@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hppacach.h,v 1.1 1990/08/08 20:20:56 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hppacach.h,v 1.2 1990/11/13 08:44:50 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -33,12 +33,12 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 #ifndef HPPACACHE_H		/* Prevent multiple inclusion */
-
 #define HPPACACHE_H
 
-#ifdef C_SCHEME
-#include "paths.h"
-#define CACHE_FILENAME_PATH SCHEME_SOURCES_PATH
+#ifdef MIT_SCHEME
+#include "option.h"
+#define CACHE_FILENAME "%s/%s.cache"
+#define CACHE_FILENAME_PATH "/usr/local/lib/mit-scheme"
 #define MODELS_FILENAME "HPPAmodels"
 #endif
 

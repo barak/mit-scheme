@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.39 1990/06/20 17:40:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.40 1990/11/13 08:44:43 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -686,6 +686,10 @@ DEFINE_PRIMITIVE ("GET-FIXED-OBJECTS-VECTOR", Prim_get_fixed_objects_vector, 0, 
   PRIMITIVE_RETURN (SHARP_F);
 }
 
+#ifndef SET_FIXED_OBJ_HOOK
+#define SET_FIXED_OBJ_HOOK(vector) Fixed_Objects = (vector)
+#endif
+
 DEFINE_PRIMITIVE ("SET-FIXED-OBJECTS-VECTOR!", Prim_set_fixed_objects_vector, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
@@ -699,7 +703,7 @@ DEFINE_PRIMITIVE ("SET-FIXED-OBJECTS-VECTOR!", Prim_set_fixed_objects_vector, 1,
 	((Valid_Fixed_Obj_Vector ())
 	 ? (Get_Fixed_Obj_Slot (Me_Myself))
 	 : SHARP_F);
-      Set_Fixed_Obj_Hook (vector);
+      SET_FIXED_OBJ_HOOK (vector);
       Set_Fixed_Obj_Slot (Me_Myself, vector);
       PRIMITIVE_RETURN (result);
     }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osscheme.h,v 1.1 1990/06/20 19:36:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osscheme.h,v 1.2 1990/11/13 08:44:54 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -40,7 +40,7 @@ MIT in each case. */
 extern Tchannel EXFUN (arg_channel, (int arg_number));
 extern Tchannel EXFUN (arg_channel_old, (int arg_number));
 
-extern int EXFUN (boolean_option_argument, (CONST char * name));
+extern int option_emacs_subprocess;
 
 extern int EXFUN (executing_scheme_primitive_p, (void));
 
@@ -56,10 +56,9 @@ extern void EXFUN (error_floating_point_exception, (void));
 
 extern void EXFUN (termination_eof, (void));
 extern void EXFUN (termination_normal, (void));
+extern void EXFUN (termination_init_error, (void));
 extern void EXFUN (termination_signal, (CONST char * signal_name));
 extern void EXFUN (termination_trap, (void));
-/* Perhaps this should be different. */
-#define termination_init_error termination_normal
 
 extern void EXFUN (request_character_interrupt, (void));
 extern void EXFUN (request_timer_interrupt, (void));

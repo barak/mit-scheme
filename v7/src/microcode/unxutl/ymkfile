@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.31 1990/11/08 11:14:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.32 1990/11/13 08:45:37 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -309,6 +309,7 @@ lookprm.c \
 lookup.c \
 memmag.c \
 obstack.c \
+option.c \
 osscheme.c \
 ostty.c \
 prim.c \
@@ -387,6 +388,7 @@ list.o \
 lookprm.o \
 lookup.o \
 obstack.o \
+option.o \
 osscheme.o \
 ostty.o \
 prim.o \
@@ -546,8 +548,8 @@ HPPACACHE : hppacache
 	chmod g+s hppacache
 	./hppacache -dump
 
-hppacache : hppacache.c hppacache.h
-	$(CC) -DC_SCHEME -o hppacache hppacache.c
+hppacache : hppacache.c hppacache.h option.h
+	$(CC) $(CFLAGS) -o hppacache hppacache.c
 
 lint.out : $(SOURCES) $(SCHEME_SOURCES) $(CSRC) usrdef.c $(HEAD_FILES)
 	rm -f lint.out
@@ -584,12 +586,13 @@ storage.o : scheme.touch gctype.c
 char.o string.o : scheme.touch prims.h
 tterm.o : scheme.touch prims.h osterm.h
 
-boot.o : scheme.touch prims.h version.h paths.h ostop.h
+boot.o : scheme.touch prims.h version.h option.h ostop.h
+option.o : ansidecl.h option.h
 term.o : scheme.touch
 
 compiler.o : config.h object.h sdata.h types.h errors.h const.h returns.h
 
-bchmmg.o bchgcl.o bchpur.o : scheme.touch prims.h bchgcc.h oscond.h $(GC_HEAD_FILES)
+bchmmg.o bchgcl.o bchpur.o : scheme.touch prims.h bchgcc.h option.h oscond.h $(GC_HEAD_FILES)
 bchdmp.o : scheme.touch prims.h bchgcc.h oscond.h $(GC_HEAD_FILES) fasl.h dump.c
 
 syntax.o : scheme.touch prims.h edwin.h syntax.h
@@ -635,8 +638,8 @@ uxproc.o : osproc.h uxproc.h osio.h uxio.h osterm.h
 uxsig.o : ossig.h osctty.h ostty.h uxtrap.h uxutil.h critsec.h
 uxsock.o : uxsock.h osio.h uxio.h
 uxterm.o : osterm.h uxterm.h osio.h uxio.h
-uxtop.o : ostop.h uxtop.h osctty.h uxutil.h errors.h
-uxtrap.o : scheme.touch uxtrap.h uxutil.h $(GC_HEAD_FILES)
+uxtop.o : ostop.h uxtop.h osctty.h uxutil.h errors.h option.h
+uxtrap.o : scheme.touch uxtrap.h uxutil.h option.h $(GC_HEAD_FILES)
 uxtty.o : ostty.h osenv.h osio.h uxio.h osterm.h uxterm.h
 uxutil.o : uxutil.h
 pruxfs.o : osfs.h

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.55 1990/06/20 21:13:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.56 1990/11/13 08:44:07 cph Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -61,6 +61,7 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "bchgcc.h"
+#include "option.h"
 
 /* Exports */
 
@@ -121,7 +122,7 @@ open_gc_file(size)
 
   (void) mktemp(gc_default_file_name);
   flags = GC_FILE_FLAGS;
-  gc_file_name = (string_option_argument ("-gcfile"));
+  gc_file_name = option_gc_file;
   if (gc_file_name == 0)
     {
       gc_file_name = gc_default_file_name;
@@ -138,7 +139,7 @@ open_gc_file(size)
     {
       fprintf(stderr,
 	      "%s: GC file \"%s\" cannot be opened; ",
-	      Saved_argv[0]), gc_file_name;
+	      scheme_program_name, gc_file_name);
       gc_file_name = gc_default_file_name;
       fprintf(stderr,
 	      "Using \"%s\" instead.\n",
@@ -148,7 +149,7 @@ open_gc_file(size)
     }
     fprintf(stderr,
 	    "%s: GC file \"%s\" cannot be opened; Aborting.\n",
-	    Saved_argv[0], gc_file_name);
+	    scheme_program_name, gc_file_name);
     exit(1);
   }
 #ifdef _HPUX
@@ -161,7 +162,7 @@ open_gc_file(size)
     {
       fprintf(stderr,
 	      "%s: cannot position at start of GC file \"%s\"; Aborting.\n",
-	      Saved_argv[0], gc_file_name);
+	      scheme_program_name, gc_file_name);
       exit(1);
     }
   }
@@ -177,7 +178,7 @@ close_gc_file()
   {
     fprintf(stderr,
 	    "%s: Problems closing GC file \"%s\".\n",
-	    Saved_argv[0], gc_file_name);
+	    scheme_program_name, gc_file_name);
   }
   if (gc_file_name == gc_default_file_name)
   {

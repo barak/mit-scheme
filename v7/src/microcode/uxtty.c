@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtty.c,v 1.3 1990/11/05 11:55:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtty.c,v 1.4 1990/11/13 08:45:26 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -139,10 +139,10 @@ DEFUN_VOID (UX_initialize_tty)
     char termcap_buffer [TERMCAP_BUFFER_SIZE];
     char * tbp = tgetstr_buffer;
     CONST char * term;
-    if ((isatty (STDOUT_FILENO)) &&
-	(!parent_process_is_emacs) &&
-	((term = (getenv ("TERM"))) != 0) &&
-	((tgetent (termcap_buffer, term)) > 0))
+    if ((isatty (STDOUT_FILENO))
+	&& (!option_emacs_subprocess)
+	&& ((term = (getenv ("TERM"))) != 0)
+	&& ((tgetent (termcap_buffer, term)) > 0))
       {
 	tty_x_size = (tgetnum ("co"));
 	tty_y_size = (tgetnum ("li"));

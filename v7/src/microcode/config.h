@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.56 1990/09/08 00:10:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.57 1990/11/13 08:44:20 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -283,18 +283,6 @@ typedef unsigned long SCHEME_OBJECT;
 #define ADDRESS_TO_DATUM(address)					\
   ((SCHEME_OBJECT) (((unsigned long) (address)) & (~(HPPA_QUAD_BIT))))
 
-/* HPPA compiled binaries are large! */
-
-#ifdef HAS_COMPILER_SUPPORT
-#ifndef CONSTANT_SIZE
-#define CONSTANT_SIZE		600	/* Default Kcells for constant */
-#endif
-#endif
-
-#ifndef COMPILER_CONSTANT_SIZE
-#define COMPILER_CONSTANT_SIZE	1300
-#endif
-
 #endif /* hp9000s800 */
 
 #ifdef hp9000s500
@@ -368,7 +356,6 @@ typedef unsigned long SCHEME_OBJECT;
 #include <public.h>
 #define HAS_FREXP
 #define HAS_MODF
-#define STACK_SIZE		4	/* 4K objects */
 #endif
 
 #ifdef i386
@@ -424,16 +411,17 @@ typedef unsigned long SCHEME_OBJECT;
   ((SCHEME_OBJECT) (((unsigned long) (address)) & (~(MIPS_DATA_BIT))))
 
 /* MIPS compiled binaries are large! */
-
 #ifdef HAS_COMPILER_SUPPORT
-#ifndef CONSTANT_SIZE
-#define CONSTANT_SIZE		700	/* Default Kcells for constant */
-#endif
+
+#ifndef DEFAULT_SMALL_CONSTANT
+#define DEFAULT_SMALL_CONSTANT 700
 #endif
 
-#ifndef COMPILER_CONSTANT_SIZE
-#define COMPILER_CONSTANT_SIZE	1500
+#ifndef DEFAULT_LARGE_CONSTANT
+#define DEFAULT_LARGE_CONSTANT 1500
 #endif
+
+#endif /* HAS_COMPILER_SUPPORT */
 
 #endif /* mips */
 
@@ -519,34 +507,4 @@ typedef unsigned long SCHEME_OBJECT;
 #undef HAVE_DOUBLE_TO_LONG_BUG
 #undef UNSIGNED_SHIFT_BUG
 #undef Conditional_Bug
-#endif
-
-/* Default "segment" sizes */
-
-#ifndef STACK_SIZE
-#ifndef USE_STACKLETS
-#define	STACK_SIZE		100	/* Default Kcells for stack */
-#else
-#define STACK_SIZE		256	/* Default stacklet size */
-#endif
-#endif
-
-#ifndef CONSTANT_SIZE
-#define CONSTANT_SIZE		400	/* Default Kcells for constant */
-#endif
-
-#ifndef HEAP_SIZE
-#define HEAP_SIZE		250	/* Default Kcells for each heap */
-#endif
-
-#ifndef COMPILER_STACK_SIZE
-#define COMPILER_STACK_SIZE STACK_SIZE
-#endif
-
-#ifndef COMPILER_HEAP_SIZE
-#define COMPILER_HEAP_SIZE	1000
-#endif
-
-#ifndef COMPILER_CONSTANT_SIZE
-#define COMPILER_CONSTANT_SIZE	1000
 #endif

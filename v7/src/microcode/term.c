@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/term.c,v 1.3 1990/11/01 04:33:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/term.c,v 1.4 1990/11/13 08:44:58 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -40,16 +40,29 @@ extern char * Term_Messages [];
 extern void EXFUN (get_band_parameters, (long * heap_size, long * const_size));
 extern void EXFUN (Reset_Memory, (void));
 
-#ifndef EXIT_HOOK
-#define EXIT_HOOK()
-#endif
-
 #define BYTES_TO_BLOCKS(n) (((n) + 1023) / 1024)
 #define MIN_HEAP_DELTA	50
+
+#ifndef EXIT_SCHEME
+#define EXIT_SCHEME exit
+#endif
+
+#ifdef EXIT_SCHEME_DECLARATIONS
+EXIT_SCHEME_DECLARATIONS;
+#endif
+
+void
+DEFUN_VOID (init_exit_scheme)
+{
+#ifdef INIT_EXIT_SCHEME
+  INIT_EXIT_SCHEME ();
+#endif
+}
 
 static void
 DEFUN (attempt_termination_backout, (code), int code)
 {
+  fflush (stderr);
   if ((WITHIN_CRITICAL_SECTION_P ())
       || (code == TERM_HALT)
       || (! (Valid_Fixed_Obj_Vector ())))
@@ -82,7 +95,7 @@ DEFUN (attempt_termination_backout, (code), int code)
     }
   }
 }
-
+
 static void
 DEFUN (termination_prefix, (code), int code)
 {
@@ -103,9 +116,11 @@ static void
 DEFUN (termination_suffix, (code, value, abnormal_p),
        int code AND int value AND int abnormal_p)
 {
+#ifdef EXIT_HOOK
+  EXIT_HOOK (code, value, abnormal_p);
+#endif
   fflush (stdout);
   Reset_Memory ();
-  EXIT_HOOK ();
   EXIT_SCHEME (value);
 }
 
@@ -135,6 +150,13 @@ DEFUN_VOID (termination_normal)
 }
 
 void
+DEFUN_VOID (termination_init_error)
+{
+  termination_prefix (TERM_EXIT);
+  termination_suffix (TERM_EXIT, 1, 1);
+}
+
+void
 DEFUN_VOID (termination_end_of_computation)
 {
   termination_prefix (TERM_END_OF_COMPUTATION);
@@ -151,7 +173,7 @@ DEFUN_VOID (termination_trap)
   termination_prefix (TERM_TRAP);
   termination_suffix (TERM_TRAP, 1, 0);
 }
-
+
 void
 DEFUN_VOID (termination_no_error_handler)
 {

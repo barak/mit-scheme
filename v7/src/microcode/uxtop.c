@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtop.c,v 1.6 1990/11/08 11:13:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtop.c,v 1.7 1990/11/13 08:45:15 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -37,6 +37,7 @@ MIT in each case. */
 #include "osctty.h"
 #include "uxutil.h"
 #include "errors.h"
+#include "option.h"
 
 extern void EXFUN (UX_initialize_channels, (void));
 extern void EXFUN (UX_initialize_ctty, (int interactive));
@@ -64,13 +65,12 @@ extern void EXFUN (UX_ctty_restore_external_state, (void));
 extern CONST char * OS_Name;
 extern CONST char * OS_Variant;
 
-int parent_process_is_emacs;
 static int interactive;
 
 int
 DEFUN_VOID (OS_under_emacs_p)
 {
-  return (parent_process_is_emacs);
+  return (option_emacs_subprocess);
 }
 
 void
@@ -79,19 +79,18 @@ DEFUN_VOID (OS_initialize)
   dstack_initialize ();
   transaction_initialize ();
   initialize_interruptable_extent ();
-  parent_process_is_emacs = (boolean_option_argument ("-emacs"));
   {
     interactive =
-      ((isatty (STDIN_FILENO)) ||
-       (isatty (STDOUT_FILENO)) ||
-       (isatty (STDERR_FILENO)) ||
-       (boolean_option_argument ("-interactive")));
+      (option_force_interactive
+       || (isatty (STDIN_FILENO))
+       || (isatty (STDOUT_FILENO))
+       || (isatty (STDERR_FILENO)));
     /* If none of the stdio streams is a terminal, disassociate us
        from the controlling terminal so that we're not affected by
        keyboard interrupts or hangup signals.  However, if we're
        running under Emacs we don't want to do this, because we want
        to receive a hangup signal if Emacs dies. */
-    if ((!interactive) && (!parent_process_is_emacs))
+    if ((!interactive) && (!option_emacs_subprocess))
       UX_setsid ();
     /* The argument passed to `UX_ctty_initialize' says whether to
        permit interrupt control, i.e. whether to attempt to setup the
@@ -110,7 +109,7 @@ DEFUN_VOID (OS_initialize)
   OS_Name = SYSTEM_NAME;
   OS_Variant = SYSTEM_VARIANT;
   fprintf (stdout, "MIT Scheme running under %s\n", OS_Variant);
-  if ((!parent_process_is_emacs) && (OS_ctty_interrupt_control ()))
+  if ((!option_emacs_subprocess) && (OS_ctty_interrupt_control ()))
     {
       fputs ("", stdout);
       fprintf (stdout, "Type %s followed by `H' to obtain information about interrupts.\n",
@@ -147,7 +146,7 @@ DEFUN (OS_quit, (code, abnormal_p), int code AND int abnormal_p)
       fputs ("\nScheme has terminated abnormally!\n", stdout);
       {
 	int dump_core =
-	  ((! (boolean_option_argument ("-nocore")))
+	  ((!option_disable_core_dump)
 	   && (userio_confirm ("Would you like a core dump? [Y or N] "))
 	   && (userio_confirm ("Do you really want a core dump? [Y or N] ")));
 	putc ('\n', stdout);

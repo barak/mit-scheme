@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.4 1990/08/09 19:52:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.5 1990/11/13 08:45:19 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -36,6 +36,7 @@ MIT in each case. */
 #include "ux.h"
 #include "uxtrap.h"
 #include "uxutil.h"
+#include "option.h"
 
 extern CONST char * EXFUN (find_signal_name, (int signo));
 extern void EXFUN (UX_dump_core, (void));
@@ -78,7 +79,7 @@ DEFUN_VOID (trap_immediate_termination)
 static void
 DEFUN_VOID (trap_dump_core)
 {
-  if (boolean_option_argument ("-nocore"))
+  if (option_disable_core_dump)
     {
       fputs (">> Core dumps are disabled - Terminating normally.\n", stdout);
       fflush (stdout);

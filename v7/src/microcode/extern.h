@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.38 1990/10/03 15:14:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.39 1990/11/13 08:44:37 cph Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -143,8 +143,7 @@ extern SCHEME_OBJECT * Return_Hook_Address;
 extern SCHEME_OBJECT * Prev_Restore_History_Stacklet;
 extern long Prev_Restore_History_Offset;
 
-extern int Saved_argc;
-extern CONST char ** Saved_argv;
+extern CONST char * scheme_program_name;
 extern CONST char * OS_Name;
 extern CONST char * OS_Variant;
 extern struct obstack scratch_obstack;
@@ -213,9 +212,6 @@ extern SCHEME_OBJECT memory_to_string ();
 extern SCHEME_OBJECT char_pointer_to_string ();
 
 /* Random and OS utilities */
-extern int EXFUN (boolean_option_argument, (CONST char * name));
-extern CONST char * EXFUN (string_option_argument, (CONST char * name));
-extern long EXFUN (numeric_option_argument, (CONST char * name, long defval));
 extern Boolean Restore_History ();
 extern Boolean interpreter_applicable_p ();
 extern void EXFUN
@@ -230,6 +226,7 @@ extern Boolean Pure_Test ();
 
 extern void EXFUN (Microcode_Termination, (int code));
 extern void EXFUN (termination_normal, (void));
+extern void EXFUN (termination_init_error, (void));
 extern void EXFUN (termination_end_of_computation, (void));
 extern void EXFUN (termination_trap, (void));
 extern void EXFUN (termination_no_error_handler, (void));

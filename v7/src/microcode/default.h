@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.34 1990/09/08 00:10:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.35 1990/11/13 08:44:27 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -102,40 +102,6 @@ do									\
 #define Test_Pure_Space_Top(New_Top) ((New_Top) <= Constant_Top)
 #endif
 
-/* Used in boot.c */
-
-#ifndef main_type
-#define main_type void
-#endif
-
-#ifndef Command_Line_Hook
-#define Command_Line_Hook()
-#endif
-
-#ifndef EXIT_SCHEME_DECLARATIONS
-#define EXIT_SCHEME_DECLARATIONS
-#endif
-
-#ifndef INIT_EXIT_SCHEME
-#define INIT_EXIT_SCHEME()
-#endif
-
-#ifndef EXIT_SCHEME
-#define EXIT_SCHEME exit
-#endif
-
-/* Used in various places. */
-
-#ifndef Init_Fixed_Objects
-#define Init_Fixed_Objects()				\
-  Default_Init_Fixed_Objects(Fixed_Objects)
-#endif
-
-#ifndef Set_Fixed_Obj_Hook
-#define Set_Fixed_Obj_Hook(New_Vector)			\
-  Fixed_Objects = New_Vector
-#endif
-
 /* Used in debug.c */
 
 #ifndef Back_Trace_Entry_Hook
@@ -218,10 +184,6 @@ do									\
 
 #ifndef SITE_RETURN_DISPATCH_HOOK
 #define SITE_RETURN_DISPATCH_HOOK()
-#endif
-
-#ifndef DOWNWARD_COERCE_FLONUM_P
-#define DOWNWARD_COERCE_FLONUM_P(number) 0
 #endif
 
 #ifndef FASLOAD_RELOCATE_HOOK

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.13 1990/11/08 11:10:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.14 1990/11/13 08:45:03 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -59,8 +59,6 @@ extern int errno;
 #include "intext.h"
 #include "dstack.h"
 #include "osscheme.h"
-
-extern int parent_process_is_emacs;
 
 extern void EXFUN (error_system_call, (int code, CONST char * name));
 

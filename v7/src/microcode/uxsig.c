@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.3 1990/08/27 20:08:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.4 1990/11/13 08:45:09 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -521,7 +521,7 @@ DEFUN_STD_HANDLER (sighnd_save_then_terminate,
 
 DEFUN_STD_HANDLER (sighnd_terminate,
   (termination_signal
-   ((! (parent_process_is_emacs && (signo == SIGHUP)))
+   ((! (option_emacs_subprocess && (signo == SIGHUP)))
     ? (find_signal_name (signo))
     : 0)))
 
@@ -621,9 +621,9 @@ DEFUN_VOID (UX_initialize_signals)
   bind_handler (SIGUSR2,	sighnd_renice);
 #endif
   bind_handler (SIGCHLD,	sighnd_dead_subprocess);
-  if ((isatty (STDIN_FILENO)) || parent_process_is_emacs)
+  if ((isatty (STDIN_FILENO)) || option_emacs_subprocess)
     {
-      if (!parent_process_is_emacs)
+      if (!option_emacs_subprocess)
 	bind_handler (SIGHUP,	sighnd_save_then_terminate);
       bind_handler (SIGQUIT,	sighnd_interactive);
       bind_handler (SIGPWR,	sighnd_save_then_terminate);
@@ -667,7 +667,7 @@ static void EXFUN (reset_query, (struct FULL_SIGCONTEXT * scp));
 
 #define INTERACTIVE_NEWLINE()						\
 {									\
-  if (!parent_process_is_emacs)						\
+  if (!option_emacs_subprocess)						\
     {									\
       putc ('\n', stdout);						\
       fflush (stdout);							\
@@ -677,7 +677,7 @@ static void EXFUN (reset_query, (struct FULL_SIGCONTEXT * scp));
 static void
 DEFUN (interactive_interrupt_handler, (scp), struct FULL_SIGCONTEXT * scp)
 {
-  if (!parent_process_is_emacs)
+  if (!option_emacs_subprocess)
     {
       fputs ((OS_tty_command_beep ()), stdout);
       putc ('\n', stdout);
@@ -685,7 +685,7 @@ DEFUN (interactive_interrupt_handler, (scp), struct FULL_SIGCONTEXT * scp)
     }
   while (1)
     {
-      if (!parent_process_is_emacs)
+      if (!option_emacs_subprocess)
 	{
 	  fprintf (stdout, "Interrupt option (? for help): ");
 	  fflush (stdout);
@@ -739,7 +739,7 @@ DEFUN (interactive_interrupt_handler, (scp), struct FULL_SIGCONTEXT * scp)
 	  termination_normal ();
 	  return;
 	case '\f':
-	  if (!parent_process_is_emacs)
+	  if (!option_emacs_subprocess)
 	    {
 	      fputs ((OS_tty_command_clear ()), stdout);
 	      fflush (stdout);
@@ -751,19 +751,19 @@ DEFUN (interactive_interrupt_handler, (scp), struct FULL_SIGCONTEXT * scp)
 	  return;
 	case 'H':
 	case 'h':
-	  if (!parent_process_is_emacs)
+	  if (!option_emacs_subprocess)
 	    print_interrupt_chars ();
 	  break;
 	case 'I':
 	case 'i':
-	  if (!parent_process_is_emacs)
+	  if (!option_emacs_subprocess)
 	    {
 	      fputs ("Ignored.  Resuming Scheme.\n", stdout);
 	      fflush (stdout);
 	    }
 	  return;
 	default:
-	  if (!parent_process_is_emacs)
+	  if (!option_emacs_subprocess)
 	    print_interactive_help ();
 	  break;
 	}

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.63 1990/09/08 00:09:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.64 1990/11/13 08:44:14 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -31,58 +31,13 @@ there shall be no use of the name of the Massachusetts Institute of
 Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
-
-/* This file contains the code to support startup of
-   the SCHEME interpreter.
 
- The command line (when not running a dumped executable version) may
- take the following forms:
+/* This file contains `main' and associated startup code. */
 
-   scheme
-
-   or
-
-   scheme {band-name}
-
-   or
-
-   scheme {filespec}
-          {-heap heap-size}
-	  {-stack stack-size}
-	  {-constant constant-size}
-	  {-utabmd utab-filename} or {-utab utab-filename}
-          {other arguments ignored by the core microcode}
-
-   with filespec either {-band band-name} or {-fasl file-name} or
-   -compiler.
-
-   arguments are optional, numbers are in 1K units.  Default values
-   are given above.  The arguments in the long for may appear in any
-   order on the command line.  The allocation arguments (heap, stack,
-   and constant) are ignored when scheme is an executable image.  A
-   warning message is printed if the command line contains them.
-
-   heap-size......number of cells to allocate for user heap; this will
-                  be doubled to allow for 2 space GC.
-   stack-size.....number of cells for control stack.  This primarily
-                  controls maximum depth of recursion.  If the flag
-		  USE_STACKLETS is defined, then this controls the
-		  size of the stacklets (not the total stack) and
-		  thus affects how often new stack segments must
-		  be allocated.
-   constant-size..number of cells for constant and pure space in the
-                  system.
-   utab-filename..name of an alternate utabmd file to use.
-
-Additional arguments may exist for particular machines; see CONFIG.H
-for details.  They are created by defining a macro Command_Line_Args.
-
-*/
-
 #include "scheme.h"
 #include "prims.h"
 #include "version.h"
-#include "paths.h"
+#include "option.h"
 #ifndef islower
 #include <ctype.h>
 #endif
@@ -90,12 +45,22 @@ for details.  They are created by defining a macro Command_Line_Args.
 
 extern PTR EXFUN (malloc, (unsigned int size));
 extern void EXFUN (free, (PTR ptr));
+extern void EXFUN (init_exit_scheme, (void));
+extern void Clear_Memory ();
+extern void Setup_Memory ();
+extern void compiler_initialize ();
+
+forward void Start_Scheme ();
+forward void Enter_Interpreter ();
 
-int Saved_argc;
-CONST char ** Saved_argv;
+CONST char * scheme_program_name;
 CONST char * OS_Name;
 CONST char * OS_Variant;
 struct obstack scratch_obstack;
+PTR initial_C_stack_pointer;
+
+/* If true, this is an executable created by dump-world. */
+Boolean scheme_dumped_p = false;
 
 PTR
 DEFUN (obstack_chunk_alloc, (size), unsigned int size)
@@ -104,7 +69,7 @@ DEFUN (obstack_chunk_alloc, (size), unsigned int size)
   if (result == 0)
     {
       fprintf (stderr, "\n%s: unable to allocate obstack chunk of %d bytes\n",
-	       (Saved_argv[0]), size);
+	       scheme_program_name, size);
       fflush (stderr);
       Microcode_Termination (TERM_EXIT);
     }
@@ -113,8 +78,8 @@ DEFUN (obstack_chunk_alloc, (size), unsigned int size)
 
 #define obstack_chunk_free free
 
-#ifndef ENTRY_HOOK
-#define ENTRY_HOOK()
+#ifndef INIT_FIXED_OBJECTS
+#define INIT_FIXED_OBJECTS() Fixed_Objects = (make_fixed_objects_vector ())
 #endif
 
 /* Declare the outermost critical section. */
@@ -125,237 +90,79 @@ DECLARE_CRITICAL_SECTION ();
 static void
 DEFUN (usage, (error_string), CONST char * error_string)
 {
-  fprintf (stderr, "%s: %s\n\n", (Saved_argv[0]), error_string);
+  fprintf (stderr, "%s: %s\n\n", scheme_program_name, error_string);
   fflush (stderr);
-  exit (1);
-}
-
-/* Command Line Parsing */
-
-static int
-DEFUN (string_compare_ci, (string1, string2),
-       CONST char * string1 AND
-       CONST char * string2)
-{
-  CONST char * scan1 = string1;
-  unsigned int length1 = (strlen (string1));
-  CONST char * scan2 = string2;
-  unsigned int length2 = (strlen (string2));
-  unsigned int length = ((length1 < length2) ? length1 : length2);
-  CONST char * end1 = (scan1 + length);
-  CONST char * end2 = (scan2 + length);
-  while ((scan1 < end1) && (scan2 < end2))
-    {
-      int c1 = (*scan1++);
-      int c2 = (*scan2++);
-      if (islower (c1))
-	{
-	  if (! (islower (c2)))
-	    c1 = (toupper (c1));
-	}
-      else
-	{
-	  if (islower (c2))
-	    c2 = (toupper (c2));
-	}
-      if (c1 != c2)
-	return ((c1 < c2) ? (-1) : 1);
-    }
-  return
-    ((length1 == length2)
-     ? 0
-     : ((length1 < length2) ? (-1) : 1));
-}
-
-static int
-DEFUN (find_option_argument, (name), CONST char * name)
-{
-  CONST char ** scan = Saved_argv;
-  CONST char ** end = (scan + Saved_argc);
-  while (scan < end)
-    if ((string_compare_ci (name, (*scan++))) == 0)
-      return ((scan - Saved_argv) - 1);
-  return (-1);
-}
-
-int
-DEFUN (boolean_option_argument, (name), CONST char * name)
-{
-  return ((find_option_argument (name)) >= 0);
-}
-
-CONST char *
-DEFUN (string_option_argument, (name), CONST char * name)
-{
-  int position = (find_option_argument (name));
-  if (position == (Saved_argc - 1))
-    {
-      fprintf (stderr, "%s: %s option requires an argument name\n\n",
-	       (Saved_argv[0]), name);
-      fflush (stderr);
-      exit (1);
-    }
-  return ((position < 0) ? 0 : (Saved_argv [position + 1]));
-}
-
-long
-DEFUN (numeric_option_argument, (name, defval),
-       CONST char * name AND
-       long defval)
-{
-  CONST char * option = (string_option_argument (name));
-  return ((option == 0) ? defval : (atoi (option)));
-}
-
-/* Used to test whether it is a dumped executable version */
-
-extern Boolean scheme_dumped_p;
-Boolean scheme_dumped_p = false;
-
-int dumped_heap_size;
-int dumped_stack_size;
-int dumped_constant_size;
-
-static void
-DEFUN (find_image_parameters, (file_name, cold_load_p, supplied_p),
-       CONST char ** file_name AND
-       Boolean * cold_load_p AND
-       Boolean * supplied_p)
-{
-  Boolean found_p = false;
-  (*supplied_p) = false;
-  (*cold_load_p) = false;
-  (*file_name) = DEFAULT_BAND_NAME;
-  if (!scheme_dumped_p)
-    {
-      Heap_Size = HEAP_SIZE;
-      Stack_Size = STACK_SIZE;
-      Constant_Size = CONSTANT_SIZE;
-    }
-  else
-    {
-      dumped_heap_size = Heap_Size;
-      dumped_stack_size = Stack_Size;
-      dumped_constant_size = Constant_Size;
-    }
-  /* This does not set found_p because the image spec. can be
-     overridden by the options below.  It just sets different
-     defaults. */
-  if (boolean_option_argument ("-compiler"))
-    {
-      (*supplied_p) = true;
-      (*file_name) = DEFAULT_COMPILER_BAND;
-      Heap_Size = COMPILER_HEAP_SIZE;
-      Stack_Size = COMPILER_STACK_SIZE;
-      Constant_Size = COMPILER_CONSTANT_SIZE;
-    }
-  /* Exclusive image specs. */
-  {
-    CONST char * band_name = (string_option_argument ("-band"));
-    if (band_name != 0)
-      {
-	if (found_p)
-	  usage ("Multiple image parameters specified!");
-	found_p = true;
-	(*supplied_p) = true;
-	(*file_name) = band_name;
-      }
-  }
-  {
-    CONST char * fasl_name = (string_option_argument ("-fasl"));
-    if (fasl_name != 0)
-      {
-	if (found_p)
-	  usage ("Multiple image parameters specified!");
-	found_p = true;
-	(*supplied_p) = true;
-	(*cold_load_p) = true;
-	(*file_name) = fasl_name;
-      }
-  }
-  Heap_Size = (numeric_option_argument ("-heap", Heap_Size));
-  Stack_Size = (numeric_option_argument ("-stack", Stack_Size));
-  Constant_Size = (numeric_option_argument ("-constant", Constant_Size));
-  if (scheme_dumped_p
-      && ((Heap_Size != dumped_heap_size)
-	  || (Stack_Size != dumped_stack_size)
-	  || (Constant_Size != dumped_constant_size)))
-    {
-      fprintf (stderr, "%s warning: Allocation parameters ignored.\n",
-	       (Saved_argv[0]));
-      fflush (stderr);
-      Heap_Size = dumped_heap_size;
-      Stack_Size = dumped_stack_size;
-      Constant_Size = dumped_constant_size;
-    }
+  termination_init_error ();
 }
 
 /* Exit is done in a different way on some operating systems (eg. VMS)  */
 
-EXIT_SCHEME_DECLARATIONS;
-
-forward void Start_Scheme ();
-forward void Enter_Interpreter ();
-extern void Clear_Memory ();
-extern void Setup_Memory ();
-PTR initial_C_stack_pointer;
+#ifndef main_type
+#define main_type void
+#endif
 
 main_type
 main (argc, argv)
      int argc;
      CONST char ** argv;
 {
-  Boolean cold_load_p, supplied_p;
-  CONST char * file_name;
-  extern void compiler_initialize ();
-
-  INIT_EXIT_SCHEME ();
-
-  Saved_argc = argc;
-  Saved_argv = argv;
+  init_exit_scheme ();
+  scheme_program_name = (argv[0]);
   initial_C_stack_pointer = (&argc);
   obstack_init (&scratch_obstack);
-
-  find_image_parameters (&file_name, &cold_load_p, &supplied_p);
-
+  read_command_line_options (argc, argv);
   if (scheme_dumped_p)
-  {
-    OS_reset ();
-    if (!supplied_p)
     {
-      printf ("Scheme Microcode Version %d.%d\n", VERSION, SUBVERSION);
-      OS_initialize ();
-      Enter_Interpreter ();
+      if (! ((Heap_Size == option_heap_size)
+	     && (Stack_Size == option_stack_size)
+	     && (Constant_Size == option_constant_size)))
+	{
+	  fprintf (stderr, "%s: warning: ignoring allocation parameters.\n",
+		   scheme_program_name);
+	  fflush (stderr);
+	}
+      OS_reset ();
+      if (!option_band_specified)
+	{
+	  printf ("Scheme Microcode Version %d.%d\n", VERSION, SUBVERSION);
+	  OS_initialize ();
+	  Enter_Interpreter ();
+	}
+      else
+	{
+	  Clear_Memory ((BLOCKS_TO_BYTES (Heap_Size)),
+			(BLOCKS_TO_BYTES (Stack_Size)),
+			(BLOCKS_TO_BYTES (Constant_Size)));
+	  /* We are reloading from scratch anyway. */
+	  scheme_dumped_p = false;
+	  if (option_fasl_file)
+	    Start_Scheme (BOOT_FASLOAD, option_fasl_file);
+	  else
+	    Start_Scheme (BOOT_LOAD_BAND, option_band_file);
+	}
     }
-    else
+  else
     {
-      Clear_Memory ((BLOCKS_TO_BYTES (Heap_Size)),
+      Heap_Size = option_heap_size;
+      Stack_Size = option_stack_size;
+      Constant_Size = option_constant_size;
+      Setup_Memory ((BLOCKS_TO_BYTES (Heap_Size)),
 		    (BLOCKS_TO_BYTES (Stack_Size)),
 		    (BLOCKS_TO_BYTES (Constant_Size)));
-      /* We are reloading from scratch anyway. */
-      scheme_dumped_p = false;
-      Start_Scheme ((cold_load_p ? BOOT_FASLOAD : BOOT_LOAD_BAND),
-		    file_name);
+      if (option_fasl_file)
+	{
+	  compiler_initialize (1);
+	  Start_Scheme (BOOT_FASLOAD, option_fasl_file);
+	}
+      else
+	{
+	  compiler_initialize (0);
+	  Start_Scheme (BOOT_LOAD_BAND, option_band_file);
+	}
     }
-  }
-  else
-  {
-    Command_Line_Hook();
-    Setup_Memory ((BLOCKS_TO_BYTES (Heap_Size)),
-		  (BLOCKS_TO_BYTES (Stack_Size)),
-		  (BLOCKS_TO_BYTES (Constant_Size)));
-    compiler_initialize ((long) cold_load_p);
-    Start_Scheme ((cold_load_p ? BOOT_FASLOAD : BOOT_LOAD_BAND),
-		  file_name);
-  }
-  exit (1);
+  termination_init_error ();
 }
 
-#define Default_Init_Fixed_Objects(Fixed_Objects)			\
-{									\
-  Fixed_Objects = (make_fixed_objects_vector ());			\
-}
-
 SCHEME_OBJECT
 make_fixed_objects_vector ()
 {
@@ -461,7 +268,8 @@ Start_Scheme (Start_Prim, File_Name)
   Boolean I_Am_Master = (Start_Prim != BOOT_GET_WORK);
   if (I_Am_Master)
     {
-      fprintf (stdout, "Scheme Microcode Version %d.%d\n", VERSION, SUBVERSION);
+      fprintf (stdout, "Scheme Microcode Version %d.%d\n",
+	       VERSION, SUBVERSION);
       fflush (stdout);
     }
   OS_initialize ();
@@ -469,7 +277,7 @@ Start_Scheme (Start_Prim, File_Name)
   {
     Current_State_Point = SHARP_F;
     Fluid_Bindings = EMPTY_LIST;
-    Init_Fixed_Objects ();
+    INIT_FIXED_OBJECTS ();
   }
 
   /* The initial program to execute is one of
@@ -536,21 +344,20 @@ Start_Scheme (Start_Prim, File_Name)
   if ((Stack_Pointer <= Stack_Guard) || (Free > MemTop))
   {
     fprintf (stderr, "Configuration won't hold initial data.\n");
-    Microcode_Termination (TERM_EXIT);
+    termination_init_error ();
   }
+#ifdef ENTRY_HOOK
   ENTRY_HOOK ();
-  Enter_Interpreter();
-  /*NOTREACHED*/
+#endif
+  Enter_Interpreter ();
 }
 
 void
-Enter_Interpreter()
+Enter_Interpreter ()
 {
   Interpret (scheme_dumped_p);
   fprintf (stderr, "\nThe interpreter returned to top level!\n");
-  fflush (stderr);
   Microcode_Termination (TERM_EXIT);
-  /*NOTREACHED*/
 }
 
 /* Garbage collection debugging utilities. */
@@ -646,44 +453,29 @@ DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_microcode_identify, 0, 0, 0)
 DEFINE_PRIMITIVE ("MICROCODE-TABLES-FILENAME", Prim_microcode_tables_filename, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
-  {
-    CONST char * file_name = (string_option_argument ("-utabmd"));
-    if (file_name == 0)
-      file_name = (string_option_argument ("-utab"));
-    if (file_name != 0)
-      PRIMITIVE_RETURN (char_pointer_to_string (file_name));
-  }
-  {
-    SCHEME_OBJECT result =
-      (allocate_string ((strlen (SCHEME_SOURCES_PATH))
-			+ (strlen (UCODE_TABLES_FILENAME))));
-    char * scan_result = ((char *) (STRING_LOC (result, 0)));
-    {
-      CONST char * scan = SCHEME_SOURCES_PATH;
-      CONST char * end = (scan + (strlen (SCHEME_SOURCES_PATH)));
-      while (scan < end)
-	(*scan_result++) = (*scan++);
-    }
-    {
-      CONST char * scan = UCODE_TABLES_FILENAME;
-      CONST char * end = (scan + (strlen (UCODE_TABLES_FILENAME)));
-      while (scan < end)
-	(*scan_result++) = (*scan++);
-    }
-    PRIMITIVE_RETURN (result);
-  }
+  PRIMITIVE_RETURN (char_pointer_to_string (option_utabmd_file));
+}
+
+static SCHEME_OBJECT
+DEFUN (argv_to_object, (argc, argv), int argc AND CONST char ** argv)
+{
+  SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, argc, 1));
+  CONST char ** scan = argv;
+  CONST char ** end = (scan + argc);
+  SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
+  while (scan < end)
+    (*scan_result++) = (char_pointer_to_string (*scan++));
+  return (result);
 }
 
 DEFINE_PRIMITIVE ("GET-COMMAND-LINE", Prim_get_command_line, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
-  {
-    SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, Saved_argc, 1));
-    CONST char ** scan = Saved_argv;
-    CONST char ** end = (scan + Saved_argc);
-    SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
-    while (scan < end)
-      (*scan_result++) = (char_pointer_to_string (*scan++));
-    PRIMITIVE_RETURN (result);
-  }
+  PRIMITIVE_RETURN (argv_to_object (option_saved_argc, option_saved_argv));
+}
+
+DEFINE_PRIMITIVE ("GET-UNUSED-COMMAND-LINE", Prim_get_unused_command_line, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (argv_to_object (option_unused_argc, option_unused_argv));
 }
