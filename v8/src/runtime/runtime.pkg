@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.322 1999/02/24 04:41:10 cph Exp $
+$Id: runtime.pkg,v 14.323 1999/02/24 05:59:23 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -395,6 +395,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (parent ())
   (export ()
 	  call-with-current-continuation
+	  continuation/block-thread-events?
 	  continuation/control-point
 	  continuation/dynamic-state
 	  continuation/type
@@ -425,6 +426,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  stack-frame-type/properties
 	  stack-frame-type/subproblem?
 	  stack-frame-type?
+	  stack-frame/block-thread-events?
 	  stack-frame/compiled-code?
 	  stack-frame/compiled-interrupt?
 	  stack-frame/dynamic-state

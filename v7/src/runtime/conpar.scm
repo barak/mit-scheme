@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.36 1999/01/02 06:06:43 cph Exp $
+$Id: conpar.scm,v 14.37 1999/02/24 05:59:01 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -29,27 +29,29 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define-structure (stack-frame
 		   (constructor make-stack-frame
 				(type elements dynamic-state
+				      block-thread-events?
 				      interrupt-mask history
 				      previous-history-offset
 				      previous-history-control-point
 				      offset previous-type %next))
 		   (conc-name stack-frame/))
-  (type false read-only true)
-  (elements false read-only true)
-  (dynamic-state false read-only true)
-  (interrupt-mask false read-only true)
-  (history false read-only true)
-  (previous-history-offset false read-only true)
-  (previous-history-control-point false read-only true)
-  (offset false read-only true)
+  (type #f read-only #t)
+  (elements #f read-only #t)
+  (dynamic-state #f read-only #t)
+  (block-thread-events? #f read-only #t)
+  (interrupt-mask #f read-only #t)
+  (history #f read-only #t)
+  (previous-history-offset #f read-only #t)
+  (previous-history-control-point #f read-only #t)
+  (offset #f read-only #t)
   ;; PREVIOUS-TYPE is the stack-frame-type of the frame above this one
   ;; on the stack (closer to the stack's top).  In at least two cases
   ;; we need to know this information.
-  (previous-type false read-only true)
+  (previous-type #f read-only #t)
   ;; %NEXT is either a parser-state object or the next frame.  In the
   ;; former case, the parser-state is used to compute the next frame.
   %next
-  (properties (make-1d-table) read-only true))
+  (properties (make-1d-table) read-only #t))
 
 (define (stack-frame/reductions stack-frame)
   (let ((history (stack-frame/history stack-frame)))
@@ -98,12 +100,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-integrable (stack-frame/compiled-code? stack-frame)
   (compiled-return-address? (stack-frame/return-address stack-frame)))
-
+
 (define (stack-frame/subproblem? stack-frame)
   (if (stack-frame/stack-marker? stack-frame)
       (stack-marker-frame/repl-eval-boundary? stack-frame)
       (stack-frame-type/subproblem? (stack-frame/type stack-frame))))
-
+
 (define (stack-frame/resolve-stack-address frame address)
   (let loop
       ((frame frame)
@@ -151,34 +153,38 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-structure (parser-state (constructor make-parser-state)
 				(conc-name parser-state/))
-  (dynamic-state false read-only true)
-  (interrupt-mask false read-only true)
-  (history false read-only true)
-  (previous-history-offset false read-only true)
-  (previous-history-control-point false read-only true)
-  (element-stream false read-only true)
-  (n-elements false read-only true)
-  (next-control-point false read-only true)
-  (previous-type false read-only true))
+  (dynamic-state #f read-only #t)
+  (block-thread-events? #f read-only #t)
+  (interrupt-mask #f read-only #t)
+  (history #f read-only #t)
+  (previous-history-offset #f read-only #t)
+  (previous-history-control-point #f read-only #t)
+  (element-stream #f read-only #t)
+  (n-elements #f read-only #t)
+  (next-control-point #f read-only #t)
+  (previous-type #f read-only #t))
 
 (define (continuation->stack-frame continuation)
   (parse-control-point (continuation/control-point continuation)
 		       (continuation/dynamic-state continuation)
-		       false))
+		       (continuation/block-thread-events? continuation)
+		       #f))
 
-(define (parse-control-point control-point dynamic-state type)
+(define (parse-control-point control-point dynamic-state block-thread-events?
+			     type)
   (let ((element-stream (control-point/element-stream control-point)))
     (parse-one-frame
      (make-parser-state
       dynamic-state
+      block-thread-events?
       (control-point/interrupt-mask control-point)
-      (let ((history 
+      (let ((history
 	     (history-transform (control-point/history control-point))))
 	(if (and (stream-pair? element-stream)
 		 (eq? return-address/reenter-compiled-code
 		      (element-stream/head element-stream)))
 	    history
-	    (history-superproblem history)))		    
+	    (history-superproblem history)))
       (control-point/previous-history-offset control-point)
       (control-point/previous-history-control-point control-point)
       element-stream
@@ -195,7 +201,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (and type
 		   (1d-table/get (stack-frame-type/properties type)
 				 allow-extended?-tag
-				 false))))))
+				 #f))))))
       (let ((length
 	     (let ((length (stack-frame-type/length type)))
 	       (if (exact-nonnegative-integer? length)
@@ -204,9 +210,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	((stack-frame-type/parser type)
 	 type
 	 (list->vector (stream-head stream length))
-	 (make-intermediate-state state
-				  length
-				  (stream-tail stream length))))))
+	 (make-intermediate-state state length (stream-tail stream length))))))
 
   (let ((the-stream (parser-state/element-stream state)))
     (if (stream-pair? the-stream)
@@ -216,11 +220,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       (if (not (zero? (parser-state/n-elements state)))
 		   ;; Construct invisible join-stacklets frame.
 		   (handle-ordinary
-		    (stream return-address/join-stacklets
-			    control-point))
+		    (stream return-address/join-stacklets control-point))
 		   (parse-control-point
 		    control-point
 		    (parser-state/dynamic-state state)
+		    (parser-state/block-thread-events? state)
 		    (parser-state/previous-type state))))))))
 
 ;;; `make-intermediate-state' is used to construct an intermediate
@@ -232,9 +236,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((previous-history-control-point
 	 (parser-state/previous-history-control-point state))
 	(new-length
-	 (- (parser-state/n-elements state) length)))	 
+	 (- (parser-state/n-elements state) length)))
     (make-parser-state
      (parser-state/dynamic-state state)
+     (parser-state/block-thread-events? state)
      (parser-state/interrupt-mask state)
      (parser-state/history state)
      (let ((previous (parser-state/previous-history-offset state)))
@@ -269,6 +274,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      type
      elements
      (parser-state/dynamic-state state)
+     (parser-state/block-thread-events? state)
      (parser-state/interrupt-mask state)
      (if history?
 	 history
@@ -278,6 +284,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (+ (vector-length elements) n-elements)
      (parser-state/previous-type state)
      (make-parser-state (parser-state/dynamic-state state)
+			(parser-state/block-thread-events? state)
 			(parser-state/interrupt-mask state)
 			(if (or force-pop? history-subproblem?)
 			    (history-superproblem history)
@@ -288,23 +295,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			n-elements
 			(parser-state/next-control-point state)
 			type))))
-
+
 (define (parser/standard type elements state)
   (parse/standard-next type elements state
 		       (and (stack-frame-type/history-subproblem? type)
 			    (stack-frame-type/subproblem? type))
-		       false))
-
+		       #f))
+
 (define (parser/standard-compiled type elements state)
   (parse/standard-next
    type elements state
    (let ((stream (parser-state/element-stream state)))
      (and (stream-pair? stream)
-	  (eq? (return-address->stack-frame-type
-		(element-stream/head stream)
-		true)
+	  (eq? (return-address->stack-frame-type (element-stream/head stream)
+						 #t)
 	       stack-frame-type/return-to-interpreter)))
-   false))
+   #f))
 
 (define (parser/apply type elements state)
   (let ((valid-history?
@@ -312,14 +318,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(and (stream-pair? stream)
 		     (eq? return-address/reenter-compiled-code
 			  (element-stream/head stream)))))))
-    (parse/standard-next type elements state
-			 valid-history? valid-history?)))
+    (parse/standard-next type elements state valid-history? valid-history?)))
 
 (define (parser/restore-interrupt-mask type elements state)
   (parser/standard
    type
    elements
    (make-parser-state (parser-state/dynamic-state state)
+		      (parser-state/block-thread-events? state)
 		      (vector-ref elements 1)
 		      (parser-state/history state)
 		      (parser-state/previous-history-offset state)
@@ -334,6 +340,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    type
    elements
    (make-parser-state (parser-state/dynamic-state state)
+		      (parser-state/block-thread-events? state)
 		      (parser-state/interrupt-mask state)
 		      (history-transform (vector-ref elements 1))
 		      (vector-ref elements 2)
@@ -355,7 +362,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (parser/special-compiled type elements state)
   (let ((code (vector-ref elements 1)))
     (cond ((fix:= code code/special-compiled/internal-apply)
-	   (parse/standard-next type elements state false false))
+	   (parse/standard-next type elements state #f #f))
 	  ((fix:= code code/special-compiled/restore-interrupt-mask)
 	   (parser/%stack-marker (parser-state/dynamic-state state)
 				 (vector-ref elements 2)
@@ -367,7 +374,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       (fix:= code code/restore-regs)
 	       (fix:= code code/apply-compiled)
 	       (fix:= code code/continue-linking))
-	   (parse/standard-next type elements state false false))
+	   (parse/standard-next type elements state #f #f))
 	  (else
 	   (error "Unknown special compiled frame" code)))))
 
@@ -401,6 +408,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    elements
    (make-parser-state
     dynamic-state
+    (parser-state/block-thread-events? state)
     interrupt-mask
     (parser-state/history state)
     (parser-state/previous-history-offset state)
@@ -445,13 +453,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (stack-frame->continuation stack-frame)
   (make-continuation 'REENTRANT
 		     (stack-frame->control-point stack-frame)
-		     (stack-frame/dynamic-state stack-frame)))
+		     (stack-frame/dynamic-state stack-frame)
+		     #f))
 
 (define (stack-frame->control-point stack-frame)
   (with-values (lambda () (unparse/stack-frame stack-frame))
     (lambda (element-stream next-control-point)
       (make-control-point
-       false
+       #f
        0
        (stack-frame/interrupt-mask stack-frame)
        (let ((history (stack-frame/history stack-frame)))
@@ -462,7 +471,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (stack-frame/previous-history-control-point stack-frame)
        (if (stack-frame/compiled-code? stack-frame)
 	   (cons-stream return-address/reenter-compiled-code
-			(cons-stream false element-stream))
+			(cons-stream #f element-stream))
 	   element-stream)
        next-control-point))))
 
@@ -479,7 +488,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		     (values (parser-state/element-stream next)
 			     (parser-state/next-control-point next)))
 		    (else
-		     (values (stream) false)))))
+		     (values (stream) #f)))))
 	(lambda (element-stream next-control-point)
 	  (values
 	   (let ((elements (stack-frame/elements stack-frame)))
@@ -529,7 +538,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   4)
 	  ((fix:= code code/special-compiled/compiled-code-bkpt)
 	   ;; Very infrequent!
-	   (let ((fsize 
+	   (let ((fsize
 		  (compiled-code-address/frame-size
 		   (element-stream/ref stream 2))))
 	     (if (not fsize)
@@ -564,7 +573,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (length/interrupt-compiled-procedure stream offset)
   offset				; ignored
   (1+ (compiled-procedure-frame-size (element-stream/head stream))))
-
+
 (define (compiled-code-address/frame-size cc-address)
   (cond ((not (compiled-code-address? cc-address))
 	 (error "compiled-code-address/frame-size: Unexpected object"
@@ -578,14 +587,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (fix:+ (compiled-procedure-frame-size cc-address) 1))
 	(else
 	 (error "compiled-code-address/frame-size: Unexpected object"
-		cc-address))))	 
-
+		cc-address))))
+
 (define (verify paranoia-index stream offset)
   (or (zero? paranoia-index)
       (stream-null? stream)
       (let* ((type
 	      (return-address->stack-frame-type (element-stream/head stream)
-						false))
+						#f))
 	     (length
 	      (let ((length (stack-frame-type/length type)))
 		(if (exact-nonnegative-integer? length)
@@ -611,7 +620,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (map-reference-trap (lambda () (stream-car stream))))
 
 (define-integrable (element-stream/ref stream index)
-  (map-reference-trap (lambda () (stream-ref stream index))))	   
+  (map-reference-trap (lambda () (stream-ref stream index))))
 
 ;;;; Stack Frame Types
 
@@ -620,12 +629,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				(code subproblem? history-subproblem?
 				      length parser))
 		   (conc-name stack-frame-type/))
-  (code false read-only true)
-  (subproblem? false read-only true)
-  (history-subproblem? false read-only true)
-  (properties (make-1d-table) read-only true)
-  (length false read-only true)
-  (parser false read-only true))
+  (code #f read-only #t)
+  (subproblem? #f read-only #t)
+  (history-subproblem? #f read-only #t)
+  (properties (make-1d-table) read-only #t)
+  (length #f read-only #t)
+  (parser #f read-only #t))
 
 (define allow-extended?-tag "stack-frame-type/allow-extended?")
 
@@ -639,7 +648,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (return-address->stack-frame-type return-address allow-extended?)
   allow-extended?			; ignored
-  (let ((allow-extended? true))
+  (let ((allow-extended? #t))
     (cond ((interpreter-return-address? return-address)
 	   (let ((code (return-address/code return-address)))
 	     (let ((type (microcode-return/code->type code)))
@@ -647,20 +656,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		   (error "return-code has no type" code))
 	       type)))
 	  ((compiled-return-address? return-address)
-	   (cond ((compiled-continuation/return-to-interpreter?
-		   return-address)
+	   (cond ((compiled-continuation/return-to-interpreter? return-address)
 		  stack-frame-type/return-to-interpreter)
-		 ((compiled-continuation/reflect-to-interface?
-		   return-address)
+		 ((compiled-continuation/reflect-to-interface? return-address)
 		  stack-frame-type/special-compiled)
-		 (else
-		  stack-frame-type/compiled-return-address)))
+		 (else stack-frame-type/compiled-return-address)))
 	  ((and allow-extended? (compiled-procedure? return-address))
 	   stack-frame-type/interrupt-compiled-procedure)
 	  ((and allow-extended? (compiled-expression? return-address))
 	   stack-frame-type/interrupt-compiled-expression)
-	  (else
-	   (error "illegal return address" return-address)))))
+	  (else (error "illegal return address" return-address)))))
 
 (define (initialize-package!)
   (set! return-address/join-stacklets
@@ -673,32 +678,28 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (set! stack-frame-type/stack-marker
 	(microcode-return/name->type 'STACK-MARKER))
   (set! stack-frame-type/compiled-return-address
-	(make-stack-frame-type false true false
+	(make-stack-frame-type #f #t #f
 			       length/compiled-return-address
 			       parser/standard-compiled))
   (set! stack-frame-type/return-to-interpreter
-	(make-stack-frame-type false false true
-			       1
-			       parser/standard))
+	(make-stack-frame-type #f #f #t 1 parser/standard))
   (set! stack-frame-type/special-compiled
-	(make-stack-frame-type false true false
+	(make-stack-frame-type #f #t #f
 			       length/special-compiled
 			       parser/special-compiled))
   (set! stack-frame-type/interrupt-compiled-procedure
-	(make-stack-frame-type false true false
+	(make-stack-frame-type #f #t #f
 			       length/interrupt-compiled-procedure
 			       parser/standard))
   (set! stack-frame-type/interrupt-compiled-expression
-	(make-stack-frame-type false true false
-			       1
-			       parser/standard))
+	(make-stack-frame-type #f #t #f 1 parser/standard))
   (set! word-size
 	(let ((initial (system-vector-length (make-bit-string 1 #f))))
 	  (let loop ((size 2))
 	    (if (= (system-vector-length (make-bit-string size #f)) initial)
-		(loop (1+ size))
-		(-1+ size)))))
-  (set! continuation-return-address false)
+		(loop (+ size 1))
+		(- size 1)))))
+  (set! continuation-return-address #f)
   unspecific)
 
 (define stack-frame-types)
@@ -711,7 +712,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define stack-frame-type/interrupt-compiled-expression)
 
 (define (make-stack-frame-types)
-  (let ((types (make-vector (microcode-return/code-limit) false)))
+  (let ((types (make-vector (microcode-return/code-limit) #f)))
 
     (define (stack-frame-type name subproblem?
 			      history-subproblem?
@@ -725,8 +726,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
     (define (standard-frame name length #!optional parser)
       (stack-frame-type name
-			false
-			false
+			#f
+			#f
 			length
 			(if (default-object? parser)
 			    parser/standard
@@ -734,15 +735,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
     (define (standard-subproblem name length)
       (stack-frame-type name
-			true
-			true
+			#t
+			#t
 			length
 			parser/standard))
 
     (define (non-history-subproblem name length #!optional parser)
       (stack-frame-type name
-			true
-			false
+			#t
+			#f
 			length
 			(if (default-object? parser)
 			    parser/standard
@@ -791,10 +792,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
     (let ((compiler-frame
 	   (lambda (name length)
-	     (stack-frame-type name false true length parser/standard)))
+	     (stack-frame-type name #f #t length parser/standard)))
 	  (compiler-subproblem
 	   (lambda (name length)
-	     (stack-frame-type name true true length parser/standard))))
+	     (stack-frame-type name #t #t length parser/standard))))
 
       (let ((length (length/application-frame 4 0)))
 	(compiler-subproblem 'COMPILER-LOOKUP-APPLY-TRAP-RESTART length)
@@ -803,7 +804,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (let ((type (compiler-frame 'COMPILER-INTERRUPT-RESTART 3)))
 	(1d-table/put! (stack-frame-type/properties type)
 		       allow-extended?-tag
-		       true))
+		       #t))
 
       (compiler-frame 'COMPILER-LINK-CACHES-RESTART 8)
       (compiler-frame 'REENTER-COMPILED-CODE 2)
@@ -887,7 +888,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((code (stack-frame/ref frame hardware-trap/code-index)))
     (cond ((pair? code) (cdr code))
 	  ((string? code) code)
-	  (else #f))))	
+	  (else #f))))
 
 (define (guarantee-hardware-trap-frame frame)
   (if (not (hardware-trap-frame? frame))
@@ -985,14 +986,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	     (write block)
 	     (let loop ((info (compiled-code-block/debugging-info block)))
 	       (cond ((null? info)
-		      false)
+		      #f)
 		     ((string? info)
 		      (begin
 			(write-string " (")
 			(write-string info)
 			(write-string ")")))
 		     ((not (pair? info))
-		      false)
+		      #f)
 		     ((string? (car info))
 		      (loop (car info)))
 		     (else
