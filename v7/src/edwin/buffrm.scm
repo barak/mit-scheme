@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffrm.scm,v 1.57 2000/01/16 13:23:42 cph Exp $
+;;; $Id: buffrm.scm,v 1.58 2000/10/26 04:18:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -87,7 +87,7 @@
 	  (set! inferiors
 		(append! (delq! modeline-inferior inferiors)
 			 (list modeline-inferior))))
-	(set! modeline-inferior false))))
+	(set! modeline-inferior #f))))
 
 (define-integrable (frame-text-inferior frame)
   (with-instance-variables buffer-frame frame ()
@@ -120,7 +120,7 @@
 	  (set! x (- x (inferior-x-size border-inferior)))
 	  (set-inferior-start! border-inferior x 0)
 	  (set-inferior-y-size! border-inferior y))
-	(set-inferior-start! border-inferior false false))
+	(set-inferior-start! border-inferior #f #f))
     (set-inferior-start! text-inferior 0 0)
     (set-inferior-size! text-inferior x y)))
 
@@ -292,12 +292,12 @@ Automatically becomes local when set in any fashion.
 Note that this is overridden by the variable
 truncate-partial-width-windows if that variable is true
 and this buffer is not full-screen width."
-  false
+  #f
   boolean?)
 
 (define-variable truncate-partial-width-windows
   "True means truncate lines in all windows less than full screen wide."
-  true
+  #t
   boolean?)
 
 (define-variable-per-buffer tab-width
@@ -347,24 +347,24 @@ Automatically becomes local when set in any fashion."
 ;;;; Window Configurations
 
 (define-structure (window-configuration (conc-name window-configuration/))
-  (screen-x-size false read-only true)
-  (screen-y-size false read-only true)
-  (root-window false read-only true)
-  (root-x-size false read-only true)
-  (root-y-size false read-only true)
-  (selected-window false read-only true)
-  (cursor-window false read-only true)
-  (minibuffer-scroll-window false read-only true))
+  (screen-x-size #f read-only #t)
+  (screen-y-size #f read-only #t)
+  (root-window #f read-only #t)
+  (root-x-size #f read-only #t)
+  (root-y-size #f read-only #t)
+  (selected-window #f read-only #t)
+  (cursor-window #f read-only #t)
+  (minibuffer-scroll-window #f read-only #t))
 
 (define-structure (saved-combination (conc-name saved-combination/))
-  (vertical? false read-only true)
-  (children false read-only true))
+  (vertical? #f read-only #t)
+  (children #f read-only #t))
 
 (define-structure (saved-window (conc-name saved-window/))
-  (buffer false read-only true)
-  (point false read-only true)
-  (mark false read-only true)
-  (start-mark false read-only true))
+  (buffer #f read-only #t)
+  (point #f read-only #t)
+  (mark #f read-only #t)
+  (start-mark #f read-only #t))
 
 (define (guarantee-window-configuration object procedure)
   (if (not (window-configuration? object))
@@ -396,7 +396,7 @@ Automatically becomes local when set in any fashion."
 			   (mark-left-inserting-copy (window-point window))
 			   (let ((ring (buffer-mark-ring buffer)))
 			     (if (ring-empty? ring)
-				 false
+				 #f
 				 (mark-right-inserting-copy
 				  (ring-ref ring 0))))
 			   (mark-right-inserting-copy
@@ -465,20 +465,20 @@ Automatically becomes local when set in any fashion."
 		      (begin
 			(%set-buffer-point! buffer
 					    (saved-window/point saved-window))
-			(select-buffer-in-window buffer window false)
+			(select-buffer-no-record buffer window)
 			(let ((mark (saved-window/mark saved-window)))
 			  (if mark (push-buffer-mark! buffer mark)))
 			(set-window-start-mark!
 			 window
 			 (saved-window/start-mark saved-window)
-			 true))
+			 #t))
 		      (set! need-buffers (cons window need-buffers)))
 		  (set! converted-windows
 			(cons (cons saved-window window) converted-windows)))))
 	  (for-each (lambda (window)
-		      (let ((buffer (other-buffer false)))
+		      (let ((buffer (other-buffer #f)))
 			(if buffer
-			    (select-buffer-in-window buffer window false))))
+			    (select-buffer-no-record buffer window))))
 		    need-buffers)
 	  (let ((convert-window
 		 (lambda (saved-window)

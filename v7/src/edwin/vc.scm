@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.73 2000/10/01 01:29:46 cph Exp $
+;;; $Id: vc.scm,v 1.74 2000/10/26 04:19:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -1086,7 +1086,7 @@ There is a special command, `*l', to mark all files currently locked.
 	    (select-window window))
 	(if (and buffer (buffer-alive? buffer))
 	    (if (and window (window-live? window))
-		(select-buffer-in-window buffer window #f)
+		(select-buffer-no-record buffer window)
 		(select-buffer buffer))))
       ;; Do the log operation.
       (finish-entry comment))

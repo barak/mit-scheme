@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debug.scm,v 1.51 2000/07/28 15:15:31 cph Exp $
+;;; $Id: debug.scm,v 1.52 2000/10/26 04:19:05 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-2000 Massachusetts Institute of Technology
 ;;;
@@ -983,7 +983,7 @@ The buffer below describes the current subproblem or reduction.
        (let ((screen (make-debug-screen buffer)))
 	 (if screen
 	     (let ((window (screen-window0 screen)))
-	       (select-buffer-in-window buffer window #t)
+	       (select-buffer buffer window)
 	       (select-window window))
 	     (select-buffer buffer))))
      ((ref-command browser-select-line)))))

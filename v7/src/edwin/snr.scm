@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: snr.scm,v 1.58 2000/06/12 01:38:17 cph Exp $
+;;; $Id: snr.scm,v 1.59 2000/10/26 04:19:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-2000 Massachusetts Institute of Technology
 ;;;
@@ -318,7 +318,7 @@ Only one News reader may be open per server; if a previous News reader
   "Kill the current buffer."
   ()
   (lambda ()
-    (let ((buffer (current-buffer)))
+    (let ((buffer (selected-buffer)))
       (let ((parent (buffer-tree:parent buffer #f)))
 	(kill-buffer buffer)
 	(if parent (select-buffer parent))))))
@@ -333,7 +333,7 @@ Only one News reader may be open per server; if a previous News reader
   "Toggle between online and offline states."
   ()
   (lambda ()
-    (let ((connection (buffer-nntp-connection (current-buffer))))
+    (let ((connection (buffer-nntp-connection (selected-buffer))))
       (if (nntp-connection:closed? connection)
 	  (nntp-connection:reopen connection)
 	  (nntp-connection:close connection)))))
@@ -424,7 +424,7 @@ Only one News reader may be open per server; if a previous News reader
 	     (news-server-buffer buffer error?)))))
 
 (define (current-news-server-buffer error?)
-  (news-server-buffer (current-buffer) error?))
+  (news-server-buffer (selected-buffer) error?))
 
 (define (news-server-buffer:connection buffer)
   (let ((connection (buffer-get buffer 'NNTP-CONNECTION #f)))
@@ -762,7 +762,7 @@ With negative argument -N, show the N oldest unread articles."
 	(let ((buffer
 	       (or (find-news-group-buffer buffer group)
 		   (make-news-group-buffer buffer group argument)))
-	      (key (news-groups-buffer:key (current-buffer))))
+	      (key (news-groups-buffer:key (selected-buffer))))
 	  (if (and key (not (buffer-get buffer 'SELECTED-FROM #f)))
 	      (buffer-put! buffer 'SELECTED-FROM key))
 	  (select-buffer buffer))
@@ -799,7 +799,7 @@ With prefix argument, updates the next several News groups."
 This command has no effect in the all-groups buffer."
   ()
   (lambda ()
-    (let ((buffer (current-buffer)))
+    (let ((buffer (selected-buffer)))
       (if (news-server-buffer? buffer)
 	  (begin
 	    (for-each-vector-element (news-server-buffer:groups buffer)
@@ -1144,7 +1144,7 @@ This shows News groups that have been created since the last time that
      (let ((group (news-group-buffer:group buffer)))
        (update-news-groups-buffers buffer group)
        (write-ignored-subjects-file group buffer)
-       (if (and (current-buffer? buffer)
+       (if (and (selected-buffer? buffer)
 		(eq? (buffer-get buffer 'SELECTED-FROM #f) 'SERVER))
 	   (let ((buffer (news-server-buffer buffer #t)))
 	     (if (eq? group (region-get (buffer-point buffer) 'NEWS-GROUP #f))
@@ -1542,7 +1542,7 @@ This shows News groups that have been created since the last time that
 	     (buffer-tree:parent (window-buffer article-window) #t)))
 	(buffer-put! group-buffer 'CONTEXT-WINDOW
 		     (weak-cons context-window #f))
-	(select-buffer-in-window group-buffer context-window #t)
+	(select-buffer group-buffer context-window)
 	(center-news-article-context context-window)))))
 
 (define (news-group-buffer:delete-context-window group-buffer window)
@@ -1714,7 +1714,7 @@ This mode's commands include:
 With prefix argument, moves down several headers."
   "p"
   (lambda (n)
-    (let ((b (current-buffer))
+    (let ((b (selected-buffer))
 	  (m (current-point)))
       (define (next-loop h n)
 	(if (= n 0)
@@ -1790,7 +1790,7 @@ With prefix argument, moves up several articles."
 With prefix argument, moves down several threads."
   "p"
   (lambda (n)
-    (let ((b (current-buffer))
+    (let ((b (selected-buffer))
 	  (m (current-point)))
       (define (next-loop t n)
 	(if (= n 0)
@@ -1900,7 +1900,7 @@ With prefix argument, unmarks the previous several articles."
   (mark/unmark-news-header-line buffer header 'UNSEEN))
 
 (define (header-iteration argument procedure)
-  (defer-marking-updates (current-buffer)
+  (defer-marking-updates (selected-buffer)
     (lambda ()
       (iterate-on-lines
        (lambda (mark) (region-get mark 'NEWS-HEADER #f))
@@ -1948,7 +1948,7 @@ With prefix argument, unmarks the previous several articles."
 Subsequent reading of the message bodies can be done offline."
   ()
   (lambda ()
-    (let* ((buffer (current-buffer))
+    (let* ((buffer (selected-buffer))
 	   (headers
 	    (cond ((news-group-buffer? buffer)
 		   (news-group:marked-headers
@@ -2027,7 +2027,7 @@ This unmarks the article indicated by point and any other articles in
 	(mark/unmark-news-thread-lines buffer thread 'UNSEEN)))))
 
 (define (thread-iteration argument procedure)
-  (defer-marking-updates (current-buffer)
+  (defer-marking-updates (selected-buffer)
     (lambda ()
       (iterate-on-lines (lambda (mark) (region-get mark 'NEWS-HEADER #f))
 			"news-article header" #f argument
@@ -2085,7 +2085,7 @@ This unmarks the article indicated by point and any other articles in
   ()
   (lambda ()
     (select-buffer
-     (let ((buffer (current-buffer)))
+     (let ((buffer (selected-buffer)))
        (cond ((news-article-buffer? buffer)
 	      buffer)
 	     ((news-group-buffer? buffer)
@@ -2102,7 +2102,7 @@ This unmarks the article indicated by point and any other articles in
   "Expand or collapse the current thread."
   ()
   (lambda ()
-    (let ((buffer (current-buffer))
+    (let ((buffer (selected-buffer))
 	  (thread (news-header:thread (current-news-header))))
       (if (news-thread:expanded? thread)
 	  (news-group-buffer:collapse-thread buffer thread)
@@ -2113,7 +2113,7 @@ This unmarks the article indicated by point and any other articles in
   "Collapse all of the threads in this News group."
   ()
   (lambda ()
-    (let ((buffer (current-buffer))
+    (let ((buffer (selected-buffer))
 	  (header (region-get (current-point) 'NEWS-HEADER #f)))
       (for-each-vector-element (news-group-buffer:threads buffer)
 	(lambda (thread)
@@ -2129,7 +2129,7 @@ This unmarks the article indicated by point and any other articles in
   "Expand all of the threads in this News group."
   ()
   (lambda ()
-    (let ((buffer (current-buffer))
+    (let ((buffer (selected-buffer))
 	  (header (region-get (current-point) 'NEWS-HEADER #f)))
       (for-each-vector-element (news-group-buffer:threads buffer)
 	(lambda (thread)
@@ -2146,7 +2146,7 @@ With positive argument N, show only N newest unread articles.
 With negative argument -N, show only N oldest unread articles."
   "P"
   (lambda (argument)
-    (let ((buffer (current-buffer)))
+    (let ((buffer (selected-buffer)))
       (with-buffer-open-1 buffer
 	(lambda ()
 	  (region-delete! (buffer-region buffer))
@@ -2164,7 +2164,7 @@ This command has no effect if the variable
  news-group-show-seen-headers is true."
   ()
   (lambda ()
-    (let ((buffer (current-buffer))
+    (let ((buffer (selected-buffer))
 	  (on-header? (region-get (current-point) 'NEWS-HEADER #f)))
       (if (not (ref-variable news-group-show-seen-headers buffer))
 	  (let ((threads (vector->list (news-group-buffer:threads buffer))))
@@ -2216,7 +2216,7 @@ This kills the current buffer."
   (lambda ()
     (if (prompt-for-confirmation? "Delete all articles not marked as read")
 	(begin
-	  (let ((buffer (current-buffer)))
+	  (let ((buffer (selected-buffer)))
 	    (for-each-vector-element (news-group-buffer:threads buffer)
 	      (lambda (thread)
 		(news-thread:for-each-real-header thread
@@ -2547,7 +2547,7 @@ Kill the current buffer in either case."
 	  (action buffer (news-header:thread header))))))
 
 (define (news-article-header-action-command select-next action)
-  (let ((buffer (current-buffer)))
+  (let ((buffer (selected-buffer)))
     (let ((group-buffer (buffer-tree:parent buffer #t))
 	  (header (news-article-buffer:header buffer)))
       (if action (action group-buffer header))
@@ -2576,7 +2576,7 @@ Normally, the header lines specified in the variable rmail-ignored-headers
  are not shown; this command shows them, or hides them if they are shown."
   ()
   (lambda ()
-    (let ((buffer (current-buffer)))
+    (let ((buffer (selected-buffer)))
       (with-buffer-open-1 buffer
 	(lambda ()
 	  (let ((header (news-article-buffer:header buffer)))
@@ -2617,8 +2617,7 @@ This is a small window showing a few lines around the subject line of the
 						    context-lines))
 			((not (eq? group-buffer
 				   (window-buffer context-window)))
-			 (select-buffer-in-window group-buffer context-window
-						  #f)
+			 (select-buffer group-buffer context-window)
 			 (set-height))
 			(argument
 			 (set-height))
@@ -2708,7 +2707,7 @@ While composing the reply, use \\[mail-yank-original] to yank the
   ()
   (lambda ()
     (guarantee-rmail-variables-initialized)
-    (let ((article-buffer (current-buffer)))
+    (let ((article-buffer (selected-buffer)))
       (if (and (not (news-article-buffer:followup-to-poster? article-buffer))
 	       (prompt-for-confirmation? "Post a follow-up article"))
 	  (make-news-reply-buffer
@@ -2741,7 +2740,7 @@ While composing the reply, use \\[mail-yank-original] to yank the
   "Forward the current News article to another user by email."
   ()
   (lambda ()
-    (let ((article-buffer (current-buffer)))
+    (let ((article-buffer (selected-buffer)))
       (make-mail-buffer
        (let ((header (news-article-buffer:header article-buffer)))
 	 `(("To" "")
@@ -2762,7 +2761,7 @@ While composing the reply, use \\[mail-yank-original] to yank the
 	   select-buffer-other-window))
       (insert-region (buffer-start article-buffer)
 		     (buffer-end article-buffer)
-		     (buffer-end (current-buffer))))))
+		     (buffer-end (selected-buffer))))))
 
 ;;;; Posting
 
@@ -2787,8 +2786,8 @@ Once editing the article, type \\[describe-mode] to get a list of commands."
 		(news-server-buffer:server buffer))))
 	(group
 	 (or (region-get (current-point) 'NEWS-GROUP #f)
-	     (buffer-get (current-buffer) 'NEWS-GROUP #f)
-	     (let ((header (buffer-get (current-buffer) 'NEWS-header #f)))
+	     (buffer-get (selected-buffer) 'NEWS-GROUP #f)
+	     (let ((header (buffer-get (selected-buffer) 'NEWS-header #f)))
 	       (and header
 		    (news-header:group header))))))
     (let ((buffer
@@ -2817,7 +2816,7 @@ While composing the follow-up, use \\[mail-yank-original] to yank the
   ()
   (lambda ()
     (guarantee-rmail-variables-initialized)
-    (let ((article-buffer (current-buffer)))
+    (let ((article-buffer (selected-buffer)))
       (if (news-article-buffer:followup-to-poster? article-buffer)
 	  (make-mail-buffer
 	   (news-article-buffer:rfc822-reply-headers article-buffer)
@@ -2906,7 +2905,7 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 (define-key 'compose-news '(#\c-c #\c-f #\c-n) 'news-move-to-newsgroups)
 
 (define ((field-mover field))
-  (set-current-point! (mail-position-on-field (current-buffer) field)))
+  (set-current-point! (mail-position-on-field (selected-buffer) field)))
 
 (define-command news-move-to-newsgroups
   "Move point to end of Newsgroups: field."
@@ -2934,7 +2933,7 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
   (field-mover "Summary"))
 
 (define (news-post-it)
-  (let ((article-buffer (current-buffer)))
+  (let ((article-buffer (selected-buffer)))
     (let ((temp-buffer
 	   (prepare-mail-buffer-for-sending
 	    article-buffer
@@ -3485,7 +3484,7 @@ With prefix arg, replaces the file with the list information."
 	(start-property-iteration get-item adjective predicate argument))
     (lambda (item n)
       (cond (item
-	     (let ((buffer (current-buffer)))
+	     (let ((buffer (selected-buffer)))
 	       (cond ((> n 0)
 		      (let loop ((item (first-item item)) (n n))
 			(let ((next (next-item buffer item)))
