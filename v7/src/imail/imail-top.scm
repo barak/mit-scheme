@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.136 2000/06/08 03:13:49 cph Exp $
+;;; $Id: imail-top.scm,v 1.137 2000/06/08 03:16:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -416,6 +416,7 @@ Instead, these commands are available:
 \\[imail-create-folder]	Create a new folder.  (Normally not needed as output commands
 	  create folders automatically.)
 \\[imail-delete-folder]	Delete an existing folder and all its messages.
+\\[imail-rename-folder]	Rename a folder.
 
 \\[imail-add-flag]	Add flag to message.  It will be displayed in the mode line.
 \\[imail-kill-flag]	Remove flag from message.
@@ -1435,7 +1436,9 @@ An error if signalled if the folder already exists."
 	  (message "Folder not deleted")))))
 
 (define-command imail-rename-folder
-  "Delete a specified folder and all its messages."
+  "Rename a folder.
+May only rename a folder to a new name on the same server or file system.
+The folder's type may not be changed."
   (lambda ()
     (let ((from
 	   (prompt-for-imail-url-string "Rename folder"
