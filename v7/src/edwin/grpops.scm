@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.3 1989/04/15 00:49:40 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.4 1989/04/23 23:22:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -136,10 +136,10 @@
 		 (let ((position (mark-position mark)))
 		   (if (and (<= start position)
 			    (<= position new-end))
-		       (%set-mark-position! mark
-					    (if (mark-left-inserting? mark)
-						new-end
-						start))))))
+		       (set-mark-position! mark
+					   (if (mark-left-inserting? mark)
+					       new-end
+					       start))))))
 	     ;; Widen the gap to the new boundaries.
 	     (vector-set! group group-index:gap-start start)
 	     (vector-set! group group-index:gap-end new-end)
@@ -161,9 +161,9 @@
 	(lambda (mark)
 	  (let ((position (mark-position mark)))
 	    (cond ((and (< new-start position) (<= position start))
-		   (%set-mark-position! mark (+ position length)))
+		   (set-mark-position! mark (+ position length)))
 		  ((and (mark-left-inserting? mark) (= new-start position))
-		   (%set-mark-position! mark new-end))))))
+		   (set-mark-position! mark new-end))))))
       (substring-move-right! text new-start start text new-end)
       (vector-set! group group-index:gap-start new-start)
       (vector-set! group group-index:gap-end new-end)))
@@ -179,9 +179,9 @@
 	(lambda (mark)
 	  (let ((position (mark-position mark)))
 	    (cond ((and (> new-end position) (>= position end))
-		   (%set-mark-position! mark (- position length)))
+		   (set-mark-position! mark (- position length)))
 		  ((and (not (mark-left-inserting? mark)) (= new-end position))
-		   (%set-mark-position! mark new-start))))))
+		   (set-mark-position! mark new-start))))))
       (substring-move-left! text end new-end text start)
       (vector-set! group group-index:gap-start new-start)
       (vector-set! group group-index:gap-end new-end)))
@@ -206,9 +206,9 @@
 		  (lambda (mark)
 		    (let ((position (mark-position mark)))
 		      (cond ((> position end)
-			     (%set-mark-position! mark (+ position n)))
+			     (set-mark-position! mark (+ position n)))
 			    ((= position end)
-			     (%set-mark-position!
+			     (set-mark-position!
 			      mark
 			      (if (mark-left-inserting? mark)
 				  new-end
@@ -217,6 +217,6 @@
 		  (lambda (mark)
 		    (let ((position (mark-position mark)))
 		      (if (>= position end)
-			  (%set-mark-position! mark (+ position n)))))))))
+			  (set-mark-position! mark (+ position n)))))))))
 	(vector-set! group group-index:gap-length (+ length n))))
   unspecific)
