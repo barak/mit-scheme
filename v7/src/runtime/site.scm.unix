@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.unix,v 1.1 1988/12/31 05:55:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.unix,v 1.2 1989/10/11 15:26:52 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -35,6 +35,21 @@ MIT in each case. |#
 ;;;; Switzerland site specific stuff
 
 (declare (usual-integrations))
+
+;;; Local hacks
+
+(define (call/cc . args)
+  ((ucode-primitive system)
+   (with-output-to-string
+     (lambda ()
+       (display "cc")
+       (let loop ((args args))
+	 (if (not (null? args))
+	     (begin
+	       (display " ")
+	       (display (car args))
+	       (loop (cdr args)))))))))
+
 ;;; Normalization of various directory structures.
 
 (let ((add-directory-rewriting-rule!
