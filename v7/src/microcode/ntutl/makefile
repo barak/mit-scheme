@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile,v 1.20 1998/04/16 04:20:55 cph Exp $
+###     $Id: makefile,v 1.21 1998/04/16 06:06:51 cph Exp $
 ###
 ###     Copyright (c) 1992-98 Massachusetts Institute of Technology
 ###
@@ -38,7 +38,7 @@
 ###
 
 ####     Makefile for Scheme on NT
-!include <ntwin32.mak>
+!include <win32.mak>
 
 USER_PRIM_SOURCES =
 USER_PRIM_OBJECTS =
@@ -286,9 +286,10 @@ SCHEME_LIB = $(USER_LIBS) md5.lib blowfish.lib gdbm.lib
 
 scheme: scheme.exe
 
-scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) scheme32.obj
+scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) scheme32.obj ntgui.res
 	$(link) $(linkdebug) $(guiflags) -out:scheme.exe \
-	$(OBJECTS) $(SCHEME_OBJECTS) scheme32.obj $(guilibsmt) $(SCHEME_LIB)
+	$(OBJECTS) $(SCHEME_OBJECTS) scheme32.obj $(guilibsmt) $(SCHEME_LIB) \
+	ntgui.res
 
 bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) scheme32.obj
 	$(link) $(linkdebug) $(guiflags) -out:bchschem.exe \
@@ -319,11 +320,8 @@ bchdef.c : $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) ntgui.c \
 	> bchdef.c
 
 # Update the resource if necessary
-ntgui.rbj: ntgui.rc ntgui.h ntdialog.dlg ntdialog.h
+ntgui.res: ntgui.rc ntgui.h ntdialog.dlg ntdialog.h
     rc -r -fo $*.res $(cvars) $*.rc
-!IFDEF CPUTYPE
-    cvtres -$(CPU) $*.res -o $*.rbj
-!ENDIF
 
 scheme.tch : scheme.h oscond.h ansidecl.h dstack.h obstack.h config.h \
 	bkpt.h object.h scode.h sdata.h gc.h interp.h stack.h futures.h \
