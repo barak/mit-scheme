@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.79 1993/10/14 19:15:10 gjr Exp $
+$Id: interp.c,v 9.80 1993/11/03 19:19:53 jmiller Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -574,7 +574,7 @@ Repeat_Dispatch:
 
 Do_Expression:
 
-  if (Eval_Debug)
+  if (0 && Eval_Debug)
   {
     Print_Expression ((Fetch_Expression ()), "Eval, expression");
     outf_console ("\n");
@@ -988,7 +988,7 @@ Pop_Return_Non_Trapping:
     Export_Registers();
     Microcode_Termination (TERM_BAD_STACK);
   }
-  if (Eval_Debug)
+  if (0 && Eval_Debug)
   {
     Print_Return ("Pop_Return, return code");
     Print_Expression (Val, "Pop_Return, value");
@@ -1606,7 +1606,7 @@ apply_dispatch:
 	      }
 	    }
 
-	    if (Eval_Debug)
+	    if (0 && Eval_Debug)
 	    {
 	      Print_Expression(LONG_TO_UNSIGNED_FIXNUM(nargs),
 			       "APPLY: Number of arguments");
@@ -1717,7 +1717,7 @@ apply_dispatch:
 
             nargs = OBJECT_DATUM (STACK_POP ()) - STACK_FRAME_HEADER;
 
-	    if (Eval_Debug)
+	    if (0 && Eval_Debug)
 	    {
 	      Print_Expression(LONG_TO_UNSIGNED_FIXNUM(nargs+STACK_FRAME_HEADER),
 			       "APPLY: Number of arguments");
