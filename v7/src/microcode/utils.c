@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.72 1997/06/26 06:58:07 cph Exp $
+$Id: utils.c,v 9.73 1998/04/14 05:13:58 cph Exp $
 
-Copyright (c) 1987-97 Massachusetts Institute of Technology
+Copyright (c) 1987-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1123,7 +1123,7 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
   cfp = C_Frame_Pointer;
   csp = C_Stack_Pointer;
 #ifdef NT386CL
-  try
+  __try
 #endif /* NT386CL */
 #endif /* i386 */
   {  
@@ -1166,7 +1166,7 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
   }
 #ifdef i386
 #ifdef NT386CL
-  finally  
+  __finally  
 #endif /* NT386CL */
   {
     C_Frame_Pointer = cfp;

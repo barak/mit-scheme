@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prntio.c,v 1.8 1997/10/24 07:24:34 cph Exp $
+$Id: prntio.c,v 1.9 1998/04/14 05:13:55 cph Exp $
 
-Copyright (c) 1993-97 Massachusetts Institute of Technology
+Copyright (c) 1993-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,6 +43,7 @@ MIT in each case. */
 #include "ntgui.h"
 #include "syscall.h"
 #include "ntproc.h"
+#include "ostty.h"
 
 extern HANDLE master_tty_window;
 extern Tchannel EXFUN (arg_to_channel, (SCHEME_OBJECT, int));
@@ -171,7 +172,7 @@ wait_for_multiple_objects_1 (unsigned long n_channels, Tchannel * channels,
       {
 	unsigned int index;
 	for (index = 0; (index < n_channels); index += 1)
-	  if ((index != console_index)
+	  if ((index != ((unsigned long) console_index))
 	      && ((NT_channel_n_read (channels[index])) != (-1)))
 	    return (index);
       }

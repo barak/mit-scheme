@@ -1,7 +1,7 @@
 /* Copyright (C) 1990 Free Software Foundation, Inc.
 This file is part of the GNU C Library.
 
-$Id: ansidecl.h,v 1.5 1996/10/02 18:56:19 cph Exp $
+$Id: ansidecl.h,v 1.6 1998/04/14 05:10:54 cph Exp $
 
 The GNU C Library is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -54,16 +54,29 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
    so they will all get the switch for lint.  */
 /* LINTLIBRARY */
 
-/* We must test for __IBMC__ everywhere that we test for __STDC__
-   because the IBM C compiler for OS/2 does not define __STDC__ even
-   though it is an ANSI C compiler.  The compiler defines __STDC__
-   only when the compiler is put into "strict ANSI" mode, in which
-   numerous useful features are disabled.  It used to be the case that
-   this could be fixed by forcibly defining __STDC__, but as of
-   version 3.0 that is no longer allowed.  What these fascists hope to
-   gain by this, besides angering programmers, is unclear.  */
+/* Some other compilers, specifically the Windows and OS/2 compilers,
+   define __STDC__ only when the compiler is put into "strict ANSI"
+   mode, in which numerous useful features are disabled.  So we have
+   reconditionalized these macros so that the stdc bindings can be
+   used for those compilers.  */
 
-#if defined(__STDC__) || defined(__IBMC__) || defined(CL386)
+#ifdef __STDC__
+#define USE_STDC_BINDINGS
+#endif
+
+#ifdef __IBMC__
+#define USE_STDC_BINDINGS
+#endif
+
+#ifdef CL386
+#define USE_STDC_BINDINGS
+#endif
+
+#ifdef _MSC_VER
+#define USE_STDC_BINDINGS
+#endif
+
+#ifdef USE_STDC_BINDINGS
 
 #define	PTR		void *
 #define	PTRCONST	void *CONST
@@ -91,7 +104,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #define	DEFUN(name, arglist, args)	name(args)
 #define	DEFUN_VOID(name)		name(NOARGS)
 
-#else	/* Not ANSI C.  */
+#else /* not USE_STDC_BINDINGS */
 
 #define	PTR		char *
 #define	PTRCONST	PTR
@@ -108,7 +121,6 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #define	DEFUN(name, arglist, args)	name arglist args;
 #define	DEFUN_VOID(name)		name()
 
-#endif	/* ANSI C.  */
-
+#endif /* not USE_STDC_BINDINGS  */
 
 #endif	/* ansidecl.h	*/

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.20 1998/01/08 06:07:54 cph Exp $
+$Id: ntio.c,v 1.21 1998/04/14 05:13:24 cph Exp $
 
 Copyright (c) 1992-98 Massachusetts Institute of Technology
 
@@ -36,6 +36,7 @@ MIT in each case. */
 #include "nt.h"
 #include "ntio.h"
 #include "osterm.h"
+#include "osfile.h"
 #include "prims.h"
 #include "outf.h"
 #include "ossig.h"
@@ -246,7 +247,8 @@ generic_channel_write (Tchannel channel, const void * buffer,
   DWORD n_written;
   STD_BOOL_API_CALL
     (WriteFile,
-     ((CHANNEL_HANDLE (channel)), buffer, n_bytes, (&n_written), 0));
+     ((CHANNEL_HANDLE (channel)), ((LPCVOID) buffer), n_bytes, (&n_written),
+      0));
   return (n_written);
 }
 
@@ -429,7 +431,8 @@ cooked_channel_write (Tchannel channel, const void * buffer,
 {
   /* Map LF to CR/LF */
   static const unsigned char crlf [] = {CARRIAGE_RETURN, LINEFEED};
-  const unsigned char * start = buffer;
+  const unsigned char * bstart = buffer;
+  const unsigned char * start = bstart;
   const unsigned char * end = (start + n_bytes);
   while (start < end)
     {
@@ -443,9 +446,9 @@ cooked_channel_write (Tchannel channel, const void * buffer,
 	    = ((* (CHANNEL_CLASS_OP_WRITE (CHANNEL_CLASS (channel))))
 	       (channel, start, n_bytes));
 	  if (n_written < 0)
-	    return (start - buffer);
-	  if (n_written < n_bytes)
-	    return ((start - buffer) + n_written);
+	    return (start - bstart);
+	  if (((unsigned int) n_written) < n_bytes)
+	    return ((start - bstart) + n_written);
 	}
       if (scan < end)
 	{
@@ -453,9 +456,9 @@ cooked_channel_write (Tchannel channel, const void * buffer,
 	  long n_written
 	    = ((* (CHANNEL_CLASS_OP_WRITE (CHANNEL_CLASS (channel))))
 	       (channel, crlf, n_bytes));
-	  if (n_written < n_bytes)
+	  if (n_written < ((long) n_bytes))
 	    /* This backs out incorrectly if only CR is written out.  */
-	    return (scan - buffer);
+	    return (scan - bstart);
 	}
       start = (scan + 1);
     }
@@ -475,7 +478,8 @@ OS_channel_write_dump_file (Tchannel channel, const void * buffer,
 			    size_t nbytes)
 {
   DWORD  scr;
-  return ((WriteFile (CHANNEL_HANDLE (channel), buffer, nbytes, &scr, 0))
+  return ((WriteFile (CHANNEL_HANDLE (channel), ((LPCVOID) buffer), nbytes,
+		      &scr, 0))
 	  ? scr : 0);
 }
 

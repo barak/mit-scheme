@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntproc.c,v 1.6 1998/01/08 06:06:14 cph Exp $
+$Id: ntproc.c,v 1.7 1998/04/14 05:13:28 cph Exp $
 
 Copyright (c) 1997-98 Massachusetts Institute of Technology
 
@@ -163,7 +163,6 @@ NT_make_subprocess (const char * filename,
   SECURITY_ATTRIBUTES sap;
   SECURITY_DESCRIPTOR sdp;
   STARTUPINFO si;
-  PROCESS_INFORMATION pi;
 
   transaction_begin ();
 
@@ -419,7 +418,7 @@ OS_process_status (Tprocess process)
 unsigned short
 OS_process_reason (Tprocess process)
 {
-  return (PROCESS_REASON (process));
+  return ((unsigned short) (PROCESS_REASON (process)));
 }
 
 void

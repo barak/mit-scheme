@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntfile.c,v 1.11 1997/10/24 07:24:39 cph Exp $
+$Id: ntfile.c,v 1.12 1998/04/14 05:13:16 cph Exp $
 
-Copyright (c) 1992-97 Massachusetts Institute of Technology
+Copyright (c) 1992-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -142,6 +142,6 @@ OS_file_set_position (Tchannel channel, off_t position)
     = (SetFilePointer ((CHANNEL_HANDLE (channel)), position, 0, FILE_BEGIN));
   if (old_position == 0xFFFFFFFF)
     NT_error_api_call ((GetLastError ()), apicall_SetFilePointer);
-  if (old_position != position)
+  if (old_position != ((DWORD) position))
     error_external_return ();
 }

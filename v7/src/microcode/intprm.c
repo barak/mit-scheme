@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: intprm.c,v 1.7 1997/04/28 07:20:33 cph Exp $
+$Id: intprm.c,v 1.8 1998/04/14 05:13:07 cph Exp $
 
-Copyright (c) 1989-97 Massachusetts Institute of Technology
+Copyright (c) 1989-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -215,7 +215,8 @@ Converts the list to an integer.  NEGATIVE? specifies the sign.")
     SCHEME_OBJECT digits = (ARG_REF (1));
     unsigned long radix = (arg_ulong_integer (2));
     unsigned int n_digits;
-    if ((radix < 2) || (radix >= (bignum_max_digit_stream_radix ())))
+    if ((radix < 2)
+	|| (radix >= ((unsigned long) (bignum_max_digit_stream_radix ()))))
       error_bad_range_arg (2);
     {
       SCHEME_OBJECT scan = digits;
@@ -225,7 +226,7 @@ Converts the list to an integer.  NEGATIVE? specifies the sign.")
 	  SCHEME_OBJECT digit = (PAIR_CAR (scan));
 	  if (!UNSIGNED_FIXNUM_P (digit))
 	    error_wrong_type_arg (1);
-	  if ((UNSIGNED_FIXNUM_TO_LONG (digit)) >= radix)
+	  if (((unsigned long) (UNSIGNED_FIXNUM_TO_LONG (digit))) >= radix)
 	    error_bad_range_arg (1);
 	  n_digits += 1;
 	  scan = (PAIR_CDR (scan));

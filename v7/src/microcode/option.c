@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.44 1997/10/22 05:21:25 cph Exp $
+$Id: option.c,v 1.45 1998/04/14 05:13:40 cph Exp $
 
-Copyright (c) 1990-97 Massachusetts Institute of Technology
+Copyright (c) 1990-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -581,12 +581,12 @@ static void
 DEFUN (option_argument, (option, argument_p, value_cell),
        CONST char * option AND
        int argument_p AND
-       PTR value_cell)
+       CONST PTR value_cell)
 {
   struct option_descriptor descriptor;
   (descriptor . option) = option;
   (descriptor . argument_p) = argument_p;
-  (descriptor . value_cell) = value_cell;
+  (descriptor . value_cell) = ((PTR) value_cell);
   obstack_grow ((&scratch_obstack), (&descriptor), (sizeof (descriptor)));
 }
 

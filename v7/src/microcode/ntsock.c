@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntsock.c,v 1.2 1997/11/01 07:18:46 cph Exp $
+$Id: ntsock.c,v 1.3 1998/04/14 05:13:37 cph Exp $
 
-Copyright (c) 1997 Massachusetts Institute of Technology
+Copyright (c) 1997-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,6 +36,7 @@ MIT in each case. */
 #ifndef DISABLE_SOCKET_SUPPORT
 
 #include "scheme.h"
+#include "prims.h"
 #include "nt.h"
 #include "ntio.h"
 #include "uxsock.h"
@@ -176,7 +177,7 @@ OS_open_server_socket (unsigned int port, int arg_number)
   {
     unsigned int nb_port = (sizeof (((struct sockaddr_in *) 0) -> sin_port));
     if (((sizeof (unsigned int)) > nb_port)
-	&& (port >= (1 << (CHAR_BIT * nb_port))))
+	&& (port >= (1U << (CHAR_BIT * nb_port))))
       error_bad_range_arg (arg_number);
   }
   transaction_begin ();

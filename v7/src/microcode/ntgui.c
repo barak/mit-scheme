@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.20 1997/06/26 06:59:20 cph Exp $
+$Id: ntgui.c,v 1.21 1998/04/14 05:13:19 cph Exp $
 
-Copyright (c) 1993-97 Massachusetts Institute of Technology
+Copyright (c) 1993-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -214,7 +214,6 @@ catatonia_trigger (void)
     exit (1);
   else
   {
-    extern void termination_normal (int);
     already_exitting = TRUE;
     termination_normal (0);
   }
@@ -641,154 +640,75 @@ DEFINE_PRIMITIVE ("NT:SEND-MESSAGE", Prim_send_message, 4, 4,
       long_to_integer (SendMessage (hwnd, message, wParam, lParam)));
 }
 
-// Indirect calls to a __stdcall procedure are compiled as if to a _cdecl
-// procedure.  The result is disaster.  The fudge_calls give us some
-// protection because the procedure entry code pushes registers.  These
-// get trampled, but with luck the values saved were not live.
-//
-//static long fudge_call_1 (long (* WINAPI f)(long), long a)
-//{
-//   return  f(a);
-//}
-//
-//DEFINE_PRIMITIVE ("CALL-FF-1", Prim_call_ff_1, 2, 2, 0)
-//{
-//    long  result;
-//    long (* WINAPI f)(long);
-//    PRIMITIVE_HEADER (2);
-//
-//    f =  arg_integer (1);
-//    result = fudge_call_1 (f, call_ff_arg (ARG_REF (2)));
-//
-//    PRIMITIVE_RETURN (long_to_integer (result));
-//}
-//
-//static long fudge_call_2 (long (* WINAPI f)(long,long), long a1, long a2)
-//{
-//    return  f(a1,a2);
-//}
-//
-//DEFINE_PRIMITIVE ("CALL-FF-2", Prim_call_ff_2, 3, 3, 0)
-//{
-//    long (* WINAPI f)(long,long);
-//
-//    PRIMITIVE_HEADER (3);
-//
-//    f =  arg_integer (1);
-//    PRIMITIVE_RETURN
-//      (long_to_integer (fudge_call_2 (f,
-//				      call_ff_arg (ARG_REF(2)),
-//				      call_ff_arg (ARG_REF(3)))));
-//}
-//
-//static long fudge_call_3 (long (* WINAPI f)(long,long,long),
-//                          long a1, long a2, long a3)
-//{
-//    return  f(a1,a2,a3);
-//}
-//
-//DEFINE_PRIMITIVE ("CALL-FF-3", Prim_call_ff_3, 4, 4, 0)
-//{
-//    long (*f)(long,long,long);
-//    long result;
-//
-//    PRIMITIVE_HEADER (4);
-//
-//    f =  arg_integer (1);
-//    result = fudge_call_3 (f,
-//			   call_ff_arg(ARG_REF(2)),
-//			   call_ff_arg(ARG_REF(3)),
-//			   call_ff_arg(ARG_REF(4)));
-//    PRIMITIVE_RETURN (long_to_integer (result));
-//}
+static SCHEME_OBJECT call_ff_really (void);
+
+DEFINE_PRIMITIVE ("CALL-FF", Prim_call_ff, 0, LEXPR, 0)
+{
+  /* This indirection saves registers correctly in this stack frame
+     rather than in a bad position in relation to the bogus C argument
+     stack.  */
+  PRIMITIVE_HEADER (LEXPR);
+  PRIMITIVE_RETURN (call_ff_really ());
+}
 
 static SCHEME_OBJECT
 call_ff_really (void)
 {
-  {
-    /*  use a struct for locals that live across the foreign function call
-        so that their position in the stack is the right end of the stack
-	frame with respect to the stacked C arguments */
-    struct {
-      long c_args[50];
-      long old_esp;
-    } local;
+  long function_address;
+  SCHEME_OBJECT * argument_scan;
+  SCHEME_OBJECT * argument_limit;
+  long result;
 
-    long result;
+  long nargs = (LEXPR_N_ARGUMENTS ());
+  if (nargs < 1)
+    signal_error_from_primitive (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+  if (nargs > 30)
+    signal_error_from_primitive (ERR_WRONG_NUMBER_OF_ARGUMENTS);
 
-    /*  We save the stack pointer and restore it because the called function
-        may pop the arguments (pascal/__stdcall) or expect us to (__cdecl). */
-
-    /*  The stack pointer is saved in a static variable so that we can find
-        it if the compiler does SP-relative addressing with a broken SP */
-
-    /*  The implication is that things will break if this gets overwritten.
-        This will happen if the foreign function directly or indirectly
-	allows a Scheme interrupt to be processed (eg by calling as scheme
-	function with interrupts enabled and that function gets rescheduled
-	in the threads package. */
-
-    static long saved_esp;
-
-    long nargs = (LEXPR_N_ARGUMENTS ());
-    if (nargs < 1)
-      signal_error_from_primitive (ERR_WRONG_NUMBER_OF_ARGUMENTS);
-    if (nargs > 30)
-      signal_error_from_primitive (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+  function_address = (arg_integer (1));
+  argument_scan = (ARG_LOC (nargs + 1));
+  argument_limit = (ARG_LOC (2));
+  while (argument_scan > argument_limit)
     {
-      long *arg_sp = &local.c_args[10];
-      SCHEME_OBJECT *argument_scan = ARG_LOC (2);
-      SCHEME_OBJECT *argument_limit = ARG_LOC (nargs+1);
-
-      long  function_address = arg_integer(1);
-
-      while (argument_scan != argument_limit)
-	*arg_sp++ =
-	  scheme_object_to_windows_object (STACK_LOCATIVE_POP(argument_scan));
-
-      arg_sp = &local.c_args[10];
-      local.old_esp = saved_esp;
+      long arg
+	= (scheme_object_to_windows_object
+	   (STACK_LOCATIVE_PUSH (argument_scan)));
 #ifdef CL386
       __asm
       {
-	// Important: The order of these instructions guards against
-	// stack pointer relative addressing.
-	mov	eax, dword ptr [function_address]
-	mov	dword ptr [saved_esp], esp
-	mov	esp, dword ptr [arg_sp]
-	call	eax
-	mov	esp, dword ptr [saved_esp]
-	mov	dword ptr [result], eax
+	push dword ptr [arg]
       }
 #else /* not CL386 */
 #ifdef __WATCOMC__
       {
 	extern void call_ff_really_1 (void);
-#pragma aux call_ff_really_1 =						\
-	"mov	eax,function_address"					\
-	"mov	saved_esp,esp"						\
-	"mov	esp,arg_sp"						\
-	"call	eax"							\
-	"mov	esp,saved_esp"						\
-	"mov	result,eax"						\
-	modify [eax edx ecx];
+#pragma aux call_ff_really_1 = "push arg";
 	call_ff_really_1 ();
       }
 #endif /* __WATCOMC__ */
 #endif /* not CL386 */
-      saved_esp = local.old_esp;
-      return  long_to_integer (result);
     }
+#ifdef CL386
+  __asm
+  {
+    mov eax, dword ptr [function_address]
+    call eax
+    mov dword ptr [result], eax
   }
-}
-
-DEFINE_PRIMITIVE ("CALL-FF", Prim_call_ff, 0, LEXPR, 0)
-{
-    /* this indirection saves registers correctly in this stack frame
-       rather than in a bad position in relation to the bogus C argument
-       stack */
-    PRIMITIVE_HEADER (LEXPR);
-    PRIMITIVE_RETURN (call_ff_really());
+#else /* not CL386 */
+#ifdef __WATCOMC__
+  {
+    extern void call_ff_really_2 (void);
+#pragma aux call_ff_really_2 =						\
+    "mov eax,function_address"						\
+    "call eax"								\
+    "mov result,eax"							\
+    modify [eax edx ecx];
+    call_ff_really_2 ();
+  }
+#endif /* __WATCOMC__ */
+#endif /* not CL386 */
+  return (long_to_integer (result));
 }
 
 //

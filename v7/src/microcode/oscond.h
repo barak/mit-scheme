@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: oscond.h,v 1.23 1997/05/01 01:21:20 cph Exp $
+$Id: oscond.h,v 1.24 1998/04/14 05:13:44 cph Exp $
 
-Copyright (c) 1990-97 Massachusetts Institute of Technology
+Copyright (c) 1990-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -168,7 +168,7 @@ MIT in each case. */
 #include "error: can't define both _BSD and _SYSV"
 #endif
 
-#if (defined(_M_I386) || defined(M_I386)) && !defined(i386)
+#if defined(_M_IX86) && !defined(i386)
 #define i386
 #endif
 
@@ -186,8 +186,12 @@ MIT in each case. */
 #endif
 #endif
 
-#if defined(__NT__) && !defined(WINNT)
+#if (defined(_WIN32) || defined(__NT__)) && !defined(WINNT)
 #define WINNT
+#endif
+
+#if defined(_MSC_VER) && !defined(CL386)
+#define CL386
 #endif
 
 #if defined(_BSD) || defined(_SYSV) || defined(_PIXEL)

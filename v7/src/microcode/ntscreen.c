@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.32 1998/01/20 18:40:13 adams Exp $
+$Id: ntscreen.c,v 1.33 1998/04/14 05:13:31 cph Exp $
 
-Copyright (c) 1993-1998 Massachusetts Institute of Technology
+Copyright (c) 1993-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -779,11 +779,7 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	}
 
 	if (hWnd == ((HWND) master_tty_window))
-	{
-	  // This is bad.  We should post a quit message like nice people
-	  extern void termination_normal (int);
 	  termination_normal (0);
-	}
 	goto use_default;
       }
 
