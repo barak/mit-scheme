@@ -1,29 +1,38 @@
+# $Id: Makefile.std,v 1.3 2000/12/05 22:33:33 cph Exp $
 #
-# $Id: Makefile.std,v 1.2 2000/03/21 04:19:41 cph Exp $
+# Copyright (c) 2000 Massachusetts Institute of Technology
 #
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
 # Standard Makefile for Scheme subsystem directories.
 # This makefile supports some utilities for Scheme subsystems.
 # Tools to rebuild these subsystems are written in Scheme and do not
 # use `make'.
-#
 
 SHELL = /bin/sh
 
 all:
 	echo "No ALL action"
 
-TAGS:
+setup:
+	test -f ed-ffi.scm \
+	&& test ! -f .edwin-ffi \
+	&& ln -s ed-ffi.scm .edwin-ffi
+
+tags TAGS:
 	etags *.scm
-
-index:
-	rm -f INDEX
-	/zu/cph/bin/schndx *.scm > INDEX
-
-listing:
-	prlist runtim.pkg *.scm
-
-locked:
-	rlog -L -R RCS/*,v
 
 stage1:
 	mkdir STAGE1
@@ -75,3 +84,8 @@ cpstage3:
 
 lnstage3:
 	ln STAGE3/* .
+
+.PHONY: all setup tags TAGS
+.PHONY: stage1 unstage1 rmstage1 cpstage1 lnstage1
+.PHONY: stage2 unstage2 rmstage2 cpstage2 lnstage2
+.PHONY: stage3 unstage3 rmstage3 cpstage3 lnstage3

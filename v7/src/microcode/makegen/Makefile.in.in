@@ -1,4 +1,4 @@
-# $Id: Makefile.in.in,v 1.3 2000/12/05 22:29:53 cph Exp $
+# $Id: Makefile.in.in,v 1.4 2000/12/05 22:31:01 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -162,8 +162,6 @@ DISTCLEAN_FILES = Makefile config.h config.cache config.log config.status \
 MAINTAINER_CLEAN_FILES = Makefile.in makegen/Makefile.deps \
 	config.h.in configure
 
-SUBDIRS = cmpauxmd
-
 # **** Implicit rules ****
 
 .SUFFIXES:
@@ -181,10 +179,6 @@ SUBDIRS = cmpauxmd
 # **** Main rules ****
 
 all: $(ALL_PROGRAMS)
-	@for subdir in $(SUBDIRS); do \
-	  echo "making $@ in $$subdir"; \
-	  ( cd $$subdir && $(MAKE) $@ ) || exit 1; \
-	done
 
 scheme: $(scheme_OBJECTS) $(scheme_DEPENDENCIES)
 	-rm -f scheme
@@ -236,10 +230,7 @@ distclean: clean
 
 maintainer-clean: distclean
 	-rm -f $(MAINTAINER_CLEAN_FILES)
-	@for subdir in $(SUBDIRS); do \
-	  echo "making $@ in $$subdir"; \
-	  ( cd $$subdir && $(MAKE) $@ ) || exit 1; \
-	done
+	( cd cmpauxmd && $(MAKE) $@ )
 
 .PHONY: all setup tags TAGS mostlyclean clean distclean maintainer-clean
 
