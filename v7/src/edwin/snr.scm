@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.15 1996/10/23 22:14:22 cph Exp $
+;;;	$Id: snr.scm,v 1.16 1996/10/23 22:58:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -3775,9 +3775,9 @@ With prefix arg, replaces the file with the list information."
   (let ((table
 	 (news-group:get-ignored-subjects (news-header:group header) #f)))
     (and table
-	 (hash-table/get table
-			 (canonicalize-subject (news-header:subject header))
-			 #f))))
+	 (let ((subject (canonicalize-subject (news-header:subject header))))
+	   (and (not (fix:= 0 (string-length subject)))
+		(hash-table/get table subject #f))))))
 
 (define (news-group:article-ignored! group header buffer)
   (let ((subject (canonicalize-subject (news-header:subject header))))
@@ -4033,15 +4033,20 @@ With prefix arg, replaces the file with the list information."
 	extra)))
 
 (define (initial-header-status header)
-  (cond ((or (not (news-header:real? header))
-	     (not (news-header:number header)))
-	 #\D)
-	((member-of-ranges? (news-group:ranges-seen
-			     (news-header:group header))
-			    (news-header:number header))
-	 (if (news-header:ignore? header) #\I #\D))
-	(else
-	 #\space)))
+  (let ((group (news-header:group header))
+	(number (news-header:number header)))
+    (cond ((or (not (news-header:real? header))
+	       (not number))
+	   #\D)
+	  ((news-header:ignore? header)
+	   (set-news-group:ranges-seen!
+	    group
+	    (add-to-ranges! (news-group:ranges-seen group) number))
+	   #\I)
+	  ((member-of-ranges? (news-group:ranges-seen group) number)
+	   #\D)
+	  (else
+	   #\space))))
 
 (define (news-header:status header)
   (news-header-extra:status (get-news-header-extra header #f)))
@@ -4065,8 +4070,11 @@ With prefix arg, replaces the file with the list information."
   (news-group:article-unseen! (news-header:group header) header buffer))
 
 (define (news-header:article-marked! header buffer)
-  (set-news-header:status! header #\M)
-  (news-group:article-unseen! (news-header:group header) header buffer))
+  (if (not (news-header:pre-read-body? header))
+      (begin
+	(set-news-header:status! header #\M)
+	(news-group:article-unseen! (news-header:group header)
+				    header buffer))))
 
 (define (news-header:article-ignored! header buffer)
   (set-news-header:status! header #\I)
