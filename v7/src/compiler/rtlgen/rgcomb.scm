@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.11 1987/04/21 14:23:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.12 1987/04/21 16:57:05 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -65,10 +65,10 @@ MIT in each case. |#
 (define (combination:constant combination offset rest-generator)
   (let ((value (combination-value combination))
 	(next (snode-next combination)))
-    (cond ((value-temporary? value)
+    (cond ((temporary? value)
 	   (generate-assignment (combination-block combination)
 				value
-				(combination-constant-value combination)
+				(vnode-known-value value)
 				next
 				offset
 				rest-generator
