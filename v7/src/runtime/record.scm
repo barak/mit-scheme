@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.6 1990/10/04 02:41:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.7 1990/10/16 21:03:14 cph Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,156 +33,152 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Records
+;;; package: (runtime record)
+
 ;;; adapted from JAR's implementation
 ;;; conforms to R4RS proposal
 
 (declare (usual-integrations))
 
 (define (make-record-type type-name field-names)
-  (let ((size (+ (length field-names) 1))
-	(the-descriptor (make-vector 7)))
-
-    (define (predicate object)
-      (and (vector? object)
-	   (= (vector-length object) size)
-	   (eq? (vector-ref object 0) the-descriptor)))
-
-    (define (guarantee record procedure-name)
-      (if (not (predicate record))
-	  (error:illegal-datum record procedure-name)))
-
-    (define (field-index name procedure-name)
-      (let loop ((names field-names) (index 1))
-	(if (null? names)
-	    (error:datum-out-of-range name procedure-name))
-	(if (eq? name (car names))
-	    index
-	    (loop (cdr names) (+ index 1)))))
-
-    (vector-set! the-descriptor 0 "record-type-descriptor")
-    (vector-set! the-descriptor 1 predicate)
-    (vector-set! the-descriptor 2
-      (lambda (names)
-	(let ((number-of-inits (length names))
-	      (indexes
-	       (map (lambda (name)
-		      (field-index name 'RECORD-CONSTRUCTOR))
-		    names)))
-	  (lambda field-values
-	    (if (not (= (length field-values) number-of-inits))
-		(error "wrong number of arguments to record constructor"
-		       field-values type-name names))
-	    (let ((record (make-vector size)))
-	      (vector-set! record 0 the-descriptor)
-	      (for-each (lambda (index value)
-			  (vector-set! record index value))
-			indexes
-			field-values)
-	      record)))))
-    (vector-set! the-descriptor 3
-      (lambda (name)
-	(let ((index (field-index name 'RECORD-ACCESSOR))
-	      (procedure-name `(RECORD-ACCESSOR ,the-descriptor ',name)))
-	  (lambda (record)
-	    (guarantee record procedure-name)
-	    (vector-ref record index)))))
-    (vector-set! the-descriptor 4
-      (lambda (name)
-	(let ((index (field-index name 'RECORD-UPDATER))
-	      (procedure-name `(RECORD-UPDATER ,the-descriptor ',name)))
-	  (lambda (record new-value)
-	    (guarantee record procedure-name)
-	    (vector-set! record index new-value)))))
-    (vector-set! the-descriptor 5 type-name)
-    (vector-set! the-descriptor 6 (list-copy field-names))
-    (unparser/set-tagged-vector-method! the-descriptor
+  (let ((record-type
+	 (vector record-type-marker type-name (list-copy field-names))))
+    (unparser/set-tagged-vector-method! record-type
 					(unparser/standard-method type-name))
-    (named-structure/set-tag-description! the-descriptor
+    (named-structure/set-tag-description! record-type
       (letrec ((description
-		(lambda (record)
-		  (guarantee record description)
-		  (map (lambda (name)
-			 (list name
-			       (vector-ref record
-					   (field-index name description))))
-		       field-names))))
+		(let ((predicate (record-predicate record-type)))
+		  (lambda (record)
+		    (if (not (predicate record))
+			(error:illegal-datum record description))
+		    (map (lambda (field-name)
+			   (list field-name
+				 (vector-ref
+				  record
+				  (record-type-field-index record-type
+							   field-name
+							   description))))
+			 (vector-ref record-type 2))))))
 	description))
-    the-descriptor))
-
-(define (record-constructor record-type #!optional field-names)
-  (if (not (record-type? record-type))
-      (error:illegal-datum record-type 'RECORD-CONSTRUCTOR))
-  ((vector-ref record-type 2)
-   (if (default-object? field-names)
-       (record-type-field-names record-type)
-       field-names)))
+    record-type))
 
-(define (record-predicate record-type)
+(define (record-type? object)
+  (and (vector? object)
+       (= (vector-length object) 3)
+       (eq? (vector-ref object 0) record-type-marker)))
+
+(define (record-type-name record-type)
   (if (not (record-type? record-type))
-      (error:illegal-datum record-type 'RECORD-PREDICATE))
+      (error:illegal-datum record-type 'RECORD-TYPE-NAME))
   (vector-ref record-type 1))
 
-(define (record-accessor record-type field-name)
+(define (record-type-field-names record-type)
   (if (not (record-type? record-type))
-      (error:illegal-datum record-type 'RECORD-ACCESSOR))
-  ((vector-ref record-type 3) field-name))
+      (error:illegal-datum record-type 'RECORD-TYPE-FIELD-NAMES))
+  (list-copy (vector-ref record-type 2)))
 
-(define (record-updater record-type field-name)
-  (if (not (record-type? record-type))
-      (error:illegal-datum record-type 'RECORD-UPDATER))
-  ((vector-ref record-type 4) field-name))
+(define-integrable (record-type-record-length record-type)
+  (+ (length (vector-ref record-type 2)) 1))
+
+(define (record-type-field-index record-type field-name procedure-name)
+  (let loop ((field-names (vector-ref record-type 2)) (index 1))
+    (if (null? field-names)
+	(error:datum-out-of-range field-name procedure-name))
+    (if (eq? field-name (car field-names))
+	index
+	(loop (cdr field-names) (+ index 1)))))
 
 (define (set-record-type-unparser-method! record-type method)
   (if (not (record-type? record-type))
       (error:illegal-datum record-type 'SET-RECORD-TYPE-UNPARSER-METHOD!))
   (unparser/set-tagged-vector-method! record-type method))
 
-;;; Abstraction-Breaking Operations
-
-(define record-type?)
+(define record-type-marker)
 
 (define (initialize-package!)
-  (let ((record-type (make-record-type "foo" '())))
-    (let ((size (vector-length record-type))
-	  (tag (vector-ref record-type 0)))
-      (unparser/set-tagged-vector-method!
-       tag
-       (unparser/standard-method 'RECORD-TYPE-DESCRIPTOR
-	 (lambda (state record-type)
-	   (unparse-object state (vector-ref record-type 5)))))
-      (named-structure/set-tag-description! tag
-	(lambda (record-type)
-	  (if (not (record-type? record-type))
-	      (error:illegal-datum record-type false))
-	  `((PREDICATE ,(vector-ref record-type 1))
-	    (CONSTRUCTOR-CONSTRUCTOR ,(vector-ref record-type 2))
-	    (ACCESSOR-CONSTRUCTOR ,(vector-ref record-type 3))
-	    (UPDATER-CONSTRUCTOR ,(vector-ref record-type 4))
-	    (TYPE-NAME ,(vector-ref record-type 5))
-	    (FIELD-NAMES ,(vector-ref record-type 6)))))
-      (set! record-type?
-	    (lambda (object)
-	      (and (vector? object)
-		   (= (vector-length object) size)
-		   (eq? (vector-ref object 0) tag))))))
-  unspecific)
-
-(define (record-type-name record-type)
+  (set! record-type-marker
+	(string->symbol "#[(runtime record)record-type-marker]"))
+  (unparser/set-tagged-vector-method!
+   record-type-marker
+   (unparser/standard-method 'RECORD-TYPE-DESCRIPTOR
+     (lambda (state record-type)
+       (unparse-object state (record-type-name record-type)))))
+  (named-structure/set-tag-description! record-type-marker
+    (lambda (record-type)
+      (if (not (record-type? record-type))
+	  (error:illegal-datum record-type false))
+      `((TYPE-NAME ,(record-type-name record-type))
+	(FIELD-NAMES ,(record-type-field-names record-type))))))
+
+(define (record-constructor record-type #!optional field-names)
   (if (not (record-type? record-type))
-      (error:illegal-datum record-type 'RECORD-TYPE-NAME))
-  (vector-ref record-type 5))
-
-(define (record-type-field-names record-type)
-  (if (not (record-type? record-type))
-      (error:illegal-datum record-type 'RECORD-TYPE-FIELD-NAMES))
-  (list-copy (vector-ref record-type 6)))
+      (error:illegal-datum record-type 'RECORD-CONSTRUCTOR))
+  (let ((field-names
+	 (if (default-object? field-names)
+	     (vector-ref record-type 2)
+	     field-names)))
+    (let ((record-length (record-type-record-length record-type))
+	  (number-of-inits (length field-names))
+	  (indexes
+	   (map (lambda (field-name)
+		  (record-type-field-index record-type
+					   field-name
+					   'RECORD-CONSTRUCTOR))
+		field-names)))
+      (lambda field-values
+	(if (not (= (length field-values) number-of-inits))
+	    (error "wrong number of arguments to record constructor"
+		   field-values record-type field-names))
+	(let ((record (make-vector record-length)))
+	  (vector-set! record 0 record-type)
+	  (for-each (lambda (index value) (vector-set! record index value))
+		    indexes
+		    field-values)
+	  record)))))
 
 (define (record? object)
   (and (vector? object)
-       (not (zero? (vector-length object)))
+       (positive? (vector-length object))
        (record-type? (vector-ref object 0))))
 
 (define (record-type-descriptor record)
   (if (not (record? record))
       (error:illegal-datum record 'RECORD-TYPE-DESCRIPTOR))
   (vector-ref record 0))
+
+(define (record-predicate record-type)
+  (if (not (record-type? record-type))
+      (error:illegal-datum record-type 'RECORD-PREDICATE))
+  (let ((record-length (record-type-record-length record-type)))
+    (lambda (object)
+      (and (vector? object)
+	   (= (vector-length object) record-length)
+	   (eq? (vector-ref object 0) record-type)))))
+
+(define (record-accessor record-type field-name)
+  (if (not (record-type? record-type))
+      (error:illegal-datum record-type 'RECORD-ACCESSOR))
+  (let ((record-length (record-type-record-length record-type))
+	(procedure-name `(RECORD-ACCESSOR ,record-type ',field-name))
+	(index
+	 (record-type-field-index record-type field-name 'RECORD-ACCESSOR)))
+    (lambda (record)
+      (if (not (and (vector? record)
+		    (= (vector-length record) record-length)
+		    (eq? (vector-ref record 0) record-type)))
+	  (error:illegal-datum record procedure-name))
+      (vector-ref record index))))
+
+(define (record-updater record-type field-name)
+  (if (not (record-type? record-type))
+      (error:illegal-datum record-type 'RECORD-UPDATER))
+  (let ((record-length (record-type-record-length record-type))
+	(procedure-name `(RECORD-UPDATER ,record-type ',field-name))
+	(index
+	 (record-type-field-index record-type field-name 'RECORD-UPDATER)))
+    (lambda (record field-value)
+      (if (not (and (vector? record)
+		    (= (vector-length record) record-length)
+		    (eq? (vector-ref record 0) record-type)))
+	  (error:illegal-datum record procedure-name))
+      (vector-set! record index field-value))))

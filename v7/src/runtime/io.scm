@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.8 1990/08/16 20:09:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.9 1990/10/16 21:03:07 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -160,7 +160,7 @@ MIT in each case. |#
   (if (not traversing?)
       ((ucode-primitive close-lost-open-files 1) open-channels-list)))
 
-;;;; Wrapped Primitives
+;;;; Channel Primitives
 
 (define (channel-read channel buffer start end)
   ((ucode-primitive channel-read 4) (channel-descriptor channel)
@@ -219,6 +219,8 @@ MIT in each case. |#
 	 (and descriptors
 	      (vector-map descriptors descriptor->channel)))))))
 
+;;;; File Primitives
+
 (define (file-open-input-channel filename)
   (without-interrupts
    (lambda ()
@@ -259,6 +261,14 @@ MIT in each case. |#
 (define (file-set-position channel position)
   ((ucode-primitive file-set-position 2) (channel-descriptor channel)
 					 position))
+
+;;;; Terminal Primitives
+
+(define (terminal-raw-output channel)
+  ((ucode-primitive terminal-raw-output 1) (channel-descriptor channel)))
+
+(define (terminal-cooked-output channel)
+  ((ucode-primitive terminal-cooked-output 1) (channel-descriptor channel)))
 
 (define (terminal-buffered? channel)
   ((ucode-primitive terminal-buffered? 1) (channel-descriptor channel)))
@@ -277,6 +287,14 @@ MIT in each case. |#
 
 (define (terminal-drain-output channel)
   ((ucode-primitive terminal-drain-output 1) (channel-descriptor channel)))
+
+(define (terminal-input-baud-rate channel)
+  ((ucode-primitive baud-index->rate 1)
+   ((ucode-primitive terminal-get-ispeed 1) (channel-descriptor channel))))
+
+(define (terminal-output-baud-rate channel)
+  ((ucode-primitive baud-index->rate 1)
+   ((ucode-primitive terminal-get-ospeed 1) (channel-descriptor channel))))
 
 (define (open-pty-master)
   (without-interrupts
@@ -364,6 +382,9 @@ MIT in each case. |#
     (set-output-buffer/string! buffer string)
     (if (= position buffer-size) (output-buffer/drain buffer))))
 
+(define output-buffer/buffered-chars
+  output-buffer/position)
+
 (define (output-buffer/drain buffer)
   (let ((position (output-buffer/position buffer)))
     (if (zero? position)
@@ -383,7 +404,7 @@ MIT in each case. |#
 
 (define (output-buffer/flush buffer)
   (set-output-buffer/position! buffer 0))
-
+
 (define (output-buffer/write-substring buffer string start end)
   (if (= start end)
       0
@@ -485,7 +506,7 @@ MIT in each case. |#
     (if (< (input-buffer/start-index buffer) end-index)
 	(set-input-buffer/start-index! buffer end-index))))
 
-(define (input-buffer/chars-available buffer)
+(define (input-buffer/buffered-chars buffer)
   (- (input-buffer/end-index buffer) (input-buffer/start-index buffer)))
 
 (define (input-buffer/chars-remaining buffer)
@@ -493,7 +514,7 @@ MIT in each case. |#
     (and (channel-type=file? channel)
 	 (let ((n (- (file-length channel) (file-position channel))))
 	   (and (not (negative? n))
-		(+ (input-buffer/chars-available buffer) n))))))
+		(+ (input-buffer/buffered-chars buffer) n))))))
 
 (define (input-buffer/char-ready? buffer interval)
   (let ((fill

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.79 1990/10/04 02:42:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.80 1990/10/16 21:03:20 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -1346,6 +1346,7 @@ MIT in each case. |#
   (export (runtime file-input)
 	  file-length
 	  file-open-input-channel
+	  input-buffer/buffered-chars
 	  input-buffer/channel
 	  input-buffer/char-ready?
 	  input-buffer/chars-remaining
@@ -1364,6 +1365,7 @@ MIT in each case. |#
 	  file-open-append-channel
 	  file-open-output-channel
 	  make-output-buffer
+	  output-buffer/buffered-chars
 	  output-buffer/close
 	  output-buffer/drain-block
 	  output-buffer/set-size
@@ -1371,18 +1373,24 @@ MIT in each case. |#
 	  output-buffer/write-char-block
 	  output-buffer/write-string-block)
   (export (runtime console-output)
+	  channel-type=terminal?
 	  channel-write-char-block
 	  channel-write-string-block
 	  make-output-buffer
+	  output-buffer/buffered-chars
 	  output-buffer/drain-block
 	  output-buffer/set-size
 	  output-buffer/size
 	  output-buffer/write-char-block
 	  output-buffer/write-string-block
+	  terminal-cooked-output
+	  terminal-output-baud-rate
+	  terminal-raw-output
 	  tty-output-channel)
   (export (runtime console-input)
 	  channel-type=file?
 	  channel-type=terminal?
+	  input-buffer/buffered-chars
 	  input-buffer/channel
 	  input-buffer/char-ready?
 	  input-buffer/peek-char
@@ -1390,6 +1398,7 @@ MIT in each case. |#
 	  make-input-buffer
 	  terminal-buffered
 	  terminal-buffered?
+	  terminal-input-baud-rate
 	  terminal-nonbuffered
 	  tty-input-channel)
   (initialization (initialize-package!)))
