@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bittop.scm,v 1.18 1993/12/09 01:17:55 gjr Exp $
+$Id: bittop.scm,v 1.19 1993/12/18 07:15:57 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -184,7 +184,7 @@ MIT in each case. |#
 	      (let ((ob (object-new-type (ucode-type vector) output-block)))
 		(subvector-fill! ob
 				 (fix:+ bl 1)
-				 (vector-length ob)
+				 (system-vector-length ob)
 				 #f)
 		(vector-set! ob 0
 			     ((ucode-primitive primitive-object-set-type)
