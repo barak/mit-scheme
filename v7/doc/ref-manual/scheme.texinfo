@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.15 1993/08/03 00:51:17 cph Exp $
+@comment $Id: scheme.texinfo,v 1.16 1993/08/03 00:52:25 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -105,9 +105,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition $Revision: 1.15 $ alpha
+@subtitle Edition 1.16 alpha
 @subtitle for Scheme Release 7.2
-@subtitle $Date: 1993/08/03 00:51:17 $
+@subtitle 2 August 1993
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
