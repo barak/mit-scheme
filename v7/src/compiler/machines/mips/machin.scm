@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.8 1992/11/08 04:11:28 jinx Exp $
+$Id: machin.scm,v 1.9 1992/11/18 03:52:14 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -115,12 +115,6 @@ MIT in each case. |#
 (define (closure-environment-adjustment nentries entry)
   nentries entry			; ignored
   0)
-
-(define-integrable (byte-offset:zero? obj)
-  (zero? obj))
-
-(define-integrable (byte-offset:- x y)
-  (- x y))
 
 ;;;; Machine Registers
 

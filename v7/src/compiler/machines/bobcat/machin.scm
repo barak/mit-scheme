@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 4.27 1992/11/08 04:10:31 jinx Exp $
+$Id: machin.scm,v 4.28 1992/11/18 03:47:54 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -213,12 +213,6 @@ MIT in each case. |#
 
 (define/format-dependent closure-environment-adjustment)
 )
-
-(define-integrable (byte-offset:zero? obj)
-  (zero? obj))
-
-(define-integrable (byte-offset:- x y)
-  (- x y))
 
 (define-integrable d0 0)
 (define-integrable d1 1)

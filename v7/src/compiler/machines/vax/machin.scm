@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 4.9 1992/11/08 04:11:05 jinx Exp $
+$Id: machin.scm,v 4.10 1992/11/18 03:55:03 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -119,12 +119,6 @@ MIT in each case. |#
 (define (closure-environment-adjustment nentries entry)
   (declare (integrate-operator closure-entry-distance))
   (closure-entry-distance nentries entry 0))
-
-(define-integrable (byte-offset:zero? obj)
-  (zero? obj))
-
-(define-integrable (byte-offset:- x y)
-  (- x y))
 
 (define-integrable r0 0)		; return value
 (define-integrable r1 1)

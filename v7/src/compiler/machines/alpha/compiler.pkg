@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.3 1992/11/14 17:24:28 gjr Exp $
+$Id: compiler.pkg,v 1.4 1992/11/18 03:52:52 gjr Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
 
@@ -48,6 +48,7 @@ case.
 	 "base/scode"			;SCode abstraction
 	 "rtlbase/valclass"		;RTL: value classes
 	 "machines/alpha/machin"	;machine dependent stuff
+	 "back/asutl"			;back-end odds and ends
 	 "base/utils"			;odds and ends
 
 	 "base/cfg1"			;control flow graph

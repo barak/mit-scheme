@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.3 1992/10/19 20:13:24 jinx Exp $
+$Id: decls.scm,v 1.4 1992/11/18 03:50:59 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -396,7 +396,8 @@ MIT in each case. |#
 			   "object" "proced" "rvalue"
 			   "scode" "subprb" "utils"))
 	 (i386-base
-	  (filename/append "machines/i386" "machin"))
+	  (append (filename/append "machines/i386" "machin")
+		  (filename/append "back" "asutl")))
 	 (rtl-base
 	  (filename/append "rtlbase"
 			   "rgraph" "rtlcfg" "rtlobj" "rtlreg" "rtlty1"
@@ -446,6 +447,7 @@ MIT in each case. |#
        (string-append directory "/" name)
        (apply filename/append directory* names)))
 
+    (define-integration-dependencies "machines/i386" "machin" "back" "asutl")
     (define-integration-dependencies "base" "object" "base" "enumer")
     (define-integration-dependencies "base" "enumer" "base" "object")
     (define-integration-dependencies "base" "utils" "base" "scode")

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.2 1992/10/19 20:13:46 jinx Exp $
+$Id: decls.scm,v 1.3 1992/11/18 03:53:38 gjr Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
 
@@ -399,7 +399,8 @@ case.
 			   "object" "proced" "rvalue"
 			   "scode" "subprb" "utils"))
 	 (alpha-base
-	  (filename/append "machines/alpha" "machin"))
+	  (append (filename/append "machines/alpha" "machin")
+		  (filename/append "back" "asutl")))
 	 (rtl-base
 	  (filename/append "rtlbase"
 			   "regset" "rgraph" "rtlcfg" "rtlobj"
@@ -449,6 +450,7 @@ case.
        (string-append directory "/" name)
        (apply filename/append directory* names)))
 
+    (define-integration-dependencies "machines/alpha" "machin" "back" "asutl")
     (define-integration-dependencies "base" "object" "base" "enumer")
     (define-integration-dependencies "base" "enumer" "base" "object")
     (define-integration-dependencies "base" "utils" "base" "scode")

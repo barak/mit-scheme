@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.13 1992/11/14 17:23:19 gjr Exp $
+$Id: compiler.pkg,v 1.14 1992/11/18 03:50:07 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -45,6 +45,7 @@ MIT in each case. |#
 	 "base/mvalue"			;multiple-value support
 	 "base/scode"			;SCode abstraction
 	 "machines/i386/machin"		;machine dependent stuff
+	 "back/asutl"			;back-end odds and ends
 	 "base/utils"			;odds and ends
 
 	 "base/cfg1"			;control flow graph

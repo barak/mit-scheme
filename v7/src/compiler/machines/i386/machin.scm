@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.14 1992/11/08 04:12:02 jinx Exp $
+$Id: machin.scm,v 1.15 1992/11/18 03:49:35 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -39,7 +39,6 @@ MIT in each case. |#
 
 ;;;; Architecture Parameters
 
-;; **** Does this apply to the stack as well? ****
 (define use-pre/post-increment? false)
 (define-integrable endianness 'LITTLE)
 (define-integrable addressing-granularity 8)
@@ -120,12 +119,6 @@ MIT in each case. |#
 (define (closure-environment-adjustment nentries entry)
   (declare (integrate-operator closure-entry-distance))
   (closure-entry-distance nentries entry 0))
-
-(define-integrable (byte-offset:zero? obj)
-  (zero? obj))
-
-(define-integrable (byte-offset:- x y)
-  (- x y))
 
 ;;;; Machine registers
 
