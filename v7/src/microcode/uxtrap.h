@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxtrap.h,v 1.29 2000/12/05 21:23:49 cph Exp $
+$Id: uxtrap.h,v 1.30 2001/10/25 17:18:24 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 #ifndef SCM_UXTRAP_H
@@ -416,13 +417,66 @@ struct full_sigcontext
 #ifdef __IA32__
 
 #ifdef __linux__
-/* Linux signal handlers are called with one argument -- the `signo'.
-   There's an alleged "iBCS signal stack" register dump just above it.
-   Thus, the fictitious `info' argument to the handler is actually the
-   first member of this register dump (described by struct
-   linux_sigcontext, below).  Unfortunately, kludging SIGINFO_CODE to
-   access the sc_trapno will fail later on when looking at the
-   saved_info. */
+
+#define SIGINFO_T siginfo_t *
+#define SIGINFO_VALID_P(info) ((info) != 0)
+#define SIGINFO_CODE(info) ((info) -> si_code)
+
+#define SIGCONTEXT			sigcontext
+#define SIGCONTEXT_SP(scp)		((scp) -> esp)
+#define SIGCONTEXT_PC(scp)		((scp) -> eip)
+
+#define HAVE_FULL_SIGCONTEXT
+/* Grab them all.  Nobody looks at them, but grab them anyway. */
+#define PROCESSOR_NREGS			19
+#define FULL_SIGCONTEXT_NREGS		19
+#define FULL_SIGCONTEXT_FIRST_REG(scp)	(scp)
+#define FULL_SIGCONTEXT_RFREE(scp)	((scp) -> edi)
+
+#define INITIALIZE_UX_SIGNAL_CODES()					\
+{									\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_INTDIV, "integer divide by 0 trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_INTOVF, "integer overflow trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTDIV, "floating-point divide by 0 trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTOVF, "floating-point overflow trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTUND, "floating-point underflow trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTRES, "floating-point inexact result");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTSUB, "subscript-range trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTINV, "invalid floating-point operation");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_ILLOPC, "illegal opcode trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_ILLOPN, "illegal operand trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_ILLADR, "illegal addressing mode trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_ILLTRP, "illegal trap");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_PRVOPC, "privileged opcode trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_PRVREG, "privileged register trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_COPROC, "co-processor trap");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_BADSTK, "bad stack trap");			\
+}
+
+#if 0
+/* In versions of Linux prior to 2.2 (?), signal handlers are called
+   with one argument -- the `signo'.  There's an alleged "iBCS signal
+   stack" register dump just above it.  Thus, the fictitious `info'
+   argument to the handler is actually the first member of this
+   register dump (described by struct linux_sigcontext, below).
+   Unfortunately, kludging SIGINFO_CODE to access the sc_trapno will
+   fail later on when looking at the saved_info. */
 #define SIGINFO_T long
 #define SIGINFO_VALID_P(info) (0)
 #define SIGINFO_CODE(info) (0)
@@ -460,6 +514,8 @@ struct linux_sigcontext {
 #define FULL_SIGCONTEXT_SP SIGCONTEXT_SP
 #define FULL_SIGCONTEXT_PC SIGCONTEXT_PC
 #define FULL_SIGCONTEXT_RFREE(scp)	((scp)->sc_edi)
+
+#endif /* 0 */
 
 #endif /* __linux__ */
 
