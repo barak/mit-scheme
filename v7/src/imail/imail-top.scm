@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.184 2000/06/23 15:46:00 cph Exp $
+;;; $Id: imail-top.scm,v 1.185 2000/06/23 19:05:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1330,7 +1330,7 @@ A prefix argument says to prompt for a URL and append all messages
 		 => (lambda (unseen) (select-message folder unseen)))
 		((selected-message #f)
 		 (message "No unseen messages"))
-		((navigator/first-message folder)
+		((navigator/last-message folder)
 		 => (lambda (first) (select-message folder first)))
 		(else
 		 (message "No changes to mail folder")))))))
@@ -1684,16 +1684,9 @@ Negative argument means search in reverse."
 		       (let ((folder (selected-folder #f buffer)))
 			 (if (message-attached? message folder)
 			     message
-			     (let ((message
-				    (let ((index
-					   (and folder
-						(message-detached? message)
-						(message-index message))))
-				      (and index
-					   (< index (folder-length folder))
-					   (get-message folder index)))))
-			       (buffer-put! buffer 'IMAIL-MESSAGE message)
-			       message)))))))))
+			     (begin
+			       (buffer-put! buffer 'IMAIL-MESSAGE #f)
+			       #f)))))))))
       (and (if (default-object? error?) #t error?)
 	   (error "No selected IMAIL message."))))
 
@@ -1774,7 +1767,8 @@ Negative argument means search in reverse."
      (maybe-add-command-suffix! notice-message-expunge folder
 				(car parameters)))
     ((INCREASE-LENGTH SET-LENGTH)
-     (maybe-add-command-suffix! notice-message-expunge folder 0))
+     (maybe-add-command-suffix! notice-folder-length-change folder
+				(car parameters) (cadr parameters)))
     (else
      (maybe-add-command-suffix! notice-folder-modifications folder))))
 
@@ -1785,12 +1779,21 @@ Negative argument means search in reverse."
 	  (if (or (not m)
 		  (message-detached? m))
 	      (select-message folder
-			      (let ((length (folder-length folder)))
-				(and (> length 0)
-				     (if (< index length)
-					 index
-					 (- length 1))))
+			      (and index
+				   (< index (folder-length folder))
+				   index)
 			      #t)))))
+  (notice-folder-modifications folder))
+
+(define (notice-folder-length-change folder old new)
+  (let ((buffer (imail-folder->buffer folder #f)))
+    (if buffer
+	(cond ((> new old)
+	       (select-message folder old #t))
+	      ((let ((m (selected-message #f buffer)))
+		 (or (not m)
+		     (message-detached? m)))
+	       (select-message folder #f #t)))))
   (notice-folder-modifications folder))
 
 (define (notice-folder-modifications folder)

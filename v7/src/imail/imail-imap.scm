@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.124 2000/06/23 18:46:05 cph Exp $
+;;; $Id: imail-imap.scm,v 1.125 2000/06/23 19:05:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -664,7 +664,7 @@
 		     (lambda (interrupt-mask)
 		       interrupt-mask
 		       (read-message-headers! folder n)))
-		   (folder-modified! folder 'INCREASE-LENGTH))
+		   (folder-modified! folder 'INCREASE-LENGTH n count))
 		  ((= count n)
 		   (set-imap-folder-messages-synchronized?! folder #t))
 		  (else
@@ -710,7 +710,7 @@
 				     (imap-message-uid m*))
 				  (error "Message inserted into folder:" m*))
 			      (loop (fix:+ i 1) i*)))))))
-	      (folder-modified! folder 'SET-LENGTH)))))))
+	      (folder-modified! folder 'SET-LENGTH n count)))))))
 
 ;;;; Message datatype
 

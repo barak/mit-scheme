@@ -1,13 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.94 2000/06/22 20:19:08 cph Exp $
+$Id: todo.txt,v 1.95 2000/06/23 19:05:40 cph Exp $
 
 Bug fixes
 ---------
-
-* If a folder has message N selected, the folder is simultaneously
-  opened somewhere else, one new message is added, and message N is
-  deleted, then the display is _not_ updated to reflect the new
-  message.
 
 * Preserve internal-date when copying to rmail folder from any other
   type of folder, by writing a distinguished header field into the
