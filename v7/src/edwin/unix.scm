@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.13 1991/04/12 23:21:24 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.14 1991/04/13 03:58:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -62,14 +62,14 @@
 	      (else
 	       (loop (-1+ slash))))))))
 
-(define (os/auto-save-pathname pathname buffer-name)
+(define (os/auto-save-pathname pathname buffer)
   (let ((wrap
 	 (lambda (name directory)
 	   (merge-pathnames (string->pathname (string-append "#" name "#"))
 			    directory))))
     (if (not pathname)
-	(wrap (string-append "%" buffer-name)
-	      (working-directory-pathname))
+	(wrap (string-append "%" (buffer-name buffer))
+	      (buffer-default-directory buffer))
 	(wrap (pathname-name-string pathname)
 	      (pathname-directory-path pathname)))))
 

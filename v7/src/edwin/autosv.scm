@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autosv.scm,v 1.23 1991/04/12 23:13:55 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autosv.scm,v 1.24 1991/04/13 03:58:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -106,7 +106,7 @@ This file is not the file you visited; that changes only when you save."
    (let ((pathname (buffer-pathname buffer)))
      (if (and pathname (ref-variable auto-save-visited-file-name))
 	 pathname
-	 (os/auto-save-pathname pathname (buffer-name buffer))))))
+	 (os/auto-save-pathname pathname buffer)))))
 
 (define (disable-buffer-auto-save! buffer)
   (set-buffer-auto-save-pathname! buffer false))
