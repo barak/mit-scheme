@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/print.scm,v 1.1 1991/09/20 20:46:48 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/print.scm,v 1.2 1991/09/20 20:56:08 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -99,9 +99,7 @@ Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
 				     (loop (cdr remaining))))))))))
 
 (define (print-region/internal region switches)
-  (let ((name (string-append (buffer-name (current-buffer))
-			     " Emacs buffer"))
-	(width (ref-variable tab-width)))
+  (let ((width (ref-variable tab-width)))
     (let ((buffer (temporary-buffer " *spool temp*")))
       (message "Spooling...")
       (region-insert-string! (buffer-point buffer)
