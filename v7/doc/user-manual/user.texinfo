@@ -121,8 +121,6 @@ Scheme with Edwin and GNU Emacs.
 * GNU Emacs Interface::         
 * Edwin::                       
 * Win32 Package Reference::     
-* Variable Index::              
-* Key Index::                   
 * Concept Index::               
 
  --- The Detailed Node Listing ---
@@ -3956,7 +3954,7 @@ column zero.
 @end itemize
 
 @c WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-@node Win32 Package Reference, Variable Index, Edwin, Top
+@node Win32 Package Reference, Concept Index, Edwin, Top
 @chapter Win32 Package Reference
 
 @ifinfo
