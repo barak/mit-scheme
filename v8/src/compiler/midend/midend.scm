@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.14 1995/08/06 19:58:53 adams Exp $
+$Id: midend.scm,v 1.15 1995/08/07 16:17:35 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -208,7 +208,7 @@ Example:
 	     assconv/top-level		; eliminate SET! and introduce LETREC
 					;  rewriting LOOKUP and SET!
 	     cleanup/top-level/1	; as below
-	     coerce/top-level
+	     ;;coerce/top-level
 
 	     earlyrew/top-level		; rewrite -1+ into -, etc.
 
