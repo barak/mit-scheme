@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgred.scm,v 1.6 1995/06/19 17:49:53 adams Exp $
+$Id: dbgred.scm,v 1.7 1995/07/04 17:40:53 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -80,6 +80,9 @@ MIT in each case. |#
   ;;   to look like an interpreter call (2) continuations will not
   ;;   have rearranged their stack-saved values but will have
   ;;   rearranged their multiple arguments (if any).
+  ;; . We must generate stack references for stack arguments as closure
+  ;;   conversion did not post stack-ref rewrites for them.
+  ;; . 
   ;;(match body
   ;;  ((LET ((?frame-name
   ;;           (CALL ',%fetch-stack-closure _ '?frame-vector)) . _)
@@ -97,107 +100,28 @@ MIT in each case. |#
 	 (frame-name (and frame-vector (first (first (let/bindings body))))))
     (let* ((arg-names  (cdr (lambda-list->names lambda-list)))
 	   (arg-slots  (length arg-names))
-	   (alist  (map cons arg-names (iota arg-slots)))
-	   (slot-map
-	    (if frame-vector
-		(let* ((frame-size (vector-length frame-vector)))
-		  (lambda (offset)
-		    (if (< -1 offset frame-size)
-			(if (< offset (- arg-slots *rtlgen/argument-registers*))
-			    (- arg-slots offset 1) ; stackarg
-			    (+ offset *rtlgen/argument-registers* 1))  ; saved
-			(internal-error "Unexpected stack offset"
-					offset form))))
-		(lambda (offset)
-		  (internal-error "No frame for stack offset" offset form)))))
+	   (arg-regs   (vector-length *rtlgen/argument-registers*))
+	   (interrupt-stack-frame-length
+	    (+ (min arg-regs arg-slots)
+	       (if frame-vector (vector-length frame-vector) 0)
+	       6))
+	   (arg0-offset
+	    (+ (min arg-regs arg-slots)
+	       4))
+	   (arg0-offset/stack
+	    (+ arg0-offset arg-slots 1))
+	   (alist  (map (lambda (name i)
+			  (cons name 
+				(if (< i arg-regs)
+				    (- arg0-offset i)
+				    (- arg0-offset/stack i))))
+			arg-names
+			(iota arg-slots)))
+	   (slot-map -1+))
       (let ((env*  (dbg-reduce/env/new-frame env alist frame-name slot-map)))
 	(dbg-reduce/reduce form env*)
 	(dbg-reduce/expr env* body)))))
 
-;; Derivarion of SLOT-MAP
-;;
-;; Example: a continuation with 4 saved values Sk (a continuation), Sx,
-;; Sy, Sz, and seven (#A) arguments Va ... Vg in a system with three
-;; (#R) argument registers R1, R2 and R3
-;;
-;; (CALL '%make-stack-closure
-;;	 (LAMBDA (cont Va Vb Vc Vd Ve Vf Vg)
-;;	   (LET ((?frame-name
-;;		  (CALL '%fetch-stack-closure '#F '#(Sk Sx Sy Sz Vd Ve Vf Vg))))
-;;                                               ;   --saved---- -stack-args
-;;	     ...))
-;;	 Sk Sx Sy Sz)
-;;
-;; Quantity			Sk Sx Sy Sz Vd Ve Vf Vg
-;; %stack-closure-ref index	 0  1  2  3  4  5  6  7
-;; offset into stack		 7  6  5  4  3  2  1  0
-;;
-;; Stack images (Higher addresses earlier lines, stack grows down
-;; page). A previous stack frame (saving Sk2, u & v, described by Sk)
-;; is on the stack:
-;;
-;;	after closure	after call	in interrupt handler
-;;	but before call
-;;	  Sk2		   Sk2		   Sk2
-;;	  Su		   Su		   Su
-;;	  Sv		   Sv		   Sv
-;;	3 Sk		   Sk		   Sk
-;;	2 Sx		   Sx		   Sx
-;;	1 Sy		   Sy		   Sy
-;; SP->	0 Sz		   Sz		   Sz
-;;			   Vd		   Vd
-;;			   Ve		   Ve
-;;			   Vf		   Vf
-;;		   SP->	   Vg		   Vg
-;;					   <cont-reg>/#F \
-;;					   Va		  \ NR
-;;					   Vb		  /
-;;					   Vc		 /
-;;					   <home>	\
-;;					   <home>	 } NH
-;;					   <home>	/
-;;					   Entry to resume
-;;					   NR
-;;					   NH
-;;					   REFLECT_CODE_INTERRUPT_RESTART
-;;				  ?SP->	   reflect_to_interface
-;;
-;; The stack locations for the quantities at *entry to the continuation*
-;; at different times is shown below.  Locations are registers or
-;; stack offsets.  The indexes in the `compiled' column are the
-;; indexes for %stack-closure-ref.  The indexes in the second column
-;; are locations to which the values will have been moved on entry to
-;; the interpreter.
-;;
-;; qty	compiled	interpeter
-;;	location	location
-;; Sk	7		11
-;; Sx   6		10
-;; Sy   5		9
-;; Sz   4		8
-;; cont	special-place	7
-;; Va	R1		0
-;; Vb	R2		1
-;; Vc	R3		2
-;; Vd	3		3
-;; Ve	2		4
-;; Vf	1		5
-;; Vg	0		6
-;;
-;; Thus the mapping for stack closure ref indexes i (numbers in first
-;; column) is i+#R+1 for saved values and #A-i-1
-;; 
-;; (<cont> is #F for real continuations and a real continuation for a
-;; lambda that is a normal procedure.)
-;;
-;; WHAT about locations prior to entry? Offsets from the slot 1 deeper
-;; than `current' continuation:
-;;
-;; qty	location
-;; Sk	+3
-;; Sx	+2
-;; Sy	+1
-;; Sz	+0
 
 (define-dbg-reducer LET (bindings body)
   (for-each (lambda (binding)
@@ -310,12 +234,40 @@ MIT in each case. |#
 (define (dbg-red/reconstruct-block block env)
   ;; Copy entire environment model BLOCK structure whilst reconstructing
   ;; variable expressions from actual environment ENV.
-  (define (variable->path variable)
-    (let ((path   (dbg-red/reconstruct-path variable *dbg-graph* env)))
-      (pp `(,variable ,path))
+  (define (->path item)
+    (let ((path   (dbg-red/reconstruct-path item *dbg-graph* env)))
+      (pp `(,item ,path))
       path))
-  (pp `(reconstruct-block ,block ,env ,*dbg-graph*))
-  (new-dbg-block/reconstruct block variable->path))
+
+  (define (reconstruct-block block)
+    (and block
+	 (let* ((parent    (new-dbg-block/parent block))
+		(parent-path
+		 (and parent
+		      (new-dbg-block/parent-path-prefix parent)
+		      (->path (new-dbg-block/parent-path-prefix parent)))))
+	   (define (make parent* parent-path*)
+	     (new-dbg-block/%make
+	      (new-dbg-block/type block)
+	      parent*
+	      parent-path*
+	      (vector-map (new-dbg-block/variables block)
+		(lambda (var)
+		  (new-dbg-variable/new-expression var (->path var))))))
+	   (cond (parent-path
+		  (make 'IC parent-path))
+		 ((and parent (eq? (new-dbg-block/type parent) 'FIRST-CLASS))
+		  (make 'IC '((TOP-LEVEL-ENVIRONMENT))))
+		 (else
+		  (make (reconstruct-block parent) #F))))))
+  
+  (and block
+       (begin
+	 (pp `(reconstruct-block ,block ,env ,*dbg-graph*))
+	 (let ((block* (reconstruct-block block)))
+	   (pp `(reconstruct-block ,block => ,block*))
+	   block*))))
+
 
 
 (define-structure
@@ -367,8 +319,11 @@ MIT in each case. |#
   (define (reconstruct-name item)
     (cond ((dbg-reduce/env/lookup env item)
 	   => (lambda (offset-or-name)
-		(list (if (number? offset-or-name) 'STACK 'COMPILED-CODE-BLOCK)
-		      offset-or-name)))
+		(list
+		 (cons (if (number? offset-or-name)
+			   'INTERRUPT-FRAME
+			   'CC-ENTRY)
+		       offset-or-name))))
 	  ((hash-table/get (dbg-red/graph/table graph) item #F)
 	   => (lambda (edges)
 		(let loop ((i  (- (vector-length edges) 1)))
@@ -393,7 +348,7 @@ MIT in each case. |#
 	    path))))
 
   (define (reconstruct-expression expr)
-    (cond ((QUOTE/? expr) expr)
+    (cond ((QUOTE/? expr) `((INTEGRATED . (quote/text expr))))
 	  ((LOOKUP/? expr) (reconstruct-name (lookup/name expr)))
 	  ((symbol? expr)  (reconstruct-name expr))
 	  ((CALL/%stack-closure-ref? expr)
@@ -402,15 +357,17 @@ MIT in each case. |#
 	     (and (LOOKUP/? frame)
 		  (QUOTE/? offset)
 		  (eq? (lookup/name frame) (dbg-reduce/env/frame-name env))
-		  `(STACK ,((dbg-reduce/env/frame-offset-map env)
-			    (quote/text offset))))))
+		  `((STACK . ,((dbg-reduce/env/frame-offset-map env)
+			     (quote/text offset)))))))
 	  ((CALL/%heap-closure-ref? expr)
 	   (let ((closure (call/%heap-closure-ref/closure expr))
 		 (offset  (call/%heap-closure-ref/offset expr)))
 	     (let ((closure-path (reconstruct-expression closure)))
-	     (and closure-path
-		  (QUOTE/? offset)
-		  `(CLOSURE ,(quote/text offset) ,closure-path)))))
+	       (and closure-path
+		    (QUOTE/? offset)
+		    `((CLOSURE . ,(+ (quote/text offset)
+				     (rtlgen/closure-first-offset)))
+		      . ,closure-path)))))
 	  ((CALL/%multicell-ref? expr)
 	   (let ((cell-path
 		  (reconstruct-expression (call/%multicell-ref/cell expr)))
@@ -419,8 +376,24 @@ MIT in each case. |#
 	     (and cell-path
 		  (QUOTE/? layout)
 		  (QUOTE/? name)
-		  `(CELL ,(vector-index (quote/text layout) (quote/text name))
-			 ,cell-path))))
+		  `((CELL
+		     . ,(vector-index (quote/text layout) (quote/text name)))
+		    . ,cell-path))))
 	  (else #F)))
     
-  (reconstruct-name item))
+  (let ((reversed-path (reconstruct-name item)))
+    (and reversed-path
+	 (reverse reversed-path))))
+
+#|
+Path expressions
+(INTEGRATED . value)			;compile time constant
+(CONSTANT-BLOCK . offset)		;integrated sharded pointer if possible
+(INTERRUPT-FRAME . value)		;index into inerrupt frame
+(CLOSURE . offset)			;index into compiled closure
+(STACK . offset-from-base)		;index into continuation frame
+(CELL . value)				;index into cell or multi-cell
+(CC-ENTRY . offset)			;entry in current cc-block
+;;These are used in parent environment path expressions
+(TOP-LEVEL-ENVIRONMENT)			;compiled code block's environment
+|#
