@@ -18,7 +18,9 @@
     (begin
       (let ((sf-and-load
 	     (lambda (files package)
-	       (fluid-let ((sf/default-syntax-table syntax-table/system-internal))		 (sf-conditionally files))
+	       (fluid-let ((sf/default-syntax-table
+			    syntax-table/system-internal))
+		 (sf-conditionally files))
 	       (for-each (lambda (file)
 			   (load (string-append file ".bin") package))
 			 files))))
