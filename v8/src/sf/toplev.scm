@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.13 1995/01/06 18:36:24 cph Exp $
+$Id: toplev.scm,v 4.14 1997/07/15 17:54:48 adams Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-1997 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,6 +38,8 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 ;;;; User Interface
+
+(define bin-pathname-type "bin")
 
 (define (integrate/procedure procedure declarations)
   (procedure-components procedure
@@ -133,6 +135,7 @@ MIT in each case. |#
 ;;;; File Syntaxer
 
 (define (syntax-file input-string bin-string spec-string)
+  (perhaps-issue-compatibility-warning)
   (if (not (or (false? sf/default-syntax-table)
 	       (syntax-table? sf/default-syntax-table)))
       (error "Malformed binding of SF/DEFAULT-SYNTAX-TABLE:"
@@ -169,7 +172,7 @@ MIT in each case. |#
 					 (if (> (string-length input-type) 2)
 					     (string-head input-type 2)
 					     input-type))
-			  "bin")))))
+			  bin-pathname-type)))))
 	      (if bin-string
 		  (merge-pathnames bin-string bin-path)
 		  bin-path))
@@ -380,3 +383,14 @@ MIT in each case. |#
 	(write-string " (process time); ")
 	(write (/ (exact->inexact real-time) 1000))
 	(write-string " (real time)"))))
+
+(define compatibility-detection-frob (vector #F '()))
+
+(define (perhaps-issue-compatibility-warning)
+  (if (eq? (vector-ref compatibility-detection-frob 0)
+	   (vector-ref compatibility-detection-frob 1))
+      (begin
+	(warn "!! You are syntaxing while in compatibilty mode, where #F is the")
+	(warn "!! same as '().  The resulting file may be incorrect for the")
+	(warn "!! standard environment."))))
+

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.13 1995/01/06 18:36:24 cph Exp $
+$Id: toplev.scm,v 4.14 1997/07/15 17:54:38 adams Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-1997 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,6 +38,8 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 ;;;; User Interface
+
+(define bin-pathname-type "bin")
 
 (define (integrate/procedure procedure declarations)
   (procedure-components procedure
@@ -169,7 +171,7 @@ MIT in each case. |#
 					 (if (> (string-length input-type) 2)
 					     (string-head input-type 2)
 					     input-type))
-			  "bin")))))
+			  bin-pathname-type)))))
 	      (if bin-string
 		  (merge-pathnames bin-string bin-path)
 		  bin-path))
