@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prosproc.c,v 1.13 1993/06/24 07:09:26 gjr Exp $
+$Id: prosproc.c,v 1.14 1995/01/05 23:48:27 cph Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -179,6 +179,10 @@ DEFUN (convert_string_vector, (vector), SCHEME_OBJECT vector)
   (*scan_result) = 0;
   return (result);
 }
+
+#ifdef _OS2
+#define environ _environ
+#endif
 
 DEFINE_PRIMITIVE ("SCHEME-ENVIRONMENT", Prim_scheme_environment, 0, 0, 0)
 {
