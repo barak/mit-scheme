@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/win32/wf_user.scm,v 1.1 1993/09/20 01:13:04 adams Exp $
+$Id: wf_user.scm,v 1.2 1993/11/10 21:34:40 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -38,39 +38,62 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 
+(define  append-menu)
 (define  arc)
 (define  begin-paint)
 (define  bit-blt)
+(define  check-menu-item)
 (define  create-brush-indirect)
 (define  create-compatible-bitmap)
 (define  create-compatible-dc)
+(define  create-menu)
+(define  create-popup-menu)
 (define  create-palette)
 (define  create-pen)
 (define  create-rect-rgn)
 (define  create-solid-brush)
-(define  delete-dc)
-(define  delete-object)
 (define  debug-break)
+(define  delete-dc)
+(define  delete-menu)
+(define  delete-object)
+(define  destroy-menu)
+(define  draw-menu-bar)
 (define  ellipse)
+(define  enable-menu-item)
 (define  end-paint)
 (define  get-dc)
 (define  get-device-caps)
+(define  get-menu)
+(define  get-menu-check-mark-dimensions)
+(define  get-menu-item-count)
+(define  get-menu-item-id)
+(define  get-menu-state)
+(define  get-menu-string)
 (define  get-nearest-color)
 (define  get-nearest-palette-index)
 (define  get-rop2)
 (define  get-stock-object)
-(define  get-window-text-length)
+(define  get-sub-menu)
+(define  get-system-menu)
 (define  get-system-metrics)
+(define  get-window-text-length)
+(define  hilite-menu-item)
+(define  insert-menu)
 (define  invalidate-rect)
+(define  is-menu)
 (define  line-to)
 (define  load-cursor)
 (define  load-icon)
+(define  load-menu)
+(define  load-menu-indirect)
 (define  move-to-ex)
+(define  modify-menu)
 (define  polygon)
 (define  polyline)
 (define  realize-palette)
-(define  release-dc)
 (define  rectangle)
+(define  release-dc)
+(define  remove-menu)
 (define  select-object)
 (define  select-palette)
 (define  select-clip-rgn)
@@ -78,6 +101,8 @@ MIT in each case. |#
 (define  set-bk-mode)
 (define  set-cursor)
 (define  set-focus)
+(define  set-menu)
+(define  set-menu-item-bitmaps)
 (define  set-pixel)
 (define  set-text-align)
 (define  set-text-color)
@@ -86,9 +111,11 @@ MIT in each case. |#
 (define  set-window-pos)
 (define  stretch-blt)
 (define  text-out)
+(define  track-popup-menu)
 (define  update-colors)
 (define  update-window)
 
+   
 (define (init-wf_user!)
 
   (set!  arc
@@ -96,6 +123,12 @@ MIT in each case. |#
 	(Arc (hdc hdc) (leftrect int) (toprect int) (rightrect int) (bottomrect int)
 	     (xstartarc int) (ystartarc int) (xendarc int) (yendarc int))
       bool gdi32.dll "Arc"))
+
+  (set!  append-menu
+    (windows-procedure
+	(append-menu (menu hmenu)
+		     (mf_flags uint) (kind uint) (newitem unchecked))
+      bool user32.dll "AppendMenuA"))
 
   (set!  begin-paint
     (windows-procedure (begin-paint (hwnd hwnd) (ps paintstruct))
@@ -106,6 +139,10 @@ MIT in each case. |#
 	(bit-blt (dest hdc) (xdest int) (ydest int) (width int) (height int)
 		 (src hdc) (xsrc int) (ysrc int) (rop dword))
       bool gdi32.dll "BitBlt"))
+
+  (set!  check-menu-item
+    (windows-procedure (check-menu-item (menu hmenu) (item uint) (flags uint))
+      dword user32.dll "CheckMenuItem"))
 
   (set!  create-brush-indirect
     (windows-procedure (create-brush-indirect (logbrush unchecked))
@@ -120,6 +157,9 @@ MIT in each case. |#
     (windows-procedure (create-compatible-dc (hdc hdc))
       hdc gdi32.dll "CreateCompatibleDC"))
 
+  (set!  create-menu
+    (windows-procedure (create-menu) hmenu user32.dll "CreateMenu"))
+
   (set!  create-palette
     (windows-procedure (create-palette (logpalette unchecked))
       hpalette gdi32.dll "CreatePalette"))
@@ -127,6 +167,9 @@ MIT in each case. |#
   (set!  create-pen
     (windows-procedure (create-pen (style int) (width int) (color colorref))
       hpen gdi32.dll "CreatePen"))
+
+  (set!  create-popup-menu
+    (windows-procedure (create-popup-menu) hmenu user32.dll "CreatePopupMenu"))
 
   (set!  create-rect-rgn
     (windows-procedure
@@ -137,20 +180,36 @@ MIT in each case. |#
     (windows-procedure (create-solid-brush (color colorref))
       hbrush gdi32.dll "CreateSolidBrush"))
 
+  (set!  debug-break
+    (windows-procedure (debug-break) unchecked kernel32.dll "DebugBreak"))
+
   (set!  delete-dc
     (windows-procedure (delete-dc (hdc hdc)) bool gdi32.dll "DeleteDC"))
+
+  (set!  delete-menu
+    (windows-procedure (delete-menu (menu hmenu) (item uint) (flags uint))
+      bool user32.dll "DeleteMenu"))
 
   (set!  delete-object
     (windows-procedure (delete-object (handle handle))
       bool gdi32.dll "DeleteObject"))
 
-  (set!  debug-break
-    (windows-procedure (debug-break) unchecked kernel32.dll "DebugBreak"))
+  (set!  destroy-menu
+    (windows-procedure (destroy-menu (menu hmenu))
+      bool user32.dll "DestroyMenu"))
+
+  (set!  draw-menu-bar
+    (windows-procedure (draw-menu-bar (window hwnd))
+      bool user32.dll "DrawMenuBar"))
 
   (set!  ellipse
     (windows-procedure
 	(ellipse (hdc hdc) (left int) (top int) (right int) (bottom int))
       bool gdi32.dll "Ellipse"))
+
+  (set!  enable-menu-item
+    (windows-procedure (enable-menu-item (menu hmenu) (item uint) (flags uint))
+      bool user32.dll "EnableMenuItem"))
 
   (set!  end-paint
     (windows-procedure (end-paint (hwnd hwnd) (ps paintstruct))
@@ -162,6 +221,32 @@ MIT in each case. |#
   (set!  get-device-caps
     (windows-procedure (get-device-caps (hdc hdc) (index int))
       int user32.dll "GetDeviceCaps"))
+
+  (set!  get-menu
+    (windows-procedure (get-menu (window hwnd))
+      hmenu user32.dll "GetMenu"))
+
+  (set!  get-menu-check-mark-dimensions
+    (windows-procedure (get-menu-check-mark-dimensions)
+      long user32.dll "GetMenuCheckMarkDimensions"))
+
+  (set!  get-menu-item-count
+    (windows-procedure (get-menu-item-count (menu hmenu)) 
+      int user32.dll "GetMenuItemCount"))
+
+  (set!  get-menu-item-id
+    (windows-procedure (get-menu-item-id (menu hmenu) (pos int)) 
+      int user32.dll "GetMenuItemID"))
+
+  (set!  get-menu-state
+    (windows-procedure (get-menu-state (menu hmenu) (item uint) (flags uint))
+      uint user32.dll "GetMenuState"))
+
+  (set!  get-menu-string
+    (windows-procedure
+	(get-menu-string (menu hmenu) (item uint) (buffer string)
+			      (max-chars int) (flags uint))
+      int user32.dll "GetMenuString"))
 
   (set!  get-nearest-color
     (windows-procedure (get-nearest-color (hdc hdc) (color colorref))
@@ -179,17 +264,39 @@ MIT in each case. |#
     (windows-procedure (get-stock-object (object int))
       hgdiobj gdi32.dll "GetStockObject"))
 
-  (set!  get-window-text-length
-    (windows-procedure (get-window-text-length (hdc hdc))
-      int user32.dll "GetWindowTextLengthA"))
+  (set!  get-sub-menu
+    (windows-procedure (get-sub-menu (hmenu hmenu) (pos int))
+      hmenu user32.dll "GetSubMenu"))
+
+  (set!  get-system-menu
+    (windows-procedure (get-system-menu (window hwnd) (revert? bool))
+      hmenu user32.dll "GetSystemMenu"))
 
   (set!  get-system-metrics
     (windows-procedure (get-system-metrics (index int))
       int user32.dll "GetSystemMetrics"))
 
+  (set!  get-window-text-length
+    (windows-procedure (get-window-text-length (hdc hdc))
+      int user32.dll "GetWindowTextLengthA"))
+
+  (set!  hilite-menu-item
+    (windows-procedure (hilite-menu-item (hwnd hwnd) (hmenu hmenu)
+					 (itemhilite uint) (hilite-flags uint))
+      bool user32.dll "HiliteMenuItem"))
+
+  (set!  insert-menu
+    (windows-procedure
+	(insert-menu (menu hmenu) (item uint) (flags uint)
+		     (idnewitem unchecked) (newitem unchecked))
+      bool user32.dll "InsertMenuA"))
+
   (set!  invalidate-rect
     (windows-procedure (invalidate-rect (hwnd hwnd) (rect rect) (erase? bool))
       bool user32.dll "InvalidateRect"))
+
+  (set!  is-menu
+    (windows-procedure (is-menu (handle hmenu)) bool user32.dll "IsMenu"))
 
   (set!  line-to
     (windows-procedure (line-to (hdc hdc) (x int) (y int))
@@ -203,9 +310,23 @@ MIT in each case. |#
     (windows-procedure (load-icon (inst hinstance) (id resource-id))
       hicon user32.dll "LoadIconA"))
 
+  (set!  load-menu
+    (windows-procedure (load-menu (inst hinstance) (id resource-id))
+      hmenu user32.dll "LoadMenuA"))
+
+  (set!  load-menu-indirect
+    (windows-procedure (load-menu-indirect (menu-template unchecked))
+      hmenu user32.dll "LoadMenuIndirectA"))
+
   (set!  move-to-ex
     (windows-procedure (move-to-ex (hdc hdc) (x int) (y int) (point unchecked))
       bool gdi32.dll "MoveToEx"))
+
+  (set!  modify-menu
+    (windows-procedure
+	(modify-menu (hmenu hmenu) (item uint) (flags uint)
+		     (idnewitem uint) (newitem unchecked))
+      bool user32.dll "ModifyMenu"))
 
   (set!  polygon
     (windows-procedure (polygon (hdc hdc) (points unchecked) (count int))
@@ -215,18 +336,22 @@ MIT in each case. |#
     (windows-procedure (polyline (hdc hdc) (points unchecked) (count int))
       bool gdi32.dll "Polyline"))
 
+  (set!  realize-palette
+    (windows-procedure (realize-palette (hdc hdc))
+      uint gdi32.dll "RealizePalette"))
+
   (set!  rectangle
     (windows-procedure
 	(rectangle (hdc hdc) (left int) (top int) (right int) (bottom int))
       bool gdi32.dll "Rectangle"))
 
-  (set!  realize-palette
-    (windows-procedure (realize-palette (hdc hdc))
-      uint gdi32.dll "RealizePalette"))
-
   (set!  release-dc
     (windows-procedure (release-dc (hwnd hwnd) (hdc hdc))
       int user32.dll "ReleaseDC"))
+
+  (set!  remove-menu
+    (windows-procedure (remove-menu (hmenu hmenu) (item uint) (flags uint))
+      bool user32.dll "RemoveMenu"))
 
   (set!  select-object
     (windows-procedure (select-object (hdc hdc) (obj hgdiobj))
@@ -255,6 +380,16 @@ MIT in each case. |#
 
   (set!  set-focus
     (windows-procedure (set-focus (hwnd hwnd)) hwnd user32.dll "SetFocus"))
+
+  (set!  set-menu
+    (windows-procedure (set-menu (hwnd hwnd) (hmenu hmenu))
+      bool user32.dll "SetMenu"))
+
+  (set!  set-menu-item-bitmaps
+    (windows-procedure
+	(set-menu-item-bitmaps (hmenu hmenu) (item uint) (flags uint)
+			       (bm-unchecked hbitmap) (bm-checked hbitmap))
+      bool user32.dll "SetMenuItemBitmaps"))
 
   (set!  set-pixel
     (windows-procedure (set-pixel (hdc hdc) (x int) (y int) (color colorref))
@@ -294,6 +429,12 @@ MIT in each case. |#
     (windows-procedure
 	(text-out (hdc hdc) (x int) (y int) (text string) (count int))
       bool gdi32.dll "TextOutA"))
+
+  (set!  track-popup-menu
+    (windows-procedure
+	(track-popup-menu (hmenu hmenu) (flags uint) (x int) (y int)
+			  (reserved int) (hwnd hwnd) (rect rect))
+      bool user32.dll "TrackPopupMenu"))
 
   (set!  update-colors
     (windows-procedure (update-colors (hdc hdc))
