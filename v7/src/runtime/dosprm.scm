@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.36 1995/11/10 23:48:18 cph Exp $
+$Id: dosprm.scm,v 1.37 1996/04/24 03:21:49 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -257,10 +257,6 @@ MIT in each case. |#
 		    user-name)))))
       (merge-pathnames "\\")))
 
-(define (file-time->string time)
-  (or ((ucode-primitive file-time->string 1) time)
-      "Thu Jan  1 00:00:00 1970"))
-
 (define (decode-file-time time) (decode-universal-time time))
 (define (encode-file-time dt) (encode-universal-time dt))
 (define (file-time->universal-time time) time)
@@ -269,7 +265,6 @@ MIT in each case. |#
 (define dos/user-home-directory user-home-directory)
 (define dos/current-user-name current-user-name)
 (define dos/current-home-directory current-home-directory)
-(define dos/file-time->string file-time->string)
 
 (define (file-touch filename)
   ((ucode-primitive file-touch 1)

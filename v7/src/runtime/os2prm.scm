@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.25 1996/04/24 03:21:30 cph Exp $
+$Id: os2prm.scm,v 1.26 1996/04/24 03:25:32 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -110,12 +110,6 @@ MIT in each case. |#
    access-time
    modification-time))
 
-(define (local-time-zone)
-  (/ ((ucode-primitive os2-time-zone 0)) 3600))
-
-(define os2/daylight-savings-time?
-  (ucode-primitive os2-daylight-savings-time? 0))
-
 (define (decode-file-time time)
   (let* ((twosecs (remainder time 32)) (time (quotient time 32))
 	 (minutes (remainder time 64)) (time (quotient time 64))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.12 1995/04/23 05:58:14 cph Exp $
+$Id: datime.scm,v 14.13 1996/04/24 03:22:03 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -57,7 +57,8 @@ MIT in each case. |#
   (month #f read-only #t)
   (year #f read-only #t)
   (day-of-week #f read-only #t)
-  (daylight-savings-time #f read-only #t))
+  (daylight-savings-time #f read-only #t)
+  (zone #f))
 
 (define (make-decoded-time second minute hour day month year)
   (let ((dt
@@ -74,14 +75,19 @@ MIT in each case. |#
 				 month
 				 (if (< year 0) 0 year)
 				 0
-				 -1)))))
+				 -1
+				 #f)))))
     ;; These calls fill in the other fields of the structure.
     ((ucode-primitive decode-time 2) dt ((ucode-primitive encode-time 1) dt))
+    (if (decoded-time/zone dt)
+	(set-decoded-time/zone! dt (/ (decoded-time/zone dt) 3600)))
     dt))
 
 (define (decode-universal-time time)
   (let ((result (allocate-decoded-time)))
     ((ucode-primitive decode-time 2) result time)
+    (if (decoded-time/zone result)
+	(set-decoded-time/zone! result (/ (decoded-time/zone result) 3600)))
     result))
 
 (define (encode-universal-time dt)
@@ -126,6 +132,41 @@ MIT in each case. |#
 		   " "
 		   (if (< hour 12) "AM" "PM"))))
 
+(define (universal-time->string time)
+  (decoded-time->string (decode-universal-time time)))
+
+(define (file-time->string time)
+  (decoded-time->string (decode-file-time time)))
+
+(define (decoded-time->string dt)
+  ;; The returned string is in the format specified by RFC 822,
+  ;; "Standard for the Format of ARPA Internet Text Messages",
+  ;; provided that time-zone information is available from the C
+  ;; library.
+  (let ((d2 (lambda (n) (string-pad-left (number->string n) 2 #\0))))
+    (string-append (day-of-week/short-string (decoded-time/day-of-week dt))
+		   ", "
+		   (number->string (decoded-time/day dt))
+		   " "
+		   (month/short-string (decoded-time/month dt))
+		   " "
+		   (number->string (decoded-time/year dt))
+		   " "
+		   (d2 (decoded-time/hour dt))
+		   ":"
+		   (d2 (decoded-time/minute dt))
+		   ":"
+		   (d2 (decoded-time/second dt))
+		   (let ((zone (decoded-time/zone dt)))
+		     (if zone
+			 (string-append
+			  " "
+			  (time-zone->string
+			   (if (decoded-time/daylight-savings-time? dt)
+			       (- zone 1)
+			       zone)))
+			 "")))))
+
 (define (time-zone->string tz)
   (if (not (time-zone? tz))
       (error:wrong-type-argument tz "time zone" 'TIME-ZONE->STRING))
