@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr3.scm,v 1.2 1987/08/18 08:22:22 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr3.scm,v 1.3 1987/08/18 20:23:58 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -256,7 +256,7 @@ MIT in each case. |#
 	     (OPERAND L dst))
 
 	    ((,suffix2 (? pos ea-r-l) (? size ea-r-b) (? base ea-v-b) (? dst ,mode))
-	     (BYTE (8 ,(1+ opcode2)))
+	     (BYTE (8 ,(1+ opcode)))
 	     (OPERAND L pos)
 	     (OPERAND B size)
 	     (OPERAND B base)
