@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2fs.c,v 1.7 1995/10/27 23:58:11 cph Exp $
+$Id: pros2fs.c,v 1.8 1995/10/28 00:55:38 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -421,7 +421,7 @@ DEFINE_PRIMITIVE ("OS2-DAYLIGHT-SAVINGS-TIME?", Prim_OS2_dst_p, 0, 0, 0)
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (OS2_daylight_savings_p ()));
 }
 
-DEFINE_PRIMITIVE ("OS2-COPY-FILE", Prim_os2_copy_file, 2, 2, 0)
+DEFINE_PRIMITIVE ("OS2-COPY-FILE", Prim_OS2_copy_file, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   STD_API_CALL (dos_copy, (STRING_ARG (1)), (STRING_ARG (2)), DCPY_EXISTING)
