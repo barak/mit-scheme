@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.20 1992/02/10 13:51:37 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.21 1992/03/26 11:02:42 cph Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -359,15 +359,21 @@ DEFUN (OS_channel_unregister, (channel), Tchannel channel)
     }
 }
 
-#ifdef HAVE_SELECT
-  CONST int UX_have_select_p = 1;
-  extern int EXFUN (UX_select,
-		    (int, SELECT_TYPE *, SELECT_TYPE *, SELECT_TYPE *,
-		     struct timeval *));
-  extern int EXFUN (UX_process_any_status_change, (void));
-#else
-  CONST int UX_have_select_p = 0;
+#if defined(_HPUX) && (_HPUX_VERSION >= 80)
+#define SELECT_DECLARED
 #endif
+
+#ifdef HAVE_SELECT
+CONST int UX_have_select_p = 1;
+extern int EXFUN (UX_process_any_status_change, (void));
+#ifndef SELECT_DECLARED
+extern int EXFUN (UX_select,
+		  (int, SELECT_TYPE *, SELECT_TYPE *, SELECT_TYPE *,
+		   struct timeval *));
+#endif /* not SELECT_DECLARED */
+#else /* not HAVE_SELECT */
+CONST int UX_have_select_p = 0;
+#endif /* not HAVE_SELECT */
 
 enum select_input
 DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
