@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.22 1993/10/13 01:33:49 cph Exp $
+@comment $Id: scheme.texinfo,v 1.23 1993/10/13 08:53:11 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -66,7 +66,7 @@
 @ifinfo
 This file documents the MIT Scheme system.
 
-Copyright @copyright{} 1988-92 Massachusetts Institute of Technology
+Copyright @copyright{} 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and Computer
@@ -105,9 +105,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.22 alpha
+@subtitle Edition 1.23 alpha
 @subtitle for Scheme Release 7.2
-@subtitle 2 August 1993
+@subtitle 13 October 1993
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -115,7 +115,7 @@ literature without prior written consent from MIT in each case.
 @page
 
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1988-92 Massachusetts Institute of Technology
+Copyright @copyright{} 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and Computer
@@ -163,24 +163,24 @@ facilities available for developing programs in MIT Scheme, and the
 @end ifinfo
 
 @menu
-* Acknowledgements::            Acknowledgements
-* Overview::                    Overview
-* Special Forms::               Special Forms
-* Equivalence Predicates::      Equivalence Predicates
-* Numbers::                     Numbers
-* Characters::                  Characters
-* Strings::                     Strings
-* Lists::                       Lists
-* Vectors::                     Vectors
-* Bit Strings::                 Bit Strings
-* Miscellaneous Datatypes::     Miscellaneous Datatypes
-* Associations::                Associations
-* Procedures::                  Procedures
-* Environments::                Environments
-* Input/Output::                Input/Output
-* File-System Interface::       File-System Interface
-* Error System::                Error System
-* Graphics::                    Graphics
+* Acknowledgements::            
+* Overview::                    
+* Special Forms::               
+* Equivalence Predicates::      
+* Numbers::                     
+* Characters::                  
+* Strings::                     
+* Lists::                       
+* Vectors::                     
+* Bit Strings::                 
+* Miscellaneous Datatypes::     
+* Associations::                
+* Procedures::                  
+* Environments::                
+* Input/Output::                
+* File-System Interface::       
+* Error System::                
+* Graphics::                    
 * Procedure Index::             Index of Procedures, Special Forms, and Variables
 * Concept Index::               Index of Concepts
 
@@ -188,145 +188,146 @@ facilities available for developing programs in MIT Scheme, and the
 
 Overview
 
-* Notational Conventions::      Notational Conventions
-* Scheme Concepts::             Scheme Concepts
-* Lexical Conventions::         Lexical Conventions
-* Expressions::                 Expressions
+* Notational Conventions::      
+* Scheme Concepts::             
+* Lexical Conventions::         
+* Expressions::                 
 
 Notational Conventions
 
-* Errors::                      Errors
-* Examples::                    Examples
-* Entry Format::                Entry Format
+* Errors::                      
+* Examples::                    
+* Entry Format::                
 
 Scheme Concepts
 
-* Variable Bindings::           Variable Bindings
-* Environment Concepts::        Environment Concepts
-* Initial and Current Environments::  Initial and Current Environments
-* Static Scoping::              Static Scoping
-* True and False::              True and False
-* External Representations::    External Representations
-* Disjointness of Types::       Disjointness of Types
-* Storage Model::               Storage Model
+* Variable Bindings::           
+* Environment Concepts::        
+* Initial and Current Environments::  
+* Static Scoping::              
+* True and False::              
+* External Representations::    
+* Disjointness of Types::       
+* Storage Model::               
 
 Lexical Conventions
 
-* Whitespace::                  Whitespace
-* Delimiters::                  Delimiters
-* Identifiers::                 Identifiers
-* Uppercase and Lowercase::     Uppercase and Lowercase
-* Naming Conventions::          Naming Conventions
-* Comments::                    Comments
-* Additional Notations::        Additional Notations
+* Whitespace::                  
+* Delimiters::                  
+* Identifiers::                 
+* Uppercase and Lowercase::     
+* Naming Conventions::          
+* Comments::                    
+* Additional Notations::        
 
 Expressions
 
-* Literal Expressions::         Literal Expressions
-* Variable References::         Variable References
-* Special Form Syntax::         Special Form Syntax
-* Procedure Call Syntax::       Procedure Call Syntax
+* Literal Expressions::         
+* Variable References::         
+* Special Form Syntax::         
+* Procedure Call Syntax::       
 
 Special Forms
 
-* Lambda Expressions::          Lambda Expressions
-* Lexical Binding::             Lexical Binding
-* Fluid Binding::               Fluid Binding
-* Definitions::                 Definitions
-* Assignments::                 Assignments
-* Quoting::                     Quoting
-* Conditionals::                Conditionals
-* Sequencing::                  Sequencing
-* Iteration::                   Iteration
-* Structure Definitions::       Structure Definitions
+* Lambda Expressions::          
+* Lexical Binding::             
+* Fluid Binding::               
+* Definitions::                 
+* Assignments::                 
+* Quoting::                     
+* Conditionals::                
+* Sequencing::                  
+* Iteration::                   
+* Structure Definitions::       
 
 Definitions
 
-* Top-Level Definitions::       Top-Level Definitions
-* Internal Definitions::        Internal Definitions
+* Top-Level Definitions::       
+* Internal Definitions::        
 
 Numbers
 
-* Numerical types::             Numerical types
-* Exactness::                   Exactness
-* Implementation restrictions::  Implementation restrictions
-* Syntax of numerical constants::  Syntax of numerical constants
-* Numerical operations::        Numerical operations
-* Numerical input and output::  Numerical input and output
-* Fixnum and Flonum Operations::  Fixnum and Flonum Operations
+* Numerical types::             
+* Exactness::                   
+* Implementation restrictions::  
+* Syntax of numerical constants::  
+* Numerical operations::        
+* Numerical input and output::  
+* Fixnum and Flonum Operations::  
 
 Fixnum and Flonum Operations
 
-* Fixnum Operations::           Fixnum Operations
-* Flonum Operations::           Flonum Operations
+* Fixnum Operations::           
+* Flonum Operations::           
 
 Characters
 
-* External Representation of Characters::  External Representation of Characters
-* Comparison of Characters::    Comparison of Characters
-* Miscellaneous Character Operations::  Miscellaneous Character Operations
-* Internal Representation of Characters::  Internal Representation of Characters
-* ASCII Characters::            ASCII Characters
-* Character Sets::              Character Sets
+* External Representation of Characters::  
+* Comparison of Characters::    
+* Miscellaneous Character Operations::  
+* Internal Representation of Characters::  
+* ASCII Characters::            
+* Character Sets::              
 
 Strings
 
-* Construction of Strings::     Construction of Strings
-* Selecting String Components::  Selecting String Components
-* Comparison of Strings::       Comparison of Strings
-* Alphabetic Case in Strings::  Alphabetic Case in Strings
-* Cutting and Pasting Strings::  Cutting and Pasting Strings
-* Searching Strings::           Searching Strings
-* Matching Strings::            Matching Strings
-* Modification of Strings::     Modification of Strings
-* Variable-Length Strings::     Variable-Length Strings
-* Byte Vectors::                Byte Vectors
+* Construction of Strings::     
+* Selecting String Components::  
+* Comparison of Strings::       
+* Alphabetic Case in Strings::  
+* Cutting and Pasting Strings::  
+* Searching Strings::           
+* Matching Strings::            
+* Modification of Strings::     
+* Variable-Length Strings::     
+* Byte Vectors::                
 
 Lists
 
-* Pairs::                       Pairs
-* Construction of Lists::       Construction of Lists
-* Selecting List Components::   Selecting List Components
-* Cutting and Pasting Lists::   Cutting and Pasting Lists
-* Filtering Lists::             Filtering Lists
-* Searching Lists::             Searching Lists
-* Mapping of Lists::            Mapping of Lists
-* Reduction of Lists::          Reduction of Lists
-* Miscellaneous List Operations::  Miscellaneous List Operations
+* Pairs::                       
+* Construction of Lists::       
+* Selecting List Components::   
+* Cutting and Pasting Lists::   
+* Filtering Lists::             
+* Searching Lists::             
+* Mapping of Lists::            
+* Reduction of Lists::          
+* Miscellaneous List Operations::  
 
 Vectors
 
-* Construction of Vectors::     Construction of Vectors
-* Selecting Vector Components::  Selecting Vector Components
-* Cutting Vectors::             Cutting Vectors
-* Modifying Vectors::           Modifying Vectors
+* Construction of Vectors::     
+* Selecting Vector Components::  
+* Cutting Vectors::             
+* Modifying Vectors::           
 
 Bit Strings
 
-* Construction of Bit Strings::  Construction of Bit Strings
-* Selecting Bit String Components::  Selecting Bit String Components
-* Cutting and Pasting Bit Strings::  Cutting and Pasting Bit Strings
-* Bitwise Operations on Bit Strings::  Bitwise Operations on Bit Strings
-* Modification of Bit Strings::  Modification of Bit Strings
-* Integer Conversions of Bit Strings::  Integer Conversions of Bit Strings
+* Construction of Bit Strings::  
+* Selecting Bit String Components::  
+* Cutting and Pasting Bit Strings::  
+* Bitwise Operations on Bit Strings::  
+* Modification of Bit Strings::  
+* Integer Conversions of Bit Strings::  
 
 Miscellaneous Datatypes
 
-* Booleans::                    Booleans
-* Symbols::                     Symbols
-* Cells::                       Cells
-* Records::                     Records
-* Promises::                    Promises
-* Streams::                     Streams
-* Weak Pairs::                  Weak Pairs
+* Booleans::                    
+* Symbols::                     
+* Cells::                       
+* Records::                     
+* Promises::                    
+* Streams::                     
+* Weak Pairs::                  
 
 Associations
 
-* Association Lists::           Association Lists
-* 1D Tables::                   1D Tables
-* The Association Table::       The Association Table
-* Hash Tables::                 Hash Tables
-* Hashing::                     Hashing
+* Association Lists::           
+* 1D Tables::                   
+* The Association Table::       
+* Hash Tables::                 
+* Object Hashing::              
+* Red-Black Trees::             
 
 Hash Tables
 
@@ -337,91 +338,91 @@ Hash Tables
 
 Procedures
 
-* Procedure Operations::        Procedure Operations
-* Primitive Procedures::        Primitive Procedures
-* Continuations::               Continuations
-* Application Hooks::           Application Hooks
+* Procedure Operations::        
+* Primitive Procedures::        
+* Continuations::               
+* Application Hooks::           
 
 Environments
 
-* Environment Operations::      Environment Operations
-* Environment Variables::       Environment Variables
-* REPL Environment::            REPL Environment
-* Interpreter Environments::    Interpreter Environments
+* Environment Operations::      
+* Environment Variables::       
+* REPL Environment::            
+* Interpreter Environments::    
 
 Input/Output
 
-* Ports::                       Ports
-* File Ports::                  File Ports
-* String Ports::                String Ports
-* Input Procedures::            Input Procedures
-* Output Procedures::           Output Procedures
-* Format::                      Format
-* Custom Output::               Custom Output
-* Port Primitives::             Port Primitives
+* Ports::                       
+* File Ports::                  
+* String Ports::                
+* Input Procedures::            
+* Output Procedures::           
+* Format::                      
+* Custom Output::               
+* Port Primitives::             
 
 Port Primitives
 
-* Input Port Primitives::       Input Port Primitives
-* Output Port Primitives::      Output Port Primitives
+* Input Port Primitives::       
+* Output Port Primitives::      
 
 File-System Interface
 
-* Pathnames::                   Pathnames
-* Working Directory::           Working Directory
-* File Manipulation::           File Manipulation
-* Directory Reader::            Directory Reader
+* Pathnames::                   
+* Working Directory::           
+* File Manipulation::           
+* Directory Reader::            
 
 Pathnames
 
-* Filenames and Pathnames::     Filenames and Pathnames
-* Components of Pathnames::     Components of Pathnames
-* Operations on Pathnames::     Operations on Pathnames
+* Filenames and Pathnames::     
+* Components of Pathnames::     
+* Operations on Pathnames::     
 * Miscellaneous Pathnames::     Miscellaneous Pathname Functions
 
 Error System
 
-* Simple Errors::               Simple Errors
-* Error Handler::               Error Handler
-* Error Messages::              Error Messages
-* Condition Types::             Condition Types
-* Condition Instances::         Condition Instances
-* Condition Signalling::        Condition Signalling
-* Condition Handling::          Condition Handling
-* Predefined Errors::           Predefined Errors
+* Simple Errors::               
+* Error Handler::               
+* Error Messages::              
+* Condition Types::             
+* Condition Instances::         
+* Condition Signalling::        
+* Condition Handling::          
+* Predefined Errors::           
 
 Graphics
 
-* Opening and Closing of Graphics Devices::  Opening and Closing of Graphics Devices
-* Coordinates for Graphics::    Coordinates for Graphics
-* Drawing Graphics::            Drawing Graphics
-* Characteristics of Graphics Output::  Characteristics of Graphics Output
-* Buffering of Graphics Output::  Buffering of Graphics Output
-* Clipping of Graphics Output::  Clipping of Graphics Output
-* Images::                      Images
-* Custom Graphics Operations::  Custom Graphics Operations
+* Opening and Closing of Graphics Devices::  
+* Coordinates for Graphics::    
+* Drawing Graphics::            
+* Characteristics of Graphics Output::  
+* Buffering of Graphics Output::  
+* Clipping of Graphics Output::  
+* Images::                      
+* Custom Graphics Operations::  
 * Win32 Graphics::              Graphics on Microsoft Windows and Windows NT
-* X Graphics::                  X Graphics
-* Starbase Graphics::           Starbase Graphics
+* X Graphics::                  
+* Starbase Graphics::           
 * Pictures::                    Pictures (MIT 6.001 implementation only)
 
 Win32 Graphics
 
-* Win32 Graphics Type::         Win32 Graphics Type
+* Win32 Graphics Type::         
 * Custom Operations for Win32 Graphics::  Custom Operations for Win32 Graphics Devices
 
 X Graphics
 
-* X Graphics Type::             X Graphics Type
-* Utilities for X Graphics::    Utilities for X Graphics
-* Custom Operations on X Graphics Devices::  Custom Operations on X Graphics Devices
+* X Graphics Type::             
+* Utilities for X Graphics::    
+* Custom Operations on X Graphics Devices::  
 
 Pictures (MIT 6.001 implementation only)
 
-* Construction of Pictures::    Construction of Pictures
-* Manipulating Pictures::       Manipulating Pictures
-* Displaying Pictures::         Displaying Pictures
-* Saving and Restoring Pictures::  Saving and Restoring Pictures
+* Construction of Pictures::    
+* Manipulating Pictures::       
+* Displaying Pictures::         
+* Saving and Restoring Pictures::  
 @end menu
 
 @node Acknowledgements, Overview, Top, Top
@@ -554,10 +555,10 @@ parses its input; that is, it performs syntactic as well as lexical
 decomposition of what it reads.
 
 @menu
-* Notational Conventions::      Notational Conventions
-* Scheme Concepts::             Scheme Concepts
-* Lexical Conventions::         Lexical Conventions
-* Expressions::                 Expressions
+* Notational Conventions::      
+* Scheme Concepts::             
+* Lexical Conventions::         
+* Expressions::                 
 @end menu
 
 @node Notational Conventions, Scheme Concepts,  , Overview
@@ -569,9 +570,9 @@ This section details the notational conventions used throughout the rest
 of this document.
 
 @menu
-* Errors::                      Errors
-* Examples::                    Examples
-* Entry Format::                Entry Format
+* Errors::                      
+* Examples::                    
+* Entry Format::                
 @end menu
 
 @node Errors, Examples,  , Notational Conventions
@@ -580,9 +581,9 @@ of this document.
 
 @cindex signal an error (defn)
 @cindex must be, notational convention
-@findex signal-error
+@findex signal-condition
 When this manual uses the phrase ``an error will be signalled,'' it
-means that Scheme will call @code{signal-error}, which normally halts
+means that Scheme will call @code{signal-condition}, which normally halts
 execution of the program and prints an error message.
 
 When this manual uses the phrase ``it is an error,'' it means that the
@@ -613,7 +614,7 @@ which case both the arrow and the value are omitted.
 
 @cindex error--> notational convention
 @cindex error, in examples
-If an example shows an evaluation that results in an error, the error
+If an example shows an evaluation that results in an error, an error
 message is shown, prefaced by @samp{@error{}}:
 
 @example
@@ -755,6 +756,10 @@ argument must be that type of data object.  For example,
 indicates that the standard Scheme procedure @code{cdr} takes one argument,
 which must be a pair.
 
+Many procedures signal an error when an argument is of the wrong type;
+usually this error is a condition of type
+@code{condition-type:wrong-type-argument}.
+
 In addition to the standard data-type names (@var{pair}, @var{list},
 @var{boolean}, @var{string}, etc.), the following names as arguments
 also imply type restrictions:
@@ -811,14 +816,14 @@ character and an output port.
 @cindex scheme concepts
 
 @menu
-* Variable Bindings::           Variable Bindings
-* Environment Concepts::        Environment Concepts
-* Initial and Current Environments::  Initial and Current Environments
-* Static Scoping::              Static Scoping
-* True and False::              True and False
-* External Representations::    External Representations
-* Disjointness of Types::       Disjointness of Types
-* Storage Model::               Storage Model
+* Variable Bindings::           
+* Environment Concepts::        
+* Initial and Current Environments::  
+* Static Scoping::              
+* True and False::              
+* External Representations::    
+* Disjointness of Types::       
+* Storage Model::               
 @end menu
 
 @node Variable Bindings, Environment Concepts,  , Scheme Concepts
@@ -840,9 +845,11 @@ to @dfn{name} the value or to be @dfn{bound to} the value.)
 @cindex unassigned variable (defn)
 @cindex error, unassigned variable
 A variable may be bound but still not have a value; such a variable is
-said to be @dfn{unassigned}.  Referencing an unassigned variable signals
-an ``Unassigned Variable'' error.  Unassigned variables are useful only
-in combination with side effects (@pxref{Assignments}).
+said to be @dfn{unassigned}.  Referencing an unassigned variable is an
+error.  When this error is signalled, it is a condition of type
+@code{condition-type:unassigned-variable}; sometimes the compiler does
+not generate code to signal the error.  Unassigned variables are useful
+only in combination with side effects (@pxref{Assignments}).
 
 @node Environment Concepts, Initial and Current Environments, Variable Bindings, Scheme Concepts
 @subsection Environment Concepts
@@ -913,24 +920,7 @@ your input, evaluates it, and prints the result.)  The environment of
 the top-level @sc{rep} loop (the one you are in when Scheme starts up)
 starts as @code{user-initial-environment}, although it can be changed by
 the @code{ge} procedure.  When a new @sc{rep} loop is created, its
-environment is determined by the program that creates it.  @sc{rep}
-loops that are created by the error handler use the environment in which
-the error occurred, if possible, or failing that they use the previous
-@sc{rep} loop's environment.
-
-@example
-@group
-1 ]=> z                                     @error{} Unbound variable
-
-2 Error-> (define z 3)
-
-2 Error-> z                                 @result{}  3
-
-2 Error-> <Control-G> interrupt typed
-
-1 ]=> z                                     @result{}  3
-@end group
-@end example
+environment is determined by the program that creates it.
 
 @node Static Scoping, True and False, Initial and Current Environments, Scheme Concepts
 @subsection Static Scoping
@@ -1040,7 +1030,7 @@ the list in the previous paragraph also has the representations @samp{(
 
 Many objects have standard external representations, but some, such as
 procedures and circular data structures, do not have standard
-representations (although particular implementations may defined
+representations (although particular implementations may define
 representations for them).
 
 An external representation may be written in a program to obtain the
@@ -1074,11 +1064,11 @@ Every object satisfies at most one of the following predicates (but
 
 @example
 @group
-bit-string?     null?           string?
-boolean?        number?         symbol?
-cell?           pair?           vector?
-char?           procedure?      weak-pair?
-environment?    promise?
+bit-string?     environment?    pathname?       string?
+boolean?        eof-object?     port?           symbol?
+cell?           null?           procedure?      vector?
+char?           number?         promise?        weak-pair?
+condition?      pair?
 @end group
 @end example
 
@@ -1127,7 +1117,10 @@ immutable.  The constants and the strings returned by
 @code{symbol->string} are then the immutable objects, while all objects
 created by other procedures are mutable.  It is an error to attempt to
 store a new value into a location that is denoted by an immutable
-object.
+object.  Note that the MIT Scheme compiler takes advantage of this
+property to share constants, but that these constants are not immutable.
+Instead, two constants that are @code{equal?} may be @code{eq?} in
+compiled code.
 
 @node Lexical Conventions, Expressions, Scheme Concepts, Overview
 @section Lexical Conventions
@@ -1137,13 +1130,13 @@ object.
 This section describes Scheme's lexical conventions.
 
 @menu
-* Whitespace::                  Whitespace
-* Delimiters::                  Delimiters
-* Identifiers::                 Identifiers
-* Uppercase and Lowercase::     Uppercase and Lowercase
-* Naming Conventions::          Naming Conventions
-* Comments::                    Comments
-* Additional Notations::        Additional Notations
+* Whitespace::                  
+* Delimiters::                  
+* Identifiers::                 
+* Uppercase and Lowercase::     
+* Naming Conventions::          
+* Comments::                    
+* Additional Notations::        
 @end menu
 
 @node Whitespace, Delimiters,  , Lexical Conventions
@@ -1216,8 +1209,8 @@ Scheme does, plus many more.
 
 MIT Scheme defines a potential identifier to be a sequence of
 non-delimiter characters that does not begin with either of the
-characters @samp{#} or @samp{,}.  Any such sequence of characters, that
-is not a syntactically valid number (@pxref{Numbers}), is considered to
+characters @samp{#} or @samp{,}.  Any such sequence of characters that
+is not a syntactically valid number (@pxref{Numbers}) is considered to
 be a valid identifier.  Note that, although it is legal for @samp{#} and
 @samp{,} to appear in an identifier (other than in the first character
 position), it is poor programming practice.
@@ -1404,10 +1397,10 @@ expression may be a @emph{literal}, a @emph{variable reference}, a
 @emph{special form}, or a @emph{procedure call}.
 
 @menu
-* Literal Expressions::         Literal Expressions
-* Variable References::         Variable References
-* Special Form Syntax::         Special Form Syntax
-* Procedure Call Syntax::       Procedure Call Syntax
+* Literal Expressions::         
+* Variable References::         
+* Special Form Syntax::         
+* Procedure Call Syntax::       
 @end menu
 
 @node Literal Expressions, Variable References,  , Expressions
@@ -1473,16 +1466,16 @@ syntactic keywords that are defined when MIT Scheme is initialized:
 access                  define-syntax           macro
 and                     delay                   make-environment
 begin                   do                      named-lambda
-bkpt                    error                   or
-case                    fluid-let               quasiquote
-cond                    if                      quote
-cons-stream             in-package              scode-quote
-declare                 lambda                  sequence
-default-object?         let                     set!
-define                  let*                    the-environment
-define-integrable       let-syntax              unassigned?
-define-macro            letrec                  using-syntax
-define-structure        local-declare
+bkpt                    fluid-let               or
+case                    if                      quasiquote
+cond                    in-package              quote
+cons-stream             lambda                  scode-quote
+declare                 let                     sequence
+default-object?         let*                    set!
+define                  let-syntax              the-environment
+define-integrable       letrec                  unassigned?
+define-macro            local-declare           using-syntax
+define-structure
 @end group
 @end example
 
@@ -1550,16 +1543,16 @@ A special form is an expression that follows special evaluation rules.
 This chapter describes the basic Scheme special forms.
 
 @menu
-* Lambda Expressions::          Lambda Expressions
-* Lexical Binding::             Lexical Binding
-* Fluid Binding::               Fluid Binding
-* Definitions::                 Definitions
-* Assignments::                 Assignments
-* Quoting::                     Quoting
-* Conditionals::                Conditionals
-* Sequencing::                  Sequencing
-* Iteration::                   Iteration
-* Structure Definitions::       Structure Definitions
+* Lambda Expressions::          
+* Lexical Binding::             
+* Fluid Binding::               
+* Definitions::                 
+* Assignments::                 
+* Quoting::                     
+* Conditionals::                
+* Sequencing::                  
+* Iteration::                   
+* Structure Definitions::       
 @end menu
 
 @node Lambda Expressions, Lexical Binding,  , Special Forms
@@ -1675,7 +1668,8 @@ passed any number of arguments between zero and three, inclusive.
 @item a
 @itemx (#!rest a)
 These two examples are equivalent.  @code{a} is a rest parameter.  The
-procedure may be passed any number of arguments.
+procedure may be passed any number of arguments.  Note: this is the only
+case in which @samp{.} cannot be used in place of @samp{#!rest}.
 
 @item (a b #!optional c d #!rest e)
 @code{a} and @code{b} are required, @code{c} and @code{d} are optional,
@@ -2048,8 +2042,8 @@ fact, these two expressions are equivalent:
 @end deffn
 
 @menu
-* Top-Level Definitions::       Top-Level Definitions
-* Internal Definitions::        Internal Definitions
+* Top-Level Definitions::       
+* Internal Definitions::        
 @end menu
 
 @node Top-Level Definitions, Internal Definitions,  , Definitions
@@ -2077,9 +2071,8 @@ has essentially the same effect as this assignment expression, if
 If @var{variable} is not bound, however, @code{define} binds
 @var{variable} to a new location in the current environment before
 performing the assignment (it is an error to perform a @code{set!} on an
-unbound variable).  If you omit @var{expression}, the variable is
-unassigned; an attempt to reference such a variable signals an
-``Unassigned Variable'' error.
+unbound variable).  If you omit @var{expression}, the variable becomes
+unassigned; an attempt to reference such a variable is an error.
 
 @example
 (define add3
@@ -2762,15 +2755,17 @@ The fields @var{name} and @var{slot-name} must both be symbols.  The
 field @var{default-init} is an expression for the initial value of the
 slot.  It is evaluated each time a new instance is constructed.  If it
 is not specified, the initial content of the slot is undefined.  Default
-values are only useful with a keyword constructor or BOA constructor
+values are only useful with a keyword constructor or @sc{boa} constructor
 with argument list (see below).
 
 A call to @code{define-structure} defines a structure descriptor and a
 set of procedures to manipulate instances of the structure.  These
-instances are represented as records by default but may alternately be
-lists or vectors.  The accessors and updaters are declared integrable
-using @code{define-integrable}.  Usually, no options are required, so a
-simple call to @code{define-structure} looks like:
+instances are represented as records by default (@pxref{Records}) but
+may alternately be lists or vectors.  The accessors and updaters are
+marked with compiler declarations so that calls to them are
+automatically transformed into record, list, or vector references as
+appropriate.  Often, no options are required, so a simple call to
+@code{define-structure} looks like:
 
 @example
 (define-structure foo a b c)
@@ -2781,10 +2776,9 @@ predicate @code{foo?}, accessors @code{foo-a}, @code{foo-b}, and
 @code{foo-c}, and updaters @code{set-foo-a!}, @code{set-foo-b!}, and
 @code{set-foo-c!}.
 
-When optional arguments are not supplied, @code{(@var{name})} may be
-abbreviated to @var{name}.  This convention holds equally for
-@var{structure-options} and @var{slot-options}.  Hence, these
-are equivalent:
+When options are not supplied, @code{(@var{name})} may be abbreviated to
+@var{name}.  This convention holds equally for @var{structure-options}
+and @var{slot-options}.  Hence, these are equivalent:
 
 @example
 (define-structure foo a b c)
@@ -2806,18 +2800,18 @@ specified instead.
 
 Possible @var{slot-options} are:
 
-@deffn {Slot Option} read-only value
+@deffn {slot option} read-only value
 When given a @var{value} other than @code{#f}, this specifies that no
 updater should be created for the slot.
 @end deffn
 
-@deffn {Slot Option} type type-descriptor
+@deffn {slot option} type type-descriptor
 This is accepted but not presently used.
 @end deffn
 
 Possible @var{structure-options} are:
 
-@deffn {Structure Option} keyword-constructor [name]
+@deffn {structure option} keyword-constructor [name]
 @cindex keyword constructor (defn)
 This specifies that the constructor should parse its arguments as as a
 list of keywords and values rather than by position (the default).  The
@@ -2832,12 +2826,13 @@ times to name multiple (identical) keyword constructors.
 @end example
 @end deffn
 
-@deffn {Structure Option} type representation-type
+@deffn {structure option} type representation-type
 This specifies the representation type for instances of the structure,
 which are records by default.  Possible values are the symbols
-@code{vector} and @code{list}.  If the @code{named} option is not
-specified, the representation does not include a tag, and neither a
-predicate nor a type descriptor is generated.
+@code{vector} and @code{list}.  If this option is given, and the
+@code{named} option is not specified, the representation does not
+include a tag, and neither a predicate nor a type descriptor is
+generated.
 
 @example
 (define-structure (foo (type list)) a b) 
@@ -2845,11 +2840,13 @@ predicate nor a type descriptor is generated.
 @end example
 @end deffn
 
-@deffn {Structure Option} conc-name [name]
+@deffn {structure option} conc-name [name]
 By default, the prefix for naming accessors and updaters is the name
 of the structure followed by a hyphen.  The @code{conc-name} option can
 be used to specify an alternative.  If @var{name} is @code{#f}, the slot
-names are used directly, without prefix.
+names are used directly, without prefix.  If @var{name} is a symbol,
+that symbol is the prefix.  If @var{name} is not given, the prefix is
+the name of the structure followed by a hyphen.
 
 @example
 @code{(define-structure (foo (conc-name moby/)) a b)}
@@ -2868,15 +2865,17 @@ defines @code{foo}, @code{make-foo}, @code{a}, @code{b}, @code{set-a!},
 @code{set-b!}, and @code{foo?}.
 @end deffn
 
-@deffn {Structure Option} constructor [name [argument-list]]
+@deffn {structure option} constructor [name [argument-list]]
 @cindex BOA constructor (defn)
 This can be specified multiple times to build constructors with
 different argument lists, called @dfn{BOA constructors} (By Order of
-Arguments).  This facility can be extremely useful.  If @var{name} is
-@code{#f}, no constructor is generated.  If @var{name} is unspecified,
-the constructor is named as usual.  @var{Argument-list} is a Scheme
-lambda list which may include optional and rest parameters in the usual
-way.  The names of the parameters must be names of defined slots.
+Arguments).  @var{Name} is the variable to which the constructor
+procedure will be bound.  If @var{name} is @code{#f}, no constructor is
+generated.  If @var{name} is unspecified, the constructor is named as
+usual.  If @var{name} is a symbol, @var{argument-list} may be specified;
+it is a Scheme lambda list which may include optional and rest
+parameters in the usual way.  The names of the parameters must be names
+of defined slots.
 
 @example
 (define-structure (foo (constructor make-foo (#!optional a b)))
@@ -2884,45 +2883,44 @@ way.  The names of the parameters must be names of defined slots.
 @end example
 @end deffn
 
-@deffn {Structure Option} predicate [name]
+@deffn {structure option} predicate [name]
 @var{Name} specifies a new name for the predicate.  If it is @code{#f},
 the predicate is not generated.  If @var{name} is not specified, the
 predicate is named as usual.
 @end deffn
 
-@deffn {Structure Option} copier [name]
+@deffn {structure option} copier [name]
 This specifies that a procedure should be generated to copy instances of
 the structure.  If @var{name} is unspecified, the copier is named by
 prefixing the structure name with @code{copy-}.  If @var{name} is
 @code{#f}, the copier is not generated.
 @end deffn
 
-@deffn {Structure Option} print-procedure expression
-The use of this option is specific to MIT Scheme.  Evaluating
-@var{expression} must yield a procedure of two arguments, the unparser
-state and a structure instance, which is used to print instances of the
-structure.  It is typically generated using
+@deffn {structure option} print-procedure expression
+Evaluating @var{expression} must yield a procedure of two arguments, an
+unparser state and a structure instance, which is used to print
+instances of the structure.  It is typically generated using
 @code{unparser/standard-method}.
 @end deffn
 
-@deffn {Structure Option} named [expression]
-This is valid only with the @code{type} option and specifies that a tag
-be included in each instance.  @var{Expression} is usually a variable
-whose value is the tag, which is by default the type descriptor itself.
-@var{Expression} is evaluated whenever the tag is needed and must be
-valid when @code{define-structure} is evaluated.  If @var{expression}
-returns different values from different evaluations, strange behavior
-results.  For convenience, since tags may have large printed
-representations, specifying this parameter causes instances to print
-like records even though they are not.
+@deffn {structure option} named [expression]
+This is valid only in conjunction with the @code{type} option and
+specifies that a tag be included in each instance.  @var{Expression} is
+usually a variable whose value is the tag, which is by default the type
+descriptor itself.  @var{Expression} is evaluated whenever the tag is
+needed and must be valid when @code{define-structure} is evaluated.  If
+@var{expression} returns different values from different evaluations,
+strange behavior results.  For convenience, since tags may have large
+printed representations, specifying this parameter causes instances to
+print like records even though they are not.
 @end deffn
 
-@deffn {Structure Option} initial-offset offset
-This is valid only with the @code{type} option.  @var{Offset} must be a
-non-negative integer and specifies a number of slots to leave open at
-the beginning of the structure before the specified slots are allocated.
-Specifying an @var{offset} of zero is equivalent to omitting the
-@code{initial-offset} option.
+@deffn {structure option} initial-offset offset
+This is valid only in conjunction with the @code{type} option.
+@var{Offset} must be an exact non-negative integer and specifies a
+number of slots to leave open at the beginning of the structure before
+the specified slots are allocated.  Specifying an @var{offset} of zero
+is equivalent to omitting the @code{initial-offset} option.
 @end deffn
 
 The essential differences between MIT Scheme's @code{define-structure}
@@ -2936,7 +2934,7 @@ constructor may be specified by giving the option
 @code{keyword-constructor}.
 
 @item
-BOA constructors are described using Scheme lambda lists.  Since there
+@sc{boa} constructors are described using Scheme lambda lists.  Since there
 is nothing corresponding to @code{&aux} in Scheme lambda lists, this
 functionality is not implemented.
 
@@ -3199,9 +3197,9 @@ or bit pattern to represent both.
 capable of discerning distinctions finer than those detectable by
 @code{eqv?}.
 
-@code{eq?} and @code{eqv?} are guaranteed to have the same
-behavior on symbols, booleans, the empty list, pairs, and non-empty
-strings and vectors.  @code{eq?}'s behavior on numbers and characters is
+@code{eq?} and @code{eqv?} are guaranteed to have the same behavior on
+symbols, booleans, the empty list, pairs, records, and non-empty strings
+and vectors.  @code{eq?}'s behavior on numbers and characters is
 implementation-dependent, but it will always return either true or
 false, and will return true only when @code{eqv?} would also return
 true.  @code{eq?} may also behave differently from @code{eqv?} on empty
@@ -3287,13 +3285,13 @@ as fixed point and floating point are referred to by names such as
 @emph{fixnum} and @emph{flonum}.
 
 @menu
-* Numerical types::             Numerical types
-* Exactness::                   Exactness
-* Implementation restrictions::  Implementation restrictions
-* Syntax of numerical constants::  Syntax of numerical constants
-* Numerical operations::        Numerical operations
-* Numerical input and output::  Numerical input and output
-* Fixnum and Flonum Operations::  Fixnum and Flonum Operations
+* Numerical types::             
+* Exactness::                   
+* Implementation restrictions::  
+* Syntax of numerical constants::  
+* Numerical operations::        
+* Numerical input and output::  
+* Fixnum and Flonum Operations::  
 @end menu
 
 @node Numerical types, Exactness,  , Numbers
@@ -4203,8 +4201,8 @@ used improperly, these operations can return incorrect answers, or even
 malformed objects that confuse the garbage collector.
 
 @menu
-* Fixnum Operations::           Fixnum Operations
-* Flonum Operations::           Flonum Operations
+* Fixnum Operations::           
+* Flonum Operations::           
 @end menu
 
 @node Fixnum Operations, Flonum Operations,  , Fixnum and Flonum Operations
@@ -4373,9 +4371,9 @@ not check the types of its arguments, nor the validity of its result.
 @example
 @group
 (fix:lsh 1 10)                          @result{}  #x400
-(fix:lsh #432 -10)                      @result{}  1
+(fix:lsh #x432 -10)                     @result{}  1
 (fix:lsh -1 3)                          @result{}  -8
-(fix:lsh -128 -4)                       @result{}  -8
+(fix:lsh -128 -4)                       @result{}  #x3FFFF8
 @end group
 @end example
 @end deffn
@@ -4419,7 +4417,7 @@ When compiled, they do not check the types of their arguments.
 
 @deffn {procedure+} flo:negate flonum
 This procedure returns the negation of its argument.  When compiled, it
-does not check the type of its argument.  Equivalent to @code{(flo:- 0
+does not check the type of its argument.  Equivalent to @code{(flo:- 0.
 @var{flonum})}.
 @end deffn
 
@@ -4463,12 +4461,12 @@ character set.  This may change when someone ports MIT Scheme to a
 non-@sc{ascii} operating system.}
 
 @menu
-* External Representation of Characters::  External Representation of Characters
-* Comparison of Characters::    Comparison of Characters
-* Miscellaneous Character Operations::  Miscellaneous Character Operations
-* Internal Representation of Characters::  Internal Representation of Characters
-* ASCII Characters::            ASCII Characters
-* Character Sets::              Character Sets
+* External Representation of Characters::  
+* Comparison of Characters::    
+* Miscellaneous Character Operations::  
+* Internal Representation of Characters::  
+* ASCII Characters::            
+* Character Sets::              
 @end menu
 
 @node External Representation of Characters, Comparison of Characters,  , Characters
@@ -5119,6 +5117,8 @@ digits.
 
 If a string literal is continued from one line to another, the string
 will contain the newline character (@code{#\newline}) at the line break.
+Standard Scheme does not specify what appears in a string literal at a
+line break.
 
 @cindex length, of string (defn)
 @cindex index, of string (defn)
@@ -5161,16 +5161,16 @@ between uppercase and lowercase.  The versions that ignore case include
 @samp{-ci} (for ``case insensitive'') in their names.
 
 @menu
-* Construction of Strings::     Construction of Strings
-* Selecting String Components::  Selecting String Components
-* Comparison of Strings::       Comparison of Strings
-* Alphabetic Case in Strings::  Alphabetic Case in Strings
-* Cutting and Pasting Strings::  Cutting and Pasting Strings
-* Searching Strings::           Searching Strings
-* Matching Strings::            Matching Strings
-* Modification of Strings::     Modification of Strings
-* Variable-Length Strings::     Variable-Length Strings
-* Byte Vectors::                Byte Vectors
+* Construction of Strings::     
+* Selecting String Components::  
+* Comparison of Strings::       
+* Alphabetic Case in Strings::  
+* Cutting and Pasting Strings::  
+* Searching Strings::           
+* Matching Strings::            
+* Modification of Strings::     
+* Variable-Length Strings::     
+* Byte Vectors::                
 @end menu
 
 @node Construction of Strings, Selecting String Components,  , Strings
@@ -5424,17 +5424,18 @@ the result to a particular range based on the exact non-negative integer
 
 @deffn {procedure+} string-capitalized? string
 @deffnx {procedure+} substring-capitalized? string start end
-These procedures @code{#t} if the first character in the string
-(substring) is an uppercase letter and none of the remaining characters
-are uppercase letters.  If the first character is not an uppercase
-letter or if any of the remaining characters are uppercase letters, they
-return @code{#f}.  If the string (substring) contains less than two
-letters, they return @code{#f}.
+These procedures return @code{#t} if the first word in the string
+(substring) is capitalized, and any subsequent words are either lower
+case or capitalized.  Otherwise, they return @code{#f}.  A word is
+defined as a non-null contiguous sequence of alphabetic characters,
+delimited by non-alphabetic characters or the limits of the string
+(substring).  A word is capitalized if its first letter is upper case
+and all its remaining letters are lower case.
 
 @example
 @group
 (map string-capitalized? '(""    "A"    "art"  "Art"  "ART"))
-                       @result{} (#f    #t     #f     #t     #f)   
+                       @result{} (#f    #t     #f     #t     #f)
 @end group
 @end example
 @end deffn
@@ -5451,19 +5452,21 @@ procedures return @code{#f}.
 @example
 @group
 (map string-upper-case?  '(""    "A"    "art"  "Art"  "ART"))
-                       @result{} (#f    #t     #f     #f     #f)   
+                       @result{} (#f    #t     #f     #f     #t)
 @end group
 @end example
 @end deffn
 
 @deffn {procedure+} string-capitalize string
 @deffnx {procedure+} string-capitalize! string
+@deffnx {procedure+} substring-capitalize! string start end
 @code{string-capitalize} returns a newly allocated copy of @var{string}
-in which the first character is uppercase and the remaining letters are
-lowercase.  For example, @code{"abcDEF"} becomes @code{"Abcdef"}.
-@code{string-capitalize!} is the destructive version of
-@code{string-capitalize}: it alters @var{string} and returns an
-unspecified value.
+in which the first alphabetic character is uppercase and the remaining
+alphabetic characters are lowercase.  For example, @code{"abcDEF"}
+becomes @code{"Abcdef"}.  @code{string-capitalize!} is the destructive
+version of @code{string-capitalize}: it alters @var{string} and returns
+an unspecified value.  @code{substring-capitalize!} destructively
+capitalizes the specified part of @var{string}.
 @end deffn
 
 @deffn {procedure+} string-downcase string
@@ -5564,15 +5567,15 @@ could have been defined by:
 These procedures return a newly allocated string created by padding
 @var{string} out to length @var{k}, using @var{char}.  If @var{char} is
 not given, it defaults to @code{#\space}.  If @var{k} is less than the
-length of @var{string}, these procedures are equivalent to
-@code{string-head}.  @code{string-pad-left} adds padding characters or
+length of @var{string}, the resulting string is a truncated form of
+@var{string}.  @code{string-pad-left} adds padding characters or
 truncates from the beginning of the string (lowest indices), while
 @code{string-pad-right} does so at the end of the string (highest
 indices).
 
 @example
 @group
-(string-pad-left "hello" 4)             @result{}  "hell"
+(string-pad-left "hello" 4)             @result{}  "ello"
 (string-pad-left "hello" 8)             @result{}  "   hello"
 (string-pad-left "hello" 8 #\*)         @result{}  "***hello"
 (string-pad-right "hello" 4)            @result{}  "hell"
@@ -5904,7 +5907,7 @@ unspecified value.  @var{K} must be a valid index of @var{string}, and
 @var{ascii} must be a valid @sc{ascii} code.
 @end deffn
 
-@deffn {procedure+} vector-8b-fill! string start end
+@deffn {procedure+} vector-8b-fill! string start end ascii
 Stores @var{ascii} in elements @var{start} (inclusive) to @var{end}
 (exclusive) of @var{string} and returns an unspecified value.
 @var{Ascii} must be a valid @sc{ascii} code.
@@ -5939,8 +5942,8 @@ lowercase letters.
 @cindex dotted pair (see pair)
 @cindex car field, of pair (defn)
 @cindex cdr field, of pair (defn)
-A @dfn{pair} (sometimes called a @dfn{dotted pair}) is a record
-structure with two fields called the @dfn{car} and @dfn{cdr} fields (for
+A @dfn{pair} (sometimes called a @dfn{dotted pair}) is a data structure
+with two fields called the @dfn{car} and @dfn{cdr} fields (for
 historical reasons).  Pairs are created by the procedure @code{cons}.
 The car and cdr fields are accessed by the procedures @code{car} and
 @code{cdr}.  The car and cdr fields are assigned by the procedures
@@ -6066,15 +6069,15 @@ programs may be represented as lists.  Among other things, this permits
 the use of the @code{read} procedure to parse Scheme programs.
 
 @menu
-* Pairs::                       Pairs
-* Construction of Lists::       Construction of Lists
-* Selecting List Components::   Selecting List Components
-* Cutting and Pasting Lists::   Cutting and Pasting Lists
-* Filtering Lists::             Filtering Lists
-* Searching Lists::             Searching Lists
-* Mapping of Lists::            Mapping of Lists
-* Reduction of Lists::          Reduction of Lists
-* Miscellaneous List Operations::  Miscellaneous List Operations
+* Pairs::                       
+* Construction of Lists::       
+* Selecting List Components::   
+* Cutting and Pasting Lists::   
+* Filtering Lists::             
+* Searching Lists::             
+* Mapping of Lists::            
+* Reduction of Lists::          
+* Miscellaneous List Operations::  
 @end menu
 
 @node Pairs, Construction of Lists,  , Lists
@@ -7035,20 +7038,24 @@ constants must be quoted:
 @cindex subvector (defn)
 @cindex start, of subvector (defn)
 @cindex end, of subvector (defn)
+@cindex index, of subvector (defn)
+@cindex valid index, of subvector (defn)
 A number of the vector procedures operate on subvectors.  A
-@dfn{subvector} is a segment of a vector, which is specified by two
-exact non-negative integers, @var{start} and @var{end}.  @var{Start} is
-the index of the first element that is included in the subvector, and
+@dfn{subvector} is a segment of a vector that is specified by two exact
+non-negative integers, @var{start} and @var{end}.  @var{Start} is the
+index of the first element that is included in the subvector, and
 @var{end} is one greater than the index of the last element that is
 included in the subvector.  Thus if @var{start} and @var{end} are the
 same, they refer to a null subvector, and if @var{start} is zero and
 @var{end} is the length of the vector, they refer to the entire vector.
+The @dfn{valid indexes} of a subvector are the exact integers between
+@var{start} inclusive and @var{end} exclusive.
 
 @menu
-* Construction of Vectors::     Construction of Vectors
-* Selecting Vector Components::  Selecting Vector Components
-* Cutting Vectors::             Cutting Vectors
-* Modifying Vectors::           Modifying Vectors
+* Construction of Vectors::     
+* Selecting Vector Components::  
+* Cutting Vectors::             
+* Modifying Vectors::           
 @end menu
 
 @node Construction of Vectors, Selecting Vector Components,  , Vectors
@@ -7158,7 +7165,8 @@ unspecified value.  @var{K} must be a valid index of
 @deffnx {procedure+} vector-seventh vector
 @deffnx {procedure+} vector-eighth vector
 These procedures access the first several elements of @var{vector} in
-the obvious way.  It is an error if @var{vector}'s length is too small.
+the obvious way.  It is an error if the implicit index of one of these
+procedurs is not a valid index of @var{vector}.
 @end deffn
 
 @node Cutting Vectors, Modifying Vectors, Selecting Vector Components, Vectors
@@ -7204,10 +7212,10 @@ returns an unspecified value.
 Destructively copies the elements of @var{vector1}, starting with index
 @var{start1} (inclusive) and ending with @var{end1} (exclusive), into
 @var{vector2} starting at index @var{start2} (inclusive).
-@var{Vector1}, @var{start1}, and @var{end1} must be valid subvector, and
-@var{start2} must be a valid index for @var{vector2}.  The length of the
-source subvector must not exceed the length of @var{vector2} minus the
-index @var{start2}.
+@var{Vector1}, @var{start1}, and @var{end1} must specify a valid
+subvector, and @var{start2} must be a valid index for @var{vector2}.
+The length of the source subvector must not exceed the length of
+@var{vector2} minus the index @var{start2}.
 
 The elements are copied as follows (note that this is only important when
 @var{vector1} and @var{vector2} are @code{eqv?}):
@@ -7239,6 +7247,14 @@ less one, in @emph{right to left order}, (the rightmost bit is numbered
 zero).  When you convert from a bit string to an integer, the zero-th
 bit is associated with the zero-th power of two, the first bit is
 associated with the first power, and so on.
+
+Bit strings are encoded very densely in memory.  Each bit occupies
+exactly one bit of storage, and the overhead for the entire bit string
+is bounded by a small constant.  However, accessing a bit in a bit
+string is slow compared to accessing an element of a vector or character
+string.  If performance is of overriding concern, it is better to use
+character strings to store sets of boolean values even though they
+occupy more space.
 
 @cindex length, of bit string (defn)
 @cindex index, of bit string (defn)
@@ -7278,12 +7294,12 @@ bit strings rather than a means of entering them as data.
 All of the bit-string procedures are MIT Scheme extensions.
 
 @menu
-* Construction of Bit Strings::  Construction of Bit Strings
-* Selecting Bit String Components::  Selecting Bit String Components
-* Cutting and Pasting Bit Strings::  Cutting and Pasting Bit Strings
-* Bitwise Operations on Bit Strings::  Bitwise Operations on Bit Strings
-* Modification of Bit Strings::  Modification of Bit Strings
-* Integer Conversions of Bit Strings::  Integer Conversions of Bit Strings
+* Construction of Bit Strings::  
+* Selecting Bit String Components::  
+* Cutting and Pasting Bit Strings::  
+* Bitwise Operations on Bit Strings::  
+* Modification of Bit Strings::  
+* Integer Conversions of Bit Strings::  
 @end menu
 
 @node Construction of Bit Strings, Selecting Bit String Components,  , Bit Strings
@@ -7465,9 +7481,9 @@ direction of copying only matters when @var{bit-string-1} and
 
 @deffn {procedure+} unsigned-integer->bit-string length integer
 Both @var{length} and @var{integer} must be exact non-negative integers.
-Converts @var{integer} into a newly allocated bit string of @var{length}
-bits.  Signals an error if @var{integer} is too large to be represented
-in @var{length} bits.
+@var{Integer} is converted to a newly allocated bit string of
+@var{length} bits.  Signals an error if @var{integer} is too large to be
+represented in @var{length} bits.
 @end deffn
 
 @deffn {procedure+} signed-integer->bit-string length integer
@@ -7492,13 +7508,13 @@ integer accordingly.
 @chapter Miscellaneous Datatypes
 
 @menu
-* Booleans::                    Booleans
-* Symbols::                     Symbols
-* Cells::                       Cells
-* Records::                     Records
-* Promises::                    Promises
-* Streams::                     Streams
-* Weak Pairs::                  Weak Pairs
+* Booleans::                    
+* Symbols::                     
+* Cells::                       
+* Records::                     
+* Promises::                    
+* Streams::                     
+* Weak Pairs::                  
 @end menu
 
 @node Booleans, Symbols,  , Miscellaneous Datatypes
@@ -7878,12 +7894,9 @@ continuations are used (@pxref{Fluid Binding}).
 @section Records
 
 MIT Scheme provides a @dfn{record} abstraction, which is a simple and
-flexible mechanism for building structures with named components.  This
-abstraction will very likely be a part of the next edition of the Scheme
-standard.  The procedures defined in this section that are expected to
-be in the standard are not marked with @samp{+}.
+flexible mechanism for building structures with named components.
 
-@deffn {procedure} make-record-type type-name field-names
+@deffn {procedure+} make-record-type type-name field-names
 @cindex record-type descriptor (defn)
 Returns a @dfn{record-type descriptor}, a value representing a new data
 type, disjoint from all others.  The @var{type-name} argument must be a
@@ -7894,7 +7907,7 @@ new type.  It is an error if the list contains any duplicates.  It is
 unspecified how record-type descriptors are represented.
 @end deffn
 
-@deffn {procedure} record-constructor record-type [field-names]
+@deffn {procedure+} record-constructor record-type [field-names]
 Returns a procedure for constructing new members of the type represented
 by @var{record-type}.  The returned procedure accepts exactly as many
 arguments as there are symbols in the given list, @var{field-names};
@@ -7908,14 +7921,14 @@ an error if it contains any duplicates or any symbols not in the default
 list.
 @end deffn
 
-@deffn {procedure} record-predicate record-type
+@deffn {procedure+} record-predicate record-type
 Returns a procedure for testing membership in the type represented by
 @var{record-type}.  The returned procedure accepts exactly one argument
 and returns @code{#t} if the argument is a member of the indicated
 record type; it returns @code{#f} otherwise.
 @end deffn
 
-@deffn {procedure} record-accessor record-type field-name
+@deffn {procedure+} record-accessor record-type field-name
 Returns a procedure for reading the value of a particular field of a
 member of the type represented by @var{record-type}.  The returned
 procedure accepts exactly one argument which must be a record of the
@@ -7926,7 +7939,7 @@ must be a member of the list of field names in the call to
 @var{record-type}.
 @end deffn
 
-@deffn {procedure} record-updater record-type field-name
+@deffn {procedure+} record-updater record-type field-name
 Returns a procedure for writing the value of a particular field of a
 member of the type represented by @var{record-type}.  The returned
 procedure accepts exactly two arguments: first, a record of the
@@ -7938,19 +7951,16 @@ of field names in the call to @code{make-record-type} that created the
 type represented by @var{record-type}.
 @end deffn
 
-@deffn {procedure} record? object
+@deffn {procedure+} record? object
 @cindex type predicate, for record
 Returns @code{#t} if @var{object} is a record of any type and @code{#f}
-otherwise.@footnote{In the current implementation of MIT Scheme, any
-object that satisfies this predicate also satisfies @code{vector?}.
-However, we plan to change the implementation to make records distinct
-from all other data types.} Note that @code{record?} may be true of any
-Scheme value; of course, if it returns @code{#t} for some particular
-value, then @code{record-type-descriptor} is applicable to that value
-and returns an appropriate descriptor.
+otherwise.  Note that @code{record?} may be true of any Scheme value; of
+course, if it returns @code{#t} for some particular value, then
+@code{record-type-descriptor} is applicable to that value and returns an
+appropriate descriptor.
 @end deffn
 
-@deffn {procedure} record-type-descriptor record
+@deffn {procedure+} record-type-descriptor record
 Returns the record-type descriptor representing the type of
 @var{record}.  That is, for example, if the returned descriptor were
 passed to @code{record-predicate}, the resulting predicate would return
@@ -7967,14 +7977,14 @@ Returns @code{#t} if @var{object} is a record-type descriptor; otherwise
 returns @code{#f}.
 @end deffn
 
-@deffn {procedure} record-type-name record-type
+@deffn {procedure+} record-type-name record-type
 Returns the type name associated with the type represented by
 @var{record-type}.  The returned value is @code{eqv?} to the
 @var{type-name} argument given in the call to @code{make-record-type}
 that created the type represented by @var{record-type}.
 @end deffn
 
-@deffn {procedure} record-type-field-names record-type
+@deffn {procedure+} record-type-field-names record-type
 Returns a list of the symbols naming the fields in members of the type
 represented by @var{record-type}.  The returned value is @code{equal?}
 to the @var{field-names} argument given in the call to
@@ -8390,6 +8400,7 @@ average lookup time is linear in the number of associations; but 1D
 tables aren't as flexible.
 
 @item
+@cindex property list
 @dfn{The association table} is MIT Scheme's equivalent to the
 @dfn{property lists} of Lisp.  It has the advantages that the keys may
 be any type of object and that it does not prevent the keys from being
@@ -8398,18 +8409,29 @@ must be performed, one for each key, whereas for traditional property
 lists only one is lookup required for both keys.
 
 @item
-@dfn{Hash tables} are a powerful mechanism with nearly constant-time
-access to large amounts of data.  However, the overhead for hash tables
-is somewhat high, both in time and space, making them unsuitable for
-small tables.  And hash tables are not as flexible as association lists.
+@dfn{Hash tables} are a powerful mechanism with constant-time access to
+large amounts of data.  Hash tables are not as flexible as association
+lists, but because their access times are independent of the number of
+associations in the table, for most applications they are the mechanism
+of choice.
+
+@item
+@dfn{Balanced binary trees} are another association mechanism that is
+useful for applications in which the keys are ordered.  Binary trees
+have access times that are proportional to the logarithm of the number
+of associations in the tree.  While they aren't as fast as hash tables,
+they offer the advantage that the contents of the tree can be converted
+to a sorted alist in linear time.  Additionally, two trees can be
+compared for equality in worst-case linear time.
 @end itemize
 
 @menu
-* Association Lists::           Association Lists
-* 1D Tables::                   1D Tables
-* The Association Table::       The Association Table
-* Hash Tables::                 Hash Tables
-* Hashing::                     Hashing
+* Association Lists::           
+* 1D Tables::                   
+* The Association Table::       
+* Hash Tables::                 
+* Object Hashing::              
+* Red-Black Trees::             
 @end menu
 
 @node Association Lists, 1D Tables,  , Associations
@@ -8505,9 +8527,11 @@ Another example is a ``reverse association'' procedure:
 @findex equal?
 These procedures return a newly allocated copy of @var{alist} in which
 all associations with keys equal to @var{object} have been removed.
-@code{del-assq} uses @code{eq?} to compare @var{object} with the keys,
-while @code{del-assv} uses @code{eqv?} and @code{del-assoc} uses
-@code{equal?}.
+Note that while the returned copy is a newly allocated list, the
+association pairs that are the elements of the list are shared with
+@var{alist}, not copied.  @code{del-assq} uses @code{eq?} to compare
+@var{object} with the keys, while @code{del-assv} uses @code{eqv?} and
+@code{del-assoc} uses @code{equal?}.
 
 @example
 @group
@@ -8588,7 +8612,8 @@ could have been implemented like this:
 @dfn{1D tables} (``one-dimensional'' tables) are similar to association
 lists.  In a 1D table, unlike an association list, the keys of the table
 are held @dfn{weakly}: if a key is garbage-collected, its associated
-value in the table is removed.
+value in the table is removed.  1D tables compare their keys for
+equality using @code{eq?}.
 
 @cindex property list
 1D tables can often be used as a higher-performance alternative to the
@@ -8665,8 +8690,7 @@ Makes an entry in the association table that associates @var{datum} with
 
 @deffn {procedure+} 2d-remove! x-key y-key
 If the association table has an entry for @var{x-key} and @var{y-key},
-it is removed and @code{#t} is returned.  Otherwise @code{#f} is
-returned.
+it is removed.  Returns an unspecified result.
 @end deffn
 
 @deffn {procedure+} 2d-get x-key y-key
@@ -8704,7 +8728,7 @@ entries for @var{y-key} exist.
 @end example
 @end deffn
 
-@node Hash Tables, Hashing, The Association Table, Associations
+@node Hash Tables, Object Hashing, The Association Table, Associations
 @section Hash Tables
 
 @cindex hash table
@@ -8714,9 +8738,9 @@ customizable growth parameters, and customizable hash functions.
 
 The average times for the insertion, deletion, and lookup operations on
 a hash table are bounded by a constant.  The space required by the table
-is linearly propertional to the number of associations in the table; in
+is linearly proportional to the number of associations in the table; in
 the current implementation the constant of proportionality is
-approximately four words per association.
+approximately five words per association.
 
 @cindex run-time-loadable option
 @cindex option, run-time-loadable
@@ -8935,7 +8959,7 @@ preferable because it is faster.
 @var{If-found} must be a procedure of one argument, and
 @var{if-not-found} must be a procedure of no arguments.  If
 @var{hash-table} contains an association for @var{key}, @var{if-found}
-is invoked on the @var{datum} of the association.  Otherwise,
+is invoked on the datum of the association.  Otherwise,
 @var{if-not-found} is invoked with no arguments.  In either case, the
 result yielded by the invoked procedure is returned as the result of
 @code{hash-table/lookup}.  The average time required by this operation
@@ -8972,12 +8996,12 @@ worst-case performance is not.  For a table containing a given number of
 associations, increasing the physical size of the table decreases the
 probability that worse-than-average performance will occur.
 
-The programmer's can control the size of a hash table by means of three
+The programmer can control the size of a hash table by means of three
 parameters:
 
 @itemize @bullet
 @item
-The table's @var{initial size} may be specified when the table is
+The table's @var{initial-size} may be specified when the table is
 created.
 
 @item
@@ -9006,35 +9030,40 @@ the hash table when it becomes full.  It is either an exact positive
 integer, or a real number greater than one.  If it is an integer, the
 new size is the sum of the old size and the rehash size.  Otherwise, it
 is a real number, and the new size is the product of the old size and
-the rehash size.  The default rehash size of a newly constructed hash
-table is @code{2.0}, but this can be changed with
-@code{set-hash-table/rehash-size!}.
+the rehash size.  Increasing the rehash size decreases the average cost
+of an insertion, but increases the average amount of space used by the
+table.  The rehash size of a table may be altered dynamically by the
+application in order to optimize the resizing of the table; for example,
+if the table will grow quickly for a known period and afterwards will
+not change size, performance might be improved by using a large rehash
+size during the growth phase and a small one during the static phase.
+The default rehash size of a newly constructed hash table is @code{2.0}.
 
 @strong{Note well:} The use of an exact positive integer for a rehash
 size is almost always undesirable; this option is provided solely for
 compatibility with the Common Lisp hash-table mechanism.  The reason for
 this has to do with the time penalty for resizing the hash table.  The
 time needed to resize a hash table is proportional to the number of
-associations in the table.  If the table grows by an amount proportional
-to the number of associations, then the resizing cost is @dfn{amortized}
-across the insertions required to fill the table to the point where it
-needs to grow again.  Since the cost of resizing and the increase in
-size are both proportional to the number of associations, the
-@dfn{amortized cost} of an insertion operation is still bounded by a
-constant.  However, if the table grows by a constant amount, regardless
-of the usable size, this is not true: the amortized cost of an insertion
-is not bounded by a constant.  Thus, using a constant rehash size means
-that the average cost of an insertion increases proportionally with the
-number of associations in the hash table.
+associations in the table.  This resizing cost is @dfn{amortized} across
+the insertions required to fill the table to the point where it needs to
+grow again.  If the table grows by an amount proportional to the number
+of associations, then the cost of resizing and the increase in size are
+both proportional to the number of associations, so the @dfn{amortized
+cost} of an insertion operation is still bounded by a constant.
+However, if the table grows by a constant amount, this is not true: the
+amortized cost of an insertion is not bounded by a constant.  Thus,
+using a constant rehash size means that the average cost of an insertion
+increases proportionally with the number of associations in the hash
+table.
 
 @cindex rehash threshold, of hash table (defn)
 The @dfn{rehash threshold} is a real number, between zero exclusive and
 one inclusive, that specifies the ratio between a hash table's usable
-size and its physical size.  The default rehash threshold of a newly
-constructed hash table is @code{1}, but this can be changed with
-@code{set-hash-table/rehash-threshold!}.  Decreasing the rehash
-threshold increases the physical size of the table for a given usable
-size.
+size and its physical size.  Decreasing the rehash threshold decreases
+the probability of worse-than-average insertion, deletion, and lookup
+times, but increases the physical size of the table for a given usable
+size.  The default rehash threshold of a newly constructed hash table is
+@code{1}.
 
 @deffn {procedure+} hash-table/size hash-table
 Returns the usable size of @var{hash-table} as an exact positive
@@ -9077,7 +9106,7 @@ structure to maintain the association.  In this section, the data
 structure that represents an association in a hash table is called an
 @dfn{entry}.
 
-@deffn {procedure+} hash-table/constructor key-hash key=? make-entry entry-valid? entry-key entry-value set-entry-value!
+@deffn {procedure+} hash-table/constructor key-hash key=? make-entry entry-valid? entry-key entry-datum set-entry-datum!
 Creates and returns a hash-table constructor procedure
 (@pxref{Construction of Hash Tables}).  The arguments to
 @code{hash-table/constructor} define the characteristics of the hash
@@ -9108,13 +9137,13 @@ procedure, this may be @code{#t}, which is equivalent to @code{(lambda
 A procedure that accepts an entry as an argument and returns the entry's
 key.
 
-@item entry-value
+@item entry-datum
 A procedure that accepts an entry as an argument and returns the entry's
 datum.
 
-@item set-entry-value!
+@item set-entry-datum!
 A procedure that accepts an entry and an object as arguments, modifies
-the entry's @var{datum} to be the object, and returns an unspecified
+the entry's datum to be the object, and returns an unspecified
 result.
 @end table
 
@@ -9136,8 +9165,8 @@ be defined:
 @deffnx {procedure+} hash-table/make-entry hash-table
 @deffnx {procedure+} hash-table/entry-valid? hash-table
 @deffnx {procedure+} hash-table/entry-key hash-table
-@deffnx {procedure+} hash-table/entry-value hash-table
-@deffnx {procedure+} hash-table/set-entry-value! hash-table
+@deffnx {procedure+} hash-table/entry-datum hash-table
+@deffnx {procedure+} hash-table/set-entry-datum! hash-table
 Each of these procedures corresponds to an argument of
 @code{hash-table/constructor}.  When called, each procedure returns the
 value of the corresponding argument that was used to construct
@@ -9163,8 +9192,8 @@ Equivalent to
 @end example
 @end deffn
 
-@node Hashing,  , Hash Tables, Associations
-@section Hashing
+@node Object Hashing, Red-Black Trees, Hash Tables, Associations
+@section Object Hashing
 
 @cindex object hashing
 @cindex hashing, of object
@@ -9176,44 +9205,282 @@ but it may be used for other things as well.  In particular, it is used
 in the generation of the written representation for some objects
 (@pxref{Custom Output}).
 
-@deffn {procedure+} object-hash object
-@deffnx {procedure+} object-unhash k
+All of these procedures accept an optional argument called @var{table}.
+If given, this argument must be an object-hash table as constructed by
+@code{hash-table/make} (see below); this table contains the
+object-integer associations.  If not given, a default table is used.
+
+@deffn {procedure+} hash object [table]
 @findex eq?
-@code{object-hash} associates an exact non-negative integer with
-@var{object} and returns that integer.  If @code{object-hash} was
-previously called with @var{object} as its argument, the integer
-returned is the same as was returned by the previous call.
-@code{object-hash} guarantees that distinct objects (in the sense of
-@code{eq?}) are associated with distinct integers.
+@code{hash} associates an exact non-negative integer with @var{object}
+and returns that integer.  If @code{hash} was previously called with
+@var{object} as its argument, the integer returned is the same as was
+returned by the previous call.  @code{hash} guarantees that distinct
+objects (in the sense of @code{eq?}) are associated with distinct
+integers.
+@end deffn
 
-@code{object-unhash} takes an exact non-negative integer @var{k} and
-returns the object associated with that integer.  If there is no object
-associated with @var{k}, @code{#f} is returned.  In other words, if
-@code{object-hash} previously returned @var{k} for some object, that
-object is the value of the call to @code{object-unhash}.
+@deffn {procedure+} unhash k [table]
+@code{unhash} takes an exact non-negative integer @var{k} and returns
+the object associated with that integer.  If there is no object
+associated with @var{k}, or if the object previously associated with
+@var{k} has been reclaimed by the garbage collector, an error is
+signalled.  In other words, if @code{hash} previously returned @var{k}
+for some object, and that object has not been reclaimed, it is the value
+of the call to @code{unhash}.
+@end deffn
 
-An object that is passed to @code{object-hash} as an argument is not
-protected from being garbage-collected.  If all other references to that
-object are eliminated, the object will be garbage-collected.
-Subsequently calling @code{object-unhash} with the hash number of the
-(garbage-collected) object will return @code{#f}.
+An object that is passed to @code{hash} as an argument is not protected
+from being reclaimed by the garbage collector.  If all other references
+to that object are eliminated, the object will be reclaimed.
+Subsequently calling @code{unhash} with the hash number of the (now
+reclaimed) object will signal an error.
 
 @example
 @group
-(define x (cons 0 0))                   @result{}  @r{unspecified}
-(object-hash x)                         @result{}  77
-(eqv? (object-hash x) (object-hash x))  @result{}  #t
-(define x 0)                            @result{}  @r{unspecified}
-(gc-flip)                               @r{;force a garbage collection}
-(object-unhash 77)                      @result{}  #f
+(define x (cons 0 0))           @result{}  @r{unspecified}
+(hash x)                        @result{}  77
+(eqv? (hash x) (hash x))        @result{}  #t
+(define x 0)                    @result{}  @r{unspecified}
+(gc-flip)                       @r{;force a garbage collection}
+(unhash 77)                     @error{}
 @end group
 @end example
 
-@findex hash
-@findex unhash
-Note: @code{hash} is a synonym for @code{object-hash} and @code{unhash}
-is a synonym for @code{object-unhash}.  These synonyms are obsolete and
-should not be used.
+@deffn {procedure+} object-hashed? object [table]
+This predicate is true if @var{object} has an associated hash number.
+Otherwise it is false.
+@end deffn
+
+@deffn {procedure+} valid-hash-number? k [table]
+This predicate is true if @var{k} is the hash number associated with
+some object.  Otherwise it is false.
+@end deffn
+
+The following two procedures provide a lower-level interface to the
+object-hashing mechanism.
+
+@deffn {procedure+} object-hash object [table [insert?]]
+@findex eq?
+@code{object-hash} is like @code{hash}, except that it accepts an
+additional optional argument, @var{insert?}.  If @var{insert?} is
+supplied and is @code{#f}, @code{object-hash} will return an integer for
+@var{object} only if there is already an association in the table;
+otherwise, it will return @code{#f}.  If @var{insert?} is not supplied,
+or is not @code{#f}, @code{object-hash} always returns an integer,
+creating an association in the table if necessary.
+
+@code{object-hash} additionally treats @code{#f} differently than does
+@code{hash}.  Calling @code{object-hash} with @code{#f} as its argument
+will return an integer that, when passed to @code{unhash}, will signal
+an error rather than returning @code{#f}.  Likewise,
+@code{valid-hash-number?} will return @code{#f} for this integer.
+@end deffn
+
+@deffn {procedure+} object-unhash k [table]
+@code{object-unhash} is like @code{unhash}, except that when @var{k} is
+not associated with any object or was previously associated with an
+object that has been reclaimed, @code{object-unhash} returns @code{#f}.
+This means that there is an ambiguity in the value returned by
+@code{object-unhash}: if @code{#f} is returned, there is no way to
+tell if @var{k} is associated with @code{#f} or is not associated with
+any object at all.
+@end deffn
+
+Finally, this procedure makes new object-hash tables:
+
+@deffn {procedure+} hash-table/make
+This procedure creates and returns a new, empty object-hash table that
+is suitable for use as the optional @var{table} argument to the above
+procedures.  The returned table contains no associations.
+@end deffn
+
+@node Red-Black Trees,  , Object Hashing, Associations
+@section Red-Black Trees
+
+@cindex trees, balanced binary
+@cindex balanced binary trees
+@cindex binary trees
+@cindex red-black binary trees
+Balanced binary trees are a useful data structure for maintaining large
+sets of associations whose keys are ordered.  While most applications
+involving large association sets should use hash tables, some
+applications can benefit from the use of binary trees.  Binary trees
+have two advantages over hash tables:
+
+@itemize @bullet
+@item
+The contents of a binary tree can be converted to an alist, sorted by
+key, in time linearly proportional to the number of associations in the
+tree.  A hash table can be converted into an unsorted alist in linear
+time; sorting it requires additional time.
+
+@item
+Two binary trees can be compared for equality in linear time.  Hash
+tables, on the other hand, cannot be compared at all; they must be
+converted to alists before comparison can be done, and alist comparison
+is quadratic unless the alists are sorted.
+@end itemize
+
+MIT Scheme's binary trees are @dfn{red-black} trees.  The red-black
+tree-balancing algorithm provides generally good performance because it
+doesn't try to keep the tree very closely balanced.  At any given node
+in the tree, one side of the node can be twice as high as the other in
+the worst case.  With typical data the tree will remain fairly well
+balanced anyway.
+
+A red-black tree takes space that is proportional to the number of
+associations in the tree.  For the current implementation, the constant
+of proportionality is eight words per association.
+
+Red-black trees hold their keys @dfn{strongly}.  In other words, if a
+red-black tree contains an association for a given key, that key cannot
+be reclaimed by the garbage collector.
+
+@cindex run-time-loadable option
+@cindex option, run-time-loadable
+The red-black tree implementation is a run-time-loadable option.  To use
+red-black trees, execute
+
+@example
+(load-option 'rb-tree)
+@end example
+@findex load-option
+
+@noindent
+once before calling any of the procedures defined here.
+
+@deffn {procedure+} make-rb-tree key=? key<?
+This procedure creates and returns a newly allocated red-black tree.
+The tree contains no associations.  @var{Key=?} and @var{key<?} are
+predicates that compare two keys and determine whether they are equal to
+or less than one another, respectively.  For any two keys, at most one
+of these predicates is true.
+@end deffn
+
+@deffn {procedure+} rb-tree? object
+Returns @code{#t} if @code{object} is a red-black tree, otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn {procedure+} rb-tree/insert! rb-tree key datum
+Associates @var{datum} with @var{key} in @var{rb-tree} and returns an
+unspecified value.  If @var{rb-tree} already has an association for
+@var{key}, that association is replaced.  The average and worst-case
+times required by this operation are proportional to the logarithm of
+the number of assocations in @var{rb-tree}.
+@end deffn
+
+@deffn {procedure+} rb-tree/lookup rb-tree key default
+Returns the datum associated with @var{key} in @var{rb-tree}.  If
+@var{rb-tree} doesn't contain an association for @var{key},
+@var{default} is returned.  The average and worst-case times required by
+this operation are proportional to the logarithm of the number of
+assocations in @var{rb-tree}.
+@end deffn
+
+@deffn {procedure+} rb-tree/delete! rb-tree key
+If @var{rb-tree} contains an association for @var{key}, removes it.
+Returns an unspecified value.  The average and worst-case times required
+by this operation are proportional to the logarithm of the number of
+assocations in @var{rb-tree}.
+@end deffn
+
+@deffn {procedure+} rb-tree->alist rb-tree
+Returns the contents of @var{rb-tree} as a newly allocated alist.  Each
+element of the alist is a pair @code{(@var{key} . @var{datum})} where
+@var{key} is one of the keys of @var{rb-tree}, and @var{datum} is its
+associated datum.  The alist is sorted by key according to the
+@var{key<?} argument used to construct @var{rb-tree}.  The average and
+worst-case times required by this operation are proportional to the
+number of associations in the tree.
+@end deffn
+
+@deffn {procedure+} rb-tree/key-list rb-tree
+Returns a newly allocated list of the keys in @var{rb-tree}.  The list
+is sorted by key according to the @var{key<?} argument used to construct
+@var{rb-tree}.  The average and worst-case times required by this
+operation are proportional to the number of associations in the tree.
+@end deffn
+
+@deffn {procedure+} rb-tree/datum-list rb-tree
+Returns a newly allocated list of the datums in @var{rb-tree}.  Each
+element of the list corresponds to one of the associations in
+@var{rb-tree}, so if the tree contains multiple associations with the
+same datum, so will this list.  The list is sorted by the keys of the
+associations, even though they do not appear in the result.  The average
+and worst-case times required by this operation are proportional to the
+number of associations in the tree.
+
+This procedure is equivalent to:
+
+@example
+(lambda (rb-tree) (map cdr (rb-tree->alist rb-tree)))
+@end example
+@end deffn
+
+@deffn {procedure+} rb-tree/equal? rb-tree-1 rb-tree-2 datum=?
+Compares @var{rb-tree-1} and @var{rb-tree-2} for equality, returning
+@code{#t} iff they are equal and @code{#f} otherwise.  The trees must
+have been constructed with the same equality and order predicates (same
+in the sense of @code{eq?}).  The keys of the trees are compared using
+the @var{key=?} predicate used to build the trees, while the datums of
+the trees are compared using the equivalence predicate @var{datum=?}.
+The worst-case time required by this operation is proportional to the
+number of associations in the tree.
+@end deffn
+
+@deffn {procedure+} rb-tree/empty? rb-tree
+Returns @code{#t} iff @var{rb-tree} contains no associations.  Otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn {procedure+} rb-tree/size rb-tree
+Returns the number of associations in @var{rb-tree}, an exact
+non-negative integer.  The average and worst-case times required by this
+operation are proportional to the number of associations in the tree.
+@end deffn
+
+@deffn {procedure+} rb-tree/height rb-tree
+Returns the height of @var{rb-tree}, an exact non-negative integer.
+This is the length of the longest path from a leaf of the tree to the
+root.  The average and worst-case times required by this operation are
+proportional to the number of associations in the tree.
+
+The returned value satisfies the following:
+
+@example
+(lambda (rb-tree)
+  (let ((size (rb-tree/size rb-tree))
+        (lg (lambda (x) (/ (log x) (log 2)))))
+    (<= (lg size)
+        (rb-tree/height rb-tree)
+        (* 2 (lg (+ size 1))))))
+@end example
+@end deffn
+
+@deffn {procedure+} rb-tree/copy rb-tree
+Returns a newly allocated copy of @var{rb-tree}.  The copy is identical
+to @var{rb-tree} in all respects, except that changes to @var{rb-tree}
+do not affect the copy, and vice versa.  The average and worst-case
+times required by this operation are proportional to the number of
+associations in the tree.
+@end deffn
+
+@deffn {procedure+} alist->rb-tree alist key=? key<?
+Returns a newly allocated red-black tree that contains the same
+associations as @var{alist}.  This procedure is equivalent to:
+
+@example
+(lambda (alist key=? key<?)
+  (let ((tree (make-rb-tree key=? key<?)))
+    (for-each (lambda (association)
+                (rb-tree/insert! tree
+                                 (car association)
+                                 (cdr association)))
+              alist)
+    tree))
+@end example
 @end deffn
 
 @node Procedures, Environments, Associations, Top
@@ -9271,10 +9538,10 @@ The written representation makes this distinction for historical
 reasons, and may eventually change.
 
 @menu
-* Procedure Operations::        Procedure Operations
-* Primitive Procedures::        Primitive Procedures
-* Continuations::               Continuations
-* Application Hooks::           Application Hooks
+* Procedure Operations::        
+* Primitive Procedures::        
+* Continuations::               
+* Application Hooks::           
 @end menu
 
 @node Procedure Operations, Primitive Procedures,  , Procedures
@@ -9332,6 +9599,20 @@ procedure; otherwise returns @code{#f}.
 Returns @code{#t} if @var{object} is a primitive procedure; otherwise
 returns @code{#f}.
 @end deffn
+
+The following two procedures test the @dfn{arity} of a procedure, that
+is, the number of arguments that the procedure accepts.  The results of
+the test may be less restrictive than the effect of calling the
+procedure.  In other words, these procedures may indicate that the
+procedure will accept a given number of arguments, but if you call the
+procedure it may signal an error.  This is because these procedures
+examine the apparent arity of a procedure.  For example, here is a
+procedure that appears to accept any number of arguments, but when
+called will signal an error if the number of arguments is not one:
+
+@example
+(lambda arguments (apply car arguments))
+@end example
 
 @deffn {procedure+} procedure-arity-valid? procedure k
 Returns @code{#t} if @var{procedure} accepts @var{k} arguments;
@@ -9524,7 +9805,7 @@ The following two procedures support multiple values.  A future revision
 of the Scheme standard will support a facility similar to, but almost
 certainly different from, this one.
 
-@deffn {procedure+} with-values thunk procedure
+@deffn {procedure+} call-with-values thunk procedure
 @cindex multiple values, from procedure
 @cindex values, multiple
 @var{Thunk} must be a procedure of no arguments, and @var{procedure}
@@ -9534,14 +9815,14 @@ expects to receive the same number of values that @var{procedure}
 accepts as arguments.  @var{Thunk} must return multiple values using the
 @code{values} procedure.  Then @var{procedure} is called with the
 multiple values as its arguments.  The result yielded by @var{procedure}
-is returned as the result of @code{with-values}.
+is returned as the result of @code{call-with-values}.
 @end deffn
 
 @deffn {procedure+} values object @dots{}
 Returns multiple values.  The continuation in effect when this procedure
 is called must be a multiple-value continuation that was created by
-@code{with-values}.  Furthermore it must accept as many values as there
-are @var{object}s.
+@code{call-with-values}.  Furthermore it must accept as many values as
+there are @var{object}s.
 @end deffn
 
 @node Application Hooks,  , Continuations, Procedures
@@ -9634,10 +9915,10 @@ an unspecified value.
 @chapter Environments
 
 @menu
-* Environment Operations::      Environment Operations
-* Environment Variables::       Environment Variables
-* REPL Environment::            REPL Environment
-* Interpreter Environments::    Interpreter Environments
+* Environment Operations::      
+* Environment Variables::       
+* REPL Environment::            
+* Interpreter Environments::    
 @end menu
 
 @node Environment Operations, Environment Variables,  , Environments
@@ -9754,9 +10035,9 @@ the @sc{rep} loop, definitions that are typed at, or loaded by, the
 partly a safety measure: if you enter a definition that happens to have
 the same name as a critical system procedure, your definition will be
 visible only to the procedures you define in the
-@code{user-initial-environment}; the MIT Scheme system procedures,
-which are defined ("closed") in the @code{system-global-environment},
-will continue to see the original definition.
+@code{user-initial-environment}; the MIT Scheme system procedures, which
+are defined in the @code{system-global-environment}, will continue to
+see the original definition.
 @end defvr
 
 @node REPL Environment, Interpreter Environments, Environment Variables, Environments
@@ -9780,8 +10061,8 @@ is the new environment.
 @section Interpreter Environments
 
 The operations in this section return environments that are constructed
-by the interpreter.  These operations should not be used lightly, as
-they will significantly degrade the performance of compiled code.  In
+by the interpreter.  These operations should only be used at the top
+level of a file; they are not supported in any other place.  In
 particular, they force the current environment to represented in a form
 suitable for use by the interpreter.  This prevents the compiler from
 performing many useful optimizations on such environments, and forces
@@ -9833,14 +10114,14 @@ low-level procedures are described that permit the implementation of
 custom ports and high-performance @sc{i/o}.
 
 @menu
-* Ports::                       Ports
-* File Ports::                  File Ports
-* String Ports::                String Ports
-* Input Procedures::            Input Procedures
-* Output Procedures::           Output Procedures
-* Format::                      Format
-* Custom Output::               Custom Output
-* Port Primitives::             Port Primitives
+* Ports::                       
+* File Ports::                  
+* String Ports::                
+* Input Procedures::            
+* Output Procedures::           
+* Format::                      
+* Custom Output::               
+* Port Primitives::             
 @end menu
 
 @node Ports, File Ports,  , Input/Output
@@ -10714,8 +10995,8 @@ prepared to deal with ports that do not implement them.
 @end table
 
 @menu
-* Input Port Primitives::       Input Port Primitives
-* Output Port Primitives::      Output Port Primitives
+* Input Port Primitives::       
+* Output Port Primitives::      
 @end menu
 
 @node Input Port Primitives, Output Port Primitives,  , Port Primitives
@@ -11019,10 +11300,10 @@ A facility for reading the contents of a directory.
 @end itemize
 
 @menu
-* Pathnames::                   Pathnames
-* Working Directory::           Working Directory
-* File Manipulation::           File Manipulation
-* Directory Reader::            Directory Reader
+* Pathnames::                   
+* Working Directory::           
+* File Manipulation::           
+* Directory Reader::            
 @end menu
 
 @node Pathnames, Working Directory,  , File-System Interface
@@ -11080,9 +11361,9 @@ pathnames.  Pathnames for other operating systems have different
 external representations.
 
 @menu
-* Filenames and Pathnames::     Filenames and Pathnames
-* Components of Pathnames::     Components of Pathnames
-* Operations on Pathnames::     Operations on Pathnames
+* Filenames and Pathnames::     
+* Components of Pathnames::     
+* Operations on Pathnames::     
 * Miscellaneous Pathnames::     Miscellaneous Pathname Functions
 @end menu
 
@@ -11095,10 +11376,11 @@ convert filenames into pathnames and vice versa.
 
 @deffn {procedure+} ->pathname object
 @cindex construction, of pathname
-Returns a pathname that is the equivalent of @var{object}.
-@var{Object} must be a pathname or a string.  If @var{object}
-is a pathname, it is returned.  If @var{object} is a string, this
-procedure returns the pathname that corresponds to the string.
+Returns a pathname that is the equivalent of @var{object}.  @var{Object}
+must be a pathname or a string.  If @var{object} is a pathname, it is
+returned.  If @var{object} is a string, this procedure returns the
+pathname that corresponds to the string; in this case it is equivalent
+to @code{(parse-namestring @var{object} #f #f)}.
 
 @example
 @group
@@ -11146,12 +11428,12 @@ filename corresponding to @var{pathname}.
 @deffn {procedure+} pathname-simplify pathname
 @cindex simplification, of pathname
 Returns a pathname that locates the same file or directory as
-@var{pathname}, but is in some sense simpler.
-Note that @code{pathname-simplify} might not always be able to simplify
-the pathname, e.g.@: on unix with symbolic links the directory
-@code{/usr/morris/../} need not be the same as @code{/usr/}
-In cases of uncertainty the behaviour is conservative, returning the
-original or a partly simplified pathname.
+@var{pathname}, but is in some sense simpler.  Note that
+@code{pathname-simplify} might not always be able to simplify the
+pathname, e.g.@: on unix with symbolic links the directory
+@code{/usr/morris/../} need not be the same as @code{/usr/}.  In cases
+of uncertainty the behavior is conservative, returning the original or a
+partly simplified pathname.
 @example
 @group
 (pathname-simplify "/usr/morris/../morris/dance")
@@ -11243,15 +11525,13 @@ missing components.
 
 Any component of a pathname may be the symbol @code{unspecific}, meaning
 that the component simply does not exist, for file systems in which such
-a value makes no sense.
-For example, UNIX and MS-DOS file systems usually does not support
-version numbers, so the version component for a UNIX of MS-DOS host
-might be @code{unspecific}.
-Similarly, the file type is usually regarded in a UNIX file system as
-the part of a name after the period, but some file names contain no
-periods and therefore have no file types).@footnote{This description is
-adapted from @cite{Common Lisp, The Language}, second edition, section
-23.1.1.}
+a value makes no sense.  For example, UNIX and MS-DOS file systems
+usually do not support version numbers, so the version component for a
+UNIX or MS-DOS host might be @code{unspecific}.  Similarly, the file
+type is usually regarded in a UNIX file system as the part of a name
+after the period, but some file names contain no periods and therefore
+have no file types).@footnote{This description is adapted from
+@cite{Common Lisp, The Language}, second edition, section 23.1.1.}
 @comment **** end CLTL ****
 
 Each component in a pathname is typically one of the following (with
@@ -11290,10 +11570,10 @@ purposes of merging or defaulting components.
 @cindex component, of pathname, unspecific
 @end table
 
-The directory and version pathname components are exceptions to these
-rules in that they may never be strings, although the values @code{#f},
-@code{wild}, and @code{unspecific} are allowed with their usual
-meanings.  Here are the other values allowed for these components:
+The host, directory, and version pathname components are exceptions to
+these rules in that they may never be strings, although the values
+@code{#f}, @code{wild}, and @code{unspecific} are allowed with their
+usual meanings.  Here are the other values allowed for these components:
 
 @itemize @bullet
 @item
@@ -11464,9 +11744,8 @@ otherwise returns @code{#f}.
 @cindex merging, of pathnames
 @cindex defaulting, of pathname
 Returns a pathname whose components are obtained by combining those of
-@var{pathname} and @var{defaults}.
-@var{defaults} defaults to the value of
-@code{*default-pathname-defaults*} and @var{default-version} defaults
+@var{pathname} and @var{defaults}.  @var{Defaults} defaults to the value
+of @code{*default-pathname-defaults*} and @var{default-version} defaults
 to @code{newest}.
 
 The pathnames are combined by components: if @var{pathname} has a
@@ -11497,28 +11776,28 @@ path2
 @end example
 
 The merging rules for the version are more complex and depend on whether
-@var{pathname} specifies a name.
-If the pathname does not specify a name, then the version, if not
-provided, will come from the defaults.
-However, if the pathname does specify a name then the version is not
-affected by the defaults.
-The reason is that the version ``belongs to'' some other file name and
-is unlikely to have anything to do with the new one.
-Finally, if this process leaves the version missing, then
+@var{pathname} specifies a name.  If @var{pathname} does not specify a
+name, then the version, if not provided, will come from @var{defaults}.
+However, if @var{pathname} does specify a name then the version is not
+affected by @var{defaults}.  The reason is that the version ``belongs
+to'' some other file name and is unlikely to have anything to do with
+the new one.  Finally, if this process leaves the version missing, then
 @var{default-version} is used.
 
 The net effect is that if the user supplies just a name, then the host,
-device, directory and type will come from the defaults, but the version
-will come from the default version argument to the merging operation.
-If the user supplies nothing, or just a directory, the name, type and
-version will come over from the defaults together.
+device, directory and type will come from @var{defaults}, but the
+version will come from @var{default-version}.  If the user supplies
+nothing, or just a directory, the name, type and version will come over
+from @var{defaults} together.
 @end deffn
 
 @deffn {variable+} *default-pathname-defaults*
 @cindex defaulting, of pathname
 This is the default pathname-defaults pathname; if any pathname
 primitive that needs a set of defaults is not given one, it uses this
-one.
+one.  @code{set-working-directory-pathname!} sets this variable to a new
+value, computed by merging the new working directory with the variable's
+old value.
 @end deffn
 
 @deffn {procedure+} pathname-default pathname device directory name type version
@@ -11545,12 +11824,12 @@ simultaneously.  It could have been defined by:
 @deffnx {procedure+} enough-namestring pathname [defaults]
 @cindex conversion, pathname to string
 These functions return a string corresponding to a subset of the
-@var{pathname} information.
-@code{file-namestring} returns a string representing just the
-@var{name}, @var{type} and @var{version} components of @var{pathname};
-the result of @code{directory-namestring} represents just the
-@var{directory} portion; and @code{host-namestring} returns a string for
-just the @var{host} portion.
+@var{pathname} information.  @code{file-namestring} returns a string
+representing just the @var{name}, @var{type} and @var{version}
+components of @var{pathname}; the result of @code{directory-namestring}
+represents just the @var{host}, @var{device}, and @var{directory}
+components; and @code{host-namestring} returns a string for just the
+@var{host} portion.
 
 @code{enough-namestring} takes another argument, @var{defaults}.
 It returns an abbreviated namestring that is just sufficient to identify
@@ -11610,9 +11889,10 @@ This is the inverse operation to @code{pathname-as-directory}.
 Returns a pathname that is equivalent to @var{pathname}, but in which
 any file components have been converted to a directory component.  If
 @var{pathname} does not have name, type, or version components, it is
-returned.  Otherwise, these file components are converted into a string,
-and the string is added to the end of the list of directory components.
-This is the inverse operation to @code{directory-pathname-as-file}.
+returned without modification.  Otherwise, these file components are
+converted into a string, and the string is added to the end of the list
+of directory components.  This is the inverse operation to
+@code{directory-pathname-as-file}.
 
 @example
 @group
@@ -11643,7 +11923,7 @@ pathname host; otherwise returns @code{#f}.
 @deffn {procedure+} init-file-pathname #!optional host
 @cindex home directory, as pathname
 Returns a pathname for the user's initialization file on @var{host}.
-The @var{host} arguments defaults to @code{local-host}.
+The @var{host} argument defaults to @code{local-host}.
 If the initialization file does not exist this function returns @code{#f}.
 @end deffn
 
@@ -11654,8 +11934,8 @@ host's file system.
 
 @deffn {procedure+} system-library-pathname pathname
 @cindex library, system pathname
-Locates the pathname in MIT Scheme's system library directory.
-An error is signalled if @var{pathname} cannot be located on the library
+Locates @var{pathname} in MIT Scheme's system library directory.  An
+error is signalled if @var{pathname} cannot be located on the library
 search path.
 
 @example
@@ -11668,19 +11948,19 @@ search path.
 
 @deffn {procedure+} system-library-directory-pathname pathname
 @cindex library, system pathname
-Locates the pathname of a MIT Scheme system library directory.
+Locates the pathname of a MIT Scheme system library directory, for
+example, "options".
 @end deffn
 
 @deffn {procedure+} user-homedir-pathname [host]
 @cindex home directory, as pathname
-Returns a pathname for the user's ``home directory'' on @var{host}.
-The @var{host} arguments defaults to @code{local-host}.
-The concept of a ``home directory'' is itself somewhat
-implementation-dependent, but it should be the place where the user
-keeps personal files, such as initialization files and mail.
-For example, on unix this is the user's unix home directory, whereas
-on MS-DOS the home directory is determined from the HOME, USER and
-USERDIR environment variables.
+Returns a pathname for the user's ``home directory'' on @var{host}.  The
+@var{host} argument defaults to @code{local-host}.  The concept of a
+``home directory'' is itself somewhat implementation-dependent, but it
+should be the place where the user keeps personal files, such as
+initialization files and mail.  For example, on unix this is the user's
+unix home directory, whereas on MS-DOS the home directory is determined
+from the HOME, USER and USERDIR environment variables.
 @end deffn
 
 
@@ -11699,7 +11979,9 @@ directory} (or simply, @dfn{working directory}) is initialized in an
 operating-system dependent manner; usually, it is the directory in which
 Scheme was invoked.  The working directory can be determined from within
 Scheme by calling the @code{pwd} procedure, and changed by calling the
-@code{cd} procedure.
+@code{cd} procedure.  Each @sc{rep} loop has its own working directory,
+and inferior @sc{rep} loops initialize their working directory from the
+value in effect in their superior at the time they are created.
 
 @deffn {procedure+} working-directory-pathname
 @deffnx {procedure+} pwd
@@ -11719,6 +12001,14 @@ current working directory as a pathname.  @var{Filename} is coerced
 using @code{->pathname} and @code{pathname-as-directory}.  @code{cd} is
 an alias for @code{set-working-directory-pathname!}.  The long name is
 intended for programs and the short name for interactive use.
+
+Additionally, @code{set-working-directory-pathname!} modifies the value
+of @code{*default-pathname-defaults*} by merging the new working
+directory into it.
+
+In the unix implementation, when this procedure is executed in the
+top-level @sc{rep} loop, it changes the working directory of the running
+Scheme executable.
 
 @example
 @group
@@ -11797,13 +12087,15 @@ file system.
 @end deffn
 
 @deffn {procedure+} file-modification-time filename
+@deffnx {procedure+} file-modification-time-direct filename
 @cindex modification time, of file
 Returns the modification time of @var{filename} as an exact integer.
 The result may be compared to other modification times using ordinary
 integer arithmetic.  If @var{filename} names a file that does not exist,
-returns @code{#f}.  If @var{filename} names a symbolic link, this
-returns the modification time of the file linked to, not the link
-itself.
+returns @code{#f}.  If @var{filename} names a symbolic link,
+@code{file-modification-time-direct} returns the modification time of
+the link, while @code{file-modification-time} returns the modification
+time of the file linked to.
 @end deffn
 
 @deffn {procedure+} file-directory? filename
@@ -11986,14 +12278,14 @@ condition arose.
 @end table
 
 @menu
-* Simple Errors::               Simple Errors
-* Error Handler::               Error Handler
-* Error Messages::              Error Messages
-* Condition Types::             Condition Types
-* Condition Instances::         Condition Instances
-* Condition Signalling::        Condition Signalling
-* Condition Handling::          Condition Handling
-* Predefined Errors::           Predefined Errors
+* Simple Errors::               
+* Error Handler::               
+* Error Messages::              
+* Condition Types::             
+* Condition Instances::         
+* Condition Signalling::        
+* Condition Handling::          
+* Predefined Errors::           
 @end menu
 
 @node Simple Errors, Error Handler,  , Error System
@@ -12553,17 +12845,17 @@ that perform buffering).  Additionally, devices may support custom
 operations, such as control of colors.
 
 @menu
-* Opening and Closing of Graphics Devices::  Opening and Closing of Graphics Devices
-* Coordinates for Graphics::    Coordinates for Graphics
-* Drawing Graphics::            Drawing Graphics
-* Characteristics of Graphics Output::  Characteristics of Graphics Output
-* Buffering of Graphics Output::  Buffering of Graphics Output
-* Clipping of Graphics Output::  Clipping of Graphics Output
-* Images::                      Images
-* Custom Graphics Operations::  Custom Graphics Operations
+* Opening and Closing of Graphics Devices::  
+* Coordinates for Graphics::    
+* Drawing Graphics::            
+* Characteristics of Graphics Output::  
+* Buffering of Graphics Output::  
+* Clipping of Graphics Output::  
+* Images::                      
+* Custom Graphics Operations::  
 * Win32 Graphics::              Graphics on Microsoft Windows and Windows NT
-* X Graphics::                  X Graphics
-* Starbase Graphics::           Starbase Graphics
+* X Graphics::                  
+* Starbase Graphics::           
 * Pictures::                    Pictures (MIT 6.001 implementation only)
 @end menu
 
@@ -13050,7 +13342,7 @@ the click of a mouse button.
 
 
 @menu
-* Win32 Graphics Type::         Win32 Graphics Type
+* Win32 Graphics Type::         
 * Custom Operations for Win32 Graphics::  Custom Operations for Win32 Graphics Devices
 @end menu
 
@@ -13275,9 +13567,9 @@ available to manipulate various aspects of the windows, to control their
 size, position, colors, and mapping.
 
 @menu
-* X Graphics Type::             X Graphics Type
-* Utilities for X Graphics::    Utilities for X Graphics
-* Custom Operations on X Graphics Devices::  Custom Operations on X Graphics Devices
+* X Graphics Type::             
+* Utilities for X Graphics::    
+* Custom Operations on X Graphics Devices::  
 @end menu
 
 @node X Graphics Type, Utilities for X Graphics,  , X Graphics
@@ -13660,10 +13952,10 @@ Coordinates (@var{i},@var{j}) are @dfn{valid coordinates} of picture
 @end example
 
 @menu
-* Construction of Pictures::    Construction of Pictures
-* Manipulating Pictures::       Manipulating Pictures
-* Displaying Pictures::         Displaying Pictures
-* Saving and Restoring Pictures::  Saving and Restoring Pictures
+* Construction of Pictures::    
+* Manipulating Pictures::       
+* Displaying Pictures::         
+* Saving and Restoring Pictures::  
 @end menu
 
 @node Construction of Pictures, Manipulating Pictures,  , Pictures
