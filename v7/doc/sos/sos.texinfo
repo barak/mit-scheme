@@ -6,12 +6,12 @@
 @setchapternewpage odd
 @synindex vr fn
 
-@c $Id: sos.texinfo,v 2.3 1998/02/21 20:24:53 cph Exp $
+@c $Id: sos.texinfo,v 2.4 1998/03/19 20:28:57 cph Exp $
 
 @set TITLE The SOS Reference Manual
-@set EDITION 2.3
-@set UPDATED 21 February 1998
-@set UPDATE-MONTH February 1998
+@set EDITION 2.4
+@set UPDATED 19 March 1998
+@set UPDATE-MONTH March 1998
 
 @ifinfo
 Copyright @copyright{} 1993-98 Massachusetts Institute of Technology
@@ -20,10 +20,10 @@ This is Edition @value{EDITION}, last updated @value{UPDATED}, of
 @cite{@value{TITLE}}.
 
 This material was developed by the Scheme project at the Massachusetts
-Institute of Technology, Department of Electrical Engineering and Computer
-Science.  Permission to copy this document, to redistribute it, and to use
-it for any purpose is granted, subject to the following restrictions and
-understandings.
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this document, to redistribute it,
+and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
 
 @enumerate
 @item
@@ -66,10 +66,10 @@ literature without prior written consent from MIT in each case.
 Copyright @copyright{} 1993-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
-Institute of Technology, Department of Electrical Engineering and Computer
-Science.  Permission to copy this document, to redistribute it, and to use
-it for any purpose is granted, subject to the following restrictions and
-understandings.
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this document, to redistribute it,
+and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
 
 @enumerate
 @item
@@ -405,12 +405,12 @@ symbols by itself, which is equivalent to the list containing that
 symbol.  Also, the argument may be the symbol @code{standard}, which is
 equivalent to @code{(accessor modifier)}.
 
-The argument to @code{define} specifies which accessors will be defined
-by this form.  The accessors are defined using default names, unless the
-names are overridden by the corresponding slot property.  The default
-names for a class @code{<foo>} and a slot @code{bar} are @code{foo-bar},
-@code{set-foo-bar!}, and @code{foo-bar-initialized?}, respectively for
-the accessor, modifier, and initpred.  For example,
+The argument to @code{define} specifies the accessors that will be
+defined by this form.  The accessors are defined using default names,
+unless the names are overridden by the corresponding slot property.  The
+default names for a class @code{<foo>} and a slot @code{bar} are
+@code{foo-bar}, @code{set-foo-bar!}, and @code{foo-bar-initialized?},
+respectively for the accessor, modifier, and initpred.  For example,
 
 @lisp
 @group
@@ -452,6 +452,8 @@ following class options are recognized:
 
 @table @code
 @item (predicate @var{[name]})
+@findex predicate
+@cindex predicate, class option
 Specifies that a predicate procedure should be defined for this class.
 @var{Name} must be either a symbol or @code{#f}: a symbol specifies the
 name that will be bound to the predicate procedure, and @code{#f}
@@ -463,6 +465,8 @@ first.  For example, the default predicate name for the class
 @code{<foo>} is @code{foo?}.
 
 @item (constructor @var{[name]} @var{slot-names} @var{[n-init-args]})
+@findex constructor
+@cindex constructor, class option
 Specifies that a constructor procedure should be defined for this class.
 @var{Name} must be a symbol, which is the name that will be bound to the
 constructor procedure; if omitted, a default name is formed by
@@ -474,6 +478,19 @@ the default constructor name for the class @code{<foo>} is
 @var{Slot-names} and @var{n-init-args} correspond to the arguments of
 the respective names accepted by @code{instance-constructor}, and can
 take any of the allowed forms for those arguments.
+
+@item (separator @var{string})
+@findex separator
+@cindex separator, class option
+Specifies how names for slot accessors are constructed.  If this option
+isn't given, the name of a slot accessor is formed by concatenating the
+name of the class with the name of the slot, with a hyphen between them.
+When this option is given, @var{string} is used instead of the hyphen.
+For example, normally a slot accessor for the slot @code{bar} in the
+class @code{foo} is called @code{foo-bar}.  A class option
+@code{(separator ".")} will cause the slot accessor to be called
+@code{foo.bar}, the modifier to be called @code{set-foo.bar!}, and the
+initialization predicate to be called @code{foo.bar?}.
 @end table
 
 Examples of @code{define-class} (compare these to the similar examples
