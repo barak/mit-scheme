@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.27 1987/12/04 22:18:23 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.28 1988/05/10 17:34:41 cph Exp $ */
 
 /* This file contains definitions pertaining to the C view of 
    Scheme pointers: widths of fields, extraction macros, pre-computed
@@ -55,8 +55,8 @@ MIT in each case. */
 #define FIXNUM_LENGTH		(ADDRESS_LENGTH - 1)
 #define FIXNUM_SIGN_BIT		(1 << FIXNUM_LENGTH)
 #define SIGN_MASK		(TYPE_CODE_MASK | FIXNUM_SIGN_BIT)
-#define SMALLEST_FIXNUM		(-1 << FIXNUM_LENGTH)
-#define BIGGEST_FIXNUM		(~(-1 << FIXNUM_LENGTH))
+#define SMALLEST_FIXNUM		((long) (-1 << FIXNUM_LENGTH))
+#define BIGGEST_FIXNUM		((long) (~(-1 << FIXNUM_LENGTH)))
 
 #define HALF_ADDRESS_LENGTH	(ADDRESS_LENGTH / 2)
 #define HALF_ADDRESS_MASK	((1 << HALF_ADDRESS_LENGTH) - 1)
@@ -69,8 +69,8 @@ MIT in each case. */
 #define FIXNUM_LENGTH		23
 #define FIXNUM_SIGN_BIT		0x00800000
 #define SIGN_MASK		0xFF800000
-#define SMALLEST_FIXNUM		0xFF800000
-#define BIGGEST_FIXNUM		0x007FFFFF
+#define SMALLEST_FIXNUM		((long) 0xFF800000)
+#define BIGGEST_FIXNUM		((long) 0x007FFFFF)
 
 #define HALF_ADDRESS_LENGTH	12
 #define HALF_ADDRESS_MASK	0x00000FFF
