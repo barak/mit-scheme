@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.10 1994/03/02 16:48:59 gjr Exp $
+$Id: string.scm,v 14.11 1994/03/02 16:51:02 gjr Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -203,13 +203,13 @@ MIT in each case. |#
   (substring->list string 0 (string-length string)))
 
 (define (substring->list string start end)
-  (let loop ((index start)
-	     (accum '()))
-    (if (fix:< index end)
-	(loop (fix:+ index 1)
+  (let loop ((index (fix:- end 1))
+	     (result '()))
+    (if (fix:< index start)
+	result
+	(loop (fix:- index 1)
 	      (cons (string-ref string index)
-		    accum))
-	(reverse! accum))))
+		    result)))))
 
 (define (string-copy string)
   (let ((size (string-length string)))
