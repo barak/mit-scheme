@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.52 1992/02/05 01:48:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.53 1992/02/10 13:03:06 jinx Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -290,7 +290,7 @@ CFLAGS = -DMIT_SCHEME C_OPTIMIZE_SWITCH C_DEBUG_SWITCH C_SWITCH_MACHINE C_SWITCH
 .c.cpp: ; @ECHO "#** Generating" $@
 	make -f xmakefile Breakup
 	$(CC) $(CFLAGS) -E $*.c | \
-	./Breakup | \
+	RUN(Breakup) | \
 	sed -e 's/^#.*//' -e 's/^[ 	]*$$//' -e 's/^$$//' | \
 	sed -n -e '/^..*/p' > $*.cpp
 
@@ -520,13 +520,13 @@ Findprim : Findprim.o
 	@ECHO "#** Re-linking" $@ because of $?
 	$(CC) $(LDFLAGS) -o $@ Findprim.o
 
-Bintopsb : Bintopsb.o
+Bintopsb : Bintopsb.o missing.o
 	@ECHO "#** Re-linking" $@ because of $?
-	$(CC) $(LDFLAGS) -o $@ Bintopsb.o
+	$(CC) $(LDFLAGS) -o $@ Bintopsb.o missing.o
 
-Psbtobin : Psbtobin.o
+Psbtobin : Psbtobin.o missing.o
 	@ECHO "#** Re-linking" $@ because of $?
-	$(CC) $(LDFLAGS) -o $@ Psbtobin.o
+	$(CC) $(LDFLAGS) -o $@ Psbtobin.o missing.o
 
 Breakup : Breakup.o
 	@ECHO "#** Re-linking" $@ because of $?
@@ -553,7 +553,7 @@ install: scheme bchscheme
 /* The first two are for VMS. */
 
 usrdef.txt :
-	./make_vmslist usrdef.txt $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES)
+	RUN(make_vmslist) usrdef.txt $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES)
 
 vmsusrdef.c :
 	echo "$$ Findprim -o usrdef.c -l [-.vms]usrdef.txt"
