@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: closconv.scm,v 1.7 1995/07/04 18:18:16 adams Exp $
+$Id: closconv.scm,v 1.8 1995/07/04 19:20:29 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -285,30 +285,28 @@ MIT in each case. |#
 			 closconv/closure/make-set!/pre-cps
 			 closconv/closure/new-name/pre-cps))))
 
-(define-structure (closconv/env
-		   (conc-name closconv/env/)
-		   (constructor closconv/env/%make (context parent)))
-  (context false read-only true)	; Dynamic or static
-  (parent false read-only true)
-  (children '() read-only false)
-  (bound '() read-only false)		; list of closconv/binding structures
+(define-structure
+    (closconv/env
+     (conc-name closconv/env/)
+     (constructor closconv/env/%make (context parent)))
+  (context  false read-only true)	; Dynamic or static
+  (parent   false read-only true)
+  (children '())
+  (bound    '())			; list of closconv/binding structures
 
   ;; a list of (closconv/binding reference reference ...)
-  (free '() read-only false)
-  ;; like FREE, but in debugging info.  Held separately as not to affect
-  ;; the algorithm.
-  (dbg-free '())
+  (free '())
 
-  (form false read-only false)
+  (form false)
 
-  ;; should be considered for having its form closed (i.e. converted to a
-  ;; %make-xxx-closure)
+  ;; CLOSE?: Should be considered for having its form closed
+  ;; (i.e. converted to a %make-xxx-closure)
   (close? false read-only false)
 
-  ;;  slots required in closure object: either #F, #T (closed, but no
-  ;;  slots), or a list of (closconv/binding reference) elements from
-  ;;  free
-  (closed-over false read-only false)
+  ;; CLOSED-OVER: slots required in closure object: either #F, #T (closed,
+  ;; but no slots), or a list of (closconv/binding reference) elements
+  ;; from free.
+  (closed-over false)
 
   (binding false read-only false))      ; known self-reference binding
 
@@ -367,25 +365,6 @@ MIT in each case. |#
 		   (set-closconv/env/free! env (cons (list binding ref) free))
 		   (set-cdr! place (cons ref (cdr place))))
 	       binding))))
-    ref))
-
-(define (closconv/lookup*/dbg env name)
-  (let ((ref `(LOOKUP ,name)))
-    (let walk-spine ((env env))
-      (cond ((not env) #F)
-	    ((closconv/binding/find (closconv/env/bound env) name)
-	     => (lambda (binding) binding))
-	    (else
-	     (let ((binding (walk-spine (closconv/env/parent env))))
-	       (if binding
-		   (let* ((free    (closconv/env/dbg-free env))
-			  (place   (assq binding free)))
-		     (if (not place)
-			 (set-closconv/env/dbg-free!
-			  env
-			  (cons (list binding ref) free))
-			 (set-cdr! place (cons ref (cdr place)))))
-		   binding)))))
     ref))
 
 (define (closconv/binding/find bindings name)
