@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.73 2000/05/19 04:16:16 cph Exp $
+;;; $Id: imail-core.scm,v 1.74 2000/05/19 16:32:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -491,7 +491,7 @@
       (error:wrong-type-argument object "message flag" procedure)))
 
 (define standard-message-flags
-  '("answered" "deleted" "edited" "filed" "forwarded" "resent" "seen"))
+  '("answered" "deleted" "filed" "forwarded" "resent" "seen"))
 
 (define (message-flags->header-field flags)
   (make-header-field message-flags:name
@@ -543,11 +543,6 @@
 (define (message-not-forwarded? msg) (not (message-flagged? msg "forwarded")))
 (define (message-forwarded msg) (set-message-flag msg "forwarded"))
 (define (message-not-forwarded msg) (clear-message-flag msg "forwarded"))
-
-(define (message-edited? msg) (message-flagged? msg "edited"))
-(define (message-unedited? msg) (not (message-flagged? msg "edited")))
-(define (message-edited msg) (set-message-flag msg "edited"))
-(define (message-not-edited msg) (clear-message-flag msg "edited"))
 
 (define (message-resent? msg) (message-flagged? msg "resent"))
 (define (message-not-resent? msg) (not (message-flagged? msg "resent")))

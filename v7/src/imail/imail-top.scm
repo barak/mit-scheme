@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.67 2000/05/19 05:03:44 cph Exp $
+;;; $Id: imail-top.scm,v 1.68 2000/05/19 16:32:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -232,7 +232,7 @@ DEL	Scroll to previous screen of this message.
 \\[imail-next-flagged-message]	Move to next message with specified flag
           (flag defaults to last one specified).
           Standard flags:
-	    answered, deleted, edited, filed, forwarded, resent, seen.
+	    answered, deleted, filed, forwarded, resent, seen.
           Any other flag is present only if you add it with `\\[imail-add-flag]'.
 \\[imail-previous-flagged-message]   Move to previous message with specified flag.
 
