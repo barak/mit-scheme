@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: savres.scm,v 14.44 2003/03/21 17:51:14 cph Exp $
+$Id: savres.scm,v 14.45 2004/10/01 04:32:36 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1995 Massachusetts Institute of Technology
 Copyright 1998,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -92,15 +93,16 @@ USA.
 		 (let ((fixed-objects (get-fixed-objects-vector)))
 		   ((ucode-primitive call-with-current-continuation)
 		    (lambda (restart)
-		      (without-interrupts
-		       (lambda ()
-			 (gc-flip)
-			 (do ()
-			     (((ucode-primitive dump-band) restart filename))
-			   (with-simple-restart 'RETRY "Try again."
-			     (lambda ()
-			       (error "Disk save failed:" filename))))
-			 (continuation after-suspend)))))
+		      (with-interrupt-mask interrupt-mask/gc-ok
+			(lambda (interrupt-mask)
+			  interrupt-mask
+			  (gc-flip)
+			  (do ()
+			      (((ucode-primitive dump-band) restart filename))
+			    (with-simple-restart 'RETRY "Try again."
+			      (lambda ()
+				(error "Disk save failed:" filename))))
+			  (continuation after-suspend)))))
 		   ((ucode-primitive set-fixed-objects-vector!)
 		    fixed-objects))))
 	   (re-read-microcode-tables!)
