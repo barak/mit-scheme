@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.16 1990/07/20 01:12:03 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.17 1990/09/11 21:58:52 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -196,7 +196,7 @@ MIT in each case. |#
    (->environment to)
    (->environment from)
    name))
-
+
 (define-integrable (object-non-pointer? object)
   (zero? (object-gc-type object)))
 
@@ -218,7 +218,7 @@ MIT in each case. |#
 	(error "FASDUMP: Object is too large to be dumped" object))
     (write-string " -- done" port))
   object)
-
+
 (define (undefined-value? object)
   ;; Note: the unparser takes advantage of the fact that objects
   ;; satisfying this predicate also satisfy:
@@ -234,8 +234,6 @@ MIT in each case. |#
 
 (define unspecific
   (object-new-type (ucode-type true) 1))
-
-;;;; Obarray->list
 
 (define (obarray->list #!optional obarray)
   (let ((table (if (default-object? obarray)
@@ -252,3 +250,19 @@ MIT in each case. |#
 		(per-symbol
 		 (cdr bucket)
 		 (cons (car bucket) accumulator))))))))
+
+(define (error:illegal-datum object #!optional operator-name)
+  (if (default-object? operator-name)
+      (error error-type:wrong-type-argument object)
+      (error error-type:wrong-type-argument object
+	     (error-irritant/noise char:newline)
+	     (error-irritant/noise "within procedure")
+	     operator-name)))
+
+(define (error:datum-out-of-range object #!optional operator-name)
+  (if (default-object? operator-name)
+      (error error-type:bad-range-argument object)
+      (error error-type:bad-range-argument object
+	     (error-irritant/noise char:newline)
+	     (error-irritant/noise "within procedure")
+	     operator-name)))
