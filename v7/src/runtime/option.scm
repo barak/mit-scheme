@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.22 1993/09/01 03:22:19 ziggy Exp $
+$Id: option.scm,v 14.23 1993/09/01 05:32:30 ziggy Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -48,10 +48,14 @@ MIT in each case. |#
 	     (let ((environment
 		    (package/environment (find-package (car descriptor)))))
 	       (for-each (lambda (filename)
-			   (load (merge-pathnames filename directory)
-				 environment
-				 syntax-table/system-internal
-				 true))
+			   (let ((path (merge-pathnames filename directory)))
+			     (with-working-directory-pathname
+			      (directory-pathname path)
+			      (lambda ()
+				(load path
+				      environment
+				      syntax-table/system-internal
+				      true)))))
 			 (cddr descriptor))
 	       (eval (cadr descriptor) environment)))
 	   (cdr entry))
@@ -76,15 +80,7 @@ MIT in each case. |#
     (HASH-TABLE ((RUNTIME HASH-TABLE) (INITIALIZE-PACKAGE!) "hashtb"))
     (KRYPT ((RUNTIME KRYPT) #F "krypt"))
     (SUBPROCESS ((RUNTIME SUBPROCESS) (INITIALIZE-PACKAGE!) "process"))
-    (PC-SAMPLE ((PC-SAMPLE INTERRUPT-HANDLER) (INITIALIZE-PACKAGE!) "pcsboot" 
-					                            "pcsintrp")
-	       ((PC-SAMPLE)                   (INITIALIZE-PACKAGE!) "pcsample" 
-					                            "binutl")
-	       ((PC-SAMPLE INTERP-PROCS)      (INITIALIZE-PACKAGE!) "pcsiproc")
-	       ((PC-SAMPLE  CODE-BLOCKS)      (INITIALIZE-PACKAGE!) "pcscobl")
-	       ((PC-SAMPLE DISPLAY)           (INITIALIZE-PACKAGE!) "pcsdisp")
-	       )
-    ))
+    (PC-SAMPLE (() #F "../pcsample/make"))))
 
 (define loaded-options
   '())
