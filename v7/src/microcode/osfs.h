@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: osfs.h,v 1.9 2000/12/05 21:23:47 cph Exp $
+$Id: osfs.h,v 1.10 2001/05/09 03:15:05 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 #ifndef SCM_OSFS_H
@@ -26,9 +27,26 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 enum file_existence { file_does_exist, file_doesnt_exist, file_is_link };
 
+enum file_type
+{
+  file_type_nonexistent = (-1),
+  file_type_regular = 0,
+  file_type_directory,
+  file_type_unix_symbolic_link,
+  file_type_unix_character_device,
+  file_type_unix_block_device,
+  file_type_unix_fifo,
+  file_type_unix_stream_socket,
+  file_type_os2_named_pipe,
+  file_type_win32_named_pipe,
+  file_type_unknown = 0xFFFF
+};
+
 extern enum file_existence EXFUN (OS_file_existence_test, (CONST char * name));
 extern enum file_existence EXFUN
   (OS_file_existence_test_direct, (CONST char * name));
+extern enum file_type EXFUN (OS_file_type_direct, (CONST char *));
+extern enum file_type EXFUN (OS_file_type_indirect, (CONST char *));
 extern int EXFUN (OS_file_access, (CONST char * name, unsigned int mode));
 extern int EXFUN (OS_file_directory_p, (CONST char * name));
 extern CONST char * EXFUN (OS_file_soft_link_p, (CONST char * name));

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prosfs.c,v 1.15 2000/12/05 21:23:47 cph Exp $
+$Id: prosfs.c,v 1.16 2001/05/09 03:15:11 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* Primitives to perform file-system operations. */
@@ -76,6 +77,34 @@ Signal an error if the file's existence is indeterminate.")
        : (result == file_does_exist)
        ? SHARP_T
        : FIXNUM_ZERO);
+  }
+}
+
+DEFINE_PRIMITIVE ("FILE-TYPE-DIRECT", Prim_file_type_direct, 1, 1,
+  "Return type of FILE, as an exact non-negative integer.\n\
+Don't indirect through symbolic links.")
+{
+  PRIMITIVE_HEADER (1);
+  {
+    enum file_type t = (OS_file_type_direct (STRING_ARG (1)));
+    PRIMITIVE_RETURN
+      ((t == file_type_nonexistent)
+       ? SHARP_F
+       : (ulong_to_integer ((unsigned long) t)));
+  }
+}
+
+DEFINE_PRIMITIVE ("FILE-TYPE-INDIRECT", Prim_file_type_indirect, 1, 1,
+  "Return type of FILE, as an exact non-negative integer.\n\
+Indirect through symbolic links.")
+{
+  PRIMITIVE_HEADER (1);
+  {
+    enum file_type t = (OS_file_type_indirect (STRING_ARG (1)));
+    PRIMITIVE_RETURN
+      ((t == file_type_nonexistent)
+       ? SHARP_F
+       : (ulong_to_integer ((unsigned long) t)));
   }
 }
 

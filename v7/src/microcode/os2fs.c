@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2fs.c,v 1.12 2000/12/05 21:23:46 cph Exp $
+$Id: os2fs.c,v 1.13 2001/05/09 03:15:02 cph Exp $
 
-Copyright (c) 1994-2000 Massachusetts Institute of Technology
+Copyright (c) 1994-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 #include "os2.h"
@@ -104,6 +105,24 @@ enum file_existence
 OS_file_existence_test_direct (const char * filename)
 {
   return (OS_file_existence_test (filename));
+}
+
+enum file_type
+OS_file_type_direct (const char * filename)
+{
+  FILESTATUS3 * info = (OS2_read_file_status (STRING_ARG (1)));
+  return
+    ((info == 0)
+     ? file_type_nonexistent
+     : (((info -> attrFile) & FILE_DIRECTORY) == 0)
+     ? file_type_regular
+     : file_type_directory);
+}
+
+enum file_type
+OS_file_type_indirect (const char * filename)
+{
+  return (OS_file_type_direct (filename));
 }
 
 #define R_OK 4

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntfs.h,v 1.4 1999/01/02 06:11:34 cph Exp $
+$Id: ntfs.h,v 1.5 2001/05/09 03:14:59 cph Exp $
 
-Copyright (c) 1997-1999 Massachusetts Institute of Technology
+Copyright (c) 1997-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 #include "nt.h"
@@ -25,7 +26,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 enum get_file_info_result { gfi_ok, gfi_not_found, gfi_not_accessible };
 
 extern enum get_file_info_result NT_get_file_info
-  (const char *, BY_HANDLE_FILE_INFORMATION *);
+  (const char *, BY_HANDLE_FILE_INFORMATION *, int);
 
 #define STAT_NOT_FOUND_P(code)						\
   (((code) == ERROR_FILE_NOT_FOUND)					\

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxfs.c,v 1.20 2000/12/05 21:23:49 cph Exp $
+$Id: uxfs.c,v 1.21 2001/05/09 03:15:14 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 #include "ux.h"
@@ -170,6 +171,59 @@ DEFUN (OS_file_existence_test_direct, (name), CONST char * name)
 #endif
   return (file_does_exist);
 }
+
+#ifndef S_ISREG
+#  define S_ISREG(mode) (((mode) & S_IFREG) != 0)
+#endif
+#ifndef S_ISDIR
+#  define S_ISDIR(mode) (((mode) & S_IFDIR) != 0)
+#endif
+#ifndef S_ISLNK
+#  define S_ISLNK(mode) (((mode) & S_IFLNK) != 0)
+#endif
+#ifndef S_ISCHR
+#  define S_ISCHR(mode) (((mode) & S_IFCHR) != 0)
+#endif
+#ifndef S_ISBLK
+#  define S_ISBLK(mode) (((mode) & S_IFBLK) != 0)
+#endif
+#ifndef S_ISFIFO
+#  define S_ISFIFO(mode) (((mode) & S_IFIFO) != 0)
+#endif
+#ifndef S_ISSOCK
+#  define S_ISSOCK(mode) (((mode) & S_IFSOCK) != 0)
+#endif
+
+#define COMPUTE_FILE_TYPE(proc, name)					\
+{									\
+  struct stat s;							\
+  if (!proc ((name), (&s)))						\
+    return (file_type_nonexistent);					\
+  else if (S_ISREG (s . st_mode))					\
+    return (file_type_regular);						\
+  else if (S_ISDIR (s . st_mode))					\
+    return (file_type_directory);					\
+  else if (S_ISLNK (s . st_mode))					\
+    return (file_type_unix_symbolic_link);				\
+  else if (S_ISCHR (s . st_mode))					\
+    return (file_type_unix_character_device);				\
+  else if (S_ISBLK (s . st_mode))					\
+    return (file_type_unix_block_device);				\
+  else if (S_ISFIFO (s . st_mode))					\
+    return (file_type_unix_fifo);					\
+  else if (S_ISSOCK (s . st_mode))					\
+    return (file_type_unix_stream_socket);				\
+  else									\
+    return (file_type_unknown);						\
+}
+
+enum file_type
+DEFUN (OS_file_type_direct, (name), CONST char * name)
+COMPUTE_FILE_TYPE (UX_read_file_status, name)
+
+enum file_type
+DEFUN (OS_file_type_indirect, (name), CONST char * name)
+COMPUTE_FILE_TYPE (UX_read_file_status_indirect, name)
 
 CONST char *
 DEFUN (UX_file_system_type, (name), CONST char * name)

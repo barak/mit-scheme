@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.26 2000/12/05 21:23:45 cph Exp $
+$Id: ntfs.c,v 1.27 2001/05/09 03:14:54 cph Exp $
 
-Copyright (c) 1992-2000 Massachusetts Institute of Technology
+Copyright (c) 1992-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 #include "nt.h"
@@ -29,12 +30,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #endif
 
 static enum get_file_info_result get_file_info_from_dir
-  (const char *, BY_HANDLE_FILE_INFORMATION *);
+  (const char *, BY_HANDLE_FILE_INFORMATION *, int);
 static int valid_drive_p (const char *);
 static HANDLE create_file_for_info (const char *);
 
 enum get_file_info_result
-NT_get_file_info (const char * namestring, BY_HANDLE_FILE_INFORMATION * info)
+NT_get_file_info (const char * namestring, BY_HANDLE_FILE_INFORMATION * info,
+		  int inaccessible_ok)
 {
   char nscopy [MAX_PATH];
   HANDLE hfile;
@@ -52,7 +54,7 @@ NT_get_file_info (const char * namestring, BY_HANDLE_FILE_INFORMATION * info)
       if (STAT_NOT_FOUND_P (code))
 	return (gfi_not_found);
       if (STAT_NOT_ACCESSIBLE_P (code))
-	return (get_file_info_from_dir (nscopy, info));
+	return (get_file_info_from_dir (nscopy, info, inaccessible_ok));
       NT_error_api_call (code, apicall_CreateFile);
     }
   if (!GetFileInformationByHandle (hfile, info))
@@ -61,7 +63,7 @@ NT_get_file_info (const char * namestring, BY_HANDLE_FILE_INFORMATION * info)
       (void) CloseHandle (hfile);
       if (STAT_NOT_FOUND_P (code))
 	return (gfi_not_found);
-      if (STAT_NOT_ACCESSIBLE_P (code))
+      if (inaccessible_ok && (STAT_NOT_ACCESSIBLE_P (code)))
 	return (gfi_not_accessible);
       NT_error_api_call (code, apicall_GetFileInformationByHandle);
     }
@@ -74,7 +76,8 @@ NT_get_file_info (const char * namestring, BY_HANDLE_FILE_INFORMATION * info)
    is available by reading the directory.  More M$ bullshit.  */
 static enum get_file_info_result
 get_file_info_from_dir (const char * namestring,
-			BY_HANDLE_FILE_INFORMATION * info)
+			BY_HANDLE_FILE_INFORMATION * info,
+			int inaccessible_ok)
 {
   WIN32_FIND_DATA fi;
   HANDLE handle = (FindFirstFile (namestring, (&fi)));
@@ -109,7 +112,7 @@ get_file_info_from_dir (const char * namestring,
 	  else
 	    return (gfi_not_found);
 	}
-      if (STAT_NOT_ACCESSIBLE_P (code))
+      if (inaccessible_ok && (STAT_NOT_ACCESSIBLE_P (code)))
 	return (gfi_not_accessible);
       NT_error_api_call (code, apicall_FindFirstFile);
     }
@@ -160,7 +163,7 @@ OS_file_existence_test (const char * name)
 {
   BY_HANDLE_FILE_INFORMATION info;
   return
-    (((NT_get_file_info (name, (&info))) == gfi_ok)
+    (((NT_get_file_info (name, (&info), 1)) == gfi_ok)
      ? file_does_exist
      : file_doesnt_exist);
 }
@@ -171,6 +174,24 @@ OS_file_existence_test_direct (const char * name)
   return (OS_file_existence_test (name));
 }
 
+enum file_type
+OS_file_type_direct (const char * name)
+{
+  BY_HANDLE_FILE_INFORMATION info;
+  return
+    (((NT_get_file_info ((STRING_ARG (1)), (&info), 0)) == gfi_not_found)
+     ? file_type_nonexistent
+     : (((info . dwFileAttributes) & FILE_ATTRIBUTE_DIRECTORY) == 0)
+     ? file_type_regular
+     : file_type_directory);
+}
+
+enum file_type
+OS_file_type_indirect (const char * name)
+{
+  return (OS_file_type_direct (name));
+}
+
 #define R_OK 4
 #define W_OK 2
 #define X_OK 1
@@ -179,7 +200,7 @@ int
 DEFUN (OS_file_access, (name, mode), CONST char * name AND unsigned int mode)
 {
   BY_HANDLE_FILE_INFORMATION info;
-  if ((NT_get_file_info (name, (&info))) != gfi_ok)
+  if ((NT_get_file_info (name, (&info), 1)) != gfi_ok)
     return (0);
   if (((mode & W_OK) != 0)
       && (((info . dwFileAttributes) & FILE_ATTRIBUTE_READONLY) != 0))
@@ -201,7 +222,7 @@ DEFUN (OS_file_directory_p, (name), CONST char * name)
 {
   BY_HANDLE_FILE_INFORMATION info;
   return
-    (((NT_get_file_info (name, (&info))) == gfi_ok)
+    (((NT_get_file_info (name, (&info), 0)) == gfi_ok)
      && (((info . dwFileAttributes) & FILE_ATTRIBUTE_DIRECTORY) != 0));
 }
 

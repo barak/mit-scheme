@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prntfs.c,v 1.16 2000/12/05 21:23:47 cph Exp $
+$Id: prntfs.c,v 1.17 2001/05/09 03:15:08 cph Exp $
 
-Copyright (c) 1993-2000 Massachusetts Institute of Technology
+Copyright (c) 1993-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* NT-specific file-system primitives. */
@@ -82,7 +83,7 @@ DEFINE_PRIMITIVE ("FILE-MODES", Prim_file_modes, 1, 1,
 {
   BY_HANDLE_FILE_INFORMATION info;
   PRIMITIVE_HEADER (1);
-  switch (NT_get_file_info ((STRING_ARG (1)), (&info)))
+  switch (NT_get_file_info ((STRING_ARG (1)), (&info), 0))
     {
     case gfi_ok:
       PRIMITIVE_RETURN
@@ -110,7 +111,7 @@ DEFINE_PRIMITIVE ("FILE-MOD-TIME", Prim_file_mod_time, 1, 1, 0)
 {
   BY_HANDLE_FILE_INFORMATION info;
   PRIMITIVE_HEADER (1);
-  switch (NT_get_file_info ((STRING_ARG (1)), (&info)))
+  switch (NT_get_file_info ((STRING_ARG (1)), (&info), 0))
     {
     case gfi_ok:
       PRIMITIVE_RETURN
@@ -249,7 +250,7 @@ the result is #F.")
   BY_HANDLE_FILE_INFORMATION info;
   PRIMITIVE_HEADER (1);
   Primitive_GC_If_Needed (MAX_ATTRIBUTES_ALLOCATION);
-  switch (NT_get_file_info ((STRING_ARG (1)), (&info)))
+  switch (NT_get_file_info ((STRING_ARG (1)), (&info), 1))
     {
     case gfi_not_found:
       PRIMITIVE_RETURN (SHARP_F);
