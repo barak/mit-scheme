@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.1 1988/06/13 11:43:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.2 1988/06/21 05:48:48 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -393,7 +393,8 @@ MIT in each case. |#
 
 (define (error-info-command)
   (let ((message (error-message))
-	(irritants (error-irritants)))
+	(irritants (error-irritants))
+	(port (current-output-port)))
     (newline)
     (write-string " Message: ")
     (write-string message)
@@ -403,7 +404,7 @@ MIT in each case. |#
 	(begin
 	  (write-string " Irritants: ")
 	  (for-each
-	   (let ((n (- (output-port/x-size (current-output-port)) 4)))
+	   (let ((n (- (output-port/x-size port) 4)))
 	     (lambda (irritant)
 	       (newline)
 	       (write-string "    ")
@@ -421,7 +422,7 @@ MIT in each case. |#
     (newline)
     (write-string " Formatted output:")
     (newline)
-    (format-error-message message irritants)))
+    (format-error-message message irritants port)))
 
 ;;;; Advanced hacking commands
 
