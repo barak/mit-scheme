@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/wrkdir.scm,v 14.6 1992/02/08 15:08:47 cph Exp $
+$Id: wrkdir.scm,v 14.7 1993/07/31 03:11:56 cph Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -65,9 +65,7 @@ MIT in each case. |#
       (set! *working-directory-pathname* pathname)
       (set! *default-pathname-defaults*
 	    (merge-pathnames pathname *default-pathname-defaults*))
-      ((ucode-primitive set-working-directory-pathname! 1)
-       (->namestring pathname))
-      (port/set-default-directory (nearest-cmdl/port) pathname)
+      (cmdl/set-default-directory (nearest-cmdl) pathname)
       pathname)))
 
 (define (with-working-directory-pathname name thunk)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.187 1993/07/28 03:42:14 cph Exp $
+$Id: runtime.pkg,v 14.188 1993/07/31 03:11:55 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -221,7 +221,6 @@ MIT in each case. |#
   (files "infstr" "infutl")
   (parent ())
   (export ()
-	  compiled-code-block/filename
 	  compiled-entry/block
 	  compiled-entry/dbg-object
 	  compiled-entry/filename
@@ -1782,11 +1781,12 @@ MIT in each case. |#
 	  cmdl-message/strings
 	  cmdl/base
 	  cmdl/driver
+	  cmdl/level
 	  cmdl/operation
 	  cmdl/operation-names
-	  cmdl/port
-	  cmdl/level
 	  cmdl/parent
+	  cmdl/port
+	  cmdl/properties
 	  cmdl/start
 	  cmdl/state
 	  cmdl?
@@ -1847,6 +1847,8 @@ MIT in each case. |#
 	  hook/repl-eval)
   (export (runtime debugger)
 	  write-restarts)
+  (export (runtime working-directory)
+	  cmdl/set-default-directory)
   (initialization (initialize-package!)))
 
 (define-package (runtime save/restore)
@@ -2423,6 +2425,8 @@ MIT in each case. |#
 	  set-working-directory-pathname!
 	  with-working-directory-pathname
 	  working-directory-pathname)
+  (export (runtime rep)
+	  *working-directory-pathname*)
   (initialization (initialize-package!)))
 
 (define-package (runtime user-interface)
@@ -2438,7 +2442,7 @@ MIT in each case. |#
 	  port/set-default-environment
 	  port/set-default-syntax-table
 	  port/write-result)
-  (export (runtime working-directory)
+  (export (runtime rep)
 	  port/set-default-directory)
   (export (runtime debugger-command-loop)
 	  port/debugger-failure
@@ -2455,7 +2459,6 @@ MIT in each case. |#
   (files "thread")
   (parent ())
   (export ()
-	  allow-thread-event-delivery
 	  block-thread-events
 	  condition-type:thread-dead
 	  condition-type:thread-deadlock

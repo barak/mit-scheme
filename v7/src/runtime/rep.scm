@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.30 1993/01/18 05:21:57 cph Exp $
+$Id: rep.scm,v 14.31 1993/07/31 03:11:54 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -58,16 +58,23 @@ MIT in each case. |#
 			    user-initial-environment
 			    user-initial-syntax-table
 			    false
-			    '()
+			    `((SET-DEFAULT-DIRECTORY
+			       ,top-level-repl/set-default-directory))
 			    user-initial-prompt)
 		 (cmdl-message/strings "Cold load finished")))))
 
 (define root-continuation)
+
+(define (top-level-repl/set-default-directory cmdl pathname)
+  cmdl
+  ((ucode-primitive set-working-directory-pathname! 1)
+   (->namestring pathname)))
 
 ;;;; Command Loops
 
 (define cmdl-rtd
-  (make-record-type "cmdl" '(LEVEL PARENT PORT DRIVER STATE OPERATIONS)))
+  (make-record-type "cmdl"
+		    '(LEVEL PARENT PORT DRIVER STATE OPERATIONS PROPERTIES)))
 
 (define cmdl? (record-predicate cmdl-rtd))
 (define cmdl/level (record-accessor cmdl-rtd 'LEVEL))
@@ -78,11 +85,13 @@ MIT in each case. |#
 (define cmdl/state (record-accessor cmdl-rtd 'STATE))
 (define set-cmdl/state! (record-updater cmdl-rtd 'STATE))
 (define cmdl/operations (record-accessor cmdl-rtd 'OPERATIONS))
+(define cmdl/properties (record-accessor cmdl-rtd 'PROPERTIES))
 
 (define make-cmdl
   (let ((constructor
-	 (record-constructor cmdl-rtd
-			     '(LEVEL PARENT PORT DRIVER STATE OPERATIONS))))
+	 (record-constructor
+	  cmdl-rtd
+	  '(LEVEL PARENT PORT DRIVER STATE OPERATIONS PROPERTIES))))
     (lambda (parent port driver state operations)
       (if (not (or (false? parent) (cmdl? parent)))
 	  (error:wrong-type-argument parent "cmdl" 'MAKE-CMDL))
@@ -91,7 +100,8 @@ MIT in each case. |#
 		   port
 		   driver
 		   state
-		   (parse-operations-list operations 'MAKE-CMDL)))))
+		   (parse-operations-list operations 'MAKE-CMDL)
+		   (make-1d-table)))))
 
 (define (push-cmdl driver state operations)
   (let ((parent (nearest-cmdl)))
@@ -102,6 +112,12 @@ MIT in each case. |#
     (if parent
 	(cmdl/base parent)
 	cmdl)))
+
+(define (cmdl/set-default-directory cmdl pathname)
+  (let ((operation (cmdl/local-operation cmdl 'SET-DEFAULT-DIRECTORY)))
+    (if operation
+	(operation cmdl pathname)))
+  (port/set-default-directory (cmdl/port cmdl) pathname))
 
 (define (cmdl/start cmdl message)
   (let ((operation
@@ -113,7 +129,13 @@ MIT in each case. |#
 	   (fluid-let ((*nearest-cmdl* cmdl)
 		       (dynamic-handler-frames '())
 		       (*bound-restarts*
-			(if (cmdl/parent cmdl) *bound-restarts* '())))
+			(if (cmdl/parent cmdl) *bound-restarts* '()))
+		       (standard-error-hook false)
+		       (standard-warning-hook false)
+		       (*working-directory-pathname*
+			*working-directory-pathname*)
+		       (*default-pathname-defaults*
+			*default-pathname-defaults*))
 	     (let loop ((message message))
 	       (loop
 		(call-with-current-continuation
@@ -325,6 +347,9 @@ MIT in each case. |#
 	     (append (if (default-object? operations) '() operations)
 		     default-repl-operations)))
 
+(define default-repl-operations
+  `((START-CHILD ,(lambda (cmdl thunk) cmdl (with-history-disabled thunk)))))
+
 (define (push-repl environment syntax-table
 		   #!optional condition operations prompt)
   (let ((parent (nearest-cmdl)))
@@ -335,31 +360,29 @@ MIT in each case. |#
 	       (if (default-object? condition) false condition)
 	       (if (default-object? operations) '() operations)
 	       (if (default-object? prompt) 'INHERIT prompt))))
-
+
 (define (repl-driver repl)
   (let ((reader-history (repl/reader-history repl))
 	(printer-history (repl/printer-history repl)))
     (port/set-default-environment (cmdl/port repl) (repl/environment repl))
     (port/set-default-syntax-table (cmdl/port repl) (repl/syntax-table repl))
-    (fluid-let ((standard-error-hook false)
-		(standard-warning-hook false))
-      (do () (false)
-	(hook/repl-write
-	 repl
-	 (let ((value
-		(hook/repl-eval
-		 (let ((s-expression
-			(hook/repl-prompt
-			 (string-append (number->string (cmdl/level repl))
-					" "
-					(repl/prompt repl))
-			 (cmdl/port repl))))
-		   (repl-history/record! reader-history s-expression)
-		   s-expression)
-		 (repl/environment repl)
-		 (repl/syntax-table repl))))
-	   (repl-history/record! printer-history value)
-	   value))))))
+    (do () (false)
+      (hook/repl-write
+       repl
+       (let ((value
+	      (hook/repl-eval
+	       (let ((s-expression
+		      (hook/repl-prompt
+		       (string-append (number->string (cmdl/level repl))
+				      " "
+				      (repl/prompt repl))
+		       (cmdl/port repl))))
+		 (repl-history/record! reader-history s-expression)
+		 s-expression)
+	       (repl/environment repl)
+	       (repl/syntax-table repl))))
+	 (repl-history/record! printer-history value)
+	 value)))))
 
 (define hook/repl-prompt)
 (define (default/repl-prompt prompt port)
@@ -379,9 +402,6 @@ MIT in each case. |#
 			  (not (interned-symbol? object))
 			  (not (number? object))
 			  (object-hash object))))
-
-(define default-repl-operations
-  `((START-CHILD ,(lambda (cmdl thunk) cmdl (with-history-disabled thunk)))))
 
 (define (repl/start repl #!optional message)
   (cmdl/start repl
@@ -442,10 +462,11 @@ MIT in each case. |#
 	(if (not (interpreter-environment? environment))
 	    (begin
 	      (fresh-line port)
-	      (write-string ";Warning! this environment is a compiled-code environment:
+	      (write-string
+	       ";Warning! this environment is a compiled-code environment:
 ; Assignments to most compiled-code bindings are prohibited,
 ; as are certain other environment operations."
-			    port)))
+	       port)))
 	(let ((package (environment->package environment)))
 	  (if package
 	      (begin
