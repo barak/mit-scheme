@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.28 1987/06/19 15:53:44 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.29 1987/06/22 19:59:38 cph Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -491,11 +491,16 @@ Eval_Non_Trapping:
       Do_Nth_Then(RC_CONDITIONAL_DECIDE, COND_PREDICATE, Pushed());
 
     case TC_COMPILED_EXPRESSION:
-      execute_compiled_setup();
-      Store_Expression( (Pointer) Get_Pointer( Fetch_Expression()));
-      Export_Registers();
-      Which_Way = enter_compiled_expression();
-      goto return_from_compiled_code;
+      {
+	Pointer compiled_expression;
+
+	compiled_expression = (Fetch_Expression ());
+	execute_compiled_setup();
+	Store_Expression ((Pointer) (Get_Pointer (compiled_expression)));
+	Export_Registers();
+	Which_Way = enter_compiled_expression();
+	goto return_from_compiled_code;
+      }
 
 /* Interpret() continues on the next page */
 
