@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.39 1988/12/28 00:10:08 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.40 1989/02/15 19:23:27 jinx Exp $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -81,7 +81,7 @@ MIT in each case. */
 #include "Error: The stepper doesn't work with stacklets."
 #endif
 #endif
-
+
 /* These C type definitions are needed by everybody.  
    They should not be here, but it is unavoidable. */
 
@@ -99,14 +99,19 @@ typedef unsigned long Pointer;
    For each implementation, be sure to specify FASL_INTERNAL_FORMAT,
    the various sizes, and the floating point information.
    Make sure that there is an appropriate FASL_<machine name>.
-   If you do not know these parameters, try compiling and running the
-   wsize program ("make wsize" if on a unix variant).  It may not run,
-   but if it does, it will probably compute the correct information.
-   
+   If there isn't, add one to the list below.
+
+   If you do not know the values of the parameters specified below,
+   try compiling and running the Wsize program ("make Wsize" if on a
+   unix variant).  It may not run, but if it does, it will probably
+   compute the correct information.  
+
    Note that the C type void is used in the sources.  If your version
-   of C does not have this type, you should bypass it.
-   This can be done by inserting the preprocessor command
-   '#define void' in this file.
+   of C does not have this type, you should bypass it.  This can be
+   done by inserting the preprocessor command '#define void' in this
+   file, under the heading for your kind of machine.
+
+   These parameters MUST be specified (and are computed by Wsize):
 
    CHAR_SIZE is the size of a character in bits.
 
@@ -125,12 +130,26 @@ typedef unsigned long Pointer;
    of a (double) floating point number.  It includes the hidden bit if
    the representation uses them.
 
-   Thus 2+FLONUM_EXPT_SIZE+FLONUM_MANTISSA_BITS(-1 if hidden bit is used)
-   should be the size in bits of a (double) floating point number.
+   Thus 2+FLONUM_EXPT_SIZE+FLONUM_MANTISSA_BITS(-1 if hidden bit is
+   used) should be no greater than the size in bits of a (double)
+   floating point number.  Note that
+   MAX_FLONUM_EXPONENT = (2^FLONUM_EXPONENT_SIZE) - 1
 
-			  FLONUM_EXPONENT_SIZE
-   MAX_FLONUM_EXPONENT = 2		       - 1
+   FLOATING_ALIGNMENT should be defined ONLY if the system requires
+   floating point numbers (double) to be aligned more strictly than
+   Pointers (long).  The value must be a mask of the low order bits
+   which are required to be zero for the storage address.  For
+   example, a value of 0x7 requires octabyte alignment on a machine
+   where addresses are specified in bytes.  The alignment must be an
+   integral multiple of the length of a long.
 
+   VAX_BYTE_ORDER should be defined ONLY if the least significant byte
+   of a longword in memory lies at the lowest address, not defined
+   otherwise (ie. Motorola MC68020, with opposite convention, or
+   PDP-10 with word addressin).
+*/
+
+/* 
    Other flags (the safe option is NOT to define them, which will
    sacrifice speed for safety):
 
@@ -140,9 +159,8 @@ typedef unsigned long Pointer;
    involved, so it sometimes makes a big difference to define the
    constants directly rather than in terms of other constants.
    Similar things can be done for other word sizes.
-*/
-
-/* Heap_In_Low_Memory should be defined if malloc returns the lowest 
+
+   Heap_In_Low_Memory should be defined if malloc returns the lowest 
    available memory and thus all addresses will fit in the datum portion
    of a Scheme Pointer.  The datum portion of a Scheme Pointer is 8 bits 
    less than the length of a C long.
@@ -151,16 +169,11 @@ typedef unsigned long Pointer;
    (i.e. Pointer) results in a logical (vs. arithmetic) shift.
    Setting the flag allows faster type code extraction.
 
-   VAX_BYTE_ORDER is defined if the least significant byte of a
-   longword in memory lies at the lowest address, not defined if the
-   opposite convention holds (ie. Motorola MC6820), or the concept
-   does not apply (ie. DEC PDP-10).
-
    BELL is the character which rings the terminal bell.
 
    The following switches are used to use the system provided library
    routines rather than the emulated versions in the Scheme sources.
-   The system provided ones are more accurate and potentially more
+   The system provided ones should be more accurate and probably more
    efficient.
 
    HAS_FLOOR should be defined if the system has the double precision
@@ -168,16 +181,6 @@ typedef unsigned long Pointer;
 
    HAS_FREXP should be defined if the system has the double precision
    procedures ldexp and frexp.  On Unix, look for frexp(3C).
-
-   FLOATING_ALIGNMENT should be defined if the system requires
-   floating point numbers (double) to be aligned more strictly than
-   Pointers (long).  The value must be a mask of the low order
-   bits which are required to be zero for the storage address.
-   For example, a value of 0x7 requires octabyte alignment on a
-   machine where addresses are specified in bytes.  The alignment
-   must be an integral multiple of the length of a long, since
-   it must pad with an explicit Pointer value.
-   This option is not completely working right now.
 
 */
 
@@ -207,6 +210,7 @@ typedef unsigned long Pointer;
 #define FASL_UMAX		11
 #define FASL_PYR		12
 #define FASL_ALLIANT		13
+#define FASL_SUN4		14
 
 /* These (pdp10 and nu) haven't worked in a while.
  * Should be upgraded or flushed some day. 
@@ -363,15 +367,29 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
 #define BELL 			'\007'
-/* Is this correct meaning of this flag? -- CPH */
+
+#ifdef sun4
+#define FASL_INTERNAL_FORMAT	FASL_SUN4
+#define FLOATING_ALIGNMENT	0x7	/* Low 3 MBZ for float storage */
+#define FLONUM_EXPT_SIZE	10
+#define FLONUM_MANTISSA_BITS	53
+#define MAX_FLONUM_EXPONENT	1023
+#endif
+
 #ifdef sun3
 #define FASL_INTERNAL_FORMAT	FASL_68020
-#else /* not sun3 */
+#define FLONUM_EXPT_SIZE	10
+#define FLONUM_MANTISSA_BITS	53
+#define MAX_FLONUM_EXPONENT	1023
+#endif
+
+#ifndef FASL_INTERNAL_FORMAT
 #define FASL_INTERNAL_FORMAT	FASL_68000
-#endif /* sun3 */
 #define FLONUM_EXPT_SIZE	7
 #define FLONUM_MANTISSA_BITS 	56
 #define MAX_FLONUM_EXPONENT	127
+#endif
+
 #define HAS_FLOOR
 #define HAS_FREXP
 /* Sun C compiler bug. */
@@ -428,7 +446,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define MAX_FLONUM_EXPONENT	2047
 #endif
 
-#ifdef spectrum
+#ifdef hp9000s800
 /* Heap resides in "Quad 1", and hence memory addresses have a 1
    in the second MSBit. This is taken care of in object.h, and is
    still considered Heap_In_Low_Memory.
