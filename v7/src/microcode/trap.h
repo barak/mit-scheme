@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/trap.h,v 9.35 1987/04/03 00:46:33 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/trap.h,v 9.36 1987/04/06 11:03:21 jinx Exp $ */
 
 /* Kinds of traps:
 
@@ -78,11 +78,15 @@ MIT in each case. */
 #define DANGEROUS_UNASSIGNED_OBJECT	Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_UNASSIGNED_DANGEROUS)
 #define UNBOUND_OBJECT			Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_UNBOUND)
 #define DANGEROUS_UNBOUND_OBJECT	Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_UNBOUND_DANGEROUS)
+#define ILLEGAL_OBJECT			Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_ILLEGAL)
+#define DANGEROUS_ILLEGAL_OBJECT	Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_ILLEGAL_DANGEROUS)
 #else
 #define UNASSIGNED_OBJECT		0x32000000
 #define DANGEROUS_UNASSIGNED_OBJECT	0x32000001
 #define UNBOUND_OBJECT			0x32000002
 #define DANGEROUS_UNBOUND_OBJECT	0x32000003
+#define ILLEGAL_OBJECT			0x32000004
+#define DANGEROUS_ILLEGAL_OBJECT	0x32000005
 #endif
 
 #define DANGEROUS_OBJECT		Make_Unsigned_Fixnum(TRAP_DANGEROUS)
