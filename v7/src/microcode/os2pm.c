@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.28 1996/03/20 23:50:18 cph Exp $
+$Id: os2pm.c,v 1.29 1997/01/01 10:13:19 cph Exp $
 
-Copyright (c) 1994-96 Massachusetts Institute of Technology
+Copyright (c) 1994-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1320,19 +1320,14 @@ static void
 window_set_size (window_t * window,
 		 unsigned short width, unsigned short height)
 {
-  SWP swp;
-  POINTL ptl;
   RECTL rcl;
-  if (!WinQueryWindowPos ((WINDOW_CLIENT (window)), (& swp)))
-    window_error (WinQueryWindowPos);
-  (ptl . x) = (swp . x);
-  (ptl . y) = (swp . y);
-  if (!WinMapWindowPoints ((WINDOW_FRAME (window)), HWND_DESKTOP, (& ptl), 1))
+  (rcl . xLeft) = 0;
+  (rcl . xRight) = width;
+  (rcl . yBottom) = 0;
+  (rcl . yTop) = height;
+  if (!WinMapWindowPoints ((WINDOW_CLIENT (window)), HWND_DESKTOP,
+			   ((PPOINTL) (& rcl)), 2))
     window_error (WinMapWindowPoints);
-  (rcl . xLeft) = (ptl . x);
-  (rcl . xRight) = ((ptl . x) + width);
-  (rcl . yBottom) = (ptl . y);
-  (rcl . yTop) = ((ptl . y) + height);
   if (!WinCalcFrameRect ((WINDOW_FRAME (window)), (& rcl), FALSE))
     window_error (WinCalcFrameRect);
   if (!WinSetWindowPos ((WINDOW_FRAME (window)),
