@@ -1,4 +1,4 @@
-# $Id: Makefile.in.in,v 1.17 2001/11/27 04:20:31 cph Exp $
+# $Id: Makefile.in.in,v 1.18 2001/12/17 18:03:44 cph Exp $
 #
 # Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
@@ -191,7 +191,7 @@ MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps config.h.in configure
 
 # **** Main rules ****
 
-default-target: scheme bchscheme
+default-target: $(ALL_PROGRAMS) $(ALL_LIBS)
 
 all: $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA)
 
