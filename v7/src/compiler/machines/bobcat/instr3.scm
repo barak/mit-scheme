@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr3.scm,v 1.16 1988/10/04 23:04:57 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr3.scm,v 1.17 1990/04/03 23:20:52 jinx Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,17 +42,23 @@ MIT in each case. |#
 ;; No size suffix means that the assembler should choose the right
 ;; size offset.
 
-;; When the displacement goes to 0, a NOP is issued.
-;; The instruction is hard to remove because of the workings of the
-;; branch tensioner.
+;; When the displacement is 0 (a branch to the immediately following
+;; instruction), a NOP instruction is issued for non-subroutine
+;; branches (BRA and Bcc).  The branch tensioner can't really handle
+;; instructions that disappear.
 
-;; Note that this NOP ``kludge'' is not correct for the BSR
-;; instruction, but doing a BSR to the following instruction is even
-;; stranger than branching to the following instruction.
+;; For BSR instructions to the immediately following instruction,
+;; there is nothing that can be done.  The branch tensioner assumes
+;; that the output does not decrease with increasing discriminator
+;; ranges, and the only two possibilities for this instruction would
+;; be to put a NOP after the BSR, or to change the BSR into a
+;; pc-relative PEA, but either of these options would make the code 32
+;; bits long, longer than the 16 bits used for short displacements.
+;; An error is generated if this situation arises.
 
 (let-syntax
     ((define-branch-instruction
-       (macro (opcode prefix . field)
+       (macro (opcode prefix field . fall-through)
 	 `(define-instruction ,opcode
 	    ((,@prefix B (@PCO (? o)))
 	     (WORD ,@field
@@ -87,7 +93,7 @@ MIT in each case. |#
 	    ((,@prefix (@PCO (? o)))
 	     (GROWING-WORD (disp o)
 	      ((0 0)
-	       (WORD (16 #b0100111001110001))) 		; NOP
+	       ,@fall-through)
 	      ((-128 127)
 	       (WORD ,@field
 		     (8 disp SIGNED)))
@@ -103,7 +109,7 @@ MIT in each case. |#
 	    ((,@prefix (@PCR (? l)))
 	     (GROWING-WORD (disp `(- ,l (+ *PC* 2)))
 	      ((0 0)
-	       (WORD (16 #b0100111001110001)))		; NOP
+	       ,@fall-through)
 	      ((-128 127)
 	       (WORD ,@field
 		     (8 disp SIGNED)))
@@ -116,9 +122,12 @@ MIT in each case. |#
 		     (8 #b11111111)
 		     (32 disp SIGNED)))))))))
 
-  (define-branch-instruction B ((? c cc)) (4 #b0110) (4 c))
-  (define-branch-instruction BRA () (8 #b01100000))
-  (define-branch-instruction BSR () (8 #b01100001)))
+  (define-branch-instruction B ((? c cc)) ((4 #b0110) (4 c))
+    (WORD (16 #b0100111001110001)))
+  (define-branch-instruction BRA () ((8 #b01100000))
+    (WORD (16 #b0100111001110001)))
+  (define-branch-instruction BSR () ((8 #b01100001))
+    (WORD (16 (error "BSR to following instruction")))))
 
 (define-instruction DB
   (((? c cc) (D (? rx)) (@PCO (? o)))
