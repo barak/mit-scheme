@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.84 1993/11/05 00:45:25 gjr Exp $
+$Id: ymkfile,v 1.85 1993/11/11 20:18:25 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -176,7 +176,9 @@ MACHINE_OBJECTS = cmpint.o cmpauxmd.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpintmd.h
 
 cmpauxmd.o : cmpauxmd.s
+#ifdef __hpux
 cmpauxmd.s : cmpauxmd.m4 xmkfile
+#endif
 
 #endif /* PROC_TYPE_68020 */
 
