@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.105 1991/03/15 23:38:39 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.106 1991/04/11 03:12:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -47,33 +47,60 @@
 (declare (usual-integrations))
 
 (define-major-mode dired fundamental "Dired"
-  "Major mode for editing a list of files.
-Each line describes a file in the directory.
-F -- visit the file on the current line.
-D -- mark that file to be killed.
-U -- remove all marks from the current line.
-Rubout -- back up a line and remove marks.
-Space -- move down one line.
-X -- kill marked files.
-Q -- quit, killing marked files.
-  This is like \\[dired-do-deletions] followed by \\[kill-buffer].
-C-] -- abort Dired; this is like \\[kill-buffer] on this buffer."
-  (local-set-variable! case-fold-search true))
+  "Mode for \"editing\" directory listings.
+In dired, you are \"editing\" a list of the files in a directory.
+You can move using the usual cursor motion commands.
+Letters no longer insert themselves.
+Instead, type d to flag a file for Deletion.
+Type u to Unflag a file (remove its D flag).
+  Type Rubout to back up one line and unflag.
+Type x to eXecute the deletions requested.
+Type f to Find the current line's file
+  (or Dired it, if it is a directory).
+Type o to find file or dired directory in Other window.
+Type # to flag temporary files (names beginning with #) for Deletion.
+Type ~ to flag backup files (names ending with ~) for Deletion.
+Type . to flag numerical backups for Deletion.
+  (Spares dired-kept-versions or its numeric argument.)
+Type r to rename a file.
+Type c to copy a file.
+Type g to read the directory again.  This discards all deletion-flags.
+Space and Rubout can be used to move down and up by lines.
+Also:
+ M, G, O -- change file's mode, group or owner."
+;;Type v to view a file in View mode, returning to Dired when done.
+;; C -- compress this file.  U -- uncompress this file.
+  (local-set-variable! case-fold-search false))
 
+(define-key 'dired #\r 'dired-rename-file)
+(define-key 'dired #\c-d 'dired-flag-file-deleted)
+(define-key 'dired #\d 'dired-flag-file-deleted)
+;(define-key 'dired #\v 'dired-view-file)
+(define-key 'dired #\e 'dired-find-file)
 (define-key 'dired #\f 'dired-find-file)
 (define-key 'dired #\o 'dired-find-file-other-window)
-(define-key 'dired #\g 'dired-revert)
-(define-key 'dired #\d 'dired-flag-file-deleted)
-(define-key 'dired #\c-d 'dired-flag-file-deleted)
 (define-key 'dired #\u 'dired-unflag)
+(define-key 'dired #\x 'dired-do-deletions)
 (define-key 'dired #\rubout 'dired-backup-unflag)
+(define-key 'dired #\? 'dired-summary)
+(define-key 'dired #\c 'dired-copy-file)
+(define-key 'dired #\# 'dired-flag-auto-save-files)
+(define-key 'dired #\~ 'dired-flag-backup-files)
+(define-key 'dired #\. 'dired-clean-directory)
+(define-key 'dired #\h 'describe-mode)
 (define-key 'dired #\space 'dired-next-line)
 (define-key 'dired #\c-n 'dired-next-line)
 (define-key 'dired #\c-p 'dired-previous-line)
-(define-key 'dired #\x 'dired-do-deletions)
+(define-key 'dired #\n 'dired-next-line)
+(define-key 'dired #\p 'dired-previous-line)
+(define-key 'dired #\g 'dired-revert)
+;(define-key 'dired #\C 'dired-compress)
+;(define-key 'dired #\U 'dired-uncompress)
+(define-key 'dired #\M 'dired-chmod)
+(define-key 'dired #\G 'dired-chgrp)
+(define-key 'dired #\O 'dired-chown)
 (define-key 'dired #\q 'dired-quit)
 (define-key 'dired #\c-\] 'dired-abort)
-(define-key 'dired #\? 'dired-summary)
 
 (define-command dired
   "\"Edit\" directory DIRNAME--delete, rename, print, etc. some files in it.
@@ -120,6 +147,11 @@ Type `h' after entering dired for more info."
 (define (revert-dired-buffer buffer dont-use-auto-save? dont-confirm?)
   dont-use-auto-save? dont-confirm?	;ignore
   (fill-dired-buffer! buffer (dired-buffer-directory buffer)))
+
+(define-variable dired-listing-switches
+  "Switches passed to ls for dired.  MUST contain the 'l' option.
+CANNOT contain the 'F' option."
+  "-al")
 
 (define (fill-dired-buffer! buffer pathname)
   (set-buffer-writeable! buffer)
@@ -128,33 +160,50 @@ Type `h' after entering dired for more info."
    (string-append "Reading directory "
 		  (pathname->string pathname)
 		  "..."))
-  (let ((pathnames (read&sort-directory pathname)))
-    (let ((lines (map os/make-dired-line pathnames))
-	  (point (buffer-point buffer)))
-      (append-message "done")
-      (for-each (lambda (line pathname)
-		  (if (not line)
-		      (begin
-			(insert-string "can't find file: " point)
-			(insert-string (pathname-name-string pathname) point)
-			(insert-newline point))))
-		lines
-		pathnames)
-      (insert-string "Directory " point)
-      (insert-string (pathname->string pathname) point)
-      (insert-newlines 2 point)
-      (buffer-put! buffer 'DIRED-HEADER-END (mark-right-inserting point))
-      (for-each (lambda (line)
-		  (if line
-		      (begin
-			(insert-string line point)
-			(insert-newline point))))
-		lines)))
-  (buffer-not-modified! buffer)
-  (set-buffer-read-only! buffer)
-  (add-buffer-initialization! buffer
+  (with-working-directory-pathname (pathname-directory-path pathname)
     (lambda ()
-      (set-dired-point! (buffer-get (current-buffer) 'DIRED-HEADER-END)))))
+      (shell-command
+       (string-append "ls "
+		      (ref-variable dired-listing-switches)
+		      " "
+		      (if (file-directory? pathname)
+			  (pathname->string pathname)
+			  (pathname-name-path pathname)))
+       (buffer-point buffer))))
+  (append-message "done")
+  (let ((point (mark-left-inserting-copy (buffer-point buffer)))
+	(group (buffer-group buffer)))
+    (let ((index (mark-index (buffer-start buffer))))
+      (if (not (group-end-index? group index))
+	  (let loop ((index index))
+	    (set-mark-index! point index)
+	    (group-insert-string! group index "  ")
+	    (let ((index (line-end-index group (mark-index point))))
+	      (if (not (group-end-index? group index))
+		  (loop (+ index 1))))))))
+  (set-buffer-point! buffer (buffer-start buffer))
+  (buffer-not-modified! buffer)
+  (set-buffer-read-only! buffer))
+
+(define (add-dired-entry pathname)
+  (let ((lstart (line-start (current-point) 0)))
+    (if (pathname=? (buffer-default-directory (mark-buffer lstart))
+		    (pathname-directory-path pathname))
+	(let ((start (mark-right-inserting lstart)))
+	  (shell-command
+	   (string-append "ls -d "
+			  (ref-variable dired-listing-switches)
+			  " "
+			  (pathname->string pathname))
+	   lstart)
+	  (insert-string "  " start)
+	  (let ((start
+		 (mark-right-inserting (dired-filename-start start))))
+	    (insert-string
+	     (pathname-name-string
+	      (string->pathname
+	       (extract-and-delete-string start (line-end start 0))))
+	     start))))))
 
 (define-command dired-find-file
   "Read the current file into a buffer."
@@ -231,11 +280,106 @@ Type `h' after entering dired for more info."
   (lambda ()
     (message "d-elete, u-ndelete, x-ecute, q-uit, f-ind, o-ther window")))
 
+(define-command dired-rename-file
+  "Rename this file to TO-FILE."
+  (lambda ()
+    (list
+     (pathname->string
+      (let ((pathname (dired-current-pathname)))
+	(prompt-for-pathname (string-append "Rename "
+					    (pathname-name-string pathname)
+					    " to")
+			     pathname
+			     false)))))
+  (lambda (to-file)
+    (let ((to (->pathname to-file)))
+      (rename-file (dired-current-pathname) to)
+      (dired-redisplay to))))
+
+(define-command dired-copy-file
+  "Copy this file to TO-FILE."
+  (lambda ()
+    (list
+     (pathname->string
+      (let ((pathname (dired-current-pathname)))
+	(prompt-for-pathname (string-append "Copy "
+					    (pathname-name-string pathname)
+					    " to")
+			     pathname
+			     false)))))
+  (lambda (to-file)
+    (let ((to (->pathname to-file)))
+      (copy-file (dired-current-pathname) to)
+      (let ((lstart (mark-right-inserting (line-start (current-point) 0))))
+	(with-read-only-defeated lstart
+	  (lambda ()
+	    (add-dired-entry to)))
+	(set-current-point! (dired-filename-start lstart))))))
+
+(define-command dired-chmod
+  "Change mode of this file."
+  "sChange to Mode"
+  (lambda (mode)
+    (let ((pathname (dired-current-pathname)))
+      (subprocess-wait
+       (start-batch-subprocess
+	(find-program "chmod" (buffer-default-directory (current-buffer)))
+	(vector "chmod" mode (pathname->string pathname))
+	false))
+      (dired-redisplay pathname))))
+
+(define-command dired-chgrp
+  "Change group of this file."
+  "sChange to Group"
+  (lambda (group)
+    (let ((pathname (dired-current-pathname)))
+      (subprocess-wait
+       (start-batch-subprocess
+	(find-program "chgrp" (buffer-default-directory (current-buffer)))
+	(vector "chgrp" group (pathname->string pathname))
+	false))
+      (dired-redisplay pathname))))
+
+(define-command dired-chown
+  "Change owner of this file."
+  "sChange to Owner"
+  (lambda (owner)
+    (let ((pathname (dired-current-pathname)))
+      (subprocess-wait
+       (start-batch-subprocess
+	(find-program "chown" (buffer-default-directory (current-buffer)))
+	(vector "chown" owner (pathname->string pathname))
+	false))
+      (dired-redisplay pathname))))
+
+(define (dired-redisplay pathname)
+  (let ((lstart (mark-right-inserting (line-start (current-point) 0))))
+    (with-read-only-defeated lstart
+      (lambda ()
+	(delete-string lstart (line-start lstart 1))
+	(add-dired-entry pathname)))
+    (set-current-point! (dired-filename-start lstart))))
+
+(define (dired-filename-start lstart)
+  (let ((eol (line-end lstart 0)))
+    (let ((m
+	   (re-search-forward
+	    "\\(Jan\\|Feb\\|Mar\\|Apr\\|May\\|Jun\\|Jul\\|Aug\\|Sep\\|Oct\\|Nov\\|Dec\\)[ ]+[0-9]+"
+	    lstart
+	    eol
+	    false)))
+      (and m
+	   (re-match-forward " *[^ ]* *" m eol)))))
+
+(define (dired-filename-region lstart)
+  (let ((start (dired-filename-start lstart)))
+    (and start
+	 (make-region start (line-end start 0)))))
+
 (define (set-dired-point! mark)
   (set-current-point!
    (let ((lstart (line-start mark 0)))
-     (if (dired-filename-line? lstart)
-	 (region-start (os/dired-filename-region lstart))
+     (or (dired-filename-start lstart)
 	 lstart))))
 
 (define (dired-current-pathname)
@@ -244,17 +388,13 @@ Type `h' after entering dired for more info."
     (dired-pathname lstart)))
 
 (define (guarantee-dired-filename-line lstart)
-  (if (not (dired-filename-line? lstart))
+  (if (not (dired-filename-start lstart))
       (editor-error "No file on this line")))
-
-(define (dired-filename-line? lstart)
-  (and (mark>= lstart (buffer-get (current-buffer) 'DIRED-HEADER-END))
-       (not (group-end? lstart))))
 
 (define (dired-pathname lstart)
   (merge-pathnames
    (pathname-directory-path (dired-buffer-directory (current-buffer)))
-   (string->pathname (region->string (os/dired-filename-region lstart)))))
+   (string->pathname (region->string (dired-filename-region lstart)))))
 
 (define (dired-mark char n)
   (with-read-only-defeated (current-point)
@@ -264,9 +404,48 @@ Type `h' after entering dired for more info."
 	  i				;ignore
 	  (let ((lstart (line-start (current-point) 0)))
 	    (guarantee-dired-filename-line lstart)
-	    (delete-right-char lstart)
-	    (insert-chars char 1 lstart)
+	    (dired-mark-1 lstart char)
 	    (set-dired-point! (line-start lstart 1))))))))
+
+(define (dired-mark-1 lstart char)
+  (delete-right-char lstart)
+  (insert-chars char 1 lstart))
+
+(define (dired-file-line? lstart)
+  (and (dired-filename-start lstart)
+       (not (re-match-forward ". d" lstart (mark+ lstart 3)))))
+
+(define (for-each-file-line buffer procedure)
+  (let ((point (mark-right-inserting-copy (buffer-start buffer))))
+    (do () ((group-end? point))
+      (if (dired-file-line? point)
+	  (procedure point))
+      (move-mark-to! point (line-start point 1)))))
+
+(define-command dired-flag-auto-save-files
+  "Flag for deletion files whose names suggest they are auto save files."
+  ()
+  (lambda ()
+    (with-read-only-defeated (current-point)
+      (lambda ()
+	(for-each-file-line (current-buffer)
+	  (lambda (lstart)
+	    (if (match-forward "#"
+			       (dired-filename-start lstart)
+			       (line-end lstart 0))
+		(dired-mark-1 lstart #\D))))))))
+
+(define-command dired-flag-backup-files
+  "Flag all backup files (names ending with ~) for deletion."
+  ()
+  (lambda ()
+    (with-read-only-defeated (current-point)
+      (lambda ()
+	(for-each-file-line (current-buffer)
+	  (lambda (lstart)
+	    (if (let ((lend (line-end lstart 0)))
+		  (match-forward "~" (mark- lend 1) lend))
+		(dired-mark-1 lstart #\D))))))))
 
 (define (dired-kill-files)
   (let ((filenames (dired-killable-filenames)))
