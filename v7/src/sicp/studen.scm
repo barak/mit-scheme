@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/studen.scm,v 1.7 1991/04/06 06:13:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/studen.scm,v 1.8 1991/04/06 06:34:33 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -379,7 +379,7 @@ MIT in each case. |#
     (PAIR?)
     (POSITION-PEN)
     (POSITIVE?)
-    (PP)
+    (PP . STUDENT-PP)
     (PRIN1 . WRITE)
     (PRINC . DISPLAY)
     (PRINT . WRITE-LINE)
