@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.19 1991/05/15 18:13:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.20 1991/05/15 19:36:18 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -311,7 +311,7 @@ MIT in each case. |#
   (cond ((char-set? string)
 	 (*unparse-with-brackets 'CHARACTER-SET string false))
 	((not *slashify?*)
-	 (*unparse-substring string))
+	 (*unparse-string string))
 	(else
 	 (let ((end (string-length string)))
 	   (let ((end*
