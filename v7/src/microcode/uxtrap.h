@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxtrap.h,v 1.25 1996/08/19 18:46:52 adams Exp $
+$Id: uxtrap.h,v 1.26 1998/03/20 22:02:26 cph Exp $
 
-Copyright (c) 1990-1993 Massachusetts Institute of Technology
+Copyright (c) 1990-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -457,7 +457,7 @@ struct full_sigcontext
 #define SIGINFO_CODE(info) (0)
 
 /* Here's the "iBCS signal stack", whatever that means. */
-struct sigcontext {
+struct linux_sigcontext {
   long sc_gs, sc_fs, sc_es, sc_ds, sc_edi, sc_esi, sc_ebp, sc_esp, sc_ebx;
   long sc_edx, sc_ecx, sc_eax, sc_trapno, sc_err, sc_eip, sc_cs, sc_eflags;
   long sc_esp_again, sc_ss;
@@ -481,7 +481,7 @@ struct sigcontext {
 #define FULL_SIGCONTEXT_NREGS		19
 #define FULL_SIGCONTEXT_FIRST_REG(scp)	(scp)
 
-#define SIGCONTEXT			sigcontext
+#define SIGCONTEXT			linux_sigcontext
 #define SIGCONTEXT_SP(scp)		((scp)->sc_esp)
 #define SIGCONTEXT_PC(scp)		((scp)->sc_eip)
 
