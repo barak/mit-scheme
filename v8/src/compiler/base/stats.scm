@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stats.scm,v 1.1 1994/12/15 03:05:04 adams Exp $
+$Id: stats.scm,v 1.2 1995/01/05 22:28:22 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -71,18 +71,22 @@ MIT in each case. |#
   sample
   display)
 
+(define compiler-statistics-flonum-unparser-cutoff '(RELATIVE 5))
+
 (define (compiler:display-statistics)
   (newline)
   (display "Compiler statistics currently ")
   (display (if compiler:enable-statistics? "enabled" "disabled"))
   (display "  (switch is compiler:enable-statistics?)")
-  (for-each (lambda (name.statistic)
-	      (newline) (newline)
-	      ((compiler-statistic/display (cdr name.statistic))))
-	    (sort
-	     (hash-table->alist *compiler-statistics*)
-	     (lambda (pair1 pair2)
-	       (symbol<? (car pair1) (car pair2))))))
+  (fluid-let ((flonum-unparser-cutoff
+	       compiler-statistics-flonum-unparser-cutoff))
+    (for-each (lambda (name.statistic)
+		(newline) (newline)
+		((compiler-statistic/display (cdr name.statistic))))
+	      (sort
+	       (hash-table->alist *compiler-statistics*)
+	       (lambda (pair1 pair2)
+		 (symbol<? (car pair1) (car pair2)))))))
 
 (define (sample statistic . data)
   (if compiler:enable-statistics?
@@ -99,7 +103,7 @@ MIT in each case. |#
 (define (sample/1/really statistic datum)
   (cond ((find-statistic statistic)
 	 => (lambda (stat)
-	      ((compiler-statistic/sample stat) datum)))
+	      ((compiler-statistic/sample stat) (dethunk datum))))
 	(else
 	 (define-compiler-statistic 1 statistic)
 	 (sample/1/really statistic datum))))
@@ -107,10 +111,19 @@ MIT in each case. |#
 (define (sample/2/really statistic datum1 datum2)
   (cond ((find-statistic statistic)
 	 => (lambda (stat)
-	      ((compiler-statistic/sample stat) datum1 datum2)))
+	      ((compiler-statistic/sample stat)
+	       (dethunk datum1)
+	       (dethunk datum2))))
 	(else
 	 (define-compiler-statistic 2 statistic)
 	 (sample/2/really statistic datum1 datum2))))
+
+
+(define-integrable (dethunk possible-thunk)
+  (let ((possible-thunk possible-thunk))
+    (if (procedure? possible-thunk)
+	(possible-thunk)
+	possible-thunk)))
 
 (define-integrable (find-statistic specification)
   (if (pair? specification)
@@ -152,15 +165,25 @@ MIT in each case. |#
 (define-statistic-type 'AVERAGE
   (lambda (name type)
     (let ((n   0)
+	  (nmax #F) (nmin #F)
 	  (sum 0))
       (define (sample datum)
 	(set! n (+ n 1))
 	(set! sum (+ sum datum))
+	(if nmax
+	    (begin
+	      (set! nmax (max nmax datum))
+	      (set! nmin (min nmin datum)))
+	    (begin
+	      (set! nmax datum)
+	      (set! nmin datum)))
 	unspecific)
       (define (print)
 	(define (say . stuff) (for-each display stuff))
 	(say name  " " type "   ")
-	(say " n = "  n  "   sum = "  sum  "   mean = " (/ sum n)))
+	(say " n "  n  "   sum "  sum)
+	(say "   mean " (/ sum n))
+	(say "   min " nmin "   max " nmax))
       (make-compiler-statistic sample print))))
 
 (define-statistic-type 'HISTOGRAM
