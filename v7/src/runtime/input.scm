@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: input.scm,v 14.23 2003/02/14 18:28:32 cph Exp $
+$Id: input.scm,v 14.24 2003/07/30 17:06:23 cph Exp $
 
-Copyright (c) 1988-1999, 2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,1997,1999,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -27,7 +28,7 @@ USA.
 ;;; package: (runtime input-port)
 
 (declare (usual-integrations))
-
+
 ;;;; Input Ports
 
 (define (input-port/char-ready? port interval)
@@ -60,15 +61,10 @@ USA.
     (input-port/discard-char port)
     line))
 
-(define eof-object
-  "EOF Object")
-
-(define (eof-object? object)
-  (eq? object eof-object))
-
-(define (make-eof-object port)
-  port
-  eof-object)
+(define <eof-object> (make-record-type '<EOF-OBJECT> '()))
+(define eof-object? (record-predicate <eof-object>))
+(define eof-object (make-eof-object))
+(define (make-eof-object port) port eof-object)
 
 ;;;; Input Procedures
 
