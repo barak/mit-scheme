@@ -1,7 +1,7 @@
 #
 # Makefile for MIT CScheme microcode.
 #
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/makefile,v 1.13 1991/10/02 21:24:43 jinx Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/makefile,v 1.14 1991/10/29 22:40:06 jinx Exp $
 #
 CPP = cc -E
 MAKE = make  # BSD doesn't have it as a default.
@@ -21,6 +21,10 @@ xscheme: xmakefile
 bchscheme: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} bchscheme
 .PHONY: bchscheme
+
+bchdrn: xmakefile
+	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} bchdrn
+.PHONY: bchdrn
 
 Psbtobin: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} Psbtobin
