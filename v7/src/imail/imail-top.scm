@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.8 2000/01/19 21:37:46 cph Exp $
+;;; $Id: imail-top.scm,v 1.9 2000/01/20 05:33:13 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -19,6 +19,9 @@
 ;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; IMAIL mail reader: top level
+
+;;; **** Redisplay issues: Many operations modify the modeline, e.g.
+;;; changes to the flags list of a message.
 
 (declare (usual-integrations))
 
@@ -520,3 +523,136 @@ Completion is performed over known flags when reading."
       (set-message-flag message "filed"))
     (if (ref-variable imail-delete-after-output)
 	((ref-command imail-delete-forward) #f))))
+
+;;;; Sending mail
+
+(define-command imail-mail
+  "Send mail in another window.
+While composing the message, use \\[mail-yank-original] to yank the
+original message into it."
+  ()
+  (lambda ()
+    (make-mail-buffer '(("To" "") ("Subject" ""))
+		      (selected-buffer)
+		      select-buffer-other-window)))
+
+(define-command imail-continue
+  "Continue composing outgoing message previously being composed."
+  ()
+  (lambda ()
+    ((ref-command mail-other-window) #t)))
+
+(define-command imail-forward
+  "Forward the current message to another user.
+With prefix argument, \"resend\" the message instead of forwarding it;
+see the documentation of `imail-resend'."
+  "P"
+  (lambda (resend?)
+    (if resend?
+	(dispatch-on-command (ref-command-object imail-resend))
+	(let ((buffer (selected-buffer))
+	      (message (selected-message)))
+	  (make-mail-buffer
+	   `(("To" "")
+	     ("Subject"
+	      ,(string-append
+		"["
+		(let ((from (get-first-header-field-value message "from" #f)))
+		  (if from
+		      (rfc822-addresses->string
+		       (string->rfc822-addresses from))
+		      ""))
+		": "
+		(or (get-first-header-field-value message "subject" #f) "")
+		"]")))
+	   #f
+	   (lambda (mail-buffer)
+	     (insert-region (buffer-start buffer)
+			    (buffer-end buffer)
+			    (buffer-end mail-buffer))
+	     (if (window-has-no-neighbors? (current-window))
+		 (select-buffer mail-buffer)
+		 (select-buffer-other-window mail-buffer))
+	     (set-message-flag message "forwarded")))))))
+
+(define-command imail-resend
+  "Resend current message to ADDRESSES.
+ADDRESSES a string consisting of several addresses separated by commas."
+  "sResend to"
+  (lambda (addresses)
+    ???))
+
+(define-command imail-reply
+  "Reply to the current message.
+Normally include CC: to all other recipients of original message;
+ prefix argument means ignore them.
+While composing the reply, use \\[mail-yank-original] to yank the
+ original message into it."
+  "P"
+  (lambda (just-sender?)
+    (let ((buffer (selected-buffer))
+	  (message (selected-message)))
+      (make-mail-buffer (imail-reply-headers message (not just-sender?))
+			buffer
+			(lambda (mail-buffer)
+			  (set-message-flag message "answered")
+			  (select-buffer-other-window mail-buffer))))))
+
+(define (imail-reply-headers message cc?)
+  (let ((resent-reply-to
+	 (get-last-header-field-value message "resent-reply-to" #f))
+	(from (get-first-header-field-value message "from" #f)))
+    `(("To"
+       ,(rfc822-addresses->string
+	 (string->rfc822-addresses
+	  (or resent-reply-to
+	      (get-all-header-field-values message "reply-to" #f)
+	      from))))
+      ("CC"
+       ,(and cc?
+	     (let ((to
+		    (if resent-reply-to
+			(get-last-header-field-value message "resent-to" #f)
+			(get-all-header-field-values message "to" #f)))
+		   (cc
+		    (if resent-reply-to
+			(get-last-header-field-value message "resent-cc" #f)
+			(get-all-header-field-values message "cc" #f))))
+	       (let ((cc
+		      (if (and to cc)
+			  (string-append to ", " cc)
+			  (or to cc))))
+		 (and cc
+		      (let ((addresses
+			     (dont-reply-to
+			      (rfc822-strip-quoted-names cc))))
+			(and (not (null? addresses))
+			     (rfc822-addresses->string addresses))))))))
+      ("In-reply-to"
+       ,(if resent-reply-to
+	    (make-in-reply-to-field
+	     from
+	     (get-last-header-field-value message "resent-date" #f)
+	     (get-last-header-field-value message "resent-message-id" #f))
+	    (make-in-reply-to-field
+	     from
+	     (get-first-header-field-value message "date" #f)
+	     (get-first-header-field-value message "message-id" #f))))
+      ("Subject"
+       ,(let ((subject
+	       (or (and resent-reply-to
+			(get-last-header-field-value message
+						     "resent-subject"
+						     #f))
+		   (get-first-header-field-value message "subject" #f))))
+	  (cond ((not subject) "")
+		((ref-variable imail-reply-with-re)
+		 (if (string-prefix-ci? "re:" subject)
+		     subject
+		     (string-append "Re: " subject)))
+		(else
+		 (do ((subject
+		       subject
+		       (string-trim-left (string-tail subject 3))))
+		     ((not (string-prefix-ci? "re:" subject))
+		      subject)))))))))
