@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.191 2001/11/06 04:44:38 cph Exp $
+;;; $Id: imail-imap.scm,v 1.192 2001/11/06 05:01:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1145,9 +1145,7 @@
 	  (if (not (imap-message-header-fields-initialized? message))
 	      (preload-cached-message-item message 'RFC822.HEADER))
 	  (if (not (imap-message-length-initialized? message))
-	      (preload-cached-message-item message 'RFC822.SIZE)))
-	(lambda ()
-	  unspecific))))
+	      (preload-cached-message-item message 'RFC822.SIZE))))))
   (let* ((connection (guarantee-imap-folder-open folder))
 	 (messages
 	  (messages-satisfying folder
@@ -1449,9 +1447,7 @@
 		  (begin
 		    (delete-file-no-errors directory)
 		    (guarantee-init-file-directory directory)
-		    (simple-write-file uidvalidity up)))))
-	  (lambda ()
-	    unspecific)))))
+		    (simple-write-file uidvalidity up)))))))))
 
 (define (remove-expunged-messages folder directory)
   (for-each (lambda (pathname)
@@ -1615,9 +1611,7 @@
 		  (lambda ()
 		    (cache-fetch-response message response
 		      (lambda (keyword) (memq keyword keywords))
-		      (lambda (keyword item) keyword item unspecific)))
-		  (lambda ()
-		    unspecific))))
+		      (lambda (keyword item) keyword item unspecific))))))
 	    responses))
 
 (define (delete-cached-message message)
@@ -1625,8 +1619,9 @@
     (lambda ()
       (delete-file-recursively (imap-message-cache-pathname message)))))
 
-(define (with-folder-locked folder if-locked if-not-locked)
-  (let ((pathname (imap-folder-lock-pathname folder))
+(define (with-folder-locked folder if-locked #!optional if-not-locked)
+  (let ((if-not-locked (if (default-object? if-not-locked) #f if-not-locked))
+	(pathname (imap-folder-lock-pathname folder))
 	(locked? #f))
     (dynamic-wind
      (lambda () unspecific)
@@ -1642,11 +1637,11 @@
 		(remove-property! folder 'IMAP-CACHE-LOCK-FAILURE)
 		(if-locked))
 	       ((get-property folder 'IMAP-CACHE-LOCK-FAILURE #f)
-		(if-not-locked))
+		(if if-not-locked (if-not-locked)))
 	       ((= i 2)
 		(imail-ui:clear-message)
 		(store-property! folder 'IMAP-CACHE-LOCK-FAILURE #t)
-		(if-not-locked))
+		(if if-not-locked (if-not-locked)))
 	       (else
 		(imail-ui:message "Waiting for folder lock..." i)
 		(imail-ui:sit-for 1000)
