@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.88 1995/07/26 22:47:25 adams Exp $
+$Id: bchmmg.c,v 9.89 1995/10/08 15:32:27 cph Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -34,8 +34,8 @@ MIT in each case. */
 
 /* Memory management top level.  Garbage collection to disk. */
 
-#include "memmag.h"
 #include "scheme.h"
+#include "memmag.h"
 #include "prims.h"
 #include "option.h"
 #include "oscond.h"
