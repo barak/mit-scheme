@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.29 1991/10/29 14:32:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.30 1991/11/26 06:53:41 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -901,9 +901,9 @@ MIT in each case. |#
     (let ((frame (continuation/first-subproblem continuation)))
       (if (apply-frame? frame)
 	  (let ((object (apply-frame/operand frame 0)))
-	    (let ((port (nearest-cmdl/output-port)))
-	      (newline port)
-	      (write-string "Automagically impurifying an object..." port))
+	    (let ((port (nearest-cmdl/port)))
+	      (fresh-line port)
+	      (write-string ";Automagically impurifying an object..." port))
 	    (impurify object)
 	    (continuation object))))))
 
