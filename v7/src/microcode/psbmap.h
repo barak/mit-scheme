@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbmap.h,v 9.36 1992/04/18 00:24:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbmap.h,v 9.37 1992/04/18 00:30:02 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -55,6 +55,7 @@ MIT in each case. */
 #include "sdata.h"
 #include "const.h"
 #include "gccode.h"
+#define boolean Boolean
 #include "comlin.h"
 
 extern double
@@ -252,7 +253,6 @@ DEFUN (quit, (code), int code)
 
 /* Include the command line parser */
 
-#define boolean Boolean
 #include "comlin.c"
 
 #define INPUT_KEYWORD()						\
