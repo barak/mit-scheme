@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules3.scm,v 4.10 1992/08/05 21:40:15 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules3.scm,v 4.11 1992/10/15 16:31:54 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -392,10 +392,14 @@ MIT in each case. |#
 ;;; interrupt handler that saves and restores the dynamic link
 ;;; register.
 
-(define (interrupt-check interrupt-label)
+(define (interrupt-check procedure-label interrupt-label)
+  ;; This always does interrupt/stack checks in line.
   (LAP (CMP L (R ,regnum:free-pointer) ,reg:compiled-memtop)
        (B B GEQ (@PCR ,interrupt-label))
-       ,@(if compiler:generate-stack-checks?
+       ,@(if (let ((object (label->object procedure-label)))
+	       (and (rtl-procedure? object)
+		    (not (rtl-procedure/stack-leaf? object))
+		    compiler:generate-stack-checks?))
 	     (LAP (CMP L (R ,regnum:stack-pointer) ,reg:stack-guard)
 		  (B B LSS (@PCR ,interrupt-label)))
 	     (LAP))))
@@ -410,7 +414,7 @@ MIT in each case. |#
 	 |#
 	 ,@(invoke-interface-jsb code:compiler-interrupt)
 	 ,@(make-external-label code-word label)
-	 ,@(interrupt-check gc-label))))
+	 ,@(interrupt-check label gc-label))))
 
 (define (dlink-procedure-header code-word label)
   (let ((gc-label (generate-label)))    
@@ -422,7 +426,7 @@ MIT in each case. |#
 	 ,@(invoke-interface-jsb code:compiler-interrupt-dlink)
 	 ;; 'Til here
 	 ,@(make-external-label code-word label)
-	 ,@(interrupt-check gc-label))))
+	 ,@(interrupt-check label gc-label))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
@@ -503,7 +507,7 @@ MIT in each case. |#
 				      external-label)
 	       (ADD L (&U ,(make-magic-closure-constant entry)) (@R 14))
 	       (LABEL ,internal-label)
-	       ,@(interrupt-check gc-label))))))
+	       ,@(interrupt-check internal-label gc-label))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
