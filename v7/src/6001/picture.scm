@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.20 1993/11/09 23:47:28 adams Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.21 1993/11/10 21:15:04 adams Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -324,7 +324,7 @@ MIT in each case. |#
 	      (graphics-clear window)
 	      (graphics-operation window 'draw-image 
 			    (quotient h-margin 2)
-			    (quotient v-margin 2)
+			    (- (quotient v-margin 2))
 			    image)
 	      (if (and true-min-max? (not image-cached?))
 		  (picture-set-image! pic image))))))))
