@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.39 1994/07/24 21:48:48 cph Exp $
+$Id: uerror.scm,v 14.40 1994/07/24 21:49:00 cph Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
