@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.43 1996/04/24 03:29:54 cph Exp $
+$Id: unxprm.scm,v 1.44 1996/04/24 03:39:08 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -356,6 +356,14 @@ MIT in each case. |#
 		     #f
 		     (file-modification-time input-filename))
     (set-file-modes! output-filename (file-modes input-filename))))
+
+(define (init-file-specifier->pathname specifier)
+  (guarantee-init-file-specifier specifier 'INIT-FILE-SPECIFIER->PATHNAME)
+  (merge-pathnames (apply string-append
+			  (cons ".mit-scheme"
+				(append-map (lambda (string) (list "/" string))
+					    specifier)))
+		   (user-homedir-pathname)))
 
 ;;; Queues after-restart daemon to clean up environment space
 

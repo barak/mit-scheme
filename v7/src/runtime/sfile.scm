@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.18 1995/10/28 01:16:09 cph Exp $
+$Id: sfile.scm,v 14.19 1996/04/24 03:39:30 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -102,3 +102,33 @@ MIT in each case. |#
 
 (define (current-file-time)
   (call-with-temporary-file-pathname file-modification-time))
+
+(define (guarantee-init-file-specifier object procedure)
+  (if (not (init-file-specifier? object))
+      (error:wrong-type-argument object "init-file specifier" procedure)))
+
+(define (init-file-specifier? object)
+  (and (list? object)
+       (for-all? object
+	 (lambda (object)
+	   (and (string? object)
+		(not (string-null? object)))))))
+
+(define (guarantee-init-file-directory pathname)
+  (let ((directory (user-homedir-pathname)))
+    (if (not (file-directory? directory))
+	(error "Home directory doesn't exist:" directory)))
+  (let loop ((pathname pathname))
+    (let ((directory (directory-pathname pathname)))
+      (if (not (file-directory? directory))
+	  (begin
+	    (loop (directory-pathname-as-file directory))
+	    (make-directory directory))))))
+
+(define (open-input-init-file specifier)
+  (open-input-file (init-file-specifier->pathname specifier)))
+
+(define (open-output-init-file specifier #!optional append?)
+  (let ((pathname (init-file-specifier->pathname specifier)))
+    (guarantee-init-file-directory pathname)
+    (open-output-file pathname (if (default-object? append?) #f append?))))

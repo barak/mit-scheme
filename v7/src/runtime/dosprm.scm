@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.37 1996/04/24 03:21:49 cph Exp $
+$Id: dosprm.scm,v 1.38 1996/04/24 03:39:47 cph Exp $
 
-Copyright (c) 1992-95 Massachusetts Institute of Technology
+Copyright (c) 1992-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -348,6 +348,60 @@ MIT in each case. |#
 		     #f
 		     (file-modification-time input-filename))
     (set-file-modes! output-filename (file-modes input-filename))))
+
+(define (init-file-specifier->pathname specifier)
+
+  (define (read-fat-init-file-map port)
+    (let loop ((result '()))
+      (let ((item (read port)))
+	(if (eof-object? item)
+	    result
+	    (begin
+	      (if (not (and (pair? item)
+			    (init-file-specifier? (car item))
+			    (string? (cdr item))))
+		  (error "Malformed init-file map item:" item))
+	      (loop (cons item result)))))))
+
+  (define (generate-fat-init-file directory)
+    (let loop ((index 1))
+      (let ((filename
+	     (string-append "ini"
+			    (string-pad-left (number->string index) 5 #\0)
+			    ".dat")))
+	(if (file-exists? (merge-pathnames filename directory))
+	    (loop (+ index 1))
+	    filename))))
+
+  (guarantee-init-file-specifier specifier 'INIT-FILE-SPECIFIER->PATHNAME)
+  (let ((short-base (merge-pathnames "mitschem.ini/" (user-homedir-pathname))))
+    (let ((file-map-pathname (merge-pathnames "filemap.dat" short-base)))
+      (let ((port #f))
+	(dynamic-wind
+	 (lambda ()
+	   (set! port (open-i/o-file file-map-pathname))
+	   unspecific)
+	 (lambda ()
+	   (merge-pathnames
+	    (or (let ((entry
+		       (assoc specifier (read-fat-init-file-map port))))
+		  (and entry
+		       (cdr entry)))
+		(let ((filename (generate-fat-init-file short-base)))
+		  (let ((channel (port/output-channel port)))
+		    (channel-file-set-position
+		     channel
+		     (channel-file-length channel)))
+		  (write (cons specifier filename) port)
+		  (newline port)
+		  filename))
+	    short-base))
+	 (lambda ()
+	   (if port
+	       (begin
+		 (close-port port)
+		 (set! port #f)
+		 unspecific))))))))
 
 (define (select-internal console? handles block?)
   (let* ((nt/qs-allinput #xff)
