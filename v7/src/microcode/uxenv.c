@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxenv.c,v 1.7 1992/05/06 14:03:36 jinx Exp $
+$Id: uxenv.c,v 1.8 1992/10/21 00:06:14 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -319,12 +319,6 @@ DEFUN (OS_set_working_dir_pathname, (name), CONST char * name)
       current_dir_path = new_current_dir_path;
     }
   }
-}
-
-CONST char *
-DEFUN (OS_get_environment_variable, (name), CONST char * name)
-{
-  return (UX_getenv (name));
 }
 
 CONST char *

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxenv.c,v 1.12 1992/10/20 23:59:27 jinx Exp $
+$Id: pruxenv.c,v 1.13 1992/10/21 00:06:20 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -190,11 +190,9 @@ The argument, a variable name, must be a string.\n\
 The result is either a string (the variable's value),\n\
  or #F indicating that the variable does not exist.")
 {
-  extern CONST char * EXFUN (OS_get_environment_variable, (CONST char * name));
   PRIMITIVE_HEADER (1);
   {
-    CONST char * variable_value =
-      (OS_get_environment_variable (STRING_ARG (1)));
+    CONST char * variable_value = (UX_getenv (STRING_ARG (1)));
     PRIMITIVE_RETURN
       ((variable_value == 0)
        ? SHARP_F

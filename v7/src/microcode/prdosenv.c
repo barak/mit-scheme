@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prdosenv.c,v 1.8 1992/10/21 00:00:37 jinx Exp $
+$Id: prdosenv.c,v 1.9 1992/10/21 00:02:10 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -147,11 +147,9 @@ The argument, a variable name, must be a string.\n\
 The result is either a string (the variable's value),\n\
  or #F indicating that the variable does not exist.")
 {
-  extern CONST char * EXFUN (OS_get_environment_variable, (CONST char * name));
   PRIMITIVE_HEADER (1);
   {
-    CONST char * variable_value =
-      (OS_get_environment_variable (STRING_ARG (1)));
+    CONST char * variable_value = (DOS_getenv (STRING_ARG (1)));
     PRIMITIVE_RETURN
       ((variable_value == 0)
        ? SHARP_F
