@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.195 2001/05/09 18:10:21 cph Exp $
+;;; $Id: prompt.scm,v 1.196 2001/05/10 02:11:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -272,7 +272,8 @@
 	   (string-table-completions string-table string))
 	 (lambda (string)
 	   (let ((default (list 'DEFAULT)))
-	     (not (eq? (string-table-get string-table string default)
+	     (not (eq? (string-table-get string-table string
+					 (lambda (index) index default))
 		       default))))
 	 'CASE-INSENSITIVE-COMPLETION? (string-table-ci? string-table)
 	 options))
