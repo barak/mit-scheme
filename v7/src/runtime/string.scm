@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.15 1997/10/02 19:16:40 adams Exp $
+$Id: string.scm,v 14.16 1997/10/03 07:26:54 cph Exp $
 
 Copyright (c) 1988-1997 Massachusetts Institute of Technology
 
@@ -623,7 +623,7 @@ MIT in each case. |#
   (cond ((not (string? object1))
 	 (error:wrong-type-argument object1 "string" procedure))
 	((not (string? object2))
-	 (error:wrong-type-argument object1 "string" procedure))))
+	 (error:wrong-type-argument object2 "string" procedure))))
 
 (define-integrable (guarantee-index/string object procedure)
   (if (not (index-fixnum? object))
