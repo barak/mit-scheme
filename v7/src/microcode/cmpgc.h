@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpgc.h,v 1.21 1992/08/29 12:54:14 jinx Exp $
+$Id: cmpgc.h,v 1.22 1992/08/30 14:02:59 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -136,6 +136,7 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 }
 
 #ifdef AUTOCLOBBER_BUG
+
 # define AUTOCLOBBER_BUMP(Old, To) do					\
 {									\
   if (OBJECT_TYPE(*Old) == TC_MANIFEST_VECTOR)				\
@@ -145,9 +146,12 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 			 - 1)));					\
     To += (PAGE_SIZE / (sizeof (SCHEME_OBJECT)));			\
   }									\
-} while (0)								\
+} while (0)
+
 #else
-#  define AUTOCLOBBER_BUMP(Old, To) do { } while (0)
+
+# define AUTOCLOBBER_BUMP(Old, To) do { } while (0)
+
 #endif
 
 #define Transport_Compiled()						\
