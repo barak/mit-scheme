@@ -31,7 +31,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.39 1987/04/16 02:01:24 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.40 1987/04/16 14:34:28 jinx Rel $
  *
  * This file contains the support routines for mapping primitive names
  * to numbers within the microcode.  This mechanism is only used by
@@ -227,4 +227,36 @@ external_primitive_to_arity(code)
     primitive_code_to_arity(code,
 			    &External_Arity_Table[0],
 			    MAX_EXTERNAL_PRIMITIVE);
+}
+
+extern Pointer Make_Prim_Exts();
+
+/*
+   Used to create a vector with symbols for each of the external
+   primitives known to the system.
+*/
+
+Pointer 
+Make_Prim_Exts()
+{
+  fast Pointer Result, *scan;
+  fast long i, Max, Count;
+
+  Max = NUndefined();
+  Count = (MAX_EXTERNAL_PRIMITIVE + Max + 1);
+  Primitive_GC_If_Needed(Count + 1);
+  Result = Make_Pointer(TC_VECTOR, Free);
+  scan = Free;
+  Free += Count + 1;
+
+  *scan++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, Count);
+  for (i = 0; i <= MAX_EXTERNAL_PRIMITIVE; i++)
+  {
+    *scan++ = external_primitive_name(i);
+  }
+  for (i = 1; i <= Max; i++)
+  {
+    *scan++ = User_Vector_Ref(Undefined_Externals, i);
+  }
+  return Result;
 }

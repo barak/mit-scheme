@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.24 1987/04/16 02:21:39 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.25 1987/04/16 14:34:02 jinx Exp $
 
    This file contains code for fasdump and dump-band.
 */
@@ -42,6 +42,8 @@ MIT in each case. */
 #include "trap.h"
 #include "lookup.h"
 #include "dump.c"
+
+extern Pointer Make_Prim_Exts();
 
 /* Some statics used freely in this file */
 Pointer *NewFree, *NewMemTop, *Fixup, *Orig_New_Free;
@@ -184,37 +186,6 @@ int Dump_Mode;
   Fixup = Fixes;
   return true;
 } /* DumpLoop */
-
-/*
-   Used to create a vector with symbols for each of the external
-   primitives known to the system.
-*/
-
-Pointer 
-Make_Prim_Exts()
-{
-  extern Pointer external_primitive_name();
-  fast Pointer Result, *scan;
-  fast long i, Max, Count;
-
-  Max = NUndefined();
-  Count = (MAX_EXTERNAL_PRIMITIVE + Max + 1);
-  Primitive_GC_If_Needed(Count + 1);
-  Result = Make_Pointer(TC_VECTOR, Free);
-  scan = Free;
-  Free += Count + 1;
-
-  *scan++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, Count);
-  for (i = 0; i <= MAX_EXTERNAL_PRIMITIVE; i++)
-  {
-    *scan++ = external_primitive_name(i);
-  }
-  for (i = 1; i <= Max; i++)
-  {
-    *scan++ = User_Vector_Ref(Undefined_Externals, i);
-  }
-  return Result;
-}
 
 void
 Fasdump_Exit()
