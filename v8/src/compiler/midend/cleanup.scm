@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.19 1995/06/15 17:59:59 adams Exp $
+$Id: cleanup.scm,v 1.20 1995/07/04 05:47:49 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -677,29 +677,3 @@ MIT in each case. |#
 
 (define (cleanup/remember new old)
   (code-rewrite/remember new old))
-
-;;(define (cleanup/get-dbg-info env expr)
-;;  (cond ((code-rewrite/original-form/previous expr)
-;;         => (lambda (dbg-info)
-;;              ;; Copy the dbg info, rewriting the expressions
-;;              (let* ((block     (new-dbg-form/block dbg-info))
-;;                     (block*    (new-dbg-block/copy-transforming
-;;                                 (lambda (expr)
-;;                                   (cleanup/copy-dbg-kmp expr env))
-;;                                 block))
-;;                     (dbg-info* (new-dbg-form/new-block dbg-info block*)))
-;;                dbg-info*)))
-;;        (else #F)))
-;;
-;;
-;;(define (cleanup/copy-dbg-kmp expr env)
-;;  (form/copy-transforming
-;;   (lambda (form copy uninteresting)
-;;     copy
-;;     (cond ((and (LOOKUP/? form)
-;;		 (cleanup/env/lookup (lookup/name form) env))
-;;	    => (lambda (value)
-;;		 (form/copy value)))
-;;	   (else
-;;	    (uninteresting form))))
-;;   expr))
