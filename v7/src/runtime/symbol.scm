@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: symbol.scm,v 1.14 2004/01/15 20:59:12 cph Exp $
+$Id: symbol.scm,v 1.15 2004/07/15 04:05:39 cph Exp $
 
 Copyright 1992,1993,2001,2003,2004 Massachusetts Institute of Technology
 
@@ -75,6 +75,20 @@ USA.
 
 (define (string-tail->symbol string start)
   ((ucode-primitive string->symbol) (string-tail string start)))
+
+(define (symbol . objects)
+  ((ucode-primitive string->symbol)
+   (apply string-append
+	  (map (lambda (object)
+		 (cond ((string? object) object)
+		       ((symbol? object) (symbol-name object))
+		       ((number? object) (number->string object))
+		       ((not object) "")
+		       (else
+			(error:wrong-type-argument object
+						   "symbol component"
+						   'SYMBOL))))
+	       objects))))
 
 (define (intern string)
   (if (string-lower-case? string)
