@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.42 1999/04/07 04:09:03 cph Exp $
+$Id: os2prm.scm,v 1.43 1999/04/26 16:35:21 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -245,17 +245,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (set! current-home-directory
 	(lambda ()
 	  (or (%current-home-directory)
-	      (let ((user-name (%current-user-name)))
-		;; If home directory not defined, look for directory
-		;; with user's name in users directory and in root
-		;; directory of system drive.  If still nothing, use
-		;; root directory of system drive.
-		(or (let ((usersdir (%users-directory)))
-		      (and usersdir
-			   (trydir (merge-pathnames user-name usersdir))))
-		    (let ((rootdir (os2/system-root-directory)))
-		      (or (trydir (merge-pathnames user-name rootdir))
-			  rootdir)))))))
+	      ;; If home directory not defined, look for directory
+	      ;; with user's name in users directory and in root
+	      ;; directory of system drive.  If still nothing, use
+	      ;; root directory of system drive.
+	      (let ((user-name (%current-user-name))
+		    (rootdir (os2/system-root-directory)))
+		(or (and user-name
+			 (or (let ((usersdir (%users-directory)))
+			       (and usersdir
+				    (trydir
+				     (merge-pathnames user-name usersdir))))
+			     (trydir (merge-pathnames user-name rootdir))))
+		    rootdir)))))
 
   (set! user-home-directory
 	(lambda (user-name)
