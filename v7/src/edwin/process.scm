@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.8 1991/10/02 09:25:55 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.9 1991/10/11 03:34:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -581,6 +581,58 @@ after the listing is made.)"
 
 (define system-call-error
   (condition-accessor condition-type:system-call-error 'ERROR-TYPE))
+
+(define-command shell-command
+  "Execute string COMMAND in inferior shell; display output, if any.
+Optional second arg true (prefix arg, if interactive) means
+insert output in current buffer after point (leave mark after it)."
+  "sShell command\nP"
+  (lambda (command insert-at-point?)
+    (if insert-at-point?
+	(begin
+	  (if (buffer-read-only? (current-buffer))
+	      (barf-if-read-only))
+	  (let ((point (current-point)))
+	    (push-current-mark! point)
+	    (shell-command command point))
+	  ((ref-command exchange-point-and-mark)))
+	(shell-command-pop-up-output
+	 (lambda (output-mark)
+	   (shell-command command output-mark))))))
+
+(define-command shell-command-on-region
+  "Execute string COMMAND in inferior shell with region as input.
+Normally display output (if any) in temp buffer;
+Prefix arg means replace the region with it."
+  "r\nsShell command on region\nP"
+  (lambda (region command replace-region?)
+    (if replace-region?
+	(let ((point (current-point))
+	      (mark (current-mark)))
+	  (let ((swap? (mark< point mark))
+		(temp (temporary-buffer " *shell-input*")))
+	    (let ((st (buffer-start temp)))
+	      (if swap?
+		  (insert-region point mark st)
+		  (insert-region mark point st))
+	      (delete-string point mark)
+	      (shell-command-region command
+				    point
+				    (make-region st (buffer-end temp))))
+	    (kill-buffer temp)
+	    (if swap? ((ref-command exchange-point-and-mark)))))
+	(shell-command-pop-up-output
+	 (lambda (output-mark)
+	   (shell-command-region command output-mark region))))))
+
+(define (shell-command-pop-up-output generate-output)
+  (let ((buffer (temporary-buffer "*Shell Command Output*")))
+    (let ((start (buffer-start buffer)))
+      (generate-output start)
+      (set-buffer-point! buffer start)
+      (if (mark< start (buffer-end buffer))
+	  (pop-up-buffer buffer false)
+	  (message "(Shell command completed with no output)")))))
 
 ;;; These procedures are not specific to the process abstraction.
 
