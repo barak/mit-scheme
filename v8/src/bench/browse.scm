@@ -178,4 +178,6 @@
 
 ;;; call: (browse)
 
-(lambda () (browse))
+(lambda ()
+  (browse) (browse) (browse) (browse) (browse)
+  (browse) (browse) (browse) (browse) (browse))
