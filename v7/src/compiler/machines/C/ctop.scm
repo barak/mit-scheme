@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.9 1993/11/16 22:37:46 gjr Exp $
+$Id: ctop.scm,v 1.10 1993/11/17 05:22:03 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -115,11 +115,7 @@ MIT in each case. |#
 		microcode-id/operating-system-variant))))
 
 (define c-compiler-switch-table
-  `(("SunOS"
-     "so"
-     ("-c" "-pic" "-O" "-Dsun4" "-D_SUNOS4" "-w")
-     ())
-    ("AIX"
+  `(("AIX"
      "so"
      ("-c" "-O" "-D_AIX")
      ,(lambda (dir)
@@ -136,7 +132,11 @@ MIT in each case. |#
     ("OSF"
      "so"
      ("-c" "-std1")
-     ("-shared"))))
+     ("-shared" "-expect_unresolved" "'*'"))
+    ("SunOS"
+     "so"
+     ("-c" "-pic" "-O" "-Dsun4" "-D_SUNOS4" "-w")
+     ())))
 
 (define (c-compiler-switches)
   (if (not (eq? compiler:c-compiler-switches 'UNKNOWN))
@@ -176,14 +176,18 @@ MIT in each case. |#
 	 compiler:c-linker-switches)
 	((assoc microcode-id/operating-system-variant c-compiler-switch-table)
 	 => (lambda (place)
-	      (let ((switches (cadddr place)))
-		(if (not (procedure? switches))
-		    switches
-		    (let ((dir (system-library-directory-pathname "include")))
-		      (if (not dir)
-			  (error 'c-linker-switches
-				 "Cannot find \"include\" directory"))
-		      (switches dir))))))
+	      (let ((switches
+		     (let ((switches (cadddr place)))
+		       (if (not (scode/procedure? switches))
+			   switches
+			   (let ((dir (system-library-directory-pathname
+				       "include")))
+			     (if (not dir)
+				 (error 'c-linker-switches
+					"Cannot find \"include\" directory"))
+			     (switches dir))))))
+		(set! compiler:c-linker-switches switches)
+		switches)))
 	(else
 	 (error 'c-linker-switches "Unknown OS"
 		microcode-id/operating-system-variant))))
