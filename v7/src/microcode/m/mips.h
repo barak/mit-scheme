@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for MIPS computers.
 
-$Id: mips.h,v 1.8 1993/06/28 02:29:40 cph Exp $
+$Id: mips.h,v 1.9 1993/11/12 16:42:40 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -44,7 +44,12 @@ MIT in each case. */
 /* The "-std" switch says to turn on ANSI features and compatible
    extensions.  The "-Olimit" switch is needed because some procedures
    are larger than the built-in optimization limit.  */
+#ifdef _ULTRIX
+/* Ultrix doesn't support -std */
+#define C_SWITCH_MACHINE -Olimit 2000
+#else
 #define C_SWITCH_MACHINE -std -Olimit 2000
+#endif
 #else
 #define C_SWITCH_MACHINE
 #endif

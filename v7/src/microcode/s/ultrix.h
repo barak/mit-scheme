@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for Ultrix
 
-$Id: ultrix.h,v 1.14 1993/06/24 07:31:32 gjr Exp $
+$Id: ultrix.h,v 1.15 1993/11/12 16:42:48 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -39,6 +39,7 @@ MIT in each case. */
 /* This is in mips.h for some reason. */
 /* #define LIB_DEBUG */
 
+#define _ULTRIX
 #define C_SWITCH_SYSTEM -D_ULTRIX -YPOSIX
 #define LD_SWITCH_SYSTEM -YPOSIX
 
