@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.5 1989/10/28 06:46:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.6 1989/10/31 03:35:04 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -149,7 +149,7 @@ MIT in each case. |#
 (define flo:1-epsilon)
 (define flo:significand-digits-base-2)
 (define flo:significand-digits-base-10)
-(define rat:flonum-epsilon/2)
+(define int:flonum-integer-limit)
 
 (define (initialize-microcode-dependencies!)
   (let ((p microcode-id/floating-mantissa-bits)
@@ -167,9 +167,8 @@ MIT in each case. |#
 	  (int:+ 2
 		 (flo:floor->exact
 		  (flo:/ (int:->flonum p)
-			 (flo:/ (flo:log 10.) (flo:log 2.)))))))
-  (set! rat:flonum-epsilon/2
-	(rat:expt 2 (int:negate flo:significand-digits-base-2)))
+			 (flo:/ (flo:log 10.) (flo:log 2.))))))
+    (set! int:flonum-integer-limit (int:expt 2 p)))
   unspecific)
 
 (define (int:max n m)
@@ -585,26 +584,70 @@ MIT in each case. |#
 		     (int:->string (ratnum-denominator q) radix))
       (int:->string q radix)))
 
+(define (make-rational n d)
+  (if (or (int:zero? n) (int:= 1 d))
+      n
+      (make-ratnum n d)))
+
 (define (rat:->flonum q)
   (if (ratnum? q)
       (ratnum->flonum q)
       (int:->flonum q)))
 
 (define (ratnum->flonum q)
-  (let ((n (integer->flonum (ratnum-numerator q) #b00))
-	(d (integer->flonum (ratnum-denominator q) #b00)))
-    (if (and n d)
-	(flo:/ n d)
-	(let ((q (rat:rationalize q (rat:* q rat:flonum-epsilon/2))))
-	  (if (ratnum? q)
-	      (flo:/ (int:->flonum (ratnum-numerator q))
-		     (int:->flonum (ratnum-denominator q)))
-	      (int:->flonum q))))))
-
-(define (make-rational n d)
-  (if (or (int:zero? n) (int:= 1 d))
-      n
-      (make-ratnum n d)))
+  (let ((q>0
+	 (lambda (n d)
+	   (let ((u int:flonum-integer-limit))
+	     (let ((g (int:gcd n u)))
+	       (let ((n (int:quotient n g))
+		     (d (int:* d (int:quotient u g)))
+		     (finish
+		      (lambda (n d e)
+			(flo:denormalize
+			 (integer->flonum
+			  (let ((g (int:gcd d u)))
+			    (int:round
+			     (int:* n (int:quotient u g))
+			     (int:quotient d g)))
+			  #b11)
+			 e))))
+		 (if (int:< n d)
+		     (let scale-up ((n n) (e 0))
+		       (let ((n*2 (int:* n 2)))
+			 (if (int:< n*2 d)
+			     (let loop ((n n*2) (n*r (int:* n 4)) (r 4) (m 1))
+			       (if (int:< n*r d)
+				   (loop n*r
+					 (int:* n*r r)
+					 (int:* r r)
+					 (int:+ m m))
+				   (scale-up n (- e m))))
+			     (finish n d e))))
+		     (let scale-down ((d d) (e 0))
+		       (let ((d (int:* d 2)))
+			 (cond ((int:> n d)
+				(let loop ((d d) (d*r (int:* d 2)) (r 4) (m 1))
+				  (cond ((int:> n d*r)
+					 (loop d*r
+					       (int:* d*r r)
+					       (int:* r r)
+					       (int:+ m m)))
+					((int:< n d*r)
+					 (scale-down d (int:+ e m)))
+					(else
+					 (finish
+					  n
+					  (int:* d*r 2)
+					  (int:1+ (int:+ e (int:+ m m))))))))
+			       ((int:< n d)
+				(finish n d (int:1+ e)))
+			       (else
+				(finish n (int:* d 2) (int:+ e 2)))))))))))))
+    (let ((n (ratnum-numerator q))
+	  (d (ratnum-denominator q)))
+      (cond ((positive? n) (q>0 n d))
+	    ((negative? n) (flo:negate (q>0 (int:negate n) d)))
+	    (else flo:0)))))
 
 (define (flo:significand-digits radix)
   (cond ((int:= radix 10)
@@ -656,7 +699,7 @@ MIT in each case. |#
 		     ((flo:= fx fy)
 		      (rat:+ (flo:->integer fx)
 			     (rat:invert (loop (flo:/ flo:1 (flo:- y fy))
-					   (flo:/ flo:1 (flo:- x fx))))))
+					       (flo:/ flo:1 (flo:- x fx))))))
 		     (else
 		      (rat:1+ (flo:->integer fx))))))
 	   (cond ((flo:positive? x) (loop x y))
@@ -1593,15 +1636,65 @@ MIT in each case. |#
 (define angle complex:angle)
 (define exact->inexact complex:exact->inexact)
 (define inexact->exact complex:inexact->exact)
-
+
 (define (number->string z #!optional radix)
   (complex:->string
    z
-   (cond ((or (default-object? radix)
-	      (equal? radix '(HEUR)))
+   (cond ((default-object? radix)
 	  10)
 	 ((and (exact-integer? radix)
 	       (<= 2 radix 36))
 	  radix)
+	 ((and (pair? radix)
+	       (eq? (car radix) 'HEUR)
+	       (list? radix))
+	  (parse-format-tail (cdr radix)))
 	 (else
 	  (bad-range 'NUMBER->STRING radix)))))
+
+(define (parse-format-tail tail)
+  (let loop
+      ((tail tail)
+       (exactness-expressed false)
+       (radix false)
+       (radix-expressed false))
+    (if (null? tail)
+	(case radix ((B) 2) ((O) 8) ((#F D) 10) ((X) 16))
+	(let ((modifier (car tail))
+	      (tail (cdr tail)))
+	  (let ((specify-modifier
+		 (lambda (old)
+		   (if old
+		       (error "Respecification of format modifier"
+			      (cadr modifier)))
+		   (cadr modifier))))
+	    (cond ((and (pair? modifier)
+			(eq? (car modifier) 'EXACTNESS)
+			(pair? (cdr modifier))
+			(memq (cadr modifier) '(E S))
+			(null? (cddr modifier)))
+		   (if (eq? (cadr modifier) 'E)
+		       (warn "NUMBER->STRING: ignoring exactness modifier"
+			     modifier))
+		   (loop tail
+			 (specify-modifier exactness-expressed)
+			 radix
+			 radix-expressed))
+		  ((and (pair? modifier)
+			(eq? (car modifier) 'RADIX)
+			(pair? (cdr modifier))
+			(memq (cadr modifier) '(B O D X))
+			(or (null? (cddr modifier))
+			    (pair? (cddr modifier))
+			    (memq (caddr modifier) '(E S))
+			    (null? (cdddr modifier))))		   (if (and (pair? (cddr modifier))
+			    (eq? (caddr modifier) 'E))
+		       (warn
+			"NUMBER->STRING: ignoring radix expression modifier"
+			modifier))
+		   (loop tail
+			 exactness-expressed
+			 (specify-modifier radix)
+			 (if (null? (cddr modifier)) 'E (caddr modifier))))
+		  (else
+		   (error "Illegal format modifier" modifier))))))))
