@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.53 2000/03/31 19:22:27 cph Exp $
+;;; $Id: vc.scm,v 1.54 2000/03/31 19:50:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -358,10 +358,7 @@ Otherwise, the mod time of the file is the checkout time."
 	  (begin
 	    (buffer-remove! buffer 'VC-MASTER)
 	    (if (vc-dired-buffer? buffer)
-		(let ((file (dired-this-file)))
-		  (if file
-		      (file-vc-master (car file) error?)
-		      (and error? (vc-registration-error #f))))
+		(file-vc-master (dired-this-file buffer error?) error?)
 		(let ((workfile (buffer-pathname buffer)))
 		  (if workfile
 		      (let ((master (%file-vc-master workfile error?)))
@@ -464,7 +461,11 @@ merge in the changes into your working copy."
   "Register the current file into your version-control system."
   "P"
   (lambda (revision?)
-    (let ((workfile (buffer-pathname (selected-buffer))))
+    (let ((workfile
+	   (let ((buffer (selected-buffer)))
+	     (if (vc-dired-buffer? buffer)
+		 (dired-this-file buffer #t)
+		 (buffer-pathname (selected-buffer))))))
       (if (not workfile) (vc-registration-error #f))
       (if (file-vc-master workfile #f)
 	  (editor-error "This file is already registered."))
@@ -542,7 +543,7 @@ merge in the changes into your working copy."
 	 (let ((files (dired-marked-files buffer)))
 	   (if (pair? files)
 	       files
-	       (dired-next-files 1)))))
+	       (dired-next-files 1 buffer)))))
     (if (pair? files)
 	(if (pair? (cdr files))
 	    (vc-start-entry
@@ -885,15 +886,11 @@ Normally shows only locked files; prefix arg says to show all files."
 		 (pathname=? (car spec) directory)))))
       (new-buffer (pathname->buffer-name directory))))
 
-(define (vc-dired-buffer? buffer)
-  (buffer-get buffer 'VC-DIRECTORY-SPEC #f))
-
 (define (fill-vc-dired-buffer! buffer directory all-files?)
   (let ((msg
 	 (string-append "Reading directory " (->namestring directory) "...")))
     (buffer-reset! buffer)
-    (set-buffer-major-mode! buffer (ref-mode-object dired))
-    (local-set-variable! mode-name "VC-Dired" buffer)
+    (set-buffer-major-mode! buffer (ref-mode-object vc-dired))
     (set-buffer-default-directory! buffer (directory-pathname directory))
     (buffer-put! buffer 'VC-DIRECTORY-SPEC (cons directory all-files?))
     (buffer-put! buffer 'REVERT-BUFFER-METHOD revert-vc-dired-buffer)
@@ -957,6 +954,49 @@ Normally shows only locked files; prefix arg says to show all files."
     (file-namestring file)
     "\n")
    mark))
+
+(define-major-mode vc-dired dired "VC-Dired"
+  "The major mode used in VC directory buffers.  It works like Dired,
+but lists only files under version control, with the current VC state of 
+each file being indicated in the place of the file's link count, owner, 
+group and size.  Subdirectories are also listed, and you may insert them 
+into the buffer as desired, as in Dired.
+  All Dired commands operate normally, with the exception of `v', which
+is redefined as the version control prefix, so that you can type 
+`vl', `v=' etc. to invoke `vc-print-log', `vc-diff', and the like on
+the file named in the current Dired buffer line.  `vv' invokes
+`vc-next-action' on this file, or on all files currently marked.
+There is a special command, `*l', to mark all files currently locked.
+
+\\{vc-dired}"
+  (lambda (buffer)
+    buffer
+    unspecific))
+
+(define (vc-dired-buffer? buffer)
+  (eq? (ref-mode-object vc-dired) (buffer-major-mode buffer)))
+
+(define-key 'vc-dired '(#\v #\h) 'vc-insert-headers)
+(define-key 'vc-dired '(#\v #\i) 'vc-register)
+(define-key 'vc-dired '(#\v #\l) 'vc-print-log)
+;;(define-key 'vc-dired '(#\v #\m) 'vc-merge)
+;;(define-key 'vc-dired '(#\v #\r) 'vc-retrieve-snapshot)
+;;(define-key 'vc-dired '(#\v #\s) 'vc-create-snapshot)
+(define-key 'vc-dired '(#\v #\u) 'vc-revert-buffer)
+(define-key 'vc-dired '(#\v #\v) 'vc-next-action)
+(define-key 'vc-dired '(#\v #\=) 'vc-diff)
+(define-key 'vc-dired '(#\v #\~) 'vc-version-other-window)
+(define-key 'vc-dired '(#\* #\l) 'vc-dired-mark-locked)
+
+(define-command vc-dired-mark-locked
+  "Mark all files currently locked."
+  ()
+  (lambda ()
+    (dired-mark-files! (selected-buffer)
+      (lambda (file)
+	(let ((master (file-vc-master file #f)))
+	  (and master
+	       (vc-backend-locking-user master #f)))))))
 
 ;;;; Log Entries
 
