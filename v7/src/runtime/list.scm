@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.21 1995/07/27 21:33:33 adams Exp $
+$Id: list.scm,v 14.22 1996/07/27 04:46:06 adams Exp $
 
-Copyright (c) 1988-1995 Massachusetts Institute of Technology
+Copyright (c) 1988-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -488,133 +488,131 @@ MIT in each case. |#
 
 ;;;; Mapping Procedures
 ;;
-;;  This is an iterative, side effecting version of map.  It is not used
-;;  because it interacts with call-with-current-continuation.
-;;
-;;(define (map procedure first . rest)
-;;
-;;  (define (bad-list thing)
-;;    (error:wrong-type-argument thing "list" 'MAP))
-;;
-;;  (define (map-1 list)
-;;    (define-integrable (end-check thing result)
-;;      (if (not (null? thing)) (bad-list list))
-;;      result)
-;;    (if (pair? list)
-;;	(let ((head (cons (procedure (car list)) '())))
-;;	  (let 1-loop ((list* (cdr list)) (previous head))
-;;	    (if (pair? list*)
-;;		(let ((new (cons (procedure (car list*)) '())))
-;;		  (set-cdr! previous new)
-;;		  (1-loop (cdr list*) new))
-;;		(end-check list* head))))
-;;	(end-check list '())))
-;;
-;;  (define (map-2 list1 list2)
-;;    (define-integrable (end-check end1 end2 result)
-;;      (if (pair? end1)
-;;	  (if (not (null? end2)) (bad-list list2))
-;;	  (if (pair? end2)
-;;	      (if (not (null? end1)) (bad-list list1))))
-;;      result)
-;;    (if (and (pair? list1) (pair? list2))
-;;	(let ((head (cons (procedure (car list1) (car list2)) '())))
-;;	  (let 2-loop ((list1* (cdr list1))
-;;		       (list2* (cdr list2))
-;;		       (previous head))
-;;	    (if (and (pair? list1*) (pair? list2*))
-;;		(let ((new (cons (procedure (car list1*) (car list2*))
-;;				 '())))
-;;		  (set-cdr! previous new)
-;;		  (2-loop (cdr list1*) (cdr list2*) new))
-;;		(end-check list1* list2* head))))
-;;	(end-check list1 list2 '())))
-;;
-;;  (define (map-n lists)
-;;    ;; LISTS has at least one list.
-;;    (let ((head  (cons '() '()))) 
-;;      (let n-loop ((lists* lists) (previous head))
-;;	(let parse-cars ((lists lists)
-;;			 (lists* lists*)
-;;			 (cars '())
-;;			 (cdrs '()))
-;;	  (cond ((null? lists*)
-;;		 (let ((new (cons (apply procedure 
-;;					 (reverse! cars)) '())))
-;;		   (set-cdr! previous new)
-;;		   (n-loop (reverse! cdrs) new)))
-;;		((pair? (car lists*))
-;;		 (parse-cars (cdr lists)
-;;			     (cdr lists*)
-;;			     (cons (car (car lists*)) cars)
-;;			     (cons (cdr (car lists*)) cdrs)))
-;;		(else
-;;		 (if (not (null? (car lists*)))
-;;		     (bad-list (car lists)))
-;;		 (cdr head)))))))
-;;
-;;  (cond ((null? rest)
-;;	 (map-1 first))
-;;	((null? (cdr rest))
-;;	 (map-2 first (car rest)))
-;;	(else
-;;	 (map-n (cons first rest)))))
+;;  This is an iterative, side effecting version of map.
+
+(define (map procedure first . rest)
+
+  (define (bad-list thing)
+    (error:wrong-type-argument thing "list" 'MAP))
+
+  (define (map-1 list)
+    (define-integrable (end-check thing result)
+      (if (not (null? thing)) (bad-list list))
+      result)
+    (if (pair? list)
+	(let ((head (cons (procedure (car list)) '())))
+	  (let 1-loop ((list* (cdr list)) (previous head))
+	    (if (pair? list*)
+		(let ((new (cons (procedure (car list*)) '())))
+		  (set-cdr! previous new)
+		  (1-loop (cdr list*) new))
+		(end-check list* head))))
+	(end-check list '())))
+
+  (define (map-2 list1 list2)
+    (define-integrable (end-check end1 end2 result)
+      (if (pair? end1)
+	  (if (not (null? end2)) (bad-list list2))
+	  (if (pair? end2)
+	      (if (not (null? end1)) (bad-list list1))))
+      result)
+    (if (and (pair? list1) (pair? list2))
+	(let ((head (cons (procedure (car list1) (car list2)) '())))
+	  (let 2-loop ((list1* (cdr list1))
+		       (list2* (cdr list2))
+		       (previous head))
+	    (if (and (pair? list1*) (pair? list2*))
+		(let ((new (cons (procedure (car list1*) (car list2*))
+				 '())))
+		  (set-cdr! previous new)
+		  (2-loop (cdr list1*) (cdr list2*) new))
+		(end-check list1* list2* head))))
+	(end-check list1 list2 '())))
+
+  (define (map-n lists)
+    ;; LISTS has at least one list.
+    (let ((head  (cons '() '()))) 
+      (let n-loop ((lists* lists) (previous head))
+	(let parse-cars ((lists lists)
+			 (lists* lists*)
+			 (cars '())
+			 (cdrs '()))
+	  (cond ((null? lists*)
+		 (let ((new (cons (apply procedure 
+					 (reverse! cars)) '())))
+		   (set-cdr! previous new)
+		   (n-loop (reverse! cdrs) new)))
+		((pair? (car lists*))
+		 (parse-cars (cdr lists)
+			     (cdr lists*)
+			     (cons (car (car lists*)) cars)
+			     (cons (cdr (car lists*)) cdrs)))
+		(else
+		 (if (not (null? (car lists*)))
+		     (bad-list (car lists)))
+		 (cdr head)))))))
+
+  (cond ((null? rest)
+	 (map-1 first))
+	((null? (cdr rest))
+	 (map-2 first (car rest)))
+	(else
+	 (map-n (cons first rest)))))
 	   
 
 (let-syntax
     ((mapping-procedure
       (macro (name combiner initial-value procedure first rest)
-	(let ((name (string-upcase (symbol->string name))))
-	  `(COND ((NULL? ,rest)
-		  (LET 1-LOOP ((LIST ,first))
-		    (IF (PAIR? LIST)
-			(,combiner (,procedure (CAR LIST))
-				   (1-LOOP (CDR LIST)))
-			(BEGIN
-			  (IF (NOT (NULL? LIST))
-			      (ERROR:WRONG-TYPE-ARGUMENT ,first "list" ',name))
-			  ,initial-value))))
-		 ((NULL? (CDR ,rest))
-		  (LET 2-LOOP ((LIST1 ,first) (LIST2 (CAR ,rest)))
-		    (IF (AND (PAIR? LIST1) (PAIR? LIST2))
-			(,combiner (,procedure (CAR LIST1) (CAR LIST2))
-				   (2-LOOP (CDR LIST1) (CDR LIST2)))
-			(BEGIN
-			  (IF (AND (NOT (PAIR? LIST1))
-				   (NOT (NULL? LIST1)))
-			      (ERROR:WRONG-TYPE-ARGUMENT ,first "list" ',name))
-			  (IF (AND (NOT (PAIR? LIST2))
-				   (NOT (NULL? LIST2)))
-			      (ERROR:WRONG-TYPE-ARGUMENT (CAR ,rest)
-							 "list" ',name))
-			  ,initial-value))))
-		 (ELSE
-		  (LET ((LISTS (CONS ,first ,rest)))
-		    (LET N-LOOP ((LISTS* LISTS))
-		      (LET PARSE-CARS
-			  ((LISTS LISTS)
-			   (LISTS* LISTS*)
-			   (CARS '())
-			   (CDRS '()))
-			(COND ((NULL? LISTS*)
-			       (,combiner (APPLY ,procedure (REVERSE! CARS))
-					  (N-LOOP (REVERSE! CDRS))))
-			      ((PAIR? (CAR LISTS*))
-			       (PARSE-CARS (CDR LISTS)
-					   (CDR LISTS*)
-					   (CONS (CAR (CAR LISTS*)) CARS)
-					   (CONS (CDR (CAR LISTS*)) CDRS)))
-			      (ELSE
-			       (IF (NOT (NULL? (CAR LISTS*)))
-				   (ERROR:WRONG-TYPE-ARGUMENT (CAR LISTS) "list"
-							      ',name))
-			       ,initial-value)))))))))))
+	`(COND ((NULL? ,rest)
+		(LET 1-LOOP ((LIST ,first))
+		  (IF (PAIR? LIST)
+		      (,combiner (,procedure (CAR LIST))
+				 (1-LOOP (CDR LIST)))
+		      (BEGIN
+			(IF (NOT (NULL? LIST))
+			    (ERROR:WRONG-TYPE-ARGUMENT ,first "list" ',name))
+			,initial-value))))
+	       ((NULL? (CDR ,rest))
+		(LET 2-LOOP ((LIST1 ,first) (LIST2 (CAR ,rest)))
+		  (IF (AND (PAIR? LIST1) (PAIR? LIST2))
+		      (,combiner (,procedure (CAR LIST1) (CAR LIST2))
+				 (2-LOOP (CDR LIST1) (CDR LIST2)))
+		      (BEGIN
+			(IF (AND (NOT (PAIR? LIST1))
+				 (NOT (NULL? LIST1)))
+			    (ERROR:WRONG-TYPE-ARGUMENT ,first "list" ',name))
+			(IF (AND (NOT (PAIR? LIST2))
+				 (NOT (NULL? LIST2)))
+			    (ERROR:WRONG-TYPE-ARGUMENT (CAR ,rest)
+						       "list" ',name))
+			,initial-value))))
+	       (ELSE
+		(LET ((LISTS (CONS ,first ,rest)))
+		  (LET N-LOOP ((LISTS* LISTS))
+		    (LET PARSE-CARS
+			((LISTS LISTS)
+			 (LISTS* LISTS*)
+			 (CARS '())
+			 (CDRS '()))
+		      (COND ((NULL? LISTS*)
+			     (,combiner (APPLY ,procedure (REVERSE! CARS))
+					(N-LOOP (REVERSE! CDRS))))
+			    ((PAIR? (CAR LISTS*))
+			     (PARSE-CARS (CDR LISTS)
+					 (CDR LISTS*)
+					 (CONS (CAR (CAR LISTS*)) CARS)
+					 (CONS (CDR (CAR LISTS*)) CDRS)))
+			    (ELSE
+			     (IF (NOT (NULL? (CAR LISTS*)))
+				 (ERROR:WRONG-TYPE-ARGUMENT (CAR LISTS) "list"
+							    ',name))
+			     ,initial-value))))))))))
 
 (define (for-each procedure first . rest)
   (mapping-procedure for-each begin unspecific procedure first rest))
 
-(define (map procedure first . rest)
-  (mapping-procedure map cons '() procedure first rest))
+;;(define (map procedure first . rest)
+;;  (mapping-procedure map cons '() procedure first rest))
 
 (define (map* initial-value procedure first . rest)
   (mapping-procedure map* cons initial-value procedure first rest))
