@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.14 1988/11/08 07:31:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.15 1988/12/23 04:32:24 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -71,22 +71,31 @@ DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->OFFSET", Prim_comp_code_address_offset
     (MAKE_SIGNED_FIXNUM (compiled_entry_to_block_offset (ARG_REF (1))));
 }
 
-/*
-  This number is eventually used to subtract from stack environment
-  addresses, so it must correspond to how those are made.
-
-  NOTE: this will have to be updated when the compiler is ported to the
-  stacklet microcode.
- */
-
-#define STACK_TOP_TO_DATUM() (((long) Stack_Top) & ADDRESS_MASK)
+#ifndef USE_STACKLETS
 
 DEFINE_PRIMITIVE ("STACK-TOP-ADDRESS", Prim_stack_top_address, 0, 0, 0)
 {
-  Primitive_0_Args();
+  PRIMITIVE_HEADER (0);
 
-  PRIMITIVE_RETURN (MAKE_SIGNED_FIXNUM(STACK_TOP_TO_DATUM()));
+  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (OBJECT_DATUM (Stack_Top)));
 }
+
+#define STACK_ADDRESS_P(object)						\
+   ((OBJECT_TYPE (object)) == TC_STACK_ENVIRONMENT)
+
+DEFINE_PRIMITIVE ("STACK-ADDRESS-OFFSET", Prim_stack_address_offset, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+
+  CHECK_ARG (1, STACK_ADDRESS_P);
+  PRIMITIVE_RETURN
+    (C_Integer_To_Scheme_Integer
+     ((STACK_LOCATIVE_DIFFERENCE
+       ((OBJECT_DATUM (ARG_REF (1))), (OBJECT_DATUM (Stack_Top))))
+      / (sizeof (Pointer))));
+}
+
+#endif /* USE_STACKLETS */
 
 DEFINE_PRIMITIVE ("COMPILED-ENTRY-KIND", Prim_compiled_entry_type, 1, 1, 0)
 {
