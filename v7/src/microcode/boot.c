@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.67 1991/02/24 01:10:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.68 1991/03/28 20:09:23 jinx Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -118,6 +118,9 @@ DEFUN (main,
   read_command_line_options (argc, argv);
   if (scheme_dumped_p)
     {
+      extern SCHEME_OBJECT compiler_utilities;
+      extern void EXFUN (compiler_reset, (SCHEME_OBJECT));
+
       if (! ((Heap_Size == option_heap_size)
 	     && (Stack_Size == option_stack_size)
 	     && (Constant_Size == option_constant_size)))
@@ -127,6 +130,7 @@ DEFUN (main,
 	  fflush (stderr);
 	}
       OS_reset ();
+      compiler_reset (compiler_utilities);
       if (!option_band_specified)
 	{
 	  printf ("Scheme Microcode Version %d.%d\n", VERSION, SUBVERSION);
