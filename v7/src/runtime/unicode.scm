@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.15 2004/02/23 20:50:33 cph Exp $
+$Id: unicode.scm,v 1.16 2004/05/26 17:05:56 cph Exp $
 
 Copyright 2001,2003,2004 Massachusetts Institute of Technology
 
@@ -127,12 +127,19 @@ USA.
 	      (error "Illegal input byte:" b))
 	  b))))
 
-(define-integrable (write-byte byte port)
-  (write-char (integer->char byte) port))
+(define (port->byte-sink port)
+  (lambda (byte)
+    (write-char (integer->char byte) port)))
+
+(define ((call-with-output-string-constructor open-output-string) generator)
+  (let ((port (open-output-string)))
+    (generator port)
+    (get-output-string port)))
 
 (define (initialize-package!)
   (initialize-output-port!)
   (initialize-input-port!)
+  (initialize-utf-output-ports!)
   unspecific)
 
 ;;;; Unicode characters
@@ -248,30 +255,29 @@ USA.
   (%code-points->alphabet items))
 
 (define (%code-points->alphabet items)
-  (call-with-values (lambda () (split-list items #x800))
-    (lambda (low-items high-items)
-      (let ((low (make-alphabet-low)))
-	(for-each (lambda (item)
-		    (if (pair? item)
-			(do ((i (car item) (fix:+ i 1)))
-			    ((fix:> i (cdr item)))
-			  (alphabet-low-set! low i))
-			(alphabet-low-set! low item)))
-		  low-items)
-	(let ((n-high (length high-items)))
-	  (let ((high1 (make-vector n-high))
-		(high2 (make-vector n-high)))
-	    (do ((items high-items (cdr items))
-		 (i 0 (fix:+ i 1)))
-		((not (pair? items)))
-	      (if (pair? (car items))
-		  (begin
-		    (vector-set! high1 i (caar items))
-		    (vector-set! high2 i (cdar items)))
-		  (begin
-		    (vector-set! high1 i (car items))
-		    (vector-set! high2 i (car items)))))
-	    (make-alphabet low high1 high2)))))))
+  (receive (low-items high-items) (split-list items #x800)
+    (let ((low (make-alphabet-low)))
+      (for-each (lambda (item)
+		  (if (pair? item)
+		      (do ((i (car item) (fix:+ i 1)))
+			  ((fix:> i (cdr item)))
+			(alphabet-low-set! low i))
+		      (alphabet-low-set! low item)))
+		low-items)
+      (let ((n-high (length high-items)))
+	(let ((high1 (make-vector n-high))
+	      (high2 (make-vector n-high)))
+	  (do ((items high-items (cdr items))
+	       (i 0 (fix:+ i 1)))
+	      ((not (pair? items)))
+	    (if (pair? (car items))
+		(begin
+		  (vector-set! high1 i (caar items))
+		  (vector-set! high2 i (cdar items)))
+		(begin
+		  (vector-set! high1 i (car items))
+		  (vector-set! high2 i (car items)))))
+	  (make-alphabet low high1 high2))))))
 
 (define (split-list items limit)
   (let loop ((items items) (low '()))
@@ -415,16 +421,14 @@ USA.
   (reduce alphabet+2 null-alphabet alphabets))
 
 (define (alphabet+2 a1 a2)
-  (call-with-values
-      (lambda ()
-	(alphabet-high+2 (alphabet-high1 a1)
-			 (alphabet-high2 a1)
-			 (alphabet-high1 a2)
-			 (alphabet-high2 a2)))
-    (lambda (high1 high2)
-      (make-alphabet (alphabet-low+2 (alphabet-low a1) (alphabet-low a2))
-		     high1
-		     high2))))
+  (receive (high1 high2)
+      (alphabet-high+2 (alphabet-high1 a1)
+		       (alphabet-high2 a1)
+		       (alphabet-high1 a2)
+		       (alphabet-high2 a2))
+    (make-alphabet (alphabet-low+2 (alphabet-low a1) (alphabet-low a2))
+		   high1
+		   high2)))
 
 (define (alphabet-low+2 low1 low2)
   (let ((low (make-alphabet-low)))
@@ -471,16 +475,14 @@ USA.
 	    (values lower upper))))))
 
 (define (alphabet- a1 a2)
-  (call-with-values
-      (lambda ()
-	(alphabet-high- (alphabet-high1 a1)
-			(alphabet-high2 a1)
-			(alphabet-high1 a2)
-			(alphabet-high2 a2)))
-    (lambda (high1 high2)
-      (make-alphabet (alphabet-low- (alphabet-low a1) (alphabet-low a2))
-		     high1
-		     high2))))
+  (receive (high1 high2)
+      (alphabet-high- (alphabet-high1 a1)
+		      (alphabet-high2 a1)
+		      (alphabet-high1 a2)
+		      (alphabet-high2 a2))
+    (make-alphabet (alphabet-low- (alphabet-low a1) (alphabet-low a2))
+		   high1
+		   high2)))
 
 (define (alphabet-low- low1 low2)
   (let ((low (make-alphabet-low)))
@@ -620,53 +622,52 @@ USA.
   (guarantee-substring-end-index end (%wide-string-length string) caller)
   (guarantee-substring-start-index start end caller))
 
-(define (call-with-wide-output-string generator)
-  (let ((port (open-wide-output-string)))
-    (generator port)
-    (get-output-string port)))
+(define open-wide-output-string)
+(define call-with-wide-output-string)
 
-(define (open-wide-output-string)
-  (make-port ws-output-port-type
-	     (let ((v (make-vector 17)))
-	       (vector-set! v 0 0)
-	       v)))
-
-(define ws-output-port-type)
 (define (initialize-output-port!)
-  (set! ws-output-port-type
-	(make-port-type
-	 `((WRITE-CHAR
-	    ,(lambda (port char)
-	       (guarantee-wide-char char 'WRITE-CHAR)
-	       (without-interrupts
-		(lambda ()
-		  (let* ((v (port/state port))
-			 (n (fix:+ (vector-ref v 0) 1)))
-		    (if (fix:< n (vector-length v))
-			(begin
-			  (vector-set! v n char)
-			  (vector-set! v 0 n))
-			(let ((v
-			       (vector-grow v
-					    (fix:- (fix:* (vector-length v) 2)
-						   1))))
-			  (vector-set! v n char)
-			  (vector-set! v 0 n)
-			  (set-port/state! port v)
-			  v)))))
-	       1))
-	   (EXTRACT-OUTPUT!
-	    ,(lambda (port)
-	       (%make-wide-string
-		(without-interrupts
-		 (lambda ()
-		   (let ((v (port/state port)))
-		     (subvector v 1 (fix:+ (vector-ref v 0) 1))))))))
-	   (WRITE-SELF
-	    ,(lambda (port port*)
-	       port
-	       (write-string " to wide string" port*))))
-	 #f))
+  (set! open-wide-output-string
+	(let ((type
+	       (make-port-type
+		`((WRITE-CHAR
+		   ,(lambda (port char)
+		      (guarantee-wide-char char 'WRITE-CHAR)
+		      (without-interrupts
+		       (lambda ()
+			 (let* ((v (port/state port))
+				(n (fix:+ (vector-ref v 0) 1)))
+			   (if (fix:< n (vector-length v))
+			       (begin
+				 (vector-set! v n char)
+				 (vector-set! v 0 n))
+			       (let ((v
+				      (vector-grow v
+						   (fix:- (fix:* (vector-length v) 2)
+							  1))))
+				 (vector-set! v n char)
+				 (vector-set! v 0 n)
+				 (set-port/state! port v)
+				 v)))))
+		      1))
+		  (EXTRACT-OUTPUT!
+		   ,(lambda (port)
+		      (%make-wide-string
+		       (without-interrupts
+			(lambda ()
+			  (let ((v (port/state port)))
+			    (subvector v 1 (fix:+ (vector-ref v 0) 1))))))))
+		  (WRITE-SELF
+		   ,(lambda (port port*)
+		      port
+		      (write-string " to wide string" port*))))
+		#f)))
+	  (lambda ()
+	    (make-port type
+		       (let ((v (make-vector 17)))
+			 (vector-set! v 0 0)
+			 v)))))
+  (set! call-with-wide-output-string
+	(call-with-output-string-constructor open-wide-output-string))
   unspecific)
 
 (define (string->wide-string string #!optional start end)
@@ -795,25 +796,25 @@ USA.
 
 (define (write-utf32-be-char char port)
   (guarantee-wide-char char 'WRITE-UTF32-BE-CHAR)
-  (%write-utf32-be-char char port))
+  (sink-utf32-be-char char (port->byte-sink port)))
 
 (define (write-utf32-le-char char port)
   (guarantee-wide-char char 'WRITE-UTF32-LE-CHAR)
-  (%write-utf32-le-char char port))
+  (sink-utf32-le-char char (port->byte-sink port)))
 
-(define-integrable (%write-utf32-be-char char port)
+(define-integrable (sink-utf32-be-char char sink)
   (let ((pt (char->integer char)))
-    (write-byte 0 port)
-    (write-byte (fix:lsh pt -16) port)
-    (write-byte (fix:lsh pt -8) port)
-    (write-byte (fix:and pt #xFF) port)))
+    (sink 0)
+    (sink (fix:lsh pt -16))
+    (sink (fix:lsh pt -8))
+    (sink (fix:and pt #xFF))))
 
-(define-integrable (%write-utf32-le-char char port)
+(define-integrable (sink-utf32-le-char char sink)
   (let ((pt (char->integer char)))
-    (write-byte (fix:and pt #xFF) port)
-    (write-byte (fix:lsh pt -8) port)
-    (write-byte (fix:lsh pt -16) port)
-    (write-byte 0 port)))
+    (sink (fix:and pt #xFF))
+    (sink (fix:lsh pt -8))
+    (sink (fix:lsh pt -16))
+    (sink 0)))
 
 (define (utf32-string->wide-string string #!optional start end)
   (%utf32-string->wide-string string
@@ -851,30 +852,30 @@ USA.
 			      (if (default-object? start) #f start)
 			      (if (default-object? end) #f end)
 			      (if (host-big-endian?)
-				  %write-utf32-be-char
-				  %write-utf32-le-char)))
+				  sink-utf32-be-char
+				  sink-utf32-le-char)))
 
 (define (wide-string->utf32-be-string string #!optional start end)
   (%wide-string->utf32-string string
 			      (if (default-object? start) #f start)
 			      (if (default-object? end) #f end)
-			      %write-utf32-be-char))
+			      sink-utf32-be-char))
 
 (define (wide-string->utf32-le-string string #!optional start end)
   (%wide-string->utf32-string string
 			      (if (default-object? start) #f start)
 			      (if (default-object? end) #f end)
-			      %write-utf32-le-char))
+			      sink-utf32-le-char))
 
-(define (%wide-string->utf32-string string start end write-utf32-char)
+(define (%wide-string->utf32-string string start end sink-utf32-char)
   (let ((input (open-wide-input-string string start end)))
-    (call-with-output-string
-     (lambda (output)
+    (call-with-output-byte-buffer
+     (lambda (sink)
        (let loop ()
 	 (let ((char (read-char input)))
 	   (if (not (eof-object? char))
 	       (begin
-		 (write-utf32-char char output)
+		 (sink-utf32-char char sink)
 		 (loop)))))))))
 
 (define (utf32-string-length string #!optional start end)
@@ -1001,32 +1002,31 @@ USA.
 
 (define (write-utf16-be-char char port)
   (guarantee-wide-char char 'WRITE-UTF16-BE-CHAR)
-  (%write-utf16-be-char char port))
+  (sink-utf16-be-char char (port->byte-sink port)))
 
 (define (write-utf16-le-char char port)
   (guarantee-wide-char char 'WRITE-UTF16-LE-CHAR)
-  (%write-utf16-le-char char port))
+  (sink-utf16-le-char char (port->byte-sink port)))
 
-(define-integrable (%write-utf16-be-char char port)
-  (%write-utf16-char char port
-		     (lambda (digit output)
-		       (output (fix:lsh digit -8))
-		       (output (fix:and digit #x00FF)))))
+(define-integrable (sink-utf16-be-char char sink)
+  (sink-utf16-char char sink
+		   (lambda (digit sink)
+		     (sink (fix:lsh digit -8))
+		     (sink (fix:and digit #x00FF)))))
 
-(define-integrable (%write-utf16-le-char char port)
-  (%write-utf16-char char port
-		     (lambda (digit output)
-		       (output (fix:and digit #x00FF))
-		       (output (fix:lsh digit -8)))))
+(define-integrable (sink-utf16-le-char char sink)
+  (sink-utf16-char char sink
+		     (lambda (digit sink)
+		       (sink (fix:and digit #x00FF))
+		       (sink (fix:lsh digit -8)))))
 
-(define-integrable (%write-utf16-char char port dissecter)
-  (let ((pt (char->integer char))
-	(write-byte (lambda (byte) (write-byte byte port))))
+(define-integrable (sink-utf16-char char sink dissecter)
+  (let ((pt (char->integer char)))
     (if (fix:< pt #x10000)
-	(dissecter pt write-byte)
+	(dissecter pt sink)
 	(let ((s (fix:- pt #x10000)))
-	  (dissecter (fix:or #xD800 (fix:lsh s -10)) write-byte)
-	  (dissecter (fix:or #xDC00 (fix:and s #x3FF)) write-byte)))))
+	  (dissecter (fix:or #xD800 (fix:lsh s -10)) sink)
+	  (dissecter (fix:or #xDC00 (fix:and s #x3FF)) sink)))))
 
 (define (utf16-string->wide-string string #!optional start end)
   (%utf16-string->wide-string string
@@ -1064,30 +1064,30 @@ USA.
 			      (if (default-object? start) #f start)
 			      (if (default-object? end) #f end)
 			      (if (host-big-endian?)
-				  %write-utf16-be-char
-				  %write-utf16-le-char)))
+				  sink-utf16-be-char
+				  sink-utf16-le-char)))
 
 (define (wide-string->utf16-be-string string #!optional start end)
   (%wide-string->utf16-string string
 			      (if (default-object? start) #f start)
 			      (if (default-object? end) #f end)
-			      %write-utf16-be-char))
+			      sink-utf16-be-char))
 
 (define (wide-string->utf16-le-string string #!optional start end)
   (%wide-string->utf16-string string
 			      (if (default-object? start) #f start)
 			      (if (default-object? end) #f end)
-			      %write-utf16-le-char))
+			      sink-utf16-le-char))
 
-(define (%wide-string->utf16-string string start end write-utf16-char)
+(define (%wide-string->utf16-string string start end sink-utf16-char)
   (let ((input (open-wide-input-string string start end)))
-    (call-with-output-string
-     (lambda (output)
+    (call-with-output-byte-buffer
+     (lambda (sink)
        (let loop ()
 	 (let ((char (read-char input)))
 	   (if (not (eof-object? char))
 	       (begin
-		 (write-utf16-char char output)
+		 (sink-utf16-char char sink)
 		 (loop)))))))))
 
 (define (utf16-string-length string #!optional start end)
@@ -1248,9 +1248,9 @@ USA.
 
 (define (write-utf8-char char port)
   (guarantee-wide-char char 'WRITE-UTF8-CHAR)
-  (%write-utf8-char char port))
+  (sink-utf8-char char (port->byte-sink port)))
 
-(define (%write-utf8-char char port)
+(define (sink-utf8-char char sink)
   (let ((pt (char->integer char)))
 
     (define-integrable (initial-char n-bits offset)
@@ -1261,32 +1261,32 @@ USA.
       (fix:or #x80 (fix:and (fix:lsh pt (fix:- 0 offset)) #x3F)))
 
     (cond ((fix:< pt #x00000080)
-	   (write-byte pt port))
+	   (sink pt))
 	  ((fix:< pt #x00000800)
-	   (write-byte (initial-char 5 6) port)
-	   (write-byte (subsequent-char 0) port))
+	   (sink (initial-char 5 6))
+	   (sink (subsequent-char 0)))
 	  ((fix:< pt #x00010000)
-	   (write-byte (initial-char 4 12) port)
-	   (write-byte (subsequent-char 6) port)
-	   (write-byte (subsequent-char 0) port))
+	   (sink (initial-char 4 12))
+	   (sink (subsequent-char 6))
+	   (sink (subsequent-char 0)))
 	  (else
-	   (write-byte (initial-char 3 18) port)
-	   (write-byte (subsequent-char 12) port)
-	   (write-byte (subsequent-char 6) port)
-	   (write-byte (subsequent-char 0) port)))))
+	   (sink (initial-char 3 18))
+	   (sink (subsequent-char 12))
+	   (sink (subsequent-char 6))
+	   (sink (subsequent-char 0))))))
 
 (define (wide-string->utf8-string string #!optional start end)
   (let ((input
 	 (open-wide-input-string string
 				 (if (default-object? start) #f start)
 				 (if (default-object? end) #f end))))
-    (call-with-output-string
-     (lambda (output)
+    (call-with-output-byte-buffer
+     (lambda (sink)
        (let loop ()
 	 (let ((char (read-char input)))
 	   (if (not (eof-object? char))
 	       (begin
-		 (%write-utf8-char char output)
+		 (sink-utf8-char char sink)
 		 (loop)))))))))
 
 (define (utf8-string-length string #!optional start end)
@@ -1369,3 +1369,107 @@ USA.
 
 (define-integrable (%valid-trailer? n)
   (fix:= #x80 (fix:and #xC0 n)))
+
+(define open-utf8-output-string)
+(define call-with-utf8-output-string)
+(define open-utf16-output-string)
+(define call-with-utf16-output-string)
+(define open-utf16-be-output-string)
+(define call-with-utf16-be-output-string)
+(define open-utf16-le-output-string)
+(define call-with-utf16-le-output-string)
+(define open-utf32-output-string)
+(define call-with-utf32-output-string)
+(define open-utf32-be-output-string)
+(define call-with-utf32-be-output-string)
+(define open-utf32-le-output-string)
+(define call-with-utf32-le-output-string)
+
+(define (initialize-utf-output-ports!)
+  (let ((make-opener
+	 (lambda (sink-char coding-name)
+	   (let ((type
+		  (make-port-type
+		   `((WRITE-CHAR
+		      ,(lambda (port char)
+			 (guarantee-wide-char char 'WRITE-CHAR)
+			 (sink-char char (port/state port))
+			 1))
+		     (EXTRACT-OUTPUT!
+		      ,(lambda (port)
+			 (get-output-bytes (port/state port))))
+		     (WRITE-SELF
+		      ,(let ((description
+			      (string-append " to " coding-name " string")))
+			 (lambda (port port*)
+			   port
+			   (write-string description port*)))))
+		   #f)))
+	     (lambda ()
+	       (make-port type (open-output-byte-buffer)))))))
+    (let-syntax
+	((define-openers
+	   (sc-macro-transformer
+	    (lambda (form environment)
+	      (if (syntax-match? '(SYMBOL DATUM expression) (cdr form))
+		  (let ((n0 (symbol-append (cadr form) '-OUTPUT-STRING)))
+		    (let ((n1 (symbol-append 'OPEN- n0))
+			  (n2 (symbol-append 'CALL-WITH- n0)))
+		      `(BEGIN
+			 (SET! ,n1
+			       (MAKE-OPENER ,(cadddr form) ,(caddr form)))
+			 (SET! ,n2
+			       (CALL-WITH-OUTPUT-STRING-CONSTRUCTOR ,n1)))))
+		  (ill-formed-syntax form))))))
+
+      (define-openers utf8 "UTF-8" sink-utf8-char)
+
+      (define-openers utf16 "UTF-16"
+	(if (host-big-endian?)
+	    sink-utf16-be-char
+	    sink-utf16-le-char))
+      (define-openers utf16-be "UTF-16BE" sink-utf16-be-char)
+      (define-openers utf16-le "UTF-16LE" sink-utf16-le-char)
+
+      (define-openers utf32 "UTF-32"
+	(if (host-big-endian?)
+	    sink-utf32-be-char
+	    sink-utf32-le-char))
+      (define-openers utf32-be "UTF-32BE" sink-utf32-be-char)
+      (define-openers utf32-le "UTF-32LE" sink-utf32-le-char)
+
+      unspecific)))
+
+;;;; Byte buffers
+
+(define (open-output-byte-buffer)
+  (let ((bytes #f)
+	(index))
+    (lambda (byte)
+      (if (eq? byte 'EXTRACT-OUTPUT!)
+	  (without-interrupts
+	   (lambda ()
+	     (set-string-maximum-length! bytes index)
+	     (let ((bytes* bytes))
+	       (set! bytes #f)
+	       bytes*)))
+	  (begin
+	    (cond ((not bytes)
+		   (set! bytes (make-string 128))
+		   (set! index 0))
+		  ((not (fix:< index (string-length bytes)))
+		   (let ((n (fix:* (string-length bytes) 2)))
+		     (let ((bytes* (make-string n)))
+		       (string-move! bytes bytes* 0)
+		       (set! bytes bytes*)))))
+	    (vector-8b-set! bytes index byte)
+	    (set! index (fix:+ index 1))
+	    unspecific)))))
+
+(define (get-output-bytes buffer)
+  (buffer 'EXTRACT-OUTPUT!))
+
+(define (call-with-output-byte-buffer generator)
+  (let ((buffer (open-output-byte-buffer)))
+    (generator buffer)
+    (get-output-bytes buffer)))

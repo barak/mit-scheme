@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.483 2004/05/26 15:20:22 cph Exp $
+$Id: runtime.pkg,v 14.484 2004/05/26 17:05:22 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4504,6 +4504,13 @@ USA.
 	  alphabet->code-points
 	  alphabet->string
 	  alphabet?
+	  call-with-utf16-be-output-string
+	  call-with-utf16-le-output-string
+	  call-with-utf16-output-string
+	  call-with-utf32-be-output-string
+	  call-with-utf32-le-output-string
+	  call-with-utf32-output-string
+	  call-with-utf8-output-string
 	  call-with-wide-output-string
 	  char-in-alphabet?
 	  char-set->alphabet
@@ -4517,6 +4524,13 @@ USA.
 	  guarantee-wide-string-index
 	  guarantee-wide-substring
 	  make-wide-string
+	  open-utf16-be-output-string
+	  open-utf16-le-output-string
+	  open-utf16-output-string
+	  open-utf32-be-output-string
+	  open-utf32-le-output-string
+	  open-utf32-output-string
+	  open-utf8-output-string
 	  open-wide-input-string
 	  open-wide-output-string
 	  read-utf16-be-char
