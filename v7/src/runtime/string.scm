@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.40 2001/03/21 05:30:07 cph Exp $
+$Id: string.scm,v 14.41 2001/03/21 05:30:53 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Character String Operations
@@ -203,7 +204,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (declare (integrate-operator %substring))
 (define (%substring string start end)
   (let ((result (string-allocate (fix:- end start))))
-    (substring-move-left! string start end result 0)
+    (%substring-move! string start end result 0)
     result))
 
 (define (substring string start end)
@@ -257,7 +258,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (guarantee-string string 'STRING-COPY)
   (let ((size (string-length string)))
     (let ((result (string-allocate size)))
-      (substring-move-left! string 0 size result 0)
+      (%substring-move! string 0 size result 0)
       result)))
 
 (define (string-move! string1 string2 start2)
@@ -276,28 +277,56 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (if (not (fix:<= (fix:+ start2 (fix:- end1 start1)) (string-length string2)))
       (error:bad-range-argument start2 'SUBSTRING-MOVE!))
   (%substring-move! string1 start1 end1 string2 start2))
-
+
 (define (%substring-move! string1 start1 end1 string2 start2)
-  (let ((n (fix:- end1 start1)))
-    (if (fix:< n 32)
-	;; When transferring less than 32 bytes, it's faster to do
-	;; inline than to call the primitive.
-	(if (or (not (eq? string2 string1)) (fix:< start2 start1))
-	    (let loop ((i1 start1) (i2 start2))
-	      (if (fix:< i1 end1)
-		  (begin
-		    (string-set! string2 i2 (string-ref string1 i1))
-		    (loop (fix:+ i1 1) (fix:+ i2 1)))))
-	    (let loop ((i1 end1) (i2 (fix:+ start2 n)))
-	      (if (fix:> i1 start1)
-		  (let ((i1 (fix:+ i1 1))
-			(i2 (fix:+ i2 1)))
-		    (string-set! string2 i2 (string-ref string1 i1))
-		    (loop i1 i2)))))
-	(if (or (not (eq? string2 string1)) (fix:< start2 start1))
-	    (substring-move-left! string1 start1 end1 string2 start2)
-	    (substring-move-right! string1 start1 end1 string2 start2)))
-    (fix:+ start2 n)))
+  ;; Calling the primitive is expensive, so avoid it for small copies.
+  (let-syntax
+      ((unrolled-move-left
+	(lambda (n)
+	  `(BEGIN
+	     (STRING-SET! STRING2 START2 (STRING-REF STRING1 START1))
+	     ,@(let loop ((i 1))
+		 (if (< i n)
+		     `((STRING-SET! STRING2 (FIX:+ START2 ,i)
+				    (STRING-REF STRING1 (FIX:+ START1 ,i)))
+		       ,@(loop (+ i 1))))))))
+       (unrolled-move-right
+	(lambda (n)
+	  `(BEGIN
+	     ,@(let loop ((i 1))
+		 (if (< i n)
+		     `(,@(loop (+ i 1))
+		       (STRING-SET! STRING2 (FIX:+ START2 ,i)
+				    (STRING-REF STRING1 (FIX:+ START1 ,i))))))
+	     (STRING-SET! STRING2 START2 (STRING-REF STRING1 START1))))))
+    (let ((n (fix:- end1 start1)))
+      (if (or (not (eq? string2 string1)) (fix:< start2 start1))
+	  (cond ((fix:> n 4)
+		 (if (fix:> n 32)
+		     (substring-move-left! string1 start1 end1 string2 start2)
+		     (let loop ((i1 start1) (i2 start2))
+		       (if (fix:< i1 end1)
+			   (begin
+			     (string-set! string2 i2 (string-ref string1 i1))
+			     (loop (fix:+ i1 1) (fix:+ i2 1)))))))
+		((fix:= n 4) (unrolled-move-left 4))
+		((fix:= n 3) (unrolled-move-left 3))
+		((fix:= n 2) (unrolled-move-left 2))
+		((fix:= n 1) (unrolled-move-left 1)))
+	  (cond ((fix:> n 4)
+		 (if (fix:> n 32)
+		     (substring-move-right! string1 start1 end1 string2 start2)
+		     (let loop ((i1 end1) (i2 (fix:+ start2 n)))
+		       (if (fix:> i1 start1)
+			   (let ((i1 (fix:- i1 1))
+				 (i2 (fix:- i2 1)))
+			     (string-set! string2 i2 (string-ref string1 i1))
+			     (loop i1 i2))))))
+		((fix:= n 4) (unrolled-move-right 4))
+		((fix:= n 3) (unrolled-move-right 3))
+		((fix:= n 2) (unrolled-move-right 2))
+		((fix:= n 1) (unrolled-move-right 1))))
+      (fix:+ start2 n))))
 
 (define (string-append . strings)
   (%string-append strings))
@@ -315,7 +344,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (let loop ((strings strings) (index 0))
       (if (pair? strings)
 	  (let ((size (string-length (car strings))))
-	    (substring-move-left! (car strings) 0 size result index)
+	    (%substring-move! (car strings) 0 size result index)
 	    (loop (cdr strings) (fix:+ index size)))
 	  result))))
 
@@ -726,9 +755,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	string
 	(let ((result (string-allocate n)))
 	  (if (fix:> length n)
-	      (substring-move-left! string 0 n result 0)
+	      (%substring-move! string 0 n result 0)
 	      (begin
-		(substring-move-left! string 0 length result 0)
+		(%substring-move! string 0 length result 0)
 		(let ((char (if (default-object? char) #\space char)))
 		  (substring-fill! result length n char))))
 	  result))))
@@ -742,11 +771,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(let ((result (string-allocate n))
 	      (i (fix:- n length)))
 	  (if (fix:< i 0)
-	      (substring-move-left! string (fix:- 0 i) length result 0)
+	      (%substring-move! string (fix:- 0 i) length result 0)
 	      (begin
 		(let ((char (if (default-object? char) #\space char)))
 		  (substring-fill! result 0 i char))
-		(substring-move-left! string 0 length result i)))
+		(%substring-move! string 0 length result i)))
 	  result))))
 
 ;;;; String Search
