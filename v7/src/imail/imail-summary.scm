@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.28 2000/10/20 04:33:20 cph Exp $
+;;; $Id: imail-summary.scm,v 1.29 2000/10/26 05:07:04 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -52,6 +52,15 @@ A real number between 0 and 1 exclusive means a fraction of the screen height."
   (lambda (x)
     (or (and (exact-integer? x) (positive? x))
 	(and (real? x) (< 0 x 1)))))
+
+(define-variable imail-summary-fixed-layout
+  "If true, summary buffer is linked to folder buffer in fixed layout.
+Selecting either buffer causes both to be selected,
+ in a standard window configuration.
+Once selected, selecting another buffer causes the window configuration
+ to be restored to a single window."
+  #f
+  boolean?)
 
 (define-command imail-summary
   "Display a summary of the selected folder, one line per message."
@@ -157,7 +166,16 @@ SUBJECT is a string of regexps separated by commas."
 	      (select-window (car windows))
 	      (select-buffer buffer))))
     (preload-folder-outlines folder)
-    (rebuild-imail-summary-buffer buffer)))
+    (rebuild-imail-summary-buffer buffer)
+    (if (ref-variable imail-summary-fixed-layout buffer)
+	(begin
+	  (delete-buffer-layout buffer)
+	  (create-buffer-layout
+	   (lambda (window buffers)
+	     (let ((buffer (car buffers)))
+	       (select-buffer buffer window)
+	       (imail-summary-pop-up-message-buffer buffer window)))
+	   (list buffer folder-buffer))))))
 
 (define (imail-summary-detach buffer)
   (let ((folder-buffer (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)))
@@ -461,18 +479,22 @@ SUBJECT is a string of regexps separated by commas."
   (if (ref-variable imail-summary-pop-up-message buffer)
       (imail-summary-pop-up-message-buffer buffer)))
 
-(define (imail-summary-pop-up-message-buffer buffer)
-  (let ((folder-buffer (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)))
+(define (imail-summary-pop-up-message-buffer buffer #!optional window)
+  (let ((folder-buffer (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f))
+	(window
+	 (if (or (default-object? window) (not window))
+	     (selected-window)
+	     window)))
     (if (and folder-buffer (selected-buffer? buffer))
 	(pop-up-buffer folder-buffer #f
-		       `((HEIGHT
-			  ,(let ((height
-				  (ref-variable imail-summary-height buffer)))
-			     (if (exact-integer? height)
-				 height
-				 (round->exact
-				  (* (window-y-size (selected-window))
-				     height))))))))))
+		       `((HEIGHT ,(imail-summary-height buffer window))
+			 (SCREEN ,(window-screen window)))))))
+
+(define (imail-summary-height buffer window)
+  (let ((height (ref-variable imail-summary-height buffer)))
+    (if (exact-integer? height)
+	height
+	(round->exact (* (window-y-size window) height)))))
 
 (define (sync-imail-summary-buffer buffer)
   (let ((message

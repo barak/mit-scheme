@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.217 2000/10/26 02:31:12 cph Exp $
+;;; $Id: imail-top.scm,v 1.218 2000/10/26 05:07:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -192,15 +192,6 @@ Otherwise, only one of the parts is shown."
 Otherwise, only the IMAIL buffer for that folder has an indicator."
   #t
   boolean?)
-
-(define-variable imail-auto-summary
-  "If true, selecting an imail buffer automatically selects its summary.
-The variable can take three values:
-#F means no auto-selection is done.
-#T means select the summary only if it already exists.
-CREATE means always select the summary, creating it if needed."
-  #f
-  (lambda (x) (or (boolean? x) (eq? x 'CREATE))))
 
 (define-command imail
   "Read and edit incoming mail.
@@ -289,7 +280,6 @@ regardless of the folder type."
   (lambda (buffer)
     (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-revert-buffer)
     (add-kill-buffer-hook buffer imail-kill-buffer)
-    ;;(add-pre-select-buffer-hook buffer imail-pre-select-buffer-hook)
     (buffer-put! buffer 'MAIL-YANK-ORIGINAL-METHOD imail-yank-original)
     (local-set-variable! mode-line-modified "--- " buffer)
     (imail-adjust-adaptive-fill buffer)
@@ -297,7 +287,7 @@ regardless of the folder type."
     (set-buffer-read-only! buffer)
     (disable-group-undo! (buffer-group buffer))
     (event-distributor/invoke! (ref-variable imail-mode-hook buffer) buffer)))
-
+
 (define-variable imail-mode-hook
   "An event distributor that is invoked when entering IMAIL mode."
   (make-event-distributor))
@@ -316,30 +306,6 @@ regardless of the folder type."
    (string-append regexp "\\|"
 		  (ref-variable adaptive-fill-first-line-regexp #f))
    buffer))
-
-(define (imail-pre-select-buffer-hook buffer window select continue)
-  (let ((auto-summary (ref-variable imail-auto-summary buffer)))
-    (if (and auto-summary (null? (buffer-windows buffer)))
-	(let ((folder (selected-folder #f buffer)))
-	  (if folder
-	      (let ((folder-buffer (imail-folder->buffer folder #f))
-		    (summary-buffer (imail-folder->summary-buffer folder #f)))
-		(if (and folder-buffer
-			 (or (eq? buffer folder-buffer)
-			     (eq? buffer summary-buffer))
-			 (null? (buffer-windows folder-buffer))
-			 (if summary-buffer
-			     (null? (buffer-windows summary-buffer))
-			     (eq? auto-summary 'CREATE)))
-		    (begin
-		      (select)		;finish pending selection
-		      (delete-other-windows window)
-		      (if (eq? buffer folder-buffer)
-			  ((ref-command imail-summary))
-			  (imail-summary-pop-up-message-buffer buffer)))
-		    (continue)))
-	      (continue)))
-	(continue))))
 
 (define imail-mode-description
   "IMAIL mode is used by \\[imail] for editing mail folders.
@@ -1391,8 +1357,7 @@ If it doesn't exist, it is created first."
 	   (let ((buffer* (other-buffer buffer)))
 	     (for-each (lambda (window)
 			 (if (window-has-no-neighbors? window)
-			     (if buffer*
-				 (select-buffer-in-window buffer* window #f))
+			     (if buffer* (select-buffer buffer* window))
 			     (window-delete! window)))
 		       (buffer-windows buffer))
 	     (bury-buffer buffer))))
@@ -1400,7 +1365,7 @@ If it doesn't exist, it is created first."
     (let ((buffer (other-buffer folder-buffer)))
       (if buffer
 	  (for-each (lambda (window)
-		      (select-buffer-in-window buffer window #f))
+		      (select-buffer buffer window))
 		    (buffer-windows folder-buffer))))
     (bury-buffer folder-buffer)))
 

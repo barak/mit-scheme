@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.76 2000/10/20 04:35:46 cph Exp $
+;;; $Id: imail.pkg,v 1.77 2000/10/26 05:07:24 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -293,7 +293,6 @@
 	  edwin-command$imail-undelete-forward
 	  edwin-command$imail-undelete-previous-message
 	  edwin-mode$imail
-	  edwin-variable$imail-auto-summary
 	  edwin-variable$imail-auto-wrap
 	  edwin-variable$imail-body-cache-limit
 	  edwin-variable$imail-default-dont-reply-to-names
@@ -339,6 +338,7 @@
 	  edwin-command$imail-summary-by-topic
 	  edwin-command$imail-summary-select-message
 	  edwin-mode$imail-summary
+	  edwin-variable$imail-summary-fixed-layout
 	  edwin-variable$imail-summary-height
 	  edwin-variable$imail-summary-highlight-message
 	  edwin-variable$imail-summary-mode-hook
@@ -346,6 +346,4 @@
 	  edwin-variable$imail-summary-show-date
 	  edwin-variable$imail-summary-subject-width)
   (export (edwin imail front-end)
-	  imail-folder->summary-buffer
-	  imail-summary-pop-up-message-buffer
 	  write-imail-summary-line!))
