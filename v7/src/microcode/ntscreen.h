@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntscreen.h,v 1.11 1995/10/24 05:05:32 cph Exp $
+$Id: ntscreen.h,v 1.12 1996/03/21 16:36:29 adams Exp $
 
-Copyright (c) 1993-95 Massachusetts Institute of Technology
+Copyright (c) 1993-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -167,7 +167,11 @@ extern VOID _fastcall Screen_SetAttributeDirect (SCREEN, SCREEN_ATTRIBUTE);
 extern VOID WriteScreenBlock_NoInvalidRect (SCREEN, int, int, LPSTR, int);
 extern void Enable_Cursor (SCREEN, BOOL);
 extern HICON ScreenSetIcon (SCREEN, HICON);
-
+extern BOOL ScreenSetFont (SCREEN, char *);
+extern BOOL ScreenSetForegroundColour (SCREEN, DWORD);
+extern BOOL ScreenSetBackgroundColour (SCREEN, DWORD);
+extern BOOL ScreenSetFont (SCREEN, char *);
+extern BOOL ScreenSetDefaultFont (char *);
 
 BOOL Screen_InitApplication (HANDLE hInstance);
 BOOL Screen_InitInstance (HANDLE hInstance, int nCmdShow);

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.22 1994/11/02 20:25:40 adams Exp $
+$Id: ntscreen.c,v 1.23 1996/03/21 16:35:15 adams Exp $
 
-Copyright (c) 1993-1994 Massachusetts Institute of Technology
+Copyright (c) 1993-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -173,12 +173,10 @@ UINT ScreenPeekOrRead (SCREEN, int count, SCREEN_EVENT* buffer, BOOL remove);
 COMMAND_HANDLER ScreenSetCommand (SCREEN, WORD cmd, COMMAND_HANDLER handler);
 WORD ScreenSetBinding (SCREEN, char key, WORD command);
 VOID GetMinMaxSizes(HWND,LPPOINT,LPPOINT);
+BOOL AdjustedSize(SCREEN,int*,int*);
 VOID Screen_Clear (SCREEN,int);
 BOOL SelectScreenFont (SCREEN, HWND);
 BOOL SelectScreenBackColor (SCREEN, HWND);
-
-/*Put here for a lack of a better place to put it */
-LONG init_font_height (char * font_size_symbol);
 
 LRESULT ScreenCommand_ChooseFont (HWND, WORD);
 LRESULT ScreenCommand_ChooseBackColor (HWND, WORD);
@@ -202,8 +200,29 @@ VOID UnregisterScreen (SCREEN);
 
 static  HANDLE  ghInstance;
 static  HICON   ghDefaultIcon;
+
+static  LOGFONT lfDefaultLogFont;
 
-BOOL
+static void
+init_LOGFONT (LOGFONT *lf)
+{
+    lf->lfHeight =         0 ;
+    lf->lfWidth =          0 ;
+    lf->lfEscapement =     0 ;
+    lf->lfOrientation =    0 ;
+    lf->lfWeight =         400 ;  /* Normal */
+    lf->lfItalic =         0 ;
+    lf->lfUnderline =      0 ;
+    lf->lfStrikeOut =      0 ;
+    lf->lfCharSet =        ANSI_CHARSET ;
+    lf->lfOutPrecision =   OUT_CHARACTER_PRECIS ;
+    lf->lfClipPrecision =  CLIP_CHARACTER_PRECIS ;
+    lf->lfQuality =        DRAFT_QUALITY ;
+    lf->lfPitchAndFamily = FIXED_PITCH | FF_MODERN ;
+    lstrcpy (lf->lfFaceName, "");
+}
+
+static BOOL
 init_color (char *color_symbol, HWND hWnd, DWORD *color)
 {
   HDC hdc;
@@ -237,16 +256,6 @@ init_geometry (char *geom_symbol, int *params)
   return  FALSE;
 }
 
-static LONG
-init_font_height (char *font_size_symbol)
-{
-  char *envvar = getenv (font_size_symbol);
-  
-  if (envvar == NULL)
-    return  9; //default font height is 9
-  
-  return ((long) strtoul (envvar, NULL, 0));
-}
 
 #ifdef WINDOWSLOSES
 
@@ -293,6 +302,11 @@ BOOL
 Screen_InitApplication (HANDLE hInstance)
 {
    WNDCLASS  wndclass ;
+   char * font_name = getenv ("MITSCHEME_FONT");
+
+   init_LOGFONT (&lfDefaultLogFont);
+   if (font_name)
+     ScreenSetDefaultFont (font_name);
 
 #ifdef WINDOWSLOSES
    init_MIT_Keyboard ();
@@ -358,10 +372,7 @@ HANDLE
 Screen_Create (HANDLE hParent, LPCSTR title, int nCmdShow)
 {
   HWND hwnd;
-  int ctr, params[4];
-
-  for (ctr = 0; ctr < 4; ctr++)
-    params[ctr] = -1;
+  int ctr, params[4] = {-1, -1, -1, -1};
 
   if (hParent == ((HANDLE) NULL))
     init_geometry ("MITSCHEME_GEOMETRY", &params[0]);
@@ -737,7 +748,6 @@ CreateScreenInfo (HWND hWnd)
 {
    HMENU   hMenu;
    SCREEN  screen;
-   char * font_name = getenv ("MITSCHEME_FONT");
    
    if (NULL == (screen =
 		(SCREEN) LocalAlloc (LPTR, sizeof(SCREEN_STRUCT) )))
@@ -780,28 +790,11 @@ CreateScreenInfo (HWND hWnd)
    screen->chars = xmalloc (MAXROWS * MAXCOLS);
    screen->attrs = xmalloc (MAXROWS * MAXCOLS * sizeof(SCREEN_ATTRIBUTE));
 
-   ClearScreen_internal (screen);
    // clear screen space
+   ClearScreen_internal (screen);
 
    // setup default font information
-
-   screen->lfFont.lfHeight =         init_font_height("MITSCHEME_FONT_SIZE");
-   screen->lfFont.lfWidth =          0 ;
-   screen->lfFont.lfEscapement =     0 ;
-   screen->lfFont.lfOrientation =    0 ;
-   screen->lfFont.lfWeight =         400 ;
-   screen->lfFont.lfItalic =         0 ;
-   screen->lfFont.lfUnderline =      0 ;
-   screen->lfFont.lfStrikeOut =      0 ;
-   screen->lfFont.lfCharSet =        ANSI_CHARSET ;
-   screen->lfFont.lfOutPrecision =   OUT_CHARACTER_PRECIS ;
-   screen->lfFont.lfClipPrecision =  CLIP_CHARACTER_PRECIS ;
-   screen->lfFont.lfQuality =        DRAFT_QUALITY ;
-   screen->lfFont.lfPitchAndFamily = FIXED_PITCH | FF_MODERN ;
-   if (font_name == NULL)
-     lstrcpy (screen->lfFont.lfFaceName, "FixedSys");
-   else   
-     lstrcpy (screen->lfFont.lfFaceName, font_name);
+   screen->lfFont = lfDefaultLogFont;
    
    // set handle before any further message processing.
    SETSCREEN (hWnd, screen);
@@ -994,15 +987,28 @@ Screen_SetMenu (SCREEN screen, HMENU hMenu)
 }
 
 //---------------------------------------------------------------------------
+//  BOOL AdjustedSize
+//   make sure that proposed width & height of screen are ok.
+//   return TRUE if adjusted, FALSE is OK
+//---------------------------------------------------------------------------
+static BOOL
+AdjustedSize (SCREEN screen, int *width, int *height) {
+  POINT minsz, maxsz;
+  GetMinMaxSizes (screen->hWnd, &minsz, &maxsz);
+  if (*width<minsz.x || *width>maxsz.x || *height<minsz.y || *height>maxsz.y) {
+    *width  = min(maxsz.x,max(minsz.x,*width));
+    *height = min(maxsz.y,max(minsz.y,*height));
+    return  TRUE;
+  }
+  return  FALSE;
+}
+
+//---------------------------------------------------------------------------
 //  BOOL ResetScreen (SCREEN  screen)
 //
 //  Description:
-//     Resets the TTY character information and causes the
+//     Resets the SCREEN character information and causes the
 //     screen to resize to update the scroll information.
-//
-//  Parameters:
-//     NPTTYINFO  npTTYInfo
-//        pointer to TTY info structure
 //
 //---------------------------------------------------------------------------
 
@@ -1043,21 +1049,19 @@ ResetScreen (SCREEN screen)
    screen->bkgnd_brush = CreateSolidBrush (screen->rgbBGColour);
 
    // a slimy hack to force the scroll position, region to
-   // be recalculated based on the new character sizes
+   // be recalculated based on the new character sizes ????
+
+   // Veto screens that are too small or too large
    {
      int width, height;
-     POINT minsz, maxsz;
      GetWindowRect (hWnd, &rcWindow);
-     GetMinMaxSizes (hWnd, &minsz, &maxsz);
      width  = rcWindow.right - rcWindow.left;
      height = (rcWindow.bottom - rcWindow.top
 	       - GetSystemMetrics(SM_CYCAPTION)
 	       - GetSystemMetrics(SM_CYFRAME)
 	       - (GetMenu(hWnd) ? GetSystemMetrics(SM_CYMENU) : 0));
-     if (width<minsz.x || width>maxsz.x || height<minsz.y || height>maxsz.y)
-       MoveWindow (hWnd, rcWindow.left, rcWindow.top,
-		   min(maxsz.x,max(minsz.x,width)),
-		   min(maxsz.y,max(minsz.y,height)), TRUE);
+     if (AdjustedSize (screen, &width, &height))
+       MoveWindow (hWnd, rcWindow.left, rcWindow.top, width, height, TRUE);
      else
        PostMessage (hWnd, WM_SIZE, SIZENORMAL,
 		    ((LPARAM) (MAKELONG (width,height))));
@@ -1266,7 +1270,7 @@ ScrollScreenBufferUp (SCREEN  screen,  int count)
 //  BOOL SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
 //
 //  Description:
-//     Sizes TTY and sets up scrolling regions.
+//     Set SCREEN size.
 //
 //---------------------------------------------------------------------------
 
@@ -1280,9 +1284,39 @@ SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
    if (NULL == screen)
       return  FALSE;
 
+   if (IsIconic(hWnd)) {
+     /*   THis entire section is a crock to ensure a reasonably sized window
+          when Scheme is started minimized
+
+        Since we protect this procedure against minimizing in the WndProc, we
+        can get here only when window is launched in a minimized state.  We
+        get here because of the PostMessage in ScreenReset.  Our duty is to
+	fake a normal position and size.
+        Luckily none of the scrolling businness happens because all the cursor
+        etc are at zero. (Hopefully it would be clipped).
+     */
+     WINDOWPLACEMENT pl;
+     int width, height, params[4] = {-1, -1, 0, 0};  /* left,top,width,height*/
+     init_geometry ("MITSCHEME_GEOMETRY", &params[0]);
+     width   = min (params[2] ? params[2] : 80*screen->xChar,
+		    GetSystemMetrics(SM_CXSCREEN));
+     height  = min (params[3] ? params[3] : 40*screen->yChar,
+		    GetSystemMetrics(SM_CYSCREEN));
+     GetWindowPlacement (hWnd, &pl);
+     AdjustedSize (screen, &width, &height);
+     pl.rcNormalPosition.left = params[0]==-1 ? 0 : params[0];
+     pl.rcNormalPosition.top  = params[1]==-1 ? 0 : params[1];
+     pl.rcNormalPosition.bottom = pl.rcNormalPosition.top + height;
+     pl.rcNormalPosition.right  = pl.rcNormalPosition.left + width;
+     SetWindowPlacement (hWnd, &pl);
+     wVertSize = height;
+     wHorzSize = width;
+   }
+
 //   if (GetMenu(hWnd)) wVertSize -= GetSystemMetrics(SM_CYMENU);
    old_width  = screen->width;
    old_height = screen->height;
+
    new_width  =
      max (1, min ((wHorzSize + screen->xOffset) / screen->xChar, MAXCOLS));
    new_height = 
@@ -1326,25 +1360,9 @@ SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
    MoveScreenCursor (screen);
    
    screen->ySize = (int) wVertSize ;
-//   screen->yScroll = max (0, (MAXROWS * screen->yChar) - screen->ySize);
-
-   screen->yScroll = 0;
-//   nScrollAmt = min (screen->yScroll, screen->yOffset ) -
-//                     screen->yOffset;
-//   ScrollWindow (hWnd, 0, -nScrollAmt, NULL, NULL);
-//   screen->yOffset = screen->yOffset + nScrollAmt ;
-//   SetScrollPos (hWnd, SB_VERT, screen->yOffset, FALSE);
-//   SetScrollRange (hWnd, SB_VERT, 0, screen->yScroll, TRUE);
-
    screen->xSize = (int) wHorzSize ;
-//   screen->xScroll = max (0, (MAXCOLS * screen->xChar) - screen->xSize);
+   screen->yScroll = 0;                      
    screen->xScroll = 0;                      
-//   nScrollAmt = min (screen->xScroll, screen->xOffset) -
-//                     screen->xOffset;
-//   ScrollWindow (hWnd, 0, -nScrollAmt, NULL, NULL);
-//   screen->xOffset = screen->xOffset + nScrollAmt ;
-//   SetScrollPos (hWnd, SB_HORZ, screen->xOffset, FALSE);
-//   SetScrollRange (hWnd, SB_HORZ, 0, screen->xScroll, TRUE);
 
    if ((screen->mode_flags & SCREEN_MODE_EDWIN) == 0)
      screen->scroll_lines = (COMPUTE_SCROLL_LINES (new_height));
@@ -3240,4 +3258,110 @@ HICON ScreenSetIcon(SCREEN screen, HICON hIcon)
   HICON  result = screen->hIcon;
   screen->hIcon = hIcon;
   return  result;
+}
+
+
+
+
+
+
+static BOOL
+parse_logfont (char *name, LOGFONT *lf)
+{
+  int i = 0, len, name_ended = 0;
+  char *start = name, *end = name;
+
+  while (1) {
+    while (*start==' ') start++;
+    if (*start==0) return  TRUE;
+    end = start;
+    while (*end!=' ' && *end!=0) end++;
+    len = end-start;
+    if ((*start>='0' && *start<='9') || *start=='-')
+      lf->lfHeight = atol(start), name_ended = 1;
+    else if (4==len && 0==_strnicmp(start, "bold", len))
+      lf->lfWeight = 700, name_ended = 1;
+    else if (6==len && 0==_strnicmp(start, "italic", len))
+      lf->lfItalic = TRUE, name_ended = 1;
+    else if (7==len && 0==_strnicmp(start, "regular", len))
+      lf->lfWeight = 400, lf->lfItalic = FALSE, name_ended = 1;
+    else if (9==len && 0==_strnicmp(start, "underline", len))
+      lf->lfUnderline = TRUE, name_ended = 1;
+    else if (9==len && 0==_strnicmp(start, "strikeout", len))
+      lf->lfStrikeOut = TRUE, name_ended = 1;
+    else if (LF_FACESIZE-i>len && !name_ended) {
+      if (i>0)
+	lf->lfFaceName[i++] = ' ';
+      while (start<end)
+	lf->lfFaceName[i++] = *start++;
+      lf->lfFaceName[i] = 0;
+    } else
+      return  FALSE;
+    start = end;
+  }
+}
+
+
+BOOL ScreenSetDefaultFont (char *description)
+{
+  /* modify default name & size, but undo characteristics */
+  LOGFONT lf = lfDefaultLogFont;
+  HFONT hFont;
+  lf.lfWeight = 400;
+  lf.lfItalic = lf.lfUnderline = lf.lfStrikeOut = FALSE;
+  if (! parse_logfont (description, &lf))
+    return  FALSE;
+  hFont = CreateFontIndirect (&lf);
+  if (hFont == NULL)
+    return  FALSE;
+  DeleteObject (hFont);
+  lfDefaultLogFont = lf;
+}
+
+BOOL ScreenSetFont (SCREEN screen, char *description)
+{
+  LOGFONT lf;
+  HFONT hFont;
+  init_LOGFONT (&lf);
+  if (! parse_logfont (description, &lf))
+    return  FALSE;
+  hFont = CreateFontIndirect (&lf);
+  if (hFont == NULL)
+    return  FALSE;
+  screen->hFont = hFont;
+  screen->lfFont = lf;
+  ResetScreen(screen);
+  return  TRUE;
+}
+
+static BOOL
+change_colour (SCREEN screen, DWORD requested_colour, DWORD *colour_slot)
+{
+  HWND hWnd = screen->hWnd;
+  HDC hdc = GetDC (hWnd);
+  COLORREF actual_colour = GetNearestColor (hdc, requested_colour);
+  if (actual_colour == CLR_INVALID) {
+    ReleaseDC (hWnd, hdc);
+    return  FALSE;
+  }
+  *colour_slot = actual_colour;
+
+  // Redraw screen with new colours
+  if (screen->bkgnd_brush != NULL)
+    DeleteObject (screen->bkgnd_brush);
+  screen->bkgnd_brush = CreateSolidBrush (screen->rgbBGColour);
+  InvalidateRect (hWnd, NULL, TRUE);
+  ReleaseDC (hWnd, hdc);
+
+  return  TRUE;
+}
+
+BOOL ScreenSetForegroundColour (SCREEN screen, DWORD colour)
+{
+  return  change_colour (screen, colour, &screen->rgbFGColour);
+}
+
+BOOL ScreenSetBackgroundColour (SCREEN screen, DWORD colour)
+{
+  return  change_colour (screen, colour, &screen->rgbBGColour);
 }
