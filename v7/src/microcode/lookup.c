@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.c,v 9.49 1992/01/15 04:37:54 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.c,v 9.50 1992/02/03 23:32:09 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -1670,7 +1670,7 @@ compiler_cache_retry:
     }
   }
 
-#if true
+#if TRUE
 
   /* The code below must complete to keep the data structures consistent.
      Thus instead of checking for GC overflow at each allocation, we check
@@ -1708,7 +1708,7 @@ compiler_cache_retry:
   {
     SCHEME_OBJECT new_trap;
 
-#if false
+#if FALSE
     /* This is included in the check above. */
     if (GC_allocate_test (9))
     {
@@ -1774,7 +1774,7 @@ compiler_cache_retry:
       store_extension = (FAST_MEMORY_REF (extension, TRAP_EXTENSION_CLONE));
       if (store_extension == SHARP_F)
       {
-#if false
+#if FALSE
 	/* This is included in the check above. */
 
 	if (GC_allocate_test (4))

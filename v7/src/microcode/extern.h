@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.43 1992/01/15 17:21:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.44 1992/02/03 23:26:46 jinx Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -270,6 +270,6 @@ extern void EXFUN (Print_Primitive, (SCHEME_OBJECT));
 extern void EXFUN (Allocate_New_Stacklet, (long));
 #endif
 
-#if false
+#if FALSE
 extern void EXFUN (Clear_Perfinfo_Data, (void));
 #endif

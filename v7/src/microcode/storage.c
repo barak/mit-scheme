@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.47 1990/10/03 15:15:05 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.48 1992/02/03 23:39:19 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -118,7 +118,7 @@ int debug_nslots = 0;
 int local_slotno = 0;
 int local_nslots = 0;
 
-#if false /* MHWU */
+#if FALSE /* MHWU */
 int debug_circle[debug_maxslots];
 int local_circle[debug_maxslots];
 #endif /* false */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/mul.c,v 9.31 1992/01/16 01:51:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/mul.c,v 9.32 1992/02/03 23:33:05 jinx Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -65,7 +65,7 @@ DEFUN (Mul, (Arg1, Arg2),
   register long A = (FIXNUM_TO_LONG (Arg1));
   register long B = (FIXNUM_TO_LONG (Arg2));
 #if __GNUC__
-#if 0
+#if FALSE
   /* GCC isn't yet efficient enough with `long long' -- KR.  */
   {
     register long long X;

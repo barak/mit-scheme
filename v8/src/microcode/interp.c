@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.64 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.65 1992/02/03 23:31:14 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -618,7 +618,7 @@ Eval_Non_Trapping:
   switch (OBJECT_TYPE (Fetch_Expression()))
   {
     default:
-#if false
+#if FALSE
       Eval_Error(ERR_UNDEFINED_USER_TYPE);
 #else
       /* fall through to self evaluating. */

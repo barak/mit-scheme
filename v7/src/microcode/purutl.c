@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.42 1991/08/06 15:13:54 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.43 1992/02/03 23:37:07 jinx Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -135,7 +135,7 @@ DEFUN (Make_Impure,
     case TC_MANIFEST_NM_VECTOR:
     case TC_MANIFEST_SPECIAL_NM_VECTOR:
     case_Non_Pointer:
-#if false
+#if FALSE
       fprintf(stderr, "\nImpurify Non-Pointer (0x%lx)\n", Object);
       Microcode_Termination(TERM_NON_POINTER_RELOCATION);
       /* fall through */
@@ -268,7 +268,7 @@ DEFUN (find_constant_space_block,
 
   while (where >= low_constant)
   {
-#if 0
+#if FALSE
     /* Skip backwards over turds left over by ALIGN_FLOAT */
 
     /* This should be #ifdef FLOATING_ALIGNMENT, but

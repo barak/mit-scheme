@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.53 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.54 1992/02/03 23:35:09 jinx Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -99,7 +99,7 @@ DEFUN (primitive_alias_to_name, (alias), char * alias)
   It is really the index of the last valid entry.
  */
 
-#if false
+#if FALSE
 
 /* This version performs an expensive linear search. */
 
@@ -128,7 +128,7 @@ DEFUN (primitive_name_to_code, (name, table, size),
   return ((long) (-1));
 }
 
-#else /* not false */
+#else /* not FALSE */
 
 /* This version performs a log (base 2) search.
    The table is assumed to be ordered alphabetically.
