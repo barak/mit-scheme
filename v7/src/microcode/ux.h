@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.58 1993/11/23 06:50:39 gjr Exp $
+$Id: ux.h,v 1.59 1993/11/23 22:58:59 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -302,7 +302,9 @@ extern int EXFUN (kill, (pid_t, int));
 
 #ifdef _SUNOS4
 #define HAVE_FTRUNCATE
+#ifdef sun4
 #define TIOCSIGSEND TIOCSIG
+#endif
 #endif
 
 #ifdef apollo
