@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.38 1988/04/03 18:12:58 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.39 1988/05/10 18:12:45 cph Exp $
 
    This file contains code for fasdump and dump-band.
 */
@@ -490,17 +490,26 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
 DEFINE_PRIMITIVE("DUMP-BAND", Prim_Band_Dump, 2)
 {
   Pointer Combination, *table_start, *table_end, *saved_free;
-  long Arg1Type, table_length;
+  long table_length;
   Boolean result;
   Primitive_2_Args();
 
   Band_Dump_Permitted();
-  Arg1Type = Type_Code(Arg1);
-  if ((Arg1Type != TC_CONTROL_POINT) &&
-      (Arg1Type != TC_EXTENDED_PROCEDURE) &&
-      (Arg1Type != TC_PRIMITIVE))
+  /* This type check isn't strictly needed, but it is better to find
+     out about problems now than to wait until band-load time.
+     However, the type code list must be kept in agreement with
+     internal-apply in the interpreter.  */
   {
-    Arg_1_Type(TC_PROCEDURE);
+    long type_code;
+
+    type_code = (Type_Code (Arg1));
+    if (! ((type_code == TC_COMPILED_ENTRY) ||
+	   (type_code == TC_CONTROL_POINT) ||
+	   (type_code == TC_ENTITY) ||
+	   (type_code == TC_EXTENDED_PROCEDURE) ||
+	   (type_code == TC_PRIMITIVE) ||
+	   (type_code == TC_PROCEDURE)))
+      error_wrong_type_arg (1);
   }
   Arg_2_Type(TC_CHARACTER_STRING);
 
