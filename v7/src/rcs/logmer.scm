@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/logmer.scm,v 1.4 1991/12/16 21:20:38 cph Exp $
+$Id: logmer.scm,v 1.5 1992/11/05 20:51:41 cph Exp $
 
-Copyright (c) 1988, 1991 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,7 +46,8 @@ MIT in each case. |#
 	    (sort-entries
 	     (let ((entries
 		    (read-entries
-		     (let ((pathnames (mapcan rcs-directory-read directories)))
+		     (let ((pathnames
+			    (append-map! rcs-directory-read directories)))
 		       (newline trace-port)
 		       (write-string "total files: " trace-port)
 		       (write (length pathnames) trace-port)
@@ -116,13 +117,13 @@ MIT in each case. |#
 				entries*))))))))
 
 (define (read-entries pathnames)
-  (mapcan (let ((prefix (length (greatest-common-prefix pathnames))))
-	    (lambda (pathname)
-	      (map (let ((filename (working-file-string pathname prefix)))
-		     (lambda (delta)
-		       (cons delta filename)))
-		   (read-file pathname))))
-	  pathnames))
+  (append-map! (let ((prefix (length (greatest-common-prefix pathnames))))
+		 (lambda (pathname)
+		   (map (let ((filename (working-file-string pathname prefix)))
+			  (lambda (delta)
+			    (cons delta filename)))
+			(read-file pathname))))
+	       pathnames))
 
 (define (working-file-string pathname prefix)
   (let ((filename
@@ -178,37 +179,9 @@ MIT in each case. |#
 		      (cons (car input) output))))))))
 
 (define (rcs-directory-read filename)
-  (let ((pathname (merge-pathnames (pathname-as-directory filename))))
-    (map (let ((directory-path (directory-pathname pathname)))
-	   (lambda (filename)
-	     (merge-pathnames directory-path (->pathname filename))))
-	 (list-transform-positive
-	     (generate-filenames (directory-namestring pathname))
-	   (lambda (filename)
-	     (string-suffix? ",v" filename))))))
-
-(define (string-suffix? string1 string2)
-  (substring-suffix? string1 0 (string-length string1)
-		     string2 0 (string-length string2)))
-
-(define (substring-suffix? string1 start1 end1 string2 start2 end2)
-  (let ((length (- end1 start1)))
-    (and (<= length (- end2 start2))
-	 (= (substring-match-backward string1 start1 end1
-				      string2 start2 end2)
-	    length))))
-
-(define (generate-filenames directory-string)
-  (let loop ((name (open-directory directory-string)))
-    (if name
-	(cons name (loop (directory-read)))
-	'())))
-
-(define open-directory
-  (make-primitive-procedure 'OPEN-DIRECTORY))
-
-(define directory-read
-  (make-primitive-procedure 'DIRECTORY-READ))
+  (list-transform-positive (directory-read (pathname-as-directory filename))
+    (lambda (pathname)
+      (string-suffix? ",v" (file-namestring pathname)))))
 
 (define (greatest-common-prefix pathnames)
   (if (null? pathnames)
