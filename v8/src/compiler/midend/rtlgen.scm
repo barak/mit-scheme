@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.30 1995/07/10 03:14:58 adams Exp $
+$Id: rtlgen.scm,v 1.31 1995/07/11 19:25:15 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -1372,10 +1372,10 @@ MIT in each case. |#
     (if (null? rest)
 	(rtlgen/stmt state next)
 	(begin
-	  (rtlgen/stmt/begin state next)
+	  (rtlgen/stmt/begin-action state next)
 	  (loop (car rest) (cdr rest))))))
 
-(define (rtlgen/stmt/begin state form)
+(define (rtlgen/stmt/begin-action state form)
   (define (illegal-action)
     (internal-error "Illegal BEGIN action" form))
   (cond ((not (pair? form))
@@ -2464,7 +2464,8 @@ MIT in each case. |#
       ((PREDICATE)
        (rtlgen/branch/false? state loc))
       ((NONE)
-       (internal-error "Unexpected target kind for value" state))
+       ;;(internal-error "Unexpected target kind for value" state)
+       loc)
       (else
        (internal-error "Unknown target kind" state)))))
 
