@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bitstr.c,v 9.57 1996/10/02 18:57:05 cph Exp $
+$Id: bitstr.c,v 9.58 1996/10/02 21:14:10 cph Exp $
 
 Copyright (c) 1987-96 Massachusetts Institute of Technology
 
@@ -601,6 +601,15 @@ DEFUN (long_to_bit_string, (length, number), long length AND long number)
     }
 }
 
+static void
+DEFUN (btbs_consumer, (result_ptr, digit),
+       PTR result_ptr
+       AND long digit)
+{
+  (* (INC_BIT_STRING_PTR (* ((unsigned char **) result_ptr))))
+    = ((unsigned char) digit);
+}
+
 SCHEME_OBJECT
 DEFUN (bignum_to_bit_string, (length, bignum),
        long length AND SCHEME_OBJECT bignum)
@@ -626,19 +635,21 @@ DEFUN (bignum_to_bit_string, (length, bignum),
     }
 }
 
-void
-DEFUN (btbs_consumer, (result_ptr, digit),
-       unsigned char ** result_ptr
-       AND long digit)
-{
-  (* (INC_BIT_STRING_PTR (*result_ptr))) = ((unsigned char) digit);
-}
-
 struct bitstr_to_bignm_context
 {
   unsigned char *source_ptr;
   unsigned int mask;
 };
+
+static unsigned int
+DEFUN (bstb_producer, (context), PTR context)
+{
+  struct bitstr_to_bignm_context * c = context;
+  unsigned int result = (c->mask & (BIT_STRING_WORD (c->source_ptr)));
+  c->mask = (LOW_MASK (CHAR_BIT));
+  DEC_BIT_STRING_PTR (c->source_ptr);
+  return (result);
+}
 
 SCHEME_OBJECT
 DEFUN (bit_string_to_bignum, (nbits, bitstr),
@@ -669,18 +680,6 @@ DEFUN (bit_string_to_bignum, (nbits, bitstr),
     (digit_stream_to_bignum (ndigits, bstb_producer,
 			     (&context), (1L << CHAR_BIT),
 			     0));
-}
-
-unsigned int
-DEFUN (bstb_producer, (context),
-       struct bitstr_to_bignm_context * context)
-{
-  unsigned int result;
-
-  result = (context->mask & (BIT_STRING_WORD (context->source_ptr)));
-  context->mask = (LOW_MASK (CHAR_BIT));
-  DEC_BIT_STRING_PTR (context->source_ptr);
-  return (result);
 }
 
 DEFINE_PRIMITIVE ("UNSIGNED-INTEGER->BIT-STRING", Prim_unsigned_to_bit_string, 2, 2, 
