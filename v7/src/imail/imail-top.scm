@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.132 2000/06/05 21:09:30 cph Exp $
+;;; $Id: imail-top.scm,v 1.133 2000/06/05 21:25:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -276,13 +276,13 @@ regardless of the folder type."
 	  ((string-ci=? protocol "umail") (make-umail-url "~/inbox.mail"))
 	  (else (error:bad-range-argument protocol)))))
 
-(define (imail-present-user-alert procedure)
+(define (imail-ui:present-user-alert procedure)
   (call-with-output-to-temporary-buffer " *IMAP alert*"
 					'(READ-ONLY SHRINK-WINDOW
 						    FLUSH-ON-SPACE)
 					procedure))
 
-(define (imail-message-wrapper . arguments)
+(define (imail-ui:message-wrapper . arguments)
   (let ((prefix (string-append (message-args->string arguments) "...")))
     (lambda (thunk)
       (fluid-let ((*imail-message-wrapper-prefix* prefix))
@@ -291,7 +291,7 @@ regardless of the folder type."
 	  (message prefix "done")
 	  v)))))
 
-(define (imail-progress-meter current total)
+(define (imail-ui:progress-meter current total)
   (if (and *imail-message-wrapper-prefix* (< 0 current total))
       (message *imail-message-wrapper-prefix*
 	       (string-pad-left
@@ -312,7 +312,7 @@ regardless of the folder type."
 		  (and folder
 		       (imail-folder->buffer folder #f)))))
 
-(define (imail-call-with-pass-phrase url receiver)
+(define (imail-ui:call-with-pass-phrase url receiver)
   (let ((key (url-pass-phrase-key url))
 	(retention-time (ref-variable imail-pass-phrase-retention-time #f)))
     (let ((entry (hash-table/get memoized-pass-phrases key #f)))
@@ -336,7 +336,7 @@ regardless of the folder type."
 		    entry)))
 	     (receiver pass-phrase)))))))
 
-(define (imail-delete-stored-pass-phrase url)
+(define (imail-ui:delete-stored-pass-phrase url)
   (hash-table/remove! memoized-pass-phrases (url-pass-phrase-key url)))
 
 (define (set-up-pass-phrase-timer! entry key retention-time)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.111 2000/06/05 20:56:48 cph Exp $
+;;; $Id: imail-imap.scm,v 1.112 2000/06/05 21:25:34 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -341,7 +341,7 @@
 				    (imap-connection-capabilities connection)))
 			     (error "Server doesn't support IMAP4rev1:" url))
 			 (let ((response
-				(imail-call-with-pass-phrase url
+				(imail-ui:call-with-pass-phrase url
 				  (lambda (pass-phrase)
 				    (imap:command:login connection
 							(imap-url-user-id url)
@@ -353,7 +353,7 @@
 			     (close-imap-connection connection)))))))))
 	    (if (imap:response:no? response)
 		(begin
-		  (imail-delete-stored-pass-phrase url)
+		  (imail-ui:delete-stored-pass-phrase url)
 		  (error "Unable to log in:"
 			 (imap:response:response-text-string response))))))
 	#t)))
@@ -505,7 +505,7 @@
 
 (define (read-message-headers! folder start)
   (if (imap-folder-uidvalidity folder)
-      ((imail-message-wrapper "Reading message UIDs")
+      ((imail-ui:message-wrapper "Reading message UIDs")
        (lambda ()
 	 (imap:command:fetch-range (imap-folder-connection folder)
 				   start #f '(UID))))))
@@ -616,7 +616,7 @@
 	      (with-interrupt-mask interrupt-mask
 		(lambda (interrupt-mask)
 		  interrupt-mask
-		  ((imail-message-wrapper "Reading message UIDs")
+		  ((imail-ui:message-wrapper "Reading message UIDs")
 		   (lambda ()
 		     (imap:command:fetch-range (imap-folder-connection folder)
 					       0 #f '(UID))))))
@@ -724,7 +724,7 @@
 	      (let ((suffix
 		     (string-append " UID for message "
 				    (number->string (+ index 1)))))
-		((imail-message-wrapper "Reading" suffix)
+		((imail-ui:message-wrapper "Reading" suffix)
 		 (lambda ()
 		   (imap:command:fetch connection index '(UID))
 		   (if (not (initpred message))
@@ -752,9 +752,9 @@
 		   (string-append
 		    " " noun " for message "
 		    (number->string (+ (message-index message) 1)))))
-	      ((imail-message-wrapper "Reading" suffix)
+	      ((imail-ui:message-wrapper "Reading" suffix)
 	       (lambda ()
-		 (imap:read-literal-progress-hook imail-progress-meter
+		 (imap:read-literal-progress-hook imail-ui:progress-meter
 		   (lambda ()
 		     (imap:command:uid-fetch connection uid keywords)
 		     (if (not (initpred message))
@@ -829,9 +829,9 @@
 			 (if (equal? section '(TEXT)) "" " part")
 			 " for message "
 			 (number->string (+ (message-index message) 1)))))
-     ((imail-message-wrapper "Reading" suffix)
+     ((imail-ui:message-wrapper "Reading" suffix)
       (lambda ()
-	(imap:read-literal-progress-hook imail-progress-meter
+	(imap:read-literal-progress-hook imail-ui:progress-meter
 	  (lambda ()
 	    (imap:command:uid-fetch
 	     (imap-folder-connection (message-folder message))
@@ -1153,12 +1153,12 @@
   (imap:command:no-response connection 'CAPABILITY))
 
 (define (imap:command:login connection user-id pass-phrase)
-  ((imail-message-wrapper "Logging in as " user-id)
+  ((imail-ui:message-wrapper "Logging in as " user-id)
    (lambda ()
      (imap:command:no-response connection 'LOGIN user-id pass-phrase))))
 
 (define (imap:command:select connection mailbox)
-  ((imail-message-wrapper "Select mailbox " mailbox)
+  ((imail-ui:message-wrapper "Select mailbox " mailbox)
    (lambda ()
      (imap:command:no-response connection 'SELECT mailbox))))
 
@@ -1187,7 +1187,7 @@
   (imap:command:no-response connection 'UID 'STORE uid 'FLAGS flags))
 
 (define (imap:command:expunge connection)
-  ((imail-message-wrapper "Expunging messages")
+  ((imail-ui:message-wrapper "Expunging messages")
    (lambda ()
      (imap:command:no-response connection 'EXPUNGE))))
 
@@ -1429,7 +1429,7 @@
 		 (error "Server shut down connection:" text)))
 	   (if (or (imap:response:no? response)
 		   (imap:response:bad? response))
-	       (imail-present-user-alert
+	       (imail-ui:present-user-alert
 		(lambda (port)
 		  (write-string "Notice from IMAP server:" port)
 		  (newline port)
@@ -1485,7 +1485,7 @@
 (define (process-response-text connection command code text)
   command
   (cond ((imap:response-code:alert? code)
-	 (imail-present-user-alert
+	 (imail-ui:present-user-alert
 	  (lambda (port)
 	    (write-string "Alert from IMAP server:" port)
 	    (newline port)

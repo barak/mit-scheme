@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.62 2000/06/05 20:04:42 cph Exp $
+$Id: todo.txt,v 1.63 2000/06/05 21:25:37 cph Exp $
 
 Bug fixes
 ---------
@@ -62,9 +62,6 @@ Design changes
 --------------
 
 * Move pathname-completion code into the runtime system.
-
-* Rename the procedures that form the UI callback interface to make it
-  clear what their role is.
 
 * Repackage the code so that each file now in the core is in a
   separate package.
