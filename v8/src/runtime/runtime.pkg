@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.293 1997/08/08 21:29:26 cph Exp $
+$Id: runtime.pkg,v 14.294 1997/11/01 07:35:47 cph Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -2285,6 +2285,7 @@ MIT in each case. |#
 	  open-tcp-stream-socket-channel
 	  open-unix-stream-socket
 	  open-unix-stream-socket-channel
+	  os/hostname
 	  tcp-server-connection-accept))
 
 (define-package (runtime subprocess)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.8 1996/05/18 06:15:24 cph Exp $
+$Id: socket.scm,v 1.9 1997/11/01 07:31:40 cph Exp $
 
-Copyright (c) 1990-96 Massachusetts Institute of Technology
+Copyright (c) 1990-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -60,6 +60,10 @@ MIT in each case. |#
   (with-thread-timer-stopped
     (lambda ()
       ((ucode-primitive get-host-by-name 1) host-name))))
+
+(define (os/hostname)
+  ((ucode-primitive canonical-host-name 1)
+   ((ucode-primitive get-host-name 0))))
 
 (define (open-unix-stream-socket-channel filename)
   (open-channel
