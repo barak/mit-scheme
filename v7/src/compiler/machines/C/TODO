@@ -11,3 +11,7 @@
 * Dynamic C loader!
 
 * Dynamic generation of ymake.cclist file.
+
+RANDOM INFO:
+  USE: 	setenv CMDOPT -DBAND_ALREADY_BUILT
+  to build a microcode without the data building stuff
