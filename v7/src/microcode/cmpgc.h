@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.13 1990/06/28 18:16:32 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.14 1991/03/21 23:25:47 jinx Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -366,11 +366,16 @@ typedef unsigned short format_word;
 #endif /* HAS_COMPILER_SUPPORT */
 
 #ifndef FLUSH_I_CACHE
-
-#define FLUSH_I_CACHE()							\
-do {									\
-} while (0)
-
+#define FLUSH_I_CACHE() do {} while (0)
 #endif /* FLUSH_I_CACHE */
+
+#ifndef COMPILER_TRANSPORT_END
+#define COMPILER_TRANSPORT_END() do					\
+{									\
+  Registers[REGBLOCK_CLOSURE_SPACE] = ((SCHEME_OBJECT) 0);		\
+  Registers[REGBLOCK_CLOSURE_FREE] = ((SCHEME_OBJECT) NULL);		\
+  FLUSH_I_CACHE ();							\
+} while (0)
+#endif /* COMPILER_TRANSPORT_END */
 
 #endif /* CMPGC_H_INCLUDED */

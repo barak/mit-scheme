@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.45 1991/02/24 01:10:48 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.46 1991/03/21 23:26:35 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -383,7 +383,7 @@ DEFUN_VOID (GC)
   Current_State_Point = *Root++;
   Fluid_Bindings = *Root++;
   Free_Stacklets = NULL;
-  FLUSH_I_CACHE ();
+  COMPILER_TRANSPORT_END ();
   CLEAR_INTERRUPT (INT_GC);
   return;
 }

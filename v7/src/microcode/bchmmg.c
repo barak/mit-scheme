@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.59 1991/03/18 21:08:58 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.60 1991/03/21 23:25:32 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -857,7 +857,7 @@ DEFUN (GC, (initial_weak_chain), SCHEME_OBJECT initial_weak_chain)
   Current_State_Point = *Root++;
   Fluid_Bindings = *Root++;
   Free_Stacklets = NULL;
-  FLUSH_I_CACHE ();
+  COMPILER_TRANSPORT_END ();
   CLEAR_INTERRUPT (INT_GC);
   return;
 }

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.17 1990/10/02 21:50:09 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.18 1991/03/21 23:25:54 jinx Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -49,12 +49,18 @@ MIT in each case. */
 #define COMPILER_VAX_TYPE			2
 #define COMPILER_SPECTRUM_TYPE			3
 #define COMPILER_MIPS_TYPE			4
+#define COMPILER_MC68040_TYPE			5
+#define COMPILER_SPARC_TYPE			6
+#define COMPILER_RS6000_TYPE			7
+#define COMPILER_MC88K_TYPE			8
 
 /* Machine parameters to be set by the user. */
 
 /* Processor type.  Choose a number from the above list, or allocate your own. */
 
-#define COMPILER_PROCESSOR_TYPE			COMPILER_MC68020_TYPE
+#ifndef COMPILER_PROCESSOR_TYPE
+#  define COMPILER_PROCESSOR_TYPE		COMPILER_MC68020_TYPE
+#endif
 
 /* Size (in long words) of the contents of a floating point register if
    different from a double.  For example, an MC68881 saves registers
@@ -75,7 +81,7 @@ typedef unsigned short format_word;
 */
 
 #define PC_ZERO_BITS                    1
-
+
 /* Skip over this many BYTES to bypass the GC check code (ordinary
 procedures and continuations differ from closures) */
 
@@ -87,6 +93,8 @@ extern void hppa_store_absolute_address ();
  */
 
 #ifdef _NEXTOS
+
+   On the 68k, when closures are invoked, the closure corresponding
    to the first entry point is what's needed on the top of the stack.
    Note that it is needed for environment only, not for code.
    The closure code does an
@@ -103,7 +111,7 @@ extern void EXFUN (flush_i_cache, (void));
 extdo {									\
   long magic_constant;							\
 									\
-#define ADJUST_CLOSURE_AT_CALL(entry_point, location)			\
+  magic_constant = (* ((long *) (((char *) (entry_point)) + 2)));	\
   (location) = ((SCHEME_OBJECT)						\
 		((((long) (OBJECT_ADDRESS (location))) + 6) +		\
 		 magic_constant));					\
@@ -121,8 +129,8 @@ extdo {									\
   ((2 * (sizeof (format_word))) + 6)
 
 /* Manifest closure entry destructuring.
-#define COMPILED_CLOSURE_ENTRY_SIZE					\
-((2 * (sizeof (format_word))) + 6)
+
+   Given the entry point of a closure, extract the `real entry point'
    (the address of the real code of the procedure, ie. one indirection)
    from the closure.
    Note that on some machines this address may be "smeared out" over
@@ -133,7 +141,7 @@ extdo {									\
 {									\
   (real_entry_point) =							\
     (* ((SCHEME_OBJECT *) (((char *) (entry_point)) + 2)));		\
-#define EXTRACT_CLOSURE_ENTRY_ADDRESS(real_entry_point, entry_point)	\
+}
 
 /* This is the inverse of EXTRACT_CLOSURE_ENTRY_ADDRESS.
    Given a closure's entry point and a code entry point, store the
@@ -144,11 +152,175 @@ extdo {									\
 {									\
   (* ((SCHEME_OBJECT *) (((char *) (entry_point)) + 2))) =		\
     ((SCHEME_OBJECT) (real_entry_point));				\
-#define STORE_CLOSURE_ENTRY_ADDRESS(real_entry_point, entry_point)	\
+}
 
 #endif /* (COMPILER_PROCESSOR_TYPE == COMPILER_MC68020_TYPE) */
 
 #if (COMPILER_PROCESSOR_TYPE == COMPILER_MC68040_TYPE)
+
+/* On the MC68040, closure entry points are aligned, so this is a NOP. */
+
+#  define ADJUST_CLOSURE_AT_CALL(entry_point, location) NOP()
+
+/* Cache flushing. */
+
+#  ifdef _NEXTOS
+
+#    define SPLIT_CACHES
+#    define FLUSH_I_CACHE()			asm ("trap #2")
+#    define FLUSH_I_CACHE_REGION(addr,nwords)	FLUSH_I_CACHE()
+
+#  endif /* _NEXTOS */
+
+#  ifdef __hpux
+
+/* The following is a test for HP-UX >= 7.05 */
+
+#    include <sys/proc.h>
+
+#    ifdef S2DATA_WT
+
+/* This only works in HP-UX >= 7.05 */
+
+#      include <sys/cache.h>
+
+extern void EXFUN (operate_on_cache_region,(int, char *, unsigned long));
+
+#      define SPLIT_CACHES
+
+#      define FLUSH_I_CACHE()						\
+  (void) (cachectl (CC_IPURGE, 0, 0))
+
+#      define FLUSH_I_CACHE_REGION(addr, nwords)			\
+  (operate_on_cache_region (CC_IPURGE, ((char *) (addr)), (nwords)))
+
+#      define PUSH_D_CACHE_REGION(addr, nwords)				\
+  (operate_on_cache_region (CC_FLUSH, ((char *) (addr)), (nwords)))
+
+#      ifdef IN_CMPINT_C
+
+void 
+DEFUN (operate_on_cache_region,
+       (cachecmd, base, nwords),
+       int cachecmd AND char * base AND unsigned long)
+{
+  char * end;
+  unsigned long nbytes, quantum;
+
+  if (nwords == 0)
+    return;
+  
+  nbytes = (nwords * (sizeof (long)));
+  end = (base + (nbytes - 1));
+  quantum = ((nbytes <= 0x40) ? 0x10 : 0x1000);
+
+  for (base = ((char *) (((unsigned long) base) & (~(quantum - 1))))
+       end = ((char *) (((unsigned long) end) & (~(quantum - 1))));
+       (base <= end);
+       base += quantum)
+    (void) (cachectl (cachecmd, base, quantum));
+  return;
+}
+
+#      endif /* IN_CMPINT_C */
+#    endif /* S2DATA_WT */
+#  endif /* hpux */
+
+#    ifndef FLUSH_I_CACHE
+#      error "Cache flushing code needed for MC68040s"
+#    endif
+
+/* Manifest closure entry block size. 
+   Size in bytes of a compiled closure's header excluding the
+   TC_MANIFEST_CLOSURE header.
+
+   On the 68040, this is the format word and gc offset word a 4-byte-long
+   jsr instruction, and 4 bytes for the target address.
+*/
+
+#  define COMPILED_CLOSURE_ENTRY_SIZE					\
+  ((2 * (sizeof (format_word))) + 4 + 4)
+
+/* Manifest closure entry destructuring.
+
+   EXTRACT_CLOSURE_ENTRY_ADDRESS(real_entry_point, entry_point)
+   Given the entry point of a closure, extract the `real entry point'
+   (the address of the real code of the procedure, ie. one indirection)
+   from the closure.
+   Note that on some machines this address may be "smeared out" over
+   multiple instructions.
+
+   STORE_CLOSURE_ENTRY_ADDRESS(real_entry_point, entry_point)
+   is the inverse of EXTRACT_CLOSURE_ENTRY_ADDRESS.
+   Given a closure's entry point and a code entry point, store the
+   code entry point in the closure.
+*/
+
+#  ifndef GC_ELIMINATES_CLOSURE_HOOK
+
+#    define EXTRACT_CLOSURE_ENTRY_ADDRESS(real_ep, entry_point) do	\
+{									\
+  (real_ep) =								\
+    (* ((SCHEME_OBJECT *) (((char *) (entry_point)) + 4)));		\
+} while (0)
+
+#    define STORE_CLOSURE_ENTRY_ADDRESS(real_ep, entry_point) do	\
+{									\
+  (* ((SCHEME_OBJECT *) (((char *) (entry_point)) + 4))) =		\
+    ((SCHEME_OBJECT) (real_ep));					\
+} while (0)
+
+
+#  else /* GC_ELIMINATES_CLOSURE_HOOK */
+
+
+#    define EXTRACT_CLOSURE_ENTRY_ADDRESS(real_ep, entry_point) do	\
+{									\
+  unsigned short *pc = ((unsigned short *) (entry_point));		\
+									\
+  (real_ep) =								\
+    (((*pc) == 0x4eae)							\
+     ? (* ((SCHEME_OBJECT *) (((char *) pc) + 4)))			\
+     : (* ((SCHEME_OBJECT *) (((char *) pc) + 2))));			\
+} while (0)
+
+/* This version changes the instructions to a more efficient version.
+   It is assumed that this is done only by the GC or other processes
+   that flush the I-cache at the end.
+ */
+
+#    define STORE_CLOSURE_ENTRY_ADDRESS(real_ep, entry_point) do	\
+{									\
+  unsigned short *pc = ((unsigned short *) (entry_point));		\
+									\
+  *pc++ = 0x4eb9;			/* JSR absolute */		\
+  (* ((SCHEME_OBJECT *) pc)) = ((SCHEME_OBJECT) (real_ep));		\
+} while (0)
+
+#  endif /* GC_ELIMINATES_CLOSURE_HOOK */
+
+
+#endif /* (COMPILER_PROCESSOR_TYPE == COMPILER_MC68040_TYPE) */
+
+
+#ifndef ADJUST_CLOSURE_AT_CALL
+
+#  include "ERROR: COMPILER_PROCESSOR_TYPE unknown"
+
+#endif /* ADJUST_CLOSURE_AT_CALL */
+
+#  error "COMPILER_PROCESSOR_TYPE unknown"
+   contains both the number of arguments provided by the caller and
+   code to jump to the destination address.  Before linkage, the cache
+
+
+#ifndef FLUSH_I_CACHE_REGION
+#  define FLUSH_I_CACHE_REGION(addr, nwords) NOP()
+#endif /* not FLUSH_I_CACHE_REGION */
+
+#ifndef PUSH_D_CACHE_REGION
+#  define PUSH_D_CACHE_REGION(addr, nwords) FLUSH_I_CACHE_REGION(addr, nwords)
+#endif /* not PUSH_D_CACHE_REGION */
    contains the callee's name instead of the jump code.
  */
 
@@ -175,33 +347,33 @@ extdo {									\
 {									\
   (target) =								\
     ((long) (* ((unsigned short *) (((char *) (address)) + 6))));	\
-#define EXTRACT_EXECUTE_CACHE_ARITY(target, address)			\
+} while (0)
 
 #define EXTRACT_EXECUTE_CACHE_SYMBOL(target, address) do		\
 {									\
-}
+  (target) = (* ((SCHEME_OBJECT *) (address)));				\
 } while (0)
-#define EXTRACT_EXECUTE_CACHE_SYMBOL(target, address)			\
+
 /* Extract the target address (not the code to get there) from an
    execute cache cell.
-}
+ */
 
 #define EXTRACT_EXECUTE_CACHE_ADDRESS(target, address) do		\
 {									\
   (target) = (* ((SCHEME_OBJECT *) (((char *) (address)) + 2)));	\
 } while (0)
-#define EXTRACT_EXECUTE_CACHE_ADDRESS(target, address)			\
+
 /* This is the inverse of EXTRACT_EXECUTE_CACHE_ADDRESS. */
 
-}
+#define STORE_EXECUTE_CACHE_ADDRESS(address, entry_address) do		\
 {									\
   (* ((SCHEME_OBJECT *) (((char *) (address)) + 2))) =			\
     ((SCHEME_OBJECT) (entry_address));					\
-#define STORE_EXECUTE_CACHE_ADDRESS(address, entry_address)		\
+} while (0)
 
 /* This stores the fixed part of the instructions leaving the
    destination address and the number of arguments intact.  These are
-}
+   split apart so the GC can call EXTRACT/STORE...ADDRESS but it does
    NOT need to store the instructions back.  On some architectures the
    instructions may change due to GC and then STORE_EXECUTE_CACHE_CODE
    should become a no-op and all of the work is done by
@@ -212,10 +384,10 @@ extdo {									\
 {									\
   (* ((unsigned short *) (address))) = ((unsigned short) 0x4ef9);	\
 } while (0)
-#define STORE_EXECUTE_CACHE_CODE(address)				\
+
 /* This overrides the definition in cmpint.c because the code below
    depends on knowing it, and is inserted before the definition in
-}
+   cmpint.c
  */
 
 #define COMPILER_REGBLOCK_N_FIXED	16
@@ -228,11 +400,15 @@ extdo {									\
 
 #define A6_TRAMPOLINE_TO_INTERFACE_OFFSET				\
   ((COMPILER_REGBLOCK_N_FIXED + (2 * COMPILER_HOOK_SIZE)) *		\
-(COMPILER_REGBLOCK_N_HOOKS * COMPILER_HOOK_SIZE)
+   (sizeof (SCHEME_OBJECT)))
 
 #define A6_CLOSURE_HOOK_OFFSET						\
-((COMPILER_REGBLOCK_N_FIXED + (2 * COMPILER_HOOK_SIZE)) *		\
- (sizeof (SCHEME_OBJECT)))
+  ((COMPILER_REGBLOCK_N_FIXED + (37 * COMPILER_HOOK_SIZE)) *		\
+   (sizeof (SCHEME_OBJECT)))
+
+#ifdef IN_CMPINT_C
+
+#define ASM_RESET_HOOK mc68k_reset_hook
 
 #ifdef CAST_FUNCTION_TO_INT_BUG
 
@@ -240,7 +416,7 @@ extdo {									\
 {									\
   extern unsigned long hook;						\
   (* ((unsigned short *) (a6_value + offset))) = 0x4ef9;		\
-#define SETUP_REGISTER(hook)						\
+  (* ((unsigned long *)							\
       (((unsigned short *) (a6_value + offset)) + 1))) =		\
     ((unsigned long) (&hook));						\
   offset += (COMPILER_HOOK_SIZE * (sizeof (SCHEME_OBJECT)));		\
@@ -248,11 +424,11 @@ extdo {									\
 
 #else /* not CAST_FUNCTION_TO_INT_BUG */
 
-}
+#define SETUP_REGISTER(hook) do						\
 {									\
   extern void EXFUN (hook, (void));					\
   (* ((unsigned short *) (a6_value + offset))) = 0x4ef9;		\
-#define SETUP_REGISTER(hook)						\
+  (* ((unsigned long *)							\
       (((unsigned short *) (a6_value + offset)) + 1))) =		\
 	((unsigned long) hook);						\
   offset += (COMPILER_HOOK_SIZE * (sizeof (SCHEME_OBJECT)));		\
@@ -260,19 +436,29 @@ extdo {									\
 
 #endif
 
-}
+void
 DEFUN_VOID (mc68k_reset_hook)
 {
+  extern void EXFUN (interface_initialize, (void));
 
-
-mc68k_reset_hook ()
+  unsigned char * a6_value = ((unsigned char *) (&Registers[0]));
   int offset = (COMPILER_REGBLOCK_N_FIXED * (sizeof (SCHEME_OBJECT)));
+
   /* These must match machines/bobcat/lapgen.scm */
 
-  extern void interface_initialize ();
+  SETUP_REGISTER (asm_scheme_to_interface);		/* 0 */
   SETUP_REGISTER (asm_scheme_to_interface_jsr);		/* 1 */
+
   if (offset != A6_TRAMPOLINE_TO_INTERFACE_OFFSET)
   {
+    fprintf (stderr,
+	     "\nmc68k_reset_hook: A6_TRAMPOLINE_TO_INTERFACE_OFFSET\n");
+    Microcode_Termination (TERM_EXIT);
+  }
+
+  SETUP_REGISTER (asm_trampoline_to_interface);		/* 2 */
+  SETUP_REGISTER (asm_shortcircuit_apply);		/* 3 */
+  SETUP_REGISTER (asm_shortcircuit_apply_size_1);	/* 4 */
   SETUP_REGISTER (asm_shortcircuit_apply_size_2);	/* 5 */
   SETUP_REGISTER (asm_shortcircuit_apply_size_3);	/* 6 */
   SETUP_REGISTER (asm_shortcircuit_apply_size_4);	/* 7 */
@@ -307,9 +493,110 @@ mc68k_reset_hook ()
   SETUP_REGISTER (asm_allocate_closure);		/* 36 */
 
   if (offset != A6_CLOSURE_HOOK_OFFSET)
+  {
+    fprintf (stderr, "\nmc68k_reset_hook: A6_CLOSURE_HOOK_OFFSET\n");
+    Microcode_Termination (TERM_EXIT);
+  }
+  else
+  {							/* 37 */
+    unsigned short *pc;
+
+    pc = ((unsigned short *) (a6_value + offset));
+    *pc++ = 0x2057;		/* MOVEA.L	(%sp),%a0 */
+    *pc++ = 0x2050;		/* MOVEA.L	(%a0),%a0 */
+    *pc++ = 0x5497;		/* ADDQ.L	&2,(%sp) */
+    *pc++ = 0x4ed0;		/* JMP		(%a0) */
+
+    offset += (COMPILER_HOOK_SIZE * (sizeof (SCHEME_OBJECT)));
+  }
+
+  SETUP_REGISTER (asm_generic_quotient);		/* 38 */
+  SETUP_REGISTER (asm_generic_remainder);		/* 39 */
+#if 0
+  interface_initialize ();
+  return;
+}
 
 #define CLOSURE_ENTRY_WORDS						\
   (COMPILED_CLOSURE_ENTRY_SIZE / (sizeof (SCHEME_OBJECT)))
+
+static long closure_chunk = (1024 * CLOSURE_ENTRY_WORDS);
+static long last_chunk_size;
+
+#define CLOSURE_CHUNK (1024 * CLOSURE_ENTRY_WORDS)
+{
+  long space;
+DEFUN (allocate_closure,
+       (nentries, size),
+       long nentries AND long size)
+
+  Microcode_Termination (TERM_COMPILER_DEATH);
+
+#else /* (COMPILER_PROCESSOR_TYPE == COMPILER_MC68040_TYPE) */
+
+  space = ((long) (Registers[REGBLOCK_CLOSURE_SPACE]));
+  result = ((SCHEME_OBJECT *) (Registers[REGBLOCK_CLOSURE_FREE]));
+
+  long compare, delta, space;
+  SCHEME_OBJECT *result;
+
+  compare = (size + ((nentries * CLOSURE_ENTRY_WORDS) - 1));
+  delta = (CLOSURE_ENTRY_WORDS
+	   * ((nentries + 1)
+	      + ((size + 1) / CLOSURE_ENTRY_WORDS)));
+
+  if (size > space)
+  {
+    SCHEME_OBJECT *start, *ptr, *eptr;
+  if (compare < space)
+    /* Clear remaining words from last chunk so that the heap can be scanned
+    SCHEME_OBJECT *start, *ptr, *end;
+       Do not clear if there was no last chunk (ie. CLOSURE_FREE was NULL).
+    if ((compare <= (CLOSURE_CHUNK - 3)) && (!GC_Check (CLOSURE_CHUNK)))
+    }
+    else
+      end = (start + CLOSURE_CHUNK);
+      if (GC_Check (size))
+      {
+	if ((Heap_Top - Free) < size)
+      if (GC_Check (compare + 3))
+	  /* No way to back out -- die. */
+	if ((Heap_Top - Free) < (compare + 3))
+	  fprintf (stderr, "\nC_allocate_closure (%d): No space.\n", size);
+	  Microcode_Termination (TERM_NO_SPACE);
+	  fprintf (stderr, "\nC_allocate_closure (%d, %d): No space.\n",
+		   nentries, size);
+	Request_GC (0);
+      }
+      else if (size <= closure_chunk)
+	start = Free;
+	end = (start + (compare + 3));
+      {
+	Request_GC (0);
+    result = start;
+    space = (eptr - start);
+    Free = end;
+    result = (start + 3);
+    space = (end - result);
+
+    for (ptr = result; ptr < end; ptr += CLOSURE_ENTRY_WORDS)
+      wptr = ((unsigned short *) ptr);
+      *wptr++ = 0x4eae;			/* JSR n(a6) */
+      *wptr = A6_CLOSURE_HOOK_OFFSET;	/* n */
+      wptr = ptr;
+
+      *wptr++ = A6_CLOSURE_HOOK_OFFSET;	/* n */
+  }
+
+    PUSH_D_CACHE_REGION (result, space);
+  Registers[REGBLOCK_CLOSURE_SPACE] = ((SCHEME_OBJECT) (space - size));
+  return (result);
+  Registers[REGBLOCK_CLOSURE_FREE] = ((SCHEME_OBJECT) (result - delta));
+  Registers[REGBLOCK_CLOSURE_SPACE] = ((SCHEME_OBJECT) (space - delta));
+}
+
+#endif /* IN_CMPINT_C */
+
 /* On the 68K, here's a  picture of a trampoline (offset in bytes from
    entry point)
      -12: MANIFEST vector header
@@ -353,20 +640,22 @@ mc68k_reset_hook ()
 #define STORE_TRAMPOLINE_ENTRY(entry_address, index) do			\
 {									\
   unsigned short *start_address, *PC;					\
-#define STORE_TRAMPOLINE_ENTRY(entry_address, index)			\
+  /* D0 will get the index.  JSR will be used to call the assembly	\
      language to C SCHEME_UTILITY handler:				\
-  unsigned short *PC;							\
+	mov.w	#index,%d0						\
 	jsr	n(a6)							\
   */									\
   start_address = ((unsigned short *) (entry_address));			\
   PC = start_address;							\
   *PC++ = ((unsigned short) 0x303C);	/* mov.w #???,%d0 */		\
-  PC = ((unsigned short *) entry_address);				\
+  *PC++ = ((unsigned short) index); 	/* ??? */			\
+  *PC++ = ((unsigned short) 0x4EAE);	/* jsr n(a6) */			\
   *PC++ = ((unsigned short) A6_TRAMPOLINE_TO_INTERFACE_OFFSET);		\
   PUSH_D_CACHE_REGION (start_address, 2);				\
 } while (0)
 
-}
+/* Derived parameters and macros.
+   These macros expect the above definitions to be meaningful.
    If they are not, the macros below may have to be changed as well.
  */
 

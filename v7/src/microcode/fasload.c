@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.60 1991/02/24 01:10:39 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.61 1991/03/21 23:26:27 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -871,10 +871,10 @@ DEFUN_VOID (execute_reload_cleanups)
 /* Utility for load band below. */
 
 void
-compiler_reset_error()
+DEFUN_VOID (compiler_reset_error)
 {
   fprintf (stderr,
-	   "\ncompiler_restart_error: The band being restored and\n");
+	   "\ncompiler_reset_error: The band being restored and\n");
   fprintf (stderr,
 	   "the compiled code interface in this microcode are inconsistent.\n");
   Microcode_Termination (TERM_COMPILER_DEATH);
@@ -1030,7 +1030,7 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   History = (Make_Dummy_History ());
   Prev_Restore_History_Stacklet = 0;
   Prev_Restore_History_Offset = 0;
-  FLUSH_I_CACHE ();
+  COMPILER_TRANSPORT_END ();
   END_BAND_LOAD (true, false);
   Band_Load_Hook ();
   /* Return in a non-standard way. */

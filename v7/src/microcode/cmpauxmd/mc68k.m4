@@ -1,8 +1,8 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.15 1991/01/08 22:16:01 cph Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.16 1991/03/21 23:25:40 jinx Exp $
 ###
-###	Copyright (c) 1989, 1990, 1991 Massachusetts Institute of Technology
+###	Copyright (c) 1989-1991 Massachusetts Institute of Technology
 ###
 ###	This material was developed by the Scheme project at the
 ###	Massachusetts Institute of Technology, Department of
@@ -177,7 +177,7 @@ reference_external(Ext_Stack_Pointer)
 reference_external(Free)
 reference_external(Registers)
 
-# This must match the C compiler
+# These must match the C compiler
 
 define(switch_to_scheme_registers,
 	`mov.l	%a6,(%sp)
@@ -445,3 +445,18 @@ define_apply_size_n(5)
 define_apply_size_n(6)
 define_apply_size_n(7)
 define_apply_size_n(8)
+
+###	This utility depends on the C compiler preserving d2-d7 and a2-a7.
+###	It takes its parameters in d0 and d1, and returns its value in a0.
+
+define_c_label(asm_allocate_closure)
+	switch_to_C_registers()
+	mov.l	%a1,-(%sp)		# Preserve reg.
+	mov.l	%d1,-(%sp)		# Push args
+	mov.l	%d0,-(%sp)
+	jsr	extern_c_label(allocate_closure)
+	addq.l	&8,(%sp)		# Pop args
+	mov.l	%d0,%a0			# Return value
+	mov.l	(%sp)+,%a1		# Restore regs
+	switch_to_scheme_registers()
+	rts
