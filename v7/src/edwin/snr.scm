@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.34 1997/05/27 19:35:17 cph Exp $
+;;;	$Id: snr.scm,v 1.35 1997/06/14 07:34:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -1953,12 +1953,14 @@ Subsequent reading of the message bodies can be done offline."
 	   (n 1 (fix:+ n 1)))
 	  ((null? headers))
 	(let ((header (car headers)))
-	  (message
-	   (string-append "Reading article "
-			  (number->string n)
-			  " of "
-			  (number->string n-articles)))
-	  (news-header:read-marked-body header buffer)))
+	  (if (news-header? header)
+	      (begin
+		(message
+		 (string-append "Reading article "
+				(number->string n)
+				" of "
+				(number->string n-articles)))
+		(news-header:read-marked-body header buffer)))))
       (cond ((news-group-buffer? buffer)
 	     (news-group:close-database (news-group-buffer:group buffer)))
 	    ((news-server-buffer? buffer)
