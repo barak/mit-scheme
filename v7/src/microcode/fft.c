@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fft.c,v 9.24 1988/08/15 20:46:29 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fft.c,v 9.25 1989/02/19 18:09:08 jinx Exp $ */
 
 /* Fourier Transforms (pas)
    1. DFT (FFT),
@@ -51,6 +51,10 @@ MIT in each case. */
    BACKWARD DFT --- Positive exponent
    Note: Seibert's Forward DFT is Oppenheim's Backward DFT.
    */
+
+#ifdef PI
+#undef PI
+#endif
 
 #define PI    3.141592653589793238462643
 #define TWOPI 6.283185307179586476925287
