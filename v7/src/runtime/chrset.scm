@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: chrset.scm,v 14.14 2001/08/10 16:50:29 cph Exp $
+$Id: chrset.scm,v 14.15 2001/09/24 04:16:19 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -126,6 +126,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define char-set:alphabetic)
 (define char-set:alphanumeric)
 (define char-set:standard)
+(define char-set:newline)
 
 (define char-set:not-upper-case)
 (define char-set:not-lower-case)
@@ -136,26 +137,29 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define char-set:not-alphanumeric)
 (define char-set:not-standard)
 
-(define char-set:not-01)
-(define char-set:newline)
-
 (define (initialize-package!)
-  ;; This must be first:
-  (set! char-set:not-01 (ascii-range->char-set #x02 #x100))
-
-  (set! char-set:upper-case (ascii-range->char-set #x41 #x5B))
-  (set! char-set:lower-case (ascii-range->char-set #x61 #x7B))
+  (set! char-set:upper-case
+	(char-set-union (ascii-range->char-set #x41 #x5B)
+			(ascii-range->char-set #xC0 #xD7)
+			(ascii-range->char-set #xD8 #xDE)))
+  (set! char-set:lower-case
+	(char-set-union (ascii-range->char-set #x61 #x7B)
+			(ascii-range->char-set #xE0 #xF7)
+			(ascii-range->char-set #xF8 #xFF)))
   (set! char-set:numeric (ascii-range->char-set #x30 #x3A))
-  (set! char-set:graphic (ascii-range->char-set #x20 #x7F))
+  (set! char-set:graphic
+	(char-set-union (ascii-range->char-set #x20 #x7F)
+			(ascii-range->char-set #xA0 #x100)))
   (set! char-set:whitespace
-	(char-set #\newline #\tab #\linefeed #\page #\return #\space))
+	(char-set #\newline #\tab #\linefeed #\page #\return #\space
+		  (integer->char #xA0)))
   (set! char-set:alphabetic
 	(char-set-union char-set:upper-case char-set:lower-case))
   (set! char-set:alphanumeric
 	(char-set-union char-set:alphabetic char-set:numeric))
   (set! char-set:standard
 	(char-set-union char-set:graphic (char-set #\newline)))
-
+  (set! char-set:newline (char-set #\newline))
   (set! char-set:not-upper-case   (char-set-invert char-set:upper-case))
   (set! char-set:not-lower-case   (char-set-invert char-set:lower-case))
   (set! char-set:not-numeric      (char-set-invert char-set:numeric))
@@ -164,33 +168,28 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (set! char-set:not-alphabetic   (char-set-invert char-set:alphabetic))
   (set! char-set:not-alphanumeric (char-set-invert char-set:alphanumeric))
   (set! char-set:not-standard     (char-set-invert char-set:standard))
-
-  (set! char-set:newline (char-set #\newline))
   unspecific)
 
-(define-integrable (char-upper-case? char)
-  (and (fix:<= (char->integer #\A) (char->integer char))
-       (fix:<= (char->integer char) (char->integer #\Z))))
+(define (char-upper-case? char)
+  (char-set-member? char-set:upper-case char))
 
-(define-integrable (char-lower-case? char)
-  (and (fix:<= (char->integer #\a) (char->integer char))
-       (fix:<= (char->integer char) (char->integer #\z))))
+(define (char-lower-case? char)
+  (char-set-member? char-set:lower-case char))
 
-(define-integrable (char-numeric? char)
-  (and (fix:<= (char->integer #\0) (char->integer char))
-       (fix:<= (char->integer char) (char->integer #\9))))
+(define (char-numeric? char)
+  (char-set-member? char-set:numeric char))
 
-(define-integrable (char-graphic? char)
+(define (char-graphic? char)
   (char-set-member? char-set:graphic char))
 
-(define-integrable (char-whitespace? char)
+(define (char-whitespace? char)
   (char-set-member? char-set:whitespace char))
 
-(define-integrable (char-alphabetic? char)
+(define (char-alphabetic? char)
   (char-set-member? char-set:alphabetic char))
 
-(define-integrable (char-alphanumeric? char)
+(define (char-alphanumeric? char)
   (char-set-member? char-set:alphanumeric char))
 
-(define-integrable (char-standard? char)
+(define (char-standard? char)
   (char-set-member? char-set:standard char))
