@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.2 1991/08/06 20:56:02 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.3 1991/08/06 22:18:41 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -340,12 +340,14 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
 (define-key 'rmail-summary #\c-m-p	'rmail-summary-previous-labeled-message)
 (define-key 'rmail-summary #\space	'rmail-summary-scroll-message-up)
 (define-key 'rmail-summary #\rubout	'rmail-summary-scroll-message-down)
-(define-key 'rmail-summary #\u		'rmail-summary-undelete-previous-message)
+(define-key 'rmail-summary #\d		'rmail-summary-delete-message-forward)
+(define-key 'rmail-summary #\D    	'rmail-summary-delete-message-backward)
+(define-key 'rmail-summary #\M-d        'rmail-summary-delete-message)
+(define-key 'rmail-summary #\u		'rmail-summary-undelete-message-backward)
+(define-key 'rmail-summary #\U   	'rmail-summary-undelete-message-forward)
+(define-key 'rmail-summary #\M-u	'rmail-summary-undelete-message)
 (define-key 'rmail-summary #\q		'rmail-summary-quit)
 (define-key 'rmail-summary #\x		'rmail-summary-exit)
-(define-key 'rmail-summary #\d		'rmail-summary-delete-forward)
-(define-key 'rmail-summary #\C-d	'rmail-summary-delete-backward)
-(define-key 'rmail-summary #\M-d        'rmail-summary-delete)
 
 ;;; (define-key 'rmail #\.		'beginning-of-buffer)
 ;;; (define-key 'rmail #\a		'rmail-add-label)
@@ -483,56 +485,87 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
 		     (lambda () true)))
     (select-buffer-other-window rmail-summary-buffer)))
 
-#|
-(defun rmail-summary-delete-forward ()
-  (interactive)
-  (let (end)
-    (rmail-summary-goto-msg)
-    (pop-to-buffer rmail-buffer)
-    (rmail-delete-message)
-    (pop-to-buffer rmail-summary-buffer)
-    (let ((buffer-read-only nil))
-      (skip-chars-forward " ")
-      (skip-chars-forward "[0-9]")
-      (delete-char 1)
-      (insert "D"))
-    (rmail-summary-next-msg 1)))
+(define-command rmail-summary-delete-message
+  "Delete this message and stay on it."
+  '()
+  (lambda ()
+    (let ((the-memo (buffer-msg-memo rmail-buffer)))
+      (set-attribute! the-memo 'DELETED))
+    (let ((the-mark1
+	   (skip-chars-forward " " (line-start (current-point) 0))))
+      (let ((the-mark
+	     (skip-chars-forward "[0-9]" the-mark1)))
+	(set-buffer-writeable! (current-buffer))
+	(delete-string the-mark (mark1+ the-mark))
+	(insert-string "D" the-mark)
+	(set-buffer-read-only! (current-buffer))))))
 
-(defun rmail-summary-undelete ()
-  (interactive)
-  (let ((buffer-read-only nil))
-    (end-of-line)
-    (cond ((re-search-backward "\\(^ *[0-9]*\\)\\(D\\)" nil t)
-	   (replace-match "\\1 ")
-	   (rmail-summary-goto-msg)
-	   (pop-to-buffer rmail-buffer)
-	   (and (rmail-message-deleted-p rmail-current-message)
-		(rmail-undelete-previous-message))
-	   (pop-to-buffer rmail-summary-buffer))
-	  (t
-	   (rmail-summary-goto-msg)))))
+(define-command rmail-summary-delete-message-forward
+  "Delete this message and move to next undeleted message."
+  '()
+  (lambda ()
+    ((ref-command rmail-summary-delete-message))
+    ((ref-command rmail-summary-next-undeleted-message) 1)))
 
-(defun rmail-summary-quit ()
-  "Quit out of rmail and rmail summary."
-  (interactive)
-  (rmail-summary-exit)
-  (rmail-quit))
+(define-command rmail-summary-delete-message-backward
+  "Delete this message and move to previous undeleted message."
+  '()
+  (lambda ()
+    ((ref-command rmail-summary-delete-message))
+    ((ref-command rmail-summary-previous-undeleted-message) 1)))
+  
+(define-command rmail-summary-undelete-message
+  "Undelete this message and stay here."
+  '()
+  (lambda ()
+    (let ((the-memo (buffer-msg-memo rmail-buffer)))
+      (if (msg-memo/deleted? the-memo)
+	  (clear-attribute! the-memo 'DELETED))
+      (let ((the-mark1
+	     (skip-chars-forward " " (line-start (current-point) 0))))
+	(let ((the-mark
+	       (skip-chars-forward "[0-9]" the-mark1)))
+	  (set-buffer-writeable! (current-buffer))
+	  (delete-string the-mark (mark1+ the-mark))
+	  (insert-string " " the-mark)
+	  (set-buffer-read-only! (current-buffer)))))))
 
-(defun rmail-summary-exit ()
-  "Exit rmail summary, remaining within rmail."
-  (interactive)
-  (bury-buffer (current-buffer))
-  (if (get-buffer-window rmail-buffer)
-      ;; Select the window with rmail in it, then delete this window.
-      (select-window (prog1
-			 (get-buffer-window rmail-buffer)
-		       (delete-window (selected-window))))
-    ;; Switch to the rmail buffer in this window.
-    (switch-to-buffer rmail-buffer)))
-|#
+(define-command rmail-summary-undelete-message-backward
+  "Search backwards from current message for first deleted message,
+and undelete it."
+  '()
+  (lambda ()
+    (let ((the-mark
+	   (re-search-backward "^....D" (line-end (current-point) 0) (buffer-start (current-buffer)))))
+      (if the-mark
+	  (begin
+	    (set-current-point! (line-start the-mark 0))
+	    (rmail-summary-goto-message-current-line)
+	    ((ref-command rmail-summary-undelete-message)))))))
 
+(define-command rmail-summary-undelete-message-forward
+  "Search forward from current message for first deleted message,
+and undelete it."
+  '()
+  (lambda ()
+    (let ((the-mark
+	   (re-search-forward "^....D" (line-start (current-point) 0) (buffer-end (current-buffer)))))
+      (if the-mark
+	  (begin
+	    (set-current-point! (line-start the-mark 0))
+	    (rmail-summary-goto-message-current-line)
+	    ((ref-command rmail-summary-undelete-message)))))))
 
+(define-command rmail-summary-exit
+  "Exit RMAIL Summary mode, remaining within RMAIL."
+  '()
+  (lambda ()
+    (bury-buffer (current-buffer))
+    ((ref-command delete-window))))
 
-
-
-
+(define-command rmail-summary-quit
+  "Exit RMAIL Summary mode and RMAIL mode."
+  '()
+  (lambda ()
+    ((ref-command rmail-summary-exit))
+    ((ref-command rmail-quit))))
