@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.43 2000/06/20 19:49:16 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.44 2000/06/23 19:29:05 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -84,9 +84,11 @@
 
 (define-class (<rmail-message>
 	       (constructor (header-fields body flags
-					   displayed-header-fields)))
+					   displayed-header-fields
+					   internal-time)))
     (<file-message>)
-  (displayed-header-fields define accessor))
+  (displayed-header-fields define accessor)
+  (internal-time accessor message-internal-time))
 
 (define-method rmail-message-displayed-header-fields ((message <message>))
   message
@@ -97,7 +99,8 @@
   (make-rmail-message (message-header-fields message)
 		      (file-message-body message)
 		      (list-copy (message-flags message))
-		      (rmail-message-displayed-header-fields message)))
+		      (rmail-message-displayed-header-fields message)
+		      (message-internal-time message)))
 
 ;;;; Read RMAIL file
 
@@ -145,7 +148,14 @@
 	     (body (read-to-eom port))
 	     (finish
 	      (lambda (headers displayed-headers)
-		(make-rmail-message headers body flags displayed-headers))))
+		(call-with-values
+		    (lambda () (rmail-internal-time-header headers))
+		  (lambda (headers time)
+		    (make-rmail-message headers body flags
+					displayed-headers
+					(or time
+					    (header-fields->internal-time
+					     headers))))))))
 	(if formatted?
 	    (finish headers displayed-headers)
 	    (finish displayed-headers 'UNDEFINED))))))
@@ -180,6 +190,22 @@
 	      ((string=? rmail-message:headers-separator line)
 	       (make-eof-object port))
 	      (else line)))))))
+
+(define (rmail-internal-time-header headers)
+  (let ((header (get-first-header-field headers "X-IMAIL-INTERNAL-TIME" #f)))
+    (if header
+	(values (delq! header headers)
+		(let ((t
+		       (ignore-errors
+			(lambda ()
+			  (string->universal-time
+			   (rfc822:tokens->string
+			    (rfc822:strip-comments
+			     (rfc822:string->tokens
+			      (header-field-value header)))))))))
+		  (and (not (condition? t))
+		       t)))
+	(values headers #f))))
 
 ;;;; Write RMAIL file
 
@@ -211,7 +237,16 @@
 (define (write-rmail-message message port)
   (write-char rmail-message:start-char port)
   (newline port)
-  (let ((headers (message-header-fields message))
+  (let ((headers
+	 (let ((headers (message-header-fields message))
+	       (time (message-internal-time message)))
+	   (if time
+	       (cons (make-header-field "X-IMAIL-INTERNAL-TIME"
+					(string-append
+					 " "
+					 (universal-time->string time)))
+		     headers)
+	       headers)))
 	(displayed-headers (rmail-message-displayed-header-fields message)))
     (let ((formatted? (not (eq? 'UNDEFINED displayed-headers))))
       (write-rmail-attributes-line message formatted? port)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.48 2000/06/23 19:29:04 cph Exp $
+;;; $Id: imail-file.scm,v 1.49 2000/06/23 19:29:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -289,7 +289,7 @@
      (string-length (file-message-body message))))
 
 (define-method message-internal-time ((message <file-message>))
-  (header-fields->internal-time headers))
+  (header-fields->internal-time message))
 
 (define (header-fields->internal-time headers)
   (let loop ((headers (get-all-header-fields headers "received")) (winner #f))
