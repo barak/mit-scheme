@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.12 1991/08/22 15:17:51 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.13 1991/08/23 23:26:48 arthur Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -341,7 +341,8 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
   (let ((pathname (->pathname filename)))
     (let ((truename (pathname->input-truename pathname)))
       (or truename
-	  (canonicalize-input-pathname (error:open-file pathname))))))
+	  (canonicalize-input-pathname
+	   (error:open-file pathname "The file does not exist."))))))
 
 (define (pathname->input-truename pathname)
   (let ((pathname (pathname->absolute-pathname pathname))
@@ -430,7 +431,10 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
       pathname
       (let loop ((directories library-directory-path))
 	(if (null? directories)
-	    (system-library-pathname (->pathname (error:open-file pathname)))
+	    (system-library-pathname
+	     (->pathname
+	      (error:open-file pathname
+			       "Cannot find file in system library path.")))
 	    (or (pathname->input-truename
 		 (merge-pathnames pathname (car directories)))
 		(loop (cdr directories)))))))

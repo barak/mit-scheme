@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.17 1991/08/22 01:15:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.18 1991/08/23 23:25:44 arthur Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -878,11 +878,29 @@ MIT in each case. |#
 				   condition)))))
 
   (set! condition-type:open-file-error
-	(make-condition-type 'OPEN-FILE-ERROR condition-type:file-error '()
+	(make-condition-type 'OPEN-FILE-ERROR condition-type:file-error
+			     '(EXPLANATION)
 	  (lambda (condition port)
 	    (write-string "Unable to open file " port)
 	    (write (access-condition condition 'FILENAME) port)
-	    (write-string "." port))))
+	    (let ((explanation (access-condition condition 'EXPLANATION)))
+	      (or (and explanation
+		       (if (condition? explanation)
+			   (and
+			    (eq? condition-type:derived-file-error
+				 (condition/type explanation))
+			    (let ((inner-condition
+				   (access-condition explanation 'CONDITION)))
+			      (and inner-condition
+				   (eq? condition-type:system-call-error
+					(condition/type inner-condition))
+				   (begin (write-string " because: " port)
+					  (write-condition-report
+					   inner-condition port)
+					  true))))
+			   (begin (write-string " because: " port)
+				  (write-string explanation port))))
+		  (write-char #\. port))))))
 
   (set! condition-type:file-touch-error
 	(make-condition-type 'FILE-TOUCH-ERROR condition-type:file-error
@@ -980,9 +998,9 @@ MIT in each case. |#
 			     standard-error-handler))
   (set! error:open-file
 	(substitutable-value-condition-signaller
-	 condition-type:open-file-error '(FILENAME)
+	 condition-type:open-file-error '(FILENAME EXPLANATION)
 	 standard-error-handler
-	 (lambda (pathname)
+	 (lambda (pathname explanation)
 	   (string-append
 	    "Expression to yield replacement for file name \""
 	    (if (pathname? pathname)

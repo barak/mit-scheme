@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.25 1991/05/10 00:03:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.26 1991/08/23 23:25:24 arthur Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -317,7 +317,8 @@ MIT in each case. |#
 		(make-condition condition-type:open-file-error
 				(condition/continuation condition)
 				(condition/restarts condition)
-				`(FILENAME ,filename))))
+				`(FILENAME ,filename
+				  EXPLANATION ,condition))))
 	   (lambda ()
 	     (without-interrupts
 	      (lambda ()
