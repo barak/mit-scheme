@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.19 1989/03/14 19:49:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.20 1989/04/17 17:07:42 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -293,7 +293,6 @@ MIT in each case. |#
 
 (define-package (compiler fg-optimizer)
   (files "fgopt/outer"			;outer analysis
-	 "fgopt/operan"			;operator analysis
 	 "fgopt/sideff"			;side effect analysis
 	 "fgopt/desenv"			;environment design
 	 )
@@ -302,7 +301,6 @@ MIT in each case. |#
 	  clear-call-graph!
 	  compute-call-graph!
 	  design-environment-frames!
-	  operator-analysis
 	  outer-analysis
 	  side-effect-analysis))
 
@@ -310,6 +308,11 @@ MIT in each case. |#
   (files "fgopt/folcon")
   (parent (compiler fg-optimizer))
   (export (compiler top-level) fold-constants))
+
+(define-package (compiler fg-optimizer operator-analysis)
+  (files "fgopt/operan")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) operator-analysis))
 
 (define-package (compiler fg-optimizer environment-optimization)
   (files "fgopt/envopt")
