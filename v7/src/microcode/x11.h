@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.9 1991/07/02 18:18:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.10 1991/07/23 08:16:09 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -51,6 +51,8 @@ struct xdisplay
 #define XD_CACHED_EVENT(xd) ((xd) -> cached_event)
 #define XD_CACHED_EVENT_P(xd) ((xd) -> cached_event_p)
 #define XD_TO_OBJECT(xd) (LONG_TO_UNSIGNED_FIXNUM (XD_ALLOCATION_INDEX (xd)))
+
+extern struct xdisplay * EXFUN (x_display_arg, (unsigned int arg));
 
 struct drawing_attributes
 {
@@ -164,28 +166,62 @@ struct xwindow
 #define FONT_WIDTH(f)	(((f) -> max_bounds) . width)
 #define FONT_HEIGHT(f)	(((f) -> ascent) + ((f) -> descent))
 #define FONT_BASE(f)    ((f) -> ascent)
+
+extern struct xwindow * EXFUN (x_window_arg, (unsigned int arg));
 
 struct ximage
 {
   unsigned int allocation_index;
-  XImage *image;
+  XImage * image;
 };
 
 #define XI_ALLOCATION_INDEX(xi) ((xi) -> allocation_index)
-#define XI_IMAGE(xi) ((xi -> image))
+#define XI_IMAGE(xi) ((xi) -> image)
+#define X_IMAGE_TO_OBJECT(image)					\
+  (LONG_TO_UNSIGNED_FIXNUM (allocate_x_image (image)))
 
-#define XI_TO_OBJECT(xi) (LONG_TO_UNSIGNED_FIXNUM (XI_ALLOCATION_INDEX (xi)))
+extern struct ximage * EXFUN (x_image_arg, (unsigned int arg));
+extern unsigned int EXFUN (allocate_x_image, (XImage * image));
+extern void EXFUN (deallocate_x_image, (struct ximage * xi));
 
-#define XV_TO_OBJECT(xv) (LONG_TO_UNSIGNED_FIXNUM (xv))
-
+struct xvisual
+{
+  unsigned int allocation_index;
+  Visual * visual;
+};
+
+#define XV_ALLOCATION_INDEX(xv) ((xv) -> allocation_index)
+#define XV_VISUAL(xv) ((xv) -> visual)
+#define X_VISUAL_TO_OBJECT(visual)					\
+  (LONG_TO_UNSIGNED_FIXNUM (allocate_x_visual (visual)))
+
+extern struct xvisual * EXFUN (x_visual_arg, (unsigned int arg));
+extern unsigned int EXFUN (allocate_x_visual, (Visual * visual));
+extern void EXFUN (deallocate_x_visual, (struct xvisual * xv));
+
+struct xcolormap
+{
+  unsigned int allocation_index;
+  Colormap colormap;
+  struct xdisplay * xd;
+};
+
+#define XCM_ALLOCATION_INDEX(xcm) ((xcm) -> allocation_index)
+#define XCM_COLORMAP(xcm) ((xcm) -> colormap)
+#define XCM_XD(xcm) ((xcm) -> xd)
+#define X_COLORMAP_TO_OBJECT(colormap, xd)				\
+  (LONG_TO_UNSIGNED_FIXNUM (allocate_x_colormap ((colormap), (xd))))
+#define XCM_DISPLAY(xcm) (XD_DISPLAY (XCM_XD (xcm)))
+
+extern struct xcolormap * EXFUN (x_colormap_arg, (unsigned int arg));
+extern unsigned int EXFUN
+  (allocate_x_colormap, (Colormap colormap, struct xdisplay * xd));
+extern void EXFUN (deallocate_x_colormap, (struct xcolormap * xcm));
+
 extern int x_debug;
 
-extern struct xdisplay * EXFUN (x_display_arg, (unsigned int arg));
-extern struct xwindow * EXFUN (x_window_arg, (unsigned int arg));
-extern struct ximage * EXFUN (x_image_arg, (unsigned int arg));
 extern PTR EXFUN (x_malloc, (unsigned int size));
 extern PTR EXFUN (x_realloc, (PTR ptr, unsigned int size));
-extern SCHEME_OBJECT EXFUN (x_window_to_object, (struct xwindow * xw));
 
 extern char * EXFUN
   (x_get_default,
@@ -210,6 +246,3 @@ extern struct xwindow * EXFUN
     struct drawing_attributes * attributes,
     struct xwindow_methods * methods,
     unsigned int extra));
-
-extern Visual * EXFUN (x_visual_arg, (unsigned int arg));
-extern struct ximage * EXFUN (x_image_arg, (unsigned int arg));

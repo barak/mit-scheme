@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.14 1991/07/08 17:39:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.15 1991/07/23 08:16:38 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -520,13 +520,12 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-SET-DASHES", Prim_x_graphics_set_dashes, 3, 3, 0)
 }
 
 DEFINE_PRIMITIVE ("X-CREATE-IMAGE", Prim_x_create_image, 3, 3,
-  " Arguments: Window, width, height\
-    Returns:   A Scheme image\
-\
-    The window is used to find the Display, Visual, and Depth\
-    information needed to crate an XImage structure.")
+  "Arguments: Window, width, height\n\
+Returns:   A Scheme image\n\
+\n\
+The window is used to find the Display, Visual, and Depth\n\
+information needed to crate an XImage structure.")
 {
-  extern allocate_x_image ();
   PRIMITIVE_HEADER (3);
   {
     struct xwindow * xw = (x_window_arg (1));
@@ -540,26 +539,22 @@ DEFINE_PRIMITIVE ("X-CREATE-IMAGE", Prim_x_create_image, 3, 3,
       (((width + (byte_pad - 1)) / byte_pad) * byte_pad);
     XWindowAttributes attrs;
     XGetWindowAttributes (dpy, window, (&attrs));
-    {
-      struct ximage * xi = (x_malloc (sizeof (struct ximage)));
-      (XI_ALLOCATION_INDEX (xi)) = (allocate_x_image (xi));
-      (XI_IMAGE (xi)) =
-	(XCreateImage
-	 (dpy,
-	  (DefaultVisualOfScreen (attrs . screen)),
-	  (attrs . depth),
-	  ZPixmap,
-	  0,
-	  ((char *)
-	   (x_malloc (height
-		      * bytes_per_line
-		      * ((((attrs . depth) - 1) / 8) + 1)))),
-	  width,
-	  height,
-	  bitmap_pad,
-	  bytes_per_line));
-      return (XI_TO_OBJECT (xi));
-    }
+    PRIMITIVE_RETURN
+      (X_IMAGE_TO_OBJECT
+       (XCreateImage
+	(dpy,
+	 (DefaultVisualOfScreen (attrs . screen)),
+	 (attrs . depth),
+	 ZPixmap,
+	 0,
+	 ((char *)
+	  (x_malloc (height
+		     * bytes_per_line
+		     * ((((attrs . depth) - 1) / 8) + 1)))),
+	 width,
+	 height,
+	 bitmap_pad,
+	 bytes_per_line)));
   }
 }
 
@@ -587,66 +582,73 @@ DEFINE_PRIMITIVE ("X-BYTES-INTO-IMAGE", Prim_x_bytes_into_image, 2, 2,
     PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
-
+
 DEFINE_PRIMITIVE("X-GET-PIXEL-FROM-IMAGE", Prim_x_get_image_pixel, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
-  PRIMITIVE_RETURN
-    (long_to_integer
-     (XGetPixel ((XI_IMAGE (x_image_arg (1))),
-		 (arg_nonnegative_integer (2)),
-		 (arg_nonnegative_integer (3)))));
+  {
+    XImage * image = (XI_IMAGE (x_image_arg (1)));
+    PRIMITIVE_RETURN
+      (long_to_integer
+       (XGetPixel (image,
+		   (arg_index_integer (2, (image -> width))),
+		   (arg_index_integer (3, (image -> height))))));
+  }
 }
 
 DEFINE_PRIMITIVE("X-SET-PIXEL-IN-IMAGE", Prim_x_set_image_pixel, 4, 4, 0)
-{ PRIMITIVE_HEADER (4);
-  { struct ximage * xi = x_image_arg(1);
-    long XCoord = arg_integer(2);
-    long YCoord = arg_integer(3);
-    long Pixel = arg_integer(4);
-
-    XPutPixel (XI_IMAGE(xi), XCoord, YCoord, Pixel);
+{
+  PRIMITIVE_HEADER (4);
+  {
+    XImage * image = (XI_IMAGE (x_image_arg (1)));
+    XPutPixel (image,
+	       (arg_index_integer (2, (image -> width))),
+	       (arg_index_integer (3, (image -> height))),
+	       (arg_integer (4)));
     PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
 
 DEFINE_PRIMITIVE ("X-DESTROY-IMAGE", Prim_x_destroy_image, 1, 1, 0)
-{ extern void x_destroy_image ();
+{
   PRIMITIVE_HEADER (1);
-  { struct ximage * xi = x_image_arg (1);
-    x_destroy_image (xi);
+  {
+    struct ximage * xi = (x_image_arg (1));
+    XDestroyImage (XI_IMAGE (xi));
+    deallocate_x_image (xi);
     PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
 
 DEFINE_PRIMITIVE ("X-DISPLAY-IMAGE", Prim_x_display_image, 8, 8, 0)
-{ /* Called with Image, X-offset in image, Y-offset in image,
+{
+  /* Called with Image, X-offset in image, Y-offset in image,
      Window, X-offset in window, Y-offset in window,
-     Width, Height
-  */
+     Width, Height */
   PRIMITIVE_HEADER (8);
-  { struct ximage * xi = x_image_arg (1);
-    long XImageOffset = arg_integer(2);
-    long YImageOffset = arg_integer(3);
-    struct xwindow * xw = x_window_arg (4);
-    long XWindowOffset = arg_integer(5);
-    long YWindowOffset = arg_integer(6);
-    long Width = arg_integer(7);
-    long Height = arg_integer(8);
-
-    XPutImage(XW_DISPLAY(xw), XW_WINDOW(xw), XW_NORMAL_GC(xw),
-	      XI_IMAGE(xi), XImageOffset, YImageOffset,
-	      XWindowOffset, YWindowOffset,
-	      Width, Height);
+  {
+    XImage * image = (XI_IMAGE (x_image_arg (1)));
+    unsigned int image_width = (image -> width);
+    unsigned int image_height = (image -> height);
+    unsigned int x_offset = (arg_index_integer (2, image_width));
+    unsigned int y_offset = (arg_index_integer (3, image_height));
+    struct xwindow * xw = (x_window_arg (4));
+    XPutImage
+      ((XW_DISPLAY (xw)),(XW_WINDOW (xw)),(XW_NORMAL_GC (xw)),
+       image, x_offset, y_offset,
+       (arg_x_coordinate (5, xw)),
+       (arg_y_coordinate (6, xw)),
+       (arg_index_integer (7, ((image_width - x_offset) + 1))),
+       (arg_index_integer (8, ((image_height - y_offset) + 1))));
     PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
-
+
 DEFINE_PRIMITIVE ("X-READ-IMAGE", Prim_x_read_image, 8, 8, 0)
-{ /* Called with Image, X-offset in image, Y-offset in image,
+{
+  /* Called with Image, X-offset in image, Y-offset in image,
      Window, X-offset in window, Y-offset in window,
-     Width, Height
-  */
+     Width, Height */
   PRIMITIVE_HEADER (8);
   { struct ximage * xi = x_image_arg (1);
     long XImageOffset = arg_integer(2);
@@ -665,12 +667,14 @@ DEFINE_PRIMITIVE ("X-READ-IMAGE", Prim_x_read_image, 8, 8, 0)
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-DEPTH", Prim_x_window_depth, 1, 1, 0)
-{ struct xwindow * xw = x_window_arg (1);
-  XWindowAttributes attrs;
-
+{
   PRIMITIVE_HEADER (1);
-  XGetWindowAttributes(XW_DISPLAY(xw), XW_WINDOW(xw), &attrs);
-  PRIMITIVE_RETURN (long_to_integer (attrs.depth));
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    XWindowAttributes attrs;
+    XGetWindowAttributes ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), (&attrs));
+    PRIMITIVE_RETURN (long_to_integer (attrs . depth));
+  }
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-MAP-X-COORDINATE", Prim_x_graphics_map_x_coordinate, 2, 2, 0)

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.22 1991/07/02 18:18:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.23 1991/07/23 08:16:24 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -79,6 +79,7 @@ static struct allocation_table x_display_table;
 static struct allocation_table x_window_table;
 static struct allocation_table x_image_table;
 static struct allocation_table x_visual_table;
+static struct allocation_table x_colormap_table;
 
 static void
 DEFUN (allocation_table_initialize, (table), struct allocation_table * table)
@@ -124,7 +125,7 @@ DEFUN (allocate_table_index, (table, item),
   (table -> length) = new_length;
   return (length);
 }
-
+
 static PTR
 DEFUN (allocation_item_arg, (arg, table),
        unsigned int arg AND
@@ -158,11 +159,18 @@ DEFUN (x_image_arg, (arg), unsigned int arg)
   return (allocation_item_arg (arg, (&x_image_table)));
 }
 
-Visual *
+struct xvisual *
 DEFUN (x_visual_arg, (arg), unsigned int arg)
 {
   INITIALIZE_ONCE ();
   return (allocation_item_arg (arg, (&x_visual_table)));
+}
+
+struct xcolormap *
+DEFUN (x_colormap_arg, (arg), unsigned int arg)
+{
+  INITIALIZE_ONCE ();
+  return (allocation_item_arg (arg, (&x_colormap_table)));
 }
 
 static int
@@ -1201,28 +1209,56 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-ICON-NAME", Prim_x_window_set_icon_name, 2, 2,
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-/* Support routines for visual and image handling */
-
-extern unsigned int allocate_x_window (xw)
-struct xwindow * xw;
-{ return allocate_table_index((&x_window_table), xw);
+unsigned int
+DEFUN (allocate_x_image, (image), XImage * image)
+{
+  struct ximage * xi = (x_malloc (sizeof (struct ximage)));
+  unsigned int index = (allocate_table_index ((&x_image_table), xi));
+  (XI_ALLOCATION_INDEX (xi)) = index;
+  (XI_IMAGE (xi)) = image;
+  return (index);
 }
 
-extern unsigned int allocate_x_visual (xv)
-Visual * xv;
-{ return allocate_table_index((&x_visual_table), xv);
-}
-
-extern unsigned int allocate_x_image (xi)
-struct ximage * xi;
-{ return allocate_table_index((&x_image_table), xi);
-}
-
-void x_destroy_image (xi)
-struct ximage * xi;
-{ XImage * image = XI_IMAGE (xi);
+void
+DEFUN (deallocate_x_image, (xi), struct ximage * xi)
+{
   ((x_image_table . items) [XI_ALLOCATION_INDEX (xi)]) = 0;
-  free (image -> data);
-  XDestroyImage (image);
   free (xi);
+}
+
+unsigned int
+DEFUN (allocate_x_visual, (visual), Visual * visual)
+{
+  struct xvisual * xv = (x_malloc (sizeof (struct xvisual)));
+  unsigned int index = (allocate_table_index ((&x_visual_table), xv));
+  (XV_ALLOCATION_INDEX (xv)) = index;
+  (XV_VISUAL (xv)) = visual;
+  return (index);
+}
+
+void
+DEFUN (deallocate_x_visual, (xv), struct xvisual * xv)
+{
+  ((x_visual_table . items) [XV_ALLOCATION_INDEX (xv)]) = 0;
+  free (xv);
+}
+
+unsigned int
+DEFUN (allocate_x_colormap, (colormap, xd),
+       Colormap colormap AND
+       struct xdisplay * xd)
+{
+  struct xcolormap * xcm = (x_malloc (sizeof (struct xcolormap)));
+  unsigned int index = (allocate_table_index ((&x_colormap_table), xcm));
+  (XCM_ALLOCATION_INDEX (xcm)) = index;
+  (XCM_COLORMAP (xcm)) = colormap;
+  (XCM_XD (xcm)) = xd;
+  return (index);
+}
+
+void
+DEFUN (deallocate_x_colormap, (xcm), struct xcolormap * xcm)
+{
+  ((x_colormap_table . items) [XCM_ALLOCATION_INDEX (xcm)]) = 0;
+  free (xcm);
 }
