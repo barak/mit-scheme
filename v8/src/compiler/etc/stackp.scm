@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/stackp.scm,v 1.3 1988/10/27 07:07:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/stackp.scm,v 1.4 1988/11/08 07:21:50 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -41,9 +41,10 @@ MIT in each case. |#
 	 (lambda ()
 	   (write-continuation
 	    (if (default-object? continuation)
-		(error-continuation)
+		(or (error-continuation)
+		    (current-proceed-continuation))
 		continuation)))))
-    (if (default-object? filename)
+    (if (or (default-object? filename) (not filename))
 	(do-it)
 	(with-output-to-file filename do-it))))
 
@@ -62,7 +63,7 @@ MIT in each case. |#
 	       (newline)
 	       (write n)
 	       (write-string "\t")
-	       (let ((string (write-to-string (stream-car stream) 60)))
+	       (let ((string (write-to-string (stream-car stream) 68)))
 		 (write-string (cdr string))
 		 (if (car string)
 		     (write-string "...")))
