@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.32 1994/10/25 01:46:12 adams Exp $
+;;;	$Id: debug.scm,v 1.33 1994/11/02 19:36:59 adams Exp $
 ;;;
 ;;;	Copyright (c) 1992-94 Massachusetts Institute of Technology
 ;;;
@@ -903,9 +903,7 @@ Set this variable to #F to disable this abbreviation."
   "#T means start a new-screen whenever the debugger is invoked.
 #F means continue in same screen.
 'ASK means ask user whether to start new-screen."
-  (if (equal? microcode-id/operating-system-name "unix")
-      #T
-      #F)
+  #T
   boolean-or-ask?)
 
 (define-variable debugger-hide-system-code?
