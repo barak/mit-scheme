@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bkpt.h,v 9.30 1993/11/03 18:50:24 jmiller Exp $
+$Id: bkpt.h,v 9.31 1993/11/04 03:47:11 gjr Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
