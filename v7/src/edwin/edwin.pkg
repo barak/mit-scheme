@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.231 1999/01/02 06:11:34 cph Exp $
+$Id: edwin.pkg,v 1.232 1999/01/14 21:38:02 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -1891,3 +1891,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (export (edwin)
 	  edwin-command$vhdl-mode
 	  edwin-mode$vhdl))
+
+(define-package (edwin password-edit)
+  (files "pwedit" "pwparse")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$mouse-toggle-pw-form
+	  edwin-command$toggle-pw-form
+	  edwin-command$view-password-file
+	  edwin-mode$password-view))

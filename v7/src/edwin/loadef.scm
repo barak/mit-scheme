@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: loadef.scm,v 1.35 1999/01/02 06:11:34 cph Exp $
+;;; $Id: loadef.scm,v 1.36 1999/01/14 21:37:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -310,6 +310,25 @@ This is usually 103 or 2627."
   "The name to use for webster interaction buffer."
   "*webster*"
   string?)
+
+;;;; Password Editor
+
+(define-library 'PASSWORD-EDIT
+  '("pwedit" (EDWIN PASSWORD-EDIT))
+  '("pwparse" (EDWIN PASSWORD-EDIT)))
+
+(define-autoload-command 'view-password-file 'PASSWORD-EDIT
+  "Read in a password file and show it in password-view mode.")
+
+(define-autoload-major-mode 'password-view 'read-only "Password-View"
+  'PASSWORD-EDIT
+  "Major mode specialized for viewing password files.")
+
+(define-autoload-command toggle-pw-form 'PASSWORD-EDIT
+  "Toggle the body of the password form under point.")
+
+(define-autoload-command mouse-toggle-pw-form 'PASSWORD-EDIT
+  "Toggle the body of the password form under mouse.")
 
 ;;;; DOS-specific commands
 

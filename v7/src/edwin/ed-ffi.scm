@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.45 1999/01/02 06:11:34 cph Exp $
+$Id: ed-ffi.scm,v 1.46 1999/01/14 21:37:56 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -219,6 +219,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     ("process"	(edwin process)
 		edwin-syntax-table)
     ("prompt"	(edwin prompt)
+		edwin-syntax-table)
+    ("pwedit"	(edwin password-edit)
+		edwin-syntax-table)
+    ("pwparse"	(edwin password-edit)
 		edwin-syntax-table)
     #|("rcs"	(edwin rcs)
 	       edwin-syntax-table)|#
