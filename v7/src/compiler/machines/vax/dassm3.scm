@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm3.scm,v 1.1 1988/01/07 16:48:49 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm3.scm,v 1.2 1988/01/18 18:39:49 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
