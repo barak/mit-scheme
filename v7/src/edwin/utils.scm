@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.19 1989/08/14 09:23:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.20 1989/08/29 20:04:08 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -114,9 +114,7 @@
 	       (if (default-object? port)
 		   (current-input-port)
 		   (guarantee-input-port port))))
-
-(define (read-from-string string)
-  (with-input-from-string string read))
+
 (define (y-or-n? . strings)
   (define (loop)
     (let ((char (char-upcase (read-char))))

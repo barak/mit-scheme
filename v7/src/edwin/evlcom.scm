@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.17 1989/08/12 08:32:04 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.18 1989/08/29 20:04:00 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -202,6 +202,12 @@ With an argument, prompts for the evaluation environment."
 			  'VISIBLE-DEFAULT
 			  default-type)
 		      (ref-mode-object prompt-for-expression))))
+
+(define (read-from-string string)
+  (bind-condition-handler '() evaluation-error-handler
+    (lambda ()
+      (with-input-from-string string read))))
+
 (define-major-mode prompt-for-expression scheme #f
   "Major mode for editing solicited input expressions.
 Depending on what is being solicited, either defaulting or completion

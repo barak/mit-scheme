@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.81 1989/08/12 08:31:32 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.82 1989/08/29 20:03:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -306,7 +306,8 @@
   (apply (command-procedure (name->command (car entry)))
 	 (map (let ((environment (->environment '(EDWIN))))
 		(lambda (expression)
-		  (eval expression environment)))	      (cdr entry))))
+		  (eval-with-history expression environment)))
+	      (cdr entry))))
 
 (define (interactive-argument char prompt)
   (let ((prompting
