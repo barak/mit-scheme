@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.30 1992/11/18 23:35:14 cph Exp $
+;;;	$Id: unix.scm,v 1.31 1992/12/03 21:51:34 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -490,7 +490,7 @@ filename suffix \".KY\"."
 
 (define (maybe-write-encrypted-file region pathname visit?)
   visit?
-  (and (ref-variable enable-compressed-files (region-start region))
+  (and (ref-variable enable-encrypted-files (region-start region))
        (equal? "KY" (pathname-type pathname))
        (begin
 	 (write-encrypted-file region pathname)
