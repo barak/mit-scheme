@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.87 1995/03/21 22:12:32 cph Exp $
+$Id: bchmmg.c,v 9.88 1995/07/26 22:47:25 adams Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -2841,7 +2841,7 @@ DEFUN_VOID (pre_read_weak_pair_buffers)
 
   last_position = -1;
   next = weak_pair_break;
-  while (next != EMPTY_LIST)
+  while (next != EMPTY_WEAK_CHAIN)
   {
     pair_addr = (OBJECT_ADDRESS (next));
     obj_addr = (OBJECT_ADDRESS (*pair_addr++));
@@ -2959,7 +2959,7 @@ DEFUN (initialize_new_space_buffer, (chain), SCHEME_OBJECT chain)
 {
   if (read_overlap == 0)
   {
-    weak_pair_break = EMPTY_LIST;
+    weak_pair_break = EMPTY_WEAK_CHAIN;
     weak_pair_buffer = (INITIAL_FREE_BUFFER ());
     weak_pair_buffer_position = -1;
   }
@@ -3006,7 +3006,7 @@ DEFUN (guarantee_in_memory, (addr), SCHEME_OBJECT * addr)
     LOAD_BUFFER (weak_pair_buffer, position, gc_buffer_bytes,
 		 "the weak pair buffer");
     weak_pair_buffer_position = position;
-    if (weak_pair_break != EMPTY_LIST)
+    if (weak_pair_break != EMPTY_WEAK_CHAIN)
     {
       weak_buffer_pre_read_count -= 1;
       pre_read_weak_pair_buffers ();
@@ -3083,7 +3083,7 @@ SCHEME_OBJECT
 void
 DEFUN (initialize_weak_pair_transport, (limit), SCHEME_OBJECT * limit)
 {
-  Weak_Chain = EMPTY_LIST;
+  Weak_Chain = EMPTY_WEAK_CHAIN;
   weak_pair_stack_ptr = Stack_Pointer;
   weak_pair_stack_limit = (limit + 1); /* in case it's odd */
   return;
@@ -3101,7 +3101,7 @@ DEFUN_VOID (fix_weak_chain_1)
   for (ptr = weak_pair_stack_ptr; ptr < limit ; ptr += 2)
     *ptr = (update_weak_pointer (*ptr));
 
-  while (chain != EMPTY_LIST)
+  while (chain != EMPTY_WEAK_CHAIN)
   {
     old_weak_cell = (OBJECT_ADDRESS (Weak_Chain));
     scan = (guarantee_in_memory (OBJECT_ADDRESS (*old_weak_cell++)));
