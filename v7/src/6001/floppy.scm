@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.20 1998/01/22 23:07:38 cph Exp $
+$Id: floppy.scm,v 1.21 1998/01/22 23:28:54 cph Exp $
 
 Copyright (c) 1992-98 Massachusetts Institute of Technology
 
@@ -116,7 +116,8 @@ insert it into the floppy drive.")
 Again, use the File Manager to format the floppy.")
 	      ((OS/2)
 	       "
-Again, use the Drive object to format the floppy.")))
+Again, use the Drive object to format the floppy.")
+	      (else "")))
 	   (append-string
 	    "
 When you have done this, type any character to continue.")
