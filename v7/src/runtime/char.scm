@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.16 2003/02/28 04:36:04 cph Exp $
+$Id: char.scm,v 14.17 2003/04/15 20:17:14 cph Exp $
 
 Copyright 1986,1987,1988,1991,1995,1997 Massachusetts Institute of Technology
 Copyright 1998,2001,2003 Massachusetts Institute of Technology
@@ -34,7 +34,7 @@ USA.
   char->integer
   integer->char)
 
-(define-integrable char-code-limit #x200000)
+(define-integrable char-code-limit #x110000)
 (define-integrable char-bits-limit #x10)
 (define-integrable char-integer-limit #x2000000)
 
