@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comtab.scm,v 1.67 1996/10/01 05:55:55 cph Exp $
+;;;	$Id: comtab.scm,v 1.68 1998/09/08 04:10:26 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -78,29 +78,23 @@
 			      (lambda ()
 				(set-comtab-vector! comtab vector)
 				(set-comtab-alist! comtab alist)))
-			     (let ((vector (make-vector 256 false)))
-			       (let ((alist
-				      (list-transform-negative alist
-					(lambda (entry)
-					  (let ((key (car entry)))
-					    (and (char? key)
-						 (< (char->integer key) 256)
-						 (begin
-						   (vector-set!
-						    vector
-						    (char->integer key)
-						    (cdr entry))
-						   true)))))))
-				 (without-interrupts
-				  (lambda ()
-				    (set-comtab-vector! comtab vector)
-				    (set-comtab-alist! comtab alist))))))))))))
-	 ;; Defining a lower-case character defines the corresponding
-	 ;; upper-case character to be an alias if not already defined.
-	 (let ((key* (char-upcase key)))
-	   (if (and (not (char=? key key*))
-		    (not (comtab-get comtab key*)))
-	       (comtab-put! comtab key* (cons comtab key)))))
+			     (let* ((vector (make-vector 256 false))
+				    (alist
+				     (list-transform-negative alist
+				       (lambda (entry)
+					 (let ((key (car entry)))
+					   (and (char? key)
+						(< (char->integer key) 256)
+						(begin
+						  (vector-set!
+						   vector
+						   (char->integer key)
+						   (cdr entry))
+						  true)))))))
+			       (without-interrupts
+				(lambda ()
+				  (set-comtab-vector! comtab vector)
+				  (set-comtab-alist! comtab alist))))))))))))
 	(else
 	 (let ((alist (comtab-alist comtab)))
 	   (let ((entry (assq key alist)))
@@ -284,13 +278,13 @@
 	(command&comtab? object))))
 
 (define (define-key mode key datum)
-  (%define-key (car (guarantee-comtabs mode 'DEFINE-KEY))
+  (%define-key (guarantee-comtabs mode 'DEFINE-KEY)
 	       key
 	       (if (valid-datum? datum) datum (->command datum))
 	       'DEFINE-KEY))
 
 (define (define-prefix-key mode key #!optional command)
-  (%define-key (car (guarantee-comtabs mode 'DEFINE-PREFIX-KEY))
+  (%define-key (guarantee-comtabs mode 'DEFINE-PREFIX-KEY)
 	       (begin
 		 (if (button? key)
 		     (error:wrong-type-argument key
@@ -306,22 +300,31 @@
 			   (cons command comtab)))))
 	       'DEFINE-PREFIX-KEY))
 
-(define (%define-key comtab key datum procedure)
-  (cond ((or (key? key) (button? key))
-	 (comtab-put! comtab (remap-alias-key key) datum))
-	((char-set? key)
-	 (for-each (lambda (key)
-		     (comtab-put! comtab (remap-alias-key key) datum))
-		   (char-set-members key)))
-	((prefixed-key? key)
-	 (let ((prefix (except-last-pair key)))
-	   (comtab-put! (if (null? prefix)
-			    comtab
-			    (lookup-prefix comtab prefix true))
-			(remap-alias-key (car (last-pair key)))
-			datum)))
-	(else
-	 (error:wrong-type-argument key "comtab key" procedure)))
+(define (%define-key comtabs key datum procedure)
+  (let* ((comtab (car comtabs))
+	 (put!
+	  (lambda (key)
+	    (comtab-put! comtab (remap-alias-key key) datum)
+	    ;; Defining a lower-case character defines the
+	    ;; corresponding upper-case character to be an alias if not
+	    ;; already defined.
+	    (if (and (char? key) (char-lower-case? key))
+		(let ((key* (char-upcase key)))
+		  (if (not (lookup-key comtabs key*))
+		      (comtab-put! comtab key* (cons comtab key))))))))
+    (cond ((or (key? key) (button? key))
+	   (put! key))
+	  ((char-set? key)
+	   (for-each put! (char-set-members key)))
+	  ((prefixed-key? key)
+	   (let ((prefix (except-last-pair key)))
+	     (comtab-put! (if (null? prefix)
+			      comtab
+			      (lookup-prefix comtab prefix true))
+			  (remap-alias-key (car (last-pair key)))
+			  datum)))
+	  (else
+	   (error:wrong-type-argument key "comtab key" procedure))))
   key)
 
 (define (comtab-alist* comtab)
