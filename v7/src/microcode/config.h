@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.60 1991/08/05 14:21:45 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.61 1991/08/15 22:15:04 gjs Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -396,6 +396,12 @@ typedef unsigned long SCHEME_OBJECT;
 #ifdef MIPSEL
 #define VAX_BYTE_ORDER
 #endif
+#endif
+
+#ifdef sony
+#define HAS_FLOOR
+#define HAS_FREXP
+#define HAS_MODF
 #endif
 
 /* Heap resides in data space which begins at 0x10000000. This is
