@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.57 1994/11/20 05:13:14 cph Exp $
+$Id: infutl.scm,v 1.58 1995/07/17 20:10:43 adams Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -486,40 +486,45 @@ MIT in each case. |#
 
 ;;;; UNCOMPRESS
 ;;;  A simple extractor for compressed binary info files.
-;;;  Note: this is written in a funky style for speed.
-;;;  It depends on EOF-OBJECTs not being chars!
 
-(define *uncompress-read-char*
-  (lambda (port)
-    (read-char port)))
-(define *uncompress-read-substring*)
 (define-integrable window-size 4096)
 
 (define (uncompress-ports input-port output-port #!optional buffer-size)
-  (let ((read-char
-	 (or (input-port/operation/read-char input-port)
-	     (error "Port doesn't support read-char" input-port))))
-    (fluid-let ((*uncompress-read-char* read-char)
-		(*uncompress-read-substring*
-		 (or (input-port/operation input-port 'READ-SUBSTRING)
-		     uncompress-read-substring)))
-      (uncompress-kernel input-port output-port
-		       	 (if (default-object? buffer-size)
-			     4096
-			     buffer-size)))))
+  (let ((buffer-size (if (default-object? buffer-size)
+			 4096
+			 buffer-size)))
+    (let ((read-substring (input-port/operation input-port 'READ-SUBSTRING)))
+      (if read-substring
+	  (uncompress-kernel-by-blocks input-port output-port buffer-size
+				       read-substring)
+	  (let ((read-char
+		 (or (input-port/operation/read-char input-port)
+		     (error "Port doesn't support read-char" input-port))))
+	    (uncompress-kernel-by-chars input-port output-port buffer-size
+					read-char))))))
 
 (define (uncompress-read-substring port buffer start end)
   (let loop ((i start))
     (if (fix:>= i end)
 	(fix:- i start)
-	(let ((char (*uncompress-read-char* port)))
+	(let ((char (read-char port)))
 	  (if (not (char? char))
 	      (fix:- i start)
 	      (begin
 		(string-set! buffer i char)
 		(loop (fix:1+ i))))))))
 
-(define (uncompress-kernel input-port output-port buffer-size)
+;;  General version.
+;;
+;; . This version will uncompress any input that can be read a character at
+;;   a time by applying parameter READ-CHAR to INPUT-PORT.  These do not
+;;   necesarily have to be a port and a port operation, but that is
+;;   the expected use.
+;; . The EOF indicator returned by READ-CHAR must not be a character, which
+;;   implies that EOF-OBJECT? and CHAR? are disjoint.
+
+(define (uncompress-kernel-by-chars input-port output-port buffer-size
+				    read-char)
   (let ((buffer (make-string buffer-size))
 	(cp-table (make-vector window-size)))
 
@@ -530,8 +535,13 @@ MIT in each case. |#
     (define-integrable (cp:+ cp n)
       (fix:remainder (fix:+ cp n) window-size))
 
-    (define-integrable (read-substring! buffer start end)
-      (*uncompress-read-substring* input-port buffer start end))
+    (define-integrable (read-substring! start end)
+      (let loop ((i start))
+	(if (fix:>= i end)
+	    (fix:- i start)
+	    (begin
+	      (string-set! buffer i (read-char input-port))
+	      (loop (fix:1+ i))))))
 
     (define (grow-buffer!)
       (let* ((new-size (fix:+ buffer-size (fix:quotient buffer-size 4)))
@@ -546,9 +556,8 @@ MIT in each case. |#
 	  (grow-buffer!)))
 
     (let loop ((bp 0) (cp 0))
-      (let ((char (*uncompress-read-char* input-port)))
-	(if (not (char? char))
-	    ;; Assume eof!
+      (let ((char (read-char input-port)))
+	(if (not (char? char))		; Assume EOF
 	    (begin
 	      (output-port/write-substring output-port buffer 0 bp)
 	      bp)
@@ -558,15 +567,14 @@ MIT in each case. |#
 		    (let ((nbp (fix:+ bp length))
 			  (ncp (cp:+ cp length)))
 		      (guarantee-buffer nbp)
-		      (read-substring! buffer bp nbp)
+		      (read-substring! bp nbp)
 		      (do ((bp bp (fix:+ bp 1)) (cp cp (cp:+ cp 1)))
 			  ((fix:= bp nbp))
 			(vector-set! cp-table cp bp))
 		      (loop nbp ncp)))
 		  (let ((cpi (displacement->cp-index
 			      (fix:+ (fix:* (fix:remainder byte 16) 256)
-				     (char->integer
-				      (*uncompress-read-char* input-port)))
+				     (char->integer (read-char input-port)))
 			      cp))
 			(length (fix:+ (fix:quotient byte 16) 1)))
 		    (let ((bp* (vector-ref cp-table cpi))
@@ -574,16 +582,140 @@ MIT in each case. |#
 			  (ncp (cp:+ cp 1)))
 		      (guarantee-buffer nbp)
 		      (let ((end-bp* (fix:+ bp* length)))
-			(if (fix:> length 10)
-			    (substring-move-right! buffer bp* end-bp*
-						   buffer bp)
-			    (do ((bp* bp* (fix:+ bp* 1))
-				 (bp bp (fix:+ bp 1)))
-				((not (fix:< bp* end-bp*)))
-			      (vector-8b-set! buffer bp
-					      (vector-8b-ref buffer bp*)))))
+			(do ((bp* bp* (fix:+ bp* 1))
+			     (bp bp (fix:+ bp 1)))
+			    ((not (fix:< bp* end-bp*)))
+			  (vector-8b-set! buffer bp
+					  (vector-8b-ref buffer bp*))))
 		      (vector-set! cp-table cp bp)
 		      (loop nbp ncp))))))))))
+
+;; This version will uncompress any input that can be read in chunks by
+;; applying parameter READ-SUBSTRING to INPUT-PORT and a substring
+;; reference.  These do not necesarily have to be a port and a port
+;; operation, but that is the expected use.
+;;
+;; This version is written for speed:
+;;
+;;  . The main speed gain is from is by buffering the input.  This version
+;;    is about 10 times faster than the above version on files, and about
+;;    1.5 times faster than the above version called on custom input
+;;    operations.
+;;
+;;  . PARSE-COMMAND interprets one `command' of compressed information.
+;;
+;;  . There is no assignment to local variables.  Instead the changeable
+;;    state is passed as explicit state variables (a kind of functional
+;;    style) and the procedures are tail-recursive so that the state
+;;    is `single-threaded'.  This prevents the compiler from
+;;    cellifying the variables.
+;;
+;;  . Some of the drudge in passing all of the state is handed over to the
+;;    compiler by making the procedures internal to PARSE-COMMAND.
+;;
+;;  . The main loop (PARSE-COMMAND) is `restartable'.  This allows the
+;;    parsing operation to determine if enough input or output buffer is
+;;    available before doing any copying, and if there is a problem it
+;;    can tail-call into the handler (RETRY-WITH-BIGGER-OUTPUT-BUFFER
+;;    and REFILL-INPUT-BUFFER-AND-RETRY) and that can tail call back
+;;    into PARSE-COMMAND.
+;;
+;;  . Refilling the input buffer and testing for EOF is a bit funky.
+;;    It relies on the fact that when we demand a refill we know how many
+;;    bytes we require to (re)parse the command.  We are at EOF when
+;;    we try to read some more data and there is none, and also there
+;;    is no unprocessed input, in which case we just tail out of the
+;;    loop.
+
+(define (uncompress-kernel-by-blocks input-port output-port buffer-size
+				     read-substring)
+  (define-integrable input-size 4096)
+  (let ((cp-table (make-vector window-size))
+	(input-buffer (make-string input-size)))
+
+    (define (displacement->cp-index displacement cp)
+      (let ((index (fix:- cp displacement)))
+	(if (fix:< index 0) (fix:+ window-size index) index)))
+
+    (define-integrable (cp:+ cp n)
+      (fix:remainder (fix:+ cp n) window-size))
+
+    (define (short-substring-move! s1 start1 end1 s2 start2)
+      (do ((i1 start1 (fix:+ i1 1))
+    	   (i2 start2 (fix:+ i2 1)))
+    	  ((fix:= i1 end1))
+    	(string-set! s2 i2 (string-ref s1 i1))))
+
+    (let parse-command ((bp 0) (cp 0) (ip 0) (ip-end 0)
+			       (buffer (make-string buffer-size))
+			       (buffer-size buffer-size))
+      ;; Invariant: (SUBTRING BUFFER IP IP-END) is unprocessed input.
+      (define (retry-with-bigger-output-buffer)
+	(let* ((new-size (fix:+ buffer-size (fix:quotient buffer-size 4)))
+	       (nbuffer (make-string new-size)))
+	  (substring-move-right! buffer 0 buffer-size nbuffer 0)
+	  (parse-command bp cp ip ip-end nbuffer new-size)))
+
+      (define (refill-input-buffer-and-retry needed)
+	(short-substring-move! input-buffer ip ip-end input-buffer 0)
+	(let* ((left (fix:- ip-end ip))
+	       (count (read-substring input-port input-buffer 
+				      left input-size))
+	       (total (fix:+ count left)))
+	  (if (fix:= count 0)
+	      (if (fix:< total needed)
+		  (error "Compressed input ends too soon"
+			 input-port 'UNCOMPRESS-KERNEL-BY-BLOCKS)
+		  (finished))
+	      (parse-command bp cp 0  total buffer buffer-size))))
+
+      (define (finished)
+	(output-port/write-substring output-port buffer 0 bp)
+	bp)
+  
+      (define (literal-command byte)
+	(let ((length (fix:+ byte 1))
+	      (ip*    (fix:+ ip 1)))
+	  (let ((nbp (fix:+ bp length))
+		(ncp (cp:+ cp length))
+		(nip (fix:+ ip* length)))
+	    (if (fix:> nbp buffer-size)
+		(retry-with-bigger-output-buffer)
+		(if (fix:> nip ip-end)
+		    (refill-input-buffer-and-retry (fix:+ length 1))
+		    (begin
+		      (short-substring-move! input-buffer ip* nip buffer bp)
+		      (do ((bp bp (fix:+ bp 1)) (cp cp (cp:+ cp 1)))
+			  ((fix:= bp nbp))
+			(vector-set! cp-table cp bp))
+		      (parse-command nbp ncp nip ip-end buffer buffer-size)))))))
+
+      (define (copy-command byte)
+	(let ((ip* (fix:+ ip 1)))
+	  (if (fix:>= ip* ip-end)
+	      (refill-input-buffer-and-retry 2)
+	      (let ((cpi (displacement->cp-index
+			  (fix:+ (fix:* (fix:remainder byte 16) 256)
+				 (vector-8b-ref input-buffer ip*))
+			  cp))
+		    (length (fix:+ (fix:quotient byte 16) 1)))
+		(let ((bp* (vector-ref cp-table cpi))
+		      (nbp (fix:+ bp length))
+		      (ncp (cp:+ cp 1)))
+		  (if (fix:> nbp buffer-size)
+		      (retry-with-bigger-output-buffer)
+		      (let ((end-bp* (fix:+ bp* length)))
+			(short-substring-move! buffer bp* end-bp* buffer bp)
+			(vector-set! cp-table cp bp)
+			(parse-command nbp ncp (fix:+ ip 2) ip-end
+				       buffer buffer-size))))))))
+
+      (if (fix:>= ip ip-end)
+	  (refill-input-buffer-and-retry 0)
+	  (let ((byte  (vector-8b-ref input-buffer ip)))
+	    (if (fix:< byte 16)
+		(literal-command byte)
+		(copy-command byte)))))))
 
 (define (fasload-loader filename)
   (call-with-current-continuation
