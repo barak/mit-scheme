@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.14 1990/11/12 03:52:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.15 1990/11/12 04:00:05 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -653,25 +653,25 @@ MIT in each case. |#
   (with-channel-blocking (input-buffer/channel buffer) true
     (lambda ()
       (if (char-ready? buffer input-buffer/fill*)
-	  (let ((string (input-buffer/string buffer)))
-	    (let loop ((buffers '()))
-	      (let ((start-index (input-buffer/start-index buffer))
-		    (end-index (input-buffer/end-index buffer)))
-		(let ((delimiter-index
-		       (substring-find-next-char-in-set string
-							start-index
-							end-index
-							delimiters)))
-		  (if delimiter-index
-		      (let ((head
-			     (substring string start-index delimiter-index)))
-			(set-input-buffer/start-index! buffer delimiter-index)
-			(apply string-append (reverse (cons head buffers))))
-		      (let ((head (substring string start-index end-index)))
-			(set-input-buffer/start-index! buffer end-index)
-			(if (input-buffer/fill* buffer)
-			    (loop (cons head buffers))
-			    (apply string-append (reverse (cons head buffers))))))))))
+	  (apply
+	   string-append
+	   (let ((string (input-buffer/string buffer)))
+	     (let loop ()
+	       (let ((start (input-buffer/start-index buffer))
+		     (end (input-buffer/end-index buffer)))
+		 (let ((delimiter
+			(substring-find-next-char-in-set string start end
+							 delimiters)))
+		   (if delimiter
+		       (let ((head (substring string start delimiter)))
+			 (set-input-buffer/start-index! buffer delimiter)
+			 (list head))
+		       (let ((head (substring string start end)))
+			 (set-input-buffer/start-index! buffer end)
+			 (cons head
+			       (if (input-buffer/fill* buffer)
+				   (loop)
+				   '())))))))))
 	  eof-object))))
 
 (define (input-buffer/discard-until-delimiter buffer delimiters)
