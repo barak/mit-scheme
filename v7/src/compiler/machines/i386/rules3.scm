@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.13 1992/02/15 14:31:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.14 1992/02/15 14:34:45 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -539,7 +539,7 @@ MIT in each case. |#
 	  (CONS-MULTICLOSURE (? nentries) (? size) (? entries)))
   (case nentries
     ((0)
-     (let ((target (target-register-reference)))
+     (let ((target (target-register-reference target)))
        (LAP (MOV W ,target (R ,regnum:free-pointer))
 	    (MOV W (@R ,regnum:free-pointer)
 		 (&U ,(make-non-pointer-literal (ucode-type manifest-vector)
