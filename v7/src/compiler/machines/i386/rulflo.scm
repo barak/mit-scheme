@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 1.20 1993/07/16 19:27:57 gjr Exp $
+$Id: rulflo.scm,v 1.21 1998/02/18 07:57:55 adams Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-1998 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -80,6 +80,7 @@ MIT in each case. |#
 		   ,(make-non-pointer-literal (ucode-type flonum) 0)))
 	 (ADD W (R ,regnum:free-pointer) (& 12)))))
 
+#|
 (define-rule statement
   ;; convert a flonum object to a floating-point number
   (ASSIGN (REGISTER (? target)) (OBJECT->FLOAT (REGISTER (? source))))
@@ -87,19 +88,22 @@ MIT in each case. |#
 	 (target (flonum-target! target)))
     (LAP ,@(object->address (register-reference source))
 	 ,@(load-float (INST-EA (@RO B ,source 4)) target))))
+|#
 
 (define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (OBJECT->FLOAT (CONSTANT (? value flonum-bit?))))
-  (let ((target (flonum-target! target)))
-    (LAP ,@(if (= value 0.)
-	       (LAP (FLDZ))
-	       (LAP (FLD1)))
-	 (FSTP (ST ,(1+ target))))))
+  ;; Convert a flonum object to a floating-point number.  Unlike the
+  ;; version above which has an implicits OBJECT->ADDRESS, this one
+  ;; uses the addressing mode to remove the type-code.  Saves a cycle
+  ;; and maybe a register spill if SOURCE is live after instruction.
+  (ASSIGN (REGISTER (? target)) (OBJECT->FLOAT (REGISTER (? source))))
+  (let* ((source (source-register source))
+	 (target (flonum-target! target)))
+    (object->float source target)))
 
-(define (flonum-bit? value)
-  (and (or (= value 0.) (= value 1.))
-       value))
+(define (object->float source-register target)
+  (let ((untagging+offset
+	 (- 4 (make-non-pointer-literal (ucode-type flonum) 0))))
+    (load-float (INST-EA (@RO W ,source-register ,untagging+offset)) target)))
 
 ;;;; Floating-point vector support.
 
@@ -176,9 +180,70 @@ MIT in each case. |#
   ((flonum-1-arg/operator operation) target source))
 
 (define ((flonum-unary-operation/general operate) target source)
-  (let* ((source (flonum-source! source))
-	 (target (flonum-target! target)))
-    (operate target source)))
+  (define (default)
+    (let* ((source (flonum-source! source))
+	   (target (flonum-target! target)))
+      (operate target source)))
+  ;; Attempt to reuse source for target if it is in ST(0).
+  ;; Otherwise we will target ST(0) by sorting the machine registers.
+  (cond ((and (pseudo-register? target) (pseudo-register? source)
+	      (eqv? fr0 (pseudo-register-alias *register-map* 'FLOAT source)))
+	 (reuse-pseudo-register-alias
+	  source 'FLOAT
+	  (lambda (alias)
+	    (let* ((sti (floreg->sti alias)))
+	      (delete-register! alias)
+	      (delete-dead-registers!)
+	      (add-pseudo-register-alias! target alias)
+	      (operate sti sti)))
+	  default))
+	(else (default))))
+
+'(define ((flonum-unary-operation/general operate) target source)
+  (define (default)
+    (let* ((source (flonum-source! source))
+	   (target (flonum-target! target)))
+      (operate target source)))
+  ;; Attempt to reuse source for target.  This works well when the
+  ;; source is ST(0).  We try to arrange this by sorting the registers
+  ;; to give allocation preference to ST(0).
+  (cond ((pseudo-register? target)
+	 (reuse-pseudo-register-alias
+	  source 'FLOAT
+	  (lambda (alias)
+	    (let* ((sti (floreg->sti alias)))
+	      (delete-register! alias)
+	      (delete-dead-registers!)
+	      (add-pseudo-register-alias! target alias)
+	      (operate sti sti)))
+	  default))
+	(else (default))))
+
+'(define ((flonum-unary-operation/general operate) target source)
+  (define (default)
+    (let* ((source (flonum-source! source))
+	   (target (flonum-target! target)))
+      (operate target source)))
+  ;; Attempt to reuse source for target.  This works well when the
+  ;; source is ST(0).  We try to arrange this by sorting the registers
+  ;; to give allocation preference to ST(0).
+  (cond ((pseudo-register? target)
+	 (let ((alias
+		(and (dead-register? source)
+		     (pseudo-register-alias *register-map* 'FLOAT source))))
+	   (if alias
+	       (default)))
+	
+	(reuse-pseudo-register-alias
+	  source 'FLOAT
+	  (lambda (alias)
+	    (let* ((sti (floreg->sti alias)))
+		(delete-register! alias)
+		(delete-dead-registers!)
+		(add-pseudo-register-alias! target alias)
+		(operate sti sti)))
+	  default))
+	(else (default))))
 
 (define (flonum-1-arg/operator operation)
   (lookup-arithmetic-method operation flonum-methods/1-arg))
@@ -363,40 +428,56 @@ MIT in each case. |#
   overflow?				;ignore
   ((flonum-2-args/operator operation) target source1 source2))
 
+;; Binary instructions all use ST(0), and are of the forms
+;;   Fop ST(0),ST(i)
+;;   Fop ST(i),ST(0)
+;;   FopP ST(i),ST(0)
+;;   Fop ST(0),memory
+;;
+;; If possible, we like to target ST(0) since it is likely to be the
+;; source of a subsequent operation.  Failing that, it is good to
+;; reuse one of the source aliases.
+
 (define ((flonum-binary-operation operate) target source1 source2)
-  (let ((default
-	  (lambda ()
-	    (let* ((sti1 (flonum-source! source1))
-		   (sti2 (flonum-source! source2)))
-	      (operate (flonum-target! target) sti1 sti2)))))
-    (cond ((pseudo-register? target)
-	   (reuse-pseudo-register-alias
-	    source1 'FLOAT
-	    (lambda (alias)
-	      (let* ((sti1 (floreg->sti alias))
-		     (sti2 (if (= source1 source2)
-			       sti1
-			       (flonum-source! source2))))
-		(delete-register! alias)
-		(delete-dead-registers!)
-		(add-pseudo-register-alias! target alias)
-		(operate sti1 sti1 sti2)))
-	    (lambda ()
-	      (reuse-pseudo-register-alias
-	       source2 'FLOAT
-	       (lambda (alias2)
-		 (let ((sti1 (flonum-source! source1))
-		       (sti2 (floreg->sti alias2)))
-		   (delete-register! alias2)
-		   (delete-dead-registers!)
-		   (add-pseudo-register-alias! target alias2)
-		   (operate sti2 sti1 sti2)))
-	       default))))
-	  ((not (eq? (register-type target) 'FLOAT))
-	   (error "flonum-2-args: Wrong type register"
-		  target 'FLOAT))
-	  (else
-	   (default)))))
+  (define (default)
+    (let* ((sti1 (flonum-source! source1))
+	   (sti2 (flonum-source! source2)))
+      (operate (flonum-target! target) sti1 sti2)))
+  (define (try-reuse-1 if-cannot)
+    (reuse-pseudo-register-alias
+     source1 'FLOAT
+     (lambda (alias1)
+       (let* ((sti1 (floreg->sti alias1))
+	      (sti2 (if (= source1 source2)
+			sti1
+			(flonum-source! source2))))
+	 (delete-register! alias1)
+	 (delete-dead-registers!)
+	 (add-pseudo-register-alias! target alias1)
+	 (operate sti1 sti1 sti2)))
+     if-cannot))
+  (define (try-reuse-2 if-cannot)
+    (reuse-pseudo-register-alias
+     source2 'FLOAT
+     (lambda (alias2)
+       (let* ((sti2 (floreg->sti alias2))
+	      (sti1 (if (= source1 source2)
+			sti2
+			(flonum-source! source1))))
+	 (delete-register! alias2)
+	 (delete-dead-registers!)
+	 (add-pseudo-register-alias! target alias2)
+	 (operate sti2 sti1 sti2)))
+     if-cannot))
+  (cond ((pseudo-register? target)
+	 (if (is-alias-for-register? fr0 source1)
+	     (try-reuse-1 (lambda () (try-reuse-2 default)))
+	     (try-reuse-2 (lambda () (try-reuse-1 default)))))
+	((not (eq? (register-type target) 'FLOAT))
+	 (error "flonum-2-args: Wrong type register"
+		target 'FLOAT))
+	(else
+	 (default))))
 
 (define (flonum-2-args/operator operation)
   (lookup-arithmetic-method operation flonum-methods/2-args))
@@ -657,3 +738,102 @@ MIT in each case. |#
   (LAP ,@prefix
        (FSTSW (R ,eax))
        (SAHF)))
+
+;; This is endianness dependent!
+
+(define (flonum-value->data-decl value)
+  (let ((high (make-bit-string 32 false))
+	(low (make-bit-string 32 false)))
+    (read-bits! value 32 high)
+    (read-bits! value 64 low)
+    (LAP ,@(lap:comment `(FLOAT ,value))
+	 (LONG U ,(bit-string->unsigned-integer high))
+	 (LONG U ,(bit-string->unsigned-integer low)))))
+
+(define (flo:32-bit-representation-exact? value)
+  ;; Returns unsigned long representation if 32 bit representation
+  ;; exists, i.e. if all `1' significant mantissa bits fit in the 32
+  ;; bit format and the exponent is within range.
+  (let ((mant-diff (make-bit-string (- 52 23) false)))
+    (read-bits! value (+ 32 0) mant-diff)
+    (and (bit-string-zero? mant-diff)
+	 (let ((expt64 (make-bit-string 11 false)))
+	   (read-bits! value (+ 32 52) expt64)
+	   (let ((expt (- (bit-string->unsigned-integer expt64) 1022)))
+	     (and (<= -127 expt 127)
+		  (let ((sign (make-bit-string 1  false))
+			(mant32 (make-bit-string 23 false)))
+		    (read-bits! value (+ 32 52 11) sign)
+		    (read-bits! value (+ 32 52 -23) mant32)
+		    (bit-string->unsigned-integer
+		     (bit-string-append
+		      (bit-string-append
+		       mant32
+		       (unsigned-integer->bit-string 8 (+ 126 expt)))
+		      sign)))))))))
+
+(define (flonum->label value block-name alignment offset data)
+  (let* ((block
+	  (or (find-extra-code-block block-name)
+	      (let ((block (declare-extra-code-block! block-name
+						      'ANYWHERE
+						      '())))
+		(add-extra-code!
+		 block
+		 (LAP (PADDING ,offset ,alignment ,padding-string)))
+		block)))
+	 (pairs (extra-code-block/xtra block))
+	 (place (assoc value pairs)))
+    (if place
+	(cdr place)
+	(let ((label (generate-label block-name)))
+	  (set-extra-code-block/xtra!
+	   block
+	   (cons (cons value label) pairs))
+	  (add-extra-code! block
+			   (LAP (LABEL ,label)
+				,@data))
+	  label))))
+
+(define (double-flonum->label fp-value)
+  (flonum->label fp-value 'DOUBLE-FLOATS 8 0
+		 (flonum-value->data-decl fp-value)))
+
+(define (single-flonum->label fp-value)
+  (flonum->label fp-value 'SINGLE-FLOATS 4 0
+		 (LAP ,@(lap:comment `(SINGLE-FLOAT ,fp-value))
+		      (LONG U ,(flo:32-bit-representation-exact? fp-value)))))
+				     
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->FLOAT (CONSTANT (? fp-value))))
+  (cond ((not (flo:flonum? fp-value))
+	 (error "OBJECT->FLOAT: Not a floating-point value" fp-value))
+	((flo:= fp-value 0.0)
+	 (let ((target (flonum-target! target)))
+	   (LAP (FLDZ)
+		(FSTP (ST ,(1+ target))))))
+	((flo:= fp-value 1.0)
+	 (let ((target (flonum-target! target)))
+	   (LAP (FLD1)
+		(FSTP (ST ,(1+ target))))))
+	(compiler:cross-compiling?
+	 (let* ((temp (allocate-temporary-register! 'GENERAL))
+		(target (flonum-target! target)))
+	   (LAP ,@(load-constant (register-reference temp) fp-value)
+		,@(object->float temp target))))
+	(else
+	 (let ((target (flonum-target! target)))
+	   (with-pcr-float fp-value
+	      (lambda (ea size)
+		(LAP (FLD ,size ,ea)
+		     (FSTP (ST ,(1+ target))))))))))
+
+(define (with-pcr-float fp-value receiver)
+  (define (generate-ea label-expr size)
+    (with-pc
+     (lambda (pc-label pc-register)
+       (receiver (INST-EA (@RO W ,pc-register (- ,label-expr ,pc-label)))
+		 size))))
+  (if (flo:32-bit-representation-exact? fp-value)
+      (generate-ea (single-flonum->label fp-value) 'S)
+      (generate-ea (double-flonum->label fp-value) 'D)))
