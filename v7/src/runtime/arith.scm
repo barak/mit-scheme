@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.35 1997/04/23 07:26:06 cph Exp $
+$Id: arith.scm,v 1.36 1997/04/28 05:59:49 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -802,47 +802,47 @@ MIT in each case. |#
       n
       (make-ratnum n d)))
 
-(define (rat:->flonum q)
+(define (rat:->inexact q)
   (if (ratnum? q)
-      (ratnum->flonum q)
-      (int:->flonum q)))
+      (let ((n (ratnum-numerator q))
+	    (d (ratnum-denominator q)))
+	(cond ((int:positive? n) (ratio->flonum n d))
+	      ((int:negative? n) (flo:negate (ratio->flonum (int:negate n) d)))
+	      (else flo:0)))
+      (int:->inexact q)))
 
-(define (ratnum->flonum q)
-  (let ((q>0
-	 (lambda (n d)
-	   (let ((k
-		  (int:- (integer-length-in-bits n)
-			 (integer-length-in-bits d)))
-		 (p flo:significand-digits-base-2))
-	     (letrec
-		 ((step1
-		   (lambda (n d)
-		     ;; (assert (< (expt 2 (- k 1)) (/ n d) (expt 2 (+ k 1))))
-		     (if (int:< k 0)
-			 (step2 (integer-shift-left n (int:- 0 k)) d)
-			 (step2 n (integer-shift-left d k)))))
-		  (step2
-		   (lambda (n d)
-		     ;; (assert (< 1/2 (/ n d) 2))
-		     (if (int:< n d)
-			 (step3 n d (int:- k p))
-			 (step3 n (int:* 2 d) (int:- (int:+ k 1) p)))))
-		  (step3
-		   (lambda (n d e)
-		     ;; (assert (and (<= 1/2 (/ n d)) (< (/ n d) 1)))
-		     (let ((n (int:round (integer-shift-left n p) d)))
-		       (if (int:= n int:flonum-integer-limit)
-			   (step4 (int:quotient n 2) (int:1+ e))
-			   (step4 n e)))))
-		  (step4
-		   (lambda (n e)
-		     (flo:denormalize (integer->flonum n #b11) e))))
-	       (step1 n d))))))
-    (let ((n (ratnum-numerator q))
-	  (d (ratnum-denominator q)))
-      (cond ((int:positive? n) (q>0 n d))
-	    ((int:negative? n) (flo:negate (q>0 (int:negate n) d)))
-	    (else flo:0)))))
+(define (int:->inexact n)
+  (cond ((int:positive? n) (ratio->flonum n 1))
+	((int:negative? n) (flo:negate (ratio->flonum (int:negate n) 1)))
+	(else flo:0)))
+
+(define (ratio->flonum n d)
+  (let ((k (int:- (integer-length-in-bits n) (integer-length-in-bits d)))
+	(p flo:significand-digits-base-2))
+    (letrec
+	((step1
+	  (lambda (n d)
+	    ;; (assert (< (expt 2 (- k 1)) (/ n d) (expt 2 (+ k 1))))
+	    (if (int:< k 0)
+		(step2 (integer-shift-left n (int:- 0 k)) d)
+		(step2 n (integer-shift-left d k)))))
+	 (step2
+	  (lambda (n d)
+	    ;; (assert (< 1/2 (/ n d) 2))
+	    (if (int:< n d)
+		(step3 n d (int:- k p))
+		(step3 n (int:* 2 d) (int:- (int:+ k 1) p)))))
+	 (step3
+	  (lambda (n d e)
+	    ;; (assert (and (<= 1/2 (/ n d)) (< (/ n d) 1)))
+	    (let ((n (int:round (integer-shift-left n p) d)))
+	      (if (int:= n int:flonum-integer-limit)
+		  (step4 (int:quotient n 2) (int:1+ e))
+		  (step4 n e)))))
+	 (step4
+	  (lambda (n e)
+	    (flo:denormalize (integer->flonum n #b11) e))))
+      (step1 n d))))
 
 (define (flo:significand-digits radix)
   (cond ((int:= radix 10)
@@ -973,7 +973,7 @@ MIT in each case. |#
   (define-standard-unary real:ceiling->exact flo:ceiling->exact rat:ceiling)
   (define-standard-unary real:truncate->exact flo:truncate->exact rat:truncate)
   (define-standard-unary real:round->exact flo:round->exact rat:round)
-  (define-standard-unary real:exact->inexact (lambda (x) x) rat:->flonum)
+  (define-standard-unary real:exact->inexact (lambda (x) x) rat:->inexact)
   (define-standard-unary real:inexact->exact flo:->rational
     (lambda (q)
       (if (rat:rational? q)
@@ -987,9 +987,9 @@ MIT in each case. |#
 	    (IF (FLONUM? X)
 		(IF (FLONUM? Y)
 		    (,flo:op X Y)
-		    (,flo:op X (RAT:->FLONUM Y)))
+		    (,flo:op X (RAT:->INEXACT Y)))
 		(IF (FLONUM? Y)
-		    (,flo:op (RAT:->FLONUM X) Y)
+		    (,flo:op (RAT:->INEXACT X) Y)
 		    (,rat:op X Y)))))))
   (define-standard-binary real:+ flo:+ (copy rat:+))
   (define-standard-binary real:- flo:- (copy rat:-))
@@ -1028,32 +1028,32 @@ MIT in each case. |#
   (if (flonum? x)
       (if (flonum? y)
 	  (if (flo:< x y) y x)
-	  (if (rat:< (flo:->rational x) y) (rat:->flonum y) x))
+	  (if (rat:< (flo:->rational x) y) (rat:->inexact y) x))
       (if (flonum? y)
-	  (if (rat:< x (flo:->rational y)) y (rat:->flonum x))
+	  (if (rat:< x (flo:->rational y)) y (rat:->inexact x))
 	  (if (rat:< x y) y x))))
 
 (define (real:min x y)
   (if (flonum? x)
       (if (flonum? y)
 	  (if (flo:< x y) x y)
-	  (if (rat:< (flo:->rational x) y) x (rat:->flonum y)))
+	  (if (rat:< (flo:->rational x) y) x (rat:->inexact y)))
       (if (flonum? y)
-	  (if (rat:< x (flo:->rational y)) (rat:->flonum x) y)
+	  (if (rat:< x (flo:->rational y)) (rat:->inexact x) y)
 	  (if (rat:< x y) x y))))
 
 (define (real:* x y)
   (cond ((flonum? x)
 	 (cond ((flonum? y) (flo:* x y))
 	       ((rat:zero? y) y)
-	       (else (flo:* x (rat:->flonum y)))))
+	       (else (flo:* x (rat:->inexact y)))))
 	((rat:zero? x) x)
-	((flonum? y) (flo:* (rat:->flonum x) y))
+	((flonum? y) (flo:* (rat:->inexact x) y))
 	(else ((copy rat:*) x y))))
 
 (define (real:/ x y)
-  (cond ((flonum? x) (flo:/ x (if (flonum? y) y (rat:->flonum y))))
-	((flonum? y) (if (rat:zero? x) x (flo:/ (rat:->flonum x) y)))
+  (cond ((flonum? x) (flo:/ x (if (flonum? y) y (rat:->inexact y))))
+	((flonum? y) (if (rat:zero? x) x (flo:/ (rat:->inexact x) y)))
 	(else ((copy rat:/) x y))))
 
 (define (real:even? n)
@@ -1074,13 +1074,13 @@ MIT in each case. |#
 		       (ERROR:WRONG-TYPE-ARGUMENT ,n FALSE ',operator-name)))))
 	   `(DEFINE (,name N M)
 	      (IF (FLONUM? N)
-		  (INT:->FLONUM
+		  (INT:->INEXACT
 		   (,operator ,(flo->int 'N)
 			      (IF (FLONUM? M)
 				  ,(flo->int 'M)
 				  M)))
 		  (IF (FLONUM? M)
-		      (INT:->FLONUM (,operator N ,(flo->int 'M)))
+		      (INT:->INEXACT (,operator N ,(flo->int 'M)))
 		      (,operator N M))))))))
   (define-integer-binary real:quotient quotient int:quotient)
   (define-integer-binary real:remainder remainder int:remainder)
@@ -1097,7 +1097,7 @@ MIT in each case. |#
        (macro (name operator)
 	 `(DEFINE (,name Q)
 	    (IF (FLONUM? Q)
-		(RAT:->FLONUM (,operator (FLO:->RATIONAL Q)))
+		(RAT:->INEXACT (,operator (FLO:->RATIONAL Q)))
 		(,operator Q))))))
   (define-rational-unary real:numerator rat:numerator)
   (define-rational-unary real:denominator rat:denominator))
@@ -1108,7 +1108,7 @@ MIT in each case. |#
 	 `(DEFINE (,name X)
 	    (IF (,hole? X)
 		,hole-value
-		(,function (REAL:->FLONUM X)))))))
+		(,function (REAL:->INEXACT X)))))))
   (define-transcendental-unary real:exp real:exact0= 1 flo:exp)
   (define-transcendental-unary real:log real:exact1= 0 flo:log)
   (define-transcendental-unary real:sin real:exact0= 0 flo:sin)
@@ -1122,10 +1122,10 @@ MIT in each case. |#
   (if (and (real:exact0= y)
 	   (real:exact? x))
       (if (real:negative? x) rec:pi 0)
-      (flo:atan2 (real:->flonum y) (real:->flonum x))))
+      (flo:atan2 (real:->inexact y) (real:->inexact x))))
 
 (define (rat:sqrt x)
-  (let ((guess (flo:sqrt (rat:->flonum x))))
+  (let ((guess (flo:sqrt (rat:->inexact x))))
     (if (int:integer? x)
 	(let ((n (flo:round->exact guess)))
 	  (if (int:= x (int:* n n))
@@ -1139,10 +1139,10 @@ MIT in each case. |#
 (define (real:sqrt x)
   (if (flonum? x) (flo:sqrt x) (rat:sqrt x)))
 
-(define (real:->flonum x)
+(define (real:->inexact x)
   (if (flonum? x)
       x
-      (rat:->flonum x)))
+      (rat:->inexact x)))
 
 (define (real:->string x radix)
   (if (flonum? x)
@@ -1187,9 +1187,9 @@ MIT in each case. |#
 			(flo:/ flo:1 (exact-method (int:negate y))))
 		       (else flo:1))))
 	      (else
-	       (general-case x (rat:->flonum y))))
+	       (general-case x (rat:->inexact y))))
 	(cond ((flonum? y)
-	       (general-case (rat:->flonum x) y))
+	       (general-case (rat:->inexact x) y))
 	      ((int:integer? y)
 	       (rat:expt x y))
 	      ((and (rat:positive? x)
@@ -1198,7 +1198,7 @@ MIT in each case. |#
 		 (if (int:= 2 d)
 		     (rat:sqrt x)
 		     (let ((guess
-			    (flo:expt (rat:->flonum x) (rat:->flonum y))))
+			    (flo:expt (rat:->inexact x) (rat:->inexact y))))
 		       (let ((q
 			      (if (int:integer? x)
 				  (flo:round->exact guess)
@@ -1207,7 +1207,7 @@ MIT in each case. |#
 			     q
 			     guess))))))
 	      (else
-	       (general-case (rat:->flonum x) (rat:->flonum y)))))))
+	       (general-case (rat:->inexact x) (rat:->inexact y)))))))
 
 (define (complex:complex? object)
   (or (recnum? object) ((copy real:real?) object)))
