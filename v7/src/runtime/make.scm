@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.43 1993/02/25 03:20:22 gjr Exp $
+$Id: make.scm,v 14.44 1993/03/01 17:40:20 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -52,11 +52,13 @@ MIT in each case. |#
 	   (not (= (vector-length names) (vector-length values))))
        (error "define-multiple: Invalid arguments" names values)
        (let ((len (vector-length names)))
-	 (do ((i 0 (1+ i)))
-	     ((>= i len) 'done)
-	   (local-assignment env
-			     (vector-ref names i)
-			     (vector-ref values i)))))))
+	 (let loop ((i 0) (val unspecific))
+	   (if (>= i len)
+	       val
+	       (loop (1+ i)
+		     (local-assignment env
+				       (vector-ref names i)
+				       (vector-ref values i)))))))))
 
 ;; This definition is replaced later in the boot sequence.
 
