@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dataflow.scm,v 1.7 1995/02/01 20:53:41 adams Exp $
+$Id: dataflow.scm,v 1.8 1995/02/11 02:04:02 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -332,17 +332,24 @@ MIT in each case. |#
 	  (if (eq? special-result 'ORDINARY)
 	      (dataflow/handler/ordinary-call env graph form rator cont rands)
 	      special-result)))
-    (if (or (and (node? result)	(not (equal? cont '(QUOTE #F))))
-	    (and (not (node? result)) (equal? cont '(QUOTE #F))))
+
+    (if (and ;;(not (LAMBDA/? rator))
+	     (or (and (node? result)	   (not (equal? cont '(QUOTE #F))))
+		 (and (not (node? result)) (equal? cont '(QUOTE #F)))))
 	(internal-error "result/CPS mismatch" result form))
-    result))
+
+   result))
 
 (define (dataflow/handler/ordinary-call  env graph form rator cont rands)
   (let* ((operator-node  (dataflow/expr env graph rator))
          (operand-nodes  (dataflow/expr* env graph rands))
 	 (direct-style?  (equal? cont '(QUOTE #F)))
 	 (cont-node      (if direct-style? #F (dataflow/expr env graph cont)))
-         (result-node    (if direct-style?
+	 (has-value?     (and direct-style?)
+			      ;;(not (and (LAMBDA/? rator)
+			      ;;	*after-cps-conversion?*))
+			 )
+         (result-node    (if has-value?
 			     (graph/add-expression-node! graph form
 							 "#[call-result]")
 			     (graph/add-location-node!  graph form
@@ -351,7 +358,7 @@ MIT in each case. |#
 			    operator-node
 			    (cons cont-node operand-nodes)
 			    result-node)
-    (and direct-style? result-node)))
+    (and has-value? result-node)))
 
 
 (define (dataflow/handler/special-call  env graph form rator cont rands)
