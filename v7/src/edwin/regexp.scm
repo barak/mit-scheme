@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.58 1991/05/17 18:38:32 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.59 1991/08/28 02:54:31 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -58,13 +58,13 @@
 (define (re-match-start i)
   (guarantee-re-register i 'RE-MATCH-START)
   (let ((index (re-match-start-index i)))
-    (and (not (negative? index))
+    (and index
 	 (make-mark (re-match-group) index))))
 
 (define (re-match-end i)
   (guarantee-re-register i 'RE-MATCH-END)
   (let ((index (re-match-end-index i)))
-    (and (not (negative? index))
+    (and index
 	 (make-mark (re-match-group) index))))
 
 (define (guarantee-re-register i operator)
@@ -163,8 +163,8 @@
 					    (char->digit char))))
 				   (cond ((not n)
 					  (string char))
-					 ((negative? (re-match-start-index n))
-					  (string #\\ char))
+					 ((not (re-match-start-index n))
+					  (error "No match for register" n))
 					 (else
 					  (extract-string
 					   (re-match-start n)
@@ -174,6 +174,7 @@
 				   '()))))
 		 (list (substring pattern start end))))))
 	pattern)))
+
 
 (define (delete-match)
   (let ((start (re-match-start 0)))
