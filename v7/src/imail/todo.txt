@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.15 2000/05/17 16:15:49 cph Exp $
+$Id: todo.txt,v 1.16 2000/05/17 16:25:06 cph Exp $
 
 Bug fixes
 ---------
@@ -71,3 +71,7 @@ New features
 
 * Write folder browser for IMAP servers.  Implement
   AVAILABLE-FOLDER-NAMES.
+
+* Generate file I/O messages when reading and writing file folders.
+  Generate message "No changes to save." from SAVE-FOLDER on an IMAP
+  folder.
