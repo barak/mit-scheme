@@ -1,6 +1,6 @@
 ;;; -*-Midas-*-
 ;;;
-;;;	$Id: ntasutl.asm,v 1.3 1993/08/21 02:41:47 gjr Exp $
+;;;	$Id: ntasutl.asm,v 1.4 1993/08/21 05:24:22 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ;;;
@@ -58,3 +58,4 @@ _getSS:
 	xor	eax,eax			; clear eax
 	mov	ax,ss			; copy code segment descriptor
 	ret
+end
