@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.23 1995/04/12 19:23:11 adams Exp $
+$Id: rtlgen.scm,v 1.24 1995/04/20 03:26:28 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -83,8 +83,10 @@ MIT in each case. |#
 	(env-name          (cadr (assq rtlgen/?env-name result))))
     (let loop ((body  (third form)))
       (cond
-       ((LET/? body)
-	;; Assume static binding
+       ((and (LET/? body)
+	     (for-all? (let/bindings body)
+	       (lambda (binding)
+		 (form/static? (cadr binding)))))
 	(loop (let/body body)))
        ((LETREC/? body)
 	(rtlgen/letrec/bindings (letrec/bindings body))
@@ -123,7 +125,21 @@ MIT in each case. |#
 			    rtlgen/wrap-trivial-closure)))
 		     (set! *procedure-result?* 'CALL-ME)
 		     (values code label))))))
-       (else (fail))))))
+       (else
+	(sample/1 '(rtlgen/procedures-by-kind histogram)
+		  'top-level-expression)
+	(let* ((label (rtlgen/new-name 'EXPRESSION))
+	       (code
+		(rtlgen/%%procedure label
+				    form 
+				    `(LAMBDA (,continuation-name ,env-name)
+				       ,body)
+				    #F
+				    rtlgen/wrap-trivial-closure)))
+	  (set! *procedure-result?* 'CALL-ME)
+	  (values code label)))
+       ;;(else (fail))
+       ))))
 
 (define-structure
     (rtlgen/descriptor
