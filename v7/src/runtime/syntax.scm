@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.38 2001/12/19 04:12:03 cph Exp $
+$Id: syntax.scm,v 14.39 2001/12/19 05:22:09 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -33,16 +33,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (set! system-global-syntax-table (make-system-global-syntax-table))
   (set-environment-syntax-table! system-global-environment
 				 system-global-syntax-table)
-  (set! user-initial-syntax-table
-	(make-syntax-table system-global-syntax-table))
   (set-environment-syntax-table! user-initial-environment
-				 user-initial-syntax-table)
+				 (make-syntax-table system-global-environment))
   (set! syntaxer/default-environment
 	(extend-interpreter-environment system-global-environment))
   unspecific)
 
 (define system-global-syntax-table)
-(define user-initial-syntax-table)
 (define *syntax-table*)
 (define *current-keyword* #f)
 (define *syntax-top-level?*)
@@ -104,7 +101,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 (fluid-let ((*syntax-table*
 		      (if (eq? table 'DEFAULT)
 			  (if (unassigned? *syntax-table*)
-			      (nearest-repl/syntax-table)
+			      (environment-syntax-table
+			       (nearest-repl/environment))
 			      *syntax-table*)
 			  (guarantee-syntax-table table name)))
 		     (*current-keyword* #f))

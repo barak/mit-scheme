@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.38 2001/12/18 20:42:50 cph Exp $
+$Id: packag.scm,v 14.39 2001/12/19 05:21:46 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -184,15 +184,14 @@ USA.
 	    (let ((alternate-loader
 		   (lookup-option 'ALTERNATE-PACKAGE-LOADER options))
 		  (load-component
-		   (let ((syntax-table (nearest-repl/syntax-table)))
-		     (lambda (component environment)
-		       (let ((value
-			      (filename->compiled-object filename component)))
-			 (if value
-			     (begin
-			       (purify (load/purification-root value))
-			       (scode-eval value environment))
-			     (load component environment syntax-table #t)))))))
+		   (lambda (component environment)
+		     (let ((value
+			    (filename->compiled-object filename component)))
+		       (if value
+			   (begin
+			     (purify (load/purification-root value))
+			     (scode-eval value environment))
+			   (load component environment 'DEFAULT #t))))))
 	      (if alternate-loader
 		  (alternate-loader load-component options)
 		  (begin

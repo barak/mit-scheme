@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.389 2001/12/19 04:11:02 cph Exp $
+$Id: runtime.pkg,v 14.390 2001/12/19 05:22:04 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -2706,7 +2706,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  condition-type:breakpoint
 	  condition/breakpoint?
 	  ge
-	  gst
 	  in
 	  initial-top-level-repl
 	  make-cmdl
@@ -2719,7 +2718,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  nearest-repl
 	  nearest-repl/condition
 	  nearest-repl/environment
-	  nearest-repl/syntax-table
 	  out
 	  pe
 	  proceed
@@ -2741,7 +2739,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  repl/prompt
 	  repl/reader-history
 	  repl/start
-	  repl/syntax-table
 	  repl:allow-restart-notifications?
 	  repl:write-result-hash-numbers?
 	  repl?
@@ -2751,7 +2748,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  set-repl/printer-history!
 	  set-repl/prompt!
 	  set-repl/reader-history!
-	  set-repl/syntax-table!
 	  signal-breakpoint
 	  standard-breakpoint-handler
 	  standard-breakpoint-hook
@@ -3770,8 +3766,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  syntax-closure/expression
 	  syntax-closure?
 	  syntax/top-level?
-	  system-global-syntax-table
-	  user-initial-syntax-table)
+	  system-global-syntax-table)
   (export (runtime defstruct)
 	  parse-lambda-list)
   (initialization (initialize-package!)))
@@ -3900,7 +3895,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  prompt-for-expression)
   (export (runtime rep)
 	  port/set-default-environment
-	  port/set-default-syntax-table
 	  port/write-result)
   (export (runtime rep)
 	  port/set-default-directory)

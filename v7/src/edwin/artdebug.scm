@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: artdebug.scm,v 1.28 1999/02/24 21:35:54 cph Exp $
+;;; $Id: artdebug.scm,v 1.29 2001/12/19 05:25:08 cph Exp $
 ;;;
-;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Continuation Browser
 
@@ -520,7 +521,7 @@ The evaluation occurs in the dynamic state of the current frame."
 	(fluid-let
 	    ((in-debugger-evaluation? #t)
 	     (hook/repl-eval
-	      (lambda (expression environment syntax-table)
+	      (lambda (expression environment)
 		(let ((unique (cons 'unique 'id)))
 		  (let ((result
 			 (call-with-current-continuation
@@ -534,8 +535,7 @@ The evaluation occurs in the dynamic state of the current frame."
 				  (lambda ()
 				    (continuation*
 				     (repl-eval expression
-						environment
-						syntax-table))))))))))
+						environment))))))))))
 		    (if (and (pair? result)
 			     (eq? unique (car result)))
 			(error (cdr result))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: evlcom.scm,v 1.64 2001/12/19 01:46:03 cph Exp $
+;;; $Id: evlcom.scm,v 1.65 2001/12/19 05:25:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -44,36 +44,23 @@ If 'DEFAULT, use the default (REP loop) environment."
 	       (->environment object))))))))
 
 (define-variable scheme-syntax-table
-  "The syntax table used by the evaluation commands, or #F.
-If #F, use the default (REP loop) syntax-table."
-  #f
-  (lambda (object)
-    (or (not object)
-	(symbol? object)
-	(syntax-table? object))))
+  "This variable is obsolete and its value is ignored."
+  #f)
 
-(let ((daemon
-       (lambda (buffer variable)
-	 variable
-	 (if buffer (normal-buffer-evaluation-mode buffer)))))
-  (add-variable-assignment-daemon! (ref-variable-object scheme-environment)
-				   daemon)
-  (add-variable-assignment-daemon! (ref-variable-object scheme-syntax-table)
-				   daemon))
+(add-variable-assignment-daemon! (ref-variable-object scheme-environment)
+  (lambda (buffer variable)
+    variable
+    (if buffer (normal-buffer-evaluation-mode buffer))))
 
 (define (normal-buffer-evaluation-mode buffer)
   (let ((environment (ref-variable-object scheme-environment))
-	(syntax-table (ref-variable-object scheme-syntax-table))
 	(evaluate-inferior (ref-variable-object evaluate-in-inferior-repl))
 	(run-light (ref-variable-object run-light)))
     (if (and (not (repl-buffer? buffer))
 	     (not (variable-local-value? buffer evaluate-inferior))
-	     (or (and (variable-local-value? buffer environment)
-		      (not (eq? 'DEFAULT
-				(variable-local-value buffer environment))))
-		 (and (variable-local-value? buffer syntax-table)
-		      (not (memq (variable-local-value buffer syntax-table)
-				 '(#F DEFAULT))))))
+	     (and (variable-local-value? buffer environment)
+		  (not (eq? 'DEFAULT
+			    (variable-local-value buffer environment)))))
 	(begin
 	  (define-variable-local-value! buffer evaluate-inferior #f)
 	  (if (not (variable-local-value? buffer run-light))
@@ -233,12 +220,6 @@ Has no effect if evaluate-in-inferior-repl is false."
   (lambda (environment)
     (local-set-variable! scheme-environment environment)))
 
-(define-command set-syntax-table
-  "Make SYNTAX-TABLE the current syntax table."
-  "XSet syntax table"
-  (lambda (syntax-table)
-    (local-set-variable! scheme-syntax-table syntax-table)))
-
 (define-command set-default-environment
   "Make ENVIRONMENT the default evaluation environment."
   "XSet default environment"
@@ -246,24 +227,11 @@ Has no effect if evaluate-in-inferior-repl is false."
     (set-variable-default-value! (ref-variable-object scheme-environment)
 				 environment)))
 
-(define-command set-default-syntax-table
-  "Make SYNTAX-TABLE the default syntax table."
-  "XSet default syntax table"
-  (lambda (syntax-table)
-    (set-variable-default-value! (ref-variable-object scheme-syntax-table)
-				 syntax-table)))
-
 (define-command set-repl-environment
   "Make ENVIRONMENT the environment of the nearest REP loop."
   "XSet REPL environment"
   (lambda (environment)
     (set-repl/environment! (nearest-repl) (->environment environment))))
-
-(define-command set-repl-syntax-table
-  "Make SYNTAX-TABLE the syntax table of the nearest REP loop."
-  "XSet REPL syntax table"
-  (lambda (syntax-table)
-    (set-repl/syntax-table! (nearest-repl) syntax-table)))
 
 (define-command select-transcript-buffer
   "Select the transcript buffer."
@@ -275,8 +243,7 @@ Has no effect if evaluate-in-inferior-repl is false."
 
 (define (prompt-for-expression-value prompt #!optional default . options)
   (let ((buffer (current-buffer)))
-    (eval-with-history buffer
-		       (apply prompt-for-expression
+    (eval-with-history (apply prompt-for-expression
 			      prompt
 			      (cond ((default-object? default)
 				     default-object-kludge)
@@ -386,23 +353,6 @@ Has no effect if evaluate-in-inferior-repl is false."
 		      (non-default environment)))
 		(nearest-repl/environment)))
 	  (non-default environment)))))
-
-(define (evaluation-syntax-table buffer environment)
-  (let ((syntax-table (ref-variable scheme-syntax-table buffer)))
-    (cond ((or (not syntax-table) (eq? 'DEFAULT syntax-table))
-	   (environment-syntax-table environment))
-	  ((syntax-table? syntax-table)
-	   syntax-table)
-	  ((symbol? syntax-table)
-	   (or (and (environment-bound? environment syntax-table)
-		    (environment-assigned? environment syntax-table)
-		    (let ((syntax-table
-			   (environment-lookup environment syntax-table)))
-		      (and (syntax-table? syntax-table)
-			   syntax-table)))
-	       (editor-error "Undefined syntax table" syntax-table)))
-	  (else
-	   (editor-error "Illegal syntax table" syntax-table)))))
 
 (define-variable run-light
   "Scheme run light.  Not intended to be modified by users.
@@ -424,8 +374,7 @@ Set by Scheme evaluation code to update the mode line."
 		 (let ((output-string
 			(with-output-to-string
 			  (lambda ()
-			    (set! value
-				  (eval-with-history buffer sexp environment))
+			    (set! value (eval-with-history sexp environment))
 			    unspecific))))
 		   (let ((evaluation-output-receiver
 			  (ref-variable evaluation-output-receiver buffer)))
@@ -460,12 +409,11 @@ Set by Scheme evaluation code to update the mode line."
 	     (update-screens! #f))))
 	(core))))
 
-(define (eval-with-history buffer expression environment)
-  (let ((syntax-table (evaluation-syntax-table buffer environment)))
-    (bind-condition-handler (list condition-type:error)
-	evaluation-error-handler
-      (lambda ()
-	(hook/repl-eval #f expression environment syntax-table)))))
+(define (eval-with-history expression environment)
+  (bind-condition-handler (list condition-type:error)
+      evaluation-error-handler
+    (lambda ()
+      (hook/repl-eval #f expression environment))))
 
 (define (evaluation-error-handler condition)
   (maybe-debug-scheme-error (ref-variable-object debug-on-evaluation-error)

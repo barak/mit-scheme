@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: intmod.scm,v 1.114 2001/12/18 20:50:51 cph Exp $
+;;; $Id: intmod.scm,v 1.115 2001/12/19 05:25:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -73,10 +73,7 @@ With two C-u's, creates a new REPL buffer with a new evaluation environment.
        (let ((make-new
 	      (lambda (environment)
 		(let ((repl-buffer (new-buffer initial-buffer-name)))
-		  (start-inferior-repl! repl-buffer
-					environment
-					(environment-syntax-table environment)
-					#f)
+		  (start-inferior-repl! repl-buffer environment #f)
 		  repl-buffer))))
 	 (if (>= argument 16)
 	     (make-new
@@ -106,7 +103,7 @@ evaluated in the specified inferior REPL buffer."
   (lambda (repl-buffer)
     (set-local-repl-buffer! (current-buffer) repl-buffer)))
 
-(define (start-inferior-repl! buffer environment syntax-table message)
+(define (start-inferior-repl! buffer environment message)
   (set-buffer-major-mode! buffer (ref-mode-object inferior-repl))
   (if (ref-variable repl-mode-locked)
       (buffer-put! buffer 'MAJOR-MODE-LOCKED #t))
@@ -128,7 +125,6 @@ evaluated in the specified inferior REPL buffer."
 	     (repl/start (make-repl #f
 				    port
 				    environment
-				    syntax-table
 				    #f
 				    `((ERROR-DECISION ,error-decision))
 				    user-initial-prompt)
@@ -1116,14 +1112,6 @@ If this is an error, the debugger examines the error condition."
 			       (mark-buffer mark)))
       #t)))
 
-(define (operation/set-default-syntax-table port syntax-table)
-  (enqueue-output-operation! port
-    (lambda (mark transcript?)
-      (if (not transcript?)
-	  (local-set-variable! scheme-syntax-table syntax-table
-			       (mark-buffer mark)))
-      #t)))
-
 (define interface-port-type
   (make-port-type
    `((WRITE-CHAR ,operation/write-char)
@@ -1140,7 +1128,6 @@ If this is an error, the debugger examines the error condition."
      (PROMPT-FOR-COMMAND-CHAR ,operation/prompt-for-command-char)
      (SET-DEFAULT-DIRECTORY ,operation/set-default-directory)
      (SET-DEFAULT-ENVIRONMENT ,operation/set-default-environment)
-     (SET-DEFAULT-SYNTAX-TABLE ,operation/set-default-syntax-table)
      (PEEK-CHAR ,operation/peek-char)
      (READ-CHAR ,operation/read-char)
      (READ ,operation/read)

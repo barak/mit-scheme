@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: nodefs.scm,v 1.11 1999/01/02 06:06:43 cph Exp $
+$Id: nodefs.scm,v 1.12 2001/12/19 05:23:50 cph Exp $
 
-Copyright (c) 1991-1999 Massachusetts Institute of Technology
+Copyright (c) 1991-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; SCode rewriting for 6.001
@@ -28,10 +29,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (set! hook/repl-eval student/repl-eval)
   unspecific)
 
-(define (student/repl-eval repl s-expression environment syntax-table)
+(define (student/repl-eval repl s-expression environment)
   (repl-scode-eval
    repl
-   (rewrite-scode (syntax s-expression syntax-table)
+   (rewrite-scode (syntax s-expression environment)
 		  (and repl
 		       (let ((port (cmdl/port repl)))
 			 (let ((operation

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: schmod.scm,v 1.54 2001/12/18 22:12:27 cph Exp $
+;;; $Id: schmod.scm,v 1.55 2001/12/19 05:25:43 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -197,7 +197,6 @@ The following commands evaluate Scheme expressions:
 	    (LIST-TRANSFORM-NEGATIVE . 1)
 	    (LIST-SEARCH-POSITIVE . 1)
 	    (LIST-SEARCH-NEGATIVE . 1)
-	    (SYNTAX-TABLE-DEFINE . 2)
 	    (FOR-ALL? . 1)
 	    (THERE-EXISTS? . 1)))
 
@@ -302,7 +301,7 @@ Otherwise, it is shown in the echo area."
 	       (let ((environment (evaluation-environment buffer)))
 		 (extended-scode-eval
 		  (syntax (with-input-from-region (make-region start end) read)
-			  (evaluation-syntax-table buffer environment))
+			  environment)
 		  environment))))
 	  (if (procedure? procedure)
 	      (let ((argl (procedure-argl procedure)))

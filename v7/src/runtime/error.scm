@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.51 2000/01/10 03:48:33 cph Exp $
+$Id: error.scm,v 14.52 2001/12/19 05:21:37 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Error System
@@ -35,12 +36,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      (lambda (type port)
 			(write-char #\space port)
 			(write-string (%condition-type/name type) port)))))
-  (name false read-only true)
+  (name #f read-only #t)
   generalizations
-  (field-indexes false read-only true)
-  (number-of-fields false read-only true)
-  (reporter false read-only true)
-  (properties (make-1d-table) read-only true))
+  (field-indexes #f read-only #t)
+  (number-of-fields #f read-only #t)
+  (reporter #f read-only #t)
+  (properties (make-1d-table) read-only #t))
 
 (define (make-condition-type name generalization field-names reporter)
   (if generalization
@@ -54,7 +55,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	     (%make-condition-type
 	      (cond ((string? name) (string-copy name))
 		    ((symbol? name) (symbol->string name))
-		    ((false? name) "(anonymous)")
+		    ((not name) "(anonymous)")
 		    (else
 		     (error:wrong-type-argument name "condition-type name"
 						'MAKE-CONDITION-TYPE)))
@@ -66,7 +67,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		       (write-string reporter port)))
 		    ((procedure-of-arity? reporter 2)
 		     reporter)
-		    ((false? reporter)
+		    ((not reporter)
 		     (if generalization
 			 (%condition-type/reporter generalization)
 			 (lambda (condition port)
@@ -97,18 +98,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  ((field-names field-names)
 	   (index old-n-fields)
 	   (indexes (let loop ((old-indexes old-indexes) (indexes '()))
-		      (if (null? old-indexes)
-			  indexes
+		      (if (pair? old-indexes)
 			  (loop (cdr old-indexes)
 				(let ((entry (car old-indexes)))
 				  (if (memq (car entry) field-names)
 				      indexes
-				      (cons entry indexes))))))))
-	(if (null? field-names)
-	    (values index (reverse! indexes))
+				      (cons entry indexes))))
+			  indexes))))
+	(if (pair? field-names)
 	    (loop (cdr field-names)
 		  (+ index 1)
-		  (cons (cons (car field-names) index) indexes)))))))
+		  (cons (cons (car field-names) index) indexes))
+	    (values index (reverse! indexes)))))))
 
 (define (%condition-type/field-index type field-name operator)
   (let ((association (assq field-name (%condition-type/field-indexes type))))
@@ -132,7 +133,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (1d-table/put! (condition-type/properties type) key datum))
 
 (define (condition-type/get type key)
-  (1d-table/get (condition-type/properties type) key false))
+  (1d-table/get (condition-type/properties type) key #f))
 
 ;;;; Condition Instances
 
@@ -146,12 +147,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			(write-string
 			 (%condition-type/name (%condition/type condition))
 			 port)))))
-  (type false read-only true)
-  (continuation false read-only true)
-  (restarts false read-only true)
-  (field-values (make-vector (%condition-type/number-of-fields type) false)
-		read-only true)
-  (properties (make-1d-table) read-only true))
+  (type #f read-only #t)
+  (continuation #f read-only #t)
+  (restarts #f read-only #t)
+  (field-values (make-vector (%condition-type/number-of-fields type) #f)
+		read-only #t)
+  (properties (make-1d-table) read-only #t))
 
 (define (make-condition type continuation restarts field-alist)
   (guarantee-condition-type type 'MAKE-CONDITION)
@@ -163,7 +164,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			  (%restarts-argument restarts 'MAKE-CONDITION))))
     (let ((field-values (%condition/field-values condition)))
       (do ((alist field-alist (cddr alist)))
-	  ((null? alist))
+	  ((not (pair? alist)))
 	(vector-set! field-values
 		     (%condition-type/field-index type (car alist)
 						  'MAKE-CONDITION)
@@ -190,8 +191,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (let ((values (%condition/field-values condition)))
 		(do ((i indexes (cdr i))
 		     (v field-values (cdr v)))
-		    ((or (null? i) (null? v))
-		     (if (not (and (null? i) (null? v)))
+		    ((or (not (pair? i))
+			 (not (pair? v)))
+		     (if (or (pair? i) (pair? v))
 			 (error:wrong-number-of-arguments
 			  constructor
 			  (+ (length indexes) 1)
@@ -256,7 +258,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (1d-table/put! (condition/properties condition) key datum))
 
 (define (condition/get condition key)
-  (1d-table/get (condition/properties condition) key false))
+  (1d-table/get (condition/properties condition) key #f))
 
 (define (write-condition-report condition port)
   (guarantee-condition condition 'WRITE-CONDITION-REPORT)
@@ -287,11 +289,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			  (if name
 			      (write name port)
 			      (write-string "(anonymous)" port)))))))
-  (name false read-only true)
-  (reporter false read-only true)
-  (effector false read-only true)
-  (interactor false)
-  (properties (make-1d-table) read-only true))
+  (name #f read-only #t)
+  (reporter #f read-only #t)
+  (effector #f read-only #t)
+  (interactor #f)
+  (properties (make-1d-table) read-only #t))
 
 (define (with-restart name reporter effector interactor thunk)
   (if name (guarantee-symbol name 'WITH-RESTART))
@@ -339,7 +341,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (restart/get restart key)
   (if (eq? key 'INTERACTIVE)
       (restart/interactor restart)
-      (1d-table/get (restart/properties restart) key false)))
+      (1d-table/get (restart/properties restart) key #f)))
 
 (define (restart/put! restart key datum)
   (if (eq? key 'INTERACTIVE)
@@ -381,7 +383,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (continue-from-derived-thread-error condition)
   (let loop ((restarts (bound-restarts)))
-    (if (not (null? restarts))
+    (if (pair? restarts)
 	(if (and (eq? 'CONTINUE (restart/name (car restarts)))
 		 (eq? condition
 		      (restart/get (car restarts) 'ASSOCIATED-CONDITION)))
@@ -392,19 +394,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (bound-restarts)
   (let loop ((restarts *bound-restarts*))
-    (if (null? restarts)
-	'()
-	(cons (car restarts) (loop (cdr restarts))))))
+    (if (pair? restarts)
+	(cons (car restarts) (loop (cdr restarts)))
+	'())))
 
 (define (first-bound-restart)
   (let ((restarts *bound-restarts*))
-    (if (null? restarts)
+    (if (not (pair? restarts))
 	(error:no-such-restart #f))
     (car restarts)))
 
 (define (%find-restart name restarts)
   (let loop ((restarts restarts))
-    (and (not (null? restarts))
+    (and (pair? restarts)
 	 (if (eq? name (%restart/name (car restarts)))
 	     (car restarts)
 	     (loop (cdr restarts))))))
@@ -508,29 +510,29 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (lambda (types)
 	     (let outer ((type (car types)) (types (cdr types)))
 	       (let inner ((generalizations generalizations))
-		 (if (null? generalizations)
-		     (and (not (null? types))
-			  (outer (car types) (cdr types)))
+		 (if (pair? generalizations)
 		     (or (eq? type (car generalizations))
-			 (inner (cdr generalizations)))))))))
+			 (inner (cdr generalizations)))
+		     (and (pair? types)
+			  (outer (car types) (cdr types)))))))))
       (if (let ((types break-on-signals-types))
-	    (and (not (null? types))
+	    (and (pair? types)
 		 (intersect-generalizations? types)))
 	  (fluid-let ((break-on-signals-types '()))
 	    (breakpoint-procedure 'INHERIT
 				  "BKPT entered because of BREAK-ON-SIGNALS:"
 				  condition)))
       (do ((frames dynamic-handler-frames (cdr frames)))
-	  ((null? frames))
+	  ((not (pair? frames)))
 	(if (let ((types (caar frames)))
-	      (or (null? types)
+	      (or (not (pair? types))
 		  (intersect-generalizations? types)))
 	    (fluid-let ((dynamic-handler-frames (cdr frames)))
 	      (hook/invoke-condition-handler (cdar frames) condition))))
       (do ((frames static-handler-frames (cdr frames)))
-	  ((null? frames))
+	  ((not (pair? frames)))
 	(if (let ((types (caar frames)))
-	      (or (null? types)
+	      (or (not (pair? types))
 		  (intersect-generalizations? types)))
 	    (fluid-let ((static-handler-frames (cdr frames))
 			(dynamic-handler-frames '()))
@@ -572,14 +574,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (standard-error-handler condition)
   (let ((hook standard-error-hook))
     (if hook
-	(fluid-let ((standard-error-hook false))
+	(fluid-let ((standard-error-hook #f))
 	  (hook condition))))
-  (repl/start (push-repl 'INHERIT 'INHERIT condition '() "error>")))
+  (repl/start (push-repl 'INHERIT condition '() "error>")))
 
 (define (standard-warning-handler condition)
   (let ((hook standard-warning-hook))
     (if hook
-	(fluid-let ((standard-warning-hook false))
+	(fluid-let ((standard-warning-hook #f))
 	  (hook condition))
 	(let ((port (notification-output-port)))
 	  (fresh-line port)
@@ -587,8 +589,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (write-condition-report condition port)
 	  (newline port)))))
 
-(define standard-error-hook false)
-(define standard-warning-hook false)
+(define standard-error-hook #f)
+(define standard-warning-hook #f)
 
 (define (condition-signaller type field-names default-handler)
   (guarantee-condition-handler default-handler 'CONDITION-SIGNALLER)
@@ -727,13 +729,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(lambda (effector arguments)
 	  (apply effector arguments)))
   (set! condition-type:serious-condition
-	(make-condition-type 'SERIOUS-CONDITION false '() false))
+	(make-condition-type 'SERIOUS-CONDITION #f '() #f))
   (set! condition-type:warning
-	(make-condition-type 'WARNING false '() false))
+	(make-condition-type 'WARNING #f '() #f))
 
   (set! condition-type:error
-	(make-condition-type 'ERROR condition-type:serious-condition '()
-	  false))
+	(make-condition-type 'ERROR condition-type:serious-condition '() #f))
 
   (let ((reporter/simple-condition
 	 (lambda (condition port)
@@ -741,7 +742,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				 (access-condition condition 'IRRITANTS)
 				 port))))
     (set! condition-type:simple-condition
-	  (make-condition-type 'SIMPLE-CONDITION false '(MESSAGE IRRITANTS)
+	  (make-condition-type 'SIMPLE-CONDITION #f '(MESSAGE IRRITANTS)
 	    reporter/simple-condition))
     (set! condition-type:simple-error
 	  (make-condition-type 'SIMPLE-ERROR condition-type:error
@@ -775,9 +776,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	     (let ((type (access-condition condition 'TYPE)))
 	       (if (string? type)
 		   (begin
-		     (if (and (not (string-null? type))
-			      (not (or (string-prefix-ci? "a " type)
-				       (string-prefix-ci? "an " type))))
+		     (if (not (or (string-null? type)
+				  (string-prefix-ci? "a " type)
+				  (string-prefix-ci? "an " type)))
 			 (write-string
 			  (if (char-set-member? char-set:vowels
 						(string-ref type 0))
@@ -1186,7 +1187,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (list-of-symbols? object)
   (and (list? object)
        (let loop ((field-names object))
-	 (or (null? field-names)
+	 (or (not (pair? field-names))
 	     (and (symbol? (car field-names))
 		  (not (memq (car field-names) (cdr field-names)))
 		  (loop (cdr field-names)))))))
@@ -1198,10 +1199,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (keyword-association-list? object)
   (and (list? object)
        (let loop ((l object) (symbols '()))
-	 (or (null? l)
+	 (or (not (pair? l))
 	     (and (symbol? (car l))
 		  (not (memq (car l) symbols))
-		  (not (null? (cdr l)))
+		  (pair? (cdr l))
 		  (loop (cddr l) (cons (car l) symbols)))))))
 
 (define-integrable (procedure-of-arity? object arity)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debug.scm,v 1.57 2001/12/19 01:45:58 cph Exp $
+;;; $Id: debug.scm,v 1.58 2001/12/19 05:25:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-2001 Massachusetts Institute of Technology
 ;;;
@@ -348,11 +348,7 @@
 				       (buffer-end buffer))
 		    (buffer-not-modified! buffer)
 		    (if env-exists?
-			(start-inferior-repl!
-			 buffer
-			 environment
-			 (evaluation-syntax-table buffer environment)
-			 #f))
+			(start-inferior-repl! buffer environment #f))
 		    buffer))))))))
 
 (define evaluation-line-marker
@@ -471,8 +467,7 @@
 					    (prompt-for-expression prompt)
 					    (if (default-object? environment)
 						(nearest-repl/environment)
-						environment)
-					    (nearest-repl/syntax-table))))))
+						environment))))))
 		      (hook/invoke-restart
 		       (lambda (continuation arguments)
 			 (invoke-continuation continuation

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.56 2001/02/27 17:21:01 cph Exp $
+$Id: rep.scm,v 14.57 2001/12/19 05:21:51 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Read-Eval-Print Loop
@@ -24,15 +25,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (declare (usual-integrations))
 
-(define repl:allow-restart-notifications? true)
-(define repl:write-result-hash-numbers? true)
+(define repl:allow-restart-notifications? #t)
+(define repl:write-result-hash-numbers? #t)
 
 (define (initialize-package!)
-  (set! *nearest-cmdl* false)
+  (set! *nearest-cmdl* #f)
   (set! hook/repl-eval default/repl-eval)
   (set! hook/repl-write default/repl-write)
   (set! hook/set-default-environment default/set-default-environment)
-  (set! hook/error-decision false)
+  (set! hook/error-decision #f)
   (initialize-breakpoint-condition!)
   unspecific)
 
@@ -40,11 +41,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (call-with-current-continuation
    (lambda (continuation)
      (set! root-continuation continuation)
-     (repl/start (make-repl false
+     (repl/start (make-repl #f
 			    console-i/o-port
 			    user-initial-environment
-			    user-initial-syntax-table
-			    false
+			    #f
 			    `((SET-DEFAULT-DIRECTORY
 			       ,top-level-repl/set-default-directory))
 			    user-initial-prompt)
@@ -80,7 +80,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  cmdl-rtd
 	  '(LEVEL PARENT PORT DRIVER STATE OPERATIONS PROPERTIES))))
     (lambda (parent port driver state operations)
-      (if (not (or (false? parent) (cmdl? parent)))
+      (if (not (or (not parent) (cmdl? parent)))
 	  (error:wrong-type-argument parent "cmdl" 'MAKE-CMDL))
       (if (not (or parent port))
 	  (error:bad-range-argument port 'MAKE-CMDL))
@@ -255,15 +255,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (cmdl/operation-names cmdl)
   (let cmdl-loop ((cmdl cmdl) (names '()))
     (let loop ((bindings (cmdl/operations cmdl)) (names names))
-      (if (null? bindings)
-	  (let ((parent (cmdl/parent cmdl)))
-	    (if parent
-		(cmdl-loop parent names)
-		names))
+      (if (pair? bindings)
 	  (loop (cdr bindings)
 		(if (memq (caar bindings) names)
 		    names
-		    (cons (caar bindings) names)))))))
+		    (cons (caar bindings) names)))
+	  (let ((parent (cmdl/parent cmdl)))
+	    (if parent
+		(cmdl-loop parent names)
+		names))))))
 
 ;;;; Messages
 
@@ -290,23 +290,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (cmdl-message/append . messages)
   (do ((messages messages (cdr messages)))
-      ((null? messages))
+      ((not (pair? messages)))
     (set-car! messages (->cmdl-message (car messages))))
   (let ((messages (delq! %cmdl-message/null messages)))
-    (cond ((null? messages)
-	   (cmdl-message/null))
-	  ((null? (cdr messages))
-	   (car messages))
-	  (else
-	   (lambda (cmdl)
-	     (for-each (lambda (message) (message cmdl)) messages))))))
+    (if (pair? messages)
+	(if (pair? (cdr messages))
+	    (lambda (cmdl)
+	      (for-each (lambda (message) (message cmdl)) messages))
+	    (car messages))
+	(cmdl-message/null))))
 
 (define-integrable (cmdl-message/null)
   %cmdl-message/null)
 
 (define (%cmdl-message/null cmdl)
   cmdl
-  false)
+  #f)
 
 ;;;; Interrupts
 
@@ -336,22 +335,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (abort->previous #!optional message)
   (invoke-abort (let ((restarts (find-restarts 'ABORT (bound-restarts))))
 		  (let ((next (find-restarts 'ABORT (cdr restarts))))
-		    (cond ((not (null? next)) (car next))
-			  ((not (null? restarts)) (car restarts))
+		    (cond ((pair? next) (car next))
+			  ((pair? restarts) (car restarts))
 			  (else (error:no-such-restart 'ABORT)))))
 		(if (default-object? message) "Up!" message)))
 
 (define (abort->top-level #!optional message)
   (invoke-abort (let loop ((restarts (find-restarts 'ABORT (bound-restarts))))
 		  (let ((next (find-restarts 'ABORT (cdr restarts))))
-		    (cond ((not (null? next)) (loop next))
-			  ((not (null? restarts)) (car restarts))
+		    (cond ((pair? next) (loop next))
+			  ((pair? restarts) (car restarts))
 			  (else (error:no-such-restart 'ABORT)))))
 		(if (default-object? message) "Quit!" message)))
 
 (define (find-restarts name restarts)
   (let loop ((restarts restarts))
-    (if (or (null? restarts)
+    (if (or (not (pair? restarts))
 	    (eq? name (restart/name (car restarts))))
 	restarts
 	(loop (cdr restarts)))))
@@ -367,7 +366,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; REP Loops
 
-(define (make-repl parent port environment syntax-table
+(define (make-repl parent port environment
 		   #!optional condition operations prompt)
   (make-cmdl parent
 	     port
@@ -396,10 +395,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			 repl/environment
 			 'ENVIRONMENT
 			 ->environment)
-		(inherit syntax-table
-			 repl/syntax-table
-			 'SYNTAX-TABLE
-			 guarantee-syntax-table)
 		(if (default-object? condition) #f condition)))
 	     (append (if (default-object? operations) '() operations)
 		     default-repl-operations)))
@@ -413,14 +408,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (error:derived-thread thread condition)
 	      (error "Non-owner thread can't start REPL:" thread)))))))
 
-(define (push-repl environment syntax-table
+(define (push-repl environment
 		   #!optional condition operations prompt)
   (let ((parent (nearest-cmdl)))
     (make-repl parent
 	       #f
 	       environment
-	       syntax-table
-	       (if (default-object? condition) false condition)
+	       (if (default-object? condition) #f condition)
 	       (if (default-object? operations) '() operations)
 	       (if (default-object? prompt) 'INHERIT prompt))))
 
@@ -435,23 +429,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((reader-history (repl/reader-history repl))
 	(printer-history (repl/printer-history repl)))
     (port/set-default-environment (cmdl/port repl) (repl/environment repl))
-    (port/set-default-syntax-table (cmdl/port repl) (repl/syntax-table repl))
-    (do () (false)
+    (do () (#f)
       (let ((s-expression
 	     (prompt-for-command-expression (cons 'STANDARD (repl/prompt repl))
 					    (cmdl/port repl))))
 	(repl-history/record! reader-history s-expression)
 	(let ((value
-	       (hook/repl-eval repl
-			       s-expression
-			       (repl/environment repl)
-			       (repl/syntax-table repl))))
+	       (hook/repl-eval repl s-expression (repl/environment repl))))
 	  (repl-history/record! printer-history value)
 	  (hook/repl-write repl s-expression value))))))
 
 (define hook/repl-eval)
-(define (default/repl-eval repl s-expression environment syntax-table)
-  (let ((scode (syntax s-expression syntax-table)))
+(define (default/repl-eval repl s-expression environment)
+  (let ((scode (syntax s-expression environment)))
     (with-repl-eval-boundary repl
       (lambda ()
 	(extended-scode-eval scode environment)))))
@@ -482,7 +472,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (cmdl/start repl
 	      (make-repl-message repl
 				 (if (default-object? message)
-				     false
+				     #f
 				     message))))
 
 (define (make-repl-message repl message)
@@ -586,7 +576,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (newline port)
   (do ((restarts restarts (cdr restarts))
        (index (length restarts) (- index 1)))
-      ((null? restarts))
+      ((not (pair? restarts)))
     (write-index index port)
     (write-string " " port)
     (write-restart-report (car restarts) port)
@@ -594,15 +584,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (filter-restarts restarts)
   (let loop ((restarts restarts))
-    (if (null? restarts)
-	'()
+    (if (pair? restarts)
 	(let ((rest
 	       (if (cmdl-abort-restart? (car restarts))
 		   (list-transform-positive (cdr restarts) cmdl-abort-restart?)
 		   (loop (cdr restarts)))))
 	  (if (restart/interactor (car restarts))
 	      (cons (car restarts) rest)
-	      rest)))))
+	      rest))
+	'())))
 
 (define (condition-restarts-message condition)
   (cmdl-message/active
@@ -618,11 +608,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define-structure (repl-state
 		   (conc-name repl-state/)
 		   (constructor make-repl-state
-				(prompt environment syntax-table condition)))
+				(prompt environment condition)))
   prompt
   environment
-  syntax-table
-  (condition false read-only true)
+  (condition #f read-only #t)
   (reader-history (make-repl-history repl-reader-history-size))
   (printer-history (make-repl-history repl-printer-history-size)))
 
@@ -643,13 +632,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (set-repl-state/environment! (cmdl/state repl) environment)
   (repl/set-default-environment repl)
   (port/set-default-environment (cmdl/port repl) environment))
-
-(define-integrable (repl/syntax-table repl)
-  (repl-state/syntax-table (cmdl/state repl)))
-
-(define (set-repl/syntax-table! repl syntax-table)
-  (set-repl-state/syntax-table! (cmdl/state repl) syntax-table)
-  (port/set-default-syntax-table (cmdl/port repl) syntax-table))
 
 (define-integrable (repl/condition repl)
   (repl-state/condition (cmdl/state repl)))
@@ -688,9 +670,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (nearest-repl/environment)
   (repl/environment (nearest-repl)))
 
-(define (nearest-repl/syntax-table)
-  (repl/syntax-table (nearest-repl)))
-
 (define (nearest-repl/condition)
   (repl/condition (nearest-repl)))
 
@@ -701,7 +680,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-structure (repl-history (constructor %make-repl-history)
 				(conc-name repl-history/))
-  (size false read-only true)
+  (size #f read-only #t)
   elements)
 
 (define (make-repl-history size)
@@ -709,14 +688,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (repl-history/record! history object)
   (let ((elements (repl-history/elements history)))
-    (if (not (null? elements))
+    (if (pair? elements)
 	(begin
 	  (set-car! elements object)
 	  (set-repl-history/elements! history (cdr elements))))))
 
 (define (repl-history/replace-current! history object)
   (let ((elements (repl-history/elements history)))
-    (if (not (null? elements))
+    (if (pair? elements)
 	(set-car! (list-tail elements (- (repl-history/size history) 1))
 		  object))))
 
@@ -755,16 +734,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		  (let ((package-name
 			 (cond ((symbol? object) (list object))
 			       ((list? object) object)
-			       (else false))))
+			       (else #f))))
 		    (and package-name
 			 (name->package package-name)))))
 	     (if (not package)
 		 (error:wrong-type-argument object "environment" procedure))
 	     (package/environment package))))))
-
-(define (gst syntax-table)
-  (guarantee-syntax-table syntax-table 'GST)
-  (set-repl/syntax-table! (nearest-repl) syntax-table))
 
 (define (re #!optional index)
   (let ((repl (nearest-repl)))
@@ -777,8 +752,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 						    index))))
 			(repl-history/replace-current! history s-expression)
 			s-expression))
-		    (repl/environment repl)
-		    (repl/syntax-table repl))))
+		    (repl/environment repl))))
 
 (define (in #!optional index)
   (repl-history/read (repl/reader-history (nearest-repl))
@@ -789,10 +763,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		     (- (if (default-object? index) 1 index) 1)))
 
 (define (read-eval-print environment message prompt)
-  (repl/start (push-repl environment 'INHERIT false '() prompt) message))
+  (repl/start (push-repl environment #f '() prompt) message))
 
 (define (ve environment)
-  (read-eval-print (->environment environment 'VE) false 'INHERIT))
+  (read-eval-print (->environment environment 'VE) #f 'INHERIT))
 
 (define (proceed #!optional value)
   (if (default-object? value)
@@ -915,7 +889,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(fluid-let ((standard-breakpoint-hook #f))
 	  (hook condition))))
   (repl/start (push-repl (breakpoint/environment condition)
-			 'INHERIT
 			 condition
 			 '()
 			 (breakpoint/prompt condition))

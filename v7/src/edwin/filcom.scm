@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.222 2001/12/18 21:35:06 cph Exp $
+;;; $Id: filcom.scm,v 1.223 2001/12/19 05:25:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -242,17 +242,8 @@ procedures are called."
 	    (local-set-variable! scheme-environment (cadr entry) buffer)
 	    (if (and (eq? 'DEFAULT (ref-variable scheme-environment buffer))
 		     (not (eq? 'DEFAULT (cadr entry))))
-		(begin
-		  (message "Ignoring bad evaluation environment: "
-			   (cadr entry))
-		  (local-set-variable! scheme-syntax-table
-				       'DEFAULT
-				       buffer))
-		(local-set-variable! scheme-syntax-table
-				     (if (pair? (cddr entry))
-					 (caddr entry)
-					 'DEFAULT)
-				     buffer)))))))
+		(message "Ignoring bad evaluation environment: "
+			 (cadr entry))))))))
 
 (define (find-file-revert buffer)
   (if (verify-visited-file-modification-time? buffer)

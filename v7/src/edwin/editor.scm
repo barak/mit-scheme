@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: editor.scm,v 1.252 2001/07/21 05:49:45 cph Exp $
+;;; $Id: editor.scm,v 1.253 2001/12/19 05:25:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -176,7 +176,6 @@
 	(start-inferior-repl!
 	 buffer
 	 (nearest-repl/environment)
-	 (nearest-repl/syntax-table)
 	 (and (not (ref-variable inhibit-startup-message))
 	      (cmdl-message/append
 	       (cmdl-message/active

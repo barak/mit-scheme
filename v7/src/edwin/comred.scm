@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: comred.scm,v 1.122 2001/07/21 05:49:36 cph Exp $
+;;; $Id: comred.scm,v 1.123 2001/12/19 05:25:12 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -446,7 +446,7 @@
   (apply (command-procedure (name->command (car entry)))
 	 (map (let ((environment (->environment '(EDWIN))))
 		(lambda (expression)
-		  (eval-with-history (current-buffer) expression environment)))
+		  (eval-with-history expression environment)))
 	      (cdr entry))))
 
 (define (interactive-argument key prompt)

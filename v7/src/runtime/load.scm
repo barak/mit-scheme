@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.59 2001/12/18 22:17:06 cph Exp $
+$Id: load.scm,v 14.60 2001/12/19 05:21:42 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -65,18 +65,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;; before opening the input file.
 
 (define (load filename/s #!optional environment syntax-table purify?)
+  syntax-table				;ignored
   (let ((environment
 	 ;; Kludge until optional defaulting fixed.
 	 (if (or (default-object? environment)
 		 (eq? environment default-object))
 	     default-object
 	     (->environment environment)))
-	(syntax-table
-	 (if (or (default-object? syntax-table)
-		 (eq? syntax-table default-object)
-		 (eq? syntax-table 'DEFAULT))
-	     default-object
-	     (guarantee-syntax-table syntax-table 'LOAD)))
 	(purify?
 	 (if (or (default-object? purify?) (eq? purify? default-object))
 	     #f
@@ -93,7 +88,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			     (lambda ()
 			       (loader pathname
 				       environment
-				       syntax-table
 				       purify?
 				       load-noisily?))))
 			(cond (last-file? (load-it))
@@ -140,13 +134,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (list 'DEFAULT-OBJECT))
 
 (define (load-noisily filename #!optional environment syntax-table purify?)
+  syntax-table				;ignored
   (fluid-let ((load-noisily? #t))
     (load filename
 	  ;; This defaulting is a kludge until we get the optional
 	  ;; defaulting fixed.  Right now it must match the defaulting
 	  ;; of `load'.
 	  (if (default-object? environment) default-object environment)
-	  (if (default-object? syntax-table) default-object syntax-table)
+	  'DEFAULT
 	  (if (default-object? purify?) default-object purify?))))
 
 (define (load-latest . args)
@@ -218,7 +213,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		(loop (cdr types) pathname (cadar types) time)
 		(skip)))))))
 
-(define (load/internal pathname environment syntax-table purify? load-noisily?)
+(define (load/internal pathname environment purify? load-noisily?)
   (let* ((port (open-input-file pathname))
 	 (fasl-marker (peek-char port)))
     (if (and (not (eof-object? fasl-marker))
@@ -231,7 +226,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			  purify?))
 	(let ((value-stream
 	       (lambda ()
-		 (eval-stream (read-stream port) environment syntax-table))))
+		 (eval-stream (read-stream port) environment))))
 	  (if load-noisily?
 	      (write-stream (value-stream)
 			    (lambda (exp&value)
@@ -251,9 +246,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     (fasload/update-debugging-info! value pathname)
     value))
 
-(define (load-object-file pathname environment
-			  syntax-table purify? load-noisily?)
-  syntax-table load-noisily?		; ignored
+(define (load-object-file pathname environment purify? load-noisily?)
+  load-noisily?		; ignored
   (loading-message
    load/suppress-loading-message? pathname
    (lambda ()
@@ -359,24 +353,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			  (close-input-port port)
 			  #t)))))
 
-(define (eval-stream stream environment syntax-table)
+(define (eval-stream stream environment)
   (stream-map stream
 	      (let ((repl (nearest-repl)))
 		(let* ((environment
 			(if (eq? environment default-object)
 			    (repl/environment repl)
-			    environment))
-		       (syntax-table
-			(make-syntax-table
-			 (if (eq? syntax-table default-object)
-			     (environment-syntax-table environment)
-			     syntax-table))))
+			    environment)))
 		  (lambda (s-expression)
 		    (cons s-expression
-			  (hook/repl-eval #f
-					  s-expression
-					  environment
-					  syntax-table)))))))
+			  (hook/repl-eval #f s-expression environment)))))))
 
 (define (write-stream stream write)
   (if (stream-pair? stream)
@@ -564,17 +550,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (fluid-let
 	  ((load
 	    (lambda (fname #!optional env syntax-table purify?)
+	      syntax-table		;ignored
 	      (let ((env (if (default-object? env) default-object env))
 		    (purify?
 		     (if (default-object? purify?) default-object purify?)))
 		(let ((place (find-filename fname alist)))
 		  (if (not place)
-		      (real-load fname
-				 env
-				 (if (default-object? syntax-table)
-				     default-object
-				     syntax-table)
-				 purify?)
+		      (real-load fname env 'DEFAULT purify?)
 		      (handle-load-hooks
 		       (lambda ()
 			 (let ((scode (caddr place)))
