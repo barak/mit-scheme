@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2thrd.h,v 1.1 1994/11/28 03:43:01 cph Exp $
+$Id: os2thrd.h,v 1.2 1995/04/11 05:17:11 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -70,6 +70,7 @@ typedef msg_t sm_kill_request_t;
 extern TID  OS2_beginthread (thread_procedure_t, void *, unsigned int);
 extern void OS2_endthread (void);
 extern void OS2_kill_thread (TID);
+extern TID  OS2_current_tid (void);
 
 #ifdef __IBMC__
 #define OS2_threadstore() ((thread_store_t **) (_threadstore ()))

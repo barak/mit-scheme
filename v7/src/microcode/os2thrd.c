@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2thrd.c,v 1.1 1994/11/28 03:43:00 cph Exp $
+$Id: os2thrd.c,v 1.2 1995/04/11 05:17:03 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -74,6 +74,16 @@ OS2_kill_thread (TID tid)
   STD_API_CALL (dos_kill_thread, (tid));
 }
 
+TID
+OS2_current_tid (void)
+{
+  PTIB ptib;
+  PPIB ppib;
+  TID tid;
+  STD_API_CALL (dos_get_info_blocks, ((&ptib), (&ppib)));
+  return (ptib -> tib_ptib2 -> tib2_ultid);
+}
+
 #ifndef __IBMC__
 #define MAX_TID 999
 static thread_store_t * thread_store_array [MAX_TID + 1];
@@ -81,11 +91,7 @@ static thread_store_t * thread_store_array [MAX_TID + 1];
 thread_store_t **
 OS2_threadstore (void)
 {
-  PTIB ptib;
-  PPIB ppib;
-  TID tid;
-  STD_API_CALL (dos_get_info_blocks, ((&ptib), (&ppib)));
-  tid = (ptib -> tib_ptib2 -> tib2_ultid);
+  TID tid = (OS2_thread_id ());
   if (tid > MAX_TID)
     OS2_logic_error ("Unexpectedly large TID.");
   return (& (thread_store_array [tid]));
