@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.46 1992/06/03 21:54:31 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.47 1992/06/04 12:42:30 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -49,6 +49,7 @@ MIT in each case. */
 
 #ifndef DOS386
 #  include <sys/param.h>
+#  define IO_PAGE_SIZE		4096
 #endif
 
 #ifndef BCH_START_CLOSURE_RELOCATION
