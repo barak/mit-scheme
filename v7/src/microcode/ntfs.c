@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.20 1998/01/09 05:31:21 cph Exp $
+$Id: ntfs.c,v 1.21 1998/01/09 05:33:52 cph Exp $
 
 Copyright (c) 1992-98 Massachusetts Institute of Technology
 
@@ -152,7 +152,7 @@ valid_drive_p (const char * namestring)
 			 (&number_of_free_clusters),
 			 (&total_number_of_clusters)));
   SetErrorMode (0);
-  return (!result);
+  return (result);
 }
 
 static HANDLE
