@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.164 1991/11/06 22:34:16 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.165 1992/02/13 18:25:54 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -378,6 +378,23 @@ even if the buffer is not visiting a file.  Automatically local in
 all buffers."
   false
   boolean?)
+
+(define (pathname->buffer-name pathname)
+  (let ((pathname
+	 (let ((pathname (->pathname pathname)))
+	   (if (pathname-name pathname)
+	       pathname
+	       (directory-pathname-as-file pathname)))))
+    (let ((name (file-namestring pathname)))
+      (if (string-null? name)
+	  (->namestring pathname)
+	  name))))
+
+(define (pathname->buffer pathname)
+  (let ((pathname (->pathname pathname)))
+    (list-search-positive (buffer-list)
+      (lambda (buffer)
+	(equal? pathname (buffer-pathname buffer))))))
 
 (define-command set-visited-file-name
   "Change name of file visited in current buffer.
@@ -444,19 +461,6 @@ Leaves point at the beginning, mark at the end."
 	(insert-file point filename)
 	(set-current-point! point)
 	(push-current-mark! mark)))))
-
-(define (pathname->buffer-name pathname)
-  (file-namestring
-   (let ((pathname (->pathname pathname)))
-     (if (pathname-name pathname)
-	 pathname
-	 (directory-pathname-as-file pathname)))))
-
-(define (pathname->buffer pathname)
-  (let ((pathname (->pathname pathname)))
-    (list-search-positive (buffer-list)
-      (lambda (buffer)
-	(equal? pathname (buffer-pathname buffer))))))
 
 (define-command copy-file
   "Copy a file; the old and new names are read in the typein window.
