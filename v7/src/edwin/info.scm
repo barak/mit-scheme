@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: info.scm,v 1.117 1993/10/06 02:40:20 cph Exp $
+;;;	$Id: info.scm,v 1.118 1994/10/09 21:57:36 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -312,7 +312,7 @@ The editing commands are the same as in Text mode,
 except for \\[info-cease-edit] to return to Info."
   (lambda (buffer)
     (define-variable-local-value! buffer (ref-variable-object page-delimiter)
-      (string-append "^\f\\|" (ref-variable page-delimiter buffer)))))
+      (string-append "^\01f\f\\|" (ref-variable page-delimiter buffer)))))
 
 (define-key 'info-edit '(#\c-c #\c-c) 'info-cease-edit)
 
@@ -820,7 +820,7 @@ The name may be an abbreviation of the reference name."
 		       (ref-variable info-history))))
 
 (define (node-start start end)
-  (line-start (or (search-backward "\n" start end false)
+  (line-start (or (search-backward "\n\01f" start end false)
 		  (editor-error))
 	      2
 	      'ERROR))
@@ -831,7 +831,7 @@ The name may be an abbreviation of the reference name."
 (define (node-end node)
   (let ((end (group-end node)))
     (let loop ((start node))
-      (let ((mark (re-search-forward "[\f]" start end false)))
+      (let ((mark (re-search-forward "[\f\01f]" start end false)))
 	(if (not mark)
 	    end
 	    (let ((m (re-match-start 0)))
@@ -840,7 +840,7 @@ The name may be an abbreviation of the reference name."
 		  (loop mark))))))))
 
 (define (next-node start end)
-  (let ((mark (search-forward "\n" start end false)))
+  (let ((mark (search-forward "\n\01f" start end false)))
       (and mark
 	   (line-start mark 1))))
 
@@ -940,7 +940,7 @@ The name may be an abbreviation of the reference name."
   "\nTag table:\n")
 
 (define tag-table-end-string
-  "\nEnd tag table\n")
+  "\01f\nEnd tag table\n")
 
 (define (find-tag-table buffer)
   (let* ((end (buffer-end buffer))
@@ -1011,7 +1011,7 @@ The name may be an abbreviation of the reference name."
 	  (+ (- index (subfile-index (car subfiles)))
 	     (mark-index
 	      (let ((buffer (current-buffer)))
-		(or (search-forward "\n"
+		(or (search-forward "\n\01f"
 				    (buffer-start buffer)
 				    (buffer-end buffer)
 				    false)
@@ -1036,12 +1036,12 @@ The name may be an abbreviation of the reference name."
 	 (let loop
 	     ((start
 	       (let ((start (ref-variable info-tag-table-start)))
-		 (or (search-forward "\n\nIndirect:\n"
+		 (or (search-forward "\n\01f\nIndirect:\n"
 				     (group-start start)
 				     start
 				     true)
 		     (editor-error)))))
-	   (if (match-forward "" start)
+	   (if (match-forward "\01f" start)
 	       '()
 	       (begin
 		 (if (not (search-forward ": " start (group-end start) false))
