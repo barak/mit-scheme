@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwin.scm,v 1.297 1993/01/09 01:15:54 cph Exp $
+;;;	$Id: bufwin.scm,v 1.298 1993/01/09 09:43:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -638,7 +638,8 @@
     (%set-window-point-moved?! window 'SINCE-START-SET)
     (%reset-window-structures! window)
     (buffer-window/redraw! window)
-    (set-interrupt-enables! mask)))
+    (set-interrupt-enables! mask)
+    unspecific))
 
 (define-method buffer-window (:set-size! window x y)
   (if (%window-debug-trace window)
@@ -740,7 +741,8 @@
     (%set-window-force-redraw?! window true)
     (%clear-window-incremental-redisplay-state! window)
     (window-needs-redisplay! window)
-    (set-interrupt-enables! mask)))
+    (set-interrupt-enables! mask)
+    unspecific))
 
 ;;;; Window State
 
@@ -860,7 +862,8 @@
       (%set-window-point-moved?! window 'SINCE-START-SET)
       (%set-buffer-point! (%window-buffer window) mark)
       (window-needs-redisplay! window)
-      (set-interrupt-enables! mask))))
+      (set-interrupt-enables! mask)
+      unspecific)))
 
 ;;;; Start Mark
 
@@ -891,23 +894,6 @@
 				  0
 				  (fix:- (window-y-size window) 1))))))
 
-(define (set-new-coordinates! window index y point-y)
-  (with-values (lambda () (predict-start-line window index y))
-    (lambda (start y-start)
-      (cond ((predict-index-visible? window start y-start
-				     (%window-point-index window))
-	     (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-	       (set-start-mark! window start y-start)
-	       (set-interrupt-enables! mask)))
-	    (point-y
-	     (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-	       (%set-window-point-index!
-		window
-		(or (predict-index window start y-start 0 point-y)
-		    (%window-group-end-index window)))
-	       (set-start-mark! window start y-start)
-	       (set-interrupt-enables! mask)))))))
-
 (define (buffer-window/scroll-y-absolute! window y-point)
   (if (%window-debug-trace window)
       ((%window-debug-trace window) 'window window 'scroll-y-absolute!
@@ -921,7 +907,8 @@
     (lambda (start y-start)
       (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
 	(set-start-mark! window start y-start)
-	(set-interrupt-enables! mask)))))
+	(set-interrupt-enables! mask)
+	unspecific))))
 
 (define (buffer-window/y-center window)
   (let ((y-size (window-y-size window)))
@@ -940,6 +927,25 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
     (and (real? cursor-centering-point)
 	 (<= 0 cursor-centering-point 100))))
 
+(define (set-new-coordinates! window index y point-y)
+  (with-values (lambda () (predict-start-line window index y))
+    (lambda (start y-start)
+      (cond ((predict-index-visible? window start y-start
+				     (%window-point-index window))
+	     (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+	       (set-start-mark! window start y-start)
+	       (set-interrupt-enables! mask)
+	       unspecific))
+	    (point-y
+	     (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+	       (%set-window-point-index!
+		window
+		(or (predict-index window start y-start 0 point-y)
+		    (%window-group-end-index window)))
+	       (set-start-mark! window start y-start)
+	       (set-interrupt-enables! mask)
+	       unspecific))))))
+
 (define (set-start-mark! window start-line y-start)
   (if (fix:= y-start 0)
       (if (%window-start-line-mark window)
@@ -989,7 +995,8 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
 (define (guarantee-start-mark! window)
   (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (%guarantee-start-mark! window)
-    (set-interrupt-enables! mask)))
+    (set-interrupt-enables! mask)
+    unspecific))
 
 (define (%guarantee-start-mark! window)
   (let ((index-at!
@@ -1071,7 +1078,8 @@ If this is zero, point is always centered after it moves off screen."
   (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (%set-window-override-string! window message)
     (window-needs-redisplay! window)
-    (set-interrupt-enables! mask)))
+    (set-interrupt-enables! mask)
+    unspecific))
 
 (define (buffer-window/clear-override-message! window)
   (if (%window-override-string window)
@@ -1082,7 +1090,8 @@ If this is zero, point is always centered after it moves off screen."
 	(let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
 	  (%set-window-override-string! window false)
 	  (buffer-window/redraw! window)
-	  (set-interrupt-enables! mask)))))
+	  (set-interrupt-enables! mask)
+	  unspecific))))
 
 (define (update-override-string! window screen x-start y-start xl xu yl yu)
   ;; This should probably update like any other string, paying

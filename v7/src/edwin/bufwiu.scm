@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwiu.scm,v 1.20 1993/01/09 01:15:56 cph Exp $
+;;;	$Id: bufwiu.scm,v 1.21 1993/01/09 09:44:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -186,11 +186,6 @@
 	       (preserve-all! window start end)))))
   (%clear-window-outstanding-changes! window))
 
-(define-integrable (preserve-nothing! window)
-  (regenerate-outlines window
-		       (%window-start-line-index window)
-		       (%window-start-line-y window)))
-
 (define (preserve-top! window start start-changes)
   (let ((start-outline (%window-start-outline window))
 	(start-y (%window-current-start-y window)))
@@ -331,6 +326,11 @@
 	       (if (not y)
 		   (regenerate-outlines window wlstart wlsy)
 		   (scroll-up y))))))))
+
+(define-integrable (preserve-nothing! window)
+  (regenerate-outlines window
+		       (%window-start-line-index window)
+		       (%window-start-line-y window)))
 
 (define (first-unchanged-outline end-outline end end-changes)
   (let loop ((outline end-outline) (end end))
@@ -417,7 +417,8 @@
        (fix:+ (%window-saved-x-start window) x-start)
        (fix:+ (%window-saved-y-start window) y-start))
       (%set-inferior-x-start! (%window-cursor-inferior window) x-start))
-    (set-interrupt-enables! mask)))
+    (set-interrupt-enables! mask)
+    unspecific))
 
 (define (buffer-window/direct-output-backward-char! window)
   (if (%window-debug-trace window)
@@ -433,7 +434,8 @@
        (fix:+ (%window-saved-x-start window) x-start)
        (fix:+ (%window-saved-y-start window) y-start))
       (%set-inferior-x-start! (%window-cursor-inferior window) x-start))
-    (set-interrupt-enables! mask)))
+    (set-interrupt-enables! mask)
+    unspecific))
 
 (define (buffer-window/home-cursor! window)
   (if (%window-debug-trace window)
@@ -447,7 +449,8 @@
 	(screen-direct-output-move-cursor (%window-saved-screen window)
 					  (%window-saved-x-start window)
 					  (%window-saved-y-start window))
-	(set-interrupt-enables! mask))))
+	(set-interrupt-enables! mask)
+	unspecific)))
 
 (define (buffer-window/direct-output-insert-char! window char)
   (if (%window-debug-trace window)
@@ -471,7 +474,8 @@
       (%set-inferior-x-start! (%window-cursor-inferior window)
 			      (fix:+ x-start 1)))
     (update-modified-tick! window)
-    (set-interrupt-enables! mask)))
+    (set-interrupt-enables! mask)
+    unspecific))
 
 (define (buffer-window/direct-output-insert-substring! window string start end)
   (if (%window-debug-trace window)
@@ -498,7 +502,8 @@
       (%set-inferior-x-start! (%window-cursor-inferior window)
 			      (fix:+ x-start length)))
     (update-modified-tick! window)
-    (set-interrupt-enables! mask)))
+    (set-interrupt-enables! mask)
+    unspecific))
 
 (define (direct-output-outline window y)
   (let loop
@@ -530,4 +535,5 @@
       (%set-inferior-x-start! (%window-cursor-inferior window) 0)
       (%set-inferior-y-start! (%window-cursor-inferior window) end-y))
     (update-modified-tick! window)
-    (set-interrupt-enables! mask)))
+    (set-interrupt-enables! mask)
+    unspecific))

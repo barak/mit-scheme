@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.53 1992/11/17 17:39:01 cph Exp $
+;;;	$Id: intmod.scm,v 1.54 1993/01/09 09:44:40 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -539,7 +539,8 @@ If this is an error, the debugger examines the error condition."
 (define (enqueue! queue object)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (enqueue!/unsafe queue object)
-    (set-interrupt-enables! interrupt-mask)))
+    (set-interrupt-enables! interrupt-mask)
+    unspecific))
 
 (define (dequeue! queue empty)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
@@ -642,7 +643,8 @@ If this is an error, the debugger examines the error condition."
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (set-port/output-strings! port (cons string (port/output-strings port)))
     (inferior-thread-output!/unsafe (port/output-registration port))
-    (set-interrupt-enables! interrupt-mask)))
+    (set-interrupt-enables! interrupt-mask)
+    unspecific))
 
 (define (enqueue-output-operation! port operator)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
@@ -658,7 +660,8 @@ If this is an error, the debugger examines the error condition."
 		 (region-insert-string! mark string)))))))
     (enqueue!/unsafe (port/output-queue port) operator)
     (inferior-thread-output!/unsafe (port/output-registration port))
-    (set-interrupt-enables! interrupt-mask)))
+    (set-interrupt-enables! interrupt-mask)
+    unspecific))
 
 (define (process-output-queue port)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok))
