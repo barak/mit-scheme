@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.494 2004/10/01 02:15:20 cph Exp $
+$Id: runtime.pkg,v 14.495 2004/10/01 02:16:49 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -302,6 +302,7 @@ USA.
 	  lexical-unassigned?
 	  lexical-unbound?
 	  lexical-unreferenceable?
+	  limit-interrupts!
 	  link-variables
 	  local-assignment
 	  make-cell
