@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: intrpt.scm,v 14.13 1993/04/29 05:24:34 cph Exp $
+$Id: intrpt.scm,v 14.14 1993/06/29 22:58:18 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -35,11 +35,14 @@ MIT in each case. |#
 ;;;; Interrupt System
 ;;; package: (runtime interrupt-handler)
 
-(declare (usual-integrations))
+(declare (usual-integrations)
+	 (integrate-external "boot"))
 
 (define (initialize-package!)
   (set! index:interrupt-vector
 	(fixed-objects-vector-slot 'SYSTEM-INTERRUPT-VECTOR))
+  (set! index:interrupt-mask-vector
+	(fixed-objects-vector-slot 'INTERRUPT-MASK-VECTOR))
   (set! index:termination-vector
 	(fixed-objects-vector-slot 'MICROCODE-TERMINATIONS-PROCEDURES))
   (set! hook/clean-input/flush-typeahead false)
@@ -69,14 +72,15 @@ MIT in each case. |#
   (real-timer-clear 0))
 
 (define-integrable stack-overflow-slot 0)
-(define-integrable global-gc-slot 1)
 (define-integrable gc-slot 2)
 (define-integrable character-slot 4)
+(define-integrable after-gc-slot 5)
 (define-integrable timer-slot 6)
 (define-integrable suspend-slot 8)
 (define-integrable illegal-interrupt-slot 9)
 
 (define index:interrupt-vector)
+(define index:interrupt-mask-vector)
 (define index:termination-vector)
 
 ;;;; Miscellaneous Interrupts
@@ -112,6 +116,14 @@ MIT in each case. |#
 (define (gc-out-of-space-handler . args)
   args
   (abort->nearest "Aborting! Out of memory"))
+
+(define (after-gc-interrupt-handler interrupt-code interrupt-enables)
+  interrupt-code interrupt-enables
+  (trigger-gc-daemons!)
+  ;; By clearing the interrupt after running the daemons we ignore an
+  ;; GC that occurs while we are running the daemons.  This helps
+  ;; prevent us from getting into a loop just running the daemons.
+  (clear-interrupts! interrupt-bit/after-gc))
 
 (define (illegal-interrupt-handler interrupt-code interrupt-enables)
   (error "Illegal interrupt" interrupt-code interrupt-enables))
@@ -176,49 +188,71 @@ MIT in each case. |#
 (define (install)
   (without-interrupts
    (lambda ()
-     (let ((old-system-interrupt-vector
+     (let ((system-interrupt-vector
 	    (vector-ref (get-fixed-objects-vector) index:interrupt-vector))
+	   (old-interrupt-mask-vector
+	    (vector-ref (get-fixed-objects-vector)
+			index:interrupt-mask-vector))
 	   (old-termination-vector
 	    (vector-ref (get-fixed-objects-vector) index:termination-vector)))
-       (let ((previous-gc-interrupt
-	      (vector-ref old-system-interrupt-vector gc-slot))
-	     (previous-global-gc-interrupt
-	      (vector-ref old-system-interrupt-vector global-gc-slot))
-	     (previous-stack-interrupt
-	      (vector-ref old-system-interrupt-vector stack-overflow-slot))
-	     (system-interrupt-vector
-	      (make-vector (vector-length old-system-interrupt-vector)
-			   default-interrupt-handler))
+       (let ((interrupt-mask-vector
+	      (let ((length (vector-length system-interrupt-vector)))
+		(if (and (vector? old-interrupt-mask-vector)
+			 (= (vector-length old-interrupt-mask-vector) length))
+		    old-interrupt-mask-vector
+		    (let ((masks (make-vector length)))
+		      (do ((i 0 (+ i 1)))
+			  ((= i length))
+			(vector-set! masks i (- (expt 2 i) 1)))
+		      masks))))
 	     (termination-vector
 	      (let ((length (microcode-termination/code-limit)))
 		(if old-termination-vector
 		    (if (> length (vector-length old-termination-vector))
 			(vector-grow old-termination-vector length)
 			old-termination-vector)
-		    (make-vector length false)))))
+		    (make-vector length #f)))))
 
-	 (vector-set! system-interrupt-vector gc-slot previous-gc-interrupt)
-	 (vector-set! system-interrupt-vector global-gc-slot
-		      previous-global-gc-interrupt)
-	 (vector-set! system-interrupt-vector stack-overflow-slot
-		      previous-stack-interrupt)
-	 (vector-set! system-interrupt-vector character-slot
-		      external-interrupt-handler)
+	 (vector-set! interrupt-mask-vector stack-overflow-slot
+		      interrupt-mask/none)
+
+	 (vector-set! interrupt-mask-vector gc-slot
+		      interrupt-mask/none)
+
 	 (vector-set! system-interrupt-vector timer-slot
 		      timer-interrupt-handler)
+	 (vector-set! interrupt-mask-vector timer-slot
+		      interrupt-mask/gc-ok)
+
+	 (vector-set! system-interrupt-vector character-slot
+		      external-interrupt-handler)
+	 (vector-set! interrupt-mask-vector character-slot
+		      interrupt-mask/timer-ok)
+
+	 (vector-set! system-interrupt-vector after-gc-slot
+		      after-gc-interrupt-handler)
+	 (vector-set! interrupt-mask-vector after-gc-slot
+		      interrupt-mask/timer-ok)
+
 	 (vector-set! system-interrupt-vector suspend-slot
 		      suspend-interrupt-handler)
+	 (vector-set! interrupt-mask-vector suspend-slot
+		      interrupt-mask/timer-ok)
+
 	 (vector-set! system-interrupt-vector illegal-interrupt-slot
 		      illegal-interrupt-handler)
-
-	 ;; install the new vector atomically
-	 (vector-set! (get-fixed-objects-vector)
-		      index:interrupt-vector
-		      system-interrupt-vector)
+	 (vector-set! interrupt-mask-vector illegal-interrupt-slot
+		      interrupt-mask/timer-ok)
 
 	 (vector-set! termination-vector
 		      (microcode-termination 'GC-OUT-OF-SPACE)
 		      gc-out-of-space-handler)
+
+	 ;; Install the new tables atomically:
+
+	 (vector-set! (get-fixed-objects-vector)
+		      index:interrupt-mask-vector
+		      interrupt-mask-vector)
 
 	 (vector-set! (get-fixed-objects-vector)
 		      index:termination-vector

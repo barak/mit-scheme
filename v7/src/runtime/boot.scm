@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: boot.scm,v 14.5 1992/12/07 19:06:39 cph Exp $
+$Id: boot.scm,v 14.6 1993/06/29 22:58:14 cph Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -67,13 +67,16 @@ MIT in each case. |#
 (define-integrable interrupt-bit/gc        #x0004)
 (define-integrable interrupt-bit/global-1  #x0008)
 (define-integrable interrupt-bit/kbd       #x0010)
-(define-integrable interrupt-bit/global-2  #x0020)
+(define-integrable interrupt-bit/after-gc  #x0020)
 (define-integrable interrupt-bit/timer     #x0040)
 (define-integrable interrupt-bit/global-3  #x0080)
 (define-integrable interrupt-bit/suspend   #x0100)
 
 ;; GC & stack overflow only
 (define-integrable interrupt-mask/gc-ok    #x0007)
+
+;; GC, stack overflow, and timer only
+(define-integrable interrupt-mask/timer-ok #x0047)
 
 ;; Absolutely everything off
 (define-integrable interrupt-mask/none     #x0000)

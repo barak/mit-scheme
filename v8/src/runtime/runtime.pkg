@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.180 1993/06/10 06:07:45 gjr Exp $
+$Id: runtime.pkg,v 14.181 1993/06/29 22:58:20 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -715,6 +715,10 @@ MIT in each case. |#
 	  add-secondary-gc-daemon!
 	  gc-clean
 	  trigger-secondary-gc-daemons!)
+  (export (runtime hash)
+	  add-primitive-gc-daemon!)
+  (export (runtime interrupt-handler)
+	  trigger-gc-daemons!)
   (initialization (initialize-package!)))
 
 (define-package (runtime gc-notification)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/hash.scm,v 14.4 1991/08/18 23:33:20 cph Exp $
+$Id: hash.scm,v 14.5 1993/06/29 22:58:17 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -93,7 +93,7 @@ MIT in each case. |#
   (set! all-hash-tables (weak-cons 0 '()))
   (set! default-hash-table (hash-table/make))
   (add-event-receiver! event:after-restore (lambda () (gc-flip)))
-  (add-gc-daemon! rehash-all-gc-daemon))
+  (add-primitive-gc-daemon! rehash-all-gc-daemon))
 
 (define-structure (hash-table
 		   (conc-name hash-table/)

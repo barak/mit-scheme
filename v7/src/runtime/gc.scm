@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 14.8 1992/02/07 19:47:24 jinx Exp $
+$Id: gc.scm,v 14.9 1993/06/29 22:58:15 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -132,8 +132,7 @@ MIT in each case. |#
 (define (gc-flip-internal safety-margin)
   (let ((start-value (hook/gc-start)))
     (let ((space-remaining ((ucode-primitive garbage-collect) safety-margin)))
-      (gc-abort-test space-remaining)
-      (hook/gc-finish start-value space-remaining)
+      (gc-finish start-value space-remaining)
       space-remaining)))
 
 (define (purify-internal item pure-space? safety-margin)
@@ -142,8 +141,7 @@ MIT in each case. |#
 	   ((ucode-primitive primitive-purify) item
 					       pure-space?
 					       safety-margin)))
-      (gc-abort-test (cdr result))
-      (hook/gc-finish start-value (cdr result))
+      (gc-finish start-value (cdr result))
       result)))
 
 (define (default/gc-start)
@@ -153,12 +151,7 @@ MIT in each case. |#
   start-value space-remaining
   false)
 
-(define gc-boot-loading?)
-
-(define gc-boot-death-message
-  "\n;; Aborting boot-load: Not enough memory to load -- Use -large option.\n")
-  
-(define (gc-abort-test space-remaining)
+(define (gc-finish start-value space-remaining)
   (if (< space-remaining 4096)
       (if gc-boot-loading?
 	  (let ((console ((ucode-primitive tty-output-channel 0))))
@@ -175,7 +168,14 @@ MIT in each case. |#
 	    (cmdl-message/active
 	     (lambda (port)
 	       port
-	       (with-gc-notification! true gc-clean))))))))
+	       (with-gc-notification! true gc-clean)))))))
+  ((ucode-primitive request-interrupts! 1) interrupt-bit/after-gc)
+  (hook/gc-finish start-value space-remaining))
+
+(define gc-boot-loading?)
+  
+(define gc-boot-death-message
+  "\n;; Aborting boot-load: Not enough memory to load -- Use -large option.\n")
 
 ;;;; User Primitives
 

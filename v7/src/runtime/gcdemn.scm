@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gcdemn.scm,v 14.5 1993/06/25 21:09:08 gjr Exp $
+$Id: gcdemn.scm,v 14.6 1993/06/29 22:58:16 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -38,31 +38,50 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (initialize-package!)
+  (set! primitive-gc-daemons (make-queue))
+  (set! trigger-primitive-gc-daemons! (make-trigger primitive-gc-daemons))
+  (set! add-primitive-gc-daemon! (make-adder primitive-gc-daemons))
   (set! gc-daemons (make-queue))
+  (set! trigger-gc-daemons! (make-trigger gc-daemons))
+  (set! add-gc-daemon! (make-adder gc-daemons))
   (set! secondary-gc-daemons (make-queue))
+  (set! trigger-secondary-gc-daemons! (make-trigger secondary-gc-daemons))
+  (set! add-secondary-gc-daemon! (make-adder secondary-gc-daemons))
   (let ((fixed-objects (get-fixed-objects-vector)))
-    (vector-set! fixed-objects #x0B trigger-gc-daemons)
+    (vector-set! fixed-objects #x0B trigger-primitive-gc-daemons!)
     ((ucode-primitive set-fixed-objects-vector!) fixed-objects)))
 
+;;; PRIMITIVE-GC-DAEMONS are executed during the GC.  They must not
+;;; allocate any storage and they must be prepared to run at times
+;;; when many data structures are not consistent.
+(define primitive-gc-daemons)
+(define trigger-primitive-gc-daemons!)
+(define add-primitive-gc-daemon!)
+
+;;; GC-DAEMONS are executed after each GC from an interrupt handler.
+;;; This interrupt handler has lower priority than the GC interrupt,
+;;; which guarantees that these daemons will not be run inside of
+;;; critical sections.  As a result, the daemons may allocate storage
+;;; and use most of the runtime facilities.
 (define gc-daemons)
+(define trigger-gc-daemons!)
+(define add-gc-daemon!)
+
+;;; SECONDARY-GC-DAEMONS are executed rarely.  Their purpose is to
+;;; reclaim storage that is either unlikely to be reclaimed or
+;;; expensive to reclaim.
 (define secondary-gc-daemons)
+(define trigger-secondary-gc-daemons!)
+(define add-secondary-gc-daemon!)
 
-(define (invoke-thunk thunk)
-  (thunk))
+(define (make-trigger daemons)
+  (lambda ()
+    (for-each (lambda (thunk) (thunk))
+	      (queue->list/unsafe daemons))))
 
-(define (trigger-gc-daemons)
-  (for-each invoke-thunk
-	    (queue->list/unsafe gc-daemons)))
-
-(define (trigger-secondary-gc-daemons!)
-  (for-each invoke-thunk
-	    (queue->list/unsafe secondary-gc-daemons)))
-
-(define (add-gc-daemon! daemon)
-  (enqueue! gc-daemons daemon))
-
-(define (add-secondary-gc-daemon! daemon)
-  (enqueue! secondary-gc-daemons daemon))
+(define (make-adder daemons)
+  (lambda (daemon)
+    (enqueue! daemons daemon)))
 
 (define (gc-clean #!optional threshold)
   (let ((threshold
