@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.40 1996/05/08 20:57:53 cph Exp $
+;;;	$Id: process.scm,v 1.41 1996/05/10 18:39:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -215,7 +215,7 @@ Initialized from the SHELL environment variable."
 (define (get-process-by-name name)
   (let loop ((processes edwin-processes))
     (cond ((null? processes) false)
-	  ((eq? name (process-name (car processes))) (car processes))
+	  ((string=? name (process-name (car processes))) (car processes))
 	  (else (loop (cdr processes))))))
 
 (define (get-buffer-process buffer)
