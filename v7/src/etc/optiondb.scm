@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.8 2001/10/16 19:42:53 cph Exp $
+$Id: optiondb.scm,v 1.9 2002/01/22 18:44:03 cph Exp $
 
-Copyright (c) 2000-2001 Massachusetts Institute of Technology
+Copyright (c) 2000-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -93,7 +93,7 @@ USA.
   (guarded-system-loader '(scode-optimizer) "sf"))
 
 (define-load-option 'SOS
-  (guarded-system-loader '(runtime object-system) "sos"))
+  (guarded-system-loader '(sos) "sos"))
 
 (define-load-option 'STUDENT
   (guarded-system-loader '(student) "6001"))
