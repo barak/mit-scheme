@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pp.scm,v 14.33 1995/01/14 00:29:51 adams Exp $
+$Id: pp.scm,v 14.34 1995/03/04 00:39:48 cph Exp $
 
-Copyright (c) 1988-94 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -59,6 +59,7 @@ MIT in each case. |#
   (set! dispatch-list code-dispatch-list)
   (set! dispatch-default print-combination)
   (set! cocked-object (generate-uninterned-symbol))
+  (set! hook/pp-description #f)
   unspecific)
 
 (define *pp-named-lambda->define?* false)
@@ -70,44 +71,52 @@ MIT in each case. |#
 (define *pp-forced-x-size* false)
 (define *pp-avoid-circularity?* false)
 (define *pp-default-as-code?* #t)
-
-(define *pp-auto-highlighter* #F)
+(define *pp-auto-highlighter* #f)
 
 (define (pp object #!optional port . rest)
   (let ((port (if (default-object? port) (current-output-port) port)))
     (let ((pretty-print
 	   (lambda (object) (apply pretty-print object port rest))))
-      (define (pretty-print* object parts)
-	(pretty-print object)
-	(for-each (lambda (element)
-		    (newline port)
-		    (pretty-print element))
-		  parts))
       (newline port)
-      (cond ((named-structure? object)
-	     (pretty-print* object (named-structure/description object)))
+      (cond ((pp-description object)
+	     => (lambda (description)
+		  (pretty-print object)
+		  (for-each (lambda (element)
+			      (newline port)
+			      (pretty-print element))
+			    description)))
 	    ((arity-dispatched-procedure? object)
 	     (pretty-print (unsyntax-entity object)))
 	    ((and (procedure? object) (procedure-lambda object))
 	     => pretty-print)
-	    ((%record? object)		; unnamed record
-	     (let loop ((i (- (%record-length object) 1)) (d '()))
-	       (if (< i 0)
-		   (pretty-print* object d)
-		   (loop (- i 1) (cons (list i (%record-ref object i)) d)))))
-	    ((weak-pair? object)
-	     (pretty-print* object `((weak-car ,(weak-car object))
-				     (weak-cdr ,(weak-cdr object)))))
-	    ((cell? object)
-	     (pretty-print* object `((contents ,(cell-contents object)))))
 	    (else
 	     (pretty-print object))))))
 
-;; Controls the appearance of procedures in the CASE statement used to describe
-;; an arity dispatched procedure:
-;;  FULL:  full bodies of procedures
-;;  NAMED: just name if the procedure is a named lambda, like FULL if unnamed
-;;  SHORT: procedures appear in #[...] unparser syntax
+(define (pp-description object)
+  (cond ((and hook/pp-description
+	      (hook/pp-description object)))
+	((named-structure? object)
+	 (named-structure/description object))
+	((%record? object)		; unnamed record
+	 (let loop ((i (- (%record-length object) 1)) (d '()))
+	   (if (< i 0)
+	       d
+	       (loop (- i 1) (cons (list i (%record-ref object i)) d)))))
+	((weak-pair? object)
+	 `((weak-car ,(weak-car object))
+	   (weak-cdr ,(weak-cdr object))))
+	((cell? object)
+	 `((contents ,(cell-contents object))))
+	(else
+	 #f)))
+
+(define hook/pp-description)
+
+;;; Controls the appearance of procedures in the CASE statement used
+;;; to describe an arity dispatched procedure:
+;;;  FULL:  full bodies of procedures
+;;;  NAMED: just name if the procedure is a named lambda, like FULL if unnamed
+;;;  SHORT: procedures appear in #[...] unparser syntax
 (define *pp-arity-dispatched-procedure-style* 'FULL)
 
 (define (unsyntax-entity object)
@@ -516,8 +525,7 @@ MIT in each case. |#
 (define print-procedure)
 (define (kernel/print-procedure nodes optimistic pessimistic depth)
   (if (and *unparse-disambiguate-null-lambda-list?*
-	   (string? (car nodes))
-	   (string-ci=? (car nodes) "#f"))
+	   (member (car nodes) '("#f" "#F")))
       (*unparse-string "()")
       (print-node (car nodes) optimistic 0))
   (let ((rest (cdr nodes)))
@@ -667,7 +675,7 @@ MIT in each case. |#
 	  (else
 	   (walk-custom unparse-object object list-depth))))
 
-  ;; We do teh following test first and the test above at (1) for a
+  ;; We do the following test first and the test above at (1) for a
   ;; PRETTY-PRINTER-HIGHLIGHT because the highlighted object may
   ;; itself be a PRETTY-PRINTER-HIGHLIGHT.  It is also important that
   ;; the case (1) above uses NUMERICAL-WALK-NO-AUTO-HIGHLIGHT
