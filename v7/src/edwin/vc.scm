@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.14 1994/04/30 21:13:55 cph Exp $
+;;;	$Id: vc.scm,v 1.15 1994/09/09 01:21:50 adams Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -1237,7 +1237,8 @@ the value of vc-log-mode-hook."
 
 (define (vc-command-arguments arguments)
   (append-map (lambda (argument)
-		(cond ((string? argument) (list argument))
+		(cond ((not argument) '())
+		      ((string? argument) (list argument))
 		      ((pathname? argument) (list (->namestring argument)))
 		      ((list? argument) (vc-command-arguments argument))
 		      (else (error "Ill-formed command argument:" argument))))
