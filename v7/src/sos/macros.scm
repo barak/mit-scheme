@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: macros.scm,v 1.5 1997/06/15 07:02:16 cph Exp $
+;;; $Id: macros.scm,v 1.6 1997/06/16 08:59:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1993-97 Massachusetts Institute of Technology
 ;;;
@@ -103,11 +103,12 @@
 		      (call-with-values
 			  (lambda ()
 			    (parse-constructor-option class-name lose option))
-			(lambda (name slots call-init-instance?)
+			(lambda (name slots ii-args)
 			  `((DEFINE ,name
-			      (INSTANCE-CONSTRUCTOR ,class-name
-						    ',slots
-						    ',call-init-instance?))))))
+			      (INSTANCE-CONSTRUCTOR
+			       ,class-name
+			       ',slots
+			       ,@(map (lambda (x) `',x) ii-args)))))))
 		     (else (lose "class option" option))))
 		 alist))))))
 
@@ -126,15 +127,12 @@
 	(else (lose "class name" name))))
 
 (define (parse-constructor-option class-name lose option)
-  (cond ((match `(,symbol? ,list-of-symbols? . ,optional?)
-		(cdr option))
-	 (values (cadr option)
-		 (caddr option)
-		 (if (null? (cdddr option)) #f (cadddr option))))
+  (cond ((match `(,symbol? ,list-of-symbols? . ,optional?) (cdr option))
+	 (values (cadr option) (caddr option) (cdddr option)))
 	((match `(,list-of-symbols? . ,optional?) (cdr option))
 	 (values (default-constructor-name class-name)
 		 (cadr option)
-		 (if (null? (cddr option)) #f (caddr option))))
+		 (cddr option)))
 	(else
 	 (lose "class option" option))))
 
