@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.29 1987/07/07 22:30:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.30 1987/07/09 23:20:52 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -154,35 +154,35 @@ MIT in each case. |#
   '())
 
 (define (combination/subproblem combination operator operands)
-  (let ((block (combination-block combination))
-	(finish
-	 (lambda (call-prefix continuation-prefix)
-	   (let ((continuation (make-continuation)))
-	     (let ((continuation-cfg
-		    (scfg*scfg->scfg!
-		     (rtl:make-continuation-heap-check continuation)
-		     continuation-prefix)))
-	       (set-continuation-rtl-entry! continuation
-					    (cfg-entry-node continuation-cfg))
-	       (make-scfg
-		(cfg-entry-node
-		 (scfg*scfg->scfg!
-		  (call-prefix continuation)
-		  ((let ((callee (combination-known-operator combination)))
-		     (cond ((normal-primitive-constant? callee)
-			    make-call/primitive)
-			   ((or (not callee) (not (procedure? callee)))
-			    make-call/unknown)
-			   (else
-			    (case (procedure/type callee)
-			      ((OPEN-INTERNAL) make-call/stack-with-link)
-			      ((OPEN-EXTERNAL) make-call/stack-with-link)
-			      ((CLOSURE) make-call/closure)
-			      ((IC) make-call/ic)
-			      (else (error "Unknown callee type" callee))))))
-		   combination operator operands invocation-prefix/null
-		   continuation)))
-		(scfg-next-hooks continuation-cfg)))))))
+  (let ((block (combination-block combination)))
+    (define (finish call-prefix continuation-prefix)
+      (let ((continuation (make-continuation block)))
+	(let ((continuation-cfg
+	       (scfg*scfg->scfg!
+		(rtl:make-continuation-heap-check continuation)
+		continuation-prefix)))
+	  (set-continuation-rtl-entry! continuation
+				       (cfg-entry-node continuation-cfg))
+	  (make-scfg
+	   (cfg-entry-node
+	    (scfg*scfg->scfg!
+	     (call-prefix continuation)
+	     ((let ((callee (combination-known-operator combination)))
+		(cond ((normal-primitive-constant? callee)
+		       make-call/primitive)
+		      ((or (not callee) (not (procedure? callee)))
+		       make-call/unknown)
+		      (else
+		       (case (procedure/type callee)
+			 ((OPEN-INTERNAL) make-call/stack-with-link)
+			 ((OPEN-EXTERNAL) make-call/stack-with-link)
+			 ((CLOSURE) make-call/closure)
+			 ((IC) make-call/ic)
+			 (else (error "Unknown callee type" callee))))))
+	      combination operator operands invocation-prefix/null
+	      continuation)))
+	   (scfg-next-hooks continuation-cfg)))))
+
     (cond ((ic-block? block)
 	   ;; **** Actually, should only do this if the environment
 	   ;; will be needed by the continuation.
