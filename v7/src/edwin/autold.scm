@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.51 1992/01/09 17:46:01 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.52 1992/04/04 12:52:33 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -75,13 +75,11 @@
 		      (make-autoloading-procedure
 		       library-name
 		       (lambda () (lexical-reference environment name))))))
-
+
 (define (define-autoload-major-mode name super-mode-name display-name
 	  library-name description)
   (define mode
-    (make-mode name
-	       true
-	       display-name
+    (make-mode name true display-name
 	       (and super-mode-name (->mode super-mode-name))
 	       description
 	       (make-autoloading-procedure library-name
@@ -94,11 +92,7 @@
 
 (define (define-autoload-minor-mode name display-name library-name description)
   (define mode
-    (make-mode name
-	       false
-	       display-name
-	       false
-	       description
+    (make-mode name false display-name false description
 	       (make-autoloading-procedure library-name
 					   (lambda ()
 					     (mode-initialization mode)))))
@@ -112,9 +106,7 @@
 
 (define (define-autoload-command name library-name description)
   (define command
-    (make-command name
-		  description
-		  '()
+    (make-command name description '()
 		  (make-autoloading-procedure library-name
 					      (lambda ()
 						(command-procedure command)))))
@@ -188,30 +180,32 @@ Second arg FORCE? controls what happens if the library is already loaded:
 Second arg is prefix arg when called interactively."
   (lambda ()
     (list
-     (car (prompt-for-alist-value "Load library"
-				  (map (lambda (library)
-					 (cons (symbol->string (car library))
-					       library))
-				       known-libraries)))
+     (prompt-for-alist-value "Load library"
+			     (map (lambda (library)
+				    (cons (symbol->string (car library))
+					  (car library)))
+				  known-libraries))
      (command-argument)))
   (lambda (name force?)
     (let ((do-it
-	   (let ((library 
-		  (or (assq name known-libraries)
-		      (editor-error "Unknown library name: " name))))
-	     (temporary-message "Loading " (car library) "...")
-	     (let ((directory (edwin-binary-directory)))
-	       (for-each
-		(lambda (entry)
-		  (load-edwin-file
-		   (merge-pathnames (->pathname (car entry)) directory)
-		   (cadr entry)
-		   (or (null? (cddr entry)) (caddr entry))))
-		(cdr library)))
-	     (if (not (memq (car library) loaded-libraries))
-		 (set! loaded-libraries (cons (car library) loaded-libraries)))
-	     (run-library-load-hooks! (car library))
-	     (append-message "done"))))
+	   (lambda ()
+	     (let ((library 
+		    (or (assq name known-libraries)
+			(editor-error "Unknown library name: " name))))
+	       (temporary-message "Loading " (car library) "...")
+	       (let ((directory (edwin-binary-directory)))
+		 (for-each
+		  (lambda (entry)
+		    (load-edwin-file
+		     (merge-pathnames (->pathname (car entry)) directory)
+		     (cadr entry)
+		     (or (null? (cddr entry)) (caddr entry))))
+		  (cdr library)))
+	       (if (not (memq (car library) loaded-libraries))
+		   (set! loaded-libraries
+			 (cons (car library) loaded-libraries)))
+	       (run-library-load-hooks! (car library))
+	       (append-message "done")))))
       (cond ((not (library-loaded? name))
 	     (do-it))
 	    ((not force?)
