@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxfs.c,v 1.23 2002/11/20 19:46:15 cph Exp $
+$Id: uxfs.c,v 1.24 2002/11/20 20:35:04 cph Exp $
 
 Copyright (c) 1990-2002 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #  undef HAVE_STATFS
 #endif
 
-#ifdef HAVE_STATSF
+#ifdef HAVE_STATFS
 #  ifdef HAVE_SYS_VFS_H
      /* GNU/Linux */
 #    include <sys/vfs.h>
