@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.2 1989/06/09 16:51:31 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.3 1989/09/20 15:03:59 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -113,12 +113,13 @@ MIT in each case. |#
   (fluid-let ((traversing? true))
     (without-interrupts
      (lambda ()
-       (if (eq? closed-direction
-		(set-channel-direction! channel closed-direction))
+       (if (eq? closed-direction (channel-direction channel))
 	   true				;Already closed!
 	   (begin
-	     (file-close-channel
-	      (set-channel-descriptor! channel closed-descriptor))	     (let loop
+	     (file-close-channel (channel-descriptor channel))
+	     (set-channel-direction! channel closed-direction)
+	     (set-channel-descriptor! channel closed-descriptor)
+	     (let loop
 		 ((l1 open-files-list)
 		  (l2 (cdr open-files-list)))
 	       (cond ((null? l2)

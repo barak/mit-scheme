@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/hash.scm,v 14.1 1988/06/13 11:45:38 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/hash.scm,v 14.2 1989/09/20 15:04:15 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -87,25 +87,22 @@ MIT in each case. |#
 ;;; locked against garbage collection.
 
 (define (initialize-package!)
-  (set! smallest-positive-bignum
-	(let loop ((x 1) (y 2))
-	  (if (object-type? (object-type x) y)
-	      (loop y (* y 2))
-	      (* y 2))))
   (set! next-hash-number 1)
   (set! hash-table-size default/hash-table-size)
   (set! unhash-table (make-vector hash-table-size '()))
   (set! hash-table (make-vector (1+ hash-table-size) '()))
   ;; Could use `primitive-object-set!' to clobber the manifest type
   ;; code instead of allocating another word here.
-  (vector-set! hash-table 0
+  (vector-set! hash-table
+	       0
 	       ((ucode-primitive primitive-object-set-type)
 		(ucode-type manifest-special-nm-vector)
 		(make-non-pointer-object hash-table-size)))
   (let loop ((n 0))
     (if (< n hash-table-size)
-	(begin (vector-set! unhash-table n (cons true '()))
-	       (loop (1+ n)))))
+	(begin
+	  (vector-set! unhash-table n (cons true '()))
+	  (loop (1+ n)))))
   (add-event-receiver! event:after-restore (lambda () (gc-flip)))
   (add-gc-daemon! rehash-gc-daemon))
 
@@ -114,7 +111,6 @@ MIT in each case. |#
 (define hash-table-size)
 (define unhash-table)
 (define hash-table)
-(define smallest-positive-bignum)
 
 (define (hash x)
   (if (eq? x false)
@@ -188,39 +184,50 @@ MIT in each case. |#
 ;;; is SNM rather than NM to make the buckets be relocated at band
 ;;; load/restore time.
 
+;;; **** There is also a problem with intermediate bignums being
+;;; consed by `rehash' while computing `index'.  This must be fixed
+;;; before the Scheme code below can be used. ****
+
 ;;; Until this code is compiled, and therefore safe, it is replaced by
 ;;; a primitive.  See the installation code below.
-
 #|
 (define (rehash-gc-daemon)
   (let cleanup ((n hash-table-size))
     (if (not (zero? n))
-	(begin (vector-set! hash-table n '())
-	       (cleanup (-1+ n)))))
+	(begin
+	  (vector-set! hash-table n '())
+	  (cleanup (-1+ n)))))
   (let outer ((n (-1+ hash-table-size)))
-    (if (negative? n)
-	true
+    (if (not (negative? n))
 	(let ((bucket (vector-ref unhash-table n)))
 	  (if (car bucket)
 	      (let inner1 ((l1 bucket) (l2 (cdr bucket)))
-		(cond ((null? l2) (outer (-1+ n)))
+		(cond ((null? l2)
+		       (outer (-1+ n)))
 		      ((eq? (system-pair-car (car l2)) false)
 		       (set-cdr! l1 (cdr l2))
 		       (inner1 l1 (cdr l1)))
-		      (else (rehash (car l2))
-			    (inner1 l2 (cdr l2)))))
+		      (else
+		       (rehash (car l2))
+		       (inner1 l2 (cdr l2)))))
 	      (let inner2 ((l (cdr bucket)))
-		(cond ((null? l) (outer (-1+ n)))
+		(cond ((null? l)
+		       (outer (-1+ n)))
 		      ((eq? (system-pair-car (car l)) false)
 		       (inner2 (cdr l)))
-		      (else (rehash (car l))
-			    (inner2 (cdr l))))))))))
+		      (else
+		       (rehash (car l))
+		       (inner2 (cdr l))))))))))
 
 (define (rehash weak-pair)
-  (let ((index (1+ (modulo (object-datum (system-pair-car weak-pair))
-			   hash-table-size))))
+  (let ((index
+	 (1+ (modulo (object-datum (system-pair-car weak-pair))
+		     hash-table-size))))
     (vector-set! hash-table
 		 index
 		 (cons (object-new-type (ucode-type pair) weak-pair)
-		       (vector-ref hash-table index)))))
+		       (vector-ref hash-table index)))
+    unspecific))
 |#
+(define (rehash-gc-daemon)
+  ((ucode-primitive rehash) unhash-table hash-table))

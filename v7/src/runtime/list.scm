@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.8 1989/08/17 07:50:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.9 1989/09/20 15:05:47 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -171,15 +171,13 @@ MIT in each case. |#
 	 car)))
 
 (define-integrable (weak-set-car! weak-pair object)
-  (system-pair-set-car! weak-pair (or object weak-pair/false))
-  unspecific)
+  (system-pair-set-car! weak-pair (or object weak-pair/false)))
 
 (define-integrable (weak-cdr weak-pair)
   (system-pair-cdr weak-pair))
 
 (define-integrable (weak-set-cdr! weak-pair object)
-  (system-pair-set-cdr! weak-pair object)
-  unspecific)
+  (system-pair-set-cdr! weak-pair object))
 
 (define (weak-memq object weak-list)
   (let ((object (if object object weak-pair/false)))
@@ -330,7 +328,9 @@ MIT in each case. |#
 (define (reverse! l)
   (let loop ((current l) (new-cdr '()))
     (if (pair? current)
-	(loop (set-cdr! current new-cdr) current)
+	(let ((next (cdr current)))
+	  (set-cdr! current new-cdr)
+	  (loop next current))
 	(begin
 	  (if (not (null? current))
 	      (error "REVERSE!: Argument not a list" l))
