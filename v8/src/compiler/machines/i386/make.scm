@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.1 1995/01/10 20:53:03 adams Exp $
+$Id: make.scm,v 1.2 1995/10/25 19:54:30 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -36,8 +36,13 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(let* ((val ((load "base/make") "Intel i386"))
-       (env (->environment '(compiler))))
-  (set! (access compiler:generate-stack-checks? env) false)
-  (set! (access compiler:compress-top-level? env) true)
-  val)
+(let ((loader
+       (lambda ()
+	 (load-option 'SF)
+	 (let ((value ((load "base/make") "Intel i386"))
+	       (env (->environment '(compiler))))
+	   (set! (access compiler:generate-stack-checks? env) false)
+	   (set! (access compiler:compress-top-level? env) true)
+	   val)
+	 (load "midend/load" #F))))
+  (loader))
