@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fill.scm,v 1.60 1999/01/02 06:11:34 cph Exp $
+;;; $Id: fill.scm,v 1.61 2000/02/23 17:37:03 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -320,14 +320,12 @@ Prefix arg means justify as well."
 With argument, turn auto-fill mode on iff argument is positive."
   "P"
   (lambda (argument)
-    (let ((argument (command-argument-value argument))
-	  (mode (ref-mode-object auto-fill)))
-      (cond ((and (or (not argument) (positive? argument))
-		  (not (current-minor-mode? mode)))
-	     (enable-current-minor-mode! mode))
-	    ((and (or (not argument) (not (positive? argument)))
-		  (current-minor-mode? mode))
-	     (disable-current-minor-mode! mode))))))
+    (let ((mode (ref-mode-object auto-fill)))
+      (if (if argument
+	      (positive? (command-argument-value argument))
+	      (not (current-minor-mode? mode)))
+	  (enable-current-minor-mode! mode)
+	  (disable-current-minor-mode! mode)))))
 
 (define-command &auto-fill-space
   "Breaks the line if it exceeds the fill column, then inserts a space."
