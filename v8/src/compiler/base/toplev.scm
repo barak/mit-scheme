@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.4 1994/11/29 02:34:07 adams Exp $
+$Id: toplev.scm,v 1.5 1994/12/02 03:00:56 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -629,9 +629,7 @@ MIT in each case. |#
 	      (*dbg-expression*)
 	      (*dbg-procedures*)
 	      (*dbg-continuations*)
-	      (*lap*)
-	      (*expressions*)
-	      (*procedures*))
+	      (*lap*))
     (fluid-let ((*input-scode*)
 		(*scode*)
 		(*kmp-program*)
@@ -666,8 +664,6 @@ MIT in each case. |#
   (set! *dbg-procedures*)
   (set! *dbg-continuations*)
   (set! *lap*)
-  (set! *expressions*)
-  (set! *procedures*)
   (set! *input-scode*)
   (set! *scode*)
   (set! *kmp-program*)
@@ -1002,7 +998,7 @@ MIT in each case. |#
 		   rtl-port
 		   lap-port))))
      
-(define cbf (make-cbf compile-bin-file/new))
-(define cf  (make-cf compile-bin-file/new))
+(define cbf (make-cbf compile-bin-file))
+(define cf  (make-cf compile-bin-file))
 (define compile-expression (make-compile-expression compile-scode/%new))
 (define compile-procedure  (make-compile-procedure compile-scode/%new))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.1 1994/11/19 02:08:04 adams Exp $
+$Id: decls.scm,v 1.2 1994/12/02 03:01:24 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -334,10 +334,17 @@ MIT in each case. |#
     (file-dependency/syntax/join
      (append (filename/append "base"
 			      "toplev" "asstop" "crstop"
-			      "blocks" "cfg1" "cfg2" "cfg3" "constr"
-			      "contin" "ctypes" "debug" "enumer"
-			      "infnew" "lvalue" "object" "pmerly" "proced"
-			      "refctx" "rvalue" "scode" "sets" "subprb"
+			      ;;"blocks" 
+			      "cfg1" "cfg2" "cfg3" "constr"
+			      ;;"contin" "ctypes" 
+			      "debug" "enumer"
+			      "infnew"
+			      ;;"lvalue"
+			      "object" "pmerly"
+			      ;;"proced"
+			      ;;"refctx" "rvalue"
+			      "scode" "sets" 
+			      ;;"subprb"
 			      "switch" "utils")
 	     (filename/append "back"
 			      "asmmac" "bittop" "bitutl" "insseq" "lapgn1"
@@ -403,10 +410,15 @@ MIT in each case. |#
 
   (let* ((front-end-base
 	  (filename/append "base"
-			   "blocks" "cfg1" "cfg2" "cfg3"
-			   "contin" "ctypes" "enumer" "lvalue"
-			   "object" "proced" "rvalue"
-			   "scode" "subprb" "utils"))
+			   ;;"blocks" 
+			   "cfg1" "cfg2" "cfg3"
+			   ;;"contin" "ctypes"
+			   "enumer" "lvalue"
+			   "object"
+			   ;;"proced" "rvalue"
+			   "scode"
+			   ;;"subprb"
+			   "utils"))
 	 (midend-base
 	  (filename/append "midend"
 			   "fakeprim"  "utils"))
@@ -471,20 +483,25 @@ MIT in each case. |#
       "cfg1" "cfg3" "object")
     (define-integration-dependencies "base" "cfg3" "base" "cfg1" "cfg2")
     (define-integration-dependencies "base" "ctypes" "base"
-      "blocks" "cfg1" "cfg2" "cfg3" "contin" "lvalue" "object" "subprb")
-    (define-integration-dependencies "base" "rvalue" "base"
-      "blocks" "cfg1" "cfg2" "cfg3" "enumer" "lvalue" "object" "utils")
-    (define-integration-dependencies "base" "lvalue" "base"
-      "blocks" "object" "proced" "rvalue" "utils")
-    (define-integration-dependencies "base" "blocks" "base"
-      "enumer" "lvalue" "object" "proced" "rvalue" "scode")
-    (define-integration-dependencies "base" "proced" "base"
-      "blocks" "cfg1" "cfg2" "cfg3" "contin" "enumer" "lvalue" "object"
-      "rvalue" "utils")
-    (define-integration-dependencies "base" "contin" "base"
-      "blocks" "cfg3" "ctypes")
-    (define-integration-dependencies "base" "subprb" "base"
-      "cfg3" "contin" "enumer" "object" "proced")
+      ;;"blocks"
+      "cfg1" "cfg2" "cfg3"
+      ;;"contin" "lvalue"
+      "object"
+      ;;"subprb"
+      )
+    ;;(define-integration-dependencies "base" "rvalue" "base"
+    ;; "blocks" "cfg1" "cfg2" "cfg3" "enumer" "lvalue" "object" "utils")
+    ;;(define-integration-dependencies "base" "lvalue" "base"
+    ;;  "blocks" "object" "proced" "rvalue" "utils")
+    ;;(define-integration-dependencies "base" "blocks" "base"
+    ;;  "enumer" "lvalue" "object" "proced" "rvalue" "scode")
+    ;;(define-integration-dependencies "base" "proced" "base"
+    ;;  "blocks" "cfg1" "cfg2" "cfg3" "contin" "enumer" "lvalue" "object"
+    ;;  "rvalue" "utils")
+    ;;(define-integration-dependencies "base" "contin" "base"
+    ;;  "blocks" "cfg3" "ctypes")
+    ;;(define-integration-dependencies "base" "subprb" "base"
+    ;;  "cfg3" "contin" "enumer" "object" "proced")
 
     (define-integration-dependencies "machines/spectrum" "machin" "rtlbase"
       "rtlreg" "rtlty1" "rtlty2")
