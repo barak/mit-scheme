@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.45 1992/03/13 10:48:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.46 1992/04/08 17:57:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -53,6 +53,11 @@ This flag has effect only when ENABLE-TRANSCRIPT-BUFFER is also true."
   true
   boolean?)
 
+(define (transcript-output-mark buffer)
+  (and (ref-variable repl-enable-transcript-buffer buffer)
+       (ref-variable enable-transcript-buffer buffer)
+       (buffer-end (transcript-buffer))))
+
 (define-variable repl-error-decision
   "If true, errors in REPL evaluation force the user to choose an option.
 Otherwise, they start a nested error REPL."
@@ -62,19 +67,20 @@ Otherwise, they start a nested error REPL."
 (define-command repl
   "Run an inferior read-eval-print loop (REPL), with I/O through buffer *scheme*.
 If buffer exists, just select it; otherwise create it and start REPL.
-REPL uses current evaluation environment,
-but prefix argument means prompt for different environment."
-  "P"
-  (lambda (argument)
+REPL uses current evaluation environment."
+  ()
+  (lambda ()
     (select-buffer
      (or (find-buffer initial-buffer-name)
-	 (let ((environment (evaluation-environment argument)))
-	   (let ((buffer (create-buffer initial-buffer-name)))
-	     (start-inferior-repl! buffer
-				   environment
-				   (evaluation-syntax-table environment)
-				   false)
-	     buffer))))))
+	 (let ((current-buffer (current-buffer)))
+	   (let ((environment (evaluation-environment current-buffer)))
+	     (let ((buffer (create-buffer initial-buffer-name)))
+	       (start-inferior-repl! buffer
+				     environment
+				     (evaluation-syntax-table current-buffer
+							      environment)
+				     false)
+	       buffer)))))))
 
 (define (start-inferior-repl! buffer environment syntax-table message)
   (set-buffer-major-mode! buffer (ref-mode-object inferior-repl))
@@ -103,7 +109,19 @@ but prefix argument means prompt for different environment."
 					   user-initial-prompt)
 				message))))))))))))
 
+(define (current-repl-buffer)
+  (let ((buffer (current-buffer)))
+    (if (buffer-interface-port buffer)
+	buffer
+	(let ((buffers repl-buffers))
+	  (if (null? buffers)
+	      (error "No REPL to evaluate in."))
+	  (car buffers)))))
+
+(define repl-buffers)
+
 (define (initialize-inferior-repls!)
+  (set! repl-buffers '())
   unspecific)
 
 (define (wait-for-input port level mode)
@@ -153,18 +171,29 @@ but prefix argument means prompt for different environment."
 	      (begin
 		(set-buffer-major-mode! buffer mode)
 		(attach-buffer-interface-port! buffer port)))))))
-
+
 (define (attach-buffer-interface-port! buffer port)
+  (if (not (memq buffer repl-buffers))
+      (set! repl-buffers (append! repl-buffers (list buffer))))
   (buffer-put! buffer 'INTERFACE-PORT port)
+  (add-kill-buffer-hook buffer kill-buffer-inferior-repl)
   (define-variable-local-value! buffer
     (ref-variable-object comint-input-ring)
     (port/input-ring port))
   (set-run-light! buffer false))
 
 (define (set-run-light! buffer run?)
-  (define-variable-local-value! buffer (ref-variable-object run-light)
-    (if run? "run" "listen"))
-  (buffer-modeline-event! buffer 'RUN-LIGHT))
+  (let ((variable (ref-variable-object run-light))
+	(value (if run? "eval" "listen")))
+    (if (and (ref-variable evaluate-in-inferior-repl buffer)
+	     (eq? buffer (current-repl-buffer)))
+	(begin
+	  (undefine-variable-local-value! buffer variable)
+	  (set-variable-default-value! variable value)
+	  (global-window-modeline-event!))
+	(begin
+	  (define-variable-local-value! buffer variable value)
+	  (buffer-modeline-event! buffer 'RUN-LIGHT)))))
 
 (define-integrable (buffer-interface-port buffer)
   (buffer-get buffer 'INTERFACE-PORT))
@@ -176,7 +205,22 @@ but prefix argument means prompt for different environment."
 	  (signal-thread-event (port/thread port)
 	    (lambda ()
 	      (exit-current-thread unspecific)))
-	  (buffer-remove! buffer 'INTERFACE-PORT)))))
+	  (buffer-remove! buffer 'INTERFACE-PORT)
+	  (let ((run-light (ref-variable-object run-light)))
+	    (if (and (ref-variable evaluate-in-inferior-repl buffer)
+		     (eq? buffer (current-repl-buffer)))
+		(begin
+		  (set-variable-default-value! run-light false)
+		  (global-window-modeline-event!)))
+	    (set! repl-buffers (delq! buffer repl-buffers))
+	    (let ((buffer
+		   (and (ref-variable evaluate-in-inferior-repl buffer)
+			(current-repl-buffer))))
+	      (if buffer
+		  (let ((value (variable-local-value buffer run-light)))
+		    (undefine-variable-local-value! buffer run-light)
+		    (set-variable-default-value! run-light value)
+		    (global-window-modeline-event!)))))))))
 
 (define (error-decision repl condition)
   (if (ref-variable repl-error-decision)
@@ -287,7 +331,8 @@ Additionally, these commands abort the command loop:
 
 (define (interrupt-command interrupt)
   (lambda ()
-    (signal-thread-event (port/thread (buffer-interface-port (current-buffer)))
+    (signal-thread-event
+	(port/thread (buffer-interface-port (current-repl-buffer)))
       interrupt)))
 
 (define-command inferior-cmdl-breakpoint
@@ -322,11 +367,18 @@ Additionally, these commands abort the command loop:
   (lambda ()
     (inferior-repl-eval-from-mark (backward-sexp (current-point) 1 'ERROR))))
 
+(define (inferior-repl-eval-from-mark mark)
+  ((ref-command inferior-repl-eval-region)
+   (make-region mark (forward-sexp mark 1 'ERROR))))
+
 (define-command inferior-repl-eval-region
   "Evaluate the region."
   "r"
   (lambda (region)
-    (inferior-repl-eval-region (region-start region) (region-end region))))
+    (let ((buffer (mark-buffer (region-start region))))
+      (ring-push! (port/input-ring (buffer-interface-port buffer))
+		  (region->string region))
+      (inferior-repl-eval-region buffer region))))
 
 (define-command inferior-repl-debug
   "Select a debugger buffer to examine the current REPL state.
@@ -377,33 +429,43 @@ If this is an error, the debugger examines the error condition."
     (let ((port (buffer-interface-port (current-buffer))))
       (set-port/command-char! port (last-command-key))
       (end-input-wait port))))
-
-(define (inferior-repl-eval-from-mark mark)
-  (inferior-repl-eval-region mark (forward-sexp mark 1 'ERROR)))
-
-(define (inferior-repl-eval-region start end)
-  (let ((buffer (mark-buffer start)))
-    (let ((port (buffer-interface-port buffer)))
+
+(define (inferior-repl-eval-region buffer region)
+  (let ((mark (transcript-output-mark buffer)))
+    (if mark
+	(insert-region (region-start region)
+		       (region-end region)
+		       mark)))
+  (let ((port (buffer-interface-port buffer)))
+    (let ((end
+	   (let ((end (buffer-end buffer))
+		 (end* (region-end region)))
+	     (if (mark~ end end*)
+		 end*
+		 end))))
       (set-buffer-point! buffer end)
-      (move-mark-to! (port/mark port) end)
-      (let ((string (extract-string start end)))
-	(ring-push! (port/input-ring port) string)
-	(if (and (ref-variable repl-enable-transcript-buffer)
-		 (ref-variable enable-transcript-buffer))
-	    (insert-string string (buffer-end (transcript-buffer)))))
-      (let ((queue (port/expression-queue port)))
-	(let ((input-port (make-buffer-input-port start end)))
-	  (bind-condition-handler (list condition-type:error)
-	      evaluation-error-handler
-	    (lambda ()
-	      (let loop ()
-		(let ((sexp (read input-port)))
-		  (if (not (eof-object? sexp))
-		      (begin
-			(enqueue! queue sexp)
-			(loop))))))))
-	(if (not (queue-empty? queue))
-	    (end-input-wait port))))))
+      (move-mark-to! (port/mark port) end))
+    (let ((queue (port/expression-queue port)))
+      (bind-condition-handler (list condition-type:error)
+	  evaluation-error-handler
+	(lambda ()
+	  (for-each (lambda (expression) (enqueue! queue expression))
+		    (read-expressions-from-region region))))
+      (if (not (queue-empty? queue))
+	  (end-input-wait port)))))
+
+(define (inferior-repl-eval-expression buffer expression)
+  (let ((mark (transcript-output-mark buffer)))
+    (if mark
+	(insert-string (fluid-let ((*unparse-with-maximum-readability?* true))
+			 (write-to-string expression))
+		       mark)))
+  (let ((port (buffer-interface-port buffer)))
+    (let ((end (buffer-end buffer)))
+      (set-buffer-point! buffer end)
+      (move-mark-to! (port/mark port) end))
+    (enqueue! (port/expression-queue port) expression)
+    (end-input-wait port)))
 
 ;;;; Queue
 
@@ -559,10 +621,7 @@ If this is an error, the debugger examines the error condition."
 (define (process-output-queue port)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok))
 	(mark (port/mark port))
-	(transcript-mark
-	 (and (ref-variable repl-enable-transcript-buffer)
-	      (ref-variable enable-transcript-buffer)
-	      (buffer-end (transcript-buffer)))))
+	(transcript-mark (transcript-output-mark (port/buffer port))))
     (let loop ()
       (let ((operation (dequeue!/unsafe (port/output-queue port) false)))
 	(if operation

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.25 1992/04/06 05:35:03 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.26 1992/04/08 17:57:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -57,15 +57,13 @@
 \\[lisp-indent-line] indents the current line for Scheme.
 \\[indent-sexp] indents the next s-expression.
 
-The following commands evaluate Scheme expressions;
-normally they record the associated output in a transcript buffer:
+The following commands evaluate Scheme expressions:
 
 \\[eval-expression] reads and evaluates an expression in minibuffer.
 \\[eval-last-sexp] evaluates the expression preceding point.
 \\[eval-defun] evaluates the current definition.
 \\[eval-current-buffer] evaluates the buffer.
 \\[eval-region] evaluates the current region."
-
   (local-set-variable! syntax-table scheme-mode:syntax-table)
   (local-set-variable! syntax-ignore-comments-backwards false)
   (local-set-variable! lisp-indent-hook standard-lisp-indent-hook)
@@ -80,6 +78,7 @@ normally they record the associated output in a transcript buffer:
     (local-set-variable! paragraph-separate separate))
   (local-set-variable! paragraph-ignore-fill-prefix true)
   (local-set-variable! indent-line-procedure (ref-command lisp-indent-line))
+  (local-set-variable! mode-line-process '(RUN-LIGHT (": " RUN-LIGHT) ""))
   (event-distributor/invoke! (ref-variable scheme-mode-hook)))
 
 (define-variable scheme-mode-hook
@@ -96,6 +95,7 @@ normally they record the associated output in a transcript buffer:
 (define-key 'scheme #\c-m-q 'indent-sexp)
 (define-key 'scheme #\c-m-z 'eval-region)
 (define-key 'scheme #\m-tab 'scheme-complete-variable)
+(define-key 'scheme '(#\c-c #\c-c) 'eval-abort-top-level)
 
 ;;;; Read Syntax
 
@@ -133,14 +133,15 @@ normally they record the associated output in a transcript buffer:
 
 (define (scheme-mode:indent-let-method state indent-point normal-indent)
   (lisp-indent-special-form
-   (let ((m (parse-state-containing-sexp state)))
-     (let ((start (forward-to-sexp-start (forward-one-sexp (mark1+ m)
-							   indent-point)
-					 indent-point)))
-       (if (and start
-		(not (re-match-forward "\\s(" start)))
-	   2
-	   1)))
+   (if (let ((start
+	      (forward-to-sexp-start
+	       (forward-one-sexp (mark1+ (parse-state-containing-sexp state))
+				 indent-point)
+	       indent-point)))
+	 (and start
+	      (not (re-match-forward "\\s(" start))))
+       2
+       1)
    state indent-point normal-indent))
 
 (define scheme-mode:indent-methods (make-string-table))

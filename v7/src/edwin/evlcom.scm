@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.35 1992/02/18 16:00:30 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.36 1992/04/08 17:57:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -55,7 +55,7 @@ If 'DEFAULT, use the default (REP loop) environment."
   'DEFAULT)
 
 (define-variable scheme-syntax-table
-  "The syntax table used by the evaluation commands, or #F
+  "The syntax table used by the evaluation commands, or #F.
 If #F, use the default (REP loop) syntax-table."
   false)
 
@@ -107,81 +107,124 @@ If #F, normal transcript output is done."
   "List breadth to which evaluation results are printed.  #F means no limit."
   false
   (lambda (object) (or (not object) (exact-nonnegative-integer? object))))
+
+(define-variable evaluate-in-inferior-repl
+  "If true, evaluation commands evaluate expressions in an inferior REPL.
+Also, the inferior REPL's run light appears in all Scheme mode buffers.
+Otherwise, expressions are evaluated directly by the commands."
+  false
+  boolean?)
 
 ;;;; Commands
 
 (define-command eval-defun
   "Evaluate defun that point is in or before.
-Print value in minibuffer.
-With argument, prompts for the evaluation environment."
-  "P"
-  (lambda (argument)
-    (evaluate-from-mark (current-definition-start) argument)))
+Print value in minibuffer."
+  ()
+  (lambda () (evaluate-from-mark (current-definition-start))))
 
 (define-command eval-next-sexp
   "Evaluate the expression following point.
-Prints the result in the typein window.
-With an argument, prompts for the evaluation environment."
-  "P"
-  (lambda (argument)
-    (evaluate-from-mark (current-point) argument)))
+Prints the result in the typein window."
+  ()
+  (lambda () (evaluate-from-mark (current-point))))
 
 (define-command eval-last-sexp
   "Evaluate the expression preceding point.
-Prints the result in the typein window.
-With an argument, prompts for the evaluation environment."
-  "P"
-  (lambda (argument)
-    (evaluate-from-mark (backward-sexp (current-point) 1 'ERROR) argument)))
+Prints the result in the typein window."
+  ()
+  (lambda () (evaluate-from-mark (backward-sexp (current-point) 1 'ERROR))))
+
+(define (evaluate-from-mark input-mark)
+  ((ref-command eval-region)
+   (make-region input-mark
+		(forward-sexp input-mark 1 'ERROR))))
 
 (define-command eval-region
   "Evaluate the region, printing the results in the typein window.
 With an argument, prompts for the evaluation environment."
-  "r\nP"
-  (lambda (region argument)
-    (evaluate-region region argument)))
+  "r"
+  (lambda (region)
+    (let ((buffer (mark-buffer (region-start region))))
+      (if (ref-variable evaluate-in-inferior-repl buffer)
+	  (inferior-repl-eval-region (current-repl-buffer) region)
+	  (evaluate-region region (evaluation-environment buffer))))))
 
 (define-command eval-current-buffer
   "Evaluate the current buffer.
-The values are printed in the typein window.
-With an argument, prompts for the evaluation environment."
-  "P"
-  (lambda (argument)
-    (evaluate-region (buffer-region (current-buffer)) argument)))
+The values are printed in the typein window."
+  ()
+  (lambda () ((ref-command eval-region) (buffer-region (current-buffer)))))
 
 (define-command eval-expression
-  "Read and evaluate an expression in the typein window.
-With an argument, prompts for the evaluation environment."
-  "xEvaluate expression\nP"
-  (lambda (expression argument)
-    (let ((enable-transcript-buffer (ref-variable enable-transcript-buffer)))
-      (if enable-transcript-buffer
-	  (insert-string
-	   (fluid-let ((*unparse-with-maximum-readability?* true))
-	     (write-to-string expression))
-	   (buffer-end (transcript-buffer)))))
-    (editor-eval expression (evaluation-environment argument))))
+  "Read and evaluate an expression in the typein window."
+  "xEvaluate expression"
+  (lambda (expression)
+    (let ((buffer (current-buffer)))
+      (if (ref-variable evaluate-in-inferior-repl buffer)
+	  (inferior-repl-eval-expression (current-repl-buffer) expression)
+	  (begin
+	    (if (ref-variable enable-transcript-buffer buffer)
+		(insert-string
+		 (fluid-let ((*unparse-with-maximum-readability?* true))
+		   (write-to-string expression))
+		 (buffer-end (transcript-buffer))))
+	    (editor-eval buffer
+			 expression
+			 (evaluation-environment buffer)))))))
+
+(define-command eval-abort-top-level
+  "Force the evaluation REPL up to top level.
+Has no effect if evaluate-in-inferior-repl is false."
+  ()
+  (lambda ()
+    (let ((buffer (current-buffer)))
+      (if (ref-variable evaluate-in-inferior-repl buffer)
+	  ((ref-command inferior-cmdl-abort-top-level))
+	  (editor-error "Nothing to abort.")))))
 
 (define-command set-environment
   "Make ENVIRONMENT the current evaluation environment."
   "XSet environment"
   (lambda (environment)
-    (set-variable! scheme-environment
-		   (or (and (eq? environment 'DEFAULT) 'DEFAULT)
-		       (->environment environment)))))
+    (let ((buffer (current-buffer)))
+      (define-variable-local-value! buffer
+	(ref-variable-object scheme-environment)
+	(if (eq? environment 'DEFAULT)
+	    'DEFAULT
+	    (->environment environment)))
+      (normal-buffer-evaluation-mode buffer))))
 
 (define-command set-syntax-table
   "Make SYNTAX-TABLE the current syntax table."
   "XSet syntax table"
   (lambda (syntax-table)
-    (set-variable! scheme-syntax-table syntax-table)))
+    (let ((buffer (current-buffer)))
+      (define-variable-local-value! buffer
+				    (ref-variable-object scheme-syntax-table)
+				    syntax-table)
+      (normal-buffer-evaluation-mode buffer))))
+
+(define (normal-buffer-evaluation-mode buffer)
+  (let ((evaluate-in-inferior-repl
+	 (ref-variable-object evaluate-in-inferior-repl))
+	(run-light (ref-variable-object run-light)))
+    (if (and (eq? (ref-variable scheme-environment buffer) 'DEFAULT)
+	     (memq (ref-variable scheme-syntax-table buffer) '(#F DEFAULT)))
+	(begin
+	  (undefine-variable-local-value! buffer evaluate-in-inferior-repl)
+	  (undefine-variable-local-value! buffer run-light))
+	(begin
+	  (define-variable-local-value! buffer evaluate-in-inferior-repl false)
+	  (define-variable-local-value! buffer run-light false)))))
 
 (define-command set-default-environment
   "Make ENVIRONMENT the default evaluation environment."
   "XSet default environment"
   (lambda (environment)
     (set-variable-default-value! (ref-variable-object scheme-environment)
-				 (or (and (eq? environment 'DEFAULT) 'DEFAULT)
+				 (if (eq? environment 'DEFAULT)
+				     'DEFAULT
 				     (->environment environment)))))
 
 (define-command set-default-syntax-table
@@ -212,16 +255,18 @@ With an argument, prompts for the evaluation environment."
 ;;;; Expression Prompts
 
 (define (prompt-for-expression-value prompt #!optional default)
-  (eval-with-history
-   (if (default-object? default)
-       (prompt-for-expression prompt)
-       (prompt-for-expression prompt
-			      (if (or (symbol? default)
-				      (pair? default)
-				      (vector? default))
-				  `',default
-				  default)))
-   (evaluation-environment false)))
+  (let ((buffer (current-buffer)))
+    (eval-with-history
+     buffer
+     (if (default-object? default)
+	 (prompt-for-expression prompt)
+	 (prompt-for-expression prompt
+				(if (or (symbol? default)
+					(pair? default)
+					(vector? default))
+				    `',default
+				    default)))
+     (evaluation-environment buffer))))
 
 (define (prompt-for-expression prompt #!optional default-object default-type)
   (let ((default-string
@@ -260,55 +305,52 @@ may be available.  The following commands are special to this mode:
 
 ;;;; Evaluation
 
-(define (evaluate-from-mark input-mark argument)
-  (evaluate-region (make-region input-mark (forward-sexp input-mark 1 'ERROR))
-		   argument))
-
-(define (evaluate-region region argument)
-  (let ((evaluation-input-recorder (ref-variable evaluation-input-recorder)))
-    (if evaluation-input-recorder
-	(evaluation-input-recorder region)))
-  (let ((enable-transcript-buffer (ref-variable enable-transcript-buffer)))
-    (if enable-transcript-buffer
-	(insert-region (region-start region)
-		       (region-end region)
-		       (buffer-end (transcript-buffer)))))
-  (let ((environment (evaluation-environment argument)))
-    (with-input-from-region region
+(define (evaluate-region region environment)
+  (let ((buffer (mark-buffer (region-start region))))
+    (let ((evaluation-input-recorder
+	   (ref-variable evaluation-input-recorder buffer)))
+      (if evaluation-input-recorder
+	  (evaluation-input-recorder region)))
+    (let ((enable-transcript-buffer
+	   (ref-variable enable-transcript-buffer buffer)))
+      (if enable-transcript-buffer
+	  (insert-region (region-start region)
+			 (region-end region)
+			 (buffer-end (transcript-buffer)))))
+    (bind-condition-handler (list condition-type:error)
+	evaluation-error-handler
       (lambda ()
+	(let loop
+	    ((expressions (read-expressions-from-region region))
+	     (result unspecific))
+	  (if (null? expressions)
+	      result
+	      (loop (cdr expressions)
+		    (editor-eval buffer (car expressions) environment))))))))
+
+(define (read-expressions-from-region region)
+  (with-input-from-region region
+    (lambda ()
+      (let loop ()
+	(let ((expression (read)))
+	  (if (eof-object? expression)
+	      '()
+	      (cons expression (loop))))))))
+
+(define (evaluation-environment buffer)
+  (let ((environment
+	 (ref-variable scheme-environment (or buffer (current-buffer)))))
+    (if (eq? 'DEFAULT environment)
+	(nearest-repl/environment)
 	(bind-condition-handler (list condition-type:error)
-	    evaluation-error-handler
-	  (letrec
-	      ((loop
-		(lambda (result)
-		  (let ((sexp (read)))
-		    (if (eof-object? sexp)
-			result
-			(loop (editor-eval sexp environment)))))))
-	    (lambda ()
-	      (loop unspecific))))))))
+	    (lambda (condition)
+	      condition
+	      (editor-error "Illegal environment: " environment))
+	  (lambda ()
+	    (->environment environment))))))
 
-(define (evaluation-environment argument)
-  (let ((->environment
-	 (lambda (object)
-	   (bind-condition-handler (list condition-type:error)
-	       (lambda (condition)
-		 condition
-		 (editor-error "Illegal environment: " object))
-	     (lambda ()
-	       (->environment object))))))
-    (if argument
-	(if (environment? argument)
-	    argument
-	    (->environment
-	     (prompt-for-expression-value "Evaluate in environment")))
-	(let ((environment (ref-variable scheme-environment)))
-	  (if (eq? 'DEFAULT environment)
-	      (nearest-repl/environment)
-	      (->environment environment))))))
-
-(define (evaluation-syntax-table environment)
-  (let ((syntax-table (ref-variable scheme-syntax-table)))
+(define (evaluation-syntax-table buffer environment)
+  (let ((syntax-table (ref-variable scheme-syntax-table buffer)))
     (cond ((or (not syntax-table) (eq? 'DEFAULT syntax-table))
 	   (nearest-repl/syntax-table))
 	  ((scheme-syntax-table? syntax-table)
@@ -326,16 +368,17 @@ may be available.  The following commands are special to this mode:
   (access syntax-table? system-global-environment))
 
 (define-variable run-light
-  "Scheme run light.  Not intended to be modified by users, but needed to
-kludge the mode line."
-  false)
+  "Scheme run light.  Not intended to be modified by users.
+Set by Scheme evaluation code to update the mode line."
+  false
+  (lambda (object) (or (not object) (string? object))))
 
 (define-variable enable-run-light?
-  "Whether to display the Scheme run light."
+  "If true, Scheme evaluation commands display a run light in the mode line."
   true
   boolean?)
 
-(define (editor-eval sexp environment)
+(define (editor-eval buffer sexp environment)
   (let ((core
 	 (lambda ()
 	   (with-input-from-string ""
@@ -345,9 +388,10 @@ kludge the mode line."
 			(with-output-to-string
 			  (lambda ()
 			    (set! value
-				  (eval-with-history sexp environment))))))
+				  (eval-with-history buffer sexp environment))
+			    unspecific))))
 		   (let ((evaluation-output-receiver
-			  (ref-variable evaluation-output-receiver)))
+			  (ref-variable evaluation-output-receiver buffer)))
 		     (if evaluation-output-receiver
 			 (evaluation-output-receiver value output-string)
 			 (with-output-to-transcript-buffer
@@ -355,28 +399,32 @@ kludge the mode line."
 			    (write-string output-string)
 			    (transcript-write
 			     value
-			     (and (ref-variable enable-transcript-buffer)
+			     (and (ref-variable enable-transcript-buffer
+						buffer)
 				  (transcript-buffer))))))))
 		 value))))))
-    (if (ref-variable enable-run-light?)
-	(unwind-protect
-	 (lambda ()
-	   (set-variable! run-light "eval")
-	   (for-each (lambda (window)
-		       (window-modeline-event! window 'RUN-LIGHT))
-		     (window-list))
-	   (update-screens! false))
-	 core
-	 (lambda ()
-	   (set-variable! run-light false)
-	   (for-each (lambda (window)
-		       (window-modeline-event! window 'RUN-LIGHT))
-		     (window-list))
-	   (update-screens! false)))
+    (if (ref-variable enable-run-light? buffer)
+	(let ((run-light (ref-variable-object run-light))
+	      (outside)
+	      (inside "eval"))
+	  (dynamic-wind
+	   (lambda ()
+	     (set! outside (variable-local-value buffer run-light))
+	     (set-variable-local-value! buffer run-light inside)
+	     (set! inside)
+	     (global-window-modeline-event!)
+	     (update-screens! false))
+	   core
+	   (lambda ()
+	     (set! inside (variable-local-value buffer run-light))
+	     (set-variable-local-value! buffer run-light outside)
+	     (set! outside)
+	     (global-window-modeline-event!)
+	     (update-screens! false))))
 	(core))))
 
-(define (eval-with-history expression environment)
-  (let ((syntax-table (evaluation-syntax-table environment)))
+(define (eval-with-history buffer expression environment)
+  (let ((syntax-table (evaluation-syntax-table buffer environment)))
     (bind-condition-handler (list condition-type:error)
 	evaluation-error-handler
       (lambda ()

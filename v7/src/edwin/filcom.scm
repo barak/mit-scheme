@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.165 1992/02/13 18:25:54 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.166 1992/04/08 17:57:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -286,7 +286,9 @@ invocation."
       (if entry
 	  (begin
 	    (local-set-variable! scheme-environment (cadr entry))
-	    (local-set-variable! scheme-syntax-table (caddr entry)))))))
+	    (local-set-variable! scheme-syntax-table (caddr entry))
+	    (local-set-variable! evaluate-in-inferior-repl false)
+	    (local-set-variable! run-light false))))))
 
 (define-command save-buffer
   "Save current buffer in visited file if modified.  Versions described below.

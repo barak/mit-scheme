@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.13 1992/02/14 22:30:53 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.14 1992/04/08 17:57:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -99,9 +99,8 @@ other than ordinary files may change this (e.g. Info, Dired,...)"
   false)
 
 (define-variable-per-buffer mode-line-process
-  "Mode-line control for displaying info on process status.
-Normally displays the Scheme run light, if ENABLE-RUN-LIGHT? is true."
-  '(run-light (": " run-light) ""))
+  "Mode-line control for displaying info on process status."
+  false)
 
 (define-variable-per-buffer mode-line-procedure
   "Procedure used to generate the mode-line.

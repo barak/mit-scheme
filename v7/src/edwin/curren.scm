@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.101 1992/04/05 02:33:05 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.102 1992/04/08 17:57:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -366,8 +366,14 @@
 	      (hangup-process process true)
 	      (set-process-buffer! process false))
 	    (buffer-processes buffer))
-  (kill-buffer-inferior-repl buffer)
+  (for-each (lambda (hook) (hook buffer))
+	    (buffer-get buffer 'KILL-BUFFER-HOOKS))
   (bufferset-kill-buffer! (current-bufferset) buffer))
+
+(define (add-kill-buffer-hook buffer hook)
+  (let ((hooks (or (buffer-get buffer 'KILL-BUFFER-HOOKS) '())))
+    (if (not (memq hook hooks))
+	(buffer-put! buffer 'KILL-BUFFER-HOOKS (cons hook hooks)))))
 
 (define (select-buffer buffer)
   (set-window-buffer! (current-window) buffer true))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.84 1992/04/06 20:13:54 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.85 1992/04/08 17:57:40 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -974,6 +974,7 @@ MIT in each case. |#
   (files "intmod")
   (parent (edwin))
   (export (edwin)
+	  current-repl-buffer
 	  edwin-command$inferior-cmdl-abort-nearest
 	  edwin-command$inferior-cmdl-abort-previous
 	  edwin-command$inferior-cmdl-abort-top-level
@@ -987,6 +988,8 @@ MIT in each case. |#
 	  edwin-mode$inferior-repl
 	  edwin-variable$repl-enable-transcript-buffer
 	  edwin-variable$repl-error-decision
+	  inferior-repl-eval-expression
+	  inferior-repl-eval-region
 	  initialize-inferior-repls!
 	  kill-buffer-inferior-repl
 	  start-inferior-repl!))
