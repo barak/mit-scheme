@@ -17,7 +17,6 @@
 	 "earley.scm"
 	 "fcomp.scm"
 	 "fib.scm"
-	 "flatten.scm"
 	 "library.scm"
 	 "matmul1.scm"
 	 "matmul2.scm"
