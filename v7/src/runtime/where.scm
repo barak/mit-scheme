@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 13.43 1987/12/05 16:40:57 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 13.44 1988/01/02 14:21:45 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -70,14 +70,10 @@
 		env-spec)
 	       ((compound-procedure? env-spec)
 		(procedure-environment env-spec))
-	       ((delayed? env-spec)
-		(if (delayed-evaluation-forced? env-spec)
-		    (error "Not a valid environment, already forced"
-			   (list where env-spec))
-		    (delayed-evaluation-environment env-spec)))
+	       ((promise? env-spec)
+		(promise-environment env-spec))
 	       (else
-		(error "Not a legal environment object" 'WHERE
-		       env-spec)))))
+		(error "WHERE: Not a legal environment object" env-spec)))))
     (environment-warning-hook environment)
     (fluid-let ((env environment)
 		(current-frame environment)
