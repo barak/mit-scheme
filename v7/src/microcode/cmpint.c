@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.7 1989/10/23 21:40:57 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.8 1989/10/24 06:05:08 jinx Exp $
  *
  * This file corresponds to
  * $COMPILER-Header: compiler.c,v 9.35 88/10/26 20:02:13 GMT cph Exp $
@@ -652,16 +652,16 @@ comutil_error (nactuals, ignore_2, ignore_3, ignore_4)
  */
 
 SCHEME_UTILITY struct utility_result
-comutil_lexpr_apply (nactuals, compiled_entry_address, ignore_3, ignore_4)
-     register long nactuals;
-     register machine_word *compiled_entry_address;
+comutil_lexpr_apply (entry_address, nactuals, ignore_3, ignore_4)
+     register machine_word *entry_address;
+     long nactuals;
      long ignore_3, ignore_4;
 {
   RETURN_UNLESS_EXCEPTION
     ((setup_lexpr_invocation
       ((nactuals + 1),
-       (COMPILED_ENTRY_MAXIMUM_ARITY (compiled_entry_address)))),
-     compiled_entry_address);
+       (COMPILED_ENTRY_MAXIMUM_ARITY (entry_address)))),
+     entry_address);
 }
 
 /* Core of comutil_link and comp_link_caches_restart. */
@@ -780,10 +780,10 @@ link_cc_block (block_address, offset, last_header_offset,
 */
 
 SCHEME_UTILITY struct utility_result
-comutil_link (block_address, constant_address, sections, ret_add)
+comutil_link (ret_add, block_address, constant_address, sections)
+     machine_word *ret_add;
      SCHEME_OBJECT *block_address, *constant_address;
      long sections;
-     machine_word *ret_add;
 {
   long offset;
 
@@ -852,68 +852,77 @@ comp_link_caches_restart ()
 */
 
 SCHEME_UTILITY struct utility_result
-comutil_operator_apply_trap (operator, nactuals, ignore_3, ignore_4)
-     SCHEME_OBJECT operator;
-     long nactuals, ignore_3, ignore_4;
+comutil_operator_apply_trap (tramp_data, ignore_2, ignore_3, ignore_4)
+     SCHEME_OBJECT *tramp_data;
+     long ignore_2, ignore_3, ignore_4;
 {
   /* Used by coerce_to_compiled.  TRAMPOLINE_APPLY */
 
-  return (comutil_apply (operator, nactuals, 0, 0));
+  return (comutil_apply ((tramp_data[0]),
+			 (OBJECT_DATUM(tramp_data[1])),
+			 0, 0));
 }
 
 SCHEME_UTILITY struct utility_result
-comutil_operator_arity_trap (operator, nactuals, ignore_3, ignore_4)
-     SCHEME_OBJECT operator;
-     long nactuals, ignore_3, ignore_4;
+comutil_operator_arity_trap (tramp_data, ignore_2, ignore_3, ignore_4)
+     SCHEME_OBJECT *tramp_data;
+     long ignore_2, ignore_3, ignore_4;
 {
   /* Linker saw an argument count mismatch. TRAMPOLINE_ARITY */
 
-  return (comutil_apply (operator, nactuals, 0, 0));
+  return (comutil_apply ((tramp_data[0]),
+			 (OBJECT_DATUM(tramp_data[1])),
+			 0, 0));
 }
 
 SCHEME_UTILITY struct utility_result
-comutil_operator_entity_trap (operator, nactuals, ignore_3, ignore_4)
-     SCHEME_OBJECT operator;
-     long nactuals, ignore_3, ignore_4;
+comutil_operator_entity_trap (tramp_data, ignore_2, ignore_3, ignore_4)
+     SCHEME_OBJECT *tramp_data;
+     long ignore_2, ignore_3, ignore_4;
 {
   /* Linker saw an entity to be applied. TRAMPOLINE_ENTITY */
 
-  return (comutil_apply (operator, nactuals, 0, 0));
+  return (comutil_apply ((tramp_data[0]),
+			 (OBJECT_DATUM(tramp_data[1])),
+			 0, 0));
 }
 
 SCHEME_UTILITY struct utility_result
-comutil_operator_interpreted_trap (operator, nactuals, ignore_3, ignore_4)
-     SCHEME_OBJECT operator;
-     long nactuals, ignore_3, ignore_4;
+comutil_operator_interpreted_trap (tramp_data, ignore_2, ignore_3, ignore_4)
+     SCHEME_OBJECT *tramp_data;
+     long ignore_2, ignore_3, ignore_4;
 {
   /* Linker saw an interpreted procedure or a procedure that it cannot
      link directly.  TRAMPOLINE_INTERPRETED
    */
 
-  return (comutil_apply (operator, nactuals, 0, 0));
+  return (comutil_apply ((tramp_data[0]),
+			 (OBJECT_DATUM(tramp_data[1])),
+			 0, 0));
 }
 
 SCHEME_UTILITY struct utility_result
-comutil_operator_lexpr_trap (operator, nactuals, ignore_3, ignore_4)
-     SCHEME_OBJECT operator;
-     long nactuals, ignore_3, ignore_4;
+comutil_operator_lexpr_trap (tramp_data, ignore_2, ignore_3, ignore_4)
+     SCHEME_OBJECT *tramp_data;
+     long ignore_2, ignore_3, ignore_4;
 {
   /* Linker saw a primitive of arbitrary number of arguments.
      TRAMPOLINE_LEXPR_PRIMITIVE
    */
 
-  Regs[REGBLOCK_LEXPR_ACTUALS] = ((SCHEME_OBJECT) nactuals);
-  return (comutil_primitive_lexpr_apply (operator, 0, 0, 0));
+  Regs[REGBLOCK_LEXPR_ACTUALS] =
+    ((SCHEME_OBJECT) (OBJECT_DATUM (tramp_data[1])));
+  return (comutil_primitive_lexpr_apply ((tramp_data[0]), 0, 0, 0));
 }
 
 SCHEME_UTILITY struct utility_result
-comutil_operator_primitive_trap (operator, ignore_2, ignore_3, ignore_4)
-     SCHEME_OBJECT operator;
+comutil_operator_primitive_trap (tramp_data, ignore_2, ignore_3, ignore_4)
+     SCHEME_OBJECT *tramp_data;
      long ignore_2, ignore_3, ignore_4;
 {
   /* Linker saw a primitive of fixed and matching arity. TRAMPOLINE_PRIMITIVE */
 
-  return (comutil_primitive_apply (operator, 0, 0, 0));
+  return (comutil_primitive_apply ((tramp_data[0]), 0, 0, 0));
 }
 
 /* ARITY Mismatch handling
@@ -924,17 +933,17 @@ comutil_operator_primitive_trap (operator, ignore_2, ignore_3, ignore_4)
  */
 
 SCHEME_UTILITY struct utility_result
-comutil_operator_1_0_trap (operator, ignore_2, ignore_3, ignore_4)
-     SCHEME_OBJECT operator;
+comutil_operator_1_0_trap (tramp_data, ignore_2, ignore_3, ignore_4)
+     SCHEME_OBJECT *tramp_data;
      long ignore_2, ignore_3, ignore_4;
 {
   STACK_PUSH (UNASSIGNED_OBJECT);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (operator));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
 }
 
 SCHEME_UTILITY struct utility_result
-comutil_operator_2_1_trap (operator, ignore_2, ignore_3, ignore_4)
-     SCHEME_OBJECT operator;
+comutil_operator_2_1_trap (tramp_data, ignore_2, ignore_3, ignore_4)
+     SCHEME_OBJECT *tramp_data;
      long ignore_2, ignore_3, ignore_4;
 {
   SCHEME_OBJECT Top;
@@ -942,22 +951,22 @@ comutil_operator_2_1_trap (operator, ignore_2, ignore_3, ignore_4)
   Top = STACK_POP ();
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (Top);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (operator));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
 }
 
 SCHEME_UTILITY struct utility_result
-comutil_operator_2_0_trap (operator, ignore_2, ignore_3, ignore_4)
-     SCHEME_OBJECT operator;
+comutil_operator_2_0_trap (tramp_data, ignore_2, ignore_3, ignore_4)
+     SCHEME_OBJECT *tramp_data;
      long ignore_2, ignore_3, ignore_4;
 {
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (operator));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
 }
 
 SCHEME_UTILITY struct utility_result
-comutil_operator_3_2_trap (operator, ignore_2, ignore_3, ignore_4)
-     SCHEME_OBJECT operator;
+comutil_operator_3_2_trap (tramp_data, ignore_2, ignore_3, ignore_4)
+     SCHEME_OBJECT *tramp_data;
      long ignore_2, ignore_3, ignore_4;
 {
   SCHEME_OBJECT Top, Next;
@@ -967,12 +976,12 @@ comutil_operator_3_2_trap (operator, ignore_2, ignore_3, ignore_4)
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (Next);
   STACK_PUSH (Top);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (operator));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
 }
 
 SCHEME_UTILITY struct utility_result
-comutil_operator_3_1_trap (operator, ignore_2, ignore_3, ignore_4)
-     SCHEME_OBJECT operator;
+comutil_operator_3_1_trap (tramp_data, ignore_2, ignore_3, ignore_4)
+     SCHEME_OBJECT *tramp_data;
      long ignore_2, ignore_3, ignore_4;
 {
   SCHEME_OBJECT Top;
@@ -981,23 +990,23 @@ comutil_operator_3_1_trap (operator, ignore_2, ignore_3, ignore_4)
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (Top);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (operator));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
 }
 
 SCHEME_UTILITY struct utility_result
-comutil_operator_3_0_trap (operator, ignore_2, ignore_3, ignore_4)
-     SCHEME_OBJECT operator;
+comutil_operator_3_0_trap (tramp_data, ignore_2, ignore_3, ignore_4)
+     SCHEME_OBJECT *tramp_data;
      long ignore_2, ignore_3, ignore_4;
 {
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (operator));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
 }
 
 SCHEME_UTILITY struct utility_result
-comutil_operator_4_3_trap (operator, ignore_2, ignore_3, ignore_4)
-     SCHEME_OBJECT operator;
+comutil_operator_4_3_trap (tramp_data, ignore_2, ignore_3, ignore_4)
+     SCHEME_OBJECT *tramp_data;
      long ignore_2, ignore_3, ignore_4;
 {
   SCHEME_OBJECT Top, Middle, Bottom;
@@ -1010,12 +1019,12 @@ comutil_operator_4_3_trap (operator, ignore_2, ignore_3, ignore_4)
   STACK_PUSH (Bottom);
   STACK_PUSH (Middle);
   STACK_PUSH (Top);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (operator));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
 }
 
 SCHEME_UTILITY struct utility_result
-comutil_operator_4_2_trap (operator, ignore_2, ignore_3, ignore_4)
-     SCHEME_OBJECT operator;
+comutil_operator_4_2_trap (tramp_data, ignore_2, ignore_3, ignore_4)
+     SCHEME_OBJECT *tramp_data;
      long ignore_2, ignore_3, ignore_4;
 {
   SCHEME_OBJECT Top, Next;
@@ -1026,12 +1035,12 @@ comutil_operator_4_2_trap (operator, ignore_2, ignore_3, ignore_4)
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (Next);
   STACK_PUSH (Top);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (operator));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
 }
 
 SCHEME_UTILITY struct utility_result
-comutil_operator_4_1_trap (operator, ignore_2, ignore_3, ignore_4)
-     SCHEME_OBJECT operator;
+comutil_operator_4_1_trap (tramp_data, ignore_2, ignore_3, ignore_4)
+     SCHEME_OBJECT *tramp_data;
      long ignore_2, ignore_3, ignore_4;
 {
   SCHEME_OBJECT Top;
@@ -1041,19 +1050,19 @@ comutil_operator_4_1_trap (operator, ignore_2, ignore_3, ignore_4)
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (Top);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (operator));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
 }
 
 SCHEME_UTILITY struct utility_result
-comutil_operator_4_0_trap (operator, ignore_2, ignore_3, ignore_4)
-     SCHEME_OBJECT operator;
+comutil_operator_4_0_trap (tramp_data, ignore_2, ignore_3, ignore_4)
+     SCHEME_OBJECT *tramp_data;
      long ignore_2, ignore_3, ignore_4;
 {
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (operator));
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (*tramp_data));
 }
 
 /* The linker either couldn't find a binding or the binding was
@@ -1069,16 +1078,19 @@ comutil_operator_4_0_trap (operator, ignore_2, ignore_3, ignore_4)
 */
 
 SCHEME_UTILITY struct utility_result
-comutil_operator_lookup_trap (extension, code_block, offset, ignore_4)
-     SCHEME_OBJECT extension, code_block;
-     long offset, ignore_4;
+comutil_operator_lookup_trap (tramp_data, ignore_2, ignore_3, ignore_4)
+     SCHEME_OBJECT *tramp_data;
+     long ignore_2, ignore_3, ignore_4;
 {
+  /* tramp_data contains extension, code_block, offset. */
+
   extern long complr_operator_reference_trap();
   SCHEME_OBJECT true_operator, *cache_cell;
   long code, nargs;
 
-  code = (complr_operator_reference_trap (&true_operator, extension));
-  cache_cell = (MEMORY_LOC (code_block, offset));
+  code = (complr_operator_reference_trap (&true_operator, (tramp_data[0])));
+  cache_cell = (MEMORY_LOC ((tramp_data[1]),
+			    (OBJECT_DATUM (tramp_data[2]))));
   EXTRACT_OPERATOR_LINK_ARITY (nargs, cache_cell);
   if (code == PRIM_DONE)
   {
@@ -1088,9 +1100,9 @@ comutil_operator_lookup_trap (extension, code_block, offset, ignore_4)
   {
     SCHEME_OBJECT *trampoline, environment, name;
 
-    EXTRACT_OPERATOR_LINK_ADDRESS(trampoline, cache_cell);
-    environment = compiled_block_environment(code_block);
-    name = compiler_var_error(extension, environment);
+    EXTRACT_OPERATOR_LINK_ADDRESS (trampoline, cache_cell);
+    environment = (compiled_block_environment (tramp_data[1]));
+    name = (compiler_var_error ((tramp_data[0]), environment));
 
     STACK_PUSH(ENTRY_TO_OBJECT(trampoline));
     STACK_PUSH(MAKE_UNSIGNED_FIXNUM(nargs)); /* For debugger */
@@ -1117,10 +1129,10 @@ comp_op_lookup_trap_restart ()
   Stack_Pointer = (Simulate_Popping (2));
   old_trampoline = (OBJECT_ADDRESS (STACK_POP ()));
   code_block = ((TRAMPOLINE_STORAGE (old_trampoline))[1]);
-  offset = (OBJECT_DATUM((TRAMPOLINE_STORAGE (old_trampoline))[2]));
-  EXTRACT_OPERATOR_LINK_ADDRESS(new_trampoline,
-                                (MEMORY_LOC(code_block, offset)));
-  return (C_to_interface ((machine_word *) (OBJECT_ADDRESS(new_trampoline))));
+  offset = (OBJECT_DATUM ((TRAMPOLINE_STORAGE (old_trampoline))[2]));
+  EXTRACT_OPERATOR_LINK_ADDRESS (new_trampoline,
+				 (MEMORY_LOC (code_block, offset)));
+  return (C_to_interface ((machine_word *) (OBJECT_ADDRESS (new_trampoline))));
 }
 
 /* INTERRUPT/GC from Scheme
@@ -1214,7 +1226,7 @@ comutil_interrupt_continuation (return_address, ignore_2, ignore_3, ignore_4)
 /* Env has live data; no entry point on the stack */
 
 SCHEME_UTILITY struct utility_result
-comutil_interrupt_ic_procedure(entry_point, ignore_2, ignore_3, ignore_4)
+comutil_interrupt_ic_procedure (entry_point, ignore_2, ignore_3, ignore_4)
      machine_word *entry_point;
      long ignore_2, ignore_3, ignore_4;
 {
@@ -1234,9 +1246,9 @@ comp_interrupt_restart ()
 /* Assigning a variable that has a trap in it (except unassigned) */
 
 SCHEME_UTILITY struct utility_result
-comutil_assignment_trap (extension_addr, value, return_address, ignore_4)
-     SCHEME_OBJECT *extension_addr, value;
+comutil_assignment_trap (return_address, extension_addr, value, ignore_4)
      machine_word *return_address;
+     SCHEME_OBJECT *extension_addr, value;
      long ignore_4;
 {
   extern long compiler_assignment_trap();
@@ -1364,9 +1376,9 @@ comp_cache_lookup_apply_restart ()
 
 #define CMPLR_REF_TRAP (name,c_trap,ret_code,restart_name,c_lookup)	\
 SCHEME_UTILITY struct utility_result					\
-name (extension_addr, return_address, ignore_3, ignore_4)		\
-     SCHEME_OBJECT *extension_addr;					\
+name (return_address, extension_addr, ignore_3, ignore_4)		\
      machine_word *return_address;					\
+     SCHEME_OBJECT *extension_addr;					\
      long ignore_3, ignore_4;						\
 {									\
   extern long c_trap();							\
@@ -1506,9 +1518,9 @@ initialize_compiler_arithmetic ()
 
 #define CMPLR_REFERENCE(util_name, c_proc, ret_code, restart_name)	\
 SCHEME_UTILITY struct utility_result					\
-util_name (environment, variable, ret_add, ignore_4)			\
-     SCHEME_OBJECT environment, variable;				\
+util_name (ret_add, environment, variable, ignore_4)			\
      machine_word *ret_add;						\
+     SCHEME_OBJECT environment, variable;				\
      long ignore_4;							\
 {									\
   extern long c_proc();							\
@@ -1556,9 +1568,9 @@ restart_name ()								\
 
 #define CMPLR_ASSIGNMENT(util_name, c_proc, ret_code, restart_name)	\
 SCHEME_UTILITY struct utility_result					\
-util_name (environment, variable, value, ret_add)			\
-     SCHEME_OBJECT environment, variable, value;			\
+util_name (ret_add, environment, variable, value)			\
      machine_word *ret_add;						\
+     SCHEME_OBJECT environment, variable, value;			\
 {									\
   extern long c_proc();							\
   long code;								\
@@ -2248,11 +2260,8 @@ coerce_to_compiled (procedure, arity, location)
 /* *** HERE *** */
 
 /* Priorities:
-   - Change comutils as follows:
-      operator_traps get address of trampoline storage;
-      entries with ret_add get it first
-      entries with entry_point (interrupt) get it first
    - initialization and register block
+   - change interpreter to match this
  */
 
 long
