@@ -12,11 +12,11 @@
 @syncodeindex pg fn
 @syncodeindex tp fn
 
-@c $Id: sos.texinfo,v 2.7 2000/07/21 18:23:04 cph Exp $
+@c $Id: sos.texinfo,v 2.8 2000/12/08 21:38:54 cph Exp $
 
 @set TITLE The SOS Reference Manual
-@set EDITION 2.7
-@set UPDATED 21 July 2000
+@set EDITION 2.8
+@set UPDATED 8 December 2000
 
 @ifinfo
 Copyright @copyright{} 1993-2000 Massachusetts Institute of Technology
@@ -152,18 +152,18 @@ class object and returns its name.  The name of an anonymous class is
 @cindex superclass, direct
 @cindex direct subclass
 @cindex subclass, direct
-A class @var{C[1]} is a @dfn{direct superclass} of a class @var{C[2]} if
-@var{C[2]} explicitly designates @var{C[1]} as a superclass in its
-definition.  In this case, @var{C[2]} is a @dfn{direct subclass} of
-@var{C[1]}.  A class @var{C[n]} is a @dfn{superclass} of a class
-@var{C[1]} if there exists a series of classes @var{C[2]}, @dots{},
-@var{C[n-1]} such that @var{C[i+1]} is a direct superclass of @var{C[i]}
-for all @var{i} between @var{1} and @var{n}.  In this case, @var{C[1]}
-is a @dfn{subclass} of @var{C[n]}.  A class is considered neither a
-superclass nor a subclass of itself.  That is, if @var{C[1]} is a
-superclass of @var{C[2]}, then @var{C[1]} is different from @var{C[2]}.
-The set of classes consisting of some given class @var{C} along with all
-of its superclasses is called ``@var{C} and its superclasses.''
+A class @var{C_1} is a @dfn{direct superclass} of a class @var{C_2} if
+@var{C_2} explicitly designates @var{C_1} as a superclass in its
+definition.  In this case, @var{C_2} is a @dfn{direct subclass} of
+@var{C_1}.  A class @var{C_n} is a @dfn{superclass} of a class @var{C_1}
+if there exists a series of classes @var{C_2}, @dots{}, @var{C_n-1} such
+that @var{C_i+1} is a direct superclass of @var{C_i} for all @var{i}
+between @var{1} and @var{n}.  In this case, @var{C_1} is a
+@dfn{subclass} of @var{C_n}.  A class is considered neither a superclass
+nor a subclass of itself.  That is, if @var{C_1} is a superclass of
+@var{C_2}, then @var{C_1} is different from @var{C_2}.  The set of
+classes consisting of some given class @var{C} along with all of its
+superclasses is called ``@var{C} and its superclasses.''
 
 @cindex class precedence list
 @cindex precedence list, class
@@ -406,7 +406,7 @@ pair whose @sc{car} is a symbol and whose @sc{cdr} is an alist.  The
 following class options are recognized:
 
 @table @code
-@item (predicate @var{[name]})
+@item (predicate [@var{name}])
 @findex predicate
 @cindex predicate, class option
 Specifies that a predicate procedure should be defined for this class.
@@ -419,7 +419,7 @@ the class name is surrounded by angle brackets, they are stripped off
 first.  For example, the default predicate name for the class
 @code{<foo>} is @code{foo?}.
 
-@item (constructor @var{[name]} @var{slot-names} @var{[n-init-args]})
+@item (constructor [@var{name}] @var{slot-names} [@var{n-init-args}])
 @findex constructor
 @cindex constructor, class option
 Specifies that a constructor procedure should be defined for this class.
