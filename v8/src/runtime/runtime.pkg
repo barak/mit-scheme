@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.89 1991/02/15 18:06:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.90 1991/02/19 22:45:36 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1892,7 +1892,9 @@ MIT in each case. |#
 	  tcp-server-connection-accept))
 
 (define-package (runtime subprocess)
-  (files "process")
+  (file-case options
+    ((load) "process")
+    (else))
   (parent ())
   (export ()
 	  make-subprocess
