@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/object.scm,v 1.1 1991/01/18 19:08:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/object.scm,v 1.2 1991/01/19 04:21:19 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,86 +36,43 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define-integrable (rcstext/make head access symbols locks strict? comment
-				 description)
-  (vector rcstext/tag head access symbols locks strict? comment description))
+(define rcstext-rtd
+  (make-record-type
+   "rcstext"
+   '(head branch access symbols locks strict? comment expand description)))
 
-(define rcstext/tag
-  "rcstext")
+(define make-rcstext (record-constructor rcstext-rtd))
+(define rcstext/head (record-accessor rcstext-rtd 'head))
+(define rcstext/branch (record-accessor rcstext-rtd 'branch))
+(define rcstext/access (record-accessor rcstext-rtd 'access))
+(define rcstext/symbols (record-accessor rcstext-rtd 'symbols))
+(define rcstext/locks (record-accessor rcstext-rtd 'locks))
+(define rcstext/strict? (record-accessor rcstext-rtd 'strict?))
+(define rcstext/comment (record-accessor rcstext-rtd 'comment))
+(define rcstext/expand (record-accessor rcstext-rtd 'expand))
+(define rcstext/description (record-accessor rcstext-rtd 'description))
 
-(define-integrable (rcstext/head rcstext) (vector-ref rcstext 1))
-(define-integrable (rcstext/access rcstext) (vector-ref rcstext 2))
-(define-integrable (rcstext/symbols rcstext) (vector-ref rcstext 3))
-(define-integrable (rcstext/locks rcstext) (vector-ref rcstext 4))
-(define-integrable (rcstext/strict? rcstext) (vector-ref rcstext 5))
-(define-integrable (rcstext/comment rcstext) (vector-ref rcstext 6))
-(define-integrable (rcstext/description rcstext) (vector-ref rcstext 7))
+(define delta-rtd
+  (make-record-type "rcsdelta"
+		    '(number date author state branches next log text)))
 
-(define-integrable (rcstext/set-head! rcstext head)
-  (vector-set! rcstext 1 head))
+(define make-delta (record-constructor delta-rtd))
+(define delta/number (record-accessor delta-rtd 'number))
+(define delta/date (record-accessor delta-rtd 'date))
+(define delta/author (record-accessor delta-rtd 'author))
+(define delta/state (record-accessor delta-rtd 'state))
+(define delta/branches (record-accessor delta-rtd 'branches))
+(define delta/next (record-accessor delta-rtd 'next))
+(define set-delta/next! (record-updater delta-rtd 'next))
+(define delta/log (record-accessor delta-rtd 'log))
+(define set-delta/log! (record-updater delta-rtd 'log))
+(define delta/text (record-accessor delta-rtd 'text))
+(define set-delta/text! (record-updater delta-rtd 'text))
 
-(define-integrable (rcstext/set-access! rcstext access)
-  (vector-set! rcstext 2 access))
-
-(define-integrable (rcstext/set-symbols! rcstext symbols)
-  (vector-set! rcstext 3 symbols))
-
-(define-integrable (rcstext/set-locks! rcstext locks)
-  (vector-set! rcstext 4 locks))
-
-(define-integrable (rcstext/set-strict?! rcstext strict?)
-  (vector-set! rcstext 5 strict?))
-
-(define-integrable (rcstext/set-comment! rcstext comment)
-  (vector-set! rcstext 6 comment))
-
-(define-integrable (rcstext/set-description! rcstext description)
-  (vector-set! rcstext 7 description))
-
-(define-integrable (delta/make number)
-  (vector delta/tag number false false false false false false false))
-
-(define delta/tag
-  "delta")
-
-(define-integrable (delta/number delta) (vector-ref delta 1))
-(define-integrable (delta/date delta) (vector-ref delta 2))
-(define-integrable (delta/author delta) (vector-ref delta 3))
-(define-integrable (delta/state delta) (vector-ref delta 4))
-(define-integrable (delta/branches delta) (vector-ref delta 5))
-(define-integrable (delta/next delta) (vector-ref delta 6))
-(define-integrable (delta/log delta) (vector-ref delta 7))
-(define-integrable (delta/text delta) (vector-ref delta 8))
-
-(define-integrable (delta/set-number! delta number)
-  (vector-set! delta 1 number))
-
-(define-integrable (delta/set-date! delta date)
-  (vector-set! delta 2 date))
-
-(define-integrable (delta/set-author! delta author)
-  (vector-set! delta 3 author))
-
-(define-integrable (delta/set-state! delta state)
-  (vector-set! delta 4 state))
-
-(define-integrable (delta/set-branches! delta branches)
-  (vector-set! delta 5 branches))
-
-(define-integrable (delta/set-next! delta next)
-  (vector-set! delta 6 next))
-
-(define-integrable (delta/set-log! delta log)
-  (vector-set! delta 7 log))
-
-(define-integrable (delta/set-text! delta text)
-  (vector-set! delta 8 text))
-
-(unparser/set-tagged-vector-method!
- delta/tag
- (unparser/standard-method "DELTA"
-   (lambda (state delta)
-     (unparse-string state (delta/number delta)))))
+(set-record-type-unparser-method! delta-rtd
+  (unparser/standard-method 'rcsdelta
+    (lambda (state delta)
+      (unparse-string state (delta/number delta)))))
 
 (define (date/make year month day hour minute second)
   (vector

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/Attic/make.scm,v 1.1 1991/01/18 19:07:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/Attic/make.scm,v 1.2 1991/01/19 04:21:14 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,5 +36,6 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(load-option 'hash-table)
 (package/system-loader "rcs" '() 'QUERY)
-(add-identification! "RCS" 1 0)
+(add-identification! "RCS" 2 0)

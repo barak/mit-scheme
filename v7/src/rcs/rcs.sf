@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/Attic/rcs.sf,v 1.1 1991/01/18 19:10:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/Attic/rcs.sf,v 1.2 1991/01/19 04:21:33 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,7 +33,6 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 (fluid-let ((sf/default-syntax-table system-global-syntax-table))
-  (sf-conditionally "object")
   (sf-directory "."))
 
 ;; Guarantee that the package modeller is loaded.

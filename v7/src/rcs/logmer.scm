@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/logmer.scm,v 1.1 1991/01/18 19:07:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/logmer.scm,v 1.2 1991/01/19 04:21:08 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,7 +35,6 @@ MIT in each case. |#
 ;;;; RCS Log Merge
 
 (declare (usual-integrations))
-(declare (integrate-external "object"))
 
 (define trace-port false)
 
@@ -92,9 +91,9 @@ MIT in each case. |#
   (write-string "\ndate: ")
   (write-string (date->string (delta/date delta)))
   (write-string ";  author: ")
-  (write (delta/author delta))
+  (write-string (delta/author delta))
   (write-string ";  state: ")
-  (write (delta/state delta))
+  (write-string (delta/state delta))
   (newline))
 
 (define (compress-entries entries)
@@ -152,7 +151,7 @@ MIT in each case. |#
 	(write-string (pathname->string pathname) trace-port)))
   (let ((deltas (rcstext->deltas (rcs/read-file pathname 'LOG-ONLY))))
     (for-each (lambda (delta)
-		(delta/set-log! delta
+		(set-delta/log! delta
 				(let ((log (string-trim (delta/log delta))))
 				  (if (string-null? log)
 				      empty-log-message

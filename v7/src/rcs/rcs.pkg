@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/rcs.pkg,v 1.1 1991/01/18 19:09:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/rcs.pkg,v 1.2 1991/01/19 04:21:25 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,7 +47,7 @@ MIT in each case. |#
 	  rcs/format))
 
 (define-package (rcs parser)
-  (files "parser")
+  (files "nparse")
   (parent (rcs))
   (export (rcs)
 	  rcs/read-file
