@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: envconv.scm,v 1.15 1995/07/15 06:17:24 adams Exp $
+$Id: envconv.scm,v 1.16 1995/09/07 22:07:49 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -358,7 +358,7 @@ MIT in each case. |#
      (not-yet-legal expr))
     (else
      (illegal expr))))
-
+
 (define (envconv/expr env expr)
   (envconv/expr-with-name env expr #f))
 
@@ -372,7 +372,7 @@ MIT in each case. |#
     (if (null? exprs)
 	(reverse! fin)
 	(loop (cdr exprs) (cons (envconv/expr env (car exprs)) fin)))))
-
+
 (define (envconv/remember new old block)
   (call-with-values
    (lambda () (code-rewrite/original-form*/previous old))
@@ -453,7 +453,7 @@ MIT in each case. |#
   (env false read-only true)
   (number false read-only true)
   (references '() read-only false))
-
+
 (define-structure
     (envconv/reference
      (conc-name envconv/reference/)
@@ -496,7 +496,7 @@ MIT in each case. |#
 	(set-envconv/env/children! parent
 				   (cons env (envconv/env/children parent))))
     env))
-
+
 (define-integrable (envconv/env/reified? env)
   (envconv/env/reified-name env))
 
@@ -517,7 +517,7 @@ MIT in each case. |#
 	(if (not parent)
 	    (envconv/env/reify! env)
 	    (envconv/env/reify-top-level! parent)))))
-
+
 (define (envconv/new-reference env name reference-text)
   (let* ((binding   (envconv/env/lookup! env name))
 	 (reference (envconv/reference/make reference-text binding env)))
@@ -526,7 +526,7 @@ MIT in each case. |#
      (cons reference
 	   (envconv/binding/references binding)))
     reference-text))
-
+
 (define (envconv/env/lookup! env name)
   (let spine-loop ((frame env) (frame* false))
     (cond ((not frame)
@@ -681,8 +681,7 @@ MIT in each case. |#
 
 (define (envconv/medium/cache? context)
   (eq? context 'TOP-LEVEL))
-
-
+
 (define (envconv/new-declaration-scope)
   (list 'DECLARE))
 
