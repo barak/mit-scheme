@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: intmod.scm,v 1.103 1999/10/31 04:31:58 cph Exp $
+;;; $Id: intmod.scm,v 1.104 1999/10/31 04:36:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -164,14 +164,18 @@ evaluated in the specified inferior REPL buffer."
 (define (inferior-repl/quit)
   unspecific)
 
-(define (current-repl-buffer buffer)
-  (let ((buffer (current-repl-buffer* buffer)))
+(define (current-repl-buffer #!optional buffer)
+  (let ((buffer
+	 (current-repl-buffer* (if (default-object? buffer) #f buffer))))
     (if (not buffer)
 	(error "No REPL to evaluate in."))
     buffer))
 
-(define (current-repl-buffer* buffer)
-  (let ((buffer (or buffer (current-buffer))))
+(define (current-repl-buffer* #!optional buffer)
+  (let ((buffer
+	 (if (or (default-object? buffer) (not buffer))
+	     (current-buffer)
+	     buffer)))
     (if (repl-buffer? buffer)
 	buffer
 	(or (local-repl-buffer buffer)
@@ -523,7 +527,7 @@ Additionally, these commands abort the command loop:
 
 (define (interrupt-command interrupt flush-queue?)
   (lambda ()
-    (let ((port (buffer-interface-port (current-repl-buffer #f) #t)))
+    (let ((port (buffer-interface-port (current-repl-buffer) #t)))
       (signal-thread-event (port/thread port) interrupt)
       (if flush-queue?
 	  (flush-queue! (port/expression-queue port))))))
