@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.3 1987/05/18 16:15:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.4 1987/05/21 14:59:26 cph Exp $
 #| -*-Scheme-*-
 Copyright (c) 1987 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.3 1987/05/18 16:15:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.4 1987/05/21 14:59:26 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -82,13 +82,7 @@ promotional, or sales literature without prior written consent from
   (lambda (temporary)
     (if (vnode-known-constant? temporary)
 	(generate/constant (vnode-known-value temporary))
-	(let ((type (temporary-type temporary)))
-	  (cond ((not type)
-		 (expression-value/simple (rtl:make-fetch temporary)))
-		((eq? type 'VALUE)
-		 (expression-value/simple (rtl:make-fetch register:value)))
-		(else
-		 (error "Illegal temporary reference" type)))))))
+	(expression-value/simple (rtl:make-fetch temporary)))))
 
 (define-rvalue-generator access-tag
   (lambda (*access)
