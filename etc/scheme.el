@@ -24,7 +24,7 @@
 ;; of special forms.  Probably the code should be merged at some point 
 ;; so that there is sharing between both libraries.
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/scheme.el,v 1.5 1988/04/12 17:03:26 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/scheme.el,v 1.6 1988/04/25 12:53:38 cph Exp $
 
 (provide 'scheme)
 
@@ -423,6 +423,7 @@ of the start of the containing expression."
 
       (put 'with-input-from-string 'scheme-indent-hook 1)
       (put 'with-output-to-string 'scheme-indent-hook 0)
+      (put 'with-values 'scheme-indent-hook 1)
 
       (put 'syntax-table-define 'scheme-indent-hook 2)
       (put 'list-transform-positive 'scheme-indent-hook 1)
