@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debian-changelog.scm,v 1.4 2001/02/13 18:44:58 cph Exp $
+;;; $Id: debian-changelog.scm,v 1.5 2001/03/11 05:15:20 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -36,8 +36,7 @@ Key bindings:
 
 \\{debian-changelog}"
   (lambda (buffer)
-    (local-set-variable! left-margin 2 buffer)
-    (local-set-variable! fill-prefix "  " buffer)
+    (local-set-variable! fill-prefix "    " buffer)
     (local-set-variable! fill-column 74 buffer)
 
     ;; Let each entry behave as one paragraph:
