@@ -1,5 +1,5 @@
 #
-# $Id: Makefile,v 1.11 2000/03/21 04:20:51 cph Exp $
+# $Id: Makefile,v 1.12 2000/12/05 22:32:53 cph Exp $
 #
 # Makefile for Scheme compiler
 # This makefile supports some utilities for the compiler.
@@ -7,121 +7,116 @@
 # written in Scheme.
 #
 
-SOURCES = back/foo base/foo fggen/foo fgopt/foo\
-	machine/foo rtlbase/foo rtlgen/foo rtlopt/foo
-SUBDIRS = $(SOURCES:foo=)
+SUBDIRS = back base fggen fgopt machine rtlbase rtlgen rtlopt
 
 SHELL = /bin/sh
 
 all:
 	echo "No ALL action"
 
-TAGS:
+setup:
+	(cd machines/vax; \
+	for N in 1 2 3; do \
+	    ln -s instr${N}.scm dinstr${N}.scm; \
+	done)
+	rm -f machine
+	ln -s machines/i386 machine
+
+tags TAGS:
 	etags back/*.scm base/*.scm fggen/*.scm fgopt/*.scm \
 	machines/*/*.scm rtlbase/*.scm rtlgen/*.scm rtlopt/*.scm
 
-index:
-	rm -f INDEX
-	/zu/cph/bin/schndx $(SOURCES:foo=*.scm) > INDEX
-
-listing:
-	prlist comp.pkg $(SOURCES:foo=*.scm)
-
-locked:
-	for subdir in . back base fggen fgopt rtlbase rtlgen rtlopt machines/*; \
-	do \
-	rlog -L -R $${subdir}/RCS/*,v ; \
-	done
-
 stage1:
-	for subdir in $(SUBDIRS); \
-	do \
-	( cd $$subdir ; echo "making $$subdir" ; \
-	mkdir STAGE1 ; mv *.com *.bci STAGE1/. ) \
+	@for SUBDIR in $(SUBDIRS); do \
+	    echo "making $@ in $${SUBDIR}"; \
+	    (cd $${SUBDIR} && mkdir STAGE1 && mv -f *.com *.bci STAGE1/.); \
 	done
 
 unstage1:
-	for subdir in $(SUBDIRS); \
-	do \
-	( cd $$subdir ; echo "making $$subdir" ; \
-	mv STAGE1/* . ; rmdir STAGE1 ) \
+	@for SUBDIR in $(SUBDIRS); do \
+	    echo "making $@ in $${SUBDIR}"; \
+	    (cd $${SUBDIR} && mv -f STAGE1/* . && rmdir STAGE1); \
 	done
 
 rmstage1:
-	rm -rf $(SOURCES:foo=STAGE1)
+	@for SUBDIR in $(SUBDIRS); do \
+	    echo "making $@ in $${SUBDIR}"; \
+	    rm -rf $${SUBDIR}/STAGE1; \
+	done
 
 cpstage1:
-	for subdir in $(SUBDIRS); \
-	do \
-	( cd $$subdir ; echo "making $$subdir" ; \
-	cpx STAGE1/* . ) \
+	@for SUBDIR in $(SUBDIRS); do \
+	    echo "making $@ in $${SUBDIR}"; \
+	    (cd $${SUBDIR} && cp -p STAGE1/* .); \
 	done
 
 lnstage1:
-	for subdir in $(SUBDIRS); \
-	do \
-	( cd $$subdir ; echo "making $$subdir" ; \
-	ln STAGE1/* . ) \
+	@for SUBDIR in $(SUBDIRS); do \
+	    echo "making $@ in $${SUBDIR}"; \
+	    (cd $${SUBDIR} && ln -f STAGE1/* .); \
 	done
 
 stage2:
-	for subdir in $(SUBDIRS); \
-	do \
-	( cd $$subdir ; echo "making $$subdir" ; \
-	mkdir STAGE2 ; mv *.com *.bci STAGE2/. ) \
+	@for SUBDIR in $(SUBDIRS); do \
+	    echo "making $@ in $${SUBDIR}"; \
+	    (cd $${SUBDIR} && mkdir STAGE2 && mv -f *.com *.bci STAGE2/.); \
 	done
 
 unstage2:
-	for subdir in $(SUBDIRS); \
-	do \
-	( cd $$subdir ; echo "making $$subdir" ; \
-	mv STAGE2/* . ; rmdir STAGE2 ) \
+	@for SUBDIR in $(SUBDIRS); do \
+	    echo "making $@ in $${SUBDIR}"; \
+	    (cd $${SUBDIR} && mv -f STAGE2/* . && rmdir STAGE2); \
 	done
 
 rmstage2:
-	rm -rf $(SOURCES:foo=STAGE2)
+	@for SUBDIR in $(SUBDIRS); do \
+	    echo "making $@ in $${SUBDIR}"; \
+	    rm -rf $${SUBDIR}/STAGE2; \
+	done
 
 cpstage2:
-	for subdir in $(SUBDIRS); \
-	do \
-	( cd $$subdir ; echo "making $$subdir" ; \
-	cpx STAGE2/* . ) \
+	@for SUBDIR in $(SUBDIRS); do \
+	    echo "making $@ in $${SUBDIR}"; \
+	    (cd $${SUBDIR} && cp -p STAGE2/* .); \
 	done
 
 lnstage2:
-	for subdir in $(SUBDIRS); \
-	do \
-	( cd $$subdir ; echo "making $$subdir" ; \
-	ln STAGE2/* . ) \
+	@for SUBDIR in $(SUBDIRS); do \
+	    echo "making $@ in $${SUBDIR}"; \
+	    (cd $${SUBDIR} && ln -f STAGE2/* .); \
 	done
 
 stage3:
-	for subdir in $(SUBDIRS); \
-	do \
-	( cd $$subdir ; echo "making $$subdir" ; \
-	mkdir STAGE3 ; mv *.com *.bci STAGE3/. ) \
+	@for SUBDIR in $(SUBDIRS); do \
+	    echo "making $@ in $${SUBDIR}"; \
+	    (cd $${SUBDIR} && mkdir STAGE3 && mv -f *.com *.bci STAGE3/.); \
 	done
 
 unstage3:
-	for subdir in $(SUBDIRS); \
-	do \
-	( cd $$subdir ; echo "making $$subdir" ; \
-	mv STAGE3/* . ; rmdir STAGE3 ) \
+	@for SUBDIR in $(SUBDIRS); do \
+	    echo "making $@ in $${SUBDIR}"; \
+	    (cd $${SUBDIR} && mv -f STAGE3/* . && rmdir STAGE3); \
 	done
 
 rmstage3:
-	rm -rf $(SOURCES:foo=STAGE3)
+	@for SUBDIR in $(SUBDIRS); do \
+	    echo "making $@ in $${SUBDIR}"; \
+	    rm -rf $${SUBDIR}/STAGE3; \
+	done
 
 cpstage3:
-	for subdir in $(SUBDIRS); \
-	do \
-	( cd $$subdir ; echo "making $$subdir" ; \
-	cpx STAGE3/* . ) \
+	@for SUBDIR in $(SUBDIRS); do \
+	    echo "making $@ in $${SUBDIR}"; \
+	    (cd $${SUBDIR} && cp -p STAGE3/* .); \
 	done
 
 lnstage3:
-	for subdir in $(SUBDIRS); \
-	do \
-	( cd $$subdir ; echo "making $$subdir" ; \
-	ln STAGE3/* . ) \
+	@for SUBDIR in $(SUBDIRS); do \
+	    echo "making $@ in $${SUBDIR}"; \
+	    (cd $${SUBDIR} && ln -f STAGE3/* .); \
 	done
+
+.PHONY: all setup tags TAGS index listing locked
+.PHONY: stage1 unstage1 rmstage1 cpstage1 lnstage1
+.PHONY: stage2 unstage2 rmstage2 cpstage2 lnstage2
+.PHONY: stage3 unstage3 rmstage3 cpstage3 lnstage3
