@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: c.c,v 1.10 1993/11/01 15:27:42 gjr Exp $
+$Id: c.c,v 1.11 1993/11/05 00:49:17 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -36,6 +36,7 @@ MIT in each case. */
 #include "prims.h"
 #include "bignum.h"
 #include "bitstr.h"
+#include "avltree.h"
 
 #ifdef BUG_GCC_LONG_CALLS
 
@@ -66,6 +67,7 @@ SCHEME_OBJECT EXFUN ((* (constructor_kludge [10])), ()) =
 #endif /* BUG_GCC_LONG_CALLS */
 
 extern char * interface_to_C_hook;
+extern long C_return_value, MAX_TRAMPOLINE;
 extern void EXFUN (C_to_interface, (PTR));
 extern void EXFUN (interface_initialize, (void));
 extern SCHEME_OBJECT * EXFUN (initialize_C_compiled_block, (int, char *));
@@ -88,28 +90,37 @@ struct compiled_entry_s
 struct compiled_block_s
 {
   char * name;
+  unsigned long nentries;
   unsigned long dispatch;
   data_block constructor;
 };
 
 int pc_zero_bits;
-char * interface_to_C_hook;
-#define PSEUDO_STATIC /* static */
-PSEUDO_STATIC struct compiled_block_s *
-  compiled_blocks = ((struct compiled_block_s *) NULL);
-PSEUDO_STATIC struct compiled_entry_s *
-  compiled_entries = ((struct compiled_entry_s *) NULL);
-PSEUDO_STATIC unsigned long
-  max_compiled_entries = 0,
-  compiled_entries_size = 0;
-PSEUDO_STATIC unsigned long
-  max_compiled_blocks = 0,
-  compiled_blocks_size = 0;
 static SCHEME_OBJECT
   dummy_entry = ((SCHEME_OBJECT) -1L);
+char *
+  interface_to_C_hook = ((char *) & dummy_entry);
 void
   * scheme_hooks_low = NULL,
   * scheme_hooks_high = NULL;
+
+#define PSEUDO_STATIC
+
+PSEUDO_STATIC long
+  initial_entry_number = -1;
+PSEUDO_STATIC unsigned long
+  max_compiled_entries = 0,
+  compiled_entries_size = 0;
+PSEUDO_STATIC struct compiled_entry_s *
+  compiled_entries = ((struct compiled_entry_s *) NULL);
+
+PSEUDO_STATIC unsigned long
+  max_compiled_blocks = 0,
+  compiled_blocks_table_size = 0;
+PSEUDO_STATIC struct compiled_block_s *
+  compiled_blocks_table = ((struct compiled_block_s *) NULL);
+PSEUDO_STATIC tree_node
+  compiled_blocks_tree = ((tree_node) NULL);
 
 SCHEME_OBJECT *
 DEFUN (trampoline_procedure, (trampoline, dispatch),
@@ -138,25 +149,53 @@ DEFUN (uninitialized_data, (base_dispatch), unsigned long base_dispatch)
   /* Not yet assigned.  Cannot construct data. */
   error_external_return ();
 }
-
-PTR
-DEFUN (lrealloc, (ptr, size),
-       PTR ptr
-       AND unsigned long size)
-{
-  extern PTR EXFUN (malloc, (unsigned long));
-  extern PTR EXFUN (realloc, (PTR, unsigned long));
 
+SCHEME_OBJECT *
+DEFUN (unspecified_code, (entry, dispatch),
+       SCHEME_OBJECT * entry AND unsigned long dispatch)
+{
+  Store_Expression ((SCHEME_OBJECT) entry);
+  C_return_value = (ERR_EXECUTE_MANIFEST_VECTOR);
+  return (&dummy_entry);
+}
+
+extern PTR EXFUN (malloc, (unsigned long));
+extern PTR EXFUN (realloc, (PTR, unsigned long));
+
+PTR
+DEFUN (lrealloc, (ptr, size), PTR ptr AND unsigned long size)
+{
   if (ptr == ((PTR) NULL))
     return (malloc (size));
   else
     return (realloc (ptr, size));
 }
 
+int
+DEFUN (declare_trampoline_block, (nentries), unsigned long nentries)
+{
+  int result;
+
+  result = (declare_compiled_code ("#trampoline_code_block",
+				   nentries,
+				   NO_SUBBLOCKS,
+				   trampoline_procedure));
+#if 0
+  /* trampoline block is special. */
+
+  if (result != 0)
+    return (result);
+
+  result = (declare_compiled_data ("#trampoline_code_block",
+				   NO_SUBBLOCKS,
+				   no_data));
+#endif
+  return (result);
+}
+
 void
 DEFUN_VOID (interface_initialize)
 {
-  extern long MAX_TRAMPOLINE;
   int i, pow, del;
   
   for (i = 0, pow = 1, del = ((sizeof (SCHEME_OBJECT)) / (sizeof (char)));
@@ -171,122 +210,32 @@ DEFUN_VOID (interface_initialize)
   }
   pc_zero_bits = i;  
 
-  if (compiled_entries != ((struct compiled_entry_s *) NULL))
-    free (compiled_entries);
-  if (compiled_blocks != ((struct compiled_block_s *) NULL))
-    free (compiled_blocks);
-  
-  interface_to_C_hook = ((char *) &dummy_entry);
-  max_compiled_entries = 0;
-  compiled_entries_size = 0;
-  compiled_entries = ((struct compiled_entry_s *) NULL);
-  max_compiled_blocks = 0;
-  compiled_blocks_size = 0;
-  compiled_blocks = ((struct compiled_block_s *) NULL);
-  
-  if (((declare_compiled_code ("#trampoline_code_block",
-			       (MAX_TRAMPOLINE + TRAMPOLINE_FUDGE),
-			       NO_SUBBLOCKS,
-			       trampoline_procedure))
-       != 0)
-#if 0
-      /* trampoline block is special. */
+  if (initial_entry_number == -1)
+    initial_entry_number = (MAX_TRAMPOLINE + TRAMPOLINE_FUDGE);
 
-      || ((declare_compiled_data ("#trampoline_code_block",
-				  NO_SUBBLOCKS,
-				  no_data))
-	  != 0)
-#endif
+  if (((declare_trampoline_block (initial_entry_number)) != 0)
       || (initialize_compiled_code_blocks ()) != 0)
   {
-    outf_fatal ("interface_initialize: error initializing compiled code.\n");
-    Microcode_Termination (TERM_EXIT);
+    if (Registers[REGBLOCK_PRIMITIVE] != SHARP_F)
+      signal_error_from_primitive (ERR_FASLOAD_COMPILED_MISMATCH);
+    else
+    {
+      outf_fatal ("interface_initialize: error initializing compiled code.\n");
+      Microcode_Termination (TERM_EXIT);
+    }
   }
   return;
 }
 
-int
-DEFUN (declare_compiled_code,
-       (name, nentries, decl_code, code_proc),
-       char * name
-       AND unsigned long nentries
-       AND int EXFUN ((* decl_code), (void))
-       AND SCHEME_OBJECT * EXFUN ((* code_proc),
-				  (SCHEME_OBJECT *, unsigned long)))
-{
-  unsigned long dispatch = max_compiled_entries;
-  unsigned long n_dispatch = (dispatch + nentries);
-  unsigned long block_index = max_compiled_blocks;
-
-  if (n_dispatch < dispatch)
-    /* Wrap around */
-    return (-1);
-    
-  if (n_dispatch >= compiled_entries_size)
-  {
-    struct compiled_entry_s * new_entries;
-    unsigned long new_entries_size = ((compiled_entries_size == 0)
-				      ? 100
-				      : ((compiled_entries_size * 3) / 2));
-    if (new_entries_size <= n_dispatch)
-      new_entries_size = (n_dispatch + 1);
-
-    new_entries = ((struct compiled_entry_s *)
-		   (lrealloc (compiled_entries,
-			      (new_entries_size
-			       * (sizeof (struct compiled_entry_s))))));
-    if (new_entries == ((struct compiled_entry_s *) NULL))
-      return (-1);
-    compiled_entries_size = new_entries_size;
-    compiled_entries = new_entries;
-  }
-
-  if (block_index >= compiled_blocks_size)
-  {
-    struct compiled_block_s * new_blocks;
-    unsigned long new_blocks_size = ((compiled_blocks_size == 0)
-				     ? 10
-				     : ((compiled_blocks_size * 3) / 2));
-    new_blocks = ((struct compiled_block_s *)
-		  (lrealloc (compiled_blocks,
-			     (new_blocks_size
-			      * (sizeof (struct compiled_block_s))))));
-    if (new_blocks == ((struct compiled_block_s *) NULL))
-      return (-1);
-    compiled_blocks_size = new_blocks_size;
-    compiled_blocks = new_blocks;
-  }
-
-  max_compiled_entries = n_dispatch;
-  max_compiled_blocks = (block_index + 1);
-  
-  compiled_blocks[block_index].name = name;
-  compiled_blocks[block_index].dispatch = dispatch;
-  compiled_blocks[block_index].constructor = uninitialized_data;
-
-  for (block_index = dispatch; block_index < n_dispatch; block_index++)
-  {
-    compiled_entries[block_index].code = code_proc;
-    compiled_entries[block_index].dispatch = dispatch;
-  }
-
-  return (* decl_code) ();
-}
-
-/* For now this is a linear search.
-   Not that it matters much, but we could easily
-   make it binary.
- */
-
 unsigned long
 DEFUN (find_compiled_block, (name), char * name)
 {
-  unsigned long i;
-  
-  for (i = 1; i < max_compiled_blocks; i++)
-    if ((strcmp (name, compiled_blocks[i].name)) == 0)
-      return (i);
-  return (0);
+  tree_node node = (tree_lookup (compiled_blocks_tree, name));
+
+  if (node == ((tree_node) NULL))
+    return (max_compiled_blocks);
+  else
+    return (node->value);
 }
 
 int
@@ -298,14 +247,14 @@ DEFUN (declare_compiled_data,
 {
   unsigned long slot = (find_compiled_block (name));
 
-  if (slot == 0)
+  if (slot == max_compiled_blocks)
     return (-1);
   
-  if ((compiled_blocks[slot].constructor != uninitialized_data)
-      && (compiled_blocks[slot].constructor != data_proc))
+  if ((compiled_blocks_table[slot].constructor != uninitialized_data)
+      && (compiled_blocks_table[slot].constructor != data_proc))
     return (-1);
 
-  compiled_blocks[slot].constructor = data_proc;
+  compiled_blocks_table[slot].constructor = data_proc;
   return (* decl_data) ();  
 }
 
@@ -315,11 +264,11 @@ DEFUN (initialize_subblock, (name), char * name)
   SCHEME_OBJECT * ep, * block;
   unsigned long slot = (find_compiled_block (name));
 
-  if (slot == 0)
+  if (slot == max_compiled_blocks)
     error_external_return ();
 
-  ep = ((* compiled_blocks[slot].constructor)
-	(compiled_blocks[slot].dispatch));
+  ep = ((* compiled_blocks_table[slot].constructor)
+	(compiled_blocks_table[slot].dispatch));
   Get_Compiled_Block (block, ep);
   return (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, block));
 }
@@ -331,11 +280,215 @@ DEFUN (initialize_C_compiled_block, (argno, name),
   unsigned long slot;
 
   slot = (find_compiled_block (name));
-  if (slot == 0)
+  if (slot == max_compiled_blocks)
     return ((SCHEME_OBJECT *) NULL);
 
-  return ((* compiled_blocks[slot].constructor)
-	  (compiled_blocks[slot].dispatch));
+  return ((* compiled_blocks_table[slot].constructor)
+	  (compiled_blocks_table[slot].dispatch));
+}
+
+int
+DEFUN (declare_compiled_code,
+       (name, nentries, decl_code, code_proc),
+       char * name
+       AND unsigned long nentries
+       AND int EXFUN ((* decl_code), (void))
+       AND code_block code_proc)
+{
+  unsigned long slot = (find_compiled_block (name));
+
+  if (slot != max_compiled_blocks)
+  {
+    code_block old_code;
+
+    old_code = (compiled_entries[compiled_blocks_table[slot].dispatch].code);
+    if (((old_code != unspecified_code)
+	 && (old_code != code_proc)
+	 && (code_proc != unspecified_code))
+	|| (compiled_blocks_table[slot].nentries != nentries))
+      return (-1);
+    if (old_code == unspecified_code)
+    {
+      unsigned long counter, limit;
+
+      counter = compiled_blocks_table[slot].dispatch;
+      limit = (counter + nentries);
+      while (counter < limit)
+	compiled_entries[counter++].code = code_proc;
+    }
+  }
+  else
+  {
+    unsigned long dispatch = max_compiled_entries;
+    unsigned long n_dispatch = (dispatch + nentries);
+    unsigned long block_index = max_compiled_blocks;
+
+    if (n_dispatch < dispatch)
+      /* Wrap around */
+      return (-1);
+    
+    if (n_dispatch >= compiled_entries_size)
+    {
+      struct compiled_entry_s * new_entries;
+      unsigned long new_entries_size = ((compiled_entries_size == 0)
+					? 100
+					: ((compiled_entries_size * 3) / 2));
+      if (new_entries_size <= n_dispatch)
+	new_entries_size = (n_dispatch + 1);
+
+      new_entries = ((struct compiled_entry_s *)
+		     (lrealloc (compiled_entries,
+				(new_entries_size
+				 * (sizeof (struct compiled_entry_s))))));
+      if (new_entries == ((struct compiled_entry_s *) NULL))
+	return (-1);
+      compiled_entries_size = new_entries_size;
+      compiled_entries = new_entries;
+    }
+
+    if (block_index >= compiled_blocks_table_size)
+    {
+      struct compiled_block_s * new_blocks;
+      unsigned long new_blocks_size
+	= ((compiled_blocks_table_size == 0)
+	   ? 10
+	   : ((compiled_blocks_table_size * 3) / 2));
+      new_blocks = ((struct compiled_block_s *)
+		    (lrealloc (compiled_blocks_table,
+			       (new_blocks_size
+				* (sizeof (struct compiled_block_s))))));
+      if (new_blocks == ((struct compiled_block_s *) NULL))
+	return (-1);
+      compiled_blocks_table_size = new_blocks_size;
+      compiled_blocks_table = new_blocks;
+    }
+
+    {
+      tree_node new_tree;
+
+      tree_error_message = ((char *) NULL);
+      new_tree = (tree_insert (compiled_blocks_tree, name, block_index));
+      if (tree_error_message != ((char *) NULL))
+	return (-1);
+      compiled_blocks_tree = new_tree;
+    }
+
+    max_compiled_entries = n_dispatch;
+    max_compiled_blocks = (block_index + 1);
+  
+    compiled_blocks_table[block_index].name = name;
+    compiled_blocks_table[block_index].nentries = nentries;
+    compiled_blocks_table[block_index].dispatch = dispatch;
+    compiled_blocks_table[block_index].constructor = uninitialized_data;
+
+    for (block_index = dispatch; block_index < n_dispatch; block_index++)
+    {
+      compiled_entries[block_index].code = code_proc;
+      compiled_entries[block_index].dispatch = dispatch;
+    }
+  }
+  return (* decl_code) ();
+}
+
+/* For now */
+
+extern SCHEME_OBJECT
+  * EXFUN (cons_c_code_table, (SCHEME_OBJECT *, SCHEME_OBJECT *, long *));
+
+extern Boolean
+  EXFUN (install_c_code_table, (SCHEME_OBJECT *, long));
+
+static SCHEME_OBJECT *
+DEFUN (copy_c_code_block_information, (index, start, limit),
+       long index AND SCHEME_OBJECT * start AND SCHEME_OBJECT * limit)
+{
+  long char_count;
+  char * src, * dest;
+
+  if (start < limit)
+    *start++
+      = (LONG_TO_UNSIGNED_FIXNUM (compiled_blocks_table[index].nentries));
+  
+  src = compiled_blocks_table[index].name;
+  dest = ((char *) start);
+
+  while ((dest < ((char *) limit)) && ((*dest++ = *src++) != '\0'))
+    ;
+  if (dest >= ((char *) limit))
+    while (*src++ != '\0')
+      dest += 1;
+  
+  char_count = (dest - ((char *) start));
+  return (start + (BYTES_TO_WORDS (dest - ((char *) start))));
+}
+
+SCHEME_OBJECT *
+DEFUN (cons_c_code_table, (start, limit, length),
+       SCHEME_OBJECT * start AND SCHEME_OBJECT * limit AND long * length)
+{
+  long count;
+
+  * length = max_compiled_blocks;
+
+  if (start < limit)
+    *start++ = (LONG_TO_FIXNUM (initial_entry_number));
+
+  for (count = 0; ((count < max_compiled_blocks) && (start < limit)); count++)
+    start = (copy_c_code_block_information (count, start, limit));
+
+  return (start);
+}
+
+Boolean
+DEFUN (install_c_code_table, (table, length),
+       SCHEME_OBJECT * table AND long length)
+{
+  SCHEME_OBJECT the_fixnum;
+  long count, dumped_initial_entry_number;
+
+  the_fixnum = *table++;
+  dumped_initial_entry_number = (FIXNUM_TO_LONG (the_fixnum));
+  if (dumped_initial_entry_number < MAX_TRAMPOLINE)
+    return (false);
+  initial_entry_number = dumped_initial_entry_number;
+
+  if (compiled_entries != ((struct compiled_entry_s *) NULL))
+    free (compiled_entries);
+  if (compiled_blocks_table != ((struct compiled_block_s *) NULL))
+    free (compiled_blocks_table);
+  if (compiled_blocks_tree != ((tree_node) NULL))
+    tree_free (compiled_blocks_tree);
+  
+  max_compiled_entries = 0;
+  compiled_entries_size = 0;
+  compiled_entries = ((struct compiled_entry_s *) NULL);
+  max_compiled_blocks = 0;
+  compiled_blocks_table_size = 0;
+  compiled_blocks_table = ((struct compiled_block_s *) NULL);
+  compiled_blocks_tree = ((tree_node) NULL);
+  
+  if ((declare_trampoline_block (initial_entry_number)) != 0)
+    return (false);
+
+  for (count = 0; count < length; count++)
+  {
+    long nentries = (UNSIGNED_FIXNUM_TO_LONG (* table++));
+    int nlen = (strlen ((char *) table));
+    char * ncopy = ((char *) (malloc (nlen + 1)));
+
+    if (ncopy == ((char *) NULL))
+      return (false);
+    strcpy (ncopy, ((char *) table));
+    if ((declare_compiled_code (ncopy,
+				nentries,
+				NO_SUBBLOCKS,
+				unspecified_code))
+	!= 0)
+      return (false);
+    table += (BYTES_TO_WORDS (nlen + 1));
+  }
+
+  return (true);
 }
 
 #define C_COUNT_TRANSFERS
@@ -344,7 +497,6 @@ unsigned long c_to_interface_transfers = 0;
 void
 DEFUN (C_to_interface, (in_entry), PTR in_entry)
 {
-  extern long C_return_value;
   SCHEME_OBJECT * entry = ((SCHEME_OBJECT *) in_entry);
 
   while (1)
@@ -362,7 +514,6 @@ DEFUN (C_to_interface, (in_entry), PTR in_entry)
     {
       if (entry != &dummy_entry)
       {
-	/* We need to export C_return_value before enabling this code. */
 	Store_Expression ((SCHEME_OBJECT) entry);
 	C_return_value = (ERR_EXECUTE_MANIFEST_VECTOR);
       }
