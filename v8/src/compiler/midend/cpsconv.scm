@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cpsconv.scm,v 1.7 1995/02/27 22:38:15 adams Exp $
+$Id: cpsconv.scm,v 1.8 1995/02/28 00:41:04 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -68,18 +68,18 @@ MIT in each case. |#
 		  (cpsconv/lambda* lambda-list body)))
 
 (define-cps-converter LET (cont bindings body)
-  (cpsconv/call** (lmap cpsconv/classify-let-binding bindings)
+  (cpsconv/call** (map cpsconv/classify-let-binding bindings)
 		  (lambda (names* rands*)
 		    `(LET ,(map list names* rands*)
 		       ,(cpsconv/expr cont body)))
 		  form))
 
 (define-cps-converter LETREC (cont bindings body)
-  `(LETREC ,(lmap (lambda (binding)
-		    (let ((value (cadr binding)))
-		      (list (car binding)
-			    (cpsconv/lambda** value))))
-		  bindings)
+  `(LETREC ,(map (lambda (binding)
+		   (let ((value (cadr binding)))
+		     (list (car binding)
+			   (cpsconv/lambda** value))))
+		 bindings)
      ,(cpsconv/expr cont body)))
 
 (define (cpsconv/lambda* lambda-list body)
@@ -108,10 +108,10 @@ MIT in each case. |#
 	   (lambda ()
 	     (let ((rator&rands (cons rator rands)))
 	       (do-call rator&rands
-			(lmap (lambda (x)
-				x	; ignored
-				false)
-			      rator&rands)
+			(map (lambda (x)
+			       x	; ignored
+			       false)
+			     rator&rands)
 			(lambda (new-names rator*&rands*)
 			  new-names	; ignored
 			  `(CALL ,(car rator*&rands*)
@@ -119,9 +119,10 @@ MIT in each case. |#
 				 ,@(cdr rator*&rands*)))))))
 	 (simple
 	  (lambda (expr*)
-	    (cond ((not (simple-operator? (cadr rator)))
-		   (cpsconv/hook-return form (cadr rator) cont expr*))
-		  ((operator/satisfies? (cadr rator) '(UNSPECIFIC-RESULT))
+	    (cond ((not (simple-operator? (quote/text rator)))
+		   (cpsconv/hook-return form (quote/text rator) cont expr*))
+		  ((operator/satisfies? (quote/text rator)
+					'(UNSPECIFIC-RESULT))
 		   `(BEGIN
 		      ,expr*
 		      ,(cpsconv/return form cont `(QUOTE ,%unspecific))))
@@ -139,9 +140,9 @@ MIT in each case. |#
 			`(CALL
 			  (LAMBDA ,(cons (cpsconv/new-ignored-continuation)
 					 names*)
-			    ,(cpsconv/expr cont (caddr rator)))
-			       (QUOTE #F)
-			       ,@rands*)))))
+			    ,(cpsconv/expr cont (lambda/body rator)))
+			  (QUOTE #F)
+			  ,@rands*)))))
 	  ((not (QUOTE/? rator))
 	   (default))
 	  ((and (simple-operator? (quote/text rator))
@@ -150,10 +151,10 @@ MIT in each case. |#
 	  ((or (simple-operator? (quote/text rator))
 	       (hook-operator? (quote/text rator)))
 	   (do-call rands
-		    (lmap (lambda (x)
-			    x		; ignored
-			    false)
-			  rands)
+		    (map (lambda (x)
+			   x		; ignored
+			   false)
+			 rands)
 		    (lambda (new-names rands*)
 		      new-names		; ignored
 		      (simple `(CALL ,rator (QUOTE ,#f) ,@rands*)))))
@@ -220,7 +221,8 @@ MIT in each case. |#
 (define (cpsconv/trivial? operand)
   (or (LOOKUP/? operand)
       (QUOTE/? operand)
-      (LAMBDA/? operand)))
+      (LAMBDA/? operand)
+      (form/static? operand)))
 
 (define (cpsconv/classify-let-binding binding)
   (let ((name    (car binding))
@@ -251,20 +253,20 @@ MIT in each case. |#
     (cpsconv/remember
      (case (car form)
        ((LOOKUP)
-	`(LOOKUP ,(cadr form)))
+	`(LOOKUP ,(lookup/name form)))
        ((QUOTE)
-	`(QUOTE ,(cadr form)))
+	`(QUOTE ,(quote/text form)))
        ((LAMBDA)
-	(cpsconv/lambda* (cadr form) (caddr form)))
+	(cpsconv/lambda* (lambda/formals form) (lambda/body form)))
        ((IF)
-	`(IF ,(walk (cadr form))
-	     ,(walk (caddr form))
-	     ,(walk (cadddr form))))
+	`(IF ,(walk (if/predicate form))
+	     ,(walk (if/consequent form))
+	     ,(walk (if/alternate form))))
        ((CALL)
 	(if (not (equal? (call/continuation form) '(QUOTE #F)))
 	    (internal-error "Already cps-converted?" form))
 	`(CALL ,(walk (call/operator form))
-	       ,@(lmap walk (call/cont-and-operands form))))
+	       ,@(map walk (call/cont-and-operands form))))
        (else
 	(internal-error "Non simple expression" form)))
      form)))  
@@ -329,34 +331,21 @@ MIT in each case. |#
   (if (not (pair? expr))
       (illegal expr))
   (case (car expr)
-    ((QUOTE)
-     (cpsconv/quote cont expr))
-    ((LOOKUP)
-     (cpsconv/lookup cont expr))
-    ((LAMBDA)
-     (cpsconv/lambda cont expr))
-    ((LET)
-     (cpsconv/let cont expr))
-    ((DECLARE)
-     (cpsconv/declare cont expr))
-    ((CALL)
-     (cpsconv/call cont expr))
-    ((BEGIN)
-     (cpsconv/begin cont expr))
-    ((IF)
-     (cpsconv/if cont expr))
-    ((LETREC)
-     (cpsconv/letrec cont expr))
-    ((SET! UNASSIGNED? OR DELAY
-	   ACCESS DEFINE IN-PACKAGE THE-ENVIRONMENT)
-     (no-longer-legal expr))
-    (else
-     (illegal expr))))
+    ((QUOTE)    (cpsconv/quote cont expr))
+    ((LOOKUP)   (cpsconv/lookup cont expr))
+    ((LAMBDA)   (cpsconv/lambda cont expr))
+    ((LET)      (cpsconv/let cont expr))
+    ((DECLARE)  (cpsconv/declare cont expr))
+    ((CALL)     (cpsconv/call cont expr))
+    ((BEGIN)    (cpsconv/begin cont expr))
+    ((IF)       (cpsconv/if cont expr))
+    ((LETREC)   (cpsconv/letrec cont expr))
+    (else       (illegal expr))))
 
 (define (cpsconv/expr* cont exprs)
-  (lmap (lambda (expr)
-	  (cpsconv/expr cont expr))
-	exprs))
+  (map (lambda (expr)
+	 (cpsconv/expr cont expr))
+       exprs))
 
 (define (cpsconv/remember new old)
   (code-rewrite/remember new old))
@@ -422,7 +411,7 @@ MIT in each case. |#
 		    ,(pred-default (cpsconv/cont/field1 cont))
 		    ,(pred-default (cpsconv/cont/field2 cont))))))
        (cond ((QUOTE/? expression)
-	      (case (boolean/discriminate (cadr expression))
+	      (case (boolean/discriminate (quote/text expression))
 		((FALSE)
 		 (pred-default (cpsconv/cont/field2 cont)))
 		((TRUE)
