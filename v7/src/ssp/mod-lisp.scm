@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.4 2004/10/28 19:41:18 cph Exp $
+$Id: mod-lisp.scm,v 1.5 2004/10/30 04:44:09 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -67,6 +67,39 @@ USA.
      (lambda () (channel-close socket)))))
 
 (define debug-internal-errors? #f)
+
+(define (write-response message port)
+  (for-each (lambda (header)
+	      ;; Kludge: mod-lisp uses case-sensitive comparisons for
+	      ;; these headers.
+	      (write-string (case (car header)
+			      ((CONTENT-LENGTH) "Content-Length")
+			      ((CONTENT-TYPE) "Content-Type")
+			      ((KEEP-SOCKET) "Keep-Socket")
+			      ((LAST-MODIFIED) "Last-Modified")
+			      ((LOCATION) "Location")
+			      ((LOG) "Log")
+			      ((LOG-ERROR) "Log-Error")
+			      ((NOTE) "Note")
+			      ((SET-COOKIE) "Set-Cookie")
+			      ((STATUS) "Status")
+			      (else (symbol-name (car header))))
+			    port)
+	      (newline port)
+	      (write-string (cdr header) port)
+	      (newline port))
+	    (http-message-headers message))
+  (write-string "end" port)
+  (newline port)
+  (let ((entity (http-message-entity message)))
+    (cond ((string? entity)
+	   (write-string entity port))
+	  ((pathname? entity)
+	   (call-with-input-file entity
+	     (lambda (input)
+	       (port->port-copy input port))))
+	  (else
+	   (error "Illegal HTTP entity:" entity)))))
 
 (define (condition->html condition)
   (call-with-output-string
@@ -255,6 +288,7 @@ USA.
   '("index.html" "index.xhtml" "index.ssp" "index.xml"))
 
 (define (mod-lisp-expander request response pathname expander)
+  (run-hooks-in-list mod-lisp-before-expander-hooks request)
   (call-with-output-string
     (lambda (port)
       (fluid-let ((*current-request* request)
@@ -265,7 +299,11 @@ USA.
 		     (with-repl-eval-boundary (nearest-repl)
 		       (lambda ()
 			 (eval expression environment))))))
-	(expander pathname port)))))
+	(expander pathname port))
+      (run-hooks-in-list mod-lisp-after-expander-hooks request response))))
+
+(define mod-lisp-before-expander-hooks (make-hook-list))
+(define mod-lisp-after-expander-hooks (make-hook-list))
 
 (define *current-request*)
 (define *current-response*)
@@ -470,38 +508,31 @@ USA.
 						 'SET-ENTITY)))))
   (set-http-message-entity! message entity))
 
-(define (write-response message port)
-  (for-each (lambda (header)
-	      ;; Kludge: mod-lisp uses case-sensitive comparisons for
-	      ;; these headers.
-	      (write-string (case (car header)
-			      ((CONTENT-LENGTH) "Content-Length")
-			      ((CONTENT-TYPE) "Content-Type")
-			      ((KEEP-SOCKET) "Keep-Socket")
-			      ((LAST-MODIFIED) "Last-Modified")
-			      ((LOCATION) "Location")
-			      ((LOG) "Log")
-			      ((LOG-ERROR) "Log-Error")
-			      ((NOTE) "Note")
-			      ((SET-COOKIE) "Set-Cookie")
-			      ((STATUS) "Status")
-			      (else (symbol-name (car header))))
-			    port)
-	      (newline port)
-	      (write-string (cdr header) port)
-	      (newline port))
-	    (http-message-headers message))
-  (write-string "end" port)
-  (newline port)
-  (let ((entity (http-message-entity message)))
-    (cond ((string? entity)
-	   (write-string entity port))
-	  ((pathname? entity)
-	   (call-with-input-file entity
-	     (lambda (input)
-	       (port->port-copy input port))))
-	  (else
-	   (error "Illegal HTTP entity:" entity)))))
+(define (message-keyword-proc accessor name)
+  (lambda (message keyword #!optional error?)
+    (let ((p (assq keyword (accessor message))))
+      (if p
+	  (cdr p)
+	  (begin
+	    (if (if (default-object? error?) #f error?)
+		(error:bad-range-argument keyword name))
+	    #f)))))
+
+(define http-message-header
+  (message-keyword-proc http-message-headers
+			'HTTP-MESSAGE-HEADER))
+
+(define http-message-url-parameter
+  (message-keyword-proc http-message-url-parameters
+			'HTTP-MESSAGE-URL-PARAMETER))
+
+(define http-message-post-parameter
+  (message-keyword-proc http-message-post-parameters
+			'HTTP-MESSAGE-POST-PARAMETER))
+
+(define http-message-cookie-parameter
+  (message-keyword-proc http-message-cookie-parameters
+			'HTTP-MESSAGE-COOKIE-PARAMETER))
 
 ;;;; Status messages
 
@@ -591,27 +622,23 @@ USA.
 (define (http-request-cookie-parameter-bindings)
   (http-message-cookie-parameters *current-request*))
 
-(define (keyword-proc accessor name)
+(define (keyword-proc accessor)
   (lambda (keyword #!optional error?)
-    (let ((p (assq keyword (accessor *current-request*))))
-      (if p
-	  (cdr p)
-	  (begin
-	    (if (if (default-object? error?) #f error?)
-		(error:bad-range-argument keyword name))
-	    #f)))))
+    (accessor *current-request*
+	      keyword
+	      (if (default-object? error?) #f error?))))
 
 (define http-request-header
-  (keyword-proc http-message-headers 'HTTP-REQUEST-HEADER))
+  (keyword-proc http-message-header))
 
 (define http-request-url-parameter
-  (keyword-proc http-message-url-parameters 'HTTP-REQUEST-URL-PARAMETER))
+  (keyword-proc http-message-url-parameter))
 
 (define http-request-post-parameter
-  (keyword-proc http-message-post-parameters 'HTTP-REQUEST-POST-PARAMETER))
+  (keyword-proc http-message-post-parameter))
 
 (define http-request-cookie-parameter
-  (keyword-proc http-message-cookie-parameters 'HTTP-REQUEST-COOKIE-PARAMETER))
+  (keyword-proc http-message-cookie-parameter))
 
 (define (http-request-post-parameter-multiple keyword)
   (let loop
@@ -643,7 +670,10 @@ USA.
   *root-dir*)
 
 (define (http-request-user-name)
-  (let ((auth (http-request-header 'authorization)))
+  (http-message-user-name *current-response*))
+
+(define (http-message-user-name message)
+  (let ((auth (http-message-header message 'authorization)))
     (and auth
 	 (cond ((string-prefix? "Basic " auth)
 		(decode-basic-auth-header auth 6 (string-length auth)))
