@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.1 2001/06/26 18:03:11 cph Exp $
+;;; $Id: compile.scm,v 1.2 2001/07/11 21:22:55 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -29,7 +29,8 @@
 		"matcher"
 		"parser"
 		"shared"
-		"synchk"))
+		"synchk"
+		"unicode"))
     (cref/generate-constructors "parser")
     (sf "parser.con")
     (sf "parser.ldr")))

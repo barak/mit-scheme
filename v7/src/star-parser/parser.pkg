@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.pkg,v 1.6 2001/07/11 00:41:55 cph Exp $
+;;; $Id: parser.pkg,v 1.7 2001/07/11 21:22:24 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -69,3 +69,20 @@
   (export ()
 	  define-*matcher-expander
 	  define-*parser-expander))
+
+(define-package (runtime unicode)
+  (files "unicode")
+  (parent ())
+  (export ()
+	  alphabet+
+	  alphabet-
+	  alphabet?
+	  char-in-alphabet?
+	  code-point->utf8-string
+	  code-point-in-alphabet?
+	  code-points->alphabet
+	  match-utf8-char-in-alphabet
+	  read-utf8-code-point
+	  string->alphabet
+	  unicode-code-point?
+	  utf8-string->code-point))

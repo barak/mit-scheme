@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.12 2001/07/10 05:04:44 cph Exp $
+;;; $Id: matcher.scm,v 1.13 2001/07/11 21:23:00 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -139,7 +139,7 @@
 	  `(CHAR-CI ,(string-ref string 0))
 	  expression))))
 
-(define-matcher-preprocessor 'ALPHABET
+(define-matcher-preprocessor 'CHAR-SET
   (lambda (expression external-bindings internal-bindings)
     internal-bindings
     (let ((arg (check-1-arg expression)))
@@ -151,6 +151,11 @@
 		  `(RE-COMPILE-CHAR-SET ,arg #F))
 	      external-bindings))
 	  expression))))
+
+(define-matcher-preprocessor 'ALPHABET
+  (lambda (expression external-bindings internal-bindings)
+    external-bindings internal-bindings
+    expression))
 
 (define-matcher-preprocessor 'WITH-POINTER
   (lambda (expression external-bindings internal-bindings)
@@ -258,8 +263,11 @@
 (define-atomic-matcher (not-char-ci char)
   `(MATCH-PARSER-BUFFER-NOT-CHAR-CI ,*buffer-name* ,char))
 
+(define-atomic-matcher (char-set char-set)
+  `(MATCH-PARSER-BUFFER-CHAR-IN-SET ,*buffer-name* ,char-set))
+
 (define-atomic-matcher (alphabet alphabet)
-  `(MATCH-PARSER-BUFFER-CHAR-IN-SET ,*buffer-name* ,alphabet))
+  `(MATCH-UTF8-CHAR-IN-ALPHABET ,*buffer-name* ,alphabet))
 
 (define-atomic-matcher (string string)
   `(MATCH-PARSER-BUFFER-STRING ,*buffer-name* ,string))
