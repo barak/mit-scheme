@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.13 1997/06/26 22:55:46 adams Exp $
+$Id: string.scm,v 14.14 1997/06/26 23:40:24 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -635,11 +635,11 @@ MIT in each case. |#
 
 
 (define-integrable (guarantee-substring string start end procedure)
-  (if (or (not (string? string))
-	  (not (index-fixnum? start))
-	  (not (index-fixnum? end))
-	  (not (fix:<= start end))
-	  (not (fix:<= end (string-length string))))
+  (if (not (and (string? string)
+		(index-fixnum? start)
+		(index-fixnum? end)
+		(fix:<= start end)
+		(fix:<= end (string-length string))))
       (guarantee-substring/fail string start end procedure)))
 
 (define (guarantee-substring/fail string start end procedure)
