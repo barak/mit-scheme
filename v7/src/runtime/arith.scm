@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.12 1990/01/10 23:19:57 hal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.13 1990/01/11 01:01:44 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -597,14 +597,17 @@ MIT in each case. |#
 		     (d (int:* d (int:quotient u g)))
 		     (finish
 		      (lambda (n d e)
-			(flo:denormalize
-			 (integer->flonum
-			  (let ((g (int:gcd d u)))
-			    (int:round
-			     (int:* n (int:quotient u g))
-			     (int:quotient d g)))
-			  #b11)
-			 e))))
+			(let ((c
+			       (lambda (n e)
+				 (flo:denormalize (integer->flonum n #b11) e)))
+			      (n
+			       (let ((g (int:gcd d u)))
+				 (int:round
+				  (int:* n (int:quotient u g))
+				  (int:quotient d g)))))
+			  (if (int:= n u)
+			      (c (int:quotient n 2) (int:1+ e))
+			      (c n e))))))
 		 (if (int:< n d)
 		     (let scale-up ((n n) (e 0))
 		       (let ((n*2 (int:* n 2)))
