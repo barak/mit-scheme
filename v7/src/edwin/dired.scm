@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.146 1994/05/04 22:58:06 cph Exp $
+;;;	$Id: dired.scm,v 1.147 1994/05/20 19:21:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -231,12 +231,6 @@ Type `h' after entering dired for more info."
 				       'FILE))
 		  file-list)
 	(mark-temporary! mark))))
-
-(define (add-dired-entry pathname)
-  (let ((lstart (line-start (current-point) 0)))
-    (if (pathname=? (buffer-default-directory (mark-buffer lstart))
-		    (directory-pathname pathname))
-	(insert-dired-entry! pathname lstart))))
 
 (define (insert-dired-entry! pathname mark)
   (let ((mark (mark-left-inserting-copy mark)))
@@ -715,12 +709,15 @@ Actions controlled by variables list-directory-brief-switches
 			  (current-point)
 			  mark)
 		      0))))
-    (with-read-only-defeated lstart
-      (lambda ()
-	(delete-string lstart (line-start lstart 1))
-	(add-dired-entry pathname)))
-    (if (mark= lstart (line-start (current-point) 0))
-	(set-dired-point! lstart))))
+    (let ((point-on-line? (mark= lstart (line-start (current-point) 0))))
+      (with-read-only-defeated lstart
+	(lambda ()
+	  (delete-string lstart (line-start lstart 1))
+	  (if (pathname=? (buffer-default-directory (mark-buffer lstart))
+			  (directory-pathname pathname))
+	      (insert-dired-entry! pathname lstart))))
+      (if point-on-line?
+	  (set-dired-point! lstart)))))
 
 (define (dired-kill-files)
   (let ((filenames (dired-marked-files #f dired-flag-delete-char)))
