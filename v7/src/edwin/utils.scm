@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.23 1991/05/06 01:09:28 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.24 1991/05/10 04:59:10 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -168,17 +168,6 @@
 	   condition
 	   (continuation (if-error)))
        thunk))))
-
-(define (write-value value truncate?)
-  (if (undefined-value? value)
-      (write-string "No value")
-      (begin
-	(write-string "Value: ")
-	(if truncate?
-	    (fluid-let ((*unparser-list-depth-limit* 5)
-			(*unparser-list-breadth-limit* 10))
-	      (write value))
-	    (write value)))))
 
 (define (pathname=? x y)
   (string=? (pathname->string x)
