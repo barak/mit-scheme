@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.55 1999/02/16 05:13:55 cph Exp $
+$Id: io.scm,v 14.56 1999/02/16 05:21:39 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -614,7 +614,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (output-buffer/drain-block buffer)
   (without-interrupts
    (lambda ()
-     (set-output-buffer/closed? buffer #t)
+     (set-output-buffer/closed?! buffer #t)
      (let ((channel (output-buffer/channel buffer)))
        (if (not (and (input-buffer? associated-buffer)
 		     (eq? channel (input-buffer/channel associated-buffer))
