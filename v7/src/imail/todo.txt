@@ -1,8 +1,21 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.64 2000/06/05 21:27:26 cph Exp $
+$Id: todo.txt,v 1.65 2000/06/07 12:44:16 cph Exp $
 
 Bug fixes
 ---------
+
+* Restrict set of recognized character sets to US-ASCII, ISO-8859, and
+  Windows-<n> for some value of <n>.  Messages in other sets should be
+  treated as unknowns; character set should appear in attachment
+  descriptor.
+
+* Attachment text property should not include terminating newline.
+
+* Treat messages in unrecognized encodings as type
+  application/octet-stream.
+
+* Provide ability to show contents of text/<subtype> in known
+  character sets with unrecognized <subtype>.
 
 * M-x imail-copy-messages re-reads the target folder UIDs for each
   message that is written, when the target folder is not being
@@ -16,6 +29,9 @@ Bug fixes
 
 New features
 ------------
+
+* Show suppressed parts of multipart/alternative as attachments in
+  cast the user wants to view them.
 
 * Command to expand attachment inline.  Sometimes attachments aren't
   big binary things but small text things that are easier to view
