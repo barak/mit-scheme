@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm3.scm,v 4.3 1988/04/15 02:22:34 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm3.scm,v 4.4 1988/05/10 19:53:41 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -105,7 +105,7 @@ MIT in each case. |#
 			 (= (extract *ir 4 6) #b00))
 		    %ADDX
 		    %ADD)))
-	  (lambda () shift/rotate)
+	  (lambda () shift/rotate/bitop)
 	  undefined))
 
 ;;;; Operations
@@ -520,6 +520,11 @@ MIT in each case. |#
   `(EXG ,(make-address-register 'A (extract *ir 0 3))
 	,(make-data-register 'D (extract *ir 9 12))))
 
+(define (shift/rotate/bitop)
+  (if (= #b11 (extract *ir 6 8))
+      (bit-extract)
+      (shift-rotate)))
+
 (define (shift/rotate)
   (let ((size (decode-bwl (extract *ir 6 8)))
 	(direction (decode-rl (extract *ir 8 9))))
@@ -535,6 +540,23 @@ MIT in each case. |#
 		      (if (zero? n) 8 n)))
 	       `,(make-data-register 'D (extract *ir 9 12)))
 	  ,(make-data-register 'D (extract *ir 0 3))))))
+
+(define (bit-extract)
+  (let ((opcode (decode-bf (extract *ir 8 11)))
+	(source (decode-ea-m&d)))
+    (let ((extension (get-word)))
+      (let ((target (if (memq opcode '(BFEXTS BFEXTU BFFFO BFINS))
+			`(,(make-data-register 'D
+					       (extract extension 12 15)))
+			'()))
+	    (offset (if (= #b0 (extract extension 11 12))
+			`(& ,(extract extension 6 11))
+			(make-data-register 'D (extract extension 6 9))))
+	    (width (if (= #b0 (extract extension 5 6))
+		       `(& ,(extract extension 0 5))
+		       (make-data-register 'D (extract extension 0 3)))))
+	`(,opcode ,source ,offset ,width ,@target)))))
+
 
 ;;;; Bit String Manipulation
 
@@ -578,6 +600,9 @@ MIT in each case. |#
 (define decode-bit (symbol-decoder #(BTST BCHG BCLR BSET)))
 (define decode-shift-type (symbol-decoder #(AS LS ROX RO)))
 (define decode-ze  (symbol-decoder #(E Z)))
+
+(define decode-bf
+  (symbol-decoder #(BFTST BFEXTU BFCHG BFEXTS BFCLR BFFFO BFSET BFINS)))
 
 (define (decode-scale scale)
   (vector-ref '#(1 2 4 8) scale))
@@ -747,6 +772,21 @@ MIT in each case. |#
 		       decode-ea-<@PCO>
 		       decode-ea-<@PCOX>
 		       decode-ea-<&>))
+
+(define decode-ea-m&d
+  (decode-ea-w/o-size decode-ea-<D>
+		      decode-ea-undefined
+		      decode-ea-<@A>
+		      decode-ea-undefined
+		      decode-ea-undefined
+		      decode-ea-<@AO>
+		      decode-ea-<@AOX>
+		      decode-ea-<W>
+		      decode-ea-<L>
+		      decode-ea-<@PCO>
+		      decode-ea-<@PCOX>
+		      decode-ea-undefined))
+		       
 
 (define decode-ea-c
   (decode-ea-w/o-size decode-ea-undefined

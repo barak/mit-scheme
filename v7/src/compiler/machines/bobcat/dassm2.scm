@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.3 1988/03/14 19:16:00 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.4 1988/05/10 19:53:08 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -202,10 +202,7 @@ MIT in each case. |#
 (set! make-address-offset
   (lambda (register offset)
     (if disassembler/symbolize-output?
-	(or (and (= register interpreter-register-pointer)
-		 (let ((entry (assq offset interpreter-register-assignments)))
-		   (and entry
-			(cdr entry))))
+	(or (interpreter-register register offset)
 	    `(@AO ,(cdr (assq register address-register-assignments))
 		  ,offset))
 	`(@AO ,register ,offset))))
@@ -215,13 +212,25 @@ MIT in each case. |#
     (case (car effective-address)
       ((@AO)
        (and (= (cadr effective-address) interpreter-register-pointer)
-	    (let ((entry
-		   (assq (caddr effective-address)
-			 interpreter-register-assignments)))
-	      (and entry
-		   (cdr entry)))))
+	    (intepreter-register interpreter-register-pointer
+				 (caddr effective-address))))
       ((REGISTER TEMPORARY ENTRY) effective-address)
       (else false))))
+
+(define (interpreter-register register offset)
+  (with-aligned-offset offset
+    (lambda (word-offset residue)
+      (and (= register interpreter-register-pointer)
+	   (let ((entry (assq word-offset interpreter-register-assignments)))
+	     (and entry
+		  (if (= residue 0)
+		      (cdr entry)
+		      `(,@(cdr entry) (,residue)))))))))
+
+(define (with-aligned-offset offset receiver)
+  (let ((q/r (integer-divide offset 4)))
+    (receiver (* (car q/r) 4) (cdr q/r))))
+
 
 (define interpreter-register-pointer
   6)
