@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.27 1993/08/26 05:45:40 gjr Exp $
+$Id: rules3.scm,v 1.28 1997/10/17 01:25:41 adams Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -39,8 +39,8 @@ MIT in each case. |#
 
 ;;;; Invocations
 
-(define-integrable (clear-continuation-type-code)
-  (LAP (AND W (@R ,regnum:stack-pointer) (R ,regnum:datum-mask))))
+;;(define-integrable (clear-continuation-type-code)
+;;  (LAP (AND W (@R ,regnum:stack-pointer) (R ,regnum:datum-mask))))
 
 (define-rule statement
   (POP-RETURN)
@@ -52,8 +52,9 @@ MIT in each case. |#
 		 (let ((interrupt-label (generate-label 'INTERRUPT)))
 		   (LAP (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
 			(JGE (@PCR ,interrupt-label))
-			,@(clear-continuation-type-code)
-			(RET)
+			(POP (R ,eax))
+			(AND W (R ,eax) (R ,regnum:datum-mask))
+			(JMP (R ,eax))
 			(LABEL ,interrupt-label)
 			,@(invoke-hook
 			   entry:compiler-interrupt-continuation-2))))))
@@ -94,8 +95,9 @@ MIT in each case. |#
   frame-size continuation
   ;; It expects the procedure at the top of the stack
   (LAP ,@(clear-map!)
-       ,@(clear-continuation-type-code)
-       (RET)))
+       (POP (R ,eax))
+       (AND W (R ,eax) (R ,regnum:datum-mask))
+       (JMP (R ,eax))))
 
 (define-rule statement
   (INVOCATION:LEXPR (? number-pushed) (? continuation) (? label))
@@ -112,8 +114,8 @@ MIT in each case. |#
   continuation
   ;; It expects the procedure at the top of the stack
   (LAP ,@(clear-map!)
-       ,@(clear-continuation-type-code)
        (POP (R ,ecx))
+       (AND W (R ,ecx) (R ,regnum:datum-mask))
        (MOV W (R ,edx) (& ,number-pushed))
        ,@(invoke-interface code:compiler-lexpr-apply)))
 
