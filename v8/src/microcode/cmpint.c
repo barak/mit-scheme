@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.79 1993/11/11 20:19:55 cph Exp $
+$Id: cmpint.c,v 1.80 1993/11/16 03:56:41 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -3421,7 +3421,9 @@ DEFUN_VOID (compiler_reset_internal)
   return;
 }
 
-#define COMPILER_UTILITIES_LENGTH ((2 * (TRAMPOLINE_ENTRY_SIZE + 1)) + 1)
+#define COMPILER_UTILITIES_N_ENTRIES	2
+#define COMPILER_UTILITIES_LENGTH					\
+ ((COMPILER_UTILITIES_N_ENTRIES * (TRAMPOLINE_ENTRY_SIZE + 1)) + 2)
 
 C_UTILITY void
 DEFUN (compiler_initialize, (fasl_p), long fasl_p)
@@ -3448,9 +3450,12 @@ DEFUN (compiler_initialize, (fasl_p), long fasl_p)
 
     block = Free;
     Free += len;
-    block[0] = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (len - 1)));
+    block[0] = (MAKE_OBJECT (TC_MANIFEST_VECTOR, (len - 1)));
+    block[1] = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,
+			     (COMPILER_UTILITIES_N_ENTRIES
+			      * TRAMPOLINE_ENTRY_SIZE)));
 
-    tramp1 = ((instruction *) (TRAMPOLINE_ENTRY_POINT (block - 1)));
+    tramp1 = ((instruction *) (TRAMPOLINE_ENTRY_POINT (block)));
     fill_trampoline (block, tramp1,
 		     ((format_word) FORMAT_WORD_RETURN),
 		     TRAMPOLINE_K_RETURN);
@@ -3493,19 +3498,33 @@ DEFUN (compiler_reset,
 {
   /* Called after a disk restore */
 
-  if (((OBJECT_TYPE (new_block)) != TC_COMPILED_CODE_BLOCK)
-      || ((OBJECT_TYPE (MEMORY_REF (new_block, 0))) != TC_MANIFEST_NM_VECTOR)
-      || ((VECTOR_LENGTH (new_block)) != (COMPILER_UTILITIES_LENGTH - 1)))
+  if ((OBJECT_TYPE (new_block)) != TC_COMPILED_CODE_BLOCK)
   {
     extern void EXFUN (compiler_reset_error, (void));
 
+lose:
     compiler_reset_error ();
+    return;
   }
-  else
+  else if ((MEMORY_REF (new_block, 0))
+	   != (MAKE_OBJECT (TC_MANIFEST_VECTOR,
+			    (COMPILER_UTILITIES_LENGTH - 1))))
   {
-    compiler_utilities = new_block;
-    compiler_reset_internal ();
+    /* Backwards compatibility */
+    if ((MEMORY_REF (new_block, 0))
+	!= (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,
+			 (COMPILER_UTILITIES_N_ENTRIES
+			  * (TRAMPOLINE_ENTRY_SIZE + 1)))))
+      goto lose;
   }
+  else if ((MEMORY_REF (new_block, 1))
+	   != (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,
+			    (COMPILER_UTILITIES_N_ENTRIES
+			     * TRAMPOLINE_ENTRY_SIZE))))
+    goto lose;
+
+  compiler_utilities = new_block;
+  compiler_reset_internal ();
   return;
 }
 
