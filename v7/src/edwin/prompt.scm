@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: prompt.scm,v 1.162 1994/03/08 20:28:54 cph Exp $
+;;;	$Id: prompt.scm,v 1.163 1995/04/09 23:21:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -794,7 +794,10 @@ Whilst editing the command, the following commands are available:
 ;;; in unix.scm which deal with .KY files.
 
 (define (prompt-for-password prompt)
-  (prompt-for-typein prompt false
+  (prompt-for-typein (if (string-suffix? " " prompt)
+			 prompt
+			 (string-append ": " prompt))
+		     #f
     (lambda ()
       (let loop ((ts ""))
 	(let ((input (keyboard-read)))
@@ -804,7 +807,7 @@ Whilst editing the command, the following commands are available:
 		 (loop ts))
 		((char=? input #\Return)
 		 ts)
-		((char=? input #\C-g)
+		((or (char=? input #\C-g) (char=? input #\BEL))
 		 (abort-current-command))
 		((char=? input #\Rubout)
 		 (let ((ts-len (string-length ts)))
@@ -825,4 +828,3 @@ Whilst editing the command, the following commands are available:
       (if (not (string=? password1 password2))
 	  (editor-error "Passwords do not match!"))
       password1)))
-
