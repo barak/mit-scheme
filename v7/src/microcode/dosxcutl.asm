@@ -1,6 +1,6 @@
 ;;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosxcutl.asm,v 1.1 1992/05/05 06:55:13 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosxcutl.asm,v 1.2 1992/07/28 14:26:03 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -38,7 +38,7 @@
 ;;;
 
 .386
-.model small
+.model tiny
 	.code
 
 	public _DPMI_GP_exception_method
@@ -95,11 +95,11 @@ _DPMI_exception_method:
 	mov	ebx,28[ebp+28]		; trapped SS
 	mov	edx,24[ebp+28]		; trapped ESP
 	cmp	ecx,0
-	jne	set_up_trap_frame
+	jne	DPMI_set_up_trap_frame
 	mov	ecx,edx			; Use the trapped stack
 	mov	eax,ebx			; to build the trap frame
 
-set_up_trap_frame:
+DPMI_set_up_trap_frame:
 	push	eax
 	pop	es
 
@@ -190,6 +190,12 @@ DPMI_exception_method_hook:
 	push	fs			; -8
 	push	es			; -12
 	push	ds			; -16
+
+;; The following code is shared by the exception handlers under DPMI
+;; and X32.
+
+	public	common_exception_method_merge
+common_exception_method_merge:
 	push	36[ebp+4]		; -20 trapped ss
 	push	24[ebp+4]		; -24 trapped cs
 	push	28[ebp+4]		; -28 trapped eflags
@@ -210,11 +216,11 @@ DPMI_exception_method_hook:
 	mov	edx,4[ebp+4]		; CS of handler
 	mov	eax,0[ebp+4]		; EIP of handler
 	cmp	edx,0			; test CS of handler
-	jne	DPMI_use_far_call
+	jne	common_use_far_call
 	call	eax			; Invoke handler
-	jmp	DPMI_continue_after_exception
+	jmp	common_continue_after_exception
 
-DPMI_after_continuation_setup:
+common_after_continuation_setup:
 ;;	Build far RET frame on stack
 
 	push	edx			; CS of handler
@@ -223,11 +229,11 @@ DPMI_after_continuation_setup:
 ;	ret	far			; Invoke handler
         db      0cbh
 
-DPMI_use_far_call:
+common_use_far_call:
 	push	cs			; Simulate a far call
-	call	DPMI_after_continuation_setup
+	call	common_after_continuation_setup
 
-DPMI_continue_after_exception:
+common_continue_after_exception:
 ;;
 ;;	If the handler returns, update machine state and `return' to
 ;;	the trapped code.
@@ -307,10 +313,10 @@ DPMI_continue_after_exception:
 	push	eax			; -4
 	mov	ax,ss
 	cmp	ax,36[ebp+4]
-	jne	DPMI_different_stacks
+	jne	common_different_stacks
 	lea	eax,40[ebp+4]
 	cmp	eax,32[ebp+4]
-	jne	DPMI_different_stacks
+	jne	common_different_stacks
 
 ;; 	Easy case:  The target stack is what we would return to trivially.
 ;;	Overwrite SS and ESP with CS and EIP, restore flags, and do a far
@@ -329,7 +335,7 @@ DPMI_continue_after_exception:
 ;	ret	far			; resume thread
         db      0cbh
 	
-DPMI_different_stacks:
+common_different_stacks:
 	push	edx			; -8  Scratch regs
 	push	ds			; -12 These two must be contiguous
 	push	ecx			; -16  for LDS instruction below!
@@ -365,5 +371,243 @@ DPMI_different_stacks:
 
 ;	ret	far			; resume thread
         db      0cbh
+
+;;	Locked data for X32.
+;;	It includes all the data and code accessed during a hardware
+;;	interrupt or an exception before X32 is reset, i.e. while
+;;	it cannot process a page fault.
+
+	.data
+	public _X32_locked_data_start
+_X32_locked_data_start dd 0
+
+X32_excp_buffer			db 64 dup(0)
+	public	_X32_excp_handlers
+_X32_excp_handlers 		db 32*20 dup (0)
+
+	public _X32_ds_val
+_X32_ds_val	dd 06765h
+	public _X32_timer_interrupt_previous
+_X32_timer_interrupt_previous	dd 0
+				dd 0
+				dd 0
+
+	public _scm_itimer_counter
+_scm_itimer_counter dd 0
+	public _scm_itimer_reload
+_scm_itimer_reload dd 0
+
+	public _IntCode			; These are usually declared in C,
+_IntCode dd 0				; but they need to be locked since
+	public _IntEnb			; they are accessed by
+_IntEnb dd 0				; X32_timer_interrupt.
+	public _MemTop
+_MemTop dd 0
+
+REGBLOCK_MEMTOP equ 0			; Offset of MEMTOP into Registers.
+
+	public _Regstart
+_Regstart db 128 dup (0)		; This must be contiguous to Registers!
+	public _Registers
+_Registers dd 0				; This is the MEMTOP used by compiled code!
+					; It is the only register that needs to be
+					; locked.
+
+	public _X32_locked_data_end
+_X32_locked_data_end db 3452 dup (0)	; Rest of registers and hooks.
+					; The magic 3452 is
+					; ((REGBLOCK_SIZE_IN_OBJECTS - 1) * 4)
+					; from cmpaux-i386.m4
+
+	.code
+
+;;	Exception handlers for X32 and X32V.
+;;	This code is not reentrant.
+;;	The same exception within this code will really confused the world.
+;;	It should be rewritten in the future to be reentrant.
+
+;;	frame on entry to _X32_exception_method (sp points to 0)
+;;
+;;  12	pointer to interrupt structure
+;;   8	eflags at interrupt
+;;   4	CS for IRETD
+;;   0	EIP for IRETD
+;;  -4	old DS
+;;  -8	old EAX	
+;; -12	old ECX
+;; -16	old EDX
+
+X32FRAME equ 16
+
+;; The pointer to the interrupt structure points to offset 0 of
+;; a block on SS whose layout is
+
+;;  32	dword SS
+;;  28	dword ESP
+;;  24	dword EFLAGS
+;;  20	dword CS
+;;  16	dword EIP
+;;  14	mode 0 for int. in real mode, 1 for int. in prot. mode, 2 for excp.
+;;  12	INT# 0 - 256
+;;  10	word GS
+;;   8	word FS
+;;   6	word ES
+;;   4	word DS
+;;   0	dword EAX
+;;  -4	trap error code
+
+	public	_X32_locked_code_start
+_X32_locked_code_start:
+
+	public	_X32_exception_method
+_X32_exception_method:
+	push	ds			; Preserve registers
+	push	eax
+	push	ecx
+	push	edx
+
+	mov	ecx,12[esp+X32FRAME]	; Pointer to structure
+	mov	ds,_X32_ds_val		; Temporary buffer
+	lea	edx,X32_excp_buffer
+
+	xor	eax,eax
+	mov	ax,ss:32[ecx]		; SS at time of trap
+	mov	4[edx],eax
+
+	mov	eax,ss:28[ecx]		; ESP at time of trap
+	mov	0[edx],eax
+
+	mov	eax,ss:24[ecx]		; EFLAGS at time of trap
+	mov	8[edx],eax
+
+	xor	eax,eax
+	mov	ax,ss:20[ecx]		; CS at time of trap
+	mov	12[edx],eax
+
+	mov	eax,ss:16[ecx]		; EIP at time of trap
+	mov	16[edx],eax
+
+	mov	eax,ss:-4[ecx]		; Trap code
+	mov	20[edx],eax
+
+	xor	eax,eax			; Trapped gs
+	mov	ax,ss:10[ecx]
+	mov	24[edx],eax
+	
+	xor	eax,eax			; Trapped fs
+	mov	ax,ss:8[ecx]
+	mov	28[edx],eax
+
+	xor	eax,eax			; Trapped es
+	mov	ax,ss:6[ecx]
+	mov	32[edx],eax
+
+	xor	eax,eax			; Trapped ds
+	mov	ax,ss:4[ecx]
+	mov	36[edx],eax
+
+	mov	eax,ss:[ecx]		; Trapped eax
+	mov	40[edx],eax
+
+	mov	eax,[esp]		; Trapped edx
+	mov	44[edx],eax
+
+	mov	eax,4[esp]		; Trapped ecx
+	mov	48[edx],eax
+
+	xor	eax,eax
+	mov	ax,ss:12[ecx]		; Trap number
+	mov	52[edx],eax
+
+	mov	ecx,eax			; Multiply by 20
+	shl	eax,2
+	add	eax,ecx
+	shl	eax,2
+
+	lea	ecx,dword ptr _X32_excp_handlers
+	add	ecx,eax			; handler info for this excp.
+
+	mov	eax,cs:[ecx]		; handler ESP
+	cmp	eax,0			; Use trapped stack?
+	jne	X32_set_up_trap_sp
+
+	lss	esp,fword ptr ds:0[edx]	; Restore trapped stack
+	jmp	X32_set_up_trap_sp_merge
+
+X32_set_up_trap_sp:
+	lss	esp,fword ptr cs:[ecx]	; Use stack specified by handler
+
+X32_set_up_trap_sp_merge:	
+
+	mov	ax,2501h		; Restore X32's internal state
+	int	21h
+	jmp	X32_set_up_trap_stack
+
+;;	Note: X32_set_up_stack does not need to be locked in memory
+;;	because we get to it after resetting X32 (i.e. scheme is
+;;	executing as a normal program again), so it should be able to
+;;	page it in if necessary.
+
+;;	X32 timer interrupt.
+;;	Must be locked in memory (and all the data it accesses.
+
+INT_Timer equ 64			; This must agree with intrpt.h
+
+	public	_X32_timer_interrupt
+_X32_timer_interrupt:
+	push	ds
+	mov	ds,cs:_X32_ds_val
+	cmp	dword ptr _scm_itimer_reload,0
+	je	x32_timer_return
+	dec	dword ptr _scm_itimer_counter
+	cmp	dword ptr _scm_itimer_counter,0
+	jne	x32_timer_return
+	push	eax
+	mov	eax,dword ptr _scm_itimer_reload
+	mov	dword ptr _scm_itimer_counter,eax
+	or	_IntCode,INT_Timer
+	mov	eax,_IntCode
+	and	eax,_IntEnb
+	cmp	eax,0
+	je	x32_timer_continue
+	mov	dword ptr _Registers[REGBLOCK_MEMTOP],-1
+
+x32_timer_continue:
+	pop	eax
+
+x32_timer_return:
+	pop	ds
+	jmp	fword ptr cs:_X32_timer_interrupt_previous
+
+	public	_X32_locked_code_end
+_X32_locked_code_end:
+
+
+X32_set_up_trap_stack:
+	push	4[edx]			; Trapped SS
+	push	0[edx]			; Trapped ESP
+	push	8[edx]			; Trapped EFLAGS
+	push	12[edx]			; Trapped CS
+	push	16[edx]			; Trapped EIP
+	push	20[edx]			; Trap code
+	push	52[edx]			; Trap number
+	push	16[ecx]			; C handler DS
+	push	12[ecx]			; C handler CS
+	push	8[ecx]			; C handler EIP
+	push	ebp			; Trapped EBP
+	mov	ebp,esp
+	push	24[edx]			; Trapped GS
+	push	28[edx]			; Trapped FS
+	push	32[edx]			; Trapped ES
+	push	36[edx]			; Trapped DS
+	mov	eax,40[edx]		; Restore trapped EAX
+	mov	ecx,48[edx]		; Restore trapped ECX
+	mov	edx,44[edx]		; Restore trapped EDX
+	jmp	common_exception_method_merge
+
+	public _X32_asm_initialize
+_X32_asm_initialize:
+	mov	_X32_ds_val,ds
+	ret
 
 end
