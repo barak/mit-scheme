@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2winp.scm,v 1.7 1995/05/16 09:21:01 cph Exp $
+$Id: os2winp.scm,v 1.8 1995/05/20 03:03:14 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; OS/2 PM Interface -- Primitives
-;;; package: (runtime os2-window)
+;;; package: (runtime os2-window-primitives)
 
 (declare (usual-integrations))
 
@@ -104,7 +104,7 @@ MIT in each case. |#
   (os2win-show 2)
   (os2win-show-cursor 2)
   (os2win-update-frame 2))
-
+
 (define-integrable (event-type event) (vector-ref event 0))
 (define-integrable (event-wid event) (vector-ref event 1))
 (define-integrable (set-event-wid! event wid) (vector-set! event 1 wid))
@@ -142,6 +142,43 @@ MIT in each case. |#
   (width #f read-only #t)
   (height #f read-only #t)
   (descender #f read-only #t))
+
+(define (os2-console/set-font! font-name)
+  (let ((metrics
+	 (os2ps-set-font (os2win-ps (os2win-console-wid)) 1 font-name)))
+    (if (not metrics)
+	(error "Unknown font name:" font-name))
+    (values (font-metrics/width metrics)
+	    (font-metrics/height metrics))))
+
+(define (os2-console/set-colors! foreground background)
+  (let ((wid (os2win-console-wid)))
+    (os2ps-set-colors (os2win-ps wid)
+		      (->color foreground 'OS2-CONSOLE/SET-COLORS!)
+		      (->color background 'OS2-CONSOLE/SET-COLORS!))
+    (let ((w.h (os2win-get-size wid)))
+      (os2win-invalidate wid 0 (car w.h) 0 (cdr w.h)))))
+
+(define (os2-console/get-pel-size)
+  (let ((w.h (os2win-get-size (os2win-console-wid))))
+    (values (car w.h)
+	    (cdr w.h))))
+
+(define (os2-console/set-pel-size! width height)
+  (os2win-set-size (os2win-console-wid) width height))
+
+(define (os2-console/get-frame-size)
+  (let ((w.h (os2win-get-frame-size (os2win-console-wid))))
+    (values (car w.h)
+	    (cdr w.h))))
+
+(define (os2-console/get-frame-position)
+  (let ((x.y (os2win-get-pos (os2win-console-wid))))
+    (values (car x.y)
+	    (cdr x.y))))
+
+(define (os2-console/set-frame-position! x y)
+  (os2win-set-pos (os2win-console-wid) x y))
 
 ;;; Constants from OS/2 header file "pmwin.h":
 

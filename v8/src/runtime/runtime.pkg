@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.257 1995/05/16 09:20:48 cph Exp $
+$Id: runtime.pkg,v 14.258 1995/05/20 03:03:22 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -2347,6 +2347,8 @@ MIT in each case. |#
   (export ()
 	  os2-graphics-device-type
 	  os2-image/set-colormap)
+  (export (runtime os2-window-primitives)
+	  ->color)
   (initialization (initialize-package!)))
 
 (define-package (runtime os2-window-primitives)
@@ -2354,6 +2356,14 @@ MIT in each case. |#
     ((os/2) "os2winp")
     (else))
   (parent ())
+  (export ()
+	  os2-console/get-frame-position
+	  os2-console/get-frame-size
+	  os2-console/get-pel-size
+	  os2-console/set-colors!
+	  os2-console/set-font!
+	  os2-console/set-frame-position!
+	  os2-console/set-pel-size!)
   (export (runtime os2-graphics)
 	  bbo_and
 	  bbo_ignore
