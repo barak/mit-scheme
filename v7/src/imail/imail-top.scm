@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.191 2000/06/26 19:07:29 cph Exp $
+;;; $Id: imail-top.scm,v 1.192 2000/06/26 19:08:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -828,7 +828,7 @@ With prefix argument, prompt even when point is on an attachment."
 			     i.m))
 		     (buffer-mime-info (mark-buffer mark))))))
 	  (if (pair? alist)
-	      (if (and (pair? (cdr alist)) (not always-prompt?))
+	      (if (or (pair? (cdr alist)) always-prompt?)
 		  (prompt-for-alist-value prompt
 					  alist
 					  (and info
