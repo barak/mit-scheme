@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crsend.scm,v 1.6 1991/11/04 20:35:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crsend.scm,v 1.7 1992/04/17 22:55:50 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -110,13 +110,16 @@ MIT in each case. |#
 		  (cons
 		   label
 		   (with-absolutely-no-interrupts
-		    (lambda ()
-		      ((ucode-primitive primitive-object-set-type)
-		       type-code:compiled-entry
-		       (make-non-pointer-object
-			(+ (cdr (or (assq label label-bindings)
-				    (error "Missing entry point" label)))
-			   (object-datum code-vector))))))))
+		     (lambda ()
+		       (let-syntax ((ucode-primitive
+				     (macro (name)
+				       (make-primitive-procedure name))))
+			 ((ucode-primitive primitive-object-set-type)
+			  type-code:compiled-entry
+			  (make-non-pointer-object
+			   (+ (cdr (or (assq label label-bindings)
+				       (error "Missing entry point" label)))
+			      (object-datum code-vector)))))))))
 		(cc-vector/entry-points cc-vector)))))
     (let ((label->expression
 	   (lambda (label)
