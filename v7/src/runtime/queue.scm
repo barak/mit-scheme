@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/queue.scm,v 14.2 1988/06/13 11:50:28 cph Rel $
+$Id: queue.scm,v 14.3 1993/06/25 21:08:38 gjr Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,7 +51,8 @@ MIT in each case. |#
     (if (null? (cdr queue))
 	(set-car! queue next)
 	(set-cdr! (cdr queue) next))
-    (set-cdr! queue next)))
+    (set-cdr! queue next)
+    unspecific))
 
 (define (dequeue!/unsafe queue)
   (let ((next (car queue)))
@@ -68,6 +69,9 @@ MIT in each case. |#
     (if (not (queue-empty? queue))
 	(begin (procedure (dequeue!/unsafe queue))
 	       (loop)))))
+
+(define-integrable (queue->list/unsafe queue)
+  (car queue))
 
 ;;; Safe (interrupt locked) versions of the above operations.
 
@@ -92,3 +96,8 @@ MIT in each case. |#
 	(if (not (eq? item empty))
 	    (begin (procedure item)
 		   (loop)))))))
+
+(define (queue->list queue)
+  (without-interrupts
+    (lambda ()
+      (list-copy (queue->list/unsafe queue)))))
