@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comhst.scm,v 1.3 1994/03/08 20:17:39 cph Exp $
+$Id: comhst.scm,v 1.4 1994/04/23 04:53:27 cph Exp $
 
 Copyright (c) 1992-94 Massachusetts Institute of Technology
 
@@ -69,8 +69,9 @@ license should have been included along with this file. |#
 	(let ((index
 	       (modulo (+ argument
 			  (command-message-receive comint-input-ring-tag
-			    (lambda (index)
-			      (delete-string (current-mark) point)
+			    (lambda (index left right)
+			      (delete-string left right)
+			      (set-current-mark! left)
 			      index)
 			    (lambda ()
 			      (push-current-mark! point)
@@ -80,8 +81,16 @@ license should have been included along with this file. |#
 		       size)))
 	  (message (number->string index))
 	  (if (positive? index)
-	      (insert-string (ring-ref ring (- index 1)) point))
-	  (set-command-message! comint-input-ring-tag index))))))
+	      (without-interrupts
+	       (lambda ()
+		 (let ((start (mark-temporary-copy point)))
+		   (insert-string (ring-ref ring (- index 1)) point)
+		   (set-command-message! comint-input-ring-tag
+					 index
+					 (mark-left-inserting-copy start)
+					 (mark-right-inserting-copy point)))))
+	      (set-command-message! comint-input-ring-tag
+				    index point point)))))))
 	 
 (define-command comint-next-input
   "Cycle forwards through input history."
@@ -110,20 +119,25 @@ license should have been included along with this file. |#
 	(syntax-table (ref-variable syntax-table))
 	(pattern (re-compile-pattern (re-quote-string string) false)))
     (let ((size (+ (ring-size ring) 1)))
-      (let ((start
-	     (command-message-receive comint-input-ring-tag
-	       (lambda (index) index)
-	       (lambda () (if backward? 0 size)))))
-	(let loop ((index start))
-	  (let ((index (+ index (if backward? 1 -1))))
-	    (cond ((if backward? (>= index size) (< index 0))
-		   (set-command-message! comint-input-ring-tag start)
-		   (editor-failure "Not found"))
-		  ((re-search-string-forward pattern
-					     false
-					     syntax-table
-					     (ring-ref ring (- index 1)))
-		   (set-variable! comint-last-input-match string)
-		   ((ref-command comint-previous-input) (- index start)))
-		  (else
-		   (loop index)))))))))
+      (call-with-values
+	  (lambda ()
+	    (command-message-receive comint-input-ring-tag
+	      values
+	      (lambda ()
+		(let ((point (current-point)))
+		  (values (if backward? 0 size) point point)))))
+	(lambda (start left right)
+	  (let loop ((index start))
+	    (let ((index (+ index (if backward? 1 -1))))
+	      (cond ((if backward? (>= index size) (< index 0))
+		     (set-command-message! comint-input-ring-tag
+					   start left right)
+		     (editor-failure "Not found"))
+		    ((re-search-string-forward pattern
+					       false
+					       syntax-table
+					       (ring-ref ring (- index 1)))
+		     (set-variable! comint-last-input-match string)
+		     ((ref-command comint-previous-input) (- index start)))
+		    (else
+		     (loop index))))))))))
