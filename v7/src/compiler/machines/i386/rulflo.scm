@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.15 1992/02/19 05:36:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.16 1992/02/19 06:18:25 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -368,9 +368,9 @@ MIT in each case. |#
 	       (lambda (target source)
 		 (if (= source target)
 		     (LAP (FLD1)
-			  (,op2%1p (ST ,',(1+ target))))
+			  (,op2%1p (ST ,',(1+ target)) (ST 0)))
 		     (LAP (FLD1)
-			  (,op2%1 (ST ,',(1+ source)))
+			  (,op2%1 (ST 0) (ST ,',(1+ source)))
 			  (FSTP (ST ,',(1+ target))))))))))))
 
   (define-flonum-operation flonum-add fadd faddp fadd faddp)
