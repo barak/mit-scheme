@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/termcap.scm,v 1.4 1992/08/27 06:33:40 jinx Exp $
+$Id: termcap.scm,v 1.5 1993/09/01 18:05:37 gjr Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -79,8 +79,8 @@ MIT in each case. |#
   (tn-memory-lines false read-only true)
   (tn-minimum-padding-speed false read-only true)
   (tn-standout-marker-width false read-only true)
-  (tn-x-size false read-only true)
-  (tn-y-size false read-only true)
+  (tn-x-size false read-only false)
+  (tn-y-size false read-only false)
 
   (ts-audible-bell false read-only true)
   (ts-clear-line false read-only true)
