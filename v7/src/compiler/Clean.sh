@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.4 2000/12/09 05:10:14 cph Exp $
+# $Id: Clean.sh,v 1.5 2001/09/25 17:22:06 cph Exp $
 #
-# Copyright (c) 2000 Massachusetts Institute of Technology
+# Copyright (c) 2000, 2001 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
 
 # Utility for cleaning up the MIT Scheme runtime-check directory.
 # The working directory must be the runtime-check directory.
@@ -26,7 +27,7 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
-../etc/Clean.sh "${1}" rm-pkg-src rm-pkg-bin
+../etc/Clean.sh "${1}" rm-pkg
 
 for SUBDIR in back base fggen fgopt machine rtlbase rtlgen rtlopt; do
     if [ -d ${SUBDIR} ]; then
