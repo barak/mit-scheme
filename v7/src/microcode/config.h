@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.89 1995/07/27 01:26:34 adams Exp $
+$Id: config.h,v 9.90 1995/10/04 22:53:58 cph Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -41,6 +41,7 @@ MIT in each case. */
 /* Default switches. */
 
 #include "oscond.h"
+#include "version.h"
 
 #ifndef butterfly
 #ifndef _UNIX
@@ -295,6 +296,8 @@ typedef unsigned long SCHEME_OBJECT;
 #define ADDRESS_TO_DATUM(address)					\
   ((SCHEME_OBJECT) (((unsigned long) (address)) & (~(HPPA_QUAD_MASK))))
 
+#if (VERSION > 11)
+
 /* SHARP_F is a magic value:
    Typecode TC_CONSTANT, high datum bits #b100, low datum bits are the top
    TYPE_CODE_LENGTH bits of HPPA_QUAD_BIT
@@ -308,6 +311,7 @@ typedef unsigned long SCHEME_OBJECT;
 */
 
 #define SHARP_F         0x22000010
+#endif /* (VERSION > 11) */
 
 #endif /* hp9000s800 */
 
