@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/strpad.scm,v 1.5 1991/05/17 23:42:30 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/strpad.scm,v 1.6 1991/10/19 07:09:54 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -72,7 +72,7 @@
 	   (if (default-object? x-size) (output-port/x-size port) x-size)))
       (let ((n-per-line (max 1 (quotient (+ x-size 1) (+ 2 n)))))
 	(do ((strings strings (cdr strings))
-	     (i 1 (if (< i n-per-line) (+ i 1) (begin (newline) 1))))
+	     (i 1 (if (< i n-per-line) (+ i 1) (begin (newline port) 1))))
 	    ((null? strings) unspecific)
 	  (if (> i 1) (write-string "  " port))
 	  (write-string (pad-on-right-to (car strings) n) port))))))
