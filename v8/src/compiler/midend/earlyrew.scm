@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: earlyrew.scm,v 1.5 1995/02/17 23:41:57 adams Exp $
+$Id: earlyrew.scm,v 1.6 1995/02/21 06:27:08 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -159,11 +159,6 @@ MIT in each case. |#
 		       (make-primitive-procedure operator-name-or-object))
 		   handler))
 
-(define (earlyrew/number? form)
-  (and (QUOTE/? form)
-       (number? (quote/text form))
-       (quote/text form)))
-
 (define (earlyrew/nothing-special x y)
   x y					; ignored
   false)
@@ -195,11 +190,13 @@ MIT in each case. |#
 		  (lambda (value)
 		    (small-fixnum? value n-bits)))))
     (lambda (x y)
-      (cond ((earlyrew/number? x)
+      (cond ((form/number? x)
 	     => (lambda (x-value)
-		  (cond ((earlyrew/number? y)
-			 => (lambda (y-value)
-			      `(QUOTE ,(op x-value y-value))))
+		  (cond ((form/number? y)
+			 `(CALL (QUOTE ,%genop)
+				(QUOTE #F)
+				(QUOTE ,x-value)
+				(QUOTE ,y-value)))
 			((optimize-x x-value y))
 			((not (test x-value))
 			 `(CALL (QUOTE ,%genop)
@@ -230,7 +227,7 @@ MIT in each case. |#
 					      (LOOKUP ,y-name))))
 				  ,y))))))
 
-	    ((earlyrew/number? y)
+	    ((form/number? y)
 	     => (lambda (y-value)
 		  (cond ((optimize-y x y-value))
 			((not (test y-value))
@@ -366,9 +363,9 @@ MIT in each case. |#
 	`(CALL (QUOTE ,&*) (QUOTE #F) ,x ,y))
       (define (out-of-line)
 	`(CALL (QUOTE ,%*) (QUOTE #F) ,x ,y))
-      (cond ((earlyrew/number? x)
+      (cond ((form/number? x)
 	     => (lambda (x-value)
-		  (cond ((earlyrew/number? y)
+		  (cond ((form/number? y)
 			 => (lambda (y-value)
 			      `(QUOTE ,(* x-value y-value))))
 			((zero? x-value)
@@ -399,7 +396,7 @@ MIT in each case. |#
 				 ,y))))
 			(else
 			 (out-of-line)))))
-	    ((earlyrew/number? y)
+	    ((form/number? y)
 	     => (lambda (y-value)
 		  (cond ((zero? y-value)
 			 (by-zero x y-value))
@@ -439,27 +436,32 @@ MIT in each case. |#
 
 (define-rewrite/early '&/
   (lambda (x y)
-    (cond ((earlyrew/number? x)
+    (define (out-of-line x y)
+      `(CALL (QUOTE ,%/) (QUOTE #F) ,x ,y))
+    (cond ((form/number? x)
 	   => (lambda (x-value)
-		(cond ((earlyrew/number? y)
+		(cond ((form/number? y)
 		       => (lambda (y-value)
-			    `(QUOTE ,(careful// x-value y-value))))
+			    (cond ((careful// x-value y-value)
+				   => (lambda (result)
+					`(QUOTE ,result)))
+				  (else (out-of-line x y)))))
 		      ((zero? x-value)
 		       `(QUOTE 0))
 		      (else
-		       `(CALL (QUOTE ,%/) (QUOTE #F) (QUOTE ,x-value) ,y)))))
-	  ((earlyrew/number? y)
+		       (out-of-line `(QUOTE ,x-value) y)))))
+	  ((form/number? y)
 	   => (lambda (y-value)
 		(cond ((zero? y-value)
-		       (user-error "/: Division by zero" x y-value))
+		       (out-of-line x y))
 		      ((= y-value 1)
 		       x)
 		      ((= y-value -1)
 		       (earlyrew/negate x))
 		      (else
-		       `(CALL (QUOTE ,%/) (QUOTE #F) ,x (QUOTE ,y-value))))))
+		       (out-of-line x y)))))
 	  (else
-	   `(CALL (QUOTE ,%/) (QUOTE #F) ,x ,y)))))
+	   (out-of-line x y)))))
 
 ;;;; Rewrites of unary operations in terms of binary operations
 
@@ -535,7 +537,7 @@ MIT in each case. |#
 	   (lambda (size)
 	     (define (default)
 	       `(CALL (QUOTE ,out-of-line) (QUOTE #F) ,size))
-	     (cond ((earlyrew/number? size)
+	     (cond ((form/number? size)
 		    => (lambda (nbytes)
 			 (if (not (and (exact-nonnegative-integer? nbytes)
 				       (<= nbytes limit)))
@@ -558,7 +560,7 @@ MIT in each case. |#
     (lambda (size fill)
       (define (default)
 	`(CALL (QUOTE ,%vector-cons) (QUOTE #F) ,size ,fill))
-      (cond ((earlyrew/number? size)
+      (cond ((form/number? size)
 	     => (lambda (nbytes)
 		  (if (or (not (exact-nonnegative-integer? nbytes))
 			  (> nbytes *vector-cons-max-open-coded-length*))
@@ -575,7 +577,7 @@ MIT in each case. |#
     (lambda (term pattern)
       (define (default)
 	`(CALL (QUOTE ,prim-general-car-cdr) (QUOTE #f) ,term ,pattern))
-      (cond ((earlyrew/number? pattern)
+      (cond ((form/number? pattern)
 	     => (lambda (pattern)
 		  (if (and (integer? pattern) (> pattern 0))
 		      (let walk-bits ((num  pattern)
@@ -621,7 +623,7 @@ MIT in each case. |#
 
 (define-rewrite/early/global 'SQRT 1
   (lambda (default arg)
-    (cond ((earlyrew/number? arg)
+    (cond ((form/number? arg)
 	   => (lambda (number)
 		`(QUOTE ,(sqrt number))))
 	  (else
@@ -653,9 +655,9 @@ MIT in each case. |#
 	      ((odd? n)
 	       (make-product variable (power variable (- n 1))))))	       
 		       
-      (cond ((earlyrew/number? exponent)
+      (cond ((form/number? exponent)
 	     => (lambda (exponent)
-		  (cond ((earlyrew/number? base)
+		  (cond ((form/number? base)
 			 => (lambda (base)
 			      `(QUOTE ,(expt base exponent))))
 			((eqv? exponent 0)
