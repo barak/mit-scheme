@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.161 1992/09/21 20:34:43 cph Exp $
+$Id: runtime.pkg,v 14.162 1992/11/05 00:22:57 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -138,6 +138,11 @@ MIT in each case. |#
 	  untrace
 	  untrace-entry
 	  untrace-exit)
+  (initialization (initialize-package!)))
+
+(define-package (runtime apply)
+  (files "apply")
+  (parent ())
   (initialization (initialize-package!)))
 
 (define-package (runtime character)
@@ -445,6 +450,8 @@ MIT in each case. |#
     ;;(else "unkdir")
     (else))
   (parent ())
+  (export (runtime pathname)
+	  *expand-directory-prefixes?*)
   (export ()
 	  directory-read))
 
