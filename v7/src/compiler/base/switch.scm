@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: switch.scm,v 4.23 1993/07/01 03:12:19 gjr Exp $
+$Id: switch.scm,v 4.24 1994/02/02 03:39:50 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -68,7 +68,14 @@ MIT in each case. |#
 ;; This only works in the C back end, right now
 (define compiler:compress-top-level? false)
 (define compiler:avoid-scode? true)
+
+;; If true, the compiler is allowed to assume that fixnum operations
+;; are only applied to inputs for which the operation is closed, i.e.
+;; generates a valid fixnum.  If false, the compiler will ensure that
+;; the result of a fixnum operation is a fixnum, although it may be an
+;; incorrect result for screw cases.
 (define compiler:assume-safe-fixnums? true)
+
 ;; The switch COMPILER:OPEN-CODE-FLOATING-POINT-ARITHMETIC? is in machin.scm.
 
 ;;; Nary switches
