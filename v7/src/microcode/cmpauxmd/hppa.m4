@@ -1,8 +1,8 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.7 1989/12/06 10:55:37 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.8 1990/01/22 22:33:22 jinx Exp $
 ;;;
-;;;	Copyright (c) 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -107,6 +107,10 @@ changecom(`;');;; -*-Midas-*-
 ;;;;	All other registers are available to the compiler.  A
 ;;;;	caller-saves convention is used, so the registers need not be
 ;;;;	preserved by subprocedures.
+;;;;
+;;;; ADB mnemonics:
+;;;;	arg3 = gr23; arg2 = gr24; arg1 = gr25; arg0 = gr26
+;;;;	dp   = gr27; ret0 = gr28; ret1 = gr29; sp   = gr30; rp   = gr02
 
 define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 8))
 define(QUAD_MASK, eval(2 ** (TC_LENGTH - 2)))
@@ -140,23 +144,25 @@ C_to_interface
 	LDI	QUAD_MASK,5
 
 interface_to_scheme
-	LDW	8(0,4),28		; Copy val
+	LDW	8(0,4),2		; Move interpreter reg to val
 	LDW	0(0,4),20		; Setup memtop
 	ADDIL	L'Ext_Stack_Pointer-$global$,27
 	LDW	R'Ext_Stack_Pointer-$global$(1),22 ; Setup stack pointer
 	ADDIL	L'Free-$global$,27
 	LDW	R'Free-$global$(1),21	; Setup free
-	COPY	28,19
-	DEP	5,LOW_TC_BIT,TC_LENGTH,19	; Setup dlink
+	COPY	2,19			; Restore dynamic link if any
+	DEP	5,LOW_TC_BIT,TC_LENGTH,19
 	.CALL	RTNVAL=GR		; out=28
 	BLE	0(5,26)			; Invoke entry point
 	COPY	31,3			; Setup scheme_to_interface_ble
 
 scheme_to_interface_ble
-	ADDI	4,31
+	ADDI	4,31,31			; Skip over format word ...
 trampoline_to_interface
 	COPY	31,26
+	DEP	0,31,2,26
 scheme_to_interface
+	STW	2,8(0,4)		; Move val to interpreter reg
 	ADDIL	L'utility_table-$global$,27
 	LDO	R'utility_table-$global$(1),29
 	LDWX,S	28(0,29),29		; Find handler
@@ -175,8 +181,6 @@ scheme_to_interface
 ;; world.  The compiler "knows" the distance between
 ;; scheme_to_interface_ble and hook_jump_table (100 bytes)
 
-	NOP
-	NOP
 	NOP
 	NOP
 	NOP
@@ -208,18 +212,18 @@ store_closure_code_real
 	EXTRU	1,18,5,5
 	DEP	5,15,5,20
 	STWM	20,4(0,21)		; Store LDIL instruction
-	LDIL	L'0xe740c002,20		; BLE opcode, register and nullify
-	LDO	R'0xe740c002(20),20
+	LDIL	L'0xe7406000,20		; BLE opcode, register and nullify
+	LDO	R'0xe7406000(20),20
 	EXTRU	1,19,1,5
 	DEP	5,29,1,20
 	EXTRU	1,29,10,5
 	DEP	5,28,10,20
 	STWM	20,4(0,21)		; Store BLE instruction
-	LDIL	L'0xb7ff07f4,20
-	LDO	R'0xb7ff07f4(20),20
+	LDIL	L'0xb7ff07e9,20
+	LDO	R'0xb7ff07e9(20),20
 	STWM	20,4(0,21)		; Store ADDI instruction
 	LDW	0(0,4),20		; Reload memtop
-	BV	0(31)			; Return
+	BE	0(5,31)			; Return
 	LDI	QUAD_MASK,5		; Restore register 5
 
 interface_to_C
