@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: macros.scm,v 1.7 1998/03/19 20:29:52 cph Exp $
+;;; $Id: macros.scm,v 1.8 1998/04/28 03:57:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1993-98 Massachusetts Institute of Technology
 ;;;
@@ -416,7 +416,10 @@
 	   (DISJUNCTION
 	    ,(lambda (name expr)
 	       (do-exprs name (disjunction-components expr list))))
-	   (DEFINITION ,(lambda (name expr) name (illegal expr)))
+	   (DEFINITION
+	    ,(lambda (name expr)
+	       (and (not (eq? name (definition-name expr)))
+		    (do-expr name (definition-value expr)))))
 	   (IN-PACKAGE ,(lambda (name expr) name (illegal expr)))
 	   (LAMBDA
 	    ,(lambda (name expr)
