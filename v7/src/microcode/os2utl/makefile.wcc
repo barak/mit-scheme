@@ -1,0 +1,132 @@
+### -*- Fundamental -*-
+###
+###	$Id: makefile.wcc,v 1.1 1995/10/15 00:43:49 cph Exp $
+###
+###	Copyright (c) 1994-95 Massachusetts Institute of Technology
+###
+###	This material was developed by the Scheme project at the
+###	Massachusetts Institute of Technology, Department of
+###	Electrical Engineering and Computer Science.  Permission to
+###	copy this software, to redistribute it, and to use it for any
+###	purpose is granted, subject to the following restrictions and
+###	understandings.
+###
+###	1. Any copy made of this software must include this copyright
+###	notice in full.
+###
+###	2. Users of this software agree to make their best efforts (a)
+###	to return to the MIT Scheme project any improvements or
+###	extensions that they make, so that these may be included in
+###	future releases; and (b) to inform MIT of noteworthy uses of
+###	this software.
+###
+###	3. All materials developed as a consequence of the use of this
+###	software shall duly acknowledge such use, in accordance with
+###	the usual standards of acknowledging credit in academic
+###	research.
+###
+###	4. MIT has made no warrantee or representation that the
+###	operation of this software will be error-free, and MIT is
+###	under no obligation to provide any services, by way of
+###	maintenance, update, or otherwise.
+###
+###	5. In conjunction with products arising from the use of this
+###	material, there shall be no use of the name of the
+###	Massachusetts Institute of Technology nor of any adaptation
+###	thereof in any advertising, promotional, or sales literature
+###	without prior written consent from MIT in each case.
+###
+
+#### Makefile for Scheme under OS/2 using Watcom C/C++
+
+# This makefile is configured for use with GNU make, the Watcom C
+# compiler, GNU m4, and the Watcom assembler.
+
+OBJ = obj
+ASM = asm
+CC = wcc386
+M4 = m4
+AS = wasm
+SYSTEM_LIBS =
+SYSTEM_CLEAN = *.err *.sym
+
+# Compiler options.
+# [DEBUG] marks options used for debugging.
+# [OPTIMIZE] marks options used for optimization.
+#
+# /4r		386 instructions, 486 timings, register-based args
+# /bm		build multi-thread binary
+# /bt=os2	build OS/2 binary (default)
+# /d1+		generate debug info [OPTIMIZE]
+# /d2		generate debug info [DEBUG]
+# /fpi		generate in-line 387 insns, emulate if none (default)
+# /fp3		generate in-line 387 insns (default)
+# /hw		generate Watcom debug info (default)
+# /mf		use flat memory model (default)
+# /od		disable optimization (default with /d2)
+# /oe		enable in-line user-code expansion [OPTIMIZE]
+# /op		force IEEE floating-point semantics
+# /ox		enable various optimizations [OPTIMIZE]
+# /s		remove stack overflow checks
+# /sg		generate calls to grow stack
+# /w0		disable warning messages
+# /zc		place literal strings in code segment
+# /ze		enable language extensions (default)
+# /zp4		use 4-byte alignment
+# /zq		operate quietly
+CFLAGS = /4r /bm /d1+ /fpi /fp3 /oe /op /ox /s /sg /w0 /zc /zp4 /zq /dMIT_SCHEME
+
+# Linker options.
+#
+# debug all		include debug info in executable
+# option caseexact	use case-sensitive comparison for identifiers
+# option quiet		operate quietly
+# option symfile	put debug info in .sym file
+LDFLAGS = debug all option caseexact option quiet
+
+# M4 options.
+#
+# -DOS2		Select OS/2 assembly-language conventions:
+#		 * No leading underscore in C symbols.
+#		 * 6-bit type codes.
+#		 * OS/2 _System calling convention.
+# -DDASM	Select Intel assembly language.
+# -DWCC386R	Select Watcom 386 register-based conventions.
+M4FLAGS = -DOS2 -DDASM -DWCC386R
+
+# Assembler options.
+#
+# /4pr		like /4r for compiler
+# /d1		generate debug info
+# /fpi		generate in-line 387 insns, emulate if none
+# /fp3		generate in-line 387 insns
+# /mf		use flat memory model
+# /zq		operate quietly
+ASFLAGS = /4pr /d1 /fpi /fp3 /mf /zq
+
+# Complicated definition to convert space-delimited object-file list
+# to a comma-delimited list:
+comma := ,
+empty :=
+space := $(empty) $(empty)
+caret = $(subst $(space),$(comma),$(strip $^))
+
+%.obj : %.c
+	$(CC) $(CFLAGS) $<
+
+%.obj : %.asm
+	$(AS) $(ASFLAGS) /fo=$@ $<
+
+%.exe :
+	wlink system os2v2 $(LDFLAGS) name $@ file $(caret)
+
+include os2utl\makefile.cmn
+
+cmpauxmd.asm : cmpauxmd.m4 asmcvt.exe
+	.\asmcvt pre < $< | $(M4) $(M4FLAGS) | .\asmcvt post > $@
+
+scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS)
+	wlink system os2v2_pm name $@ $(LDFLAGS) file $(caret) $(SCHEME_LIB)
+
+bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS)
+	wlink system os2v2_pm name $@ $(LDFLAGS) file $(caret) $(SCHEME_LIB)
