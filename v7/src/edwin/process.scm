@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.5 1991/04/29 10:19:30 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.6 1991/04/29 10:51:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -460,23 +460,35 @@ after the listing is made.)"
   (run-synchronous-process input-region output-mark "/bin/sh" "-c" command))
 
 (define (run-synchronous-process input-region output-mark program . arguments)
-  (let ((process
-	 (start-pipe-subprocess program
-				(list->vector
-				 (cons (os/filename-non-directory program)
-				       arguments))
-				false)))
-    (call-with-output-copier process output-mark
-      (lambda (copy-output)
-	(call-with-input-copier process input-region
-	  (lambda (copy-input)
-	    (let loop ()
-	      (copy-input)
-	      (copy-output)
-	      (let ((status (subprocess-status process)))
-		(if (eq? status 'RUNNING)
-		    (loop)
-		    status)))))))))
+  (let ((process false))
+    (dynamic-wind
+     (lambda ()
+       (if (not process)
+	   (set! process
+		 (start-pipe-subprocess
+		  program
+		  (list->vector
+		   (cons (os/filename-non-directory program) arguments))
+		  false)))
+       unspecific)
+     (lambda ()
+       (call-with-output-copier process output-mark
+	 (lambda (copy-output)
+	   (call-with-input-copier process input-region
+	     (lambda (copy-input)
+	       (let loop ()
+		 (copy-input)
+		 (copy-output)
+		 (let ((status (subprocess-status process)))
+		   (if (eq? status 'RUNNING)
+		       (loop)
+		       status))))))))
+     (lambda ()
+       (if (and process (not (eq? process 'DELETED)))
+	   (begin
+	     (subprocess-delete process)
+	     (set! process 'DELETED)))
+       unspecific))))
 
 (define (call-with-output-copier process output-mark receiver)
   (let ((output-mark (and output-mark (mark-left-inserting output-mark))))
