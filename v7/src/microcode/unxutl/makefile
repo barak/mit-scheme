@@ -1,7 +1,7 @@
 #
 # Makefile for MIT CScheme microcode.
 #
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/makefile,v 1.5 1989/09/20 23:23:37 cph Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/makefile,v 1.6 1989/11/02 03:45:25 jinx Exp $
 #
 CPP = cc -E
 MAKE = make  # BSD doesn't have it as a default.
@@ -39,7 +39,7 @@ doppband:
 # If you have a problem with cc -E here, changing
 # the definition of CPP above may fix it.
 xmakefile: ymakefile ymake.script ymake.local cf.h s.h m.h
-	rm -f xmakefile
+	rm -f xmakefile junk.c
 	cp ymakefile junk.c
 	$(CPP) junk.c | sed -n -f ymake.script > xmakefile
 	rm -f junk.c
