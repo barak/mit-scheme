@@ -1,8 +1,11 @@
 /* -*- C -*- */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/test-c.c,v 1.1 1992/02/14 01:50:05 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/test-c.c,v 1.2 1992/02/14 17:03:33 jinx Exp $ */
 
 #include <stdio.h>
+
+extern long external_long;
+extern long * external_pointer;
 
 struct two_word_struct
 {
@@ -43,6 +46,8 @@ long
 	  + (q0 * x0) + (q1 * x1));
 }
 
+long external_long, * external_pointer;
+
 main (argc, argv)
      int argc;
      char **argv;
@@ -72,5 +77,9 @@ main (argc, argv)
 
   temp = (reveal_structure_convention (values[31], values[32]));
   printf ("temp = {foo = %ld, bar = %ld}\n", temp.foo, temp.bar);
+  external_long = 42;
+  external_pointer = &external_long;
+  printf ("*external_pointer = %ld; external_pointer = 0x%lx\n",
+	  *external_pointer, external_pointer);
   exit (0);
 }
