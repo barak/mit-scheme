@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instrf.scm,v 1.12 1992/08/05 23:34:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instrf.scm,v 1.13 1992/08/12 02:55:42 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -37,26 +37,9 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define-macro (define-trivial-instruction mnemonic opcode . extra)
-  `(define-instruction ,mnemonic
-     (()
-      (BYTE (8 ,opcode))
-      ,@(map (lambda (extra)
-	       `(BYTE (8 ,extra)))
-	     extra))))
-
-(define-trivial-instruction F2XM1 #xd9 #xf0)
-(define-trivial-instruction FABS  #xd9 #xe1)
-
 (let-syntax
     ((define-binary-flonum
        (macro (mnemonic pmnemonic imnemonic digit opcode1 opcode2)
-	 ;; In the following code, the commented code follows the i486
-	 ;; manual, which is wrong.  The uncommented versions agree
-	 ;; with the hardware and the description in the i486 book.
-
-	 opcode2			; ignored
-
 	 `(begin
 	    (define-instruction ,mnemonic
 	      (((ST 0) (ST (? i)))
@@ -65,15 +48,11 @@ MIT in each case. |#
 
 	      (((ST (? i)) (ST 0))
 	       (BYTE (8 #xdc)
-		     ;; (8 (+ ,opcode2 i))
-		     (8 (+ ,opcode1 i))
-		     ))
+		     (8 (+ ,opcode2 i))))
 
 	      (()
 	       (BYTE (8 #xde)
-		     ;; (8 (+ ,opcode2 1))
-		     (8 (+ ,opcode1 1))
-		     ))
+		     (8 (+ ,opcode2 1))))
 
 	      ((D (? source mW))
 	       (BYTE (8 #xdc))
@@ -86,9 +65,7 @@ MIT in each case. |#
 	    (define-instruction ,pmnemonic
 	      (((ST (? i)) (ST 0))
 	       (BYTE (8 #xde)
-		     ;; (8 (+ ,opcode2 i))
-		     (8 (+ ,opcode1 i))
-		     )))
+		     (8 (+ ,opcode2 i)))))
 
 	    (define-instruction ,imnemonic
 	      ((L (? source mW))
@@ -99,12 +76,41 @@ MIT in each case. |#
 	       (BYTE (8 #xde))
 	       (ModR/M ,digit source)))))))
 
-  (define-binary-flonum FADD  FADDP  FIADD  0 #xc0 #xc0)
-  (define-binary-flonum FDIV  FDIVP  FIDIV  6 #xf0 #xf8)
-  (define-binary-flonum FDIVR FDIVPR FIDIVR 7 #xf8 #xf0)
-  (define-binary-flonum FMUL  FMULP  FIMUL  1 #xc8 #xc8)
-  (define-binary-flonum FSUB  FSUBP  FISUB  4 #xe0 #xe8)
-  (define-binary-flonum FSUBR FSUBPR FISUBR 5 #xe8 #xe0))
+  ;; The i486 book (and 387, etc.) has inconsistent instruction
+  ;; descriptions and opcode assignments for FSUB and siblings,
+  ;; and FDIV and siblings.
+  ;; FSUB ST(i),ST is described as replacing ST(i) with ST-ST(i)
+  ;; while the opcode described replaces ST(i) with ST(i)-ST.
+
+  ;; In the following, the F% forms follow the descriptions in the
+  ;; book, namely, F%SUB computes ST-ST(i) and F%SUBR computes
+  ;; ST(i)-ST, storing into their destination (first) argument.
+
+  ;; The %-less forms follow the opcodes and usual convention,
+  ;; namely FSUB computes destination (first) argument - source
+  ;; argument FSUBR computes source - destination.
+
+  (define-binary-flonum FADD   FADDP   FIADD   0 #xc0 #xc0)
+  (define-binary-flonum F%DIV  F%DIVP  F%IDIV  6 #xf0 #xf0)
+  (define-binary-flonum F%DIVR F%DIVPR F%IDIVR 7 #xf8 #xf8)
+  (define-binary-flonum FDIV   FDIVP   FIDIV   6 #xf0 #xf8)
+  (define-binary-flonum FDIVR  FDIVPR  FIDIVR  7 #xf8 #xf0)
+  (define-binary-flonum FMUL   FMULP   FIMUL   1 #xc8 #xc8)
+  (define-binary-flonum F%SUB  F%SUBP  F%ISUB  4 #xe0 #xe0)
+  (define-binary-flonum F%SUBR F%SUBPR F%ISUBR 5 #xe8 #xe8)
+  (define-binary-flonum FSUB   FSUBP   FISUB   4 #xe0 #xe8)
+  (define-binary-flonum FSUBR  FSUBPR  FISUBR  5 #xe8 #xe0))
+
+(define-macro (define-trivial-instruction mnemonic opcode . extra)
+  `(define-instruction ,mnemonic
+     (()
+      (BYTE (8 ,opcode))
+      ,@(map (lambda (extra)
+	       `(BYTE (8 ,extra)))
+	     extra))))
+
+(define-trivial-instruction F2XM1 #xd9 #xf0)
+(define-trivial-instruction FABS  #xd9 #xe1)
 
 (define-instruction FBLD
   (((? source mW))
