@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.14 1997/06/26 07:02:22 cph Exp $
+$Id: nttrap.c,v 1.15 1998/02/01 05:35:33 cph Exp $
 
-Copyright (c) 1992-97 Massachusetts Institute of Technology
+Copyright (c) 1992-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -347,7 +347,7 @@ DEFUN_VOID (NT_initialize_traps)
 {
   trap_state = trap_state_recover;
   user_trap_state = trap_state_recover;
-  return;
+  (void) SetErrorMode (SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
 }
 
 void
@@ -1345,8 +1345,6 @@ DEFUN (WinntEnterHook, (enter_interpreter),
 {
 #ifdef USE_SET_UNHANDLED_EXCEPTION_FILTER
   (void) SetUnhandledExceptionFilter (scheme_unhandled_exception_filter);
-  /* Doesn't seem to work as it should: */
-  (void) SetErrorMode (SEM_NOGPFAULTERRORBOX);
   (* enter_interpreter) ();
   outf_fatal ("Exception!\n");
   termination_trap ();

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.21 1998/01/09 05:33:52 cph Exp $
+$Id: ntfs.c,v 1.22 1998/02/01 05:35:41 cph Exp $
 
 Copyright (c) 1992-98 Massachusetts Institute of Technology
 
@@ -143,16 +143,12 @@ valid_drive_p (const char * namestring)
   DWORD bytes_per_sector;
   DWORD number_of_free_clusters;
   DWORD total_number_of_clusters;
-  BOOL result;
-  SetErrorMode (SEM_FAILCRITICALERRORS);
-  result
-    = (GetDiskFreeSpace (namestring,
-			 (&sectors_per_cluster),
-			 (&bytes_per_sector),
-			 (&number_of_free_clusters),
-			 (&total_number_of_clusters)));
-  SetErrorMode (0);
-  return (result);
+  return
+    (GetDiskFreeSpace (namestring,
+		       (&sectors_per_cluster),
+		       (&bytes_per_sector),
+		       (&number_of_free_clusters),
+		       (&total_number_of_clusters)));
 }
 
 static HANDLE
