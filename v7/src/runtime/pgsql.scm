@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pgsql.scm,v 1.7 2003/11/10 21:46:20 cph Exp $
+$Id: pgsql.scm,v 1.8 2003/11/11 04:46:39 cph Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -239,6 +239,10 @@ USA.
 		    (close-pgsql-conn conn)
 		    (set! conn)
 		    unspecific))))
+
+(define (pgsql-conn-open? connection)
+  (guarantee-connection connection 'PGSQL-CONN-OPEN?)
+  (if (connection-handle connection) #t #f))
 
 (define-integrable (connection->handle connection)
   (guarantee-valid-connection connection 'CONNECTION->HANDLE))

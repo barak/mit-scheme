@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.468 2003/11/06 04:16:50 cph Exp $
+$Id: runtime.pkg,v 14.469 2003/11/11 04:46:43 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4660,6 +4660,7 @@ USA.
 	  pgsql-conn-db
 	  pgsql-conn-error-message
 	  pgsql-conn-host
+	  pgsql-conn-open?
 	  pgsql-conn-options
 	  pgsql-conn-pass
 	  pgsql-conn-port
