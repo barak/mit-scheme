@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.132 1992/11/17 17:36:37 cph Exp $
+;;;	$Id: dired.scm,v 1.133 1992/11/20 13:49:12 bal Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -71,7 +71,8 @@ Type g to read the directory again.  This discards all deletion-flags.
 Space and Rubout can be used to move down and up by lines.
 Also:
  M, G, O -- change file's mode, group or owner.
- C -- compress this file.  U -- uncompress this file."
+ C -- compress this file.  U -- uncompress this file.
+ K -- encrypt/decrypt this file."
 ;;Type v to view a file in View mode, returning to Dired when done.
   (lambda (buffer)
     (define-variable-local-value! buffer (ref-variable-object case-fold-search)
