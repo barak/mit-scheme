@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbmap.h,v 9.21 1987/01/22 14:33:52 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbmap.h,v 9.22 1987/08/07 15:36:46 jinx Rel $
  *
  * This file contains macros and declarations for Bintopsb.c
  * and Psbtobin.c
@@ -47,6 +47,7 @@ MIT in each case. */
 #include "config.h"
 #include "object.h"
 #include "bignum.h"
+#include "bitstr.h"
 #include "gc.h"
 #include "types.h"
 #include "sdata.h"
@@ -60,7 +61,7 @@ extern double frexp(), ldexp();
 #include "missing.c"
 #endif
 
-#define PORTABLE_VERSION	1
+#define PORTABLE_VERSION	2
 
 /* Number of objects which, when traced recursively, point at all other
    objects dumped.  Currently the dumped object and the external

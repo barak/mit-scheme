@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.25 1987/06/05 04:11:31 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.26 1987/08/07 15:34:27 jinx Exp $
  *
  * This File contains the code to translate portable format binary
  * files to internal format.
@@ -105,7 +105,7 @@ read_a_char()
       fprintf(stderr,
 	      "%s: File is not Portable.  Character Code Found.\n",
 	      Program_Name);
-      fscanf(Portable_File, "%d", &Code);
+      fscanf(Portable_File, "%ld", &Code);
       getc(Portable_File);			/* Space */
       OUT(Code);
     }
@@ -259,6 +259,59 @@ read_an_integer(The_Type, To, Slot)
   }
 }
 
+Pointer *
+read_a_bit_string(To, Slot)
+     Pointer *To, *Slot;
+{
+  long size_in_bits, size_in_words;
+  Pointer the_bit_string;
+
+  fscanf(Portable_File, "%ld", &size_in_bits);
+  size_in_words = (1 + bits_to_pointers (size_in_bits));
+
+  the_bit_string = Make_Pointer(TC_BIT_STRING, To);
+  *To++ = Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, size_in_words);
+  *To = size_in_bits;
+  To += size_in_words;
+
+  if (size_in_bits != 0)
+  {
+    unsigned long temp;
+    fast Pointer *scan;
+    fast long bits_remaining, bits_accumulated;
+    fast Pointer accumulator, next_word;
+
+    accumulator = 0;
+    bits_accumulated = 0;
+    scan = bit_string_low_ptr(the_bit_string);
+    for(bits_remaining = size_in_bits;
+	bits_remaining > 0;
+	bits_remaining -= 4)
+    {
+      read_hex_digit(temp);
+      if ((bits_accumulated + 4) > POINTER_LENGTH)
+      {
+	accumulator |=
+	  ((temp & low_mask(POINTER_LENGTH - bits_accumulated)) <<
+	   bits_accumulated);
+	*(inc_bit_string_ptr(scan)) = accumulator;
+	accumulator = (temp >> (POINTER_LENGTH - bits_accumulated));
+	bits_accumulated -= (POINTER_LENGTH - 4);
+	temp &= low_mask(bits_accumulated);
+      }
+      else
+      {
+	accumulator |= (temp << bits_accumulated);
+	bits_accumulated += 4;
+      }
+    }
+    if (bits_accumulated != 0)
+      *(inc_bit_string_ptr(scan)) = accumulator;
+  }
+  *Slot = the_bit_string;
+  return To;
+}
+
 /* Underflow and Overflow */
 
 /* dflmax and dflmin exist in the Berserkely FORTRAN library */
@@ -353,6 +406,10 @@ Read_External(N, Table, To)
 	  To = read_a_string(To, Table++);
 	  continue;
 
+	case TC_BIT_STRING:
+	  To = read_a_bit_string(To, Table++);
+	  continue;
+
 	case TC_FIXNUM:
 	case TC_BIG_FIXNUM:
 	  To = read_an_integer(The_Type, To, Table++);
@@ -364,7 +421,7 @@ Read_External(N, Table, To)
 
 	    getc(Portable_File);	/* Space */
 	    VMS_BUG(the_char_code = 0);
-	    fscanf( Portable_File, "%3x", &the_char_code);
+	    fscanf( Portable_File, "%3lx", &the_char_code);
 	    *Table++ = Make_Non_Pointer( TC_CHARACTER, the_char_code);
 	    continue;
 	  }
@@ -602,23 +659,31 @@ long
 Read_Header_and_Allocate()
 {
   long Portable_Version, Flags, Version, Sub_Version;
-  long NFlonums, NIntegers, NStrings, NBits, NChars;
+  long NFlonums, NIntegers, NBits, NBitstrs, NBBits, NStrings, NChars;
   long Size;
 
   /* Read Header */
 
   fscanf(Input_File, "%ld %ld %ld %ld",
 	 &Portable_Version, &Flags, &Version, &Sub_Version);
+
   fscanf(Input_File, "%ld %ld %ld",
 	 &Heap_Count, &Dumped_Heap_Base, &Heap_Objects);
+
   fscanf(Input_File, "%ld %ld %ld",
 	 &Constant_Count, &Dumped_Constant_Base, &Constant_Objects);
+
   fscanf(Input_File, "%ld %ld %ld",
 	 &Pure_Count, &Dumped_Pure_Base, &Pure_Objects);
-  fscanf(Input_File, "%ld %ld %ld %ld %ld",
-	 &NFlonums, &NIntegers, &NStrings, &NBits, &NChars);
+
   fscanf(Input_File, "%ld %ld",
 	 &Dumped_Object_Addr, &Dumped_Ext_Prim_Addr);
+
+  fscanf(Input_File, "%ld %ld %ld %ld %ld %ld %ld",
+	 &NFlonums,
+	 &NIntegers, &NBits,
+	 &NBitstrs, &NBBits,
+	 &NStrings, &NChars);
 
   if ((Portable_Version != PORTABLE_VERSION)	||
       (Version != FASL_FORMAT_VERSION)		||
@@ -626,7 +691,7 @@ Read_Header_and_Allocate()
   {
     fprintf(stderr,
 	    "FASL File Version %4d Subversion %4d Portable Version %4d\n",
-	    Version, Sub_Version , Portable_Version);
+	    Version, Sub_Version, Portable_Version);
     fprintf(stderr,
 	    "Expected: Version %4d Subversion %4d Portable Version %4d\n",
 	    FASL_FORMAT_VERSION, FASL_SUBVERSION, PORTABLE_VERSION);
@@ -641,9 +706,12 @@ Read_Header_and_Allocate()
 	  Constant_Count + Constant_Objects +
 	  Pure_Count + Pure_Objects +
 	  flonum_to_pointer(NFlonums) +
-	  ((NIntegers * bignum_header_to_pointer) +
+	  ((NIntegers * (1 + bignum_header_to_pointer)) +
 	   (bigdigit_to_pointer(bits_to_bigdigit(NBits)))) +
-	  ((NStrings * STRING_CHARS) + (char_to_pointer(NChars))));
+	  ((NStrings * (1 + STRING_CHARS)) +
+	   (char_to_pointer(NChars))) +
+	  ((NBitstrs * (1 + BIT_STRING_FIRST_WORD)) +
+	   (bits_to_pointers(NBBits))));
 	  
   Allocate_Heap_Space(Size);
   if (Heap == NULL)
