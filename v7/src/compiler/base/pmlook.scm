@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmlook.scm,v 1.3 1987/04/21 23:52:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmlook.scm,v 1.4 1987/05/07 00:09:08 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -63,9 +63,12 @@ MIT in each case. |#
 	    (eqv? pattern instance)))
       (and (not (null? entries))
 	   (or (and (match (caar entries) instance)
-		    (apply (cdar entries) values))
+		    (pattern-lookup/bind (cdar entries) values))
 	       (lookup-loop (cdr entries) '()))))
     (lookup-loop entries '())))
+
+(define (pattern-lookup/bind binder values)
+  (apply binder values))
 
 (set! pattern-variables
   (named-lambda (pattern-variables pattern)
