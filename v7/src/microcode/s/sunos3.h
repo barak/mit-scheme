@@ -1,7 +1,8 @@
 /* -*-C-*-
    System file for SUNOS
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/sunos3.h,v 1.2 1990/10/16 20:57:13 cph Rel $
+$Id
+: /scheme/src/ucode.new/s/RCS/sunos3.h,v 1.2 1990/10/16 20:57:13 cph Rel gjr $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 

@@ -1,7 +1,8 @@
 /* -*-C-*-
    System file for Encore UMAX42 and Mach
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/umax.h,v 1.3 1990/10/16 20:57:29 cph Rel $
+$Id
+: /scheme/src/ucode.new/s/RCS/umax.h,v 1.3 1990/10/16 20:57:29 cph Rel gjr $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 

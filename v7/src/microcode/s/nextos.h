@@ -1,7 +1,8 @@
 /* -*-C-*-
    System file for NeXT running Mach
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/nextos.h,v 1.4 1991/08/28 05:47:04 cph Exp $
+$Id
+: /scheme/src/ucode.new/s/RCS/nextos.h,v 1.4 1991/08/28 05:47:04 cph Exp gjr $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 

@@ -1,7 +1,8 @@
 /* -*-C-*-
    System file for Mach emulating BSD4.3
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/mach4-3.h,v 1.1 1992/02/16 00:13:15 jinx Exp $
+$Id
+: /scheme/src/ucode.new/s/RCS/mach4-3.h,v 1.1 1992/02/16 00:13:15 jinx Exp gjr $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 

@@ -1,5 +1,6 @@
 #!/bin/csh -f
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/ultrix.m4,v 1.4 1991/02/15 00:51:05 jinx Exp $
+# $Id
+: /scheme/src/ucode.new/s/RCS/ultrix.m4,v 1.4 1991/02/15 00:51:05 jinx Exp gjr $
 # Postprocessing to make m4 work correctly under Ultrix & BSD.
 
 if ($#argv == 0) then

@@ -1,7 +1,8 @@
 /* -*-C-*-
    System file for BSD4.2
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/bsd4-2.h,v 1.5 1990/10/16 20:56:47 cph Rel $
+$Id
+: /scheme/src/ucode.new/s/RCS/bsd4-2.h,v 1.5 1990/10/16 20:56:47 cph Rel gjr $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 

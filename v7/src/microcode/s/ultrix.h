@@ -1,7 +1,8 @@
 /* -*-C-*-
    System file for Ultrix
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/ultrix.h,v 1.12 1990/11/29 04:59:44 cph Rel $
+$Id
+: /scheme/src/ucode.new/s/RCS/ultrix.h,v 1.12 1990/11/29 04:59:44 cph Rel gjr $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 

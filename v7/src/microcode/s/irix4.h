@@ -1,7 +1,8 @@
 /* -*-C-*-
    System file for SGI's IRIS version 4.x
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/irix4.h,v 1.1 1992/07/30 14:56:45 jinx Exp $
+$Id
+: /scheme/src/ucode.new/s/RCS/irix4.h,v 1.1 1992/07/30 14:56:45 jinx Exp gjr $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 

@@ -1,7 +1,8 @@
 /* -*-C-*-
    System file for AT&T System V Release 3
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/sysv3.h,v 1.2 1992/08/27 09:04:45 jinx Exp $
+$Id
+: /scheme/src/ucode.new/s/RCS/sysv3.h,v 1.2 1992/08/27 09:04:45 jinx Exp gjr $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 

@@ -1,7 +1,8 @@
 /* -*-C-*-
    System file for Sony NEWS-OS version 5
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/newsos5.h,v 1.2 1992/08/17 17:32:13 cph Exp $
+$Id
+: /scheme/src/ucode.new/s/RCS/newsos5.h,v 1.2 1992/08/17 17:32:13 cph Exp gjr $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 

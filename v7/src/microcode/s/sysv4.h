@@ -1,7 +1,8 @@
 /* -*-C-*-
    System file for AT&T System V Release 4
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/sysv4.h,v 1.1 1991/06/14 23:35:12 cph Exp $
+$Id
+: /scheme/src/ucode.new/s/RCS/sysv4.h,v 1.1 1991/06/14 23:35:12 cph Exp gjr $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
