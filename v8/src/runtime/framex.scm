@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: framex.scm,v 14.18 1994/11/20 22:05:55 gjr Exp $
+$Id: framex.scm,v 14.19 1995/07/27 20:42:20 adams Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -223,79 +223,89 @@ MIT in each case. |#
     (lambda ()
       (hardware-trap-frame/describe frame long?))))
 
-(define (method/compiled-code frame)
-  (let ((get-environment
-	 (lambda ()
-	   (stack-frame/environment frame undefined-environment))))
+(define ((method/compiled-code frame-elements->entry) frame)
+  (let ((entry (frame-elements->entry (stack-frame/elements frame))))
+    (define (get-environment)
+      (stack-frame/environment frame entry undefined-environment))
     (let ((object
-	   (compiled-entry/dbg-object (stack-frame/return-address frame)))
+	   (compiled-entry/dbg-object entry))
 	  (lose
 	   (lambda ()
 	     (values compiled-code (get-environment) undefined-expression))))
       (cond ((not object)
 	     (lose))
 	    ((dbg-continuation? object)
-	     (let ((source-code (dbg-continuation/source-code object)))
-	       (if (and (vector? source-code)
-			(not (zero? (vector-length source-code))))
-		   (let* ((expression (vector-ref source-code 1))
-			  (win2
-			   (lambda (environment subexp)
-			     (values expression environment subexp)))
-			  (win
-			   (lambda (select-subexp)
-			     (win2
-			      (get-environment)
-			      (validate-subexpression
-			       frame
-			       (select-subexp expression))))))
-		     (case (vector-ref source-code 0)
-		       ((SEQUENCE-2-SECOND)
-			(win &pair-car))
-		       ((ASSIGNMENT-CONTINUE
-			 DEFINITION-CONTINUE)
-			(win &pair-cdr))
-		       ((SEQUENCE-3-SECOND
-			 CONDITIONAL-DECIDE)
-			(win &triple-first))
-		       ((SEQUENCE-3-THIRD)
-			(win &triple-second))
-		       ((COMBINATION-OPERAND)
-			(values
-			 expression
-			 (get-environment)
-			 (validate-subexpression
-			  frame
-			  (if (zero? (vector-ref source-code 2))
-			      (combination-operator expression)
-			      (list-ref (combination-operands expression)
-					(-1+ (vector-ref source-code 2)))))))
-		       ((COMBINATION-ELEMENT)
-			(win2 undefined-environment
-			      (vector-ref source-code 2)))
-		       ((SEQUENCE-ELEMENT)
-			(win2 undefined-environment
-			      (vector-ref source-code 2)))
-		       ((CONDITIONAL-PREDICATE)
-			(win2 undefined-environment
-			      (vector-ref source-code 2)))
-		       (else
-			(lose))))
-		   (lose))))
+	     (let* ((expression (dbg-continuation/outer object))
+		    (element    (dbg-continuation/inner object))
+		    (win2
+		     (lambda (environment subexp)
+		       (values expression environment subexp)))
+		    (win
+		     (lambda (select-subexp)
+		       (win2
+			(get-environment)
+			(validate-subexpression
+			 frame
+			 (select-subexp expression))))))
+	       (case (dbg-continuation/type object)
+		 ((COMBINATION-ELEMENT)
+		  (win2 (get-environment) element))
+		 ((SEQUENCE-ELEMENT)
+		  (win2 (get-environment) element))
+		 ((CONDITIONAL-PREDICATE)
+		  (win2 (get-environment) element))
+		 ((SEQUENCE-2-SECOND)
+		  (win &pair-car))
+		 ((ASSIGNMENT-CONTINUE
+		   DEFINITION-CONTINUE)
+		  (win &pair-cdr))
+		 ((SEQUENCE-3-SECOND
+		   CONDITIONAL-DECIDE)
+		  (win &triple-first))
+		 ((SEQUENCE-3-THIRD)
+		  (win &triple-second))
+		 ((COMBINATION-OPERAND)
+		  (values
+		   expression
+		   (get-environment)
+		   (validate-subexpression
+		    frame
+		    (if (zero? element)
+			(combination-operator expression)
+			(list-ref (combination-operands expression)
+				  (-1+ element))))))
+		 (else
+		  (lose)))))
 	    ((dbg-procedure? object)
 	     (values (lambda-body (dbg-procedure/source-code object))
 		     (and (dbg-procedure/block object)
 			  (get-environment))
 		     undefined-expression))
-	    #|
 	    ((dbg-expression? object)
 	     ;; no expression!
 	     (lose))
-	    |#
 	    (else
 	     (lose))))))
 
 (define (initialize-package!)
+
+  (define (&vector-first vector)
+    (&vector-ref vector 0))
+
+  (define (&vector-second vector)
+    (&vector-ref vector 1))
+
+  (define (&vector-fourth vector)
+    (&vector-ref vector 3))
+
+  (define (&vector-fifth vector)
+    (&vector-ref vector 4))
+
+  (define (record-method name method)
+    (set-stack-frame-type/debugging-info-method!
+     (microcode-return/name->type name)
+     method))
+
   (set! stack-frame-type/pop-return-error
 	(microcode-return/name->type 'POP-RETURN-ERROR))
   (record-method 'COMBINATION-APPLY method/null)
@@ -370,26 +380,25 @@ MIT in each case. |#
   (record-method 'COMPILER-ERROR-RESTART
 		 method/compiler-error-restart)
   (record-method 'HARDWARE-TRAP method/hardware-trap)
+
   (set-stack-frame-type/debugging-info-method!
    stack-frame-type/compiled-return-address
-   method/compiled-code)
-  (set-stack-frame-type/debugging-info-method!
-   stack-frame-type/interrupt-compiled-procedure
-   method/compiled-code)
-  (set-stack-frame-type/debugging-info-method!
-   stack-frame-type/interrupt-compiled-expression
-   method/compiled-code))
+   (method/compiled-code &vector-first))
 
-(define (&vector-second vector)
-  (&vector-ref vector 1))
+  (let ((method (method/compiled-code &vector-fifth)))
+    (set-stack-frame-type/debugging-info-method!
+     stack-frame-type/interrupt-compiled-procedure
+     method)
+    (set-stack-frame-type/debugging-info-method!
+     stack-frame-type/interrupt-compiled-return-address
+     method)
+    )
 
-(define (&vector-fourth vector)
-  (&vector-ref vector 3))
+  ;;(set-stack-frame-type/debugging-info-method!
+  ;; stack-frame-type/interrupt-compiled-expression
+  ;; method/compiled-code)
+  )
 
-(define (record-method name method)
-  (set-stack-frame-type/debugging-info-method!
-   (microcode-return/name->type name)
-   method))
 
 (define-integrable (stack-frame-type/debugging-info-method type)
   (1d-table/get (stack-frame-type/properties type) method-tag false))
