@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.135 2001/05/24 17:46:42 cph Exp $
+;;; $Id: imail-core.scm,v 1.136 2001/05/24 17:51:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -370,6 +370,12 @@
 (define-method container-url-for-prompt ((resource <resource>))
   (container-url-for-prompt (resource-locator resource)))
 
+(define-method url-child-name ((resource <resource>))
+  (url-child-name (resource-locator resource)))
+
+(define-method url-base-name ((resource <resource>))
+  (url-base-name (resource-locator resource)))
+
 (define-class <folder> (<resource>))
 (define-class <container> (<resource>))
 
@@ -379,8 +385,11 @@
 (define-method %append-message (message (folder <folder>))
   (%append-message message (resource-locator folder)))
 
-(define-method make-child-url ((container <container>) name)
-  (make-child-url (resource-locator container) name))
+(define-method make-child-url ((container <container>) child-name)
+  (make-child-url (resource-locator container) child-name))
+
+(define-method container-url-contents ((container <container>))
+  (container-url-contents (resource-locator container)))
 
 (define (guarantee-folder folder procedure)
   (if (not (folder? folder))
