@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.210 2000/07/11 20:34:59 cph Exp $
+;;; $Id: imail-top.scm,v 1.211 2000/07/21 19:22:15 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -681,9 +681,11 @@ With prefix argument N, undeletes backward N messages,
 					   " marked for deletion")))
 		       (let ((do-prompt
 			      (lambda ()
-				(if (memq 'BRIEF confirmation)
-				    (prompt-for-confirmation? prompt)
-				    (prompt-for-yes-or-no? prompt)))))
+				(cond ((memq 'BRIEF confirmation)
+				       (prompt-for-confirmation? prompt))
+				      ((memq 'VERBOSE confirmation)
+				       (prompt-for-yes-or-no? prompt))
+				      (else #t)))))
 			 (if (memq 'SHOW-MESSAGES confirmation)
 			     (cleanup-pop-up-buffers
 			      (lambda ()
