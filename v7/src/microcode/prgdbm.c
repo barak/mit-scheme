@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prgdbm.c,v 1.5 2003/02/14 18:28:22 cph Exp $
+$Id: prgdbm.c,v 1.6 2003/08/21 20:59:10 cph Exp $
 
-Copyright (c) 1996-1999 Massachusetts Institute of Technology
+Copyright 1996,1997,1999,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -253,3 +253,25 @@ DEFINE_PRIMITIVE ("GDBM-SETOPT", Prim_gdbm_setopt, 3, 3, 0)
 				    (sizeof (int)))));
   }
 }
+
+#ifdef COMPILE_AS_MODULE
+
+char *
+DEFUN_VOID (dload_initialize_file)
+{
+  declare_primitive ("GDBM-OPEN", Prim_gdbm_open, 4, 4, 0);
+  declare_primitive ("GDBM-CLOSE", Prim_gdbm_close, 1, 1, 0);
+  declare_primitive ("GDBM-STORE", Prim_gdbm_store, 4, 4, 0);
+  declare_primitive ("GDBM-FETCH", Prim_gdbm_fetch, 2, 2, 0);
+  declare_primitive ("GDBM-EXISTS", Prim_gdbm_exists, 2, 2, 0);
+  declare_primitive ("GDBM-DELETE", Prim_gdbm_delete, 2, 2, 0);
+  declare_primitive ("GDBM-FIRSTKEY", Prim_gdbm_firstkey, 1, 1, 0);
+  declare_primitive ("GDBM-NEXTKEY", Prim_gdbm_nextkey, 2, 2, 0);
+  declare_primitive ("GDBM-REORGANIZE", Prim_gdbm_reorganize, 1, 1, 0);
+  declare_primitive ("GDBM-SYNC", Prim_gdbm_sync, 1, 1, 0);
+  declare_primitive ("GDBM-VERSION", Prim_gdbm_version, 0, 0, 0);
+  declare_primitive ("GDBM-SETOPT", Prim_gdbm_setopt, 3, 3, 0);
+  return ("#prgdbm");
+}
+
+#endif /* COMPILE_AS_MODULE */
