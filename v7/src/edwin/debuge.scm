@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debuge.scm,v 1.46 1992/11/09 20:45:33 cph Exp $
+;;;	$Id: debuge.scm,v 1.47 1992/11/09 21:02:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -54,21 +54,21 @@
   (if (and (buffer-modified? buffer)
 	   (buffer-writeable? buffer))
       (let ((pathname
-	     (merge-pathnames
-	      (let ((pathname (buffer-pathname buffer)))
-		(cond ((not pathname)
-		       (and (y-or-n? "Save buffer "
-				     (buffer-name buffer)
-				     " (Y or N)? ")
-			    ((access prompt-for-expression
-				     system-global-environment)
-			     "Filename")))
-		      ((integer? (pathname-version pathname))
-		       (pathname-new-version pathname 'NEWEST))
-		      (else
-		       pathname))))))
+	     (let ((pathname (buffer-pathname buffer)))
+	       (cond ((not pathname)
+		      (and (y-or-n? "Save buffer "
+				    (buffer-name buffer)
+				    " (Y or N)? ")
+			   ((access prompt-for-expression
+				    system-global-environment)
+			    "Filename")))
+		     ((integer? (pathname-version pathname))
+		      (pathname-new-version pathname 'NEWEST))
+		     (else
+		      pathname)))))
 	(if pathname
-	    (let ((filename (->namestring pathname)))
+	    (let* ((pathname (merge-pathnames pathname))
+		   (filename (->namestring pathname)))
 	      (if (or (not (file-exists? pathname))
 		      (y-or-n? "File '"
 			       filename
