@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/fasl.h,v 9.31 1990/06/20 17:40:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/fasl.h,v 9.32 1990/10/05 18:58:53 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -57,8 +57,9 @@ MIT in each case. */
 #define FASL_Offset_Prim_Size	9	/* Size of primitive table in SCHEME_OBJECTs */
 #define FASL_Offset_Ci_Version	10	/* Version number for compiled code interface */
 #define FASL_Offset_Ut_Base	11	/* Address of the utilities vector */
+#define FASL_Offset_Check_Sum	12	/* Header and data checksum. */
 
-#define FASL_Offset_First_Free	12	/* Used to clear header */
+#define FASL_Offset_First_Free	13	/* Used to clear header */
 
 /* Aliases for backwards compatibility. */
 
