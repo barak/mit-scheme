@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.54 2004/02/16 05:50:43 cph Exp $
+$Id: xml-parser.scm,v 1.55 2004/02/18 19:52:06 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -267,25 +267,23 @@ USA.
 	      attrs)))
 
 (define (parse-element-content b p name)
-  (let loop ((elements '#()))
-    (let ((v (parse-end-tag b)))
-      (if v
-	  (begin
-	    (if (not (xml-name=? (vector-ref v 0) name))
-		(perror p "Mismatched start tag" (vector-ref v 0) name))
-	    (let ((contents (coalesce-strings! (vector->list elements))))
-	      (if (null? contents)
-		  ;; Preserve fact that this element was formed by a
-		  ;; start/end tag pair rather than by an empty
-		  ;; element tag.
-		  (list "")
-		  contents)))
-	  (let ((v (parse-content b)))
-	    (if (not v)
-		(perror p "Unterminated start tag" name))
-	    (if (equal? v '#(""))
-		(perror p "Unknown content"))
-	    (loop (vector-append elements v)))))))
+  (let ((vc (parse-content b)))
+    (if (not vc)
+	(perror p "Unterminated start tag" name))
+    (let ((ve (parse-end-tag b)))
+      (if (not ve)
+	  (if (peek-parser-buffer-char b)
+	      (perror (get-parser-buffer-pointer b) "Unknown content")
+	      (perror p "Unterminated start tag" name)))
+      (if (not (xml-name=? (vector-ref ve 0) name))
+	  (perror p "Mismatched start tag" (vector-ref ve 0) name))
+      (let ((content (coalesce-strings! (vector->list vc))))
+	(if (null? content)
+	    ;; Preserve fact that this element was formed by a
+	    ;; start/end tag pair rather than by an empty
+	    ;; element tag.
+	    (list "")
+	    content)))))
 
 (define parse-end-tag			;[42]
   (*parser
