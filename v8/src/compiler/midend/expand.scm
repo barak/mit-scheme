@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: expand.scm,v 1.2 1994/11/26 22:05:28 gjr Exp $
+$Id: expand.scm,v 1.3 1995/01/19 04:52:40 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -71,10 +71,10 @@ MIT in each case. |#
 (define (expand/lambda form)
   (expand/remember
    (let ((lambda-list (lambda/formals form))
-	 (body (expand/expr (lambda/body form))))
+	 (body        (expand/expr (lambda/body form))))
      (cond ((memq '#!AUX lambda-list)
 	    => (lambda (tail)
-		 (let ((rest (list-prefix lambda-list tail))
+		 (let ((rest  (list-prefix lambda-list tail))
 		       (auxes (cdr tail)))
 		   (if (null? auxes)
 		       `(LAMBDA ,rest ,body)
@@ -121,8 +121,7 @@ MIT in each case. |#
 ;;;; Sort AUX bindings so that ASSCONV will do a better job.
 
 (define (expand/aux/sort auxes body)
-  (if (or (not (pair? body))
-	  (not (eq? (car body) 'BEGIN)))
+  (if (not (BEGIN/? body))
       body
       (let loop ((actions (simplify-actions (cdr body)))
 		 (last false)
