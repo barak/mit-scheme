@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml-parser.scm,v 1.7 2001/07/12 03:21:00 cph Exp $
+;;; $Id: xml-parser.scm,v 1.8 2001/07/12 05:31:37 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -36,6 +36,7 @@
 			    (string-append
 			     " at "
 			     (parser-buffer-position-string
+			      ;; **** This isn't quite right.  ****
 			      (if (pair? *entity-expansion-nesting*)
 				  (cdar (last-pair *entity-expansion-nesting*))
 				  ptr)))
@@ -107,10 +108,10 @@
 		     (vector-ref v 0))))
 	     (misc-2 (if dtd (parse-misc buffer) '()))
 	     (element
-	      (let ((v (parse-element buffer)))
-		(if (not v)
-		    (perror buffer "Missing root element"))
-		(vector-ref v 0)))
+	      (or (let ((v (parse-element buffer)))
+		    (and v
+			 (vector-ref v 0)))
+		  (perror buffer "Missing root element")))
 	     (misc-3 (parse-misc buffer)))
 	(if (peek-parser-buffer-char buffer)
 	    (perror buffer "Unparsed content in input"))
@@ -132,21 +133,21 @@
 	      parse-processing-instructions
 	      (map normalize-line-endings (match S))))))))
 
-(define parse-declaration		;[23,24,32,80]
+(define (xml-declaration-parser description allow-standalone?)
   (*parser
    (top-level
     (with-pointer p
-      (transform (lambda (v) (transform-declaration (vector-ref v 0) #t p))
-	(sbracket "XML declaration" "<?xml" "?>"
+      (transform
+	  (lambda (v)
+	    (transform-declaration (vector-ref v 0) allow-standalone? p))
+	(sbracket description "<?xml" "?>"
 	  parse-attribute-list))))))
 
+(define parse-declaration		;[23,24,32,80]
+  (xml-declaration-parser "XML declaration" #t))
+
 (define parse-text-decl			;[77]
-  (*parser
-   (top-level
-    (with-pointer p
-      (transform (lambda (v) (transform-declaration (vector-ref v 0) #f p))
-	(sbracket "XML declaration" "<?xml" "?>"
-	  parse-attribute-list))))))
+  (xml-declaration-parser "XML text declaration" #f))
 
 (define (transform-declaration attributes allow-standalone? p)
   (let ((finish
@@ -217,7 +218,8 @@
 		     (if v*
 			 (begin
 			   (if (not (eq? (vector-ref v 0) (vector-ref v* 0)))
-			       (perror p "Mismatched start tag"))
+			       (perror p "Mismatched start tag"
+				       (vector-ref v 0) (vector-ref v* 0)))
 			   (coalesce-strings!
 			    (list-transform-negative (vector->list elements)
 			      (lambda (element)
@@ -225,7 +227,8 @@
 				     (string-null? element))))))
 			 (let ((v* (parse-content buffer)))
 			   (if (not v*)
-			       (perror p "Unterminated start tag"))
+			       (perror p "Unterminated start tag"
+				       (vector-ref v 0)))
 			   (if (equal? v* '#(""))
 			       (perror p "Unknown content"))
 			   (loop (vector-append elements v*))))))
@@ -235,7 +238,7 @@
   (*parser
    (top-level
     (bracket "start tag"
-	(seq (noise (string "<")) maybe-parse-name)
+	(seq (noise (string "<")) parse-name)
 	(match (alt (string ">") (string "/>")))
       parse-attribute-list))))
 
@@ -243,7 +246,7 @@
   (*parser
    (top-level
     (sbracket "end tag" "</" ">"
-      parse-name
+      parse-required-name
       S?))))
 
 (define parse-content			;[43]
@@ -303,36 +306,33 @@
 	     (make-xml-processing-instructions (vector-ref v 0)
 					       (vector-ref v 1)))
 	 (sbracket description start end
-	   (with-pointer ns
-	     (transform
-		 (lambda (v)
-		   (if (string-ci=? (symbol-name (vector-ref v 0)) "xml")
-		       (perror ns "Illegal PI name"))
-		   v)
-	       parse-name))
+	   (with-pointer p
+	     (map (lambda (name)
+		    (if (string-ci=? (symbol-name name) "xml")
+			(perror p "Illegal PI name" name))
+		    name)
+		  parse-required-name))
 	   parse-body))))))
 
 ;;;; Names and references
 
-(define parse-name
-  (*parser (require-success "Malformed XML name" maybe-parse-name)))
+(define parse-required-name
+  (*parser (require-success "Malformed XML name" parse-name)))
 
-(define maybe-parse-name		;[5]
+(define parse-name			;[5]
   (*parser (map xml-intern (match match-name))))
 
-(define (match-name buffer)		;[5]
+(define (match-name buffer)
   (and (match-utf8-char-in-alphabet buffer alphabet:name-initial)
        (let loop ()
 	 (if (match-utf8-char-in-alphabet buffer alphabet:name-subsequent)
 	     (loop)
 	     #t))))
 
-(define parse-name-token
-  (*parser
-   (require-success "Malformed XML name token"
-     maybe-parse-name-token)))
+(define parse-required-name-token
+  (*parser (require-success "Malformed XML name token" parse-name-token)))
 
-(define maybe-parse-name-token		;[7]
+(define parse-name-token		;[7]
   (*parser (map xml-intern (match match-name-token))))
 
 (define (match-name-token buffer)
@@ -363,13 +363,6 @@
    (alt parse-char-reference
 	parse-entity-reference)))
 
-(define parse-entity-reference		;[68]
-  (*parser
-   (with-pointer p
-     (transform (lambda (v) (dereference-entity (vector-ref v 0) p))
-       (sbracket "entity reference" "&" ";"
-	 parse-name)))))
-
 (define parse-reference-deferred
   (*parser
    (match
@@ -380,6 +373,13 @@
 	      match-name)
 	 (string ";")))))
 
+(define parse-entity-reference		;[68]
+  (*parser
+   (with-pointer p
+     (transform (lambda (v) (dereference-entity (vector-ref v 0) p))
+       (sbracket "entity reference" "&" ";"
+	 parse-required-name)))))
+
 (define parse-entity-reference-deferred
   (*parser (match (seq (string "&") match-name (string ";")))))
 
@@ -387,7 +387,7 @@
   (*parser
    (map dereference-parameter-entity
 	(sbracket "parameter-entity reference" "%" ";"
-	  parse-name))))
+	  parse-required-name))))
 
 ;;;; Attributes
 
@@ -410,7 +410,7 @@
   (*parser
    (encapsulate (lambda (v) (cons (vector-ref v 0) (vector-ref v 1)))
      (seq S
-	  maybe-parse-name
+	  parse-name
 	  S?
 	  (require-success "Missing attribute separator"
 	    (noise (string "=")))
@@ -634,7 +634,7 @@
       (sbracket "document-type declaration" "<!DOCTYPE" ">"
 	(require-success "Malformed document type"
 	  (seq S
-	       parse-name
+	       parse-required-name
 	       (map (lambda (external)
 		      (if external (set! *internal-dtd?* #f))
 		      external)
@@ -701,7 +701,7 @@
        (parse-cp			;[48]
 	 (*parser
 	  (alt (encapsulate encapsulate-suffix
-		 (seq maybe-parse-name
+		 (seq parse-name
 		      (? (match (char-set "?*+")))))
 	       parse-children)))
 
@@ -717,7 +717,7 @@
 	 (lambda (v) (make-xml-!element (vector-ref v 0) (vector-ref v 1)))
        (sbracket "element declaration" "<!ELEMENT" ">"
 	 S
-	 parse-name
+	 parse-required-name
 	 S
 	 ;;[46]
 	 (alt (map xml-intern (match (string "EMPTY")))
@@ -733,7 +733,7 @@
 			    (seq (* (seq S?
 					 (noise (string "|"))
 					 S?
-					 parse-name))
+					 parse-required-name))
 				 S?
 				 (noise (string ")*")))
 
@@ -749,11 +749,11 @@
        (lambda (v) (make-xml-!attlist (vector-ref v 0) (vector-ref v 1)))
      (sbracket "attribute-list declaration" "<!ATTLIST" ">"
        S
-       parse-name
+       parse-required-name
        (encapsulate vector->list
 	 (* (encapsulate vector->list
 	      (seq S
-		   maybe-parse-name
+		   parse-name
 		   S
 		   ;;[54,57]
 		   (alt (map xml-intern
@@ -776,11 +776,11 @@
 				   (noise (string "(")))
 			      (noise (string ")"))
 			    S?
-			    parse-name
+			    parse-required-name
 			    (* (seq S?
 				    (noise (string "|"))
 				    S?
-				    parse-name))
+				    parse-required-name))
 			    S?))
 			;;[59]
 			(encapsulate
@@ -788,11 +788,11 @@
 			      (cons 'ENUMERATED (vector->list v)))
 			  (sbracket "enumerated type" "(" ")"
 			    S?
-			    parse-name-token
+			    parse-required-name-token
 			    (* (seq S?
 				    (noise (string "|"))
 				    S?
-				    parse-name-token))
+				    parse-required-name-token))
 			    S?)))
 		   S
 		   ;;[60]
@@ -811,32 +811,32 @@
 (define parse-!entity			;[70,71,72,73,74,76]
   (*parser
    (sbracket "entity declaration" "<!ENTITY" ">"
-     (seq S
-	  (alt (encapsulate
-		   (lambda (v)
-		     (make-parameter-entity (vector-ref v 0) (vector-ref v 1)))
-		 (seq (noise (string "%"))
-		      S
-		      parse-name
-		      S
-		      (alt parse-entity-value
-			   parse-external-id)))
-	       (encapsulate
-		   (lambda (v)
-		     (if (fix:= (vector-length v) 2)
-			 (make-entity (vector-ref v 0) (vector-ref v 1))
-			 (make-unparsed-entity (vector-ref v 0)
-					       (vector-ref v 1)
-					       (vector-ref v 2))))
-		 (seq parse-name
-		      S
-		      (alt parse-entity-value
-			   (seq parse-external-id
-				(? (seq S
-					(noise (string "NDATA"))
-					S
-					parse-name)))))))
-	  S?))))
+     S
+     (alt (encapsulate
+	      (lambda (v)
+		(make-parameter-entity (vector-ref v 0) (vector-ref v 1)))
+	    (seq (noise (string "%"))
+		 S
+		 parse-required-name
+		 S
+		 (alt parse-entity-value
+		      parse-external-id)))
+	  (encapsulate
+	      (lambda (v)
+		(if (fix:= (vector-length v) 2)
+		    (make-entity (vector-ref v 0) (vector-ref v 1))
+		    (make-unparsed-entity (vector-ref v 0)
+					  (vector-ref v 1)
+					  (vector-ref v 2))))
+	    (seq parse-required-name
+		 S
+		 (alt parse-entity-value
+		      (seq parse-external-id
+			   (? (seq S
+				   (noise (string "NDATA"))
+				   S
+				   parse-required-name)))))))
+     S?)))
 
 (define parse-!notation			;[82,83]
   (*parser
@@ -844,7 +844,7 @@
        (lambda (v) (make-xml-!notation (vector-ref v 0) (vector-ref v 1)))
      (sbracket "notation declaration" "<!NOTATION" ">"
        S
-       parse-name
+       parse-required-name
        S
        (alt parse-external-id
 	    (encapsulate
