@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.11 1989/06/16 09:14:08 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.12 1989/10/26 07:39:03 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -230,8 +230,8 @@ MIT in each case. |#
   (and (let ((callee (combination/model combination)))
 	 (and callee
 	      (rvalue/procedure? callee)
-	      (procedure/open-internal? callee)
-	      (internal-block/dynamic-link? (procedure-block callee))))       (if (return-operator/subproblem? (combination/continuation combination))
+	      (block/dynamic-link? (procedure-block callee))))
+       (if (return-operator/subproblem? (combination/continuation combination))
 	   link-prefix/subproblem
 	   (let ((context (combination/context combination)))
 	     (let ((popping-limit

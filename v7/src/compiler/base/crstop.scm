@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crstop.scm,v 1.4 1989/08/21 19:32:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crstop.scm,v 1.5 1989/10/26 07:35:41 cph Exp $
 $MC68020-Header: toplev.scm,v 4.16 89/04/26 05:09:52 GMT cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
@@ -95,14 +95,13 @@ MIT in each case. |#
   (if (default-object? info-output-pathname)
       (set! info-output-pathname false))
 
-  (fluid-let ((*info-output-pathname*
-	       (if (and info-output-pathname
-			(not (eq? info-output-pathname true)))
-		   info-output-pathname
-		   *info-output-pathname*))
+  (fluid-let ((*info-output-filename*
+	       (if (pathname? info-output-pathname)
+		   (pathname->string info-output-pathname)
+		   *info-output-filename*))
 	      (*rtl-output-pathname*
-	       (if (and rtl-output-pathname
-			(not (eq? rtl-output-pathname true)))		   rtl-output-pathname
+	       (if (pathname? rtl-output-pathname)
+		   rtl-output-pathname
 		   *rtl-output-pathname*)))
     ((if (default-object? wrapper)
 	 in-compiler

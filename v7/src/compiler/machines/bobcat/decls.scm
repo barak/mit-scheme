@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.23 1989/08/28 18:33:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.24 1989/10/26 07:37:35 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -347,8 +347,8 @@ MIT in each case. |#
 	     (filename/append "fgopt"
 			      "blktyp" "closan" "conect" "contan" "delint"
 			      "desenv" "envopt" "folcon" "offset" "operan"
-			      "order" "outer" "param" "reord" "reuse"
-			      "sideff" "simapp" "simple" "subfre")
+			      "order" "outer" "param" "reord" "reteqv" "reuse"
+			      "sideff" "simapp" "simple" "subfre" "varind")
 	     (filename/append "rtlbase"
 			      "regset" "rgraph" "rtlcfg" "rtlcon" "rtlexp"
 			      "rtline" "rtlobj" "rtlreg" "rtlty1" "rtlty2"
@@ -359,7 +359,7 @@ MIT in each case. |#
 	     (filename/append "rtlopt"
 			      "ralloc" "rcse1" "rcse2" "rcseep" "rcseht"
 			      "rcserq" "rcsesr" "rdeath" "rdebug" "rinvex"
-			      "rlife"))
+			      "rlife" "rtlcsm"))
      compiler-syntax-table)
     (file-dependency/syntax/join
      (filename/append "machines/bobcat"
@@ -500,7 +500,8 @@ MIT in each case. |#
       (filename/append "fgopt"
 		       "blktyp" "closan" "conect" "contan" "delint" "desenv"
 		       "envopt" "folcon" "offset" "operan" "order" "param"
-		       "outer" "reuse" "sideff" "simapp" "simple" "subfre"))
+		       "outer" "reuse" "reteqv" "sideff" "simapp" "simple"
+		       "subfre" "varind"))
      (append bobcat-base front-end-base))
 
     (define-integration-dependencies "fgopt" "reuse" "fgopt" "reord")
@@ -514,7 +515,8 @@ MIT in each case. |#
     (file-dependency/integration/join
      (append cse-base
 	     (filename/append "rtlopt" "ralloc" "rdeath" "rdebug" "rinvex"
-			      "rlife"))     (append bobcat-base rtl-base))
+			      "rlife" "rtlcsm"))
+     (append bobcat-base rtl-base))
 
     (file-dependency/integration/join cse-base cse-base)
 

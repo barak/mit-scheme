@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.12 1989/09/24 03:37:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.13 1989/10/26 07:36:36 cph Exp $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -44,7 +44,7 @@ MIT in each case. |#
 	   (block-type! block block-type/ic)
 	   (begin
 	     (block-type! block block-type/stack)
-	     (maybe-close-procedure! block))))
+	     (maybe-close-procedure! (block-procedure block)))))
       ((CONTINUATION)
        (for-each loop (block-children block)))
       ((EXPRESSION)
@@ -60,56 +60,53 @@ MIT in each case. |#
 
   (loop root-block))
 
-(define (maybe-close-procedure! block)
-  (if (procedure-closure-context (block-procedure block))
-      (close-procedure! block)))
+(define (maybe-close-procedure! procedure)
+  (if (eq? true (procedure-closure-context procedure))
+      (close-procedure! procedure)))
 
-(define (close-procedure! block)
-  (let ((procedure (block-procedure block))
-	(current-parent (block-parent block)))
-
-    (define (uninteresting-variable? variable)
-      (or (lvalue-integrated? variable)
-	  ;; Some of this is redundant
-	  (let ((value (lvalue-known-value variable)))
-	    (and value
-		 (or (eq? value procedure)
-		     (and (rvalue/procedure? value)
-			  (procedure/trivial-or-virtual? value)))))))
-
-    (let ((previously-trivial? (procedure/trivial-closure? procedure))
-	  (parent (or (procedure-target-block procedure) current-parent)))
-      ;; Note: this should be innocuous if there is already a closure block.
-      ;; In particular, if there is a closure block which happens to be a
-      ;; reference placed there by the first-class environment transformation
-      ;; in fggen/fggen and fggen/canon, and it is replaced by the line below,
-      ;; the presumpt first-class environment is not really used as one, so
-      ;; the procedure is being "demoted" from first-class to closure.
+(define (close-procedure! procedure)
+  (let ((block (procedure-block procedure))
+	(previously-trivial? (procedure/trivial-closure? procedure))
+	(original-parent (procedure-target-block procedure)))
+    (let ((parent (block-parent block)))
       (set-procedure-closure-context! procedure
-				      (make-reference-context parent))
+				      (make-reference-context original-parent))
       (with-values
 	  (lambda ()
-	    (find-closure-bindings
-	     parent
-	     (list-transform-negative (block-free-variables block)
-	       (lambda (lvalue)
-		 (or (uninteresting-variable? lvalue)
-		     (begin
-		       (set-variable-closed-over?! lvalue true)
-		       false))))
-	     '()
-	     (list-transform-negative (block-variables-nontransitively-free
-				       block)
-	       uninteresting-variable?)))
+	    (let ((uninteresting-variable?
+		   (lambda (variable)
+		     (or (lvalue-integrated? variable)
+			 (let ((value (lvalue-known-value variable)))
+			   (and value
+				(or (eq? value procedure)
+				    (and (rvalue/procedure? value)
+					 (procedure/trivial-or-virtual?
+					  value)))))))))
+	      (find-closure-bindings
+	       original-parent
+	       (list-transform-negative (block-free-variables block)
+		 (lambda (lvalue)
+		   (or (uninteresting-variable? lvalue)
+		       (begin
+			 (set-variable-closed-over?! lvalue true)
+			 false))))
+	       '()
+	       (list-transform-negative
+		   (block-variables-nontransitively-free block)
+		 uninteresting-variable?))))
 	(lambda (closure-frame-block size)
 	  (set-block-parent! block closure-frame-block)
 	  (set-procedure-closure-size! procedure size)))
-      (let ((new (procedure/trivial-closure? procedure)))
-	(if (or (and previously-trivial? (not new))
-		(and (not previously-trivial?) new))
-	    (error "close-procedure! trivial becoming non-trivial or viceversa"
-		   procedure))))
-    (disown-block-child! current-parent block)))
+      (if (if previously-trivial?
+	      (not (procedure/trivial-closure? procedure))
+	      (procedure/trivial-closure? procedure))
+	  (error "trivial procedure becoming non-trivial or vice-versa"
+		 procedure))
+      (set-block-children! parent (delq! block (block-children parent)))
+      (if (eq? parent original-parent)
+	  (set-block-disowned-children!
+	   parent
+	   (cons block (block-disowned-children parent)))))))
 
 (define (find-closure-bindings block free-variables bound-variables
 			       variables-nontransitively-free)

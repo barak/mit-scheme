@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.13 1989/08/21 19:33:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.14 1989/10/26 07:37:28 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -274,13 +274,13 @@ MIT in each case. |#
   (if disassembler/write-addresses?
       (begin
 	(write-string
-	 (number->string (+ offset disassembler/base-address)
-			 '(HEUR (RADIX X S))))
+	 (number->string (+ offset disassembler/base-address) 16))
 	(write-char #\Tab)))
   
   (if disassembler/write-offsets?
       (begin
-	(write-string (number->string offset '(HEUR (RADIX X S))))	(write-char #\Tab)))
+	(write-string (number->string offset 16))
+	(write-char #\Tab)))
 
   (if symbol-table
       (write-string "    "))

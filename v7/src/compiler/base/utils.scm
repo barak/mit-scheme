@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.13 1989/08/28 18:33:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.14 1989/10/26 07:36:11 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -77,7 +77,7 @@ MIT in each case. |#
 	   ((eq? prefix lambda-tag:fluid-let) 'FLUID-LET)
 	   (else prefix)))
     "-"
-    (number->string (generate-label-number) 10))))
+    (number->string (generate-label-number)))))
 
 (define *current-label-number*)
 
@@ -209,34 +209,50 @@ MIT in each case. |#
       (scode/primitive-procedure? object)
       (eq? object compiled-error-procedure)))
 
-(define function-names
+(define boolean-valued-function-names
   '(
-    ;; Predicates
     OBJECT-TYPE? EQ? FALSE? NULL? PAIR? VECTOR? SYMBOL? STRING?
-    NUMBER? CHAR? PROMISE? BIT-STRING? CELL? CHAR-ASCII?
-
-    ;; Numbers
+    NUMBER? CHAR? PROMISE? BIT-STRING? CELL?
     COMPLEX? REAL? RATIONAL? INTEGER? EXACT? INEXACT?
     ZERO? POSITIVE? NEGATIVE? ODD? EVEN?
-    = < > <= >= MAX MIN
-    + - * / 1+ -1+ ABS QUOTIENT REMAINDER MODULO INTEGER-DIVIDE
-    GCD LCM FLOOR CEILING TRUNCATE ROUND
-    EXP LOG EXPT SQRT SIN COS TAN ASIN ACOS ATAN
-    FIX:ZERO? FIX:NEGATIVE? FIX:POSITIVE?
-    FIX:= FIX:< FIX:> FIX:1+ FIX:-1+ FIX:+ FIX:- FIX:*
-    FIX:DIVIDE FIX:GCD FIX:QUOTIENT FIX:REMAINDER
-
-    ;; Random
-    OBJECT-TYPE NOT ASCII->CHAR CHAR->INTEGER CHAR-BITS CHAR-CODE
-    CHAR-DOWNCASE CHAR-UPCASE INTEGER->CHAR MAKE-CHAR
-    PRIMITIVE-PROCEDURE-ARITY
-
-    ;; References (assumes immediate constants are immutable)
-    CAR CDR LENGTH
-    VECTOR-REF VECTOR-LENGTH
-    STRING-REF STRING-LENGTH STRING-MAXIMUM-LENGTH
-    BIT-STRING-REF BIT-STRING-LENGTH
+    = < > <= >=
+    FIX:FIXNUM? FIX:ZERO? FIX:NEGATIVE? FIX:POSITIVE? FIX:= FIX:< FIX:>
+    FLO:FLONUM? FLO:ZERO? FLO:NEGATIVE? FLO:POSITIVE? FLO:= FLO:< FLO:>
+    INT:INTEGER? INT:ZERO? INT:NEGATIVE? INT:POSITIVE? INT:= INT:< INT:>
+    NOT BIT-STRING-REF
     ))
+
+(define function-names
+  (append
+   boolean-valued-function-names
+   '(
+     ;; Numbers
+     MAX MIN + - * / 1+ -1+ CONJUGATE ABS QUOTIENT REMAINDER MODULO
+     INTEGER-DIVIDE GCD LCM NUMERATOR DENOMINATOR FLOOR CEILING TRUNCATE ROUND
+     FLOOR->EXACT CEILING->EXACT TRUNCATE->EXACT ROUND->EXACT
+     RATIONALIZE RATIONALIZE->EXACT SIMPLEST-RATIONAL SIMPLEST-EXACT-RATIONAL
+     EXP LOG SIN COS TAN ASIN ACOS ATAN SQRT EXPT MAKE-RECTANGULAR MAKE-POLAR
+     REAL-PART IMAG-PART MAGNITUDE ANGLE EXACT->INEXACT INEXACT->EXACT
+     FIX:1+ FIX:-1+ FIX:+ FIX:- FIX:*
+     FIX:DIVIDE FIX:GCD FIX:QUOTIENT FIX:REMAINDER
+     INT:+ INT:- INT:* INT:DIVIDE INT:QUOTIENT INT:REMAINDER INT:ABS
+     INT:1+ INT:-1+ INT:NEGATE
+     FLO:+ FLO:- FLO:* FLO:/ FLO:NEGATE FLO:ABS FLO:EXP FLO:LOG FLO:SIN FLO:COS
+     FLO:TAN FLO:ASIN FLO:ACOS FLO:ATAN FLO:ATAN2 FLO:SQRT FLO:EXPT FLO:FLOOR
+     FLO:CEILING FLO:TRUNCATE FLO:ROUND FLO:FLOOR->EXACT FLO:CEILING->EXACT
+     FLO:TRUNCATE->EXACT FLO:ROUND->EXACT
+
+     ;; Random
+     OBJECT-TYPE CHAR-ASCII? ASCII->CHAR CHAR->INTEGER CHAR-BITS CHAR-CODE
+     CHAR-DOWNCASE CHAR-UPCASE INTEGER->CHAR MAKE-CHAR
+     PRIMITIVE-PROCEDURE-ARITY
+
+     ;; References (assumes immediate constants are immutable)
+     CAR CDR LENGTH
+     VECTOR-REF VECTOR-LENGTH
+     STRING-REF STRING-LENGTH STRING-MAXIMUM-LENGTH
+     BIT-STRING-LENGTH
+     )))
 
 ;; The following definition is used to avoid computation if possible.
 ;; Not to avoid recomputation.  To avoid recomputation, function-names
@@ -254,30 +270,73 @@ MIT in each case. |#
     LIST->VECTOR VECTOR->LIST MAKE-BIT-STRING MAKE-CELL STRING->SYMBOL
     ))
 
+(define additional-boolean-valued-function-primitives
+  (list (ucode-primitive zero?)
+	(ucode-primitive positive?)
+	(ucode-primitive negative?)
+	(ucode-primitive &=)
+	(ucode-primitive &<)
+	(ucode-primitive &>)))
+
 (define additional-function-primitives
-   (list
-    (ucode-primitive &+) (ucode-primitive &-)
-    (ucode-primitive &*) (ucode-primitive &/)
-    (ucode-primitive &<) (ucode-primitive &>)
-    (ucode-primitive &=) (ucode-primitive &atan)))
+  (list (ucode-primitive 1+)
+	(ucode-primitive -1+)
+	(ucode-primitive &+)
+	(ucode-primitive &-)
+	(ucode-primitive &*)
+	(ucode-primitive &/)))
 
 ;;;; "Foldable" and side-effect-free operators
 
-(define function-variables
-  (map (lambda (name)
-	 (cons name
-	       (lexical-reference system-global-environment name)))
-       function-names))
+(define boolean-valued-function-variables)
+(define function-variables)
+(define side-effect-free-variables)
+(define boolean-valued-function-primitives)
+(define function-primitives)
+(define side-effect-free-primitives)
+
+(let ((global-valued
+       (lambda (names)
+	 (list-transform-negative names
+	   (lambda (name)
+	     (lexical-unreferenceable? system-global-environment name)))))
+      (global-value
+       (lambda (name)
+	 (lexical-reference system-global-environment name)))
+      (primitives
+       (let ((primitive-procedure?
+	      (lexical-reference system-global-environment
+				 'PRIMITIVE-PROCEDURE?)))
+	 (lambda (procedures)
+	   (list-transform-positive procedures primitive-procedure?)))))
+  (let ((names (global-valued boolean-valued-function-names)))
+    (let ((procedures (map global-value names)))
+      (set! boolean-valued-function-variables (map cons names procedures))
+      (set! boolean-valued-function-primitives
+	    (append! (primitives procedures)
+		     additional-boolean-valued-function-primitives))))
+  (let ((names (global-valued function-names)))
+    (let ((procedures (map global-value names)))
+      (set! function-variables
+	    (map* boolean-valued-function-variables cons names procedures))
+      (set! function-primitives
+	    (append! (primitives procedures)
+		     (append additional-function-primitives
+			     boolean-valued-function-primitives)))))
+  (let ((names (global-valued side-effect-free-additional-names)))
+    (let ((procedures (map global-value names)))
+      (set! side-effect-free-variables
+	    (map* function-variables cons names procedures))
+      (set! side-effect-free-primitives
+	    (append! (primitives procedures)
+		     function-primitives))
+      unspecific)))
+
+(define-integrable (boolean-valued-function-variable? name)
+  (assq name boolean-valued-function-variables))
 
 (define-integrable (constant-foldable-variable? name)
   (assq name function-variables))
-
-(define side-effect-free-variables
-  (map* function-variables
-	(lambda (name)
-	 (cons name
-	       (lexical-reference system-global-environment name)))
-	side-effect-free-additional-names))
 
 (define-integrable (side-effect-free-variable? name)
   (assq name side-effect-free-variables))
@@ -287,22 +346,14 @@ MIT in each case. |#
     (and place
 	 (cdr place))))
 
-(define function-primitives
-  (append!
-   (list-transform-positive (map cdr function-variables)
-     (lexical-reference system-global-environment 'PRIMITIVE-PROCEDURE?))
-   additional-function-primitives))
+(define-integrable (boolean-valued-function-primitive? operator)
+  (memq operator boolean-valued-function-primitives))
 
-(define (constant-foldable-primitive? operator)
+(define-integrable (constant-foldable-primitive? operator)
   (memq operator function-primitives))
 
-(define side-effect-free-primitives
-  (append!
-   (list-transform-positive (map cdr side-effect-free-variables)
-     (lexical-reference system-global-environment 'PRIMITIVE-PROCEDURE?))
-   additional-function-primitives))
-
-(define (side-effect-free-primitive? operator)  (memq operator side-effect-free-primitives))
+(define-integrable (side-effect-free-primitive? operator)
+  (memq operator side-effect-free-primitives))
 
 (define procedure-object?
   (lexical-reference system-global-environment 'PROCEDURE?))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rgraph.scm,v 4.5 1989/07/25 12:37:46 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rgraph.scm,v 4.6 1989/10/26 07:38:21 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -48,8 +48,14 @@ MIT in each case. |#
   register-n-deaths
   register-live-length
   register-crosses-call?
-  register-value-classes
-  )
+  register-value-classes)
+
+(define (add-rgraph-bblock! rgraph bblock)
+  (set-rgraph-bblocks! rgraph (cons bblock (rgraph-bblocks rgraph))))
+
+(define (delete-rgraph-bblock! rgraph bblock)
+  (set-rgraph-bblocks! rgraph (delq! bblock (rgraph-bblocks rgraph))))
+
 (define (add-rgraph-non-object-register! rgraph register)
   (set-rgraph-non-object-registers!
    rgraph

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.10 1989/08/21 19:32:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.11 1989/10/26 07:35:47 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -78,8 +78,8 @@ MIT in each case. |#
 	   (compiled-code-address->block object)))
 	 (write-string "\nOffset: ")
 	 (write-string
-	  (number->string (compiled-code-address->offset object)
-			  '(HEUR (RADIX X S)))))	(else
+	  (number->string (compiled-code-address->offset object) 16)))
+	(else
 	 (error "debug/where -- what?" object))))
 
 (define (compiler:write-rtl-file input-path #!optional output-path)

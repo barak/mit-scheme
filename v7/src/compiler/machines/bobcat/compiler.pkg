@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.24 1989/08/21 19:33:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.25 1989/10/26 07:37:23 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -346,6 +346,11 @@ MIT in each case. |#
   (parent (compiler fg-optimizer))
   (export (compiler top-level) operator-analysis))
 
+(define-package (compiler fg-optimizer variable-indirection)
+  (files "fgopt/varind")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) initialize-variable-indirections!))
+
 (define-package (compiler fg-optimizer environment-optimization)
   (files "fgopt/envopt")
   (parent (compiler fg-optimizer))
@@ -359,7 +364,9 @@ MIT in each case. |#
 (define-package (compiler fg-optimizer continuation-analysis)
   (files "fgopt/contan")
   (parent (compiler fg-optimizer))
-  (export (compiler top-level) continuation-analysis))
+  (export (compiler top-level)
+	  continuation-analysis
+	  setup-block-static-links!))
 
 (define-package (compiler fg-optimizer compute-node-offsets)
   (files "fgopt/offset")
@@ -425,6 +432,11 @@ MIT in each case. |#
    (parent (compiler fg-optimizer subproblem-ordering))
    (export (compiler fg-optimizer subproblem-ordering)
 	   parameter-analysis))
+
+(define-package (compiler fg-optimizer return-equivalencing)
+  (files "fgopt/reteqv")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) find-equivalent-returns!))
 
 (define-package (compiler rtl-generator)
   (files "rtlgen/rtlgen"		;RTL generator
@@ -479,7 +491,9 @@ MIT in each case. |#
   (files "rtlgen/rgcomb")
   (parent (compiler rtl-generator))
   (export (compiler rtl-generator)
-	  generate/combination))
+	  generate/combination)
+  (export (compiler rtl-generator combination/inline)
+	  generate/invocation-prefix))
 
 (define-package (compiler rtl-generator generate/return)
   (files "rtlgen/rgretn")
@@ -509,6 +523,12 @@ MIT in each case. |#
   (files "rtlopt/rinvex")
   (parent (compiler rtl-optimizer))
   (export (compiler top-level) invertible-expression-elimination))
+
+(define-package (compiler rtl-optimizer common-suffix-merging)
+  (files "rtlopt/rtlcsm")
+  (parent (compiler rtl-optimizer))
+  (export (compiler top-level) merge-common-suffixes!))
+
 (define-package (compiler rtl-optimizer lifetime-analysis)
   (files "rtlopt/rlife")
   (parent (compiler rtl-optimizer))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simple.scm,v 4.5 1989/07/18 20:22:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simple.scm,v 4.6 1989/10/26 07:37:06 cph Rel $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -79,8 +79,7 @@ MIT in each case. |#
     ((APPLICATION)
      (case (application-type node)
        ((COMBINATION)
-	(if (and (combination/inline? node)
-		 (combination/inline/simple? node))
+	(if (combination/simple-inline? node)
 	    (walk/return-operator (combination/continuation node) continuation)
 	    (let ((callee (rvalue-known-value (combination/operator node))))
 	      (and callee

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.14 1989/08/10 11:05:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.15 1989/10/26 07:36:03 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -153,10 +153,6 @@ MIT in each case. |#
 
 (define-integrable set-procedure-passed-out?!
   set-rvalue-%passed-out?!)
-
-(define (close-procedure? procedure)
-  (not (eq? (procedure-closing-limit procedure)
-	    (procedure-closing-block procedure))))
 
 (define-integrable (closure-procedure-needs-operator? procedure)
   ;; This must be true if the closure needs its parent frame since the
@@ -184,10 +180,11 @@ MIT in each case. |#
   (assq 'TRIVIAL (procedure-properties procedure)))
 
 (define (procedure-inline-code? procedure)
-  (or (procedure/trivial? procedure)
-      (and (procedure-always-known-operator? procedure)
-	   (procedure-application-unique? procedure)
-	   (procedure/virtually-open? procedure))))
+  (and (not (procedure-rest procedure))
+       (or (procedure/trivial? procedure)
+	   (and (procedure-always-known-operator? procedure)
+		(procedure-application-unique? procedure)
+		(procedure/virtually-open? procedure)))))
 
 (define-integrable (open-procedure-needs-static-link? procedure)
   (stack-block/static-link? (procedure-block procedure)))

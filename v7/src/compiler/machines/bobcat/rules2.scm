@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.9 1989/08/28 18:34:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.10 1989/10/26 07:37:56 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -56,12 +56,12 @@ MIT in each case. |#
     (let ((finish-1
 	   (lambda (alias)
 	     (finish (register-reference alias)
-		     (standard-register-reference register-2 'DATA)
+		     (standard-register-reference register-2 'DATA true)
 		     cc)))
 	  (finish-2
 	   (lambda (alias)
 	     (finish (register-reference alias)
-		     (standard-register-reference register-1 'DATA)
+		     (standard-register-reference register-1 'DATA true)
 		     (invert-cc-noncommutative cc)))))
       (let ((try-type
 	     (lambda (type continue)
@@ -81,7 +81,7 @@ MIT in each case. |#
 		    (finish-1 (load-alias-register! register-1 'DATA)))))))))))
 
 (define (compare/register*memory register memory cc)
-  (let ((reference (standard-register-reference register 'DATA)))
+  (let ((reference (standard-register-reference register 'DATA true)))
     (if (effective-address/register? reference)
 	(begin
 	  (set-standard-branches! cc)
@@ -99,7 +99,7 @@ MIT in each case. |#
   (set-standard-branches! 'NE)
   (LAP ,(test-non-pointer (ucode-type false)
 			  0
-			  (standard-register-reference register false))))
+			  (standard-register-reference register false true))))
 
 (define-rule predicate
   (TRUE-TEST (? memory))
@@ -139,7 +139,7 @@ MIT in each case. |#
   (set-standard-branches! 'EQ)
   (LAP ,(test-non-pointer (ucode-type unassigned)
 			  0
-			  (standard-register-reference register 'DATA))))
+			  (standard-register-reference register 'DATA true))))
 
 (define-rule predicate
   (UNASSIGNED-TEST (? memory))
@@ -190,7 +190,7 @@ MIT in each case. |#
 	(set-standard-branches! 'EQ)
 	(LAP ,(test-non-pointer-constant
 	       constant
-	       (standard-register-reference register 'DATA))))
+	       (standard-register-reference register 'DATA true))))
       (compare/register*memory register
 			       (INST-EA (@PCR ,(constant->label constant)))
 			       'EQ)))
@@ -226,13 +226,13 @@ MIT in each case. |#
   (eq-test/constant*memory constant
 			   (predicate/memory-operand-reference memory)))
 
-;;;; Fixnum Predicates
+;;;; Fixnum/Flonum Predicates
 
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (REGISTER (? register)))
   (QUALIFIER (pseudo-register? register))
   (set-standard-branches! (fixnum-predicate->cc predicate))
-  (test-fixnum (standard-register-reference register 'DATA)))
+  (test-fixnum (standard-register-reference register 'DATA true)))
 
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (? memory))
@@ -278,7 +278,7 @@ MIT in each case. |#
 (define (fixnum-predicate/register*constant register constant cc)
   (set-standard-branches! cc)
   (guarantee-signed-fixnum constant)
-  (let ((reference (standard-register-reference register 'DATA)))
+  (let ((reference (standard-register-reference register 'DATA true)))
     (if (effective-address/register? reference)
 	(LAP (CMP L (& ,(* constant fixnum-1)) ,reference))
 	(LAP (CMPI L (& ,(* constant fixnum-1)) ,reference)))))
@@ -325,14 +325,12 @@ MIT in each case. |#
    (predicate/memory-operand-reference memory)
    constant
    (invert-cc-noncommutative (fixnum-predicate->cc predicate))))
-
-;;;; Flonum Predicates
 
 (define-rule predicate
   (FLONUM-PRED-1-ARG (? predicate) (REGISTER (? register)))
   (QUALIFIER (pseudo-float? register))
   (set-flonum-branches! (flonum-predicate->cc predicate))
-  (LAP (FTST ,(float-register-reference register))))
+  (LAP (FTST ,(standard-register-reference register 'FLOAT false))))
 
 (define-rule predicate
   (FLONUM-PRED-2-ARGS (? predicate)
@@ -340,5 +338,5 @@ MIT in each case. |#
 		      (REGISTER (? register2)))
   (QUALIFIER (and (pseudo-float? register1) (pseudo-float? register2)))
   (set-flonum-branches! (flonum-predicate->cc predicate))
-  (LAP (FCMP ,(float-register-reference register2)
-	     ,(float-register-reference register1))))
+  (LAP (FCMP ,(standard-register-reference register2 'FLOAT false)
+	     ,(standard-register-reference register1 'FLOAT false))))

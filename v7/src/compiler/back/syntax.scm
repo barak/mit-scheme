@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.23 1989/04/15 18:04:59 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.24 1989/10/26 07:35:06 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -96,12 +96,12 @@ MIT in each case. |#
 
 (define (integer-syntaxer expression coercion-type size)
   (let ((name (make-coercion-name coercion-type size)))
-    (if (integer? expression)
+    (if (exact-integer? expression)
 	`',((lookup-coercion name) expression)
 	`(SYNTAX-EVALUATION ,expression ,name))))
 
 (define (syntax-evaluation expression coercion)
-  (if (integer? expression)
+  (if (exact-integer? expression)
       (coercion expression)
       `(EVALUATION ,expression ,(coercion-size coercion) ,coercion)))
 
@@ -159,7 +159,7 @@ MIT in each case. |#
       (choose-clause value (cdr clauses))))
 
 (define (variable-width-expression-syntaxer name expression clauses)
-  (if (integer? expression)
+  (if (exact-integer? expression)
       (let ((chosen (choose-clause expression clauses)))
 	`(LET ((,name ,expression))
 	   (DECLARE (INTEGRATE ,name))
@@ -176,7 +176,8 @@ MIT in each case. |#
 		clauses)))))
 
 (define (syntax-variable-width-expression expression clauses)
-  (if (integer? expression)      (let ((chosen (choose-clause expression clauses)))
+  (if (exact-integer? expression)
+      (let ((chosen (choose-clause expression clauses)))
 	(car ((car chosen) expression)))
       `(VARIABLE-WIDTH-EXPRESSION
 	,expression

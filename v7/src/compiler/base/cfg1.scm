@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 4.3 1987/12/31 10:01:31 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 4.4 1989/10/26 07:35:30 cph Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -80,13 +80,6 @@ MIT in each case. |#
 
 (define (delete-node-previous-edge! node edge)
   (set-node-previous-edges! node (delq! edge (node-previous-edges node))))
-
-;;;; Edge Datatype
-
-(define-structure (edge (type vector)) left-node left-connect right-node)
-
-(define (edge-next-node edge)
-  (and edge (edge-right-node edge)))
 
 (define-integrable (snode-next snode)
   (edge-next-node (snode-next-edge snode)))
@@ -97,6 +90,27 @@ MIT in each case. |#
 (define-integrable (pnode-alternative pnode)
   (edge-next-node (pnode-alternative-edge pnode)))
 
+(define (cfg-node-get node key)
+  (let ((entry (assq key (node-alist node))))
+    (and entry
+	 (cdr entry))))
+
+(define (cfg-node-put! node key item)
+  (let ((entry (assq key (node-alist node))))
+    (if entry
+	(set-cdr! entry item)
+	(set-node-alist! node (cons (cons key item) (node-alist node))))))
+
+(define (cfg-node-remove! node key)
+  (set-node-alist! node (del-assq! key (node-alist node))))
+
+;;;; Edge Datatype
+
+(define-structure (edge (type vector))
+  left-node
+  left-connect
+  right-node)
+
 (define (create-edge! left-node left-connect right-node)
   (let ((edge (make-edge left-node left-connect right-node)))
     (if left-node
@@ -104,6 +118,12 @@ MIT in each case. |#
     (if right-node
 	(add-node-previous-edge! right-node edge))
     edge))
+
+(define-integrable (node->edge node)
+  (create-edge! false false node))
+
+(define (edge-next-node edge)
+  (and edge (edge-right-node edge)))
 
 (define (edge-connect-left! edge left-node left-connect)
   (if (edge-left-node edge)
@@ -121,7 +141,7 @@ MIT in each case. |#
       (begin
 	(set-edge-right-node! edge right-node)
 	(add-node-previous-edge! right-node edge))))
-
+
 (define (edge-disconnect-left! edge)
   (let ((left-node (edge-left-node edge))
 	(left-connect (edge-left-connect edge)))
@@ -138,28 +158,23 @@ MIT in each case. |#
 	  (set-edge-right-node! edge false)
 	  (delete-node-previous-edge! right-node edge)))))
 
-(define (edges-connect-right! edges right-node)
-  (for-each (lambda (edge) (edge-connect-right! edge right-node)) edges))
-
 (define (edge-disconnect! edge)
   (edge-disconnect-left! edge)
   (edge-disconnect-right! edge))
 
+(define (edge-replace-left! edge left-node left-connect)
+  (edge-disconnect-left! edge)
+  (edge-connect-left! edge left-node left-connect))
+
+(define (edge-replace-right! edge right-node)
+  (edge-disconnect-right! edge)
+  (edge-connect-right! edge right-node))
+
+(define (edges-connect-right! edges right-node)
+  (for-each (lambda (edge) (edge-connect-right! edge right-node)) edges))
+
 (define (edges-disconnect-right! edges)
   (for-each edge-disconnect-right! edges))
-
-;;;; Node Properties
 
-(define (cfg-node-get node key)
-  (let ((entry (assq key (node-alist node))))
-    (and entry
-	 (cdr entry))))
-
-(define (cfg-node-put! node key item)
-  (let ((entry (assq key (node-alist node))))
-    (if entry
-	(set-cdr! entry item)
-	(set-node-alist! node (cons (cons key item) (node-alist node))))))
-
-(define (cfg-node-remove! node key)
-  (set-node-alist! node (del-assq! key (node-alist node))))
+(define (edges-replace-right! edges right-node)
+  (for-each (lambda (edge) (edge-replace-right! edge right-node)) edges))

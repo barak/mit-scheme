@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/operan.scm,v 4.6 1989/05/08 22:21:09 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/operan.scm,v 4.7 1989/10/26 07:36:51 cph Rel $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -66,7 +66,7 @@ MIT in each case. |#
 (define (continuation-passed-out? continuation)
   (there-exists? (continuation/combinations continuation)
     (lambda (combination)
-      (and (not (combination/inline? combination))
+      (and (not (combination/simple-inline? combination))
 	   (let ((operator (combination/operator combination)))
 	     (or (rvalue-passed-in? operator)
 		 (there-exists? (rvalue-values operator)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.22 1989/09/20 16:39:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.23 1989/10/26 07:36:21 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -44,14 +44,16 @@ MIT in each case. |#
 	       (make-expression
 		block
 		continuation
-		(transmit-values
-		    (if (scode/open-block? scode)
-			(scode/open-block-components scode
-			  (lambda (names declarations body)
-			    (return-3 (make-variables block names)
-				      declarations
-				      (unscan-defines names '() body))))
-			(return-3 '() '() scode))
+		(with-values
+		    (lambda ()
+		      (let ((collect
+			     (lambda (names declarations body)
+			       (values (make-variables block names)
+				       declarations
+				       (unscan-defines names '() body)))))
+			(if (scode/open-block? scode)
+			    (scode/open-block-components scode collect)
+			    (scan-defines scode collect))))
 		  (lambda (variables declarations scode)
 		    (set-block-bound-variables! block variables)
 		    (generate/body block continuation declarations scode))))))
@@ -683,16 +685,32 @@ MIT in each case. |#
 (define (generate/disjunction/value block continuation expression)
   (scode/disjunction-components expression
     (lambda (predicate alternative)
-      (generate/combination
-       block
-       continuation
-       (let ((temp (generate-uninterned-symbol)))
-	 (scode/make-let (list temp)
-			 (list predicate)
-			 (let ((predicate (scode/make-variable temp)))
-			   (scode/make-conditional predicate
-						   predicate
-						   alternative))))))))
+      (if (and (scode/combination? predicate)
+	       (boolean-valued-operator?
+		(scode/combination-operator predicate)))
+	  (generate/conditional
+	   block
+	   continuation
+	   (scode/make-conditional predicate true alternative))
+	  (generate/combination
+	   block
+	   continuation
+	   (let ((temp (generate-uninterned-symbol)))
+	     (scode/make-let (list temp)
+			     (list predicate)
+			     (let ((predicate (scode/make-variable temp)))
+			       (scode/make-conditional predicate
+						       predicate
+						       alternative)))))))))
+
+(define (boolean-valued-operator? operator)
+  (cond ((scode/primitive-procedure? operator)
+	 (boolean-valued-function-primitive? operator))
+	((scode/absolute-reference? operator)
+	 (boolean-valued-function-variable?
+	  (scode/absolute-reference-name operator)))
+	(else
+	 false)))
 
 (define (generate/access block continuation expression)
   (scode/access-components expression
@@ -738,7 +756,8 @@ MIT in each case. |#
 
 ;; Enclose directives are generated only for lambda expressions
 ;; evaluated in environments whose manipulation has been made
-;; explicit.  The code should include a syntatic check.  The;; expression must be a call to scode-eval with a quotation of a
+;; explicit.  The code should include a syntactic check.  The
+;; expression must be a call to scode-eval with a quotation of a
 ;; lambda and a variable as arguments.
 ;; NOTE: This code depends on lvalue-integrated? never integrating
 ;; the hidden reference within the procedure object.  See base/lvalue

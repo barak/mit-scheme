@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.17 1989/07/25 12:37:32 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.18 1989/10/26 07:38:28 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -72,11 +72,15 @@ MIT in each case. |#
 	  ((or (rtl:machine-register-expression? locative)
 	       (rtl:trivial-expression? expression))
 	   (%make-assign locative expression))
+	  ((and (or (rtl:register? locative)
+		    (rtl:offset? expression))
+		(equal? locative expression))
+	   (make-null-cfg))
 	  (else
 	   (let ((register (rtl:make-pseudo-register)))
 	     (scfg*scfg->scfg! (assign-register register)
 			       (%make-assign locative register)))))))
-
+
 (define (rtl:make-eq-test expression-1 expression-2)
   (expression-simplify-for-predicate expression-1
     (lambda (expression-1)
@@ -340,10 +344,12 @@ MIT in each case. |#
 	   (if (rtl:trivial-expression? expression)
 	       (receiver expression)
 	       (assign-to-temporary expression scfg-append! receiver)))))
-    (let ((entry (assq (car expression) expression-methods)))
-      (if entry
-	  (apply (cdr entry) receiver scfg-append! (cdr expression))
-	  (receiver expression)))))
+    (if (rtl:trivial-expression? expression)
+	(receiver expression)
+	(let ((entry (assq (car expression) expression-methods)))
+	  (if entry
+	      (apply (cdr entry) receiver scfg-append! (cdr expression))
+	      (receiver expression))))))
 
 (define (assign-to-temporary expression scfg-append! receiver)
   (let ((pseudo (rtl:make-pseudo-register)))
@@ -554,7 +560,7 @@ MIT in each case. |#
     (expression-simplify operand scfg-append!
       (lambda (operand)
 	(receiver (rtl:make-fixnum-1-arg operator operand))))))
-
+
 (define-expression-method 'GENERIC-BINARY
   (lambda (receiver scfg-append! operator operand1 operand2)
     (expression-simplify operand1 scfg-append!
@@ -569,7 +575,8 @@ MIT in each case. |#
     (expression-simplify operand scfg-append!
       (lambda (operand)
 	(receiver (rtl:make-generic-unary operator operand))))))
-(define-expression-method 'FLONUM-1-ARG
+
+(define-expression-method 'FLONUM-1-ARG
   (lambda (receiver scfg-append! operator operand)
     (expression-simplify operand scfg-append!
       (lambda (s-operand)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtline.scm,v 4.9 1989/08/21 19:34:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtline.scm,v 4.10 1989/10/26 07:38:35 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -124,16 +124,13 @@ MIT in each case. |#
     (node-mark! bblock)
     (queue-continuations! bblock)
     (if (and (not (bblock-label bblock))
-	     (let ((edges (node-previous-edges bblock)))
-	       (and (not (null? edges))
-		    (not (null? (cdr edges))))))
+	     (node-previous>1? bblock))
 	(bblock-label! bblock))
     (let ((kernel
 	   (lambda ()
 	     (let loop ((rinst (bblock-instructions bblock)))
 	       (cond ((rinst-next rinst)
-		      (cons (rinst-rtl rinst)
-			    (loop (rinst-next rinst))))
+		      (cons (rinst-rtl rinst) (loop (rinst-next rinst))))
 		     ((sblock? bblock)
 		      (cons (rinst-rtl rinst)
 			    (let ((next (snode-next bblock)))
@@ -182,17 +179,14 @@ MIT in each case. |#
 		       (alternative (linearize-bblock an)))
 		   `(,(rtl:make-jumpc-statement predicate clabel)
 		     ,@alternative
-		     ,@(if (node-marked? cn)
-			   '()
-			   (linearize-bblock cn))))))))))
+		     ,@(if (node-marked? cn) '() (linearize-bblock cn))))))))))
 
   (linearize-bblock bblock))
 
 (define linearize-rtl
   (make-linearizer bblock-linearize-rtl
-    (lambda ()
-      (let ((value (list false)))
-	(cons value value)))    (lambda (accumulator instructions)
+    (lambda () (let ((value (list false))) (cons value value)))
+    (lambda (accumulator instructions)
       (set-cdr! (cdr accumulator) instructions)
       (set-cdr! accumulator (last-pair instructions))
       accumulator)

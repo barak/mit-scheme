@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/object.scm,v 4.7 1989/08/10 11:05:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/object.scm,v 4.8 1989/10/26 07:36:00 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -118,7 +118,11 @@ MIT in each case. |#
        (vector-tag? (tagged-vector/tag object))))
 
 (define (->tagged-vector object)
-  (let ((object (if (integer? object) (unhash object) object)))    (and (or (tagged-vector? object)
+  (let ((object
+	 (if (exact-nonnegative-integer? object)
+	     (unhash object)
+	     object)))
+    (and (or (tagged-vector? object)
 	     (named-structure? object))
 	 object)))
 

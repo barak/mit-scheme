@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insmac.scm,v 1.124 1988/06/14 08:47:02 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insmac.scm,v 1.125 1989/10/26 07:37:39 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -91,7 +91,8 @@ MIT in each case. |#
       ',categories)))
 
 (define (process-ea-field field)
-  (if (integer? field)      (integer-syntaxer field 'UNSIGNED 3)
+  (if (exact-integer? field)
+      (integer-syntaxer field 'UNSIGNED 3)
       (let ((binding (cadr field))
 	    (clauses (cddr field)))
 	(variable-width-expression-syntaxer

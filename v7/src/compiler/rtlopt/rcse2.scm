@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.11 1989/01/21 09:06:11 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.12 1989/10/26 07:39:27 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -69,13 +69,14 @@ MIT in each case. |#
 
 (define ((expression-inserter expression element hash in-memory?))
   (or element
-      (begin (if (rtl:register? expression)
-		 (set-register-expression! (rtl:register-number expression)
-					   expression)
-		 (mention-registers! expression))
-	     (let ((element* (hash-table-insert! hash expression false)))
-	       (set-element-in-memory?! element* in-memory?)
-	       (element-first-value element*)))))
+      (begin
+	(if (rtl:register? expression)
+	    (set-register-expression! (rtl:register-number expression)
+				      expression)
+	    (mention-registers! expression))
+	(let ((element* (hash-table-insert! hash expression false)))
+	  (set-element-in-memory?! element* in-memory?)
+	  (element-first-value element*)))))
 
 (define (expression-canonicalize expression)
   (cond ((rtl:register? expression)
@@ -117,8 +118,9 @@ MIT in each case. |#
 	      ;; except the compiler's output, which is explicit.
 	      (if (interpreter-stack-pointer? (rtl:offset-register expression))
 		  (quantity-number (stack-reference-quantity expression))
-		  (begin (set! hash-arg-in-memory? true)
-			 (continue expression))))
+		  (begin
+		    (set! hash-arg-in-memory? true)
+		    (continue expression))))
 	     ((BYTE-OFFSET)
 	      (set! hash-arg-in-memory? true)
 	      (continue expression))
@@ -126,12 +128,13 @@ MIT in each case. |#
 	      (set! hash-arg-in-memory? true)
 	      (set! do-not-record? true)
 	      0)
-	     (else (continue expression))))))
+	     (else
+	      (continue expression))))))
 
     (define (continue expression)
       (rtl:reduce-subparts expression + 0 loop
 	(lambda (object)
-	  (cond ((integer? object) object)
+	  (cond ((integer? object) (inexact->exact object))
 		((symbol? object) (symbol-hash object))
 		((string? object) (string-hash object))
 		(else (hash object))))))
@@ -193,50 +196,44 @@ MIT in each case. |#
   ;; the hash table as the destination of an assignment.  ELEMENT is
   ;; the hash table element for the value being assigned to
   ;; EXPRESSION.
-  (let ((class (element->class element))
-	(register (rtl:register-number expression)))
+  (let ((register (rtl:register-number expression)))
     (set-register-expression! register expression)
-    (if class
-	(let ((expression (element-expression class))
-	      (register-equivalence!
-	       (lambda (quantity)
-		 (set-register-quantity! register quantity)
-		 (let ((last (quantity-last-register quantity)))
-		   (cond ((not last)
-			  (set-quantity-first-register! quantity register)
-			  (set-register-next-equivalent! register false))
-			 (else
-			  (set-register-next-equivalent! last register)
-			  (set-register-previous-equivalent! register last))))
-		 (set-quantity-last-register! quantity register))))
-	  (cond ((rtl:register? expression)
-		 (register-equivalence!
-		  (get-register-quantity (rtl:register-number expression))))
-		((stack-reference? expression)
-		 (register-equivalence!
-		  (stack-reference-quantity expression))))))
-    (set-element-in-memory?!
-     (hash-table-insert! (expression-hash expression) expression class)
-     false))
-  unspecific)
+    (let ((quantity (get-element-quantity element)))
+      (if quantity
+	  (begin
+	    (set-register-quantity! register quantity)
+	    (let ((last (quantity-last-register quantity)))
+	      (cond ((not last)
+		     (set-quantity-first-register! quantity register)
+		     (set-register-next-equivalent! register false))
+		    (else
+		     (set-register-next-equivalent! last register)
+		     (set-register-previous-equivalent! register last))))
+	    (set-quantity-last-register! quantity register)))))
+  (set-element-in-memory?! (hash-table-insert! (expression-hash expression)
+					       expression
+					       (element->class element))
+			   false))
 
 (define (insert-stack-destination! expression element)
-  (let ((class (element->class element)))
-    (if class
-	(let ((expression (element-expression class))
-	      (stash-quantity!
-	       (lambda (quantity)
-		 (set-stack-reference-quantity! expression quantity))))
-	  (cond ((rtl:register? expression)
-		 (stash-quantity!
-		  (get-register-quantity (rtl:register-number expression))))
-		((stack-reference? expression)
-		 (stash-quantity!
-		  (stack-reference-quantity expression))))))
-    (set-element-in-memory?!
-     (hash-table-insert! (expression-hash expression) expression class)
-     false))
-  unspecific)
+  (let ((quantity (get-element-quantity element)))
+    (if quantity
+	(set-stack-reference-quantity! expression quantity)))
+  (set-element-in-memory?! (hash-table-insert! (expression-hash expression)
+					       expression
+					       (element->class element))
+			   false))
+
+(define (get-element-quantity element)
+  (let loop ((element (element->class element)))
+    (and element
+	 (let ((expression (element-expression element)))
+	   (cond ((rtl:register? expression)
+		  (get-register-quantity (rtl:register-number expression)))
+		 ((stack-reference? expression)
+		  (stack-reference-quantity expression))
+		 (else
+		  (loop (element-next-value element))))))))
 
 (define (insert-memory-destination! expression element hash)
   (let ((class (element->class element)))
@@ -246,16 +243,14 @@ MIT in each case. |#
     ;; In that case, there is no need to make an element at all.
     (if (or class hash)
 	(set-element-in-memory?! (hash-table-insert! hash expression class)
-				 true)))
-  unspecific)
+				 true))))
 
 (define (mention-registers! expression)
   (if (rtl:register? expression)
       (let ((register (rtl:register-number expression)))
 	(remove-invalid-references! register)
 	(set-register-in-table! register (register-tick register)))
-      (rtl:for-each-subexpression expression mention-registers!))
-  unspecific)
+      (rtl:for-each-subexpression expression mention-registers!)))
 
 (define (remove-invalid-references! register)
   ;; If REGISTER is invalid, delete from the hash table all
@@ -297,9 +292,15 @@ MIT in each case. |#
   ;; Invalidate a register expression.  These expressions are handled
   ;; specially for efficiency -- the register is marked invalid but we
   ;; delay searching the hash table for relevant expressions.
-  (let ((hash (expression-hash expression)))
-    (register-invalidate! (rtl:register-number expression))
-    (hash-table-delete! hash (hash-table-lookup hash expression))))
+  (let ((register (rtl:register-number expression))
+	(hash (expression-hash expression)))
+    (register-invalidate! register)
+    ;; If we're invalidating the stack pointer, delete its entries
+    ;; immediately.
+    (if (interpreter-stack-pointer? expression)
+	(mention-registers! expression)
+	(hash-table-delete! hash (hash-table-lookup hash expression)))))
+
 (define (register-invalidate! register)
   (let ((next (register-next-equivalent register))
 	(previous (register-previous-equivalent register))

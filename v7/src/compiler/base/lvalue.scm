@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.15 1989/08/10 11:05:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.16 1989/10/26 07:35:56 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -86,6 +86,7 @@ MIT in each case. |#
   register	;register for parameters passed in registers
   stack-overwrite-target?
 		;true iff variable is the target of a stack overwrite
+  indirection	;alias for this variable [variable or #f]
   )
 
 (define continuation-variable/type variable-in-cell?)
@@ -93,7 +94,7 @@ MIT in each case. |#
 
 (define (make-variable block name)
   (make-lvalue variable-tag block name '() false false '() false false
-	       false))
+	       false false))
 
 (define variable-assoc
   (association-procedure eq? variable-name))
@@ -127,7 +128,7 @@ MIT in each case. |#
   (define-named-variable continuation)
   (define-named-variable value))
 
-(define-integrable (variable/register variable)
+(define (variable/register variable)
   (let ((maybe-delayed-register (variable-register variable)))
     (if (promise? maybe-delayed-register)
 	(force maybe-delayed-register)
@@ -238,7 +239,7 @@ MIT in each case. |#
    variable
    (cons assignment (variable-assignments variable))))
 
-(define (variable-assigned? variable)
+(define-integrable (variable-assigned? variable)
   (not (null? (variable-assignments variable))))
 
 ;; Note:
@@ -255,6 +256,10 @@ MIT in each case. |#
 	 (or (rvalue/constant? value)
 	     (and (rvalue/procedure? value)
 		  (procedure/virtually-open? value))))))
+
+(define (variable-unused? variable)
+  (or (lvalue-integrated? variable)
+      (variable-indirection variable)))
 
 (define (lvalue=? lvalue lvalue*)
   (or (eq? lvalue lvalue*)
@@ -283,8 +288,9 @@ MIT in each case. |#
 
 (define-integrable (lvalue/external-source? lvalue)
   ;; (number? (lvalue-passed-in? lvalue))
-  (and (lvalue-passed-in? lvalue)
-       (not (eq? (lvalue-passed-in? lvalue) 'INHERITED))))
+  (let ((passed-in? (lvalue-passed-in? lvalue)))
+    (and passed-in?
+	 (not (eq? passed-in? 'INHERITED)))))
 
 (define-integrable (lvalue/internal-source? lvalue)
   (not (null? (lvalue-initial-values lvalue))))
@@ -307,3 +313,50 @@ MIT in each case. |#
 		   ;; which the variable is referenced.
 		   (memq variable
 			 (block-bound-variables reference-block))))))))
+
+(define (lvalue/articulation-points lvalue)
+  ;; This won't work if (memq lvalue (lvalue-backward-links lvalue))?
+  (let ((articulation-points '())
+	(number-tag "number-tag"))
+    (let ((articulation-point!
+	   (lambda (lvalue)
+	     (if (not (memq lvalue articulation-points))
+		 (begin
+		   (set! articulation-points (cons lvalue articulation-points))
+		   unspecific))))
+	  (allocate-number!
+	   (let ((n 0))
+	     (lambda ()
+	       (let ((number n))
+		 (set! n (1+ n))
+		 number)))))
+      (with-new-lvalue-marks
+       (lambda ()
+	 (let loop ((lvalue lvalue) (parent false) (number (allocate-number!)))
+	   (lvalue-mark! lvalue)
+	   (lvalue-put! lvalue number-tag number)
+	   (if (lvalue/source? lvalue)
+	       number
+	       (apply min
+		      (cons number
+			    (map (lambda (link)
+				   (cond ((not (lvalue-marked? link))
+					  (let ((low
+						 (loop link
+						       lvalue
+						       (allocate-number!))))
+					    (if (<= number low)
+						(articulation-point! lvalue))
+					    low))
+					 ((eq? link parent)
+					  number)
+					 (else
+					  (lvalue-get link number-tag))))
+				 (lvalue-initial-backward-links lvalue)))))))))
+    (set! articulation-points
+	  (sort (delq! lvalue articulation-points)
+		(lambda (x y)
+		  (< (lvalue-get x number-tag) (lvalue-get y number-tag)))))
+    (for-each (lambda (lvalue) (lvalue-remove! lvalue number-tag))
+	      (cons lvalue (lvalue-backward-links lvalue)))
+    articulation-points))

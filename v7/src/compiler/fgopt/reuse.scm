@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/reuse.scm,v 1.3 1989/05/21 03:57:49 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/reuse.scm,v 1.4 1989/10/26 07:37:03 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,7 +50,7 @@ MIT in each case. |#
 				 (rvalue/procedure? callee)
 				 (procedure/open-internal? callee)))
 			   (caller (block-procedure block)))
-		       (and (not (combination/inline? combination))
+		       (and (not (combination/simple-inline? combination))
 			    (return-operator/reduction?
 			     (combination/continuation combination))
 			    (rvalue/procedure? caller)
@@ -277,8 +277,7 @@ MIT in each case. |#
 			     (generate-assignments (cdr nodes) rest)))))
 
 (define (trivial-assignments nodes rest)
-  (let loop ((nodes
-	      (order-nodes-per-current-constraints nodes)))
+  (let loop ((nodes nodes))
     (if (null? nodes)
 	rest
 	(trivial-assignment (car nodes) (loop (cdr nodes))))))
@@ -326,12 +325,3 @@ MIT in each case. |#
 			   target
 			   (subproblem-continuation subproblem))
      rest)))
-
-(define (order-nodes-per-current-constraints nodes)
-  (if *current-constraints*
-      (order-per-constraints/extracted
-       nodes
-       *current-constraints*
-       node-value)
-      nodes))
-

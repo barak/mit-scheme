@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndvar.scm,v 1.2 1989/04/21 17:10:02 markf Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndvar.scm,v 1.3 1989/10/26 07:38:52 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -44,12 +44,12 @@ MIT in each case. |#
 	     (continuation/register continuation)
 	     register:value)))
       (find-variable-internal context variable
-	(lambda (locative)
+	(lambda (variable locative)
 	  (if-compiler
 	   (if (variable-in-cell? variable)
 	       (rtl:make-fetch locative)
 	       locative)))
-	(lambda (block locative)
+	(lambda (variable block locative)
 	  (cond ((variable-in-known-location? context variable)
 		 (if-compiler
 		  (rtl:locative-offset locative
@@ -69,8 +69,10 @@ MIT in each case. |#
 
 (define (find-closure-variable context variable)
   (find-variable-internal context variable
-    identity-procedure
-    (lambda (block locative)
+    (lambda (variable locative)
+      variable
+      locative)
+    (lambda (variable block locative)
       block locative
       (error "Closure variable in IC frame" variable))))
 
@@ -86,20 +88,30 @@ MIT in each case. |#
 	  (if (procedure/trivial-closure? rvalue)
 	      (error "Trivial closure value encountered"))
 	  (if-compiler
+	   variable
 	   (block-ancestor-or-self->locative
 	    context
 	    (procedure-block rvalue)
 	    0
 	    (procedure-closure-offset rvalue))))
-	(let ((register (variable/register variable)))
-	  (if register
-	      (if-compiler (register-locative register))
-	      (find-block/variable context variable
-		(lambda (offset-locative)
-		  (lambda (block locative)
-		    (if-compiler
-		     (offset-locative locative (variable-offset block variable)))))
-		if-ic))))))
+	(let loop ((variable variable))
+	  (let ((indirection (variable-indirection variable)))
+	    (if indirection
+		(loop indirection)
+		(let ((register (variable/register variable)))
+		  (if register
+		      (if-compiler variable (register-locative register))
+		      (find-block/variable context variable
+			(lambda (offset-locative)
+			  (lambda (block locative)
+			    (if-compiler
+			     variable
+			     (offset-locative
+			      locative
+			      (variable-offset block variable)))))
+			(lambda (block locative)
+			  (if-ic variable block locative)))))))))))
+
 (define (find-definition-variable context lvalue)
   (find-block/variable context lvalue
     (lambda (offset-locative)

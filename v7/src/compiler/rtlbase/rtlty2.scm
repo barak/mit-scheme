@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty2.scm,v 4.6 1988/11/08 08:24:57 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty2.scm,v 4.7 1989/10/26 07:38:39 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,18 +36,21 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define-integrable rtl:expression-type first)
-(define-integrable rtl:address-register second)
-(define-integrable rtl:address-number third)
-(define-integrable rtl:invocation-pushed second)
-(define-integrable rtl:invocation-continuation third)
-(define-integrable rtl:test-expression second)
+(define-integrable rtl:expression-type car)
+(define-integrable rtl:address-register cadr)
+(define-integrable rtl:address-number caddr)
+(define-integrable rtl:test-expression cadr)
+(define-integrable rtl:invocation-pushed cadr)
+(define-integrable rtl:invocation-continuation caddr)
+
+(define-integrable (rtl:set-invocation-continuation! rtl continuation)
+  (set-car! (cddr rtl) continuation))
 
 (define (rtl:make-constant value)
   (if (unassigned-reference-trap? value)
       (rtl:make-unassigned)
       (%make-constant value)))
-
+
 ;;;; Locatives
 
 ;;; Locatives are used as an intermediate form by the code generator
@@ -85,7 +88,6 @@ MIT in each case. |#
 
 (define-integrable (rtl:interpreter-call-result:unbound?)
   (rtl:make-fetch 'INTERPRETER-CALL-RESULT:UNBOUND?))
-
 
 ;;; "Pre-simplification" locative offsets
 
@@ -131,4 +133,53 @@ MIT in each case. |#
 			     (quotient scheme-object-width 8))))
 		  BYTE))
 	(else `(OFFSET ,locative ,byte-offset BYTE))))
+
+;;; Expressions that are used in the intermediate form.
 
+(define-integrable (rtl:make-address locative)
+  `(ADDRESS ,locative))
+
+(define-integrable (rtl:make-environment locative)
+  `(ENVIRONMENT ,locative))
+
+(define-integrable (rtl:make-cell-cons expression)
+  `(CELL-CONS ,expression))
+
+(define-integrable (rtl:make-fetch locative)
+  `(FETCH ,locative))
+
+(define-integrable (rtl:make-typed-cons:pair type car cdr)
+  `(TYPED-CONS:PAIR ,type ,car ,cdr))
+
+(define-integrable (rtl:make-typed-cons:vector type elements)
+  `(TYPED-CONS:VECTOR ,type ,@elements))
+
+(define-integrable (rtl:make-typed-cons:procedure label arg-info nvars)
+  `(TYPED-CONS:PROCEDURE ,label ,arg-info ,nvars))
+
+;;; Linearizer Support
+
+(define-integrable (rtl:make-jump-statement label)
+  `(JUMP ,label))
+
+(define-integrable (rtl:make-jumpc-statement predicate label)
+  `(JUMPC ,predicate ,label))
+
+(define-integrable (rtl:make-label-statement label)
+  `(LABEL ,label))
+
+(define-integrable (rtl:negate-predicate expression)
+  `(NOT ,expression))
+
+;;; Stack
+
+(define-integrable (stack-locative-offset locative offset)
+  (rtl:locative-offset locative (stack->memory-offset offset)))
+
+(define-integrable (stack-push-address)
+  (rtl:make-pre-increment (interpreter-stack-pointer)
+			  (stack->memory-offset -1)))
+
+(define-integrable (stack-pop-address)
+  (rtl:make-post-increment (interpreter-stack-pointer)
+			   (stack->memory-offset 1)))

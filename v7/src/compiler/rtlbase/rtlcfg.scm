@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 4.7 1989/04/15 18:06:41 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 4.8 1989/10/26 07:38:24 cph Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -60,14 +60,6 @@ MIT in each case. |#
 (define (make-pblock instructions)
   (make-pnode pblock-tag instructions false false false false '() false false))
 
-(define-vector-slots rinst 0
-  rtl
-  dead-registers
-  next)
-
-(define (make-rtl-instruction rtl)
-  (vector rtl '() false))
-
 (define-integrable (statement->srtl statement)
   (snode->scfg (make-sblock (make-rtl-instruction statement))))
 
@@ -99,38 +91,39 @@ MIT in each case. |#
 			       consequent-lap-generator
 			       alternative-lap-generator)))))
 
-(define-integrable (rinst-dead-register? rinst register)
-  (memq register (rinst-dead-registers rinst)))
+(define-integrable (bblock-reversed-instructions bblock)
+  (rinst-reversed (bblock-instructions bblock)))
 
-(define (rinst-last rinst)
-  (if (rinst-next rinst)
-      (rinst-last (rinst-next rinst))
-      rinst))
-
-(define (bblock-compress! bblock)
-  (if (not (node-marked? bblock))
-      (begin
-	(node-mark! bblock)
-	(if (sblock? bblock)
-	    (let ((next (snode-next bblock)))
-	      (if next
-		  (begin
-		    (if (null? (cdr (node-previous-edges next)))
-			(begin
-			  (set-rinst-next!
-			   (rinst-last (bblock-instructions bblock))
-			   (bblock-instructions next))
-			  (set-bblock-instructions!
-			   next
-			   (bblock-instructions bblock))
-			  (snode-delete! bblock)))
-		    (bblock-compress! next))))
-	    (begin (let ((consequent (pnode-consequent bblock)))
-		     (if consequent
-			 (bblock-compress! consequent)))
-		   (let ((alternative (pnode-alternative bblock)))
-		     (if alternative
-			 (bblock-compress! alternative))))))))
+(define (bblock-compress! bblock limit-predicate)
+  (let ((walk-next?
+	 (if limit-predicate
+	     (lambda (next) (and next (not (limit-predicate next))))
+	     (lambda (next) next))))
+    (let walk-bblock ((bblock bblock))
+      (if (not (node-marked? bblock))
+	  (begin
+	    (node-mark! bblock)
+	    (if (sblock? bblock)
+		(let ((next (snode-next bblock)))
+		  (if (walk-next? next)
+		      (begin
+			(if (null? (cdr (node-previous-edges next)))
+			    (begin
+			      (set-rinst-next!
+			       (rinst-last (bblock-instructions bblock))
+			       (bblock-instructions next))
+			      (set-bblock-instructions!
+			       next
+			       (bblock-instructions bblock))
+			      (snode-delete! bblock)))
+			(walk-bblock next))))
+		(begin
+		  (let ((consequent (pnode-consequent bblock)))
+		    (if (walk-next? consequent)
+			(walk-bblock consequent)))
+		  (let ((alternative (pnode-alternative bblock)))
+		    (if (walk-next? alternative)
+			(walk-bblock alternative))))))))))
 
 (define (bblock-walk-forward bblock procedure)
   (let loop ((rinst (bblock-instructions bblock)))
@@ -187,3 +180,39 @@ MIT in each case. |#
 
 (define cfg/prefer-branch/tag
   (intern "#[(compiler)cfg/prefer-branch]"))
+
+;;;; RTL Instructions
+
+(define-vector-slots rinst 0
+  rtl
+  dead-registers
+  next)
+
+(define (make-rtl-instruction rtl)
+  (vector rtl '() false))
+
+(define-integrable (rinst-dead-register? rinst register)
+  (memq register (rinst-dead-registers rinst)))
+
+(define (rinst-last rinst)
+  (if (rinst-next rinst)
+      (rinst-last (rinst-next rinst))
+      rinst))
+
+(define (rinst-disconnect-previous! bblock rinst)
+  (let loop ((rinst* (bblock-instructions bblock)))
+    (if (eq? rinst (rinst-next rinst*))
+	(set-rinst-next! rinst* false)
+	(loop (rinst-next rinst*)))))
+
+(define (rinst-length rinst)
+  (let loop ((rinst rinst) (length 0))
+    (if rinst
+	(loop (rinst-next rinst) (1+ length))
+	length)))
+
+(define (rinst-reversed rinst)
+  (let loop ((rinst rinst) (result '()))
+    (if rinst
+	(loop (rinst-next rinst) (cons rinst result))
+	result)))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg3.scm,v 4.3 1989/03/28 20:41:57 arthur Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg3.scm,v 4.4 1989/10/26 07:35:37 cph Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -68,7 +68,11 @@ MIT in each case. |#
   (vector-ref pcfg 3))
 
 (define-integrable (make-null-cfg) false)
-(define-integrable cfg-null? false?)
+(define-integrable cfg-null? false?)
+
+(define-integrable (cfg-entry-edge cfg)
+  (node->edge (cfg-entry-node cfg)))
+
 (define-integrable (snode->scfg snode)
   (node->scfg snode set-snode-next-edge!))
 

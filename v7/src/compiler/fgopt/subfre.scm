@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/subfre.scm,v 1.2 1989/04/03 22:03:55 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/subfre.scm,v 1.3 1989/10/26 07:37:09 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -141,6 +141,11 @@ MIT in each case. |#
 
 (define (walk-lvalue lvalue walk-rvalue)
   (let ((value (lvalue-known-value lvalue)))
-    (cond ((not value) (list lvalue))
-	  ((lvalue-integrated? lvalue) (walk-rvalue value))
-	  (else (eq-set-adjoin lvalue (walk-rvalue value))))))
+    (if value
+	(if (lvalue-integrated? lvalue)
+	    (walk-rvalue value)
+	    (eq-set-adjoin lvalue (walk-rvalue value)))
+	(if (and (variable? lvalue)
+		 (variable-indirection lvalue))
+	    (walk-lvalue (variable-indirection lvalue) walk-rvalue)
+	    (list lvalue)))))

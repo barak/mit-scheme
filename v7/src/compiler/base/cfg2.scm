@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg2.scm,v 4.2 1987/12/30 06:58:00 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg2.scm,v 4.3 1989/10/26 07:35:34 cph Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,32 +39,78 @@ MIT in each case. |#
 ;;;; Editing
 
 (define (snode-delete! snode)
-  (let ((previous-edges (node-previous-edges snode))
-	(next-edge (snode-next-edge snode)))
+  (let ((next-edge (snode-next-edge snode)))
     (if next-edge
-	(let ((node (edge-right-node next-edge)))
-	  (edges-disconnect-right! previous-edges)
-	  (edge-disconnect! next-edge)
-	  (edges-connect-right! previous-edges node))
-	(edges-disconnect-right! previous-edges))))
+	(begin
+	  (edges-replace-right! (node-previous-edges snode)
+				(edge-right-node next-edge))
+	  (edge-disconnect! next-edge))
+	(edges-disconnect-right! (node-previous-edges snode)))))
 
 (define (edge-insert-snode! edge snode)
   (let ((next (edge-right-node edge)))
-    (edge-disconnect-right! edge)
-    (edge-connect-right! edge snode)
+    (edge-replace-right! edge snode)
     (create-edge! snode set-snode-next-edge! next)))
 
 (define (node-insert-snode! node snode)
-  (let ((previous-edges (node-previous-edges node)))
-    (edges-disconnect-right! previous-edges)
-    (edges-connect-right! previous-edges snode)
-    (create-edge! snode set-snode-next-edge! node)))
+  (edges-replace-right! (node-previous-edges node) snode)
+  (create-edge! snode set-snode-next-edge! node))
 
-(define-integrable (node->edge node)
-  (create-edge! false false node))
+(define-integrable (node-disconnect-on-right! node)
+  (edges-disconnect-right! (node-previous-edges node)))
 
-(define-integrable (cfg-entry-edge cfg)
-  (node->edge (cfg-entry-node cfg)))
+(define (node-disconnect-on-left! node)
+  (if (snode? node)
+      (snode-disconnect-on-left! node)
+      (pnode-disconnect-on-left! node)))
+
+(define (snode-disconnect-on-left! node)
+  (let ((edge (snode-next-edge node)))
+    (if edge
+	(edge-disconnect-left! edge))))
+
+(define (pnode-disconnect-on-left! node)
+  (let ((edge (pnode-consequent-edge node)))
+    (if edge
+	(edge-disconnect-left! edge)))
+  (let ((edge (pnode-alternative-edge node)))
+    (if edge
+	(edge-disconnect-left! edge))))
+
+(define (node-replace! old-node new-node)
+  (if (snode? old-node)
+      (snode-replace! old-node new-node)
+      (pnode-replace! old-node new-node)))
+
+(define (snode-replace! old-node new-node)
+  (node-replace-on-right! old-node new-node)
+  (snode-replace-on-left! old-node new-node))
+
+(define (pnode-replace! old-node new-node)
+  (node-replace-on-right! old-node new-node)
+  (pnode-replace-on-left! old-node new-node))
+
+(define-integrable (node-replace-on-right! old-node new-node)
+  (edges-replace-right! (node-previous-edges old-node) new-node))
+
+(define (node-replace-on-left! old-node new-node)
+  (if (snode? old-node)
+      (snode-replace-on-left! old-node new-node)
+      (pnode-replace-on-left! old-node new-node)))
+
+(define (snode-replace-on-left! old-node new-node)
+  (let ((edge (snode-next-edge old-node)))
+    (if edge
+	(edge-replace-left! edge new-node set-snode-next-edge!))))
+
+(define (pnode-replace-on-left! old-node new-node)
+  (let ((edge (pnode-consequent-edge old-node)))
+    (if edge
+	(edge-replace-left! edge new-node set-pnode-consequent-edge!)))
+  (let ((edge (pnode-alternative-edge old-node)))
+    (if edge
+	(edge-replace-left! edge new-node set-pnode-alternative-edge!))))
+
 ;;;; Previous Connections
 
 (define-integrable (node-previous=0? node)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.31 1989/09/05 22:34:52 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.32 1989/10/26 07:38:56 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -77,47 +77,58 @@ MIT in each case. |#
 (define (try-handler combination primitive entry)
   (let ((operands (combination/operands combination)))
     (and (primitive-arity-correct? primitive (length operands))
-	 (let ((result ((vector-ref entry 0) operands)))
-	   (and result
-		(transmit-values result
-		  (lambda (generator indices)
-		    (make-inliner entry generator indices))))))))
+	 (with-values (lambda () ((vector-ref entry 0) operands))
+	   (lambda (generator indices internal-close-coding?)
+	     (and generator
+		  (make-inliner entry
+				generator
+				indices
+				internal-close-coding?)))))))
 
 ;;;; Code Generator
 
 (define (combination/inline combination)
-  (let ((context (combination/context combination))
-	(inliner (combination/inliner combination)))
-    (generate/return* context
-		      (combination/continuation combination)
-		      (combination/continuation-push combination)
-		      (let ((handler (inliner/handler inliner))
-			    (generator (inliner/generator inliner))
-			    (expressions
-			     (map subproblem->expression
-				  (inliner/operands inliner))))
-			(make-return-operand
-			 (lambda ()
-			   ((vector-ref handler 1) generator
-						   context
-						   expressions))
-			 (lambda (finish)
-			   ((vector-ref handler 2) generator
-						   context
-						   expressions
-						   finish))
-			 (lambda (finish)
-			   ((vector-ref handler 3) generator
-						   context
-						   expressions
-						   finish))
-			 false)))))
-
-(define (combination/inline/simple? combination)
-  (not (memq (primitive-procedure-name
-	      (constant-value
-	       (rvalue-known-value (combination/operator combination))))
-	     non-simple-primitive-names)))
+  (let ((inliner (combination/inliner combination)))
+    (let ((finish
+	   (lambda (context operand->expression)
+	     (generate/return*
+	      context
+	      (combination/continuation combination)
+	      (combination/continuation-push combination)
+	      (let ((handler (inliner/handler inliner))
+		    (generator (inliner/generator inliner))
+		    (expressions
+		     (map operand->expression (inliner/operands inliner))))
+		(make-return-operand (lambda ()
+				       ((vector-ref handler 1) generator
+							       combination
+							       expressions))
+				     (lambda (finish)
+				       ((vector-ref handler 2) generator
+							       combination
+							       expressions
+							       finish))
+				     (lambda (finish)
+				       ((vector-ref handler 3) generator
+							       combination
+							       expressions
+							       finish))
+				     false))))))
+      (if (and (inliner/internal-close-coding? inliner)
+	       (combination/reduction? combination))
+	  (let ((prefix (generate/invocation-prefix combination))
+		(invocation
+		 (finish
+		  ;; This value of context is a special kludge.  See
+		  ;; `generate/return*' for the details.
+		  (length (inliner/operands inliner))
+		  index->stack-reference)))
+	    (if prefix
+		(scfg*scfg->scfg!
+		 (prefix (combination/frame-size combination) 0)
+		 invocation)
+		invocation))
+	  (finish (combination/context combination) subproblem->expression)))))
 
 (define (subproblem->expression subproblem)
   (let ((rvalue (subproblem-rvalue subproblem)))
@@ -138,34 +149,51 @@ MIT in each case. |#
 	     (rtl:make-fetch
 	      (continuation*/register
 	       (subproblem-continuation subproblem))))))))
+
+(define (index->stack-reference index)
+  (rtl:make-fetch
+   (stack-locative-offset (rtl:make-fetch register:stack-pointer) index)))
+
+(define-integrable (combination/reduction? combination)
+  (return-operator/reduction? (combination/continuation combination)))
 
-(define (invoke/effect->effect generator context expressions)
-  (generator context expressions false))
+(define (invoke/effect->effect generator combination expressions)
+  (generator combination expressions false))
 
-(define (invoke/predicate->value generator context expressions finish)
-  (generator context expressions
-    (lambda (pcfg)
-      (let ((temporary (rtl:make-pseudo-register)))
-	;; Force assignments to be made first.
-	(let ((consequent
-	       (rtl:make-assignment temporary (rtl:make-constant true)))
-	      (alternative
-	       (rtl:make-assignment temporary (rtl:make-constant false))))
-	  (scfg*scfg->scfg!
-	   (pcfg*scfg->scfg! pcfg consequent alternative)
-	   (finish (rtl:make-fetch temporary))))))))
-
-(define (invoke/value->effect generator context expressions)
-  generator context expressions
-  (make-null-cfg))
-
-(define (invoke/value->predicate generator context expressions finish)
-  (generator context expressions
+(define (invoke/effect->predicate generator combination expressions finish)
+  (generator combination expressions
     (lambda (expression)
       (finish (rtl:make-true-test expression)))))
 
-(define (invoke/value->value generator context expressions finish)
-  (generator context expressions finish))
+(define (invoke/effect->value generator combination expressions finish)
+  (generator combination expressions finish))
+
+(define (invoke/predicate->effect generator combination expressions)
+  generator combination expressions
+  (make-null-cfg))
+
+(define (invoke/predicate->predicate generator combination expressions finish)
+  (generator combination expressions finish))
+
+(define (invoke/predicate->value generator combination expressions finish)
+  (generator combination expressions (finish/predicate->value finish)))
+
+(define ((finish/predicate->value finish) pcfg)
+  (pcfg*scfg->scfg! pcfg
+		    (finish (rtl:make-constant true))
+		    (finish (rtl:make-constant false))))
+
+(define (invoke/value->effect generator combination expressions)
+  generator combination expressions
+  (make-null-cfg))
+
+(define (invoke/value->predicate generator combination expressions finish)
+  (generator combination expressions
+    (lambda (expression)
+      (finish (rtl:make-true-test expression)))))
+
+(define (invoke/value->value generator combination expressions finish)
+  (generator combination expressions finish))
 
 ;;;; Definers
 
@@ -191,55 +219,56 @@ MIT in each case. |#
 
 (define define-open-coder/effect
   (open-coder-definer invoke/effect->effect
-		      invoke/value->predicate
-		      invoke/value->value))
+		      invoke/effect->predicate
+		      invoke/effect->value))
 
 (define define-open-coder/predicate
-  (open-coder-definer invoke/value->effect
-		      invoke/value->value
+  (open-coder-definer invoke/predicate->effect
+		      invoke/predicate->predicate
 		      invoke/predicate->value))
+
+(define define-open-coder/generic-predicate
+  (open-coder-definer
+   invoke/predicate->effect
+   (lambda (generator combination expressions finish)
+     (generator combination expressions true finish))
+   (lambda (generator combination expressions finish)
+     (generator combination expressions false finish))))
 
 (define define-open-coder/value
   (open-coder-definer invoke/value->effect
 		      invoke/value->predicate
 		      invoke/value->value))
-
-(define (define-non-simple-primitive! name)
-  (if (not (memq name non-simple-primitive-names))
-      (set! non-simple-primitive-names (cons name non-simple-primitive-names)))
-  unspecific)
-
-(define non-simple-primitive-names
-  '())
 
 ;;;; Operand Filters
 
-(define (simple-open-coder generator operand-indices)
+(define (simple-open-coder generator operand-indices internal-close-coding?)
   (lambda (operands)
     operands
-    (return-2 generator operand-indices)))
+    (values generator operand-indices internal-close-coding?)))
 
 (define (constant-filter predicate)
-  (lambda (generator constant-index operand-indices)
+  (lambda (generator constant-index operand-indices internal-close-coding?)
     (lambda (operands)
       (let ((operand (rvalue-known-value (list-ref operands constant-index))))
-	(and operand
-	     (rvalue/constant? operand)
-	     (let ((value (constant-value operand)))
-	       (and (predicate value)
-		    (return-2 (generator value) operand-indices))))))))
+	(if (and operand
+		 (rvalue/constant? operand)
+		 (predicate (constant-value operand)))
+	    (values (generator (constant-value operand))
+		    operand-indices
+		    internal-close-coding?)
+	    (values false false false))))))
 
 (define filter/nonnegative-integer
-  (constant-filter
-   (lambda (value) (and (integer? value) (not (negative? value))))))
+  (constant-filter exact-nonnegative-integer?))
 
 (define filter/positive-integer
   (constant-filter
-   (lambda (value) (and (integer? value) (positive? value)))))
+   (lambda (value) (and (exact-integer? value) (positive? value)))))
 
 ;;;; Constraint Checkers
 
-(define (open-code:with-checks context checks non-error-cfg error-finish
+(define (open-code:with-checks combination checks non-error-cfg error-finish
 			       primitive-name expressions)
   (let ((checks (list-transform-negative checks cfg-null?)))
     (if (null? checks)
@@ -248,14 +277,24 @@ MIT in each case. |#
 	;; it creates some unreachable code which we can't easily
 	;; remove from the output afterwards.
 	(let ((error-cfg
-	       (with-values (lambda () (generate-continuation-entry context))
-		 (lambda (label setup cleanup)
-		   (scfg-append!
-		    (generate-primitive primitive-name expressions setup label)
-		    cleanup
-		    (if error-finish
-			(error-finish (rtl:make-fetch register:value))
-			(make-null-cfg)))))))
+	       (if (combination/reduction? combination)
+		   (let ((scfg
+			  (generate-primitive primitive-name '() false false)))
+		     (make-scfg (cfg-entry-node scfg) '()))
+		   (with-values
+		       (lambda ()
+			 (generate-continuation-entry
+			  (combination/context combination)))
+		     (lambda (label setup cleanup)
+		       (scfg-append!
+			(generate-primitive primitive-name
+					    expressions
+					    setup
+					    label)
+			cleanup
+			(if error-finish
+			    (error-finish (rtl:make-fetch register:value))
+			    (make-null-cfg))))))))
 	  (let loop ((checks checks))
 	    (if (null? checks)
 		non-error-cfg
@@ -265,14 +304,16 @@ MIT in each case. |#
 (define (generate-primitive name argument-expressions
 			    continuation-setup continuation-label)
   (scfg*scfg->scfg!
-   (let loop ((args argument-expressions))
-     (if (null? args)
-	 (scfg*scfg->scfg! continuation-setup
-			   (rtl:make-push-return continuation-label))
-	 (load-temporary-register scfg*scfg->scfg! (car args)
-	   (lambda (temporary)
-	     (scfg*scfg->scfg! (loop (cdr args))
-			       (rtl:make-push temporary))))))
+   (if continuation-label
+       (let loop ((args argument-expressions))
+	 (if (null? args)
+	     (scfg*scfg->scfg! continuation-setup
+			       (rtl:make-push-return continuation-label))
+	     (load-temporary-register scfg*scfg->scfg! (car args)
+	       (lambda (temporary)
+		 (scfg*scfg->scfg! (loop (cdr args))
+				   (rtl:make-push temporary))))))
+       (make-null-cfg))
    (let ((primitive (make-primitive-procedure name true)))
      ((or (special-primitive-handler primitive)
 	  rtl:make-invocation:primitive)
@@ -331,11 +372,11 @@ MIT in each case. |#
 
 (define (indexed-memory-reference type length-expression index-locative)
   (lambda (name value-type generator)
-    (lambda (context expressions finish)
+    (lambda (combination expressions finish)
       (let ((object (car expressions))
 	    (index (cadr expressions)))
 	(open-code:with-checks
-	 context
+	 combination
 	 (cons*
 	  (open-code:type-check object type)
 	  (open-code:type-check index (ucode-type fixnum))
@@ -417,12 +458,16 @@ MIT in each case. |#
   (rtl:make-assignment locative (rtl:make-char->ascii value)))
 
 (define (assignment-finisher make-assignment make-fetch)
+  make-fetch				;ignore
   (lambda (locative value finish)
     (let ((assignment (make-assignment locative value)))
       (if finish
+#|	  
 	  (load-temporary-register scfg*scfg->scfg! (make-fetch locative)
 	    (lambda (temporary)
 	      (scfg*scfg->scfg! assignment (finish temporary))))
+|#
+	  (scfg*scfg->scfg! assignment (finish (rtl:make-constant unspecific)))
 	  assignment))))
 
 (define finish-vector-assignment
@@ -435,15 +480,16 @@ MIT in each case. |#
 
 (define-open-coder/predicate 'NULL?
   (simple-open-coder
-   (lambda (context expressions finish)
-     context
+   (lambda (combination expressions finish)
+     combination
      (finish (pcfg-invert (rtl:make-true-test (car expressions)))))
-   '(0)))
+   '(0)
+   false))
 
 (let ((open-code/type-test
        (lambda (type)
-	 (lambda (context expressions finish)
-	   context
+	 (lambda (combination expressions finish)
+	   combination
 	   (finish
 	    (rtl:make-type-test (rtl:make-object->type (car expressions))
 				type))))))
@@ -451,46 +497,49 @@ MIT in each case. |#
   (let ((simple-type-test
 	 (lambda (name type)
 	   (define-open-coder/predicate name
-	     (simple-open-coder (open-code/type-test type) '(0))))))
+	     (simple-open-coder (open-code/type-test type) '(0) false)))))
     (simple-type-test 'PAIR? (ucode-type pair))
     (simple-type-test 'STRING? (ucode-type string))
     (simple-type-test 'BIT-STRING? (ucode-type vector-1b)))
 
   (define-open-coder/predicate 'OBJECT-TYPE?
-    (filter/nonnegative-integer open-code/type-test 0 '(1))))
+    (filter/nonnegative-integer open-code/type-test 0 '(1) false)))
 
 (define-open-coder/predicate 'EQ?
   (simple-open-coder
-   (lambda (context expressions finish)
-     context
+   (lambda (combination expressions finish)
+     combination
      (finish (rtl:make-eq-test (car expressions) (cadr expressions))))
-   '(0 1)))
+   '(0 1)
+   false))
 
 (let ((open-code/pair-cons
        (lambda (type)
-	 (lambda (context expressions finish)
-	   context
+	 (lambda (combination expressions finish)
+	   combination
 	   (finish
 	    (rtl:make-typed-cons:pair (rtl:make-constant type)
 				      (car expressions)
 				      (cadr expressions)))))))
 
   (define-open-coder/value 'CONS
-    (simple-open-coder (open-code/pair-cons (ucode-type pair)) '(0 1)))
+    (simple-open-coder (open-code/pair-cons (ucode-type pair)) '(0 1) false))
 
   (define-open-coder/value 'SYSTEM-PAIR-CONS
-    (filter/nonnegative-integer open-code/pair-cons 0 '(1 2))))
+    (filter/nonnegative-integer open-code/pair-cons 0 '(1 2) false)))
 
 (define-open-coder/value 'VECTOR
   (lambda (operands)
-    (and (< (length operands) 32)
-	 (return-2 (lambda (context expressions finish)
-		     context
-		     (finish
-		      (rtl:make-typed-cons:vector
-		       (rtl:make-constant (ucode-type vector))
-		       expressions)))
-		   (all-operand-indices operands)))))
+    (if (< (length operands) 32)
+	(values (lambda (combination expressions finish)
+		  combination
+		  (finish
+		   (rtl:make-typed-cons:vector
+		    (rtl:make-constant (ucode-type vector))
+		    expressions)))
+		(all-operand-indices operands)
+		false)
+	(values false false false))))
 
 (define (all-operand-indices operands)
   (let loop ((operands operands) (index 0))
@@ -508,10 +557,10 @@ MIT in each case. |#
 
 (define-open-coder/value 'STRING-ALLOCATE
   (simple-open-coder
-   (lambda (context expressions finish)
+   (lambda (combination expressions finish)
      (let ((length (car expressions)))
        (open-code:with-checks
-	context
+	combination
 	(list (open-code:nonnegative-check length))
 	(finish
 	 (rtl:make-typed-cons:string
@@ -520,58 +569,83 @@ MIT in each case. |#
 	finish
 	'STRING-ALLOCATE
 	expressions)))
-   '(0)))
+   '(0)
+   compiler:generate-range-checks?))
 |#
 
-(let ((make-fixed-ref
+(let ((user-ref
        (lambda (name make-fetch type index)
-	 (lambda (context expressions finish)
+	 (define-open-coder/value name
+	   (simple-open-coder
+	    (lambda (combination expressions finish)
+	      (let ((expression (car expressions)))
+		(open-code:with-checks
+		 combination
+		 (list (open-code:type-check expression type))
+		 (finish (make-fetch (rtl:locative-offset expression index)))
+		 finish
+		 name
+		 expressions)))
+	    '(0)
+	    compiler:generate-type-checks?)))))
+  (user-ref 'CELL-CONTENTS rtl:make-fetch (ucode-type cell) 0)
+  (user-ref 'VECTOR-LENGTH rtl:length-fetch (ucode-type vector) 0)
+  (user-ref 'STRING-LENGTH rtl:length-fetch (ucode-type string) 1)
+  (user-ref 'BIT-STRING-LENGTH rtl:length-fetch (ucode-type vector-1b) 1)
+  (user-ref 'CAR rtl:make-fetch (ucode-type pair) 0)
+  (user-ref 'CDR rtl:make-fetch (ucode-type pair) 1))
+
+(let ((system-ref
+       (lambda (name make-fetch index)
+	 (define-open-coder/value name
+	   (simple-open-coder
+	    (lambda (combination expressions finish)
+	      combination
+	      (finish
+	       (make-fetch (rtl:locative-offset (car expressions) index))))
+	    '(0)
+	    false)))))
+  (system-ref 'SYSTEM-PAIR-CAR rtl:make-fetch 0)
+  (system-ref 'SYSTEM-PAIR-CDR rtl:make-fetch 1)
+  (system-ref 'SYSTEM-HUNK3-CXR0 rtl:make-fetch 0)
+  (system-ref 'SYSTEM-HUNK3-CXR1 rtl:make-fetch 1)
+  (system-ref 'SYSTEM-HUNK3-CXR2 rtl:make-fetch 2))
+
+(let ((make-fixed-ref
+       (lambda (name index)
+	 (lambda (combination expressions finish)
 	   (let ((expression (car expressions)))
 	     (open-code:with-checks
-	      context
-	      (if type (list (open-code:type-check expression type)) '())
-	      (finish (make-fetch (rtl:locative-offset expression index)))
+	      combination
+	      (list (open-code:type-check expression (ucode-type pair)))
+	      (finish (rtl:make-fetch (rtl:locative-offset expression index)))
 	      finish
 	      name
-	      expressions)))))
-      (standard-def
-       (lambda (name fixed-ref)
-	 (define-open-coder/value name
-	   (simple-open-coder fixed-ref '(0))))))
-  (let ((user-ref
-	 (lambda (name make-fetch type index)
-	   (standard-def name (make-fixed-ref name make-fetch type index)))))
-    (user-ref 'CELL-CONTENTS rtl:make-fetch (ucode-type cell) 0)
-    (user-ref 'VECTOR-LENGTH rtl:length-fetch (ucode-type vector) 0)
-    (user-ref 'STRING-LENGTH rtl:length-fetch (ucode-type string) 1)
-    (user-ref 'BIT-STRING-LENGTH rtl:length-fetch (ucode-type vector-1b) 1)
-    (user-ref 'SYSTEM-PAIR-CAR rtl:make-fetch false 0)
-    (user-ref 'SYSTEM-PAIR-CDR rtl:make-fetch false 1)
-    (user-ref 'SYSTEM-HUNK3-CXR0 rtl:make-fetch false 0)
-    (user-ref 'SYSTEM-HUNK3-CXR1 rtl:make-fetch false 1)
-    (user-ref 'SYSTEM-HUNK3-CXR2 rtl:make-fetch false 2)
-    (user-ref 'SYSTEM-VECTOR-SIZE rtl:vector-length-fetch false 0))
-  (let ((car-ref (make-fixed-ref 'CAR rtl:make-fetch (ucode-type pair) 0))
-	(cdr-ref (make-fixed-ref 'CDR rtl:make-fetch (ucode-type pair) 1)))
-    (standard-def 'CAR car-ref)
-    (standard-def 'CDR cdr-ref)
+	      expressions))))))
+  (let ((car-ref (make-fixed-ref 'CAR 0))
+	(cdr-ref (make-fixed-ref 'CDR 1)))
     (define-open-coder/value 'GENERAL-CAR-CDR
       (filter/positive-integer
        (lambda (pattern)
-	 (lambda (context expressions finish)
-	   context
-	   (finish
-	    (let loop ((pattern pattern) (expression (car expressions)))
-	      (if (= pattern 1)
-		  expression
-		  ((if (odd? pattern) car-ref cdr-ref)
-		   context
-		   (list expression)
-		   (lambda (expression)
-		     (loop (quotient pattern 2) expression))))))))
+	 (if (= pattern 1)
+	     (lambda (combination expressions finish)
+	       combination
+	       (finish (car expressions)))
+	     (lambda (combination expressions finish)
+	       (let loop ((pattern pattern)
+			  (expression (car expressions)))
+		 (let ((new-pattern (quotient pattern 2)))
+		   ((if (odd? pattern) car-ref cdr-ref)
+		    combination
+		    (list expression)
+		    (if (= new-pattern 1)
+			finish
+			(lambda (expression)
+			  (loop new-pattern expression)))))))))
        1
-       '(0)))))
-
+       '(0)
+       compiler:generate-type-checks?))))
+
 (for-each (lambda (name)
 	    (define-open-coder/value name
 	      (simple-open-coder
@@ -579,9 +653,11 @@ MIT in each case. |#
 		 (lambda (locative expressions finish)
 		   expressions
 		   (finish (rtl:make-fetch locative))))
-	       '(0 1))))
+	       '(0 1)
+	       (or compiler:generate-type-checks?
+		   compiler:generate-range-checks?))))
 	  '(VECTOR-REF SYSTEM-VECTOR-REF))
-
+
 ;; For now SYSTEM-XXXX side effect procedures are considered
 ;; dangerous to the garbage collector's health.  Some day we will
 ;; again be able to enable them.
@@ -590,10 +666,10 @@ MIT in each case. |#
        (lambda (name type index)
 	 (define-open-coder/effect name
 	   (simple-open-coder
-	    (lambda (context expressions finish)
+	    (lambda (combination expressions finish)
 	      (let ((object (car expressions)))
 		(open-code:with-checks
-		 context
+		 combination
 		 (if type (list (open-code:type-check object type)) '())
 		 (finish-vector-assignment (rtl:locative-offset object index)
 					   (cadr expressions)
@@ -601,7 +677,8 @@ MIT in each case. |#
 		 finish
 		 name
 		 expressions)))
-	    '(0 1))))))
+	    '(0 1)
+	    compiler:generate-type-checks?)))))
   (fixed-assignment 'SET-CAR! (ucode-type pair) 0)
   (fixed-assignment 'SET-CDR! (ucode-type pair) 1)
   (fixed-assignment 'SET-CELL-CONTENTS! (ucode-type cell) 0)
@@ -621,17 +698,19 @@ MIT in each case. |#
 		   (finish-vector-assignment locative
 					     (caddr expressions)
 					     finish)))
-	       '(0 1 2))))
+	       '(0 1 2)
+	       (or compiler:generate-type-checks?
+		   compiler:generate-range-checks?))))
 	  '(VECTOR-SET! #| SYSTEM-VECTOR-SET! |#))
 
 ;;;; Character/String Primitives
 
 (define-open-coder/value 'CHAR->INTEGER
   (simple-open-coder
-   (lambda (context expressions finish)
+   (lambda (combination expressions finish)
      (let ((char (car expressions)))
        (open-code:with-checks
-	context
+	combination
 	(list (open-code:type-check char (ucode-type character)))
 	(finish
 	 (rtl:make-cons-pointer
@@ -640,7 +719,8 @@ MIT in each case. |#
 	finish
 	'CHAR->INTEGER
 	expressions)))
-   '(0)))
+   '(0)
+   compiler:generate-type-checks?))
 
 (define-open-coder/value 'STRING-REF
   (simple-open-coder
@@ -648,29 +728,34 @@ MIT in each case. |#
      (lambda (locative expressions finish)
        expressions
        (finish (rtl:string-fetch locative))))
-   '(0 1)))
+   '(0 1)
+   (or compiler:generate-type-checks?
+       compiler:generate-range-checks?)))
 
 (define-open-coder/effect 'STRING-SET!
   (simple-open-coder
    (string-memory-reference 'STRING-SET! (ucode-type character)
      (lambda (locative expressions finish)
        (finish-string-assignment locative (caddr expressions) finish)))
-   '(0 1 2)))
+   '(0 1 2)
+   (or compiler:generate-type-checks?
+       compiler:generate-range-checks?)))
 
 ;;;; Fixnum Arithmetic
 
 (for-each (lambda (fixnum-operator)
 	    (define-open-coder/value fixnum-operator
 	      (simple-open-coder
-	       (lambda (context expressions finish)
-		 context
+	       (lambda (combination expressions finish)
+		 combination
 		 (finish
 		  (rtl:make-fixnum->object
 		   (rtl:make-fixnum-2-args
 		    fixnum-operator
 		    (rtl:make-object->fixnum (car expressions))
 		    (rtl:make-object->fixnum (cadr expressions))))))
-	       '(0 1))))
+	       '(0 1)
+	       false)))
 	  '(PLUS-FIXNUM
 	    MINUS-FIXNUM
 	    MULTIPLY-FIXNUM
@@ -680,39 +765,42 @@ MIT in each case. |#
 (for-each (lambda (fixnum-operator)
 	    (define-open-coder/value fixnum-operator
 	      (simple-open-coder
-	       (lambda (context expressions finish)
-		 context
+	       (lambda (combination expressions finish)
+		 combination
 		 (finish
 		  (rtl:make-fixnum->object
 		   (rtl:make-fixnum-1-arg
 		    fixnum-operator
 		    (rtl:make-object->fixnum (car expressions))))))
-	       '(0))))
+	       '(0)
+	       false)))
 	  '(ONE-PLUS-FIXNUM MINUS-ONE-PLUS-FIXNUM))
 
 (for-each (lambda (fixnum-pred)
 	    (define-open-coder/predicate fixnum-pred
 	      (simple-open-coder
-	       (lambda (context expressions finish)
-		 context
+	       (lambda (combination expressions finish)
+		 combination
 		 (finish
 		  (rtl:make-fixnum-pred-2-args
 		   fixnum-pred
 		   (rtl:make-object->fixnum (car expressions))
 		   (rtl:make-object->fixnum (cadr expressions)))))
-	       '(0 1))))
+	       '(0 1)
+	       false)))
 	  '(EQUAL-FIXNUM? LESS-THAN-FIXNUM? GREATER-THAN-FIXNUM?))
 
 (for-each (lambda (fixnum-pred)
 	    (define-open-coder/predicate fixnum-pred
 	      (simple-open-coder
-	       (lambda (context expressions finish)
-		 context
+	       (lambda (combination expressions finish)
+		 combination
 		 (finish
 		  (rtl:make-fixnum-pred-1-arg
 		   fixnum-pred
 		   (rtl:make-object->fixnum (car expressions)))))
-	       '(0))))
+	       '(0)
+	       false)))
 	  '(ZERO-FIXNUM? POSITIVE-FIXNUM? NEGATIVE-FIXNUM?))
 
 ;;; Floating Point Arithmetic
@@ -724,10 +812,10 @@ MIT in each case. |#
        (lambda (flonum-operator)
 	 (define-open-coder/value flonum-operator
 	   (simple-open-coder
-	    (lambda (context expressions finish)
+	    (lambda (combination expressions finish)
 	      (let ((argument (car expressions)))
 		(open-code:with-checks
-		 context
+		 combination
 		 (list (open-code:type-check argument (ucode-type flonum)))
 		 (finish (rtl:make-float->object
 			  (rtl:make-flonum-1-arg
@@ -737,19 +825,21 @@ MIT in each case. |#
 		 finish
 		 flonum-operator
 		 expressions)))
-	    '(0))))
-       '(SINE-FLONUM COSINE-FLONUM ATAN-FLONUM EXP-FLONUM
-		     LN-FLONUM SQRT-FLONUM TRUNCATE-FLONUM))
+	    '(0)
+	    compiler:generate-type-checks?)))
+       '(FLONUM-NEGATE FLONUM-ABS FLONUM-SIN FLONUM-COS FLONUM-TAN FLONUM-ASIN
+	 FLONUM-ACOS FLONUM-ATAN FLONUM-EXP FLONUM-LOG FLONUM-SQRT FLONUM-ROUND
+	 FLONUM-TRUNCATE))
 
       (for-each
        (lambda (flonum-operator)
 	 (define-open-coder/value flonum-operator
 	   (simple-open-coder
-	    (lambda (context expressions finish)
+	    (lambda (combination expressions finish)
 	      (let ((arg1 (car expressions))
 		    (arg2 (cadr expressions)))
 		(open-code:with-checks
-		 context
+		 combination
 		 (list (open-code:type-check arg1 (ucode-type flonum))
 		       (open-code:type-check arg2 (ucode-type flonum)))
 		 (finish
@@ -763,17 +853,18 @@ MIT in each case. |#
 		 finish
 		 flonum-operator
 		 expressions)))
-	    '(0 1))))
-       '(PLUS-FLONUM MINUS-FLONUM MULTIPLY-FLONUM DIVIDE-FLONUM))
-
+	    '(0 1)
+	    compiler:generate-type-checks?)))
+       '(FLONUM-ADD FLONUM-SUBTRACT FLONUM-MULTIPLY FLONUM-DIVIDE))
+
       (for-each
        (lambda (flonum-pred)
 	 (define-open-coder/predicate flonum-pred
 	   (simple-open-coder
-	    (lambda (context expressions finish)
+	    (lambda (combination expressions finish)
 	      (let ((argument (car expressions)))
 		(open-code:with-checks
-		 context
+		 combination
 		 (list (open-code:type-check argument (ucode-type flonum)))
 		 (finish
 		  (rtl:make-flonum-pred-1-arg
@@ -784,18 +875,19 @@ MIT in each case. |#
 		   (finish (rtl:make-true-test expression)))
 		 flonum-pred
 		 expressions)))
-	    '(0))))
-       '(ZERO-FLONUM? POSITIVE-FLONUM? NEGATIVE-FLONUM?))
+	    '(0)
+	    compiler:generate-type-checks?)))
+       '(FLONUM-ZERO? FLONUM-POSITIVE? FLONUM-NEGATIVE?))
 
       (for-each
        (lambda (flonum-pred)
 	 (define-open-coder/predicate flonum-pred
 	   (simple-open-coder
-	    (lambda (context expressions finish)
+	    (lambda (combination expressions finish)
 	      (let ((arg1 (car expressions))
 		    (arg2 (cadr expressions)))
 		(open-code:with-checks
-		 context
+		 combination
 		 (list (open-code:type-check arg1 (ucode-type flonum))
 		       (open-code:type-check arg2 (ucode-type flonum)))
 		 (finish (rtl:make-flonum-pred-2-args
@@ -808,52 +900,64 @@ MIT in each case. |#
 		   (finish (rtl:make-true-test expression)))
 		 flonum-pred
 		 expressions)))
-	    '(0 1))))
-       '(EQUAL-FLONUM? LESS-THAN-FLONUM? GREATER-THAN-FLONUM?))
+	    '(0 1)
+	    compiler:generate-type-checks?)))
+       '(FLONUM-EQUAL? FLONUM-LESS? FLONUM-GREATER?))
+
+      ;; end COMPILER:OPEN-CODE-FLOATING-POINT-ARITHMETIC?
       ))
 
 ;;; Generic arithmetic
 
-(define (generic-binary-generator generic-op is-pred?)
-  (define-non-simple-primitive! generic-op)
-  ((if is-pred? define-open-coder/predicate define-open-coder/value)
-   generic-op
-   (simple-open-coder
-    (let ((fix-op (generic->fixnum-op generic-op)))
-      (lambda (context expressions finish)
-	(let ((op1 (car expressions))
-	      (op2 (cadr expressions))
-	      (give-it-up
-	       (generic-default generic-op is-pred?
-				context expressions finish)))
-	  (if is-pred?
-	      (generate-binary-type-test (ucode-type fixnum) op1 op2
-		give-it-up
-		(lambda ()
-		  (finish
-		   (if (eq? fix-op 'EQUAL-FIXNUM?)
-		       ;; This produces better code.
-		       (rtl:make-eq-test op1 op2)
-		       (rtl:make-fixnum-pred-2-args
-			fix-op
-			(rtl:make-object->fixnum op1)
-			(rtl:make-object->fixnum op2))))))
-	      (let ((give-it-up (give-it-up)))
-		(generate-binary-type-test (ucode-type fixnum) op1 op2
-		  (lambda ()
-		    give-it-up)
-		  (lambda ()
-		    (load-temporary-register scfg*scfg->scfg!
-					     (rtl:make-fixnum-2-args
-					      fix-op
-					      (rtl:make-object->fixnum op1)
-					      (rtl:make-object->fixnum op2))
-		      (lambda (fix-temp)
-			(pcfg*scfg->scfg!
-			 (pcfg/prefer-alternative! (rtl:make-overflow-test))
-			 give-it-up
-			 (finish (rtl:make-fixnum->object fix-temp))))))))))))
-    '(0 1))))
+(define (generic-binary-operator generic-op)
+  (define-open-coder/value generic-op
+    (simple-open-coder
+     (let ((fix-op (generic->fixnum-op generic-op)))
+       (lambda (combination expressions finish)
+	 (let ((op1 (car expressions))
+	       (op2 (cadr expressions))
+	       (give-it-up
+		(generic-default generic-op combination expressions
+				 false finish)))
+	   (let ((give-it-up (give-it-up)))
+	     (generate-binary-type-test (ucode-type fixnum) op1 op2
+	       (lambda ()
+		 give-it-up)
+	       (lambda ()
+		 (load-temporary-register scfg*scfg->scfg!
+					  (rtl:make-fixnum-2-args
+					   fix-op
+					   (rtl:make-object->fixnum op1)
+					   (rtl:make-object->fixnum op2))
+		   (lambda (fix-temp)
+		     (pcfg*scfg->scfg!
+		      (pcfg/prefer-alternative! (rtl:make-overflow-test))
+		      give-it-up
+		      (finish (rtl:make-fixnum->object fix-temp)))))))))))
+     '(0 1)
+     true)))
+
+(define (generic-binary-predicate generic-op)
+  (define-open-coder/generic-predicate generic-op
+    (simple-open-coder
+     (let ((fix-op (generic->fixnum-op generic-op)))
+       (lambda (combination expressions predicate? finish)
+	 (let ((op1 (car expressions))
+	       (op2 (cadr expressions)))
+	   (generate-binary-type-test (ucode-type fixnum) op1 op2
+	     (generic-default generic-op combination expressions predicate?
+			      finish)
+	     (lambda ()
+	       ((if predicate? finish (finish/predicate->value finish))
+		(if (eq? fix-op 'EQUAL-FIXNUM?)
+		    ;; This produces better code.
+		    (rtl:make-eq-test op1 op2)
+		    (rtl:make-fixnum-pred-2-args
+		     fix-op
+		     (rtl:make-object->fixnum op1)
+		     (rtl:make-object->fixnum op2)))))))))
+     '(0 1)
+     true)))
 
 (define (generate-binary-type-test type op1 op2 give-it-up do-it)
   (generate-type-test type op1
@@ -875,40 +979,47 @@ MIT in each case. |#
 			      (pcfg*scfg->scfg! test* (do-it) give-it-up)
 			      give-it-up)))))))
 
-(define (generic-unary-generator generic-op is-pred?)
-  (define-non-simple-primitive! generic-op)
-  ((if is-pred? define-open-coder/predicate define-open-coder/value)
-   generic-op
-   (simple-open-coder
-    (let ((fix-op (generic->fixnum-op generic-op)))
-      (lambda (context expressions finish)
-	(let ((op (car expressions))
-	      (give-it-up
-	       (generic-default generic-op is-pred?
-				context expressions finish)))
-	  (if is-pred?
-	      (generate-unary-type-test (ucode-type fixnum) op
-		give-it-up
-		(lambda ()
-		  (finish
-		   (rtl:make-fixnum-pred-1-arg
-		    fix-op
-		    (rtl:make-object->fixnum op)))))
-	      (let ((give-it-up (give-it-up)))
-		(generate-unary-type-test (ucode-type fixnum) op
-		  (lambda ()
-		    give-it-up)
-		  (lambda ()
-		    (load-temporary-register scfg*scfg->scfg!
-					     (rtl:make-fixnum-1-arg
-					      fix-op
-					      (rtl:make-object->fixnum op))
-		      (lambda (fix-temp)
-			(pcfg*scfg->scfg!
-			 (pcfg/prefer-alternative! (rtl:make-overflow-test))
-			 give-it-up
-			 (finish (rtl:make-fixnum->object fix-temp))))))))))))
-    '(0))))
+(define (generic-unary-operator generic-op)
+  (define-open-coder/value generic-op
+    (simple-open-coder
+     (let ((fix-op (generic->fixnum-op generic-op)))
+       (lambda (combination expressions finish)
+	 (let ((op (car expressions)))
+	   (let ((give-it-up
+		  ((generic-default generic-op combination expressions
+				    false finish))))
+	     (generate-unary-type-test (ucode-type fixnum) op
+	       (lambda ()
+		 give-it-up)
+	       (lambda ()
+		 (load-temporary-register scfg*scfg->scfg!
+					  (rtl:make-fixnum-1-arg
+					   fix-op
+					   (rtl:make-object->fixnum op))
+		   (lambda (fix-temp)
+		     (pcfg*scfg->scfg!
+		      (pcfg/prefer-alternative! (rtl:make-overflow-test))
+		      give-it-up
+		      (finish (rtl:make-fixnum->object fix-temp)))))))))))
+     '(0)
+     true)))
+
+(define (generic-unary-predicate generic-op)
+  (define-open-coder/generic-predicate generic-op
+    (simple-open-coder
+     (let ((fix-op (generic->fixnum-op generic-op)))
+       (lambda (combination expressions predicate? finish)
+	 (let ((op (car expressions)))
+	   (generate-unary-type-test (ucode-type fixnum) op
+	     (generic-default generic-op combination expressions predicate?
+			      finish)
+	     (lambda ()
+	       ((if predicate? finish (finish/predicate->value finish))
+		(rtl:make-fixnum-pred-1-arg
+		 fix-op
+		 (rtl:make-object->fixnum op))))))))
+     '(0)
+     true)))
 
 (define (generate-unary-type-test type op give-it-up do-it)
   (generate-type-test type op
@@ -917,60 +1028,55 @@ MIT in each case. |#
     (lambda (test)
       (pcfg*scfg->scfg! test (do-it) (give-it-up)))))
 
-(define (generic-default generic-op is-pred? context expressions finish)
+(define (generic-default generic-op combination expressions predicate? finish)
   (lambda ()
-    (with-values (lambda () (generate-continuation-entry context))
-      (lambda (label setup cleanup)
-	(scfg-append!
-	 (generate-primitive generic-op expressions setup label)
-	 cleanup
-	 (if is-pred?
-	     (finish (rtl:make-true-test (rtl:make-fetch register:value)))
-	     (expression-simplify-for-statement (rtl:make-fetch register:value)
-						finish)))))))
+    (if (combination/reduction? combination)
+	(let ((scfg (generate-primitive generic-op '() false false)))
+	  (make-scfg (cfg-entry-node scfg) '()))
+	(with-values
+	    (lambda ()
+	      (generate-continuation-entry (combination/context combination)))
+	  (lambda (label setup cleanup)
+	    (scfg-append!
+	     (generate-primitive generic-op expressions setup label)
+	     cleanup
+	     (if predicate?
+		 (finish (rtl:make-true-test (rtl:make-fetch register:value)))
+		 (expression-simplify-for-statement
+		  (rtl:make-fetch register:value)
+		  finish))))))))
 
 (define (generic->fixnum-op generic-op)
   (case generic-op
-    ((&+) 'PLUS-FIXNUM)
-    ((&-) 'MINUS-FIXNUM)
-    ((&*) 'MULTIPLY-FIXNUM)
-    ((1+) 'ONE-PLUS-FIXNUM)
-    ((-1+) 'MINUS-ONE-PLUS-FIXNUM)
-    ((&<) 'LESS-THAN-FIXNUM?)
-    ((&>) 'GREATER-THAN-FIXNUM?)
-    ((&=) 'EQUAL-FIXNUM?)
-    ((zero?) 'ZERO-FIXNUM?)
-    ((positive?) 'POSITIVE-FIXNUM?)
-    ((negative?) 'NEGATIVE-FIXNUM?)
+    ((integer-add &+) 'plus-fixnum)
+    ((integer-subtract &-) 'minus-fixnum)
+    ((integer-multiply &*) 'multiply-fixnum)
+    ((integer-quotient) 'fixnum-quotient)
+    ((integer-remainder) 'fixnum-remainder)
+    ((integer-add-1 1+) 'one-plus-fixnum)
+    ((integer-subtract-1 -1+) 'minus-one-plus-fixnum)
+    ((integer-negate) 'fixnum-negate)
+    ((integer-less? &<) 'less-than-fixnum?)
+    ((integer-greater? &>) 'greater-than-fixnum?)
+    ((integer-equal? &=) 'equal-fixnum?)
+    ((integer-zero? zero?) 'zero-fixnum?)
+    ((integer-positive? positive?) 'positive-fixnum?)
+    ((integer-negative? negative?) 'negative-fixnum?)
     (else (error "Can't find corresponding fixnum op:" generic-op))))
 
-(define (generic->floatnum-op generic-op)
-  (case generic-op
-    ((&+) 'PLUS-FLOATNUM)
-    ((&-) 'MINUS-FLOATNUM)
-    ((&*) 'MULTIPLY-FLOATNUM)
-    ((1+) 'ONE-PLUS-FLOATNUM)
-    ((-1+) 'MINUS-ONE-PLUS-FLOATNUM)
-    ((&<) 'LESS-THAN-FLOATNUM?)
-    ((&>) 'GREATER-THAN-FLOATNUM?)
-    ((&=) 'EQUAL-FLOATNUM?)
-    ((zero?) 'ZERO-FLOATNUM?)
-    ((positive?) 'POSITIVE-FLOATNUM?)
-    ((negative?) 'NEGATIVE-FLOATNUM?)
-    (else (error "Can't find corresponding floatnum op:" generic-op))))
+(for-each (lambda (generic-op)
+	    (generic-binary-operator generic-op))
+	  '(&+ &- &* integer-add integer-subtract integer-multiply))
 
 (for-each (lambda (generic-op)
-	    (generic-binary-generator generic-op false))
-	  '(&+ &- &*))
+	    (generic-binary-predicate generic-op))
+	  '(&= &< &> integer-equal? integer-less? integer-greater?))
 
 (for-each (lambda (generic-op)
-	    (generic-binary-generator generic-op true))
-	  '(&= &< &>))
+	    (generic-unary-operator generic-op))
+	  '(1+ -1+ integer-add-1 integer-subtract-1))
 
 (for-each (lambda (generic-op)
-	    (generic-unary-generator generic-op false))
-	  '(1+ -1+))
-
-(for-each (lambda (generic-op)
-	    (generic-unary-generator generic-op true))
-	  '(zero? positive? negative?))
+	    (generic-unary-predicate generic-op))
+	  '(zero? positive? negative?
+		  integer-zero? integer-positive? integer-negative?))

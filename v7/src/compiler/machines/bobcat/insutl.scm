@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insutl.scm,v 1.7 1989/08/28 18:33:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insutl.scm,v 1.8 1989/10/26 07:37:43 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -146,38 +146,44 @@ MIT in each case. |#
 					   base-suppress index-suppress
 					   base-displacement-size
 					   base-displacement
-					   memory-indirection-type
+					   indirection-type
 					   outer-displacement-size
 					   outer-displacement)
-  (append-syntax!
-   (EXTENSION-WORD (1 index-register-type)
-		   (3 index-register)
-		   (1 index-size)
-		   (2 factor SCALE-FACTOR)
-		   (1 #b1)
-		   (1 base-suppress)
-		   (1 index-suppress)
-		   (2 base-displacement-size)
-		   (1 #b0)
-		   (3 (case memory-indirection-type
-			((#F)
-			 #b000)
-			((PRE)
-			 outer-displacement-size)
-			((POST)
-			 (+ #b100 outer-displacement-size))
-			(else
-			 (error "bad memory indirection-type"
-				memory-indirection-type)))))
-   (append-syntax!
-    (output-displacement base-displacement-size base-displacement)
-    (output-displacement outer-displacement-size outer-displacement))))
-
-(define (output-displacement size displacement)
-  (case size
-    ((1))
-    ((2) (EXTENSION-WORD (16 displacement SIGNED)))
-    ((3) (EXTENSION-WORD (32 displacement SIGNED)))))
+  (let ((output-displacement
+	 (lambda (size displacement)
+	   (case size
+	     ((1) false)
+	     ((2) (EXTENSION-WORD (16 displacement SIGNED)))
+	     ((3) (EXTENSION-WORD (32 displacement SIGNED)))
+	     (else (error "illegal displacement-size" size))))))
+    (apply
+     optimize-group
+     (let loop
+	 ((items
+	   (list
+	    (EXTENSION-WORD
+	     (1 index-register-type)
+	     (3 index-register)
+	     (1 index-size)
+	     (2 factor SCALE-FACTOR)
+	     (1 #b1)
+	     (1 base-suppress)
+	     (1 index-suppress)
+	     (2 base-displacement-size)
+	     (1 #b0)
+	     (3 (case indirection-type
+		  ((#F) #b000)
+		  ((PRE) outer-displacement-size)
+		  ((POST) (+ #b100 outer-displacement-size))
+		  (else (error "illegal indirection-type" indirection-type)))))
+	    (output-displacement base-displacement-size base-displacement)
+	    (output-displacement outer-displacement-size outer-displacement))))
+       (if (null? items)
+	   '()
+	   (let ((rest (loop (cdr items))))
+	     (if (car items)
+		 (cons-syntax (car items) rest)
+		 rest)))))))
 
 ;;;; Common special cases
 

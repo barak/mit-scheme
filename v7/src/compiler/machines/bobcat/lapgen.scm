@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.21 1989/08/28 18:33:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.22 1989/10/26 07:37:46 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -69,24 +69,23 @@ MIT in each case. |#
 		    (pseudo-register-offset register)))
 
 (define (machine->machine-register source target)
-  (cond ((float-register? source)
-	 (if (float-register? target)
-	     (INST (FMOVE ,source ,target))
-	     (error "Moving from floating point register to non-fp register")))
-	((float-register? target)
-	 (error "Moving from non-floating point register to fp register"))
-	(else (INST (MOV L
-			 ,(register-reference source)
-			 ,(register-reference target))))))
+  (if (not (register-types-compatible? source target))
+      (error "Moving between incompatible register types" source target))
+  (if (float-register? source)
+      (INST (FMOVE ,(register-reference source)
+		   ,(register-reference target)))
+      (INST (MOV L
+		 ,(register-reference source)
+		 ,(register-reference target)))))
 
 (define (machine-register->memory source target)
   (if (float-register? source)
-      (INST (FMOVE X ,(register-reference source) ,target))
+      (INST (FMOVE D ,(register-reference source) ,target))
       (INST (MOV L ,(register-reference source) ,target))))
 
 (define (memory->machine-register source target)
   (if (float-register? target)
-      (INST (FMOVE X ,source ,(register-reference target)))
+      (INST (FMOVE D ,source ,(register-reference target)))
       (INST (MOV L ,source ,(register-reference target)))))
 
 (package (offset-reference byte-offset-reference)
@@ -240,6 +239,9 @@ MIT in each case. |#
 
 (define-integrable (effective-address/address-register? ea)
   (eq? (lap:ea-keyword ea) 'A))
+
+(define (effective-address/float-register? ea)
+  (memq ea '(FP0 FP1 FP2 FP3 FP4 FP5 FP6 FP7)))
 
 (define (standard-target-reference target)
   ;; Our preference for data registers here is a heuristic that works
@@ -347,15 +349,111 @@ MIT in each case. |#
 	((rtl:stack-push? target) (INST-EA (@-A 7)))
 	(else (error "STANDARD-TARGET->EA: Not a standard target" target))))
 
+;;;; Machine Targets (actually, arithmetic targets)
+
+(define (reuse-and-load-machine-target! type target source operate-on-target)
+  (reuse-machine-target! type target
+    (lambda (target)
+      (operate-on-target (move-to-alias-register! source type target)))
+    (lambda (target)
+      (LAP
+       ,(if (eq? type 'FLOAT)
+	    (let ((source (standard-register-reference source type false)))
+	      (if (effective-address/float-register? source)
+		  (INST (FMOVE ,source ,target))
+		  (INST (FMOVE D ,source ,target))))
+	    (INST (MOV L ,(standard-register-reference source type true)
+		       ,target)))
+       ,@(operate-on-target target)))))
+
+(define (reuse-machine-target! type
+			       target
+			       operate-on-pseudo-target
+			       operate-on-machine-target)
+  (let ((use-temporary
+	 (lambda (target)
+	   (let ((temp (reference-temporary-register! type)))
+	     (LAP ,@(operate-on-machine-target temp)
+		  ,(if (eq? type 'FLOAT)
+		       (INST (FMOVE ,temp ,target))
+		       (INST (MOV L ,temp ,target))))))))
+    (case (rtl:expression-type target)
+      ((REGISTER)
+       (let ((register (rtl:register-number target)))
+	 (if (pseudo-register? register)
+	     (operate-on-pseudo-target register)
+	     (let ((target (register-reference register)))
+	       (if (eq? type (register-type register))
+		   (operate-on-machine-target target)
+		   (use-temporary target))))))
+       ((OFFSET)
+	(use-temporary (offset->indirect-reference! target)))
+       (else
+	(error "Illegal machine target" target)))))
+
+(define (reuse-and-operate-on-machine-target! type target operate-on-target)
+  (reuse-machine-target! type target
+    (lambda (target)
+      (operate-on-target (reference-target-alias! target type)))
+    operate-on-target))
+
+(define (machine-operation-target? target)
+  (or (rtl:register? target)
+      (rtl:offset? target)))
+
+(define (two-arg-register-operation
+	 operate commutative?
+	 target-type source-reference alternate-source-reference
+	 target source1 source2)
+  (let ((worst-case
+	 (lambda (target source1 source2)
+	   (LAP ,(if (eq? target-type 'FLOAT)
+		     (INST (FMOVE ,source1 ,target))
+		     (INST (MOV L ,source1 ,target)))
+		,@(operate target source2)))))
+    (reuse-machine-target! target-type target
+      (lambda (target)
+	(reuse-pseudo-register-alias! source1 target-type
+	  (lambda (alias)
+	    (let ((source2 (if (= source1 source2)
+			       (register-reference alias)
+			       (source-reference source2))))
+	      (delete-dead-registers!)
+	      (add-pseudo-register-alias! target alias)
+	      (operate (register-reference alias) source2)))
+	  (lambda ()
+	    (let ((new-target-alias!
+		   (lambda ()
+		     (let ((source1 (alternate-source-reference source1))
+			   (source2 (source-reference source2)))
+		       (delete-dead-registers!)
+		       (worst-case (reference-target-alias! target target-type)
+				   source1
+				   source2)))))
+	      (if commutative?
+		  (reuse-pseudo-register-alias source2 target-type
+		    (lambda (alias2)
+		      (let ((source1 (source-reference source1)))
+			(delete-machine-register! alias2)
+			(delete-dead-registers!)
+			(add-pseudo-register-alias! target alias2)
+			(operate (register-reference alias2) source1)))
+		    new-target-alias!)
+		  (new-target-alias!))))))
+      (lambda (target)
+	(worst-case target
+		    (alternate-source-reference source1)
+		    (source-reference source2))))))
+
 ;;;; Fixnum Operators
 
 (define (signed-fixnum? n)
-  (and (integer? n)
+  (and (exact-integer? n)
        (>= n signed-fixnum/lower-limit)
        (< n signed-fixnum/upper-limit)))
 
 (define (unsigned-fixnum? n)
-  (and (integer? n)
+  (and (exact-integer? n)
        (not (negative? n))
        (< n unsigned-fixnum/upper-limit)))
 
@@ -367,7 +465,7 @@ MIT in each case. |#
   (if (not (unsigned-fixnum? n)) (error "Not a unsigned fixnum" n))
   n)
 
-(define fixnum-1
+(define-integrable fixnum-1
   (expt 2 scheme-type-width))
 
 (define (load-fixnum-constant constant register-reference)
@@ -398,43 +496,9 @@ MIT in each case. |#
     ((GREATER-THAN-FIXNUM? POSITIVE-FIXNUM?) 'GT)
     (else (error "FIXNUM-PREDICATE->CC: Unknown predicate" predicate))))
 
-(define-integrable (fixnum-2-args/commutative? operator)
+(define (fixnum-2-args/commutative? operator)
   (memq operator '(PLUS-FIXNUM MULTIPLY-FIXNUM)))
 
-(define (reuse-and-load-fixnum-target! target source operate-on-target)
-  (reuse-fixnum-target! target
-    (lambda (target)
-      (operate-on-target (move-to-alias-register! source 'DATA target)))
-    (lambda (target)
-      (LAP (MOV L ,(standard-register-reference source 'DATA) ,target)
-	   ,@(operate-on-target target)))))
-
-(define (reuse-fixnum-target! target
-			      operate-on-pseudo-target
-			      operate-on-machine-target)
-  (let ((use-temporary
-	 (lambda (target)
-	   (let ((temp (reference-temporary-register! 'DATA)))
-	     (LAP ,@(operate-on-machine-target temp)
-		  (MOV L ,temp ,target))))))
-    (case (rtl:expression-type target)
-      ((REGISTER)
-       (let ((register (rtl:register-number target)))
-	 (if (pseudo-register? register)
-	     (operate-on-pseudo-target register)
-	     (let ((target (register-reference register)))
-	       (if (data-register? register)
-		   (operate-on-machine-target target)
-		   (use-temporary target))))))
-       ((OFFSET)
-	(use-temporary (offset->indirect-reference! target)))
-       (else
-	(error "REUSE-FIXNUM-TARGET!: Unknown fixnum target" target)))))
-
-(define (fixnum-operation-target? target)
-  (or (rtl:register? target)
-      (rtl:offset? target)))
-
 (define (define-fixnum-method operator methods method)
   (let ((entry (assq operator (cdr methods))))
     (if entry
@@ -463,7 +527,7 @@ MIT in each case. |#
 
 (define-integrable (fixnum-2-args/operate-constant operator)
   (lookup-fixnum-method operator fixnum-methods/2-args-constant))
-
+
 (define-fixnum-method 'ONE-PLUS-FIXNUM fixnum-methods/1-arg
   (lambda (reference)
     (LAP (ADD L (& ,fixnum-1) ,reference))))
@@ -484,15 +548,14 @@ MIT in each case. |#
 (define-fixnum-method 'MULTIPLY-FIXNUM fixnum-methods/2-args
   (lambda (target source)
     (if (equal? target source)
-	(let ((new-source (reference-temporary-register! 'DATA)))
-	  ;;; I should add new-source as an alias for source, but I
-	  ;;; don't have a handle on the actual register here (I just
-	  ;;; have the register-reference).  Maybe this should be
-	  ;;; moved into the rules.
-	  (LAP
-	   (MOV L ,source ,new-source)
-	   (AS R L (& ,scheme-type-width) ,target)
-	   (MUL S L ,new-source ,target)))
+	(if (even? scheme-type-width)
+	    (LAP
+	     (AS R L (& ,(quotient scheme-type-width 2)) ,target)
+	     (MUL S L ,source ,target))
+	    (LAP
+	     (AS R L (& ,scheme-type-width) ,target)
+	     (MUL S L ,source ,target)
+	     (AS L L (& ,scheme-type-width) ,target)))
 	(LAP
 	 (AS R L (& ,scheme-type-width) ,target)
 	 (MUL S L ,source ,target)))))
@@ -511,7 +574,7 @@ MIT in each case. |#
 			    (AS L L ,temp ,target)))
 		     (LAP (AS L L (& ,power-of-2) ,target)))
 		 (LAP (MUL S L (& ,n) ,target))))))))
-
+
 (define (integer-log-base-2? n)
   (let loop ((power 1) (exponent 0))
     (cond ((< n power) false)
@@ -526,14 +589,51 @@ MIT in each case. |#
   (lambda (target n)
     (cond ((zero? n) (LAP))
 	  (else (LAP (SUB L (& ,(* n fixnum-1)) ,target))))))
+
+(define-fixnum-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
+  (lambda (target source)
+    (LAP
+     (DIV S L ,source ,target)
+     (AS L L (& ,scheme-type-width) ,target))))
+
+(define-fixnum-method 'FIXNUM-QUOTIENT fixnum-methods/2-args-constant
+  (lambda (target n)
+    (cond ((= n 1) (LAP))
+	  ((= n -1) (LAP (NEG L ,target)))
+	  (else
+	   (let ((power-of-2 (integer-log-base-2? n)))
+	     (if power-of-2
+		 (if (> power-of-2 8)
+		     (let ((temp (reference-temporary-register! 'DATA)))
+		       (LAP (MOV L (& ,power-of-2) ,temp)
+			    (AS R L ,temp ,target)))
+		     (LAP (AS R L (& ,power-of-2) ,target)))
+		 (LAP (DIV S L (& ,n) ,target))))))))
+
+(define-fixnum-method 'FIXNUM-REMAINDER fixnum-methods/2-args
+  (lambda (target source)
+    (let ((temp (reference-temporary-register! 'DATA)))
+      (LAP
+       (DIV S L ,source ,temp ,target)
+       (MOV L ,temp ,target)))))
+
+(define-fixnum-method 'FIXNUM-REMAINDER fixnum-methods/2-args-constant
+  (lambda (target n)
+    (if (or (= n 1) (= n -1))
+	(LAP (CLR L ,target))
+	(let ((power-of-2 (integer-log-base-2? n)))
+	  (if power-of-2
+	      (if (> power-of-2 8)
+		  (let ((temp (reference-temporary-register! 'DATA)))
+		    (LAP (MOV L (& ,power-of-2) ,temp)
+			 (AS R L ,temp ,target)))
+		  (LAP (AS R L (& ,power-of-2) ,target)))
+	      (let ((temp (reference-temporary-register! 'DATA)))
+		(LAP
+		 (DIV S L (& ,(* n fixnum-1)) ,temp ,target)
+		 (MOV L ,temp ,target))))))))
 
 ;;;; Flonum Operators
-
-(define (float-target-reference target)
-  (delete-dead-registers!)
-  (register-reference
-   (or (register-alias target 'FLOAT)
-       (allocate-alias-register! target 'FLOAT))))
 
 (define (define-flonum-method operator methods method)
   (let ((entry (assq operator (cdr methods))))
@@ -546,29 +646,37 @@ MIT in each case. |#
   (cdr (or (assq operator (cdr methods))
 	   (error "Unknown operator" operator))))
 
-
 (define flonum-methods/1-arg
   (list 'FLONUM-METHODS/1-ARG))
 
 (define-integrable (flonum-1-arg/operate operator)
   (lookup-flonum-method operator flonum-methods/1-arg))
 
-;;; Notice the weird ,', syntax here.  If LAP changes, this may also have to change.
+;;; Notice the weird ,', syntax here.
+;;; If LAP changes, this may also have to change.
 
 (let-syntax
     ((define-flonum-operation
        (macro (primitive-name instruction-name)
-	 `(define-flonum-method ',primitive-name flonum-methods/1-arg
-	    (lambda (source target)
-	      (LAP (,instruction-name ,',source ,',target)))))))
-  (define-flonum-operation SINE-FLONUM FSIN)
-  (define-flonum-operation COSINE-FLONUM FCOS)
-  (define-flonum-operation ARCTAN-FLONUM FATAN)
-  (define-flonum-operation EXP-FLONUM FETOX)
-  (define-flonum-operation LN-FLONUM FLOGN)
-  (define-flonum-operation SQRT-FLONUM FSQRT)
-  (define-flonum-operation TRUNCATE-FLONUM FINT))
-
+	 `(DEFINE-FLONUM-METHOD ',primitive-name FLONUM-METHODS/1-ARG
+	    (LAMBDA (SOURCE TARGET)
+	      (IF (EFFECTIVE-ADDRESS/FLOAT-REGISTER? SOURCE)
+		  (LAP (,instruction-name ,',source ,',target))
+		  (LAP (,instruction-name D ,',source ,',target))))))))
+  (define-flonum-operation flonum-negate fneg)
+  (define-flonum-operation flonum-abs fabs)
+  (define-flonum-operation flonum-sin fsin)
+  (define-flonum-operation flonum-cos fcos)
+  (define-flonum-operation flonum-tan ftan)
+  (define-flonum-operation flonum-asin fasin)
+  (define-flonum-operation flonum-acos facos)
+  (define-flonum-operation flonum-atan fatan)
+  (define-flonum-operation flonum-exp fetox)
+  (define-flonum-operation flonum-log flogn)
+  (define-flonum-operation flonum-sqrt fsqrt)
+  (define-flonum-operation flonum-round fint)
+  (define-flonum-operation flonum-truncate fintrz))
+
 (define flonum-methods/2-args
   (list 'FLONUM-METHODS/2-ARGS))
 
@@ -579,12 +687,12 @@ MIT in each case. |#
     ((define-flonum-operation
        (macro (primitive-name instruction-name)
 	 `(define-flonum-method ',primitive-name flonum-methods/2-args
-	   (lambda (source target)
+	   (lambda (target source)
 	     (LAP (,instruction-name ,',source ,',target)))))))
-  (define-flonum-operation PLUS-FLONUM FADD)
-  (define-flonum-operation MINUS-FLONUM FSUB)
-  (define-flonum-operation MULTIPLY-FLONUM FMUL)
-  (define-flonum-operation DIVIDE-FLONUM FDIV))
+  (define-flonum-operation flonum-add fadd)
+  (define-flonum-operation flonum-subtract fsub)
+  (define-flonum-operation flonum-multiply fmul)
+  (define-flonum-operation flonum-divide fdiv))
 
 (define (invert-float-cc cc)
   (cdr (or (assq cc
@@ -597,7 +705,6 @@ MIT in each case. |#
 		  (MI . PL) (PL . MI)))
 	   (error "INVERT-FLOAT-CC: Not a known CC" cc))))
 
-
 (define (set-flonum-branches! cc)
   (set-current-branches!
    (lambda (label)
@@ -607,10 +714,14 @@ MIT in each case. |#
 
 (define (flonum-predicate->cc predicate)
   (case predicate
-    ((EQUAL-FLONUM? ZERO-FLONUM?) 'EQ)
-    ((LESS-THAN-FLONUM? NEGATIVE-FLONUM?) 'LT)
-    ((GREATER-THAN-FLONUM? POSITIVE-FLONUM?) 'GT)
-    (else (error "FLONUM-PREDICATE->CC: Unknown predicate" predicate))))
+    ((FLONUM-EQUAL? FLONUM-ZERO?) 'EQ)
+    ((FLONUM-LESS? FLONUM-NEGATIVE?) 'LT)
+    ((FLONUM-GREATER? FLONUM-POSITIVE?) 'GT)
+    (else (error "FLONUM-PREDICATE->CC: Unknown predicate" predicate))))
+
+(define (flonum-2-args/commutative? operator)
+  (memq operator '(FLONUM-ADD FLONUM-MULTIPLY)))
+
 ;;;; OBJECT->DATUM rules - Mhwu
 ;;;  Similar to fixnum rules, but no sign extension
 

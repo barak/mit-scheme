@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.10 1989/07/25 12:42:02 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.11 1989/10/26 07:35:00 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -266,37 +266,41 @@ MIT in each case. |#
 	  (set! *register-map* map)
 	  (prefix-instructions! instructions)))))
 
-(define (standard-register-reference register preferred-type)
+(define (standard-register-reference register preferred-type alternate-types?)
   ;; Generate a standard reference for `register'.  This procedure
   ;; uses a number of heuristics, aided by `preferred-type', to
   ;; determine the optimum reference.  This should be used only when
   ;; the reference need not have any special properties, as the result
   ;; is not even guaranteed to be a register reference.
-  (let ((no-preference
-	 (lambda ()
-	   ;; Next, attempt to find an alias of any type.  If there
-	   ;; are no aliases, and the register is not dead, allocate
-	   ;; an alias of the preferred type.  This is desirable
-	   ;; because the register will be used again.  Otherwise,
-	   ;; this is the last use of this register, so we might as
-	   ;; well just use the register's home.
-	   (let ((alias (register-alias register false)))
-	     (cond (alias
-		    (register-reference alias))
-		   ((dead-register? register)
-		    (pseudo-register-home register))
-		   (else
-		    (reference-alias-register! register preferred-type)))))))
-    (cond ((machine-register? register)
-	   (register-reference register))
+  (if (machine-register? register)
+      (if alternate-types?
+	  (register-reference register)
+	  (machine-register-reference register preferred-type))
+      (let ((no-reuse-possible
+	     (lambda ()
+	       ;; If there are no aliases, and the register is not dead,
+	       ;; allocate an alias of the preferred type.  This is
+	       ;; desirable because the register will be used again.
+	       ;; Otherwise, this is the last use of this register, so we
+	       ;; might as well just use the register's home.
+	       (if (and (dead-register? register)
+			(register-saved-into-home? register))
+		   (pseudo-register-home register)
+		   (reference-alias-register! register preferred-type)))))
+	(let ((no-preference
+	       (lambda ()
+		 ;; Next, attempt to find an alias of any type.
+		 (let ((alias (register-alias register false)))
+		   (if alias
+		       (register-reference alias)
+		       (no-reuse-possible))))))
 	  ;; First, attempt to find an alias of the preferred type.
-	  (preferred-type
-	   (let ((alias (register-alias register preferred-type)))
-	     (if alias
-		 (register-reference alias)
-		 (no-preference))))
-	  (else
-	   (no-preference)))))
+	  (if preferred-type
+	      (let ((alias (register-alias register preferred-type)))
+		(cond (alias (register-reference alias))
+		      (alternate-types? (no-preference))
+		      (else (no-reuse-possible))))
+	      (no-preference))))))
 
 (define (machine-register-reference register type)
   ;; Returns a reference to a machine register which contains the same
@@ -311,12 +315,6 @@ MIT in each case. |#
 	     temp))
        (load-alias-register! register type))))
 
-(define (float-register-reference register)
-  (register-reference
-   (if (machine-register? register)
-       register
-       (load-alias-register! register 'FLOAT))))
-
 (define (load-machine-register! source-register machine-register)
   (if (machine-register? source-register)
       (if (eqv? source-register machine-register)
@@ -325,7 +323,7 @@ MIT in each case. |#
       (if (is-alias-for-register? machine-register source-register)
 	  (LAP)
 	  (reference->register-transfer
-	   (standard-register-reference source-register false)
+	   (standard-register-reference source-register false true)
 	   machine-register))))
 
 (define (move-to-alias-register! source type target)
@@ -375,7 +373,8 @@ MIT in each case. |#
       (delete-dead-registers!)
       (if-reusable alias))
     (lambda ()
-      (let ((source (standard-register-reference source false)))	(delete-dead-registers!)
+      (let ((source (standard-register-reference source false true)))
+	(delete-dead-registers!)
 	(if-not source)))))
 
 (define (reuse-pseudo-register-alias! source type if-reusable if-not)

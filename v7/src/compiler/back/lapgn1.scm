@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.7 1989/08/21 19:30:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.8 1989/10/26 07:34:56 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -81,12 +81,12 @@ MIT in each case. |#
 	      (*pending-bblocks* '()))
     (for-each (lambda (edge)
 		(if (not (node-marked? (edge-right-node edge)))
-		    (cgen-entry edge)))
+		    (cgen-entry rgraph edge)))
 	      (rgraph-entry-edges rgraph))
     (if (not (null? *pending-bblocks*))
 	(error "CGEN-RGRAPH: pending blocks left at end of pass"))))
 
-(define (cgen-entry edge)
+(define (cgen-entry rgraph edge)
   (define (loop bblock map)
     (cgen-bblock bblock map)
     (if (sblock? bblock)
@@ -99,11 +99,14 @@ MIT in each case. |#
     (let ((next (edge-next-node edge)))
       (if (and next (not (node-marked? next)))
 	  (let ((previous (node-previous-edges next)))
-	    (cond ((not (for-all? previous edge-left-node))
+	    (cond ((for-all? previous
+		     (lambda (edge)
+		       (memq edge (rgraph-entry-edges rgraph))))
 		   ;; Assumption: no action needed to clear existing
 		   ;; register map at this point.
 		   (loop next (empty-register-map)))
-		  ((null? (cdr previous))
+		  ((and (null? (cdr previous))
+			(edge-left-node (car previous)))
 		   (loop
 		    next
 		    (let ((previous (edge-left-node edge)))
@@ -164,7 +167,10 @@ MIT in each case. |#
 		   (loop)))))))
 
 (define (adjust-maps-at-merge! bblock)
-  (let ((edges (node-previous-edges bblock)))    (let ((maps
+  (let ((edges
+	 (list-transform-positive (node-previous-edges bblock)
+	   edge-left-node)))
+    (let ((maps
 	   (map
 	    (let ((live-registers (bblock-live-at-entry bblock)))
 	      (lambda (edge)

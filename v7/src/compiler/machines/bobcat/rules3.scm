@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.17 1989/08/28 18:34:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.18 1989/10/26 07:38:00 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -458,16 +458,24 @@ MIT in each case. |#
 			      environment-offset
 			      free-ref-offset
 			      n-sections)
-  (LAP (MOV L (@PCR ,code-block-label) (D 0))
-       (AND L ,mask-reference (D 0))
-       (MOV L (D 0) (A 0))
-       (LEA (@AO 0 ,environment-offset) (A 1))
-       (MOV L ,reg:environment (@A 1))
-       (LEA (@AO 0 ,free-ref-offset) (A 1))
-       ,(load-dnw n-sections 0)
-       (JSR ,entry:compiler-link)
-       ,@(make-external-label (continuation-code-word false)
-			      (generate-label))))
+  (let ((load-offset
+	 (lambda (offset)
+	   (if (<= -32768 offset 32767)
+	       (INST (LEA (@AO 0 ,offset) (A 1)))
+	       (INST (LEA (@AOF 0 E (,offset L) #F
+				((D 0) L 1) Z
+				(0 N))
+			  (A 1)))))))
+    (LAP (MOV L (@PCR ,code-block-label) (D 0))
+	 (AND L ,mask-reference (D 0))
+	 (MOV L (D 0) (A 0))
+	 ,(load-offset environment-offset)
+	 (MOV L ,reg:environment (@A 1))
+	 ,(load-offset free-ref-offset)
+	 ,(load-dnw n-sections 0)
+	 (JSR ,entry:compiler-link)
+	 ,@(make-external-label (continuation-code-word false)
+				(generate-label)))))
 
 (define (generate/constants-block constants references assignments uuo-links)
   (let ((constant-info

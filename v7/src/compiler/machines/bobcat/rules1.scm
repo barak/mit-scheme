@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.26 1989/09/25 21:45:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.27 1989/10/26 07:37:51 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -42,7 +42,7 @@ MIT in each case. |#
   (ASSIGN (REGISTER (? target)) (REGISTER (? source)))
   (QUALIFIER (machine-register? target))
   (LAP (MOV L
-	    ,(standard-register-reference source false)
+	    ,(standard-register-reference source false true)
 	    ,(register-reference target))))
 
 (define-rule statement
@@ -186,7 +186,7 @@ MIT in each case. |#
 	  (ADDRESS->FIXNUM (OBJECT->ADDRESS (REGISTER (? source)))))
   (QUALIFIER (pseudo-register? target))
   (convert-object/register->register target source address->fixnum))
-
+
 (define (convert-object/offset->register target address offset conversion)
   (let ((source (indirect-reference! address offset)))
     (delete-dead-registers!)
@@ -212,7 +212,7 @@ MIT in each case. |#
 						    (? offset)))))
   (QUALIFIER (pseudo-register? target))
   (convert-object/offset->register target address offset address->fixnum))
-
+
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OFFSET (REGISTER (? address)) (? offset)))
   (QUALIFIER (pseudo-register? target))
@@ -238,7 +238,7 @@ MIT in each case. |#
   (QUALIFIER (and (pseudo-register? target) (pseudo-register? datum)))
   (let ((target (move-to-alias-register! datum 'DATA target)))
     (LAP (OR UL (& ,(make-non-pointer-literal type 0)) ,target))))
-
+
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (UNASSIGNED))
   (QUALIFIER (pseudo-register? target))
@@ -314,7 +314,7 @@ MIT in each case. |#
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (REGISTER (? r)))
   (LAP (MOV L
-	    ,(standard-register-reference r false)
+	    ,(standard-register-reference r false true)
 	    ,(indirect-reference! a n))))
 
 (define-rule statement
@@ -326,7 +326,7 @@ MIT in each case. |#
   (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
 	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? datum))))
   (let ((target (indirect-reference! address offset)))
-    (LAP (MOV L ,(standard-register-reference datum 'DATA) ,target)
+    (LAP (MOV L ,(standard-register-reference datum 'DATA true) ,target)
 	 ,(memory-set-type type target))))
 
 (define-rule statement
@@ -342,8 +342,10 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a0)) (? n0))
 	  (OFFSET (REGISTER (? a1)) (? n1)))
-  (let ((source (indirect-reference! a1 n1)))
-    (LAP (MOV L ,source ,(indirect-reference! a0 n0)))))
+  (if (and (= a0 a1) (= n0 n1))
+      (LAP)
+      (let ((source (indirect-reference! a1 n1)))
+	(LAP (MOV L ,source ,(indirect-reference! a0 n0))))))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
@@ -371,12 +373,12 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (REGISTER (? r)))
   (QUALIFIER (pseudo-word? r))
-  (LAP (MOV L ,(standard-register-reference r false) (@A+ 5))))
+  (LAP (MOV L ,(standard-register-reference r false true) (@A+ 5))))
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (REGISTER (? r)))
   (QUALIFIER (pseudo-float? r))
-  (LAP (FMOVE D ,(float-register-reference r) (@A+ 5))))
+  (LAP (FMOVE D ,(machine-register-reference r 'FLOAT) (@A+ 5))))
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (OFFSET (REGISTER (? r)) (? n)))
@@ -406,12 +408,12 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (REGISTER (? r)))
-  (LAP (MOV L ,(standard-register-reference r false) (@-A 7))))
+  (LAP (MOV L ,(standard-register-reference r false true) (@-A 7))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
 	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? datum))))
-  (LAP (MOV L ,(standard-register-reference datum 'DATA) (@-A 7))
+  (LAP (MOV L ,(standard-register-reference datum 'DATA true) (@-A 7))
        ,(memory-set-type type (INST-EA (@A 7)))))
 
 (define-rule statement
@@ -419,6 +421,11 @@ MIT in each case. |#
 	  (CONS-POINTER (CONSTANT (? type)) (ENTRY:PROCEDURE (? label))))
   (LAP (PEA (@PCR ,(rtl-procedure/external-label (label->object label))))
        ,(memory-set-type type (INST-EA (@A 7)))))
+
+(define-rule statement
+  (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
+	  (OFFSET-ADDRESS (REGISTER (? r)) (? n)))
+  (LAP (PEA ,(indirect-reference! r n))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (OFFSET (REGISTER (? r)) (? n)))
@@ -439,17 +446,40 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (? target) (FIXNUM-1-ARG (? operator) (REGISTER (? source))))
-  (QUALIFIER (and (fixnum-operation-target? target) (pseudo-register? source)))
-  (reuse-and-load-fixnum-target! target
-				 source
-				 (fixnum-1-arg/operate operator)))
+  (QUALIFIER (and (machine-operation-target? target)
+		  (pseudo-register? source)))
+  (reuse-and-load-machine-target! 'DATA
+				  target
+				  source
+				  (fixnum-1-arg/operate operator)))
+
+(define-rule statement
+  (ASSIGN (? target)
+	  (FIXNUM-2-ARGS (? operator)
+			 (REGISTER (? source1))
+			 (REGISTER (? source2))))
+  (QUALIFIER (and (machine-operation-target? target)
+		  (pseudo-register? source1)
+		  (pseudo-register? source2)))
+  (two-arg-register-operation (fixnum-2-args/operate operator)
+			      (fixnum-2-args/commutative? operator)
+			      'DATA
+			      (standard-fixnum-source operator)
+			      (lambda (source)
+				(standard-register-reference source
+							     'DATA
+							     true))
+			      target
+			      source1
+			      source2))
 
 (define-rule statement
   (ASSIGN (? target)
 	  (FIXNUM-2-ARGS (? operator)
 			 (REGISTER (? source))
 			 (OBJECT->FIXNUM (CONSTANT (? constant)))))
-  (QUALIFIER (and (fixnum-operation-target? target) (pseudo-register? source)))
+  (QUALIFIER (and (machine-operation-target? target)
+		  (pseudo-register? source)))
   (fixnum-2-args/register*constant operator target source constant))
 
 (define-rule statement
@@ -457,31 +487,31 @@ MIT in each case. |#
 	  (FIXNUM-2-ARGS (? operator)
 			 (OBJECT->FIXNUM (CONSTANT (? constant)))
 			 (REGISTER (? source))))
-  (QUALIFIER (and (fixnum-operation-target? target) (pseudo-register? source)))
+  (QUALIFIER (and (machine-operation-target? target)
+		  (pseudo-register? source)))
   (if (fixnum-2-args/commutative? operator)
       (fixnum-2-args/register*constant operator target source constant)
       (fixnum-2-args/constant*register operator target constant source)))
 
 (define (fixnum-2-args/register*constant operator target source constant)
-  (reuse-and-load-fixnum-target! target source
+  (reuse-and-load-machine-target! 'DATA target source
     (lambda (target)
       ((fixnum-2-args/operate-constant operator) target constant))))
 
 (define (fixnum-2-args/constant*register operator target constant source)
-  (reuse-and-operate-on-fixnum-target! target
+  (reuse-and-operate-on-machine-target! 'DATA target
     (lambda (target)
       (LAP ,@(load-fixnum-constant constant target)
 	   ,@((fixnum-2-args/operate operator)
 	      target
-	      (if (eq? operator 'MULTIPLY-FIXNUM)
-		  (standard-multiply-source source)
-		  (standard-register-reference source 'DATA)))))))
+	      ((standard-fixnum-source operator) source))))))
 
-(define (reuse-and-operate-on-fixnum-target! target operate-on-target)
-  (reuse-fixnum-target! target
-    (lambda (target)
-      (operate-on-target (reference-target-alias! target 'DATA)))
-    operate-on-target))
+(define (standard-fixnum-source operator)
+  (let ((alternate-types?
+	 (not (memq operator
+		    '(MULTIPLY-FIXNUM FIXNUM-DIVIDE FIXNUM-REMAINDER)))))
+    (lambda (source)
+      (standard-register-reference source 'DATA alternate-types?))))
 
 ;;; The maximum value for a shift constant is 8, so these rules can
 ;;; only be used when the type width is 6 bits or less.
@@ -494,7 +524,8 @@ MIT in each case. |#
 	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
 			 (OBJECT->FIXNUM (CONSTANT 4))
 			 (OBJECT->FIXNUM (REGISTER (? source)))))
-  (QUALIFIER (and (fixnum-operation-target? target) (pseudo-register? source)))
+  (QUALIFIER (and (machine-operation-target? target)
+		  (pseudo-register? source)))
   (convert-index->fixnum/register target source))
 
 (define-rule statement
@@ -502,7 +533,8 @@ MIT in each case. |#
 	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
 			 (OBJECT->FIXNUM (REGISTER (? source)))
 			 (OBJECT->FIXNUM (CONSTANT 4))))
-  (QUALIFIER (and (fixnum-operation-target? target) (pseudo-register? source)))
+  (QUALIFIER (and (machine-operation-target? target)
+		  (pseudo-register? source)))
   (convert-index->fixnum/register target source))
 
 (define-rule statement
@@ -510,7 +542,7 @@ MIT in each case. |#
 	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
 			 (OBJECT->FIXNUM (CONSTANT 4))
 			 (OBJECT->FIXNUM (OFFSET (REGISTER (? r)) (? n)))))
-  (QUALIFIER (fixnum-operation-target? target))
+  (QUALIFIER (machine-operation-target? target))
   (convert-index->fixnum/offset target r n))
 
 (define-rule statement
@@ -518,7 +550,7 @@ MIT in each case. |#
 	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
 			 (OBJECT->FIXNUM (OFFSET (REGISTER (? r)) (? n)))
 			 (OBJECT->FIXNUM (CONSTANT 4))))
-  (QUALIFIER (fixnum-operation-target? target))
+  (QUALIFIER (machine-operation-target? target))
   (convert-index->fixnum/offset target r n))
 
 ;;; end (IF (<= SCHEME-TYPE-WIDTH 6) ...)
@@ -528,79 +560,16 @@ MIT in each case. |#
 ;;; not in use.
 
 (define (convert-index->fixnum/register target source)
-  (reuse-and-load-fixnum-target! target source
+  (reuse-and-load-machine-target! 'DATA target source
     (lambda (target)
       (LAP (LS L L (& ,(+ scheme-type-width 2)) ,target)))))
 
 (define (convert-index->fixnum/offset target address offset)
   (let ((source (indirect-reference! address offset)))
-    (reuse-and-operate-on-fixnum-target! target
+    (reuse-and-operate-on-machine-target! 'DATA target
       (lambda (target)
 	(LAP (MOV L ,source ,target)
 	     (LS L L (& ,(+ scheme-type-width 2)) ,target))))))
-(define-rule statement
-  (ASSIGN (? target)
-	  (FIXNUM-2-ARGS (? operator)
-			 (REGISTER (? source1))
-			 (REGISTER (? source2))))
-  (QUALIFIER (and (fixnum-operation-target? target)
-		  (pseudo-register? source1)
-		  (pseudo-register? source2)))
-  (let ((worst-case
-	 (lambda (target source1 source2)
-	   (LAP (MOV L ,source1 ,target)
-		,@((fixnum-2-args/operate operator) target source2))))
-	(source-reference
-	 (if (eq? operator 'MULTIPLY-FIXNUM)
-	     standard-multiply-source
-	     (lambda (source) (standard-register-reference source 'DATA)))))
-    (reuse-fixnum-target! target
-      (lambda (target)
-	(reuse-pseudo-register-alias! source1 'DATA
-	  (lambda (alias)
-	    (let ((source2 (if (= source1 source2)
-			       (register-reference alias)
-			       (source-reference source2))))
-	      (delete-dead-registers!)
-	      (add-pseudo-register-alias! target alias)
-	      ((fixnum-2-args/operate operator) (register-reference alias)
-						source2)))
-	  (lambda ()
-	    (let ((new-target-alias!
-		   (lambda ()
-		     (let ((source1
-			    (standard-register-reference source1 'DATA))
-			   (source2 (source-reference source2)))
-		       (delete-dead-registers!)
-		       (worst-case (reference-target-alias! target 'DATA)
-				   source1
-				   source2)))))
-	      (if (fixnum-2-args/commutative? operator)
-		  (reuse-pseudo-register-alias source2 'DATA
-		    (lambda (alias2)
-		      (let ((source1 (source-reference source1)))
-			(delete-machine-register! alias2)
-			(delete-dead-registers!)
-			(add-pseudo-register-alias! target alias2)
-			((fixnum-2-args/operate operator)
-			 (register-reference alias2)
-			 source1)))
-		    new-target-alias!)
-		  (new-target-alias!))))))
-      (lambda (target)
-	(worst-case target
-		    (standard-register-reference source1 'DATA)
-		    (source-reference source2))))))
-
-(define (standard-multiply-source register)
-  (let ((alias (register-alias register 'DATA)))
-    (cond (alias
-	   (register-reference alias))
-	  ((register-saved-into-home? register)
-	   (pseudo-register-home register))
-	  (else
-	   (reference-alias-register! register 'DATA)))))
-
 ;;;; Flonum Operations
 
 (define-rule statement
@@ -614,7 +583,7 @@ MIT in each case. |#
 			    flonum-size
 			    (INST-EA (@A+ 5)))
 	 (FMOVE D
-		,(float-register-reference source)
+		,(machine-register-reference source 'FLOAT)
 		(@A+ 5)))))
 
 (define-rule statement
@@ -626,30 +595,39 @@ MIT in each case. |#
 	      ,(reference-target-alias! target 'FLOAT))))
 
 (define-rule statement
-  (ASSIGN (REGISTER (? target))
+  (ASSIGN (? target)
 	  (FLONUM-1-ARG (? operator) (REGISTER (? source))))
-  (QUALIFIER (and (pseudo-float? target) (pseudo-float? source)))
-  (let ((source-reference (float-register-reference source)))
-    (let ((target-reference (float-target-reference target)))
-      (LAP ,@((flonum-1-arg/operate operator)
-	      source-reference
-	      target-reference)))))
+  (QUALIFIER (and (machine-operation-target? target)
+		  (pseudo-float? source)))
+  (let ((operate-on-target
+	 (lambda (target)
+	   ((flonum-1-arg/operate operator)
+	    (standard-register-reference source 'FLOAT false)
+	    target))))
+    (reuse-machine-target! 'FLOAT target
+      (lambda (target)
+	(operate-on-target (reference-target-alias! target 'FLOAT)))
+      operate-on-target)))
 
 (define-rule statement
-  (ASSIGN (REGISTER (? target))
+  (ASSIGN (? target)
 	  (FLONUM-2-ARGS (? operator)
 			 (REGISTER (? source1))
 			 (REGISTER (? source2))))
-  (QUALIFIER (and (pseudo-float? target)
+  (QUALIFIER (and (machine-operation-target? target)
 		  (pseudo-float? source1)
 		  (pseudo-float? source2)))
-  (let ((source1-reference (float-register-reference source1))
-	(source2-reference (float-register-reference source2)))
-    (let ((target-reference (float-target-reference target)))
-      (LAP (FMOVE ,source1-reference ,target-reference)
-	   ,@((flonum-2-args/operate operator)
-	      source2-reference
-	      target-reference)))))
+  (let ((source-reference
+	 (lambda (source) (standard-register-reference source 'FLOAT false))))
+    (two-arg-register-operation (flonum-2-args/operate operator)
+				(flonum-2-args/commutative? operator)
+				'FLOAT
+				source-reference
+				source-reference
+				target
+				source1
+				source2)))
+
 ;;;; CHAR->ASCII/BYTE-OFFSET
 
 (define (load-char-into-register type source target)

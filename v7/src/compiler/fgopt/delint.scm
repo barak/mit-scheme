@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/delint.scm,v 1.1 1989/04/21 18:54:53 markf Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/delint.scm,v 1.2 1989/10/26 07:36:48 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -32,8 +32,10 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Delete intergrated parameters
+;;;; Delete integrated parameters
 
+(declare (usual-integrations))
+
 (define (delete-integrated-parameters blocks)
   (for-each
    (lambda (block)
@@ -64,9 +66,10 @@ MIT in each case. |#
 					     required)))
 	    (delete-integrations procedure-optional set-procedure-optional!))
 	  (let ((rest (procedure-rest procedure)))
-	    (if (and rest (lvalue-integrated? rest))
-		(begin (set! deletions (eq-set-adjoin deletions rest))
-		       (set-procedure-rest! procedure false))))))
+	    (if (and rest (variable-unused? rest))
+		(begin
+		  (set! deletions (eq-set-adjoin deletions rest))
+		  (set-procedure-rest! procedure false))))))
     (with-values
 	(lambda ()
 	  (find-integrated-bindings (procedure-names procedure)
@@ -79,7 +82,7 @@ MIT in each case. |#
 	(set-block-bound-variables!
 	 block
 	 (eq-set-difference (block-bound-variables block) deletions)))))
-
+
 (define (find-integrated-bindings names vals)
   (if (null? names)
       (values '() '() '())
@@ -87,7 +90,7 @@ MIT in each case. |#
 	  (lambda ()
 	    (find-integrated-bindings (cdr names) (cdr vals)))
 	(lambda (names* values* integrated)
-	  (if (lvalue-integrated? (car names))
+	  (if (variable-unused? (car names))
 	      (values names* values* (cons (car names) integrated))
 	      (values (cons (car names) names*)
 		      (cons (car vals) values*)
@@ -101,7 +104,7 @@ MIT in each case. |#
 	    (find-integrated-variables (cdr variables)))
 	(lambda (not-integrated integrated)
 	  (if (or (variable-register (car variables))
-		  (lvalue-integrated? (car variables)))
+		  (variable-unused? (car variables)))
 	      (values not-integrated
 		      (cons (car variables) integrated))
 	      (values (cons (car variables) not-integrated)

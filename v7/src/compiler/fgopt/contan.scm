@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/contan.scm,v 4.8 1988/12/19 20:25:08 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/contan.scm,v 4.9 1989/10/26 07:36:44 cph Rel $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -138,6 +138,45 @@ may change if call-with-current-continuation is handled specially.
 		    (let ((block (continuation/block value)))
 		      (and (block-ancestor? block parent)
 			   block))))))))
+
+(define (setup-block-static-links! blocks)
+  (for-each
+   (lambda (block)
+     (if (stack-block? block)
+	 (set-block-static-link?! block (compute-block-static-link? block))))
+   blocks))
+
+(define (compute-block-static-link? block)
+  ;; (and (not (block/no-free-references? block)) ...)
+  (let ((parent (block-parent block)))
+    (and parent
+	 (cond ((stack-block? parent) (not (block-stack-link block)))
+	       ((ic-block? parent) (ic-block/use-lookup? parent))
+	       (else true)))))
+
+(define (block/no-free-references? block)
+  (and (for-all? (block-free-variables block)
+	 (lambda (variable)
+	   (or (lvalue-integrated? variable)
+	       (let ((block (variable-block variable)))
+		 (and (ic-block? block)
+		      (not (ic-block/use-lookup? block)))))))
+       (let loop ((block* block))
+	 (and (not
+	       (there-exists? (block-applications block*)
+		 (lambda (application)
+		   (let ((block*
+			  (if (application/combination? application)
+			      (let ((adjustment
+				     (combination/frame-adjustment
+				      application)))
+				(and adjustment
+				     (cdr adjustment)))
+			      (block-popping-limit
+			       (reference-context/block
+				(application-context application))))))
+		     (and block* (block-ancestor? block block*))))))
+	      (for-all? (block-children block*) loop)))))
 
 (define (compute-block-popping-limits block)
   (let ((external (stack-block/external-ancestor block)))

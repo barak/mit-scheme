@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.11 1989/08/10 11:05:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.12 1989/10/26 07:35:27 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -87,6 +87,7 @@ from the continuation, and then "glued" into place afterwards.
   closure-offsets	;for closure block, alist of bound variable offsets
   debugging-info	;dbg-block, if used
   stack-link		;for stack block, adjacent block on stack
+  static-link?		;for stack block, true iff static link to parent
   popping-limits	;for stack block (see continuation analysis)
   popping-limit		;for stack block (see continuation analysis)
   layout-frozen?	;used by frame reuse to tell parameter
@@ -268,18 +269,9 @@ from the continuation, and then "glued" into place afterwards.
     (procedure block)
     (for-each loop (block-children block))))
 
-(define-integrable (internal-block/parent-known? block)
-  (block-stack-link block))
+(define-integrable (stack-block/static-link? block)
+  (block-static-link? block))
 
-(define (stack-block/static-link? block)
-  (and (not (null? (block-free-variables block)))
-       (let ((parent (block-parent block)))
-	 (and parent
-	      (cond ((stack-block? parent)
-		     (not (internal-block/parent-known? block)))
-		    ((ic-block? parent)
-		     (ic-block/use-lookup? parent))
-		    (else true))))))
 (define-integrable (stack-block/continuation-lvalue block)
   (procedure-continuation-lvalue (block-procedure block)))
 

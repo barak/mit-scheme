@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.12 1989/07/25 12:37:17 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.13 1989/10/26 07:38:32 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -54,16 +54,28 @@ MIT in each case. |#
 	'(INVOCATION-PREFIX:DYNAMIC-LINK
 	  INVOCATION-PREFIX:MOVE-FRAME-UP)))
 
-(define-integrable (rtl:trivial-expression? expression)
-  (memq (rtl:expression-type expression)
-	'(ASSIGNMENT-CACHE
-	  CONS-CLOSURE
-	  CONSTANT
-	  ENTRY:CONTINUATION
-	  ENTRY:PROCEDURE
-	  REGISTER
-	  UNASSIGNED
-	  VARIABLE-CACHE)))
+(define (rtl:trivial-expression? expression)
+  (case (rtl:expression-type expression)
+    ((ASSIGNMENT-CACHE
+      CONS-CLOSURE
+      CONSTANT
+      ENTRY:CONTINUATION
+      ENTRY:PROCEDURE
+      REGISTER
+      UNASSIGNED
+      VARIABLE-CACHE)
+     true)
+    ((OBJECT->FIXNUM OBJECT->UNSIGNED-FIXNUM)
+     (rtl:constant? (rtl:object->fixnum-expression expression)))
+    ((OBJECT->DATUM)
+     (let ((subexpression (rtl:object->datum-expression expression)))
+       (and (rtl:constant? subexpression)
+	    (non-pointer-object? (rtl:constant-value subexpression)))))
+    ((OBJECT->TYPE)
+     (rtl:constant? (rtl:object->type-expression expression)))
+    (else
+     false)))
+
 (define (rtl:non-object-valued-expression? expression)
   (if (rtl:register? expression)
       (register-contains-non-object? (rtl:register-number expression))

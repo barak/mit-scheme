@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.12 1989/03/14 19:35:30 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.13 1989/10/26 07:39:08 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,10 +37,17 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (generate/return return)
-  (generate/return* (return/context return)
-		    (return/operator return)
-		    (application-continuation-push return)
-		    (trivial-return-operand (return/operand return))))
+  (let loop ((returns (return/equivalence-class return)))
+    (if (null? returns)
+	(generate/return* (return/context return)
+			  (return/operator return)
+			  (application-continuation-push return)
+			  (trivial-return-operand (return/operand return)))
+	(let ((memoization (cfg-node-get (car returns) memoization-tag)))
+	  (if (and memoization
+		   (not (eq? memoization loop-memoization-marker)))
+	      memoization
+	      (loop (cdr returns)))))))
 
 (define (generate/trivial-return context operator operand)
   (generate/return* context operator false (trivial-return-operand operand)))
@@ -163,9 +170,8 @@ MIT in each case. |#
        (finish (rtl:make-fetch register))))))
 
 (define (return-operator/pop-frames context operator extra)
-  (let ((block (reference-context/block context))
-	(pop-extra
-	 (lambda ()
+  (let ((pop-extra
+	 (lambda (extra)
 	   (if (zero? extra)
 	       (make-null-cfg)
 	       (rtl:make-assignment register:stack-pointer
@@ -173,22 +179,32 @@ MIT in each case. |#
 				     (stack-locative-offset
 				      (rtl:make-fetch register:stack-pointer)
 				      extra)))))))
-    (if (or (ic-block? block)
-	    (return-operator/subproblem? operator))
-	(pop-extra)
-	(let ((popping-limit (block-popping-limit block)))
-	  (cond ((not popping-limit)
-		 (scfg*scfg->scfg!
-		  (rtl:make-link->stack-pointer)
-		  (pop-extra)))
-		((and (eq? popping-limit (reference-context/block context))
-		      (zero? (block-frame-size popping-limit))
-		      (zero? (reference-context/offset context))
-		      (zero? extra))
-		 (make-null-cfg))
-		(else
-		 (rtl:make-assignment register:stack-pointer
-				      (popping-limit/locative context
-							      popping-limit
-							      0
-							      extra))))))))
+    (if (exact-integer? context)
+	;; This kludge is used by open-coding of some primitives in
+	;; reduction position.  In that case, there is no frame (and
+	;; therefore no context) because adjustments prior to the
+	;; open-coding have eliminated it.  So it is known that only
+	;; the primitive's arguments are on the stack, and the return
+	;; address appears directly above that.
+	(pop-extra (+ context extra))
+	(let ((block (reference-context/block context)))
+	  (if (or (ic-block? block)
+		  (return-operator/subproblem? operator))
+	      (pop-extra extra)
+	      (let ((popping-limit (block-popping-limit block)))
+		(cond ((not popping-limit)
+		       (scfg*scfg->scfg!
+			(rtl:make-link->stack-pointer)
+			(pop-extra extra)))
+		      ((and (eq? popping-limit block)
+			    (zero? (block-frame-size popping-limit))
+			    (zero? (reference-context/offset context))
+			    (zero? extra))
+		       (make-null-cfg))
+		      (else
+		       (rtl:make-assignment
+			register:stack-pointer
+			(popping-limit/locative context
+						popping-limit
+						0
+						extra))))))))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.13 1989/07/25 12:40:44 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.14 1989/10/26 07:37:31 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -293,9 +293,8 @@ MIT in each case. |#
     (case (car effective-address)
       ((@AO)
        (and (or (eq? (cadr effective-address) 'REGS-POINTER)
-		(and (number? (cadr effective-address))
-		     (= (cadr effective-address)
-			interpreter-register-pointer)))	    (interpreter-register interpreter-register-pointer
+		(eqv? (cadr effective-address) interpreter-register-pointer))
+	    (interpreter-register interpreter-register-pointer
 				  (caddr effective-address))))
       ((REGISTER TEMPORARY ENTRY) effective-address)
       (else false))))

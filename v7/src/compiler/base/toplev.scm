@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.21 1989/09/24 03:39:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.22 1989/10/26 07:36:07 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -586,12 +586,12 @@ MIT in each case. |#
       (phase/fold-constants)
       (phase/open-coding-analysis)
       (phase/operator-analysis)
+      (phase/variable-indirection)
       (phase/environment-optimization)
       (phase/identify-closure-limits)
       (phase/setup-block-types)      (phase/compute-call-graph)
       (phase/side-effect-analysis)
       (phase/continuation-analysis)
-      (phase/setup-frame-adjustments)
       (phase/subproblem-analysis)
       (phase/delete-integrated-parameters)
       (phase/subproblem-ordering)
@@ -599,6 +599,7 @@ MIT in each case. |#
       (phase/design-environment-frames)
       (phase/connectivity-analysis)
       (phase/compute-node-offsets)
+      (phase/return-equivalencing)
       (phase/info-generation-1)
       (phase/fg-optimization-cleanup))))
 
@@ -627,6 +628,11 @@ MIT in each case. |#
     (lambda ()
       (operator-analysis *procedures* *applications*))))
 
+(define (phase/variable-indirection)
+  (compiler-subphase "Variable Indirection"
+    (lambda ()
+      (initialize-variable-indirections! *lvalues*))))
+
 (define (phase/environment-optimization)
   (compiler-subphase "Environment Optimization"
     (lambda ()
@@ -635,7 +641,15 @@ MIT in each case. |#
 (define (phase/identify-closure-limits)
   (compiler-subphase "Closure Limit Identification"
     (lambda ()
-      (identify-closure-limits! *procedures* *applications* *lvalues*))))
+      (identify-closure-limits! *procedures* *applications* *lvalues*)
+      (if (not compiler:preserve-data-structures?)
+	  (for-each (lambda (procedure)
+		      (if (not (procedure-continuation? procedure))
+			  (begin
+			    (set-procedure-free-callees! procedure '())
+			    (set-procedure-free-callers! procedure '())
+			    (set-procedure-variables! procedure '()))))
+		    *procedures*)))))
 
 (define (phase/setup-block-types)
   (compiler-subphase "Block Type Determination"
@@ -656,13 +670,10 @@ MIT in each case. |#
 (define (phase/continuation-analysis)
   (compiler-subphase "Continuation Analysis"
     (lambda ()
-      (continuation-analysis *blocks*))))
+      (continuation-analysis *blocks*)
+      (setup-frame-adjustments *applications*)
+      (setup-block-static-links! *blocks*))))
 
-(define (phase/setup-frame-adjustments)
-  (compiler-subphase "Frame Adjustment Determination"
-    (lambda ()
-      (setup-frame-adjustments *applications*))))
-
 (define (phase/subproblem-analysis)
   (compiler-subphase "Subproblem Analysis"
     (lambda ()
@@ -693,6 +704,11 @@ MIT in each case. |#
   (compiler-subphase "Stack Frame Offset Determination"
     (lambda ()
       (compute-node-offsets *root-expression*))))
+
+(define (phase/return-equivalencing)
+  (compiler-subphase "Return Equivalencing"
+    (lambda ()
+      (find-equivalent-returns! *lvalues* *applications*))))
 
 (define (phase/info-generation-1)
   (compiler-subphase "Debugging Information Initialization"
@@ -766,6 +782,7 @@ MIT in each case. |#
       (if compiler:cse?
 	  (phase/common-subexpression-elimination))
       (phase/invertible-expression-elimination)
+      (phase/common-suffix-merging)
       (phase/lifetime-analysis)
       (if compiler:code-compression?
 	  (phase/code-compression))
@@ -782,7 +799,13 @@ MIT in each case. |#
   (compiler-subphase "Invertible Expression Elimination"
     (lambda ()
       (invertible-expression-elimination *rtl-graphs*))))
-(define (phase/lifetime-analysis)
+
+(define (phase/common-suffix-merging)
+  (compiler-subphase "Common Suffix Merging"
+    (lambda ()
+      (merge-common-suffixes! *rtl-graphs*))))
+
+(define (phase/lifetime-analysis)
   (compiler-subphase "Lifetime Analysis"
     (lambda ()
       (lifetime-analysis *rtl-graphs*))))

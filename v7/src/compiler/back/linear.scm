@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.7 1988/11/06 14:50:00 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.8 1989/10/26 07:35:04 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -41,9 +41,8 @@ MIT in each case. |#
     (node-mark! bblock)
     (queue-continuations! bblock)
     (if (and (not (bblock-label bblock))
-	     (let ((edges (node-previous-edges bblock)))
-	       (and (not (null? edges))
-		    (not (null? (cdr edges))))))	(bblock-label! bblock))
+	     (node-previous>1? bblock))
+	(bblock-label! bblock))
     (let ((kernel
 	   (lambda ()
 	     (LAP ,@(bblock-instructions bblock)

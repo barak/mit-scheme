@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/infnew.scm,v 4.5 1989/08/21 19:32:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/infnew.scm,v 4.6 1989/10/26 07:35:51 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -199,14 +199,21 @@ MIT in each case. |#
 
 (define (variable->dbg-variable variable)
   (or (lvalue-get variable dbg-variable-tag)
-      (let ((integrated? (lvalue-integrated? variable)))
+      (let ((integrated? (lvalue-integrated? variable))
+	    (indirection (variable-indirection variable)))
 	(let ((dbg-variable
 	       (make-dbg-variable (variable-name variable)
 				  (cond (integrated? 'INTEGRATED)
+					(indirection 'INDIRECTED)
 					((variable-in-cell? variable) 'CELL)
 					(else 'NORMAL))
-				  (and integrated?
-				       (lvalue-known-value variable)))))	  (if integrated?
+				  (cond (integrated?
+					 (lvalue-known-value variable))
+					(indirection
+					 (variable->dbg-variable indirection))
+					(else
+					 false)))))
+	  (if integrated?
 	      (set! *integrated-variables*
 		    (cons dbg-variable *integrated-variables*)))
 	  (lvalue-put! variable dbg-variable-tag dbg-variable)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.20 1989/08/21 19:34:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.21 1989/10/26 07:39:15 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -357,7 +357,11 @@ MIT in each case. |#
   (with-new-node-marks
    (lambda ()
      (let ((initial-bblocks
-	    (map->eq-set edge-right-node (rgraph-initial-edges rgraph))))
+	    (map->eq-set edge-right-node (rgraph-initial-edges rgraph)))
+	   (protected-edges
+	    (append! (map rtl-procedure/entry-edge *procedures*)
+		     (map rtl-continuation/entry-edge *continuations*)
+		     (map rtl-continuation/entry-edge *extra-continuations*))))
        (let ((result '()))
 	 (define (loop bblock)
 	   (if (sblock? bblock)
@@ -380,7 +384,8 @@ MIT in each case. |#
 		     (let ((bblock (edge-left-node edge)))
 		       (if bblock
 			   (not (node-marked? bblock))
-			   disallow-entries?))))))
+			   (and disallow-entries?
+				(not (memq edge protected-edges)))))))))
 	     (lambda (bblock)
 	       (set-node-previous-edges!
 		bblock
@@ -391,35 +396,3 @@ MIT in each case. |#
 	 (for-each (delete-block-edges! false) initial-bblocks)
 	 (for-each (delete-block-edges! true) result)
 	 (set-rgraph-bblocks! rgraph (append! initial-bblocks result)))))))
-
-(define (bblock-compress! bblock limit-predicate)
-  ;; This improved compressor should replace the original in "rtlbase/rtlcfg".
-  (let ((walk-next?
-	 (if limit-predicate
-	     (lambda (next) (and next (not (limit-predicate next))))
-	     (lambda (next) next))))
-    (let walk-bblock ((bblock bblock))
-      (if (not (node-marked? bblock))
-	  (begin
-	    (node-mark! bblock)
-	    (if (sblock? bblock)
-		(let ((next (snode-next bblock)))
-		  (if (walk-next? next)
-		      (begin
-			(if (null? (cdr (node-previous-edges next)))
-			    (begin
-			      (set-rinst-next!
-			       (rinst-last (bblock-instructions bblock))
-			       (bblock-instructions next))
-			      (set-bblock-instructions!
-			       next
-			       (bblock-instructions bblock))
-			      (snode-delete! bblock)))
-			(walk-bblock next))))
-		(begin
-		  (let ((consequent (pnode-consequent bblock)))
-		    (if (walk-next? consequent)
-			(walk-bblock consequent)))
-		  (let ((alternative (pnode-alternative bblock)))
-		    (if (walk-next? alternative)
-			(walk-bblock alternative))))))))))

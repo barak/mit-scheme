@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.8 1989/08/10 11:39:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.9 1989/10/26 07:39:32 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -91,8 +91,9 @@ MIT in each case. |#
 	   (set-element-previous-value! class element)
 	   (let loop ((x element))
 	     (if x
-		 (begin (set-element-first-value! x element)
-			(loop (element-next-value x))))))
+		 (begin
+		   (set-element-first-value! x element)
+		   (loop (element-next-value x))))))
 	  (else
 	   (set-element-first-value! element class)
 	   (let loop ((previous class)
@@ -122,8 +123,9 @@ MIT in each case. |#
 	     (set-element-next-value! previous next)
 	     (let loop ((element next))
 	       (if element
-		   (begin (set-element-first-value! element next)
-			  (loop (element-next-value element)))))))
+		   (begin
+		     (set-element-first-value! element next)
+		     (loop (element-next-value element)))))))
        (let ((next (element-next-hash element))
 	     (previous (element-previous-hash element)))
 	 (if next (set-element-previous-hash! next previous))
@@ -137,24 +139,37 @@ MIT in each case. |#
     (if (< i (hash-table-size))
 	(let bucket-loop ((element (hash-table-ref i)))
 	  (if element
-	      (begin (if (predicate element)
-			 (hash-table-delete! i element))
-		     (bucket-loop (element-next-hash element)))
+	      (begin
+		(if (predicate element)
+		    (hash-table-delete! i element))
+		(bucket-loop (element-next-hash element)))
 	      (table-loop (1+ i))))))
   unspecific)
 
 (define (rtl:expression-cost expression)
-  (case (rtl:expression-type expression)
-    ((REGISTER) 1)
-    ((CONSTANT) (rtl:constant-cost (rtl:constant-value expression)))
-    (else
-     (let loop ((parts (cdr expression)) (cost 2))
-       (if (null? parts)
-	   cost
-	   (loop (cdr parts)
-		 (if (pair? (car parts))
-		     (+ cost (rtl:expression-cost (car parts)))
-		     cost)))))))
+  (let ((complex
+	 (lambda ()
+	   (let loop ((parts (cdr expression)) (cost 3))
+	     (if (null? parts)
+		 cost
+		 (loop (cdr parts)
+		       (if (pair? (car parts))
+			   (+ cost (rtl:expression-cost (car parts)))
+			   cost)))))))
+    (case (rtl:expression-type expression)
+      ((CONSTANT) (rtl:constant-cost (rtl:constant-value expression)))
+      ((REGISTER) 2)
+      ((OBJECT->FIXNUM)
+       (if (let ((subexpression (rtl:object->fixnum-expression expression)))
+	     (and (rtl:constant? subexpression)
+		  (let ((n (rtl:constant-value subexpression)))
+		    (and (exact-integer? n)
+			 (<= -128 n 127)))))
+	   1
+	   (complex)))
+      (else
+       (complex)))))
+
 (define (hash-table-copy table)
   ;; During this procedure, the `element-cost' slots of `table' are
   ;; reused as "broken hearts".

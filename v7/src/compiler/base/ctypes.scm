@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.13 1989/08/10 11:05:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.14 1989/10/26 07:35:44 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -49,7 +49,6 @@ MIT in each case. |#
   operand-values	;set by outer-analysis, used by identify-closure-limits
   continuation-push
   model			;set by identify-closure-limits, used in generation
-  destination-block	;used by identify-closure-limits to quench propagation
   frame-adjustment	;set by setup-frame-adjustments, used in generation
   reuse-existing-frame?	;set by setup-frame-adjustments, used in generation
   )
@@ -60,7 +59,7 @@ MIT in each case. |#
   (let ((application
 	 (make-snode application-tag
 		     type block operator operands false '() '()
-		     continuation-push false true false false)))
+		     continuation-push false false false)))
     (set! *applications* (cons application *applications*))
     (add-block-application! block application)
     (if (rvalue/reference? operator)
@@ -141,10 +140,16 @@ MIT in each case. |#
 (define-integrable (combination/operands combination)
   (cdr (application-operands combination)))
 
+(define (combination/simple-inline? combination)
+  (let ((inliner (combination/inliner combination)))
+    (and inliner
+	 (not (inliner/internal-close-coding? inliner)))))
+
 (define-structure (inliner (type vector) (conc-name inliner/))
   (handler false read-only true)
   (generator false read-only true)
-  operands)
+  operands
+  internal-close-coding?)
 
 (define-integrable (make-return block continuation rvalue)
   (make-application 'RETURN block continuation (list rvalue) false))
@@ -155,6 +160,9 @@ MIT in each case. |#
 (define-integrable return/context application-context)
 (define-integrable return/operator application-operator)
 (define-integrable return/continuation-push application-continuation-push)
+(define-integrable return/equivalence-class application-model)
+(define-integrable set-return/equivalence-class! set-application-model!)
+
 (define-integrable (return/operand return)
   (car (application-operands return)))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.9 1989/09/24 03:33:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.10 1989/10/26 07:36:40 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -36,134 +36,79 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-#|
-
-The closure analysis operates by identifying the "closing limit" of
-each procedure, which is defined as the nearest ancestor of the
-procedure's closing block which is active during the procedure's
-lifetime.  The closing limit is false whenever the extent of the
-procedure is not fully known, or if the procedure must be fully closed
-for any reason (including canonicalization).
-
-Procedures that are called from a closed procedure must inherit that
-procedure's closing limit since only the blocks farther away than the
-closing limit can be assumed to exist when those procedures are
-called.
-
-The procedure's free variables which are bound in blocks up to the
-closing limit (exclusive) must be consed in the heap.  Other free
-variables don't necessarily need to be allocated on the heap, provided
-that there is a known way to get to them.
-
-This analysis is maximal in that it is required for ANY closure
-construction mechanism that optimizes by means of a stack, because use
-of a stack associates procedure extent with block scope.  For many
-simple techniques it generates more information than is needed.
-
-**** Unfortunately the analysis is not compatible with the current
-implementation of closures.  If a closure invokes another procedure
-which is not a child, the current implementation requires that the
-other procedure also be a closure.  However, if the closing-limit of
-the (closed) caller is the same as that of the (open) callee, the
-callee will not be marked as a closure.  This has disastrous results.
-As a result, the analysis has been modified to force the closing-limit
-to #F whenever a closure is identified.
-
-|#
-
 (define (identify-closure-limits! procs&conts applications lvalues)
   (let ((procedures
-	 (list-transform-negative procs&conts procedure-continuation?)))
-    (for-each initialize-lvalues-lists! lvalues)
-    (for-each initialize-closure-limit! procedures)
-    (for-each initialize-arguments! applications)
-    (transitive-closure
-     (lambda ()
-       (for-each (lambda (procedure)
-		   (if (procedure-passed-out? procedure)
-		       (maybe-close-procedure! procedure
-					       false
-					       'PASSED-OUT
-					       false)))
-		 procedures))
-     (lambda (item)
-       (if (rvalue/procedure? item)
-	   (analyze-procedure item)
-	   (analyze-application item)))
-     (append procedures applications))
-    ;; Clean up
-    (if (not compiler:preserve-data-structures?)
-	(for-each (lambda (procedure)
-		    (set-procedure-free-callees! procedure '())
-		    (set-procedure-free-callers! procedure '())
-		    (set-procedure-variables! procedure '()))
-		  procedures))))
-
-(define (initialize-lvalues-lists! lvalue)
-  (if (lvalue/variable? lvalue)
-      (for-each (lambda (value)
-		  (if (rvalue/procedure? value)
-		      (set-procedure-variables!
-		       value
-		       (cons lvalue (procedure-variables value)))))
-		(lvalue-values lvalue))))
-
-(define (initialize-closure-limit! procedure)
-  (set-procedure-closing-limit! procedure (procedure-closing-block procedure))
-  ;; This sorting is crucial!  It causes a procedure's ancestors to be
-  ;; considered for undrifting prior to the procedure being
-  ;; considered.  This matters because the decision to undrift a
-  ;; procedure can be affected by whether or not the ancestors have
-  ;; been undrifted.
-  (set-procedure-free-callers!
-   procedure
-   (sort (procedure-free-callers procedure)
-	 (lambda (x y)
-	   (let ((y (procedure-block y))
-		 (x (procedure-block x)))
-	     (and (not (eq? y x))
-		  (original-block-ancestor-or-self? y x)))))))
-
-(define (initialize-arguments! application)
-  (if (application/combination? application)
-      (begin
-	(let ((values
-	       (let ((operands (application-operands application)))
-		 (if (null? operands)
-		     '()
-		     (eq-set-union* (rvalue-values (car operands))
-				    (map rvalue-values (cdr operands)))))))
-	  (set-application-operand-values! application values)
-	  (for-each
-	   (lambda (value)
-	     (if (and (rvalue/procedure? value)
-		      (not (procedure-continuation? value)))
-		 (set-procedure-virtual-closure?! value true)))
-	   values))
-	(set-combination/model!
-	 application
-	 (rvalue-known-value (combination/operator application))))))
+	 (list-transform-negative procs&conts procedure-continuation?))
+	(combinations
+	 (list-transform-positive applications application/combination?)))
+    (for-each (lambda (procedure)
+		(set-procedure-variables! procedure '()))
+	      procedures)
+    (for-each
+     (lambda (lvalue)
+       (if (lvalue/variable? lvalue)
+	   (for-each (lambda (value)
+		       (if (rvalue/procedure? value)
+			   (set-procedure-variables!
+			    value
+			    (cons lvalue (procedure-variables value)))))
+		     (lvalue-values lvalue))))
+     lvalues)
+    (for-each
+     (lambda (combination)
+       (let ((values
+	      (let ((operands (application-operands combination)))
+		(if (null? operands)
+		    '()
+		    (eq-set-union* (rvalue-values (car operands))
+				   (map rvalue-values (cdr operands)))))))
+	 (set-application-operand-values! combination values)
+	 (for-each
+	  (lambda (value)
+	    (if (and (rvalue/procedure? value)
+		     (not (procedure-continuation? value)))
+		(set-procedure-virtual-closure?! value true)))
+	  values))
+       (set-combination/model!
+	combination
+	(rvalue-known-value (combination/operator combination))))
+     combinations)
+    (undrift-procedures!
+     (fluid-let ((*undrifting-constraints* '()))
+       (with-new-node-marks
+	(lambda ()
+	  (transitive-closure
+	   (lambda ()
+	     (for-each (lambda (procedure)
+			 (if (procedure-passed-out? procedure)
+			     (close-procedure! procedure 'PASSED-OUT false)
+			     (analyze-procedure procedure)))
+		       procedures))
+	   analyze-combination
+	   combinations)))
+       *undrifting-constraints*))))
 
 (define (analyze-procedure procedure)
-  (for-each (lambda (variable)
-	      (maybe-close-procedure! procedure
-				      (variable-block variable)
-				      'EXPORTED
-				      variable))
-	    (procedure-variables procedure)))
+  (for-each
+   (lambda (variable)
+     ;; If this procedure is the value of a variable which is bound
+     ;; in a non-descendent block, we must close it.
+     (if (not (procedure-closure-context procedure))
+	 (close-if-unreachable! (variable-block variable)
+				(procedure-closing-block procedure)
+				procedure
+				'EXPORTED
+				variable)))
+   (procedure-variables procedure)))
 
-(define (analyze-application application)
-  (let* ((operator (application-operator application))
+(define (analyze-combination combination)
+  (let* ((operator (combination/operator combination))
 	 (proc (rvalue-known-value operator))
 	 (procs (rvalue-values operator)))
-    (cond ((not (application/combination? application))
-	   ;; If the combination is not an application, we need not
-	   ;; examine the operators for compatibility.
-	   unspecific)
-	  ((rvalue-passed-in? operator)
+    (cond ((rvalue-passed-in? operator)
 	   ;; We don't need to close the operands because
 	   ;; they have been marked as passed out already.
-	   (close-rvalue! operator 'APPLY-COMPATIBILITY application))
+	   (close-rvalue! operator 'APPLY-COMPATIBILITY combination))
 	  ((null? procs)
 	   ;; The (null? procs) case is the NOP node case.  This combination
 	   ;; should not be executed, so it should have no effect on any items
@@ -172,7 +117,7 @@ to #F whenever a closure is identified.
 	  ((not proc)
 	   (let ((class (compatibility-class procs))
 		 (model (car procs)))
-	     (set-combination/model! application
+	     (set-combination/model! combination
 				     (if (eq? class 'APPLY-COMPATIBILITY)
 					 false
 					 model))
@@ -181,35 +126,27 @@ to #F whenever a closure is identified.
 			     (set-procedure-virtual-closure?! proc true))
 			   procs)
 		 (begin
-		   (close-rvalue! operator class application)
-		   (close-application-arguments! application false)))))
+		   (close-rvalue! operator class combination)
+		   (close-combination-arguments! combination)))))
 	  ((or (not (rvalue/procedure? proc))
 	       (procedure-closure-context proc))
-	   (close-application-arguments! application false))
+	   (close-combination-arguments! combination))
 	  (else
 	   unspecific))))
-
-(define (close-application-arguments! application block)
-  (let ((previous (application-destination-block application)))
-    (let ((new
-	   (if (eq? previous true)
-	       block
-	       (and previous
-		    block
-		    (block-nearest-common-ancestor block previous)))))
-      (if (not (eq? new previous))
-	  (begin
-	    (set-application-destination-block! application new)
-	    (close-values! (application-operand-values application)
-			   new
-			   'ARGUMENT
-			   application))))))
+
+(define (close-combination-arguments! combination)
+  (if (not (node-marked? combination))
+      (begin
+	(node-mark! combination)
+	(close-values! (application-operand-values combination)
+		       'ARGUMENT
+		       combination))))
 
 (define (compatibility-class procs)
   (if (not (for-all? procs rvalue/procedure?))
       'APPLY-COMPATIBILITY
       (let* ((model (car procs))
-	     (model-env (procedure-closing-limit model)))
+	     (model-env (procedure-closing-block model)))
 	(with-values (lambda () (procedure-arity-encoding model))
 	  (lambda (model-min model-max)
 	    (let loop
@@ -225,151 +162,180 @@ to #F whenever a closure is identified.
 				 (= model-max this-max))
 			    (loop (cdr procs)
 				  (if (and (not (procedure/closure? this))
-					   (eq? (procedure-closing-limit this)
+					   (eq? (procedure-closing-block this)
 						model-env))
 				      class
 				      'COMPATIBILITY))
 			    'APPLY-COMPATIBILITY)))))))))))
 
 (define-integrable (close-rvalue! rvalue reason1 reason2)
-  (close-values! (rvalue-values rvalue) false reason1 reason2))
+  (close-values! (rvalue-values rvalue) reason1 reason2))
 
-(define (close-values! values binding-block reason1 reason2)
+(define (close-values! values reason1 reason2)
   (for-each (lambda (value)
 	      (if (and (rvalue/procedure? value)
 		       (not (procedure-continuation? value)))
-		  (maybe-close-procedure! value
-					  binding-block
-					  reason1
-					  reason2)))
+		  (close-procedure! value reason1 reason2)))
 	    values))
 
-(define (maybe-close-procedure! procedure binding-block reason1 reason2)
-  (let ((closing-limit (procedure-closing-limit procedure)))
-    (cond ((not closing-limit)
-	   (add-closure-reason! procedure reason1 reason2))
-	  ((not (and binding-block
-		     (block-ancestor-or-self? binding-block closing-limit)))
-	   (close-procedure! procedure reason1 reason2)))))
+(define (close-if-unreachable! block block* procedure reason1 reason2)
+  ;; If `block*' is not an ancestor of `block', close `procedure'.
+  (if (not (block-ancestor-or-self? block block*))
+      ;; However, if it was an ancestor before procedure-drifting took
+      ;; place, don't close, just undo the drifting.
+      (if (original-block-ancestor? block block*)
+	  (undrifting-constraint! block block* procedure reason1 reason2)
+	  (close-procedure! procedure reason1 reason2))))
 
 (define (close-procedure! procedure reason1 reason2)
-  (set-procedure-closing-limit! procedure false)
-  (if (procedure-virtual-closure? procedure)
-      (set-procedure-virtual-closure?! procedure false))
-  (let ((previously-trivial? (procedure/trivial-closure? procedure)))
-    ;; We can't change the closing block yet.  `setup-block-types!'
-    ;; has a consistency check that depends on the closing block
-    ;; remaining the same.
-    (add-closure-reason! procedure reason1 reason2)
-    ;; Force the procedure's type to CLOSURE.
-    (if (not (procedure-closure-context procedure))
-	(set-procedure-closure-context! procedure true))
-    ;; The code generator needs all callees to be closed.
-    (let ((block (procedure-block procedure)))
-      (for-each-callee! block
-	(lambda (value)
-	  (if (not (block-ancestor-or-self? (procedure-block value) block))
-	      (maybe-close-procedure! value false 'CONTAGION procedure)))))
-    ;; The environment optimizer may have moved some procedures in the
-    ;; environment tree based on the (now incorrect) assumption that this
-    ;; procedure was not closed.  Fix this.
-    ;; On the other hand, if it was trivial before, it is still trivial
-    ;; now, so the callers are not affected.
-    (if (not previously-trivial?)
-	(examine-free-callers! procedure))
-    ;; We need to reexamine those applications which may have this procedure
-    ;; as an operator, since the compatibility class of the operator may have
-    ;; changed.
-    (enqueue-nodes! (procedure-applications procedure))))
+  (add-closure-reason! procedure reason1 reason2)
+  (if (not (procedure-closure-context procedure))
+      (begin
 
-(define (for-each-callee! block procedure)
+	;; Force the procedure's type to CLOSURE.  Don't change the
+	;; closing block yet -- that will be taken care of by
+	;; `setup-block-types!'.
+	(set-procedure-closure-context! procedure true)
+	(if (procedure-virtual-closure? procedure)
+	    (set-procedure-virtual-closure?! procedure false))
+	(cancel-dependent-undrifting-constraints! procedure)
+	(close-non-descendent-callees! procedure (procedure-block procedure))
+
+	;; The procedure-drifting may have moved some procedures in
+	;; the environment tree based on the (now incorrect)
+	;; assumption that this procedure was not closed.  Fix this.
+	;; On the other hand, if it was trivial before, it is still
+	;; trivial now, so the callers are not affected.
+	(if (not (procedure/trivial-closure? procedure))
+	    (examine-free-callers! procedure))
+
+	;; We need to reexamine those applications which may have
+	;; this procedure as an operator, since the compatibility
+	;; class of the operator may have changed.
+	(enqueue-nodes! (procedure-applications procedure)))))
+
+(define (close-non-descendent-callees! procedure block)
   (for-each-block-descendent! block
     (lambda (block*)
-      (for-each (lambda (application)
-		  (for-each (lambda (value)
-			      (if (and (rvalue/procedure? value)
-				       (not (procedure-continuation? value)))
-				  (procedure value)))
-			    (rvalue-values
-			     (application-operator application))))
-		(block-applications block*)))))
-
+      (for-each
+       (lambda (application)
+	 (for-each (lambda (value)
+		     (if (and (rvalue/procedure? value)
+			      (not (procedure-continuation? value)))
+			 (close-if-unreachable! (procedure-block value) block
+						value 'CONTAGION procedure)))
+		   (rvalue-values (application-operator application))))
+       (block-applications block*)))))
+
 (define (examine-free-callers! procedure)
-  (let ((block (procedure-block procedure)))
-    (for-each
-     (lambda (procedure*)
-       (if (not (procedure-closure-context procedure*))
-	   (let ((parent (procedure-closing-block procedure*))
-		 (original-parent (procedure-target-block procedure*)))
-	     ;; No need to do anything if PROCEDURE* hasn't drifted
-	     ;; relative to PROCEDURE.
-	     (if (and (not (eq? parent original-parent))
-		      (not (block-ancestor-or-self? parent block)))
-		 (let ((binding-block
-			(reduce original-block-nearest-common-ancestor
-				false
-				(map variable-block
-				     (cdr (assq procedure
-						(procedure-free-callees
-						 procedure*)))))))
-		   (if (not (block-ancestor-or-self? parent binding-block))
-		       ;; PROCEDURE* has drifted towards the
-		       ;; environment root past the point where we
-		       ;; have access to PROCEDURE (by means of free
-		       ;; variables).  We must drift it away from
-		       ;; the root until we regain access to PROCEDURE.
-		       (undrift-procedure! procedure* binding-block)))))))
-     (procedure-free-callers procedure))))
-
-(define (undrift-procedure! procedure new-parent)
-  (let ((block (procedure-block procedure))
-	(parent (procedure-closing-block procedure))
-	(original-parent (procedure-target-block procedure)))
-    ;; (assert! (eq? parent (procedure-closing-limit procedure)))
-    (set-block-children! parent (delq! block (block-children parent)))
-    (set-block-parent! block new-parent)
-    (set-block-children! new-parent (cons block (block-children new-parent)))
-    (set-procedure-closing-limit! procedure new-parent)
-    (enqueue-nodes! (cons procedure (procedure-applications procedure)))
-    (if (eq? new-parent original-parent)
-	(set-block-disowned-children!
-	 original-parent
-	 (delq! block (block-disowned-children original-parent)))
-	(let ((parent-procedure (block-procedure original-parent)))
-	  (if (and (not (block-ancestor-or-self? original-parent new-parent))
-		   (rvalue/procedure? parent-procedure)
-		   (not (procedure-closure-context parent-procedure)))
-	      ;; My original parent has drifted to a place where I
-	      ;; can't be closed.  I must drag it back.
-	      (if (original-block-ancestor-or-self? original-parent new-parent)
-		  (undrift-procedure! parent-procedure new-parent)
-		  (error "Procedure has free variables in hyperspace!"
-			 procedure)))))
-    (examine-free-callers! procedure)))
+  (for-each
+   (lambda (procedure*)
+     (let ((block (procedure-block procedure*)))
+       (for-each
+	(lambda (block*)
+	  (if (not (block-ancestor-or-self? block block*))
+	      (undrifting-constraint! block block* false false false)))
+	(map->eq-set
+	 variable-block
+	 (cdr (or (assq procedure (procedure-free-callees procedure*))
+		  (error "missing free-callee" procedure procedure*)))))))
+   (procedure-free-callers procedure)))
 
-;;; These are like the corresponding standard block operations, but
-;;; they ignore any block drifting caused by envopt.
+(define *undrifting-constraints*)
 
-(define (original-block-ancestor-or-self? block block*)
-  (or (eq? block block*)
-      (let loop ((block (original-block-parent block)))
-	(and block
-	     (or (eq? block block*)
-		 (loop (original-block-parent block)))))))
+(define (undrifting-constraint! block block* procedure reason1 reason2)
+  (if (and procedure (procedure-closure-context procedure))
+      (add-closure-reason! procedure reason1 reason2)
+      (let ((block
+	     (let loop ((block block))
+	       (if (or (eq? (block-parent block) (original-block-parent block))
+		       (original-block-ancestor? (block-parent block) block*))
+		   (loop (block-parent block))
+		   block)))
+	    (condition (and procedure (list procedure reason1 reason2))))
+	(let ((entry (assq block *undrifting-constraints*))
+	      (check-inheritance
+	       (lambda ()
+		 (let loop ((block* block*))
+		   (if block*
+		       (let ((procedure (block-procedure block*)))
+			 (if (eq? true (procedure-closure-context procedure))
+			     (close-non-descendent-callees! procedure block)
+			     (loop (block-parent block*)))))))))
+	  (if (not entry)
+	      (begin
+		(set! *undrifting-constraints*
+		      (cons (list block (list block* condition))
+			    *undrifting-constraints*))
+		(check-inheritance))
+	      (let ((entry* (assq block* (cdr entry))))
+		(cond ((not entry*)
+		       (set-cdr! entry
+				 (cons (list block* condition) (cdr entry)))
+		       (check-inheritance))
+		      ((not
+			(if condition
+			    (list-search-positive (cdr entry*)
+			      (lambda (condition*)
+				(and
+				 (eq? (car condition) (car condition*))
+				 (eqv? (cadr condition) (cadr condition*))
+				 (eqv? (caddr condition) (caddr condition*)))))
+			    (memq false (cdr entry*))))
+		       (set-cdr! entry* (cons condition (cdr entry*)))
+		       unspecific))))))))
 
-(define (original-block-nearest-common-ancestor block block*)
-  (let loop
-      ((join false)
-       (ancestry (original-block-ancestry block '()))
-       (ancestry* (original-block-ancestry block* '())))
-    (if (and (not (null? ancestry))
-	     (not (null? ancestry*))
-	     (eq? (car ancestry) (car ancestry*)))
-	(loop (car ancestry) (cdr ancestry) (cdr ancestry*))
-	join)))
+(define (cancel-dependent-undrifting-constraints! procedure)
+  (for-each
+   (let ((block (procedure-block procedure)))
+     (lambda (entry)
+       (for-each
+	(lambda (entry*)
+	  (set-cdr! entry*
+		    (list-transform-negative! (cdr entry*)
+		      (lambda (constraint)
+			(and constraint (eq? procedure (car constraint)))))))
+	(cdr entry))
+       (if (there-exists? (cdr entry)
+	     (lambda (entry*)
+	       (and (not (null? (cdr entry*)))
+		    (block-ancestor-or-self? (car entry*) block))))
+	   (close-non-descendent-callees! procedure (car entry)))))
+   *undrifting-constraints*))
+
+(define (undrift-procedures! constraints)
+  (for-each
+   (lambda (entry)
+     (let ((entries
+	    (list-transform-negative! (cdr entry)
+	      (lambda (entry*)
+		(null? (cdr entry*))))))
+       (if (not (null? entries))
+	   (undrift-block! (car entry)
+			   (reduce original-block-nearest-ancestor
+				   false
+				   (map car entries))))))
+   constraints))
 
-(define (original-block-ancestry block path)
-  (let ((parent (original-block-parent block)))
-    (if parent
-	(original-block-ancestry parent (cons block path))
-	(cons block path))))
+(define-integrable (list-transform-negative! items predicate)
+  ((list-deletor! predicate) items))
+
+(define (undrift-block! block new-parent)
+  (let ((parent (block-parent block)))
+    (set-block-children! parent (delq! block (block-children parent))))
+  (own-block-child! new-parent block)
+  (if (eq? new-parent (original-block-parent block))
+      (set-block-disowned-children!
+       new-parent
+       (delq! block (block-disowned-children new-parent)))))
+
+(define (original-block-ancestor? block block*)
+  (let loop ((block (original-block-parent block)))
+    (and block
+	 (or (eq? block block*)
+	     (loop (original-block-parent block))))))
+
+(define (original-block-nearest-ancestor block block*)
+  (cond ((or (eq? block block*) (original-block-ancestor? block block*)) block)
+	((original-block-ancestor? block* block) block*)
+	(else (error "unrelated blocks" block block*))))
