@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -37,7 +37,7 @@
 
 ;;;; Compiler Utilities
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.79 1986/12/22 23:52:52 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.80 1987/01/01 18:51:18 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -235,9 +235,6 @@
     (let ((value (thunk)))
       (write-line (- (runtime) start))
       value)))
-
-(define &make-object
-  (make-primitive-procedure '&MAKE-OBJECT))
 
 ;;;; Set Operations
 
@@ -492,16 +489,22 @@
   (memq operator constant-foldable-operators))
 
 (define constant-foldable-operators
-  (map* (list primitive-type primitive-type?
-	      eq? null? pair? car cdr vector-length vector-ref
-	      number? complex? real? rational? integer?
-	      zero? positive? negative? odd? even? exact? inexact?
-	      = < > <= >= max min
-	      + - * / 1+ -1+ abs quotient remainder modulo integer-divide
-	      gcd lcm floor ceiling truncate round
-	      exp log expt sqrt sin cos tan asin acos atan)
-	make-primitive-procedure
-	'(&+ &- &* &/ &< &> &= &ATAN)))
+  (list primitive-type primitive-type?
+	eq? null? pair? car cdr vector-length vector-ref
+	number? complex? real? rational? integer?
+	zero? positive? negative? odd? even? exact? inexact?
+	= < > <= >= max min
+	+ - * / 1+ -1+ abs quotient remainder modulo integer-divide
+	gcd lcm floor ceiling truncate round
+	exp log expt sqrt sin cos tan asin acos atan
+	(ucode-primitive &+)
+	(ucode-primitive &-)
+	(ucode-primitive &*)
+	(ucode-primitive &/)
+	(ucode-primitive &<)
+	(ucode-primitive &>)
+	(ucode-primitive &=)
+	(ucode-primitive &atan)))
 
 ;;; end USING-SYNTAX
 )
