@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.c,v 9.42 1989/09/20 23:10:03 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.c,v 9.43 1989/11/06 22:00:00 jinx Exp $
  *
  * This file contains symbol lookup and modification routines.  See
  * Hal Abelson for a paper describing and justifying the algorithm.
@@ -1385,6 +1385,7 @@ force_definition(env, symbol, message)
 
   if (OBJECT_TYPE (env) == GLOBAL_ENV)
   {
+    *message = ERR_BAD_FRAME;
     return ((SCHEME_OBJECT *) NULL);
   }
 
@@ -1392,14 +1393,15 @@ force_definition(env, symbol, message)
   {
     previous = env;
     env = FAST_MEMORY_REF (MEMORY_REF (env, ENVIRONMENT_FUNCTION),
-			  PROCEDURE_ENVIRONMENT);
+			   PROCEDURE_ENVIRONMENT);
   } while (OBJECT_TYPE (env) != GLOBAL_ENV);
 
-  *message = Local_Set(previous, symbol, UNASSIGNED_OBJECT);
+  *message = (Local_Set (previous, symbol, UNASSIGNED_OBJECT));
   if (*message != PRIM_DONE)
+  {
     return ((SCHEME_OBJECT *) NULL);
-  return
-    deep_lookup(previous, symbol, fake_variable_object);
+  }
+  return (deep_lookup(previous, symbol, fake_variable_object));
 }
 
 /* Macros to allow multiprocessor interlocking in
