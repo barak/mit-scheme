@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: regexp.scm,v 1.64 1993/08/13 23:40:21 cph Exp $
+;;;	$Id: regexp.scm,v 1.65 1993/10/11 11:39:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -78,40 +78,43 @@
 	(error "No match group"))
     group))
 
+(define (re-match-data)
+  (let ((group (object-unhash match-group)))
+    (cons group
+	  (if group
+	      (let ((v (make-vector 20 false)))
+		(do ((i 0 (+ i 1)))
+		    ((= i 20))
+		  (let ((index (vector-ref registers i)))
+		    (if index
+			(vector-set!
+			 v i
+			 ;; Start marks are right-inserting,
+			 ;; end marks are left-inserting.
+			 (make-permanent-mark group index (>= i 10))))))
+		v)
+	      (vector-copy registers)))))
+
+(define (set-re-match-data! data)
+  (let ((group (car data))
+	(marks (cdr data)))
+    (set! match-group (if group (group-hash-number group) hash-of-false))
+    (set! registers
+	  (if group
+	      (vector-map marks
+			  (lambda (mark)
+			    (and mark
+				 (let ((index (mark-index mark)))
+				   (mark-temporary! mark)
+				   index))))
+	      marks)))
+  unspecific)
+
 (define (preserving-match-data thunk)
-  (let ((group unspecific)
-	(marks unspecific))
-    (unwind-protect
-     (lambda ()
-       (set! group (object-unhash match-group))
-       (set! marks
-	     (if group
-		 (let ((v (make-vector 20 false)))
-		   (do ((i 0 (+ i 1)))
-		       ((= i 20))
-		     (let ((index (vector-ref registers i)))
-		       (if index
-			   (vector-set!
-			    v i
-			    ;; Start marks are right-inserting,
-			    ;; end marks are left-inserting.
-			    (make-permanent-mark group index (>= i 10))))))
-		   v)
-		 (vector-copy registers)))
-       unspecific)
-     thunk
-     (lambda ()
-       (set! match-group (if group (group-hash-number group) hash-of-false))
-       (set! registers
-	     (if group
-		 (vector-map marks
-		   (lambda (mark)
-		     (and mark
-			  (let ((index (mark-index mark)))
-			    (mark-temporary! mark)
-			    index))))
-		 marks))
-       unspecific))))
+  (let ((data unspecific))
+    (unwind-protect (lambda () (set! data (re-match-data)) unspecific)
+		    thunk
+		    (lambda () (set-re-match-data! data)))))
 
 (define-integrable (syntax-table-argument syntax-table)
   (syntax-table/entries (or syntax-table standard-syntax-table)))
@@ -187,8 +190,7 @@
 	  pattern
 	  (re-translation-table case-fold-search)
 	  (syntax-table-argument syntax-table)
-	  registers
-	  group start end)))
+	  registers group start end)))
     (set! match-group (compute-match-group group index))
     index))
 
@@ -199,8 +201,7 @@
 	  pattern
 	  (re-translation-table case-fold-search)
 	  (syntax-table-argument syntax-table)
-	  registers
-	  group start end)))
+	  registers group start end)))
     (set! match-group (compute-match-group group index))
     index))
 
@@ -211,8 +212,7 @@
 	  pattern
 	  (re-translation-table case-fold-search)
 	  (syntax-table-argument syntax-table)
-	  registers
-	  group start end)))
+	  registers group start end)))
     (set! match-group (compute-match-group group index))
     index))
 
@@ -232,8 +232,7 @@
    pattern
    (re-translation-table case-fold-search)
    (syntax-table-argument syntax-table)
-   registers
-   string start end))
+   registers string start end))
 
 (define (re-search-string-forward pattern case-fold-search syntax-table string)
   (re-search-substring-forward pattern case-fold-search syntax-table
@@ -246,8 +245,7 @@
    pattern
    (re-translation-table case-fold-search)
    (syntax-table-argument syntax-table)
-   registers
-   string start end))
+   registers string start end))
 
 (define (re-search-string-backward pattern case-fold-search syntax-table
 				   string)
@@ -261,8 +259,7 @@
    pattern
    (re-translation-table case-fold-search)
    (syntax-table-argument syntax-table)
-   registers
-   string start end))
+   registers string start end))
 
 (define (search-forward string start end #!optional case-fold-search)
   (%re-search string start end

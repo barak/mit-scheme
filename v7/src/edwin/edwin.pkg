@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.138 1993/10/06 02:40:26 cph Exp $
+$Id: edwin.pkg,v 1.139 1993/10/11 11:39:37 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -540,6 +540,7 @@ MIT in each case. |#
 	  delete-match
 	  preserving-match-data
 	  re-match-buffer-forward
+	  re-match-data
 	  re-match-end
 	  re-match-end-index
 	  re-match-forward
@@ -558,7 +559,8 @@ MIT in each case. |#
 	  re-substitute-registers
 	  replace-match
 	  search-backward
-	  search-forward))
+	  search-forward
+	  set-re-match-data!))
 
 (define-package (edwin regular-expression-compiler)
   (files "rgxcmp")
