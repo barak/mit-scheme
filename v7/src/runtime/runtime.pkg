@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.283 1997/06/25 03:28:17 cph Exp $
+$Id: runtime.pkg,v 14.284 1997/07/15 05:16:12 adams Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -45,7 +45,6 @@ MIT in each case. |#
 	 "lambdx"
 	 "queue"
 	 "sfile"
-	 "string"
 	 "symbol"
 	 "udata"
 	 "vector")
@@ -87,6 +86,113 @@ MIT in each case. |#
   (files "version")
   (parent ())
   (initialization (initialize-package!)))
+
+(define-package (runtime string)
+  (files "string")
+  (parent ())
+  (export ()
+	  char->string
+	  list->string
+	  guarantee-string
+	  make-string
+	  set-string-length!
+	  string
+	  string->list
+	  string-allocate
+	  string-append
+	  string-capitalize
+	  string-capitalize!
+	  string-capitalized?
+	  string-ci<=?
+	  string-ci<?
+	  string-ci=?
+	  string-ci>=?
+	  string-ci>?
+	  string-compare
+	  string-compare-ci
+	  string-copy
+	  string-downcase
+	  string-downcase!
+	  string-fill!
+	  string-find-next-char
+	  string-find-next-char-ci
+	  string-find-next-char-in-set
+	  string-find-previous-char
+	  string-find-previous-char-ci
+	  string-find-previous-char-in-set
+	  string-hash
+	  string-hash-mod
+	  string-head
+	  string-length
+	  string-lower-case?
+	  string-match-backward
+	  string-match-backward-ci
+	  string-match-forward
+	  string-match-forward-ci
+	  string-maximum-length
+	  string-null?
+	  string-pad-left
+	  string-pad-right
+	  string-prefix-ci?
+	  string-prefix?
+	  string-ref
+	  string-replace
+	  string-replace!
+	  string-set!
+	  string-suffix-ci?
+	  string-suffix?
+	  string-tail
+	  string-trim
+	  string-trim-left
+	  string-trim-right
+	  string-upcase
+	  string-upcase!
+	  string-upper-case?
+	  string<=?
+	  string<?
+	  string=?
+	  string>=?
+	  string>?
+	  string?
+	  substring
+	  substring->list
+	  substring-capitalize!
+	  substring-capitalized?
+	  substring-ci<?
+	  substring-ci=?
+	  substring-downcase!
+	  substring-fill!
+	  substring-find-next-char
+	  substring-find-next-char-ci
+	  substring-find-next-char-in-set
+	  substring-find-previous-char
+	  substring-find-previous-char-ci
+	  substring-find-previous-char-in-set
+	  substring-lower-case?
+	  substring-match-backward
+	  substring-match-backward-ci
+	  substring-match-forward
+	  substring-match-forward-ci
+	  substring-move-left!
+	  substring-move-right!
+	  substring-prefix-ci?
+	  substring-prefix?
+	  substring-replace
+	  substring-replace!
+	  substring-suffix-ci?
+	  substring-suffix?
+	  substring-upcase!
+	  substring-upper-case?
+	  substring<?
+	  substring=?
+	  substring?
+	  vector-8b-fill!
+	  vector-8b-find-next-char
+	  vector-8b-find-next-char-ci
+	  vector-8b-find-previous-char
+	  vector-8b-find-previous-char-ci
+	  vector-8b-ref
+	  vector-8b-set!))
 
 (define-package (runtime 1d-property)
   (files "prop1d")
