@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: blowfish.scm,v 1.9 1999/08/09 04:07:11 cph Exp $
+$Id: blowfish.scm,v 1.10 1999/08/09 04:09:02 cph Exp $
 
 Copyright (c) 1997, 1999 Massachusetts Institute of Technology
 
@@ -95,7 +95,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (blowfish-encrypt-string plaintext key-string init-vector encrypt?)
   (blowfish-encrypt-substring plaintext 0 (string-length plaintext)
-			      key-string encrypt?))
+			      key-string init-vector encrypt?))
 
 (define (blowfish-encrypt-substring plaintext start end
 				    key-string init-vector encrypt?)
@@ -124,6 +124,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (write-string init-vector port)
     init-vector))
 
+(define (compute-blowfish-cfb-init-vector)
+  (let ((iv (make-string 8)))
+    (do ((i 0 (fix:+ i 1))
+	 (t (get-universal-time) (quotient t #x100)))
+	((fix:= 8 i))
+      (vector-8b-set! iv i (remainder t #x100)))
+    iv))
+
 (define (read-blowfish-file-header port)
   (let ((line (read-line port)))
     (cond ((string=? blowfish-file-header-v1 line)
@@ -144,14 +152,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define blowfish-file-header-v1 "Blowfish, 16 rounds")
 (define blowfish-file-header-v2 "Blowfish, 16 rounds, version 2")
-
-(define (compute-blowfish-cfb-init-vector)
-  (let ((iv (make-string 8)))
-    (do ((i 0 (fix:+ i 1))
-	 (t (get-universal-time) (quotient t #x100)))
-	((fix:= 8 i))
-      (vector-8b-set! iv i (remainder t #x100)))
-    iv))
 
 (define (md5-file filename)
   (call-with-binary-input-file filename
