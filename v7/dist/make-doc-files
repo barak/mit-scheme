@@ -1,46 +1,58 @@
 #!/bin/sh
 
+prefix=`/scheme/v7/dist/release-prefix`
+tldir=${prefix}/documentation
+mkdir ${prefix}
+mkdir ${tldir}
+
+mans="ref-manual user-manual sos"
 types="texinfo info dvi ps html"
 
-tldir=documentation-`date +%Y%m%d`
-mkdir ${tldir}
-cd ${tldir}
+for type in ${types}
+do
+  for man in ${mans}
+  do
+    case ${type} in
+    info)
+      cpx /scheme/documentation/${man}/*.info* ${tldir}
+      ;;
+    html)
+      cpx /scheme/documentation/${man}/html/*.html ${tldir}
+      ;;
+    *)
+      cpx /scheme/documentation/${man}/*.${type} ${tldir}
+      ;;
+    esac
+  done
+done
+
+cpx /scheme/v7/linux/lib/edwin/info/dir ${tldir}
+cpx /scheme/v7/dist/index.html ${tldir}
+
+chmod 444 ${tldir}/*
 
 for type in ${types}
 do
-  mkdir doc-${type}
-done
-
-for man in ref-manual user-manual sos
-do
-  dir=/scheme/documentation/${man}
-  cpx ${dir}/*.texinfo doc-texinfo/.
-  cpx ${dir}/*.info* doc-info/.
-  cpx ${dir}/*.dvi doc-dvi/.
-  cpx ${dir}/*.ps doc-ps/.
-  cpx ${dir}/html/*.html doc-html/.
-done
-
-cpx /scheme/v7/linux/lib/edwin/info/dir doc-info/.
-cpx /scheme/v7/dist/index.html doc-html/.
-
-for type in ${types}
-do
-  chmod 444 doc-${type}/*
-done
-
-for type in ${types}
-do
-  tarfile=doc-${type}.tar.gz
-  (cd doc-${type}; tar cvzf ../${tarfile} *)
+  tarfile=${prefix}-doc-${type}.tar.gz
+  rm -f ${tarfile}
+  case ${type} in
+  info)
+    tar cvzf ${tarfile} ${tldir}/dir ${tldir}/*.info*
+    ;;
+  *)
+    tar cvzf ${tarfile} ${tldir}/*.${type}
+    ;;
+  esac
   chmod 444 ${tarfile}
 done
 
-zipfile=doc-html.zip
-(cd doc-html; zip -l ../${zipfile} *)
+zipfile=${prefix}-doc-html.zip
+rm -f ${zipfile}
+zip -l ${zipfile} ${tldir}/*.html
 chmod 444 ${zipfile}
 
-rm -rf doc-texinfo
-rm -rf doc-info
-rm -rf doc-dvi
-rm -rf doc-ps
+rm -rf doc-html
+mkdir doc-html
+mv ${tldir}/*.html doc-html
+
+rm -rf ${tldir}

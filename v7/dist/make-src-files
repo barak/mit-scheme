@@ -1,20 +1,9 @@
 #!/bin/sh
 
-if [ $# -ne 1 ]
-then
-  echo "usage: $0 DESTINATION"
-  exit 1
-fi
-
+prefix=`/scheme/v7/dist/release-prefix`
+mkdir ${prefix}
 source=/scheme/v7/src
-destination=$1
-
-if [ -d ${destination} ]
-then
-  echo "DESTINATION must not be an existing directory"
-  exit 1
-fi
-
+destination="${prefix}/src"
 mkdir ${destination}
 
 for file in 6001 COPYING Makefile.std TAGS compiler cref edwin microcode rcs runtime sf sos win32
@@ -26,17 +15,16 @@ find ${destination} -type l -name RCS -print | xargs rm
 find ${destination} -type f -print | xargs chmod a-w
 find ${destination} -type d -print | xargs chmod g-w
 
-suffix=`date +%Y%m%d`
-tarfile=src-${suffix}.tar.gz
-zipfile=src-${suffix}.zip
-ucfile=gnulinux-ucode-src-${suffix}.tar.gz
+tarfile=${prefix}-src.tar.gz
+zipfile=${prefix}-src.zip
+ucfile=${prefix}-src-ucode-gnu-linux.tar.gz
 
 tar cvzf ${tarfile} ${destination}
 zip -rl ${zipfile} ${destination}
 
 (cd ${destination}/microcode; unxutl/config i386-linux)
-(cd ${destination}; tar cvzf ../${ucfile} microcode)
+tar cvzf ${ucfile} ${destination}/microcode
 
 chmod -w ${tarfile} ${zipfile} ${ucfile}
 
-rm -rf ${destination}
+rm -rf ${prefix}
