@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.39 2004/11/17 04:20:46 cph Exp $
+$Id: list.scm,v 14.40 2004/11/17 04:42:31 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,2000 Massachusetts Institute of Technology
@@ -134,7 +134,10 @@ USA.
 
 (define (guarantee-list object caller)
   (if (not (list? object))
-      (error:wrong-type-argument object "list" caller)))
+      (error:not-list object caller)))
+
+(define (error:not-list object caller)
+  (error:wrong-type-argument object "list" caller))
 
 (define (guarantee-list-of-type object predicate description caller)
   (if (not (list-of-type? object predicate))
@@ -144,7 +147,11 @@ USA.
   (list-of-type? object pair?))
 
 (define (guarantee-alist object caller)
-  (guarantee-list-of-type object pair? "association list" caller))
+  (if (not (alist? object))
+      (error:not-alist object caller)))
+
+(define (error:not-alist object caller)
+  (error:wrong-type-argument object "association list" caller))
 
 (define (list?->length object)
   (let loop ((l1 object) (l2 object) (length 0))
@@ -175,7 +182,7 @@ USA.
 (define (guarantee-list->length object caller)
   (let ((n (list?->length object)))
     (if (not n)
-	(error:wrong-type-argument object "list" caller))
+	(error:not-list object caller))
     n))
 
 (define (guarantee-list-of-type->length object predicate description caller)
@@ -217,7 +224,7 @@ USA.
   (list-head (list-tail list start) (- end start)))
 
 (define (list-copy items)
-  (let ((lose (lambda () (error:wrong-type-argument items "list" 'LIST-COPY))))
+  (let ((lose (lambda () (error:not-list items 'LIST-COPY))))
     (cond ((pair? items)
 	   (let ((head (cons (car items) '())))
 	     (let loop ((list (cdr items)) (previous head))
@@ -231,8 +238,7 @@ USA.
 	  (else (lose)))))
 
 (define (alist-copy alist)
-  (let ((lose
-	 (lambda () (error:wrong-type-argument alist "alist" 'ALIST-COPY))))
+  (let ((lose (lambda () (error:not-alist alist 'ALIST-COPY))))
     (cond ((pair? alist)
 	   (if (pair? (car alist))
 	       (let ((head (cons (car alist) '())))
@@ -292,7 +298,7 @@ USA.
 		    (loop (system-pair-cdr items*)))))
 	(begin
 	  (if (not (null? items*))
-	      (error:wrong-type-argument items "weak list" 'WEAK-LIST->LIST))
+	      (error:not-weak-list items 'WEAK-LIST->LIST))
 	  '()))))
 
 (define (list->weak-list items)
@@ -301,11 +307,21 @@ USA.
 	(weak-cons (car items*) (loop (cdr items*)))
 	(begin
 	  (if (not (null? items*))
-	      (error:wrong-type-argument items "list" 'LIST->WEAK-LIST))
+	      (error:not-list items 'LIST->WEAK-LIST))
 	  '()))))
 
 (define weak-pair/false
   "weak-pair/false")
+
+(define (weak-list? object)
+  (list-of-type? object weak-pair?))
+
+(define (guarantee-weak-list object caller)
+  (if (not (weak-list? object))
+      (error:not-weak-list object caller)))
+
+(define (error:not-weak-list object caller)
+  (error:wrong-type-argument object caller 'WEAK-LIST->LIST))
 
 (define (weak-memq object items)
   (let ((object (or object weak-pair/false)))
@@ -316,7 +332,7 @@ USA.
 	      (loop (system-pair-cdr items*)))
 	  (begin
 	    (if (not (null? items*))
-		(error:wrong-type-argument items "weak list" 'WEAK-MEMQ))
+		(error:not-weak-list items 'WEAK-MEMQ))
 	    #f)))))
 
 (define (weak-delq! item items)
@@ -332,8 +348,7 @@ USA.
 			items*))
 		  (begin
 		    (if (not (null? items*))
-			(error:wrong-type-argument items "weak list"
-						   'WEAK-MEMQ))
+			(error:not-weak-list items 'WEAK-MEMQ))
 		    '()))))
 	   (locate-initial-segment
 	    (lambda (last this)
@@ -344,8 +359,7 @@ USA.
 				(trim-initial-segment (system-pair-cdr this)))
 		      (locate-initial-segment this (system-pair-cdr this)))
 		  (if (not (null? this))
-		      (error:wrong-type-argument items "weak list"
-						 'WEAK-MEMQ))))))
+		      (error:not-weak-list items 'WEAK-MEMQ))))))
     (trim-initial-segment items)))
 
 ;;;; Standard Selectors
@@ -353,13 +367,10 @@ USA.
 (declare (integrate-operator safe-car safe-cdr))
 
 (define (safe-car x)
-  (if (pair? x) (car x) (error:not-a-pair x)))
+  (if (pair? x) (car x) (error:not-pair x 'SAFE-CAR)))
 
 (define (safe-cdr x)
-  (if (pair? x) (cdr x) (error:not-a-pair x)))
-
-(define (error:not-a-pair x)
-  (error:wrong-type-argument x "pair" #f))
+  (if (pair? x) (cdr x) (error:not-pair x 'SAFE-CDR)))
 
 (define (caar x) (safe-car (safe-car x)))
 (define (cadr x) (safe-car (safe-cdr x)))
@@ -453,15 +464,12 @@ USA.
 				       ((null? next)
 					(set-cdr! cell accum))
 				       (else
-					(error:wrong-type-argument (car rest)
-								   "list"
-								   'APPEND))))
+					(error:not-list (car rest) 'APPEND))))
 			       root))
 			    ((null? l1)
 			     accum)
 			    (else
-			     (error:wrong-type-argument (car rest) "list"
-							'APPEND))))
+			     (error:not-list (car rest) 'APPEND))))
 		    (cdr rest))
 	      accum))
 	'())))
@@ -476,7 +484,7 @@ USA.
 	       head)
 	      (else
 	       (if (not (null? head))
-		   (error:wrong-type-argument (car lists) "list" 'APPEND!))
+		   (error:not-list (car lists) 'APPEND!))
 	       (loop (car tail) (cdr tail)))))
       '()))
 
@@ -489,7 +497,7 @@ USA.
 	(loop (cdr rest) (cons (car rest) so-far))
 	(begin
 	  (if (not (null? rest))
-	      (error:wrong-type-argument l "list" 'REVERSE*))
+	      (error:not-list l 'REVERSE*))
 	  so-far))))
 
 (define (reverse*! l tail)
@@ -500,7 +508,7 @@ USA.
 	  (loop next current))
 	(begin
 	  (if (not (null? current))
-	      (error:wrong-type-argument l "list" 'REVERSE*!))
+	      (error:not-list l 'REVERSE*!))
 	  new-cdr))))
 
 ;;;; Mapping Procedures
@@ -558,7 +566,7 @@ USA.
     (do ((lists (cons first rest) (cdr lists)))
 	((not (pair? lists)))
       (if (not (list? (car lists)))
-	  (error:wrong-type-argument (car lists) "list" 'MAP)))
+	  (error:not-list (car lists) 'MAP)))
     (let ((n (length first)))
       (do ((lists rest (cdr lists)))
 	  ((not (pair? lists)))
@@ -620,8 +628,7 @@ USA.
 		      (DO ((LISTS (CONS FIRST REST) (CDR LISTS)))
 			  ((NOT (PAIR? LISTS)))
 			(IF (NOT (LIST? (CAR LISTS)))
-			    (ERROR:WRONG-TYPE-ARGUMENT (CAR LISTS) "list"
-						       ',name)))
+			    (ERROR:NOT-LIST (CAR LISTS) ',name)))
 		      (LET ((N (LENGTH FIRST)))
 			(DO ((LISTS REST (CDR LISTS)))
 			    ((NOT (PAIR? LISTS)))
@@ -649,11 +656,11 @@ USA.
 	    (loop (procedure value (car l)) (cdr l))
 	    (begin
 	      (if (not (null? l))
-		  (error:wrong-type-argument list "list" 'REDUCE))
+		  (error:not-list list 'REDUCE))
 	      value)))
       (begin
 	(if (not (null? list))
-	    (error:wrong-type-argument list "list" 'REDUCE))
+	    (error:not-list list 'REDUCE))
 	initial)))
 
 (define (reduce-right procedure initial list)
@@ -663,11 +670,11 @@ USA.
 	    (procedure value (loop (car l) (cdr l)))
 	    (begin
 	      (if (not (null? l))
-		  (error:wrong-type-argument list "list" 'REDUCE-RIGHT))
+		  (error:not-list list 'REDUCE-RIGHT))
 	      value)))
       (begin
 	(if (not (null? list))
-	    (error:wrong-type-argument list "list" 'REDUCE-RIGHT))
+	    (error:not-list list 'REDUCE-RIGHT))
 	initial)))
 
 (define (fold-left procedure initial-value a-list)
@@ -678,7 +685,7 @@ USA.
 	      (cdr list))
 	(begin
 	  (if (not (null? list))
-	      (error:wrong-type-argument a-list "list" 'FOLD-LEFT))
+	      (error:not-list a-list 'FOLD-LEFT))
 	  initial-value))))
 
 (define (fold-right procedure initial-value a-list)
@@ -687,15 +694,13 @@ USA.
 	(procedure (car list) (fold (cdr list)))
 	(begin
 	  (if (not (null? list))
-	      (error:wrong-type-argument a-list "list" 'FOLD-RIGHT))
+	      (error:not-list a-list 'FOLD-RIGHT))
 	  initial-value))))
 
 ;;;; Generalized List Operations
 
 (define (keep-matching-items items predicate)
-  (let ((lose
-	 (lambda ()
-	   (error:wrong-type-argument items "list" 'KEEP-MATCHING-ITEMS))))
+  (let ((lose (lambda () (error:not-list items 'KEEP-MATCHING-ITEMS))))
     (cond ((pair? items)
 	   (let ((head (cons (car items) '())))
 	     (let loop ((items* (cdr items)) (previous head))
@@ -713,9 +718,7 @@ USA.
 	  (else (lose)))))
 
 (define (delete-matching-items items predicate)
-  (let ((lose
-	 (lambda ()
-	   (error:wrong-type-argument items "list" 'DELETE-MATCHING-ITEMS))))
+  (let ((lose (lambda () (error:not-list items 'DELETE-MATCHING-ITEMS))))
     (cond ((pair? items)
 	   (let ((head (cons (car items) '())))
 	     (let loop ((items* (cdr items)) (previous head))
@@ -740,7 +743,7 @@ USA.
 	    (loop (cdr items*)))
 	(begin
 	  (if (not (null? items*))
-	      (error:wrong-type-argument items "list" 'FIND-MATCHING-ITEM))
+	      (error:not-list items 'FIND-MATCHING-ITEM))
 	  #f))))
 
 (define (find-non-matching-item items predicate)
@@ -751,7 +754,7 @@ USA.
 	    (car items*))
 	(begin
 	  (if (not (null? items*))
-	      (error:wrong-type-argument items "list" 'FIND-MATCHING-ITEM))
+	      (error:not-list items 'FIND-MATCHING-ITEM))
 	  #f))))
 
 (define (delete-matching-items! items predicate)
@@ -778,7 +781,7 @@ USA.
 		  (lose)))))
        (lose
 	(lambda ()
-	  (error:wrong-type-argument items "list" 'DELETE-MATCHING-ITEMS!))))
+	  (error:not-list items 'DELETE-MATCHING-ITEMS!))))
     (trim-initial-segment items)))
 
 (define (keep-matching-items! items predicate)
@@ -805,7 +808,7 @@ USA.
 		  (lose)))))
        (lose
 	(lambda ()
-	  (error:wrong-type-argument items "list" 'KEEP-MATCHING-ITEMS!))))
+	  (error:not-list items 'KEEP-MATCHING-ITEMS!))))
     (trim-initial-segment items)))
 
 (define ((list-deletor predicate) items)
@@ -857,7 +860,7 @@ USA.
 	      (loop (cdr items*)))
 	  (begin
 	    (if (not (null? items*))
-		(error:wrong-type-argument items "list" #f))
+		(error:not-list items #f))
 	    #f)))))
 
 (define (add-member-procedure predicate)
@@ -879,7 +882,7 @@ USA.
 	      (loop (cdr items*)))
 	  (begin
 	    (if (not (null? items*))
-		(error:wrong-type-argument items "list" #f))
+		(error:not-list items #f))
 	    #f)))))
 
 (define ((delete-association-procedure deletor predicate selector) key alist)
@@ -897,7 +900,7 @@ USA.
 	    (loop (cdr items*)))
 	(begin
 	  (if (not (null? items*))
-	      (error:wrong-type-argument items "list" 'MEMQ))
+	      (error:not-list items 'MEMQ))
 	  #f))))
 
 (define (assq key alist)
@@ -905,17 +908,17 @@ USA.
     (if (pair? alist*)
 	(begin
 	  (if (not (pair? (car alist*)))
-	      (error:wrong-type-argument alist "alist" 'ASSQ))
+	      (error:not-alist alist 'ASSQ))
 	  (if (eq? (car (car alist*)) key)
 	      (car alist*)
 	      (loop (cdr alist*))))
 	(begin
 	  (if (not (null? alist*))
-	      (error:wrong-type-argument alist "alist" 'ASSQ))
+	      (error:not-alist alist 'ASSQ))
 	  #f))))
 
 (define (delq item items)
-  (let ((lose (lambda () (error:wrong-type-argument items "list" 'DELQ))))
+  (let ((lose (lambda () (error:not-list items 'DELQ))))
     (cond ((pair? items)
 	   (let ((head (cons (car items) '())))
 	     (let loop ((items (cdr items)) (previous head))
@@ -943,7 +946,7 @@ USA.
 			items*))
 		  (begin
 		    (if (not (null? items*))
-			(error:wrong-type-argument items "list" 'DELQ!))
+			(error:not-list items 'DELQ!))
 		    '()))))
 	   (locate-initial-segment
 	    (lambda (last this)
@@ -952,7 +955,7 @@ USA.
 		      (set-cdr! last (trim-initial-segment (cdr this)))
 		      (locate-initial-segment this (cdr this)))
 		  (if (not (null? this))
-		      (error:wrong-type-argument items "list" 'DELQ!))))))
+		      (error:not-list items 'DELQ!))))))
     (trim-initial-segment items)))
 
 ;;;; Lastness and Segments
@@ -989,4 +992,7 @@ USA.
 
 (define-integrable (guarantee-pair object procedure)
   (if (not (pair? object))
-      (error:wrong-type-argument object "pair" procedure)))
+      (error:not-pair object procedure)))
+
+(define (error:not-pair object procedure)
+  (error:wrong-type-argument object "pair" procedure))
