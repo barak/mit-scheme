@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pthmap.scm,v 4.2 1995/04/28 12:35:59 adams Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pthmap.scm,v 4.3 1995/07/12 19:43:43 adams Exp $
 
 Copyright (c) 1987-1995 Massachusetts Institute of Technology
 
@@ -135,4 +135,4 @@ MIT in each case. |#
 					  (make-node-list pathname))
 		     value)))
 
-)
+unspecific)
