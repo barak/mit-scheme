@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.56 2000/05/18 22:11:14 cph Exp $
+;;; $Id: imail-imap.scm,v 1.57 2000/05/19 02:31:07 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -897,18 +897,18 @@
 	(port (imap-connection-port connection)))
     (if imail-trace?
 	(imail-trace-record-output (cons* 'SEND tag command arguments)))
-    (write-string tag port)
-    (write-char #\space port)
-    (write command port)
+    (imap-transcript-write-string tag port)
+    (imap-transcript-write-char #\space port)
+    (imap-transcript-write command port)
     (for-each (lambda (argument)
 		(if argument
 		    (begin
-		      (write-char #\space port)
+		      (imap-transcript-write-char #\space port)
 		      (imap:send-command-argument connection tag argument))))
 	      arguments)
-    (write-char #\return port)
-    (write-char #\linefeed port)
-    (flush-output port)
+    (imap-transcript-write-char #\return port)
+    (imap-transcript-write-char #\linefeed port)
+    (imap-transcript-flush-output port)
     tag))
 
 (define (imap:send-command-argument connection tag argument)
@@ -916,11 +916,11 @@
     (let loop ((argument argument))
       (cond ((or (symbol? argument)
 		 (exact-nonnegative-integer? argument))
-	     (write argument port))
+	     (imap-transcript-write argument port))
 	    ((and (pair? argument)
 		  (eq? (car argument) 'ATOM)
 		  (string? (cdr argument)))
-	     (write-string (cdr argument) port))
+	     (imap-transcript-write-string (cdr argument) port))
 	    ((and (pair? argument)
 		  (eq? (car argument) 'LITERAL)
 		  (string? (cdr argument)))
@@ -930,21 +930,21 @@
 		 (imap:write-quoted-string argument port)
 		 (imap:write-literal-string connection tag argument)))
 	    ((list? argument)
-	     (write-char #\( port)
+	     (imap-transcript-write-char #\( port)
 	     (if (pair? argument)
 		 (begin
 		   (loop (car argument))
 		   (for-each (lambda (object)
-			       (write-char #\space port)
+			       (imap-transcript-write-char #\space port)
 			       (loop object))
 			     (cdr argument))))
-	     (write-char #\) port))
+	     (imap-transcript-write-char #\) port))
 	    (else (error "Illegal IMAP syntax:" argument))))))
 
 (define (imap:write-literal-string connection tag string)
   (let ((port (imap-connection-port connection)))
     (imap:write-literal-string-header string port)
-    (flush-output port)
+    (imap-transcript-flush-output port)
     (let loop ()
       (let ((response (imap:read-server-response port)))
 	(cond ((imap:response:continue? response)

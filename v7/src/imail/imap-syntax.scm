@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-syntax.scm,v 1.9 2000/05/16 15:14:17 cph Exp $
+;;; $Id: imap-syntax.scm,v 1.10 2000/05/19 02:31:12 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -573,26 +573,26 @@
   (imap:write-quoted-substring string 0 (string-length string) port))
 
 (define (imap:write-quoted-substring string start end port)
-  (write-char #\" port)
+  (imap-transcript-write-char #\" port)
   (let loop ((start start))
     (if (fix:< start end)
 	(let ((char (string-ref string start)))
 	  (if (or (char=? char #\\) (char=? char #\"))
-	      (write-char #\\ port))
-	  (write-char char port)
+	      (imap-transcript-write-char #\\ port))
+	  (imap-transcript-write-char char port)
 	  (loop (fix:+ start 1)))))
-  (write-char #\" port))
+  (imap-transcript-write-char #\" port))
 
 (define (imap:write-literal-string-header string port)
   (imap:write-literal-substring-header string 0 (string-length string) port))
 
 (define (imap:write-literal-substring-header string start end port)
   string
-  (write-char #\{ port)
-  (write (fix:- end start) port)
-  (write-char #\} port)
-  (write-char #\return port)
-  (write-char #\linefeed port))
+  (imap-transcript-write-char #\{ port)
+  (imap-transcript-write (fix:- end start) port)
+  (imap-transcript-write-char #\} port)
+  (imap-transcript-write-char #\return port)
+  (imap-transcript-write-char #\linefeed port))
 
 (define (imap:write-literal-string-body string port)
   (imap:write-literal-substring-body string 0 (string-length string) port))
@@ -604,11 +604,11 @@
 	(let ((index (substring-find-next-char string start end #\newline)))
 	  (if index
 	      (begin
-		(write-substring string start index port)
-		(write-char #\return port)
-		(write-char #\linefeed port)
+		(imap-transcript-write-substring string start index port)
+		(imap-transcript-write-char #\return port)
+		(imap-transcript-write-char #\linefeed port)
 		(loop (fix:+ index 1)))
-	      (write-substring string start end port))))))
+	      (imap-transcript-write-substring string start end port))))))
 
 (define (imap:universal-time->date-time time)
   (imap:decoded-time->date-time (universal-time->global-decoded-time time)))
