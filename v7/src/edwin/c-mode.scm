@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: c-mode.scm,v 1.52 1993/08/10 05:46:42 cph Exp $
+;;;	$Id: c-mode.scm,v 1.53 1995/02/02 21:22:52 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -234,7 +234,7 @@ regardless of where in the line point is when the TAB command is used."
 						      false))
 			       (mark< (skip-chars-forward
 				       " \t"
-				       (forward-word mark 1))
+				       (skip-chars-forward "a-zA-Z0-9_$" mark))
 				      point))
 			  (let ((state
 				 (parse-partial-sexp
