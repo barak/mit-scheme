@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.54 1992/08/16 23:21:57 jinx Exp $
+$Id: bintopsb.c,v 9.55 1992/10/31 23:41:13 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -546,8 +546,8 @@ DEFUN (print_a_flonum, (val),
 {
   fast long size_in_bits;
   fast double mant, temp;
-  long expt;
-  extern double frexp();
+  int expt;
+  extern double EXFUN (frexp, (double, int *));
 
   fprintf(portable_file, "%02x %c ",
 	  TC_BIG_FLONUM,
@@ -568,7 +568,7 @@ DEFUN (print_a_flonum, (val),
     if (temp >= 1.0)
       temp -= 1.0;
   }
-  fprintf(portable_file, "%ld %ld ", expt, size_in_bits);
+  fprintf(portable_file, "%d %ld ", expt, size_in_bits);
 
   for (size_in_bits = hex_digits(size_in_bits);
        size_in_bits > 0;
