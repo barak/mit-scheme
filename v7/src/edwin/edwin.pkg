@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.115 1993/02/10 16:21:07 cph Exp $
+$Id: edwin.pkg,v 1.116 1993/02/25 02:54:50 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -820,7 +820,6 @@ MIT in each case. |#
 #|
 (define-package (edwin process)
   (file-case os-type
-    ((unix) "process")
     ((dos)  "dosproc"))
   (parent (edwin))
   (export (edwin)
@@ -830,7 +829,12 @@ MIT in each case. |#
 	  initialize-processes!			; always present
 	  process-list				; always present
 	  subprocesses-available?))		; always present
-|#
+
+(define-package (edwin dosjob)
+  (file-case os-type
+    ((dos) "doscom" "dosshell"))
+  (parent (edwin)))
+#|
 
 ;;;; This is the variant used under Unix/X
 
