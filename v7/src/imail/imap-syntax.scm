@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-syntax.scm,v 1.13 2000/07/05 01:04:01 cph Exp $
+;;; $Id: imap-syntax.scm,v 1.14 2000/07/05 01:14:01 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -281,28 +281,23 @@
 
 ;;;; URL parser
 
-(define (url:decoding-parser match-encoded match-decoded keyword)
+(define (url:decoding-parser match-encoded keyword)
   (decoding-parser match-encoded
 		   url:decode-substring
-		   (simple-parser match-decoded keyword)))
+		   (simple-parser match-always keyword)))
 
 (define (imap:server-parser allow-auth?)
   (sequence-parser
    (optional-parser
     (sequence-parser
-     (let ((parse-user-id
-	    (url:decoding-parser imap:match:achar+
-				 imap:match:astring
-				 'USER-ID)))
+     (let ((parse-user-id (url:decoding-parser imap:match:achar+ 'USER-ID)))
        (if allow-auth?
 	   (let ((parse-auth
 		  (sequence-parser
 		   (noise-parser (ci-string-matcher ";auth="))
 		   (alternatives-parser
 		    (simple-parser (string-matcher "*") 'AUTH-TYPE)
-		    (url:decoding-parser imap:match:achar+
-					 imap:match:atom
-					 'AUTH-TYPE)))))
+		    (url:decoding-parser imap:match:achar+ 'AUTH-TYPE)))))
 	     (alternatives-parser
 	      (sequence-parser parse-user-id
 			       (optional-parser parse-auth))
@@ -321,21 +316,14 @@
 (define imap:parse:mailboxlist
   (sequence-parser
    (optional-parser
-    (url:decoding-parser imap:match:bchar+
-			 (alternatives-matcher
-			  (rexp-matcher
-			   (rexp+
-			    (char-set-union imap:char-set:atom-char
-					    imap:char-set:list-wildcards)))
-			  imap:match:string)
-			 'MAILBOX-LIST))
+    (url:decoding-parser imap:match:bchar+ 'MAILBOX-LIST))
    (noise-parser (ci-string-matcher ";type="))
    (simple-parser (alternatives-matcher (ci-string-matcher "list")
 					(ci-string-matcher "lsub"))
 		  'LIST-TYPE)))
 
 (define imap:parse:enc-mailbox
-  (url:decoding-parser imap:match:bchar+ imap:match:astring 'MAILBOX))
+  (url:decoding-parser imap:match:bchar+ 'MAILBOX))
 
 (define imap:parse:uidvalidity
   (sequence-parser (noise-parser (ci-string-matcher ";uidvalidity="))
@@ -344,9 +332,7 @@
 (define imap:parse:messagelist
   (sequence-parser imap:parse:enc-mailbox
 		   (optional-parser
-		    (url:decoding-parser imap:match:bchar+
-					 imap:match:search-program
-					 'SEARCH-PROGRAM))
+		    (url:decoding-parser imap:match:bchar+ 'SEARCH-PROGRAM))
 		   (optional-parser imap:parse:uidvalidity)))
 
 (define imap:parse:messagepart
