@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: triv.pkg,v 1.5 2001/08/18 04:49:06 cph Exp $
+$Id: triv.pkg,v 1.6 2001/08/20 02:49:18 cph Exp $
 
 Copyright (c) 2001 Massachusetts Institute of Technology
 
@@ -34,7 +34,7 @@ USA.
 			'#()
 			(list->vector
 			 (map (lambda (name)
-				(vector name (cons (car ancestors) name)))
+				(vector name (car ancestors)))
 			      exported-names))
 			(list->vector
 			 (map (lambda (n.p)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpkg.scm,v 1.11 2001/08/18 04:48:34 cph Exp $
+$Id: conpkg.scm,v 1.12 2001/08/20 02:48:57 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -48,87 +48,6 @@ USA.
 		      (package-structure<? (car a) (car b))))))
 	    (list->vector (map cdr alist)))))
 
-(define (construct-external-description package extension?)
-  (call-with-values
-      (lambda ()
-	(split-bindings-list (package/sorted-bindings package)))
-    (lambda (internal exports imports)
-      (vector (package/name package)
-	      (let loop ((package package))
-		(let ((parent (package/parent package)))
-		  (if parent
-		      (cons (package/name parent) (loop parent))
-		      '())))
-	      (map (let ((map-files
-			  (lambda (clause)
-			    (map ->namestring
-				 (file-case-clause/files clause)))))
-		     (lambda (file-case)
-		       (cons (file-case/type file-case)
-			     (if (file-case/type file-case)
-				 (map (lambda (clause)
-					(cons (file-case-clause/keys clause)
-					      (map-files clause)))
-				      (file-case/clauses file-case))
-				 (map-files
-				  (car (file-case/clauses file-case)))))))
-		   (package/file-cases package))
-	      (package/initialization package)
-	      (package/finalization package)
-	      (list->vector internal)
-	      (list->vector
-	       (map (lambda (n.l)
-		      (list->vector
-		       (cons (car n.l)
-			     (map (lambda (link)
-				    (let ((dest (link/destination link)))
-				      (cons (package/name
-					     (binding/package dest))
-					    (binding/name dest))))
-				  (cdr n.l)))))
-		    exports))
-	      (list->vector
-	       (map (lambda (n.s)
-		      (let ((name (car n.s))
-			    (source (cdr n.s)))
-			(if (eq? name (binding/name source))
-			    (vector name
-				    (package/name (binding/package source)))
-			    (vector name
-				    (package/name (binding/package source))
-				    (binding/name source)))))
-		    imports))
-	      extension?))))
-
-(define (split-bindings-list bindings)
-  (let loop ((bindings bindings) (internal '()) (exports '()) (imports '()))
-    (if (pair? bindings)
-	(let ((binding (car bindings))
-	      (bindings (cdr bindings)))
-	  (let ((name (binding/name binding))
-		(source (binding/source-binding binding))
-		(links
-		 (list-transform-positive (binding/links binding) link/new?)))
-	    (if (and source
-		     (or (binding/new? binding)
-			 (pair? links)))
-		(if (eq? binding source)
-		    (if (pair? links)
-			(loop bindings
-			      internal
-			      (cons (cons name links) exports)
-			      imports)
-			(loop bindings
-			      (cons name internal)
-			      exports
-			      imports))
-		    (loop bindings
-			  internal
-			  exports
-			  (cons (cons name source) imports)))
-		(loop bindings internal exports imports))))
-	(values (reverse! internal) (reverse! exports) (reverse! imports)))))
-
 (define (package-structure<? x y)
   (cond ((package/topological<? x y) true)
 	((package/topological<? y x) false)
@@ -141,3 +60,71 @@ USA.
 	      (if (eq? x y)
 		  true
 		  (loop (package/parent y)))))))
+
+(define (construct-external-description package extension?)
+  (call-with-values (lambda () (split-links package))
+    (lambda (exports imports)
+      (vector (package/name package)
+	      (let loop ((package package))
+		(let ((parent (package/parent package)))
+		  (if parent
+		      (cons (package/name parent) (loop parent))
+		      '())))
+	      (map (lambda (file-case)
+		     (cons (file-case/type file-case)
+			   (if (file-case/type file-case)
+			       (map (lambda (clause)
+				      (cons (file-case-clause/keys clause)
+					    (map-files clause)))
+				    (file-case/clauses file-case))
+			       (map-files
+				(car (file-case/clauses file-case))))))
+		   (package/file-cases package))
+	      (package/initialization package)
+	      (package/finalization package)
+	      (list->vector
+	       (map binding/name
+		    (list-transform-positive (package/sorted-bindings package)
+		      (lambda (binding)
+			(and (binding/new? binding)
+			     (binding/internal? binding)
+			     (not (there-exists? (binding/links binding)
+				    (lambda (link)
+				      (memq link
+					    (package/links package))))))))))
+	      (list->vector
+	       (map (lambda (link)
+		      (let ((source (link/source link))
+			    (destination (link/destination link)))
+			(let ((sn (binding/name source))
+			      (dp (package/name (binding/package destination)))
+			      (dn (binding/name destination)))
+			  (if (eq? sn dn)
+			      (vector sn dp)
+			      (vector sn dp dn)))))
+		    exports))
+	      (list->vector
+	       (map (lambda (link)
+		      (let ((source (link/source link))
+			    (destination (link/destination link)))
+			(let ((dn (binding/name destination))
+			      (sp (package/name (binding/package source)))
+			      (sn (binding/name source)))
+			  (if (eq? dn sn)
+			      (vector dn sp)
+			      (vector dn sp sn)))))
+		    imports))
+	      extension?))))
+
+(define (split-links package)
+  (let loop ((links (package/links package)) (exports '()) (imports '()))
+    (if (pair? links)
+	(let ((link (car links))
+	      (links (cdr links)))
+	  (if (eq? (binding/package (link/source link)) package)
+	      (loop links (cons link exports) imports)
+	      (loop links exports (cons link imports))))
+	(values exports imports))))
+
+(define (map-files clause)
+  (map ->namestring (file-case-clause/files clause)))

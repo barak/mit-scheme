@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.32 2001/08/18 04:47:26 cph Exp $
+$Id: packag.scm,v 14.33 2001/08/20 02:48:31 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -249,8 +249,8 @@ USA.
   (initialization #f read-only #t)
   (finalization #f read-only #t)
   (internal-names #f read-only #t)
-  (internal-bindings #f read-only #t)
-  (external-bindings #f read-only #t)
+  (exports #f read-only #t)
+  (imports #f read-only #t)
   (extension? #f read-only #t))
 
 (define (package-file? object)
@@ -288,29 +288,20 @@ USA.
 				      (eq? (car clause) 'ELSE))
 				  (list-of-type? (cdr clause) string?)))))))))
        (vector-of-type? (package-description/internal-names object) symbol?)
-       (vector-of-type? (package-description/internal-bindings object)
-	 (lambda (binding)
-	   (and (vector? binding)
-		(let ((n (vector-length binding)))
-		  (and (fix:>= n 2)
-		       (symbol? (vector-ref binding 0))
-		       (let loop ((i 1))
-			 (or (fix:= i n)
-			     (and (let ((p.n (vector-ref binding i)))
-				    (and (pair? p.n)
-					 (package-name? (car p.n))
-					 (symbol? (cdr p.n))))
-				  (loop (fix:+ i 1))))))))))
-       (vector-of-type? (package-description/external-bindings object)
-	 (lambda (binding)
-	   (and (vector? binding)
-		(or (fix:= (vector-length binding) 2)
-		    (fix:= (vector-length binding) 3))
-		(symbol? (vector-ref binding 0))
-		(package-name? (vector-ref binding 1))
-		(or (fix:= (vector-length binding) 2)
-		    (symbol? (vector-ref binding 2))))))
+       (vector-of-type? (package-description/exports object) link-description?)
+       (vector-of-type? (package-description/imports object) link-description?)
        (boolean? (package-description/extension? object))))
+
+(define (link-description? object)
+  (and (vector? object)
+       (cond ((fix:= (vector-length object) 2)
+	      (and (symbol? (vector-ref object 0))
+		   (package-name? (vector-ref object 1))))
+	     ((fix:= (vector-length object) 3)
+	      (and (symbol? (vector-ref object 0))
+		   (package-name? (vector-ref object 1))
+		   (symbol? (vector-ref object 2))))
+	     (else #f))))
 
 ;; CONSTRUCT-PACKAGES-FROM-FILE is called from the cold load and must
 ;; only use procedures that are inline-coded by the compiler.
@@ -348,9 +339,9 @@ USA.
 		null-environment))
 	  (cons (package-description/internal-names description)
 		(lambda (name) name))
-	  (cons (package-description/internal-bindings description)
+	  (cons (package-description/exports description)
 		(lambda (binding) (vector-ref binding 0)))
-	  (cons (package-description/external-bindings description)
+	  (cons (package-description/imports description)
 		(lambda (binding) (vector-ref binding 0))))))
     (let loop ((path name) (package system-global-package))
       (if (pair? (cdr path))
@@ -364,21 +355,18 @@ USA.
 (define (create-links-from-description description)
   (let ((environment
 	 (find-package-environment (package-description/name description))))
-    (let ((bindings (package-description/internal-bindings description)))
+    (let ((bindings (package-description/exports description)))
       (let ((n (vector-length bindings)))
 	(do ((i 0 (fix:+ i 1)))
 	    ((fix:= i n))
 	  (let ((binding (vector-ref bindings i)))
-	    (let ((name (vector-ref binding 0))
-		  (n (vector-length binding)))
-	      (do ((i 1 (fix:+ i 1)))
-		  ((fix:= i n))
-		(let ((link (vector-ref binding i)))
-		  (link-variables (find-package-environment (car link))
-				  (cdr link)
-				  environment
-				  name))))))))
-    (let ((bindings (package-description/external-bindings description)))
+	    (link-variables (find-package-environment (vector-ref binding 1))
+			    (if (fix:= (vector-length binding) 3)
+				(vector-ref binding 2)
+				(vector-ref binding 0))
+			    environment
+			    (vector-ref binding 0))))))
+    (let ((bindings (package-description/imports description)))
       (let ((n (vector-length bindings)))
 	(do ((i 0 (fix:+ i 1)))
 	    ((fix:= i n))

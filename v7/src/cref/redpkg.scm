@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.16 2001/08/18 04:48:59 cph Exp $
+$Id: redpkg.scm,v 1.17 2001/08/20 02:49:09 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -460,27 +460,24 @@ USA.
 		    (loop parent (cdr ancestors)))
 		  (set-package/parent! package #f))))
 	(let ((expression (make-expression package namestring #f)))
-	  ;; Unlinked internal names: just bind them.
+	  ;; Unlinked internal names.
 	  (for-each-vector-element (vector-ref desc 5)
 	    (lambda (name)
 	      (bind! package name expression #f)))
-	  ;; Exported bindings: bind the name and link it to the
-	  ;; external names.
+	  ;; Exported bindings.
 	  (for-each-vector-element (vector-ref desc 6)
 	    (lambda (entry)
-	      (let ((name (vector-ref entry 0)))
+	      (let ((name (vector-ref entry 0))
+		    (external-package (get-package (vector-ref entry 1) #t))
+		    (external-name
+		     (if (fix:= (vector-length entry) 2)
+			 (vector-ref entry 0)
+			 (vector-ref entry 2))))
 		(bind! package name expression #f)
-		(let ((n (vector-length entry)))
-		  (do ((i 1 (fix:+ i 1)))
-		      ((fix:= i n))
-		    (let ((p.n (vector-ref entry i)))
-		      (link! package
-			     name
-			     (get-package (car p.n) #t)
-			     (cdr p.n)
-			     #f)))))))
-	  ;; Imported bindings: bind just the external name and link
-	  ;; it to the internal name.
+		(link! package name
+		       external-package external-name
+		       package #f))))
+	  ;; Imported bindings.
 	  (for-each-vector-element (vector-ref desc 7)
 	    (lambda (entry)
 	      (let ((external-package (get-package (vector-ref entry 1) #t))
@@ -489,11 +486,9 @@ USA.
 			 (vector-ref entry 0)
 			 (vector-ref entry 2))))
 		(bind! external-package external-name expression #f)
-		(link! external-package
-		       external-name
-		       package
-		       (vector-ref entry 0)
-		       #f)))))))))
+		(link! external-package external-name
+		       package (vector-ref entry 0)
+		       package #f)))))))))
 
 (define (package-lookup package name)
   (let package-loop ((package package))
@@ -527,7 +522,7 @@ USA.
 		(for-each (lambda (names)
 			    (link! package (car names)
 				   destination (cdr names)
-				   new?))
+				   package new?))
 			  (cdr export))))
 	    (package-description/exports description))
   (for-each (lambda (import)
@@ -535,7 +530,7 @@ USA.
 		(for-each (lambda (names)
 			    (link! source (cdr names)
 				   package (car names)
-				   new?))
+				   package new?))
 			  (cdr import))))
 	    (package-description/imports description)))
 
@@ -553,7 +548,7 @@ USA.
 
 (define (link! source-package source-name
 	       destination-package destination-name
-	       new?)
+	       owner-package new?)
   (let ((source-binding (intern-binding! source-package source-name new?))
 	(destination-binding
 	 (package/find-binding destination-package destination-name)))
@@ -569,7 +564,7 @@ USA.
       (rb-tree/insert! (package/bindings destination-package)
 		       destination-name
 		       destination-binding)
-      (make-link source-binding destination-binding new?))))
+      (make-link source-binding destination-binding owner-package new?))))
 
 (define (intern-binding! package name new?)
   (let ((binding (package/find-binding package name)))

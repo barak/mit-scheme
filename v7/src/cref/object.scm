@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 1.12 2001/08/18 04:48:44 cph Exp $
+$Id: object.scm,v 1.13 2001/08/20 02:49:01 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -70,7 +70,8 @@ USA.
   parent
   (children '())
   (bindings (make-rb-tree eq? symbol<?) read-only #t)
-  (references (make-rb-tree eq? symbol<?) read-only #t))
+  (references (make-rb-tree eq? symbol<?) read-only #t)
+  (links '()))
 
 (define-integrable (package/n-files package)
   (length (package/files package)))
@@ -155,10 +156,12 @@ USA.
   (destination #f read-only #t)
   (new? #f read-only #t))
 
-(define (make-link source-binding destination-binding new?)
+(define (make-link source-binding destination-binding owner-package new?)
   (let ((link (%make-link source-binding destination-binding new?)))
     (set-binding/links! source-binding
 			(cons link (binding/links source-binding)))
+    (set-package/links! owner-package
+			(cons link (package/links owner-package)))
     link))
 
 (define-structure
