@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dataflow.scm,v 1.9 1995/03/20 02:02:02 adams Exp $
+$Id: dataflow.scm,v 1.10 1995/03/21 18:14:12 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -95,8 +95,9 @@ MIT in each case. |#
 
 	    (graph/substitite-simple-constants
 	     graph graph/read-eqv?-preserving-constant?)
-	    (if compiler:guru?
-		(graph/look-for-interesting-nodes graph))
+	    ;;(if compiler:guru?
+	    ;;	(graph/look-for-interesting-nodes graph))
+	    (graph/reduce-%internal-apply graph)
 	    (if (graph/interesting? graph)
 		(graph/display-statistics! graph))
 
@@ -2291,6 +2292,10 @@ MIT in each case. |#
 		       (lambda (value)
 			 (or (value/procedure? value)
 			     (value/closure? value))))
+		     ;;(for-each (lambda (ap)
+		     ;;		 (fluid-let ((*unparser-list-depth-limit* 3))
+		     ;;		   (pp ap)))
+		     ;;  (node/uses/operator node))
 		     (display "\n;; Multiple procedures ") (display node)
 		     (display " ")
 		     (for-each (lambda (p)
@@ -2302,6 +2307,46 @@ MIT in each case. |#
 		    (else unspecific)))))
     (graph/nodes graph)))
 
+(define (graph/reduce-%internal-apply graph)
+  (define (match? lambda-expr remove-closure? arity)
+    (call-with-values
+	(lambda () (lambda-list/parse (lambda/formals lambda-expr)))
+      (lambda (required optional rest aux)
+	aux
+	(let ((req  (if remove-closure? (cddr required) (cdr required))))
+	  (and (not rest)
+	       (= arity (+ (length req) (length optional))))))))
+  (define (value/arity-matches? value arity)
+    (cond ((value/procedure? value)
+	   (match? (value/text value) #F arity))
+	  ((value/closure? value)
+	   (match? (value/text (value/closure/procedure value))
+		   (eq? (value/closure/kind value) 'HEAP)
+		   arity))
+	  (else #F)))
+  (define (inspect application)
+    (if (call/%internal-apply? (application/text application))
+	(let* ((node    (application/operator-node application))
+	       (values  (node/values node))
+	       (call-arity
+		(length (cdr (application/operand-nodes application)))))
+	  (cond ((value-set/unknown? values))
+		((value-set/unique-value values))
+		((for-all? (value-set/singletons values)
+		   (lambda (value)
+		     (value/arity-matches? value call-arity)))
+		 (if compiler:guru?
+		     (begin
+		       (display "\n;; Call site ") (display node)
+		       (display " multiple procedures arity ")
+		       (display call-arity) (display ": ")
+		       (display (map (lambda (p) (or (value/procedure? p)
+						     (value/closure/kind p)))
+				     (value-set/singletons values)))))
+		 (form/rewrite! (second (application/text application))
+		   `(QUOTE ,%internal-apply-unchecked)))
+		(else unspecific)))))
+  (for-each inspect (graph/applications graph)))
 
 (define (graph/cleanup! graph)
   ;; After dataflow has comuted the values at each node, we no longer need
