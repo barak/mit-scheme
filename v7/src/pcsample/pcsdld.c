@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pcsdld.c,v 1.1 1995/07/28 14:14:08 adams Exp $
+$Id: pcsdld.c,v 1.2 1995/08/08 22:37:15 adams Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -895,11 +895,25 @@ DEFUN_VOID        (initialize_pcsample_primitives)
  using this most ultra super duper secret primitive. FNORD!\
  ");
   /*-------------------------------------------------------------------------*/
+
+
+
+  declare_primitive ("%PC-SAMPLE/SET-ZONE!",
+		     Prim_pc_sample_set_current_zone, 1, 1,
+		     "(index)\n\
+Set current pc-sampling zone to INDEX (a small exact integer), returning \
+the previous value.");
+
+  declare_primitive ("%PC-SAMPLE/GET-MAX-ZONE",
+		     Prim_pc_sample_get_max_zone, 0, 0, 0);
+
+  declare_primitive ("%PC-SAMPLE/CLEAR-ZONES!",
+		     Prim_pc_sample_clear_zones, 0, 0,
+		     "()\nZero zone counts.");
+
+  declare_primitive ("%PC-SAMPLE/READ-ZONES!", Prim_pc_sample_read_zones, 1, 1,
+		     "(flonum-vector)\n\
+Copy zone counts into FLONUM-VECTOR.  Returns the number copied, which \
+is limited by either the number of zones to the capacity of FLONUM-VECTOR.");
+
 }
-
-
-
-
-
-
-/* fini */

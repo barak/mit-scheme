@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pcsample.c,v 1.1 1995/07/28 14:14:08 adams Exp $
+$Id: pcsample.c,v 1.2 1995/08/08 22:36:48 adams Exp $
 
 Copyright (c) 1990-1995 Massachusetts Institute of Technology
 
@@ -139,12 +139,29 @@ DEFUN (profile_trap_handler, (scp), struct FULL_SIGCONTEXT * scp)
 }
 
 #else  /* HAVE_SIGCONTEXT and HAS_COMPILER_SUPPORT and not USE_STACKLETS     */
+
+/* Timezones
+ * These timezones are different to the ones in the microcode.  The basic support here allows them to be
+ */
+
+#define INITIAL_ZONE_LIMIT 10
+static int current_zone = 0;
+static int max_zone = INITIAL_ZONE_LIMIT;
+
+static double initial_zone_buffer[INITIAL_ZONE_LIMIT] = {0.0};
+static double *zones = initial_zone_buffer;
+
+/* Invariant: 0 <= current_zone < max_zone */
+/* Invariant: zones -> allocation of max_zone doubles */
+
 
 #define essential_profile_trap_handler(scp)  do				      \
 {									      \
   extern void EXFUN (pc_sample, (struct FULL_SIGCONTEXT *));		      \
+  extern void EXFUN (zone_sample, ());				      \
 									      \
   pc_sample (scp) ;		/* For now, profiler just PC samples */	      \
+  zones[current_zone] += 1.0;   /* and zone sampling */                       \
   OS_pc_sample_timer_set(profile_interval,   /* launch another 1-shot */      \
 			 profile_interval) ; /* at the same interval  */      \
 } while (FALSE)
@@ -1424,5 +1441,62 @@ DEFINE_PRIMITIVE ("%PC-SAMPLE/DISABLE-MICROCODE",
   PRIMITIVE_RETURN (UNSPECIFIC) ;
 }
 /*****************************************************************************/
+
+/* Zone operations
+
+   These are not locked agains PC-Sampling activity but they are safe
+   in the sense that they will at worst gain or lose a sample
+*/
+
+DEFINE_PRIMITIVE ("%PC-SAMPLE/SET-ZONE!",
+		  Prim_pc_sample_set_current_zone, 1, 1,
+  "(index)\n\
+Set current pc-sampling zone to INDEX (a small exact integer), returning \
+the previous value.")
+{
+    PRIMITIVE_HEADER(1);
+    {
+	int  old_zone = current_zone;
+	current_zone = arg_index_integer (1, INITIAL_ZONE_LIMIT);
+	PRIMITIVE_RETURN (LONG_TO_FIXNUM(old_zone));
+    }
+}
+
+DEFINE_PRIMITIVE ("%PC-SAMPLE/GET-MAX-ZONE",
+		  Prim_pc_sample_get_max_zone, 0, 0, 0)
+{
+    PRIMITIVE_HEADER(0);
+    PRIMITIVE_RETURN(LONG_TO_FIXNUM(max_zone));
+}
+
+DEFINE_PRIMITIVE ("%PC-SAMPLE/CLEAR-ZONES!", Prim_pc_sample_clear_zones, 0, 0,
+  "()\n\
+Zero zone counts.")
+{
+    PRIMITIVE_HEADER (0);
+    {
+	int  i;
+	for (i = 0; i < max_zone; i++) zones[i] = 0.0;
+    }
+    PRIMITIVE_RETURN(UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("%PC-SAMPLE/READ-ZONES!", Prim_pc_sample_read_zones, 1, 1,
+  "(flonum-vector)\n\
+Copy zone counts into FLONUM-VECTOR.  Returns the number copied, which \
+is limited by either the number of zones to the capacity of FLONUM-VECTOR.")
+{
+    PRIMITIVE_HEADER (1);
+    {
+	SCHEME_OBJECT vector = (FLOATING_VECTOR_ARG (1));
+	int length = FLOATING_VECTOR_LENGTH (vector);
+	int limit = (length<max_zone) ? length : max_zone;
+	int i;
+	for (i = 0; i < limit; i++)
+	  FLOATING_VECTOR_SET (vector, i, zones[i]);
+	PRIMITIVE_RETURN (LONG_TO_FIXNUM(limit));	
+    }
+}
+
 #endif /* HAVE_ITIMER */
 #endif /* REALLY_INCLUDE_PROFILE_CODE */
