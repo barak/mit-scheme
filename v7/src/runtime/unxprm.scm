@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.66 2004/02/16 05:39:29 cph Exp $
+$Id: unxprm.scm,v 1.67 2004/10/18 05:05:52 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1997,1998,1999,2000 Massachusetts Institute of Technology
@@ -192,6 +192,31 @@ USA.
 
 (define (initialize-system-primitives!)
   (add-event-receiver! event:after-restart reset-environment-variables!))
+
+(define (os/pathname-mime-type pathname)
+  (let ((suffix (pathname-type pathname)))
+    (and (string? suffix)
+	 (or (search-mime-types-file "~/.mime.types" suffix)
+	     (search-mime-types-file "/etc/mime.types" suffix)))))
+
+(define (search-mime-types-file pathname suffix)
+  (and (file-readable? pathname)
+       (call-with-input-file pathname
+	 (lambda (port)
+	   (let loop ()
+	     (let ((line (read-line port)))
+	       (and (not (eof-object? line))
+		    (let ((line (string-trim line)))
+		      (if (or (string-null? line)
+			      (char=? (string-ref line 0) #\#))
+			  (loop)
+			  (let ((tokens
+				 (burst-string line char-set:whitespace #t)))
+			    (if (there-exists? (cdr tokens)
+				  (lambda (suffix*)
+				    (string=? suffix* suffix)))
+				(car tokens)
+				(loop))))))))))))
 
 (define (user-home-directory user-name)
   (let ((directory ((ucode-primitive get-user-home-directory 1) user-name)))

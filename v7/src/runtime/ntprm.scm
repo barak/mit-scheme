@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.45 2004/02/16 05:37:03 cph Exp $
+$Id: ntprm.scm,v 1.46 2004/10/18 05:05:28 cph Exp $
 
 Copyright 1995,1996,1998,1999,2000,2001 Massachusetts Institute of Technology
 Copyright 2003,2004 Massachusetts Institute of Technology
@@ -110,6 +110,21 @@ USA.
 
 (define (file-time->universal-time time) (+ time epoch))
 (define (universal-time->file-time time) (- time epoch))
+
+(define (os/pathname-mime-type pathname)
+  (let ((type (pathname-type pathname)))
+    (and (string? type)
+	 (let* ((name (string-append "HKEY_CLASSES_ROOT\\." type))
+		(key (win32-registry/open-key name #f)))
+	   (and key
+		(receive (type value)
+		    (win32-registry/get-value key "Content Type")
+		  (and type
+		       (begin
+			 (if (not (eq? type 'REG_SZ))
+			     (error "Wrong value type in registry entry:"
+				    name))
+			 value))))))))
 
 (define get-environment-variable)
 (define set-environment-variable!)
