@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.52 2005/03/19 05:08:17 cph Exp $
+$Id: record.scm,v 1.53 2005/03/19 05:21:21 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003,2004,2005 Massachusetts Institute of Technology
@@ -70,7 +70,7 @@ USA.
 	  (%record #f
 		   #f
 		   "record-type"
-		   '#(NAME DISPATCH-TAG FIELD-NAMES DEFAULT-INITS EXTENSION)
+		   '#(DISPATCH-TAG NAME FIELD-NAMES DEFAULT-INITS EXTENSION)
 		   (vector-cons 5 (lambda () #f))
 		   #f)))
     (set! record-type-type-tag (make-dispatch-tag type))
