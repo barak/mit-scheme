@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.312 1999/02/16 00:49:36 cph Exp $
+$Id: runtime.pkg,v 14.313 1999/02/16 05:18:05 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -1851,6 +1851,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  input-buffer/discard-char
 	  input-buffer/discard-until-delimiter
 	  input-buffer/eof?
+	  input-buffer/open?
 	  input-buffer/peek-char
 	  input-buffer/read-char
 	  input-buffer/read-substring
@@ -1863,10 +1864,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  output-buffer/channel
 	  output-buffer/close
 	  output-buffer/drain-block
+	  output-buffer/open?
 	  output-buffer/set-size
 	  output-buffer/size
 	  output-buffer/write-char-block
-	  output-buffer/write-string-block
 	  output-buffer/write-substring
 	  output-buffer/write-substring-block
 	  set-channel-port!)
