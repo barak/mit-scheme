@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/xdebug.c,v 9.27 1990/06/20 17:42:45 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/xdebug.c,v 9.28 1992/02/03 23:51:07 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -130,10 +130,10 @@ Find_In_Area(Name, From, To, Obj, Mode, print_p, store_p)
     occurrences += 1;
     if (print_p)
 #ifndef b32
-      printf("Location = 0x%x; Contents = 0x%x\n",
+      printf("Location = 0x%lx; Contents = 0x%lx\n",
 	     ((long) Where), ((long) (*Where)));
 #else
-      printf("Location = 0x%08x; Contents = 0x%08x\n",
+      printf("Location = 0x%08lx; Contents = 0x%08lx\n",
 	     ((long) Where), ((long) (*Where)));
 #endif
     if (store_p)
@@ -162,11 +162,11 @@ Find_Who_Points(Obj, Find_Mode, Collect_Mode)
   {
     putchar('\n');
 #ifndef b32
-    printf("*** Looking for Obj = 0x%x; Find_Mode = %2d ***\n",
-	   Obj, Find_Mode);
+    printf("*** Looking for Obj = 0x%lx; Find_Mode = %2ld ***\n",
+	   ((long) Obj), ((long) Find_Mode));
 #else
-    printf("*** Looking for Obj = 0x%08x; Find_Mode = %2d ***\n",
-	   Obj, Find_Mode);
+    printf("*** Looking for Obj = 0x%08lx; Find_Mode = %2ld ***\n",
+	   ((long) Obj), ((long) Find_Mode));
 #endif
   }
   n += Find_In_Area("Constant Space",
@@ -202,19 +202,21 @@ Print_Memory(Where, How_Many)
   fast SCHEME_OBJECT *End   = &Where[How_Many];
 
 #ifndef b32
-  printf("\n*** Memory from 0x%x to 0x%x (excluded) ***\n", Where, End);
+  printf ("\n*** Memory from 0x%lx to 0x%lx (excluded) ***\n",
+	  ((long) Where), ((long) End));
   while (Where < End)
   {
-    printf("0x%x\n", *Where++);
+    printf ("0x%lx\n", ((long) (*Where++)));
   }
 #else
-  printf("\n*** Memory from 0x%08x to 0x%08x (excluded) ***\n", Where, End);
+  printf ("\n*** Memory from 0x%08lx to 0x%08lx (excluded) ***\n",
+	  ((long) Where), ((long) End));
   while (Where < End)
   {
-    printf("0x%08x\n", *Where++);
+    printf ("0x%0l8x\n", ((long) (*Where++)));
   }
 #endif
-  printf("Done.\n");
+  printf ("Done.\n");
   return;
 }
 
@@ -235,7 +237,7 @@ DEFINE_PRIMITIVE ("DEBUG-SHOW-ENV", Prim_debug_show_env, 1, 1, 0)
   PRIMITIVE_HEADER (1);
 
   environment = (ARG_REF (1));
-  printf ("\n*** Environment = 0x%x ***\n", environment);
+  printf ("\n*** Environment = 0x%lx ***\n", ((long) environment));
   Show_Env (environment);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -260,7 +262,7 @@ DEFINE_PRIMITIVE ("DEBUG-FIND-SYMBOL", Prim_debug_find_symbol, 1, 1, 0)
       printf ("\nNot interned.\n");
     else
       {
-	printf ("\nInterned Symbol: 0x%x", symbol);
+	printf ("\nInterned Symbol: 0x%lx", ((long) symbol));
 	Print_Expression (MEMORY_REF (symbol, SYMBOL_GLOBAL_VALUE), "Value");
 	printf ("\n");
       }
