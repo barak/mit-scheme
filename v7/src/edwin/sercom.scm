@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sercom.scm,v 1.57 1991/04/23 06:43:29 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sercom.scm,v 1.58 1991/05/17 04:52:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -139,57 +139,100 @@ and the value is minus the number of lines."
       (set-variable! search-last-regexp regexp)
       (list regexp))))
 
+(define (search-failure string)
+  (editor-error "Search failed: " (write-to-string string)))
+
 (define-command search-forward
-  "Search forward from point for a character string.
-Sets point at the end of the occurrence found."
+  "Search forward from point for STRING.
+Set point to the end of the occurrence found."
   (search-prompt "Search")
   (lambda (string)
     (let ((point (current-point)))
       (let ((mark (search-forward string point (group-end point))))
-	(if mark
-	    (begin
-	      (push-current-mark! point)
-	      (set-current-point! mark))
-	    (editor-failure))))))
+	(if (not mark) (search-failure string))
+	(set-current-point! mark)))))
 
 (define-command search-backward
-  "Search backward from point for a character string.
-Sets point at the beginning of the occurrence found."
+  "Search backward from point for STRING.
+Set point to the beginning of the occurrence found."
   (search-prompt "Search backward")
   (lambda (string)
     (let ((point (current-point)))
       (let ((mark (search-backward string point (group-start point))))
-	(if mark
-	    (begin
-	      (push-current-mark! point)
-	      (set-current-point! mark))
-	    (editor-failure))))))
+	(if (not mark) (search-failure string))
+	(set-current-point! mark)))))
 
 (define-command re-search-forward
-  "Search forward from point for a regular expression.
-Sets point at the end of the occurrence found."
-  (search-prompt "RE search")
+  "Search forward from point for regular expression REGEXP.
+Set point to the end of the occurrence found."
+  (re-search-prompt "RE search")
   (lambda (regexp)
     (let ((point (current-point)))
       (let ((mark (re-search-forward regexp point (group-end point))))
-	(if mark
-	    (begin
-	      (push-current-mark! point)
-	      (set-current-point! mark))
-	    (editor-failure))))))
+	(if (not mark) (search-failure regexp))
+	(set-current-point! mark)))))
 
 (define-command re-search-backward
-  "Search backward from point for a character string.
-Sets point at the beginning of the occurrence found."
-  (search-prompt "RE search backward")
+  "Search backward from point for regular expression REGEXP.
+Set point to the beginning of the occurrence found.
+The match found is the one starting last in the buffer
+and yet ending before the place of the origin of the search."
+  (re-search-prompt "RE search backward")
   (lambda (regexp)
     (let ((point (current-point)))
       (let ((mark (re-search-backward regexp point (group-start point))))
-	(if mark
-	    (begin
-	      (push-current-mark! point)
-	      (set-current-point! mark))
-	    (editor-failure))))))
+	(if (not mark) (search-failure regexp))
+	(set-current-point! mark)))))
+
+;;;; Word Search
+
+(define-command word-search-forward
+  "Search forward from point for STRING, ignoring differences in punctuation.
+Set point to the end of the occurrence found."
+  (search-prompt "Word search")
+  (lambda (string)
+    ((ref-command re-search-forward)
+     (string->wordified-regexp string (ref-variable syntax-table)))))
+
+(define-command word-search-backward
+  "Search backward from point for STRING, ignoring differences in punctuation.
+Set point to the beginning of the occurrence found."
+  (search-prompt "Word search backward")
+  (lambda (string)
+    ((ref-command re-search-backward)
+     (string->wordified-regexp string (ref-variable syntax-table)))))
+
+(define (string->wordified-regexp string syntax-table)
+  (apply
+   string-append
+   (let ((end (string-length string)))
+     (letrec
+	 ((scan-word
+	   (lambda (start)
+	     (let loop ((index (+ start 1)))
+	       (cond ((>= index end)
+		      (cons (substring string start end) '("\\b")))
+		     ((char=? #\w
+			      (char->syntax-code (string-ref string index)))
+		      (loop (+ index 1)))
+		     (else
+		      (cons (substring string start index)
+			    (scan-punctuation (+ index 1))))))))
+	  (scan-punctuation
+	   (lambda (index)
+	     (cond ((>= index end)
+		    '("\\b"))
+		   ((char=? #\w (char->syntax-code (string-ref string index)))
+		    (cons "\\W+" (scan-word index)))
+		   (else
+		    (scan-punctuation (+ index 1)))))))
+       (let loop ((index 0))
+	 (cond ((>= index end)
+		'())
+	       ((char=? #\w (char->syntax-code (string-ref string index)))
+		(cons "\\b" (scan-word index)))
+	       (else
+		(loop (+ index 1)))))))))
 
 ;;;; Incremental Search
 
