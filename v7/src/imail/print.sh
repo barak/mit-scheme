@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: print.sh,v 1.5 2000/05/11 00:48:06 cph Exp $
+# $Id: print.sh,v 1.6 2000/05/17 20:53:31 cph Exp $
 #
 # Copyright (c) 1999-2000 Massachusetts Institute of Technology
 #
@@ -18,7 +18,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-prlist todo.txt imail-top.scm imail-core.scm \
+prlist todo.txt imail-top.scm imail-summary.scm imail-core.scm \
   imail-file.scm imail-rmail.scm imail-umail.scm \
   imail-imap.scm imap-response.scm imap-syntax.scm \
   imail-util.scm rfc822.scm url.scm parser.scm rexp.scm

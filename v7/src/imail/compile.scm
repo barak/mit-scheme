@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.6 2000/04/22 01:53:42 cph Exp $
+;;; $Id: compile.scm,v 1.7 2000/05/17 20:53:24 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -41,7 +41,8 @@
 		     (access edwin-syntax-table (->environment '(EDWIN)))))
 		(lambda (filename)
 		  (compile-file filename '() syntax-table)))
-	      '("imail-top"))
+	      '("imail-summary"
+		"imail-top"))
     (cref/generate-constructors "imail")
     (sf "imail.con")
     (sf "imail.ldr")))

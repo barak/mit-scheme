@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.33 2000/05/16 03:33:47 cph Exp $
+;;; $Id: imail.pkg,v 1.34 2000/05/17 20:53:27 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -122,7 +122,9 @@
 	  rfc822:received-header-components
 	  rfc822:string->addresses
 	  rfc822:string->tokens
-	  rfc822:strip-quoted-names))
+	  rfc822:strip-comments
+	  rfc822:strip-quoted-names
+	  rfc822:tokens->string))
 
 (define-package (edwin imail imap-syntax)
   (files "imap-syntax")
@@ -197,8 +199,6 @@
 	 "imail-rmail"
 	 "imail-umail"
 	 "imail-imap"
-	 "imail-top")
-  (parent (edwin))
-  (import (edwin rmail)
-	  guarantee-rmail-variables-initialized
-	  rmail-spool-directory))
+	 "imail-top"
+	 "imail-summary")
+  (parent (edwin)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rfc822.scm,v 1.6 2000/05/15 17:47:50 cph Exp $
+;;; $Id: rfc822.scm,v 1.7 2000/05/17 20:53:32 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -95,6 +95,12 @@
 			       (eqv? #\> (cadr addr-spec))
 			       (cons (car addr-spec)
 				     (cddr addr-spec))))))))))))
+
+(define (rfc822:strip-comments tokens)
+  (list-transform-negative tokens
+    (lambda (token)
+      (and (string? token)
+	   (char=? #\( (string-ref token 0))))))
 
 (define (rfc822:received-header-components string)
   (let ((from #f)
@@ -208,7 +214,8 @@
 		  (eq? 'ILLEGAL (caar tokens)))
 	     (write-char (cdar tokens) port))
 	    (else
-	     (error "Malformed RFC-822 token stream:" tokens))))))
+	     (error "Malformed RFC-822 token stream:" tokens))))
+    (get-output-from-accumulator port)))
 
 ;;;; Parser
 
