@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.11 1988/12/13 13:45:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.12 1989/03/14 19:35:30 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -69,9 +69,11 @@ MIT in each case. |#
 (define (generate/return* context operator not-on-stack? operand)
   (let ((continuation (rvalue-known-value operator)))
     (if (and continuation
-	     (not (procedure/simplified?
-		   (block-procedure
-		    (continuation/closing-block continuation)))))
+	     (let ((procedure
+		    (block-procedure
+		     (continuation/closing-block continuation))))
+	       (not (and (procedure? procedure)
+			 (procedure/simplified? procedure)))))
 	((method-table-lookup simple-methods (continuation/type continuation))
 	 (if not-on-stack?
 	     (return-operator/pop-frames context operator 0)
