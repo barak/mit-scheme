@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: udata.scm,v 14.17 1995/07/27 21:23:12 adams Exp $
+$Id: udata.scm,v 14.18 1997/07/09 14:39:36 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -292,3 +292,16 @@ contains constants derived from the source program.
   (if (promise-non-expression? promise)
       (error "Promise has no environment" promise))
   (system-pair-car promise))
+
+(define (force promise)
+  (cond ((not (promise? promise))
+	 (error:wrong-type-argument promise "promise" 'FORCE))
+	((eq? #T (system-pair-car promise))
+	 (system-pair-cdr promise))
+	((eqv? 0 (system-pair-car promise)) ; compiled promise
+	 (let ((result ((system-pair-cdr promise))))
+	   (system-pair-set-cdr! promise result)
+	   (system-pair-set-car! promise #T)
+	   result))
+	(else ; losing old style
+	 ((ucode-primitive force 1) promise))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 1.3 1997/06/27 14:06:10 adams Exp $
+$Id: gconst.scm,v 1.4 1997/07/09 14:39:47 adams Exp $
 
 Copyright (c) 1987-93 Massachusetts Institute of Technology
 
@@ -149,7 +149,6 @@ MIT in each case. |#
     FLO:VECTOR-REF
     FLO:VECTOR-SET!
     FLO:ZERO?
-    FORCE
     GENERAL-CAR-CDR
     GET-FIXED-OBJECTS-VECTOR
     GET-NEXT-CONSTANT

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.52 1996/12/01 17:22:31 adams Exp $
+$Id: global.scm,v 14.53 1997/07/09 14:40:07 adams Exp $
 
 Copyright (c) 1988-1996 Massachusetts Institute of Technology
 
@@ -40,7 +40,7 @@ MIT in each case. |#
 ;;;; Primitive Operators
 
 (define-primitives
-  force error-procedure
+  error-procedure
   set-interrupt-enables! enable-interrupts! with-interrupt-mask
   get-fixed-objects-vector with-history-disabled
   (primitive-procedure-arity 1)
