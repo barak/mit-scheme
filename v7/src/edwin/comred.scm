@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.89 1991/11/04 20:50:44 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.90 1991/11/14 22:49:16 markf Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -278,13 +278,17 @@
 	    ((eq? command (ref-command-object forward-char))
 	     (if (and (not (group-end? point))
 		      (char-graphic? (mark-right-char point))
-		      (< point-x (- (window-x-size window) 2)))
+		      (< point-x (- (window-x-size window) 2))
+		      (null? (group-move-point-daemons
+			      (mark-group point))))
 		 (window-direct-output-forward-char! window)
 		 (normal)))
 	    ((eq? command (ref-command-object backward-char))
 	     (if (and (not (group-start? point))
 		      (char-graphic? (mark-left-char point))
-		      (< 0 point-x (- (window-x-size window) 1)))
+		      (< 0 point-x (- (window-x-size window) 1))
+		      (null? (group-move-point-daemons
+			      (mark-group point))))
 		 (window-direct-output-backward-char! window)
 		 (normal)))
 	    (else
