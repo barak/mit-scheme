@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.34 1993/11/03 22:57:59 adams Exp $
+@comment $Id: scheme.texinfo,v 1.35 1993/11/03 23:02:03 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -8739,7 +8739,7 @@ implementation supports destructive insertion and deletion operations
 with a good constant factor.
 
 @item
-@dfn{Weight-Balanced trees} are a kind of balanced binary.  The
+@dfn{Weight-Balanced trees} are a kind of balanced binary trees.  The
 implementation provides non-destructive operations.  There is a
 comprehensive set of operations including a constant time size
 operation, many high-level operations such as the set operations union,
