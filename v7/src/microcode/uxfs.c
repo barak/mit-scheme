@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfs.c,v 1.4 1991/04/12 03:20:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfs.c,v 1.5 1991/10/29 13:59:31 cph Exp $
 
 Copyright (c) 1990-1 Massachusetts Institute of Technology
 
@@ -35,30 +35,57 @@ MIT in each case. */
 #include "ux.h"
 #include "osfs.h"
 
+int
+DEFUN (UX_read_file_status, (filename, s),
+       CONST char * filename AND
+       struct stat * s)
+{
+  while ((UX_lstat (filename, s)) < 0)
+    {
+      if (errno == EINTR)
+	continue;
+      if ((errno == ENOENT) || (errno == ENOTDIR))
+	return (0);
+      error_system_call (errno, syscall_lstat);
+    }
+  return (1);
+}
+
+int
+DEFUN (UX_read_file_status_indirect, (filename, s),
+       CONST char * filename AND
+       struct stat * s)
+{
+  while ((UX_stat (filename, s)) < 0)
+    {
+      if (errno == EINTR)
+	continue;
+      if ((errno == ENOENT) || (errno == ENOTDIR))
+	return (0);
+      error_system_call (errno, syscall_stat);
+    }
+  return (1);
+}
+
 enum file_existence
 DEFUN (OS_file_existence_test, (name), CONST char * name)
 {
   struct stat s;
   return
-    (((UX_stat (name, (&s))) < 0)
-     ? (((errno == ENOENT) || (errno == ENOTDIR))
-	? file_doesnt_exist
-	: file_may_exist)
-     : file_does_exist);
+    ((UX_read_file_status_indirect (name, (&s)))
+     ? file_does_exist
+     : (UX_read_file_status (name, (&s)))
+     ? file_is_link
+     : file_doesnt_exist);
 }
-
-int
-DEFUN (OS_file_access, (name, mode), CONST char * name AND unsigned int mode)
-{
-  return ((UX_access (name, mode)) == 0);
-}
-
+
 int
 DEFUN (OS_file_directory_p, (name), CONST char * name)
 {
   struct stat s;
-  return (((UX_stat (name, (&s))) == 0) &&
-	  (((s . st_mode) & S_IFMT) == S_IFDIR));
+  return
+    ((UX_read_file_status_indirect (name, (&s)))
+     && (((s . st_mode) & S_IFMT) == S_IFDIR));
 }
 
 CONST char *
@@ -66,8 +93,8 @@ DEFUN (OS_file_soft_link_p, (name), CONST char * name)
 {
 #ifdef HAVE_SYMBOLIC_LINKS
   struct stat s;
-  if (((UX_lstat (name, (&s))) < 0)
-      || (((s . st_mode) & S_IFMT) != S_IFLNK))
+  if (! ((UX_read_file_status (name, (&s)))
+	 && (((s . st_mode) & S_IFMT) == S_IFLNK)))
     return (0);
   {
     int scr;
@@ -93,6 +120,12 @@ DEFUN (OS_file_soft_link_p, (name), CONST char * name)
   return (0);
 #endif
 }
+
+int
+DEFUN (OS_file_access, (name, mode), CONST char * name AND unsigned int mode)
+{
+  return ((UX_access (name, mode)) == 0);
+}
 
 void
 DEFUN (OS_file_remove, (name), CONST char * name)
@@ -104,12 +137,12 @@ void
 DEFUN (OS_file_remove_link, (name), CONST char * name)
 {
   struct stat s;
-  if (((UX_lstat (name, (&s))) == 0) &&
-      ((((s . st_mode) & S_IFMT) == S_IFREG)
+  if ((UX_read_file_status (name, (&s)))
+      && ((((s . st_mode) & S_IFMT) == S_IFREG)
 #ifdef HAVE_SYMBOLIC_LINKS
-       || (((s . st_mode) & S_IFMT) == S_IFLNK)
+	  || (((s . st_mode) & S_IFMT) == S_IFLNK)
 #endif
-       ))
+	  ))
     UX_unlink (name);
 }
 

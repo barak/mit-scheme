@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.45 1991/09/05 22:26:48 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.46 1991/10/29 13:59:04 cph Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -39,6 +39,11 @@ MIT in each case. */
 #include "ux.h"
 #include "osfs.h"
 
+extern int EXFUN
+  (UX_read_file_status, (CONST char * filename, struct stat * s));
+extern int EXFUN
+  (UX_read_file_status_indirect, (CONST char * filename, struct stat * s));
+
 static SCHEME_OBJECT EXFUN (file_attributes_internal, (struct stat * s));
 static void EXFUN (file_mode_string, (struct stat * s, char * a));
 static char EXFUN (file_type_letter, (struct stat * s));
@@ -56,9 +61,9 @@ DEFINE_PRIMITIVE ("FILE-MODES", Prim_file_modes, 1, 1,
   struct stat stat_result;
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    (((UX_stat ((STRING_ARG (1)), (&stat_result))) < 0)
-     ? SHARP_F
-     : (LONG_TO_UNSIGNED_FIXNUM ((stat_result . st_mode) & 07777)));
+    ((UX_read_file_status_indirect ((STRING_ARG (1)), (&stat_result)))
+     ? (LONG_TO_UNSIGNED_FIXNUM ((stat_result . st_mode) & 07777))
+     : SHARP_F);
 }
 
 DEFINE_PRIMITIVE ("SET-FILE-MODES!", Prim_set_file_modes, 2, 2,
@@ -75,9 +80,9 @@ DEFINE_PRIMITIVE ("FILE-MOD-TIME", Prim_file_mod_time, 1, 1, 0)
   struct stat s;
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    (((UX_lstat ((STRING_ARG (1)), (&s))) < 0)
-     ? SHARP_F
-     : (long_to_integer (s . st_mtime)));
+    ((UX_read_file_status ((STRING_ARG (1)), (&s)))
+     ? (long_to_integer (s . st_mtime))
+     : SHARP_F);
 }
 
 DEFINE_PRIMITIVE ("FILE-MOD-TIME-INDIRECT", Prim_file_mod_time_indirect, 1, 1, 0)
@@ -85,9 +90,9 @@ DEFINE_PRIMITIVE ("FILE-MOD-TIME-INDIRECT", Prim_file_mod_time_indirect, 1, 1, 0
   struct stat s;
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    (((UX_stat ((STRING_ARG (1)), (&s))) < 0)
-     ? SHARP_F
-     : (long_to_integer (s . st_mtime)));
+    ((UX_read_file_status_indirect ((STRING_ARG (1)), (&s)))
+     ? (long_to_integer (s . st_mtime))
+     : SHARP_F);
 }
 
 /* Returns a vector of 10 items:
@@ -112,9 +117,9 @@ DEFINE_PRIMITIVE ("FILE-MOD-TIME-INDIRECT", Prim_file_mod_time_indirect, 1, 1, 0
   struct stat s;							\
   PRIMITIVE_HEADER (1);							\
   PRIMITIVE_RETURN							\
-    (((stat_syscall ((STRING_ARG (1)), (&s))) < 0)			\
-     ? SHARP_F								\
-     : (file_attributes_internal (&s)));				\
+    ((stat_syscall ((STRING_ARG (1)), (&s)))				\
+     ? (file_attributes_internal (&s))					\
+     : SHARP_F);							\
 }
 
 DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1, 1,
@@ -122,11 +127,11 @@ DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1, 1,
 If the file exists and its status information is accessible, the result\n\
 is a vector of 10 items (see the reference manual for details).  Otherwise\n\
 the result is #F.")
-     FILE_ATTRIBUTES_PRIMITIVE (UX_lstat)
+     FILE_ATTRIBUTES_PRIMITIVE (UX_read_file_status)
 
 DEFINE_PRIMITIVE ("FILE-ATTRIBUTES-INDIRECT", Prim_file_attributes_indirect, 1, 1,
   "Like FILE-ATTRIBUTES but indirect through symbolic links.")
-     FILE_ATTRIBUTES_PRIMITIVE (UX_stat)
+     FILE_ATTRIBUTES_PRIMITIVE (UX_read_file_status_indirect)
 
 static SCHEME_OBJECT
 DEFUN (file_attributes_internal, (s), struct stat * s)
@@ -202,16 +207,16 @@ DEFUN (file_mode_string, (s, a), struct stat * s AND char * a)
   rwx ((((s -> st_mode) & 0070) << 3), (& (a [4])));
   rwx ((((s -> st_mode) & 0007) << 6), (& (a [7])));
 #ifdef S_ISUID
-   if (((s -> st_mode) & S_ISUID) != 0)
-     (a[3]) = (((a[3]) == 'x') ? 's' : 'S');
+  if (((s -> st_mode) & S_ISUID) != 0)
+    (a[3]) = (((a[3]) == 'x') ? 's' : 'S');
 #endif
 #ifdef S_ISGID
-   if (((s -> st_mode) & S_ISGID) != 0)
-     (a[6]) = (((a [6]) == 'x') ? 's' : 'S');
+  if (((s -> st_mode) & S_ISGID) != 0)
+    (a[6]) = (((a [6]) == 'x') ? 's' : 'S');
 #endif
 #ifdef S_ISVTX
-   if (((s -> st_mode) & S_ISVTX) != 0)
-     (a[9]) = (((a [9]) == 'x') ? 't' : 'T');
+  if (((s -> st_mode) & S_ISVTX) != 0)
+    (a[9]) = (((a [9]) == 'x') ? 't' : 'T');
 #endif
 }
 

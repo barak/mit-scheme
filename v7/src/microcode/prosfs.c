@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfs.c,v 1.3 1991/04/12 03:20:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfs.c,v 1.4 1991/10/29 13:58:58 cph Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -49,14 +49,20 @@ MIT in each case. */
 
 DEFINE_PRIMITIVE ("FILE-EXISTS?", Prim_file_exists_p, 1, 1,
   "Return #T iff FILENAME refers to an existing file.\n\
-Otherwise #F is returned, in which case either:\n\
-  (1) the file doesn't exist, or\n\
-  (2) it's not possible to determine whether the file exists.")
+Return #F if the file doesn't exist.\n\
+Return zero if it's a symbolic link that points to a nonexisting file.\n\
+Signal an error if the file's existence is indeterminate.")
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN
-    (BOOLEAN_TO_OBJECT
-     ((OS_file_existence_test (STRING_ARG (1))) == file_does_exist));
+  {
+    enum file_existence result = (OS_file_existence_test (STRING_ARG (1)));
+    PRIMITIVE_RETURN
+      ((result == file_doesnt_exist)
+       ? SHARP_F
+       : (result == file_does_exist)
+       ? SHARP_T
+       : FIXNUM_ZERO);
+  }
 }
 
 DEFINE_PRIMITIVE ("FILE-ACCESS", Prim_file_access, 2, 2,

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.27 1991/10/16 00:27:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.28 1991/10/29 13:59:20 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -114,7 +114,9 @@ enum syscall_names
   syscall_unlink,
   syscall_utime,
   syscall_vfork,
-  syscall_write
+  syscall_write,
+  syscall_stat,
+  syscall_lstat
 };
 
 enum syserr_names

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osfs.h,v 1.2 1991/04/12 03:20:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osfs.h,v 1.3 1991/10/29 13:58:53 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -37,7 +37,7 @@ MIT in each case. */
 
 #include "os.h"
 
-enum file_existence { file_does_exist, file_doesnt_exist, file_may_exist };
+enum file_existence { file_does_exist, file_doesnt_exist, file_is_link };
 
 extern enum file_existence EXFUN (OS_file_existence_test, (CONST char * name));
 extern int EXFUN (OS_file_access, (CONST char * name, unsigned int mode));

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.59 1991/09/05 22:27:17 markf Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.60 1991/10/29 13:59:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987-91 Massachusetts Institute of Technology
 ;;;
@@ -631,6 +631,8 @@
 	       UTIME
 	       VFORK
 	       WRITE
+	       STAT
+	       LSTAT
 	       ))
 
 ;;; [] System-call errors
@@ -696,4 +698,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.59 1991/09/05 22:27:17 markf Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.60 1991/10/29 13:59:11 cph Exp $"
