@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.45 1992/09/08 22:32:36 cph Exp $
+;;;	$Id: buffrm.scm,v 1.46 1992/09/10 02:43:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -401,15 +401,18 @@ Automatically becomes local when set in any fashion."
 	   (lambda (window)
 	     (let ((association (assq window converted-windows)))
 	       (and association
-		    (cdr association))))))
+		    (cdr association)))))
+	  (selected-window (editor-frame-selected-window frame)))
       (make-window-configuration
        (screen-x-size screen)
        (screen-y-size screen)
        root-window
        (window-x-size frame)
        (window-y-size frame)
-       (converted-window (editor-frame-selected-window frame))
-       (converted-window (editor-frame-cursor-window frame))
+       (converted-window selected-window)
+       (let ((window (editor-frame-cursor-window frame)))
+	 (and (not (eq? window selected-window))
+	      (converted-window window)))
        (let ((window (object-unhash *minibuffer-scroll-window*)))
 	 (and window
 	      (converted-window window)))))))
@@ -453,11 +456,12 @@ Automatically becomes local when set in any fashion."
 		(let ((buffer (saved-window/buffer saved-window)))
 		  (if (buffer-alive? buffer)
 		      (begin
-			(set-window-buffer! window buffer)
-			(set-window-point! window
-					   (saved-window/point saved-window))
-			(push-buffer-mark! buffer
-					   (saved-window/mark saved-window))
+			(%set-buffer-point! buffer
+					    (saved-window/point saved-window))
+			(select-buffer-in-window buffer window false)
+			(let ((mark (saved-window/mark saved-window)))
+			  (if mark
+			      (push-buffer-mark! buffer mark)))
 			(set-window-start-mark!
 			 window
 			 (saved-window/start-mark saved-window)
@@ -468,7 +472,7 @@ Automatically becomes local when set in any fashion."
 	  (for-each (lambda (window)
 		      (let ((buffer (other-buffer false)))
 			(if buffer
-			    (set-window-buffer! window buffer))))
+			    (select-buffer-in-window buffer window false))))
 		    need-buffers)
 	  (let ((convert-window
 		 (lambda (saved-window)
@@ -484,7 +488,10 @@ Automatically becomes local when set in any fashion."
 		       (screen-select-window! screen window))))))
 	    (let ((window (window-configuration/cursor-window configuration)))
 	      (if window
-		  (screen-select-cursor! screen (convert-window window))))
+		  (let ((window (convert-window window)))
+		    (without-interrupts
+		     (lambda ()
+		       (screen-select-cursor! screen window))))))
 	    (let ((window
 		   (window-configuration/minibuffer-scroll-window
 		    configuration)))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/winren.scm,v 1.3 1990/11/02 03:25:09 cph Rel $
+;;;	$Id: winren.scm,v 1.4 1992/09/10 02:44:28 cph Exp $
 ;;;
-;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -51,4 +51,3 @@
 (define window-x-size)
 (define window-y-size)
 (define window-needs-redisplay?)
-(define %set-window-buffer!)

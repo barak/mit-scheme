@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.111 1992/02/12 23:47:39 cph Exp $
+;;;	$Id: wincom.scm,v 1.112 1992/09/10 02:44:25 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -376,7 +376,7 @@ ARG lines.  No arg means split equally."
   (let ((window (current-window))
 	(use-window
 	 (lambda (window)
-	   (select-buffer-in-window buffer window)
+	   (select-buffer-in-window buffer window true)
 	   (select-window window))))
     (let loop ((windows (buffer-windows buffer)))
       (cond ((null? windows)
@@ -399,7 +399,9 @@ ARG lines.  No arg means split equally."
        (let ((screen (other-screen (selected-screen) false)))
 	 (if screen
 	     (begin
-	       (select-buffer-in-window buffer (screen-selected-window screen))
+	       (select-buffer-in-window buffer
+					(screen-selected-window screen)
+					true)
 	       screen)
 	     (make-screen buffer))))
       (editor-error "Display doesn't support multiple screens")))
@@ -451,7 +453,7 @@ Also kills any pop up window it may have created."
 	window))
 
     (define (pop-into-window window)
-      (set-window-buffer! window buffer true)
+      (select-buffer-in-window buffer window true)
       (maybe-record-window window))
 
     (define (maybe-record-window window)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rename.scm,v 1.4 1990/11/02 03:24:41 cph Rel $
+;;;	$Id: rename.scm,v 1.5 1992/09/10 02:44:22 cph Exp $
 ;;;
-;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -59,5 +59,4 @@
     (e<-w 'window? 'buffer-frame?)
     (e<-w 'window-x-size 'buffer-frame-x-size)
     (e<-w 'window-y-size 'buffer-frame-y-size)
-    (e<-w 'window-needs-redisplay? 'buffer-frame-needs-redisplay?)
-    (e<-w '%set-window-buffer! 'set-window-buffer!)))
+    (e<-w 'window-needs-redisplay? 'buffer-frame-needs-redisplay?)))

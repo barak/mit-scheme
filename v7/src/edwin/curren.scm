@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.103 1992/04/10 20:20:50 cph Exp $
+;;;	$Id: curren.scm,v 1.104 1992/09/10 02:43:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -379,7 +379,7 @@
 		      last-buffer
 		      (error "Buffer to be killed has no replacement"
 			     buffer))))
-	     (set-window-buffer! (car windows) new-buffer false)
+	     (select-buffer-in-window new-buffer (car windows) false)
 	     (loop (cdr windows) new-buffer))))
      (bufferset-kill-buffer! (current-bufferset) buffer))))
 
@@ -403,23 +403,20 @@
   (or (buffer-get buffer key) '()))
 
 (define (select-buffer buffer)
-  (set-window-buffer! (current-window) buffer true))
+  (select-buffer-in-window buffer (current-window) true))
 
 (define (select-buffer-no-record buffer)
-  (set-window-buffer! (current-window) buffer false))
+  (select-buffer-in-window buffer (current-window) false))
 
-(define (select-buffer-in-window buffer window)
-  (set-window-buffer! window buffer true))
-
-(define (set-window-buffer! window buffer record?)
+(define (select-buffer-in-window buffer window record?)
   (without-interrupts
    (lambda ()
      (undo-leave-window! window)
      (if (current-window? window)
 	 (change-selected-buffer buffer record?
 	   (lambda ()
-	     (%set-window-buffer! window buffer)))
-	 (%set-window-buffer! window buffer)))))
+	     (set-window-buffer! window buffer)))
+	 (set-window-buffer! window buffer)))))
 
 (define-variable select-buffer-hook
   "An event distributor that is invoked when a buffer is selected.
@@ -440,7 +437,7 @@ The buffer is guaranteed to be selected at that time."
 		    (let ((window (current-window)))
 		      (set! old-buffer (window-buffer window))
 		      (if (buffer-alive? buffer)
-			  (set-window-buffer! window buffer true)))
+			  (select-buffer-in-window buffer window true)))
 		    (set! buffer)
 		    unspecific)
 		  thunk
@@ -448,7 +445,7 @@ The buffer is guaranteed to be selected at that time."
 		    (let ((window (current-window)))
 		      (set! buffer (window-buffer window))
 		      (if (buffer-alive? old-buffer)
-			  (set-window-buffer! window old-buffer true)))
+			  (select-buffer-in-window old-buffer window true)))
 		    (set! old-buffer)
 		    unspecific))))
 

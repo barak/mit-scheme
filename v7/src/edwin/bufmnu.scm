@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.119 1992/04/16 22:29:46 cph Exp $
+;;;	$Id: bufmnu.scm,v 1.120 1992/09/10 02:44:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -182,7 +182,7 @@ You can mark buffers with the \\[buffer-menu-mark] command."
 		  (let ((new (window-split-vertically! window height)))
 		    (if new
 			(begin
-			  (set-window-buffer! new (car buffers) true)
+			  (select-buffer-in-window (car buffers) new true)
 			  (loop new (cdr buffers))))))
 		(loop window others))))))
     (clear-message)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.98 1992/09/08 18:18:18 cph Exp $
+$Id: edwin.pkg,v 1.99 1992/09/10 02:44:17 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -377,6 +377,7 @@ MIT in each case. |#
 	  edwin-variable$truncate-partial-width-windows
 	  screen-window-configuration
 	  set-screen-window-configuration!
+	  set-window-buffer!
 	  set-window-debug-trace!
 	  set-window-point!
 	  set-window-start-mark!
