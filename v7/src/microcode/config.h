@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.27 1987/06/18 19:54:55 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.28 1987/06/18 22:12:42 jinx Exp $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -195,6 +195,7 @@ typedef unsigned long Pointer;
 #define FASL_CELERITY		9
 #define FASL_HP_SPECTRUM	10
 #define FASL_UMAX		11
+#define FALS_PYR		12
 
 /* These (pdp10 and nu) haven't worked in a while.
  * Should be upgraded or flushed some day. 
@@ -418,7 +419,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define HAS_FLOOR
 #define HAS_FREXP
 #endif
-
+
 #ifdef umax
 #define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
@@ -432,6 +433,20 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define MAX_FLONUM_EXPONENT	1023
 #define HAS_FLOOR
 #define HAS_FREXP
+#endif
+
+#ifdef pyr
+#define Heap_In_Low_Memory
+#define UNSIGNED_SHIFT
+#define CHAR_SIZE            8
+#define USHORT_SIZE          16
+#define ULONG_SIZE           32
+#define BELL                 '\007'
+#define FASL_INTERNAL_FORMAT FASL_PYR
+/* Flonum (double) size is 64 bits. */
+#define FLONUM_EXPT_SIZE     11
+#define FLONUM_MANTISSA_BITS 52
+#define MAX_FLONUM_EXPONENT  2047
 #endif
 
 /* Make sure that some definition applies. 

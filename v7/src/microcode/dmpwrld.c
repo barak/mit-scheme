@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.24 1987/04/16 02:21:08 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.25 1987/06/18 22:15:11 jinx Rel $
  *
  * This file contains a primitive to dump an executable version of Scheme.
  * It uses unexec.c from GNU Emacs.
@@ -85,6 +85,12 @@ MIT in each case. */
 #ifdef sun2
 #define UNEXEC_AVAILABLE
 #define SEGMENT_MASK		(SEGSIZ - 1)
+#endif
+
+#ifdef pyr
+#define UNEXEC_AVAILABLE
+#define SEGMENT_MASK (2048-1)	/* ZMAGIC format */
+				/* man a.out for info */
 #endif
 
 #ifndef UNEXEC_AVAILABLE
