@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.189 2001/10/10 04:26:37 cph Exp $
+;;; $Id: imail-imap.scm,v 1.190 2001/10/14 02:00:13 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1235,9 +1235,7 @@
 		      (imap-message-body-parts message)))
 	       (write-string part port)))
 	    (else
-	     (imap:bind-fetch-body-part-port port
-	       (lambda ()
-		 (fetch-message-body-part message section))))))))
+	     (fetch-message-body-part-to-port message section port))))))
 
 (define (parse-mime-body body)
   (cond ((not (and (pair? body) (list? body))) (parse-mime-body:lose body))
@@ -1528,6 +1526,19 @@
 				     (imap-message-uid message)
 				     keywords))))))))
 
+(define (fetch-message-body-part-to-port message section port)
+  (let ((keyword (imap-body-section->keyword section)))
+    (let ((pathname (message-item-pathname message keyword)))
+      (if (not (file-exists? pathname))
+	  (begin
+	    (guarantee-init-file-directory pathname)
+	    (call-with-output-file pathname
+	      (lambda (port)
+		(imap:bind-fetch-body-part-port port
+		  (lambda ()
+		    (fetch-message-body-part-1 message section keyword)))))))
+      (file->port pathname port))))
+
 (define (fetch-message-body-part message section)
   (let ((keyword (imap-body-section->keyword section)))
     (let ((pathname (message-item-pathname message keyword)))
@@ -1660,6 +1671,17 @@
   (call-with-input-file pathname
     (lambda (port)
       ((input-port/custom-operation port 'REST->STRING) port))))
+
+(define (file->port pathname output-port)
+  (call-with-input-file pathname
+    (lambda (input-port)
+      (let ((buffer (make-string 4096)))
+	(let loop ()
+	  (let ((n (read-string! buffer input-port)))
+	    (if (> n 0)
+		(begin
+		  (write-substring buffer 0 n output-port)
+		  (loop)))))))))
 
 (define (delete-file-recursively pathname)
   (if (file-directory? pathname)
