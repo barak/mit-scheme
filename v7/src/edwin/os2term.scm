@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2term.scm,v 1.6 1995/04/10 16:53:05 cph Exp $
+;;;	$Id: os2term.scm,v 1.7 1995/04/22 21:20:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -57,12 +57,13 @@
 (define reading-event?)
 (define desktop-width)
 (define desktop-height)
+(define hide-console?)
 
 (define (initialize-package!)
   (set! os2-display-type
 	(make-display-type 'PM
 			   #t
-			   (lambda () #t)
+			   (lambda () (initialize-pm-state) #t)
 			   make-os2-screen
 			   get-os2-input-operations
 			   with-editor-interrupts-from-os2
@@ -78,13 +79,15 @@
 	(set! screen-list '())
 	(set! event-queue (make-queue))
 	(set! event-descriptor (os2win-open-event-qid))
+	(set! desktop-width (os2win-desktop-width))
+	(set! desktop-height (os2win-desktop-height))
+	(set! hide-console? #t)
 	unspecific)))
 
 (define (finalize-pm-state)
   (if event-descriptor
       (begin
-	(do () ((null? screen-list))
-	  (os2-screen/discard! (car screen-list)))
+	(do () ((null? screen-list)) (os2-screen/discard! (car screen-list)))
 	(set! event-queue)
 	(os2win-close-event-qid event-descriptor)
 	(set! event-descriptor #f)
@@ -95,16 +98,16 @@
 	      (signal-interrupts? #t)
 	      (previewer-registration))
     (dynamic-wind (lambda ()
-		    (initialize-pm-state)
 		    (preview-event-stream)
-		    (set! desktop-width (os2win-desktop-width))
-		    (set! desktop-height (os2win-desktop-height))
-		    (os2win-set-state (os2win-console-wid) window-state:hide))
+		    (if hide-console?
+			(begin
+			  (set! hide-console? #f)
+			  (os2win-set-state (os2win-console-wid)
+					    window-state:hide))))
 		  (lambda ()
 		    (receiver (lambda (thunk) (thunk)) '()))
 		  (lambda ()
-		    (deregister-input-thread-event previewer-registration)
-		    (finalize-pm-state)))))
+		    (deregister-input-thread-event previewer-registration)))))
 
 (define (with-os2-interrupts-enabled thunk)
   (with-signal-interrupts #t thunk))
@@ -125,11 +128,6 @@
 		    unspecific))))
 
 (define (make-os2-screen)
-  ;; Call to INITIALIZE-PM-STATE needed because first screen is built
-  ;; before the display is grabbed.  This is a bug that should be
-  ;; fixed -- the display grab should be the very first thing that
-  ;; happens.
-  (initialize-pm-state)
   (call-with-values open-window
     (lambda (state x-size y-size)
       (let ((screen
