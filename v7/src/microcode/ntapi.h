@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntapi.h,v 1.1 1997/01/01 22:58:34 cph Exp $
+$Id: ntapi.h,v 1.2 1997/01/05 23:37:21 cph Exp $
 
 Copyright (c) 1997 Massachusetts Institute of Technology
 
@@ -44,6 +44,7 @@ enum syscall_names
   apicall_CreateFile,
   apicall_FindFirstFile,
   apicall_GetFileAttributes,
+  apicall_GetFileInformationByHandle,
   apicall_GetFileSize,
   apicall_GetFileTime,
   apicall_MoveFile,
@@ -803,6 +804,7 @@ static char * syscall_names_table [] =
   "CREATE-FILE",
   "FIND-FIRST-FILE",
   "GET-FILE-ATTRIBUTES",
+  "GET-FILE-INFORMATION-BY-HANDLE",
   "GET-FILE-SIZE",
   "GET-FILE-TIME",
   "MOVE-FILE",
