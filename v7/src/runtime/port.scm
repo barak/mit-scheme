@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.28 2003/03/07 20:36:53 cph Exp $
+$Id: port.scm,v 1.29 2003/03/07 21:16:27 cph Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
@@ -29,7 +29,7 @@ USA.
 
 (declare (usual-integrations))
 
-(define-structure (port-type (type-descriptor port-type-rtd)
+(define-structure (port-type (type-descriptor <port-type>)
 			     (conc-name port-type/)
 			     (constructor %make-port-type (custom-operations)))
   custom-operations
@@ -48,7 +48,7 @@ USA.
   (flush-output #f read-only #t)
   (discretionary-flush-output #f read-only #t))
 
-(set-record-type-unparser-method! port-type-rtd
+(set-record-type-unparser-method! <port-type>
   (lambda (state type)
     ((standard-unparser-method
       (if (port-type/supports-input? type)
@@ -99,11 +99,11 @@ USA.
     READ-SUBSTRING))
 
 (define input-operation-accessors
-  (map (lambda (name) (record-accessor port-type-rtd name))
+  (map (lambda (name) (record-accessor <port-type> name))
        input-operation-names))
 
 (define input-operation-modifiers
-  (map (lambda (name) (record-modifier port-type-rtd name))
+  (map (lambda (name) (record-modifier <port-type> name))
        input-operation-names))
 
 (define output-operation-names
@@ -114,11 +114,11 @@ USA.
     WRITE-SUBSTRING))
 
 (define output-operation-accessors
-  (map (lambda (name) (record-accessor port-type-rtd name))
+  (map (lambda (name) (record-accessor <port-type> name))
        output-operation-names))
 
 (define output-operation-modifiers
-  (map (lambda (name) (record-modifier port-type-rtd name))
+  (map (lambda (name) (record-modifier <port-type> name))
        output-operation-names))
 
 (define (port-type/operation-names type)
@@ -459,7 +459,7 @@ USA.
 
 (define extract-operation!
   (let ((set-port-type/custom-operations!
-	 (record-modifier port-type-rtd 'CUSTOM-OPERATIONS)))
+	 (record-modifier <port-type> 'CUSTOM-OPERATIONS)))
     (lambda (type name)
       (let ((operation (assq name (port-type/custom-operations type))))
 	(and operation

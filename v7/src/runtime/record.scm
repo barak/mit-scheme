@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.34 2003/03/07 19:08:28 cph Exp $
+$Id: record.scm,v 1.35 2003/03/07 21:18:22 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003 Massachusetts Institute of Technology
@@ -433,7 +433,7 @@ USA.
 
 ;;;; Runtime support for DEFINE-STRUCTURE
 
-(define structure-type-rtd)
+(define <structure-type>)
 (define make-define-structure-type)
 (define structure-type?)
 (define structure-type/type)
@@ -444,26 +444,26 @@ USA.
 (define set-structure-type/unparser-method!)
 
 (define (initialize-structure-type-type!)
-  (set! structure-type-rtd
+  (set! <structure-type>
 	(make-record-type "structure-type"
 			  '(TYPE NAME FIELD-NAMES FIELD-INDEXES
 				 UNPARSER-METHOD)))
   (set! make-define-structure-type
-	(record-constructor structure-type-rtd))
+	(record-constructor <structure-type>))
   (set! structure-type?
-	(record-predicate structure-type-rtd))
+	(record-predicate <structure-type>))
   (set! structure-type/type
-	(record-accessor structure-type-rtd 'TYPE))
+	(record-accessor <structure-type> 'TYPE))
   (set! structure-type/name
-	(record-accessor structure-type-rtd 'NAME))
+	(record-accessor <structure-type> 'NAME))
   (set! structure-type/field-names
-	(record-accessor structure-type-rtd 'FIELD-NAMES))
+	(record-accessor <structure-type> 'FIELD-NAMES))
   (set! structure-type/field-indexes
-	(record-accessor structure-type-rtd 'FIELD-INDEXES))
+	(record-accessor <structure-type> 'FIELD-INDEXES))
   (set! structure-type/unparser-method
-	(record-accessor structure-type-rtd 'UNPARSER-METHOD))
+	(record-accessor <structure-type> 'UNPARSER-METHOD))
   (set! set-structure-type/unparser-method!
-	(record-modifier structure-type-rtd 'UNPARSER-METHOD))
+	(record-modifier <structure-type> 'UNPARSER-METHOD))
   unspecific)
 
 (define (structure-tag/unparser-method tag type)
