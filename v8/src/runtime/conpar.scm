@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.5 1988/12/30 06:42:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.6 1989/01/07 00:24:54 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -113,6 +113,9 @@ MIT in each case. |#
 
 (define-integrable (stack-frame/subproblem? stack-frame)
   (stack-frame-type/subproblem? (stack-frame/type stack-frame)))
+
+(define-integrable (stack-frame/compiled-code? stack-frame)
+  (compiled-return-address? (stack-frame/return-address stack-frame)))
 
 (define (stack-frame/resolve-stack-address frame address)
   (let loop
@@ -244,31 +247,45 @@ MIT in each case. |#
        false
        0
        (stack-frame/interrupt-mask stack-frame)
-       (history-untransform (stack-frame/history stack-frame))
+       (let ((history (stack-frame/history stack-frame)))
+	 (if (eq? history undefined-history)
+	     (fixed-objects-item 'DUMMY-HISTORY)
+	     (history-untransform history)))
        (stack-frame/previous-history-offset stack-frame)
        (stack-frame/previous-history-control-point stack-frame)
-       element-stream
+       (if (stack-frame/compiled-code? stack-frame)
+	   (cons-stream return-address/reenter-compiled-code
+			(cons-stream false element-stream))
+	   element-stream)
        next-control-point))))
 
 (define (unparse/stack-frame stack-frame)
-  (let ((next (stack-frame/%next stack-frame)))
-    (cond ((stack-frame? next)
-	   (with-values (lambda () (unparse/stack-frame next))
-	     (lambda (element-stream next-control-point)
-	       (values
-		(let ((elements (stack-frame/elements stack-frame)))
-		  (let ((length (vector-length elements)))
-		    (let loop ((index 0))
-		      (if (< index length)
-			  (cons-stream (vector-ref elements index)
-				       (loop (1+ index)))
-			  element-stream))))
-		next-control-point))))
-	  ((parser-state? next)
-	   (values (parser-state/element-stream next)
-		   (parser-state/next-control-point next)))
-	  (else
-	   (values (stream) false)))))
+  (if (eq? (stack-frame/return-address stack-frame)
+	   return-address/join-stacklets)
+      (values (stream) (vector-ref (stack-frame/elements stack-frame) 1))
+      (with-values
+	  (lambda ()
+	    (let ((next (stack-frame/%next stack-frame)))
+	      (cond ((stack-frame? next)
+		     (unparse/stack-frame next))
+		    ((parser-state? next)
+		     (values (parser-state/element-stream next)
+			     (parser-state/next-control-point next)))
+		    (else
+		     (values (stream) false)))))
+	(lambda (element-stream next-control-point)
+	  (values
+	   (let ((elements (stack-frame/elements stack-frame)))
+	     (let ((length (vector-length elements)))
+	       (let loop ((index 0))
+		 (if (< index length)
+		     (cons-stream (vector-ref elements index)
+				  (loop (1+ index)))
+		     element-stream))))
+	   next-control-point)))))
+
+(define return-address/join-stacklets)
+(define return-address/reenter-compiled-code)
 
 ;;;; Special Frame Lengths
 
@@ -320,7 +337,7 @@ MIT in each case. |#
 		      (parser-state/element-stream state)
 		      (parser-state/n-elements state)
 		      (parser-state/next-control-point state))))
-
+
 (define (parser/restore-dynamic-state type elements state)
   (make-restore-frame type elements state
 		      ;; Possible problem: the dynamic state really
@@ -398,6 +415,10 @@ MIT in each case. |#
 	 (error "illegal return address" return-address))))
 
 (define (initialize-package!)
+  (set! return-address/join-stacklets
+	(make-return-address (microcode-return 'JOIN-STACKLETS)))
+  (set! return-address/reenter-compiled-code
+	(make-return-address (microcode-return 'REENTER-COMPILED-CODE)))
   (set! stack-frame-types (make-stack-frame-types))
   (set! stack-frame-type/compiled-return-address
 	(make-stack-frame-type false
