@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosint10.c,v 1.6 1992/10/20 15:07:24 jinx Exp $
+$Id: dosint10.c,v 1.7 1992/10/20 15:31:20 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -380,8 +380,6 @@ DEFINE_PRIMITIVE ("BIOS:INITIALIZE!", Prim_bios_enter, 2, 2,
     error_external_return ();
   bios_initialize_variables ((arg_integer_in_range (1, 30, 38)),
 			     (arg_integer_in_range (2, 40, 48)));
-  bios_clear_screen ();
-  bios__set_cursor_position (0, 0, display_rows);
   bios_initialized_p = 1;
   PRIMITIVE_RETURN (SHARP_T);
 }
@@ -392,7 +390,6 @@ DEFINE_PRIMITIVE ("BIOS:EXIT!", Prim_bios_exit, 0, 0,
   PRIMITIVE_HEADER (0);
   if (!bios_initialized_p)
     error_external_return ();
-  bios__set_cursor_position (0, 0, display_rows);
   bios_uninitialize_variables ();
   bios_initialized_p = 0;
   PRIMITIVE_RETURN (SHARP_T);
