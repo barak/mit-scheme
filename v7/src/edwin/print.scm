@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: print.scm,v 1.13 1997/12/26 23:45:28 cph Exp $
+;;;	$Id: print.scm,v 1.14 1997/12/26 23:46:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
@@ -110,7 +110,7 @@ Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
 					   (if print-headers? '("-p") '())))))
 
 (define (print-region/nt region print-headers? title buffer)
-  print-headers? title
+  print-headers? title buffer
   (call-with-temporary-file-pathname
    (lambda (pathname)
      (write-region region pathname #f #t)
