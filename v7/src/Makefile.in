@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.4 2000/12/08 19:10:13 cph Exp $
+# $Id: Makefile.in,v 1.5 2000/12/08 19:12:36 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -70,8 +70,8 @@ EODIR = $(EDDIR)/autoload
 
 all:
 	( cd microcode && $(MAKE) $@ )
-	scheme -compiler -heap 4000 < etc/compile.scm
-	etc/build-bands.sh
+	scheme -compiler -heap 4000 < $(srcdir)/etc/compile.scm
+	$(srcdir)/etc/build-bands.sh
 
 mostlyclean clean distclean maintainer-clean:
 	$(srcdir)/Clean.sh $@ $(SUBDIRS)
