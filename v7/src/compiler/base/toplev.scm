@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.53 1997/06/12 04:35:47 cph Exp $
+$Id: toplev.scm,v 4.54 1997/10/02 00:11:42 adams Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -545,11 +545,11 @@ MIT in each case. |#
 	 |#
 	 (phase/rtl-optimization)
 	 (if rtl-output-port
-	     (phase/rtl-file-output rtl-output-port))
+	     (phase/rtl-file-output scode rtl-output-port))
 	 (phase/lap-generation)
 	 (phase/lap-linearization)
 	 (if lap-output-port
-	     (phase/lap-file-output lap-output-port))
+	     (phase/lap-file-output scode lap-output-port))
 	 (assemble&link info-output-pathname))))))
 
 (define (compiler-phase name thunk)
@@ -934,11 +934,14 @@ MIT in each case. |#
 		  (set-rgraph-register-known-values! rgraph false))
 		*rtl-graphs*)))
 
-(define (phase/rtl-file-output port)
+(define (phase/rtl-file-output scode port)
   (compiler-phase "RTL File Output"
     (lambda ()
       (write-string "RTL for object " port)
       (write *recursive-compilation-number* port)
+      (newline port)
+      (pp scode port #T 4)
+      (newline port)
       (newline port)
       (write-rtl-instructions (linearize-rtl *rtl-root*
 					     *rtl-procedures*
@@ -1000,7 +1003,7 @@ MIT in each case. |#
 	    (set! *rtl-root*)
 	    unspecific)))))
 
-(define (phase/lap-file-output port)
+(define (phase/lap-file-output scode port)
   (compiler-phase "LAP File Output"
     (lambda ()
       (fluid-let ((*unparser-radix* 16)
@@ -1010,18 +1013,32 @@ MIT in each case. |#
 	    (write-string "LAP for object ")
 	    (write *recursive-compilation-number*)
 	    (newline)
+	    (pp scode (current-output-port) #T 4)
 	    (newline)
-	    (for-each (lambda (instruction)
-			(if (and (pair? instruction)
-				 (eq? (car instruction) 'LABEL))
-			    (begin
-			      (write (cadr instruction))
-			      (write-char #\:))
-			    (begin
-			      (write-char #\tab)
-			      (write instruction)))
-			(newline))
-		      *lap*)
+	    (newline)
+	    (newline)
+	    (for-each
+		(lambda (instruction)
+		  (cond ((and (pair? instruction)
+			      (eq? (car instruction) 'LABEL))
+			 (write (cadr instruction))
+			 (write-char #\:))
+			((and (pair? instruction)
+			      (eq? (car instruction) 'COMMENT))
+			 (write-char #\tab)
+			 (write-string ";;")
+			 (for-each (lambda (frob)
+				     (write-string " ")
+				     (write (if (and (pair? frob)
+						     (eq? (car frob) 'RTL))
+						(cadr frob)
+						frob)))
+			   (cdr instruction)))
+			(else
+			 (write-char #\tab)
+			 (write instruction)))
+		  (newline))
+	      *lap*)
 	    (if (not (zero? *recursive-compilation-number*))
 		(begin
 		  (write-char #\page)
