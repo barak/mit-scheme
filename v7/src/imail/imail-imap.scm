@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.202 2004/02/17 05:53:31 cph Exp $
+$Id: imail-imap.scm,v 1.203 2004/12/07 07:25:26 cph Exp $
 
 Copyright 1999,2000,2001,2003,2004 Massachusetts Institute of Technology
 
@@ -1330,17 +1330,21 @@ USA.
   (error "Unrecognized MIME bodystructure:" body))
 
 (define (parse-mime-parameters parameters)
-  (let ((lose (lambda () (error "Malformed MIME parameters:" parameters))))
-    (let loop ((parameters parameters) (alist '()))
-      (if (pair? parameters)
-	  (if (pair? (cdr parameters))
-	      (loop (cddr parameters)
-		    (cons (cons (intern (car parameters)) (cadr parameters))
-			  alist))
-	      (lose))
-	  (if (null? parameters)
-	      (reverse! alist)
-	      (lose))))))
+  (if parameters
+      (let ((lose
+	     (lambda () (error "Malformed MIME parameters:" parameters))))
+	(let loop ((parameters parameters) (alist '()))
+	  (if (pair? parameters)
+	      (if (pair? (cdr parameters))
+		  (loop (cddr parameters)
+			(cons (cons (intern (car parameters))
+				    (cadr parameters))
+			      alist))
+		  (lose))
+	      (if (null? parameters)
+		  (reverse! alist)
+		  (lose)))))
+      '()))
 
 (define (parse-mime-disposition disposition)
   (and disposition
