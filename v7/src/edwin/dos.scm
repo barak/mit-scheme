@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.43 1997/01/05 23:46:13 cph Exp $
+;;;	$Id: dos.scm,v 1.44 1997/01/06 00:18:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-97 Massachusetts Institute of Technology
 ;;;
@@ -251,7 +251,7 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
    name))
 
 (define (win32/read-dired-files file all-files?)
-  (map (lambda (entry) (cons (->namestring (car entry)) (cdr entry)))
+  (map (lambda (entry) (cons (file-namestring (car entry)) (cdr entry)))
        (let ((entries (directory-read file #f #t)))
 	 (if all-files?
 	     entries
