@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.173 1999/11/05 05:37:41 cph Exp $
+;;; $Id: buffer.scm,v 1.174 2000/02/07 23:09:41 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -220,13 +220,11 @@ The buffer is guaranteed to be deselected at that time."
 	(if (default-object? default) #f default))))
 
 (define (buffer-put! buffer key value)
-  (if value
-      (let ((entry (assq key (buffer-alist buffer))))
-	(if entry
-	    (set-cdr! entry value)
-	    (set-buffer-alist! buffer
-			       (cons (cons key value) (buffer-alist buffer)))))
-      (buffer-remove! buffer key)))
+  (let ((entry (assq key (buffer-alist buffer))))
+    (if entry
+	(set-cdr! entry value)
+	(set-buffer-alist! buffer
+			   (cons (cons key value) (buffer-alist buffer))))))
 
 (define (buffer-remove! buffer key)
   (set-buffer-alist! buffer (del-assq! key (buffer-alist buffer))))
