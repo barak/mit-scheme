@@ -37,6 +37,8 @@
 
 ;;;; Compiler Make File for MC68020
 
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.7 1986/12/13 17:31:11 cph Exp $
+
 (declare (usual-integrations))
 
 (set-working-directory-pathname! "$zcomp")
@@ -47,71 +49,71 @@
 	     '(SYSTEM-GLOBAL-ENVIRONMENT)
 	     '(
 	       (SYSTEM-GLOBAL-ENVIRONMENT
-		"macros.bin.52"		;compiler syntax
-		"pbs.bin.1"		;bit-string read/write syntax
+		"macros.bin"		;compiler syntax
+		"pbs.bin"		;bit-string read/write syntax
 		)
 
 	       (COMPILER-PACKAGE
-		"mc68020/machin.bin.40"	;machine dependent stuff
-		"toplev.bin.86"		;top level
-		"utils.bin.69"		;odds and ends
-		"cfg.bin.136"		;control flow graph
-		"ctypes.bin.32"		;CFG datatypes
-		"dtypes.bin.83"		;DFG datatypes
-		"dfg.bin.54"		;data flow graph
-		"rtl.bin.106"		;register transfer language
-		"emodel.bin.93"		;environment model
-		"rtypes.bin.10"		;RTL analyzer datatypes
-		"nmatch.bin.11"		;simple pattern matcher
+		"mc68020/machin.bin"	;machine dependent stuff
+		"toplev.bin"		;top level
+		"utils.bin"		;odds and ends
+		"cfg.bin"		;control flow graph
+		"ctypes.bin"		;CFG datatypes
+		"dtypes.bin"		;DFG datatypes
+		"dfg.bin"		;data flow graph
+		"rtl.bin"		;register transfer language
+		"emodel.bin"		;environment model
+		"rtypes.bin"		;RTL analyzer datatypes
+		"nmatch.bin"		;simple pattern matcher
 		)
 
 	       (CONVERTER-PACKAGE
-		"graphc.bin.107"	;SCode->flow-graph converter
+		"graphc.bin"		;SCode->flow-graph converter
 		)
 
 	       (DATAFLOW-PACKAGE
-		"dflow.bin.99"		;Dataflow analyzer
+		"dflow.bin"		;Dataflow analyzer
 		)
 
 	       (CALL-CONSTRUCTOR-PACKAGE
-		"calls.bin.73"		;Call-sequence constructor
+		"calls.bin"		;Call-sequence constructor
 		)
 
 	       (RTL-GENERATOR-PACKAGE
-		"cgen.bin.187"		;RTL generator
-		"linear.bin.72"		;linearization
+		"cgen.bin"		;RTL generator
+		"linear.bin"		;linearization
 		)
 
 	       (RTL-CSE-PACKAGE
-		"rcse.bin.91"		;RTL common subexpression eliminator
+		"rcse.bin"		;RTL common subexpression eliminator
 		)
 
 	       (RTL-ANALYZER-PACKAGE
-		"rlife.bin.49"		;RTL register lifetime analyzer
-		"ralloc.bin.7"		;RTL register allocator
+		"rlife.bin"		;RTL register lifetime analyzer
+		"ralloc.bin"		;RTL register allocator
 		)
 
 	       (LAP-GENERATOR-PACKAGE
-		"lapgen.bin.17"		;LAP generator.
-		"regmap.bin.84"		;Hardware register allocator.
-		"mc68020/lapgen.bin.138" ;code generation rules.
+		"lapgen.bin"		;LAP generator.
+		"regmap.bin"		;Hardware register allocator.
+		"mc68020/lapgen.bin"	;code generation rules.
 		)
 
 	       (LAP-SYNTAXER-PACKAGE
-		"syntax.bin.12"		;Generic syntax phase
-		"mc68020/coerce.bin.6"	;Coercions: integer -> bit string
-		"asmmac.bin.1"		;Macros for hairy syntax
-		"mc68020/insmac.bin.117" ;Macros for hairy syntax
-		"mc68020/instr1.bin.58"	;68000 Effective addressing
-		"mc68020/instr2.bin.8"	;68000 Instructions
-		"mc68020/instr3.bin.8"	;  "        "
+		"syntax.bin"		;Generic syntax phase
+		"mc68020/coerce.bin"	;Coercions: integer -> bit string
+		"asmmac.bin"		;Macros for hairy syntax
+		"mc68020/insmac.bin"	;Macros for hairy syntax
+		"mc68020/instr1.bin"	;68000 Effective addressing
+		"mc68020/instr2.bin"	;68000 Instructions
+		"mc68020/instr3.bin"	;  "        "
 		)
 
 	       (LAP-PACKAGE
-		"mc68020/assmd.bin.28"	;Machine dependent
-		"symtab.bin.36"		;Symbol tables
-		"block.bin.19"		;Assembly blocks
-		"laptop.bin.90"		;Assembler top level
+		"mc68020/assmd.bin"	;Machine dependent
+		"symtab.bin"		;Symbol tables
+		"block.bin"		;Assembly blocks
+		"laptop.bin"		;Assembler top level
 		)
 
 	       ))
