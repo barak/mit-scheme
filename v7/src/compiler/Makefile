@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.16 2000/12/06 03:01:20 cph Exp $
+# $Id: Makefile,v 1.17 2000/12/06 04:45:45 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -32,8 +32,11 @@ all:
 setup:
 	(cd machines/vax; \
 	for N in 1 2 3; do \
-	    ln -s instr$${N}.scm dinstr$${N}.scm; \
+	    test -f dinstr$${N}.scm || ln -s instr$${N}.scm dinstr$${N}.scm; \
 	done)
+	for FN in compiler.cbf compiler.pkg compiler.sf make.com; do \
+	    test -f $${FN} || ln -s machine/$${FN} .; \
+	done
 
 tags TAGS:
 	etags back/*.scm base/*.scm fggen/*.scm fgopt/*.scm \
