@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/hash.scm,v 14.3 1991/08/16 15:40:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/hash.scm,v 14.4 1991/08/18 23:33:20 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -135,32 +135,29 @@ MIT in each case. |#
   (if (eq? x false)
       0
       (object-hash x
-		   (if (default-object? table)
-		       default-hash-table
-		       table)
+		   (if (default-object? table) default-hash-table table)
 		   true)))
 
 (define (unhash n #!optional table)
   (if (zero? n)
       false
-      (let ((table (if (default-object? table)
-		       default-hash-table
-		       table)))
-	(or (object-unhash n table)
-	    (error "unhash: Not a valid hash number" n table)))))
+      (let ((object
+	     (object-unhash n
+			    (if (default-object? table)
+				default-hash-table
+				table))))
+	(if (not object)
+	    (error:bad-range-argument n 'UNHASH))
+	object)))
 
 (define (valid-hash-number? n #!optional table)
   (or (zero? n)
-      (object-unhash n (if (default-object? table)
-			   default-hash-table
-			   table))))
+      (object-unhash n (if (default-object? table) default-hash-table table))))
 
-(define (object-hashed? n #!optional table)
+(define (object-hashed? x #!optional table)
   (or (eq? x false)
       (object-hash x
-		   (if (default-object? table)
-		       default-hash-table
-		       table)
+		   (if (default-object? table) default-hash-table table)
 		   false)))  
 
 ;;; This is not dangerous because assq is a primitive and does not
@@ -171,14 +168,16 @@ MIT in each case. |#
 ;;; compiled, but can lose if it is interpreted.
 
 (define (object-hash object #!optional table insert?)
-  (let ((table (cond ((default-object? table)
-		      default-hash-table)
-		     ((hash-table? table)
-		      table)
-		     (else
-		      (error "object-hash: Not a hash table" table))))
-	(insert? (or (default-object? insert?)
-		     insert?)))
+  (let ((table
+	 (if (default-object? table)
+	     default-hash-table
+	     (begin
+	       (if (not (hash-table? table))
+		   (error:wrong-type-argument table
+					      "object-hash table"
+					      'OBJECT-HASH))
+	       table)))
+	(insert? (or (default-object? insert?) insert?)))
     (with-absolutely-no-interrupts
       (lambda ()
 	(let* ((hash-index (fix:+ 1
@@ -206,7 +205,8 @@ MIT in each case. |#
 				  hash-index
 				  (cons pair bucket))
 		     (set-cdr! unhash-bucket
-			       (cons (object-new-type (ucode-type weak-cons) pair)
+			       (cons (object-new-type (ucode-type weak-cons)
+						      pair)
 				     (cdr unhash-bucket)))
 		     result)))))))))
 
@@ -215,12 +215,15 @@ MIT in each case. |#
 ;;; daemon will not splice that bucket.
 
 (define (object-unhash number #!optional table)
-  (let* ((table (cond ((default-object? table)
-		       default-hash-table)
-		      ((hash-table? table)
-		       table)
-		      (else
-		       (error "object-hash: Not a hash table" table))))
+  (let* ((table
+	  (if (default-object? table)
+	      default-hash-table
+	      (begin
+		(if (not (hash-table? table))
+		    (error:wrong-type-argument table
+					       "object-hash table"
+					       'OBJECT-UNHASH))
+		table)))
 	 (index (modulo number (hash-table/size table))))
     (with-absolutely-no-interrupts
       (lambda ()
