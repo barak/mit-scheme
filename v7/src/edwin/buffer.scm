@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.146 1991/05/04 22:02:03 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.147 1991/10/29 13:39:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -270,6 +270,12 @@ The buffer is guaranteed to be deselected at that time."
 	  ((car thunks))
 	  (loop (cdr thunks)))))
   (vector-set! buffer buffer-index:initializations '()))
+
+(define (->buffer object)
+  (cond ((buffer? object) object)
+	((and (mark? object) (mark-buffer object)))
+	((and (group? object) (group-buffer object)))
+	(else (error "can't coerce to buffer:" object))))
 
 ;;;; Modification Flags
 
@@ -377,12 +383,13 @@ The buffer is guaranteed to be deselected at that time."
 		 (%set-variable-value! variable (cdr binding)))))))))
 
 (define (variable-local-value buffer variable)
-  (if (buffer-local-bindings-installed? buffer)
-      (variable-value variable)
-      (let ((binding (search-local-bindings buffer variable)))
-	(if binding
-	    (cdr binding)
-	    (variable-default-value variable)))))
+  (let ((buffer (->buffer buffer)))
+    (if (buffer-local-bindings-installed? buffer)
+	(variable-value variable)
+	(let ((binding (search-local-bindings buffer variable)))
+	  (if binding
+	      (cdr binding)
+	      (variable-default-value variable))))))
 
 (define (set-variable-local-value! buffer variable value)
   (if (variable-buffer-local? variable)
