@@ -1,7 +1,7 @@
 #
 # Makefile for MIT CScheme microcode.
 #
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/makefile,v 1.17 1992/03/17 21:58:14 cph Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/makefile,v 1.18 1992/08/24 13:31:00 jinx Exp $
 #
 CPP = cc -E
 MAKE = make  # BSD doesn't have it as a default.
@@ -65,6 +65,9 @@ clean remove:
 	rm -f hard-params limits.h float.h
 	rm -f usrdef.c bchdef.c usr6003.c usrkit.c usrLYN.c
 	rm -f lint.out
+
+unconfig:
+	rm -f m.h s.h cmpint2.h config.status
 
 tags:
 	etags *.[ch] ../runtime/*.scm
