@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.67 2001/05/24 01:13:57 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.68 2001/06/12 00:47:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -38,11 +38,6 @@
 
 ;;;; Server operations
 
-(define-method %open-resource ((url <rmail-url>))
-  (if (not (file-readable? (pathname-url-pathname url)))
-      (error:bad-range-argument url 'OPEN-RESOURCE))
-  (make-rmail-folder url))
-
 (define-method %create-resource ((url <rmail-url>))
   (if (file-exists? (pathname-url-pathname url))
       (error:bad-range-argument url 'CREATE-RESOURCE))
@@ -77,6 +72,13 @@
 	(make-header-field "Note" "This is the header of an rmail file.")
 	(make-header-field "Note" "If you are seeing it in rmail,")
 	(make-header-field "Note" "it means the file has no messages in it.")))
+
+(define-method open-resource ((url <rmail-url>))
+  (if (file-readable? (pathname-url-pathname url))
+      (maybe-make-resource url make-rmail-folder)
+      (begin
+	(unmemoize-resource url)
+	(error:bad-range-argument url 'OPEN-RESOURCE))))
 
 ;;;; Message
 

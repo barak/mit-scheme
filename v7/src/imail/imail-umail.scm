@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.48 2001/05/24 01:14:10 cph Exp $
+;;; $Id: imail-umail.scm,v 1.49 2001/06/12 00:47:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -35,11 +35,6 @@
 
 ;;;; Server operations
 
-(define-method %open-resource ((url <umail-url>))
-  (if (not (file-readable? (pathname-url-pathname url)))
-      (error:bad-range-argument url 'OPEN-RESOURCE))
-  (make-umail-folder url))
-
 (define-method %create-resource ((url <umail-url>))
   (if (file-exists? (pathname-url-pathname url))
       (error:bad-range-argument url 'CREATE-RESOURCE))
@@ -54,6 +49,13 @@
 ;;;; Folder
 
 (define-class (<umail-folder> (constructor (locator))) (<file-folder>))
+
+(define-method open-resource ((url <umail-url>))
+  (if (file-readable? (pathname-url-pathname url))
+      (maybe-make-resource url make-umail-folder)
+      (begin
+	(unmemoize-resource url)
+	(error:bad-range-argument url 'OPEN-RESOURCE))))
 
 ;;;; Message
 

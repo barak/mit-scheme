@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.143 2001/06/04 17:38:50 cph Exp $
+;;; $Id: imail-core.scm,v 1.144 2001/06/12 00:47:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -420,6 +420,10 @@
   (if (not (container? container))
       (error:wrong-type-argument container "IMAIL container" procedure)))
 
+(define (maybe-make-resource url constructor)
+  (or (get-memoized-resource url)
+      (memoize-resource (constructor url))))
+
 (define (get-memoized-resource url #!optional error?)
   (or (let ((resource (hash-table/get memoized-resources url #f)))
 	(and resource
@@ -435,10 +439,12 @@
       (and (if (default-object? error?) #f error?)
 	   (error "URL has no associated resource:" url))))
 
-(define (memoize-resource resource close)
+(define (memoize-resource resource)
   (hash-table/put! memoized-resources
 		   (resource-locator resource)
-		   (weak-cons resource close))
+		   (weak-cons resource
+			      (lambda (resource)
+				(close-resource resource #t))))
   resource)
 
 (define (unmemoize-resource url)
@@ -463,12 +469,7 @@
 ;; -------------------------------------------------------------------
 ;; Open the resource named URL.
 
-(define (open-resource url)
-  (or (get-memoized-resource url)
-      (memoize-resource (%open-resource url)
-			(lambda (resource) (close-resource resource #t)))))
-
-(define-generic %open-resource (url))
+(define-generic open-resource (url))
 
 (define (with-open-resource url procedure)
   (let ((resource #f))
@@ -489,11 +490,7 @@
 ;; space penalty.  NO-DEFER? means that the resource must be closed
 ;; immediately, and not deferred.
 
-(define (close-resource resource no-defer?)
-  (save-resource resource)
-  (%close-resource resource no-defer?))
-
-(define-generic %close-resource (resource no-defer?))
+(define-generic close-resource (resource no-defer?))
 
 ;; -------------------------------------------------------------------
 ;; Return the number of messages in FOLDER.

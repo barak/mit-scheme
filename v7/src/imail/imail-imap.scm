@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.179 2001/06/03 06:00:18 cph Exp $
+;;; $Id: imail-imap.scm,v 1.180 2001/06/12 00:47:32 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -749,7 +749,7 @@
 
 ;;;; Folder and container datatypes
 
-(define-class (<imap-folder> (constructor (locator))) (<folder>)
+(define-class <imap-folder> (<folder>)
   (connection define standard
 	      initial-value #f)
   (read-only? define standard)
@@ -769,6 +769,13 @@
 (define-class (<imap-container> (constructor (locator))) (<container>)
   (connection define standard
 	      initial-value #f))
+
+(define make-imap-folder
+  (let ((constructor (instance-constructor <imap-folder> '(LOCATOR))))
+    (lambda (url)
+      (let ((folder (constructor url)))
+	(reset-imap-folder! folder)
+	folder))))
 
 (define (reset-imap-folder! folder)
   (without-interrupts
@@ -1126,7 +1133,6 @@
 				  '(BODYSTRUCTURE)))))
 
 (define-method preload-folder-outlines ((folder <imap-folder>))
-  
   (let* ((connection (guarantee-imap-folder-open folder))
 	 (messages
 	  (messages-satisfying folder
@@ -1481,13 +1487,12 @@
 
 ;;;; Folder operations
 
-(define-method %open-resource ((url <imap-folder-url>))
-  (let ((folder (make-imap-folder url)))
-    (reset-imap-folder! folder)
+(define-method open-resource ((url <imap-folder-url>))
+  (let ((folder (maybe-make-resource url make-imap-folder)))
     (guarantee-imap-folder-open folder)
     folder))
 
-(define-method %close-resource ((folder <imap-folder>) no-defer?)
+(define-method close-resource ((folder <imap-folder>) no-defer?)
   (close-imap-folder folder no-defer?))
 
 (define (close-imap-folder folder no-defer?)
@@ -1559,18 +1564,20 @@
 
 ;;;; Container operations
 
-(define-method %open-resource ((url <imap-container-url>))
-  (let ((container (make-imap-container url)))
+(define-method open-resource ((url <imap-container-url>))
+  (let ((container (maybe-make-resource url make-imap-container)))
     (guarantee-imap-connection-open
      (without-interrupts
       (lambda ()
-	(let ((connection (get-compatible-imap-connection url)))
-	  (set-imap-container-connection! container connection)
-	  (increment-connection-reference-count! connection)
-	  connection))))
+	(or (imap-container-connection container)
+	    (let ((connection (get-compatible-imap-connection url)))
+	      (set-imap-container-connection! container connection)
+	      (increment-connection-reference-count! connection)
+	      connection)))))
+    (object-modified! container 'STATUS)
     container))
 
-(define-method %close-resource ((container <imap-container>) no-defer?)
+(define-method close-resource ((container <imap-container>) no-defer?)
   (let ((connection
 	 (without-interrupts
 	  (lambda ()

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.77 2001/06/03 01:42:31 cph Exp $
+;;; $Id: imail-file.scm,v 1.78 2001/06/12 00:47:24 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -289,8 +289,9 @@
 (define (file-folder-pathname folder)
   (pathname-url-pathname (resource-locator folder)))
 
-(define-method %close-resource ((folder <file-folder>) no-defer?)
+(define-method close-resource ((folder <file-folder>) no-defer?)
   no-defer?
+  (save-resource folder)
   (discard-file-folder-messages folder)
   (discard-file-folder-xstring folder))
 
@@ -489,10 +490,10 @@
 
 (define-class (<file-container> (constructor (locator))) (<container>))
 
-(define-method %open-resource ((url <directory-url>))
-  (make-file-container url))
+(define-method open-resource ((url <directory-url>))
+  (maybe-make-resource url make-file-container))
 
-(define-method %close-resource ((container <file-container>) no-defer?)
+(define-method close-resource ((container <file-container>) no-defer?)
   container no-defer?
   unspecific)
 
