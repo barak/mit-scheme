@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.30 1990/10/02 21:49:25 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.31 1990/10/03 18:55:46 jinx Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -234,7 +234,8 @@ extern C_TO_SCHEME long
   comp_unbound_p_restart(),
   comp_assignment_restart(),
   comp_definition_restart(),
-  comp_lookup_apply_restart();
+  comp_lookup_apply_restart(),
+  comp_error_restart();
 
 extern SCHEME_UTILITY struct utility_result
   comutil_return_to_interpreter(),
@@ -1920,16 +1921,29 @@ comp_lookup_apply_restart ()
     return (code);
   }
 }
-
+
 SCHEME_UTILITY struct utility_result
 comutil_primitive_error (ret_add, primitive, ignore_3, ignore_4)
      instruction *ret_add;
      SCHEME_OBJECT primitive;
      long ignore_3, ignore_4;
 {
-  STACK_PUSH (primitive);
   STACK_PUSH (ENTRY_TO_OBJECT (ret_add));
-  RETURN_TO_C (ERR_BAD_COMBINATION);
+  STACK_PUSH (primitive);
+  Store_Expression (SHARP_F);
+  Store_Return (RC_COMP_ERROR_RESTART);
+  Save_Cont ();
+  RETURN_TO_C (ERR_COMPILED_CODE_ERROR);
+}
+
+C_TO_SCHEME long
+comp_error_restart ()
+{
+  instruction *ret_add;
+
+  STACK_POP ();			/* primitive */
+  ret_add = ((instruction *) (OBJECT_ADDRESS (STACK_POP ())));
+  return (C_to_interface (ret_add));
 }
 
 /* Procedures to destructure compiled entries and closures. */
@@ -2819,6 +2833,7 @@ LOSING_RETURN_ADDRESS (comp_cache_lookup_apply_restart)
 LOSING_RETURN_ADDRESS (comp_safe_lookup_trap_restart)
 LOSING_RETURN_ADDRESS (comp_unassigned_p_trap_restart)
 LOSING_RETURN_ADDRESS (comp_link_caches_restart)
+LOSING_RETURN_ADDRESS (comp_error_restart)
 
 /* NOP entry points */
 
