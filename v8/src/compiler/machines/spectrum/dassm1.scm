@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dassm1.scm,v 1.1 1994/11/19 02:08:04 adams Exp $
+$Id: dassm1.scm,v 1.2 1994/11/22 04:01:23 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -142,9 +142,10 @@ MIT in each case. |#
   (fluid-let ((*unparser-radix* 16))
     (disassembler/for-each-instruction instruction-stream
       (lambda (offset instruction)
-	(disassembler/write-instruction symbol-table
-					offset
-					(lambda () (display-instruction offset instruction)))))))
+	(disassembler/write-instruction
+	 symbol-table
+	 offset
+	 (lambda () (display-instruction offset instruction)))))))
 
 (define (disassembler/for-each-instruction instruction-stream procedure)
   (let loop ((instruction-stream instruction-stream))
@@ -262,7 +263,6 @@ MIT in each case. |#
 	  (error "disassembler/write-linkage-section: Unknown section kind"
 		 kind)))
       (1+ (+ index length)))))
-
 
 (define-integrable (variable-cache-name cache)
   ((ucode-primitive primitive-object-ref 2) cache 1))
@@ -430,9 +430,12 @@ MIT in each case. |#
     closure-entry-bkpt-hook
     interrupt-procedure/new
     interrupt-continuation/new
+    interrupt-closure/new
     quotient
     remainder
-    interpreter-call))
+    interpreter-call
+    profile-count
+    profile-count/2))
 
 (define display-instruction
   (let ((prev-instruction '())
@@ -486,7 +489,9 @@ MIT in each case. |#
 	(match? '(external-label . ?) instruction))
 
       (define (offset->address field adjustment)
-	(+ (+ offset disassembler/base-address) field adjustment))
+	(remainder
+	 (+ (+ offset disassembler/base-address) field adjustment)
+	 #x100000000))
       (define (offset-targets)
 	(let ((res
 	       (map (lambda (@pco.n)
