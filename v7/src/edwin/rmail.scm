@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.17 1992/04/29 22:29:26 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.18 1992/04/29 23:05:09 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -1398,23 +1398,20 @@ buffer visiting that file."
 	 (message return-value)
 	 return-value)
        (lambda ()
-	 (if (eq? return-value 'ABORT)
-	     (begin
-	       (with-buffer-open
-		(current-buffer)
-		(lambda ()
-		  (kill-string
-		   (msg-memo/start-body memo)
-		   (msg-memo/end-body memo))
-		  (insert-string original-message
-				 (msg-memo/start-body memo))))))
 	 (set-current-major-mode! (ref-mode-object rmail))
 	 (let ((buf (current-buffer)))
 	   (with-buffer-open
 	       buf
 	     (lambda ()
 	       (memoize-buffer buf)
-	       (update-mode-line! buf)))
+	       (update-mode-line! buf)
+	       (if (eq? return-value 'ABORT)
+		   (let ((memo (msg-memo/nth (buffer-msg-memo buf) msg-num)))
+		     (kill-string
+		      (msg-memo/start-body memo)
+		      (msg-memo/end-body memo))
+		     (insert-string original-message
+				    (msg-memo/start-body memo))))))
 	   (show-message buf msg-num)))))))
 
 ;;;; Undigestifier
