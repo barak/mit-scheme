@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: intrpt.scm,v 14.18 1993/08/31 00:52:44 ziggy Exp $
+$Id: intrpt.scm,v 14.19 1993/08/31 08:52:18 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -70,15 +70,15 @@ MIT in each case. |#
   (process-timer-clear 0)
   (real-timer-clear 0))
 
-(define-integrable stack-overflow-slot    	 0)
-(define-integrable global-gc-slot		 1)
-(define-integrable gc-slot                	 2)
-(define-integrable character-slot         	 4)
-(define-integrable after-gc-slot		 5)
-(define-integrable timer-slot             	 6)
-(define-integrable suspend-slot           	 8)
+(define-integrable stack-overflow-slot 0)
+(define-integrable global-gc-slot 1)
+(define-integrable gc-slot 2)
+(define-integrable character-slot 4)
+(define-integrable after-gc-slot 5)
+(define-integrable timer-slot 6)
+(define-integrable suspend-slot 8)
 ;; Room for Descartes profiler interrupt handlers
-(define-integrable illegal-interrupt-slot	15)
+(define-integrable illegal-interrupt-slot 15)
 
 (define index:interrupt-vector)
 (define index:interrupt-mask-vector)
@@ -210,16 +210,15 @@ MIT in each case. |#
 			old-termination-vector)
 		    (make-vector length #f)))))
 
-	 (do ((i
-	       (fix:- (vector-length system-interrupt-vector) 1)
-	       (fix:- i 1)))
-	     ((fix:< i 0))
-	   (if (not (vector-ref system-interrupt-vector i))
-	       (begin
-		 (vector-set! interrupt-mask-vector i
-			      (fix:not (fix:lsh 1 i)))
-		 (vector-set! system-interrupt-vector i
-			      illegal-interrupt-handler))))
+	 (let ((length (vector-length system-interrupt-vector)))
+	   (do ((i 0 (fix:+ i 1)))
+	       ((fix:= i length))
+	     (if (not (vector-ref system-interrupt-vector i))
+		 (begin
+		   (vector-set! interrupt-mask-vector i
+				(fix:not (fix:lsh 1 i)))
+		   (vector-set! system-interrupt-vector i
+				illegal-interrupt-handler)))))
 
 	 (vector-set! interrupt-mask-vector stack-overflow-slot
 		      interrupt-mask/none)
