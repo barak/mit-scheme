@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: screen.scm,v 1.106 1995/07/02 06:38:33 cph Exp $
+;;;	$Id: screen.scm,v 1.107 1996/03/06 07:04:10 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -174,13 +174,14 @@
 (define (update-screen! screen display-style)
   (if (and display-style (not (eq? 'NO-OUTPUT display-style)))
       (screen-force-update screen))
-  (and (with-screen-in-update screen display-style
-	 (lambda ()
-	   (editor-frame-update-display! (screen-root-window screen)
-					 display-style)))
-       (begin
-	 (set-screen-needs-update?! screen false)
-	 true)))
+  (let ((finished?
+	 (with-screen-in-update screen display-style
+	   (lambda ()
+	     (editor-frame-update-display! (screen-root-window screen)
+					   display-style)))))
+    (if (eq? finished? #t)
+	(set-screen-needs-update?! screen #f))
+    finished?))
 
 ;;; Interface from update optimizer to terminal:
 
@@ -648,13 +649,14 @@
 	       screen
 	       (lambda ()
 		 (and (thunk)
-		      (or (not (screen-visible? screen))
+		      (if (screen-visible? screen)
 			  (and (or (not (screen-needs-update? screen))
 				   (and (not (eq? 'NO-OUTPUT display-style))
 					(screen-update screen display-style)))
 			       (begin
 				 (screen-update-cursor screen)
-				 true))))))))
+				 #t))
+			  'INVISIBLE))))))
 	 (set-screen-in-update?! screen old-flag)
 	 finished?)))))
 
