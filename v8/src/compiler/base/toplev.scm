@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.9 1995/08/02 03:11:55 adams Exp $
+$Id: toplev.scm,v 1.10 1995/08/08 15:59:50 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -519,8 +519,6 @@ MIT in each case. |#
 (define *recursive-compilation-number*)
 (define *procedure-result?*)
 (define *remote-links*)
-(define *process-time*)
-(define *real-time*)
 
 (define *kmp-output-port* false)
 (define *kmp-output-abbreviated?* true)
@@ -582,46 +580,43 @@ MIT in each case. |#
       (let ((others
 	     (map (lambda (other) (vector-ref other 2))
 		  (recursive-compilation-results))))
-	(let ((value
-	       (cond ((not (compiled-code-address? expression))
-		      (vector compiler:compile-by-procedures?
-			      expression
-			      others))
-		     (else
-		      (let* ((all-blocks
-			      (list->vector
-			       (cons
-				(compiled-code-address->block
-				 expression)
-				others)))
-			     (purification-root
-			      (if compiler:compile-by-procedures?
-				  (list->vector others)
-				  all-blocks)))
-			(make-compiled-module
-			 expression
-			 all-blocks
-			 *info-output-filename*
-			 purification-root))))))
-	  (if compiler:show-time-reports?
-	      (compiler-time-report "Total compilation time"
-				    *process-time*
-				    *real-time*))
-	  value))))
+	(cond ((not (compiled-code-address? expression))
+	       (vector compiler:compile-by-procedures?
+		       expression
+		       others))
+	      (else
+	       (let* ((all-blocks
+		       (list->vector
+			(cons
+			 (compiled-code-address->block
+			  expression)
+			 others)))
+		      (purification-root
+		       (if compiler:compile-by-procedures?
+			   (list->vector others)
+			   all-blocks)))
+		 (make-compiled-module
+		  expression
+		  all-blocks
+		  *info-output-filename*
+		  purification-root)))))))
 
-  (if compiler:preserve-data-structures?
+  (define (compilation-process)
+    (if compiler:preserve-data-structures?
       (begin
 	(compiler:reset!)
 	(run-compiler))
       (fluid-let ((*recursive-compilation-number* 0)
 		  (*recursive-compilation-count* 1)
 		  (*procedure-result?* false)
-		  (*remote-links* '())
-		  (*process-time* 0)
-		  (*real-time* 0))
+		  (*remote-links* '()))
 	(bind-assembler&linker-top-level-variables
 	 (lambda ()
 	   (bind-compiler-variables run-compiler))))))
+
+  (if compiler:show-time-reports?
+      (with-timings compilation-process compiler-final-time-report)
+      (compilation-process)))
 
 (define (bind-compiler-variables thunk)
   ;; Split this fluid-let because compiler was choking on it.
@@ -656,8 +651,6 @@ MIT in each case. |#
   (set! *recursive-compilation-count* 1)
   (set! *procedure-result?* false)
   (set! *remote-links* '())
-  (set! *process-time* 0)
-  (set! *real-time* 0)
 
   (set! *ic-procedure-headers*)
   (set! *current-label-number*)
@@ -709,13 +702,7 @@ MIT in each case. |#
     (write-string name)
     (write-string "...")
     (if compiler:show-time-reports?
-	(let ((process-start *process-time*)
-	      (real-start *real-time*))
-	  (let ((value (thunk)))
-	    (compiler-time-report "  Time taken"
-				  (- *process-time* process-start)
-				  (- *real-time* real-start))
-	    value))
+	(with-timings thunk compiler-intermediate-time-report)
 	(thunk))))
 
 (define *output-prefix* "")
@@ -727,26 +714,33 @@ MIT in each case. |#
 	   (if compiler:phase-wrapper
 	       (lambda () (compiler:phase-wrapper thunk))
 	       thunk)))
-      (if (= 1 *phase-level*)
-	  (let ((process-start (process-time-clock))
-		(real-start (real-time-clock)))
-	    (let ((value (do-it)))
-	      (let ((process-delta (- (process-time-clock) process-start))
-		    (real-delta (- (real-time-clock) real-start)))
-		(set! *process-time* (+ process-delta *process-time*))
-		(set! *real-time* (+ real-delta *real-time*)))
-	      value))
-	  (do-it)))))
+      (do-it))))
 
-(define (compiler-time-report prefix process-time real-time)
+
+(define ((compiler-time-reporter prefix) process-non-gc process-gc real)
+  (define (write-time time)
+    (write (/ (exact->inexact time) 1000)))
   (newline)
   (write-string *output-prefix*)
   (write-string prefix)
   (write-string ": ")
-  (write (/ (exact->inexact process-time) 1000))
+  (write-time (+ process-non-gc process-gc))
+  (if (not (= process-gc 0))
+      (begin
+	(write-string " (")
+	(write-time process-non-gc)
+	(write-string " + ")
+	(write-time process-gc)
+	(write-string " GC)")))
   (write-string " (process time); ")
-  (write (/ (exact->inexact real-time) 1000))
+  (write-time real)
   (write-string " (real time)"))
+
+(define compiler-intermediate-time-report
+  (compiler-time-reporter "  Time taken"))
+
+(define compiler-final-time-report
+  (compiler-time-reporter "Total compilation time"))
 
 (define (phase/rtl-optimization)
   (compiler-superphase "RTL Optimization"
