@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.20 1992/02/04 00:42:48 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.21 1992/02/04 04:15:02 jinx Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -1064,9 +1064,9 @@ DEFUN (userio_read_line, (line, size), char * line AND int size)
 	result = USERIO_READ_LINE_INPUT_FAILED;
 	break;
       }
-      (*scan) = c;
       if (c == '\n')
 	c = '\0';
+      (*scan) = c;
       if (c == '\0')
       {
 	result = USERIO_READ_LINE_OK;
@@ -1115,6 +1115,7 @@ DEFUN_VOID (interactive_back_trace)
     fprintf (stderr, "Problems reading keyboard input -- exiting.\n");
     termination_eof ();
   }
+  INTERACTIVE_NEWLINE ();
   if ((strlen (&input_string[0])) == 0)
     debug_back_trace (stdout);
   else
@@ -1128,8 +1129,15 @@ DEFUN_VOID (interactive_back_trace)
 	transaction_abort ();
 	return;
       }
-      transaction_record_action (tat_always, fclose, ((PTR) to_dump));
+      transaction_record_action (tat_always,
+				 ((void EXFUN ((*), (PTR))) fclose),
+				 ((PTR) to_dump));
+      fprintf (stdout, "Writing the stack trace to file \"%s\" -- ",
+	       &input_string[0]);
+      fflush (stdout);
       debug_back_trace (to_dump);
+      fputs ("Done.\n", stdout);
+      fflush (stdout);
     }
     transaction_commit ();
   }

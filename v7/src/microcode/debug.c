@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.42 1992/02/03 23:24:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.43 1992/02/04 04:14:43 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -39,8 +39,9 @@ MIT in each case. */
 #include "trap.h"
 #include "lookup.h"
 
-static void EXFUN (do_printing, (SCHEME_OBJECT, Boolean));
-static Boolean EXFUN (print_primitive_name, (SCHEME_OBJECT));
+static void EXFUN (do_printing, (FILE *, SCHEME_OBJECT, Boolean));
+static Boolean EXFUN (print_primitive_name, (FILE *, SCHEME_OBJECT));
+static void EXFUN (print_expression, (FILE *, SCHEME_OBJECT, char *));
 
 /* Compiled Code Debugging */
 
@@ -216,25 +217,26 @@ DEFUN (Show_Env, (The_Env), SCHEME_OBJECT The_Env)
 	 i < count;
 	 i++, name_ptr++)
     {
-      Print_Expression (PAIR_CAR (*name_ptr), "Name ");
-      Print_Expression (PAIR_CDR (*name_ptr), " Value ");
+      Print_Expression ((PAIR_CAR (*name_ptr)), "Name ");
+      Print_Expression ((PAIR_CDR (*name_ptr)), " Value ");
       printf ("\n");
     }
   }
 }
 
 static void
-DEFUN (print_list, (pair), SCHEME_OBJECT pair)
+DEFUN (print_list, (stream, pair), FILE * stream AND SCHEME_OBJECT pair)
 {
   int count;
 
-  printf ("(");
+  fprintf (stream, "(");
   count = 0;
   while (((PAIR_P (pair)) || (WEAK_PAIR_P (pair))) && (count < MAX_LIST_PRINT))
     {
       if (count > 0)
-	printf (" ");
-      Print_Expression ((PAIR_CAR (pair)),
+	fprintf (stream, " ");
+      print_expression (stream,
+			(PAIR_CAR (pair)),
 			((WEAK_PAIR_P (pair)) ? "{weak}" : ""));
       pair = (PAIR_CDR (pair));
       count += 1;
@@ -242,19 +244,19 @@ DEFUN (print_list, (pair), SCHEME_OBJECT pair)
   if (pair != EMPTY_LIST)
     {
       if (count == MAX_LIST_PRINT)
-	printf (" ...");
+	fprintf (stream, " ...");
       else
 	{
-	  printf (" . ");
-	  Print_Expression (pair, "");
+	  fprintf (stream, " . ");
+	  print_expression (stream, pair, "");
 	}
     }
-  printf (")");
+  fprintf (stream, ")");
   return;
 }
 
 static void
-DEFUN (print_return_name, (Ptr), SCHEME_OBJECT Ptr)
+DEFUN (print_return_name, (stream, Ptr), FILE * stream AND SCHEME_OBJECT Ptr)
 {
   long index;
   char * name;
@@ -266,11 +268,11 @@ DEFUN (print_return_name, (Ptr), SCHEME_OBJECT Ptr)
       if ((name != ((char *) 0)) &&
 	  ((name [0]) != '\0'))
 	{
-	  printf ("%s", name);
+	  fprintf (stream, "%s", name);
 	  return;
 	}
     }
-  printf ("[0x%lx]", index);
+  fprintf (stream, "[0x%lx]", index);
   return;
 }
 
@@ -278,19 +280,19 @@ void
 DEFUN (Print_Return, (String), char * String)
 {
   printf ("%s: ", String);
-  print_return_name (Fetch_Return ());
+  print_return_name (stdout, Fetch_Return ());
   printf ("\n");
 }
 
 static void
-DEFUN (print_string, (string), SCHEME_OBJECT string)
+DEFUN (print_string, (stream, string), FILE * stream AND SCHEME_OBJECT string)
 {
   long length;
   long i;
   char * next;
   char this;
 
-  printf ("\"");
+  fprintf (stream, "\"");
   length = (STRING_LENGTH (string));
   next = ((char *) (STRING_LOC (string, 0)));
   for (i = 0; (i < length); i += 1)
@@ -299,34 +301,34 @@ DEFUN (print_string, (string), SCHEME_OBJECT string)
       switch (this)
 	{
 	case '\\':
-	  printf ("\\\\");
+	  fprintf (stream, "\\\\");
 	  break;
 	case '"':
-	  printf ("\\\"");
+	  fprintf (stream, "\\\"");
 	  break;
 	case '\t':
-	  printf ("\\t");
+	  fprintf (stream, "\\t");
 	  break;
 	case '\n':
-	  printf ("\\n");
+	  fprintf (stream, "\\n");
 	  break;
 	case '\f':
-	  printf ("\\f");
+	  fprintf (stream, "\\f");
 	  break;
 	default:
 	  if ((this >= ' ') && (this <= '~'))
-	    putchar (this);
+	    putc (this, stream);
 	  else
-	    printf ("\\%03o", this);
+	    fprintf (stream, "\\%03o", this);
 	  break;
 	}
     }
-  printf ("\"");
+  fprintf (stream, "\"");
   return;
 }
 
 static void
-DEFUN (print_symbol, (symbol), SCHEME_OBJECT symbol)
+DEFUN (print_symbol, (stream, symbol), FILE * stream AND SCHEME_OBJECT symbol)
 {
   SCHEME_OBJECT string;
   long length;
@@ -337,12 +339,13 @@ DEFUN (print_symbol, (symbol), SCHEME_OBJECT symbol)
   length = (STRING_LENGTH (string));
   next = ((char *) (STRING_LOC (string, 0)));
   for (i = 0; (i < length); i += 1)
-    putchar (*next++);
+    putc (*next++, stream);
   return;
 }
 
 static void
-DEFUN (print_filename, (filename), SCHEME_OBJECT filename)
+DEFUN (print_filename, (stream, filename),
+       FILE * stream AND SCHEME_OBJECT filename)
 {
   long length;
   char * scan;
@@ -356,14 +359,14 @@ DEFUN (print_filename, (filename), SCHEME_OBJECT filename)
   while (scan < end)
     if ((*scan++) == '/')
       slash = scan;
-  printf ("\"%s\"", slash);
+  fprintf (stream, "\"%s\"", slash);
   return;
 }
 
 static void
 DEFUN (print_object, (object), SCHEME_OBJECT object)
 {
-  do_printing (object, true);
+  do_printing (stdout, object, true);
   printf ("\n");
   fflush (stdout);
   return;
@@ -390,7 +393,7 @@ DEFUN (print_objects, (objects, n),
   while (scan < end)
     {
       printf ("%4x: ", (((char *) scan) - ((char *) objects)));
-      do_printing ((*scan++), true);
+      do_printing (stdout, (*scan++), true);
       printf ("\n");
     }
   fflush (stdout);
@@ -410,22 +413,29 @@ DEFUN (print_vector, (vector), SCHEME_OBJECT vector)
   return;
 }
 
-void
-Print_Expression (expression, string)
-     SCHEME_OBJECT expression;
-     char * string;
+static void
+DEFUN (print_expression, (stream, expression, string),
+       FILE * stream AND SCHEME_OBJECT expression AND char * string)
 {
   if ((string [0]) != 0)
-    printf ("%s: ", string);
-  do_printing (expression, true);
+    fprintf (stream, "%s: ", string);
+  do_printing (stream, expression, true);
+  return;
+}
+
+void
+DEFUN (Print_Expression, (expression, string),
+       SCHEME_OBJECT expression AND char * string)
+{
+  print_expression (stdout, expression, string);
   return;
 }
 
 extern char * Type_Names [];
 
 static void
-DEFUN (do_printing, (Expr, Detailed),
-       SCHEME_OBJECT Expr AND Boolean Detailed)
+DEFUN (do_printing, (stream, Expr, Detailed),
+       FILE * stream AND SCHEME_OBJECT Expr AND Boolean Detailed)
 {
   long Temp_Address;
   Boolean handled_p;
@@ -437,103 +447,103 @@ DEFUN (do_printing, (Expr, Detailed),
     {
     case TC_ACCESS:
       {
-	printf ("[ACCESS (");
+	fprintf (stream, "[ACCESS (");
 	Expr = (MEMORY_REF (Expr, ACCESS_NAME));
       SPrint:
-	print_symbol (Expr);
+	print_symbol (stream, Expr);
 	handled_p = true;
-	printf (")");
+	fprintf (stream, ")");
 	break;
       }
 
     case TC_ASSIGNMENT:
-      printf ("[SET! (");
+      fprintf (stream, "[SET! (");
       Expr = (MEMORY_REF ((MEMORY_REF (Expr, ASSIGN_NAME)), VARIABLE_SYMBOL));
       goto SPrint;
 
     case TC_CHARACTER_STRING:
-      print_string (Expr);
+      print_string (stream, Expr);
       return;
 
     case TC_DEFINITION:
-      printf ("[DEFINE (");
+      fprintf (stream, "[DEFINE (");
       Expr = (MEMORY_REF (Expr, DEFINE_NAME));
       goto SPrint;
 
     case TC_FIXNUM:
-      printf ("%ld", ((long) (FIXNUM_TO_LONG (Expr))));
+      fprintf (stream, "%ld", ((long) (FIXNUM_TO_LONG (Expr))));
       return;
 
     case TC_BIG_FLONUM:
-      printf ("%lf", (FLONUM_TO_DOUBLE (Expr)));
+      fprintf (stream, "%lf", (FLONUM_TO_DOUBLE (Expr)));
       return;
 
     case TC_WEAK_CONS:
     case TC_LIST:
-      print_list (Expr);
+      print_list (stream, Expr);
       return;
 
     case TC_NULL:
       if (Temp_Address == 0)
 	{
-	  printf ("()");
+	  fprintf (stream, "()");
 	  return;
 	}
       break;
 
     case TC_UNINTERNED_SYMBOL:
-      printf ("[UNINTERNED_SYMBOL (");
+      fprintf (stream, "[UNINTERNED_SYMBOL (");
       goto SPrint;
 
     case TC_INTERNED_SYMBOL:
-      print_symbol (Expr);
+      print_symbol (stream, Expr);
       return;
 
     case TC_VARIABLE:
       Expr = (MEMORY_REF (Expr, VARIABLE_SYMBOL));
       if (Detailed)
 	{
-	  printf ("[VARIABLE (");
+	  fprintf (stream, "[VARIABLE (");
 	  goto SPrint;
 	}
-      print_symbol (Expr);
+      print_symbol (stream, Expr);
       return;
 
     case TC_COMBINATION:
-      printf ("[COMBINATION (%ld args) 0x%lx]",
+      fprintf (stream, "[COMBINATION (%ld args) 0x%lx]",
 	      ((long) ((VECTOR_LENGTH (Expr)) - 1)),
 	      ((long) Temp_Address));
       if (Detailed)
 	{
-	  printf (" (");
-	  do_printing ((MEMORY_REF (Expr, COMB_FN_SLOT)), false);
-	  printf (" ...)");
+	  fprintf (stream, " (");
+	  do_printing (stream, (MEMORY_REF (Expr, COMB_FN_SLOT)), false);
+	  fprintf (stream, " ...)");
 	}
       return;
 
     case TC_COMBINATION_1:
-      printf ("[COMBINATION_1 0x%lx]", ((long) Temp_Address));
+      fprintf (stream, "[COMBINATION_1 0x%lx]", ((long) Temp_Address));
       if (Detailed)
 	{
-	  printf (" (");
-	  do_printing ((MEMORY_REF (Expr, COMB_1_FN)), false);
-	  printf (", ");
-	  do_printing ((MEMORY_REF (Expr, COMB_1_ARG_1)), false);
-	  printf (")");
+	  fprintf (stream, " (");
+	  do_printing (stream, (MEMORY_REF (Expr, COMB_1_FN)), false);
+	  fprintf (stream, ", ");
+	  do_printing (stream, (MEMORY_REF (Expr, COMB_1_ARG_1)), false);
+	  fprintf (stream, ")");
 	}
       return;
 
     case TC_COMBINATION_2:
-      printf ("[COMBINATION_2 0x%lx]", ((long) Temp_Address));
+      fprintf (stream, "[COMBINATION_2 0x%lx]", ((long) Temp_Address));
       if (Detailed)
 	{
-	  printf (" (");
-	  do_printing ((MEMORY_REF (Expr, COMB_2_FN)), false);
-	  printf (", ");
-	  do_printing ((MEMORY_REF (Expr, COMB_2_ARG_1)), false);
-	  printf (", ");
-	  do_printing ((MEMORY_REF (Expr, COMB_2_ARG_2)), false);
-	  printf (")");
+	  fprintf (stream, " (");
+	  do_printing (stream, (MEMORY_REF (Expr, COMB_2_FN)), false);
+	  fprintf (stream, ", ");
+	  do_printing (stream, (MEMORY_REF (Expr, COMB_2_ARG_1)), false);
+	  fprintf (stream, ", ");
+	  do_printing (stream, (MEMORY_REF (Expr, COMB_2_ARG_2)), false);
+	  fprintf (stream, ")");
 	}
       return;
 
@@ -541,77 +551,79 @@ DEFUN (do_printing, (Expr, Detailed),
       {
 	SCHEME_OBJECT procedure;
 
-	printf ("[ENVIRONMENT 0x%lx]", ((long) Temp_Address));
-	printf (" (from ");
+	fprintf (stream, "[ENVIRONMENT 0x%lx]", ((long) Temp_Address));
+	fprintf (stream, " (from ");
 	procedure = (MEMORY_REF (Expr, ENVIRONMENT_FUNCTION));
 	if ((OBJECT_TYPE (procedure)) == TC_QUAD)
 	  procedure = (MEMORY_REF (procedure, ENV_EXTENSION_PROCEDURE));
-	do_printing (procedure, false);
-	printf (")");
+	do_printing (stream, procedure, false);
+	fprintf (stream, ")");
 	return;
       }
 
     case TC_EXTENDED_LAMBDA:
       if (Detailed)
-	printf ("[EXTENDED_LAMBDA (");
-      do_printing ((MEMORY_REF ((MEMORY_REF (Expr, ELAMBDA_NAMES)), 1)),
+	fprintf (stream, "[EXTENDED_LAMBDA (");
+      do_printing (stream,
+		   (MEMORY_REF ((MEMORY_REF (Expr, ELAMBDA_NAMES)), 1)),
 		   false);
       if (Detailed)
-	printf (") 0x%lx", ((long) Temp_Address));
+	fprintf (stream, ") 0x%lx", ((long) Temp_Address));
       return;
 
     case TC_EXTENDED_PROCEDURE:
       if (Detailed)
-	printf ("[EXTENDED_PROCEDURE (");
-      do_printing ((MEMORY_REF (Expr, PROCEDURE_LAMBDA_EXPR)), false);
+	fprintf (stream, "[EXTENDED_PROCEDURE (");
+      do_printing (stream, (MEMORY_REF (Expr, PROCEDURE_LAMBDA_EXPR)), false);
       if (Detailed)
-	printf (") 0x%lx]", ((long) Temp_Address));
+	fprintf (stream, ") 0x%lx]", ((long) Temp_Address));
       break;
 
     case TC_LAMBDA:
       if (Detailed)
-	printf ("[LAMBDA (");
-      do_printing ((MEMORY_REF ((MEMORY_REF (Expr, LAMBDA_FORMALS)), 1)),
+	fprintf (stream, "[LAMBDA (");
+      do_printing (stream,
+		   (MEMORY_REF ((MEMORY_REF (Expr, LAMBDA_FORMALS)), 1)),
 		  false);
       if (Detailed)
-	printf (") 0x%lx]", ((long) Temp_Address));
+	fprintf (stream, ") 0x%lx]", ((long) Temp_Address));
       return;
 
     case TC_PRIMITIVE:
-      printf ("[PRIMITIVE ");
-      print_primitive_name (Expr);
-      printf ("]");
+      fprintf (stream, "[PRIMITIVE ");
+      print_primitive_name (stream, Expr);
+      fprintf (stream, "]");
       return;
 
     case TC_PROCEDURE:
       if (Detailed)
-	printf ("[PROCEDURE (");
-      do_printing ((MEMORY_REF (Expr, PROCEDURE_LAMBDA_EXPR)), false);
+	fprintf (stream, "[PROCEDURE (");
+      do_printing (stream, (MEMORY_REF (Expr, PROCEDURE_LAMBDA_EXPR)), false);
       if (Detailed)
-	printf (") 0x%lx]", ((long) Temp_Address));
+	fprintf (stream, ") 0x%lx]", ((long) Temp_Address));
       return;
 
     case TC_REFERENCE_TRAP:
       {
 	if ((OBJECT_DATUM (Expr)) <= TRAP_MAX_IMMEDIATE)
 	  break;
-	printf ("[REFERENCE-TRAP");
-	Print_Expression ((MEMORY_REF (Expr, TRAP_TAG)), " tag");
-	Print_Expression ((MEMORY_REF (Expr, TRAP_EXTRA)), " extra");
-	printf ("]");
+	fprintf (stream, "[REFERENCE-TRAP");
+	print_expression (stream, (MEMORY_REF (Expr, TRAP_TAG)), " tag");
+	print_expression (stream, (MEMORY_REF (Expr, TRAP_EXTRA)), " extra");
+	fprintf (stream, "]");
 	return;
       }
 
     case TC_RETURN_CODE:
-      printf ("[RETURN_CODE ");
-      print_return_name (Expr);
-      printf ("]");
+      fprintf (stream, "[RETURN_CODE ");
+      print_return_name (stream, Expr);
+      fprintf (stream, "]");
       return;
 
     case TC_TRUE:
       if (Temp_Address == 0)
 	{
-	  printf ("#T");
+	  fprintf (stream, "#T");
 	  return;
 	}
       break;
@@ -650,27 +662,27 @@ DEFUN (do_printing, (Expr, Detailed),
 	    break;
 	  }
 
-	printf ("[%s offset: 0x%lx entry: 0x%lx",
-		type_string,
-		((long) (compiled_entry_to_block_offset (entry))),
-		((long) (OBJECT_DATUM (entry))));
+	fprintf (stream, "[%s offset: 0x%lx entry: 0x%lx",
+		 type_string,
+		 ((long) (compiled_entry_to_block_offset (entry))),
+		 ((long) (OBJECT_DATUM (entry))));
 	if (closure_p)
-	  printf (" address: 0x%lx", ((long) Temp_Address));
+	  fprintf (stream, " address: 0x%lx", ((long) Temp_Address));
 
 	filename = (compiled_entry_debug_filename (entry));
 	if (STRING_P (filename))
 	  {
-	    printf (" file: ");
-	    print_filename (filename);
+	    fprintf (stream, " file: ");
+	    print_filename (stream, filename);
 	  }
 	else if (PAIR_P (filename))
 	  {
-	    printf (" file: ");
-	    print_filename (PAIR_CAR (filename));
-	    printf (" block: %ld",
+	    fprintf (stream, " file: ");
+	    print_filename (stream, (PAIR_CAR (filename)));
+	    fprintf (stream, " block: %ld",
 		    ((long) (FIXNUM_TO_LONG (PAIR_CDR (filename)))));
 	  }
-	printf ("]");
+	fprintf (stream, "]");
 	return;
       }
 
@@ -680,26 +692,25 @@ DEFUN (do_printing, (Expr, Detailed),
   if (! handled_p)
     {
       if ((OBJECT_TYPE (Expr)) <= LAST_TYPE_CODE)
-	printf ("[%s", (Type_Names [OBJECT_TYPE (Expr)]));
+	fprintf (stream, "[%s", (Type_Names [OBJECT_TYPE (Expr)]));
       else
-	printf ("[0x%02x", (OBJECT_TYPE (Expr)));
+	fprintf (stream, "[0x%02x", (OBJECT_TYPE (Expr)));
     }
-  printf (" 0x%lx]", ((long) Temp_Address));
+  fprintf (stream, " 0x%lx]", ((long) Temp_Address));
   return;
 }
 
-extern Boolean EXFUN (Print_One_Continuation_Frame, (SCHEME_OBJECT));
-
-Boolean
-DEFUN (Print_One_Continuation_Frame, (Temp), SCHEME_OBJECT Temp)
+static Boolean
+DEFUN (print_one_continuation_frame, (stream, Temp),
+       FILE * stream AND SCHEME_OBJECT Temp)
 {
   SCHEME_OBJECT Expr;
 
-  Print_Expression (Temp, "Return code");
-  printf ("\n");
+  print_expression (stream, Temp, "Return code");
+  fprintf (stream, "\n");
   Expr = (STACK_POP ());
-  Print_Expression (Expr, "Expression");
-  printf ("\n");
+  print_expression (stream, Expr, "Expression");
+  fprintf (stream, "\n");
   if (((OBJECT_DATUM (Temp)) == RC_END_OF_COMPUTATION) ||
       ((OBJECT_DATUM (Temp)) == RC_HALT))
     return (true);
@@ -707,16 +718,21 @@ DEFUN (Print_One_Continuation_Frame, (Temp), SCHEME_OBJECT Temp)
     Stack_Pointer = (Previous_Stack_Pointer (Expr));
   return (false);
 }
+
+extern Boolean EXFUN (Print_One_Continuation_Frame, (SCHEME_OBJECT));
+
+Boolean
+DEFUN (Print_One_Continuation_Frame, (Temp), SCHEME_OBJECT Temp)
+{
+  return (print_one_continuation_frame (stdout, Temp));
+}
 
 /* Back_Trace relies on (a) only a call to Save_Cont puts a return code on the
    stack; (b) Save_Cont pushes the expression first.
-
-   NOTE: currently Back_Trace ignores where and always
-   prints on stdout.  This should eventually be fixed.
  */
 
 void
-DEFUN (Back_Trace, (where), FILE * where)
+DEFUN (Back_Trace, (stream), FILE * stream)
 {
   SCHEME_OBJECT Temp, * Old_Stack;
 
@@ -727,21 +743,21 @@ DEFUN (Back_Trace, (where), FILE * where)
     if ((STACK_LOCATIVE_DIFFERENCE (Stack_Top, (STACK_LOC (0)))) <= 0)
     {
       if ((STACK_LOC (0)) == Old_Stack)
-	printf ("\n[Invalid stack pointer.]\n");
+	fprintf (stream, "\n[Invalid stack pointer.]\n");
       else
-	printf ("\n[Stack ends abruptly.]\n");
+	fprintf (stream, "\n[Stack ends abruptly.]\n");
       break;
     }
     if (Return_Hook_Address == (STACK_LOC (0)))
     {
       Temp = (STACK_POP ());
-      if (Temp != MAKE_OBJECT (TC_RETURN_CODE, RC_RETURN_TRAP_POINT))
+      if (Temp != (MAKE_OBJECT (TC_RETURN_CODE, RC_RETURN_TRAP_POINT)))
       {
-        printf ("\n--> Return trap is missing here <--\n");
+        fprintf (stream, "\n--> Return trap is missing here <--\n");
       }
       else
       {
-	printf ("\n[Return trap found here as expected]\n");
+	fprintf (stream, "\n[Return trap found here as expected]\n");
         Temp = Old_Return_Code;
       }
     }
@@ -751,25 +767,23 @@ DEFUN (Back_Trace, (where), FILE * where)
     }
     if ((OBJECT_TYPE (Temp)) == TC_RETURN_CODE)
     {
-      if (Print_One_Continuation_Frame(Temp))
-      {
+      if (print_one_continuation_frame (stream, Temp))
 	break;
-      }
     }
     else
     {
-      Print_Expression(Temp, "  ...");
+      print_expression (stream, Temp, "  ...");
       if ((OBJECT_TYPE (Temp)) == TC_MANIFEST_NM_VECTOR)
       {
 	Stack_Pointer = (STACK_LOC (- (OBJECT_DATUM (Temp))));
-        printf (" (skipping)");
+        fprintf (stream, " (skipping)");
       }
-      printf ("\n");
+      fprintf (stream, "\n");
     }
   }
   Stack_Pointer = Old_Stack;
   Back_Trace_Exit_Hook();
-  fflush (stdout);
+  fflush (stream);
   return;
 }
 
@@ -786,7 +800,8 @@ DEFUN (print_stack, (sp), SCHEME_OBJECT * sp)
 }
 
 static Boolean
-DEFUN (print_primitive_name, (primitive), SCHEME_OBJECT primitive)
+DEFUN (print_primitive_name, (stream, primitive),
+       FILE * stream AND SCHEME_OBJECT primitive)
 {
   extern char * EXFUN (primitive_to_name, (SCHEME_OBJECT));
   char *name;
@@ -794,12 +809,12 @@ DEFUN (print_primitive_name, (primitive), SCHEME_OBJECT primitive)
   name = primitive_to_name(primitive);
   if (name == ((char *) NULL))
   {
-    printf ("Unknown primitive 0x%08x", PRIMITIVE_NUMBER(primitive));
+    fprintf (stream, "Unknown primitive 0x%08x", PRIMITIVE_NUMBER(primitive));
     return false;
   }
   else
   {
-    printf ("%s", name);
+    fprintf (stream, "%s", name);
     return true;
   }
 }
@@ -812,7 +827,7 @@ DEFUN (Print_Primitive, (primitive), SCHEME_OBJECT primitive)
   int NArgs, i;
 
   printf ("Primitive: ");
-  if (print_primitive_name(primitive))
+  if (print_primitive_name (stdout, primitive))
   {
     NArgs = primitive_to_arity(primitive);
   }
@@ -825,7 +840,7 @@ DEFUN (Print_Primitive, (primitive), SCHEME_OBJECT primitive)
   for (i = 0; i < NArgs; i++)
   {
     sprintf (buffer, "...Arg %ld", ((long) (i + 1)));
-    Print_Expression ((STACK_REF (i)), buffer);
+    print_expression (stdout, (STACK_REF (i)), buffer);
     printf ("\n");
   }
   return;

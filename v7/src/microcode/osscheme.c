@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osscheme.c,v 1.5 1992/02/04 00:35:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osscheme.c,v 1.6 1992/02/04 04:14:32 jinx Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -84,6 +84,7 @@ void
 DEFUN_VOID (request_suspend_interrupt)
 {
   REQUEST_INTERRUPT (INT_Suspend);
+  return;
 }
 
 int
@@ -97,6 +98,7 @@ DEFUN_VOID (deliver_pending_interrupts)
 {
   if (INTERRUPT_PENDING_P (INT_Mask))
     signal_interrupt_from_primitive ();
+  return;
 }
 
 long
@@ -109,12 +111,17 @@ void
 DEFUN (set_interrupt_mask, (mask), long mask)
 {
   SET_INTERRUPT_MASK (mask & INT_Mask);
+  return;
 }
 
 void
 DEFUN (debug_back_trace, (stream), FILE * stream)
 {
+  fputs ("*** Scheme Microcode Back Trace: ***\n", stream);
   Back_Trace (stream);
+  fputs ("*** End of Back Trace ***\n", stream);
+  fflush (stream);
+  return;
 }
 
 void
@@ -123,4 +130,5 @@ DEFUN (debug_examine_memory, (address, label),
        CONST char * label)
 {
   Print_Expression ((* ((SCHEME_OBJECT *) address)), ((char *) label));
+  return;
 }
