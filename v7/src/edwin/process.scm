@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.49 1996/05/15 18:48:40 cph Exp $
+;;;	$Id: process.scm,v 1.50 1996/05/15 20:05:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -668,7 +668,9 @@ after the listing is made.)"
 				 port buffer 0 (- index start-index))))
 			   (set! start-index (+ start-index n-written))
 			   n-written))
-		       (output-port/close port)))))))
+		       (begin
+			 (output-port/close port)
+			 0)))))))
 	  (begin
 	    (output-port/close port)
 	    (receiver #f))))))
