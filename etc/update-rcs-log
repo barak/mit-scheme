@@ -6,5 +6,6 @@
 
 PATH=/usr/contrib/bin:/usr/local/bin:/usr/bin:/bin
 export PATH
+umask 002
 
 bgx -ioe /scheme/etc/update-rcs-log scheme -large -no-init-file
