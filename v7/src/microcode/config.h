@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.92 1995/10/05 06:32:26 cph Exp $
+$Id: config.h,v 9.93 1995/10/08 15:28:45 cph Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -577,6 +577,7 @@ extern void * alpha_heap_malloc (long);
 
 extern void * OS2_commit_heap (unsigned long);
 #define HEAP_MALLOC OS2_commit_heap
+#define HEAP_FREE(address)
 
 #define EXIT_SCHEME_DECLARATIONS extern void OS2_exit_scheme (int)
 #define EXIT_SCHEME OS2_exit_scheme
