@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.7 1989/05/21 03:55:03 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.8 1989/08/01 17:19:23 cph Exp $
 $MC68020-Header: lapgen.scm,v 4.19 89/01/18 13:49:56 GMT cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
@@ -425,7 +425,8 @@ MIT in each case. |#
 	     (pseudo-register-offset register))))))
 
 (define-integrable (indirect-char/ascii-reference! register offset)
-  (indirect-byte-reference! register (+ 3 (* offset 4))))
+  (indirect-byte-reference! register (* offset 4)))
+
 (define (char->signed-8-bit-immediate character)
   (let ((ascii (char->ascii character)))
     (if (< ascii 128)
