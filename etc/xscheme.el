@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.19 1988/08/12 02:41:22 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.20 1988/10/21 15:28:23 cph Exp $
 
 (require 'scheme)
 
@@ -398,13 +398,13 @@ Control returns to the top level rep loop."
   (interactive)
   (let ((inhibit-quit t))
     (cond ((not xscheme-control-g-synchronization-p)
-	   (interrupt-process "scheme" t))
+	   (interrupt-process "scheme"))
 	  (xscheme-control-g-disabled-p
 	   (message "Relax..."))
 	  (t
 	   (setq xscheme-control-g-disabled-p t)
 	   (message "Sending C-G interrupt to Scheme...")
-	   (interrupt-process "scheme" t)
+	   (interrupt-process "scheme")
 	   (send-string "scheme" (char-to-string 0))))))
 
 (defun xscheme-send-control-u-interrupt ()
@@ -425,7 +425,7 @@ Control returns to the top level rep loop."
 (defun xscheme-send-interrupt (char mark-p)
   "Send a ^A type interrupt to the Scheme process."
   (interactive "cInterrupt character to send: ")
-  (quit-process "scheme" t)
+  (quit-process "scheme")
   (send-string "scheme" (char-to-string char))
   (if (and mark-p xscheme-control-g-synchronization-p)
       (send-string "scheme" (char-to-string 0))))
