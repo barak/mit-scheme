@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: version.scm,v 14.184 2000/04/04 17:55:17 cph Exp $
+$Id: version.scm,v 14.185 2000/04/20 20:51:26 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -25,10 +25,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (add-subsystem-identification! "Release" '(7 5 6))
+  (add-subsystem-identification! "Release" '(7 5 7))
   (snarf-microcode-version!)
   (add-event-receiver! event:after-restore snarf-microcode-version!)
-  (add-subsystem-identification! "Runtime" '(14 181)))
+  (add-subsystem-identification! "Runtime" '(14 182)))
 
 (define (snarf-microcode-version!)
   (add-subsystem-identification! "Microcode"
