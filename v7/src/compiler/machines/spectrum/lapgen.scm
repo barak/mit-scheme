@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 4.42 1993/02/18 06:02:44 gjr Exp $
+$Id: lapgen.scm,v 4.43 1993/02/28 06:16:36 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -80,6 +80,12 @@ MIT in each case. |#
 (define-integrable (sort-machine-registers registers)
   registers)
 
+;; ***
+;; Note: fp16-fp31 only exist on PA-RISC 1.1 or later.
+;; If compiling for PA-RISC 1.0, truncate this
+;; list after fp15.
+;; ***
+
 (define available-machine-registers
   ;; g1 removed from this list since it is the target of ADDIL,
   ;; needed to expand some rules.  g31 may want to be removed
@@ -95,6 +101,9 @@ MIT in each case. |#
    g31
    ;; fp0 fp1 fp2 fp3
    fp4 fp5 fp6 fp7 fp8 fp9 fp10 fp11 fp12 fp13 fp14 fp15
+   ;; The following are only available on newer processors
+   fp16 fp17 fp18 fp19 fp20 fp21 fp22 fp23
+   fp24 fp25 fp26 fp27 fp28 fp29 fp30 fp31
    ))
 
 (define-integrable (float-register? register)
@@ -117,6 +126,8 @@ MIT in each case. |#
 	     GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL
 	     GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL
 	     FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT
+	     FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT
+	     FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT
 	     FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT)
 	  register))
 	((register-value-class=word? register) 'GENERAL)
@@ -131,7 +142,7 @@ MIT in each case. |#
 	    (vector-set! references register (INST-EA (GR ,register)))
 	    (loop (1+ register)))))
     (let loop ((register 32) (fpr 0))
-      (if (< register 48)
+      (if (< register 64)
 	  (begin
 	    (vector-set! references register (INST-EA (FPR ,fpr)))
 	    (loop (1+ register) (1+ fpr)))))
@@ -156,7 +167,7 @@ MIT in each case. |#
   ;; Load a Scheme constant into a machine register.
   (if (non-pointer-object? constant)
       (load-immediate (non-pointer->literal constant) target)
-      (load-pc-relative (constant->label constant) target)))
+      (load-pc-relative (constant->label constant) target 'CONSTANT)))
 
 (define (load-non-pointer type datum target)
   ;; Load a Scheme non-pointer constant, defined by type and datum,
@@ -261,7 +272,9 @@ MIT in each case. |#
 	(LAP ,@(load-offset d b regnum:addil-result)
 	     (FSTDS () ,r (OFFSET 0 0 ,regnum:addil-result))))))
 
-(define (load-pc-relative label target)
+#|
+(define (load-pc-relative label target type)
+  type					; ignored
   ;; Load a pc-relative location's contents into a machine register.
   ;; This assumes that the offset fits in 14 bits!
   ;; We should have a pseudo-op for LDW that does some "branch" tensioning.
@@ -270,7 +283,8 @@ MIT in each case. |#
        (DEP () 0 31 2 ,regnum:addil-result)
        (LDW () (OFFSET (- ,label *PC*) 0 ,regnum:addil-result) ,target)))
 
-(define (load-pc-relative-address label target)
+(define (load-pc-relative-address label target type)
+  type					; ignored
   ;; Load a pc-relative address into a machine register.
   ;; This assumes that the offset fits in 14 bits!
   ;; We should have a pseudo-op for LDO that does some "branch" tensioning.
@@ -278,6 +292,85 @@ MIT in each case. |#
        ;; Clear the privilege level, making this a memory address.
        (DEP () 0 31 2 ,regnum:addil-result)
        (LDO () (OFFSET (- ,label *PC*) 0 ,regnum:addil-result) ,target)))
+|#
+
+;; These versions of load-pc-... remember what they obtain, to avoid
+;; doing the sequence multiple times.
+;; In addition, they assume that the code is running in the least
+;; privilege, and avoid the DEP in the sequences above.
+
+(define-integrable *privilege-level* 3)
+
+(define-integrable (close? label label*)
+  ;; Heuristic
+  label label*				; ignored
+  compiler:compile-by-procedures?)
+
+(define (load-pc-relative label target type)
+  (load-pc-relative-internal label target type
+			     (lambda (offset base target)
+			       (LAP (LDW () (OFFSET ,offset 0 ,base)
+					 ,target)))))
+
+(define (load-pc-relative-address label target type)
+  (load-pc-relative-internal label target type
+			     (lambda (offset base target)
+			       (LAP (LDO () (OFFSET ,offset 0 ,base)
+					 ,target)))))
+
+(define (load-pc-relative-internal label target type gen)
+  (with-values (lambda () (get-typed-label type))
+    (lambda (label* alias type*)
+      (define (closer label* alias)
+	(let ((temp (standard-temporary!)))
+	  (set-typed-label! type label temp)
+	  (LAP (LDO () (OFFSET (- ,label ,label*) 0 ,alias) ,temp)
+	       ,@(gen 0 temp target))))
+
+      (cond ((not label*)
+	     (let ((temp (standard-temporary!))
+		   (here (generate-label)))
+	       (let ((value `(+ ,here ,(+ 8 *privilege-level*))))
+		 (set-typed-label! 'CODE value temp)
+		 (LAP (LABEL ,here)
+		      (BL () ,temp (@PCO 0))
+		      ,@(if (or (eq? type 'CODE) (close? label label*))
+			    (gen (INST-EA (- ,label ,value)) temp target)
+			    (closer value temp))))))
+	    ((or (eq? type* type) (close? label label*))
+	     (gen (INST-EA (- ,label ,label*)) alias target))
+	    (else
+	     (closer label* alias))))))
+
+;;; Typed labels provide further optimization.  There are two types,
+;;; CODE and CONSTANT, that say whether the label is located in the
+;;; code block or the constants block of the output.  Statistically,
+;;; a label is likely to be closer to another label of the same type
+;;; than to a label of the other type.
+
+(define (get-typed-label type)
+  (let ((entries (register-map-labels *register-map* 'GENERAL)))
+    (let loop ((entries* entries))
+      (cond ((null? entries*)
+	     ;; If no entries of the given type, use any entry that is
+	     ;; available.
+	     (let loop ((entries entries))
+	       (cond ((null? entries)
+		      (values false false false))
+		     ((pair? (caar entries))
+		      (values (cdaar entries) (cadar entries) (caaar entries)))
+		     (else
+		      (loop (cdr entries))))))
+	    ((and (pair? (caar entries*))
+		  (eq? type (caaar entries*)))
+	     (values (cdaar entries*) (cadar entries*) type))
+	    (else
+	     (loop (cdr entries*)))))))
+
+(define (set-typed-label! type label alias)
+  (set! *register-map*
+	(set-machine-register-label *register-map* alias (cons type label)))
+  unspecific)
 
 ;; COMIBTN, COMIBFN, and COMBN are pseudo-instructions that nullify
 ;; the following instruction when the branch is taken.  Since COMIBT,

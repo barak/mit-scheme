@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 4.35 1993/02/12 01:57:47 gjr Exp $
+$Id: rulflo.scm,v 4.36 1993/02/28 06:18:24 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -54,13 +54,15 @@ MIT in each case. |#
   (let ((source (flonum-source! source))
 	(temp (standard-temporary!)))
     (let ((target (standard-target! target)))
-      (LAP ; (STW () 0 (OFFSET 0 0 21))	; make heap parsable forwards
-	   (DEPI () #b100 31 3 21)	; quad align
-	   (COPY () 21 ,target)
-	   ,@(deposit-type (ucode-type flonum) target)
-	   ,@(load-non-pointer (ucode-type manifest-nm-vector) 2 temp)
-	   (STWM () ,temp (OFFSET 4 0 21))
-	   (FSTDS (MA) ,source (OFFSET 8 0 21))))))
+      (LAP
+       ;; make heap parsable forwards
+       ;; (STW () 0 (OFFSET 0 0 ,regnum:free-pointer))	
+       (DEPI () #b100 31 3 ,regnum:free-pointer)		; quad align
+       (COPY () ,regnum:free-pointer ,target)
+       ,@(deposit-type (ucode-type flonum) target)
+       ,@(load-non-pointer (ucode-type manifest-nm-vector) 2 temp)
+       (STWS (MA C) ,temp (OFFSET 4 0 ,regnum:free-pointer))
+       (FSTDS (MA) ,source (OFFSET 8 0 ,regnum:free-pointer))))))
 
 (define-rule statement
   ;; convert a flonum object to a floating-point number
@@ -68,6 +70,10 @@ MIT in each case. |#
   (let ((source (standard-move-to-temporary! source)))
     (LAP ,@(object->address source)
 	 (FLDDS () (OFFSET 4 0 ,source) ,(flonum-target! target)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->FLOAT (CONSTANT 0.)))
+  (LAP (FCPY (DBL) 0 ,(flonum-target! target))))
 
 ;;;; Flonum Arithmetic
 
@@ -99,14 +105,18 @@ MIT in each case. |#
 
 (define-arithmetic-method 'FLONUM-NEGATE flonum-methods/1-arg
   (lambda (target source)
-    #|
-    ;; No zero on the floating-point co-processor.  Need to create one.
-    (let ((temp (if (= target source) (flonum-temporary!) target)))
-      (LAP (FSUB (DBL) ,temp ,temp ,temp)
-	   (FSUB (DBL) ,temp ,source ,target)))
-    |#
     ;; The status register (fr0) reads as 0 for non-store instructions.
     (LAP (FSUB (DBL) 0 ,source ,target))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLONUM-2-ARGS FLONUM-SUBTRACT
+			 (OBJECT->FLOAT (CONSTANT 0.))
+			 (REGISTER (? source))
+			 (? overflow)))
+  overflow?				; ignore
+  (let ((source (flonum-source! source)))
+    (LAP (FSUB (DBL) 0 ,source ,(flonum-target! target)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))

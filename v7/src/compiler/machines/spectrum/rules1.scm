@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules1.scm,v 4.33 1990/07/22 18:55:17 jinx Rel $
-$MC68020-Header: rules1.scm,v 4.33 90/05/03 15:17:28 GMT jinx Exp $
+$Id: rules1.scm,v 4.34 1993/02/28 06:18:12 gjr Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -64,8 +63,14 @@ MIT in each case. |#
   ;; tag the contents of a register
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type)) (REGISTER (? source))))
-  ;; *** Why doesn't it work when qualifier is used? ***
   ;; (QUALIFIER (fits-in-5-bits-signed? type))
+  ;; This qualifier does not work because the qualifiers are not
+  ;; tested in the rtl compressor.  The qualifier is combined with
+  ;; the rule body into a single procedure, and the rtl compressor
+  ;; cannot invoke it since it is not in the context of the lap
+  ;; generator.  Thus the qualifier is not checked, the RTL instruction
+  ;; is compressed, and then the lap generator fails when the qualifier
+  ;; fails.
   (deposit-type type (standard-move-to-target! source target)))
 
 (define-rule statement
@@ -108,8 +113,10 @@ MIT in each case. |#
 
 (define-rule statement
   ;; pop an object off the stack
-  (ASSIGN (REGISTER (? target)) (POST-INCREMENT (REGISTER 22) 1))
-  (LAP (LDWM () (OFFSET 4 0 22) ,(standard-target! target))))
+  (ASSIGN (REGISTER (? target)) (POST-INCREMENT (REGISTER (? reg)) 1))
+  (QUALIFIER (= reg regnum:stack-pointer))
+  (LAP
+   (LDWM () (OFFSET 4 0 ,regnum:stack-pointer) ,(standard-target! target))))
 
 ;;;; Loading of Constants
 
@@ -147,29 +154,31 @@ MIT in each case. |#
   ;; load the address of a variable reference cache
   (ASSIGN (REGISTER (? target)) (VARIABLE-CACHE (? name)))
   (load-pc-relative (free-reference-label name) 
-		    (standard-target! target)))
+		    (standard-target! target)
+		    'CONSTANT))
 
 (define-rule statement
   ;; load the address of an assignment cache
   (ASSIGN (REGISTER (? target)) (ASSIGNMENT-CACHE (? name)))
   (load-pc-relative (free-assignment-label name)
-		    (standard-target! target)))
+		    (standard-target! target)
+		    'CONSTANT))
 
 (define-rule statement
   ;; load the address of a procedure's entry point
   (ASSIGN (REGISTER (? target)) (ENTRY:PROCEDURE (? label)))
-  (load-pc-relative-address label (standard-target! target)))
+  (load-pc-relative-address label (standard-target! target) 'CODE))
 
 (define-rule statement
   ;; load the address of a continuation
   (ASSIGN (REGISTER (? target)) (ENTRY:CONTINUATION (? label)))
-  (load-pc-relative-address label (standard-target! target)))
+  (load-pc-relative-address label (standard-target! target) 'CODE))
 
 ;;; Spectrum optimizations
 
 (define (load-entry label target)
   (let ((target (standard-target! target)))
-    (LAP ,@(load-pc-relative-address label target)
+    (LAP ,@(load-pc-relative-address label target 'CODE)
 	 ,@(address->entry target))))
 
 (define-rule statement
@@ -201,15 +210,25 @@ MIT in each case. |#
 
 (define-rule statement
   ;; Push an object register on the heap
-  (ASSIGN (POST-INCREMENT (REGISTER 21) 1) (? source register-expression))
-  (QUALIFIER (word-register? source))
-  (LAP (STWM () ,(standard-source! source) (OFFSET 4 0 21))))
+  ;; *** IMPORTANT: This uses a STWS instruction with the cache hint set.
+  ;; The cache hint prevents newer HP PA processors from loading a cache
+  ;; line from memory when it is about to be overwritten.
+  ;; In theory this could cause a problem at the very end (64 bytes) of the
+  ;; heap, since the last cache line may overlap the next area (the stack).
+  ;; ***
+  (ASSIGN (POST-INCREMENT (REGISTER (? reg)) 1) (? source register-expression))
+  (QUALIFIER (and (= reg regnum:free-pointer)
+		  (word-register? source)))
+  (LAP
+   (STWS (MA C) ,(standard-source! source) (OFFSET 4 0 ,regnum:free-pointer))))
 
 (define-rule statement
   ;; Push an object register on the stack
-  (ASSIGN (PRE-INCREMENT (REGISTER 22) -1) (? source register-expression))
-  (QUALIFIER (word-register? source))
-  (LAP (STWM () ,(standard-source! source) (OFFSET -4 0 22))))
+  (ASSIGN (PRE-INCREMENT (REGISTER (? reg)) -1) (? source register-expression))
+  (QUALIFIER (and (word-register? source)
+		  (= reg regnum:stack-pointer)))
+  (LAP
+   (STWM () ,(standard-source! source) (OFFSET -4 0 ,regnum:stack-pointer))))
 
 ;; Cheaper, common patterns.
 
@@ -220,12 +239,14 @@ MIT in each case. |#
 	      (standard-source! address)))
 
 (define-rule statement
-  (ASSIGN (POST-INCREMENT (REGISTER 21) 1) (MACHINE-CONSTANT 0))
-  (LAP (STWM () 0 (OFFSET 4 0 21))))
+  (ASSIGN (POST-INCREMENT (REGISTER (? reg)) 1) (MACHINE-CONSTANT 0))
+  (QUALIFIER (= reg regnum:free-pointer))
+  (LAP (STWS (MA C) 0 (OFFSET 4 0 ,regnum:free-pointer))))
 
 (define-rule statement
-  (ASSIGN (PRE-INCREMENT (REGISTER 22) -1) (MACHINE-CONSTANT 0))
-  (LAP (STWM () 0 (OFFSET -4 0 22))))
+  (ASSIGN (PRE-INCREMENT (REGISTER (? reg)) -1) (MACHINE-CONSTANT 0))
+  (QUALIFIER (= reg regnum:stack-pointer))
+  (LAP (STWM () 0 (OFFSET -4 0 ,regnum:stack-pointer))))
 
 ;;;; CHAR->ASCII/BYTE-OFFSET
 
