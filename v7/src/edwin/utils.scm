@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: utils.scm,v 1.28 1993/01/09 01:16:25 cph Exp $
+;;;	$Id: utils.scm,v 1.29 1993/01/09 09:46:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -46,6 +46,31 @@
 
 (declare (usual-integrations))
 
+(define (guarantee-heap-available n-words operator)
+  (gc-flip)
+  (if (not ((ucode-primitive heap-available? 1) n-words))
+      (error:allocation-failure n-words operator)))
+
+(define condition-type:allocation-failure
+  (make-condition-type 'ALLOCATION-FAILURE condition-type:error
+      '(OPERATOR N-WORDS)
+    (lambda (condition port)
+      (let ((operator (access-condition condition 'OPERATOR)))
+	(if operator
+	    (begin
+	      (write-string "The procedure " port)
+	      (write operator port)
+	      (write-string " is unable" port))
+	    (write-string "Unable" port)))
+      (write-string " to allocate " port)
+      (write (access-condition condition 'N-WORDS) port)
+      (write-string " of storage." port))))
+
+(define error:allocation-failure
+  (condition-signaller condition-type:allocation-failure
+		       '(N-WORDS OPERATOR)
+		       standard-error-handler))
+
 (define-macro (chars-to-words-shift)
   ;; This is written as a macro so that the shift will be a constant
   ;; in the compiled code.
@@ -62,10 +87,7 @@
       (error:bad-range-argument n-chars 'STRING-ALLOCATE))
   (let ((n-words (fix:+ (fix:lsh n-chars (chars-to-words-shift)) 3)))
     (if (not ((ucode-primitive heap-available? 1) n-words))
-	(begin
-	  (gc-flip)
-	  (if (not ((ucode-primitive heap-available? 1) n-words))
-	      (error "Unable to allocate string of this length:" n-chars))))
+	(guarantee-heap-available n-words 'STRING-ALLOCATE))
     (let ((mask (set-interrupt-enables! interrupt-mask/none)))
       (let ((result
 	     ((ucode-primitive primitive-get-free 1)
@@ -103,7 +125,8 @@
     (set-string-length! string n-chars)
     ;; This won't work if range-checking is turned on.
     (string-set! string (fix:+ n-chars 1) #\nul)
-    (set-interrupt-enables! mask)))
+    (set-interrupt-enables! mask)
+    unspecific))
 
 (define (%substring-move! source start-source end-source
 			  target start-target)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.114 1993/01/09 01:16:10 cph Exp $
+;;;	$Id: fileio.scm,v 1.115 1993/01/09 09:46:54 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -146,20 +146,29 @@ Each procedure is called with three arguments:
 		(fix:- end index))))))))
 
 (define (group-insert-file! group index truename)
-  (let ((channel (file-open-input-channel (->namestring truename))))
-    (let ((length (file-length channel)))
-      (without-interrupts
-	(lambda ()
-	  (prepare-gap-for-insert! group index length)))
-      (let ((n
-	     (channel-read channel (group-text group) index (+ index length))))
-	(without-interrupts
+  (let ((filename (->namestring truename)))
+    (let ((channel (file-open-input-channel filename)))
+      (let ((length (file-length channel)))
+	(bind-condition-handler (list condition-type:allocation-failure)
+	    (lambda (condition)
+	      condition
+	      (error "File too large to fit in memory:" filename))
 	  (lambda ()
-	    (let ((gap-start* (fix:+ index n)))
-	      (undo-record-insertion! group index gap-start*)
-	      (finish-group-insert! group index n))))
-	(channel-close channel)
-	n))))
+	    (without-interrupts
+	      (lambda ()
+		(prepare-gap-for-insert! group index length)))))
+	(let ((n
+	       (channel-read channel
+			     (group-text group)
+			     index
+			     (+ index length))))
+	  (without-interrupts
+	    (lambda ()
+	      (let ((gap-start* (fix:+ index n)))
+		(undo-record-insertion! group index gap-start*)
+		(finish-group-insert! group index n))))
+	  (channel-close channel)
+	  n)))))
 
 ;;;; Buffer Mode Initialization
 
