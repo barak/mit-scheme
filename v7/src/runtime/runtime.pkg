@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.45 1989/08/09 11:08:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.46 1989/08/10 08:18:17 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -960,10 +960,15 @@ MIT in each case. |#
 	  imag-part
 	  inexact->exact
 	  inexact?
+	  integer-ceiling
 	  integer-divide
 	  integer-divide-quotient
 	  integer-divide-remainder
-	  integer-expt	  integer?
+	  integer-expt
+	  integer-floor
+	  integer-round
+	  integer-truncate
+	  integer?
 	  lcm
 	  log
 	  magnitude
