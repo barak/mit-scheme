@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.19 1989/08/21 19:32:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.20 1989/09/20 16:39:48 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -195,7 +195,10 @@ MIT in each case. |#
 			    (write-to-string (lambda-name scode)))
 			   do-it))
 			do-it))
-		  do-it)))))      (if output?
+		  (lambda ()
+		    (fluid-let ((*remote-links* '()))
+		      (do-it))))))))
+      (if output?
 	  (begin
 	    (newline)
 	    (write-string *output-prefix*)

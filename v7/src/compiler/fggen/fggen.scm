@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.21 1989/09/15 17:05:22 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.22 1989/09/20 16:39:24 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -719,12 +719,10 @@ MIT in each case. |#
 	    (continue/rvalue-constant
 	     block continuation
 	     (make-constant
-	      ;; This is a temporary kludge to fix a problem with the
-	      ;; next case.
-	      (fluid-let ((compiler:compile-by-procedures? false))
-		(compile-recursively
-		 (scode/quotation-expression expression)
-		 false)))))	   ((COMPILE-PROCEDURE)
+	      (compile-recursively
+	       (scode/quotation-expression expression)
+	       false))))
+	   ((COMPILE-PROCEDURE)
 	    (if (not (scode/lambda? expression))
 		(error "Bad compile-procedure directive" comment))
 	    (if compiler:compile-by-procedures?
