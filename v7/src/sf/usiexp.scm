@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.20 1993/11/20 21:30:32 cph Exp $
+$Id: usiexp.scm,v 4.21 1993/11/29 23:15:01 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -532,6 +532,17 @@ MIT in each case. |#
        (constant/make (and expr (object/scode expr))
 		      (string->symbol (car operands))))
       (if-not-expanded)))
+
+(define (int:->flonum-expansion expr operands if-expanded if-not-expanded
+				block)
+  (if (and (pair? operands)
+	   (null? (cdr operands)))
+      (if-expanded
+       (make-combination expr
+			 block
+			 (ucode-primitive integer->flonum 2)
+			 (list (car operands) (constant/make #f #b10))))
+      (if-not-expanded)))
 
 ;;;; Tables
 
@@ -596,6 +607,7 @@ MIT in each case. |#
     fix:zero?
     flo:flonum?
     fourth
+    int:->flonum
     int:integer?
     list
     make-string
@@ -678,6 +690,7 @@ MIT in each case. |#
    fix:zero?-expansion
    flo:flonum?-expansion
    fourth-expansion
+   int:->flonum-expansion
    exact-integer?-expansion
    list-expansion
    make-string-expansion
