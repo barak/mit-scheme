@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.183 2001/07/21 01:27:49 cph Exp $
+;;; $Id: imail-imap.scm,v 1.184 2001/07/21 03:53:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -940,13 +940,13 @@
 		   (with-interrupt-mask interrupt-mask
 		     (lambda (interrupt-mask)
 		       interrupt-mask
-		       (read-message-headers! folder n))))
+		       (read-message-headers! folder n)))
+		   (object-modified! folder 'INCREASE-LENGTH n count))
 		  ((= count n)
 		   (set-imap-folder-messages-synchronized?! folder #t))
 		  (else
 		   (error "EXISTS response decreased folder length:"
-			  folder)))
-	    (object-modified! folder 'SET-LENGTH n count))
+			  folder))))
 	  (begin
 	    (detach-all-messages! folder)
 	    (let ((v (imap-folder-messages folder))
