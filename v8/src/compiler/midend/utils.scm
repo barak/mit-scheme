@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.16 1995/02/22 05:50:15 adams Exp $
+$Id: utils.scm,v 1.17 1995/02/22 13:37:04 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -529,7 +529,7 @@ Example use of FORM/COPY-TRANSFORMING:
   (let loop ((exprs (begin/actions form)))
     (cond ((null? exprs) (internal-error "No non-declare subform" form))
 	  ((DECLARE/? (car exprs)) (loop (cdr exprs)))
-	  (else (if (null? (cdr exprs) (car exprs) #F))))))
+	  (else (if (null? (cdr exprs)) (car exprs) #F)))))
 
 (define (form/satisfies? form operator-properties)
   (let walk ((expr form))
