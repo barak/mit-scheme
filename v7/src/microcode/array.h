@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.28 1988/08/15 20:35:46 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.29 1989/02/19 17:51:28 jinx Exp $ */
 
 
 #define REAL float
@@ -191,38 +191,3 @@ extern void    Scheme_Vector_To_C_Array();
 extern void Find_Offset_Scale_For_Linear_Map();
 /* REAL Min,Max, New_Min,New_Max, *Offset,*Scale;
  */
-
-/* other macros
- */
-#define My_Store_Flonum_Result(Ans, Value_Cell) 		        \
-  (Value_Cell) = (Allocate_Float( ((double) Ans)));
-
-#define My_Store_Reduced_Flonum_Result(Ans, Value_Cell)			\
-{ double Number = ((double) Ans);					\
-  double floor();							\
-  Pointer result;							\
-  if (floor(Number) != Number)						\
-  { My_Store_Flonum_Result(Number, Value_Cell);				\
-  }									\
-  else if (Number == 0)							\
-    (Value_Cell) = Make_Unsigned_Fixnum(0);				\
-  if ((floor(Number) == Number) && (Number != 0))			\
-  { int exponent;							\
-    double frexp();							\
-    frexp(Number, &exponent);						\
-    if (exponent <= FIXNUM_LENGTH)					\
-    { double_into_fixnum(Number, result);				\
-      (Value_Cell) = result;						\
-    }									\
-    /* Since the float has no fraction, we will not gain		\
-       precision if its mantissa has enough bits to support		\
-       the exponent. */							\
-    else if (exponent <= FLONUM_MANTISSA_BITS)				\
-    {	result = Float_To_Big(Number);					\
-      (Value_Cell) = result;						\
-    }									\
-    else if (Number != 0)						\
-    { My_Store_Flonum_Result( (Ans), (Value_Cell));			\
-    }									\
-  }									\
-}

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.33 1988/08/15 20:35:29 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.34 1989/02/19 17:51:20 jinx Exp $ */
 
 /* ARRAY = 
    sequence of REAL(float or double numbers) with a tag on the front */
@@ -1439,7 +1439,7 @@ Pointer C_Array_To_Scheme_Vector(Array, Length) REAL *Array; long Length;
   *Now_Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, Length);
 
   for (i=0; i<Length; i++) {
-    My_Store_Reduced_Flonum_Result( Array[i], *Now_Free);
+    Store_Reduced_Flonum_Result( Array[i], *Now_Free);
     Now_Free++; 
   }
   return Result;

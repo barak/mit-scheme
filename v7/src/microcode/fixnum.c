@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.26 1988/08/15 20:46:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.27 1989/02/19 17:51:38 jinx Rel $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -134,11 +134,12 @@ DEFINE_PRIMITIVE ("MINUS-FIXNUM", Prim_minus_fixnum, 2, 2, 0)
   FIXNUM_RESULT (result);
 }
 
+/* Fixnum multiplication routine with overflow detection. */
+
+#include "mul.c"
+
 DEFINE_PRIMITIVE ("MULTIPLY-FIXNUM", Prim_multiply_fixnum, 2, 2, 0)
 {
-  /* Mul, which does the multiplication with overflow handling, is
-     customized for some machines.  Therefore, it is in os.c */
-  extern Pointer Mul();
   fast long result;
   Primitive_2_Args ();
 

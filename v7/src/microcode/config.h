@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.40 1989/02/15 19:23:27 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.41 1989/02/19 17:51:33 jinx Exp $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -368,26 +368,21 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define ULONG_SIZE		32
 #define BELL 			'\007'
 
-#ifdef sun4
-#define FASL_INTERNAL_FORMAT	FASL_SUN4
-#define FLOATING_ALIGNMENT	0x7	/* Low 3 MBZ for float storage */
 #define FLONUM_EXPT_SIZE	10
 #define FLONUM_MANTISSA_BITS	53
 #define MAX_FLONUM_EXPONENT	1023
+
+#ifdef sun4
+#define FASL_INTERNAL_FORMAT	FASL_SUN4
+#define FLOATING_ALIGNMENT	0x7	/* Low 3 MBZ for float storage */
 #endif
 
 #ifdef sun3
 #define FASL_INTERNAL_FORMAT	FASL_68020
-#define FLONUM_EXPT_SIZE	10
-#define FLONUM_MANTISSA_BITS	53
-#define MAX_FLONUM_EXPONENT	1023
 #endif
 
 #ifndef FASL_INTERNAL_FORMAT
 #define FASL_INTERNAL_FORMAT	FASL_68000
-#define FLONUM_EXPT_SIZE	7
-#define FLONUM_MANTISSA_BITS 	56
-#define MAX_FLONUM_EXPONENT	127
 #endif
 
 #define HAS_FLOOR

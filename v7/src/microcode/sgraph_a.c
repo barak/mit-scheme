@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.5 1988/08/15 20:33:45 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.6 1989/02/19 17:51:11 jinx Rel $ */
 
 #include "scheme.h"
 #include "prims.h"
@@ -70,11 +70,11 @@ DEFINE_PRIMITIVE ("PLOT-ARRAY-IN-BOX", Prim_plot_array_in_box, 3, 3, 0)
   Answer = Make_Pointer(TC_LIST, Free);
   Orig_Free = Free;
   Free += 4;
-  My_Store_Reduced_Flonum_Result(Offset, *Orig_Free);
+  Store_Reduced_Flonum_Result(Offset, *Orig_Free);
   Orig_Free++;
   *Orig_Free = Make_Pointer(TC_LIST, Orig_Free+1);
   Orig_Free++;
-  My_Store_Reduced_Flonum_Result(Scale, *Orig_Free);
+  Store_Reduced_Flonum_Result(Scale, *Orig_Free);
   Orig_Free++;
   *Orig_Free = EMPTY_LIST;
   PRIMITIVE_RETURN(Answer);
@@ -113,11 +113,11 @@ DEFINE_PRIMITIVE ("PLOT-ARRAY-IN-BOX-WITH-OFFSET-SCALE", Prim_plot_array_in_box_
   Answer = Make_Pointer(TC_LIST, Free);
   Orig_Free = Free;
   Free += 4;
-  My_Store_Reduced_Flonum_Result(Offset, *Orig_Free);
+  Store_Reduced_Flonum_Result(Offset, *Orig_Free);
   Orig_Free++;
   *Orig_Free = Make_Pointer(TC_LIST, Orig_Free+1);
   Orig_Free++;
-  My_Store_Reduced_Flonum_Result(Scale, *Orig_Free);
+  Store_Reduced_Flonum_Result(Scale, *Orig_Free);
   Orig_Free++;
   *Orig_Free = EMPTY_LIST;
   PRIMITIVE_RETURN(Answer);
@@ -1397,15 +1397,15 @@ DEFINE_PRIMITIVE ("INQUIRE-COLOR", Prim_inquire_color, 1, 1, 0)
   Answer = Make_Pointer(TC_LIST, Free);
   Orig_Free = Free;
   Free += 6;
-  My_Store_Reduced_Flonum_Result(red, *Orig_Free);
+  Store_Reduced_Flonum_Result(red, *Orig_Free);
   Orig_Free++;
   *Orig_Free = Make_Pointer(TC_LIST, Orig_Free+1);
   Orig_Free++;
-  My_Store_Reduced_Flonum_Result(green, *Orig_Free);
+  Store_Reduced_Flonum_Result(green, *Orig_Free);
   Orig_Free++;
   *Orig_Free = Make_Pointer(TC_LIST, Orig_Free+1);
   Orig_Free++;
-  My_Store_Reduced_Flonum_Result(blue, *Orig_Free);
+  Store_Reduced_Flonum_Result(blue, *Orig_Free);
   Orig_Free++;
   *Orig_Free = EMPTY_LIST;
   PRIMITIVE_RETURN(Answer);
