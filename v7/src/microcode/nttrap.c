@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.13 1997/05/06 04:51:12 cph Exp $
+$Id: nttrap.c,v 1.14 1997/06/26 07:02:22 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -1323,7 +1323,9 @@ DEFUN (WinntException, (code, info),
   }
 }
 
-#ifdef __WATCOMC__
+#if (defined(__WATCOMC__) && (__WATCOMC__ < 1100))
+/* Watcom 10 has broken __try/__except support,
+   which has been fixed in version 11.  */
 #define USE_SET_UNHANDLED_EXCEPTION_FILTER
 #endif
 
