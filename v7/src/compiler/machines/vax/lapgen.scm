@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.3 1988/01/13 19:29:29 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.4 1988/01/15 20:14:23 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -314,19 +314,21 @@ MIT in each case. |#
 				(INST-EA (@RO W 13 ,index)))
 			     (loop (cdr names) (+ index 6)))))
 		 `(BEGIN ,@(loop names start)))))
-  (define-entries #x00F0
-    return-to-interpreter uuo-link-trap apply error
-    wrong-number-of-arguments interrupt-procedure
-    interrupt-continuation lookup-apply lookup access unassigned?
-    unbound?  set!  define primitive-apply setup-lexpr
-    safe-lookup cache-variable reference-trap assignment-trap uuo-link
-    cache-reference-apply safe-reference-trap unassigned?-trap
-    cache-variable-multiple uuo-link-multiple))
+  (define-entries #x00F0 return-to-interpreter uuo-link-trap operator-trap
+    apply error wrong-number-of-arguments
+    interrupt-procedure interrupt-continuation lookup-apply 
+    lookup access unassigned? unbound? set! define primitive-apply enclose
+    setup-lexpr safe-lookup cache-variable reference-trap
+    assignment-trap uuo-link cache-reference-apply
+    safe-reference-trap unassigned?-trap cache-variable-multiple
+    uuo-link-multiple &+ &- &* &/ &= &< &> 1+ -1+ zero? positive? negative?
+    cache-assignment cache-assignment-multiple primitive-lexpr-apply))
 
 (define-integrable reg:compiled-memtop (INST-EA (@R 13)))
 (define-integrable reg:environment (INST-EA (@RO B 13 #x0C)))
 (define-integrable reg:temp (INST-EA (@RO B 13 #x10)))
 (define-integrable reg:enclose-result (INST-EA (@RO B 13 #x14)))
+(define-integrable reg:lexpr-primitive-arity (INST-EA (@RO 6 #x001C)))
 
 ;; These are the results of using bump-type on the corresponding values.
 (define-integrable reg:temp-type (INST-EA (@RO B 13 #x13)))
