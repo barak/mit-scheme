@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.9 1988/06/14 08:48:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.10 1988/08/29 22:54:31 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -207,8 +207,13 @@ MIT in each case. |#
 	   (LABEL ,label)
 	   ,@(generate/move-frame-up* frame-size temp)))))
 
-(define (object->address*dynamic-link frame-size dreg)
-  (let ((label (generate-label))
+(define-rule statement
+  (INVOCATION-PREFIX:DYNAMIC-LINK (? frame-size)
+				  (OBJECT->ADDRESS (REGISTER (? source)))
+				  (REGISTER 12))
+  (QUALIFIER (pseudo-register? source))
+  (let ((dreg (move-to-temporary-register! source 'DATA))
+	(label (generate-label))
 	(temp (allocate-temporary-register! 'ADDRESS)))
     (let ((areg (register-reference temp)))
       (LAP (AND L ,mask-reference ,dreg)
@@ -218,18 +223,6 @@ MIT in each case. |#
 	   (MOV L (A 4) ,areg)
 	   (LABEL ,label)
 	   ,@(generate/move-frame-up* frame-size temp)))))
-
-(define-rule statement
-  (INVOCATION-PREFIX:DYNAMIC-LINK (? frame-size)
-				  (OBJECT->ADDRESS (REGISTER (? source)))
-				  (REGISTER 12))
-  (if (and (dead-register? source)
-	   (register-has-alias? source 'DATA))
-      (object->address*dynamic-link frame-size
-       (register-reference (register-alias source 'DATA)))
-      (let ((temp (reference-temporary-register! 'DATA)))
-	(LAP (MOV L ,(coerce->any source) ,temp)
-	     ,@(object->address*dynamic-link frame-size temp)))))
 
 (define (generate/move-frame-up frame-size destination)
   (let ((temp (allocate-temporary-register! 'ADDRESS)))
