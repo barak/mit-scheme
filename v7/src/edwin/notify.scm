@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: notify.scm,v 1.14 1994/03/04 21:30:40 cph Exp $
+;;;	$Id: notify.scm,v 1.15 1994/11/20 05:18:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-94 Massachusetts Institute of Technology
 ;;;
@@ -122,12 +122,11 @@ Ignored if notify-show-mail is false."
   file-directory?)
 
 (define (notifier:mail-present)
-  (if (let ((attributes
-	     (file-attributes
-	      (merge-pathnames (ref-variable mail-notify-directory)
-			       (unix/current-user-name)))))
-	(and attributes
-	     (> (file-attributes/length attributes) 0)))
+  (if (let ((pathname
+	     (merge-pathnames (ref-variable mail-notify-directory)
+			      (unix/current-user-name))))
+	(and (file-exists? pathname)
+	     (> (file-length pathname) 0)))
       (ref-variable notify-mail-present)
       (ref-variable notify-mail-not-present)))
 
