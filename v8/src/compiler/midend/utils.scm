@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.25 1995/05/06 18:28:45 adams Exp $
+$Id: utils.scm,v 1.26 1995/07/04 18:15:58 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -1208,3 +1208,48 @@ Example use of FORM/COPY-TRANSFORMING:
 	   (+ size 1))
 	  (else
 	   (walk (car program) (walk (cdr program) (+ size 1)))))))
+
+;; (compile-boolean-property expr env bound? free? assigned?)
+;;   -> #F  or  name -> Bool
+;;
+;; bound?, free?, assigned? : (env * name -> Bool) or #F
+;;
+
+(define (compile-boolean-property expr env bound? free? assigned?)
+
+  (let compile ((expr expr))
+    (define (binary-operator? tag operate)
+      (and (list? expr)
+	   (= (length expr) 3)
+	   (eq? (car expr) tag)
+	   (let ((a (compile (second expr)))
+		 (b (compile (third expr))))
+	     (and a b (operate a b)))))
+    (define-integrable (environment-query predicate?)
+      (and predicate?
+	   (lambda (name)
+	     (predicate? env name))))
+    (cond ((eq? expr 'NONE)     (lambda (name) name #F))
+	  ((eq? expr 'ALL)      (lambda (name) name #T))
+	  ((eq? expr 'FREE)     (environment-query free?))
+	  ((eq? expr 'BOUND)    (environment-query bound?))
+	  ((eq? expr 'ASSIGNED) (environment-query assigned?))
+	  ((not (pair? expr))   #F)
+	  ((and (eq? (car expr) 'SET)
+		(list? expr)
+		(for-all? expr symbol?)
+		(lambda (name)
+		  (memq name (cdr expr)))))
+	  ((binary-operator? 'UNION
+			     (lambda (a b)
+			       (lambda (name)
+				 (or (a name) (b name))))))
+	  ((binary-operator? 'DIFFERENCE
+			     (lambda (a b)
+			       (lambda (name)
+				 (and (a name) (not (b name)))))))
+	  ((binary-operator? 'INTERSECTION
+			     (lambda (a b)
+			       (lambda (name)
+				 (and (a name) (b name))))))
+	  (else #F))))
