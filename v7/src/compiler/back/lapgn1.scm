@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.11 1991/05/06 22:47:15 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.12 1991/10/22 09:53:38 cph Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -171,10 +171,10 @@ MIT in each case. |#
 			  (*needed-registers* '()))
 		(let ((instructions (match-result)))
 		  (delete-dead-registers!)
-		  (LAP ,@*prefix-instructions*
-		       ,@(if *insert-rtl?*
+		  (LAP ,@(if *insert-rtl?*
 			     (LAP (COMMENT (RTL ,rtl)))
 			     (LAP))
+		       ,@*prefix-instructions*
 		       ,@instructions
 		       ,@*suffix-instructions*))))
 	    (begin (error "CGEN-RINST: No matching rules" rtl)
