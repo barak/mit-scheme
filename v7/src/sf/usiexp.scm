@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.34 1995/04/29 13:08:29 adams Exp $
+$Id: usiexp.scm,v 4.35 1995/08/02 21:42:07 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -40,13 +40,24 @@ MIT in each case. |#
 
 ;;;; Fixed-arity arithmetic primitives
 
-
 (define (make-combination expression block primitive operands)
-  (combination/make (and expression
-			 (object/scode expression))
+  (combination/make (and expression (object/scode expression))
 		    block
 		    (constant/make false primitive)
 		    operands))
+
+(define (make-operand-binding expression block operand make-body)
+  (combination/make (and expression (object/scode expression))
+		    block
+		    (let ((block (block/make block #t '()))
+			  (name (string->uninterned-symbol "operand")))
+		      (let ((variable (variable/make&bind! block name)))
+			(procedure/make
+			 #f
+			 block lambda-tag:let (list variable) '() #f
+			 (make-body block
+				    (reference/make #f block variable)))))
+		    (list operand)))
 
 (define (constant-eq? expression constant)
   (and (constant? expression)
@@ -160,8 +171,8 @@ MIT in each case. |#
 
 (define (fix:<=-expansion expr operands if-expanded if-not-expanded block)
   (if (and (pair? operands)
-		(pair? (cdr operands))
-		(null? (cddr operands)))
+	   (pair? (cdr operands))
+	   (null? (cddr operands)))
       (if-expanded
        (make-combination
 	expr
@@ -231,18 +242,10 @@ MIT in each case. |#
 (define (expt-expansion expr operands if-expanded if-not-expanded block)
   (let ((make-binder
 	 (lambda (make-body)
-	   (if-expanded
-	    (combination/make
-	     (and expr (object/scode expr))
-	     block
-	     (let ((block (block/make block #t '()))
-		   (name (string->uninterned-symbol "operand")))
-	       (let ((variable (variable/make&bind! block name)))
-		 (procedure/make
-		  #f
-		  block lambda-tag:let (list variable) '() #f
-		  (make-body block (reference/make false block variable)))))
-	     (list (car operands)))))))
+	   (make-operand-binding expr
+				 block
+				 (car operands)
+				 make-body))))
     (cond ((not (and (pair? operands)
 		     (pair? (cdr operands))
 		     (null? (cddr operands))))
@@ -481,10 +484,12 @@ MIT in each case. |#
   (if (and (pair? operands)
 	   (null? (cdr operands)))
       (if-expanded
-       (make-disjunction
-	expr
-	(make-type-test false block (ucode-type fixnum) (car operands))
-	(make-type-test false block (ucode-type big-fixnum) (car operands))))
+       (make-operand-binding expr block (car operands)
+	 (lambda (block operand)
+	   (make-disjunction
+	    expr
+	    (make-type-test #f block (ucode-type fixnum) operand)
+	    (make-type-test #f block (ucode-type big-fixnum) operand)))))
       (if-not-expanded)))
 
 (define (exact-rational?-expansion expr operands if-expanded if-not-expanded
@@ -492,36 +497,41 @@ MIT in each case. |#
   (if (and (pair? operands)
 	   (null? (cdr operands)))
       (if-expanded
-       (make-disjunction
-	expr
-	(make-type-test false block (ucode-type fixnum) (car operands))
-	(make-type-test false block (ucode-type big-fixnum) (car operands))
-	(make-type-test false block (ucode-type ratnum) (car operands))))
+       (make-operand-binding expr block (car operands)
+	 (lambda (block operand)
+	   (make-disjunction
+	    expr
+	    (make-type-test #f block (ucode-type fixnum) operand)
+	    (make-type-test #f block (ucode-type big-fixnum) operand)
+	    (make-type-test #f block (ucode-type ratnum) operand)))))
       (if-not-expanded)))
 
 (define (complex?-expansion expr operands if-expanded if-not-expanded block)
   (if (and (pair? operands)
 	   (null? (cdr operands)))
       (if-expanded
-       (make-disjunction
-	expr
-	(make-type-test false block (ucode-type fixnum) (car operands))
-	(make-type-test false block (ucode-type big-fixnum) (car operands))
-	(make-type-test false block (ucode-type ratnum) (car operands))
-	(make-type-test false block (ucode-type big-flonum) (car operands))
-	(make-type-test false block (ucode-type recnum) (car operands))))
+       (make-operand-binding expr block (car operands)
+	 (lambda (block operand)
+	   (make-disjunction
+	    expr
+	    (make-type-test #f block (ucode-type fixnum) operand)
+	    (make-type-test #f block (ucode-type big-fixnum) operand)
+	    (make-type-test #f block (ucode-type ratnum) operand)
+	    (make-type-test #f block (ucode-type big-flonum) operand)
+	    (make-type-test #f block (ucode-type recnum) operand)))))
       (if-not-expanded)))
 
 (define (symbol?-expansion expr operands if-expanded if-not-expanded block)
   (if (and (pair? operands)
 	   (null? (cdr operands)))
       (if-expanded
-       (make-disjunction
-	expr
-	(make-type-test false block (ucode-type interned-symbol)
-			(car operands))
-	(make-type-test false block (ucode-type uninterned-symbol)
-			(car operands))))
+       (make-operand-binding expr block (car operands)
+	 (lambda (block operand)
+	   (make-disjunction
+	    expr
+	    (make-type-test #f block (ucode-type interned-symbol) operand)
+	    (make-type-test #f block (ucode-type uninterned-symbol)
+			    operand)))))
       (if-not-expanded)))
 
 (define (make-disjunction expr . clauses)
@@ -530,7 +540,7 @@ MIT in each case. |#
 	(car clauses)
 	(disjunction/make (and expr (object/scode expr))
 			  (car clauses) (loop (cdr clauses))))))
-      
+
 (define (make-type-test expr block type operand)
   (make-combination expr block
 		    (ucode-primitive object-type?)

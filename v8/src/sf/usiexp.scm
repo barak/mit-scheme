@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 1.3 1995/08/02 19:02:17 adams Exp $
+$Id: usiexp.scm,v 1.4 1995/08/02 21:42:14 cph Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -47,11 +47,23 @@ MIT in each case. |#
   ;;;; Fixed-arity arithmetic primitives
 
   (define (make-combination expression block primitive operands)
-    (combination/make (and expression
-			   (object/scode expression))
+    (combination/make (and expression (object/scode expression))
 		      block
 		      (constant/make false primitive)
 		      operands))
+
+  (define (make-operand-binding expression block operand make-body)
+    (combination/make (and expression (object/scode expression))
+		      block
+		      (let ((block (block/make block #t '()))
+			    (name (string->uninterned-symbol "operand")))
+			(let ((variable (variable/make&bind! block name)))
+			  (procedure/make
+			   #f
+			   block lambda-tag:let (list variable) '() #f
+			   (make-body block
+				      (reference/make #f block variable)))))
+		      (list operand)))
 
   (define (constant-eq? expression constant)
     (and (constant? expression)
@@ -227,7 +239,8 @@ MIT in each case. |#
 	     ((constant-eq? y 1)
 	      (make-combination expr block (ucode-primitive 1+) (list x)))
 	     (else
-	      (make-combination expr block (ucode-primitive &+) (list x y)))))))
+	      (make-combination expr block (ucode-primitive &+)
+				(list x y)))))))
 
   (define *-expansion
     (right-accumulation 
@@ -239,18 +252,10 @@ MIT in each case. |#
   (define (expt-expansion expr operands if-expanded if-not-expanded block)
     (let ((make-binder
 	   (lambda (make-body)
-	     (if-expanded
-	      (combination/make
-	       (and expr (object/scode expr))
-	       block
-	       (let ((block (block/make block #t '()))
-		     (name (string->uninterned-symbol "operand")))
-		 (let ((variable (variable/make&bind! block name)))
-		   (procedure/make
-		    #f
-		    block lambda-tag:let (list variable) '() #f
-		    (make-body block (reference/make false block variable)))))
-	       (list (car operands)))))))
+	     (make-operand-binding expr
+				   block
+				   (car operands)
+				   make-body))))
       (cond ((not (and (pair? operands)
 		       (pair? (cdr operands))
 		       (null? (cddr operands))))
@@ -357,7 +362,7 @@ MIT in each case. |#
 			  block
 			  (ucode-primitive cons)
 			  (list (car rest)
-				(cons*-expansion-loop false block (cdr rest))))))
+				(cons*-expansion-loop #f block (cdr rest))))))
 
   (define (list-expansion expr operands if-expanded if-not-expanded block)
     (if (< (length operands) 9)
@@ -369,7 +374,7 @@ MIT in each case. |#
 	(constant/make (and expr (object/scode expr)) '())
 	(make-combination expr block (ucode-primitive cons)
 			  (list (car rest)
-				(list-expansion-loop false block (cdr rest))))))
+				(list-expansion-loop #f block (cdr rest))))))
 
   (define (values-expansion expr operands if-expanded if-not-expanded block)
     if-not-expanded
@@ -466,7 +471,8 @@ MIT in each case. |#
 
   ;;;; Miscellaneous
 
-  (define (make-string-expansion expr operands if-expanded if-not-expanded block)
+  (define (make-string-expansion expr operands if-expanded if-not-expanded
+				 block)
     (if (and (pair? operands)
 	     (null? (cdr operands)))
 	(if-expanded
@@ -486,11 +492,15 @@ MIT in each case. |#
       (if (and (pair? operands)
 	       (null? (cdr operands)))
 	  (if-expanded
-	   (make-disjunction
-	    expr
-	    (map (lambda (type)
-		   (make-type-test false block type (car operands)))
-		 get-the-types)))
+	   (if (null? (cdr get-the-types))
+	       (make-type-test #f block (car get-the-types) (car operands))
+	       (make-operand-binding expr block (car operands)
+		 (lambda (block operand)
+		   (make-disjunction
+		    expr
+		    (map (lambda (type)
+			   (make-type-test #f block type operand))
+			 get-the-types))))))
 	  (if-not-expanded))))
 
   (define char?-expansion
@@ -537,7 +547,7 @@ MIT in each case. |#
      (list (cross-sf/ucode-type 'interned-symbol)
 	   (cross-sf/ucode-type 'uninterned-symbol))))
 
-  (define (make-disjunction expr  clauses)
+  (define (make-disjunction expr clauses)
     (let loop ((clauses clauses))
       (if (null? (cdr clauses))
 	  (car clauses)
@@ -653,15 +663,16 @@ MIT in each case. |#
       (weak-pair?         . ,weak-pair?-expansion)
       (with-values        . ,call-with-values-expansion)
       (zero?              . ,zero?-expansion)
-     ))
+      ))
 
   usual-integrations/expansion-alist)
-
+
 (define usual-integrations/expansion-alist)
 
 (define (usual-integrations/initialize-expanders!)
   (set! usual-integrations/expansion-alist
-	(usual-integrations/make-expansion-alist)))
+	(usual-integrations/make-expansion-alist))
+  unspecific)
 
 ;;;;  Hooks and utilities for user defined reductions and expanders
 
