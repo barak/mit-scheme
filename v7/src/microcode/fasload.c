@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.92 2002/07/02 18:38:16 cph Exp $
+$Id: fasload.c,v 9.93 2002/07/02 19:03:26 cph Exp $
 
 Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
@@ -1063,7 +1063,7 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   /* Clear various interpreter state parameters. */
   Trapping = false;
   Return_Hook_Address = 0;
-  History = (Make_Dummy_History ());
+  history_register = (Make_Dummy_History ());
   Prev_Restore_History_Stacklet = 0;
   Prev_Restore_History_Offset = 0;
   COMPILER_TRANSPORT_END ();

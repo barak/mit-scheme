@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.20 2002/07/02 18:38:46 cph Exp $
+$Id: nttrap.c,v 1.21 2002/07/02 19:03:55 cph Exp $
 
 Copyright (c) 1992-2002 Massachusetts Institute of Technology
 
@@ -526,7 +526,7 @@ DEFUN (setup_trap_frame, (code, context, trinfo, new_stack_pointer),
       && (trinfo->state == STATE_COMPILED_CODE))
     Stop_History ();
 
-  History = (Make_Dummy_History ());
+  history_register = (Make_Dummy_History ());
  Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
   STACK_PUSH (trap_name);
   STACK_PUSH (handler);

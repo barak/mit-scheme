@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.67 2002/07/02 18:38:39 cph Exp $
+$Id: memmag.c,v 9.68 2002/07/02 19:03:49 cph Exp $
 
 Copyright (c) 1987-2000, 2002 Massachusetts Institute of Technology
 
@@ -474,7 +474,7 @@ DEFUN_VOID (GC)
 
   Root = Free;
   *Free++ = Fixed_Objects;
-  *Free++ = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, History));
+  *Free++ = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, history_register));
   *Free++ = Get_Current_Stacklet ();
   *Free++ =
     ((Prev_Restore_History_Stacklet == NULL)
@@ -572,7 +572,7 @@ DEFUN_VOID (GC)
   Set_Fixed_Obj_Slot
     (Lost_Objects_Base, (LONG_TO_UNSIGNED_FIXNUM (ADDRESS_TO_DATUM (Root2))));
 
-  History = (OBJECT_ADDRESS (*Root++));
+  history_register = (OBJECT_ADDRESS (*Root++));
 
   Set_Current_Stacklet (*Root);
   Root += 1;
@@ -612,9 +612,8 @@ DEFUN_VOID (GC)
    the GC daemon if there is one.
 
    This primitive never returns normally.  It always escapes into
-   the interpreter because some of its cached registers (eg. History)
-   have changed.
-*/
+   the interpreter because some of its cached registers (e.g.
+   history_register) have changed.  */
 
 DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
 {

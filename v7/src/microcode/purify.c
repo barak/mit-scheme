@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: purify.c,v 9.61 2001/12/16 06:01:33 cph Exp $
+$Id: purify.c,v 9.62 2002/07/02 19:04:07 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -482,8 +482,8 @@ purification_failure:
    everyone else halted.
 
    This primitive always "returns" by escaping to the interpreter
-   because some of its cached registers (eg. History) have changed.
-*/
+   because some of its cached registers (e.g. history_register) have
+   changed.  */
 
 DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
 {

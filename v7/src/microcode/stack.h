@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: stack.h,v 9.40 2002/07/02 18:39:04 cph Exp $
+$Id: stack.h,v 9.41 2002/07/02 19:04:13 cph Exp $
 
 Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
@@ -344,9 +344,10 @@ Pushed()
     Prev_Restore_History_Offset = 0;					\
     if ((!Valid_Fixed_Obj_Vector ()) ||					\
 	(Get_Fixed_Obj_Slot (Dummy_History) == SHARP_F))		\
-      History = Make_Dummy_History ();					\
+      history_register = Make_Dummy_History ();				\
     else								\
-      History = OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History));	\
+      history_register							\
+	= OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History));		\
   }									\
   else if (Prev_Restore_History_Stacklet ==				\
 	   OBJECT_ADDRESS (Control_Point))				\

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.80 2002/07/02 18:39:20 cph Exp $
+$Id: utils.c,v 9.81 2002/07/02 19:04:19 cph Exp $
 
 Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
@@ -815,8 +815,8 @@ DEFUN (Restore_History, (hist_obj), SCHEME_OBJECT hist_obj)
   }
   else
   {
-    History = (OBJECT_ADDRESS (new_hist));
-    return (true);
+    history_register = (OBJECT_ADDRESS (new_hist));
+    return (1);
   }
 }
 

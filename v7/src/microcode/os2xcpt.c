@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2xcpt.c,v 1.10 2002/07/02 18:38:52 cph Exp $
+$Id: os2xcpt.c,v 1.11 2002/07/02 19:04:01 cph Exp $
 
 Copyright (c) 1994-2002 Massachusetts Institute of Technology
 
@@ -787,7 +787,7 @@ setup_trap_frame (PEXCEPTIONREPORTRECORD report,
   /* Make sure the history register is properly initialized.  */
   if ((new_sp != 0) && ((trinfo -> state) == STATE_COMPILED_CODE))
     Stop_History ();
-  History = (Make_Dummy_History ());
+  history_register = (Make_Dummy_History ());
 
   /* Push the call frame for the trap handler.  */
  Will_Push (STACK_ENV_EXTRA_SLOTS + 2);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.h,v 9.44 2002/07/02 18:38:28 cph Exp $
+$Id: interp.h,v 9.45 2002/07/02 19:03:44 cph Exp $
 
 Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
@@ -26,7 +26,6 @@ extern void EXFUN (abort_to_interpreter, (int argument));
 extern int EXFUN (abort_to_interpreter_argument, (void));
 
 #define Regs		Registers
-#define History		history_register
 
 #define Env		(Registers[REGBLOCK_ENV])
 #define Val		(Registers[REGBLOCK_VAL])

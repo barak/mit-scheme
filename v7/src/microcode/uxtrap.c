@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.c,v 1.32 2002/07/02 18:39:27 cph Exp $
+$Id: uxtrap.c,v 1.33 2002/07/02 19:04:25 cph Exp $
 
 Copyright (c) 1990-2002 Massachusetts Institute of Technology
 
@@ -339,7 +339,7 @@ DEFUN (setup_trap_frame, (signo, info, scp, trinfo, new_stack_pointer),
   {
     Stop_History ();
   }
-  History = (Make_Dummy_History ());
+  history_register = (Make_Dummy_History ());
  Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
   STACK_PUSH (signal_name);
   STACK_PUSH (handler);

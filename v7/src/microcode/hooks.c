@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.61 2002/07/02 18:38:22 cph Exp $
+$Id: hooks.c,v 9.62 2002/07/02 19:03:38 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -236,7 +236,8 @@ DEFUN (CWCC, (return_code, reuse_flag, receiver),
 
 	if ((ret_code == RC_RESTORE_HISTORY) || (ret_code == return_code))
 	{
-	  History = (OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History)));
+	  history_register
+	    = (OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History)));
 	  STACK_RESET ();
 	  /* Will_Push(3); */
 	  STACK_PUSH (control_point);
@@ -859,7 +860,7 @@ SCHEME_OBJECT
 initialize_history ()
 {
   /* Dummy History Structure */
-  History = (Make_Dummy_History ());
+  history_register = (Make_Dummy_History ());
   return
     (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, (Make_Dummy_History ())));
 }
@@ -871,11 +872,11 @@ Set the interpreter's history object to HISTORY.")
   PRIMITIVE_HEADER (1);
   PRIMITIVE_CANONICALIZE_CONTEXT ();
   CHECK_ARG (1, HUNK3_P);
-  Val = (*History);
+  Val = (*history_register);
 #ifndef DISABLE_HISTORY
-  History = (OBJECT_ADDRESS (ARG_REF (1)));
+  history_register = (OBJECT_ADDRESS (ARG_REF (1)));
 #else
-  History = (OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History)));
+  history_register = (OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History)));
 #endif
   POP_PRIMITIVE_FRAME (1);
   PRIMITIVE_ABORT (PRIM_POP_RETURN);
@@ -891,7 +892,7 @@ DEFINE_PRIMITIVE ("WITH-HISTORY-DISABLED", Prim_with_history_disabled, 1, 1,
   {
     SCHEME_OBJECT thunk = (ARG_REF (1));
     /* Remove one reduction from the history before saving it */
-    SCHEME_OBJECT * first_rib = (OBJECT_ADDRESS (History [HIST_RIB]));
+    SCHEME_OBJECT * first_rib = (OBJECT_ADDRESS (history_register [HIST_RIB]));
     SCHEME_OBJECT * second_rib =
       (OBJECT_ADDRESS (first_rib [RIB_NEXT_REDUCTION]));
     if ((first_rib != second_rib) &&
@@ -908,9 +909,10 @@ DEFINE_PRIMITIVE ("WITH-HISTORY-DISABLED", Prim_with_history_disabled, 1, 1,
 		break;
 	      rib = next_rib;
 	    }
-	  /* This maintains the mark in (History [HIST_RIB]). */
-	  (History [HIST_RIB]) =
-	    (MAKE_POINTER_OBJECT ((OBJECT_TYPE (History [HIST_RIB])), rib));
+	  /* This maintains the mark in (history_register [HIST_RIB]). */
+	  (history_register [HIST_RIB]) =
+	    (MAKE_POINTER_OBJECT ((OBJECT_TYPE (history_register [HIST_RIB])),
+				  rib));
 	}
       }
     POP_PRIMITIVE_FRAME (1);
