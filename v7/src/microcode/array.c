@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.37 1989/06/23 03:47:49 pas Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.38 1989/07/30 23:59:02 pas Exp $ */
 
 
 #include "scheme.h"
@@ -52,6 +52,17 @@ MIT in each case. */
    
    see array.h for macros, NM_VECTOR, and extern 
    */
+
+
+/* mathematical constants */
+#ifdef PI
+#undef PI
+#endif
+#define PI    3.141592653589793238462643
+#define TWOPI 6.283185307179586476925287
+#define SQRT_2          1.4142135623730950488
+#define ONE_OVER_SQRT_2  .7071067811865475244
+/* Abramowitz and Stegun */
 
 
 /* first some utilities */
@@ -517,6 +528,51 @@ DEFINE_PRIMITIVE ("COMPLEX-SUBARRAY-COMPLEX-SCALE!",
 }
 
 
+/* Accumulate
+   using combinators              * 
+   corresponding type codes       1
+   */
+DEFINE_PRIMITIVE ("COMPLEX-SUBARRAY-ACCUMULATE!",
+		  Prim_complex_subarray_accumulate, 6,6, 0)
+{ long  at,m,mplus, tc, i;
+  REAL *a,*b;			/* (a,b) = (real,imag) input arrays */
+  REAL *c;			/* result = output array of length 2, holds a complex number */
+  double x, y, temp;
+  
+  PRIMITIVE_HEADER (6);
+  CHECK_ARG (1, ARRAY_P);	/* a = input array (real) */
+  CHECK_ARG (2, ARRAY_P);	/* b = input array (imag) */
+  a = Scheme_Array_To_C_Array(ARG_REF(1));
+  b = Scheme_Array_To_C_Array(ARG_REF(2));
+  if ((Array_Length(ARG_REF(1))) != (Array_Length(ARG_REF(2)))) error_bad_range_arg(2);
+  tc = arg_nonnegative_integer(3); /*       tc = type code 0 or 1            */
+  at = arg_nonnegative_integer(4); /*       at = starting index              */
+  m  = arg_nonnegative_integer(5); /*       m  = number of points to process */
+  CHECK_ARG (6, ARRAY_P);	/* c = output array of length 2 */
+  c = Scheme_Array_To_C_Array(ARG_REF(6));
+  if ((Array_Length(ARG_REF(6))) != 2) error_bad_range_arg(6);
+  
+  mplus = at + m;
+  if (mplus > (Array_Length(ARG_REF(1)))) error_bad_range_arg(5);
+
+  if (tc==1)
+  { x = 1.0;			/* real part of accumulator */
+    y = 0.0;			/* imag part of accumulator */
+    for (i=at;i<mplus;i++) 
+    { temp = ((double) a[i])*x - ((double) b[i])*y;
+      y    = ((double) b[i])*x + ((double) a[i])*y;
+      x    = temp; }
+  }
+  else
+    error_bad_range_arg(3);
+  
+  c[0] = ((REAL) x);		/* mechanism for returning complex number */
+  c[1] = ((REAL) y);		/* do not use lists, avoid heap pointer   */
+  PRIMITIVE_RETURN (NIL);  
+}
+
+
+
 DEFINE_PRIMITIVE ("CS-ARRAY-TO-COMPLEX-ARRAY!",
 		  Prim_cs_array_to_complex_array, 3, 3, 0)
 { long n,n2,n2_1, i;
@@ -678,8 +734,9 @@ void REALexp(a,b) REAL *a,*b;
   (*b) = ((REAL) y);
 }
 void REALlog(a,b) REAL *a,*b;
-{ if ((*a) < 0.0)
-    Primitive_Error(ERR_ARG_1_BAD_RANGE); /* log(negative) */
+{ 
+  if ((*a) < 0.0)
+    error_bad_range_arg(1);	/* log(negative) */
   (*b) = ( (REAL) log( (double) (*a)) );
 }
 
@@ -702,8 +759,9 @@ void REALsquare(a,b) REAL *a,*b;
 { (*b) = ( (REAL) ((*a) * (*a)) );
 }
 void REALsqrt(a,b) REAL *a,*b;
-{ if ((*a) < 0.0)
-    Primitive_Error(ERR_ARG_1_BAD_RANGE); /* sqrt(negative) */
+{
+  if ((*a) < 0.0)
+    error_bad_range_arg(1);	/* sqrt(negative) */
   (*b) = ( (REAL) sqrt( (double) (*a)) );
 }
 
@@ -729,8 +787,8 @@ void REALatan(a,b) REAL *a,*b;
 void REALgamma(a,b) REAL *a,*b;
 { register double y;
   if ((y = gamma(((double) (*a)))) > LN_MAXDOUBLE)
-    Primitive_Error(ERR_ARG_1_BAD_RANGE); /* gamma( non-positive integer ) */
-  (*b) = ((REAL) (signgam * exp(y)));  /* see HPUX Section 3 */
+    error_bad_range_arg(1);	/* gamma( non-positive integer ) */
+  (*b) = ((REAL) (signgam * exp(y))); /* see HPUX Section 3 */
 }
 void REALerf(a,b) REAL *a,*b;
 { (*b) = ( (REAL) erf((double) (*a)) );
@@ -747,8 +805,9 @@ void REALbessel1(order,a,b) long order; REAL *a,*b;  /* Bessel of first kind */
     (*b) = ( (REAL) jn(((int) order), ((double) (*a))) );
 }
 void REALbessel2(order,a,b) long order; REAL *a,*b;  /* Bessel of second kind */
-{ if ((*a) <= 0.0)
-    Primitive_Error(ERR_ARG_1_BAD_RANGE); /* Blows Up */
+{ 
+  if ((*a) <= 0.0)
+    error_bad_range_arg(1);	/* Blows Up */
   if (order == 0)
     (*b) = ( (REAL) y0((double) (*a)) );
   if (order == 1)
@@ -789,29 +848,34 @@ struct array_func_table {
 
 #define MAX_ARRAY_FUNCTC 17
 
-DEFINE_PRIMITIVE ("ARRAY-UNARY-FUNCTION!", Prim_array_unary_function, 2, 2, 0)
-{ long Length, i, allocated_cells;
+/* array-unary-function!    could be called        array-operation-1!
+   following the naming convention for other similar procedures 
+   but it is specialized to mappings only, so we have special name.
+   */
+DEFINE_PRIMITIVE ("ARRAY-UNARY-FUNCTION!", Prim_array_unary_function, 2,2, 0)
+{ long n, i;
   REAL *a,*b;
-  SCHEME_ARRAY Result;
-  long functc;
+  long tc;
   void (*f)();
   
-  Primitive_2_Args();
-  Arg_1_Type(TC_ARRAY);
-  Arg_2_Type(TC_FIXNUM);
-  Length = Array_Length(Arg1);
-  Range_Check(functc, Arg2, 0, MAX_ARRAY_FUNCTC, ERR_ARG_2_BAD_RANGE);
-  f = ((Array_Function_Table[functc]).func);
-  if (1 != (Array_Function_Table[functc]).numofargs) /* check unary */
-    Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-
-  Result = Arg1;
-  a = Scheme_Array_To_C_Array(Arg1);
-  b = Scheme_Array_To_C_Array(Result);
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (1, ARRAY_P);	/*      a  = input (and output) array    */
+  CHECK_ARG (2, FIXNUM_P);	/*      tc = type code                   */
   
-  for (i=0; i<Length; i++)
-    (*f) ( &(a[i]), &(b[i]) );	/* a to b */
-  return Result; 
+  tc = arg_nonnegative_integer(2);
+  if (tc > MAX_ARRAY_FUNCTC) error_bad_range_arg(2);
+  f = ((Array_Function_Table[tc]).func);
+  if (1 != (Array_Function_Table[tc]).numofargs) error_wrong_type_arg(2);
+  /* check it is a unary function */
+  
+  a = Scheme_Array_To_C_Array(ARG_REF(1));
+  b = a;
+  n = Array_Length(ARG_REF(1));
+  
+  for (i=0; i<n; i++)
+    (*f) ( &(a[i]), &(b[i]) );	/* a into b */
+  
+  PRIMITIVE_RETURN (NIL);
 }
 
 
@@ -1038,57 +1102,287 @@ DEFINE_PRIMITIVE ("ARRAY-CLIP-MIN-MAX!", Prim_array_clip_min_max, 3, 3, 0)
   return SHARP_F;
 }
 
-DEFINE_PRIMITIVE ("COMPLEX-ARRAY-TO-POLAR!",
-		  Prim_complex_array_to_polar, 2, 2, 0)
-{ long Length, i;
-  REAL *To_Here_Mag, *To_Here_Phase;
-  REAL *From_Here_Real, *From_Here_Imag;
-  Pointer Result_Mag, Result_Phase;
-  
-  Primitive_2_Args();
-  Arg_1_Type(TC_ARRAY);
-  Arg_2_Type(TC_ARRAY);
-  Length = Array_Length(Arg1);
-  if (Length != Array_Length(Arg2)) Primitive_Error(ERR_ARG_1_BAD_RANGE);
-  
-  Result_Mag = Arg1;
-  Result_Phase = Arg2;
-  
-  From_Here_Real = Scheme_Array_To_C_Array(Arg1);
-  From_Here_Imag = Scheme_Array_To_C_Array(Arg2);
-  To_Here_Mag = Scheme_Array_To_C_Array(Result_Mag);
-  To_Here_Phase = Scheme_Array_To_C_Array(Result_Phase);
 
-  for (i=0; i < Length; i++) 
-  { C_Make_Polar(*From_Here_Real, *From_Here_Imag, *To_Here_Mag, *To_Here_Phase);
-    From_Here_Real++ ;  From_Here_Imag++ ;
-    To_Here_Mag++ ;     To_Here_Phase++ ; }
-  
-  return SHARP_F;
-}
+/* complex-array-operation-1!
+   groups together procedures   that use 1 complex-array    
+   and                         store the result in place
+   */
 
-DEFINE_PRIMITIVE ("COMPLEX-ARRAY-MAGNITUDE!", Prim_complex_array_magnitude, 3, 3, 0)
-{ long n, i;
-  REAL *a, *b, *mg;
+DEFINE_PRIMITIVE ("COMPLEX-ARRAY-OPERATION-1!",
+		  Prim_complex_array_operation_1, 3,3, 0)
+{ long n, i, opcode;
+  REAL *a, *b;
+  void complex_array_to_polar(), complex_array_exp(), complex_array_sqrt();
+  void complex_array_sin(), complex_array_cos();
+  void complex_array_asin(), complex_array_acos();
   
   PRIMITIVE_HEADER (3);
-  CHECK_ARG (1, ARRAY_P);	/* input array -- n      real part         */
-  CHECK_ARG (2, ARRAY_P);	/* input array -- n      imag part         */
-  CHECK_ARG (3, ARRAY_P);	/* ouput array -- n      magnitude         */
+  CHECK_ARG (1, FIXNUM_P);	/* operation opcode */
+  CHECK_ARG (2, ARRAY_P);	/* input array -- n      real part         */
+  CHECK_ARG (3, ARRAY_P);	/* input array -- n      imag part         */
   
-  n = Array_Length(ARG_REF(1));
-  if (n != Array_Length(ARG_REF(2))) error_bad_range_arg(2);
+  n = Array_Length(ARG_REF(2));
   if (n != Array_Length(ARG_REF(3))) error_bad_range_arg(3);
   
-  a  = Scheme_Array_To_C_Array(ARG_REF(1)); /*  real part */
-  b  = Scheme_Array_To_C_Array(ARG_REF(2)); /*  imag part */
-  mg = Scheme_Array_To_C_Array(ARG_REF(3)); /*  magnitude */
+  a  = Scheme_Array_To_C_Array(ARG_REF(2)); /*  real part */
+  b  = Scheme_Array_To_C_Array(ARG_REF(3)); /*  imag part */
   
-  for (i=0; i<n; i++)
-    mg[i] = (REAL) sqrt( (double) a[i]*a[i] + b[i]*b[i] );
+  opcode = arg_nonnegative_integer(1);
+  
+  if (opcode==1)
+    complex_array_to_polar(a,b,n); 
+  else if (opcode==2)
+    complex_array_exp(a,b,n); 
+  else if (opcode==3)
+    complex_array_sqrt(a,b,n); 
+  else if (opcode==4)
+    complex_array_sin(a,b,n); 
+  else if (opcode==5)
+    complex_array_cos(a,b,n); 
+  else if (opcode==6)
+    complex_array_asin(a,b,n); 
+  else if (opcode==7)
+    complex_array_acos(a,b,n); 
+  else
+    error_bad_range_arg(1);	/* illegal opcode */
   
   PRIMITIVE_RETURN (NIL);
 }
+
+void complex_array_to_polar(a,b,n)
+     REAL *a,*b; long n;
+{ long i;
+  double x,y, temp;
+  for (i=0; i<n; i++) {
+    x = (double) a[i];
+    y = (double) b[i];
+    temp = sqrt(x*x + y*y);
+    if (temp == 0.0)
+      b[i] = 0.0;		/* choose angle = 0    for x,y=0,0 */
+    else
+      b[i] = (REAL) atan2(y,x);
+    a[i]   = (REAL) temp;
+  }
+} 
+
+void complex_array_exp(a,b,n)
+     REAL *a,*b; long n;
+{ long i;
+  double x,y, temp;
+  
+  for (i=0; i<n; i++)
+  { x = (double) a[i];
+    y = (double) b[i];
+    if ((temp = exp(x)) == HUGE) error_bad_range_arg(2); /* overflow */
+    a[i] = (REAL) (temp*cos(y));
+    b[i] = (REAL) (temp*sin(y));
+  }
+}
+
+void complex_array_sqrt(a,b,n)
+     REAL *a,*b; long n;
+{ long i;
+  double x,y, r;
+  
+  for (i=0; i<n; i++)
+  { x = (double) a[i];
+    y = (double) b[i];
+    r = sqrt( x*x + y*y);
+    a[i] = sqrt((r+x)/2.0);
+    if (y>0.0) 
+      b[i] =  sqrt((r-x)/2.0);	/* choose principal root */
+    else			/* see Abramowitz (p.17 3.7.27) */
+      b[i] = -sqrt((r-x)/2.0);
+  }
+}
+
+void complex_array_sin(a,b,n)
+     REAL *a,*b; long n;
+{ long i;
+  double x, ey,fy;
+  REAL temp;
+  
+  for (i=0; i<n; i++)
+  { x = (double) a[i];
+    ey = exp((double) b[i]);	/* radius should be small to avoid overflow */
+    fy = 1.0/ey;		/* exp(-y) */
+    temp = (REAL) (sin(x) * (ey + fy) * 0.5); /* expanded (e(iz)-e(-iz))*(-.5i) formula */
+    b[i] = (REAL) (cos(x) * (ey - fy) * 0.5); /* see my notes in Abram.p.71 */
+    a[i] = temp;
+  }
+}
+
+void complex_array_cos(a,b,n)
+     REAL *a,*b; long n;
+{ long i;
+  double x, ey,fy;
+  REAL temp;
+  
+  for (i=0; i<n; i++)
+  { x = (double) a[i];
+    ey = exp((double) b[i]);	/* radius should be small to avoid overflow */
+    fy = 1.0/ey;		/* exp(-y) */
+    temp = (REAL) (cos(x) * (ey + fy) * 0.5); /* expanded (e(iz)+e(-iz))*.5 formula */
+    b[i] = (REAL) (sin(x) * (fy - ey) * 0.5); /* see my notes in Abram.p.71*/
+    a[i] = temp;
+  }
+}
+
+void complex_array_asin(a,b,n)
+     REAL *a,*b; long n;
+{ long i;
+  double x,y, alfa,beta, xp1,xm1;
+  
+  for (i=0; i<n; i++)
+  { x = (double) a[i];
+    y = (double) b[i];
+    xp1 = x+1;        xm1 = x-1;
+    xp1 = xp1*xp1;    xm1 = xm1*xm1;
+    y = y*y;
+    x = sqrt(xp1+y);		/* use again as temp var */
+    y = sqrt(xm1+y);		/* use again as temp var */
+    alfa = (x+y)*0.5;
+    beta = (x-y)*0.5;		/* Abramowitz p.81 4.4.37 */
+    a[i]   = (REAL) asin(beta);
+    b[i]   = (REAL) log(alfa + sqrt(alfa*alfa - 1));
+  }
+}
+
+void complex_array_acos(a,b,n)
+     REAL *a,*b; long n;
+{ long i;
+  double x,y, alfa,beta, xp1,xm1;
+  
+  for (i=0; i<n; i++)
+  { x = (double) a[i];
+    y = (double) b[i];
+    xp1 = x+1;        xm1 = x-1;
+    xp1 = xp1*xp1;    xm1 = xm1*xm1;
+    y = y*y;
+    x = sqrt(xp1+y);		/* use again as temp var */
+    y = sqrt(xm1+y);		/* use again as temp var */
+    alfa = (x+y)*0.5;
+    beta = (x-y)*0.5;		/* Abramowitz p.81 4.4.38 */
+    a[i]   = (REAL) acos(beta);
+    b[i]   = (REAL) -log(alfa + sqrt(alfa*alfa - 1));
+  }
+}
+
+
+/* complex-array-operation-1b!
+   groups together procedures   that use 1 complex-array    &  1 number
+   and                         store the result in place
+   (e.g. invert 1/x)
+   */
+
+DEFINE_PRIMITIVE ("COMPLEX-ARRAY-OPERATION-1B!",
+		  Prim_complex_array_operation_1b, 4,4, 0)
+{ long n, i, opcode;
+  REAL *a, *b, inf;
+  void complex_array_invert();
+  int errcode;
+  
+  PRIMITIVE_HEADER (4);
+  CHECK_ARG (1, FIXNUM_P);	/* operation opcode */
+  CHECK_ARG (2, ARRAY_P);	/* input array -- n      real part         */
+  CHECK_ARG (3, ARRAY_P);	/* input array -- n      imag part         */
+  errcode = Scheme_Number_To_REAL(ARG_REF(4), &inf); /* User-Provided Infinity */
+  if (errcode==1) error_bad_range_arg(4); if (errcode==2) error_wrong_type_arg(4);
+  
+  n = Array_Length(ARG_REF(2));
+  if (n != Array_Length(ARG_REF(3))) error_bad_range_arg(3);
+  
+  a  = Scheme_Array_To_C_Array(ARG_REF(2)); /*  real part */
+  b  = Scheme_Array_To_C_Array(ARG_REF(3)); /*  imag part */
+  
+  opcode = arg_nonnegative_integer(1);
+  
+  if (opcode==1)
+    complex_array_invert(a,b, n, inf);  /* performs 1/x */
+  else if (opcode==2)
+    error_bad_range_arg(1);	/* illegal opcode */
+  else
+    error_bad_range_arg(1);	/* illegal opcode */
+  
+  PRIMITIVE_RETURN (NIL);
+}
+
+void complex_array_invert(a,b, n, inf)
+     REAL *a,*b, inf; long n;
+{ long i;
+  double x,y, r;
+  
+  for (i=0; i<n; i++)
+  { x = (double) a[i];
+    y = (double) b[i];
+    r = (x*x + y*y);
+    if (r==0.0) {
+      a[i] = inf;
+      b[i] = inf; }
+    else {
+      a[i] = (REAL)  x/r;
+      b[i] = (REAL) -y/r; }
+  }
+}
+
+
+
+/* complex-array-operation-1a
+   groups together procedures   that use 1 complex-array    
+   and                 store result in a 3rd real array.
+   */
+
+DEFINE_PRIMITIVE ("COMPLEX-ARRAY-OPERATION-1A",
+		  Prim_complex_array_operation_1a, 4,4, 0)
+{ long n, i, opcode;
+  REAL *a, *b, *c;
+  void complex_array_magnitude(), complex_array_angle();
+  
+  PRIMITIVE_HEADER (4);
+  CHECK_ARG (1, FIXNUM_P);	/* operation opcode */
+  CHECK_ARG (2, ARRAY_P);	/* input array -- n      real part         */
+  CHECK_ARG (3, ARRAY_P);	/* input array -- n      imag part         */
+  CHECK_ARG (4, ARRAY_P);	/* output array -- n                       */
+  
+  n = Array_Length(ARG_REF(2));
+  if (n != Array_Length(ARG_REF(3))) error_bad_range_arg(3);
+  if (n != Array_Length(ARG_REF(4))) error_bad_range_arg(4);
+  
+  a  = Scheme_Array_To_C_Array(ARG_REF(2)); /*  real part */
+  b  = Scheme_Array_To_C_Array(ARG_REF(3)); /*  imag part */
+  c  = Scheme_Array_To_C_Array(ARG_REF(4)); /*  output    */
+  
+  opcode = arg_nonnegative_integer(1);
+  
+  if (opcode==1)
+    complex_array_magnitude(a,b,c,n); 
+  else if (opcode==2)
+    complex_array_angle(a,b,c,n); 
+  else
+    error_bad_range_arg(1);	/* illegal opcode */
+  
+  PRIMITIVE_RETURN (NIL);
+}
+
+void complex_array_magnitude(a,b,c,n)
+     REAL *a,*b,*c; long n;
+{ long i;
+  for (i=0; i<n; i++)
+    c[i] = (REAL) sqrt( (double) a[i]*a[i] + b[i]*b[i] );
+}
+
+void complex_array_angle(a,b,c,n)
+     REAL *a,*b,*c; long n;
+{ long i;
+  for (i=0; i<n; i++) {
+    if ((a[i] == 0.0) && (b[i]==0.0))
+      c[i] = 0.0;		/* choose angle=0   for point (0,0) */
+    else
+      c[i] = (REAL) atan2( (double) b[i], (double) a[i]); }
+  /*                                imag           real   */
+}
+
+
 
 DEFINE_PRIMITIVE ("CS-ARRAY-MAGNITUDE!", Prim_cs_array_magnitude, 1, 1, 0)
 { long n, i;
@@ -1291,45 +1585,56 @@ DEFINE_PRIMITIVE ("ARRAY-MULTIPLY-INTO-SECOND-ONE!",
   return Result;
 }
 
-DEFINE_PRIMITIVE ("COMPLEX-ARRAY-MULTIPLY-INTO-SECOND-ONE!",
-		  Prim_complex_array_multiply_into_second_one, 4, 4, 0)
-{ long Length, i;
-  REAL *To_Here_1, *To_Here_2;
-  REAL *From_Here_1, *From_Here_2, *From_Here_3, *From_Here_4;
-  REAL Temp;
-  Pointer Result_1, Result_2;
-  
-  Primitive_4_Args();
-  Arg_1_Type(TC_ARRAY);
-  Arg_2_Type(TC_ARRAY);
-  Arg_3_Type(TC_ARRAY);
-  Arg_4_Type(TC_ARRAY);
-  Length = Array_Length(Arg1);
-  if (Length != Array_Length(Arg2)) Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  if (Length != Array_Length(Arg3)) Primitive_Error(ERR_ARG_3_BAD_RANGE);
-  if (Length != Array_Length(Arg4)) Primitive_Error(ERR_ARG_4_BAD_RANGE);
+/* complex-array-operation-2!
+   groups together procedures   that use 2 complex-arrays     
+   and                 store result in either 1st or 2nd
+   */
 
-  Result_1 = Arg3;
-  Result_2 = Arg4;
+DEFINE_PRIMITIVE ("COMPLEX-ARRAY-OPERATION-2!",
+		  Prim_complex_array_operation_2, 5,5, 0)
+{ long n, opcode;
+  REAL *ax,*ay, *bx,*by;
+  void complex_array_multiply_into_second_one();
   
-  From_Here_1 = Scheme_Array_To_C_Array(Arg1);
-  From_Here_2 = Scheme_Array_To_C_Array(Arg2);
-  From_Here_3 = Scheme_Array_To_C_Array(Arg3);
-  From_Here_4 = Scheme_Array_To_C_Array(Arg4);
-  To_Here_1 = Scheme_Array_To_C_Array(Result_1);
-  To_Here_2 = Scheme_Array_To_C_Array(Result_2);
+  PRIMITIVE_HEADER (5);
+  CHECK_ARG (1, FIXNUM_P);	/* operation opcode */
+  CHECK_ARG (2, ARRAY_P);	/* ax array -- n      real         */
+  CHECK_ARG (3, ARRAY_P);	/* ay array -- n      imag         */
+  CHECK_ARG (4, ARRAY_P);	/* bx array -- n      real         */
+  CHECK_ARG (5, ARRAY_P);	/* by array -- n      imag         */
   
-  for (i=0; i < Length; i++) {
-    Temp  = (*From_Here_1) * (*From_Here_3) - (*From_Here_2) * (*From_Here_4);
-    *To_Here_2++ = (*From_Here_1) * (*From_Here_4) + (*From_Here_2) * (*From_Here_3);
-    *To_Here_1++ = Temp;
-    From_Here_1++ ;
-    From_Here_2++ ;
-    From_Here_3++ ;
-    From_Here_4++ ;
-  }
-  return SHARP_F;
+  n = Array_Length(ARG_REF(2));
+  if (n != Array_Length(ARG_REF(3))) error_bad_range_arg(3);
+  if (n != Array_Length(ARG_REF(4))) error_bad_range_arg(4);
+  if (n != Array_Length(ARG_REF(4))) error_bad_range_arg(5);
+  
+  ax  = Scheme_Array_To_C_Array(ARG_REF(2)); /*  real */
+  ay  = Scheme_Array_To_C_Array(ARG_REF(3)); /*  imag */
+  bx  = Scheme_Array_To_C_Array(ARG_REF(4)); /*  real */
+  by  = Scheme_Array_To_C_Array(ARG_REF(5)); /*  imag */
+  
+  opcode = arg_nonnegative_integer(1);
+  
+  if (opcode==1)
+    complex_array_multiply_into_second_one(ax,ay,bx,by, n); 
+  else if (opcode==2)
+    error_bad_range_arg(1);	/* illegal opcode */
+  else
+    error_bad_range_arg(1);	/* illegal opcode */
+  
+  PRIMITIVE_RETURN (NIL);
 }
+
+void complex_array_multiply_into_second_one(ax,ay,bx,by, n)
+     REAL *ax,*ay,*bx,*by; long n;
+{ long i;
+  REAL temp;
+  for (i=0;i<n;i++) {
+    temp   = ax[i]*bx[i]  -  ay[i]*by[i]; /*  real part */
+    by[i]  = ax[i]*by[i]  +  ay[i]*bx[i]; /*  imag part */
+    bx[i]  = temp; }
+}
+
 
 void C_Array_Complex_Multiply_Into_First_One(a,b,c,d, length) /* used in fft.c */
      REAL *a,*b,*c,*d; long length;
@@ -1383,57 +1688,68 @@ void array_divide_into_z( x,y, z, n, inf) /* z can either x or y */
   }
 }
 
-DEFINE_PRIMITIVE ("COMPLEX-ARRAY-DIVIDE-INTO-XXX!",
-		  Prim_complex_array_divide_into_xxx, 6,6, 0)
-{ long n, i, one_or_two;
-  REAL inf, *xr,*xi, *yr,*yi;
+
+/* complex-array-operation-2b!
+   groups together procedures   that use 2 complex-arrays   & 1 additional real number
+   and                 store result in either 1st or 2nd
+   (e.g. division)
+   */
+
+DEFINE_PRIMITIVE ("COMPLEX-ARRAY-OPERATION-2B!",
+		  Prim_complex_array_operation_2b, 6,6, 0)
+{ long n, opcode;
+  REAL *ax,*ay, *bx,*by,  inf;
   void complex_array_divide_into_z();
   int errcode;
   
   PRIMITIVE_HEADER (6);
-  CHECK_ARG (1, ARRAY_P);       /* real numerator */
-  CHECK_ARG (2, ARRAY_P);	/* imag numerator */
-  CHECK_ARG (3, ARRAY_P);	/* real denominator */
-  CHECK_ARG (4, ARRAY_P);	/* imag denominator */
-  CHECK_ARG (6, FIXNUM_P);	/* one_or_two = where to store the result */
-  n = Array_Length(ARG_REF(1));
-  if (n != Array_Length(ARG_REF(2))) error_bad_range_arg(2);
+  CHECK_ARG (1, FIXNUM_P);	/* operation opcode */
+  CHECK_ARG (2, ARRAY_P);	/* ax array -- n      real         */
+  CHECK_ARG (3, ARRAY_P);	/* ay array -- n      imag         */
+  CHECK_ARG (4, ARRAY_P);	/* bx array -- n      real         */
+  CHECK_ARG (5, ARRAY_P);	/* by array -- n      imag         */
+  errcode = Scheme_Number_To_REAL(ARG_REF(6), &inf); /* User-Provided Infinity */
+  if (errcode==1) error_bad_range_arg(6); if (errcode==2) error_wrong_type_arg(6);
+  
+  n = Array_Length(ARG_REF(2));
   if (n != Array_Length(ARG_REF(3))) error_bad_range_arg(3);
   if (n != Array_Length(ARG_REF(4))) error_bad_range_arg(4);
-  errcode = Scheme_Number_To_REAL(ARG_REF(5), &inf); /* User-Provided Infinity */
-  if (errcode==1) error_bad_range_arg(5); if (errcode==2) error_wrong_type_arg(5);
+  if (n != Array_Length(ARG_REF(4))) error_bad_range_arg(5);
   
-  one_or_two = arg_nonnegative_integer(6); 
-  xr = Scheme_Array_To_C_Array(ARG_REF(1));
-  xi = Scheme_Array_To_C_Array(ARG_REF(2));
-  yr = Scheme_Array_To_C_Array(ARG_REF(3));
-  yi = Scheme_Array_To_C_Array(ARG_REF(4));
+  ax  = Scheme_Array_To_C_Array(ARG_REF(2)); /*  real */
+  ay  = Scheme_Array_To_C_Array(ARG_REF(3)); /*  imag */
+  bx  = Scheme_Array_To_C_Array(ARG_REF(4)); /*  real */
+  by  = Scheme_Array_To_C_Array(ARG_REF(5)); /*  imag */
   
-  if (one_or_two == 1)
-    complex_array_divide_into_z(xr,xi, yr,yi, xr,xi,  n, inf);
-  else if (one_or_two == 2)
-    complex_array_divide_into_z(xr,xi, yr,yi, yr,yi,  n, inf);
+  opcode = arg_nonnegative_integer(1);
+  
+  if (opcode==1)
+    complex_array_divide_into_z(ax,ay,bx,by, ax,ay,  n, inf); /* into-first-one */
+  else if (opcode==2)
+    complex_array_divide_into_z(ax,ay,bx,by, bx,by,  n, inf); /* into-second-one */
   else
-    error_bad_range_arg(6);
+    error_bad_range_arg(1);	/* illegal opcode */
+  
   PRIMITIVE_RETURN (NIL);
 }
+
 
 void complex_array_divide_into_z(xr,xi, yr,yi, zr,zi, n, inf)   /* z can be either x or y */
      REAL *xr,*xi, *yr,*yi, *zr,*zi, inf;   long n;
 { long i;
-  register REAL temp, radius;
+  register double temp, radius;
   
   for (i=0; i<n; i++)
-  { radius = (yr[i] * yr[i]) + (yi[i] * yi[i]); /* denominator */
+  { radius = (double) (yr[i] * yr[i]) + (yi[i] * yi[i]); /* denominator */
     if (radius == 0.0) {
       if (xr[i] == 0.0) zr[i] = 1.0;
       else              zr[i] = inf * xr[i];
       if (xi[i] == 0.0) zi[i] = 1.0;
       else              zi[i] = inf * xi[i]; }
     else {
-      temp        =  xr[i] * yr[i]  +  xi[i] * yi[i];
-      zi[i] = (xi[i] * yr[i]  -  xr[i] * yi[i]) / radius;
-      zr[i] = temp                              / radius; 
+      temp        =  (double) (xr[i] * yr[i]  +  xi[i] * yi[i]);
+      zi[i] = (REAL) (xi[i] * yr[i]  -  xr[i] * yi[i]) / radius;
+      zr[i] = (REAL) temp                              / radius; 
     }}
 }
 
@@ -1555,19 +1871,22 @@ double unit_triangle_wave(t) double t;
   else                           return (-((twopi-t_bar)/pi));
 }
 
-DEFINE_PRIMITIVE ("ARRAY-HANNING", Prim_array_hanning, 2, 2, 0)
-{ long length, hanning_power, allocated_cells;
-  SCHEME_ARRAY answer; 
+
+DEFINE_PRIMITIVE ("ARRAY-HANNING!", Prim_array_hanning, 2,2, 0)
+{ long n, hanning_power;
+  REAL *a;
   void C_Array_Make_Hanning();
-  Primitive_2_Args();
-  Arg_1_Type(TC_FIXNUM);
-  Arg_2_Type(TC_FIXNUM);
-  length = Get_Integer(Arg1);
-  hanning_power = Get_Integer(Arg2);
   
-  Allocate_Array(answer, length, allocated_cells);
-  C_Array_Make_Hanning( (Scheme_Array_To_C_Array(answer)), length, hanning_power);
-  return answer;
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (1, ARRAY_P);	/* input array -- n */
+  CHECK_ARG (2, FIXNUM_P);	/* hanning power */
+
+  a  = Scheme_Array_To_C_Array(ARG_REF(1));
+  n = Array_Length(ARG_REF(1));
+  hanning_power = arg_nonnegative_integer(2);
+  
+  C_Array_Make_Hanning( a, n, hanning_power);
+  PRIMITIVE_RETURN (NIL);
 }
 void C_Array_Make_Hanning(f1, length, power)
      REAL f1[]; long length, power;
@@ -1601,9 +1920,51 @@ double integer_power(a, n) double a; long n;
   { return(a * integer_power(a, (n-1))); }
 }
 
+/* array-operation-1!
+   groups together procedures   that use 1 array    
+   and                         store the result in place
+   (e.g. random)
+   */
+
+DEFINE_PRIMITIVE ("ARRAY-OPERATION-1!",
+		  Prim_array_operation_1, 2,2, 0)
+{ long n, opcode;
+  REAL *a;
+  void array_random();
+  
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (1, FIXNUM_P);	/* operation opcode */
+  CHECK_ARG (2, ARRAY_P);	/* input array -- n */
+  
+  n = Array_Length(ARG_REF(2));
+  a  = Scheme_Array_To_C_Array(ARG_REF(2));
+  
+  opcode = arg_nonnegative_integer(1);
+  
+  if (opcode==1)
+    array_random(a,n); 
+  else if (opcode==2)
+    error_bad_range_arg(1);	/* illegal opcode */
+  else
+    error_bad_range_arg(1);	/* illegal opcode */
+  
+  PRIMITIVE_RETURN (NIL);
+}
+
+void array_random(a,n)
+     REAL *a; long n;
+{ long i;
+  /* HPUX 3: Rand uses a multiplicative congruential random-number generator
+     with period 2^32 that returns successive pseudo-random numbers in the 
+     range from 0 to 2^15-1 */
+  for (i=0;i<n;i++)
+    a[i] = ((REAL) rand()) * (3.0517578125e-5);	/* 3.051xxx = 2^(-15) 
+						   makes the range from 0 to 1 */
+}
+
 
 /* The following should go away. 
-   Better done using ARRAY-CONS-INTEGERS, and ARRAY-UNARY-FUNCTION
+   superceded by ARRAY-CONS-INTEGERS, ARRAY-UNARY-FUNCTION and array-random
    */
 DEFINE_PRIMITIVE ("SAMPLE-APERIODIC-FUNCTION", Prim_sample_aperiodic_function, 3, 3, 0)
 { long N, i, allocated_cells, Function_Number;
@@ -1630,8 +1991,11 @@ DEFINE_PRIMITIVE ("SAMPLE-APERIODIC-FUNCTION", Prim_sample_aperiodic_function, 3
   
   DT = (twopi * (1 / Sampling_Frequency));
   if      (Function_Number == 0)
-    for (i=0, DTi=0.0; i < N; i++, DTi += DT) 
-      *To_Here++ = (REAL) rand();
+    /* HPUX 3: Rand uses a multiplicative congruential random-number generator
+       with period 2^32 that returns successive pseudo-random numbers in the 
+       range from 0 to 2^15-1 */
+    for (i=0; i<N; i++)
+      *To_Here++ = 3.0517578125e-5 * ((REAL) rand()); /* 2^(-15) makes range from 0 to 1 */
   else if (Function_Number == 1)
   { double length=DT*N;
     for (i=0, DTi=0.0; i < N; i++, DTi += DT)
