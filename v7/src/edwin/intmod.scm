@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.88 1997/08/03 06:44:39 cph Exp $
+;;;	$Id: intmod.scm,v 1.89 1998/03/02 19:05:12 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -340,10 +340,19 @@ REPL uses current evaluation environment."
   "Major mode for communicating with an inferior read-eval-print loop (REPL).
 Editing and evaluation commands are like Scheme mode:
 
+\\[lisp-indent-line] indents the current line for Scheme.
+\\[indent-sexp] indents the next s-expression.
+\\[scheme-complete-variable] completes the variable preceding point.
+\\[show-parameter-list] shows the parameters of the call surrounding point.
+
 \\[inferior-repl-eval-last-sexp] evaluates the expression preceding point.
 \\[inferior-repl-eval-defun] evaluates the current definition.
 \\[inferior-repl-eval-region] evaluates the current region.
-C-g aborts any evaluation.
+
+When an error occurs, you can run the command-line debugger with (debug),
+or you can run the windowed debugger:
+
+\\[inferior-repl-debug] enters windowed debugger on the current error.
 
 Expressions submitted for evaluation are saved in an expression history.
 The history may be accessed with the following commands:
@@ -355,8 +364,10 @@ The history may be accessed with the following commands:
 
 The REPL may be controlled by the following commands:
 
-\\[inferior-cmdl-abort-top-level] returns to top level.
-\\[inferior-cmdl-abort-previous] goes up one level."
+\\[inferior-cmdl-abort-top-level] aborts evaluation, returns to top level.
+\\[inferior-cmdl-abort-nearest] aborts evaluation, returns to current level.
+\\[inferior-cmdl-abort-previous] aborts evaluation, goes up one level.
+\\[inferior-cmdl-breakpoint] interrupts evaluation, enters a breakpoint."
   (lambda (buffer)
     (event-distributor/invoke! (ref-variable inferior-repl-mode-hook buffer)
 			       buffer)))
@@ -391,7 +402,9 @@ Typing ? will show you which characters perform useful functions.
 Additionally, these commands abort the command loop:
 
 \\[inferior-cmdl-abort-top-level] returns to the top-level REPL.
-\\[inferior-cmdl-abort-previous] returns to the previous level REPL."
+\\[inferior-cmdl-abort-previous] goes up one level to the previous REPL.
+\\[inferior-cmdl-abort-nearest] returns to the current REPL.
+\\[inferior-cmdl-breakpoint] enters a breakpoint REPL."
   (lambda (buffer)
     (event-distributor/invoke! (ref-variable inferior-cmdl-mode-hook buffer)
 			       buffer)))
