@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.2 1988/08/05 20:15:15 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.3 1989/08/12 00:18:46 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -84,7 +84,7 @@ MIT in each case. |#
     COMPILED-CODE-ADDRESS->OFFSET
     CONS
     ENABLE-INTERRUPTS!
-    ENVIRONMENT-LINK-NAME    EQ?
+    EQ?
     ERROR-PROCEDURE
     EXECUTE-AT-NEW-STATE-POINT
     FALSE
