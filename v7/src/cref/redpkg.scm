@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.20 2001/10/01 20:40:07 cph Exp $
+$Id: redpkg.scm,v 1.21 2001/11/15 05:26:26 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -522,8 +522,8 @@ USA.
 			 (vector-ref entry 0)
 			 (vector-ref entry 2))))
 		(bind! package name expression #f)
-		(link! package name
-		       external-package external-name
+		(link! package name #f
+		       external-package external-name #f
 		       package #f))))
 	  ;; Imported bindings.
 	  (for-each-vector-element (vector-ref desc 4)
@@ -534,8 +534,8 @@ USA.
 			 (vector-ref entry 0)
 			 (vector-ref entry 2))))
 		(bind! external-package external-name expression #f)
-		(link! external-package external-name
-		       package (vector-ref entry 0)
+		(link! external-package external-name #f
+		       package (vector-ref entry 0) #f
 		       package #f)))))))))
 
 (define (package-lookup package name)
@@ -560,17 +560,17 @@ USA.
   (for-each (lambda (export)
 	      (let ((destination (get-package (car export) #t)))
 		(for-each (lambda (names)
-			    (link! package (car names)
-				   destination (cdr names)
-				   package new?))
+			    (link! package (car names) new?
+				   destination (cdr names) #t
+				   package #t))
 			  (cdr export))))
 	    (package-description/exports description))
   (for-each (lambda (import)
 	      (let ((source (get-package (car import) #t)))
 		(for-each (lambda (names)
-			    (link! source (cdr names)
-				   package (car names)
-				   package new?))
+			    (link! source (cdr names) #f
+				   package (car names) #t
+				   package #t))
 			  (cdr import))))
 	    (package-description/imports description)))
 
@@ -593,25 +593,34 @@ USA.
 	  (set-value-cell/expressions! value-cell
 				       (cons expression expressions))))))
 
-(define (link! source-package source-name
-	       destination-package destination-name
-	       owner-package new?)
-  (let ((source-binding (intern-binding! source-package source-name new?))
-	(destination-binding
-	 (package/find-binding destination-package destination-name)))
-    (if (and destination-binding
-	     (not (eq? (binding/value-cell destination-binding)
-		       (binding/value-cell source-binding))))
-	(error "Attempt to reinsert binding:" destination-name))
-    (let ((destination-binding
-	   (make-binding destination-package
-			 destination-name
-			 (binding/value-cell source-binding)
-			 new?)))
-      (rb-tree/insert! (package/bindings destination-package)
-		       destination-name
-		       destination-binding)
-      (make-link source-binding destination-binding owner-package new?))))
+(define (link! source-package source-name source-new?
+	       destination-package destination-name destination-new?
+	       owner-package link-new?)
+  (let ((source-binding
+	 (intern-binding! source-package source-name source-new?)))
+    (make-link source-binding
+	       (let ((binding
+		      (package/find-binding destination-package
+					    destination-name)))
+		 (if binding
+		     (begin
+		       (if (not (eq? (binding/value-cell binding)
+				     (binding/value-cell source-binding)))
+			   (error "Attempt to reinsert binding:"
+				  destination-name destination-package))
+		       (if destination-new? (set-binding/new?! binding #t))
+		       binding)
+		     (let ((binding
+			    (make-binding destination-package
+					  destination-name
+					  (binding/value-cell source-binding)
+					  destination-new?)))
+		       (rb-tree/insert! (package/bindings destination-package)
+					destination-name
+					binding)
+		       binding)))
+	       owner-package
+	       link-new?)))
 
 (define (intern-binding! package name new?)
   (let ((binding (package/find-binding package name)))
