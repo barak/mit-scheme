@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.51 2005/03/19 04:56:37 cph Exp $
+$Id: record.scm,v 1.52 2005/03/19 05:08:17 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003,2004,2005 Massachusetts Institute of Technology
@@ -236,14 +236,18 @@ USA.
 
 (define set-record-type-unparser-method!/after-boot
   (named-lambda (set-record-type-unparser-method! record-type method)
-    (guarantee-unparser-method method 'SET-RECORD-TYPE-UNPARSER-METHOD!)
-    (let ((tag (record-type-dispatch-tag record-type)))
-      (remove-generic-procedure-generators unparse-record
-					   (list (make-dispatch-tag #f) tag))
-      (add-generic-procedure-generator unparse-record
-	(lambda (generic tags)
-	  generic
-	  (and (eq? (cadr tags) tag) method))))))
+    (guarantee-record-type record-type 'SET-RECORD-TYPE-UNPARSER-METHOD!)
+    (if method
+	(guarantee-unparser-method method 'SET-RECORD-TYPE-UNPARSER-METHOD!))
+    (let ((tag (%record-type-dispatch-tag record-type)))
+      (remove-generic-procedure-generators
+       unparse-record
+       (list (record-type-dispatch-tag rtd:unparser-state) tag))
+      (if method
+	  (add-generic-procedure-generator unparse-record
+	    (lambda (generic tags)
+	      generic
+	      (and (eq? (cadr tags) tag) method)))))))
 
 (define (record-type-extension record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-EXTENSION)
