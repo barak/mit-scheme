@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosint10.c,v 1.5 1992/10/17 22:54:55 jinx Exp $
+$Id: dosint10.c,v 1.6 1992/10/20 15:07:24 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -83,23 +83,30 @@ map_ansi_sys_color_to_bios_attribute (int iANSIcode)
     {
       case 30:
       case 40: return 0x00;
+
       case 31:
       case 41: return _0B(0,0,0,0,0,1,0,0);
+
       case 32:
       case 42: return _0B(0,0,0,0,0,0,1,0);
+
       case 33:
       case 43: return _0B(0,0,0,0,0,1,1,0);
+
       case 34:
       case 44: return _0B(0,0,0,0,0,0,0,1);
+
       case 35:
       case 45: return _0B(0,0,0,0,0,1,0,1);
+
       case 36:
       case 46: return _0B(0,0,0,0,0,0,1,1);
+ 
       case 37:
       case 47: return _0B(0,0,0,0,0,1,1,1);
+
+      default: return (0);
     }
-  return 0x00;
-    /* covers case of atoi parse failure returning 0 */
 }
 
 static int bios_initialized_p = 0;
@@ -124,8 +131,8 @@ bios_initialize_variables (int foreground, int background)
 
   foreground_attribute = (MAP (foreground));
   background_attribute = (MAP (background));
-  normal_video = (foreground_attribute | background_attribute);
-  reverse_video = ((foreground_attribute << 4) | (background_attribute >> 4));
+  normal_video = ((background_attribute << 4) | foreground_attribute);
+  reverse_video = ((foreground_attribute << 4) | background_attribute);
   return;
 }
 
@@ -368,7 +375,6 @@ DEFINE_PRIMITIVE ("BIOS:CLEAR-SCREEN!", Prim_bios_clear_screen, 0, 0,
 DEFINE_PRIMITIVE ("BIOS:INITIALIZE!", Prim_bios_enter, 2, 2,
 		  "Initialize bios internal state. (foreground background)")
 {
-  int foreground, background;
   PRIMITIVE_HEADER (2);
   if ((! (stdout_is_console_p ())) || bios_initialized_p)
     error_external_return ();
@@ -396,6 +402,8 @@ DEFINE_PRIMITIVE ("BIOS:SCROLL-LINES-DOWN!", Prim_bios_scroll_lines_down, 5, 5,
 		  "Scroll a console rectangle down. (xl xu yl yu delta)")
 {
   PRIMITIVE_HEADER (5);
+  if (!bios_initialized_p)
+    error_external_return ();
   bios__scroll_down_rectangle (normal_video, (arg_integer (5)),
 			       (arg_integer (1)), (arg_integer (3)),
 			       (arg_integer (2)), (arg_integer (4)));
@@ -406,6 +414,8 @@ DEFINE_PRIMITIVE ("BIOS:SCROLL-LINES-UP!", Prim_bios_scroll_lines_up, 5, 5,
 		  "Scroll a console rectangle up. (xl xu yl yu delta)")
 {
   PRIMITIVE_HEADER (5);
+  if (!bios_initialized_p)
+    error_external_return ();
   bios__scroll_up_rectangle (normal_video, (arg_integer (5)),
 			     (arg_integer (1)), (arg_integer (3)),
 			     (arg_integer (2)), (arg_integer (4)));
@@ -416,6 +426,8 @@ DEFINE_PRIMITIVE ("BIOS:WRITE-CURSOR!", Prim_bios_write_cursor, 2, 2,
 		  "Draw the cursor on the console. (x y)")
 {
   PRIMITIVE_HEADER (2);
+  if (!bios_initialized_p)
+    error_external_return ();
   bios__set_cursor_position (0, (arg_integer (1)), (arg_integer (2)));
   PRIMITIVE_RETURN (SHARP_T);
 }
@@ -424,6 +436,8 @@ DEFINE_PRIMITIVE ("BIOS:WRITE-CHAR!", Prim_bios_write_char, 2, 2,
 		  "Write a character on the console. (char highlight)")
 {
   PRIMITIVE_HEADER (2);
+  if (!bios_initialized_p)
+    error_external_return ();
   if (BOOLEAN_ARG (2))
   {
     int x, y;
@@ -443,6 +457,8 @@ DEFINE_PRIMITIVE ("BIOS:WRITE-SUBSTRING!", Prim_bios_write_substring, 4, 4,
   int x, y;
   long start, end;
   PRIMITIVE_HEADER (4);
+  if (!bios_initialized_p)
+    error_external_return ();
   start = (arg_integer (2));
   end = (arg_integer (3));
   if (start > end)
@@ -497,3 +513,4 @@ DEFINE_PRIMITIVE ("BIOS:SET-TEXT-SIZE!", Prim_bios_set_text_size, 2, 2,
   bios__set_text_size (al, bl);
   PRIMITIVE_RETURN (SHARP_T);
 }
+
