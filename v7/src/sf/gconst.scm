@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 4.17 1993/10/10 07:50:39 cph Exp $
+$Id: gconst.scm,v 4.18 1994/01/28 04:07:52 gjr Exp $
 
-Copyright (c) 1987-93 Massachusetts Institute of Technology
+Copyright (c) 1987-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -89,6 +89,7 @@ MIT in each case. |#
     ERROR-PROCEDURE
     FALSE
     FALSE?
+    FIRST
     FIX:*
     FIX:+
     FIX:-
