@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.25 1992/09/22 22:42:14 cph Exp $
+$Id: x11graph.scm,v 1.26 1993/01/12 21:42:01 cph Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,6 +52,7 @@ MIT in each case. |#
   (x-window-beep 1)
   (x-window-clear 1)
   (x-window-iconify 1)
+  (x-window-id 1)
   (x-window-lower 1)
   (x-window-map 1)
   (x-window-query-pointer 1)
@@ -649,6 +650,9 @@ MIT in each case. |#
 
 (define (x-graphics/starbase-filename device)
   (x-window-starbase-filename (x-graphics-device/xw device)))
+
+(define (x-graphics/window-id device)
+  (x-window-id (x-graphics-device/xw device)))
 
 ;;;; Font Operations
 

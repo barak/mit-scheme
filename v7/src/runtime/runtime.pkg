@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.168 1993/01/07 21:00:12 cph Exp $
+$Id: runtime.pkg,v 14.169 1993/01/12 21:42:09 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -2178,6 +2178,7 @@ MIT in each case. |#
 	  x-graphics/set-mouse-shape
 	  x-graphics/set-window-name
 	  x-graphics/starbase-filename
+	  x-graphics/window-id
 	  x-graphics/withdraw-window
 	  x-graphics:auto-raise?
 	  x-image/destroy
