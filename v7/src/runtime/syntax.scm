@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 13.44 1987/04/03 00:52:43 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 13.45 1987/05/19 13:38:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -321,7 +321,7 @@
 (define syntax-SET!-form
   (spread-arguments
    (lambda (name . rest)
-     ((syntax-extended-assignment name)
+     ((invert-expression (syntax-expression name))
       (expand-binding-value rest)))))
 
 (define syntax-DEFINE-form
@@ -373,53 +373,12 @@
    (lambda (predicate consequent . rest)
      (make-conditional (syntax-expression predicate)
 		       (syntax-expression consequent)
-		       (cond ((null? rest)
-			      false)
+		       (cond ((null? rest) undefined-conditional-branch)
 			     ((null? (cdr rest))
 			      (syntax-expression (car rest)))
 			     (else
 			      (syntax-error "Too many forms" (cdr rest))))))))
 
-(define syntax-COND-form
-  (let ()
-    (define (process-cond-clauses clause rest)
-      (cond ((eq? (car clause) 'ELSE)
-	     (if (null? rest)
-		 (syntax-sequence (cdr clause))
-		 (syntax-error "ELSE not last clause" rest)))
-	    ((null? rest)
-	     (if (cdr clause)
-		 (make-conjunction (syntax-expression (car clause))
-				   (syntax-sequence (cdr clause)))
-		 (syntax-expression (car clause))))
-	    ((null? (cdr clause))
-	     (make-disjunction (syntax-expression (car clause))
-			       (process-cond-clauses (car rest)
-						     (cdr rest))))
-	    ((and (pair? (cdr clause))
-		  (eq? (cadr clause) '=>))
-	     (syntax-expression
-	      `((ACCESS COND-=>-HELPER SYNTAXER-PACKAGE '())
-		,(car clause)
-		(DELAY ,@(cddr clause))
-		(DELAY (COND ,@rest)))))
-	    (else
-	     (make-conditional (syntax-expression (car clause))
-			       (syntax-sequence (cdr clause))
-			       (process-cond-clauses (car rest)
-						     (cdr rest))))))
-    (spread-arguments
-     (lambda (clause . rest)
-       (process-cond-clauses clause rest)))))
-
-(define (cond-=>-helper form1-result thunk2 thunk3)
-  (if form1-result
-      ((force thunk2) form1-result)
-      (force thunk3)))
-
-(define (make-funcall name . args)
-  (make-combination (make-variable name) args))
-
 (define syntax-CONJUNCTION-form
   (spread-arguments
    (lambda forms
@@ -429,6 +388,45 @@
   (spread-arguments
    (lambda forms
      (expand-disjunction forms))))
+
+(define syntax-COND-form
+  (let ()
+    (define (process-cond-clauses clause rest)
+      (cond ((eq? (car clause) 'ELSE)
+	     (if (null? rest)
+		 (syntax-sequence (cdr clause))
+		 (syntax-error "ELSE not last clause" rest)))
+	    ((null? (cdr clause))
+	     (make-disjunction (syntax-expression (car clause))
+			       (if (null? rest)
+				   undefined-conditional-branch
+				   (process-cond-clauses (car rest)
+							 (cdr rest)))))
+	    ((and (pair? (cdr clause))
+		  (eq? (cadr clause) '=>))
+	     (syntax-expression
+	      `((ACCESS COND-=>-HELPER SYNTAXER-PACKAGE '())
+		,(car clause)
+		(LAMBDA () ,@(cddr clause))
+		(LAMBDA ()
+		  ,(if (null? rest)
+		       undefined-conditional-branch
+		       `(COND ,@rest))))))
+	    (else
+	     (make-conditional (syntax-expression (car clause))
+			       (syntax-sequence (cdr clause))
+			       (if (null? rest)
+				   undefined-conditional-branch
+				   (process-cond-clauses (car rest)
+							 (cdr rest)))))))
+    (spread-arguments
+     (lambda (clause . rest)
+       (process-cond-clauses clause rest)))))
+
+(define (cond-=>-helper form1-result thunk2 thunk3)
+  (if form1-result
+      ((thunk2) form1-result)
+      (thunk3)))
 
 ;;;; Procedures
 
@@ -561,20 +559,20 @@
 
     (define (syntax-fluid-bindings bindings receiver)
       (if (null? bindings)
-	  (receiver '() '() '() '())
+	  (receiver '() '() (list false) (list false))
 	  (syntax-fluid-bindings (cdr bindings)
 	    (lambda (names values transfers-in transfers-out)
 	      (let ((binding (car bindings)))
 		(if (pair? binding)
-		    (let ((transfer 
-			   (let ((assignment
-				  (syntax-extended-assignment (car binding))))
-			     (lambda (target source)
-			       (make-assignment
-				target
-				(assignment
-				 (make-assignment source
-						  unassigned-object))))))
+		    (let ((transfer
+			   (let ((reference (syntax-expression (car binding))))
+			     (let ((assignment (invert-expression reference)))
+			       (lambda (target source)
+				 (make-sequence*
+				  (make-assignment target reference)
+				  (assignment (make-variable source))
+				  (make-assignment source
+						   unassigned-object))))))
 			  (value (expand-binding-value (cdr binding)))
 			  (inside-name
 			   (string->uninterned-symbol "INSIDE-PLACEHOLDER"))
@@ -678,9 +676,6 @@
 )
 
 ;;;; Extended Assignment Syntax
-
-(define (syntax-extended-assignment expression)
-  (invert-expression (syntax-expression expression)))
 
 (define (invert-expression target)
   (cond ((variable? target)
@@ -1011,5 +1006,4 @@
 	       ))))
 
 ;;; end SYNTAXER-PACKAGE
-)
 )

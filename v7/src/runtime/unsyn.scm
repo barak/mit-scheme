@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 13.42 1987/03/17 18:54:23 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 13.43 1987/05/19 13:38:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -105,7 +105,10 @@
 (define (unsyntax-ASSIGNMENT-object assignment)
   (assignment-components assignment
     (lambda (name value)
-      `(SET! ,name ,(unsyntax-object value)))))
+      `(SET! ,name
+	     ,@(if (unassigned-object? value)
+		   '()
+		   `(,(unsyntax-object value)))))))
 
 (define ((definition-unexpander key lambda-key) name value)
   (if (lambda? value)
@@ -164,10 +167,10 @@
 
 (define (unsyntax-conditional predicate consequent alternative)
   (cond ((false? alternative)
-	 (if (conditional? consequent)
-	     `(AND ,@(unexpand-conjunction predicate consequent))
-	     `(IF ,(unsyntax-object predicate)
-		  ,(unsyntax-object consequent))))
+	 `(AND ,@(unexpand-conjunction predicate consequent)))
+	((eq? alternative undefined-conditional-branch)
+	 `(IF ,(unsyntax-object predicate)
+	      ,(unsyntax-object consequent)))
 	((conditional? alternative)
 	 `(COND ,@(unsyntax-cond-conditional predicate
 					     consequent
@@ -186,7 +189,7 @@
     ,@(unsyntax-cond-alternative alternative)))
 
 (define (unsyntax-cond-alternative alternative)
-  (cond ((false? alternative) '())
+  (cond ((eq? alternative undefined-conditional-branch) '())
 	((disjunction? alternative)
 	 (disjunction-components alternative unsyntax-cond-disjunction))
 	((conditional? alternative)
@@ -328,36 +331,21 @@
   (combination-components body
     (lambda (operator operands)
       `(FLUID-LET ,(unsyntax-let-bindings
-		    (map extract-transfer-var
-			 (lambda-components** (car operands)
-			   (lambda (name req opt rest body)
-			     (sequence-actions body))))
-		    (every-other values))
+		    (extract-transfer-variables
+		     (sequence-actions (lambda-body (car operands))))
+		    (let every-other ((values values))
+		      (if (null? values)
+			  '()
+			  (cons (car values) (every-other (cddr values))))))
 	 ,@(lambda-components** (cadr operands)
 	     (lambda (name required optional rest body)
 	       (unsyntax-sequence body)))))))
 
-(define (every-other list)
-  (if (null? list)
-      '()
-      (cons (car list) (every-other (cddr list)))))
-
-(define (extract-transfer-var assignment)
-  (assignment-components assignment
-    (lambda (name value)
-      (cond ((assignment? value)
-	     (assignment-components value (lambda (name value) name)))
-	    ((combination? value)
-	     (combination-components value
-	       (lambda (operator operands)
-		 (cond ((eq? operator lexical-assignment)
-			`(ACCESS ,(cadr operands)
-				 ,@(unexpand-access (car operands))))
-		       (else
-			(error "Unknown SCODE form" 'FLUID-LET
-			       assignment))))))
-	    (else
-	     (error "Unknown SCODE form" 'FLUID-LET assignment))))))
+(define (extract-transfer-variables actions)
+  (if (assignment? (car actions))
+      (cons (unsyntax-object (assignment-value (car actions)))
+	    (extract-transfer-variables (cdddr actions)))
+      '()))
 
 (define ((unsyntax-deep-or-common-FLUID-LET name prim)
 	 ignored-required ignored-operands body)
