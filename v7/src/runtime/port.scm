@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.19 1999/02/25 18:23:55 cph Exp $
+$Id: port.scm,v 1.20 2001/02/27 17:20:35 cph Exp $
 
-Copyright (c) 1991-1999 Massachusetts Institute of Technology
+Copyright (c) 1991-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -630,7 +630,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define *interaction-i/o-port* #f)
 
 (define (current-input-port)
-  *current-input-port*)
+  (or *current-input-port* (nearest-cmdl/port)))
 
 (define (set-current-input-port! port)
   (set! *current-input-port* (guarantee-input-port port))
@@ -641,7 +641,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (thunk)))
 
 (define (current-output-port)
-  *current-output-port*)
+  (or *current-output-port* (nearest-cmdl/port)))
 
 (define (set-current-output-port! port)
   (set! *current-output-port* (guarantee-output-port port))
