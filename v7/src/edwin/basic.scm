@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: basic.scm,v 1.128 1993/02/25 02:43:26 gjr Exp $
+;;;	$Id: basic.scm,v 1.129 1993/02/25 08:35:52 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -314,8 +314,8 @@ With argument, saves visited file first."
   (lambda (argument)
     (if argument (save-buffer (current-buffer) false))
     (if (and scheme-can-quit? (os/scheme-can-quit?))
-	(editor-error "Scheme cannot be suspended"))
-    (quit-scheme)))
+	(quit-scheme)
+	(editor-error "Scheme cannot be suspended"))))
 
 (define-command suspend-edwin
   "Stop Edwin and return to Scheme."
