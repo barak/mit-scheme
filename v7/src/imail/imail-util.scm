@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.1 2000/01/04 22:51:15 cph Exp $
+;;; $Id: imail-util.scm,v 1.2 2000/01/07 23:09:03 cph Exp $
 ;;;
 ;;; Copyright (c) 1999 Massachusetts Institute of Technology
 ;;;
@@ -154,6 +154,9 @@
 	  (car tokens))
       ""))
 
+(define (read-lines port)
+  (source->list (lambda () (read-line port))))
+
 (define (read-header-lines port)
   (source->list
    (lambda ()
