@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.16 1993/01/12 10:45:20 cph Exp $
+$Id: rules3.scm,v 1.17 1993/07/20 00:52:24 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -243,8 +243,10 @@ MIT in each case. |#
 
 (define-rule statement
   ;; Move <frame-size> words back to SP+offset
-  (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size)
-				   (OFFSET-ADDRESS (REGISTER 3) (? offset)))
+  (INVOCATION-PREFIX:MOVE-FRAME-UP
+   (? frame-size)
+   (OFFSET-ADDRESS (REGISTER 3)
+		   (MACHINE-CONSTANT (? offset))))
   (let ((how-far (* 4 (- offset frame-size))))
     (cond ((zero? how-far)
 	   (LAP))
@@ -273,9 +275,10 @@ MIT in each case. |#
 
 (define-rule statement
   ;; Move <frame-size> words back to base virtual register + offset
-  (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size)
-				   (OFFSET-ADDRESS (REGISTER (? base))
-						   (? offset)))
+  (INVOCATION-PREFIX:MOVE-FRAME-UP
+   (? frame-size)
+   (OFFSET-ADDRESS (REGISTER (? base))
+		   (MACHINE-CONSTANT (? offset))))
   (QUALIFIER (not (= base 3)))
   (generate/move-frame-up frame-size
     (lambda (reg)

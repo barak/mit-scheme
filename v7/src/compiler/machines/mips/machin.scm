@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.12 1993/06/29 22:25:51 gjr Exp $
+$Id: machin.scm,v 1.13 1993/07/20 00:52:23 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -289,12 +289,15 @@ MIT in each case. |#
        (= (rtl:register-number expression) regnum:dynamic-link)))
 
 (define-integrable (interpreter-environment-register)
-  (rtl:make-offset (interpreter-regs-pointer) 3))
+  (rtl:make-offset (interpreter-regs-pointer)
+		   (rtl:make-machine-constant 3)))
 
 (define (interpreter-environment-register? expression)
   (and (rtl:offset? expression)
        (interpreter-regs-pointer? (rtl:offset-base expression))
-       (= 3 (rtl:offset-number expression))))
+       (let ((offset (rtl:offset-offset expression)))
+	 (rtl:machine-constant? offset)
+	 (= 3 (rtl:machine-constant-value offset)))))
 
 (define-integrable (interpreter-register:access)
   (rtl:make-machine-register regnum:C-return-value))
@@ -375,8 +378,9 @@ MIT in each case. |#
 	       3)))
 	((MACHINE-CONSTANT)
 	 (if-integer (rtl:machine-constant-value expression)))
-	((ENTRY:PROCEDURE ENTRY:CONTINUATION ASSIGNMENT-CACHE VARIABLE-CACHE
-			  OFFSET-ADDRESS)
+	((ENTRY:PROCEDURE ENTRY:CONTINUATION
+	  ASSIGNMENT-CACHE VARIABLE-CACHE
+	  OFFSET-ADDRESS BYTE-OFFSET-ADDRESS FLOAT-OFFSET-ADDRESS)
 	 3)
 	((CONS-NON-POINTER)
 	 (and (rtl:machine-constant? (rtl:cons-non-pointer-type expression))
@@ -394,8 +398,7 @@ MIT in each case. |#
 (define compiler:primitives-with-no-open-coding
   '(DIVIDE-FIXNUM GCD-FIXNUM FIXNUM-QUOTIENT FIXNUM-REMAINDER
     INTEGER-QUOTIENT INTEGER-REMAINDER &/ QUOTIENT REMAINDER
-    FLONUM-SIN FLONUM-COS FLONUM-TAN FLONUM-ASIN FLONUM-ACOS
-    FLONUM-ATAN FLONUM-EXP FLONUM-LOG FLONUM-TRUNCATE FLONUM-ROUND
-    FLONUM-REMAINDER FLONUM-SQRT
-    VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS
-    FLOATING-VECTOR-REF FLOATING-VECTOR-SET!))
+    FLONUM-SIN FLONUM-COS FLONUM-TAN FLONUM-ASIN FLONUM-ACOS FLONUM-ATAN2
+    FLONUM-ATAN FLONUM-EXP FLONUM-LOG FLONUM-REMAINDER FLONUM-SQRT
+    FLONUM-TRUNCATE FLONUM-ROUND FLONUM-CEILING FLONUM-FLOOR
+    VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS))

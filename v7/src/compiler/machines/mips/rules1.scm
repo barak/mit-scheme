@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules1.scm,v 1.5 1991/10/25 00:13:22 cph Exp $
+$Id: rules1.scm,v 1.6 1993/07/20 00:52:24 gjr Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; LAP Generation Rules: Data Transfers
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -92,20 +93,71 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (REGISTER (? source))))
   (standard-unary-conversion source target object->address))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (OFFSET-ADDRESS (REGISTER (? base))
+			  (REGISTER (? index))))
+  (shifted-add target base index 2))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
-	  (OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
+	  (OFFSET-ADDRESS (REGISTER (? source))
+			  (MACHINE-CONSTANT (? offset))))
   (standard-unary-conversion source target
     (lambda (source target)
       (add-immediate (* 4 offset) source target))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
-	  (BYTE-OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
+	  (BYTE-OFFSET-ADDRESS (REGISTER (? base))
+			       (REGISTER (? index))))
+  (shifted-add target base index 0))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (BYTE-OFFSET-ADDRESS (REGISTER (? source))
+			       (MACHINE-CONSTANT (? offset))))
   (standard-unary-conversion source target
     (lambda (source target)
       (add-immediate offset source target))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT-OFFSET-ADDRESS (REGISTER (? base))
+				(REGISTER (? index))))
+  (shifted-add target base index 3))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT-OFFSET-ADDRESS (REGISTER (? source))
+				(MACHINE-CONSTANT (? offset))))
+  (standard-unary-conversion source target
+    (lambda (source target)
+      (add-immediate (* 8 offset) source target))))
+
+(define (shifted-add target base index shift)
+  (if (zero? shift)
+      (standard-binary-conversion base index target
+       (lambda (base index target)
+	 (LAP (ADDU ,target ,base ,index))))
+      (let ((base (standard-source! base))
+	    (index (standard-source! index))
+	    (temp (standard-temporary!)))
+	(let ((target (standard-target! target)))
+	  (LAP (SLL ,temp ,index ,shift)
+	       (ADDU ,target ,base ,temp))))))
+
+(define (with-indexed-address base index shift recvr)
+  (let ((base (standard-source! base))
+	(index (standard-source! index))
+	(temp (standard-temporary!)))
+    (if (zero? shift)
+	(LAP (ADDU ,temp ,base ,index)
+	     ,@(recvr temp))
+	(LAP (SLL ,temp ,index ,shift)
+	     (ADDU ,temp ,base ,temp)
+	     ,@(recvr temp)))))
 
 ;;;; Loading of Constants
 
@@ -193,8 +245,20 @@ MIT in each case. |#
 
 ;;;; Transfers from memory
 
+#|
 (define-rule statement
-  (ASSIGN (REGISTER (? target)) (OFFSET (REGISTER (? address)) (? offset)))
+  (ASSIGN (REGISTER (? target))
+	  (OFFSET (REGISTER (? base)) (REGISTER (? index))))
+  (with-indexed-address base index 2
+   (lambda (address)
+     (let ((target (standard-target! target)))
+       (LAP (LW ,target (OFFSET 0 ,address))
+	    (NOP))))))
+|#
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (OFFSET (REGISTER (? address)) (MACHINE-CONSTANT (? offset))))
   (standard-unary-conversion address target
     (lambda (address target)
       (LAP (LW ,target (OFFSET ,(* 4 offset) ,address))
@@ -207,9 +271,20 @@ MIT in each case. |#
 
 ;;;; Transfers to memory
 
+#|
 (define-rule statement
   ;; store an object in memory
-  (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
+  (ASSIGN (OFFSET (REGISTER (? base)) (REGISTER (? index)))
+	  (? source register-expression))
+  (QUALIFIER (word-register? source))
+  (with-indexed-address base index 2
+    (lambda (address)
+      (LAP (SW ,(standard-source! source) (OFFSET 0 ,address))))))
+|#
+
+(define-rule statement
+  ;; store an object in memory
+  (ASSIGN (OFFSET (REGISTER (? address)) (MACHINE-CONSTANT (? offset)))
 	  (? source register-expression))
   (QUALIFIER (word-register? source))
   (LAP (SW ,(standard-source! source)
@@ -231,11 +306,20 @@ MIT in each case. |#
   (LAP (ADDI ,regnum:stack-pointer ,regnum:stack-pointer -4)
        (SW ,(standard-source! source)
 	   (OFFSET 0 ,regnum:stack-pointer))))
-
+
 ;; Cheaper, common patterns.
 
+#|
 (define-rule statement
-  (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
+  (ASSIGN (OFFSET (REGISTER (? base)) (REGISTER (? index)))
+	  (MACHINE-CONSTANT 0))
+  (with-indexed-address base index 2
+    (lambda (address)
+      (LAP (SW 0 (OFFSET 0 ,address))))))
+|#
+
+(define-rule statement
+  (ASSIGN (OFFSET (REGISTER (? address)) (MACHINE-CONSTANT (? offset)))
 	  (MACHINE-CONSTANT 0))
   (LAP (SW 0 (OFFSET ,(* 4 offset) ,(standard-source! address)))))
 
@@ -253,10 +337,28 @@ MIT in each case. |#
 
 ;;;; CHAR->ASCII/BYTE-OFFSET
 
+#|
 (define-rule statement
   ;; load char object from memory and convert to ASCII byte
   (ASSIGN (REGISTER (? target))
-	  (CHAR->ASCII (OFFSET (REGISTER (? address)) (? offset))))
+	  (CHAR->ASCII (OFFSET (REGISTER (? base))
+			       (REGISTER (? index)))))
+  (with-indexed-address base index 2
+    (lambda (address)
+      (let ((target (standard-target! target)))
+	(LAP (LBU ,target
+		  (OFFSET ,(if (eq? endianness 'LITTLE)
+			       0
+			       3)
+			  ,address))
+	     (NOP))))))
+|#
+
+(define-rule statement
+  ;; load char object from memory and convert to ASCII byte
+  (ASSIGN (REGISTER (? target))
+	  (CHAR->ASCII (OFFSET (REGISTER (? address))
+			       (MACHINE-CONSTANT (? offset)))))
   (standard-unary-conversion address target
     (lambda (address target)
       (LAP (LBU ,target
@@ -267,15 +369,29 @@ MIT in each case. |#
 			,address))
 	   (NOP)))))
 
+#|
 (define-rule statement
   ;; load ASCII byte from memory
   (ASSIGN (REGISTER (? target))
-	  (BYTE-OFFSET (REGISTER (? address)) (? offset)))
+	  (BYTE-OFFSET (REGISTER (? base))
+		       (REGISTER (? index))))
+  (with-indexed-address base index 0
+    (lambda (address)
+      (let ((target (standard-target! target)))
+	(LAP (LBU ,target (OFFSET 0 ,address))
+	     (NOP))))))
+|#
+
+(define-rule statement
+  ;; load ASCII byte from memory
+  (ASSIGN (REGISTER (? target))
+	  (BYTE-OFFSET (REGISTER (? address))
+		       (MACHINE-CONSTANT (? offset))))
   (standard-unary-conversion address target
     (lambda (address target)
       (LAP (LBU ,target (OFFSET ,offset ,address))
 	   (NOP)))))
-
+
 (define-rule statement
   ;; convert char object to ASCII byte
   ;; Missing optimization: If source is home and this is the last
@@ -288,23 +404,59 @@ MIT in each case. |#
     (lambda (source target)
       (LAP (ANDI ,target ,source #xFF)))))
 
+#|
 (define-rule statement
   ;; store null byte in memory
-  (ASSIGN (BYTE-OFFSET (REGISTER (? source)) (? offset))
+  (ASSIGN (BYTE-OFFSET (REGISTER (? base))
+		       (REGISTER (? index)))
+	  (CHAR->ASCII (CONSTANT #\NUL)))
+  (with-indexed-address base index 0
+    (lambda (address)
+      (LAP (SB 0 (OFFSET 0 ,address))))))
+|#
+
+(define-rule statement
+  ;; store null byte in memory
+  (ASSIGN (BYTE-OFFSET (REGISTER (? source))
+		       (MACHINE-CONSTANT (? offset)))
 	  (CHAR->ASCII (CONSTANT #\NUL)))
   (LAP (SB 0 (OFFSET ,offset ,(standard-source! source)))))
 
+#|
 (define-rule statement
   ;; store ASCII byte in memory
-  (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
+  (ASSIGN (BYTE-OFFSET (REGISTER (? base))
+		       (REGISTER (? index)))
+	  (REGISTER (? source)))
+  (with-indexed-address base index 0
+    (lambda (address)
+      (LAP (SB ,(standard-source! source) (OFFSET 0 ,address))))))
+|#
+
+(define-rule statement
+  ;; store ASCII byte in memory
+  (ASSIGN (BYTE-OFFSET (REGISTER (? address))
+		       (MACHINE-CONSTANT (? offset)))
 	  (REGISTER (? source)))
   (LAP (SB ,(standard-source! source)
 	   (OFFSET ,offset ,(standard-source! address)))))
 
+#|
 (define-rule statement
   ;; convert char object to ASCII byte and store it in memory
   ;; register + byte offset <- contents of register (clear top bits)
-  (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
+  (ASSIGN (BYTE-OFFSET (REGISTER (? base)) (REGISTER (? index)))
+	  (CHAR->ASCII (REGISTER (? source))))
+  (with-indexed-address base index 0
+    (lambda (address)
+      (LAP (SB ,(standard-source! source) (OFFSET 0 ,address))))))
+|#
+
+(define-rule statement
+  ;; convert char object to ASCII byte and store it in memory
+  ;; register + byte offset <- contents of register (clear top bits)
+  (ASSIGN (BYTE-OFFSET (REGISTER (? address))
+		       (MACHINE-CONSTANT (? offset)))
 	  (CHAR->ASCII (REGISTER (? source))))
   (LAP (SB ,(standard-source! source)
 	   (OFFSET ,offset ,(standard-source! address)))))

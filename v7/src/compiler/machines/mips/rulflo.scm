@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulflo.scm,v 1.6 1991/10/25 00:13:40 cph Exp $
+$Id: rulflo.scm,v 1.7 1993/07/20 00:52:26 gjr Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -73,6 +73,79 @@ MIT in each case. |#
     (let ((target (fpr->float-register (flonum-target! target))))
       (LAP ,@(object->address source source)
 	   ,@(fp-load-doubleword 4 source target #T)))))
+
+;; Floating-point vector support
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT-OFFSET (REGISTER (? base))
+			(MACHINE-CONSTANT (? offset))))
+  (let* ((base (standard-source! base))
+	 (target (fpr->float-register (flonum-target! target))))
+    (fp-load-doubleword (* 8 offset) base target #T)))
+
+(define-rule statement
+  (ASSIGN (FLOAT-OFFSET (REGISTER (? base))
+			(MACHINE-CONSTANT (? offset)))
+	  (REGISTER (? source)))
+  (let ((base (standard-source! base))
+	(source (fpr->float-register (flonum-source! source))))
+    (fp-store-doubleword (* 8 offset) base source)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT-OFFSET (REGISTER (? base)) (REGISTER (? index))))
+  (with-indexed-address base index 3
+    (lambda (address)
+      (fp-load-doubleword 0 address
+			  (fpr->float-register (flonum-target! target)) #T))))
+
+(define-rule statement
+  (ASSIGN (FLOAT-OFFSET (REGISTER (? base)) (REGISTER (? index)))
+	  (REGISTER (? source)))
+  (with-indexed-address base index 3
+    (lambda (address)
+      (fp-store-doubleword 0 address
+			   (fpr->float-register (flonum-source! source))))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT-OFFSET (OFFSET-ADDRESS (REGISTER (? base))
+					(MACHINE-CONSTANT (? w-offset)))
+			(MACHINE-CONSTANT (? f-offset))))
+  (let* ((base (standard-source! base))
+	 (target (fpr->float-register (flonum-target! target))))
+    (fp-load-doubleword (+ (* 4 w-offset) (* 8 f-offset)) base target #T)))
+
+(define-rule statement
+  (ASSIGN (FLOAT-OFFSET (OFFSET-ADDRESS (REGISTER (? base))
+					(MACHINE-CONSTANT (? w-offset)))
+			(MACHINE-CONSTANT (? f-offset)))
+	  (REGISTER (? source)))
+  (let ((base (standard-source! base))
+	(source (fpr->float-register (flonum-source! source))))
+    (fp-store-doubleword (+ (* 4 w-offset) (* 8 f-offset)) base source)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT-OFFSET (OFFSET-ADDRESS (REGISTER (? base))
+					(MACHINE-CONSTANT (? w-offset)))
+			(REGISTER (? index))))
+  (with-indexed-address base index 3
+    (lambda (address)
+      (fp-load-doubleword (* 4 w-offset) address
+			  (fpr->float-register (flonum-target! target))
+			  #T))))
+
+(define-rule statement
+  (ASSIGN (FLOAT-OFFSET (OFFSET-ADDRESS (REGISTER (? base))
+					(MACHINE-CONSTANT (? w-offset)))
+			(REGISTER (? index)))
+	  (REGISTER (? source)))
+  (with-indexed-address base index 3
+    (lambda (address)
+      (fp-store-doubleword (* 4 w-offset) address
+			   (fpr->float-register (flonum-source! source))))))
 
 ;;;; Flonum Arithmetic
 

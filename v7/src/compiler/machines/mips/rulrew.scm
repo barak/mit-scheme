@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.5 1993/01/08 00:04:50 cph Exp $
+$Id: rulrew.scm,v 1.6 1993/07/20 00:52:26 gjr Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
@@ -206,9 +206,7 @@ MIT in each case. |#
    (and (rtl:object->fixnum? expression)
 	(rtl:register? (rtl:object->fixnum-expression expression))))
 
-;;;; Closures and othe optimizations.  
-
-;; These rules are Spectrum specific
+;;;; Closures and other optimizations.  
 
 (define-rule rewriting
   (CONS-POINTER (REGISTER (? type register-known-value))
@@ -221,21 +219,16 @@ MIT in each case. |#
 		      (rtl:cons-closure? datum))))
   (rtl:make-cons-pointer type datum))
 
-#|
-;; Not yet written.
-
-;; A type is compatible when a depi instruction can put it in assuming that
-;; the datum has the quad bits set.
-;; A register is a machine-address-register if it is a machine register and
-;; always contains an address (ie. free pointer, stack pointer, or dlink register)
-
 (define-rule rewriting
-  (CONS-POINTER (REGISTER (? type register-known-value))
-		(REGISTER (? datum machine-address-register)))
-  (QUALIFIER (and (rtl:machine-constant? type)
-		  (spectrum-type-optimizable? (rtl:machine-constant-value type))))
-  (rtl:make-cons-pointer type datum))
-|#
+  (FLOAT-OFFSET (REGISTER (? base register-known-value))
+		(MACHINE-CONSTANT 0))
+  (QUALIFIER (and (rtl:float-offset-address? base)
+		  (rtl:simple-subexpressions? base)))
+  (rtl:make-float-offset (rtl:float-offset-address-base base)
+			 (rtl:float-offset-address-offset base)))
 
-
-	     
+(define (rtl:simple-subexpressions? expr)
+  (for-all? (cdr expr)
+    (lambda (sub)
+      (or (rtl:machine-constant? sub)
+	  (rtl:register? sub)))))
