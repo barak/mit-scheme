@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.22 1987/04/03 00:43:16 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.23 1987/05/29 02:22:51 jinx Exp $
  *
  * This file contains hooks and handles for the new fluid bindings
  * scheme for multiprocessors.
@@ -56,7 +56,7 @@ Define_Primitive(Prim_Set_Fluid_Bindings, 1, "SET-FLUID-BINDINGS!")
 
   Result = Fluid_Bindings;
   Fluid_Bindings = Arg1;
-  return Result;
+  PRIMITIVE_RETURN(Result);
 }
 
 /* (GET-FLUID-BINDINGS NEW-BINDINGS)
@@ -67,7 +67,7 @@ Define_Primitive(Prim_Get_Fluid_Bindings, 0, "GET-FLUID-BINDINGS")
 {
   Primitive_0_Args();
 
-  return Fluid_Bindings;
+  PRIMITIVE_RETURN(Fluid_Bindings);
 }
 
 /* (WITH-SAVED-FLUID-BINDINGS THUNK)
@@ -89,7 +89,7 @@ Define_Primitive(Prim_With_Saved_Fluid_Bindings,1,"WITH-SAVED-FLUID-BINDINGS")
   Push(Arg1);
   Push(STACK_FRAME_HEADER);
  Pushed();
-  longjmp(*Back_To_Eval, PRIM_APPLY);
+  PRIMITIVE_ABORT(PRIM_APPLY);
 }
 
 /* Utilities for the primitives below. */
@@ -117,12 +117,17 @@ Pointer
     case TRAP_UNBOUND_DANGEROUS:
     case TRAP_UNASSIGNED_DANGEROUS:
     case TRAP_FLUID_DANGEROUS:
-      return deep_lookup(env, hunk[VARIABLE_SYMBOL], hunk);
+    case TRAP_COMPILER_CACHED_DANGEROUS:
+      return deep_lookup(env, hunk[VARIABLE_SYMBOL], hunk, false);
 
+    case TRAP_COMPILER_CACHED:
     case TRAP_FLUID:
     case TRAP_UNBOUND:
     case TRAP_UNASSIGNED:
       return cell;
+
+    case TRAP_NOP:
+      Primitive_Error(ERR_BAD_FRAME);
 
     default:
       Primitive_Error(ERR_BROKEN_COMPILED_VARIABLE);
@@ -140,9 +145,11 @@ new_fluid_binding(cell, value, force)
   Pointer new_trap_value;
   long new_trap_kind, trap_kind;
 
+  new_trap_kind = TRAP_FLUID;
   setup_lock(set_serializer, cell);
 
-  new_trap_kind = TRAP_FLUID;
+new_fluid_binding_restart:
+
   trap = *cell;
   new_trap_value = trap;
 
@@ -151,17 +158,18 @@ new_fluid_binding(cell, value, force)
     get_trap_kind(trap_kind, trap);
     switch(trap_kind)
     {
+      case TRAP_NOP:
       case TRAP_DANGEROUS:
         Vector_Set(trap,
 		   TRAP_TAG,
-		   Make_Unsigned_Fixnum(TRAP_FLUID_DANGEROUS));
+		   Make_Unsigned_Fixnum(TRAP_FLUID | (trap_kind & 1)));
 
 	/* Fall through */
       case TRAP_FLUID:
       case TRAP_FLUID_DANGEROUS:
-	new_trap_kind = TRAP_NOP;
+	new_trap_kind = -1;
 	break;
-
+
       case TRAP_UNBOUND:
       case TRAP_UNBOUND_DANGEROUS:
 	if (!force)
@@ -172,9 +180,15 @@ new_fluid_binding(cell, value, force)
 	/* Fall through */
       case TRAP_UNASSIGNED:
       case TRAP_UNASSIGNED_DANGEROUS:
-	new_trap_kind = Make_Unsigned_Fixnum((TRAP_FLUID | (trap_kind & 1)));
+	new_trap_kind = (TRAP_FLUID | (trap_kind & 1));
 	new_trap_value = UNASSIGNED_OBJECT;
 	break;
+
+      case TRAP_COMPILER_CACHED:
+      case TRAP_COMPILED_CACHED_DANGEROUS:
+	cell = Nth_Vector_Loc(Fast_Vector_Ref(*cell, TRAP_EXTRA),
+			      TRAP_EXTENSION_CELL);
+	goto new_fluid_binding_restart;
 
       default:
 	remove_lock(set_serializer);
@@ -182,7 +196,7 @@ new_fluid_binding(cell, value, force)
     }
   }
 
-  if (new_trap_kind != TRAP_NOP)
+  if (new_trap_kind != -1)
   {
     if (GC_allocate_test(2))
     {
@@ -190,7 +204,7 @@ new_fluid_binding(cell, value, force)
       Primitive_GC(2);
     }
     trap = Make_Pointer(TC_REFERENCE_TRAP, Free);
-    *Free++ = new_trap_kind;
+    *Free++ = Make_Unsigned_Fixnum(new_trap_kind);
     *Free++ = new_trap_value;
     *cell = trap;
   }
@@ -232,14 +246,14 @@ Define_Primitive(Prim_Add_Fluid_Binding, 3, "ADD-FLUID-BINDING!")
 
     case TC_INTERNED_SYMBOL:
     case TC_UNINTERNED_SYMBOL:
-      cell = deep_lookup(Arg1, Arg2, fake_variable_object);
+      cell = deep_lookup(Arg1, Arg2, fake_variable_object, false);
       break;
 
     default:
       Primitive_Error(ERR_ARG_2_WRONG_TYPE);
   }
 
-  return new_fluid_binding(cell, Arg3, false);
+  PRIMITIVE_RETURN(new_fluid_binding(cell, Arg3, false));
 }
 
 /* (MAKE-FLUID-BINDING! ENVIRONMENT SYMBOL-OR-VARIABLE VALUE)
@@ -257,8 +271,8 @@ Define_Primitive(Prim_Add_Fluid_Binding, 3, "ADD-FLUID-BINDING!")
 
 Define_Primitive(Prim_Make_Fluid_Binding, 3, "MAKE-FLUID-BINDING!")
 {
+  extern Pointer *force_definition();
   Pointer *cell;
-  fast Pointer env, previous;
   Primitive_3_Args();
 
   if (Arg1 != GLOBAL_ENV)
@@ -272,48 +286,35 @@ Define_Primitive(Prim_Make_Fluid_Binding, 3, "MAKE-FLUID-BINDING!")
 
     case TC_INTERNED_SYMBOL:
     case TC_UNINTERNED_SYMBOL:
-      cell = deep_lookup(Arg1, Arg2, fake_variable_object);
+      cell = deep_lookup(Arg1, Arg2, fake_variable_object, false);
       break;
 
     default:
       Primitive_Error(ERR_ARG_2_WRONG_TYPE);
   }
-
-  /* This only happens when global is not allowed,
-     it's expensive and will not be used, but is
-     provided for completeness.
-   */
 
   if (cell == unbound_trap_object)
   {
-    long result;
-    Pointer symbol;
+    long message;
 
-    env = Arg1;
-    if (Type_Code(env) == GLOBAL_ENV)
-      Primitive_Error(ERR_BAD_FRAME);
-	    
-    do
+    /* This only happens when global is not allowed,
+       only provided for completeness.
+     */
+
+    cell = force_definition(Arg1,
+			    ((Type_Code(Arg2) == TC_VARIABLE) ?
+			     Vector_Ref(Arg2, VARIABLE_SYMBOL) :
+			     Arg2)
+			    &message);
+
+    if (message != PRIM_DONE)
     {
-      previous = env;
-      env = Fast_Vector_Ref(Vector_Ref(env, ENVIRONMENT_FUNCTION),
-			    PROCEDURE_ENVIRONMENT);
-    } while (Type_Code(env) != GLOBAL_ENV);
-
-    symbol = ((Type_Code(Arg2) == TC_VARIABLE) ?
-	      Vector_Ref(Arg2, VARIABLE_SYMBOL) :
-	      Arg2);
-
-    result = Local_Set(previous, symbol, UNASSIGNED_OBJECT);
-    if (result != PRIM_DONE)
-    {
-      if (result == PRIM_INTERRUPT)
+      if (message == PRIM_INTERRUPT)
 	Primitive_Interrupt();
-
-      Primitive_Error(result);
+      else
+	Primitive_Error(message);
     }
-    cell = deep_lookup(previous, symbol, fake_variable_object);
   }
 
-  return new_fluid_binding(cell, Arg3, true);
+  PRIMITIVE_RETURN(new_fluid_binding(cell, Arg3, true));
 }

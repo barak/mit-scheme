@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sdata.h,v 9.23 1987/04/16 02:29:06 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sdata.h,v 9.24 1987/05/29 02:24:18 jinx Rel $
  *
  * Description of the user data objects.  This should parallel the
  * file SDATA.SCM in the runtime system.
@@ -322,6 +322,15 @@ MIT in each case. */
 #define PROCEDURE_LAMBDA_EXPR	0
 #define PROCEDURE_ENVIRONMENT	1
 
+/* QUAD or HUNK4
+ * Like a pair but with 4 components.
+ */
+
+#define HUNK4_CXR0				0
+#define HUNK4_CXR1				1
+#define HUNK4_CXR2				2
+#define HUNK4_CXR3				3
+
 /* REFERENCE_TRAP
  * Causes the variable lookup code to trap.
  * Used to implement a variety of features.
@@ -333,6 +342,19 @@ MIT in each case. */
 #define TRAP_TAG				0
 #define TRAP_EXTRA				1
 
+/* Traps can be extended for the use of the fast variable reference mechanism in
+ * compiled code.  The following is the format of a trap extension object.
+ */
+
+#define TRAP_EXTENSION_CELL			HUNK4_CXR0
+#define TRAP_EXTENSION_CACHE_LIST		HUNK4_CXR1
+#define TRAP_EXTENSION_UUO_LIST			HUNK4_CXR2
+#define TRAP_EXTENSION_NAME			HUNK4_CXR3
+
+/* Aliases */
+#define TRAP_EXTENSION_BLOCK			TRAP_EXTENSION_CACHE_LIST
+#define TRAP_EXTENSION_OFFSET			TRAP_EXTENSION_UUO_LIST
+
 /* RETURN_CODE
  * Represents an address where computation is to continue.  These can be
  * thought of as states in a finite state machine, labels in an assembly
@@ -365,7 +387,7 @@ MIT in each case. */
 #define STATE_SPACE_TAG			1
 #define STATE_SPACE_NEAREST_POINT	2
 #define STATE_SPACE_SIZE		3
-
+
 /* When in RC_MOVE_TO_ADJACENT_POINT in the interpreter, the following
    information is available on the stack (placed there by
    Translate_To_Point
@@ -374,7 +396,7 @@ MIT in each case. */
 #define TRANSLATE_FROM_DISTANCE		1
 #define TRANSLATE_TO_POINT		2
 #define TRANSLATE_TO_DISTANCE		3
-
+
 /* TRUE
  * The initial binding of the variable T is to an object of this type.
  * This type is the beginnings of a possible move toward a system where

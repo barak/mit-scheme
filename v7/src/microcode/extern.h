@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.24 1987/04/16 02:21:28 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.25 1987/05/29 02:22:08 jinx Exp $
  *
  * External declarations.
  *
@@ -89,11 +89,13 @@ extern Pointer
  *Heap,			/* Bottom of all heap space */
   Current_State_Point,	/* Dynamic state point */
   Fluid_Bindings,	/* Fluid bindings AList */
-  return_to_interpreter, /* Return address/code left by interpreter
-			    when calling compiled code */
- *last_return_code;	/* Address of the most recent return code in the stack.
+ *last_return_code,	/* Address of the most recent return code in the stack.
 			   This is only meaningful while in compiled code.
 			   *** This must be changed when stacklets are used. ***
+			 */
+  return_to_interpreter;/* Return code/address used by the compiled code
+			   interface to make compiled code return to the
+			   interpreter.
 			 */
 
 extern Declare_Fixed_Objects();

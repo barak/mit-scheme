@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.24 1987/04/21 15:02:02 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.25 1987/05/29 02:23:02 jinx Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -652,7 +652,10 @@ Prim_No_Trap_Apply:
       Set_Time_Zone(Zone_Lookup);
       cell = Get_Pointer(Fetch_Expression());
       lookup(cell, Fetch_Env(), cell, repeat_variable_lookup);
-      Val = *cell;
+
+lookup_end_restart:
+
+      Val = Fetch(cell[0]);
       if (Type_Code(Val) != TC_REFERENCE_TRAP)
       {
 	Set_Time_Zone(Zone_Working);
@@ -666,20 +669,34 @@ Prim_No_Trap_Apply:
 	case TRAP_UNBOUND_DANGEROUS:
 	case TRAP_UNASSIGNED_DANGEROUS:
 	case TRAP_FLUID_DANGEROUS:
+	case TRAP_COMPILER_CACHED_DANGEROUS:
 	  cell = Get_Pointer(Fetch_Expression());
 	  temp =
-	    deep_lookup_end(deep_lookup(Fetch_Env(), cell[VARIABLE_SYMBOL], cell),
+	    deep_lookup_end(deep_lookup(Fetch_Env(),
+					cell[VARIABLE_SYMBOL],
+					cell),
 			    cell);
-	  goto external_lookup_return;
-
-	/* No need to recompile, pass the fake variable. */
-	case TRAP_FLUID:
-	  temp = deep_lookup_end(lookup_fluid(Val), fake_variable_object);
-
-	external_lookup_return:
 	  Import_Val();
 	  if (temp != PRIM_DONE)
 	    break;
+	  Set_Time_Zone(Zone_Working);
+	  goto Pop_Return;
+
+	case TRAP_COMPILER_CACHED:
+	  cell = Nth_Vector_Loc(Fast_Vector_Ref(Val, TRAP_EXTRA),
+				TRAP_EXTENSION_CELL);
+	  goto lookup_end_restart;
+
+	case TRAP_FLUID:
+	  cell = lookup_fluid(Val);
+	  goto lookup_end_restart;
+
+/* Interpret() continues on the next page */
+
+/* Interpret(), continued */
+
+	case TRAP_NOP:
+	  Val = Vector_Ref(Val, TRAP_EXTRA);
 	  Set_Time_Zone(Zone_Working);
 	  goto Pop_Return;
 
@@ -690,10 +707,6 @@ Prim_No_Trap_Apply:
 	case TRAP_UNASSIGNED:
 	  temp = ERR_UNASSIGNED_VARIABLE;
 	  break;
-
-/* Interpret() continues on the next page */
-
-/* Interpret(), continued */
 
 	default:
 	  temp = ERR_BROKEN_COMPILED_VARIABLE;
@@ -706,7 +719,7 @@ Prim_No_Trap_Apply:
       temp = Lex_Ref(Fetch_Env(), Fetch_Expression());
       Import_Val();
       if (temp == PRIM_DONE)
-	break;
+	goto Pop_Return;
 
 #endif No_In_Line_Lookup
 
@@ -811,48 +824,65 @@ Pop_Return:
 
 /* Interpret(), continued */
 
-#define define_compiler_restart( return_code, entry)			\
+#define define_compiler_restart(return_code, entry)			\
     case return_code:							\
-      { extern long entry();						\
+      {									\
+	extern long entry();						\
 	compiled_code_restart();					\
 	Export_Registers();						\
 	Which_Way = entry();						\
 	goto return_from_compiled_code;					\
       }
 
-      define_compiler_restart( RC_COMP_INTERRUPT_RESTART,
-			      comp_interrupt_restart)
+      define_compiler_restart (RC_COMP_INTERRUPT_RESTART,
+			       comp_interrupt_restart)
 
-      define_compiler_restart( RC_COMP_LEXPR_INTERRUPT_RESTART,
-			      comp_lexpr_interrupt_restart)
+      define_compiler_restart (RC_COMP_LEXPR_INTERRUPT_RESTART,
+			       comp_lexpr_interrupt_restart)
 
-      define_compiler_restart( RC_COMP_LOOKUP_APPLY_RESTART,
-			      comp_lookup_apply_restart)
+      define_compiler_restart (RC_COMP_LOOKUP_APPLY_RESTART,
+			       comp_lookup_apply_restart)
 
-      define_compiler_restart( RC_COMP_REFERENCE_RESTART,
-			      comp_reference_restart)
+      define_compiler_restart (RC_COMP_REFERENCE_RESTART,
+			       comp_reference_restart)
 
-      define_compiler_restart( RC_COMP_ACCESS_RESTART,
-			      comp_access_restart)
+      define_compiler_restart (RC_COMP_ACCESS_RESTART, comp_access_restart)
 
-      define_compiler_restart( RC_COMP_UNASSIGNED_P_RESTART,
-			      comp_unassigned_p_restart)
+      define_compiler_restart (RC_COMP_UNASSIGNED_P_RESTART,
+			       comp_unassigned_p_restart)
 
-      define_compiler_restart( RC_COMP_UNBOUND_P_RESTART,
-			      comp_unbound_p_restart)
+      define_compiler_restart (RC_COMP_UNBOUND_P_RESTART,
+			       comp_unbound_p_restart)
 
-      define_compiler_restart( RC_COMP_ASSIGNMENT_RESTART,
-			      comp_assignment_restart)
+      define_compiler_restart (RC_COMP_ASSIGNMENT_RESTART,
+			       comp_assignment_restart)
 
-      define_compiler_restart( RC_COMP_DEFINITION_RESTART,
-			      comp_definition_restart)
+      define_compiler_restart (RC_COMP_DEFINITION_RESTART,
+			       comp_definition_restart)
 
+      define_compiler_restart (RC_COMP_SAFE_REFERENCE_RESTART,
+			       comp_safe_reference_restart)
+
+      define_compiler_restart (RC_COMP_CACHE_VARIABLE_RESTART,
+			       comp_cache_variable_restart)
+
+      define_compiler_restart (RC_COMP_REFERENCE_TRAP_RESTART,
+			       comp_reference_trap_restart)
+
+      define_compiler_restart (RC_COMP_ASSIGNMENT_TRAP_RESTART,
+			       comp_assignment_trap_restart)
+
+      define_compiler_restart (RC_COMP_UUO_LINK_RESTART, comp_uuo_link_restart)
+
+      define_compiler_restart (RC_COMP_UUO_LINK_TRAP_RESTART,
+			       comp_uuo_link_trap_restart)
+
     case RC_REENTER_COMPILED_CODE:
       compiled_code_restart();
       Export_Registers();
       Which_Way = return_to_compiled_code();
       goto return_from_compiled_code;
-
+
     case RC_CONDITIONAL_DECIDE:
       Pop_Return_Val_Check();
       End_Subproblem();
@@ -876,7 +906,7 @@ Pop_Return:
       /* Should be called RC_REDO_EVALUATION. */
       Store_Env(Pop());
       Reduces_To(Fetch_Expression());
-
+
     case RC_EXECUTE_ACCESS_FINISH:
     {
       long Result;
@@ -926,12 +956,17 @@ Pop_Return:
       Restore_Env();
       cell = Get_Pointer(Vector_Ref(Fetch_Expression(), ASSIGN_NAME));
       lookup(cell, Fetch_Env(), cell, repeat_assignment_lookup);
-      setup_lock(set_serializer, cell);
 
       value = Val;
       bogus_unassigned = Get_Fixed_Obj_Slot(Non_Object);
       if (value == bogus_unassigned)
 	value = UNASSIGNED_OBJECT;
+
+assignment_end_before_lock:
+
+      setup_lock(set_serializer, cell);
+
+assignment_end_after_lock:
 
       if (Type_Code(*cell) != TC_REFERENCE_TRAP)
       {
@@ -956,6 +991,7 @@ Pop_Return:
 	case TRAP_UNBOUND_DANGEROUS:
 	case TRAP_UNASSIGNED_DANGEROUS:
 	case TRAP_FLUID_DANGEROUS:
+	case TRAP_COMPILER_CACHED_DANGEROUS:
 	  remove_lock(set_serializer);
 	  cell = Get_Pointer(Vector_Ref(Fetch_Expression(), ASSIGN_NAME));
 	  temp =
@@ -965,21 +1001,7 @@ Pop_Return:
 				cell,
 				value,
 				false);
-	  goto external_assignment_return;
-
-	case TRAP_UNASSIGNED:
-	  Val = bogus_unassigned;
-	  goto normal_assignment_done;
-
-	case TRAP_FLUID:
-	  /* No need to recompile, pass the fake variable. */
-	  remove_lock(set_serializer);
-	  temp = deep_assignment_end(lookup_fluid(*cell),
-				     fake_variable_object,
-				     value,
-				     false);
-
-	external_assignment_return:
+external_assignment_return:
 	  Import_Val();
 	  if (temp != PRIM_DONE)
 	    break;
@@ -987,9 +1009,46 @@ Pop_Return:
 	  End_Subproblem();
 	  goto Pop_Return;
 
+	case TRAP_COMPILER_CACHED:
+	{
+	  Pointer extension;
+
+	  extension = Fast_Vector_Ref(Val, TRAP_EXTRA);
+	  if (Fast_Vector_Ref(extension, TRAP_EXTENSION_UUO_LIST) != NIL)
+	  {
+	    /* No need to recompile, pass the fake variable. */
+	    remove_lock(set_serializer);
+	    temp = deep_assignment_end(cell,
+				       fake_variable_object,
+				       value,
+				       false);
+	    goto external_assignment_return;
+	  }
+	  cell = Nth_Vector_Loc(extension, TRAP_EXTENSION_CELL);
+	  goto assignment_end_after_lock;
+	}	  
+
+/* Interpret() continues on the next page */
+
+/* Interpret(), continued */
+
+	case TRAP_FLUID:
+	  remove_lock(set_serializer);
+	  cell = lookup_fluid(Val);
+	  goto assignment_end_before_lock;
+
 	case TRAP_UNBOUND:
 	  remove_lock(set_serializer);
 	  temp = ERR_UNBOUND_VARIABLE;
+	  break;
+
+	case TRAP_UNASSIGNED:
+	  Val = bogus_unassigned;
+	  goto normal_assignment_done;
+
+	case TRAP_NOP:
+	  remove_lock(set_serializer);
+	  temp = ERR_BAD_FRAME;
 	  break;
 
 	default:
@@ -998,12 +1057,16 @@ Pop_Return:
 	  break;
       }
 
+      if (value == UNASSIGNED_OBJECT)
+	value = bogus_unassigned;
+	
 /* Interpret() continues on the next page */
 
 /* Interpret(), continued */
 
-#else
+#else No_In_Line_Lookup
 
+      value = Val;
       Set_Time_Zone(Zone_Lookup);
       Restore_Env();
       temp = Lex_Set(Fetch_Env(),
@@ -1011,12 +1074,13 @@ Pop_Return:
 		     value);
       Import_Val();
       if (temp == PRIM_DONE) 
-      { End_Subproblem();
+      {
+	End_Subproblem();
 	Set_Time_Zone(Zone_Working);
 	break;
       }
 
-#endif
+#endif No_In_Line_Lookup
 
       Set_Time_Zone(Zone_Working);
       Save_Env();

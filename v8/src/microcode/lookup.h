@@ -30,13 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.h,v 9.36 1987/04/16 02:26:04 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.h,v 9.37 1987/05/29 02:24:06 jinx Exp $ */
 
 /* Macros and declarations for the variable lookup code. */
 
 extern Pointer
   *deep_lookup(),
-  *lookup_fluid();
+  *lookup_fluid(),
+  *force_definition();
 
 extern long
   deep_lookup_end(),
@@ -225,7 +226,8 @@ label:									\
 
 #define lookup_primitive_type_test()					\
 {									\
-  if (Type_Code(Arg1) != GLOBAL_ENV) Arg_1_Type(TC_ENVIRONMENT);	\
+  if (Type_Code(Arg1) != GLOBAL_ENV)					\
+    Arg_1_Type(TC_ENVIRONMENT);						\
   if (Type_Code(Arg2) != TC_INTERNED_SYMBOL)				\
     Arg_2_Type(TC_UNINTERNED_SYMBOL);					\
 }
@@ -233,7 +235,7 @@ label:									\
 #define lookup_primitive_end(Result)					\
 {									\
   if (Result == PRIM_DONE)						\
-    return Val;								\
+    PRIMITIVE_RETURN(Val);						\
   if (Result == PRIM_INTERRUPT)						\
     Primitive_Interrupt();						\
   Primitive_Error(Result);						\

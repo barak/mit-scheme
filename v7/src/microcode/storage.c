@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.31 1987/05/28 16:07:58 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.32 1987/05/29 02:24:33 jinx Exp $
 
 This file defines the storage for global variables for
 the Scheme Interpreter. */
@@ -60,14 +60,12 @@ Pointer
  *Heap,			/* Bottom of entire heap */
   Current_State_Point = NIL, /* Used by dynamic winder */
   Fluid_Bindings = NIL,	/* Fluid bindings AList */
-  return_to_interpreter, /* Return address/code left by interpreter
-			    when calling compiled code */
-  uuo_link_trap,	/* Entry address for uuo links needing
-			   special attention */
  *last_return_code,	/* Address of the most recent return code in the stack.
 			   This is only meaningful while in compiled code.
 			   *** This must be changed when stacklets are used. ***
 			 */
+  compiler_utilities,	/* Utility block in constant space needed by the compiled
+			   code interface. */
  Swap_Temp;		/* Used by Swap_Pointers in default.h */
 
 long IntCode,		/* Interrupts requesting */

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.25 1987/04/16 14:34:02 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.26 1987/05/29 02:22:19 jinx Exp $
 
    This file contains code for fasdump and dump-band.
 */
@@ -300,6 +300,7 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
 */
 Built_In_Primitive(Prim_Band_Dump, 2, "DUMP-BAND", 0xB7)
 {
+  extern Pointer compiler_utilities;
   Pointer Combination, Ext_Prims;
   long Arg1Type;
   Primitive_2_Args();
@@ -322,7 +323,7 @@ Built_In_Primitive(Prim_Band_Dump, 2, "DUMP-BAND", 0xB7)
   Free[COMB_1_ARG_1] = NIL;
   Free += 2;
   *Free++ = Combination;
-  *Free++ = return_to_interpreter;
+  *Free++ = compiler_utilities;
   *Free = Make_Pointer(TC_LIST, Free-2);
   Free++;  /* Some compilers are TOO clever about this and increment Free
 	      before calculating Free-2! */

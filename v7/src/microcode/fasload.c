@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.25 1987/04/16 02:21:50 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.26 1987/05/29 02:22:32 jinx Exp $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
@@ -464,6 +464,18 @@ Built_In_Primitive(Prim_reload_band_name, 0, "RELOAD-BAND-NAME", 0x1A3)
   return C_String_To_Scheme_String(reload_band_name);
 }
 
+extern void compiler_reset_error();
+
+void 
+compiler_reset_error()
+{
+  fprintf(stderr,
+	  "\ncompiler_restart_error: The band being restored and\n");
+  fprintf(stderr,
+	  "the compiled code interface in this microcode are inconsistent.\n");
+  Microcode_Termination(TERM_COMPILER_DEATH);
+}
+
 /* (LOAD-BAND FILE-NAME)
    Restores the heap and pure space from the contents of FILE-NAME,
    which is typically a file created by DUMP-BAND.  The file can,
@@ -471,9 +483,10 @@ Built_In_Primitive(Prim_reload_band_name, 0, "RELOAD-BAND-NAME", 0x1A3)
 */
 Built_In_Primitive(Prim_Band_Load, 1, "LOAD-BAND", 0xB9)
 {
+  extern Pointer compiler_utilities;
   Pointer Save_FO, *Save_Free, *Save_Free_Constant,
           Save_Undefined, *Save_Stack_Pointer,
-  	  *Save_Stack_Guard, Result;
+  	  *Save_Stack_Guard, saved_utilities, Result;
 
   long Jump_Value;
   jmp_buf  Swapped_Buf, *Saved_Buf;
@@ -492,6 +505,7 @@ Built_In_Primitive(Prim_Band_Load, 1, "LOAD-BAND", 0xB9)
   Free_Constant = Constant_Space;
   Save_Stack_Pointer = Stack_Pointer;
   Save_Stack_Guard = Stack_Guard;
+  saved_utilities = compiler_utilities;
 
 /* Prim_Band_Load continues on next page */
 
@@ -504,15 +518,17 @@ Built_In_Primitive(Prim_Band_Load, 1, "LOAD-BAND", 0xB9)
   Saved_Buf = Back_To_Eval;
   Jump_Value = setjmp(Swapped_Buf);
   if (Jump_Value == 0)
-  { extern char *malloc();
+  {
+    extern char *malloc();
     extern strcpy(), free();
+    extern void compiler_reset();
 
     length = Get_Integer(Fast_Vector_Ref(Arg1, STRING_LENGTH));
     band_name = malloc(length);
     if (band_name != ((char *) NULL))
       strcpy(band_name, Scheme_String_To_C_String(Arg1));
 
-    Back_To_Eval = (jmp_buf *) Swapped_Buf;
+    Back_To_Eval = ((jmp_buf *) Swapped_Buf);
     Result = Fasload(Arg1, false);
     Back_To_Eval = Saved_Buf;
 
@@ -526,15 +542,18 @@ Built_In_Primitive(Prim_Band_Load, 1, "LOAD-BAND", 0xB9)
     Save_Cont();
     Store_Expression(Vector_Ref(Result,0));
     /* Primitive externals handled by Fasload */
-    return_to_interpreter = Vector_Ref(Result, 1);
+    compiler_utilities = Vector_Ref(Result, 1);
+    compiler_reset(compiler_utilities);
     Store_Env(Make_Non_Pointer(GLOBAL_ENV, GO_TO_GLOBAL));
     Set_Pure_Top();
     Band_Load_Hook();
-    longjmp(*Back_To_Eval, PRIM_DO_EXPRESSION);
+    PRIMITIVE_ABORT(PRIM_DO_EXPRESSION);
   }
   else
-  { if (band_name != ((char *) NULL))
+  {
+    if (band_name != ((char *) NULL))
       free(band_name);
+    compiler_utilities = saved_utilities;
     Back_To_Eval = Saved_Buf;
     Free = Save_Free;
     Free_Constant = Save_Free_Constant;
@@ -543,7 +562,8 @@ Built_In_Primitive(Prim_Band_Load, 1, "LOAD-BAND", 0xB9)
     Undefined_Externals = Save_Undefined;
     Restore_Fixed_Obj(Save_FO);
     if (Jump_Value == PRIM_INTERRUPT)
-    { printf("\nFile too large for memory.\n");
+    {
+      fprintf(stderr, "\nFile too large for memory.\n");
       Jump_Value = ERR_FASL_FILE_BAD_DATA;
     }
     Primitive_Error(Jump_Value);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.33 1987/05/28 00:45:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.34 1987/05/29 02:21:09 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -535,7 +535,8 @@ long Err, Micro_Error;
     case TERM_BROKEN_HEART:
       printf("Broken heart encountered.\n"); break;
     case TERM_COMPILER_DEATH:
-      printf("Compiled code entered without compiler support.\n"); break;
+      printf("Mismatch between compiled code and compiled code support.\n");
+      break;
     case TERM_DISK_RESTORE:
       printf("DISK restore.\n"); break;
     case TERM_EOF:

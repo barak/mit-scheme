@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/trap.h,v 9.37 1987/04/16 02:30:49 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/trap.h,v 9.38 1987/05/29 02:24:53 jinx Rel $ */
 
 /* Kinds of traps:
 
@@ -41,7 +41,6 @@ MIT in each case. */
    For efficiency, some traps are immediate, while some are
    pointer objects.  The type code is multiplexed, and the
    garbage collector handles it specially.
-
  */
 
 /* The following are immediate traps: */
@@ -51,16 +50,20 @@ MIT in each case. */
 #define TRAP_UNBOUND				2
 #define TRAP_UNBOUND_DANGEROUS			3
 #define TRAP_ILLEGAL				4
-#define TRAP_ILLEGAL_DANGEROUS			5	/* Unused. */
+#define TRAP_ILLEGAL_DANGEROUS			5
 
 /* TRAP_MAX_IMMEDIATE is defined in const.h */
 
 /* The following are not: */
 
-#define TRAP_NOP				10	/* Unused. */
+#define TRAP_NOP				10
 #define TRAP_DANGEROUS				11
 #define TRAP_FLUID				12
 #define TRAP_FLUID_DANGEROUS			13
+#define TRAP_COMPILER_CACHED			14
+#define TRAP_COMPILER_CACHED_DANGEROUS		15
+
+#define TRAP_EXTENSION_TYPE			TC_QUAD
 
 /* Trap utilities */
 
@@ -89,7 +92,9 @@ MIT in each case. */
 #define DANGEROUS_ILLEGAL_OBJECT	0x32000005
 #endif
 
+#define NOP_OBJECT			Make_Unsigned_Fixnum(TRAP_NOP)
 #define DANGEROUS_OBJECT		Make_Unsigned_Fixnum(TRAP_DANGEROUS)
+#define REQUEST_RECACHE_OBJECT		DANGEROUS_ILLEGAL_OBJECT
 
 #if (TC_REFERENCE_TRAP != 0x32)
 #include "error: trap.h and types.h are inconsistent"
