@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.18 2000/05/10 17:03:30 cph Exp $
+;;; $Id: imail-umail.scm,v 1.19 2000/05/12 18:23:03 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -137,6 +137,11 @@
     (lambda (port)
       (for-each (lambda (message) (write-umail-message message port))
 		(file-folder-messages folder)))))
+
+(define-method append-message-to-file ((message <message>) (url <umail-url>))
+  (let ((port (open-binary-output-file (file-url-pathname url) #t)))
+    (write-umail-message message port)
+    (close-port port)))
 
 (define (write-umail-message message port)
   (let ((from-line (get-message-property message "umail-from-line" #f)))

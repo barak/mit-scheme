@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.53 2000/05/12 17:56:18 cph Exp $
+;;; $Id: imail-core.scm,v 1.54 2000/05/12 18:22:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -151,13 +151,20 @@
 (define-generic %copy-folder (url new-url))
 
 (define-method %copy-folder ((url <url>) (new-url <url>))
-  (let ((from (open-folder url))
-	(to (new-folder new-url)))
-    (let ((n (folder-length from)))
+  (let ((folder (open-folder url)))
+    (let ((n (folder-length folder)))
       (do ((i 0 (+ i 1)))
 	  ((= i n))
-	(append-message to (get-message from i))))
-    (save-folder to)))
+	(%append-message (get-message folder i) new-url)))))
+
+;; -------------------------------------------------------------------
+;; Insert a copy of MESSAGE in FOLDER at the end of the existing
+;; messages.  Unspecified result.
+
+(define (append-message message url)
+  (%append-message message (->url url)))
+
+(define-generic %append-message (message url))
 
 ;; -------------------------------------------------------------------
 ;; Return a list of URLs for folders that match URL-PATTERN.
@@ -292,12 +299,6 @@
   (%get-message folder index))
 
 (define-generic %get-message (folder index))
-
-;; -------------------------------------------------------------------
-;; Insert a copy of MESSAGE in FOLDER at the end of the existing
-;; messages.  Unspecified result.
-
-(define-generic append-message (folder message))
 
 ;; -------------------------------------------------------------------
 ;; Remove all messages in FOLDER that are marked for deletion.

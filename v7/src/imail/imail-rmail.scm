@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.24 2000/05/10 17:03:27 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.25 2000/05/12 18:22:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -68,11 +68,14 @@
   (synchronize-file-folder-write folder write-rmail-file))
 
 (define (compute-rmail-folder-header-fields folder)
+  (make-rmail-folder-header-fields (folder-flags folder)))
+
+(define (make-rmail-folder-header-fields flags)
   (list (make-header-field "Version" " 5")
 	(make-header-field "Labels"
 			   (decorated-string-append
 			    "" "," ""
-			    (flags->rmail-labels (folder-flags folder))))
+			    (flags->rmail-labels flags)))
 	(make-header-field "Note" "   This is the header of an rmail file.")
 	(make-header-field "Note" "   If you are seeing it in rmail,")
 	(make-header-field "Note"
@@ -96,7 +99,7 @@
 	    (let ((message (read-rmail-message port)))
 	      (if message
 		  (begin
-		    (append-message folder message)
+		    (append-message message (folder-url folder))
 		    (loop))))))))))
 
 (define (read-rmail-prolog port)
@@ -176,12 +179,26 @@
   ;; **** Do backup of file here.
   (call-with-binary-output-file pathname
     (lambda (port)
-      (write-string "BABYL OPTIONS: -*- rmail -*-" port)
-      (newline port)
-      (write-header-fields (rmail-folder-header-fields folder) port)
-      (write-char rmail-message:end-char port)
+      (write-rmail-file-header (rmail-folder-header-fields folder))
       (for-each (lambda (message) (write-rmail-message message port))
 		(file-folder-messages folder)))))
+
+(define-method append-message-to-file ((message <message>) (url <rmail-url>))
+  (let ((pathname (file-url-pathname url)))
+    (if (file-exists? pathname)
+	(let ((port (open-binary-output-file pathname #t)))
+	  (write-rmail-message message port)
+	  (close-port port))
+	(call-with-binary-output-file pathname
+	  (lambda (port)
+	    (write-rmail-file-header (make-rmail-folder-header-fields '()))
+	    (write-rmail-message message port))))))
+
+(define (write-rmail-file-header header-fields)
+  (write-string "BABYL OPTIONS: -*- rmail -*-" port)
+  (newline port)
+  (write-header-fields header-fields port)
+  (write-char rmail-message:end-char port))
 
 (define (write-rmail-message message port)
   (write-char rmail-message:start-char port)
@@ -248,8 +265,8 @@
 			  (let ((n (folder-length inbox)))
 			    (do ((index 0 (+ index 1)))
 				((= index n))
-			      (append-message folder
-					      (get-message inbox index))))
+			      (append-message (get-message inbox index)
+					      (folder-url folder))))
 			  inbox))
 		      pathnames)))
 	    (save-folder folder)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.42 2000/05/12 18:00:56 cph Exp $
+;;; $Id: imail-top.scm,v 1.43 2000/05/12 18:22:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -660,13 +660,13 @@ Completion is performed over known flags when reading."
   "Append messages to this folder from a specified folder."
   "sInput from folder"
   (lambda (url-string)
-    (let ((folder (selected-folder))
-	  (message (selected-message))
-	  (folder* (open-folder url-string)))
-      (let ((n (folder-length folder*)))
+    (let ((message (selected-message))
+	  (folder (open-folder url-string))
+	  (url (folder-url (selected-folder))))
+      (let ((n (folder-length folder)))
 	(do ((index 0 (+ index 1)))
 	    ((= index n))
-	  (append-message folder (get-message folder* index))))
+	  (append-message (get-message folder index) url)))
       (if (not message)
 	  (select-message folder (first-unseen-message folder))))))
 
@@ -674,9 +674,8 @@ Completion is performed over known flags when reading."
   "Append this message to a specified folder."
   "sOutput to folder"
   (lambda (url-string)
-    (let ((folder (open-folder url-string))
-	  (message (selected-message)))
-      (append-message folder message)
+    (let ((message (selected-message)))
+      (append-message message url-string)
       (message-filed message)
       (if (ref-variable imail-delete-after-output)
 	  ((ref-command imail-delete-forward) #f))

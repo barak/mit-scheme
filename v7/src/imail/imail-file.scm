@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.21 2000/05/12 17:56:22 cph Exp $
+;;; $Id: imail-file.scm,v 1.22 2000/05/12 18:22:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -97,25 +97,33 @@
 (define-method %get-message ((folder <file-folder>) index)
   (list-ref (file-folder-messages folder) index))
 
-(define-method append-message ((folder <file-folder>) (message <message>))
-  (let ((message (copy-message message)))
-    (without-interrupts
-     (lambda ()
-       (set-file-folder-messages!
-	folder
-	(let ((messages (file-folder-messages folder)))
-	  (if (pair? messages)
-	      (begin
-		(let loop ((prev messages) (this (cdr messages)) (index 1))
-		  (if (pair? this)
-		      (loop this (cdr this) (fix:+ index 1))
-		      (begin
-			(attach-message! message folder index)
-			(set-cdr! prev (list message)))))
-		messages)
-	      (begin
-		(attach-message! message folder 0)
-		(list message)))))))))
+(define-method %append-message ((message <message>) (url <file-url>))
+  (let ((folder (get-memoized-folder url)))
+    (if folder
+	(let ((message (copy-message message)))
+	  (without-interrupts
+	   (lambda ()
+	     (set-file-folder-messages!
+	      folder
+	      (let ((messages (file-folder-messages folder)))
+		(if (pair? messages)
+		    (begin
+		      (let loop
+			  ((prev messages)
+			   (this (cdr messages))
+			   (index 1))
+			(if (pair? this)
+			    (loop this (cdr this) (fix:+ index 1))
+			    (begin
+			      (attach-message! message folder index)
+			      (set-cdr! prev (list message)))))
+		      messages)
+		    (begin
+		      (attach-message! message folder 0)
+		      (list message))))))))
+	(append-message-to-file message url))))
+
+(define-generic append-message-to-file (message url))
 
 (define-method expunge-deleted-messages ((folder <file-folder>))
   (without-interrupts

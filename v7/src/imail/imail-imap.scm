@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.32 2000/05/12 18:00:52 cph Exp $
+;;; $Id: imail-imap.scm,v 1.33 2000/05/12 18:22:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -520,6 +520,9 @@
 (define-method %copy-folder ((url <imap-url>) (new-url <imap-url>))
   ???)
 
+(define-method %append-message ((message <message>) (url <imap-url>))
+  ???)
+
 (define-method available-folder-names ((url <imap-url>))
   ???)
 
@@ -565,10 +568,6 @@
   (guarantee-imap-folder-open folder)
   (or (imap-folder-unseen folder) 0))
 |#
-
-(define-method append-message ((folder <imap-folder>) (message <message>))
-  (guarantee-imap-folder-open folder)
-  ???)
 
 (define-method expunge-deleted-messages ((folder <imap-folder>))
   (guarantee-imap-folder-open folder)
