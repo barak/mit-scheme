@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/manual.scm,v 1.2 1991/09/18 15:59:26 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/manual.scm,v 1.3 1991/09/18 19:25:07 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -68,9 +68,13 @@ where SECTION is the desired section of the manual, as in `tty(4)'."
 	      topic))
 	(begin
 	  (set! section
-		(substring topic (match-beginning 2) (match-end 2)))
+		(substring topic
+			   (re-match-start-index 2)
+			   (re-match-end-index 2)))
 	  (set! topic
-		(substring topic (match-beginning 1) (match-end 1))))
+		(substring topic
+			   (re-match-start-index 1)
+			   (re-match-end-index 1))))
 	(set! section false))
     (let ((buffer-name
 	   (if (ref-variable manual-entry-reuse-buffer?)
@@ -104,6 +108,9 @@ where SECTION is the desired section of the manual, as in `tty(4)'."
 	(pop-up-buffer buffer false)
 	(message "Manual page ready")))))
 
+(define manual-vendor-pattern
+   "^\\(\\(Printed\\|Sun Release\\) [0-9].*[0-9]\\| *Page [0-9]*.*(printed [0-9/]*)\\|[ \t]*Hewlett-Packard\\( Company\\|\\)[ \t]*- [0-9]* -.*\\)$")
+
 (define (nuke-nroff-bs buffer)
 
   (let ((start (buffer-start buffer))
@@ -126,6 +133,15 @@ where SECTION is the desired section of the manual, as in `tty(4)'."
 	      (replace-match "" false true)
 	      (loop (re-search-forward
 		     pattern (re-match-start 0) end false))))))
+
+    ;; Nuke footers: "Printed 12/3/85	27 April 1981	1"
+    (let loop ((point
+		(re-search-forward manual-vendor-pattern  start end true)))
+      (if point
+	  (begin
+	    (replace-match "" false true)
+	    (loop (re-search-forward
+		   manual-vendor-pattern (re-match-start 0) end false)))))
 
     ;; Crunch blank lines
     (let ((pattern "\n\n\n\n*"))
