@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.33 2000/01/05 02:40:09 cph Exp $
+$Id: ntprm.scm,v 1.34 2000/04/19 01:00:17 cph Exp $
 
 Copyright (c) 1992-2000 Massachusetts Institute of Technology
 
@@ -96,6 +96,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((attr (file-attributes namestring)))
     (and attr
 	 (file-attributes/length attr))))
+
+(define (copy-file from to)
+  ((ucode-primitive nt-copy-file 2) (->namestring (merge-pathnames from))
+				    (->namestring (merge-pathnames to))))
 
 (define (file-modification-time filename)
   ((ucode-primitive file-mod-time 1)
@@ -360,21 +364,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (os/default-end-of-line-translation)
   "\r\n")
 
-(define (initialize-system-primitives!)
-  (let ((reset!
-	 (lambda ()
-	   (reset-environment-variables!)
-	   (cache-console-channel-descriptor!))))
-    (reset!)
-    (add-event-receiver! event:after-restart reset!))
-  (set! nt/hide-subprocess-windows? #t)
-  (set! nt/subprocess-argument-quote-char #f)
-  (set! nt/subprocess-argument-escape-char #f)
-  unspecific)
-
 (define (dos/fs-drive-type pathname)
   ;; (system-name . [nfs-]mount-point)
-  (cons (nt-volume-info/file-system-name (nt-volume-info pathname)) ""))
+  (cons (let ((info (nt-volume-info pathname)))
+	  (let ((name (nt-volume-info/file-system-name info)))
+	    ;; Samba normally advertises itself as NTFS, except that
+	    ;; it doesn't claim to store Unicode on the disk.
+	    (if (and (string-ci=? name "NTFS")
+		     (fix:= 0
+			    (fix:and (nt-volume-info/file-system-flags info)
+				     nt-fs-flag/unicode-on-disk)))
+		"Samba"
+		name)))
+	""))
 
 (define (dos/fs-long-filenames? pathname)
   ;; Currently we have a problem with long filenames on FAT systems because
@@ -420,10 +422,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define nt-fs-flag/persistent-acls		#x00000008)
 (define nt-fs-flag/file-compression		#x00000010)
 (define nt-fs-flag/volume-is-compressed		#x00008000)
-
-(define (copy-file from to)
-  ((ucode-primitive nt-copy-file 2) (->namestring (merge-pathnames from))
-				    (->namestring (merge-pathnames to))))
 
 (define (init-file-specifier->pathname specifier)
 
@@ -542,6 +540,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define nt/hide-subprocess-windows?)
 (define nt/subprocess-argument-quote-char)
 (define nt/subprocess-argument-escape-char)
+
+(define (initialize-system-primitives!)
+  (let ((reset!
+	 (lambda ()
+	   (reset-environment-variables!)
+	   (cache-console-channel-descriptor!))))
+    (reset!)
+    (add-event-receiver! event:after-restart reset!))
+  (set! nt/hide-subprocess-windows? #t)
+  (set! nt/subprocess-argument-quote-char #f)
+  (set! nt/subprocess-argument-escape-char #f)
+  unspecific)
 
 (define (os/make-subprocess filename arguments environment working-directory
 			    ctty stdin stdout stderr)
