@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.10 1992/09/30 18:36:27 cph Exp $
+$Id: floppy.scm,v 1.11 1992/09/30 18:51:38 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -439,6 +439,7 @@ then answer \"yes\" to the prompt below.")
 	    (append-string "\nThere are no files to delete.")
 	    (begin
 	      (append-string "
+
 The following files appear on your floppy, but not in the working directory:
 ")
 	      (for-each (lambda (record)
