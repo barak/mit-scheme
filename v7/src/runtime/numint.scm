@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: numint.scm,v 1.3 1992/09/30 13:28:16 jinx Exp $
+$Id: numint.scm,v 1.4 1995/08/20 15:58:14 adams Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -37,52 +37,101 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+;;(define (make-=-operator =)
+;;  (lambda zs
+;;    (reduce-comparator = zs 'make-=-operator)))
+
 (define (make-=-operator =)
-  (lambda zs
-    (reduce-comparator = zs 'make-=-operator)))
+  (make-arity-dispatched-procedure
+   (lambda (self . zs)
+     self				; ignored
+     (reduce-comparator = zs 'make-=-operator))
+   (lambda () #T)
+   (lambda (z) z #T)
+   (lambda (z1 z2) (= z1 z2))))
+
+;;(define (make-<-operator <)
+;;  (lambda zs
+;;    (reduce-comparator < zs 'make-<-operator)))
+
+(define (make-comparison-operator comparator name)
+  (make-arity-dispatched-procedure
+   (lambda (self . zs)
+     self				; ignored
+     (reduce-comparator comparator zs name))
+   (lambda () #T)
+   (lambda (z) z #T)
+   comparator))
 
 (define (make-<-operator <)
-  (lambda zs
-    (reduce-comparator < zs 'make-<-operator)))
+  (make-comparison-operator < 'make-<-operator))
 
 (define (make->-operator <)
-  (lambda zs
-    (reduce-comparator (lambda (x y) (< y x)) 
-		       zs
-		       'make->-operator)))
+  (make-comparison-operator (lambda (x y) (< y x)) 'make->-operator))
 
 (define (make-<=-operator <)
-  (lambda zs
-    (reduce-comparator (lambda (x y) (not (< y x)))
-		       zs
-		       'make-<=-operator)))
+  (make-comparison-operator (lambda (x y) (not (< y x))) 'make-<=-operator))
   
 (define (make->=-operator <)
-  (lambda zs
-    (reduce-comparator (lambda (x y) (not (< x y)))
-		       zs
-		       'make->=-operator)))
+  (make-comparison-operator (lambda (x y) (not (< x y))) 'make->=-operator))
+
+;;(define (make-max/min-operator max/min)
+;;  (lambda (x . xs)
+;;    (reduce-max/min max/min x xs 'make-max/min-operator)))
 
 (define (make-max/min-operator max/min)
-  (lambda (x . xs)
-    (reduce-max/min max/min x xs 'make-max/min-operator)))
+  (make-arity-dispatched-procedure
+   (lambda (self x . xs)
+     self				;ignored
+     (reduce-max/min max/min x xs 'make-max/min-operator))
+   #F
+   (lambda (x) x)
+   max/min))
+
+;;(define (make-atan-operator atan1 atan2)
+;;  (lambda (z . xs)
+;;    (if (null? xs)
+;;	(atan1 z)
+;;	(atan2 z (car xs)))))
 
 (define (make-atan-operator atan1 atan2)
-  (lambda (z . xs)
-    (if (null? xs)
-	(atan1 z)
-	(atan2 z (car xs)))))
+  (make-arity-dispatched-procedure
+   (lambda (self z1 #!optional z2)	; required for arity
+     (error "ATAN operator: should never get to this case" self z1 z2))
+   atan1
+   atan2))
+
+;;(define (make-accumulation-operator op identity)
+;;  (lambda zs (reduce op identity zs)))
+;;
+;;(define (make-inverse-accumulation-operator
+;;	 accumulate-op identity unary-invert-op binary-invert-op)
+;;  (lambda (z1 . zs)
+;;    (if (null? zs)
+;;	(unary-invert-op z1)
+;;	(binary-invert-op z1
+;;			  (reduce accumulate-op identity zs)))))
 
 (define (make-accumulation-operator op identity)
-  (lambda zs (reduce op identity zs)))
+  (make-arity-dispatched-procedure
+   (lambda (self . zs)
+     self				; ignored
+     (reduce op identity zs))
+   (lambda () identity)
+   (lambda (z) z)
+   op))
 
 (define (make-inverse-accumulation-operator
 	 accumulate-op identity unary-invert-op binary-invert-op)
-  (lambda (z1 . zs)
-    (if (null? zs)
-	(unary-invert-op z1)
-	(binary-invert-op z1
-			  (reduce accumulate-op identity zs)))))
+  (make-arity-dispatched-procedure
+   (lambda (self z1 . zs)
+     self				; ignored
+     (binary-invert-op z1
+		       (reduce accumulate-op identity zs)))
+   #F					; no nullary case
+   unary-invert-op
+   binary-invert-op))
+
 
 (define (make-arithmetic-package package-name . operations) 
   (lambda (m . opt)
