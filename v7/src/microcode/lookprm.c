@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookprm.c,v 1.7 1992/01/20 13:22:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookprm.c,v 1.8 1992/01/20 13:26:19 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -258,8 +258,7 @@ DEFUN (extract_or_create_cache, (frame, sym),
 }
 
 void
-error_bad_environment(arg)
-     long arg;
+DEFUN (error_bad_environment, (arg), long arg)
 {
   if (OBJECT_TYPE (ARG_REF(arg)) == GLOBAL_ENV)
     error_bad_range_arg(arg);
@@ -292,7 +291,7 @@ error_bad_environment(arg)
    affected.  It will have to be rethought.
 
    NOTE: The following procedure and extract_or_create_cache have NOT
-   been parallelized.  They needs thinking.
+   been parallelized.  They need thinking.
 */
 
 DEFINE_PRIMITIVE ("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3, 3, 0)
