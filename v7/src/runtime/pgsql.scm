@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pgsql.scm,v 1.9 2004/11/25 04:00:06 cph Exp $
+$Id: pgsql.scm,v 1.10 2004/12/28 06:42:25 cph Exp $
 
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -337,8 +337,8 @@ USA.
 (define-result-accessor n-fields)
 (define-result-accessor cmd-status)
 
-(DEFINE (PGSQL-RESULT-STATUS RESULT)
-  (INDEX->NAME (PQ-RESULT-STATUS (RESULT->HANDLE RESULT)) EXEC-STATUS))
+(define (pgsql-result-status result)
+  (index->name (pq-result-status (result->handle result)) exec-status))
 
 (define (pgsql-clear result)
   (remove-from-gc-finalizer! results result))
