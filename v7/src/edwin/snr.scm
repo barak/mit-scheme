@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.48 1998/12/31 04:24:56 cph Exp $
+;;;	$Id: snr.scm,v 1.49 1998/12/31 04:32:33 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-98 Massachusetts Institute of Technology
 ;;;
@@ -2113,7 +2113,7 @@ This unmarks the article indicated by point and any other articles in
 	     ((news-group-buffer? buffer)
 	      (call-with-values
 		  (lambda ()
-		    (get-article-buffer buffer (current-news-header)))
+		    (get-article-buffer buffer (current-news-header) #t))
 		(lambda (buffer new?)
 		  new?
 		  buffer)))
@@ -2395,14 +2395,14 @@ Otherwise, the standard pruned header is shown."
   (let ((start (buffer-start buffer)))
     (delete-string start (mark1+ (mail-header-end start)))))
 
-(define (get-article-buffer group-buffer header)
+(define (get-article-buffer group-buffer header error?)
   (if (not (news-header:real? header))
       (editor-error "Can't select a placeholder article."))
   (let ((buffer (find-news-article-buffer group-buffer header)))
     (if buffer
 	(values buffer #f)
 	(let ((buffer (make-news-article-buffer group-buffer header)))
-	  (if (not buffer)
+	  (if (and error? (not buffer))
 	      (editor-error "Article no longer available from server."))
 	  (values buffer #t)))))
 
@@ -2699,10 +2699,12 @@ With prefix argument, appends next several articles."
 	   (header-iteration argument
 	     (lambda (group-buffer header)
 	       (call-with-values
-		   (lambda () (get-article-buffer group-buffer header))
+		   (lambda () (get-article-buffer group-buffer header #f))
 		 (lambda (article-buffer new?)
-		   (procedure article-buffer)
-		   (if new? (kill-buffer article-buffer)))))))
+		   (if article-buffer
+		       (begin
+			 (procedure article-buffer)
+			 (if new? (kill-buffer article-buffer)))))))))
 	  (else
 	   (editor-error "No article selected.")))))
 
