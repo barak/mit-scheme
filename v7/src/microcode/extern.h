@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: extern.h,v 9.61 2002/07/02 18:15:07 cph Exp $
+$Id: extern.h,v 9.62 2002/07/03 04:11:26 cph Exp $
 
 Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
@@ -241,7 +241,7 @@ extern void EXFUN (Setup_Interrupt, (long Masked_Interrupts));
 extern void EXFUN (preserve_interrupt_mask, (void));
 extern void EXFUN (back_out_of_primitive, (void));
 
-extern void EXFUN (Interpret, (Boolean));
+extern void EXFUN (Interpret, (int));
 extern void EXFUN (Do_Micro_Error, (long, Boolean));
 extern void EXFUN (Translate_To_Point, (SCHEME_OBJECT));
 extern void EXFUN (Stop_History, (void));

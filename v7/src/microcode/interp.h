@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.h,v 9.47 2002/07/03 02:36:58 cph Exp $
+$Id: interp.h,v 9.48 2002/07/03 04:10:23 cph Exp $
 
 Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
@@ -125,8 +125,8 @@ extern SCHEME_OBJECT EXFUN (primitive_apply_internal, (SCHEME_OBJECT));
 
 #define PRIMITIVE_APPLY_INTERNAL(loc, primitive)			\
 {									\
-  (Registers[REGBLOCK_PRIMITIVE]) = (primitive);			\
   PTR PRIMITIVE_APPLY_INTERNAL_position = dstack_position;		\
+  (Registers[REGBLOCK_PRIMITIVE]) = (primitive);			\
   (loc)									\
     = ((* (Primitive_Procedure_Table [PRIMITIVE_NUMBER (primitive)]))	\
        ());								\
