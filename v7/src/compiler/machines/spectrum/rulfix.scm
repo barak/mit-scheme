@@ -1,8 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.39 1992/04/07 19:51:01 jinx Exp $
-$MC68020-Header: rules1.scm,v 4.33 90/05/03 15:17:28 GMT jinx Exp $
-$MC68020-Header: lapgen.scm,v 4.35 90/07/20 15:53:40 GMT jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.40 1992/08/05 15:24:36 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -657,9 +655,8 @@ MIT in each case. |#
 (define-arithconst-method 'FIXNUM-QUOTIENT
   fixnum-methods/2-args/register*constant
   (lambda (constant ovflw?)
-    (let ((factor (abs constant)))
-      (and (or (not ovflw?) (= factor 1))
-	   (integer-log-base-2? factor))))
+    ovflw?				; ignored
+    (integer-log-base-2? factor))
   (lambda (tgt src constant ovflw?)
     (guarantee-signed-fixnum constant)
     (case constant
@@ -668,51 +665,72 @@ MIT in each case. |#
 	   (LAP (COPY (TR) ,src ,tgt))
 	   (copy src tgt)))
       ((-1)
-       (let ((skip (if ovflw? 'NSV 'NV)))
+       (let ((skip (if ovflw? 'NSV 'TR)))
 	 (LAP (SUB (,skip) 0 ,src ,tgt))))
       (else
        (let* ((factor (abs constant))
-	      (xpt (integer-log-base-2? factor))
-	      (sign (standard-temporary!))
-	      (delta (* (-1+ factor) fixnum-1))
-	      (fits? (fits-in-11-bits-signed? delta))
-	      (temp (and (not fits?) (standard-temporary!))))
-	 (if (or (not xpt) ovflw?)
-	     (error "fixnum-quotient: Inconsistency" constant ovflw?))
+	      (xpt (integer-log-base-2? factor)))
+	 (cond ((not xpt)
+		(error "fixnum-quotient: Inconsistency" constant))
+	       ((>= xpt scheme-datum-width)
+		(if ovfwl?
+		    (LAP (COPY (TR) 0 ,tgt))
+		    (copy 0 tgt)))
+	       (else
+		;; Note: The following cannot overflow because we are
+		;; dividing by a constant whose absolute value is
+		;; strictly greater than 1.  However, we need to
+		;; negate after shifting, not before, because negating
+		;; the input can overflow (if it is -0).
+		;; This unfortunately implies an extra instruction in the
+		;; case of negative constants because if this weren't the
+		;; case, we could substitute the first ADD instruction for
+		;; a SUB for negative constants, and eliminate the SUB later.
+		(let* ((posn (- 32 (+ xpt scheme-type-width)))
+		       (delta (* (-1+ factor) fixnum-1))
+		       (fits? (fits-in-11-bits-signed? delta))
+		       (temp (and (not fits?) (standard-temporary!))))
 	 
-	 (LAP ,@(if fits?
-		    (LAP)
-		    (load-immediate delta temp))
-	      ,@(if (negative? constant)
-		    (LAP (SUB (>=) 0 ,src ,tgt))
-		    (LAP (ADD (>=) 0 ,src ,tgt)))
-	      ,@(if (fits-in-11-bits-signed? delta)
-		    (LAP (ADDI () ,delta ,tgt ,tgt))
-		    (LAP (ADD () ,temp ,tgt ,tgt)))
-	      (EXTRS () ,tgt 0 1 ,sign)
-	      (SHD () ,sign ,tgt ,xpt ,tgt)
-	      (DEP () 0 31 ,scheme-type-width ,tgt)))))))
+		  (LAP ,@(if fits?
+			     (LAP)
+			     (load-immediate delta temp))
+		       (ADD (>=) 0 ,src ,tgt)
+		       ,@(if (fits-in-11-bits-signed? delta)
+			     (LAP (ADDI () ,delta ,tgt ,tgt))
+			     (LAP (ADD () ,temp ,tgt ,tgt)))
+		       (EXTRS () ,tgt ,(-1+ posn) ,posn ,tgt)
+		       ,@(if (negative? constant)
+			     (LAP (SUB () 0 ,tgt ,tgt))
+			     (LAP))
+		       ,@(if ovflw?
+			     (DEP (TR) 0 31 ,scheme-type-width ,tgt)
+			     (DEP () 0 31 ,scheme-type-width ,tgt)))))))))))
 
 (define-arithconst-method 'FIXNUM-REMAINDER
   fixnum-methods/2-args/register*constant
   (lambda (constant ovflw?)
-    (and (not ovflw?)
-	 (integer-log-base-2? (abs constant))))
+    ovflw?				; ignored
+    (integer-log-base-2? (abs constant)))
   (lambda (tgt src constant ovflw?)
     (guarantee-signed-fixnum constant)
     (case constant
       ((1 -1)
-       (LAP (COPY () 0 ,tgt)))
+       (if ovflw?
+	   (LAP (COPY (TR) 0 ,tgt))
+	   (LAP (COPY () 0 ,tgt))))
       (else
        (let ((sign (standard-temporary!))
 	     (len (let ((xpt (integer-log-base-2? (abs constant))))
 		    (and xpt (+ xpt scheme-type-width)))))
 	 (let ((sgn-len (- 32 len)))
-	   (if (or ovflw? (not len))
+	   (if (not len)
 	       (error "fixnum-remainder: Inconsistency" constant ovflw?))
 	   (LAP (EXTRS () ,src 0 1 ,sign)
 		(EXTRU (=) ,src 31 ,len ,tgt)
-		(DEP () ,sign ,(- sgn-len 1) ,sgn-len ,tgt))))))))
+		(DEP () ,sign ,(- sgn-len 1) ,sgn-len ,tgt)
+		,@(if ovflw?
+		      (LAP (SKIP))
+		      (LAP)))))))))
 
 ;;;; Predicates
 
