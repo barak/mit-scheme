@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.24 1992/02/25 22:56:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.25 1992/03/20 05:17:51 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -137,7 +137,11 @@ MIT in each case. |#
 			   interrupt-mask
 			   (unblock-thread-events)
 			   (message cmdl)
-			   ((cmdl/driver cmdl) cmdl)))))))))))))
+			   (call-with-current-continuation
+			    (lambda (continuation)
+			      (with-create-thread-continuation continuation
+				(lambda ()
+				  ((cmdl/driver cmdl) cmdl)))))))))))))))))
     (if operation
 	(operation cmdl thunk)
 	(with-thread-mutex-locked (port/thread-mutex (cmdl/port cmdl))

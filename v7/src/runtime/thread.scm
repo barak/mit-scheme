@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/thread.scm,v 1.3 1992/03/11 12:17:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/thread.scm,v 1.4 1992/03/20 05:18:00 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -98,14 +98,12 @@ MIT in each case. |#
 (define first-running-thread)
 (define last-running-thread)
 
-(define initial-thread)
-
 (define-integrable (without-interrupts thunk)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (let ((value (thunk)))
       (set-interrupt-enables! interrupt-mask)
       value)))
-
+
 (define (initialize-package!)
   (initialize-error-conditions!)
   (set! first-running-thread false)
@@ -115,14 +113,18 @@ MIT in each case. |#
   (let ((thread (make-thread)))
     (set-thread/continuation! thread false)
     (thread-running thread)
-    (detach-thread thread)
-    (set! initial-thread thread))
+    (detach-thread thread))
   (add-event-receiver! event:before-exit stop-thread-timer))
-
+
 (define (create-thread root-continuation thunk)
+  (if (not (or (not root-continuation) (continuation? root-continuation)))
+      (error:wrong-type-argument root-continuation
+				 "continuation or #f"
+				 create-thread))
   (call-with-current-continuation
    (lambda (return)
-     (%within-continuation root-continuation true
+     (%within-continuation (or root-continuation root-continuation-default)
+			   true
        (lambda ()
 	 (fluid-let ((state-space:local (make-state-space)))
 	   (call-with-current-continuation
@@ -133,6 +135,19 @@ MIT in each case. |#
 		(%within-continuation return true (lambda () thread)))))
 	   (set-interrupt-enables! interrupt-mask/all)
 	   (exit-current-thread (thunk))))))))
+
+(define root-continuation-default)
+
+(define (create-thread-continuation)
+  root-continuation-default)
+
+(define (with-create-thread-continuation continuation thunk)
+  (if (not (continuation? continuation))
+      (error:wrong-type-argument continuation
+				 "continuation"
+				 with-create-thread-continuation))
+  (fluid-let ((root-continuation-default continuation))
+    (thunk)))
 
 (define-integrable (current-thread)
   (or first-running-thread (error "No current thread!")))

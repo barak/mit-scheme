@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.137 1992/03/08 16:22:30 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.138 1992/03/20 05:17:56 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -2038,13 +2038,14 @@ MIT in each case. |#
   (files "x11graph")
   (parent ())
   (export ()
+	  create-x-colormap
+	  create-x-image
 	  x-character-bounds/ascent
 	  x-character-bounds/descent
 	  x-character-bounds/lbearing
 	  x-character-bounds/rbearing
 	  x-character-bounds/width
 	  x-close-all-displays
-	  x-close-display
 	  x-colormap/allocate-color
 	  x-colormap/free
 	  x-colormap/query-color
@@ -2063,6 +2064,49 @@ MIT in each case. |#
 	  x-font-structure/start-index
 	  x-geometry-string
 	  x-graphics-device-type
+	  x-graphics/available?
+	  x-graphics/clear
+	  x-graphics/close-display
+	  x-graphics/close-window
+	  x-graphics/coordinate-limits
+	  x-graphics/copy-area
+	  x-graphics/device-coordinate-limits
+	  x-graphics/drag-cursor
+	  x-graphics/draw-line
+	  x-graphics/draw-point
+	  x-graphics/draw-text
+	  x-graphics/font-structure
+	  x-graphics/get-colormap
+	  x-graphics/get-default
+	  x-graphics/flush
+	  x-graphics/iconify-window
+	  x-graphics/lower-window
+	  x-graphics/map-window
+	  x-graphics/move-cursor
+	  x-graphics/move-window
+	  x-graphics/open-display
+	  x-graphics/query-pointer
+	  x-graphics/raise-window
+	  x-graphics/reset-clip-rectangle
+	  x-graphics/resize-window
+	  x-graphics/set-background-color
+	  x-graphics/set-border-color
+	  x-graphics/set-border-width
+	  x-graphics/set-clip-rectangle
+	  x-graphics/set-colormap
+	  x-graphics/set-coordinate-limits
+	  x-graphics/set-drawing-mode
+	  x-graphics/set-font
+	  x-graphics/set-foreground-color
+	  x-graphics/set-icon-name
+	  x-graphics/set-input-hint
+	  x-graphics/set-internal-border-width
+	  x-graphics/set-line-style
+	  x-graphics/set-mouse-color
+	  x-graphics/set-mouse-shape
+	  x-graphics/set-window-name
+	  x-graphics/starbase-filename
+	  x-graphics/withdraw-window
 	  x-image/destroy
 	  x-image/draw
 	  x-image/draw-subimage
@@ -2071,9 +2115,7 @@ MIT in each case. |#
 	  x-image/height
 	  x-image/set-pixel
 	  x-image/width
-	  x-image?
-	  x-open-display
-	  )
+	  x-image?)
   (initialization (initialize-package!)))
 
 (define-package (runtime starbase-graphics)
@@ -2312,6 +2354,7 @@ MIT in each case. |#
 	  condition-type:thread-detached
 	  condition-type:thread-control-error
 	  create-thread
+	  create-thread-continuation
 	  current-thread
 	  detach-thread
 	  exit-current-thread
@@ -2334,6 +2377,7 @@ MIT in each case. |#
 	  try-lock-thread-mutex
 	  unblock-thread-events
 	  unlock-thread-mutex
+	  with-create-thread-continuation
 	  with-thread-mutex-locked
 	  yield-current-thread)
   (export (runtime interrupt-handler)
