@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-src-files,v 1.17 2001/03/02 18:07:32 cph Exp $
+# $Id: make-src-files,v 1.18 2001/03/05 20:47:34 cph Exp $
 #
 # Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
@@ -22,27 +22,28 @@
 
 INSTALL="install"
 INSTALL_DATA="${INSTALL} -m 644"
-PREFIX=`get_release_prefix`
-TAG=`get_release_tag`
+PREFIX="$(get_release_prefix)"
+TAG="$(get_release_tag)"
+CVS="cvs -d /scheme/cvsroot"
 
 rm -rf ${PREFIX}
 mkdir ${PREFIX}
 
 (
     cd /scheme/v7/src/runtime
-    TAG_STATUS="`cvs status -v version.scm | fgrep ${TAG}`"
+    TAG_STATUS="$(${CVS} status -v version.scm | fgrep ${TAG})"
     if [ -z "${TAG_STATUS}" ]; then
-	cvs rtag ${TAG} v7/doc v7/src etc/xscheme.el
+	${CVS} rtag ${TAG} v7/doc v7/src etc/xscheme.el
     fi
 )
 
 (
     cd ${PREFIX}
-    cvs -d /scheme/cvsroot export -r ${TAG} -d src v7/src
+    ${CVS} export -r ${TAG} -d src v7/src
     (cd src; ./Setup.sh)
-    cvs -d /scheme/cvsroot export -r ${TAG} -d doc v7/doc
+    ${CVS} export -r ${TAG} -d doc v7/doc
     (cd doc; autoconf)
-    cvs -d /scheme/cvsroot export -r ${TAG} etc/xscheme.el
+    ${CVS} export -r ${TAG} etc/xscheme.el
 )
 
 find ${PREFIX} -type f -print | xargs chmod g-w
