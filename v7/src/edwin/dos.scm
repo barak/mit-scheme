@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.29 1995/10/25 02:19:50 cph Exp $
+;;;	$Id: dos.scm,v 1.30 1995/10/25 05:38:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ;;;
@@ -140,10 +140,10 @@
   ;;   'DIRECTORY means FILE is a directory and a full listing is expected.
   ;;   'FILE means FILE itself should be listed, and not its contents.
   ;; SWITCHES are ignored.
-  (generate-dired-listing (if (eq? type 'DIRECTORY)
-			      (pathname-as-directory file)
-			      file)
-			  mark))
+  (generate-dired-listing! (if (eq? type 'DIRECTORY)
+			       (pathname-as-directory file)
+			       file)
+			   mark))
 
 (define (generate-dired-listing! pathname point)
   (let ((files (directory-read pathname)))
