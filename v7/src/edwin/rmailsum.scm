@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.13 1991/08/28 14:35:58 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.14 1991/09/10 13:53:21 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -654,7 +654,9 @@ and undelete it."
   '()
   (lambda ()
     (bury-buffer (current-buffer))
-    ((ref-command delete-window))))
+    (if (window-has-no-neighbors? (current-window))
+	(select-buffer rmail-buffer)
+	((ref-command delete-window)))))
 
 (define-command rmail-summary-quit
   "Exit RMAIL Summary mode and RMAIL mode."
