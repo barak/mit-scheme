@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/conpkg.scm,v 1.1 1988/06/13 12:38:19 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/conpkg.scm,v 1.2 1991/09/20 04:04:15 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,11 +42,15 @@ MIT in each case. |#
 (define (construct-constructor pmodel)
   (let ((packages (pmodel/packages pmodel)))
     `((DECLARE (USUAL-INTEGRATIONS))
-      ,@(mapcan*
-	 `((LET ()
-	     (DECLARE (INTEGRATE-PRIMITIVE-PROCEDURES ENVIRONMENT-LINK-NAME))
-	     ,@(mapcan* (mapcan construct-links (pmodel/extra-packages pmodel))
-			construct-links packages)))
+      ,@(append-map*
+	 `((LET ((ENVIRONMENT-LINK-NAME
+		  (LET-SYNTAX
+		      ((UCODE-PRIMITIVE
+			(MACRO (NAME) (MAKE-PRIMITIVE-PROCEDURE NAME))))
+		    (UCODE-PRIMITIVE ENVIRONMENT-LINK-NAME))))
+	     ,@(append-map*
+		(append-map construct-links (pmodel/extra-packages pmodel))
+		construct-links packages)))
 	 construct-definitions
 	 (sort packages package-structure<?)))))
 
@@ -69,16 +73,17 @@ MIT in each case. |#
 (define (construct-links package)
   (if (equal? (package/name package) '(PACKAGE))
       '()
-      (mapcan (lambda (binding)
-		(map (lambda (link)
-		       (let ((source (link/source link))
-			     (destination (link/destination link)))
-			 `(ENVIRONMENT-LINK-NAME
-			   ,(package-reference (binding/package destination))
-			   ,(package-reference (binding/package source))
-			   ',(binding/name source))))
-		     (binding/links binding)))
-	      (btree-fringe (package/bindings package)))))
+      (append-map
+       (lambda (binding)
+	 (map (lambda (link)
+		(let ((source (link/source link))
+		      (destination (link/destination link)))
+		  `(ENVIRONMENT-LINK-NAME
+		    ,(package-reference (binding/package destination))
+		    ,(package-reference (binding/package source))
+		    ',(binding/name source))))
+	      (binding/links binding)))
+       (btree-fringe (package/bindings package)))))
 
 (define (package/source-bindings package)
   (list-transform-positive (btree-fringe (package/bindings package))
@@ -113,26 +118,26 @@ MIT in each case. |#
 		     (CDR (CAR ALIST))
 		     (LOOP (CDR ALIST)))))))
 	LOOKUP-KEY			;ignore if not referenced
-	,@(mapcan (lambda (package)
-		    (let ((reference (package-reference package)))
-		      (if (> (package/n-files package) 1)
-			  `((LET ((ENVIRONMENT ,reference))
-			      ,@(load-package package 'ENVIRONMENT)))
-			  (load-package package reference))))
-		  (pmodel/packages pmodel))))))
+	,@(append-map (lambda (package)
+			(let ((reference (package-reference package)))
+			  (if (> (package/n-files package) 1)
+			      `((LET ((ENVIRONMENT ,reference))
+				  ,@(load-package package 'ENVIRONMENT)))
+			      (load-package package reference))))
+		      (pmodel/packages pmodel))))))
 
 (define (load-package package environment)
-  (mapcan (lambda (file-case)
-	    (let ((type (file-case/type file-case)))
-	      (if type
-		  `((CASE (LOOKUP-KEY ',type)
-		      ,@(map (lambda (clause)
-			       `(,(file-case-clause/keys clause)
-				 ,@(clause-loader clause environment)))
-			     (file-case/clauses file-case))))
-		  (clause-loader (car (file-case/clauses file-case))
-				 environment))))
-	  (package/file-cases package)))
+  (append-map (lambda (file-case)
+		(let ((type (file-case/type file-case)))
+		  (if type
+		      `((CASE (LOOKUP-KEY ',type)
+			  ,@(map (lambda (clause)
+				   `(,(file-case-clause/keys clause)
+				     ,@(clause-loader clause environment)))
+				 (file-case/clauses file-case))))
+		      (clause-loader (car (file-case/clauses file-case))
+				     environment))))
+	      (package/file-cases package)))
 
 (define (clause-loader clause environment)
   (let ((files (file-case-clause/files clause)))
