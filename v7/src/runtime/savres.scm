@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: savres.scm,v 14.32 2000/03/01 23:45:56 cph Exp $
+$Id: savres.scm,v 14.33 2000/03/01 23:47:06 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -143,7 +143,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (if (default-object? port)
 	     (current-output-port)
 	     (guarantee-output-port port))))
-    (fresh-line port)
     (write-string world-identification port)
     (if time-world-saved
 	(begin
