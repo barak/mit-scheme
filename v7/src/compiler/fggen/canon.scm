@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: canon.scm,v 1.21 2002/02/08 03:08:00 cph Exp $
+$Id: canon.scm,v 1.22 2002/02/08 03:54:25 cph Exp $
 
 Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -799,7 +799,7 @@ ARBITRARY:	The expression may be executed more than once.  It
   (let ((dispatch-vector
 	 (make-vector (microcode-type/code-limit) canonicalize/constant)))
 
-    (let-syntax
+    (letrec-syntax
 	((dispatch-entry
 	  (sc-macro-transformer
 	   (lambda (form environment)
@@ -807,7 +807,7 @@ ARBITRARY:	The expression may be executed more than once.  It
 			   ,(close-syntax (caddr form) environment)))))
 
 	 (dispatch-entries
-	  (c-macro-transformer
+	  (sc-macro-transformer
 	   (lambda (form environment)
 	     (let ((handler (close-syntax (caddr form) environment)))
 	       `(BEGIN

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asmmac.scm,v 1.12 2002/02/08 03:06:16 cph Exp $
+$Id: asmmac.scm,v 1.13 2002/02/08 03:54:10 cph Exp $
 
 Copyright (c) 1988, 1990, 1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -27,6 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-syntax define-instruction
   (sc-macro-transformer
    (lambda (form environment)
+     environment
      (if (syntax-match? '(SYMBOL * (DATUM + DATUM)) (cdr form))
 	 `(ADD-INSTRUCTION!
 	   ',(cadr form)

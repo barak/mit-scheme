@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 4.24 2002/02/08 03:07:04 cph Exp $
+$Id: macros.scm,v 4.25 2002/02/08 03:55:01 cph Exp $
 
 Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -143,25 +143,30 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 					   (and (pair? x)
 						(list-of-type? x symbol?)))))))
 		    (lambda (form environment)
-		      (let ((type (cadr form))
-			    (slots (cddr form)))
-			(let ((tag-name (symbol-append type '-TAG)))
-			  (let ((tag-ref (close-syntax tag-name environment)))
-			    `(BEGIN
-			       (DEFINE ,tag-name
-				 (MAKE-VECTOR-TAG ,',parent ',type
-						  ,',enumeration))
-			       (DEFINE ,(symbol-append type '?)
-				 (TAGGED-VECTOR/PREDICATE ,tag-name))
-			       (DEFINE-VECTOR-SLOTS ,type ,,reserved ,@slots)
-			       (SET-VECTOR-TAG-DESCRIPTION!
-				,tag-name
-				(LAMBDA (OBJECT)
-				  (APPEND!
-				   ((VECTOR-TAG-DESCRIPTION ,',parent) OBJECT)
-				   (DESCRIPTOR-LIST OBJECT
-						    ,type
-						    ,@slots))))))))))))))))))
+		      (if (syntax-match? pattern (cdr form))
+			  (let ((type (cadr form))
+				(slots (cddr form)))
+			    (let ((tag-name (symbol-append type '-TAG)))
+			      (let ((tag-ref
+				     (close-syntax tag-name environment)))
+				`(BEGIN
+				   (DEFINE ,tag-name
+				     (MAKE-VECTOR-TAG ,',parent ',type
+						      ,',enumeration))
+				   (DEFINE ,(symbol-append type '?)
+				     (TAGGED-VECTOR/PREDICATE ,tag-ref))
+				   (DEFINE-VECTOR-SLOTS ,type ,,reserved
+				     ,@slots)
+				   (SET-VECTOR-TAG-DESCRIPTION!
+				    ,tag-name
+				    (LAMBDA (OBJECT)
+				      (APPEND!
+				       ((VECTOR-TAG-DESCRIPTION ,',parent)
+					OBJECT)
+				       (DESCRIPTOR-LIST OBJECT
+							,type
+							,@slots))))))))
+			  (ill-formed-syntax form))))))))))))
   (define-type-definition snode 5 #f)
   (define-type-definition pnode 6 #f)
   (define-type-definition rvalue 2 rvalue-types)
@@ -251,25 +256,28 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-syntax define-rtl-expression
   (sc-macro-transformer
    (lambda (form environment)
-     (define-rtl-common form environment
+     environment
+     (define-rtl-common form
        (lambda (expression) expression)
        'RTL:EXPRESSION-TYPES))))
 
 (define-syntax define-rtl-statement
   (sc-macro-transformer
    (lambda (form environment)
-     (define-rtl-common form environment
+     environment
+     (define-rtl-common form
        (lambda (expression) `(STATEMENT->SRTL ,expression))
        'RTL:STATEMENT-TYPES))))
 
 (define-syntax define-rtl-predicate
   (sc-macro-transformer
    (lambda (form environment)
-     (define-rtl-common form environment
+     environment
+     (define-rtl-common form
        (lambda (expression) `(PREDICATE->PRTL ,expression))
        'RTL:PREDICATE-TYPES))))
 
-(define (define-rtl-common form environment wrap-constructor types)
+(define (define-rtl-common form wrap-constructor types)
   (if (syntax-match? '(SYMBOL SYMBOL * SYMBOL) (cdr form))
       (let ((type (cadr form))
 	    (prefix (caddr form))
@@ -320,12 +328,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (rsc-macro-transformer
    (lambda (form environment)
      (if (syntax-match? '(* DATUM) (cdr form))
-	 `(,(close-syntax 'QUASIQUOTE environment) ,@(cdr form))
+	 `(,(close-syntax 'QUASIQUOTE environment) ,(cdr form))
 	 (ill-formed-syntax form)))))
 
 (define-syntax inst-ea
   (rsc-macro-transformer
-   (lambda (ea)
+   (lambda (form environment)
      (if (syntax-match? '(DATUM) (cdr form))
 	 `(,(close-syntax 'QUASIQUOTE environment) ,(cadr form))
 	 (ill-formed-syntax form)))))
@@ -333,9 +341,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-syntax define-enumeration
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match '(SYMBOL * SYMBOL) (cdr form))
+     (if (syntax-match? '(SYMBOL (* SYMBOL)) (cdr form))
 	 (let ((name (cadr form))
-	       (elements (cddr form)))
+	       (elements (caddr form)))
 	   (let ((enumeration (symbol-append name 'S)))
 	     (let ((enum-ref (close-syntax enumeration environment)))
 	       `(BEGIN
@@ -359,7 +367,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-syntax cfg-node-case
   (sc-macro-transformer
-   (lambda (expression . clauses)
+   (lambda (form environment)
      (if (syntax-match? '(EXPRESSION * (DATUM * EXPRESSION)) (cdr form))
 	 (enumeration-case-1 (cadr form) (cddr form) environment
 			     (lambda (element) (symbol-append element '-TAG))
@@ -402,4 +410,4 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
        (if (identifier? expression)
 	   (generate-body expression)
 	   `(LET ((TEMP ,expression))
-	      (generate-body 'TEMP)))))))
+	      ,(generate-body 'TEMP)))))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fggen.scm,v 4.36 2002/02/08 03:08:11 cph Exp $
+$Id: fggen.scm,v 4.37 2002/02/08 03:54:36 cph Exp $
 
 Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -952,7 +952,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		 (else
 		  (generate/constant block continuation
 				     context expression))))))
-    (let-syntax
+    (letrec-syntax
 	((dispatch-entry
 	  (sc-macro-transformer
 	   (lambda (form environment)
