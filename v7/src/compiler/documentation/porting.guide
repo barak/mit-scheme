@@ -1,6 +1,6 @@
 Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.3 1991/02/22 22:51:31 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.4 1991/02/23 05:34:01 jinx Exp $
 
 
 			LIAR PORTING GUIDE
@@ -564,14 +564,14 @@ track of the original version from which you started, and
 additionally, that on which your original is based.  For example, if
 you use machines/mips/assmd.scm as a model for your version, in it you
 would find something like
-  $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.3 1991/02/22 22:51:31 jinx Exp $
+  $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.4 1991/02/23 05:34:01 jinx Exp $
   $MC68020-Header: assmd.scm,v 1.36 89/08/28 18:33:33 GMT cph Exp $
 In order to allow an easier merge in the future, it would
 be good if you transformed this header into
-  $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.3 1991/02/22 22:51:31 jinx Exp $
+  $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.4 1991/02/23 05:34:01 jinx Exp $
   $mips-Header: assmd.scm,v 1.1 90/05/07 04:10:19 GMT jinx Exp $
   $MC68020-Header: assmd.scm,v 1.36 89/08/28 18:33:33 GMT cph Exp $
-The new $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.3 1991/02/22 22:51:31 jinx Exp $ line would be used by RCS to keep track of the
+The new $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.4 1991/02/23 05:34:01 jinx Exp $ line would be used by RCS to keep track of the
 versions of your port and the others could be used to find updates to
 the originals that would make updating your port easier.
 
@@ -671,12 +671,12 @@ various parts of the compiler.  The following is the current list of
 the primary parameters.  The definitions of derived parameters not
 mentioned here should be copied verbatim from existing ports.  Some of
 these parameters are not currently in use, but should all be provided
-for future versions.
+for completeness.
 
 - endianness: Should be the symbol LITTLE if an address, when used as
-a byte address, refers to the least significant byte of the longword
+a byte address, refers to the least significant byte of the long-word
 addressed by it.  It should be BIG if it refers to the most
-significant byte of the longword.  Note that the compiler has not been
+significant byte of the long-word.  Note that the compiler has not been
 ported to any machines where the quantum of addressability is not an
 8-bit byte, so the notion may not apply to those.
 
@@ -701,7 +701,7 @@ Scheme floating point object will take.
 
 - float-alignment: This value defines the bit-alignment constraints
 for a C `double'.  It must be a multiple of scheme-object-width.  If
-floating point values can only be stored at even longword addresses,
+floating point values can only be stored at even long-word addresses,
 for example, this value should be twice scheme-object-width.
 
 - address-units-per-packed-char: This parameter defines how much to
@@ -709,7 +709,7 @@ increment an address by in order to make it point to the next
 character in a string.  The compiler has not been ported in any
 configuration where this is not 1, but may be if 16-bit characters are
 used in the future.
-
+
 - signed-fixnum/upper-limit: This parameter should be derived from
 others, but is specified as a constant due to a shortcoming of the
 compiler pre-processing system (expt is not constant-folded).  Use the
@@ -725,13 +725,118 @@ should probably be copied verbatim.
 
 - execute-cache-size: This should match EXECUTE_CACHE_ENTRY_SIZE in
 microcode/cmpint-md.h, and is explained in microcode/cmpint.txt .
-*** We should probably rename one or the other to be more alike.
+*** We should probably rename one or the other to be alike.
 
-- closure-first-offset, closure-object-first-offset,
-closure-entry-distance, closure-environment-adjustment:
+The following parameters specify the format of closures containing
+multiple entry points to the front-end of the compiler.  These
+closures are described in some detail in microcode/cmpint.txt and in
+more detail in the section that explains the rules used to generate
+such objects.
+	
+- closure-object-first-offset: This procedure takes a single argument,
+the number of entry points in a closure object, and computes the
+distance in long-words between the first long-word in the closure
+object, and the first long-word containing a free variable.  This is
+the number of long-words taken up by the closure object's header, and
+the code to represent N closure entry points.
 
-*** Here! ***
+- closure-first-offset: This procedure takes two arguments, the number
+of entry points in a closure object, and the index of one of them, the
+first being zero.  It computes the distance between that entry's
+environment pointer and the first free variable in the closure object.
+The entry's environment pointer will be the address of the entry point
+itself if closure entry points are always aligned on long-word
+boundaries, or the address of the first entry point if they are not.
 
+- closure-entry-distance: This procedure is given the number of entry
+points in a closure object, and the indices for two of its entry
+points, and computes the number of bytes that separate the two entry
+points in the closure object.  This distance should be a multiple of
+the parameter COMPILED_CLOSURE_ENTRY_SIZE described in
+microcode/cmpint.txt and defined in microcode/cmpint-md.h.
+
+- closure-environment-adjustment: This procedure takes two parameters,
+the number of entry points in a closure object, and the index of one
+of them.  It computes the number of bytes that must be added to the
+entry point's address to result in the entry point's environment
+pointer.  If entry points are always aligned on long-word boundaries,
+this number should always be zero, otherwise it should be the distance
+to the zeroth entry point.
+
+The remaining code in machin.scm describes the register set of the
+architecture and defines the register conventions imposed by the port.
+These conventions must match the expectations of
+microcode/cmpaux-md.m4 described in microcode/cmpaux.txt.
+
+Machine registers are assigned a contiguous range of non-negative
+integers starting from zero.  Typically symbolic names are given to
+each of these integers for use in some of the rules, especially those
+dealing with the assembly language interface.
+
+- number-of-machine-registers should be the number of machine registers,
+ie. one greater than the number assigned to the last machine register.
+
+- number-of-temporary-registers is the number of reserved memory
+locations used for storing the contents of spilled pseudo registers.
+
+Liar requires certain fixed locations to hold various implementation
+variables such as the stack pointer, the free memory pointer, the
+pointer to the runtime library and interpreter's "register" array, and
+the dynamic link "register".  Typically each of these locations is a
+fixed machine register.  In addition, typically a processor register
+is reserved for returning values and another for holding a bit-mask
+used to clear type tags from objects.  All of these registers are
+given additional symbolic names.
+
+*** What the heck is machine-register-known-value used for?  It seems
+that the pointer mask is a known value, but...  Currently all the
+ports seem to have the same definition.
+
+The contents of pseudo registers are divided into various classes to
+allow some simple forms of consistency checking.  Some machine
+registers always contain values in a fixed class (eg. floating point
+registers and registers holding the pointer mask).
+
+- machine-register-value-class is a procedure that maps a register to
+its inherent value class.  The main value classes are
+value-class=object, value-class=address, and value-class=float.
+The registers allocated for the special implementation quantities have
+fixed value classes.  The remaining registers, managed by the
+compiler's register allocator, may be generic (value-class=word) or
+allow ony certain values to be stored in them (value-class=float,
+value-class=addres, etc.).
+
+Most of the remainder of compiler/machines/port/machin.scm is a set of
+procedures that return and compare the port's chosen locations for
+various operations.  Some of these operations are no longer used by
+the compiler, and reflect a previous reliance on the interpreter to
+accomplish certain environment operations.  These operations are now
+handled by invoking the appopriate primitives rather than using
+special entry points in the runtime library for them.  Under some
+compiler switch settings the older methods for handling these
+operations can be re-activated.
+
+- rtl:machine-register? should return a machine register for those
+special RTL registers that have been allocated to fixed registers, and
+false otherwise.
+
+- rtl:interpreter-register? should return the long-word offset in the
+runtime library's memory "register" array for those special RTL
+registers not allocated to fixed registers, and false otherwise.
+
+- rtl:interpreter-register->offset errors when the special RTL
+register has not been allocated to a fixed register, and otherwise
+returns the long-word offset into the register  array.
+
+- rtl:constant-cost is a procedure that computes some metric of how
+expensive is to generate a particular constant.  If the constant is
+cheaply reconstructed, the register allocator may decide to flush it
+(rather than spill it to memory) and re-generate it the next time it
+is needed.
+
+- copiler:open-code-floating-point-arithmetic? and
+compiler:primitives-with-no-open-coding have been described in the
+section on compiler switches and parameters.
 
 	LAPGEN files:
 
