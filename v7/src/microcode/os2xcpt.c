@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2xcpt.c,v 1.3 1995/04/28 07:05:08 cph Exp $
+$Id: os2xcpt.c,v 1.4 1995/04/28 07:20:08 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -985,12 +985,12 @@ OS2_subthread_exception_handler (PEXCEPTIONREPORTRECORD report,
       sprintf (backtrace, "  (Backtrace:");
       sprintf ((backtrace + (strlen (backtrace))), " 0x%08x",
 	       (context -> ctx_RegEip));
-      while ((ebp > (ptib -> tib_pstack))
-	     && (ebp < (ptib -> tib_pstacklimit))
+      while ((((char *) ebp) > ((char *) (ptib -> tib_pstack)))
+	     && (((char *) ebp) < ((char *) (ptib -> tib_pstacklimit)))
 	     && (count < 10))
 	{
 	  sprintf ((backtrace + (strlen (backtrace))), " 0x%08x", (ebp[1]));
-	  ebp = (ebp[0]);
+	  ebp = ((ULONG *) (ebp[0]));
 	}
       sprintf ((backtrace + (strlen (backtrace))), ")");
     }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2env.c,v 1.6 1995/04/28 07:04:58 cph Exp $
+$Id: os2env.c,v 1.7 1995/04/28 07:16:35 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -303,5 +303,5 @@ OS_set_working_dir_pathname (const char * name)
       name += 2;
       length -= 2;
     }
-  STD_API_CALL (dos_set_current_dir, ((length == 0) ? "\\" : name));
+  STD_API_CALL (dos_set_current_dir, ((length == 0) ? "\\" : ((char *) name)));
 }
