@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kilcom.scm,v 1.60 1991/04/21 00:51:04 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kilcom.scm,v 1.61 1991/04/24 00:38:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -258,12 +258,18 @@ but the region must still match the last killed stuff."
 	(let ((ring (current-kill-ring))
 	      (point (current-point)))
 	  (if (or (ring-empty? ring)
-		  (not (match-string (ring-ref ring 0) (current-mark) point)))
+		  (not
+		   (let ((string (ring-ref ring 0))
+			 (mark (current-mark)))
+		     (if (mark< mark point)
+			 (match-forward string mark point false)
+			 (match-forward string point mark false)))))
 	      (editor-error "Region does not match last kill"))
 	  (delete-string (pop-current-mark!) point)
 	  (if (not (zero? argument))
-	      (begin (ring-pop! ring)
-		     (unkill-reversed (ring-ref ring 0))))))
+	      (begin
+		(ring-pop! ring)
+		(unkill-reversed (ring-ref ring 0))))))
       (lambda ()
 	(editor-error "No previous un-kill to replace")))
     (set-command-message! un-kill-tag)))
