@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.43 1992/05/14 03:06:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.44 1992/07/05 14:20:16 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -45,16 +45,16 @@ MIT in each case. |#
 	  (and (effective-address/address-register? source)
 	       (= (+ 8 (lap:ea-operand-1 source)) target)))
       (LAP)
-      (LAP ,(memory->machine-register source target))))
+      (memory->machine-register source target)))
 
 (define (register->register-transfer source target)
-  (LAP ,(machine->machine-register source target)))
+  (machine->machine-register source target))
 
 (define (home->register-transfer source target)
-  (LAP ,(pseudo->machine-register source target)))
+  (pseudo->machine-register source target))
 
 (define (register->home-transfer source target)
-  (LAP ,(machine->pseudo-register source target)))
+  (machine->pseudo-register source target))
 
 (define (pseudo-register-home register)
   (offset-reference regnum:regs-pointer (pseudo-register-offset register)))
@@ -127,21 +127,21 @@ MIT in each case. |#
   (if (not (register-types-compatible? source target))
       (error "Moving between incompatible register types" source target))
   (if (float-register? source)
-      (INST (FMOVE ,(register-reference source)
-		   ,(register-reference target)))
-      (INST (MOV L
-		 ,(register-reference source)
-		 ,(register-reference target)))))
+      (LAP (FMOVE ,(register-reference source)
+		  ,(register-reference target)))
+      (LAP (MOV L
+		,(register-reference source)
+		,(register-reference target)))))
 
 (define (machine-register->memory source target)
   (if (float-register? source)
-      (INST (FMOVE D ,(register-reference source) ,target))
-      (INST (MOV L ,(register-reference source) ,target))))
+      (LAP (FMOVE D ,(register-reference source) ,target))
+      (LAP (MOV L ,(register-reference source) ,target))))
 
 (define (memory->machine-register source target)
   (if (float-register? target)
-      (INST (FMOVE D ,source ,(register-reference target)))
-      (INST (MOV L ,source ,(register-reference target)))))
+      (LAP (FMOVE D ,source ,(register-reference target)))
+      (LAP (MOV L ,source ,(register-reference target)))))
 
 (define (offset-reference register offset)
   (byte-offset-reference register (* 4 offset)))
@@ -157,24 +157,19 @@ MIT in each case. |#
 
 (define (load-dnl n d)
   (cond ((zero? n)
-	 (INST (CLR L (D ,d))))
+	 (LAP (CLR L (D ,d))))
 	((<= -128 n 127)
-	 (INST (MOVEQ (& ,n) (D ,d))))
+	 (LAP (MOVEQ (& ,n) (D ,d))))
 	(else
-	 (INST (MOV L (& ,n) (D ,d))))))
+	 (LAP (MOV L (& ,n) (D ,d))))))
 
 (define (load-dnw n d)
   (cond ((zero? n)
-	 (INST (CLR W (D ,d))))
+	 (LAP (CLR W (D ,d))))
 	((<= -128 n 127)
-	 (INST (MOVEQ (& ,n) (D ,d))))
+	 (LAP (MOVEQ (& ,n) (D ,d))))
 	(else
-	 (INST (MOV W (& ,n) (D ,d))))))
-
-(define (test-dnw n d)
-  (if (zero? n)
-      (INST (TST W (D ,d)))
-      (INST (CMPI W (& ,n) (D ,d)))))
+	 (LAP (MOV W (& ,n) (D ,d))))))
 
 (define (ea+=constant ea c)
   (cond ((zero? c)
@@ -242,15 +237,15 @@ MIT in each case. |#
 
 (define (memory-set-type type target)
   (if (= 8 scheme-type-width)
-      (INST (MOV B (& ,type) ,target))
-      (INST (OR B (& ,(* type-scale-factor type)) ,target))))
+      (LAP (MOV B (& ,type) ,target))
+      (LAP (OR B (& ,(* type-scale-factor type)) ,target))))
 
 (define (test-byte n effective-address)
   ;; This is used to test actual bytes.
   ;; Type codes are "preprocessed" by the pertinent rule.
   (if (and (zero? n) (effective-address/data&alterable? effective-address))
-      (INST (TST B ,effective-address))
-      (INST (CMPI B (& ,n) ,effective-address))))
+      (LAP (TST B ,effective-address))
+      (LAP (CMPI B (& ,n) ,effective-address))))
 
 (define (test-non-pointer-constant constant target)
   (test-non-pointer (object-type constant)
@@ -261,10 +256,10 @@ MIT in each case. |#
   (if (and (zero? type)
 	   (zero? datum)
 	   (effective-address/data&alterable? effective-address))
-      (INST (TST L ,effective-address))
-      (INST (CMPI UL
-		  (& ,(make-non-pointer-literal type datum))
-		  ,effective-address))))
+      (LAP (TST L ,effective-address))
+      (LAP (CMPI UL
+		 (& ,(make-non-pointer-literal type datum))
+		 ,effective-address))))
 
 (define (set-standard-branches! cc)
   (set-current-branches!
@@ -385,14 +380,14 @@ MIT in each case. |#
       (let ((loop (generate-label 'LOOP)))
 	(with-counter
 	 (lambda (counter)
-	   (LAP ,(load-dnw (-1+ n) counter)
+	   (LAP ,@(load-dnw (-1+ n) counter)
 		(LABEL ,loop)
-		,(instruction-gen)
+		,@(instruction-gen)
 		(DB F (D ,counter) (@PCR ,loop))))))
       (let loop ((n n))
 	(if (zero? n)
 	    (LAP)
-	    (LAP ,(instruction-gen)
+	    (LAP ,@(instruction-gen)
 		 ,@(loop (-1+ n)))))))
 
 (define (standard-target-expression? target)
@@ -426,11 +421,11 @@ MIT in each case. |#
        (register-reference (move-to-alias-register! source type target))))
     (lambda (target)
       (LAP
-       ,(if (eq? type 'FLOAT)
-	    (load-float-register
-	     (standard-register-reference source type false)
-	     target)
-	    (INST (MOV L
+       ,@(if (eq? type 'FLOAT)
+	     (load-float-register
+	      (standard-register-reference source type false)
+	      target)
+	     (LAP (MOV L
 		       ,(standard-register-reference source type true)
 		       ,target)))
        ,@(operate-on-target target)))))
@@ -443,9 +438,9 @@ MIT in each case. |#
 	 (lambda (target)
 	   (let ((temp (reference-temporary-register! type)))
 	     (LAP ,@(operate-on-machine-target temp)
-		  ,(if (eq? type 'FLOAT)
-		       (load-float-register temp target)
-		       (INST (MOV L ,temp ,target))))))))
+		  ,@(if (eq? type 'FLOAT)
+			(load-float-register temp target)
+			(LAP (MOV L ,temp ,target))))))))
     (case (rtl:expression-type target)
       ((REGISTER)
        (let ((register (rtl:register-number target)))
@@ -462,8 +457,8 @@ MIT in each case. |#
 
 (define (load-float-register source target)
   (if (effective-address/float-register? source)
-      (INST (FMOVE ,source ,target))
-      (INST (FMOVE D ,source ,target))))
+      (LAP (FMOVE ,source ,target))
+      (LAP (FMOVE D ,source ,target))))
 
 (define (reuse-and-operate-on-machine-target! type target operate-on-target)
   (reuse-machine-target! type target
@@ -482,9 +477,9 @@ MIT in each case. |#
 	 target source1 source2)
   (let ((worst-case
 	 (lambda (target source1 source2)
-	   (LAP ,(if (eq? target-type 'FLOAT)
-		     (load-float-register source1 target)
-		     (INST (MOV L ,source1 ,target)))
+	   (LAP ,@(if (eq? target-type 'FLOAT)
+		      (load-float-register source1 target)
+		      (LAP (MOV L ,source1 ,target)))
 		,@(operate target source2)))))
     (reuse-machine-target! target-type target
       (lambda (target)
@@ -563,8 +558,8 @@ MIT in each case. |#
 
 (define (test-fixnum effective-address)
   (if (effective-address/data&alterable? effective-address)
-      (INST (TST L ,effective-address))
-      (INST (CMPI L (& 0) ,effective-address))))
+      (LAP (TST L ,effective-address))
+      (LAP (CMPI L (& 0) ,effective-address))))
 
 (define (fixnum-predicate->cc predicate)
   (case predicate
@@ -773,14 +768,14 @@ MIT in each case. |#
 		 (LAP (LS R L (& ,m) ,target)
 		      ,@(word->fixnum target))
 		 (let ((temp (reference-temporary-register! 'DATA)))
-		   (LAP ,(load-dnl m temp)
+		   (LAP ,@(load-dnl m temp)
 			(LS R L ,temp ,target)
 			,@(word->fixnum target))))))		 
 	  (else
 	   (if (< n 9)
 	       (LAP (LS L L (& ,n) ,target))
 	       (let ((temp (reference-temporary-register! 'DATA)))
-		 (LAP ,(load-dnl n temp)
+		 (LAP ,@(load-dnl n temp)
 		      (LS L L ,temp ,target))))))))
 
 ;;; Quotient is weird because it must shift left the quotient,
@@ -1027,32 +1022,6 @@ MIT in each case. |#
 (define (char->signed-8-bit-immediate character)
   (let ((ascii (char->ascii character)))
     (if (< ascii 128) ascii (- ascii 256))))
-
-#|
-
-;; *** This is believed to be a fossil. ***
-;; Left here until the first compilation to make sure that it really is.
-;; Can be removed the next time it is seen.
-
-(define (byte-offset->register source source-reg target)
-  ;; This code uses a temporary register because right now the register
-  ;; allocator thinks that it could use the same register for the target
-  ;; and source, while what we want to happen is to first clear the target
-  ;; and then move from source to target.
-  ;; Optimal Code: (CLR L ,target-ref)
-  ;;               (MOV B ,source ,target)
-  ;; source-register is passed in to check for this. Yuck.
-  (delete-dead-registers!)
-  (let* ((temp-ref (register-reference (allocate-temporary-register! 'DATA)))
-	 (target (allocate-alias-register! target 'DATA)))
-    (if (= target source-reg)
-	(LAP (CLR L ,temp-ref)
-	     (MOV B ,source ,temp-ref)
-	     (MOV L ,temp-ref ,(register-reference target)))
-	(LAP (CLR L ,(register-reference target))
-	     (MOV B ,source ,(register-reference target))))))
-
-|#
 
 ;;;; Registers/Entries
 
@@ -1172,7 +1141,7 @@ MIT in each case. |#
     ))
 
 (define-integrable (invoke-interface code)
-  (LAP ,(load-dnw code 0)
+  (LAP ,@(load-dnw code 0)
        (JMP ,entry:compiler-scheme-to-interface)))
 
 #|
@@ -1181,12 +1150,12 @@ MIT in each case. |#
 ;; The others can be handled similarly.
 
 (define-integrable (invoke-interface-jsr code)
-  (LAP ,(load-dnw code 0)
+  (LAP ,@(load-dnw code 0)
        (LEA (@PCO 12) (A 0))
        (MOV L (A 0) (D 1))
        (JMP ,entry:compiler-scheme-to-interface)))
 |#
 
 (define-integrable (invoke-interface-jsr code)
-  (LAP ,(load-dnw code 0)
+  (LAP ,@(load-dnw code 0)
        (JSR ,entry:compiler-scheme-to-interface-jsr)))

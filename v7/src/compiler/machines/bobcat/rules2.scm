@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.12 1990/01/18 22:44:04 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.13 1992/07/05 14:20:58 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; LAP Generation Rules: Predicates
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -98,7 +99,7 @@ MIT in each case. |#
 (define-rule predicate
   (TYPE-TEST (REGISTER (? register)) (? type))
   (set-standard-branches! 'EQ)
-  (LAP ,(test-byte type (reference-alias-register! register 'DATA))))
+  (test-byte type (reference-alias-register! register 'DATA)))
 
 (define-rule predicate
   (TYPE-TEST (OBJECT->TYPE (REGISTER (? register))) (? type))
@@ -129,7 +130,7 @@ MIT in each case. |#
   (set-standard-branches! 'EQ)
   (let ((source (indirect-reference! address offset)))
     (cond ((= scheme-type-width 8)
-	   (LAP ,(test-byte type source)))
+	   (test-byte type source))
 	  ((and (zero? type) use-68020-instructions?)
 	   (LAP (BFTST ,source (& 0) (& ,scheme-type-width))))
 	  (else
@@ -141,7 +142,7 @@ MIT in each case. |#
   (LAP ,@(object->type source target)
        ,@(if (zero? type)
 	     (LAP)
-	     (LAP ,(test-byte type target)))))
+	     (test-byte type target))))
 
 (define-rule predicate
   (EQ-TEST (REGISTER (? register-1)) (REGISTER (? register-2)))
@@ -181,9 +182,9 @@ MIT in each case. |#
   (if (non-pointer-object? constant)
       (begin
 	(set-standard-branches! 'EQ)
-	(LAP ,(test-non-pointer-constant
-	       constant
-	       (standard-register-reference register 'DATA true))))
+	(test-non-pointer-constant
+	 constant
+	 (standard-register-reference register 'DATA true)))
       (compare/register*memory register
 			       (INST-EA (@PCR ,(constant->label constant)))
 			       'EQ)))
@@ -203,7 +204,7 @@ MIT in each case. |#
     (if (non-pointer-object? constant)
 	(begin
 	  (set-standard-branches! 'EQ)
-	  (LAP ,(test-non-pointer-constant constant memory)))
+	  (test-non-pointer-constant constant memory))
 	(compare/memory*memory memory
 			       (INST-EA (@PCR ,(constant->label constant)))
 			       'EQ))))
@@ -222,9 +223,9 @@ MIT in each case. |#
 
 (define (eq-test/synthesized-constant*register type datum register)
   (set-standard-branches! 'EQ)
-  (LAP ,(test-non-pointer type
-			  datum
-			  (standard-register-reference register 'DATA true))))
+  (test-non-pointer type
+		    datum
+		    (standard-register-reference register 'DATA true)))
 
 (define-rule predicate
   (EQ-TEST (CONS-POINTER (MACHINE-CONSTANT (? type))
@@ -242,9 +243,9 @@ MIT in each case. |#
 
 (define (eq-test/synthesized-constant*memory type datum memory)
   (set-standard-branches! 'EQ)
-  (LAP ,(test-non-pointer type
-			  datum
-			  (predicate/memory-operand-reference memory))))
+  (test-non-pointer type
+		    datum
+		    (predicate/memory-operand-reference memory)))
 
 ;;;; Fixnum/Flonum Predicates
 
@@ -256,7 +257,7 @@ MIT in each case. |#
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (REGISTER (? register)))
   (set-standard-branches! (fixnum-predicate->cc predicate))
-  (LAP ,(test-fixnum (standard-register-reference register 'DATA true))))
+  (test-fixnum (standard-register-reference register 'DATA true)))
 
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (OBJECT->FIXNUM (REGISTER (? register))))
@@ -267,7 +268,7 @@ MIT in each case. |#
   (FIXNUM-PRED-1-ARG (? predicate) (? memory))
   (QUALIFIER (predicate/memory-operand? memory))
   (set-standard-branches! (fixnum-predicate->cc predicate))
-  (LAP ,(test-fixnum (predicate/memory-operand-reference memory))))
+  (test-fixnum (predicate/memory-operand-reference memory)))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.37 1992/07/05 14:20:36 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -385,7 +385,7 @@ MIT in each case. |#
 	  (CONS-POINTER (MACHINE-CONSTANT (? type)) (REGISTER (? datum))))
   (let ((target (indirect-reference! address offset)))
     (LAP (MOV L ,(standard-register-reference datum 'DATA true) ,target)
-	 ,(memory-set-type type target))))
+	 ,@(memory-set-type type target))))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
@@ -395,7 +395,7 @@ MIT in each case. |#
 	(target (indirect-reference! address offset)))
     (LAP (LEA ,(indirect-reference! source n) ,temp)
 	 (MOV L ,temp ,target)
-	 ,(memory-set-type type target))))
+	 ,@(memory-set-type type target))))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
@@ -405,7 +405,7 @@ MIT in each case. |#
 	(target (indirect-reference! address offset)))
     (LAP (LEA ,(indirect-byte-reference! source n) ,temp)
 	 (MOV L ,temp ,target)
-	 ,(memory-set-type type target))))
+	 ,@(memory-set-type type target))))
 
 ;; Common case that can be done cheaply:
 
@@ -436,7 +436,7 @@ MIT in each case. |#
     (LAP (LEA (@PCR ,(rtl-procedure/external-label (label->object label)))
 	      ,temp)
 	 (MOV L ,temp ,target)
-	 ,(memory-set-type type target))))
+	 ,@(memory-set-type type target))))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a0)) (? n0))
@@ -502,7 +502,7 @@ MIT in each case. |#
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
 	  (CONS-POINTER (MACHINE-CONSTANT (? type)) (REGISTER (? datum))))
   (LAP (MOV L ,(standard-register-reference datum 'DATA true) (@-A 7))
-       ,(memory-set-type type (INST-EA (@A 7)))))
+       ,@(memory-set-type type (INST-EA (@A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
@@ -515,28 +515,28 @@ MIT in each case. |#
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(ENTRY:PROCEDURE (? label))))
   (LAP (PEA (@PCR ,(rtl-procedure/external-label (label->object label))))
-       ,(memory-set-type type (INST-EA (@A 7)))))
+       ,@(memory-set-type type (INST-EA (@A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(ENTRY:CONTINUATION (? label))))
   (LAP (PEA (@PCR ,label))
-       ,(memory-set-type type (INST-EA (@A 7)))))
+       ,@(memory-set-type type (INST-EA (@A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(OFFSET-ADDRESS (REGISTER (? r)) (? n))))
   (LAP (PEA ,(indirect-reference! r n))
-       ,(memory-set-type type (INST-EA (@A 7)))))
+       ,@(memory-set-type type (INST-EA (@A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(BYTE-OFFSET-ADDRESS (REGISTER (? r)) (? n))))
   (LAP (PEA ,(indirect-byte-reference! r n))
-       ,(memory-set-type type (INST-EA (@A 7)))))
+       ,@(memory-set-type type (INST-EA (@A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (OFFSET (REGISTER (? r)) (? n)))

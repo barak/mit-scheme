@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.32 1992/07/05 14:20:51 jinx Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,13 +41,13 @@ MIT in each case. |#
 
 (define-integrable (clear-continuation-type-code)
   (if (= scheme-type-width 8)
-      (INST (CLR B (@A 7)))
-      (INST (AND L ,mask-reference (@A 7)))))
+      (LAP (CLR B (@A 7)))
+      (LAP (AND L ,mask-reference (@A 7)))))
 
 (define-rule statement
   (POP-RETURN)
   (LAP ,@(clear-map!)
-       ,(clear-continuation-type-code)
+       ,@(clear-continuation-type-code)
        (RTS)))
 
 (define-rule statement
@@ -64,7 +64,7 @@ MIT in each case. |#
 	   ((7) (LAP (JMP ,entry:compiler-shortcircuit-apply-size-7)))
 	   ((8) (LAP (JMP ,entry:compiler-shortcircuit-apply-size-8)))
 	   (else
-	    (LAP ,(load-dnl frame-size 2)
+	    (LAP ,@(load-dnl frame-size 2)
 		 (JMP ,entry:compiler-shortcircuit-apply))))))
 
 (define-rule statement
@@ -78,14 +78,14 @@ MIT in each case. |#
   frame-size continuation
   ;; It expects the procedure at the top of the stack
   (LAP ,@(clear-map!)
-       ,(clear-continuation-type-code)
+       ,@(clear-continuation-type-code)
        (RTS)))
 
 (define-rule statement
   (INVOCATION:LEXPR (? number-pushed) (? continuation) (? label))
   continuation
   (LAP ,@(clear-map!)
-       ,(load-dnl number-pushed 2)
+       ,@(load-dnl number-pushed 2)
        (LEA (@PCR ,label) (A 0))
        (MOV L (A 0) (D 1))
        ,@(invoke-interface code:compiler-lexpr-apply)))
@@ -95,8 +95,8 @@ MIT in each case. |#
   continuation
   ;; It expects the procedure at the top of the stack
   (LAP ,@(clear-map!)
-       ,(load-dnl number-pushed 2)
-       ,(clear-continuation-type-code)
+       ,@(load-dnl number-pushed 2)
+       ,@(clear-continuation-type-code)
        (MOV L (@A+ 7) (D 1))
        ,@(invoke-interface code:compiler-lexpr-apply)))
 
@@ -131,7 +131,7 @@ MIT in each case. |#
     (delete-dead-registers!)
     (LAP ,@set-extension
 	 ,@(clear-map!)
-	 ,(load-dnl frame-size 3)
+	 ,@(load-dnl frame-size 3)
 	 (LEA (@PCR ,*block-label*) (A 1))
 	 (MOV L (A 1) (D 2))
 	 ,@(invoke-interface code:compiler-cache-reference-apply))))
@@ -146,7 +146,7 @@ MIT in each case. |#
     (LAP ,@set-environment
 	 ,@(clear-map!)
 	 ,@(load-constant name (INST-EA (D 2)))
-	 ,(load-dnl frame-size 3)
+	 ,@(load-dnl frame-size 3)
 	 ,@(invoke-interface code:compiler-lookup-apply))))
 
 (define-rule statement
@@ -154,7 +154,7 @@ MIT in each case. |#
   continuation
   (LAP ,@(clear-map!)
        ,@(if (eq? primitive compiled-error-procedure)
-	     (LAP ,(load-dnl frame-size 1)
+	     (LAP ,@(load-dnl frame-size 1)
 		  (JMP ,entry:compiler-error))
 	     (let ((arity (primitive-procedure-arity primitive)))
 	       (cond ((not (negative? arity))
@@ -167,7 +167,7 @@ MIT in each case. |#
 			   (JMP ,entry:compiler-primitive-lexpr-apply)))
 		     (else
 		      ;; Unknown primitive arity.  Go through apply.
-		      (LAP ,(load-dnl frame-size 2)
+		      (LAP ,@(load-dnl frame-size 2)
 			   (MOV L (@PCR ,(constant->label primitive)) (D 1))
 			   ,@(invoke-interface code:compiler-apply))))))))
 
@@ -245,10 +245,10 @@ MIT in each case. |#
 	       (LAP (MOV L (@AO 7 4) (@AO 7 8))
 		    (MOV L (@A+ 7) (@A 7)))
 	       (let ((i (lambda ()
-			  (INST (MOV L (@A+ 7)
-				     ,(offset-reference a7 (-1+ how-far)))))))
-		 (LAP ,(i)
-		      ,(i)
+			  (LAP (MOV L (@A+ 7)
+				    ,(offset-reference a7 (-1+ how-far)))))))
+		 (LAP ,@(i)
+		      ,@(i)
 		      ,@(increment-machine-register 15 (* 4 (- how-far 2)))))))
 	  (else
 	   (generate/move-frame-up frame-size (offset-reference a7 offset))))))
@@ -318,9 +318,9 @@ MIT in each case. |#
 	 ,@(generate-n-times
 	    frame-size 5
 	    (lambda ()
-	      (INST (MOV L
-			 (@-A ,(- temp 8))
-			 (@-A ,(- destination 8)))))
+	      (LAP (MOV L
+			(@-A ,(- temp 8))
+			(@-A ,(- destination 8)))))
 	    (lambda (generator)
 	      (generator (allocate-temporary-register! 'DATA))))
 	 (MOV L ,(register-reference destination) (A 7)))))
@@ -647,7 +647,7 @@ long-word aligned and there is no need for shuffling.
 ;; and returns its value in a0.
 
 (define (MC68040/allocate-closure size)
-  (LAP ,(load-dnl size 0)
+  (LAP ,@(load-dnl size 0)
        (JSR ,entry:compiler-allocate-closure)))
 
 ;; If this issues too much code, the optional code can be eliminated at
@@ -754,7 +754,7 @@ long-word aligned and there is no need for shuffling.
        (MOV L (A 0) (D 2))
        (LEA (@PCR ,free-ref-label) (A 0))
        (MOV L (A 0) (D 3))
-       ,(load-dnl n-sections 4)
+       ,@(load-dnl n-sections 4)
        (JSR ,entry:compiler-link)
        ,@(make-external-label (continuation-code-word false)
 			      (generate-label))))
@@ -766,19 +766,19 @@ long-word aligned and there is no need for shuffling.
   (let ((load-offset
 	 (lambda (offset)
 	   (if (<= -32768 offset 32767)
-	       (INST (LEA (@AO 0 ,offset) (A 1)))
-	       (INST (LEA (@AOF 0 E (,offset L) #F
-				((D 0) L 1) Z
-				(0 N))
-			  (A 1)))))))
+	       (LAP (LEA (@AO 0 ,offset) (A 1)))
+	       (LAP (LEA (@AOF 0 E (,offset L) #F
+			       ((D 0) L 1) Z
+			       (0 N))
+			 (A 1)))))))
     (LAP (MOV L (@PCR ,code-block-label) (D 2))
 	 (AND L ,mask-reference (D 2))
 	 (MOV L (D 2) (A 0))
-	 ,(load-offset environment-offset)
+	 ,@(load-offset environment-offset)
 	 (MOV L ,reg:environment (@A 1))
-	 ,(load-offset free-ref-offset)
+	 ,@(load-offset free-ref-offset)
 	 (MOV L (A 1) (D 3))
-	 ,(load-dnl n-sections 4)
+	 ,@(load-dnl n-sections 4)
 	 (JSR ,entry:compiler-link)
 	 ,@(make-external-label (continuation-code-word false)
 				(generate-label)))))
