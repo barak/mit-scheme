@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppacach.c,v 1.7 1993/06/08 04:08:47 gjr Exp $
+$Id: hppacach.c,v 1.8 1993/06/08 04:17:43 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -400,13 +400,14 @@ update_pdc_database (mode, pdc_cache, filename)
     else
     {
       write_p = 0;
-      fprintf (stderr, "Data base \"%s\" is write-protected.\n", filename);
+      if (mode != MODE_PRINT)
+	fprintf (stderr, "Data base \"%s\" is write-protected.\n", filename);
     }
   }
   if (! (search_pdc_database (fd, pdc_cache, filename)))
     {
       read_parameters (pdc_cache);
-      if (!write_p)
+      if (!write_p && (mode != MODE_PRINT))
 	printf ("Could not write information to data base.\n");
       else
       {
@@ -431,8 +432,11 @@ update_pdc_database (mode, pdc_cache, filename)
     read_parameters (new_cache);
     if ((memcmp (new_cache, pdc_cache, (sizeof (struct pdc_cache_dump))))
 	== 0)
-      printf ("Correct information for model %s already present in data base.\n",
-	      &new_cache->hardware[0]);
+    {
+      if (mode != MODE_PRINT)
+	printf ("Correct information for model %s is present in data base.\n",
+		&new_cache->hardware[0]);
+    }
     else
     {
       printf ("Data base contains different information for model %s.\n",
@@ -444,7 +448,8 @@ update_pdc_database (mode, pdc_cache, filename)
 	  if (write_p)
 	  {
 	    printf ("Keeping the new information.\n");
-	    if ((lseek (fd, (- (sizeof (struct pdc_cache_dump))), SEEK_CUR)) == -1)
+	    if ((lseek (fd, (- (sizeof (struct pdc_cache_dump))), SEEK_CUR))
+		== -1)
 	      io_lose ("update_pdc_database", "lseek (%s) failed", filename);
 	    if ((write (fd, new_cache, (sizeof (struct pdc_cache_dump))))
 		!= (sizeof (struct pdc_cache_dump)))
