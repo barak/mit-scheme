@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.53 2004/08/10 01:03:02 cph Exp $
+$Id: xml.pkg,v 1.54 2004/10/15 18:34:13 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -87,6 +87,9 @@ USA.
   (files "xml-struct")
   (parent (runtime xml))
   (export ()
+	  (flatten-xml-element-contents flatten-xml-element-content)
+	  (set-xml-element-contents! set-xml-element-content!)
+	  (xml-element-contents xml-element-content)
 	  <xml-!attlist>
 	  <xml-!element>
 	  <xml-!entity>
@@ -119,7 +122,7 @@ USA.
 	  error:not-xml-parameter-entity-ref
 	  error:not-xml-processing-instructions
 	  error:not-xml-unparsed-!entity
-	  flatten-xml-element-contents
+	  flatten-xml-element-content
 	  guarantee-xml-!attlist
 	  guarantee-xml-!element
 	  guarantee-xml-!entity
@@ -176,7 +179,7 @@ USA.
 	  set-xml-dtd-internal!
 	  set-xml-dtd-root!
 	  set-xml-element-attributes!
-	  set-xml-element-contents!
+	  set-xml-element-content!
 	  set-xml-element-name!
 	  set-xml-entity-ref-name!
 	  set-xml-external-id-id!
@@ -231,7 +234,7 @@ USA.
 	  xml-dtd-root
 	  xml-dtd?
 	  xml-element-attributes
-	  xml-element-contents
+	  xml-element-content
 	  xml-element-name
 	  xml-element-namespace-decls
 	  xml-element?

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.46 2004/08/12 06:31:01 cph Exp $
+$Id: xml-struct.scm,v 1.47 2004/10/15 18:34:22 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -172,7 +172,7 @@ USA.
 (define-xml-type element
   (name xml-name?)
   (attributes xml-attribute-list?)
-  (contents canonicalize canonicalize-content))
+  (content canonicalize canonicalize-content))
 
 (define (xml-attribute-list? object)
   (and (list-of-type? object xml-attribute?)
@@ -476,7 +476,7 @@ USA.
 	(lambda (attrs . items)
 	  (make-xml-element name
 			    (if (not attrs) '() attrs)
-			    (flatten-xml-element-contents items))))))
+			    (flatten-xml-element-content items))))))
 
 (define (standard-xml-element-predicate qname iri)
   (let ((name (make-xml-name qname iri)))
@@ -509,7 +509,7 @@ USA.
 		 (error "Unknown item passed to xml-attrs:" item))))
 	'())))
 
-(define (flatten-xml-element-contents item)
+(define (flatten-xml-element-content item)
   (letrec
       ((scan-item
 	(lambda (item tail)

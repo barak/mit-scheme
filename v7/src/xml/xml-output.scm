@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.34 2004/07/24 03:45:49 cph Exp $
+$Id: xml-output.scm,v 1.35 2004/10/15 18:34:20 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -136,17 +136,17 @@ USA.
 
 (define-method %write-xml ((element <xml-element>) ctx)
   (let ((name (xml-element-name element))
-	(contents (xml-element-contents element)))
+	(content (xml-element-content element)))
     (emit-string "<" ctx)
     (write-xml-name name ctx)
     (write-xml-attributes (xml-element-attributes element)
-			  (if (pair? contents) 1 3)
+			  (if (pair? content) 1 3)
 			  ctx)
-    (if (pair? contents)
+    (if (pair? content)
 	(begin
 	  (emit-string ">" ctx)
 	  (for-each (lambda (content) (%write-xml content ctx))
-		    contents)
+		    content)
 	  (emit-string "</" ctx)
 	  (write-xml-name name ctx)
 	  (emit-string ">" ctx))
