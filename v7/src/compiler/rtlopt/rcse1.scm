@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.110 1987/06/30 00:21:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.111 1987/07/03 18:58:24 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -203,6 +203,7 @@ MIT in each case. |#
 (define-cse-method 'INVOCATION:JUMP method/noop)
 (define-cse-method 'INVOCATION:LEXPR method/noop)
 (define-cse-method 'INVOCATION:PRIMITIVE method/noop)
+(define-cse-method 'INVOCATION:UUO-LINK method/noop)
 
 (define (method/invalidate-stack statement)
   (stack-pointer-invalidate!))

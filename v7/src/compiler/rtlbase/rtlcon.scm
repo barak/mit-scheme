@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 1.9 1987/06/02 11:34:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 1.10 1987/07/03 18:56:57 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -143,53 +143,45 @@ MIT in each case. |#
 ;;;; Invocations
 
 (define (rtl:make-invocation:apply frame-size prefix continuation)
-  (%make-invocation:apply frame-size
-			  prefix
-			  (and continuation
-			       (continuation-label continuation))))
+  (%make-invocation:apply
+   frame-size prefix (and continuation (continuation-label continuation))))
 
 (define (rtl:make-invocation:cache-reference frame-size prefix continuation
 					     extension)
   (expression-simplify-for-statement extension
    (lambda (extension)
-     (%make-invocation:cache-reference frame-size
-				       prefix
-				       (and continuation
-					    (continuation-label continuation))
-				       extension))))
+     (%make-invocation:cache-reference
+      frame-size prefix (and continuation (continuation-label continuation))
+      extension))))
 
 (define (rtl:make-invocation:jump frame-size prefix continuation procedure)
-  (%make-invocation:jump frame-size
-			 prefix
-			 (and continuation
-			      (continuation-label continuation))
-			 (procedure-label procedure)))
+  (%make-invocation:jump
+   frame-size prefix (and continuation (continuation-label continuation))
+   (procedure-label procedure)))
 
 (define (rtl:make-invocation:lexpr frame-size prefix continuation procedure)
-  (%make-invocation:lexpr frame-size
-			  prefix
-			  (and continuation
-			       (continuation-label continuation))
-			  (procedure-label procedure)))
+  (%make-invocation:lexpr
+   frame-size prefix (and continuation (continuation-label continuation))
+   (procedure-label procedure)))
 
 (define (rtl:make-invocation:lookup frame-size prefix continuation
 				    environment name)
   (expression-simplify-for-statement environment
     (lambda (environment)
-      (%make-invocation:lookup frame-size
-			       prefix
-			       (and continuation
-				    (continuation-label continuation))
-			       environment
-			       name))))
+      (%make-invocation:lookup
+       frame-size prefix (and continuation (continuation-label continuation))
+       environment name))))
 
 (define (rtl:make-invocation:primitive frame-size prefix continuation
 				       procedure)
-  (%make-invocation:primitive frame-size
-			      prefix
-			      (and continuation
-				   (continuation-label continuation))
-			      procedure))
+  (%make-invocation:primitive
+   frame-size prefix (and continuation (continuation-label continuation))
+   procedure))
+
+(define (rtl:make-invocation:uuo-link frame-size prefix continuation name)
+  (%make-invocation:uuo-link
+   frame-size prefix (and continuation (continuation-label continuation))
+   name))
 
 ;;;; Expression Simplification
 
