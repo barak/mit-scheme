@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: string.c,v 9.44 2001/03/08 17:14:36 cph Exp $
+$Id: string.c,v 9.45 2001/10/04 16:13:24 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* String primitives. */
@@ -158,14 +159,15 @@ DEFINE_PRIMITIVE ("SET-STRING-MAXIMUM-LENGTH!", Prim_set_string_maximum_length, 
   CHECK_ARG (1, STRING_P);
   {
     SCHEME_OBJECT string = (ARG_REF (1));
-    long length =
-      (arg_index_integer (2, ((MAXIMUM_STRING_LENGTH (string)) + 1)));
+    long length
+      = (arg_index_integer (2, ((MAXIMUM_STRING_LENGTH (string)) + 1)));
+    if (max_length < (STRING_LENGTH (string)))
+      SET_STRING_LENGTH (string, max_length);
     MEMORY_SET
       (string,
        STRING_HEADER,
        (MAKE_OBJECT
 	(TC_MANIFEST_NM_VECTOR, ((BYTES_TO_WORDS (length + 1)) + 1))));
-    SET_STRING_LENGTH (string, length);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
