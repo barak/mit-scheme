@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxsig.h,v 1.2 1993/08/28 23:08:57 gjr Exp $
+$Id: uxsig.h,v 1.3 1994/02/15 04:23:49 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -70,6 +70,7 @@ DEFUN (name, (signo, info, pscp),					\
   int STD_HANDLER_abortp;						\
   DECLARE_FULL_SIGCONTEXT (scp);					\
   INITIALIZE_FULL_SIGCONTEXT (pscp, scp);				\
+  record_signal_delivery (signo);					\
   STD_HANDLER_abortp = (enter_interruption_extent ());			\
   statement;								\
   if (STD_HANDLER_abortp)						\

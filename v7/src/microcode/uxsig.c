@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.27 1993/08/28 22:46:42 gjr Exp $
+$Id: uxsig.c,v 1.28 1994/02/15 04:23:41 cph Exp $
 
-Copyright (c) 1990-1993 Massachusetts Institute of Technology
+Copyright (c) 1990-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -177,6 +177,78 @@ DEFUN (activate_handler, (signo, handler),
 {
   INSTALL_HANDLER (signo, handler) ;
 }
+
+/* Signal Debugging */
+
+#ifdef DEBUG_SIGNAL_DELIVERY
+
+int signal_history [256];
+int * signal_history_pointer;
+
+static void
+DEFUN_VOID (initialize_signal_debugging)
+{
+  int * scan = (&signal_history[0]);
+  int * end = (scan + (sizeof (signal_history)));
+  signal_history_pointer = scan;
+  while (scan < end)
+    (*scan++) = 0;
+}
+
+static void
+DEFUN (record_signal_delivery, (signo), int signo)
+{
+  block_signals ();
+  (*signal_history_pointer++) = signo;
+  if (signal_history_pointer >= (& (signal_history [sizeof (signal_history)])))
+    signal_history_pointer = (&signal_history[0]);
+  unblock_signals ();
+}
+
+#else /* not DEBUG_SIGNAL_DELIVERY */
+
+#define initialize_signal_debugging()
+#define record_signal_delivery(signo)
+
+#endif /* not DEBUG_SIGNAL_DELIVERY */
+
+#if defined(sonyrisc) && defined(_SYSV4)
+/* Sony NEWS-OS 5.0.2 has a nasty bug because `sigaction' maintains a
+   table which contains the signal handlers, and passes
+   `sigaction_handler' to the kernel in place of any handler's
+   address.  Unfortunately, `signal' doesn't know about this table, so
+   it returns `sigaction_handler' as its value, which can subsequently
+   get passed back to `sigaction' and stored in the table.  Once
+   stored in the table, this causes an infinite recursion, which kills
+   the process (with SIGSEGV) when the stack exceeds the allowable
+   amount of virtual memory.
+
+   This problem would not be an issue, because Scheme deliberately
+   doesn't mix the use of `sigaction' with `signal', except that the
+   last release of 5.0.2 (baseline 31.1) calls `signal' from
+   `grantpt'.  So, the following patch overrides the built-in version
+   of `signal' with one that coexists safely with `sigaction'.  */
+
+Tsignal_handler
+DEFUN (signal, (signo, handler),
+       int signo AND
+       Tsignal_handler handler)
+{
+  struct sigaction act;
+  struct sigaction oact;
+
+  (act . sa_handler) = handler;
+  UX_sigemptyset (& (act . sa_mask));
+  (act . sa_flags) = (SA_RESETHAND | SA_NODEFER);
+  if (handler == SIG_IGN)
+    (act . sa_flags) |= SA_NOCLDWAIT;
+  if ((UX_sigaction (signo, (&act), (&oact))) < 0)
+    return (SIG_ERR);
+  else
+    return (oact . sa_handler);
+}
+
+#endif /* sonyrisc && _SYSV4 */
 
 /* Signal Descriptors */
 
@@ -583,6 +655,7 @@ DEFUN_VOID (UX_initialize_signals)
   stop_signal_hook = 0;
   subprocess_death_hook = 0;
   initialize_signal_descriptors ();
+  initialize_signal_debugging ();
   bind_handler (SIGINT,		sighnd_control_g);
   bind_handler (SIGFPE,		sighnd_fpe);
   bind_handler (SIGALRM,	sighnd_timer);
@@ -616,7 +689,6 @@ DEFUN_VOID (UX_initialize_signals)
         bind_handler (SIGIOT,   sighnd_control_x);
       else
         bind_handler (SIGIOT,	sighnd_software_trap);
-      bind_handler (SIGIOT,	sighnd_software_trap);
       bind_handler (SIGEMT,	sighnd_software_trap);
       bind_handler (SIGSYS,	sighnd_software_trap);
       bind_handler (SIGABRT,	sighnd_software_trap);
