@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.2 1993/06/09 10:09:41 jawilson Exp $
+$Id: lapgen.scm,v 1.3 1993/06/10 18:05:38 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -153,10 +153,30 @@ MIT in each case. |#
   (let ((aliases (assq reg current-register-list)))
     (and aliases
 	 (let ((alias (assq type (cdr aliases))))
-	   (cond (alias (cdr alias))
+	   (cond (alias)
 		 ((not type)
-		  (cdadr aliases))
+		  (cadr aliases))
 		 (else false))))))
+
+(define (allocate-additional-alias reg type)
+  ;; This is flakey.
+  ;; After this, there are two aliases for the same RTL register,
+  ;; with incompatible types.
+  ;; Hopefully Liar will not mix the two up.
+  (let ((aliases (assq reg current-register-list)))
+    (if (not aliases)
+	(error "allocate-additional-alias: No previous aliases" reg)
+	(let ((alias (assq type (cdr aliases))))
+	  (if alias
+	      (error "allocate-additional-alias: Already has alias" reg)
+	      (let ((name (new-register-name reg type)))
+		;; Kludge!  This depends on having at most two!
+		(if (eq? type 'DOUBLE)
+		    (set-cdr! (last-pair aliases) (list (cons type name)))
+		    (set-cdr! aliases
+			      (cons (cons type name)
+				    (cdr aliases))))
+		name))))))
 
 (define (standard-source! reg type)
   (cond ((register-is-machine-register? reg)
@@ -164,36 +184,29 @@ MIT in each case. |#
 	   (if (eq? (machine-register-type-symbol reg) type)
 	       name
 	       (rhs-cast name type))))
-	((find-register reg type))
+	((find-register reg type)
+	 => cdr)
 	((find-register reg false)
-	 => (lambda (reg)
-	      (rhs-cast reg type)))
+	 => (lambda (alias)
+	      (if (compatible/C*C? (car alias) type)
+		  (rhs-cast (cdr alias) type)
+		  (allocate-additional-alias reg type))))
 	(else
 	 (comp-internal-error "Unallocated register"
 			      'STANDARD-SOURCE! reg))))
 
 (define (standard-target! reg type)
   (cond ((register-is-machine-register? reg)
+	 (if (not (compatible/C*register? type (register-type reg)))
+	     (error "standard-target!: Incompatible type register" reg type))
 	 (machine-register-name reg))
-	#|
-	;; This code is broken.
-	;; It gives multiple C aliases to a single RTL register,
-	;; but nothing guarantees that the most recent alias is used
-	;; when reading the value.
-	((assq reg current-register-list)
-	 => (lambda (aliases)
-	      (let ((alias (assq type (cdr aliases))))
-		(if (or (not alias)
-			(not (null? (cddr aliases))))
-		    (let ((name (new-register-name reg type)))
-		      (set-cdr! aliases (list (cons type name)))
-		      name)
-		    (cdr alias)))))
-	|#
-	((find-register reg type))
+	((find-register reg type)
+	 => cdr)
 	((find-register reg false)
-	 => (lambda (reg)
-	      (lhs-cast reg type)))
+	 => (lambda (alias)
+	      (if (compatible/C*C? (car alias) type)
+		  (lhs-cast (cdr alias) type)
+		  (allocate-additional-alias reg type))))
 	(else
 	 (let ((name (new-register-name reg type)))
 	   (set! current-register-list
@@ -513,13 +526,27 @@ MIT in each case. |#
 (define (sort-machine-registers lst)
   lst)
 
+(define (compatible/C*register? c-type reg-type)
+  (if (eq? c-type 'DOUBLE)
+      (eq? reg-type 'FLOAT)
+      (not (eq? reg-type 'FLOAT))))
+
+(define (compatible/C*C? type1 type2)
+  (if (eq? type1 'DOUBLE)
+      (eq? type2 'DOUBLE)
+      (not (eq? type2 'DOUBLE))))
+
 (define (register-type reg)
-  (comp-internal-error "Should not be using register allocator"
-		       'REGISTER-TYPE reg))
+  (cond ((or (machine-register? reg)
+	     (register-value-class=word? reg))
+	 'WORD)
+	((register-value-class=float? reg)
+	 'FLOAT)
+	(else
+	 (error "unable to determine register type" reg))))
 
 (define (register-types-compatible? x y)
-  (comp-internal-error "Should not be using register allocator"
-		       'REGISTER-TYPES-COMPATIBLE? x y))
+  (boolean=? (eq? type1 'FLOAT) (eq? type2 'FLOAT)))
 
 (define (register-reference num)
   (comp-internal-error "Should not be using register allocator"
