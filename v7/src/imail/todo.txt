@@ -1,13 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.87 2000/06/19 20:01:21 cph Exp $
+$Id: todo.txt,v 1.88 2000/06/19 20:27:45 cph Exp $
 
 Bug fixes
 ---------
-
-* M-x imail-toggle-message isn't really a replacement for M-x
-  imail-toggle-headers.  If the message is really large, and you just
-  want to see the headers, it's serious overkill.  So reimplement the
-  latter, and bind the former to `T'.
 
 * Must be able to handle malformed headers in incoming mail.
   Generating a low-level error in this situation is unacceptable.

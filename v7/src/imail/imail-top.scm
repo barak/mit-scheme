@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.171 2000/06/19 20:01:12 cph Exp $
+;;; $Id: imail-top.scm,v 1.172 2000/06/19 20:27:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -341,6 +341,7 @@ Instead, these commands are available:
 \\[imail-summary-by-flags]	Like \\[imail-summary] only just messages with particular flag(s).
 \\[imail-summary-by-recipients]   Like \\[imail-summary] only just messages with particular recipient(s).
 
+\\[imail-toggle-header]	Toggle between full headers and reduced headers.
 \\[imail-toggle-message]	Toggle between standard and raw message formats.")
 
 (define (imail-revert-buffer buffer dont-use-auto-save? dont-confirm?)
@@ -403,7 +404,8 @@ Instead, these commands are available:
 (define-key 'imail #\r		'imail-reply)
 (define-key 'imail #\s		'imail-save-folder)
 (define-key 'imail #\m-s	'imail-search)
-(define-key 'imail #\t		'imail-toggle-message)
+(define-key 'imail #\t		'imail-toggle-header)
+(define-key 'imail #\T		'imail-toggle-message)
 (define-key 'imail #\u		'imail-undelete-previous-message)
 (define-key 'imail #\m-u	'imail-first-unseen-message)
 (define-key 'imail #\x		'imail-expunge)
@@ -1319,6 +1321,16 @@ If it doesn't exist, it is created first."
 	 "Folder saved"
 	 "No changes need to be saved."))))
 
+(define-command imail-toggle-header
+  "Show full message headers if pruned headers currently shown, or vice versa."
+  ()
+  (lambda ()
+    (let ((message (selected-message)))
+      (select-message (selected-folder)
+		      message
+		      #t
+		      (if (get-property message 'RAW? #f) #f 'FULL-HEADERS)))))
+
 (define-command imail-toggle-message
   "Toggle between standard and raw formats for message."
   ()
@@ -1671,7 +1683,7 @@ Negative argument means search in reverse."
 		    (begin
 		      (store-property! message 'RAW? raw?)
 		      (insert-header-fields message raw? mark)
-		      (cond (raw?
+		      (cond ((and raw? (not (eq? raw? 'FULL-HEADERS)))
 			     (insert-message-body message mark))
 			    ((folder-supports-mime? folder)
 			     (insert-mime-message-body message mark #f 0))
