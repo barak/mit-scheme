@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dostrap.c,v 1.2 1992/09/18 05:54:06 jinx Exp $
+$Id: dostrap.c,v 1.3 1992/11/23 04:01:58 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -414,6 +414,8 @@ DEFUN (setup_trap_frame, (trapno, info, scp, trinfo, new_stack_pointer),
     {
       fprintf (stderr, "There is no trap handler for recovery!\n");
       fprintf (stderr, "Trap = %s.\n", (find_trap_name (trapno)));
+      fprintf (stderr, "pc = %04x:%08lx; sp = %04x:%08lx.\n",
+	       scp->sc_cs, scp->sc_eip, scp->sc_ss, scp->sc_esp);
       fflush (stderr);
       termination_trap ();
     }
