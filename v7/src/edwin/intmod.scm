@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.86 1995/04/30 07:02:18 cph Exp $
+;;;	$Id: intmod.scm,v 1.87 1997/03/30 06:23:43 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -101,6 +101,8 @@ REPL uses current evaluation environment."
   (set-buffer-major-mode! buffer (ref-mode-object inferior-repl))
   (if (ref-variable repl-mode-locked)
       (buffer-put! buffer 'MAJOR-MODE-LOCKED true))
+  (if (environment? environment)
+      (local-set-variable! scheme-environment environment buffer))
   (create-thread editor-thread-root-continuation
     (lambda ()
       (let ((port
