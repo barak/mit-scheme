@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.9 1992/11/18 03:52:14 gjr Exp $
+$Id: machin.scm,v 1.10 1992/12/22 02:17:06 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -369,11 +369,8 @@ MIT in each case. |#
 	       3)))
 	((MACHINE-CONSTANT)
 	 (if-integer (rtl:machine-constant-value expression)))
-	((ENTRY:PROCEDURE
-	  ENTRY:CONTINUATION
-	  ASSIGNMENT-CACHE
-	  VARIABLE-CACHE
-	  OFFSET-ADDRESS)
+	((ENTRY:PROCEDURE ENTRY:CONTINUATION ASSIGNMENT-CACHE VARIABLE-CACHE
+			  OFFSET-ADDRESS)
 	 3)
 	((CONS-NON-POINTER)
 	 (and (rtl:machine-constant? (rtl:cons-non-pointer-type expression))
@@ -389,8 +386,7 @@ MIT in each case. |#
   true)
 
 (define compiler:primitives-with-no-open-coding
-  '(DIVIDE-FIXNUM GCD-FIXNUM FIXNUM-QUOTIENT FIXNUM-REMAINDER
-    FIXNUM-NOT FIXNUM-AND FIXNUM-ANDC FIXNUM-OR FIXNUM-XOR FIXNUM-LSH
+  '(DIVIDE-FIXNUM GCD-FIXNUM FIXNUM-QUOTIENT FIXNUM-REMAINDER FIXNUM-LSH
     INTEGER-QUOTIENT INTEGER-REMAINDER &/ QUOTIENT REMAINDER
     FLONUM-SIN FLONUM-COS FLONUM-TAN FLONUM-ASIN FLONUM-ACOS
     FLONUM-ATAN FLONUM-EXP FLONUM-LOG FLONUM-TRUNCATE FLONUM-ROUND

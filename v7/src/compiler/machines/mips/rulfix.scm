@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulfix.scm,v 1.6 1992/08/20 01:28:14 jinx Exp $
+$Id: rulfix.scm,v 1.7 1992/12/22 02:20:45 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -229,6 +229,11 @@ MIT in each case. |#
 			   (BLTZ ,tgt (@PCR ,if-no-overflow))
 			   (NOP)))))))
 	   (LAP)))))
+
+(define-arithmetic-method 'FIXNUM-NOT fixnum-methods/1-arg
+  (lambda (tgt src overflow?)
+    overflow?
+    (LAP (NOR ,tgt 0 ,src))))
 
 (define-rule statement
   ;; execute a binary fixnum operation
@@ -365,6 +370,27 @@ MIT in each case. |#
        (MFLO ,tgt)))
 
 (define-arithmetic-method 'MULTIPLY-FIXNUM fixnum-methods/2-args do-multiply)
+
+(define-arithmetic-method 'FIXNUM-AND fixnum-methods/2-args
+  (lambda (tgt src1 src2 overflow?)
+    overflow?
+    (LAP (AND ,tgt ,src1 ,src2))))
+
+(define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args
+  (lambda (tgt src1 src2 overflow?)
+    overflow?
+    (LAP (NOR ,regnum:assembler-temp 0 ,src2)
+	 (AND ,tgt ,src1 ,regnum:assembler-temp))))
+
+(define-arithmetic-method 'FIXNUM-OR fixnum-methods/2-args
+  (lambda (tgt src1 src2 overflow?)
+    overflow?
+    (LAP (OR ,tgt ,src1 ,src2))))
+
+(define-arithmetic-method 'FIXNUM-XOR fixnum-methods/2-args
+  (lambda (tgt src1 src2 overflow?)
+    overflow?
+    (LAP (XOR ,tgt ,src1 ,src2))))
 
 (define-rule statement
   ;; execute binary fixnum operation with constant second arg
@@ -394,7 +420,8 @@ MIT in each case. |#
 	   target constant source overflow?)))))
 
 (define (fixnum-2-args/commutative? operator)
-  (memq operator '(PLUS-FIXNUM MULTIPLY-FIXNUM)))
+  (memq operator
+	'(PLUS-FIXNUM MULTIPLY-FIXNUM FIXNUM-AND FIXNUM-OR FIXNUM-XOR)))
 
 (define (fixnum-2-args/operator/register*constant operation)
   (lookup-arithmetic-method operation fixnum-methods/2-args/register*constant))
