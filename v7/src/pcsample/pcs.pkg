@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pcs.pkg,v 1.1 1995/07/28 14:14:08 adams Exp $
+$Id: pcs.pkg,v 1.2 1995/11/19 19:28:34 adams Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -432,3 +432,12 @@ MIT in each case. |#
 	  with-pc-sample-default-status-displayer
 	  )
   (initialization (initialize-package!)))
+
+(define-package (pc-sample zones)
+  (files "zones")
+  (parent ())
+  (export ()
+	  make-pc-sample-zone
+	  wrap-with-zone
+	  reset-zone-counts!
+	  display-zone-report))
