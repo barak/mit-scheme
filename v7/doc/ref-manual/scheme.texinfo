@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.49 1995/03/02 04:56:36 adams Exp $
+@comment $Id: scheme.texinfo,v 1.50 1995/04/20 16:03:24 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -7718,6 +7718,29 @@ unspecified value.  @var{K} must be a valid index of @var{bit-string}.
 Sets the @var{k}th bit in @var{bit-string} to 0 and returns an
 unspecified value.  @var{K} must be a valid index of @var{bit-string}.
 @end deffn
+
+@deffn {procedure+} bit-substring-find-next-set-bit bit-string start end
+@cindex searching, of bit string
+Returns the index of the first occurrence of a set bit in the substring
+of @var{bit-string} from @var{start} (inclusive) to @var{end}
+(exclusive).  If none of the bits in the substring are set @code{#f} is
+returned.  The index returned is relative to the whole bit string, not
+substring.
+
+The following procedure uses @code{bit-substring-find-next-set-bit} to
+find all the set bits and display their indexes:
+@example
+(define (scan-bitstring bs)
+  (let ((end (bit-string-length bs)))
+    (let loop ((start 0))
+      (let ((next (bit-substring-find-next-set-bit bs start end)))
+	(if next
+	    (begin
+	      (write-line next)
+	      (if (< next end)
+		  (loop (+ next 1)))))))))
+@end example
+@end defn
 
 @node Cutting and Pasting Bit Strings, Bitwise Operations on Bit Strings, Selecting Bit String Components, Bit Strings
 @section Cutting and Pasting Bit Strings
