@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgstr.scm,v 1.18 1995/09/08 02:44:17 adams Exp $
+$Id: dbgstr.scm,v 1.19 1995/09/08 02:56:57 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -196,12 +196,14 @@ MIT in each case. |#
 		(new-dbg-continuation/inner new-info)))
 	      (aggregate
 	       ;; This condition is true when a user level form has internal
-	       ;; invisible continuations
+	       ;; invisible continuations, either as a subproblem or reduction
 	       (if (or (not (new-dbg-continuation/outer new-info))
 		       (eq? (new-dbg-continuation/outer new-info)
 			    (new-dbg-continuation/inner new-info)))
-		   (new-dbg-expression/outer
-		    (new-dbg-continuation/inner new-info))
+		   (or (new-dbg-expression/outer
+			(new-dbg-continuation/inner new-info))
+		       (new-dbg-expression/source-code
+			(new-dbg-continuation/inner new-info)))
 		   (new-dbg-expression/source-code
 		    (new-dbg-continuation/outer new-info)))))
 	 (and aggregate
