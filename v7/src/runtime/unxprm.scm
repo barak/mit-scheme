@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.59 2000/01/05 02:39:21 cph Exp $
+$Id: unxprm.scm,v 1.60 2001/03/16 21:37:48 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 |#
 
 ;;;; Miscellaneous Unix Primitives
@@ -60,7 +61,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (file-executable? filename)
   (file-access filename 1))
-
+
 (define (temporary-file-pathname #!optional directory)
   (let ((root-string
 	 (string-append
@@ -76,7 +77,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	     (merge-pathnames (string-append root-string (number->string ext))
 			      directory)))
 	(if (allocate-temporary-file pathname)
-	    pathname
+	    (begin
+	      ;; Make sure file isn't readable or writeable by anyone
+	      ;; other than the owner.
+	      (set-file-modes! pathname
+			       (fix:and (file-modes pathname)
+					#o0700))
+	      pathname)
 	    (begin
 	      (if (> ext 999)
 		  (error "Can't find unique temporary pathname:"
