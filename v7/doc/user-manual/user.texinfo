@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.100 2002/12/30 05:34:36 cph Exp $
+@comment $Id: user.texinfo,v 1.101 2002/12/30 06:08:30 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -1108,7 +1108,7 @@ that world image, your options will be recognized.
 The following procedures define command-line parsers.  In each, the
 argument @var{keyword} defines the option that will be recognized on the
 command line.  The @var{keyword} must be a string containing at least
-one additional character; do not include the leading hyphens.
+one character; do not include the leading hyphens.
 
 @deffn {procedure+} simple-command-line-parser keyword thunk
 Defines @var{keyword} to be a simple command-line option.  When this
