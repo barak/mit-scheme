@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: tterm.c,v 1.13 2002/01/29 06:00:09 cph Exp $
+$Id: tterm.c,v 1.14 2002/11/20 15:39:40 cph Exp $
 
 Copyright (c) 1990-2002 Massachusetts Institute of Technology
 
@@ -32,6 +32,9 @@ USA.
    parsing error on GNU systems.  */
 #  undef false
 #  undef true
+#  ifdef HAVE_TERMIOS_H
+#    include <termios.h>
+#  endif
 #  include <curses.h>
 #  include <term.h>
 #else
