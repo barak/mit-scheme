@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.14 1987/12/10 02:40:19 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.15 1987/12/10 04:01:50 cph Exp $
 
 (require 'scheme)
 
@@ -855,7 +855,7 @@ the remaining input.")
     ("[Error REPL]" . "[Evaluator]")
     ("[Breakpoint REPL]" . "[Evaluator]")
     ("[Debugger REPL]" . "[Evaluator]")
-    ("[Visiting Environment]" . "[Evaluator]")
+    ("[Visiting environment]" . "[Evaluator]")
     ("[Environment Inspector]" . "[Where]"))
   "An alist which maps the Scheme command interpreter type to a print string.")
 
