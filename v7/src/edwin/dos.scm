@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.10 1993/03/05 03:12:29 gjr Exp $
+;;;	$Id: dos.scm,v 1.11 1993/07/30 06:26:13 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ;;;
@@ -185,15 +185,15 @@ Includes the new backup.  Must be > 0."
 		     (file-type->version (pathname-type pathname) 0)))
 
 (define (os/backup-buffer? truename)
-  (and (memv (string-ref 
-	      (file-attributes/mode-string (file-attributes truename)) 0)
-	     '(#\- #\l))
-       (not
-	(let ((directory (pathname-directory truename)))
-	  (and (pair? directory)
-	       (eq? 'ABSOLUTE (car directory))
-	       (pair? (cdr directory))
-	       (eqv? "tmp" (cadr directory)))))))
+  (let ((attrs (file-attributes truename)))
+    (and attrs
+	 (memv (string-ref (file-attributes/mode-string attrs) 0)
+	       '(#\- #\l))
+	 (not (let ((directory (pathname-directory truename)))
+		(and (pair? directory)
+		     (eq? 'ABSOLUTE (car directory))
+		     (pair? (cdr directory))
+		     (eqv? "tmp" (cadr directory))))))))
 
 (define (os/default-backup-filename)
   "c:/tmp/edwin.bak")
@@ -439,7 +439,9 @@ Includes the new backup.  Must be > 0."
 				    (substring time-string 0 (fix:- len 5)))))
 	      ""))))
 
-  (let ((name (file-namestring file)) (attr (file-attributes file)))
+  (let ((name (file-namestring file))
+	(attr (or (file-attributes file)
+		  (dummy-file-attributes))))
     (let ((entry (string-append
 		  (string-pad-right	; Mode string
 		   (file-attributes/mode-string attr) 12 #\Space)
@@ -450,6 +452,9 @@ Includes the new backup.  Must be > 0."
 		  name)))
       (insert-string entry point)
       (insert-newline point))))
+
+(define-integrable (dummy-file-attributes)
+  '#(#f 0 0 0 0 0 0 0 "----------" 0))
 
 (define (os/scheme-can-quit?)
   true)
