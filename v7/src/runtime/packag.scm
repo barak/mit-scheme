@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.21 1995/06/02 04:30:07 cph Exp $
+$Id: packag.scm,v 14.22 1995/10/31 23:12:41 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -171,10 +171,16 @@ MIT in each case. |#
 			       (assoc "scm" load/default-types))
 			 load/default-types)))
 	  (let ((syntax-table (nearest-repl/syntax-table)))
-	    (load (pathname-new-type pathname "bco")
+	    (load (let ((rewrite (assq 'MAKE-CONSTRUCTOR-NAME options)))
+		    (if rewrite
+			(rewrite pathname)
+			(pathname-new-type pathname "bco")))
 		  system-global-environment
 		  syntax-table false)
-	    ((load (pathname-new-type pathname "bld")
+	    ((load (let ((rewrite (assq 'MAKE-LOADER-NAME options)))
+		     (if rewrite
+			 (rewrite pathname)
+			 (pathname-new-type pathname "bld")))
 		   system-global-environment
 		   syntax-table false)
 	     (lambda (component environment)
