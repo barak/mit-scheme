@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.20 1993/02/28 21:03:50 cph Exp $
+$Id: syntax.scm,v 14.21 1993/03/03 19:56:10 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -622,25 +622,16 @@ MIT in each case. |#
       (syntax-error "name of lambda expression must be a symbol" name))
   (parse-lambda-list pattern
     (lambda (required optional rest)
-      (for-each guarantee-parameter-not-syntactic-keyword required)
-      (for-each guarantee-parameter-not-syntactic-keyword optional)
-      (if rest (guarantee-parameter-not-syntactic-keyword rest))
       (internal-make-lambda name required optional rest body))))
 
 (define (make-closed-block tag names values body)
-  (for-each guarantee-parameter-not-syntactic-keyword names)
   (make-combination (internal-make-lambda tag names '() false body) values))
 
 (define (make-letrec names values body)
-  (for-each guarantee-parameter-not-syntactic-keyword names)
   (make-closed-block lambda-tag:let '() '()
 		     (make-scode-sequence
 		      (append! (map make-definition names values)
 			       (list body)))))
-
-(define (guarantee-parameter-not-syntactic-keyword name)
-  (if (syntax-table-ref *syntax-table* name)
-      (syntax-error "rebinding syntactic keyword" name)))
 
 (define-integrable lambda-tag:unnamed
   ((ucode-primitive string->symbol) "#[unnamed-procedure]"))
