@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.9 1995/01/28 02:42:01 adams Exp $
+$Id: rtlgen.scm,v 1.10 1995/01/28 17:10:56 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -1595,11 +1595,13 @@ MIT in each case. |#
 
 (define (rtlgen/branch/true state)
   (let ((cont (rtlgen/state/expr/target state)))
-    (rtlgen/emit!/1 `(JUMP ,(rtlgen/reference-true-label! cont)))))
+    (rtlgen/emit!/1 `(JUMP ,(rtlgen/reference-true-label! cont))))
+  false)
 
 (define (rtlgen/branch/false state)
   (let ((cont (rtlgen/state/expr/target state)))
-    (rtlgen/emit!/1 `(JUMP ,(rtlgen/reference-false-label! cont)))))
+    (rtlgen/emit!/1 `(JUMP ,(rtlgen/reference-false-label! cont))))
+  false)
 
 (define (rtlgen/branch/likely state predicate)
   (let ((cont (rtlgen/state/expr/target state)))
@@ -2830,21 +2832,34 @@ MIT in each case. |#
 		       (internal-error "Unexpected value target" target
 				       (rtlgen/open-coder/rator
 					open-coder))))))
-      (let ((merge-label (rtlgen/new-name 'MERGE))
-	    (true-label  (rtlgen/new-name 'TRUE))
-	    (false-label (rtlgen/new-name 'FALSE)))
-	(handler (rtlgen/state/->expr
-		  state
-		  `(PREDICATE ,(list true-label 0) ,(list false-label 0)))
+      (let* ((true-label  (rtlgen/new-name 'TRUE))
+	     (false-label (rtlgen/new-name 'FALSE))
+	     (tl          (list true-label 0))
+	     (fl          (list false-label 0)))
+	(handler (rtlgen/state/->expr  state  `(PREDICATE ,tl ,fl))
 		 rands open-coder)
-	(rtlgen/assign!*
-	 `((LABEL ,true-label)
-	   (ASSIGN ,target* (CONSTANT ,#t))
-	   (JUMP ,merge-label)
-	   (LABEL ,false-label)
-	   (ASSIGN ,target* (CONSTANT ,#f))
-	   (LABEL ,merge-label)))
-	target*))))
+	(let ((true-label-taken?   (not (zero? (cadr tl))))
+	      (false-label-taken?  (not (zero? (cadr fl)))))
+	  (cond ((and true-label-taken? false-label-taken?)
+		 (let ((merge-label  (rtlgen/new-name 'MERGE)))
+		   (rtlgen/assign!*
+		    `((LABEL ,true-label)
+		      (ASSIGN ,target* (CONSTANT ,#t))
+		      (JUMP ,merge-label)
+		      (LABEL ,false-label)
+		      (ASSIGN ,target* (CONSTANT ,#f))
+		      (LABEL ,merge-label)))))
+		(true-label-taken?
+		 (rtlgen/assign!* `((LABEL ,true-label)
+				    (ASSIGN ,target* (CONSTANT ,#T)))))
+		(false-label-taken?
+		 (rtlgen/assign!* `((LABEL ,false-label)
+				    (ASSIGN ,target* (CONSTANT ,#F)))))
+		(else
+		 (internal-error "Neither branch taken"
+				 (rtlgen/open-coder/rator open-coder)
+				 rands)))))
+      target*)))
 
 (define (rtlgen/value->pred handler)
   (lambda (state rands open-coder)
