@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.37 1995/08/16 18:19:52 adams Exp $
+$Id: rtlgen.scm,v 1.38 1995/08/19 15:33:00 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -1342,8 +1342,9 @@ MIT in each case. |#
 	(lambda () (%matchup (cdr bindings) '(handler state) '(cdr form)))
       (lambda (names code)
 	`(DEFINE ,proc-name
-	   (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
-	     (NAMED-LAMBDA (,proc-name STATE FORM)
+	   (NAMED-LAMBDA (,proc-name STATE FORM)
+	     STATE FORM			; might be ignored
+	     (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
 	       ,code)))))))
 
 (define-rtl-generator/stmt LET (state bindings body)
@@ -1404,7 +1405,7 @@ MIT in each case. |#
     (internal-error "Illegal CALL statement operator" rator))
   (cond
    ((QUOTE/? rator)
-    (rtlgen/call* state (quote/text rator) cont rands))
+    (rtlgen/call* state form (quote/text rator) cont rands))
    ((LOOKUP/? rator)
     (set! *rtlgen/form-calls-internal?* true)
     (rtlgen/jump state (lookup/name rator) cont rands))
@@ -1415,7 +1416,7 @@ MIT in each case. |#
 	     ;; /compatible
 	     ;; Compatibility only, extended stack frame
 	     => (lambda (result)
-		  (rtlgen/extended-call state result call)))
+		  (rtlgen/extended-call state form result call)))
 	    ((form/match rtlgen/call-lambda-with-stack-closure-pattern call)
 	     => (lambda (result)
 		  (rtlgen/call-lambda-with-stack-closure
@@ -1423,7 +1424,7 @@ MIT in each case. |#
 	    (else (bad-rator)))))
    (else (bad-rator))))
 
-(define (rtlgen/extended-call state match-result call)
+(define (rtlgen/extended-call state form match-result call)
   (let (#| (cont-name (cadr (assq rtlgen/?cont-name match-result))) |#
 	(rator (cadr (assq rtlgen/?rator match-result)))
 	(frame-vector* (cadr (assq rtlgen/?frame-vector* match-result)))
@@ -1435,6 +1436,7 @@ MIT in each case. |#
     (if (not (LAMBDA/? ret-add))
 	(internal-error "Bad extended call" call)
 	(rtlgen/call* state
+		      form
 		      rator
 		      `(CALL (QUOTE ,%make-stack-closure)
 			     (QUOTE #F)
@@ -1704,7 +1706,7 @@ MIT in each case. |#
 	   (default)))))
   false)
 
-(define (rtlgen/call* state rator* cont rands)
+(define (rtlgen/call* state form rator* cont rands)
   (define (bad-rator)
     (internal-error "Illegal CALL statement operator" rator*))
 
@@ -1746,10 +1748,11 @@ MIT in each case. |#
 					     cont))
 	((hash-table/get *open-coders* rator* false)
 	 (set! *rtlgen/form-returns?* true)
-	 (if (not (operator/satisfies? rator* '(SPECIAL-INTERFACE)))
-	     (begin
-	       (rtlgen/invoke-out-of-line state rator* cont rands))
-	     (rtlgen/invoke-special state rator* cont rands)))
+	 (fluid-let ((*rtlgen/current-form* form))
+	   (if (not (operator/satisfies? rator* '(SPECIAL-INTERFACE)))
+	       (begin
+		 (rtlgen/invoke-out-of-line state rator* cont rands))
+	       (rtlgen/invoke-special state rator* cont rands))))
 	(else
 	 (bad-rator))))
 
@@ -2529,15 +2532,16 @@ MIT in each case. |#
 			 (target  (rtlgen/state/expr/target state)))
 		    (case (car target)
 		      ((ANY REGISTER)
-		       (rtlgen/open-code/value state rands* rator))
+		       (rtlgen/open-code/value state rands* rator form))
 		      ((PREDICATE)
-		       (rtlgen/open-code/pred state rands* rator))
+		       (rtlgen/open-code/pred state rands* rator form))
 		      ((NONE)
-		       (rtlgen/open-code/stmt state rands* rator))
+		       (rtlgen/open-code/stmt state rands* rator form))
 		      (else
 		       (internal-error "Unknown value destination"
 				       target
 				       form))))))))))
+
 
 (define (rtlgen/variable-cache state name keyword)
   (if (not (QUOTE/? name))
@@ -2790,20 +2794,29 @@ MIT in each case. |#
 	(user-error "Wrong number of arguments" rator)
 	open-coder)))
 
-(define (rtlgen/open-code/pred state rands rator)
-  ;; No meaningful value
-  (let ((open-coder  (rtlgen/get-open-coder/checked rator rands)))
-    ((rtlgen/open-coder/pred open-coder) state rands open-coder)))
 
-(define (rtlgen/open-code/stmt state rands rator)
-  ;; No meaningful value
-  (let ((open-coder  (rtlgen/get-open-coder/checked rator rands)))
-    ((rtlgen/open-coder/stmt open-coder) state rands open-coder)))
+;; KLUDGE.  Used for passing the form to selected open-coders
+(define *rtlgen/current-form* #F)
 
-(define (rtlgen/open-code/value state rands rator)
+(define-integrable (rtlgen/open-code/common state rands rator form select-kind)
+  (let ((open-coder  (rtlgen/get-open-coder/checked rator rands)))
+    (if (rtlgen/open-coder/requires-form? open-coder)
+	(fluid-let ((*rtlgen/current-form* form))
+	  ((select-kind open-coder) state rands open-coder))
+	((select-kind open-coder) state rands open-coder))))
+
+(define (rtlgen/open-code/pred state rands rator form)
+  ;; No meaningful value
+  (rtlgen/open-code/common state rands rator form rtlgen/open-coder/pred))
+
+(define (rtlgen/open-code/stmt state rands rator form)
+  ;; No meaningful value
+  (rtlgen/open-code/common state rands rator form rtlgen/open-coder/stmt))
+
+(define (rtlgen/open-code/value state rands rator form)
   ;; Returns location of result
-  (let ((open-coder  (rtlgen/get-open-coder/checked rator rands)))
-    ((rtlgen/open-coder/value open-coder) state rands open-coder)))
+  (rtlgen/open-code/common state rands rator form rtlgen/open-coder/value))
+
 
 (define (rtlgen/open-code/out-of-line cont-label rator)
   ;; No meaningful value
@@ -2828,10 +2841,13 @@ MIT in each case. |#
   (stmt false read-only true)
   (pred false read-only true)
   (outl false read-only true)
-  (special false read-only true))
+  (special false read-only true)
+  ;; some opend coders need to inspect the CALL form:
+  (requires-form? false read-only true))
 
 (define (define-open-coder name-or-object nargs
-	  vhandler shandler phandler ohandler sphandler)
+	  vhandler shandler phandler ohandler sphandler
+	  #!optional requires-form?)
   (let ((rator (if (known-operator? name-or-object)
 		   name-or-object
 		   (make-primitive-procedure name-or-object nargs))))
@@ -2840,7 +2856,10 @@ MIT in each case. |#
      rator
      (rtlgen/open-coder/make rator nargs
 			     vhandler shandler phandler
-			     ohandler sphandler))))
+			     ohandler sphandler
+			     (if (default-object? requires-form?)
+				 #F
+				 requires-form?)))))
 
 (define (rtlgen/no-predicate-open-coder state rands open-coder)
   state rands				; ignored
@@ -2898,7 +2917,8 @@ MIT in each case. |#
     (rtlgen/out-of-line->stmt handler)
     (rtlgen/out-of-line->pred handler)
     handler
-    rtlgen/no-special-open-coder))
+    rtlgen/no-special-open-coder
+    'REQUIRES-FORM))
 
 (define (define-open-coder/special name-or-object nargs handler)
   (define-open-coder name-or-object nargs
@@ -2906,7 +2926,8 @@ MIT in each case. |#
     (rtlgen/special->stmt handler)
     (rtlgen/special->pred handler)
     rtlgen/no-out-of-line-open-coder
-    handler))
+    handler
+    'REQUIRES-FORM))
 
 (define (rtlgen/pred->value handler)
   (lambda (state rands open-coder)
@@ -2961,19 +2982,45 @@ MIT in each case. |#
      (call-with-values
 	 (lambda () (rtlgen/preserve-state state))
        (lambda (gen-prefix gen-suffix)
-	 (let ((cont-label (rtlgen/new-name 'CONT)))
+	 (let* ((cont-label (rtlgen/new-name 'CONT))
+		(frame-size (if (not *rtlgen/frame-size*)
+				0
+				(- *rtlgen/frame-size* 1)))
+		(dbg-info
+		 (rtlgen/dbg-expression->continuation 
+		  (code-rewrite/original-form/previous *rtlgen/current-form*)
+		  cont-label
+		  frame-size)))
 	   (gen-prefix)
 	   (code-gen-1 cont-label)
 	   (rtlgen/emit!/1
 	    `(RETURN-ADDRESS ,cont-label
-			     #f
-			     (MACHINE-CONSTANT ,(if (not *rtlgen/frame-size*)
-						    0
-						    (- *rtlgen/frame-size* 1)))
+			     ,dbg-info
+			     (MACHINE-CONSTANT ,frame-size)
 			     (MACHINE-CONSTANT 1)))
 	   (let ((result (code-gen-2 state)))
 	     (gen-suffix)
 	     result)))))))
+
+(define (rtlgen/dbg-expression->continuation info label frame-size)
+  frame-size				; ignored
+  (and (new-dbg-expression? info)
+       (let ((outer (new-dbg-expression/outer info))
+	     (inner (new-dbg-expression/source-code info)))
+	 (and outer
+	      inner
+	      (let ((cont
+		     (new-dbg-continuation/make
+		      (cond ((scode/sequence? outer) 'SEQUENCE-ELEMENT)
+			    ((and (scode/conditional? outer)
+				  (eq? (scode/conditional-predicate outer)
+				       inner))
+			     'CONDITIONAL-PREDICATE)
+			    (else 'COMBINATION-ELEMENT))
+		      outer
+		      inner)))
+		(set-new-dbg-continuation/label! cont label)
+		cont)))))
 
 (define (rtlgen/out-of-line->pred handler)
   (rtlgen/value->pred (rtlgen/out-of-line->value handler)))
