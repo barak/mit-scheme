@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/reuse.scm,v 1.5 1990/02/02 18:38:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/reuse.scm,v 1.6 1990/08/27 13:23:45 jinx Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -227,15 +227,26 @@ MIT in each case. |#
 	     (block-ancestor? block definition-block))
 	(let ((value (lvalue-known-value variable)))
 	  (or (and value
-		   (rvalue/procedure? value)
-		   (procedure/closure? value)
-		   (eq? value (block-procedure block)))
+		   (or (and (rvalue/procedure? value)
+			    (procedure/closure? value)
+			    (eq? value (block-procedure block)))
+		       (and (rvalue/block? value)
+			    (block-shares? block value))))
 	      (block-ancestor? block definition-block)
 	      (let loop ((block block))
 		(if (closure-block? block)
 		    (memq variable (block-bound-variables block))
 		    (let ((parent (block-parent block)))
-		      (and parent (loop parent))))))))))
+		      (and parent (loop parent))))))))))
+
+(define (block-shares? block block*)
+  (or (block-ancestor-or-self? block block*)
+      (and (closure-block? block*)
+	   (let ((bclos (block-nearest-closure-ancestor block)))
+	     (and bclos
+		  (eq? (block-shared-block (block-parent bclos))
+		       (block-shared-block block*)))))))
+
 (define (order-subproblems/overwrite-block caller-block
 					   overwritten-block
 					   terminal-nodes
