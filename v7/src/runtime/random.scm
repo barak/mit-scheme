@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.11 1995/07/19 05:16:29 cph Exp $
+$Id: random.scm,v 14.12 1995/07/19 05:22:08 cph Exp $
 
 Copyright (c) 1993-95 Massachusetts Institute of Technology
 
@@ -99,7 +99,7 @@ MIT in each case. |#
 				       (fix:+ index 1))))
 	(set-interrupt-enables! mask)
 	(flo:/ element b.)))))
-
+
 (define (make-random-state #!optional state)
   (let ((state (if (default-object? state) #f state)))
     (if (or (eq? #t state) (exact-integer? state))
@@ -107,7 +107,7 @@ MIT in each case. |#
 	 (congruential-rng (+ (real-time-clock) 123456789)))
 	(copy-random-state
 	 (guarantee-random-state state 'MAKE-RANDOM-STATE)))))
-
+
 (define (initial-random-state generate-random-seed)
   ;; The numbers returned by GENERATE-RANDOM-SEED are not critical.
   ;; Except for the explicitly disallowed sequences, all other
@@ -144,6 +144,7 @@ MIT in each case. |#
 	    (quotient (* (- n 1) b) m-1)))))))
 
 (define-structure (random-state
+		   (type vector)
 		   (named ((ucode-primitive string->symbol)
 			   "#[(runtime random-number)random-state]"))
 		   (constructor %make-random-state))
@@ -176,6 +177,7 @@ MIT in each case. |#
 	state)))
 
 (define *random-state*)
+
 (define (initialize-package!)
   (set! *random-state* (make-random-state #t))
   unspecific)
