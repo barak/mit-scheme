@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.11 1991/08/26 20:20:41 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.12 1991/08/26 22:06:09 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -675,7 +675,9 @@ Calls whatever function is bound to #\c-o in RMAIL mode."
     (let ((the-command
 	   (comtab-entry (mode-comtabs (current-major-mode)) #\c-o)))
       (execute-command the-command))
-    ((ref-command rmail-summary))))
+    (select-buffer-other-window rmail-summary-buffer)
+    (if (ref-variable rmail-delete-after-output)
+	((ref-command rmail-summary-delete-message-forward)))))
 
 (define-command rmail-summary-output-to-rmail-file
   "Append this message to RMAIL file named FILE-NAME.
@@ -686,7 +688,9 @@ Calls whatever function is bound to #\o in RMAIL mode."
     (let ((the-command
 	   (comtab-entry (mode-comtabs (current-major-mode)) #\o)))
       (execute-command the-command))
-    ((ref-command rmail-summary))))
+    (select-buffer-other-window rmail-summary-buffer)
+    (if (ref-variable rmail-delete-after-output)
+	((ref-command rmail-summary-delete-message-forward)))))
 
 (define-command rmail-summary-get-new-mail
   "Get new mail.
