@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.35 1990/11/28 21:11:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.36 1990/11/28 22:43:02 cph Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -62,6 +62,10 @@ MIT in each case. */
 #define ADJUST_EXEC_HEADER   						\
   hdr.a_magic = ((ohdr.a_magic.file_type == OLDMAGIC.file_type) ?	\
 		 NEWMAGIC : ohdr.a_magic);
+#endif
+
+#if defined (hp9000s800)
+#undef CANNOT_UNEXEC
 #endif
 
 #if defined (sun3)
