@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapopt.scm,v 1.11 1993/02/28 16:50:14 gjr Exp $
+$Id: lapopt.scm,v 1.12 1993/06/25 22:56:49 gjr Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -40,7 +40,7 @@ MIT in each case. |#
 ;;;; An instruction classifier and decomposer
 
 (define (classify-instruction instr)
-  ;; returns: type target source-1 source-2
+  ;; returns: type target source-1 source-2 offset
   ;; This needs the following:
   ;; - Loads with base modification (LDWM)
   ;; - Third source (indexed loads)
@@ -57,42 +57,53 @@ MIT in each case. |#
 		   ;; not (list-ref instr 4)
 		   (car (last-pair instr))
 		   (list-ref instr 2)
-		   (list-ref instr 3)))
+		   (list-ref instr 3)
+		   false))
 	  ((memq opcode '(ADDI ADDIO ADDIT ADDITO SUBI SUBIO COMICLR))
 	   ;; immed source target
 	   (values 'ALU
 		   (list-ref instr 4)
 		   (list-ref instr 3)
+		   false
 		   false))
 	  ((memq opcode '(COPY))
 	   ;; source target
 	   (values 'ALU
 		   (list-ref instr 3)
 		   (list-ref instr 2)
+		   false
 		   false))
 	  ((memq opcode '(LDW LDB LDO LDH))
 	   ;; (offset n m source) target
-	   (values 'MEMORY
-		   (list-ref instr 3)
-		   (cadddr (list-ref instr 2))
-		   false))
+	   (let ((offset (list-ref instr 2)))
+	     (values 'MEMORY
+		     (list-ref instr 3)
+		     (cadddr offset)
+		     false
+		     (cadr offset))))
 	  ((memq opcode '(STW STB STH))
 	   ;; source1 (offset n m source2)
-	   (values 'MEMORY
-		   false
-		   (list-ref instr 2)
-		   (cadddr (list-ref instr 3))))
+	   (let ((offset (list-ref instr 3)))
+	     (values 'MEMORY
+		     false
+		     (list-ref instr 2)
+		     (cadddr offset)
+		     (cadr offset))))
 	  ((memq opcode '(STWM))
 	   ;; source1 (offset n m target/source)
-	   (let ((base (cadddr (list-ref instr 3))))
+	   (let* ((offset (list-ref instr 3))
+		  (base (cadddr offset)))
 	     (values 'MEMORY
 		     base
 		     (list-ref instr 2)
-		     base)))	   
+		     base
+		     (cadr offset))))
+
 	  ((memq opcode '(LDI LDIL))
 	   ;; immed target
 	   (values 'ALU
 		   (list-ref instr 3)
+		   false
 		   false
 		   false))
 	  ((memq opcode '(ADDIL))
@@ -100,10 +111,10 @@ MIT in each case. |#
 	   (values 'ALU
 		   regnum:addil-result
 		   (list-ref instr 3)
+		   false
 		   false))
 	  ((memq opcode '(NOP))
-	   (values 'ALU false false false))
-
+	   (values 'ALU false false false false))
 	  #|
 	  ((memq opcode '(B BL GATE))
 	   <>)
@@ -112,19 +123,22 @@ MIT in each case. |#
 	   (values 'CONTROL
 		   false
 		   (list-ref instr 2)
-		   (list-ref instr 3)))
+		   (list-ref instr 3)
+		   false))
 	  ((memq opcode '(BLR))
 	   ;; source target
 	   (values 'CONTROL
 		   (list-ref instr 3)
 		   (list-ref instr 2)
+		   false
 		   false))
 	  ((memq opcode '(BV))
 	   ;; source-1 source-2
 	   (values 'CONTROL
 		   false
 		   (list-ref instr 2)
-		   (list-ref instr 3)))
+		   (list-ref instr 3)
+		   false))
 	  ((memq opcode '(BE))
 	   <>)
 	  ((memq opcode '(BLE))
@@ -135,16 +149,15 @@ MIT in each case. |#
 	   <>)
 	  ((memq opcode '(LABEL EQUATE ENTRY-POINT
 				EXTERNAL-LABEL BLOCK-OFFSET))
-	   (values 'DIRECTIVE false false false))
+	   (values 'DIRECTIVE false false false false))
 	  |#
 	  (else
-	   (values 'UNKNOWN false false false)))))
+	   (values 'UNKNOWN false false false false)))))
 
-(define (instruction-type instr)
-  (with-values (lambda () (classify-instruction instr))
-    (lambda (type tgt src1 src2)
-      tgt src1 src2			; ignored
-      type)))
+(define (offset-fits? offset opcode)
+  (and (number? offset)
+       (memq opcode '(ldw ldb ldo ldh stw stb sth stwm ldwm))
+       (<= -8192 offset 8191)))
 
 ;;;; Utilities
 
@@ -267,7 +280,7 @@ MIT in each case. |#
 	  (else
 	   (with-values
 	       (lambda () (classify-instruction (car next)))
-	     (lambda (type target src1 src2)
+	     (lambda (type target src1 src2 offset)
 	       (if (or (not (memq type '(MEMORY ALU)))
 		       (eq? target regnum:stack-pointer))
 		   (values (fix-simple-return ret frame junk)
@@ -358,7 +371,11 @@ MIT in each case. |#
 	 (instr (and next (car next)))
 	 (next* (and next (find-non-label (cdr next)))))
     (if (and instr
-	     (memq (instruction-type instr) '(ALU MEMORY))
+	     (with-values (lambda () (classify-instruction instr))
+	       (lambda (type tgt src1 src2 offset)
+		 (or (eq? type 'ALU)
+		     (and (eq? type 'MEMORY)
+			  (offset-fits? offset (car instr))))))
 	     (not (skips? instr))
 	     (not (pc-sensitive? instr))
 	     (or (not next*)
