@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.92 2004/01/15 20:58:36 cph Exp $
+$Id: make.scm,v 14.93 2004/10/18 04:11:41 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
@@ -218,7 +218,7 @@ USA.
 
 (define (package-initialization-sequence specs)
   (let loop ((specs specs))
-    (if (not (null? specs))
+    (if (pair? specs)
 	(let ((spec (car specs)))
 	  (if (or (not (pair? spec))
 		  (symbol? (car spec)))
@@ -522,6 +522,9 @@ USA.
    ;; More debugging
    ((RUNTIME CONTINUATION-PARSER) INITIALIZE-SPECIAL-FRAMES! #f)
    (RUNTIME URL)))
+
+(if (eq? os-name 'NT)
+    (package-initialize '(RUNTIME WIN32-REGISTRY) 'INITIALIZE-PACKAGE! #f))
 
 (let ((obj (file->object "site" #t #t)))
   (if obj

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.498 2004/10/06 18:46:55 cph Exp $
+$Id: runtime.pkg,v 14.499 2004/10/18 04:11:54 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4708,3 +4708,26 @@ USA.
 	  pgsql-tuples-ok
 	  poll-pgsql-conn
 	  poll-pgsql-reset))
+
+
+(os-type-case
+ ((nt)
+  (define-package (runtime win32-registry)
+    (files "win32-registry")
+    (parent (runtime))
+    (export ()
+	    win32-registry/add-subkey
+	    win32-registry/delete-subkey
+	    win32-registry/delete-value
+	    win32-registry/get-value
+	    win32-registry/key-full-name
+	    win32-registry/key-name
+	    win32-registry/key-parent
+	    win32-registry/key?
+	    win32-registry/open-key
+	    win32-registry/set-value
+	    win32-registry/subkey
+	    win32-registry/subkeys
+	    win32-registry/value-names
+	    win32/expand-environment-strings)
+    (initialization (initialize-package!)))))
