@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.8 2001/07/11 00:41:50 cph Exp $
+;;; $Id: buffer.scm,v 1.9 2001/10/04 15:50:40 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -119,10 +119,12 @@
   ;; current position.  If there is a character available, increment
   ;; the position and return the character.  If there are no more
   ;; characters available, return #F and leave the position unchanged.
-  (let ((char (peek-parser-buffer-char buffer)))
-    (if char
-	(increment-buffer-index! buffer char))
-    char))
+  (and (guarantee-buffer-chars buffer 1)
+       (let ((char
+	      (string-ref (parser-buffer-string buffer)
+			  (parser-buffer-index buffer))))
+	 (increment-buffer-index! buffer char)
+	 char)))
 
 (define (peek-parser-buffer-char buffer)
   ;; Attempt to read the next character from BUFFER, starting at the
@@ -134,7 +136,7 @@
 
 (define (parser-buffer-ref buffer index)
   (if (not (index-fixnum? index))
-      (error:wrong-type-argument index "index" '???))
+      (error:wrong-type-argument index "index" 'PARSER-BUFFER-REF))
   (and (guarantee-buffer-chars buffer (fix:+ index 1))
        (string-ref (parser-buffer-string buffer)
 		   (fix:+ (parser-buffer-index buffer) index))))
@@ -145,17 +147,22 @@
 	`(BEGIN
 	   (DEFINE (,(symbol-append 'MATCH-PARSER-BUFFER- name '-NO-ADVANCE)
 		    BUFFER REFERENCE)
-	     (LET ((CHAR (PEEK-PARSER-BUFFER-CHAR BUFFER)))
-	       (AND CHAR
+	     (AND (GUARANTEE-BUFFER-CHARS BUFFER 1)
+		  (LET ((CHAR
+			 (STRING-REF (PARSER-BUFFER-STRING BUFFER)
+				     (PARSER-BUFFER-INDEX BUFFER))))
+		    (DECLARE (INTEGRATE CHAR))
 		    ,test)))
 	   (DEFINE (,(symbol-append 'MATCH-PARSER-BUFFER- name)
 		    BUFFER REFERENCE)
-	     (LET ((CHAR (PEEK-PARSER-BUFFER-CHAR BUFFER)))
-	       (AND CHAR
-		    ,test
-		    (BEGIN
-		      (INCREMENT-BUFFER-INDEX! BUFFER CHAR)
-		      #T))))))))
+	     (AND (GUARANTEE-BUFFER-CHARS BUFFER 1)
+		  (LET ((CHAR
+			 (STRING-REF (PARSER-BUFFER-STRING BUFFER)
+				     (PARSER-BUFFER-INDEX BUFFER))))
+		    (AND ,test
+			 (BEGIN
+			   (INCREMENT-BUFFER-INDEX! BUFFER CHAR)
+			   #T)))))))))
   (char-matcher char (char=? char reference))
   (char-matcher char-ci (char-ci=? char reference))
   (char-matcher not-char (not (char=? char reference)))
@@ -230,34 +237,38 @@
 				     (fix:+ (parser-buffer-line buffer) 1))))
       (set-parser-buffer-index! buffer j))))
 
-(define (guarantee-buffer-chars buffer n)
+(define-integrable (guarantee-buffer-chars buffer n)
+  (or (fix:<= (fix:+ (parser-buffer-index buffer) n)
+	      (parser-buffer-end buffer))
+      (guarantee-buffer-chars-1 buffer n)))
+
+(define (guarantee-buffer-chars-1 buffer n)
   (let ((min-end (fix:+ (parser-buffer-index buffer) n))
 	(end (parser-buffer-end buffer)))
-    (or (fix:<= min-end end)
-	(and (not (parser-buffer-at-end? buffer))
-	     (begin
-	       (let* ((string (parser-buffer-string buffer))
-		      (max-end (string-length string))
-		      (max-end*
-		       (let loop ((max-end* max-end))
-			 (if (fix:<= min-end max-end*)
-			     max-end*
-			     (loop (fix:* max-end* 2))))))
-		 (if (fix:> max-end* max-end)
-		     (let ((string* (make-string max-end*)))
-		       (string-move! string string* 0)
-		       (set-parser-buffer-string! buffer string*))))
-	       (let ((n-read
-		      (let ((string (parser-buffer-string buffer)))
-			((parser-buffer-source buffer)
-			 string end (string-length string)))))
-		 (if (fix:> n-read 0)
-		     (let ((end (fix:+ end n-read)))
-		       (set-parser-buffer-end! buffer end)
-		       (fix:<= min-end end))
-		     (begin
-		       (set-parser-buffer-at-end?! buffer #t)
-		       #f))))))))
+    (and (not (parser-buffer-at-end? buffer))
+	 (begin
+	   (let* ((string (parser-buffer-string buffer))
+		  (max-end (string-length string))
+		  (max-end*
+		   (let loop ((max-end* max-end))
+		     (if (fix:<= min-end max-end*)
+			 max-end*
+			 (loop (fix:* max-end* 2))))))
+	     (if (fix:> max-end* max-end)
+		 (let ((string* (make-string max-end*)))
+		   (string-move! string string* 0)
+		   (set-parser-buffer-string! buffer string*))))
+	   (let ((n-read
+		  (let ((string (parser-buffer-string buffer)))
+		    ((parser-buffer-source buffer)
+		     string end (string-length string)))))
+	     (if (fix:> n-read 0)
+		 (let ((end (fix:+ end n-read)))
+		   (set-parser-buffer-end! buffer end)
+		   (fix:<= min-end end))
+		 (begin
+		   (set-parser-buffer-at-end?! buffer #t)
+		   #f)))))))
 
 (define (discard-parser-buffer-head! buffer)
   ;; Tell the buffer that it is safe to discard all characters to the
