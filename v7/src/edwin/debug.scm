@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debug.scm,v 1.50 2000/04/30 22:17:00 cph Exp $
+;;; $Id: debug.scm,v 1.51 2000/07/28 15:15:31 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-2000 Massachusetts Institute of Technology
 ;;;
@@ -480,7 +480,7 @@
 	    (call-with-interface-port
 	     (let ((buff (new-buffer " *debug*-RESTARTS")))
 	       (add-browser-buffer! browser buff)
-	       (pop-up-buffer buff)
+	       (pop-up-buffer buff #f)
 	       (buffer-start buff))
 	     (lambda (port)
 	       (write-string "  " port)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: wincom.scm,v 1.125 2000/04/07 19:53:16 cph Exp $
+;;; $Id: wincom.scm,v 1.126 2000/07/28 15:14:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1987, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -474,14 +474,11 @@ Also kills any pop up window it may have created."
 (define *minibuffer-scroll-window* (weak-cons #f #f))
 (define *pop-up-buffer-window-alist* '())
 
-(define (pop-up-buffer buffer #!optional select? not-current-window?)
+(define (pop-up-buffer buffer select? #!optional options)
   ;; If some new window is created by this procedure, it is returned
   ;; as the value.  Otherwise the value is #f.
-  (let ((select? (and (not (default-object? select?)) select?))
-	(current-window-ok?
-	 (if (default-object? not-current-window?)
-	     #t
-	     (not not-current-window?))))
+  (let ((select? (if (default-object? select?) #f select?))
+	(options (if (default-object? options) '() options)))
 
     (define (pop-up-window window)
       (let ((window (window-split-vertically! window #f)))
@@ -497,14 +494,16 @@ Also kills any pop up window it may have created."
     (define (maybe-record-window window)
       (weak-set-car! *minibuffer-scroll-window* window)
       (if select? (select-window window))
-      #f)
+      (and (eq? window (weak-car *previous-popped-up-window*))
+	   window))
 
     (define (find-visible-window buffer)
       (let loop ((windows (buffer-windows buffer)))
 	(and (not (null? windows))
 	     (let ((window (car windows)))
 	       (if (and (window-visible? window)
-			(or current-window-ok? (not (current-window? window))))
+			(or (not (memq 'NOT-CURRENT-WINDOW options))
+			    (not (current-window? window))))
 		   window
 		   (loop (cdr windows)))))))
 
@@ -535,9 +534,7 @@ Also kills any pop up window it may have created."
 		   (let ((window (largest-window)))
 		     (if (and (>= (window-y-size window)
 				  (ref-variable split-height-threshold))
-			      (not
-			       (window-has-horizontal-neighbor?
-				window)))
+			      (not (window-has-horizontal-neighbor? window)))
 			 (pop-up-window window)
 			 (let ((window (lru-window))
 			       (current (current-window)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: os2.scm,v 1.49 2000/03/23 03:19:15 cph Exp $
+;;; $Id: os2.scm,v 1.50 2000/07/28 15:15:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -157,7 +157,7 @@
     (let ((buffer (temporary-buffer "*popclient*")))
       (cleanup-pop-up-buffers
        (lambda ()
-	 (pop-up-buffer buffer)
+	 (pop-up-buffer buffer #f)
 	 (let ((status.reason
 		(let ((args
 		       (list "-u" user-name

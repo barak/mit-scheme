@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unix.scm,v 1.108 2000/04/30 22:17:08 cph Exp $
+;;; $Id: unix.scm,v 1.109 2000/07/28 15:15:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -575,7 +575,7 @@ option, instead taking -P <filename>."
     (let ((buffer (temporary-buffer "*popclient*")))
       (cleanup-pop-up-buffers
        (lambda ()
-	 (pop-up-buffer buffer)
+	 (pop-up-buffer buffer #f)
 	 (let ((status.reason
 		(unix/call-with-pop-client-password-options password
 		  (lambda (password-options)

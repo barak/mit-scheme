@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.69 2000/05/16 15:12:07 cph Exp $
+;;; $Id: vc.scm,v 1.70 2000/07/28 15:15:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -487,7 +487,8 @@ merge in the changes into your working copy."
 			   (if (not shown?)
 			       (begin
 				 (if from-dired?
-				     (pop-up-buffer buffer #f #t)
+				     (pop-up-buffer buffer #f
+						    '(NOT-CURRENT-WINDOW))
 				     (select-buffer buffer))
 				 (set! shown? #t))))))
 		   ;; If the file on disk is newer, then the user just
@@ -1847,7 +1848,7 @@ the value of vc-log-mode-hook."
 		 ;; anyhow:
 		 #f)
 		(else
-		 (pop-up-buffer buffer)
+		 (pop-up-buffer buffer #f)
 		 (error "Couldn't analyze cvs update result."))))))))
 
 ;;;; Command Execution

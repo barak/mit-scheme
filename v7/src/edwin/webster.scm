@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: webster.scm,v 1.4 2000/04/30 22:17:10 cph Exp $
+$Id: webster.scm,v 1.5 2000/07/28 15:15:38 cph Exp $
 
 Copyright (c) 1998-2000 Massachusetts Institute of Technology
 
@@ -111,7 +111,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	     (let ((windows (buffer-windows buffer)))
 	       (if (null? windows)
 		   (begin
-		     (pop-up-buffer buffer #f #f)
+		     (pop-up-buffer buffer #f)
 		     (car (buffer-windows buffer)))
 		   (car windows)))))
 	(set-window-point! window m)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: bufmnu.scm,v 1.129 2000/05/23 20:06:35 cph Exp $
+;;; $Id: bufmnu.scm,v 1.130 2000/07/28 15:15:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -232,7 +232,7 @@ You can mark buffers with the \\[buffer-menu-mark] command."
 			#f)
     (with-variable-value! (ref-variable-object pop-up-windows) #t
       (lambda ()
-	(pop-up-buffer (previous-buffer))))
+	(pop-up-buffer (previous-buffer) #f)))
     (clear-message)))
 
 (define-command buffer-menu-this-window

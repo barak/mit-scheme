@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: abbrev.scm,v 1.4 2000/04/30 22:16:57 cph Exp $
+;;; $Id: abbrev.scm,v 1.5 2000/07/28 15:15:29 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -445,7 +445,7 @@ or may be omitted (it is usually omitted)."
 (define-command list-abbrevs
   "Display a list of all defined abbrevs."
   ()
-  (lambda () (pop-up-buffer (prepare-abbrev-list-buffer) #f #f)))
+  (lambda () (pop-up-buffer (prepare-abbrev-list-buffer) #f)))
 
 (define (prepare-abbrev-list-buffer)
   (let ((buffer (find-or-create-buffer "*Abbrevs*")))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.67 2000/07/20 02:30:03 cph Exp $
+;;; $Id: sendmail.scm,v 1.68 2000/07/28 15:15:34 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -242,7 +242,7 @@ is inserted."
 	     (if selector (selector buffer))
 	     (if (cleanup-pop-up-buffers
 		  (lambda ()
-		    (if (not selector) (pop-up-buffer buffer))
+		    (if (not selector) (pop-up-buffer buffer #f))
 		    (prompt-for-confirmation?
 		     "Unsent message being composed; erase it")))
 		 (continue #f)
