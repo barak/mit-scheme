@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.14 1991/07/24 19:48:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.15 1991/08/06 22:15:09 arthur Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -341,7 +341,6 @@ DEFUN (setup_trap_frame, (signo, info, scp, trinfo, new_stack_pointer),
      ? SHARP_F
      : (char_pointer_to_string (find_signal_name (signo))));
   signal_code = (find_signal_code_name (signo, info, scp));
-  History = (Make_Dummy_History ());
   if (!stack_recovered_p)
     {
       Initialize_Stack ();
@@ -353,7 +352,7 @@ DEFUN (setup_trap_frame, (signo, info, scp, trinfo, new_stack_pointer),
     }
   else
     Stack_Pointer = new_stack_pointer;
- Will_Push ((6 + CONTINUATION_SIZE) + (STACK_ENV_EXTRA_SLOTS + 2));
+ Will_Push (7 + CONTINUATION_SIZE);
   STACK_PUSH (trinfo -> extra_trap_info);
   STACK_PUSH (trinfo -> pc_info_2);
   STACK_PUSH (trinfo -> pc_info_1);
@@ -364,6 +363,15 @@ DEFUN (setup_trap_frame, (signo, info, scp, trinfo, new_stack_pointer),
   Store_Return (RC_HARDWARE_TRAP);
   Store_Expression (long_to_integer (signo));
   Save_Cont ();
+ Pushed ();
+  if (stack_recovered_p
+      /* This may want to do it in other cases, but this may be enough. */
+      && (trinfo->state == STATE_COMPILED_CODE))
+  {
+    Stop_History ();
+  }
+  History = (Make_Dummy_History ());
+ Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
   STACK_PUSH (signal_name);
   STACK_PUSH (handler);
   STACK_PUSH (STACK_FRAME_HEADER + 1);
