@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxenv.c,v 1.15 1996/04/23 20:44:15 cph Exp $
+$Id: uxenv.c,v 1.16 1997/04/24 05:26:06 cph Exp $
 
-Copyright (c) 1990-96 Massachusetts Institute of Technology
+Copyright (c) 1990-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -100,12 +100,21 @@ DEFUN (OS_encode_time ,(buffer), struct time_structure * buffer)
 
 static clock_t initial_process_clock;
 
+#ifdef __linux
+/* Linux seems to record the time in an unusual way.
+   Time that Scheme programs spend computing do not seem to be recorded
+   as "user" time, but as "system" time.  So return the sum of both times.  */
+#define PROCESS_TIME(buffer) (((buffer) . tms_utime) + ((buffer) . tms_stime))
+#else
+#define PROCESS_TIME(buffer) ((buffer) . tms_utime)
+#endif
+
 static void
 DEFUN_VOID (initialize_process_clock)
 {
   struct tms buffer;
   UX_times (&buffer);
-  initial_process_clock = (buffer . tms_utime);
+  initial_process_clock = (PROCESS_TIME (buffer));
 }
 
 double
@@ -119,7 +128,7 @@ DEFUN_VOID (OS_process_clock)
     if (errno != EINTR)
       error_system_call (errno, syscall_times);
   return
-    (((((double) ((buffer . tms_utime) - initial_process_clock)) * 2000.0)
+    (((((double) ((PROCESS_TIME (buffer)) - initial_process_clock)) * 2000.0)
       + ct)
      / (2.0 * ct));
 }
