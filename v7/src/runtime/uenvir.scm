@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.41 2001/08/03 20:29:57 cph Exp $
+$Id: uenvir.scm,v 14.42 2001/11/02 17:08:02 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -113,7 +113,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (cond ((interpreter-environment? environment)
 	 (interpreter-environment/bound? environment name))
 	((stack-ccenv? environment)
-	 (stack-ccenv/bound? environment name))
+	 (stack-ccenv/bound? environment name)
 	((closure-ccenv? environment)
 	 (closure-ccenv/bound? environment name))
 	(else
@@ -528,7 +528,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 dbg-variable?)))
 
 (define (stack-ccenv/bound? environment name)
-  (dbg-block/find-name (stack-ccenv/block environment) name))
+  (or (dbg-block/find-name (stack-ccenv/block environment) name)
+      (let ((parent (stack-ccenv/parent environment)))
+	(and parent
+	     (environment-bound? parent name)))))
 
 (define (stack-ccenv/lookup environment name)
   (lookup-dbg-variable (stack-ccenv/block environment)
@@ -630,12 +633,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		(closure-ccenv/variable-bound? environment variable))))))
 
 (define (closure-ccenv/bound? environment name)
-  (let ((block (closure-ccenv/stack-block environment)))
-    (let ((index (dbg-block/find-name block name)))
-      (and index
-	   (closure-ccenv/variable-bound?
-	    environment
-	    (vector-ref (dbg-block/layout-vector block) index))))))
+  (or (let ((block (closure-ccenv/stack-block environment)))
+	(let ((index (dbg-block/find-name block name)))
+	  (and index
+	       (closure-ccenv/variable-bound?
+		environment
+		(vector-ref (dbg-block/layout-vector block) index)))))
+      (let ((parent (closure-ccenv/parent environment)))
+	(and parent
+	     (environment-bound? parent name)))))
 
 (define (closure-ccenv/variable-bound? environment variable)
   (or (eq? (dbg-variable/type variable) 'INTEGRATED)
