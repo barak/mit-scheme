@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typedb.scm,v 1.10 1996/07/23 15:17:13 adams Exp $
+$Id: typedb.scm,v 1.11 1996/07/23 15:33:51 adams Exp $
 
 Copyright (c) 1996 Massachusetts Institute of Technology
 
@@ -335,8 +335,8 @@ MIT in each case. |#
 	    (set! arity op)
 	    (define-operator-type op
 	      (primitive-procedure-type (make-list arity domain*) range
-					'function)))
-	(for-each process-element ops))))
+					'function))))
+      (for-each process-element ops)))
 
   ((unchecked-function type:flonum type:flonum)
    flo:+ flo:- flo:* flo:/ flo:negate flo:abs flo:sqrt
