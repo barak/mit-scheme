@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.35 2004/09/14 20:06:19 cph Exp $
+$Id: emacs.scm,v 14.36 2004/09/15 02:56:51 cph Exp $
 
 Copyright 1986,1987,1991,1993,1994,1999 Massachusetts Institute of Technology
 Copyright 2001,2003,2004 Massachusetts Institute of Technology
@@ -142,11 +142,14 @@ USA.
 	 (transmit-signal-with-argument port #\v (write-to-string object)))))
 
 (define (emacs/error-decision repl condition)
-  repl condition
-  (transmit-signal the-console-port #\z)
-  (beep the-console-port)
-  (if paranoid-error-decision?
-      (cmdl-interrupt/abort-previous)))
+  condition
+  (let ((port (cmdl/port repl)))
+    (if (eq? port the-console-port)
+	(begin
+	  (transmit-signal port #\z)
+	  (beep port)
+	  (if paranoid-error-decision?
+	      (cmdl-interrupt/abort-previous))))))
 
 (define paranoid-error-decision?
   #f)
@@ -156,10 +159,14 @@ USA.
 
 (define (emacs/read-start port)
   (transmit-signal port #\s)
-  (port/read-start the-console-port))
+  (let ((operation (deferred-operation 'READ-START)))
+    (if operation
+	(operation port))))
 
 (define (emacs/read-finish port)
-  (port/read-finish the-console-port)
+  (let ((operation (deferred-operation 'READ-START)))
+    (if operation
+	(operation port)))
   (transmit-signal port #\f))
 
 ;;;; Protocol Encoding
@@ -223,8 +230,7 @@ USA.
 	(make-port-type
 	 `((PROMPT-FOR-EXPRESSION ,emacs/prompt-for-expression)
 	   (PROMPT-FOR-COMMAND-CHAR ,emacs/prompt-for-command-char)
-	   (PROMPT-FOR-COMMAND-EXPRESSION
-	    ,emacs/prompt-for-command-expression)
+	   (PROMPT-FOR-COMMAND-EXPRESSION ,emacs/prompt-for-command-expression)
 	   (PROMPT-FOR-CONFIRMATION ,emacs/prompt-for-confirmation)
 	   (DEBUGGER-FAILURE ,emacs/debugger-failure)
 	   (DEBUGGER-MESSAGE ,emacs/debugger-message)
@@ -237,9 +243,12 @@ USA.
 	   (GC-FINISH ,emacs/gc-finish))
 	 vanilla-console-port-type))
   (add-event-receiver! event:after-restore
-		       (lambda ()
-			 (set-port/type! the-console-port
-					 (select-console-port-type)))))
+    (lambda ()
+      (let ((type (select-console-port-type)))
+	(if (let ((type (port/type the-console-port)))
+	      (or (eq? type vanilla-console-port-type)
+		  (eq? type emacs-console-port-type)))
+	    (set-port/type! the-console-port type))))))
 
 (define (select-console-port-type)
   (if ((ucode-primitive under-emacs? 0))
@@ -254,3 +263,6 @@ USA.
 	(set! hook/^G-interrupt #f)
 	(set! hook/error-decision #f)
 	vanilla-console-port-type)))
+
+(define (deferred-operation name)
+  (port-type/operation vanilla-console-port-type name))
