@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.166 1987/05/21 15:06:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.167 1987/05/22 00:12:22 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -231,7 +231,8 @@ MIT in each case. |#
 		 `(BEGIN ,@(loop names #x00F0)))))
   (define-entries apply error wrong-number-of-arguments interrupt-procedure
     interrupt-continuation lookup-apply lookup access unassigned? unbound?
-    set! define primitive-apply enclose setup-lexpr setup-ic-procedure))
+    set! define primitive-apply enclose setup-lexpr return-to-interpreter
+    safe-lookup))
 
 (define reg:temp '(@AO 6 #x0010))
 (define reg:enclose-result '(@AO 6 #x0014))
@@ -479,16 +480,15 @@ MIT in each case. |#
 	     (@PCR ,(constant->label constant))
 	     ,(coerce->machine-register register)))))
 
-(define (eq-test/constant*memory constant register offset)
+(define (eq-test/constant*memory constant memory-reference)
   (set-standard-branches! 'EQ)
-  (let ((source (indirect-reference! register offset)))
-    (if (non-pointer-object? constant)
-	`(,(test-non-pointer (primitive-type constant)
-			     (primitive-datum constant)
-			     source))
-	(let ((temp (reference-temporary-register! false)))
-	  `((MOVE L ,source ,temp)
-	    (CMP L (@PCR ,(constant->label constant)) ,temp))))))
+  (if (non-pointer-object? constant)
+      `(,(test-non-pointer (primitive-type constant)
+			   (primitive-datum constant)
+			   memory-reference))
+      (let ((temp (reference-temporary-register! false)))
+	`((MOVE L ,memory-reference ,temp)
+	  (CMP L (@PCR ,(constant->label constant)) ,temp)))))
 
 (define (eq-test/register*register register-1 register-2)
   (set-standard-branches! 'EQ)
@@ -504,11 +504,9 @@ MIT in each case. |#
 	(finish register-2 register-1)
 	(finish register-1 register-2))))
 
-(define (eq-test/register*memory register-1 register-2 offset-2)
+(define (eq-test/register*memory register memory-reference)
   (set-standard-branches! 'EQ)
-  `((CMP L
-	 ,(indirect-reference! register-2 offset-2)
-	 ,(coerce->machine-register register-1))))
+  `((CMP L ,memory-reference ,(coerce->machine-register register))))
 
 (define (eq-test/memory*memory register-1 offset-1 register-2 offset-2)
   (set-standard-branches! 'EQ)
@@ -534,11 +532,19 @@ MIT in each case. |#
 
 (define-rule predicate
   (EQ-TEST (OFFSET (REGISTER (? register)) (? offset)) (CONSTANT (? constant)))
-  (eq-test/constant*memory constant register offset))
+  (eq-test/constant*memory constant (indirect-reference! register offset)))
 
 (define-rule predicate
   (EQ-TEST (CONSTANT (? constant)) (OFFSET (REGISTER (? register)) (? offset)))
-  (eq-test/constant*memory constant register offset))
+  (eq-test/constant*memory constant (indirect-reference! register offset)))
+
+(define-rule predicate
+  (EQ-TEST (CONSTANT (? constant)) (POST-INCREMENT (REGISTER 15) 1))
+  (eq-test/constant*memory constant '(@A+ 7)))
+
+(define-rule predicate
+  (EQ-TEST (POST-INCREMENT (REGISTER 15) 1) (CONSTANT (? constant)))
+  (eq-test/constant*memory constant '(@A+ 7)))
 
 (define-rule predicate
   (EQ-TEST (REGISTER (? register-1)) (REGISTER (? register-2)))
@@ -547,12 +553,22 @@ MIT in each case. |#
 (define-rule predicate
   (EQ-TEST (OFFSET (REGISTER (? register-1)) (? offset-1))
 	   (REGISTER (? register-2)))
-  (eq-test/register*memory register-2 register-1 offset-1))
+  (eq-test/register*memory register-2
+			   (indirect-reference! register-1 offset-1)))
 
 (define-rule predicate
   (EQ-TEST (REGISTER (? register-1))
 	   (OFFSET (REGISTER (? register-2)) (? offset-2)))
-  (eq-test/register*memory register-1 register-2 offset-2))
+  (eq-test/register*memory register-1
+			   (indirect-reference! register-2 offset-2)))
+
+(define-rule predicate
+  (EQ-TEST (POST-INCREMENT (REGISTER 15) 1) (REGISTER (? register)))
+  (eq-test/register*memory register '(@A+ 7)))
+
+(define-rule predicate
+  (EQ-TEST (REGISTER (? register)) (POST-INCREMENT (REGISTER 15) 1))
+  (eq-test/register*memory register '(@A+ 7)))
 
 (define-rule predicate
   (EQ-TEST (OFFSET (REGISTER (? register-1)) (? offset-1))
@@ -686,8 +702,9 @@ MIT in each case. |#
   (lookup-call entry:compiler-access environment name))
 
 (define-rule statement
-  (INTERPRETER-CALL:LOOKUP (? environment) (? name))
-  (lookup-call entry:compiler-lookup environment name))
+  (INTERPRETER-CALL:LOOKUP (? environment) (? name) (? safe?))
+  (lookup-call (if safe? entry:compiler-safe-lookup entry:compiler-lookup)
+	       environment name))
 
 (define-rule statement
   (INTERPRETER-CALL:UNASSIGNED? (? environment) (? name))
