@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.41 1993/10/21 11:57:46 cph Exp $
+$Id: rep.scm,v 14.42 1993/10/21 12:14:18 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -143,7 +143,6 @@ MIT in each case. |#
 			  *default-pathname-defaults*)
 			 (*current-input-port* port)
 			 (*current-output-port* port)
-			 (*error-output-port* port)
 			 (*notification-output-port* port)
 			 (*trace-output-port* port)
 			 (*interaction-i/o-port* port))
@@ -475,14 +474,11 @@ MIT in each case. |#
     (cmdl-message/append
      (or message
 	 (and condition
-	      (cmdl-message/active
-	       (let ((port (error-output-port)))
-		 (lambda (ignore)
-		   ignore
-		   (fluid-let ((*unparser-list-depth-limit* 25)
-			       (*unparser-list-breadth-limit* 100)
-			       (*unparser-string-length-limit* 500))
-		     (write-condition-report condition port)))))))
+	      (cmdl-message/strings
+	       (fluid-let ((*unparser-list-depth-limit* 25)
+			   (*unparser-list-breadth-limit* 100)
+			   (*unparser-string-length-limit* 500))
+		 (condition/report-string condition port)))))
      (and condition
 	  (cmdl-message/append
 	   (and (condition/error? condition)
@@ -788,7 +784,7 @@ MIT in each case. |#
   (if (default-object? value)
       (continue)
       (use-value value))
-  (let ((port (error-output-port)))
+  (let ((port (notification-output-port)))
     (fresh-line port)
     (write-string ";Unable to PROCEED" port)))
 

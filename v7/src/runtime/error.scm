@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.36 1993/10/21 11:49:42 cph Exp $
+$Id: error.scm,v 14.37 1993/10/21 12:14:16 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -544,7 +544,7 @@ MIT in each case. |#
     (if hook
 	(fluid-let ((standard-warning-hook false))
 	  (hook condition))
-	(let ((port (error-output-port)))
+	(let ((port (notification-output-port)))
 	  (fresh-line port)
 	  (write-string ";Warning: " port)
 	  (write-condition-report condition port)))))

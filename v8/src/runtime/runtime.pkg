@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.207 1993/10/21 11:49:53 cph Exp $
+$Id: runtime.pkg,v 14.208 1993/10/21 12:14:20 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -949,7 +949,6 @@ MIT in each case. |#
 	  close-port
 	  current-input-port
 	  current-output-port
-	  error-output-port
 	  guarantee-i/o-port
 	  guarantee-input-port
 	  guarantee-output-port
@@ -1006,7 +1005,6 @@ MIT in each case. |#
 	  port?
 	  set-current-input-port!
 	  set-current-output-port!
-	  set-error-output-port!
 	  set-input-port/state!
 	  set-interaction-i/o-port!
 	  set-notification-output-port!
@@ -1014,7 +1012,6 @@ MIT in each case. |#
 	  set-port/state!
 	  set-trace-output-port!
 	  trace-output-port
-	  with-error-output-port
 	  with-input-from-port
 	  with-interaction-i/o-port
 	  with-notification-output-port
@@ -1023,7 +1020,6 @@ MIT in each case. |#
   (export (runtime rep)
 	  *current-input-port*
 	  *current-output-port*
-	  *error-output-port*
 	  *interaction-i/o-port*
 	  *notification-output-port*
 	  *trace-output-port*)

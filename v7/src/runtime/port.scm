@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.5 1993/10/21 11:49:49 cph Exp $
+$Id: port.scm,v 1.6 1993/10/21 12:14:18 cph Exp $
 
 Copyright (c) 1991-93 Massachusetts Institute of Technology
 
@@ -488,7 +488,6 @@ MIT in each case. |#
 
 (define *current-input-port*)
 (define *current-output-port*)
-(define *error-output-port* #f)
 (define *notification-output-port* #f)
 (define *trace-output-port* #f)
 (define *interaction-i/o-port* #f)
@@ -513,17 +512,6 @@ MIT in each case. |#
 
 (define (with-output-to-port port thunk)
   (fluid-let ((*current-output-port* (guarantee-output-port port)))
-    (thunk)))
-
-(define (error-output-port)
-  (or *error-output-port* (nearest-cmdl/port)))
-
-(define (set-error-output-port! port)
-  (set! *error-output-port* (guarantee-output-port port))
-  unspecific)
-
-(define (with-error-output-port port thunk)
-  (fluid-let ((*error-output-port* (guarantee-output-port port)))
     (thunk)))
 
 (define (notification-output-port)
