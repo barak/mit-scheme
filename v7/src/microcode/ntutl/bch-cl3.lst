@@ -59,6 +59,7 @@ prostty.obj
 
 prntenv.obj
 prntfs.obj
+prntio.obj
 
 ntasutl.obj
 ntenv.obj

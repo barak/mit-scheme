@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.17 1993/01/12 19:01:03 gjr Exp $
+$Id: dosprm.scm,v 1.18 1993/09/01 18:23:42 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -273,7 +273,102 @@ MIT in each case. |#
   ((ucode-primitive directory-delete 1)
    (->namestring (merge-pathnames name))))
 
-;;; Queues after-restart daemon to clean up environment space
-
 (define (initialize-system-primitives!)
-  (add-event-receiver! event:after-restart reset-environment-variables!))
+  (let ((reset!
+	 (lambda ()
+	   (reset-environment-variables!)
+	   (cache-console-channel-descriptor!))))
+    (reset!)
+    (add-event-receiver! event:after-restart reset!)))
+
+(define (select-internal console? handles block?)
+  (let* ((nt/qs-allinput #xff)
+	 (select
+	  (if console?
+	      (lambda (period)
+		((ucode-primitive nt:msgwaitformultipleobjects 4)
+		 handles #f period nt/qs-allinput))
+	      (lambda (period)
+		((ucode-primitive nt:waitformultipleobjects 3)
+		 handles #f period)))))
+    (if (not block?)
+	(select 0)
+	(let loop ()
+	  (let ((res (select 20)))
+	    (if (zero? res)
+		(loop)
+		res))))))
+	       
+(define console-channel-descriptor)
+
+(define (cache-console-channel-descriptor!)
+  (set! console-channel-descriptor
+	(if (string-ci=? microcode-id/operating-system-name "dos")
+	    -1
+	    ((ucode-primitive get-handle 1) 1)))
+  unspecific)
+
+(define (select-descriptor descriptor block?)
+  (define (select-result res)
+    (cond ((fix:> res 0)
+	   'INPUT-AVAILABLE)
+	  ((fix:< res 0)
+	   (error "Illegal result from select-internal" result))
+	  (else
+	   #f)))
+
+  (select-result
+   (if (= descriptor console-channel-descriptor)
+       (select-internal true '#() block?)
+       (select-internal false (vector descriptor) block?))))
+
+(define-structure (nt-select-registry
+		   (conc-name nt-select-registry/)
+		   (constructor nt-select-registry/make))
+  console
+  descriptors)
+
+(define-integrable (find-descriptor df dl)
+  (list-search-positive dl
+    (lambda (d)
+      (= d df))))
+
+(define (make-select-registry . descriptors)
+  (cond ((find-descriptor console-channel-descriptor descriptors)
+	 => (lambda (ccd)
+	      (nt-select-registry/make console-channel-descriptor
+				       (delq! ccd descriptors))))
+	(else
+	 (nt-select-registry/make false descriptors))))
+
+(define (add-to-select-registry! registry descriptor)
+  (cond ((= descriptor console-channel-descriptor)
+	 (set-nt-select-registry/console! registry console-channel-descriptor))
+	((not (find-descriptor descriptor
+			       (nt-select-registry/descriptors registry)))
+	 (set-nt-select-registry/descriptors!
+	  registry
+	  (cons descriptor (nt-select-registry/descriptors registry))))))
+
+(define (remove-from-select-registry! registry descriptor)
+  (cond ((= descriptor console-channel-descriptor)
+	 (set-nt-select-registry/console! registry false))
+	((find-descriptor descriptor (nt-select-registry/descriptors registry))
+	 => (lambda (dr)
+	      (set-nt-select-registry/descriptors!
+	       registry
+	       (delq! dr (nt-select-registry/descriptors registry)))))))
+
+(define (select-registry-test registry block?)
+  (let* ((handles (list->vector (nt-select-registry/descriptors registry)))
+	 (result (select-internal (nt-select-registry/console registry)
+				  handles
+				  block?)))
+    (cond ((fix:< result 0)
+	   (error "Illegal result from select-internal" result))
+	  ((fix:= result 0)
+	   #f)
+	  ((fix:> result (vector-length handles))
+	   (list (nt-select-registry/console registry)))
+	  (else
+	   (list (vector-ref handles (fix:- result 1)))))))

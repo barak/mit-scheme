@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.9 1993/08/23 01:40:13 gjr Exp $
+###	$Id: makefile,v 1.10 1993/09/01 18:28:41 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -185,8 +185,9 @@ prosio.c \
 prosterm.c \
 prostty.c \
 prosenv.c \
+prntenv.c \
 prntfs.c \
-prntenv.c
+prntio.c
 
 HEAD_FILES = scheme.tch prims.h zones.h locks.h bignum.h \
 	$(GC_HEAD_FILES) trap.h lookup.h history.h cmpint.h
@@ -248,7 +249,8 @@ prosterm.obj \
 prosenv.obj \
 prostty.obj \
 prntenv.obj \
-prntfs.obj
+prntfs.obj \
+prntio.obj
 
 STD_GC_OBJECTS = \
 fasdump.obj \
@@ -410,7 +412,7 @@ prmcon.obj : scheme.tch prims.h prmcon.h $(OS_PRIM_DEPENDENCIES)
 
 NT_DEPENDENCIES = oscond.h ansidecl.h posixtyp.h intext.h \
 		   dstack.h os.h osscheme.h nt.h ntsys.h syscall.h
-ntenv.obj : osenv.h $(NT_DEPENDENCIES)
+ntenv.obj : scheme.tch osenv.h $(NT_DEPENDENCIES)
 ntfile.obj : osfile.h osio.h ntio.h $(NT_DEPENDENCIES)
 ntfs.obj : osfs.h $(NT_DEPENDENCIES)
 ntio.obj : osio.h ntio.h $(NT_DEPENDENCIES)
@@ -425,7 +427,9 @@ ntasutl.obj : ntasutl.asm
 ntkbutl.obj : ntkbutl.asm
 ntscreen.obj : ntscreen.c ntscreen.h
 prntenv.obj : $(NT_DEPENDENCIES)
-prntfs.obj : $(NT_DEPENDENCIES) scheme.h prims.h osfs.h
+prntfs.obj : $(NT_DEPENDENCIES) scheme.tch prims.h osfs.h
+prntio.obj : $(NT_DEPENDENCIES) scheme.tch prims.h ntio.h osio.h syscall.h
+
 cmpauxmd.obj : cmpauxmd.asm
 
 ntscmlib.dll: ntwntlib.dll ntw32lib.dll
