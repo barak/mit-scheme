@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.127 2000/10/25 05:07:27 cph Exp $
+;;; $Id: curren.scm,v 1.128 2000/10/26 02:30:07 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -410,6 +410,7 @@ The frame is guaranteed to be deselected at that time."
 	       (buffer-processes buffer))
      (for-each (lambda (hook) (hook buffer))
 	       (get-buffer-hooks buffer 'KILL-BUFFER-HOOKS))
+     (delete-buffer-layout buffer)
      (if (not (make-buffer-invisible buffer))
 	 (error "Buffer to be killed has no replacement" buffer))
      (bufferset-kill-buffer! (current-bufferset) buffer))))
@@ -455,33 +456,20 @@ The frame is guaranteed to be deselected at that time."
      (if (selected-window? window)
 	 (change-selected-buffer window buffer record?
 	   (lambda ()
-	     (set-window-buffer! window buffer)))
-	 (set-window-buffer! window buffer)))))
+	     (maybe-select-buffer-layout window buffer)))
+	 (maybe-select-buffer-layout window buffer)))))
 
 (define (change-selected-buffer window buffer record? selection-thunk)
-  (let ((finish-selection
-	 (lambda ()
-	   (change-local-bindings! (selected-buffer) buffer selection-thunk)
-	   (set-buffer-point! buffer (window-point window))
-	   (if record?
-	       (bufferset-select-buffer! (current-bufferset) buffer))
-	   (for-each (lambda (hook) (hook buffer window))
-		     (get-buffer-hooks buffer 'SELECT-BUFFER-HOOKS))
-	   (if (not (minibuffer? buffer))
-	       (event-distributor/invoke! (ref-variable select-buffer-hook #f)
-					  buffer
-					  window)))))
-    (let loop ((hooks (get-buffer-hooks buffer 'PRE-SELECT-BUFFER-HOOKS)))
-      (if (pair? hooks)
-	  ((car hooks) buffer window finish-selection
-		       (lambda () (loop (cdr hooks))))
-	  (finish-selection)))))
-
-(define (add-pre-select-buffer-hook buffer hook)
-  (add-buffer-hook buffer 'PRE-SELECT-BUFFER-HOOKS hook))
-
-(define (remove-pre-select-buffer-hook buffer hook)
-  (remove-buffer-hook buffer 'PRE-SELECT-BUFFER-HOOKS hook))
+  (change-local-bindings! (selected-buffer) buffer selection-thunk)
+  (set-buffer-point! buffer (window-point window))
+  (if record?
+      (bufferset-select-buffer! (current-bufferset) buffer))
+  (for-each (lambda (hook) (hook buffer window))
+	    (get-buffer-hooks buffer 'SELECT-BUFFER-HOOKS))
+  (if (not (minibuffer? buffer))
+      (event-distributor/invoke! (ref-variable select-buffer-hook #f)
+				 buffer
+				 window)))
 
 (define (add-select-buffer-hook buffer hook)
   (add-buffer-hook buffer 'SELECT-BUFFER-HOOKS hook))
@@ -518,6 +506,55 @@ The buffer is guaranteed to be selected at that time."
     (if (not process)
 	(editor-error "Selected buffer has no process"))
     process))
+
+;;;; Buffer Layouts
+
+(define (create-buffer-layout selector buffers)
+  (let ((layout (cons selector (list->weak-list buffers))))
+    (for-each (lambda (buffer)
+		(if (buffer-get buffer buffer-layout-key #f)
+		    (error "Can't add buffer to multiple layouts:" buffer))
+		(buffer-put! buffer buffer-layout-key layout))
+	      buffers)))
+
+(define (maybe-select-buffer-layout window buffer)
+  (let ((screen (window-screen window)))
+    (if (let ((layout (hash-table/get screen-buffer-layouts screen #f)))
+	  (and layout
+	       (not (weak-memq buffer (cdr layout)))))
+	(begin
+	  (delete-other-windows window)
+	  (hash-table/remove! screen-buffer-layouts screen)))
+    (let ((layout (buffer-get buffer buffer-layout-key #f)))
+      (if layout
+	  (begin
+	    (hash-table/put! screen-buffer-layouts screen layout)
+	    (delete-other-windows window)
+	    ((car layout) window (cdr layout)))
+	  (set-window-buffer! window buffer)))))
+
+(define (delete-buffer-layout buffer)
+  (let ((layout (buffer-get buffer buffer-layout-key #f)))
+    (if layout
+	(begin
+	  (do ((buffers (cdr layout) (weak-cdr buffers)))
+	      ((not (weak-pair? buffers)))
+	    (let ((buffer (weak-car buffers)))
+	      (if buffer
+		  (buffer-remove! buffer buffer-layout-key))))
+	  (hash-table/for-each screen-buffer-layouts
+	    (lambda (screen layout*)
+	      (if (eq? layout layout*)
+		  (hash-table/remove! screen-buffer-layouts screen))))))))
+
+(define buffer-layout-key
+  (list 'BUFFER-LAYOUT))
+
+(define screen-buffer-layouts)
+(add-event-receiver! editor-initializations
+  (lambda ()
+    (set! screen-buffer-layouts (make-eq-hash-table))
+    unspecific))
 
 ;;;; Point
 
