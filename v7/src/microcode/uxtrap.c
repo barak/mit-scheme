@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.3 1990/08/09 19:40:39 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.4 1990/08/09 19:52:20 jinx Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -469,11 +469,11 @@ DEFUN (continue_from_trap, (signo, code, scp),
 
   new_stack_pointer =
     (scheme_sp_valid
-     ? scheme_sp
+     ? ((SCHEME_OBJECT *) scheme_sp)
      : (pc_in_C && (Stack_Pointer < Stack_Top)
 	&& (Stack_Pointer > Absolute_Stack_Base))
-     ? ((long) Stack_Pointer)
-     : ((long) 0));
+     ? Stack_Pointer
+     : ((SCHEME_OBJECT *) 0));
 
   if (pc_in_hyper_space || (pc_in_scheme && ALLOW_ONLY_C))
   {
