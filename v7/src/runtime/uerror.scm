@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.37 1993/12/17 00:05:57 cph Exp $
+$Id: uerror.scm,v 14.38 1993/12/21 23:32:46 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -923,7 +923,7 @@ MIT in each case. |#
       '()
     (lambda (condition port)
       (write-string
-       "Object cannot be dumped because it contains an environment:"
+       "Object cannot be dumped because it contains an environment: "
        port)
       (write (access-condition condition 'DATUM) port))))
 
