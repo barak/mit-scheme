@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.93 1998/06/21 09:02:01 cph Exp $
+;;;	$Id: intmod.scm,v 1.94 1998/11/18 03:32:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -428,7 +428,7 @@ The REPL may be controlled by the following commands:
 (define-key 'inferior-repl '(#\C-c #\C-o) 'inferior-repl-flush-output)
 (define-key 'inferior-repl '(#\C-c #\C-r) 'comint-history-search-backward)
 (define-key 'inferior-repl '(#\C-c #\C-s) 'comint-history-search-forward)
-(define-key 'inferior-repl '(#\C-c #\C-u) 'comint-kill-input)
+;;(define-key 'inferior-repl '(#\C-c #\C-u) 'comint-kill-input)
 
 (define-key 'inferior-repl '(#\C-c #\C-d) 'inferior-repl-debug)
 
