@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.25 1991/07/05 23:15:23 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.26 1991/07/19 00:38:54 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -318,19 +318,55 @@ may be available.  The following commands are special to this mode:
       (lambda ()
 	(hook/repl-eval (nearest-repl) expression environment syntax-table)))))
 
+(define-variable error-display-mode
+  "ERROR-BUFFER => Error messages always appear in *Error* buffer.
+FIT => Error messages appear in Typein window if they fit and in *Error*
+buffer if they don't.
+TRANSCRIPT => Error messages appear in transcript buffer.
+TYPEIN or False => Error messages always appear in Typein window."
+  'transcript
+  (lambda (value)
+    (or (not value)
+	(memq value '(error-buffer fit transcript typein)))))
+
+(define (default-report-error condition)
+  (let ((report-string
+	 (with-output-to-string
+	   (lambda ()
+	     (write-condition-report condition (current-output-port))))))
+    (let ((typein-report
+	   (lambda ()
+	     (message "Evaluation error: " report-string)))
+	  (error-buffer-report
+	   (lambda ()
+	     (string->temporary-buffer report-string "*Error*")
+	     (message "Evaluation error"))))
+      (case (ref-variable error-display-mode)
+	((TRANSCRIPT)
+	 (with-output-to-transcript-buffer
+	   (lambda ()
+	     (fresh-line)
+	     (display ";Error: ")
+	     (display report-string)
+	     (newline)
+	     (newline))))
+	((FIT)
+	 (if (and (not (string-find-next-char report-string #\newline))
+		  (< (string-columns report-string 18 false)
+		     (window-x-size (typein-window))))
+	     (typein-report)
+	     (error-buffer-report)))
+	((ERROR-BUFFER)
+	 (error-buffer-report))
+	((TYPEIN)
+	 (typein-report))
+	(else
+	 (typein-report))))))
+
 (define (evaluation-error-handler condition)
+  (default-report-error condition)
   (if (ref-variable debug-on-evaluation-error)
-      (debug-scheme-error condition)
-      (let ((string
-	     (with-string-output-port
-	       (lambda (port)
-		 (write-condition-report condition port)))))
-	(if (and (not (string-find-next-char string #\newline))
-		 (< (string-columns string 18 false) 80))
-	    (message "Evaluation error: " string)
-	    (begin
-	      (string->temporary-buffer string "*Error*")
-	      (message "Evaluation error")))))
+      (debug-scheme-error condition))
   (%editor-error))
 
 ;;;; Transcript Buffer

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.43 1991/07/08 22:38:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.44 1991/07/19 00:39:48 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -632,6 +632,8 @@ MIT in each case. |#
   (export (edwin)
 	  debug-scheme-error
 	  edwin-variable$continuation-browser-output-style)
+  (import (runtime continuation-parser)
+	  stack-frame/reductions)
   (import (runtime debugger)
 	  command/condition-report
 	  command/condition-restart
@@ -651,15 +653,40 @@ MIT in each case. |#
 	  command/show-all-frames
 	  command/show-current-frame
 	  command/summarize-subproblems
+	  debugger-pp
 	  dstate/environment-list
-	  make-initial-dstate)
+	  dstate/number-of-reductions
+	  dstate/previous-subproblems
+	  dstate/reduction
+	  dstate/reduction-number
+	  dstate/subproblem
+	  dstate/subproblem-number
+	  dstate/using-history?
+	  hook/debugger-before-return
+	  improper-list-length
+	  make-initial-dstate
+	  output-to-string
+	  print-environment
+	  print-reduction-expression
+	  print-subproblem-expression
+	  reduction-environment
+	  reduction-expression
+	  set-current-subproblem!
+	  set-dstate/environment-list!
+	  set-dstate/reduction-number!
+	  show-environment-name
+	  stack-frame/compiled-code?)
   (import (runtime debugger-utilities)
 	  hook/debugger-failure
 	  hook/debugger-message
 	  hook/presentation)
+  (import (runtime error-handler)
+	  hook/before-restart)
   (import (runtime rep)
 	  hook/prompt-for-confirmation
-	  hook/prompt-for-expression))
+	  hook/prompt-for-expression)
+  (import (runtime unparser)
+	  *unparse-primitives-by-name?*))
 
 (define-package (edwin dired)
   (files "dired")
