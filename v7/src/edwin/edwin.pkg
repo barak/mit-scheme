@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.191 1996/04/24 02:04:58 cph Exp $
+$Id: edwin.pkg,v 1.192 1996/04/24 02:55:18 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -1592,16 +1592,47 @@ MIT in each case. |#
   (export (edwin)
 	  edwin-command$news-all-groups
 	  edwin-command$news-catch-up-group
+	  edwin-command$news-clear-read-messages
+	  edwin-command$news-collapse-threads
+	  edwin-command$news-compose-article
+	  edwin-command$news-compose-article-other-window
+	  edwin-command$news-compose-followup-article
 	  edwin-command$news-delete-article
 	  edwin-command$news-delete-thread
+	  edwin-command$news-expand-threads
 	  edwin-command$news-expunge-group
+	  edwin-command$news-forward-article
+	  edwin-command$news-group-next-thread
+	  edwin-command$news-group-next-thread-article
+	  edwin-command$news-group-next-unread-article
+	  edwin-command$news-group-next-unread-header
+	  edwin-command$news-group-previous-thread
+	  edwin-command$news-group-previous-thread-article
+	  edwin-command$news-group-previous-unread-article
+	  edwin-command$news-group-previous-unread-header
+	  edwin-command$news-ignore-article-thread
+	  edwin-command$news-ignore-thread
 	  edwin-command$news-kill-current-buffer
+	  edwin-command$news-mark-article
+	  edwin-command$news-mark-thread
+	  edwin-command$news-move-to-distribution
+	  edwin-command$news-move-to-followup-to
+	  edwin-command$news-move-to-keywords
+	  edwin-command$news-move-to-newsgroups
+	  edwin-command$news-move-to-summary
+	  edwin-command$news-new-groups
 	  edwin-command$news-next-article
-	  edwin-command$news-next-line
+	  edwin-command$news-next-thread-article
+	  edwin-command$news-next-unread-article
+	  edwin-command$news-next-unread-article-in-thread
 	  edwin-command$news-output-article
 	  edwin-command$news-output-article-to-rmail-file
 	  edwin-command$news-previous-article
-	  edwin-command$news-previous-line
+	  edwin-command$news-previous-thread-article
+	  edwin-command$news-previous-unread-article
+	  edwin-command$news-previous-unread-article-in-thread
+	  edwin-command$news-read-group-headers
+	  edwin-command$news-read-subscribed-group-headers
 	  edwin-command$news-refresh-group
 	  edwin-command$news-refresh-groups
 	  edwin-command$news-reply-to-article
@@ -1613,19 +1644,44 @@ MIT in each case. |#
 	  edwin-command$news-subscribe-group-by-name
 	  edwin-command$news-toggle-article-context
 	  edwin-command$news-toggle-article-header
-	  edwin-command$news-undelete-article
-	  edwin-command$news-undelete-thread
+	  edwin-command$news-toggle-online
+	  edwin-command$news-toggle-thread
+	  edwin-command$news-unmark-article
+	  edwin-command$news-unmark-article-backwards
+	  edwin-command$news-unmark-thread
 	  edwin-command$news-unsubscribe-group
+	  edwin-command$news-unsubscribe-group-backwards
 	  edwin-command$rnews
+	  edwin-mode$compose-news
 	  edwin-mode$news-article
+	  edwin-mode$news-common
 	  edwin-mode$news-group
 	  edwin-mode$news-server
+	  edwin-variable$compose-news-mode-hook
 	  edwin-variable$news-article-context-lines
-	  edwin-variable$news-full-name
-	  edwin-variable$news-organization
+	  edwin-variable$news-article-highlight-selected
+	  edwin-variable$news-article-mode-hook
+	  edwin-variable$news-automatically-collapse-threads
+	  edwin-variable$news-common-mode-hook
+	  edwin-variable$news-group-author-column
+	  edwin-variable$news-group-ignore-hidden-subjects
+	  edwin-variable$news-group-ignored-subject-retention
+	  edwin-variable$news-group-mode-hook
+	  edwin-variable$news-group-show-author-name
+	  edwin-variable$news-group-show-context-headers
+	  edwin-variable$news-group-truncate-subject
+	  edwin-variable$news-initially-collapse-threads
+	  edwin-variable$news-join-threads-with-same-subject
+	  edwin-variable$news-refresh-group-when-selected
 	  edwin-variable$news-server
-	  edwin-variable$news-server-show-domain
-	  edwin-variable$show-unsubscribed-news-groups))
+	  edwin-variable$news-server-initial-refresh
+	  edwin-variable$news-server-mode-hook
+	  edwin-variable$news-server-name-appearance
+	  edwin-variable$news-server-offline-timeout
+	  edwin-variable$news-show-nonexistent-groups
+	  edwin-variable$news-show-unsubscribed-groups
+	  edwin-variable$news-sort-groups
+	  edwin-variable$news-split-threads-on-subject-changes))
 
 (define-package (edwin nntp)
   (files "nntp")
@@ -1646,10 +1702,10 @@ MIT in each case. |#
 	  find-active-news-group
 	  find-news-group
 	  make-news-group
+	  make-nntp-connection
 	  news-group:<
 	  news-group:active?
 	  news-group:cached-header
-	  news-group:cached-header-numbers
 	  news-group:cached-headers
 	  news-group:connection
 	  news-group:discard-cached-header!
@@ -1659,20 +1715,29 @@ MIT in each case. |#
 	  news-group:headers
 	  news-group:last-article
 	  news-group:name
+	  news-group:pre-read-headers
+	  news-group:purge-header-cache
+	  news-group:purge-pre-read-headers
 	  news-group:reader-hook
 	  news-group:server
-	  news-group:update-probe!
+	  news-group:server-info
+	  news-group:update-server-info!
 	  news-group?
 	  news-header:<
-	  news-header:dummy?
 	  news-header:field-value
 	  news-header:followup-to
 	  news-header:followups
+	  news-header:from
 	  news-header:group
+	  news-header:guarantee-full-text!
 	  news-header:message-id
+	  news-header:n-lines
 	  news-header:number
 	  news-header:read-body
 	  news-header:reader-hook
+	  news-header:real?
+	  news-header:references
+	  news-header:subject
 	  news-header:text
 	  news-header:thread
 	  news-header:xref
@@ -1680,20 +1745,21 @@ MIT in each case. |#
 	  news-thread:<
 	  news-thread:for-each-header
 	  news-thread:reader-hook
-	  news-thread:root-headers
+	  news-thread:root
 	  news-thread?
 	  nntp-connection:active-groups
 	  nntp-connection:close
 	  nntp-connection:closed?
-	  nntp-connection:discard-active-groups-cache!
+	  nntp-connection:new-groups
 	  nntp-connection:post-article
+	  nntp-connection:purge-group-cache
 	  nntp-connection:reader-hook
 	  nntp-connection:reopen
 	  nntp-connection:server
 	  nntp-connection?
-	  open-nntp-connection
 	  organize-headers-into-threads
 	  set-news-group:reader-hook!
+	  set-news-group:server-info!
 	  set-news-header:reader-hook!
 	  set-news-thread:reader-hook!
 	  set-nntp-connection:reader-hook!

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: nntp.scm,v 1.2 1995/05/06 02:21:44 cph Exp $
+;;;	$Id: nntp.scm,v 1.3 1996/04/24 02:54:51 cph Exp $
 ;;;
-;;;	Copyright (c) 1995 Massachusetts Institute of Technology
+;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -45,7 +45,7 @@
 ;;;; NNTP Interface
 
 ;;; This program provides a high-level interface to an NNTP server.
-;;; It implements a database abstraction which gives the impression
+;;; It implements a database abstraction that gives the impression
 ;;; that the news database is in memory and can be manipulated
 ;;; directly.  This abstraction largely hides the underlying server
 ;;; communication on which it is built.
@@ -55,93 +55,220 @@
 ;;; method for combining headers into conversation threads.
 
 (declare (usual-integrations))
+
+(load-option 'GDBM)
 
 ;;;; NNTP Connection
 
 (define-structure (nntp-connection
 		   (conc-name nntp-connection:)
-		   (constructor make-nntp-connection (server)))
+		   (constructor make-nntp-connection (server change-hook)))
   (server #f read-only #t)
+  (change-hook #f read-only #t)
   (process #f)
-  banner
-  (group-table (make-string-hash-table) read-only #t)
-  (%active-groups #f)
-  (reader-hook #f))
-
-(define (nntp-connection:port connection)
-  (subprocess-i/o-port (nntp-connection:process connection)))
-
-(define (open-nntp-connection server)
-  (let ((connection (make-nntp-connection server)))
-    (nntp-connection:reopen connection)
-    connection))
+  (port #f)
+  (banner #f)
+  (group-table (make-group-hash-table) read-only #t)
+  (reader-hook #f)
+  (current-group #f))
 
 (define (nntp-connection:reopen connection)
-  (let ((process
-	 (let ((program (os/find-program "tcp" #f)))
-	   (start-pipe-subprocess program
-				  (vector (file-namestring program)
-					  (nntp-connection:server connection)
-					  "nntp")
-				  #f))))
-    (set-nntp-connection:process! connection process)
-    (set-nntp-connection:banner!
-     connection
-     ;; Set up the line translation for the process, because the
-     ;; network line translation is CR-LF regardless of the operating
-     ;; system this program runs on.
-     (input-port/read-line (subprocess-i/o-port process "\r\n")))))
+  (let ((msg
+	 (string-append "Opening connection to "
+			(nntp-connection:server connection)
+			"... ")))
+    (message msg)
+    (let ((port (nntp-connection:reopen-1 connection)))
+      (set-nntp-connection:port! connection port)
+      (set-nntp-connection:banner! connection (input-port/read-line port)))
+    (set-nntp-connection:current-group! connection #f)
+    (if (nntp-connection:change-hook connection)
+	((nntp-connection:change-hook connection) connection))
+    (message msg "done")))
 
+(define (nntp-connection:reopen-1 connection)
+  ;; Use socket primitives if available, otherwise see if the "tcp"
+  ;; program can be run as a subprocess.
+  (let ((server (nntp-connection:server connection))
+	(size nntp-socket-buffer-size))
+    (or (call-with-current-continuation
+	 (lambda (k)
+	   (bind-condition-handler
+	       (list condition-type:unimplemented-primitive)
+	       (lambda (condition) condition (k #f))
+	     (lambda ()
+	       (let ((channel (open-tcp-stream-socket-channel server "nntp")))
+		 (set-nntp-connection:process! connection #f)
+		 (make-generic-i/o-port channel channel size size "\r\n"))))))
+	(let ((process
+	       (let ((program (os/find-program "tcp" #f)))
+		 (start-pipe-subprocess program
+					(vector (file-namestring program)
+						server
+						"nntp")
+					#f))))
+	  (set-nntp-connection:process! connection process)
+	  (let ((port (subprocess-i/o-port process "\r\n")))
+	    ((port/operation port 'SET-INPUT-BUFFER-SIZE) port size)
+	    ((port/operation port 'SET-OUTPUT-BUFFER-SIZE) port size)
+	    port)))))
+
 (define (nntp-connection:closed? connection)
   (let ((port (nntp-connection:port connection)))
     (or (not port)
 	(input-port/eof? port))))
 
 (define (nntp-connection:close connection)
+  (let ((msg
+	 (string-append "Closing connection to "
+			(nntp-connection:server connection)
+			"... ")))
+    (message msg)
+    (if (not (nntp-connection:closed? connection))
+	(begin
+	  (nntp-write-command connection "quit")
+	  (nntp-drain-output connection)))
+    (nntp-connection:close-1 connection)
+    (message msg "done")))
+
+(define (nntp-connection:close-1 connection)
   (if (not (nntp-connection:closed? connection))
       (begin
-	(nntp-write-command connection "quit")
-	(nntp-drain-output connection)))
-  (nntp-flush-input connection)
-  (subprocess-delete (nntp-connection:process connection)))
+	(close-port (nntp-connection:port connection))
+	(set-nntp-connection:port! connection #f)))
+  (let ((process (nntp-connection:process connection)))
+    (if process
+	(begin
+	  (subprocess-delete process)
+	  (set-nntp-connection:process! connection #f))))
+  (set-nntp-connection:current-group! connection #f)
+  (if (nntp-connection:change-hook connection)
+      ((nntp-connection:change-hook connection) connection)))
 
-(define (nntp-connection:active-groups connection)
-  (or (nntp-connection:%active-groups connection)
-      (let ((lines
-	     (let ((msg "Reading list of news groups... "))
-	       (message msg)
-	       (let ((lines (list->vector (nntp-list-command connection))))
-		 (message msg "done")
-		 lines))))
-	(let ((msg "Parsing list of news groups... "))
-	  (message msg)
-	  (let ((end (vector-length lines)))
-	    (do ((index 0 (fix:+ index 1)))
-		((fix:= index end))
-	      (let ((tokens (string-tokenize (vector-ref lines index))))
-		(let ((group (make-news-group connection (car tokens))))
-		  (set-news-group:server-probe!
-		   group
-		   (let ((last (token->number (cadr tokens)))
-			 (first (token->number (caddr tokens))))
-		     (vector (- (+ last 1) first)
-			     first
-			     last)))
-		  (vector-set! lines index group)))))
-	  (message msg "done")
-	  (sort! lines news-group:<)
-	  (set-nntp-connection:%active-groups! connection lines)
-	  lines))))
+(define (nntp-connection:current-group? connection group-name)
+  (and (nntp-connection:current-group connection)
+       (string=? (nntp-connection:current-group connection) group-name)))
+
+;;;; Groups-List Cache
 
-(define (nntp-connection:discard-active-groups-cache! connection)
-  (set-nntp-connection:%active-groups! connection #f))
+(define (nntp-connection:active-groups connection re-read?)
+  (call-with-values
+      (lambda () (nntp-connection:active-groups-vector connection re-read?))
+    (lambda (time lines)
+      time
+      (convert-groups-list lines))))
+
+(define (nntp-connection:new-groups connection)
+  (call-with-values
+      (lambda () (nntp-connection:active-groups-vector connection #f))
+    (lambda (time lines)
+      (let ((new-lines
+	     (call-with-temporary-file-pathname
+	      (lambda (pathname)
+		(call-with-output-file pathname
+		  (lambda (port)
+		    (nntp-newsgroups-command connection port time)))
+		(call-with-input-file pathname read-newsgroup-lines)))))
+	(let* ((table (make-string-hash-table))
+	       (add-line
+		(lambda (line)
+		  (hash-table/put! table (string-first-token line) line))))
+	  (for-each-vector-element lines add-line)
+	  (for-each-vector-element new-lines add-line)
+	  (write-file-atomically
+	   (nntp-connection:active-groups-pathname connection)
+	   (lambda (port)
+	     (write (get-universal-time) port)
+	     (newline port)
+	     (for-each (lambda (line)
+			 (write-string line port)
+			 (newline port))
+		       (hash-table/datum-list table)))))
+	(convert-groups-list new-lines)))))
+
+(define (nntp-connection:active-groups-vector connection re-read?)
+  (let ((pathname (nntp-connection:active-groups-pathname connection)))
+    (if (or re-read? (not (file-readable? pathname)))
+	(write-file-atomically pathname
+	  (lambda (port)
+	    (write (get-universal-time) port)
+	    (newline port)
+	    (nntp-list-command connection port))))
+    (let ((msg "Reading list of news groups... "))
+      (message msg)
+      (call-with-input-file pathname
+	(lambda (port)
+	  (let ((time (read port)))
+	    (if (eqv? #\newline (input-port/peek-char port))
+		(input-port/discard-char port))
+	    (let ((lines (read-newsgroup-lines port)))
+	      (message msg "done")
+	      (values time lines))))))))
+
+(define (convert-groups-list lines)
+  (let ((msg "Parsing list of news groups... "))
+    (message msg)
+    (let ((end (vector-length lines)))
+      (do ((i 0 (fix:+ i 1)))
+	  ((fix:= i end))
+	(vector-set! lines i (string-first-token (vector-ref lines i)))))
+    (sort! lines string<?)
+    (message msg "done"))
+  lines)
+
+(define (read-newsgroup-lines port)
+  (let loop ((lines '()))
+    (let ((line (input-port/read-line port)))
+      (if (eof-object? line)
+	  (list->vector (reverse! lines))
+	  (loop (cons line lines))))))
+
+(define (nntp-connection:active-groups-pathname connection)
+  (init-file-specifier->pathname
+   (list "snr" (nntp-connection:server connection) "all-groups")))
+
+;;;; Group Cache
+
+(define make-group-hash-table
+  (hash-table/constructor string-hash-mod
+			  string=?
+			  (lambda (name group) name group)
+			  (lambda (group) group #t)
+			  (lambda (group) (news-group:name group))
+			  (lambda (group) group)
+			  (lambda (group group*)
+			    group group*
+			    (error "Can't redefine a named group:" group*))
+			  #f))
+
+(define (find-news-group connection name)
+  (hash-table/get (nntp-connection:group-table connection) name #f))
+
+(define (nntp-connection:remember-group! connection name group)
+  (hash-table/put! (nntp-connection:group-table connection) name group))
+
+(define (nntp-connection:purge-group-cache connection predicate)
+  (let ((table (nntp-connection:group-table connection)))
+    (if table
+	(hash-table/for-each table
+	  (lambda (name group)
+	    (if (predicate group)
+		(hash-table/remove! table name)))))))
 
 ;;;; NNTP Commands
 
 (define (nntp-group-command connection group-name)
-  (prepare-nntp-connection connection)
+  (nntp-protect connection
+    (lambda ()
+      (nntp-group-request connection group-name)
+      (nntp-drain-output connection)
+      (nntp-group-reply connection))))
+
+(define (nntp-group-request connection group-name)
   (nntp-write-command connection "group" group-name)
-  (nntp-drain-output connection)
+  (set-nntp-connection:current-group! connection group-name))
+
+(define (nntp-group-reply connection)
   (let ((response (nntp-read-line connection)))
     (case (nntp-response-number response)
       ((211)
@@ -149,93 +276,142 @@
 	 (vector (token->number (cadr tokens))
 		 (token->number (caddr tokens))
 		 (token->number (cadddr tokens)))))
-      ((411)
-       'NO-SUCH-GROUP)
-      (else
-       (nntp-error response)))))
+      ((411) 'NO-SUCH-GROUP)
+      (else (nntp-error response)))))
 
 ;; This says how many pending HEAD requests may be sent before it's
 ;; necessary to starting reading the replies, to avoid deadlock.
 (define nntp-maximum-request 400)
 
+;; This is an estimate of the number of bytes per HEAD request.  This
+;; is sufficiently large to allow 9-digit message numbers.
+(define nntp-head-request-size 16)
+
+(define (nntp-head-request-count)
+  ;; This returns the maximum number of head requests to transmit,
+  ;; limited so that at least twice this number can be initially sent
+  ;; to fill the request window.
+  (let loop
+      ((n-chunk (quotient nntp-socket-buffer-size nntp-head-request-size)))
+    (if (< (quotient nntp-maximum-request n-chunk) 2)
+	(loop (quotient n-chunk 2))
+	n-chunk)))
+
 (define (nntp-head-request connection key)
   (nntp-write-command connection "head" key))
 
-(define (nntp-head-reply connection)
+(define (nntp-head-reply connection prune?)
   (let ((response (nntp-read-line connection)))
     (case (nntp-response-number response)
       ((221)
        (let ((tokens (string-tokenize response)))
-	 (let ((article-number (cadr tokens))
-	       (message-id (caddr tokens)))
-	   (if (and (valid-article-number? article-number)
-		    (valid-message-id? message-id))
-	       (vector article-number
-		       message-id
-		       (nntp-read-text-lines connection))
-	       'NO-SUCH-ARTICLE))))
+	 (vector (cadr tokens)
+		 (caddr tokens)
+		 (if prune?
+		     (header-lines->text (nntp-read-text-lines connection))
+		     (with-string-output-port
+		       (lambda (port)
+			 (nntp-read-text connection port #f)))))))
       ((423 430)
        'NO-SUCH-ARTICLE)
       (else
        (nntp-error response)))))
 
 (define (nntp-body-command connection key port)
-  (prepare-nntp-connection connection)
-  (nntp-write-command connection "body" key)
-  (nntp-drain-output connection)
-  (let ((response (nntp-read-line connection)))
-    (case (nntp-response-number response)
-      ((222)
-       (nntp-read-text-1 connection port)
-       #t)
-      ((423 430)
-       #f)
-      (else
-       (nntp-error response)))))
+  (nntp-protect connection
+    (lambda ()
+      (nntp-write-command connection "body" key)
+      (nntp-drain-output connection)
+      (let ((response (nntp-read-line connection)))
+	(case (nntp-response-number response)
+	  ((222) (nntp-read-text connection port #f) #t)
+	  ((423 430) #f)
+	  (else (nntp-error response)))))))
 
-(define (nntp-list-command connection)
-  (prepare-nntp-connection connection)
-  (nntp-write-command connection "list")
-  (nntp-drain-output connection)
-  (let ((response (nntp-read-line connection)))
-    (if (fix:= 215 (nntp-response-number response))
-	(nntp-read-text-lines connection)
-	(nntp-error response))))
+(define (nntp-list-command connection port)
+  (%nntp-list-command connection port
+		      (string-append "Reading list of news groups from "
+				     (nntp-connection:server connection)
+				     "... ")
+		      (list "list")
+		      215))
+
+(define (nntp-newsgroups-command connection port time)
+  (%nntp-list-command connection port
+		      (string-append "Reading new news groups from "
+				     (nntp-connection:server connection)
+				     "... ")
+		      (cons "newgroups" (nntp-newsgroups-time time))
+		      231))
+
+(define (nntp-newsgroups-time time)
+  (let ((dt (decode-universal-time time))
+	(d2 (lambda (n) (string-pad-left (number->string n) 2 #\0))))
+    (list (string-append (d2 (decoded-time/year dt))
+			 (d2 (decoded-time/month dt))
+			 (d2 (decoded-time/day dt)))
+	  (string-append (d2 (decoded-time/hour dt))
+			 (d2 (decoded-time/minute dt))
+			 (d2 (decoded-time/second dt))))))
+
+(define (%nntp-list-command connection port msg command valid-response)
+  (nntp-protect connection
+    (lambda ()
+      (message msg)
+      (apply nntp-write-command connection command)
+      (nntp-drain-output connection)
+      (let ((response (nntp-read-line connection)))
+	(if (fix:= (nntp-response-number response) valid-response)
+	    (let ((n 0))
+	      (nntp-read-text connection port
+		(lambda ()
+		  (set! n (fix:+ n 1))
+		  (if (fix:= (fix:remainder n 128) 0)
+		      (message msg n)))))
+	    (nntp-error response)))
+      (message msg "done"))))
 
 (define (nntp-connection:post-article connection port)
-  (prepare-nntp-connection connection)
-  (nntp-write-command connection "post")
-  (nntp-drain-output connection)
-  (let ((response (nntp-read-line connection)))
-    (if (fix:= 340 (nntp-response-number response))
-	(let loop ()
-	  (let ((line (input-port/read-line port)))
-	    (if (eof-object? line)
-		(begin
-		  (nntp-write-command connection ".")
-		  (nntp-drain-output connection)
-		  (let ((response (nntp-read-line connection)))
-		    (and (not (fix:= 240 (nntp-response-number response)))
-			 response)))
-		(begin
-		  (nntp-write-line connection line)
-		  (loop)))))
-	response)))
+  (nntp-protect connection
+    (lambda ()
+      (nntp-write-command connection "post")
+      (nntp-drain-output connection)
+      (let ((response (nntp-read-line connection)))
+	(if (fix:= 340 (nntp-response-number response))
+	    (let loop ()
+	      (let ((line (input-port/read-line port)))
+		(if (eof-object? line)
+		    (begin
+		      (nntp-write-command connection ".")
+		      (nntp-drain-output connection)
+		      (let ((response (nntp-read-line connection)))
+			(and (not (fix:= 240 (nntp-response-number response)))
+			     response)))
+		    (begin
+		      (nntp-write-line connection line)
+		      (loop)))))
+	    response)))))
 
 (define (nntp-error response)
   (error "NNTP error:" response))
 
-(define (prepare-nntp-connection connection)
-  (nntp-flush-input connection)
-  (if (nntp-connection:closed? connection)
-      (nntp-connection:reopen connection)))
+;;;; NNTP I/O
 
-(define (nntp-flush-input connection)
-  (let ((port (nntp-connection:port connection)))
-    (if port
-	(do ()
-	    ((not (input-port/char-ready? port 100)))
-	  (input-port/discard-line port)))))
+(define nntp-socket-buffer-size 4096)
+
+(define (nntp-protect connection thunk)
+  (let ((abort? #t))
+    (dynamic-wind (lambda ()
+		    (set! abort? #t)
+		    unspecific)
+		  (lambda ()
+		    (if (nntp-connection:closed? connection)
+			(nntp-connection:reopen connection))
+		    (let ((value (thunk)))
+		      (set! abort? #f)
+		      value))
+		  (lambda ()
+		    (if abort? (nntp-connection:close-1 connection))))))
 
 (define (nntp-write-command connection string . strings)
   (let ((port (nntp-connection:port connection)))
@@ -265,14 +441,10 @@
       (error "Malformed NNTP response:" line))
   (substring->nonnegative-integer line 0 3))
 
-(define (nntp-read-text connection)
-  (with-string-output-port
-    (lambda (port)
-      (nntp-read-text-1 connection port))))
-
-(define (nntp-read-text-1 connection port)
+(define (nntp-read-text connection port per-line)
   (let loop ()
     (let ((line (nntp-read-line connection)))
+      (if per-line (per-line))
       (let ((length (string-length line)))
 	(cond ((fix:= 0 length)
 	       (output-port/write-char port #\newline)
@@ -307,306 +479,524 @@
 		   (constructor %make-news-group (connection name)))
   (connection #f read-only #t)
   (name #f read-only #t)
-  (header-table (make-eqv-hash-table) read-only #t)
-  (server-probe #f)
+  (%header-table #f)
+  (%header-gdbf 'UNKNOWN)
+  (%estimated-n-articles #f)
+  (%first-article #f)
+  (%last-article #f)
   (reader-hook #f))
 
 (define (make-news-group connection name)
-  (let ((table (nntp-connection:group-table connection)))
-    (or (hash-table/get table name #f)
-	(let ((group (%make-news-group connection name)))
-	  (hash-table/put! table name group)
-	  group))))
+  (or (find-news-group connection name)
+      (let ((group (%make-news-group connection name)))
+	(nntp-connection:remember-group! connection name group)
+	group)))
 
 (define-integrable (news-group:server group)
   (nntp-connection:server (news-group:connection group)))
 
 (define (news-group:< x y)
-  (string-ci<? (news-group:name x) (news-group:name y)))
-
-(define (find-news-group connection name)
-  (hash-table/get (nntp-connection:group-table connection) name #f))
+  (string<? (news-group:name x) (news-group:name y)))
 
 (define (find-active-news-group connection name)
-  (let ((table (nntp-connection:group-table connection)))
-    (let ((group (hash-table/get table name #f)))
-      (if group
-	  (and (news-group:active? group) group)
-	  (and (not (nntp-connection:%active-groups connection))
-	       (let ((probe (nntp-group-command connection name)))
-		 (and (not (eq? 'NO-SUCH-GROUP probe))
-		      (let ((group (%make-news-group connection name)))
-			(set-news-group:server-probe! group probe)
-			(hash-table/put! table name group)
-			group))))))))
+  (let ((group (find-news-group connection name)))
+    (if group
+	(and (news-group:active? group) group)
+	(let ((server-info (nntp-group-command connection name)))
+	  (and (not (eq? 'NO-SUCH-GROUP server-info))
+	       (let ((group (make-news-group connection name)))
+		 (news-group:maybe-save-server-info! group server-info)
+		 group))))))
 
 (define (news-group:active? group)
-  (news-group:maybe-update-probe! group)
-  (not (eq? 'NO-SUCH-GROUP (news-group:server-probe group))))
+  (if (not (news-group:%estimated-n-articles group))
+      (news-group:update-server-info! group))
+  (not (eq? 'NO-SUCH-GROUP (news-group:%estimated-n-articles group))))
 
-(define-integrable (news-group:estimated-n-articles group)
-  (vector-ref (news-group:guarantee-server-probe group) 0))
+(define (news-group:estimated-n-articles group)
+  (and (news-group:active? group) (news-group:%estimated-n-articles group)))
 
-(define-integrable (news-group:first-article group)
-  (vector-ref (news-group:guarantee-server-probe group) 1))
+(define (news-group:first-article group)
+  (and (news-group:active? group) (news-group:%first-article group)))
 
-(define-integrable (news-group:last-article group)
-  (vector-ref (news-group:guarantee-server-probe group) 2))
+(define (news-group:last-article group)
+  (and (news-group:active? group) (news-group:%last-article group)))
 
-(define (news-group:guarantee-server-probe group)
-  (news-group:maybe-update-probe! group)
-  (let ((probe (news-group:server-probe group)))
-    (if (eq? 'NO-SUCH-GROUP probe)
-	(error "Unknown news group:" (news-group:name group)))
-    probe))
-
-(define (news-group:maybe-update-probe! group)
-  (if (not (news-group:server-probe group))
-      (news-group:update-probe! group)))
-
-(define (news-group:update-probe! group)
-  (set-news-group:server-probe!
+(define (news-group:update-server-info! group)
+  (set-news-group:server-info!
    group
    (nntp-group-command (news-group:connection group)
 		       (news-group:name group))))
+
+(define (news-group:maybe-save-server-info! group server-info)
+  (if (not (news-group:%estimated-n-articles group))
+      (set-news-group:server-info! group server-info)))
+
+(define (set-news-group:server-info! group info)
+  (if (vector? info)
+      (begin
+	(set-news-group:%estimated-n-articles! group (vector-ref info 0))
+	(set-news-group:%first-article! group (vector-ref info 1))
+	(set-news-group:%last-article! group (vector-ref info 2)))
+      (begin
+	(set-news-group:%estimated-n-articles! group info)
+	(set-news-group:%first-article! group #f)
+	(set-news-group:%last-article! group #f))))
+
+(define (news-group:server-info group)
+  (if (eq? 'NO-SUCH-GROUP (news-group:%estimated-n-articles group))
+      (news-group:%estimated-n-articles group)
+      (vector (news-group:%estimated-n-articles group)
+	      (news-group:%first-article group)
+	      (news-group:%last-article group))))
 
 ;;;; Header Cache
 
+(define (news-group:header-table group)
+  (or (news-group:%header-table group)
+      (let ((table (make-header-hash-table)))
+	(set-news-group:%header-table! group table)
+	table)))
+
+(define make-header-hash-table
+  (hash-table/constructor remainder
+			  =
+			  (lambda (number header) number header)
+			  (lambda (header) header #t)
+			  (lambda (header) (news-header:number header))
+			  (lambda (header) header)
+			  (lambda (header header*)
+			    header header*
+			    (error "Can't redefine a numbered header:"
+				   header*))
+			  #f))
+
 (define (news-group:header group number)
   (let ((table (news-group:header-table group)))
-    (let ((header (hash-table/get table number #f)))
-      (and (not (eq? 'NONE header))
-	   (or header
-	       (let ((header (parse-header group (read-header group number))))
-		 (hash-table/put! table number (or header 'NONE))
+    (or (hash-table/get table number #f)
+	(let ((header (parse-header group (get-pre-read-header group number))))
+	  (if (news-header? header)
+	      (hash-table/put! table number header))
+	  header))))
+
+(define (news-group:id->header group id)
+  (let ((header (parse-header group (read-header group id #t))))
+    (and (news-header? header)
+	 (let ((table (news-group:header-table group))
+	       (number (news-header:number header)))
+	   (or (hash-table/get table number #f)
+	       (begin
+		 (hash-table/put! table number header)
 		 header))))))
 
-(define (news-group:headers group numbers)
-  (call-with-values (lambda () (cached-headers group numbers))
-    (lambda (headers numbers)
-      (if (null? numbers)
-	  headers
-	  (let ((table (news-group:header-table group)))
-	    (let loop
-		((headers headers)
-		 (numbers numbers)
-		 (responses (read-headers group numbers)))
-	      (if (null? responses)
-		  headers
-		  (loop (let ((header (parse-header group (car responses))))
-			  (hash-table/put! table
-					   (car numbers)
-					   (or header 'NONE))
-			  (if header (cons header headers) headers))
-			(cdr numbers)
-			(cdr responses)))))))))
-
-(define (cached-headers group numbers)
-  (let ((table (news-group:header-table group)))
-    (let loop ((numbers numbers) (headers '()) (numbers* '()))
-      (if (null? numbers)
-	  (values headers (reverse! numbers*))
-	  (let ((header (hash-table/get table (car numbers) #f)))
-	    (loop (cdr numbers)
-		  (if (or (not header) (eq? 'NONE header))
-		      headers
-		      (cons header headers))
-		  (if (not header)
-		      (cons (car numbers) numbers*)
-		      numbers*)))))))
-
 (define (news-group:cached-header group number)
-  (hash-table/get (news-group:header-table group) number #f))
+  (and (news-group:%header-table group)
+       (hash-table/get (news-group:%header-table group) number #f)))
 
-(define (news-group:discard-cached-header! group number)
-  (hash-table/remove! (news-group:header-table group) number))
+(define (news-group:purge-header-cache group predicate all-in-heap?)
+  (let ((table (news-group:%header-table group)))
+    (if table
+	(if all-in-heap?
+	    (hash-table/clear! table)
+	    (hash-table/for-each table
+	      (lambda (number header)
+		(if (and (news-header? header) (predicate header))
+		    (hash-table/remove! table number))))))))
 
-(define (news-group:cached-header-numbers group)
-  (hash-table/key-list (news-group:header-table group)))
+(define (news-group:discard-cached-header! header)
+  (let ((group (news-header:group header)))
+    (if (news-group:%header-table group)
+	(hash-table/remove! (news-group:%header-table group)
+			    (news-header:number header)))))
 
 (define (news-group:cached-headers group)
-  (hash-table/datum-list (news-group:header-table group)))
+  (let ((table (news-group:%header-table group)))
+    (if table
+	(hash-table/datum-list table)
+	'())))
+
+(define (news-group:headers group numbers ignore?)
+  (call-with-values (lambda () (cached-headers group numbers ignore?))
+    (lambda (headers numbers)
+      (cond ((null? numbers)
+	     headers)
+	    ((gdbm-available?)
+	     (news-group:headers-gdbm group numbers headers ignore?))
+	    (else
+	     (news-group:headers-no-gdbm group numbers headers ignore?))))))
+
+(define (cached-headers group numbers ignore?)
+  (let ((table (news-group:%header-table group)))
+    (if table
+	(let loop ((numbers numbers) (headers '()) (numbers* '()))
+	  (if (null? numbers)
+	      (values headers (reverse! numbers*))
+	      (let ((header (hash-table/get table (car numbers) #f)))
+		(if (not header)
+		    (loop (cdr numbers)
+			  headers
+			  (cons (car numbers) numbers*))
+		    (loop (cdr numbers)
+			  (cons (if (ignore? header)
+				    (begin
+				      (hash-table/remove! table (car numbers))
+				      (cons 'IGNORED-ARTICLE (car numbers)))
+				    header)
+				headers)
+			  numbers*)))))
+	(values '() numbers))))
+
+(define (news-group:headers-gdbm group numbers headers ignore?)
+  (if (not (nntp-connection:closed? (news-group:connection group)))
+      (news-group:pre-read-headers group numbers))
+  (let* ((n-to-parse (length numbers))
+	 (msg
+	  (string-append "Parsing "
+			 (number->string n-to-parse)
+			 " header"
+			 (if (fix:= n-to-parse 1) "" "s")
+			 " from "
+			 (news-group:name group)
+			 "... ")))
+    (message msg)
+    (let loop ((numbers numbers) (n 0) (headers headers))
+      (if (null? numbers)
+	  (begin
+	    (message msg "done")
+	    headers)
+	  (let ((number (car numbers))
+		(n (fix:+ n 1)))
+	    (if (fix:= 0 (fix:remainder n 128))
+		(message msg n " (" (integer-round (* n 100) n-to-parse) "%)"))
+	    (loop (cdr numbers)
+		  n
+		  (adjoin-header group
+				 number
+				 (get-pre-read-header group number)
+				 ignore?
+				 headers)))))))
+
+(define (news-group:headers-no-gdbm group numbers headers ignore?)
+  (read-headers group numbers #t headers
+		(lambda (number reply headers)
+		  (adjoin-header group number reply ignore? headers))))
+
+(define (adjoin-header group number reply ignore? headers)
+  (let ((header (parse-header group reply)))
+    (cond ((not (news-header? header))
+	   (cons (cons header number) headers))
+	  ((ignore? header)
+	   headers)
+	  (else
+	   (hash-table/put! (news-group:header-table group) number header)
+	   (cons header headers)))))
+
+(define (news-group:header-gdbf group)
+  (let ((gdbf (news-group:%header-gdbf group)))
+    (if (eq? 'UNKNOWN gdbf)
+	(let ((gdbf
+	       (and (gdbm-available?)
+		    (let ((pathname (news-group:gdbf-pathname group)))
+		      (guarantee-init-file-directory pathname)
+		      (gdbm-open pathname 0 GDBM_WRCREAT #o666)))))
+	  (set-news-group:%header-gdbf! group gdbf)
+	  gdbf)
+	gdbf)))
+
+(define (news-group:gdbf-pathname group)
+  (init-file-specifier->pathname
+   (list "snr" (news-group:server group) "headers" (news-group:name group))))
+
+(define (news-group:pre-read-headers group numbers)
+  (let ((gdbf (news-group:header-gdbf group)))
+    (if gdbf
+	(let ((keys
+	       (list-transform-negative (map number->string numbers)
+		 (lambda (key)
+		   (gdbm-exists? gdbf key)))))
+	  (if (not (null? keys))
+	      (read-headers group keys #t '()
+			    (lambda (key reply replies)
+			      (gdbm-store gdbf key (write-to-string reply)
+					  GDBM_REPLACE)
+			      replies)))))))
+
+(define (get-pre-read-header group number)
+  (let ((gdbf (news-group:header-gdbf group)))
+    (if gdbf
+	(let ((key (number->string number)))
+	  (let ((datum (gdbm-fetch gdbf key)))
+	    (cond (datum
+		   (with-input-from-string datum read))
+		  ((nntp-connection:closed? (news-group:connection group))
+		   'UNREACHABLE-ARTICLE)
+		  (else
+		   (let ((reply (read-header group number #t)))
+		     (gdbm-store gdbf key (write-to-string reply) GDBM_REPLACE)
+		     reply)))))
+	(read-header group number #t))))
+
+(define (news-group:purge-pre-read-headers group predicate)
+  (let ((gdbf (news-group:header-gdbf group)))
+    (if gdbf
+	(if (eq? predicate 'ALL)
+	    (begin
+	      (gdbm-close gdbf)
+	      (set-news-group:%header-gdbf! group 'UNKNOWN)
+	      (delete-file-no-errors (news-group:gdbf-pathname group)))
+	    (begin
+	      (let ((keys
+		     (let loop ((key (gdbm-firstkey gdbf)) (keys '()))
+		       (if (not key)
+			   keys
+			   (loop (gdbm-nextkey gdbf key)
+				 (if (predicate (string->number key))
+				     (cons key keys)
+				     keys))))))
+		(if (not (null? keys))
+		    (begin
+		      (with-gdbf-fast gdbf
+			(lambda ()
+			  (for-each (lambda (key) (gdbm-delete gdbf key))
+				    keys)))
+		      (gdbm-reorganize gdbf))))
+	      (gdbm-close gdbf)
+	      (set-news-group:%header-gdbf! group 'UNKNOWN))))))
+
+(define (with-gdbf-fast gdbf thunk)
+  (dynamic-wind (lambda ()
+		  (gdbm-setopt gdbf gdbm_fastmode 1))
+		thunk
+		(lambda ()
+		  (gdbm-sync gdbf)
+		  (gdbm-setopt gdbf gdbm_fastmode 0))))
 
 ;;;; Read Headers
 
-(define (read-header group number)
-  (news-group:update-probe! group)
-  (let ((connection (news-group:connection group))
-	(msg "Reading news header... "))
-    (message msg)
-    (prepare-nntp-connection connection)
-    (nntp-head-request connection (number->string number))
-    (let ((response (nntp-head-reply connection)))
-      (message msg "done")
-      response)))
+(define (read-header group specifier prune?)
+  (let ((connection (news-group:connection group)))
+    (nntp-protect connection
+      (lambda ()
+	(let ((switch? (maybe-request-group-switch connection group)))
+	  (nntp-head-request connection
+			     (if (string? specifier)
+				 specifier
+				 (number->string specifier)))
+	  (nntp-drain-output connection)
+	  (maybe-reply-group-switch connection group switch?)
+	  (nntp-head-reply connection prune?))))))
 
-(define (read-headers group numbers)
-  (news-group:update-probe! group)
+(define (maybe-switch-groups connection group)
+  (let ((switch? (maybe-request-group-switch connection group)))
+    (if switch?
+	(nntp-drain-output connection))
+    (maybe-reply-group-switch connection group switch?)))
+
+(define (maybe-request-group-switch connection group)
+  (if (nntp-connection:current-group? connection (news-group:name group))
+      #f
+      (nntp-protect connection
+	(lambda ()
+	  (nntp-group-request connection (news-group:name group))
+	  #t))))
+
+(define (maybe-reply-group-switch connection group switch?)
+  (if switch?
+      (news-group:maybe-save-server-info!
+       group
+       (nntp-protect connection
+	 (lambda ()
+	   (nntp-group-reply connection))))))
+
+(define (read-headers group numbers prune? replies combine-replies)
   (let ((n-to-read (length numbers))
 	(connection (news-group:connection group))
-	(msg "Reading news headers... ")
-	(n-received 0))
-    (let ((msg? (fix:>= n-to-read 100)))
+	(n-received 0)
+	(n-chunk (nntp-head-request-count)))
+    (let ((msg
+	   (string-append "Reading "
+			  (number->string n-to-read)
+			  " header"
+			  (if (fix:= n-to-read 1) "" "s")
+			  " from "
+			  (news-group:name group)
+			  "... ")))
 
       (define (send-requests numbers n)
 	(do ((numbers numbers (cdr numbers))
 	     (n n (fix:- n 1)))
-	    ((fix:= n 0) numbers)
-	  (nntp-head-request connection (number->string (car numbers)))))
+	    ((fix:= n 0)
+	     (nntp-drain-output connection)
+	     numbers)
+	  (nntp-head-request connection
+			     (if (string? (car numbers))
+				 (car numbers)
+				 (number->string (car numbers))))))
 
-      (define (receive-replies numbers n responses)
-	(nntp-drain-output connection)
+      (define (receive-replies numbers numbers* replies)
 	(do ((numbers numbers (cdr numbers))
-	     (n n (fix:- n 1))
-	     (responses responses
-			(cons (nntp-head-reply connection) responses)))
-	    ((fix:= n 0) responses)
-	  (if (and msg?
-		   (begin
-		     (set! n-received (fix:+ n-received 1))
-		     (fix:= 0 (fix:remainder n-received 20))))
-	      (message msg (integer-round (* n-received 100) n-to-read) "%"))))
+	     (replies replies
+		      (combine-replies (car numbers)
+				       (nntp-head-reply connection prune?)
+				       replies)))
+	    ((eq? numbers numbers*) replies)
+	  (if (fix:= 0 (fix:remainder n-received 16))
+	      (message msg
+		       n-received
+		       " ("
+		       (integer-round (* n-received 100) n-to-read)
+		       "%)"))
+	  (set! n-received (fix:+ n-received 1))))
 
       (message msg)
-      (prepare-nntp-connection connection)
-      (let loop ((numbers numbers) (n-left n-to-read) (responses '()))
-	(if (null? numbers)
-	    (begin
-	      (message msg "done")
-	      (reverse! responses))
-	    (let ((n (min n-left nntp-maximum-request)))
-	      (let ((numbers* (send-requests numbers n)))
-		(loop numbers*
-		      (fix:- n-left n)
-		      (receive-replies numbers n responses)))))))))
+      (nntp-protect connection
+	(lambda ()
+	  (let ((switch? (maybe-request-group-switch connection group))
+		(n
+		 (min n-to-read
+		      (* n-chunk (quotient nntp-maximum-request n-chunk)))))
+	    (let ((txlist (send-requests numbers n)))
+	      (maybe-reply-group-switch connection group switch?)
+	      (let loop
+		  ((txn (- n-to-read n))
+		   (txlist txlist)
+		   (rxn n-to-read)
+		   (rxlist numbers)
+		   (replies replies))
+		(if (null? rxlist)
+		    (begin
+		      (message msg "done")
+		      (reverse! replies))
+		    (let* ((rxd (min rxn n-chunk))
+			   (rxlist* (list-tail rxlist rxd))
+			   (replies (receive-replies rxlist rxlist* replies))
+			   (txd (min txn n-chunk)))
+		      (loop (- txn txd)
+			    (send-requests txlist txd)
+			    (- rxn rxd)
+			    rxlist*
+			    replies)))))))))))
 
 ;;;; Parse Headers
 
-(define (parse-header group response)
-  (and (vector? response)
-       (let ((lines (vector-ref response 2)))
-	 (make-news-header group
-			   (token->number (vector-ref response 0))
-			   (vector-ref response 1)
-			   (lines->header-text lines)
-			   (parse-header-lines lines)))))
+(define (parse-header group reply)
+  (if (vector? reply)
+      (let ((header
+	     (make-news-header group
+			       (let ((number (vector-ref reply 0)))
+				 (and (valid-article-number? number)
+				      (token->number number)))
+			       (vector-ref reply 1)
+			       (vector-ref reply 2))))
+	(if (not (news-header:number header))
+	    (let ((entry
+		   (assoc (news-group:name group) (news-header:xref header))))
+	      (if (and entry (valid-article-number? (cdr entry)))
+		  (set-news-header:number! header
+					   (token->number (cdr entry))))))
+	(and (news-header:number header)
+	     header))
+      reply))
 
-(define (lines->header-text lines)
-  (let ((length
-	 (do ((lines lines (cdr lines))
-	      (nchars 0 (fix:+ (fix:+ nchars 1) (string-length (car lines)))))
-	     ((null? lines) nchars))))
-    (let ((text (make-string length)))
-      (let loop ((lines lines) (index 0))
-	(if (not (null? lines))
-	    (loop (cdr lines)
-		  (let* ((line (car lines))
-			 (end (string-length line)))
-		    (do ((i1 0 (fix:+ i1 1))
-			 (i2 index (fix:+ i2 1)))
-			((fix:= i1 end)
-			 (string-set! text i2 #\newline)
-			 (fix:+ i2 1))
-		      (string-set! text i2 (string-ref line i1)))))))
-      text)))
+(define (header-lines->text lines)
+  (header-alist->text (parse-header-lines lines)))
 
 (define (parse-header-lines lines)
   (cond ((null? lines)
 	 '())
-	((header-line? (car lines))
-	 (let ((unfold
-		(lambda (rest)
-		  (let ((colon (string-find-next-char (car lines) #\:))
-			(end (string-length (car lines))))
-		    (cons (substring-trim (car lines) 0 colon)
-			  (let ((value
-				 (substring-trim (car lines)
-						 (fix:+ colon 1)
-						 end)))
-			    (if (null? rest)
-				value
-				(apply string-append
-				       (cons value
-					     (append-map
-					      (lambda (string)
-						(list " "
-						      (string-trim string)))
-					      (reverse! rest)))))))))))
-	   (let loop ((lines (cdr lines)) (rest '()))
-	     (cond ((null? lines)
-		    (list (unfold rest)))
-		   ((header-continuation-line? (car lines))
-		    (loop (cdr lines) (cons (car lines) rest)))
-		   (else
-		    (cons (unfold rest) (parse-header-lines lines)))))))
+	((and (not (string-null? (car lines)))
+	      (not (or (char=? #\space (string-ref (car lines) 0))
+		       (char=? #\tab (string-ref (car lines) 0))))
+	      (string-find-next-char (car lines) #\:))
+	 => (lambda (colon)
+	      (let ((unfold
+		     (lambda (rest)
+		       (let ((end (string-length (car lines))))
+			 (cons (substring-trim (car lines) 0 colon)
+			       (let ((value
+				      (substring-trim (car lines)
+						      (fix:+ colon 1)
+						      end)))
+				 (if (null? rest)
+				     value
+				     (apply string-append
+					    value
+					    (append-map
+					     (lambda (string)
+					       (list " "
+						     (string-trim string)))
+					     (reverse! rest))))))))))
+		(let loop ((lines (cdr lines)) (rest '()))
+		  (cond ((null? lines)
+			 (list (unfold rest)))
+			((and (not (string-null? (car lines)))
+			      (or (char=? #\space (string-ref (car lines) 0))
+				  (char=? #\tab (string-ref (car lines) 0)))
+			      (string-find-next-char-in-set
+			       (car lines) char-set:not-whitespace))
+			 (loop (cdr lines) (cons (car lines) rest)))
+			(else
+			 (cons (unfold rest) (parse-header-lines lines))))))))
 	(else
 	 (parse-header-lines (cdr lines)))))
 
-(define (header-line? line)
-  (and (not (string-null? line))
-       (not (or (char=? #\space (string-ref line 0))
-		(char=? #\tab (string-ref line 0))))
-       (string-find-next-char line #\:)))
+(define (header-alist->text alist)
+  (apply string-append
+	 (cons "\n"
+	       (append-map (lambda (entry)
+			     (list (car entry) ": " (cdr entry) "\n"))
+			   (prune-header-alist alist)))))
 
-(define (header-continuation-line? line)
-  (and (not (string-null? line))
-       (or (char=? #\space (string-ref line 0))
-	   (char=? #\tab (string-ref line 0)))
-       (string-find-next-char-in-set line char-set:not-whitespace)))
+(define (prune-header-alist alist)
+  (list-transform-positive alist
+    (lambda (entry)
+      (or (string-ci=? (car entry) "subject")
+	  (string-ci=? (car entry) "references")
+	  (string-ci=? (car entry) "from")
+	  (string-ci=? (car entry) "lines")
+	  (string-ci=? (car entry) "xref")))))
 
-;;;; News-Header Data Structure
+(define (header-text-parser name)
+  (let ((regexp (header-regexp name)))
+    (lambda (text)
+      (let ((start (re-search-string-forward regexp #t #f text)))
+	(if start
+	    (apply string-append
+		   (reverse!
+		    (let ((end (string-length text)))
+		      (let loop ((start start) (strings '()))
+			(let ((index
+			       (substring-find-next-char text start end
+							 #\newline))
+			      (accum
+			       (lambda (end)
+				 (cons (substring-trim text start end)
+				       (if (null? strings)
+					   strings
+					   (cons " " strings))))))
+			  (if index
+			      (let ((strings (accum index))
+				    (index (fix:+ index 1)))
+				(if (or (fix:= index end)
+					(not
+					 (let ((char (string-ref text index)))
+					   (or (char=? char #\space)
+					       (char=? char #\tab)))))
+				    strings
+				    (loop index strings)))
+			      (accum end)))))))
+	    "")))))
 
-(define-structure (news-header
-		   (conc-name news-header:)
-		   (constructor make-news-header
-				(group number message-id text alist)))
-  (group #f read-only #t)
-  number
-  (message-id #f read-only #t)
-  (text #f read-only #t)
-  (alist #f read-only #t)
-  (followup-to #f)
-  (followups '())
-  (thread #f)
-  (reader-hook #f))
+(define (header-regexp name)
+  (let ((name (string-downcase name)))
+    (or (hash-table/get header-regexp-table name #f)
+	(let ((regexp
+	       (re-compile-pattern (string-append "^" name ":[ \t]*") #t)))
+	  (hash-table/put! header-regexp-table name regexp)
+	  regexp))))
 
-(define (dummy-news-header message-id)
-  (make-news-header #f #f message-id #f '()))
-
-(define (news-header:dummy? header)
-  (not (news-header:text header)))
-
-(define (news-header:field-value header name)
-  (let ((field
-	 (list-search-positive (news-header:alist header)
-	   (lambda (field)
-	     (string-ci=? (car field) name)))))
-    (if field
-	(cdr field)
-	"")))
-
-(define (news-header:< x y)
-  (< (news-header:number x) (news-header:number y)))
-
-(define (news-header:read-body header port)
-  (nntp-body-command (news-group:connection (news-header:group header))
-		     (news-header:message-id header)
-		     port))
-
-(define (news-header:xref header)
-  (parse-xref-tokens
-   (string-tokenize (news-header:field-value header "xref"))))
-
-(define (parse-xref-tokens tokens)
-  (if (null? tokens)
-      tokens
-      (let ((colon (string-find-next-char (car tokens) #\:))
-	    (rest (parse-xref-tokens (cdr tokens))))
-	(if colon
-	    (cons (cons (string-head (car tokens) colon)
-			(string-tail (car tokens) (fix:+ colon 1)))
-		  rest)
-	    rest))))
+(define header-regexp-table
+  (make-string-hash-table))
 
 (define (valid-article-number? string)
   (let ((end (string-length string)))
@@ -634,6 +1024,78 @@
 			 (not (char=? #\< (string-ref string index)))
 			 (loop (fix:+ index 1)))))))))
 
+;;;; News-Header Data Structure
+
+(define-structure (news-header
+		   (conc-name news-header:)
+		   (constructor make-news-header
+				(group number message-id text)))
+  (group #f read-only #t)
+  number
+  (message-id #f read-only #t)
+  (text #f)
+  (followup-to #f)
+  (followups '())
+  (thread #f)
+  (reader-hook #f))
+
+(define (dummy-news-header group message-id)
+  (make-news-header group #f message-id #f))
+
+(define-integrable news-header:real? news-header:text)
+
+(define (field-value-accessor name)
+  (let ((parser (header-text-parser name)))
+    (lambda (header)
+      (parser (news-header:text header)))))
+
+(define news-header:subject (field-value-accessor "subject"))
+(define news-header:references (field-value-accessor "references"))
+(define news-header:from (field-value-accessor "from"))
+(define news-header:n-lines (field-value-accessor "lines"))
+(define news-header:%xref (field-value-accessor "xref"))
+
+(define (news-header:field-value header name)
+  ((header-text-parser name) (news-header:text header)))
+
+(define (news-header:< x y)
+  (< (news-header:number x) (news-header:number y)))
+
+(define (news-header:read-body header port)
+  (let ((group (news-header:group header))
+	(number (news-header:number header)))
+    (let ((connection (news-group:connection group)))
+      (nntp-body-command connection
+			 (if number
+			     (begin
+			       (maybe-switch-groups connection group)
+			       (number->string number))
+			     (news-header:message-id header))
+			 port))))
+
+(define (news-header:xref header)
+  (let loop ((tokens (string-tokenize (news-header:%xref header))))
+    (if (null? tokens)
+	tokens
+	(let ((colon (string-find-next-char (car tokens) #\:))
+	      (rest (loop (cdr tokens))))
+	  (if colon
+	      (cons (cons (string-head (car tokens) colon)
+			  (string-tail (car tokens) (fix:+ colon 1)))
+		    rest)
+	      rest)))))
+
+(define (news-header:guarantee-full-text! header)
+  (let ((text (news-header:text header)))
+    (if (and (not (string-null? text))
+	     (char=? (string-ref text 0) #\newline))
+	(let ((reply
+	       (read-header (news-header:group header)
+			    (news-header:number header)
+			    #f)))
+	   (if (vector? reply)
+	       (set-news-header:text! header (vector-ref reply 2)))))))
+
 ;;;; Conversation Threads
 
 ;;; This is by far the hairiest part of this implementation.  Headers
@@ -644,112 +1106,372 @@
 ;;; these trees, represented by the tree roots.  The list is sorted by
 ;;; the header order of the roots.
 
+;;; Considerable additional hair is required because there are
+;;; numerous broken posting agents in the world.  In principle, the
+;;; references fields of News messages contains an ordered list of
+;;; message IDs, but in practice, each of these IDs must be checked
+;;; for syntactic validity, and the order must be ignored since some
+;;; posting agents mangle it.  The only property that seems valid is
+;;; that referenced message IDs are predecessors in the thread, but
+;;; even this must be qualified by a graph algorithm that detects
+;;; cycles and breaks them.
+
 (define-structure (news-thread
 		   (conc-name news-thread:)
-		   (constructor make-news-thread (root-headers)))
-  (root-headers #f read-only #t)
+		   (constructor make-news-thread (root)))
+  (root #f)
   (reader-hook #f))
 
 (define (news-thread:< x y)
-  (news-header:< (car (news-thread:root-headers x))
-		 (car (news-thread:root-headers y))))
+  (news-header:< (news-thread:root x) (news-thread:root y)))
 
 (define (news-thread:for-each-header thread procedure)
-  (for-each (letrec ((loop
-		      (lambda (header)
-			(procedure header)
-			(for-each loop (news-header:followups header)))))
-	      loop)
-	    (news-thread:root-headers thread)))
+  (let loop ((header (news-thread:root thread)))
+    (procedure header)
+    (for-each loop (news-header:followups header))))
 
-(define (organize-headers-into-threads headers)
-  (build-followup-trees! headers)
-  (sort (map make-threads-equivalent!
-	     (let ((threads (associate-threads-with-trees headers)))
-	       (for-each (lambda (thread)
-			   (for-each guarantee-header-number
-				     (news-thread:root-headers thread)))
-			 threads)
-	       (build-equivalence-classes
-		threads
-		(find-subject-associations threads))))
+(define (organize-headers-into-threads headers
+				       allow-server-probes?
+				       split-different-subjects?
+				       join-same-subjects?)
+  (sort (let ((threads
+	       (associate-threads-with-trees
+		(build-followup-trees! headers
+				       allow-server-probes?
+				       split-different-subjects?))))
+	  (if join-same-subjects?
+	      (map make-threads-equivalent!
+		   (build-equivalence-classes
+		    threads
+		    (find-subject-associations threads)))
+	      threads))
 	news-thread:<))
 
-(define (build-followup-trees! headers)
-  (let ((references (make-eq-hash-table))
-	(dummy-headers '()))
-    (let ((get-refs (lambda (h) (hash-table/get references h '())))
-	  (set-refs (lambda (h r) (hash-table/put! references h r))))
-      (let ((id-table (make-string-hash-table)))
-	(for-each (lambda (header)
-		    (set-news-header:followup-to! header #f)
-		    (set-news-header:followups! header '())
-		    (set-news-header:thread! header #f)
-		    (set-refs header (news-header:references header))
-		    (hash-table/put! id-table
-				     (news-header:message-id header)
-				     header))
-		  headers)
-	(for-each (lambda (header)
-		    (do ((refs (get-refs header) (cdr refs)))
-			((null? refs))
-		      (set-car! refs
-				(let ((id (car refs)))
-				  (or (hash-table/get id-table id #f)
-				      (let ((header (dummy-news-header id)))
-					(hash-table/put! id-table id header)
-					(set! dummy-headers
-					      (cons header dummy-headers))
-					header))))))
-		  headers))
-      (for-each (lambda (header)
-		  (do ((refs (get-refs header) (cdr refs)))
-		      ((null? refs))
-		    (if (news-header:dummy? (car refs))
-			(let ((drefs (get-refs (car refs))))
-			  (if (not (eq? 'BROKEN drefs))
-			      (let loop ((x (cdr refs)) (y drefs))
-				(cond ((null? x)
-				       unspecific)
-				      ((null? y)
-				       (set-refs (car refs) (cdr refs)))
-				      ((eq? (car x) (car y))
-				       (loop (cdr x) (cdr y)))
-				      (else
-				       (set-refs (car refs) 'BROKEN)))))))))
-		headers)
-      (for-each (lambda (dummy-header)
-		  (if (eq? 'BROKEN (get-refs dummy-header))
-		      (set-refs dummy-header '())))
-		dummy-headers)
-      (let ((set-followups
-	     (lambda (header)
-	       (let ((refs (get-refs header)))
-		 (if (not (null? refs))
-		     (let ((header* (car refs)))
-		       (set-news-header:followup-to! header header*)
-		       (set-news-header:followups!
-			header*
-			(cons header (news-header:followups header*)))))))))
-	(for-each set-followups headers)
-	(for-each set-followups dummy-headers)))))
+;;; Organize headers into heterarchies based on References: fields.
 
-(define (news-header:references header)
-  ;; Check the references header field to guarantee that it's
-  ;; well-formed, and discard it entirely if it isn't.  This paranoia
-  ;; is reasonable since I've already seen bad references during the
-  ;; first few days of testing.
-  (let ((tokens
-	 (reverse-string-tokenize
-	  (news-header:field-value header "references"))))
-    (if (let loop ((tokens tokens))
-	  (or (null? tokens)
-	      (and (valid-message-id? (car tokens))
-		   (not (member (car tokens) (cdr tokens)))
-		   (loop (cdr tokens)))))
-	tokens
-	'())))
+(define (build-followup-trees! headers
+			       allow-server-probes?
+			       split-different-subjects?)
+  (call-with-values
+      (lambda ()
+	(map-references-to-headers headers allow-server-probes?))
+    (lambda (headers dummy-headers)
+      (let ((headers (append dummy-headers headers)))
+	(convert-header-graphs-to-trees headers)
+	(simplify-followup-to-links headers)
+	(canonicalize-tree-ordering headers))
+      (if split-different-subjects?
+	  (split-trees-on-subject-changes headers))
+      (append! (discard-useless-dummy-headers dummy-headers) headers))))
+
+(define (map-references-to-headers headers allow-server-probes?)
+  (let ((id-table (make-string-hash-table))
+	(queue (make-queue))
+	(dummy-headers '()))
+
+    (define (init-header header)
+      (set-news-header:followup-to! header (news-header:reference-list header))
+      (set-news-header:followups! header '())
+      (set-news-header:thread! header #f)
+      (hash-table/put! id-table (news-header:message-id header) header))
+
+    (for-each init-header headers)
+    (for-each (lambda (header) (enqueue!/unsafe queue header)) headers)
+    (queue-map!/unsafe queue
+      (lambda (header)
+	(let ((group (news-header:group header)))
+	  (set-news-header:followup-to!
+	   header
+	   (remove-duplicates
+	    (map (lambda (id)
+		   (or (hash-table/get id-table id #f)
+		       (and allow-server-probes?
+			    (let ((header (news-group:id->header group id)))
+			      (and header
+				   (begin
+				     (if (eq? (hash-table/get id-table
+							      header
+							      #t)
+					      #t)
+					 (begin
+					   (set! headers (cons header headers))
+					   (init-header header)
+					   (enqueue!/unsafe queue header)))
+				     header))))
+		       (let ((header (dummy-news-header group id)))
+			 (set! dummy-headers (cons header dummy-headers))
+			 (init-header header)
+			 header)))
+		 (news-header:followup-to header)))))))
+    (for-each
+     (lambda (header)
+       (for-each
+	(lambda (ref)
+	  (set-news-header:followups!
+	   ref
+	   (cons header (news-header:followups ref))))
+	(news-header:followup-to header)))
+     headers)
+    (values headers dummy-headers)))
 
+(define (news-header:reference-list header)
+  (if (news-header:real? header)
+      ;; Check the references header field to guarantee that it's
+      ;; well-formed, and discard it entirely if it isn't.  This paranoia
+      ;; is reasonable since I've already seen bad references during the
+      ;; first few days of testing.
+      (let ((tokens (parse-references-list (news-header:references header))))
+	(if (for-all? tokens valid-message-id?)
+	    tokens
+	    '()))
+      '()))
+
+(define (parse-references-list refs)
+  (let ((end (string-length refs)))
+
+    (define (find-ref-start index)
+      (and (fix:< index end)
+	   (if (char=? #\< (string-ref refs index))
+	       index
+	       (find-ref-start (fix:+ index 1)))))
+
+    (define (find-ref-end index)
+      (and (fix:< index end)
+	   (if (char=? #\> (string-ref refs index))
+	       (fix:+ index 1)
+	       (find-ref-end (fix:+ index 1)))))
+
+    (let loop ((index 0) (result '()))
+      (let ((start (find-ref-start index)))
+	(if start
+	    (let ((end (find-ref-end (fix:+ start 1))))
+	      (if end
+		  (loop end (cons (substring refs start end) result))
+		  (reverse! result)))
+	    (reverse! result))))))
+
+;;; Convert the header heterarchies into trees by eliminating
+;;; redundant paths to the ancestors of a header.
+
+(define (convert-header-graphs-to-trees headers)
+  (let ((tables (cons (make-eq-hash-table) (make-eq-hash-table))))
+    (for-each (lambda (header)
+		(if (eq? (hash-table/get (car tables) header 'NONE) 'NONE)
+		    (eliminate-redundant-relatives tables header)))
+	      headers)
+    (let loop ()
+      (let ((changes? #f))
+	(for-each (lambda (header)
+		    (if (eliminate-extra-parent tables header)
+			(begin (set! changes? #t) unspecific)))
+		  headers)
+	(if changes? (loop))))))
+
+(define (eliminate-redundant-relatives tables header)
+  (let ((do-header
+	 (lambda (header)
+	   (for-each
+	    (lambda (parent) (unlink-headers! parent header))
+	    (compute-redundant-relatives news-header:followup-to
+					 (car tables)
+					 header))
+	   (for-each
+	    (lambda (child) (unlink-headers! header child))
+	    (compute-redundant-relatives news-header:followups
+					 (cdr tables)
+					 header)))))
+    (let loop ((header header))
+      (do-header header)
+      (for-each loop (news-header:followup-to header)))
+    (let loop ((header header))
+      (do-header header)
+      (for-each loop (news-header:followups header)))))
+
+(define (eliminate-extra-parent tables header)
+  (let ((parents (news-header:followup-to header)))
+    (and (not (null? parents))
+	 (not (null? (cdr parents)))
+	 (let ((a (car parents))
+	       (b (cadr parents))
+	       (parent-is-ancestor?
+		(lambda (a b)
+		  (and (not (null? (news-header:followup-to a)))
+		       (null? (cdr (news-header:followup-to a)))
+		       (memq (car (news-header:followup-to a))
+			     (compute-header-relatives news-header:followup-to
+						       (car tables)
+						       b)))))
+	       (move-under
+		(lambda (a b)
+		  (unlink-headers! (car (news-header:followup-to a)) a)
+		  (unlink-headers! b header)
+		  (link-headers! b a)
+		  (reset-caches! tables a)
+		  (eliminate-redundant-relatives tables a)
+		  #f)))
+	   (cond ((parent-is-ancestor? a b)
+		  (move-under a b))
+		 ((parent-is-ancestor? b a)
+		  (move-under b a))
+		 (else
+		  ;; Heuristic: because the followup-to field is in
+		  ;; the same order that the original References:
+		  ;; header was, unless a poster has munged the order,
+		  ;; the leftmost entry is the oldest reference.
+		  (let ((parents (list-copy (news-header:followup-to b))))
+		    (for-each (lambda (p) (unlink-headers! p b)) parents)
+		    (for-each (lambda (p) (link-headers! p a)) parents))
+		  (unlink-headers! a header)
+		  (link-headers! a b)
+		  (reset-caches! tables a)
+		  (eliminate-redundant-relatives tables a)
+		  #t))))))
+
+(define (compute-redundant-relatives step table header)
+  (let ((relatives (step header)))
+    (list-transform-positive relatives
+      (lambda (child)
+	(there-exists? relatives
+	  (lambda (child*)
+	    (and (not (eq? child* child))
+		 (memq child
+		       (compute-header-relatives step table child*)))))))))
+
+(define (compute-header-relatives step table header)
+  (let loop ((header header))
+    (let ((cache (hash-table/get table header 'NONE)))
+      (case cache
+	((NONE)
+	 (hash-table/put! table header 'PENDING)
+	 (let ((result
+		(reduce unionq
+			'()
+			(let ((headers (step header)))
+			  (cons headers (map loop headers))))))
+	   (hash-table/put! table header result)
+	   result))
+	((PENDING)
+	 (error "Cycle detected in header graph:" header))
+	(else cache)))))
+
+(define (reset-caches! tables header)
+  (let ((do-header
+	 (lambda (header)
+	   (hash-table/remove! (car tables) header)
+	   (hash-table/remove! (cdr tables) header))))
+    (let loop ((header header))
+      (do-header header)
+      (for-each loop (news-header:followup-to header)))
+    (let loop ((header header))
+      (do-header header)
+      (for-each loop (news-header:followups header)))))
+
+(define (unlink-headers! p c)
+  (set-news-header:followups! p (delq! c (news-header:followups p)))
+  (set-news-header:followup-to! c (delq! p (news-header:followup-to c))))
+
+(define (link-headers! p c)
+  (if (not (memq c (news-header:followups p)))
+      (begin
+	(set-news-header:followups! p (cons c (news-header:followups p)))
+	(set-news-header:followup-to! c
+				      (cons p (news-header:followup-to c))))))
+
+;;; Change followup-to slots to point to a single header rather than a
+;;; list of headers.  Eliminate dummy headers that have zero or one
+;;; children.
+
+(define (simplify-followup-to-links headers)
+  (for-each (lambda (header)
+	      (set-news-header:followup-to!
+	       header
+	       (let ((parents (news-header:followup-to header)))
+		 (if (null? parents)
+		     #f
+		     (car parents)))))
+	    headers))
+
+(define (discard-useless-dummy-headers dummy-headers)
+  (for-each maybe-discard-dummy-header dummy-headers)
+  (list-transform-negative dummy-headers
+    (lambda (header)
+      (null? (news-header:followups header)))))
+
+(define (maybe-discard-dummy-header header)
+  (let ((children (news-header:followups header)))
+    (cond ((null? children)
+	   (let ((parent (news-header:followup-to header)))
+	     (if parent
+		 (begin
+		   (disassociate-header-from-parent header parent)
+		   (if (not (news-header:real? parent))
+		       (maybe-discard-dummy-header parent))))))
+	  ((null? (cdr children))
+	   (let ((parent (news-header:followup-to header)))
+	     (set-news-header:followup-to! (car children) parent)
+	     (set-news-header:followups! header '())
+	     (if parent
+		 (begin
+		   (set-car! (memq header (news-header:followups parent))
+			     (car children))
+		   (set-news-header:followup-to! header #f)
+		   (if (not (news-header:real? parent))
+		       (maybe-discard-dummy-header parent)))))))))
+
+(define (canonicalize-tree-ordering headers)
+  (for-each
+   (lambda (header)
+     (if (not (news-header:followup-to header))
+	 (let loop ((header header))
+	   (let ((followups (news-header:followups header)))
+	     (for-each loop followups)
+	     (set-news-header:followups! header
+					 (sort followups news-header:<)))
+	   (if (and (not (news-header:real? header))
+		    (not (news-header:number header)))
+	       (set-news-header:number!
+		header
+		(news-header:number (car (news-header:followups header))))))))
+   headers))
+
+(define (split-trees-on-subject-changes headers)
+  (for-each
+   (lambda (header)
+     (if (news-header:real? header)
+	 (let ((parent (news-header:followup-to header))
+	       (subject ))
+	   (if (and parent
+		    (not
+		     (let ((subject
+			    (if (news-header:real? parent)
+				(news-header:subject parent)
+				(find-tree-subject header))))
+		       (compare-subjects
+			(canonicalize-subject (news-header:subject header))
+			(canonicalize-subject subject)))))
+	       (disassociate-header-from-parent header parent)))))
+   headers))
+
+(define (find-tree-subject header)
+  (let ((parent (news-header:followup-to header)))
+    (if parent
+	(find-tree-subject parent)
+	(let loop ((header header))
+	  (if (news-header:real? header)
+	      (news-header:subject header)
+	      (let ((followups (news-header:followups header)))
+		(if (null? followups)
+		    (error "Thread tree has no subject!"))
+		(loop (car followups))))))))
+
+(define (disassociate-header-from-parent header parent)
+  (set-news-header:followups! parent
+			      (delq! header (news-header:followups parent)))
+  (set-news-header:followup-to! header #f))
+
+;;; Create a thread to represent each header tree, and mark the
+;;; tree's headers as members of that thread.
+
 (define (associate-threads-with-trees headers)
   (let ((threads '()))
     (for-each (lambda (header)
@@ -759,44 +1481,37 @@
 			     (if (news-header:followup-to header)
 				 (loop (news-header:followup-to header))
 				 header))))
-		      (let ((thread (make-news-thread (list root))))
+		      (let ((thread (make-news-thread root)))
 			(set! threads (cons thread threads))
 			(news-thread:for-each-header thread
 			  (lambda (header)
 			    (set-news-header:thread! header thread)))))))
 	      headers)
     threads))
-
-(define (guarantee-header-number header)
-  (let ((followups (news-header:followups header)))
-    (for-each guarantee-header-number followups)
-    (set-news-header:followups! header (sort followups news-header:<)))
-  (if (not (news-header:number header))
-      (let ((followups (news-header:followups header)))
-	(if (null? followups)
-	    (error "Dummy header has no followups:" header))
-	(set-news-header:number! header
-				 (news-header:number (car followups))))))
 
+;;; Build a mapping from header subjects to threads.
+
 (define (find-subject-associations threads)
   (let ((subject-alist '()))
-    (for-each (lambda (thread)
-		(news-thread:for-each-header thread
-		  (lambda (header)
-		    (let ((subject
-			   (canonicalize-subject
-			    (news-header:field-value header "subject"))))
-		      (if (not (string-null? subject))
-			  (let ((entry (assoc-subject subject subject-alist)))
-			    (cond ((not entry)
-				   (set! subject-alist
-					 (cons (list subject thread)
-					       subject-alist))
-				   unspecific)
-				  ((not (memq thread (cdr entry)))
-				   (set-cdr! entry
-					     (cons thread (cdr entry)))))))))))
-	      threads)
+    (for-each
+     (lambda (thread)
+       (news-thread:for-each-header thread
+	 (lambda (header)
+	   (if (news-header:real? header)
+	       (let ((subject
+		      (canonicalize-subject
+		       (news-header:subject header))))
+		 (if (not (string-null? subject))
+		     (let ((entry (assoc-subject subject subject-alist)))
+		       (cond ((not entry)
+			      (set! subject-alist
+				    (cons (list subject thread)
+					  subject-alist))
+			      unspecific)
+			     ((not (memq thread (cdr entry)))
+			      (set-cdr! entry
+					(cons thread (cdr entry))))))))))))
+     threads)
     subject-alist))
 
 (define (canonicalize-subject subject)
@@ -829,9 +1544,16 @@
 	(ye (string-length y)))
     (let ((i (substring-match-forward-ci x 0 xe y 0 ye)))
       (if (fix:= i xe)
-	  (if (fix:= i ye) 'EQUAL 'LEFT-PREFIX)
-	  (if (fix:= i ye) 'RIGHT-PREFIX #f)))))
+	  (if (fix:= i ye)
+	      'EQUAL
+	      (and (>= (/ xe ye) 3/4) 'LEFT-PREFIX))
+	  (if (fix:= i ye)
+	      (and (>= (/ ye xe) 3/4) 'RIGHT-PREFIX)
+	      #f)))))
 
+;;; Merge threads that have shared subjects, even though they lack
+;;; common references.
+
 (define (build-equivalence-classes threads subject-alist)
   (let ((equivalences (make-eq-hash-table)))
     (for-each (lambda (thread)
@@ -859,31 +1581,34 @@
 			      (cddr entry))))
 		subject-alist))
     (map (lambda (class) (map car class))
-	 (eliminate-duplicates
+	 (remove-duplicates
 	  (map cdr (hash-table/datum-list equivalences))))))
-
-(define (eliminate-duplicates items)
-  (let loop ((items items) (result '()))
-    (if (null? items)
-	result
-	(loop (cdr items)
-	      (if (memq (car items) result)
-		  result
-		  (cons (car items) result))))))
 
 (define (make-threads-equivalent! threads)
   (let ((threads (sort threads news-thread:<)))
     (let ((thread (car threads))
 	  (threads (cdr threads)))
-      (for-each (lambda (thread*)
-		  (news-thread:for-each-header thread*
-		    (lambda (header)
-		      (set-news-header:thread! header thread))))
-		threads)
-      (set-cdr! (news-thread:root-headers thread)
-		(map (lambda (thread)
-		       (car (news-thread:root-headers thread)))
-		     threads))
+      (if (not (null? threads))
+	  (begin
+	    (for-each (lambda (thread*)
+			(news-thread:for-each-header thread*
+			  (lambda (header)
+			    (set-news-header:thread! header thread))))
+		      threads)
+	    (let ((dummy
+		   (dummy-news-header
+		    (news-header:group (news-thread:root thread))
+		    #f))
+		  (roots
+		   (cons (news-thread:root thread)
+			 (map news-thread:root threads))))
+	      (set-news-header:thread! dummy thread)
+	      (set-news-header:followups! dummy roots)
+	      (for-each (lambda (header)
+			  (set-news-header:followup-to! header dummy))
+			roots)
+	      (set-news-header:number! dummy (news-header:number (car roots)))
+	      (set-news-thread:root! thread dummy))))
       thread)))
 
 ;;;; Miscellaneous
@@ -901,30 +1626,41 @@
 (define char-set:newline (char-set #\newline))
 
 (define (input-port/eof? port)
-  ((or (port/operation port 'EOF?) (error "Port missing EOF? operation:" port))
-   port))
+  ((port/operation port 'EOF?) port))
 
-(define (string-tokenize string)
-  (substring-tokenize string 0 (string-length string)))
+(define (write-file-atomically pathname procedure)
+  (let ((finished? #f))
+    (dynamic-wind (lambda ()
+		    unspecific)
+		  (lambda ()
+		    (let ((value (call-with-output-file pathname procedure)))
+		      (set! finished? #t)
+		      value))
+		  (lambda ()
+		    (if (not finished?)
+			(delete-file-no-errors pathname))))))
 
-(define (substring-tokenize string start end)
-  (reverse! (reverse-substring-tokenize string start end)))
+(define (string-tokenize string #!optional white not-white)
+  (let ((white (if (default-object? white) char-set:whitespace white))
+	(not-white
+	 (if (default-object? white) char-set:not-whitespace not-white))
+	(end (string-length string)))
+    (let loop ((start 0) (tokens '()))
+      (if (fix:= start end)
+	  (reverse! tokens)
+	  (let ((delimiter
+		 (or (substring-find-next-char-in-set string start end white)
+		     end)))
+	    (loop (or (substring-find-next-char-in-set
+		       string delimiter end not-white)
+		      end)
+		  (cons (substring string start delimiter) tokens)))))))
 
-(define (reverse-string-tokenize string)
-  (reverse-substring-tokenize string 0 (string-length string)))
-
-(define (reverse-substring-tokenize string start end)
-  (let loop ((start start) (tokens '()))
-    (if (fix:= start end)
-	tokens
-	(let ((delimiter
-	       (or (substring-find-next-char-in-set
-		    string start end char-set:whitespace)
-		   end)))
-	  (loop (or (substring-find-next-char-in-set
-		     string delimiter end char-set:not-whitespace)
-		    end)
-		(cons (substring string start delimiter) tokens))))))
+(define (string-first-token string)
+  (let ((index (string-find-next-char-in-set string char-set:whitespace)))
+    (if index
+	(string-head string index)
+	string)))
 
 (define (token->number token)
   (substring->nonnegative-integer token 0 (string-length token)))
@@ -943,7 +1679,7 @@
 	  n
 	  (loop (fix:+ index 1)
 		(+ (* n 10) (get-digit index)))))))
-
+
 (define (substring-skip-leading-space string start end)
   (let loop ((index start))
     (if (and (fix:< index end)
@@ -965,3 +1701,42 @@
 (define (substring-trim string start end)
   (let ((start (substring-skip-leading-space string start end)))
     (substring string start (substring-skip-trailing-space string start end))))
+
+(define (unionq x y)
+  (if (null? y)
+      x
+      (let loop ((x x) (y y))
+	(if (null? x)
+	    y
+	    (loop (cdr x) (if (memq (car x) y) y (cons (car x) y)))))))
+
+(define (differenceq x y)
+  (if (null? y)
+      x
+      (let loop ((x x) (z '()))
+	(if (null? x)
+	    (reverse! z)
+	    (loop (cdr x) (if (memq (car x) y) z (cons (car x) z)))))))
+
+(define (subsetq? x y)
+  (or (null? x)
+      (and (memq (car x) y)
+	   (subsetq? (cdr x) y))))
+
+(define (remove-duplicates items)
+  (let loop ((items items) (result '()))
+    (if (null? items)
+	(reverse! result)
+	(loop (cdr items)
+	      (if (memq (car items) result)
+		  result
+		  (cons (car items) result))))))
+
+(define (hash-table/modify! table key default modifier)
+  (hash-table/put! table key (modifier (hash-table/get table key default))))
+
+(define (map! procedure items)
+  (do ((items items (cdr items)))
+      ((null? items))
+    (set-car! items (procedure (car items))))
+  items)
