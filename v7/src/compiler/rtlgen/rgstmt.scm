@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.6 1988/10/13 10:34:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.7 1988/11/02 21:45:43 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -56,7 +56,23 @@ MIT in each case. |#
 		 (intern-scode-variable! block name)
 		 expression))
 	      (lambda (name)
-		(generate/cached-assignment name expression))))))))
+		(if (memq 'IGNORE-ASSIGNMENT-TRAPS
+			  (variable-declarations lvalue))
+		    (let ((temp (rtl:make-pseudo-register)))
+		      ;; This `let' forces order of evaluation.  The
+		      ;; fetch of `temp' depends on the fact that the
+		      ;; assignment to `temp' marks it as containing a
+		      ;; non-object, and thus prevents the generation
+		      ;; of type stripping code here.
+		      (let ((n1
+			     (rtl:make-assignment
+			      temp
+			      (rtl:make-assignment-cache name))))
+			(scfg*scfg->scfg!
+			 n1
+			 (rtl:make-assignment (rtl:make-fetch temp)
+					      expression))))
+		    (generate/cached-assignment name expression)))))))))
 
 (define (generate/cached-assignment name value)
   (let* ((temp (rtl:make-pseudo-register))
