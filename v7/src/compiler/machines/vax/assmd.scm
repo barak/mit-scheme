@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/assmd.scm,v 1.1 1988/01/08 13:04:24 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/assmd.scm,v 4.2 1988/01/08 14:55:40 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -33,6 +33,9 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Assembler Machine Dependencies.  DEC Vax version
+;;;
+;;; Matches version 4.2 of bobcat/assmd.scm
+;;;
 
 (declare (usual-integrations))
 
@@ -53,34 +56,40 @@ MIT in each case. |#
 (define maximum-block-offset (- (expt 2 15) 1))
 (define block-offset-width 16)
 
-(define (block-offset->bit-string offset start?)
-  (unsigned-integer->bit-string
-   block-offset-width
-   (+ offset (if start? offset (1+ offset)))))
+(define make-nmv-header)
+(let ()
 
-(define make-nmv-header
-  (let ((nmv-type-string
-	 (unsigned-integer->bit-string 8
-				       (microcode-type 'MANIFEST-NM-VECTOR))))
-    (named-lambda (make-nmv-header n)
-      (bit-string-append
-       (unsigned-integer->bit-string 24 n)
-       nmv-type-string))))
+(set! make-nmv-header
+(named-lambda (make-nmv-header n)
+  (bit-string-append (unsigned-integer->bit-string 24 n)
+		     nmv-type-string)))
+
+(define nmv-type-string
+  (unsigned-integer->bit-string 8 (microcode-type 'MANIFEST-NM-VECTOR)))
+
+)
 
 (define (object->bit-string object)
   (bit-string-append
    (unsigned-integer->bit-string 24 (primitive-datum object))
    (unsigned-integer->bit-string 8 (primitive-type object))))
+
+(define (block-offset->bit-string offset start?)
+  (unsigned-integer->bit-string block-offset-width
+				(if start? offset (1+ offset))))
 
 ;;; Machine dependent instruction order
 
+;;;
+;;; is this right?
+;;;
 (define (instruction-initial-position block)
   0)
 
 (define (instruction-insert! bits block position receiver)
-  (declare (integrate receiver))
-  (let ((l (bit-string-length bits)))
-    (bit-substring-move-right! bits 0 l block position)
-    (receiver (+ position l))))
+  (let* ((l (bit-string-length bits))
+	 (new-position (- position l)))
+    (bit-substring-move-right! bits 0 l block new-position)
+    (receiver new-position)))
 
 (set! instruction-append bit-string-append)
