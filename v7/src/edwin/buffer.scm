@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.174 2000/02/07 23:09:41 cph Exp $
+;;; $Id: buffer.scm,v 1.175 2000/02/29 04:07:07 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -103,7 +103,6 @@ The buffer is guaranteed to be deselected at that time."
 	  (window-modeline-event! (car windows) type)
 	  (loop (cdr windows))))))
 
-
 (define (without-editor-interrupts thunk)
   ;; Control interrupts whether or not in the editor.
   ;; WITH-EDITOR-INTERRUPTS-DISABLED is required in the running editor but
@@ -112,7 +111,6 @@ The buffer is guaranteed to be deselected at that time."
   (if within-editor?
       (with-editor-interrupts-disabled thunk)
       (without-interrupts thunk)))
-
 
 (define (buffer-reset! buffer)
   (set-buffer-writable! buffer)
@@ -359,13 +357,15 @@ The buffer is guaranteed to be deselected at that time."
 	 (set-variable-default-value! variable value))))
 
 (define (set-variable-default-value! variable value)
-  (let ((value (normalize-variable-value variable value)))
-    (without-editor-interrupts
-     (lambda ()
-       (set-variable-%default-value! variable value)
-       (if (not (search-local-bindings (current-buffer) variable))
-	   (set-variable-%value! variable value))
-       (invoke-variable-assignment-daemons! #f variable)))))
+  (if within-editor?
+      (let ((value (normalize-variable-value variable value)))
+	(without-editor-interrupts
+	 (lambda ()
+	   (set-variable-%default-value! variable value)
+	   (if (not (search-local-bindings (current-buffer) variable))
+	       (set-variable-%value! variable value))
+	   (invoke-variable-assignment-daemons! #f variable))))
+      (set-default-variable-value!/outside-editor variable value)))
 
 (define-integrable (search-local-bindings buffer variable)
   (let loop ((bindings (buffer-local-bindings buffer)))
@@ -422,14 +422,16 @@ The buffer is guaranteed to be deselected at that time."
 (define (set-variable-value! variable value)
   (if within-editor?
       (set-variable-local-value! (current-buffer) variable value)
-      (begin
-	(let ((value (normalize-variable-value variable value)))
-	  (without-interrupts
-	   ;; Not with-editor-interrupts-disabled as we are not within-editor?
-	   (lambda ()
-	     (set-variable-%default-value! variable value)
-	     (set-variable-%value! variable value)
-	     (invoke-variable-assignment-daemons! #f variable)))))))
+      (set-default-variable-value!/outside-editor variable value)))
+
+(define (set-default-variable-value!/outside-editor variable value)
+  (let ((value (normalize-variable-value variable value)))
+    (without-interrupts
+     ;; Not with-editor-interrupts-disabled as we are not within-editor?
+     (lambda ()
+       (set-variable-%default-value! variable value)
+       (set-variable-%value! variable value)
+       (invoke-variable-assignment-daemons! #f variable)))))
 
 (define (with-variable-value! variable new-value thunk)
   (let ((old-value))
@@ -461,7 +463,6 @@ The buffer is guaranteed to be deselected at that time."
      (undo-local-bindings! buffer #f)
      (%set-buffer-major-mode! buffer mode)
      (buffer-modeline-event! buffer 'BUFFER-MODES))))
-
 
 (define (%set-buffer-major-mode! buffer mode)
   (set-buffer-modes! buffer (list mode))
