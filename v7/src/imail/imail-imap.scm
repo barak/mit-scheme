@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.12 2000/05/03 19:29:39 cph Exp $
+;;; $Id: imail-imap.scm,v 1.13 2000/05/03 20:29:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -231,64 +231,73 @@
   (messages define standard
 	    initializer (lambda () (make-vector 0))))
 
-(define-class (<imap-message>
-	       (constructor (uid flags length envelope)))
-    ()
+(define-class <imap-message> (<message>)
   (uid define accessor)
-  (flags define standard)
   (length define accessor)
-  (envelope define accessor)
-  (external define standard
-	    initial-value #f))
+  (envelope define accessor))
 
+(define make-imap-message
+  (let ((constructor
+	 (instance-constructor <imap-message>
+			       '(HEADER-FIELDS BODY FLAGS PROPERTIES
+					       UID LENGTH ENVELOPE))))
+    (lambda (uid flags length envelope)
+      (constructor 'UNCACHED 'UNCACHED flags '()
+		   uid length envelope))))
+
+(let ((demand-loader
+       (lambda (generic slot-name item-name transform)
+	 (let ((modifier (slot-modifier <imap-message> slot-name)))
+	   (define-method generic ((message <imap-message>))
+	     (if (eq? 'UNCACHED (call-next-method message))
+		 (modifier
+		  message
+		  (transform
+		   (translate-string-line-endings
+		    (car
+		     (imap:command:uid-fetch connection
+					     (imap-message-uid message)
+					     (list item-name)))))))
+	     (call-next-method message))))))
+  (demand-loader message-header-fields 'HEADER-FIELDS 'RFC822.HEADER
+		 (lambda (string)
+		   (if (string-suffix? "\n\n" string)
+		       (string-head string (fix:- (string-length string) 1))
+		       string)))
+  (demand-loader message-body 'BODY 'RFC822.TEXT identity-procedure))
+
+(define-method set-message-flags! ((message <imap-message>) flags)
+  ;; **** synchronize here.
+  ???
+  (call-next-method message flags))
+
 (define (set-imap-folder-length! folder count)
   (let ((v (imap-folder-messages folder))
-	(v* (make-vector count #f))
 	(connection (imap-folder-connection folder)))
-    (let ((end (vector-length v)))
-      (fill-messages-vector connection v*)
-      (do ((i 0 (fix:+ i 1)))
-	  ((fix:= i count))
-	(let ((uid (imap-message-uid (vector-ref v* i))))
-	  (let loop ((j 0))
-	    (if (fix:< j end)
-		(if (and (vector-ref v j)
-			 (= uid (imap-message-uid (vector-ref v j))))
-		    (begin
-		      (vector-set! v* i (vector-ref v j))
-		      (vector-set! v j #f))
-		    (loop (fix:+ j 1)))))))
-      (detach-external-messages v))
-    (set-imap-folder-messages! folder v*))
+    (let ((v* (vector-grow v count #f)))
+      (fill-messages-vector connection v* (vector-length v))
+      (set-imap-folder-messages! folder v*)))
   (folder-modified! folder))
 
 (define (forget-imap-folder-messages! folder)
   (let ((v (imap-folder-messages folder)))
-    (detach-external-messages v)
-    (fill-messages-vector (imap-folder-connection folder) v))
+    (for-each-vector-element v detach-message)
+    (fill-messages-vector (imap-folder-connection folder) v 0))
   (folder-modified! folder))
 
-(define (fill-messages-vector connection messages)
+(define (fill-messages-vector connection messages start)
   (let ((end (vector-length messages)))
     (do ((responses
 	  (imap:command:fetch-range connection 0 end
 				    '(UID FLAGS RFC822.SIZE ENVELOPE))
 	  (cdr responses))
-	 (index 0 (fix:+ index 1)))
+	 (index start (fix:+ index 1)))
 	((fix:= index end))
       (vector-set! messages index (apply make-imap-message (car responses))))))
 
-(define (detach-external-messages v)
-  (for-each-vector-element v
-    (lambda (m)
-      (if (and m (imap-message-external m))
-	  (detach-message (imap-message-external m))))))
-
 (define (remove-imap-folder-message folder index)
   (let ((v (imap-folder-messages folder)))
-    (let ((m (vector-ref v index)))
-      (if (and m (imap-message-external m))
-	  (detach-message (imap-message-external m))))
+    (detach-message (vector-ref v index))
     (let ((end (vector-length v)))
       (let ((v* (make-vector (fix:- end 1))))
 	(subvector-move-left! v 0 index v* 0)
@@ -334,34 +343,17 @@
   (vector-length (imap-folder-messages folder)))
 
 (define-method %get-message ((folder <imap-folder>) index)
-  (let ((messages (imap-folder-messages folder))
-	(connection (imap-folder-connection folder)))
-    (let ((message
-	   (or (vector-ref messages index)
-	       (let ((message
-		      (apply make-imap-message
-			     (imap:command:fetch connection
-						 index
-						 '(UID FLAGS RFC822.SIZE
-						       ENVELOPE)))))
-		 (vector-set! messages index message)
-		 message))))
-      (or (imap-message-external message)
-	  (let ((external
-		 (let ((items
-			(imap:command:fetch connection
-					    index
-					    '(RFC822.HEADER RFC822.TEXT))))
-		   (make-attached-message
-		    folder
-		    (lines->header-fields
-		     (except-last-pair!
-		      (string->lines
-		       (translate-string-line-endings (car items)))))
-		    (translate-string-line-endings (cadr items))))))
-	    (set-message-index! external index)
-	    (set-imap-message-external! message external)
-	    external)))))
+  (let ((messages (imap-folder-messages folder)))
+    (or (vector-ref messages index)
+	(let ((message
+	       (apply make-imap-message
+		      (imap:command:fetch (imap-folder-connection folder)
+					  index
+					  '(UID FLAGS RFC822.SIZE
+						ENVELOPE)))))
+	  (vector-set! messages index message)
+	  (set-message-index! message index)
+	  message))))
 
 (define-method first-unseen-message ((folder <imap-folder>))
   (let ((unseen (imap-folder-first-unseen folder)))
@@ -426,6 +418,14 @@
 						  (number->string end)))
 					   items))
       '()))
+
+(define (imap:command:uid-fetch connection uid items)
+  (let ((response
+	 (imap:command:single-response imap:response:fetch?
+				       connection 'UID 'FETCH uid items)))
+    (map (lambda (item)
+	   (imap:response:fetch-attribute response item))
+	 items)))
 
 (define (imap:command:noop connection)
   (imap:command:no-response connection 'NOOP))
@@ -561,7 +561,7 @@
 	((imap:response:exists? response)
 	 (let ((count (imap:response:exists-count response))
 	       (folder (selected-imap-folder connection)))
-	   (if (not (= count (folder-length folder)))
+	   (if (> count (folder-length folder))	;required to be >=
 	       (set-imap-folder-length! folder count)))
 	 #f)
 	((imap:response:expunge? response)
