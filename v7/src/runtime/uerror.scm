@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.8 1989/04/05 05:46:30 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.9 1989/08/04 02:42:32 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -280,7 +280,8 @@ MIT in each case. |#
      (lambda (entry)
        (vector-set! types (microcode-error (car entry)) (cadr entry)))
      `(
-       (BAD-ASSIGNMENT ,(make-internal-type "Bound variable"))       (BAD-ERROR-CODE ,(make-internal-type "Illegal error code"))
+       (BAD-ASSIGNMENT ,(make-internal-type "Illegal to rebind variable"))
+       (BAD-ERROR-CODE ,(make-internal-type "Illegal error code"))
        (BAD-FRAME ,(make-internal-type "Illegal environment frame"))
        (BAD-INTERRUPT-CODE ,(make-internal-type "Illegal interrupt code"))
        (BAD-RANGE-ARGUMENT-0 ,(make-bad-range-type 0))
