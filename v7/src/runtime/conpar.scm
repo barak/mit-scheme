@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.28 1993/09/11 21:08:54 gjr Exp $
+$Id: conpar.scm,v 14.29 1993/09/11 21:26:50 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -509,8 +509,12 @@ MIT in each case. |#
 	   4)
 	  ((fix:= code code/special-compiled/compiled-code-bkpt)
 	   ;; Very infrequent!
-	   (fix:+ 5 (compiled-code-address/frame-size
-		     (element-stream/ref stream 2))))
+	   (let ((fsize 
+		  (compiled-code-address/frame-size
+		   (element-stream/ref stream 2))))
+	     (if (not fsize)
+		 5
+		 (fix:+ 5 fsize))))
 	  (else
 	   (default)))))
 
@@ -591,25 +595,29 @@ MIT in each case. |#
   (microcode-return/code->type (microcode-return name)))
 
 (define (return-address->stack-frame-type return-address allow-extended?)
-  (cond ((interpreter-return-address? return-address)
-	 (let ((code (return-address/code return-address)))
-	   (let ((type (microcode-return/code->type code)))
-	     (if (not type)
-		 (error "return-code has no type" code))
-	     type)))
-	((compiled-return-address? return-address)
-	 (cond ((compiled-continuation/return-to-interpreter? return-address)
-		stack-frame-type/return-to-interpreter)
-	       ((compiled-continuation/reflect-to-interface? return-address)
-		stack-frame-type/special-compiled)
-	       (else
-		stack-frame-type/compiled-return-address)))
-	((and allow-extended? (compiled-procedure? return-address))
-	 stack-frame-type/interrupt-compiled-procedure)
-	((and allow-extended? (compiled-expression? return-address))
-	 stack-frame-type/interrupt-compiled-expression)
-	(else
-	 (error "illegal return address" return-address))))
+  allow-extended?			; ignored
+  (let ((allow-extended? true))
+    (cond ((interpreter-return-address? return-address)
+	   (let ((code (return-address/code return-address)))
+	     (let ((type (microcode-return/code->type code)))
+	       (if (not type)
+		   (error "return-code has no type" code))
+	       type)))
+	  ((compiled-return-address? return-address)
+	   (cond ((compiled-continuation/return-to-interpreter?
+		   return-address)
+		  stack-frame-type/return-to-interpreter)
+		 ((compiled-continuation/reflect-to-interface?
+		   return-address)
+		  stack-frame-type/special-compiled)
+		 (else
+		  stack-frame-type/compiled-return-address)))
+	  ((and allow-extended? (compiled-procedure? return-address))
+	   stack-frame-type/interrupt-compiled-procedure)
+	  ((and allow-extended? (compiled-expression? return-address))
+	   stack-frame-type/interrupt-compiled-expression)
+	  (else
+	   (error "illegal return address" return-address)))))
 
 (define (initialize-package!)
   (set! return-address/join-stacklets
