@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: inerly.scm,v 1.3 2001/12/19 21:39:30 cph Exp $
+$Id: inerly.scm,v 1.4 2001/12/20 02:03:21 cph Exp $
 
 Copyright (c) 1988, 1989, 1990, 1999, 2001 Massachusetts Institute of Technology
 
@@ -24,7 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;; NOPs for now.
 
 (declare (usual-integrations))
-
+
 ;;;; Transformers and utilities
 
 (define early-instructions '())
@@ -34,11 +34,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (set! early-transformers
 	(cons (cons name transformer)
 	      early-transformers)))
-
-(define (eq-subset? s1 s2)
-  (or (null? s1)
-      (and (memq (car s1) s2)
-	   (eq-subset? (cdr s1) s2))))
 
 ;;; Instruction and addressing mode macros
 
@@ -62,18 +57,3 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 						      true)))))))
 			 patterns))
 		 EARLY-INSTRUCTIONS))))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
