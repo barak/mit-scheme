@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-syntax.scm,v 1.6 2000/04/28 16:14:42 cph Exp $
+;;; $Id: imap-syntax.scm,v 1.7 2000/05/16 01:46:42 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -286,32 +286,37 @@
 		   url:decode-substring
 		   (simple-parser match-decoded keyword)))
 
-(define imap:parse:server
+(define (imap:server-parser allow-auth?)
   (sequence-parser
    (optional-parser
-    (let ((parse-user-id
-	   (url:decoding-parser imap:match:achar+
-				imap:match:astring
-				'USER-ID))
-	  (parse-auth
-	   (sequence-parser
-	    (noise-parser (ci-string-matcher ";auth="))
-	    (alternatives-parser
-	     (simple-parser (string-matcher "*") 'AUTH-TYPE)
-	     (url:decoding-parser imap:match:achar+
-				  imap:match:atom
-				  'AUTH-TYPE)))))
-      (sequence-parser
-       (alternatives-parser
-	(sequence-parser parse-user-id
-			 (optional-parser parse-auth))
-	(sequence-parser (optional-parser parse-user-id)
-			 parse-auth))
-       (noise-parser (string-matcher "@")))))
+    (sequence-parser
+     (let ((parse-user-id
+	    (url:decoding-parser imap:match:achar+
+				 imap:match:astring
+				 'USER-ID)))
+       (if allow-auth?
+	   (let ((parse-auth
+		  (sequence-parser
+		   (noise-parser (ci-string-matcher ";auth="))
+		   (alternatives-parser
+		    (simple-parser (string-matcher "*") 'AUTH-TYPE)
+		    (url:decoding-parser imap:match:achar+
+					 imap:match:atom
+					 'AUTH-TYPE)))))
+	     (alternatives-parser
+	      (sequence-parser parse-user-id
+			       (optional-parser parse-auth))
+	      (sequence-parser (optional-parser parse-user-id)
+			       parse-auth)))
+	   parse-user-id))
+     (noise-parser (string-matcher "@"))))
    (simple-parser (rexp-matcher url:rexp:host) 'HOST)
    (optional-parser
     (noise-parser (string-matcher ":"))
     (simple-parser (rexp-matcher (rexp+ char-set:numeric)) 'PORT))))
+
+(define imap:parse:server
+  (imap:server-parser #t))
 
 (define imap:parse:mailboxlist
   (sequence-parser
@@ -354,12 +359,6 @@
 		    (decoding-parser imap:match:bchar+
 				     url:decode-substring
 				     imap:parse:section))))
-
-(define imap:parse:simple-message
-  (sequence-parser imap:parse:enc-mailbox
-		   (optional-parser
-		    (noise-parser (ci-string-matcher "/;uid="))
-		    (simple-parser imap:match:nz-number 'UID))))
 
 ;;;; Mailbox-name encoding (modified UTF-7)
 

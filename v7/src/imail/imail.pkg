@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.30 2000/05/15 17:47:54 cph Exp $
+;;; $Id: imail.pkg,v 1.31 2000/05/16 01:46:30 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -133,11 +133,11 @@
 	  imap:char-set:tag-char
 	  imap:char-set:text-char
 	  imap:match:tag
+	  imap:parse:enc-mailbox
 	  imap:parse:section
-	  imap:parse:server
-	  imap:parse:simple-message
 	  imap:quoted-char?
 	  imap:quoted-special?
+	  imap:server-parser
 	  imap:string-may-be-quoted?
 	  imap:write-literal-string-body
 	  imap:write-literal-string-header
