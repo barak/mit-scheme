@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/make.scm,v 4.4 1988/05/11 04:18:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/make.scm,v 4.5 1988/06/13 12:29:43 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -34,87 +34,9 @@ MIT in each case. |#
 
 ;;;; SCode Optimizer: System Construction
 
-(in-package system-global-environment
 (declare (usual-integrations))
-
-(define sf)
-(define sfu? false)
-(define sf/set-default-syntax-table!)
-(define sf/set-file-syntax-table!)
-(define sf/add-file-declarations!)
 
-(define package/scode-optimizer
-  (make-environment
-    (define package/top-level	(make-environment))
-    (define package/transform	(make-environment))
-    (define package/integrate	(make-environment))
-    (define package/cgen	(make-environment))
-    (define package/expansion	(make-environment))
-    (define package/declarations (make-environment))
-    (define package/copy	(make-environment))
-    (define package/free	(make-environment))
-    (define package/change-type	(make-environment))))
-
-(in-package package/scode-optimizer
-
-  (define scode-optimizer/system
-    (make-environment
-      (define :name "SF")
-      (define :version 4)
-      (define :modification 4)
-      (define :files)
-
-      (define :rcs-header		;RCS sets up this string.
-	"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/make.scm,v 4.4 1988/05/11 04:18:27 jinx Exp $")
-
-      (define :files-lists
-	(list
-	 (cons system-global-environment
-	       '(
-		 "sfmac.bin"		; Macros for SF
-		 ))
-	 (cons package/scode-optimizer
-	       '(
-		 "mvalue.bin"		; Multiple Value Support
-		 "lsets.bin"		; Set Data Abstraction
-		 "table.bin"		; Table Abstraction
-		 "pthmap.bin"		; Pathname Map Abstraction
-		 "object.bin"		; Data Structures
-		 "emodel.bin"		; Environment Model
-		 "gconst.bin"		; Global Primitives List
-		 "usicon.bin"		; Usual Integrations: Constants
-		 "tables.bin"		; Operation Table Abstractions
-		 "packag.bin"		; Global packaging
-		 ))
-	 (cons package/top-level
-	       '("toplev.bin"))		; Top Level
-	 (cons package/transform
-	       '("xform.bin"))		; SCode -> Internal
-	 (cons package/integrate
-	       '("subst.bin"))		; Beta Substitution Optimizer
-	 (cons package/cgen
-	       '("cgen.bin"))		; Internal -> SCode
-	 (cons package/expansion
-	       '("usiexp.bin"		; Usual Integrations: Expanders
-		 "reduct.bin"))		; User defined expanders
-	 (cons package/declarations
-	       '("pardec.bin"))		; Declaration Parser
-	 (cons package/copy
-	       '("copy.bin"))		; Copy Expressions
-	 (cons package/free
-	       '("free.bin"))		; Free Variable Analysis
-	 (cons package/change-type
-	       '("chtype.bin"))		; Type interning
-	 ))))
-
-  (load-system! scode-optimizer/system true)
-
-  (scode-optimizer/initialize!))
-
-#|
-
-See also the file SFSF.scm
-
-|#
-;;; end IN-PACKAGE SYSTEM-GLOBAL-ENVIRONMENT
-)
+(package/system-loader "sf" '() 'QUERY)
+((package/reference (find-package '(SCODE-OPTIMIZER))
+		    'USUAL-INTEGRATIONS/CACHE!))
+(add-system! (make-system "SF" 4 5 '()))

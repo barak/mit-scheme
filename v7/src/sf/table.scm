@@ -30,13 +30,11 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-(declare (usual-integrations))
-(declare (automagic-integrations))
-(declare (open-block-optimizations))
-(declare (eta-substitution))
-
-(using-syntax sf-syntax-table
-
+(declare (usual-integrations)
+	 (automagic-integrations)
+	 (open-block-optimizations)
+	 (eta-substitution))
+
 ;;; simple table abstraction
 ;;;
 ;;; A table is a mutable mapping from key to value.  There is a
@@ -49,30 +47,23 @@ MIT in each case. |#
 ;;; My big problem with this is that we have to go through the continuation
 ;;; passing style get function whether we want to or not.
 
-(define-named-structure table 
-  get-function
-  put!-function
-  remove!-function
-  anything-else)
+(define-structure (table (conc-name %table-)
+			 (constructor %make-table))
+  (get-function false read-only true)
+  (put!-function false read-only true)
+  (remove!-function false read-only true)
+  (anything-else false read-only true))
 
-((access add-unparser-special-object! unparser-package)
- *table-tag
- (lambda (table)
-   (unparse-with-brackets
-    (lambda ()
-      (write-string "Table ")
-      (write (hash table))))))
-
-(define (table-get table key if-found if-not-found)
+(define-integrable (table-get table key if-found if-not-found)
   ((%table-get-function table) key if-found if-not-found))
 
-(define (table-put! table key value)
+(define-integrable (table-put! table key value)
   ((%table-put!-function table) key value))
 
-(define (table-remove! table key)
+(define-integrable (table-remove! table key)
   ((%table-remove!-function table) key))
 
-(define (table-function table operation arglist)
+(define-integrable (table-function table operation arglist)
   ((%table-anything-else table) operation arglist))
 
 (define (table-get-chain key1 if-found if-not-found . tables)
@@ -91,7 +82,7 @@ MIT in each case. |#
 		    identity-procedure
 		    (lambda () #f)))
        keylist))
-
+
 ;;; Returns a table
 
 (define (make-generic-eq?-table)
@@ -139,5 +130,3 @@ MIT in each case. |#
 	(else (error "Don't understand that message"))))
 
     (%make-table get put! remove! dispatch)))
-
-)

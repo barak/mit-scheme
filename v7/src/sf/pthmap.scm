@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pthmap.scm,v 1.2 1988/03/22 17:38:21 jrm Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pthmap.scm,v 4.1 1988/06/13 12:30:05 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -34,10 +34,10 @@ MIT in each case. |#
 
 ;;;; Pathname Maps
 
-(declare (usual-integrations))
-(declare (automagic-integrations))
-(declare (open-block-optimizations))
-(declare (eta-substitution))
+(declare (usual-integrations)
+	 (automagic-integrations)
+	 (open-block-optimizations)
+	 (eta-substitution))
 
 (define pathname-map/make)
 (define pathname-map?)
@@ -57,13 +57,9 @@ MIT in each case. |#
 (define pathname-map/tag "pathname-map")
 (define pathname-map/root-node cdr)
 
-((access add-unparser-special-pair! unparser-package)
+(unparser/set-tagged-pair-method!
  pathname-map/tag
- (lambda (map)
-   ((access unparse-with-brackets unparser-package)
-    (lambda ()
-      (write-string "PATHNAME-MAP ")
-      (write (hash map))))))
+ (unparser/standard-method "PATHNAME-MAP"))
 
 (declare (integrate-operator node/make))
 
@@ -72,9 +68,9 @@ MIT in each case. |#
 
 (define unbound-value "unbound-value")
 (define node/value car)
-(define node/set-value! set-car!)
+(define set-node/value! set-car!)
 (define node/alist cdr)
-(define node/set-alist! set-cdr!)
+(define set-node/alist! set-cdr!)
 
 (define (node/associate node key)
   (let ((entry (assoc key (node/alist node))))
@@ -110,7 +106,7 @@ MIT in each case. |#
 
 (set! pathname-map/insert!
   (named-lambda (pathname-map/insert! map pathname value)
-    (node/set-value! (find-or-create-node (pathname-map/root-node map)
+    (set-node/value! (find-or-create-node (pathname-map/root-node map)
 					  (make-node-list pathname))
 		     value)))
 
@@ -131,7 +127,7 @@ MIT in each case. |#
 
 (define (create-node node node-list)
   (let ((next (node/make)))
-    (node/set-alist! node
+    (set-node/alist! node
 		     (cons (cons (car node-list) next)
 			   (node/alist node)))
     (if (null? (cdr node-list))

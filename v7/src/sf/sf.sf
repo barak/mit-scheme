@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/make.scm,v 4.5 1988/06/13 12:29:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/sf.sf,v 4.1 1988/06/13 12:28:58 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -32,11 +32,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; SCode Optimizer: System Construction
-
-(declare (usual-integrations))
-
-(package/system-loader "sf" '() 'QUERY)
-((package/reference (find-package '(SCODE-OPTIMIZER))
-		    'USUAL-INTEGRATIONS/CACHE!))
-(add-system! (make-system "SF" 4 5 '()))
+(sf/set-default-syntax-table! system-global-syntax-table)
+(sf-conditionally "object")
+(sf-conditionally "lsets")
+(sf-directory ".")
+(cref/generate-all "sf")(sf "sf.con" "sf.bcon")
+(sf "sf.ldr" "sf.bldr")

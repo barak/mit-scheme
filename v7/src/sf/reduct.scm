@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/reduct.scm,v 1.1 1988/05/11 04:20:07 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/reduct.scm,v 4.1 1988/06/13 12:30:09 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -127,7 +127,7 @@ Examples:
   (reference/make
    block
    (or (block/lookup-name block name false)
-       (block/lookup-name global-block name true))))
+       (block/lookup-name (integrate/get-top-level-block) name true))))
 
 (declare (integrate-operator handle-variable))
 

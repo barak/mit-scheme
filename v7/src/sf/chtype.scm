@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/chtype.scm,v 1.3 1988/04/23 08:49:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/chtype.scm,v 4.1 1988/06/13 12:29:10 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -36,12 +36,12 @@ MIT in each case. |#
 
 (declare (usual-integrations)
 	 (automagic-integrations)
-	 (integrate-external "object" "mvalue"))
+	 (integrate-external "object"))
 
-(define (change-type/external block expression)
+(define (intern-type block expression)
   (change-type/block block)
   (change-type/expression expression)
-  (return-2 expression (block/bound-variables block)))
+  (make-integration-info expression (block/bound-variables block)))
 
 (define (change-type/block block)
   (change-type/object enumeration/random block)
@@ -68,7 +68,7 @@ MIT in each case. |#
 (declare (integrate-operator change-type/object))
 
 (define (change-type/object enumeration object)
-  (object/set-enumerand!
+  (set-object/enumerand!
    object
    (enumeration/name->enumerand enumeration
 				(enumerand/name (object/enumerand object)))))

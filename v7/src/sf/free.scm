@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/free.scm,v 3.4 1988/04/23 08:50:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/free.scm,v 4.1 1988/06/13 12:31:26 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 

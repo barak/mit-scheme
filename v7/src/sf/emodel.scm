@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/emodel.scm,v 3.5 1988/04/23 08:50:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/emodel.scm,v 4.1 1988/06/13 12:29:20 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -42,7 +42,7 @@ MIT in each case. |#
 
 (define (block/unsafe! block)
   (if (block/safe? block)
-      (begin (block/set-safe?! block false)
+      (begin (set-block/safe?! block false)
 	     (if (block/parent block)
 		 (block/unsafe! (block/parent block))))))
 

@@ -32,11 +32,10 @@ MIT in each case. |#
 
 ;;;; Unordered Set abstraction
 
-(declare (usual-integrations))
-(declare (automagic-integrations))
-(declare (open-block-optimizations))
+(declare (usual-integrations)
+	 (automagic-integrations)
+	 (open-block-optimizations))
 
-
 #|
 
 Each set has an ELEMENT-TYPE which is a predicate that all elements of
@@ -72,119 +71,62 @@ to figure out what is going on in this code.
 (define any-type?)
 
 |#
-
-(using-syntax sf-syntax-table
-
-(declare (integrate-operator list-deletor member-procedure))
-
-(declare (integrate empty-set
-		    singleton-set
-		    set/member?
-		    set/adjoin
-		    set/remove
-		    set->list
-		    set/for-each
-		    set/map
-		    set/empty?
-		    ))
-
-#|
-
-;;; Snarfed from "runtime/list.scm"
-
-(define (member-procedure predicate)
-  (lambda (element list)
-    (let loop ((list list))
-      (and (pair? list)
-	   (if (predicate (car list) element)
-	       list
-	       (loop (cdr list)))))))
-
-(define (list-deletor predicate)
-  (define (list-deletor-loop list)
-    (if (pair? list)
-	(if (predicate (car list))
-	    (list-deletor-loop (cdr list))
-	    (cons (car list) (list-deletor-loop (cdr list))))
-	'()))
-  list-deletor-loop)
-
-(define-named-structure set element-type predicate elements)
-
-((access add-unparser-special-object! unparser-package)
- *set-tag
- (lambda (set)
-   (unparse-with-brackets
-    (lambda ()
-      (write-string "Unordered Set ")
-      (write (hash set))
-      (write-string " of ")
-      (display (%set-element-type set))))))
-
+
 (define-integrable (check-type element-type element)
-  (or (element-type element)
-      (error "Element of wrong type -- CHECK-TYPE" element-type element)))
-|#
-
-(define-integrable (check-type element-type element)
-  element-type element ;are ignored
-  #t)
+  element-type element			;ignore
+  true)
 
 (define-integrable (member-procedure predicate) 
-  predicate ; ignore
+  predicate				;ignore
   memq)
 
-(define (list-deletor predicate)
-  (declare (integrate predicate))
-  (define (list-deletor-loop list)
-    (if (pair? list)
-	(if (predicate (car list))
-	    (list-deletor-loop (cdr list))
-	    (cons (car list) (list-deletor-loop (cdr list))))
-	'()))
-  list-deletor-loop)
+(define-integrable (list-deletor predicate)
+  (letrec ((list-deletor-loop
+	    (lambda (list)
+	      (if (pair? list)
+		  (if (predicate (car list))
+		      (list-deletor-loop (cdr list))
+		      (cons (car list) (list-deletor-loop (cdr list))))
+		  '()))))
+    list-deletor-loop))
 
-(define-integrable (set? object) object #t)
+(define-integrable (set? object)
+  object				;ignore
+  true)
 
 (define-integrable (%make-set element-type predicate elements)
-  element-type ; ignore two
-  predicate
+  element-type predicate		;ignore
   elements)
 
 (define-integrable (%unsafe-set-element-type set)
-  set	; ignore
+  set					;ignore
   (lambda (object) 
     (declare (integrate object))
-    object ; ignore
-    #t))
+    object				;ignore
+    true))
 
 (define-integrable (%unsafe-set-predicate set) 
-  set ; ignore
+  set					;ignore
   eq?)
 
-(define-integrable (%unsafe-set-elements set) set)
+(define-integrable (%unsafe-set-elements set)
+  set)
 
 (define-integrable (set-element-type set)
   (%unsafe-set-element-type set))
 
-(declare (integrate-operator adjoin-lists-without-duplicates))
-
-(define (adjoin-lists-without-duplicates predicate l1 l2)
-  predicate ; is ignored
-  (declare (integrate  l1 l2))
-  (let ((member? memq))
-    (declare (integrate member?))
-    (define (loop new-list old-list)
-      (cond ((null? old-list) new-list)
-	    ((member? (car old-list) new-list) (loop new-list (cdr old-list)))
-	    (else (loop (cons (car old-list) new-list) (cdr old-list)))))
-    (loop l1 l2)))
+(define-integrable (adjoin-lists-without-duplicates predicate l1 l2)
+  predicate				;ignore
+  (let loop ((new-list l1) (old-list l2))
+    (cond ((null? old-list) new-list)
+	  ((memq (car old-list) new-list) (loop new-list (cdr old-list)))
+	  (else (loop (cons (car old-list) new-list) (cdr old-list))))))
 
 (define-integrable (invert-sense predicate)
   (lambda (object)
     (declare (integrate object))
     (not (predicate object))))
-
+
 (define-integrable (%subset predicate list)
   ((list-deletor (invert-sense predicate)) list))
 
@@ -220,15 +162,14 @@ to figure out what is going on in this code.
 
 ;;; End of speed hack.
 
-(declare (integrate-operator spread-set spread-2-sets))
-
+(declare (integrate-operator spread-set))
 (define (spread-set set receiver)
   (declare (integrate receiver))
   (if (not (set? set))
-      (error "Object not a set" set)
-      (receiver (%unsafe-set-element-type set)
-		(%unsafe-set-predicate    set)
-		(%unsafe-set-elements     set))))
+      (error "Object not a set" set))
+  (receiver (%unsafe-set-element-type set)
+	    (%unsafe-set-predicate    set)
+	    (%unsafe-set-elements     set)))
 
 #|
 (define (spread-2-sets set1 set2 receiver)
@@ -243,8 +184,7 @@ to figure out what is going on in this code.
 	      (error "Set mismatch")
 	      (receiver etype1 pred1 stream1 stream2)))))))
 |#
-(define (spread-2-sets set1 set2 receiver)
-  (declare (integrate set1 set2 receiver))
+(define-integrable (spread-2-sets set1 set2 receiver)
   (spread-set set1
     (lambda (etype1 pred1 stream1)
       (declare (integrate etype1 pred1))
@@ -252,7 +192,7 @@ to figure out what is going on in this code.
         (lambda (etype2 pred2 stream2)
 	  etype2 pred2 ; are ignored
 	  (receiver etype1 pred1 stream1 stream2))))))
-
+
 (define (set/member? set element)
   (spread-set set
     (lambda (element-type predicate list)
@@ -262,8 +202,8 @@ to figure out what is going on in this code.
 
 (declare (integrate-operator adjoin-element))
 (define (adjoin-element predicate element list)
-  (declare (integrate  list))
-  predicate ; is ignored
+  (declare (integrate list))
+  predicate				;ignore
   (if (memq element list)
       list
       (cons element list)))
@@ -271,7 +211,7 @@ to figure out what is going on in this code.
 (define (set/adjoin set element)
   (spread-set set
     (lambda (element-type predicate list)
-      (declare (integrate stream))
+      (declare (integrate list))
       (check-type element-type element)
       (%make-set element-type predicate
 		 (adjoin-element predicate element list)))))
@@ -299,8 +239,7 @@ to figure out what is going on in this code.
   (spread-set set
     (lambda (element-type predicate list)
       (declare (integrate list))
-      element-type
-      predicate
+      element-type predicate		;ignore
       (list->stream list))))
 
 (define (list->stream list)
@@ -312,25 +251,22 @@ to figure out what is going on in this code.
   (spread-set set
     (lambda (element-type predicate l)
       (declare (integrate list))
-      element-type
-      predicate
+      element-type predicate		;ignore
       (apply list l))))
 
 (define (set/for-each function set)
   (spread-set set
     (lambda (element-type predicate list)
       (declare (integrate list))
-      element-type
-      predicate
+      element-type predicate		;ignore
       (for-each function list))))
-
+
 #|
 (define (set/map new-element-type new-predicate function set)
   (spread-set set
-    (lambda (e p list)
+    (lambda (element-type predicate list)
       (declare (integrate list))
-      e
-      p
+      element-type predicate		;ignore
       (%make-set new-element-type new-predicate
 		 (remove-duplicates
 		  new-predicate
@@ -341,21 +277,20 @@ to figure out what is going on in this code.
 			       (error "Element of wrong type" new-element))))
 		       list))))))
 |#
+
 (define (set/map new-element-type new-predicate function set)
   (spread-set set
-    (lambda (e p l)
+    (lambda (element-type predicate list)
       (declare (integrate list))
-      e
-      p
+      element-type predicate		;ignore
       (%make-set new-element-type new-predicate
-		 (remove-duplicates eq? (map function l))))))
+		 (remove-duplicates eq? (map function list))))))
 
 (define (set/empty? set)
   (spread-set set
     (lambda (element-type predicate list)
       (declare (integrate list))
-      element-type
-      predicate
+      element-type predicate		;ignore
       (null? list))))
 
 (define (interleave l1 l2)
@@ -401,7 +336,6 @@ to figure out what is going on in this code.
 			    (not ((member-procedure pred) l1-element l2)))
 			  l1)))))
 
-(define (any-type? element) element true)
-
-)
-
+(define (any-type? element)
+  element				;ignore
+  true)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/object.scm,v 3.2 1988/03/22 17:37:47 jrm Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/object.scm,v 4.1 1988/06/13 12:29:47 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -34,72 +34,32 @@ MIT in each case. |#
 
 ;;;; SCode Optimizer: Data Types
 
-(declare (usual-integrations))
-(declare (automagic-integrations))
-(declare (open-block-optimizations))
+(declare (usual-integrations)
+	 (automagic-integrations)
+	 (open-block-optimizations))
 
-(let-syntax ()
+(let-syntax
+    ((define-enumerand
+       (macro (name enumeration)
+	 `(DEFINE ,(symbol-append name '/ENUMERAND)
+	    (ENUMERATION/NAME->ENUMERAND
+	     ,(symbol-append 'ENUMERATION/ enumeration)
+	     ',name))))
+     (define-simple-type
+       (macro (name enumeration slots)
+	 `(BEGIN
+	    (DEFINE-ENUMERAND ,name ,enumeration)
+	    (DEFINE-STRUCTURE (,name
+			       (NAMED ,(symbol-append name '/ENUMERAND))
+			       (CONC-NAME ,(symbol-append name '/))
+			       (CONSTRUCTOR ,(symbol-append name '/MAKE)))
+	      ,@slots)))))
 
-(define-syntax define-type
-  (macro (name enumeration slots)
-    (let ((enumerand (symbol-append name '/ENUMERAND)))
-      `(BEGIN
-	 (DEFINE ,enumerand
-	   (ENUMERATION/NAME->ENUMERAND ,(symbol-append 'ENUMERATION/
-							enumeration)
-					',name))
-	 ((ACCESS ADD-UNPARSER-SPECIAL-OBJECT! UNPARSER-PACKAGE) ,enumerand
-	  (LAMBDA (OBJECT)
-	    (UNPARSE-WITH-BRACKETS
-	     (LAMBDA ()
-	       (WRITE ',name)
-	       (WRITE-STRING " ")
-	       (WRITE (HASH OBJECT))))))
-	 (DEFINE ,(symbol-append name '?) (OBJECT/PREDICATE ,enumerand))
-	 ,@(let loop ((slots slots) (index 1))
-	     (if (null? slots)
-		 '()
-		 (let ((slot (car slots)))
-		   (let ((ref-name (symbol-append name '/ slot))
-			 (set-name (symbol-append name '/SET- slot '!)))
-		     `((DECLARE (INTEGRATE-OPERATOR ,ref-name ,set-name))
-		       (DEFINE (,ref-name ,name)
-			 (DECLARE (INTEGRATE ,name))
-			 (VECTOR-REF ,name ,index))
-		       (DEFINE (,set-name ,name ,slot)
-			 (DECLARE (INTEGRATE ,name ,slot))
-			 (VECTOR-SET! ,name ,index ,slot))
-		       ,@(loop (cdr slots) (1+ index)))))))))))
-
-(define-syntax define-simple-type
-  (macro (name enumeration slots)
-    (let ((make-name (symbol-append name '/MAKE)))
-      `(BEGIN (DECLARE (INTEGRATE-OPERATOR ,make-name))
-	      (DEFINE (,make-name ,@slots)
-		(DECLARE (INTEGRATE ,@slots))
-		(OBJECT/ALLOCATE ,(symbol-append name '/ENUMERAND) ,@slots))
-	      (DEFINE-TYPE ,name ,enumeration ,slots)))))
-
-;;;; Objects
-
-(declare (integrate object/allocate)
-	 (integrate-operator object/enumerand object/set-enumerand!))
-
-(define object/allocate vector)
-
-(define (object/enumerand object)
-  (declare (integrate object))
+(define-integrable (object/enumerand object)
   (vector-ref object 0))
 
-(define (object/set-enumerand! object enumerand)
-  (declare (integrate object enumerand))
+(define-integrable (set-object/enumerand! object enumerand)
   (vector-set! object 0 enumerand))
-
-(define (object/predicate enumerand)
-  (lambda (object)
-    (and (vector? object)
-	 (not (zero? (vector-length object)))
-	 (eq? enumerand (vector-ref object 0)))))
 
 ;;;; Enumerations
 
@@ -120,29 +80,16 @@ MIT in each case. |#
 		enumerands)
       enumeration)))
 
-(declare (integrate-operator enumerand/enumeration enumerand/name
-			     enumerand/index enumeration/cardinality
-			     enumeration/index->enumerand
-			     enumeration/name->enumerand))
+(define-structure (enumerand (type vector)
+			     (conc-name enumerand/))
+  (enumeration false read-only true)
+  (name false read-only true)
+  (index false read-only true))
 
-(define (enumerand/enumeration enumerand)
-  (declare (integrate enumerand))
-  (vector-ref enumerand 0))
-
-(define (enumerand/name enumerand)
-  (declare (integrate enumerand))
-  (vector-ref enumerand 1))
-
-(define (enumerand/index enumerand)
-  (declare (integrate enumerand))
-  (vector-ref enumerand 2))
-
-(define (enumeration/cardinality enumeration)
-  (declare (integrate enumeration))
+(define-integrable (enumeration/cardinality enumeration)
   (vector-length (car enumeration)))
 
-(define (enumeration/index->enumerand enumeration index)
-  (declare (integrate enumeration index))
+(define-integrable (enumeration/index->enumerand enumeration index)
   (vector-ref (car enumeration) index))
 
 (define (enumeration/name->enumerand enumeration name)
@@ -161,44 +108,50 @@ MIT in each case. |#
      VARIABLE
      )))
 
-(define-type block random
-  (parent children safe? declarations bound-variables flags))
+(define-enumerand block random)
+(define-structure (block (named block/enumerand)
+			 (conc-name block/)
+			 (constructor %block/make))
+  parent
+  children
+  safe?
+  declarations
+  bound-variables
+  flags)
 
 (define (block/make parent safe?)
   (let ((block
-	 (object/allocate block/enumerand parent '() safe?
-			  (declarations/make-null) '() '())))
+	 (%block/make parent '() safe? (declarations/make-null) '() '())))
     (if parent
-	(block/set-children! parent (cons block (block/children parent))))
+	(set-block/children! parent (cons block (block/children parent))))
     block))
 
-(define-type delayed-integration random
-  (state environment operations value))
-
-(declare (integrate-operator delayed-integration/make))
-
-(define (delayed-integration/make operations expression)
-  (declare (integrate operations expression))
-  (object/allocate delayed-integration/enumerand 'NOT-INTEGRATED false
-		   operations expression))
+(define-enumerand delayed-integration random)
+(define-structure (delayed-integration
+		   (named delayed-integration/enumerand)
+		   (conc-name delayed-integration/)
+		   (constructor delayed-integration/make (operations value)))
+  (state 'NOT-INTEGRATED)
+  (environment false)
+  operations
+  value)
 
 (define-simple-type variable random
   (block name flags))
 
 (define (variable/make&bind! block name)
   (let ((variable (variable/make block name '())))
-    (block/set-bound-variables! block
+    (set-block/bound-variables! block
 				(cons variable
 				      (block/bound-variables block)))
     variable))
 
-(define (variable/flag? variable flag)
+(define-integrable (variable/flag? variable flag)
   (memq flag (variable/flags variable)))
 
-(define (variable/set-flag! variable flag)
-  (declare (integrate variable/flag))
+(define (set-variable/flag! variable flag)
   (if (not (variable/flag? variable flag))
-      (variable/set-flags! variable
+      (set-variable/flags! variable
 			   (cons flag (variable/flags variable)))))
 
 (let-syntax ((define-flag
@@ -207,7 +160,7 @@ MIT in each case. |#
 		    (DEFINE (,tester VARIABLE)
 		      (VARIABLE/FLAG? VARIABLE (QUOTE ,name)))
 		    (DEFINE (,setter VARIABLE)
-		      (VARIABLE/SET-FLAG! VARIABLE (QUOTE ,name)))))))
+		      (SET-VARIABLE/FLAG! VARIABLE (QUOTE ,name)))))))
 
   (define-flag SIDE-EFFECTED variable/side-effected variable/side-effect!)
   (define-flag REFERENCED    variable/referenced    variable/reference!)
@@ -250,15 +203,11 @@ MIT in each case. |#
 		 (enumeration/name->index enumeration/expression type-name)
 		 method)))
 
-(declare (integrate-operator expression/method name->method))
-
-(define (expression/method dispatch-vector expression)
-  (declare (integrate dispatch-vector expression))
+(define-integrable (expression/method dispatch-vector expression)
   (vector-ref dispatch-vector (enumerand/index (object/enumerand expression))))
 
-(define (name->method dispatch-vector name)
+(define-integrable (name->method dispatch-vector name)
   ;; Useful for debugging
-  (declare (integrate dispatch-vector name))
   (vector-ref dispatch-vector
 	      (enumeration/name->index enumeration/expression name)))
 
@@ -282,3 +231,15 @@ MIT in each case. |#
 
 ;;; end LET-SYNTAX
 )
+
+(define-integrable (constant->integration-info constant)
+  (make-integration-info (constant/make constant) '()))
+
+(define-integrable (make-integration-info expression uninterned-variables)
+  (cons expression uninterned-variables))
+
+(define-integrable (integration-info/expression integration-info)
+  (car integration-info))
+
+(define-integrable (integration-info/uninterned-variables integration-info)
+  (cdr integration-info))

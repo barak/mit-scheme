@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 3.8 1988/05/11 04:18:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 4.1 1988/06/13 12:29:54 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -38,36 +38,35 @@ MIT in each case. |#
 	 (open-block-optimizations)
 	 (automagic-integrations)
 	 (eta-substitution)
-	 (integrate-external "object" "mvalue"))
+	 (integrate-external "object"))
 
 (define (declarations/make-null)
   (declarations/make '() '() '()))
 
 (define (declarations/parse block declarations)
-  (transmit-values
-      (accumulate
-       (lambda (declaration bindings)
-	 (let ((association (assq (car declaration) known-declarations)))
-	   (if (not association)
-	       bindings
-	       (transmit-values (cdr association)
-		 (lambda (before-bindings? parser)
-		   (let ((block
-			  (if before-bindings?
-			      (let ((block (block/parent block)))
-				(if (block/parent block)
-				    (warn "Declaration not at top level"
-					  declaration))
-				block)
-			      block)))
-		     (parser block
-			     (bindings/cons block before-bindings?)
-			     bindings
-			     (cdr declaration))))))))
-       (return-2 '() '())
-       declarations)
-    (lambda (before after)
-      (declarations/make declarations before after))))
+  (let ((bindings
+	 (accumulate
+	  (lambda (bindings declaration)
+	    (let ((association (assq (car declaration) known-declarations)))
+	      (if (not association)
+		  bindings
+		  (let ((before-bindings? (car (cdr association)))
+			(parser (cdr (cdr association))))
+		    (let ((block
+			   (if before-bindings?
+			       (let ((block (block/parent block)))
+				 (if (block/parent block)
+				     (warn "Declaration not at top level"
+					   declaration))
+				 block)
+			       block)))
+		      (parser block
+			      (bindings/cons block before-bindings?)
+			      bindings
+			      (cdr declaration)))))))
+	  (cons '() '())
+	  declarations)))
+    (declarations/make declarations (car bindings) (cdr bindings))))
 
 (define (bindings/cons block before-bindings?)
   (lambda (bindings global? operation export? names values)
@@ -77,29 +76,21 @@ MIT in each case. |#
 			     names
 			     (block/lookup-names block names true))
 			 values)))
-      (transmit-values bindings
-	(lambda (before after)
-	  (if before-bindings?
-	      (return-2 (cons result before) after)
-	      (return-2 before (cons result after))))))))
+      (if before-bindings?
+	  (cons (cons result (car bindings)) (cdr bindings))
+	  (cons (car bindings) (cons result (cdr bindings)))))))
 
-(declare (integrate-operator bind/general bind/values bind/no-values))
-
-(define (bind/general table/cons table global? operation export? names values)
-  (declare (integrate table/cons table global? operation export? names values))
+(define-integrable (bind/general table/cons table global? operation export?
+				 names values)
   (table/cons table global? operation export? names values))
 
-(define (bind/values table/cons table operation export? names values)
-  (declare (integrate table/cons table operation export? names values))
+(define-integrable (bind/values table/cons table operation export? names
+				values)
   (table/cons table (not export?) operation export? names values))
 
-(define (bind/no-values table/cons table operation export? names)
-  (declare (integrate table/cons table operation export? names))
+(define-integrable (bind/no-values table/cons table operation export? names)
   (table/cons table false operation export? names 'NO-VALUES))
 
-(define (declarations/known? declaration)
-  (assq (car declaration) known-declarations))
-
 ;; before-bindings? should be true if binding <name> should nullify
 ;; the declaration.  It should be false if a binding and the
 ;; declaration can "coexist".
@@ -107,10 +98,13 @@ MIT in each case. |#
 (define (define-declaration name before-bindings? parser)
   (let ((entry (assq name known-declarations)))
     (if entry
-	(set-cdr! entry (return-2 before-bindings? parser))
+	(set-cdr! entry (cons before-bindings? parser))
 	(set! known-declarations
-	      (cons (cons name (return-2 before-bindings? parser))
+	      (cons (cons name (cons before-bindings? parser))
 		    known-declarations)))))
+
+(define-integrable (declarations/known? declaration)
+  (assq (car declaration) known-declarations))
 
 (define known-declarations
   '())
@@ -119,13 +113,13 @@ MIT in each case. |#
   (let loop ((table table) (items items))
     (if (null? items)
 	table
-	(loop (cons (car items) table) (cdr items)))))
+	(loop (cons table (car items)) (cdr items)))))
 
 (define (declarations/binders declarations)
   (let ((procedure
 	 (lambda (bindings)
 	   (lambda (operations)
-	     (accumulate (lambda (binding operations)
+	     (accumulate (lambda (operations binding)
 			   ((if (binding/global? binding)
 				operations/bind-global
 				operations/bind)
@@ -136,8 +130,8 @@ MIT in each case. |#
 			    (binding/values binding)))
 			 operations
 			 bindings)))))
-    (return-2 (procedure (declarations/before declarations))
-	      (procedure (declarations/after declarations)))))
+    (values (procedure (declarations/before declarations))
+	    (procedure (declarations/after declarations)))))
 
 (define (declarations/for-each-variable declarations procedure)
   (declarations/for-each-binding declarations
@@ -175,74 +169,49 @@ MIT in each case. |#
 		(list-copy (binding/names binding))
 		'()))
 	  (declarations/after declarations)))
-
-(declare (integrate-operator declarations/make declarations/original
-			     declarations/before declarations/after))
 
-(define (declarations/make original before after)
-  (declare (integrate original before after))
-  (vector original before after))
+(define-structure (declarations
+		   (type vector)
+		   (constructor declarations/make)
+		   (conc-name declarations/))
+  (original false read-only true)
+  (before false read-only true)
+  (after false read-only true))
 
-(define (declarations/original declarations)
-  (declare (integrate declarations))
-  (vector-ref declarations 0))
-
-(define (declarations/before declarations)
-  (declare (integrate declarations))
-  (vector-ref declarations 1))
-
-(define (declarations/after declarations)
-  (declare (integrate declarations))
-  (vector-ref declarations 2))
-
-(declare (integrate-operator binding/make binding/global? binding/operation
-			     binding/export? binding/names binding/values))
-
-(define (binding/make global? operation export? names values)
-  (declare (integrate global? operation export? names values))
-  (vector global? operation export? names values))
-
-(define (binding/global? binding)
-  (declare (integrate binding))
-  (vector-ref binding 0))
-
-(define (binding/operation binding)
-  (declare (integrate binding))
-  (vector-ref binding 1))
-
-(define (binding/export? binding)
-  (declare (integrate binding))
-  (vector-ref binding 2))
-
-(define (binding/names binding)
-  (declare (integrate binding))
-  (vector-ref binding 3))
-
-(define (binding/values binding)
-  (declare (integrate binding))
-  (vector-ref binding 4))
+(define-structure (binding
+		   (type vector)
+		   (constructor binding/make)
+		   (conc-name binding/))
+  (global? false read-only true)
+  (operation false read-only true)
+  (export? false read-only true)
+  (names false read-only true)
+  (values false read-only true))
 
 ;;;; Integration of System Constants
 
 (define-declaration 'USUAL-INTEGRATIONS true
   (lambda (block table/cons table deletions)
-    block ; ignored
+    block				;ignored
     (let ((finish
-	   (lambda (table operation names values)
-	     (transmit-values
-		 (if (null? deletions)
-		     (return-2 names values)
-		     (let deletion-loop ((names names) (values values))
-		       (cond ((null? names) (return-2 '() '()))
-			     ((memq (car names) deletions)
-			      (deletion-loop (cdr names) (cdr values)))
-			     (else
-			      (cons-multiple
-			       (return-2 (car names) (car values))
-			       (deletion-loop (cdr names) (cdr values)))))))
-	       (lambda (names values)
-		 (bind/values table/cons table operation false names
-			      values))))))
+	   (lambda (table operation names vals)
+	     (with-values
+		 (lambda ()
+		   (if (null? deletions)
+		       (values names vals)
+		       (let deletion-loop ((names names) (vals vals))
+			 (cond ((null? names) (values '() '()))
+			       ((memq (car names) deletions)
+				(deletion-loop (cdr names) (cdr vals)))
+			       (else
+				(with-values
+				    (lambda ()
+				      (deletion-loop (cdr names) (cdr vals)))
+				  (lambda (names* vals*)
+				    (values (cons (car names) names*)
+					    (cons (car vals) vals*)))))))))
+	       (lambda (names vals)
+		 (bind/values table/cons table operation false names vals))))))
       (finish (finish table 'INTEGRATE
 		      usual-integrations/constant-names
 		      usual-integrations/constant-values)
@@ -252,24 +221,29 @@ MIT in each case. |#
 
 (define-declaration 'INTEGRATE-PRIMITIVE-PROCEDURES false
   (lambda (block table/cons table specifications)
-    (transmit-values
-	(let loop ((specifications specifications))
-	  (if (null? specifications)
-	      (return-2 '() '())
-	      (cons-multiple (parse-primitive-specification
-			      block
-			      (car specifications))
-			     (loop (cdr specifications)))))
-      (lambda (names values)
-	(bind/values table/cons table 'INTEGRATE true names values)))))
+    (with-values
+	(lambda ()
+	  (let loop ((specifications specifications))
+	    (if (null? specifications)
+		(values '() '())
+		(with-values (lambda () (loop (cdr specifications)))
+		  (lambda (names vals)
+		    (with-values
+			(lambda ()
+			  (parse-primitive-specification block
+							 (car specifications)))
+		      (lambda (name value)
+			(values (cons name names) (cons value vals)))))))))
+      (lambda (names vals)
+	(bind/values table/cons table 'INTEGRATE true names vals)))))
 
 (define (parse-primitive-specification block specification)
-  block ; ignored
+  block					;ignored
   (let ((finish
 	 (lambda (variable-name primitive-name)
-	   (return-2 variable-name
-		     (constant->integration-info
-		      (make-primitive-procedure primitive-name))))))
+	   (values variable-name
+		   (constant->integration-info
+		    (make-primitive-procedure primitive-name))))))
     (cond ((and (pair? specification)
 		(symbol? (car specification))
 		(pair? (cdr specification))
@@ -280,80 +254,39 @@ MIT in each case. |#
 	  (else (error "Bad primitive specification" specification)))))
 
 ;;; Special declarations courtesy JRM
+;;; I return the operations table unmodified, but bash on the
+;;; block.  This actually works pretty well.
 
-;; I return the operations table unmodified, but bash on the
-;; block.  This actually works pretty well.
-
-;; One problem here with this multiple values hack is that
-;; table is a multiple value -- yuck!
-
-(define-declaration 'AUTOMAGIC-INTEGRATIONS false
-  (lambda (block table/cons table names)
-    table/cons
-    names
-    (block/set-flags! block 
-		      (cons 'AUTOMAGIC-INTEGRATIONS (block/flags block)))
-    table))
-
-(define-declaration 'ETA-SUBSTITUTION false
-  (lambda (block table/cons table names)
-    table/cons
-    names
-    (block/set-flags! block
-		      (cons 'ETA-SUBSTITUTION (block/flags block)))
-    table))
-
-(define-declaration 'OPEN-BLOCK-OPTIMIZATIONS false
-  (lambda (block table/cons table names)
-    table/cons
-    names
-    (block/set-flags! block
-		      (cons 'OPEN-BLOCK-OPTIMIZATIONS (block/flags block)))
-    table))
-
-(define-declaration 'NO-AUTOMAGIC-INTEGRATIONS false
-  (lambda (block table/cons table names)
-    table/cons
-    names
-    (block/set-flags! block 
-		      (cons 'NO-AUTOMAGIC-INTEGRATIONS (block/flags block)))
-    table))
-
-(define-declaration 'NO-ETA-SUBSTITUTION false
-  (lambda (block table/cons table names)
-    table/cons
-    names
-    (block/set-flags! block
-		      (cons 'NO-ETA-SUBSTITUTION (block/flags block)))
-    table))
-
-(define-declaration 'NO-OPEN-BLOCK-OPTIMIZATIONS false
-  (lambda (block table/cons table names)
-    table/cons
-    names
-    (block/set-flags! block
-		      (cons 'NO-OPEN-BLOCK-OPTIMIZATIONS 
-			    (block/flags block)))
-    table))
-
+(for-each (lambda (flag)
+	    (define-declaration flag false
+	      (lambda (block table/cons table names)
+		table/cons names			;ignore
+		(set-block/flags! block (cons flag (block/flags block)))
+		table)))
+	  '(AUTOMAGIC-INTEGRATIONS
+	    ETA-SUBSTITUTION
+	    OPEN-BLOCK-OPTIMIZATIONS
+	    NO-AUTOMAGIC-INTEGRATIONS
+	    NO-ETA-SUBSTITUTION
+	    NO-OPEN-BLOCK-OPTIMIZATIONS))
 
 ;;;; Integration of User Code
 
 (define-declaration 'INTEGRATE false
   (lambda (block table/cons table names)
-    block ; ignored
+    block				;ignored
     (bind/no-values table/cons table 'INTEGRATE true names)))
 
 (define-declaration 'INTEGRATE-OPERATOR false
   (lambda (block table/cons table names)
-    block ; ignored
+    block				;ignored
     (bind/no-values table/cons table 'INTEGRATE-OPERATOR true names)))
 
 (define-declaration 'INTEGRATE-EXTERNAL true
   (lambda (block table/cons table specifications)
-    block ; ignored
+    block				;ignored
     (accumulate
-     (lambda (extern table)
+     (lambda (table extern)
        (bind/values table/cons table (vector-ref extern 1) false
 		    (list (vector-ref extern 0))
 		    (list
@@ -366,7 +299,7 @@ MIT in each case. |#
 (define (specification->pathnames specification)
   (let ((value
 	 (scode-eval (syntax specification system-global-syntax-table)
-		     (access syntax-environment syntaxer-package))))
+		     syntaxer/default-environment)))
     (if (pair? value)
 	(map ->pathname value)
 	(list (->pathname value)))))
@@ -377,17 +310,14 @@ MIT in each case. |#
       (let ((finish
 	     (lambda (value)
 	       (if-ok
-		(transmit-values (copy/expression/extern value)
+		(with-values (lambda () (copy/expression/extern value))
 		  (lambda (block expression)
 		    (vector (variable/name variable)
 			    operation
 			    block
 			    expression)))))))
 	(if info
-	    (transmit-values info
-	      (lambda (value uninterned)
-		uninterned ; ignored
-		(finish value)))
+	    (finish (integration-info/expression info))
 	    (variable/final-value variable environment finish if-not))))))
 
 ;;;; User provided reductions and expansions
@@ -396,7 +326,7 @@ MIT in each case. |#
 
 (define-declaration 'REDUCE-OPERATOR false
   (lambda (block table/cons table reduction-rules)
-    block ; ignored
+    block				;ignored
     ;; Maybe it wants to be exported?
     (bind/general table/cons table false 'EXPAND false
 		  (map car reduction-rules)
@@ -404,17 +334,13 @@ MIT in each case. |#
 			 (reducer/make rule block))
 		       reduction-rules))))
 
-;; Expansions.  These should be used with great care, and require
-;; knowing a fair amount about the internals of sf.  This declaration
-;; is purely a hook, with no convenience.
-
-(define expander-evaluation-environment
-  (access package/expansion
-	  package/scode-optimizer))
+;;; Expansions.  These should be used with great care, and require
+;;; knowing a fair amount about the internals of sf.  This declaration
+;;; is purely a hook, with no convenience.
 
 (define-declaration 'EXPAND-OPERATOR true
   (lambda (block table/cons table expanders)
-    block ; ignored
+    block				;ignored
     (bind/general table/cons table false 'EXPAND false
 		  (map car expanders)
 		  (map (lambda (expander)

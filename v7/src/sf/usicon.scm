@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usicon.scm,v 3.4 1988/04/23 08:52:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usicon.scm,v 4.1 1988/06/13 12:30:46 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -35,7 +35,7 @@ MIT in each case. |#
 ;;;; SCode Optimizer: Usual Integrations: Constants
 
 (declare (usual-integrations)
-	 (integrate-external "object" "mvalue"))
+	 (integrate-external "object"))
 
 (define usual-integrations/constant-names)
 (define usual-integrations/constant-values)
@@ -63,9 +63,3 @@ MIT in each case. |#
 		      (lexical-reference system-global-environment name))))
 	     usual-integrations/constant-names))
   'DONE)
-
-(declare (integrate-operator constant->integration-info))
-
-(define (constant->integration-info constant)
-  (declare (integrate constant))
-  (return-2 (constant/make constant) '()))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 3.8 1988/04/23 08:55:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 4.1 1988/06/13 12:30:56 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -38,7 +38,7 @@ MIT in each case. |#
 	 (eta-substitution)
 	 (automagic-integrations)
 	 (open-block-optimizations)
-	 (integrate-external "object" "mvalue"))
+	 (integrate-external "object"))
 
 ;;; GLOBAL-BLOCK is used to handle (USUAL-INTEGRATIONS), as follows.
 ;;; This declaration refers to a large group of names, which are
@@ -59,7 +59,7 @@ MIT in each case. |#
 (define (transform/top-level expression)
   (fluid-let ((try-deep-lookup? false))
     (let ((block (block/make (block/make false false) false)))
-      (return-2 block (transform/top-level-1 true block block expression)))))
+      (values block (transform/top-level-1 true block block expression)))))
 
 (define (transform/recursive block top-level-block expression)
   (fluid-let ((try-deep-lookup? true))
@@ -76,7 +76,8 @@ MIT in each case. |#
       (cond ((not (scode-open-block? expression))
 	     (transform/expression block environment expression))
 	    ((not top-level?)
-	     (error "transform/top-level-1: open blocks disallowed" expression))
+	     (error "TRANSFORM/TOP-LEVEL-1: open blocks disallowed"
+		    expression))
 	    (else
 	     (open-block-components expression
 	       (transform/open-block* block environment)))))))
@@ -89,7 +90,7 @@ MIT in each case. |#
 (declare (integrate-operator transform/expression))
 
 (define (transform/expression block environment expression)
-  ((transform/dispatch expression) block environment expression))
+  ((scode-walk transform/dispatch expression) block environment expression))
 
 (define global-block)
 
@@ -116,15 +117,15 @@ MIT in each case. |#
 (define ((transform/open-block* block environment) auxiliary declarations body)
   (let ((variables (map (lambda (name) (variable/make block name '()))
 			auxiliary)))
-    (block/set-bound-variables! block
+    (set-block/bound-variables! block
 				(append (block/bound-variables block)
 					variables))
-    (block/set-declarations! block (declarations/parse block declarations))
+    (set-block/declarations! block (declarations/parse block declarations))
     (let ((environment (environment/bind environment variables)))
 
       (define (loop variables actions)
 	(cond ((null? variables)
-	       (return-2 '() (map transform actions)))
+	       (values '() (map transform actions)))
 	      ((null? actions)
 	       (error "Extraneous auxiliaries" variables))
 
@@ -135,27 +136,28 @@ MIT in each case. |#
 	      ((and (scode-assignment? (car actions))
 		    (eq? (assignment-name (car actions))
 			 (variable/name (car variables))))
-	       (transmit-values (loop (cdr variables) (cdr actions))
-		 (lambda (values actions*)
-		   (return-2
-		    (cons (transform (assignment-value (car actions))) values)
+	       (with-values (lambda () (loop (cdr variables) (cdr actions)))
+		 (lambda (vals actions*)
+		   (values
+		    (cons (transform (assignment-value (car actions))) vals)
 		    (cons open-block/value-marker actions*)))))
 	      (else
-	       (transmit-values (loop variables (cdr actions))
-		 (lambda (values actions*)
-		   (return-2 values
-			     (cons (transform (car actions)) actions*)))))))
+	       (with-values (lambda () (loop variables (cdr actions)))
+		 (lambda (vals actions*)
+		   (values vals (cons (transform (car actions)) actions*)))))))
 
-      (define (transform subexpression)
+      (define-integrable (transform subexpression)
 	(transform/expression block environment subexpression))
 
-      (transmit-values (loop variables (sequence-actions body))
-	(lambda (values actions)
-	  (open-block/make block variables values actions #f))))))
+      (with-values (lambda () (loop variables (sequence-actions body)))
+	(lambda (vals actions)
+	  (open-block/make block variables vals actions false))))))
 
 (define (transform/variable block environment expression)
   (reference/make block
-		  (environment/lookup block environment (variable-name expression))))
+		  (environment/lookup block
+				      environment
+				      (variable-name expression))))
 
 (define (transform/assignment block environment expression)
   (assignment-components expression
@@ -170,16 +172,17 @@ MIT in each case. |#
   (lambda-components* expression
     (lambda (name required optional rest body)
       (let ((block (block/make block true)))
-	(transmit-values
-	    (let ((name->variable 
-		   (lambda (name) (variable/make block name '()))))
-	      (return-3 (map name->variable required)
+	(with-values
+	    (lambda ()
+	      (let ((name->variable 
+		     (lambda (name) (variable/make block name '()))))
+		(values (map name->variable required)
 			(map name->variable optional)
-			(and rest (name->variable rest))))
+			(and rest (name->variable rest)))))
 	  (lambda (required optional rest)
 	    (let* ((bound `(,@required ,@optional ,@(if rest `(,rest) '())))
 		   (environment (environment/bind environment bound)))
-	      (block/set-bound-variables! block bound)
+	      (set-block/bound-variables! block bound)
 	      (procedure/make
 	       block name required optional rest
 	       (transform/procedure-body block
@@ -191,7 +194,7 @@ MIT in each case. |#
       (open-block-components expression
 	(lambda (auxiliary declarations body)
 	  (if (null? auxiliary)
-	      (begin (block/set-declarations!
+	      (begin (set-block/declarations!
 		      block
 		      (declarations/parse block declarations))
 		     (transform/expression block environment body))
@@ -265,11 +268,11 @@ MIT in each case. |#
 		       (transform/quotation* expression)))))
 
 (define (transform/quotation block environment expression)
-  block environment ;ignored
+  block environment			;ignored
   (transform/quotation* (quotation-expression expression)))
 
 (define (transform/quotation* expression)
-  (transmit-values (transform/top-level expression)
+  (with-values (lambda () (transform/top-level expression))
     quotation/make))
 
 (define (transform/sequence block environment expression)
@@ -282,22 +285,22 @@ MIT in each case. |#
   (the-environment/make block))
 
 (define transform/dispatch
-  (make-type-dispatcher
-   `((,access-type ,transform/access)
-     (,assignment-type ,transform/assignment)
-     (,combination-type ,transform/combination)
-     (,comment-type ,transform/comment)
-     (,conditional-type ,transform/conditional)
-     (,declaration-type ,transform/declaration)
-     (,definition-type ,transform/definition)
-     (,delay-type ,transform/delay)
-     (,disjunction-type ,transform/disjunction)
-     (,error-combination-type ,transform/error-combination)
-     (,in-package-type ,transform/in-package)
-     (,lambda-type ,transform/lambda)
-     (,open-block-type ,transform/open-block)
-     (,quotation-type ,transform/quotation)
-     (,sequence-type ,transform/sequence)
-     (,the-environment-type ,transform/the-environment)
-     (,variable-type ,transform/variable))
-   transform/constant))
+  (make-scode-walker
+   transform/constant
+   `((ACCESS ,transform/access)
+     (ASSIGNMENT ,transform/assignment)
+     (COMBINATION ,transform/combination)
+     (COMMENT ,transform/comment)
+     (CONDITIONAL ,transform/conditional)
+     (DECLARATION ,transform/declaration)
+     (DEFINITION ,transform/definition)
+     (DELAY ,transform/delay)
+     (DISJUNCTION ,transform/disjunction)
+     (ERROR-COMBINATION ,transform/error-combination)
+     (IN-PACKAGE ,transform/in-package)
+     (LAMBDA ,transform/lambda)
+     (OPEN-BLOCK ,transform/open-block)
+     (QUOTATION ,transform/quotation)
+     (SEQUENCE ,transform/sequence)
+     (THE-ENVIRONMENT ,transform/the-environment)
+     (VARIABLE ,transform/variable))))

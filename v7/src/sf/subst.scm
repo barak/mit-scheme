@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 3.10 1988/05/11 04:19:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 4.1 1988/06/13 12:30:15 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -37,19 +37,15 @@ MIT in each case. |#
 (declare (usual-integrations)
 	 (eta-substitution)
 	 (open-block-optimizations)
-	 (integrate-external "object" "mvalue" "lsets"))
+	 (integrate-external "object" "lsets"))
 
-
-(using-syntax sf-syntax-table
-
 (define *top-level-block*)
 
 (define (integrate/get-top-level-block)
   *top-level-block*)
 
-;; Block names are added to this list so
-;; warnings can be more descriptive.
-
+;;; Block names are added to this list so warnings can be more
+;;; descriptive.
 (define *current-block-names*)
 
 (define (integrate/top-level block expression)
@@ -57,34 +53,36 @@ MIT in each case. |#
 	      (*current-block-names* '()))
     (process-block-flags (block/flags block)
       (lambda ()
-	(let ((operations  (operations/bind-block (operations/make) block))
+	(let ((operations (operations/bind-block (operations/make) block))
 	      (environment (environment/make)))
 	  (if (open-block? expression)
-	      (transmit-values
-	       (environment/recursive-bind operations environment
-					   (open-block/variables expression)
-					   (open-block/values expression))
-	       (lambda (environment values)
-		 (return-3 operations
-			   environment
-			   (quotation/make block
-					   (integrate/open-block operations
-								 environment
-								 expression
-								 values)))))
-	      (return-3 operations
-			environment
-			(quotation/make block
-					(integrate/expression operations
-							      environment
-							      expression)))
+	      (with-values
+		  (lambda ()
+		    (environment/recursive-bind
+		     operations environment
+		     (open-block/variables expression)
+		     (open-block/values expression)))
+	       (lambda (environment vals)
+		 (values operations
+			 environment
+			 (quotation/make block
+					 (integrate/open-block operations
+							       environment
+							       expression
+							       vals)))))
+	      (values operations
+		      environment
+		      (quotation/make block
+				      (integrate/expression operations
+							    environment
+							    expression)))
 	      ))))))
 
 (define (operations/bind-block operations block)
   (let ((declarations (block/declarations block)))
     (if (null? declarations)
 	(operations/shadow operations (block/bound-variables block))
-	(transmit-values (declarations/binders declarations)
+	(with-values (lambda () (declarations/binders declarations))
 	  (lambda (before-bindings after-bindings)
 	    (after-bindings
 	     (operations/shadow (before-bindings operations)
@@ -115,15 +113,15 @@ MIT in each case. |#
       (operations/lookup operations variable
         (lambda (operation info)
 	  (case operation
-	    ((INTEGRATE-OPERATOR EXPAND) 
-	     (variable/reference!  variable) 
+	    ((INTEGRATE-OPERATOR EXPAND)
+	     (variable/reference! variable)
 	     expression)
 	    ((INTEGRATE)
 	     (integrate/name expression info environment
 			     (lambda (new-expression)
 			       (variable/integrated! variable)
 			       new-expression)
-			     (lambda () 
+			     (lambda ()
 			       (variable/reference! variable)
 			       expression)))
 	    (else (error "Unknown operation" operation))))
@@ -148,8 +146,9 @@ MIT in each case. |#
 	       (lambda (value)
 		 (if (constant-value? value)
 		     (if-win
-		      (copy/expression (reference/block reference) value
-				       #f))
+		      (copy/expression/intern (reference/block reference)
+					      value
+					      #f))
 		     (if-fail)))))
 	  (environment/lookup environment variable
             (lambda (value)
@@ -166,7 +165,7 @@ MIT in each case. |#
       (and (reference? value)
 	   (not (variable/side-effected (reference/variable value)))
 	   (block/safe? (variable/block (reference/variable value))))))
-
+
 (define (integrate/reference-operator operations environment operator operands)
   (let ((variable (reference/variable operator)))
     (let ((dont-integrate
@@ -214,7 +213,7 @@ MIT in each case. |#
     (let ((variable (assignment/variable assignment)))
       (operations/lookup operations variable
 	(lambda (operation info)
-	  info
+	  info				;ignore
 	  (case operation
 	    ((INTEGRATE INTEGRATE-OPERATOR EXPAND)
 	     (warn "Attempt to assign integrated name"
@@ -238,16 +237,15 @@ MIT in each case. |#
 	   (operations/bind-block operations (open-block/block expression))))
       (process-block-flags (block/flags (open-block/block expression))
         (lambda ()
-	  (transmit-values
-	   (environment/recursive-bind operations
-				       environment
-				       (open-block/variables expression)
-				       (open-block/values expression))
-	   (lambda (environment values)
-	     (integrate/open-block operations
-				   environment
-				   expression
-				   values))))))))
+	  (with-values
+	      (lambda ()
+		(environment/recursive-bind operations
+					    environment
+					    (open-block/variables expression)
+					    (open-block/values expression)))
+	   (lambda (environment vals)
+	     (integrate/open-block operations environment expression
+				   vals))))))))
 
 (define (process-block-flags flags continuation)
   (if (null? flags)
@@ -275,30 +273,22 @@ MIT in each case. |#
 	  (else (error "Bad flag"))))))
 
 (define (integrate/open-block operations environment expression values)
-  (let ((actions (map (lambda (action)
-		     (if (eq? action open-block/value-marker)
-			 action
-			 (integrate/expression operations environment action)))
-		   (open-block/actions expression)))
+  (let ((actions
+	 (integrate/actions operations environment
+			    (open-block/actions expression)))
 	(vars (open-block/variables expression)))
     ;; Complain about unreferenced variables.
     ;; If the block is unsafe, then it is likely that
     ;; there will be a lot of them on purpose (top level or
     ;; the-environment) so no complaining.
     (if (block/safe? (open-block/block expression))
-	(for-each (lambda (var)
-		    (if (and (not (variable/integrated var))
-			     (not (variable/referenced var))
-			     (not (variable/can-ignore? var)))
+	(for-each (lambda (variable)
+		    (if (variable/unreferenced? variable)
 			(warn "Unreferenced defined variable:"
-			      (variable/name var))))
+			      (variable/name variable))))
 		  vars))
     (if (open-block/optimized expression)
-	(open-block/make (open-block/block expression)
-			 vars
-			 values
-			 actions
-			 #t)
+	(open-block/make (open-block/block expression) vars values actions #t)
 	(open-block/optimizing-make (open-block/block expression)
 				    vars
 				    values
@@ -306,9 +296,19 @@ MIT in each case. |#
 				    operations
 				    environment))))
 
-;; Cannot optimize (lambda () (bar)) => bar (eta substitution) 
-;; because BAR may be a procedure with different
-;; arity than the lambda
+(define (variable/unreferenced? variable)
+  (and (not (variable/integrated variable))
+       (not (variable/referenced variable))
+       (not (variable/can-ignore? variable))))
+
+(define-method/integrate 'PROCEDURE
+  (lambda (operations environment procedure)
+    (integrate/procedure operations
+			 (simulate-unknown-application environment procedure)
+			 procedure)))
+
+;; Cannot optimize (lambda () (bar)) => bar (eta substitution) because
+;; BAR may be a procedure with different arity than the lambda
 
 #| You can get some weird stuff with this
 
@@ -333,9 +333,8 @@ you ask for.
 
 |#
 
-
-(define *eta-substitution-switch #f)
-
+(define *eta-substitution-switch #F)
+
 (define (integrate/procedure operations environment procedure)
   (let ((block    (procedure/block    procedure))
 	(required (procedure/required procedure))
@@ -354,9 +353,7 @@ you ask for.
 	    ;; referenced.
 	    (if (block/safe? block)
 		(for-each (lambda (variable)
-			    (if (and (not (variable/referenced variable))
-				     (not (variable/integrated variable))
-				     (not (variable/can-ignore? variable)))
+			    (if (variable/unreferenced? variable)
 				(warn "Unreferenced bound variable:"
 				      (variable/name variable)
 				      *current-block-names*)))
@@ -369,8 +366,8 @@ you ask for.
 		     (null? rest)
 		     (let ((operands (combination/operands body)))
 		       (match-up? operands required))
-		     (set/empty? 
-		      (set/intersection 
+		     (set/empty?
+		      (set/intersection
 		       (list->set variable? eq? required)
 		       (free/expression (combination/operator body)))))
 		(combination/operator body)
@@ -389,13 +386,6 @@ you ask for.
 		(and (reference? this-operand)
 		     (eq? (reference/variable this-operand) this-required)
 		     (match-up? (cdr operands) (cdr required)))))))
-
-
-(define-method/integrate 'PROCEDURE
-  (lambda (operations environment procedure)
-    (integrate/procedure operations
-			 (simulate-unknown-application environment procedure)
-			 procedure)))
 
 
 (define-method/integrate 'COMBINATION
@@ -445,7 +435,7 @@ you ask for.
     (let ((declarations (declaration/declarations declaration)))
       (declaration/make
        declarations
-       (transmit-values (declarations/binders declarations)
+       (with-values (lambda () (declarations/binders declarations))
 	 (lambda (before-bindings after-bindings)
 	   (integrate/expression (after-bindings (before-bindings operations))
 				 environment
@@ -481,7 +471,7 @@ you ask for.
 	  (consequent (integrate/expression
 		       operations environment
 		       (conditional/consequent expression)))
-	  (alternative (integrate/expression 
+	  (alternative (integrate/expression
 			operations environment
 			(conditional/alternative expression))))
       (if (constant? predicate)
@@ -505,46 +495,59 @@ you ask for.
 	      predicate)
 	  (disjunction/make predicate alternative)))))
 
-
-;; Optimize (begin (foo)) => (foo)
-;; Optimize (begin a b (foo) 22 (bar)) => (begin (foo) (bar))
-
 (define-method/integrate 'SEQUENCE
   (lambda (operations environment expression)
+    ;; Optimize (begin (foo)) => (foo)
+    ;; Optimize (begin a b (foo) 22 (bar)) => (begin (foo) (bar))
     (sequence/optimizing-make
-     (integrate/expressions operations environment
-			    (sequence/actions expression)))))
+     (integrate/actions operations environment
+			(sequence/actions expression)))))
 
-(define (sequence/optimizing-make expression-list)
-  (define (remove-non-side-effecting-expressions expression-list)
-    (cond ((null? (cdr expression-list)) expression-list)
-	  ;; This clause lets you ignore a variable by mentioning it
-	  ;; in a sequence.
-	  ((reference? (car expression-list))
-	   (variable/can-ignore! (reference/variable (car expression-list)))
-	   (remove-non-side-effecting-expressions (cdr expression-list)))
-	  ((non-side-effecting-in-sequence? (car expression-list))
-	   (remove-non-side-effecting-expressions (cdr expression-list)))
-	  (else (cons (car expression-list)
-		      (remove-non-side-effecting-expressions
-		       (cdr expression-list))))))
-  (let ((pruned-elist (remove-non-side-effecting-expressions expression-list)))
-    (if (null? (cdr pruned-elist))
-	(car pruned-elist)
-	(sequence/make pruned-elist))))
+(define (integrate/actions operations environment actions)
+  (let ((action (car actions)))
+    (if (null? (cdr actions))
+	(list (if (eq? action open-block/value-marker)
+		  action
+		  (integrate/expression operations environment action)))
+	(cons (cond ((reference? action)
+		     ;; This clause lets you ignore a variable by
+		     ;; mentioning it in a sequence.
+		     (variable/can-ignore! (reference/variable action))
+		     action)
+		    ((eq? action open-block/value-marker)
+		     action)
+		    (else
+		     (integrate/expression operations environment action)))
+	      (integrate/actions operations environment (cdr actions))))))
 
-;; To do this right, we really need a compiler that knows
-;; about call for effect, call for predicate, etc.
+(define (sequence/optimizing-make actions)
+  (let ((actions (remove-non-side-effecting actions)))
+    (if (null? (cdr actions))
+	(car actions)
+	(sequence/make actions))))
+
+(define (remove-non-side-effecting actions)
+  ;; Do not remove references from sequences, because they have
+  ;; meaning as declarations.  The output code generator will take
+  ;; care of removing them when they are no longer needed.
+  (if (null? (cdr actions))
+      actions
+      (let ((rest (remove-non-side-effecting (cdr actions))))
+	(if (non-side-effecting-in-sequence? (car actions))
+	    rest
+	    (cons (car actions) rest)))))
 
 (define (non-side-effecting-in-sequence? expression)
-  (or (constant?  expression)
+  ;; Compiler does a better job of this because it is smarter about
+  ;; what kinds of expressions can cause side effects.  But this
+  ;; should be adequate to catch most of the simple cases.
+  (or (constant? expression)
       (quotation? expression)
-      (delay?     expression)
+      (delay? expression)
       (procedure? expression)
-      ;; access if the environment is okay to not
-      ;; eval.
-      ))
-
+      (and (access? expression)
+	   (non-side-effecting-in-sequence? (access/environment expression)))))
+
 (define-method/integrate 'ACCESS
   (lambda (operations environment expression)
     (let ((environment* (access/environment expression))
@@ -589,40 +592,42 @@ you ask for.
 		     (integrate/quotation (in-package/quotation expression)))))
 
 (define (integrate/quotation quotation)
-  (transmit-values (integrate/top-level (quotation/block quotation)
-					(quotation/expression quotation))
+  (with-values
+      (lambda ()
+	(integrate/top-level (quotation/block quotation)
+			     (quotation/expression quotation)))
     (lambda (operations environment expression)
-      operations
-      environment
+      operations environment		;ignore
       expression)))
 
 ;;;; Environment
 
-(define (environment/recursive-bind operations environment variables values)
+(define (environment/recursive-bind operations environment variables vals)
   ;; Used to implement mutually-recursive definitions that can
   ;; integrate one another.  When circularities are detected within
   ;; the definition-reference graph, integration is disabled.
-  (let ((values
+  (let ((vals
 	 (map (lambda (value)
 		(delayed-integration/make operations value))
-	      values)))
+	      vals)))
     (let ((environment
-	   (environment/bind-multiple environment variables values)))
+	   (environment/bind-multiple environment variables vals)))
       (for-each (lambda (value)
-		  (delayed-integration/set-environment! value environment))
-		values)
-      (return-2 environment
-		(map delayed-integration/force values)))))
+		  (set-delayed-integration/environment! value environment))
+		vals)
+      (values environment (map delayed-integration/force vals)))))
 
 (define (integrate/name reference info environment if-integrated if-not)
   (let ((variable (reference/variable reference)))
     (let ((finish
 	   (lambda (value uninterned)
 	     (if-integrated
-	      (copy/expression (reference/block reference) value
-			       uninterned)))))
+	      (copy/expression/intern (reference/block reference)
+				      value
+				      uninterned)))))
       (if info
-	  (transmit-values info finish)
+	  (finish (integration-info/expression info)
+		  (integration-info/uninterned-variables info))
 	  (environment/lookup environment variable
 	    (lambda (value)
 	      (if (delayed-integration? value)
@@ -660,7 +665,7 @@ you ask for.
   (define (bind-optional environment optional)
     (if (null? optional)
 	(bind-rest environment (procedure/rest procedure))
-	(bind-optional 
+	(bind-optional
 	 (environment/bind environment (car optional) *unknown-value)
 	 (cdr optional))))
 
@@ -715,14 +720,10 @@ you ask for.
 (define (environment/make)
   '())
 
-(declare (integrate environment/bind environment/bind-multiple))
-
-(define (environment/bind environment variable value)
-  (declare (integrate environment variable value))
+(define-integrable (environment/bind environment variable value)
   (cons (cons variable value) environment))
 
-(define (environment/bind-multiple environment variables values)
-  (declare (integrate environment variables values))
+(define-integrable (environment/bind-multiple environment variables values)
   (map* environment cons variables values))
 
 (define (environment/lookup environment variable if-found if-unknown if-not)
@@ -745,14 +746,14 @@ you ask for.
 		  (operations
 		   (delayed-integration/operations delayed-integration))
 		  (expression (delayed-integration/value delayed-integration)))
-	      (delayed-integration/set-state! delayed-integration
+	      (set-delayed-integration/state! delayed-integration
 					      'BEING-INTEGRATED)
-	      (delayed-integration/set-environment! delayed-integration false)
-	      (delayed-integration/set-operations! delayed-integration false)
-	      (delayed-integration/set-value! delayed-integration false)
+	      (set-delayed-integration/environment! delayed-integration false)
+	      (set-delayed-integration/operations! delayed-integration false)
+	      (set-delayed-integration/value! delayed-integration false)
 	      (integrate/expression operations environment expression))))
-       (delayed-integration/set-state! delayed-integration 'INTEGRATED)
-       (delayed-integration/set-value! delayed-integration value)))
+       (set-delayed-integration/state! delayed-integration 'INTEGRATED)
+       (set-delayed-integration/value! delayed-integration value)))
     ((INTEGRATED) 'DONE)
     ((BEING-INTEGRATED)
      (error "Attempt to re-force delayed integration" delayed-integration))
@@ -812,7 +813,7 @@ forms are simply removed.
   (and (constant? operator)
        (primitive-procedure? (constant/value operator))
        (memq (constant/value operator) *foldable-primitive-procedures)))
-
+
 ;;; deal with (let () (define ...))
 ;;; deal with (let ((x 7)) (let ((y 4)) ...)) => (let ((x 7) (y 4)) ...)
 ;;; Actually, we really don't want to hack with these for various
@@ -828,8 +829,7 @@ forms are simply removed.
 	  ((and (procedure? operator)
 		(null? (procedure/optional operator))
 		(not (procedure/rest operator))
-		(block/safe? (procedure/block operator))
-		)
+		(block/safe? (procedure/block operator)))
 	   (delete-unreferenced-parameters
 	    (procedure/required operator)
 	    (procedure/body operator)
@@ -858,7 +858,7 @@ forms are simply removed.
 		     (append unreferenced-operands (list form))))))))
 	  (else
 	   (combination/make operator operands)))))
-
+
 (define (delete-unreferenced-parameters parameters body operands receiver)
   (let ((free-in-body (free/expression body)))
     (let loop ((parameters 		parameters)
@@ -867,13 +867,13 @@ forms are simply removed.
 	       (referenced-operands	'())
 	       (unreferenced-operands	'()))
     (cond ((null? parameters)
-	   (if (null? operands) 
+	   (if (null? operands)
 	       (receiver (reverse required-parameters) ; preserve order
 			 (reverse referenced-operands)
 			 unreferenced-operands)
-	       (error "Argument mismatch" (block/bound-variables block))))
-	  ((null? operands) (error "Argument mismatch" 
-				   (block/bound-variables block)))
+	       (error "Argument mismatch" operands)))
+	  ((null? operands)
+	   (error "Argument mismatch" parameters))
 	  (else (let ((this-parameter (car parameters))
 		      (this-operand   (car operands)))
 		  (cond ((set/member? free-in-body this-parameter)
@@ -910,7 +910,7 @@ forms are simply removed.
 ;; 2 Identify the circular dependencies and place them in
 ;;    a open block.
 ;; 3 Identify the bindings that can be made in parallel and
-;;    make LET type statements. 
+;;    make LET type statements.
 ;; 4 This deletes unused bindings in an open block and
 ;;    compartmentalizes the environment.
 ;; 5 Re-optimize the code in the body.  This can help if the
@@ -920,7 +920,7 @@ forms are simply removed.
 
 (let ()
 
-(set! open-block/optimizing-make 
+(set! open-block/optimizing-make
   (named-lambda (open-block/optimizing-make block vars values actions
 					    operations environment)
   (if (and *block-optimizing-switch
@@ -943,8 +943,8 @@ forms are simply removed.
 	     ; (print-template template)
 	      (integrate/expression
 	       operations
-	       environment (build-new-code template 
-			       (block/parent block) 
+	       environment (build-new-code template
+			       (block/parent block)
 			       table:var->vals actions))))))
       (open-block/make block vars values actions #t))))
 
@@ -966,7 +966,7 @@ forms are simply removed.
 		  (fill-table (cdr vars) (cdr vals)))))
     (fill-table vars vals)
     table))
-
+
 (declare (integrate varlist->varset nodelist->nodeset
 		    empty-nodeset singleton-nodeset
 		    empty-varset singleton-varset))
@@ -1000,7 +1000,7 @@ forms are simply removed.
   (let ((table (make-generic-eq?-table)))
     (define (kernel val)
       (let ((free-variables (free/expression val)))
-	(table-put! table val 
+	(table-put! table val
 		    (set/intersection bound-variables free-variables))))
     (for-each kernel vals)
     table))
@@ -1021,67 +1021,51 @@ forms are simply removed.
   (cond ((null? actions) '())
 	((eq? (car actions) open-block/value-marker) (get-body (cdr actions)))
 	(else (cons (car actions) (get-body (cdr actions))))))
-      
+
 ;;; Graph structure for figuring out dependencies in a LETREC
 
-(define-unsafe-named-structure node type vars needs needed-by depth)
+(define-structure (node
+		   (constructor %make-node (type vars))
+		   (conc-name %node-))
+  type
+  (vars false read-only true)
+  (needs (empty-nodeset))
+  (needed-by (empty-nodeset))
+  (depth false))
 
-((access add-unparser-special-object! unparser-package)
- *node-tag
- (lambda (node)
-   (unparse-with-brackets
-    (lambda () 
-      (write-string "Node")
-      (write (hash node))))))
+(define-integrable (make-base-node)
+  (%make-node 'BASE (empty-varset)))
 
-(declare (integrate make-base-node variable->node make-letrec-node))
+(define-integrable (variable->node variable)
+  (%make-node 'SETUP (singleton-varset variable)))
 
-(define (make-base-node)
-  (%make-node 'BASE
-	      (empty-varset)
-	      (empty-nodeset)
-	      (empty-nodeset)
-	      #f))
+(define-integrable (make-letrec-node variable-set)
+  (%make-node 'LETREC variable-set))
 
-(define (variable->node variable)
-  (declare (integrate variable))
-  (%make-node 'SETUP
-	      (singleton-varset variable)
-	      (empty-nodeset)
-	      (empty-nodeset)
-	      #F))
-
-(define (make-letrec-node variable-set)
-  (declare (integrate variable-set))
-  (%make-node 'LETREC
-	      variable-set
-	      (empty-nodeset)
-	      (empty-nodeset)
-	      #f))
-
-(declare (integrate add-node-need! remove-node-need!
-		    add-node-needed-by! remove-node-needed-by!))
-
+(declare (integrate add-node-need!
+		    remove-node-need!
+		    add-node-needed-by!
+		    remove-node-needed-by!))
 
 (define (add-node-need! needer what-i-need)
   (declare (integrate what-i-need))
-  (%set-node-needs! needer (set/adjoin (%node-needs needer) what-i-need)))
+  (set-%node-needs! needer (set/adjoin (%node-needs needer) what-i-need)))
 
 (define (remove-node-need! needer what-i-no-longer-need)
   (declare (integrate what-i-no-longer-need))
-  (%set-node-needs! needer 
+  (set-%node-needs! needer
 		    (set/remove (%node-needs needer) what-i-no-longer-need)))
 
 (define (add-node-needed-by! needee what-needs-me)
   (declare (integrate what-needs-me))
-  (%set-node-needed-by! needee 
+  (set-%node-needed-by! needee
 			(set/adjoin (%node-needed-by needee) what-needs-me)))
 
 (define (remove-node-needed-by! needee what-needs-me)
   (declare (integrate what-needs-me))
-  (%set-node-needed-by! needee
+  (set-%node-needed-by! needee
 			(set/remove (%node-needed-by needee) what-needs-me)))
-
+
 (define (build-graph vars table:var->vals table:vals->free body-free)
   (let ((table:variable->node (make-generic-eq?-table)))
 
@@ -1107,14 +1091,14 @@ forms are simply removed.
   (set/for-each (lambda (needee)
 	      (remove-node-need! needee node))
 	    (%node-needed-by node))
-  (%set-node-type! node 'UNLINKED))
+  (set-%node-type! node 'UNLINKED))
 
 (declare (integrate unlink-nodes!))
 
 (define (unlink-nodes! nodelist)
   (for-each unlink-node! nodelist))
 
-(define (link-nodes! body-free 
+(define (link-nodes! body-free
 		    table:var->vals table:vals->free variables table:var->node)
 
   (define (kernel variable)
@@ -1137,7 +1121,7 @@ forms are simply removed.
   (for-each kernel variables)
 
   (let ((base-node (make-base-node)))
-    (set/for-each 
+    (set/for-each
      (lambda (needed-var)
        (table-get table:var->node needed-var
 		  (lambda (needed-node)
@@ -1145,7 +1129,7 @@ forms are simply removed.
 		  (lambda () (error "Broken analysis: free var"))))
      body-free)
     base-node))
-
+
 (define (collapse-circularities! graph)
   ;; Search for a circularity:  if found, collapse it, and repeat
   ;; until none are found.
@@ -1203,18 +1187,18 @@ forms are simply removed.
 
     (let ((letrec-node (make-letrec-node varset)))
       (set/for-each (lambda (need) (link-2-nodes! letrec-node need)) needs-set)
-      (set/for-each 
+      (set/for-each
        (lambda (needer) (link-2-nodes! needer letrec-node)) needed-by)
       ;; now delete nodes in nodelist
       (unlink-nodes! nodelist)))))
-	
+
 (define (label-node-depth! graph)
   (define (label-nodes! nodeset depth)
     (if (set/empty? nodeset)
 	'()
 	(begin
-	  (set/for-each (lambda (node) (%set-node-depth! node depth)) nodeset)
-	  (label-nodes! 
+	  (set/for-each (lambda (node) (set-%node-depth! node depth)) nodeset)
+	  (label-nodes!
 	   (apply set/union* (map %node-needs (set->list nodeset)))
 	   (1+ depth)))))
   (label-nodes! (singleton-nodeset graph) 0))
@@ -1233,7 +1217,7 @@ forms are simply removed.
 	(set/for-each print-graph (%node-needs node)))))
 
 (define (collapse-parallel-nodelist depth nodeset)
-  (if (set/empty? nodeset) 
+  (if (set/empty? nodeset)
       '()
       (let loop ((nodestream      (set->list nodeset))
 		 (let-children    (empty-varset))
@@ -1265,10 +1249,10 @@ forms are simply removed.
 			let-children
 			letrec-children
 			children)))))))
-
+
 (define (linearize graph)
   (collapse-parallel-nodelist 0 (%node-needs graph)))
-			   
+
 (define (build-new-code template parent vars->vals actions)
   (let ((body (sequence/optimizing-make (get-body actions))))
     (let loop ((template template)
@@ -1280,7 +1264,7 @@ forms are simply removed.
 	     (let ((this-type (car this))
 		   (this-vars (cdr this)))
 	       (let ((this-vals
-		      (map (lambda (var) 
+		      (map (lambda (var)
 			     (table-get vars->vals var
 					(lambda (val) val)
 					(lambda () (error "broken"))))
@@ -1288,7 +1272,7 @@ forms are simply removed.
 
 	       (if (eq? this-type 'LET)
 		   (let ((block (block/make block true)))
-		     (block/set-bound-variables! block this-vars)
+		     (set-block/bound-variables! block this-vars)
 		     (loop (cdr template)
 			   block
 			   (combination/optimizing-make
@@ -1301,10 +1285,10 @@ forms are simply removed.
 			     code)
 			    this-vals)))
 		   (let ((block (block/make block true)))
-		     (block/set-bound-variables! block this-vars)
+		     (set-block/bound-variables! block this-vars)
 		     (loop (cdr template)
 			   block
-			   (open-block/make 
+			   (open-block/make
 			    block this-vars this-vals
 			    (append (make-list
 				     (length this-vals)
@@ -1312,7 +1296,5 @@ forms are simply removed.
 				    (list code))
 			    #t)))))))))))
 
-) ;; End of OPEN-BLOCK/OPTIMIZING-MAKE
-
-
-) ;; End of USING-SYNTAX SF-SYNTAX-TABLE
+;; End of OPEN-BLOCK/OPTIMIZING-MAKE
+)

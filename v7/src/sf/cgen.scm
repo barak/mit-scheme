@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/cgen.scm,v 3.6 1988/04/23 08:49:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/cgen.scm,v 4.1 1988/06/13 12:29:04 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -202,7 +202,21 @@ MIT in each case. |#
 
 (define-method/cgen 'SEQUENCE
   (lambda (interns expression)
-    (make-sequence (cgen/expressions interns (sequence/actions expression)))))
+    (let ((actions
+	   (if flush-declarations?
+	       (remove-references (sequence/actions expression))
+	       (sequence/actions expression))))
+      (if (null? (cdr actions))
+	  (cgen/expression interns (car actions))
+	  (make-sequence (cgen/expressions interns actions))))))
+
+(define (remove-references actions)
+  (if (null? (cdr actions))
+      actions
+      (let ((rest (remove-references (cdr actions))))
+	(if (reference? (car actions))
+	    rest
+	    (cons (car actions) rest)))))
 
 (define-method/cgen 'THE-ENVIRONMENT
   (lambda (interns expression)

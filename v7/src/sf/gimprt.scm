@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/make.scm,v 4.5 1988/06/13 12:29:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gimprt.scm,v 4.1 1988/06/13 12:29:33 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -32,11 +32,10 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; SCode Optimizer: System Construction
+;;;; SCode Optimizer: Global Imports
 
 (declare (usual-integrations))
 
-(package/system-loader "sf" '() 'QUERY)
-((package/reference (find-package '(SCODE-OPTIMIZER))
-		    'USUAL-INTEGRATIONS/CACHE!))
-(add-system! (make-system "SF" 4 5 '()))
+(define scode-assignment? assignment?)
+(define scode-open-block? open-block?)
+(define scode-sequence? sequence?)

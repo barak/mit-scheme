@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/copy.scm,v 3.8 1988/04/23 08:50:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/copy.scm,v 4.1 1988/06/13 12:29:14 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -38,27 +38,28 @@ MIT in each case. |#
 	 (open-block-optimizations)
 	 (eta-substitution)
 	 (automagic-integrations)
-	 (integrate-external "object" "mvalue"))
+	 (integrate-external "object"))
 
 (define root-block)
 
-(define (copy/external/intern block expression uninterned)
+(define (copy/expression/intern block expression uninterned)
   (fluid-let ((root-block block)
 	      (copy/variable/free copy/variable/free/intern)
 	      (copy/declarations copy/declarations/intern))
-    (let ((environment (environment/rebind block (environment/make) uninterned)))
+    (let ((environment
+	   (environment/rebind block (environment/make) uninterned)))
       (copy/expression root-block
 		       environment
 		       expression))))
 
-(define (copy/external/extern expression)
+(define (copy/expression/extern expression)
   (fluid-let ((root-block (block/make false false))
 	      (copy/variable/free copy/variable/free/extern)
 	      (copy/declarations copy/declarations/extern))
     (let ((environment (environment/make)))
       (let ((expression
 	     (copy/expression root-block environment expression)))
-	(return-2 root-block expression)))))
+	(values root-block expression)))))
 
 (define (copy/expressions block environment expressions)
   (map (lambda (expression)
@@ -96,17 +97,17 @@ MIT in each case. |#
 				 (variable/flags variable)))
 		old-bound)))
       (let ((environment (environment/bind environment old-bound new-bound)))
-	(block/set-bound-variables! result new-bound)
-	(block/set-declarations!
+	(set-block/bound-variables! result new-bound)
+	(set-block/declarations!
 	 result
 	 (copy/declarations block environment (block/declarations block)))
-	(block/set-flags! result (block/flags block))
-	(return-2 result environment)))))
+	(set-block/flags! result (block/flags block))
+	(values result environment)))))
 
 (define copy/variable/free)
 
 (define (copy/variable block environment variable)
-  block ; ignored
+  block					;ignored
   (environment/lookup environment variable
     identity-procedure
     (copy/variable/free variable)))
@@ -123,7 +124,7 @@ MIT in each case. |#
 		((not variable*)
 		 (loop (block/parent block)))
 		((block/safe? (variable/block variable*))
-		 (variable/set-name! variable* (rename-symbol name))
+		 (set-variable/name! variable* (rename-symbol name))
 		 (loop (block/parent block)))
 		(else
 		 (error "Integration requires renaming unsafe variable"
@@ -175,11 +176,12 @@ MIT in each case. |#
 	(if-not))))
 
 (define (environment/rebind block environment variables)
-  (environment/bind environment
-		    variables
-		    (map (lambda (variable)
-			   (block/lookup-name block (variable/name variable) true))
-			 variables)))
+  (environment/bind
+   environment
+   variables
+   (map (lambda (variable)
+	  (block/lookup-name block (variable/name variable) true))
+	variables)))
 
 (define (make-renamer environment)
   (lambda (variable)
@@ -204,8 +206,7 @@ MIT in each case. |#
   (lambda (block environment expression)
     (let ((operator (combination/operator expression))
 	  (operands (combination/operands expression)))
-      (if (and (constant? operator)
-	       (eq? error-procedure (constant/value operator))
+      (if (and (operator/error-procedure? operator)
 	       (the-environment? (caddr operands)))
 	  (combination/make
 	   operator
@@ -215,6 +216,15 @@ MIT in each case. |#
 	  (combination/make
 	   (copy/expression block environment operator)
 	   (copy/expressions block environment operands))))))
+
+(define (operator/error-procedure? operator)
+  (or (and (constant? operator)
+	   (eq? error-procedure (constant/value operator)))
+      (and (access? operator)
+	   (eq? 'ERROR-PROCEDURE (access/name operator))
+	   (let ((environment (access/environment operator)))
+	     (and (constant? environment)
+		  (not (constant/value environment)))))))
 
 (define-method/copy 'CONDITIONAL
   (lambda (block environment expression)
@@ -256,7 +266,9 @@ MIT in each case. |#
 
 (define-method/copy 'PROCEDURE
   (lambda (block environment procedure)
-    (transmit-values (copy/block block environment (procedure/block procedure))
+    (with-values
+	(lambda ()
+	  (copy/block block environment (procedure/block procedure)))
       (lambda (block environment)
 	(let ((rename (make-renamer environment)))
 	  (procedure/make block
@@ -270,8 +282,9 @@ MIT in each case. |#
 
 (define-method/copy 'OPEN-BLOCK
   (lambda (block environment expression)
-    (transmit-values
-	(copy/block block environment (open-block/block expression))
+    (with-values
+	(lambda ()
+	  (copy/block block environment (open-block/block expression)))
       (lambda (block environment)
 	(open-block/make
 	 block

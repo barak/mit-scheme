@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 3.11 1988/04/23 08:52:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 4.1 1988/06/13 12:30:37 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -36,18 +36,14 @@ MIT in each case. |#
 
 (declare (usual-integrations)
 	 (automagic-integrations)
-	 (open-block-optimizations)
-	 (integrate-external "mvalue"))
+	 (open-block-optimizations))
 
 ;;;; User Interface
 
 (define (integrate/procedure procedure declarations)
-  (if (compound-procedure? procedure)
-      (procedure-components procedure
-	(lambda (*lambda environment)
-	  (scode-eval (integrate/scode *lambda declarations false)
-		      environment)))
-      (error "INTEGRATE/PROCEDURE: Not a compound procedure" procedure)))
+  (procedure-components procedure
+    (lambda (*lambda environment)
+      (scode-eval (integrate/scode *lambda declarations false) environment))))
 
 (define (integrate/sexp s-expression syntax-table declarations receiver)
   (integrate/simple (lambda (s-expressions)
@@ -58,23 +54,21 @@ MIT in each case. |#
   (integrate/simple identity-procedure scode declarations receiver))
 
 (define (sf input-string #!optional bin-string spec-string)
-  (if (unassigned? bin-string) (set! bin-string false))
-  (if (unassigned? spec-string) (set! spec-string false))
-  (syntax-file input-string bin-string spec-string))
+  (syntax-file input-string
+	       (if (default-object? bin-string) false bin-string)
+	       (if (default-object? spec-string) false spec-string)))
 
 (define (scold input-string #!optional bin-string spec-string)
   "Use this only for syntaxing the cold-load root file.
 Currently only the 68000 implementation needs this."
-  (if (unassigned? bin-string) (set! bin-string false))
-  (if (unassigned? spec-string) (set! spec-string false))
   (fluid-let ((wrapping-hook wrap-with-control-point))
     (syntax-file input-string bin-string spec-string)))
 
 (define (sf/set-default-syntax-table! syntax-table)
-  (if (or (false? syntax-table)
-	  (syntax-table? syntax-table))
-      (set! default-syntax-table syntax-table)
-      (error "Illegal syntax table" syntax-table)))
+  (if (not (or (false? syntax-table)
+	       (syntax-table? syntax-table)))
+      (error "Illegal syntax table" syntax-table))
+  (set! default-syntax-table syntax-table))
 
 (define (sf/set-file-syntax-table! pathname syntax-table)
   (pathname-map/insert! file-info/syntax-table
@@ -90,11 +84,11 @@ Currently only the 68000 implementation needs this."
 
 (define (file-info/find pathname)
   (let ((pathname (pathname/normalize pathname)))
-    (return-2 (pathname-map/lookup file-info/syntax-table
-				   pathname
-				   identity-procedure
-				   (lambda () default-syntax-table))
-	      (file-info/get-declarations pathname))))
+    (values (pathname-map/lookup file-info/syntax-table
+				 pathname
+				 identity-procedure
+				 (lambda () default-syntax-table))
+	    (file-info/get-declarations pathname))))
 
 (define (file-info/get-declarations pathname)
   (pathname-map/lookup file-info/declarations
@@ -103,10 +97,8 @@ Currently only the 68000 implementation needs this."
 		       (lambda () '())))
 
 (define (pathname/normalize pathname)
-  (pathname-new-version
-   (merge-pathnames (pathname->absolute-pathname (->pathname pathname))
-		    sf/default-input-pathname)
-   false))
+  (pathname-default-type (pathname->absolute-pathname (->pathname pathname))
+			 "scm"))
 
 (define file-info/syntax-table
   (pathname-map/make))
@@ -119,49 +111,70 @@ Currently only the 68000 implementation needs this."
 
 ;;;; File Syntaxer
 
-(define sf/default-input-pathname
-  (make-pathname false false false "scm" 'NEWEST))
-
 (define sf/default-externs-pathname
-  (make-pathname false false false "ext" 'NEWEST))
+  (make-pathname false false false false "ext" 'NEWEST))
 
-(define sf/output-pathname-type "bin")
-(define sf/unfasl-pathname-type "unf")
+(define sfu? false)
 
 (define (syntax-file input-string bin-string spec-string)
-  (for-each
-   (lambda (pathname)
-     (let ((input-path (pathname->input-truename pathname)))
-       (if (not input-path)
-	   (error "SF: File does not exist" pathname))
-       (let ((bin-path
-	      (let ((bin-path
-		     (pathname-new-type input-path
-					sf/output-pathname-type)))
-		(if bin-string
-		    (merge-pathnames (->pathname bin-string) bin-path)
-		    bin-path))))
-	 (let ((spec-path
-		(and (or spec-string sfu?)
-		     (let ((spec-path
-			    (pathname-new-type bin-path
-					       sf/unfasl-pathname-type)))
-		       (if spec-string
-			   (merge-pathnames (->pathname spec-string)
-					    spec-path)
-			   spec-path)))))
-	   (syntax-file* input-path bin-path spec-path)))))
-   (stickify-input-filenames input-string sf/default-input-pathname)))
+  (for-each (lambda (input-string)
+	      (with-values
+		  (lambda ()
+		    (sf/pathname-defaulting input-string
+					    bin-string
+					    spec-string))
+		(lambda (input-pathname bin-pathname spec-pathname)
+		  (with-values (lambda () (file-info/find input-pathname))
+		    (lambda (syntax-table declarations)
+		      (sf/internal input-pathname bin-pathname spec-pathname
+				   syntax-table declarations))))))
+	    (if (pair? input-string)
+		input-string
+		(list input-string))))
+
+(define (sf/pathname-defaulting input-string bin-string spec-string)
+  (let ((pathname
+	 (merge-pathnames
+	  (->pathname input-string)
+	  (make-pathname false false '() false "scm" 'NEWEST))))
+    (let ((input-path (pathname->input-truename pathname)))
+      (if (not input-path)
+	  (error "SF: File does not exist" pathname))
+      (let ((input-type (pathname-type input-path)))
+	(let ((bin-path
+	       (let ((bin-path
+		      (pathname-new-type
+		       input-path
+		       (if (equal? "scm" input-type)
+			   "bin"
+			   (string-append "b" input-type)))))
+		 (if bin-string
+		     (merge-pathnames (->pathname bin-string) bin-path)
+		     bin-path))))
+	  (let ((spec-path
+		 (and (or spec-string sfu?)
+		      (let ((spec-path
+			     (pathname-new-type
+			      bin-path
+			      (if (equal? "scm" input-type)
+				  "unf"
+				  (string-append "u" input-type)))))
+			(if spec-string
+			    (merge-pathnames (->pathname spec-string)
+					     spec-path)
+			    spec-path)))))
+	    (values input-path bin-path spec-path)))))))
 
-(define (syntax-file* input-pathname bin-pathname spec-pathname)
+(define (sf/internal input-pathname bin-pathname spec-pathname
+		     syntax-table declarations)
   (fluid-let ((sf/default-externs-pathname
-	       (make-pathname (pathname-device input-pathname)
+	       (make-pathname (pathname-host input-pathname)
+			      (pathname-device input-pathname)
 			      (pathname-directory input-pathname)
 			      false
 			      "ext"
 			      'NEWEST)))
-    (let ((start-date (date))
-	  (start-time (time))
+    (let ((start-date (get-decoded-time))
 	  (input-filename (pathname->string input-pathname))
 	  (bin-filename (pathname->string bin-pathname))
 	  (spec-filename (and spec-pathname (pathname->string spec-pathname))))
@@ -172,17 +185,19 @@ Currently only the 68000 implementation needs this."
       (write bin-filename)
       (write-string " ")
       (write spec-filename)
-      (transmit-values
-	  (transmit-values (file-info/find input-pathname)
-	    (lambda (syntax-table declarations)
-	      (integrate/file input-pathname syntax-table declarations
-			      spec-pathname)))
+      (with-values
+	  (lambda ()
+	    (integrate/file input-pathname syntax-table declarations
+			    spec-pathname))
 	(lambda (expression externs events)
 	  (fasdump (wrapping-hook
 		    (make-comment `((SOURCE-FILE . ,input-filename)
-				    (DATE . ,start-date)
-				    (TIME . ,start-time)
-				    (FLUID-LET . ,*fluid-let-type*))
+				    (DATE ,(decoded-time/year start-date)
+					  ,(decoded-time/month start-date)
+					  ,(decoded-time/day start-date))
+				    (TIME ,(decoded-time/hour start-date)
+					  ,(decoded-time/minute start-date)
+					  ,(decoded-time/second start-date)))
 				  (set! expression false)))
 		   bin-pathname)
 	  (write-externs-file (pathname-new-type
@@ -196,9 +211,12 @@ Currently only the 68000 implementation needs this."
 		     (with-output-to-file spec-pathname
 		       (lambda ()
 			 (newline)
-			 (write `(DATE ,start-date ,start-time))
-			 (newline)
-			 (write `(FLUID-LET ,*fluid-let-type*))
+			 (write `(DATE ,(decoded-time/year start-date)
+				       ,(decoded-time/month start-date)
+				       ,(decoded-time/day start-date)
+				       ,(decoded-time/hour start-date)
+				       ,(decoded-time/minute start-date)
+				       ,(decoded-time/second start-date)))
 			 (newline)
 			 (write `(SOURCE-FILE ,input-filename))
 			 (newline)
@@ -245,16 +263,16 @@ Currently only the 68000 implementation needs this."
   scode)
 
 (define control-point-tail
-  `(3 ,(primitive-set-type (microcode-type 'NULL) (* 4 4))
+  `(3 ,(object-new-type (microcode-type 'NULL) 16)
       () () () () () () () () () () () () () () ()))
 
 (define (wrap-with-control-point scode)
-  (system-list-to-vector type-code-control-point
-			 `(,return-address-restart-execution
-			   ,scode
-			   ,system-global-environment
-			   ,return-address-non-existent-continuation
-			   ,@control-point-tail)))
+  (system-list->vector type-code-control-point
+		       `(,return-address-restart-execution
+			 ,scode
+			 ,system-global-environment
+			 ,return-address-non-existent-continuation
+			 ,@control-point-tail)))
 
 (define type-code-control-point
   (microcode-type 'CONTROL-POINT))
@@ -268,17 +286,18 @@ Currently only the 68000 implementation needs this."
 ;;;; Optimizer Top Level
 
 (define (integrate/file file-name syntax-table declarations compute-free?)
-  compute-free? ; ignored
+  compute-free?				;ignored
   (integrate/kernel (lambda ()
 		      (phase:syntax (phase:read file-name) syntax-table))
 		    declarations))
 
 (define (integrate/simple preprocessor input declarations receiver)
-  (transmit-values
-      (integrate/kernel (lambda () (preprocessor input)) declarations)
+  (with-values
+      (lambda ()
+	(integrate/kernel (lambda () (preprocessor input)) declarations))
     (or receiver
 	(lambda (expression externs events)
-	  externs events ; ignored
+	  externs events		;ignored
 	  expression))))
 
 (define (integrate/kernel get-scode declarations)
@@ -286,19 +305,22 @@ Currently only the 68000 implementation needs this."
 	      (previous-process-time false)
 	      (previous-real-time false)
 	      (events '()))
-    (transmit-values
-	(transmit-values
-	    (transmit-values
-		(phase:transform (canonicalize-scode (get-scode) declarations))
-	      phase:optimize)
-	  phase:generate-scode)
+    (with-values
+	(lambda ()
+	  (with-values
+	      (lambda ()
+		(with-values
+		    (lambda ()
+		      (phase:transform (canonicalize-scode (get-scode)
+							   declarations)))
+		  phase:optimize))
+	    phase:generate-scode))
       (lambda (externs expression)
 	(end-phase)
-	(return-3 expression externs (reverse! events))))))
+	(values expression externs (reverse! events))))))
 
 (define (canonicalize-scode scode declarations)
-  (let ((declarations
-	 ((access process-declarations syntaxer-package) declarations)))
+  (let ((declarations (process-declarations declarations)))
     (if (null? declarations)
 	scode
 	(scan-defines (make-sequence
@@ -311,23 +333,24 @@ Currently only the 68000 implementation needs this."
   (read-file filename))
 
 (define (phase:syntax s-expression #!optional syntax-table)
-  (if (or (unassigned? syntax-table) (not syntax-table))
-      (set! syntax-table (make-syntax-table system-global-syntax-table)))
   (mark-phase "Syntax")
-  (syntax* s-expression syntax-table))
+  (syntax* s-expression
+	   (if (or (default-object? syntax-table) (not syntax-table))
+	       (make-syntax-table system-global-syntax-table)
+	       syntax-table)))
 
 (define (phase:transform scode)
   (mark-phase "Transform")
-  (transform/expression scode))
+  (transform/top-level scode))
 
 (define (phase:optimize block expression)
   (mark-phase "Optimize")
-  (integrate/expression block expression))
+  (integrate/top-level block expression))
 
 (define (phase:generate-scode operations environment expression)
   (mark-phase "Generate SCode")
-  (return-2 (operations->external operations environment)
-	    (cgen/expression expression)))
+  (values (operations->external operations environment)
+	  (cgen/external expression)))
 
 (define previous-name)
 (define previous-process-time)

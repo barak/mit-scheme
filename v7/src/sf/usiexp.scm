@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 3.8 1988/05/11 04:19:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 4.1 1988/06/13 12:30:50 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -284,6 +284,7 @@ MIT in each case. |#
 	  (else
 	   (if-not-expanded)))))
 
+#| ;; Not a desirable optimization with current compiler.
 (define (identity-procedure-expansion operands if-expanded if-not-expanded
 				      block)
   if-not-expanded block ; ignored
@@ -291,6 +292,7 @@ MIT in each case. |#
       (error "IDENTITY-PROCEDURE-EXPANSION: wrong number of arguments"
 	     (length operands)))
   (if-expanded (car operands)))
+|#
 
 ;;;; Tables
 
@@ -302,7 +304,7 @@ MIT in each case. |#
       caaaar caaadr caadar caaddr cadaar cadadr caddar cadddr
       cdaaar cdaadr cdadar cdaddr cddaar cddadr cdddar cddddr
       second third fourth fifth sixth seventh eighth
-      make-string identity-procedure
+      make-string
       ))
 
 (define usual-integrations/expansion-values
@@ -320,7 +322,7 @@ MIT in each case. |#
 	cddaar-expansion cddadr-expansion cdddar-expansion cddddr-expansion
 	second-expansion third-expansion fourth-expansion fifth-expansion
 	sixth-expansion seventh-expansion eighth-expansion
-	make-string-expansion identity-procedure-expansion
+	make-string-expansion
 	))
 
 (define usual-integrations/expansion-alist
@@ -337,8 +339,7 @@ MIT in each case. |#
 (define (scode->scode-expander scode-expander)
   (lambda (operands if-expanded if-not-expanded block)
     (scode-expander
-     (map (access cgen/external-with-declarations package/cgen)
-	  operands)
+     (map cgen/external-with-declarations operands)
      (lambda (scode-expression)
        (if-expanded
 	(transform/recursive
@@ -346,3 +347,7 @@ MIT in each case. |#
 	 (integrate/get-top-level-block)
 	 scode-expression)))
      if-not-expanded)))
+
+;;; Kludge for EXPAND-OPERATOR declaration.
+(define expander-evaluation-environment
+  (the-environment))

@@ -1,0 +1,152 @@
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/sf.pkg,v 4.1 1988/06/13 12:28:55 cph Exp $
+
+Copyright (c) 1987 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
+
+;;;; SF Packaging
+
+(global-definitions "../runtime/runtim")
+
+(define-package (scode-optimizer)
+  (files "lsets"
+	 "table"
+	 "pthmap"
+	 "object"
+	 "emodel"
+	 "gconst"
+	 "usicon"
+	 "tables")
+  (parent ()))
+
+(define-package (scode-optimizer global-imports)
+  (files "gimprt")
+  (parent ())
+  (export (scode-optimizer)
+	  scode-assignment?
+	  scode-open-block?
+	  scode-sequence?))
+
+(define-package (scode-optimizer top-level)
+  (files "toplev")
+  (parent (scode-optimizer))
+  (export ()
+	  sf
+	  sf/add-file-declarations!
+	  sf/set-default-syntax-table!
+	  sf/set-file-syntax-table!
+	  sfu?)
+  (export (scode-optimizer)
+	  integrate/procedure
+	  integrate/file
+	  integrate/sexp
+	  integrate/scode
+	  read-externs-file)
+  (import (runtime syntaxer)
+	  process-declarations))
+
+(define-package (scode-optimizer transform)
+  (files "xform")
+  (parent (scode-optimizer))
+  (export (scode-optimizer)
+	  transform/top-level
+	  transform/recursive))
+
+(define-package (scode-optimizer integrate)
+  (files "subst")
+  (parent (scode-optimizer))
+  (export (scode-optimizer)
+	  integrate/top-level
+	  integrate/get-top-level-block
+	  variable/final-value))
+
+(define-package (scode-optimizer cgen)
+  (files "cgen")
+  (parent (scode-optimizer))
+  (export (scode-optimizer)
+	  cgen/external)
+  (export (scode-optimizer expansion)
+	  cgen/external-with-declarations))
+
+(define-package (scode-optimizer expansion)
+  (files "usiexp" "reduct")
+  (parent (scode-optimizer))
+  (export (scode-optimizer)
+	  reducer/make
+	  usual-integrations/expansion-names
+	  usual-integrations/expansion-values
+	  usual-integrations/expansion-alist)
+  (export (scode-optimizer declarations)
+	  expander-evaluation-environment))
+
+(define-package (scode-optimizer declarations)
+  (files "pardec")
+  (parent (scode-optimizer))
+  (export (scode-optimizer)
+	  declarations/known?
+	  declarations/make-null
+	  declarations/parse
+	  declarations/binders
+	  declarations/original
+	  declarations/map
+	  declarations/for-each-variable
+	  declarations/integrated-variables
+	  operations->external))
+
+(define-package (scode-optimizer copy)
+  (files "copy")
+  (parent (scode-optimizer))
+  (export (scode-optimizer)
+	  copy/expression/intern
+	  copy/expression/extern))
+
+(define-package (scode-optimizer free)
+  (files "free")
+  (parent (scode-optimizer))
+  (export (scode-optimizer)
+	  free/expression))
+
+(define-package (scode-optimizer change-type)
+  (files "chtype")
+  (parent (scode-optimizer))
+  (export (scode-optimizer)
+	  intern-type))
+
+(define-package (scode-optimizer build-utilities)
+  (files "butils")
+  (parent ())
+  (export ()
+	  compile-directory
+	  compile-directory?
+	  file-processed?
+	  sf-conditionally
+	  sf-directory
+	  sf-directory?))
