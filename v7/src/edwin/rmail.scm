@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.51 1996/06/16 05:18:24 cph Exp $
+;;;	$Id: rmail.scm,v 1.52 1996/09/30 01:01:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -1665,9 +1665,7 @@ buffer visiting that file."
       (set-buffer-major-mode! buffer (ref-mode-object rmail))
       (with-buffer-open buffer
 	(lambda ()
-	  ;; Memoization is not needed here, and in fact
-	  ;; screws things up royally --- bal
-	  ;; (memoize-buffer buffer)
+	  (memoize-buffer buffer)
 	  (let ((memo (buffer-msg-memo buffer)))
 	    (if (msg-memo? memo)
 		(let ((first (msg-memo/first memo))
@@ -1804,7 +1802,9 @@ Leaves original message, deleted, before the undigestified messages."
       (if m
 	  (let ((m (re-search-forward babyl-header-end-regexp m end false)))
 	    (if m
-		(memoize-messages buffer m end)))))))
+		(begin
+		  (set-buffer-msg-memo! buffer #f)
+		  (memoize-messages buffer m end))))))))
 
 (define (memoize-messages buffer start end)
   (let ((memo (buffer-msg-memo buffer)))
