@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rulfix.scm,v 1.3 1991/02/15 00:40:35 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rulfix.scm,v 1.4 1991/02/16 01:09:02 jinx Exp $
 $MC68020-Header: rules1.scm,v 4.34 1991/01/23 21:34:30 jinx Exp $
 
 Copyright (c) 1989, 1991 Massachusetts Institute of Technology
@@ -664,17 +664,32 @@ MIT in each case. |#
 	     (LAP (ASH L ,(make-immediate shift) ,source1 ,target)
 		  (MUL L ,source2 ,target))))))))
 
-(define-fixnum-method 'FIXNUM-LSH fixnum-methods/2-args
-  (lambda (target source1 source2)
-    (let* ((rtarget (target-or-register target))
-	   (temp (if (eq? rtarget target)
-		     (standard-temporary-reference)
-		     rtarget)))
-      (LAP (ASH L ,(make-immediate (- 0 scheme-type-width))
-		,source2 ,temp)
-	   (ASH L ,temp ,source1 ,rtarget)
-	   ,@(word->fixnum/ea rtarget target)))))
+(define (code-fixnum-shift target source1 source2)
+  #|
+  ;; This does arithmetic shifting, rather than logical!
+  (let* ((rtarget (target-or-register target))
+	 (temp (if (eq? rtarget target)
+		   (standard-temporary-reference)
+		   rtarget)))
+    (LAP (ASH L ,(make-immediate (- 0 scheme-type-width))
+	      ,source2 ,temp)
+	 (ASH L ,temp ,source1 ,rtarget)
+	 ,@(word->fixnum/ea rtarget target)))
+  |#
+  ;; This is a kludge that depends on the fact that there are
+  ;; always scheme-type-width 0 bits at the bottom.
+  (let* ((rtarget (target-or-register target))
+	 (temp (standard-temporary-reference)))
+    (LAP (ASH L ,(make-immediate (- 0 scheme-type-width))
+	      ,source2 ,temp)
+	 (ROTL (S 31) ,source1 ,rtarget) ; guarantee sign bit of 0.
+	 (ASH L ,temp ,rtarget ,rtarget)
+	 (ROTL (S 1) ,rtarget ,rtarget) ; undo effect of previous ROTL.
+	 ,@(word->fixnum/ea rtarget target))))
 
+(define-fixnum-method 'FIXNUM-LSH fixnum-methods/2-args
+  code-fixnum-shift)
+
 (define-fixnum-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
   (lambda (target source1 source2)
     (if (ea/same? source1 source2)
@@ -686,7 +701,7 @@ MIT in each case. |#
     (if (ea/same? source1 source2)
 	(load-fixnum-constant 0 target)
 	(code-fixnum-remainder target source1 source2))))
-
+
 (define-fixnum-method 'PLUS-FIXNUM fixnum-methods/2-args-constant
   (lambda (target source n)
     (add-fixnum-constant source n  target)))
@@ -742,29 +757,32 @@ MIT in each case. |#
     (if (zero? n)
 	(load-fixnum-constant 0 target)
 	(LAP (BIC L ,source ,(make-immediate (* n fixnum-1)) ,target)))))
-
+
 (define-fixnum-method 'FIXNUM-LSH fixnum-methods/2-args-constant
   (lambda (target source n)
     (cond ((zero? n)
 	   (ea/copy source target))
 	  ((not (<= (- 0 scheme-datum-width) n scheme-datum-width))
 	   (load-fixnum-constant 0 target))
-	  ((negative? n)
+	  ((not (negative? n))
+	   (LAP (ASH L ,(make-immediate n) ,source ,target)))
+	  ;; The following two cases depend on having scheme-type-width
+	  ;; 0 bits at the bottom.
+	  ((>= n (- 0 scheme-type-width))
 	   (let ((rtarget (target-or-register target)))
-	     (LAP (ASH L ,(make-immediate n) ,source ,rtarget)
+	     (LAP (ROTL (S ,(+ 32 n)) ,source ,rtarget)
 		  ,@(word->fixnum/ea rtarget target))))
 	  (else
-	   (LAP (ASH L ,(make-immediate n) ,source ,target))))))
-
+	   (let ((rtarget (target-or-register target)))
+	     (LAP (ROTL (S 31) ,source ,rtarget)
+		  (ASH L ,(make-immediate (1+ n)) ,rtarget ,rtarget)
+		  ,@(word->fixnum/ea rtarget target)))))))
+
 (define-fixnum-method 'FIXNUM-LSH fixnum-methods/2-args-tnatsnoc
   (lambda (target n source)
     (if (zero? n)
 	(load-fixnum-constant 0 target)
-	(let ((rtarget (target-or-register target)))
-	  (LAP (ASH L ,(make-immediate (- 0 scheme-type-width)) ,source
-		    ,rtarget)
-	       (ASH L ,rtarget ,(make-immediate (* n fixnum-1)) ,rtarget)
-	       ,@(word->fixnum/ea rtarget target))))))
+	(code-fixnum-shift target (make-immediate (* n fixnum-1)) source))))
 
 (define-fixnum-method 'MULTIPLY-FIXNUM fixnum-methods/2-args-constant
   (lambda (target source n)
