@@ -1,0 +1,37 @@
+#!/bin/sh
+
+if [ $# -ne 1 ]
+then
+  echo "usage: $0 DESTINATION"
+  exit 1
+fi
+
+source=/scheme/v7/src
+destination=$1
+
+if [ -d ${destination} ]
+then
+  echo "DESTINATION must not be an existing directory"
+  exit 1
+fi
+
+mkdir ${destination}
+
+for file in 6001 COPYING Makefile.std TAGS compiler cref edwin microcode rcs runtime sf sos win32
+do
+  cpx -E ${source}/${file} ${destination}
+done
+
+find ${destination} -type l -name RCS -print | xargs rm
+find ${destination} -type f -print | xargs chmod a-w
+find ${destination} -type d -print | xargs chmod g-w
+
+suffix=`date +%Y%m%d`
+tarfile=src-${suffix}.tar.gz
+zipfile=src-${suffix}.zip
+
+tar czvf ${tarfile} ${destination}
+zip -rl ${zipfile} ${destination}
+chmod -w ${tarfile} ${zipfile}
+
+rm -rf ${destination}
