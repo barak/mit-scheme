@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.32 1993/10/25 21:35:08 cph Exp $
+@comment $Id: scheme.texinfo,v 1.33 1993/11/03 03:37:26 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -331,6 +331,7 @@ Associations
 * Hash Tables::                 
 * Object Hashing::              
 * Red-Black Trees::             
+* Weight-Balanced Trees::       
 
 Hash Tables
 
@@ -339,6 +340,13 @@ Hash Tables
 * Resizing of Hash Tables::     
 * Address Hashing::             
 * Low-Level Hash Table Operations::  
+
+Weight-Balanced Trees
+
+* Construction of Weight-Balanced Trees::  
+* Basic Operations on Weight-Balanced Trees::  
+* Advanced Operations on Weight-Balanced Trees::  
+* Indexing Operations on Weight-Balanced Trees::  
 
 Procedures
 
@@ -8724,6 +8732,21 @@ of associations in the tree.  While they aren't as fast as hash tables,
 they offer the advantage that the contents of the tree can be converted
 to a sorted alist in linear time.  Additionally, two trees can be
 compared for equality in worst-case linear time.
+
+@item
+@dfn{Red-Black trees} are a kind of balanced binary tree.  The
+implementation supports destructive insertion and deletion operations
+with a good constant factor.
+
+@item
+@dfn{Weight-Balanced trees} are a kind of balanced binary.  The
+implementation supports non-destructive operations.  For insertion and
+deletion the implementation is slower than Red-Black trees but weight
+balanced trees support a constant time size operation, and many
+high-level operations such as the set operations union, intersection and
+difference, and indexing of elements by position are implememted
+efficiently.
+
 @end itemize
 
 @menu
@@ -8733,6 +8756,7 @@ compared for equality in worst-case linear time.
 * Hash Tables::                 
 * Object Hashing::              
 * Red-Black Trees::             
+* Weight-Balanced Trees::       
 @end menu
 
 @node Association Lists, 1D Tables,  , Associations
@@ -9724,7 +9748,7 @@ is suitable for use as the optional @var{table} argument to the above
 procedures.  The returned table contains no associations.
 @end deffn
 
-@node Red-Black Trees,  , Object Hashing, Associations
+@node Red-Black Trees, Weight-Balanced Trees, Object Hashing, Associations
 @section Red-Black Trees
 
 @cindex trees, balanced binary
@@ -9751,12 +9775,12 @@ converted to alists before comparison can be done, and alist comparison
 is quadratic unless the alists are sorted.
 @end itemize
 
-MIT Scheme's binary trees are @dfn{red-black} trees.  The red-black
-tree-balancing algorithm provides generally good performance because it
-doesn't try to keep the tree very closely balanced.  At any given node
-in the tree, one side of the node can be twice as high as the other in
-the worst case.  With typical data the tree will remain fairly well
-balanced anyway.
+MIT Scheme provides an implementation of @dfn{red-black} trees.  The
+red-black tree-balancing algorithm provides generally good performance
+because it doesn't try to keep the tree very closely balanced.  At any
+given node in the tree, one side of the node can be twice as high as the
+other in the worst case.  With typical data the tree will remain fairly
+well balanced anyway.
 
 A red-black tree takes space that is proportional to the number of
 associations in the tree.  For the current implementation, the constant
@@ -9788,7 +9812,7 @@ of these predicates is true.
 @end deffn
 
 @deffn {procedure+} rb-tree? object
-Returns @code{#t} if @code{object} is a red-black tree, otherwise
+Returns @code{#t} if @var{object} is a red-black tree, otherwise
 returns @code{#f}.
 @end deffn
 
@@ -9911,6 +9935,500 @@ associations as @var{alist}.  This procedure is equivalent to:
     tree))
 @end example
 @end deffn
+
+@node Weight-Balanced Trees,  , Red-Black Trees, Associations
+@section Weight-Balanced Trees
+
+@cindex trees, balanced binary
+@cindex balanced binary trees
+@cindex binary trees
+@cindex weight-balanced binary trees
+Balanced binary trees are a useful data structure for maintaining large
+sets of ordered objects or sets of associations whose keys are ordered.
+MIT Scheme has an comprehensive implementation of weight-balanced binary
+trees which has several advantages over the other data structures for
+large aggregates:
+
+@itemize @bullet
+@item
+In addition to the usual element-level operations like insertion,
+deletion and lookup, there is a full complement of collection-level
+operations, like set intersection, union and subset test, all of which
+are implemented with good orders of growth in time and space.  This
+makes weight balanced trees ideal for rapid prototyping of functionally
+derived specifications.
+
+@item
+An element in a tree may be indexed by its position under the ordering
+of the keys, and the ordinal position of an element may be determined,
+both with reasonable efficiency.
+
+@item
+Operations to find and remove minimum element make weight balanced trees
+simple to use for priority queues.
+
+@item
+The implementation is @emph{functional} rather than imperative.  This
+means that operations like `inserting' an element in a tree do not
+destroy the old tree, in much the same way that @code{(+ 1 x)} modifies
+neither the constant 1 nor the value bound to @code{x}.  The programmer
+need not worry about copying the trees, and space efficiency is achieved
+by sharing subtrees.
+
+@end itemize
+
+These features make weight-balanced trees suitable for a wide range of
+applications, especially those structured in such a way that they
+require large numbers of sets or discrete maps.  Applications that have
+a few global databases and concentrate on element-level operations like
+insertion and lookup are probably better off using hash-tables or
+red-black trees.
+
+The @emph{size} of a tree is the number of associations that it
+contains.  Weight balanced binary trees are balanced to keep the sizes
+of the subtrees of each node within a constant factor of each other.
+This ensures logarithmic single-path operations (like lookup and
+insertion).  A weight balanced tree takes space that is proportional to
+the number of associations in the tree.  For the current implementation,
+the constant of proportionality is six words per association.
+
+@cindex binary trees, as sets
+@cindex binary trees, as discrete maps
+@cindex sets, using binary trees
+@cindex discrete maps, using binary trees
+Weight balanced trees can be used as an implementation for either
+discrete sets or discrete maps (associations).  Sets are implemented by
+ignoring the datum that is associated with the key.  Under this scheme
+associations exist in the tree to indicate that the key of the
+association is a member of the set.  Typically a value such as @code{()}
+or @code{#f} is associated with the key.
+
+Many operations can be viewed as computing a result that has two
+different names, depending on whether the tree arguments are thought of
+as sets or maps.  An example is @code{wt-tree/member?}, which, when
+regarding the tree as a set, computes the set membership operation, but,
+when regarding the tree as a discrete map, @code{wt-tree/member?} is the
+predicate telling if the map is defined at an element in its domain.
+Most names in this package have been chosen based on interpreting the
+trees as sets (hence the name @code{wt-tree/member?} rather than
+@code{wt-tree/defined-at?}).
+
+
+@cindex run-time-loadable option
+@cindex option, run-time-loadable
+The weight balanced tree implementation is a run-time-loadable option.
+To use weight balanced trees, execute
+
+@example
+(load-option 'wt-tree)
+@end example
+@findex load-option
+
+@noindent
+once before calling any of the procedures defined here.
+
+
+@menu
+* Construction of Weight-Balanced Trees::  
+* Basic Operations on Weight-Balanced Trees::  
+* Advanced Operations on Weight-Balanced Trees::  
+* Indexing Operations on Weight-Balanced Trees::  
+@end menu
+
+@node Construction of Weight-Balanced Trees, Basic Operations on Weight-Balanced Trees,  , Weight-Balanced Trees
+@subsection Construction of Weight-Balanced Trees
+
+Binary trees require there to be a total order on the keys used to
+arrange the elements in the tree.  Weight-balanced trees are organized
+by @emph{types}, where the type is an object encapsulating the ordering
+relation.  Creating a tree is a two-stage process.  First a tree type
+must be created from a predicate which gives the ordering.  A tree type
+is then used for making trees, either empty or singleton trees or trees
+from other aggregate structures like association lists.  Once created, a
+tree `knows' its type and the type is used to test compatibility between
+trees in operations taking two trees.  Usually a small number of tree
+types are created at the beginning of a program and used many times
+throughaout its execution.
+
+@deffn {procedure+} make-wt-tree-type key<?
+This procedure creates and returns a new tree type based on the ordering
+predicate @var{key<?}.
+@var{Key<?} must be a total ordering, having the property that for all
+key values @code{a}, @code{b} and @code{c}:
+
+@example
+(key<? a a)                         @result{} #f
+(and (key<? a b) (key<? b a))       @result{} #f
+(if (and (key<? a b) (key<? b c))
+    (key<? a c)
+    #t)                             @result{} #t
+@end example
+
+@noindent
+Two key values are assumed to be equal if neither is less than the other
+by @var{key<?}.
+
+Each call to @code{make-wt-tree-type} returns a distinct value, and
+trees are only compatible if their tree types are @code{eq?}, so trees
+that are intended to be used in binary tree operations must all be
+created with a tree type originating from a single call to
+@code{make-wt-tree-type}.
+@end deffn
+
+@defvr {variable+} number-wt-type
+A standard tree type for trees with numeric keys.  @code{Number-wt-type}
+could have been defined by
+
+@example
+(define number-wt-type (make-wt-tree-type  <))
+@end example
+@end defvr
+
+@defvr {variable+} string-wt-type
+A standard tree type for trees with string keys.  @code{String-wt-type}
+could have been defined by
+
+@example
+(define string-wt-type (make-wt-tree-type  string<?))
+@end example
+@end defvr
+
+
+
+@deffn {procedure+} make-wt-tree wt-tree-type
+This procedure creates and returns a newly allocated weight balanced
+tree.  The tree is empty, i.e. it contains no associations.
+@var{Wt-tree-type} is a weight balanced tree type obtained by calling
+@code{make-wt-tree-type}; the returned tree has this type.
+@end deffn
+
+@deffn {procedure+} singleton-wt-tree wt-tree-type key datum
+This procedure creates and returns a newly allocated weight balanced
+tree.  The tree contains a single association, that of @var{datum} with
+@var{key}.  @var{Wt-tree-type} is a weight balanced tree type obtained
+by calling @code{make-wt-tree-type}; the returned tree has this type.
+@end deffn
+
+@deffn {procedure+} alist->wt-tree tree-type alist
+Returns a newly allocated weight-balanced tree that contains the same
+associations as @var{alist}.  This procedure is equivalent to:
+
+@example
+(lambda (type alist)
+  (let ((tree (make-wt-tree type)))
+    (for-each (lambda (association)
+                (wt-tree/add! tree
+                              (car association)
+                              (cdr association)))
+              alist)
+    tree))
+@end example
+@end deffn
+
+
+
+@node Basic Operations on Weight-Balanced Trees, Advanced Operations on Weight-Balanced Trees, Construction of Weight-Balanced Trees, Weight-Balanced Trees
+@subsection Basic Operations on Weight-Balanced Trees
+
+This section describes the usual tree operations for insertion, deletion
+and lookup.
+
+@deffn {procedure+} wt-tree? object
+Returns @code{#t} if @var{object} is a weight-balanced tree, otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn {procedure+} wt-tree/empty? wt-tree
+Returns @code{#t} if @code{wt-tree} contains no associations, otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn {procedure+} wt-tree/size wt-tree
+Returns the number of associations in @var{wt-tree}, an exact
+non-negative integer.  This operation takes constant time.
+@end deffn
+
+
+@deffn {procedure+} wt-tree/add wt-tree key datum
+Returns a new tree containing all the associations in @var{wt-tree} and
+the association of @var{datum} with @var{key}.  If @var{wt-tree} already
+had an association for @var{key}, the new association overrides the old.
+The average and worst-case times required by this operation are
+proportional to the logarithm of the number of associations in
+@var{wt-tree}.
+@end deffn
+
+@deffn {procedure+} wt-tree/add! wt-tree key datum
+Associates @var{datum} with @var{key} in @var{wt-tree} and returns an
+unspecified value.  If @var{wt-tree} already has an association for
+@var{key}, that association is replaced.  The average and worst-case
+times required by this operation are proportional to the logarithm of
+the number of associations in @var{wt-tree}.
+@end deffn
+
+@deffn {procedure+} wt-tree/member? key wt-tree
+Returns @code{#t} if @var{wt-tree} contains an association for
+@var{key}, otherwise returns @code{#f}.  The average and worst-case
+times required by this operation are proportional to the logarithm of
+the number of associations in @var{wt-tree}.
+@end deffn
+
+@deffn {procedure+} wt-tree/lookup wt-tree key default
+Returns the datum associated with @var{key} in @var{wt-tree}.  If
+@var{wt-tree} doesn't contain an association for @var{key},
+@var{default} is returned.  The average and worst-case times required by
+this operation are proportional to the logarithm of the number of
+associations in @var{wt-tree}.
+@end deffn
+
+@deffn {procedure+} wt-tree/delete wt-tree key
+Returns a new tree containing all the associations in @var{wt-tree},
+except that if @var{wt-tree} contains an association for @var{key}, it
+is removed from the result.  The average and worst-case times required
+by this operation are proportional to the logarithm of the number of
+associations in @var{wt-tree}.
+@end deffn
+
+@deffn {procedure+} wt-tree/delete! wt-tree key
+If @var{wt-tree} contains an association for @var{key} the association
+is removed.  Returns an unspecified value.  The average and worst-case
+times required by this operation are proportional to the logarithm of
+the number of associations in @var{wt-tree}.
+@end deffn
+
+
+@node Advanced Operations on Weight-Balanced Trees, Indexing Operations on Weight-Balanced Trees, Basic Operations on Weight-Balanced Trees, Weight-Balanced Trees
+@subsection Advanced Operations on Weight-Balanced Trees
+
+In the following the @emph{size} of a tree is the number of associations
+that the tree contains, and a @emph{smaller} tree contains fewer
+associations.
+
+@deffn {procedure+} wt-tree/split< wt-tree bound
+Returns a new tree containing all and only the associations in
+@var{wt-tree} which have a key that is less than @var{bound} in the
+ordering relation of the tree type of @var{wt-tree}.  The average and
+worst-case times required by this operation are proportional to the
+logarithm of the size of @var{wt-tree}.
+@end deffn
+
+@deffn {procedure+} wt-tree/split> wt-tree bound
+Returns a new tree containing all and only the associations in
+@var{wt-tree} which have a key that is greater than @var{bound} in the
+ordering relation of the tree type of @var{wt-tree}.  The average and
+worst-case times required by this operation are proportional to the
+logarithm of size of @var{wt-tree}.
+@end deffn
+
+@deffn {procedure+} wt-tree/union wt-tree1 wt-tree2
+Returns a new tree containing all the associations from both trees.
+This operation is asymmetric: when both trees have an association for
+the same key, the returned tree associates the datum from @var{wt-tree2}
+with the key.  Thus if the trees are viewed as discrete maps then
+@code{wt-tree/union} computes the map override of @var{wt-tree1} by
+@var{wt-tree2}.  If the trees are used as sets the result is the set
+union of the arguments.
+The average and worst-case times required by this operation
+are proportional to the sum of the sizes of both trees.
+If the minimum key of one tree is greater than the maximum key of
+the other tree then the time required is at worst proportional to
+the logarithm of the size of the larger tree.
+@end deffn
+
+@deffn {procedure+} wt-tree/intersection wt-tree1 wt-tree2
+Returns a new tree containing all and only those associations from
+@var{wt-tree1} which have keys appearing as the key of in an association
+in @var{wt-tree2}.  If the trees are being used as sets the result is
+the set intersection of the arguments.  As a discrete map operation, it
+computes the domain restriction of @var{wt-tree1} to (the domain of)
+@var{wt-tree2}.  The worst-case time required by this operation is
+proportional to the size of the larger tree.
+@end deffn
+
+@deffn {procedure+} wt-tree/difference wt-tree1 wt-tree2
+Returns a new tree containing all and only those associations from
+@var{wt-tree1} which have keys that @emph{do not} appear as the key of
+an association in @var{wt-tree2}.  If the trees are viewed as sets the
+result is the asymmetric set difference of the arguments.  As a discrete
+map operation, it computes the domain restriction of @var{wt-tree1} to
+the complement of (the domain of) @var{wt-tree2}.  The
+worst-case time required by this operation is proportional to the 
+of the size of @var{wt-tree1}.
+@end deffn
+
+
+@deffn {procedure+} wt-tree/subset? wt-tree1 wt-tree2
+Returns @code{#t} iff the key of each association in @var{wt-tree1} is
+the key of some association in @var{wt-tree2}, otherwise returns @code{#f}.
+Viewed as a set operation, @code{wt-tree/subset?} is the improper subset
+predicate.
+A proper subset predicate can be constructed:
+
+@example
+(define (proper-subset? s1 s2)
+  (and (wt-tree/subset? s1 s2)
+       (< (wt-tree/size s1) (wt-tree/size s2))))
+@end example
+
+As a discrete map operation, @code{wt-tree/subset?} is the subset
+operation on the domain(s) of the map(s).  In the worst-case the time
+required by this operation is proportional to the size of
+@var{wt-tree1}.
+@end deffn
+
+
+@deffn {procedure+} wt-tree/set-equal? wt-tree1 wt-tree2
+Returns @code{#t} iff for every association in @var{wt-tree1} there is
+an association in @var{wt-tree2} that has the same key, and @emph{vice
+versa}.
+
+Viewing the arguments as sets @code{wt-tree/set-equal?} is the set
+equality predicate.  As a map operation it determines if two maps are
+defined on the same domain.
+
+This procedure is equivalent to
+
+@example
+(and (wt-tree/subset? @var{wt-tree1} @var{wt-tree2})
+     (wt-tree/subset? @var{wt-tree2} @var{wt-tree1}))
+@end example
+
+In the worst-case the time required by this operation is proportional to
+the size of the smaller tree.
+@end deffn
+
+
+@deffn {procedure+} wt-tree/fold combiner initial wt-tree
+This procedure reduces @var{wt-tree} by combining all the associations,
+using an reverse in-order traversal, so the associations are visited in
+reverse order.  @var{Combiner} is a procedure of three arguments: a key,
+a datum and the accumulated result so far.  Provided @var{combiner}
+takes time bounded by a constant, @code{wt-tree/fold} takes time
+proportional to the size of @var{wt-tree}.
+
+An sorted association list can be derived simply:
+@example
+(define (wt-tree->alist tree)
+  (fold (lambda (key datum list) (cons (cons key datum) list))
+        '()
+        tree))
+@end example
+
+The data in the associations can be summed like this:
+@example
+(define (sum-wt-tree-data tree)
+  (fold  (lambda (key datum sum) (+ sum datum))  0  tree)
+@end example
+@end deffn
+
+
+@deffn {procedure+} wt-tree/for-each action wt-tree
+This procedure traverses the tree in-order, applying @var{action} to
+each association.
+The associations are processed in increasing order of their keys.
+@var{Action} is a procedure of two arguments which take the key and
+datum respectively of the association.
+Provided @var{action} takes time bounded by a constant,
+@code{wt-tree/for-each} takes time proportional to in the size of
+@var{wt-tree}.
+The example prints the tree:
+
+@example
+(define (print-tree tree)
+  (for-each  (lambda (key value) (display (list key value)))
+             tree))
+@end example
+@end deffn
+
+
+@node Indexing Operations on Weight-Balanced Trees,  , Advanced Operations on Weight-Balanced Trees, Weight-Balanced Trees
+@subsection Indexing Operations on Weight-Balanced Trees
+
+Weight balanced trees support operations that view the tree as sorted
+sequence of associations.  Elements of the sequence can be accessed by
+position, and the position of an element in the sequence can be
+determined, both in logarthmic time.
+
+@deffn {procedure+} wt-tree/index wt-tree index
+@deffnx {procedure+} wt-tree/index-datum wt-tree index
+@deffnx {procedure+} wt-tree/index-pair wt-tree index
+Returns the 0-based @var{index}th association of @var{wt-tree} in the
+sorted sequence under the tree's ordering relation on the keys.
+@code{wt-tree/index} returns the @var{index}th key,
+@code{wt-tree/index-datum} returns the datum associated with the
+@var{index}th key and @code{wt-tree/index-pair} returns a new pair
+@code{(@var{key} . @var{datum})} which is the @code{cons} of the minimum
+key and its datum.  The average and worst-case times required by this
+operation are proportional to the logarithm of the number of
+associations in the tree.
+
+These operations signal an error if the tree is empty, if
+@var{index}@code{<0}, or if @var{index} is greater than or equal to the
+number of associations in the tree.
+
+Indexing can be used to find the median key in the tree as follows:
+
+@example
+(define (median tree)
+  (wt-tree/index tree (quotient (wt-tree/size tree) 2)))
+@end example
+@end deffn
+
+@deffn {procedure+} wt-tree/rank wt-tree key
+Determines the 0-based position of @var{key} in the sorted sequence of
+the keys under the tree's ordering relation, or @code{#f} if the tree
+has no association with for @var{key}.  This procedure returns either an
+exact non-negative integer or @code{#f}.  The average and worst-case
+times required by this operation are proportional to the logarithm of
+the number of associations in the tree.
+@end deffn
+
+@deffn {procedure+} wt-tree/min wt-tree index
+@deffnx {procedure+} wt-tree/min-datum wt-tree index
+@deffnx {procedure+} wt-tree/min-pair wt-tree index
+Returns the association of @var{wt-tree} that has the least key under the tree's ordering relation.
+@code{wt-tree/min} returns the least key,
+@code{wt-tree/min-datum} returns the datum associated with the
+least key and @code{wt-tree/min-pair} returns a new pair
+@code{(key . datum) }which is the @code{cons} of the key and the datum.
+The average and worst-case times required by this operation are
+proportional to the logarithm of the number of associations in the tree.
+
+These operations signal an error if the tree is empty.
+They could be written
+@example
+(define (wt-tree/min tree)        (wt-tree/index tree 0))
+(define (wt-tree/min-datum tree)  (wt-tree/index-datum tree 0))
+(define (wt-tree/min-pair tree)   (wt-tree/index-pair tree 0))
+@end example
+@end deffn
+
+@deffn {procedure+} wt-tree/delete-min wt-tree
+Returns a new tree containing all of the associations in @var{wt-tree}
+except the association with the least key under the @var{wt-tree}'s
+ordering relation.  An error is signalled if the tree is empty.  The
+average and worst-case times required by this operation are proportional
+to the logarithm of the number of associations in the tree.  This
+operation is equivalent to
+
+@example
+(wt-tree/delete @var{wt-tree} (wt-tree/min @var{wt-tree}))
+@end example
+@end deffn
+
+
+@deffn {procedure+} wt-tree/delete-min! wt-tree
+Removes the association with the least key under the @var{wt-tree}'s
+ordering relation.  An error is signalled if the tree is empty.  The
+average and worst-case times required by this operation are proportional
+to the logarithm of the number of associations in the tree.  This
+operation is equivalent to
+
+@example
+(wt-tree/delete! @var{wt-tree} (wt-tree/min @var{wt-tree}))
+@end example
+@end deffn
+
 
 @node Procedures, Environments, Associations, Top
 @chapter Procedures
@@ -14903,7 +15421,7 @@ These procedures extract components of objects of type
 in documentation of the @code{XLoadQueryFont} Xlib call.
 @end deffn
 
-@node Starbase Graphics, , X Graphics, Graphics
+@node Starbase Graphics,  , X Graphics, Graphics
 @section Starbase Graphics
 @cindex starbase graphics
 
