@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.47 1996/05/14 01:52:11 cph Exp $
+;;;	$Id: process.scm,v 1.48 1996/05/14 23:35:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -615,47 +615,69 @@ after the listing is made.)"
 	   (and (ref-variable translate-file-data-on-output mark)
 		(mark-translation mark)))
 	 'DEFAULT)))
-  (call-with-input-copier process input-region
+  (call-with-input-copier process input-region output-mark 512
     (lambda (copy-input)
-      (call-with-output-copier process output-mark
+      (call-with-output-copier process output-mark input-region
+			       ;; The 16 here is a heuristic that
+			       ;; seems to work provide reasonable
+			       ;; feedback for the popclient program,
+			       ;; which at present is the only
+			       ;; subprocess that uses this feature.
+			       (if allow-redisplay? 16 512)
 	(lambda (copy-output)
-	  (if allow-redisplay? (update-screens! '(IGNORE-INPUT)))
-	  (let loop ()
-	    (copy-input)
-	    (if (and (> (copy-output) 0) allow-redisplay?)
-		(update-screens! '(IGNORE-INPUT)))
-	    (let ((status (subprocess-status process)))
-	      (if (eq? status 'RUNNING)
-		  (loop)
-		  status))))))))
+	  (if copy-input
+	      (if copy-output
+		  (begin
+		    (if allow-redisplay? (update-screens! '(IGNORE-INPUT)))
+		    (let loop ()
+		      (copy-input)
+		      (let ((n (copy-output)))
+			(cond ((not n)
+			       (loop))
+			      ((> n 0)
+			       (if allow-redisplay?
+				   (update-screens! '(IGNORE-INPUT)))
+			       (loop))))))
+		  (do () ((= (copy-input) 0))))
+	      (if copy-output
+		  (begin
+		    (if allow-redisplay? (update-screens! '(IGNORE-INPUT)))
+		    (do ()
+			((= (copy-output) 0))
+		      (if allow-redisplay?
+			  (update-screens! '(IGNORE-INPUT)))))))))))
+  (subprocess-wait process))
 
-(define (call-with-input-copier process input-region receiver)
-  (if input-region
-      (handle-broken-pipe process
-	(lambda ()
-	  (let ((group (region-group input-region))
-		(start-index (region-start-index input-region))
-		(end-index (region-end-index input-region))
-		(port (subprocess-output-port process))
-		(buffer (make-string 512)))
-	    (let ((output-port/set-blocking-mode
-		   (port/operation port 'SET-OUTPUT-BLOCKING-MODE))
-		  (output-port/write-chars (port/operation port 'WRITE-CHARS))
-		  (output-port/close (port/operation port 'CLOSE-OUTPUT)))
-	      (output-port/set-blocking-mode port 'NONBLOCKING)
-	      (receiver
-	       (lambda ()
-		 (if (< start-index end-index)
-		     (let ((index (min (+ start-index 512) end-index)))
-		       (group-copy-substring! group start-index index
-					      buffer 0)
-		       (let ((n-written
-			      (output-port/write-chars
-			       port buffer 0 (- index start-index))))
-			 (set! start-index (+ start-index n-written))
-			 n-written))
-		     (output-port/close port))))))))
-      (receiver (lambda () 0))))
+(define (call-with-input-copier process input-region nonblock? bsize receiver)
+  (let ((port (subprocess-output-port process)))
+    (let ((output-port/set-blocking-mode
+	   (port/operation port 'SET-OUTPUT-BLOCKING-MODE))
+	  (output-port/write-chars (port/operation port 'WRITE-CHARS))
+	  (output-port/close (port/operation port 'CLOSE-OUTPUT)))
+      (if input-region
+	  (handle-broken-pipe process
+	    (lambda ()
+	      (let ((group (region-group input-region))
+		    (start-index (region-start-index input-region))
+		    (end-index (region-end-index input-region))
+		    (buffer (make-string bsize)))
+		(if nonblock?
+		    (output-port/set-blocking-mode port 'NONBLOCKING))
+		(receiver
+		 (lambda ()
+		   (if (< start-index end-index)
+		       (let ((index (min (+ start-index bsize) end-index)))
+			 (group-copy-substring! group start-index index
+						buffer 0)
+			 (let ((n-written
+				(output-port/write-chars
+				 port buffer 0 (- index start-index))))
+			   (set! start-index (+ start-index n-written))
+			   n-written))
+		       (output-port/close port)))))))
+	  (begin
+	    (output-port/close port)
+	    (receiver #f))))))
 
 (define (handle-broken-pipe process thunk)
   (call-with-current-continuation
@@ -673,33 +695,30 @@ after the listing is made.)"
 (define system-call-error
   (condition-accessor condition-type:system-call-error 'ERROR-TYPE))
 
-(define (call-with-output-copier process output-mark receiver)
-  (if output-mark
-      (let ((port (subprocess-input-port process))
-	    (buffer (make-string 512)))
-	(let ((input-port/set-blocking-mode
-	       (port/operation port 'SET-INPUT-BLOCKING-MODE))
-	      (input-port/read-chars (port/operation port 'READ-CHARS))
-	      (input-port/open? (port/operation port 'INPUT-OPEN?))
-	      (input-port/close (port/operation port 'CLOSE-INPUT)))
-	  (let ((copy-output
-		 (lambda ()
-		   (let ((n (input-port/read-chars port buffer)))
-		     (if n
-			 (begin
-			   (if (> n 0)
-			       (insert-substring buffer 0 n output-mark))
-			   n)
-			 0)))))
-	    (input-port/set-blocking-mode port 'NONBLOCKING)
-	    (let ((status (receiver copy-output)))
-	      (if (input-port/open? port)
-		  (begin
-		    (input-port/set-blocking-mode port 'BLOCKING)
-		    (do () ((= (copy-output) 0)))
-		    (input-port/close port)))
-	      status))))
-      (receiver (lambda () 0))))
+(define (call-with-output-copier process output-mark nonblock? bsize receiver)
+  (let ((port (subprocess-input-port process)))
+    (let ((input-port/set-blocking-mode
+	   (port/operation port 'SET-INPUT-BLOCKING-MODE))
+	  (input-port/read-chars (port/operation port 'READ-CHARS))
+	  (input-port/open? (port/operation port 'INPUT-OPEN?))
+	  (input-port/close (port/operation port 'CLOSE-INPUT)))
+      (if output-mark
+	  (let ((buffer (make-string bsize)))
+	    (let ((copy-output
+		   (lambda ()
+		     (let ((n (input-port/read-chars port buffer)))
+		       (if (and n (> n 0))
+			   (insert-substring buffer 0 n output-mark))
+		       n))))
+	      (if nonblock? (input-port/set-blocking-mode port 'NONBLOCKING))
+	      (let ((status (receiver copy-output)))
+		(if (and nonblock? (input-port/open? port))
+		    (begin
+		      (input-port/set-blocking-mode port 'BLOCKING)
+		      (do () ((= (copy-output) 0)))
+		      (input-port/close port)))
+		status)))
+	  (receiver #f)))))
 
 (define-command shell-command
   "Execute string COMMAND in inferior shell; display output, if any.
