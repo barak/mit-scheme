@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.19 1992/02/18 14:05:02 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.20 1992/02/19 23:56:32 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -544,7 +544,7 @@ MIT in each case. |#
 	    (MOV W (@R ,regnum:free-pointer)
 		 (&U ,(make-non-pointer-literal (ucode-type manifest-vector)
 						size)))
-	    (ADD W (R ,regnum:free-pointer) (& (* 4 (1+ size)))))))
+	    (ADD W (R ,regnum:free-pointer) (& ,(* 4 (1+ size)))))))
     ((1)
      (let ((entry (vector-ref entries 0)))
        (generate/cons-closure target
