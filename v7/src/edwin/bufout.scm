@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufout.scm,v 1.3 1989/08/09 13:16:53 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufout.scm,v 1.4 1991/05/15 21:19:11 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -53,7 +53,7 @@
 
 (define (mark->output-port mark #!optional buffer)
   (output-port/copy mark-output-port-template
-		    (cons (mark-left-inserting mark)
+		    (cons (mark-left-inserting-copy mark)
 			  (if (default-object? buffer)
 			      false
 			      buffer))))
@@ -112,8 +112,12 @@
 (define (operation/write-string port string)
   (region-insert-string! (output-port/mark port) string))
 
+(define (operation/close port)
+  (mark-temporary! (output-port/mark port)))
+
 (define mark-output-port-template
-  (make-output-port `((FLUSH-OUTPUT ,operation/flush-output)
+  (make-output-port `((CLOSE ,operation/close)
+		      (FLUSH-OUTPUT ,operation/flush-output)
 		      (FRESH-LINE ,operation/fresh-line)
 		      (FRESH-LINES ,operation/fresh-lines)
 		      (PRINT-SELF ,operation/print-self)
