@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.13 1992/02/08 15:10:14 cph Exp $
+$Id: gconst.scm,v 4.14 1992/11/08 04:23:45 jinx Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -215,7 +215,7 @@ MIT in each case. |#
     SET-CELL-CONTENTS!
     SET-INTERRUPT-ENABLES!
     SET-STRING-LENGTH!
-    STRING->SYMBOL
+    ;; STRING->SYMBOL ; Runtime version copies the string
     STRING-ALLOCATE
     STRING-HASH
     STRING-HASH-MOD
