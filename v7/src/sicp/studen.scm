@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/studen.scm,v 1.5 1991/03/12 23:18:51 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/studen.scm,v 1.6 1991/04/06 05:23:30 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -57,7 +57,27 @@ MIT in each case. |#
 			       (char=? #\- char)))
 			(begin (discard-char)
 			       (string-append string "-" (loop)))
-			string)))))))))
+			string))))))))
+  
+  (define char-set/mit-scheme-atom-delimiters
+    char-set/atom-delimiters)
+
+  (define char-set/sicp-atom-delimiters
+    (char-set-difference
+     char-set/mit-scheme-atom-delimiters
+     (char-set #\[ #\])))
+
+  (define (set-atom-delimiters! kind)
+    (set! char-set/atom-delimiters
+	  (case kind
+	    ((mit-scheme)
+	     char-set/mit-scheme-atom-delimiters)
+	    ((sicp)
+	     char-set/sicp-atom-delimiters)
+	    (else
+	     (error "set-atom-delimiters!: Unknown kind")))))
+
+) ;; end in-package
 
 (parser-table/set-entry! system-global-parser-table
 			 "#\/"
@@ -83,12 +103,17 @@ MIT in each case. |#
 
 (define *student-syntax-table*)
 
+(define set-atom-delimiters!
+  (access set-atom-delimiters! (->environment '(runtime parser))))
+
 (define (enable-system-syntax)
   (set-current-parser-table! system-global-parser-table)
+  (set-atom-delimiters! 'mit-scheme)
   (set-repl/syntax-table! (nearest-repl) system-global-syntax-table))
 
 (define (disable-system-syntax)
   (set-current-parser-table! *student-parser-table*)
+  (set-atom-delimiters! 'sicp)
   (set-repl/syntax-table! (nearest-repl) *student-syntax-table*))
 
 (define (initialize-syntax!)
@@ -102,7 +127,7 @@ MIT in each case. |#
   ;; Add brackets as extended alphabetic since they are used in book (ugh!)
   (parser-table/entry
    system-global-parser-table
-   "/"
+   "@"
    (lambda (parse-object collect-list)
      (parser-table/set-entry! sicp-parser-table "[" parse-object collect-list)
      (parser-table/set-entry! sicp-parser-table "]" parse-object
