@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.4 1994/11/22 19:49:17 gjr Exp $
+$Id: utils.scm,v 1.5 1994/11/26 17:43:21 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -84,8 +84,9 @@ MIT in each case. |#
 	   ((new-variable->index symbol)
 	    => (lambda (index)
 		 (*unparse-string name)
-		 (*unparse-string kmp/pp-symbol-glue)
-		 (*unparse-string (number->string index))))
+		 ;;(*unparse-string kmp/pp-symbol-glue)
+		 ;;(*unparse-string (number->string index))
+		 ))
 	   (else
 	    ;;(*unparse-string "#[uninterned-symbol ")
 	    (*unparse-string name)
@@ -113,8 +114,9 @@ MIT in each case. |#
 	   (let ((index  (new-variable->index x))
 		 (name   (symbol-name x)))
 	     (cond (index
-		    (string-append name kmp/pp-symbol-glue
-				   (number->string index)))
+		    ;;(string-append name kmp/pp-symbol-glue
+		    ;;		   (number->string index))
+		    name)
 		   ((= 0 (vector-8b-ref name 0))
 		    (substring name 1 (string-length name)))
 		   (else
@@ -310,9 +312,12 @@ MIT in each case. |#
   ;;(generate-uninterned-symbol prefix)
   (set! new-variable-index (+ new-variable-index 1))
   (let ((symbol (string->uninterned-symbol
-		 (if (symbol? prefix)
-		     (symbol-name prefix)
-		     prefix))))
+		 (string-append
+		  (if (symbol? prefix)
+		      (symbol-name prefix)
+		      prefix)
+		  "-"
+		  (number->string new-variable-index)))))
     (hash-table/put! new-variable-table symbol new-variable-index)
     symbol))
 
