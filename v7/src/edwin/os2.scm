@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.2 1995/01/06 01:08:29 cph Exp $
+;;;	$Id: os2.scm,v 1.3 1995/01/16 20:40:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -131,11 +131,11 @@ Includes the new backup.  Must be > 0."
 		 (if (null? filenames)
 		     (sort versions <)
 		     (loop (cdr filenames)
-			   (let ((version
+			   (let ((root.version
 				  (os/numeric-backup-filename?
 				   (car filenames))))
-			     (if (and version (> version 0))
-				 (cons version versions)
+			     (if root.version
+				 (cons (cdr root.version) versions)
 				 versions)))))))
 	  (if (null? versions)
 	      (values (os2/make-backup-pathname
@@ -188,23 +188,24 @@ Includes the new backup.  Must be > 0."
 					  type))))))
 
 (define (os/numeric-backup-filename? filename)
-  (let ((version
-	 (or (and (re-search-string-forward
-		   (re-compile-pattern "\\.~\\([0-9]+\\)~$" #f)
-		   #f
-		   #f
-		   filename)
-		  (substring->number filename
-				     (re-match-start-index 1)
-				     (re-match-end-index 1)))
-	     (let ((type (pathname-type filename)))
-	       (and (string? type)
-		    (fix:= 3 (string-length type))
-		    (or (substring->number type 0 3)
-			(substring->number type 1 3)))))))
-    (and version
-	 (> version 0)
-	 version)))
+  (and (let ((try
+	      (lambda (pattern)
+		(re-search-string-forward (re-compile-pattern pattern #f)
+					  #f
+					  #f
+					  filename))))
+	 (or (try "^\\(.+\\)\\.~\\([0-9]+\\)~$")
+	     (try "^\\([^.]+\\)\\.\\([0-9][0-9][0-9]\\)$")
+	     (try "^\\([^.]+\\.[^.]\\)\\([0-9][0-9]\\)$")))
+       (let ((root-start (re-match-start-index 1))
+	     (root-end (re-match-end-index 1))
+	     (version-start (re-match-start-index 2))
+	     (version-end (re-match-end-index 2)))
+	 (let ((version
+		(substring->number filename version-start version-end)))
+	   (and (> version 0)
+		(cons (substring filename root-start root-end)
+		      version))))))
 
 (define (os/auto-save-pathname pathname buffer)
   (let ((pathname
