@@ -1,6 +1,44 @@
-;;; -*- Scheme -*-
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/krypt.scm,v 1.7 1992/04/06 19:36:09 bal Exp $
+
+Copyright (c) 1988-92 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
+
+;;;; Encryption/Decryption functions
+;;; package: (runtime krypt)
 
 (declare (usual-integrations))
+
+;;; This implementation is based on krypt.c, written by Ron Rivest.
+;;; encrypt and decrypt are compatible with krypt.c.
 
 (define-integrable ts 256)				; Actual table size to use
 
@@ -43,12 +81,6 @@
 		(vector-set! s j t)
 		(loop (fix:1+ i) j (fix:remainder (fix:1+ k) m)))))))))
 
-#|
-(define-integrable (inc-mod i ts)
-  (if (fix:< i ts) 
-      i
-      (fix:- i ts)))
-|#
 (define-integrable (inc-mod i ts)
   (fix:remainder i ts))
 
@@ -102,10 +134,6 @@
      (string-pad-left (write-to-string (decoded-time/second the-time)) 2 #\0)
      " "
      (write-to-string (decoded-time/year the-time)))))
-#|
-(define (get-krypt-time-string)
-  "Mon Mar 30 17:21:44 1992")
-|#
 
 (define (update-checksum cs block index length)
   (let ((end-index (fix:+ index length)))
@@ -179,9 +207,4 @@
 	    (if (default-object? password-error)
 		(error "krypt: Password error.")
 		(password-error))))))
-
-	    
-	      
-	      
-	      
-	      
+	  
