@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/ansi.scm,v 1.2 1992/05/11 04:54:27 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/ansi.scm,v 1.3 1992/05/28 18:40:37 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -35,18 +35,11 @@ MIT in each case. |#
 ;;;; Hard-coded ANSI terminal type for lack of termcap on DOS
 
 (declare (usual-integrations))
-
+
 (define (make-ansi-terminal-description columns lines)
-  (define (defined? sym)
-    (not (lexical-unreferenceable? (the-environment) sym)))
-
-  (define (get-numstring scheme shell)
-    (or (and (defined? scheme)
-	     (exact-nonnegative-integer?
-	      (lexical-reference (the-environment) scheme))
-	     (number->string
-	      (lexical-reference (the-environment) scheme)))
-	(get-environment-variable shell)))
+  (define (get-numstring base-name)
+    (or (get-environment-variable (string-append "EDWIN_" base-name))
+	(get-environment-variable base-name)))
 
   (define (valid-mode? color-string)
     (and (string? color-string)
@@ -67,8 +60,8 @@ MIT in each case. |#
 	     (string-append ";" color-string))
 	""))
 
-  (let ((foregnd (get-numstring 'edwin:foreground-color "FOREGROUND"))
-	(backgnd (get-numstring 'edwin:background-color "BACKGROUND")))
+  (let ((foregnd (get-numstring "FOREGROUND"))
+	(backgnd (get-numstring "BACKGROUND")))
     (let ((normal
 	   (string-append "\033[0"
 			  (make-mode foregnd)
