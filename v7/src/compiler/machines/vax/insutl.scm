@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insutl.scm,v 1.3 1987/08/18 18:29:18 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insutl.scm,v 1.4 1987/08/20 20:43:25 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -238,7 +238,9 @@ MIT in each case. |#
 	    ((and (pair? expression) (eq? (car expression) '&))
 	     (wrap '& '(R A V I)	; M and W unpredictable
 		   15 8
-		   (coerce-to-type (cadr expression) type)))
+		   (cons-syntax
+		    (coerce-to-type (cadr expression) type)
+		    '())))
 	    (else #F))))
 	  
   (cond ((not (pair? expression)) #F)
