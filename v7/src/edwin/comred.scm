@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: comred.scm,v 1.118 2000/05/08 17:34:43 cph Exp $
+;;; $Id: comred.scm,v 1.119 2000/05/08 17:53:11 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -208,19 +208,50 @@
 	  (if (eq? history command-history)
 	      '()
 	      (loop history))))))
-
-(define (add-command-suffix! suffix)
-  (if *command-suffixes*
-      (enqueue! *command-suffixes* suffix)
-      (suffix)))
-
-(define (maybe-add-command-suffix! suffix)
+
+(define (add-command-suffix! procedure . arguments)
   (if *command-suffixes*
       (without-interrupts
        (lambda ()
-	 (if (not (queued?/unsafe *command-suffixes* suffix))
-	     (enqueue!/unsafe *command-suffixes* suffix))))
-      (suffix)))
+	 (%add-command-suffix! procedure arguments)))
+      (apply procedure arguments)))
+
+(define (maybe-add-command-suffix! procedure . arguments)
+  (if *command-suffixes*
+      (without-interrupts
+       (lambda ()
+	 (let loop ((items (car *command-suffixes*)))
+	   (cond ((not (pair? items))
+		  (%add-command-suffix! procedure arguments))
+		 ((not (and (eq? procedure (caar items))
+			    (equal? arguments (cdar items))))
+		  (loop (cdr items)))))))
+      (apply procedure arguments)))
+
+(define (%add-command-suffix! procedure arguments)
+  (let ((next (cons (cons procedure arguments) '())))
+    (if (pair? (cdr *command-suffixes*))
+	(set-cdr! (cdr *command-suffixes*) next)
+	(set-car! *command-suffixes* next))
+    (set-cdr! *command-suffixes* next)))
+
+(define (run-command-suffixes)
+  (let loop ()
+    (let ((item
+	   (without-interrupts
+	    (lambda ()
+	      (let ((next (car *command-suffixes*)))
+		(and (pair? next)
+		     (if (pair? (cdr next))
+			 (set-car! *command-suffixes* (cdr next))
+			 (begin
+			   (set-car! *command-suffixes* '())
+			   (set-cdr! *command-suffixes* '()))))
+		(car next))))))
+      (if item
+	  (begin
+	    (apply (car item) (cdr item))
+	    (loop))))))
 
 ;;; The procedures for executing commands come in two flavors.  The
 ;;; difference is that the EXECUTE-foo procedures reset the command
@@ -274,15 +305,11 @@
 	     (set! *non-undo-count* 0)
 	     (if (not *command-argument*)
 		 (undo-boundary! point))
-	     (fluid-let ((*command-suffixes* (make-queue)))
+	     (fluid-let ((*command-suffixes* (cons '() '())))
 	       (let ((v
 		      (apply procedure
 			     (interactive-arguments command record?))))
-		 (let loop ()
-		   (if (not (queue-empty? *command-suffixes*))
-		       (begin
-			 ((dequeue! *command-suffixes*))
-			 (loop))))
+		 (run-command-suffixes)
 		 v)))))
       (cond ((or *executing-keyboard-macro?* *command-argument*)
 	     (normal))
