@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: kilcom.scm,v 1.64 1993/01/10 10:47:06 cph Exp $
+;;;	$Id: kilcom.scm,v 1.65 1995/05/02 21:18:58 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -217,24 +217,29 @@ The command \\[yank] can retrieve it from there.
       (lambda ()
 	(if (null? strings)
 	    (editor-error "No previous kill"))
-	(set-car! strings
-		  (if forward?
-		      (string-append (car strings) string)
-		      (string-append string (car strings))))
-	(set-variable! kill-ring-yank-pointer strings))
+	(let ((string
+	       (if forward?
+		   (string-append (car strings) string)
+		   (string-append string (car strings)))))
+	  (set-car! strings string)
+	  (set-variable! kill-ring-yank-pointer strings)
+	  (os/interprogram-cut string)))
       (lambda ()
-	(let ((strings
-	       (let ((kill-ring-max (ref-variable kill-ring-max)))
-		 (if (zero? kill-ring-max)
-		     '()
-		     (let ((strings (cons string strings)))
-		       (if (> (length strings) kill-ring-max)
-			   (set-cdr! (list-tail strings (- kill-ring-max 1))
-				     '()))
-		       strings)))))
-	  (set-variable! kill-ring strings)
-	  (set-variable! kill-ring-yank-pointer strings)))))
+	(kill-ring-save-1 string)
+	(os/interprogram-cut string))))
   (set-command-message! append-next-kill-tag))
+
+(define (kill-ring-save-1 string)
+  (let ((strings
+	 (let ((kill-ring-max (ref-variable kill-ring-max)))
+	   (if (zero? kill-ring-max)
+	       '()
+	       (let ((strings (cons string strings)))
+		 (if (> (length strings) kill-ring-max)
+		     (set-cdr! (list-tail strings (- kill-ring-max 1)) '()))
+		 strings)))))
+    (set-variable! kill-ring strings)
+    (set-variable! kill-ring-yank-pointer strings)))
 
 (define append-next-kill-tag
   "Append Next Kill")
@@ -287,7 +292,18 @@ comes the newest one."
   ((ref-command rotate-yank-pointer) offset)
   (let* ((start (mark-right-inserting-copy (current-point)))
 	 (end (mark-left-inserting-copy start)))
-    (insert-string (car (ref-variable kill-ring-yank-pointer)) start)
+    (insert-string (let ((string (car (ref-variable kill-ring-yank-pointer)))
+			 (string*
+			  (and (= offset 0)
+			       (os/interprogram-paste))))
+		     (if (and string*
+			      (not (string-null? string*))
+			      (not (string=? string* string)))
+			 (begin
+			   (kill-ring-save-1 string*)
+			   string*)
+			 string))
+		   start)
     (mark-temporary! end)
     (mark-temporary! start)
     (if before?

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.13 1995/05/02 00:29:23 cph Exp $
+;;;	$Id: os2.scm,v 1.14 1995/05/02 21:18:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -357,6 +357,15 @@ Includes the new backup.  Must be > 0."
 
 (define (os/set-file-modes-writable! pathname)
   (set-file-modes! pathname (fix:andc (file-modes pathname) #x0001)))
+
+(define (os/interprogram-cut string push?)
+  push?
+  (os2-clipboard-write-text
+   ;; Some programs can't handle strings over 64k.
+   (if (fix:< (string-length string) #x10000) string "")))
+
+(define os/interprogram-paste
+  os2-clipboard-read-text)
 
 ;;;; Dired customization
 

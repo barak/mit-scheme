@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.48 1995/04/15 06:14:01 cph Exp $
+;;;	$Id: unix.scm,v 1.49 1995/05/02 21:19:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -705,3 +705,10 @@ Value is a list of strings."
 		       (string-append " "
 				      (number->string
 				       (decoded-time/year dt)))))))
+
+(define (os/interprogram-cut string push?)
+  string push?
+  unspecific)
+
+(define (os/interprogram-paste)
+  #f)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.170 1995/04/30 06:52:22 cph Exp $
+$Id: edwin.pkg,v 1.171 1995/05/02 21:18:47 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -1154,7 +1154,10 @@ MIT in each case. |#
 
  ((os/2)
   (extend-package (edwin)
-    (files "os2"))
+    (files "os2")
+    (import (runtime os2-window-primitives)
+	    os2-clipboard-read-text
+	    os2-clipboard-write-text))
 
   (extend-package (edwin dired)
     (files "diros2")
