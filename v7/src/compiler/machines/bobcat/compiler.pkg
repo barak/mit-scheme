@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.38 1992/07/29 23:10:00 cph Exp $
+$Id: compiler.pkg,v 1.39 1992/09/24 22:07:15 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -159,6 +159,11 @@ MIT in each case. |#
 	  compile-bin-file
 	  compile-procedure
 	  compile-scode
+	  compiler:dump-bci-file
+	  compiler:dump-bci/bcs-files
+	  compiler:dump-bif/bsm-files
+	  compiler:dump-inf-file
+	  compiler:dump-info-file
 	  compiler:reset!
 	  cross-compile-bin-file
 	  cross-compile-bin-file-end)
