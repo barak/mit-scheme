@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasdump.c,v 9.57 1993/10/14 19:18:15 gjr Exp $
+$Id: fasdump.c,v 9.58 1993/11/04 04:03:07 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -61,7 +61,8 @@ extern SCHEME_OBJECT
   * EXFUN (initialize_primitive_table, (SCHEME_OBJECT *, SCHEME_OBJECT *)),
   * EXFUN (cons_primitive_table, (SCHEME_OBJECT *, SCHEME_OBJECT *, long *)),
   * EXFUN (cons_whole_primitive_table,
-	   (SCHEME_OBJECT *, SCHEME_OBJECT *, long *));
+	   (SCHEME_OBJECT *, SCHEME_OBJECT *, long *)),
+  * EXFUN (cons_c_code_table, (SCHEME_OBJECT *, SCHEME_OBJECT *, long *));
 
 /* Some statics used freely in this file */
 
@@ -115,9 +116,7 @@ static CONST char * dump_file_name = ((char *) 0);
 {									\
   Transport_Compiled();							\
   if ((mode == 2) && ((OBJECT_TYPE (*(To - 1))) == TC_ENVIRONMENT))	\
-  {									\
     *(To - 1) = SHARP_F;						\
-  }									\
 }
 
 #define Dump_Compiled_Entry(label)						\
@@ -155,7 +154,7 @@ DEFUN (DumpLoop, (Scan, mode), fast SCHEME_OBJECT * Scan AND int mode)
     {
       case TC_PRIMITIVE:
       case TC_PCOMB0:
-        *Scan = dump_renumber_primitive(*Scan);
+        * Scan = (dump_renumber_primitive (* Scan));
 	break;
 
       case TC_BROKEN_HEART:
@@ -180,14 +179,14 @@ DEFUN (DumpLoop, (Scan, mode), fast SCHEME_OBJECT * Scan AND int mode)
 	compiled_code_present_p = true;
 	Dump_Compiled_Entry (after_entry);
       after_entry:
-	*Scan = Temp;
+	* Scan = Temp;
 	break;
 
       case TC_MANIFEST_CLOSURE:
       {
 	fast long count;
-	fast char *word_ptr;
-	SCHEME_OBJECT *area_end;
+	fast char * word_ptr;
+	SCHEME_OBJECT * area_end;
 
 	compiled_code_present_p = true;
 	START_CLOSURE_RELOCATION (Scan);
@@ -242,8 +241,8 @@ DEFUN (DumpLoop, (Scan, mode), fast SCHEME_OBJECT * Scan AND int mode)
 	  case GLOBAL_OPERATOR_LINKAGE_KIND:
 	  {
 	    fast long count;
-	    fast char *word_ptr;
-	    SCHEME_OBJECT *end_scan;
+	    fast char * word_ptr;
+	    SCHEME_OBJECT * end_scan;
 
 	    START_OPERATOR_RELOCATION (Scan);
 	    count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
@@ -376,9 +375,8 @@ DEFUN (Fasdump_Exit, (code, close_p), long code AND Boolean close_p)
 
   Fixes = Fixup;
   if (close_p)
-  {
     OS_channel_close_noerror (dump_channel);
-  }
+
   result = true;
   while (Fixes != NewMemTop)
   {
@@ -389,9 +387,8 @@ DEFUN (Fasdump_Exit, (code, close_p), long code AND Boolean close_p)
   }
   Fixup = Fixes;
   if ((close_p) && ((!result) || (code != PRIM_DONE)))
-  {
     OS_file_remove (dump_file_name);
-  }
+
   dump_file_name = ((char *) 0);
   Fasdump_Exit_Hook ();
   if (!result)
@@ -400,13 +397,9 @@ DEFUN (Fasdump_Exit, (code, close_p), long code AND Boolean close_p)
     /*NOTREACHED*/
   }
   if (code == PRIM_DONE)
-  {
     return (SHARP_T);
-  }
   else if (code == PRIM_INTERRUPT)
-  {
     return (SHARP_F);
-  }
   else
   {
     signal_error_from_primitive (code);
@@ -440,8 +433,8 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
   Tchannel channel;
   Boolean arg_string_p;
   SCHEME_OBJECT Object, *New_Object, arg2, flag;
-  SCHEME_OBJECT *table_start, *table_end;
-  long Length, table_length;
+  SCHEME_OBJECT * prim_table_start, * prim_table_end;
+  long Length, prim_table_length;
   Boolean result;
   PRIMITIVE_HEADER (3);
 
@@ -449,19 +442,15 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
   arg2 = (ARG_REF (2));
   arg_string_p = (STRING_P (arg2));
   if (!arg_string_p)
-  {
     channel = (arg_channel (2));
-  }
   flag = (ARG_REF (3));
 
   compiled_code_present_p = false;
 
-  table_end = &Free[(Space_Before_GC ())];
-  table_start = (initialize_primitive_table (Free, table_end));
-  if (table_start >= table_end)
-  {
-    Primitive_GC (table_start - Free);
-  }
+  prim_table_end = &Free[(Space_Before_GC ())];
+  prim_table_start = (initialize_primitive_table (Free, prim_table_end));
+  if (prim_table_start >= prim_table_end)
+    Primitive_GC (prim_table_start - Free);
 
   Fasdump_Free_Calc (NewFree, NewMemTop, Orig_New_Free);
   Fixup = NewMemTop;
@@ -482,28 +471,34 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
   DUMPLOOP (New_Object,
 	    ((flag == SHARP_F) ? 0 : ((flag == SHARP_T) ? 1 : 2)));
   Length = (NewFree - New_Object);
-  table_start = NewFree;
-  table_end = (cons_primitive_table (NewFree, Fixup, &table_length));
-  if (table_end >= Fixup)
-  {
+  prim_table_start = NewFree;
+  prim_table_end = (cons_primitive_table (NewFree, Fixup, &prim_table_length));
+  if (prim_table_end >= Fixup)
     FASDUMP_INTERRUPT ();
-  }
+
+#ifdef NATIVE_CODE_IS_C
+
+  /* Cannot dump C compiled code. */
+
+  if (compiled_code_present_p)
+    PRIMITIVE_RETURN (Fasdump_Exit (ERR_COMPILED_CODE_ERROR, false));
+
+#endif /* NATIVE_CODE_IS_C */
 
   if (arg_string_p)
   {
     channel = (OS_open_dump_file (dump_file_name));
     if (channel == NO_CHANNEL)
-    {
       PRIMITIVE_RETURN (Fasdump_Exit (ERR_ARG_2_BAD_RANGE, false));
-    }
   }
 
   dump_channel = channel;
   result = (Write_File (New_Object,
 			Length, New_Object,
 			0, Constant_Space,
-			table_start, table_length,
-			((long) (table_end - table_start)),
+			prim_table_start, prim_table_length,
+			((long) (prim_table_end - prim_table_start)),
+			prim_table_end, 0, 0,
 			compiled_code_present_p, false));
 
   PRIMITIVE_RETURN (Fasdump_Exit ((result ? PRIM_DONE : PRIM_INTERRUPT),
@@ -518,9 +513,14 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
 
 DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
 {
-  SCHEME_OBJECT Combination, *table_start, *table_end, *saved_free;
-  long table_length;
-  Boolean result;
+  SCHEME_OBJECT
+    Combination, * saved_free,
+    * prim_table_start, * prim_table_end,
+    * c_table_start, * c_table_end;
+  long
+    prim_table_length,
+    c_table_length;
+  Boolean result = false;
   PRIMITIVE_HEADER (2);
 
   Band_Dump_Permitted ();
@@ -541,11 +541,18 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
   (* Free) = (MAKE_POINTER_OBJECT (TC_LIST, (Free - 2)));
   Free ++;  /* Some compilers are TOO clever about this and increment Free
 	      before calculating Free-2! */
-  table_start = Free;
-  table_end = (cons_whole_primitive_table (Free, Heap_Top, &table_length));
-  if (table_end >= Heap_Top)
-    result = false;
-  else
+  prim_table_start = Free;
+  prim_table_end = (cons_whole_primitive_table (prim_table_start,
+						Heap_Top,
+						&prim_table_length));
+  if (prim_table_end >= Heap_Top)
+    goto done;
+
+  c_table_start = prim_table_end;
+  c_table_end = (cons_c_code_table (c_table_start, Heap_Top, &c_table_length));
+  if (c_table_end >= Heap_Top)
+    goto done;
+
   {
     SCHEME_OBJECT * faligned_heap, * faligned_constant;
     CONST char * filename = ((CONST char *) (STRING_LOC ((ARG_REF (2)), 0)));
@@ -570,13 +577,17 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
 			  faligned_heap,
 			  ((long) (Free_Constant - faligned_constant)),
 			  faligned_constant,
-			  table_start, table_length,
-			  ((long) (table_end - table_start)),
+			  prim_table_start, prim_table_length,
+			  ((long) (prim_table_end - prim_table_start)),
+			  c_table_start, c_table_length,
+			  ((long) (c_table_end - c_table_start)),
 			  (compiler_utilities != SHARP_F), true));
     OS_channel_close_noerror (dump_channel);
-    if (!result)
+    if (! result)
       OS_file_remove (filename);
   }
+
+done:
   Band_Dump_Exit_Hook ();
   Free = saved_free;
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (result));

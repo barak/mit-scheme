@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: load.c,v 9.32 1993/06/24 07:08:53 gjr Exp $
+$Id: load.c,v 9.33 1993/11/04 04:02:56 gjr Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -74,6 +74,7 @@ static long
   Const_Base, Const_Count,
   Dumped_Heap_Top, Dumped_Constant_Top,
   Primitive_Table_Size, Primitive_Table_Length,
+  C_Code_Table_Size, C_Code_Table_Length,
   dumped_processor_type, dumped_interface_version;
 
 static unsigned long
@@ -90,14 +91,10 @@ DEFUN_VOID (print_fasl_information)
   printf ("Machine = %ld; Version = %ld; Subversion = %ld\n",
 	  Machine_Type, Version, Sub_Version);
   if ((dumped_processor_type != 0) || (dumped_interface_version != 0))
-  {
     printf ("Compiled code interface version = %ld; Processor type = %ld\n",
 	    dumped_interface_version, dumped_processor_type);
-  }
   if (band_p)
-  {
     printf ("The file contains a dumped image (band).\n");
-  }
 
   printf ("\nRelocation Information:\n\n");
   printf ("Heap Count = %ld; Heap Base = 0x%lx; Heap Top = 0x%lx\n",
@@ -110,13 +107,10 @@ DEFUN_VOID (print_fasl_information)
   printf ("Dumped object at 0x%lx (as read from file)\n", Dumped_Object);
   printf ("Compiled code utilities vector = 0x%lx\n", dumped_utilities);
   if (Ext_Prim_Vector != SHARP_F)
-  {
     printf ("External primitives vector = 0x%lx\n", Ext_Prim_Vector);
-  }
   else
-  {
     printf ("Length of primitive table = %ld\n", Primitive_Table_Length);
-  }
+  printf ("Length of C table = %ld\n", C_Code_Table_Length);
   printf ("Checksum = 0x%lx\n", dumped_checksum);
   return;
 }
@@ -128,9 +122,8 @@ DEFUN (initialize_variables_from_fasl_header, (buffer),
   SCHEME_OBJECT Pointer_Heap_Base, Pointer_Const_Base;
 
   if (buffer[FASL_Offset_Marker] != FASL_FILE_MARKER)
-  {
     return (FASL_FILE_NOT_FASL);
-  }
+
   NORMALIZE_HEADER (buffer,
 		    (sizeof(buffer) / sizeof(SCHEME_OBJECT)),
 		    buffer[FASL_Offset_Heap_Base],
@@ -160,8 +153,8 @@ DEFUN (initialize_variables_from_fasl_header, (buffer),
   }
   else
   {
-    Primitive_Table_Length = OBJECT_DATUM (buffer[FASL_Offset_Prim_Length]);
-    Primitive_Table_Size = OBJECT_DATUM (buffer[FASL_Offset_Prim_Size]);
+    Primitive_Table_Length = (OBJECT_DATUM (buffer[FASL_Offset_Prim_Length]));
+    Primitive_Table_Size = (OBJECT_DATUM (buffer[FASL_Offset_Prim_Size]));
     Ext_Prim_Vector = SHARP_F;
   }
 
@@ -175,14 +168,23 @@ DEFUN (initialize_variables_from_fasl_header, (buffer),
   }
   else
   {
-    SCHEME_OBJECT temp;
+    SCHEME_OBJECT temp = buffer[FASL_Offset_Ci_Version];
 
-    temp = buffer[FASL_Offset_Ci_Version];
-
-    band_p = CI_BAND_P(temp);
-    dumped_processor_type = CI_PROCESSOR(temp);
-    dumped_interface_version = CI_VERSION(temp);
+    band_p = (CI_BAND_P (temp));
+    dumped_processor_type = (CI_PROCESSOR (temp));
+    dumped_interface_version = (CI_VERSION (temp));
     dumped_utilities = buffer[FASL_Offset_Ut_Base];
+  }
+
+  if (Sub_Version < FASL_C_CODE)
+  {
+    C_Code_Table_Length = 0;
+    C_Code_Table_Size = 0;
+  }
+  else
+  {
+    C_Code_Table_Length = (OBJECT_DATUM (buffer[FASL_Offset_C_Length]));
+    C_Code_Table_Size = (OBJECT_DATUM (buffer[FASL_Offset_C_Length]));
   }
 
 #ifndef INHIBIT_FASL_VERSION_CHECK
@@ -252,7 +254,6 @@ DEFUN (initialize_variables_from_fasl_header, (buffer),
       (checksum_area (((unsigned long *) &buffer[0]),
 		      ((long) (FASL_HEADER_LENGTH)),
 		      ((unsigned long) 0)));
-
   }
 
 #endif /* INHIBIT_CHECKSUMS */
@@ -267,9 +268,7 @@ DEFUN_VOID (Read_Header)
 
   if ((Load_Data (FASL_HEADER_LENGTH, header)) !=
       FASL_HEADER_LENGTH)
-  {
     return (FASL_FILE_TOO_SHORT);
-  }
   return (initialize_variables_from_fasl_header (&header[0]));
 }
 

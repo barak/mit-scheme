@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchdmp.c,v 9.73 1993/10/14 19:18:42 gjr Exp $
+$Id: bchdmp.c,v 9.74 1993/11/04 04:03:27 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -744,6 +744,18 @@ DEFUN (dump_to_file, (root, fname),
     Primitive_GC (table_end - saved_free);
   }
 
+#ifdef NATIVE_CODE_IS_C
+
+  /* Cannot dump C compiled code. */
+
+  if (compiled_code_present_p)
+  {
+    fasdump_exit (0);
+    signal_error_from_primitive (ERR_COMPILED_CODE_ERROR);
+  }
+
+#endif /* NATIVE_CODE_IS_C */
+
   tsize = (table_end - table_start);
   hlength = ((sizeof (SCHEME_OBJECT)) * tsize);
   if (((lseek (dump_file,
@@ -758,7 +770,7 @@ DEFUN (dump_to_file, (root, fname),
 
   hlength = ((sizeof (SCHEME_OBJECT)) * FASL_HEADER_LENGTH);
   prepare_dump_header (header, dumped_object, length, dumped_object,
-		       0, Constant_Space, tlength, tsize,
+		       0, Constant_Space, tlength, tsize, 0, 0,
 		       compiled_code_present_p, false);
   if (((lseek (dump_file, 0, 0)) == -1)
       || ((write (dump_file, ((char *) &header[0]), hlength)) != hlength))
@@ -839,7 +851,9 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
   }
 }
 
-extern SCHEME_OBJECT compiler_utilities;
+extern SCHEME_OBJECT
+  compiler_utilities,
+  * EXFUN (cons_c_code_table, (SCHEME_OBJECT *, SCHEME_OBJECT *, long *));
 
 /* (DUMP-BAND PROCEDURE FILE-NAME)
    Saves all of the heap and pure space on FILE-NAME.  When the
@@ -849,9 +863,14 @@ extern SCHEME_OBJECT compiler_utilities;
 
 DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
 {
-  SCHEME_OBJECT Combination, *table_start, *table_end, *saved_free;
-  long table_length;
-  Boolean result;
+  SCHEME_OBJECT
+    Combination, * saved_free,
+    * prim_table_start, * prim_table_end,
+    * c_table_start, * c_table_end;
+  long
+    prim_table_length,
+    c_table_length;
+  Boolean result = false;
   PRIMITIVE_HEADER (2);
 
   Band_Dump_Permitted ();
@@ -872,11 +891,18 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
   (* Free) = (MAKE_POINTER_OBJECT (TC_LIST, (Free - 2)));
   Free ++;  /* Some compilers are TOO clever about this and increment Free
 	      before calculating Free-2! */
-  table_start = Free;
-  table_end = (cons_whole_primitive_table (Free, Heap_Top, &table_length));
-  if (table_end >= Heap_Top)
-    result = false;
-  else
+  prim_table_start = Free;
+  prim_table_end = (cons_whole_primitive_table (prim_table_start,
+						Heap_Top,
+						&prim_table_length));
+  if (prim_table_end >= Heap_Top)
+    goto done;
+
+  c_table_start = prim_table_end;
+  c_table_end = (cons_c_code_table (c_table_start, Heap_Top, &c_table_length));
+  if (c_table_end >= Heap_Top)
+    goto done;
+
   {
     SCHEME_OBJECT * faligned_heap, * faligned_constant;
     CONST char * filename = ((CONST char *) (STRING_LOC ((ARG_REF (2)), 0)));
@@ -901,13 +927,17 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
 			  faligned_heap,
 			  ((long) (Free_Constant - faligned_constant)),
 			  faligned_constant,
-			  table_start, table_length,
-			  ((long) (table_end - table_start)),
+			  prim_table_start, prim_table_length,
+			  ((long) (prim_table_end - prim_table_start)),
+			  c_table_start, c_table_length,
+			  ((long) (c_table_end - c_table_start)),
 			  (compiler_utilities != SHARP_F), true));
     OS_channel_close_noerror (dump_channel);
-    if (!result)
+    if (! result)
       OS_file_remove (filename);
   }
+
+done:
   Band_Dump_Exit_Hook ();
   Free = saved_free;
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (result));

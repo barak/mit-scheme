@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.75 1993/11/01 23:52:47 gjr Exp $
+$Id: cmpint.c,v 1.76 1993/11/04 04:03:35 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -277,7 +277,11 @@ extern C_UTILITY SCHEME_OBJECT
   EXFUN (compiled_with_interrupt_mask, (unsigned long,
 					SCHEME_OBJECT,
 					unsigned long)),
-  EXFUN (compiled_with_stack_marker, (SCHEME_OBJECT));
+  EXFUN (compiled_with_stack_marker, (SCHEME_OBJECT)),
+  * EXFUN (cons_c_code_table, (SCHEME_OBJECT *, SCHEME_OBJECT *, long *));
+
+extern C_UTILITY Boolean
+  EXFUN (install_c_code_table, (SCHEME_OBJECT *, long));
 
 extern C_UTILITY void
   EXFUN (compiler_initialize, (long fasl_p)),
@@ -285,7 +289,7 @@ extern C_UTILITY void
   EXFUN (store_variable_cache,
 	 (SCHEME_OBJECT extension, SCHEME_OBJECT block, long offset)),
   EXFUN (compiled_entry_type, (SCHEME_OBJECT entry, long *buffer)),
-  EXFUN (declare_compiled_code_block, (SCHEME_OBJECT block));
+  EXFUN (declare_compiled_code_block, (SCHEME_OBJECT block));  
 
 extern C_TO_SCHEME long
   EXFUN (enter_compiled_expression, (void)),
@@ -3419,29 +3423,6 @@ DEFUN_VOID (compiler_reset_internal)
 #define COMPILER_UTILITIES_LENGTH ((2 * (TRAMPOLINE_ENTRY_SIZE + 1)) + 1)
 
 C_UTILITY void
-DEFUN (compiler_reset,
-       (new_block),
-       SCHEME_OBJECT new_block)
-{
-  /* Called after a disk restore */
-
-  if (((OBJECT_TYPE (new_block)) != TC_COMPILED_CODE_BLOCK)
-      || ((OBJECT_TYPE (MEMORY_REF (new_block, 0))) != TC_MANIFEST_NM_VECTOR)
-      || ((VECTOR_LENGTH (new_block)) != (COMPILER_UTILITIES_LENGTH - 1)))
-  {
-    extern void EXFUN (compiler_reset_error, (void));
-
-    compiler_reset_error ();
-  }
-  else
-  {
-    compiler_utilities = new_block;
-    compiler_reset_internal ();
-  }
-  return;
-}
-
-C_UTILITY void
 DEFUN (compiler_initialize, (fasl_p), long fasl_p)
 {
   /* Start-up of whole interpreter */
@@ -3503,6 +3484,50 @@ DEFUN (compiler_initialize, (fasl_p), long fasl_p)
   return;
 }
 
+C_UTILITY void
+DEFUN (compiler_reset,
+       (new_block),
+       SCHEME_OBJECT new_block)
+{
+  /* Called after a disk restore */
+
+  if (((OBJECT_TYPE (new_block)) != TC_COMPILED_CODE_BLOCK)
+      || ((OBJECT_TYPE (MEMORY_REF (new_block, 0))) != TC_MANIFEST_NM_VECTOR)
+      || ((VECTOR_LENGTH (new_block)) != (COMPILER_UTILITIES_LENGTH - 1)))
+  {
+    extern void EXFUN (compiler_reset_error, (void));
+
+    compiler_reset_error ();
+  }
+  else
+  {
+    compiler_utilities = new_block;
+    compiler_reset_internal ();
+  }
+  return;
+}
+
+#ifndef NATIVE_CODE_IS_C
+
+SCHEME_OBJECT *
+DEFUN (cons_c_code_table, (start, limit, length),
+       SCHEME_OBJECT * start
+       AND SCHEME_OBJECT * limit
+       AND long * length)
+{
+  * length = 0;
+  return (start);
+}
+
+Boolean
+DEFUN (install_c_code_table, (table, length),
+       SCHEME_OBJECT * table AND long length)
+{
+  return (true);
+}
+
+#endif /* NATIVE_CODE_IS_C */
+
 #else	/* not HAS_COMPILER_SUPPORT */
 
 /* Stubs for compiler utilities.
@@ -3548,7 +3573,11 @@ extern SCHEME_OBJECT
   EXFUN (compiled_with_interrupt_mask, (unsigned long,
 					SCHEME_OBJECT,
 					unsigned long)),
-  EXFUN (compiled_with_stack_marker, (SCHEME_OBJECT));
+  EXFUN (compiled_with_stack_marker, (SCHEME_OBJECT)),
+  * EXFUN (cons_c_code_table, (SCHEME_OBJECT *, SCHEME_OBJECT *, long *));
+
+extern Boolean
+  EXFUN (install_c_code_table, (SCHEME_OBJECT *, long));
 
 extern void
   EXFUN (compiler_reset, (SCHEME_OBJECT new_block)),
@@ -3617,6 +3646,23 @@ DEFUN (compiled_with_stack_marker, (thunk), SCHEME_OBJECT thunk)
 {
   signal_error_from_primitive (ERR_INAPPLICABLE_CONTINUATION);
   /*NOTREACHED*/
+}
+
+SCHEME_OBJECT *
+DEFUN (cons_c_code_table, (start, limit, length),
+       SCHEME_OBJECT * start
+       AND SCHEME_OBJECT * limit
+       AND long * length)
+{
+  * length = 0;
+  return (start);
+}
+
+Boolean
+DEFUN (install_c_code_table, (table, length),
+       SCHEME_OBJECT * table AND long length)
+{
+  return (true);
 }
 
 /* Bad entry points. */
@@ -3786,16 +3832,12 @@ LOSING_RETURN_ADDRESS (comp_error_restart)
 /* NOP entry points */
 
 void
-DEFUN (compiler_reset,
-       (new_block),
-       SCHEME_OBJECT new_block)
+DEFUN (compiler_reset, (new_block), SCHEME_OBJECT new_block)
 {
   extern void EXFUN (compiler_reset_error, (void));
 
   if (new_block != SHARP_F)
-  {
     compiler_reset_error ();
-  }
   return;
 }
 

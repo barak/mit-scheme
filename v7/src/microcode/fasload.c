@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.73 1993/10/31 16:51:06 gjr Exp $
+$Id: fasload.c,v 9.74 1993/11/04 04:03:14 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -65,11 +65,18 @@ extern char * Abort_Names [];
 extern SCHEME_OBJECT * load_renumber_table;
 extern SCHEME_OBJECT compiler_utilities;
 
-extern SCHEME_OBJECT EXFUN (intern_symbol, (SCHEME_OBJECT));
-extern void EXFUN (install_primitive_table, (SCHEME_OBJECT *, long));
-extern void EXFUN (compiler_reset_error, (void));
-extern void EXFUN (compiler_initialize, (long));
-extern void EXFUN (compiler_reset, (SCHEME_OBJECT));
+extern SCHEME_OBJECT
+  EXFUN (intern_symbol, (SCHEME_OBJECT));
+
+extern void
+  EXFUN (install_primitive_table, (SCHEME_OBJECT *, long)),
+  EXFUN (install_c_table, (SCHEME_OBJECT *, long)),
+  EXFUN (compiler_reset_error, (void)),
+  EXFUN (compiler_initialize, (long)),
+  EXFUN (compiler_reset, (SCHEME_OBJECT));
+
+extern Boolean
+  EXFUN (install_c_code_table, (SCHEME_OBJECT *, long));
 
 #ifndef FLUSH_I_CACHE_REGION
 #  define FLUSH_I_CACHE_REGION(addr, nwords) NOP()
@@ -136,7 +143,10 @@ DEFUN (read_channel_continue, (header, mode, repeat_p),
     SET_MEMTOP (Heap_Top);    
   }
 
-  heap_length = (Heap_Count + Primitive_Table_Size + Primitive_Table_Length);
+  heap_length = (Heap_Count
+		 + Primitive_Table_Size
+		 + Primitive_Table_Length
+		 + C_Code_Table_Size);
 
   if (GC_Check (heap_length))
   {
@@ -239,10 +249,13 @@ DEFUN (read_file_start, (file_name, from_band_load),
   return;
 }
 
-static SCHEME_OBJECT *
-DEFUN (read_file_end, (mode), int mode)
+static void
+DEFUN (read_file_end, (mode, prim_table_ptr, c_code_table_ptr),
+       int mode
+       AND SCHEME_OBJECT ** prim_table_ptr
+       AND SCHEME_OBJECT ** c_code_table_ptr)
 {
-  SCHEME_OBJECT *table, *ignore;
+  SCHEME_OBJECT * prim_table, * c_code_table, * ignore;
   extern unsigned long checksum_area ();
 
   if ((Load_Data (Heap_Count, ((char *) Free))) != Heap_Count)
@@ -277,8 +290,8 @@ DEFUN (read_file_end, (mode), int mode)
   Free_Constant += Const_Count;
   SET_CONSTANT_TOP ();
 
-  table = Free;
-  if ((Load_Data (Primitive_Table_Size, ((char *) Free)))
+  prim_table = Free;
+  if ((Load_Data (Primitive_Table_Size, ((char *) prim_table)))
       != Primitive_Table_Size)
   {
     if (mode != MODE_CHANNEL)
@@ -286,19 +299,38 @@ DEFUN (read_file_end, (mode), int mode)
     signal_error_from_primitive (ERR_IO_ERROR);
   }
   computed_checksum =
-    (checksum_area (((unsigned long *) Free),
+    (checksum_area (((unsigned long *) prim_table),
 		    Primitive_Table_Size,
 		    computed_checksum));
-  NORMALIZE_REGION (((char *) table), Primitive_Table_Size);
+  NORMALIZE_REGION (((char *) prim_table), Primitive_Table_Size);
   Free += Primitive_Table_Size;
+
+  c_code_table = Free;
+  if ((C_Code_Table_Size != 0)
+      && ((Load_Data (C_Code_Table_Size, ((char *) c_code_table)))
+	  != C_Code_Table_Size))
+  {
+    if (mode != MODE_CHANNEL)
+      OS_channel_close_noerror (load_channel);
+    signal_error_from_primitive (ERR_IO_ERROR);
+  }
+  computed_checksum =
+    (checksum_area (((unsigned long *) c_code_table),
+		    C_Code_Table_Size,
+		    computed_checksum));
+  NORMALIZE_REGION (((char *) c_code_table), C_Code_Table_Size);
+  Free += C_Code_Table_Size;
 
   if (mode != MODE_CHANNEL)
     OS_channel_close_noerror (load_channel);
 
-  if ((computed_checksum != ((unsigned long) 0)) &&
-      (dumped_checksum != SHARP_F))
+  if ((computed_checksum != ((unsigned long) 0))
+      && (dumped_checksum != SHARP_F))
     signal_error_from_primitive (ERR_IO_ERROR);
-  return (table);
+
+  * prim_table_ptr = prim_table;
+  * c_code_table_ptr = c_code_table;
+  return;
 }
 
 /* Statics used by Relocate, below */
@@ -657,9 +689,9 @@ static SCHEME_OBJECT
 DEFUN (load_file, (mode), int mode)
 {
   SCHEME_OBJECT
-    *Orig_Heap,
-    *Constant_End, *Orig_Constant,
-    *temp, *primitive_table;
+    * Orig_Heap,
+    * Constant_End, * Orig_Constant,
+    * temp, * primitive_table, * c_code_table;
 
   /* Read File */
 
@@ -672,7 +704,7 @@ DEFUN (load_file, (mode), int mode)
   ALIGN_FLOAT (Free);
   Orig_Heap = Free;
   Orig_Constant = Free_Constant;
-  primitive_table = (read_file_end (mode));
+  read_file_end (mode, &primitive_table, &c_code_table);
   Constant_End = Free_Constant;
   heap_relocation = (COMPUTE_RELOCATION (Orig_Heap, Heap_Base));
 
@@ -692,7 +724,7 @@ DEFUN (load_file, (mode), int mode)
     automagically: the utilities vector is part of the band.
    */
 
-  if ((!band_p) && (dumped_utilities != SHARP_F))
+  if ((! band_p) && (dumped_utilities != SHARP_F))
   {
     if (compiler_utilities == SHARP_F)
       signal_error_from_primitive (ERR_FASLOAD_COMPILED_MISMATCH);
@@ -713,9 +745,11 @@ DEFUN (load_file, (mode), int mode)
   Setup_For_String_Inversion ();
 #endif
 
-  /* Setup the primitive table */
+  /* Setup the primitive and C code tables */
 
   install_primitive_table (primitive_table, Primitive_Table_Length);
+  if (! (install_c_code_table (c_code_table, C_Code_Table_Length)))
+    signal_error_from_primitive (ERR_FASLOAD_COMPILED_MISMATCH);
 
   if ((mode != MODE_BAND)
       || (heap_relocation != ((relocation_type) 0))

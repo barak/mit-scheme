@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasl.h,v 9.33 1993/02/15 02:51:22 gjr Exp $
+$Id: fasl.h,v 9.34 1993/11/04 04:02:49 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -58,8 +58,10 @@ MIT in each case. */
 #define FASL_Offset_Ci_Version	10	/* Version number for compiled code interface */
 #define FASL_Offset_Ut_Base	11	/* Address of the utilities vector */
 #define FASL_Offset_Check_Sum	12	/* Header and data checksum. */
+#define FASL_Offset_C_Length	13	/* Number of entries in the C code table */
+#define FASL_Offset_C_Size	14	/* Size of C code table in SCHEME_OBJECTs */
 
-#define FASL_Offset_First_Free	13	/* Used to clear header */
+#define FASL_Offset_First_Free	15	/* Used to clear header */
 
 /* Aliases for backwards compatibility. */
 
@@ -77,6 +79,7 @@ MIT in each case. */
 #define SUBVERSION_MASK		((ONE << SUBVERSION_LENGTH) - 1)
 #define The_Sub_Version(P)	(((P) >> MACHINE_TYPE_LENGTH) & SUBVERSION_MASK)
 #define The_Version(P)		(OBJECT_TYPE (P))
+
 #define Make_Version(V, S, M)						\
   MAKE_OBJECT ((V), ((((unsigned long) (S)) << MACHINE_TYPE_LENGTH)	\
 		     | (M)))						\
@@ -85,10 +88,11 @@ MIT in each case. */
 #define CI_VERSION(P)		(((P) >> (DATUM_LENGTH / 2)) & CI_MASK)
 #define CI_PROCESSOR(P)		((P) & CI_MASK)
 #define CI_BAND_P(P)		((OBJECT_TYPE (P)) == TC_TRUE)
+
 #define MAKE_CI_VERSION(Band_p, Version, Processor_Type)		\
   MAKE_OBJECT (((Band_p) ? TC_TRUE : TC_NULL),				\
-		   ((((unsigned long) (Version)) << (DATUM_LENGTH / 2))	\
-		    | (Processor_Type)))				\
+	       ((((unsigned long) (Version)) << (DATUM_LENGTH / 2))	\
+		| (Processor_Type)))					\
 
 /* "Memorable" FASL versions -- ones where we modified something
    and want to remain backwards compatible.
@@ -107,11 +111,12 @@ MIT in each case. */
 #define FASL_MERGED_PRIMITIVES	7
 #define FASL_INTERFACE_VERSION	8
 #define FASL_NEW_BIGNUMS	9
+#define FASL_C_CODE		10
 
 /* Current parameters.  Always used on output. */
 
 #define FASL_FORMAT_VERSION	FASL_FORMAT_ADDED_STACK
-#define FASL_SUBVERSION		FASL_NEW_BIGNUMS
+#define FASL_SUBVERSION		FASL_C_CODE
 
 /*
   The definitions below correspond to the ones above.  They usually
@@ -120,11 +125,11 @@ MIT in each case. */
  */
 
 #ifndef FASL_READ_VERSION
-#define FASL_READ_VERSION	FASL_FORMAT_VERSION
+#define FASL_READ_VERSION	FASL_FORMAT_ADDED_STACK
 #endif
 
 #ifndef FASL_READ_SUBVERSION
-#define FASL_READ_SUBVERSION	FASL_SUBVERSION
+#define FASL_READ_SUBVERSION	FASL_NEW_BIGNUMS
 #endif
 
 /* These are for Bintopsb.
