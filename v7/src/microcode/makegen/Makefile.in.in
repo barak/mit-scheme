@@ -1,4 +1,4 @@
-# $Id: Makefile.in.in,v 1.5 2000/12/06 02:42:30 cph Exp $
+# $Id: Makefile.in.in,v 1.6 2000/12/06 05:46:47 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -211,6 +211,9 @@ bintopsb: $(bintopsb_OBJECTS) $(bintopsb_DEPENDENCIES)
 psbtobin: $(psbtobin_OBJECTS) $(psbtobin_DEPENDENCIES)
 	-rm -f psbtobin
 	$(LINK) $(psbtobin_LDFLAGS) $(psbtobin_OBJECTS) $(psbtobin_LIBS)
+
+setup:
+	( cd cmpauxmd && $(MAKE) )
 
 tags: TAGS
 TAGS:
