@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2pm.c,v 1.5 1995/02/21 22:54:07 cph Exp $
+$Id: pros2pm.c,v 1.6 1995/04/28 07:01:32 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -695,80 +695,82 @@ DEFINE_PRIMITIVE ("OS2WIN-GET-EVENT", Prim_OS2_window_get_event, 2, 2, 0)
       = (OS2_receive_message ((qid_argument (1)), (BOOLEAN_ARG (2)), 1));
     SCHEME_OBJECT result = SHARP_F;
     if (message != 0)
-      switch (MSG_TYPE (message))
-	{
-	case mt_button_event:
+      {
+	switch (MSG_TYPE (message))
 	  {
-	    unsigned short type = (SM_BUTTON_EVENT_TYPE (message));
-	    result = (allocate_marked_vector (TC_VECTOR, 7, 0));
-	    CVT_UNSIGNED (0, ET_BUTTON);
-	    CVT_UNSIGNED (1, (SM_BUTTON_EVENT_WID (message)));
-	    CVT_UNSIGNED (2, (BUTTON_TYPE_NUMBER (type)));
-	    CVT_UNSIGNED (3, (BUTTON_TYPE_EVENT (type)));
-	    CVT_UNSIGNED (4, (SM_BUTTON_EVENT_X (message)));
-	    CVT_UNSIGNED (5, (SM_BUTTON_EVENT_Y (message)));
-	    CVT_UNSIGNED (6, (SM_BUTTON_EVENT_FLAGS (message)));
+	  case mt_button_event:
+	    {
+	      unsigned short type = (SM_BUTTON_EVENT_TYPE (message));
+	      result = (allocate_marked_vector (TC_VECTOR, 7, 0));
+	      CVT_UNSIGNED (0, ET_BUTTON);
+	      CVT_UNSIGNED (1, (SM_BUTTON_EVENT_WID (message)));
+	      CVT_UNSIGNED (2, (BUTTON_TYPE_NUMBER (type)));
+	      CVT_UNSIGNED (3, (BUTTON_TYPE_EVENT (type)));
+	      CVT_UNSIGNED (4, (SM_BUTTON_EVENT_X (message)));
+	      CVT_UNSIGNED (5, (SM_BUTTON_EVENT_Y (message)));
+	      CVT_UNSIGNED (6, (SM_BUTTON_EVENT_FLAGS (message)));
+	      break;
+	    }
+	  case mt_close_event:
+	    {
+	      result = (allocate_marked_vector (TC_VECTOR, 2, 0));
+	      CVT_UNSIGNED (0, ET_CLOSE);
+	      CVT_UNSIGNED (1, (SM_CLOSE_EVENT_WID (message)));
+	      break;
+	    }
+	  case mt_focus_event:
+	    {
+	      result = (allocate_marked_vector (TC_VECTOR, 3, 0));
+	      CVT_UNSIGNED (0, ET_FOCUS);
+	      CVT_UNSIGNED (1, (SM_FOCUS_EVENT_WID (message)));
+	      CVT_BOOLEAN  (2, (SM_FOCUS_EVENT_GAINEDP (message)));
+	      break;
+	    }
+	  case mt_key_event:
+	    {
+	      result = (allocate_marked_vector (TC_VECTOR, 5, 0));
+	      CVT_UNSIGNED (0, ET_KEY);
+	      CVT_UNSIGNED (1, (SM_KEY_EVENT_WID (message)));
+	      CVT_UNSIGNED (2, (SM_KEY_EVENT_CODE (message)));
+	      CVT_UNSIGNED (3, (SM_KEY_EVENT_FLAGS (message)));
+	      CVT_UNSIGNED (4, (SM_KEY_EVENT_REPEAT (message)));
+	      break;
+	    }
+	  case mt_paint_event:
+	    {
+	      result = (allocate_marked_vector (TC_VECTOR, 6, 0));
+	      CVT_UNSIGNED (0, ET_PAINT);
+	      CVT_UNSIGNED (1, (SM_PAINT_EVENT_WID (message)));
+	      CVT_UNSIGNED (2, (SM_PAINT_EVENT_XL (message)));
+	      CVT_UNSIGNED (3, (SM_PAINT_EVENT_XH (message)));
+	      CVT_UNSIGNED (4, (SM_PAINT_EVENT_YL (message)));
+	      CVT_UNSIGNED (5, (SM_PAINT_EVENT_YH (message)));
+	      break;
+	    }
+	  case mt_resize_event:
+	    {
+	      result = (allocate_marked_vector (TC_VECTOR, 4, 0));
+	      CVT_UNSIGNED (0, ET_RESIZE);
+	      CVT_UNSIGNED (1, (SM_RESIZE_EVENT_WID (message)));
+	      CVT_UNSIGNED (2, (SM_RESIZE_EVENT_WIDTH (message)));
+	      CVT_UNSIGNED (3, (SM_RESIZE_EVENT_HEIGHT (message)));
+	      break;
+	    }
+	  case mt_visibility_event:
+	    {
+	      result = (allocate_marked_vector (TC_VECTOR, 3, 0));
+	      CVT_UNSIGNED (0, ET_VISIBILITY);
+	      CVT_UNSIGNED (1, (SM_VISIBILITY_EVENT_WID (message)));
+	      CVT_BOOLEAN  (2, (SM_VISIBILITY_EVENT_SHOWNP (message)));
+	      break;
+	    }
+	  default:
+	    OS2_destroy_message (message);
+	    OS2_error_anonymous ();
 	    break;
 	  }
-	case mt_close_event:
-	  {
-	    result = (allocate_marked_vector (TC_VECTOR, 2, 0));
-	    CVT_UNSIGNED (0, ET_CLOSE);
-	    CVT_UNSIGNED (1, (SM_CLOSE_EVENT_WID (message)));
-	    break;
-	  }
-	case mt_focus_event:
-	  {
-	    result = (allocate_marked_vector (TC_VECTOR, 3, 0));
-	    CVT_UNSIGNED (0, ET_FOCUS);
-	    CVT_UNSIGNED (1, (SM_FOCUS_EVENT_WID (message)));
-	    CVT_BOOLEAN  (2, (SM_FOCUS_EVENT_GAINEDP (message)));
-	    break;
-	  }
-	case mt_key_event:
-	  {
-	    result = (allocate_marked_vector (TC_VECTOR, 5, 0));
-	    CVT_UNSIGNED (0, ET_KEY);
-	    CVT_UNSIGNED (1, (SM_KEY_EVENT_WID (message)));
-	    CVT_UNSIGNED (2, (SM_KEY_EVENT_CODE (message)));
-	    CVT_UNSIGNED (3, (SM_KEY_EVENT_FLAGS (message)));
-	    CVT_UNSIGNED (4, (SM_KEY_EVENT_REPEAT (message)));
-	    break;
-	  }
-	case mt_paint_event:
-	  {
-	    result = (allocate_marked_vector (TC_VECTOR, 6, 0));
-	    CVT_UNSIGNED (0, ET_PAINT);
-	    CVT_UNSIGNED (1, (SM_PAINT_EVENT_WID (message)));
-	    CVT_UNSIGNED (2, (SM_PAINT_EVENT_XL (message)));
-	    CVT_UNSIGNED (3, (SM_PAINT_EVENT_XH (message)));
-	    CVT_UNSIGNED (4, (SM_PAINT_EVENT_YL (message)));
-	    CVT_UNSIGNED (5, (SM_PAINT_EVENT_YH (message)));
-	    break;
-	  }
-	case mt_resize_event:
-	  {
-	    result = (allocate_marked_vector (TC_VECTOR, 4, 0));
-	    CVT_UNSIGNED (0, ET_RESIZE);
-	    CVT_UNSIGNED (1, (SM_RESIZE_EVENT_WID (message)));
-	    CVT_UNSIGNED (2, (SM_RESIZE_EVENT_WIDTH (message)));
-	    CVT_UNSIGNED (3, (SM_RESIZE_EVENT_HEIGHT (message)));
-	    break;
-	  }
-	case mt_visibility_event:
-	  {
-	    result = (allocate_marked_vector (TC_VECTOR, 3, 0));
-	    CVT_UNSIGNED (0, ET_VISIBILITY);
-	    CVT_UNSIGNED (1, (SM_VISIBILITY_EVENT_WID (message)));
-	    CVT_BOOLEAN  (2, (SM_VISIBILITY_EVENT_SHOWNP (message)));
-	    break;
-	  }
-	default:
-	  OS2_destroy_message (message);
-	  OS2_error_anonymous ();
-	  break;
-	}
-    OS2_destroy_message (message);
+	OS2_destroy_message (message);
+      }
     PRIMITIVE_RETURN (result);
   }
 }
