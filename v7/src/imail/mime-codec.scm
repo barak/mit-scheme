@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mime-codec.scm,v 1.4 2000/06/01 18:21:07 cph Exp $
+;;; $Id: mime-codec.scm,v 1.5 2000/06/01 18:25:37 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -96,7 +96,8 @@
 	(write-char char port)))))
 
 (define (decode-base64-text-string string pending-return?)
-  (decode-base64-substring string 0 (string-length string) pending-return?))
+  (decode-base64-text-substring string 0 (string-length string)
+				pending-return?))
 
 (define (decode-base64-text-substring string start end pending-return?)
   (decode-base64-internal string start end
@@ -123,22 +124,22 @@
       (lambda (output)
 	(let ((input
 	       (lambda (index)
-		 (let loop ((char (read-char port)))
-		   (cond ((eof-object? char)
-			  (if (not (fix:= index 0))
-			      (error "Premature EOF from BASE64 port."))
-			  #f)
-			 ((let ((digit
-				 (vector-8b-ref base64-char-table
-						(char->integer char))))
-			    (and (fix:< digit #x40)
-				 digit)))
-			 ((char=? char #\=)
-			  (if (not (or (fix:= index 2) (fix:= index 3)))
-			      (error "Misplaced #\= from BASE64 port."))
-			  #f)
-			 (else
-			  (loop (read-char port)))))))
+		 (let loop ()
+		   (let ((char (read-char input)))
+		     (cond ((eof-object? char)
+			    (if (not (fix:= index 0))
+				(error "Premature EOF from BASE64 port."))
+			    #f)
+			   ((let ((digit
+				   (vector-8b-ref base64-char-table
+						  (char->integer char))))
+			      (and (fix:< digit #x40)
+				   digit)))
+			   ((char=? char #\=)
+			    (if (not (or (fix:= index 2) (fix:= index 3)))
+				(error "Misplaced #\= from BASE64 port."))
+			    #f)
+			   (else (loop)))))))
 	      (output (make-output output)))
 	  (let loop ()
 	    (if (decode-base64-quantum input output)
