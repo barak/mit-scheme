@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: switch.scm,v 4.22 1993/02/25 02:07:00 gjr Exp $
+$Id: switch.scm,v 4.23 1993/07/01 03:12:19 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -68,6 +68,7 @@ MIT in each case. |#
 ;; This only works in the C back end, right now
 (define compiler:compress-top-level? false)
 (define compiler:avoid-scode? true)
+(define compiler:assume-safe-fixnums? true)
 ;; The switch COMPILER:OPEN-CODE-FLOATING-POINT-ARITHMETIC? is in machin.scm.
 
 ;;; Nary switches
