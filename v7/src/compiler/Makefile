@@ -1,5 +1,5 @@
 #
-# $Id: Makefile,v 1.10 1992/12/23 13:42:11 cph Exp $
+# $Id: Makefile,v 1.11 2000/03/21 04:20:51 cph Exp $
 #
 # Makefile for Scheme compiler
 # This makefile supports some utilities for the compiler.
@@ -16,7 +16,7 @@ SHELL = /bin/sh
 all:
 	echo "No ALL action"
 
-tags:
+TAGS:
 	etags back/*.scm base/*.scm fggen/*.scm fgopt/*.scm \
 	machines/*/*.scm rtlbase/*.scm rtlgen/*.scm rtlopt/*.scm
 

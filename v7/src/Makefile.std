@@ -1,5 +1,5 @@
 #
-# $Id: Makefile.std,v 1.1 2000/03/21 02:44:05 cph Exp $
+# $Id: Makefile.std,v 1.2 2000/03/21 04:19:41 cph Exp $
 #
 # Standard Makefile for Scheme subsystem directories.
 # This makefile supports some utilities for Scheme subsystems.
@@ -12,7 +12,7 @@ SHELL = /bin/sh
 all:
 	echo "No ALL action"
 
-tags:
+TAGS:
 	etags *.scm
 
 index:
