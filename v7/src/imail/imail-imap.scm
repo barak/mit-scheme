@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.6 2000/04/28 16:49:10 cph Exp $
+;;; $Id: imail-imap.scm,v 1.7 2000/04/28 19:07:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -109,9 +109,8 @@
   (permanent-flags define standard)
   (uidvalidity define standard
 	       initial-value #f)
-  (first-unseen define standard)
-  (length define standard
-	  initial-value 0)
+  (first-unseen define standard
+		initial-value #f)
   (messages define standard
 	    initializer (lambda () (make-vector 0))))
 
@@ -125,17 +124,48 @@
   (external define standard
 	    initial-value #f))
 
+(define (set-imap-folder-length! folder count)
+  (let ((v (imap-folder-messages folder))
+	(v* (make-vector count #f))
+	(connection (imap-folder-connection folder)))
+    (let ((end (vector-length v)))
+      (fill-messages-vector connection v*)
+      (do ((i 0 (fix:+ i 1)))
+	  ((fix:= i count))
+	(let ((uid (imap-message-uid (vector-ref v* i))))
+	  (let loop ((j 0))
+	    (if (fix:< j end)
+		(if (and (vector-ref v j)
+			 (= uid (imap-message-uid (vector-ref v j))))
+		    (begin
+		      (vector-set! v* i (vector-ref v j))
+		      (vector-set! v j #f))
+		    (loop (fix:+ j 1)))))))
+      (detach-external-messages v))
+    (set-imap-folder-messages! folder v*)
+    (folder-modified! folder)))
+
 (define (forget-imap-folder-messages! folder)
   (let ((v (imap-folder-messages folder)))
-    (let ((n (vector-length v)))
-      (do ((i 0 (fix:+ i 1)))
-	  ((fix:= i n))
-	(let ((m (vector-ref v i)))
-	  (if (and m (imap-message-external m))
-	      (detach-message (imap-message-external m)))
-	  (vector-set! v i #f)))))
-  (set-imap-folder-messages! folder
-			     (make-vector (imap-folder-length folder) #f)))
+    (detach-external-messages v)
+    (fill-messages-vector (imap-folder-connection folder) v))
+  (folder-modified! folder))
+
+(define (fill-messages-vector connection messages)
+  (let ((end (vector-length messages)))
+    (do ((responses
+	  (imap:command:fetch-range connection 0 end
+				    '(UID FLAGS RFC822.SIZE ENVELOPE))
+	  (cdr responses))
+	 (index 0 (fix:+ index 1)))
+	((fix:= index end))
+      (vector-set! messages index (apply make-imap-message (car responses))))))
+
+(define (detach-external-messages v)
+  (for-each-vector-element v
+    (lambda (m)
+      (if (and m (imap-message-external m))
+	  (detach-message (imap-message-external m))))))
 
 (define (open-imap-connection url)
   (let ((host (imap-url-host url))
@@ -163,11 +193,6 @@
 	    (set! associated-imap-connections
 		  (cons (weak-cons connection (cons host user-id))
 			associated-imap-connections))
-	    (if (not (memq 'IMAP4REV1
-			   (imap:command:capability connection)))
-		(begin
-		  (close-imap-connection connection)
-		  (error "Server doesn't support IMAP4rev1:" host)))
 	    (let ((response
 		   (authenticate url user-id
 		     (lambda (passphrase)
@@ -176,6 +201,11 @@
 		  (begin
 		    (close-imap-connection connection)
 		    (error "Unable to log in:" response))))
+	    (if (not (memq 'IMAP4REV1
+			   (imap:command:capability connection)))
+		(begin
+		  (close-imap-connection connection)
+		  (error "Server doesn't support IMAP4rev1:" host)))
 	    connection)))))
 
 (define (close-imap-connection connection)
@@ -215,6 +245,11 @@
       (set-cdr! queue '())
       responses)))
 
+(define (next-imap-command-tag connection)
+  (let ((n (imap-connection-sequence-number connection)))
+    (set-imap-connection-sequence-number! connection (+ n 1))
+    (string-append "A" (string-pad-left (number->string n) 4 #\0))))
+
 (define (expunge-imap-folder-message folder index)
   ???)
 
@@ -243,26 +278,31 @@
 
 (define-method subscribed-folder-names ((url <imap-url>))
   ???)
-
+
 (define-method %folder-valid? ((folder <imap-folder>))
-  ???)
+  folder
+  #t)
 
 (define-method folder-length ((folder <imap-folder>))
-  (imap-folder-length folder))
+  (vector-length (imap-folder-messages folder)))
 
 (define-method %get-message ((folder <imap-folder>) index)
-  (let ((messages (imap-folder-messages folder)))
+  (let ((messages (imap-folder-messages folder))
+	(connection (imap-folder-connection folder)))
     (let ((message
 	   (or (vector-ref messages index)
-	       (apply make-imap-message
-		      (imap:command:fetch (imap-folder-connection folder)
-					  index
-					  '(UID FLAGS RFC822.SIZE
-						ENVELOPE))))))
+	       (let ((message
+		      (apply make-imap-message
+			     (imap:command:fetch connection
+						 index
+						 '(UID FLAGS RFC822.SIZE
+						       ENVELOPE)))))
+		 (vector-set! messages index message)
+		 message))))
       (or (imap-message-external message)
 	  (let ((external
 		 (let ((items
-			(imap:command:fetch (imap-folder-connection folder)
+			(imap:command:fetch connection
 					    index
 					    '(RFC822.HEADER RFC822.TEXT))))
 		   (make-attached-message
@@ -276,19 +316,10 @@
 	    (set-imap-message-external! message external)
 	    external)))))
 
-(define (translate-string-line-endings string)
-  (translate-substring-line-endings string 0 (string-length string)))
-
-(define (translate-substring-line-endings string start end)
-  (let ((indexes (substring-search-all "\r\n" string start end)))
-    (let ((s (make-string (fix:- (fix:- end start) (length indexes)))))
-      (let loop ((indexes indexes) (i start) (j 0))
-	(if (pair? indexes)
-	    (let ((j (substring-move! string i (car indexes) s j)))
-	      (string-set! s j #\newline)
-	      (loop (cdr indexes) (fix:+ (car indexes) 2) (fix:+ j 1)))
-	    (substring-move! string i end s j)))
-      s)))
+(define-method first-unseen-message ((folder <imap-folder>))
+  (let ((unseen (imap-folder-first-unseen folder)))
+    (and unseen
+	 (get-message folder unseen))))
 
 (define-method %append-message ((folder <imap-folder>) message)
   ???)
@@ -300,7 +331,8 @@
   ???)
 
 (define-method poll-folder ((folder <imap-folder>))
-  ???)
+  (imap:command:noop (imap-folder-connection folder))
+  #f)
 
 (define-method synchronize-folder ((folder <imap-folder>))
   ???)
@@ -346,14 +378,22 @@
 
 (define (imap:command:fetch-range connection start end items)
   (if (fix:< start end)
-      (imap:command:multiple-response imap:response:fetch?
-				      connection 'FETCH
-				      (string-append (number->string
-						      (+ start 1))
-						     ":"
-						     (number->string end))
-				      items)
+      (map (lambda (response)
+	     (map (lambda (item)
+		    (imap:response:fetch-attribute response item))
+		  items))
+	   (imap:command:multiple-response imap:response:fetch?
+					   connection 'FETCH
+					   (cons 'ATOM
+						 (string-append
+						  (number->string (+ start 1))
+						  ":"
+						  (number->string end)))
+					   items))
       '()))
+
+(define (imap:command:noop connection)
+  (imap:command:no-response connection 'NOOP))
 
 (define (imap:command:no-response connection command . arguments)
   (let ((responses (apply imap:command connection command arguments)))
@@ -401,17 +441,16 @@
     (flush-output port)
     tag))
 
-(define (next-imap-command-tag connection)
-  (let ((n (imap-connection-sequence-number connection)))
-    (set-imap-connection-sequence-number! connection (+ n 1))
-    (string-append "A" (string-pad-left (number->string n) 4 #\0))))
-
 (define (imap:send-command-argument connection tag command argument)
   (let ((port (imap-connection-port connection)))
     (let loop ((argument argument))
       (cond ((or (symbol? argument)
 		 (exact-nonnegative-integer? argument))
 	     (write argument port))
+	    ((and (pair? argument)
+		  (eq? (car argument) 'ATOM)
+		  (string? (cdr argument)))
+	     (write-string (cdr argument) port))
 	    ((string? argument)
 	     (if (imap:string-may-be-quoted? argument)
 		 (imap:write-quoted-string argument port)
@@ -487,18 +526,20 @@
 	((imap:response:exists? response)
 	 (let ((count (imap:response:exists-count response))
 	       (folder (selected-imap-folder connection)))
-	   (if (not (= count (imap-folder-length folder)))
-	       (begin
-		 (set-imap-folder-length! folder count)
-		 (forget-imap-folder-messages! folder))))
+	   (if (not (= count (folder-length folder)))
+	       (set-imap-folder-length! folder count)))
 	 #f)
 	((imap:response:expunge? response)
-	 (expunge-imap-folder-message (selected-imap-folder connection)
-				      (imap:response:expunge-index response))
+	 (let ((folder (selected-imap-folder connection)))
+	   (expunge-imap-folder-message folder
+					(imap:response:expunge-index response))
+	   (folder-modified! folder))
 	 #f)
 	((imap:response:flags? response)
-	 (set-imap-folder-allowed-flags! (selected-imap-folder connection)
-					 (imap:response:flags response))
+	 (let ((folder (selected-imap-folder connection)))
+	   (set-imap-folder-allowed-flags! folder
+					   (imap:response:flags response))
+	   (folder-modified! folder))
 	 #f)
 	((imap:response:recent? response)
 	 #f)
@@ -511,7 +552,7 @@
 	 #t)
 	(else
 	 (error "Illegal server response:" response))))
-
+
 (define (process-response-text connection code text)
   (cond ((imap:response-code:uidvalidity? code)
 	 (let ((folder (selected-imap-folder connection))
@@ -520,14 +561,20 @@
 		 (or (not uidvalidity*)
 		     (> uidvalidity uidvalidity*)))
 	       (forget-imap-folder-messages! folder))
-	   (set-imap-folder-uidvalidity! folder uidvalidity)))
+	   (set-imap-folder-uidvalidity! folder uidvalidity)
+	   (folder-modified! folder)))
 	((imap:response-code:unseen? code)
-	 (set-imap-folder-first-unseen! (selected-imap-folder connection)
-					(imap:response-code:unseen code)))
+	 (let ((folder (selected-imap-folder connection)))
+	   (set-imap-folder-first-unseen!
+	    folder
+	    (- (imap:response-code:unseen code) 1))
+	   (folder-modified! folder)))
 	((imap:response-code:permanentflags? code)
-	 (set-imap-folder-permanent-flags!
-	  (selected-imap-folder connection)
-	  (imap:response-code:permanentflags code)))
+	 (let ((folder (selected-imap-folder connection)))
+	   (set-imap-folder-permanent-flags!
+	    folder
+	    (imap:response-code:permanentflags code))
+	   (folder-modified! folder)))
 	((imap:response-code:alert? code)
 	 (imail-present-user-alert
 	  (lambda (port)
