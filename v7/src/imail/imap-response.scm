@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.37 2000/07/03 02:03:11 cph Exp $
+;;; $Id: imap-response.scm,v 1.38 2000/07/03 02:06:35 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -87,7 +87,7 @@
       (cons* delim (read-astring port) flags))))
 
 (define (read-search-response port)
-  (read-open-list read-nz-number port))
+  (read-open-list port read-nz-number))
 
 (define (read-status-response port)
   (discard-known-char #\space port)
@@ -101,7 +101,7 @@
 			 (cons name (read-number port))))))))
 
 (define (read-capability-response port)
-  (read-open-list read-interned-atom port))
+  (read-open-list port read-interned-atom))
 
 (define (read-namespace-response port)
   (discard-known-char #\space port)
@@ -110,7 +110,7 @@
     (let ((ns2 (read-generic port)))
       (discard-known-char #\space port)
       (list ns1 ns2 (read-generic port)))))
-
+
 (define (read-response-text port)
   (discard-known-char #\space port)
   (let ((code
@@ -120,7 +120,7 @@
 	  (if (char=? #\= (peek-char port))
 	      (read-mime2-text port)
 	      (read-text port)))))
-
+
 (define (read-response-text-code port)
   (discard-known-char #\[ port)
   (let ((code
@@ -236,7 +236,7 @@
   (let ((char (peek-char-no-eof port)))
     (cond ((char=? #\" char) (read-quoted port))
 	  ((char=? #\{ char) (read-literal port))
-	  ((char=? #\( char) (read-list port))
+	  ((char=? #\( char) (read-list port read-generic))
 	  ((imap:atom-char? char)
 	   (let ((atom (read-atom port)))
 	     (cond ((atom-is-number? atom) (string->number atom))
@@ -376,12 +376,10 @@
 
 (define *read-literal-progress-hook* #f)
 
-(define (read-list port #!optional read-item)
-  (read-closed-list #\( #\)
-		    (if (default-object? read-item) read-generic read-item)
-		    port))
+(define (read-list port read-item)
+  (read-closed-list #\( #\) port read-item))
 
-(define (read-closed-list open close read-item port)
+(define (read-closed-list open close port read-item)
   (discard-known-char open port)
   (if (char=? close (peek-char-no-eof port))
       (begin
@@ -400,7 +398,7 @@
 		(else
 		 (error "Illegal list delimiter:" char)))))))
 
-(define (read-open-list read-item port)
+(define (read-open-list port read-item)
   (let loop ((items '()))
     (let ((char (peek-char-no-eof port)))
       (cond ((char=? char #\space)
