@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.9 1995/01/30 17:56:51 adams Exp $
+$Id: compiler.pkg,v 1.10 1995/04/01 16:51:03 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -538,6 +538,7 @@ MIT in each case. |#
 	 "midend/indexify"
 	 "midend/rtlgen"
 	 "midend/copier"
+	 "midend/coerce"
 	 "midend/dataflow"
 	 "midend/split"
 	 "midend/widen")
