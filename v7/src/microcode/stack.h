@@ -1,49 +1,39 @@
-/*	Emacs -*-C-*-an't tell the language			*/
+/* -*-C-*-
 
-/****************************************************************
-*                                                               *
-*                         Copyright (c) 1986                    *
-*               Massachusetts Institute of Technology           *
-*                                                               *
-* This material was developed by the Scheme project at the      *
-* Massachusetts Institute of Technology, Department of          *
-* Electrical Engineering and Computer Science.  Permission to   *
-* copy this software, to redistribute it, and to use it for any *
-* purpose is granted, subject to the following restrictions and *
-* understandings.                                               *
-*                                                               *
-* 1. Any copy made of this software must include this copyright *
-* notice in full.                                               *
-*                                                               *
-* 2. Users of this software agree to make their best efforts (a)*
-* to return to the MIT Scheme project any improvements or       *
-* extensions that they make, so that these may be included in   *
-* future releases; and (b) to inform MIT of noteworthy uses of  *
-* this software.                                                *
-*                                                               *
-* 3.  All materials developed as a consequence of the use of    *
-* this software shall duly acknowledge such use, in accordance  *
-* with the usual standards of acknowledging credit in academic  *
-* research.                                                     *
-*                                                               *
-* 4. MIT has made no warrantee or representation that the       *
-* operation of this software will be error-free, and MIT is     *
-* under no obligation to provide any services, by way of        *
-* maintenance, update, or otherwise.                            *
-*                                                               *
-* 5.  In conjunction with products arising from the use of this *
-* material, there shall be no use of the name of the            *
-* Massachusetts Institute of Technology nor of any adaptation   *
-* thereof in any advertising, promotional, or sales literature  *
-* without prior written consent from MIT in each case.          *
-*                                                               *
-****************************************************************/
+Copyright (c) 1987 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. */
+
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 5.2 1987/01/06 20:22:21 cph Exp $ */
+
+/* This file contains macros for manipulating stacks and stacklets. */
 
-/* File: STACK.H
- *
- * This file contains macros for manipulating stacks and/or stacklets.
- */
-
 #ifdef USE_STACKLETS
 /* Stack is made up of linked small parts, each in the heap */
 
@@ -227,13 +217,13 @@ Pushed()
 
 /* Full size stack in a statically allocated area */
 
-#define Stack_Check(P)						\
-{								\
-  if ((P) <= Stack_Guard)					\
-    { if ((P) <= Absolute_Stack_Base)				\
-	Microcode_Termination(TERM_STACK_OVERFLOW);		\
-      Request_Interrupt(INT_Stack_Overflow);			\
-    }								\
+#define Stack_Check(P)							\
+{									\
+  if ((P) <= Stack_Guard)						\
+    { if ((P) <= Absolute_Stack_Base)					\
+	Microcode_Termination (TERM_STACK_OVERFLOW);			\
+      Request_Interrupt (INT_Stack_Overflow);				\
+    }									\
 }
 
 #define Internal_Will_Push(N)		Stack_Check(Stack_Pointer - (N))
@@ -243,77 +233,84 @@ Pushed()
 #define Terminate_Old_Stacklet()
 
 /* Used by garbage collector to detect the end of constant space, and to
-   skip over the gap between constant space and the stack.
- */
+   skip over the gap between constant space and the stack. */
+
 #define Terminate_Constant_Space(Where)					\
+{									\
   *Free_Constant =							\
-    Make_Non_Pointer(TC_MANIFEST_NM_VECTOR,				\
-		     (Stack_Pointer-Free_Constant)-1);			\
-  *Stack_Top = Make_Pointer(TC_BROKEN_HEART, Stack_Top);		\
-  Where = Stack_Top
+    Make_Non_Pointer (TC_MANIFEST_NM_VECTOR,				\
+		      ((Stack_Pointer - Free_Constant) - 1));		\
+  *Stack_Top = Make_Pointer (TC_BROKEN_HEART, Stack_Top);		\
+  Where = Stack_Top;							\
+}
 
-#define Get_Current_Stacklet()		NIL
+#define Get_Current_Stacklet() NIL
 
-#define Set_Current_Stacklet(Where)	{}
+#define Set_Current_Stacklet(Where) {}
 
 #define Previous_Stack_Pointer(Where)					\
-  Nth_Vector_Loc(Where,							\
-		 (STACKLET_HEADER_SIZE+					\
-                  Get_Integer(Vector_Ref(Where,				\
-                                         STACKLET_UNUSED_LENGTH))))
+(Nth_Vector_Loc (Where,							\
+		 (STACKLET_HEADER_SIZE +				\
+		  Get_Integer (Vector_Ref (Where,			\
+					   STACKLET_UNUSED_LENGTH)))))
 
 /* Never allocate more space */
-#define New_Stacklet_Size(N)		0
+#define New_Stacklet_Size(N) 0
 
-#define Get_End_Of_Stacklet()		Stack_Top
+#define Get_End_Of_Stacklet() Stack_Top
 
 /* Not needed in this version */
 
 #define Join_Stacklet_Backout()
 #define Apply_Stacklet_Backout()
 #define Within_Stacklet_Backout()
-
+
 /* This piece of code KNOWS which way the stack grows.
-   The assumption is that successive pushes modify decreasing addresses.
- */
+   The assumption is that successive pushes modify decreasing addresses. */
+
+/* Clear the stack and replace it with a copy of the contents of the
+   control point. Also disables the history collection mechanism,
+   since the saved history would be incorrect on the new stack. */
 
 #define Our_Throw(From_Pop_Return, P)					\
-/* Clear the stack and replace it with a copy of the contents of the	\
-   control point. Also disables the history collection mechanism,	\
-   since the saved history would be incorrect on the new stack.		\
-*/									\
-{ Pointer Control_Point = (P);						\
+{									\
+  Pointer Control_Point;						\
   long NCells, Offset;							\
   fast Pointer *To_Where, *From_Where;					\
   fast long len;							\
+									\
+  Control_Point = (P);							\
   if (Consistency_Check)						\
-    if (Type_Code(Control_Point) != TC_CONTROL_POINT)			\
-      Microcode_Termination(TERM_BAD_STACK);				\
-  len = Vector_Length(Control_Point);					\
-  NCells = ((len - 1) -							\
-	    Get_Integer(Vector_Ref(Control_Point,			\
-				   STACKLET_UNUSED_LENGTH)));		\
-  Stack_Check(Stack_Top - NCells);					\
-  From_Where = Nth_Vector_Loc(Control_Point, STACKLET_HEADER_SIZE);	\
-  From_Where = Nth_Vector_Loc(Control_Point, ((len + 1) - NCells));	\
-  To_Where = Stack_Top - NCells;					\
+    if (Type_Code (Control_Point) != TC_CONTROL_POINT)			\
+      Microcode_Termination (TERM_BAD_STACK);				\
+  len = Vector_Length (Control_Point);					\
+  NCells = ((len - 1)							\
+	    - Get_Integer (Vector_Ref (Control_Point,			\
+				       STACKLET_UNUSED_LENGTH)));	\
+  IntCode &= (~ INT_Stack_Overflow);					\
+  Stack_Check (Stack_Top - NCells);					\
+  From_Where = Nth_Vector_Loc (Control_Point, STACKLET_HEADER_SIZE);	\
+  From_Where = Nth_Vector_Loc (Control_Point, ((len + 1) - NCells));	\
+  To_Where = (Stack_Top - NCells);					\
   Stack_Pointer = To_Where;						\
-  for (len=0; len < NCells; len++) *To_Where++ = *From_Where++;		\
+  for (len = 0; len < NCells; len++)					\
+    *To_Where++ = *From_Where++;					\
   if (Consistency_Check)						\
     if ((To_Where != Stack_Top) ||					\
-        (From_Where != Nth_Vector_Loc(Control_Point,			\
-				      1+Vector_Length(Control_Point))))	\
-      Microcode_Termination(TERM_BAD_STACK);				\
+	(From_Where != Nth_Vector_Loc (Control_Point,			\
+				       (1 + Vector_Length (Control_Point))))) \
+      Microcode_Termination (TERM_BAD_STACK);				\
   if (!(From_Pop_Return))						\
-  { Previous_Restore_History_Stacklet = NULL;				\
-    Previous_Restore_History_Offset = 0;				\
-    if ((!Valid_Fixed_Obj_Vector()) ||					\
-	(Get_Fixed_Obj_Slot(Dummy_History) == NIL))			\
-      History = Make_Dummy_History();					\
-    else History = Get_Pointer(Get_Fixed_Obj_Slot(Dummy_History));	\
-  }									\
-  else if (Previous_Restore_History_Stacklet ==				\
-	   Get_Pointer(Control_Point))					\
+    {									\
+      Previous_Restore_History_Stacklet = NULL;				\
+      Previous_Restore_History_Offset = 0;				\
+      if ((!Valid_Fixed_Obj_Vector ()) ||				\
+	  (Get_Fixed_Obj_Slot (Dummy_History) == NIL))			\
+	History = Make_Dummy_History ();				\
+      else								\
+	History = Get_Pointer (Get_Fixed_Obj_Slot (Dummy_History));	\
+    }									\
+  else if (Previous_Restore_History_Stacklet == Get_Pointer (Control_Point)) \
     Previous_Restore_History_Stacklet = NULL;				\
 }
 
