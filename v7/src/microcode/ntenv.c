@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntenv.c,v 1.4 1993/07/18 20:26:08 gjr Exp $
+$Id: ntenv.c,v 1.5 1993/07/27 21:27:42 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -119,17 +119,12 @@ DEFUN (ms_to_ticks, (clocks), clock_t clocks)
   return (result == 0) ? 1 : result;
 }
 
-
-extern volatile unsigned long scm_itimer_counter, scm_itimer_reload;
-
 void
 DEFUN (OS_process_timer_set, (first, interval),
        clock_t first AND
        clock_t interval)
-{ /* Convert granularity to 1/18.2 seconds */
-
-  scm_itimer_counter = ms_to_ticks(first);
-  scm_itimer_reload  = ms_to_ticks(interval);
+{
+  /* Convert granularity to 1/18.2 seconds */
 
   return;
 }
@@ -137,7 +132,6 @@ DEFUN (OS_process_timer_set, (first, interval),
 void
 DEFUN_VOID (OS_process_timer_clear)
 {
-  scm_itimer_reload = scm_itimer_counter = 0;
   return;
 }
 

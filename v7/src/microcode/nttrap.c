@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.3 1993/06/24 02:10:58 gjr Exp $
+$Id: nttrap.c,v 1.4 1993/07/27 21:27:06 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -574,7 +574,6 @@ DEFUN (continue_from_trap, (trapno, info, scp),
        SIGINFO_T info AND
        struct FULL_SIGCONTEXT * scp)
 {
-  extern unsigned short scheme_ss;
   int pc_in_C;
   int pc_in_heap;
   int pc_in_constant_space;
@@ -631,9 +630,7 @@ DEFUN (continue_from_trap, (trapno, info, scp),
 
   scheme_sp_valid =
     (pc_in_scheme
-     && (((scp->sc_ss & 0xffff) == (scp->sc_ds & 0xffff))
-	 || ((scheme_ss != 0)
-	     && ((scp->sc_ss & 0xffff) == scheme_ss)))
+     && ((scp->sc_ss & 0xffff) == (scp->sc_ds & 0xffff))
      && ((scp->sc_ds & 0xffff) == (initial_C_ds & 0xffff))
      && ((scheme_sp < ((long) Stack_Top)) &&
 	 (scheme_sp >= ((long) Absolute_Stack_Base)) &&
