@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.8 1988/10/29 00:12:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.9 1989/03/06 19:59:42 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,6 +39,10 @@ MIT in each case. |#
 
 (define (initialize-package!)
   (set! *nearest-cmdl* false)
+  (set! with-cmdl/input-port
+	(object-component-binder cmdl/input-port set-cmdl/input-port!))
+  (set! with-cmdl/output-port
+	(object-component-binder cmdl/output-port set-cmdl/output-port!))
   (set! hook/cmdl-prompt default/cmdl-prompt)
   (set! hook/cmdl-message default/cmdl-message)
   (set! cmdl-interrupt/breakpoint default/breakpoint)
@@ -132,6 +136,9 @@ MIT in each case. |#
     (if parent
 	(cmdl/base parent)
 	cmdl)))
+
+(define with-cmdl/input-port)
+(define with-cmdl/output-port)
 
 ;;;; Messages
 
