@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prntenv.c,v 1.6 1997/01/01 22:57:35 cph Exp $
+$Id: prntenv.c,v 1.7 1998/04/18 05:40:42 cph Exp $
 
-Copyright (c) 1993-97 Massachusetts Institute of Technology
+Copyright (c) 1993-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -68,5 +68,29 @@ The result is either a string (the variable's value),\n\
       ((variable_value == 0)
        ? SHARP_F
        : (char_pointer_to_string ((unsigned char *) variable_value)));
+  }
+}
+
+#define VQRESULT(index, value)						\
+  VECTOR_SET (result, index, (ulong_to_integer (value)))
+
+
+DEFINE_PRIMITIVE ("WIN32-VIRTUAL-QUERY", Prim_win32_virtual_query, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    MEMORY_BASIC_INFORMATION info;
+    SCHEME_OBJECT result;
+    (void) VirtualQuery
+      (((LPCVOID) (arg_ulong_integer (1))), (&info), (sizeof (info)));
+    result = (allocate_marked_vector (TC_VECTOR, 7, 1));
+    VQRESULT (0, ((unsigned long) (info.BaseAddress)));
+    VQRESULT (1, ((unsigned long) (info.AllocationBase)));
+    VQRESULT (2, (info.AllocationProtect));
+    VQRESULT (3, (info.RegionSize));
+    VQRESULT (4, (info.State));
+    VQRESULT (5, (info.Protect));
+    VQRESULT (6, (info.Type));
+    PRIMITIVE_RETURN (result);
   }
 }
