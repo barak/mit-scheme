@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2sock.c,v 1.9 1999/01/02 06:11:34 cph Exp $
+$Id: os2sock.c,v 1.10 1999/04/28 03:27:55 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -21,6 +21,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 /* This conditional encompasses the entire file.  */
 #ifndef DISABLE_SOCKET_SUPPORT
+
+/* This definition is necessary for compilation with newer versions of
+   the Developer's Toolkit for OS/2.  The newer version default to
+   using TCP/IP 4.1, but this code was designed for TCP/IP 4.0.  */
+#define TCPV40HDRS
 
 #include "os2.h"
 #include "uxsock.h"
