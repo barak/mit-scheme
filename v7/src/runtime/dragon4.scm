@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dragon4.scm,v 1.4 1990/09/11 22:33:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dragon4.scm,v 1.5 1990/09/13 20:12:50 cph Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -38,7 +38,11 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (flo:->string x radix)
-  (let ((x>0
+  (let ((inf?
+	 (lambda (x)
+	   (and (flo:> x 1.)
+		(flo:= x (flo:/ x 2.)))))
+	(x>0
 	 (lambda (x)
 	   (let ((p flo:significand-digits-base-2))
 	     (with-values (lambda () (dragon4-normalize x p))
@@ -83,10 +87,20 @@ MIT in each case. |#
 				      (scientific))))))))))))))))
     (or (and flonum-unparser-hook
 	     (flonum-unparser-hook x radix))
-	(cond ((flo:positive? x) (x>0 x))
-	      ((flo:negative? x) (string-append "-" (x>0 (flo:negate x))))
-	      (else (string-copy "0."))))))
-
+	(cond ((flo:positive? x)
+	       (if (inf? x)
+		   (string-copy "#[+inf]")
+		   (x>0 x)))
+	      ((flo:negative? x)
+	       (let ((x (flo:negate x)))
+		 (if (inf? x)
+		     (string-copy "#[-inf]")
+		     (string-append "-" (x>0 x)))))
+	      ((flo:zero? x)
+	       (string-copy "0."))
+	      (else
+	       (string-copy "#[NaN]"))))))
+
 (define (flonum-unparser-cutoff-args)
   (cond ((eq? 'NORMAL flonum-unparser-cutoff)
 	 (values 'NORMAL 0))
@@ -108,7 +122,7 @@ MIT in each case. |#
 
 (define flonum-unparser-hook #f)
 (define flonum-unparser-cutoff 'NORMAL)
-
+
 (define (dragon4-normalize x precision)
   (with-values (lambda () (flo:normalize x))
     (lambda (f e-p)
