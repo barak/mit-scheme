@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/coerce.scm,v 1.1 1987/07/28 18:26:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/coerce.scm,v 1.2 1987/08/13 01:13:28 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -55,12 +55,27 @@ MIT in each case. |#
 ;; If you add coercions here, remember to also add them to
 ;; EXPAND-DESCRIPTOR in isnmac.scm .
 
+;; Displacements on the vax are counted from the pc of the following syllable.
+
+(define (coerce-displacement nbits)
+  (let ((coercion
+	 (cond ((= nbits 8) coerce-8-bit-signed)
+	       ((= nbits 16) coerce-16-bit-signed)
+	       (else (error "coerce-displacement: Bad size" nbits))))
+	(offset (/ nbits 8)))
+    (lambda (expression)
+      ;; Expression is either (@PCO <offset>) or (@PCR <label>)
+      (syntax-evaluation
+       (if (eq? (car expression) '@PCO)
+	   (cadr expression)
+	   `(- ,(cadr expression) (+ *PC* ,offset)))
+       coercion))))
+
 (define make-coercion
   (coercion-maker
    `((UNSIGNED . ,coerce-unsigned-integer)
      (SIGNED . ,coerce-signed-integer)
-     (LITERAL . ,coerce-literal)
-     (SHORT-LABEL . ,coerce-short-label))))
+     (DISPLACEMENT . ,coerce-displacement))))
 
 (define-coercion 'UNSIGNED 1)
 (define-coercion 'UNSIGNED 2)
@@ -84,5 +99,5 @@ MIT in each case. |#
 (define-coercion 'SIGNED 16)
 (define-coercion 'SIGNED 32)
 
-(define-coercion 'LITERAL 8)
-(define-coercion 'SHORT-LABEL 8)
+(define-coercion 'DISPLACEMENT 8)
+(define-coercion 'DISPLACEMENT 16)
