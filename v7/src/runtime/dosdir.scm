@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosdir.scm,v 1.1 1992/04/11 23:48:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosdir.scm,v 1.2 1992/08/06 13:40:16 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -65,11 +65,13 @@ MIT in each case. |#
 		      (eq? (pathname-type pattern) 'WILD))
 		 pathnames
 		 (list-transform-positive pathnames
-		   (lambda (instance)
-		     (and (match-component (pathname-name pattern)
-					   (pathname-name instance))
-			  (match-component (pathname-type pattern)
-					   (pathname-type instance)))))))))))
+		   (let ((match-name
+			  (component-matcher (pathname-name pattern)))
+			 (match-type
+			  (component-matcher (pathname-type pattern))))
+		     (lambda (instance)
+		       (and (match-name (pathname-name instance))
+			    (match-type (pathname-type instance))))))))))))
 
 (define (generate-directory-pathnames pathname)
   (let ((channel (directory-channel-open (->namestring pathname))))
@@ -81,9 +83,54 @@ MIT in each case. |#
 	      (directory-channel-close channel)
 	      result))))))
 
-(define (match-component pattern instance)
-  (or (eq? pattern 'WILD)
-      (equal? pattern instance)))
+(define (component-matcher pattern)
+  ;; For the time being, this only understands one asterisk,
+  ;; and does not understand question marks.
+  (cond ((eq? pattern 'WILD)
+	 (lambda (instance)
+	   instance			; ignored
+	   true))
+	((and (string? pattern) (string-find-next-char pattern #\*))
+	 =>
+	 (lambda (posn)
+	   (let* ((len (string-length pattern))
+		  (min-len (-1+ len)))
+	     (cond ((zero? posn)
+		    (let ((suffix (substring pattern 1 len)))
+		      (lambda (instance)
+			(and (string? instance)
+			     (let ((len* (string-length instance)))
+			       (and (>= len* min-len)
+				    (string=? suffix
+					      (substring instance
+							 (- len* min-len)
+							 len*))))))))
+		   ((= posn (-1+ len))
+		    (let ((prefix (substring pattern 0 min-len)))
+		      (lambda (instance)
+			(and (string? instance)
+			     (let ((len* (string-length instance)))
+			       (and (>= len* min-len)
+				    (string=? prefix
+					      (substring instance 0
+							 min-len))))))))
+		   (else
+		    (let ((prefix (substring pattern 0 posn))
+			  (suffix (substring pattern (1+ posn) len))
+			  (suffix-len (- len (1+ posn))))
+		      (lambda (instance)
+			(and (string? instance)
+			     (let ((len* (string-length instance)))
+			       (and (>= len* min-len)
+				    (string=? prefix
+					      (substring instance 0 posn))
+				    (string=? suffix
+					      (substring instance
+							 (- len* suffix-len)
+							 len*))))))))))))
+	(else
+	 (lambda (instance)
+	   (equal? pattern instance)))))
 
 (define (pathname<? x y)
   (or (component<? (pathname-name x) (pathname-name y))
