@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.47 2000/06/08 17:58:27 cph Exp $
+;;; $Id: sendmail.scm,v 1.48 2000/06/08 18:26:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -530,9 +530,15 @@ and don't delete any header fields."
 		      (buffer-windows mail-reply-buffer))
 	    (let ((end (mark-left-inserting-copy (current-point))))
 	      (let ((start (mark-right-inserting-copy end)))
-		(insert-region (buffer-start mail-reply-buffer)
-			       (buffer-end mail-reply-buffer)
-			       start)
+		(let ((method
+		       (buffer-get mail-reply-buffer
+				   'MAIL-YANK-ORIGINAL-METHOD
+				   #f)))
+		  (if method
+		      (method mail-reply-buffer start)
+		      (insert-region (buffer-start mail-reply-buffer)
+				     (buffer-end mail-reply-buffer)
+				     start)))
 		(if (not (line-end? end))
 		    (insert-newline end))
 		(if (not (command-argument-multiplier-only? argument))
