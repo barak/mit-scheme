@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.65 1992/02/03 23:09:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.66 1992/02/10 13:04:14 jinx Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -447,7 +447,7 @@ typedef unsigned long SCHEME_OBJECT;
 #define MAX_FLONUM_EXPONENT    1023
 /* Floating point representation uses hidden bit. */
 #define HAS_FLOOR
-#define HAS_FREXP
+/* #define HAS_FREXP */
 #define HAS_MODF
 #endif /* alpha */
 
