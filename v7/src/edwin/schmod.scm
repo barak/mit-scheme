@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: schmod.scm,v 1.41 1998/03/02 18:55:12 cph Exp $
+;;;	$Id: schmod.scm,v 1.42 1998/06/07 08:14:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -309,13 +309,18 @@ Otherwise, it is shown in the echo area."
 			   (or (symbol? argl)
 			       (null? argl)
 			       (and (pair? argl)
-				    (symbol? (car argl))
+				    (or (symbol? (car argl))
+					(eq? (car argl) #!optional)
+					(eq? (car argl) #!rest)
+					(eq? (car argl) #!aux))
 				    (loop (cdr argl))))))
 		    (let ((point (mark-left-inserting-copy point)))
 		      (let loop ((argl argl))
 			(cond ((pair? argl)
 			       (insert-char #\space point)
-			       (insert-string (symbol->string (car argl))
+			       (insert-string (if (symbol? (car argl))
+						  (symbol->string (car argl))
+						  (write-to-string (car argl)))
 					      point)
 			       (loop (cdr argl)))
 			      ((symbol? argl)
