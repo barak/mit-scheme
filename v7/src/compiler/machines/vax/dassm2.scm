@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm2.scm,v 4.9 1989/06/07 02:17:36 jinx Rel $
-$MC68020-Header: dassm2.scm,v 4.12 88/12/30 07:05:13 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm2.scm,v 4.10 1991/02/15 00:41:23 jinx Exp $
+$MC68020-Header: dassm2.scm,v 4.17 90/05/03 15:17:04 GMT jinx Exp $
 
-Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,13 +34,14 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; VAX Disassembler: Top Level
+;;; package: (compiler disassembler)
 
 (declare (usual-integrations))
-
+
 (set! compiled-code-block/bytes-per-object 4)
 (set! compiled-code-block/objects-per-procedure-cache 2)
 (set! compiled-code-block/objects-per-variable-cache 1)
-
+
 (set! disassembler/read-variable-cache
       (lambda (block index)
 	(let-syntax ((ucode-type
@@ -56,43 +57,14 @@ MIT in each case. |#
       (lambda (block index)
 	(fluid-let ((*block block))
 	  (let* ((offset (compiled-code-block/index->offset index)))
-	    (let ((opcode (read-unsigned-integer offset 16))
-		  (arity (read-unsigned-integer (+ offset 6) 16)))
+	    (let ((arity (read-unsigned-integer offset 16))
+		  (opcode (read-unsigned-integer (+ offset 2) 16)))
 	      (case opcode
-		((#x9f17)		; JMP @#<value>
+		((#x9f17)		; JMP @&<value>
+		 ;; *** This should learn how to decode trampolines. ***
 		 (vector 'COMPILED
-			 (read-procedure (+ offset 2))
+			 (read-procedure (+ offset 4))
 			 arity))
-		((#x9f16)		; JSB @#<value>
-		 (let* ((new-block
-			 (compiled-code-address->block
-			  (read-procedure (+ offset 2))))
-			(offset
-			 (fluid-let ((*block new-block))
-			   (read-unsigned-integer 14 16))))
-		   (case offset
-		     ((#x106)		; lookup
-		      (vector 'VARIABLE
-			      (variable-cache-name
-			       (system-vector-ref new-block 3))
-			      arity))
-		     ((#x10c		; interpreted
-		       #x160		; fixed arity primitive
-		       #x166)		; lexpr primitive
-		      (vector 'INTERPRETED
-			      (system-vector-ref new-block 3)
-			      arity))
-		     ((#x112		; arity
-		       #x11e		; entity
-		       #x124 #x12a #x130 #x136 #x13c ; specialized arity
-		       #x142 #x148 #x14e #x154 #x15a)
-		      (vector 'COMPILED
-			      (system-vector-ref new-block 3)
-			      arity))
-		     (else		; including #x118, APPLY
-		      (error
-		       "disassembler/read-procedure-cache: Unknown offset"
-		       offset block index)))))
 		(else
 		 (error "disassembler/read-procedure-cache: Unknown opcode"
 			opcode block index))))))))
@@ -202,7 +174,7 @@ MIT in each case. |#
 	 (let ((label (dbg-labels/find-offset symbol-table offset)))
 	   (and label 
 		(dbg-label/name label))))))
-
+
 (define (external-label-marker? symbol-table offset state)
   (if symbol-table
       (let ((label (dbg-labels/find-offset symbol-table (+ offset 4))))
@@ -220,7 +192,7 @@ MIT in each case. |#
 			  (loop offset)))
 		   (= offset
 		      (/ (bit-string->unsigned-integer contents) 2))))))))
-
+
 (define (make-data-deposit *ir size)
   (case size
     ((B)
@@ -367,13 +339,50 @@ MIT in each case. |#
   ;; This assumes that pco was just extracted.
   ;; VAX PC relative modes are defined with respect to the pc
   ;; immediately after the PC relative field.
+
+  (define (default)
+    `(,(if deferred? '@@PCO '@PCO) ,size ,pco))
+
+  (define (test address)
+    (disassembler/lookup-symbol *symbol-table address))
+
+  (define (object-offset? relative)
+    (let* ((unsigned (if (negative? relative)
+			 (+ (expt 2 32) relative)
+			 relative))
+	   (tc (quotient unsigned (expt 2 scheme-datum-width))))
+
+      (define (try tc)
+	(let* ((object-base (* tc (expt 2 scheme-datum-width)))
+	       (offset (- unsigned object-base)))
+	  (cond ((test (+ *current-offset offset))
+		 =>
+		 (lambda (label)
+		   (list label object-base)))
+		(else
+		 false))))
+
+      (or (try tc)
+	  (try (1+ tc)))))
+
   (let ((absolute (+ pco *current-offset)))
-    (if disassembler/symbolize-output?
-	(let ((answ (disassembler/lookup-symbol *symbol-table absolute)))
-	  (if answ
-	      `(,(if deferred? '@@PCR '@PCR) ,answ)
-	      `(,(if deferred? '@@PCO '@PCO) ,size ,pco)))
-	`(,(if deferred? '@@PCO '@PCO) ,size ,pco))))
+    (cond ((not disassembler/symbolize-output?)
+	   (default))
+	  ((test absolute)
+	   =>
+	   (lambda (answ)
+	     `(,(if deferred? '@@PCR '@PCR) ,answ)))
+	  ((test (- absolute 2))
+	   ;; Kludge to get branches to execute caches correctly.
+	   =>
+	   (lambda (answ)
+	     `(,(if deferred? '@@PCRO '@PCRO) ,answ 2)))
+	  ((object-offset? pco)
+	   =>
+	   (lambda (answ)
+	     `(,(if deferred? '@@PCRO '@PCRO) ,@answ)))
+	  (else
+	   (default)))))
 
 (define (undefined-instruction)
   ;; This losing assignment removes a 'cwcc'. Too bad.

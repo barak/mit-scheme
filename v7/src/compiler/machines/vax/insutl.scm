@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insutl.scm,v 4.2 1989/05/17 20:30:11 jinx Rel $
-$MC68020-Header: insutl.scm,v 1.6 88/06/14 08:47:30 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insutl.scm,v 4.3 1991/02/15 00:41:48 jinx Exp $
 
-Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; VAX utility procedures
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -141,6 +141,12 @@ MIT in each case. |#
 	 (4 14))
    (BYTE (32 off SIGNED)))
 
+  ((@RO UL (? n) (? off))		; Kludge
+   (R M W A V I)
+   (BYTE (4 n)
+	 (4 14))
+   (BYTE (32 off UNSIGNED)))
+
   ((@@RO L (? n) (? off))
    (R M W A V I)
    (BYTE (4 n)
@@ -151,9 +157,9 @@ MIT in each case. |#
    (R M W A V I)
    (BYTE (4 15)
 	 (4 8))
-   (IMMEDIATE value))
+   (IMMEDIATE value SIGNED))
 
-  ((&U (? value))			;Kludge
+  ((&U (? value))			; Kludge
    (R M W A V I)
    (BYTE (4 15)
 	 (4 8))
@@ -202,6 +208,8 @@ MIT in each case. |#
    (BYTE (32 off SIGNED)))
 
   ;; Self adjusting modes
+  ;; The ranges seem wrong, but are correct given that disp
+  ;; must be adjusted for the longer modes.  
 
   ((@PCR (? label))
    (R M W A V I)
@@ -211,7 +219,6 @@ MIT in each case. |#
      (BYTE (4 15)
 	   (4 10))
      (BYTE (8 disp SIGNED)))
-    ;; The following range is correct.  Think about it.
     ((-32767 32768)			; (@PCO W label)
      (BYTE (4 15)
 	   (4 12))
@@ -229,7 +236,6 @@ MIT in each case. |#
      (BYTE (4 15)
 	   (4 11))
      (BYTE (8 disp SIGNED)))
-    ;; The following range is correct.  Think about it.
     ((-32767 32768)			; (@@PCO W label)
      (BYTE (4 15)
 	   (4 13))
@@ -237,7 +243,24 @@ MIT in each case. |#
     ((() ())				; (@@PCO L label)
      (BYTE (4 15)
 	   (4 15))
-     (BYTE (32 (- disp 3) SIGNED))))))
+     (BYTE (32 (- disp 3) SIGNED)))))
+
+  ((@PCRO (? label) (? offset))	; Kludge
+   (R M W A V I)
+   (VARIABLE-WIDTH
+    (disp `(+ ,offset (- ,label (+ *PC* 2))))
+    ((-128 127)				; (@PCO B label)
+     (BYTE (4 15)
+	   (4 10))
+     (BYTE (8 disp UNSIGNED)))
+    ((-32767 32768)			; (@PCO W label)
+     (BYTE (4 15)
+	   (4 12))
+     (BYTE (16 (- disp 1) UNSIGNED)))
+    ((() ())				; (@PCO L label)
+     (BYTE (4 15)
+	   (4 14))
+     (BYTE (32 (- disp 3) UNSIGNED))))))
 
 ;;;; Effective address processing
 
@@ -261,7 +284,7 @@ MIT in each case. |#
        ((B) (if unsigned? coerce-8-bit-unsigned coerce-8-bit-signed))
        ((W) (if unsigned? coerce-16-bit-unsigned coerce-16-bit-signed))
        ((L) (if unsigned? coerce-32-bit-unsigned coerce-32-bit-signed))
-       ((d f g h l o q)
+       ((D F G H L O Q)
 	(error "coerce-to-type: Unimplemented type" type))
        (else (error "coerce-to-type: Unknown type" type))))))
 

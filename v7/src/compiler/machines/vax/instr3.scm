@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr3.scm,v 1.8 1989/05/17 20:30:03 jinx Rel $
-$MC68020-Header: instr3.scm,v 1.16 88/10/04 23:04:57 GMT jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr3.scm,v 1.9 1991/02/15 00:41:40 jinx Exp $
 
-Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -254,14 +253,16 @@ MIT in each case. |#
     ((define-field-instruction
        (macro (name suffix1 suffix2 opcode mode)
 	 `(define-instruction ,name
-	    ((,suffix1 (? pos ea-r-l) (? size ea-r-b) (? base ea-v-b) (? dst ,mode))
+	    ((,suffix1 (? pos ea-r-l) (? size ea-r-b) (? base ea-v-b)
+		       (? dst ,mode))
 	     (BYTE (8 ,opcode))
 	     (OPERAND L pos)
 	     (OPERAND B size)
 	     (OPERAND B base)
 	     (OPERAND L dst))
 
-	    ((,suffix2 (? pos ea-r-l) (? size ea-r-b) (? base ea-v-b) (? dst ,mode))
+	    ((,suffix2 (? pos ea-r-l) (? size ea-r-b) (? base ea-v-b)
+		       (? dst ,mode))
 	     (BYTE (8 ,(1+ opcode)))
 	     (OPERAND L pos)
 	     (OPERAND B size)
@@ -288,25 +289,21 @@ MIT in each case. |#
 
 (define-instruction B
   ((B (? c cc) (@PCO (? dest)))
-   (BYTE (4 c)
-	 (4 #x1))
+   (BYTE (4 c) (4 #x1))
    (DISPLACEMENT (8 dest)))
 
   ((B (? c cc) (@PCR (? dest)))
-   (BYTE (4 c)
-	 (4 #x1))
+   (BYTE (4 c) (4 #x1))
    (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
 
   ((W (? c inverse-cc) (@PCO (? dest)))
-   (BYTE (4 c)				; (B B (~ cc) (+ *PC* 3))
-	 (4 #x1))
+   (BYTE (4 c) (4 #x1))			; (B B (~ cc) (+ *PC* 3))
    (BYTE (8 #x03 SIGNED))
    (BYTE (8 #x31))			; (BR W dest)
    (DISPLACEMENT (16 dest)))
 
   ((W (? c inverse-cc) (@PCR (? dest)))
-   (BYTE (4 c)				; (B B (~ cc) (+ *PC* 3))
-	 (4 #x1))
+   (BYTE (4 c) (4 #x1))			; (B B (~ cc) (+ *PC* 3))
    (BYTE (8 #x03 SIGNED))
    (BYTE (8 #x31))			; (BR W dest)
    (DISPLACEMENT (16 `(- ,dest (+ *PC* 2)))))
@@ -316,23 +313,36 @@ MIT in each case. |#
    (VARIABLE-WIDTH
     (disp `(- ,label (+ *PC* 2)))
     ((-128 127)
-     (BYTE (4 c)
-	   (4 #x1))
+     (BYTE (4 c) (4 #x1))
      (BYTE (8 disp SIGNED)))
-     ;; The following range is correct.  Think about it.
     ((-32765 32770)
-     (BYTE (4 (inverse-cc cs))		; (B B (~ cc) (+ *PC* 3))
-	   (4 #x1))
+     (BYTE (4 (inverse-cc cs)) (4 #x1))	; (B B (~ cc) (+ *PC* 3))
      (BYTE (8 #x03))
      (BYTE (8 #x31))			; (BR W label)
      (BYTE (16 (- disp 3) SIGNED)))
     ((() ())
-     (BYTE (4 (inverse-cc cs))		; (B B (~ cc) (+ *PC* 6))
-	   (4 #x1))
+     (BYTE (4 (inverse-cc cs)) (4 #x1))	; (B B (~ cc) (+ *PC* 6))
      (BYTE (8 #x06))
      (BYTE (8 #x17))			; (JMP (@PCO L label))
-     (BYTE (4 15)
-	   (4 14))
+     (BYTE (4 15) (4 14))
+     (BYTE (32 (- disp 6) SIGNED)))))
+
+  (((? c cc cs) (@PCRO (? label) (? offset))) ; Kludge!
+   (VARIABLE-WIDTH
+    (disp `(+ ,offset (- ,label (+ *PC* 2))))
+    ((-128 127)
+     (BYTE (4 c) (4 #x1))
+     (BYTE (8 disp SIGNED)))
+    ((-32765 32770)
+     (BYTE (4 (inverse-cc cs)) (4 #x1))	; (B B (~ cc) (+ *PC* 3))
+     (BYTE (8 #x03))
+     (BYTE (8 #x31))			; (BR W label)
+     (BYTE (16 (- disp 3) SIGNED)))
+    ((() ())
+     (BYTE (4 (inverse-cc cs)) (4 #x1))	; (B B (~ cc) (+ *PC* 6))
+     (BYTE (8 #x06))
+     (BYTE (8 #x17))			; (JMP (@PCO L label))
+     (BYTE (4 15) (4 14))
      (BYTE (32 (- disp 6) SIGNED))))))
 
 (let-syntax
@@ -363,7 +373,21 @@ MIT in each case. |#
 		((-128 127)		; (BR/BSB B label)
 		 (BYTE (8 ,(+ #x10 bit)))
 		 (BYTE (8 disp SIGNED)))
-		;; The following range is correct.  Think about it.
+		((-32767 32768)		; (BR/BSB W label)
+		 (BYTE (8 ,(+ #x30 bit)))
+		 (BYTE (16 (- disp 1) SIGNED)))
+		((() ())		; (JMP/JSB (@PCO L label))
+		 (BYTE (8 ,(+ #x16 bit)))
+		 (BYTE (4 15)
+		       (4 14))
+		 (BYTE (32 (- disp 4) SIGNED)))))
+
+	      (((@PCRO (? label) (? offset))) ; Kludge!
+	       (VARIABLE-WIDTH
+		(disp `(+ ,offset (- ,label (+ *PC* 2))))
+		((-128 127)		; (BR/BSB B label)
+		 (BYTE (8 ,(+ #x10 bit)))
+		 (BYTE (8 disp SIGNED)))
 		((-32767 32768)		; (BR/BSB W label)
 		 (BYTE (8 ,(+ #x30 bit)))
 		 (BYTE (16 (- disp 1) SIGNED)))

@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules1.scm,v 4.6 1989/05/21 03:55:50 jinx Rel $
-$MC68020-Header: rules1.scm,v 4.22 89/04/27 20:06:32 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules1.scm,v 4.7 1991/02/15 00:42:13 jinx Exp $
+$MC68020-Header: rules1.scm,v 4.34 1991/01/23 21:34:30 jinx Exp $
 
-Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,49 +33,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; LAP Generation Rules: Data Transfers.  DEC VAX version.
-;;; Note: All fixnum code has been moved to rulfix.scm.
+;;;; LAP Generation Rules: Data Transfers.
+;;; Note: All fixnum code is in rulfix.scm
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
-;;;; Transfers to Registers
+;;;; Register Assignments
 
-(define-rule statement
-  (ASSIGN (REGISTER (? target)) (REGISTER (? source)))
-  (QUALIFIER (machine-register? target))
-  (LAP (MOV L
-	    ,(standard-register-reference source false)
-	    ,(register-reference target))))
-
-(define-rule statement
-  (ASSIGN (REGISTER 14) (OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
-  (QUALIFIER (pseudo-register? source))
-  (LAP (MOVA L ,(indirect-reference! source offset) (R 14))))
-
-(define-rule statement
-  (ASSIGN (REGISTER 14) (OFFSET-ADDRESS (REGISTER 14) (? n)))
-  (increment-rn 14 n))
-
-(define-rule statement
-  (ASSIGN (REGISTER 10) (OFFSET-ADDRESS (REGISTER 14) (? offset)))
-  (let ((real-offset (* 4 offset)))
-    (LAP (MOVA L (@RO ,(datum-size real-offset) 14 ,real-offset) (R 10)))))
-
-(define-rule statement
-  (ASSIGN (REGISTER 10) (OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
-  (QUALIFIER (pseudo-register? source))
-  (LAP (MOVA L ,(indirect-reference! source offset) (R 10))))
-
-(define-rule statement
-  (ASSIGN (REGISTER 10) (OBJECT->ADDRESS (REGISTER (? source))))
-  (QUALIFIER (pseudo-register? source))
-  (let ((source (preferred-register-reference source)))
-    (LAP (BIC L ,mask-reference ,source (R 10)))))
-
-(define-rule statement
-  (ASSIGN (REGISTER 10) (OBJECT->ADDRESS (POST-INCREMENT (REGISTER 14) 1)))
-  (LAP (BIC L ,mask-reference (@R+ 14) (R 10))))
-
 ;;; All assignments to pseudo registers are required to delete the
 ;;; dead registers BEFORE performing the assignment.  However, it is
 ;;; necessary to derive the effective address of the source
@@ -84,228 +49,253 @@ MIT in each case. |#
 ;;; which have been reused.
 
 (define-rule statement
-  (ASSIGN (REGISTER (? target)) (OFFSET-ADDRESS (REGISTER (? source)) (? n)))
-  (QUALIFIER (and (pseudo-register? target) (machine-register? source)))
-  (let ((source (indirect-reference! source n)))
-    (LAP (MOVA L ,source ,(standard-target-reference target)))))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target)) (OFFSET-ADDRESS (REGISTER (? source)) (? n)))
-  (QUALIFIER (and (pseudo-register? target) (pseudo-register? source)))
-  (reuse-pseudo-register-alias! source 'GENERAL
-    (lambda (reusable-alias)
-      (delete-dead-registers!)
-      (add-pseudo-register-alias! target reusable-alias)
-      (increment-rn reusable-alias n))
-    (lambda ()
-      ;; *** This could use an add instruction. ***
-      (let ((source (indirect-reference! source n)))
-	(LAP (MOVA L ,source ,(standard-target-reference target)))))))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target)) (CONSTANT (? source)))
-  (QUALIFIER (pseudo-register? target))
-  (LAP ,(load-constant source (standard-target-reference target))))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target)) (VARIABLE-CACHE (? name)))
-  (QUALIFIER (pseudo-register? target))
-  (LAP (MOV L
-	    (@PCR ,(free-reference-label name))
-	    ,(standard-target-reference target))))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target)) (ASSIGNMENT-CACHE (? name)))
-  (QUALIFIER (pseudo-register? target))
-  (LAP (MOV L
-	    (@PCR ,(free-assignment-label name))
-	    ,(standard-target-reference target))))
-
-(define-rule statement
   (ASSIGN (REGISTER (? target)) (REGISTER (? source)))
-  (QUALIFIER (pseudo-register? target))
-  (move-to-alias-register! source 'GENERAL target)
-  (LAP))
-
-(define (object->address source reg-ref)
-  (if (eq? source reg-ref)
-      (LAP (BIC L ,mask-reference ,reg-ref))
-      (LAP (BIC L ,mask-reference ,source ,reg-ref))))
-
-(define-integrable (ct/object->address object target)
-  (LAP ,(load-immediate (object-datum object) target)))
-
-(define (object->datum source reg-ref)
-  (if (eq? source reg-ref)
-      (LAP (BIC L ,mask-reference ,reg-ref))
-      (LAP (BIC L ,mask-reference ,source ,reg-ref))))
-
-(define-integrable (ct/object->datum object target)
-  (LAP ,(load-immediate (object-datum object) target)))
-
-(define-integrable (object->type source reg-ref)
-  (LAP (ROTL (S 8) ,source ,reg-ref)))
-
-(define-integrable (ct/object->type object target)
-  (LAP ,(load-immediate (object-type object) target)))
+  (assign-register->register target source))
 
 (define-rule statement
-  (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (CONSTANT (? constant))))
-  (QUALIFIER (pseudo-register? target))
-  (convert-object/constant->register target constant
-				     object->datum
-				     ct/object->datum))
+  (ASSIGN (REGISTER (? target)) (OFFSET-ADDRESS (REGISTER (? source)) (? n)))
+  (load-displaced-register target source (* 4 n)))
 
 (define-rule statement
-  (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (CONSTANT (? constant))))
-  (QUALIFIER (pseudo-register? target))
-  (convert-object/constant->register target constant
-				     object->address
-				     ct/object->address))
+  ;; This is an intermediate rule -- not intended to produce code.
+  (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(OFFSET-ADDRESS (REGISTER (? source)) (? n))))
+  (load-displaced-register/typed target source type (* 4 n)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (BYTE-OFFSET-ADDRESS (REGISTER (? source)) (? n)))
+  (load-displaced-register target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(BYTE-OFFSET-ADDRESS (REGISTER (? source)) (? n))))
+  (load-displaced-register/typed target source type n))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (REGISTER (? source))))
-  (QUALIFIER (pseudo-register? target))
   (convert-object/register->register target source object->type))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (REGISTER (? type)) (REGISTER (? datum))))
+  (cond ((register-copy-if-available datum 'GENERAL target)
+	 =>
+	 (lambda (get-datum-alias)
+	   (let* ((type (any-register-reference type))
+		  (datum&target (get-datum-alias)))
+	     (set-type/ea type datum&target))))
+	((register-copy-if-available type 'GENERAL target)
+	 =>
+	 (lambda (get-type-alias)
+	   (let* ((datum (any-register-reference datum))
+		  (type&target (get-type-alias)))
+	     (cons-pointer/ea type&target datum type&target))))
+	(else
+	 (let* ((type (any-register-reference type))
+		(datum (any-register-reference datum))
+		(target (standard-target-reference target)))
+	   (cons-pointer/ea type datum target)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type)) (REGISTER (? datum))))
+  (if (zero? type)
+      (assign-register->register target datum)
+      (with-register-copy-alias! datum 'GENERAL target
+	(lambda (alias)
+	  (set-type/constant type alias))
+	(lambda (datum target)
+	  (cons-pointer/constant type datum target)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (REGISTER (? source))))
-  (QUALIFIER (pseudo-register? target))
   (convert-object/register->register target source object->datum))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (REGISTER (? source))))
-  (QUALIFIER (pseudo-register? target))
   (convert-object/register->register target source object->address))
 
+;;;; Loading Constants
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (CONSTANT (? source)))
+  (load-constant source (standard-target-reference target)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (MACHINE-CONSTANT (? n)))
+  (load-immediate n (standard-target-reference target)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(MACHINE-CONSTANT (? datum))))
+  (load-non-pointer type datum (standard-target-reference target)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (ENTRY:PROCEDURE (? label)))
+  (load-pc-relative-address
+   target
+   (rtl-procedure/external-label (label->object label))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (ENTRY:CONTINUATION (? label)))
+  (load-pc-relative-address target label))
+
+(define-rule statement
+  ;; This is an intermediate rule -- not intended to produce code.
+  (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(ENTRY:PROCEDURE (? label))))
+  (load-pc-relative-address/typed target
+				  type
+				  (rtl-procedure/external-label
+				   (label->object label))))
+
+(define-rule statement
+  ;; This is an intermediate rule -- not intended to produce code.
+  (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(ENTRY:CONTINUATION (? label))))
+  (load-pc-relative-address/typed target type label))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (VARIABLE-CACHE (? name)))
+  (load-pc-relative target (free-reference-label name)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (ASSIGNMENT-CACHE (? name)))
+  (load-pc-relative target (free-assignment-label name)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (CONSTANT (? constant))))
+  (convert-object/constant->register target constant
+				     object->datum ct/object->datum))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (CONSTANT (? constant))))
+  (convert-object/constant->register target constant
+				     object->address ct/object->address))
+
+;;;; Transfers from Memory
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (OBJECT->TYPE (OFFSET (REGISTER (? address)) (? offset))))
+  (convert-object/offset->register target address offset object->type))
+
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (OBJECT->DATUM (OFFSET (REGISTER (? address)) (? offset))))
-  (QUALIFIER (pseudo-register? target))
   (convert-object/offset->register target address offset object->datum))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (OBJECT->ADDRESS (OFFSET (REGISTER (? address)) (? offset))))
-  (QUALIFIER (pseudo-register? target))
   (convert-object/offset->register target address offset object->address))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OFFSET (REGISTER (? address)) (? offset)))
-  (QUALIFIER (pseudo-register? target))
   (let ((source (indirect-reference! address offset)))
     (LAP (MOV L ,source ,(standard-target-reference target)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (POST-INCREMENT (REGISTER 14) 1))
-  (QUALIFIER (pseudo-register? target))
   (LAP (MOV L (@R+ 14) ,(standard-target-reference target))))
 
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? datum))))
-  (QUALIFIER (and (pseudo-register? target) (machine-register? datum)))
-  (let ((target (standard-target-reference target)))
-    (LAP (BIS L (& ,(make-non-pointer-literal type 0))
-	      ,(register-reference datum) ,target))))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? datum))))
-  (QUALIFIER (and (pseudo-register? target) (pseudo-register? datum)))
-  (with-register-copy-alias! datum 'GENERAL target
-    (lambda (target)
-      (LAP (BIS L (& ,(make-non-pointer-literal type 0)) ,target)))
-    (lambda (source target)
-      (LAP (BIS L (& ,(make-non-pointer-literal type 0)) ,source ,target)))))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (CONS-POINTER (CONSTANT (? type)) (CONSTANT (? datum))))
-  (QUALIFIER (pseudo-register? target))
-  (LAP ,(load-non-pointer type datum (standard-target-reference target))))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (CONS-POINTER (CONSTANT (? type)) (ENTRY:PROCEDURE (? label))))
-  (QUALIFIER (pseudo-register? target))
-  (let ((target (standard-target-reference target)))
-    (LAP (MOVA B
-	       (@PCR ,(rtl-procedure/external-label (label->object label)))
-	      ,target)
-	 (BIS L (& ,(make-non-pointer-literal type 0)) ,target))))
-
 ;;;; Transfers to Memory
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (CONSTANT (? object)))
-  (LAP ,(load-constant object (indirect-reference! a n))))
+  (load-constant object (indirect-reference! a n)))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
-	  (UNASSIGNED))
-  (LAP ,(load-non-pointer (ucode-type unassigned)
-			  0
-			  (indirect-reference! a n))))
-
-;; 1,3,4,5 of the following may need to do a delete-dead-registers!
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(MACHINE-CONSTANT (? datum))))
+  (load-non-pointer type datum (indirect-reference! a n)))
 
 (define-rule statement
-  (ASSIGN (OFFSET (REGISTER (? a)) (? n))
-	  (REGISTER (? r)))
-  (let ((target (indirect-reference! a n)))
-    (LAP (MOV L
-	      ,(standard-register-reference r false)
-	      ,target))))
+  (ASSIGN (OFFSET (REGISTER (? a)) (? n)) (REGISTER (? r)))
+  (QUALIFIER (register-value-class=word? r))
+  (LAP (MOV L
+	    ,(any-register-reference r)
+	    ,(indirect-reference! a n))))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (POST-INCREMENT (REGISTER 14) 1))
   (LAP (MOV L (@R+ 14) ,(indirect-reference! a n))))
-
+
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
-	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? datum))))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type)) (REGISTER (? datum))))
   (let ((target (indirect-reference! address offset)))
-    (LAP (BIS L ,(make-immediate (make-non-pointer-literal type 0))
-	      ,(standard-register-reference datum false)
-	      ,target))))
+    (cons-pointer/constant type
+			   (any-register-reference datum)
+			   target)))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
-	  (CONS-POINTER (CONSTANT (? type)) (ENTRY:PROCEDURE (? label))))
-  (let ((temp (reference-temporary-register! 'GENERAL))
-	(target (indirect-reference! address offset)))
-    (LAP (MOVA B (@PCR ,(rtl-procedure/external-label (label->object label)))
-	       ,temp)
-	 (BIS L ,(make-immediate (make-non-pointer-literal type 0))
-	      ,temp ,target))))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(OFFSET-ADDRESS (REGISTER (? source)) (? n))))
+  (store-displaced-register/typed address offset type source (* 4 n)))
+
+(define-rule statement
+  (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(BYTE-OFFSET-ADDRESS (REGISTER (? source)) (? n))))
+  (store-displaced-register/typed address offset type source n))
+
+;; Common case that can be done cheaply:
+
+(define-rule statement
+  (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
+	  (BYTE-OFFSET-ADDRESS (OFFSET (REGISTER (? address)) (? offset))
+			       (? n)))
+  (if (zero? n)
+      (LAP)
+      (increment/ea (indirect-reference! address offset) n)))
+
+(define-rule statement
+  (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(ENTRY:PROCEDURE (? label))))
+  (let ((target (indirect-reference! address offset))
+	(label (rtl-procedure/external-label (label->object label))))
+    #|
+    (LAP (MOVA B (@PCR ,label) ,target)
+	 ,@(set-type/constant type target))
+    |#
+    (LAP (MOVA B (@PCRO ,label ,(make-non-pointer-literal type 0)) ,target))))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a0)) (? n0))
 	  (OFFSET (REGISTER (? a1)) (? n1)))
-  (let ((source (indirect-reference! a1 n1)))
-    (LAP (MOV L ,source ,(indirect-reference! a0 n0)))))
+  (if (and (= a0 a1) (= n0 n1))
+      (LAP)
+      (let ((source (indirect-reference! a1 n1)))
+	(LAP (MOV L ,source ,(indirect-reference! a0 n0))))))
 
 ;;;; Consing
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 12) 1) (CONSTANT (? object)))
-  (LAP ,(load-constant object (INST-EA (@R+ 12)))))
+  (load-constant object (INST-EA (@R+ 12))))
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 12) 1)
-	  (CONS-POINTER (CONSTANT (? type)) (CONSTANT (? datum))))
-  (LAP ,(load-non-pointer type datum (INST-EA (@R+ 12)))))
-
-(define-rule statement
-  (ASSIGN (POST-INCREMENT (REGISTER 12) 1) (UNASSIGNED))
-  (LAP ,(load-non-pointer (ucode-type unassigned) 0 (INST-EA (@R+ 12)))))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(MACHINE-CONSTANT (? datum))))
+  (load-non-pointer type datum (INST-EA (@R+ 12))))
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 12) 1) (REGISTER (? r)))
-  (LAP (MOV L ,(standard-register-reference r false) (@R+ 12))))
+  (QUALIFIER (register-value-class=word? r))
+  (LAP (MOV L ,(any-register-reference r) (@R+ 12))))
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 12) 1) (OFFSET (REGISTER (? r)) (? n)))
@@ -315,55 +305,65 @@ MIT in each case. |#
   ;; This pops the top of stack into the heap
   (ASSIGN (POST-INCREMENT (REGISTER 12) 1) (POST-INCREMENT (REGISTER 14) 1))
   (LAP (MOV L (@R+ 14) (@R+ 12))))
-
+
 ;;;; Pushes
 
 (define-rule statement
-  (ASSIGN (PRE-INCREMENT (REGISTER 14) -1) (CONSTANT (? object)))
-  (LAP ,(push-constant object)))
-
-(define-rule statement
-  (ASSIGN (PRE-INCREMENT (REGISTER 14) -1) (UNASSIGNED))
-  (LAP ,(push-non-pointer (ucode-type unassigned) 0)))
-
-(define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 14) -1) (REGISTER (? r)))
-  (LAP (PUSHL ,(standard-register-reference r false))))
+  (QUALIFIER (register-value-class=word? r))
+  (LAP (PUSHL ,(any-register-reference r))))
+
+(define-rule statement
+  (ASSIGN (PRE-INCREMENT (REGISTER 14) -1) (CONSTANT (? object)))
+  (LAP (PUSHL ,(constant->ea object))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 14) -1)
-	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? datum))))
-  (LAP (PUSHL ,(standard-register-reference datum 'GENERAL))
-       (MOV B (S ,type) (@RO B 14 3))))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type)) (REGISTER (? datum))))
+  (LAP (PUSHL ,(any-register-reference datum))
+       ,@(set-type/constant type (INST-EA (@R 14)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 14) -1)
-	  (CONS-POINTER (CONSTANT (? type)) (ENTRY:PROCEDURE (? label))))
-  (LAP (PUSHA B (@PCR ,(rtl-procedure/external-label (label->object label))))
-       (MOV B (S ,type) (@RO B 14 3))))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(MACHINE-CONSTANT (? datum))))
+  (LAP (PUSHL ,(non-pointer->ea type datum))))
+
+(define-rule statement
+  (ASSIGN (PRE-INCREMENT (REGISTER 14) -1)
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(ENTRY:PROCEDURE (? label))))
+  (push-pc-relative-address/typed type
+				  (rtl-procedure/external-label
+				   (label->object label))))
+
+(define-rule statement
+  (ASSIGN (PRE-INCREMENT (REGISTER 14) -1)
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(ENTRY:CONTINUATION (? label))))
+  (push-pc-relative-address/typed type label))
+
+(define-rule statement
+  (ASSIGN (PRE-INCREMENT (REGISTER 14) -1)
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(OFFSET-ADDRESS (REGISTER (? r)) (? n))))
+  (push-displaced-register/typed type r (* 4 n)))
+
+(define-rule statement
+  (ASSIGN (PRE-INCREMENT (REGISTER 14) -1)
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(BYTE-OFFSET-ADDRESS (REGISTER (? r)) (? n))))
+  (push-displaced-register/typed type r n))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 14) -1) (OFFSET (REGISTER (? r)) (? n)))
   (LAP (PUSHL ,(indirect-reference! r n))))
-
-(define-rule statement
-  (ASSIGN (PRE-INCREMENT (REGISTER 14) -1) (ENTRY:CONTINUATION (? label)))
-  (LAP (PUSHA B (@PCR ,label))
-       (MOV B (S ,(ucode-type compiled-entry)) (@RO B 14 3))))
 
 ;;;; CHAR->ASCII/BYTE-OFFSET
-
-(define (load-char-into-register type source target)
-  (let ((target (standard-target-reference target)))
-    (if (not (zero? type))
-	(LAP ,(load-non-pointer type 0 target)
-	     (MOV B ,source ,target))
-	(LAP (MOVZ B L ,source ,target)))))    
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CHAR->ASCII (OFFSET (REGISTER (? address)) (? offset))))
-  (QUALIFIER (pseudo-register? target))
   (load-char-into-register 0
 			   (indirect-char/ascii-reference! address offset)
 			   target))
@@ -371,23 +371,21 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CHAR->ASCII (REGISTER (? source))))
-  (QUALIFIER (pseudo-register? target))
-  (let ((source (machine-register-reference source 'GENERAL)))
-    (load-char-into-register 0 source target)))
+  (load-char-into-register 0
+			   (reference-alias-register! source 'GENERAL)
+			   target))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (BYTE-OFFSET (REGISTER (? address)) (? offset)))
-  (QUALIFIER (pseudo-register? target))
   (load-char-into-register 0
 			   (indirect-byte-reference! address offset)
 			   target))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
-	  (CONS-POINTER (CONSTANT (? type))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(BYTE-OFFSET (REGISTER (? address)) (? offset))))
-  (QUALIFIER (pseudo-register? target))
   (load-char-into-register type
 			   (indirect-byte-reference! address offset)
 			   target))
@@ -396,7 +394,7 @@ MIT in each case. |#
   (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
 	  (CHAR->ASCII (CONSTANT (? character))))
   (LAP (MOV B
-	    ,(make-immediate (char->signed-8-bit-immediate character))
+	    (& ,(char->signed-8-bit-immediate character))
 	    ,(indirect-byte-reference! address offset))))
 
 (define-rule statement
@@ -418,3 +416,73 @@ MIT in each case. |#
 	  (CHAR->ASCII (OFFSET (REGISTER (? source)) (? source-offset))))
   (let ((source (indirect-char/ascii-reference! source source-offset)))
     (LAP (MOV B ,source ,(indirect-byte-reference! target target-offset)))))
+
+;;;; Utilities specific to rules1 (others in lapgen)
+
+(define (load-displaced-register target source n)
+  (if (zero? n)
+      (assign-register->register target source)
+      (with-register-copy-alias! source 'GENERAL target
+	(lambda (reusable-alias)
+	  (increment/ea reusable-alias n))
+	(lambda (source target)
+	  (add-constant/ea source n target)))))
+
+(define (load-displaced-register/typed target source type n)
+  (if (zero? type)
+      (load-displaced-register target source n)
+      (let ((unsigned-offset (+ (make-non-pointer-literal type 0) n)))
+	(with-register-copy-alias! source 'GENERAL target
+	  (lambda (reusable-alias)
+	    (LAP (ADD L (&U ,unsigned-offset) ,reusable-alias)))
+	  (lambda (source target)
+	    (LAP (ADD L (&U ,unsigned-offset) ,source ,target)))))))
+
+(define (store-displaced-register/typed address offset type source n)
+  (let* ((source (any-register-reference source))
+	 (target (indirect-reference! address offset)))
+    (if (zero? type)
+	(add-constant/ea source n target)
+	(LAP (ADD L (&U ,(+ (make-non-pointer-literal type 0) n))
+		  ,source ,target)))))
+
+(define (push-displaced-register/typed type r n)
+  (if (zero? type)
+      (LAP (PUSHA B ,(indirect-byte-reference! r n)))
+      #|
+      (LAP (PUSHA B ,(indirect-byte-reference! r n))
+	   (set-type/constant type (INST-EA (@R 14))))
+      |#
+      (let ((reg (allocate-indirection-register! r)))
+	(LAP (PUSHA B (@RO UL ,reg ,(+ (make-non-pointer-literal type 0)
+				       n)))))))
+
+(define (assign-register->register target source)
+  (move-to-alias-register! source (register-type target) target)
+  (LAP))
+
+(define (load-pc-relative target label)
+  (LAP (MOV L (@PCR ,label) ,(standard-target-reference target))))
+
+(define (load-pc-relative-address target label)
+  (LAP (MOVA B (@PCR ,label) ,(standard-target-reference target))))
+
+(define (load-pc-relative-address/typed target type label)
+  (let ((target (standard-target-reference target)))
+    #|
+    (LAP (MOVA B (@PCR ,label) ,target)
+	 ,@(set-type/constant type target))
+    |#
+    (LAP (MOVA B (@PCRO ,label ,(make-non-pointer-literal type 0)) ,target))))
+
+(define (push-pc-relative-address/typed type label)
+  #|
+  (LAP (PUSHA B (@PCR ,label))
+       ,@(set-type/constant type (INST-EA (@R 14))))
+  |#
+  (LAP (PUSHA B (@PCRO ,label ,(make-non-pointer-literal type 0)))))
+
+(define (load-char-into-register type source target)
+  (let ((target (standard-target-reference target)))
+    (LAP ,@(load-non-pointer type 0 target)
+	 (MOV B ,source ,target))))

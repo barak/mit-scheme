@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/compiler.pkg,v 1.5 1989/07/11 23:48:53 cph Rel $
-$MC68020-Header: comp.pkg,v 1.22.1.1 89/05/21 14:45:10 GMT jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/compiler.pkg,v 1.6 1991/02/15 00:41:07 jinx Exp $
+$MC68020-Header: comp.pkg,v 1.30 90/05/03 15:16:59 GMT jinx Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -71,6 +71,7 @@ MIT in each case. |#
 	 "rtlbase/rtlcfg"		;RTL: CFG types
 	 "rtlbase/rtlobj"		;RTL: CFG objects
 	 "rtlbase/regset"		;RTL: register sets
+	 "rtlbase/valclass"		;RTL: value classes
 
 	 "back/insseq"			;LAP instruction sequences
 	 )
@@ -79,20 +80,27 @@ MIT in each case. |#
 	  compiler:analyze-side-effects?
 	  compiler:cache-free-variables?
 	  compiler:code-compression?
+	  compiler:compile-by-procedures?
 	  compiler:cse?
 	  compiler:default-top-level-declarations
 	  compiler:enable-expansion-declarations?
 	  compiler:enable-integration-declarations?
+	  compiler:generate-lap-files?
 	  compiler:generate-range-checks?
 	  compiler:generate-rtl-files?
 	  compiler:generate-type-checks?
 	  compiler:implicit-self-static?
+	  compiler:noisy?
 	  compiler:open-code-flonum-checks?
 	  compiler:open-code-primitives?
 	  compiler:optimize-environments?
 	  compiler:package-optimization-level
 	  compiler:preserve-data-structures?
-	  compiler:show-subphases?))
+	  compiler:show-phases?
+	  compiler:show-procedures?
+	  compiler:show-subphases?
+	  compiler:show-time-reports?
+	  compiler:use-multiclosures?))
 
 (define-package (compiler reference-contexts)
   (files "base/refctx")
@@ -161,20 +169,22 @@ MIT in each case. |#
 	  *rtl-graphs*
 	  *rtl-procedures*)
   (export (compiler lap-syntaxer)
-	  compiler:external-labels
+	  *block-label*
+	  *external-labels*
 	  label->object)
   (export (compiler debug)
 	  *root-expression*
 	  *rtl-procedures*
 	  *rtl-graphs*)
   (import (runtime compiler-info)
-	  make-dbg-info-vector))
+	  make-dbg-info-vector)
+  (import (runtime unparser)
+	  *unparse-uninterned-symbols-by-name?*))
 
 (define-package (compiler debug)
   (files "base/debug")
   (parent (compiler))
   (export ()
-	  compiler:write-rtl-file
 	  debug/find-continuation
 	  debug/find-entry-node
 	  debug/find-procedure
@@ -184,9 +194,12 @@ MIT in each case. |#
 	  show-bblock-rtl
 	  show-fg
 	  show-fg-node
-	  show-rtl)
+	  show-rtl
+	  write-rtl-instructions)
   (import (runtime pretty-printer)
-	  *pp-primitives-by-name*))
+	  *pp-primitives-by-name*)
+  (import (runtime unparser)
+	  *unparse-uninterned-symbols-by-name?*))
 
 (define-package (compiler pattern-matcher/lookup)
   (files "base/pmlook")
@@ -271,11 +284,8 @@ MIT in each case. |#
 	  dbg-block-name/return-address
 	  dbg-block-name/static-link
 
-	  make-dbg-label
-	  dbg-label/names
-	  set-dbg-label/names!
+	  make-dbg-label-2
 	  dbg-label/offset
-	  set-dbg-label/name!
 	  set-dbg-label/external?!))
 
 (define-package (compiler constraints)
@@ -341,6 +351,11 @@ MIT in each case. |#
   (parent (compiler fg-optimizer))
   (export (compiler top-level) operator-analysis))
 
+(define-package (compiler fg-optimizer variable-indirection)
+  (files "fgopt/varind")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) initialize-variable-indirections!))
+
 (define-package (compiler fg-optimizer environment-optimization)
   (files "fgopt/envopt")
   (parent (compiler fg-optimizer))
@@ -354,7 +369,9 @@ MIT in each case. |#
 (define-package (compiler fg-optimizer continuation-analysis)
   (files "fgopt/contan")
   (parent (compiler fg-optimizer))
-  (export (compiler top-level) continuation-analysis))
+  (export (compiler top-level)
+	  continuation-analysis
+	  setup-block-static-links!))
 
 (define-package (compiler fg-optimizer compute-node-offsets)
   (files "fgopt/offset")
@@ -381,7 +398,9 @@ MIT in each case. |#
   (parent (compiler fg-optimizer))
   (export (compiler top-level)
 	  setup-block-types!
-	  setup-closure-contexts!))
+	  setup-closure-contexts!)
+  (export (compiler)
+	  indirection-block-procedure))
 
 (define-package (compiler fg-optimizer simplicity-analysis)
   (files "fgopt/simple")
@@ -420,6 +439,11 @@ MIT in each case. |#
    (parent (compiler fg-optimizer subproblem-ordering))
    (export (compiler fg-optimizer subproblem-ordering)
 	   parameter-analysis))
+
+(define-package (compiler fg-optimizer return-equivalencing)
+  (files "fgopt/reteqv")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) find-equivalent-returns!))
 
 (define-package (compiler rtl-generator)
   (files "rtlgen/rtlgen"		;RTL generator
@@ -449,10 +473,6 @@ MIT in each case. |#
   (files "rtlgen/opncod")
   (parent (compiler rtl-generator))
   (export (compiler rtl-generator) combination/inline)
-  (export (compiler fg-optimizer simplicity-analysis)
-	  combination/inline/simple?)
-  (export (compiler fg-optimizer subproblem-ordering parameter-analysis)
-	  combination/inline/simple?)
   (export (compiler top-level) open-coding-analysis))
 
 (define-package (compiler rtl-generator find-block)
@@ -466,15 +486,21 @@ MIT in each case. |#
   (export (compiler rtl-generator)
 	  generate/rvalue
 	  load-closure-environment
+	  make-cons-closure-indirection
+	  make-cons-closure-redirection
+	  make-closure-redirection
 	  make-ic-cons
 	  make-non-trivial-closure-cons
-	  make-trivial-closure-cons))
+	  make-trivial-closure-cons
+	  redirect-closure))
 
 (define-package (compiler rtl-generator generate/combination)
   (files "rtlgen/rgcomb")
   (parent (compiler rtl-generator))
   (export (compiler rtl-generator)
-	  generate/combination))
+	  generate/combination)
+  (export (compiler rtl-generator combination/inline)
+	  generate/invocation-prefix))
 
 (define-package (compiler rtl-generator generate/return)
   (files "rtlgen/rgretn")
@@ -505,6 +531,24 @@ MIT in each case. |#
   (parent (compiler rtl-optimizer))
   (export (compiler top-level) invertible-expression-elimination))
 
+(define-package (compiler rtl-optimizer common-suffix-merging)
+  (files "rtlopt/rtlcsm")
+  (parent (compiler rtl-optimizer))
+  (export (compiler top-level) merge-common-suffixes!))
+
+(define-package (compiler rtl-optimizer rtl-dataflow-analysis)
+  (files "rtlopt/rdflow")
+  (parent (compiler rtl-optimizer))
+  (export (compiler top-level) rtl-dataflow-analysis))
+
+(define-package (compiler rtl-optimizer rtl-rewriting)
+  (files "rtlopt/rerite")
+  (parent (compiler rtl-optimizer))
+  (export (compiler top-level)
+	  rtl-rewriting:post-cse
+	  rtl-rewriting:pre-cse)
+  (export (compiler lap-syntaxer) add-rewriting-rule!))
+
 (define-package (compiler rtl-optimizer lifetime-analysis)
   (files "rtlopt/rlife")
   (parent (compiler rtl-optimizer))
@@ -512,7 +556,7 @@ MIT in each case. |#
   (export (compiler rtl-optimizer code-compression) mark-set-registers!))
 
 (define-package (compiler rtl-optimizer code-compression)
-  (files "rtlopt/rdeath")
+  (files "rtlopt/rcompr")
   (parent (compiler rtl-optimizer))
   (export (compiler top-level) code-compression))
 
@@ -532,6 +576,7 @@ MIT in each case. |#
 	 "machines/vax/rules3"		;  "      "        "
 	 "machines/vax/rules4"		;  "      "        "
 	 "machines/vax/rulfix"		;code generation rules: fixnums
+	 "machines/vax/rulrew"		;code rewriting rules
 	 "back/syntax"			;Generic syntax phase
 	 "back/syerly"			;Early binding version
 	 "machines/vax/coerce"		;Coercions: integer -> bit string
@@ -551,7 +596,12 @@ MIT in each case. |#
 	  lap:make-unconditional-branch
 	  lap:syntax-instruction)
   (export (compiler top-level)
-	  generate-bits)
+	  *interned-assignments*
+	  *interned-constants*
+	  *interned-uuo-links*
+	  *interned-variables*
+	  *next-constant*
+	  generate-lap)
   (import (scode-optimizer expansion)
 	  scode->scode-expander))
 
@@ -565,10 +615,10 @@ MIT in each case. |#
   (files "back/linear")
   (parent (compiler lap-syntaxer))
   (export (compiler lap-syntaxer)
-	  linearize-bits
-	  bblock-linearize-bits)
+	  linearize-lap
+	  bblock-linearize-lap)
   (export (compiler top-level)
-	  linearize-bits))
+	  linearize-lap))
 
 (define-package (compiler assembler)
   (files "machines/vax/assmd"		;Machine dependent
@@ -596,7 +646,7 @@ MIT in each case. |#
 	  compiler:disassemble)
   (import (runtime compiler-info)
 	  compiled-code-block/dbg-info
-	  dbg-info-vector/items
+	  dbg-info-vector/blocks-vector
 	  dbg-info-vector?
 	  dbg-info/labels
 	  dbg-label/external?

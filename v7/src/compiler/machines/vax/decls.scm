@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/decls.scm,v 4.4 1989/05/21 17:56:33 jinx Rel $
-$MC68020-Header: decls.scm,v 4.21.1.1 89/05/21 14:50:15 GMT jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/decls.scm,v 4.5 1991/02/15 00:41:29 jinx Exp $
+$MC68020-Header: decls.scm,v 4.27 90/05/03 15:17:08 GMT jinx Exp $
 
-Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,7 +33,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Compiler File Dependencies.  VAX compiler.
+;;;; Compiler File Dependencies.  VAX version.
+;;; package: (compiler declarations)
 
 (declare (usual-integrations))
 
@@ -332,34 +333,36 @@ MIT in each case. |#
 		     filenames))))
     (file-dependency/syntax/join
      (append (filename/append "base"
-			      "blocks" "cfg1" "cfg2" "cfg3" "constr" "contin"
-			      "crstop" "ctypes" "debug" "enumer" "infnew"
-			      "lvalue" "object" "pmerly" "proced" "refctx"
-			      "rvalue" "scode" "sets" "subprb" "switch"
-			      "toplev" "utils")
+			      "blocks" "cfg1" "cfg2" "cfg3" "constr"
+			      "contin" "crstop" "ctypes" "debug" "enumer"
+			      "infnew" "lvalue" "object" "pmerly" "proced"
+			      "refctx" "rvalue" "scode" "sets" "subprb"
+			      "switch" "toplev" "utils")
 	     (filename/append "back"
 			      "asmmac" "bittop" "bitutl" "insseq" "lapgn1"
 			      "lapgn2" "lapgn3" "linear" "regmap" "symtab"
 			      "syntax")
 	     (filename/append "machines/vax"
-			      "dassm1" "dsyn" "insmac" "machin" "rgspcm")
+			      "dassm1" "dsyn" "insmac" "machin" "rgspcm"
+			      "rulrew")
 	     (filename/append "fggen"
 			      "declar" "fggen" "canon")
 	     (filename/append "fgopt"
 			      "blktyp" "closan" "conect" "contan" "delint"
 			      "desenv" "envopt" "folcon" "offset" "operan"
-			      "order" "outer" "param" "reord" "reuse"
-			      "sideff" "simapp" "simple" "subfre")
+			      "order" "outer" "param" "reord" "reteqv" "reuse"
+			      "sideff" "simapp" "simple" "subfre" "varind")
 	     (filename/append "rtlbase"
 			      "regset" "rgraph" "rtlcfg" "rtlcon" "rtlexp"
-			      "rtline" "rtlobj" "rtlreg" "rtlty1" "rtlty2")
+			      "rtline" "rtlobj" "rtlreg" "rtlty1" "rtlty2"
+			      "valclass")
 	     (filename/append "rtlgen"
 			      "fndblk" "fndvar" "opncod" "rgcomb" "rgproc"
 			      "rgretn" "rgrval" "rgstmt" "rtlgen")
 	     (filename/append "rtlopt"
-			      "ralloc" "rcse1" "rcse2" "rcseep" "rcseht"
-			      "rcserq" "rcsesr" "rdeath" "rdebug" "rinvex"
-			      "rlife"))
+			      "ralloc" "rcompr" "rcse1" "rcse2" "rcseep"
+			      "rcseht" "rcserq" "rcsesr" "rdebug" "rdflow"
+			      "rerite" "rinvex" "rlife" "rtlcsm"))
      compiler-syntax-table)
     (file-dependency/syntax/join
      (filename/append "machines/vax"
@@ -377,7 +380,17 @@ MIT in each case. |#
 ;;;; Integration Dependencies
 
 (define (initialize/integration-dependencies!)
-  (let ((front-end-base
+
+  (define (add-declaration! declaration filenames)
+    (for-each (lambda (filenames)
+		(let ((node (filename->source-node filenames)))
+		  (set-source-node/declarations!
+		   node
+		   (cons declaration
+			 (source-node/declarations node)))))
+	      filenames))
+
+  (let* ((front-end-base
 	 (filename/append "base"
 			  "blocks" "cfg1" "cfg2" "cfg3"
 			  "contin" "ctypes" "enumer" "lvalue"
@@ -387,23 +400,26 @@ MIT in each case. |#
 	 (filename/append "machines/vax" "machin"))
 	(rtl-base
 	 (filename/append "rtlbase"
-			  "regset" "rgraph" "rtlcfg" "rtlexp" "rtlobj"
-			  "rtlreg" "rtlty1" "rtlty2"))
+			  "rgraph" "rtlcfg" "rtlobj" "rtlreg" "rtlty1"
+			  "rtlty2"))
 	(cse-base
 	 (filename/append "rtlopt"
-			  "rcse1" "rcse2" "rcseep" "rcseht" "rcserq" "rcsesr"))
+			  "rcse1" "rcseht" "rcserq" "rcsesr"))
+	(cse-all
+	 (append (filename/append "rtlopt"
+				  "rcse2" "rcseep")
+		 cse-base))
 	(instruction-base
-	 (append (filename/append "back" "insseq")
-		 (filename/append "machines/vax" "assmd" "machin")))
+	 (filename/append "machines/vax" "assmd" "machin"))
 	(lapgen-base
-	 (append (filename/append "back" "lapgn2" "lapgn3" "regmap")
+	 (append (filename/append "back" "lapgn3" "regmap")
 		 (filename/append "machines/vax" "lapgen")))
 	(assembler-base
-	 (append (filename/append "back" "bitutl" "symtab")
+	 (append (filename/append "back" "symtab")
 		 (filename/append "machines/vax" "insutl")))
 	(lapgen-body
 	 (append
-	  (filename/append "back" "lapgn1" "syntax")
+	  (filename/append "back" "lapgn1" "lapgn2" "syntax")
 	  (filename/append "machines/vax"
 			   "rules1" "rules2" "rules3" "rules4" "rulfix")))
 	(assembler-body
@@ -456,7 +472,6 @@ MIT in each case. |#
     (define-integration-dependencies "machines/vax" "machin" "rtlbase"
       "rtlreg" "rtlty1" "rtlty2")
 
-    (define-integration-dependencies "rtlbase" "regset" "base")
     (define-integration-dependencies "rtlbase" "rgraph" "base" "cfg1" "cfg2")
     (define-integration-dependencies "rtlbase" "rgraph" "machines/vax"
       "machin")
@@ -465,8 +480,8 @@ MIT in each case. |#
     (define-integration-dependencies "rtlbase" "rtlcon" "base" "cfg3" "utils")
     (define-integration-dependencies "rtlbase" "rtlcon" "machines/vax"
       "machin")
-    (define-integration-dependencies "rtlbase" "rtlexp" "base" "utils")
-    (define-integration-dependencies "rtlbase" "rtlexp" "rtlbase" "rtlreg")
+    (define-integration-dependencies "rtlbase" "rtlexp" "rtlbase"
+      "rtlreg" "rtlty1")
     (define-integration-dependencies "rtlbase" "rtline" "base" "cfg1" "cfg2")
     (define-integration-dependencies "rtlbase" "rtline" "rtlbase"
       "rtlcfg" "rtlty2")
@@ -490,7 +505,8 @@ MIT in each case. |#
       (filename/append "fgopt"
 		       "blktyp" "closan" "conect" "contan" "delint" "desenv"
 		       "envopt" "folcon" "offset" "operan" "order" "param"
-		       "outer" "reuse" "sideff" "simapp" "simple" "subfre"))
+		       "outer" "reuse" "reteqv" "sideff" "simapp" "simple"
+		       "subfre" "varind"))
      (append vax-base front-end-base))
 
     (define-integration-dependencies "fgopt" "reuse" "fgopt" "reord")
@@ -502,25 +518,33 @@ MIT in each case. |#
      (append vax-base front-end-base rtl-base))
 
     (file-dependency/integration/join
-     (append cse-base
-	     (filename/append "rtlopt" "ralloc" "rdeath" "rdebug" "rinvex"
-			      "rlife"))
+     (append cse-all
+	     (filename/append "rtlopt" "ralloc" "rcompr" "rdebug" "rdflow"
+			      "rerite" "rinvex" "rlife" "rtlcsm")
+	     (filename/append "machines/vax" "rulrew"))
      (append vax-base rtl-base))
 
-    (file-dependency/integration/join cse-base cse-base)
-
-    (define-integration-dependencies "rtlopt" "rcseht" "base" "object")
-    (define-integration-dependencies "rtlopt" "rcserq" "base" "object")
-    (define-integration-dependencies "rtlopt" "rlife"  "base" "cfg2")
+    (file-dependency/integration/join cse-all cse-base)
 
     (file-dependency/integration/join
-     (append instruction-base
-	     lapgen-base
-	     lapgen-body
-	     assembler-base
-	     assembler-body
-	     (filename/append "back" "linear" "syerly"))
-     instruction-base)
+     (filename/append "rtlopt" "ralloc" "rcompr" "rdebug" "rlife")
+     (filename/append "rtlbase" "regset"))
+
+    (file-dependency/integration/join
+     (filename/append "rtlopt" "rcseht" "rcserq")
+     (filename/append "base" "object"))
+
+    (define-integration-dependencies "rtlopt" "rlife"  "base" "cfg2")
+
+    (let ((dependents
+	   (append instruction-base
+		   lapgen-base
+		   lapgen-body
+		   assembler-base
+		   assembler-body
+		   (filename/append "back" "linear" "syerly"))))
+      (add-declaration! '(USUAL-DEFINITION (SET EXPT)) dependents)
+      (file-dependency/integration/join dependents instruction-base))
 
     (file-dependency/integration/join (append lapgen-base lapgen-body)
 				      lapgen-base)
@@ -531,7 +555,7 @@ MIT in each case. |#
     (define-integration-dependencies "back" "lapgn1" "base"
       "cfg1" "cfg2" "utils")
     (define-integration-dependencies "back" "lapgn1" "rtlbase"
-      "regset" "rgraph" "rtlcfg")
+      "rgraph" "rtlcfg")
     (define-integration-dependencies "back" "lapgn2" "rtlbase" "rtlreg")
     (define-integration-dependencies "back" "lapgn3" "rtlbase" "rtlcfg")
     (define-integration-dependencies "back" "linear" "base" "cfg1" "cfg2")

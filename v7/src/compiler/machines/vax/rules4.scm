@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules4.scm,v 4.2 1989/05/17 20:31:24 jinx Rel $
-$MC68020-Header: rules4.scm,v 4.5 88/12/30 07:05:28 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules4.scm,v 4.3 1991/02/15 00:42:38 jinx Exp $
+$MC68020-Header: rules4.scm,v 4.12 90/05/03 15:17:38 GMT jinx Exp $
 
-Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,156 +33,113 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; LAP Generation Rules: Interpreter Calls.  DEC VAX version.
+;;;; LAP Generation Rules: Interpreter Calls.
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
+;;;; Variable cache trap handling.
+
+(define-rule statement
+  (INTERPRETER-CALL:CACHE-REFERENCE (? extension) (? safe?))
+  (QUALIFIER (interpreter-call-argument? extension))
+  (let* ((set-extension
+	  (interpreter-call-argument->machine-register! extension r2))
+	 (clear-map (clear-map!)))
+    (LAP ,@set-extension
+	 ,@clear-map
+	 #|
+	 ;; This should be enabled if the short-circuit code is written.
+	 (JSB ,(if safe?
+		   entry:compiler-safe-reference-trap
+		   entry:compiler-reference-trap))
+	 |#
+	 ,@(invoke-interface-jsb (if safe?
+				     code:compiler-safe-reference-trap
+				     code:compiler-reference-trap)))))
+
+(define-rule statement
+  (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension) (? value))
+  (QUALIFIER (and (interpreter-call-argument? extension)
+		  (interpreter-call-argument? value)))
+  (let* ((set-extension
+	 (interpreter-call-argument->machine-register! extension r2))
+	 (set-value (interpreter-call-argument->machine-register! value r3))
+	 (clear-map (clear-map!)))
+    (LAP ,@set-extension
+	 ,@set-value
+	 ,@clear-map
+	 #|
+	 ;; This should be enabled if the short-circuit code is written.
+	 (JSB ,entry:compiler-assignment-trap)
+	 |#
+	 ,@(invoke-interface-jsb code:compiler-assignment-trap))))
+
+(define-rule statement
+  (INTERPRETER-CALL:CACHE-UNASSIGNED? (? extension))
+  (QUALIFIER (interpreter-call-argument? extension))
+  (let* ((set-extension
+	  (interpreter-call-argument->machine-register! extension r2))
+	 (clear-map (clear-map!)))
+    (LAP ,@set-extension
+	 ,@clear-map
+	 ,@(invoke-interface-jsb code:compiler-unassigned?-trap))))
+
 ;;;; Interpreter Calls
+
+;;; All the code that follows is obsolete.  It hasn't been used in a while.
+;;; It is provided in case the relevant switches are turned off, but there
+;;; is no real reason to do this.  Perhaps the switches should be removed.
 
 (define-rule statement
   (INTERPRETER-CALL:ACCESS (? environment) (? name))
-  (lookup-call entry:compiler-access environment name))
+  (QUALIFIER (interpreter-call-argument? environment))
+  (lookup-call code:compiler-access environment name))
 
 (define-rule statement
   (INTERPRETER-CALL:LOOKUP (? environment) (? name) (? safe?))
-  (lookup-call (if safe? entry:compiler-safe-lookup entry:compiler-lookup)
+  (QUALIFIER (interpreter-call-argument? environment))
+  (lookup-call (if safe? code:compiler-safe-lookup code:compiler-lookup)
 	       environment name))
 
 (define-rule statement
   (INTERPRETER-CALL:UNASSIGNED? (? environment) (? name))
-  (lookup-call entry:compiler-unassigned? environment name))
+  (QUALIFIER (interpreter-call-argument? environment))
+  (lookup-call code:compiler-unassigned? environment name))
 
 (define-rule statement
   (INTERPRETER-CALL:UNBOUND? (? environment) (? name))
-  (lookup-call entry:compiler-unbound? environment name))
+  (QUALIFIER (interpreter-call-argument? environment))
+  (lookup-call code:compiler-unbound? environment name))
 
-(define (lookup-call entry environment name)
-  (let ((set-environment (expression->machine-register! environment r4)))
-    (let ((clear-map (clear-map!)))
-      (LAP ,@set-environment
-	   ,@clear-map
-	   ,(load-constant name (INST-EA (R 4)))
-	   (JSB ,entry)))))
-
+(define (lookup-call code environment name)
+  (let* ((set-environment
+	  (interpreter-call-argument->machine-register! environment r2))
+	 (clear-map (clear-map!)))
+    (LAP ,@set-environment
+	 ,@clear-map
+	 ,@(load-constant name (INST-EA (R 3)))
+	 ,@(invoke-interface-jsb code))))
+
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? environment) (? name) (? value))
-  (QUALIFIER (not (eq? 'CONS-POINTER (car value))))
-  (assignment-call:default entry:compiler-define environment name value))
+  (QUALIFIER (and (interpreter-call-argument? environment)
+		  (interpreter-call-argument? value)))
+  (assignment-call code:compiler-define environment name value))
 
 (define-rule statement
   (INTERPRETER-CALL:SET! (? environment) (? name) (? value))
-  (QUALIFIER (not (eq? 'CONS-POINTER (car value))))
-  (assignment-call:default entry:compiler-set! environment name value))
+  (QUALIFIER (and (interpreter-call-argument? environment)
+		  (interpreter-call-argument? value)))
+  (assignment-call code:compiler-set! environment name value))
 
-(define (assignment-call:default entry environment name value)
-  (let ((set-environment (expression->machine-register! environment r3)))
-    (let ((set-value (expression->machine-register! value r5)))
-      (let ((clear-map (clear-map!)))
-	(LAP ,@set-environment
-	     ,@set-value
-	     ,@clear-map
-	     ,(load-constant name (INST-EA (R 4)))
-	     (JSB ,entry))))))
-
-(define-rule statement
-  (INTERPRETER-CALL:DEFINE (? environment) (? name)
-			   (CONS-POINTER (CONSTANT (? type))
-					 (REGISTER (? datum))))
-  (assignment-call:cons-pointer entry:compiler-define environment name type
-				datum))
-
-(define-rule statement
-  (INTERPRETER-CALL:SET! (? environment) (? name)
-			 (CONS-POINTER (CONSTANT (? type))
-				       (REGISTER (? datum))))
-  (assignment-call:cons-pointer entry:compiler-set! environment name type
-				datum))
-
-(define (assignment-call:cons-pointer entry environment name type datum)
-  (let ((set-environment (expression->machine-register! environment r3)))
-    (let ((datum (coerce->any datum)))
-      (let ((clear-map (clear-map!)))
-	(LAP ,@set-environment
-	     ,@clear-map
-	     (BIS L (& ,(make-non-pointer-literal type 0)) ,datum (R 5))
-	     ,(load-constant name (INST-EA (R 4)))
-	     (JSB ,entry))))))
-
-(define-rule statement
-  (INTERPRETER-CALL:DEFINE (? environment) (? name)
-			   (CONS-POINTER (CONSTANT (? type))
-					 (ENTRY:PROCEDURE (? label))))
-  (assignment-call:cons-procedure entry:compiler-define environment name type
-				  label))
-
-(define-rule statement
-  (INTERPRETER-CALL:SET! (? environment) (? name)
-			 (CONS-POINTER (CONSTANT (? type))
-				       (ENTRY:PROCEDURE (? label))))
-  (assignment-call:cons-procedure entry:compiler-set! environment name type
-				  label))
-
-(define (assignment-call:cons-procedure entry environment name type label)
-  (let ((set-environment (expression->machine-register! environment r3)))
-    (LAP ,@set-environment
-	 ,@(clear-map!)
-	 (PUSHA B (@PCR ,(rtl-procedure/external-label (label->object label))))
-	 (MOV B ,(make-immediate type) (@RO B 14 3))
-	 (MOV L (@R+ 14) (R 5))
-	 ,(load-constant name (INST-EA (R 4)))
-	 (JSB ,entry))))
-
-(define-rule statement
-  (INTERPRETER-CALL:CACHE-REFERENCE (? extension) (? safe?))
-  (let ((set-extension (expression->machine-register! extension r3)))
-    (let ((clear-map (clear-map!)))
-      (LAP ,@set-extension
-	   ,@clear-map
-	   (JSB ,(if safe?
-		     entry:compiler-safe-reference-trap
-		     entry:compiler-reference-trap))))))
-
-(define-rule statement
-  (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension) (? value))
-  (QUALIFIER (not (eq? 'CONS-POINTER (car value))))
-  (let ((set-extension (expression->machine-register! extension r3)))
-    (let ((set-value (expression->machine-register! value r4)))
-      (let ((clear-map (clear-map!)))
-	(LAP ,@set-extension
-	     ,@set-value
-	     ,@clear-map
-	     (JSB ,entry:compiler-assignment-trap))))))
-
-(define-rule statement
-  (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension)
-				     (CONS-POINTER (CONSTANT (? type))
-						   (REGISTER (? datum))))
-  (let ((set-extension (expression->machine-register! extension r3)))
-    (let ((datum (coerce->any datum)))
-      (let ((clear-map (clear-map!)))
-	(LAP ,@set-extension
-	     ,@clear-map
-	     (BIS L (& ,(make-non-pointer-literal type 0)) ,datum (R 4))
-	     (JSB ,entry:compiler-assignment-trap))))))
-
-(define-rule statement
-  (INTERPRETER-CALL:CACHE-ASSIGNMENT
-   (? extension)
-   (CONS-POINTER (CONSTANT (? type))
-		 (ENTRY:PROCEDURE (? label))))
-  (let* ((set-extension (expression->machine-register! extension r3))
+(define (assignment-call code environment name value)
+  (let* ((set-environment
+	  (interpreter-call-argument->machine-register! environment r2))
+	 (set-value (interpreter-call-argument->machine-register! value r4))
 	 (clear-map (clear-map!)))
-    (LAP ,@set-extension
+    (LAP ,@set-environment
+	 ,@set-value
 	 ,@clear-map
-	 (PUSHA B (@PCR ,(rtl-procedure/external-label (label->object label))))
-	 (MOV B ,(make-immediate type) (@RO B 14 3))
-	 (MOV L (@R+ 14) (R 4))
-	 (JSB ,entry:compiler-assignment-trap))))
-
-(define-rule statement
-  (INTERPRETER-CALL:CACHE-UNASSIGNED? (? extension))
-  (let ((set-extension (expression->machine-register! extension r3)))
-    (let ((clear-map (clear-map!)))
-      (LAP ,@set-extension
-	   ,@clear-map
-	   (JSB ,entry:compiler-unassigned?-trap)))))
+	 ,@(load-constant name (INST-EA (R 3)))
+	 ,@(invoke-interface-jsb code))))

@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/compiler.sf,v 1.2 1989/07/11 23:51:35 cph Rel $
-$MC68020-Header: comp.sf,v 1.7 88/12/15 17:02:14 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/compiler.sf,v 1.3 1991/02/15 00:41:12 jinx Exp $
+$MC68020-Header: comp.sf,v 1.12 90/01/18 22:43:26 GMT cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,13 +43,13 @@ MIT in each case. |#
 (if (not (name->package '(COMPILER)))
     (begin
       ;; If there is no existing package constructor, generate one.
-      (if (not (file-exists? "machines/vax/comp.bcon"))
+      (if (not (file-exists? "comp.bcon"))
 	  (begin
 	    ((access cref/generate-trivial-constructor
 		     (->environment '(CROSS-REFERENCE)))
-	     "machines/vax/comp")
-	    (sf "machines/vax/comp.con" "comp.bcon")))
-      (load "machines/vax/comp.bcon")))
+	     "comp")
+	    (sf "comp.con" "comp.bcon")))
+      (load "comp.bcon")))
 
 ;; Guarantee that the necessary syntactic transforms and optimizers
 ;; are loaded.
@@ -70,7 +70,15 @@ MIT in each case. |#
 	((access initialize-package! environment)))
       (sf-and-load '("base/pmlook") '(COMPILER PATTERN-MATCHER/LOOKUP))
       (sf-and-load '("base/pmpars") '(COMPILER PATTERN-MATCHER/PARSER))
-      (sf-and-load '("machines/vax/assmd") '(COMPILER ASSEMBLER))
+      (fluid-let ((sf/default-syntax-table
+		   (access compiler-syntax-table
+			   (->environment '(COMPILER MACROS)))))
+	(sf-and-load '("machines/vax/machin") '(COMPILER)))
+      (fluid-let ((sf/default-declarations
+		   '((integrate-external "insseq")
+		     (integrate-external "machin")
+		     (usual-definition (set expt)))))
+	(sf-and-load '("machines/vax/assmd") '(COMPILER ASSEMBLER)))
       (sf-and-load '("back/syntax") '(COMPILER LAP-SYNTAXER))
       (sf-and-load '("machines/vax/coerce" "back/asmmac"
 					   "machines/vax/insmac")
@@ -88,20 +96,19 @@ MIT in each case. |#
 (in-package (->environment '(COMPILER LAP-SYNTAXER))
   (if (and compiler:enable-expansion-declarations?
 	   (null? early-instructions))
-      (fluid-let ((load-noisily? false))
+      (fluid-let ((load-noisily? false)
+		  (load/suppress-loading-message? false))
+	(write-string "\n\n---- Pre-loading instruction sets ----")
 	(for-each (lambda (name)
-		    (write-string "\nPre-loading instruction set from ")
-		    (write name)
 		    (load (string-append "machines/vax/" name ".scm")
 			  '(COMPILER LAP-SYNTAXER)
-			  early-syntax-table)
-		    (write-string " -- done"))
+			  early-syntax-table))
 		  '("insutl" "instr1" "instr2" "instr3")))))
 
 ;; Resyntax any files that need it.
 ((access syntax-files! (->environment '(COMPILER))))
 
+;; Rebuild the package constructors and cref.
 (cref/generate-all "comp")
-
 (sf "comp.con" "comp.bcon")
 (sf "comp.ldr" "comp.bldr")

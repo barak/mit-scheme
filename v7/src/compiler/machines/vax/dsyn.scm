@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dsyn.scm,v 1.6 1989/05/17 20:28:51 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dsyn.scm,v 1.7 1991/02/15 00:41:35 jinx Exp $
 This file has no counterpart in the MC68020 compiler
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
@@ -51,17 +51,17 @@ MIT in each case. |#
   (make-syntax-table system-global-syntax-table))
 
 (define transform/define-instruction
-  (macro (name . cases)
+  (macro (name . patterns)
     (if (memq name instructions-disassembled-specially)
 	''()
-	`(begin ,@(map (lambda (case)
-			 (process-instruction-definition name case))
-		       cases)))))
+	`(begin ,@(map (lambda (pattern)
+			 (process-instruction-definition name pattern))
+		       patterns)))))
 
-(define (process-instruction-definition name case)
-  (let ((prefix (cons name (find-pattern-prefix (car case))))
-	(opcode-field (cadr case))
-	(operands (cddr case)))
+(define (process-instruction-definition name pattern)
+  (let ((prefix (cons name (find-pattern-prefix (car pattern))))
+	(opcode-field (cadr pattern))
+	(operands (cddr pattern)))
     (if (not (eq? (car opcode-field) 'BYTE))
 	(error "process-instruciton-definition: unhandled opcode kind"
 	       opcode-field))

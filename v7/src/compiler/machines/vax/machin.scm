@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/machin.scm,v 4.6 1989/09/05 22:34:32 arthur Rel $
-$MC68020-Header: machin.scm,v 4.14 89/01/18 09:58:56 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/machin.scm,v 4.7 1991/02/15 00:42:01 jinx Exp $
+$MC68020-Header: machin.scm,v 4.23 1991/02/05 03:50:50 jinx Exp $
 
-Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,80 +34,93 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Machine Model for DEC Vax
+;;; package: (compiler)
 
 (declare (usual-integrations))
 
-;;; Floating-point open-coding not implemented for VAXen.
-(define compiler:open-code-floating-point-arithmetic? false)
+;;;; Architecture Parameters
 
-;;; Size of words.  Some of the stuff in "assmd.scm" might want to
-;;; come here.
-
+(define-integrable endianness 'LITTLE)
 (define-integrable addressing-granularity 8)
 (define-integrable scheme-object-width 32)
-(define-integrable scheme-datum-width 24)
-(define-integrable scheme-type-width 8)
+(define-integrable scheme-type-width 6)	;or 8
 
-;; It is currently required that both packed characters and objects be
-;; integrable numbers of address units.  Furthermore, the number of
-;; address units per object must be an integral multiple of the number
-;; of address units per character.  This will cause problems on a
-;; machine that is word addressed, in which case we will have to
-;; rethink the character addressing strategy.
-(define-integrable address-units-per-object 4)
+;; NOTE: expt is not being constant-folded now.
+;; For the time being, some of the parameters below are
+;; pre-computed and marked with ***
+;; There are similar parameters in lapgen.scm
+;; Change them if any of the parameters above change.
+
+(define-integrable scheme-datum-width
+  (- scheme-object-width scheme-type-width))
+
+(define-integrable flonum-size 2)
+(define-integrable float-alignment 32)
+
+;;; It is currently required that both packed characters and objects
+;;; be integrable numbers of address units.  Furthermore, the number
+;;; of address units per object must be an integral multiple of the
+;;; number of address units per character.  This will cause problems
+;;; on a machine that is word addressed: we will have to rethink the
+;;; character addressing strategy.
+
+(define-integrable address-units-per-object
+  (quotient scheme-object-width addressing-granularity))
+
 (define-integrable address-units-per-packed-char 1)
 
-(let-syntax ((fold
-	      (macro (expression)
-		(eval expression system-global-environment))))
-  (define-integrable unsigned-fixnum/upper-limit (fold (expt 2 24)))
-  (define-integrable signed-fixnum/upper-limit (fold (expt 2 23)))
-  (define-integrable signed-fixnum/lower-limit (fold (- (expt 2 23)))))
+(define-integrable signed-fixnum/upper-limit
+  ;; (expt 2 (-1+ scheme-datum-width)) ***
+  33554432)
 
-(define-integrable (stack->memory-offset offset)
-  offset)
+(define-integrable signed-fixnum/lower-limit
+  (- signed-fixnum/upper-limit))
 
-(define ic-block-first-parameter-offset
-  2)
+(define-integrable unsigned-fixnum/upper-limit
+  (* 2 signed-fixnum/upper-limit))
 
-(define closure-block-first-offset
-  2)
+(define-integrable (stack->memory-offset offset) offset)
+(define-integrable ic-block-first-parameter-offset 2)
 
-(define (rtl:machine-register? rtl-register)
-  (case rtl-register
-    ((STACK-POINTER) (interpreter-stack-pointer))
-    ((DYNAMIC-LINK) (interpreter-dynamic-link))
-    ((INTERPRETER-CALL-RESULT:ACCESS) (interpreter-register:access))
-    ((INTERPRETER-CALL-RESULT:CACHE-REFERENCE)
-     (interpreter-register:cache-reference))
-    ((INTERPRETER-CALL-RESULT:CACHE-UNASSIGNED?)
-     (interpreter-register:cache-unassigned?))
-    ((INTERPRETER-CALL-RESULT:LOOKUP) (interpreter-register:lookup))
-    ((INTERPRETER-CALL-RESULT:UNASSIGNED?) (interpreter-register:unassigned?))
-    ((INTERPRETER-CALL-RESULT:UNBOUND?) (interpreter-register:unbound?))
-    (else false)))
+;; This must return a word based offset.
+;; On the VAX, to save space, entries can be at 2 mod 4 addresses,
+;; which makes it impossible if the closure object used for
+;; referencing points to arbitrary entries.  Instead, all closure
+;; entry points bump to the canonical entry point, which is always
+;; longword aligned.
+;; On other machines (word aligned), it may be easier to bump back
+;; to each entry point, and the entry number `entry' would be part
+;; of the computation.
 
-(define (rtl:interpreter-register? rtl-register)
-  (case rtl-register
-    ((MEMORY-TOP) 0)
-    ((STACK-GUARD) 1)
-    ((VALUE) 2)
-    ((ENVIRONMENT) 3)
-    ((TEMPORARY) 4)
-    (else false)))
+(define (closure-first-offset nentries entry)
+  entry					; ignored
+  (if (zero? nentries)
+      1
+      (quotient (+ (+ 3 1) (* 5 (- nentries 1))) 2)))
 
-(define (rtl:interpreter-register->offset locative)
-  (or (rtl:interpreter-register? locative)
-      (error "Unknown register type" locative)))
+;; This is from the start of the complete closure object,
+;; viewed as a vector, and including the header word.
 
-(define (rtl:constant-cost constant)
-  ;; Magic numbers.  Ask RMS where they came from.
-  (if (and (object-type? 0 constant)
-	   (zero? (object-datum constant)))
-      0
-      3))
-
-(define-integrable r0 0)
+(define (closure-object-first-offset nentries)
+  (case nentries
+    ((0) 1)
+    ((1) 4)
+    (else
+     (quotient (+ 5 (* 5 nentries)) 2))))
+
+;; Bump from one entry point to another.
+
+(define (closure-entry-distance nentries entry entry*)
+  nentries				; ignored
+  (* 10 (- entry* entry)))
+
+;; Bump to the canonical entry point.
+
+(define (closure-environment-adjustment nentries entry)
+  (declare (integrate-operator closure-entry-distance))
+  (closure-entry-distance nentries entry 0))
+
+(define-integrable r0 0)		; return value
 (define-integrable r1 1)
 (define-integrable r2 2)
 (define-integrable r3 3)
@@ -119,100 +132,169 @@ MIT in each case. |#
 (define-integrable r9 9)
 (define-integrable r10 10)
 (define-integrable r11 11)
-(define-integrable r12 12)
-(define-integrable r13 13)
-(define-integrable r14 14)
-(define-integrable r15 15)
+(define-integrable r12 12)		; AP
+(define-integrable r13 13)		; FP
+(define-integrable r14 14)		; SP
+(define-integrable r15 15) 		; PC, not really useable.
+
 (define number-of-machine-registers 16)
-;; Each is a quadword long
 (define number-of-temporary-registers 256)
 
-(define-integrable regnum:dynamic-link r10)
+(define-integrable regnum:return-value r9)
+(define-integrable regnum:regs-pointer r10)
+(define-integrable regnum:pointer-mask r11)
 (define-integrable regnum:free-pointer r12)
-(define-integrable regnum:regs-pointer r13)
+(define-integrable regnum:dynamic-link r13)
 (define-integrable regnum:stack-pointer r14)
+(define-integrable (machine-register-known-value register) register false)
 
-(define-integrable (sort-machine-registers registers)
-  registers)
-
-(define available-machine-registers
-  (list r0 r1 r2 r3 r4 r5 r6 r7 r8 r9))
-
-(define initial-non-object-registers
-  (list r10 r11 r12 r13 r14 r15))
-
-(define-integrable (register-type register)
-  ;; This may have to be changed when floating support is added.
-  'GENERAL)
-
-(define register-reference
-  (let ((references (make-vector 16)))
-    (let loop ((i 0))
-      (if (< i 16)
-	  (begin
-	    (vector-set! references i (INST-EA (R ,i)))
-	    (loop (1+ i)))))
-    (lambda (register)
-      (vector-ref references register))))
-
-(define mask-reference (INST-EA (R 11)))
+(define (machine-register-value-class register)
+  (cond ((<= 0 register 9) value-class=object)
+	((= 11 register) value-class=immediate)
+	((<= 10 register 15) value-class=address)
+	(else (error "illegal machine register" register))))
 
-;; These must agree with cmpvax.m4
+;;;; RTL Generator Interface
 
-(define-integrable (interpreter-register:access)
+(define (interpreter-register:access)
   (rtl:make-machine-register r0))
 
-(define-integrable (interpreter-register:cache-reference)
+(define (interpreter-register:cache-reference)
   (rtl:make-machine-register r0))
 
-(define-integrable (interpreter-register:cache-unassigned?)
+(define (interpreter-register:cache-unassigned?)
   (rtl:make-machine-register r0))
 
-(define-integrable (interpreter-register:lookup)
+(define (interpreter-register:lookup)
   (rtl:make-machine-register r0))
 
-(define-integrable (interpreter-register:unassigned?)
+(define (interpreter-register:unassigned?)
   (rtl:make-machine-register r0))
 
-(define-integrable (interpreter-register:unbound?)
+(define (interpreter-register:unbound?)
   (rtl:make-machine-register r0))
 
 (define-integrable (interpreter-value-register)
-  (rtl:make-offset (interpreter-regs-pointer) 2))
+  (rtl:make-machine-register regnum:return-value))
 
 (define (interpreter-value-register? expression)
-  (and (rtl:offset? expression)
-       (interpreter-regs-pointer? (rtl:offset-register expression))
-       (= 2 (rtl:offset-number expression))))
+  (and (rtl:register? expression)
+       (= (rtl:register-number expression) regnum:return-value)))
 
-(define-integrable (interpreter-environment-register)
+(define (interpreter-environment-register)
   (rtl:make-offset (interpreter-regs-pointer) 3))
 
 (define (interpreter-environment-register? expression)
   (and (rtl:offset? expression)
-       (interpreter-regs-pointer? (rtl:offset-register expression))
+       (interpreter-regs-pointer? (rtl:offset-base expression))
        (= 3 (rtl:offset-number expression))))
 
-(define-integrable (interpreter-free-pointer)
+(define (interpreter-free-pointer)
   (rtl:make-machine-register regnum:free-pointer))
 
-(define-integrable (interpreter-free-pointer? register)
-  (= (rtl:register-number register) regnum:free-pointer))
+(define (interpreter-free-pointer? expression)
+  (and (rtl:register? expression)
+       (= (rtl:register-number expression) regnum:free-pointer)))
 
-(define-integrable (interpreter-regs-pointer)
+(define (interpreter-regs-pointer)
   (rtl:make-machine-register regnum:regs-pointer))
 
-(define-integrable (interpreter-regs-pointer? register)
-  (= (rtl:register-number register) regnum:regs-pointer))
+(define (interpreter-regs-pointer? expression)
+  (and (rtl:register? expression)
+       (= (rtl:register-number expression) regnum:regs-pointer)))
 
-(define-integrable (interpreter-stack-pointer)
+(define (interpreter-stack-pointer)
   (rtl:make-machine-register regnum:stack-pointer))
 
-(define-integrable (interpreter-stack-pointer? register)
-  (= (rtl:register-number register) regnum:stack-pointer))
+(define (interpreter-stack-pointer? expression)
+  (and (rtl:register? expression)
+       (= (rtl:register-number expression) regnum:stack-pointer)))
 
-(define-integrable (interpreter-dynamic-link)
+(define (interpreter-dynamic-link)
   (rtl:make-machine-register regnum:dynamic-link))
 
-(define-integrable (interpreter-dynamic-link? register)
-  (= (rtl:register-number register) regnum:dynamic-link))
+(define (interpreter-dynamic-link? expression)
+  (and (rtl:register? expression)
+       (= (rtl:register-number expression) regnum:dynamic-link)))
+
+(define (rtl:machine-register? rtl-register)
+  (case rtl-register
+    ((STACK-POINTER)
+     (interpreter-stack-pointer))
+    ((DYNAMIC-LINK)
+     (interpreter-dynamic-link))
+    ((VALUE)
+     (interpreter-value-register))
+    ((INTERPRETER-CALL-RESULT:ACCESS)
+     (interpreter-register:access))
+    ((INTERPRETER-CALL-RESULT:CACHE-REFERENCE)
+     (interpreter-register:cache-reference))
+    ((INTERPRETER-CALL-RESULT:CACHE-UNASSIGNED?)
+     (interpreter-register:cache-unassigned?))
+    ((INTERPRETER-CALL-RESULT:LOOKUP)
+     (interpreter-register:lookup))
+    ((INTERPRETER-CALL-RESULT:UNASSIGNED?)
+     (interpreter-register:unassigned?))
+    ((INTERPRETER-CALL-RESULT:UNBOUND?)
+     (interpreter-register:unbound?))
+    (else
+     false)))
+
+(define (rtl:interpreter-register? rtl-register)
+  (case rtl-register
+    ((MEMORY-TOP) 0)
+    ((STACK-GUARD) 1)
+    #| ((VALUE) 2) |#
+    ((ENVIRONMENT) 3)
+    ((TEMPORARY) 4)
+    (else false)))
+
+(define (rtl:interpreter-register->offset locative)
+  (or (rtl:interpreter-register? locative)
+      (error "Unknown register type" locative)))
+
+(define (rtl:constant-cost expression)
+  ;; Magic numbers
+  ;; number of bytes for the instruction to construct/fetch into register.
+  (let ((if-integer
+	 (lambda (value)
+	   (cond ((zero? value) 2)
+		 ((<= -63 value 63)
+		  3)
+		 (else
+		  7)))))
+    (let ((if-synthesized-constant
+	   (lambda (type datum)
+	     (if-integer (make-non-pointer-literal type datum)))))
+      (case (rtl:expression-type expression)
+	((CONSTANT)
+	 (let ((value (rtl:constant-value expression)))
+	   (if (non-pointer-object? value)
+	       (if-synthesized-constant (object-type value)
+					(careful-object-datum value))
+	       3)))
+	((MACHINE-CONSTANT)
+	 (if-integer (rtl:machine-constant-value expression)))
+	((ENTRY:PROCEDURE
+	  ENTRY:CONTINUATION
+	  ASSIGNMENT-CACHE
+	  VARIABLE-CACHE
+	  OFFSET-ADDRESS
+	  BYTE-OFFSET-ADDRESS)
+	 4)				; assuming word offset
+	((CONS-POINTER)
+	 (and (rtl:machine-constant? (rtl:cons-pointer-type expression))
+	      (rtl:machine-constant? (rtl:cons-pointer-datum expression))
+	      (if-synthesized-constant
+	       (rtl:machine-constant-value (rtl:cons-pointer-type expression))
+	       (rtl:machine-constant-value
+		(rtl:cons-pointer-datum expression)))))
+	(else false)))))
+
+;;; Floating-point open-coding not implemented for VAXen.
+
+(define compiler:open-code-floating-point-arithmetic?
+  false)
+
+(define compiler:primitives-with-no-open-coding
+  '(DIVIDE-FIXNUM GCD-FIXNUM &/))

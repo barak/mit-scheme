@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm1.scm,v 4.4 1989/06/07 02:14:22 jinx Rel $
-$MC68020-Header: dassm1.scm,v 4.10 88/12/30 07:05:04 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm1.scm,v 4.5 1991/02/15 00:41:16 jinx Exp $
+$MC68020-Header: dassm1.scm,v 4.15 90/07/12 16:42:39 GMT jinx Exp $
 
-Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,34 +50,46 @@ MIT in each case. |#
   (let ((pathname (->pathname filename)))
     (with-output-to-file (pathname-new-type pathname "lap")
       (lambda ()
-	(let ((object (fasload (pathname-new-type pathname "com")))
-	      (info (let ((pathname (pathname-new-type pathname "binf")))
-		      (and (if (default-object? symbol-table?)
-			       (file-exists? pathname)
-			       symbol-table?)
-			   (fasload pathname)))))
-	  (cond ((compiled-code-address? object)
-		 (disassembler/write-compiled-code-block
-		  (compiled-code-address->block object)
-		  info
-		  false))
-		((not (scode/comment? object))
-		 (error "compiler:write-lap-file : Not a compiled file"
-			(pathname-new-type pathname "com")))
-		(else
-		 (scode/comment-components
-		  object
-		  (lambda (text expression)
-		    expression ;; ignored
-		    (if (dbg-info-vector? text)
-			(let ((items (dbg-info-vector/items text)))
-			  (for-each disassembler/write-compiled-code-block
-				    (vector->list items)
-				    (if (false? info)
-					(make-list (vector-length items) false)
-					(vector->list info))))
-			(error "compiler:write-lap-file : Not a compiled file"
-			       (pathname-new-type pathname "com"))))))))))))
+	(let ((com-file (pathname-new-type pathname "com")))
+	  (let ((object (fasload com-file))
+		(info
+		 (let ((pathname (pathname-new-type pathname "binf")))
+		   (and (if (default-object? symbol-table?)
+			    (file-exists? pathname)
+			    symbol-table?)
+			(fasload pathname)))))
+	    (if (compiled-code-address? object)
+		(disassembler/write-compiled-code-block
+		 (compiled-code-address->block object)
+		 info)
+		(begin
+		  (if (not
+		       (and (scode/comment? object)
+			    (dbg-info-vector? (scode/comment-text object))))
+		      (error "Not a compiled file" com-file))
+		  (let ((items
+			 (vector->list
+			  (dbg-info-vector/blocks-vector
+			   (scode/comment-text object)))))
+		    (if (not (null? items))
+			(if (false? info)
+			    (let loop ((items items))
+			      (disassembler/write-compiled-code-block
+			       (car items)
+			       false)
+			      (if (not (null? (cdr items)))
+				  (begin
+				    (write-char #\page)
+				    (loop (cdr items)))))
+			    (let loop
+				((items items) (info (vector->list info)))
+			      (disassembler/write-compiled-code-block
+			       (car items)
+			       (car info))
+			      (if (not (null? (cdr items)))
+				  (begin
+				    (write-char #\page)
+				    (loop (cdr items) (cdr info))))))))))))))))
 
 (define disassembler/base-address)
 
@@ -102,23 +114,10 @@ MIT in each case. |#
 (define compiled-code-block/objects-per-procedure-cache)
 (define compiled-code-block/objects-per-variable-cache)
 
-(define (write-block block)
-  (write-string "#[COMPILED-CODE-BLOCK ")
-  (write-string
-   (number->string (object-hash block) '(HEUR (RADIX D S))))
-  (write-string " ")
-  (write-string
-   (number->string (object-datum block) '(HEUR (RADIX X E))))
-  (write-string "]"))
-
-(define (disassembler/write-compiled-code-block block info #!optional page?)
+(define (disassembler/write-compiled-code-block block info)
   (let ((symbol-table (and info (dbg-info/labels info))))
-    (if (or (default-object? page?) page?)
-	(begin
-	  (write-char #\page)
-	  (newline)))
     (write-string "Disassembly of ")
-    (write-block block)
+    (write block)
     (write-string ":\n")
     (write-string "Code:\n\n")
     (disassembler/write-instruction-stream
@@ -141,16 +140,9 @@ MIT in each case. |#
   (fluid-let ((*unparser-radix* 16))
     (disassembler/for-each-instruction instruction-stream
       (lambda (offset instruction)
-	(disassembler/write-instruction
-	 symbol-table
-	 offset
-	 (lambda ()
-	   (let ((string
-		  (with-output-to-string
-		    (lambda ()
-		      (display instruction)))))
-	     (string-downcase! string)
-	     (write-string string))))))))
+	(disassembler/write-instruction symbol-table
+					offset
+					(lambda () (display instruction)))))))
 
 (define (disassembler/for-each-instruction instruction-stream procedure)
   (let loop ((instruction-stream instruction-stream))
@@ -195,34 +187,36 @@ MIT in each case. |#
 		   (let ((label
 			  (disassembler/lookup-symbol symbol-table offset)))
 		     (if label
-			 (write-string (string-downcase label))
+			 (write-string label)
 			 (write offset))))
 		 (write-string ")")))))
 	((compiled-code-address? constant)
 	 (write-string "  (offset ")
 	 (write (compiled-code-address->offset constant))
 	 (write-string " in ")
-	 (write-block (compiled-code-address->block constant))
+	 (write (compiled-code-address->block constant))
 	 (write-string ")"))
 	(else false)))
 
 (define (disassembler/write-linkage-section block symbol-table index)
-  (define (write-caches index size how-many writer)
-    (let loop ((index index) (how-many how-many))
-      (if (zero? how-many)
-	  'DONE
-	  (begin
-	    (disassembler/write-instruction
-	     symbol-table
-	     (compiled-code-block/index->offset index)
-	     (lambda ()
-	       (writer block index)))
-	    (loop (+ size index) (-1+ how-many))))))
-
   (let* ((field (object-datum (system-vector-ref block index)))
 	 (descriptor (integer-divide field #x10000)))
     (let ((kind (integer-divide-quotient descriptor))
 	  (length (integer-divide-remainder descriptor)))
+
+      (define (write-caches size writer)
+	(let loop ((index (1+ index))
+		   (how-many (quotient length size)))
+	  (if (zero? how-many)
+	      'DONE
+	      (begin
+		(disassembler/write-instruction
+		 symbol-table
+		 (compiled-code-block/index->offset index)
+		 (lambda ()
+		   (writer block index)))
+		(loop (+ size index) (-1+ how-many))))))
+
       (disassembler/write-instruction
        symbol-table
        (compiled-code-block/index->offset index)
@@ -233,24 +227,18 @@ MIT in each case. |#
        (case kind
 	 ((0)
 	  (write-caches
-	   (1+ index)
 	   compiled-code-block/objects-per-procedure-cache
-	   (quotient length compiled-code-block/objects-per-procedure-cache)
 	   disassembler/write-procedure-cache))
 	 ((1)
 	  (write-caches
-	   (1+ index)
 	   compiled-code-block/objects-per-variable-cache
-	   (quotient length compiled-code-block/objects-per-variable-cache)
-	   (lambda (block index)
-	     (disassembler/write-variable-cache "Reference" block index))))
+	  (lambda (block index)
+	    (disassembler/write-variable-cache "Reference" block index))))
 	 ((2)
 	  (write-caches
-	   (1+ index)
 	   compiled-code-block/objects-per-variable-cache
-	   (quotient length compiled-code-block/objects-per-variable-cache)
-	   (lambda (block index)
-	     (disassembler/write-variable-cache "Assignment" block index))))
+	  (lambda (block index)
+	    (disassembler/write-variable-cache "Assignment" block index))))
 	 (else
 	  (error "disassembler/write-linkage-section: Unknown section kind"
 		 kind)))
@@ -284,20 +272,19 @@ MIT in each case. |#
 	(if label
 	    (begin
 	      (write-char #\Tab)
-	      (write-string (string-downcase (dbg-label/name label)))
+	      (write-string (dbg-label/name label))
 	      (write-char #\:)
 	      (newline)))))
 
   (if disassembler/write-addresses?
       (begin
 	(write-string
-	 (number->string (+ offset disassembler/base-address)
-			 '(HEUR (RADIX X S))))
+	 (number->string (+ offset disassembler/base-address) 16))
 	(write-char #\Tab)))
   
   (if disassembler/write-offsets?
       (begin
-	(write-string (number->string offset '(HEUR (RADIX X S))))
+	(write-string (number->string offset 16))
 	(write-char #\Tab)))
 
   (if symbol-table

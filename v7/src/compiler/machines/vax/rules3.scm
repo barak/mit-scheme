@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules3.scm,v 4.7 1989/05/17 20:31:11 jinx Rel $
-$MC68020-Header: rules3.scm,v 4.15 88/12/30 07:05:20 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules3.scm,v 4.8 1991/02/15 00:42:30 jinx Exp $
+$MC68020-Header: rules3.scm,v 4.26 90/08/21 02:23:26 GMT jinx Exp $
 
-Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,24 +33,34 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; LAP Generation Rules: Invocations and Entries.  DEC VAX version.
+;;;; LAP Generation Rules: Invocations and Entries.
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
 ;;;; Invocations
 
+(define-integrable (clear-continuation-type-code)
+  (LAP (BIC L ,mask-reference (@R 14))))
+
 (define-rule statement
   (POP-RETURN)
   (LAP ,@(clear-map!)
-       (CLR B (@RO B 14 3))
+       ,@(clear-continuation-type-code)
        (RSB)))
 
 (define-rule statement
   (INVOCATION:APPLY (? frame-size) (? continuation))
   continuation				; ignored
   (LAP ,@(clear-map!)
-	,(load-rn frame-size 0)
-	(JMP ,entry:compiler-apply)))
+       ,@(load-rn frame-size 2)
+       #|
+       (JMP ,entry:compiler-shortcircuit-apply)
+       |#
+       (MOV L (@R+ 14) (R 1))
+       ,@(invoke-interface code:compiler-apply)
+       ;; 'Til here
+       ))
 
 (define-rule statement
   (INVOCATION:JUMP (? frame-size) (? continuation) (? label))
@@ -63,25 +73,25 @@ MIT in each case. |#
   frame-size continuation		; ignored
   ;; It expects the procedure at the top of the stack
   (LAP ,@(clear-map!)
-       (CLR B (@RO B 14 3))
+       ,@(clear-continuation-type-code)
        (RSB)))
 
 (define-rule statement
   (INVOCATION:LEXPR (? number-pushed) (? continuation) (? label))
   continuation				; ignored
   (LAP ,@(clear-map!)
-       ,(load-rn number-pushed 0)
-       (MOVA B (@PCR ,label) (R 3))
-       (JMP ,entry:compiler-lexpr-apply)))
+       ,@(load-rn number-pushed 2)
+       (MOVA B (@PCR ,label) (R 1))
+       ,@(invoke-interface code:compiler-lexpr-apply)))
 
 (define-rule statement
   (INVOCATION:COMPUTED-LEXPR (? number-pushed) (? continuation))
   continuation				; ignored
   ;; It expects the procedure at the top of the stack
   (LAP ,@(clear-map!)
-       ,(load-rn number-pushed 0)
-       (BIC L ,mask-reference (@R+ 14) (R 3))
-       (JMP ,entry:compiler-lexpr-apply)))
+       ,@(load-rn number-pushed 2)
+       (BIC L ,mask-reference (@R+ 14) (R 1))
+       ,@(invoke-interface code:compiler-lexpr-apply)))
 
 (define-rule statement
   (INVOCATION:UUO-LINK (? frame-size) (? continuation) (? name))
@@ -92,51 +102,72 @@ MIT in each case. |#
        ;; The other possibility would be
        ;;       (JMP (@@PCR ,(free-uuo-link-label name frame-size)))
        ;; and to have <entry> at label, but it is longer and slower.
-       (BR (@PCR ,(free-uuo-link-label name frame-size)))))
+       ;; The 2 below accomodates the arrangement between the arity
+       ;; and the instructions in an execute cache.
+       (BR (@PCRO ,(free-uuo-link-label name frame-size) 2))))
+
+;;; The following two rules are obsolete.  They haven't been used in a while.
+;;; They are provided in case the relevant switches are turned off, but there
+;;; is no reason to do this.  Perhaps the switches should be removed.
 
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size) (? continuation) (? extension))
   continuation				; ignored
-  (let ((set-extension (expression->machine-register! extension r6)))
-    (delete-dead-registers!)
+  (let* ((set-extension 
+	  (interpreter-call-argument->machine-register! extension r1))
+	 (clear-map (clear-map!)))
     (LAP ,@set-extension
-	 ,@(clear-map!)
-	 ,(load-rn frame-size 0)
-	 (MOVA B (@PCR ,*block-start-label*) (R 4))
-	 (JMP ,entry:compiler-cache-reference-apply))))
+	 ,@clear-map
+	 ,@(load-rn frame-size 3)
+	 (MOVA B (@PCR ,*block-label*) (R 2))
+	 ,@(invoke-interface code:compiler-cache-reference-apply))))
 
 (define-rule statement
   (INVOCATION:LOOKUP (? frame-size) (? continuation) (? environment) (? name))
   continuation				; ignored
-  (let ((set-environment (expression->machine-register! environment r7)))
-    (delete-dead-registers!)
+  (let* ((set-environment
+	  (interpreter-call-argument->machine-register! environment r1))
+	 (clear-map (clear-map!)))
     (LAP ,@set-environment
-	 ,@(clear-map!)
-	 ,(load-constant name (INST-EA (R 8)))
-	 ,(load-rn frame-size 0)
-	 (JMP ,entry:compiler-lookup-apply))))
+	 ,@clear-map
+	 ,@(load-constant name (INST-EA (R 2)))
+	 ,@(load-rn frame-size 3)
+	 ,@(invoke-interface code:compiler-lookup-apply))))
 
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
   continuation				; ignored
   (LAP ,@(clear-map!)
        ,@(if (eq? primitive compiled-error-procedure)
-	     (LAP ,(load-rn frame-size 0)
-		  (JMP ,entry:compiler-error))
+	     (LAP ,@(load-rn frame-size 1)
+		  #|
+		  (JMP ,entry:compiler-error)
+		  |#
+		  ,@(invoke-interface code:compiler-error))
 	     (let ((arity (primitive-procedure-arity primitive)))
 	       (cond ((not (negative? arity))
-		      (LAP (MOV L (@PCR ,(constant->label primitive)) (R 9))
-			   (JMP ,entry:compiler-primitive-apply)))
+		      (LAP (MOV L (@PCR ,(constant->label primitive)) (R 1))
+			   #|
+			   (JMP ,entry:compiler-primitive-apply)
+			   |#
+			   ,@(invoke-interface code:compiler-primitive-apply)))
 		     ((= arity -1)
 		      (LAP (MOV L ,(make-immediate (-1+ frame-size))
 				,reg:lexpr-primitive-arity)
-			   (MOV L (@PCR ,(constant->label primitive)) (R 9))
-			   (JMP ,entry:compiler-primitive-lexpr-apply)))
+			   (MOV L (@PCR ,(constant->label primitive)) (R 1))
+			   #|
+			   (JMP ,entry:compiler-primitive-lexpr-apply)
+			   |#
+			   ,@(invoke-interface
+			      code:compiler-primitive-lexpr-apply)))
 		     (else
 		      ;; Unknown primitive arity.  Go through apply.
-		      (LAP ,(load-rn frame-size 0)
-			   (PUSHL (@PCR ,(constant->label primitive)))
-			   (JMP ,entry:compiler-apply))))))))
+		      (LAP ,@(load-rn frame-size 2)
+			   (MOV L (constant->ea primitive) (R 1))
+			   #|
+			   (JMP ,entry:compiler-apply)
+			   |#
+			   ,@(invoke-interface code:compiler-apply))))))))
 
 (let-syntax
     ((define-special-primitive-invocation
@@ -149,9 +180,14 @@ MIT in each case. |#
 	    frame-size continuation	; ignored
 	    ,(list 'LAP
 		   (list 'UNQUOTE-SPLICING '(clear-map!))
+		   #|
 		   (list 'JMP
 			 (list 'UNQUOTE
-			       (symbol-append 'ENTRY:COMPILER- name))))))))
+			       (symbol-append 'ENTRY:COMPILER- name)))
+		   |#
+		   (list 'UNQUOTE-SPLICING
+			 `(INVOKE-INTERFACE ,(symbol-append 'CODE:COMPILER-
+							    name))))))))
   (define-special-primitive-invocation &+)
   (define-special-primitive-invocation &-)
   (define-special-primitive-invocation &*)
@@ -172,8 +208,8 @@ MIT in each case. |#
   (LAP))
 
 (define-rule statement
-  (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size) (REGISTER 10))
-  (generate/move-frame-up frame-size (offset-reference 10 0)))
+  (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size) (REGISTER 13))
+  (generate/move-frame-up frame-size (offset-reference 13 0)))
 
 (define-rule statement
   (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size)
@@ -182,20 +218,20 @@ MIT in each case. |#
     (cond ((zero? how-far)
 	   (LAP))
 	  ((zero? frame-size)
-	   (increment-rn 14 how-far))
+	   (increment-rn 14 (* 4 how-far)))
 	  ((= frame-size 1)
 	   (LAP (MOV L (@R+ 14) ,(offset-reference r14 (-1+ how-far)))
-		,@(increment-rn 14 (-1+ how-far))))
+		,@(increment-rn 14 (* 4 (-1+ how-far)))))
 	  ((= frame-size 2)
 	   (if (= how-far 1)
 	       (LAP (MOV L (@RO B 14 4) (@RO B 14 8))
 		    (MOV L (@R+ 14) (@R 14)))
 	       (let ((i (lambda ()
-			  (INST (MOV L (@R+ 14)
-				     ,(offset-reference r14 (-1+ how-far)))))))
-		 (LAP ,(i)
-		      ,(i)
-		      ,@(increment-rn 14 (- how-far 2))))))
+			  (LAP (MOV L (@R+ 14)
+				    ,(offset-reference r14 (-1+ how-far)))))))
+		 (LAP ,@(i)
+		      ,@(i)
+		      ,@(increment-rn 14 (* 4 (- how-far 2)))))))
 	  (else
 	   (generate/move-frame-up frame-size
 				   (offset-reference r14 offset))))))
@@ -208,35 +244,35 @@ MIT in each case. |#
   (generate/move-frame-up frame-size (indirect-reference! base offset)))
 
 (define-rule statement
-  (INVOCATION-PREFIX:DYNAMIC-LINK 0 (REGISTER 14) (REGISTER 10))
+  (INVOCATION-PREFIX:DYNAMIC-LINK 0 (REGISTER 14) (REGISTER 13))
   (LAP))
 
 (define-rule statement
   (INVOCATION-PREFIX:DYNAMIC-LINK (? frame-size)
 				  (OFFSET-ADDRESS (REGISTER (? base))
 						  (? offset))
-				  (REGISTER 10))
+				  (REGISTER 13))
   (let ((label (generate-label))
 	(temp (allocate-temporary-register! 'GENERAL)))
     (let ((temp-ref (register-reference temp)))
       (LAP (MOVA L ,(indirect-reference! base offset) ,temp-ref)
-	   (CMP L ,temp-ref (R 10))
+	   (CMP L ,temp-ref (R 13))
 	   (B B LEQU (@PCR ,label))
-	   (MOV L (R 10) ,temp-ref)
+	   (MOV L (R 13) ,temp-ref)
 	   (LABEL ,label)
 	   ,@(generate/move-frame-up* frame-size temp)))))
 
 (define-rule statement
   (INVOCATION-PREFIX:DYNAMIC-LINK (? frame-size)
 				  (OBJECT->ADDRESS (REGISTER (? source)))
-				  (REGISTER 10))
+				  (REGISTER 13))
   (QUALIFIER (pseudo-register? source))
   (let ((do-it
 	 (lambda (reg-ref)
 	   (let ((label (generate-label)))
-	     (LAP (CMP L ,reg-ref (R 10))
+	     (LAP (CMP L ,reg-ref (R 13))
 		  (B B LEQU (@PCR ,label))
-		  (MOV L (R 10) ,reg-ref)
+		  (MOV L (R 13) ,reg-ref)
 		  (LABEL ,label)
 		  ,@(generate/move-frame-up* frame-size
 					     (lap:ea-R-register reg-ref)))))))
@@ -251,13 +287,13 @@ MIT in each case. |#
 (define-rule statement
   (INVOCATION-PREFIX:DYNAMIC-LINK (? frame-size)
 				  (REGISTER (? source))
-				  (REGISTER 10))
+				  (REGISTER 13))
   (QUALIFIER (pseudo-register? source))
   (let ((reg-ref (move-to-temporary-register! source 'GENERAL))
 	(label (generate-label)))
-    (LAP (CMP L ,reg-ref (R 10))
+    (LAP (CMP L ,reg-ref (R 13))
 	 (B B LEQU (@PCR ,label))
-	 (MOV L (R 10) ,reg-ref)
+	 (MOV L (R 13) ,reg-ref)
 	 (LABEL ,label)
 	 ,@(generate/move-frame-up* frame-size
 				    (lap:ea-R-register reg-ref)))))
@@ -273,9 +309,7 @@ MIT in each case. |#
 	 ,@(generate-n-times
 	    frame-size 5
 	    (lambda ()
-	      (INST (MOV L
-			 (@-R ,temp)
-			 (@-R ,destination))))
+	      (LAP (MOV L (@-R ,temp) (@-R ,destination))))
 	    (lambda (generator)
 	      (generator (allocate-temporary-register! 'GENERAL))))
 	 (MOV L ,(register-reference destination) (R 14)))))
@@ -283,13 +317,15 @@ MIT in each case. |#
 ;;;; External Labels
 
 (define (make-external-label code label)
-  (set! compiler:external-labels 
-	(cons label compiler:external-labels))
+  (set! *external-labels* (cons label *external-labels*))
   (LAP (WORD U ,code)
        (BLOCK-OFFSET ,label)
        (LABEL ,label)))
 
 ;;; Entry point types
+
+(define-integrable (make-format-longword format-word gc-offset)
+  (+ (* #x20000 gc-offset) format-word))
 
 (define-integrable (make-code-word min max)
   (+ (* #x100 min) max))
@@ -309,41 +345,70 @@ MIT in each case. |#
 (define internal-entry-code-word
   (make-code-word #xff #xfe))
 
+(define internal-continuation-code-word
+  (make-code-word #xff #xfc))
+
+(define (frame-size->code-word offset default)
+  (cond ((not offset)
+	 default)
+	((< offset #x2000)
+	 ;; This uses up through (#xff #xdf).
+	 (let ((qr (integer-divide offset #x80)))
+	   (make-code-word (+ #x80 (integer-divide-remainder qr))
+			   (+ #x80 (integer-divide-quotient qr)))))
+	(else
+	 (error "Unable to encode continuation offset" offset))))
+
 (define (continuation-code-word label)
-  (let ((offset
-	 (if label
-	     (rtl-continuation/next-continuation-offset (label->object label))
-	     0)))
-    (cond ((not offset)
-	   (make-code-word #xff #xfc))
-	  ((< offset #x2000)
-	   ;; This uses up through (#xff #xdf).
-	   (let ((qr (integer-divide offset #x80)))
-	     (make-code-word (+ #x80 (integer-divide-remainder qr))
-			     (+ #x80 (integer-divide-quotient qr)))))
-	  (else
-	   (error "Unable to encode continuation offset" offset)))))
+  (frame-size->code-word
+   (if label
+       (rtl-continuation/next-continuation-offset (label->object label))
+       0)
+   internal-continuation-code-word))
+
+(define (internal-procedure-code-word rtl-proc)
+  (frame-size->code-word
+   (rtl-procedure/next-continuation-offset rtl-proc)
+   internal-entry-code-word))
 
 ;;;; Procedure headers
 
 ;;; The following calls MUST appear as the first thing at the entry
 ;;; point of a procedure.  They assume that the register map is clear
 ;;; and that no register contains anything of value.
-
-;;; **** The only reason that this is true is that no register is live
+;;;
+;;; The only reason that this is true is that no register is live
 ;;; across calls.  If that were not true, then we would have to save
 ;;; any such registers on the stack so that they would be GC'ed
 ;;; appropriately.
 ;;;
-;;; **** This is not strictly true: the dynamic link register may
-;;; contain a valid dynamic link, but the gc handler determines that
-;;; and saves it as appropriate.
+;;; The only exception is the dynamic link register, handled
+;;; specially.  Procedures that require a dynamic link use a different
+;;; interrupt handler that saves and restores the dynamic link
+;;; register.
 
 (define-integrable (simple-procedure-header code-word label
-					    entry:compiler-interrupt)
+					    ;; entry:compiler-interrupt
+					    code:compiler-interrupt)
   (let ((gc-label (generate-label)))
     (LAP (LABEL ,gc-label)
+	 #|
 	 (JSB ,entry:compiler-interrupt)
+	 |#
+	 ,@(invoke-interface-jsb code:compiler-interrupt)
+	 ,@(make-external-label code-word label)
+	 (CMP L (R 12) ,reg:compiled-memtop)
+	 (B B GEQ (@PCR ,gc-label)))))
+
+(define (dlink-procedure-header code-word label)
+  (let ((gc-label (generate-label)))    
+    (LAP (LABEL ,gc-label)
+	 #|
+	 (JSB ,entry:compiler-interrupt-dlink)
+	 |#
+	 (MOV L (R 13) (R 2))		; move dlink to arg register.
+	 ,@(invoke-interface-jsb code:compiler-interrupt-dlink)
+	 ;; 'Til here
 	 ,@(make-external-label code-word label)
 	 (CMP L (R 12) ,reg:compiled-memtop)
 	 (B B GEQ (@PCR ,gc-label)))))
@@ -357,26 +422,33 @@ MIT in each case. |#
   (CONTINUATION-HEADER (? internal-label))
   (simple-procedure-header (continuation-code-word internal-label)
 			   internal-label
-			   entry:compiler-interrupt-continuation))
+			   ;; entry:compiler-interrupt-continuation
+			   code:compiler-interrupt-continuation))
 
 (define-rule statement
   (IC-PROCEDURE-HEADER (? internal-label))
-  (let ((procedure (label->object internal-label)))
-    (let ((external-label (rtl-procedure/external-label procedure)))
+  (let* ((procedure (label->object internal-label))
+	 (external-label (rtl-procedure/external-label procedure)))
     (LAP (ENTRY-POINT ,external-label)
 	 (EQUATE ,external-label ,internal-label)
 	 ,@(simple-procedure-header expression-code-word
 				    internal-label
-				    entry:compiler-interrupt-ic-procedure)))))
+				    ;; entry:compiler-interrupt-ic-procedure
+				    code:compiler-interrupt-ic-procedure))))
 
 (define-rule statement
   (OPEN-PROCEDURE-HEADER (? internal-label))
-  (LAP (EQUATE ,(rtl-procedure/external-label
-		 (label->object internal-label))
-	       ,internal-label)
-       ,@(simple-procedure-header internal-entry-code-word
-				  internal-label
-				  entry:compiler-interrupt-procedure)))
+  (let ((rtl-proc (label->object internal-label)))
+    (LAP
+     (EQUATE ,(rtl-procedure/external-label rtl-proc) ,internal-label)
+     ,@((if (rtl-procedure/dynamic-link? rtl-proc)
+	    dlink-procedure-header 
+	    (lambda (code-word label)
+	      (simple-procedure-header code-word label
+				       ;; entry:compiler-interrupt-procedure
+				       code:compiler-interrupt-procedure)))
+	(internal-procedure-code-word rtl-proc)
+	internal-label))))
 
 (define-rule statement
   (PROCEDURE-HEADER (? internal-label) (? min) (? max))
@@ -385,129 +457,223 @@ MIT in each case. |#
 	       ,internal-label)
        ,@(simple-procedure-header (make-procedure-code-word min max)
 				  internal-label
-				  entry:compiler-interrupt-procedure)))
+				  ;; entry:compiler-interrupt-procedure
+				  code:compiler-interrupt-procedure)))
 
 ;;;; Closures.  These two statements are intertwined:
+;;; Note: If the closure is a multiclosure, the closure object on the
+;;; stack corresponds to the first (official) entry point.
+;;; Thus on entry and interrupt it must be bumped around.
 
-(define magic-closure-constant
-  (- (* (ucode-type compiled-entry) #x1000000) 6))
+(define (make-magic-closure-constant entry)
+  (- (make-non-pointer-literal (ucode-type compiled-entry) 0)
+     (+ (* entry 10) 6)))
 
 (define-rule statement
-  (CLOSURE-HEADER (? internal-label))
-  (let ((procedure (label->object internal-label)))
+  (CLOSURE-HEADER (? internal-label) (? nentries) (? entry))
+  nentries				; ignored
+  (let ((rtl-proc (label->object internal-label)))
     (let ((gc-label (generate-label))
-	  (external-label (rtl-procedure/external-label procedure)))
-      (LAP (LABEL ,gc-label)
-	   (JMP ,entry:compiler-interrupt-closure)
-	   ,@(make-external-label internal-entry-code-word external-label)
-	   (ADD L (& ,magic-closure-constant) (@R 14))
-	   (LABEL ,internal-label)
-	   (CMP L (R 12) ,reg:compiled-memtop)
-	   (B B GEQ (@PCR ,gc-label))))))
+	  (external-label (rtl-procedure/external-label rtl-proc)))
+      (if (zero? nentries)
+	  (LAP (EQUATE ,external-label ,internal-label)
+	       ,@(simple-procedure-header
+		  (internal-procedure-code-word rtl-proc)
+		  internal-label
+		  ;; entry:compiler-interrupt-procedure
+		  code:compiler-interrupt-procedure))
+	  (LAP (LABEL ,gc-label)
+	       ,@(increment/ea (INST-EA (@R 14)) (* 10 entry))
+	       #|
+	       (JMP ,entry:compiler-interrupt-closure)
+	       |#
+	       ,@(invoke-interface code:compiler-interrupt-closure)
+	       ,@(make-external-label internal-entry-code-word
+				      external-label)
+	       (ADD L (&U ,(make-magic-closure-constant entry)) (@R 14))
+	       (LABEL ,internal-label)
+	       (CMP L (R 12) ,reg:compiled-memtop)
+	       (B B GEQ (@PCR ,gc-label)))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
-	  (CONS-POINTER (CONSTANT (? type))
-			(CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
-				      (? min) (? max) (? size))))
-  (QUALIFIER (pseudo-register? target))
-  (generate/cons-closure (reference-target-alias! target 'GENERAL)
-			 type procedure-label min max size))
-
-(define-rule statement
-  (ASSIGN (? target)
-	  (CONS-POINTER (CONSTANT (? type))
-			(CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
-				      (? min) (? max) (? size))))
-  (QUALIFIER (standard-target-expression? target))
-  (generate/cons-closure
-   (standard-target-expression->ea target)
-   type procedure-label min max size))
+	  (CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
+			(? min) (? max) (? size)))
+  (let ((target (standard-target-reference target)))
+    (generate/cons-closure target
+			   false procedure-label min max size)))
 
 (define (generate/cons-closure target type procedure-label min max size)
-  (LAP ,(load-non-pointer (ucode-type manifest-closure)
-			  (+ 3 size)
-			  (INST-EA (@R+ 12)))
-       (MOV L (&U ,(+ #x100000 (make-procedure-code-word min max)))
+  (LAP ,@(load-non-pointer (ucode-type manifest-closure)
+			   (+ 3 size)
+			   (INST-EA (@R+ 12)))
+       (MOV L (&U ,(make-format-longword (make-procedure-code-word min max) 8))
 	    (@R+ 12))
-       (BIS L (& ,(make-non-pointer-literal type 0)) (R 12) ,target)
+       ,@(if type
+	     (LAP (BIS L (&U ,(make-non-pointer-literal type 0)) (R 12)
+		       ,target))
+	     (LAP (MOV L (R 12) ,target)))
        (MOV W (&U #x9f16) (@R+ 12))	; (JSB (@& <entry>))
        (MOVA B (@PCR ,(rtl-procedure/external-label
 		       (label->object procedure-label)))
 	     (@R+ 12))
        (CLR W (@R+ 12))
-       ,@(increment-rn 12 size)))
+       ,@(increment-rn 12 (* 4 size))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (CONS-MULTICLOSURE (? nentries) (? size) (? entries)))
+  (let ((target (standard-target-reference target)))
+    (case nentries
+      ((0)
+       (LAP (MOV L (R 12) ,target)
+	    ,@(load-non-pointer (ucode-type manifest-vector)
+				size
+				(INST-EA (@R+ 12)))
+	    ,@(increment-rn 12 (* 4 size))))
+      ((1)
+       (let ((entry (vector-ref entries 0)))
+	 (generate/cons-closure target false
+				(car entry) (cadr entry) (caddr entry)
+				size)))
+      (else
+       (generate/cons-multiclosure target nentries size
+				   (vector->list entries))))))
+
+(define (generate/cons-multiclosure target nentries size entries)
+  (let ((total-size (+ size
+		       (quotient (+ 3 (* 5 nentries))
+				 2)))
+	(temp (standard-temporary-reference)))
+
+    (define (generate-entries entries offset first?)
+      (if (null? entries)
+	  (LAP)
+	  (let ((entry (car entries)))
+	    (LAP (MOV L (&U ,(make-format-longword
+			      (make-procedure-code-word (cadr entry)
+							(caddr entry))
+			      offset))
+		      (@R+ 12))
+		 ,@(if first?
+		       (LAP (MOV L (R 12) ,target))
+		       (LAP))
+		 (MOV W ,temp (@R+ 12))	; (JSB (@& <entry>))
+		 (MOVA B (@PCR ,(rtl-procedure/external-label
+				 (label->object (car entry))))
+		       (@R+ 12))
+		 ,@(generate-entries (cdr entries)
+				     (+ 10 offset)
+				     false)))))
+
+    (LAP ,@(load-non-pointer (ucode-type manifest-closure)
+			     total-size
+			     (INST-EA (@R+ 12)))
+	 (MOV L (&U ,(make-format-longword nentries 0)) (@R+ 12))
+	 (MOV W (&U #x9f16) ,temp)
+	 ,@(generate-entries entries 12 true)
+	 ,@(if (odd? nentries)
+	       (LAP (CLR W (@R+ 12)))
+	       (LAP))
+	 ,@(increment-rn 12 (* 4 size)))))
 
 ;;;; Entry Header
 ;;; This is invoked by the top level of the LAP GENERATOR.
 
-(define generate/quotation-header
-  (let ((uuo-link-tag 0)
-	(reference-tag 1)
-	(assignment-tag 2))
+(define (generate/quotation-header environment-label free-ref-label n-sections)
+  (LAP (MOV L ,reg:environment (@PCR ,environment-label))
+       (MOVA B (@PCR ,*block-label*) (R 2))
+       (MOVA B (@PCR ,free-ref-label) (R 3))
+       ,@(load-rn n-sections 4)
+       #|
+       (JSB ,entry:compiler-link)
+       |#
+       ,@(invoke-interface-jsb code:compiler-link)
+       ,@(make-external-label (continuation-code-word false)
+			      (generate-label))))
 
-    (define (make-constant-block-tag tag datum)
-      (if (> datum #xffff)
-	  (error "make-constant-block-tag: datum too large" datum)
-	  (+ (* tag #x10000) datum)))
+(define (generate/remote-link code-block-label
+			      environment-offset
+			      free-ref-offset
+			      n-sections)
+  (LAP (BIC L ,mask-reference (@PCR ,code-block-label) (R 2))
+       (MOV L ,reg:environment
+	    (@RO ,(datum-size environment-offset) 2 ,environment-offset))
+       ,@(add-constant/ea (INST-EA (R 2)) free-ref-offset (INST-EA (R 3)))
+       ,@(load-rn n-sections 4)
+       #|
+       (JSB ,entry:compiler-link)
+       |#
+       ,@(invoke-interface-jsb code:compiler-link)
+       ,@(make-external-label (continuation-code-word false)
+			      (generate-label))))
+
+(define (generate/constants-block constants references assignments uuo-links)
+  (let ((constant-info
+	 (declare-constants 0 (transmogrifly uuo-links)
+	   (declare-constants 1 references
+	     (declare-constants 2 assignments
+	       (declare-constants false constants
+		 (cons false (LAP))))))))
+    (let ((free-ref-label (car constant-info))
+	  (constants-code (cdr constant-info))
+	  (debugging-information-label (allocate-constant-label))
+	  (environment-label (allocate-constant-label))
+	  (n-sections
+	   (+ (if (null? uuo-links) 0 1)
+	      (if (null? references) 0 1)
+	      (if (null? assignments) 0 1))))
+      (values
+       (LAP ,@constants-code
+	    ;; Place holder for the debugging info filename
+	    (SCHEME-OBJECT ,debugging-information-label DEBUGGING-INFO)
+	    ;; Place holder for the load time environment if needed
+	    (SCHEME-OBJECT ,environment-label
+			   ,(if (null? free-ref-label) 0 'ENVIRONMENT)))
+       environment-label
+       free-ref-label
+       n-sections))))
 
-    (define (declare-constants tag constants info)
-      (define (inner constants)
-	(if (null? constants)
-	    (cdr info)
-	    (let ((entry (car constants)))
-	      (LAP (SCHEME-OBJECT ,(cdr entry) ,(car entry))
-		   ,@(inner (cdr constants))))))
+(define (declare-constants tag constants info)
+  (define (inner constants)
+    (if (null? constants)
+	(cdr info)
+	(let ((entry (car constants)))
+	  (LAP (SCHEME-OBJECT ,(cdr entry) ,(car entry))
+	       ,@(inner (cdr constants))))))
+  (if (and tag (not (null? constants)))
+      (let ((label (allocate-constant-label)))
+	(cons label
+	      (inner
+	       `((,(let ((datum (length constants)))
+		     (if (> datum #xffff)
+			 (error "datum too large" datum))
+		     (+ (* tag #x10000) datum))
+		  . ,label)
+		 ,@constants))))
+      (cons (car info) (inner constants))))
 
-      (if (and tag (not (null? constants)))
-	  (let ((label (allocate-constant-label)))
-	    (cons label
-		  (inner `((,(make-constant-block-tag tag (length constants))
-			    . ,label)
-			   ,@constants))))
-	  (cons (car info) (inner constants))))
+;; IMPORTANT:
+;; frame-size and uuo-label are switched (with respect to the 68k
+;; version) in order to preserve the arity in a constant position (the
+;; Vax is little-endian).  The invocation rule for uuo-links has been
+;; changed to take the extra 2 bytes into account.
+;; Alternatively we could
+;; make execute caches 3 words long, with the third containing the
+;; frame size and the middle the second part of the instruction.
 
-    (define (transmogrifly uuos)
-      (define (inner name assoc)
-	(if (null? assoc)
-	    (transmogrifly (cdr uuos))
-	    (cons (cons name (cdar assoc)) 		; uuo-label
-		  (cons (cons (caar assoc)		; frame-size
-			      (allocate-constant-label))
-			(inner name (cdr assoc))))))
-      (if (null? uuos)
-	  '()
-	  (inner (caar uuos) (cdar uuos))))
-
-    (lambda (block-label constants references assignments uuo-links)
-      (let ((constant-info
-	     (declare-constants uuo-link-tag (transmogrifly uuo-links)
-	       (declare-constants reference-tag references
-		 (declare-constants assignment-tag assignments
-		   (declare-constants #f constants
-		     (cons '() (LAP))))))))
-	(let ((free-ref-label (car constant-info))
-	      (constants-code (cdr constant-info))
-	      (debugging-information-label (allocate-constant-label))
-	      (environment-label (allocate-constant-label)))
-	  (LAP ,@constants-code
-	       ;; Place holder for the debugging info filename
-	       (SCHEME-OBJECT ,debugging-information-label DEBUGGING-INFO)
-	       ;; Place holder for the load time environment if needed
-	       (SCHEME-OBJECT ,environment-label
-			      ,(if (null? free-ref-label) 0 'ENVIRONMENT))
-	       ,@(if (null? free-ref-label)
-		     (LAP)
-		     (LAP (MOV L ,reg:environment (@PCR ,environment-label))
-			  (MOVA B (@PCR ,block-label) (R 3))
-			  (MOVA B (@PCR ,free-ref-label) (R 4))
-			  ,(load-rn (+ (if (null? uuo-links) 0 1)
-				       (if (null? references) 0 1)
-				       (if (null? assignments) 0 1))
-				    0)
-			  (JSB ,entry:compiler-link)
-			  ,@(make-external-label (continuation-code-word false)
-						 (generate-label))))))))))
+(define (transmogrifly uuos)
+  (define (inner name assoc)
+    (if (null? assoc)
+	(transmogrifly (cdr uuos))
+	(cons (cons (caar assoc)			; frame-size
+		    (cdar assoc))			; uuo-label
+	      (cons (cons name				; variable name
+			  (allocate-constant-label))	; dummy label
+		    (inner name (cdr assoc))))))
+  (if (null? uuos)
+      '()
+      (inner (caar uuos) (cdar uuos))))
 
 ;;; Local Variables: ***
 ;;; eval: (put 'declare-constants 'scheme-indent-hook 2) ***
