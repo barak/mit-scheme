@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.76 2001/03/08 17:03:35 cph Exp $
+$Id: utils.c,v 9.77 2001/03/08 18:23:55 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -387,7 +387,8 @@ DEFUN (error_in_system_call, (err, name),
   VECTOR_SET (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
   VECTOR_SET (v, 1, (LONG_TO_UNSIGNED_FIXNUM ((unsigned int) err)));
   VECTOR_SET (v, 2, (LONG_TO_UNSIGNED_FIXNUM ((unsigned int) name)));
-  error_with_argument (v);
+  error_argument = argument;
+  signal_error_from_primitive (ERR_IN_SYSTEM_CALL);
   /*NOTREACHED*/
 }
 
@@ -640,7 +641,7 @@ DEFUN (Do_Micro_Error, (Err, From_Pop_Return),
   /* Arg 2:     Int. mask */
   STACK_PUSH (LONG_TO_FIXNUM(FETCH_INTERRUPT_MASK()));
   /* Arg 1:     Err. No   */
-  if (Err == ERR_WITH_ARGUMENT)
+  if ((Err == ERR_WITH_ARGUMENT) || (Err == ERR_IN_SYSTEM_CALL))
     STACK_PUSH (error_argument);
   else if ((Err >= SMALLEST_FIXNUM) && (Err <= BIGGEST_FIXNUM))
     STACK_PUSH (LONG_TO_FIXNUM (Err));
