@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.37 1989/12/08 01:49:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.38 1990/04/04 18:52:12 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -514,12 +514,16 @@ DEFINE_PRIMITIVE ("FILE-TOUCH", Prim_file_touch, 1, 1,
   "Given a file name, changes the times of the file to the current time.\n\
 If the file does not exist, creates it.\n\
 Both the access time and modification time are changed.\n\
-Returns #F if successful, otherwise a unix error string.")
+Returns #T if the file did not exist and it was created.\n\
+Returns #F if the file existed and its time was modified.\n\
+Otherwise it returns a unix error string.")
 {
   PRIMITIVE_HEADER (1);
 
   PRIMITIVE_RETURN (file_touch (STRING_ARG (1)));
 }
+
+#define N_RETRIES 1
 
 static SCHEME_OBJECT
 file_touch (filename)
@@ -529,6 +533,8 @@ file_touch (filename)
   struct stat file_status;
   int fd;
   char buf [1];
+  int count;
+  SCHEME_OBJECT ret_val;
 
   extern int ftruncate ();
   extern int lseek ();
@@ -550,18 +556,28 @@ file_touch (filename)
 #endif /* bsd */
 #endif /* 0 */
 
-  /* CASE 1: create the file if it doesn't exist. */
-  result = (stat (filename, (& file_status)));
-  if (result != 0)
+  ret_val = SHARP_F;
+
+  for (count = 0; true; count += 1)
+  {
+    /* CASE 1: create the file if it doesn't exist. */
+    result = (stat (filename, (& file_status)));
+    if (result == 0)
+      break;
+    /* Use O_EXCL to prevent overwriting existing file.  This
+       prevents lossage when `stat' fails because of access or I/O
+       errors.  */
+    fd = (open (filename, (O_RDWR | O_CREAT | O_EXCL), 0666));
+    if (fd >= 0)
     {
-      /* Use O_EXCL to prevent overwriting existing file.  This
-	 prevents lossage when `stat' fails because of access or I/O
-	 errors.  */
-      fd = (open (filename, (O_RDWR | O_CREAT | O_EXCL), 0666));
-      if (fd < 0)
-	return (system_error_message ("open"));
+      ret_val = SHARP_T;
       goto zero_length_file;
     }
+    else if ((errno != EEXIST) || (count >= N_RETRIES))
+    {
+      return (system_error_message ("open"));
+    }
+  }
 
 #if 0
   /* Disable this code -- this is subject to clock skew problems
@@ -577,14 +593,14 @@ file_touch (filename)
   ((tvp [1]) . tv_usec) = 0;
   result = (utimes (filename, tvp));
   if (result == 0)
-    return (SHARP_F);
+    return (ret_val);
 
 #else /* not bsd */
 #ifdef hpux
 
   result = (utime (filename, 0));
   if (result == 0)
-    return (SHARP_F);
+    return (ret_val);
 
 #endif /* hpux */
 #endif /* bsd */
@@ -642,7 +658,7 @@ file_touch (filename)
 	return (system_error_message ("ftruncate"));
       if ((close (fd)) != 0)
 	return (system_error_message ("close"));
-      return (SHARP_F);
+      return (ret_val);
     }
 
   /* CASE 4: read, then write back the first byte in the file. */
@@ -678,5 +694,5 @@ file_touch (filename)
     }
   if ((close (fd)) != 0)
     return (system_error_message ("close"));
-  return (SHARP_F);
+  return (ret_val);
 }
