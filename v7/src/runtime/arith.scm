@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.41 1997/07/07 20:24:45 adams Exp $
+$Id: arith.scm,v 1.42 1997/07/08 01:22:28 adams Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -344,7 +344,7 @@ MIT in each case. |#
   (set! *maximum-fixnum-radix-powers*
 	(make-initialized-vector 37
 	  (lambda (radix)
-	    (and (fix:> radix 2)
+	    (and (fix:>= radix 2)
 		 (let loop ((digits 0) (factor 1))
 		   (let ((nf (int:* factor radix)))
 		     (if (fix:fixnum? nf)
