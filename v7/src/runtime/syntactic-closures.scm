@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: syntactic-closures.scm,v 14.1 2002/02/03 03:38:57 cph Exp $
+;;; $Id: syntactic-closures.scm,v 14.2 2002/02/08 17:31:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -416,20 +416,19 @@
 				    'SYNTACTIC-ENVIRONMENT/DEFINE))))
 
 (define (syntactic-environment/rename environment name)
-  (let ((name (identifier->symbol name)))
-    (cond ((internal-syntactic-environment? environment)
-	   (internal-syntactic-environment/rename environment name))
-	  ((top-level-syntactic-environment? environment)
-	   (top-level-syntactic-environment/rename environment name))
-	  ((environment? environment)
-	   (environment/rename environment name))
-	  ((filtered-syntactic-environment? environment)
-	   (filtered-syntactic-environment/rename environment name))
-	  ((null-syntactic-environment? environment)
-	   (null-syntactic-environment/rename environment name))
-	  (else
-	   (error:wrong-type-argument environment "syntactic environment"
-				      'SYNTACTIC-ENVIRONMENT/RENAME)))))
+  (cond ((internal-syntactic-environment? environment)
+	 (internal-syntactic-environment/rename environment name))
+	((top-level-syntactic-environment? environment)
+	 (top-level-syntactic-environment/rename environment name))
+	((environment? environment)
+	 (environment/rename environment name))
+	((filtered-syntactic-environment? environment)
+	 (filtered-syntactic-environment/rename environment name))
+	((null-syntactic-environment? environment)
+	 (null-syntactic-environment/rename environment name))
+	(else
+	 (error:wrong-type-argument environment "syntactic environment"
+				    'SYNTACTIC-ENVIRONMENT/RENAME))))
 
 (define (syntactic-environment->environment environment)
   (cond ((internal-syntactic-environment? environment)
@@ -495,7 +494,7 @@
 
 (define (environment/rename environment name)
   environment
-  name)
+  (identifier->symbol name))
 
 ;;; Top-level syntactic environments represent top-level environments.
 ;;; They are always layered over a real syntactic environment.
@@ -548,7 +547,7 @@
 
 (define (top-level-syntactic-environment/rename environment name)
   environment
-  name)
+  (identifier->symbol name))
 
 (define (top-level-syntactic-environment->environment environment)
   (syntactic-environment->environment
@@ -624,8 +623,9 @@
 		(internal-syntactic-environment/bound environment))))))
 
 (define (internal-syntactic-environment/rename environment name)
-  (rename-symbol name
-		 (internal-syntactic-environment/rename-state environment)))
+  (rename-identifier
+   name
+   (internal-syntactic-environment/rename-state environment)))
 
 (define (internal-syntactic-environment->environment environment)
   (syntactic-environment->environment
@@ -958,8 +958,8 @@
 (define (bind-variable! environment name)
   (let ((rename (syntactic-environment/rename environment name)))
     (syntactic-environment/define environment
-				   name
-				   (make-variable-item rename))
+				  name
+				  (make-variable-item rename))
     rename))
 
 ;;;; Expansion History
@@ -1161,15 +1161,24 @@
   (delay
     (let ((n (+ *rename-suffix* 1)))
       (set! *rename-suffix* n)
-      (string-append "." (number->string n)))))
+      (number->string n))))
 
-(define (rename-symbol symbol state)
-  (string->symbol
-   (string-append "."
-		  (symbol->string symbol)
-		  (force state))))
+(define (rename-identifier identifier state)
+  (if (interned-symbol? identifier)
+      (string->symbol
+       (string-append "."
+		      (symbol->string identifier)
+		      "."
+		      (force state)))
+      (intern
+       (string-append "."
+		      (symbol->string (identifier->symbol identifier))
+		      "."
+		      (number->string (hash identifier))
+		      "-"
+		      (force state)))))
 
 (define (make-name-generator)
   (let ((state (make-rename-state)))
     (lambda (identifier)
-      (rename-symbol (identifier->symbol identifier) state))))
+      (rename-identifier identifier state))))
