@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.55 1992/12/28 21:57:56 cph Exp $
+$Id: opncod.scm,v 4.56 1992/12/30 14:13:45 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -278,11 +278,14 @@ MIT in each case. |#
 		    internal-close-coding?)
 	    (values false false false))))))
 
+(define-integrable scheme-type-limit
+  (back-end:expt 2 scheme-type-width))
+
 (define filter/type-code
   (constant-filter
    (lambda (operand)
      (and (exact-nonnegative-integer? operand)
-	  (< operand (expt 2 scheme-type-width))))))
+	  (back-end:< operand scheme-type-limit)))))
 
 (define (internal-close-coding-for-type-checks)
   compiler:generate-type-checks?)
@@ -590,7 +593,7 @@ MIT in each case. |#
 			(rtl:constant-value type))))
 	 (if (and ok?
 		  (exact-nonnegative-integer? tag)
-		  (< tag (expt 2 scheme-type-width)))
+		  (back-end:< tag scheme-type-limit))
 	     (finish
 	      (rtl:make-type-test (rtl:make-object->type object)
 				  tag))
@@ -600,7 +603,7 @@ MIT in each case. |#
 	       (open-code:type-check type (ucode-type fixnum))
 	       (open-code:range-check type
 				      (rtl:make-machine-constant
-				       (expt 2 scheme-type-width))))
+				       scheme-type-limit)))
 	      (finish
 	       (rtl:make-eq-test (rtl:make-object->datum type)
 				 (rtl:make-object->type object)))

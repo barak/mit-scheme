@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgn1.scm,v 4.13 1992/10/24 16:01:03 jinx Exp $
+$Id: lapgn1.scm,v 4.14 1992/12/30 14:13:35 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -48,33 +48,60 @@ MIT in each case. |#
     (with-new-node-marks
       (lambda ()
 	(for-each cgen-rgraph rgraphs)
-	(for-each (lambda (remote-link)
-		    (vector-set! remote-link
-				 0
-				 (constant->label (vector-ref remote-link 0)))
-		    unspecific)
-		  remote-links)
-	(with-values prepare-constants-block
-	  (or process-constants-block
-	      (lambda (constants-code environment-label free-ref-label
-				      n-sections)
-		(LAP ,@constants-code
-		     ,@(generate/quotation-header environment-label
-						  (or free-ref-label
-						      environment-label)
-						  n-sections)
-		     ,@(let loop ((remote-links remote-links))
-			 (if (null? remote-links)
-			     (LAP)
-			     (LAP ,@(let ((remote-link (car remote-links)))
-				      (generate/remote-link
-				       (vector-ref remote-link 0)
-				       (vector-ref remote-link 1)
-				       (or (vector-ref remote-link 2)
-					   (vector-ref remote-link 1))
-				       (vector-ref remote-link 3)))
-				  ,@(loop (cdr remote-links)))))))))))))
+	(let ((link-info
+	       (and compiler:compress-top-level?
+		    (not (null? remote-links))
+		    (not (null? (cdr remote-links)))
+		    (let* ((index->vector
+			    (lambda (index)
+			      (list->vector
+			       (map (lambda (remote-link)
+				      (vector-ref remote-link index))
+				    remote-links))))
+			   (index->constant-label
+			    (lambda (index)
+			      (constant->label (index->vector index)))))
+		      (list (length remote-links)
+			    ;; cc blocks
+			    (index->constant-label 0)
+			    ;; number of linker sections
+			    (index->vector 3))))))
 
+	  (if (not link-info)
+	      (for-each (lambda (remote-link)
+			  (vector-set! remote-link
+				       0
+				       (constant->label
+					(vector-ref remote-link 0)))
+			  unspecific)
+			remote-links))
+	    
+	  (with-values prepare-constants-block
+	    (or process-constants-block
+		(lambda (constants-code environment-label free-ref-label
+					n-sections)
+		  (LAP ,@constants-code
+		       ,@(generate/quotation-header environment-label
+						    (or free-ref-label
+							environment-label)
+						    n-sections)
+		       ,@(if link-info
+			     (generate/remote-links (car link-info)
+						    (cadr link-info)
+						    (caddr link-info))
+			     (let loop ((remote-links remote-links))
+			       (if (null? remote-links)
+				   (LAP)
+				   (LAP
+				    ,@(let ((remote-link (car remote-links)))
+					(generate/remote-link
+					 (vector-ref remote-link 0)
+					 (vector-ref remote-link 1)
+					 (or (vector-ref remote-link 2)
+					     (vector-ref remote-link 1))
+					 (vector-ref remote-link 3)))
+				    ,@(loop (cdr remote-links)))))))))))))))
+
 (define (cgen-rgraph rgraph)
   (fluid-let ((*current-rgraph* rgraph)
 	      (*pending-bblocks* '()))
@@ -84,7 +111,7 @@ MIT in each case. |#
 	      (rgraph-entry-edges rgraph))
     (if (not (null? *pending-bblocks*))
 	(error "CGEN-RGRAPH: pending blocks left at end of pass"))))
-
+
 (define (cgen-entry rgraph edge)
   (define (loop bblock map)
     (cgen-bblock bblock map)
