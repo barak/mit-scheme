@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.10 2000/01/20 17:47:59 cph Exp $
+;;; $Id: imail-top.scm,v 1.11 2000/01/21 20:25:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -44,12 +44,15 @@ It is useful to set this variable in the site customisation file."
 
 (define-variable imail-ignored-headers
   "A regular expression matching header fields one would rather not see."
-  "^via:\\|^mail-from:\\|^origin:\\|^status:\\|^received:\\|^[a-z-]*message-id:\\|^summary-line:\\|^errors-to:"
+  (regexp-group "via" "mail-from" "origin" "status" "received"
+		"[a-z-]*message-id" "summary-line" "errors-to")
   string-or-false?)
 
 (define-variable imail-message-filter
   "If not #f, is a filter procedure for new headers in IMAIL.
-Called with the start and end marks of the header as arguments."
+The procedure is called with one argument, a list of headers,
+ and is expected to return another list of headers.
+ Each list element is a pair of two strings, the name and value."
   #f
   (lambda (object) (or (not object) (procedure? object))))
 
@@ -397,7 +400,7 @@ With prefix argument N moves backward N messages with these flags."
 		    (else
 		     (loop (- delta 1) next next)))))))))
 
-(define (select-message folder selector #!optional force?)
+(define (select-message folder selector #!optional force? full-headers?)
   (let ((buffer (imail-folder->buffer folder))
 	(message
 	 (cond ((or (not selector) (message? selector))
@@ -408,7 +411,8 @@ With prefix argument N moves backward N messages with these flags."
 		(get-message folder selector))
 	       (else
 		(error:wrong-type-argument selector "message selector"
-					   'SELECT-MESSAGE)))))
+					   'SELECT-MESSAGE))))
+	(full-headers? (if (default-object? full-headers?) #f full-headers?)))
     (if (and (not (if (default-object? force?) #f force?))
 	     (eq? message (buffer-get buffer 'IMAIL-MESSAGE #f)))
 	(imail-update-mode-line! buffer)
@@ -416,20 +420,16 @@ With prefix argument N moves backward N messages with these flags."
 	  (buffer-reset! buffer)
 	  (associate-imail-folder-with-buffer folder buffer)
 	  (buffer-put! buffer 'IMAIL-MESSAGE message)
+	  (buffer-put! buffer 'IMAIL-FULL-HEADERS? full-headers?)
 	  (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
 	    (if message
 		(begin
-		  (for-each (lambda (line)
-			      (insert-string line mark)
-			      (insert-newline mark))
-			    (let ((displayed
-				   (get-message-property
-				    message
-				    "displayed-header-fields"
-				    '())))
-			      (if (eq? '() displayed)
-				  (header-fields message)
-				  displayed)))
+		  (insert-string
+		   (header-fields->string
+		    (if full-headers?
+			(header-fields message)
+			(maybe-reformat-headers message buffer)))
+		   mark)
 		  (insert-newline mark)
 		  (insert-string (message-body message) mark))
 		(insert-string "[This folder has no messages in it.]" mark))
@@ -469,6 +469,38 @@ With prefix argument N moves backward N messages with these flags."
 		     (string-append line "," (separated-append flags ","))
 		     line))
 	       " 0/0")))))
+
+(define (maybe-reformat-headers message buffer)
+  (let ((displayed
+	 (get-message-property message
+			       "displayed-header-fields"
+			       'NONE)))
+    (if (eq? 'NONE displayed)
+	(let ((trimmed
+	       (let ((headers
+		      (let ((headers (header-fields message))
+			    (regexp
+			     (ref-variable imail-ignored-headers buffer)))
+			(if regexp
+			    (list-search-negative headers
+			      (lambda (header)
+				(re-string-match regexp
+						 (header-field-name header))))
+			    headers)))
+		     (filter (ref-variable rmail-message-filter buffer)))
+		 (if filter
+		     (map (lambda (n.v)
+			    (make-header-field (car n.v) (cdr n.v)))
+			  (filter (map (lambda (header)
+					 (cons (header-field-name header)
+					       (header-field-value header)))
+				       headers)))
+		     headers))))
+	  (set-message-property message
+				"displayed-header-fields"
+				trimmed)
+	  trimmed)
+	displayed)))
 
 ;;;; Message deletion
 
@@ -787,3 +819,53 @@ together with two commands to return to regular IMAIL:
   ()
   (lambda ()
     (select-message (selected-folder) (selected-message) #t)))
+
+;;;; Miscellany
+
+(define-command imail-toggle-headers
+  "Show full message headers if pruned headers currently shown, or vice versa."
+  ()
+  (lambda ()
+    (select-message
+     (selected-folder)
+     (selected-message)
+     #t
+     (not (buffer-get (selected-buffer) 'IMAIL-FULL-HEADERS? #f)))))
+
+(define-command imail-search
+  "Show message containing next match for given string.
+Negative argument means search in reverse."
+  (lambda ()
+    (let ((reverse? (< (command-argument-numeric-value (command-argument)) 0)))
+      (list (prompt-for-string (string-append (if reverse? "Reverse " "")
+					      "IMAIL search")
+			       #f
+			       'DEFAULT-TYPE 'INSERTED-DEFAULT
+			       'HISTORY 'IMAIL-SEARCH
+			       'HISTORY-INDEX 0)
+	    reverse?)))
+  (lambda (pattern reverse?)
+    (let ((folder (selected-folder))
+	  (msg
+	   (string-append (if reverse? "Reverse " "")
+			  "IMAIL search for " pattern "...")))
+      (message msg)
+      (let ((index
+	     (let ((index (message-index (selected-message))))
+	       (let loop
+		   ((indexes
+		     (let ((indexes (search-folder folder pattern)))
+		       (if reverse?
+			   (reverse indexes)
+			   indexes))))
+		 (and (pair? indexes)
+		      (if (if reverse?
+			      (< (car indexes) index)
+			      (> (car indexes) index))
+			  (car indexes)
+			  (loop (cdr indexes))))))))
+	(if index
+	    (begin
+	      (select-message folder index)
+	      (message msg "done"))
+	    (editor-failure "Search failed: " pattern))))))
