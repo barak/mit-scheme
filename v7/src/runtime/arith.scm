@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.30 1994/12/15 21:40:14 adams Exp $
+$Id: arith.scm,v 1.31 1995/01/13 22:17:16 adams Exp $
 
 Copyright (c) 1989-94 Massachusetts Institute of Technology
 
@@ -134,7 +134,7 @@ MIT in each case. |#
 	(macro (name generic-binary identity primitive-binary)
 	  `(SET! ,name
 		 (MAKE-ENTITY
-		  (LAMBDA (SELF . ZS)
+		  (NAMED-LAMBDA (,name SELF . ZS)
 		    SELF		; ignored
 		    (REDUCE ,generic-binary ,identity ZS))
 		  (VECTOR (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
@@ -154,7 +154,7 @@ MIT in each case. |#
 		     generic-inverse inverse-identity primitive-binary)
 	  `(SET! ,name
 		 (MAKE-ENTITY
-		  (LAMBDA (SELF Z1 . ZS)
+		  (NAMED-LAMBDA (,name SELF Z1 . ZS)
 		    SELF		; ignored
 		    (,generic-binary
 		     Z1
@@ -172,7 +172,7 @@ MIT in each case. |#
 	(macro (name generic-binary primitive-binary correct-type? negated?)
 	  `(SET! ,name
 		 (MAKE-ENTITY
-		  (LAMBDA (SELF . ZS)
+		  (NAMED-LAMBDA (,name SELF . ZS)
 		    SELF		; ignored
 		    (REDUCE-COMPARATOR ,generic-binary ZS ',name))
 		  (VECTOR 
@@ -199,7 +199,7 @@ MIT in each case. |#
 	(macro (name generic-binary)
 	  `(SET! ,name
 		 (MAKE-ENTITY
-		  (LAMBDA (SELF X . XS)
+		  (NAMED-LAMBDA (,name SELF X . XS)
 		    SELF		; ignored
 		    (REDUCE-MAX/MIN ,generic-binary X XS ',name))
 		  (VECTOR 
