@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: site.scm.unix,v 1.12 1993/11/13 02:43:18 gjr Exp $
+$Id: site.scm.unix,v 1.13 1993/11/13 03:52:54 gjr Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -58,7 +58,8 @@ MIT in each case. |#
     (system command-line)))
 
 (define (system command-line)
-  (let ((inside (working-directory-pathname))
+  (let ((inside (->namestring
+		 (directory-pathname-as-file (working-directory-pathname))))
 	(outside false))
     (dynamic-wind
      (lambda ()
@@ -66,7 +67,7 @@ MIT in each case. |#
        (set! outside ((ucode-primitive working-directory-pathname 0)))
        ((ucode-primitive set-working-directory-pathname! 1) inside))
      (lambda ()
-       ((ucode-primitive system) command-line))
+       ((ucode-primitive system 1) command-line))
      (lambda ()
        (set! inside ((ucode-primitive working-directory-pathname 0)))
        ((ucode-primitive set-working-directory-pathname! 1) outside)
