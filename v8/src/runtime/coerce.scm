@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: coerce.scm,v 1.4 1996/07/26 19:57:38 adams Exp $
+$Id: coerce.scm,v 1.5 1996/07/26 23:39:26 adams Exp $
 
 Copyright (c) 1996 Massachusetts Institute of Technology
 
@@ -68,8 +68,8 @@ MIT in each case. |#
     (define-integrable (entity-extra entity)
       (system-pair-cdr entity))
 
-    (define-integrable (entity-procedure entity)
-      (system-pair-car entity))
+    ;;(define-integrable (entity-procedure entity)
+    ;;  (system-pair-car entity))
 
     (define (try-arity-dispatched-procedure)
       (cond ((and (fix:> (vector-length (entity-extra object)) arity)
@@ -90,87 +90,81 @@ MIT in each case. |#
 	    (else
 	     (default))))
 
-    (define (mismatch)
-      (default))
-
     (define (make-compiled-coercion procedure arity min max)
       ;; Note that min and max are +1-encoded, arity is not.
 
       (define-macro (coerce args . exprs)
-	`(NAMED-LAMBDA (PROCEDURE-COERCION ,@args)
+	`(NAMED-LAMBDA (COERCED-PROCEDURE ,@args)
 	   (JUMP ,(+ (length exprs) 1) PROCEDURE ,@exprs)))
 
-      (cond
-       ((fix:= min max)
-	(mismatch))
-       ((fix:<= arity min)
-	(mismatch))
-       (else
-	(case arity
-	  ((0)				; min = 1
-	   (case max
-	     ((2)   (coerce () xx))
-	     ((3)   (coerce () xx xx))
-	     ((4)   (coerce () xx xx xx))
-	     ((5)   (coerce () xx xx xx xx))
-	     ((254) (coerce () '()))
-	     ((253) (coerce () xx '()))
-	     ((252) (coerce () xx xx '()))
-	     ((251) (coerce () xx xx xx '()))
-	     ((250) (coerce () xx xx xx xx '()))
-	     (else (default))))
-	  ((1)				; min <= 2
-	   (case max
-	     ((3)   (coerce (a1) a1 xx))
-	     ((4)   (coerce (a1) a1 xx xx))
-	     ((5)   (coerce (a1) a1 xx xx xx))
-	     ((254) (coerce (a1) (list a1)))
-	     ((253) (coerce (a1) a1 '()))
-	     ((252) (coerce (a1) a1 xx '()))
-	     ((251) (coerce (a1) a1 xx xx '()))
-	     ((250) (coerce (a1) a1 xx xx xx '()))
-	     (else (default))))
-	  ((2)				; min <= 3
-	   (case max
-	     ((4)   (coerce (a1 a2) a1 a2 xx))
-	     ((5)   (coerce (a1 a2) a1 a2 xx xx))
-	     ((254) (coerce (a1 a2) (list a1 a2)))
-	     ((253) (coerce (a1 a2) a1 (list a2)))
-	     ((252) (coerce (a1 a2) a1 a2 '()))
-	     ((251) (coerce (a1 a2) a1 a2 xx '()))
-	     ((250) (coerce (a1 a2) a1 a2 xx xx '()))
-	     (else (default))))
-	  ((3)				; min <= 4
-	   (case max
-	     ((5)   (coerce (a1 a2 a3) a1 a2 a3 xx))
-	     ((254) (coerce (a1 a2 a3) (list a1 a2 a3)))
-	     ((253) (coerce (a1 a2 a3) a1 (list a2 a3)))
-	     ((252) (coerce (a1 a2 a3) a1 a2 (list a3)))
-	     ((251) (coerce (a1 a2 a3) a1 a2 a3 '()))
-	     ((250) (coerce (a1 a2 a3) a1 a2 a3 xx '()))
-	     (else (default))))
-	  ((4)				; min <= 5
-	   (case max
-	     ((254) (coerce (a1 a2 a3 a4) (list a1 a2 a3 a4)))
-	     ((253) (coerce (a1 a2 a3 a4) a1 (list a2 a3 a4)))
-	     ((252) (coerce (a1 a2 a3 a4) a1 a2 (list a3 a4)))
-	     ((251) (coerce (a1 a2 a3 a4) a1 a2 a3 (list a4)))
-	     ((250) (coerce (a1 a2 a3 a4) a1 a2 a3 a4 '()))))
-	  ((5)				; min <= 6
-	   (case max
-	     ((254) (coerce (a1 a2 a3 a4 a5) (list a1 a2 a3 a4 a5)))
-	     ((253) (coerce (a1 a2 a3 a4 a5) a1 (list a2 a3 a4 a5)))
-	     ((252) (coerce (a1 a2 a3 a4 a5) a1 a2 (list a3 a4 a5)))
-	     ((251) (coerce (a1 a2 a3 a4 a5) a1 a2 a3 (list a4 a5)))
-	     ((250) (coerce (a1 a2 a3 a4 a5) a1 a2 a3 a4 (list a5)))
-	     (else (default))))
-	  ((6)				; min <= 7
-	   (case max
-	     ((254) (coerce (a1 a2 a3 a4 a5 a6) (list a1 a2 a3 a4 a5 a6)))
-	     ((253) (coerce (a1 a2 a3 a4 a5 a6) a1 (list a2 a3 a4 a5 a6)))
-	     ((252) (coerce (a1 a2 a3 a4 a5 a6) a1 a2 (list a3 a4 a5 a6)))
-	     (else (default))))
-	  (else (default))))))
+      (if (fix:< arity (fix:- min 1))
+	  (default)			; too few args
+	  (case arity
+	    ((0)
+	     (case max
+	       ((2)   (coerce () xx))
+	       ((3)   (coerce () xx xx))
+	       ((4)   (coerce () xx xx xx))
+	       ((5)   (coerce () xx xx xx xx))
+	       ((254) (coerce () '()))
+	       ((253) (coerce () xx '()))
+	       ((252) (coerce () xx xx '()))
+	       ((251) (coerce () xx xx xx '()))
+	       ((250) (coerce () xx xx xx xx '()))
+	       (else (default))))
+	    ((1)
+	     (case max
+	       ((3)   (coerce (a1) a1 xx))
+	       ((4)   (coerce (a1) a1 xx xx))
+	       ((5)   (coerce (a1) a1 xx xx xx))
+	       ((254) (coerce (a1) (list a1)))
+	       ((253) (coerce (a1) a1 '()))
+	       ((252) (coerce (a1) a1 xx '()))
+	       ((251) (coerce (a1) a1 xx xx '()))
+	       ((250) (coerce (a1) a1 xx xx xx '()))
+	       (else (default))))
+	    ((2)
+	     (case max
+	       ((4)   (coerce (a1 a2) a1 a2 xx))
+	       ((5)   (coerce (a1 a2) a1 a2 xx xx))
+	       ((254) (coerce (a1 a2) (list a1 a2)))
+	       ((253) (coerce (a1 a2) a1 (list a2)))
+	       ((252) (coerce (a1 a2) a1 a2 '()))
+	       ((251) (coerce (a1 a2) a1 a2 xx '()))
+	       ((250) (coerce (a1 a2) a1 a2 xx xx '()))
+	       (else (default))))
+	    ((3)
+	     (case max
+	       ((5)   (coerce (a1 a2 a3) a1 a2 a3 xx))
+	       ((254) (coerce (a1 a2 a3) (list a1 a2 a3)))
+	       ((253) (coerce (a1 a2 a3) a1 (list a2 a3)))
+	       ((252) (coerce (a1 a2 a3) a1 a2 (list a3)))
+	       ((251) (coerce (a1 a2 a3) a1 a2 a3 '()))
+	       ((250) (coerce (a1 a2 a3) a1 a2 a3 xx '()))
+	       (else (default))))
+	    ((4)
+	     (case max
+	       ((254) (coerce (a1 a2 a3 a4) (list a1 a2 a3 a4)))
+	       ((253) (coerce (a1 a2 a3 a4) a1 (list a2 a3 a4)))
+	       ((252) (coerce (a1 a2 a3 a4) a1 a2 (list a3 a4)))
+	       ((251) (coerce (a1 a2 a3 a4) a1 a2 a3 (list a4)))
+	       ((250) (coerce (a1 a2 a3 a4) a1 a2 a3 a4 '()))
+	       (else  (default))))
+	    ((5)
+	     (case max
+	       ((254) (coerce (a1 a2 a3 a4 a5) (list a1 a2 a3 a4 a5)))
+	       ((253) (coerce (a1 a2 a3 a4 a5) a1 (list a2 a3 a4 a5)))
+	       ((252) (coerce (a1 a2 a3 a4 a5) a1 a2 (list a3 a4 a5)))
+	       ((251) (coerce (a1 a2 a3 a4 a5) a1 a2 a3 (list a4 a5)))
+	       ((250) (coerce (a1 a2 a3 a4 a5) a1 a2 a3 a4 (list a5)))
+	       (else (default))))
+	    ((6)
+	     (case max
+	       ((254) (coerce (a1 a2 a3 a4 a5 a6) (list a1 a2 a3 a4 a5 a6)))
+	       ((253) (coerce (a1 a2 a3 a4 a5 a6) a1 (list a2 a3 a4 a5 a6)))
+	       ((252) (coerce (a1 a2 a3 a4 a5 a6) a1 a2 (list a3 a4 a5 a6)))
+	       (else (default))))
+	    (else (default)))))
 
     (if (fixnum? arity)
 	(if (object-type? (ucode-type compiled-entry) object)
@@ -185,16 +179,11 @@ MIT in each case. |#
 	(default))))
 
 
-(define (make-primitive-coercion primitive arity)
-  (cond ((and (eq? primitive (ucode-primitive car)) (eqv? arity 1))
-	 (named-lambda (car object)
-	   (if (pair? object)
-	       (car object)
-	       (error:wrong-type-argument object "pair" 'CAR))))
-	(else
-	 ((ucode-primitive coerce-to-compiled-procedure 2)
-	  primitive arity))))
+;; It is probably a better idea to bind CONS CAR CDR etc to compiled
+;; procedures and be done with it.
 
+(define (make-primitive-coercion primitive arity)
+  ((ucode-primitive coerce-to-compiled-procedure 2) primitive arity))
 
 
 (define arity-dispatcher-tag
