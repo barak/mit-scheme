@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.43 1992/02/18 17:28:19 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.44 1992/02/24 22:10:33 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -2730,8 +2730,10 @@ SCHEME_OBJECT
   compiler_utilities,
   return_to_interpreter;
 
+#ifndef REGBLOCK_ALLOCATED_BY_INTERFACE
 SCHEME_OBJECT
   Registers[REGBLOCK_LENGTH];
+#endif
 
 static void
 DEFUN_VOID (compiler_reset_internal)
