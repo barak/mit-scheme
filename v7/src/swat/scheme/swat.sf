@@ -1,0 +1,38 @@
+
+(fluid-let ((sf/default-syntax-table syntax-table/system-internal)
+	    (sf/default-declarations
+	     `((usual-integrations) ,@sf/default-declarations)))
+
+  (sf-conditionally "scc-macros")
+  (load "scc-macros")
+  (sf-conditionally "uitk-macros")
+  (load "uitk-macros")
+  (sf-conditionally "structures")
+  (sf-conditionally "structures2")
+  (sf-conditionally "xlibCONSTANTS")
+
+  (fluid-let ((sf/default-declarations
+	       `((integrate-external "structures")
+		 (integrate-external "structures2")
+		 (integrate-external "xlibCONSTANTS")
+		 ,@sf/default-declarations)))
+    (sf-conditionally "control-floating-errors")
+    (sf-conditionally "generics")
+    (sf-conditionally "widget-mit")
+    (sf-conditionally "tk-mit")
+    (sf-conditionally "uitk")
+    (sf-conditionally "mit-xlib")
+    (sf-conditionally "mit-xhooks")
+    (sf-conditionally "baseobj")
+    (sf-conditionally "widget")
+    (sf-conditionally "geometry")
+    (sf-conditionally "simple")
+    (sf-conditionally "canvas")
+    (sf-conditionally "menu")
+    (sf-conditionally "text")
+    ))
+
+;;(load-option 'CREF)
+;;(cref/generate-constructors "swat")
+;;(sf "swat.con")
+;;(sf "swat.ldr")
