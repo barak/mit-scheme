@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.185 1995/07/11 23:09:20 cph Exp $
+;;;	$Id: filcom.scm,v 1.186 1995/07/11 23:19:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -631,11 +631,11 @@ If a file with the new name already exists, confirmation is requested first."
 
 (define (prompt-for-pathname* prompt directory
 			      verify-final-value? require-match?)
-  (let ((directory
-	 (if directory
-	     (directory-pathname directory)
-	     (buffer-default-directory (current-buffer))))
-	(insertion (os/pathname->display-string directory)))
+  (let* ((directory
+	  (if directory
+	      (directory-pathname directory)
+	      (buffer-default-directory (current-buffer))))
+	 (insertion (os/pathname->display-string directory)))
     (prompt-string->pathname
      (prompt-for-completed-string
       prompt
