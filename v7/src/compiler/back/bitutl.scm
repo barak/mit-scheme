@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bitutl.scm,v 1.4 1990/01/18 22:41:51 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bitutl.scm,v 1.5 1992/07/05 13:27:36 jinx Exp $
 
-Copyright (c) 1987, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -148,6 +148,8 @@ MIT in each case. |#
 	(error "evaluate: unknown operator" keyword)
 	(cdr place))))
 
+;; Either argument can be an interval
+
 (define ((symmetric scalar) op1 op2)
   (if (interval? op1)
       (if (interval? op2)
@@ -160,8 +162,19 @@ MIT in each case. |#
 			 (scalar op1 (interval-high op2)))
 	  (scalar op1 op2))))
 
+;; Only the first argument can be an interval
+
+(define ((asymmetric op) op1 op2)
+  (if (interval? op1)
+      (make-interval (op (interval-low op1) op2)
+		     (op (interval-high op1) op2))
+      (op op1 op2)))
+
 (define-operator! '+ (symmetric +))
 (define-operator! '- (symmetric -))
+
+(define-operator! '/ (asymmetric paranoid-quotient))
+(define-operator! 'remainder (asymmetric remainder))
 
 ;; Only one argument can be an interval.
 
@@ -174,15 +187,6 @@ MIT in each case. |#
 	   (make-interval (* op1 (interval-low op2))
 			  (* op1 (interval-high op2))))
 	  (else (* op1 op2)))))
-
-;; Only the first argument can be an interval
-
-(define-operator! '/
-  (lambda (op1 op2)
-    (if (interval? op1)
-	(make-interval (paranoid-quotient (interval-low op1) op2)
-		       (paranoid-quotient (interval-high op1) op2))
-	(paranoid-quotient op1 op2))))
 
 ;;;; Variable width expression utilities
 
