@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.20 1991/03/22 00:31:39 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.21 1991/04/03 04:09:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -232,11 +232,16 @@ may be available.  The following commands are special to this mode:
   (let ((environment (evaluation-environment argument)))
     (with-input-from-region region
       (lambda ()
-	(let loop ((sexp (read)))
-	  (if (not (eof-object? sexp))
-	      (begin
-		(editor-eval sexp environment)
-		(loop (read)))))))))
+	(bind-condition-handler (list condition-type:error) evaluation-error-handler
+	  (letrec
+	      ((loop
+		(lambda ()
+		  (let ((sexp (read)))
+		    (if (not (eof-object? sexp))
+			(begin
+			  (editor-eval sexp environment)
+			  (loop (read))))))))
+	    loop))))))
 
 (define (evaluation-environment argument)
   (let ((->environment
