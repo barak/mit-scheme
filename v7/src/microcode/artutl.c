@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/artutl.c,v 1.2 1989/09/24 13:49:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/artutl.c,v 1.3 1989/09/24 16:15:01 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -193,7 +193,7 @@ flonum_normalize (x)
   int exponent;
   double significand = (frexp ((FLONUM_TO_DOUBLE (x)), (&exponent)));
   return (cons ((double_to_flonum (significand)),
-		(double_to_flonum ((double) exponent))));
+		(long_to_integer ((long) exponent))));
 }
 
 /* Generic Integer Operations */
