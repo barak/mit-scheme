@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.133 2001/05/24 01:19:47 cph Exp $
+;;; $Id: imail-core.scm,v 1.134 2001/05/24 03:41:28 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -358,17 +358,20 @@
   (if (not (container? container))
       (error:wrong-type-argument container "IMAIL container" procedure)))
 
-(define (get-memoized-resource url)
-  (let ((resource (hash-table/get memoized-resources url #f)))
-    (and resource
-	 (let ((resource (weak-car resource)))
-	   ;; Delete memoization _only_ if URL-EXISTS? unambiguously
-	   ;; states non-existence.  An error is often transitory.
-	   (if (and resource (ignore-errors (lambda () (url-exists? url))))
-	       resource
-	       (begin
-		 (hash-table/remove! memoized-resources url)
-		 #f))))))
+(define (get-memoized-resource url #!optional error?)
+  (or (let ((resource (hash-table/get memoized-resources url #f)))
+	(and resource
+	     (let ((resource (weak-car resource)))
+	       ;; Delete memoization _only_ if URL-EXISTS?
+	       ;; unambiguously states non-existence.  An error is
+	       ;; often transitory.
+	       (if (and resource (ignore-errors (lambda () (url-exists? url))))
+		   resource
+		   (begin
+		     (hash-table/remove! memoized-resources url)
+		     #f)))))
+      (and (if (default-object? error?) #f error?)
+	   (error "URL has no associated resource:" url))))
 
 (define (memoize-resource resource close)
   (hash-table/put! memoized-resources
