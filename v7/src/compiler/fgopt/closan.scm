@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: closan.scm,v 4.28 2001/11/05 18:13:12 cph Exp $
+$Id: closan.scm,v 4.29 2001/11/05 18:57:11 cph Exp $
 
 Copyright (c) 1987-1991, 1998, 1999, 2001 Massachusetts Institute of Technology
 
@@ -24,6 +24,132 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;; package: (compiler fg-optimizer closure-analysis)
 
 (declare (usual-integrations))
+
+;;; Theory behind this analysis.
+;;;
+;;; The closure analysis is really performed in two parts.  The first
+;;; part is called "environment optimization", and is in
+;;; "fgopt/envopt.scm".  The second part is called "closure analysis"
+;;; and is in this file.  This naming is misleading, because only part
+;;; of the environment optimization is in "envopt", while the code
+;;; here implements a combination of closure analysis and environment
+;;; optimization.  It would be more appropriate to merge the two files
+;;; together.
+;;;
+;;; The analysis performed here consists of two basic operations.  The
+;;; first operation is to decide what procedures need to be closures,
+;;; and conversely what procedures may be closed over the stack.
+;;; These latter are called "open" procedures.  We will call this
+;;; operation "closure analysis".
+;;;
+;;; The second operation is to reorganize the environment "genealogy"
+;;; in order to minimize the number of procedures that need to be
+;;; closed.  We will call this operation "environment optimization".
+;;;
+;;; The closure analysis uses a handful of straightforward rules to
+;;; decide whether to close a procedure.  These rules fall into two
+;;; general classes: (1) The procedure is stored or invoked in a place
+;;; where it's ancestor environments aren't available on the stack;
+;;; (2) The procedure is invoked from a place in which other
+;;; procedures are also invoked, and so must be closed to provide a
+;;; uniform calling interface amongst the procedures.
+;;;
+;;; The environment analysis is considerably more complex.  The basic
+;;; algorithm is to take each procedure and raise it up in the
+;;; environment heirarchy so that its closing environment is the
+;;; top-level environment.  Then, a number of constraints are applied
+;;; to the procedure, which together have the effect of pulling it
+;;; back down the heirarchy as far as is necessary to satisfy the
+;;; constraints.
+;;;
+;;; There are three basic constraints applied: (1) The closing
+;;; environment must contain bindings for all of the free variables
+;;; referenced by the procedure.  (2) The invocation environment of
+;;; the procedure must include the closing environment of any
+;;; procedure called from this procedure.  (3) Any environment in
+;;; which this procedure is stored must include the closing
+;;; environment of this procedure.  If all of these constraints are
+;;; satisfied, then the procedure may remain open; otherwise it must
+;;; be closed.
+
+;;; The constraints are applied as a relaxation process in which the
+;;; closing environments are slowly moved down the tree.  At points
+;;; where it is discovered that it's not possible to satisfy the
+;;; constraints for a given procedure, that procedure is closed.
+;;; Closing of a procedure changes some of the constraints that depend
+;;; on that procedure, allowing other constrained procedures to rise
+;;; back up on the environment tree.
+;;;
+;;; There are several problems with this analysis, some of which are
+;;; fundamental to the analysis, and some of which have to do with the
+;;; implementation.  I will examine the implementation first.
+;;;
+;;; This implementation doesn't have a clear structure in which the
+;;; constraints are properly reified and applied.  Instead, the
+;;; application of the constraints is somewhat ad hoc, and what is
+;;; reified is the end result of the constraint application rather
+;;; than the constraint itself.  This means that the actual
+;;; constraints are embedded in the code rather than being stated as
+;;; data structures that can be reflected on.  Consequently there are
+;;; several places where a given constraint is applied, and in each
+;;; place the application is slightly different.
+;;;
+;;; A further problem is that several of the constraints are applied
+;;; non-locally.  For example, places in which caller/callee
+;;; relationships are analyzed look at the transitive closure of the
+;;; caller/callee graph.  Instead, they should only examine the direct
+;;; relationships.  This has two undesirable effects.  The first is
+;;; that the optimization suffers, because the relationships are
+;;; overconstrained.  The second is that the transitive closure
+;;; depends on the _current_ state of the environment heirarchy, which
+;;; means that there is feedback in the relaxation process.  This
+;;; feedback makes analysis of the algorithm very difficult.
+;;;
+;;; This brings up my final point about the implementation.  The
+;;; entire relaxation process involves a great deal of undiscipled
+;;; feedback.  In addition to the transitive closure problem, there is
+;;; also the ad hoc intermixing of constraint application and closing
+;;; of procedures.  The end result of all of this is that the specific
+;;; optimization computed here can't be described, because it depends
+;;; on the specific order in which each action occurs.  And this in
+;;; turn depends on the specific order in which procedures appear in
+;;; lists, and the order in which MAP iterates over its argument list.
+;;;
+;;; In short, there's no way to prove that this implementation will
+;;; converge, or that if it does it will result in correct code.
+;;;
+;;; An alternate strategy would be as follows.
+;;;
+;;; (1) Write down all of the constraints on the code as a set of
+;;; equations.  Some of these equations would be conditional, in that
+;;; they depend on things other than the environment heirarchy, such
+;;; as whether or not a procedure is closed.
+;;;
+;;; (2) Raise up all of the procedures to the top level.
+;;;
+;;; (3) Apply all of the constraints to generate a new set of closing
+;;; blocks.  Note that this computation must be based entirely on the
+;;; old set of closing blocks, and thus has no feedback.
+;;;
+;;; (4) Any constraints that are left unsatisfied indicate procedures
+;;; that may need to be closed.  Close one or more of them.
+;;;
+;;; (5) Continue iterating (3) and (4) until all of the constraints
+;;; are satisfied, then modify the closing blocks of all of the
+;;; procedures to the new ones implied by the constraints.
+;;;
+;;; This strategy has the major advantage that it is clear.  The
+;;; absence of feedback means that the analysis can be understood, and
+;;; it can be proven that this algorithm converges.
+;;;
+;;; The only real uncertainty is how effective the algorithm will be,
+;;; and that is determined solely by step (4).  The choice of
+;;; procedures to close isn't obvious.  A conservative choice would be
+;;; to close all of them.  This will certainly result in correct code,
+;;; but it is almost certainly non-optimal.  And this is the
+;;; fundamental problem with this analysis: it is attempting to search
+;;; a large space that doesn't have a known metric.  Consequently it
+;;; is difficult to determine how to make it work well.
 
 (define (identify-closure-limits! procs&conts applications lvalues)
   (let ((procedures
