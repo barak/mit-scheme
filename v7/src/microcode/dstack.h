@@ -1,4 +1,4 @@
-/* Copyright (C) 1990 Free Software Foundation, Inc.
+/* Copyright (C) 1990-91 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/dstack.h,v 1.1 1990/06/20 19:35:44 cph Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/dstack.h,v 1.2 1991/07/05 23:28:40 cph Exp $ */
 
 #ifndef __DSTACK_H__
 #define __DSTACK_H__
@@ -35,9 +35,18 @@ extern PTR EXFUN (dstack_alloc, (unsigned int length));
 extern void EXFUN
   (dstack_protect,
    (void EXFUN ((*protector), (PTR environment)), PTR environment));
-/* Create an unwind protection frame which invokes `protector' when
+/* Create an unwind protection frame that invokes `protector' when
    the stack is unwound.  `environment' is passed to `protector' as
    its sole argument when it is invoked. */
+
+extern void EXFUN
+  (dstack_alloc_and_protect,
+   (unsigned int length,
+    void EXFUN ((*initializer), (PTR environment)),
+    void EXFUN ((*protector), (PTR environment))));
+/* Allocate a chunk of `length' bytes of space, call `initializer' to
+   initialize that space, and create an unwind protection frame that
+   invokes `protector' when the stack is unwound.  */
 
 extern PTR dstack_position;
 /* The current stack pointer. */
@@ -45,27 +54,6 @@ extern PTR dstack_position;
 extern void EXFUN (dstack_set_position, (PTR position));
 /* Unwind the stack to `position', which must be a previous value of
    `dstack_position'. */
-
-typedef struct
-{
-  PTR stack_pointer;
-  jmp_buf env;
-} Tcatch_tag;
-
-#define CATCH(tag)							\
-  ((((tag) . stack_pointer) = dstack_position),				\
-   (setjmp ((tag) . env)))
-
-#define THROW(tag, value)						\
-{									\
-  /* Copy `tag' in case it is dstack-allocated. */			\
-  /* Must split declaration and assignment because some compilers	\
-     do not permit aggregate initializers. */				\
-  Tcatch_tag THROW_tag;							\
-  THROW_tag = (tag);							\
-  dstack_set_position (THROW_tag . stack_pointer);			\
-  longjmp ((THROW_tag . env), (value));					\
-}
 
 extern void EXFUN (dstack_bind, (PTR location, PTR value));
 /* Dynamically bind `location' to `value'.  `location' is treated as

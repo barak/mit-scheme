@@ -14,7 +14,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/wind.c,v 1.2 1991/07/02 18:16:59 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/wind.c,v 1.3 1991/07/05 23:28:57 cph Exp $ */
 
 #include <stdio.h>
 #include "obstack.h"
@@ -102,6 +102,22 @@ DEFUN (dstack_protect, (protector, environment),
 }
 
 void
+DEFUN (dstack_alloc_and_protect, (length, initializer, protector),
+       unsigned int length AND
+       void EXFUN ((*initializer), (PTR environment)) AND
+       void EXFUN ((*protector), (PTR environment)))
+{
+  struct winding_record * record =
+    (dstack_alloc ((sizeof (struct winding_record)) + length));
+  PTR environment = (((char *) record) + (sizeof (struct winding_record)));
+  (*initializer) (environment);
+  (record -> next) = current_winding_record;
+  (record -> protector) = protector;
+  (record -> environment) = environment;
+  current_winding_record = record;
+}
+
+void
 DEFUN (dstack_set_position, (position), PTR position)
 {
   block_signals ();
@@ -146,19 +162,28 @@ struct binding_record
 };
 
 static void
-DEFUN (undo_binding, (record), PTR record)
+DEFUN (undo_binding, (environment), PTR environment)
 {
-  (* (((struct binding_record *) record) -> location)) =
-    (((struct binding_record *) record) -> value);
+  (* (((struct binding_record *) environment) -> location)) =
+    (((struct binding_record *) environment) -> value);
+}
+
+static PTR * save_binding_location;
+
+static void
+DEFUN (save_binding, (environment), PTR environment)
+{
+  (((struct binding_record *) environment) -> location) =
+    save_binding_location;
+  (((struct binding_record *) environment) -> value) =
+    (*save_binding_location);
 }
 
 void
 DEFUN (dstack_bind, (location, value), PTR location AND PTR value)
 {
-  struct binding_record * record =
-    (dstack_alloc (sizeof (struct binding_record)));
-  (record -> location) = ((PTR *) location);
-  (record -> value) = (* ((PTR *) location));
-  dstack_protect (undo_binding, record);
+  save_binding_location = location;
+  dstack_alloc_and_protect
+    ((sizeof (struct binding_record)), save_binding, undo_binding);
   (* ((PTR *) location)) = value;
 }
