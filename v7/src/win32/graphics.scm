@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.16 1999/01/02 06:19:10 cph Exp $
+$Id: graphics.scm,v 1.17 2002/06/26 03:33:56 cph Exp $
 
-Copyright (c) 1993-1999 Massachusetts Institute of Technology
+Copyright (c) 1993-1999, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -679,13 +680,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (win32-device/invalidate! window)
     unspecific))
 
+(define (win32-graphics/open? device)
+  (if (win32-device/hwnd (graphics-device/descriptor device)) #t #f))
+
+(define (win32-graphics/close device)
+  (close-descriptor (graphics-device/descriptor device)))
 
 (define (close-descriptor descriptor)
   (if (and descriptor (win32-device/hwnd descriptor))
       (destroy-window (win32-device/hwnd descriptor))))
-
-(define (win32-graphics/close device)
-  (close-descriptor (graphics-device/descriptor device)))
 
 (define (win32-graphics/set-clip-rectangle device
            x-left y-bottom x-right y-top)
@@ -949,7 +952,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(make-graphics-device-type
 	 'WIN32
 	 `((available? ,win32-graphics/available?)
-	   (open  ,win32-graphics/open)
+	   (open ,win32-graphics/open)
+	   (open? ,win32-graphics/open?)
 	   (clear ,win32-graphics/clear)
 	   (close ,win32-graphics/close)
 	   (coordinate-limits ,win32-graphics/coordinate-limits)
@@ -964,8 +968,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (draw-point ,win32-graphics/draw-point)
 	   (draw-text ,win32-graphics/draw-text)
 	   (draw-ellipse ,win32-graphics/draw-ellipse)
-	   (fill-polygon   ,win32-graphics/fill-polygon)
-	   (find-color   ,win32-graphics/find-color)
+	   (fill-polygon ,win32-graphics/fill-polygon)
+	   (find-color ,win32-graphics/find-color)
 	   (flush ,win32-graphics/flush)
 	   (image-depth ,win32-graphics/image-depth)
 	   (load-bitmap ,win32-graphics/load-bitmap)
@@ -982,8 +986,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (set-line-width ,win32-graphics/set-line-width)
 	   (set-foreground-color ,win32-graphics/set-foreground-color)
 	   (set-background-color ,win32-graphics/set-background-color)
-	   (set-window-name ,win32-graphics/set-window-name)
-          )))
+	   (set-window-name ,win32-graphics/set-window-name))))
 
   (set! dib-image-type
 	(make-image-type
