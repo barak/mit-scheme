@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.11 1993/10/11 10:59:38 cph Exp $
+$Id: hashtb.scm,v 1.12 1993/10/12 22:19:02 cph Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
@@ -158,10 +158,10 @@ MIT in each case. |#
 (define (strong-cdr entry) (cdr entry))
 (define (strong-set-cdr! entry datum) (set-cdr! entry datum))
 
-(define (hash-table/strong-constructor key-hash key=?)
+(define (strong-hash-table/constructor key-hash key=?)
   (hash-table/constructor key-hash key=? cons #t car cdr set-cdr!))
 
-(define (hash-table/weak-constructor key-hash key=?)
+(define (weak-hash-table/constructor key-hash key=?)
   (hash-table/constructor key-hash key=? weak-cons weak-pair/car?
 			  weak-car weak-cdr weak-set-cdr!))
 
@@ -769,7 +769,7 @@ MIT in each case. |#
 (define (initialize-package!)
   (set! address-hash-tables '())
   (add-primitive-gc-daemon! mark-address-hash-tables!)
-  (set! make-eq-hash-table (hash-table/weak-constructor eq-hash eq?))
+  (set! make-eq-hash-table (weak-hash-table/constructor eq-hash eq?))
   ;; EQV? hash tables are weak except for numbers and #F.  It's
   ;; important to keep numbers in the table, and handling #F specially
   ;; makes it easier to deal with weak pairs.
@@ -792,11 +792,11 @@ MIT in each case. |#
 				(lambda (entry datum)
 				  (system-pair-set-cdr! entry datum))))
   (set! make-equal-hash-table
-	(hash-table/strong-constructor equal-hash equal?))
+	(strong-hash-table/constructor equal-hash equal?))
   (set! make-symbol-hash-table make-eq-hash-table)
   (set! make-object-hash-table make-eqv-hash-table)
   (set! make-string-hash-table
-	(hash-table/strong-constructor string-hash-mod string=?))
+	(strong-hash-table/constructor string-hash-mod string=?))
   unspecific)
 
 (define (check-arg object default predicate description procedure)
