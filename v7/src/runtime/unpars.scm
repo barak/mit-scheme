@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.5 1988/07/16 18:54:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.6 1988/10/15 17:19:29 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -315,9 +315,9 @@ MIT in each case. |#
 (define (char->octal char)
   (let ((qr1 (integer-divide (char->ascii char) 8)))
     (let ((qr2 (integer-divide (integer-divide-quotient qr1) 8)))
-      (char->string (digit->char (integer-divide-quotient qr2) 8)
-		    (digit->char (integer-divide-remainder qr2) 8)
-		    (digit->char (integer-divide-remainder qr1) 8)))))
+      (string (digit->char (integer-divide-quotient qr2) 8)
+	      (digit->char (integer-divide-remainder qr2) 8)
+	      (digit->char (integer-divide-remainder qr1) 8)))))
 
 (define string-delimiters)
 

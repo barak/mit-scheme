@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.4 1988/08/05 20:48:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.5 1988/10/15 17:19:10 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -277,7 +277,7 @@ MIT in each case. |#
 (define (parse-object/numeric-prefix)
   (let ((number
 	 (let ((char (read-char)))
-	   (string-append (char->string #\# char) (read-atom)))))
+	   (string-append (string #\# char) (read-atom)))))
     (or (parse-number number)
 	(parse-error "Bad number syntax" number))))
 
@@ -407,9 +407,9 @@ MIT in each case. |#
 (define (parse-object/string-quote)
   (discard-char)
   (let loop ()
-    (let ((string (read-string char-set/string-delimiters)))
+    (let ((head (read-string char-set/string-delimiters)))
       (if (char=? #\" (read-char))
-	  string
+	  head
 	  (let ((char
 		 (let ((char (read-char)))
 		   (cond ((char-ci=? char #\t) #\Tab)
@@ -417,11 +417,11 @@ MIT in each case. |#
 			 ((char-ci=? char #\f) #\Page)
 			 ((char->digit char 8)
 			  (octal->char
-			   (string-append (char->string char)
+			   (string-append (string char)
 					  (read-string char-set/not-octal))))
 			 (else char)))))
-	    (string-append string
-			   (char->string char)
+	    (string-append head
+			   (string char)
 			   (loop)))))))
 
 (define (octal->char string)
@@ -448,9 +448,9 @@ MIT in each case. |#
        (let loop ()
 	 (cond ((char=? #\\ (peek-char))
 		(discard-char)
-		(char->string (read-char)))
+		(string (read-char)))
 	       ((char-set-member? char-set/char-delimiters (peek-char))
-		(char->string (read-char)))
+		(string (read-char)))
 	       (else
 		(let ((string (read-string char-set/char-delimiters)))
 		  (if (let ((char (peek-char/eof-ok)))

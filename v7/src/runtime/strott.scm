@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/strott.scm,v 14.2 1988/06/13 11:51:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/strott.scm,v 14.3 1988/10/15 17:19:21 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -66,6 +66,19 @@ MIT in each case. |#
   accumulator
   counter)
 
+(define (operation/write-char port char)
+  (let ((state (output-port/state port)))
+    (let ((accumulator (output-string-state/accumulator state))
+	  (counter (output-string-state/counter state)))
+      (if (zero? counter)
+	  ((output-string-state/return state)
+	   (cons true (apply string-append (reverse! accumulator))))
+	  (begin
+	    (set-output-string-state/accumulator!
+	     state
+	     (cons (string char) accumulator))
+	    (set-output-string-state/counter! state (-1+ counter)))))))
+
 (define (operation/write-string port string)
   (let ((state (output-port/state port)))
     (let ((accumulator (cons string (output-string-state/accumulator state)))
@@ -81,9 +94,6 @@ MIT in each case. |#
 	    (set-output-string-state/accumulator! state accumulator)
 	    (set-output-string-state/counter! state counter))))))
 
-(define (operation/write-char port char)
-  (operation/write-string port (char->string char)))
-
 (define (operation/print-self state port)
   port
-  (unparse-string state "to string (truncated)"))
+  (unparse-string state "to string (truncating)"))

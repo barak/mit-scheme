@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/char.scm,v 14.1 1988/06/13 11:41:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/char.scm,v 14.2 1988/10/15 17:19:05 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -250,9 +250,9 @@ MIT in each case. |#
 			(or (char=? base-char backslash-char)
 			    (char-set-member? char-set/atom-delimiters
 					      base-char)))
-		   (string-append "\\" (char->string base-char)))
+		   (string-append "\\" (string base-char)))
 		  ((char-graphic? base-char)
-		   (char->string base-char))
+		   (string base-char))
 		  (else
 		   (string-append "<code "
 				  (write-to-string code)

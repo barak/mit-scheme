@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/strout.scm,v 14.2 1988/06/13 11:52:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/strout.scm,v 14.3 1988/10/15 17:19:25 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -53,11 +53,11 @@ MIT in each case. |#
 
 (define output-string-template)
 
-(define-integrable (operation/write-string port string)
-  (set-output-port/state! port (cons string (output-port/state port))))
-
 (define (operation/write-char port char)
-  (operation/write-string port (char->string char)))
+  (set-output-port/state! port (cons (string char) (output-port/state port))))
+
+(define (operation/write-string port string)
+  (set-output-port/state! port (cons string (output-port/state port))))
 
 (define (operation/print-self state port)
   port

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/string.scm,v 14.1 1988/06/13 11:51:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/string.scm,v 14.2 1988/10/15 17:19:16 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -195,8 +195,10 @@ MIT in each case. |#
 		 (loop (1+ index) (cdr chars)))))
     (loop 0 chars)))
 
-(define (char->string . chars)
+(define (string . chars)
   (list->string chars))
+
+(define char->string string)
 
 (define (string->list string)
   (substring->list string 0 (string-length string)))
