@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.13 1992/09/17 05:15:08 cph Exp $
+$Id: edextra.scm,v 1.14 1992/09/25 01:04:06 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -342,6 +342,9 @@ The following filenames are reserved and may not be used:
 	  (if (student-directory? (dired-buffer-directory (current-buffer)))
 	      (equal? "asv" (pathname-type filename))
 	      (usual filename)))))
+
+(set! default-homedir-pathname
+      (lambda () (->pathname student-dir)))
 
 (define (dired-buffer-directory buffer)
   ;; Similar to the definition in "dired.scm".  That definition should
