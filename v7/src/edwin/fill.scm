@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fill.scm,v 1.56 1992/11/13 22:15:01 cph Exp $
+;;;	$Id: fill.scm,v 1.57 1992/12/02 18:08:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -200,10 +200,12 @@ Prefix arg means justify as well."
 	      (begin
 		(move-mark-to!
 		 point
-		 (let ((m (skip-chars-backward "^ \n" target point)))
-		   (if (mark> m point)
-		       m
-		       (skip-chars-forward "^ \n" target end))))
+		 (if (char=? #\space (extract-right-char target))
+		     target
+		     (let ((m (skip-chars-backward "^ \n" target point)))
+		       (if (mark> m point)
+			   m
+			   (skip-chars-forward "^ \n" target end)))))
 		(if (mark< point end)
 		    (begin
 		      (delete-horizontal-space point)
