@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.3 1988/08/22 22:15:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.4 1988/08/29 22:30:22 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -63,7 +63,7 @@ MIT in each case. |#
 		(if (not (node-marked? (edge-right-node edge)))
 		    (cgen-entry edge)))
 	      (rgraph-entry-edges rgraph))))
-
+
 (define (cgen-entry edge)
   (let ((bblock (edge-right-node edge)))
     (fluid-let ((*entry-bblock* bblock))
@@ -130,17 +130,6 @@ MIT in each case. |#
 	    (begin (error "CGEN-BBLOCK: No matching rules" rtl)
 		   (loop)))))))
 
-(define (lap-generator/match-rtl-instruction rtl)
-  ;; Match a single RTL instruction, returning a thunk to generate the
-  ;; LAP.  This is used in the RTL optimizer at certain points to
-  ;; determine if a rewritten instruction is valid.
-  (let ((rule
-	 (if (eq? (car rtl) 'ASSIGN)
-	     (assq (caadr rtl) *assign-rules*)
-	     (assq (car rtl) *cgen-rules*))))
-    (and rule
-	 (pattern-lookup (cdr rule) rtl))))
-
 (define (bblock-input-register-map bblock)
   (if (or (eq? bblock *entry-bblock*)
 	  (not (node-previous=1? bblock)))
@@ -158,20 +147,38 @@ MIT in each case. |#
 
 (define *cgen-rules* '())
 (define *assign-rules* '())
+(define *assign-variable-rules* '())
 
 (define (add-statement-rule! pattern result-procedure)
   (let ((result (cons pattern result-procedure)))
-    (if (eq? (car pattern) 'ASSIGN)
-	(let ((entry (assq (caadr pattern) *assign-rules*)))
-	  (if entry
-	      (set-cdr! entry (cons result (cdr entry)))
-	      (set! *assign-rules*
-		    (cons (list (caadr pattern) result)
-			  *assign-rules*))))
-	(let ((entry (assq (car pattern) *cgen-rules*)))
-	  (if entry
-	      (set-cdr! entry (cons result (cdr entry)))
-	      (set! *cgen-rules*
-		    (cons (list (car pattern) result)
-			  *cgen-rules*))))))
+    (cond ((not (eq? (car pattern) 'ASSIGN))
+	   (let ((entry (assq (car pattern) *cgen-rules*)))
+	     (if entry
+		 (set-cdr! entry (cons result (cdr entry)))
+		 (set! *cgen-rules*
+		       (cons (list (car pattern) result)
+			     *cgen-rules*)))))
+	  ((not (pattern-variable? (cadr pattern)))
+	   (let ((entry (assq (caadr pattern) *assign-rules*)))
+	     (if entry
+		 (set-cdr! entry (cons result (cdr entry)))
+		 (set! *assign-rules*
+		       (cons (list (caadr pattern) result)
+			     *assign-rules*)))))
+	  (else
+	   (set! *assign-variable-rules*
+		 (cons result *assign-variable-rules*)))))
   pattern)
+
+(define (lap-generator/match-rtl-instruction rtl)
+  ;; Match a single RTL instruction, returning a thunk to generate the
+  ;; LAP.  This is used in the RTL optimizer at certain points to
+  ;; determine if a rewritten instruction is valid.
+  (if (not (rtl:assign? rtl))
+      (let ((rules (assq (rtl:expression-type rtl) *cgen-rules*)))
+	(and rules (pattern-lookup (cdr rules) rtl)))
+      (let ((rules
+	     (assq (rtl:expression-type (rtl:assign-address rtl))
+		   *assign-rules*)))
+	(or (and rules (pattern-lookup (cdr rules) rtl))
+	    (pattern-lookup *assign-variable-rules* rtl)))))
