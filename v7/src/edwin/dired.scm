@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.128 1992/11/12 18:00:20 cph Exp $
+;;;	$Id: dired.scm,v 1.129 1992/11/16 16:39:12 bal Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -110,6 +110,7 @@ Also:
 (define-key 'dired #\G 'dired-chgrp)
 (define-key 'dired #\O 'dired-chown)
 (define-key 'dired #\q 'dired-quit)
+(define-key 'dired #\K 'dired-krypt-file)
 (define-key 'dired #\c-\] 'dired-abort)
 
 (let-syntax ((define-function-key
@@ -576,3 +577,66 @@ Actions controlled by variables list-directory-brief-switches
       (set-buffer-point! buffer (buffer-start buffer))
       (buffer-not-modified! buffer)
       (pop-up-buffer buffer false))))
+
+;;;; Krypt File
+
+(load-option 'krypt)
+
+(define-command dired-krypt-file
+  "Krypt/unkrypt a file.  If the file ends in KY, assume it is already 
+krypted and unkrypt it.  Otherwise, krypt it."
+  '()
+  (lambda ()
+    (let ((pathname (dired-current-pathname)))
+      (if (and (pathname-type pathname)
+	       (string=? (pathname-type pathname) "KY"))
+	  (dired-decrypt-file pathname)
+	  (dired-encrypt-file pathname)))))
+
+(define (dired-decrypt-file pathname)
+  (let ((the-encrypted-file
+	 (with-input-from-file pathname
+	   (lambda ()
+	     (read-string (char-set)))))
+	(password 
+	 (prompt-for-password "Password: ")))
+    (let ((the-string
+	   (decrypt the-encrypted-file password
+		    (lambda () 
+		      (editor-beep)
+		      (message "krypt: Password error!")
+		      'FAIL)
+		    (lambda (x) 
+		      (editor-beep)
+		      (message "krypt: Checksum error!")
+		      'FAIL))))
+      (if (not (eq? the-string 'FAIL))
+	  (let ((new-name (pathname-new-type pathname false)))
+	    (with-output-to-file new-name
+	      (lambda ()
+		(write-string the-string)))
+	    (delete-file pathname)
+	    (dired-redisplay new-name))))))
+
+(define (dired-encrypt-file pathname)
+  (let ((the-file-string
+	 (with-input-from-file pathname
+	   (lambda ()
+	     (read-string (char-set)))))
+	(password 
+	 (prompt-for-password "Password: ")))
+    (let ((the-encrypted-string
+	   (encrypt the-file-string password)))
+      (let ((new-name 
+	     (pathname-new-type 
+	      pathname
+	      (let ((old-type (pathname-type pathname)))
+		(if (not old-type)
+		    "KY"
+		    (string-append old-type ".KY"))))))
+	(with-output-to-file new-name
+	  (lambda ()
+	    (write-string the-encrypted-string)))
+	(delete-file pathname)
+	(dired-redisplay new-name)))))
+	 
