@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.24 1998/01/03 18:12:52 cph Exp $
+$Id: edextra.scm,v 1.25 1998/01/20 02:35:36 cph Exp $
 
 Copyright (c) 1992-98 Massachusetts Institute of Technology
 
@@ -400,13 +400,6 @@ option the file from the problem set will not be installed.
 (set-variable! repl-error-decision true)
 (set-variable! version-control true)
 (set-variable! trim-versions-without-asking true)
-(let ((variable-bound?
-       (lambda (name)
-	 (string-table-get editor-variables (symbol->string name)))))
-  (if (variable-bound? 'enable-compressed-files)
-      (set-variable! enable-compressed-files false))
-  (if (variable-bound? 'enable-encrypted-files)
-      (set-variable! enable-encrypted-files false)))
 
 (if (eq? 'UNIX microcode-id/operating-system)
     (set-variable!
