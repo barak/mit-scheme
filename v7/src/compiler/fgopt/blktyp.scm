@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.5 1988/11/01 04:50:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.6 1988/11/17 05:18:17 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -68,7 +68,8 @@ MIT in each case. |#
 (define (close-procedure! block)
   (let ((procedure (block-procedure block))
 	(current-parent (block-parent block)))
-    (let ((parent (or (procedure-target-block procedure) current-parent)))
+    (let ((previously-trivial? (procedure/trivial-closure? procedure))
+	  (parent (or (procedure-target-block procedure) current-parent)))
       ;; Note: this should be innocuous if there is already a closure block.
       ;; In particular, if there is a closure block which happens to be a
       ;; reference placed there by the first-class environment transformation
@@ -83,12 +84,18 @@ MIT in each case. |#
 	parent)
        (list-transform-negative (block-free-variables block)
 	 (lambda (lvalue)
-	   (let ((val (lvalue-known-value lvalue)))
-	     (and val
-		  (or (eq? val procedure)
-		      (and (rvalue/procedure? val)
-			   (procedure/trivial-or-virtual? val)))))))
+	   (or (lvalue-integrated? lvalue)
+	       ;; Some of this is redundant
+	       (let ((val (lvalue-known-value lvalue)))
+		 (and val
+		      (or (eq? val procedure)
+			  (and (rvalue/procedure? val)
+			       (procedure/trivial-or-virtual? val))))))))
        '())
+      (if (and previously-trivial?
+	       (not (procedure/trivial-closure? procedure)))
+	  (error "close-procedure! trivial becoming non-trivial"
+		 procedure))
       (set-block-children! current-parent
 			   (delq! block (block-children current-parent)))
       (set-block-disowned-children!
@@ -154,6 +161,8 @@ MIT in each case. |#
 	     (set-block-closure-offsets! block table)
 	     (recvr block size))
 	    ((lvalue-integrated? (car variables))
+	     (error "make-closure-block: Found integrated lvalue"
+		    (car variables))
 	     (loop (cdr variables) offset table size))
 	    (else
 	     (loop (cdr variables)
