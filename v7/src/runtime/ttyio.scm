@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ttyio.scm,v 1.11 1999/02/18 03:54:37 cph Exp $
+$Id: ttyio.scm,v 1.12 1999/02/24 21:36:08 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (set! hook/read-char operation/read-char)
     (set! hook/peek-char operation/peek-char)
     (set! the-console-port-type
-	  (make-i/o-port-type
+	  (make-port-type
 	   `((BEEP ,operation/beep)
 	     (CLEAR ,operation/clear)
 	     (DISCRETIONARY-FLUSH-OUTPUT ,operation/flush-output)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.16 1999/02/16 20:11:34 cph Exp $
+$Id: fileio.scm,v 1.17 1999/02/24 21:36:17 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -33,16 +33,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (PATHNAME ,operation/pathname)
 	   (TRUENAME ,operation/truename))))
     (set! input-file-type
-	  (make-input-port-type (append input-operations
-					other-operations)
-				generic-input-type))
+	  (make-port-type (append input-operations other-operations)
+			  generic-input-type))
     (set! output-file-type
-	  (make-output-port-type other-operations
-				 generic-output-type))
+	  (make-port-type other-operations
+			  generic-output-type))
     (set! i/o-file-type
-	  (make-i/o-port-type (append input-operations
-				      other-operations)
-			      generic-i/o-type)))
+	  (make-port-type (append input-operations other-operations)
+			  generic-i/o-type)))
   unspecific)
 
 (define input-file-type)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.16 1999/02/18 03:54:03 cph Exp $
+$Id: port.scm,v 1.17 1999/02/24 21:36:37 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -345,11 +345,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (make-encapsulated-port port state rewrite-operation)
   (guarantee-port port)
   (%make-port (let ((type (port/type port)))
-		((if (port-type/supports-input? type)
-		     (if (port-type/supports-output? type)
-			 make-i/o-port-type
-			 make-input-port-type)
-		     make-output-port-type)
+		(make-port-type
 		 (append-map
 		  (lambda (entry)
 		    (let ((operation
@@ -364,61 +360,48 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; Constructors
 
-(define (make-input-port type state)
-  (make-port (if (port-type? type) type (make-input-port-type type #f)) state))
-
-(define (make-output-port type state)
-  (make-port (if (port-type? type) type (make-output-port-type type #f))
-	     state))
-
-(define (make-i/o-port type state)
-  (make-port (if (port-type? type) type (make-i/o-port-type type #f)) state))
-
 (define (make-port type state)
   (guarantee-port-type type 'MAKE-PORT)
   (%make-port type state (make-thread-mutex)))
 
-(define (make-input-port-type operations type)
-  (operations->port-type operations type 'MAKE-INPUT-PORT-TYPE #t #f))
-
-(define (make-output-port-type operations type)
-  (operations->port-type operations type 'MAKE-OUTPUT-PORT-TYPE #f #t))
-
-(define (make-i/o-port-type operations type)
-  (operations->port-type operations type 'MAKE-I/O-PORT-TYPE #t #t))
-
-(define (operations->port-type operations type procedure-name input? output?)
+(define (make-port-type operations type)
   (let ((type
 	 (parse-operations-list
 	  (append operations
 		  (if type
 		      (list-transform-negative (port-type/operations type)
 			(let ((ignored
-			       (append (if (assq 'READ-CHAR operations)
-					   '(DISCARD-CHAR
-					     DISCARD-CHARS
-					     PEEK-CHAR
-					     READ-CHAR
-					     READ-STRING
-					     READ-SUBSTRING)
-					   '())
-				       (if (assq 'WRITE-CHAR operations)
-					   '(WRITE-CHAR
-					     WRITE-SUBSTRING)
-					   '()))))
+			       (append
+				(if (assq 'READ-CHAR operations)
+				    '(DISCARD-CHAR
+				      DISCARD-CHARS
+				      PEEK-CHAR
+				      READ-CHAR
+				      READ-STRING
+				      READ-SUBSTRING)
+				    '())
+				(if (or (assq 'WRITE-CHAR operations)
+					(assq 'WRITE-SUBSTRING operations))
+				    '(WRITE-CHAR
+				      WRITE-SUBSTRING)
+				    '()))))
 			  (lambda (entry)
 			    (or (assq (car entry) operations)
 				(memq (car entry) ignored)))))
 		      '()))
-	  procedure-name)))
-    (install-operations! type input?
-			 input-operation-names
-			 input-operation-modifiers
-			 input-operation-defaults)
-    (install-operations! type output?
-			 output-operation-names
-			 output-operation-modifiers
-			 output-operation-defaults)
+	  'MAKE-PORT-TYPE)))
+    (let ((operations (port-type/operations type)))
+      (install-operations! type
+			   (assq 'READ-CHAR operations)
+			   input-operation-names
+			   input-operation-modifiers
+			   input-operation-defaults)
+      (install-operations! type
+			   (or (assq 'WRITE-CHAR operations)
+			       (assq 'WRITE-SUBSTRING operations))
+			   output-operation-names
+			   output-operation-modifiers
+			   output-operation-defaults))
     type))
 
 (define (parse-operations-list operations procedure)
@@ -718,3 +701,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define output-port/state port/state)
 (define set-input-port/state! set-port/state!)
 (define set-output-port/state! set-port/state!)
+
+(define (make-input-port type state)
+  (make-port (if (port-type? type) type (make-port-type type #f)) state))
+
+(define make-output-port make-input-port)
+(define make-i/o-port make-input-port)

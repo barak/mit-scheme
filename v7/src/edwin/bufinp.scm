@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: bufinp.scm,v 1.7 1999/02/18 04:14:41 cph Exp $
+;;;$Id: bufinp.scm,v 1.8 1999/02/24 21:35:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -123,11 +123,11 @@
 		(buffer-input-port-state/current-index state)))))
 
 (define buffer-input-port-type
-  (make-input-port-type `((CHAR-READY? ,operation/char-ready?)
-			  (DISCARD-CHAR ,operation/discard-char)
-			  (DISCARD-CHARS ,operation/discard-chars)
-			  (PEEK-CHAR ,operation/peek-char)
-			  (PRINT-SELF ,operation/print-self)
-			  (READ-CHAR ,operation/read-char)
-			  (READ-STRING ,operation/read-string))
-			#f))
+  (make-port-type `((CHAR-READY? ,operation/char-ready?)
+		    (DISCARD-CHAR ,operation/discard-char)
+		    (DISCARD-CHARS ,operation/discard-chars)
+		    (PEEK-CHAR ,operation/peek-char)
+		    (PRINT-SELF ,operation/print-self)
+		    (READ-CHAR ,operation/read-char)
+		    (READ-STRING ,operation/read-string))
+		  #f))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strnin.scm,v 14.7 1999/02/18 04:14:22 cph Exp $
+$Id: strnin.scm,v 14.8 1999/02/24 21:36:21 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -26,14 +26,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (initialize-package!)
   (set! input-string-port-type
-	(make-input-port-type `((CHAR-READY? ,operation/char-ready?)
-				(DISCARD-CHAR ,operation/discard-char)
-				(DISCARD-CHARS ,operation/discard-chars)
-				(PEEK-CHAR ,operation/peek-char)
-				(WRITE-SELF ,operation/write-self)
-				(READ-CHAR ,operation/read-char)
-				(READ-STRING ,operation/read-string))
-			      #f))
+	(make-port-type `((CHAR-READY? ,operation/char-ready?)
+			  (DISCARD-CHAR ,operation/discard-char)
+			  (DISCARD-CHARS ,operation/discard-chars)
+			  (PEEK-CHAR ,operation/peek-char)
+			  (WRITE-SELF ,operation/write-self)
+			  (READ-CHAR ,operation/read-char)
+			  (READ-STRING ,operation/read-string))
+			#f))
   unspecific)
 
 (define (with-input-from-string string thunk)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strott.scm,v 14.8 1999/02/18 04:14:19 cph Exp $
+$Id: strott.scm,v 14.9 1999/02/24 21:36:25 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -26,10 +26,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (initialize-package!)
   (set! output-string-port-type
-	(make-output-port-type `((WRITE-SELF ,operation/write-self)
-				 (WRITE-CHAR ,operation/write-char)
-				 (WRITE-SUBSTRING ,operation/write-substring))
-			       #f)))
+	(make-port-type `((WRITE-SELF ,operation/write-self)
+			  (WRITE-CHAR ,operation/write-char)
+			  (WRITE-SUBSTRING ,operation/write-substring))
+			#f)))
 
 (define (with-output-to-truncated-string max thunk)
   (call-with-current-continuation

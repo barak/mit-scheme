@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.25 1999/02/16 20:30:54 cph Exp $
+$Id: emacs.scm,v 14.26 1999/02/24 21:36:13 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -209,7 +209,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (initialize-package!)
   (set! emacs-console-port
-	(make-port (make-i/o-port-type
+	(make-port (make-port-type
 		    `((PROMPT-FOR-EXPRESSION ,emacs/prompt-for-expression)
 		      (PROMPT-FOR-COMMAND-CHAR ,emacs/prompt-for-command-char)
 		      (PROMPT-FOR-COMMAND-EXPRESSION

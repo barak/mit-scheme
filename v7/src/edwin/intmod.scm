@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: intmod.scm,v 1.97 1999/02/18 04:05:22 cph Exp $
+;;; $Id: intmod.scm,v 1.98 1999/02/24 21:35:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -1052,7 +1052,7 @@ If this is an error, the debugger examines the error condition."
       #t)))
 
 (define interface-port-type
-  (make-i/o-port-type
+  (make-port-type
    `((WRITE-CHAR ,operation/write-char)
      (WRITE-SUBSTRING ,operation/write-substring)
      (FRESH-LINE ,operation/fresh-line)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.14 1999/02/16 20:11:38 cph Exp $
+$Id: genio.scm,v 1.15 1999/02/24 21:36:33 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -64,18 +64,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 `((CLOSE ,operation/close)
 	   (WRITE-SELF ,operation/write-self))))
     (set! generic-input-type
-	  (make-input-port-type (append input-operations
-					other-operations)
-				#f))
+	  (make-port-type (append input-operations
+				  other-operations)
+			  #f))
     (set! generic-output-type
-	  (make-output-port-type (append output-operations
-					 other-operations)
-				 #f))
+	  (make-port-type (append output-operations
+				  other-operations)
+			  #f))
     (set! generic-i/o-type
-	  (make-i/o-port-type (append input-operations
-				      output-operations
-				      other-operations)
-			      #f)))
+	  (make-port-type (append input-operations
+				  output-operations
+				  other-operations)
+			  #f)))
   unspecific)
 
 (define generic-input-type)

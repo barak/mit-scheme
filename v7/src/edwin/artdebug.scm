@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: artdebug.scm,v 1.27 1999/02/16 20:12:15 cph Exp $
+;;; $Id: artdebug.scm,v 1.28 1999/02/24 21:35:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -1346,7 +1346,7 @@ Prefix argument means do not kill the debugger buffer."
   (prompt-for-confirmation? prompt))
 
 (define interface-port-type
-  (make-output-port-type
+  (make-port-type
    `((WRITE-CHAR ,operation/write-char)
      (WRITE-SUBSTRING ,operation/write-substring)
      (FRESH-LINE ,operation/fresh-line)

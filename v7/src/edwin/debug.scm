@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debug.scm,v 1.47 1999/02/16 20:12:04 cph Exp $
+;;; $Id: debug.scm,v 1.48 1999/02/24 21:36:02 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
 ;;;
@@ -1895,7 +1895,7 @@ once it has been renamed, it will not be deleted automatically.")
   (prompt-for-expression prompt))
 
 (define interface-port-type
-  (make-output-port-type
+  (make-port-type
    `((WRITE-CHAR ,operation/write-char)
      (PROMPT-FOR-CONFIRMATION ,operation/prompt-for-confirmation)
      (PROMPT-FOR-EXPRESSION ,operation/prompt-for-expression))

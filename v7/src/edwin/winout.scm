@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: winout.scm,v 1.12 1999/02/16 20:12:09 cph Exp $
+;;;$Id: winout.scm,v 1.13 1999/02/24 21:35:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -97,10 +97,10 @@
   (unparse-object state (port/state port)))
 
 (define window-output-port-type
-  (make-output-port-type `((FLUSH-OUTPUT ,operation/flush-output)
-			   (FRESH-LINE ,operation/fresh-line)
-			   (PRINT-SELF ,operation/print-self)
-			   (WRITE-CHAR ,operation/write-char)
-			   (WRITE-SUBSTRING ,operation/write-substring)
-			   (X-SIZE ,operation/x-size))
-			 #f))
+  (make-port-type `((FLUSH-OUTPUT ,operation/flush-output)
+		    (FRESH-LINE ,operation/fresh-line)
+		    (PRINT-SELF ,operation/print-self)
+		    (WRITE-CHAR ,operation/write-char)
+		    (WRITE-SUBSTRING ,operation/write-substring)
+		    (X-SIZE ,operation/x-size))
+		  #f))
