@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: blowfish.scm,v 1.1 1997/06/09 07:43:58 cph Exp $
+$Id: blowfish.scm,v 1.2 1997/06/09 08:08:00 cph Exp $
 
 Copyright (c) 1997 Massachusetts Institute of Technology
 
@@ -43,6 +43,10 @@ MIT in each case. |#
   (blowfish-cbc 4)
   (blowfish-cfb64 5))
 
+(define (blowfish-available?)
+  (and (implemented-primitive-procedure? md5)
+       (implemented-primitive-procedure? blowfish-set-key)))
+
 (define (blowfish-encrypt-string plaintext key-string encrypt?)
   (blowfish-cfb64 plaintext
 		  (blowfish-set-key (md5 key-string))
@@ -69,24 +73,13 @@ MIT in each case. |#
 			    output)
 	      (loop (fix:and #x7 (fix:+ m (fix:and #x7 n))))))))))
 
-(define (blowfish-encrypt-file input-file output-file key-string encrypt?
-			       text?)
-  ((if (and text? encrypt?)
-       call-with-input-file
-       call-with-binary-input-file)
-   input-file
-   (lambda (input)
-     ((if (and text? (not encrypt?))
-	  call-with-output-file
-	  call-with-binary-output-file)
-      output-file
-      (lambda (output)
-	(let ((header "Blowfish, 16 rounds"))
-	  (if encrypt?
-	      (begin
-		(write-string header output)
-		(newline output))
-	      (if (not (string=? (read-line input) header))
-		  (error:bad-range-argument input-file
-					    'BLOWFISH-ENCRYPT-FILE))))
-	(blowfish-encrypt-port input output key-string encrypt?))))))
+(define (write-blowfish-file-header port)
+  (write-string blowfish-file-header port)
+  (newline port))
+
+(define (read-blowfish-file-header port)
+  (if (not (string=? (read-line port) blowfish-file-header))
+      (error "Not a Blowfish file:" port)))
+
+(define blowfish-file-header
+  "Blowfish, 16 rounds")
