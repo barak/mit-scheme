@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.37 1991/05/10 04:54:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.38 1991/05/15 21:21:12 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -607,7 +607,8 @@ MIT in each case. |#
   (files "debug")
   (parent (edwin))
   (export (edwin)
-	  debug-scheme-error)
+	  debug-scheme-error
+	  edwin-variable$continuation-browser-output-style)
   (import (runtime debugger)
 	  command/condition-report
 	  command/condition-restart

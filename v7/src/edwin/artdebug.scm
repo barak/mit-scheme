@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.5 1991/05/06 00:54:58 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.6 1991/05/15 21:20:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -117,13 +117,38 @@ The error that started the debugger is:
 		 (standard-output buffer (lambda () (thunk) (newline))))))
     (thunk)))
 
+(define-variable continuation-browser-output-style
+  "Controls the style used for output from the continuation browser:
+'DISCARD means keep only output from most recent command; all other values
+  keep all output.
+'NARROW means highlight most recent output by narrowing to it.
+'JUSTIFY means highlight most recent output by putting it at window top.
+anything else means don't highlight most recent output at all."
+  'JUSTIFY)
+
 (define (standard-output buffer thunk)
-  (set-buffer-writeable! buffer)
-  (region-delete! (buffer-region buffer))
-  (with-output-to-mark (buffer-point buffer) thunk)
-  (buffer-not-modified! buffer)
-  (set-buffer-read-only! buffer)
-  (set-buffer-point! buffer (buffer-start buffer)))
+  (let ((output-style (ref-variable continuation-browser-output-style))
+	(end (buffer-end buffer)))
+    (set-buffer-writeable! buffer)
+    (widen end)
+    (cond ((eq? 'DISCARD output-style)
+	   (region-delete! (buffer-region buffer)))
+	  ((not (group-start? end))
+	   (guarantee-newlines 3 end)))
+    (let ((start (mark-right-inserting-copy end)))
+      (with-output-to-mark end thunk)
+      (guarantee-newline end)
+      (mark-temporary! start)
+      (buffer-not-modified! buffer)
+      (set-buffer-read-only! buffer)
+      (set-buffer-point! buffer start)
+      (case output-style
+	((NARROW)
+	 (narrow-to-region start end))
+	((JUSTIFY)
+	 (for-each (lambda (window)
+		     (set-window-start-mark! window start true))
+		   (buffer-windows buffer)))))))
 
 (define (setup-buffer-environment! buffer)
   (set-variable!
@@ -247,6 +272,7 @@ Prompts for a value to give the continuation as an argument."
 \\[continuation-browser-goto] Goes to an arbitrary subproblem.
 \\[continuation-browser-summarize-subproblems] prints a summary (History) of all subproblems.
 \\[continuation-browser-condition-report] prints the error message Info.
+\\[continuation-browser-condition-restart] continues the program using a standard restart option.
 \\[continuation-browser-print-expression] pretty prints the current expression.
 \\[continuation-browser-print-environment-procedure] pretty prints the procedure that created the current environment.
 \\[continuation-browser-move-to-parent-environment] moves to the environment that is the Parent of the current environment.
@@ -268,6 +294,7 @@ Prompts for a value to give the continuation as an argument."
 (define-key 'continuation-browser #\h
   'continuation-browser-summarize-subproblems)
 (define-key 'continuation-browser #\i 'continuation-browser-condition-report)
+(define-key 'continuation-browser #\k 'continuation-browser-condition-restart)
 (define-key 'continuation-browser #\l 'continuation-browser-print-expression)
 (define-key 'continuation-browser #\o
   'continuation-browser-print-environment-procedure)
