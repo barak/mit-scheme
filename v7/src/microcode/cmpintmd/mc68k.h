@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.12 1990/04/12 22:45:55 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.13 1990/04/23 02:35:49 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -81,6 +81,31 @@ procedures and continuations differ from closures) */
 
 #define ENTRY_SKIPPED_CHECK_OFFSET 	4
 #define CLOSURE_SKIPPED_CHECK_OFFSET 	10
+
+   Note that it is needed for environment only, not for code.
+   The closure code does an
+   ADDI.L	&magic-constant,(SP)
+   on entry, to bump the current entry point (after the JSR instruction)
+   to the correct place.
+   This code emulates that operation by extracting the magic constant
+   from the closure code, and adjusting the address by 6 as if the
+   JSR instruction had just been executed.
+   It is used when interrupts are disabled, in order not to get into a loop.
+   Note that if closure entry points were always longword-aligned, there
+   would be no need for this nonsense.
+extern void EXFUN (flush_i_cache, (void));
+extdo {									\
+  long magic_constant;							\
+									\
+#define ADJUST_CLOSURE_AT_CALL(entry_point, location)			\
+  (location) = ((SCHEME_OBJECT)						\
+		((((long) (OBJECT_ADDRESS (location))) + 6) +		\
+		 magic_constant));					\
+} while (0)
+
+/* Manifest closure entry block size. 
+   Size in bytes of a compiled closure's header excluding the
+   TC_MANIFEST_CLOSURE header.
 
    On the 68k, this is the format word and gc offset word and 6 bytes
    more for the jsr instruction.  
@@ -260,7 +285,6 @@ mc68k_reset_hook ()
   SETUP_REGISTER (asm_primitive_error);			/* 35 */
   SETUP_REGISTER (asm_allocate_closure);		/* 36 */
 
-  SETUP_REGISTER (asm_interrupt_multiclosure);		/* 35 */
 
 #define CLOSURE_ENTRY_WORDS						\
   (COMPILED_CLOSURE_ENTRY_SIZE / (sizeof (SCHEME_OBJECT)))
