@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.53 1994/12/19 19:38:30 cph Exp $
+$Id: decls.scm,v 1.54 1995/02/14 00:29:58 cph Exp $
 
-Copyright (c) 1989-94 Massachusetts Institute of Technology
+Copyright (c) 1989-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -139,6 +139,7 @@ MIT in each case. |#
 		"debug"
 		"debuge"
 		"dired"
+		"diros2"
 		"dirunx"
 		"docstr"
 		"dos"

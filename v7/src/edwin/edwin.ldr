@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.53 1995/01/06 01:03:24 cph Exp $
+$Id: edwin.ldr,v 1.54 1995/02/14 00:30:37 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -203,8 +203,9 @@ MIT in each case. |#
 
 	(let ((env (->environment '(EDWIN DIRED))))
 	  (load "dired" env)
-	  (if (eq? (lookup 'OS-TYPE) 'unix)
-	      (load "dirunx" env)))
+	  (case (lookup 'OS-TYPE)
+	    ((UNIX) (load "dirunx" env))
+	    ((OS/2) (load "diros2" env))))
 
 	(load "argred" (->environment '(EDWIN COMMAND-ARGUMENT)))
 	(load "autold" environment)

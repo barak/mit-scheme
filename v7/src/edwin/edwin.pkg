@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.162 1995/02/08 01:20:55 cph Exp $
+$Id: edwin.pkg,v 1.163 1995/02/14 00:30:44 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -1156,6 +1156,11 @@ MIT in each case. |#
   (extend-package (edwin)
     (files "os2"))
 
+  (extend-package (edwin dired)
+    (files "diros2")
+    (export (edwin)
+	    edwin-command$dired-do-compress))
+
   (extend-package (edwin process)
     (files "process"))
 
@@ -1183,11 +1188,6 @@ MIT in each case. |#
 	    screen-pel-width
 	    screen-pel-height)
     (import (runtime os2-window-primitives)
-	    bbo_and
-	    bbo_ignore
-	    bbo_no_color_info
-	    bbo_or
-	    bbo_pal_colors
 	    button-event-type:down
 	    button-event/number
 	    button-event/type
@@ -1215,20 +1215,9 @@ MIT in each case. |#
 	    key-event/flags
 	    key-event/repeat
 	    number-of-event-types
-	    os2ps-bitblt
 	    os2ps-clear
-	    os2ps-close-bitmap
-	    os2ps-line
-	    os2ps-move-graphics-cursor
-	    os2ps-open-bitmap
-	    os2ps-poly-line
-	    os2ps-poly-line-disjoint
-	    os2ps-query-capabilities
-	    os2ps-query-capability
 	    os2ps-set-colors
 	    os2ps-set-font
-	    os2ps-set-line-type
-	    os2ps-set-mix
 	    os2ps-write
 	    os2win-activate
 	    os2win-beep
@@ -1263,21 +1252,6 @@ MIT in each case. |#
 	    paint-event/yl
 	    resize-event/height
 	    resize-event/width
-	    rop_dstinvert
-	    rop_mergecopy
-	    rop_mergepaint
-	    rop_notsrccopy
-	    rop_notsrcerase
-	    rop_one
-	    rop_patcopy
-	    rop_patinvert
-	    rop_patpaint
-	    rop_srcand
-	    rop_srccopy
-	    rop_srcerase
-	    rop_srcinvert
-	    rop_srcpaint
-	    rop_zero
 	    virtual-key-supremum
 	    visibility-event/shown?
 	    vk_backspace

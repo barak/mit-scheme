@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dirunx.scm,v 1.9 1995/01/31 21:38:17 cph Exp $
+;;;	$Id: dirunx.scm,v 1.10 1995/02/14 00:30:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ;;;
@@ -42,8 +42,8 @@
 ;;; of that license should have been included along with this file.
 ;;;
 
-;;;; Directory Editor
-;; package: (edwin dired)
+;;;; Directory Editor (Unix Customizations)
+;;; package: (edwin dired)
 
 (declare (usual-integrations))
 
@@ -105,24 +105,3 @@ The files are compressed or uncompressed using gzip."
 		      lstart))))))))
       (if (positive? n)
 	  (message "Compressed or uncompressed " n " files.")))))
-
-(define (dired-change-files verb argument procedure)
-  (let ((filenames
-	 (if argument
-	     (dired-next-files (command-argument-value argument))
-	     (let ((files (dired-marked-files)))
-	       (if (null? files)
-		   (dired-next-files 1)
-		   files)))))
-    (if (null? filenames)
-	(message "No files to " verb ".")
-	(begin
-	  (for-each (lambda (filename)
-		      (set-cdr! filename
-				(mark-right-inserting-copy (cdr filename))))
-		    filenames)
-	  (for-each (lambda (filename)
-		      (procedure (car filename) (cdr filename))
-		      (mark-temporary! (cdr filename)))
-		    filenames)))
-    (length filenames)))

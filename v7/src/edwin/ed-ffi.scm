@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.36 1994/12/19 19:38:44 cph Exp $
+$Id: ed-ffi.scm,v 1.37 1995/02/14 00:30:28 cph Exp $
 
-Copyright (c) 1990-94 Massachusetts Institute of Technology
+Copyright (c) 1990-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -110,6 +110,8 @@ of that license should have been included along with this file.
     ("debuge"  (edwin)
 	       edwin-syntax-table)
     ("dired"   (edwin dired)
+	       edwin-syntax-table)
+    ("diros2"  (edwin dired)
 	       edwin-syntax-table)
     ("dirunx"  (edwin dired)
 	       edwin-syntax-table)
