@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.23 1999/05/08 02:31:50 cph Exp $
+$Id: string.scm,v 14.24 1999/06/10 16:27:56 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -676,7 +676,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(let loop ((tstart tstart))
 	  (let ((tstart
 		 (let find-leader ((tstart tstart))
-		   (and (fix:< tstart tend)
+		   (and (fix:<= tstart tend)
 			(if (char=? leader (string-ref text tstart))
 			    tstart
 			    (find-leader (fix:+ tstart 1)))))))
