@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.16 1991/05/05 17:14:12 jinx Exp $
+$Id: closan.scm,v 4.17 1998/12/04 07:10:28 cph Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -289,13 +289,16 @@ MIT in each case. |#
      (let ((block* (procedure-block procedure*)))
        (for-each
 	(lambda (block**)
-	  (if (not (block-ancestor-or-self? block* block**))
-	      (undrifting-constraint!
-	       block*
-	       (if (original-block-ancestor? block** block)
-		   block
-		   block**)
-	       savedproc reason1 reason2)))
+	  ;; Don't constrain the caller to be any lower than BLOCK.
+	  ;; If BLOCK** is a descendant of BLOCK, it will impose a
+	  ;; separate constraint in GUARANTEE-CONNECTIVITY!.
+	  (let ((block**
+		 (if (original-block-ancestor? block** block)
+		     block
+		     block**)))
+	    (if (not (block-ancestor-or-self? block* block**))
+		(undrifting-constraint! block* block**
+					savedproc reason1 reason2))))
 	(map->eq-set
 	 variable-block
 	 (cdr (or (assq procedure (procedure-free-callees procedure*))
@@ -336,6 +339,8 @@ MIT in each case. |#
   ;; Undrift `block' so it is a descendant of `block*' in order not
   ;; to close `procedure' for <`reason1',`reason2'>
   ;; If `procedure' is false, undrift unconditionally
+  (if (block-ancestor? block block*)
+      (error "Attempt to undrift block below an ancestor:" block block*))
   (if (or (not procedure)
 	  (and (not (procedure-closure-context procedure))
 	       (not (procedure/trivial-closure? procedure))))
