@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.25 1992/05/23 01:12:47 jinx Exp $
+$Id: savres.scm,v 14.26 1992/11/12 03:25:40 gjr Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -56,6 +56,7 @@ MIT in each case. |#
 
 (define disk-save)
 (define dump-world)
+(define *within-restore-window?* false)
 
 (define (setup-image save-image)
   (lambda (filename #!optional identify)
@@ -70,7 +71,8 @@ MIT in each case. |#
 	 (if (string? identify) unspecific false))
        (lambda ()
 	 (set! time-world-saved time)
-	 (event-distributor/invoke! event:after-restore)
+	 (fluid-let ((*within-restore-window?* true))
+	   (event-distributor/invoke! event:after-restore))
 	 (start-thread-timer)
 	 (cond ((string? identify)
 		(set! world-identification identify)

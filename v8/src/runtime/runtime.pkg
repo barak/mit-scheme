@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.162 1992/11/05 00:22:57 jinx Exp $
+$Id: runtime.pkg,v 14.163 1992/11/12 03:25:33 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -1810,6 +1810,8 @@ MIT in each case. |#
 	  disk-save
 	  dump-world
 	  identify-world)
+  (export (runtime user-interface)
+	  *within-restore-window?*)
   (initialization (initialize-package!)))
 
 (define-package (runtime scode)

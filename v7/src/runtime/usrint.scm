@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/usrint.scm,v 1.2 1992/06/01 22:23:16 cph Exp $
+$Id: usrint.scm,v 1.3 1992/11/12 03:25:49 gjr Exp $
 
-Copyright (c) 1991-92 Massachusetts Institute of Technology
+Copyright (c) 1991-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -216,12 +216,12 @@ MIT in each case. |#
 
 (define (port/gc-start port)
   (let ((operation (port/operation port 'GC-START)))
-    (if operation
+    (if (and operation (not *within-restore-window?*))
 	(operation port))))
 
 (define (port/gc-finish port)
   (let ((operation (port/operation port 'GC-FINISH)))
-    (if operation
+    (if (and operation (not *within-restore-window?*))
 	(operation port))))
 
 (define (port/read-start port)
