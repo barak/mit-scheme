@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 15.18 1992/09/14 23:14:05 cph Exp $
+$Id: make.scm,v 15.19 1992/09/14 23:18:10 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -39,7 +39,7 @@ MIT in each case. |#
 (package/system-loader "6001" '() 'QUERY)
 (load '("edextra" "floppy") (->environment '(edwin)))
 ((access initialize-package! (->environment '(student scode-rewriting))))
-(add-system! (make-system "6.001" 15 17 '()))
+(add-system! (make-system "6.001" 15 19 '()))
 
 ;;; Customize the runtime system:
 (set! repl:allow-restart-notifications? false)
@@ -54,5 +54,9 @@ MIT in each case. |#
       false)
 (set! hook/exit (lambda (integer) integer (warn "EXIT has been disabled.")))
 (set! hook/quit (lambda () (warn "QUIT has been disabled.")))
+(set! user-initial-environment (->environment '(student)))
+
+(in-package (->environment '(student))
+  (define nil #f))
 
 (ge '(student))
