@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.16 1987/05/07 00:26:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.17 1987/05/18 22:47:25 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -65,10 +65,10 @@ MIT in each case. |#
     (make-environment
       (define :name "Liar (Bobcat 68020)")
       (define :version 1)
-      (define :modification 16)
+      (define :modification 17)
       (define :files)
 
-;      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.16 1987/05/07 00:26:03 cph Exp $"
+;      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.17 1987/05/18 22:47:25 cph Exp $"
 ;	(lambda (filename version date time author state)
 ;	  (set! :version (car version))
 ;	  (set! :modification (cadr version))))
@@ -128,7 +128,6 @@ MIT in each case. |#
 
 	 (cons rtl-cse-package
 	       '("front-end/rcse.bin"	;RTL common subexpression eliminator
-		 "front-end/rcseep.bin"	;CSE expression predicates
 		 "front-end/rcseht.bin"	;CSE hash table
 		 "front-end/rcsesa.bin"	;CSE state abstraction
 		 "front-end/rcserq.bin"	;CSE register/quantity abstractions
