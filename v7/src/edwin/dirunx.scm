@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dirunx.scm,v 1.4 1994/08/04 08:49:16 cph Exp $
+;;;	$Id: dirunx.scm,v 1.5 1994/09/14 20:43:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -85,9 +85,10 @@ The files are compressed or uncompressed using gzip."
 		 (let ((type (pathname-type pathname))
 		       (namestring (->namestring pathname)))
 		   (let ((decompress?
-			  (or (string=? "gz" type)
-			      (string=? "z" type)
-			      (string=? "Z" type))))
+			  (and (string? type)
+			       (or (string=? "gz" type)
+				   (string=? "z" type)
+				   (string=? "Z" type)))))
 		     (message (if decompress? "Unc" "C")
 			      "ompressing file `"
 			      namestring
