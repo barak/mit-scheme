@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.92 2000/07/21 17:59:22 cph Exp $
+@comment $Id: scheme.texinfo,v 1.93 2000/09/05 00:10:45 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -44,9 +44,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.92
+@subtitle Edition 1.93
 @subtitle for Scheme Release 7.5
-@subtitle 21 July 2000
+@subtitle 4 September 2000
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -2200,8 +2200,8 @@ The two notations are equivalent in all respects.
 'a                                      @result{}  a
 '#(a b c)                               @result{}  #(a b c)
 '(+ 1 2)                                @result{}  (+ 1 2)
-'(quote a)                              @result{}  'a
-''a                                     @result{}  'a
+'(quote a)                              @result{}  (quote a)
+''a                                     @result{}  (quote a)
 @end group
 @end example
 
