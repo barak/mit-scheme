@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.55 1991/05/05 00:45:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.56 1991/09/07 22:46:37 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -45,6 +45,7 @@ MIT in each case. */
 #define In_Fasdump
 #include "bchgcc.h"
 #include "fasl.h"
+#include "ux.h"
 
 static Tchannel dump_channel;
 
@@ -58,16 +59,16 @@ static Tchannel dump_channel;
 #include "dump.c"
 
 extern SCHEME_OBJECT
-  dump_renumber_primitive (),
-  *initialize_primitive_table (),
-  *cons_primitive_table (),
-  *cons_whole_primitive_table ();
+  EXFUN (dump_renumber_primitive, (SCHEME_OBJECT)),
+  * EXFUN (initialize_primitive_table, (SCHEME_OBJECT *, SCHEME_OBJECT *)),
+  * EXFUN (cons_primitive_table, (SCHEME_OBJECT *, SCHEME_OBJECT *, long *)),
+  * EXFUN (cons_whole_primitive_table, (SCHEME_OBJECT *, SCHEME_OBJECT *, long *));
 
 static char *dump_file_name;
 static int real_gc_file, dump_file;
 static SCHEME_OBJECT *saved_free;
-static SCHEME_OBJECT fixup_buffer[GC_DISK_BUFFER_SIZE];
-static SCHEME_OBJECT *fixup_buffer_end = &fixup_buffer[GC_DISK_BUFFER_SIZE];
+static SCHEME_OBJECT *fixup_buffer = ((SCHEME_OBJECT *) NULL);
+static SCHEME_OBJECT *fixup_buffer_end;
 static SCHEME_OBJECT *fixup;
 static fixup_count = 0;
 static Boolean compiled_code_present_p;
@@ -226,14 +227,14 @@ DEFUN (fasdump_exit, (length), long length)
 
 #if true
   {
-    extern int ftruncate ();
+    extern int EXFUN (ftruncate, (int, unsigned long));
 
     ftruncate (dump_file, length);
     result = ((close (dump_file)) == 0);
   }
 #else
   {
-    extern int truncate ();
+    extern int EXFUN (truncate, (const char *, unsigned long));
 
     result = (close (dump_file) == 0);
     truncate (dump_file_name, length);
@@ -242,7 +243,7 @@ DEFUN (fasdump_exit, (length), long length)
 
   if (length == 0)
   {
-    extern int unlink ();
+    extern int EXFUN (unlink, (const char *));
 
     (void) (unlink (dump_file_name));
   }
@@ -260,9 +261,10 @@ next_buffer:
 
   if (fixup_count >= 0)
   {
-    if (((lseek (real_gc_file, (fixup_count * GC_BUFFER_BYTES), 0)) == -1) ||
-	((read (real_gc_file, fixup_buffer, GC_BUFFER_BYTES)) !=
-	 GC_BUFFER_BYTES))
+    if (((lseek (real_gc_file, (fixup_count << gc_buffer_byte_shift), 0))
+	 == -1)
+	|| ((read (real_gc_file, ((char *) fixup_buffer), gc_buffer_bytes))
+	    != gc_buffer_bytes))
     {
       gc_death (TERM_EXIT,
 		"fasdump: Could not read back the fasdump fixup information",
@@ -283,8 +285,10 @@ Boolean
 DEFUN_VOID (reset_fixes)
 {
   fixup_count += 1;
-  if (((lseek (real_gc_file, (fixup_count * GC_BUFFER_BYTES), 0)) == -1) ||
-      ((write (real_gc_file, fixup_buffer, GC_BUFFER_BYTES)) != GC_BUFFER_BYTES))
+  if (((lseek (real_gc_file, (fixup_count << gc_buffer_byte_shift), 0))
+       == -1)
+      || ((write (real_gc_file, ((char *) fixup_buffer), gc_buffer_bytes))
+	  != gc_buffer_bytes))
   {
     return (false);
   }
@@ -354,10 +358,9 @@ DEFUN (dumploop, (Scan, To_ptr, To_Address_ptr),
 
 	  /* The + & -1 are here because of the Scan++ in the for header. */
 	  overflow = ((Scan - scan_buffer_top) + 1);
-	  Scan = (((dump_and_reload_scan_buffer ((overflow /
-						  GC_DISK_BUFFER_SIZE),
+	  Scan = (((dump_and_reload_scan_buffer ((overflow >> gc_buffer_shift),
 						 &success)) +
-		   (overflow % GC_DISK_BUFFER_SIZE)) - 1);
+		   (overflow & gc_buffer_mask)) - 1);
 	  if (!success)
 	  {
 	    return (PRIM_INTERRUPT);
@@ -403,7 +406,7 @@ DEFUN (dumploop, (Scan, To_ptr, To_Address_ptr),
 	      {
 		/* We stopped because we needed to relocate too many. */
 		Scan = (dump_and_reload_scan_buffer (0, NULL));
-		max_here = GC_DISK_BUFFER_SIZE;
+		max_here = gc_buffer_size;
 	      }
 	    }
 	    /* The + & -1 are here because of the Scan++ in the for header. */
@@ -436,7 +439,7 @@ DEFUN (dumploop, (Scan, To_ptr, To_Address_ptr),
 		fasdump_linked_operator ();
 		next_ptr = ((char *)
 			    (end_scan_buffer_extension ((char *) next_ptr)));
-		overflow -= GC_DISK_BUFFER_SIZE;
+		overflow -= gc_buffer_size;
 	      }
 	      else
 	      {
@@ -605,7 +608,9 @@ DEFUN (dumploop, (Scan, To_ptr, To_Address_ptr),
 
       }
   }
+
 end_dumploop:
+
   *To_ptr = To;
   *To_Address_ptr = To_Address;
   return (PRIM_DONE);
@@ -621,6 +626,14 @@ DEFUN (dump_to_file, (root, fname),
   SCHEME_OBJECT *dumped_object, *free_buffer, *dummy;
   SCHEME_OBJECT *table_start, *table_end, *table_top;
   SCHEME_OBJECT header[FASL_HEADER_LENGTH];
+
+  if (fixup_buffer == ((SCHEME_OBJECT *) NULL))
+  {
+    fixup_buffer = ((SCHEME_OBJECT *) (malloc (gc_buffer_bytes)));
+    if (fixup_buffer == ((SCHEME_OBJECT *) NULL))
+      error_system_call (errno, syscall_malloc);
+    fixup_buffer_end = (fixup_buffer + gc_buffer_size);
+  }
 
   dump_file_name = fname;
   dump_file = (open (dump_file_name, GC_FILE_FLAGS, 0666));
@@ -642,10 +655,6 @@ DEFUN (dump_to_file, (root, fname),
     fasdump_exit (0);
     Primitive_GC (table_start - saved_free);
   }
-
-#if (GC_DISK_BUFFER_SIZE <= FASL_HEADER_LENGTH)
-#  include "error in bchdmp.c: FASL_HEADER_LENGTH too large"
-#endif
 
   free_buffer = (initialize_free_buffer ());
   Free = ((SCHEME_OBJECT *) NULL);
@@ -748,7 +757,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
   }
   else
   {
-    extern char *mktemp ();
+    extern char * EXFUN (mktemp, (char *));
     extern int EXFUN (OS_channel_copy,
 		      (off_t source_length,
 		       Tchannel source_channel,
