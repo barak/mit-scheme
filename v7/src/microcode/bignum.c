@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 5.2 1986/12/17 05:58:31 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 5.3 1986/12/17 18:26:45 cph Exp $
 
 This file contains the procedures for handling BIGNUM Arithmetic. */
 
@@ -141,8 +141,8 @@ Built_In_Primitive (Prim_Big_To_Fix, 1, "BIG->FIX")
 }
 
 Pointer
-Big_To_Fix (bignum)
-     Pointer bignum;
+Big_To_Fix (bignum_object)
+     Pointer bignum_object;
 {
   fast bigdigit *bptr, *scan;
   fast long result, i;
@@ -152,7 +152,7 @@ Big_To_Fix (bignum)
     return (bignum_object);
   bptr = BIGNUM (Get_Pointer (bignum_object));
   Length = LEN (bptr);
-  if (Length = 0)
+  if (Length == 0)
     return (FIXNUM_0);
   if (Length > FIXNUM_LENGTH_AS_BIGNUM)
     return (bignum_object);
