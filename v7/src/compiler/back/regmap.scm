@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.11 1991/07/25 02:31:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.12 1992/07/05 14:26:38 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Register Allocator
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -159,6 +160,20 @@ registers into some interesting sorting order.
 
 ;;;; Map Entry
 
+;; A map entry has four parts:
+;;  HOME is either a pseudo-register (which has a physical address in
+;;        memory associated with it) or #F indicating that the value
+;;        can be flushed when the last alias is reused
+;;  SAVED-INTO-HOME? is a boolean that tells whether the value in the
+;;        live register can be dropped rather than pushed to the home
+;;        if the last live register is needed for other purposes
+;;  ALIASES is a list of machine registers that contain the quantity
+;;        being mapped (pseudo-register, cached value, etc.)
+;;  LABEL is a tag to associate with the computed contents of the live
+;;        registers holding this value.  This allows individual back
+;;        ends to remember labels or other hard-to-generate constant
+;;        values and avoid regenerating them.
+
 (define-integrable (make-map-entry home saved-into-home? aliases label)
   ;; HOME may be false, indicating that this is a temporary register.
   ;; SAVED-INTO-HOME? must be true when HOME is false.  ALIASES must
@@ -250,16 +265,31 @@ registers into some interesting sorting order.
 					      (map-entry-label entry)))
    (map-registers map)))
 
+(define-integrable (pseudo-register-entry->temporary-entry entry)
+  (make-map-entry false
+		  true
+		  (map-entry-aliases entry)
+		  (map-entry-label entry)))
+
+(define (register-map:entry->temporary map entry)
+  (make-register-map
+   (map-entries:replace&touch map
+			      entry
+			      (pseudo-register-entry->temporary-entry entry))
+   (map-registers map)))
+
 (define (register-map:delete-entry map entry)
   (make-register-map (map-entries:delete map entry)
 		     (map-registers:add* map (map-entry-aliases entry))))
 
 (define (register-map:delete-entries regmap entries)
-  (make-register-map (map-entries:delete* regmap entries)
-		     (map-registers:add* regmap
-					 (apply append
-						(map map-entry-aliases
-						     entries)))))
+  (if (null? entries)
+      regmap
+      (make-register-map (map-entries:delete* regmap entries)
+			 (map-registers:add* regmap
+					     (apply append
+						    (map map-entry-aliases
+							 entries))))))
 
 (define (register-map:delete-alias map entry alias)
   (make-register-map (if (null? (cdr (map-entry-aliases entry)))
@@ -284,6 +314,15 @@ registers into some interesting sorting order.
 		       ;; assumed to work on machine regs.
 		       (delq alias
 			     (map-entry-aliases entry)))))
+
+(define (register-map:entries->temporaries regmap entries)
+  (if (null? entries)
+      regmap
+      (make-register-map
+       (map* (map-entries:delete* regmap entries)
+	     pseudo-register-entry->temporary-entry
+	     entries)
+       (map-registers regmap))))
 
 (define (register-map:keep-live-entries map live-registers)
   (let loop
@@ -629,25 +668,43 @@ for REGISTER.  If no such register exists, returns #F."
 	map)))
 
 (define (delete-pseudo-register map register receiver)
+  ;; If the pseudo-register has any alias with a cached value --
+  ;; indicated by a labelled entry --  then we convert the map entry to
+  ;; represent a temporary register rather than a pseudo register.
+  ;;
+  ;; receiver gets the new map and the aliases that are no longer
+  ;; needed (even if it is convenient to keep them around)
   (let ((entry (map-entries:find-home map register)))
-    (if entry
-	(receiver (register-map:delete-entry map entry)
-		  (map-entry-aliases entry))
-	(receiver map '()))))
+    (cond ((not entry) (receiver map '()))
+	  ((not (map-entry-label entry))
+	   (receiver (register-map:delete-entry map entry)
+		     (map-entry-aliases entry)))
+	  (else				; Pseudo -> temporary
+	   (receiver (register-map:entry->temporary map entry)
+		     (map-entry-aliases entry))))))
 
 (define (delete-pseudo-registers map registers)
   ;; Used to remove dead registers from the map.
-  (let ((entries
-	 (let loop ((registers registers))
-	   (if (null? registers)
-	       '()
-	       (let ((entry (map-entries:find-home map (car registers))))
-		 (if entry
-		     (cons entry (loop (cdr registers)))
-		     (loop (cdr registers))))))))
-    (if (null? entries)
-	map
-	(register-map:delete-entries map entries))))
+  ;; See comments to delete-pseudo-register, above.
+
+  (define (create-new-map delete transform)
+    (register-map:entries->temporaries (register-map:delete-entries map delete)
+				       transform))
+
+
+  (let loop ((registers registers)
+	     (entries-to-delete '())
+	     (entries-to-transform '()))
+    (if (null? registers)
+	(create-new-map entries-to-delete entries-to-transform)
+	(let ((entry (map-entries:find-home map (car registers))))
+	  (loop (cdr registers)
+		(if (and entry (not (map-entry-label entry)))
+		    (cons entry entries-to-delete)
+		    entries-to-delete)
+		(if (and entry (map-entry-label entry))
+		    (cons entry entries-to-transform)
+		    entries-to-transform))))))
 
 (define (delete-other-locations map register)
   ;; Used in assignments to indicate that other locations containing
