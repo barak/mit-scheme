@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.30 2004/02/24 20:36:25 cph Exp $
+$Id: xml-output.scm,v 1.31 2004/02/24 20:48:32 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -39,9 +39,10 @@ USA.
 
 (define (set-coding xml port)
   (port/set-coding port
-		   (normalize-coding port
-				     (and (xml-document? xml)
-					  (xml-document-declaration xml))))
+		   (or (normalize-coding port
+					 (and (xml-document? xml)
+					      (xml-document-declaration xml)))
+		       'UTF-8))
   (port/set-line-ending port 'TEXT))
 
 (define (xml->wide-string xml . options)
