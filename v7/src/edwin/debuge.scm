@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debuge.scm,v 1.43 1991/11/04 20:50:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debuge.scm,v 1.44 1992/01/13 19:15:42 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -76,7 +76,11 @@
 		    (write-string "Writing file '")
 		    (write-string filename)
 		    (write-string "'")
-		    (write-region (buffer-region buffer) filename false)
+		    (let ((region (buffer-unclipped-region buffer)))
+		      (group-write-to-file (region-group region)
+					   (region-start-index region)
+					   (region-end-index region)
+					   filename))
 		    (write-string " -- done")
 		    (set-buffer-pathname! buffer pathname)
 		    (set-buffer-truename! buffer (->truename pathname))
