@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr3.scm,v 1.1 1987/08/14 05:05:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr3.scm,v 1.2 1987/08/18 08:22:22 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -41,157 +41,157 @@ MIT in each case. |#
 (define-instruction ASH
   ((L (? cnt ea-r-b) (? src ea-r-l) (? dst ea-w-l))
    (BYTE (8 #x78))
-   (OPERAND cnt)
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND B  cnt)
+   (OPERAND L src)
+   (OPERAND L dst))
 
   ((Q (? cnt ea-r-b) (? src ea-r-q) (? dst ea-w-q))
    (BYTE (8 #x79))
-   (OPERAND cnt)
-   (OPERAND src)
-   (OPERAND dst)))
+   (OPERAND B cnt)
+   (OPERAND Q src)
+   (OPERAND Q dst)))
 
 (define-instruction ROTL
   (((? cnt ea-r-b) (? src ea-r-l) (? dst ea-w-l))
    (BYTE (8 #x9C))
-   (OPERAND cnt)
-   (OPERAND src)
-   (OPERAND dst)))
+   (OPERAND B cnt)
+   (OPERAND L src)
+   (OPERAND L dst)))
 
 (define-instruction POLY
   ((F (? arg ea-r-f) (? degree ea-r-w) (? tbladdr ea-a-b))
    (BYTE (8 #x55))
-   (OPERAND arg)
-   (OPERAND degree)
-   (OPERAND tbladdr))
+   (OPERAND F arg)
+   (OPERAND W degree)
+   (OPERAND B tbladdr))
 
   ((D (? arg ea-r-d) (? degree ea-r-w) (? tbladdr ea-a-b))
    (BYTE (8 #x75))
-   (OPERAND arg)
-   (OPERAND degree)
-   (OPERAND tbladdr))
+   (OPERAND D arg)
+   (OPERAND W degree)
+   (OPERAND B tbladdr))
 
   ((G (? arg ea-r-g) (? degree ea-r-w) (? tbladdr ea-a-b))
    (BYTE (16 #x55FD))
-   (OPERAND arg)
-   (OPERAND degree)
-   (OPERAND tbladdr))
+   (OPERAND G arg)
+   (OPERAND W degree)
+   (OPERAND B tbladdr))
 
   ((H (? arg ea-r-h) (? degree ea-r-w) (? tbladdr ea-a-b))
    (BYTE (16 #x75FD))
-   (OPERAND arg)
-   (OPERAND degree)
-   (OPERAND tbladdr)))
+   (OPERAND H arg)
+   (OPERAND W degree)
+   (OPERAND B tbladdr)))
 
 ;;;; Special instructions (Chap. 12)
 
 (define-instruction PUSHR
   (((? mask ea-r-w))
    (BYTE (8 #xBB))
-   (OPERAND mask)))
+   (OPERAND W mask)))
 
 (define-instruction POPR
   (((? mask ea-r-w))
    (BYTE (8 #xBA))
-   (OPERAND mask)))
+   (OPERAND W mask)))
 
 (define-instruction MOVPSL
   (((? dst ea-w-l))
    (BYTE (8 #xDC))
-   (OPERAND dst)))
+   (OPERAND L dst)))
 
 (define-instruction BISPSW
   (((? mask ea-r-w))
    (BYTE (8 #xB8))
-   (OPERAND mask)))
+   (OPERAND W mask)))
 
 (define-instruction BICPSW
   (((? mask ea-r-w))
    (BYTE (8 #xB9))
-   (OPERAND mask)))
+   (OPERAND W mask)))
 
 (define-instruction MOVA
   ((B (? src ea-a-b) (? dst ea-w-l))
    (BYTE (8 #x9E))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND B src)
+   (OPERAND L dst))
 
   ((W (? src ea-a-w) (? dst ea-w-l))
    (BYTE (8 #x3E))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND W src)
+   (OPERAND L dst))
 
   ((L (? src ea-a-l) (? dst ea-w-l))
    (BYTE (8 #xDE))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND L src)
+   (OPERAND L dst))
 
   ((F (? src ea-a-f) (? dst ea-w-l))
    (BYTE (8 #xDE))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND F src)
+   (OPERAND L dst))
 
   ((Q (? src ea-a-q) (? dst ea-w-l))
    (BYTE (8 #x7E))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND Q src)
+   (OPERAND L dst))
 
   ((D (? src ea-a-d) (? dst ea-w-l))
    (BYTE (8 #x7E))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND D src)
+   (OPERAND L dst))
 
   ((G (? src ea-a-g) (? dst ea-w-l))
    (BYTE (8 #x7E))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND G src)
+   (OPERAND L dst))
 
   ((H (? src ea-a-h) (? dst ea-w-l))
    (BYTE (16 #x7EFD))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND H src)
+   (OPERAND L dst))
 
   ((O (? src ea-a-o) (? dst ea-w-l))
    (BYTE (16 #x7EFD))
-   (OPERAND src)
-   (OPERAND dst)))
+   (OPERAND O src)
+   (OPERAND L dst)))
 
 (define-instruction PUSHA
   ((B (? src ea-a-b))
    (BYTE (8 #x9E))
-   (OPERAND src))
+   (OPERAND B src))
 
   ((W (? src ea-a-w))
    (BYTE (8 #x3E))
-   (OPERAND src))
+   (OPERAND W src))
 
   ((L (? src ea-a-l))
    (BYTE (8 #xDE))
-   (OPERAND src))
+   (OPERAND L src))
 
   ((F (? src ea-a-f))
    (BYTE (8 #xDE))
-   (OPERAND src))
+   (OPERAND F src))
 
   ((Q (? src ea-a-q))
    (BYTE (8 #x7E))
-   (OPERAND src))
+   (OPERAND Q src))
 
   ((D (? src ea-a-d))
    (BYTE (8 #x7E))
-   (OPERAND src))
+   (OPERAND D src))
 
   ((G (? src ea-a-g))
    (BYTE (8 #x7E))
-   (OPERAND src))
+   (OPERAND G src))
 
   ((H (? src ea-a-h))
    (BYTE (16 #x7EFD))
-   (OPERAND src))
+   (OPERAND H src))
 
   ((O (? src ea-a-o))
    (BYTE (16 #x7EFD))
-   (OPERAND src)))
+   (OPERAND O src)))
 
 ;;; Array indeces and queues
 
@@ -199,48 +199,48 @@ MIT in each case. |#
   (((? subscript ea-r-l) (? low ea-r-l) (? high ea-r-l)
     (? size ea-r-l) (? indexin ea-r-l) (? indexout ea-w-l))
    (BYTE (8 #x0A))
-   (OPERAND subscript)
-   (OPERAND low)
-   (OPERAND high)
-   (OPERAND size)
-   (OPERAND indexin)
-   (OPERAND indexout)))
+   (OPERAND L subscript)
+   (OPERAND L low)
+   (OPERAND L high)
+   (OPERAND L size)
+   (OPERAND L indexin)
+   (OPERAND L indexout)))
 
 (define-instruction INSQUE
   (((? entry ea-a-b) (? pred ea-a-b))
    (BYTE (8 #x0E))
-   (OPERAND entry)
-   (OPERAND pred)))
+   (OPERAND B entry)
+   (OPERAND B pred)))
 
 (define-instruction REMQUE
   (((? entry ea-a-b) (? addr ea-w-l))
    (BYTE (8 #x0F))
-   (OPERAND entry)
-   (OPERAND addr)))
+   (OPERAND B entry)
+   (OPERAND L addr)))
 
 (define-instruction INSQHI
   (((? entry ea-a-b) (? header ea-a-q))
    (BYTE (8 #x5C))
-   (OPERAND entry)
-   (OPERAND header)))
+   (OPERAND B entry)
+   (OPERAND Q header)))
 
 (define-instruction INSQTI
   (((? entry ea-a-b) (? header ea-a-q))
    (BYTE (8 #x5D))
-   (OPERAND entry)
-   (OPERAND header)))
+   (OPERAND B entry)
+   (OPERAND Q header)))
 
 (define-instruction REMQHI
   (((? header ea-a-q) (? addr ea-w-l))
    (BYTE (8 #x5E))
-   (OPERAND header)
-   (OPERAND addr)))
+   (OPERAND Q header)
+   (OPERAND L addr)))
 
 (define-instruction REMQTI
   (((? header ea-a-q) (? addr ea-w-l))
    (BYTE (8 #x5F))
-   (OPERAND header)
-   (OPERAND addr)))
+   (OPERAND Q header)
+   (OPERAND L addr)))
 
 ;;; Bit field instructions
 
@@ -250,17 +250,17 @@ MIT in each case. |#
 	 `(define-instruction ,name
 	    ((,suffix1 (? pos ea-r-l) (? size ea-r-b) (? base ea-v-b) (? dst ,mode))
 	     (BYTE (8 ,opcode))
-	     (OPERAND pos)
-	     (OPERAND size)
-	     (OPERAND base)
-	     (OPERAND dst))
+	     (OPERAND L pos)
+	     (OPERAND B size)
+	     (OPERAND B base)
+	     (OPERAND L dst))
 
 	    ((,suffix2 (? pos ea-r-l) (? size ea-r-b) (? base ea-v-b) (? dst ,mode))
 	     (BYTE (8 ,(1+ opcode2)))
-	     (OPERAND pos)
-	     (OPERAND size)
-	     (OPERAND base)
-	     (OPERAND dst))))))
+	     (OPERAND L pos)
+	     (OPERAND B size)
+	     (OPERAND B base)
+	     (OPERAND L dst))))))
 
   (define-field-instruction FF S C #xEA ea-w-l)
   (define-field-instruction EXTV S Z #xEE ea-w-l)
@@ -269,10 +269,10 @@ MIT in each case. |#
 (define-instruction INSV
   (((? src ea-r-l) (? pos ea-r-l) (? size ea-r-b) (? base ea-v-b))
    (BYTE (8 #xF0))
-   (OPERAND src)
-   (OPERAND pos)
-   (OPERAND size)
-   (OPERAND base)))
+   (OPERAND L src)
+   (OPERAND L pos)
+   (OPERAND B size)
+   (OPERAND B base)))
 
 ;;;; Control instructions (Chap. 13)
 
@@ -350,7 +350,7 @@ MIT in each case. |#
 	    (define-instruction ,namej
 	      (((? dst ea-a-b))
 	       (BYTE (8 ,(+ #x16 bit)))
-	       (OPERAND dst)))))))
+	       (OPERAND B dst)))))))
 
   (define-unconditional-transfer BR JMP #x1)
   (define-unconditional-transfer BSB JSB #x0))
@@ -360,149 +360,149 @@ MIT in each case. |#
 (define-instruction CALLG
   (((? arglist ea-a-b) (? dst ea-a-b))
    (BYTE (8 #xFA))
-   (OPERAND arglist)
-   (OPERAND dst)))
+   (OPERAND B arglist)
+   (OPERAND B dst)))
 
 (define-instruction CALLS
   (((? narg ea-r-l) (? dst ea-a-b))
    (BYTE (8 #xFB))
-   (OPERAND narg)
-   (OPERAND dst)))
+   (OPERAND L narg)
+   (OPERAND B dst)))
 
 (define-trivial-instruction RET #x04)
 
 (define-instruction BLB
   ((S (? src ea-r-l) (? dest displacement))
    (BYTE (8 #xE8))
-   (OPERAND src)
+   (OPERAND L src)
    (DISPLACEMENT (8 dest)))
 
   ((C (? src ea-r-l) (? dest displacement))
    (BYTE (8 #xE9))
-   (OPERAND src)
+   (OPERAND L src)
    (DISPLACEMENT (8 dest))))
 
 (define-instruction BB
   ((S (? pos ea-r-l) (? base ea-v-b) (? dest displacement))
    (BYTE (8 #xE0))
-   (OPERAND pos)
-   (OPERAND base)
+   (OPERAND L pos)
+   (OPERAND B base)
    (DISPLACEMENT (8 dest)))
   
   ((C (? pos ea-r-l) (? base ea-v-b) (? dest displacement))
    (BYTE (8 #xE1))
-   (OPERAND pos)
-   (OPERAND base)
+   (OPERAND L pos)
+   (OPERAND B base)
    (DISPLACEMENT (8 dest)))
   
   ((S S (? pos ea-r-l) (? base ea-v-b) (? dest displacement))
    (BYTE (8 #xE2))
-   (OPERAND pos)
-   (OPERAND base)
+   (OPERAND L pos)
+   (OPERAND B base)
    (DISPLACEMENT (8 dest)))
   
   ((C S (? pos ea-r-l) (? base ea-v-b) (? dest displacement))
    (BYTE (8 #xE3))
-   (OPERAND pos)
-   (OPERAND base)
+   (OPERAND L pos)
+   (OPERAND B base)
    (DISPLACEMENT (8 dest)))
   
   ((S C (? pos ea-r-l) (? base ea-v-b) (? dest displacement))
    (BYTE (8 #xE4))
-   (OPERAND pos)
-   (OPERAND base)
+   (OPERAND L pos)
+   (OPERAND B base)
    (DISPLACEMENT (8 dest)))
   
   ((C C (? pos ea-r-l) (? base ea-v-b) (? dest displacement))
    (BYTE (8 #xE5))
-   (OPERAND pos)
-   (OPERAND base)
+   (OPERAND L pos)
+   (OPERAND B base)
    (DISPLACEMENT (8 dest)))
 
   ((S S I (? pos ea-r-l) (? base ea-v-b) (? dest displacement))
    (BYTE (8 #xE6))
-   (OPERAND pos)
-   (OPERAND base)
+   (OPERAND L pos)
+   (OPERAND B base)
    (DISPLACEMENT (8 dest)))
 
   ((C C I (? pos ea-r-l) (? base ea-v-b) (? dest displacement))
    (BYTE (8 #xE7))
-   (OPERAND pos)
-   (OPERAND base)
+   (OPERAND L pos)
+   (OPERAND B base)
    (DISPLACEMENT (8 dest))))
 
 (define-instruction ACB
   ((B (? limit ea-r-b) (? add ea-r-b) (? index ea-m-b) (? dest displacement))
    (BYTE (8 #x9D))
-   (OPERAND limit)
-   (OPERAND add)
-   (OPERAND index)
+   (OPERAND B limit)
+   (OPERAND B add)
+   (OPERAND B index)
    (DISPLACEMENT (8 dest)))
   
   ((W (? limit ea-r-w) (? add ea-r-w) (? index ea-m-w) (? dest displacement))
    (BYTE (8 #x3D))
-   (OPERAND limit)
-   (OPERAND add)
-   (OPERAND index)
+   (OPERAND W limit)
+   (OPERAND W add)
+   (OPERAND W index)
    (DISPLACEMENT (8 dest)))
   
   ((L (? limit ea-r-l) (? add ea-r-l) (? index ea-m-l) (? dest displacement))
    (BYTE (8 #xF1))
-   (OPERAND limit)
-   (OPERAND add)
-   (OPERAND index)
+   (OPERAND L limit)
+   (OPERAND L add)
+   (OPERAND L index)
    (DISPLACEMENT (8 dest)))
   
   ((F (? limit ea-r-f) (? add ea-r-f) (? index ea-m-f) (? dest displacement))
    (BYTE (8 #x4F))
-   (OPERAND limit)
-   (OPERAND add)
-   (OPERAND index)
+   (OPERAND F limit)
+   (OPERAND F add)
+   (OPERAND F index)
    (DISPLACEMENT (8 dest)))
   
   ((D (? limit ea-r-d) (? add ea-r-d) (? index ea-m-d) (? dest displacement))
    (BYTE (8 #x6F))
-   (OPERAND limit)
-   (OPERAND add)
-   (OPERAND index)
+   (OPERAND D limit)
+   (OPERAND D add)
+   (OPERAND D index)
    (DISPLACEMENT (8 dest)))
   
   ((G (? limit ea-r-g) (? add ea-r-g) (? index ea-m-g) (? dest displacement))
    (BYTE (16 #x4FFD))
-   (OPERAND limit)
-   (OPERAND add)
-   (OPERAND index)
+   (OPERAND G limit)
+   (OPERAND G add)
+   (OPERAND G index)
    (DISPLACEMENT (8 dest)))
   
   ((H (? limit ea-r-h) (? add ea-r-h) (? index ea-m-h) (? dest displacement))
    (BYTE (16 #x6FFD))
-   (OPERAND limit)
-   (OPERAND add)
-   (OPERAND index)
+   (OPERAND H limit)
+   (OPERAND H add)
+   (OPERAND H index)
    (DISPLACEMENT (8 dest))))
 
 (define-instruction AOB
   ((LSS (? limit ea-r-l) (? index ea-m-l) (? dest displacement))
    (BYTE (8 #xF2))
-   (OPERAND limit)
-   (OPERAND index)
+   (OPERAND L limit)
+   (OPERAND L index)
    (DISPLACEMENT (8 dest)))
 
   ((LEQ (? limit ea-r-l) (? index ea-m-l) (? dest displacement))
    (BYTE (8 #xF3))
-   (OPERAND limit)
-   (OPERAND index)
+   (OPERAND L limit)
+   (OPERAND L index)
    (DISPLACEMENT (8 dest))))
 
 (define-instruction SOB
   ((GEQ (? index ea-m-l) (? dest displacement))
    (BYTE (8 #xF4))
-   (OPERAND index)
+   (OPERAND L index)
    (DISPLACEMENT (8 dest)))
 
   ((GTR (? index ea-m-l) (? dest displacement))
    (BYTE (8 #xF5))
-   (OPERAND index)
+   (OPERAND L index)
    (DISPLACEMENT (8 dest))))
 
 ;; NOTE: The displacements must be placed separately on the
@@ -520,21 +520,21 @@ MIT in each case. |#
 (define-instruction CASE
   ((B (? selector ea-r-b) (? base ea-r-b) (? limit ea-r-b))
    (BYTE (8 #x8F))
-   (OPERAND selector)
-   (OPERAND base)
-   (OPERAND limit))
+   (OPERAND B selector)
+   (OPERAND B base)
+   (OPERAND B limit))
 
   ((W (? selector ea-r-w) (? base ea-r-w) (? limit ea-r-w))
    (BYTE (8 #xAF))
-   (OPERAND selector)
-   (OPERAND base)
-   (OPERAND limit))
+   (OPERAND W selector)
+   (OPERAND W base)
+   (OPERAND W limit))
 
   ((L (? selector ea-r-l) (? base ea-r-l) (? limit ea-r-l))
    (BYTE (8 #xCF))
-   (OPERAND selector)
-   (OPERAND base)
-   (OPERAND limit)))
+   (OPERAND L selector)
+   (OPERAND L base)
+   (OPERAND L limit)))
 
 ;;;; BCD instructions (Chap 15.)
 
@@ -545,21 +545,21 @@ MIT in each case. |#
 	    (((? oplen ea-r-w) (? op ea-a-b)
               (? reslen ea-r-w) (? res ea-a-b))
 	     (BYTE (8 ,opcode4))
-	     (OPERAND oplen)
-	     (OPERAND op)
-	     (OPERAND reslen)
-	     (OPERAND res))
+	     (OPERAND W oplen)
+	     (OPERAND B op)
+	     (OPERAND W reslen)
+	     (OPERAND B res))
 
 	    (((? op1len ea-r-w) (? op1 ea-a-b)
 	      (? op2len ea-r-w) (? op2 ea-a-b)
               (? reslen ea-r-w) (? res ea-a-b))
 	     (BYTE (8 ,(1+ opcode4)))
-	     (OPERAND op1len)
-	     (OPERAND op1)
-	     (OPERAND op2len)
-	     (OPERAND op2)
-	     (OPERAND reslen)
-	     (OPERAND res))))))
+	     (OPERAND W op1len)
+	     (OPERAND B op1)
+	     (OPERAND W op2len)
+	     (OPERAND B op2)
+	     (OPERAND W reslen)
+	     (OPERAND B res))))))
 
   (define-add/sub-bcd-instruction ADDP #x20)
   (define-add/sub-bcd-instruction SUBP #x22))
@@ -572,12 +572,12 @@ MIT in each case. |#
 	      (? op2len ea-r-w) (? op2 ea-a-b)
               (? reslen ea-r-w) (? res ea-a-b))
 	     (BYTE (8 ,opcode))
-	     (OPERAND op1len)
-	     (OPERAND op1)
-	     (OPERAND op2len)
-	     (OPERAND op2)
-	     (OPERAND reslen)
-	     (OPERAND res))))))
+	     (OPERAND W op1len)
+	     (OPERAND B op1)
+	     (OPERAND W op2len)
+	     (OPERAND B op2)
+	     (OPERAND W reslen)
+	     (OPERAND B res))))))
 
   (define-add/sub-bcd-instruction MULP #x25)
   (define-add/sub-bcd-instruction DIVP #x27))
@@ -585,48 +585,48 @@ MIT in each case. |#
 (define-instruction CMPP
   (((? len ea-r-w) (? src1 ea-a-b) (? src2 ea-a-b))
    (BYTE (8 #x35))
-   (OPERAND len)
-   (OPERAND src1)
-   (OPERAND src2))
+   (OPERAND W len)
+   (OPERAND B src1)
+   (OPERAND B src2))
 
   (((? len1 ea-r-w) (? src1 ea-a-b) (? len2 ea-r-w) (? src2 ea-a-b))
    (BYTE (8 #x37))
-   (OPERAND len1)
-   (OPERAND src1)
-   (OPERAND len2)
-   (OPERAND src2)))
+   (OPERAND W len1)
+   (OPERAND B src1)
+   (OPERAND W len2)
+   (OPERAND B src2)))
 
 (define-instruction ASHP
   (((? srclen ea-r-w) (? src ea-a-b)
     (? round ea-r-b)
     (? dstlen ea-r-w) (? dst ea-a-b))
    (BYTE (8 #xF8))
-   (OPERAND srclen)
-   (OPERAND src)
-   (OPERAND round)
-   (OPERAND dstlen)
-   (OPERAND dst)))
+   (OPERAND W srclen)
+   (OPERAND B src)
+   (OPERAND B round)
+   (OPERAND W dstlen)
+   (OPERAND B dst)))
 
 (define-instruction MOVP
   (((? len ea-r-w) (? src ea-a-b) (? dst ea-a-b))
    (BYTE (8 #x34))
-   (OPERAND len)
-   (OPERAND src)
-   (OPERAND dst)))   
+   (OPERAND W len)
+   (OPERAND B src)
+   (OPERAND B dst)))   
 
 (define-instruction CVTLP
   (((? src ea-r-l) (? len ea-r-w) (? dst ea-a-b))
    (BYTE (8 #xF9))
-   (OPERAND src)
-   (OPERAND len)
-   (OPERAND dst)))
+   (OPERAND L src)
+   (OPERAND W len)
+   (OPERAND B dst)))
 
 (define-instruction CVTPL
   (((? len ea-r-w) (? src ea-a-b) (? dst ea-w-l))
    (BYTE (8 #x36))
-   (OPERAND len)
-   (OPERAND src)
-   (OPERAND dst)))
+   (OPERAND W len)
+   (OPERAND B src)
+   (OPERAND L dst)))
 
 (let-syntax
     ((define-cvt-trailing-instruction
@@ -636,11 +636,11 @@ MIT in each case. |#
 	      (? tbl ea-a-b)
 	      (? dstlen ea-r-w) (? dst ea-a-b))
 	     (BYTE (8 ,opcode))
-	     (OPERAND srclen)
-	     (OPERAND src)
-	     (OPERAND tbl)
-	     (OPERAND dstlen)
-	     (OPERAND dst))))))
+	     (OPERAND W srclen)
+	     (OPERAND B src)
+	     (OPERAND B tbl)
+	     (OPERAND W dstlen)
+	     (OPERAND B dst))))))
 
   (define-cvt-trailing-instruction CVTPT #x24)
   (define-cvt-trailing-instruction CVTTT #x26))
@@ -652,10 +652,10 @@ MIT in each case. |#
 	    (((? srclen ea-r-w) (? src ea-a-b)
 	      (? dstlen ea-r-w) (? dst ea-a-b))
 	     (BYTE (8 ,opcode))
-	     (OPERAND srclen)
-	     (OPERAND src)
-	     (OPERAND dstlen)
-	     (OPERAND dst))))))
+	     (OPERAND W srclen)
+	     (OPERAND B src)
+	     (OPERAND W dstlen)
+	     (OPERAND B dst))))))
 
   (define-cvt-separate-instruction CVTPS #x08)
   (define-cvt-separate-instruction CVTSP #x09))
