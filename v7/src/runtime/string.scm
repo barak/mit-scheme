@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.31 2000/04/13 22:21:01 cph Exp $
+$Id: string.scm,v 14.32 2000/04/13 22:23:03 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -680,8 +680,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (substring-move-left! string 0 n result 0)
 	      (begin
 		(substring-move-left! string 0 length result 0)
-		(substring-fill! result length n
-				 (if (default-object? char) #\space char))))
+		(let ((char (if (default-object? char) #\space char)))
+		  (substring-fill! result length n char))))
 	  result))))
 
 (define (string-pad-left string n #!optional char)
@@ -695,8 +695,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (if (fix:< i 0)
 	      (substring-move-left! string (fix:- 0 i) length result 0)
 	      (begin
-		(substring-fill! result 0 i
-				 (if (default-object? char) #\space char))
+		(let ((char (if (default-object? char) #\space char)))
+		  (substring-fill! result 0 i char))
 		(substring-move-left! string 0 length result i)))
 	  result))))
 
