@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unix.scm,v 1.93 1999/02/01 03:46:43 cph Exp $
+;;; $Id: unix.scm,v 1.94 1999/02/01 16:09:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -638,7 +638,7 @@ option, instead taking -P <filename>."
   boolean?)
 
 (define (os/rmail-pop-procedure)
-  (and (os/find-program "popclient" #f (ref-variable exec-path))
+  (and (os/find-program "popclient" #f (ref-variable exec-path) #f)
        (lambda (server user-name password directory)
 	 (unix/pop-client server user-name password directory))))
 

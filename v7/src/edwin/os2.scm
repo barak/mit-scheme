@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: os2.scm,v 1.45 1999/02/01 03:47:55 cph Exp $
+;;; $Id: os2.scm,v 1.46 1999/02/01 16:09:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-1999 Massachusetts Institute of Technology
 ;;;
@@ -143,7 +143,7 @@
   system-mailboxes)
 
 (define (os/rmail-pop-procedure)
-  (and (os/find-program "popclient" #f (ref-variable exec-path))
+  (and (os/find-program "popclient" #f (ref-variable exec-path) #f)
        (lambda (server user-name password directory)
 	 (os2-pop-client server user-name password directory))))
 
