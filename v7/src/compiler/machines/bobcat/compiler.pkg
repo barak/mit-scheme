@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.2 1988/06/15 20:40:34 jrm Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.3 1988/07/19 18:22:41 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -262,7 +262,9 @@ MIT in each case. |#
   (export (compiler top-level)
 	  generate-top-level-info
 	  generate-top-level-object
-	  generation-phase2))
+	  generation-phase2)
+  (import (runtime compiler-info)
+	  compiler-entries-tag))
 
 (define-package (compiler lap-syntaxer)
   (files "back/lapgn1"			;LAP generator
@@ -324,4 +326,6 @@ MIT in each case. |#
 	 "machines/bobcat/dassm3")
   (parent (compiler))
   (export ()
-	  compiler:write-lap-file))
+	  compiler:write-lap-file)
+  (import (runtime compiler-info)
+	  compiler-entries-tag))
