@@ -1,4 +1,4 @@
-
+THIS FILE MOSTLY REFERS TO LIAR 4.7 OR EARLIER
 
 	       Notes on potential compiler improvements
 

@@ -1,3 +1,6 @@
+THIS FILE NEEDS TO BE UPDATAED TO LIAR 5.0.
+Further, it looks semiautomagically generated.  By what?
+
 ================================================================
 	compiler/back:
 ================================================================

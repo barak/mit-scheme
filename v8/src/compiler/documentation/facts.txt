@@ -1,3 +1,5 @@
+THIS FILE REFERS ONLY TO LIAR 4.7 OR EARLIER
+
 Some useful facts:
 
 * A canonical subproblem has a `continuation' component that satisfies
