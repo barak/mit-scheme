@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modes.scm,v 1.26 1992/01/09 17:45:16 cph Exp $
+;;;	$Id: modes.scm,v 1.27 1993/09/01 18:09:29 gjr Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -58,18 +58,28 @@
   (comtabs false read-only true)
   display-name
   major?
-  description
+  %description
   initialization
   alist)
 
+(define (mode-description mode)
+  (let ((desc (mode-%description mode)))
+    (if (string? desc)
+	desc
+	(let ((new (->doc-string (%symbol->string (mode-name mode))
+				 desc)))
+	  (if new
+	      (set-mode-%description! mode new))
+	  new))))
+
 (define (make-mode name major? display-name super-mode description
 		   initialization)
-  (let ((mode
-	 (let ((string (symbol->string name)))
-	   (or (string-table-get editor-modes string)
-	       (let ((mode (%make-mode name (list (make-comtab)))))
-		 (string-table-put! editor-modes string mode)
-		 mode)))))
+  (let* ((sname (symbol->string name))
+	 (mode
+	  (or (string-table-get editor-modes sname)
+	      (let ((mode (%make-mode name (list (make-comtab)))))
+		(string-table-put! editor-modes sname mode)
+		mode))))
     (set-mode-display-name! mode display-name)
     (set-mode-major?! mode major?)
     (set-cdr! (mode-comtabs mode)
@@ -82,7 +92,7 @@
 		     ;; that as a valid argument.  Later, this can be
 		     ;; an error.
 		     super-mode)))
-    (set-mode-description! mode description)
+    (set-mode-%description! mode (doc-string->posn sname description))
     (set-mode-initialization! mode initialization)
     (set-mode-alist! mode '())
     mode))
