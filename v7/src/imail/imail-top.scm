@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.128 2000/06/05 18:16:44 cph Exp $
+;;; $Id: imail-top.scm,v 1.129 2000/06/05 19:31:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -397,25 +397,27 @@ Instead, these commands are available:
 \\[imail-expunge]	Expunge deleted messages.
 \\[imail-save-folder]	Save the current folder.
 
+\\[imail-input]	Visit a specified folder in its own buffer.
 \\[imail-get-new-mail]	Poll the server for changes.
 \\[imail-disconnect]	Disconnect from the server.
-\\[imail-quit]       Quit IMAIL: save, then switch to another buffer.
+\\[imail-quit]       Quit IMAIL: disconnect from server, then switch to another buffer.
 
 \\[imail-mail]	Mail a message (same as \\[mail-other-window]).
 \\[imail-reply]	Reply to this message.  Like \\[imail-mail] but initializes some fields.
 \\[imail-forward]	Forward this message to another user.
 \\[imail-continue]	Continue composing outgoing message started before.
 
-\\[imail-input]	Append messages from a specified folder.
-\\[imail-output]       Output this message to a specified folder (append it).
-\\[imail-copy-messages]	Copy all messages in selected folder to another folder.
-\\[imail-copy-folder]	Copy all messages in specified folder to another folder.
-\\[imail-create-folder]	Create a new folder.  (Normally not needed
-	  as output commands create folders automatically.)
-\\[imail-delete-folder]	Delete an existing folder.
+\\[imail-output]       Append this message to a specified folder.
+\\[imail-save-attachment]	Save a MIME attachment to a file.
+\\[imail-copy-messages]	Copy all messages in this folder to another folder.
+\\[imail-copy-folder]	Copy all messages from one folder to another.
+
+\\[imail-create-folder]	Create a new folder.  (Normally not needed as output commands
+	  create folders automatically.)
+\\[imail-delete-folder]	Delete an existing folder and all its messages.
 
 \\[imail-add-flag]	Add flag to message.  It will be displayed in the mode line.
-\\[imail-kill-flag]	Remove a flag from current message.
+\\[imail-kill-flag]	Remove flag from message.
 \\[imail-next-flagged-message]	Move to next message with specified flag
           (flag defaults to last one specified).
           Standard flags:
@@ -433,6 +435,8 @@ Instead, these commands are available:
 The following variables customize the behavior of IMAIL.  See each
 variable's documentation (using \\[describe-variable]) for details:
 
+    imail-auto-wrap
+    imail-auto-wrap-mime-encoded
     imail-default-dont-reply-to-names
     imail-default-imap-mailbox
     imail-default-imap-server
@@ -446,7 +450,9 @@ variable's documentation (using \\[describe-variable]) for details:
     imail-mode-hook
     imail-pass-phrase-retention-time
     imail-primary-folder
+    imail-receive-mime
     imail-reply-with-re
+    imail-update-interval
 
 \\{imail}"
   (lambda (buffer)
@@ -1412,7 +1418,7 @@ An error if signalled if the folder already exists."
       (message "Created folder " (url->string url)))))
 
 (define-command imail-delete-folder
-  "Delete a specified folder."
+  "Delete a specified folder and all its messages."
   (lambda ()
     (list (prompt-for-imail-url-string "Delete folder"
 				       'HISTORY 'IMAIL-DELETE-FOLDER
