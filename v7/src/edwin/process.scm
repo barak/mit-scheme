@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.20 1992/02/11 20:52:30 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.21 1992/02/12 02:23:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -140,40 +140,37 @@ False means don't delete them until \\[list-processes] is run."
 	  (mark-right-inserting-copy (buffer-end buffer))))))
 
 (define (start-process name buffer environment program . arguments)
-  (let ((directory (buffer-default-directory buffer)))
-    (let ((make-subprocess
+  (let ((make-subprocess
+	 (let ((directory (buffer-default-directory buffer)))
 	   (let ((filename (find-program program directory))
 		 (arguments (list->vector (cons program arguments)))
 		 (pty? (ref-variable process-connection-type buffer)))
 	     (lambda ()
-	       (start-subprocess filename arguments environment pty?)))))
-      ;; Calling WITH-WORKING-DIRECTORY-PATHNAME is a kludge --
-      ;; there's no other way to specify the working directory of the
-      ;; subprocess.  The subprocess abstraction should be fixed to
-      ;; allow this.
-      (with-working-directory-pathname directory
-	(lambda ()
-	  (without-interrupts
-	   (lambda ()
-	     (let ((subprocess (make-subprocess)))
-	       (let ((channel (subprocess-input-channel subprocess)))
-		 (if channel
-		     (begin
-		       (channel-nonblocking channel)
-		       (channel-register channel))))
-	       (let ((process
-		      (%make-process
-		       subprocess
-		       (do ((n 2 (+ n 1))
-			    (name* name
-				   (string-append name
-						  "<" (number->string n) ">")))
-			   ((not (get-process-by-name name*)) name*))
-		       buffer)))
-		 (update-process-mark! process)
-		 (subprocess-put! subprocess 'EDWIN-PROCESS process)
-		 (set! edwin-processes (cons process edwin-processes))
-		 process)))))))))
+	       (start-subprocess filename
+				 arguments
+				 (cons environment (->namestring directory))
+				 pty?))))))
+    (without-interrupts
+     (lambda ()
+       (let ((subprocess (make-subprocess)))
+	 (let ((channel (subprocess-input-channel subprocess)))
+	   (if channel
+	       (begin
+		 (channel-nonblocking channel)
+		 (channel-register channel))))
+	 (let ((process
+		(%make-process
+		 subprocess
+		 (do ((n 2 (+ n 1))
+		      (name* name
+			     (string-append name
+					    "<" (number->string n) ">")))
+		     ((not (get-process-by-name name*)) name*))
+		 buffer)))
+	   (update-process-mark! process)
+	   (subprocess-put! subprocess 'EDWIN-PROCESS process)
+	   (set! edwin-processes (cons process edwin-processes))
+	   process))))))
 
 (define (start-subprocess filename arguments environment pty?)
   (if (and pty? ((ucode-primitive have-ptys? 0)))
