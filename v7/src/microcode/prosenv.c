@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosenv.c,v 1.13 1996/04/23 20:39:56 cph Exp $
+$Id: prosenv.c,v 1.14 1996/10/07 17:52:47 cph Exp $
 
 Copyright (c) 1987-96 Massachusetts Institute of Technology
 
@@ -43,7 +43,7 @@ MIT in each case. */
 DEFINE_PRIMITIVE ("ENCODED-TIME", Prim_encoded_time, 0, 0,
   "Return the current time as an integer.")
 {
-  PRIMITIVE_RETURN (long_to_integer ((long) (OS_encoded_time ())));
+  PRIMITIVE_RETURN (ulong_to_integer ((unsigned long) (OS_encoded_time ())));
 }
 
 DEFINE_PRIMITIVE ("DECODE-TIME", Prim_decode_time, 2, 2,
@@ -60,22 +60,22 @@ The vector's elements are:\n\
   len = (VECTOR_LENGTH (vec));
   if (! (len >= 8))
     error_bad_range_arg (1);
-  OS_decode_time (((time_t) (arg_integer (2))), &ts);
-  FAST_VECTOR_SET (vec, 1, (long_to_integer (ts . second)));
-  FAST_VECTOR_SET (vec, 2, (long_to_integer (ts . minute)));
-  FAST_VECTOR_SET (vec, 3, (long_to_integer (ts . hour)));
-  FAST_VECTOR_SET (vec, 4, (long_to_integer (ts . day)));
-  FAST_VECTOR_SET (vec, 5, (long_to_integer (ts . month)));
-  FAST_VECTOR_SET (vec, 6, (long_to_integer (ts . year)));
-  FAST_VECTOR_SET (vec, 7, (long_to_integer (ts . day_of_week)));
+  OS_decode_time (((time_t) (arg_ulong_integer (2))), &ts);
+  FAST_VECTOR_SET (vec, 1, (ulong_to_integer (ts . second)));
+  FAST_VECTOR_SET (vec, 2, (ulong_to_integer (ts . minute)));
+  FAST_VECTOR_SET (vec, 3, (ulong_to_integer (ts . hour)));
+  FAST_VECTOR_SET (vec, 4, (ulong_to_integer (ts . day)));
+  FAST_VECTOR_SET (vec, 5, (ulong_to_integer (ts . month)));
+  FAST_VECTOR_SET (vec, 6, (ulong_to_integer (ts . year)));
+  FAST_VECTOR_SET (vec, 7, (ulong_to_integer (ts . day_of_week)));
   if (len > 8)
-    FAST_VECTOR_SET (vec, 8, (long_to_integer (ts . daylight_savings_time)));
+    FAST_VECTOR_SET (vec, 8, (ulong_to_integer (ts . daylight_savings_time)));
   if (len > 9)
     FAST_VECTOR_SET
       (vec, 9,
        (((ts . time_zone) == INT_MAX)
 	? SHARP_F
-	: (long_to_integer (ts . time_zone))));
+	: (ulong_to_integer (ts . time_zone))));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -91,24 +91,24 @@ DEFINE_PRIMITIVE ("ENCODE-TIME", Prim_encode_time, 1, 1,
   len = (VECTOR_LENGTH (vec));
   if (! (len >= 8))
     error_bad_range_arg (1);
-  (ts . second) = (integer_to_long (FAST_VECTOR_REF (vec, 1)));
-  (ts . minute) = (integer_to_long (FAST_VECTOR_REF (vec, 2)));
-  (ts . hour) = (integer_to_long (FAST_VECTOR_REF (vec, 3)));
-  (ts . day) = (integer_to_long (FAST_VECTOR_REF (vec, 4)));
-  (ts . month) = (integer_to_long (FAST_VECTOR_REF (vec, 5)));
-  (ts . year) = (integer_to_long (FAST_VECTOR_REF (vec, 6)));
-  (ts . day_of_week) = (integer_to_long (FAST_VECTOR_REF (vec, 7)));
+  (ts . second) = (integer_to_ulong (FAST_VECTOR_REF (vec, 1)));
+  (ts . minute) = (integer_to_ulong (FAST_VECTOR_REF (vec, 2)));
+  (ts . hour) = (integer_to_ulong (FAST_VECTOR_REF (vec, 3)));
+  (ts . day) = (integer_to_ulong (FAST_VECTOR_REF (vec, 4)));
+  (ts . month) = (integer_to_ulong (FAST_VECTOR_REF (vec, 5)));
+  (ts . year) = (integer_to_ulong (FAST_VECTOR_REF (vec, 6)));
+  (ts . day_of_week) = (integer_to_ulong (FAST_VECTOR_REF (vec, 7)));
   (ts . daylight_savings_time)
     = ((len > 8)
-       ? (integer_to_long (FAST_VECTOR_REF (vec, 8)))
+       ? (integer_to_ulong (FAST_VECTOR_REF (vec, 8)))
        : (-1));
   (ts . time_zone)
     = (((len > 9)
 	&& (INTEGER_P (FAST_VECTOR_REF (vec, 9)))
-	&& (integer_to_long_p (FAST_VECTOR_REF (vec, 9))))
-       ? (integer_to_long (FAST_VECTOR_REF (vec, 9)))
+	&& (integer_to_ulong_p (FAST_VECTOR_REF (vec, 9))))
+       ? (integer_to_ulong (FAST_VECTOR_REF (vec, 9)))
        : INT_MAX);
-  PRIMITIVE_RETURN (long_to_integer ((long) (OS_encode_time (&ts))));
+  PRIMITIVE_RETURN (ulong_to_integer ((unsigned long) (OS_encode_time (&ts))));
 }
 
 DEFINE_PRIMITIVE ("SYSTEM-CLOCK", Prim_system_clock, 0, 0,
