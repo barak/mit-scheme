@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.138 2002/03/26 03:53:46 cph Exp $
+$Id: todo.txt,v 1.139 2003/01/10 21:29:10 cph Exp $
 
 Bug fixes
 ---------
@@ -57,11 +57,18 @@ New features
 * Implement decoder for uuencoded attachments.  Agnes recently sent me
   a message with a uuencoded attachment.
 
-* Allow the user to specify that elements of a MIME digest are to be
+* [partially done]
+  Allow the user to specify that elements of a MIME digest are to be
   treated as out-of-line rather than inline.  In this case the
   attachment summaries need to show the "from" and "subject" headers
   so that the digest can be browsed.  We will also need commands to
   toggle all of the elements between in-line and out-of-line.
+
+* Add ability to treat a MIME digest as a folder, so that it can be
+  visited and browsed like any other folder.  Obviously, deleting
+  individual messages in the folder can't work, but this could be
+  simulated, using client-side markers, or perhaps flags such as
+  "digest-message-1-deleted".
 
 * Implement generic operation to say whether a folder rename can work.
   Use this to extend M-x imail-rename-folder to work in all cases by
