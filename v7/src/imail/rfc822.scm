@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rfc822.scm,v 1.5 2000/05/02 21:07:59 cph Exp $
+;;; $Id: rfc822.scm,v 1.6 2000/05/15 17:47:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -61,70 +61,29 @@
     (if (and address-list (null? (cdr address-list)))
 	(car address-list)
 	(map string-trim (burst-string string #\, #f)))))
-
+
 (define (rfc822:strip-quoted-names tokens)
-  (define (parse-list tokens separator parse-element)
-    (let ((first (parse-element tokens)))
-      (and first
-	   (let loop ((tokens (cdr first)) (words (list (car first))))
-	     (let ((next
-		    (and (pair? tokens)
-			 (eqv? separator (car tokens))
-			 (parse-element (cdr tokens)))))
-	       (if next
-		   (loop (cdr next) (cons (car next) words))
-		   (cons (reverse! words) tokens)))))))
-
-  (define (parse-addr-spec tokens)
-    (let ((local-part (parse-list tokens #\. parse-word)))
-      (and local-part
-	   (pair? (cdr local-part))
-	   (eqv? #\@ (cadr local-part))
-	   (let ((domain (parse-domain (cddr local-part))))
-	     (and domain
-		  (cons (string-append
-			 (decorated-string-append "" "." ""
-						  (car local-part))
-			 "@"
-			 (decorated-string-append "" "." ""
-						  (car domain)))
-			(cdr domain)))))))
-
-  (define (parse-domain tokens)
-    (parse-list tokens #\.
-      (lambda (tokens)
-	(and (pair? tokens)
-	     (string? (car tokens))
-	     (not (eqv? #\" (string-ref (car tokens) 0)))
-	     tokens))))
-
-  (define (parse-word tokens)
-    (and (pair? tokens)
-	 (string? (car tokens))
-	 (not (eqv? #\[ (string-ref (car tokens) 0)))
-	 tokens))
-
-  (parse-list tokens #\,
+  (rfc822:parse-list tokens #\,
     (lambda (tokens)
-      (or (parse-addr-spec tokens)
-	  (let ((word (parse-word tokens)))
+      (or (rfc822:parse-addr-spec tokens)
+	  (let ((word (rfc822:parse-word tokens)))
 	    (and word
 		 (let ((tokens
 			(let loop ((tokens (cdr word)))
-			  (let ((word (parse-word tokens)))
+			  (let ((word (rfc822:parse-word tokens)))
 			    (if word
 				(loop (cdr word))
 				tokens)))))
 		   (and (pair? tokens)
 			(eqv? #\< (car tokens))
 			(let ((addr-spec
-			       (parse-addr-spec
+			       (rfc822:parse-addr-spec
 				(let ((domains
-				       (parse-list (cdr tokens) #\,
+				       (rfc822:parse-list (cdr tokens) #\,
 					 (lambda (tokens)
 					   (and (pair? tokens)
 						(eqv? #\@ (car tokens))
-						(parse-domain
+						(rfc822:parse-domain
 						 (cdr tokens)))))))
 				  (if (and domains
 					   (pair? (cdr domains))
@@ -136,6 +95,120 @@
 			       (eqv? #\> (cadr addr-spec))
 			       (cons (car addr-spec)
 				     (cddr addr-spec))))))))))))
+
+(define (rfc822:received-header-components string)
+  (let ((from #f)
+	(by #f)
+	(via #f)
+	(with '())
+	(id #f)
+	(for #f)
+	(lose (lambda () (error "Malformed Received header:" string))))
+    (let loop ((tokens (rfc822:string->tokens string)))
+      (cond ((not (pair? tokens))
+	     (lose))
+	    ((eqv? #\: (car tokens))
+	     (values from by via (reverse! with) id for
+		     (string->universal-time (rfc822:tokens->string tokens))))
+	    ((not (string? (car tokens)))
+	     (lose))
+	    ((string-ci=? "from" (car tokens))
+	     (let ((tokens (rfc822:parse-domain (cdr tokens))))
+	       (if (not tokens)
+		   (lose))
+	       (set! from (car tokens))
+	       (loop (cdr tokens))))
+	    ((string-ci=? "by" (car tokens))
+	     (let ((tokens (rfc822:parse-domain (cdr tokens))))
+	       (if (not tokens)
+		   (lose))
+	       (set! from (car tokens))
+	       (loop (cdr tokens))))
+	    ((string-ci=? "via" (car tokens))
+	     (if (not (pair? (cdr tokens)))
+		 (lose))
+	     (set! from (cadr tokens))
+	     (loop (cddr tokens)))
+	    ((string-ci=? "with" (car tokens))
+	     (if (not (pair? (cdr tokens)))
+		 (lose))
+	     (set! with (cons (cadr tokens) with))
+	     (loop (cddr tokens)))
+	    ((string-ci=? "id" (car tokens))
+	     (let ((tokens (rfc822:parse-msg-id (cdr tokens))))
+	       (if (not tokens)
+		   (lose))
+	       (set! id (car tokens))
+	       (loop (cdr tokens))))
+	    ((string-ci=? "for" (car tokens))
+	     (let ((tokens (rfc822:parse-addr-spec (cdr tokens))))
+	       (if (not tokens)
+		   (lose))
+	       (set! for (car tokens))
+	       (loop (cdr tokens))))
+	    (else (lose))))))
+
+(define (rfc822:parse-msg-id tokens)
+  (and (pair? tokens)
+       (eqv? #\< (car tokens))
+       (let ((addr-spec (rfc822:parse-addr-spec (cdr tokens))))
+	 (and (pair? addr-spec)
+	      (pair? (cdr addr-spec))
+	      (eqv? #\> (cadr addr-spec))
+	      (cons (car addr-spec) (cddr addr-spec))))))
+
+(define (rfc822:parse-addr-spec tokens)
+  (let ((local-part (rfc822:parse-list tokens #\. rfc822:parse-word)))
+    (and (pair? local-part)
+	 (pair? (cdr local-part))
+	 (eqv? #\@ (cadr local-part))
+	 (let ((domain (rfc822:parse-domain (cddr local-part))))
+	   (and (pair? domain)
+		(cons (string-append
+		       (decorated-string-append "" "." "" (car local-part))
+		       "@"
+		       (decorated-string-append "" "." "" (car domain)))
+		      (cdr domain)))))))
+
+(define (rfc822:parse-domain tokens)
+  (rfc822:parse-list tokens #\.
+    (lambda (tokens)
+      (and (pair? tokens)
+	   (string? (car tokens))
+	   (not (char=? #\" (string-ref (car tokens) 0)))
+	   tokens))))
+
+(define (rfc822:parse-word tokens)
+  (and (pair? tokens)
+       (string? (car tokens))
+       (not (char=? #\[ (string-ref (car tokens) 0)))
+       tokens))
+
+(define (rfc822:parse-list tokens separator parse-element)
+  (let ((first (parse-element tokens)))
+    (and first
+	 (let loop ((tokens (cdr first)) (words (list (car first))))
+	   (let ((next
+		  (and (pair? tokens)
+		       (eqv? separator (car tokens))
+		       (parse-element (cdr tokens)))))
+	     (if next
+		 (loop (cdr next) (cons (car next) words))
+		 (cons (reverse! words) tokens)))))))
+
+(define (rfc822:tokens->string tokens)
+  (let ((port (make-accumulator-output-port)))
+    (do ((tokens tokens (cdr tokens)))
+	((not (pair? tokens)))
+      (cond ((char? (car tokens))
+	     (write-char (car tokens) port))
+	    ((string? (car tokens))
+	     (write-string (car tokens) port))
+	    ((and (pair? (car tokens))
+		  (eq? 'ILLEGAL (caar tokens)))
+	     (write-char (cdar tokens) port))
+	    (else
+	     (error "Malformed RFC-822 token stream:" tokens))))))
 
 ;;;; Parser
 
