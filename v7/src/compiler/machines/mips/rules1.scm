@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules1.scm,v 1.3 1991/06/17 21:21:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules1.scm,v 1.4 1991/07/25 02:46:10 cph Exp $
 $MC68020-Header: rules1.scm,v 4.33 90/05/03 15:17:28 GMT jinx Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -149,51 +149,49 @@ MIT in each case. |#
 (define-rule statement
   ;; load the address of a variable reference cache
   (ASSIGN (REGISTER (? target)) (VARIABLE-CACHE (? name)))
-  (LAP
-   ,@(load-pc-relative (free-reference-label name) 
-		       (standard-target! target))
-   (NOP)))
+  (load-pc-relative (standard-target! target)
+		    'CONSTANT (free-reference-label name)
+		    true))
 
 (define-rule statement
   ;; load the address of an assignment cache
   (ASSIGN (REGISTER (? target)) (ASSIGNMENT-CACHE (? name)))
-  (LAP
-   ,@(load-pc-relative (free-assignment-label name)
-		    (standard-target! target))
-   (NOP)))
+  (load-pc-relative (standard-target! target)
+		    'CONSTANT (free-assignment-label name)
+		    true))
 
 (define-rule statement
   ;; load the address of a procedure's entry point
   (ASSIGN (REGISTER (? target)) (ENTRY:PROCEDURE (? label)))
-  (load-pc-relative-address label (standard-target! target)))
+  (load-pc-relative-address (standard-target! target) 'CODE label))
 
 (define-rule statement
   ;; load the address of a continuation
   (ASSIGN (REGISTER (? target)) (ENTRY:CONTINUATION (? label)))
-  (load-pc-relative-address label (standard-target! target)))
-
-;;; Spectrum optimizations converted to MIPS
-
-(define (load-entry label target)
-  (let ((target (standard-target! target)))
-    (LAP ,@(load-pc-relative-address label target)
-	 ,@(address->entry target))))
+  (load-pc-relative-address (standard-target! target) 'CODE label))
 
 (define-rule statement
   ;; load a procedure object
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(ENTRY:PROCEDURE (? label))))
-  (QUALIFIER (= type (ucode-type compiled-entry)))
-  (load-entry label target))
+  (load-entry target type label))
 
 (define-rule statement
   ;; load a return address object
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(ENTRY:CONTINUATION (? label))))
-  (QUALIFIER (= type (ucode-type compiled-entry)))
-  (load-entry label target))
+  (load-entry target type label))
+
+(define (load-entry target type label)
+  (let ((temporary (standard-temporary!))
+	(target (standard-target! target)))
+    ;; Loading the address into a temporary makes it more useful,
+    ;; because it can be reused later.
+    (LAP ,@(load-pc-relative-address temporary 'CODE label)
+	 (AND ,target ,temporary ,regnum:address-mask)
+	 ,@(put-type type target))))
 
 ;;;; Transfers to Memory
 		    
@@ -269,16 +267,14 @@ MIT in each case. |#
 (define-rule statement
   ;; convert char object to ASCII byte
   ;; Missing optimization: If source is home and this is the last
-  ;; reference (it is dead afterwards), an LB could be done instead
-  ;; of an LW followed by an object->datum.  This is unlikely since
-  ;; the value will be home only if we've spilled it, which happens
-  ;; rarely.
+  ;; reference (it is dead afterwards), an LB could be done instead of
+  ;; an LW followed by an ANDI.  This is unlikely since the value will
+  ;; be home only if we've spilled it, which happens rarely.
   (ASSIGN (REGISTER (? target))
 	  (CHAR->ASCII (REGISTER (? source))))
   (standard-unary-conversion source target
     (lambda (source target)
-      (LAP (SLL ,target ,source 24)
-	   (SRL ,target ,target 24)))))
+      (LAP (ANDI ,target ,source #xFF)))))
 
 (define-rule statement
   ;; store null byte in memory

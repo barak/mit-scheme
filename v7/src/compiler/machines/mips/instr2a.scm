@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/instr2a.scm,v 1.3 1991/06/17 21:21:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/instr2a.scm,v 1.4 1991/07/25 02:45:56 cph Exp $
 
-Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,23 +42,23 @@ MIT in each case. |#
     ((branch
       (macro (keyword match-phrase forward reverse)
 	`(define-instruction ,keyword
-	   ((,@match-phrase (@PCO (? branch-dest-pco)))
-	    (VARIABLE-WIDTH (offset (/ branch-dest-pco 4))
-	      ((#x-8000 #x7fff) (LONG ,@forward (16 offset signed)))
-	      ((() ()) (LONG (32 "Can't branch tension @PCO operands")))))
-	   ((,@match-phrase (@PCR (? branch-dest-pcr)))
-	    (VARIABLE-WIDTH (offset `(/ (- ,branch-dest-pcr (+ *PC* 4)) 4))
-	      ((#x-8000 #x7fff) (LONG ,@forward (16 offset signed)))
+	   ((,@match-phrase (@PCO (? offset)))
+	    (LONG ,@forward
+		  (16 (quotient offset 4) SIGNED)))
+	   ((,@match-phrase (@PCR (? label)))
+	    (VARIABLE-WIDTH (offset `(/ (- ,label (+ *PC* 4)) 4))
+	      ((#x-8000 #x7fff)
+	       (LONG ,@forward (16 offset SIGNED)))
 	      ((() ())
 	       ;;         <reverse> xxx
-	       ;;         LUI    $1,left_adj(branch-dest - 16)
-	       ;;         BGEZAL $0,yyy
-	       ;;         ADDIU  $1,$1,right(branch-dest - 16)
-	       ;; yyy:    ADD    $1,$1,$31
+	       ;;         LUI    $1, left_adj(offset*4 - 12)
+	       ;;         BGEZAL $0, yyy
+	       ;;         ADDIU  $1, $1, right(offset*4 - 12)
+	       ;; yyy:    ADD    $1, $1, $31
 	       ;;         JR     $1
-	       ;;         ADD    $0,$0,$0
 	       ;; xxx:
-	       (LONG ,@reverse (16 6)	; reverse branch to (.+1)+6
+	       (LONG ,@reverse		; reverse branch to (.+1)+5
+		     (16 5)
 	             (6 15)		; LUI
 		     (5 0)
 		     (5 1)
@@ -80,42 +80,45 @@ MIT in each case. |#
 		     (6 0)		; JR
 		     (5 1)
 		     (15 0)
-		     (6 8)
-		     (6 0)		; ADD
-		     (5 0)
-		     (5 0)
-		     (5 0)
-		     (5 0)
-		     (6 32)))))))))
-  (branch bc0f () ((6 16) (10 #x100)) ((6 16) (10 #x101)))
+		     (6 8)))))))))
+  (branch beq
+	  ((? reg1) (? reg2))
+	  ((6 4) (5 reg1) (5 reg2))
+	  ((6 5) (5 reg1) (5 reg2)))
+  (branch bne
+	  ((? reg1) (? reg2))
+	  ((6 5) (5 reg1) (5 reg2))
+	  ((6 4) (5 reg1) (5 reg2)))
+  (branch bgez
+	  ((? reg))
+	  ((6 1) (5 reg) (5 1))
+	  ((6 1) (5 reg) (5 0)))
+  (branch bgtz
+	  ((? reg))
+	  ((6 7) (5 reg) (5 0))
+	  ((6 6) (5 reg) (5 0)))
+  (branch blez
+	  ((? reg))
+	  ((6 6) (5 reg) (5 0))
+	  ((6 7) (5 reg) (5 0)))
+  (branch bltz
+	  ((? reg))
+	  ((6 1) (5 reg) (5 0))
+	  ((6 1) (5 reg) (5 1)))
+  (branch bgezal
+	  ((? reg))
+	  ((6 1) (5 reg) (5 17))
+	  ((16 "can't branch tension a bgezal instruction")))
+  (branch bltzal
+	  ((? reg))
+	  ((6 1) (5 reg) (5 16))
+	  ((16 "can't branch tension a bltzal instruction")))
+  ;; (branch bc0f () ((6 16) (10 #x100)) ((6 16) (10 #x101)))
   (branch bc1f () ((6 17) (10 #x100)) ((6 17) (10 #x101)))
-  (branch bc2f () ((6 18) (10 #x100)) ((6 18) (10 #x101)))
-  (branch bc3f () ((6 19) (10 #x100)) ((6 19) (10 #x101)))
-  (branch bc0t () ((6 16) (10 #x101)) ((6 16) (10 #x100)))
+  ;; (branch bc2f () ((6 18) (10 #x100)) ((6 18) (10 #x101)))
+  ;; (branch bc3f () ((6 19) (10 #x100)) ((6 19) (10 #x101)))
+  ;; (branch bc0t () ((6 16) (10 #x101)) ((6 16) (10 #x100)))
   (branch bc1t () ((6 17) (10 #x101)) ((6 17) (10 #x100)))
-  (branch bc2t () ((6 18) (10 #x101)) ((6 18) (10 #x100)))
-  (branch bc3t () ((6 19) (10 #x101)) ((6 19) (10 #x100)))
-  (branch beq ((? reg1) (? reg2))
-	      ((6 4) (5 reg1) (5 reg2))
-	      ((6 5) (5 reg1) (5 reg2)))
-  (branch bgez ((? reg))
-	       ((6 1) (5 reg) (5 1))
-	       ((6 1) (5 reg) (5 0)))
-  (branch bgezal ((? reg))
-	         ((6 1) (5 reg) (5 17))
-		 ((16 "can't branch tension a bgezal instruction")))
-  (branch bgtz ((? reg))
-	       ((6 7) (5 reg) (5 0))
-	       ((6 6) (5 reg) (5 0)))
-  (branch blez ((? reg))
-	       ((6 6) (5 reg) (5 0))
-	       ((6 7) (5 reg) (5 0)))
-  (branch bltz ((? reg))
-	       ((6 1) (5 reg) (5 0))
-	       ((6 1) (5 reg) (5 1)))
-  (branch bltzal ((? reg))
-	         ((6 1) (5 reg) (5 16))
-		 ((16 "can't branch tension a bltzal instruction")))
-  (branch bne ((? reg1) (? reg2))
-	      ((6 5) (5 reg1) (5 reg2))
-	      ((6 4) (5 reg1) (5 reg2))))
+  ;; (branch bc2t () ((6 18) (10 #x101)) ((6 18) (10 #x100)))
+  ;; (branch bc3t () ((6 19) (10 #x101)) ((6 19) (10 #x100)))
+  )

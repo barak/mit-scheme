@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulflo.scm,v 1.4 1991/07/16 20:53:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulflo.scm,v 1.5 1991/07/25 02:46:19 cph Exp $
 $MC68020-Header: rules1.scm,v 4.33 90/05/03 15:17:28 GMT jinx Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
@@ -103,32 +103,9 @@ MIT in each case. |#
        (macro (primitive-name opcode)
 	 `(define-arithmetic-method ',primitive-name flonum-methods/1-arg
 	    (lambda (target source)
-	      (LAP (,opcode DOUBLE ,',target ,',source)))))))
-  (define-flonum-operation flonum-abs FABS)
-  (define-flonum-operation flonum-negate FNEG))
-
-; Well, I thought this would work, but the fine print in the manual
-; says that CVT.D only works with a source type of single precision.
-
-; (define-arithmetic-method 'FLONUM-ROUND flonum-methods/1-arg
-;   (lambda (target source)
-;     (let ((temp (standard-temporary!)))
-;       (LAP (CFC1 ,regnum:assembler-temp 31)      ; Status register
-; 	   (ORI  ,temp ,regnum:assembler-temp 3) ; Rounding Mode <-
-; 	   (XORI ,temp ,temp 3)			 ;; 0 (nearest)
-; 	   (CTC1 ,temp 31)			 ; Store mode back
-; 	   (CVT.D DOUBLE ,target ,source)	 ; Move & round
-; 	   (CTC1 ,regnum:assembler-temp 31)))))  ; Restore status
- 
-; (define-arithmetic-method 'FLONUM-TRUNCATE flonum-methods/1-arg
-;   (lambda (target source)
-;     (let ((temp (standard-temporary!)))
-;       (LAP (CFC1 ,regnum:assembler-temp 31)      ; Status register
-; 	   (ORI ,temp ,regnum:assembler-temp 3)	 ; Rounding Mode <-
-; 	   (XORI  ,temp ,temp 2)                 ;; 1 (toward zero)
-; 	   (CTC1 ,temp 31)			 ; Store mode back
-; 	   (CVT.D DOUBLE ,target ,source)	 ; Move & round
-; 	   (CTC1 ,regnum:assembler-temp 31)))))	 ; Restore status
+	      (LAP (,opcode ,',target ,',source)))))))
+  (define-flonum-operation flonum-abs ABS.D)
+  (define-flonum-operation flonum-negate NEG.D))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -154,11 +131,11 @@ MIT in each case. |#
        (macro (primitive-name opcode)
 	 `(define-arithmetic-method ',primitive-name flonum-methods/2-args
 	    (lambda (target source1 source2)
-	      (LAP (,opcode DOUBLE ,',target ,',source1 ,',source2)))))))
-  (define-flonum-operation flonum-add FADD)
-  (define-flonum-operation flonum-subtract FSUB)
-  (define-flonum-operation flonum-multiply FMUL)
-  (define-flonum-operation flonum-divide FDIV))
+	      (LAP (,opcode ,',target ,',source1 ,',source2)))))))
+  (define-flonum-operation flonum-add ADD.D)
+  (define-flonum-operation flonum-subtract SUB.D)
+  (define-flonum-operation flonum-multiply MUL.D)
+  (define-flonum-operation flonum-divide DIV.D))
 
 ;;;; Flonum Predicates
 
@@ -172,9 +149,9 @@ MIT in each case. |#
 	 (NOP)
 	 ,@(flonum-compare
 	    (case predicate
-	      ((FLONUM-ZERO?) 'C.EQ)
-	      ((FLONUM-NEGATIVE?) 'C.LT)
-	      ((FLONUM-POSITIVE?) 'C.GT)
+	      ((FLONUM-ZERO?) 'C.EQ.D)
+	      ((FLONUM-NEGATIVE?) 'C.LT.D)
+	      ((FLONUM-POSITIVE?) 'C.GT.D)
 	      (else (error "unknown flonum predicate" predicate)))
 	    source temp))))
 
@@ -183,9 +160,9 @@ MIT in each case. |#
 		      (REGISTER (? source1))
 		      (REGISTER (? source2)))
   (flonum-compare (case predicate
-		    ((FLONUM-EQUAL?) 'C.EQ)
-		    ((FLONUM-LESS?) 'C.LT)
-		    ((FLONUM-GREATER?) 'C.GT)
+		    ((FLONUM-EQUAL?) 'C.EQ.D)
+		    ((FLONUM-LESS?) 'C.LT.D)
+		    ((FLONUM-GREATER?) 'C.GT.D)
 		    (else (error "unknown flonum predicate" predicate)))
 		  (flonum-source! source1)
 		  (flonum-source! source2)))
@@ -196,6 +173,6 @@ MIT in each case. |#
      (LAP (BC1T (@PCR ,label)) (NOP)))
    (lambda (label)
      (LAP (BC1F (@PCR ,label)) (NOP))))
-  (if (eq? cc 'C.GT)
-      (LAP (C.LT DOUBLE ,r2 ,r1) (NOP))
-      (LAP (,cc DOUBLE ,r1 ,r2) (NOP))))
+  (if (eq? cc 'C.GT.D)
+      (LAP (C.LT.D ,r2 ,r1) (NOP))
+      (LAP (,cc ,r1 ,r2) (NOP))))

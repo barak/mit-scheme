@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/instr2b.scm,v 1.2 1991/07/21 07:41:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/instr2b.scm,v 1.3 1991/07/25 02:45:59 cph Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -51,7 +51,7 @@ MIT in each case. |#
 		     (16 delta SIGNED)))
 	      ((() ())
 	       ;; LUI    1,adjusted-left<offset>
-	       ;; ADDU    1,1,base-reg
+	       ;; ADDU   1,1,base-reg
 	       ;; LW     source/dest-reg,right<offset>(1)
 	       (LONG (6 15)	; LUI
 		     (5 0)
@@ -66,61 +66,25 @@ MIT in each case. |#
 		     (6 ,opcode); LW
 		     (5 1)
 		     (5 source/dest-reg)
-		     (16 (adjusted:low delta) SIGNED)))))
-	   (((? source/dest-reg) (@PCR (? label)))
-	    (VARIABLE-WIDTH (delta `(- ,label (+ *PC* 8)))
-	      ((#x-8000 #x7fff)
-	       ; 	BGEZAL 0,X
-	       ; 	LW source/dest-reg,delta(31)
-	       ; X:
-	       (LONG (6 1)		; BGEZAL
-		     (5 0)
-		     (5 17)
-		     (16 1)
-		     (6 ,opcode)	; LW
-		     (5 31)
-		     (5 source/dest-reg)
-		     (16 delta)))
-	      ((() ())
-	      ;		BGEZAL	0,X
-	      ;		LUI	1,upper-half-adjusted
-	      ;	X:	ADDU	1,31,1
-	      ;		LW	source/dest-reg,lower-half(1)
-	       (LONG (6 1)		; BGEZAL
-		     (5 0)
-		     (5 17)
-		     (16 1)
-		     (6 15)		; LUI
-		     (5 0)
-		     (5 1)
-		     (16 (adjusted:high delta))
-		     (6 0)		; ADDU
-		     (5 1)
-		     (5 31)
-		     (5 1)
-		     (5 0)
-		     (6 33)
-		     (6 ,opcode)	; LW
-		     (5 1)
-		     (5 source/dest-reg)
 		     (16 (adjusted:low delta) SIGNED)))))))))
   (load/store-instruction lb 32)
   (load/store-instruction lbu 36)
   (load/store-instruction lh 33)
   (load/store-instruction lhu 37)
   (load/store-instruction lw 35)
-  (load/store-instruction lwc0 48)
+  ;; (load/store-instruction lwc0 48)
   (load/store-instruction lwc1 49)
-  (load/store-instruction lwc2 50)
-  (load/store-instruction lwc3 51)
-  (load/store-instruction lwl 34)
-  (load/store-instruction lwr 38)
+  ;; (load/store-instruction lwc2 50)
+  ;; (load/store-instruction lwc3 51)
+  ;; (load/store-instruction lwl 34)
+  ;; (load/store-instruction lwr 38)
   (load/store-instruction sb 40)
   (load/store-instruction sh 41)
   (load/store-instruction sw 43)
-  (load/store-instruction swc0 56)
+  ;; (load/store-instruction swc0 56)
   (load/store-instruction swc1 57)
-  (load/store-instruction swc2 58)
-  (load/store-instruction swc3 59)
-  (load/store-instruction swl 42)
-  (load/store-instruction swr 46))
+  ;; (load/store-instruction swc2 58)
+  ;; (load/store-instruction swc3 59)
+  ;; (load/store-instruction swl 42)
+  ;; (load/store-instruction swr 46)
+  )

@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/lapgen.scm,v 1.4 1991/06/17 21:21:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/lapgen.scm,v 1.5 1991/07/25 02:46:06 cph Exp $
 $MC68020-Header: lapgen.scm,v 4.26 90/01/18 22:43:36 GMT cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -143,8 +143,7 @@ MIT in each case. |#
 
 (define (memory->register-transfer offset base target)
   (case (register-type target)
-    ((GENERAL) (LAP (LW ,target (OFFSET ,offset ,base))
-		    (NOP)))
+    ((GENERAL) (LAP (LW ,target (OFFSET ,offset ,base)) (NOP)))
     ((FLOAT) (fp-load-doubleword offset base target #T))
     (else (error "unknown register type" target))))
 
@@ -159,8 +158,10 @@ MIT in each case. |#
   (let ((delay-slot? (and (not (default-object? delay-slot?)) delay-slot?)))
     (if (non-pointer-object? constant)
 	(load-immediate (non-pointer->literal constant) target)
-	(LAP ,@(load-pc-relative (constant->label constant) target)
-	     ,@(if delay-slot? '((NOP)) '())))))
+	(LAP ,@(load-pc-relative target
+				 'CONSTANT
+				 (constant->label constant)
+				 delay-slot?)))))
 
 (define (load-non-pointer type datum target)
   ;; Load a Scheme non-pointer constant, defined by type and datum,
@@ -188,58 +189,60 @@ MIT in each case. |#
 
 ;;;; Regularized Machine Instructions
 
+(define (adjusted:high n)
+  (let ((n (->unsigned n)))
+    (if (< (remainder n #x10000) #x8000)
+	(quotient n #x10000)
+	(+ (quotient n #x10000) 1))))
+
+(define-integrable (adjusted:low n)
+  (remainder (->unsigned n) #x10000))
+
+(define-integrable (top-16-bits n)
+  (quotient (->unsigned n) #x10000))
+
+(define-integrable (bottom-16-bits n)
+  (remainder (->unsigned n) #x10000))
+
+(define (->unsigned n)
+  (if (negative? n) (- #x100000000 n) n))
+
+(define-integrable (fits-in-16-bits-signed? value)
+  (<= #x-8000 value #x7fff))
+
+(define-integrable (fits-in-16-bits-unsigned? value)
+  (<= #x0 value #xffff))
+
+(define-integrable (top-16-bits-only? value)
+  (zero? (bottom-16-bits value)))
+
 (define (copy r t)
   (if (= r t)
       (LAP)
       (LAP (ADD ,t 0 ,r))))
 
-(define-integrable (long->bits long)
-  ((if (negative? long)
-       signed-integer->bit-string
-       unsigned-integer->bit-string) 32 long))
-
-(define (adjusted:high long)
-  (let ((n (long->bits long)))
-    (+ (extract n 16 32)
-       (if (> (extract n 0 16) #x7FFF)
-	   1 0))))
-
-(define (adjusted:low long)
-  (extract-signed (long->bits long) 0 16))
-
-(define (top-16-bits long)
-  (extract (long->bits long) 16 32))
-
 (define (add-immediate value source dest)
-  (cond
-   ((fits-in-16-bits-signed? value)
-    (LAP (ADDI ,dest ,source ,value)))
-   ((top-16-bits-only? value)
-    (LAP (LUI ,regnum:assembler-temp ,(top-16-bits value))
-	 (ADD ,dest ,regnum:assembler-temp ,source)))
-   (else
-    (LAP (ADDIU ,dest ,source ,(adjusted:low value))
-	 (LUI ,regnum:assembler-temp ,(adjusted:high value))
-	 (ADD ,dest ,dest ,regnum:assembler-temp)))))
+  (if (fits-in-16-bits-signed? value)
+      (LAP (ADDI ,dest ,source ,value))
+      (LAP ,@(load-immediate value regnum:assembler-temp)
+	   (ADD ,dest ,regnum:assembler-temp ,source))))
 
 (define (load-immediate value dest)
-  (cond
-   ((fits-in-16-bits-signed? value)
-    (LAP (ADDI ,dest 0 ,value)))
-   ((top-16-bits-only? value)
-    (LAP (LUI ,dest ,(top-16-bits value))))
-   ((fits-in-16-bits-unsigned? value)
-    (LAP (ORI ,dest 0 ,value)))
-   (else
-    (LAP
-     (LUI ,regnum:assembler-temp ,(adjusted:high value))
-     (ADDIU ,dest ,regnum:assembler-temp ,(adjusted:low value))))))
-
+  (cond ((fits-in-16-bits-signed? value)
+	 (LAP (ADDI ,dest 0 ,value)))
+	((fits-in-16-bits-unsigned? value)
+	 (LAP (ORI ,dest 0 ,value)))
+	((top-16-bits-only? value)
+	 (LAP (LUI ,dest ,(top-16-bits value))))
+	(else
+	 (LAP (LUI ,regnum:assembler-temp ,(adjusted:high value))
+	      (ADDIU ,dest ,regnum:assembler-temp ,(adjusted:low value))))))
+
 (define (fp-copy from to)
   (if (= to from)
       (LAP)
-      (LAP (FMOV DOUBLE ,(float-register->fpr to)
-		        ,(float-register->fpr from)))))
+      (LAP (MOV.D ,(float-register->fpr to)
+		  ,(float-register->fpr from)))))
 
 ;; Handled by VARIABLE-WIDTH in instr1.scm
 
@@ -262,29 +265,80 @@ MIT in each case. |#
 	     (SWC1 ,most (OFFSET ,(+ offset 4) ,base)))
 	(LAP (SWC1 ,least (OFFSET ,(+ offset 4) ,base))
 	     (SWC1 ,most (OFFSET ,offset ,base))))))
-
-(define (load-pc-relative label target)
-  ;; Load a pc-relative location's contents into a machine register.
-  (LAP (LW ,target (@PCR ,label))))
-
-(define (load-pc-relative-address label target)
-  ;; Load address of a pc-relative location into a machine register.
-  (LAP (PC-RELATIVE-OFFSET ,target (@PCR ,label))))
 
-(define (branch-generator! cc = < > <> >= <=)
-  (let ((forward
-	 (case cc
-	   ((=)   =) ((<)  <)  ((>)  >)
-	   ((<>) <>) ((>=) >=) ((<=) <=)))
-	(inverse
-	 (case cc
-	   ((=)  <>) ((<)  >=) ((>)  <=)
-	   ((<>) =)  ((>=) <)  ((<=) >))))
-    (set-current-branches!
-     (lambda (label)
-       (LAP (,@forward (@PCR ,label)) (NOP)))
-     (lambda (label)
-       (LAP (,@inverse (@PCR ,label)) (NOP))))))
+;;;; PC-relative addresses
+
+(define (load-pc-relative target type label delay-slot?)
+  ;; Load a pc-relative location's contents into a machine register.
+  ;; Optimization: if there is a register that contains the value of
+  ;; another label, use that register as the base register.
+  ;; Otherwise, allocate a temporary and load it with the value of the
+  ;; label, then use the temporary as the base register.  This
+  ;; strategy of loading a temporary wins if the temporary is used
+  ;; again, but loses if it isn't, since loading the temporary takes
+  ;; two instructions in addition to the LW instruction, while doing a
+  ;; pc-relative LW instruction takes only two instructions total.
+  ;; But pc-relative loads of various kinds are quite common, so this
+  ;; should almost always be advantageous.
+  (with-values (lambda () (get-typed-label type))
+    (lambda (label* alias)
+      (if label*
+	  (LAP (LW ,target (OFFSET (- ,label ,label*) ,alias))
+	       ,@(if delay-slot? (LAP (NOP)) (LAP)))
+	  (let ((temporary (standard-temporary!)))
+	    (set-typed-label! type label temporary)
+	    (LAP ,@(%load-pc-relative-address temporary label)
+		 (LW ,target (OFFSET 0 ,temporary))
+		 ,@(if delay-slot? (LAP (NOP)) (LAP))))))))
+
+(define (load-pc-relative-address target type label)
+  ;; Load address of a pc-relative location into a machine register.
+  ;; Optimization: if there is another register that contains the
+  ;; value of another label, add the difference between the labels to
+  ;; that register's contents instead.  The ADDI takes one
+  ;; instruction, while the %LOAD-PC-RELATIVE-ADDRESS takes two, so
+  ;; this is always advantageous.
+  (let ((instructions
+	 (with-values (lambda () (get-typed-label type))
+	   (lambda (label* alias)
+	     (if label*
+		 (LAP (ADDI ,target ,alias (- ,label ,label*)))
+		 (%load-pc-relative-address target label))))))
+    (set-typed-label! type label target)
+    instructions))
+
+(define (%load-pc-relative-address target label)
+  (let ((label* (generate-label)))
+    (LAP (BGEZAL 0 (@PCO 4))
+	 (LABEL ,label*)
+	 (ADDI ,target 31 (- ,label (+ ,label* 4))))))
+
+;;; Typed labels provide further optimization.  There are two types,
+;;; CODE and CONSTANT, that say whether the label is located in the
+;;; code block or the constants block of the output.  Statistically,
+;;; a label is likely to be closer to another label of the same type
+;;; than to a label of the other type.
+
+(define (get-typed-label type)
+  (let ((entries (register-map-labels *register-map* 'GENERAL)))
+    (let loop ((entries* entries))
+      (cond ((null? entries*)
+	     ;; If no entries of the given type, use any entry that is
+	     ;; available.
+	     (if (null? entries)
+		 (values false false)
+		 (values (cdaar entries) (cadar entries))))
+	    ((eq? type (caaar entries*))
+	     (values (cdaar entries*) (cadar entries*)))
+	    (else
+	     (loop (cdr entries*)))))))
+
+(define (set-typed-label! type label alias)
+  (set! *register-map*
+	(set-machine-register-label *register-map* alias (cons type label)))
+  unspecific)
+
+;;;; Comparisons
 
 (define (compare-immediate comp i r2)
   ; Branch if immediate <comp> r2
@@ -298,7 +352,10 @@ MIT in each case. |#
 	    `(BNE 0 ,r2) `(BGEZ ,r2) `(BLEZ ,r2))
 	  (LAP))
       (let ((temp (standard-temporary!)))
-	(if (fits-in-16-bits-signed? i)
+	(if (fits-in-16-bits-signed?
+	     (if (or (eq? '> cc) (eq? '<= cc))
+		 (+ i 1)
+		 i))
 	    (begin
 	      (branch-generator! cc
 	        `(BEQ ,temp ,r2) `(BNE 0 ,temp) `(BEQ 0 ,temp)
@@ -322,8 +379,21 @@ MIT in each case. |#
       ((= <>) (LAP))
       ((< >=) (LAP (SLT ,temp ,r1 ,r2)))
       ((> <=) (LAP (SLT ,temp ,r2 ,r1))))))
-
-;;;; Conditions
+
+(define (branch-generator! cc = < > <> >= <=)
+  (let ((forward
+	 (case cc
+	   ((=)   =) ((<)  <)  ((>)  >)
+	   ((<>) <>) ((>=) >=) ((<=) <=)))
+	(inverse
+	 (case cc
+	   ((=)  <>) ((<)  >=) ((>)  <=)
+	   ((<>) =)  ((>=) <)  ((<=) >))))
+    (set-current-branches!
+     (lambda (label)
+       (LAP (,@forward (@PCR ,label)) (NOP)))
+     (lambda (label)
+       (LAP (,@inverse (@PCR ,label)) (NOP))))))
 
 (define (invert-condition condition)
   (let ((place (assq condition condition-inversion-table)))
@@ -421,15 +491,6 @@ MIT in each case. |#
 (define (lookup-arithmetic-method operator methods)
   (cdr (or (assq operator (cdr methods))
 	   (error "Unknown operator" operator))))
-
-(define (fits-in-16-bits-signed? value)
-  (<= #x-8000 value #x7FFF))
-
-(define (fits-in-16-bits-unsigned? value)
-  (<= #x0 value #xFFFF))
-
-(define (top-16-bits-only? value)
-  (zero? (remainder value #x10000)))
 
 (define-integrable (ea/mode ea) (car ea))
 (define-integrable (register-ea/register ea) (cadr ea))

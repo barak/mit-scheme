@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/instr3.scm,v 1.1 1990/05/07 04:14:47 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/instr3.scm,v 1.2 1991/07/25 02:46:03 cph Exp $
 
-Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,79 +33,146 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; MIPS instruction set, part 3
+;;; Floating point co-processor (R2010)
 
 (declare (usual-integrations))
-;;;; Floating point co-processor (R2010)
-
+
 (let-syntax
     ((three-reg
       (macro (keyword function-code)
-	`(define-instruction ,keyword
-	   ((SINGLE (? fd) (? fs) (? ft))
-	    (LONG (6 17)
-		  (1 1)
-		  (4 0)	       ; single precision
-		  (5 ft)
-		  (5 fs)
-		  (5 fd)
-		  (6 ,function-code)))
-	   ((DOUBLE (? fd) (? fs) (? ft))
-	    (LONG (6 17)
-		  (1 1)
-		  (4 1)	       ; double precision
-		  (5 ft)
-		  (5 fs)
-		  (5 fd)
-		  (6 ,function-code))))))
-     (two-reg
-      (macro (keyword function-code)
-	`(define-instruction ,keyword
-	   ((SINGLE (? fd) (? fs))
-	    (LONG (6 17)
-		  (1 1)
-		  (4 0)	       ; single precision
-		  (5 0)
-		  (5 fs)
-		  (5 fd)
-		  (6 ,function-code)))
-	   ((DOUBLE (? fd) (? fs))
-	    (LONG (6 17)
-		  (1 1)
-		  (4 1)	       ; double precision
-		  (5 0)
-		  (5 fs)
-		  (5 fd)
-		  (6 ,function-code))))))
-     (compare
-      (macro (keyword conditions)
-	`(define-instruction ,keyword
-	   ((SINGLE (? fs) (? ft))
-	    (LONG (6 17)
-		  (1 1)
-		  (4 0)	       ; single precision
-		  (5 ft)
-		  (5 fs)
-		  (5 0)
-		  (6 ,conditions)))
-	   ((DOUBLE (? fs) (? ft))
-	    (LONG (6 17)
-		  (1 1)
-		  (4 1)	       ; double precision
-		  (5 ft)
-		  (5 fs)
-		  (5 0)
-		  (6 ,conditions)))))))
+	`(BEGIN
+	   (DEFINE-INSTRUCTION ,(symbol-append keyword '.S)
+	     (((? fd) (? fs) (? ft))
+	      (LONG (6 17)
+		    (1 1)
+		    (4 0)		; single precision
+		    (5 ft)
+		    (5 fs)
+		    (5 fd)
+		    (6 ,function-code))))
+	   (DEFINE-INSTRUCTION ,(symbol-append keyword '.D)
+	     (((? fd) (? fs) (? ft))
+	      (LONG (6 17)
+		    (1 1)
+		    (4 1)		; double precision
+		    (5 ft)
+		    (5 fs)
+		    (5 fd)
+		    (6 ,function-code))))))))
 
-  (three-reg fadd 0)
-  (three-reg fsub 1)
-  (three-reg fmul 2)
-  (three-reg fdiv 3)
-  (two-reg fabs 5)
-  (two-reg fmov 6)
-  (two-reg fneg 7)
-  (two-reg cvt.s 32)
-  (two-reg cvt.d 33)
-  (two-reg cvt.w 36)
+  (three-reg add 0)
+  (three-reg sub 1)
+  (three-reg mul 2)
+  (three-reg div 3))
+
+(let-syntax
+    ((two-reg
+      (macro (keyword function-code)
+	`(BEGIN
+	   (DEFINE-INSTRUCTION ,(symbol-append keyword '.S)
+	     (((? fd) (? fs))
+	      (LONG (6 17)
+		    (1 1)
+		    (4 0)		; single precision
+		    (5 0)
+		    (5 fs)
+		    (5 fd)
+		    (6 ,function-code))))
+	   (DEFINE-INSTRUCTION ,(symbol-append keyword '.D)
+	     (((? fd) (? fs))
+	      (LONG (6 17)
+		    (1 1)
+		    (4 1)		; double precision
+		    (5 0)
+		    (5 fs)
+		    (5 fd)
+		    (6 ,function-code))))))))
+  (two-reg abs 5)
+  (two-reg mov 6)
+  (two-reg neg 7))
+
+(define-instruction cvt.d.s
+  (((? fd) (? fs))
+   (LONG (6 17)
+	 (1 1)
+	 (4 0)
+	 (5 0)
+	 (5 fs)
+	 (5 fd)
+	 (6 33))))
+
+(define-instruction cvt.d.w
+  (((? fd) (? fs))
+   (LONG (6 17)
+	 (1 1)
+	 (4 4)
+	 (5 0)
+	 (5 fs)
+	 (5 fd)
+	 (6 33))))
+
+(define-instruction cvt.s.d
+  (((? fd) (? fs))
+   (LONG (6 17)
+	 (1 1)
+	 (4 1)
+	 (5 0)
+	 (5 fs)
+	 (5 fd)
+	 (6 32))))
+
+(define-instruction cvt.s.w
+  (((? fd) (? fs))
+   (LONG (6 17)
+	 (1 1)
+	 (4 4)
+	 (5 0)
+	 (5 fs)
+	 (5 fd)
+	 (6 32))))
+
+(define-instruction cvt.w.d
+  (((? fd) (? fs))
+   (LONG (6 17)
+	 (1 1)
+	 (4 1)
+	 (5 0)
+	 (5 fs)
+	 (5 fd)
+	 (6 36))))
+
+(define-instruction cvt.w.s
+  (((? fd) (? fs))
+   (LONG (6 17)
+	 (1 1)
+	 (4 0)
+	 (5 0)
+	 (5 fs)
+	 (5 fd)
+	 (6 36))))
+
+(let-syntax
+    ((compare
+      (macro (keyword conditions)
+	`(BEGIN
+	   (DEFINE-INSTRUCTION ,(symbol-append keyword '.S)
+	     (((? fs) (? ft))
+	      (LONG (6 17)
+		    (1 1)
+		    (4 0)
+		    (5 ft)
+		    (5 fs)
+		    (5 0)
+		    (6 ,conditions))))
+	   (DEFINE-INSTRUCTION ,(symbol-append keyword '.D)
+	     (((? fs) (? ft))
+	      (LONG (6 17)
+		    (1 1)
+		    (4 1)
+		    (5 ft)
+		    (5 fs)
+		    (5 0)
+		    (6 ,conditions))))))))
   (compare c.f 48)
   (compare c.un 49)
   (compare c.eq 50)
@@ -122,4 +189,3 @@ MIT in each case. |#
   (compare c.nge 61)
   (compare c.le 62)
   (compare c.ngt 63))
-
