@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: utils.scm,v 1.36 1994/05/04 22:57:06 cph Exp $
+;;;	$Id: utils.scm,v 1.37 1994/08/24 19:50:40 adams Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -87,7 +87,7 @@
       ((8) -3)
       (else (error "Can't support this word size:" chars-per-word)))))
 
-(define (string-allocate n-chars)
+(define (edwin-string-allocate n-chars)
   (if (not (fix:fixnum? n-chars))
       (error:wrong-type-argument n-chars "fixnum" 'STRING-ALLOCATE))
   (if (not (fix:>= n-chars 0))
@@ -115,7 +115,7 @@
 	  (set-interrupt-enables! mask)
 	  result)))))
 
-(define (set-string-maximum-length! string n-chars)
+(define (edwin-set-string-maximum-length! string n-chars)
   (if (not (string? string))
       (error:wrong-type-argument string "string" 'SET-STRING-MAXIMUM-LENGTH!))
   (if (not (fix:fixnum? n-chars))
@@ -137,6 +137,16 @@
     (string-set! string n-chars #\nul)
     (set-interrupt-enables! mask)
     unspecific))
+
+(define string-allocate
+  (if (compiled-procedure? edwin-string-allocate)
+      edwin-string-allocate
+      (ucode-primitive string-allocate)))
+
+(define set-string-maximum-length!
+  (if (compiler-procedure? edwin-set-string-maximum-length!)
+      edwin-set-string-maximum-length!
+      (ucode-primitive set-string-maximum-length!)))
 
 (define (%substring-move! source start-source end-source
 			  target start-target)
