@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.20 1991/05/02 06:13:37 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.21 1991/05/07 17:31:53 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -230,8 +230,8 @@ hppa_store_absolute_address (addr, sourcev, nullify_p)
   *addr = ble.inst;
   return;
 }
-
-/* I-Cache flushing code.
+
+/* Cache flushing/pushing code.
    Uses routines from cmpaux-hppa.m4.
  */
 
@@ -240,19 +240,71 @@ hppa_store_absolute_address (addr, sourcev, nullify_p)
 
 static struct pdc_cache_dump cache_info;
 
-extern void flush_i_cache ();
+extern void
+  flush_i_cache (),
+  push_d_cache_region ();
 
 void
 flush_i_cache ()
 {
   extern void cache_flush_all ();
+  struct pdc_cache_result *cache_desc;
+  
+  cache_desc = ((struct pdc_cache_result *) &(cache_info.cache_format));
+
   /* The call can be interrupted in the middle of a set, so do it twice.
      Probability of two interrupts in the same cache line is
-     exceedingly small, so this is likely to win. */
-  cache_flush_all ((D_CACHE | I_CACHE), (& (cache_info . cache_format)));
-  cache_flush_all ((D_CACHE | I_CACHE), (& (cache_info . cache_format)));
+     exceedingly small, so this is likely to win.
+     On the other hand, if the caches are directly mapped, a single
+     call can't lose.
+     In addition, if the cache is shared, there is no need to flush at all.
+   */
+
+  if (((cache_desc->I_info.conf.bits.fsel & 1) == 0)
+      || ((cache_desc->D_info.conf.bits.fsel & 1) == 0))
+  {
+    unsigned int flag = 0;
+
+    if (cache_desc->I_info.loop != 1)
+      flag |= I_CACHE;
+    if (cache_desc->D_info.loop != 1)
+      flag |= D_CACHE;
+
+    if (flag != 0)
+      cache_flush_all (flag, cache_desc);
+    cache_flush_all ((D_CACHE | I_CACHE), cache_desc);
+  }
 }
 
+void
+push_d_cache_region (start_address, block_size)
+     void *start_address;
+     unsigned long block_size;
+{
+  extern void cache_flush_region ();
+  struct pdc_cache_result *cache_desc;
+  
+  cache_desc = ((struct pdc_cache_result *) &(cache_info.cache_format));
+
+  /* Note that the first and last words are also flushed from the I-cache
+     in case this object is adjacent to another that has already caused
+     the cache line to be copied into the I-cache.
+   */
+
+  if (((cache_desc->I_info.conf.bits.fsel & 1) == 0)
+      || ((cache_desc->D_info.conf.bits.fsel & 1) == 0))
+  {
+    cache_flush_region (start_address, block_size, D_CACHE);
+    cache_flush_region (start_address, 1, I_CACHE);
+    cache_flush_region (((void *)
+			 (((unsigned long *) start_address)
+			  + (block_size - 1))),
+			1,
+			I_CACHE);
+  }
+  return;
+}
+
 #ifndef MODELS_FILENAME
 #define MODELS_FILENAME "HPPAmodels"
 #endif
@@ -608,24 +660,19 @@ do {									\
 /* This pushes a region of the D-cache back to memory.
    It is (typically) used after loading (and relocating) a piece of code
    into memory.
-   Note that the first and last words are also flushed from the I-cache
-   in case this object is adjacent to another that has already caused
-   the cache line to be copied into the I-cache.
  */   
 
 #define PUSH_D_CACHE_REGION(address, nwords) do				\
 {									\
-  extern void cache_flush_region ();					\
-  long *start_address, block_size;					\
+  extern void push_d_cache_region ();					\
 									\
-  start_address = ((long *) (address));					\
-  block_size = (nwords);						\
-									\
-  cache_flush_region (((void *) start_address), block_size, D_CACHE);	\
-  cache_flush_region (((void *) start_address), 1, I_CACHE);		\
-  cache_flush_region (((void *) (start_address + (block_size - 1))), 1,	\
-		      I_CACHE);						\
+  push_d_cache_region (((unsigned long *) (address)),			\
+		       ((unsigned long) (nwords)));			\
 } while (0)
+
+/* This is not completely true.  Some models (eg. 850) have combined caches,
+   but we have to assume the worst.
+ */
 
 #define SPLIT_CACHES
 
