@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: crstop.scm,v 1.1 1994/11/19 02:02:36 adams Exp $
+$Id: crstop.scm,v 1.2 1995/07/13 20:23:21 adams Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -70,7 +70,9 @@ MIT in each case. |#
   (ic-procedure-headers false read-only true))
 
 (define (cross-compiler-phase/info-generation-2 pathname)
-  (info-generation-2 pathname set-cc-code-block/debugging-info!))
+  (info-generation-2 pathname
+		     set-cc-code-block/debugging-info!
+		     (lambda (constant) #f)))
 
 (define (cross-compiler-phase/link)
   (compiler-phase
