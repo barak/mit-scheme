@@ -64,4 +64,6 @@
 ;;; call:  (destructive 600 50)
  
 (lambda ()
+  (destructive 1200 100)
+  (destructive 1200 100)
   (destructive 1200 100))

@@ -74,7 +74,7 @@
  
 (define (run)
   (do ((i 0 (+ i 1)))
-      ((= i 5000))			; 1000 in original
+      ((= i 1000))
     (dderiv '(_+ (_* 3 x x) (_* a x x) (_* b x) 5))
     (dderiv '(_+ (_* 3 x x) (_* a x x) (_* b x) 5))
     (dderiv '(_+ (_* 3 x x) (_* a x x) (_* b x) 5))
@@ -88,4 +88,5 @@
  
 ;;; call:  (run)
  
-(lambda () (run))
+(lambda () (run) (run) (run) (run) (run))
+
