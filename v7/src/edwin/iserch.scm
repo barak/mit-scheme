@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.12 1991/04/23 06:40:24 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.13 1991/05/17 04:52:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -87,13 +87,8 @@
 	       keyboard-read-char)))
 	    ((test-for (ref-variable search-exit-char))
 	     (if (string-null? (search-state-text state))
-		 (if (search-state-forward? state)
-		     (if (search-state-regexp? state)
-			 (ref-command-object re-search-forward)
-			 (ref-command-object search-forward))
-		     (if (search-state-regexp? state)
-			 (ref-command-object re-search-backward)
-			 (ref-command-object search-backward)))
+		 (nonincremental-search (search-state-forward? state)
+					(search-state-regexp? state))
 		 (begin
 		   (isearch-exit state)
 		   false)))
@@ -124,6 +119,30 @@
 	    (else
 	     (isearch-append-char state char))))))
 
+(define (nonincremental-search forward? regexp?)
+  (cond ((char=? (remap-alias-char (ref-variable search-yank-word-char))
+		 (prompt-for-typein
+		  (if regexp?
+		      (prompt-for-string/prompt
+		       (if forward? "RE search" "RE search backward")
+		       (write-to-string (ref-variable search-last-regexp)))
+		      (prompt-for-string/prompt
+		       (if forward? "Search" "Search backward")
+		       (write-to-string (ref-variable search-last-string))))
+		  false
+		  (lambda () (keyboard-peek-char))))
+	 (if forward?
+	     (ref-command-object word-search-forward)
+	     (ref-command-object word-search-backward)))
+	(regexp?
+	 (if forward?
+	     (ref-command-object re-search-forward)
+	     (ref-command-object re-search-backward)))
+	(else
+	 (if forward?
+	     (ref-command-object search-forward)
+	     (ref-command-object search-backward)))))
+
 (define (isearch-append-char state char)
   (isearch-append-string state (string char)))
 
