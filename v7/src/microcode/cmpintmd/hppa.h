@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppa.h,v 1.45 1993/09/11 02:44:51 gjr Exp $
+$Id: hppa.h,v 1.46 1993/09/11 21:28:33 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -892,7 +892,7 @@ DEFUN (alloc_bkpt_handle, (kind, first_instr, entry_point),
   handle[3] = ((SCHEME_OBJECT) first_instr);
   handle[4] = (ENTRY_TO_OBJECT (entry_point));
   
-  return (MAKE_POINTER_OBJECT (TC_VECTOR, handle));
+  return (MAKE_POINTER_OBJECT (TC_NON_MARKED_VECTOR, handle));
 }
 
 SCHEME_OBJECT

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: comutl.c,v 1.26 1993/09/11 02:45:51 gjr Exp $
+$Id: comutl.c,v 1.27 1993/09/11 21:27:44 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -237,7 +237,7 @@ Remove a breakpoint trap installed by INSTALL-BKPT.")
 {
   PRIMITIVE_HEADER (2);
   CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
-  CHECK_ARG (2, VECTOR_P);
+  CHECK_ARG (2, NON_MARKED_VECTOR_P);
 
   {
     SCHEME_OBJECT * entry = (OBJECT_ADDRESS (ARG_REF (1)));
@@ -267,7 +267,7 @@ Proceed the computation from the current breakpoint.")
 {
   PRIMITIVE_HEADER (3);
   CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
-  CHECK_ARG (2, VECTOR_P);
+  CHECK_ARG (2, NON_MARKED_VECTOR_P);
 
   PRIMITIVE_RETURN (bkpt_proceed (((PTR) (OBJECT_ADDRESS (ARG_REF (1)))),
 				  (ARG_REF (2)),
