@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.29 1990/08/17 23:40:55 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.30 1990/10/02 21:49:25 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -290,7 +290,8 @@ extern SCHEME_UTILITY struct utility_result
   comutil_unbound_p(),
   comutil_assignment(),
   comutil_definition(),
-  comutil_lookup_apply();
+  comutil_lookup_apply(),
+  comutil_primitive_error();
 
 extern struct utility_result
   (*(utility_table[]))();
@@ -360,7 +361,8 @@ struct utility_result
   comutil_unbound_p,				/* 0x32 */
   comutil_assignment,				/* 0x33 */
   comutil_definition,				/* 0x34 */
-  comutil_lookup_apply				/* 0x35 */
+  comutil_lookup_apply,				/* 0x35 */
+  comutil_primitive_error			/* 0x36 */
   };
 
 /* These definitions reflect the indices into the table above. */
@@ -1917,6 +1919,17 @@ comp_lookup_apply_restart ()
     Save_Cont ();
     return (code);
   }
+}
+
+SCHEME_UTILITY struct utility_result
+comutil_primitive_error (ret_add, primitive, ignore_3, ignore_4)
+     instruction *ret_add;
+     SCHEME_OBJECT primitive;
+     long ignore_3, ignore_4;
+{
+  STACK_PUSH (primitive);
+  STACK_PUSH (ENTRY_TO_OBJECT (ret_add));
+  RETURN_TO_C (ERR_BAD_COMBINATION);
 }
 
 /* Procedures to destructure compiled entries and closures. */
