@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.30 1993/09/01 23:12:10 cph Exp $
+$Id: x11graph.scm,v 1.31 1993/09/01 23:26:40 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -454,12 +454,14 @@ MIT in each case. |#
 
 (let ((mouse-event-handler
        (lambda (window event)
-	 (vector-set! event 2
-		      (x-graphics-map-x-coordinate window
-						   (vector-ref event 2)))
-	 (vector-set! event 3
-		      (x-graphics-map-y-coordinate window
-						   (vector-ref event 3)))
+	 (let ((xw (vector-ref event 1)))
+	   (vector-set! event 1 window)
+	   (vector-set! event 2
+			(x-graphics-map-x-coordinate xw
+						     (vector-ref event 2)))
+	   (vector-set! event 3
+			(x-graphics-map-y-coordinate xw
+						     (vector-ref event 3))))
 	 (enqueue! (x-display/event-queue (x-window/display window)) event)
 	 true)))
   (define-event-handler event-type:button-down mouse-event-handler)
@@ -468,6 +470,7 @@ MIT in each case. |#
 
 (let ((user-event-handler
        (lambda (window event)
+	 (vector-set! event 1 window)
 	 (enqueue! (x-display/event-queue (x-window/display window)) event)
 	 true)))
   ;; ENTER and LEAVE events should be modified to have X,Y coordinates.
