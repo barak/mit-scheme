@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bintopsb.c,v 9.58 1993/11/07 01:39:06 gjr Exp $
+$Id: bintopsb.c,v 9.59 1993/11/07 01:57:14 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -98,6 +98,7 @@ DEFUN (ispunct_local, (c), fast char c)
 #endif /* ispunct */
 
 /* Needed to upgrade */
+
 #define TC_PRIMITIVE_EXTERNAL	0x10
 
 #define STRING_LENGTH_TO_LONG(value)					\
@@ -121,6 +122,28 @@ DEFUN (ispunct_local, (c), fast char c)
 #define EXTRACT_EXECUTE_CACHE_ARITY(v,a) do { } while (0)
 #endif
 
+#if (COMPILER_PROCESSOR_TYPE != COMPILER_LOSING_C_TYPE)
+
+#undef START_CLOSURE_RELOCATION
+#undef END_CLOSURE_RELOCATION
+#undef EXTRACT_CLOSURE_ENTRY_ADDRESS
+#undef STORE_CLOSURE_ENTRY_ADDRESS
+#undef EXTRACT_OPERATOR_LINKAGE_ADDRESS
+#undef STORE_OPERATOR_LINKAGE_ADDRESS
+#undef START_OPERATOR_RELOCATION
+#undef END_OPERATOR_RELOCATION
+
+#define START_CLOSURE_RELOCATION(foo) do {} while (0)
+#define END_CLOSURE_RELOCATION(foo) do {} while (0)
+#define EXTRACT_CLOSURE_ENTRY_ADDRESS(var,addr) do {} while (0)
+#define STORE_CLOSURE_ENTRY_ADDRESS(var,addr) do {} while (0)
+#define EXTRACT_OPERATOR_LINKAGE_ADDRESS(var,addr) do {} while (0)
+#define STORE_OPERATOR_LINKAGE_ADDRESS(var,addr) do {} while (0)
+#define START_OPERATOR_RELOCATION(foo) do {} while (0)
+#define END_OPERATOR_RELOCATION(foo) do {} while (0)
+
+#endif /* (COMPILER_PROCESSOR_TYPE != COMPILER_LOSING_C_TYPE) */
+
 /* Global data */
 
 static Boolean
