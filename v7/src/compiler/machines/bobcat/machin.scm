@@ -37,13 +37,13 @@
 
 ;;;; Machine Model for 68020
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 1.42 1987/01/09 19:41:14 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 1.43 1987/02/10 22:14:37 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
 (define (rtl:message-receiver-size:closure) 1)
 (define (rtl:message-receiver-size:stack) 1)
-(define (rtl:message-receiver-size:subproblem) 1)
+(define (rtl:message-receiver-size:subproblem) 2)
 
 (define-integrable (stack->memory-offset offset)
   offset)
