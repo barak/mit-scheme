@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.31 2000/10/26 22:16:45 cph Exp $
+;;; $Id: imail-summary.scm,v 1.32 2000/10/27 03:18:44 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -158,14 +158,8 @@ SUBJECT is a string of regexps separated by commas."
 		     (buffer-put! buffer 'IMAIL-NAVIGATORS
 				  (imail-summary-navigators buffer))
 		     (if (ref-variable imail-summary-fixed-layout buffer)
-			 (create-buffer-layout
-			  (lambda (window buffers)
-			    (let ((buffer (car buffers)))
-			      (if (eq? (window-buffer window) buffer)
-				  (imail-summary-pop-up-message-buffer buffer
-								       window)
-				  (select-buffer buffer window))))
-			  (list buffer folder-buffer)))))
+			 (create-buffer-layout imail-summary-layout-selector
+					       (list buffer folder-buffer)))))
 		  buffer)))))
     (buffer-put! buffer 'IMAIL-SUMMARY-DESCRIPTION description)
     (buffer-put! buffer 'IMAIL-SUMMARY-PREDICATE predicate)
@@ -200,6 +194,11 @@ SUBJECT is a string of regexps separated by commas."
 	     (buffer-get folder-buffer 'IMAIL-FOLDER #f)))
       (and error?
 	   (error:bad-range-argument buffer 'IMAIL-SUMMARY-BUFFER->FOLDER))))
+
+(define (imail-summary-layout-selector window buffers)
+  (let ((summary-buffer (car buffers)))
+    (select-buffer summary-buffer window)
+    (imail-summary-pop-up-message-buffer summary-buffer window)))
 
 (define (imail-summary-modification-event folder type parameters)
   (let ((buffer (imail-folder->summary-buffer folder #f)))
@@ -479,18 +478,23 @@ SUBJECT is a string of regexps separated by commas."
   (if (ref-variable imail-summary-pop-up-message buffer)
       (imail-summary-pop-up-message-buffer buffer)))
 
-(define (imail-summary-pop-up-message-buffer buffer #!optional window)
-  (let ((folder-buffer (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f))
+(define (imail-summary-pop-up-message-buffer summary-buffer #!optional window)
+  (let ((folder-buffer (buffer-get summary-buffer 'IMAIL-FOLDER-BUFFER #f))
 	(window
 	 (if (or (default-object? window) (not window))
 	     (selected-window)
 	     window)))
-    (if (and folder-buffer (eq? (window-buffer window) buffer))
-	(window-split-vertically! window
-				  (imail-summary-height buffer window)))))
+    (if (and folder-buffer
+	     (not (buffer-visible? folder-buffer))
+	     (eq? (window-buffer window) summary-buffer))
+	(let ((new
+	       (window-split-vertically! window
+					 (imail-summary-height window))))
+	  (if new
+	      (select-buffer folder-buffer new))))))
 
-(define (imail-summary-height buffer window)
-  (let ((height (ref-variable imail-summary-height buffer)))
+(define (imail-summary-height window)
+  (let ((height (ref-variable imail-summary-height window)))
     (if (exact-integer? height)
 	height
 	(round->exact (* (window-y-size window) height)))))
@@ -650,7 +654,7 @@ with some additions to make navigation more natural.
   (lambda ()
     (let ((buffer (imail-folder->buffer (selected-folder) #t)))
       (set-buffer-point! buffer (buffer-start buffer))
-      (pop-up-buffer buffer #f))))
+      (imail-summary-pop-up-message-buffer (selected-buffer)))))
 
 (define-command imail-summary-scroll-msg-up
   "Scroll the IMAIL window forward.
