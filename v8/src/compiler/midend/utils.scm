@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.22 1995/04/29 01:11:40 adams Exp $
+$Id: utils.scm,v 1.23 1995/05/05 12:55:51 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -102,7 +102,8 @@ MIT in each case. |#
   (fluid-let ((*pp-primitives-by-name* false)
 	      (*pp-uninterned-symbols-by-name* false)
 	      (*pp-avoid-circularity?* true)
-	      (*pp-default-as-code?* true))
+	      (*pp-default-as-code?* true)
+	      (*unparse-abbreviate-quotations?* #T))
     (pp kmp-code)))
 
 (define (kmp/ppp kmp-code)
