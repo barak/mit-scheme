@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.115 1991/09/02 21:58:00 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.116 1991/09/20 13:34:08 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -86,7 +86,7 @@ Also:
 (define-key 'dired #\e 'dired-find-file)
 (define-key 'dired #\f 'dired-find-file)
 (define-key 'dired #\o 'dired-find-file-other-window)
-(define-key 'dired #\C 'dired-flag-file-for-copy)
+(define-key 'dired #\k 'dired-flag-file-for-copy)
 (define-key 'dired #\u 'dired-unflag)
 (define-key 'dired #\x 'dired-do-deletions)
 (define-key 'dired #\y 'dired-do-copies)
