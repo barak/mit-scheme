@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pruxdld.c,v 1.18 2003/05/12 20:02:27 cph Exp $
+$Id: pruxdld.c,v 1.19 2003/06/06 16:37:47 cph Exp $
 
-Copyright (c) 1993-2001 Massachusetts Institute of Technology
+Copyright 1993,1997,2000,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
