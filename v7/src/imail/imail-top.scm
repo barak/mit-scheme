@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.147 2000/06/09 04:17:48 cph Exp $
+;;; $Id: imail-top.scm,v 1.148 2000/06/12 00:57:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1769,13 +1769,6 @@ see the documentation of `imail-resend'."
 	   (select-buffer mail-buffer)
 	   (select-buffer-other-window mail-buffer))
        (message-forwarded message)))))
-
-(define (with-buffer-point-preserved buffer thunk)
-  (let ((point (mark-right-inserting-copy (buffer-point buffer))))
-    (let ((value (thunk)))
-      (set-buffer-point! buffer point)
-      (mark-temporary! point)
-      value)))
 
 (define-command imail-resend
   "Resend current message to ADDRESSES.
@@ -1801,6 +1794,9 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 	   (lambda ()
 	     (insert-string (message-body message) (buffer-end mail-buffer))))
 	 (disable-buffer-mime-processing! mail-buffer)
+	 (if (window-has-no-neighbors? (current-window))
+	     (select-buffer mail-buffer)
+	     (select-buffer-other-window mail-buffer))
 	 (message-resent message))))))
 
 (define (header-field->mail-header header)
@@ -1809,6 +1805,13 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 	  (if (string-prefix? " " v)
 	      (string-tail v 1)
 	      v))))
+
+(define (with-buffer-point-preserved buffer thunk)
+  (let ((point (mark-right-inserting-copy (buffer-point buffer))))
+    (let ((value (thunk)))
+      (set-buffer-point! buffer point)
+      (mark-temporary! point)
+      value)))
 
 (define-command imail-reply
   "Reply to the current message.
