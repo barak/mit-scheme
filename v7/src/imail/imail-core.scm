@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.69 2000/05/18 03:42:55 cph Exp $
+;;; $Id: imail-core.scm,v 1.70 2000/05/18 03:59:43 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -213,6 +213,9 @@
      (set-folder-modification-count!
       folder
       (+ (folder-modification-count folder) 1))))
+  (apply folder-event folder type parameters))
+
+(define (folder-event folder type . parameters)
   (event-distributor/invoke! (folder-modification-event folder)
 			     folder
 			     type

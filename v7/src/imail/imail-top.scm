@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.59 2000/05/18 03:43:06 cph Exp $
+;;; $Id: imail-top.scm,v 1.60 2000/05/18 03:59:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -131,11 +131,6 @@ May be called with an IMAIL folder URL as argument;
   (call-with-pass-phrase (string-append "Password for user " user-id
 					" on host " host)
 			 receiver))
-
-(define (notice-folder-modifications folder)
-  (let ((buffer (imail-folder->buffer folder #f)))
-    (if buffer
-	(imail-update-mode-line! buffer))))
 
 (define (imail-default-url)
   (let ((primary-folder (ref-variable imail-primary-folder)))
@@ -467,7 +462,7 @@ With prefix argument N moves backward N messages with these flags."
 	  (buffer-not-modified! buffer)))
     (if message
 	(message-seen message))
-    (imail-update-mode-line! buffer)))
+    (folder-event folder 'SELECT-MESSAGE message)))
 
 (define (associate-imail-with-buffer buffer folder message)
   (without-interrupts
@@ -569,11 +564,14 @@ With prefix argument N moves backward N messages with these flags."
       (and (if (default-object? error?) #t error?)
 	   (error "No selected IMAIL message."))))
 
-(define (imail-update-mode-line! buffer)
-  (local-set-variable! mode-line-process
-		       (imail-mode-line-summary-string buffer)
-		       buffer)
-  (buffer-modeline-event! buffer 'PROCESS-STATUS))
+(define (notice-folder-modifications folder)
+  (let ((buffer (imail-folder->buffer folder #f)))
+    (if buffer
+	(begin
+	  (local-set-variable! mode-line-process
+			       (imail-mode-line-summary-string buffer)
+			       buffer)
+	  (buffer-modeline-event! buffer 'PROCESS-STATUS)))))
 
 (define (imail-mode-line-summary-string buffer)
   (let ((message (selected-message #f buffer)))
