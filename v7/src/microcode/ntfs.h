@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntfs.h,v 1.2 1997/10/26 09:15:18 cph Exp $
+$Id: ntfs.h,v 1.3 1998/02/01 05:54:42 cph Exp $
 
-Copyright (c) 1997 Massachusetts Institute of Technology
+Copyright (c) 1997-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,8 +42,12 @@ extern enum get_file_info_result NT_get_file_info
 
 #define STAT_NOT_FOUND_P(code)						\
   (((code) == ERROR_FILE_NOT_FOUND)					\
-   || ((code) == ERROR_PATH_NOT_FOUND))
+   || ((code) == ERROR_PATH_NOT_FOUND)					\
+   || ((code) == ERROR_NOT_READY)					\
+   || ((code) == ERROR_INVALID_DRIVE)					\
+   || ((code) == ERROR_NO_MEDIA_IN_DRIVE))
 
 #define STAT_NOT_ACCESSIBLE_P(code)					\
   (((code) == ERROR_ACCESS_DENIED)					\
-   || ((code) == ERROR_SHARING_VIOLATION))
+   || ((code) == ERROR_SHARING_VIOLATION)				\
+   || ((code) == ERROR_DRIVE_LOCKED))
