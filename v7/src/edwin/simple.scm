@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.35 1991/04/21 00:52:09 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.36 1991/04/24 00:39:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -135,9 +135,7 @@
 	(cond ((<= end gap-start)
 	       (group-insert-substring! (mark-group point)
 					(mark-index point)
-					text
-					start
-					end))
+					text start end))
 	      ((<= gap-end start)
 	       (group-insert-substring! (mark-group point)
 					(mark-index point)
@@ -148,23 +146,20 @@
 	       (let ((point (mark-left-inserting-copy point)))
 		 (group-insert-substring! (mark-group point)
 					  (mark-index point)
-					  text
-					  start
-					  gap-start)
+					  text start gap-start)
 		 (group-insert-substring! (mark-group point)
 					  (mark-index point)
-					  text
-					  gap-end
+					  text gap-end
 					  (+ end gap-length))
 		 (mark-temporary! point))))))))
-
+
 (define (extract-string mark #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))
     (let ((group (mark-group mark))
 	  (index1 (mark-index mark))
 	  (index2 (mark-index point)))
       (if (not (eq? group (mark-group point)))
-	  (error "EXTRACT-STRING: Marks not related" mark point))
+	  (error "Marks not related:" mark point))
       (if (< index1 index2)
 	  (group-extract-string group index1 index2)
 	  (group-extract-string group index2 index1)))))
@@ -175,7 +170,7 @@
 	  (index1 (mark-index mark))
 	  (index2 (mark-index point)))
       (if (not (eq? group (mark-group point)))
-	  (error "DELETE-STRING: Marks not related" mark point))
+	  (error "Marks not related:" mark point))
       (if (< index1 index2)
 	  (group-delete! group index1 index2)
 	  (group-delete! group index2 index1)))))
@@ -186,37 +181,10 @@
 	  (index1 (mark-index mark))
 	  (index2 (mark-index point)))
       (if (not (eq? group (mark-group point)))
-	  (error "EXTRACT-AND-DELETE-STRING: Marks not related" mark point))
+	  (error "Marks not related:" mark point))
       (if (< index1 index2)
-	  (let ((string (group-extract-string group index1 index2)))
-	    (group-delete! group index1 index2)
-	    string)
-	  (let ((string (group-extract-string group index2 index1)))
-	    (group-delete! group index2 index1)
-	    string)))))
-
-(define (match-string string mark #!optional point)
-  (let ((point (if (default-object? point) (current-point) point)))
-    (let ((group (mark-group mark))
-	  (index1 (mark-index mark))
-	  (index2 (mark-index point))
-	  (length (string-length string)))
-      (define (kernel index1 index2)
-	(let ((pos1 (group-index->position group index1 true))
-	      (pos2 (group-index->position group index2 false))
-	      (gap-start (group-gap-start group))
-	      (gap-end (group-gap-end group))
-	      (text (group-text group)))
-	  (if (and (<= pos1 gap-start) (<= gap-end pos2))
-	      (let ((split (- gap-start pos1)))
-		(and (substring=? text pos1 gap-start string 0 split)
-		     (substring=? text gap-end pos2 string split length)))
-	      (substring=? text pos1 pos2 string 0 length))))
-      (if (not (eq? group (mark-group point)))
-	  (error "MATCH-STRING: Marks not related" mark point))
-      (cond ((= index1 index2) (zero? length))
-	    ((< index1 index2) (kernel index1 index2))
-	    (else (kernel index2 index1))))))
+	  (group-extract-and-delete-string! group index1 index2)
+	  (group-extract-and-delete-string! group index2 index1)))))
 
 (define (downcase-area mark #!optional point)
   (region-transform!
@@ -272,3 +240,18 @@
 (define (reposition-window-top mark)
   (if (not (and mark (set-window-start-mark! (current-window) mark false)))
       (editor-beep)))
+
+(define (narrow-to-region mark #!optional point)
+  (let ((point (if (default-object? point) (current-point) point)))
+    (let ((group (mark-group mark))
+	  (index1 (mark-index mark))
+	  (index2 (mark-index point)))
+      (if (not (eq? group (mark-group point)))
+	  (error "Marks not related:" mark point))
+      (if (<= index1 index2)
+	  (group-narrow! group index1 index2)
+	  (group-narrow! group index2 index1)))))
+
+(define (widen #!optional point)
+  (group-widen!
+   (mark-group (if (default-object? point) (current-point) point))))
