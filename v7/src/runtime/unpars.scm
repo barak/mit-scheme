@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.47 1987/06/17 20:09:58 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.48 1987/06/25 22:23:32 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -52,6 +52,7 @@
 
 (define *unparse-char)
 (define *unparse-string)
+(define *unparse-symbol)
 (define *unparser-list-depth*)
 (define *slashify*)
 
@@ -64,7 +65,10 @@
   (fluid-let ((*unparse-char (access :write-char port))
 	      (*unparse-string (access :write-string port))
 	      (*unparser-list-depth* 0)
-	      (*slashify* slashify))
+	      (*slashify* slashify)
+	      (*unparse-symbol (if (unassigned? *unparse-symbol)
+				   unparse-symbol
+				   *unparse-symbol)))
     (*unparse-object-or-future object)))
 
 (define (*unparse-object-or-future object)
@@ -118,7 +122,7 @@
   (*unparse-string (symbol->string symbol)))
 
 (define-type 'INTERNED-SYMBOL
-  unparse-symbol)
+  *unparse-symbol)
 
 (define-type 'UNINTERNED-SYMBOL
   (lambda (symbol)
