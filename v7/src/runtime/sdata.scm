@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sdata.scm,v 14.1 1988/06/13 11:51:27 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sdata.scm,v 14.2 1991/08/12 13:38:39 jinx Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -79,13 +79,13 @@ MIT in each case. |#
   (map-reference-trap (lambda () (system-hunk3-cxr1 triple))))
 
 (define (&triple-set-second! triple new-second)
-  (system-hunk3-set-cxr0! triple (unmap-reference-trap new-second)))
+  (system-hunk3-set-cxr1! triple (unmap-reference-trap new-second)))
 
 (define (&triple-third triple)
   (map-reference-trap (lambda () (system-hunk3-cxr2 triple))))
 
 (define (&triple-set-third! triple new-third)
-  (system-hunk3-set-cxr0! triple (unmap-reference-trap new-third)))
+  (system-hunk3-set-cxr2! triple (unmap-reference-trap new-third)))
 
 (define (&typed-vector-cons type elements)
   (system-list->vector
