@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.83 1997/07/16 02:37:41 adams Exp $
+$Id: fasload.c,v 9.84 1998/07/20 06:48:16 cph Exp $
 
-Copyright (c) 1987-96 Massachusetts Institute of Technology
+Copyright (c) 1987-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -59,9 +59,13 @@ static Tchannel load_channel;
 
 #include "load.c"
 
+#ifdef _POSIX
+#include <string.h>
+#else
 extern char * EXFUN (malloc, (int));
 extern int EXFUN (strlen, (const char *));
 extern char * EXFUN (strcpy, (char *, const char *));
+#endif
 
 extern char * Error_Names [];
 extern char * Abort_Names [];
