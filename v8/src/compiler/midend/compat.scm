@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compat.scm,v 1.6 1995/02/22 05:32:39 adams Exp $
+$Id: compat.scm,v 1.7 1995/03/10 14:44:08 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -268,7 +268,7 @@ MIT in each case. |#
   ;; SPECIAL-ARGUMENTS is the number of arguments passed by a special
   ;; mechanism, usually 1 for the continuation, or 2 for the
   ;; continuation and heap closure.
-  (with-values
+  (call-with-values
       (lambda ()
 	(%compat/split-register&stack special-arguments
 				      (lambda-list->names lambda-list)))
@@ -361,14 +361,14 @@ MIT in each case. |#
   (hash-table/put! *compat-rewritten-operators* operator handler))
 
 (define (compat/standard-call-handler env rator cont rands)
-  (with-values (lambda () (compat/split-register&stack rands))
+  (call-with-values (lambda () (compat/split-register&stack rands))
     (lambda (reg-rands stack-rands)
       (compat/rewrite-call/split env rator cont reg-rands stack-rands))))
 
 (let* ((compat/invocation-cookie
 	(lambda (n)
 	  (lambda (env rator cont rands)
-	    (with-values
+	    (call-with-values
 		(lambda () (compat/split-register&stack (list-tail rands n)))
 	      (lambda (reg-rands stack-rands)
 		(compat/rewrite-call/split
