@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.84 1993/11/22 00:32:28 gjr Exp $
+$Id: bchmmg.c,v 9.85 1993/12/11 20:31:44 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -70,6 +70,9 @@ MIT in each case. */
 #  define RECORD_GC_STATISTICS
 #endif
 #define MILLISEC * 1000
+
+#define FLOOR(value,quant)	((quant) * ((value) / (quant)))
+#define CEILING(value,quant)	(FLOOR (((value) + ((quant) - 1)), (quant)))
 
 /* Memory management top level.  Garbage collection to disk.
 
@@ -132,6 +135,7 @@ extern void EXFUN (Setup_Memory, (int, int, int));
 extern void EXFUN (Reset_Memory, (void));
 
 long
+  absolute_gc_file_end_position,
   gc_file_end_position,
   gc_file_current_position,
   gc_file_start_position;
@@ -1825,8 +1829,9 @@ DEFUN (swap_gc_file, (fid), int fid)
   gc_file = fid;
   read_overlap = 0;
   write_overlap = 0;
+  gc_file_end_position
+    = (absolute_gc_file_end_position - gc_file_start_position);
   gc_file_start_position = 0L;
-  gc_file_end_position = (saved_heap_size * (sizeof (SCHEME_OBJECT)));
   return (saved_gc_file);
 }
 
@@ -1939,6 +1944,8 @@ DEFUN (open_gc_file, (size, unlink_p),
     termination_open_gc_file (((char *) NULL), ((char *) NULL));
   }
 
+  absolute_gc_file_end_position = gc_file_end_position;
+
   if ((stat (gc_file_name, &file_info)) == -1)
   {
     exists_p = false;
@@ -2079,16 +2086,28 @@ extern Boolean EXFUN (update_allocator_parameters, (SCHEME_OBJECT *));
 Boolean
 DEFUN (update_allocator_parameters, (ctop), SCHEME_OBJECT * ctop)
 {
+  SCHEME_OBJECT * htop;
+  long new_end, delta;
+
   /* buffer for impurify, etc. */
   ctop = ((SCHEME_OBJECT *)
 	  (ALIGN_UP_TO_IO_PAGE (ctop + CONSTANT_SPACE_FUDGE)));
-  if (ctop >= Highest_Allocated_Address)
+  htop = ((SCHEME_OBJECT *)
+	  (ALIGN_DOWN_TO_IO_PAGE (Highest_Allocated_Address)));
+  if (ctop >= htop)
     return (FALSE);
 
+  new_end = (((char *) htop) - ((char *) ctop));
+  new_end = (CEILING (new_end, gc_buffer_bytes));
+  new_end += gc_file_start_position;
+  if ((new_end > absolute_gc_file_end_position)
+      && (! option_gc_end_position))
+    return (FALSE);
+
+  gc_file_end_position = new_end;
   Constant_Top = ctop;
   Heap_Bottom = Constant_Top;
-  Heap_Top = ((SCHEME_OBJECT *)
-	      (ALIGN_DOWN_TO_IO_PAGE (Highest_Allocated_Address)));
+  Heap_Top = htop;
   aligned_heap = Heap_Bottom;
   Local_Heap_Base = Heap_Bottom;
   Unused_Heap_Bottom = Heap_Top;
@@ -2098,6 +2117,37 @@ DEFUN (update_allocator_parameters, (ctop), SCHEME_OBJECT * ctop)
   return (TRUE);
 }
 
+Boolean
+DEFUN_VOID (recompute_gc_end_position)
+{
+  SCHEME_OBJECT * htop;
+  long new_end, delta;
+
+  if ((((gc_file_end_position - gc_file_start_position) % gc_buffer_bytes)
+       == 0)
+      || option_gc_end_position)
+    return (TRUE);
+
+  htop = ((SCHEME_OBJECT *)
+	  (ALIGN_DOWN_TO_IO_PAGE (Highest_Allocated_Address)));
+  new_end = (CEILING ((((char *) htop) - ((char *) Constant_Top)),
+		      gc_buffer_bytes));
+  new_end += gc_file_start_position;
+  if (new_end <= absolute_gc_file_end_position)
+  {
+    gc_file_end_position = new_end;
+    return (TRUE);
+  }
+  delta = (FLOOR ((absolute_gc_file_end_position - gc_file_start_position),
+		  gc_buffer_bytes));
+  if ((((char *) Constant_Top) + delta) <= (((char *) Free) + GC_Reserve))
+    /* This should really GC and retry, but ... */
+    return (FALSE);
+  Heap_Top = ((SCHEME_OBJECT *) (((char *) Constant_Top) + delta));
+  SET_MEMTOP (Heap_Top - GC_Reserve);
+  return (TRUE);
+}
+
 void
 DEFUN_VOID (reset_allocator_parameters)
 {
@@ -2239,7 +2289,7 @@ DEFUN (Setup_Memory, (heap_size, stack_size, constant_space_size),
   heap_size = (BLOCK_TO_IO_SIZE (heap_size));
   constant_space_size = (BLOCK_TO_IO_SIZE (constant_space_size));
   real_stack_size = (BLOCK_TO_IO_SIZE (real_stack_size));
-  gc_buffer_allocation =  (GC_BUFFER_ALLOCATION (2 * gc_total_buffer_size));
+  gc_buffer_allocation = (GC_BUFFER_ALLOCATION (2 * gc_total_buffer_size));
 
   /* Allocate. */
 
@@ -2286,7 +2336,9 @@ DEFUN (Setup_Memory, (heap_size, stack_size, constant_space_size),
   Clear_Memory (heap_size, stack_size, constant_space_size);
   INITIALIZE_GC_BUFFERS (1,
 			 Highest_Allocated_Address,
-			 (heap_size * (sizeof (SCHEME_OBJECT))),
+			 ((sizeof (SCHEME_OBJECT))
+			  * (CEILING ((heap_size + constant_space_size),
+				      gc_buffer_size))),
 			 option_gc_read_overlap,
 			 option_gc_write_overlap,
 			 option_gc_drone);
@@ -3426,10 +3478,11 @@ DEFINE_PRIMITIVE ("BCHSCHEME-PARAMETERS-SET!", Prim_bchscheme_set_params, 1, 1, 
   {
     char * new_drone_ptr;
     SCHEME_OBJECT vector, new_drone;
-    int power;
     long
       new_buffer_size, new_read_overlap,
-      new_write_overlap, new_sleep_period;
+      new_write_overlap, new_sleep_period,
+      old_buffer_size = gc_buffer_size,
+      old_buffer_shift = gc_buffer_shift;
 
     vector = (VECTOR_ARG (1));
     if ((VECTOR_LENGTH (vector)) != N_PARAMS)
@@ -3451,12 +3504,21 @@ DEFINE_PRIMITIVE ("BCHSCHEME-PARAMETERS-SET!", Prim_bchscheme_set_params, 1, 1, 
       if (new_drone_ptr != ((char *) NULL))
 	strcpy (new_drone_ptr, ((char *) (STRING_LOC (new_drone, 0))));
     }
-
-    power = (next_exponent_of_two (new_buffer_size));
-    if (((1L << power) != new_buffer_size)
-	|| ((set_gc_buffer_sizes (power)) != 0))
-      error_bad_range_arg (1);
 
+    if (new_buffer_size != old_buffer_size)
+    {
+      int power = (next_exponent_of_two (new_buffer_size));
+
+      if (((1L << power) != new_buffer_size)
+	  || ((set_gc_buffer_sizes (power)) != 0))
+	error_bad_range_arg (1);
+      if (! (recompute_gc_end_position ()))
+      {
+	set_gc_buffer_sizes (old_buffer_shift);
+	error_bad_range_arg (1);
+      }
+    }
+
     BUFFER_SHUTDOWN (0);
     SET_SLEEP_DELTA (new_sleep_period);
     if ((drone_file_name != ((char *) NULL))
@@ -3465,14 +3527,23 @@ DEFINE_PRIMITIVE ("BCHSCHEME-PARAMETERS-SET!", Prim_bchscheme_set_params, 1, 1, 
 
     if ((RE_INITIALIZE_GC_BUFFERS (0,
 				   Highest_Allocated_Address,
-				   (saved_heap_size
-				    * (sizeof (SCHEME_OBJECT))),
+				   ((sizeof (SCHEME_OBJECT))
+				    * (CEILING ((saved_heap_size
+						 + saved_constant_size),
+						gc_buffer_size))),
 				   new_read_overlap,
 				   new_write_overlap,
-				   new_drone_ptr)) == 0)
+				   new_drone_ptr))
+	== 0)
       PRIMITIVE_RETURN (UNSPECIFIC);
     else
     {
+      if (new_buffer_size != old_buffer_size)
+      {
+	set_gc_buffer_sizes (old_buffer_shift);
+	recompute_gc_end_position ();
+      }
+
       BUFFER_SHUTDOWN (0);
       if (new_drone_ptr != ((char *) NULL))
 	free (new_drone_ptr);
