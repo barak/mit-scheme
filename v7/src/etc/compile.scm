@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.1 2000/12/07 21:50:48 cph Exp $
+$Id: compile.scm,v 1.2 2000/12/19 20:57:10 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -37,6 +37,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		  (load (pathname-new-type name "sf"))
 		  (load (pathname-new-type name "cbf")))))
 	    '("runtime" "sf" "compiler" "edwin" "6001"))
+  (with-working-directory-pathname "cref"
+    (lambda ()
+      (if (not (file-exists? "cref.con"))
+	  (load "cref.sf"))))
   (for-each (lambda (name)
 	      (load (merge-pathnames "compile" (pathname-as-directory name))))
 	    '("sos" "imail"))
