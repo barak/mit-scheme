@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/syntax.scm,v 1.70 1991/04/23 06:44:12 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/syntax.scm,v 1.71 1991/05/17 18:39:35 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -42,14 +42,93 @@
 ;;; of that license should have been included along with this file.
 ;;;
 
-;;;; Syntax tables for Edwin
+;;;; Syntax Tables
 
 (declare (usual-integrations))
 
-;;;; Syntax Tables
+(define-structure (syntax-table (constructor %make-syntax-table)
+				(conc-name syntax-table/))
+  (entries false read-only true))
+
+(define (modify-syntax-entry! syntax-table char string)
+  (if (not (syntax-table? syntax-table))
+      (error:wrong-type-argument syntax-table
+				 "syntax table"
+				 'MODIFY-SYNTAX-ENTRY!))
+  (vector-set! (syntax-table/entries syntax-table)
+	       (char->ascii char)
+	       ((ucode-primitive string->syntax-entry) string)))
+
+(define (modify-syntax-entries! syntax-table cl ch string)
+  (if (not (syntax-table? syntax-table))
+      (error:wrong-type-argument syntax-table
+				 "syntax table"
+				 'MODIFY-SYNTAX-ENTRIES!))
+  (let ((entries (syntax-table/entries syntax-table))
+	(ah (char->ascii ch))
+	(entry ((ucode-primitive string->syntax-entry) string)))
+    (do ((a (char->ascii cl) (+ a 1)))
+	((>= a ah) unspecific)
+      (vector-set! entries a entry))))
+
+(define standard-syntax-table
+  (let ((table
+	 (%make-syntax-table
+	  (make-vector 256 ((ucode-primitive string->syntax-entry) "")))))
+    (modify-syntax-entries! table #\0 #\9 "w")
+    (modify-syntax-entries! table #\A #\Z "w")
+    (modify-syntax-entries! table #\a #\z "w")
+    (modify-syntax-entry! table #\$ "w")
+    (modify-syntax-entry! table #\% "w")
+    (modify-syntax-entry! table #\( "()")
+    (modify-syntax-entry! table #\) ")(")
+    (modify-syntax-entry! table #\[ "(]")
+    (modify-syntax-entry! table #\] ")[")
+    (modify-syntax-entry! table #\{ "(}")
+    (modify-syntax-entry! table #\} "){")
+    (modify-syntax-entry! table #\" "\"")
+    (modify-syntax-entry! table #\\ "\\")
+    (for-each (lambda (char)
+		(modify-syntax-entry! table char "_"))
+	      (string->list "_-+*/&|<>="))
+    (for-each (lambda (char)
+		(modify-syntax-entry! table char "."))
+	      (string->list ".,;:?!#@~^'`"))
+    table))
+
+(define (make-syntax-table)
+  (%make-syntax-table
+   (vector-copy (syntax-table/entries standard-syntax-table))))
+
+(define (char->syntax-code syntax-table char)
+  ((ucode-primitive char->syntax-code) (syntax-table/entries syntax-table)
+				       char))
+
+(define (substring-find-next-char-of-syntax string start end
+					    syntax-table syntax)
+  (let loop ((index start))
+    (and (< index end)
+	 (if (char=? syntax
+		     (char->syntax-code syntax-table
+					(string-ref string index)))
+	     index
+	     (loop (+ index 1))))))
+
+(define (substring-find-next-char-not-of-syntax string start end
+						syntax-table syntax)
+  (let loop ((index start))
+    (and (< index end)
+	 (if (char=? syntax
+		     (char->syntax-code syntax-table
+					(string-ref string index)))
+	     (loop (+ index 1))
+	     index))))
+
+;;;; Word Parsing
 
 (define-variable syntax-table
-  "The syntax-table used for word and list parsing.")
+  "The syntax-table used for word and list parsing."
+  (make-syntax-table))
 
 (define-variable syntax-ignore-comments-backwards
   "If true, ignore comments in backwards expression parsing.
@@ -57,64 +136,8 @@ This can be #T for comments that end in }, as in Pascal or C.
 It should be #F for comments that end in Newline, as in Lisp;
 this is because Newline occurs often when it doesn't indicate
 a comment ending."
-  false)
-
-(define-structure (syntax-table (constructor %make-syntax-table)
-				(conc-name syntax-table/))
-  (entries false read-only true))
-
-(define (guarantee-syntax-table syntax-table)
-  (if (not (syntax-table? syntax-table))
-      (error "not a syntax table" syntax-table))
-  syntax-table)
-
-(define (modify-syntax-entry! syntax-table char string)
-  (guarantee-syntax-table syntax-table)
-  (vector-set! (syntax-table/entries syntax-table)
-	       (char->ascii char)
-	       ((ucode-primitive string->syntax-entry) string))
-  unspecific)
-
-(define (modify-syntax-entries! syntax-table cl ch string)
-  (guarantee-syntax-table syntax-table)
-  (let ((entries (syntax-table/entries syntax-table))
-	(ah (char->ascii ch))
-	(entry ((ucode-primitive string->syntax-entry) string)))
-    (let loop ((a (char->ascii cl)))
-      (vector-set! entries a entry)
-      (if (< a ah) (loop (1+ a))))))
-
-(define make-syntax-table
-  (let ((standard-syntax-table
-	 (%make-syntax-table
-	  (make-vector 256 ((ucode-primitive string->syntax-entry) "")))))
-    (modify-syntax-entries! standard-syntax-table #\0 #\9 "w")
-    (modify-syntax-entries! standard-syntax-table #\A #\Z "w")
-    (modify-syntax-entries! standard-syntax-table #\a #\z "w")
-    (modify-syntax-entry! standard-syntax-table #\$ "w")
-    (modify-syntax-entry! standard-syntax-table #\% "w")
-    (modify-syntax-entry! standard-syntax-table #\( "()")
-    (modify-syntax-entry! standard-syntax-table #\) ")(")
-    (modify-syntax-entry! standard-syntax-table #\[ "(]")
-    (modify-syntax-entry! standard-syntax-table #\] ")[")
-    (modify-syntax-entry! standard-syntax-table #\{ "(}")
-    (modify-syntax-entry! standard-syntax-table #\} "){")
-    (modify-syntax-entry! standard-syntax-table #\" "\"")
-    (modify-syntax-entry! standard-syntax-table #\\ "\\")
-    (for-each (lambda (char)
-		(modify-syntax-entry! standard-syntax-table char "_"))
-	      (string->list "_-+*/&|<>="))
-    (for-each (lambda (char)
-		(modify-syntax-entry! standard-syntax-table char "."))
-	      (string->list ".,;:?!#@~^'`"))
-    (lambda ()
-      (%make-syntax-table
-       (vector-copy (syntax-table/entries standard-syntax-table))))))
-
-(define (initialize-syntax-table!)
-  (set-variable! syntax-table (make-syntax-table)))
-
-;;;; Word Parsing
+  false
+  boolean?)
 
 (define forward-word)
 (define backward-word)
@@ -200,9 +223,53 @@ a comment ending."
    (group-start-index (mark-group mark))))
 
 (define (mark-left-char-quoted? mark)
-  (if (not (group-start? mark))
-      (mark-right-char-quoted? (mark-1+ mark))
-      (error "Mark has no left char" mark)))
+  (if (group-start? mark)
+      (error "Mark has no left char" mark))
+  (mark-right-char-quoted? (mark-1+ mark)))
+
+(define-structure (parse-state (type vector))
+  (depth false read-only true)
+  (in-string? false read-only true)	;#F or ASCII delimiter.
+  (in-comment? false read-only true)	;#F or 1 or 2.
+  (quoted? false read-only true)
+  (last-sexp false)
+  (containing-sexp false)
+  (location false))
+
+(define (forward-to-sexp-start mark end)
+  (parse-state-location (parse-partial-sexp mark end 0 true)))
+
+(define (parse-partial-sexp start end
+			    #!optional target-depth stop-before? old-state)
+  (if (not (mark<= start end))
+      (error "Marks incorrectly related:" start end))
+  (let ((target-depth
+	 (if (or (default-object? target-depth) (not target-depth))
+	     -1000000
+	     target-depth))
+	(stop-before? (if (default-object? stop-before?) false stop-before?))
+	(old-state (if (default-object? old-state) false old-state))
+	(group (mark-group start)))
+    (let ((state
+	   ((ucode-primitive scan-sexps-forward)
+	    (syntax-table/entries (ref-variable syntax-table))
+	    group
+	    (mark-index start)
+	    (mark-index end)
+	    target-depth stop-before? old-state)))
+      ;; Convert the returned indices to marks.
+      (if (parse-state-last-sexp state)
+	  (set-parse-state-last-sexp! 
+	   state 
+	   (make-mark group (parse-state-last-sexp state))))
+      (if (parse-state-containing-sexp state)
+	  (set-parse-state-containing-sexp! 
+	   state
+	   (make-mark group (parse-state-containing-sexp state))))
+      (set-parse-state-location! state
+				 (make-mark group
+					    (parse-state-location state)))
+      state)))
 
 (define forward-one-sexp)
 (define backward-one-sexp)
@@ -273,69 +340,6 @@ a comment ending."
   (%backward-list start (default-end/backward start end) -1 false)))
 
 )
-
-(define-structure (parse-state (type vector))
-  (depth false read-only true)
-  (in-string? false read-only true)	;#F or ASCII delimiter.
-  (in-comment? false read-only true)	;#F or 1 or 2.
-  (quoted? false read-only true)
-  (last-sexp false)
-  (containing-sexp false)
-  (location false))
-
-(define (forward-to-sexp-start mark end)
-  (parse-state-location (parse-partial-sexp mark end 0 true)))
-
-(define (parse-partial-sexp start end
-			    #!optional target-depth stop-before? old-state)
-  (if (not (mark<= start end))
-      (error "Marks incorrectly related" start end))
-  (let ((target-depth
-	 (if (or (default-object? target-depth) (not target-depth))
-	     -1000000
-	     target-depth))
-	(stop-before? (if (default-object? stop-before?) false stop-before?))
-	(old-state (if (default-object? old-state) false old-state))
-	(group (mark-group start)))
-    (let ((state
-	   ((ucode-primitive scan-sexps-forward)
-	    (syntax-table/entries (ref-variable syntax-table))
-	    group
-	    (mark-index start)
-	    (mark-index end)
-	    target-depth stop-before? old-state)))
-      ;; Convert the returned indices to marks.
-      (if (parse-state-last-sexp state)
-	  (set-parse-state-last-sexp! 
-	   state 
-	   (make-mark group (parse-state-last-sexp state))))
-      (if (parse-state-containing-sexp state)
-	  (set-parse-state-containing-sexp! 
-	   state
-	   (make-mark group (parse-state-containing-sexp state))))
-      (set-parse-state-location! state
-				 (make-mark group
-					    (parse-state-location state)))
-      state)))
-
-(define (char->syntax-code char)
-  ((ucode-primitive char->syntax-code)
-   (syntax-table/entries (ref-variable syntax-table))
-   char))
-
-(define (substring-find-next-char-of-syntax string start end syntax)
-  (let loop ((index start))
-    (and (not (= index end))
-	 (if (char=? syntax (char->syntax-code (string-ref string index)))
-	     index
-	     (loop (1+ index))))))
-
-(define (substring-find-next-char-not-of-syntax string start end syntax)
-  (let loop ((index start))
-    (and (not (= index end))
-	 (if (char=? syntax (char->syntax-code (string-ref string index)))
-	     (loop (1+ index))
-	     index))))
 
 ;;;; Definition Start/End
 

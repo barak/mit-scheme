@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sercom.scm,v 1.58 1991/05/17 04:52:02 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sercom.scm,v 1.59 1991/05/17 18:39:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -206,33 +206,27 @@ Set point to the beginning of the occurrence found."
   (apply
    string-append
    (let ((end (string-length string)))
-     (letrec
-	 ((scan-word
-	   (lambda (start)
-	     (let loop ((index (+ start 1)))
-	       (cond ((>= index end)
-		      (cons (substring string start end) '("\\b")))
-		     ((char=? #\w
-			      (char->syntax-code (string-ref string index)))
-		      (loop (+ index 1)))
-		     (else
-		      (cons (substring string start index)
-			    (scan-punctuation (+ index 1))))))))
-	  (scan-punctuation
-	   (lambda (index)
-	     (cond ((>= index end)
-		    '("\\b"))
-		   ((char=? #\w (char->syntax-code (string-ref string index)))
-		    (cons "\\W+" (scan-word index)))
-		   (else
-		    (scan-punctuation (+ index 1)))))))
-       (let loop ((index 0))
-	 (cond ((>= index end)
-		'())
-	       ((char=? #\w (char->syntax-code (string-ref string index)))
-		(cons "\\b" (scan-word index)))
-	       (else
-		(loop (+ index 1)))))))))
+     (let ((index
+	    (substring-find-next-char-of-syntax string 0 end
+						syntax-table #\w)))
+       (if index
+	   (cons "\\b"
+		 (let loop ((start index))
+		   (let ((index
+			  (substring-find-next-char-not-of-syntax
+			   string start end
+			   syntax-table #\w)))
+		     (if index
+			 (cons (substring string start index)
+			       (let ((index
+				      (substring-find-next-char-of-syntax
+				       string (+ index 1) end
+				       syntax-table #\w)))
+				 (if index
+				     (cons "\\W+" (loop index))
+				     '("\\b"))))
+			 (cons (substring string start end) '("\\b"))))))
+	   '())))))
 
 ;;;; Incremental Search
 

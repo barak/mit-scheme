@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.57 1991/05/10 22:15:58 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.58 1991/05/17 18:38:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -48,7 +48,6 @@
 
 (define registers (make-vector 20))
 (define match-group (object-hash false))
-(define standard-syntax-table (make-syntax-table))
 
 (define-integrable (re-match-start-index i)
   (vector-ref registers i))

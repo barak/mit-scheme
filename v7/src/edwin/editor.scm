@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.202 1991/05/14 02:04:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.203 1991/05/17 18:36:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -138,7 +138,6 @@
     (reset-editor)
     (initialize-typein!)
     (initialize-typeout!)
-    (initialize-syntax-table!)
     (initialize-command-reader!)
     (initialize-processes!)
     (set! edwin-editor

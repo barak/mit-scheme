@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/linden.scm,v 1.119 1991/04/03 04:26:03 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/linden.scm,v 1.120 1991/05/17 18:37:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -129,7 +129,9 @@
 	       ;; LAST-SEXP is on subsequent line -- indent under the
 	       ;; first expression on that line.
 	       (forward-to-sexp-start (line-start last-sexp 0) last-sexp))))
-      (if (char=? #\( (char->syntax-code (mark-right-char first-sexp)))
+      (if (char=? #\(
+		  (char->syntax-code syntax-table
+				     (mark-right-char first-sexp)))
 	  ;; The first expression is a list -- don't bother to call
 	  ;; the indent hook.
 	  (mark-column (backward-prefix-chars normal-indent))
@@ -153,7 +155,8 @@
   (let ((first-sexp
 	 (forward-to-sexp-start (mark1+ (parse-state-containing-sexp state))
 				indent-point)))
-    (and (let ((syntax (char->syntax-code (mark-right-char first-sexp))))
+    (and (let ((syntax
+		(char->syntax-code syntax-table (mark-right-char first-sexp))))
 	   (or (char=? #\w syntax)
 	       (char=? #\_ syntax)))
 	 (let ((name (extract-string first-sexp

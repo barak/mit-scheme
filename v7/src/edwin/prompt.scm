@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.143 1991/05/17 04:51:03 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.144 1991/05/17 18:38:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -529,10 +529,8 @@ a repetition of this command will exit."
 	     (let ((index
 		    (and (string-prefix-ci? string new-string)
 			 (substring-find-next-char-not-of-syntax
-			  new-string
-			  (string-length string)
-			  end
-			  #\w))))
+			  new-string (string-length string) end
+			  (ref-variable syntax-table) #\w))))
 	       (if index
 		   (substring new-string 0 (1+ index))
 		   new-string))))))
