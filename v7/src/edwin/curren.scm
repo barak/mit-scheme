@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: curren.scm,v 1.114 1995/04/22 19:53:18 cph Exp $
+;;;	$Id: curren.scm,v 1.115 1995/04/27 20:33:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -184,14 +184,17 @@ The screen is guaranteed to be deselected at that time."
 
 ;;;; Windows
 
-(define (current-window)
-  (screen-selected-window (selected-screen)))
-
 (define (window-list)
   (append-map screen-window-list (screen-list)))
 
-(define (current-window? window)
-  (eq? window (current-window)))
+(define (selected-window)
+  (screen-selected-window (selected-screen)))
+
+(define (selected-window? window)
+  (eq? window (selected-window)))
+
+(define current-window selected-window)
+(define current-window? selected-window?)
 
 (define (window0)
   (screen-window0 (selected-screen)))
@@ -239,7 +242,7 @@ The screen is guaranteed to be deselected at that time."
   (let ((n (if (or (default-object? n) (not n)) 1 n))
 	(other-screens?
 	 (if (default-object? other-screens?) #f other-screens?))
-	(selected-window (current-window))
+	(selected-window (selected-window))
 	(typein-ok? (within-typein-edit?)))
     (cond ((positive? n)
 	   (let loop ((n n) (window selected-window))
@@ -347,14 +350,17 @@ The screen is guaranteed to be deselected at that time."
 (define (buffer-names)
   (bufferset-names (current-bufferset)))
 
-(define (current-buffer? buffer)
-  (eq? buffer (current-buffer)))
+(define (selected-buffer)
+  (window-buffer (selected-window)))
 
-(define (current-buffer)
-  (window-buffer (current-window)))
+(define (selected-buffer? buffer)
+  (eq? buffer (selected-buffer)))
+
+(define current-buffer selected-buffer)
+(define current-buffer? selected-buffer?)
 
 (define (previous-buffer)
-  (other-buffer (current-buffer)))
+  (other-buffer (selected-buffer)))
 
 (define (other-buffer buffer)
   (let loop ((less-preferred false) (buffers (buffer-list)))
@@ -440,23 +446,23 @@ The screen is guaranteed to be deselected at that time."
   (or (buffer-get buffer key) '()))
 
 (define (select-buffer buffer)
-  (select-buffer-in-window buffer (current-window) true))
+  (select-buffer-in-window buffer (selected-window) true))
 
 (define (select-buffer-no-record buffer)
-  (select-buffer-in-window buffer (current-window) false))
+  (select-buffer-in-window buffer (selected-window) false))
 
 (define (select-buffer-in-window buffer window record?)
   (without-interrupts
    (lambda ()
      (undo-leave-window! window)
-     (if (current-window? window)
+     (if (selected-window? window)
 	 (change-selected-buffer window buffer record?
 	   (lambda ()
 	     (set-window-buffer! window buffer)))
 	 (set-window-buffer! window buffer)))))
 
 (define (change-selected-buffer window buffer record? selection-thunk)
-  (change-local-bindings! (current-buffer) buffer selection-thunk)
+  (change-local-bindings! (selected-buffer) buffer selection-thunk)
   (set-buffer-point! buffer (window-point window))
   (if record?
       (bufferset-select-buffer! (current-bufferset) buffer))
@@ -482,7 +488,7 @@ The buffer is guaranteed to be selected at that time."
 (define (with-selected-buffer buffer thunk)
   (let ((old-buffer))
     (dynamic-wind (lambda ()
-		    (let ((window (current-window)))
+		    (let ((window (selected-window)))
 		      (set! old-buffer (window-buffer window))
 		      (if (buffer-alive? buffer)
 			  (select-buffer-in-window buffer window true)))
@@ -490,7 +496,7 @@ The buffer is guaranteed to be selected at that time."
 		    unspecific)
 		  thunk
 		  (lambda ()
-		    (let ((window (current-window)))
+		    (let ((window (selected-window)))
 		      (set! buffer (window-buffer window))
 		      (if (buffer-alive? old-buffer)
 			  (select-buffer-in-window old-buffer window true)))
@@ -498,21 +504,21 @@ The buffer is guaranteed to be selected at that time."
 		    unspecific))))
 
 (define (current-process)
-  (let ((process (get-buffer-process (current-buffer))))
+  (let ((process (get-buffer-process (selected-buffer))))
     (if (not process)
-	(editor-error "Current buffer has no process"))
+	(editor-error "Selected buffer has no process"))
     process))
 
 ;;;; Point
 
 (define (current-point)
-  (window-point (current-window)))
+  (window-point (selected-window)))
 
 (define (set-current-point! mark)
-  (set-window-point! (current-window) mark))
+  (set-window-point! (selected-window) mark))
 
 (define (set-buffer-point! buffer mark)
-  (let ((window (current-window)))
+  (let ((window (selected-window)))
     (if (eq? buffer (window-buffer window))
 	(set-window-point! window mark)
 	(%set-buffer-point! buffer mark))))
@@ -520,14 +526,14 @@ The buffer is guaranteed to be selected at that time."
 (define (with-current-point point thunk)
   (let ((old-point))
     (dynamic-wind (lambda ()
-		    (let ((window (current-window)))
+		    (let ((window (selected-window)))
 		      (set! old-point (window-point window))
 		      (set-window-point! window point))
 		    (set! point)
 		    unspecific)
 		  thunk
 		  (lambda ()
-		    (let ((window (current-window)))
+		    (let ((window (selected-window)))
 		      (set! point (window-point window))
 		      (set-window-point! window old-point))
 		    (set! old-point)
@@ -549,7 +555,7 @@ The buffer is guaranteed to be selected at that time."
 ;;;; Mark and Region
 
 (define (current-mark)
-  (buffer-mark (current-buffer)))
+  (buffer-mark (selected-buffer)))
 
 (define (buffer-mark buffer)
   (let ((ring (buffer-mark-ring buffer)))
@@ -558,7 +564,7 @@ The buffer is guaranteed to be selected at that time."
 	(ring-ref ring 0))))
 
 (define (set-current-mark! mark)
-  (set-buffer-mark! (current-buffer) (guarantee-mark mark)))
+  (set-buffer-mark! (selected-buffer) (guarantee-mark mark)))
 
 (define (set-buffer-mark! buffer mark)
   (ring-set! (buffer-mark-ring buffer) 0 (mark-right-inserting-copy mark)))
@@ -570,18 +576,18 @@ If false, don't display any message."
   string-or-false?)
 
 (define (push-current-mark! mark)
-  (push-buffer-mark! (current-buffer) (guarantee-mark mark))
+  (push-buffer-mark! (selected-buffer) (guarantee-mark mark))
   (let ((notification (ref-variable auto-push-point-notification)))
     (if (and notification
 	     (not *executing-keyboard-macro?*)
-	     (not (typein-window? (current-window))))
+	     (not (typein-window? (selected-window))))
 	(temporary-message notification))))
 
 (define (push-buffer-mark! buffer mark)
   (ring-push! (buffer-mark-ring buffer) (mark-right-inserting-copy mark)))
 
 (define (pop-current-mark!)
-  (pop-buffer-mark! (current-buffer)))
+  (pop-buffer-mark! (selected-buffer)))
 
 (define (pop-buffer-mark! buffer)
   (ring-pop! (buffer-mark-ring buffer)))
@@ -600,22 +606,22 @@ If false, don't display any message."
 ;;;; Modes and Comtabs
 
 (define (current-major-mode)
-  (buffer-major-mode (current-buffer)))
+  (buffer-major-mode (selected-buffer)))
 
 (define (current-minor-modes)
-  (buffer-minor-modes (current-buffer)))
+  (buffer-minor-modes (selected-buffer)))
 
 (define (current-comtabs)
-  (buffer-comtabs (current-buffer)))
+  (buffer-comtabs (selected-buffer)))
 
 (define (set-current-major-mode! mode)
-  (set-buffer-major-mode! (current-buffer) mode))
+  (set-buffer-major-mode! (selected-buffer) mode))
 
 (define (current-minor-mode? mode)
-  (buffer-minor-mode? (current-buffer) mode))
+  (buffer-minor-mode? (selected-buffer) mode))
 
 (define (enable-current-minor-mode! mode)
-  (enable-buffer-minor-mode! (current-buffer) mode))
+  (enable-buffer-minor-mode! (selected-buffer) mode))
 
 (define (disable-current-minor-mode! mode)
-  (disable-buffer-minor-mode! (current-buffer) mode))
+  (disable-buffer-minor-mode! (selected-buffer) mode))
