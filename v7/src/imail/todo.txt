@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.8 2000/05/15 16:45:57 cph Exp $
+$Id: todo.txt,v 1.9 2000/05/15 19:08:47 cph Exp $
 
 Bug fixes
 ---------
@@ -41,10 +41,6 @@ Design changes
 
 * Eliminate COPY-FOLDER operation.  Implement something closer to the
   IMAP COPY operation, e.g. APPEND-MESSAGES.
-
-* Eliminate message properties.  Store this information in the headers
-  and translate as needed.  E.g. unix from line in umail message would
-  be stored as header in RMAIL message.
 
 * Reimplement UID synchronization.  Take advantage of monotonic UID
   numbers to discover largest prefix range that hasn't changed.
