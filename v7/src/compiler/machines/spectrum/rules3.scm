@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 4.38 1993/02/18 05:57:06 gjr Exp $
+$Id: rules3.scm,v 4.39 1993/02/28 06:16:06 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -51,7 +51,7 @@ MIT in each case. |#
 	 ;; Thus the bottom two bits of temp are 0, representing the
 	 ;; highest privilege level, and the privilege level will
 	 ;; not be changed by the BV instruction.
-	 (LDWM () (OFFSET 4 0 22) ,temp)
+	 (LDWM () (OFFSET 4 0 ,regnum:stack-pointer) ,temp)
 	 ,@(object->address temp)
 	 (BV (N) 0 ,temp))))
 
@@ -80,7 +80,7 @@ MIT in each case. |#
 	    (LAP ,@(load-immediate frame-size regnum:second-arg)
 		 (BLE () (OFFSET ,hook:compiler-shortcircuit-apply 4
 				 ,regnum:scheme-to-interface-ble)))))
-       (LDWM () (OFFSET 4 0 22) ,regnum:first-arg)))
+       (LDWM () (OFFSET 4 0 ,regnum:stack-pointer) ,regnum:first-arg)))
 
 (define-rule statement
   (INVOCATION:JUMP (? frame-size) (? continuation) (? label))
@@ -99,7 +99,7 @@ MIT in each case. |#
   continuation				;ignore
   (LAP ,@(clear-map!)
        ,@(load-immediate number-pushed regnum:second-arg)
-       ,@(load-pc-relative-address label regnum:first-arg)
+       ,@(load-pc-relative-address label regnum:first-arg 'CODE)
        ,@(invoke-interface code:compiler-lexpr-apply)))
 
 (define-rule statement
@@ -107,7 +107,7 @@ MIT in each case. |#
   continuation				;ignore
   ;; Destination address is at TOS; pop it into first-arg
   (LAP ,@(clear-map!)
-       (LDWM () (OFFSET 4 0 22) ,regnum:first-arg)
+       (LDWM () (OFFSET 4 0 ,regnum:stack-pointer) ,regnum:first-arg)
        ,@(load-immediate number-pushed regnum:second-arg)
        ,@(object->address regnum:first-arg)
        ,@(invoke-interface code:compiler-lexpr-apply)))
@@ -131,7 +131,7 @@ MIT in each case. |#
   continuation				;ignore
   (LAP ,@(load-interface-args! extension false false false)
        ,@(load-immediate frame-size regnum:third-arg)
-       ,@(load-pc-relative-address *block-label* regnum:second-arg)
+       ,@(load-pc-relative-address *block-label* regnum:second-arg 'CODE)
        ,@(invoke-interface code:compiler-cache-reference-apply)))
 
 (define-rule statement
@@ -154,7 +154,8 @@ MIT in each case. |#
 	   ,@(invoke-interface code:compiler-error))
       (LAP ,@(clear-map!)
 	   ,@(load-pc-relative (constant->label primitive)
-			       regnum:first-arg)
+			       regnum:first-arg
+			       'CONSTANT)
 	   ,@(let ((arity (primitive-procedure-arity primitive)))
 	       (cond ((not (negative? arity))
 		      (invoke-interface code:compiler-primitive-apply))
@@ -225,19 +226,23 @@ MIT in each case. |#
 
 (define-rule statement
   ;; Move up 0 words back to top of stack : a No-Op
-  (INVOCATION-PREFIX:MOVE-FRAME-UP 0 (REGISTER 22))
+  (INVOCATION-PREFIX:MOVE-FRAME-UP 0 (REGISTER (? reg)))
+  (QUALIFIER (= reg regnum:stack-pointer))
   (LAP))
 
 (define-rule statement
   ;; Move <frame-size> words back to dynamic link marker
-  (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size) (REGISTER 19))
+  (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size) (REGISTER (? reg)))
+  (QUALIFIER (= reg regnum:dynamic-link))
   (generate/move-frame-up frame-size
-			  (lambda (reg) (LAP (COPY () 19 ,reg)))))
+			  (lambda (reg)
+			    (LAP (COPY () ,regnum:dynamic-link ,reg)))))
 
 (define-rule statement
   ;; Move <frame-size> words back to SP+offset
   (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size)
-				   (OFFSET-ADDRESS (REGISTER 22) (? offset)))
+				   (OFFSET-ADDRESS (REGISTER (? reg)) (? offset)))
+  (QUALIFIER (= reg regnum:stack-pointer))
   (let ((how-far (* 4 (- offset frame-size))))
     (cond ((zero? how-far)
 	   (LAP))
@@ -245,22 +250,23 @@ MIT in each case. |#
 	   (error "invocation-prefix:move-frame-up: bad specs"
 		  frame-size offset))
 	  ((zero? frame-size)
-	   (load-offset how-far 22 22))
+	   (load-offset how-far regnum:stack-pointer regnum:stack-pointer))
 	  ((= frame-size 1)
 	   (let ((temp (standard-temporary!)))
-	     (LAP (LDWM () (OFFSET ,how-far 0 22) ,temp)
-		  (STW () ,temp (OFFSET 0 0 22)))))
+	     (LAP (LDWM () (OFFSET ,how-far 0 ,regnum:stack-pointer) ,temp)
+		  (STW () ,temp (OFFSET 0 0 ,regnum:stack-pointer)))))
 	  ((= frame-size 2)
 	   (let ((temp1 (standard-temporary!))
 		 (temp2 (standard-temporary!)))
-	     (LAP (LDWM () (OFFSET 4 0 22) ,temp1)
-		  (LDWM () (OFFSET ,(- how-far 4) 0 22) ,temp2)
-		  (STW () ,temp1 (OFFSET 0 0 22))
-		  (STW () ,temp2 (OFFSET 4 0 22)))))
+	     (LAP (LDWM () (OFFSET 4 0 ,regnum:stack-pointer) ,temp1)
+		  (LDWM () (OFFSET ,(- how-far 4) 0 ,regnum:stack-pointer)
+			,temp2)
+		  (STW () ,temp1 (OFFSET 0 0 ,regnum:stack-pointer))
+		  (STW () ,temp2 (OFFSET 4 0 ,regnum:stack-pointer)))))
 	  (else
 	   (generate/move-frame-up frame-size
 	     (lambda (reg)
-	       (load-offset (* 4 offset) 22 reg)))))))
+	       (load-offset (* 4 offset) regnum:stack-pointer reg)))))))
 
 (define-rule statement
   ;; Move <frame-size> words back to base virtual register + offset
@@ -282,14 +288,18 @@ MIT in each case. |#
 (define-rule statement
   (INVOCATION-PREFIX:DYNAMIC-LINK (? frame-size)
 				  (REGISTER (? source))
-				  (REGISTER 19))
+				  (REGISTER (? reg)))
+  (QUALIFIER (= reg regnum:dynamic-link))
   (if (and (zero? frame-size)
 	   (= source regnum:stack-pointer))
       (LAP)
       (let ((env-reg (standard-move-to-temporary! source)))
-	(LAP (SUB (<<=) ,env-reg 19 0)	; skip if env LS dyn link
-	     (COPY () 19 ,env-reg)	; env <- dyn link
-	     ,@(generate/move-frame-up* frame-size env-reg)))))
+	(LAP
+	 ;; skip if env LS dyn link
+	 (SUB (<<=) ,env-reg ,regnum:dynamic-link 0)
+	 ;; env <- dyn link
+	 (COPY () ,regnum:dynamic-link ,env-reg)
+	 ,@(generate/move-frame-up* frame-size env-reg)))))
 
 (define (generate/move-frame-up frame-size destination-generator)
   (let ((temp (standard-temporary!)))
@@ -305,11 +315,11 @@ MIT in each case. |#
 	    (LAP))
 	   ((1)
 	    (let ((temp (standard-temporary!)))
-	      (LAP (LDW () (OFFSET 0 0 22) ,temp)
+	      (LAP (LDW () (OFFSET 0 0 ,regnum:stack-pointer) ,temp)
 		   (STWM () ,temp (OFFSET -4 0 ,destination)))))
 	   (else
 	    (generate/move-frame-up** frame-size destination)))
-       (COPY () ,destination 22)))
+       (COPY () ,destination ,regnum:stack-pointer)))
 
 (define (generate/move-frame-up** frame-size dest)
   (let ((from (standard-temporary!))
@@ -519,7 +529,7 @@ MIT in each case. |#
 	   ;; This code must match the code and count in microcode/cmpint2.h
 	   (DEP () 0 31 2 ,regnum:ble-return)
 	   ,@(address->entry regnum:ble-return)
-	   (STWM () ,regnum:ble-return (OFFSET -4 0 22))
+	   (STWM () ,regnum:ble-return (OFFSET -4 0 ,regnum:stack-pointer))
 	   (LABEL ,internal-label)
 	   ,@(interrupt-check internal-label gc-label)))))
 
@@ -561,7 +571,7 @@ MIT in each case. |#
 	 ,@(load-non-pointer (ucode-type manifest-closure)
 			     total-size
 			     regnum:first-arg)
-	 (STWM () ,regnum:first-arg (OFFSET 4 0 ,regnum:free-pointer))
+	 (STWS (MA C) ,regnum:first-arg (OFFSET 4 0 ,regnum:free-pointer))
 	 ;; Make entries and store result
 	 ,@(core target)
 	 ;; Allocate space for closed-over variables
@@ -596,7 +606,7 @@ MIT in each case. |#
    (lambda (target)
      (LAP ;; Number of closure entries
 	 ,@(load-entry-format nentries 0 target)
-	 (STWM () ,target (offset 4 0 ,regnum:free-pointer))
+	 (STWS (MA C) ,target (OFFSET 4 0 ,regnum:free-pointer))
 	 ;; First entry point is result.
 	 ,@(load-offset 4 regnum:free-pointer target)
 	 ,@(generate-entries 12 entries)))))
@@ -656,35 +666,129 @@ MIT in each case. |#
 
 (define (generate/quotation-header environment-label free-ref-label n-sections)
   ;; Calls the linker
-  (LAP (LDW () ,reg:environment 2)
-       ,@(load-pc-relative-address environment-label 1)
-       (STW () 2 (OFFSET 0 0 1))
-       ,@(load-pc-relative-address *block-label* regnum:second-arg)
-       ,@(load-pc-relative-address free-ref-label regnum:third-arg)
-       ,@(load-immediate n-sections regnum:fourth-arg)
-       ,@(invoke-interface-ble code:compiler-link)
-       ,@(make-external-label (continuation-code-word false)
-			      (generate-label))))
+  (in-assembler-environment
+   (empty-register-map)
+   (list regnum:first-arg regnum:second-arg
+	 regnum:third-arg regnum:fourth-arg)
+   (lambda ()
+     (let ((segment (load-pc-relative-address environment-label 1 'CONSTANT)))
+       (LAP (LDW () ,reg:environment 2)
+	    ,@segment
+	    (STW () 2 (OFFSET 0 0 1))
+	    ,@(load-pc-relative-address *block-label* regnum:second-arg 'CODE)
+	    ,@(load-pc-relative-address free-ref-label regnum:third-arg 'CONSTANT)
+	    ,@(load-immediate n-sections regnum:fourth-arg)
+	    ,@(invoke-interface-ble code:compiler-link)
+	    ,@(make-external-label (continuation-code-word false)
+				   (generate-label)))))))
 
 (define (generate/remote-link code-block-label
 			      environment-offset
 			      free-ref-offset
 			      n-sections)
   ;; Link all of the top level procedures within the file
-  (LAP ,@(load-pc-relative code-block-label regnum:second-arg)
-       ,@(object->address regnum:second-arg)
-       (LDW () ,reg:environment 2)
-       ,@(load-offset environment-offset regnum:second-arg 1)
-       (STW () 2 (OFFSET 0 0 1))
-       ,@(load-offset free-ref-offset regnum:second-arg regnum:third-arg)
-       ,@(load-immediate n-sections regnum:fourth-arg)
-       ,@(invoke-interface-ble code:compiler-link)
-       ,@(make-external-label (continuation-code-word false)
-			      (generate-label))))
+  (in-assembler-environment
+   (empty-register-map)
+   (list regnum:first-arg regnum:second-arg
+	 regnum:third-arg regnum:fourth-arg)
+   (lambda ()
+     (let ((segment (load-pc-relative code-block-label regnum:second-arg 'CONSTANT)))
+       (LAP ,@segment
+	    ,@(object->address regnum:second-arg)
+	    (LDW () ,reg:environment 2)
+	    ,@(load-offset environment-offset regnum:second-arg 1)
+	    (STW () 2 (OFFSET 0 0 1))
+	    ,@(load-offset free-ref-offset regnum:second-arg regnum:third-arg)
+	    ,@(load-immediate n-sections regnum:fourth-arg)
+	    ,@(invoke-interface-ble code:compiler-link)
+	    ,@(make-external-label (continuation-code-word false)
+				   (generate-label)))))))
+
+(define (in-assembler-environment map needed-registers thunk)
+  (fluid-let ((*register-map* map)
+	      (*prefix-instructions* (LAP))
+	      (*suffix-instructions* (LAP))
+	      (*needed-registers* needed-registers))
+    (let ((instructions (thunk)))
+      (LAP ,@*prefix-instructions*
+	   ,@instructions
+	   ,@*suffix-instructions*))))
+
+(define (generate/remote-links n-code-blocks code-blocks-label n-sections)
+  (if (= n-code-blocks 0)
+      (LAP)
+      (let ((loop (generate-label))
+	    (bytes (generate-label))
+	    (after-bytes (generate-label)))
+	(LAP (STWM () 0 (OFFSET -4 0 ,regnum:stack-pointer))
+	     (COPY () 0 ,regnum:first-arg)
+	     (LABEL ,loop)
+	     (LDO () (OFFSET 1 0 ,regnum:first-arg) ,regnum:second-arg)
+	     (STW () ,regnum:second-arg (OFFSET 0 0 ,regnum:stack-pointer))
+	     (BL () ,regnum:third-arg (@PCR ,after-bytes))
+	     (DEP () 0 31 2 ,regnum:third-arg)
+	     (LABEL ,bytes)
+	     ,@(sections->bytes n-code-blocks n-sections)
+	     (LABEL ,after-bytes)
+	     (LDBX () (INDEX ,regnum:first-arg 0 ,regnum:third-arg)
+		   ,regnum:fourth-arg)
+	     (LDW () (OFFSET (- ,code-blocks-label ,bytes) 0 ,regnum:third-arg)
+		  ,regnum:third-arg)
+	     ,@(object->address regnum:third-arg)
+	     (LDWX (S) (INDEX ,regnum:second-arg 0 ,regnum:third-arg)
+		   ,regnum:second-arg)
+	     ,@(object->address regnum:second-arg)
+	     (LDW () (OFFSET 4 0 ,regnum:second-arg) ,regnum:third-arg)
+	     (LDW () (OFFSET 0 0 ,regnum:second-arg) ,regnum:first-arg)
+	     (LDW () ,reg:environment 2)
+	     ,@(object->datum regnum:third-arg regnum:third-arg)
+	     ,@(object->datum regnum:first-arg regnum:first-arg)
+	     (SH2ADD () ,regnum:third-arg ,regnum:second-arg ,regnum:third-arg)
+	     (SH2ADD () ,regnum:first-arg ,regnum:second-arg
+		     ,regnum:first-arg)
+	     (LDO () (OFFSET 8 0 ,regnum:third-arg) ,regnum:third-arg)
+	     (STW () 2 (OFFSET 0 0 ,regnum:first-arg))
+	     ,@(invoke-interface-ble code:compiler-link)
+	     ,@(make-external-label (continuation-code-word false)
+				    (generate-label))	 
+	     (LDW () (OFFSET 0 0 ,regnum:stack-pointer) ,regnum:first-arg)
+	     ,@(cond ((fits-in-5-bits-signed? n-code-blocks)
+		      (LAP (COMIBF (<=) ,n-code-blocks ,regnum:first-arg
+				   (@PCR ,loop))
+			   (NOP ())))
+		     ((fits-in-11-bits-signed? n-code-blocks)
+		      (LAP (COMICLR (<=) ,n-code-blocks ,regnum:first-arg 0)
+			   (B (N) (@PCR ,loop))))
+		     (else
+		      (LAP (LDI () ,n-code-blocks ,regnum:second-arg)
+			   (COMBF (<=) ,regnum:second-arg ,regnum:first-arg
+				  (@PCR ,loop))
+			   (NOP ()))))
+	     (LDO () (OFFSET 4 0 ,regnum:stack-pointer)
+		  ,regnum:stack-pointer)))))
+
+(define (sections->bytes n-code-blocks n-sections)
+  (let walk ((bytes
+	      (append (vector->list n-sections)
+		      (let ((left (remainder n-code-blocks 4)))
+			(if (zero? left)
+			    '()
+			    (make-list (- 4 left) 0))))))
+    (if (null? bytes)
+	(LAP)
+	(let ((hi (car bytes))
+	      (midhi (cadr bytes))
+	      (midlo (caddr bytes))
+	      (lo (cadddr bytes)))
+	  (LAP (UWORD () ,(+ lo (* 256
+				   (+ midlo (* 256 (+ midhi (* 256 hi)))))))
+	       ,@(walk (cddddr bytes)))))))
 
 (define (generate/constants-block constants references assignments
 				  uuo-links global-links static-vars)
   (let ((constant-info
+	 ;; Note: generate/remote-links depends on all the references (& uuos)
+	 ;; being first!
 	 (declare-constants 0 (transmogrifly uuo-links)
 	   (declare-constants 1 references
 	     (declare-constants 2 assignments
