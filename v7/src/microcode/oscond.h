@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: oscond.h,v 1.24 1998/04/14 05:13:44 cph Exp $
+$Id: oscond.h,v 1.25 1998/07/20 04:15:45 cph Exp $
 
 Copyright (c) 1990-98 Massachusetts Institute of Technology
 
@@ -124,7 +124,13 @@ MIT in each case. */
 #endif /* __hpux */
 #endif /* _HPUX */
 
-#ifdef _IRIX4
+#if defined(_IRIX4) || defined(_IRIX6)
+#ifndef _IRIX
+#define _IRIX
+#endif
+#endif
+
+#ifdef _IRIX
 #define _POSIX
 #define _SYSV3
 #endif

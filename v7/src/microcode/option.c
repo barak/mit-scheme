@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.45 1998/04/14 05:13:40 cph Exp $
+$Id: option.c,v 1.46 1998/07/20 04:15:14 cph Exp $
 
 Copyright (c) 1990-98 Massachusetts Institute of Technology
 
@@ -49,13 +49,24 @@ extern void free ();
 extern int atoi ();
 
 #ifdef WINNT
+
 #include <io.h>
 #include <string.h>
 #include <stdlib.h>
-#else
+
+#else /* not WINNT */
+#ifdef _POSIX
+
+#include <unistd.h>
+#include <string.h>
+
+#else /* not _POSIX */
+
 extern int strlen ();
 extern char * malloc ();
-#endif
+
+#endif /* not _POSIX */
+#endif /* not WINNT */
 
 #ifndef NULL
 # define NULL 0

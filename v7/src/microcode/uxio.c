@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.41 1997/10/22 05:25:17 cph Exp $
+$Id: uxio.c,v 1.42 1998/07/20 04:18:54 cph Exp $
 
-Copyright (c) 1990-97 Massachusetts Institute of Technology
+Copyright (c) 1990-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -265,7 +265,11 @@ DEFUN (OS_channel_write_dump_file, (channel, buffer, nbytes),
   return ((scr < 0) ? 0 : scr);
 }
 
+#ifdef _POSIX
+#include <string.h>
+#else
 extern int EXFUN (strlen, (CONST char *));
+#endif
 
 void
 DEFUN (OS_channel_write_string, (channel, string),

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: regex.c,v 1.17 1997/06/06 06:56:42 cph Exp $
+$Id: regex.c,v 1.18 1998/07/20 04:16:27 cph Exp $
 
-Copyright (c) 1987-97 Massachusetts Institute of Technology
+Copyright (c) 1987-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -49,7 +49,7 @@ extern char * malloc ();
 extern char * realloc ();
 extern void free ();
 
-#if defined(_IRIX4) || defined(_AIX)
+#if defined(_IRIX) || defined(_AIX)
 #define SIGN_EXTEND_CHAR(x) ((((int) (x)) >= 0x80)			\
 			     ? (((int) (x)) - 0x100)			\
 			     : ((int) (x)))

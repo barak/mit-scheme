@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.h,v 1.26 1998/03/20 22:02:26 cph Exp $
+$Id: uxtrap.h,v 1.27 1998/07/20 04:19:30 cph Exp $
 
 Copyright (c) 1990-98 Massachusetts Institute of Technology
 
@@ -274,7 +274,7 @@ struct full_sigcontext
 #endif /* vax */
 
 #ifdef mips
-#ifdef _IRIX4
+#ifdef _IRIX
 
 /* Information on sigcontext structure in signal.h */
 
@@ -310,7 +310,7 @@ struct full_sigcontext
     (SIGSEGV, (~ 0L),       ENXIO,   "Read beyond mapped object");	\
 }
 
-#else /* not _IRIX4 */
+#else /* not _IRIX */
 #ifndef _SYSV4
 
 /* Information on sigcontext structure in signal.h */
@@ -423,7 +423,7 @@ struct full_sigcontext
 }
 
 #endif /* _SYSV4 */
-#endif /* _IRIX4 */
+#endif /* _IRIX */
 #endif /* mips */
 
 #if defined(i386) && defined(_MACH_UNIX)
