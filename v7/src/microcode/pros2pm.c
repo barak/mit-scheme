@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2pm.c,v 1.8 1995/05/16 09:19:55 cph Exp $
+$Id: pros2pm.c,v 1.9 1995/05/20 10:14:17 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -431,23 +431,36 @@ DEFINE_PRIMITIVE ("OS2PS-TEXT-WIDTH", Prim_OS2_ps_text_width, 4, 4, 0)
   }
 }
 
+static SCHEME_OBJECT
+convert_font_metrics (font_metrics_t * m)
+{
+  if (m == 0)
+    return (SHARP_F);
+  else
+    {
+      SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 1));
+      VECTOR_SET (v, 0, (long_to_integer (FONT_METRICS_WIDTH (m))));
+      VECTOR_SET (v, 1, (long_to_integer (FONT_METRICS_HEIGHT (m))));
+      VECTOR_SET (v, 2, (long_to_integer (FONT_METRICS_DESCENDER (m))));
+      OS_free (m);
+      return (v);
+    }
+}
+
+DEFINE_PRIMITIVE ("OS2PS-GET-FONT-METRICS", Prim_OS2_ps_get_font_metrics, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (convert_font_metrics (OS2_ps_get_font_metrics (psid_argument (1))));
+}
+
 DEFINE_PRIMITIVE ("OS2PS-SET-FONT", Prim_OS2_ps_set_font, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
-  {
-    SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 3, 1));
-    font_metrics_t * m
-      = (OS2_ps_set_font ((psid_argument (1)),
-			  (USHORT_ARG (2)),
-			  (STRING_ARG (3))));
-    if (m == 0)
-      PRIMITIVE_RETURN (SHARP_F);
-    VECTOR_SET (result, 0, (long_to_integer (FONT_METRICS_WIDTH (m))));
-    VECTOR_SET (result, 1, (long_to_integer (FONT_METRICS_HEIGHT (m))));
-    VECTOR_SET (result, 2, (long_to_integer (FONT_METRICS_DESCENDER (m))));
-    OS_free (m);
-    PRIMITIVE_RETURN (result);
-  }
+  PRIMITIVE_RETURN
+    (convert_font_metrics (OS2_ps_set_font ((psid_argument (1)),
+					    (USHORT_ARG (2)),
+					    (STRING_ARG (3)))));
 }
 
 DEFINE_PRIMITIVE ("OS2PS-CLEAR", Prim_OS2_ps_clear, 5, 5, 0)

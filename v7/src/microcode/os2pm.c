@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.16 1995/05/19 21:04:16 cph Exp $
+$Id: os2pm.c,v 1.17 1995/05/20 10:14:06 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -507,23 +507,31 @@ typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
   ps_t * ps;
-  unsigned short id;
-  char spec [1];
-} sm_ps_set_font_request_t;
-#define SM_PS_SET_FONT_REQUEST_PS(m)					\
-  (((sm_ps_set_font_request_t *) (m)) -> ps)
-#define SM_PS_SET_FONT_REQUEST_ID(m)					\
-  (((sm_ps_set_font_request_t *) (m)) -> id)
-#define SM_PS_SET_FONT_REQUEST_SPEC(m)					\
-  (((sm_ps_set_font_request_t *) (m)) -> spec)
+} sm_ps_get_font_metrics_request_t;
+#define SM_PS_GET_FONT_METRICS_REQUEST_PS(m)				\
+  (((sm_ps_get_font_metrics_request_t *) (m)) -> ps)
 
 typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
   font_metrics_t * metrics;
-} sm_ps_set_font_reply_t;
-#define SM_PS_SET_FONT_REPLY_METRICS(m)					\
-  (((sm_ps_set_font_reply_t *) (m)) -> metrics)
+} sm_ps_get_font_metrics_reply_t;
+#define SM_PS_GET_FONT_METRICS_REPLY_METRICS(m)				\
+  (((sm_ps_get_font_metrics_reply_t *) (m)) -> metrics)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  ps_t * ps;
+  unsigned short id;
+  char spec [1];
+} sm_ps_set_font_t;
+#define SM_PS_SET_FONT_PS(m)						\
+  (((sm_ps_set_font_t *) (m)) -> ps)
+#define SM_PS_SET_FONT_ID(m)						\
+  (((sm_ps_set_font_t *) (m)) -> id)
+#define SM_PS_SET_FONT_SPEC(m)						\
+  (((sm_ps_set_font_t *) (m)) -> spec)
 
 typedef struct
 {
@@ -966,7 +974,8 @@ static unsigned long ps_get_bitmap_bits
   (ps_t *, unsigned long, unsigned long, PBYTE, PBITMAPINFO2);
 static unsigned long ps_set_bitmap_bits
   (ps_t *, unsigned long, unsigned long, PBYTE, PBITMAPINFO2);
-static font_metrics_t * ps_set_font (ps_t *, unsigned short, const char *);
+static font_metrics_t * ps_get_font_metrics (ps_t *);
+static int ps_set_font (ps_t *, unsigned short, const char *);
 
 static void clipboard_write_text (const char *);
 static const char * clipboard_read_text (void);
@@ -1095,8 +1104,11 @@ OS2_initialize_pm_thread (void)
   SET_MSG_TYPE_LENGTH (mt_ps_text_width_request, sm_ps_text_width_request_t);
   SET_MSG_TYPE_LENGTH (mt_ps_text_width_reply, sm_ps_text_width_reply_t);
   SET_MSG_TYPE_LENGTH (mt_ps_clear, sm_ps_clear_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_set_font_request, sm_ps_set_font_request_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_set_font_reply, sm_ps_set_font_reply_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_get_font_metrics_request,
+		       sm_ps_get_font_metrics_request_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_get_font_metrics_reply,
+		       sm_ps_get_font_metrics_reply_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_set_font, sm_ps_set_font_t);
   SET_MSG_TYPE_LENGTH (mt_ps_set_colors, sm_ps_set_colors_t);
   SET_MSG_TYPE_LENGTH (mt_ps_move_gcursor, sm_ps_move_gcursor_t);
   SET_MSG_TYPE_LENGTH (mt_ps_draw_line, sm_ps_draw_line_t);
@@ -1440,6 +1452,7 @@ static void handle_ps_set_bitmap_request (msg_t *);
 static void handle_ps_bitblt_request (msg_t *);
 static void handle_ps_draw_text_request (msg_t *);
 static void handle_ps_text_width_request (msg_t *);
+static void handle_ps_get_font_metrics_request (msg_t *);
 static void handle_ps_set_font_request (msg_t *);
 static void handle_ps_clear_request (msg_t *);
 static void handle_ps_set_colors_request (msg_t *);
@@ -1561,7 +1574,10 @@ object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
 	case mt_ps_text_width_request:
 	  handle_ps_text_width_request (message);
 	  break;
-	case mt_ps_set_font_request:
+	case mt_ps_get_font_metrics_request:
+	  handle_ps_get_font_metrics_request (message);
+	  break;
+	case mt_ps_set_font:
 	  handle_ps_set_font_request (message);
 	  break;
 	case mt_ps_clear:
@@ -2363,18 +2379,46 @@ handle_ps_text_width_request (msg_t * request)
 }
 
 font_metrics_t *
+OS2_ps_get_font_metrics (psid_t psid)
+{
+  ps_t * ps = (psid_to_ps (psid));
+  msg_t * message = (OS2_create_message (mt_ps_get_font_metrics_request));
+  font_metrics_t * metrics;
+  (SM_PS_GET_FONT_METRICS_REQUEST_PS (message)) = ps;
+  message
+    = (OS2_message_transaction ((PS_QID (ps)),
+				message,
+				mt_ps_get_font_metrics_reply));
+  metrics = (SM_PS_GET_FONT_METRICS_REPLY_METRICS (message));
+  OS2_destroy_message (message);
+  return (metrics);
+}
+
+static void
+handle_ps_get_font_metrics_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_ps_get_font_metrics_reply));
+  (SM_PS_GET_FONT_METRICS_REPLY_METRICS (reply))
+    = (ps_get_font_metrics (SM_PS_GET_FONT_METRICS_REQUEST_PS (request)));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
+}
+
+font_metrics_t *
 OS2_ps_set_font (psid_t psid, unsigned short id, const char * name)
 {
   ps_t * ps = (psid_to_ps (psid));
-  msg_t * message
-    = (OS2_create_message_1 (mt_ps_set_font_request, (strlen (name))));
+  msg_t * message = (OS2_create_message_1 (mt_ps_set_font, (strlen (name))));
   font_metrics_t * metrics;
-  (SM_PS_SET_FONT_REQUEST_PS (message)) = ps;
-  (SM_PS_SET_FONT_REQUEST_ID (message)) = id;
-  strcpy ((SM_PS_SET_FONT_REQUEST_SPEC (message)), name);
+  (SM_PS_SET_FONT_PS (message)) = ps;
+  (SM_PS_SET_FONT_ID (message)) = id;
+  strcpy ((SM_PS_SET_FONT_SPEC (message)), name);
   message
-    = (OS2_message_transaction ((PS_QID (ps)), message, mt_ps_set_font_reply));
-  metrics = (SM_PS_SET_FONT_REPLY_METRICS (message));
+    = (OS2_message_transaction ((PS_QID (ps)),
+				message,
+				mt_ps_get_font_metrics_reply));
+  metrics = (SM_PS_GET_FONT_METRICS_REPLY_METRICS (message));
   OS2_destroy_message (message);
   if ((metrics != 0) && (psid == (OS2_console_psid ())))
     OS2_console_font_change_hook (metrics);
@@ -2385,11 +2429,13 @@ static void
 handle_ps_set_font_request (msg_t * request)
 {
   qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_ps_set_font_reply));
-  (SM_PS_SET_FONT_REPLY_METRICS (reply))
-    = (ps_set_font ((SM_PS_SET_FONT_REQUEST_PS (request)),
-		    (SM_PS_SET_FONT_REQUEST_ID (request)),
-		    (SM_PS_SET_FONT_REQUEST_SPEC (request))));
+  msg_t * reply = (OS2_create_message (mt_ps_get_font_metrics_reply));
+  (SM_PS_GET_FONT_METRICS_REPLY_METRICS (reply))
+    = ((ps_set_font ((SM_PS_SET_FONT_PS (request)),
+		     (SM_PS_SET_FONT_ID (request)),
+		     (SM_PS_SET_FONT_SPEC (request))))
+       ? (ps_get_font_metrics (SM_PS_SET_FONT_PS (request)))
+       : 0);
   OS2_destroy_message (request);
   OS2_send_message (sender, reply);
 }
@@ -3799,6 +3845,19 @@ static int ps_set_font_1 (ps_t * ps, PSZ, LONG, USHORT, LONG);
 static PLONG ps_make_char_increments (LONG);
 
 static font_metrics_t *
+ps_get_font_metrics (ps_t * ps)
+{
+  font_metrics_t * metrics = (OS_malloc (sizeof (font_metrics_t)));
+  FONTMETRICS fm;
+  if (!GpiQueryFontMetrics ((PS_HANDLE (ps)), (sizeof (fm)), (& fm)))
+    window_error (GpiQueryFontMetrics);
+  (FONT_METRICS_WIDTH (metrics)) = (fm . lMaxCharInc);
+  (FONT_METRICS_HEIGHT (metrics)) = (fm . lMaxBaselineExt);
+  (FONT_METRICS_DESCENDER (metrics)) = (fm . lMaxDescender);
+  return (metrics);
+}
+
+static int
 ps_set_font (ps_t * ps, unsigned short id, const char * spec)
 {
   PSZ name = 0;
@@ -3812,21 +3871,17 @@ ps_set_font (ps_t * ps, unsigned short id, const char * spec)
       return (0);
     }
   {
-    font_metrics_t * metrics = (OS_malloc (sizeof (font_metrics_t)));
     FONTMETRICS fm;
     if (!GpiQueryFontMetrics ((PS_HANDLE (ps)), (sizeof (fm)), (& fm)))
       window_error (GpiQueryFontMetrics);
-    (FONT_METRICS_WIDTH (metrics)) = (fm . lMaxCharInc);
-    (FONT_METRICS_HEIGHT (metrics)) = (fm . lMaxBaselineExt);
-    (FONT_METRICS_DESCENDER (metrics)) = (fm . lMaxDescender);
     if ((PS_CHAR_INCREMENTS (ps)) != 0)
       OS_free (PS_CHAR_INCREMENTS (ps));
     (PS_CHAR_INCREMENTS (ps))
       = ((((fm . fsDefn) & FM_DEFN_OUTLINE) != 0)
 	 ? (ps_make_char_increments (fm . lMaxCharInc))
 	 : 0);
-    return (metrics);
   }
+  return (1);
 }
 
 static int
