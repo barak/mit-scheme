@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.68 2000/04/07 20:59:48 cph Exp $
+;;; $Id: vc.scm,v 1.69 2000/05/16 15:12:07 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -802,15 +802,16 @@ If the current buffer is named `F', the version is named `F.~REV~'.
 If `F.~REV~' already exists, it is used instead of being re-created."
   "sVersion to visit (default is latest version)"
   (lambda (revision)
-    (let ((revision (vc-normalize-revision revision))
-	  (master (current-vc-master #t)))
-      (if (not revision)
-	  (editor-error "Must specify a revision."))
-      (let ((workfile
-	     (string-append (vc-workfile-string master) ".~" revision "~")))
-	(if (not (file-exists? workfile))
-	    (vc-backend-checkout master revision #f workfile))
-	(find-file-other-window workfile)))))
+    (let* ((master (current-vc-master #t))
+	   (revision
+	    (or (vc-normalize-revision revision)
+		(vc-backend-workfile-revision master)
+		(vc-backend-default-revision master #f)))
+	   (workfile
+	    (string-append (vc-workfile-string master) ".~" revision "~")))
+      (if (not (file-exists? workfile))
+	  (vc-backend-checkout master revision #f workfile))
+      (find-file-other-window workfile))))
 
 (define-command vc-insert-headers
   "Insert headers in a file for use with your version-control system.
