@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.5 1993/07/28 20:29:07 gjr Exp $
+$Id: ntscreen.c,v 1.6 1993/07/30 06:20:17 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -1623,6 +1623,33 @@ static VOID _fastcall
 Screen_WriteCharUninterpreted (SCREEN screen, int ch,
 			       struct screen_write_char_s * rectp)
 {
+  /* Line wrap/overwrite the last position */
+    
+  if (screen->column >= screen->width)
+  {
+    if (screen->mode_flags & SCREEN_MODE_AUTOWRAP)
+    {
+      if ((rectp != ((struct screen_write_char_s *) NULL))
+	  && (rectp->row != -1))
+      {
+	InvalidateRect (screen->hWnd, &rectp->rect, FALSE);
+	rectp->row = -1;
+      }
+      Screen_CR (screen);
+      if (! (screen->mode_flags & SCREEN_MODE_NEWLINE))
+	Screen_LF (screen);
+    }
+    else
+    {
+      screen->column -= 1;
+      if (rectp != ((struct screen_write_char_s *) NULL))
+      {
+	rectp->col -= 1;
+	rectp->rect.right -= screen->xChar;
+      }
+    }
+  }
+
   screen->chars[screen->row * MAXCOLS + screen->column] = ch;
   screen->attrs[screen->row * MAXCOLS + screen->column] =
     screen->write_attribute;
@@ -1653,19 +1680,7 @@ Screen_WriteCharUninterpreted (SCREEN screen, int ch,
     rectp->col = (screen->column + 1);
     rectp->row = screen->row;
   }
-
-  /* Line wrap */
   screen->column += 1;
-  if (screen->column >= screen->width)
-  {
-    screen->column -= 1;
-    if (screen->mode_flags & SCREEN_MODE_AUTOWRAP)
-    {
-      Screen_CR (screen);
-      if (! (screen->mode_flags & SCREEN_MODE_NEWLINE))
-	Screen_LF (screen);
-    }
-  }
   return;
 }
 
