@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.1 1988/06/13 11:58:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.2 1988/06/15 18:35:33 jrm Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -419,11 +419,97 @@ MIT in each case. |#
     (lambda ()
       (*unparse-object (primitive-procedure-name procedure)))))
 
+
+;;;; Compiled entries
+#|
 (define (unparse/compiled-entry entry)
   (*unparse-with-brackets (compiled-entry-type entry)
 			  false
 			  (lambda () (*unparse-datum entry))))
+|#
 
+(define (unparse/compiled-entry entry)
+  (discriminate-compiled-entry entry
+    (lambda () (unparse-compiled-procedure entry))
+    (lambda () (unparse-compiled-entry entry))
+    (lambda () (unparse-compiled-entry entry))
+    (lambda () (unparse-compiled-entry entry))))
+
+(define (entry-to-manifest-closure? entry)
+  (compiled-code-block/manifest-closure? 
+   (compiled-code-address->block entry)))
+
+(define (unparse-compiled-procedure entry)
+  ;; Gross-out to make the "FASLoading" message not print out
+  ;; in the middle of the other stuff.
+  (define (do-it thunk)
+    (*unparse-with-brackets
+     (if (entry-to-manifest-closure? entry)
+	 'MANIFEST-CLOSURE
+	 'COMPILED-PROCEDURE)
+     entry
+     thunk))
+  (compiled-entry->name entry
+    (lambda (string)
+      (do-it
+       (lambda () 
+	 (unparse-entry-name string))))
+    (lambda ()
+      (compiled-entry->pathname entry
+        (lambda (pathname)
+	  (do-it 
+	   (lambda () 
+	     (*unparse-string "from ")
+	     (*unparse-string (pathname-name pathname)))))
+	(lambda ()
+	  (do-it
+	   (lambda () 
+	     (*unparse-datum entry))))))))
+
+;;; Names in the symbol table are of the form
+;;; "FOOBAR-127"
+;;; The 127 is added by the compiler.  This procedure strips
+;;; the trailing number and passes the two strings to IF-STRIPPED
+;;; If the entry doesn't have a trailing number, it passes the
+;;; whole thing to IF-NOT-STRIPPED.
+;;; This will fail gracefully should the compiler change.
+
+(define (strip-trailing-number string if-stripped if-not-stripped)
+  (let loop ((index (-1+ (string-length string))))
+    (cond ((zero? index) (if-not-stripped))
+	  ((char=? (string-ref string index) #\-)
+	   (if-stripped 
+	    (substring string 0 index)
+	    (substring string (1+ index) (string-length string))))
+	  ((char-numeric? (string-ref string index))
+	   (loop (-1+ index)))
+	  (else (if-not-stripped)))))
+
+(define (unparse-entry-name string)
+  (strip-trailing-number string
+    (lambda (string1 string2)
+      (*unparse-string string1)
+      (*unparse-string " ")
+      (*unparse-string string2))
+    *unparse-string))
+
+(define (unparse-compiled-entry entry)
+  (define (unparse-it thunk)
+    (*unparse-with-brackets
+     (compiled-entry-type entry)
+     entry
+     (lambda () (thunk))))
+  (compiled-entry->pathname entry
+    (lambda (pathname)
+      (unparse-it 
+       (lambda ()
+	 (*unparse-string "from ")
+	 (*unparse-string (pathname-name pathname)))))
+    (lambda () 
+      (unparse-it 
+       (lambda () (*unparse-datum entry))))))
+
+;;;; Miscellaneous
 (define (unparse/environment environment)
   (if (lexical-unreferenceable? environment ':PRINT-SELF)
       (unparse/default environment)
