@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: slot.scm,v 1.2 1997/06/17 08:10:41 cph Exp $
+;;; $Id: slot.scm,v 1.3 1997/06/17 08:40:02 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -192,9 +192,9 @@
 		   (or (list-search-positive interacting-options
 			 (lambda (names)
 			   (memq (car x) names)))
-		       (list names))))
+		       (list (car x)))))
 	      (let ((entry
-		     (let loop ((names interaction))
+		     (let loop ((names names))
 		       (and (not (null? names))
 			    (or (assq (car names) (cdr result))
 				(loop (cdr names)))))))
