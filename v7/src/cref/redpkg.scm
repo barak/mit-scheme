@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.14 2001/08/16 20:46:11 cph Exp $
+$Id: redpkg.scm,v 1.15 2001/08/16 20:50:26 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -48,10 +48,10 @@ USA.
 			     (begin
 			       (warn "Malformed package-description file:"
 				     pathname)
-			       '())))
+			       #f)))
 		       (begin
 			 (warn "Can't find package-description file:" pathname)
-			 '())))))
+			 #f)))))
 	      globals)
 	 model-pathname)))))
 
@@ -408,9 +408,10 @@ USA.
 			   (error "Unknown package name:" name)))))))
 	;; GLOBALS is a list of the bindings supplied externally.
 	(for-each (lambda (global)
-		    (process-globals-info (cdr global)
-					  (->namestring (car global))
-					  get-package))
+		    (if (cdr global)
+			(process-globals-info (cdr global)
+					      (->namestring (car global))
+					      get-package)))
 		  globals)
 	(for-each
 	 (lambda (package description)

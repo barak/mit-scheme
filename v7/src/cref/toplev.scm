@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.14 2001/08/15 02:59:58 cph Exp $
+$Id: toplev.scm,v 1.15 2001/08/16 20:46:15 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -50,14 +50,12 @@ USA.
   (generate/common
    (lambda (pathname pmodel changes?)
      (write-cref-unusual pathname pmodel changes?)
-     (write-globals pathname pmodel changes?)
      (write-external-descriptions pathname pmodel changes?))))
 
 (define cref/generate-all
   (generate/common
    (lambda (pathname pmodel changes?)
      (write-cref pathname pmodel changes?)
-     (write-globals pathname pmodel changes?)
      (write-external-descriptions pathname pmodel changes?))))
 
 (define (write-external-descriptions pathname pmodel changes?)
@@ -76,48 +74,3 @@ USA.
       (with-output-to-file (pathname-new-type pathname "crf")
 	(lambda ()
 	  (format-packages-unusual pmodel)))))
-
-(define (write-globals pathname pmodel changes?)
-  (if (or changes? (not (file-processed? pathname "pkg" "glo")))
-      (let ((package-bindings
-	     (map (lambda (package)
-		    (cons package
-			  (list-transform-positive
-			      (package/sorted-bindings package)
-			    binding/source-binding)))
-		  (pmodel/packages pmodel)))
-	    (exports '()))
-	(for-each (lambda (entry)
-		    (for-each (lambda (binding)
-				(for-each (lambda (link)
-					    (set! exports
-						  (cons (link/destination link)
-							exports))
-					    unspecific)
-					  (binding/links binding)))
-			      (cdr entry)))
-		  package-bindings)
-	(for-each (lambda (binding)
-		    (let ((package (binding/package binding)))
-		      (let ((entry (assq package package-bindings)))
-			(if entry
-			    (set-cdr! entry (cons binding (cdr entry)))
-			    (begin
-			      (set! package-bindings
-				    (cons (list package binding)
-					  package-bindings))
-			      unspecific)))))
-		  exports)
-	(fasdump (cons '(VERSION . 2)
-		       (map (lambda (entry)
-			      (vector (package/name (car entry))
-				      (let loop ((package (car entry)))
-					(let ((parent
-					       (package/parent package)))
-					  (if parent
-					      (cons (package/name parent)
-						    (loop parent))
-					      '())))
-				      (map binding/name (cdr entry))))
-			    package-bindings))
-		 (pathname-new-type pathname "glo")))))
