@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.42 2000/06/14 02:15:38 cph Exp $
+;;; $Id: imail-file.scm,v 1.43 2000/06/16 17:21:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -210,7 +210,7 @@
 	    (if (= sync-time current-time)
 		(if (= sync-count current-count)
 		    'SYNCHRONIZED
-		    'FOLDER-MODIFIED)
+		    'CACHE-MODIFIED)
 		(if (= sync-count current-count)
 		    'PERSISTENT-MODIFIED
 		    'BOTH-MODIFIED))

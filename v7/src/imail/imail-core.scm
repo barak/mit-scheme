@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.100 2000/06/14 02:15:36 cph Exp $
+;;; $Id: imail-core.scm,v 1.101 2000/06/16 17:21:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -363,7 +363,7 @@
 ;; -------------------------------------------------------------------
 ;; Compare FOLDER's cache with the persistent folder and return a
 ;; symbol indicating whether they are synchronized, as follows:
-;; SYNCHRONIZED FOLDER-MODIFIED PERSISTENT-MODIFIED BOTH-MODIFIED
+;; SYNCHRONIZED CACHE-MODIFIED PERSISTENT-MODIFIED BOTH-MODIFIED
 ;; PERSISTENT-DELETED UNSYNCHRONIZED
 
 (define-generic folder-sync-status (folder))
