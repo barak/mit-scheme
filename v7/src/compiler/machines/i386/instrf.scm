@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instrf.scm,v 1.4 1992/02/13 05:59:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instrf.scm,v 1.5 1992/02/13 06:00:37 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -52,11 +52,11 @@ MIT in each case. |#
        (macro (mnemonic pmnemonic imnemonic digit opcode1 opcode2)
 	 `(begin
 	    (define-instruction ,mnemonic
-	      (((ST 0) (ST ,i))
+	      (((ST 0) (ST i))
 	       (BYTE (8 #xd8)
 		     (8 (+ ,opcode1 i))))
 
-	      (((ST ,i) (ST 0))
+	      (((ST i) (ST 0))
 	       (BYTE (8 #xdc)
 		     (8 (+ ,opcode2 i))))
 
@@ -73,7 +73,7 @@ MIT in each case. |#
 	       (ModR/M ,digit source)))
 
 	    (define-instruction ,pmnemonic
-	      (((ST ,i) (ST 0))
+	      (((ST i) (ST 0))
 	       (BYTE (8 #xde)
 		     (8 (+ #xc0 i)))))
 
