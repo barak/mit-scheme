@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: undo.scm,v 1.53 1993/01/12 10:50:41 cph Exp $
+;;;	$Id: undo.scm,v 1.54 1993/01/24 07:06:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -70,7 +70,9 @@
 (define (undo-done! point)
   ;; Called to say that POINT's group should have no undo data,
   ;; usually because it has just been filled from a file.
-  (set-group-undo-data! (mark-group point) '()))
+  (let ((group (mark-group point)))
+    (if (not (eq? #t (group-undo-data group)))
+	(set-group-undo-data! group '()))))
 
 (define (undo-boundary! point)
   ;; Called to say that M-x undo should consider this the boundary of
