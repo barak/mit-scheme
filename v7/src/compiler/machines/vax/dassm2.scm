@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm2.scm,v 4.1 1988/01/07 21:16:19 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm2.scm,v 4.2 1988/01/15 20:13:52 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -218,20 +218,16 @@ MIT in each case. |#
       ;; Interpreter entry points
       ,@(make-entries
 	 #x00F0
-	 '(apply error wrong-number-of-arguments
-		 interrupt-procedure interrupt-continuation
-		 lookup-apply lookup access unassigned? unbound? set!
-		 define primitive-apply enclose setup-lexpr
-		 return-to-interpreter safe-lookup cache-variable
-		 reference-trap assignment-trap))
-      ,@(make-entries
-	 #x0228
-	 '(uuo-link uuo-link-trap cache-reference-apply
-		    safe-reference-trap unassigned?-trap
-		    cache-variable-multiple uuo-link-multiple
-		    &+ &- &* &/ &= &< &> 1+ -1+ zero? positive?
-		    negative? cache-assignment cache-assignment-multiple
-		    operator-trap)))))
+	 '(return-to-interpreter 
+	   uuo-link-trap operator-trap
+	   apply error wrong-number-of-arguments
+	   interrupt-procedure interrupt-continuation lookup-apply 
+	   lookup access unassigned? unbound? set! define primitive-apply enclose
+	   setup-lexpr safe-lookup cache-variable reference-trap
+	   assignment-trap uuo-link cache-reference-apply
+	   safe-reference-trap unassigned?-trap cache-variable-multiple
+	   uuo-link-multiple &+ &- &* &/ &= &< &> 1+ -1+ zero? positive? negative?
+	   cache-assignment cache-assignment-multiple primitive-lexpr-apply)))))
 
 )
 
