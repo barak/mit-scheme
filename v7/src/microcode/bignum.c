@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bignum.c,v 9.44 1997/04/23 05:40:11 cph Exp $
+$Id: bignum.c,v 9.45 1997/07/04 16:02:18 adams Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -426,8 +426,17 @@ DEFUN (bignum_remainder, (numerator, denominator),
 	if ((BIGNUM_LENGTH (denominator)) == 1)
 	  {
 	    bignum_digit_type digit = (BIGNUM_REF (denominator, 0));
-	    if (digit == 1)
-	      return (BIGNUM_ZERO ());
+	    if ((digit & (digit-1)) == 0) /* i.e. digit = 2^k, including 1 */
+	      {
+		bignum_digit_type unsigned_remainder;
+		if (BIGNUM_LENGTH (numerator) == 0)
+		  return (BIGNUM_ZERO ());
+		unsigned_remainder = (digit-1) & (BIGNUM_REF (numerator, 0));
+		if (unsigned_remainder == 0)
+		  return (BIGNUM_ZERO ());
+		return (bignum_digit_to_bignum
+			(unsigned_remainder, BIGNUM_NEGATIVE_P (numerator)));
+	      }
 	    if (digit < BIGNUM_RADIX_ROOT)
 	      return
 		(bignum_remainder_unsigned_small_denominator
