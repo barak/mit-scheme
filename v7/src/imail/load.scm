@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.24 2001/01/04 23:24:21 cph Exp $
+;;; $Id: load.scm,v 1.25 2001/01/06 05:49:52 cph Exp $
 ;;;
-;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as

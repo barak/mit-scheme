@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.30 2001/01/04 23:23:21 cph Exp $
+;;; $Id: imail-util.scm,v 1.31 2001/01/06 05:50:05 cph Exp $
 ;;;
-;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
