@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for Linux
 
-$Id: linux.h,v 1.3 1995/10/01 07:19:07 cph Exp $
+$Id: linux.h,v 1.4 1995/10/05 03:34:50 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -41,32 +41,8 @@ MIT in each case. */
 
 #define ALTERNATE_M4 s/ultrix.m4
 
-/* The following change is necessary if ELF binaries are used.
-   Unfortunately, it is insufficient, because the Linux ELF
-   implementation also moves the data segment to 0x08000000, which
-   means that all of the pointer manipulation code must be changed.
-   This is normal for some architectures, e.g. the MIPS and HPPA, but
-   it make the binaries for Linux ELF different for the binaries for
-   all other i386 machines.
-
-   Since I don't currently know any way to adjust the mapping of the
-   data segment, if ELF is in use, I'll just force the switch that
-   causes GCC to generate a.out format instead of ELF.  This is a
-   temporary patch, because one of these days a.out won't be
-   supported, but hopefully by then we'll know how to fix this
-   correctly.  */
-#if 0
 #ifdef __ELF__
-#define M4_SWITCH_SYSTEM -P "define(SUPPRESS_LEADING_UNDERSCORE,1)"
+#define M4_SWITCH_SYSTEM -P "define(LINUX_ELF,1)"
 #else
 #define M4_SWITCH_SYSTEM
-#endif
-#endif
-
-#ifdef __ELF__
-#define C_SWITCH_SYSTEM -b i486-linuxaout
-#define LD_SWITCH_SYSTEM -b i486-linuxaout
-#else
-#define C_SWITCH_SYSTEM
-#define LD_SWITCH_SYSTEM
 #endif

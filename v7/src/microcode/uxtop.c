@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.16 1994/12/02 20:38:54 cph Exp $
+$Id: uxtop.c,v 1.17 1995/10/05 03:34:14 cph Exp $
 
-Copyright (c) 1990-94 Massachusetts Institute of Technology
+Copyright (c) 1990-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,6 +38,14 @@ MIT in each case. */
 #include "uxutil.h"
 #include "errors.h"
 #include "option.h"
+#include "config.h"
+#include "extern.h"
+
+#ifdef _LINUX_ELF
+#include <linux/ldt.h>
+#include <linux/unistd.h>
+static void EXFUN (initialize_linux_elf_segments, (void));
+#endif
 
 extern void EXFUN (UX_initialize_channels, (void));
 extern void EXFUN (UX_initialize_ctty, (int interactive));
@@ -108,6 +116,9 @@ DEFUN_VOID (OS_initialize)
   OS_Variant = SYSTEM_VARIANT;
 #ifdef _SUNOS
   vadvise (VA_ANOM);		/* Anomolous paging, don't try to guess. */
+#endif
+#ifdef _LINUX_ELF
+  initialize_linux_elf_segments ();
 #endif
 }
 
@@ -420,3 +431,54 @@ OS_syserr_names (unsigned int * length, unsigned char *** names)
   (*length) = ((sizeof (syserr_names_table)) / (sizeof (char *)));
   (*names) = ((unsigned char **) syserr_names_table);
 }
+
+/* Special hacking for Linux ELF memory management.  */
+
+#ifdef _LINUX_ELF
+
+extern unsigned short Scheme_Code_Segment_Selector;
+extern unsigned short Scheme_Data_Segment_Selector;
+extern unsigned short Scheme_Stack_Segment_Selector;
+
+static _syscall3 (int, modify_ldt, int, func, void *, buffer, unsigned long, nbytes)
+
+static void
+DEFUN_VOID (initialize_linux_elf_segments)
+{
+  struct modify_ldt_ldt_s mldt;
+
+  (mldt . entry_number) = 1;
+  (mldt . base_addr) = LINUX_ELF_DATA_SEGMENT_START;
+  (mldt . limit) = LINUX_ELF_DATA_SEGMENT_LIMIT;
+  (mldt . seg_32bit) = 1;
+  (mldt . contents) = MODIFY_LDT_CONTENTS_CODE;
+  (mldt . read_exec_only) = 1;
+  (mldt . limit_in_pages) = 1;
+  (mldt . seg_not_present) = 0;
+  if ((modify_ldt (1, (&mldt), (sizeof (mldt)))) != 0)
+    {
+      outf_fatal ("\n%s: unable to allocate code segment descriptor\n",
+	       scheme_program_name);
+      Microcode_Termination (TERM_EXIT);
+    }
+  Scheme_Code_Segment_Selector = (((mldt . entry_number) << 3) | 0x7);
+    
+  (mldt . entry_number) = 2;
+  (mldt . base_addr) = LINUX_ELF_DATA_SEGMENT_START;
+  (mldt . limit) = LINUX_ELF_DATA_SEGMENT_LIMIT;
+  (mldt . seg_32bit) = 1;
+  (mldt . contents) = MODIFY_LDT_CONTENTS_DATA;
+  (mldt . read_exec_only) = 0;
+  (mldt . limit_in_pages) = 1;
+  (mldt . seg_not_present) = 0;
+  if ((modify_ldt (1, (&mldt), (sizeof (mldt)))) != 0)
+    {
+      outf_fatal ("\n%s: unable to allocate data segment descriptor\n",
+	       scheme_program_name);
+      Microcode_Termination (TERM_EXIT);
+    }
+  Scheme_Data_Segment_Selector = (((mldt . entry_number) << 3) | 0x7);
+  Scheme_Stack_Segment_Selector = Scheme_Data_Segment_Selector;
+}
+
+#endif /* _LINUX_ELF */

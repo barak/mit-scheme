@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: i386.h,v 1.25 1994/11/28 04:05:21 cph Exp $
+$Id: i386.h,v 1.26 1995/10/05 03:32:49 cph Exp $
 
-Copyright (c) 1992-94 Massachusetts Institute of Technology
+Copyright (c) 1992-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -497,13 +497,8 @@ long i386_pc_displacement_relocation = 0;
 
 #define ASM_RESET_HOOK i386_reset_hook
 
-#if !defined(WINNT) || defined(WINNT_RAW_ADDRESSES)
-#  define HOOK_TO_SCHEME_OFFSET(hook) 					\
-  ((unsigned long) (hook))
-#else
-extern unsigned long winnt_address_delta;
-#  define HOOK_TO_SCHEME_OFFSET(hook)					\
-  (((unsigned long) (hook)) - winnt_address_delta)
+#ifndef HOOK_TO_SCHEME_OFFSET
+#define HOOK_TO_SCHEME_OFFSET(hook) ((unsigned long) (hook))
 #endif
 
 #define SETUP_REGISTER(hook) do						\

@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.37 1995/10/01 07:19:42 cph Exp $
+###	$Id: i386.m4,v 1.38 1995/10/05 03:32:24 cph Exp $
 ###
 ###	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ###
@@ -116,9 +116,17 @@ ifdef(`DOS',
       `define(IFNDOS,`')',
       `define(IFNDOS,`$1')')
 
+ifdef(`WINNT',
+      `define(IF_WINNT,`$1')',
+      `define(IF_WINNT,`')')
+
 ifdef(`OS2',
       `define(IFOS2,`$1')',
       `define(IFOS2,`')')
+
+ifdef(`LINUX_ELF',
+      `define(IF_LINUX_ELF,`$1')',
+      `define(IF_LINUX_ELF,`')')
 
 ifdef(`DISABLE_387',
       `define(IF387,`')',
@@ -138,9 +146,8 @@ ifdef(`DOS',
       `define(use_external_code,`	extrn _$1:near')',
       `define(use_external_code,`')')
 
-ifdef(`OS2',
-      `define(`SUPPRESS_LEADING_UNDERSCORE',1)',
-      `')
+IFOS2(`define(`SUPPRESS_LEADING_UNDERSCORE',1)')
+IF_LINUX_ELF(`define(`SUPPRESS_LEADING_UNDERSCORE',1)')
 
 ifdef(`SUPPRESS_LEADING_UNDERSCORE',
       `define(external_data_reference,`$1')',
@@ -158,7 +165,7 @@ ifdef(`DOS',
 
 ifdef(`DOS',
       `define(define_data,`	public _$1')',
-      `define(define_data,`	.globl external_code_reference($1)')')
+      `define(define_data,`	.globl external_data_reference($1)')')
 
 define(define_c_label,
 `define_code($1)
@@ -305,17 +312,20 @@ use_external_data(Free)
 use_external_data(Ext_Stack_Pointer)
 use_external_data(utility_table)
 
-ifdef(`WINNT',
-`	extrn _RegistersPtr:dword',
-`ifdef(`DOS',
-`use_external_data(Registers)',
-`define_data(Regstart)
+ifdef(`WINNT',`
+	extrn _RegistersPtr:dword
+',`ifdef(`DOS',`
+use_external_data(Registers)
+',`
+define_data(Regstart)
 allocate_space(Regstart,128)
-define_data(Registers)
-allocate_space(Registers,eval(REGBLOCK_SIZE_IN_OBJECTS*4))')')
 
-ifdef(`WINNT',
-`	extrn _winnt_address_delta:dword')
+define_data(Registers)
+allocate_space(Registers,eval(REGBLOCK_SIZE_IN_OBJECTS*4))
+')
+')
+
+IF_WINNT(`	extrn _winnt_address_delta:dword')
 
 define_data(i387_presence)
 allocate_longword(i387_presence)
@@ -326,27 +336,53 @@ allocate_longword(C_Stack_Pointer)
 define_data(C_Frame_Pointer)
 allocate_longword(C_Frame_Pointer)
 
-ifdef(`WINNT',`define_data(Scheme_Transfer_Address)
-allocate_longword(Scheme_Transfer_Address)')
+IF_WINNT(`define(HACK_SEGMENT_REGS,1)')
+IF_LINUX_ELF(`define(HACK_SEGMENT_REGS,1)')
 
-ifdef(`WINNT',`define_data(Scheme_Code_Segment_Selector)
+ifdef(`HACK_SEGMENT_REGS',`
+
+define_data(Scheme_Transfer_Address)
+allocate_longword(Scheme_Transfer_Address)
+
+define_data(Scheme_Code_Segment_Selector)
 allocate_word(Scheme_Code_Segment_Selector)
+
 define_data(Scheme_Data_Segment_Selector)
 allocate_word(Scheme_Data_Segment_Selector)
+
 define_data(Scheme_Stack_Segment_Selector)
 allocate_word(Scheme_Stack_Segment_Selector)
+
 define_data(C_Code_Segment_Selector)
 allocate_word(C_Code_Segment_Selector)
+
 define_data(C_Data_Segment_Selector)
 allocate_word(C_Data_Segment_Selector)
+
 define_data(C_Extra_Segment_Selector)
 allocate_word(C_Extra_Segment_Selector)
+
 define_data(C_Stack_Segment_Selector)
-allocate_word(C_Stack_Segment_Selector)',
-`IFDOS(`define_data(C_Stack_Segment_Selector)
 allocate_word(C_Stack_Segment_Selector)
+
+IF_WINNT(`define(RETF,`db	0cbh')')
+IF_LINUX_ELF(`define(RETF,`.byte	0xcb')')
+
+IF_WINNT(`define(SEGMENT_DELTA,`EDR(winnt_address_delta)')')
+IF_LINUX_ELF(`define(SEGMENT_DELTA,`IMM(0x08000000)')')
+
+',`IFDOS(`
+
+define_data(C_Stack_Segment_Selector)
+allocate_word(C_Stack_Segment_Selector)
+
 define_data(Scheme_Stack_Segment_Selector)
-allocate_word(Scheme_Stack_Segment_Selector)')')
+allocate_word(Scheme_Stack_Segment_Selector)
+
+')')
+
+IFOS2(`define(USE_STRUCS,1)')
+IF_LINUX_ELF(`define(USE_STRUCS,1)')
 
 DECLARE_CODE_SEGMENT()
 declare_alignment(2)
@@ -356,32 +392,40 @@ define_c_label(i386_interface_initialize)
 	OP(mov,l)	TW(REG(esp),REG(ebp))
 
 							# Initialize selectors
-ifdef(`WINNT',
-`	lea	eax,cross_segment_transfer_point
-	mov	_Scheme_Transfer_Address,eax
-	mov	_C_Extra_Segment_Selector,es		; This assumes it is constant
+ifdef(`HACK_SEGMENT_REGS',`
+	OP(lea,l)	TW(ABS(cross_segment_transfer_point),REG(eax))
+	OP(mov,l)	TW(REG(eax),EDR(Scheme_Transfer_Address))
+	OP(mov,w)	TW(REG(es),EDR(C_Extra_Segment_Selector)) # This assumes it is constant
 
-	mov	_C_Code_Segment_Selector,cs
-	mov	ax,_Scheme_Code_Segment_Selector
-	cmp	ax,0
-	jne	skip_code_assignment
-	mov	_Scheme_Code_Segment_Selector,cs
+	OP(mov,w)	TW(REG(cs),EDR(C_Code_Segment_Selector))
+	OP(mov,w)	TW(EDR(Scheme_Code_Segment_Selector),REG(ax))
+	OP(cmp,w)	TW(IMM(0),REG(ax))
+	jne		skip_code_assignment
+	OP(mov,w)	TW(REG(cs),EDR(Scheme_Code_Segment_Selector))
 skip_code_assignment:
 
-	mov	_C_Data_Segment_Selector,ds
-	mov	ax,_Scheme_Data_Segment_Selector
-	cmp	ax,0
-	jne	skip_data_assignment
-	mov	_Scheme_Data_Segment_Selector,ds
-skip_data_assignment:')
+	OP(mov,w)	TW(REG(ds),EDR(C_Data_Segment_Selector))
+	OP(mov,w)	TW(EDR(Scheme_Data_Segment_Selector),REG(ax))
+	OP(cmp,w)	TW(IMM(0),REG(ax))
+	jne		skip_data_assignment
+	OP(mov,w)	TW(REG(ds),EDR(Scheme_Data_Segment_Selector))
+skip_data_assignment:
 
-IFDOS(`	OP(mov,w)	TW(REG(ss),EDR(C_Stack_Segment_Selector))
+	OP(mov,w)	TW(REG(ss),EDR(C_Stack_Segment_Selector))
 	OP(mov,w)	TW(EDR(Scheme_Stack_Segment_Selector),REG(ax))
 	OP(cmp,w)	TW(IMM(0),REG(ax))
 	jne		skip_stack_assignment
 	OP(mov,w)	TW(REG(ds),EDR(Scheme_Stack_Segment_Selector))
-skip_stack_assignment:')
-
+skip_stack_assignment:
+',`IFDOS(`
+	OP(mov,w)	TW(REG(ss),EDR(C_Stack_Segment_Selector))
+	OP(mov,w)	TW(EDR(Scheme_Stack_Segment_Selector),REG(ax))
+	OP(cmp,w)	TW(IMM(0),REG(ax))
+	jne		skip_stack_assignment
+	OP(mov,w)	TW(REG(ds),EDR(Scheme_Stack_Segment_Selector))
+skip_stack_assignment:
+')
+')
 	OP(xor,l)	TW(REG(eax),REG(eax))		# No 387 available
 
 # Unfortunately, the `movl cr0,ecx' instruction is privileged.
@@ -408,7 +452,8 @@ IF387(`
 	      `OP(or,w)	TW(IMM(HEX(0220)),WOF(-2,REG(ebp)))')
 	fldcw	WOF(-2,REG(ebp))
 
-i386_initialize_no_fp:')
+i386_initialize_no_fp:
+')
 	OP(mov,l)	TW(REG(eax),EDR(i387_presence))
 	leave
 	ret
@@ -427,10 +472,11 @@ define_c_label(C_to_interface)
 							# Register block = %esi
 							# Scheme offset in NT
 
-	ifdef(`WINNT',
-	`mov	esi,dword ptr _RegistersPtr
-	sub	esi,_winnt_address_delta',	
-	`OP(lea,l)	TW(ABS(EDR(Registers)),regs)')
+ifdef(`WINNT',
+`	OP(mov,l)	TW(ABS(EDR(RegistersPtr)),regs)',
+`	OP(lea,l)	TW(ABS(EDR(Registers)),regs)')
+ifdef(`HACK_SEGMENT_REGS',
+`	OP(sub,l)	TW(SEGMENT_DELTA,regs)')
 	jmp	external_code_reference(interface_to_scheme)
 
 define_c_label(asm_trampoline_to_interface)
@@ -446,38 +492,44 @@ define_debugging_label(scheme_to_interface_call)
 
 define_c_label(asm_scheme_to_interface)
 define_debugging_label(scheme_to_interface)
-ifdef(`WINNT',
-`	push	dword ptr 36[esi]			; 4th utility arg
-	push	eax					; Save utility index
+ifdef(`HACK_SEGMENT_REGS',
+`	OP(push,l)	LOF(36,regs)			# 4th utility arg
+	OP(push,l)	REG(eax)			# Save utility index
 
-	mov	ax,es					; C ds
-	mov	ds,ax
+	OP(mov,w)	TW(REG(es),REG(ax))		# C ds
+	OP(mov,w)	TW(REG(ax),REG(ds))
 
-	mov	ax,_C_Extra_Segment_Selector		; C es
-	mov	es,ax
-	add	edi,_winnt_address_delta		; Map Free to C data space
-	mov	_Free,edi
+	OP(mov,w)	TW(EDR(C_Extra_Segment_Selector),REG(ax)) # C es
+	OP(mov,w)	TW(REG(ax),REG(es))
 
-	mov	eax,esp					; Map SP to C data space
-	add	eax,_winnt_address_delta
-	mov	_Ext_Stack_Pointer,eax
+# Map Free to C data space
+	OP(add,l)	TW(SEGMENT_DELTA,rfree)
+	OP(mov,l)	TW(rfree,EDR(Free))
 
-	mov	ss,_C_Stack_Segment_Selector		; Switch stack segment
-	mov	esp,_C_Stack_Pointer
-	mov	ebp,_C_Frame_Pointer
+# Map SP to C data space
+	OP(mov,l)	TW(REG(esp),REG(eax))
+	OP(add,l)	TW(SEGMENT_DELTA,REG(eax))
+	OP(mov,l)	TW(REG(eax),EDR(Ext_Stack_Pointer))
 
-	xor	eax,eax
-	mov	ax,_C_Code_Segment_Selector
-	push	eax
-	push	_Scheme_Transfer_Address
-	db	0cbh					; retf
+# Switch stack segment
+	OP(mov,w)	TW(EDR(C_Stack_Segment_Selector),REG(ss))
+	OP(mov,l)	TW(EDR(C_Stack_Pointer),REG(esp))
+	OP(mov,l)	TW(EDR(C_Frame_Pointer),REG(ebp))
+
+	OP(xor,l)	TW(REG(eax),REG(eax))
+	OP(mov,w)	TW(EDR(C_Code_Segment_Selector),REG(ax))
+	OP(push,l)	REG(eax)
+	OP(push,l)	EDR(Scheme_Transfer_Address)
+	RETF
 
 cross_segment_transfer_point:
-
-	mov	eax,_Ext_Stack_Pointer
-	push	dword ptr 4[eax]			; 4th utility arg
-	add	_Ext_Stack_Pointer,8
-	mov	eax, dword ptr [eax]			; utility index
+ifdef(`USE_STRUCS',`
+	OP(sub,l)	TW(IMM(8),REG(esp))	# alloc space for struct return
+')
+	OP(mov,l)	TW(EDR(Ext_Stack_Pointer),REG(eax))
+	OP(push,l)	LOF(4,REG(eax))			# 4th utility arg
+	OP(add,l)	TW(IMM(8),EDR(Ext_Stack_Pointer))
+	OP(mov,l)	TW(IND(REG(eax)),REG(eax))	# utility index
 ',
 
 `	OP(mov,l)	TW(REG(esp),EDR(Ext_Stack_Pointer))
@@ -488,7 +540,8 @@ IFDOS(`	OP(mov,w)	TW(EDR(C_Stack_Segment_Selector),REG(ss))')	# Swap stack segme
 	OP(mov,l)	TW(EDR(C_Stack_Pointer),REG(esp))
 	OP(mov,l)	TW(EDR(C_Frame_Pointer),REG(ebp))
 
-IFOS2(`	OP(sub,l)	TW(IMM(8),REG(esp))	# alloc space for struct return
+ifdef(`USE_STRUCS',`
+	OP(sub,l)	TW(IMM(8),REG(esp))	# alloc space for struct return
 ')
 	OP(push,l)	LOF(REGBLOCK_UTILITY_ARG4(),regs) # Utility args
 ')
@@ -496,7 +549,8 @@ IFOS2(`	OP(sub,l)	TW(IMM(8),REG(esp))	# alloc space for struct return
 	OP(push,l)	REG(edx)
 	OP(push,l)	REG(ecx)
 
-IFOS2(`	OP(mov,l)	TW(REG(esp),REG(ecx))	# push pointer to struct return
+ifdef(`USE_STRUCS',`
+	OP(mov,l)	TW(REG(esp),REG(ecx))	# push pointer to struct return
 	OP(add,l)	TW(IMM(16),REG(ecx))
 	OP(push,l)	REG(ecx)
 ')
@@ -504,22 +558,26 @@ IFOS2(`	OP(mov,l)	TW(REG(esp),REG(ecx))	# push pointer to struct return
 	OP(xor,l)	TW(REG(ecx),REG(ecx))
 	OP(mov,b)	TW(REG(al),REG(cl))
 	OP(mov,l)	TW(SDX(EDR(utility_table),REG(ecx),4),REG(eax))
-	call	IJMP(REG(eax))
+	call		IJMP(REG(eax))
 
 define_debugging_label(scheme_to_interface_return)
-IFOS2(`	OP(add,l)	TW(IMM(4),REG(esp))	# pop pointer to struct return
+ifdef(`USE_STRUCS',`
+	OP(add,l)	TW(IMM(4),REG(esp))	# pop pointer to struct return
 ')
 	OP(add,l)	TW(IMM(16),REG(esp))		# Pop utility args
 
-	ifdef(`WINNT',
-	`',
-`IFDOS(`OP(mov,l)	TW(LOF(4,REG(eax)),REG(edx))
-	OP(mov,l)	TW(IND(REG(eax)),REG(eax))')')
+ifdef(`WINNT',`',`
+IFDOS(`
+	OP(mov,l)	TW(LOF(4,REG(eax)),REG(edx))
+	OP(mov,l)	TW(IND(REG(eax)),REG(eax))
+')
+')
 
-IFOS2(`	OP(pop,l)	REG(eax)	# Pop struct return into registers
-	OP(pop,l)	REG(edx)')
-
-	jmp	IJMP(REG(eax))				# Invoke handler
+ifdef(`USE_STRUCS',`
+	OP(pop,l)	REG(eax)	# Pop struct return into registers
+	OP(pop,l)	REG(edx)
+')
+	jmp		IJMP(REG(eax))			# Invoke handler
 
 define_c_label(interface_to_scheme)
 IF387(`
@@ -533,59 +591,56 @@ IF387(`
 	ffree	ST(5)
 	ffree	ST(6)
 	ffree	ST(7)
-interface_to_scheme_proceed:')
-ifdef(`WINNT',
-`	mov	edi,_Free				; Free pointer = %edi
-	sub	edi,_winnt_address_delta		; as a scheme offset
+interface_to_scheme_proceed:
+')
+ifdef(`HACK_SEGMENT_REGS',
+`	OP(mov,l)	TW(EDR(Free),rfree)
+	OP(sub,l)	TW(SEGMENT_DELTA,rfree)
+	OP(mov,l)	TW(IMM(ADDRESS_MASK),rmask)
 
-	mov	ebp,67108863				; pointer mask #x03ffffff
+	OP(mov,l)	TW(EDR(Ext_Stack_Pointer),REG(eax)) # Switch stacks
+	OP(sub,l)	TW(SEGMENT_DELTA,REG(eax))
+	OP(mov,w)	TW(EDR(Scheme_Stack_Segment_Selector),REG(ss))
+	OP(mov,l)	TW(REG(eax),REG(esp))
 
-	mov	eax,_Ext_Stack_Pointer			; Switch stacks
-	sub	eax,_winnt_address_delta
-	mov	ss,_Scheme_Stack_Segment_Selector
-	mov	esp,eax
-				
-	sub	edx,_winnt_address_delta		; Entry point to new space
-	xor	ecx,ecx					; Setup cross-segment jump
-	mov	cx,_Scheme_Code_Segment_Selector
+	OP(sub,l)	TW(SEGMENT_DELTA,REG(edx))	# Entry point to new space
+	OP(xor,l)	TW(REG(ecx),REG(ecx))		# Setup cross-segment jump
+	OP(mov,w)	TW(EDR(Scheme_Code_Segment_Selector),REG(ecx))
 
-	mov	ax,ds					; Store C ds in es,
-	mov	es,ax					;  unused by Scheme.
-	mov	ax,_Scheme_Data_Segment_Selector	; Switch data segments
-	mov	ds,ax
-							
-	push	ecx
-	push	edx
+	OP(mov,w)	TW(REG(ds),REG(ax))		# Store C ds in es,
+	OP(mov,w)	TW(REG(ax),REG(es))		#  unused by Scheme.
+	OP(mov,w)	TW(EDR(Scheme_Data_Segment_Selector),REG(ax)) # Switch data segments
+	OP(mov,w)	TW(REG(ax),REG(ds))
 
-	mov	eax,dword ptr 8[esi]			; Value/dynamic link
-	mov	ecx,eax					; Preserve if used
-	and	ecx,ebp					; Restore potential
-							;  dynamic link
-	mov	dword ptr 16[esi],ecx
-	db	0cbh					; retf
+	OP(push,l)	REG(ecx)
+	OP(push,l)	REG(edx)
+
+	OP(mov,l)	TW(LOF(REGBLOCK_VAL(),regs),REG(eax)) # Value/dynamic link
+	OP(mov,l)	TW(REG(eax),REG(ecx))		# Preserve if used
+	OP(and,l)	TW(rmask,REG(ecx))		# Restore potential dynamic link
+	OP(mov,l)	TW(REG(ecx),LOF(REGBLOCK_DLINK(),regs))
+	RETF						# Perform cross-segment jump
 ',
 `	OP(mov,l)	TW(EDR(Free),rfree)		# Free pointer = %edi
-							# Value/dynamic link
-	OP(mov,l)	TW(LOF(REGBLOCK_VAL(),regs),REG(eax))
+	OP(mov,l)	TW(LOF(REGBLOCK_VAL(),regs),REG(eax)) # Value/dynamic link
 	OP(mov,l)	TW(IMM(ADDRESS_MASK),rmask)	# = %ebp
 
-							# Swap stack segments
-IFDOS(`	OP(mov,w)	TW(EDR(Scheme_Stack_Segment_Selector),REG(ss))')
+IFDOS(`	OP(mov,w)	TW(EDR(Scheme_Stack_Segment_Selector),REG(ss))') # Swap stack segments
 
 	OP(mov,l)	TW(EDR(Ext_Stack_Pointer),REG(esp))
 	OP(mov,l)	TW(REG(eax),REG(ecx))		# Preserve if used
-	OP(and,l)	TW(rmask,REG(ecx))		# Restore potential
-							#  dynamic link
+	OP(and,l)	TW(rmask,REG(ecx))		# Restore potential dynamic link
 	OP(mov,l)	TW(REG(ecx),LOF(REGBLOCK_DLINK(),regs))
-	jmp	IJMP(REG(edx))')
+	jmp		IJMP(REG(edx))')
 
-ifdef(`WINNT',
-`	extrn	_WinntExceptionTransferHook:near
+IF_WINNT(`
+	extrn	_WinntExceptionTransferHook:near
 
 	public	_callWinntExceptionTransferHook
 _callWinntExceptionTransferHook:
 	call	_WinntExceptionTransferHook
-	mov	edx,eax')
+	mov	edx,eax
+')
 
 define_c_label(interface_to_C)
 IF387(`

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.90 1995/10/04 22:53:58 cph Exp $
+$Id: config.h,v 9.91 1995/10/05 03:32:04 cph Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -459,8 +459,34 @@ extern unsigned long winnt_address_delta;
 
 #define SCHEME_ADDR_TO_ADDR(saddr) (DATUM_TO_ADDRESS (saddr))
 #define ADDR_TO_SCHEME_ADDR(caddr) (ADDRESS_TO_DATUM (caddr))
+#define HOOK_TO_SCHEME_OFFSET(hook) (ADDRESS_TO_DATUM (hook))
 
 #endif /* WINNT && !WINNT_RAW_ADDRESSES */
+
+#if defined(__linux) && defined(__ELF__)
+
+/* Linux ELF adds a data-segment bit which must be translated away.
+   We'll use the same trick as Win32s since the code is there and it
+   maintains binary compatibility.  */
+
+#define _LINUX_ELF 1
+#define LINUX_ELF_DATA_SEGMENT_START 0x08000000
+#define LINUX_ELF_DATA_SEGMENT_LIMIT 0x04000
+
+#define DATUM_TO_ADDRESS(datum)						\
+  ((SCHEME_OBJECT *)							\
+   (((unsigned long) (datum)) + LINUX_ELF_DATA_SEGMENT_START))
+
+#define ADDRESS_TO_DATUM(address)					\
+  ((SCHEME_OBJECT)							\
+   (((unsigned long) (address)) - LINUX_ELF_DATA_SEGMENT_START))
+
+typedef unsigned long SCHEME_ADDR;
+#define SCHEME_ADDR_TO_ADDR(saddr) (DATUM_TO_ADDRESS (saddr))
+#define ADDR_TO_SCHEME_ADDR(caddr) (ADDRESS_TO_DATUM (caddr))
+#define HOOK_TO_SCHEME_OFFSET(hook) (ADDRESS_TO_DATUM (hook))
+
+#endif /* __linux && __ELF__ */
 
 #endif /* i386 */
 
