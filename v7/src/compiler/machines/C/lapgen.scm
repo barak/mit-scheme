@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.9 1993/10/30 13:46:34 gjr Exp $
+$Id: lapgen.scm,v 1.10 1993/11/13 06:44:26 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -74,10 +74,8 @@ MIT in each case. |#
 (define (reg*type->name reg type)
   (string-append
    (case type
-     ((WORD)
-      (string-append "Wrd" (number->string reg)))
-     ((DOUBLE)
-      (string-append "Dbl" (number->string reg)))
+     ((WORD) "Wrd")
+     ((DOUBLE) "Dbl")
      (else
       (comp-internal-error "Unknown type" 'REG*TYPE->NAME type)))
    (number->string reg)))
