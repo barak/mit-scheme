@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 4.26 1990/01/25 16:38:08 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 4.27 1990/03/12 21:38:18 cph Exp $
 $MC68020-Header: lapgen.scm,v 4.26 90/01/18 22:43:36 GMT cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
@@ -94,7 +94,7 @@ MIT in each case. |#
    ;; g30
    g31
    ;; fp0 fp1 fp2 fp3
-   fp4 fp5 fp6 fp6 fp7 fp8 fp9 fp10 fp11 fp12 fp13 fp14 fp15
+   fp4 fp5 fp6 fp7 fp8 fp9 fp10 fp11 fp12 fp13 fp14 fp15
    ))
 
 (define-integrable (float-register? register)
