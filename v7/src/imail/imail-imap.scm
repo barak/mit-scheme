@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.115 2000/06/10 20:17:57 cph Exp $
+;;; $Id: imail-imap.scm,v 1.116 2000/06/10 20:59:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -78,10 +78,29 @@
   (imap-url-mailbox url))
 
 (define-method url-body-container-string ((url <imap-url>))
-  (make-imap-url-string (imap-url-user-id url)
-			(imap-url-host url)
-			(imap-url-port url)
-			""))
+  (make-imap-url-string
+   (imap-url-user-id url)
+   (imap-url-host url)
+   (imap-url-port url)
+   (with-open-imap-connection url
+     (lambda (connection)
+       (let ((namespace
+	      (let ((namespace (imap-connection-namespace connection)))
+		(and namespace
+		     (let ((personal
+			    (imap:response:namespace-personal namespace)))
+		       (and (pair? personal)
+			    (car personal)))))))
+	 (if (and namespace (cadr namespace))
+	     (let ((prefix (car namespace))
+		   (delimiter (cadr namespace)))
+	       (if (and (fix:= (string-length prefix) 6)
+			(string-prefix-ci? "inbox" prefix)
+			(not (string-prefix? "inbox" prefix))
+			(string-suffix? delimiter prefix))
+		   (string-append "inbox" delimiter)
+		   prefix))
+	     ""))))))
 
 (define-method url-exists? ((url <imap-url>))
   (not
