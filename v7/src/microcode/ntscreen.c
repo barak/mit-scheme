@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.44 2000/04/20 20:49:08 cph Exp $
+$Id: ntscreen.c,v 1.45 2000/05/01 02:57:14 cph Exp $
 
 Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
@@ -3282,9 +3282,9 @@ allocate_event (SCREEN screen, SCREEN_EVENT_TYPE type)
     {
       new_event = free_events;
       free_events = (free_events -> next);
-      (new_event -> next) = 0;
       n_free_events -= 1;
     }
+  (new_event -> next) = 0;
   if (event_queue_tail == 0)
     event_queue_head = new_event;
   else
