@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.31 1998/02/16 03:50:14 cph Exp $
+$Id: rules3.scm,v 1.32 1998/02/16 03:55:28 cph Exp $
 
 Copyright (c) 1992-1998 Massachusetts Institute of Technology
 
@@ -418,7 +418,7 @@ MIT in each case. |#
 ;;; interrupt handler that saves and restores the dynamic link
 ;;; register.
 
-(define (interrupt-check procedure-label interrupt-label checks)
+(define (interrupt-check interrupt-label checks)
   ;; This always does interrupt checks in line.
   (LAP ,@(if (or (memq 'INTERRUPT checks) (memq 'HEAP checks))
 	     (LAP (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
@@ -429,7 +429,7 @@ MIT in each case. |#
 		  (JL (@PCR ,interrupt-label)))
 	     (LAP))))
 
-(define (simple-procedure-header code-word label checks entry)
+(define (simple-procedure-header code-word label entry)
   (let ((checks (get-entry-interrupt-checks)))
     (if (null? checks)
 	(LAP ,@(make-external-label code-word label))
@@ -437,7 +437,7 @@ MIT in each case. |#
 	  (LAP (LABEL ,gc-label)
 	       ,@(invoke-hook/call entry)
 	       ,@(make-external-label code-word label)
-	       ,@(interrupt-check label gc-label checks))))))
+	       ,@(interrupt-check gc-label checks))))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
@@ -466,7 +466,7 @@ MIT in each case. |#
 	   (LABEL ,gc-label)
 	   ,@(invoke-interface/call code:compiler-interrupt-ic-procedure)
 	   ,@(make-external-label expression-code-word internal-label)
-	   ,@(interrupt-check internal-label gc-label)))))
+	   ,@(interrupt-check gc-label)))))
 
 (define-rule statement
   (OPEN-PROCEDURE-HEADER (? internal-label))
@@ -779,7 +779,7 @@ MIT in each case. |#
 	       (suffix
 		(lambda (gc-label)
 		  (LAP ,@(label+adjustment)
-		       ,@(interrupt-check internal-label gc-label checks)))))
+		       ,@(interrupt-check gc-label checks)))))
 	  (if (null? checks)
 	      (LAP ,@(label+adjustment))
 	      (if (>= entry (vector-length closure-share-names))
