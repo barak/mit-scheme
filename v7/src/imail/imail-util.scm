@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.12 2000/05/02 20:59:35 cph Exp $
+;;; $Id: imail-util.scm,v 1.13 2000/05/08 14:53:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -207,3 +207,20 @@
 	      (loop (cdr indexes) (fix:+ (car indexes) 2) (fix:+ j 1)))
 	    (substring-move! string i end s j)))
       s)))
+
+(define (network-string->lines string)
+  (network-substring->lines string 0 (string-length string)))
+
+(define (network-substring->lines string start end)
+  (let loop
+      ((start start)
+       (indexes (substring-search-all "\r\n" string start end))
+       (lines '()))
+    (if (pair? indexes)
+	(loop (fix:+ (car indexes) 2)
+	      (cdr indexes)
+	      (cons (substring string start (car indexes)) lines))
+	(reverse!
+	 (if (fix:< start end)
+	     (cons (substring string start end) lines)
+	     lines)))))
