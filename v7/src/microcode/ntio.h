@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.h,v 1.9 1997/10/24 07:25:01 cph Exp $
+$Id: ntio.h,v 1.10 1997/10/25 07:40:26 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -87,7 +87,8 @@ extern channel_class_t * NT_channel_class_generic;
 extern channel_class_t * NT_channel_class_file;
 extern channel_class_t * NT_channel_class_screen;
 extern channel_class_t * NT_channel_class_console;
-extern channel_class_t * NT_channel_class_pipe;
+extern channel_class_t * NT_channel_class_anonymous_pipe;
+extern channel_class_t * NT_channel_class_named_pipe;
 extern struct channel * NT_channel_table;
 
 extern Tchannel NT_make_channel (HANDLE, channel_class_t *);

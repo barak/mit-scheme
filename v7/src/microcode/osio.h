@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: osio.h,v 1.12 1997/01/01 22:57:34 cph Exp $
+$Id: osio.h,v 1.13 1997/10/25 07:40:15 cph Exp $
 
 Copyright (c) 1990-97 Massachusetts Institute of Technology
 
@@ -55,8 +55,8 @@ enum channel_type
   channel_type_os2_console,
   channel_type_os2_unnamed_pipe,
   channel_type_os2_named_pipe,
-  channel_type_win32_char,
-  channel_type_win32_pipe
+  channel_type_win32_anonymous_pipe,
+  channel_type_win32_named_pipe
 };
 
 extern size_t OS_channel_table_size;

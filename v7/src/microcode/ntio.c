@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.18 1997/10/24 07:24:56 cph Exp $
+$Id: ntio.c,v 1.19 1997/10/25 07:40:21 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -46,7 +46,8 @@ MIT in each case. */
 channel_class_t * NT_channel_class_generic;
 channel_class_t * NT_channel_class_file;
 channel_class_t * NT_channel_class_screen;
-channel_class_t * NT_channel_class_pipe;
+channel_class_t * NT_channel_class_anonymous_pipe;
+channel_class_t * NT_channel_class_named_pipe;
 
 static Tchannel channel_allocate (void);
 static long cooked_channel_write (Tchannel, const void *, unsigned long) ;
@@ -80,11 +81,14 @@ NT_handle_channel_class (HANDLE handle)
 {
   if (Screen_IsScreenHandle (handle))
     return (NT_channel_class_screen);
+  /* If GetFileType returns FILE_TYPE_PIPE, assume that it is a named
+     pipe.  This procedure won't be called with an anonymous-pipe
+     handle.  */
   switch (GetFileType (handle))
     {
     case FILE_TYPE_DISK: return (NT_channel_class_file);
-    case FILE_TYPE_PIPE: return (NT_channel_class_pipe);
     case FILE_TYPE_CHAR: return (NT_channel_class_generic);
+    case FILE_TYPE_PIPE: return (NT_channel_class_named_pipe);
     default: return (NT_channel_class_generic);
     }
 }
@@ -340,11 +344,11 @@ OS_make_pipe (Tchannel * readerp, Tchannel * writerp)
   STD_BOOL_API_CALL (CreatePipe, ((&hread), (&hwrite), 0, 0));
   transaction_begin ();
   NT_handle_close_on_abort (hwrite);
-  (*readerp) = (NT_make_channel (hread, NT_channel_class_pipe));
+  (*readerp) = (NT_make_channel (hread, NT_channel_class_anonymous_pipe));
   transaction_commit ();
   transaction_begin ();
   OS_channel_close_on_abort (*readerp);
-  (*writerp) = (NT_make_channel (hwrite, NT_channel_class_pipe));
+  (*writerp) = (NT_make_channel (hwrite, NT_channel_class_anonymous_pipe));
   transaction_commit ();
 }
 
@@ -378,15 +382,24 @@ pipe_channel_n_read (Tchannel channel)
 }
 
 static void
-initialize_channel_class_pipe (void)
+initialize_channel_class_anonymous_pipe (void)
 {
   channel_class_t * class = (OS_malloc (sizeof (channel_class_t)));
-  (CHANNEL_CLASS_TYPE (class)) = channel_type_win32_pipe;
+  (CHANNEL_CLASS_TYPE (class)) = channel_type_win32_anonymous_pipe;
   (CHANNEL_CLASS_OP_READ (class)) = pipe_channel_read;
   (CHANNEL_CLASS_OP_WRITE (class)) = generic_channel_write;
   (CHANNEL_CLASS_OP_CLOSE (class)) = generic_channel_close;
   (CHANNEL_CLASS_OP_N_READ (class)) = pipe_channel_n_read;
-  NT_channel_class_pipe = class;
+  NT_channel_class_anonymous_pipe = class;
+}
+
+static void
+initialize_channel_class_named_pipe (void)
+{
+  channel_class_t * class = (OS_malloc (sizeof (channel_class_t)));
+  (*class) = (*NT_channel_class_anonymous_pipe);
+  (CHANNEL_CLASS_TYPE (class)) = channel_type_win32_named_pipe;
+  NT_channel_class_named_pipe = class;
 }
 
 static long
@@ -647,5 +660,6 @@ NT_initialize_channels (void)
   initialize_channel_class_generic ();
   initialize_channel_class_file ();
   initialize_channel_class_screen ();
-  initialize_channel_class_pipe ();
+  initialize_channel_class_anonymous_pipe ();
+  initialize_channel_class_named_pipe ();
 }
