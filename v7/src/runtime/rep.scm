@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.29 1993/01/07 21:00:23 cph Exp $
+$Id: rep.scm,v 14.30 1993/01/18 05:21:57 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -395,7 +395,11 @@ MIT in each case. |#
     (cmdl-message/append
      (cond ((not message)
 	    (if condition
-		(cmdl-message/strings (condition/report-string condition))
+		(cmdl-message/strings
+		 (fluid-let ((*unparser-list-depth-limit* 25)
+			     (*unparser-list-breadth-limit* 100)
+			     (*unparser-string-length-limit* 500))
+		   (condition/report-string condition)))
 		(cmdl-message/null)))
 	   ((string? message)
 	    (cmdl-message/strings message))
