@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.3 1994/11/23 20:03:26 gjr Exp $
+$Id: toplev.scm,v 1.4 1994/11/29 02:34:07 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -178,7 +178,7 @@ MIT in each case. |#
 
 ;;;; Alternate Entry Points
 
-(define (compile-scode/new scode #!optional keep-debugging-info?)
+(define (compile-scode scode #!optional keep-debugging-info?)
   keep-debugging-info?			; ignored
   (perhaps-issue-compatibility-warning)
   (compile-scode/%new scode))
@@ -403,21 +403,6 @@ MIT in each case. |#
 	      (or expression
 		  (label->object *rtl-entry-label*)))
 	unspecific)))))
-
-(define compile-bin-file/new
-  (make-compile-bin-file
-   (lambda (scode info-pathname kmp-port rtl-port lap-port)
-     (%compile/new scode
-		   false
-		   info-pathname
-		   kmp-port
-		   rtl-port
-		   lap-port))))
-     
-(define cbf/new (make-cbf compile-bin-file/new))
-(define cf/new (make-cf compile-bin-file/new))
-(define compile-expression/new (make-compile-expression compile-scode/%new))
-(define compile-procedure/new (make-compile-procedure compile-scode/%new))
 
 (define (compile-recursively/new kmp-program procedure-result? procedure-name)
   ;; Used by the compiler when it wants to compile subexpressions as
@@ -1006,9 +991,18 @@ MIT in each case. |#
 		  (write-char #\page)
 		  (newline)))
 	    (output-port/flush-output port)))))))
-
-(define compile-bin-file compile-bin-file/new)
-(define cbf cbf/new)
-(define cf cf/new)
-(define compile-expression compile-expression/new)
-(define compile-procedure compile-procedure/new)
+
+(define compile-bin-file
+  (make-compile-bin-file
+   (lambda (scode info-pathname kmp-port rtl-port lap-port)
+     (%compile/new scode
+		   false
+		   info-pathname
+		   kmp-port
+		   rtl-port
+		   lap-port))))
+     
+(define cbf (make-cbf compile-bin-file/new))
+(define cf  (make-cf compile-bin-file/new))
+(define compile-expression (make-compile-expression compile-scode/%new))
+(define compile-procedure  (make-compile-procedure compile-scode/%new))
