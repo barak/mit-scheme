@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.38 1989/04/15 19:49:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.39 1989/05/03 01:04:27 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -1219,8 +1219,8 @@ strcmp_ci (s1, s2)
     {
       register int c1 = (*s1++);
       register int c2 = (*s2++);
-      if (islower (c1)) c1 = (_toupper (c1));
-      if (islower (c2)) c2 = (_toupper (c2));
+      if (islower (c1)) c1 = (toupper (c1));
+      if (islower (c2)) c2 = (toupper (c2));
       if (c1 < c2) return (-1);
       if (c1 > c2) return (1);
     }
