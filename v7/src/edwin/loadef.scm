@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.3 1989/04/28 22:51:06 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.4 1989/08/03 01:32:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -67,8 +67,6 @@ The Scheme code is executed when the node is selected."
   "Default search string for Info \\[info-search] command to search for."
   false)
 
-(define-variable info-tag-table-start "")
-(define-variable info-tag-table-end "")
 (define-autoload-command 'info 'INFO
   "Create a buffer for Info, the documentation browser program.")
 
