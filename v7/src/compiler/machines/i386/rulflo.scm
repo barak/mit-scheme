@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.4 1992/02/03 06:26:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.5 1992/02/03 14:26:16 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -207,9 +207,9 @@ MIT in each case. |#
 	      (FPATAN)
 	      (FSTP D (ST ,(1+ target))))))))
 
-;; **** These appear to really need two locations.
-;; Perhaps they should be handled by RTL rewrite
-;; into rules using flonum-atan2. ****
+#|
+;; These really need two locations on the stack.
+;; To avoid that, they are rewritten at the RTL level into simpler operations.
 
 (define-arithmetic-method 'flonum-acos flonum-methods/1-arg
   (flonum-unary-operation/general
@@ -235,6 +235,7 @@ MIT in each case. |#
 	  (FXCH (ST 1))
 	  (FPATAN)
 	  (FSTP D (ST ,(1+ target)))))))
+|#
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -285,38 +286,84 @@ MIT in each case. |#
 
 (define flonum-methods/2-args
   (list 'FLONUM-METHODS/2-ARGS))
+
+(define (flonum-1-arg%1/operator operation)
+  (lookup-arithmetic-method operation flonum-methods/1-arg%1))
+
+(define flonum-methods/1-arg%1
+  (list 'FLONUM-METHODS/1-ARG%1))
+
+(define (flonum-1%1-arg/operator operation)
+  (lookup-arithmetic-method operation flonum-methods/1%1-arg))
+
+(define flonum-methods/1%1-arg
+  (list 'FLONUM-METHODS/1%1-ARG))
+
+(define (binary-flonum-arithmetic? operation)
+  (memq operation '(FLONUM-ADD FLONUM-SUBTRACT FLONUM-MULTIPLY FLONUM-DIVIDE)))
 
 (let-syntax
     ((define-flonum-operation
        (macro (primitive-name op1%2 op1%2p op2%1 op2%1p)
-	 `(define-arithmetic-method ',primitive-name flonum-methods/2-args
-	    (flonum-binary-operation
-	     (lambda (target source1 source2)
-	       (cond ((= target source1)
-		      (cond ((zero? target)
-			     (LAP (,op1%2 D (ST) (ST ,',source2))))
-			    ((zero? source2)
-			     (LAP (,op2%1 D (ST ,',target) (ST))))
-			    (else
-			     (LAP (FLD D (ST ,',source2))
-				  (,op2%1p D (ST ,',(1+ target)) (ST))))))
-		     ((= target source2)
-		      (cond ((zero? target)
-			     (LAP (,op2%1 D (ST) (ST ,',source1))))
-			    ((zero? source1)
-			     (LAP (,op1%2 D (ST ,',target) (ST))))
-			    (else
-			     (LAP (FLD D (ST ,',source1))
-				  (,op1%2p D (ST ,',(1+ target)) (ST))))))
-		     (else
-		      (LAP (FLD D (ST ,',source1))
-			   (,op1%2 D (ST) (ST ,',(1+ source2)))
-			   (FSTP D (ST ,',(1+ target))))))))))))
+	 `(begin
+	    (define-arithmetic-method ',primitive-name flonum-methods/2-args
+	      (flonum-binary-operation
+	       (lambda (target source1 source2)
+		 (cond ((= target source1)
+			(cond ((zero? target)
+			       (LAP (,op1%2 D (ST) (ST ,',source2))))
+			      ((zero? source2)
+			       (LAP (,op2%1 D (ST ,',target) (ST))))
+			      (else
+			       (LAP (FLD D (ST ,',source2))
+				    (,op2%1p D (ST ,',(1+ target)) (ST))))))
+		       ((= target source2)
+			(cond ((zero? target)
+			       (LAP (,op2%1 D (ST) (ST ,',source1))))
+			      ((zero? source1)
+			       (LAP (,op1%2 D (ST ,',target) (ST))))
+			      (else
+			       (LAP (FLD D (ST ,',source1))
+				    (,op1%2p D (ST ,',(1+ target)) (ST))))))
+		       (else
+			(LAP (FLD D (ST ,',source1))
+			     (,op1%2 D (ST) (ST ,',(1+ source2)))
+			     (FSTP D (ST ,',(1+ target)))))))))
+
+	    (define-arithmetic-method ',primitive-name flonum-methods/1%1-arg
+	      (flonum-unary-operation/general
+	       (lambda (target source)
+		 (if (= source target)
+		     (LAP (FLD1)
+			  (,op1%2p D (ST ,',(1+ target)) (ST)))
+		     (LAP (FLD1)
+			  (,op1%2 D (ST) (ST ,',(1+ source)))
+			  (FSTP D (ST ,',(1+ target))))))))
+
+	    (define-arithmetic-method ',primitive-name flonum-methods/1-arg%1
+	      (flonum-unary-operation/general
+	       (lambda (target source)
+		 (if (= source target)
+		     (LAP (FLD1)
+			  (,op2%1p D (ST ,',(1+ target))))
+		     (LAP (FLD1)
+			  (,op2%1 D (ST ,',(1+ source)))
+			  (FSTP D (ST ,',(1+ target))))))))))))
+
   (define-flonum-operation flonum-add fadd faddp fadd faddp)
   (define-flonum-operation flonum-subtract fsub fsubp fsubr fsubpr)
   (define-flonum-operation flonum-multiply fmul fmulp fmul fmulp)
   (define-flonum-operation flonum-divide fdiv fdivp fdivr fdivpr))
 
+(define-arithmetic-method 'flonum-atan2 flonum-methods/2-args
+  (lambda (target source1 source2)
+    (let* ((source1->top (load-machine-register! source fr0))
+	   (source2 (flonum-source!)))
+      (rtl-target:=machine-register! target fr0)
+      (LAP ,@source1->top
+	   (FLD D (ST ,source2))
+	   (FPATAN)))))
+
 (define-arithmetic-method 'flonum-remainder flonum-methods/2-args
   (flonum-binary-operation
    (lambda (target source1 source2)
@@ -345,6 +392,44 @@ MIT in each case. |#
 				   0
 				   target))))
 	      (FXCH (ST ,source2)))))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLONUM-2-ARGS FLONUM-SUBTRACT
+			 (OBJECT->FLOAT (CONSTANT 0.))
+			 (REGISTER (? source))
+			 (? overflow?)))
+  overflow?				;ignore
+  ((flonum-unary-operation/general
+    (lambda (target source)
+      (if (and (zero? target) (zero? source))
+	  (LAP (FCHS))
+	  (LAP (FLD D (ST ,source))
+	       (FCHS)
+	       (FSTP D (ST ,(1+ target)))))))
+   target source))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLONUM-2-ARGS (? operation)
+			 (REGISTER (? source))
+			 (OBJECT->FLOAT (CONSTANT 1.))
+			 (? overflow?)))
+  (QUALIFIER (binary-flonum-arithmetic? operation))
+  overflow?				;ignore
+  ((flonum-unary-operation/general (flonum-1-arg%1/operator operation)
+				   target source)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLONUM-2-ARGS (? operation)
+			 (OBJECT->FLOAT (CONSTANT 1.))
+			 (REGISTER (? source))
+			 (? overflow?)))
+  (QUALIFIER (binary-flonum-arithmetic? operation))
+  overflow?				;ignore
+  ((flonum-unary-operation/general (flonum-1%1-arg/operator operation)
+   target source)))
 
 ;;;; Flonum Predicates
 
