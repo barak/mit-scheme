@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules4.scm,v 1.0 1988/01/05 22:24:49 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules4.scm,v 4.1 1988/01/05 22:25:13 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; VAX LAP Generation Rules: Interpreter Calls
-;;;  Matches MC68020 version 1.4
+;;;  Matches MC68020 version 4.2
 
 (declare (usual-integrations))
 
@@ -67,18 +67,16 @@ MIT in each case. |#
 
 (define-rule statement
   (INTERPRETER-CALL:ENCLOSE (? number-pushed))
-  (decrement-frame-pointer-offset!
-   number-pushed
-   (LAP (MOV L (R 12) ,reg:enclose-result)
-	(MOV B ,(immediate-type (ucode-type vector)) ,reg:enclose-result-type)
-	,(load-non-pointer (ucode-type manifest-vector) number-pushed
-			   (INST-EA (@R+ 12)))
-     
-	,@(generate-n-times
-	   number-pushed 5
-	   (lambda () (INST (MOV L (@R+ 14) (@R+ 12))))
-	   (lambda (generator)
-	     (generator (allocate-temporary-register! 'GENERAL)))))))
+  (LAP (MOV L (R 12) ,reg:enclose-result)
+       (MOV B ,(immediate-type (ucode-type vector)) ,reg:enclose-result-type)
+       ,(load-non-pointer (ucode-type manifest-vector) number-pushed
+			  (INST-EA (@R+ 12)))
+       
+       ,@(generate-n-times
+	  number-pushed 5
+	  (lambda () (INST (MOV L (@R+ 14) (@R+ 12))))
+	  (lambda (generator)
+	    (generator (allocate-temporary-register! 'GENERAL))))))
 
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? environment) (? name) (? value))
@@ -178,47 +176,4 @@ MIT in each case. |#
 	   ,@clear-map
 	   (JSB ,entry:compiler-unassigned?-trap)
 	   ,@(make-external-label (generate-label))))))
-
-;;;; Poppers
 
-(define-rule statement
-  (MESSAGE-RECEIVER:CLOSURE (? frame-size))
-  (record-push!
-   (LAP (PUSHL (& ,(* frame-size 4))))))
-
-(define-rule statement
-  (MESSAGE-RECEIVER:STACK (? frame-size))
-  (record-push!
-   (LAP (PUSHL (& ,(+ #x00180000 (* frame-size 4)))))))
-
-(define-rule statement
-  (MESSAGE-RECEIVER:SUBPROBLEM (? label))
-  (record-continuation-frame-pointer-offset! label)
-  (increment-frame-pointer-offset!
-   2
-   (LAP (PUSHA B (@PCR ,label))
-	(MOV B ,(immediate-type type-code:return-address) (@RO B 14 3))
-	(PUSHL (& #x00300000)))))
-
-(define (apply-closure-sequence frame-size receiver-offset label)
-  (let ((offset (* (+ receiver-offset (frame-pointer-offset)) 4)))
-    (LAP ,(load-rnw frame-size 2)
-	 (MOVA L (@RO ,(offset-type offset) 14 ,offset) (R 0))
-	 (MOVA B (@PCR ,label) (R 1))
-	 (JMP ,popper:apply-closure))))
-
-(define (apply-stack-sequence frame-size receiver-offset n-levels label)
-  (let ((offset (* (+ receiver-offset (frame-pointer-offset)) 4)))
-    (LAP (MOV L (S ,n-levels) (R 3))
-	 ,(load-rnw frame-size 2)
-	 (MOVA L (@RO ,(offset-type offset) 14 ,offset)
-	       (R 0))
-	 (MOVA B (@PCR ,label) (R 1))
-	 (JMP ,popper:apply-stack))))
-
-(define-rule statement
-  (MESSAGE-SENDER:VALUE (? receiver-offset))
-  (disable-frame-pointer-offset!
-   (LAP ,@(clear-map!)
-	,@(increment-rnl 14 (+ receiver-offset (frame-pointer-offset)))
-	(JMP ,popper:value))))
