@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.34 1988/08/15 20:31:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.35 1988/09/27 01:56:59 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -750,15 +750,20 @@ copy_token (target, size, token_type)
 	{
 	  c = (getc (input));
 	  if (c == '\"') break;
-	  TOKEN_BUFFER_WRITE
-	    ((c == '\\')
-	     ? (getc (input))
-	     : (((token_type == tokentype_string_upcase) &&
-		 (isalpha (c)) &&
-		 (islower (c)))
-		? (toupper (c))
-		: c));
-	} 
+	  if (c == '\\')
+	    {
+	      TOKEN_BUFFER_WRITE (c);
+	      c = (getc (input));
+	      TOKEN_BUFFER_WRITE (c);
+	    }
+	  else
+	    TOKEN_BUFFER_WRITE
+	      (((token_type == tokentype_string_upcase) &&
+		(isalpha (c)) &&
+		(islower (c)))
+	       ? (toupper (c))
+	       : c);
+	}
       TOKEN_BUFFER_WRITE ('\0');
     }
   else
