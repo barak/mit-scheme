@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: make-docs.sh,v 1.1 2000/07/07 21:15:09 cph Exp $
+# $Id: make-docs.sh,v 1.2 2000/07/07 21:15:52 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -18,7 +18,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-mkdir -p doc-files
+rm -rf doc-files
+mkdir doc-files
 cd doc-files
 makeinfo ../imail.texinfo
 texi2dvi ../imail.texinfo
