@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simapp.scm,v 1.1 1987/06/09 19:52:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simapp.scm,v 1.2 1987/06/30 19:50:45 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -112,11 +112,13 @@ MIT in each case. |#
   (let ((procedures (vnode-initial-procedures vnode)))
     (if (not (memq procedure procedures))
 	(set-vnode-initial-procedures! vnode (cons procedure procedures))))
-  (let ((procedures (vnode-procedures-cache vnode)))
-    (if (not (memq procedure procedures))
-	(begin (enqueue-nodes! (vnode-combinations vnode))
-	       (set-vnode-procedures-cache! vnode
-					    (cons procedure procedures))))))
+  (let loop ((vnode vnode))
+    (let ((procedures (vnode-procedures-cache vnode)))
+      (if (not (memq procedure procedures))
+	  (begin (enqueue-nodes! (vnode-combinations vnode))
+		 (set-vnode-procedures-cache! vnode
+					      (cons procedure procedures))
+		 (for-each loop (vnode-forward-links vnode)))))))
 
 (define (vnode-connect!:vnode from)
   (define (self to)
