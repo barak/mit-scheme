@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/syntax.scm,v 1.67 1989/04/15 00:53:13 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/syntax.scm,v 1.68 1989/04/17 22:27:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -54,12 +54,8 @@ this is because Newline occurs often when it doesn't indicate
 a comment ending."
   false)
 
-(define-structure (syntax-table
-		   ;; This is named to prevent reusing `syntax-table'
-		   ;; variable to hold the tag (the default behavior).
-		   (named (string->symbol "#[(edwin)syntax-table]"))
-		   (constructor %make-syntax-table)
-		   (conc-name syntax-table/))
+(define-structure (syntax-table (constructor %make-syntax-table)
+				(conc-name syntax-table/))
   (entries false read-only true))
 
 (define (guarantee-syntax-table syntax-table)
