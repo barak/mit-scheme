@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: debug.scm,v 1.2 1994/11/26 16:55:09 gjr Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -63,7 +63,7 @@ MIT in each case. |#
 
 (define %compile-proc
   (lambda (form)
-    (compile
+    (compile/debug
      (compile/syntax form))))
 
 (define %compile-proc/rtl
@@ -73,6 +73,17 @@ MIT in each case. |#
 
 (define (compile/syntax form)
   (syntax form (repl/syntax-table (nearest-repl))))
+
+(define (compile/debug scode)
+  (apply
+   (lambda (result var-table)
+     (set! *variable-properties* var-table)
+     result)
+   (within-midend false
+     (lambda ()
+       (let ((result (compile-0* scode)))
+	 (set! *last-code-rewrite-table* *code-rewrite-table*)
+	 (list result *variable-properties*))))))
 
 (define &+ (make-primitive-procedure '&+))
 (define &- (make-primitive-procedure '&-))
