@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dossig.c,v 1.10 1992/09/26 02:54:57 cph Exp $
+$Id: dossig.c,v 1.11 1992/09/30 14:31:42 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -1026,7 +1026,8 @@ DEFUN (install_exception_handlers, (get_vector, set_handler, restore),
       handler = exception_handler;
       if ((under_DPMI_p ())
 	  && (enable_DPMI_exceptions_p ())
-	  && ((DPMI_alloc_scheme_stack (&scheme_ds, &scheme_ss, Stack_Guard))
+	  && ((DPMI_alloc_scheme_stack (&scheme_ds, &scheme_ss,
+					((unsigned long) Stack_Guard)))
 	      == DOS_SUCCESS))
       {
 	Scheme_Stack_Segment_Selector = scheme_ss;
