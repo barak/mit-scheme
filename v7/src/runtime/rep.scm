@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.2 1988/07/06 20:34:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.3 1988/07/11 18:53:25 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -396,7 +396,9 @@ MIT in each case. |#
   (let ((port (cmdl/output-port repl)))
     (if (undefined-value? object)
 	(write-string "\n;No value" port)
-	(write-line object port))))
+	(begin
+	  (write-string "\n;Value: " port)
+	  (write object port)))))
 
 ;;;; History
 
