@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: const.h,v 9.51 2004/11/21 04:16:56 cph Exp $
+$Id: const.h,v 9.52 2004/12/06 21:32:46 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1997,2000,2002,2004 Massachusetts Institute of Technology
@@ -45,16 +45,17 @@ USA.
    6 #!eof
    7 #!default
    8 #!aux
+   9 '()
  */
 
 #define SHARP_F			MAKE_OBJECT (TC_NULL, 0)
 #define SHARP_T			MAKE_OBJECT (TC_CONSTANT, 0)
 #define UNSPECIFIC		MAKE_OBJECT (TC_CONSTANT, 1)
 #define DEFAULT_OBJECT		MAKE_OBJECT (TC_CONSTANT, 7)
+#define EMPTY_LIST		MAKE_OBJECT (TC_CONSTANT, 9)
 #define FIXNUM_ZERO		MAKE_OBJECT (TC_FIXNUM, 0)
 #define BROKEN_HEART_ZERO	MAKE_OBJECT (TC_BROKEN_HEART, 0)
 
-#define EMPTY_LIST SHARP_F
 #define EMPTY_LIST_P(object) ((object) == EMPTY_LIST)
 
 /* Assorted sizes used in various places */
