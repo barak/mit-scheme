@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/outline.scm,v 1.3 1992/04/17 21:09:16 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/outline.scm,v 1.4 1992/04/21 19:08:41 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -244,8 +244,8 @@ With argument, turn outline mode on iff argument is positive."
 	     (disable-current-minor-mode! mode))))))
 
 (define-minor-mode outline "Outline" "Minor mode for moving over outlines.")
-(define-key 'outline '(#\C-z #\f) 'forward-topic)
-(define-key 'outline '(#\C-z #\b) 'backward-topic)
-(define-key 'outline '(#\C-z #\n) 'narrow-to-topic)
-(define-key 'outline '(#\M-C-z #\f) 'forward-up-topic)
-(define-key 'outline '(#\M-C-z #\b) 'backward-up-topic)
+(define-key 'outline '(#\C-c #\C-f) 'forward-topic)
+(define-key 'outline '(#\C-c #\C-b) 'backward-topic)
+(define-key 'outline '(#\C-c #\C-n) 'narrow-to-topic)
+(define-key 'outline '(#\C-c #\C-a) 'forward-up-topic)
+(define-key 'outline '(#\C-c #\C-u) 'backward-up-topic)
