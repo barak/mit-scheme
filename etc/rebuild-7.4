@@ -1,6 +1,6 @@
 #!/bin/csh -f
 
-# $Id: rebuild-7.4,v 1.13 1994/01/08 21:36:00 gjr Exp $
+# $Id: rebuild-7.4,v 1.14 1995/07/27 18:30:17 adams Exp $
 
 # Arguments: runtimeversion compilerversion edwinversion 6001version
 
@@ -27,15 +27,17 @@
 
 hp9000s300
 if ("$status" == 0) then
-  set root="/scheme/300"
+  set root="/scheme/7.4/300"
   set student_constant=""
 endif
 hp9000s800
 if ("$status" == 0) then
-  set root="/scheme/700"
+  set root="/scheme/7.4/700"
   set student_constant=" -constant 2000"
 endif
 
+set src="/scheme/7.4/src"
+set scheme="scheme-7.4"
 
 set noclobber
 set lock="$root/tmp/lock"
@@ -57,7 +59,7 @@ echo \(begin\  > $script
 
 if ("$1" != "none") then
   if (("$1" == "") || ("$1" == "next")) then
-    set runver=`rcsversion /scheme/src/runtime/version.scm`
+    set runver=`rcsversion $src/runtime/version.scm`
   else
     set runver="$1"
   endif
@@ -70,7 +72,7 @@ endif
 
 if ("$2" != "none") then
   if (("$2" == "") || ("$2" == "next")) then
-    set compver=`rcsversion /scheme/src/compiler/base/make.scm`
+    set compver=`rcsversion $src/compiler/base/make.scm`
   else
     set compver="$2"
   endif
@@ -85,7 +87,7 @@ endif
 
 if ("$3" != "none") then
   if (("$3" == "") || ("$3" == "next")) then
-    set edver=`rcsversion /scheme/src/edwin/make.scm`
+    set edver=`rcsversion $src/edwin/make.scm`
   else
     set edver="$3"
   endif
@@ -98,7 +100,7 @@ endif
 
 if ("$4" != "none") then
   if (("$4" == "") || ("$4" == "next")) then
-    set stver=`rcsversion /scheme/src/6001/make.scm`
+    set stver=`rcsversion $src/6001/make.scm`
   else
     set stver="$4"
   endif
@@ -143,7 +145,7 @@ echo "### cd $root/runtime"
 cd $root/runtime
 
 echo "### scheme -compiler -no-init-file"
-scheme -compiler -heap 2000 -no-init-file <$script
+$scheme -compiler -heap 2000 -no-init-file <$script
 
 set result="$status"
 rm -f $script
@@ -162,7 +164,7 @@ if ("$runtime" != "") then
   cd $root/runtime
   rm -f ../tmp/runtime.com
   echo "### scheme -large -fasl make.com -no-init-file"
-  scheme -large -fasl make.com -no-init-file <<*END*
+  $scheme -large -fasl make.com -no-init-file <<*END*
 (begin
   (disk-save "../tmp/runtime.com")
   (write-line '(saved runtime band))
@@ -188,7 +190,7 @@ if ("$complr" != "") then
   cd $root/sf
   rm -f ../tmp/complr.com
   echo "### scheme -large $runbandarg -no-init-file"
-  scheme -large $runbandarg -no-init-file <<*END*
+  $scheme -large $runbandarg -no-init-file <<*END*
 (begin
   (load "make.com")
   (cd "../compiler")
@@ -217,7 +219,7 @@ if ("$edwin" != "") then
   cd $root/edwin
   rm -f ../tmp/edwin.com
   echo "### scheme -large $runbandarg -no-init-file"
-  scheme -large $runbandarg -no-init-file <<*END*
+  $scheme -large $runbandarg -no-init-file <<*END*
 (begin
   (load "make.com")
   (disk-save "../tmp/edwin.com")
@@ -267,7 +269,7 @@ if ("$student" != "") then
   cd $root/runtime-check
   rm -f ../tmp/6001.com
   echo "### scheme -large$student_constant -fasl make.com -no-init-file"
-  scheme -large$student_constant -fasl make.com -no-init-file <<*END*
+  $scheme -large$student_constant -fasl make.com -no-init-file <<*END*
 (begin
   (cd "../edwin")
   (load "make.com")
