@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.25 1990/06/28 18:20:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.26 1990/07/28 18:57:17 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -568,7 +568,7 @@ storage.o : scheme.touch gctype.c
 
 char.o string.o : scheme.touch prims.h
 
-boot.o : scheme.touch prims.h version.h paths.h
+boot.o : scheme.touch prims.h version.h paths.h ostop.h
 term.o : scheme.touch
 
 compiler.o : config.h object.h sdata.h types.h errors.h const.h returns.h

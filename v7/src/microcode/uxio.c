@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.2 1990/06/21 20:01:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.3 1990/07/28 18:56:56 jinx Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -55,6 +55,14 @@ DEFUN_VOID (UX_initialize_channels)
     for (channel = 0; (channel < OS_channel_table_size); channel += 1)
       MARK_CHANNEL_CLOSED (channel);
   }
+}
+
+void
+DEFUN_VOID (UX_reset_channels)
+{
+  UX_free (channel_table);
+  channel_table = 0;
+  OS_channel_table_size = 0;
 }
 
 void

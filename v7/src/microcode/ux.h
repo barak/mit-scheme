@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.2 1990/07/16 21:06:52 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.3 1990/07/28 18:56:52 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -440,6 +440,7 @@ extern char * EXFUN (getlogin, (void));
 #define UX_chmod chmod
 #define UX_close close
 #define UX_ctime ctime
+#define UX_free free
 #define UX_fstat fstat
 #define UX_getenv getenv
 #define UX_getegid getegid

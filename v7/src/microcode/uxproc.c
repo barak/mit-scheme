@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.1 1990/06/20 19:37:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.2 1990/07/28 18:57:00 jinx Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -67,6 +67,14 @@ DEFUN_VOID (UX_initialize_processes)
       ((*subprocess_death_hook), (pid_t pid, wait_status_t * status));
     subprocess_death_hook = subprocess_death;
   }
+}
+
+void
+DEFUN_VOID (UX_reset_processes)
+{
+  UX_free (process_table);
+  process_table = 0;
+  OS_process_table_size = 0;
 }
 
 static Tprocess

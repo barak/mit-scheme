@@ -1,15 +1,16 @@
 /* -*- C -*-
    Switzerland local additions to the makefile
-   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y300.lcl,v 1.9 1990/06/25 18:29:04 jinx Exp $
+   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y300.lcl,v 1.10 1990/07/28 18:57:14 jinx Exp $
  */
 
 /* These extra files are for 6003.  They assume we're using HP-UX. */
 
 6003_SOURCES = $(X_SOURCES) $(CTERM_SOURCES) $(GRAPHICS_SOURCES)\
-	SOURCES_SYSTEM SOURCES_MACHINE Sgraph_ar.c fft.c array.c image.c
+	SOURCES_SYSTEM SOURCES_MACHINE Sgraph_ar.c fft.c array.c\
+       image.c dmpwrld.c
 6003_OBJECTS = $(X_OBJECTS) $(CTERM_OBJECTS) $(GRAPHICS_OBJECTS)\
-	OBJECTS_SYSTEM OBJECTS_MACHINE Sgraph_ar.o fft.o array.o image.o\
-	usr6003.o
+	OBJECTS_SYSTEM OBJECTS_MACHINE Sgraph_ar.o fft.o array.o\
+       image.o dmpwrld.o usr6003.o
 6003_LIB =  $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(CTERM_LIB)\
 	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
 
@@ -18,10 +19,10 @@
  */
 
 KIT_SOURCES = $(X_SOURCES) $(CTERM_SOURCES) $(GRAPHICS_SOURCES)\
-	SOURCES_SYSTEM SOURCES_MACHINE gpio.c
+	SOURCES_SYSTEM SOURCES_MACHINE gpio.c dmpwrld.c
 KIT_OBJECTS = $(X_OBJECTS) $(CTERM_OBJECTS) $(GRAPHICS_OBJECTS)\
-	OBJECTS_SYSTEM OBJECTS_MACHINE gpio.o usrkit.o
-KIT_LIB =  $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(CTERM_LIB)\
+	OBJECTS_SYSTEM OBJECTS_MACHINE gpio.o dmpwrld.o usrkit.o
+KIT_LIB = $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(CTERM_LIB)\
 	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD -ldvio
 
 /* Franklyn's personal scheme: 6003-like + Sgraph_xt. */

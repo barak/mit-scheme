@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.31 1990/06/20 17:40:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.32 1990/07/28 18:56:45 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -38,29 +38,34 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
-
+
 #ifndef unix
 #include "Error: dumpworld.c does not work on non-unix machines."
 #endif
 
+#include "ux.h"
+#include "osfs.h"
+#include <sys/file.h>
+
 /* Compatibility definitions for GNU Emacs's unexec.c.
    Taken from the various m-*.h and s-*.h files for GNU Emacs.
 */
 
-#ifdef vax
-#define UNEXEC_AVAILABLE
+#define CANNOT_UNEXEC
+
+#if defined (vax)
+#undef CANNOT_UNEXEC
 #endif
 
-#ifdef hp9000s300
-#define UNEXEC_AVAILABLE
+#if defined (hp9000s300)
+#undef CANNOT_UNEXEC
 #define ADJUST_EXEC_HEADER   						\
   hdr.a_magic = ((ohdr.a_magic.file_type == OLDMAGIC.file_type) ?	\
 		 NEWMAGIC : ohdr.a_magic);
-
 #endif
 
-#ifdef sun3
-#define UNEXEC_AVAILABLE
+#if defined (sun3)
+#undef CANNOT_UNEXEC
 #define SEGMENT_MASK		(SEGSIZ - 1)
 #define A_TEXT_OFFSET(HDR)	sizeof (HDR)
 #define TEXT_START		(PAGSIZ + (sizeof(struct exec)))
@@ -68,8 +73,8 @@ MIT in each case. */
 
 /* I haven't tried any below this point. */
 
-#if defined(umax)
-#define UNEXEC_AVAILABLE
+#if defined (umax)
+#undef CANNOT_UNEXEC
 #define HAVE_GETPAGESIZE
 #define COFF
 #define UMAX
@@ -77,22 +82,22 @@ MIT in each case. */
 #define SEGMENT_MASK		(64 * 1024 - 1)
 #endif
 
-#ifdef celerity
-#define UNEXEC_AVAILABLE
+#if defined (celerity)
+#undef CANNOT_UNEXEC
 #endif
 
-#ifdef sun2
-#define UNEXEC_AVAILABLE
+#if defined (sun2)
+#undef CANNOT_UNEXEC
 #define SEGMENT_MASK		(SEGSIZ - 1)
 #endif
 
-#ifdef pyr
-#define UNEXEC_AVAILABLE
+#if defined (pyr)
+#undef CANNOT_UNEXEC
 #define SEGMENT_MASK (2048-1)	/* ZMAGIC format */
 				/* man a.out for info */
 #endif
 
-#ifndef UNEXEC_AVAILABLE
+#if defined (CANNOT_UEXEC)
 #include "Error: dumpworld.c only works on a few machines."
 #endif
 
@@ -107,7 +112,7 @@ MIT in each case. */
 (((((unsigned) &etext) - 1) & ~SEGMENT_MASK) + (SEGMENT_MASK + 1))
 #endif
 
-#ifdef _HPUX
+#if defined (_HPUX)
 #define USG
 #define HPUX
 #endif
@@ -115,10 +120,6 @@ MIT in each case. */
 /* More compatibility definitions for unexec. */
 
 extern int end, etext, edata;
-char *start_of_text(), *start_of_data();
-void bzero();
-
-#include "unexec.c"
 
 char
 *start_of_text()
@@ -132,116 +133,119 @@ char
   return ((char *) DATA_START);
 }
 
-void
-bzero (b, length)
-     register char *b;
-     register int length;
-{
-  while (length-- > 0)
-    *b++ = 0;
-}
+#if defined (USG) || defined (NO_BZERO)
+
+#define bzero(b,len)	(memset((b), 0, (len)))
+
+#else
+
+extern void bzero();
+
+#endif
+
+#define static
+
+#if defined (hp9000s800)
+#include "unexhp9k800.c"
+#else
+#include "unexec.c"
+#endif
+
+#undef static
 
-/* Making sure that IO will be alright when restored. */
-
-Boolean
-there_are_open_files()
-{
-  register int i;
-
-  i = FILE_CHANNELS;
-  while (i > 0)
-    if (Channels[--i] != NULL) return true;
-  return false;
-}
-
-/* These two procedures depend on the internal structure of a
-   FILE object.  See /usr/include/stdio.h for details. */
-
-long
-Save_Input_Buffer()
-{
-  long result;
-
-  result = (stdin)->_cnt;
-  (stdin)->_cnt = 0;
-  return result;
-}
-
 void
-Restore_Input_Buffer(Buflen)
-     fast long Buflen;
+DEFUN (unix_find_pathname, (program_name, target),
+       CONST char * program_name AND char * target)
 {
-  (stdin)->_cnt = Buflen;
+  int length;
+  char
+    * path,
+    * next;
+  extern char *
+    EXFUN (index, (char * path AND char srchr));
+  extern void
+    EXFUN (strcpy, (char * target AND CONST char * source));
+
+  /* Attempt first in the connected directory */
+
+  if (((program_name[0]) == '/')
+      || (OS_file_access (program_name, X_OK))
+      || ((path = ((char *) (getenv ("PATH")))) == ((char *) NULL)))
+  {
+    strcpy (target, program_name);
+    return;
+  }
+  for (next = (index (path, ':'));
+       path != ((char *)  NULL);
+       path = (next + 1),
+       next = (index (path, ':')))
+  {
+    length = ((next == ((char *) NULL))
+	      ? (strlen (path))
+	      : (next-path));
+    strncpy (target, path, length);
+    target[length] = '/';
+    target[length + 1] = '\0';
+    strcpy ((target + (length + 1)), program_name);
+    if (OS_file_access (target, X_OK))
+    {
+      return;
+    }
+  }
+  strcpy (target, program_name);
   return;
 }
-
+
 /* The primitive visible from Scheme. */
 
-extern Boolean Was_Scheme_Dumped;
-extern unix_find_pathname();
+extern Boolean scheme_dumped_p;
 
 DEFINE_PRIMITIVE ("DUMP-WORLD", Prim_dump_world, 1, 1, 0)
 {
-  char *fname, path_buffer[FILE_NAME_LENGTH];
-  Boolean Saved_Dumped_Value, Saved_Photo_Open;
-  int Result;
-  long Buflen;
+  int result;
+  SCHEME_OBJECT arg;
+  Boolean saved_dumped_p;
+  char
+    * fname,
+    path_buffer[FILE_NAME_LENGTH];
+  extern
+    char ** Saved_Argv;
   PRIMITIVE_HEADER (1);
 
   PRIMITIVE_CANONICALIZE_CONTEXT();
-  if (there_are_open_files())
-    signal_error_from_primitive (ERR_OUT_OF_FILE_HANDLES);
+
+  arg = (ARG_REF (1));
   fname = (STRING_ARG (1));
 
   /* Set up for restore */
 
-  Saved_Dumped_Value = Was_Scheme_Dumped;
-  Saved_Photo_Open = Photo_Open;
+  saved_dumped_p = scheme_dumped_p;
 
-  /* IO: flushing pending output, and flushing cached input. */
-
-  fflush(stdout);
-  fflush(stderr);
-
-  if (Photo_Open)
-  {
-    fflush(Photo_File_Handle);
-    Photo_Open = false;
-  }
-
-  Buflen = Save_Input_Buffer();
-
-  Was_Scheme_Dumped = true;
+  scheme_dumped_p = true;
   Val = SHARP_T;
-  OS_quit (TERM_HALT, false);
   POP_PRIMITIVE_FRAME (1);
 
   /* Dump! */
 
-  unix_find_pathname(Saved_argv[0], path_buffer);
-  Result = unexec(fname,
-		  path_buffer,
-		  ((unsigned) 0),			/* default */
-		  ((unsigned) 0),			/* default */
-		  ((unsigned) start_of_text())
-		  );
+  unix_find_pathname ((Saved_argv[0]), path_buffer);
+  result = (unexec (fname,
+		    path_buffer,
+		    ((unsigned) 0),		/* default */
+		    ((unsigned) 0),		/* default */
+		    ((unsigned) start_of_text())));
 
   /* Restore State */
 
-  OS_reinitialize();
   Val = SHARP_F;
-  Was_Scheme_Dumped = Saved_Dumped_Value;
+  scheme_dumped_p = saved_dumped_p;
 
   /* IO: Restoring cached input for this job. */
 
-  Restore_Input_Buffer(Buflen);
-  Photo_Open = Saved_Photo_Open;
-
-  if (Result != 0)
-    {
-      STACK_PUSH (ARG_REF (1));	/* Since popped above */
-      error_external_return ();
-    }
+  if (result != 0)
+  {
+    STACK_PUSH (arg);
+    error_external_return ();
+  }
 
   PRIMITIVE_ABORT (PRIM_POP_RETURN);
   /*NOTREACHED*/

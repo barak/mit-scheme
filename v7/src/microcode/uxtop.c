@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtop.c,v 1.1 1990/06/20 19:37:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtop.c,v 1.2 1990/07/28 18:57:07 jinx Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -48,6 +48,10 @@ extern void EXFUN (UX_initialize_terminals, (void));
 extern void EXFUN (UX_initialize_trap_recovery, (void));
 extern void EXFUN (UX_initialize_tty, (void));
 extern void EXFUN (UX_initialize_userio, (void));
+
+extern void EXFUN (UX_reset_channels, (void));
+extern void EXFUN (UX_reset_processes, (void));
+extern void EXFUN (UX_reset_terminals, (void));
 
 extern void EXFUN (OS_initialize_transcript_file, (void));
 
@@ -120,6 +124,19 @@ DEFUN_VOID (OS_initialize)
 #endif
 }
 
+void
+DEFUN_VOID (OS_reset)
+{
+  /*
+    There should really be a reset for each initialize above,
+    but the rest seem innocuous.
+   */
+
+  UX_reset_channels ();
+  UX_reset_terminals ();
+  UX_reset_processes ();
+}
+
 void
 DEFUN (OS_quit, (code, abnormal_p), int code AND int abnormal_p)
 {

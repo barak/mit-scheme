@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.61 1990/06/20 17:38:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.62 1990/07/28 18:56:36 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -86,6 +86,7 @@ for details.  They are created by defining a macro Command_Line_Args.
 #ifndef islower
 #include <ctype.h>
 #endif
+#include "ostop.h"
 
 extern PTR EXFUN (malloc, (unsigned int size));
 extern void EXFUN (free, (PTR ptr));
@@ -207,10 +208,13 @@ DEFUN (numeric_option_argument, (name, defval),
 }
 
 /* Used to test whether it is a dumped executable version */
-Boolean Was_Scheme_Dumped = false;
-int Saved_Heap_Size;
-int Saved_Stack_Size;
-int Saved_Constant_Size;
+
+extern Boolean scheme_dumped_p;
+Boolean scheme_dumped_p = false;
+
+int dumped_heap_size;
+int dumped_stack_size;
+int dumped_constant_size;
 
 static void
 DEFUN (find_image_parameters, (file_name, cold_load_p, supplied_p),
@@ -222,7 +226,7 @@ DEFUN (find_image_parameters, (file_name, cold_load_p, supplied_p),
   (*supplied_p) = false;
   (*cold_load_p) = false;
   (*file_name) = DEFAULT_BAND_NAME;
-  if (!Was_Scheme_Dumped)
+  if (!scheme_dumped_p)
     {
       Heap_Size = HEAP_SIZE;
       Stack_Size = STACK_SIZE;
@@ -230,9 +234,9 @@ DEFUN (find_image_parameters, (file_name, cold_load_p, supplied_p),
     }
   else
     {
-      Saved_Heap_Size = Heap_Size;
-      Saved_Stack_Size = Stack_Size;
-      Saved_Constant_Size = Constant_Size;
+      dumped_heap_size = Heap_Size;
+      dumped_stack_size = Stack_Size;
+      dumped_constant_size = Constant_Size;
     }
   /* This does not set found_p because the image spec. can be
      overridden by the options below.  It just sets different
@@ -272,17 +276,17 @@ DEFUN (find_image_parameters, (file_name, cold_load_p, supplied_p),
   Heap_Size = (numeric_option_argument ("-heap", Heap_Size));
   Stack_Size = (numeric_option_argument ("-stack", Stack_Size));
   Constant_Size = (numeric_option_argument ("-constant", Constant_Size));
-  if (Was_Scheme_Dumped
-      && ((Heap_Size != Saved_Heap_Size)
-	  || (Stack_Size != Saved_Stack_Size)
-	  || (Constant_Size != Saved_Constant_Size)))
+  if (scheme_dumped_p
+      && ((Heap_Size != dumped_heap_size)
+	  || (Stack_Size != dumped_stack_size)
+	  || (Constant_Size != dumped_constant_size)))
     {
       fprintf (stderr, "%s warning: Allocation parameters ignored.\n",
 	       (Saved_argv[0]));
       fflush (stderr);
-      Heap_Size = Saved_Heap_Size;
-      Stack_Size = Saved_Stack_Size;
-      Constant_Size = Saved_Constant_Size;
+      Heap_Size = dumped_heap_size;
+      Stack_Size = dumped_stack_size;
+      Constant_Size = dumped_constant_size;
     }
 }
 
@@ -314,9 +318,9 @@ main (argc, argv)
 
   find_image_parameters (&file_name, &cold_load_p, &supplied_p);
 
-  if (Was_Scheme_Dumped)
+  if (scheme_dumped_p)
   {
-    printf("Executable Scheme Image\n");
+    OS_reset ();
     if (!supplied_p)
     {
       printf ("Scheme Microcode Version %d.%d\n", VERSION, SUBVERSION);
@@ -329,19 +333,22 @@ main (argc, argv)
 		    (BLOCKS_TO_BYTES (Stack_Size)),
 		    (BLOCKS_TO_BYTES (Constant_Size)));
       /* We are reloading from scratch anyway. */
-      Was_Scheme_Dumped = false;
+      scheme_dumped_p = false;
       Start_Scheme ((cold_load_p ? BOOT_FASLOAD : BOOT_LOAD_BAND),
 		    file_name);
     }
   }
-
-  Command_Line_Hook();
-  Setup_Memory ((BLOCKS_TO_BYTES (Heap_Size)),
-		(BLOCKS_TO_BYTES (Stack_Size)),
-		(BLOCKS_TO_BYTES (Constant_Size)));
-  compiler_initialize ((long) cold_load_p);
-  Start_Scheme ((cold_load_p ? BOOT_FASLOAD : BOOT_LOAD_BAND),
-		file_name);
+  else
+  {
+    Command_Line_Hook();
+    Setup_Memory ((BLOCKS_TO_BYTES (Heap_Size)),
+		  (BLOCKS_TO_BYTES (Stack_Size)),
+		  (BLOCKS_TO_BYTES (Constant_Size)));
+    compiler_initialize ((long) cold_load_p);
+    Start_Scheme ((cold_load_p ? BOOT_FASLOAD : BOOT_LOAD_BAND),
+		  file_name);
+  }
+  exit (1);
 }
 
 #define Default_Init_Fixed_Objects(Fixed_Objects)			\
@@ -539,7 +546,7 @@ Start_Scheme (Start_Prim, File_Name)
 void
 Enter_Interpreter()
 {
-  Interpret (Was_Scheme_Dumped);
+  Interpret (scheme_dumped_p);
   fprintf (stderr, "\nThe interpreter returned to top level!\n");
   fflush (stderr);
   Microcode_Termination (TERM_EXIT);
@@ -572,16 +579,16 @@ char
   gc_death_message_buffer[100];
 
 void
-gc_death(code, message, scan, free)
+gc_death (code, message, scan, free)
      long code;
      char *message;
      SCHEME_OBJECT *scan, *free;
 {
-  fprintf(stderr, "\n%s.\n", message);
-  fprintf(stderr, "scan = 0x%lx; free = 0x%lx\n", scan, free);
+  fprintf (stderr, "\n%s.\n", message);
+  fprintf (stderr, "scan = 0x%lx; free = 0x%lx\n", scan, free);
   deadly_scan = scan;
   deadly_free = free;
-  Microcode_Termination(code);
+  Microcode_Termination (code);
   /*NOTREACHED*/
 }
 

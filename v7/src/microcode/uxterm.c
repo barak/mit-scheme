@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.2 1990/06/21 20:01:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.3 1990/07/28 18:57:03 jinx Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -65,6 +65,13 @@ DEFUN_VOID (UX_initialize_terminals)
       fflush (stderr);
       termination_init_error ();
     }
+}
+
+void
+DEFUN_VOID (UX_reset_terminals)
+{
+  UX_free (terminal_table);
+  terminal_table = 0;
 }
 
 /* This is called from the file-opening code. */
