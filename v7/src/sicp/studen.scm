@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/studen.scm,v 1.3 1990/11/15 23:33:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/studen.scm,v 1.4 1991/03/06 21:11:29 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -114,8 +114,8 @@ MIT in each case. |#
 	     (or (syntax-table-ref system-global-syntax-table from)
 		 (error "Missing syntactic keyword" from))))))
     (for-each (lambda (name) (move name name))
-	      '(ACCESS BEGIN BKPT COLLECT COND CONS-STREAM DEFINE
-		       DELAY ERROR IF LAMBDA LET MAKE-ENVIRONMENT
+	      '(ACCESS BEGIN COLLECT COND CONS-STREAM DEFINE
+		       DELAY IF LAMBDA LET MAKE-ENVIRONMENT
 		       QUOTE SET! THE-ENVIRONMENT))
     (move 'AND 'CONJUNCTION)
     (move 'OR 'DISJUNCTION)
@@ -187,10 +187,6 @@ MIT in each case. |#
 (define user-global-names
   '(
     (%EXIT)
-    (%GE)
-    (%IN) 
-    (%OUT)
-    (%VE)
     (*)
     (*ARGS*)
     (*PROC*)
@@ -224,6 +220,7 @@ MIT in each case. |#
     (ASSV)
     (ATAN)
     (ATOM?)
+    (BKPT)
     (BREAK . BREAK-ENTRY)
     (BREAK-BOTH . BREAK)
     (BREAK-ENTRY)
@@ -284,7 +281,7 @@ MIT in each case. |#
     (EQ?)
     (EQUAL?)
     (EQV?)
-    (ERROR-PROCEDURE)
+    (ERROR)
     (EVAL)
     (EVEN?)
     (EXP)
@@ -301,11 +298,13 @@ MIT in each case. |#
     (FORCE)
     (FOURTH)
     (GCD)
+    (GE)
     (GENERATE-UNINTERNED-SYMBOL)
     (GRAPHICS-AVAILABLE?)
     (GRAPHICS-TEXT)
     (HEAD)
     (IMPLODE)
+    (IN)
     (INIT-GRAPHICS)
     (INTEGER-DIVIDE)
     (INTEGER?)
@@ -346,7 +345,8 @@ MIT in each case. |#
     (ODD?)
     (OPEN-READER-CHANNEL . OPEN-INPUT-FILE)
     (OPEN-PRINTER-CHANNEL . OPEN-OUTPUT-FILE)
-    (OR . OR*)
+    (OR . OR*) 
+    (OUT)
     (PAIR?)
     (POSITION-PEN)
     (POSITIVE?)
@@ -399,6 +399,7 @@ MIT in each case. |#
     (UNTRACE-EXIT)
     (USER-GLOBAL-ENVIRONMENT . #T)
     (USER-INITIAL-ENVIRONMENT . #T)
+    (VE)
     (VECTOR)
     (VECTOR-CONS)
     (VECTOR-REF)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/sbuild.scm,v 1.2 1990/11/14 14:58:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/sbuild.scm,v 1.3 1991/03/06 21:12:23 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,7 +38,7 @@ MIT in each case. |#
 
 (define student-system
   (make-system "Student (6.001)"
-	       14 2
+	       14 3
 	       `((,system-global-environment
 		  "compat" "graphics" "strmac" "stream" "genenv" "studen"))))
 
