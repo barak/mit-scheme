@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.24 1992/07/28 14:17:51 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.25 1992/08/12 01:29:01 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -333,10 +333,14 @@ IF387(`
 	OP(sub,l)	TW(IMM(4),REG(esp))
 	fclex
 	fnstcw	WOF(-2,REG(ebp))
-	# Set rounding mode to round-to-even, precision control to double,
-	# mask the inexact result exception, and unmask the other exceptions.
+	# On Unix, set rounding mode to round-to-even, precision control to
+	# double, mask the inexact result exception, and unmask the other exceptions.
+	# On DOS, set rounding mode to round-to-even, precision control to
+	# double and and mask all exceptions.
 	OP(and,w)	TW(IMM(HEX(f0e0)),WOF(-2,REG(ebp)))
-	OP(or,w)	TW(IMM(HEX(0220)),WOF(-2,REG(ebp)))
+	ifdef(`DOS',
+	      `OP(or,w)	TW(IMM(HEX(023f)),WOF(-2,REG(ebp)))',
+	      `OP(or,w)	TW(IMM(HEX(0220)),WOF(-2,REG(ebp)))')
 	fldcw	WOF(-2,REG(ebp))
 
 i386_initialize_no_fp:')
