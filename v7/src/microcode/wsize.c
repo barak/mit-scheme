@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/wsize.c,v 9.24 1989/02/15 03:29:34 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/wsize.c,v 9.25 1989/02/15 18:47:04 jinx Exp $ */
 
 #include <stdio.h>
 #include <math.h>
@@ -83,7 +83,7 @@ struct double_probe {
 
 main()
 {
-  double accum[1], new_accum[1], delta, dtemp;
+  double accum[3], delta, dtemp;
   int count, expt_size, char_size, mant_size, double_size, extra;
   unsigned long to_be_shifted;
   unsigned bogus;
@@ -172,16 +172,22 @@ main()
 
   mant_size = 1;
   accum[0] = 1.0;
+  accum[1] = 0.0;
   delta = 0.5;
 
   while(true)
   {
-    new_accum[0] = (accum[0] + delta);
-    if ((new_accum[0] == accum[0]) || (mant_size == double_size))
+    accum[2] = accum[1];
+    accum[1] = (accum[0] + delta);
+    if ((accum[1] == accum[0]) ||
+	(accum[2] == accum[1]) ||
+	(mant_size == double_size))
       break;
     delta = (delta / ((double) 2.0));
     mant_size += 1;
   }
+
+  printf("#define FLONUM_MANTISSA_BITS %d\n", mant_size);
 
   for(errno = 0, expt_size = 0, bogus = 1, dtemp = 0.0;
       ((errno != ERANGE) && (expt_size <= double_size));
@@ -196,7 +202,6 @@ main()
   expt_size -= 1;
 
   printf("#define FLONUM_EXPT_SIZE     %d\n", expt_size);
-  printf("#define FLONUM_MANTISSA_BITS %d\n", mant_size);
   printf("#define MAX_FLONUM_EXPONENT  %d\n", ((1 << expt_size) - 1));
 
   extra = ((2 + expt_size + mant_size) - double_size);
