@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.18 1987/05/18 23:20:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.19 1987/05/19 18:18:03 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -65,10 +65,10 @@ MIT in each case. |#
     (make-environment
       (define :name "Liar (Bobcat 68020)")
       (define :version 1)
-      (define :modification 18)
+      (define :modification 19)
       (define :files)
 
-;      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.18 1987/05/18 23:20:26 cph Exp $"
+;      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.19 1987/05/19 18:18:03 cph Exp $"
 ;	(lambda (filename version date time author state)
 ;	  (set! :version (car version))
 ;	  (set! :modification (cadr version))))
@@ -86,7 +86,7 @@ MIT in each case. |#
 		 "base/object.bin"	;tagged object support
 		 "base/queue.bin"	;queue abstraction
 		 "base/sets.bin"	;set abstraction
-		 "source/mvalue.bin"	;multiple-value support
+		 "base/mvalue.bin"	;multiple-value support
 
 		 "machines/bobcat/machin.bin" ;machine dependent stuff
 		 "base/toplev.bin"	;top level
