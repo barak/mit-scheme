@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.54 1993/11/08 06:15:59 gjr Exp $
+$Id: ux.h,v 1.55 1993/11/08 21:45:53 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -146,6 +146,7 @@ extern int EXFUN (kill, (pid_t, int));
 
 #ifdef _AIX
 #define UNION_WAIT_STATUS
+#define SYSTEM_VARIANT "AIX"
 #endif /* _AIX */
 
 #else /* not _POSIX */
