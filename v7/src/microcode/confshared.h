@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: confshared.h,v 11.5 2003/02/14 18:28:18 cph Exp $
+$Id: confshared.h,v 11.6 2003/05/17 02:21:13 cph Exp $
 
-Copyright (c) 2000, 2002 Massachusetts Institute of Technology
+Copyright 2000,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -314,18 +314,6 @@ typedef unsigned long SCHEME_OBJECT;
 #  define MACHINE_TYPE		"IA-32"
 #endif
 
-#ifdef __linux__
-   extern void * linux_heap_malloc (unsigned long);
-#  define HEAP_MALLOC linux_heap_malloc
-#  define HEAP_FREE(address)
-#endif
-
-#ifdef __FreeBSD__
-   extern void * freebsd_heap_malloc (unsigned long);
-#  define HEAP_MALLOC freebsd_heap_malloc
-#  define HEAP_FREE(address)
-#endif
-
 #endif /* __IA32__ */
 
 #ifdef mips
@@ -388,6 +376,12 @@ typedef unsigned long SCHEME_OBJECT;
 #endif
 
 #endif /* __alpha */
+
+#ifdef USE_MMAP_HEAP_MALLOC
+   extern void * mmap_heap_malloc (unsigned long);
+#  define HEAP_MALLOC mmap_heap_malloc
+#  define HEAP_FREE(address)
+#endif
 
 #ifdef __OS2__
 

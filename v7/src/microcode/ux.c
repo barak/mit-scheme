@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.23 2003/02/14 18:28:24 cph Exp $
+$Id: ux.c,v 1.24 2003/05/17 02:21:17 cph Exp $
 
-Copyright (c) 1990-2002 Massachusetts Institute of Technology
+Copyright 1991,1992,1993,1996,1997,2000 Massachusetts Institute of Technology
+Copyright 2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -634,46 +635,63 @@ DEFUN (OS_free, (ptr), void * ptr)
   UX_free (ptr);
 }
 
-#ifdef __linux__
+#ifdef EMULATE_GETPAGESIZE
+#ifdef HAVE_SYSCONF
 
-#include <sys/mman.h>
-
-void *
-linux_heap_malloc (unsigned long requested_length)
+unsigned long
+DEFUN_VOID (UX_getpagesize)
 {
-  unsigned long ps = (getpagesize ());
-  void * addr
-    = (mmap (((void *)
-#ifndef VALGRIND_MODE
-	      ps
-#else
-	      0x10000
-#endif
-	      ),
-	     (((requested_length + (ps - 1)) / ps) * ps),
-	     (PROT_EXEC | PROT_READ | PROT_WRITE),
-	     (MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED),
-	     0, 0));
-  return ((addr == ((void *) (-1))) ? 0 : addr);
+  static int vp = 0;
+  static long v;
+  if (!vp)
+    {
+      v = (sysconf (_SC_PAGESIZE));
+      vp = 1;
+    }
+  return ((v <= 0) ? 0x1000 : v);
 }
 
-#endif /* __linux__ */
+#endif /* HAVE_SYSCONF */
+#endif /* EMULATE_GETPAGESIZE */
 
-#ifdef __FreeBSD__
+#ifdef USE_MMAP_HEAP_MALLOC
 
-#include <sys/mman.h>
+#ifdef VALGRIND_MODE
+#  define MMAP_BASE_ADDRESS 0x10000
+#else
+#  define MMAP_BASE_ADDRESS (UX_getpagesize ())
+#endif
 
-void *
-freebsd_heap_malloc (unsigned long requested_length)
+#ifndef MAP_FAILED
+#  define MAP_FAILED ((void *) (-1))
+#endif
+
+static void *
+mmap_heap_malloc_1 (unsigned long requested_length, int fixedp)
 {
-  unsigned long ps = (getpagesize ());
+  unsigned long ps = (UX_getpagesize ());
   void * addr
-    = (mmap (((void *) ps),
+    = (mmap (((void *) MMAP_BASE_ADDRESS),
 	     (((requested_length + (ps - 1)) / ps) * ps),
 	     (PROT_EXEC | PROT_READ | PROT_WRITE),
-	     (MAP_PRIVATE | MAP_ANON | MAP_FIXED),
-	     (-1), 0));
+	     (MAP_PRIVATE | MAP_ANONYMOUS | (fixedp ? MAP_FIXED : 0)),
+	     /* Ignored by GNU/Linux, required by FreeBSD and Solaris.  */
+	     (-1),
+	     0));
   return ((addr == MAP_FAILED) ? 0 : addr);
 }
 
-#endif /* __FreeBSD__ */
+void *
+mmap_heap_malloc (unsigned long requested_length)
+{
+  void * addr = (mmap_heap_malloc_1 (requested_length, 1));
+  if (addr == 0)
+    /* Can't get exact address; try for something nearby.  */
+    addr = (mmap_heap_malloc_1 (requested_length, 0));
+  if (addr == 0)
+    /* mmap not returning anything useful.  */
+    addr = (UX_malloc (requested_length));
+  return (addr);
+}
+
+#endif /* USE_MMAP_HEAP_MALLOC */

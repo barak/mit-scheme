@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: acconfig.h,v 11.6 2003/02/14 18:28:14 cph Exp $
+$Id: acconfig.h,v 11.7 2003/05/17 02:21:04 cph Exp $
 
-Copyright (c) 2000-2001 Massachusetts Institute of Technology
+Copyright 2002,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -141,6 +141,19 @@ USA.
 #else
 #  ifdef HAVE_TERMIO_H
 #    include <termio.h>
+#  endif
+#endif
+
+#ifdef HAVE_SYS_MMAN_H
+#  include <sys/mman.h>
+#endif
+
+#ifdef HAVE_MMAP
+#  if defined(MAP_ANON) && !defined(MAP_ANONYMOUS)
+#    define MAP_ANONYMOUS MAP_ANON
+#  endif
+#  ifdef MAP_ANONYMOUS
+#    define USE_MMAP_HEAP_MALLOC
 #  endif
 #endif
 

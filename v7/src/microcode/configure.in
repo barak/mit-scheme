@@ -19,7 +19,7 @@ dnl along with MIT/GNU Scheme; if not, write to the Free Software
 dnl Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 dnl 02111-1307, USA.
 
-AC_REVISION([$Id: configure.in,v 11.21 2003/05/12 20:02:24 cph Exp $])
+AC_REVISION([$Id: configure.in,v 11.22 2003/05/17 02:21:09 cph Exp $])
 AC_INIT(boot.c)
 AC_CONFIG_HEADER(config.h)
 
@@ -117,7 +117,7 @@ AC_CHECK_HEADERS(sys/file.h sys/ioctl.h sys/mount.h sys/param.h sys/poll.h)
 AC_CHECK_HEADERS(sys/ptyio.h sys/socket.h sys/time.h sys/un.h sys/vfs.h)
 AC_CHECK_HEADERS(stdbool.h termio.h termios.h unistd.h utime.h)
 AC_CHECK_HEADERS(openssl/blowfish.h openssl/md5.h blowfish.h md5.h)
-AC_CHECK_HEADERS(mhash.h mcrypt.h gdbm.h curses.h term.h dlfcn.h)
+AC_CHECK_HEADERS(mhash.h mcrypt.h gdbm.h curses.h term.h dlfcn.h sys/mman.h)
 
 dnl Checks for typedefs
 AC_TYPE_MODE_T
@@ -380,7 +380,7 @@ AC_FUNC_WAIT3
 AC_CHECK_FUNCS(ctermid)
 AC_CHECK_FUNCS(dup2)
 AC_CHECK_FUNCS(fcntl floor fpathconf frexp ftruncate)
-AC_CHECK_FUNCS(getcwd gethostbyname gethostname getlogin getpgrp)
+AC_CHECK_FUNCS(getcwd gethostbyname gethostname getlogin getpagesize getpgrp)
 AC_CHECK_FUNCS(gettimeofday getwd grantpt)
 AC_CHECK_FUNCS(kill)
 AC_CHECK_FUNCS(lockf)

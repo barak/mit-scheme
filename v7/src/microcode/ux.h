@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.76 2003/02/14 18:28:24 cph Exp $
+$Id: ux.h,v 1.77 2003/05/17 02:21:22 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
+Copyright 1996,1997,1998,1999,2000,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -100,6 +101,10 @@ USA.
 
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
+#endif
+
+#ifdef HAVE_SYS_MMAN_H
+#  include <sys/mman.h>
 #endif
 
 /* GNU C library defines environ if __USE_GNU is defined.  */
@@ -561,6 +566,13 @@ typedef RETSIGTYPE (*Tsignal_handler) ();
 #else
    extern int EXFUN (UX_kill, (pid_t pid, int sig));
 #  define EMULATE_KILL
+#endif
+
+#ifdef HAVE_GETPAGESIZE
+#  define UX_getpagesize getpagesize
+#else
+   extern unsigned long EXFUN (UX_getpagesize, (void));
+#  define EMULATE_GETPAGESIZE
 #endif
 
 #ifdef HAVE_POLL
