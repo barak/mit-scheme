@@ -115,6 +115,13 @@ what you give them.   Help stamp out software-hoarding!  */
 #include "config.h"
 #endif
 
+#ifdef MIT_SCHEME
+# include "oscond.h"
+# ifdef _UNIX
+#  include "ux.h"
+# endif
+#endif
+
 #ifndef BUFSIZE
 #ifdef DEBUG
 #define BUFSIZE bufsize
@@ -154,13 +161,6 @@ xrealloc (ptr, size)
   return tem;
 }
 #endif /* not emacs */
-
-#ifdef MIT_SCHEME
-# include "oscond.h"
-# ifdef _UNIX
-#  include "ux.h"
-# endif
-#endif
 
 short ospeed;
 
