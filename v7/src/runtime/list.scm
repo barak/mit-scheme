@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 13.42 1987/02/11 02:22:09 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 13.43 1988/05/03 18:55:13 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -58,8 +58,8 @@
   elements)
 
 (define (list? frob)
-  (cond ((null? frob) true)
-	((pair? frob) (list? (cdr frob)))
+  (cond ((pair? frob) (list? (cdr frob)))
+	((null? frob) true)
 	(else false)))
 
 (define (cons* first-element . rest-elements)
@@ -156,10 +156,10 @@
 (define (append! . lists)
   (define (loop head tail)
     (cond ((null? tail) head)
-	  ((null? head) (loop (car tail) (cdr tail)))
 	  ((pair? head)
 	   (set-cdr! (last-pair head) (loop (car tail) (cdr tail)))
 	   head)
+	  ((null? head) (loop (car tail) (cdr tail)))
 	  (else (error "APPEND!: Argument not a list" head))))
   (if (null? lists)
       '()
@@ -186,10 +186,13 @@
 	 (error "MAP: Too few arguments" f))
 	((null? (cdr lists))
 	 (let 1-loop ((list (car lists)))
-	   (if (null? list)
-	       '()
-	       (cons (f (car list))
-		     (1-loop (cdr list))))))
+	   (cond ((pair? list)
+		  (cons (f (car list))
+			(1-loop (cdr list))))
+		 ((null? list)
+		  '())
+		 (else
+		  (error "MAP: Argument not a list" (car lists))))))
 	(else
 	 (let n-loop ((lists lists))
 	   (let parse-cars
@@ -215,10 +218,13 @@
 	 (error "MAP*: Too few arguments" f))
 	((null? (cdr lists))
 	 (let 1-loop ((list (car lists)))
-	   (if (null? list)
-	       initial-value
-	       (cons (f (car list))
-		     (1-loop (cdr list))))))
+	   (cond ((pair? list)
+		  (cons (f (car list))		  
+			(1-loop (cdr list))))
+		 ((null? list)
+		  initial-value)
+		 (else
+		  (error "MAP*: Argument not a list" (car lists))))))
 	(else
 	 (let n-loop ((lists lists))
 	   (let parse-cars
@@ -244,10 +250,13 @@
 	 (error "FOR-EACH: Too few arguments" f))
 	((null? (cdr lists))
 	 (let 1-loop ((list (car lists)))
-	   (if (null? list)
-	       *the-non-printing-object*
-	       (begin (f (car list))
-		      (1-loop (cdr list))))))
+	   (cond ((pair? list)
+		  (f (car list))
+		  (1-loop (cdr list)))
+		 ((null? list)
+		  *the-non-printing-object*)
+		 (else
+		  (error "FOR-EACH: Argument not a list" (car lists))))))
 	(else
 	 (let n-loop ((lists lists))
 	   (let parse-cars
@@ -271,7 +280,18 @@
 (define mapcar map)
 (define mapcar* map*)
 (define mapc for-each)
-
+
+(define (reduce f initial list)
+  (define (loop value l)
+    (cond ((pair? l)
+	   (loop (f value (car l))
+		 (cdr l)))
+	  ((null? l)
+	   value)
+	  (else
+	   (error "REDUCE: Argument not a list" list))))
+  (loop initial list))  
+  
 (define (there-exists? predicate)
   (define (loop objects)
     (and (pair? objects)
