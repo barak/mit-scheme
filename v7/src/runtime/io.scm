@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.63 2001/03/21 05:40:33 cph Exp $
+$Id: io.scm,v 14.64 2001/06/09 00:30:38 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -1066,8 +1066,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (cond ((fix:< bstart bend)
 	     (let ((bstring (input-buffer/string buffer))
 		   (available (fix:- bend bstart))
-		   (needed (fix:- end index)))
-	       (if (fix:>= available needed)
+		   (needed (- end index)))
+	       (if (>= available needed)
 		   (begin
 		     (let ((bend (fix:+ bstart needed)))
 		       (substring-move! bstring bstart bend string index)
@@ -1077,8 +1077,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		     (substring-move! bstring bstart bend string index)
 		     (set-input-buffer/start-index! buffer bend)
 		     (if (input-buffer/char-ready? buffer 0)
-			 (transfer-input-buffer (fix:+ index available))
-			 (fix:+ index available))))))
+			 (transfer-input-buffer (+ index available))
+			 (+ index available))))))
 	    ((input-buffer/closed? buffer)
 	     index)
 	    (else
@@ -1086,21 +1086,21 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
   (define (read-directly index)
     (if (and (not (input-buffer/line-translation buffer))
-	     (fix:>= (fix:- end index) (input-buffer/size buffer)))
+	     (>= (- end index) (input-buffer/size buffer)))
 	(let ((n
 	       (channel-read (input-buffer/channel buffer) string index end)))
 	  (if n
-	      (fix:+ index n)
-	      (and (not (fix:= index start)) index)))
+	      (+ index n)
+	      (and (not (= index start)) index)))
 	(if (input-buffer/fill buffer)
 	    (transfer-input-buffer index)
-	    (and (not (fix:= index start)) index))))
+	    (and (not (= index start)) index))))
 
   (without-interrupts
    (lambda ()
      (let ((index (transfer-input-buffer start)))
        (and index
-	    (fix:- index start))))))
+	    (- index start))))))
 
 (define (input-buffer/read-until-delimiter buffer delimiters)
   (without-interrupts
