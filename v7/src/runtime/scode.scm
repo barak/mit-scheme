@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.4 1989/04/15 01:22:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.5 1989/04/18 16:30:05 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -106,28 +106,19 @@ MIT in each case. |#
 (define-integrable string->symbol
   (ucode-primitive string->symbol))
 
-(define symbol->string/downcase?
-  true)
-
-(define (symbol->string symbol)
-  (let ((string (system-pair-car symbol)))
-    (if (and symbol->string/downcase?
-	     (object-type? (ucode-type interned-symbol) symbol)
-	     (not (string-find-next-char-in-set string char-set:lower-case)))
-	(string-downcase string)
-	(string-copy string))))
-
-(define (make-named-tag name)
-  (string->symbol (string-append "#[" name "]")))
+(define-integrable (symbol->string symbol)
+  (string-copy (system-pair-car symbol)))
 
 (define-integrable (intern string)
-  (string->symbol (string-upcase string)))
+  (string->symbol (string-downcase string)))
 
 (define-integrable (symbol-hash symbol)
   (string-hash (system-pair-car symbol)))
 
 (define (symbol-append . symbols)
-  (string->symbol (apply string-append (map system-pair-car symbols))))
+  (let ((string (apply string-append (map system-pair-car symbols))))
+    (string-downcase! string)
+    (string->symbol string)))
 
 ;;;; Variable
 
@@ -234,7 +225,7 @@ MIT in each case. |#
 	      (eq? (car text) declaration-tag)))))
 
 (define-integrable declaration-tag
-  (string->symbol "#[DECLARATION]"))
+  (string->symbol "#[declaration]"))
 
 (define-integrable (declaration-text declaration)
   (cdr (comment-text declaration)))

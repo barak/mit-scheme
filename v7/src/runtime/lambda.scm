@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambda.scm,v 14.4 1988/12/30 06:42:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambda.scm,v 14.5 1989/04/18 16:29:32 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -470,10 +470,10 @@ MIT in each case. |#
 ;;;; Internal Lambda
 
 (define-integrable lambda-tag:internal-lambda
-  (string->symbol "#[INTERNAL-LAMBDA]"))
+  (string->symbol "#[internal-lambda]"))
 
 (define-integrable lambda-tag:internal-lexpr
-  (string->symbol "#[INTERNAL-LEXPR]"))
+  (string->symbol "#[internal-lexpr]"))
 
 (define-integrable (make-internal-lambda names body)
   (make-slambda lambda-tag:internal-lambda names body))

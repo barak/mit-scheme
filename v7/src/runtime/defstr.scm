@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.6 1989/02/28 18:23:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.7 1989/04/18 16:29:25 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -345,7 +345,7 @@ must be defined when the defstruct is evaluated.
     read-only?))
 
 (define-integrable structure
-  (string->symbol "#[DEFSTRUCT-DESCRIPTION]"))
+  (string->symbol "#[defstruct-description]"))
 
 (define slot-assoc)
 

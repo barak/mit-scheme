@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.9 1988/12/31 06:39:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.10 1989/04/18 16:29:39 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,7 +62,7 @@ MIT in each case. |#
   string-length
   substring=?
   substring-move-right!
-  substring-upcase!
+  substring-downcase!
   tty-beep
   tty-flush-output
   tty-read-char-immediate
@@ -170,7 +170,8 @@ MIT in each case. |#
   object)
 
 (define (implemented-primitive-procedure? primitive)
-  (get-primitive-address (get-primitive-name (object-datum primitive)) false))
+  (get-primitive-address (intern (get-primitive-name (object-datum primitive)))
+			 false))
 
 (define map-filename
   (if (and (implemented-primitive-procedure? file-exists?)
@@ -191,16 +192,19 @@ MIT in each case. |#
       (substring-move-right! y 0 y-length result x-length)
       result)))
 
-(define (string-upcase string)
+(define (string-downcase string)
   (let ((size (string-length string)))
     (let ((result (string-allocate size)))
       (substring-move-right! string 0 size result 0)
-      (substring-upcase! result 0 size)
+      (substring-downcase! result 0 size)
       result)))
 
 (define (string=? string1 string2)
   (substring=? string1 0 (string-length string1)
 	       string2 0 (string-length string2)))
+
+(define (intern string)
+  (string->symbol (string-downcase string)))
 
 (define (package-initialize package-name procedure-name)
   (tty-write-char newline-char)
@@ -300,7 +304,7 @@ MIT in each case. |#
 		(string=? filename "gc")))
        (eval (purify (fasload (map-filename filename) true)) environment)))
  `((SORT-TYPE . MERGE-SORT)
-   (OS-TYPE . ,(string->symbol (string-upcase os-name-string)))
+   (OS-TYPE . ,(intern os-name-string))
    (OPTIONS . NO-LOAD)))
 
 ;; Funny stuff is done.  Rest of sequence is standardized.

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.34 1989/04/15 01:24:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.35 1989/04/18 16:29:51 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -1341,7 +1341,6 @@ MIT in each case. |#
 	  make-definition
 	  make-delay
 	  make-in-package
-	  make-named-tag
 	  make-quotation
 	  make-the-environment
 	  make-variable
@@ -1355,7 +1354,6 @@ MIT in each case. |#
 	  string->symbol
 	  string->uninterned-symbol
 	  symbol->string
-	  symbol->string/downcase?
 	  symbol-append
 	  symbol-hash
 	  symbol?

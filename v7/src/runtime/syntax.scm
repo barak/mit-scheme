@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.7 1988/12/05 23:32:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.8 1989/04/18 16:30:11 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -603,16 +603,16 @@ MIT in each case. |#
 			       (list body)))))
 
 (define-integrable lambda-tag:unnamed
-  (string->symbol "#[UNNAMED-PROCEDURE]"))
+  (string->symbol "#[unnamed-procedure]"))
 
 (define-integrable lambda-tag:let
-  (string->symbol "#[LET-PROCEDURE]"))
+  (string->symbol "#[let-procedure]"))
 
 (define-integrable lambda-tag:fluid-let
-  (string->symbol "#[FLUID-LET-PROCEDURE]"))
+  (string->symbol "#[fluid-let-procedure]"))
 
 (define-integrable lambda-tag:make-environment
-  (string->symbol "#[MAKE-ENVIRONMENT]"))
+  (string->symbol "#[make-environment]"))
 
 ;;;; Lambda List Parser
 

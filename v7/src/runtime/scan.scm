@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scan.scm,v 14.2 1988/06/16 06:28:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scan.scm,v 14.3 1989/04/18 16:29:59 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -54,7 +54,7 @@ MIT in each case. |#
 ;;; UNSCAN-DEFINES, respectively.
 
 (define-integrable open-block-tag
-  (string->symbol "#[OPEN-BLOCK]"))
+  (string->symbol "#[open-block]"))
 
 (define-integrable sequence-2-type
   (ucode-type sequence-2))

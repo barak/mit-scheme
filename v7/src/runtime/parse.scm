@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.6 1989/02/10 22:13:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.7 1989/04/18 16:29:45 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -269,7 +269,7 @@ MIT in each case. |#
 
 (define (intern-string! string)
   ;; Special version of `intern' to reduce consing and increase speed.
-  (substring-upcase! string 0 (string-length string))
+  (substring-downcase! string 0 (string-length string))
   (string->symbol string))
 
 (define (parse-object/symbol)
