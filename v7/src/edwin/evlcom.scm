@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: evlcom.scm,v 1.57 1998/05/01 04:32:56 cph Exp $
+;;;	$Id: evlcom.scm,v 1.58 1998/06/01 05:40:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -209,7 +209,7 @@ With an argument, prompts for the evaluation environment."
 	    ((ref-variable evaluate-in-inferior-repl buffer)
 	     (inferior-repl-eval-region (current-repl-buffer buffer) region))
 	    (else
-	     (evaluate-region region (evaluation-environment buffer)))))))
+	     (evaluate-region region (evaluation-environment buffer #f)))))))
 
 (define-command eval-current-buffer
   "Evaluate the current buffer.
@@ -238,7 +238,7 @@ The values are printed in the typein window."
 		     (buffer-end buffer)))))
 	     (editor-eval buffer
 			  expression
-			  (evaluation-environment buffer)))))))
+			  (evaluation-environment buffer #f)))))))
 
 (define-command eval-abort-top-level
   "Force the evaluation REPL up to top level.
@@ -392,16 +392,19 @@ may be available.  The following commands are special to this mode:
 	      '()
 	      (cons expression (loop))))))))
 
-(define (evaluation-environment buffer)
+(define (evaluation-environment buffer #!optional global-ok?)
   (let ((buffer (or buffer (current-buffer)))
 	(non-default
 	 (lambda (object)
 	   (if (environment? object)
 	       object
 	       (let ((package (name->package object)))
-		 (if (not package)
-		     (editor-error "Package not loaded: " object))
-		 (package/environment package))))))
+		 (cond (package
+			(package/environment package))
+		       ((if (default-object? global-ok?) #t global-ok?)
+			system-global-environment)
+		       (else
+			(editor-error "Package not loaded: " object))))))))
     (let ((environment (ref-variable scheme-environment buffer)))
       (if (eq? 'DEFAULT environment)
 	  (if (ref-variable evaluate-in-inferior-repl buffer)
