@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.26 1988/04/27 04:12:44 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.27 1988/05/10 15:15:43 cph Exp $
  *
  * This file contains hooks and handles for the new fluid bindings
  * scheme for multiprocessors.
@@ -42,34 +42,6 @@ MIT in each case. */
 #include "lookup.h"
 #include "locks.h"
 
-/* (SET-FLUID-BINDINGS! NEW-BINDINGS)
-   Sets the microcode fluid-bindings variable.  Returns the previous value.
-*/
-
-Define_Primitive(Prim_Set_Fluid_Bindings, 1, "SET-FLUID-BINDINGS!")
-{ 
-  Pointer Result;
-  Primitive_1_Arg();
-
-  if (Arg1 != NIL)
-    Arg_1_Type(TC_LIST);
-
-  Result = Fluid_Bindings;
-  Fluid_Bindings = Arg1;
-  PRIMITIVE_RETURN(Result);
-}
-
-/* (GET-FLUID-BINDINGS NEW-BINDINGS)
-   Gets the microcode fluid-bindings variable.
-*/
-
-Define_Primitive(Prim_Get_Fluid_Bindings, 0, "GET-FLUID-BINDINGS")
-{
-  Primitive_0_Args();
-
-  PRIMITIVE_RETURN(Fluid_Bindings);
-}
-
 /* (WITH-SAVED-FLUID-BINDINGS THUNK)
    Executes THUNK, then restores the previous fluid bindings.
 */

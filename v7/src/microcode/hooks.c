@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.30 1988/03/24 07:12:24 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.31 1988/05/10 15:15:10 cph Exp $
  *
  * This file contains various hooks and handles which connect the
  * primitives with the main interpreter.
@@ -560,6 +560,34 @@ DEFINE_PRIMITIVE ("SET-INTERRUPT-ENABLES!", Prim_set_interrupt_enables, 1)
   PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (previous));
 }
 
+/* (GET-FLUID-BINDINGS)
+   Gets the microcode fluid-bindings variable.  */
+
+DEFINE_PRIMITIVE ("GET-FLUID-BINDINGS", Prim_get_fluid_bindings, 0)
+{
+  PRIMITIVE_HEADER (0);
+
+  PRIMITIVE_RETURN (Fluid_Bindings);
+}
+
+/* (SET-FLUID-BINDINGS! NEW-BINDINGS)
+   Sets the microcode fluid-bindings variable.
+   Returns the previous value.  */
+
+DEFINE_PRIMITIVE ("SET-FLUID-BINDINGS!", Prim_set_fluid_bindings, 1)
+{
+  Pointer new_bindings;
+  Pointer old_bindings;
+  PRIMITIVE_HEADER (1);
+
+  new_bindings = (ARG_REF (1));
+  if (! ((new_bindings == NIL) || (PAIR_P (new_bindings))))
+    error_wrong_type_arg (1);
+  old_bindings = Fluid_Bindings;
+  Fluid_Bindings = new_bindings;
+  PRIMITIVE_RETURN (old_bindings);
+}
+
 /* (SET-CURRENT-HISTORY! TRIPLE)
    Begins recording history into TRIPLE.  The history structure is
    somewhat complex and should be understood before trying to use
@@ -570,8 +598,8 @@ DEFINE_PRIMITIVE ("SET-INTERRUPT-ENABLES!", Prim_set_interrupt_enables, 1)
    because it modifies one of the registers that the interpreter caches
    (History).
 
-   The longjmp forces the interpreter to recache.
-*/
+   The longjmp forces the interpreter to recache.  */
+
 DEFINE_PRIMITIVE ("SET-CURRENT-HISTORY!", Prim_Set_Current_History, 1)
 {
   Primitive_1_Arg();
