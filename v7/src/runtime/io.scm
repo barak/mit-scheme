@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.54 1999/01/02 06:11:34 cph Exp $
+$Id: io.scm,v 14.55 1999/02/16 05:13:55 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -42,7 +42,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ;; object in order to determine when all references to it have been
   ;; dropped.  Second, the structure provides a type predicate.
   descriptor
-  (type false read-only true)
+  (type #f read-only #t)
   port)
 
 (define (open-channel procedure)
@@ -108,7 +108,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (if (channel-descriptor channel)
 	 (begin
 	   ((ucode-primitive channel-close 1) (channel-descriptor channel))
-	   (set-channel-descriptor! channel false)
+	   (set-channel-descriptor! channel #f)
 	   (let loop
 	       ((l1 open-channels-list)
 		(l2 (cdr open-channels-list)))
@@ -164,7 +164,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (begin
 	     (let ((channel (system-pair-car (car l))))
 	       (if channel
-		   (set-channel-descriptor! channel false)))
+		   (set-channel-descriptor! channel #f)))
 	     (action (system-pair-cdr (car l)))
 	     (let ((l (cdr l)))
 	       (set-cdr! open-channels-list l)
@@ -485,7 +485,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (if descriptor
 	   (begin
 	     ((ucode-primitive new-directory-close 1) descriptor)
-	     (set-directory-channel/descriptor! channel false)
+	     (set-directory-channel/descriptor! channel #f)
 	     (remove-from-protection-list! open-directories-list channel)))))))
 
 (define (close-lost-open-directories-daemon)
@@ -571,11 +571,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define-structure (output-buffer
 		   (conc-name output-buffer/)
 		   (constructor %make-output-buffer))
-  (channel false read-only true)
+  (channel #f read-only #t)
   string
   position
   line-translation			; string that newline maps to
-  logical-size)
+  logical-size
+  (closed? #f))
 
 (define (output-buffer-sizes translation buffer-size)
   (let ((logical-size
@@ -596,7 +597,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	     (if (eq? 'TCP-STREAM-SOCKET (channel-type channel))
 		 "\r\n"
 		 (os/default-end-of-line-translation))
-	     line-translation)))
+	     (if (and (string? line-translation)
+		      (string=? "\n" line-translation))
+		 #f
+		 line-translation))))
     (with-values (lambda () (output-buffer-sizes translation buffer-size))
       (lambda (logical-size string-size)
 	(%make-output-buffer channel
@@ -606,9 +610,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			     translation
 			     logical-size)))))
 
-(define (output-buffer/close buffer)
+(define (output-buffer/close buffer associated-buffer)
   (output-buffer/drain-block buffer)
-  (channel-close (output-buffer/channel buffer)))
+  (without-interrupts
+   (lambda ()
+     (set-output-buffer/closed? buffer #t)
+     (let ((channel (output-buffer/channel buffer)))
+       (if (not (and (input-buffer? associated-buffer)
+		     (eq? channel (input-buffer/channel associated-buffer))
+		     (input-buffer/open? associated-buffer)))
+	   (channel-close channel))))))
+
+(define-integrable (output-buffer/open? buffer)
+  (not (output-buffer/closed? buffer)))
 
 (define (output-buffer/size buffer)
   (output-buffer/logical-size buffer))
@@ -676,7 +690,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			    (output-buffer/string buffer) posn)
       (set-output-buffer/position! buffer (fix:+ posn (fix:- end start)))))
 
-  (cond ((not (output-buffer/string buffer))
+  (cond ((output-buffer/closed? buffer)
+	 (error:bad-range-argument buffer 'OUTPUT-BUFFER/WRITE-SUBSTRING))
+	((not (output-buffer/string buffer))
 	 (if (fix:= start end)
 	     0
 	     (or (channel-write (output-buffer/channel buffer)
@@ -702,7 +718,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (output-buffer/drain buffer)
   (let ((string (output-buffer/string buffer))
 	(position (output-buffer/position buffer)))
-    (if (or (not string) (zero? position))
+    (if (or (not string) (zero? position) (output-buffer/closed? buffer))
 	0
 	(let ((n (channel-write
 		  (output-buffer/channel buffer)
@@ -739,21 +755,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (output-buffer/write-char-block buffer char)
   (output-buffer/write-substring-block buffer (string char) 0 1))
-
-(define (output-buffer/write-string-block buffer string)
-  (output-buffer/write-substring-block buffer string 0 (string-length string)))
 
 ;;;; Buffered Input
 
 (define-structure (input-buffer
 		   (conc-name input-buffer/)
 		   (constructor %make-input-buffer))
-  (channel false read-only true)
+  (channel #f read-only #t)
   string
   start-index
   end-index
   line-translation			; string that maps to newline
-  ;; REAL-END is zero iff CHANNEL is closed.
+  ;; REAL-END is zero iff the buffer is closed.
   real-end)
 
 (define (input-buffer-size translation buffer-size)
@@ -774,7 +787,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (if (eq? 'TCP-STREAM-SOCKET (channel-type channel))
 		  "\r\n"
 		  (os/default-end-of-line-translation))
-	      line-translation))
+	      (if (and (string? line-translation)
+		       (string=? "\n" line-translation))
+		  #f
+		  line-translation)))
 	 (string-size (input-buffer-size translation buffer-size)))
     (%make-input-buffer channel
 			(make-string string-size)
@@ -783,12 +799,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			translation
 			string-size)))
 
-(define (input-buffer/close buffer)
+(define (input-buffer/close buffer associated-buffer)
   (without-interrupts
    (lambda ()
      (set-input-buffer/real-end! buffer 0)
-     (channel-close (input-buffer/channel buffer)))))
+     (let ((channel (input-buffer/channel buffer)))
+       (if (not (and (output-buffer? associated-buffer)
+		     (eq? channel (output-buffer/channel associated-buffer))
+		     (output-buffer/open? associated-buffer)))
+	   (channel-close channel))))))
 
+(define-integrable (input-buffer/closed? buffer)
+  (fix:= 0 (input-buffer/real-end buffer)))
+
+(define-integrable (input-buffer/open? buffer)
+  (not (input-buffer/closed? buffer)))
+
 (define (input-buffer/size buffer)
   (string-length (input-buffer/string buffer)))
 
@@ -797,7 +823,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ;; Discards any buffered characters.
   (without-interrupts
    (lambda ()
-     (if (fix:= (input-buffer/real-end buffer) 0)
+     (if (input-buffer/closed? buffer)
 	 0
 	 (let ((string-size
 		(input-buffer-size (input-buffer/line-translation buffer)
@@ -820,7 +846,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       (set-input-buffer/end-index! buffer logical-end)
 	       (set-input-buffer/real-end! buffer string-size)
 	       string-size)))))))
-
+
 (define (input-buffer/flush buffer)
   (without-interrupts
    (lambda ()
@@ -834,11 +860,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (input-buffer/fill buffer)
   ;; Assumption:
-  ;; (and (fix:= (input-buffer/start-index buffer)
-  ;;		 (input-buffer/end-index buffer))
-  ;;	  (not (fix:= 0 (input-buffer/real-end buffer))))
-  (let ((channel (input-buffer/channel buffer))
-	(delta
+  ;; (and (input-buffer/open? buffer)
+  ;;      (fix:= (input-buffer/start-index buffer)
+  ;;             (input-buffer/end-index buffer)))
+  (let ((delta
 	 (fix:- (input-buffer/real-end buffer)
 		(input-buffer/end-index buffer)))
 	(string (input-buffer/string buffer)))
@@ -848,18 +873,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			      (input-buffer/real-end buffer)
 			      string
 			      0))
-    (if (channel-closed? channel)
-	(begin
-	  (set-input-buffer/end-index! buffer delta)
-	  (set-input-buffer/real-end! buffer delta)
-	  delta)
-	(let ((n-read
-	       (channel-read channel string delta (string-length string))))
-	  (and n-read
-	       (let ((end-index (fix:+ delta n-read)))
-		 (if (fix:= n-read 0)
-		     (channel-close channel))
-		 (input-buffer/after-fill! buffer end-index)))))))
+    (let ((n-read
+	   (channel-read (input-buffer/channel buffer)
+			 string delta (string-length string))))
+      (and n-read
+	   (input-buffer/after-fill! buffer (fix:+ delta n-read))))))
 
 (define (input-buffer/after-fill! buffer end-index)
   (set-input-buffer/start-index! buffer 0)
@@ -878,46 +896,44 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (input-buffer/chars-remaining buffer)
   (without-interrupts
    (lambda ()
-     (let ((channel (input-buffer/channel buffer)))
-       (and (channel-open? channel)
-	    (channel-type=file? channel)
-	    (not (input-buffer/line-translation buffer))
-	    (let ((n
-		   (fix:- (channel-file-length channel)
-			  (channel-file-position channel))))
-	      (and (fix:>= n 0)
-		   (fix:+ (input-buffer/buffered-chars buffer) n))))))))
+     (and (input-buffer/open? buffer)
+	  (not (input-buffer/line-translation buffer))
+	  (let ((channel (input-buffer/channel buffer)))
+	    (and (channel-type=file? channel)
+		 (let ((n
+			(fix:- (channel-file-length channel)
+			       (channel-file-position channel))))
+		   (and (fix:>= n 0)
+			(fix:+ (input-buffer/buffered-chars buffer) n)))))))))
 
 (define (input-buffer/char-ready? buffer interval)
   (without-interrupts
    (lambda ()
      (char-ready? buffer
        (lambda (buffer)
-	 (let ((channel (input-buffer/channel buffer)))
-	   (and (channel-open? channel)
-		(with-channel-blocking channel false
-		  (lambda ()
-		    (if (positive? interval)
-			(let ((timeout (+ (real-time-clock) interval)))
-			  (let loop ()
-			    (let ((n (input-buffer/fill buffer)))
-			      (if n
-				  (fix:> n 0)
-				  (and (< (real-time-clock) timeout)
-				       (loop))))))
-			(input-buffer/fill* buffer)))))))))))
+	 (with-channel-blocking (input-buffer/channel buffer) #f
+	   (lambda ()
+	     (if (positive? interval)
+		 (let ((timeout (+ (real-time-clock) interval)))
+		   (let loop ()
+		     (let ((n (input-buffer/fill buffer)))
+		       (if n
+			   (fix:> n 0)
+			   (and (< (real-time-clock) timeout)
+				(loop))))))
+		 (input-buffer/fill* buffer)))))))))
 
 (define (char-ready? buffer fill)
-  (and (not (fix:= (input-buffer/real-end buffer) 0))
+  (and (input-buffer/open? buffer)
        (or (fix:< (input-buffer/start-index buffer)
 		  (input-buffer/end-index buffer))
 	   (fill buffer))))
 
 (define (input-buffer/eof? buffer)
-  ;; This returns true iff it knows that it is at EOF.
-  ;; If BUFFER is non-blocking with no input available, it returns false.
+  ;; This returns #t iff it knows that it is at EOF.
+  ;; If BUFFER is non-blocking with no input available, it returns #f.
   (and (not (input-buffer/char-ready? buffer 0))
-       (fix:= (input-buffer/real-end buffer) 0)))
+       (input-buffer/closed? buffer)))
 
 (define (input-buffer/translate! buffer)
   (with-values
@@ -1003,11 +1019,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (cond ((fix:< start-index (input-buffer/end-index buffer))
 	      (set-input-buffer/start-index! buffer (fix:+ start-index 1))
 	      (string-ref (input-buffer/string buffer) start-index))
-	     ((fix:= (input-buffer/real-end buffer) 0)
+	     ((input-buffer/closed? buffer)
 	      eof-object)
 	     (else
 	      (let ((n (input-buffer/fill buffer)))
-		(cond ((not n) false)
+		(cond ((not n) #f)
 		      ((fix:= n 0) eof-object)
 		      (else
 		       (set-input-buffer/start-index! buffer 1)
@@ -1019,11 +1035,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (let ((start-index (input-buffer/start-index buffer)))
        (cond ((fix:< start-index (input-buffer/end-index buffer))
 	      (string-ref (input-buffer/string buffer) start-index))
-	     ((fix:= (input-buffer/real-end buffer) 0)
+	     ((input-buffer/closed? buffer)
 	      eof-object)
 	     (else
 	      (let ((n (input-buffer/fill buffer)))
-		(cond ((not n) false)
+		(cond ((not n) #f)
 		      ((fix:= n 0) eof-object)
 		      (else
 		       (string-ref (input-buffer/string buffer) 0))))))))))
@@ -1034,7 +1050,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (let ((start-index (input-buffer/start-index buffer)))
        (cond ((fix:< start-index (input-buffer/end-index buffer))
 	      (set-input-buffer/start-index! buffer (fix:+ start-index 1)))
-	     ((not (fix:= (input-buffer/real-end buffer) 0))
+	     ((input-buffer/open? buffer)
 	      (if (let ((n (input-buffer/fill buffer)))
 		    (and n
 			 (not (fix:= n 0))))
@@ -1060,8 +1076,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		     (if (input-buffer/char-ready? buffer 0)
 			 (transfer-input-buffer (fix:+ index available))
 			 (fix:+ index available))))))
-	    ((or (fix:= (input-buffer/real-end buffer) 0)
-		 (channel-closed? (input-buffer/channel buffer)))
+	    ((input-buffer/closed? buffer)
 	     index)
 	    (else
 	     (read-directly index)))))
@@ -1087,51 +1102,49 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (input-buffer/read-until-delimiter buffer delimiters)
   (without-interrupts
    (lambda ()
-     (let ((channel (input-buffer/channel buffer)))
-       (if (and (channel-open? channel)
-		(char-ready? buffer input-buffer/fill-block))
-	   (apply string-append
-		  (let ((string (input-buffer/string buffer)))
-		    (let loop ()
-		      (let ((start (input-buffer/start-index buffer))
-			    (end (input-buffer/end-index buffer)))
-			(let ((delimiter
-			       (substring-find-next-char-in-set
-				string start end delimiters)))
-			  (if delimiter
-			      (let ((head (substring string start delimiter)))
-				(set-input-buffer/start-index! buffer
-							       delimiter)
-				(list head))
-			      (let ((head (substring string start end)))
-				(set-input-buffer/start-index! buffer end)
-				(cons head
-				      (if (input-buffer/fill-block buffer)
-					  (loop)
-					  '())))))))))
-	   eof-object)))))
+     (if (and (input-buffer/open? buffer)
+	      (char-ready? buffer input-buffer/fill-block))
+	 (apply string-append
+		(let ((string (input-buffer/string buffer)))
+		  (let loop ()
+		    (let ((start (input-buffer/start-index buffer))
+			  (end (input-buffer/end-index buffer)))
+		      (let ((delimiter
+			     (substring-find-next-char-in-set
+			      string start end delimiters)))
+			(if delimiter
+			    (let ((head (substring string start delimiter)))
+			      (set-input-buffer/start-index! buffer
+							     delimiter)
+			      (list head))
+			    (let ((head (substring string start end)))
+			      (set-input-buffer/start-index! buffer end)
+			      (cons head
+				    (if (input-buffer/fill-block buffer)
+					(loop)
+					'())))))))))
+	 eof-object))))
 
 (define (input-buffer/discard-until-delimiter buffer delimiters)
   (without-interrupts
    (lambda ()
-     (let ((channel (input-buffer/channel buffer)))
-       (if (and (channel-open? channel)
-		(char-ready? buffer input-buffer/fill-block))
-	   (let ((string (input-buffer/string buffer)))
-	     (let loop ()
-	       (let ((end-index (input-buffer/end-index buffer)))
-		 (let ((index
-			(substring-find-next-char-in-set
-			 string
-			 (input-buffer/start-index buffer)
-			 end-index
-			 delimiters)))
-		   (if index
-		       (set-input-buffer/start-index! buffer index)
-		       (begin
-			 (set-input-buffer/start-index! buffer end-index)
-			 (if (input-buffer/fill-block buffer)
-			     (loop)))))))))))))
+     (if (and (input-buffer/open? buffer)
+	      (char-ready? buffer input-buffer/fill-block))
+	 (let ((string (input-buffer/string buffer)))
+	   (let loop ()
+	     (let ((end-index (input-buffer/end-index buffer)))
+	       (let ((index
+		      (substring-find-next-char-in-set
+		       string
+		       (input-buffer/start-index buffer)
+		       end-index
+		       delimiters)))
+		 (if index
+		     (set-input-buffer/start-index! buffer index)
+		     (begin
+		       (set-input-buffer/start-index! buffer end-index)
+		       (if (input-buffer/fill-block buffer)
+			   (loop))))))))))))
 
 (define (input-buffer/fill-block buffer)
   (fix:> (let loop () (or (input-buffer/fill buffer) (loop))) 0))

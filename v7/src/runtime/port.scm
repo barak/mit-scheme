@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.12 1999/02/16 00:49:21 cph Exp $
+$Id: port.scm,v 1.13 1999/02/16 05:17:42 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -131,10 +131,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (output-port/operation/discretionary-flush port))
 	  (else false)))))
 
-(define (close-port port)
-  (let ((operation (port/operation port 'CLOSE)))
+(define ((closer name) port)
+  (let ((operation (port/operation port name)))
     (if operation
 	(operation port))))
+
+(define close-port (closer 'CLOSE))
+(define close-input-port (closer 'CLOSE-INPUT))
+(define close-output-port (closer 'CLOSE-OUTPUT))
 
 (define (port/input-channel port)
   (let ((operation (port/operation port 'INPUT-CHANNEL)))
@@ -145,10 +149,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((operation (port/operation port 'OUTPUT-CHANNEL)))
     (and operation
 	 (operation port))))
-
-;; These names required by Scheme standard:
-(define close-input-port close-port)
-(define close-output-port close-port)
 
 ;; These names for upwards compatibility:
 (define input-port/channel port/input-channel)

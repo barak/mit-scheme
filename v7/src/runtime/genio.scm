@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.11 1999/02/16 00:50:04 cph Exp $
+$Id: genio.scm,v 1.12 1999/02/16 05:14:46 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -65,16 +65,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (set! generic-input-template
 	  (make-input-port (append input-operations
 				   other-operations)
-			   false))
+			   #f))
     (set! generic-output-template
 	  (make-output-port (append output-operations
 				    other-operations)
-			    false))
+			    #f))
     (set! generic-i/o-template
 	  (make-i/o-port (append input-operations
 				 output-operations
 				 other-operations)
-			 false)))
+			 #f)))
   unspecific)
 
 (define generic-input-template)
@@ -206,7 +206,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (operation/input-terminal-mode port)
   (let ((channel (operation/input-channel port)))
-    (cond ((not (channel-type=terminal? channel)) false)
+    (cond ((not (channel-type=terminal? channel)) #f)
 	  ((terminal-cooked-input? channel) 'COOKED)
 	  (else 'RAW))))
 
@@ -252,7 +252,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (operation/output-terminal-mode port)
   (let ((channel (operation/output-channel port)))
-    (cond ((not (channel-type=terminal? channel)) false)
+    (cond ((not (channel-type=terminal? channel)) #f)
 	  ((terminal-cooked-output? channel) 'COOKED)
 	  (else 'RAW))))
 
@@ -264,28 +264,25 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (else (error:wrong-type-datum mode "terminal mode"))))
 
 (define (operation/close port)
-  ;; Must close output-buffer first, because it may need to flush
-  ;; buffered data, and there might only be one channel for both the
-  ;; input and output buffers.
-  (operation/close-output port)
-  (operation/close-input port))
+  (operation/close-input port)
+  (operation/close-output port))
 
 (define (operation/close-output port)
   (let ((output-buffer (port/output-buffer port)))
     (if output-buffer
-	(output-buffer/close output-buffer))))
+	(output-buffer/close output-buffer (port/input-buffer port)))))
 
 (define (operation/close-input port)
   (let ((input-buffer (port/input-buffer port)))
     (if input-buffer
-	(input-buffer/close input-buffer))))
+	(input-buffer/close input-buffer (port/output-buffer port)))))
 
 (define (operation/output-open? port)
   (let ((output-buffer (port/output-buffer port)))
     (and output-buffer
-	 (channel-open? (output-buffer/channel output-buffer)))))
+	 (output-buffer/open? output-buffer))))
 
 (define (operation/input-open? port)
   (let ((input-buffer (port/input-buffer port)))
     (and input-buffer
-	 (channel-open? (input-buffer/channel input-buffer)))))
+	 (input-buffer/open? input-buffer))))
