@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insmac.scm,v 1.119 1987/07/08 22:05:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insmac.scm,v 1.120 1987/07/17 15:48:27 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -195,7 +195,7 @@ MIT in each case. |#
 	(coercion-type
 	 (if (null? (cddr descriptor)) 'UNSIGNED (caddr descriptor))))
     (case coercion-type
-      ((UNSIGNED SIGNED SHIFT-NUMBER QUICK)
+      ((UNSIGNED SIGNED SHIFT-NUMBER QUICK BFWIDTH)
        (receiver `(,(integer-syntaxer expression coercion-type size))
 		 size false false))
       ((SHORT-LABEL)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.18 1987/07/15 02:59:48 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.19 1987/07/17 15:46:27 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -109,7 +109,7 @@ MIT in each case. |#
 ;;;; Lap level integration and expansion dependencies
 
 (define filenames/dependency-group/lap
-  (filename/append "machines/bobcat" "instr1" "instr2" "instr3"))
+  (filename/append "machines/bobcat" "instr1" "instr2" "instr3" "instr4"))
 
 (define filenames/dependency-group/lap-syn1
   (append (filename/append "back-end" "lapgn1" "lapgn2" "lapgn3" "regmap")
@@ -194,6 +194,6 @@ MIT in each case. |#
 
 (file-dependency/syntax/join
  (append (filename/append "machines/bobcat" "insutl" "instr1" "instr2"
-			  "instr3")
+			  "instr3" "instr4")
 	 (filename/append "machines/spectrum" "instrs"))
  assembler-syntax-table)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr1.scm,v 1.62 1987/07/08 22:06:08 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr1.scm,v 1.63 1987/07/17 15:48:41 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -114,6 +114,9 @@ MIT in each case. |#
 
 (define-ea-transformer ea-d&-& (DATA) (&))
 (define-ea-transformer ea-all-A () (A))
+
+(define-ea-transformer ea-d/c () (A @A+ @-A &))
+(define-ea-transformer ea-d/c&a (ALTERABLE) (A @A+ @-A &))
 
 ;;;; Special purpose transformers
 
@@ -127,6 +130,10 @@ MIT in each case. |#
 (define-symbol-transformer lw    (W . 1) (L . 0))
 (define-symbol-transformer rl    (R . 0) (L . 1))
 (define-symbol-transformer us    (U . 0) (S . 1))
+(define-symbol-transformer chkwl (W . 6) (L . 4))
+(define-symbol-transformer bwl+1 (B . 1) (W . 2) (L . 3))
+(define-symbol-transformer nwl-n (W . 2) (L . 3))
+
 (define-symbol-transformer cc
   (T . 0) (F . 1) (HI . 2) (LS . 3) (HS . 4) (LO . 5)
   (CC . 4) (CS . 5) (NE . 6) (EQ . 7) (VC . 8) (VS . 9)
@@ -141,3 +148,11 @@ MIT in each case. |#
   (D0 . 0) (D1 . 1) (D2 . 2) (D3 . 3) (D4 . 4) (D5 . 5) (D6 . 6) (D7 . 7)
   (A0 . 8) (A1 . 9) (A2 . 10) (A3 . 11) (A4 . 12) (A5 . 13)
   (A6 . 14) (A7 . 15))
+
+;; Control registers for 68010 and 68020
+
+(define-symbol-transformer cont-reg
+  (SFC . #x000) (DFC . #x001) (USP . #x800) (VBR . #x801)
+  ;; The ones below are for the 68020 only.
+  (CACR . #x002) (CAAR . #x802) (MSP . #x803) (ISP . #x804))
+

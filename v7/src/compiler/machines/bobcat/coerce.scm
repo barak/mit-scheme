@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/coerce.scm,v 1.7 1987/03/19 00:52:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/coerce.scm,v 1.8 1987/07/17 15:40:20 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -51,13 +51,21 @@ MIT in each case. |#
 	     (and (< offset 128) offset))
 	 (error "Short label out of range" offset)))))
 
+(define coerce-bit-field-width
+  (standard-coercion
+   (lambda (w)
+     (cond ((< 0 w 32) w)
+	   ((= w 32) 0)
+	   (else (error "Bad bit field width" w))))))
+
 (define make-coercion
   (coercion-maker
    `((UNSIGNED . ,coerce-unsigned-integer)
      (SIGNED . ,coerce-signed-integer)
      (QUICK . ,coerce-quick)
      (SHIFT-NUMBER . ,coerce-quick)
-     (SHORT-LABEL . ,coerce-short-label))))
+     (SHORT-LABEL . ,coerce-short-label)
+     (BFWIDTH . ,coerce-bit-field-width))))
 
 (define-coercion 'UNSIGNED 1)
 (define-coercion 'UNSIGNED 2)
@@ -65,11 +73,15 @@ MIT in each case. |#
 (define-coercion 'UNSIGNED 4)
 (define-coercion 'UNSIGNED 5)
 (define-coercion 'UNSIGNED 6)
+(define-coercion 'UNSIGNED 7)
 (define-coercion 'UNSIGNED 8)
 (define-coercion 'UNSIGNED 9)
 (define-coercion 'UNSIGNED 10)
+(define-coercion 'UNSIGNED 11)
 (define-coercion 'UNSIGNED 12)
 (define-coercion 'UNSIGNED 13)
+(define-coercion 'UNSIGNED 14)
+(define-coercion 'UNSIGNED 15)
 (define-coercion 'UNSIGNED 16)
 (define-coercion 'UNSIGNED 32)
 
@@ -78,5 +90,6 @@ MIT in each case. |#
 (define-coercion 'SIGNED 32)
 
 (define-coercion 'QUICK 3)
+(define-coercion 'BFWIDTH 5)
 (define-coercion 'SHIFT-NUMBER 3)
 (define-coercion 'SHORT-LABEL 8)

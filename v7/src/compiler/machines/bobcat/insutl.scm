@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insutl.scm,v 1.2 1987/07/01 20:53:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insutl.scm,v 1.3 1987/07/17 15:49:20 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -230,12 +230,17 @@ MIT in each case. |#
 (define-integrable (relative-word address)
   (syntax-evaluation `(- ,address *PC*) coerce-16-bit-signed))
 
+(define-integrable (relative-long address)
+  (syntax-evaluation `(- ,address *PC*) coerce-32-bit-signed))
+
 (define-integrable (offset-word data)
   (syntax-evaluation data coerce-16-bit-signed))
 
 (define-integrable (output-bit-string bit-string)
   bit-string)
 
+;;;; Randoms
+
 ;; Auxiliary procedure for register list transformers
 
 (define (encode-register-list reg-list encoding)

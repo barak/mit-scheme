@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr3.scm,v 1.11 1987/07/16 10:13:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr3.scm,v 1.12 1987/07/17 15:49:06 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -65,6 +65,20 @@ MIT in each case. |#
 	 (8 #b00000000))
    (relative-word l))
 
+  ;; 68020 only
+
+  (((? c cc) L (@PCO (? o)))
+   (WORD (4 #b0110)
+	 (4 cc)
+	 (8 #b11111111))
+   (immediate-long o))
+
+  (((? c cc) L (@PCR (? l)))
+   (WORD (4 #b0110)
+	 (4 cc)
+	 (8 #b11111111))
+   (relative-long l))
+
   (((? c cc) U (@PCO (? o)))
    (WORD (4 #b0110)
 	 (4 c)
@@ -94,6 +108,16 @@ MIT in each case. |#
    (WORD (16 #b0110000000000000))
    (relative-word l))
 
+  ;; 68020 only
+
+  ((L (@PCO (? o)))
+   (WORD (16 #b0110000011111111))
+   (immediate-long o))
+
+  ((L (@PCR (? l)))
+   (WORD (16 #b0110000011111111))
+   (relative-long l))
+
   ((U (@PCO (? o)))
    (WORD (16 #b0110000000000000))
    (immediate-word o))
@@ -101,7 +125,7 @@ MIT in each case. |#
   ((U (@PCR (? l)))
    (WORD (16 #b0110000000000000))
    (relative-word l)))
-
+
 (define-instruction BSR
   ((B (@PCO (? o)))
    (WORD (8 #b01100001)
@@ -118,6 +142,16 @@ MIT in each case. |#
   ((W (@PCR (? l)))
    (WORD (16 #b0110000100000000))
    (relative-word l))
+
+  ;; 68020 onlyu
+
+  ((L (@PCO (? o)))
+   (WORD (16 #b0110000111111111))
+   (immediate-long o))
+
+  ((L (@PCR (? l)))
+   (WORD (16 #b0110000111111111))
+   (relative-long l))
 
   ((U (@PCO (? o)))
    (WORD (16 #b0110000100000000))
@@ -152,6 +186,13 @@ MIT in each case. |#
    (WORD (10 #b0100111010)
 	 (6 ea DESTINATION-EA))))
 
+;; 68010 and 68020 only
+
+(define-instruction RTD
+  (((& (? offset)))
+   (WORD (16 #b0100111001110100))
+   (EXTENSION-WORD (16 offset))))
+
 (define-instruction RTE
   (()
    (WORD (16 #b0100111001110011))))
@@ -164,16 +205,20 @@ MIT in each case. |#
   (()
    (WORD (16 #b0100111001110101))))
 
-(define-instruction TRAP
-  (((& (? v)))
-   (WORD (12 #b010011100100)
-	 (4 v))))
-
 (define-instruction TRAPV
   (()
    (WORD (16 #b0100111001110110))))
 
-;;;; Randomness
+;;;; Family member dependent miscellaneous instructions.
+
+#| 
+
+;;  These are the 68000/68010 versions
+
+(define-instruction TRAP
+  (((& (? v)))
+   (WORD (12 #b010011100100)
+	 (4 v))))
 
 (define-instruction CHK
   (((? ea ea-d) (D (? rx)))
@@ -187,6 +232,67 @@ MIT in each case. |#
    (WORD (13 #b0100111001010)
 	 (3 rx))
    (immediate-word d)))
+
+|#
+
+;;;; Family member dependent miscellaneous instructions (continued).
+
+;; These are the 68020 versions
+
+(define-instruction TRAP
+  (((& (? v)))
+   (WORD (12 #b010011100100)
+	 (4 v)))
+
+  (((? c cc))
+   (WORD (4 #b0101)
+	 (4 cc)
+	 (8 #b11111100)))
+
+  (((? c cc) W (& (? data)))
+   (WORD (4 #b0101)
+	 (4 cc)
+	 (8 #b11111010))
+   (EXTENSION-WORD (16 data)))
+
+  (((? c cc) L (& (? data)))
+   (WORD (4 #b0101)
+	 (4 cc)
+	 (8 #b11111011))
+   (EXTENSION-WORD (32 data))))
+
+(define-instruction CHK
+  ;; This is for compatibility with older (68000/68010) syntax.
+  ;; There is no size suffix to the opcode.
+
+  (((? ea ea-d) (D (? rx)))
+   (WORD (4 #b0100)
+	 (3 rx)
+	 (3 #b110)
+	 (6 ea SOURCE-EA 'W)))
+
+  (((? size chkwl) (? ea ea-d) (D (? rx)))
+   (WORD (4 #b0100)
+	 (3 rx)
+	 (3 size)
+	 (6 ea SOURCE-EA 'W))))
+
+(define-instruction LINK
+  ((W (A (? rx)) (& (? d)))
+   (WORD (13 #b0100111001010)
+	 (3 rx))
+   (immediate-word d))
+
+  ((L (A (? rx)) (& (? d)))
+   (WORD (13 #b0100100000001)
+	 (3 rx))
+   (immediate-long d)))
+
+;;;; Randomness
+
+(define-instruction ILLEGAL
+  (()
+   (WORD (16 #b0100101011111100))))
 
 (define-instruction NOP
   (()
@@ -390,3 +496,40 @@ MIT in each case. |#
 	 (3 #b001)
 	 (3 ry))
    (relative-word l)))
+
+;;;; 68010 and 68020 only privileged MOVE instructions.
+
+;;; move from/to control register.
+
+(define-instruction MOVEC
+  ((((? creg cont-reg)) ((? rtype da) (? greg)))
+   (WORD (15 #b010011100111101)
+	 (1 #b0))
+   (EXTENSION-WORD (1 rtype)
+		   (3 greg)
+		   (12 creg)))
+
+  ((((? rtype da) (? greg)) ((? creg cont-reg)))
+   (WORD (15 #b010011100111101)
+	 (1 #b1))
+   (EXTENSION-WORD (1 rtype)
+		   (3 greg)
+		   (12 creg))))
+
+(define-instruction MOVES
+  (((? size bwl) ((? rtype da) (? reg)) (? dest ea-m&a))
+   (WORD (8 #b00001110)
+	 (2 size)
+	 (6 dest DESTINATION-EA))
+   (EXTENSION-WORD (1 rtype)
+		   (3 reg)
+		   (1 #b1)
+		   (11 #b00000000000)))
+  (((? size bwl) (? dest ea-m&a) ((? rtype da) (? reg)))
+   (WORD (8 #b00001110)
+	 (2 size)
+	 (6 dest DESTINATION-EA))
+   (EXTENSION-WORD (1 rtype)
+		   (3 reg)
+		   (1 #b0)
+		   (11 #b00000000000))))

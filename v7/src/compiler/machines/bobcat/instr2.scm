@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr2.scm,v 1.10 1987/07/08 22:06:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr2.scm,v 1.11 1987/07/17 15:48:53 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -72,7 +72,7 @@ MIT in each case. |#
 (let-syntax ((define-binary-addition
 	      (macro (keyword Qkeyword Xkeyword opcode Qbit Iopcode)
 		`(BEGIN
-		  (define-instruction ,Qkeyword				;ADDQ
+		  (define-instruction ,Qkeyword			;ADDQ/SUBQ
 		    ((B (& (? data)) (? ea ea-all-A))
 		     (WORD (4 #b0101)
 			   (3 data QUICK)
@@ -88,7 +88,7 @@ MIT in each case. |#
 			   (6 ea DESTINATION-EA))))
 
 		  (define-instruction ,keyword
-		    (((? s bwl ssym) (& (? data)) (? ea ea-d&a))	;ADDI
+		    (((? s bwl ssym) (& (? data)) (? ea ea-d&a)) ;ADDI/SUBI
 		     (WORD (4 #b0000)
 			   (4 ,Iopcode)
 			   (2 s)
@@ -114,9 +114,9 @@ MIT in each case. |#
 			   (3 rx)
 			   (1 #b1)
 			   (2 s)
-			   (6 ea DESTINATION-EA)))
+			   (6 ea DESTINATION-EA)))
 
-		    (((? s wl ssym) (? ea ea-all) (A (? rx)))	;ADDA
+		    (((? s wl ssym) (? ea ea-all) (A (? rx)))   ;ADDA/SUBA
 		     (WORD (4 ,opcode)
 			   (3 rx)
 			   (1 s)
@@ -142,28 +142,12 @@ MIT in each case. |#
   (define-binary-addition ADD ADDQ ADDX #b1101 #b0 #b0110)
   (define-binary-addition SUB SUBQ SUBX #b1001 #b1 #b0100))
 
-(define-instruction DIV
-  (((? sgn us) (D (? rx)) (? ea ea-d))
-   (WORD (4 #b1000)
-	 (3 rx)
-	 (1 sgn)
-	 (2 #b11)
-	 (6 ea SOURCE-EA 'W))))
-
 (define-instruction EXT
   (((? s wl) (D (? rx)))
    (WORD (9 #b010010001)
 	 (1 s)
 	 (3 #b000)
 	 (3 rx))))
-
-(define-instruction MUL
-  (((? sgn us) (? ea ea-d) (D (? rx)))
-   (WORD (4 #b1100)
-	 (3 rx)
-	 (1 sgn)
-	 (2 #b11)
-	 (6 ea SOURCE-EA 'W))))
 
 (define-instruction NEG
   (((? s bwl) (? dea ea-d&a))
@@ -176,6 +160,77 @@ MIT in each case. |#
    (WORD (8 #b01000000)
 	 (2 s)
 	 (6 dea DESTINATION-EA))))
+
+;;; Multiplication and division
+
+#|
+
+;; These are the 68000/68010 versions
+
+(define-instruction DIV
+  (((? sgn us) (D (? rx)) (? ea ea-d))
+   (WORD (4 #b1000)
+	 (3 rx)
+	 (1 sgn)
+	 (2 #b11)
+	 (6 ea SOURCE-EA 'W))))
+
+(define-instruction MUL
+  (((? sgn us) (? ea ea-d) (D (? rx)))
+   (WORD (4 #b1100)
+	 (3 rx)
+	 (1 sgn)
+	 (2 #b11)
+	 (6 ea SOURCE-EA 'W))))
+
+|#
+
+;; These are the 68020 versions
+
+(let-syntax ((define-mul-and-div
+	       (macro (keyword word-form-bit long-form-bit)
+		 `(define-instruction ,keyword
+		    (((? sgn us) W (D (? n)) (? ea ea-d))
+		     (WORD (1 #b1)
+			   (1 ,word-form-bit)
+			   (2 #b00)
+			   (3 n)
+			   (1 sgn)
+			   (2 #b11)
+			   (6 ea SOURCE-EA 'W)))
+
+		    (((? sgn us) L (D (? q)) (? ea ea-d))
+		     (WORD (9 #b010011000)
+			   (1 ,long-form-bit)
+			   (6 ea SOURCE-EA 'L))
+		     (EXTENSION-WORD (1 #b0)
+				     (3 q)
+				     (1 sgn)
+				     (8 #b00000000)
+				     (3 q)))
+
+		    (((? sgn us) L (D (? r)) (D (? q)) (? ea ea-d))
+		     (WORD (9 #b010011000)
+			   (1 ,long-form-bit)
+			   (6 ea SOURCE-EA 'L))
+		     (EXTENSION-WORD (1 #b0)
+				     (3 q)
+				     (1 sgn)
+				     (8 #b10000000)
+				     (3 r)))))))
+  (define-mul-and-div MUL #b1 #b0)
+  (define-mul-and-div DIV #b0 #b1))
+
+(define-instruction DIVL
+  (((? sgn us) L (D (? r)) (D (? q)) (? ea ea-d))
+   (WORD (9 #b010011000)
+	 (1 #b1)			; DIV long-form-bit
+	 (6 ea SOURCE-EA 'L))
+   (EXTENSION-WORD (1 #b0)
+		   (3 q)
+		   (1 sgn)
+		   (8 #b00000000)
+		   (3 r))))
 
 ;;;; Comparisons
 
@@ -262,8 +317,8 @@ MIT in each case. |#
 			  (2 s)
 			  (6 #b111100))
 		    (immediate-words data ssym))))))
-  (define-bitwise-logical AND #b1100 #b0010)
-  (define-bitwise-logical OR  #b1000 #b0000))
+  (define-bitwise-logical AND #b1100 #b0010) 	; and ANDI
+  (define-bitwise-logical OR  #b1000 #b0000))	; and ORI
 
 (define-instruction EOR
   (((? s bwl) (D (? rx)) (? ea ea-d&a))
