@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2term.scm,v 1.16 1996/05/11 08:50:15 cph Exp $
+;;;	$Id: os2term.scm,v 1.17 1996/05/14 05:42:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -268,6 +268,7 @@
 		      (set! finished? result)
 		      result))
 		  (lambda ()
+		    (set-screen-face! screen (screen-normal-face screen))
 		    (if finished?
 			(update-os2-screen-names! screen))))))
 
