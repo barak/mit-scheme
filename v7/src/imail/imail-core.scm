@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.15 2000/01/19 20:56:50 cph Exp $
+;;; $Id: imail-core.scm,v 1.16 2000/01/20 17:16:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -736,3 +736,9 @@
 (define (header-field-continuation-line? line)
   (and (not (string-null? line))
        (char-lwsp? (string-ref line 0))))
+
+(define (string->header-fields string)
+  (lines->header-fields (string->lines string)))
+
+(define (header-fields->string headers)
+  (lines->string (header-fields->lines headers)))
