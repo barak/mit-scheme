@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: edtfrm.scm,v 1.87 1993/08/10 06:35:44 cph Exp $
+;;;	$Id: edtfrm.scm,v 1.88 1995/01/06 01:02:39 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -190,7 +190,10 @@
       (if frame
 	  ;; Make sure the event is inside the text portion of the
 	  ;; buffer, not in the modeline or other decoration.
-	  (cond ((and (< -1 relative-x (buffer-frame-x-size frame))
+	  (cond ((and (or (not (eq? frame
+				    (editor-frame-typein-window editor-frame)))
+			  (within-typein-edit?))
+		      (< -1 relative-x (buffer-frame-x-size frame))
 		      (< -1 relative-y (buffer-frame-y-size frame))
 		      (local-comtab-entry
 		       (buffer-comtabs (window-buffer frame))
