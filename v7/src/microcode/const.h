@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: const.h,v 9.48 2003/02/14 18:28:18 cph Exp $
+$Id: const.h,v 9.49 2004/11/18 18:14:02 cph Exp $
 
 Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
@@ -34,31 +34,23 @@ USA.
 #define PI			3.1415926535
 #define STACK_FRAME_HEADER	1
 
-/* Precomputed typed pointers */
-#if (SIZEOF_UNSIGNED_LONG == 4)	/* 32 bit word */
-#  if (TYPE_CODE_LENGTH == 8)
-#    define SHARP_F		0x00000000
-#    define SHARP_T		0x08000000
-#    define UNSPECIFIC		0x08000001
-#    define FIXNUM_ZERO		0x1A000000
-#    define BROKEN_HEART_ZERO	0x22000000
-#  endif
-#  if (TYPE_CODE_LENGTH == 6)
-#    define SHARP_F		0x00000000
-#    define SHARP_T		0x20000000
-#    define UNSPECIFIC		0x20000001
-#    define FIXNUM_ZERO		0x68000000
-#    define BROKEN_HEART_ZERO	0x88000000
-#  endif
-#endif
+/* Assigned TC_CONSTANT datum values:
+   0 #t
+   1 unspecific
+   2 [non-object]
+   3 #!optional
+   4 #!rest
+   5 #!key
+   6 #!eof
+   7 #!default
+ */
 
-#ifndef SHARP_F			/* Safe version */
-#  define SHARP_F		MAKE_OBJECT (TC_NULL, 0)
-#  define SHARP_T		MAKE_OBJECT (TC_CONSTANT, 0)
-#  define UNSPECIFIC		MAKE_OBJECT (TC_CONSTANT, 1)
-#  define FIXNUM_ZERO		MAKE_OBJECT (TC_FIXNUM, 0)
-#  define BROKEN_HEART_ZERO	MAKE_OBJECT (TC_BROKEN_HEART, 0)
-#endif /* SHARP_F */
+#define SHARP_F			MAKE_OBJECT (TC_NULL, 0)
+#define SHARP_T			MAKE_OBJECT (TC_CONSTANT, 0)
+#define UNSPECIFIC		MAKE_OBJECT (TC_CONSTANT, 1)
+#define DEFAULT_OBJECT		MAKE_OBJECT (TC_CONSTANT, 7)
+#define FIXNUM_ZERO		MAKE_OBJECT (TC_FIXNUM, 0)
+#define BROKEN_HEART_ZERO	MAKE_OBJECT (TC_BROKEN_HEART, 0)
 
 #define EMPTY_LIST SHARP_F
 

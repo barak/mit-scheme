@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.101 2003/05/17 20:55:31 cph Exp $
+$Id: cmpint.c,v 1.102 2004/11/18 18:13:58 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -86,7 +86,7 @@ USA.
 #include "interp.h"     /* Interpreter state and primitive destructuring */
 #include "default.h"    /* various definitions */
 #include "extern.h"	/* External decls (missing Cont_Debug, etc.) */
-#include "trap.h"       /* UNASSIGNED_OBJECT, CACHE_TYPE */
+#include "trap.h"       /* CACHE_TYPE */
 #include "prims.h"      /* LEXPR */
 #include "prim.h"	/* Primitive_Procedure_Table, etc. */
 
@@ -461,7 +461,7 @@ DEFUN (open_gap,
   delta = (- delta);
   while ((--delta) >= 0)
   {
-    STACK_LOCATIVE_POP (gap_location) = UNASSIGNED_OBJECT;
+    STACK_LOCATIVE_POP (gap_location) = DEFAULT_OBJECT;
   }
   return (source_location);
 }
@@ -1461,7 +1461,7 @@ DEFUN_VOID (comp_op_lookup_trap_restart)
 
 /* ARITY Mismatch handling
    These receive the entry point as an argument and must fill the
-   Scheme stack with the missing unassigned values.
+   Scheme stack with the missing default values.
    They are invoked by TRAMPOLINE_K_n_m where n and m are the same
    as in the name of the procedure.
    The single item of information in the trampoline data area is
@@ -1473,7 +1473,7 @@ DEFINE_SCHEME_UTILITY_1 (comutil_operator_1_0_trap, tramp_data_raw)
 {
   SCHEME_OBJECT * tramp_data = (SCHEME_ADDR_TO_ADDR (tramp_data_raw));
 
-  STACK_PUSH (UNASSIGNED_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
   RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
 }
 
@@ -1483,7 +1483,7 @@ DEFINE_SCHEME_UTILITY_1 (comutil_operator_2_1_trap, tramp_data_raw)
   SCHEME_OBJECT * tramp_data = (SCHEME_ADDR_TO_ADDR (tramp_data_raw));
 
   Top = (STACK_POP ());
-  STACK_PUSH (UNASSIGNED_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
   STACK_PUSH (Top);
   RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
 }
@@ -1492,8 +1492,8 @@ DEFINE_SCHEME_UTILITY_1 (comutil_operator_2_0_trap, tramp_data_raw)
 {
   SCHEME_OBJECT * tramp_data = (SCHEME_ADDR_TO_ADDR (tramp_data_raw));
 
-  STACK_PUSH (UNASSIGNED_OBJECT);
-  STACK_PUSH (UNASSIGNED_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
   RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
 }
 
@@ -1504,7 +1504,7 @@ DEFINE_SCHEME_UTILITY_1 (comutil_operator_3_2_trap, tramp_data_raw)
 
   Top = (STACK_POP ());
   Next = (STACK_POP ());
-  STACK_PUSH (UNASSIGNED_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
   STACK_PUSH (Next);
   STACK_PUSH (Top);
   RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
@@ -1516,8 +1516,8 @@ DEFINE_SCHEME_UTILITY_1 (comutil_operator_3_1_trap, tramp_data_raw)
   SCHEME_OBJECT * tramp_data = (SCHEME_ADDR_TO_ADDR (tramp_data_raw));
 
   Top = (STACK_POP ());
-  STACK_PUSH (UNASSIGNED_OBJECT);
-  STACK_PUSH (UNASSIGNED_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
   STACK_PUSH (Top);
   RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
 }
@@ -1526,9 +1526,9 @@ DEFINE_SCHEME_UTILITY_1 (comutil_operator_3_0_trap, tramp_data_raw)
 {
   SCHEME_OBJECT * tramp_data = (SCHEME_ADDR_TO_ADDR (tramp_data_raw));
 
-  STACK_PUSH (UNASSIGNED_OBJECT);
-  STACK_PUSH (UNASSIGNED_OBJECT);
-  STACK_PUSH (UNASSIGNED_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
   RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
 }
 
@@ -1541,7 +1541,7 @@ DEFINE_SCHEME_UTILITY_1 (comutil_operator_4_3_trap, tramp_data_raw)
   Middle = (STACK_POP ());
   Bottom = (STACK_POP ());
 
-  STACK_PUSH (UNASSIGNED_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
   STACK_PUSH (Bottom);
   STACK_PUSH (Middle);
   STACK_PUSH (Top);
@@ -1555,8 +1555,8 @@ DEFINE_SCHEME_UTILITY_1 (comutil_operator_4_2_trap, tramp_data_raw)
 
   Top = (STACK_POP ());
   Next = (STACK_POP ());
-  STACK_PUSH (UNASSIGNED_OBJECT);
-  STACK_PUSH (UNASSIGNED_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
   STACK_PUSH (Next);
   STACK_PUSH (Top);
   RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
@@ -1568,9 +1568,9 @@ DEFINE_SCHEME_UTILITY_1 (comutil_operator_4_1_trap, tramp_data_raw)
   SCHEME_OBJECT * tramp_data = (SCHEME_ADDR_TO_ADDR (tramp_data_raw));
 
   Top = (STACK_POP ());
-  STACK_PUSH (UNASSIGNED_OBJECT);
-  STACK_PUSH (UNASSIGNED_OBJECT);
-  STACK_PUSH (UNASSIGNED_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
   STACK_PUSH (Top);
   RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
 }
@@ -1578,10 +1578,10 @@ DEFINE_SCHEME_UTILITY_1 (comutil_operator_4_1_trap, tramp_data_raw)
 DEFINE_SCHEME_UTILITY_1 (comutil_operator_4_0_trap, tramp_data_raw)
 {
   SCHEME_OBJECT * tramp_data = (SCHEME_ADDR_TO_ADDR (tramp_data_raw));
-  STACK_PUSH (UNASSIGNED_OBJECT);
-  STACK_PUSH (UNASSIGNED_OBJECT);
-  STACK_PUSH (UNASSIGNED_OBJECT);
-  STACK_PUSH (UNASSIGNED_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
+  STACK_PUSH (DEFAULT_OBJECT);
   RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
 }
 
