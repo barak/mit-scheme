@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.6 1988/12/13 13:00:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.7 1988/12/14 12:42:49 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -220,11 +220,13 @@ from the continuation, and then "glued" into place afterwards.
 	path)))
 
 (define (block-partial-ancestry block ancestor)
-  ;; (assert (or (not ancestor) (block-ancestor? block ancestor)))
-  (let loop ((block (block-parent block)) (path (list block)))
-    (if (eq? block ancestor)
-	path
-	(loop (block-parent block) (cons block path)))))
+  ;; (assert (or (not ancestor) (block-ancestor-or-self? block ancestor)))
+  (if (eq? block ancestor)
+      '()
+      (let loop ((block (block-parent block)) (path (list block)))
+	(if (eq? block ancestor)
+	    path
+	    (loop (block-parent block) (cons block path))))))
 
 (define (find-outermost-block block)
   ;; Should this check whether it is an expression/ic block or not?
