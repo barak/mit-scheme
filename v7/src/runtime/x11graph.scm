@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.9 1991/05/09 03:46:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.10 1991/07/23 08:19:26 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -78,8 +78,61 @@ MIT in each case. |#
   (x-graphics-set-function 2)
   (x-graphics-set-fill-style 2)
   (x-graphics-set-line-style 2)
-  (x-graphics-set-dashes 3))
+  (x-graphics-set-dashes 3)
+
+  (x-bytes-into-image 2)
+  (x-create-image 3)
+  (x-destroy-image 1)
+  (x-display-image 8)
+  (x-get-pixel-from-image 3)
+  (x-set-pixel-in-image 4)
+
+  (x-allocate-color 4)
+  (x-create-colormap 3)
+  (x-free-colormap 1)
+  (x-query-color 2)
+  (x-set-window-colormap 2)
+  (x-store-color 5)
+  (x-store-colors 2)
+  (x-window-colormap 1)
+
+  (x-window-visual 1)
+  (x-visual-deallocate 1))
 
+;;;; Protection lists
+
+(define (make-protection-list)
+  (list 'PROTECTION-LIST))
+
+(define (add-to-protection-list! list scheme-object microcode-object)
+  (with-absolutely-no-interrupts
+   (lambda ()
+     (set-cdr! list
+	       (cons (weak-cons scheme-object microcode-object)
+		     (cdr list))))))
+
+(define (remove-from-protection-list! list scheme-object)
+  (with-absolutely-no-interrupts
+   (lambda ()
+     (let loop ((associations (cdr list)) (previous list))
+       (if (not (null? associations))
+	   (if (eq? scheme-object (weak-pair/car? (car associations)))
+	       (set-cdr! previous (cdr associations))
+	       (loop (cdr associations) associations)))))))
+
+(define (clean-lost-protected-objects list cleaner)
+  (let loop ((associations (cdr list)) (previous list))
+    (if (not (null? associations))
+	(if (weak-pair/car? (car associations))
+	    (loop (cdr associations) associations)
+	    (begin
+	      (cleaner (weak-cdr (car associations)))
+	      (let ((next (cdr associations)))
+		(set-cdr! previous next)
+		(loop next previous)))))))
+
+;;;; X graphics device
+
 (define (initialize-package!)
   (set! x-graphics-device-type
 	(make-graphics-device-type
@@ -87,12 +140,15 @@ MIT in each case. |#
 	   (clear ,operation/clear)
 	   (close ,operation/close)
 	   (coordinate-limits ,operation/coordinate-limits)
+	   (create-colormap ,operation/create-colormap)
+	   (create-image ,operation/create-image)
 	   (device-coordinate-limits ,operation/device-coordinate-limits)
 	   (drag-cursor ,operation/drag-cursor)
 	   (draw-line ,operation/draw-line)
 	   (draw-point ,operation/draw-point)
 	   (draw-text ,operation/draw-text)
 	   (flush ,operation/flush)
+	   (get-colormap ,operation/get-colormap)
 	   (get-default ,operation/get-default)
 	   (map-window ,operation/map-window)
 	   (move-cursor ,operation/move-cursor)
@@ -104,6 +160,7 @@ MIT in each case. |#
 	   (set-border-color ,operation/set-border-color)
 	   (set-border-width ,operation/set-border-width)
 	   (set-clip-rectangle ,operation/set-clip-rectangle)
+	   (set-colormap ,operation/set-colormap)
 	   (set-coordinate-limits ,operation/set-coordinate-limits)
 	   (set-drawing-mode ,operation/set-drawing-mode)
 	   (set-font ,operation/set-font)
@@ -114,8 +171,11 @@ MIT in each case. |#
 	   (set-mouse-shape ,operation/set-mouse-shape)
 	   (starbase-filename ,operation/starbase-filename)
 	   (unmap-window ,operation/unmap-window))))
-  unspecific)
-
+  (set! window-list (make-protection-list))
+  (add-gc-daemon! close-lost-windows-daemon)
+  (initialize-image-datatype)
+  (initialize-colormap-datatype))
+
 (define x-graphics-device-type)
 
 (define (x-geometry-string x y width height)
@@ -134,7 +194,7 @@ MIT in each case. |#
 (define-structure (x-graphics-device (conc-name x-graphics-device/))
   (window false read-only true)
   (display false read-only true))
-
+
 (define (x-graphics-device/process-events! device)
   (let ((xd (x-graphics-device/display device)))
     (let loop ()
@@ -150,7 +210,11 @@ MIT in each case. |#
 
 (define (operation/close device)
   (x-graphics-device/process-events! device)
-  (x-close-window (x-graphics-device/window device)))
+  (x-close-window (x-graphics-device/window device))
+  (remove-from-protection-list! window-list device))
+
+(define (close-lost-windows-daemon)
+  (clean-lost-protected-objects window-list x-close-window))
 
 (define (operation/coordinate-limits device)
   (x-graphics-device/process-events! device)
@@ -206,6 +270,8 @@ MIT in each case. |#
 (define default-display-hash
   false)
 
+(define window-list)
+
 (define (operation/open display geometry #!optional suppress-map?)
   (let ((xw
 	 (x-graphics-open-window
@@ -228,7 +294,9 @@ MIT in each case. |#
 	  geometry
 	  (and (not (default-object? suppress-map?))
 	       suppress-map?))))
-    (make-x-graphics-device xw (x-window-display xw))))
+    (let ((device (make-x-graphics-device xw (x-window-display xw))))
+      (add-to-protection-list! window-list device xw)
+      device)))
 
 (define (operation/reset-clip-rectangle device)
   (x-graphics-device/process-events! device)
@@ -314,3 +382,110 @@ MIT in each case. |#
 (define (operation/unmap-window device)
   (x-graphics-device/process-events! device)
   (x-window-unmap (x-graphics-device/window device)))
+
+;;;; Images
+
+(define x-image?)
+(define make-x-image)
+(define x-image/descriptor)
+(define x-image/window)
+(define x-image/width)
+(define x-image/height)
+(define image-list)
+
+(define (initialize-image-datatype)
+  (let ((rtd (make-record-type "image" '(DESCRIPTOR WINDOW WIDTH HEIGHT))))
+    (set! x-image? (record-predicate rtd))
+    (set! make-x-image (record-constructor rtd))
+    (set! x-image/descriptor (record-accessor rtd 'DESCRIPTOR))
+    (set! x-image/window (record-accessor rtd 'WINDOW))
+    (set! x-image/width (record-accessor rtd 'WIDTH))
+    (set! x-image/height (record-accessor rtd 'HEIGHT)))
+  (set! image-list (make-protection-list))
+  (add-gc-daemon! destroy-lost-images-daemon))
+
+(define (operation/create-image device width height)
+  (let ((window (x-graphics-device/window device)))
+    (let ((descriptor (x-create-image window width height)))
+      (let ((image (make-x-image descriptor window width height)))
+	(add-to-protection-list! image-list image descriptor)
+	image))))
+
+(define (destroy-lost-images-daemon)
+  (clean-lost-protected-objects image-list x-destroy-image))
+
+(define (x-image/destroy image)
+  (x-destroy-image (x-image/descriptor image))
+  (remove-from-protection-list! image-list image))
+
+(define (x-image/get-pixel image x y)
+  (x-get-pixel-from-image (x-image/descriptor image) x y))
+
+(define (x-image/set-pixel image x y value)
+  (x-set-pixel-in-image (x-image/descriptor image) x y value))
+
+(define (x-image/draw image window-x window-y)
+  (x-display-image (x-image/descriptor image) 0 0
+		   (x-image/window image) window-x window-y
+		   (x-image/width image) (x-image/height image)))
+
+(define (x-image/draw-subimage image x y width height window-x window-y)
+  (x-display-image (x-image/descriptor image) x y
+		   (x-image/window image) window-x window-y
+		   width height))
+
+(define (x-image/fill-from-byte-vector image byte-vector)
+  (x-bytes-into-image byte-vector (x-image/descriptor image)))
+
+;;;; Colormaps
+
+(define x-colormap?)
+(define %make-colormap)
+(define colormap/descriptor)
+(define colormap-list)
+
+(define (initialize-colormap-datatype)
+  (let ((rtd (make-record-type "colormap" '(DESCRIPTOR))))
+    (set! x-colormap? (record-predicate rtd))
+    (set! %make-colormap (record-constructor rtd))
+    (set! colormap/descriptor (record-accessor rtd 'DESCRIPTOR)))
+  (set! colormap-list (make-protection-list))
+  (add-gc-daemon! destroy-lost-colormaps-daemon))
+
+(define (make-colormap descriptor)
+  (let ((colormap (%make-colormap descriptor)))
+    (add-to-protection-list! colormap-list colormap descriptor)
+    colormap))
+
+(define (operation/get-colormap device)
+  (make-colormap (x-window-colormap (x-graphics-device/window device))))
+
+(define (operation/set-colormap device colormap)
+  (x-set-window-colormap (x-graphics-device/window device)
+			 (colormap/descriptor colormap)))
+
+(define (operation/create-colormap device writeable?)
+  (let ((window (x-graphics-device/window device)))
+    (let ((visual (x-window-visual window)))
+      (let ((descriptor (x-create-colormap window visual writeable?)))
+	(x-visual-deallocate visual)
+	(make-colormap descriptor)))))
+
+(define (destroy-lost-colormaps-daemon)
+  (clean-lost-protected-objects colormap-list x-free-colormap))
+
+(define (x-colormap/free colormap)
+  (x-free-colormap (colormap/descriptor colormap))
+  (remove-from-protection-list! colormap-list colormap))
+
+(define (x-colormap/allocate-color colormap r g b)
+  (x-allocate-color (colormap/descriptor colormap) r g b))
+
+(define (x-colormap/query-color colormap position)
+  (x-query-color (colormap/descriptor colormap) position))
+
+(define (x-colormap/store-color colormap position r g b)
+  (x-store-color (colormap/descriptor colormap) position r g b))
+
+(define (x-colormap/store-colors colormap color-vector)
+  (x-store-colors (colormap/descriptor colormap) color-vector))
