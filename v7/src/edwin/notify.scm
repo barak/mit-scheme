@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/notify.scm,v 1.6 1992/02/19 00:11:02 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/notify.scm,v 1.7 1992/03/08 16:32:05 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -63,6 +63,22 @@
 		     (write-to-string minute)
 		     (if (< hour 12) "am" "pm")))))
 
+(define-variable notify-show-date
+  "If true, the notifier displays the current date."
+  false
+  boolean?)
+
+(define (notifier:date)
+  (let ((time (get-decoded-time)))
+    (string-append (vector-ref
+		    '#("Mon " "Tue " "Wed " "Thu " "Fri " "Sat " "Sun ")
+		    (decoded-time/day-of-week time))
+		   (write-to-string (decoded-time/day time))
+		   (vector-ref
+		    '#(" Jan" " Feb" " Mar" " Apr" " May" " Jun"
+		      " Jul" " Aug" " Sep" " Oct" " Nov" " Dec")
+		    (decoded-time/month time)))))
+
 (define-variable notify-show-load
   "If true, the notifier displays the load average."
   false
@@ -122,6 +138,7 @@ Ignored if notify-show-mail is false."
 
 (define notifier-elements
   (list (cons (ref-variable-object notify-show-time) notifier:time)
+	(cons (ref-variable-object notify-show-date) notifier:date)
 	(cons (ref-variable-object notify-show-load) notifier:load-average)))
 
 (define-command run-notifier
