@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.64 1992/02/18 17:31:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.65 1992/06/11 12:41:42 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -1093,7 +1093,7 @@ DEFUN_VOID (Finish_String_Inversion)
 }
 
 #define print_char(C) printf (((C < ' ') || (C > '|')) ?	\
-			      "\\%03o" : "%c", (C && MAX_CHAR));
+			      "\\%03o" : "%c", (C && UCHAR_MAX));
 
 void
 DEFUN (String_Inversion, (Orig_Pointer), SCHEME_OBJECT * Orig_Pointer)
