@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dib.scm,v 1.7 2003/02/14 18:28:35 cph Exp $
+$Id: dib.scm,v 1.8 2003/11/11 02:03:16 cph Exp $
 
-Copyright (c) 1993, 1999-2001 Massachusetts Institute of Technology
+Copyright 1993,2000,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -34,18 +34,12 @@ USA.
 ;; DIBS are handles into non-scheme memory.  They are kept on a GC
 ;; finalizer so that the memory can be freed if there is no longer a
 ;; handle to the DIB.  Because DIBS can be huge, we also support
-;; explicit deallocation via DELETE-DIB.  The GC finalizer descriptor
-;; is a CELL containing the handle.  It is shared with the DIB
-;; structure so that explicit deallocation can signal that the dib is
-;; void.
+;; explicit deallocation via DELETE-DIB.
 
 (define dib-finalizer)
 
 (define (make-dib handle)
-  (let* ((cell (make-cell handle))
-	 (dib (%make-dib cell)))
-    (add-to-gc-finalizer! dib-finalizer dib cell)
-    dib))
+  (add-to-gc-finalizer! dib-finalizer (%make-dib handle)))
 
 (define (dib-result handle)
   (if (= handle 0)
@@ -54,7 +48,7 @@ USA.
 
 (define (dib-arg dib)
   (if dib
-      (cell-contents (dib-handle dib))
+      (dib-handle dib)
       0))
 
 (define-windows-type dib
@@ -63,9 +57,7 @@ USA.
   dib-result)
 
 (define (delete-dib dib)
-  (let ((handle (cell-contents (dib-handle dib))))
-    (set-cell-contents! (dib-handle dib) 0)
-    (%delete-dib handle)))
+  (remove-from-gc-finalizer! dib-finalizer dib))
 
 (define dibutils.dll)
 (define open-dib)
@@ -76,7 +68,6 @@ USA.
 (define bitmap-from-dib)
 (define dib-from-bitmap)
 (define dib-blt)
-(define %delete-dib)
 (define dib-width)
 (define dib-height)
 (define dib-set-pixels-unaligned)
@@ -103,9 +94,6 @@ USA.
 	 (dib-blt (dest hdc) (x int) (y int) (w int) (height int) 
 		  (src dib) (src-x int) (src-y int) (raster-op long))
 	 bool dibutils.dll "DibBlt"))
-  (set! %delete-dib
-	(windows-procedure
-	 (%delete-dib (dib-handle handle)) bool dibutils.dll "DeleteDIB"))
   ;; int-arg is the handle, NOT dib-arg for a DIB record.
   (set! dib-height
 	(windows-procedure (dib-height (dib dib)) int dibutils.dll "DibHeight"
@@ -131,5 +119,9 @@ USA.
 	 (dib-set-pixels-unaligned (dib dib) (pixels string))
 	 bool dibutils.dll "DIBSetPixelsUnaligned"))
   (set! dib-finalizer
-	(make-gc-finalizer (lambda (cell) (%delete-dib (cell-contents cell)))))
+	(make-gc-finalizer (windows-procedure (%delete-dib (dib-handle handle))
+					      bool dibutils.dll "DeleteDIB")
+			   dib?
+			   dib-handle
+			   set-dib-handle!))
   unspecific)
