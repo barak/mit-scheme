@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.10 1989/04/28 22:53:00 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.11 1989/05/16 18:52:49 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -102,33 +102,32 @@ the buffer *Transcript*:
 
 (define scheme-mode:syntax-table (make-syntax-table))
 
-(modify-syntax-entries! scheme-mode:syntax-table #\NUL #\/ "_   ")
-(modify-syntax-entries! scheme-mode:syntax-table #\: #\@ "_   ")
-(modify-syntax-entries! scheme-mode:syntax-table #\[ #\` "_   ")
-(modify-syntax-entries! scheme-mode:syntax-table #\{ #\Rubout "_   ")
+(modify-syntax-entries! scheme-mode:syntax-table #\NUL #\/ "_")
+(modify-syntax-entries! scheme-mode:syntax-table #\: #\@ "_")
+(modify-syntax-entries! scheme-mode:syntax-table #\[ #\` "_")
+(modify-syntax-entries! scheme-mode:syntax-table #\{ #\Rubout "_")
 
-(modify-syntax-entry! scheme-mode:syntax-table #\Space "    ")
-(modify-syntax-entry! scheme-mode:syntax-table #\Tab "    ")
-(modify-syntax-entry! scheme-mode:syntax-table #\Page "    ")
-(modify-syntax-entry! scheme-mode:syntax-table #\[ "    ")
-(modify-syntax-entry! scheme-mode:syntax-table #\] "    ")
-(modify-syntax-entry! scheme-mode:syntax-table #\{ "    ")
-(modify-syntax-entry! scheme-mode:syntax-table #\} "    ")
+(modify-syntax-entry! scheme-mode:syntax-table #\Space " ")
+(modify-syntax-entry! scheme-mode:syntax-table #\Tab " ")
+(modify-syntax-entry! scheme-mode:syntax-table #\Page " ")(modify-syntax-entry! scheme-mode:syntax-table #\[ " ")
+(modify-syntax-entry! scheme-mode:syntax-table #\] " ")
+(modify-syntax-entry! scheme-mode:syntax-table #\{ " ")
+(modify-syntax-entry! scheme-mode:syntax-table #\} " ")
 (modify-syntax-entry! scheme-mode:syntax-table #\| "  23")
 
-(modify-syntax-entry! scheme-mode:syntax-table #\; "<   ")
-(modify-syntax-entry! scheme-mode:syntax-table #\newline ">   ")
+(modify-syntax-entry! scheme-mode:syntax-table #\; "< ")
+(modify-syntax-entry! scheme-mode:syntax-table #\newline "> ")
 
-(modify-syntax-entry! scheme-mode:syntax-table #\' "'   ")
-(modify-syntax-entry! scheme-mode:syntax-table #\` "'   ")
-(modify-syntax-entry! scheme-mode:syntax-table #\, "'   ")
-(modify-syntax-entry! scheme-mode:syntax-table #\@ "'   ")
-(modify-syntax-entry! scheme-mode:syntax-table #\# "' 14")
+(modify-syntax-entry! scheme-mode:syntax-table #\' "  p")
+(modify-syntax-entry! scheme-mode:syntax-table #\` "  p")
+(modify-syntax-entry! scheme-mode:syntax-table #\, "_ p")
+(modify-syntax-entry! scheme-mode:syntax-table #\@ "_ p")
+(modify-syntax-entry! scheme-mode:syntax-table #\# "_ p14")
 
-(modify-syntax-entry! scheme-mode:syntax-table #\" "\"   ")
-(modify-syntax-entry! scheme-mode:syntax-table #\\ "\\   ")
-(modify-syntax-entry! scheme-mode:syntax-table #\( "()  ")
-(modify-syntax-entry! scheme-mode:syntax-table #\) ")(  ")
+(modify-syntax-entry! scheme-mode:syntax-table #\" "\" ")
+(modify-syntax-entry! scheme-mode:syntax-table #\\ "\\ ")
+(modify-syntax-entry! scheme-mode:syntax-table #\( "()")
+(modify-syntax-entry! scheme-mode:syntax-table #\) ")(")
 
 ;;;; Indentation
 
