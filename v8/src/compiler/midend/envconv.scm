@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: envconv.scm,v 1.14 1995/07/11 21:42:10 adams Exp $
+$Id: envconv.scm,v 1.15 1995/07/15 06:17:24 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -382,6 +382,9 @@ MIT in each case. |#
 	     (begin
 	       (if (not (new-dbg-procedure/block dbg-info))
 		   (set-new-dbg-procedure/block! dbg-info block))
+	       (if (and block
+			(not (new-dbg-block/procedure block)))
+		   (set-new-dbg-block/procedure! block dbg-info))
 	       (code-rewrite/remember* new dbg-info))
 	     (begin
 	       (if (not (new-dbg-expression/block dbg-info))
