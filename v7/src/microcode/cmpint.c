@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.40 1992/01/14 19:32:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.41 1992/01/20 13:16:58 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -2838,6 +2838,9 @@ DEFUN (compiler_initialize,
 #include "errors.h"	/* Error codes and Termination codes */
 #include "const.h"	/* REGBLOCK_MINIMUM_LENGTH */
 #include "returns.h"	/* RC_POP_FROM_COMPILED_CODE */
+
+extern void EXFUN (Microcode_Termination, (int code));
+extern void EXFUN (compiler_reset_error, (void));
 
 extern long
   compiler_interface_version,
