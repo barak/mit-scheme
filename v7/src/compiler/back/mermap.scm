@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/mermap.scm,v 1.1 1988/11/07 13:57:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/mermap.scm,v 1.2 1988/11/07 23:24:32 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -69,7 +69,7 @@ MIT in each case. |#
 			   (positive? (vector-ref (car entries) 1))
 			   aliases)
 			  map-entries)
-		    (eqv-set-delete map-registers aliases)))))))
+		    (eqv-set-difference map-registers aliases)))))))
 
 (define (eliminate-conflicting-aliases! entries)
   (for-each (lambda (conflicting-alias)
