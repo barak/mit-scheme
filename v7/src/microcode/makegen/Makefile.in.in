@@ -1,4 +1,4 @@
-# $Id: Makefile.in.in,v 1.12 2000/12/08 18:08:42 cph Exp $
+# $Id: Makefile.in.in,v 1.13 2000/12/08 19:07:28 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -56,7 +56,7 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 
 # **** Tool configuration ****
 
-auxdir = $(libdir)/mit-scheme
+AUXDIR = $(libdir)/mit-scheme
 
 CC = @CC@
 M4 = $(srcdir)/makegen/m4.sh
@@ -64,7 +64,7 @@ AS = as
 TAR = tar
 GZIP_ENV = --best
 
-DEFS = -DMIT_SCHEME -DDEFAULT_LIBRARY_PATH=\"$(auxdir)\" @DEFS@ \
+DEFS = -DMIT_SCHEME -DDEFAULT_LIBRARY_PATH=\"$(AUXDIR)\" @DEFS@ \
        -I. -I$(srcdir) -I.
 CFLAGS = @CFLAGS@
 X_CFLAGS = @X_CFLAGS@
@@ -248,22 +248,22 @@ install-binPROGRAMS: $(bin_PROGRAMS)
 	done
 
 install-auxPROGRAMS: $(aux_PROGRAMS)
-	$(mkinstalldirs) $(DESTDIR)$(auxdir)
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
 	@list='$(aux_PROGRAMS)'; \
 	for p in $$list; do \
 	    if test -f $$p; then \
-		echo "  $(INSTALL_PROGRAM) $$p $(DESTDIR)$(auxdir)/."; \
-		$(INSTALL_PROGRAM) $$p $(DESTDIR)$(auxdir)/.; \
+		echo "  $(INSTALL_PROGRAM) $$p $(DESTDIR)$(AUXDIR)/."; \
+		$(INSTALL_PROGRAM) $$p $(DESTDIR)$(AUXDIR)/.; \
 	    fi; \
 	done
 
 install-auxDATA: $(aux_DATA)
-	$(mkinstalldirs) $(DESTDIR)$(auxdir)
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
 	@list='$(aux_DATA)'; \
 	for p in $$list; do \
 	    if test -f $$p; then \
-		echo "  $(INSTALL_DATA) $$p $(DESTDIR)$(auxdir)/."; \
-		$(INSTALL_DATA) $$p $(DESTDIR)$(auxdir)/.; \
+		echo "  $(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/."; \
+		$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/.; \
 	    fi; \
 	done
 
