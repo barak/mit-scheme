@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: split.scm,v 1.2 1994/11/20 00:46:15 jmiller Exp $
+$Id: split.scm,v 1.3 1994/11/25 23:06:58 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -39,11 +39,15 @@ MIT in each case. |#
 ;;; A closure analyzer is just a phase that requires a dataflow graph to perform
 ;;; its function.  Maybe we should rename it some day.
 
-(define (make-dataflow-analyzer transformer)
-  (lambda (KMP-Program)
-    (let* ((new-text     (copier/top-level KMP-Program dataflow/remember))
+(define (make-dataflow-analyzer remember transformer)
+  (lambda (original-program)
+    (let* ((new-text     (copier/top-level original-program remember))
 	   (graph        (dataflow/top-level new-text)))
-      (transformer new-text graph (graph/closures graph)))))
+      ;; dataflow/top-level may decline to generate a graph, in which case the
+      ;; dataflow transformation is merely an identity.
+      (if graph
+	  (transformer original-program graph)
+	  new-text))))
 
 ;;;; SPLIT-AND-DRIFT
 
@@ -87,9 +91,11 @@ MIT in each case. |#
 
 (define split-and-drift
   (make-dataflow-analyzer
-   (lambda (code graph closures)
-     graph				; Not needed
-     (let* ((output-code `(LET () ,code))
+   (lambda (new old) (split/remember new old))
+   (lambda (original-program graph)
+     (let* ((code     (graph/program graph))
+	    (closures (graph/closures graph))
+	    (output-code `(LET () ,code))
 	    ;; LET inserted so we can create a LETREC frame inside, if
 	    ;; needed, in find-lambda-drift-frame
 	    (lambda-drift-point (find-lambda-drift-frame output-code)))
@@ -105,7 +111,7 @@ MIT in each case. |#
 	 (for-every movable-closures
 	   (lambda (closure)
 	     (split-closure-and-drift closure lambda-drift-point)))
-	 output-code)))))
+	 (split/remember output-code original-program))))))
 
 ;;; Split and drift operations
 
@@ -164,32 +170,48 @@ MIT in each case. |#
 		   (let ((form (application/text site)))
 		     ;; FORM is (CALL ',%internal-apply <continuation>
 		     ;;               <nargs> <operator> <operand>...)
+		     ;; The debugging information previously associated
+		     ;; with the whole call must now be associated with
+		     ;; _both_ the BEGIN and the inner CALL.
+		     ;; The BEGIN is automatically associated with the
+		     ;; debugging information since it is a form/rewrite!
+		     ;; of the call.
+		     ;; The inner call must be done explicitly.
 		     (form/rewrite! form
 		       `(BEGIN
 			  ,(fifth form)	; In case of side-effects!
-			  (CALL ,lambda-expr ,(third form)
-				,@(list-tail form 5))))))))
-
+			  ,(split/remember*
+			    `(CALL ,lambda-expr ,(third form)
+				   ,@(list-tail form 5))
+			    form)))))))
 	      ((LAMBDA/? lambda-expr)
 	       ;; Clean up the lambda bindings to remove optionals and lexprs in
 	       ;; the lifted version.
 	       (let* ((lambda-list (cadr lambda-expr))
 		      (names (lambda-list->names lambda-list))
-		      (lifted-lambda
-		       `(LAMBDA ,names ,(third lambda-expr)))
-		      (new-name (closan/new-name 'CLOSURE-GUTS)))
+		      (body (third lambda-expr))
+		      (lifted-lambda `(LAMBDA ,names ,body))
+		      (new-name (split/new-name 'CLOSURE-GUTS)))
 		 (drift-lambda!		; Drift to top-level LETREC
 		  lambda-drift-point new-name lifted-lambda)
+		 ;; The calls to split/remember* are for the same
+		 ;; reason as above in the trivial case.
 		 (form/rewrite! lambda-expr
 		   ;; Rewrite body of closing code to call new top-level LAMBDA
 		   (if *after-cps-conversion?*
 		       `(LAMBDA ,lambda-list
-			  (CALL (LOOKUP ,new-name)
-				,@(map (lambda (name) `(LOOKUP ,name)) names)))
+			  ,(split/remember*
+			    `(CALL (LOOKUP ,new-name)
+				   ,@(map (lambda (name) `(LOOKUP ,name))
+					  names))
+			    body))
 		       `(LAMBDA ,lambda-list
-			  (CALL (LOOKUP ,new-name) (QUOTE #F) ; Continuation
-				,@(map (lambda (name) `(LOOKUP ,name))
-				    (cdr names))))))
+			  ,(split/remember*
+			    `(CALL (LOOKUP ,new-name)
+				   (QUOTE #F) 	; Continuation
+				   ,@(map (lambda (name) `(LOOKUP ,name))
+					  (cdr names)))
+			    body))))
 		 (for-every mutable-call-sites
 		   (lambda (site)
 		     ;; Rewrite calls that are known to be to heap or trivial
@@ -204,11 +226,14 @@ MIT in each case. |#
 			   ((TRIVIAL)
 			    `(BEGIN
 			       ,(fifth form) ; In case of side-effects!
-			       (CALL (LOOKUP ,new-name)
-				     ,(third form)
-				     ,@(lambda-list/applicate
-					(cdr lambda-list)
-					(list-tail form 5)))))
+			       ;; Same reason as above.
+			       ,(split/remember*
+				 `(CALL (LOOKUP ,new-name)
+					,(third form)
+					,@(lambda-list/applicate
+					   (cdr lambda-list)
+					   (list-tail form 5)))
+				 form)))
 			   ((HEAP)
 			    `(CALL (LOOKUP ,new-name)
 				   ,(third form)
@@ -228,6 +253,7 @@ MIT in each case. |#
 	(if (LETREC/?  old-body)
 	    old-body
 	    (let ((result `(LETREC () ,old-body)))
+	      (split/remember* result previous)
 	      (form/rewrite! previous `(LET ,(let/bindings previous) ,result))
 	      result))))
     ;; Unwrap all static (and pseudo-static) bindings, and force the
@@ -250,7 +276,7 @@ MIT in each case. |#
 
 ;;; General utility routines
 
-(define (closan/new-name prefix)
+(define (split/new-name prefix)
   (new-variable prefix))
 
 (define (for-every things proc)
@@ -262,3 +288,10 @@ MIT in each case. |#
   (if (symbol? call-site)
       #F
       (node/unique-value (application/operator-node call-site))))
+
+(define (split/remember new old)
+  (code-rewrite/remember new old))
+
+(define (split/remember* new copy)
+  (code-rewrite/remember* new
+			  (code-rewrite/original-form copy)))
