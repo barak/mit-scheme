@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.78 1992/02/19 00:05:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.79 1992/03/13 10:48:29 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -972,16 +972,16 @@ MIT in each case. |#
   (files "intmod")
   (parent (edwin))
   (export (edwin)
-	  edwin-command$inferior-debugger-self-insert
-	  edwin-command$inferior-repl-abort-nearest
-	  edwin-command$inferior-repl-abort-previous
-	  edwin-command$inferior-repl-abort-top-level
-	  edwin-command$inferior-repl-breakpoint
+	  edwin-command$inferior-cmdl-abort-nearest
+	  edwin-command$inferior-cmdl-abort-previous
+	  edwin-command$inferior-cmdl-abort-top-level
+	  edwin-command$inferior-cmdl-breakpoint
+	  edwin-command$inferior-cmdl-self-insert
 	  edwin-command$inferior-repl-eval-defun
 	  edwin-command$inferior-repl-eval-last-sexp
 	  edwin-command$inferior-repl-eval-region
 	  edwin-command$repl
-	  edwin-mode$inferior-debugger
+	  edwin-mode$inferior-cmdl
 	  edwin-mode$inferior-repl
 	  initialize-inferior-repls!
 	  kill-buffer-inferior-repl
