@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2fs.c,v 1.3 1995/01/31 22:11:35 cph Exp $
+$Id: pros2fs.c,v 1.4 1995/03/21 01:05:22 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -387,4 +387,22 @@ DEFINE_PRIMITIVE ("CURRENT-PID", Prim_current_pid, 0, 0,
 {
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN (long_to_integer (OS2_scheme_pid));
+}
+
+DEFINE_PRIMITIVE ("DOS-QUERY-MEMORY", Prim_dos_query_memory, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    ULONG start = (arg_nonnegative_integer (1));
+    ULONG length = (arg_nonnegative_integer (2));
+    ULONG flags;
+    XTD_API_CALL
+      (dos_query_mem, (((PVOID) start), (&length), (&flags)),
+       {
+	 if (rc == ERROR_INVALID_ADDRESS)
+	   PRIMITIVE_RETURN (SHARP_F);
+       });
+    PRIMITIVE_RETURN (cons ((ulong_to_integer (length)),
+			    (ulong_to_integer (flags))));
+  }
 }
