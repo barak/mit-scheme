@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11color.c,v 1.1 1991/07/11 02:16:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11color.c,v 1.2 1991/07/11 03:57:36 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -336,57 +336,6 @@ DEFINE_PRIMITIVE("X-LOOKUP-COLOR", Prim_x_lookup_color, 3, 3, 0)
   }
 }
 
-static Get_Color(Dest, Source)
-XColor *Dest;
-SCHEME_OBJECT Source;
-{ long flag = 0;
-  SCHEME_OBJECT Temp;
-
-#define SHOULD_BE_INTEGER(offset, field, flag_bit)			\
-{ Temp = VECTOR_REF(Source, offset);					\
-  if (Temp != SHARP_F)							\
-  { if ((! (INTEGER_P (Temp))) || (! (integer_to_long_p (Temp))))	\
-    { error_bad_range_arg (3); }					\
-    else								\
-    { Dest->field = integer_to_long(Temp);				\
-      flag |= flag_bit;							\
-    }									\
-  }									\
-}
-
-  if ((! (VECTOR_P (Source))) || (VECTOR_LENGTH (Source) != 4))
-  { error_bad_range_arg (3);
-  }
-  SHOULD_BE_INTEGER(0, pixel, 0);
-  SHOULD_BE_INTEGER(1, red, DoRed);
-  SHOULD_BE_INTEGER(2, green, DoGreen);
-  SHOULD_BE_INTEGER(3, blue, DoBlue);
-}
-
-DEFINE_PRIMITIVE("X-STORE-COLORS", Prim_x_store_colors, 3, 3, 0)
-{ /* Input: (Scheme) display, colormap, vector of vectors, each of
-     which contains pixel, r, g, b (where r/g/b can be #f or integer)
-  */
-  XColor *ColorVector, *ThisColor;
-  SCHEME_OBJECT Vect, *This_Entry;
-  long Length, i;
-  SCHEME_OBJECT *SingleColor;
-
-  PRIMITIVE_HEADER(3);
-
-  Vect = VECTOR_ARG(3);
-  Length = VECTOR_LENGTH(Vect);
-  Primitive_GC_If_Needed(sizeof(XColor) * Length);
-  ColorVector = (XColor *) Free;
-  SingleColor = VECTOR_LOC(Vect, 0);
-  for (i=0, ThisColor = ColorVector; i < Length; i++)
-  { Get_Color(ThisColor++, *SingleColor++);
-  }
-  XStoreColors
-    (XD_DISPLAY(x_display_arg(1)), arg_integer(2), ColorVector, Length);
-  PRIMITIVE_RETURN(UNSPECIFIC);
-}
-
 DEFINE_PRIMITIVE ("X-STORE-COLOR", Prim_x_store_color, 6, 6,
   "Input: (Scheme) display, colormap, pixel, r, g, b (r/g/b may be #f).")
 {
@@ -411,6 +360,68 @@ DEFINE_PRIMITIVE ("X-STORE-COLOR", Prim_x_store_color, 6, 6,
       (c . flags) |= DoBlue;
     }
   XStoreColor ((XD_DISPLAY (x_display_arg (1))), (arg_integer (2)), (&c));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+#define CONVERT_COLOR_OBJECT(index, color, flag)			\
+{									\
+  SCHEME_OBJECT object = (VECTOR_REF (color_object, (index)));		\
+  if (object != SHARP_F)						\
+    {									\
+      if (! ((INTEGER_P (object)) && (integer_to_long_p (object))))	\
+	goto losing_color_object;					\
+      {									\
+	long value = (integer_to_long (object));			\
+	if ((value < 0) || (value > 65535))				\
+	  goto losing_color_object;					\
+	(colors_scan -> color) = value;					\
+	(colors_scan -> flags) |= (flag);				\
+      }									\
+    }									\
+}
+
+DEFINE_PRIMITIVE ("X-STORE-COLORS", Prim_x_store_colors, 3, 3,
+  "Input: (Scheme) display, colormap, vector of vectors, each of\n\
+which contains pixel, r, g, b (where r/g/b can be #f or integer).")
+{
+  PRIMITIVE_HEADER (3);
+  {
+    SCHEME_OBJECT color_vector = (VECTOR_ARG (3));
+    unsigned long n_colors = (VECTOR_LENGTH (color_vector));
+    XColor * colors = (dstack_alloc ((sizeof (XColor)) * n_colors));
+    {
+      SCHEME_OBJECT * vector_scan = (VECTOR_LOC (color_vector, 0));
+      SCHEME_OBJECT * vector_end = (vector_scan + n_colors);
+      XColor * colors_scan = colors;
+      while (vector_scan < vector_end)
+	{
+	  SCHEME_OBJECT color_object = (*vector_scan++);
+	  if (! ((VECTOR_P (color_object))
+		 && ((VECTOR_LENGTH (color_object)) == 4)))
+	    {
+	    losing_color_object:
+	      error_wrong_type_arg (3);
+	    }
+	  {
+	    SCHEME_OBJECT pixel_object = (VECTOR_REF (color_object, 0));
+	    if (! ((INTEGER_P (pixel_object))
+		   && (integer_to_long_p (pixel_object))))
+	      goto losing_color_object;
+	    (colors_scan -> pixel) = (integer_to_long (pixel_object));
+	  }
+	  (colors_scan -> flags) = 0;
+	  CONVERT_COLOR_OBJECT (1, red, DoRed);
+	  CONVERT_COLOR_OBJECT (2, green, DoGreen);
+	  CONVERT_COLOR_OBJECT (3, blue, DoBlue);
+	  colors_scan += 1;
+	}
+    }
+    XStoreColors
+      ((XD_DISPLAY (x_display_arg (1))),
+       (arg_integer (2)),
+       colors,
+       n_colors);
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
