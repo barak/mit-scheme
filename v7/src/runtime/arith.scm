@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.61 2004/10/13 03:22:40 cph Exp $
+$Id: arith.scm,v 1.62 2005/01/11 03:56:44 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1999,2001,2002 Massachusetts Institute of Technology
-Copyright 2003,2004 Massachusetts Institute of Technology
+Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1812,17 +1812,6 @@ USA.
 (define (exact-positive-integer? object)
   (and (int:integer? object)
        (int:positive? object)))
-
-(define-syntax define-guarantee
-  (sc-macro-transformer
-   (lambda (form environment)
-     `(DEFINE (,(symbol-append 'GUARANTEE- (cadr form)) OBJECT OPERATOR)
-	(IF (NOT (,(symbol-append (cadr form) '?) OBJECT))
-	    (ERROR:WRONG-TYPE-ARGUMENT OBJECT
-				       ,(close-syntax (caddr form)
-						      environment)
-				       OPERATOR))
-	OBJECT))))
 
 (define-guarantee number "number")
 (define-guarantee complex "complex number")

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: sysmac.scm,v 14.12 2003/02/14 18:28:34 cph Exp $
+$Id: sysmac.scm,v 14.13 2005/01/11 03:57:23 cph Exp $
 
-Copyright (c) 1988, 1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1988,2001,2002,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -62,3 +62,20 @@ USA.
    (lambda (form environment)
      environment
      (make-return-address (apply microcode-return (cdr form))))))
+
+(define-syntax define-guarantee
+  (sc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(SYMBOL EXPRESSION) (cdr form))
+	 (let ((root (cadr form))
+	       (desc (close-syntax (caddr form) environment)))
+	   (let ((p-name (symbol root '?))
+		 (g-name (symbol 'guarantee- root))
+		 (e-name (symbol 'error:not- root)))
+	     `(BEGIN
+		(DEFINE (,g-name OBJECT CALLER)
+		  (IF (NOT (,(close-syntax p-name environment) OBJECT))
+		      (,(close-syntax e-name environment) OBJECT CALLER)))
+		(DEFINE (,e-name OBJECT CALLER)
+		  (ERROR:WRONG-TYPE-ARGUMENT OBJECT ,desc CALLER)))))
+	 (ill-formed-syntax form)))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.526 2005/01/07 15:10:06 cph Exp $
+$Id: runtime.pkg,v 14.527 2005/01/11 03:57:00 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -3931,6 +3931,7 @@ USA.
   (files "sysmac")
   (parent (runtime))
   (export (runtime)
+	  define-guarantee
 	  define-primitives
 	  ucode-primitive
 	  ucode-return-address

@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.39 2004/10/29 16:30:25 cph Exp $
+$Id: sfile.scm,v 14.40 2005/01/11 03:57:16 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
-Copyright 1999,2001,2003,2004 Massachusetts Institute of Technology
+Copyright 1999,2001,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -372,23 +372,6 @@ USA.
 	    (loop (fix:+ i 1))
 	    i)
 	end)))
-
-(define-syntax define-guarantee
-  (sc-macro-transformer
-   (lambda (form environment)
-     (if (syntax-match? '(SYMBOL EXPRESSION) (cdr form))
-	 (let ((root (cadr form))
-	       (desc (close-syntax (caddr form) environment)))
-	   (let ((p-name (symbol root '?))
-		 (g-name (symbol 'guarantee- root))
-		 (e-name (symbol 'error:not- root)))
-	     `(BEGIN
-		(DEFINE (,g-name OBJECT CALLER)
-		  (IF (NOT (,(close-syntax p-name environment) OBJECT))
-		      (,(close-syntax e-name environment) OBJECT CALLER)))
-		(DEFINE (,e-name OBJECT CALLER)
-		  (ERROR:WRONG-TYPE-ARGUMENT OBJECT ,desc CALLER)))))
-	 (ill-formed-syntax form)))))
 
 (define-guarantee mime-type "MIME type")
 (define-guarantee mime-type-string "MIME type string")
