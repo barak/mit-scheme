@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.39 1999/01/02 06:06:43 cph Exp $
+$Id: usiexp.scm,v 4.40 2000/03/16 17:20:06 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (make-combination expression block primitive operands)
   (combination/make (and expression (object/scode expression))
 		    block
-		    (constant/make false primitive)
+		    (constant/make #f primitive)
 		    operands))
 
 (define (make-operand-binding expression block operand make-body)
@@ -142,7 +142,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (if (and (pair? operands) (null? (cdr operands)))
       (if-expanded
        (make-combination expr block (ucode-primitive eq?)
-			 (list (car operands) (constant/make false 0))))
+			 (list (car operands) (constant/make #f 0))))
       (if-not-expanded)))
 
 (define (fix:=-expansion expr operands if-expanded if-not-expanded block)
@@ -165,7 +165,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	expr
 	block
 	(ucode-primitive not)
-	(list (make-combination false
+	(list (make-combination #f
 				block
 				(ucode-primitive greater-than-fixnum?)
 				operands))))
@@ -180,7 +180,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	expr
 	block
 	(ucode-primitive not)
-	(list (make-combination false
+	(list (make-combination #f
 				block
 				(ucode-primitive less-than-fixnum?)
 				operands))))
@@ -207,7 +207,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      (make-binary expr
 				   block
 				   first
-				   (loop false (car rest) (cdr rest)))))))
+				   (loop #f (car rest) (cdr rest)))))))
 	      (else
 	       (if-not-expanded)))))))
 
@@ -289,9 +289,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (cond ((null? operands)
 	     (if-not-expanded))
 	    ((null? (cdr operands))
-	     (expand expr (constant/make false identity) (car operands)))
+	     (expand expr (constant/make #f identity) (car operands)))
 	    (else
-	     (inverse-expansion false (cdr operands)
+	     (inverse-expansion #f (cdr operands)
 	       (lambda (expression)
 		 (expand expr (car operands) expression))
 	       if-not-expanded
@@ -319,7 +319,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	block
 	(global-ref/make 'APPLY)
 	(list (car operands)
-	      (cons*-expansion-loop false block (cdr operands)))))
+	      (cons*-expansion-loop #f block (cdr operands)))))
       (if-not-expanded)))
 
 (define (cons*-expansion expr operands if-expanded if-not-expanded block)
@@ -334,7 +334,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			block
 			(ucode-primitive cons)
 			(list (car rest)
-			      (cons*-expansion-loop false block (cdr rest))))))
+			      (cons*-expansion-loop #f block (cdr rest))))))
 
 (define (list-expansion expr operands if-expanded if-not-expanded block)
   (if (< (length operands) 9)
@@ -346,12 +346,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (constant/make (and expr (object/scode expr)) '())
       (make-combination expr block (ucode-primitive cons)
 			(list (car rest)
-			      (list-expansion-loop false block (cdr rest))))))
+			      (list-expansion-loop #f block (cdr rest))))))
 
 (define (values-expansion expr operands if-expanded if-not-expanded block)
   if-not-expanded
   (if-expanded
-   (let ((block (block/make block true '())))
+   (let ((block (block/make block #t '())))
      (let ((variables
 	    (map (lambda (operand)
 		   operand
@@ -362,17 +362,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(and expr (object/scode expr))
 	block
 	(procedure/make
-	 false
-	 block lambda-tag:let variables '() false
-	 (let ((block (block/make block true '())))
+	 #f
+	 block lambda-tag:let variables '() #f
+	 (let ((block (block/make block #t '())))
 	   (let ((variable (variable/make&bind! block 'RECEIVER)))
 	     (procedure/make
-	      false block lambda-tag:unnamed (list variable) '() false
-	      (combination/make false
+	      #f block lambda-tag:unnamed (list variable) '() #f
+	      (combination/make #f
 				block
-				(reference/make false block variable)
+				(reference/make #f block variable)
 				(map (lambda (variable)
-				       (reference/make false block variable))
+				       (reference/make #f block variable))
 				     variables))))))
 	operands)))))
 
@@ -384,7 +384,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (if-expanded
        (combination/make (and expr (object/scode expr))
 			 block
-			 (combination/make false block (car operands) '())
+			 (combination/make #f block (car operands) '())
 			 (cdr operands)))
       (if-not-expanded)))
 
@@ -398,7 +398,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			   block
 			   (ucode-primitive general-car-cdr)
 			   (list (car operands)
-				 (constant/make false encoding))))
+				 (constant/make #f encoding))))
 	(if-not-expanded))))
 
 (define caar-expansion (general-car-cdr-expansion #b111))
@@ -525,7 +525,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (make-type-test expr block type operand)
   (make-combination expr block
 		    (ucode-primitive object-type?)
-		    (list (constant/make false type) operand)))
+		    (list (constant/make #f type) operand)))
 
 (define (string->symbol-expansion expr operands if-expanded if-not-expanded
 				  block)
@@ -559,6 +559,36 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			 block
 			 (ucode-primitive integer->flonum 2)
 			 (list (car operands) (constant/make #f #b10))))
+      (if-not-expanded)))
+
+(define (flo:<=-expansion expr operands if-expanded if-not-expanded block)
+  (if (and (pair? operands)
+	   (pair? (cdr operands))
+	   (null? (cddr operands)))
+      (if-expanded
+       (make-combination
+	expr
+	block
+	(ucode-primitive not)
+	(list (make-combination #f
+				block
+				(ucode-primitive flonum-greater?)
+				operands))))
+      (if-not-expanded)))
+
+(define (flo:>=-expansion expr operands if-expanded if-not-expanded block)
+  (if (and (pair? operands)
+	   (pair? (cdr operands))
+	   (null? (cddr operands)))
+      (if-expanded
+       (make-combination
+	expr
+	block
+	(ucode-primitive not)
+	(list (make-combination #f
+				block
+				(ucode-primitive flonum-less?)
+				operands))))
       (if-not-expanded)))
 
 ;;;; Tables
@@ -618,6 +648,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     fix:<=
     fix:=
     fix:>=
+    flo:<=
+    flo:>=
     fourth
     int:->flonum
     int:integer?
@@ -697,6 +729,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    fix:<=-expansion
    fix:=-expansion
    fix:>=-expansion
+   flo:<=-expansion
+   flo:>=-expansion
    fourth-expansion
    int:->flonum-expansion
    exact-integer?-expansion
