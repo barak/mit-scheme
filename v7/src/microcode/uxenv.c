@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxenv.c,v 1.18 1999/04/07 04:01:48 cph Exp $
+$Id: uxenv.c,v 1.19 1999/12/21 19:21:31 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -439,7 +439,7 @@ DEFUN_VOID (OS_current_user_home_directory)
       }
   }
   {
-    struct passwd * entry = (UX_getpwuid (UX_geteuid ()));
+    struct passwd * entry = (UX_getpwuid (UX_getuid ()));
     if (entry != 0)
       return (entry -> pw_dir);
   }
