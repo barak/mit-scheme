@@ -1,8 +1,8 @@
 /* -*- C -*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdrn.c,v 1.3 1992/02/10 13:53:03 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdrn.c,v 1.4 1992/03/26 04:21:11 cph Exp $
 
-Copyright (c) 1991-1992 Massachusetts Institute of Technology
+Copyright (c) 1991-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -169,7 +169,9 @@ DEFUN (always_one, (operation_name, noise),
 static void
 DEFUN (process_requests, (drone), struct drone_info * drone)
 {
+#if !(defined(_HPUX) && (_HPUX_VERSION >= 80))
   extern int EXFUN (select, (int, int *, int *, int *, struct timeval *));
+#endif
   sigset_t non_blocking_signal_mask, blocking_signal_mask;
   int result, count, buffer_index, flags;
   long current_position = -1;

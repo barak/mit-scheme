@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.72 1992/03/26 04:14:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.73 1992/03/26 04:17:53 cph Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -494,7 +494,9 @@ static long default_sleep_period = 20 MILLISEC;
 #define GET_SLEEP_DELTA()	default_sleep_period
 #define SET_SLEEP_DELTA(value)	default_sleep_period = (value)
 
-extern int EXFUN (select, (int, int *, int *, int *, const struct timeval *));
+#if !(defined(_HPUX) && (_HPUX_VERSION >= 80))
+extern int EXFUN (select, (int, int *, int *, int *, struct timeval *));
+#endif
 
 static void
 DEFUN (sleep_awaiting_drones, (microsec, mask),
