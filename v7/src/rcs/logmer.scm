@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: logmer.scm,v 1.11 1995/11/12 05:52:22 cph Exp $
+$Id: logmer.scm,v 1.12 1995/11/12 05:55:42 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -47,6 +47,7 @@ MIT in each case. |#
     (newline port)
     (write-string "regenerating log for directory: " port)
     (write (->namestring directory))
+    (write-string "..." port)
     (let ((pathnames (rcs-directory-read directory)))
       (if (let ((time (file-modification-time-indirect output-file)))
 	    (or (not time)
@@ -67,11 +68,7 @@ MIT in each case. |#
 		(call-with-output-file output-file
 		  (lambda (port)
 		    (format/entries entries port))))))
-	  (begin
-	    (newline port)
-	    (write-string "directory " port)
-	    (write (->namestring directory) port)
-	    (write-string " is up to date." port))))))
+	  (write-string " log is up to date" port)))))
 
 (define (format/entries entries port)
   (let ((groups (compress-entries entries)))
