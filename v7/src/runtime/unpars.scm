@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.48 2001/06/15 20:38:51 cph Exp $
+$Id: unpars.scm,v 14.49 2001/12/19 03:31:25 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -613,9 +613,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;;; Miscellaneous
 
 (define (unparse/environment environment)
-  (if (lexical-unreferenceable? environment ':PRINT-SELF)
-      (unparse/default environment)
-      ((lexical-reference environment ':PRINT-SELF))))
+  (let ((print-self
+	 (ignore-errors
+	  (lambda ()
+	    (environment-lookup environment ':PRINT-SELF)))))
+    (if (and (procedure? print-self) (procedure-arity-valid? print-self 0))
+	(print-self)
+	(unparse/default environment))))
 
 (define (unparse/variable variable)
   (*unparse-with-brackets 'VARIABLE variable
