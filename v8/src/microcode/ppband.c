@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.21 1987/01/22 14:13:35 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.22 1987/02/10 22:45:31 jinx Exp $
  *
  * Dumps Scheme FASL in user-readable form .
  */
@@ -190,16 +190,28 @@ long Location, Type, The_Datum;
   printf("%x]\n", Points_To);
 }
 
-main()
+main(argc, argv)
+int argc;
+char **argv;
 { Pointer *Next;
   long i;
-  if (!Read_Header())
-  { fprintf(stderr, "Input does not appear to be in FASL format.\n");
-    exit(1);
+  if (argc == 1)
+  { if (!Read_Header())
+    { fprintf(stderr, "Input does not appear to be in FASL format.\n");
+      exit(1);
+    }
+    printf("Dumped object at 0x%x\n", Relocate(Dumped_Object));
+    if (Sub_Version >= FASL_LONG_HEADER)
+      printf("External primitives at 0x%x\n\n", Relocate(Ext_Prim_Vector));
   }
-  printf("Dumped object at 0x%x\n", Relocate(Dumped_Object));
-  if (Sub_Version >= FASL_LONG_HEADER)
-    printf("External primitives at 0x%x\n\n", Relocate(Ext_Prim_Vector));
+  else
+  { Const_Count = 0;
+    sscanf(argv[1], "%x", &Heap_Base);
+    sscanf(argv[2], "%x", &Const_Base);
+    sscanf(argv[3], "%d", &Heap_Count);
+    printf("Heap Base = 0x%08x; Constant Base = 0x%08x; Heap Count = %d\n",
+	   Heap_Base, Const_Base, Heap_Count);
+  }    
   Data = (Pointer *) malloc(sizeof(Pointer) * (Heap_Count + Const_Count));
   Load_Data(Heap_Count + Const_Count, Data);
   printf("Heap contents\n\n");
