@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.11 2004/11/16 20:11:38 cph Exp $
+$Id: mod-lisp.scm,v 1.12 2004/11/18 20:03:16 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -69,6 +69,10 @@ USA.
 (define debug-internal-errors? #f)
 
 (define (write-response message port)
+  (if trace-requests?
+      (pp `(RESPONSE ,@(map (lambda (p)
+			      (list (car p) (cdr p)))
+			    (http-message-headers message)))))
   (for-each (lambda (header)
 	      ;; Kludge: mod-lisp uses case-sensitive comparisons for
 	      ;; these headers.
@@ -180,10 +184,6 @@ USA.
 					      response
 					      pathname
 					      expand))))))
-	  (if trace-requests?
-	      (pp `(RESPONSE ,@(map (lambda (p)
-				      (list (car p) (cdr p)))
-				    (http-message-headers response)))))
 	  response)))))
 
 (define (url->relative url server-root)
@@ -383,9 +383,7 @@ USA.
 		   (or (string->number datum)
 		       (error "Invalid Content-Length:" datum)))))
 		((COOKIE)
-		 (set-http-message-cookie-parameters!
-		  request
-		  (parse-parameters datum)))
+		 (parse-cookie request datum))
 		(else
 		 (add-header request keyword datum)))
 	      (loop)))))
@@ -474,6 +472,19 @@ USA.
 	       (else
 		(values #f start))))
       (values #f #f)))
+
+(define (parse-cookie message string)
+  (set-http-message-cookies!
+   message
+   (append! (http-message-cookies message)
+	    (map (lambda (binding)
+		   (let ((nv (burst-string binding #\= #f)))
+		     (if (not (and (pair? nv)
+				   (pair? (cdr nv))
+				   (null? (cddr nv))))
+			 (error "Malformed cookie value:" string))
+		     (cons (car nv) (cdr nv))))
+		 (map string-trim (burst-string string #\; #f))))))
 
 ;;;; HTTP message datatype
 
@@ -485,7 +496,7 @@ USA.
   (url #f)
   (url-parameters '())
   (post-parameters '())
-  (cookie-parameters '()))
+  (cookies '()))
 
 (define (set-header message keyword datum)
   (let ((p (assq keyword (http-message-headers message))))
@@ -537,9 +548,9 @@ USA.
   (message-keyword-proc http-message-post-parameters
 			'HTTP-MESSAGE-POST-PARAMETER))
 
-(define http-message-cookie-parameter
-  (message-keyword-proc http-message-cookie-parameters
-			'HTTP-MESSAGE-COOKIE-PARAMETER))
+(define http-message-cookie
+  (message-keyword-proc http-message-cookies
+			'HTTP-MESSAGE-COOKIE))
 
 ;;;; Status messages
 
@@ -606,6 +617,52 @@ USA.
 (define (add-content-type-header message type)
   (set-header message 'CONTENT-TYPE (symbol-name type)))
 
+;;;; Cookie support
+
+(define (set-cookie message name value attrs)
+  ;; Version 0 ("netscape") cookies.
+  (add-header message
+	      'SET-COOKIE
+	      (let* ((%attr
+		      (lambda (key name map-value)
+			(let ((value (get-keyword-value attrs key #f)))
+			  (if value
+			      (string-append "; "
+					     (symbol-name name)
+					     "="
+					     (if map-value
+						 (map-value value)
+						 value))
+			      ""))))
+		     (attr
+		      (lambda (name map-value)
+			(%attr name name map-value))))
+		(string-append (symbol-name name) "=" value
+			       (%attr 'max-age 'expires max-age->expires)
+			       (attr 'domain #f)
+			       (attr 'path #f)
+			       (attr 'secure (lambda (v) v "secure"))))))
+
+(define (max-age->expires n)
+  (let ((dt (universal-time->global-decoded-time (+ (get-universal-time) n)))
+	(d2 (lambda (n) (string-pad-left (number->string n) 2 #\0))))
+    (string-append (let ((day (decoded-time/day-of-week dt)))
+		     (if day
+			 (string-append (day-of-week/short-string day) ", ")
+			 ""))
+		   (number->string (decoded-time/day dt))
+		   "-"
+		   (month/short-string (decoded-time/month dt))
+		   "-"
+		   (number->string (decoded-time/year dt))
+		   " "
+		   (d2 (decoded-time/hour dt))
+		   ":"
+		   (d2 (decoded-time/minute dt))
+		   ":"
+		   (d2 (decoded-time/second dt))
+		   " GMT")))
+
 ;;;; Request/response accessors
 
 (define (http-request-entity)
@@ -626,8 +683,8 @@ USA.
 (define (http-request-post-parameter-bindings)
   (http-message-post-parameters *current-request*))
 
-(define (http-request-cookie-parameter-bindings)
-  (http-message-cookie-parameters *current-request*))
+(define (http-request-cookies)
+  (http-message-cookies *current-request*))
 
 (define (keyword-proc accessor)
   (lambda (keyword #!optional error?)
@@ -644,8 +701,8 @@ USA.
 (define http-request-post-parameter
   (keyword-proc http-message-post-parameter))
 
-(define http-request-cookie-parameter
-  (keyword-proc http-message-cookie-parameter))
+(define http-request-cookie
+  (keyword-proc http-message-cookie))
 
 (define (http-request-post-parameter-multiple keyword)
   (let loop
@@ -669,6 +726,9 @@ USA.
   (if (if (default-object? override?) #f override?)
       (set-header *current-response* keyword datum)
       (add-header *current-response* keyword datum)))
+
+(define (http-response-cookie name value . attrs)
+  (set-cookie *current-response* name value attrs))
 
 (define (http-status-response code extra)
   (guarantee-exact-nonnegative-integer code 'HTTP-STATUS-RESPONSE)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ssp.pkg,v 1.12 2004/11/01 19:09:24 cph Exp $
+$Id: ssp.pkg,v 1.13 2004/11/18 20:03:18 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -52,8 +52,8 @@ USA.
 	  define-subtree-handler
 	  http-browser-type
 	  html-content-type
-	  http-request-cookie-parameter
-	  http-request-cookie-parameter-bindings
+	  http-request-cookie
+	  http-request-cookies
 	  http-request-entity
 	  http-request-header
 	  http-request-header-bindings
@@ -77,8 +77,8 @@ USA.
   (export (runtime ssp-expander-environment)
 	  http-browser-type
 	  html-content-type
-	  http-request-cookie-parameter
-	  http-request-cookie-parameter-bindings
+	  http-request-cookie
+	  http-request-cookies
 	  http-request-entity
 	  http-request-header
 	  http-request-header-bindings
@@ -91,6 +91,7 @@ USA.
 	  http-request-url-parameter
 	  http-request-url-parameter-bindings
 	  http-request-user-name
+	  http-response-cookie
 	  http-response-header
 	  http-status-response
 	  server-root-dir))
