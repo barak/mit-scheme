@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/doskbd.c,v 1.3 1992/05/12 04:16:56 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/doskbd.c,v 1.4 1992/05/13 16:49:24 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -32,8 +32,6 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-
-
 /* These flags determine how the code will behave. */
 
 #define DOSX_USE_INT_INTERCEPT
@@ -66,10 +64,6 @@ MIT in each case. */
 #ifndef EFAULT
 #  define EFAULT 2001
 #endif
-
-#define Dprintf(thing)		\
-  if (0) printf(thing)
-    
 
 /* Tables mapping scan codes to ASCII characters.
    Entries with NULL (\0) should not be mapped by the
@@ -167,7 +161,7 @@ unshifted_scan_code_to_ascii[] =
 	'u',		/* 22 */
 	'i',		/* 23 */
 	'o',		/* 24 */
-	'\0',		/* 25 */	/* M-p does not work, somehow. */
+	'p',		/* 25 */
 	'[',		/* 26 */
 	']',		/* 27 */
 	'\r',		/* 28 */
@@ -269,8 +263,8 @@ DOSX_install_kbd_hook_p()
   else
     return dos_true;  
 }
-
-/*
+
+/*
    We would like to use Zortech's int_intercept with the following
    routine under DOSX (or Phar Lap).
 
@@ -325,14 +319,16 @@ bios_keyboard_handler(struct INT_DATA *pd)
   else
     ascii = ((int) shifted_scan_code_to_ascii[scan_code]);
 
-  if (ascii == '\0')
-    return INTERRUPT_CHAIN_NEXT;	
+  if (ascii == 0)
+    return (INTERRUPT_CHAIN_NEXT);
   if ((chord & PC_KBD_CTRL_MASK) != 0)
-  {
     ascii &= ~0x60;			/* Controlify */
-  }
   if (chord & PC_KBD_ALT_MASK)
     ascii |= 0x80;			/* Metafy */
+  if (ascii == 0360)
+    return (INTERRUPT_CHAIN_NEXT);	/* Problems with M-p */
+  if ((ascii == 0200) || (ascii == 0))
+    scan_code = 3;			/* Problems with C-Space */
 
   /* Insert metafied char in bios buffer. */
   regs.h.ah = DOS_KBD_FUNC_RECORD_KEYSTROKE;
@@ -488,7 +484,6 @@ DPMI_free_DOS_block (unsigned short selector)
 }
 
 #endif /* DPMI_RM_HANDLER_REAL */
-
 
 #ifdef DOSX_RM_HANDLER_REAL
 
@@ -605,7 +600,7 @@ DOSX_restore_vector (unsigned vecnum, unsigned eip,
 
 #endif /* DOSX_PM_HANDLER_UNTOUCHED */
 
-#ifndef DOSX_RM_HANDLER_UNTOUCHED
+#if (!(defined(DOSX_RM_HANDLER_UNTOUCHED) && defined(DOSX_PM_HANDLER_UNTOUCHED)))
 
 static void
 DOSX_RM_getvector (unsigned vecnum, unsigned * vector)
@@ -618,6 +613,10 @@ DOSX_RM_getvector (unsigned vecnum, unsigned * vector)
   * vector = regs.e.ebx;
   return;
 }
+
+#endif /* !(DOSX_RM_HANDLER_UNTOUCHED && DOSX_PM_HANDLER_UNTOUCHED) */
+
+#ifndef DOSX_RM_HANDLER_UNTOUCHED
 
 static int
 DOSX_RM_setvector (unsigned vecnum, unsigned rm_address)
@@ -811,7 +810,7 @@ unsigned char RM_handler_pattern[] =
 0x2e,0x8a,0x9f,0xba,0,	/* 30	mov	bl,cs:unshifted_table[bx]	*/
 			/*  merge:					*/
 0x80,0xfb,0,		/* 35	cmp	bl,0	; No translation?	*/
-0x74,0x2b,		/* 38	je	abort_translation		*/
+0x74,0x37,		/* 38	je	abort_translation		*/
 0x0f,0xba,0xe0,2,	/* 3a	bt	al,2h	; Control set?		*/
 0x73,3,			/* 3e	jnc	after_ctrl			*/
 0x80,0xe3,0x9f,		/* 40	and	bl,09fh ; controlify		*/
@@ -820,31 +819,37 @@ unsigned char RM_handler_pattern[] =
 0x73,3,			/* 47	jnc	after_meta			*/
 0x80,0xcb,0x80,		/* 49	or	bl,080h ; metify		*/
 			/*  after_meta:					*/
-0x58,			/* 4c	pop	ax				*/
-0x51,			/* 4d	push	cx	; Preserve cx		*/
-0x50,			/* 4e	push	ax				*/
-0x8a,0xe8,		/* 4f	mov	ch,al	; Scan code		*/
-0x8a,0xcb,		/* 51	mov	cl,bl	; ASCII value		*/
-0xb4,5,			/* 53	mov	ah,05h	; fcn. number		*/
-0xcd,0x16,		/* 55	int	16h	; Record keystroke	*/
-0x58,			/* 57	pop	ax	; Restore registers	*/
-0x59,			/* 58	pop	cx				*/
-0x5b,			/* 59	pop	bx				*/
-0x55,			/* 5a	push	bp				*/
-0x8b,0xec,		/* 5b	mov	bp,sp				*/
-0x80,0x66,8,0xfe,	/* 5d	and	8[bp],0feh  ; clc iret's flags	*/
-0x5d,			/* 61	pop	bp				*/
-0x9d,			/* 62	popf					*/
-0xf8,			/* 63	clc					*/
-0xcf,			/* 64	iret					*/
+0x80,0xfb,0xf0,		/* 4c   cmp	bl,0f0h ; M-p ?			*/
+0x74,0x20,		/* 4f	je	abort_translation		*/
+0x58,			/* 51	pop	ax				*/
+0x51,			/* 52	push	cx	; Preserve cx		*/
+0x50,			/* 53	push	ax				*/
+0x8a,0xe8,		/* 54	mov	ch,al	; Scan code		*/
+0x80,0xfb,0,		/* 56	cmp	bl,0	; C-Space?		*/
+0x75,2,			/* 59   jne	after_ctrl_space		*/
+0xb5,3,			/* 5b	mov	ch,3	; Fudge scan code	*/
+			/*  after_ctrl_space:				*/
+0x8a,0xcb,		/* 5d	mov	cl,bl	; ASCII value		*/
+0xb4,5,			/* 5f	mov	ah,05h	; fcn. number		*/
+0xcd,0x16,		/* 61	int	16h	; Record keystroke	*/
+0x58,			/* 63	pop	ax	; Restore registers	*/
+0x59,			/* 64	pop	cx				*/
+0x5b,			/* 65	pop	bx				*/
+0x55,			/* 66	push	bp				*/
+0x8b,0xec,		/* 67	mov	bp,sp				*/
+0x80,0x66,8,0xfe,	/* 69	and	8[bp],0feh  ; clc iret's flags	*/
+0x5d,			/* 6d	pop	bp				*/
+0x9d,			/* 6e	popf					*/
+0xf8,			/* 6f	clc					*/
+0xcf,			/* 70	iret					*/
 			/*  abort_translation:				*/
-0x58,			/* 65	pop	ax				*/
-0x5b,			/* 66	pop	bx				*/
-0xeb,0x97		/* 67	jmp	chain				*/
-			/* 69	PAD					*/
+0x58,			/* 71	pop	ax				*/
+0x5b,			/* 72	pop	bx				*/
+0xeb,0x8b		/* 73	jmp	chain				*/
+			/* 75	PAD					*/
 };
 
-#define PATTERN_SIZE		0x69
+#define PATTERN_SIZE		0x75
 #define PADDED_PATTERN_SIZE	0x80
 #define PATTERN_CHAIN_OFFSET	2
 #define PATTERN_START_OFFSET	6
@@ -1059,7 +1064,8 @@ DPMI_install_kbd_hook (void)
 static int
 DOSX_install_kbd_hook (void)
 {
-  if (!DOSX_install_kbd_hook_p()) return DOS_FAILURE;
+  if (!(DOSX_install_kbd_hook_p ()))
+    return (DOS_FAILURE);
   
 #ifdef DOSX_USE_INT_INTERCEPT
   {
@@ -1142,23 +1148,16 @@ DOSX_install_kbd_hook (void)
 
 #else /* not 0 */
     
-
-    Dprintf ("Allocating DOS block.\n");
     if ((DOSX_allocate_DOS_block (RM_ISR_TOTAL_SIZE, &new_handler.x.seg))
 	!= DOS_SUCCESS)
     {
       int saved_errno = errno;
-
-
-      Dprintf ("Failed allocating DOS block.\n");
 
       free (RM_handler);
       errno = saved_errno;
       return (DOS_FAILURE);
     }
     new_handler.x.off = 0;
-
-    Dprintf ("Allocated DOS memory.\n");
 
     /* This assumes that the bottom 1 Mb of memory is mapped to the DOS
        memory, so it can be accessed directly.
@@ -1168,14 +1167,9 @@ DOSX_install_kbd_hook (void)
 	    RM_handler,
 	    RM_ISR_TOTAL_SIZE);
 
-    Dprintf ("memcpy'd.\n");
-
     if ((DOSX_RM_setvector (DOS_INTVECT_SYSTEM_SERVICES, new_handler.fp))
 	!= DOS_SUCCESS)
     {
-
-      Dprintf ("Failed to install real mode handler.\n");
-
       DOSX_free_DOS_block (new_handler.x.seg);
       fflush (stdout);
       free (RM_handler);
@@ -1183,9 +1177,6 @@ DOSX_install_kbd_hook (void)
       return (DOS_FAILURE);
     }
     DOSX_RM_segment = new_handler.x.seg;
-
-
-    Dprintf ("Installed real mode handler.\n");
 
 #endif /* 0 */
 
@@ -1200,8 +1191,9 @@ DOSX_install_kbd_hook (void)
 static int
 DOSX_restore_kbd_hook (void)
 {
-  if (!DOSX_install_kbd_hook_p()) return DOS_FAILURE;
-  
+  if (!(DOSX_install_kbd_hook_p ()))
+    return (DOS_FAILURE);
+
 #ifdef DOSX_USE_INT_INTERCEPT
 
   (void) int_restore (DOS_INTVECT_SYSTEM_SERVICES);

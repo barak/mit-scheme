@@ -1,6 +1,6 @@
 ;;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/doskbutl.asm,v 1.1 1992/05/05 06:55:13 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/doskbutl.asm,v 1.2 1992/05/13 16:49:53 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -193,7 +193,15 @@ after_control:
         or      al,080h         ; Set bit 8
 
 after_meta:
+	cmp	al,0f0h		; M-p ?
+	je	abort_translation
         mov     ecx,-4[ebp]     ; Get scan code
+
+	cmp	al,0		; C-Space ?
+	jne	after_ctrl_space
+	mov	cl,3		; Fudge scan code
+
+after_ctrl_space:
 	mov	ch,cl
         mov     cl,al           ; Transfer ASCII value
         
