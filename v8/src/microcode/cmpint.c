@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.88 1996/10/02 18:57:13 cph Exp $
+$Id: cmpint.c,v 1.89 1997/08/12 19:37:32 adams Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -1204,7 +1204,8 @@ DEFUN (link_cc_block,
        long original_count AND
        instruction * ret_add AND
        register long count)
-{ Boolean execute_p;
+{
+  Boolean execute_p;
   register long entry_size;
   SCHEME_OBJECT block;
   SCHEME_OBJECT header;
@@ -1214,7 +1215,8 @@ DEFUN (link_cc_block,
 
   if (count != -1) fprintf(stderr, "Count is %d!\n", count);
   transaction_begin ();
-  { Boolean * ap = (dstack_alloc (sizeof (Boolean)));
+  {
+    Boolean * ap = (dstack_alloc (sizeof (Boolean)));
     *ap = linking_cc_block_p;
     transaction_record_action (tat_abort, abort_link_cc_block, ap);
   }
@@ -1227,12 +1229,16 @@ DEFUN (link_cc_block,
 	     sections, offset, last_header_offset, original_count);
   */
   while ((--sections) >= 0)
-  { SCHEME_OBJECT * scan = &(block_address[last_header_offset]);
+  {
+    SCHEME_OBJECT * scan = &(block_address[last_header_offset]);
     header = (*scan);
+
     kind = (READ_LINKAGE_KIND (header));
     switch (kind)
-    { case OPERATOR_LINKAGE_KIND:
+    {
+      case OPERATOR_LINKAGE_KIND:
 	cache_handler = compiler_cache_operator;
+
       handle_operator:
         execute_p = true;
 	entry_size = EXECUTE_CACHE_ENTRY_SIZE;
@@ -1262,25 +1268,26 @@ DEFUN (link_cc_block,
 	goto handle_reference;
 
       default:
-	/* fprintf(stderr, "Error case 0x%x %d %d %d %d",
-	           kind, sections, count, offset, last_header_offset);
-        */
 	offset += 1;
 	total_count = (READ_CACHE_LINKAGE_COUNT (header));
 	count = (total_count - 1);
 	result = ERR_COMPILED_CODE_ERROR;
 	goto back_out;
     }
+
     /* This accomodates the re-entry case after a GC.
        It undoes the effects of the "smash header" code below.
     */
+
     if (original_count < 0)
-    { total_count = count;
+    {
+      total_count = count;
       if (execute_p)
 	offset += (FIRST_OPERATOR_LINKAGE_OFFSET - 1);
     }
     else
-    { total_count = original_count;
+    {
+      total_count = original_count;
       fprintf(stderr, "Don't get here!\n");
     }
 
@@ -1294,7 +1301,8 @@ DEFUN (link_cc_block,
     /* fprintf(stderr, " 0x%x\n", block_address[last_header_offset]);
        */
     for (offset += 1; ((--count) >= 0); offset += entry_size)
-    { SCHEME_OBJECT info;	/* A symbol or a fixnum */
+    {
+      SCHEME_OBJECT info;	/* A symbol or a fixnum */
 
       if (! execute_p)
 	info = (block_address[offset]);
@@ -1306,7 +1314,8 @@ DEFUN (link_cc_block,
 		 sections, count, offset, last_header_offset, total_count);
       */
       if ((result != PRIM_DONE) || (Trampoline_Generator != SHARP_F))
-      { /* Save enough state to continue.
+      {
+	/* Save enough state to continue.
 	   Note that offset is decremented to compensate for it being
 	   incremented by the for loop header.
 	   Similary sections and count are incremented to compensate
@@ -1316,6 +1325,7 @@ DEFUN (link_cc_block,
 	 */
 	if (result != PRIM_DONE) Trampoline_Generator = SHARP_F;
 	fprintf(stderr, "(backout)\n");
+
   back_out:
 	if (execute_p)
 	  END_OPERATOR_RELOCATION (&(block_address[offset]));
@@ -1327,7 +1337,8 @@ DEFUN (link_cc_block,
 	STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (count + 1));
 	STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (total_count));
 	if (Trampoline_Generator != SHARP_F)
-	{ STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (entry_size));
+	{
+	  STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (entry_size));
 	  STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_CONTINUE_LINKING);
 	  STACK_PUSH (reflect_to_interface);
 	  STACK_PUSH (FIXNUM_ZERO);
@@ -1336,7 +1347,8 @@ DEFUN (link_cc_block,
 	  result = PRIM_APPLY;
 	}
 	else
-	{ Store_Expression (SHARP_F);
+	{
+	  Store_Expression (SHARP_F);
 	  Store_Return (RC_COMP_LINK_CACHES_RESTART);
 	  Save_Cont ();
 	}
@@ -1344,6 +1356,7 @@ DEFUN (link_cc_block,
         /* Smash header for the garbage collector.
            It is smashed back on return.  See the comment above.
          */
+
 	fprintf(stderr, "Backout smash %d 0x%x ... ",
 		last_header_offset, block_address[last_header_offset]);
         block_address[last_header_offset] =
@@ -1401,7 +1414,6 @@ DEFNX (comutil_link,
   SCHEME_OBJECT * constant_address
     = (SCHEME_ADDR_TO_ADDR (constant_address_raw));
   long offset;
-
 
 #ifdef AUTOCLOBBER_BUG
   block_address[OBJECT_DATUM (* block_address)] = Regs[REGBLOCK_ENV];
