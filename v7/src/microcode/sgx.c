@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgx.c,v 1.2 1988/07/16 07:19:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgx.c,v 1.3 1988/07/19 20:04:12 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -69,6 +69,29 @@ static void delete_raster ();
     error_external_return ();						\
 }
 
+static int
+x_io_error_handler (display)
+     Display *display;
+{
+  fprintf (stderr, "\nX IO Error\n");
+  error_external_return ();
+}
+
+static int
+x_error_handler (display, error_event)
+     Display *display;
+     XErrorEvent *error_event;
+{
+  fprintf (stderr, "\nX Error: %s\n",
+	   (XErrDescrip (error_event -> error_code)));
+  fprintf (stderr, "         Request code: %d\n",
+	   (error_event -> request_code));
+  fprintf (stderr, "         Request function: %d\n", (error_event -> func));
+  fprintf (stderr, "         Request window: %x\n", (error_event -> window));
+  fprintf (stderr, "         Error serial: %x\n", (error_event -> serial));
+  error_external_return ();
+}
+
 /* (X-GRAPHICS-OPEN-DISPLAY display-name)
 
    Opens the named display.  The name may be #F, in which case the
@@ -84,6 +107,11 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-OPEN-DISPLAY", Prim_x_graphics_open_display, 1)
 
   /* Only one display at a time. */
   close_display ();
+
+  /* Grab error handlers. */
+  XErrorHandler (x_error_handler);
+  XIOErrorHandler (x_io_error_handler);
+
   display = (XOpenDisplay (((ARG_REF (1)) == NIL) ? NULL : (STRING_ARG (1))));
   window = 0;
   (filename [0]) = '\0';
