@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.213 2000/12/05 21:52:49 cph Exp $
+;;; $Id: filcom.scm,v 1.214 2001/05/07 18:36:50 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; File Commands
 
@@ -747,21 +748,18 @@ Prefix arg means treat the plaintext file as binary data."
 
 (define (prompt-for-directory prompt default . options)
   (->namestring
-   (let ((file-directory?
-	  (lambda (pathname)
-	    (and (not (pathname-wild? pathname))
-		 (file-directory? pathname)))))
-     (let ((directory
-	    (prompt-for-pathname* prompt default file-directory? options)))
-       (if (file-test-no-errors file-directory? directory)
-	   (pathname-as-directory directory)
-	   directory)))))
+   (pathname-as-directory
+    (prompt-for-pathname* prompt default file-directory-not-wild? options))))
 
 (define (prompt-for-existing-directory prompt default . options)
   (->namestring
    (pathname-as-directory
-    (prompt-for-pathname* prompt default file-directory?
+    (prompt-for-pathname* prompt default file-directory-not-wild?
 			  (cons* 'REQUIRE-MATCH? #t options)))))
+
+(define (file-directory-not-wild? pathname)
+  (and (not (pathname-wild? pathname))
+       (file-directory? pathname)))
 
 (define (prompt-for-pathname prompt default . options)
   (prompt-for-pathname* prompt default file-exists? options))
