@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.38 1992/11/18 23:35:19 cph Exp $
+$Id: edwin.ldr,v 1.39 1993/08/09 19:20:36 jawilson Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -98,6 +98,7 @@ MIT in each case. |#
 	(load "paths" environment)
 	(load "struct" environment)
 	(load "grpops" (->environment '(EDWIN GROUP-OPERATIONS)))
+	(load "txtprp" (->environment '(EDWIN TEXT-PROPS)))
 	(load "regops" environment)
 	(load "motion" environment)
 	(load "search" environment)
