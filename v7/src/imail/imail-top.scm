@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.106 2000/05/24 21:43:21 cph Exp $
+;;; $Id: imail-top.scm,v 1.107 2000/05/24 23:21:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1269,10 +1269,9 @@ While composing the reply, use \\[mail-yank-original] to yank the
  original message into it."
   "P"
   (lambda (just-sender?)
-    (let ((buffer (selected-buffer))
-	  (message (selected-message)))
+    (let ((message (selected-message)))
       (make-mail-buffer (imail-reply-headers message (not just-sender?))
-			buffer
+			(chase-imail-buffer (selected-buffer))
 			(lambda (mail-buffer)
 			  (message-answered message)
 			  (select-buffer-other-window mail-buffer))))))
