@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.232 2001/01/24 22:53:47 cph Exp $
+;;; $Id: imail-top.scm,v 1.233 2001/01/25 00:15:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -473,8 +473,6 @@ Instead, these commands are available:
 (define-key 'imail #\r		'imail-reply)
 (define-key 'imail #\s		'imail-save-folder)
 (define-key 'imail #\m-s	'imail-search)
-(define-key 'imail #\t		'imail-toggle-header)
-(define-key 'imail #\c-t	'imail-toggle-mime-entity)
 (define-key 'imail #\u		'imail-undelete-previous-message)
 (define-key 'imail #\m-u	'imail-first-unseen-message)
 (define-key 'imail #\w		'imail-save-mime-entity)
@@ -487,11 +485,15 @@ Instead, these commands are available:
 (define-key 'imail #\?		'describe-mode)
 (define-key 'imail '(#\c-c #\c-n)	'imail-next-same-subject)
 (define-key 'imail '(#\c-c #\c-p)	'imail-previous-same-subject)
-(define-key 'imail '(#\c-c #\c-t)	'imail-toggle-message)
+(define-key 'imail '(#\c-c #\c-t #\c-e)	'imail-toggle-mime-entity)
+(define-key 'imail '(#\c-c #\c-t #\c-h)	'imail-toggle-header)
+(define-key 'imail '(#\c-c #\c-t #\c-m)	'imail-toggle-message)
+(define-key 'imail '(#\c-c #\c-t #\c-w)	'imail-toggle-wrap-entity)
 
 ;; Putting these after the group above exploits behavior in the comtab
 ;; abstraction that makes these bindings the ones that show up during
 ;; command substitution.
+(define-key 'imail #\t		'imail-toggle-header)
 (define-key 'imail #\c-m-h	'imail-summary)
 (define-key 'imail #\c-m-l	'imail-summary-by-flags)
 (define-key 'imail #\c-m-r	'imail-summary-by-recipients)
@@ -896,13 +898,27 @@ With prefix argument, prompt even when point is on an attachment."
   "Expand or collapse the MIME entity at point."
   ()
   (lambda ()
-    (let ((i.m (current-mime-entity)))
-      (toggle-mime-entity (car i.m)
-			  (cdr i.m)
-			  (selected-message)))))
+    (let ((i.m (current-mime-entity))
+	  (message (selected-message)))
+      (let ((info (car i.m))
+	    (mark (cdr i.m)))
+	(set-mime-info-expanded?! info (not (mime-info-expanded? info)))
+	(re-render-mime-entity info mark message)))))
 
-(define (toggle-mime-entity info mark message)
-  (set-mime-info-expanded?! info (not (mime-info-expanded? info)))
+(define-command imail-toggle-wrap-entity
+  "Toggle auto-wrap on or off for the MIME entity at point."
+  ()
+  (lambda ()
+    (let ((i.m (current-mime-entity))
+	  (message (selected-message)))
+      (let ((info (car i.m))
+	    (mark (cdr i.m)))
+	(store-property! (mime-info-body info)
+			 'WRAP?
+			 (not (get-property (mime-info-body info) 'WRAP? #t)))
+	(re-render-mime-entity info mark message)))))
+
+(define (re-render-mime-entity info mark message)
   (let ((region (mime-entity-region mark))
 	(buffer (mark-buffer mark)))
     (if (not region)
@@ -917,7 +933,7 @@ With prefix argument, prompt even when point is on an attachment."
       (mark-temporary! point)
       (set-buffer-point! buffer point))
     (buffer-not-modified! buffer)))
-
+
 (define (maybe-prompt-for-mime-info prompt mark always-prompt? predicate)
   (let ((info (mark-mime-info mark)))
     (if (and info (not always-prompt?) (predicate info))
@@ -2033,7 +2049,7 @@ Negative argument means search in reverse."
 	  ((folder-supports-mime? (message-folder message))
 	   (insert-mime-message-body message mark inline-only? left-margin))
 	  (else
-	   (call-with-auto-wrapped-output-mark mark left-margin
+	   (call-with-auto-wrapped-output-mark mark left-margin message
 	     (lambda (port)
 	       (write-message-body message port)))))))
 
@@ -2165,6 +2181,7 @@ Negative argument means search in reverse."
   (call-with-auto-wrapped-output-mark
    mark
    (walk-mime-context-left-margin context)
+   body
    (lambda (port)
      (call-with-mime-decoding-output-port
       (mime-part-encoding context body)
@@ -2413,9 +2430,9 @@ Negative argument means search in reverse."
 
 ;;;; Automatic wrap/fill
 
-(define (call-with-auto-wrapped-output-mark mark left-margin generator)
+(define (call-with-auto-wrapped-output-mark mark left-margin object generator)
   (let ((auto-wrap (ref-variable imail-auto-wrap mark)))
-    (if auto-wrap
+    (if (and auto-wrap (get-property object 'WRAP? #t))
 	(let ((start (mark-right-inserting-copy mark))
 	      (end (mark-left-inserting-copy mark)))
 	  (call-with-output-mark mark generator)
