@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.8 1989/05/12 10:03:17 mhwu Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.9 1989/08/08 21:06:27 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -114,10 +114,8 @@ must be defined when the defstruct is evaluated.
   (if (not (list? options))
       (error "Structure options must be a list" options))
   (let ((conc-name (symbol-append name '-))
-	(constructor-seen? false)
-	(keyword-constructor? false)
-	(constructor-name (symbol-append 'make- name))
 	(boa-constructors '())
+	(keyword-constructors '())
 	(copier-name false)
 	(predicate-name (symbol-append name '?))
 	(print-procedure default-value)
@@ -128,13 +126,13 @@ must be defined when the defstruct is evaluated.
 	(offset 0)
 	(include false))
 
-    (define (parse/option keyword arguments)
+    (define (parse/option option keyword arguments)
       (let ((n-arguments (length arguments)))
+
 	(define (check-arguments min max)
 	  (if (or (< n-arguments min) (> n-arguments max))
 	      (error "Structure option used with wrong number of arguments"
-		     keyword
-		     arguments)))
+		     option)))
 
 	(define (symbol-option default)
 	  (parse/option-value symbol? keyword (car arguments) default))
@@ -147,21 +145,20 @@ must be defined when the defstruct is evaluated.
 		      (symbol-option (symbol-append name '-)))))
 	  ((KEYWORD-CONSTRUCTOR)
 	   (check-arguments 0 1)
-	   (set! constructor-seen? true)
-	   (set! keyword-constructor? true)
-	   (if (not (null? (cdr arguments)))
-	       (set! constructor-name
-		     (symbol-option (symbol-append 'make- name)))))
+	   (set! keyword-constructors
+		 (cons (cons option
+			     (if (null? arguments)
+				 (list (symbol-append 'make- name))
+				 arguments))
+		       keyword-constructors)))
 	  ((CONSTRUCTOR)
 	   (check-arguments 0 2)
-	   (cond ((null? arguments)
-		  (set! constructor-seen? true))
-		 ((null? (cdr arguments))
-		  (set! constructor-seen? true)
-		  (set! constructor-name
-			(symbol-option (symbol-append 'make- name))))
-		 (else
-		  (set! boa-constructors (cons arguments boa-constructors)))))
+	   (set! boa-constructors
+		 (cons (cons option
+			     (if (null? arguments)
+				 (list (symbol-append 'make- name))
+				 arguments))
+		       boa-constructors)))
 	  ((COPIER)
 	   (check-arguments 0 1)
 	   (if (not (null? arguments))
@@ -200,18 +197,28 @@ must be defined when the defstruct is evaluated.
 
     (for-each (lambda (option)
 		(if (pair? option)
-		    (parse/option (car option) (cdr option))
-		    (parse/option option '())))
+		    (parse/option option (car option) (cdr option))
+		    (parse/option option option '())))
 	      options)
+    (let loop ((constructors (append boa-constructors keyword-constructors)))
+      (if (not (null? constructors))
+	  (begin
+	    (let ((name (cadar constructors)))
+	      (for-each (lambda (constructor)
+			  (if (eq? name (cadr constructor))
+			      (error "Conflicting constructor definitions"
+				     (caar constructors)
+				     (car constructor))))
+			(cdr constructors)))
+	    (loop (cdr constructors)))))
     (vector structure
 	    name
 	    conc-name
-	    keyword-constructor?
-	    (and (or constructor-seen?
-		     (null? boa-constructors))
-		 constructor-name)
-	    boa-constructors
-	    copier-name
+	    false
+	    (map cdr keyword-constructors)
+	    (if (and (null? boa-constructors)
+		     (null? keyword-constructors))
+		(list (symbol-append 'make- name))		(map cdr boa-constructors))	    copier-name
 	    predicate-name
 	    (if (eq? print-procedure default-value)
 		`(,(absolute 'UNPARSER/STANDARD-METHOD) ',name)
@@ -258,7 +265,7 @@ must be defined when the defstruct is evaluated.
 		   (error "DEFINE-STRUCTURE -- Argument to option not given"
 			  (car options))
 		   (receiver (car options) (cadr options))))
-	     (define (loop options)
+	     (let loop ((options options))
 	       (if (not (null? options))
 		   (begin
 		     (case (car options)
@@ -266,17 +273,22 @@ must be defined when the defstruct is evaluated.
 			(set! type
 			      (with-option-type-and-argument options
                                 (lambda (type arg)
-				  (parse/option-value symbol? type arg true)))))
+				  (parse/option-value symbol?
+						      type
+						      arg
+						      true)))))
 		       ((READ-ONLY)
 			(set! read-only?
 			      (with-option-type-and-argument options
                                 (lambda (type arg)
-				  (parse/option-value boolean? type arg true)))))
+				  (parse/option-value boolean?
+						      type
+						      arg
+						      true)))))
 		       (else
 			(error "Unrecognized structure slot option"
 			       (car options))))
 		     (loop (cddr options)))))
-	     (loop options)
 	     (vector name index default type read-only?)))))
     (if (pair? slot-description)
 	(if (pair? (cdr slot-description))
@@ -325,8 +337,8 @@ must be defined when the defstruct is evaluated.
   (define-structure-refs structure 1
     name
     conc-name
-    keyword-constructor?
-    constructor-name
+    *dummy*
+    keyword-constructors
     boa-constructors
     copier-name
     predicate-name
@@ -454,19 +466,19 @@ must be defined when the defstruct is evaluated.
 	  (structure/slots structure)))
 
 (define (constructor-definitions structure)
-  `(,@(if (structure/constructor-name structure)
-	  (list
-	   ((if (structure/keyword-constructor? structure)
-		constructor-definition/keyword
-		constructor-definition/default)
-	    structure
-	    (structure/constructor-name structure)))
-	  '())
-    ,@(map (lambda (boa-constructor)
-	     (constructor-definition/boa structure
-					 (car boa-constructor)
-					 (cadr boa-constructor)))
-	   (structure/boa-constructors structure))))
+  `(,@(map (lambda (boa-constructor)
+	     (if (null? (cdr boa-constructor))
+		 (constructor-definition/default structure
+						 (car boa-constructor))
+		 (constructor-definition/boa structure
+					     (car boa-constructor)
+					     (cadr boa-constructor))))
+	   (structure/boa-constructors structure))
+    ,@(map (lambda (keyword-constructor)
+	     (constructor-definition/keyword structure
+					     (car keyword-constructor)))
+	   (structure/keyword-constructors structure))))
+
 (define (constructor-definition/default structure name)
   (let ((slot-names (map slot/name (structure/slots structure))))
     `(DEFINE (,name ,@slot-names)
