@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.80 1994/04/23 04:52:27 cph Exp $
+;;;	$Id: intmod.scm,v 1.81 1994/08/15 18:46:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -933,9 +933,7 @@ If this is an error, the debugger examines the error condition."
   (if (not (and suppress-standard-prompts?
 		(or (string=? prompt user-initial-prompt)
 		    (member prompt standard-prompts))))
-      (begin
-	(write-string prompt port)
-	(write-char #\space port))))
+      (write-string prompt port)))
 
 (define suppress-standard-prompts? #t)
 (define standard-prompts
