@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/boot.scm,v 14.2 1988/08/05 20:16:26 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/boot.scm,v 14.3 1989/08/09 11:08:31 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -40,17 +40,24 @@ MIT in each case. |#
 (define (unparser/standard-method name #!optional unparser)
   (lambda (state object)
     (if (not (unparser-state? state)) (error "Bad unparser state" state))
-    (let ((port (unparser-state/port state)))
-      (write-string "#[" port)
-      (if (string? name)
-	  (write-string name port)
-	  (unparse-object state name))
-      (write-char #\Space port)
-      (write-string (number->string (hash object)) port)
-      (if (and (not (default-object? unparser)) unparser)
-	  (begin (write-char #\Space port)
-		 (unparser state object)))
-      (write-char #\] port))))
+    (let ((port (unparser-state/port state))
+	  (hash-string (number->string (hash object))))
+      (if *unparse-with-maximum-readability?*
+	  (begin
+	    (write-string "#@" port)
+	    (write-string hash-string port))
+	  (begin
+	    (write-string "#[" port)
+	    (if (string? name)
+		(write-string name port)
+		(unparse-object state name))
+	    (write-char #\space port)
+	    (write-string hash-string port)
+	    (if (and (not (default-object? unparser)) unparser)
+		(begin (write-char #\Space port)
+		       (unparser state object)))
+	    (write-char #\] port))))))
+
 (define-integrable interrupt-bit/stack     #x0001)
 (define-integrable interrupt-bit/global-gc #x0002)
 (define-integrable interrupt-bit/gc        #x0004)

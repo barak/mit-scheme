@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.12 1989/02/09 03:45:14 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.13 1989/08/09 11:08:39 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,6 +46,7 @@ MIT in each case. |#
   (set! *unparser-list-depth-limit* false)
   (set! *unparse-primitives-by-name?* false)
   (set! *unparse-uninterned-symbols-by-name?* false)
+  (set! *unparse-with-maximum-readability?* false)
   (set! system-global-unparser-table (make-system-global-unparser-table))
   (set-current-unparser-table! system-global-unparser-table))
 
@@ -54,6 +55,7 @@ MIT in each case. |#
 (define *unparser-list-depth-limit*)
 (define *unparse-primitives-by-name?*)
 (define *unparse-uninterned-symbols-by-name?*)
+(define *unparse-with-maximum-readability?*)
 (define system-global-unparser-table)
 (define *current-unparser-table*)
 
@@ -198,40 +200,57 @@ MIT in each case. |#
 (define-integrable (*unparse-hash object)
   (*unparse-string (number->string (hash object))))
 
+(define (*unparse-readable-hash object)
+  (*unparse-string "#@")
+  (*unparse-hash object))
+
 (define (*unparse-with-brackets name object thunk)
-  (*unparse-string "#[")
-  (if (string? name)
-      (*unparse-string name)
-      (*unparse-object name))
-  (if object
-      (begin (*unparse-char #\Space)
-	     (*unparse-hash object)))
-  (if thunk
-      (begin (*unparse-char #\Space)
-	     (thunk)))
-  (*unparse-char #\]))
+  (if (and *unparse-with-maximum-readability?* object)
+      (*unparse-readable-hash object)
+      (begin
+	(*unparse-string "#[")
+	(if (string? name)
+	    (*unparse-string name)
+	    (*unparse-object name))
+	(if object
+	    (begin
+	      (*unparse-char #\Space)
+	      (*unparse-hash object)))
+	(if thunk
+	    (begin
+	      (*unparse-char #\Space)
+	      (thunk)))
+	(*unparse-char #\]))))
 
 ;;;; Unparser Methods
 
 (define (unparse/default object)
-  (let ((type (user-object-type object))
-	(gc-type ((ucode-primitive primitive-object-gc-type 1) object)))
-    (case gc-type
-      ((1 2 3 4 -3 -4)			; cell pair triple quad vector compiled
+  (let ((type (user-object-type object)))
+    (case ((ucode-primitive primitive-object-gc-type 1) object)
+      ((1 2 3 4 -3 -4)		; cell pair triple quad vector compiled
        (*unparse-with-brackets type object false))
-      (else				; non pointer, gc special, undefined
+      ((0)			; non pointer
        (*unparse-with-brackets type object
-			       (lambda ()
-				 (*unparse-datum object)))))))
+	 (lambda ()
+	   (*unparse-datum object))))
+      (else			; undefined, gc special
+       (*unparse-with-brackets type false
+	 (lambda ()
+	   (*unparse-datum object)))))))
 
 (define (user-object-type object)
   (let ((type-code (object-type object)))
     (let ((type-name (microcode-type/code->name type-code)))
       (if type-name
-	  (let ((entry (assq type-name renamed-user-object-types)))
-	    (if entry (cdr entry) type-name))
+	  (rename-user-object-type type-name)
 	  (intern
 	   (string-append "undefined-type:" (number->string type-code)))))))
+
+(define (rename-user-object-type type-name)
+  (let ((entry (assq type-name renamed-user-object-types)))
+    (if entry
+	(cdr entry)
+	type-name)))
 
 (define renamed-user-object-types
   '((FIXNUM . NUMBER)
@@ -454,9 +473,13 @@ MIT in each case. |#
   (let ((unparse-name
 	 (lambda ()
 	   (*unparse-object (primitive-procedure-name procedure)))))
-    (if *unparse-primitives-by-name?*
-	(unparse-name)
-	(*unparse-with-brackets 'PRIMITIVE-PROCEDURE false unparse-name))))
+    (cond (*unparse-primitives-by-name?*
+	   (unparse-name))
+	  (*unparse-with-maximum-readability?*
+	   (*unparse-readable-hash procedure))
+	  (else
+	   (*unparse-with-brackets 'PRIMITIVE-PROCEDURE false unparse-name)))))
+
 (define (unparse/compiled-entry entry)
   (let* ((type (compiled-entry-type entry))
 	 (closure?
