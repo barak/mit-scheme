@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.3 1989/04/24 23:45:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.4 1989/04/25 01:04:43 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -60,9 +60,12 @@ MIT in each case. |#
 
 (define (file-writable? filename)
   (let ((pathname (pathname->absolute-pathname (->pathname filename))))
-    (or ((ucode-primitive file-access) (pathname->string pathname) 2)
-	((ucode-primitive file-access) (pathname-directory-string pathname)
-				       2))))
+    (let ((filename (pathname->string pathname)))
+      (or ((ucode-primitive file-access) filename 2)
+	  (and (not ((ucode-primitive file-exists?) filename))
+	       ((ucode-primitive file-access)
+		(pathname-directory-string pathname)
+		2))))))
 
 (define (file-attributes filename)
   ((ucode-primitive file-attributes)
