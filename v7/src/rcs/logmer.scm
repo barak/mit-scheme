@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: logmer.scm,v 1.18 2000/02/01 01:58:14 cph Exp $
+$Id: logmer.scm,v 1.19 2000/02/01 01:59:51 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -34,7 +34,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (write-string "regenerating log for directory: " port)
     (write (->namestring directory))
     (write-string "..." port)
-    (newline port)
     (let ((pathnames (rcs-directory-read directory)))
       (if (let ((time (file-modification-time-indirect output-file)))
 	    (or (not time)
@@ -42,6 +41,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		  (lambda (w.r)
 		    (> (file-modification-time-indirect (cdr w.r)) time)))))
 	  (begin
+	    (newline port)
 	    (write-string "total files: " port)
 	    (write (length pathnames) port)
 	    (newline port)
