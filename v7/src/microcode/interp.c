@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.77 1993/08/24 23:27:52 ziggy Exp $
+$Id: interp.c,v 9.78 1993/09/07 21:47:14 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -2231,12 +2231,19 @@ Primitive_Internal_Apply:
 
     case RC_RESTORE_FLUIDS:
       Fluid_Bindings = Fetch_Expression();
-      /* Why is this here? -- Jinx */
-      COMPILER_SETUP_INTERRUPT();
       break;
 
     case RC_RESTORE_INT_MASK:
       SET_INTERRUPT_MASK (UNSIGNED_FIXNUM_TO_LONG (Fetch_Expression()));
+      if (GC_Check (0))
+        Request_GC (0);
+      if ((PENDING_INTERRUPTS ()) != 0)
+      {
+	Store_Return (RC_RESTORE_VALUE);
+	Store_Expression (Val);
+	Save_Cont ();
+	Interrupt (PENDING_INTERRUPTS ());
+      }
       break;
 
     case RC_STACK_MARKER:
