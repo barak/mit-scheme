@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.34 1994/03/24 18:29:08 gjr Exp $
+$Id: unpars.scm,v 14.35 1994/08/04 00:25:28 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -53,6 +53,7 @@ MIT in each case. |#
   (set! *unparse-disambiguate-null-as-itself?* true)
   (set! *unparse-disambiguate-null-lambda-list?* false)
   (set! *unparse-compound-procedure-names?* true)
+  (set! *unparse-with-addresses?* false)
   (set! system-global-unparser-table (make-system-global-unparser-table))
   (set! *default-list-depth* 0)
   (set-current-unparser-table! system-global-unparser-table))
@@ -67,6 +68,7 @@ MIT in each case. |#
 (define *unparse-disambiguate-null-as-itself?*)
 (define *unparse-disambiguate-null-lambda-list?*)
 (define *unparse-compound-procedure-names?*)
+(define *unparse-with-addresses?*)
 (define system-global-unparser-table)
 (define *default-list-depth*)
 (define *current-unparser-table*)
@@ -252,7 +254,10 @@ MIT in each case. |#
   (let ((type (user-object-type object)))
     (case ((ucode-primitive primitive-object-gc-type 1) object)
       ((1 2 3 4 -3 -4)		; cell pair triple quad vector compiled
-       (*unparse-with-brackets type object false))
+       (*unparse-with-brackets type object
+	 (and *unparse-with-addresses?*
+	      (lambda ()
+		(*unparse-datum object)))))
       ((0)			; non pointer
        (*unparse-with-brackets type object
 	 (lambda ()
