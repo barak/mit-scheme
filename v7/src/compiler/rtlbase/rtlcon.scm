@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rtlcon.scm,v 4.24 1992/11/18 00:48:24 gjr Exp $
+$Id: rtlcon.scm,v 4.25 1993/02/25 02:12:39 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -469,51 +469,135 @@ MIT in each case. |#
 
 (define-expression-method 'TYPED-CONS:VECTOR
   (lambda (receiver scfg-append! type . elements)
-    (let* ((free (interpreter-free-pointer)))
-      (expression-simplify type scfg-append!
-	(lambda (type)
-	  (simplify-expressions elements scfg-append!
-	    (lambda (elements)
-	      (assign-to-temporary (rtl:make-cons-pointer type free)
-				   scfg-append!
-		(lambda (temporary)
-		  (expression-simplify
-		   (rtl:make-cons-non-pointer
-		    (rtl:make-machine-constant (ucode-type manifest-vector))
-		    (rtl:make-machine-constant (length elements)))
-		   scfg-append!
-		   (lambda (header)
-		     (if use-pre/post-increment?
-			 (scfg-append!
-			  (rtl:make-assignment-internal
-			   (rtl:make-post-increment free 1)
-			   header)
-			  (let loop ((elements elements))
-			    (if (null? elements)
-				(receiver temporary)
+    (let ((nelements (length elements)))
+      (if (> nelements (-1+ (number-of-available-word-registers)))
+	  (simplify-cons-long-vector nelements receiver
+				     scfg-append! type elements)
+	  (let* ((free (interpreter-free-pointer)))
+	    (expression-simplify type scfg-append!
+	      (lambda (type)
+		(simplify-expressions elements scfg-append!
+		  (lambda (elements)
+		    (assign-to-temporary (rtl:make-cons-pointer type free)
+			scfg-append!
+		      (lambda (temporary)
+			(expression-simplify
+			    (rtl:make-cons-non-pointer
+			     (rtl:make-machine-constant
+			      (ucode-type manifest-vector))
+			     (rtl:make-machine-constant (length elements)))
+			    scfg-append!
+			  (lambda (header)
+			    (if use-pre/post-increment?
 				(scfg-append!
 				 (rtl:make-assignment-internal
 				  (rtl:make-post-increment free 1)
-				  (car elements))
-				 (loop (cdr elements))))))
-			 (scfg-append!
-			  (rtl:make-assignment-internal
-			   (rtl:make-offset free 0)
-			   header)
-			  (let loop ((elements elements) (offset 1))
-			    (if (null? elements)
+				  header)
+				 (let loop ((elements elements))
+				   (if (null? elements)
+				       (receiver temporary)
+				       (scfg-append!
+					(rtl:make-assignment-internal
+					 (rtl:make-post-increment free 1)
+					 (car elements))
+					(loop (cdr elements))))))
 				(scfg-append!
 				 (rtl:make-assignment-internal
-				  free
-				  (rtl:make-offset-address free offset))
-				 (receiver temporary))
-				(scfg-append!
-				 (rtl:make-assignment-internal
-				  (rtl:make-offset free offset)
-				  (car elements))
-				 (loop (cdr elements)
-				       (+ offset 1))))))))))))))))))
+				  (rtl:make-offset free 0)
+				  header)
+				 (let loop ((elements elements) (offset 1))
+				   (if (null? elements)
+				       (scfg-append!
+					(rtl:make-assignment-internal
+					 free
+					 (rtl:make-offset-address free offset))
+					(receiver temporary))
+				       (scfg-append!
+					(rtl:make-assignment-internal
+					 (rtl:make-offset free offset)
+					 (car elements))
+					(loop (cdr elements)
+					      (+ offset 1))))))))))))))))))))
 
+(define (simplify-cons-long-vector nelements receiver
+				   scfg-append! type elements)
+  (let ((chunk-size (-1+ (number-of-available-word-registers)))
+	(free (interpreter-free-pointer)))
+    (let ((nchunks (quotient (+ nelements (-1+ chunk-size)) chunk-size))
+	  (store-element!
+	   (if use-pre/post-increment?
+	       (lambda (element offset)
+		 offset			; ignored
+		 (rtl:make-assignment-internal
+		  (rtl:make-post-increment free 1)
+		  element))
+	       (lambda (element offset)
+		 (rtl:make-assignment-internal
+		  (rtl:make-offset free offset)
+		  element)))))
+	     
+      (define (do-chunk elements offset tail)
+	(simplify-expressions elements scfg-append!
+	  (lambda (elements)
+	    (let loop ((elements elements) (offset offset))
+	      (if (null? elements)
+		  tail
+		  (scfg-append! (store-element! (car elements) offset)
+				(loop (cdr elements)
+				      (1+ offset))))))))
+	  
+      (expression-simplify type scfg-append!
+	(lambda (type)
+	  (assign-to-temporary (rtl:make-cons-pointer type free) scfg-append!
+	    (lambda (temporary)
+	      (expression-simplify
+		  (rtl:make-cons-non-pointer
+		   (rtl:make-machine-constant
+		    (ucode-type manifest-vector))
+		   (rtl:make-machine-constant (length elements)))
+		  scfg-append!
+		(lambda (header)
+		  (scfg-append!
+		   (store-element! header 0)
+		   (let process ((elements elements)
+				 (offset 1)
+				 (chunk 1))
+		     (if (= chunk nchunks)
+			 (do-chunk elements
+				   offset
+				   (if use-pre/post-increment?
+				       (receiver temporary)
+				       (scfg-append!
+					(rtl:make-assignment-internal
+					 free
+					 (rtl:make-offset-address
+					  free
+					  (1+ nelements)))
+					(receiver temporary))))
+			 (do-chunk (list-head elements chunk-size)
+				   offset
+				   (process (list-tail elements chunk-size)
+					    (+ offset chunk-size)
+					    (1+ chunk)))))))))))))))
+
+;; This re-caches and re-computes if we change the number of registers
+
+(define number-of-available-word-registers
+  (let ((reg-list false)
+	(value false))
+  (lambda ()
+    (if (and value
+	     (eq? reg-list available-machine-registers))
+	value
+	(begin
+	  (set! reg-list available-machine-registers)
+	  (set! value
+		(length (list-transform-positive reg-list
+			  (lambda (reg)
+			    (value-class/ancestor-or-self? (machine-register-value-class reg)
+							   value-class=word)))))
+	  value)))))
+
 (define-expression-method 'TYPED-CONS:PROCEDURE
   (lambda (receiver scfg-append! entry)
     (expression-simplify
