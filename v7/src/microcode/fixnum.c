@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.23 1987/05/09 18:27:24 cph Exp $
+
 Copyright (c) 1987 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,214 +32,160 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.22 1987/04/16 02:22:24 jinx Exp $
- *
- * Support for fixed point arithmetic (24 bit).  Mostly superceded
- * by generic arithmetic.
- */
-
+/* Support for fixed point arithmetic.  This should be used instead of
+   generic arithmetic when it is desired to tell the compiler to perform
+   open coding of fixnum arithmetic.  It is probably a short-term kludge
+   that will eventually go away. */
+
 #include "scheme.h"
 #include "primitive.h"
+
+#define FIXNUM_PRIMITIVE_1(parameter_1)					\
+  fast long parameter_1;						\
+  Primitive_1_Arg ();							\
+  FIXNUM_ARG_1 ();							\
+  Sign_Extend (Arg1, parameter_1)
 
-                    /***************************/
-                    /* UNARY FIXNUM OPERATIONS */
-                    /***************************/
+#define FIXNUM_PRIMITIVE_2(parameter_1, parameter_2)			\
+  fast long parameter_1, parameter_2;					\
+  Primitive_2_Args ();							\
+  FIXNUM_ARG_1 (parameter_1);						\
+  FIXNUM_ARG_2 (parameter_2);						\
+  Sign_Extend (Arg1, parameter_1);					\
+  Sign_Extend (Arg2, parameter_2)
 
-/* These operations return NIL if their argument is not a fixnum.
-   Otherwise, they return the appropriate fixnum if the result is
-   expressible as a fixnum.  If the result is out of range, they
-   return NIL.
-*/
+#define FIXNUM_ARG_1(parameter)						\
+  if (! (fixnum_p (Arg1)))						\
+    error_wrong_type_arg_1 ()
 
-Built_In_Primitive(Prim_One_Plus_Fixnum, 1, "ONE-PLUS-FIXNUM", 0x42)
+#define FIXNUM_ARG_2(parameter)						\
+  if (! (fixnum_p (Arg2)))						\
+    error_wrong_type_arg_2 ()
+
+#define FIXNUM_RESULT(fixnum)						\
+  if (! (Fixnum_Fits (fixnum)))						\
+    error_bad_range_arg_1 ();						\
+  return (Make_Signed_Fixnum (fixnum));
+
+#define BOOLEAN_RESULT(x)						\
+  return ((x) ? TRUTH : NIL)
+
+/* Predicates */
+
+Built_In_Primitive (Prim_Zero_Fixnum, 1, "ZERO-FIXNUM?", 0x46)
 {
-  fast long A, Result;
-  Primitive_1_Arg();
-
-  Arg_1_Type(TC_FIXNUM);
-  Sign_Extend(Arg1, A);
-  Result = A + 1;
-  if (Fixnum_Fits(Result))
-    return Make_Non_Pointer(TC_FIXNUM, Result);
-  else
-    return NIL;
+  FIXNUM_PRIMITIVE_1 (x);
+  BOOLEAN_RESULT ((Get_Integer (Arg1)) == 0);
 }
 
-Built_In_Primitive(Prim_M_1_Plus_Fixnum, 1, "MINUS-ONE-PLUS-FIXNUM", 0x43)
+Built_In_Primitive (Prim_Negative_Fixnum, 1, "NEGATIVE-FIXNUM?", 0x7F)
 {
-  fast long A, Result;
-  Primitive_1_Arg();
+  FIXNUM_PRIMITIVE_1 (x);
+  BOOLEAN_RESULT (x < 0);
+}
 
-  Arg_1_Type(TC_FIXNUM);
-  Sign_Extend(Arg1, A);
-  Result = A - 1;
-  if (Fixnum_Fits(Result))
-    return Make_Non_Pointer(TC_FIXNUM, Result);
-  else
-    return NIL;
+Built_In_Primitive (Prim_Positive_Fixnum, 1, "POSITIVE-FIXNUM?", 0x41)
+{
+  FIXNUM_PRIMITIVE_1 (x);
+  BOOLEAN_RESULT (x > 0);
+}
+
+Built_In_Primitive (Prim_Equal_Fixnum, 2, "EQUAL-FIXNUM?", 0x3F)
+{
+  FIXNUM_PRIMITIVE_2 (x, y);
+  BOOLEAN_RESULT (x == y);
+}
+
+Built_In_Primitive (Prim_Less_Fixnum, 2, "LESS-THAN-FIXNUM?", 0x40)
+{
+  FIXNUM_PRIMITIVE_2 (x, y);
+  BOOLEAN_RESULT (x < y);
+}
+
+Built_In_Primitive (Prim_Greater_Fixnum, 2, "GREATER-THAN-FIXNUM?", 0x81)
+{
+  FIXNUM_PRIMITIVE_2 (x, y);
+  BOOLEAN_RESULT (x > y);
 }
 
-                    /****************************/
-                    /* BINARY FIXNUM PREDICATES */
-                    /****************************/
+/* Operators */
 
-/* Binary fixnum predicates return NIL if their argument is not a
-   fixnum, 1 if the predicate is true, or 0 if the predicate is false.
-*/
-
-#define Binary_Predicate_Fixnum(Op)					\
-{									\
-  fast long A, B;							\
-  Primitive_2_Args();							\
-									\
-  Arg_1_Type(TC_FIXNUM);						\
-  Arg_2_Type(TC_FIXNUM);						\
-  Sign_Extend(Arg1, A);							\
-  Sign_Extend(Arg2, B);							\
-  return Make_Unsigned_Fixnum(((A Op B) ? 1 : 0));			\
+Built_In_Primitive (Prim_One_Plus_Fixnum, 1, "ONE-PLUS-FIXNUM", 0x42)
+{
+  fast long result;
+  FIXNUM_PRIMITIVE_1 (x);
+  result = (x + 1);
+  FIXNUM_RESULT (result);
 }
 
-Built_In_Primitive(Prim_Equal_Fixnum, 2, "EQUAL-FIXNUM?", 0x3F)
+Built_In_Primitive (Prim_M_1_Plus_Fixnum, 1, "MINUS-ONE-PLUS-FIXNUM", 0x43)
 {
-  Binary_Predicate_Fixnum(==);
+  fast long result;
+  FIXNUM_PRIMITIVE_1 (x);
+  result = (x - 1);
+  FIXNUM_RESULT (result);
 }
 
-Built_In_Primitive(Prim_Greater_Fixnum, 2, "LESS-THAN-FIXNUM?", 0x40)
+Built_In_Primitive (Prim_Plus_Fixnum, 2, "PLUS-FIXNUM", 0x3B)
 {
-  Binary_Predicate_Fixnum(>);
+  fast long result;
+  FIXNUM_PRIMITIVE_2 (x, y);
+  result = (x + y);
+  FIXNUM_RESULT (result);
 }
 
-Built_In_Primitive(Prim_Less_Fixnum, 2, "GREATER-THAN-FIXNUM?", 0x81)
+Built_In_Primitive (Prim_Minus_Fixnum, 2, "MINUS-FIXNUM", 0x3C)
 {
-  Binary_Predicate_Fixnum(<);
+  fast long result;
+  FIXNUM_PRIMITIVE_2 (x, y);
+  result = (x - y);
+  FIXNUM_RESULT (result);
 }
 
-                    /****************************/
-                    /* BINARY FIXNUM OPERATIONS */
-                    /****************************/
-
-/* All binary fixnum operations take two arguments and return NIL if
-   either is not a fixnum.  If both arguments are fixnums and the
-   result fits as a fixnum, then the result is returned.  If the
-   result will not fit as a fixnum, NIL is returned.
-*/
-
-#define Binary_Fixnum(Op)						\
-{									\
-  fast long A, B, Result;						\
-  Primitive_2_Args();							\
-									\
-  Arg_1_Type(TC_FIXNUM);						\
-  Arg_2_Type(TC_FIXNUM);						\
-  Sign_Extend(Arg1, A);							\
-  Sign_Extend(Arg2, B);							\
-  Result = A Op B;							\
-  if (Fixnum_Fits(Result))						\
-    return Make_Non_Pointer(TC_FIXNUM, Result);				\
-  else									\
-    return NIL;								\
-}
-
-Built_In_Primitive(Prim_Plus_Fixnum, 2, "PLUS-FIXNUM", 0x3B)
+Built_In_Primitive (Prim_Multiply_Fixnum, 2, "MULTIPLY-FIXNUM", 0x3D)
 {
-  Binary_Fixnum(+);
-}
-
-Built_In_Primitive(Prim_Minus_Fixnum, 2, "MINUS-FIXNUM", 0x3C)
-{
-  Binary_Fixnum(-);
-}
-
-Built_In_Primitive(Prim_Multiply_Fixnum, 2, "MULTIPLY-FIXNUM", 0x3D)
-{
-  /* Mul, which does the multiplication with overflow handling is
-     machine dependent.  Therefore, it is in os.c
-  */
+  /* Mul, which does the multiplication with overflow handling, is
+     customized for some machines.  Therefore, it is in os.c */
   extern Pointer Mul();
-  Primitive_2_Args();
+  fast long result;
+  Primitive_2_Args ();
 
-  Arg_1_Type(TC_FIXNUM);
-  Arg_2_Type(TC_FIXNUM);
-  return Mul(Arg1, Arg2);
+  FIXNUM_ARG_1 ();
+  FIXNUM_ARG_2 ();
+  result = (Mul (Arg1, Arg2));
+  if (result == NIL)
+    error_bad_range_arg_1 ();
+  return (result);
 }
-
-Built_In_Primitive(Prim_Divide_Fixnum, 2, "DIVIDE-FIXNUM", 0x3E)
-{
 
+Built_In_Primitive (Prim_Divide_Fixnum, 2, "DIVIDE-FIXNUM", 0x3E)
+{
   /* Returns the CONS of quotient and remainder */
-  fast long A, B, Quotient, Remainder;
-  Primitive_2_Args();
+  fast long quotient;
+  FIXNUM_PRIMITIVE_2 (numerator, denominator);
 
-  Arg_1_Type(TC_FIXNUM);
-  Arg_2_Type(TC_FIXNUM);
-  Sign_Extend(Arg1, A); Sign_Extend(Arg2, B);
-  if (B == 0)
-    Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  Primitive_GC_If_Needed(2);
-  Quotient = A/B;
-  Remainder = A%B;
-  if (Fixnum_Fits(Quotient))
-  { Free[CONS_CAR] = Make_Non_Pointer(TC_FIXNUM, Quotient);
-    Free[CONS_CDR] = Make_Non_Pointer(TC_FIXNUM, Remainder);
-    Free += 2;
-    return Make_Pointer(TC_LIST, Free-2);
-  }
-  return NIL;
+  if (denominator == 0)
+    error_bad_range_arg_2 ();
+  Primitive_GC_If_Needed (2);
+  quotient = (numerator / denominator);
+  if (! (Fixnum_Fits (quotient)))
+    error_bad_range_arg_1 ();
+  Free[CONS_CAR] = (Make_Signed_Fixnum (quotient));
+  Free[CONS_CDR] = (Make_Signed_Fixnum (numerator % denominator));
+  Free += 2;
+  return (Make_Pointer (TC_LIST, (Free - 2)));
 }
 
-Built_In_Primitive(Prim_Gcd_Fixnum, 2, "GCD-FIXNUM", 0x66)
+Built_In_Primitive (Prim_Gcd_Fixnum, 2, "GCD-FIXNUM", 0x66)
 {
-  /* Returns the Greatest Common Divisor */
-  fast long A, B, C;
-  Primitive_2_Args();
+  fast long z;
+  FIXNUM_PRIMITIVE_2 (x, y);
 
-  Arg_1_Type(TC_FIXNUM);
-  Arg_2_Type(TC_FIXNUM);
-  Sign_Extend(Arg1, A); Sign_Extend(Arg2, B);
-  while (B != 0)
-  { C = A;
-    A = B;
-    B = C % B;
-  }
-  return Make_Non_Pointer(TC_FIXNUM, A);
-}
-
-/* (NEGATIVE-FIXNUM? NUMBER)
-      Returns NIL if NUMBER isn't a fixnum.  Returns 0 if NUMBER < 0, 1
-      if NUMBER >= 0.
-*/
-Built_In_Primitive(Prim_Negative_Fixnum, 1, "NEGATIVE-FIXNUM?", 0x7F)
-{
-  long Value;
-  Primitive_1_Arg();
-
-  Arg_1_Type(TC_FIXNUM);
-  Sign_Extend(Arg1, Value);
-  return Make_Unsigned_Fixnum(((Value < 0) ? 1 : 0));
-}
-
-/* (POSITIVE-FIXNUM? NUMBER)
-      Returns 1 if NUMBER is a positive fixnum, 0 for other fixnums,
-      or NIL.
-*/
-Built_In_Primitive(Prim_Positive_Fixnum, 1, "POSITIVE-FIXNUM?", 0x41)
-{
-  long Value;
-  Primitive_1_Arg();
-
-  Arg_1_Type(TC_FIXNUM);
-  Sign_Extend(Arg1, Value);
-  return Make_Unsigned_Fixnum(((Value > 0) ? 1 : 0));
-}
-
-/* (ZERO-FIXNUM? NUMBER)
-      Returns NIL if NUMBER isn't a fixnum.  Otherwise, returns 0 if
-      NUMBER is 0 or 1 if it is.
-*/
-Built_In_Primitive(Prim_Zero_Fixnum, 1, "ZERO-FIXNUM?", 0x46)
-{
-  Primitive_1_Arg();
-
-  Arg_1_Type(TC_FIXNUM);
-  return Make_Unsigned_Fixnum(((Get_Integer(Arg1) == 0) ? 1 : 0));
+  while (y != 0)
+    {
+      z = x;
+      x = y;
+      y = (z % y);
+    }
+  return (Make_Signed_Fixnum (x));
 }
