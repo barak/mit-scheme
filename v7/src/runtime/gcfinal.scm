@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gcfinal.scm,v 14.1 2000/04/10 18:32:17 cph Exp $
+$Id: gcfinal.scm,v 14.2 2000/04/10 19:10:53 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -62,20 +62,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (remove-from-gc-finalizer! finalizer object)
   (guarantee-gc-finalizer finalizer 'REMOVE-FROM-GC-FINALIZER!)
-  (if (object-pointer? object)
-      (let ((procedure (gc-finalizer-procedure finalizer)))
-	(without-interrupts
-	 (lambda ()
-	   (let loop ((items (gc-finalizer-items finalizer)) (prev #f))
-	     (if (pair? items)
-		 (if (eq? object (weak-car (car items)))
-		     (let ((next (cdr items)))
-		       (if prev
-			   (set-cdr! prev next)
-			   (set-gc-finalizer-items! finalizer next))
-		       (procedure (weak-cdr (car items)))
-		       (loop next prev))
-		     (loop (cdr items) items)))))))))
+  (and (object-pointer? object)
+       (let ((procedure (gc-finalizer-procedure finalizer)))
+	 (without-interrupts
+	  (lambda ()
+	    (let loop ((items (gc-finalizer-items finalizer)) (prev #f))
+	      (and (pair? items)
+		   (if (eq? object (weak-car (car items)))
+		       (let ((next (cdr items)))
+			 (if prev
+			     (set-cdr! prev next)
+			     (set-gc-finalizer-items! finalizer next))
+			 (procedure (weak-cdr (car items))))
+		       (loop (cdr items) items)))))))))
 
 (define (remove-all-from-gc-finalizer! finalizer)
   (guarantee-gc-finalizer finalizer 'REMOVE-ALL-FROM-GC-FINALIZER!)
