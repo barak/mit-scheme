@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.29 1995/05/05 23:15:47 cph Exp $
+;;;	$Id: sendmail.scm,v 1.30 1995/05/10 20:26:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -349,6 +349,9 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 (define ((field-mover field))
   (set-current-point! (mail-position-on-field (current-buffer) field)))
 
+(define ((cc-field-mover field))
+  (set-current-point! (mail-position-on-cc-field (current-buffer) field)))
+
 (define-command mail-to
   "Move point to end of To field."
   ()
@@ -357,17 +360,17 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 (define-command mail-subject
   "Move point to end of Subject field."
   ()
-  (field-mover "Subject"))
+  (field-mover "Subject")).
 
 (define-command mail-cc
   "Move point to end of CC field."
   ()
-  (field-mover "CC"))
+  (cc-field-mover "CC"))
 
 (define-command mail-bcc
   "Move point to end of BCC field."
   ()
-  (field-mover "BCC"))
+  (cc-field-mover "BCC"))
 
 (define (mail-position-on-field buffer field)
   (let ((start (buffer-start buffer)))
