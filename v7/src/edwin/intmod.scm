@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.48 1992/06/05 21:38:54 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.49 1992/08/18 23:32:10 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -53,10 +53,13 @@ This flag has effect only when ENABLE-TRANSCRIPT-BUFFER is also true."
   true
   boolean?)
 
-(define (transcript-output-mark buffer)
-  (and (ref-variable repl-enable-transcript-buffer buffer)
-       (ref-variable enable-transcript-buffer buffer)
-       (buffer-end (transcript-buffer))))
+(define (call-with-transcript-output-mark buffer procedure)
+  (if (and (ref-variable repl-enable-transcript-buffer buffer)
+	   (ref-variable enable-transcript-buffer buffer))
+      (call-with-transcript-buffer
+       (lambda (buffer)
+	 (procedure (buffer-end buffer))))
+      (procedure false)))
 
 (define-variable repl-error-decision
   "If true, errors in REPL evaluation force the user to choose an option.
@@ -440,11 +443,12 @@ If this is an error, the debugger examines the error condition."
       (end-input-wait port))))
 
 (define (inferior-repl-eval-region buffer region)
-  (let ((mark (transcript-output-mark buffer)))
-    (if mark
-	(insert-region (region-start region)
-		       (region-end region)
-		       mark)))
+  (call-with-transcript-output-mark buffer
+    (lambda (mark)
+      (if mark
+	  (insert-region (region-start region)
+			 (region-end region)
+			 mark))))
   (let ((port (buffer-interface-port buffer)))
     (let ((end
 	   (let ((end (buffer-end buffer))
@@ -464,11 +468,13 @@ If this is an error, the debugger examines the error condition."
 	  (end-input-wait port)))))
 
 (define (inferior-repl-eval-expression buffer expression)
-  (let ((mark (transcript-output-mark buffer)))
-    (if mark
-	(insert-string (fluid-let ((*unparse-with-maximum-readability?* true))
-			 (write-to-string expression))
-		       mark)))
+  (call-with-transcript-output-mark buffer
+    (lambda (mark)
+      (if mark
+	  (insert-string
+	   (fluid-let ((*unparse-with-maximum-readability?* true))
+	     (write-to-string expression))
+	   mark))))
   (let ((port (buffer-interface-port buffer)))
     (let ((end (buffer-end buffer)))
       (set-buffer-point! buffer end)
@@ -629,24 +635,26 @@ If this is an error, the debugger examines the error condition."
 
 (define (process-output-queue port)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok))
-	(mark (port/mark port))
-	(transcript-mark (transcript-output-mark (port/buffer port))))
-    (let loop ()
-      (let ((operation (dequeue!/unsafe (port/output-queue port) false)))
-	(if operation
-	    (begin
-	      (operation mark false)
-	      (if transcript-mark (operation transcript-mark true))
-	      (loop)))))
-    (let ((strings (port/output-strings port)))
-      (if (not (null? strings))
-	  (begin
-	    (set-port/output-strings! port '())
-	    (do ((strings (reverse! strings) (cdr strings)))
-		((null? strings))
-	      (region-insert-string! mark (car strings))
-	      (if transcript-mark
-		  (region-insert-string! transcript-mark (car strings)))))))
+	(mark (port/mark port)))
+    (call-with-transcript-output-mark (port/buffer port)
+      (lambda (transcript-mark)
+	(let loop ()
+	  (let ((operation (dequeue!/unsafe (port/output-queue port) false)))
+	    (if operation
+		(begin
+		  (operation mark false)
+		  (if transcript-mark (operation transcript-mark true))
+		  (loop)))))
+	(let ((strings (port/output-strings port)))
+	  (if (not (null? strings))
+	      (begin
+		(set-port/output-strings! port '())
+		(do ((strings (reverse! strings) (cdr strings)))
+		    ((null? strings))
+		  (region-insert-string! mark (car strings))
+		  (if transcript-mark
+		      (region-insert-string! transcript-mark
+					     (car strings)))))))))
     (set-interrupt-enables! interrupt-mask))
   true)
 

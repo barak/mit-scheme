@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.37 1992/06/01 21:55:55 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.38 1992/08/18 23:31:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -82,6 +82,18 @@ and the output, if non-null, is shown in a pop-up buffer."
   false
   boolean?)
 
+(define-variable disable-evaluation-commands
+  "If true, evaluation commands signal an error."
+  false
+  boolean?)
+
+(define-variable evaluate-in-inferior-repl
+  "If true, evaluation commands evaluate expressions in an inferior REPL.
+Also, the inferior REPL's run light appears in all Scheme mode buffers.
+Otherwise, expressions are evaluated directly by the commands."
+  false
+  boolean?)
+
 (define-variable transcript-buffer-name
   "Name of evaluation transcript buffer.
 This can also be a buffer object."
@@ -91,6 +103,11 @@ This can also be a buffer object."
   "Mode of evaluation transcript buffer.
 This can be either a mode object or the name of one."
   'scheme)
+
+(define-variable transcript-buffer-read-only
+  "If true, transcript buffer is initialized to read-only when created."
+  true
+  boolean?)
 
 (define-variable transcript-output-wrapper
   "A procedure that is called to setup transcript output.
@@ -111,18 +128,6 @@ If #F, normal transcript output is done."
 (define-variable transcript-disable-evaluation
   "If true, evaluation commands are disabled in the transcript buffer."
   true
-  boolean?)
-
-(define-variable disable-evaluation-commands
-  "If true, evaluation commands signal an error."
-  false
-  boolean?)
-
-(define-variable evaluate-in-inferior-repl
-  "If true, evaluation commands evaluate expressions in an inferior REPL.
-Also, the inferior REPL's run light appears in all Scheme mode buffers.
-Otherwise, expressions are evaluated directly by the commands."
-  false
   boolean?)
 
 ;;;; Commands
@@ -180,10 +185,12 @@ The values are printed in the typein window."
 	     (inferior-repl-eval-expression (current-repl-buffer) expression))
 	    (else
 	     (if (ref-variable enable-transcript-buffer buffer)
-		 (insert-string
-		  (fluid-let ((*unparse-with-maximum-readability?* true))
-		    (write-to-string expression))
-		  (buffer-end (transcript-buffer))))
+		 (call-with-transcript-buffer
+		  (lambda (buffer)
+		    (insert-string
+		     (fluid-let ((*unparse-with-maximum-readability?* true))
+		       (write-to-string expression))
+		     (buffer-end buffer)))))
 	     (editor-eval buffer
 			  expression
 			  (evaluation-environment buffer)))))))
@@ -265,7 +272,7 @@ Has no effect if evaluate-in-inferior-repl is false."
   "Select the transcript buffer."
   ()
   (lambda ()
-    (select-buffer (transcript-buffer))))
+    (call-with-transcript-buffer select-buffer)))
 
 ;;;; Expression Prompts
 
@@ -327,9 +334,11 @@ may be available.  The following commands are special to this mode:
       (if evaluation-input-recorder
 	  (evaluation-input-recorder region)))
     (if (ref-variable enable-transcript-buffer buffer)
-	(insert-region (region-start region)
-		       (region-end region)
-		       (buffer-end (transcript-buffer))))
+	(call-with-transcript-buffer
+	 (lambda (buffer)
+	   (insert-region (region-start region)
+			  (region-end region)
+			  (buffer-end buffer)))))
     (bind-condition-handler (list condition-type:error)
 	evaluation-error-handler
       (lambda ()
@@ -501,11 +510,12 @@ FIT           Error messages appear in typein window if they fit;
       (let ((output-wrapper (ref-variable transcript-output-wrapper)))
 	(if output-wrapper
 	    (output-wrapper thunk)
-	    (let ((output-port
-		   (let ((buffer (transcript-buffer)))
-		     (mark->output-port (buffer-end buffer) buffer))))
-	      (fresh-line output-port)
-	      (with-output-to-port output-port thunk))))
+	    (call-with-transcript-buffer
+	     (lambda (buffer)
+	       (let ((output-port
+		      (mark->output-port (buffer-end buffer) buffer)))
+		 (fresh-line output-port)
+		 (with-output-to-port output-port thunk))))))
       (let ((value))
 	(let ((output
 	       (with-output-to-string
@@ -554,6 +564,24 @@ FIT           Error messages appear in typein window if they fit;
 		  (*unparser-list-breadth-limit*
 		   (ref-variable transcript-list-breadth-limit)))
 	(write-to-string value))))
+
+(define (call-with-transcript-buffer procedure)
+  (let ((buffer (transcript-buffer)))
+    (let ((group (buffer-group buffer))
+	  (outside)
+	  (inside false))
+      (dynamic-wind (lambda ()
+		      (set! outside (group-read-only? group))
+		      (if inside
+			  (set-group-read-only! group)
+			  (set-group-writeable! group)))
+		    (lambda ()
+		      (procedure buffer))
+		    (lambda ()
+		      (set! inside (group-read-only? group))
+		      (if outside
+			  (set-group-read-only! group)
+			  (set-group-writeable! group)))))))
 
 (define (transcript-buffer)
   (let ((name (ref-variable transcript-buffer-name)))
@@ -564,8 +592,16 @@ FIT           Error messages appear in typein window if they fit;
 	      (set-buffer-major-mode!
 	       buffer
 	       (->mode (ref-variable transcript-buffer-mode)))
+	      (if (ref-variable transcript-buffer-read-only)
+		  (set-buffer-read-only! buffer))
 	      (if (ref-variable transcript-disable-evaluation)
-		  (define-variable-local-value! buffer
-		    (ref-variable-object disable-evaluation-commands)
-		    true))
+		  (add-buffer-initialization! buffer
+		    (lambda ()
+		      (local-set-variable! disable-evaluation-commands true)
+		      (if (eq? (buffer-major-mode buffer)
+			       (ref-mode-object scheme))
+			  (begin
+			    (local-set-variable! evaluate-in-inferior-repl
+						 false)
+			    (local-set-variable! run-light false))))))
 	      buffer)))))
