@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxenv.c,v 1.5 1991/07/31 14:37:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxenv.c,v 1.6 1991/10/08 21:46:43 markf Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -265,32 +265,37 @@ DEFUN_VOID (UX_initialize_environment)
 #endif
 }
 
+static size_t current_dir_path_size = 0;
+static char * current_dir_path = 0;
+
 CONST char *
 DEFUN_VOID (OS_working_dir_pathname)
 {
-  static size_t path_size = 0;
-  static char * path;
-  if (path_size == 0)
+  if (current_dir_path) {
+    return (current_dir_path);
+  }
+  if (current_dir_path_size == 0)
     {
-      path = (UX_malloc (1024));
-      if (path == 0)
+      current_dir_path = (UX_malloc (1024));
+      if (current_dir_path == 0)
 	error_system_call (ENOMEM, syscall_malloc);
-      path_size = 1024;
+      current_dir_path_size = 1024;
     }
   while (1)
     {
-      if ((UX_getcwd (path, path_size)) != 0)
-	return (path);
+      if ((UX_getcwd (current_dir_path, current_dir_path_size)) != 0)
+	return (current_dir_path);
       if (errno != ERANGE)
 	error_system_call (errno, syscall_getcwd);
-      path_size *= 2;
+      current_dir_path_size *= 2;
       {
-	char * new_path = (UX_realloc (path, path_size));
-	if (new_path == 0)
+	char * new_current_dir_path =
+	  (UX_realloc (current_dir_path, current_dir_path_size));
+	if (new_current_dir_path == 0)
 	  /* ANSI C requires `path' to be unchanged -- we may have to
 	     discard it for systems that don't behave thus. */
 	  error_system_call (ENOMEM, syscall_realloc);
-	path = new_path;
+	current_dir_path = new_current_dir_path;
       }
     }
 }
@@ -298,7 +303,22 @@ DEFUN_VOID (OS_working_dir_pathname)
 void
 DEFUN (OS_set_working_dir_pathname, (name), CONST char * name)
 {
+  size_t name_size = strlen (name);
   STD_VOID_SYSTEM_CALL (syscall_chdir, (UX_chdir (name)));
+  while (1) {
+    if (name_size < current_dir_path_size) {
+      strcpy(current_dir_path, name);
+      return;
+    } 
+    current_dir_path_size *= 2;
+    {
+      char * new_current_dir_path =
+	(UX_realloc (current_dir_path, current_dir_path_size));
+      if (new_current_dir_path == 0)
+	error_system_call (ENOMEM, syscall_realloc);
+      current_dir_path = new_current_dir_path;
+    }
+  }
 }
 
 CONST char *
