@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/artutl.c,v 1.3 1989/09/24 16:15:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/artutl.c,v 1.4 1989/09/25 16:50:56 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -150,7 +150,7 @@ bignum_to_flonum (bignum)
      ? (BIGNUM_TO_FLONUM (bignum))
      : SHARP_F);
 }
-
+
 Boolean
 flonum_integer_p (x)
      SCHEME_OBJECT x;
@@ -194,6 +194,16 @@ flonum_normalize (x)
   double significand = (frexp ((FLONUM_TO_DOUBLE (x)), (&exponent)));
   return (cons ((double_to_flonum (significand)),
 		(long_to_integer ((long) exponent))));
+}
+
+SCHEME_OBJECT
+flonum_denormalize (x, e)
+     SCHEME_OBJECT x;
+     SCHEME_OBJECT e;
+{
+  extern double ldexp ();
+  return (double_to_flonum (ldexp ((FLONUM_TO_DOUBLE (x)),
+				   ((int) (integer_to_long (e))))));
 }
 
 /* Generic Integer Operations */

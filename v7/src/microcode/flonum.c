@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.29 1989/09/24 15:12:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.30 1989/09/25 16:51:17 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -259,5 +259,14 @@ DEFINE_PRIMITIVE ("FLONUM-NORMALIZE", Prim_flonum_normalize, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   Set_Time_Zone (Zone_Math);
   CHECK_ARG (1, FLONUM_P);
-  PRIMITIVE_RETURN (flonum_normalize (ARG_REF (1))); 
+  PRIMITIVE_RETURN (flonum_normalize (ARG_REF (1)));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-DENORMALIZE", Prim_flonum_denormalize, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  Set_Time_Zone (Zone_Math);
+  CHECK_ARG (1, FLONUM_P);
+  CHECK_ARG (1, INTEGER_P);
+  PRIMITIVE_RETURN (flonum_denormalize ((ARG_REF (1)), (ARG_REF (2))));
 }
