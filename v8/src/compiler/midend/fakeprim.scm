@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.22 1995/08/23 14:07:44 adams Exp $
+$Id: fakeprim.scm,v 1.23 1995/09/05 18:59:19 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -145,7 +145,7 @@ MIT in each case. |#
   ;;     by a call to the primitive LEXICAL-REFERENCE)
   (make-operator "#[*lookup]" '(SIDE-EFFECT-FREE)))
 
-(cookie-call %*lookup cont environment 'variable-name 'depth 'offset)
+;;(cookie-call %*lookup cont environment 'variable-name 'depth 'offset)
 
 
 (define %*set!
@@ -157,7 +157,7 @@ MIT in each case. |#
   ;;     by a call to the primitive LEXICAL-ASSIGNMENT)
   (make-operator "#[*set!]"))
 
-(cookie-call %*set! cont environment 'VARIABLE-NAME value 'DEPTH 'OFFSET)
+;;(cookie-call %*set! cont environment 'VARIABLE-NAME value 'DEPTH 'OFFSET)
 
 (define %*unassigned?
   ;; (CALL ',%*unassigned? <continuation> <environment>
@@ -169,7 +169,7 @@ MIT in each case. |#
   ;;   Returns a boolean value
   (make-operator "#[*unassigned?]" '(SIDE-EFFECT-FREE)))
 
-(cookie-call %*unassigned? cont environment 'variable-name 'depth 'offset)
+;;(cookie-call %*unassigned? cont environment 'variable-name 'depth 'offset)
 
 
 (define %*define
@@ -607,7 +607,7 @@ MIT in each case. |#
   ;; (CALL ',%make-entity '#F <value> <value>)
   (make-operator/simple "#[make-entity]"))
 
-
+
 (define %vector
   ;; (CALL ',%vector '#F <value>*)
   ;; Open-coded version of VECTOR primitive.
@@ -622,16 +622,6 @@ MIT in each case. |#
   ;; Unchecked.
   (make-operator/simple "#[vector-length]"))
 
-(define %vector-check
-  ;; (CALL ',%vector-check '#F <object> <index>)
-  ;; ->#T if <object> is a vector and <index> is a valid index
-  (make-operator/simple "#[vector-check]" '(PROPER-PREDICATE)))
-
-(define %vector-check/index
-  ;; (CALL ',%vector-check/index '#F <vector> <index>)
-  ;; ->#T if <index> is a valid index for the vector <vector>
-  (make-operator/simple "#[vector-check/index]" '(PROPER-PREDICATE)))
-
 (define %vector-ref
   ;; (CALL ',%vector-ref '#F <vector> <index>)
   ;; Unchecked.
@@ -642,23 +632,64 @@ MIT in each case. |#
   ;; Unchecked.
   (make-operator/simple* "#[vector-set!]" '(UNSPECIFIC-RESULT)))
 
-(define %vector-ref/check
-  ;; (CALL ',%vector-ref/check '#F <vector> <limit> <index>)
-  ;;  Range-check component of VECTOR-REF.
-  ;;   VECTOR-REF
-  ;;    == (%vector-ref/check <vector> (VECTOR-LENGTH <vector>) <index>)
-  ;; Note
-  ;;   This operation can be used in a loop, with the vector-length operation
-  ;;   lifted out.  Further, if the length is computed as
-  ;;     (if (vector? <vector>) (%vector-length <vector>) 0)
-  ;;   then the inner check is effectively coerced to a type check as well.
-  (make-operator/effect-sensitive "#[vector-ref/check]"))
 
-(define %vector-set/check!
-  ;; (CALL ',%vector-set/check! '#F <vector> <limit> <index> <value>)
-  ;; See %vector-ref/check
-  (make-operator/simple* "#[vector-set/check!]" '(UNSPECIFIC-RESULT)))
+(define %generic-index-check/ref
+  ;; (CALL ',%generic-index-check '#F <collection> <index>
+  ;;       '#(<type> <length-ref>))
+  ;;   Generic type & range check.
+  ;;   Returns #T if   <collection> has typecode <type> (or omits if #F)
+  ;;              and  0  <=  <index>  <  (<length-ref> <collection>)
+  (make-operator/simple "#[generic-index-check/ref]" '(PROPER-PREDICATE)))
 
+(define %generic-index-check/set!
+  ;; (CALL ',%generic-index-check '#F <collection> <index> <elt>
+  ;;       '#(<type> <length-ref> <elt-type>))
+  ;;   Generic type & range check.
+  ;;   Returns #T if   <collection> has typecode <type> (or omits check if #F)
+  ;;              and  <elt> has typecode <elt-type> (or omits check if #F)
+  ;;              and  0  <=  <index>  <  (<length-ref> <collection>)
+  (make-operator/simple "#[generic-index-check/set!]" '(PROPER-PREDICATE)))
+
+
+(define %%record-length  (make-operator/simple "#[%record-length]"))
+(define %%record-ref     (make-operator/effect-sensitive "#[%record-ref]"))
+(define %%record-set!
+  (make-operator/simple* "#[%record-set!]" '(UNSPECIFIC-RESULT)))
+
+(define %string-length   (make-operator/effect-sensitive "#[string-length]"))
+(define %string-ref      (make-operator/effect-sensitive "#[string-ref]"))
+(define %string-set!
+  (make-operator/simple* "#[string-set!]" '(UNSPECIFIC-RESULT)))
+(define %vector-8b-ref   (make-operator/effect-sensitive "#[vector-8b-ref]"))
+(define %vector-8b-set!
+  (make-operator/simple* "#[vector-8b-set!]" '(UNSPECIFIC-RESULT)))
+
+(define %floating-vector-length
+  (make-operator/simple "#[floating-vector-length]"))
+(define %floating-vector-ref
+  (make-operator/effect-sensitive "#[floating-vector-ref]"))
+(define %floating-vector-set!
+  (make-operator/simple* "#[floating-vector-set!]" '(UNSPECIFIC-RESULT)))
+
+(define %bit-string-length  (make-operator/simple "#[bit-string-length]"))
+
+;;(define %vector-ref/check
+;;  ;; (CALL ',%vector-ref/check '#F <vector> <limit> <index>)
+;;  ;;  Range-check component of VECTOR-REF.
+;;  ;;   VECTOR-REF
+;;  ;;    == (%vector-ref/check <vector> (VECTOR-LENGTH <vector>) <index>)
+;;  ;; Note
+;;  ;;   This operation can be used in a loop, with the vector-length operation
+;;  ;;   lifted out.  Further, if the length is computed as
+;;  ;;     (if (vector? <vector>) (%vector-length <vector>) 0)
+;;  ;;   then the inner check is effectively coerced to a type check as well.
+;;  (make-operator/effect-sensitive "#[vector-ref/check]"))
+;;
+;;(define %vector-set/check!
+;;  ;; (CALL ',%vector-set/check! '#F <vector> <limit> <index> <value>)
+;;  ;; See %vector-ref/check
+;;  (make-operator/simple* "#[vector-set/check!]" '(UNSPECIFIC-RESULT)))
+
 
 (define %make-promise
   ;; (CALL ',%make-promise '#F <thunk>)
@@ -713,12 +744,11 @@ MIT in each case. |#
 (define %flo:make-multicell
   ;; (CALL ',%flo:make-multicell '#F 'LAYOUT <value> <value> ...)
   (make-operator/simple "#[flo:make-multicell]"))
-;;(cookie-call %make-multicell '#F 'LAYOUT #!rest values)
 
 (define %flo:multicell-ref
   ;; (CALL ',%flo:multicell-ref '#F cell 'LAYOUT 'NAME)
-  (make-operator/effect-sensitive "#[flo:multicell-ref]" '(RESULT-TYPE FLONUM))
-(cookie-call %multicell-ref '#F cell 'LAYOUT 'NAME)
+  (make-operator/effect-sensitive "#[flo:multicell-ref]" '(RESULT-TYPE FLONUM)))
+(cookie-call %flo:multicell-ref '#F cell 'LAYOUT 'NAME)
 
 (define %flo:multicell-set!
   ;; (CALL ',%flo:multicell-set! '#F cell value 'LAYOUT 'NAME)
@@ -880,13 +910,6 @@ MIT in each case. |#
   (make-operator/simple "#[stack-closure-ref]"))
 (cookie-call %stack-closure-ref '#F closure offset 'NAME)
 
-(define %machine-fixnum?
-  ;; (CALL ',%machine-fixnum? '#F <value>)
-  ;; Note:
-  ;;   #T if <value> is a fixnum on the target machine, else #F
-  (make-operator/simple "#[machine-fixnum?]" '(PROPER-PREDICATE)))
-(cookie-call %machine-fixnum? '#F value)
-
 (define %small-fixnum?
   ;; (CALL ',%small-fixnum? '#F <value> 'FIXNUM)
   ;; Note:
@@ -896,7 +919,8 @@ MIT in each case. |#
   ;;    bits than a full fixnum on the target machine).  This is used
   ;;    in the expansion of generic arithmetic to guarantee no
   ;;    overflow is possible on the target machine.
-  ;;  If FIXNUM is 0, then this is the same as %machine-fixnum?
+  ;;  If FIXNUM is 0, then this is the same as FIXNUM? on the target
+  ;;  machine.
   (make-operator/simple "#[small-fixnum?]" '(PROPER-PREDICATE)))
 
 (cookie-call %small-fixnum? '#F value 'precision-bits)
@@ -1022,9 +1046,12 @@ MIT in each case. |#
 	   '(SIDE-EFFECT-INSENSITIVE)
 	   '(SIDE-EFFECT-FREE))))
  (list make-cell cons vector %record string-allocate flo:vector-cons
-       system-pair-cons %record-length vector-length flo:vector-length
+       system-pair-cons
+       ;;%record-length
+       ;;vector-length
+       ;;flo:vector-length
        object-type object-datum
-       bit-string-length
+       ;;bit-string-length
        (make-primitive-procedure 'PRIMITIVE-OBJECT-SET-TYPE)
        fix:-1+ fix:1+ fix:+ fix:- fix:*
        fix:quotient fix:remainder ; fix:gcd
@@ -1053,32 +1080,34 @@ MIT in each case. |#
      simple-operator
      (list '(SIMPLE)
 	   '(SIDE-EFFECT-FREE))))
- (list cell-contents car cdr %record-ref
-       vector-ref
-       string-ref
-       string-length vector-8b-ref
+ (list cell-contents
+       ;;car cdr %record-ref
+       ;;vector-ref
+       ;;string-ref
+       ;;string-length vector-8b-ref
        system-pair-car system-pair-cdr
        system-hunk3-cxr0 system-hunk3-cxr1 system-hunk3-cxr2
        (make-primitive-procedure 'PRIMITIVE-GET-FREE)
        (make-primitive-procedure 'PRIMITIVE-OBJECT-REF)))
 
-(for-each
- (lambda (simple-operator)
-   (define-operator-properties
-     simple-operator
-     (list '(SIMPLE)
-	   '(SIDE-EFFECT-FREE)
-	   '(RESULT-TYPE FLONUM))))
- (list flo:vector-ref))
+;;(for-each
+;; (lambda (simple-operator)
+;;   (define-operator-properties
+;;     simple-operator
+;;     (list ;;'(SIMPLE)
+;;	   '(SIDE-EFFECT-FREE)
+;;	   '(RESULT-TYPE FLONUM))))
+;; (list flo:vector-ref))
 
 (for-each
  (lambda (operator)
    (define-operator-properties
      operator
      (list '(SIMPLE) '(UNSPECIFIC-RESULT))))
- (list set-cell-contents! set-car! set-cdr! %record-set!
-       vector-set!
-       string-set! vector-8b-set! flo:vector-set!
+ (list set-cell-contents!
+       ;;set-car! set-cdr! %record-set!
+       ;;vector-set!
+       ;;string-set! vector-8b-set! flo:vector-set!
        (make-primitive-procedure 'PRIMITIVE-INCREMENT-FREE)
        (make-primitive-procedure 'PRIMITIVE-OBJECT-SET!)))
 
@@ -1116,12 +1145,12 @@ MIT in each case. |#
 	        '(SIDE-EFFECT-INSENSITIVE)))))
   '(COERCE-TO-COMPILED-PROCEDURE))
 
-(for-each
-    (lambda (prim-name)
-      (let ((prim  (make-primitive-procedure prim-name)))
-	(set! compiler:primitives-with-no-open-coding
-	      (cons prim-name compiler:primitives-with-no-open-coding))))
-  '(VECTOR-REF VECTOR-SET! CAR CDR))
+;;(for-each
+;;    (lambda (prim-name)
+;;      (let ((prim  (make-primitive-procedure prim-name)))
+;;	(set! compiler:primitives-with-no-open-coding
+;;	      (cons prim-name compiler:primitives-with-no-open-coding))))
+;;  '(VECTOR-REF VECTOR-SET! CAR CDR))
 
 ;;;; Compatibility operators
 
@@ -1189,77 +1218,3 @@ MIT in each case. |#
   ;;   parameters are passed in to a procedure, so it must appear
   ;;   immediately after the parameter list for a LAMBDA expression.
   (make-operator "#[fetch-parameter-frame]"))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;;  Syntax abstractions
-
-(let-syntax
-    ((kmp-form-accessors
-      (macro (name . args)
-	(define (->string x)  (if (symbol? x) (symbol-name x) x))
-	(define (->sym . stuff)
-	  (intern (apply string-append (map ->string stuff))))
-	(define (loop  args path defs)
-	  (define (add-def field path)
-	    (let  ((base-name    (->sym name "/" field))
-		   (safe-name    (->sym name "/" field "/safe"))
-		   (unsafe-name  (->sym name "/" field "/unsafe")))
-	      (cons* `(DEFINE-INTEGRABLE (,base-name FORM)
-			(,safe-name FORM))
-		     `(DEFINE-INTEGRABLE (,unsafe-name FORM)
-			,path)
-		     `(DEFINE            (,safe-name FORM)
-			(IF (AND (PAIR? FORM)
-				 (EQ? (CAR FORM) ',name))
-			    ,path
-			    (INTERNAL-ERROR "Illegal KMP syntax" ',name FORM)))
-		     defs)))
-	    (cond ((null? args)
-		   defs)
-		  ((eq? (car args) '#!REST)
-		   (add-def (cadr args) path))
-		  ((eq? (car args) '#F)
-		   (loop (cdr args) `(CDR ,path) defs))
-		  (else
-		   (loop (cdr args)
-			 `(CDR ,path)
-			 (add-def (car args) `(CAR ,path))))))
-	  `(BEGIN 1			;bogon for 0 defs
-		  ,@(reverse (loop args `(CDR FORM) '())))))
-
-     (alternate-kmp-form
-      (macro (name . args)
-	`(kmp-form-accessors ,name . ,args)))
-     (kmp-form
-      (macro (name . args)
-	`(BEGIN (DEFINE-INTEGRABLE (,(symbol-append name '/?) FORM)
-		  (AND (PAIR? FORM)
-		       (EQ? (CAR FORM) ',name)))
-		(kmp-form-accessors ,name . ,args)))))  
-
-  ;; Generate KMP accessors like QUOTE/TEXT (doesn't check head of
-  ;; form) and QUOTE/TEXT/SAFE (requires head of form to be QUOTE)
-
-  (kmp-form QUOTE   text)
-  (kmp-form LOOKUP  name)
-  (kmp-form LAMBDA  formals body)
-  (kmp-form LET     bindings body)
-  (kmp-form DECLARE #!rest declarations)
-  (kmp-form CALL    operator continuation #!rest operands)
-  (alternate-kmp-form
-            CALL    #F #!rest cont-and-operands)
-  (kmp-form BEGIN   #!rest exprs)	; really 1 or more
-  (kmp-form IF      predicate consequent alternate)
-  (kmp-form LETREC  bindings body)
-
-  (kmp-form SET!    name expr)
-  (kmp-form ACCESS  name env-expr)
-  (kmp-form DEFINE  name expr)
-  (kmp-form THE-ENVIRONMENT)
-  (kmp-form IN-PACKAGE env-expr expr)
-  )
-
-(define-integrable (call/operand1 form)  (first  (call/operands form)))
-(define-integrable (call/operand2 form)  (second (call/operands form)))
-(define-integrable (call/operand3 form)  (third  (call/operands form)))
