@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.179 1994/03/16 23:26:52 cph Exp $
+;;;	$Id: filcom.scm,v 1.180 1994/12/19 19:40:32 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -215,6 +215,7 @@ invocation."
   ;; DATABASE -must- be a vector whose elements are all three element
   ;; lists.  The car of each element must be a string, and the
   ;; elements must be sorted on those strings.
+  (sort! database (lambda (x y) (string<? (car x) (car y))))
   (lambda (buffer)
     (let ((entry
 	   (let ((pathname (buffer-pathname buffer)))
