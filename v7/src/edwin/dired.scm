@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.145 1994/03/23 22:47:05 cph Exp $
+;;;	$Id: dired.scm,v 1.146 1994/05/04 22:58:06 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -760,8 +760,9 @@ Actions controlled by variables list-directory-brief-switches
 
 (define (dired-kill-file! filename)
   (let ((deleted?
-	 (catch-file-errors (lambda () false)
-			    (lambda () (delete-file (car filename)) true))))
+	 (if (file-directory? filename)
+	     (delete-directory-no-errors filename)
+	     (delete-file-no-errors filename))))
     (if deleted?
 	(with-read-only-defeated (cdr filename)
 	  (lambda ()
