@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxenv.c,v 1.1 1990/06/20 19:37:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxenv.c,v 1.2 1990/10/01 22:42:02 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -226,7 +226,6 @@ DEFUN (OS_process_timer_set, (first, interval),
 void
 DEFUN_VOID (OS_process_timer_clear)
 {
-  error_unimplemented_primitive ();
 }
 
 void
