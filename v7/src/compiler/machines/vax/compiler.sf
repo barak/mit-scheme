@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/compiler.sf,v 1.1 1989/05/17 20:32:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/compiler.sf,v 1.2 1989/07/11 23:51:35 cph Rel $
 $MC68020-Header: comp.sf,v 1.7 88/12/15 17:02:14 GMT cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
@@ -37,7 +37,7 @@ MIT in each case. |#
 
 ;; Guarantee that the package modeller is loaded.
 (if (not (name->package '(CROSS-REFERENCE)))
-    (with-working-directory-pathname "/scheme/cref" (lambda () (load "make"))))
+    (with-working-directory-pathname "../cref" (lambda () (load "make"))))
 
 ;; Guarantee that the compiler's package structure exists.
 (if (not (name->package '(COMPILER)))
@@ -101,29 +101,7 @@ MIT in each case. |#
 ;; Resyntax any files that need it.
 ((access syntax-files! (->environment '(COMPILER))))
 
-(define (link-file from to #!optional physical?)
-  ((make-primitive-procedure 'LINK-FILE)
-   (canonicalize-input-filename from)
-   (canonicalize-output-filename to)
-   (and (not (default-object? physical?)) physical?)))
+(cref/generate-all "comp")
 
-(define (unix-rename-file from to)
-  (if (file-exists? to)
-      (delete-file to))
-  (link-file from to true)
-  (delete-file from))
-
-;; Rebuild the package constructors and cref.
-(dynamic-wind
- (lambda ()
-   (link-file "machines/vax/comp.pkg" "comp.pkg" true))
- (lambda ()
-   (cref/generate-all "comp")
-   (unix-rename-file "comp.cref" "machines/vax/comp.cref")
-   (unix-rename-file "comp.con" "machines/vax/comp.con")
-   (unix-rename-file "comp.ldr" "machines/vax/comp.ldr")
-   (unix-rename-file "comp.glob" "machines/vax/comp.glob"))
- (lambda ()
-   (delete-file "comp.pkg")))
-(sf "machines/vax/comp.con" "comp.bcon")
-(sf "machines/vax/comp.ldr" "comp.bldr")
+(sf "comp.con" "comp.bcon")
+(sf "comp.ldr" "comp.bldr")

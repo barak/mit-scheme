@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/compiler.cbf,v 1.2 1989/05/22 17:11:04 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/compiler.cbf,v 1.3 1989/07/11 23:52:21 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -34,7 +34,7 @@ MIT in each case. |#
 
 ;;;; Compiler Recompiling script
 
-(compiler:batch-compile
+((access compiler:batch-compile (->environment '(compiler top-level)))
  '(
    "back/asmmac"
    "back/bittop"
