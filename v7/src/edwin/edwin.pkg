@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.250 2000/03/31 20:09:52 cph Exp $
+$Id: edwin.pkg,v 1.251 2000/04/05 14:22:55 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -1536,12 +1536,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  edwin-command$rmail-sort-by-subject
 	  edwin-command$rmail-summary
 	  edwin-command$rmail-summary-beginning-of-buffer
+	  edwin-command$rmail-summary-by-recipients
 	  edwin-command$rmail-summary-delete-message
 	  edwin-command$rmail-summary-delete-message-backward
 	  edwin-command$rmail-summary-delete-message-forward
 	  edwin-command$rmail-summary-exit
 	  edwin-command$rmail-summary-expunge
 	  edwin-command$rmail-summary-expunge-and-save
+	  edwin-command$rmail-summary-get-new-mail
+	  edwin-command$rmail-summary-input
+	  edwin-command$rmail-summary-mail
 	  edwin-command$rmail-summary-next-message
 	  edwin-command$rmail-summary-next-undeleted-message
 	  edwin-command$rmail-summary-output
@@ -1549,6 +1553,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  edwin-command$rmail-summary-previous-message
 	  edwin-command$rmail-summary-previous-undeleted-message
 	  edwin-command$rmail-summary-quit
+	  edwin-command$rmail-summary-reply
 	  edwin-command$rmail-summary-scroll-message-down
 	  edwin-command$rmail-summary-scroll-message-up
 	  edwin-command$rmail-summary-show-message
@@ -1560,6 +1565,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  edwin-command$rmail-undelete-previous-message
 	  edwin-mode$rmail
 	  edwin-mode$rmail-summary
+	  edwin-variable$rmail-buffer
 	  edwin-variable$rmail-default-dont-reply-to-names
 	  edwin-variable$rmail-delete-after-output
 	  edwin-variable$rmail-dont-reply-to-names
@@ -1576,6 +1582,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  edwin-variable$rmail-primary-inbox-list
 	  edwin-variable$rmail-primary-pop-server
 	  edwin-variable$rmail-reply-with-re
+	  edwin-variable$rmail-summary-buffer
+	  edwin-variable$rmail-summary-mode-hook
+	  edwin-variable$rmail-summary-vector
+	  edwin-variable$rmailsum-rcs-header
 	  fetch-all-fields
 	  fetch-first-field
 	  fetch-last-field
