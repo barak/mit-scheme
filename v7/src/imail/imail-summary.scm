@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.23 2000/06/20 19:38:32 cph Exp $
+;;; $Id: imail-summary.scm,v 1.24 2000/07/28 15:25:50 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -454,7 +454,7 @@ SUBJECT is a string of regexps separated by commas."
 (define (imail-summary-pop-up-message-buffer buffer)
   (let ((folder-buffer (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)))
     (if (and folder-buffer (selected-buffer? buffer))
-	(pop-up-buffer folder-buffer))))
+	(pop-up-buffer folder-buffer #f))))
 
 (define (sync-imail-summary-buffer buffer)
   (let ((message
