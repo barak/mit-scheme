@@ -12,7 +12,7 @@
 @syncodeindex pg fn
 @syncodeindex tp fn
 
-@c $Id: sos.texinfo,v 2.10 2002/03/07 06:24:02 cph Exp $
+@c $Id: sos.texinfo,v 2.11 2002/03/07 06:26:11 cph Exp $
 
 @set TITLE The SOS Reference Manual
 @set EDITION 2.9
@@ -1421,34 +1421,6 @@ form, the free variable @code{call-next-method} is bound to a
 details).  If the @code{define-method} body refers to this variable, the
 defined method is a chained method, otherwise it is an ordinary method.
 @end deffn
-
-@ifset dontsetme
-
-@deffn Syntax method lambda-list body @dots{}
-This special form evaluates to an anonymous method in the same way that
-@code{lambda} evaluates to an anonymous procedure.  @var{Lambda-list}
-and @var{body} have exactly the same syntax and semantics as the
-corresponding parts of @code{define-method}.  Note that the following
-are completely equivalent:
-
-@lisp
-@group
-(define-method g ((a <foo>) b)
-  (cons b a))
-
-(add-method g
-  (method ((a <foo>) b)
-    (cons b a)))
-
-(add-method g
-  (make-method (list <foo>)
-    (lambda (a b)
-      (cons b a))))
-@end group
-@end lisp
-@end deffn
-
-@end ifset
 
 @node Chained Methods, Computed Methods, Method Syntax, Methods
 @section Chained Methods
