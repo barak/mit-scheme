@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.20 1991/02/15 18:06:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.21 1991/04/15 20:47:37 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -221,7 +221,7 @@ MIT in each case. |#
 	     (= 250 (char->ascii fasl-marker)))
 	(begin
 	  (close-input-port port)
-	  (scode-eval
+	  (extended-scode-eval
 	   (let ((scode
 		  (fasload/internal true-pathname
 				    load/suppress-loading-message?)))

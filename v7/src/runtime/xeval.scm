@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/xeval.scm,v 1.3 1991/02/15 18:08:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/xeval.scm,v 1.4 1991/04/15 20:48:03 jinx Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -37,15 +37,20 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define hook/extended-scode-eval)
+
+(define (default/extended-scode-eval expression environment)
+  (scode-eval expression environment))
+
 (define (extended-scode-eval expression environment)
   (cond ((interpreter-environment? environment)
-	 (scode-eval expression environment))
+	 (hook/extended-scode-eval expression environment))
 	((scode-constant? expression)
 	 expression)
 	(else
 	 (with-values (lambda () (split-environment environment))
 	   (lambda (bound-names interpreter-environment)
-	     (scode-eval
+	     (hook/extended-scode-eval
 	      (cond ((null? bound-names)
 		     expression)
 		    ((or (definition? expression)
@@ -116,6 +121,7 @@ MIT in each case. |#
 	   (THE-ENVIRONMENT ,rewrite/the-environment)
 	   (UNASSIGNED? ,rewrite/unassigned?)
 	   (VARIABLE ,rewrite/variable))))
+  (set! hook/extended-scode-eval default/extended-scode-eval)
   unspecific)
 
 (define (rewrite/variable expression environment bound-names)

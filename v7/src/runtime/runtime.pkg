@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.100 1991/04/11 03:24:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.101 1991/04/15 20:47:45 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -638,7 +638,8 @@ MIT in each case. |#
   (files "xeval")
   (parent ())
   (export ()
-	  extended-scode-eval)
+	  extended-scode-eval
+	  hook/extended-scode-eval)
   (initialization (initialize-package!)))
 
 (define-package (runtime file-input)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.20 1991/02/15 18:05:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.21 1991/04/15 20:47:29 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -51,12 +51,16 @@ MIT in each case. |#
 
 (define (compiled-code-block/dbg-info block demand-load?)
   (let ((old-info (compiled-code-block/debugging-info block)))
-    (if (and (pair? old-info) (dbg-info? (car old-info)))
-	(car old-info)
-	(and demand-load?
-	     (let ((dbg-info (read-debugging-info old-info)))
-	       (if dbg-info (memoize-debugging-info! block dbg-info))
-	       dbg-info)))))
+    (cond ((dbg-info? old-info)
+	   old-info)
+	  ((and (pair? old-info) (dbg-info? (car old-info)))
+	   (car old-info))
+	  (demand-load?
+	   (let ((dbg-info (read-debugging-info old-info)))
+	     (if dbg-info (memoize-debugging-info! block dbg-info))
+	     dbg-info))
+	  (else
+	   false))))
 
 (define (discard-debugging-info!)
   (without-interrupts

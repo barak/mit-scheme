@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.14 1991/02/15 18:07:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.15 1991/04/15 20:47:52 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -442,7 +442,7 @@ MIT in each case. |#
     keyword))
 
 (define-integrable (syntax-eval scode)
-  (scode-eval scode syntaxer/default-environment))
+  (extended-scode-eval scode syntaxer/default-environment))
 
 ;;;; FLUID-LET
 
