@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dired.scm,v 1.188 2001/06/03 01:48:32 cph Exp $
+;;; $Id: dired.scm,v 1.189 2001/06/04 17:12:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -532,7 +532,7 @@ With a prefix argument you can edit the current listing switches instead."
 
 (define-command dired-do-copy
   "Copy all marked (or next ARG) files, or copy the current file.
-This normally preserves the last-modified date when copying.
+This preserves the last-modified date when copying.
 When operating on just the current file, you specify the new name.
 When operating on multiple or marked files, you specify a directory,
 and new copies of these files are made in that directory
