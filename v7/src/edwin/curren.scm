@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.102 1992/04/08 17:57:39 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.103 1992/04/10 20:20:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -347,33 +347,60 @@
 
 (define (find-or-create-buffer name)
   (bufferset-find-or-create-buffer (current-bufferset) name))
-
+
 (define (rename-buffer buffer new-name)
-  (bufferset-rename-buffer (current-bufferset) buffer new-name))
+  (without-interrupts
+   (lambda ()
+     (for-each (lambda (hook) (hook buffer new-name))
+	       (get-buffer-hooks buffer 'RENAME-BUFFER-HOOKS))
+     (bufferset-rename-buffer (current-bufferset) buffer new-name))))
+
+(define-integrable (add-rename-buffer-hook buffer hook)
+  (add-buffer-hook buffer 'RENAME-BUFFER-HOOKS hook))
+
+(define-integrable (remove-rename-buffer-hook buffer hook)
+  (remove-buffer-hook buffer 'RENAME-BUFFER-HOOKS hook))
 
 (define (kill-buffer buffer)
-  (let loop
-      ((windows (buffer-windows buffer))
-       (last-buffer false))
-    (if (not (null? windows))
-	(let ((new-buffer
-	       (or (other-buffer buffer)
-		   last-buffer
-		   (error "Buffer to be killed has no replacement" buffer))))
-	  (set-window-buffer! (car windows) new-buffer false)
-	  (loop (cdr windows) new-buffer))))
-  (for-each (lambda (process)
-	      (hangup-process process true)
-	      (set-process-buffer! process false))
-	    (buffer-processes buffer))
-  (for-each (lambda (hook) (hook buffer))
-	    (buffer-get buffer 'KILL-BUFFER-HOOKS))
-  (bufferset-kill-buffer! (current-bufferset) buffer))
+  (without-interrupts
+   (lambda ()
+     (for-each (lambda (process)
+		 (hangup-process process true)
+		 (set-process-buffer! process false))
+	       (buffer-processes buffer))
+     (for-each (lambda (hook) (hook buffer))
+	       (get-buffer-hooks buffer 'KILL-BUFFER-HOOKS))
+     (let loop
+	 ((windows (buffer-windows buffer))
+	  (last-buffer false))
+       (if (not (null? windows))
+	   (let ((new-buffer
+		  (or (other-buffer buffer)
+		      last-buffer
+		      (error "Buffer to be killed has no replacement"
+			     buffer))))
+	     (set-window-buffer! (car windows) new-buffer false)
+	     (loop (cdr windows) new-buffer))))
+     (bufferset-kill-buffer! (current-bufferset) buffer))))
 
-(define (add-kill-buffer-hook buffer hook)
-  (let ((hooks (or (buffer-get buffer 'KILL-BUFFER-HOOKS) '())))
-    (if (not (memq hook hooks))
-	(buffer-put! buffer 'KILL-BUFFER-HOOKS (cons hook hooks)))))
+(define-integrable (add-kill-buffer-hook buffer hook)
+  (add-buffer-hook buffer 'KILL-BUFFER-HOOKS hook))
+
+(define-integrable (remove-kill-buffer-hook buffer hook)
+  (remove-buffer-hook buffer 'KILL-BUFFER-HOOKS hook))
+
+(define (add-buffer-hook buffer key hook)
+  (let ((hooks (get-buffer-hooks buffer key)))
+    (cond ((null? hooks)
+	   (buffer-put! buffer key (list hook)))
+	  ((not (memq hook hooks))
+	   (set-cdr! (last-pair hooks) (list hook))))))
+
+(define (remove-buffer-hook buffer key hook)
+  (buffer-put! buffer key (delq! hook (get-buffer-hooks buffer key))))
+
+(define-integrable (get-buffer-hooks buffer key)
+  (or (buffer-get buffer key) '()))
 
 (define (select-buffer buffer)
   (set-window-buffer! (current-window) buffer true))
