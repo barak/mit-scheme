@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.29 1991/10/30 20:52:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.30 1991/11/04 20:36:20 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -100,7 +100,7 @@ MIT in each case. |#
 		   (conc-name source-node/)
 		   (constructor make/source-node (filename)))
   (filename false read-only true)
-  (pathname (string->pathname filename) read-only true)
+  (pathname (->pathname filename) read-only true)
   (forward-links '())
   (backward-links '())
   (forward-closure '())
@@ -283,14 +283,14 @@ MIT in each case. |#
   (if (file-exists? pathname)
       (begin
 	(write-string "\nTouch file: ")
-	(write (pathname->string pathname))
+	(write (enough-namestring pathname))
 	(file-touch pathname))))
 
 (define (pathname-delete! pathname)
   (if (file-exists? pathname)
       (begin
 	(write-string "\nDelete file: ")
-	(write (pathname->string pathname))
+	(write (enough-namestring pathname))
 	(delete-file pathname))))
 
 (define (sc filename)
@@ -579,7 +579,10 @@ MIT in each case. |#
 		  (make-pathname
 		   false
 		   false
-		   (make-list (length (pathname-directory pathname)) 'UP)
+		   (cons 'RELATIVE
+			 (make-list
+			  (length (cdr (pathname-directory pathname)))
+			  'UP))
 		   false
 		   false
 		   false)))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/comcmp.scm,v 1.2 1989/09/21 01:55:35 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/comcmp.scm,v 1.3 1991/11/04 20:36:02 cph Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -205,7 +205,7 @@ MIT in each case. |#
 
 (define (show-differences f1 f2)
   (define (->name f)
-    (pathname->string (->pathname f)))
+    (enough-namestring (merge-pathnames f)))
 
   (let ((result (compare-com-files f1 f2)))
     (if (pair? result)

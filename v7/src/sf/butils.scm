@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/butils.scm,v 4.4 1991/08/22 17:59:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/butils.scm,v 4.5 1991/11/04 20:31:36 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,34 +39,30 @@ MIT in each case. |#
 (define (directory-processor input-type output-type process-file)
   (let ((directory-read
 	 (let ((input-pattern
-		(make-pathname false false '() 'WILD input-type 'NEWEST)))
+		(make-pathname false false false 'WILD input-type 'NEWEST)))
 	   (lambda (directory)
 	     (directory-read
-	      (merge-pathnames (pathname-as-directory
-				(->pathname directory))
-			       input-pattern))))))
+	      (merge-pathnames
+	       (pathname-as-directory (merge-pathnames directory))
+	       input-pattern))))))
     (lambda (input-directory #!optional output-directory force?)
       (let ((output-directory
 	     (if (default-object? output-directory) false output-directory))
 	    (force? (if (default-object? force?) false force?)))
-	(for-each (let ((output-directory-path
-			 (and output-directory
-			      (->pathname output-directory))))
-		    (lambda (pathname)
-		      (if (or force?
-			      (not
-			       (compare-file-modification-times
-				(pathname-default-type pathname input-type)
-				(let ((output-pathname
-				       (pathname-new-type pathname
-							  output-type)))
-				  (if output-directory-path
-				      (merge-pathnames output-directory-path
-						       output-pathname)
-				      output-pathname)))))
-			  (process-file pathname output-directory))))
+	(for-each (lambda (pathname)
+		    (if (or force?
+			    (not (compare-file-modification-times
+				  (pathname-default-type pathname input-type)
+				  (let ((output-pathname
+					 (pathname-new-type pathname
+							    output-type)))
+				    (if output-directory
+					(merge-pathnames output-directory
+							 output-pathname)
+					output-pathname)))))
+			(process-file pathname output-directory)))
 		  (if (pair? input-directory)
-		      (mapcan directory-read input-directory)
+		      (append-map! directory-read input-directory)
 		      (directory-read input-directory)))))))
 
 (define sf-directory
@@ -86,7 +82,7 @@ MIT in each case. |#
 	 output-directory
 	 (newline)
 	 (write-string "Process file: ")
-	 (write-string (pathname->string pathname)))))
+	 (write-string (enough-namestring pathname)))))
   (set! sf-directory? (directory-processor "scm" "bin" show-pathname))
   (set! compile-directory? (directory-processor "bin" "com" show-pathname)))
 
@@ -106,14 +102,13 @@ MIT in each case. |#
 	(kernel filename))))
 
 (define (file-processed? filename input-type output-type)
-  (let ((pathname (->pathname filename)))
-    (compare-file-modification-times
-     (pathname-default-type pathname input-type)
-     (pathname-new-type pathname output-type))))
+  (compare-file-modification-times
+   (pathname-default-type filename input-type)
+   (pathname-new-type filename output-type)))
 
 (define (compare-file-modification-times source target)
-  (let ((source (file-modification-time source)))
+  (let ((source (file-modification-time-indirect source)))
     (and source
-	 (let ((target (file-modification-time target)))
+	 (let ((target (file-modification-time-indirect target)))
 	   (and target
 		(<= source target))))))

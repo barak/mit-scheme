@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/make.scm,v 1.7 1991/03/01 20:19:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/make.scm,v 1.8 1991/11/04 20:34:10 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -37,4 +37,4 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (package/system-loader "cref" '() false)
-(add-system! (make-system "CREF" 1 7 '()))
+(add-system! (make-system "CREF" 1 8 '()))

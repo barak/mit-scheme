@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 4.7 1990/04/10 15:46:39 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 4.8 1991/11/04 20:31:46 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,9 +34,7 @@ MIT in each case. |#
 
 ;;;; SCode Optimizer: Top Level
 
-(declare (usual-integrations)
-	 (automagic-integrations)
-	 (open-block-optimizations))
+(declare (usual-integrations))
 
 ;;;; User Interface
 
@@ -111,8 +109,7 @@ Currently only the 68000 implementation needs this."
 		       (lambda () sf/default-declarations)))
 
 (define (pathname/normalize pathname)
-  (pathname-default-type (pathname->absolute-pathname (->pathname pathname))
-			 "scm"))
+  (pathname-default-type (merge-pathnames pathname) "scm"))
 
 (define file-info/syntax-table
   (pathname-map/make))
@@ -169,37 +166,32 @@ Currently only the 68000 implementation needs this."
 		(list input-string))))
 
 (define (sf/pathname-defaulting input-string bin-string spec-string)
-  (let ((pathname
-	 (merge-pathnames
-	  (->pathname input-string)
-	  (make-pathname false false '() false "scm" 'NEWEST))))
-    (let ((input-path (pathname->input-truename pathname)))
-      (if (not input-path)
-	  (error "SF: File does not exist" pathname))
-      (let ((input-type (pathname-type input-path)))
-	(let ((bin-path
-	       (let ((bin-path
-		      (pathname-new-type
-		       input-path
-		       (if (equal? "scm" input-type)
-			   "bin"
-			   (string-append "b" input-type)))))
-		 (if bin-string
-		     (merge-pathnames (->pathname bin-string) bin-path)
-		     bin-path))))
-	  (let ((spec-path
-		 (and (or spec-string sfu?)
-		      (let ((spec-path
-			     (pathname-new-type
-			      bin-path
-			      (if (equal? "scm" input-type)
-				  "unf"
-				  (string-append "u" input-type)))))
-			(if spec-string
-			    (merge-pathnames (->pathname spec-string)
-					     spec-path)
-			    spec-path)))))
-	    (values input-path bin-path spec-path)))))))
+  (let ((input-path (pathname/normalize input-string)))
+    (let ((input-type (pathname-type input-path)))
+      (let ((bin-path
+	     (let ((bin-path
+		    (pathname-new-type
+		     input-path
+		     (if (and (string? input-type)
+			      (not (string=? "scm" input-type)))
+			 (string-append "b" input-type)
+			 "bin"))))
+	       (if bin-string
+		   (merge-pathnames bin-string bin-path)
+		   bin-path))))
+	(let ((spec-path
+	       (and (or spec-string sfu?)
+		    (let ((spec-path
+			   (pathname-new-type
+			    bin-path
+			    (if (and (string? input-type)
+				     (not (string=? "scm" input-type)))
+				(string-append "u" input-type)
+				"unf"))))
+		      (if spec-string
+			  (merge-pathnames spec-string spec-path)
+			  spec-path)))))
+	  (values input-path bin-path spec-path))))))
 
 (define (sf/internal input-pathname bin-pathname spec-pathname
 		     syntax-table declarations)
@@ -210,33 +202,33 @@ Currently only the 68000 implementation needs this."
 			      false
 			      "ext"
 			      'NEWEST)))
-    (let ((start-date (get-decoded-time))
-	  (input-filename (pathname->string input-pathname))
-	  (bin-filename (pathname->string bin-pathname))
-	  (spec-filename (and spec-pathname (pathname->string spec-pathname))))
+    (let ((start-date (get-decoded-time)))
       (if sf:noisy?
 	  (begin
 	    (newline)
 	    (write-string "Syntax file: ")
-	    (write input-filename)
+	    (write (enough-namestring input-pathname))
 	    (write-string " ")
-	    (write bin-filename)
-	    (write-string " ")
-	    (write spec-filename)))
+	    (write (enough-namestring bin-pathname))
+	    (if spec-pathname
+		(begin
+		  (write-string " ")
+		  (write (enough-namestring spec-pathname))))))
       (with-values
 	  (lambda ()
 	    (integrate/file input-pathname syntax-table declarations
 			    spec-pathname))
 	(lambda (expression externs events)
 	  (fasdump (wrapping-hook
-		    (make-comment `((SOURCE-FILE . ,input-filename)
-				    (DATE ,(decoded-time/year start-date)
-					  ,(decoded-time/month start-date)
-					  ,(decoded-time/day start-date))
-				    (TIME ,(decoded-time/hour start-date)
-					  ,(decoded-time/minute start-date)
-					  ,(decoded-time/second start-date)))
-				  (set! expression false)))
+		    (make-comment
+		     `((SOURCE-FILE . ,(->namestring input-pathname))
+		       (DATE ,(decoded-time/year start-date)
+			     ,(decoded-time/month start-date)
+			     ,(decoded-time/day start-date))
+		       (TIME ,(decoded-time/hour start-date)
+			     ,(decoded-time/minute start-date)
+			     ,(decoded-time/second start-date)))
+		     (set! expression false)))
 		   bin-pathname)
 	  (write-externs-file (pathname-new-type
 			       bin-pathname
@@ -247,7 +239,7 @@ Currently only the 68000 implementation needs this."
 			 (begin
 			   (newline)
 			   (write-string "Writing ")
-			   (write spec-filename)))
+			   (write (enough-namestring spec-pathname))))
 		     (with-output-to-file spec-pathname
 		       (lambda ()
 			 (newline)
@@ -258,9 +250,9 @@ Currently only the 68000 implementation needs this."
 				       ,(decoded-time/minute start-date)
 				       ,(decoded-time/second start-date)))
 			 (newline)
-			 (write `(SOURCE-FILE ,input-filename))
+			 (write `(SOURCE-FILE ,(->namestring input-pathname)))
 			 (newline)
-			 (write `(BINARY-FILE ,bin-filename))
+			 (write `(BINARY-FILE ,(->namestring bin-pathname)))
 			 (for-each (lambda (event)
 				     (newline)
 				     (write `(,(car event)
@@ -270,39 +262,18 @@ Currently only the 68000 implementation needs this."
 			 (write-string " -- done")))))))))
 
 (define (read-externs-file pathname)
-  (let ((pathname
-	 (merge-pathnames (->pathname pathname) sf/default-externs-pathname)))
+  (let ((pathname (merge-pathnames pathname sf/default-externs-pathname)))
     (if (file-exists? pathname)
 	(fasload pathname)
-	(begin (warn "Nonexistent externs file" (pathname->string pathname))
-	       '()))))
+	(begin
+	  (warn "Nonexistent externs file" (->namestring pathname))
+	  '()))))
 
 (define (write-externs-file pathname externs)
   (cond ((not (null? externs))
 	 (fasdump externs pathname))
 	((file-exists? pathname)
 	 (delete-file pathname))))
-
-#|
-;; This seems unused
-
-(define (print-spec identifier names)
-  (newline)
-  (newline)
-  (write-string "(")
-  (write identifier)
-  (let loop
-      ((names
-	(sort names
-	      (lambda (x y)
-		(string<? (symbol->string x)
-			  (symbol->string y))))))
-    (if (not (null? names))
-	(begin (newline)
-	       (write (car names))
-	       (loop (cdr names)))))
-  (write-string ")"))
-|#
 
 (define (wrapping-hook scode)
   scode)

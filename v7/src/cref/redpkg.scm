@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/redpkg.scm,v 1.3 1990/10/05 11:33:16 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/redpkg.scm,v 1.4 1991/11/04 20:34:18 cph Exp $
 
-Copyright (c) 1988, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,7 +38,7 @@ MIT in each case. |#
 	 (integrate-external "object"))
 
 (define (read-package-model filename)
-  (let ((model-pathname (pathname->absolute-pathname (->pathname filename))))
+  (let ((model-pathname (merge-pathnames filename)))
     (with-values
 	(lambda ()
 	  (sort-descriptions
@@ -52,7 +52,7 @@ MIT in each case. |#
 	     (lambda (pathname)
 	       (for-each (let ((expression
 				(make-expression root-package
-						 (pathname->string pathname)
+						 (->namestring pathname)
 						 false)))
 			   (lambda (name)
 			     (bind! root-package name expression)))
@@ -138,18 +138,10 @@ MIT in each case. |#
 	 (if (pathname=? pathname (analysis-cache/pathname (car caches)))
 	     (car caches)
 	     (loop (cdr caches))))))
-
-(define (pathname=? x y)
-  (and (equal? (pathname-name x) (pathname-name y))
-       (equal? (pathname-directory x) (pathname-directory y))
-       (equal? (pathname-type x) (pathname-type y))
-       (equal? (pathname-version x) (pathname-version y))
-       (equal? (pathname-host x) (pathname-host y))
-       (equal? (pathname-device x) (pathname-device y))))
 
 (define (record-file-analysis! pmodel package pathname entries)
   (for-each
-   (let ((filename (pathname->string pathname))
+   (let ((filename (->namestring pathname))
 	 (root-package (pmodel/root-package pmodel))
 	 (primitive-package (pmodel/primitive-package pmodel)))
      (lambda (entry)
@@ -281,7 +273,7 @@ MIT in each case. |#
 	     (cdr file-case))))
 
 (define-integrable (parse-filename filename)
-  (string->pathname filename))
+  (->pathname filename))
 
 (define (parse-initialization initialization)
   (if (not (and (pair? initialization) (null? (cdr initialization))))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crstop.scm,v 1.8 1991/02/14 18:45:55 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crstop.scm,v 1.9 1991/11/04 20:35:26 cph Exp $
 
-Copyright (c) 1988, 1989, 1990, 1991 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -56,9 +56,7 @@ MIT in each case. |#
      (if (not (default-object? output-string))
 	 output-string
 	 (merge-pathnames output-default
-			  (pathname->input-truename
-			   (merge-pathnames (->pathname input-string)
-					    input-default))))
+			  (merge-pathnames input-string input-default)))
      input-default
      (lambda (input-pathname output-pathname)
        (maybe-open-file compiler:generate-rtl-files?
@@ -109,7 +107,7 @@ MIT in each case. |#
     (fluid-let ((compiler:compile-by-procedures? false)
 		(*info-output-filename*
 		 (if (pathname? info-output-pathname)
-		     (pathname->string info-output-pathname)
+		     (->namestring info-output-pathname)
 		     *info-output-filename*))
 		(*rtl-output-port* rtl-output-port)
 		(*lap-output-port* lap-output-port))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crsend.scm,v 1.5 1991/02/06 03:04:59 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crsend.scm,v 1.6 1991/11/04 20:35:20 cph Exp $
 
-Copyright (c) 1988, 1989, 1990, 1991 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -49,23 +49,18 @@ MIT in each case. |#
 (define (compiler-pathnames input-string output-string default transform)
   (let* ((core
 	  (lambda (input-string)
-	    (let ((input-pathname
-		   (pathname->input-truename
-		    (merge-pathnames (->pathname input-string) default))))
-	      (if (not input-pathname)
-		  (error "File does not exist" input-string))
+	    (let ((input-pathname (merge-pathnames input-string default)))
 	      (let ((output-pathname
 		     (let ((output-pathname
 			    (pathname-new-type input-pathname "com")))
 		       (if output-string
-			   (merge-pathnames (->pathname output-string)
-					    output-pathname)
+			   (merge-pathnames output-string output-pathname)
 			   output-pathname))))
 		(newline)
 		(write-string "Compile File: ")
-		(write (pathname->string input-pathname))
+		(write (enough-namestring input-pathname))
 		(write-string " => ")
-		(write (pathname->string output-pathname))
+		(write (enough-namestring output-pathname))
 		(fasdump (transform input-pathname output-pathname)
 			 output-pathname)))))
 	 (kernel

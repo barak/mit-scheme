@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/toplev.scm,v 1.4 1991/03/01 20:19:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/toplev.scm,v 1.5 1991/11/04 20:34:26 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,14 +38,14 @@ MIT in each case. |#
 
 (define (generate/common kernel)
   (lambda (filename)
-    (let ((pathname (pathname->absolute-pathname (->pathname filename))))
+    (let ((pathname (merge-pathnames filename)))
       (let ((pmodel (read-package-model pathname)))
 	(read-file-analyses! pmodel)
 	(resolve-references! pmodel)
 	(kernel pathname pmodel)))))
 
 (define (cref/generate-trivial-constructor filename)
-  (let ((pathname (pathname->absolute-pathname (->pathname filename))))
+  (let ((pathname (merge-pathnames filename)))
     (write-constructor pathname (read-package-model pathname))))
 
 (define cref/generate-cref

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.35 1991/07/25 02:33:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.36 1991/11/04 20:35:36 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -81,25 +81,20 @@ MIT in each case. |#
 (define (compiler-pathnames input-string output-string default transform)
   (let* ((core
 	  (lambda (input-string)
-	    (let ((input-pathname
-		   (pathname->input-truename
-		    (merge-pathnames (->pathname input-string) default))))
-	      (if (not input-pathname)
-		  (error "File does not exist" input-string))
+	    (let ((input-pathname (merge-pathnames input-string default)))
 	      (let ((output-pathname
 		     (let ((output-pathname
 			    (pathname-new-type input-pathname "com")))
 		       (if output-string
-			   (merge-pathnames (->pathname output-string)
-					    output-pathname)
+			   (merge-pathnames output-string output-pathname)
 			   output-pathname))))
 		(if compiler:noisy?
 		    (begin
 		      (newline)
 		      (write-string "Compile File: ")
-		      (write (pathname->string input-pathname))
+		      (write (enough-namestring input-pathname))
 		      (write-string " => ")
-		      (write (pathname->string output-pathname))))
+		      (write (enough-namestring output-pathname))))
 		(fasdump (transform input-pathname output-pathname)
 			 output-pathname)))))
 	 (kernel
@@ -534,7 +529,7 @@ MIT in each case. |#
 	 (if (default-object? wrapper) in-compiler wrapper)))
     (fluid-let ((*info-output-filename*
 		 (if (pathname? info-output-pathname)
-		     (pathname->string info-output-pathname)
+		     (->namestring info-output-pathname)
 		     *info-output-filename*))
 		(*rtl-output-port* rtl-output-port)
 		(*lap-output-port* lap-output-port)

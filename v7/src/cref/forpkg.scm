@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/forpkg.scm,v 1.6 1991/05/07 02:02:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/forpkg.scm,v 1.7 1991/11/04 20:34:03 cph Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -176,7 +176,7 @@ MIT in each case. |#
 	(for-each (lambda (pathname)
 		    (output-port/write-string port indentation)
 		    (output-port/write-char port #\")
-		    (output-port/write-string port (pathname->string pathname))
+		    (output-port/write-string port (->namestring pathname))
 		    (output-port/write-char port #\")
 		    (output-port/write-char port #\newline))
 		  (package/files package)))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/conpkg.scm,v 1.2 1991/09/20 04:04:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/conpkg.scm,v 1.3 1991/11/04 20:33:57 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -144,7 +144,7 @@ MIT in each case. |#
     (if (null? files)
 	`(FALSE)
 	(map (lambda (file)
-	       `(LOAD ,(pathname->string file) ,environment))
+	       `(LOAD ,(->namestring file) ,environment))
 	     files))))
 
 (define (package-definition name value)
