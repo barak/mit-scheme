@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.73 2001/12/17 17:40:58 cph Exp $
+$Id: make.scm,v 14.74 2001/12/18 18:27:24 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -28,7 +28,7 @@ USA.
 ((ucode-primitive set-interrupt-enables! 1) 0)
 
 ;; This must be defined as follows so that it is no part of a multi-define
-;; itself.  It must also precede any other top-level defintiions in this file
+;; itself.  It must also precede any other top-level definitions in this file
 ;; that are not performed directly using LOCAL-ASSIGNMENT.
 
 ((ucode-primitive local-assignment 3)
