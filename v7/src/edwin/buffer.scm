@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: buffer.scm,v 1.191 2005/03/31 18:59:05 cph Exp $
+$Id: buffer.scm,v 1.192 2005/03/31 19:00:03 cph Exp $
 
 Copyright 1986,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1998,1999,2000 Massachusetts Institute of Technology
@@ -248,6 +248,7 @@ The buffer is guaranteed to be deselected at that time."
 	    ((group? object) (group-buffer object))
 	    ((region? object) (mark-buffer (region-start object)))
 	    ((window? object) (window-buffer object))
+	    ((not object) (current-buffer))
 	    (else (error:wrong-type-argument object "buffer" '->BUFFER)))
       (error:bad-range-argument object '->BUFFER)))
 
