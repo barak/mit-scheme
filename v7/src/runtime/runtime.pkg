@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.477 2004/02/16 05:38:12 cph Exp $
+$Id: runtime.pkg,v 14.478 2004/02/17 05:00:18 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4469,6 +4469,7 @@ USA.
 	  match-parser-buffer-substring-ci
 	  match-parser-buffer-substring-ci-no-advance
 	  match-parser-buffer-substring-no-advance
+	  (match-utf8-char-in-alphabet match-parser-buffer-char-in-alphabet)
 	  parser-buffer-line
 	  parser-buffer-pointer-index
 	  parser-buffer-pointer-line
