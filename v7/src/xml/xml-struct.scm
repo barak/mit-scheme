@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.38 2003/09/30 02:13:56 cph Exp $
+$Id: xml-struct.scm,v 1.39 2003/11/03 21:31:23 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -171,7 +171,7 @@ USA.
 (define-xml-type element
   (name xml-name?)
   (attributes xml-attribute-list?)
-  (contents xml-content?))
+  (contents xml-content? canonicalize-content))
 
 (define (xml-attribute-list? object)
   (and (list-of-type? object xml-attribute?)
