@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.131 1989/04/15 00:51:58 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.132 1989/04/20 08:16:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -495,7 +495,7 @@ a repetition of this command will exit."
 	   "There are no possible completions of what you have typed.")
 	  (begin
 	    (write-string "Possible completions are:\n")
-	    (write-strings-densely (sort strings string<?)))))))
+	    (write-strings-densely strings))))))
 
 (define (completion-procedure/complete-word string
 					    if-unique
