@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: comhst.scm,v 1.1 1992/09/23 23:03:31 jinx Exp $
+$Id: comhst.scm,v 1.2 1993/08/22 04:16:32 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -121,3 +121,8 @@ license should have been included along with this file. |#
 		   ((ref-command comint-previous-input) (- index start)))
 		  (else
 		   (loop index)))))))))
+
+(define (comint-record-input ring string)
+  (if (or (ring-empty? ring)
+	  (not (string=? string (ring-ref ring 0))))
+      (ring-push! ring string)))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: comint.scm,v 1.19 1993/08/02 02:50:40 cph Exp $
+$Id: comint.scm,v 1.20 1993/08/22 04:16:25 gjr Exp $
 
-Copyright (c) 1991-1992 Massachusetts Institute of Technology
+Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -196,11 +196,6 @@ the input."
 	      (insert-newline point))
 	  (move-mark-to! mark point)
 	  (process-send-string process (string-append string terminator)))))))
-
-(define (comint-record-input ring string)
-  (if (or (ring-empty? ring)
-	  (not (string=? string (ring-ref ring 0))))
-      (ring-push! ring string)))
 
 (define-variable-per-buffer comint-get-old-input
   "Procedure that submits old text in comint mode.
