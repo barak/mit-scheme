@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.16 1995/09/02 20:57:24 adams Exp $
+$Id: laterew.scm,v 1.17 1995/09/05 19:00:21 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -284,6 +284,7 @@ MIT in each case. |#
 (let ((not-primitive  (make-primitive-procedure 'NOT)))
   (define-rewrite/late not-primitive
     (lambda (form rands)
+      form				; ignored
       (let ((cont   (first rands))
 	    (x      (second rands))
 	    (more?  (not (null? (cddr rands)))))
@@ -294,6 +295,7 @@ MIT in each case. |#
 
 (define-rewrite/late %make-multicell
   (lambda (form rands)
+    form				; ignored
     (let ((cont    (first rands))
 	  (layout  (second rands))
 	  (values  (cddr rands)))
@@ -304,6 +306,7 @@ MIT in each case. |#
 
 (define-rewrite/late %multicell-ref
   (lambda (form rands)
+    form				; ignored
     (let ((cont    (first rands))
 	  (cell    (second rands))
 	  (layout  (third rands))
@@ -312,6 +315,7 @@ MIT in each case. |#
 
 (define-rewrite/late %multicell-set!
   (lambda (form rands)
+    form				; ignored
     (let ((cont    (first rands))
 	  (cell    (second rands))
 	  (value   (third rands))
@@ -357,6 +361,7 @@ MIT in each case. |#
 
 (define-rewrite/late %flo:make-multicell
   (lambda (form rands)
+    form				; ignored
     (let ((cont    (first rands))
 	  (layout  (second rands))
 	  (values  (cddr rands)))
@@ -367,6 +372,7 @@ MIT in each case. |#
 
 (define-rewrite/late %flo:multicell-ref
   (lambda (form rands)
+    form				; ignored
     (let ((cont    (first rands))
 	  (cell    (second rands))
 	  (layout  (third rands))
@@ -375,6 +381,7 @@ MIT in each case. |#
 
 (define-rewrite/late %flo:multicell-set!
   (lambda (form rands)
+    form				; ignored
     (let ((cont    (first rands))
 	  (cell    (second rands))
 	  (value   (third rands))
@@ -412,43 +419,19 @@ MIT in each case. |#
 		       `(CALL ',flo:vector-set! '#F
 			      (LOOKUP ,cell)
 			      (QUOTE ,index)
-			      ,value/s))
+			      ,value))
 		     (iota (length values))
 		     values)
 	      (LOOKUP ,cell))))))))
 
-(define-rewrite/late %vector-check
-  (let ((vector-tag (machine-tag 'VECTOR)))
-    (lambda (form rands)
-      (let ((cont   (first rands))
-	    (vec    (second rands))
-	    (index  (third rands)))
-	cont
-	`(IF (CALL (QUOTE ,object-type?) '#F (QUOTE ,vector-tag) ,vec)
-	     (CALL (QUOTE ,%word-less-than-unsigned?) '#F
-		   ,index
-		   (CALL ',%vector-length '#F ,vec))
-	     '#F)))))
-
-(define-rewrite/late %vector-check/index
-  (lambda (form rands)
-    (let ((cont   (first rands))
-	  (vec    (second rands))
-	  (index  (third rands)))
-      cont
-      `(CALL (QUOTE ,%word-less-than-unsigned?) '#F
-	     ,index
-	     (CALL ',%vector-length '#F ,vec)))))
-
 (define-rewrite/late %generic-index-check/ref
   ;; (CALL '%generic-index-check/ref '#F <collection> <index> '#(checks))
   (lambda (form rands)
-    (let  ((cont (first rands))
-	   (collection (second rands))
+    form				; ignored
+    (let  ((collection (second rands))
 	   (index      (third rands))
 	   (checks     (quote/text (fourth rands))))
-      cont
-      (let ((collection* (laterew/new-name 'COLLECTION))
+      (let ((collection*     (laterew/new-name 'COLLECTION))
 	    (collection-tag  (vector-ref checks 0))
 	    (length-ref      (vector-ref checks 1)))
 	(let ((test1
@@ -463,15 +446,15 @@ MIT in each case. |#
 			  ,index
 			  (CALL ',length-ref '#F (LOOKUP ,collection*)))
 		   `(QUOTE #T))))
-	  (bind collection* collection
-		(andify test1 test2)))))))
+	  `(LET ((,collection* ,collection))
+	     ,(andify test1 test2)))))))
 
 
 (define-rewrite/late %generic-index-check/set!
   ;; (CALL '%generic-index-check/set! '#F <collection> <index> <elt> '#(checks))
   (lambda (form rands)
-    (let  ((cont (first rands))
-	   (collection (second rands))
+    form ; ignored
+    (let  ((collection (second rands))
 	   (index      (third rands))
 	   (element    (fourth rands))
 	   (checks     (quote/text (fifth rands))))
@@ -498,5 +481,5 @@ MIT in each case. |#
 			  ',element-tag
 			  ,element)
 		   `(QUOTE #T))))
-	  (bind collection* collection
-		(andify (andify test1 test2) test3)))))))
+	  `(LET ((,collection* ,collection))
+	     ,(andify (andify test1 test2) test3)))))))
