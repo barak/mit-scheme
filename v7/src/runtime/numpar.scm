@@ -37,7 +37,7 @@
 
 ;;;; Number Parser
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 1.4 1987/01/07 17:52:08 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 1.5 1987/01/07 18:40:51 cph Exp $
 
 (declare (usual-integrations))
 
@@ -79,15 +79,12 @@
 	  (case (car chars)
 	    ((#\+ #\-)
 	     (parse-real chars
-	       (lambda (chars real*)
-		 (and (not (null? chars))
-		      (null? (cdr chars))
-		      (or (char-ci=? (car chars) #\i)
-			  (char-ci=? (car chars) #\j))
-		      (make-rectangular real
-					(if (char=? (car chars) #\+)
-					    real*
-					    (- real*)))))))
+	       (lambda (chars* real*)
+		 (and (not (null? chars*))
+		      (null? (cdr chars*))
+		      (or (char-ci=? (car chars*) #\i)
+			  (char-ci=? (car chars*) #\j))
+		      (make-rectangular real real*)))))
 	    ((#\@)
 	     (parse-real chars
 	       (lambda (chars real*)
