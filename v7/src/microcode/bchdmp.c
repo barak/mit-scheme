@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.64 1992/05/04 18:32:03 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.65 1992/06/03 21:54:18 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -42,19 +42,11 @@ MIT in each case. */
 #include "trap.h"
 #include "lookup.h"		/* UNCOMPILED_VARIABLE */
 #define In_Fasdump
-#include "bchgcc.h"
 #include "fasl.h"
-
 
 #ifdef DOS386
-#include "msdos.h"
-#include "dosio.h"
-
-int
-DEFUN (ftruncate, (fd, size), int fd AND unsigned long size)
-{
-  return size;
-}
+#  include "msdos.h"
+#  include "dosio.h"
 
 char *
 DEFUN (mktemp, (fname), unsigned char * fname)
@@ -64,19 +56,28 @@ DEFUN (mktemp, (fname), unsigned char * fname)
   return;
 }
 
-#define FASDUMP_FILENAME "\\tmp\\fasdump.bin"
+#  define FASDUMP_FILENAME "\\tmp\\fasdump.bin"
 
-#else
+#else /* not DOS386 */
 
-#include "ux.h"
-#include "uxio.h"
+#  include "ux.h"
+#  include "uxio.h"
 extern int EXFUN (unlink, (CONST char *));
 
-#define FASDUMP_FILENAME "/tmp/fasdumpXXXXXX"
+#  define FASDUMP_FILENAME "/tmp/fasdumpXXXXXX"
+
+#if defined(_HPUX) || defined(_SUNOS4) || defined(_ULTRIX) || defined(_SYSV4)
+#  define HAVE_FTRUNCATE
+#endif
+
+#if (defined(_HPUX) && (_HPUX_VERSION >= 80)) || defined(_SYSV4)
+#  define FTRUNCATE_DECLARED
+#endif
 
 #endif /* DOS386 */
 
-
+#include "bchgcc.h"
+
 static Tchannel dump_channel;
 
 #define Write_Data(size, buffer)					\
@@ -247,10 +248,6 @@ do {									\
   BCH_STORE_CLOSURE_ENTRY_ADDRESS (Temp, Scan);				\
 }
 
-#if (defined(_HPUX) && (_HPUX_VERSION >= 80)) || defined(_SYSV4)
-#define FTRUNCATE_DECLARED
-#endif
-
 Boolean
 DEFUN (fasdump_exit, (length), long length)
 {
@@ -260,7 +257,7 @@ DEFUN (fasdump_exit, (length), long length)
   Free = saved_free;
   restore_gc_file ();
 
-#if TRUE
+#ifdef HAVE_FTRUNCATE
   {
 #ifndef FTRUNCATE_DECLARED
     extern int EXFUN (ftruncate, (int, unsigned long));
@@ -269,13 +266,17 @@ DEFUN (fasdump_exit, (length), long length)
     result = ((close (dump_file)) == 0);
   }
 #else
+
+  result = (close (dump_file) == 0);
+
+#endif /* HAVE_FTRUNCATE */
+#if defined(HAVE_TRUNCATE) && !defined(HAVE_FTRUNCATE)
   {
     extern int EXFUN (truncate, (CONST char *, unsigned long));
 
-    result = (close (dump_file) == 0);
     truncate (dump_file_name, length);
   }
-#endif
+#endif /* HAVE_TRUNCATE */
 
   if (length == 0)
   {
@@ -295,6 +296,9 @@ next_buffer:
 
   if (fixup_count >= 0)
   {
+#if defined(_SYSV3) && !defined(_HPUX)
+    extern int EXFUN (read, (int, char *, int));
+#endif
     if ((retrying_file_operation
 	 (read, real_gc_file, ((char *) fixup_buffer),
 	  (gc_file_start_position + (fixup_count << gc_buffer_byte_shift)),
@@ -320,6 +324,10 @@ next_buffer:
 Boolean
 DEFUN_VOID (reset_fixes)
 {
+#if defined(_SYSV3) && !defined(_HPUX)
+    extern int EXFUN (write, (int, char *, int));
+#endif
+
   long start;
 
   fixup_count += 1;

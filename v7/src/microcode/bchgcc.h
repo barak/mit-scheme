@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.45 1992/05/04 18:31:22 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.46 1992/06/03 21:54:31 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -38,13 +38,17 @@ MIT in each case. */
 
 #include "oscond.h"
 #include "gccode.h"
+
 #ifdef _BSD
-#include <sys/file.h>
+#  include <sys/file.h>
 #else
-#include <fcntl.h>
+#  ifndef F_GETFL
+#    include <fcntl.h>
+#  endif
 #endif
+
 #ifndef DOS386
-#include <sys/param.h>
+#  include <sys/param.h>
 #endif
 
 #ifndef BCH_START_CLOSURE_RELOCATION
