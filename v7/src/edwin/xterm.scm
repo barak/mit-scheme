@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.32 1992/03/14 00:01:14 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.33 1992/03/25 21:40:10 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -127,7 +127,7 @@
 					(error "unable to open display"))
 				    (and (not (default-object? geometry))
 					 geometry)
-				    '("edwin" . "Edwin"))))
+				    '("edwin" . "Emacs"))))
 	   (x-window-set-event-mask xterm event-mask)
 	   (make-screen (make-xterm-screen-state xterm
 						 (x-window-display xterm))
