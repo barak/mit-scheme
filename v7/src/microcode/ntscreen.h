@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.h,v 1.14 1997/04/03 04:40:53 cph Exp $
+$Id: ntscreen.h,v 1.15 1997/05/17 06:59:56 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -193,6 +193,7 @@ extern void screen_char_dimensions (HWND, int *, int *);
 // The following return false on no events
 extern BOOL  Screen_GetEvent (HANDLE, SCREEN_EVENT *);
 extern BOOL  Screen_PeekEvent (HANDLE, SCREEN_EVENT *);
+extern BOOL  Screen_pending_events_p (void);
 
 //---------------------------------------------------------------------------
 //  Messages

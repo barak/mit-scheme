@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.28 1997/04/03 04:41:04 cph Exp $
+$Id: ntscreen.c,v 1.29 1997/05/17 07:00:14 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -3265,6 +3265,19 @@ Screen_PeekEvent (HANDLE hwnd, SCREEN_EVENT * event)
   if (event != ((SCREEN_EVENT *) NULL))
     *event = screen->queue_head->event;
   return  TRUE;
+}
+
+BOOL
+Screen_pending_events_p (void)
+{
+  SCREEN screen = registered_screens;
+  while (screen)
+    {
+      if ((screen -> n_events) != 0)
+	return (TRUE);
+      screen = (screen -> registry_link);
+    }
+  return (FALSE);
 }
 
 //---------------------------------------------------------------------------

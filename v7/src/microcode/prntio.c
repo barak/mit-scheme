@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntio.c,v 1.5 1997/04/03 04:41:15 cph Exp $
+$Id: prntio.c,v 1.6 1997/05/17 07:00:23 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -125,17 +125,24 @@ wait_for_multiple_objects (DWORD nhand, HANDLE * handles, DWORD timeout,
 {
   DWORD result;
   MSG m;
-  /* This is a kludge.  MsgWaitForMultipleObjects has a race
-     condition -- it ignores messages that are already queued.  So
-     check the queue as late as possible before the call, in order
-     to minimize the window in which we can get stuck waiting for
-     a message that has already arrived.  */
 #ifdef TRACE_SCREEN_MSGS
   fprintf (trace_file, "MsgWaitForMultipleObjects: timeout=0x%x\n", timeout);
   fflush (trace_file);
 #endif
-  if (msgp && (PeekMessage ((&m), 0, 0, 0, PM_NOREMOVE)))
-    return (((m.message) == WM_SCHEME_INTERRUPT) ? (nhand + 2) : (nhand + 1));
+  if (msgp)
+    {
+      if (Screen_pending_events_p ())
+	return (nhand + 1);
+      /* This is a kludge.  MsgWaitForMultipleObjects has a race
+	 condition -- it ignores messages that are already queued.  So
+	 check the queue as late as possible before the call, in order
+	 to minimize the window in which we can get stuck waiting for
+	 a message that has already arrived.  */
+      if (PeekMessage ((&m), 0, 0, 0, PM_NOREMOVE))
+	return (((m.message) == WM_SCHEME_INTERRUPT)
+		? (nhand + 2)
+		: (nhand + 1));
+    }
   result =
     (MsgWaitForMultipleObjects (nhand, handles, FALSE, timeout, QS_ALLINPUT));
 #ifdef TRACE_SCREEN_MSGS
