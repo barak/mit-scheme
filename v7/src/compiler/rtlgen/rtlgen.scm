@@ -1,46 +1,40 @@
-;;; -*-Scheme-*-
-;;;
-;;;	Copyright (c) 1987 Massachusetts Institute of Technology
-;;;
-;;;	This material was developed by the Scheme project at the
-;;;	Massachusetts Institute of Technology, Department of
-;;;	Electrical Engineering and Computer Science.  Permission to
-;;;	copy this software, to redistribute it, and to use it for any
-;;;	purpose is granted, subject to the following restrictions and
-;;;	understandings.
-;;;
-;;;	1. Any copy made of this software must include this copyright
-;;;	notice in full.
-;;;
-;;;	2. Users of this software agree to make their best efforts (a)
-;;;	to return to the MIT Scheme project any improvements or
-;;;	extensions that they make, so that these may be included in
-;;;	future releases; and (b) to inform MIT of noteworthy uses of
-;;;	this software.
-;;;
-;;;	3. All materials developed as a consequence of the use of this
-;;;	software shall duly acknowledge such use, in accordance with
-;;;	the usual standards of acknowledging credit in academic
-;;;	research.
-;;;
-;;;	4. MIT has made no warrantee or representation that the
-;;;	operation of this software will be error-free, and MIT is
-;;;	under no obligation to provide any services, by way of
-;;;	maintenance, update, or otherwise.
-;;;
-;;;	5. In conjunction with products arising from the use of this
-;;;	material, there shall be no use of the name of the
-;;;	Massachusetts Institute of Technology nor of any adaptation
-;;;	thereof in any advertising, promotional, or sales literature
-;;;	without prior written consent from MIT in each case.
-;;;
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.6 1987/03/19 00:47:32 cph Exp $
+
+Copyright (c) 1987 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
 
 ;;;; RTL Generation
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.5 1987/02/11 22:55:14 cph Exp $
-
 (declare (usual-integrations))
-(using-syntax (access compiler-syntax-table compiler-package)
 
 (define *nodes*)
 
@@ -202,13 +196,12 @@
 				   expression))))))
 		      (generate:next next offset rest-generator))))
 
-(define (assignment:value-register block value-register rvalue next offset
+(define (assignment:value-register block rvalue next offset
 				   rest-generator rvalue->sexpression)
   (if (not (generate:next-is-null? next rest-generator))
       (error "Return node has next"))
   (scfg*node->node!
-   (scfg*scfg->scfg! (if (or (value-register? rvalue)
-			     (value-temporary? rvalue))
+   (scfg*scfg->scfg! (if (value-temporary? rvalue)
 			 (make-null-cfg)
 			 (rvalue->sexpression rvalue offset
 			   (lambda (expression)
@@ -222,15 +215,6 @@
 			      (make-null-cfg))
 			  (rtl:make-return))))
    (generate:next next offset rest-generator)))
-
-(define-assignment value-register-tag
-  assignment:value-register)
-
-(define-assignment value-push-tag
-  (lambda (block value-push rvalue next offset rest-generator
-		 rvalue->sexpression)
-    (scfg*node->node! (rvalue->sexpression rvalue offset rtl:make-push)
-		      (generate:next next (1+ offset) rest-generator))))
 
 (define-assignment value-ignore-tag
   (lambda (block value-ignore rvalue next offset rest-generator
@@ -252,7 +236,7 @@
 		(rtl:make-assignment temporary expression))))
 	(generate:next next offset rest-generator)))
       ((VALUE)
-       (assignment:value-register block temporary rvalue next offset
+       (assignment:value-register block rvalue next offset
 				  rest-generator rvalue->sexpression))
       (else
        (error "Unknown temporary type" temporary)))))
@@ -326,10 +310,6 @@
   (lambda (block offset scfg-append! receiver)
     (receiver (rtl:make-fetch register:environment))))
 
-(define-rvalue->expression value-register-tag
-  (lambda (value-register offset scfg-append! receiver)
-    (receiver (rtl:make-fetch register:value))))
-
 (define-rvalue->expression reference-tag
   (lambda (reference offset scfg-append! receiver)
     (reference->expression (reference-block reference)
@@ -386,7 +366,7 @@
   ;; IC procedures have their entry points linked into their headers
   ;; at load time by the linker.
   (let ((header
-	 (scode:make-lambda (variable-name (procedure-name procedure))
+	 (scode/make-lambda (variable-name (procedure-name procedure))
 			    (map variable-name (procedure-required procedure))
 			    (map variable-name (procedure-optional procedure))
 			    (let ((rest (procedure-rest procedure)))
@@ -398,22 +378,38 @@
 	  (cons (cons procedure header)
 		*ic-procedure-headers*))
     (receiver (rtl:make-typed-cons:pair
-	       (rtl:make-constant (scode:procedure-type-code header))
+	       (rtl:make-constant (scode/procedure-type-code header))
 	       (rtl:make-constant header)
 	       (rtl:make-fetch register:environment)))))
 
 (define (rvalue->expression:closure-procedure procedure offset scfg-append!
 					      receiver)
   (let ((block (block-parent (procedure-block procedure))))
+
     (define (finish environment)
       (receiver (rtl:make-typed-cons:pair
 		 (rtl:make-constant type-code:compiled-procedure)
 		 (rtl:make-entry:procedure procedure)
 		 environment)))
+
+    (define (ic-locative closure-block block)
+      (let ((loser
+	     (lambda (locative)
+	       (error "Closure parent not IC block"))))
+	(find-block closure-block block offset
+	  loser
+	  loser
+	  (lambda (locative nearest-ic-locative)
+	    locative))))
+
     (cond ((not block)
 	   (finish (rtl:make-constant false)))
 	  ((ic-block? block)
-	   (finish (rtl:make-fetch register:environment)))
+	   (finish
+	    (let ((closure-block (procedure-closure-block procedure)))
+	      (if (ic-block? closure-block)
+		  (rtl:make-fetch register:environment)
+		  (ic-locative closure-block block)))))
 	  ((closure-block? block)
 	   (let ((closure-block (procedure-closure-block procedure)))
 	     (define (loop variables n receiver)
@@ -436,29 +432,13 @@
 				     pushes)))
 			     (finish (rtl:interpreter-call-result:enclose))))
 
-	     (define (loser locative)
-	       (error "Closure parent not IC block"))
-
 	     (loop (block-bound-variables block) 0
 	       (lambda (offset n pushes)
 		 (let ((parent (block-parent block)))
 		   (if parent
-		       (find-block closure-block parent offset
-			 loser
-			 loser
-			 (lambda (locative nearest-ic-locative)
-			   (make-frame (1+ n)
-				       (cons (rtl:make-push locative)
-					     pushes))))
+		       (make-frame (1+ n)
+				   (cons (rtl:make-push
+					  (ic-locative closure-block parent))
+					 pushes))
 		       (make-frame n pushes)))))))
-	  (else (error "Unknown block type" block)))))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: (access rtl-generator-package compiler-package)
-;;; Scheme Syntax Table: (access compiler-syntax-table compiler-package)
-;;; Tags Table Pathname: (access compiler-tags-pathname compiler-package)
-;;; End:
   "node rtl arguments")

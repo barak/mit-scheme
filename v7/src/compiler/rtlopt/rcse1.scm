@@ -1,47 +1,41 @@
-;;; -*-Scheme-*-
-;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
-;;;
-;;;	This material was developed by the Scheme project at the
-;;;	Massachusetts Institute of Technology, Department of
-;;;	Electrical Engineering and Computer Science.  Permission to
-;;;	copy this software, to redistribute it, and to use it for any
-;;;	purpose is granted, subject to the following restrictions and
-;;;	understandings.
-;;;
-;;;	1. Any copy made of this software must include this copyright
-;;;	notice in full.
-;;;
-;;;	2. Users of this software agree to make their best efforts (a)
-;;;	to return to the MIT Scheme project any improvements or
-;;;	extensions that they make, so that these may be included in
-;;;	future releases; and (b) to inform MIT of noteworthy uses of
-;;;	this software.
-;;;
-;;;	3. All materials developed as a consequence of the use of this
-;;;	software shall duly acknowledge such use, in accordance with
-;;;	the usual standards of acknowledging credit in academic
-;;;	research.
-;;;
-;;;	4. MIT has made no warrantee or representation that the
-;;;	operation of this software will be error-free, and MIT is
-;;;	under no obligation to provide any services, by way of
-;;;	maintenance, update, or otherwise.
-;;;
-;;;	5. In conjunction with products arising from the use of this
-;;;	material, there shall be no use of the name of the
-;;;	Massachusetts Institute of Technology nor of any adaptation
-;;;	thereof in any advertising, promotional, or sales literature
-;;;	without prior written consent from MIT in each case.
-;;;
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.99 1987/03/19 00:46:43 cph Exp $
+
+Copyright (c) 1987 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
 
 ;;;; RTL Common Subexpression Elimination
 ;;;  Based on the GNU C Compiler
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.98 1987/02/12 00:41:08 cph Exp $
-
 (declare (usual-integrations))
-(using-syntax (access compiler-syntax-table compiler-package)
 
 (define (common-subexpression-elimination blocks n-registers)
   (fluid-let ((*next-quantity-number* 0))
@@ -219,7 +213,8 @@
   (lambda (statement)
     (let ((n (rtl:interpreter-call:enclose-size statement)))
       (stack-region-invalidate! 0 n)
-      (stack-pointer-adjust! n))))
+      (stack-pointer-adjust! n))
+    (expression-invalidate! (interpreter-register:enclose))))
 
 (define (define-assignment-method type
 	  get-environment set-environment!
@@ -545,355 +540,4 @@
 (define (hash-object object)
   (cond ((integer? object) object)
 	((symbol? object) (symbol-hash object))
-	(else (hash object))))
-
-;;;; Expression Predicates
-
-(define (expression-equivalent? x y validate?)
-  ;; If VALIDATE? is true, assume that Y comes from the hash table and
-  ;; should have its register references validated.
-  (define (loop x y)
-    (let ((type (rtl:expression-type x)))
-      (and (eq? type (rtl:expression-type y))
-	   (case type
-	     ((REGISTER)
-	      (register-equivalent? x y))
-	     ((OFFSET)
-	      (let ((rx (rtl:offset-register x)))
-		(and (register-equivalent? rx (rtl:offset-register y))
-		     (if (interpreter-stack-pointer? rx)
-			 (eq? (stack-reference-quantity x)
-			      (stack-reference-quantity y))
-			 (= (rtl:offset-number x)
-			    (rtl:offset-number y))))))
-	     (else
-	      (rtl:match-subexpressions x y loop))))))
-
-  (define (register-equivalent? x y)
-    (let ((x (rtl:register-number x))
-	  (y (rtl:register-number y)))
-      (and (eq? (register-quantity x) (register-quantity y))
-	   (or (not validate?)
-	       (= (register-in-table y) (register-tick y))))))
-
-  (loop x y))
-
-(define (expression-refers-to? x y)
-  ;; True iff any subexpression of X matches Y.
-  (define (loop x)
-    (or (eq? x y)
-	(if (eq? (rtl:expression-type x) (rtl:expression-type y))
-	    (expression-equivalent? x y false)
-	    (rtl:any-subexpression? x loop))))
-  (loop x))
-
-(define (expression-address-varies? expression)
-  (if (memq (rtl:expression-type expression)
-	    '(OFFSET PRE-INCREMENT POST-INCREMENT))
-      (register-expression-varies? (rtl:address-register expression))
-      (rtl:any-subexpression? expression expression-address-varies?)))
-
-(define (expression-varies? expression)
-  ;; This procedure should not be called on a register expression.
-  (let ((type (rtl:expression-type expression)))
-    (or (memq type '(OFFSET PRE-INCREMENT POST-INCREMENT))
-	(if (eq? type 'REGISTER)
-	    (register-expression-varies? expression)
-	    (rtl:any-subexpression? expression expression-varies?)))))
-
-(define (register-expression-varies? expression)
-  (not (= regnum:regs-pointer (rtl:register-number expression))))
-
-(define (stack-push/pop? expression)
-  (and (pre/post-increment? expression)
-       (interpreter-stack-pointer? (rtl:address-register expression))))
-
-(define (heap-allocate? expression)
-  (and (pre/post-increment? expression)
-       (interpreter-free-pointer? (rtl:address-register expression))))
-
-(define-integrable (pre/post-increment? expression)
-  (memq (rtl:expression-type expression) '(PRE-INCREMENT POST-INCREMENT)))
-
-;;;; Stack References
-
-(define *stack-offset*)
-(define *stack-reference-quantities*)
-
-(define (stack-reference? expression)
-  (and (eq? (rtl:expression-type expression) 'OFFSET)
-       (interpreter-stack-pointer? (rtl:address-register expression))))
-
-(define (stack-reference-quantity expression)
-  (let ((n (+ *stack-offset* (rtl:offset-number expression))))
-    (let ((entry (ass= n *stack-reference-quantities*)))
-      (if entry
-	  (cdr entry)
-	  (let ((quantity (new-quantity false)))
-	    (set! *stack-reference-quantities*
-		  (cons (cons n quantity)
-			*stack-reference-quantities*))
-	    quantity)))))
-
-(define-integrable (stack-pointer-adjust! offset)
-  (set! *stack-offset* (+ (stack->memory-offset offset) *stack-offset*))
-  (stack-pointer-invalidate!))
-
-(define-integrable (stack-pointer-invalidate!)
-  (register-expression-invalidate! (interpreter-stack-pointer)))
-
-(define-integrable (stack-invalidate!)
-  (set! *stack-reference-quantities* '()))
-
-(define (stack-region-invalidate! start end)
-  (let ((end (+ *stack-offset* end)))
-    (define (loop i quantities)
-      (if (< i end)
-	  (loop (1+ i)
-		(del-ass=! i quantities))
-	  (set! *stack-reference-quantities* quantities)))
-    (loop (+ *stack-offset* start) *stack-reference-quantities*)))
-
-(define (stack-reference-invalidate! expression)
-  (expression-invalidate! expression)
-  (set! *stack-reference-quantities*
-	(del-ass=! (+ *stack-offset* (rtl:offset-number expression))
-		   *stack-reference-quantities*)))
-
-(define ass= (association-procedure = car))
-(define del-ass=! (delete-association-procedure list-deletor! = car))
-
-;;;; Hash Table Abstraction
-
-(define n-buckets 31)
-
-(define (make-hash-table)
-  (make-vector n-buckets false))
-
-(define *hash-table*)
-
-(define-integrable (hash-table-ref hash)
-  (vector-ref *hash-table* hash))
-
-(define-integrable (hash-table-set! hash element)
-  (vector-set! *hash-table* hash element))
-
-(define element-tag (make-vector-tag false 'ELEMENT))
-(define element? (tagged-vector-predicate element-tag))
-
-(define-vector-slots element 1
-  expression cost in-memory?
-  next-hash previous-hash
-  next-value previous-value first-value)
-
-(define (make-element expression)
-  (vector element-tag expression false false false false false false false))
-
-(define (hash-table-lookup hash expression)
-  (define (loop element)
-    (and element
-	 (if (let ((expression* (element-expression element)))
-	       (or (eq? expression expression*)
-		   (expression-equivalent? expression expression* true)))
-	     element
-	     (loop (element-next-hash element)))))
-  (loop (hash-table-ref hash)))
-
-(define (hash-table-insert! hash expression class)
-  (let ((element (make-element expression))
-	(cost (rtl:expression-cost expression)))
-    (set-element-cost! element cost)
-    (let ((next (hash-table-ref hash)))
-      (set-element-next-hash! element next)
-      (if next (set-element-previous-hash! next element)))
-    (hash-table-set! hash element)
-    (cond ((not class)
-	   (set-element-first-value! element element))
-	  ((< cost (element-cost class))
-	   (set-element-next-value! element class)
-	   (set-element-previous-value! class element)
-	   (let loop ((x element))
-	     (if x
-		 (begin (set-element-first-value! x element)
-			(loop (element-next-value x))))))
-	  (else
-	   (set-element-first-value! element class)
-	   (let loop ((previous class)
-		      (next (element-next-value class)))
-	     (cond ((not next)
-		    (set-element-next-value! element false)
-		    (set-element-next-value! previous element)
-		    (set-element-previous-value! element previous))
-		   ((<= cost (element-cost next))
-		    (set-element-next-value! element next)
-		    (set-element-previous-value! next element)
-		    (set-element-next-value! previous element)
-		    (set-element-previous-value! element previous))
-		   (else
-		    (loop next (element-next-value next)))))))
-    element))
-
-(define (hash-table-delete! hash element)
-  (if element
-      (begin
-       ;; **** Mark this element as removed.  [ref crock-1]
-       (set-element-first-value! element false)
-       (let ((next (element-next-value element))
-	     (previous (element-previous-value element)))
-	 (if next (set-element-previous-value! next previous))
-	 (if previous
-	     (set-element-next-value! previous next)
-	     (let loop ((element next))
-	       (if element
-		   (begin (set-element-first-value! element next)
-			  (loop (element-next-value element)))))))
-       (let ((next (element-next-hash element))
-	     (previous (element-previous-hash element)))
-	 (if next (set-element-previous-hash! next previous))
-	 (if previous
-	     (set-element-next-hash! previous next)
-	     (hash-table-set! hash next))))))
-
-(define (hash-table-delete-class! predicate)
-  (let table-loop ((i 0))
-    (if (< i n-buckets)
-	(let bucket-loop ((element (hash-table-ref i)))
-	  (if element
-	      (begin (if (predicate element)
-			 (hash-table-delete! i element))
-		     (bucket-loop (element-next-hash element)))
-	      (table-loop (1+ i)))))))
-
-(package (hash-table-copy)
-
-(define *elements*)
-
-(define-export (hash-table-copy table)
-  (fluid-let ((*elements* '()))
-    (vector-map table element-copy)))
-
-(define (element-copy element)
-  (and element
-       (let ((entry (assq element *elements*)))
-	 (if entry
-	     (cdr entry)
-	     (let ((new (make-element (element-expression element))))
-	       (set! *elements* (cons (cons element new) *elements*))
-	       (set-element-cost! new (element-cost element))
-	       (set-element-in-memory?! new (element-in-memory? element))
-	       (set-element-next-hash!
-		new
-		(element-copy (element-next-hash element)))
-	       (set-element-previous-hash!
-		new
-		(element-copy (element-previous-hash element)))
-	       (set-element-next-value!
-		new
-		(element-copy (element-next-value element)))
-	       (set-element-previous-value!
-		new
-		(element-copy (element-previous-value element)))
-	       (set-element-first-value!
-		new
-		(element-copy (element-first-value element)))
-	       new)))))
-
-)
-
-;;;; State Abstraction
-
-(define (state:initialize n-registers thunk)
-  (fluid-let ((*register-quantity* (make-vector n-registers))
-	      (*register-next-equivalent* (make-vector n-registers))
-	      (*register-previous-equivalent* (make-vector n-registers))
-	      (*register-expression* (make-vector n-registers))
-	      (*register-tick* (make-vector n-registers))
-	      (*register-in-table* (make-vector n-registers))
-	      (*hash-table* (make-hash-table))
-	      (*stack-offset*)
-	      (*stack-reference-quantities*))
-    (thunk)))
-
-(define (state:reset!)
-  (vector-fill-with-quantities! *register-quantity*)
-  (vector-fill! *register-next-equivalent* false)
-  (vector-fill! *register-previous-equivalent* false)
-  (vector-fill! *register-expression* false)
-  (for-each-machine-register
-   (lambda (register)
-     (set-register-expression! register (rtl:make-machine-register register))))
-  (vector-fill! *register-tick* 0)
-  (vector-fill! *register-in-table* -1)
-  (set! *hash-table* (make-hash-table))
-  (set! *stack-offset* 0)
-  (set! *stack-reference-quantities* '()))
-
-(define (vector-fill-with-quantities! vector)
-  (define (loop i)
-    (vector-set! vector i (new-quantity i))
-    (if (not (zero? i))
-	(loop (-1+ i))))
-  (loop (-1+ (vector-length vector))))
-
-(define (state:get)
-  (vector (vector-map *register-quantity* quantity-copy)
-	  (vector-copy *register-next-equivalent*)
-	  (vector-copy *register-previous-equivalent*)
-	  (vector-copy *register-expression*)
-	  (vector-copy *register-tick*)
-	  (vector-copy *register-in-table*)
-	  (hash-table-copy *hash-table*)
-	  *stack-offset*
-	  (copy-alist *stack-reference-quantities*)))
-
-(define (state:set! state)
-  (set! *register-quantity* (vector-ref state 0))
-  (set! *register-next-equivalent* (vector-ref state 1))
-  (set! *register-previous-equivalent* (vector-ref state 2))
-  (set! *register-expression* (vector-ref state 3))
-  (set! *register-tick* (vector-ref state 4))
-  (set! *register-in-table* (vector-ref state 5))
-  (set! *hash-table* (vector-ref state 6))
-  (set! *stack-offset* (vector-ref state 7))
-  (set! *stack-reference-quantities* (vector-ref state 8)))
-
-;;;; Register/Quantity Abstractions
-
-(define quantity-tag (make-vector-tag false 'QUANTITY))
-(define quantity? (tagged-vector-predicate quantity-tag))
-(define-vector-slots quantity 1 number first-register last-register)
-
-(define *next-quantity-number*)
-
-(define (generate-quantity-number)
-  (let ((n *next-quantity-number*))
-    (set! *next-quantity-number* (1+ *next-quantity-number*))
-    n))
-
-(define (make-quantity number first-register last-register)
-  (vector quantity-tag number first-register last-register))
-
-(define (new-quantity register)
-  (make-quantity (generate-quantity-number) register register))
-
-(define (quantity-copy quantity)
-  (make-quantity (quantity-number quantity)
-		 (quantity-first-register quantity)
-		 (quantity-last-register quantity)))
-
-(define-register-references quantity)
-(define-register-references next-equivalent)
-(define-register-references previous-equivalent)
-(define-register-references expression)
-(define-register-references tick)
-(define-register-references in-table)
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: (access rtl-cse-package compiler-package)
-;;; Scheme Syntax Table: (access compiler-syntax-table compiler-package)
-;;; Tags Table Pathname: (access compiler-tags-pathname compiler-package)
-;;; End:
   rtl:set-interpreter-call:set!-value!)

@@ -1,46 +1,40 @@
-;;; -*-Scheme-*-
-;;;
-;;;	Copyright (c) 1987 Massachusetts Institute of Technology
-;;;
-;;;	This material was developed by the Scheme project at the
-;;;	Massachusetts Institute of Technology, Department of
-;;;	Electrical Engineering and Computer Science.  Permission to
-;;;	copy this software, to redistribute it, and to use it for any
-;;;	purpose is granted, subject to the following restrictions and
-;;;	understandings.
-;;;
-;;;	1. Any copy made of this software must include this copyright
-;;;	notice in full.
-;;;
-;;;	2. Users of this software agree to make their best efforts (a)
-;;;	to return to the MIT Scheme project any improvements or
-;;;	extensions that they make, so that these may be included in
-;;;	future releases; and (b) to inform MIT of noteworthy uses of
-;;;	this software.
-;;;
-;;;	3. All materials developed as a consequence of the use of this
-;;;	software shall duly acknowledge such use, in accordance with
-;;;	the usual standards of acknowledging credit in academic
-;;;	research.
-;;;
-;;;	4. MIT has made no warrantee or representation that the
-;;;	operation of this software will be error-free, and MIT is
-;;;	under no obligation to provide any services, by way of
-;;;	maintenance, update, or otherwise.
-;;;
-;;;	5. In conjunction with products arising from the use of this
-;;;	material, there shall be no use of the name of the
-;;;	Massachusetts Institute of Technology nor of any adaptation
-;;;	thereof in any advertising, promotional, or sales literature
-;;;	without prior written consent from MIT in each case.
-;;;
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.7 1987/03/19 00:47:01 cph Exp $
+
+Copyright (c) 1987 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
 
 ;;;; RTL Generation: Combinations
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.6 1987/01/01 19:07:14 cph Exp $
-
 (declare (usual-integrations))
-(using-syntax (access compiler-syntax-table compiler-package)
 
 (define-generator combination-tag
   (lambda (combination offset rest-generator)
@@ -55,14 +49,14 @@
 (define (combination:normal combination offset rest-generator)
   ;; For the time being, all close-coded combinations will return
   ;; their values in the value register.  If the value of a
-  ;; combination is not a temporary, it is either a value-register
-  ;; or a value-ignore, which is alright.
+  ;; combination is not a temporary, it is a value-ignore, which is
+  ;; alright.
   (let ((value (combination-value combination)))
     (if (temporary? value)
-	(let ((type* (temporary-type value)))
-	  (if type*
-	      (if (not (eq? 'VALUE type*))
-		  (error "COMBINATION:NORMAL: Bad temporary type" type*))
+	(let ((type (temporary-type value)))
+	  (if type
+	      (if (not (eq? 'VALUE type))
+		  (error "COMBINATION:NORMAL: Bad temporary type" type))
 	      (set-temporary-type! value 'VALUE)))))
   (if (generate:next-is-null? (snode-next combination) rest-generator)
       (combination:reduction combination offset)
@@ -71,8 +65,7 @@
 (define (combination:constant combination offset rest-generator)
   (let ((value (combination-value combination))
 	(next (snode-next combination)))
-    (cond ((or (value-register? value)
-	       (value-temporary? value))
+    (cond ((value-temporary? value)
 	   (generate-assignment (combination-block combination)
 				value
 				(combination-constant-value combination)
@@ -468,9 +461,10 @@
     `(APPLY-STACK ,number-pushed
 		  ,(+ number-pushed (block-frame-size block))
 		  ,(block-ancestor-distance
-		   block
-		   (procedure-block
-		    (combination-known-operator combination))))))
+		    block
+		    (block-parent
+		     (procedure-block
+		      (combination-known-operator combination)))))))
 
 (define (invocation-prefix:stack->sibling combination number-pushed)
    `(MOVE-FRAME-UP ,number-pushed
@@ -531,14 +525,4 @@
 (define-export make-call:push-operator
   (make-call-maker subproblem->push 1+))
 
-)
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: (access rtl-generator-package compiler-package)
-;;; Scheme Syntax Table: (access compiler-syntax-table compiler-package)
-;;; Tags Table Pathname: (access compiler-tags-pathname compiler-package)
-;;; End:
 		   ,(-1+ (block-frame-size (combination-block combination)))))

@@ -1,116 +1,129 @@
-;;; -*-Scheme-*-
-;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
-;;;
-;;;	This material was developed by the Scheme project at the
-;;;	Massachusetts Institute of Technology, Department of
-;;;	Electrical Engineering and Computer Science.  Permission to
-;;;	copy this software, to redistribute it, and to use it for any
-;;;	purpose is granted, subject to the following restrictions and
-;;;	understandings.
-;;;
-;;;	1. Any copy made of this software must include this copyright
-;;;	notice in full.
-;;;
-;;;	2. Users of this software agree to make their best efforts (a)
-;;;	to return to the MIT Scheme project any improvements or
-;;;	extensions that they make, so that these may be included in
-;;;	future releases; and (b) to inform MIT of noteworthy uses of
-;;;	this software.
-;;;
-;;;	3. All materials developed as a consequence of the use of this
-;;;	software shall duly acknowledge such use, in accordance with
-;;;	the usual standards of acknowledging credit in academic
-;;;	research.
-;;;
-;;;	4. MIT has made no warrantee or representation that the
-;;;	operation of this software will be error-free, and MIT is
-;;;	under no obligation to provide any services, by way of
-;;;	maintenance, update, or otherwise.
-;;;
-;;;	5. In conjunction with products arising from the use of this
-;;;	material, there shall be no use of the name of the
-;;;	Massachusetts Institute of Technology nor of any adaptation
-;;;	thereof in any advertising, promotional, or sales literature
-;;;	without prior written consent from MIT in each case.
-;;;
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.11 1987/03/19 00:53:59 cph Exp $
+
+Copyright (c) 1987 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
 
 ;;;; Compiler Make File for MC68020
 
 (declare (usual-integrations))
 
 (set-working-directory-pathname! "$zcomp")
-(load "rcs" system-global-environment)
-(load "load" system-global-environment)
+(load "base/rcs" system-global-environment)
+(load "base/load" system-global-environment)
 
 (load-system system-global-environment
 	     'COMPILER-PACKAGE
 	     '(SYSTEM-GLOBAL-ENVIRONMENT)
 	     '(
 	       (SYSTEM-GLOBAL-ENVIRONMENT
-		"macros.bin"		;compiler syntax
-		"pbs.bin"		;bit-string read/write syntax
+		"base/macros"		;compiler syntax
+		"base/pbs"		;bit-string read/write syntax
 		)
 
 	       (COMPILER-PACKAGE
-		"mc68020/machin.bin"	;machine dependent stuff
-		"toplev.bin"		;top level
-		"utils.bin"		;odds and ends
-		"cfg.bin"		;control flow graph
-		"ctypes.bin"		;CFG datatypes
-		"dtypes.bin"		;DFG datatypes
-		"bblock.bin"		;Basic block datatype
-		"dfg.bin"		;data flow graph
-		"rtl.bin"		;register transfer language
-		"emodel.bin"		;environment model
-		"rtypes.bin"		;RTL analyzer datatypes
-		"nmatch.bin"		;simple pattern matcher
+		"base/decls"		;declarations
+;		"machines/bobcat/decls"	;more declarations
+
+		"base/object"		;tagged object support
+		"base/queue"		;queue abstraction
+		"base/sets"		;set abstraction
+		"source/mvalue"		;multiple-value support
+
+		"machines/bobcat/machin" ;machine dependent stuff
+		"base/toplev"		;top level
+		"base/utils"		;odds and ends
+		"base/cfg"		;control flow graph
+		"base/ctypes"		;CFG datatypes
+		"base/dtypes"		;DFG datatypes
+		"base/bblock"		;Basic block datatype
+		"base/dfg"		;data flow graph
+		"base/rtltyp"		;RTL: type definitions
+		"base/rtl"		;RTL: expression operations
+		"base/rtlreg"		;RTL: registers
+		"base/rtlcfg"		;RTL: CFG types
+		"base/emodel"		;environment model
+		"base/rtypes"		;RTL analyzer datatypes
+		"base/nmatch"		;simple pattern matcher
 		)
 
 	       (CONVERTER-PACKAGE
-		"graphc.bin"		;SCode->flow-graph converter
+		"alpha/graphc"		;SCode->flow-graph converter
 		)
 
 	       (DATAFLOW-PACKAGE
-		"dflow.bin"		;Dataflow analyzer
+		"alpha/dflow"		;Dataflow analyzer
 		)
 
 	       (RTL-GENERATOR-PACKAGE
-		"rtlgen.bin"		;RTL generator
-		"rgcomb.bin"		;RTL generator: combinations
-		"linear.bin"		;linearization
+		"front-end/rtlgen"	;RTL generator
+		"front-end/rgcomb"	;RTL generator: combinations
+		"base/linear"		;linearization
 		)
 
 	       (RTL-CSE-PACKAGE
-		"rcse.bin"		;RTL common subexpression eliminator
+		"front-end/rcse"	;RTL common subexpression eliminator
+		"front-end/rcseep"	;CSE expression predicates
+		"front-end/rcsesr"	;CSE stack references
+		"front-end/rcseht"	;CSE hash table
+		"front-end/rcsesa"	;CSE state abstraction
+		"front-end/rcserq"	;CSE register/quantity abstractions
 		)
 
 	       (RTL-ANALYZER-PACKAGE
-		"rlife.bin"		;RTL register lifetime analyzer
-		"ralloc.bin"		;RTL register allocator
+		"front-end/rlife"	;RTL register lifetime analyzer
+		"front-end/ralloc"	;RTL register allocator
 		)
 
 	       (LAP-GENERATOR-PACKAGE
-		"lapgen.bin"		;LAP generator.
-		"regmap.bin"		;Hardware register allocator.
-		"mc68020/lapgen.bin"	;code generation rules.
+		"back-end/lapgen"	;LAP generator.
+		"back-end/regmap"	;Hardware register allocator.
+		"machines/bobcat/lapgen" ;code generation rules.
 		)
 
 	       (LAP-SYNTAXER-PACKAGE
-		"syntax.bin"		;Generic syntax phase
-		"mc68020/coerce.bin"	;Coercions: integer -> bit string
-		"asmmac.bin"		;Macros for hairy syntax
-		"mc68020/insmac.bin"	;Macros for hairy syntax
-		"mc68020/instr1.bin"	;68000 Effective addressing
-		"mc68020/instr2.bin"	;68000 Instructions
-		"mc68020/instr3.bin"	;  "        "
+		"back-end/syntax"	;Generic syntax phase
+		"machines/bobcat/coerce" ;Coercions: integer -> bit string
+		"back-end/asmmac"	;Macros for hairy syntax
+		"machines/bobcat/insmac" ;Macros for hairy syntax
+		"machines/bobcat/instr1" ;68000 Effective addressing
+		"machines/bobcat/instr2" ;68000 Instructions
+		"machines/bobcat/instr3" ;  "        "
 		)
 
 	       (LAP-PACKAGE
-		"mc68020/assmd.bin"	;Machine dependent
-		"symtab.bin"		;Symbol tables
-		"block.bin"		;Assembly blocks
-		"laptop.bin"		;Assembler top level
+		"machines/bobcat/assmd" ;Machine dependent
+		"back-end/symtab"	;Symbol tables
+		"back-end/block"	;Assembly blocks
+		"back-end/laptop"	;Assembler top level
 		)
 
 	       ))
@@ -123,7 +136,7 @@
       (define :version)
       (define :modification)
 
-      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.10 1986/12/20 23:49:57 cph Exp $"
+      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.11 1987/03/19 00:53:59 cph Exp $"
 	(lambda (filename version date time author state)
 	  (set! :version (car version))
 	  (set! :modification (cadr version))))))
