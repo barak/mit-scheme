@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.33 1987/07/17 15:42:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.34 1987/07/17 19:33:08 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -46,11 +46,11 @@ MIT in each case. |#
     (make-environment
       (define :name "Liar (Bobcat 68020)")
       (define :version 1)
-      (define :modification 33)
+      (define :modification 34)
       (define :files)
 
 ;      (parse-rcs-header
-;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.33 1987/07/17 15:42:50 jinx Exp $"
+;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.34 1987/07/17 19:33:08 mhwu Exp $"
 ;       (lambda (filename version date time zone author state)
 ;	 (set! :version (car version))
 ;	 (set! :modification (cadr version))))
@@ -95,6 +95,7 @@ MIT in each case. |#
 		 "base/regset.bin"	;RTL Register Sets
 		 "base/pmlook.bin"	;pattern matcher: lookup
 		 "base/pmpars.bin"	;pattern matcher: parser
+		 "base/infutl.bin"	;utilities for info generation, shared
 		 "back-end/insseq.bin"	;lap instruction sequences
 		 ))
 
@@ -138,6 +139,10 @@ MIT in each case. |#
 		 "front-end/rdeath.bin"	;RTL dead code eliminations
 		 "front-end/rdebug.bin"	;RTL optimizer debugging output
 		 "front-end/ralloc.bin"	;RTL register allocator
+		 ))
+
+	 (cons debugging-information-package
+	       '("base/infgen.bin"	;debugging information generation
 		 ))
 
 	 (cons lap-syntax-package
