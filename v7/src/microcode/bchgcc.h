@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.50 1992/06/04 14:42:38 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.51 1992/07/23 12:33:30 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -87,13 +87,17 @@ MIT in each case. */
 #endif
 
 
+#ifndef __osf__
+# define ssize_t int
+#endif /* __osf__ */
+
 extern char * EXFUN (error_name, (int));
 
 extern int EXFUN (retrying_file_operation,
 		  (/* no prototype because (CONST char *) != (char *) */
-		   int EXFUN((*), ()),
+		   ssize_t EXFUN ((*), ()),
 		   int, char *, long, long, char *, char *, long *,
-		   int EXFUN((*), (char *, char *))));
+		   int EXFUN ((*), (char *, char *))));
 
 extern int EXFUN (io_error_retry_p, (char *, char *));
 extern int EXFUN (io_error_always_abort, (char *, char *));
