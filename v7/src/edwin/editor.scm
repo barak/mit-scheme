@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.213 1992/02/10 12:02:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.214 1992/02/10 15:48:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -307,20 +307,21 @@ This does not affect editor errors or evaluation errors."
   (abort-current-command))
 
 (define (quit-editor-and-signal-error condition)
-  (call-with-current-continuation
-   (lambda (continuation)
-     (within-continuation editor-abort
-       (lambda ()
-	 (set! edwin-continuation continuation)
-	 (error condition))))))
+  (quit-editor-and (lambda () (error condition))))
 
 (define (quit-editor)
+  (quit-editor-and (lambda () *the-non-printing-object*)))
+
+(define (quit-scheme)
+  (quit-editor-and (lambda () (quit) (edit))))
+
+(define (quit-editor-and thunk)
   (call-with-current-continuation
    (lambda (continuation)
      (within-continuation editor-abort
        (lambda ()
 	 (set! edwin-continuation continuation)
-	 *the-non-printing-object*)))))
+	 (thunk))))))
 
 (define (exit-editor)
   (within-continuation editor-abort reset-editor))
