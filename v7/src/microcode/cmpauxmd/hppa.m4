@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.14 1991/05/08 02:17:14 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.15 1991/05/15 16:21:50 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -590,7 +590,8 @@ generic_flonum_result			; expects data in fr4.
 	COPY	21,2			; result (untagged)
 	LDWM	4(0,22),8		; return address
 	LDIL	L'FLONUM_VECTOR_HEADER,7
-	LDO	R'FLONUM_VECTOR_HEADER(7),7
+	;	LDO	R'FLONUM_VECTOR_HEADER(7),7	; Assembler bug!
+	ADDI	R'FLONUM_VECTOR_HEADER,7,7
 	STWM	7,4(0,21)		; vector header
 	DEPI	TC_FLONUM,TC_START,TC_LENGTH,2 ; tag flonum
 	DEP	5,TC_START,TC_LENGTH,8	; data segment quadrant bits
