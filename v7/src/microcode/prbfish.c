@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prbfish.c,v 1.6 1999/08/13 17:03:48 cph Exp $
+$Id: prbfish.c,v 1.7 1999/08/13 18:31:52 cph Exp $
 
 Copyright (c) 1997, 1999 Massachusetts Institute of Technology
 
@@ -177,7 +177,7 @@ Returned value is the new value of NUM.")
   PRIMITIVE_RETURN (long_to_integer (num));
 }
 
-DEFINE_PRIMITIVE ("BLOWFISH-OFB64-SUBSTRING-V2", Prim_blowfish_ofb64_substring, 8, 8,
+DEFINE_PRIMITIVE ("BLOWFISH-OFB64-SUBSTRING", Prim_blowfish_ofb64_substring, 8, 8,
   "(INPUT ISTART IEND OUTPUT OSTART KEY INIT-VECTOR NUM)\n\
 Apply Blowfish in Output Feed-Back mode.\n\
 (INPUT,ISTART,IEND) is an arbitrary substring.\n\
