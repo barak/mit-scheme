@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.77 2000/05/22 20:50:37 cph Exp $
+;;; $Id: imail-imap.scm,v 1.78 2000/05/22 22:40:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1123,7 +1123,7 @@
 	   (if code
 	       (process-response-text connection command code text))
 	   (if (and (imap:response:bye? response)
-		    (not (eq? command 'LOGOUT)))
+		    (not (memq command '(LOGOUT #F))))
 	       (begin
 		 (close-imap-connection connection)
 		 (error "Server shut down connection:" text)))
