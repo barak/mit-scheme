@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: schmod.scm,v 1.33 1993/04/02 01:48:10 cph Exp $
+;;;	$Id: schmod.scm,v 1.34 1993/09/16 21:59:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -228,9 +228,7 @@ The following commands evaluate Scheme expressions:
   (let ((end
 	 (let ((point (current-point)))
 	   (or (re-match-forward "\\(\\sw\\|\\s_\\)+"
-				 point
-				 (group-end point)
-				 false)
+				 point (group-end point) false)
 	       (let ((start (group-start point)))
 		 (if (not (and (mark< start point)
 			       (re-match-forward "\\sw\\|\\s_"
@@ -243,7 +241,8 @@ The following commands evaluate Scheme expressions:
       (standard-completion (extract-string start end)
 	(lambda (prefix if-unique if-not-unique if-not-found)
 	  (let ((completions
-		 (let ((completions (obarray-completions prefix)))
+		 (let ((completions
+			(obarray-completions (string-downcase prefix))))
 		   (if (not bound-only?)
 		       completions
 		       (let ((environment (evaluation-environment false)))
