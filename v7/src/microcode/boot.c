@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.52 1988/10/21 00:12:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.53 1988/10/21 18:20:51 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -170,12 +170,14 @@ Def_Number(key, nargs, args, def)
 
 /* Used to test whether it is a dumped executable version */
 
-extern Boolean Was_Scheme_Dumped, Recover_Automatically;
-Boolean
-  Was_Scheme_Dumped = false,
-  Recover_Automatically = false;
-
-int Saved_Heap_Size, Saved_Stack_Size, Saved_Constant_Size;
+extern Boolean Was_Scheme_Dumped;
+Boolean Was_Scheme_Dumped = false;
+extern Boolean Recover_Automatically;
+Boolean Recover_Automatically = false;
+Boolean inhibit_termination_messages;
+int Saved_Heap_Size;
+int Saved_Stack_Size;
+int Saved_Constant_Size;
 
 void
 usage(error_string)
@@ -300,6 +302,7 @@ main(argc, argv)
 
   Init_Exit_Scheme();
 
+  inhibit_termination_messages = false;
   Saved_argc = argc;
   Saved_argv = argv;
 
@@ -535,9 +538,6 @@ Enter_Interpreter()
   /*NOTREACHED*/
 }
 
-extern Boolean inhibit_termination_messages;
-Boolean inhibit_termination_messages = false;
-
 term_type
 Microcode_Termination(code)
      long code;
