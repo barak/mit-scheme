@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.34 1988/05/05 08:42:17 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.35 1988/05/12 22:28:29 cph Exp $
  *
  * This file contains the code that copies objects into pure
  * and constant space.
@@ -462,12 +462,14 @@ Pointer Info;
   Recomputed_Length = ((Free_Constant - New_Object) - 4);
   *Free_Constant++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
   *Free_Constant++ = Make_Non_Pointer(END_OF_BLOCK, (Recomputed_Length + 5));
+#ifndef FLOATING_ALIGNMENT
   if (Length > Recomputed_Length)
   {
     fprintf(stderr, "\nPurify phase error %x, %x\n",
 	    Length, Recomputed_Length);
     Microcode_Termination(TERM_EXIT);
   }
+#endif
   *New_Object++ =
     Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, Pure_Length);
   *New_Object = Make_Non_Pointer(PURE_PART, (Recomputed_Length + 5));
