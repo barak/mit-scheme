@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 4.18 2003/02/14 18:28:34 cph Exp $
+$Id: object.scm,v 4.19 2003/03/13 03:22:48 cph Exp $
 
 Copyright 1987,1988,1989,1992,1993,1997 Massachusetts Institute of Technology
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
@@ -137,6 +137,7 @@ USA.
 	     (TYPE VECTOR)
 	     (NAMED
 	      ,(close-syntax (symbol-append name '/ENUMERAND) environment))
+	     (TYPE-DESCRIPTOR ,(symbol-append 'RTD: name))
 	     (CONC-NAME ,(symbol-append name '/))
 	     (CONSTRUCTOR ,(symbol-append name '/MAKE)))
 	  ,@(if scode?
