@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.8 1989/08/01 17:19:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.9 1989/12/20 22:20:15 cph Rel $
 $MC68020-Header: lapgen.scm,v 4.19 89/01/18 13:49:56 GMT cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
@@ -489,31 +489,6 @@ MIT in each case. |#
 (define-integrable reg:environment (INST-EA (@RO B 13 #x0C)))
 (define-integrable reg:temp (INST-EA (@RO B 13 #x10)))
 (define-integrable reg:lexpr-primitive-arity (INST-EA (@RO B 13 #x1C)))
-
-;;;; 2/3 Operand register allocation
-
-;; These should probably live in back/lapgn2.scm
-
-(define (with-copy-if-available source type if-win if-lose use-register!)
-  (reuse-pseudo-register-alias
-   source type
-   (lambda (reusable-alias)
-     (if-win (lambda ()
-	       (delete-machine-register! reusable-alias)
-	       (delete-dead-registers!)
-	       (use-register! reusable-alias)
-	       (register-reference reusable-alias))))
-   if-lose))
-
-(define-integrable (with-register-copy-if-available
-		     source type target if-win if-lose)
-  (with-copy-if-available source type if-win if-lose
-    (lambda (reusable-alias)
-      (add-pseudo-register-alias! target reusable-alias))))
-
-(define-integrable (with-temporary-copy-if-available
-		     source type if-win if-lose)
-  (with-copy-if-available source type if-win if-lose need-register!))
 
 ;;;; Higher level rules - assignment
 
