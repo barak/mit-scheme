@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.49 2000/05/08 19:07:47 cph Exp $
+;;; $Id: imail-core.scm,v 1.50 2000/05/08 20:32:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -744,7 +744,8 @@
 	  (if (or (not (pair? lines))
 		  (string-null? (car lines))
 		  (header-field-initial-line? (car lines)))
-	      (loop lines (lines->header-field (reverse! group)))
+	      (loop lines
+		    (cons (lines->header-field (reverse! group)) headers))
 	      (collect-group (cdr lines) (cons (car lines) group))))
 	(reverse! headers))))
 
