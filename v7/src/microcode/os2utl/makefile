@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.1 1994/11/28 04:26:10 cph Exp $
+###	$Id: makefile,v 1.2 1994/12/02 20:44:01 cph Exp $
 ###
 ###	Copyright (c) 1994 Massachusetts Institute of Technology
 ###
@@ -72,7 +72,7 @@ OPTIMIZE_CFLAGS = /O
 CFLAGS = -DMIT_SCHEME -D__STDC__ $(DEBUG_CFLAGS) $(ICC_FLAGS)
 DEBUG_LDFLAGS = $(DEBUG_CFLAGS)
 OPTIMIZE_LDFLAGS =
-LDFLAGS = $(DEBUG_LDFLAGS) $(ICC_FLAGS)
+LDFLAGS = $(DEBUG_LDFLAGS) $(ICC_FLAGS) /B"/PM:pm"
 
 .SUFFIXES:
 .SUFFIXES: .c .obj
@@ -260,6 +260,8 @@ os2fs.c \
 os2io.c \
 os2msg.c \
 os2pipe.c \
+os2pm.c \
+os2pmcon.c \
 os2term.c \
 os2thrd.c \
 os2top.c \
@@ -277,6 +279,8 @@ os2fs.$(OBJ) \
 os2io.$(OBJ) \
 os2msg.$(OBJ) \
 os2pipe.$(OBJ) \
+os2pm.$(OBJ) \
+os2pmcon.$(OBJ) \
 os2term.$(OBJ) \
 os2thrd.$(OBJ) \
 os2top.$(OBJ) \
@@ -426,8 +430,8 @@ prostty.$(OBJ) : ostty.h osctty.h osfile.h osio.h
 prmcon.$(OBJ) : scheme.tch prims.h prmcon.h
 
 $(OS2_OBJECTS) : dstack.h osscheme.h outf.h os.h ansidecl.h oscond.h \
-	posixtyp.h syscall.h osio.h os2.h os2api.h os2io.h os2msg.h \
-	os2thrd.h os2ctty.h os2cthrd.h
+	posixtyp.h syscall.h osio.h os2.h os2api.h os2cthrd.h os2ctty.h \
+	os2io.h os2msg.h os2pm.h os2thrd.h
 os2ctty.$(OBJ) : osctty.h ossig.h
 os2env.$(OBJ) : osenv.h scheme.tch
 os2file.$(OBJ) : osfile.h
