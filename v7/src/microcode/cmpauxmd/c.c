@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: c.c,v 1.5 1993/10/27 23:11:43 gjr Exp $
+$Id: c.c,v 1.6 1993/10/27 23:50:09 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -116,8 +116,8 @@ DEFUN (lrealloc, (ptr, size),
 int
 DEFUN (declare_compiled_code, (name, decl_proc, code_proc),
        char * name
-       AND void EXFUN (decl_proc, (void))
-       AND SCHEME_OBJECT * EXFUN (code_proc, (SCHEME_OBJECT *)))
+       AND void EXFUN ((* decl_proc), (void))
+       AND SCHEME_OBJECT * EXFUN ((* code_proc), (SCHEME_OBJECT *)))
 {  
   int index;
 
@@ -151,7 +151,7 @@ DEFUN (declare_compiled_code, (name, decl_proc, code_proc),
   }
   compiled_code_blocks[index] = (code_proc);
   compiled_block_names[index] = name;
-  decl_proc ();
+  (* decl_proc) ();
   return (index);
 }
 
@@ -231,7 +231,7 @@ DEFUN (initialize_C_compiled_block, (argno, name),
 }
 
 void
-DEFUN (C_to_interface, (entry), PTR in_entry)
+DEFUN (C_to_interface, (in_entry), PTR in_entry)
 {
   SCHEME_OBJECT * entry = ((SCHEME_OBJECT *) in_entry);
   while (1)
