@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.7 1991/02/15 18:07:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.8 1991/04/08 22:20:21 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -203,15 +203,28 @@ MIT in each case. |#
   (x-graphics-device/process-events! device)
   (x-window-set-position (x-graphics-device/window device) x y))
 
+(define default-display-hash
+  false)
+
 (define (operation/open display geometry #!optional suppress-map?)
   (let ((xw
 	 (x-graphics-open-window
-	  (if (or (not display) (string? display))
-	      (let ((d (x-open-display display)))
-		(if (not d)
-		    (error "unable to open display" display))
-		d)
-	      display)
+	  (let ((open
+		 (lambda ()
+		   (let ((d (x-open-display display)))
+		     (if (not d)
+			 (error "unable to open display" display))
+		     d))))
+	    (cond ((false? display)
+		   (or (and default-display-hash
+			    (object-unhash default-display-hash))
+		       (let ((d (open)))
+			 (set! default-display-hash (object-hash d))
+			 d)))
+		  ((string? display)
+		   (open))
+		  (else
+		   display)))
 	  geometry
 	  (and (not (default-object? suppress-map?))
 	       suppress-map?))))
