@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.19 2000/05/20 03:24:31 cph Exp $
+;;; $Id: imail-util.scm,v 1.20 2000/05/20 19:09:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -241,6 +241,35 @@
 (define (burst-comma-list-string string)
   (list-transform-negative (map string-trim (burst-string string #\, #f))
     string-null?))
+
+;;;; Broken-pipe handler
+
+(define (handle-broken-pipe handler thunk)
+  (bind-condition-handler (list condition-type:system-call-error
+				condition-type:derived-port-error)
+      (lambda (condition)
+	(if (or (broken-pipe? condition)
+		(derived-broken-pipe? condition))
+	    (handler condition)))
+    thunk))
+
+(define (broken-pipe? condition)
+  (and (eq? (condition/type condition) condition-type:system-call-error)
+       (eq? (system-call-name condition) 'WRITE)
+       (eq? (system-call-error condition) 'BROKEN-PIPE)))
+
+(define system-call-name
+  (condition-accessor condition-type:system-call-error 'SYSTEM-CALL))
+
+(define system-call-error
+  (condition-accessor condition-type:system-call-error 'ERROR-TYPE))
+
+(define (derived-broken-pipe? condition)
+  (and (eq? (condition/type condition) condition-type:derived-port-error)
+       (broken-pipe? (derived-condition condition))))
+
+(define derived-port-condition
+  (condition-accessor condition-type:derived-port-error 'CONDITION))
 
 ;;;; Ordered-string-vector completion
 

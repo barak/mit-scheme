@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.61 2000/05/19 21:02:20 cph Exp $
+;;; $Id: imail-imap.scm,v 1.62 2000/05/20 19:09:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -866,26 +866,18 @@
 	(error msg))))
 
 (define (imap:command connection command . arguments)
-  (bind-condition-handler (list condition-type:system-call-error)
-      (lambda (condition)
-	(if (and (memq (system-call-name condition) '(READ WRITE))
-		 (eq? 'BROKEN-PIPE (system-call-error condition)))
-	    (begin
-	      (close-imap-connection connection)
-	      (error "Connection to IMAP server broken; please try again."))))
-    (lambda ()
-      (imap:wait-for-tagged-response connection
-				     (imap:send-command connection
-							command arguments)
-				     (if (eq? command 'UID)
-					 (car arguments)
-					 command)))))
-
-(define system-call-name
-  (condition-accessor condition-type:system-call-error 'SYSTEM-CALL))
-
-(define system-call-error
-  (condition-accessor condition-type:system-call-error 'ERROR-TYPE))
+  (handle-broken-pipe
+   (lambda (condition)
+     condition
+     (close-imap-connection connection)
+     (error "Connection to IMAP server broken; please try again."))
+   (lambda ()
+     (imap:wait-for-tagged-response
+      connection
+      (imap:send-command connection command arguments)
+      (if (eq? command 'UID)
+	  (car arguments)
+	  command)))))
 
 (define imail-trace? #f)
 (define imail-trace-output)
