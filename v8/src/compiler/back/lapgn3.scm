@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgn3.scm,v 1.1 1994/11/19 01:54:17 adams Exp $
+$Id: lapgn3.scm,v 1.2 1994/11/26 19:13:50 adams Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -46,6 +46,7 @@ MIT in each case. |#
 (define *interned-uuo-links*)
 (define *interned-global-links*)
 (define *interned-static-variables*)
+(define *block-profiles*)
 
 (define (allocate-named-label prefix)
   (let ((label
@@ -160,3 +161,84 @@ MIT in each case. |#
 			    *interned-uuo-links*
 			    *interned-global-links*
 			    *interned-static-variables*))
+
+
+(define *current-profile-info*)
+
+(define (profile-info/start)
+  (set! *current-profile-info* (cons #f '())))
+
+(define (profile-info/end)
+  (set! *block-profiles* (cons *current-profile-info* *block-profiles*))
+  ;;(pp *current-profile-info*)
+  (set! *current-profile-info*)
+  unspecific)
+
+(define (profile-info/declare label)
+  (set-car! *current-profile-info* label)
+  unspecific)
+
+(define (profile-info/add data)
+  (define (merge-profile-data d1 d2)
+    (cond ((symbol? d1)  (cons (cons d1 1) d2))
+	  ((and (pair? d1)
+		(symbol? (car d1))) (cons d1 d2))
+	  ((append d1 d2))))
+  (set-cdr! *current-profile-info*
+	    (merge-profile-data data (cdr *current-profile-info*)))
+  unspecific)
+
+
+(define profile-info/offsets-tag (string->symbol "#[(?)profile-info/offsets]"))
+(define profile-info/data-tag    (string->symbol "#[(?)profile-info/data]"))
+
+(define (profile-info-key<? u v) (symbol<? u v))
+(define (profile-info-key=? u v) (eq? u v))
+
+(define (profile-info/insert-info! block label->offset)
+  (define (format-data data)
+    (let loop ((data (sort data (lambda (u v)
+				  ;; reverse order:
+				  (profile-info-key<? (car v) (car u)))))
+	       (result '())
+	       (current #F)
+	       (count   0))
+      (define (add name count result)
+	(if name
+	    (if (= count 1)
+		(cons name result)
+		(cons* count name result))
+	    result))
+      (cond ((null? data)
+	     (list->vector (add current count result)))
+	    ((profile-info-key=? current (caar data))
+	     (loop (cdr data) result current (+ (cdar data) count)))
+	    (else
+	     (loop (cdr data) (add current count result) (caar data) (cdar data))))))
+  (let* ((processed
+	  (map (lambda (info)
+		 (cons (label->offset (car info))
+		       (format-data (cdr info))))
+	       *block-profiles*))
+	 (sorted   (sort processed (lambda (x y) (fix:< (car x) (car y)))))
+	 (offsets  (list->vector
+		    (cons profile-info/offsets-tag (map car sorted))))
+	 (counts   (list->vector
+		    (cons profile-info/data-tag (map cdr sorted)))))
+    (system-vector-set! block
+			(- (system-vector-length block) 4)
+			offsets)
+    (system-vector-set! block
+			(- (system-vector-length block) 3)
+			counts)))
+
+
+(define (compiled-code-block/read-profile-count block count)
+  block
+  count
+  0)
+
+(define (compiled-code-block/write-profile-count block count value)
+  block
+  count
+  0)
