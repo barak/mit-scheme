@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxenv.c,v 1.14 1993/01/12 19:47:26 gjr Exp $
+$Id: pruxenv.c,v 1.15 1993/11/06 21:21:12 cph Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -100,6 +100,13 @@ If the argument is not a known group ID, #F is returned.")
   }
 }
 
+DEFINE_PRIMITIVE ("CURRENT-PID", Prim_current_pid, 0, 0,
+  "Return Scheme's PID.")
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (long_to_integer (UX_getpid ()));
+}
+
 DEFINE_PRIMITIVE ("CURRENT-UID", Prim_current_uid, 0, 0,
   "Return Scheme's effective UID.")
 {
