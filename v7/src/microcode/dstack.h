@@ -1,4 +1,4 @@
-/* Copyright (C) 1990-91 Free Software Foundation, Inc.
+/* Copyright (C) 1990-92 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -14,13 +14,17 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/dstack.h,v 1.2 1991/07/05 23:28:40 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/dstack.h,v 1.3 1992/01/20 16:03:50 jinx Exp $ */
 
 #ifndef __DSTACK_H__
 #define __DSTACK_H__
 
 #include "ansidecl.h"
 #include <setjmp.h>
+
+extern void
+  EXFUN (free, (void *)),
+  EXFUN (abort, (void));
 
 extern void EXFUN (dstack_initialize, (void));
 /* Call this once to initialize the stack. */
