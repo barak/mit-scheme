@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for HP9000 series 800
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k800.h,v 1.1 1989/07/18 22:35:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k800.h,v 1.2 1989/07/26 23:59:26 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -36,10 +36,3 @@ MIT in each case. */
 #define PROC_TYPE PROC_TYPE_HPPA
 
 #define C_SWITCH_MACHINE -Dspectrum
-
-/* Optimization loses on "interp.c". */
-#define C_OPTIMIZE_SWITCH
-
-#ifndef HAVE_CURSES
-#define LIBS_SYSTEM -lcurses
-#endif

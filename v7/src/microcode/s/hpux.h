@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for HP-UX
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/hpux.h,v 1.2 1989/07/26 04:17:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/hpux.h,v 1.3 1989/07/26 23:59:35 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -44,3 +44,7 @@ MIT in each case. */
 
 #define SOURCES_SYSTEM unixprim.c
 #define OBJECTS_SYSTEM unixprim.o
+
+#ifndef HAVE_CURSES
+#define LIBS_SYSTEM -lcurses
+#endif
