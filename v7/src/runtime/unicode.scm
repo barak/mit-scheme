@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.19 2004/10/13 04:49:53 cph Exp $
+$Id: unicode.scm,v 1.20 2004/11/19 18:11:29 cph Exp $
 
 Copyright 2001,2003,2004 Massachusetts Institute of Technology
 
@@ -80,15 +80,15 @@ USA.
 	   `(BEGIN
 	      (GUARANTEE-STRING ,string ,caller)
 	      (LET* ((,(list-ref form 3)
-		      (IF (OR (DEFAULT-OBJECT? ,end) (NOT ,end))
-			  (STRING-LENGTH ,string)
+		      (IF (IF (DEFAULT-OBJECT? ,end) #F ,end)
 			  (GUARANTEE-LIMITED-INDEX ,end (STRING-LENGTH ,string)
-						   ,caller)))
+						   ,caller)
+			  (STRING-LENGTH ,string)))
 		     (,(list-ref form 2)
-		      (IF (OR (DEFAULT-OBJECT? ,start) (NOT ,start))
-			  0
+		      (IF (IF (DEFAULT-OBJECT? ,start) #F ,start)
 			  (GUARANTEE-LIMITED-INDEX ,start ,(list-ref form 3)
-						   ,caller))))
+						   ,caller)
+			  0)))
 		,@(map (let ((excludes
 			      (list (list-ref form 2) (list-ref form 3))))
 			 (lambda (expr)
@@ -548,11 +548,11 @@ USA.
 (define (make-wide-string length #!optional char)
   (%make-wide-string
    (make-vector length
-		(if (default-object? char)
-		    (integer->char 0)
+		(if (if (default-object? char) #f char)
 		    (begin
 		      (guarantee-wide-char char 'MAKE-WIDE-STRING)
-		      char)))))
+		      char)
+		    (integer->char 0)))))
 
 (define (wide-string . chars)
   (for-each (lambda (char) (guarantee-wide-char char 'WIDE-STRING)) chars)
@@ -630,14 +630,14 @@ USA.
 (define (string->wide-string string #!optional start end)
   (guarantee-string string 'STRING->WIDE-STRING)
   (let* ((end
-	  (if (or (default-object? end) (not end))
-	      (string-length string)
+	  (if (if (default-object? end) #f end)
 	      (guarantee-limited-index end (string-length string)
-				       'STRING->WIDE-STRING)))
+				       'STRING->WIDE-STRING)
+	      (string-length string)))
 	 (start
-	  (if (or (default-object? start) (not start))
-	      0
-	      (guarantee-limited-index start end 'STRING->WIDE-STRING)))
+	  (if (if (default-object? start) #f start)
+	      (guarantee-limited-index start end 'STRING->WIDE-STRING)
+	      0))
 	 (v (make-vector (fix:- end start))))
     (do ((i start (fix:+ i 1))
 	 (j 0 (fix:+ j 1)))
@@ -649,14 +649,14 @@ USA.
   (guarantee-wide-string string 'WIDE-STRING->STRING)
   (let* ((v (wide-string-contents string))
 	 (end
-	  (if (or (default-object? end) (not end))
-	      (vector-length v)
+	  (if (if (default-object? end) #f end)
 	      (guarantee-limited-index end (vector-length v)
-				       'WIDE-STRING->STRING)))
+				       'WIDE-STRING->STRING)
+	      (vector-length v)))
 	 (start
-	  (if (or (default-object? start) (not start))
-	      0
-	      (guarantee-limited-index start end 'WIDE-STRING->STRING)))
+	  (if (if (default-object? start) #f start)
+	      (guarantee-limited-index start end 'WIDE-STRING->STRING)
+	      0))
 	 (s (make-string (fix:- end start))))
     (do ((i start (fix:+ i 1))
 	 (j 0 (fix:+ j 1)))
@@ -724,7 +724,7 @@ USA.
 (define (write-utf32-le-char char port)
   (guarantee-wide-char char 'WRITE-UTF32-LE-CHAR)
   (sink-utf32-le-char char (port->byte-sink port)))
-
+
 (define-integrable (sink-utf32-be-char char sink)
   (let ((pt (char->integer char)))
     (sink 0)
@@ -738,78 +738,50 @@ USA.
     (sink (fix:lsh pt -8))
     (sink (fix:lsh pt -16))
     (sink 0)))
-
+
 (define (utf32-string->wide-string string #!optional start end)
-  (utf-string->wide-string string
-			   (if (default-object? start) #f start)
-			   (if (default-object? end) #f end)
+  (utf-string->wide-string string start end
 			   (if (host-big-endian?)
 			       source-utf32-be-char
 			       source-utf32-le-char)
 			   'UTF32-STRING->WIDE-STRING))
 
 (define (utf32-be-string->wide-string string #!optional start end)
-  (utf-string->wide-string string
-			   (if (default-object? start) #f start)
-			   (if (default-object? end) #f end)
-			   source-utf32-be-char
+  (utf-string->wide-string string start end source-utf32-be-char
 			   'UTF32-BE-STRING->WIDE-STRING))
 
 (define (utf32-le-string->wide-string string #!optional start end)
-  (utf-string->wide-string string
-			   (if (default-object? start) #f start)
-			   (if (default-object? end) #f end)
-			   source-utf32-le-char
+  (utf-string->wide-string string start end source-utf32-le-char
 			   'UTF32-LE-STRING->WIDE-STRING))
 
 (define (wide-string->utf32-string string #!optional start end)
-  (wide-string->utf-string string
-			   (if (default-object? start) #f start)
-			   (if (default-object? end) #f end)
+  (wide-string->utf-string string start end
 			   (if (host-big-endian?)
 			       sink-utf32-be-char
 			       sink-utf32-le-char)
 			   'WIDE-STRING->UTF32-STRING))
 
 (define (wide-string->utf32-be-string string #!optional start end)
-  (wide-string->utf-string string
-			   (if (default-object? start) #f start)
-			   (if (default-object? end) #f end)
-			   sink-utf32-be-char
+  (wide-string->utf-string string start end sink-utf32-be-char
 			   'WIDE-STRING->UTF32-BE-STRING))
 
 (define (wide-string->utf32-le-string string #!optional start end)
-  (wide-string->utf-string string
-			   (if (default-object? start) #f start)
-			   (if (default-object? end) #f end)
-			   sink-utf32-le-char
+  (wide-string->utf-string string start end sink-utf32-le-char
 			   'WIDE-STRING->UTF32-LE-STRING))
 
 (define (utf32-string-length string #!optional start end)
   (if (host-big-endian?)
-      (%utf32-string-length string
-			    (if (default-object? start) #f start)
-			    (if (default-object? end) #f end)
-			    "32BE" utf32-be-bytes->code-point
+      (%utf32-string-length string start end "32BE" utf32-be-bytes->code-point
 			    'UTF32-STRING-LENGTH)
-      (%utf32-string-length string
-			    (if (default-object? start) #f start)
-			    (if (default-object? end) #f end)
-			    "32LE" utf32-le-bytes->code-point
+      (%utf32-string-length string start end "32LE" utf32-le-bytes->code-point
 			    'UTF32-STRING-LENGTH)))
 
 (define (utf32-be-string-length string #!optional start end)
-  (%utf32-string-length string
-			(if (default-object? start) #f start)
-			(if (default-object? end) #f end)
-			"32BE" utf32-be-bytes->code-point
+  (%utf32-string-length string start end "32BE" utf32-be-bytes->code-point
 			'UTF32-BE-STRING-LENGTH))
 
 (define (utf32-le-string-length string #!optional start end)
-  (%utf32-string-length string
-			(if (default-object? start) #f start)
-			(if (default-object? end) #f end)
-			"32LE" utf32-le-bytes->code-point
+  (%utf32-string-length string start end "32LE" utf32-le-bytes->code-point
 			'UTF32-LE-STRING-LENGTH))
 
 (define (%utf32-string-length string start end type combiner caller)
@@ -819,30 +791,18 @@ USA.
 	(validate-utf32-char string start end combiner)))))
 
 (define (utf32-string-valid? string #!optional start end)
-  (if (host-big-endian?)
-      (%utf32-string-valid? string
-			    (if (default-object? start) #f start)
-			    (if (default-object? end) #f end)
+  (%utf32-string-valid? string start end
+			(if (host-big-endian?)
 			    utf32-be-bytes->code-point
-			    'UTF32-STRING-VALID?)
-      (%utf32-string-valid? string
-			    (if (default-object? start) #f start)
-			    (if (default-object? end) #f end)
-			    utf32-le-bytes->code-point
-			    'UTF32-STRING-VALID?)))
+			    utf32-le-bytes->code-point)
+			'UTF32-STRING-VALID?))
 
 (define (utf32-be-string-valid? string #!optional start end)
-  (%utf32-string-valid? string
-			(if (default-object? start) #f start)
-			(if (default-object? end) #f end)
-			utf32-be-bytes->code-point
+  (%utf32-string-valid? string start end utf32-be-bytes->code-point
 			'UTF32-BE-STRING-VALID?))
 
 (define (utf32-le-string-valid? string #!optional start end)
-  (%utf32-string-valid? string
-			(if (default-object? start) #f start)
-			(if (default-object? end) #f end)
-			utf32-le-bytes->code-point
+  (%utf32-string-valid? string start end utf32-le-bytes->code-point
 			'UTF32-LE-STRING-VALID?))
 
 (define (%utf32-string-valid? string start end combiner caller)
@@ -919,7 +879,7 @@ USA.
 (define (write-utf16-le-char char port)
   (guarantee-wide-char char 'WRITE-UTF16-LE-CHAR)
   (sink-utf16-le-char char (port->byte-sink port)))
-
+
 (define-integrable (sink-utf16-be-char char sink)
   (sink-utf16-char char sink
 		   (lambda (digit sink)
@@ -939,78 +899,50 @@ USA.
 	(let ((s (fix:- pt #x10000)))
 	  (dissecter (fix:or #xD800 (fix:lsh s -10)) sink)
 	  (dissecter (fix:or #xDC00 (fix:and s #x3FF)) sink)))))
-
+
 (define (utf16-string->wide-string string #!optional start end)
-  (utf-string->wide-string string
-			   (if (default-object? start) #f start)
-			   (if (default-object? end) #f end)
+  (utf-string->wide-string string start end
 			   (if (host-big-endian?)
 			       source-utf16-be-char
 			       source-utf16-le-char)
 			   'UTF16-STRING->WIDE-STRING))
 
 (define (utf16-be-string->wide-string string #!optional start end)
-  (utf-string->wide-string string
-			   (if (default-object? start) #f start)
-			   (if (default-object? end) #f end)
-			   source-utf16-be-char
+  (utf-string->wide-string string start end source-utf16-be-char
 			   'UTF16-BE-STRING->WIDE-STRING))
 
 (define (utf16-le-string->wide-string string #!optional start end)
-  (utf-string->wide-string string
-			   (if (default-object? start) #f start)
-			   (if (default-object? end) #f end)
-			   source-utf16-le-char
+  (utf-string->wide-string string start end source-utf16-le-char
 			   'UTF16-LE-STRING->WIDE-STRING))
 
 (define (wide-string->utf16-string string #!optional start end)
-  (wide-string->utf-string string
-			   (if (default-object? start) #f start)
-			   (if (default-object? end) #f end)
+  (wide-string->utf-string string start end
 			   (if (host-big-endian?)
 			       sink-utf16-be-char
 			       sink-utf16-le-char)
 			   'WIDE-STRING->UTF16-STRING))
 
 (define (wide-string->utf16-be-string string #!optional start end)
-  (wide-string->utf-string string
-			   (if (default-object? start) #f start)
-			   (if (default-object? end) #f end)
-			   sink-utf16-be-char
+  (wide-string->utf-string string start end sink-utf16-be-char
 			   'WIDE-STRING->UTF16-BE-STRING))
 
 (define (wide-string->utf16-le-string string #!optional start end)
-  (wide-string->utf-string string
-			   (if (default-object? start) #f start)
-			   (if (default-object? end) #f end)
-			   sink-utf16-le-char
+  (wide-string->utf-string string start end sink-utf16-le-char
 			   'WIDE-STRING->UTF16-LE-STRING))
 
 (define (utf16-string-length string #!optional start end)
   (if (host-big-endian?)
-      (%utf16-string-length string
-			    (if (default-object? start) #f start)
-			    (if (default-object? end) #f end)
-			    "16BE" be-bytes->digit16
+      (%utf16-string-length string start end "16BE" be-bytes->digit16
 			    'UTF16-STRING-LENGTH)
-      (%utf16-string-length string
-			    (if (default-object? start) #f start)
-			    (if (default-object? end) #f end)
-			    "16LE" le-bytes->digit16
+      (%utf16-string-length string start end "16LE" le-bytes->digit16
 			    'UTF16-STRING-LENGTH)))
 
 (define (utf16-be-string-length string #!optional start end)
-  (%utf16-string-length string
-			(if (default-object? start) #f start)
-			(if (default-object? end) #f end)
-			"16BE" be-bytes->digit16
+  (%utf16-string-length string start end "16BE" be-bytes->digit16
 			'UTF16-BE-STRING-LENGTH))
 
 (define (utf16-le-string-length string #!optional start end)
-  (%utf16-string-length string
-			(if (default-object? start) #f start)
-			(if (default-object? end) #f end)
-			"16LE" le-bytes->digit16
+  (%utf16-string-length string start end "16LE" le-bytes->digit16
 			'UTF16-LE-STRING-LENGTH))
 
 (define (%utf16-string-length string start end type combiner caller)
@@ -1021,29 +953,17 @@ USA.
 
 (define (utf16-string-valid? string #!optional start end)
   (if (host-big-endian?)
-      (%utf16-string-valid? string
-			    (if (default-object? start) #f start)
-			    (if (default-object? end) #f end)
-			    be-bytes->digit16
+      (%utf16-string-valid? string start end be-bytes->digit16
 			    'UTF16-STRING-VALID?)
-      (%utf16-string-valid? string
-			    (if (default-object? start) #f start)
-			    (if (default-object? end) #f end)
-			    le-bytes->digit16
+      (%utf16-string-valid? string start end le-bytes->digit16
 			    'UTF16-STRING-VALID?)))
 
 (define (utf16-be-string-valid? string #!optional start end)
-  (%utf16-string-valid? string
-			(if (default-object? start) #f start)
-			(if (default-object? end) #f end)
-			be-bytes->digit16
+  (%utf16-string-valid? string start end be-bytes->digit16
 			'UTF16-BE-STRING-VALID?))
 
 (define (utf16-le-string-valid? string #!optional start end)
-  (%utf16-string-valid? string
-			(if (default-object? start) #f start)
-			(if (default-object? end) #f end)
-			le-bytes->digit16
+  (%utf16-string-valid? string start end le-bytes->digit16
 			'UTF16-LE-STRING-VALID?))
 
 (define (%utf16-string-valid? string start end combiner caller)
@@ -1051,7 +971,7 @@ USA.
     (encoded-string-valid? string start end
       (lambda (string start end)
 	(validate-utf16-char string start end combiner)))))
-
+
 (define (validate-utf16-char string start end combiner)
 
   (define-integrable (n i)
@@ -1124,9 +1044,7 @@ USA.
 		 (error "Illegal UTF-8 byte:" b0)))))))
 
 (define (utf8-string->wide-string string #!optional start end)
-  (utf-string->wide-string string
-			   (if (default-object? start) #f start)
-			   (if (default-object? end) #f end)
+  (utf-string->wide-string string start end
 			   source-utf8-char
 			   'UTF8-STRING->WIDE-STRING))
 
@@ -1160,9 +1078,7 @@ USA.
 	   (sink (subsequent-char 0))))))
 
 (define (wide-string->utf8-string string #!optional start end)
-  (wide-string->utf-string string
-			   (if (default-object? start) #f start)
-			   (if (default-object? end) #f end)
+  (wide-string->utf-string string start end
 			   sink-utf8-char
 			   'WIDE-STRING->UTF8-STRING))
 
@@ -1292,8 +1208,8 @@ USA.
 	    (make-port type
 		       (open-input-object-buffer
 			(wide-string-contents string)
-			(if (default-object? start) #f start)
-			(if (default-object? end) #f end)
+			start
+			end
 			'OPEN-WIDE-INPUT-STRING)))))
   unspecific)
 
@@ -1396,11 +1312,7 @@ USA.
 		  (write-string suffix output-port)))))
 	  #f)))
     (lambda (bytes #!optional start end)
-      (make-port type
-		 (open-input-byte-buffer string
-					 (if (default-object? start) #f start)
-					 (if (default-object? end) #f end)
-					 #f)))))
+      (make-port type (open-input-byte-buffer string start end #f)))))
 
 (define (utf-string->wide-string string start end source-char caller)
   (let ((source (open-input-byte-buffer string start end caller)))
@@ -1466,13 +1378,13 @@ USA.
 
 (define (open-input-byte-buffer bytes start end caller)
   (let* ((end
-	  (if (not end)
-	      (string-length bytes)
-	      (guarantee-limited-index end (string-length bytes) caller)))
+	  (if (if (default-object? end) #f end)
+	      (guarantee-limited-index end (string-length bytes) caller)
+	      (string-length bytes)))
 	 (index
-	  (if (not start)
-	      0
-	      (guarantee-limited-index start end caller))))
+	  (if (if (default-object? start) #f start)
+	      (guarantee-limited-index start end caller)
+	      0)))
     (lambda ()
       (without-interrupts
        (lambda ()
@@ -1523,13 +1435,13 @@ USA.
 
 (define (open-input-object-buffer objects start end caller)
   (let* ((end
-	  (if (not end)
-	      (vector-length objects)
-	      (guarantee-limited-index end (vector-length objects) caller)))
+	  (if (if (default-object? end) #f end)
+	      (guarantee-limited-index end (vector-length objects) caller)
+	      (vector-length objects)))
 	 (index
-	  (if (not start)
-	      0
-	      (guarantee-limited-index start end caller))))
+	  (if (if (default-object? start) #f start)
+	      (guarantee-limited-index start end caller)
+	      0)))
     (lambda ()
       (without-interrupts
        (lambda ()
