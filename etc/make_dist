@@ -34,10 +34,7 @@ vms/make.vms
 # Copy all the auxiliary files.  Use $tempfile because of buggy
 # interaction between `find' and RFA under recent versions of hp-ux.
 cd $source
-if (-e $tempfile) then
-  rm -f $tempfile
-endif
-find Makefile documentation etc makefiles libs -print > $tempfile
+find Makefile documentation etc examples makefiles libs -print > $tempfile
 find vms \( -name '*.com' -o -name '*.txt' -o -name '*.el' \) -print >> $tempfile
 cpio -pdmuv $destination < $tempfile
 rm -f $tempfile
