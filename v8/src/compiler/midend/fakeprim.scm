@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.13 1995/04/19 22:53:02 adams Exp $
+$Id: fakeprim.scm,v 1.14 1995/05/14 00:53:04 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -541,15 +541,48 @@ MIT in each case. |#
 
 (cookie-call %cons '#F car-value cdr-value)
 
+
+;; Unchecked operations on pairs.  Result is unspecified if the pair
+;; argument is not a pair.
+(define %car
+  ;; (CALL ',%car '#F <pair>)
+  (make-operator/effect-sensitive "#[car]"))
+
+(define %cdr
+  ;; (CALL ',%cdr '#F <pair>)
+  (make-operator/effect-sensitive "#[cdr]"))
+
+(define %set-car!
+  ;; (CALL ',%set-car '#F <pair> <value>)
+  (make-operator/simple* "#[set-car!]" '(UNSPECIFIC-RESULT)))
+
+(define %set-cdr!
+  ;; (CALL ',%set-cdr '#F <pair> <value>)
+  (make-operator/simple* "#[set-cdr!]" '(UNSPECIFIC-RESULT)))
+
+
 (define %make-entity
   ;; (CALL ',%make-entity '#F <value> <value>)
   (make-operator/simple "#[make-entity]"))
+
 
 (define %vector
   ;; (CALL ',%vector '#F <value>*)
   ;; Note:
   ;;   Introduced by expand.scm for DEFINE-MULTIPLE
   (make-operator/simple "#[vector]"))
+
+(define %vector-length
+  ;; (CALL ',%vector-length '#F <vector>)
+  (make-operator/simple "#[vector-length]"))
+
+(define %vector-ref
+  ;; (CALL ',%vector-ref '#F <vector> <index>)
+  (make-operator/effect-sensitive "#[vector-ref]"))
+
+(define %vector-set!
+  ;; (CALL ',%vector-set! '#F <vector> <index> <value>)
+  (make-operator/simple* "#[vector-set!]" '(UNSPECIFIC-RESULT)))
 
 (cookie-call %vector '#F #!rest values)
 
