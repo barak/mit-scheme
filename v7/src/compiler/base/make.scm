@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.103 1993/12/08 17:50:41 gjr Exp $
+$Id: make.scm,v 4.104 1994/01/08 21:06:59 gjr Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,7 +45,7 @@ MIT in each case. |#
      (load-option 'COMPRESS)
      (load-option 'HASH-TABLE)
      (load-option 'RB-TREE)
-     (package/system-loader "comp" '() 'QUERY)))
+     (package/system-loader "compiler" '() 'QUERY)))
   (let ((initialize-package!
 	 (lambda (package-name)
 	   ((environment-lookup (->environment package-name)
