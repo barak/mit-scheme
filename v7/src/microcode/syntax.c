@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.13 1989/05/01 19:38:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.14 1989/05/03 02:04:20 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -142,8 +142,9 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
   PRIMITIVE_RETURN
     (c_char_to_scheme_char
      (syntax_code_spec
-      [SYNTAX_ENTRY_CODE
-       (SYNTAX_TABLE_REF ((ARG_REF (1)), (arg_ascii_char (2))))]));
+      [((int)
+	(SYNTAX_ENTRY_CODE
+	 (SYNTAX_TABLE_REF ((ARG_REF (1)), (arg_ascii_char (2))))))]));
 }
 
 /* Parser Initialization */
