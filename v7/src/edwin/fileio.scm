@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.86 1989/03/14 08:00:41 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.87 1989/03/15 19:14:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -50,12 +50,14 @@
 	 (let ((region (file->region-interactive truename)))
 	   (region-delete! (buffer-unclipped-region buffer))
 	   (region-insert! (buffer-start buffer) region))
-	 (set-buffer-point! buffer (buffer-start buffer)))
+	 (set-buffer-point! buffer (buffer-start buffer))
+	 (set-buffer-modification-time! buffer
+					(file-modification-time truename))
+	 (if (file-writable? truename)
+	     (set-buffer-writeable! buffer)
+	     (set-buffer-read-only! buffer)))
 	(temporary-message "(New File)"))
-    (set-buffer-truename! buffer truename)
-    (set-buffer-modification-time! buffer (file-modification-time truename))
-    (if (not (file-writable? truename))
-	(set-buffer-file-read-only! buffer)))
+    (set-buffer-truename! buffer truename))
   (set-buffer-pathname! buffer pathname)
   (setup-buffer-auto-save! buffer)
   (set-buffer-save-length! buffer)
