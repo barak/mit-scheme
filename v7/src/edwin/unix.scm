@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.17 1991/05/15 18:44:44 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.18 1991/10/23 06:14:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -272,25 +272,25 @@ Includes the new backup.  Must be > 0."
 	filename)))
 
 (define (os/directory-list directory)
-  (ucode-primitive directory-close 0)
+  ((ucode-primitive directory-close 0))
   ((ucode-primitive directory-open-noread 1) directory)
   (let loop ((result '()))
     (let ((name ((ucode-primitive directory-read 0))))
       (if name
 	  (loop (cons name result))
 	  (begin
-	    (ucode-primitive directory-close 0)
+	    ((ucode-primitive directory-close 0))
 	    result)))))
 
 (define (os/directory-list-completions directory prefix)
-  (ucode-primitive directory-close 0)
+  ((ucode-primitive directory-close 0))
   ((ucode-primitive directory-open-noread 1) directory)
   (let loop ((result '()))
     (let ((name ((ucode-primitive directory-read-matching 1) prefix)))
       (if name
 	  (loop (cons name result))
 	  (begin
-	    (ucode-primitive directory-close 0)
+	    ((ucode-primitive directory-close 0))
 	    result)))))
 
 (define-integrable os/file-directory?
