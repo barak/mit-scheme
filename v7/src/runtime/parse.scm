@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.50 2004/02/16 05:37:27 cph Exp $
+$Id: parse.scm,v 14.51 2004/10/28 02:10:55 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
@@ -141,6 +141,7 @@ USA.
       (store-char initial #\] handler:close-bracket)
       (store-char initial #\; handler:comment)
       (store-char special #\| handler:multi-line-comment)
+      (store-char special #\; handler:expression-comment)
       (store-char initial #\' handler:quote)
       (store-char initial #\` handler:quasiquote)
       (store-char initial #\, handler:unquote)
@@ -200,6 +201,13 @@ USA.
 	   ((#\|) (vbar))
 	   (else (loop)))))
       (else (loop))))
+  continue-parsing)
+
+;; It would be better if we could skip over the object without
+;; creating it, but for now this will work.
+(define (handler:expression-comment port db ctx char1 char2)
+  ctx char1 char2
+  (read-object port db)
   continue-parsing)
 
 (define (handler:atom port db ctx char)
