@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dumpdat.scm,v 1.1 1993/01/12 20:47:07 gjr Exp $
+$Id: dumpdat.scm,v 1.2 1993/02/24 21:58:39 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -45,7 +45,7 @@ MIT in each case. |#
 (define decoded-time-structure-tag
   (access decoded-time-structure-tag (->environment '(runtime date/time))))
 
-(define *dumped-dates* "_dates.scm")
+(define *dumped-dates* "_dates_.dat")
 
 (define (dump-dates . paths)
   (with-output-to-file *dumped-dates*
