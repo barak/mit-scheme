@@ -52,8 +52,8 @@
 
 (define (picture-set-image! picture image)
   (let ((img (picture-image picture)))
-    (if (x-image? img)
-	(x-image/destroy img))
+    (if (image? img)
+	(image/destroy img))
     (%picture-set-image! picture image)))
 
 (define (picture-min picture)
@@ -162,8 +162,8 @@
   (%picture-set-min! picture #f)
   (%picture-set-max! picture #f)
   (let ((img (picture-image picture)))
-    (if (x-image? img)
-	(x-image/destroy img))
+    (if (image? img)
+	(image/destroy img))
     (%picture-set-image! picture '())))
 
 (define (find-min-max picture)

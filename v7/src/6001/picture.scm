@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.18 1993/01/12 21:30:52 gjs Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.19 1993/11/09 21:20:02 adams Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -238,13 +238,13 @@ MIT in each case. |#
 
 (define (picture-display window pic #!optional pic-min pic-max)
   (define (check-image pic window brick-wid brick-hgt)
-    (if (x-image? (picture-image pic))
+    (if (image? (picture-image pic))
 	(let ((image (picture-image pic)))
 	  (and (1d-table/get (graphics-device/properties window) image #f)
 	       (fix:= (fix:* (picture-width pic) brick-wid) 
-		      (x-image/width image))
+		      (image/width image))
 	       (fix:= (fix:* (picture-height pic) brick-hgt) 
-		      (x-image/height image))))
+		      (image/height image))))
 	#f))
 
   (with-values 
@@ -278,9 +278,10 @@ MIT in each case. |#
 					 brick-wid brick-hgt
 					 pic-min pic-max))))
 	      (graphics-clear window)
-	      (x-image/draw image 
+	      (graphics-operation window 'draw-image
 			    (quotient h-margin 2)
-			    (quotient v-margin 2))
+			    (quotient v-margin 2)
+			    image)
 	      (if (and true-min-max? (not image-cached?))
 		  (picture-set-image! pic image))))))))
 
