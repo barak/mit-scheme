@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.42 1988/03/23 18:31:25 jrm Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.43 1988/03/23 18:45:39 jinx Rel $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -1375,11 +1375,19 @@ Perform_Application:
 	    /* This code assumes that adding 1 to nargs takes care
 	       of everything, including type code, etc.
 	     */
+
 	    nargs = Pop();
 	    Push(Fast_Vector_Ref(Function, ENTITY_OPERATOR));
 	    Push(nargs + 1);
-	    /* No interrupts, etc. */
-	    goto Apply_Non_Trapping;
+	    /* This must be done to prevent an infinite push loop by
+	       an entity whose handler is the entity itself or some
+	       other such loop.  Of course, it will die if stack overflow
+	       interrupts are disabled.
+	       This will not work in fscheme!  It has to be thought out
+	       carefully.
+	     */
+	    Stack_Check(Stack_Pointer);
+	    goto Internal_Apply;
 	  }
 
 /* Interpret() continues on the next page */
