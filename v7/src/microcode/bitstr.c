@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.47 1991/01/31 07:00:00 hal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.48 1991/08/23 22:10:15 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -150,7 +150,7 @@ DEFINE_PRIMITIVE ("BIT-STRING-LENGTH", Prim_bit_string_length, 1, 1, 0)
   bit_string = (ARG_REF (1));						\
   index = (arg_nonnegative_integer (2));				\
   if (index >= (BIT_STRING_LENGTH (bit_string)))			\
-    error_bad_range_arg (1);						\
+    error_bad_range_arg (2);						\
 									\
   ptr =									\
     (MEMORY_LOC								\
