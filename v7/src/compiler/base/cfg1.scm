@@ -37,12 +37,12 @@
 
 ;;;; Control Flow Graph Abstraction
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.138 1986/12/16 23:45:57 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.139 1986/12/17 07:56:20 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
 
-;;;; Node Types
+;;;; Basic Node Types
 
 (define cfg-node-tag (make-vector-tag false 'CFG-NODE))
 (define cfg-node? (tagged-vector-subclass-predicate cfg-node-tag))
@@ -84,6 +84,63 @@
 
 (define-vector-method pnode-tag ':DESCRIBE
   pnode-describe)
+
+;;;; Hooks
+
+;;; There are several different types of node, each of which has
+;;; different types of "next" connections, for example, the predicate
+;;; node has a consequent and an alternative connection.  Any kind of
+;;; node can be connected to either of these connections.  Since it is
+;;; desirable to be able to splice nodes in and out of the graph, we
+;;; would like to be able to dis/connect a node from its previous node
+;;; without knowing anything about that node.  Hooks provide this
+;;; capability by providing an operation for setting the previous
+;;; node's appropriate "next" connection to any value.
+
+(define-integrable make-hook cons)
+(define-integrable hook-node car)
+(define-integrable hook-basher cdr)
+
+(define-integrable (find-hook node next)
+  (assq node (node-previous next)))
+
+(define (hook=? x y)
+  (and (eq? (hook-node x) (hook-node y))
+       (eq? (hook-basher x) (hook-basher y))))
+
+(define hook-member?
+  (member-procedure hook=?))
+
+(define (hooks-union x y)
+  (let loop ((x x))
+    (cond ((null? x) y)
+	  ((hook-member? (car x) y) (loop (cdr x)))
+	  (else (cons (car x) (loop (cdr x)))))))
+
+(define (hook-connect! hook node)
+  (set-node-previous! node (cons hook (node-previous node)))
+  (let ((old ((hook-basher hook) (hook-node hook) node)))
+    (if old
+	(error "Connect node twice!" hook old node))))
+
+(define (hook-disconnect! hook node)
+  (set-node-previous! node (delq! hook (node-previous node)))
+  (if (not ((hook-basher hook) (hook-node hook) false))
+      (error "Disconnect node twice!" hook node)))
+
+(define (hooks-connect! hooks node)
+  (define (loop hooks)
+    (if (not (null? hooks))
+	(begin (hook-connect! (car hooks) node)
+	       (loop (cdr hooks)))))
+  (loop hooks))
+
+(define (hooks-disconnect! hooks node)
+  (define (loop hooks)
+    (if (not (null? hooks))
+	(begin (hook-disconnect! (car hooks) node)
+	       (loop (cdr hooks)))))
+  (loop hooks))
 
 ;;;; Holders
 
@@ -190,98 +247,6 @@
 		    (procedure node))))
 	    (node-previous node)))
 
-;;;; Frames
-
-(define frame-tag (make-vector-tag false 'FRAME))
-(define-vector-slots frame 1 &entry)
-
-(define-integrable (frame-entry-node frame)
-  (entry-holder-next (frame-&entry frame)))
-
-(define (frame-describe frame)
-  `((FRAME-&ENTRY ,(frame-&entry frame))))
-
-(define sframe-tag (make-vector-tag frame-tag 'SFRAME))
-(define-vector-slots sframe 2 &next)
-
-(define-integrable (make-sframe entry next)
-  (vector sframe-tag entry next))
-
-(define-integrable (sframe-next-hooks sframe)
-  (node-previous (sframe-&next sframe)))
-
-(define-vector-method sframe-tag ':DESCRIBE
-  (lambda (sframe)
-    (append! (frame-describe sframe)
-	     `((SFRAME-&NEXT ,(sframe-&next sframe))))))
-
-(define (scfg->sframe scfg)
-  (let ((entry (make-entry-holder))
-	(next (make-exit-holder)))
-    (entry-holder-connect! entry (cfg-entry-node scfg))
-    (hooks-connect! (scfg-next-hooks scfg) next)
-    (make-sframe entry next)))
-
-(define (sframe-replace-cfg! sframe scfg)
-  (let ((entry (frame-&entry sframe))
-	(next (sframe-&next sframe)))
-    (node-disconnect! entry (entry-holder-&next entry))
-    (hooks-disconnect! (node-previous next) next)
-    (entry-holder-connect! entry (cfg-entry-node scfg))
-    (hooks-connect! (scfg-next-hooks scfg) next)))
-
-(define (sframe->scfg sframe)
-  (let ((entry (frame-entry-node sframe)))
-    (if entry
-	(make-scfg entry (sframe-next-hooks sframe))
-	(make-null-cfg))))
-
-(define pframe-tag (make-vector-tag frame-tag 'PFRAME))
-(define-vector-slots pframe 2 &consequent &alternative)
-
-(define-integrable (make-pframe entry consequent alternative)
-  (vector pframe-tag entry consequent alternative))
-
-(define-integrable (pframe-consequent-hooks pframe)
-  (node-previous (pframe-&consequent pframe)))
-
-(define-integrable (pframe-alternative-hooks pframe)
-  (node-previous (pframe-&alternative pframe)))
-
-(define-vector-method pframe-tag ':DESCRIBE
-  (lambda (pframe)
-    (append! (frame-describe pframe)
-	     `((PFRAME-&CONSEQUENT ,(pframe-&consequent pframe))
-	       (PFRAME-&ALTERNATIVE ,(pframe-&alternative pframe))))))
-
-(define (pcfg->pframe pcfg)
-  (let ((entry (make-entry-holder))
-	(consequent (make-exit-holder))
-	(alternative (make-exit-holder)))
-    (entry-holder-connect! entry (cfg-entry-node pcfg))
-    (hooks-connect! (pcfg-consequent-hooks pcfg) consequent)
-    (hooks-connect! (pcfg-alternative-hooks pcfg) alternative)
-    (make-pframe entry consequent alternative)))
-
-(define (pframe-replace-cfg! pframe pcfg)
-  (let ((entry (frame-&entry pframe))
-	(consequent (pframe-&consequent pframe))
-	(alternative (pframe-&alternative pframe)))
-    (node-disconnect! entry (entry-holder-&next entry))
-    (hooks-disconnect! (node-previous consequent) consequent)
-    (hooks-disconnect! (node-previous alternative) alternative)
-    (entry-holder-connect! entry (cfg-entry-node pcfg))
-    (hooks-connect! (pcfg-consequent-hooks pcfg) consequent)
-    (hooks-connect! (pcfg-alternative-hooks pcfg) alternative)))
-
-(define (pframe->scfg pframe)
-  (let ((entry (frame-entry-node pframe)))
-    (if entry
-	(make-scfg entry
-		   (pframe-consequent-hooks pframe)
-		   (pframe-alternative-hooks pframe))
-	(make-null-cfg))))
-
 ;;;; Noops
 
 (define noop-node-tag (make-vector-tag cfg-node-tag 'NOOP))
@@ -356,6 +321,9 @@
 	(set-cdr! entry item)
 	(set-node-alist! node (cons (cons key item) (node-alist node))))))
 
+(define (node-remove! node key)
+  (set-node-alist! node (del-assq! key (node-alist node))))
+
 (define *generation*)
 
 (define make-generation
@@ -418,48 +386,6 @@
 
 (define-integrable (cfg-null? cfg)
   (false? cfg))
-
-;;;; Hooks
-
-;;; There are several different types of node, each of which has
-;;; different types of "next" connections, for example, the predicate
-;;; node has a consequent and an alternative connection.  Any kind of
-;;; node can be connected to either of these connections.  Since it is
-;;; desirable to be able to splice nodes in and out of the graph, we
-;;; would like to be able to dis/connect a node from its previous node
-;;; without knowing anything about that node.  Hooks provide this
-;;; capability by providing an operation for setting the previous
-;;; node's appropriate "next" connection to any value.
-
-(define-integrable make-hook cons)
-(define-integrable hook-node car)
-(define-integrable hook-basher cdr)
-(define-integrable hooks-union append!)
-
-(define-integrable (find-hook node next)
-  (assq node (node-previous next)))
-
-(define (hook-connect! hook node)
-  (set-node-previous! node (cons hook (node-previous node)))
-  ((hook-basher hook) (hook-node hook) node))
-
-(define (hooks-connect! hooks node)
-  (define (loop hooks)
-    (if (not (null? hooks))
-	(begin (hook-connect! (car hooks) node)
-	       (loop (cdr hooks)))))
-  (loop hooks))
-
-(define (hook-disconnect! hook node)
-  (set-node-previous! node (delq! hook (node-previous node)))
-  ((hook-basher hook) (hook-node hook) false))
-
-(define (hooks-disconnect! hooks node)
-  (define (loop hooks)
-    (if (not (null? hooks))
-	(begin (hook-disconnect! (car hooks) node)
-	       (loop (cdr hooks)))))
-  (loop hooks))
 
 ;;;; CFG Construction
 
@@ -696,6 +622,98 @@
 	(hooks-disconnect! previous node)
 	(hooks-connect! previous (cfg-entry-node scfg))
 	(hooks-connect! (scfg-next-hooks scfg) node))))
+
+;;;; Frames
+
+(define frame-tag (make-vector-tag false 'FRAME))
+(define-vector-slots frame 1 &entry)
+
+(define-integrable (frame-entry-node frame)
+  (entry-holder-next (frame-&entry frame)))
+
+(define (frame-describe frame)
+  `((FRAME-&ENTRY ,(frame-&entry frame))))
+
+(define sframe-tag (make-vector-tag frame-tag 'SFRAME))
+(define-vector-slots sframe 2 &next)
+
+(define-integrable (make-sframe entry next)
+  (vector sframe-tag entry next))
+
+(define-integrable (sframe-next-hooks sframe)
+  (node-previous (sframe-&next sframe)))
+
+(define-vector-method sframe-tag ':DESCRIBE
+  (lambda (sframe)
+    (append! (frame-describe sframe)
+	     `((SFRAME-&NEXT ,(sframe-&next sframe))))))
+
+(define (scfg->sframe scfg)
+  (let ((entry (make-entry-holder))
+	(next (make-exit-holder)))
+    (entry-holder-connect! entry (cfg-entry-node scfg))
+    (hooks-connect! (scfg-next-hooks scfg) next)
+    (make-sframe entry next)))
+
+(define (sframe-replace-cfg! sframe scfg)
+  (let ((entry (frame-&entry sframe))
+	(next (sframe-&next sframe)))
+    (node-disconnect! entry (entry-holder-&next entry))
+    (hooks-disconnect! (node-previous next) next)
+    (entry-holder-connect! entry (cfg-entry-node scfg))
+    (hooks-connect! (scfg-next-hooks scfg) next)))
+
+(define (sframe->scfg sframe)
+  (let ((entry (frame-entry-node sframe)))
+    (if entry
+	(make-scfg entry (sframe-next-hooks sframe))
+	(make-null-cfg))))
+
+(define pframe-tag (make-vector-tag frame-tag 'PFRAME))
+(define-vector-slots pframe 2 &consequent &alternative)
+
+(define-integrable (make-pframe entry consequent alternative)
+  (vector pframe-tag entry consequent alternative))
+
+(define-integrable (pframe-consequent-hooks pframe)
+  (node-previous (pframe-&consequent pframe)))
+
+(define-integrable (pframe-alternative-hooks pframe)
+  (node-previous (pframe-&alternative pframe)))
+
+(define-vector-method pframe-tag ':DESCRIBE
+  (lambda (pframe)
+    (append! (frame-describe pframe)
+	     `((PFRAME-&CONSEQUENT ,(pframe-&consequent pframe))
+	       (PFRAME-&ALTERNATIVE ,(pframe-&alternative pframe))))))
+
+(define (pcfg->pframe pcfg)
+  (let ((entry (make-entry-holder))
+	(consequent (make-exit-holder))
+	(alternative (make-exit-holder)))
+    (entry-holder-connect! entry (cfg-entry-node pcfg))
+    (hooks-connect! (pcfg-consequent-hooks pcfg) consequent)
+    (hooks-connect! (pcfg-alternative-hooks pcfg) alternative)
+    (make-pframe entry consequent alternative)))
+
+(define (pframe-replace-cfg! pframe pcfg)
+  (let ((entry (frame-&entry pframe))
+	(consequent (pframe-&consequent pframe))
+	(alternative (pframe-&alternative pframe)))
+    (node-disconnect! entry (entry-holder-&next entry))
+    (hooks-disconnect! (node-previous consequent) consequent)
+    (hooks-disconnect! (node-previous alternative) alternative)
+    (entry-holder-connect! entry (cfg-entry-node pcfg))
+    (hooks-connect! (pcfg-consequent-hooks pcfg) consequent)
+    (hooks-connect! (pcfg-alternative-hooks pcfg) alternative)))
+
+(define (pframe->scfg pframe)
+  (let ((entry (frame-entry-node pframe)))
+    (if entry
+	(make-scfg entry
+		   (pframe-consequent-hooks pframe)
+		   (pframe-alternative-hooks pframe))
+	(make-null-cfg))))
 
 ;;; end USING-SYNTAX
 )
