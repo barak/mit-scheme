@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-syntax.scm,v 1.3 2000/04/22 05:06:24 cph Exp $
+;;; $Id: imap-syntax.scm,v 1.4 2000/04/23 00:40:34 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -175,7 +175,10 @@
 		     (ci-string-matcher ".not")))
 		   'KEYWORD)
     (noise-parser (string-matcher " ("))
-    (list-parser imap:match:astring (string-matcher " ") 'HEADERS)
+    (predicated-parser (list-parser imap:match:astring
+				    (string-matcher " ")
+				    'HEADERS)
+		       (lambda (pv) (pair? (parser-token pv 'HEADERS))))
     (noise-parser (string-matcher ")")))))
 
 (define imap:parse:section
@@ -190,10 +193,11 @@
        imap:parse:section-text
        (simple-parser (ci-string-matcher "mime") 'KEYWORD)))))
    (lambda (pv)
-     (map* (cons (let ((keyword (parser-token pv 'KEYWORD)))
-		   (and keyword
-			(intern keyword)))
-		 (or (parser-token pv 'HEADERS) '()))
+     (map* (let ((keyword (parser-token pv 'KEYWORD)))
+	     (if keyword
+		 (cons (intern keyword)
+		       (or (parser-token pv 'HEADERS) '()))
+		 '()))
 	   string->number
 	   (or (parser-token pv 'NUMBER) '())))
    'SECTION))
