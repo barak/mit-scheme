@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for HP9000 series 800
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k800.h,v 1.3 1989/08/03 20:01:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k800.h,v 1.4 1990/01/22 22:26:07 jinx Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,9 +35,10 @@ MIT in each case. */
 
 #define PROC_TYPE PROC_TYPE_HPPA
 
-#define C_SWITCH_MACHINE -Dspectrum
-
 #if defined(HAVE_STARBASE_GRAPHICS) && !defined(STARBASE_DEVICE_DRIVERS)
 /* Add additional Starbase device drivers here. */
 #define STARBASE_DEVICE_DRIVERS -ldd98550
 #endif
+
+#define C_SWITCH_MACHINE -Dspectrum -DTYPE_CODE_LENGTH=6
+#define M4_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6
