@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 14.5 1988/09/15 03:00:25 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 14.6 1989/08/07 07:37:02 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -102,7 +102,8 @@ MIT in each case. |#
   (let ((files
 	 (format-files-list (system/files-lists system)
 			    (if (default-object? compiled?)
-				(prompt-for-confirmation "Load compiled? ")				compiled?))))
+				(prompt-for-confirmation "Load compiled")
+				compiled?))))
     (set-system/files! system
 		       (map (lambda (file) (pathname->string (car file)))
 			    files))

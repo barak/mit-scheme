@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 14.6 1989/08/03 23:02:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 14.7 1989/08/07 07:37:09 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -37,6 +37,21 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define (where #!optional environment)
+  (let ((environment
+	 (if (default-object? environment)
+	     (nearest-repl/environment)
+	     (->environment environment))))
+    (hook/repl-environment (nearest-repl) environment)
+    (letter-commands command-set
+		     (cmdl-message/standard "Environment Inspector")
+		     "Where-->"
+		     (make-wstate (list environment)))))
+
+(define-structure (wstate
+		   (conc-name wstate/))
+  frame-list)
+
 (define (initialize-package!)
   (set! command-set
 	(make-command-set
@@ -65,63 +80,55 @@ MIT in each case. |#
   unspecific)
 
 (define command-set)
-(define frame-list)
-
-(define (where #!optional environment)
-  (let ((environment
-	 (if (default-object? environment)
-	     (nearest-repl/environment)
-	     (->environment environment))))
-    (hook/repl-environment (nearest-repl) environment)
-    (fluid-let ((frame-list (list environment)))
-      (letter-commands command-set
-		       (cmdl-message/standard "Environment Inspector")
-		       "Where-->"))))
 
-(define (show)
-  (show-current-frame false))
+(define (show wstate)
+  (show-current-frame wstate false))
 
-(define (show-current-frame brief?)
-  (show-frame (car frame-list) (length (cdr frame-list)) brief?))
+(define (show-current-frame wstate brief?)
+  (presentation
+   (lambda ()
+     (let ((frame-list (wstate/frame-list wstate)))
+       (show-frame (car frame-list)
+		   (length (cdr frame-list))
+		   brief?)))))
 
-(define (show-all)
-  (show-frames (car (last-pair frame-list)) 0))
+(define (show-all wstate)
+  (show-frames (car (last-pair (wstate/frame-list wstate))) 0))
 
-(define (parent)
-  (if (environment-has-parent? (car frame-list))
-      (begin
-	(set! frame-list
-	      (cons (environment-parent (car frame-list)) frame-list))
-	(show-current-frame true))
-      (begin
-	(newline)
-	(write-string "The current frame has no parent."))))
+(define (parent wstate)
+  (let ((frame-list (wstate/frame-list wstate)))
+    (if (environment-has-parent? (car frame-list))
+	(begin
+	  (set-wstate/frame-list! wstate
+				  (cons (environment-parent (car frame-list))
+					frame-list))
+	  (show-current-frame wstate true))
+	(debugger-failure "The current frame has no parent"))))
 
-(define (son)
-  (let ((frames frame-list))
+(define (son wstate)
+  (let ((frames (wstate/frame-list wstate)))
     (if (null? (cdr frames))
+	(debugger-failure
+	 "This is the original frame; its children cannot be found")
 	(begin
-	  (newline)
-	  (write-string
-	   "This is the original frame.  Its children cannot be found."))
-	(begin
-	  (set! frame-list (cdr frames))
-	  (show-current-frame true)))))
+	  (set-wstate/frame-list! wstate (cdr frames))
+	  (show-current-frame wstate true)))))
 
-(define (name)
-  (newline)
-  (write-string "This frame was created by ")
-  (print-user-friendly-name (car frame-list)))
+(define (name wstate)
+  (presentation
+   (lambda ()
+     (write-string "This frame was created by ")
+     (print-user-friendly-name (car (wstate/frame-list wstate))))))
 
-(define (recursive-where)
-  (let ((inp (prompt-for-expression "Object to eval and examine-> ")))
-    (write-string "New where!")
-    (debug/where (debug/eval inp (car frame-list)))))
+(define (recursive-where wstate)
+  (let ((inp (prompt-for-expression "Object to evaluate and examine")))
+    (debugger-message "New where!")
+    (debug/where (debug/eval inp (car (wstate/frame-list wstate))))))
 
-(define (enter)
-  (debug/read-eval-print (car frame-list)
+(define (enter wstate)
+  (debug/read-eval-print (car (wstate/frame-list wstate))
 			 "You are now in the desired environment"
 			 "Eval-in-env-->"))
 
-(define (show-object)
-  (debug/read-eval-print-1 (car frame-list)))
+(define (show-object wstate)
+  (debug/read-eval-print-1 (car (wstate/frame-list wstate))))

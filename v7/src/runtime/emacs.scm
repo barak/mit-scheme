@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.2 1988/07/13 20:09:56 hal Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.3 1989/08/07 07:36:34 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -160,14 +160,15 @@ MIT in each case. |#
 (define (emacs/prompt-for-confirmation cmdl prompt)
   (if (cmdl/io-to-console? cmdl)
       (begin
-	(transmit-signal-with-argument #\n prompt)
+	(transmit-signal-with-argument #\n
+				       (string-append prompt " (y or n)? "))
 	(char=? #\y (read-char-internal)))
       (normal/prompt-for-confirmation cmdl prompt)))
 
 (define (emacs/prompt-for-expression cmdl prompt)
   (if (cmdl/io-to-console? cmdl)
       (begin
-	(transmit-signal-with-argument #\i prompt)
+	(transmit-signal-with-argument #\i (string-append prompt ": "))
 	(read console-input-port))
       (normal/prompt-for-expression cmdl prompt)))
 
@@ -199,6 +200,7 @@ MIT in each case. |#
 (define normal/prompt-for-expression)
 (define normal/^G-interrupt)
 (define normal/set-working-directory-pathname!)
+(define normal/presentation)
 
 (define (initialize-package!)
   (set! normal/gc-start hook/gc-start)
@@ -217,6 +219,7 @@ MIT in each case. |#
   (set! normal/^G-interrupt hook/^G-interrupt)
   (set! normal/set-working-directory-pathname!
 	hook/set-working-directory-pathname!)
+  ;;(set! normal/presentation hook/presentation)
   (add-event-receiver! event:after-restore install!)
   (install!))
 
@@ -241,7 +244,9 @@ MIT in each case. |#
   (set! hook/prompt-for-expression emacs/prompt-for-expression)
   (set! hook/^G-interrupt emacs/^G-interrupt)
   (set! hook/set-working-directory-pathname!
-	emacs/set-working-directory-pathname!))
+	emacs/set-working-directory-pathname!)
+  ;;(set! hook/presentation (lambda (thunk) (thunk)))
+  unspecific)
 
 (define (install-normal-hooks!)
   (set! hook/gc-start normal/gc-start)
@@ -259,4 +264,6 @@ MIT in each case. |#
   (set! hook/prompt-for-expression normal/prompt-for-expression)
   (set! hook/^G-interrupt normal/^G-interrupt)
   (set! hook/set-working-directory-pathname!
-	normal/set-working-directory-pathname!))
+	normal/set-working-directory-pathname!)
+  ;;(set! hook/presentation normal/presentation)
+  unspecific)

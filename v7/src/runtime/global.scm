@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.10 1989/08/03 23:03:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.11 1989/08/07 07:36:38 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -171,7 +171,8 @@ MIT in each case. |#
   ((ucode-primitive primitive-type? 2) (ucode-type future) object))
 
 (define (exit)
-  (if (prompt-for-confirmation "Kill Scheme? ")      (%exit)))
+  (if (prompt-for-confirmation "Kill Scheme")
+      (%exit)))
 
 (define (%exit)
   (event-distributor/invoke! event:before-exit)

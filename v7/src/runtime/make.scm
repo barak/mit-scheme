@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.14 1989/08/03 23:07:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.15 1989/08/07 07:36:42 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -63,9 +63,7 @@ MIT in each case. |#
   substring=?
   substring-move-right!
   substring-downcase!
-  tty-beep
   tty-flush-output
-  tty-read-char-immediate
   tty-write-char
   tty-write-string
   vector-ref
@@ -87,27 +85,6 @@ MIT in each case. |#
   (tty-write-char newline-char)
   (tty-flush-output)
   (exit))
-
-(define (prompt-for-confirmation prompt)
-  (let loop ()
-    (tty-write-char newline-char)
-    (tty-write-string prompt)
-    (tty-write-string "(y or n) ")
-    (tty-flush-output)
-    (let ((char (tty-read-char-immediate)))
-      (cond ((or (eq? #\y char)
-		 (eq? #\Y char))
-	     (tty-write-string "Yes")
-	     (tty-flush-output)
-	     true)
-	    ((or (eq? #\n char)
-		 (eq? #\N char))
-	     (tty-write-string "No")
-	     (tty-flush-output)
-	     false)
-	    (else
-	     (tty-beep)
-	     (loop))))))
 
 ;;;; GC, Interrupts, Errors
 
@@ -196,8 +173,8 @@ MIT in each case. |#
 			 false))
 
 (define map-filename
-  (if (and (implemented-primitive-procedure? file-exists?)
-	   (not (prompt-for-confirmation "Load interpreted? ")))      (lambda (filename)
+  (if (implemented-primitive-procedure? file-exists?)
+      (lambda (filename)
 	(let ((com-file (string-append filename ".com")))
 	  (if (file-exists? com-file)
 	      com-file

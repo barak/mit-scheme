@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.14 1989/08/03 23:02:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.15 1989/08/07 07:36:30 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -37,102 +37,34 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (set!
-   command-set
-   (make-command-set
-    'DEBUG-COMMANDS
-    `((#\? ,standard-help-command
-	   "Help, list command letters")
-      (#\A ,show-all-frames
-	   "Show bindings in current environment and its ancestors")
-      (#\B ,earlier-reduction-command
-	   "Earlier reduction (Back in time)")
-      (#\C ,show-current-frame
-	   "Show bindings of identifiers in the current environment")
-      (#\D ,later-subproblem-command
-	   "Move (Down) to the next (later) subproblem")
-      (#\E ,enter-read-eval-print-loop
-	   "Enter a read-eval-print loop in the current environment")
-      (#\F ,later-reduction-command
-	   "Later reduction (Forward in time)")
-      (#\G ,goto-command
-	   "Go to a particular Subproblem/Reduction level")
-      (#\H ,summarize-history-command
-	   "Prints a summary of the entire history")
-      (#\I ,error-info-command
-	   "Redisplay the error message")
-      (#\L ,pretty-print-current-expression
-	   "(list expression) Pretty-print the current expression")
-      (#\O ,pretty-print-environment-procedure
-	   "Pretty print the procedure that created the current environment")
-      (#\P ,move-to-parent-environment
-	   "Move to environment which is parent of current environment")
-      (#\Q ,standard-exit-command
-	   "Quit (exit DEBUG)")
-      (#\R ,reductions-command
-	   "Print the reductions of the current subproblem level")
-      (#\S ,move-to-child-environment
-	   "Move to child of current environment (in current chain)")
-      (#\T ,print-current-reduction
-	   "Print the current subproblem/reduction")
-      (#\U ,earlier-subproblem-command
-	   "Move (Up) to the previous (earlier) subproblem")
-      (#\V ,eval-in-current-environment
-	   "Evaluate expression in current environment")
-      (#\W ,enter-where-command
-	   "Enter WHERE on the current environment")
-      (#\X ,internal-command
-	   "Create a read eval print loop in the debugger environment")
-      (#\Y ,frame-command
-	   "Display the current stack frame")
-      (#\Z ,return-command
-	   "Return (continue with) an expression after evaluating it")
-      )))
-  unspecific)
-
-(define command-set)
-
-(define current-subproblem)
-(define previous-subproblems)
-(define current-subproblem-number)
-(define current-reduction-number)
-(define current-reductions)
-(define current-number-of-reductions)
-(define current-reduction)
-(define current-expression)
-(define environment-list)
-
-(define reduction-wrap-around-tag 'WRAP-AROUND)
 (define student-walk? false)
 (define print-return-values? false)
-(define environment-arguments-truncation 68)
 
 (define (debug #!optional object)
-  (fluid-let ((current-subproblem)
-	      (previous-subproblems)
-	      (current-subproblem-number)
-	      (current-reduction-number)
-	      (current-reductions)
-	      (current-number-of-reductions)
-	      (current-reduction)
-	      (current-expression)
-	      (environment-list))
-    (set-current-subproblem!
-     (let ((object
-	    (if (default-object? object)
-		(or (error-continuation)
-		    (current-proceed-continuation))
-		object)))
-       (or (coerce-to-stack-frame object)
-	   (error "DEBUG: null continuation" object)))
-     '()
-     (lambda () 0))
+  (let ((dstate
+	 (make-initial-dstate 
+	  (if (default-object? object)
+	      (or (error-continuation)
+		  (current-proceed-continuation))
+	      object))))
     (letter-commands command-set
 		     (cmdl-message/append
-		      (cmdl-message/active print-current-reduction)
+		      (cmdl-message/active
+		       (lambda ()
+			 (command/print-reduction dstate)))
 		      (cmdl-message/standard "Debugger"))
-		     "Debug-->")))
+		     "Debug-->"
+		     dstate)))
+
+(define (make-initial-dstate object)
+  (let ((dstate (allocate-dstate)))
+    (set-current-subproblem!
+     dstate
+     (or (coerce-to-stack-frame object)
+	 (error "DEBUG: null continuation" object))
+     '()
+     first-reduction-number)
+    dstate))
 
 (define (coerce-to-stack-frame object)
   (cond ((stack-frame? object)
@@ -141,160 +73,211 @@ MIT in each case. |#
 	 (coerce-to-stack-frame (continuation->stack-frame object)))
 	(else
 	 (error "DEBUG: illegal argument" object))))
+
+(define-structure (dstate
+		   (conc-name dstate/)
+		   (constructor allocate-dstate ()))
+  subproblem
+  previous-subproblems
+  subproblem-number
+  reduction-number
+  reductions
+  number-of-reductions
+  reduction
+  expression
+  environment-list)
 
-;;;; Display commands
+(define (initialize-package!)
+  (set!
+   command-set
+   (make-command-set
+    'DEBUG-COMMANDS
+    `((#\? ,standard-help-command
+	   "Help, list command letters")
+      (#\A ,command/show-all-frames
+	   "Show bindings in current environment and its ancestors")
+      (#\B ,command/earlier-reduction
+	   "Earlier reduction (Back in time)")
+      (#\C ,command/show-current-frame
+	   "Show bindings of identifiers in the current environment")
+      (#\D ,command/later-subproblem
+	   "Move (Down) to the next (later) subproblem")
+      (#\E ,command/enter-read-eval-print-loop
+	   "Enter a read-eval-print loop in the current environment")
+      (#\F ,command/later-reduction
+	   "Later reduction (Forward in time)")
+      (#\G ,command/goto
+	   "Go to a particular Subproblem/Reduction level")
+      (#\H ,command/summarize-history
+	   "Prints a summary of the entire history")
+      (#\I ,command/error-info
+	   "Redisplay the error message")
+      (#\L ,command/print-expression
+	   "(list expression) Pretty-print the current expression")
+      (#\O ,command/print-environment-procedure
+	   "Pretty print the procedure that created the current environment")
+      (#\P ,command/move-to-parent-environment
+	   "Move to environment which is parent of current environment")
+      (#\Q ,standard-exit-command
+	   "Quit (exit DEBUG)")
+      (#\R ,command/print-reductions
+	   "Print the reductions of the current subproblem level")
+      (#\S ,command/move-to-child-environment
+	   "Move to child of current environment (in current chain)")
+      (#\T ,command/print-reduction
+	   "Print the current subproblem/reduction")
+      (#\U ,command/earlier-subproblem
+	   "Move (Up) to the previous (earlier) subproblem")
+      (#\V ,command/eval-in-current-environment
+	   "Evaluate expression in current environment")
+      (#\W ,command/enter-where
+	   "Enter WHERE on the current environment")
+      (#\X ,command/internal
+	   "Create a read eval print loop in the debugger environment")
+      (#\Y ,command/frame
+	   "Display the current stack frame")
+      (#\Z ,command/return
+	   "Return (continue with) an expression after evaluating it")
+      )))
+  unspecific)
 
-(define (print-current-reduction)
-  (print-current-expression)
-  (print-current-environment))
-
-(define (print-current-expression)
-  (newline)
-  (write-string "Subproblem level: ")
-  (write current-subproblem-number)
-  (if current-reduction
-      (begin
-	(write-string "  Reduction number: ")
-	(write current-reduction-number)
-	(newline)
-	(write-string "Expression (from execution history):")
-	(print-expression current-expression))
-      (begin
-	(newline)
-	(cond ((not (invalid-expression? current-expression))
-	       (write-string
-		(if (stack-frame/compiled-code? current-subproblem)
-		    "Compiled code expression (from stack):"
-		    "Expression (from stack):"))
-	       (print-expression current-expression))
-	      ((or (not (debugging-info/undefined-expression?
-			 current-expression))
-		   (not (debugging-info/noise? current-expression)))
-	       (write-string
-		(if (stack-frame/compiled-code? current-subproblem)
-		    "Compiled code expression unknown"
-		    "Expression unknown")))
-	      (else
-	       (write-string
-		((debugging-info/noise current-expression) true)))))))
-
-(define (stack-frame/compiled-code? frame)
-  (compiled-return-address? (stack-frame/return-address frame)))
-
-(define (print-current-environment)
-  (if (pair? environment-list)
-      (let ((environment (car environment-list)))
-	(show-environment-name environment)
-	(show-environment-arguments environment))
-      (begin
-	(newline)
-	(write-string "There is no current environment"))))
-
-(define (show-environment-arguments environment)
-  (if (not (environment->package environment))
-      (begin
-	(newline)
-	(let ((arguments (environment-arguments environment)))
-	  (if (eq? arguments 'UNKNOWN)
-	      (show-environment-bindings environment true)
-	      (begin
-		(write-string "applied to ")
-		(write-string
-		 (cdr
-		  (write-to-string arguments
-				   environment-arguments-truncation)))))))))
-
-(define (show-environment-arguments environment)
-  (if (not (environment->package environment))
-      (begin
-	(newline)
-	(let ((arguments (environment-arguments environment)))
-	  (if (eq? arguments 'UNKNOWN)
-	      (show-environment-bindings environment true)
-	      (begin
-		(write-string "applied to ")
-		(write-string
-		 (cdr
-		  (write-to-string arguments
-				   environment-arguments-truncation)))))))))
+(define command-set)
 
-(define (pretty-print-current-expression)
-  (cond ((debugging-info/compiled-code? current-expression)
-	 (newline)
-	 (write-string ";compiled code"))
-	((not (debugging-info/undefined-expression? current-expression))
-	 (print-expression current-expression))
-	((debugging-info/noise? current-expression)
-	 (newline)
-	 (write-string ";")
-	 (write-string ((debugging-info/noise current-expression) false)))
-	(else
-	 (newline)
-	 (write-string ";undefined expression"))))
-
-(define (pretty-print-environment-procedure)
-  (with-current-environment
-   (lambda (environment)
-     (let ((scode-lambda (environment-lambda environment)))
-       (if scode-lambda
-	   (print-expression scode-lambda)
+(define (command/print-reduction dstate)
+  (presentation
+   (lambda ()
+     (write-string "Subproblem level: ")
+     (write (dstate/subproblem-number dstate))
+     (let ((expression (dstate/expression dstate)))
+       (if (dstate/reduction dstate)
+	   (begin
+	     (write-string "  Reduction number: ")
+	     (write (dstate/reduction-number dstate))
+	     (newline)
+	     (write-string "Expression (from execution history):")
+	     (newline)
+	     (pretty-print expression))
+	   (let ((subproblem (dstate/subproblem dstate)))
+	     (newline)
+	     (cond ((not (invalid-expression? expression))
+		    (write-string
+		     (if (stack-frame/compiled-code? subproblem)
+			 "Compiled code expression (from stack):"
+			 "Expression (from stack):"))
+		    (newline)
+		    (pretty-print expression))
+		   ((or (not (debugging-info/undefined-expression? expression))
+			(not (debugging-info/noise? expression)))
+		    (write-string
+		     (if (stack-frame/compiled-code? subproblem)
+			 "Compiled code expression unknown"
+			 "Expression unknown")))
+		   (else
+		    (write-string
+		     ((debugging-info/noise expression) true)))))))
+     (let ((environment-list (dstate/environment-list dstate)))
+       (if (pair? environment-list)
+	   (let ((environment (car environment-list)))
+	     (show-environment-name environment)
+	     (if (not (environment->package environment))
+		 (begin
+		   (newline)
+		   (let ((arguments (environment-arguments environment)))
+		     (if (eq? arguments 'UNKNOWN)
+			 (show-environment-bindings environment true)
+			 (begin
+			   (write-string "applied to ")
+			   (write-string
+			    (cdr
+			     (write-to-string
+			      arguments
+			      (- (output-port/x-size (current-output-port))
+				 11))))))))))
 	   (begin
 	     (newline)
-	     (write-string
-	      "Unable to get procedure for this environment")))))))
+	     (write-string "There is no current environment")))))))
+
+(define (command/print-expression dstate)
+  (presentation
+   (lambda ()
+     (let ((expression (dstate/expression dstate)))
+       (cond ((debugging-info/compiled-code? expression)
+	      (write-string ";compiled code"))
+	     ((not (debugging-info/undefined-expression? expression))
+	      (pretty-print expression))
+	     ((debugging-info/noise? expression)
+	      (write-string ";")
+	      (write-string ((debugging-info/noise expression) false)))
+	     (else
+	      (write-string ";undefined expression")))))))
 
-(define (reductions-command)
-  (let loop ((reductions current-reductions))
-    (cond ((pair? reductions)
-	   (print-expression (reduction-expression (car reductions)))
-	   (loop (cdr reductions)))
-	  ((wrap-around-in-reductions? reductions)
-	   (newline)
-	   (write-string "Wrap around in the reductions at this level")))))
+(define (command/print-environment-procedure dstate)
+  (with-current-environment dstate
+    (lambda (environment)
+      (let ((scode-lambda (environment-lambda environment)))
+	(if scode-lambda
+	    (presentation (lambda () (pretty-print scode-lambda)))
+	    (debugger-failure "No procedure for this environment"))))))
 
-(define (print-expression expression)
-  (pp expression))
+(define (command/print-reductions dstate)
+  (let ((reductions (dstate/reductions dstate)))
+    (if (pair? reductions)
+	(presentation
+	 (lambda ()
+	   (pretty-print (reduction-expression (car reductions)))
+	   (let loop ((reductions (cdr reductions)))
+	     (cond ((pair? reductions)
+		    (newline)
+		    (pretty-print (reduction-expression (car reductions)))
+		    (loop (cdr reductions)))
+		   ((eq? 'WRAP-AROUND reductions)
+		    (newline)
+		    (write-string
+		     "Wrap around in the reductions at this level"))))))
+	(debugger-failure "No reductions at this level"))))
 
 ;;;; Short history display
 
-(define (summarize-history-command)
+(define (command/summarize-history dstate)
   (let ((top-subproblem
-	 (if (null? previous-subproblems)
-	     current-subproblem
-	     (car (last-pair previous-subproblems)))))
-    (newline)
-    (write-string "SL#  Procedure Name          Expression")
-    (newline)
-    (let loop ((frame top-subproblem) (level 0))
-      (if frame
-	  (begin
-	    (let ((reductions (stack-frame/reductions frame)))
-	      (if (pair? reductions)
-		  (let ((print-reduction
-			 (lambda (reduction)
-			   (terse-print-expression
-			    level
-			    (reduction-expression reduction)
-			    (reduction-environment reduction)))))
-		    (print-reduction (car reductions))
-		    (if (= level 0)
-			(let loop ((reductions (cdr reductions)))
-			  (if (pair? reductions)
-			      (begin (print-reduction (car reductions))
-				     (loop (cdr reductions)))))))
-		  (with-values
-		      (lambda () (stack-frame/debugging-info frame))
-		    (lambda (expression environment)
-		      (terse-print-expression level
-					      expression
-					      environment)))))
-	    (loop (stack-frame/next-subproblem frame) (1+ level)))))))
+	 (let ((previous-subproblems (dstate/previous-subproblems dstate)))
+	   (if (null? previous-subproblems)
+	       (dstate/subproblem dstate)
+	       (car (last-pair previous-subproblems))))))
+    (presentation
+     (lambda ()
+       (write-string "SL#  Procedure-name          Expression")
+       (newline)
+       (let loop ((frame top-subproblem) (level 0))
+	 (if frame
+	     (begin
+	       (let ((reductions (stack-frame/reductions frame)))
+		 (if (pair? reductions)
+		     (let ((print-reduction
+			    (lambda (reduction)
+			      (terse-print-expression
+			       level
+			       (reduction-expression reduction)
+			       (reduction-environment reduction)))))
+		       (print-reduction (car reductions))
+		       (if (= level 0)
+			   (let loop ((reductions (cdr reductions)))
+			     (if (pair? reductions)
+				 (begin
+				   (print-reduction (car reductions))
+				   (loop (cdr reductions)))))))
+		     (with-values
+			 (lambda () (stack-frame/debugging-info frame))
+		       (lambda (expression environment)
+			 (terse-print-expression level
+						 expression
+						 environment)))))
+	       (loop (stack-frame/next-subproblem frame) (1+ level)))))))))
 
 (define (terse-print-expression level expression environment)
   (newline)
   (write-string (string-pad-right (number->string level) 4))
   (write-string " ")
-  ;;; procedure name
   (write-string
    (string-pad-right
     (let ((name
@@ -310,8 +293,11 @@ MIT in each case. |#
    (cond ((debugging-info/compiled-code? expression)
 	  ";compiled code")
 	 ((not (debugging-info/undefined-expression? expression))
-	  (output-to-string 50
-			    (lambda () (write-sexp (unsyntax expression)))))
+	  (output-to-string
+	   50
+	   (lambda ()
+	     (fluid-let ((*unparse-primitives-by-name?* true))
+	       (write (unsyntax expression))))))
 	 ((debugging-info/noise? expression)
 	  (output-to-string
 	   50
@@ -319,257 +305,233 @@ MIT in each case. |#
 	     (write-string ((debugging-info/noise expression) false)))))
 	 (else
 	  ";undefined expression"))))
-
-(define (write-sexp sexp)
-  (fluid-let ((*unparse-primitives-by-name?* true))
-    (write sexp)))
 
 ;;;; Subproblem/reduction motion
 
-(define (earlier-subproblem-command)
-  (if (stack-frame/next-subproblem current-subproblem)
-      (begin
-	(earlier-subproblem)
-	(print-current-reduction))
-      (begin
-	(beep)
-	(newline)
-	(write-string "There are only ")
-	(write current-subproblem-number)
-	(write-string " subproblem levels; already at earliest level"))))
+(define (command/earlier-subproblem dstate)
+  (if (stack-frame/next-subproblem (dstate/subproblem dstate))
+      (let ((subproblem (dstate/subproblem dstate)))
+	(move-to-subproblem! dstate
+			     (stack-frame/next-subproblem subproblem)
+			     (cons subproblem
+				   (dstate/previous-subproblems dstate))
+			     normal-reduction-number))
+      (debugger-failure "There are only "
+			(1+ (dstate/subproblem-number dstate))
+			" subproblem levels; already at earliest level")))
 
-(define (earlier-reduction-command)
-  (cond ((and student-walk?
-	      (> current-subproblem-number 0)
-	      (= current-reduction-number 0))
-	 (earlier-subproblem-command))
-	((< current-reduction-number (-1+ current-number-of-reductions))
-	 (set-current-reduction! (1+ current-reduction-number))
-	 (print-current-reduction))
-	(else
-	 (newline)
-	 (write-string
-	  (if (wrap-around-in-reductions? current-reductions)
-	      "Wrap around in reductions at this level"
-	      "No more reductions at this level"))
-	 (newline)
-	 (write-string "Going to the previous (earlier) subproblem")
-	 (newline)
-	 (earlier-subproblem-command))))
+(define (command/earlier-reduction dstate)
+  (let ((reduction-number (dstate/reduction-number dstate)))
+    (cond ((and student-walk?
+		(> (dstate/subproblem-number dstate) 0)
+		(= reduction-number 0))
+	   (command/earlier-subproblem dstate))
+	  ((< reduction-number
+	      (-1+ (dstate/number-of-reductions dstate)))
+	   (move-to-reduction! dstate (1+ reduction-number)))
+	  (else
+	   (debugger-message
+	    (if (wrap-around-in-reductions? (dstate/reductions dstate))
+		"Wrap around in"
+		"No more")
+	    " reductions; going to the previous (earlier) subproblem")
+	   (command/earlier-subproblem dstate)))))
 
-(define (earlier-subproblem)
-  ;; Assumption: (not (not (stack-frame/next-subproblem current-subproblem)))
-  (set-current-subproblem! (stack-frame/next-subproblem current-subproblem)
-			   (cons current-subproblem previous-subproblems)
-			   normal-reduction-number))
+(define (command/later-subproblem dstate)
+  (later-subproblem dstate normal-reduction-number))
 
-(define (later-subproblem-command)
-  (later-subproblem normal-reduction-number))
+(define (command/later-reduction dstate)
+  (if (positive? (dstate/reduction-number dstate))
+      (move-to-reduction! dstate (-1+ (dstate/reduction-number dstate)))
+      (later-subproblem dstate
+			(if (or (not student-walk?)
+				(= (dstate/subproblem-number dstate) 1))
+			    last-reduction-number
+			    normal-reduction-number))))
 
-(define (later-reduction-command)
-  (if (positive? current-reduction-number)
-      (begin
-	(set-current-reduction! (-1+ current-reduction-number))
-	(print-current-reduction))
-      (later-subproblem
-       (if (or (not student-walk?)
-	       (= current-subproblem-number 1))
-	   last-reduction-number
-	   normal-reduction-number))))
-
-(define (later-subproblem select-reduction-number)
-  (if (null? previous-subproblems)
-      (begin
-	(beep)
-	(newline)
-	(write-string "Already at latest subproblem level"))
-      (begin
-	(set-current-subproblem! (car previous-subproblems)
-				 (cdr previous-subproblems)
-				 select-reduction-number)
-	(print-current-reduction))))
+(define (later-subproblem dstate select-reduction-number)
+  (if (null? (dstate/previous-subproblems dstate))
+      (debugger-failure "Already at latest subproblem level")
+      (let ((previous-subproblems (dstate/previous-subproblems dstate)))
+	(move-to-subproblem! dstate
+			     (car previous-subproblems)
+			     (cdr previous-subproblems)
+			     select-reduction-number))))
 
 ;;;; General motion command
 
-(define (goto-command)
-  (if (select-subproblem)
-      (begin
-	(select-reduction)
-	(print-current-reduction))))
+(define (command/goto dstate)
+  (let* ((subproblems (select-subproblem dstate))
+	 (subproblem (car subproblems))
+	 (reduction-number
+	  (select-reduction
+	   (improper-list-length (stack-frame/reductions subproblem)))))
+    (move-to-subproblem! dstate
+			 subproblem
+			 (cdr subproblems)
+			 (lambda (number-of-reductions)
+			   number-of-reductions ;ignore
+			   reduction-number))))
 
-(define (select-subproblem)
+(define (select-subproblem dstate)
+  (let top-level-loop ()
+    (let ((delta
+	   (- (prompt-for-nonnegative-integer "Subproblem number" false)
+	      (dstate/subproblem-number dstate))))
+      (if (negative? delta)
+	  (list-tail (dstate/previous-subproblems dstate) (-1+ (- delta)))
+	  (let loop
+	      ((subproblem (dstate/subproblem dstate))
+	       (subproblems (dstate/previous-subproblems dstate))
+	       (delta delta))
+	    (if (zero? delta)
+		(cons subproblem subproblems)
+		(let ((next (stack-frame/next-subproblem subproblem)))
+		  (if next
+		      (loop next (cons subproblem subproblems) (-1+ delta))
+		      (begin
+			(debugger-failure
+			 "Subproblem number too large (limit is "
+			 (length subproblems)
+			 " inclusive)")
+			(top-level-loop))))))))))
+
+(define (select-reduction number-of-reductions)
+  (cond ((> number-of-reductions 1)
+	 (prompt-for-nonnegative-integer "Reduction number"
+					 number-of-reductions))
+	((= number-of-reductions 1)
+	 (debugger-message "Exactly one reduction for this subproblem")
+	 0)
+	(else
+	 (debugger-message "No reductions for this subproblem")
+	 -1)))
+
+(define (prompt-for-nonnegative-integer prompt limit)
   (let loop ()
-    (let ((subproblem-number (prompt-for-expression "Subproblem number: ")))
-      (if (not (and (integer? subproblem-number)
-		    (not (negative? subproblem-number))))
-	  (begin
-	    (beep)
-	    (newline)
-	    (write-string "Subproblem level must be nonnegative integer!")
-	    (loop))
-	  (let ((delta (- subproblem-number current-subproblem-number)))
-	    (cond ((negative? delta)
-		   (let ((tail
-			  (list-tail previous-subproblems (-1+ (- delta)))))
-		     (set-current-subproblem! (car tail)
-					      (cdr tail)
-					      normal-reduction-number))
-		   true)
-		  ((positive? delta)
-		   (let loop
-		       ((subproblem current-subproblem)
-			(subproblems previous-subproblems)
-			(delta delta))
-		     (let ((next (stack-frame/next-subproblem subproblem)))
-		       (cond ((not next)
-			      (beep)
-			      (newline)
-			      (write-string "There is no such subproblem")
-			      false)
-			     ((= delta 1)
-			      (set-current-subproblem!
-			       next
-			       (cons subproblem subproblems)
-			       normal-reduction-number)
-			      true)
-			     (else
-			      (loop next
-				    (cons subproblem subproblems)
-				    (-1+ delta)))))))
-		  (else
-		   (newline)
-		   (write-string "Already at subproblem ")
-		   (write subproblem-number)
-		   false)))))))
-
-(define (select-reduction)
-  (set-current-reduction!
-   (cond ((> current-number-of-reductions 1)
-	  (let get-reduction-number ()
-	    (let ((reduction-number
-		   (prompt-for-expression
-		    (string-append
-		     "Reduction Number (0 through "
-		     (number->string (-1+ current-number-of-reductions))
-		     " inclusive): "))))
-	      (cond ((not (and (integer? reduction-number)
-			       (not (negative? reduction-number))))
-		     (beep)
-		     (newline)
-		     (write-string
-		      "Reduction number must be nonnegative integer!")
-		     (get-reduction-number))
-		    ((not (< reduction-number
-			     current-number-of-reductions))
-		     (beep)
-		     (newline)
-		     (write-string "Reduction number too large!")
-		     (get-reduction-number))
-		    (else
-		     reduction-number)))))
-	 ((= current-number-of-reductions 1)
-	  (newline)
-	  (write-string "There is only one reduction for this subproblem")
-	  (newline)
-	  0)
-	 (else
-	  (newline)
-	  (write-string "There are no reductions for this subproblem")
-	  (newline)
-	  -1))))
+    (let ((expression
+	   (prompt-for-expression
+	    (string-append prompt
+			   (if limit
+			       (string-append " (0 through "
+					      (number->string (-1+ limit))
+					      " inclusive)")
+			       "")))))
+      (cond ((not (and (integer? expression)
+		       (not (negative? expression))))	     (debugger-failure prompt " must be nonnegative integer")
+	     (loop))
+	    ((and limit (>= expression limit))
+	     (debugger-failure prompt " too large")
+	     (loop))
+	    (else
+	     expression)))))
 
 ;;;; Environment motion and display
 
-(define (show-current-frame)
-  (if (pair? environment-list)
-      (show-current-frame-1 false)
-      (print-undefined-environment)))
+(define (command/show-current-frame dstate)
+  (if (pair? (dstate/environment-list dstate))
+      (show-current-frame dstate false)
+      (undefined-environment)))
 
-(define (show-current-frame-1 brief?)
-  (show-frame (car environment-list) (length (cdr environment-list)) brief?))
+(define (command/show-all-frames dstate)
+  (let ((environment-list (dstate/environment-list dstate)))
+    (if (pair? environment-list)
+	(show-frames (car (last-pair environment-list)) 0)
+	(undefined-environment))))
 
-(define (show-all-frames)
-  (if (pair? environment-list)
-      (show-frames (car (last-pair environment-list)) 0)
-      (print-undefined-environment)))
+(define (command/move-to-parent-environment dstate)
+  (let ((environment-list (dstate/environment-list dstate)))
+    (cond ((not (pair? environment-list))
+	   (undefined-environment))
+	  ((environment-has-parent? (car environment-list))
+	   (set-dstate/environment-list!
+	    dstate
+	    (cons (environment-parent (car environment-list))
+		  environment-list))
+	   (show-current-frame dstate true))
+	  (else
+	   (debugger-failure "The current environment has no parent")))))
 
-(define (move-to-parent-environment)
-  (cond ((not (pair? environment-list))
-	 (print-undefined-environment))
-	((environment-has-parent? (car environment-list))
-	 (set! environment-list
-	       (cons (environment-parent (car environment-list))
-		     environment-list))
-	 (show-current-frame-1 true))
-	(else
-	 (beep)
-	 (newline)
-	 (write-string "The current environment has no parent"))))
+(define (command/move-to-child-environment dstate)
+  (let ((environment-list (dstate/environment-list dstate)))
+    (cond ((not (pair? (dstate/environment-list dstate)))
+	   (undefined-environment))
+	  ((not (pair? (cdr environment-list)))
+	   (debugger-failure
+	    "This is the initial environment; can't move to child"))
+	  (else
+	   (set-dstate/environment-list! dstate (cdr environment-list))
+	   (show-current-frame dstate true)))))
 
-(define (move-to-child-environment)
-  (cond ((not (pair? environment-list))
-	 (print-undefined-environment))
-	((not (pair? (cdr environment-list)))
-	 (beep)
-	 (newline)
-	 (write-string "This is the initial environment; can't move to child"))
-	(else
-	 (set! environment-list (cdr environment-list))
-	 (show-current-frame-1 true))))
+(define (show-current-frame dstate brief?)
+  (presentation
+   (lambda ()
+     (let ((environment-list (dstate/environment-list dstate)))
+       (show-frame (car environment-list)
+		   (length (cdr environment-list))
+		   brief?)))))
 
-(define (enter-read-eval-print-loop)
-  (debug/read-eval-print (get-evaluation-environment)
+(define (command/enter-read-eval-print-loop dstate)
+  (debug/read-eval-print (get-evaluation-environment dstate)
 			 "You are now in the desired environment"
 			 "Eval-in-env-->"))
 
-(define (eval-in-current-environment)
-  (debug/read-eval-print-1 (get-evaluation-environment)))
+(define (command/eval-in-current-environment dstate)
+  (debug/read-eval-print-1 (get-evaluation-environment dstate)))
 
-(define (enter-where-command)
-  (with-current-environment debug/where))
+(define (command/enter-where dstate)
+  (with-current-environment dstate debug/where))
 
 ;;;; Error info
 
-(define (error-info-command)
-  (let ((message (error-message))
-	(irritants (error-irritants))
-	(port (current-output-port)))
-    (newline)
-    (write-string " Message: ")
-    (write-string message)
-    (newline)
-    (if (null? irritants)
-	(write-string " No irritants")
-	(begin
-	  (write-string " Irritants: ")
-	  (for-each
-	   (let ((n (- (output-port/x-size port) 4)))
-	     (lambda (irritant)
-	       (newline)
-	       (write-string "    ")
-	       (if (error-irritant/noise? irritant)
-		   (begin
-		     (write-string "noise: ")
-		     (write (error-irritant/noise-value irritant)))
-		   (write-string
-		    (let ((result (write-to-string irritant n)))
-		      (if (car result)
-			  (substring-move-right! "..." 0 3
-						 (cdr result) (- n 3)))
-		      (cdr result))))))
-	   irritants)))
-    (newline)
-    (write-string " Formatted output:")
-    (newline)
-    (format-error-message message irritants port)))
+(define (command/error-info dstate)
+  dstate				;ignore
+  (show-error-info (error-condition)))
+
+(define (show-error-info condition)
+  (if condition
+      (presentation
+       (lambda ()
+	 (let ((message (condition/message condition))
+	       (irritants (condition/irritants condition))
+	       (port (current-output-port)))
+	   (write-string " Message: ")
+	   (write-string message)
+	   (newline)
+	   (if (null? irritants)
+	       (write-string " No irritants")
+	       (begin
+		 (write-string " Irritants: ")
+		 (for-each
+		  (let ((n (- (output-port/x-size port) 4)))
+		    (lambda (irritant)
+		      (newline)
+		      (write-string "    ")
+		      (if (error-irritant/noise? irritant)
+			  (begin
+			    (write-string "noise: ")
+			    (write (error-irritant/noise-value irritant)))
+			  (write-string
+			   (let ((result (write-to-string irritant n)))
+			     (if (car result)
+				 (substring-move-right! "..." 0 3
+							(cdr result) (- n 3)))
+			     (cdr result))))))
+		  irritants)))
+	   (newline)
+	   (write-string " Formatted output:")
+	   (newline)
+	   ((condition/reporter condition) condition port))))
+      (debugger-failure "No error to report")))
 
 ;;;; Advanced hacking commands
 
-(define (return-command)
-  (let ((next (stack-frame/next-subproblem current-subproblem)))
+(define (command/return dstate)
+  (let ((next (stack-frame/next-subproblem (dstate/subproblem dstate))))
     (if next
-	(let ((invalid-expression? (invalid-expression? current-expression))
-	      (environment (get-evaluation-environment))
+	(let ((invalid-expression?
+	       (invalid-expression? (dstate/expression dstate)))
+	      (environment (get-evaluation-environment dstate))
 	      (return
 	       (lambda (value)
 		 ((stack-frame->continuation next) value))))
@@ -581,11 +543,10 @@ MIT in each case. |#
 			   "Expression to EVALUATE and CONTINUE with"
 			   (if invalid-expression?
 			       ""
-			       " ($ to retry)")
-			   ": "))))
+			       " ($ to retry)")))))
 		    (if (and (not invalid-expression?)
 			     (eq? expression '$))
-			(unsyntax current-expression)
+			(unsyntax (dstate/expression dstate))
 			expression))
 		  environment)))
 	    (if print-return-values?
@@ -594,72 +555,108 @@ MIT in each case. |#
 		  (write-string "That evaluates to:")
 		  (newline)
 		  (write value)
-		  (if (prompt-for-confirmation "Confirm: ") (return value)))
+		  (if (prompt-for-confirmation "Confirm") (return value)))
 		(return value))))
-	(begin
-	  (beep)
-	  (newline)
-	  (write-string "Can't continue!!!")))))
+	(debugger-failure "Can't continue!!!"))))
 
-(define (internal-command)
-  (debug/read-eval-print (->environment '(runtime debugger))
+(define (command/internal dstate)
+  dstate				;ignore
+  (debug/read-eval-print (->environment '(RUNTIME DEBUGGER))
 			 "You are now in the debugger environment"
 			 "Debugger-->"))
-(define (frame-command)
-  (write-string "Stack frame ")
-  (write current-subproblem)
-  (write-string " :")
-  (newline)
-  (for-each pp (named-structure/description current-subproblem)))
+(define (command/frame dstate)
+  (presentation
+   (lambda ()
+     (write-string "Stack frame ")
+     (write (dstate/subproblem dstate))
+     (write-string " :")
+     (newline)
+     (for-each (lambda (element)
+		 (newline)
+		 (pretty-print element))
+	       (named-structure/description (dstate/subproblem dstate))))))
 
-;;;; Reduction and subproblem motion low-level
+;;;; Low-level Side-effects
 
-(define (set-current-subproblem! stack-frame previous-frames
+(define (move-to-subproblem! dstate
+			     stack-frame
+			     previous-frames
+			     select-reduction-number)
+  (dynamic-wind
+   (lambda ()
+     unspecific)
+   (lambda ()
+     (set-current-subproblem! dstate
+			      stack-frame
+			      previous-frames
+			      select-reduction-number))
+   (lambda ()
+     (command/print-reduction dstate))))
+
+(define (move-to-reduction! dstate reduction-number)
+  (dynamic-wind (lambda () unspecific)
+		(lambda () (set-current-reduction! dstate reduction-number))
+		(lambda () (command/print-reduction dstate))))
+
+(define (set-current-subproblem! dstate
+				 stack-frame
+				 previous-frames
 				 select-reduction-number)
-  (set! current-subproblem stack-frame)
-  (set! previous-subproblems previous-frames)
-  (set! current-subproblem-number (length previous-subproblems))
-  (set! current-reductions
-	(if stack-frame (stack-frame/reductions current-subproblem) '()))
-  (set! current-number-of-reductions (dotted-list-length current-reductions))
-  (set-current-reduction! (select-reduction-number)))
+  (set-dstate/subproblem! dstate stack-frame)
+  (set-dstate/previous-subproblems! dstate previous-frames)
+  (set-dstate/subproblem-number! dstate (length previous-frames))
+  (let* ((reductions (if stack-frame (stack-frame/reductions stack-frame) '()))
+	 (number-of-reductions (improper-list-length reductions)))
+    (set-dstate/reductions! dstate reductions)
+    (set-dstate/number-of-reductions! dstate number-of-reductions)
+    (set-current-reduction! dstate
+			    (select-reduction-number number-of-reductions))))
 
-(define (last-reduction-number)
-  (-1+ current-number-of-reductions))
+(define (normal-reduction-number number-of-reductions)
+  (min (-1+ number-of-reductions) 0))
 
-(define (normal-reduction-number)
-  (min (-1+ current-number-of-reductions) 0))
+(define (first-reduction-number number-of-reductions)
+  number-of-reductions			;ignore
+  0)
 
-(define (set-current-reduction! number)
-  (set! current-reduction-number number)
-  (set! current-reduction
-	(and (not (null? current-reductions))
-	     (>= number 0)
-	     (list-ref current-reductions number)))
-  (if current-reduction
-      (begin
-	(set! current-expression (reduction-expression current-reduction))
-	(set! environment-list
-	      (list (reduction-environment current-reduction))))
-      (with-values (lambda () (stack-frame/debugging-info current-subproblem))
-	(lambda (expression environment)
-	  (set! current-expression expression)
-	  (set! environment-list
-		(if (debugging-info/undefined-environment? environment)
-		    '()
-		    (list environment)))))))
+(define (last-reduction-number number-of-reductions)
+  (-1+ number-of-reductions))
+
+(define (set-current-reduction! dstate number)
+  (set-dstate/reduction-number! dstate number)
+  (let ((reduction
+	 (and (>= number 0)
+	      (let loop
+		  ((reductions (dstate/reductions dstate))
+		   (number number))
+		(and (pair? reductions)
+		     (if (zero? number)
+			 (car reductions)
+			 (loop (cdr reductions) (-1+ number))))))))
+    (set-dstate/reduction! dstate reduction)
+    (if reduction
+	(begin
+	  (set-dstate/expression! dstate (reduction-expression reduction))
+	  (set-dstate/environment-list!
+	   dstate
+	   (list (reduction-environment reduction))))
+	(with-values
+	    (lambda ()
+	      (stack-frame/debugging-info (dstate/subproblem dstate)))
+	  (lambda (expression environment)
+	    (set-dstate/expression! dstate expression)
+	    (set-dstate/environment-list!
+	     dstate
+	     (if (debugging-info/undefined-environment? environment)
+		 '()
+		 (list environment))))))))
 
 ;;;; Utilities
 
-(define (repeat f n)
-  (if (> n 0)
-      (begin (f)
-	     (repeat f (-1+ n)))))
-
-(define (dotted-list-length l)
-  (let count ((n 0) (L L))
+(define (improper-list-length l)
+  (let count ((n 0) (l l))
     (if (pair? l)
-	(count (1+ n) (CDR L))
+	(count (1+ n) (cdr l))
 	n)))
 
 (define-integrable (reduction-expression reduction)
@@ -669,31 +666,29 @@ MIT in each case. |#
   (cadr reduction))
 
 (define (wrap-around-in-reductions? reductions)
-  (eq? (list-tail reductions (dotted-list-length reductions))
-       reduction-wrap-around-tag))
+  (or (eq? 'WRAP-AROUND reductions)
+      (and (pair? reductions)
+	   (eq? 'WRAP-AROUND (cdr (last-pair reductions))))))
 
 (define (invalid-expression? expression)
   (or (debugging-info/undefined-expression? expression)
       (debugging-info/compiled-code? expression)))
 
-(define (with-current-environment receiver)
-  (if (pair? environment-list)
-      (receiver (car environment-list))
-      (print-undefined-environment)))
+(define (get-evaluation-environment dstate)
+  (let ((environment-list (dstate/environment-list dstate)))
+    (if (and (pair? environment-list)
+	     (environment? (car environment-list)))
+	(car environment-list)
+	(begin
+	  (debugger-message
+	   "Cannot evaluate in current environment;\nusing the read-eval-print environment instead")
+	  (nearest-repl/environment)))))
 
-(define (get-evaluation-environment)
-  (if (and (pair? environment-list)
-	   (environment? (car environment-list)))
-      (car environment-list)
-      (begin
-	(newline)
-	(write-string "Cannot evaluate in current environment")
-	(newline)
-	(write-string "Using the read-eval-print environment instead")
-	(newline)
-	(nearest-repl/environment))))
+(define (with-current-environment dstate receiver)
+  (let ((environment-list (dstate/environment-list dstate)))
+    (if (pair? environment-list)
+	(receiver (car environment-list))
+	(undefined-environment))))
 
-(define (print-undefined-environment)
-  (beep)
-  (newline)
-  (write-string "There is no current environment"))
+(define (undefined-environment)
+  (debugger-failure "There is no current environment"))

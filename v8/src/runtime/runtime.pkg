@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.43 1989/08/03 23:08:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.44 1989/08/07 07:36:56 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -288,6 +288,9 @@ MIT in each case. |#
   (export ()
 	  continuation->stack-frame
 	  continuation/first-subproblem
+	  hardware-trap-frame/describe
+	  hardware-trap-frame/print-registers
+	  hardware-trap-frame/print-stack
 	  microcode-return/code->type
 	  stack-frame->continuation
 	  stack-frame-type/code
@@ -312,12 +315,9 @@ MIT in each case. |#
 	  stack-frame/skip-non-subproblems
 	  stack-frame/subproblem?
 	  stack-frame/type
-	  stack-frame?
-	  hardware-trap-frame/describe
-	  hardware-trap-frame/print-stack
-	  hardware-trap-frame/print-registers
-	  )
-  (initialization (initialize-package!)))
+	  stack-frame?)
+  (export (runtime debugger)
+	  stack-frame/compiled-code?)  (initialization (initialize-package!)))
 
 (define-package (runtime control-point)
   (files "cpoint")
@@ -366,13 +366,18 @@ MIT in each case. |#
   (parent (runtime debugger-command-loop))
   (export (runtime debugger-command-loop)
 	  debug/read-eval-print-1
+	  debugger-failure
+	  debugger-message
 	  output-to-string
+	  presentation
 	  print-user-friendly-name
 	  show-environment-bindings
 	  show-environment-name
 	  show-frame
 	  show-frames
 	  write-dbg-name)
+  (export (runtime emacs-interface)
+	  hook/presentation)
   (initialization (initialize-package!)))
 
 (define-package (runtime debugging-info)
@@ -1164,7 +1169,9 @@ MIT in each case. |#
   (files "pp")
   (parent ())
   (export ()
-	  pp)  (initialization (initialize-package!)))
+	  pp
+	  pretty-print)
+  (initialization (initialize-package!)))
 
 (define-package (runtime primitive-io)
   (files "io")

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.5 1989/08/03 23:03:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.6 1989/08/07 07:36:22 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -61,23 +61,24 @@ MIT in each case. |#
 			      (cdr command-set)))
 	      (loop (cdr command-set)))))))
 
-(define (letter-commands command-set message prompt)
+(define (letter-commands command-set message prompt state)
   (with-standard-proceed-point
    (lambda ()
      (push-cmdl letter-commands/driver
-		(cons command-set prompt)
+		(vector command-set prompt state)
 		message))))
 
 (define (letter-commands/driver cmdl)
-  (let ((command-set (car (cmdl/state cmdl)))
-	(prompt (cdr (cmdl/state cmdl))))
+  (let ((command-set (vector-ref (cmdl/state cmdl) 0))
+	(prompt (vector-ref (cmdl/state cmdl) 1))
+	(state (vector-ref (cmdl/state cmdl) 2)))
     (let loop ()
       (let ((char (char-upcase (prompt-for-command-char prompt cmdl))))
 	(with-output-to-port (cmdl/output-port cmdl)
 	  (lambda ()
 	    (let ((entry (assv char (cdr command-set))))
 	      (if entry
-		  ((cadr entry))
+		  ((cadr entry) state)
 		  (begin
 		    (beep)
 		    (newline)
@@ -86,7 +87,8 @@ MIT in each case. |#
 		    (loop)))))))))
   (cmdl-message/null))
 
-(define ((standard-help-command command-set))
+(define ((standard-help-command command-set) state)
+  state					;ignore
   (for-each (lambda (entry)
 	      (newline)
 	      (write-string "   ")
@@ -96,7 +98,9 @@ MIT in each case. |#
 	    (cdr command-set))
   unspecific)
 
-(define (standard-exit-command)  (proceed))
+(define (standard-exit-command state)
+  state					;ignore
+  (proceed))
 
 (define (initialize-package!)
   (set! hook/leaving-command-loop default/leaving-command-loop))

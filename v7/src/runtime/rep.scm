@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.10 1989/08/03 23:03:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.11 1989/08/07 07:36:52 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -564,7 +564,7 @@ MIT in each case. |#
     (let loop ()
       (newline output-port)
       (write-string prompt output-port)
-      (write-string "(y or n) " output-port)
+      (write-string " (y or n)? " output-port)
       (let ((char (char-upcase (read-char-internal input-port))))
 	(cond ((or (char=? #\Y char)
 		   (char=? #\Space char))
@@ -581,7 +581,9 @@ MIT in each case. |#
 (define (default/prompt-for-expression cmdl prompt)
   (let ((output-port (cmdl/output-port cmdl)))
     (newline output-port)
-    (write-string prompt output-port)    (read (cmdl/input-port cmdl))))
+    (write-string prompt output-port)
+    (write-string ": " output-port)
+    (read (cmdl/input-port cmdl))))
 
 (define (read-char-internal input-port)
   (let loop ()

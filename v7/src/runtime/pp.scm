@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.6 1989/02/22 07:16:34 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.7 1989/08/07 07:36:48 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -60,41 +60,47 @@ MIT in each case. |#
 (define *pp-uninterned-symbols-by-name* true)
 (define *forced-x-size* false)
 
-(define (pp object #!optional port as-code?)
+(define (pp object #!optional port . rest)
   (let ((object
 	 (or (and (integer? object)
 		  (not (negative? object))
 		  (unhash object))
 	     object))
-	(port (if (default-object? port) (current-output-port) port))
-	(as-code? (if (default-object? as-code?) false as-code?)))
-    (cond ((or (not (scode-constant? object))
-	       (compound-procedure? object))
-	   (pp-top-level port
-			 (let ((sexp (unsyntax object)))
-			   (if (and *named-lambda->define?*
-				    (pair? sexp)
-				    (eq? (car sexp) 'NAMED-LAMBDA))
-			       `(DEFINE ,@(cdr sexp))
-			       sexp))
-			 true))
-	  ((named-structure? object)
-	   (pp-top-level port object false)
+	(port (if (default-object? port) (current-output-port) port)))    (newline port)
+    (cond ((named-structure? object)
+	   (pretty-print object port)
 	   (for-each (lambda (element)
-		       (pp-top-level port element false))
+		       (newline port)
+		       (pretty-print element port))
 		     (named-structure/description object)))
+	  ((compound-procedure? object)
+	   (pretty-print (procedure-lambda object) port))
 	  (else
-	   (pp-top-level port object as-code?))))
+	   (apply pretty-print object port rest)))))
+(define (pretty-print object #!optional port as-code?)
+  (let ((port (if (default-object? port) (current-output-port) port)))
+    (if (scode-constant? object)
+	(pp-top-level object
+		      port
+		      (if (default-object? as-code?) false as-code?))
+	(pp-top-level (let ((sexp (unsyntax object)))
+			(if (and *named-lambda->define?*
+				 (pair? sexp)
+				 (eq? (car sexp) 'NAMED-LAMBDA))
+			    `(DEFINE ,@(cdr sexp))
+			    sexp))
+		      port
+		      true)))
   unspecific)
 
-(define (pp-top-level port expression as-code?)
+(define (pp-top-level expression port as-code?)
   (fluid-let
       ((x-size (get-x-size port))
        (output-port port)
        (operation/write-char (output-port/operation/write-char port))
        (operation/write-string (output-port/operation/write-string port)))
     (let ((node (numerical-walk expression)))
-      (*unparse-newline)      ((if as-code? print-node print-non-code-node) node 0 0)
+      ((if as-code? print-node print-non-code-node) node 0 0)
       (output-port/flush-output port))))
 
 (define (stepper-pp expression port p-wrapper table nc relink! sc! offset)

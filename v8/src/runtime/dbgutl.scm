@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/dbgutl.scm,v 14.7 1989/01/06 20:59:45 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/dbgutl.scm,v 14.8 1989/08/07 07:36:25 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -53,9 +53,8 @@ MIT in each case. |#
   (if (string? name) (write-string name) (write name)))
 
 (define (debug/read-eval-print-1 environment)
-  (let ((value (debug/eval (prompt-for-expression "Eval--> ") environment)))
-    (newline)
-    (write value)))
+  (debugger-message
+   (debug/eval (prompt-for-expression "Evaluate expression") environment)))
 
 (define (output-to-string length thunk)
   (let ((x (with-output-to-truncated-string length thunk)))
@@ -64,14 +63,16 @@ MIT in each case. |#
     (cdr x)))
 
 (define (show-frames environment depth)
-  (let loop ((environment environment) (depth depth))
-    (newline)
-    (write-string "----------------------------------------")
-    (show-frame environment depth true)
-    (if (environment-has-parent? environment)
-	(begin
-	  (newline)
-	  (loop (environment-parent environment) (1+ depth))))))
+  (presentation
+   (lambda ()
+     (let loop ((environment environment) (depth depth))
+       (write-string "----------------------------------------")
+       (show-frame environment depth true)
+       (if (environment-has-parent? environment)
+	   (begin
+	     (newline)
+	     (newline)
+	     (loop (environment-parent environment) (1+ depth))))))))
 
 (define (show-frame environment depth brief?)
   (show-environment-name environment)
@@ -138,3 +139,40 @@ MIT in each case. |#
 	      (output-to-string (max (- x-size (string-length s)) 0)
 		(lambda ()
 		  (write value))))))))))
+
+(define hook/debugger-failure)
+(define hook/debugger-message)
+(define hook/presentation)
+
+(define (initialize-package!)
+  (set! hook/debugger-failure default/debugger-failure)
+  (set! hook/debugger-message default/debugger-message)
+  (set! hook/presentation default/presentation)
+  unspecific)
+
+(define (debugger-failure . objects)
+  (hook/debugger-failure (message-arguments->string objects)))
+
+(define (default/debugger-failure message)
+  (beep)
+  (write-string message)
+  (newline))
+
+(define (debugger-message . objects)
+  (hook/debugger-message (message-arguments->string objects)))
+
+(define (default/debugger-message message)
+  (write-string message)
+  (newline))
+
+(define (message-arguments->string objects)
+  (apply string-append
+	 (map (lambda (x) (if (string? x) x (write-to-string x)))
+	      objects)))
+
+(define (presentation thunk)
+  (hook/presentation thunk))
+
+(define (default/presentation thunk)
+  (newline)
+  (thunk))
