@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.66 2001/05/17 04:37:30 cph Exp $
+;;; $Id: imail-file.scm,v 1.67 2001/05/23 05:05:00 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -283,7 +283,7 @@
 (define-generic revert-file-folder (folder))
 
 (define (file-folder-pathname folder)
-  (pathname-url-pathname (folder-url folder)))
+  (pathname-url-pathname (resource-locator folder)))
 
 (define-method %close-folder ((folder <file-folder>))
   (discard-file-folder-messages folder)
@@ -312,9 +312,12 @@
   (vector-ref (file-folder-messages folder) index))
 
 (define-method %append-message ((message <message>) (url <file-url>))
-  (let ((folder (get-memoized-folder url)))
+  (let ((folder (get-memoized-resource url)))
     (if folder
-	(let ((message (make-message-copy message folder)))
+	(let ((message (make-message-copy message folder))
+	      (exists?
+	       (or (file-folder-file-modification-time folder)
+		   (file-exists? (file-folder-pathname folder)))))
 	  (without-interrupts
 	   (lambda ()
 	     (set-file-folder-messages!
@@ -324,7 +327,8 @@
 		  (let ((messages (vector-grow messages (fix:+ n 1))))
 		    (attach-message! message folder n)
 		    (vector-set! messages n message)
-		    messages)))))))
+		    messages))))))
+	  (not exists?))
 	(append-message-to-file message url))))
 
 (define-generic make-message-copy (message folder))
@@ -351,7 +355,7 @@
 			 (if (message-deleted? m)
 			     (begin
 			       (detach-message! m)
-			       (folder-modified! folder 'EXPUNGE i*)
+			       (object-modified! folder 'EXPUNGE i*)
 			       (loop (fix:+ i 1) i*))
 			     (begin
 			       (set-message-index! m i*)
@@ -384,7 +388,7 @@
 (define-method folder-sync-status ((folder <file-folder>))
   (let ((sync-time (file-folder-file-modification-time folder))
 	(sync-count (file-folder-file-modification-count folder))
-	(current-count (folder-modification-count folder))
+	(current-count (object-modification-count folder))
 	(current-time (file-modification-time (file-folder-pathname folder))))
     (if (and sync-time sync-count)
 	(if current-time
@@ -413,10 +417,10 @@
 (define (synchronize-file-folder-write folder writer)
   (let ((pathname (file-folder-pathname folder)))
     (let loop ()
-      (let ((count (folder-modification-count folder)))
+      (let ((count (object-modification-count folder)))
 	(writer folder pathname)
 	(let ((t (file-modification-time pathname)))
-	  (if (and t (= count (folder-modification-count folder)))
+	  (if (and t (= count (object-modification-count folder)))
 	      (begin
 		(set-file-folder-file-modification-count! folder count)
 		(set-file-folder-file-modification-time! folder t))
@@ -441,7 +445,7 @@
 		    (set-file-folder-file-modification-time! folder t)
 		    (set-file-folder-file-modification-count!
 		     folder
-		     (folder-modification-count folder)))
+		     (object-modification-count folder)))
 		  (loop)))))))
   (set-file-folder-messages!
    folder

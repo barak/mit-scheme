@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.154 2001/05/18 20:03:09 cph Exp $
+;;; $Id: imail-imap.scm,v 1.155 2001/05/23 05:05:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -581,7 +581,7 @@
 
 ;;;; Folder datatype
 
-(define-class (<imap-folder> (constructor (url connection))) (<folder>)
+(define-class (<imap-folder> (constructor (locator connection))) (<folder>)
   (connection define accessor)
   (read-only? define standard)
   (allowed-flags define standard)
@@ -622,13 +622,13 @@
 	     (lambda ()
 	       (imap:command:select
 		connection
-		(imap-url-server-mailbox (folder-url folder)))
+		(imap-url-server-mailbox (resource-locator folder)))
 	       (set! selected? #t)
 	       unspecific)
 	     (lambda ()
 	       (if (not selected?)
 		   (set-imap-connection-folder! connection #f)))))
-	  (folder-modified! folder 'STATUS)
+	  (object-modified! folder 'STATUS)
 	  #t))))
 
 (define (new-imap-folder-uidvalidity! folder uidvalidity)
@@ -681,7 +681,7 @@
 	 (if new-length
 	     (set-imap-folder-messages! folder
 					(vector-head v new-length))))
-       (folder-modified! folder 'EXPUNGE index)))))
+       (object-modified! folder 'EXPUNGE index)))))
 
 (define (initial-messages)
   (make-vector 64 #f))
@@ -748,7 +748,7 @@
 		     (lambda (interrupt-mask)
 		       interrupt-mask
 		       (read-message-headers! folder n)))
-		   (folder-modified! folder 'INCREASE-LENGTH n count))
+		   (object-modified! folder 'INCREASE-LENGTH n count))
 		  ((= count n)
 		   (set-imap-folder-messages-synchronized?! folder #t))
 		  (else
@@ -796,7 +796,7 @@
 				     (imap-message-uid m*))
 				  (error "Message inserted into folder:" m*))
 			      (loop (fix:+ i 1) i*)))))))
-	      (folder-modified! folder 'SET-LENGTH n count)))))))
+	      (object-modified! folder 'SET-LENGTH n count)))))))
 
 ;;;; Message datatype
 
@@ -1258,8 +1258,9 @@
 		  #f))
 	       (begin
 		 (imap:command:create connection (imap-url-server-mailbox url))
-		 (thunk))))))
-    (if (let ((url* (folder-url folder)))
+		 (thunk)
+		 #t)))))
+    (if (let ((url* (resource-locator folder)))
 	  (and (imap-url? url*)
 	       (compatible-imap-urls? url url*)))
 	(begin
@@ -1306,7 +1307,7 @@
   (let ((connection (imap-folder-connection folder)))
     (maybe-close-imap-connection connection)
     (set-imap-connection-folder! connection #f))
-  (folder-modified! folder 'STATUS))
+  (object-modified! folder 'STATUS))
 
 (define-method folder-length ((folder <imap-folder>))
   (imap-folder-n-messages folder))
@@ -1663,7 +1664,7 @@
        thunk))))
 
 (define (process-responses connection command responses)
-  (with-folder-events-deferred
+  (with-modification-events-deferred
     (lambda ()
       (if (pair? responses)
 	  (if (process-response connection command (car responses))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.64 2001/05/17 04:37:42 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.65 2001/05/23 05:05:11 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -54,12 +54,12 @@
     (set-file-folder-file-modification-time! folder (get-universal-time))
     (set-file-folder-file-modification-count!
      folder
-     (folder-modification-count folder))
+     (object-modification-count folder))
     (save-folder folder)))
 
 ;;;; Folder
 
-(define-class (<rmail-folder> (constructor (url))) (<file-folder>)
+(define-class (<rmail-folder> (constructor (locator))) (<file-folder>)
   (header-fields define standard))
 
 (define-method rmail-folder-header-fields ((folder <folder>))
@@ -263,15 +263,17 @@
 
 (define-method append-message-to-file ((message <message>) (url <rmail-url>))
   (let ((pathname (pathname-url-pathname url)))
-    (if (file-exists? pathname)
-	(let ((port (open-binary-output-file pathname #t)))
-	  (write-rmail-message message port)
-	  (close-port port))
-	(call-with-binary-output-file pathname
-	  (lambda (port)
-	    (write-rmail-file-header (make-rmail-folder-header-fields '())
-				     port)
-	    (write-rmail-message message port))))))
+    (let ((exists? (file-exists? pathname)))
+      (if exists?
+	  (call-with-binary-append-file pathname
+	    (lambda (port)
+	      (write-rmail-message message port)))
+	  (call-with-binary-output-file pathname
+	    (lambda (port)
+	      (write-rmail-file-header (make-rmail-folder-header-fields '())
+				       port)
+	      (write-rmail-message message port))))
+      (not exists?))))
 
 (define (write-rmail-file-header header-fields port)
   (write-string "BABYL OPTIONS: -*- rmail -*-" port)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.242 2001/05/21 20:48:11 cph Exp $
+;;; $Id: imail-top.scm,v 1.243 2001/05/23 05:05:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -234,7 +234,7 @@ regardless of the folder type."
 	   (open-folder
 	    (if url-string
 		(imail-parse-partial-url url-string)
-		(imail-default-url #f)))))
+		(imail-primary-url #f)))))
       (let ((buffer (imail-folder->buffer folder #f)))
 	(if buffer
 	    (begin
@@ -243,7 +243,7 @@ regardless of the folder type."
 	    (begin
 	      (let ((buffer
 		     (new-buffer
-		      (url-presentation-name (folder-url folder)))))
+		      (url-presentation-name (resource-locator folder)))))
 		(associate-imail-with-buffer buffer folder #f)
 		(select-buffer buffer))
 	      (select-message folder
@@ -440,9 +440,7 @@ Instead, these commands are available:
 (define (imail-kill-buffer buffer)
   (let ((folder (selected-folder #f buffer)))
     (if folder
-	(begin
-	  (close-folder folder)
-	  (unmemoize-folder (folder-url folder)))))
+	(unmemoize-resource (resource-locator folder))))
   (notifier:set-mail-string! #f))
 
 (define-key 'imail #\a		'imail-add-flag)
@@ -829,7 +827,7 @@ With prefix argument N, removes FLAG from next N messages,
   (lambda (url-string)
     (let ((url (imail-parse-partial-url url-string)))
       (copy-folder (open-folder url)
-		   (folder-url (selected-folder))
+		   (resource-locator (selected-folder))
 		   (lambda () ((ref-command imail-get-new-mail) #f))
 		   (string-append "from " (url->string url))))))
 
@@ -917,10 +915,17 @@ With prefix argument, prompt even when point is on an attachment."
 	  (message (selected-message)))
       (let ((info (car i.m))
 	    (mark (cdr i.m)))
-	(store-property! (mime-info-body info)
-			 'WRAP?
-			 (not (get-property (mime-info-body info) 'WRAP? #t)))
+	(mime-body-wrapped! (mime-info-body info)
+			    (not (mime-body-wrapped? (mime-info-body info))))
 	(re-render-mime-entity info mark message)))))
+
+(define (mime-body-wrapped? body)
+  (get-property body 'WRAP? #t))
+
+(define (mime-body-wrapped! body value)
+  (if (eq? value #t)
+      (remove-property! body 'WRAP?)
+      (store-property! body 'WRAP? value)))
 
 (define (re-render-mime-entity info mark message)
   (let ((region (mime-entity-region mark))
@@ -1325,9 +1330,9 @@ An error if signalled if the folder already exists."
 (define-command imail-delete-folder
   "Delete a specified folder and all its messages."
   (lambda ()
-    (list (prompt-for-folder "Delete folder" #f
-			     'HISTORY 'IMAIL-DELETE-FOLDER
-			     'REQUIRE-MATCH? #t)))
+    (list (maybe-prompt-for-folder "Delete folder"
+				   'HISTORY 'IMAIL-DELETE-FOLDER
+				   'REQUIRE-MATCH? #t)))
   (lambda (url-string)
     (let ((url (imail-parse-partial-url url-string)))
       (if (prompt-for-yes-or-no?
@@ -1343,15 +1348,14 @@ May only rename a folder to a new name on the same server or file system.
 The folder's type may not be changed."
   (lambda ()
     (let ((from
-	   (prompt-for-folder "Rename folder" #f
-			      'HISTORY 'IMAIL-RENAME-FOLDER-SOURCE
-			      'HISTORY-INDEX 0
-			      'REQUIRE-MATCH? #t)))
+	   (maybe-prompt-for-folder "Rename folder"
+				    'HISTORY 'IMAIL-RENAME-FOLDER-SOURCE
+				    'HISTORY-INDEX 0
+				    'REQUIRE-MATCH? #t)))
       (list from
-	    (prompt-for-folder
-	     "Rename folder to"
-	     (url->string (url-container (imail-parse-partial-url from)))
-	     'HISTORY 'IMAIL-RENAME-FOLDER-TARGET))))
+	    (prompt-for-folder "Rename folder to"
+			       (url-container (imail-parse-partial-url from))
+			       'HISTORY 'IMAIL-RENAME-FOLDER-TARGET))))
   (lambda (from to)
     (let ((from (imail-parse-partial-url from))
 	  (to (imail-parse-partial-url to)))
@@ -1364,30 +1368,32 @@ If the target folder exists, the messages are appended to it.
 If it doesn't exist, it is created first."
   (lambda ()
     (let ((from
-	   (prompt-for-selectable-folder "Copy folder" #f
-					 'HISTORY 'IMAIL-COPY-FOLDER-SOURCE
-					 'HISTORY-INDEX 0
-					 'REQUIRE-MATCH? #t)))
+	   (maybe-prompt-for-selectable-folder
+	    "Copy folder"
+	    'HISTORY 'IMAIL-COPY-FOLDER-SOURCE
+	    'HISTORY-INDEX 0
+	    'REQUIRE-MATCH? #t)))
       (list from
 	    (prompt-for-folder
 	     "Copy messages to folder"
 	     (make-child-url
-	      (url-container
-	       (or (let ((history
-			  (prompt-history-strings 'IMAIL-COPY-FOLDER-TARGET)))
-		     (and (pair? history)
-			  (let ((url
-				 (ignore-errors
-				  (lambda ()
-				    (imail-parse-partial-url (car history))))))
-			    (and (url? url)
-				 url))))
-		   (imail-default-url #f)))
+	      (or (let ((history
+			 (prompt-history-strings 'IMAIL-COPY-FOLDER-TARGET)))
+		    (and (pair? history)
+			 (let ((url
+				(ignore-errors
+				 (lambda ()
+				   (imail-parse-partial-url (car history))))))
+			   (and (url? url)
+				(url-container url)))))
+		  (imail-default-container))
 	      (url-base-name (imail-parse-partial-url from)))
 	     'HISTORY 'IMAIL-COPY-FOLDER-TARGET))))
   (lambda (from to)
     (let ((folder (open-folder (imail-parse-partial-url from)))
 	  (to (imail-parse-partial-url to)))
+      (if (eq? (resource-locator folder) to)
+	  (editor-error "Can't copy folder to itself:" to))
       (with-open-connection to
 	(lambda ()
 	  (copy-folder folder to #f
@@ -1485,12 +1491,12 @@ With prefix argument, closes and buries only selected IMAIL folder."
   ()
   (lambda ()
     (let ((message (selected-message)))
-      (store-property! message 'RAW?
-		       (case (get-property message 'RAW? #f)
-			 ((#f) 'HEADERS-ONLY)
-			 ((HEADERS-ONLY) #f)
-			 ((BODY-ONLY) #t)
-			 (else 'BODY-ONLY)))
+      (message-raw! message
+		    (case (message-raw? message)
+		      ((#f) 'HEADERS-ONLY)
+		      ((HEADERS-ONLY) #f)
+		      ((BODY-ONLY) #t)
+		      (else 'BODY-ONLY)))
       (select-message (selected-folder) message #t))))
 
 (define-command imail-toggle-message
@@ -1498,11 +1504,19 @@ With prefix argument, closes and buries only selected IMAIL folder."
   ()
   (lambda ()
     (let ((message (selected-message)))
-      (store-property! message 'RAW?
-		       (case (get-property message 'RAW? #f)
-			 ((#f HEADERS-ONLY) #t)
-			 (else #f)))
+      (message-raw! message
+		    (case (message-raw? message)
+		      ((#f HEADERS-ONLY) #t)
+		      (else #f)))
       (select-message (selected-folder) message #t))))
+
+(define (message-raw? message)
+  (get-property message 'RAW? #f))
+
+(define (message-raw! message value)
+  (if value
+      (store-property! message 'RAW? value)
+      (remove-property! message 'RAW?)))
 
 (define-command imail-get-new-mail
   "Probe the mail server for new mail.
@@ -1522,11 +1536,11 @@ A prefix argument says to prompt for a URL and append all messages
     (if url-string
 	((ref-command imail-input-from-folder) url-string)
 	(let* ((folder (selected-folder))
-	       (count (folder-modification-count folder)))
+	       (count (object-modification-count folder)))
 	  (probe-folder folder)
 	  (cond ((navigator/first-unseen-message folder)
 		 => (lambda (unseen) (select-message folder unseen)))
-		((<= (folder-modification-count folder) count)
+		((<= (object-modification-count folder) count)
 		 (message "No changes to mail folder"))
 		((selected-message #f)
 		 (message "No unseen messages"))
@@ -1582,24 +1596,19 @@ Negative argument means search in reverse."
 
 ;;;; URLs
 
-(define (imail-default-url protocol)
-  (let ((primary-folder (ref-variable imail-primary-folder #f)))
-    (if primary-folder
-	(imail-parse-partial-url primary-folder)
-	(imail-get-default-url protocol))))
+(define (imail-primary-url protocol)
+  (let ((url-string (ref-variable imail-primary-folder #f)))
+    (if url-string
+	(imail-parse-partial-url url-string)
+	(imail-default-url protocol))))
 
 (define (imail-parse-partial-url string)
-  (parse-url-string string imail-get-default-url))
+  (parse-url-string string imail-default-url))
 
-(define (imail-get-default-url protocol)
+(define (imail-default-url protocol)
   (cond ((not protocol)
-	 (let ((folder
-		(buffer-get (chase-imail-buffer (selected-buffer))
-			    'IMAIL-FOLDER
-			    #f)))
-	   (if folder
-	       (folder-url folder)
-	       (imail-get-default-url "imap"))))
+	 (or (imail-selected-url #f)
+	     (imail-default-url "imap")))
 	((string-ci=? protocol "imap")
 	 (call-with-values
 	     (lambda ()
@@ -1620,7 +1629,56 @@ Negative argument means search in reverse."
 					  #f)))))
 	((string-ci=? protocol "file") (make-rmail-url "~/RMAIL"))
 	(else (error:bad-range-argument protocol))))
+
+(define (imail-selected-url #!optional error? mark)
+  (let ((mark
+	 (if (or (default-object? mark) (not mark))
+	     (current-point)
+	     mark)))
+    (or (let ((buffer (mark-buffer mark)))
+	  (let ((selector (buffer-get buffer 'IMAIL-URL-SELECTOR #f)))
+	    (if selector
+		(selector mark)
+		(let ((folder
+		       (buffer-get (chase-imail-buffer buffer)
+				   'IMAIL-FOLDER
+				   #f)))
+		  (and folder
+		       (resource-locator folder))))))
+	(and (if (default-object? error?) #t error?)
+	     (error "No selected URL:" mark)))))
+
+(define (set-imail-url-selector! buffer selector)
+  (buffer-put! buffer 'IMAIL-URL-SELECTOR selector))
+
+(define (imail-default-container)
+  (or (imail-browser-url #f)
+      (imail-default-url #f)))
+
+(define (imail-browser-url #!optional error? buffer)
+  (let ((buffer
+	 (if (or (default-object? buffer) (not buffer))
+	     (selected-buffer)
+	     buffer)))
+    (or (buffer-get buffer 'IMAIL-BROWSER-URL #f)
+	(and (if (default-object? error?) #t error?)
+	     (error "Buffer has no IMAIL browser URL:" buffer)))))
+
+(define (set-imail-browser-url! buffer url)
+  (buffer-put! buffer 'IMAIL-BROWSER-URL url))
 
+(define (maybe-prompt-for-folder prompt . options)
+  (or (imail-selected-url #f)
+      (apply prompt-for-folder prompt #f options)))
+
+(define (maybe-prompt-for-selectable-folder prompt . options)
+  (or (imail-selected-url #f)
+      (apply prompt-for-selectable-folder prompt #f options)))
+
+(define (maybe-prompt-for-container prompt . options)
+  (or (imail-selected-url #f)
+      (apply prompt-for-container prompt #f options)))
+
 (define (prompt-for-folder prompt default . options)
   (%prompt-for-url prompt default options
 		   (lambda (url)
@@ -1651,8 +1709,7 @@ Negative argument means search in reverse."
 	(default
 	 (cond ((string? default) default)
 	       ((url? default) (url->string default))
-	       ((not default)
-		(url->string (url-container (imail-default-url #f))))
+	       ((not default) (url->string (imail-default-container)))
 	       (else (error "Illegal default:" default)))))
     (let ((history (get-option 'HISTORY)))
       (if (null? (prompt-history-strings history))
@@ -1661,10 +1718,10 @@ Negative argument means search in reverse."
 	   prompt
 	   (if (= (or (get-option 'HISTORY-INDEX) -1) -1) default #f)
 	   (lambda (string if-unique if-not-unique if-not-found)
-	     (url-complete-string string imail-get-default-url
+	     (url-complete-string string imail-default-url
 				  if-unique if-not-unique if-not-found))
 	   (lambda (string)
-	     (url-string-completions string imail-get-default-url))
+	     (url-string-completions string imail-default-url))
 	   (lambda (string)
 	     (predicate (imail-parse-partial-url string)))
 	   'DEFAULT-TYPE 'INSERTED-DEFAULT
@@ -1867,7 +1924,7 @@ Negative argument means search in reverse."
 	  (set-buffer-point! buffer (buffer-start buffer))
 	  (buffer-not-modified! buffer)))
     (if message (message-seen message))
-    (folder-event folder 'SELECT-MESSAGE message)))
+    (signal-modification-event folder 'SELECT-MESSAGE message)))
 
 (define (selected-folder #!optional error? buffer)
   (or (buffer-get (chase-imail-buffer
@@ -1912,8 +1969,7 @@ Negative argument means search in reverse."
       (if (file-folder? folder)
 	  (directory-pathname (file-folder-pathname folder))
 	  (user-homedir-pathname)))
-     (add-event-receiver! (folder-modification-event folder)
-			  notice-folder-event)
+     (receive-modification-events folder notice-folder-event)
      (add-kill-buffer-hook buffer delete-associated-buffers)
      (add-kill-buffer-hook buffer stop-probe-folder-thread)
      (start-probe-folder-thread buffer))))
@@ -1991,7 +2047,7 @@ Negative argument means search in reverse."
 					      index)))
 				   #t))))
 	  (if (and (ref-variable imail-global-mail-notification buffer)
-		   (eq? (folder-url folder) (imail-default-url "imap")))
+		   (eq? (resource-locator folder) (imail-primary-url "imap")))
 	      (notifier:set-mail-string!
 	       (if (> (count-unseen-messages folder) 0)
 		   "[New Mail]"
@@ -2000,7 +2056,7 @@ Negative argument means search in reverse."
 
 (define (count-unseen-messages folder)
   (let ((count (get-property folder 'COUNT-UNSEEN-MESSAGES #f))
-	(mod-count (folder-modification-count folder)))
+	(mod-count (object-modification-count folder)))
     (if (and count (= (cdr count) mod-count))
 	(car count)
 	(let ((n (folder-length folder)))
@@ -2076,7 +2132,7 @@ Negative argument means search in reverse."
 ;;;; Message insertion procedures
 
 (define (insert-message message inline-only? left-margin mark)
-  (let ((raw? (get-property message 'RAW? #f)))
+  (let ((raw? (message-raw? message)))
     (insert-header-fields message (and raw? (not (eq? raw? 'BODY-ONLY))) mark)
     (cond ((and raw? (not (eq? raw? 'HEADERS-ONLY)))
 	   (insert-message-body message mark))
@@ -2483,7 +2539,7 @@ Negative argument means search in reverse."
 
 (define (call-with-auto-wrapped-output-mark mark left-margin object generator)
   (let ((auto-wrap (ref-variable imail-auto-wrap mark)))
-    (if (and auto-wrap (get-property object 'WRAP? #t))
+    (if (and auto-wrap (mime-body-wrapped? object))
 	(let ((start (mark-right-inserting-copy mark))
 	      (end (mark-left-inserting-copy mark)))
 	  (call-with-output-mark mark generator)

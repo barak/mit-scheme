@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.45 2001/05/17 04:37:55 cph Exp $
+;;; $Id: imail-umail.scm,v 1.46 2001/05/23 05:05:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -48,12 +48,12 @@
     (set-file-folder-file-modification-time! folder (get-universal-time))
     (set-file-folder-file-modification-count!
      folder
-     (folder-modification-count folder))
+     (object-modification-count folder))
     (save-folder folder)))
 
 ;;;; Folder
 
-(define-class (<umail-folder> (constructor (url))) (<file-folder>))
+(define-class (<umail-folder> (constructor (locator))) (<file-folder>))
 
 ;;;; Message
 
@@ -159,9 +159,12 @@
 	  (write-umail-message message #t port))))))
 
 (define-method append-message-to-file ((message <message>) (url <umail-url>))
-  (let ((port (open-binary-output-file (pathname-url-pathname url) #t)))
-    (write-umail-message message #t port)
-    (close-port port)))
+  (let ((pathname (pathname-url-pathname url)))
+    (let ((exists? (file-exists? pathname)))
+      (call-with-binary-append-file pathname
+	(lambda (port)
+	  (write-umail-message message #t port)))
+      (not exists?))))
 
 (define (write-umail-message message output-flags? port)
   (write-string (umail-message-from-line message) port)

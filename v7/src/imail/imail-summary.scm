@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.41 2001/05/18 01:04:02 cph Exp $
+;;; $Id: imail-summary.scm,v 1.42 2001/05/23 05:05:16 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -163,8 +163,9 @@ SUBJECT is a string of regexps separated by commas."
 		  (without-interrupts
 		   (lambda ()
 		     (add-kill-buffer-hook buffer imail-summary-detach)
-		     (add-event-receiver! (folder-modification-event folder)
-					  imail-summary-modification-event)
+		     (receive-modification-events
+		      folder
+		      imail-summary-modification-event)
 		     (buffer-put! folder-buffer 'IMAIL-SUMMARY-BUFFER buffer)
 		     (associate-buffer-with-imail-buffer folder-buffer buffer)
 		     (buffer-put! buffer 'IMAIL-NAVIGATORS
@@ -190,8 +191,9 @@ SUBJECT is a string of regexps separated by commas."
 	  (buffer-remove! folder-buffer 'IMAIL-SUMMARY-BUFFER)
 	  (let ((folder (buffer-get folder-buffer 'IMAIL-FOLDER #f)))
 	    (if folder
-		(remove-event-receiver! (folder-modification-event folder)
-					imail-summary-modification-event)))))))
+		(ignore-modification-events
+		 folder
+		 imail-summary-modification-event)))))))
 
 (define (imail-folder->summary-buffer folder error?)
   (or (let ((buffer (imail-folder->buffer folder error?)))

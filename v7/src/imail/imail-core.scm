@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.124 2001/05/17 05:05:30 cph Exp $
+;;; $Id: imail-core.scm,v 1.125 2001/05/23 05:04:57 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -23,24 +23,85 @@
 
 (declare (usual-integrations))
 
-;;;; Base object type
+;;;; Properties
 
-(define-class <imail-object> ()
-  (properties define accessor
-	      initializer make-1d-table))
+(define-class <property-mixin> ()
+  (alist define (accessor modifier)
+	 accessor object-properties
+	 modifier set-object-properties!
+	 initial-value '()))
 
 (define (get-property object key default)
-  (1d-table/get (imail-object-properties object) key default))
+  (let ((entry (assq key (object-properties object))))
+    (if entry
+	(cdr entry)
+	default)))
 
 (define (store-property! object key datum)
-  (1d-table/put! (imail-object-properties object) key datum))
+  (let ((alist (object-properties object)))
+    (let ((entry (assq key alist)))
+      (if entry
+	  (set-cdr! entry datum)
+	  (set-object-properties! object (cons (cons key datum) alist))))))
 
 (define (remove-property! object key)
-  (1d-table/remove! (imail-object-properties object) key))
+  (set-object-properties! object (del-assq! key (object-properties object))))
+
+;;;; Modification events
+
+(define-class <modification-event-mixin> ()
+  (modification-count define (accessor modifier)
+		      accessor object-modification-count
+		      modifier set-object-modification-count!
+		      initial-value 0)
+  (modification-event define accessor
+		      accessor object-modification-event
+		      initializer make-event-distributor))
+
+(define (receive-modification-events object procedure)
+  (add-event-receiver! (object-modification-event object) procedure))
+
+(define (ignore-modification-events object procedure)
+  (remove-event-receiver! (object-modification-event object) procedure))
+
+(define (object-modified! object type . parameters)
+  (without-interrupts
+   (lambda ()
+     (set-object-modification-count!
+      object
+      (+ (object-modification-count object) 1))))
+  (apply signal-modification-event object type parameters))
+
+(define (signal-modification-event object type . parameters)
+  (if *deferred-modification-events*
+      (set-cdr! *deferred-modification-events*
+		(cons (cons* object type parameters)
+		      (cdr *deferred-modification-events*)))
+      (begin
+	(if imap-trace-port
+	    (begin
+	      (write-line (cons* 'OBJECT-EVENT object type parameters)
+			  imap-trace-port)
+	      (flush-output imap-trace-port)))
+	(event-distributor/invoke! (object-modification-event object)
+				   object
+				   type
+				   parameters))))
+
+(define (with-modification-events-deferred thunk)
+  (let ((events (list 'EVENTS)))
+    (let ((v
+	   (fluid-let ((*deferred-modification-events* events))
+	     (thunk))))
+      (for-each (lambda (event) (apply signal-modification-event event))
+		(reverse! (cdr events)))
+      v)))
+
+(define *deferred-modification-events* #f)
 
 ;;;; URL type
 
-(define-class <url> (<imail-object>))
+(define-class <url> (<property-mixin>))
 (define-class <folder-url> (<url>))
 (define-class <container-url> (<url>))
 
@@ -206,7 +267,9 @@
 ;; already exists or can't be created.
 
 (define (create-folder url)
-  (%create-folder url))
+  (let ((folder (%create-folder url)))
+    (signal-modification-event (url-container url) 'CREATE-FOLDER url)
+    folder))
 
 (define-generic %create-folder (url))
 
@@ -215,11 +278,9 @@
 ;; exist or if it can't be deleted.
 
 (define (delete-folder url)
-  (let ((folder (get-memoized-folder url)))
-    (if folder
-	(close-folder folder)))
-  (unmemoize-folder url)
-  (%delete-folder url))
+  (%delete-folder url)
+  (signal-modification-event (url-container url) 'DELETE-FOLDER url)
+  (unmemoize-resource url))
 
 (define-generic %delete-folder (url))
 
@@ -231,11 +292,10 @@
 ;; another.  It only allows changing the name of an existing folder.
 
 (define (rename-folder url new-url)
-  (let ((folder (get-memoized-folder url)))
-    (if folder
-	(close-folder folder)))
-  (unmemoize-folder url)
-  (%rename-folder url new-url))
+  (%rename-folder url new-url)
+  (signal-modification-event (url-container url) 'DELETE-FOLDER url)
+  (unmemoize-resource url)
+  (signal-modification-event (url-container new-url) 'CREATE-FOLDER new-url))
 
 (define-generic %rename-folder (url new-url))
 
@@ -244,7 +304,8 @@
 ;; messages.  Unspecified result.
 
 (define (append-message message url)
-  (%append-message message url))
+  (if (%append-message message url)
+      (signal-modification-event (url-container url) 'CREATE-FOLDER url)))
 
 (define-generic %append-message (message url))
 
@@ -254,81 +315,67 @@
 
 (define-generic with-open-connection (url thunk))
 
-;;;; Folder type
+;;;; Resources
 
-(define-class <folder> (<imail-object>)
-  (url define accessor)
-  (modification-count define standard
-		      initial-value 0)
-  (modification-event define accessor
-		      initializer make-event-distributor))
+(define-class <resource> (<property-mixin> <modification-event-mixin>)
+  (locator define accessor))
 
-(define-method write-instance ((folder <folder>) port)
-  (write-instance-helper 'FOLDER folder port 
+(define-class <folder> (<resource>))
+(define-class <container> (<resource>))
+
+(define-method write-instance ((r <resource>) port)
+  (write-instance-helper (resource-type-name r) r port
     (lambda ()
       (write-char #\space port)
-      (write (url-presentation-name (folder-url folder)) port))))
+      (write (url-presentation-name (resource-locator r)) port))))
+
+(define-generic resource-type-name (resource))
+(define-method resource-type-name ((r <resource>)) r 'RESOURCE)
+(define-method resource-type-name ((r <folder>)) r 'FOLDER)
+(define-method resource-type-name ((r <container>)) r 'CONTAINER)
+
+(define (get-memoized-resource url)
+  (let ((resource (hash-table/get memoized-resources url #f)))
+    (and resource
+	 (let ((resource (weak-car resource)))
+	   ;; Delete memoization _only_ if URL-EXISTS? unambiguously
+	   ;; states non-existence.  An error is often transitory.
+	   (if (and resource (ignore-errors (lambda () (url-exists? url))))
+	       resource
+	       (begin
+		 (hash-table/remove! memoized-resources url)
+		 #f))))))
+
+(define (memoize-resource resource close)
+  (hash-table/put! memoized-resources
+		   (resource-locator resource)
+		   (weak-cons resource close))
+  resource)
+
+(define (unmemoize-resource url)
+  (let ((r.c (hash-table/get memoized-resources url #f)))
+    (if r.c
+	(let ((resource (weak-car r.c)))
+	  (if resource
+	      (begin
+		(let ((close (weak-cdr r.c)))
+		  (if close
+		      (close resource)))
+		(hash-table/remove! memoized-resources url)))))))
+
+(define (%unmemoize-resource url)
+  (hash-table/remove! memoized-resources url))
+
+(define memoized-resources
+  (make-eq-hash-table))
 
 (define (guarantee-folder folder procedure)
   (if (not (folder? folder))
       (error:wrong-type-argument folder "IMAIL folder" procedure)))
 
-(define (folder-modified! folder type . parameters)
-  (without-interrupts
-   (lambda ()
-     (set-folder-modification-count!
-      folder
-      (+ (folder-modification-count folder) 1))))
-  (apply folder-event folder type parameters))
-
-(define (folder-event folder type . parameters)
-  (if *deferred-folder-events*
-      (set-cdr! *deferred-folder-events*
-		(cons (cons* folder type parameters)
-		      (cdr *deferred-folder-events*)))
-      (begin
-	(if (and imap-trace-port (imap-folder? folder))
-	    (begin
-	      (write-line (cons* 'FOLDER-EVENT folder type parameters)
-			  imap-trace-port)
-	      (flush-output imap-trace-port)))
-	(event-distributor/invoke! (folder-modification-event folder)
-				   folder
-				   type
-				   parameters))))
-
-(define (with-folder-events-deferred thunk)
-  (let ((events (list 'EVENTS)))
-    (let ((v
-	   (fluid-let ((*deferred-folder-events* events))
-	     (thunk))))
-      (for-each (lambda (event) (apply folder-event event))
-		(reverse! (cdr events)))
-      v)))
-
-(define *deferred-folder-events* #f)
-
-(define (get-memoized-folder url)
-  (let ((folder (hash-table/get memoized-folders url #f)))
-    (and folder
-	 (let ((folder (weak-car folder)))
-	   ;; Delete memoization _only_ if URL-EXISTS? unambiguously
-	   ;; states non-existence.  An error is often transitory.
-	   (if (and folder (ignore-errors (lambda () (url-exists? url))))
-	       folder
-	       (begin
-		 (unmemoize-folder url)
-		 #f))))))
-
-(define (memoize-folder folder)
-  (hash-table/put! memoized-folders (folder-url folder) (weak-cons folder #f))
-  folder)
-
-(define (unmemoize-folder url)
-  (hash-table/remove! memoized-folders url))
-
-(define memoized-folders
-  (make-eq-hash-table))
+(define (guarantee-container container procedure)
+  (if (not (container? container))
+      (error:wrong-type-argument container "IMAIL container" procedure)))
 
 ;;;; Folder operations
 
@@ -336,8 +383,8 @@
 ;; Open the folder named URL.
 
 (define (open-folder url)
-  (or (get-memoized-folder url)
-      (memoize-folder (%open-folder url))))
+  (or (get-memoized-resource url)
+      (memoize-resource (%open-folder url) close-folder)))
 
 (define-generic %open-folder (url))
 
@@ -437,7 +484,7 @@
 
 ;;;; Message type
 
-(define-class <message> (<imail-object>)
+(define-class <message> (<property-mixin>)
   (header-fields define accessor)
   (flags define accessor)
   (folder define standard
@@ -468,7 +515,7 @@
       (modifier message flags)
       (let ((folder (message-folder message)))
 	(if folder
-	    (folder-modified! folder 'FLAGS message))))))
+	    (object-modified! folder 'FLAGS message))))))
 
 (define (message-attached? message #!optional folder)
   (let ((folder (if (default-object? folder) #f folder)))
@@ -832,7 +879,7 @@
 (define-generic mime-message-body-structure (message))
 (define-generic write-mime-message-body-part (message selector cache? port))
 
-(define-class <mime-body> (<imail-object>)
+(define-class <mime-body> (<property-mixin>)
   (parameters define accessor)
   (disposition define accessor)
   (language define accessor)
