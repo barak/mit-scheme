@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.7 2001/06/30 06:05:19 cph Exp $
+;;; $Id: matcher.scm,v 1.8 2001/07/02 05:08:16 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -50,11 +50,10 @@
 	  (lambda ()
 	    (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
 				 (cdr internal-bindings))
-			    (compile-matcher-expression
-			     expression
-			     (no-pointers)
-			     (simple-backtracking-continuation `#T)
-			     (simple-backtracking-continuation `#F)))))))))
+			    (compile-matcher-expression expression
+				(no-pointers)
+			      (simple-backtracking-continuation `#T)
+			      (simple-backtracking-continuation `#F)))))))))
 
 (define (compile-matcher-expression expression pointers if-succeed if-fail)
   (cond ((and (pair? expression)
@@ -74,7 +73,7 @@
 	 (handle-pending-backtracking pointers
 	   (lambda (pointers)
 	     `(IF (,expression ,*buffer-name*)
-		  ,(if-succeed (unknown-location pointers))
+		  ,(if-succeed (no-pointers))
 		  ,(if-fail pointers)))))
 	(else
 	 (error "Malformed matcher:" expression))))
@@ -201,7 +200,7 @@
      (HANDLE-PENDING-BACKTRACKING POINTERS
        (LAMBDA (POINTERS)
 	 `(IF ,,test-expression
-	      ,(IF-SUCCEED (UNKNOWN-LOCATION POINTERS))
+	      ,(IF-SUCCEED (NO-POINTERS))
 	      ,(IF-FAIL POINTERS))))))
 
 (define-atomic-matcher (char char)
@@ -230,13 +229,14 @@
     (lambda (pointers)
       `(LET ((,identifier ,(current-pointer pointers)))
 	 ,(compile-matcher-expression expression pointers
-				      if-succeed if-fail)))))
+	    if-succeed if-fail)))))
 
 (define-matcher (* expression)
   if-fail
   (handle-pending-backtracking pointers
     (lambda (pointers)
-      (let ((pointers (unknown-location pointers))
+      pointers
+      (let ((pointers (no-pointers))
 	    (v (generate-uninterned-symbol)))
 	`(BEGIN
 	   (LET ,v ()
@@ -247,43 +247,41 @@
 
 (define-matcher (seq . expressions)
   (with-current-pointer pointers
-    (lambda (start-pointers)
+    (lambda (start)
       (let loop
 	  ((expressions expressions)
-	   (pointers start-pointers))
+	   (pointers start))
 	(if (pair? expressions)
-	    (compile-matcher-expression (car expressions)
-					pointers
-					(lambda (pointers)
-					  (loop (cdr expressions) pointers))
-					(lambda (pointers)
-					  (if-fail
-					   (new-backtrack-pointer
-					    start-pointers pointers))))
+	    (compile-matcher-expression (car expressions) pointers
+	      (lambda (pointers)
+		(loop (cdr expressions) pointers))
+	      (lambda (pointers)
+		(if-fail (new-backtrack-pointer start pointers))))
 	    (if-succeed pointers))))))
 
 (define-matcher (alt . expressions)
-  (with-current-pointer pointers
-    (lambda (pointers)
-      (let loop ((expressions expressions))
-	(if (pair? expressions)
-	    (let ((predicate
-		   (compile-matcher-expression
-		    (car expressions)
-		    pointers
-		    (simple-backtracking-continuation '#T)
-		    (simple-backtracking-continuation '#F)))
-		  (consequent
-		   (lambda () (if-succeed (unknown-location pointers))))
-		  (alternative
-		   (lambda () (loop (cdr expressions)))))
-	      (cond ((eq? predicate '#T) (consequent))
-		    ((eq? predicate '#F) (alternative))
-		    (else `(IF ,predicate ,(consequent) ,(alternative)))))
-	    (if-fail pointers))))))
+  (cond ((not (pair? expressions))
+	 (if-fail pointers))
+	((not (pair? (cdr expressions)))
+	 (compile-matcher-expression expression pointers if-succeed if-fail))
+	(else
+	 (handle-pending-backtracking pointers
+	   (lambda (pointers)
+	     (with-current-pointer pointers
+	       (lambda (pointers)
+		 (let ((s (simple-backtracking-continuation '#T))
+		       (f (simple-backtracking-continuation '#F))))
+		 `(IF (OR ,@(map (lambda (expression)
+				   (compile-matcher-expression expression
+				       pointers
+				     s f))
+				 expressions))
+		      ,(if-succeed (no-pointers))
+		      ,(if-fail pointers)))))))))
 
 ;;; Edwin Variables:
 ;;; Eval: (scheme-indent-method 'handle-pending-backtracking 1)
 ;;; Eval: (scheme-indent-method 'define-matcher-optimizer 2)
 ;;; Eval: (scheme-indent-method 'with-buffer-name 0)
+;;; Eval: (scheme-indent-method 'compile-matcher-expression 2)
 ;;; End:

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.5 2001/06/30 03:23:45 cph Exp $
+;;; $Id: shared.scm,v 1.6 2001/07/02 05:08:22 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -100,7 +100,7 @@
   ;; wherever we potentially need a pointer reference.  But we track
   ;; usage of the pointer, so that we only generate calls to
   ;; GET-PARSER-BUFFER-POINTER when the pointer is used.
-  (if (car pointers)
+  (if (or (cdr pointers) (car pointers))
       (procedure pointers)
       (let ((v.u (cons (generate-uninterned-symbol) #f)))
 	(let ((x (procedure (cons v.u (cdr pointers)))))
@@ -110,15 +110,12 @@
 	      x)))))
 
 (define (current-pointer pointers)
-  (if (not (car pointers))
-      (error "Missing required current pointer:" pointers))
-  (set-cdr! (car pointers) #t)
-  (car (car pointers)))
-
-(define (unknown-location pointers)
-  ;; Discard the pointer to the current position, if any.  Used after
-  ;; successful matching operations that modify the buffer position.
-  (cons #f (cdr pointers)))
+  (let ((pointer
+	 (or (cdr pointers)
+	     (car pointers)
+	     (error "Missing required current pointer:" pointers))))
+    (set-cdr! pointer #t)
+    (car pointer)))
 
 (define (new-backtrack-pointer backtrack-pointers pointers)
   ;; Specify that we want to backtrack to the position specified in
@@ -127,12 +124,14 @@
   ;; delay, we can generate multiple sequential calls to change the
   ;; position, which is wasteful since only the last call in the
   ;; sequence is meaningful.
-  (cons (car pointers) (car backtrack-pointers)))
+  (cons (car pointers)
+	(if (eq? (car pointers) (car backtrack-pointers))
+	    #f
+	    (car backtrack-pointers))))
 
 (define (handle-pending-backtracking pointers procedure)
   ;; Perform a pending backtracking operation, if any.
-  (if (and (cdr pointers)
-	   (not (eq? (car pointers) (cdr pointers))))
+  (if (cdr pointers)
       (begin
 	(set-cdr! (cdr pointers) #t)
 	`(BEGIN
