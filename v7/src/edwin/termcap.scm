@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/termcap.scm,v 1.2 1992/04/22 21:11:30 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/termcap.scm,v 1.3 1992/05/28 18:38:27 jinx Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -131,8 +131,7 @@ MIT in each case. |#
   (ts-visible-bell false read-only true))
 
 (define (make-termcap-description terminal-type-name)
-  (if (or (string-ci=? terminal-type-name "ansi.sys")
-	  (string-ci=? terminal-type-name "pc-console"))
+  (if (string-ci=? terminal-type-name "ansi.sys")
       (let ((x-size (output-port/x-size console-output-port))
 	    (y-size (output-port/y-size console-output-port)))
 	(make-ansi-terminal-description x-size y-size))
