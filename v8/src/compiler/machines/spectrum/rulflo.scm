@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 1.4 1995/08/15 00:12:17 adams Exp $
+$Id: rulflo.scm,v 1.5 1996/07/22 04:45:41 adams Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -190,6 +190,13 @@ MIT in each case. |#
       (let ((base* (standard-temporary!)))
 	(LAP (LDO () (OFFSET ,offset 0 ,base) ,base*)
 	     (FLDDS () (OFFSET 0 0 ,base*) ,target)))))
+
+(define (%single-float-load/offset target base offset)
+  (if (<= -16 offset 15)
+      (LAP (FLDWS () (OFFSET ,offset 0 ,base) ,target))
+      (let ((base* (standard-temporary!)))
+	(LAP (LDO () (OFFSET ,offset 0 ,base) ,base*)
+	     (FLDWS () (OFFSET 0 0 ,base*) ,target)))))
 
 (define (%float-store/offset base offset source)
   (if (<= -16 offset 15)
@@ -460,6 +467,47 @@ MIT in each case. |#
       (LAP ,@load-arg
 	   ,@clear-regs
 	   ,@(invoke-hook hook)))))
+
+
+;; Note: the only way to move a general register into a floating point
+;; register is via memory.  Therefore we have several rules to catch
+;; the cases where the argument is coming from memory and load into
+;; the fp reg instead.
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLONUM-1-ARG FIXNUM->FLONUM (REGISTER (? source)) (? overflow?)))
+  overflow?				;ignore
+  (let ((source (standard-source! source)))
+    (let ((target (flonum-target! target)))
+      ;; Use unallocated heap as temporary storage:
+      (LAP (STW () ,source (OFFSET 4 0 ,regnum:free-pointer))
+	   (FLDWS () (OFFSET 4 0 ,regnum:free-pointer) ,target)
+	   (FCNVFX (SGL DBL) ,target ,target)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLONUM-1-ARG FIXNUM->FLONUM
+			(OFFSET (REGISTER (? base)) (REGISTER (? index)))
+			(? overflow?)))
+  overflow?				;ignore
+  (let ((base (standard-source! base))
+	(index (standard-source! index)))
+    (let ((target (flonum-target! target)))
+      (LAP (FLDWX (S) (INDEX ,index 0 ,base) ,target)
+	   (FCNVFX (SGL DBL) ,target ,target)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLONUM-1-ARG FIXNUM->FLONUM
+			(OFFSET (REGISTER (? base))
+				(MACHINE-CONSTANT (? offset)))
+			(? overflow?)))
+  overflow?				;ignore
+  (let ((base (standard-source! base)))
+    (let ((target (flonum-target! target)))
+      (LAP ,@(%single-float-load/offset target base (* 4 offset))
+	   (FCNVFX (SGL DBL) ,target ,target)))))
 
 ;; Missing operations
 
