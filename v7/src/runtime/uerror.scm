@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.6 1988/12/30 06:43:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.7 1989/03/07 01:23:04 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -55,7 +55,8 @@ MIT in each case. |#
     (vector-set! fixed-objects
 		 (fixed-objects-vector-slot 'SYSTEM-ERROR-VECTOR)
 		 (make-error-handlers))
-    ((ucode-primitive set-fixed-objects-vector!) fixed-objects)))
+    ((ucode-primitive set-fixed-objects-vector!) fixed-objects))
+  unspecific)
 
 (define (make-error-handlers)
   (let ((error-code-limit (microcode-error/code-limit)))
@@ -481,7 +482,10 @@ MIT in each case. |#
     (define-reference-trap-handler 'UNBOUND-VARIABLE
       'COMPILER-OPERATOR-LOOKUP-TRAP-RESTART)
 
-    (define-internal-apply-handler 'BAD-ASSIGNMENT 0 2
+    (define-internal-apply-handler 'BAD-ASSIGNMENT 1 2
+      (ucode-primitive environment-link-name))
+
+    (define-internal-apply-handler 'ILLEGAL-REFERENCE-TRAP 1 2
       (ucode-primitive environment-link-name))
 
     (define-standard-frame-handler 'UNASSIGNED-VARIABLE 'EVAL-ERROR
@@ -504,6 +508,9 @@ MIT in each case. |#
 
     (define-expression-frame-handler 'BAD-FRAME 'IN-PACKAGE-CONTINUE true
       in-package-environment)
+
+    (define-internal-apply-handler 'BAD-FRAME 0 2
+      (ucode-primitive environment-link-name))
 
     (define-standard-frame-handler 'BROKEN-CVARIABLE 'EVAL-ERROR
       standard-frame/variable? variable-name)
