@@ -29,9 +29,11 @@ there shall be no use of the name of the Massachusetts Institute of
 Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
-
-/* This file contains version information for the microcode */
 
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/version.h,v 5.2 1986/12/17 06:00:10 cph Exp $
+
+This file contains version information for the microcode. */
+
 /* Scheme system release version */
 
 #ifndef RELEASE
@@ -44,7 +46,7 @@ MIT in each case. */
 #define VERSION		9
 #endif
 #ifndef SUBVERSION
-#define SUBVERSION	10
+#define SUBVERSION	11
 #endif
 
 #ifndef UCODE_TABLES_FILENAME

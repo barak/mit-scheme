@@ -1,49 +1,38 @@
-/*          Hey EMACS, this is -*- C -*- code!                 */
+/* -*-C-*-
 
-/****************************************************************
-*                                                               *
-*                         Copyright (c) 1984                    *
-*               Massachusetts Institute of Technology           *
-*                                                               *
-* This material was developed by the Scheme project at the      *
-* Massachusetts Institute of Technology, Department of          *
-* Electrical Engineering and Computer Science.  Permission to   *
-* copy this software, to redistribute it, and to use it for any *
-* purpose is granted, subject to the following restrictions and *
-* understandings.                                               *
-*                                                               *
-* 1. Any copy made of this software must include this copyright *
-* notice in full.                                               *
-*                                                               *
-* 2. Users of this software agree to make their best efforts (a)*
-* to return to the MIT Scheme project any improvements or       *
-* extensions that they make, so that these may be included in   *
-* future releases; and (b) to inform MIT of noteworthy uses of  *
-* this software.                                                *
-*                                                               *
-* 3.  All materials developed as a consequence of the use of    *
-* this software shall duly acknowledge such use, in accordance  *
-* with the usual standards of acknowledging credit in academic  *
-* research.                                                     *
-*                                                               *
-* 4. MIT has made no warrantee or representation that the       *
-* operation of this software will be error-free, and MIT is     *
-* under no obligation to provide any services, by way of        *
-* maintenance, update, or otherwise.                            *
-*                                                               *
-* 5.  In conjunction with products arising from the use of this *
-* material, there shall be no use of the name of the            *
-* Massachusetts Institute of Technology nor of any adaptation   *
-* thereof in any advertising, promotional, or sales literature  *
-* without prior written consent from MIT in each case.          *
-*                                                               *
-****************************************************************/
-
-/* File: BIGNUM.C
- *
- * This file contains the procedures for handling BIGNUM Arithmetic
- *
- */
+Copyright (c) 1986 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. */
+
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 5.2 1986/12/17 05:58:31 cph Exp $
+
+This file contains the procedures for handling BIGNUM Arithmetic. */
 
 #include "scheme.h"
 #include <math.h>
@@ -138,39 +127,54 @@ Pointer Arg1;
 }
 
 /* (BIG_TO_FIX BIGNUM)
-      [Primitive number 0x68]
-      When given a bignum, returns the equivalent fixnum if there is
-      one. If BIGNUM is out of range, or isn't a bignum, returns
-      BIGNUM.
-*/
-Built_In_Primitive(Prim_Big_To_Fix, 1, "BIG->FIX")
-{ Primitive_1_Arg();
-  Arg_1_Type(TC_BIG_FIXNUM);
-  return Big_To_Fix(Arg1);
+   [Primitive number 0x68]
+   When given a bignum, returns the equivalent fixnum if there is
+   one. If BIGNUM is out of range, or isn't a bignum, returns
+   BIGNUM. */
+
+Built_In_Primitive (Prim_Big_To_Fix, 1, "BIG->FIX")
+{
+  Primitive_1_Arg ();
+
+  Arg_1_Type (TC_BIG_FIXNUM);
+  return (Big_To_Fix (Arg1));
 }
 
-Pointer Big_To_Fix(Arg1)
-Pointer Arg1;
-{ fast bigdigit *SCAN, *ARG1;
-  fast long Answer, i;
+Pointer
+Big_To_Fix (bignum)
+     Pointer bignum;
+{
+  fast bigdigit *bptr, *scan;
+  fast long result, i;
   long Length;
-  if (Type_Code(Arg1) != TC_BIG_FIXNUM) return Arg1;
-  ARG1 = BIGNUM(Get_Pointer(Arg1));
-  Length = LEN(ARG1);
-  if (Length==0) Answer = 0;
-  else if (Length > FIXNUM_LENGTH_AS_BIGNUM) return Arg1;
-  else if (Length < FIXNUM_LENGTH_AS_BIGNUM)
-    for (SCAN=Bignum_Top(ARG1), i=0, Answer=0; i< Length; i++)
-      Answer = Mul_Radix(Answer) + *SCAN--;
-  else
-    /* Length == FIXNUM_LENGTH_AS_BIGNUM */
-    for (SCAN=Bignum_Top(ARG1), i=0, Answer=0; i< Length; i++)
-    { Answer = Mul_Radix(Answer) + *SCAN--;
-      /* This takes care of signed arithmetic */
-      if ((Answer < 0) || (!(Fixnum_Fits(Answer)))) return Arg1;
-    }
-  if NEG_BIGNUM(ARG1) Answer = - Answer;
-  return Make_Non_Pointer(TC_FIXNUM, Answer);
+
+  if ((Type_Code (bignum_object)) != TC_BIG_FIXNUM)
+    return (bignum_object);
+  bptr = BIGNUM (Get_Pointer (bignum_object));
+  Length = LEN (bptr);
+  if (Length = 0)
+    return (FIXNUM_0);
+  if (Length > FIXNUM_LENGTH_AS_BIGNUM)
+    return (bignum_object);
+
+  scan = Bignum_Top (bptr);
+  result = *scan--;
+#if ((FIXNUM_LENGTH_AS_BIGNUM * SHIFT) > ULONG_SIZE)
+  /* Mask the MS digit to prevent overflow during left shift. */
+  if (Length = FIXNUM_LENGTH_AS_BIGNUM)
+    result &=
+      ((1 << ((FIXNUM_LENGTH + 1) - ((FIXNUM_LENGTH + 1) % SHIFT))) - 1);
+#endif
+  for (i = (Length - 1); (i > 0); i -= 1)
+    result = (Mul_Radix (result) + *scan--);
+  if (result < 0)
+    return (bignum_object);
+  if (NEG_BIGNUM (bptr))
+    result = (- result);
+  return
+    (Fixnum_Fits (result)
+     ? Make_Signed_Fixnum (result)
+     : bignum_object);
 }
 
 Boolean Fits_Into_Flonum(Bignum)
