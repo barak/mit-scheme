@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: coerce.scm,v 1.3 1995/03/25 16:02:55 adams Exp $
+$Id: coerce.scm,v 1.4 1995/04/29 22:26:36 adams Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -107,7 +107,7 @@ wins by about 10%.
 			arity-map)
 		      (binding-loop (cdr bindings)))
 		    (let* ((ref  (car refs))
-			   (text (coerce/reference/form ref))
+			   (text (coerce/reference/form/call ref))
 			   (len  (length (call/operands text)))
 			   (arity.refs (assv len arity-map)))
 		      (cond (arity.refs
@@ -176,7 +176,7 @@ wins by about 10%.
 		    (cond ((within? (coerce/reference/env ref)
 				    coercion-env)
 			   (coerce/rewrite-call!
-			    (coerce/reference/form ref)
+			    (coerce/reference/form/call ref)
 			    arity name*)
 			   (loop (cdr refs) (+ replaced 1) kept))
 			  (else
@@ -197,14 +197,13 @@ wins by about 10%.
 	   (CALL ',coerce-to-compiled '#F (LOOKUP ,name) ',len)))))
 
 (define (coerce/rewrite-call! call arity coerced-operator)
-  ;;(form/rewrite! (call/operator call) 
-  ;;  `(LOOKUP ,coerced-operator))
   (form/rewrite! call
     `(CALL ',%internal-apply-unchecked
 	   ,(call/continuation call)
 	   ',arity
 	   (LOOKUP ,coerced-operator)
 	   ,@(call/operands call))))
+
 
 (define-coercer LET (bindings body)
   (let* ((names   (map car bindings))
@@ -313,6 +312,27 @@ wins by about 10%.
 (define (coerce/reference/make env form) (cons form env))
 (define (coerce/reference/form ref) (car ref))
 (define (coerce/reference/env ref) (cdr ref))
+
+(define (coerce/reference/form/call ref)
+  ;; One complexity is that a call site may already have been rewritten to
+  ;; be a binding for some inner coerced procedure.  This happens at
+  ;; the call site for F in the following example:
+  ;;   (lambda (f)
+  ;;     (lambda (g)
+  ;;	   (f (lambda (x) (g (+ x 1))))))
+  ;; By the time we get to rewrite the call to F it looks like this:
+  ;;   ((lambda (g*) (f (lambda (x) (g* (+ x 1))))) <coerce-g>)
+  ;; So this code `dereferences' to the original call site
+  (define (bad)
+    (internal-error "Bad call site reference" ref))
+  (let loop ((form (coerce/reference/form ref)))
+    (cond ((not (CALL/? form))
+	   (bad))
+	  ((LOOKUP/? (call/operator form))
+	   form)
+	  ((LAMBDA/? (call/operator form))
+	   (loop (lambda/body (call/operator form))))
+	  (else (bad)))))
 
 (define-structure
     (coerce/binding
