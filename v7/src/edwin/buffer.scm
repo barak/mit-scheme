@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.140 1991/03/22 00:30:44 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.141 1991/04/12 23:16:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -61,7 +61,7 @@
   local-bindings
   initializations
   auto-save-pathname
-  auto-save-modified?
+  auto-save-state
   save-length
   backed-up?
   modification-time
@@ -107,7 +107,7 @@ The buffer is guaranteed to be deselected at that time."
 		   buffer-index:initializations
 		   (list (mode-initialization mode)))
       (vector-set! buffer buffer-index:auto-save-pathname false)
-      (vector-set! buffer buffer-index:auto-save-modified? false)
+      (set-buffer-auto-save-state! buffer 'NO-CHANGES)
       (vector-set! buffer buffer-index:save-length 0)
       (vector-set! buffer buffer-index:backed-up? false)
       (vector-set! buffer buffer-index:modification-time false)
@@ -136,7 +136,7 @@ The buffer is guaranteed to be deselected at that time."
      (vector-set! buffer buffer-index:truename false)
      (buffer-modeline-event! buffer 'BUFFER-PATHNAME)
      (vector-set! buffer buffer-index:auto-save-pathname false)
-     (vector-set! buffer buffer-index:auto-save-modified? false)
+     (set-buffer-auto-save-state! buffer 'NO-CHANGES)
      (vector-set! buffer buffer-index:save-length 0))))
 
 (define (set-buffer-name! buffer name)
@@ -158,8 +158,8 @@ The buffer is guaranteed to be deselected at that time."
 (define-integrable (set-buffer-auto-save-pathname! buffer pathname)
   (vector-set! buffer buffer-index:auto-save-pathname pathname))
 
-(define-integrable (set-buffer-auto-saved! buffer)
-  (vector-set! buffer buffer-index:auto-save-modified? false))
+(define-integrable (set-buffer-auto-save-state! buffer state)
+  (vector-set! buffer buffer-index:auto-save-state state))
 
 (define-integrable (set-buffer-save-length! buffer)
   (vector-set! buffer buffer-index:save-length (buffer-length buffer)))
@@ -167,8 +167,8 @@ The buffer is guaranteed to be deselected at that time."
 (define-integrable (set-buffer-backed-up?! buffer flag)
   (vector-set! buffer buffer-index:backed-up? flag))
 
-(define-integrable (set-buffer-modification-time! buffer flag)
-  (vector-set! buffer buffer-index:modification-time flag))
+(define-integrable (set-buffer-modification-time! buffer time)
+  (vector-set! buffer buffer-index:modification-time time))
 
 (define-integrable (set-buffer-comtabs! buffer comtabs)
   (vector-set! buffer buffer-index:comtabs comtabs))
@@ -241,35 +241,67 @@ The buffer is guaranteed to be deselected at that time."
 
 (define-integrable (reset-buffer-alist! buffer)
   (vector-set! buffer buffer-index:alist '()))
+
+(define (add-buffer-initialization! buffer thunk)
+  (without-interrupts (lambda () (%add-buffer-initialization! buffer thunk))))
+
+(define (%add-buffer-initialization! buffer thunk)
+  (if (current-buffer? buffer)
+      (thunk)
+      (vector-set! buffer
+		   buffer-index:initializations
+		   (append! (buffer-initializations buffer) (list thunk)))))
+
+(define (perform-buffer-initializations! buffer)
+  ;; Assumes that interrupts are disabled and BUFFER is selected.
+  (let loop ((thunks (buffer-initializations buffer)))
+    (if (not (null? thunks))
+	(begin
+	  ((car thunks))
+	  (loop (cdr thunks)))))
+  (vector-set! buffer buffer-index:initializations '()))
 
 ;;;; Modification Flags
 
 (define-integrable (buffer-modified? buffer)
   (group-modified? (buffer-group buffer)))
 
-(define-integrable (buffer-not-modified! buffer)
-  (set-buffer-modified! buffer false))
+(define (buffer-not-modified! buffer)
+  (without-interrupts
+   (lambda ()
+     (let ((group (buffer-group buffer)))
+       (if (group-modified? group)
+	   (begin
+	     (set-group-modified! group false)
+	     (buffer-modeline-event! buffer 'BUFFER-MODIFIED)
+	     (set-buffer-auto-save-state! buffer 'NO-CHANGES)))))))
 
-(define-integrable (buffer-modified! buffer)
-  (set-buffer-modified! buffer true))
-
-(define (set-buffer-modified! buffer sense)
-  (let ((group (buffer-group buffer)))
-    (if (not (eq? sense (group-modified? group)))
-	(begin
-	  (set-group-modified! group sense)
-	  (vector-set! buffer buffer-index:auto-save-modified? sense)
-	  (buffer-modeline-event! buffer 'BUFFER-MODIFIED)))))
+(define (buffer-modified! buffer)
+  (without-interrupts
+   (lambda ()
+     (%buffer-modified! buffer (buffer-group buffer)))))
 
 (define (buffer-modification-daemon buffer)
   (lambda (group start end)
-    ;; Open coded for speed.
     start end				;ignore
-    (if (not (group-modified? group))
-	(begin
-	  (set-group-modified! group true)
-	  (buffer-modeline-event! buffer 'BUFFER-MODIFIED)))
-    (vector-set! buffer buffer-index:auto-save-modified? true)))
+    (%buffer-modified! buffer group)))
+
+(define-integrable (%buffer-modified! buffer group)
+  (cond ((not (group-modified? group))
+	 (set-group-modified! group true)
+	 (buffer-modeline-event! buffer 'BUFFER-MODIFIED)
+	 (set-buffer-auto-save-state! buffer 'UNSAVED-CHANGES))
+	((eq? 'AUTO-SAVED (buffer-auto-save-state buffer))
+	 (set-buffer-auto-save-state! buffer 'AUTO-SAVED+CHANGES))))
+
+(define-integrable (set-buffer-auto-saved! buffer)
+  (set-buffer-auto-save-state! buffer 'AUTO-SAVED))
+
+(define-integrable (buffer-auto-save-modified? buffer)
+  (memq (buffer-auto-save-state buffer) '(UNSAVED-CHANGES AUTO-SAVED+CHANGES)))
+
+(define-integrable (buffer-auto-saved? buffer)
+  (memq (buffer-auto-save-state buffer) '(AUTO-SAVED AUTO-SAVED+CHANGES)))
 
 (define (buffer-clip-daemon buffer)
   (lambda (group start end)
@@ -299,25 +331,6 @@ The buffer is guaranteed to be deselected at that time."
 		  thunk
 		  (lambda ()
 		    (if read-only? (set-group-read-only! group))))))
-
-(define (add-buffer-initialization! buffer thunk)
-  (without-interrupts (lambda () (%add-buffer-initialization! buffer thunk))))
-
-(define (%add-buffer-initialization! buffer thunk)
-  (if (current-buffer? buffer)
-      (thunk)
-      (vector-set! buffer
-		   buffer-index:initializations
-		   (append! (buffer-initializations buffer) (list thunk)))))
-
-(define (perform-buffer-initializations! buffer)
-  ;; Assumes that interrupts are disabled and BUFFER is selected.
-  (let loop ((thunks (buffer-initializations buffer)))
-    (if (not (null? thunks))
-	(begin
-	  ((car thunks))
-	  (loop (cdr thunks)))))
-  (vector-set! buffer buffer-index:initializations '()))
 
 ;;;; Local Bindings
 
