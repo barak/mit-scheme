@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.51 2000/03/31 19:08:27 cph Exp $
+;;; $Id: vc.scm,v 1.52 2000/03/31 19:20:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -453,22 +453,12 @@ with the logmessage as change commentary.  A writable file is retained.
 merge in the changes into your working copy."
   "P"
   (lambda (revision?)
-    (if (vc-dired-buffer? (selected-buffer))
-	(let ((files
-	       (let ((files (dired-marked-files)))
-		 (if (pair? files)
-		     files
-		     (dired-next-files 1)))))
-	  (if (pair? files)
-	      (if (pair? (cdr files))
-		  (vc-start-entry
-		   #f "Enter a change comment for the marked files." #f
-		   (vc-next-action-dired (selected-buffer))
-		   #f)
-		  (vc-next-action-on-file (caar files) #t #f #f))))
-	(vc-next-action-on-file (or (buffer-pathname (selected-buffer))
-				    (vc-registration-error #f))
-				#f revision? #f))))
+    (let ((buffer (selected-buffer)))
+      (if (vc-dired-buffer? buffer)
+	  (vc-next-action-dired buffer)
+	  (vc-next-action-on-file (or (buffer-pathname buffer)
+				      (vc-registration-error #f))
+				  #f revision? #f)))))
 
 (define-command vc-register
   "Register the current file into your version-control system."
@@ -546,15 +536,42 @@ merge in the changes into your working copy."
 		      ((string=? owner (current-user-name)) (do-checkin))
 		      (else (vc-steal-lock master revision? comment owner))))))
 	(vc-register workfile revision? comment 'LOCK))))
-
+
 (define (vc-next-action-dired buffer)
-  (lambda (comment)
-    (for-each-dired-mark buffer
-      (lambda (file)
-	(let ((msg (string-append "Processing " (->namestring file) "...")))
-	  (message msg)
-	  (vc-next-action-on-file file #t #f comment)
-	  (message msg "done"))))))
+  (let ((files
+	 (let ((files (dired-marked-files buffer)))
+	   (if (pair? files)
+	       files
+	       (dired-next-files 1)))))
+    (if (pair? files)
+	(if (pair? (cdr files))
+	    (vc-start-entry
+	     #f
+	     "Enter a change comment for the marked files."
+	     (and (there-exists? files
+		    (lambda (file)
+		      (let ((master (file-vc-master file #f)))
+			(and master
+			     (if (eq? vc-type:cvs (vc-master-type master))
+				 (memq (cvs-status master)
+				       '(LOCALLY-MODIFIED
+					 LOCALLY-ADDED
+					 LOCALLY-REMOVED))
+				 (vc-backend-locking-user master #f))))))
+		  "")
+	     #f
+	     (lambda (comment)
+	       (for-each-dired-mark buffer
+		 (lambda (file)
+		   (let ((msg
+			  (string-append "Processing "
+					 (->namestring file)
+					 "...")))
+		     (message msg)
+		     (vc-next-action-on-file file #t #f comment)
+		     (message msg "done")))))
+	     #f)
+	    (vc-next-action-on-file (caar files) #t #f #f)))))
 
 (define (vc-register workfile revision? comment keep?)
   (let ((buffer (pathname->buffer workfile)))
