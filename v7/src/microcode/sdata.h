@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: sdata.h,v 9.35 2001/07/31 03:12:08 cph Exp $
+$Id: sdata.h,v 9.36 2001/08/01 02:17:31 cph Exp $
 
 Copyright (c) 1987-1989, 1999, 2001 Massachusetts Institute of Technology
 
@@ -438,20 +438,23 @@ USA.
 #define GET_TRAP_CACHE GET_TRAP_EXTENSION
 
 
-#define GET_CACHE_CELL(extension)					\
-  (MEMORY_LOC ((extension), TRAP_EXTENSION_CELL))
+#define GET_CACHE_VALUE(cache)						\
+  (MEMORY_REF ((cache), TRAP_EXTENSION_CELL))
 
-#define GET_CACHE_NAME(extension)					\
-  (MEMORY_REF ((extension), TRAP_EXTENSION_NAME))
+#define SET_CACHE_VALUE(cache, value)					\
+  MEMORY_SET ((cache), TRAP_EXTENSION_CELL, (value))
 
-#define GET_CACHE_CLONE(extension)					\
-  (MEMORY_REF ((extension), TRAP_EXTENSION_CLONE))
+#define GET_CACHE_NAME(cache)						\
+  (MEMORY_REF ((cache), TRAP_EXTENSION_NAME))
 
-#define SET_CACHE_CLONE(extension, clone)				\
-  MEMORY_SET ((extension), TRAP_EXTENSION_CLONE, (clone))
+#define GET_CACHE_CLONE(cache)						\
+  (MEMORY_REF ((cache), TRAP_EXTENSION_CLONE))
 
-#define GET_CACHE_REFERENCES(extension)					\
-  (MEMORY_REF ((extension), TRAP_EXTENSION_REFERENCES))
+#define SET_CACHE_CLONE(cache, clone)					\
+  MEMORY_SET ((cache), TRAP_EXTENSION_CLONE, (clone))
+
+#define GET_CACHE_REFERENCES(cache)					\
+  (MEMORY_REF ((cache), TRAP_EXTENSION_REFERENCES))
 
 
 #define GET_CACHE_REFERENCES_LOOKUP(references)				\
