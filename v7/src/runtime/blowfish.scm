@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: blowfish.scm,v 1.4 1999/01/02 06:11:34 cph Exp $
+$Id: blowfish.scm,v 1.5 1999/01/14 18:28:32 cph Exp $
 
 Copyright (c) 1997, 1999 Massachusetts Institute of Technology
 
@@ -70,7 +70,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (read-blowfish-file-header port)
   (if (not (string=? (read-line port) blowfish-file-header))
-      (error "Not a Blowfish file:" port)))
+      (error:bad-range-argument port 'READ-BLOWFISH-FILE-HEADER)))
 
 (define blowfish-file-header
   "Blowfish, 16 rounds")
