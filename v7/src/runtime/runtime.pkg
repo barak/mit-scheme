@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.400 2001/12/21 18:22:33 cph Exp $
+$Id: runtime.pkg,v 14.401 2001/12/21 18:37:35 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -1241,6 +1241,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (files "defstr")
   (parent (runtime))
   (export ()
+	  define-structure
 	  define-structure/keyword-parser
 	  define-structure/list-accessor
 	  define-structure/list-modifier
@@ -1250,8 +1251,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  named-structure/description
 	  named-structure?)
   (export (runtime unparser)
-	  structure-tag/unparser-method)
-  (initialization (initialize-package!)))
+	  structure-tag/unparser-method))
 
 (define-package (runtime directory)
   (parent (runtime))
@@ -3755,14 +3755,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (files "syntab")
   (parent (runtime))
   (export ()
-	  guarantee-syntax-table
-	  make-syntax-table
-	  syntax-table/define
-	  syntax-table/ref
-	  syntax-table?)
+	  syntax-table/define)
   (export (runtime syntaxer)
+	  guarantee-syntax-table
 	  syntax-table/environment
-	  syntax-table/extend))
+	  syntax-table/extend
+	  syntax-table/ref))
 
 (define-package (runtime syntaxer)
   (files "syntax")

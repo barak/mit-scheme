@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.80 2001/12/21 18:22:20 cph Exp $
+$Id: make.scm,v 14.81 2001/12/21 18:37:23 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -475,7 +475,6 @@ USA.
    (RUNTIME SYNTAXER)
    (RUNTIME ILLEGAL-DEFINITIONS)
    (RUNTIME MACROS)
-   ((RUNTIME DEFSTRUCT) INITIALIZE-DEFINE-STRUCTURE-MACRO! #t)
    (RUNTIME UNSYNTAXER)
    (RUNTIME PRETTY-PRINTER)
    (RUNTIME EXTENDED-SCODE-EVAL)

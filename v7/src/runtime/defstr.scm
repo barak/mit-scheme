@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.34 2001/12/20 06:34:28 cph Exp $
+$Id: defstr.scm,v 14.35 2001/12/21 18:37:18 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -70,12 +70,7 @@ differences:
 
 |#
 
-(define (initialize-define-structure-macro!)
-  (syntax-table/define system-global-environment
-		       'DEFINE-STRUCTURE
-		       transform/define-structure))
-
-(define transform/define-structure
+(define-syntax define-structure
   (lambda (name-and-options . slot-descriptions)
     (let ((structure
 	   (with-values

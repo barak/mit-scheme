@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.278 2001/12/19 01:43:59 cph Exp $
+$Id: edwin.pkg,v 1.279 2001/12/21 18:41:18 cph Exp $
 
 Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
@@ -107,6 +107,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  output-buffer/write-substring-block)
   (import (runtime char-syntax)
 	  char-syntax-table/entries)
+  (import (runtime)
+	  define-primitives
+	  ucode-primitive
+	  ucode-type)
   (export (edwin class-macros)
 	  class-instance-transforms)
   (export ()
@@ -122,6 +126,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-package (edwin class-macros)
   (files "clsmac")
   (parent (edwin))
+  (export (edwin window)
+	  =>
+	  define-class
+	  define-method
+	  usual=>
+	  with-instance-variables)
   (import ()
 	  (make-scode-variable make-variable)
 	  (scode-variable-name variable-name)))
@@ -148,9 +158,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (parent (edwin))
   (export (edwin)
 	  canonicalize-name
+	  command-defined?
 	  command-name->scheme-name
+	  define-command
+	  define-major-mode
+	  define-minor-mode
+	  define-variable
+	  define-variable-per-buffer
 	  edwin-syntax-table
+	  local-set-variable!
 	  mode-name->scheme-name
+	  ref-command
+	  ref-command-object
+	  ref-mode-object
+	  ref-variable
+	  ref-variable-object
+	  set-variable!
 	  variable-name->scheme-name))
 
 (define-package (edwin group-operations)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: clsmac.scm,v 1.5 2001/12/19 01:41:36 cph Exp $
+;;;$Id: clsmac.scm,v 1.6 2001/12/21 18:41:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989, 1999, 2001 Massachusetts Institute of Technology
 ;;;
@@ -29,13 +29,7 @@
 ;;; likely will not ever, be supported as a part of the Scheme system.
 ;;; ******************************************************************
 
-(define window-environment
-  (->environment '(EDWIN WINDOW)))
-
-(set-environment-syntax-table! window-environment
-			       (make-syntax-table (->environment '(EDWIN))))
-
-(syntax-table/define window-environment 'DEFINE-CLASS
+(define-syntax define-class
   (lambda (name superclass variables)
     (guarantee-symbol "Class name" name)
     (if (not (null? superclass))
@@ -50,20 +44,20 @@
 		   ,(if (null? superclass) false superclass)
 		   ',variables))))
 
-(syntax-table/define window-environment 'DEFINE-METHOD
+(define-syntax define-method
   (lambda (class bvl . body)
     (syntax-class-definition class bvl body
       (lambda (name expression)
 	(make-syntax-closure
 	 (make-method-definition class name expression))))))
 
-(syntax-table/define window-environment 'WITH-INSTANCE-VARIABLES
+(define-syntax with-instance-variables
   (lambda (class self free-names . body)
     (guarantee-symbol "Self name" self)
     (make-syntax-closure
      (syntax-class-expression class self free-names body))))
 
-(syntax-table/define window-environment '=>
+(define-syntax =>
   (lambda (object operation . arguments)
     (guarantee-symbol "Operation name" operation)
     (let ((obname (string->uninterned-symbol "object")))
@@ -72,7 +66,7 @@
 	  ,obname
 	  ,@arguments)))))
 
-(syntax-table/define window-environment 'USUAL=>
+(define-syntax usual=>
   (lambda (object operation . arguments)
     (guarantee-symbol "Operation name" operation)
     (if (not *class-name*)
