@@ -1,8 +1,0 @@
-#!/bin/sh
-
-tex user.texinfo
-texindex user.cp user.fn user.ky user.pg user.tp user.vr
-tex user.texinfo
-texindex user.cp user.fn user.ky user.pg user.tp user.vr
-tex user.texinfo
-# hopefully by now all the references have reached their correct pages
