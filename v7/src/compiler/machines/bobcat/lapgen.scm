@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.16 1988/11/04 10:23:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.17 1988/11/04 10:58:30 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -498,11 +498,16 @@ MIT in each case. |#
       (LAP (MOV L
 		(@PCR ,(constant->label constant))
 		,register-ref)
-	   ,(scheme-object->datum register-ref))))
+	   ,@(object->address register-ref))))
 
-(define (scheme-object->datum register-reference)
-  (INST (AND L ,mask-reference ,register-reference)))
+(define-integrable (object->address register-reference)
+  (LAP (AND L ,mask-reference ,register-reference)))
 
+(define-integrable (object->datum register-reference)
+  (LAP (AND L ,mask-reference ,register-reference)))
+
+(define-integrable (object->type register-reference)
+  (LAP (RO L L (& 8) ,register-reference)))
 ;;;; CHAR->ASCII rules
 
 (define (coerce->any/byte-reference register)
