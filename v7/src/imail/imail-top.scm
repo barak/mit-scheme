@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.221 2000/11/27 18:51:54 cph Exp $
+;;; $Id: imail-top.scm,v 1.222 2000/12/16 05:45:34 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1343,12 +1343,28 @@ If it doesn't exist, it is created first."
 ;;;; Miscellany
 
 (define-command imail-quit
-  "Quit out of IMAIL."
-  ()
-  (lambda ()
-    (let ((folder (selected-folder)))
-      (close-folder folder)
-      (imail-bury folder))))
+  "Quit out of IMAIL.
+Closes selected folder and buries its buffer.
+With prefix argument, closes and buries all IMAIL folders."
+  "P"
+  (lambda (quit-all?)
+    (let ((quit
+	   (lambda (folder)
+	     (close-folder folder)
+	     (imail-bury folder))))
+      (if quit-all?
+	  (for-each quit (folder-list))
+	  (quit (selected-folder))))))
+
+(define (folder-list)
+  (let loop ((buffers (buffer-list)) (folders '()))
+    (if (pair? buffers)
+	(loop (cdr buffers)
+	      (let ((folder (buffer-get (car buffers) 'IMAIL-FOLDER #f)))
+		(if folder
+		    (cons folder folders)
+		    folders)))
+	(reverse! folders))))
 
 (define-command imail-bury
   "Bury current IMAIL buffer and its summary buffer."
@@ -1384,7 +1400,7 @@ If it doesn't exist, it is created first."
 				       'REQUIRE-MATCH? #t)))
   (lambda (url-string)
     ((ref-command imail) url-string)))
-
+
 (define-command imail-save-folder
   "Save the currently selected IMAIL folder."
   ()
@@ -1413,7 +1429,7 @@ If it doesn't exist, it is created first."
 		      message
 		      #t
 		      (not (get-property message 'RAW? #f))))))
-
+
 (define-command imail-get-new-mail
   "Probe the mail server for new mail.
 Selects the first new message if any new mail.
@@ -1444,7 +1460,7 @@ A prefix argument says to prompt for a URL and append all messages
 		 => (lambda (first) (select-message folder first)))
 		(else
 		 (message "No changes to mail folder")))))))
-
+
 (define-command imail-disconnect
   "Disconnect the selected IMAIL folder from its server.
 Has no effect on non-server-based folders."
