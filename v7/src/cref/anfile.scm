@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/anfile.scm,v 1.2 1989/08/03 23:25:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/anfile.scm,v 1.3 1989/08/06 07:52:22 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -59,7 +59,8 @@ MIT in each case. |#
 	(fasdump analyzed-file output-pathname))
     analyzed-file))
 
-(define analyze/file/memoize? false)
+(define analyze/file/memoize? true)
+
 (define (compare-file-modification-times x y)
   (let ((x (file-modification-time x)))
     (and x
