@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.88 2001/07/18 05:11:09 cph Exp $
+@comment $Id: user.texinfo,v 1.89 2001/11/26 19:48:14 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -34,9 +34,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.87
-@subtitle for Scheme Release 7.5.17
-@subtitle 18 July 2001
+@subtitle Edition 1.88
+@subtitle for Scheme Release 7.6.0
+@subtitle 26 November 2001
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -93,25 +93,26 @@ appendix.
 @cindex Windows
 @cindex PC
 This document discusses many operating-system specific features of the
-MIT Scheme implementation.  In order to simplify the discussion, we use
-abbreviations to refer to some operating systems.  When the text uses
-the term @dfn{unix}, this means any of the unix systems that we support,
-including GNU/Linux, *BSD, HP-UX, Ultrix, NeXT, and SunOS.  The term
-@dfn{OS/2} means the IBM OS/2 operating system, version 2.1 or later.
-We use the term @dfn{Windows} to collectively refer to the Microsoft
-Windows operating systems: Windows 95, Windows 98, and Windows NT.  We
-use the term @dfn{PC} to refer to any computer running OS/2 or Windows.
-Thus we consider a PC to be a system with a @sc{dos}-like file system,
-using backslashes for directory separators, drive letters, @sc{cr-lf}
-line termination, and (potentially) the hideous 8.3 short filenames.
+MIT Scheme implementation.  In order to simplify the discussion, we
+use abbreviations to refer to some operating systems.  When the text
+uses the term @dfn{unix}, this means any of the unix systems that we
+support, including GNU/Linux, *BSD, HP-UX, Ultrix, NeXT, and SunOS.
+The term @dfn{OS/2} means the IBM OS/2 operating system, version 2.1
+or later.  We use the term @dfn{Windows} to collectively refer to the
+Microsoft Windows 32-bit operating systems: Windows 95, Windows 98,
+Windows ME, Windows NT, Windows 2000, and Windows XP.  We use the term
+@dfn{PC} to refer to any computer running OS/2 or Windows.  Thus we
+consider a PC to be a system with a @sc{dos}-like file system, using
+backslashes for directory separators, drive letters, @sc{cr-lf} line
+termination, and (potentially) the hideous 8.3 short filenames.
 
 @cindex Web site
 @cindex FTP site
 The primary distribution site for this software is
 
 @example
-@uref{http://www.swiss.ai.mit.edu/ftpdir/scheme-7.5/}
-@uref{ftp://ftp.swiss.ai.mit.edu/pub/scheme-7.5/}
+@uref{http://www.swiss.ai.mit.edu/projects/scheme/}
+@uref{ftp://ftp.swiss.ai.mit.edu/pub/mit-scheme/}
 @end example
 
 @noindent
@@ -129,7 +130,7 @@ system you are using.
 @node Installation, Running Scheme, Introduction, Top
 @chapter Installation
 
-This chapter describes how to install MIT Scheme release 7.5.  The
+This chapter describes how to install MIT Scheme release 7.6.  The
 release is supported under several different operating systems: unix,
 OS/2, and Windows.  Read the section detailing the installation for the
 operating system that you are using.
@@ -169,7 +170,7 @@ To install the software in @file{/usr/local}, do the following
 cd /usr/local
 rm -f bin/scheme bin/bchscheme
 rm -rf lib/mit-scheme
-gzip -cd scheme-7.5.17-ix86-gnu-linux.tar.gz | tar xvf -
+gzip -cd scheme-7.6.0-ix86-gnu-linux.tar.gz | tar xvf -
 @end group
 @end example
 
@@ -187,7 +188,7 @@ First unpack the distribution:
 @example
 mkdir temp
 cd temp
-gzip -cd scheme-7.5.17-ix86-gnu-linux.tar.gz | tar xvf -
+gzip -cd scheme-7.6.0-ix86-gnu-linux.tar.gz | tar xvf -
 @end example
 
 @item
@@ -239,9 +240,10 @@ more information.
 @node Windows Installation, OS/2 Installation, Unix Installation, Installation
 @section Windows Installation
 
-This section describes how to install MIT Scheme on Windows 95, Windows
-98, or Windows NT 4.0.  The software should also work on older versions
-of Windows NT, but we haven't tested it there.
+This section describes how to install MIT Scheme on Windows 95,
+Windows 98, Windows Me, Windows NT 4.0, Windows 2000, or Windows XP.
+The software should also work on older versions of Windows NT, but we
+haven't tested it there.
 
 MIT Scheme is distributed as a self-installing executable.  Installation
 of the software is straightforward.  Simply execute the downloaded file
@@ -250,7 +252,7 @@ choose the directory in which MIT Scheme is to be installed, and the
 name of the folder in which the shortcuts are to be placed.
 
 To uninstall the software, open up the @samp{Control Panel}, run
-@samp{Add/Remove Programs}, and double-click on @samp{MIT Scheme 7.5}.
+@samp{Add/Remove Programs}, and double-click on @samp{MIT Scheme 7.6}.
 
 @node OS/2 Installation, Optional Configuration, Windows Installation, Installation
 @section OS/2 Installation
@@ -515,22 +517,23 @@ environment variables.
 @node Basics of Starting Scheme, Customizing Scheme, Running Scheme, Running Scheme
 @section Basics of Starting Scheme
 
-Usually, MIT Scheme is invoked by typing
+Under unix and OS/2, MIT Scheme is invoked by typing
 
 @example
 scheme
 @end example
 
 @noindent
-at your operating system's command interpreter.  Scheme will load
-itself, clear the screen, and print something like this:
+at your operating system's command interpreter.  Under Windows, MIT
+Scheme is invoked by double-clicking on a shortcut.  In either case,
+Scheme will load itself and print something like this:
 
 @example
 @group
-Scheme saved on Wednesday July 18, 2001 at 12:50:28 AM
-  Release 7.5.17
-  Microcode 14.4
-  Runtime 14.189
+Scheme saved on Monday November 26, 2001 at 2:38:09 PM
+  Release 7.6.0
+  Microcode 14.5
+  Runtime 14.192
 @end group
 @end example
 
@@ -1293,10 +1296,10 @@ These environment variables are referred to by the runtime system.
 @item @code{HOME}
 @findex HOME
 Directory in which to look for init files.  E.g.@: @file{c:\users\joe}
-or @file{/home/joe}.  This variable needs to be set on OS/2 and Windows
-9x.  Under Windows NT, the environment variables @code{HOMEDRIVE} and
-@code{HOMEPATH}, set by the operating system, are used instead.  Under
-unix, @code{HOME} is set by the login shell.
+or @file{/home/joe}.  This variable needs to be set on OS/2 and
+Windows 9x.  Under Windows NT/2000/XP, the environment variables
+@code{HOMEDRIVE} and @code{HOMEPATH}, set by the operating system, are
+used instead.  Under unix, @code{HOME} is set by the login shell.
 
 @item @code{TMPDIR}
 @itemx @code{TEMP}
@@ -1491,20 +1494,20 @@ this to determine the user's shell if the environment variable
 @section Starting Scheme from Microsoft Windows
 
 The Microsoft Windows version of MIT Scheme runs as a graphics-based
-application.  Scheme can be started from the command line as described
-at the beginning of this chapter.
+application.  Scheme is normally started using shortcuts; the
+installer automatically generates several different predefined
+shortcuts for your convenience.
 
-Shortcuts are a convenient way to start Scheme.  The rest of this
-section gives some tips on how to set up shortcuts that run Scheme.  If
-you are unfamiliar with this concept you should read about it in the
-system help.
+The rest of this section gives some tips on how to set up shortcuts
+that run Scheme.  If you are unfamiliar with this concept you should
+read about it in the system help.
 
 @itemize @bullet
 @item
-Under Windows NT shortcuts can be @emph{common} or @emph{personal}.
-When setting common shortcuts it is important to make the shortcut
-properties independent of the vagaries of the environment of the user
-who is running them.
+Under Windows NT, Windows 2000, or Windows XP, shortcuts can be
+@emph{common} or @emph{personal}.  When setting common shortcuts it is
+important to make the shortcut properties independent of the vagaries
+of the environment of the user who is running them.
 
 @item
 Give the shortcut an accurate @var{Description}.
@@ -1520,10 +1523,10 @@ variable.
 
 @item
 Set the shortcut's @var{Working Directory} to something sensible.  On
-Windows NT you can use @samp{%HOMEDRIVE%%HOMEPATH%} to make Scheme start
-up in the user's home directory.  On Windows 9x you can use
-@samp{%HOME%} to achieve the same effect, provided that you have set the
-@code{HOME} environment variable as we recommend.
+Windows NT/2000/XP you can use @samp{%HOMEDRIVE%%HOMEPATH%} to make
+Scheme start up in the user's home directory.  On Windows 9x/ME you can
+use @samp{%HOME%} to achieve the same effect, provided that you have
+set the @code{HOME} environment variable as we recommend.
 
 @item
 There are several icons available in the Scheme executable --- choose
@@ -4688,608 +4691,130 @@ state that prevents Edwin from running.
 @node Release Notes, GNU Free Documentation License, Edwin, Top
 @appendix Release Notes
 
-The previous full release of MIT Scheme was version 7.4.7 in 1998.  This
-section describes major changes that have occurred since that time.  For
-more detailed information, see the @file{RCS.log} files in the source
-code.
+The previous full release of MIT Scheme was version 7.5.17.  This
+section describes changes that have occurred since that time.  For
+more detailed information, see the @file{ChangeLog} files in the
+source code.
 
 Note that MIT Scheme still conforms to the @cite{Revised^4 Report on the
 Algorithmic Language Scheme}, but not to the @cite{Revised^5 Report on
 The Algorithmic Language Scheme}.
 
-@menu
-* Recent Changes::              
-* Overall Changes::             
-* Base System Changes::         
-* Edwin Changes::               
-* Changes to the Windows Port::  
-@end menu
-
-@node Recent Changes, Overall Changes, Release Notes, Release Notes
-@section Recent Changes
-
-These are the changes since release 7.5.0:
-
 @itemize @bullet
 @item
-Release 7.5.17 includes enhancements to @acronym{IMAIL} and many bug
-fixes.  @acronym{IMAIL} now has a Dired-like browser for folders; the
-@samp{rmail:} and @samp{umail:} folder types have been retired in favor
-of a more uniform @samp{file:} type; and some problems using
-@acronym{IMAIL} with Microsoft Exchange have been fixed.  Many people
-experienced trouble trying to compile release 7.5.16 from source code; a
-number of bugs have been fixed and this release should now build cleanly
-on most unix systems.  Finally, the representation of character-set
-objects has been changed; unfortunately this requires recompiling any
-code that refers to the procedures
-@code{substring-find-next-char-in-set} or
-@code{substring-find-previous-char-in-set}.
+The variable-reference machinery has been completely redesigned.  The
+new design provides two new features: (1) a procedure
+@code{link-variables} that can link two variable bindings with
+different names (previously @code{environment-link-name} could only
+link bindings with the same name); (2) a new procedure
+@code{unbind-variable} that can remove a variable binding.  Both of
+these operations work only on ``top-level'' environments; they don't
+work on environments created by invoking compiled procedures.
 
-@item
-Release 7.5.16 fixes two limitations in email support.  First, the
-mail-sending interface has been reworked to generate the formatted
-message to a temporary file rather than a buffer.  This allows sending
-very large attachments.  Second, @acronym{IMAIL}'s handling of
-file-based folders has been reworked to store a copy of the file in an
-"external string" The in-heap data structures no longer contain excerpts
-from the file, but instead keep indexes into the file and extract the
-excerpts on demand.  This allows reading very large mail files with
-reasonably-sized heaps (however it does require enough virtual memory to
-hold an image of the file).  The actual in-heap storage is quite small,
-approximately 100 bytes per message.
-
-@item
-Release 7.5.15 has no user-visible changes.  The crypto code in the
-system has been re-engineered so that it can be dynamically loaded on
-GNU/Linux systems, thus avoiding a direct dependence on crypto
-libraries.  This allows Scheme to be used without crypto libraries
-(except for the crypto support, of course).
-
-@item
-Release 7.5.14 has changed the way that the crypto libraries are
-handled.  We now support OpenSSL and mcrypt in addition to mhash and the
-older, more custom libraries we were using.  Additional bug fixes:
-transcript files now record output as they are supposed to; Edwin Info
-mode doesn't complain if Scheme's private Info directory is missing;
-termcap support has been reworked to eliminate compilation errors on Red
-Hat 7.0.
-
-@item
-Release 7.5.13 finishes the source-tree reorganization; this software is
-now packaged for Debian.  A fatal bug in the bchscheme garbage collector
-has been fixed.  X graphics procedures now accept any coordinate
-argument that satisfies the @code{real?} predicate; previously it did
-not accept exact rational numbers or complex numbers with inexact
-imaginary zero.  Quite a few bugs have been fixed in @acronym{IMAIL},
-including some changes needed to interact properly with @acronym{UW}
-@acronym{IMAP}.  @acronym{IMAIL}'s user interface has been tweaked a
-bit.  Edwin now has a @code{debian-changelog} mode.
-
-@item
-Release 7.5.12 is a complete reorganization of the source tree to use
-modern configuration techniques based on Autoconf.  The purpose of this
-reorganization is to simplify maintenance, porting, and the generation
-of binary packages (e.g. Debian @samp{.deb} packages).  The C code has
-been extensively modified to support this, and a lot of general cleanup
-has been done.  There should be no user-visible changes due to the
-reorganization, aside from the usual crop of bug fixes.
-
-@item
-Release 7.5.11 includes unencumbered support for Blowfish encryption,
-reflecting recent changes to @acronym{US} export controls.  More bug
-fixes, including a fatal bug in the @code{purify} procedure when running
-@code{bchscheme}, which has been around for many years and never noticed.
-
-@item
-Release 7.5.10 fixes numerous bugs, and offers significant speed
-improvements to the basic operation of @acronym{IMAIL}.  This release
-also provides a shell script to build the system from source code (works
-on GNU/Linux and FreeBSD systems only).
-
-@item
-Release 7.5.9 adds the @acronym{IMAIL} mail reader; @acronym{IMAIL} is a
-new Rmail-like mail reader that supports @acronym{IMAP} and
-@acronym{MIME}.  Edwin's mail-sending support has also been enhanced to
-understand @acronym{MIME}, so that it is now possible to send
-@acronym{MIME} attachments.  Numerous changes to the runtime system and
-to Edwin have been made to support these changes.
-
-Additional changes:
-
-@itemize @bullet
-@item
-Edwin now has rudimentary support for a mouse wheel.
-
-@item
-Edwin buffer-menu now does better job aligning its columns.
-
-@item
-In Edwin, @kbd{M-x vc-version-other-window} now defaults the version if
-unspecified.
-
-@item
-@code{string->decoded-time} (and consequently other procedures that
-convert @acronym{RFC-822} time strings) now accepts two-digit years,
-pivoting around 1970.  This is a crock, but we have seen recent email
-messages utilizing such strings.
-
-@item
-New procedure @code{set-string-maximum-length!}.
-@end itemize
-
-@item
-Release 7.5.8 fixes a nasty uninitialized-memory bug in the Win32
-event-handling code.  No other system is affected.
-
-@item
-Release 7.5.7 changes: add support for the mhash library under
-GNU/Linux; fix bug in international keyboard support under Windows
-(thanks to Jacques Herry); beep now works properly in Edwin under
-Windows 9x; fix a fatal Edwin bug triggered by deleting a continued line
-at the top of the window; fix assorted bugs in Edwin's VC mode.
-
-@item
-Release 7.5.6 has a number of changes mostly having to do with
-@acronym{CVS}: sources converted from @acronym{RCS} to @acronym{CVS};
-change logs converted to GNU ChangeLog format; @acronym{VC}
-now supports @acronym{CVS}; @acronym{VC} program logic cleaned up;
-several bugs fixed in abbrev support; new procedures convert times
-to/from @acronym{ISO} C @code{ctime()} format.
-
-@item
-Release 7.5.5 changes the implementation of @code{sort} (and
-@code{merge-sort}) when applied to lists: previously this procedure was
-recursive to a depth of half the length of the list being sorted; the
-new implementation recurses only to a depth of lg(N).  Additionally,
-this release provides new procedures @code{flo:<=}, @code{flo:>=},
-@code{flo:max} and @code{flo:min}.
-
-@item
-Release 7.5.4 fixes some bugs in the @acronym{SOS} object instantiation
-code (reported by Joe Marshall).  It also includes several improvements
-to Edwin: implementation of abbrevs; implementation of adaptive fill;
-change incremental search to terminate on @key{RET} rather than
-@key{ESC}; show mode-specific key bindings in @kbd{C-h m}.
-
-@item
-Release 7.5.3 fixes problems in the Windows port that caused errors when
-trying to read gzipped Info files.  This release also fixes a bug that
-prevented the code from compiling properly when using egcs or GCC 2.95.x
-under GNU/Linux.
-
-@item
-Release 7.5.2 adds support for FreeBSD; no other system is affected.
-The code for GNU/Linux has been re-compiled but should otherwise be
-unchanged.
-
-@item
-Release 7.5.1 fixes some bugs in Edwin Rmail and in how Edwin displays
-characters with codes between @code{#x80} and @code{#xA0}.
-@end itemize
-
-@node Overall Changes, Base System Changes, Recent Changes, Release Notes
-@section Overall Changes
-
-The following changes affect the entire system:
-
-@itemize @bullet
-
-@item
-MIT Scheme has been re-released under the GNU General Public License.
-
-@item
-With this release we no longer support Windows 3.1 or any form of
-@acronym{DOS}.  The only supported Microsoft operating systems are
-Windows 95, Windows 98, and Windows NT.  We have tested on Windows 95,
-Windows 98, and Windows NT 4.0.
-
-@item
-Although there have been no significant changes to the compiler, there
-have been some low-level representation changes to records and
-structures that make compiled code in this release incompatible with
-that from the previous release.
-
-@item
-@acronym{SOS} object-oriented programming extensions are now included in
-the base release.  They are not loaded by default; evaluate
-@code{(load-option 'sos)} to load them.
-
-@item
-The documentation has been overhauled.  The Reference Manual has
-sections describing both new facilities and also some older facilities
-that were never properly documented.  The User's Manual has new material
-in the Installation, Debugging, and Edwin chapters, and has been revised
-throughout.
-
-@end itemize
-
-@node Base System Changes, Edwin Changes, Overall Changes, Release Notes
-@section Base System Changes
-
-These are the major changes to the base system:
-
-@itemize @bullet
-
-@item
-Command-line options:
-
-@itemize @bullet
-@item
-The @code{-compiler} and @code{-edwin} command-line options can now be
-specified together, meaning that a band containing both compiler and
-Edwin support should be loaded.
-
-@item
-The heap-sizing code now automatically defaults the @code{-constant}
-command-line option to the correct size for the band being loaded, and
-adds the heap used by the band to the requested heap size.  In
-consequence, it should rarely be necessary to specify @code{-constant}.
-An additional benefit is that the @code{-heap} command-line option now
-specifies exactly how much heap space is available when Scheme is
-started; previously the available amount was less than the specified
-amount due to the band's heap usage.
-
-@item
-Command-line arguments can now be defined by user code.
-@end itemize
-
-@item
-Numeric input/output:
-
-@itemize @bullet
-@item
-Several changes to the number reader and printer have resulted in
-greatly improved performance, particularly for floating-point numbers.
-
-@item
-The variable @code{flonum-unparser-cutoff} can now specify the format in
-which the numbers are to be printed, e.g.@: @code{scientific} or
-@code{engineering}.
-
-@item
-The parser now treats @code{*parser-radix*} differently: if it is set to
-a value other than @code{10} and the parser encounters radix-10 syntax
-(e.g.@: a decimal point), an error is signalled.
-@end itemize
-
-@item
-Strings and characters:
-
-@itemize @bullet
-@item
-Regular-expression match and search are now available for strings.
-
-@item
-String search procedures are now implemented, using Boyer-Moore search
-when appropriate.
-
-@item
-Characters now have 16 bits of character code (instead of 7) to allow
-8-bit ISO latin and Unicode characters.  Strings are still based on
-8-bit characters.
-@end itemize
-
-@item
-Ports:
-
-@itemize @bullet
-@item
-The @code{fresh-line} operation is now supported by all common port
-types.
-
-@item
-@code{close-input-port} and @code{close-output-port} now close
-only one side of a bidirectional port; previously they closed both
-sides.
+@strong{This is an incompatible change to the compiled-code
+representation.  All programs must be recompiled.}
 
 @item
-The following port operations have been eliminated:
-@code{write-string}, @code{read-chars}, and @code{write-chars}.
+The ``packaging'' subsystem has been redesigned to make it more
+flexible.  The new design takes advantage of the improved
+variable-linking mechanism to allow packages to export bindings using
+names different from their internal names.  Also, each package now
+maintains an in-memory data structure that should (in principal) allow
+it to be uninstalled or reinstalled.  This subsystem is still
+evolving; expect further changes in the future.
 
-@item
-The low-level port data abstraction has been overhauled.  The new design
-has @dfn{port types} that implement the operations for the port, and are
-shared between all ports of a given type.
-@end itemize
-
-@item
-Operating-system interface:
-
-@itemize @bullet
-@item
-Synchronous subprocesses can now be run from Scheme code.
-
-@item
-Date and time support has been fleshed out and now provides a rich set
-of representations and conversions.  Unfortunately, this support depends
-on underlying support of the C library, which is sometimes of low
-quality.
-
-@item
-A bug in socket support has been fixed: port numbers are now specified
-normally and automatically translated to network order.  Previously it
-was necessary to translate them to network order by hand.
-
-@item
-@code{open-tcp-stream-socket} and @code{open-unix-stream-socket} now
-return one @acronym{I/O} port rather than an input port and an output
-port.  @acronym{TCP} sockets now use @code{"\r\n"} end-of-line marker
-regardless of the operating system.
-
-@item
-Under Linux, Scheme now detects various foreign filesystems such as
-@code{msdos}, @code{vfat}, @code{ntfs}, and @code{hpfs}, and sets the
-default line translation for files on those systems to @code{"\r\n"}.
-@end itemize
-
-@item
-Red-black trees now support operations to read or delete the minimum or
-maximum element of a tree.
-
-@item
-Both @code{merge-sort} and @code{quick-sort} are now available.  As
-before, @code{sort} defaults to @code{merge-sort}.
-
-@item
-Pathname objects can now be written (using @code{fasdump}) on one
-operating system and read (using @code{fasload}) on another.  Previously
-this didn't work between unlike operating systems, such as Windows and
-unix, because Scheme only loaded the pathname support for the operating
-system it was running on.  Now support for all operating systems is
-loaded, no matter what system is being used.
-
-@item
-Numerous fixes to stream code, eliminating premature dereferencing of
-streams, and dropping pointers to streams as soon as possible.
-
-@item
-Transcripts (i.e.@: @code{transcript-on}) are now local to a particular
-@acronym{REPL}.  This is usually relevant only when using Edwin, where
-there can be several @acronym{REPL} buffers.  Previously transcripts
-only recorded activity on the Scheme console, and ignored any other
-@acronym{REPL}s, including Edwin @acronym{REPL} buffers.
-
-@item
-@code{bkpt} is no longer a macro.  Instead, it extracts an environment
-from the continuation it is called with, by looking at the innermost
-stack frame.  In order for this to work properly, it must not be called
-in a tail-recursive position.  Calling it in a tail-recursive position
-will not generate any errors, but will cause the breakpoint to be
-visiting the wrong environment.
-
-@item
-Under X11, the BackSpace keysym is treated as Delete, as long as
-BackSpace is bound to @acronym{ASCII} backspace.
-
-@item
-The @file{hppacach} program knows how to find kernel files for HP-UX
-10.x and later.
-
-@item
-OS/2:
-
-@itemize @bullet
-@item
-Under OS/2, the default font for the Scheme console window has been
-changed to @code{"8.Courier"}.
-
-@item
-More sophisticated heuristics are used to discover the user's home
-directory on OS/2 systems.
-
-@item
-Under OS/2 Warp 4.0, Scheme now reports the operating-system version
-correctly.
-@end itemize
-
-@item
-A new undocumented generic-procedure dispatch mechanism and its
-associated tagged data structures provides a high-performance substrate
-for building @acronym{CLOS}-like object-oriented programming systems.
-This mechanism has been fully integrated into the existing record and
-@code{defstruct} code.  The @acronym{SOS} system (which @emph{is}
-documented) has been added as a load option to allow writing
-object-oriented code.
-
-@item
-Undocumented interfaces now provide support for @code{gdbm},
-@acronym{MD5} checksums, and blowfish encryption.  The blowfish
-encryption is disabled by default, but we may later distribute a key to
-enable it.
-
-@end itemize
-
-@node Edwin Changes, Changes to the Windows Port, Base System Changes, Release Notes
-@section Edwin Changes
-
-These changes affect only Edwin:
-
-@itemize @bullet
+This subsystem is now included in the released binaries; it can be
+loaded by @samp{(load-option 'cref)}.
 
 @item
-The following are new language modes: @acronym{HTML}, Java,
-@acronym{PHP}, Verilog, @acronym{VHDL}.  Some of these modes are pretty
-sketchy, consisting of little more than syntax and indentation -- they
-are not to be confused with the more powerful modes provided by Emacs.
+Compiled-code debugging information is now keyed to prevent using the
+wrong debugging info when examining compiled code.  This means that
+in-memory data structures have an identifying key that is matched
+against a corresponding key in the debugging-info file.  The debugging
+info is used only when the keys match.
 
 @item
-Edwin can read and write files compressed with @code{bzip2},
-@code{gzip}, or @code{compress}.  It can also read and write files
-encrypted with blowfish (but this is currently disabled due to export
-restrictions).
+MIT Scheme now has a non-validating @acronym{XML} parser that is
+mostly conformant (except that it doesn't support @acronym{UTF-16}).
 
 @item
-On PC systems, compressed files, encrypted files, and Rmail files
-do not have line translation; they are stored in Scheme's native format
-(i.e.@: with newlines as line terminators).
+There is very limited support for @acronym{UTF-8}.  At present this is
+only used by the @acronym{XML} parser.
 
 @item
-Edwin now indirects through symbolic links to find the true file being
-edited, and backup files go in the directory of the true file rather
-than the link.
+All string and character procedures now operate on
+@acronym{ISO-8859-1} rather than @acronym{US-ASCII} as the base
+character set.  This isn't real internationalization support, but at
+least it broadens the character support slightly.  This involved
+changing a number of procedures that were formerly written in C and
+are now written in Scheme, which may have a performance impact on some
+uses.
 
 @item
-Commands that read arguments from the minibuffer now have prompt
-histories, which can be accessed by using @kbd{M-p} and @kbd{M-n}.
+The procedure @code{length} now detects circularities in its argument
+and signals an error.
 
 @item
-The command @code{eval-expression} is now bound to @kbd{M-:} for
-compatibility with newer versions of Emacs.
+A new @code{rexp} facility provides a more readable syntax for
+specifying regular expressions.  This syntax can be compiled into the
+usual syntax.
 
 @item
-A new command @code{insert-filename}, bound to @kbd{C-c C-i}, prompts
-for a filename in the minibuffer, then inserts it at point.  The
-formatting of the filename is controlled by the variable
-@code{insert-filename-format}, which by default uses Scheme string
-format.
+There is a new @dfn{parser buffer} abstraction that supports the
+building of parsers with backtracking.  An associated high-level
+parser description language allows parsers to be described in a
+@acronym{BNF}-like language that is compiled into efficient Scheme
+code.
 
 @item
-Shell buffers now implement command completion.  This is overloaded onto
-the filename-completion command @kbd{C-M-i} just as in Emacs.
+A new procedure @code{flo:finite?} returns @samp{#f} for infinite or
+@samp{NaN} flonums and @samp{#t} for all others.
 
 @item
-A new command-line option @code{-edit} causes the editor to start up
-when Scheme is started.
+The signal-handling code for GNU/Linux systems has been changed to
+take advantage of additional information identifying the types of
+arithmetic exceptions.  This allows more accurate error messages to
+be generated.
 
 @item
-A new command @code{inferior-repl-flush-output}, bound to @kbd{C-c C-o},
-deletes output from the previous command.  This works similarly to the
-corresponding command in shell buffers.
+The following procedure names were changed:
 
-@item
-Errors in the @acronym{REPL} buffer now prompt in the @acronym{REPL}
-buffer itself, rather than in the minibuffer as previously.  The new
-prompts are less intrusive.
-
-@item
-The evaluation commands now permit the evaluation environment to be set
-to the name of a package, and use the package's environment if
-available.  If the package's environment is unavailable, or if the
-package doesn't exist, the global environment is used instead.
-
-@item
-The command @code{repl} now treats its argument differently, simplifying
-the creation of multiple inferior @acronym{REPL} buffers.  A new command
-@code{set-inferior-repl-buffer} associates a Scheme buffer with an
-arbitrary inferior @acronym{REPL} buffer, so that evaluation commands in
-that Scheme buffer use the specified @acronym{REPL} buffer.
-
-@item
-Info now supports the variable @code{info-directory-list}, which works
-like that in Emacs.
-
-@item
-The command @code{manual-entry} now uses multiple buffers with Emacs 19
-naming conventions.
-
-@item
-Frame-related commands are now bound to @kbd{C-x 5} as in Emacs, e.g.@:
-@kbd{C-x 5 f} finds a file in another frame.  The command
-@code{split-window-horizontally} has been moved to @kbd{C-x 3}, again as
-in Emacs.
-
-@item
-All commands operating on frames now use the noun ``frame'' in their
-names, for consistency with Emacs.  Previously they used ``screen''.
-
-@item
-New commands @code{show-frame-size}, @code{show-frame-position},
-@code{set-frame-size}, and @code{set-frame-position}.
-
-@item
-Under X11, Edwin now distinguishes between its primary frame and all
-other frames when finding resources.  The new X resource name for these
-secondary frames is @code{edwinSecondary}.
-
-@item
-Sending mail is now supported through a direct @acronym{SMTP} interface.
-This interface will work on any operating system that supports sockets
-(all of the systems we current distribute for).  See the variables
-@code{mail-relay-host} and @code{smtp-require-valid-recipients}.
-
-@end itemize
-
-@node Changes to the Windows Port,  , Edwin Changes, Release Notes
-@section Windows Changes
-
-Many substantial changes have been made to the Windows port, mostly to
-bring it up to par with the other ports.
+@multitable @columnfractions .5 .5
+@item Old name
+@tab New name
+@item @code{list-transform-positive}
+@tab @code{keep-matching-items}
+@item @code{list-transform-negative}
+@tab @code{delete-matching-items}
+@item @code{list-search-positive}
+@tab @code{find-matching-item}
+@end multitable
 
-@itemize @bullet
+@noindent
+and the following new procedures were implemented:
+@code{keep-matching-items!} and @code{delete-matching-items!}.
 
 @item
-There is now a single input queue for events, which fixes various small
-but annoying bugs having to do with events not being read at times when
-they should have been.
+@acronym{IMAIL} now supports commands to sort folders according to
+various criteria.  The design is similar to that of Rmail.
 
 @item
-The command-line parser has been improved so that it will accept
-arguments with spaces in them.  In order for this to work properly, the
-argument must be surrounded by double quotes.  This fix allows Scheme to
-be installed in a directory whose name contains spaces.
+@acronym{IMAIL} has been re-engineered to improve performance on very
+large folders.  There is now a disk cache for each @acronym{IMAP}
+folder, to eliminate unnecessary network delays.  Also, the summary
+buffer previously used a quadratic algorithm to associate lines in the
+summary with messages in the folder; it now uses a linear algorithm.
 
 @item
-Scheme now understands about Windows 98 version strings, and furthermore
-provides more detailed information about specifics of the platform.
+A new @acronym{IMAIL} command @code{imail-file-message} appends the
+text of a message to a file more or less as it appears in the buffer.
+This is intended to allow collecting messages into a file in a
+human-readable format.
 
 @item
-Scheme now more aggressively allocates low memory, and consequently is
-able to allocate slightly larger heaps.  Unfortunately there are
-inherent limitations on the heap size that cannot easily be worked
-around in this fashion.  If you need more memory, you must use a
-friendlier operating system, or wait for Windows 64-bit addressing
-support.
-
-@item
-The Scheme microcode now compiles using Visual C++ 5.0 or later.
-However it is probably not desirable to do this, because Visual C++
-links in certain libraries at key places in the memory image, and
-consequently limits the heap to fairly small sizes.  The microcode we
-distribute is compiled with Watcom C/C++ 11.0, which does not restrict
-our heap allocation as much.
-
-@item
-Various pop-up error dialogs are now suppressed, e.g.@: for inaccessible
-floppy devices.
-
-@item
-International keyboards should now work properly.  However, this hasn't
-been tested properly; we'd appreciate information about how well it
-works.
-
-@item
-Subprocesses and sockets are now supported.  However, Edwin's shell mode
-works only under Windows NT; there is something wrong with the Windows
-9x subprocess support that we don't yet understand.
-
-@item
-Scheme now uses more sophisticated heuristics to discover the user's
-home directory on Windows systems.  It is no longer necessary to bind
-the @code{HOME} environment variable under Windows NT.
-
-@item
-Edwin has its own copy of @file{gzip.exe} to guarantee that there's
-support for @code{gzip}-compressed files.
-
-@item
-Edwin now recognizes the standard Windows shell prompt in shell buffers.
-
-@item
-Edwin printing commands now work.
-
-@item
-Edwin now supports cut and paste using the kill and yank commands.
-
-@item
-All Dired commands are now supported.  Dired formats directory listings
-in native format rather than unix format.  The @kbd{M} command changes
-mode bits, which are specified much like arguments to the @code{attrib}
-command.  The @kbd{S} command toggles whether or not hidden/system files
-are shown; by default these files do not appear in Dired listings.
-
-@item
-New undocumented primitives provide access to the registry.
-
+@acronym{IMAIL} used to determine the type of file folders by their
+file names; now it examines the file contents instead.  When creating
+a new file folder, it prompts for the type.
 @end itemize
 
 @node GNU Free Documentation License, Index, Release Notes, Top
