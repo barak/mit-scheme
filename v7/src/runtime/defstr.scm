@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.51 2003/03/13 03:57:42 cph Exp $
+$Id: defstr.scm,v 14.52 2003/03/13 20:06:41 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,1997,2000 Massachusetts Institute of Technology
@@ -137,12 +137,6 @@ differences:
 	(if (not tagged?)
 	    (check-for-illegal-untagged predicate-option
 					print-procedure-option))
-	(if (and type-descriptor-option
-		 (not (option/argument type-descriptor-option)))
-	    (check-for-illegal-no-descriptor type-descriptor-option
-					     tagged?
-					     safe-accessors-option
-					     keyword-constructor-options))
 	(do ((slots slots (cdr slots))
 	     (index (if tagged? (+ offset 1) offset) (+ index 1)))
 	    ((not (pair? slots)))
@@ -220,7 +214,7 @@ differences:
 	(lose named-option))
     (if initial-offset-option
 	(lose initial-offset-option))))
-
+
 (define (check-for-illegal-untagged predicate-option print-procedure-option)
   (let ((test
 	 (lambda (option)
@@ -232,23 +226,6 @@ differences:
 		      (option/original option))))))
     (test predicate-option)
     (test print-procedure-option)))
-
-(define (check-for-illegal-no-descriptor type-descriptor-option
-					 tagged?
-					 safe-accessors-option
-					 keyword-constructor-options)
-  (if tagged?
-      (error "Structure option illegal for tagged structure:"
-	     (option/original type-descriptor-option))
-      (let ((lose
-	     (lambda (option)
-	       (error "Structure option illegal without type descriptor:"
-		      (option/original option)))))
-	(cond ((and safe-accessors-option
-		    (option/argument safe-accessors-option))
-	       (lose safe-accessors-option))
-	      (keyword-constructor-options
-	       (lose (car keyword-constructor-options)))))))
 
 (define (compute-constructors constructor-options
 			      keyword-constructor-options
@@ -466,7 +443,7 @@ differences:
     context
     (one-required-argument option
       (lambda (arg)
-	(if (or (identifier? arg) (not arg))
+	(if (identifier? arg)
 	    `(TYPE-DESCRIPTOR ,arg)
 	    #f)))))
 
@@ -839,7 +816,7 @@ differences:
 		       (,(absolute 'CAR context) OBJECT)
 		       ,tag-expression)))))))
 	'())))
-
+
 (define (type-definitions structure)
   (let ((physical-type (structure/physical-type structure))
 	(type-name (structure/type-descriptor structure))
@@ -847,38 +824,38 @@ differences:
 	(slots (structure/slots structure))
 	(context (structure/context structure))
 	(print-procedure (structure/print-procedure structure)))
-    (if type-name
-	(let ((name (symbol->string (parser-context/name context)))
-	      (field-names (map slot/name slots))
-	      (inits
-	       (map (lambda (slot)
-		      `(LAMBDA () ,(close (slot/default slot) context)))
-		    slots)))
-	  `((DEFINE ,type-name
-	      ,(if (eq? physical-type 'RECORD)
-		   `(,(absolute 'MAKE-RECORD-TYPE context)
-		     ',name
-		     ',field-names
-		     (LIST ,@inits)
-		     ,(close print-procedure context))
-		   `(,(absolute 'MAKE-DEFINE-STRUCTURE-TYPE context)
-		     ',physical-type
-		     ',name
-		     ',field-names
-		     ',(map slot/index (structure/slots structure))
-		     (LIST ,@inits)
-		     ,(if (structure/tagged? structure)
-			  (close print-procedure context)
-			  '#F)
-		     ,(if (and tag-expression
-			       (not (eq? tag-expression type-name)))
-			  (close tag-expression context)
-			  '#F)
-		     ',(structure/offset structure))))
-	    ,@(if (and tag-expression
-		       (not (eq? tag-expression type-name)))
-		  `((,(absolute 'NAMED-STRUCTURE/SET-TAG-DESCRIPTION! context)
-		     ,(close tag-expression context)
-		     ,type-name))
-		  '())))
-	'())))
+    (let ((name (symbol->string (parser-context/name context)))
+	  (field-names (map slot/name slots))
+	  (inits
+	   (map (lambda (slot)
+		  `(LAMBDA () ,(close (slot/default slot) context)))
+		slots)))
+      `((DEFINE ,type-name
+	  ,(if (eq? physical-type 'RECORD)
+	       `(,(absolute 'MAKE-RECORD-TYPE context)
+		 ',name
+		 ',field-names
+		 (LIST ,@inits)
+		 ,(close print-procedure context))
+	       `(,(absolute 'MAKE-DEFINE-STRUCTURE-TYPE context)
+		 ',physical-type
+		 ',name
+		 ',field-names
+		 ',(map slot/index slots)
+		 (LIST ,@inits)
+		 ,(if (structure/tagged? structure)
+		      (close print-procedure context)
+		      '#F)
+		 ,(if (and tag-expression
+			   (not (eq? tag-expression type-name)))
+		      (close tag-expression context)
+		      '#F)
+		 ',(+ (if (structure/tagged? structure) 1 0)
+		      (structure/offset structure)
+		      (length slots)))))
+	,@(if (and tag-expression
+		   (not (eq? tag-expression type-name)))
+	      `((,(absolute 'NAMED-STRUCTURE/SET-TAG-DESCRIPTION! context)
+		 ,(close tag-expression context)
+		 ,type-name))
+	      '())))))
