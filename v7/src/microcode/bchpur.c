@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.51 1991/02/24 01:10:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.52 1991/02/26 21:15:56 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,6 +45,7 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "bchgcc.h"
+#include "zones.h"
 
 /* Purify modes */
 
@@ -75,8 +76,7 @@ MIT in each case. */
 /* A modified copy of GCLoop. */
 
 SCHEME_OBJECT *
-DEFUN (purifyloop,
-       (Scan, To_ptr, To_Address_ptr, purify_mode),
+DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
        fast SCHEME_OBJECT *Scan AND
        SCHEME_OBJECT **To_ptr AND
        SCHEME_OBJECT **To_Address_ptr AND
@@ -361,9 +361,7 @@ end_purifyloop:
  */
 
 SCHEME_OBJECT *
-DEFUN (purify_header_overflow,
-       (free_buffer),
-       SCHEME_OBJECT *free_buffer)
+DEFUN (purify_header_overflow, (free_buffer), SCHEME_OBJECT *free_buffer)
 {
   SCHEME_OBJECT *scan_buffer;
   long delta;
@@ -382,8 +380,7 @@ DEFUN (purify_header_overflow,
 }
 
 SCHEME_OBJECT
-DEFUN (purify,
-       (object, flag),
+DEFUN (purify, (object, flag),
        SCHEME_OBJECT object AND
        SCHEME_OBJECT flag)
 {
@@ -476,9 +473,7 @@ DEFUN (purify,
 /* Stub.  Not needed by this version.  Terminates Scheme if invoked. */
 
 SCHEME_OBJECT
-DEFUN (Purify_Pass_2,
-       (info),
-       SCHEME_OBJECT info)
+DEFUN (Purify_Pass_2, (info), SCHEME_OBJECT info)
 {
   gc_death (TERM_EXIT, "Purify_Pass_2 invoked", NULL, NULL);
   /*NOTREACHED*/
