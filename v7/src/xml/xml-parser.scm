@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.50 2003/10/15 01:25:14 cph Exp $
+$Id: xml-parser.scm,v 1.51 2003/12/29 05:07:54 uid67408 Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -356,13 +356,20 @@ USA.
   description
   (lambda (buffer)
     (let loop ()
-      (if (and (not (there-exists? ends
-		      (lambda (end)
-			(match-parser-buffer-string-no-advance buffer
-							       end))))
-	       (match-utf8-char-in-alphabet buffer alphabet))
-	  (loop)
-	  #t))))
+      (if (there-exists? ends
+	    (lambda (end)
+	      (match-parser-buffer-string-no-advance buffer end)))
+	  #t
+	  (begin
+	    (if (not (match-utf8-char-in-alphabet buffer alphabet))
+		(let ((p (get-parser-buffer-pointer b))
+		      (c (peek-parser-buffer-char buffer)))
+		  ;; Not quite right -- we should be getting the next
+		  ;; UTF-8 character, but this gets the next byte.
+		  (if c
+		      (perror p "Illegal character" c)
+		      (perror p "Unexpected EOF"))))
+	    (loop))))))
 
 (define parse-char-data			;[14]
   (let ((parse-body
