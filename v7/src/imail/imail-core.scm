@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.121 2001/05/13 03:45:48 cph Exp $
+;;; $Id: imail-core.scm,v 1.122 2001/05/15 19:46:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -77,6 +77,11 @@
 ;; "imap://localhost/inbox/" (except that for IMAP folders, the result
 ;; may be affected by the NAMESPACE prefix information).
 (define-generic url-container (url))
+
+;; Return a list of URLs referring to the contents of CONTAINER-URL.
+;; The result can contain both folder and container URLs.
+;; The result is not sorted.
+(define-generic container-url-contents (container-url))
 
 ;; Return the base name of FOLDER-URL.  This is the PATHNAME-NAME of a
 ;; file-based folder, and for IMAP it's the part of the mailbox name

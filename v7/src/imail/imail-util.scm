@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.37 2001/05/14 19:27:54 cph Exp $
+;;; $Id: imail-util.scm,v 1.38 2001/05/15 19:47:02 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -176,6 +176,19 @@
 			   (if (default-object? line-ending) "\n" line-ending)
 			   lines))
 
+(define (check-file-prefix pathname magic)
+  (let* ((n-to-read (string-length magic))
+	 (buffer (make-string n-to-read))
+	 (n-read
+	  (catch-file-errors (lambda (condition) condition #f)
+	    (lambda ()
+	      (call-with-input-file pathname
+		(lambda (port)
+		  (read-string! buffer port)))))))
+    (and n-read
+	 (fix:= n-to-read n-read)
+	 (string=? buffer magic))))
+
 (define (read-required-char port)
   (let ((char (read-char port)))
     (if (eof-object? char)
@@ -376,11 +389,13 @@
 	      result))))))
 
 (define ((result-filter filter) name directory result)
-  (let ((pathname (parse-namestring (string-append directory name) #f #f)))
-    (cond ((safe-file-directory? pathname)
-	   (cons (pathname-as-directory pathname) result))
-	  ((filter pathname) (cons pathname result))
-	  (else result))))
+  (if (or (string=? name ".") (string=? name ".."))
+      result
+      (let ((pathname (parse-namestring (string-append directory name) #f #f)))
+	(cond ((safe-file-directory? pathname)
+	       (cons (pathname-as-directory pathname) result))
+	      ((filter pathname) (cons pathname result))
+	      (else result)))))
 
 (define (safe-file-directory? pathname)
   (catch-file-errors (lambda (condition) condition #f)

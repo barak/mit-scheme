@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.64 2001/05/13 03:45:52 cph Exp $
+;;; $Id: imail-file.scm,v 1.65 2001/05/15 19:46:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -48,61 +48,71 @@
 (define pathname-url-constructors
   (make-eq-hash-table))
 
-(define-method url-body ((url <pathname-url>))
-  (pathname->url-body (pathname-url-pathname url)))
-
-(define (pathname->url-body pathname)
-  (string-append (let ((device (pathname-device pathname)))
-		   (if (string? device)
-		       (string-append "/" device ":")
-		       ""))
-		 (let ((directory (pathname-directory pathname)))
-		   (if (pair? directory)
-		       (string-append
-			(if (eq? (car directory) 'ABSOLUTE) "/" "")
-			(decorated-string-append
-			 "" "" "/"
-			 (map (lambda (string)
-				(url:encode-string
-				 (if (eq? string 'UP) ".." string)))
-			      (cdr directory))))
-		       ""))
-		 (url:encode-string (file-namestring pathname))))
-
 (define-method url-container ((url <pathname-url>))
   (make-directory-url
    (directory-pathname
     (directory-pathname-as-file (pathname-url-pathname url)))))
-
-(define (define-pathname-url-predicate class predicate)
+
+(define (define-pathname-url-predicates class
+	  file-predicate
+	  directory-predicate
+	  pathname-predicate)
   (let ((constructor (get-pathname-url-constructor class)))
     (let loop ((entries pathname-url-predicates))
       (if (pair? entries)
 	  (if (eq? class (vector-ref (car entries) 0))
 	      (begin
-		(vector-set! (car entries) 1 predicate)
-		(vector-set! (car entries) 2 constructor))
+		(vector-set! (car entries) 1 file-predicate)
+		(vector-set! (car entries) 2 directory-predicate)
+		(vector-set! (car entries) 3 pathname-predicate)
+		(vector-set! (car entries) 4 constructor))
 	      (loop (cdr entries)))
 	  (begin
 	    (set! pathname-url-predicates
-		  (cons (vector class predicate constructor)
+		  (cons (vector class
+				file-predicate
+				directory-predicate
+				pathname-predicate
+				constructor)
 			pathname-url-predicates))
 	    unspecific)))))
 
+(define (find-pathname-url-constructor pathname must-exist? if-not-found)
+  (let ((type (file-type-indirect pathname))
+	(search
+	 (lambda (index)
+	   (let loop ((entries pathname-url-predicates))
+	     (and (pair? entries)
+		  (if ((vector-ref (car entries) index) pathname)
+		      (vector-ref (car entries) 4)
+		      (loop (cdr entries))))))))
+    (or (case type
+	  ((REGULAR) (search 1))
+	  ((DIRECTORY) (search 2))
+	  ((#F) (and (not must-exist?) (search 3)))
+	  (else #f))
+	(and if-not-found
+	     (if-not-found pathname type)))))
+
 (define pathname-url-predicates '())
+
+(define-method url-is-selectable? ((url <pathname-url>))
+  (and (find-pathname-url-constructor (pathname-url-pathname url) #t #f) #t))
 
 (define-method parse-url-body ((string <string>) (default-url <pathname-url>))
   (let ((pathname
 	 (parse-pathname-url-body string (pathname-url-pathname default-url))))
-    ((let loop ((entries pathname-url-predicates))
-       (if (pair? entries)
-	   (if ((vector-ref (car entries) 1) pathname)
-	       (vector-ref (car entries) 2)
-	       (loop (cdr entries)))
-	   (if (or (directory-pathname? pathname)
-		   (file-directory? pathname))
-	       make-directory-url
-	       make-file-url)))
+    ((find-pathname-url-constructor pathname #f
+       (lambda (pathname type)
+	 (case type
+	   ((REGULAR) make-file-url)
+	   ((DIRECTORY) make-directory-url)
+	   ((#F)
+	    (if (directory-pathname? pathname)
+		make-directory-url
+		make-file-url))
+	   (else
+	    (error "Pathname refers to illegal file type:" pathname)))))
      pathname)))
 
 (define (parse-pathname-url-body string default-pathname)
@@ -127,6 +137,27 @@
 	   (error:bad-range-argument string 'PARSE-PATHNAME-URL-BODY))
 	  (else
 	   (finish string)))))
+
+(define-method url-body ((url <pathname-url>))
+  (pathname->url-body (pathname-url-pathname url)))
+
+(define (pathname->url-body pathname)
+  (string-append (let ((device (pathname-device pathname)))
+		   (if (string? device)
+		       (string-append "/" device ":")
+		       ""))
+		 (let ((directory (pathname-directory pathname)))
+		   (if (pair? directory)
+		       (string-append
+			(if (eq? (car directory) 'ABSOLUTE) "/" "")
+			(decorated-string-append
+			 "" "" "/"
+			 (map (lambda (string)
+				(url:encode-string
+				 (if (eq? string 'UP) ".." string)))
+			      (cdr directory))))
+		       ""))
+		 (url:encode-string (file-namestring pathname))))
 
 ;;;; File folders
 
@@ -135,9 +166,6 @@
 
 (define-method url-exists? ((url <file-url>))
   (file-exists? (pathname-url-pathname url)))
-
-(define-method url-is-selectable? ((url <file-url>))
-  (file-regular? (pathname-url-pathname url)))
 
 (define-method url-presentation-name ((url <file-url>))
   (file-namestring (pathname-url-pathname url)))
@@ -169,6 +197,18 @@
 
 ;;;; Server operations
 
+(define-method container-url-contents ((url <directory-url>))
+  (simple-directory-read (pathname-url-pathname url)
+    (lambda (name directory result)
+      (if (or (string=? name ".") (string=? name ".."))
+	  result
+	  (let* ((pathname
+		  (parse-namestring (string-append directory name) #f #f))
+		 (constructor (pathname-url-filter pathname)))
+	    (if constructor
+		(cons (constructor pathname) result)
+		result))))))
+
 (define-method %url-complete-string
     ((string <string>) (default-url <pathname-url>)
 		       if-unique if-not-unique if-not-found)
@@ -176,7 +216,7 @@
    (parse-pathname-url-body
     string
     (directory-pathname (pathname-url-pathname default-url)))
-   (lambda (pathname) pathname #t)
+   pathname-url-filter
    (lambda (string)
      (if-unique (pathname->url-body string)))
    (lambda (prefix get-completions)
@@ -191,7 +231,14 @@
 	(parse-pathname-url-body
 	 string
 	 (directory-pathname (pathname-url-pathname default-url)))
-	(lambda (pathname) pathname #t))))
+	pathname-url-filter)))
+
+(define (pathname-url-filter pathname)
+  (find-pathname-url-constructor pathname #t
+    (lambda (pathname type)
+      pathname
+      (and (eq? type 'DIRECTORY)
+	   make-directory-url))))
 
 (define-method %delete-folder ((url <file-url>))
   (delete-file (pathname-url-pathname url)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.62 2001/05/13 03:46:04 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.63 2001/05/15 19:46:57 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -28,23 +28,13 @@
 (define-class <rmail-url> (<file-url>))
 (define make-rmail-url (pathname-url-constructor <rmail-url>))
 
-(define-pathname-url-predicate <rmail-url>
+(define-pathname-url-predicates <rmail-url>
+  (lambda (pathname) (check-file-prefix pathname "BABYL OPTIONS:"))
+  (lambda (pathname) pathname #f)
   (lambda (pathname)
-    (case (file-type-indirect pathname)
-      ((REGULAR)
-       (let* ((magic "BABYL OPTIONS:")
-	      (n-to-read (string-length magic))
-	      (buffer (make-string n-to-read))
-	      (n-read
-	       (call-with-input-file pathname
-		 (lambda (port)
-		   (read-string! buffer port)))))
-	 (and (fix:= n-to-read n-read)
-	      (string=? buffer magic))))
-      ((#F)
-       (or (string=? (pathname-type pathname) "rmail")
-	   (string=? (file-namestring pathname) "RMAIL")))
-      (else #f))))
+    (or (equal? (pathname-type pathname) "rmail")
+	(and (equal? (pathname-name pathname) "RMAIL")
+	     (not (pathname-type pathname))))))
 
 (define-method make-peer-url ((url <rmail-url>) name)
   (make-rmail-url

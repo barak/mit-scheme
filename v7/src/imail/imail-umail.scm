@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.43 2001/05/13 03:46:17 cph Exp $
+;;; $Id: imail-umail.scm,v 1.44 2001/05/15 19:46:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -28,21 +28,10 @@
 (define-class <umail-url> (<file-url>))
 (define make-umail-url (pathname-url-constructor <umail-url>))
 
-(define-pathname-url-predicate <umail-url>
-  (lambda (pathname)
-    (case (file-type-indirect pathname)
-      ((REGULAR)
-       (let* ((magic "From ")
-	      (n-to-read (string-length magic))
-	      (buffer (make-string n-to-read))
-	      (n-read
-	       (call-with-input-file pathname
-		 (lambda (port)
-		   (read-string! buffer port)))))
-	 (and (fix:= n-to-read n-read)
-	      (string=? buffer magic))))
-      ((#F) (string=? (pathname-type pathname) "mail"))
-      (else #f))))
+(define-pathname-url-predicates <umail-url>
+  (lambda (pathname) (check-file-prefix pathname "From "))
+  (lambda (pathname) pathname #f)
+  (lambda (pathname) (equal? (pathname-type pathname) "mail")))
 
 (define-method make-peer-url ((url <umail-url>) name)
   (make-umail-url
