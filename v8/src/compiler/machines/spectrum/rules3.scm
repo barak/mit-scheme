@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.5 1994/12/02 02:17:19 adams Exp $
+$Id: rules3.scm,v 1.6 1994/12/16 20:16:41 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -1681,7 +1681,10 @@ MIT in each case. |#
   ;; a large buffer at the end of the heap.  As long as the code can't
   ;; loop without checking, which is what intrpt guarantees, there
   ;; is no need to check.
-  heap					; ignored
+
+  (if (and (number? heap)
+	   (> heap 1000))
+      (internal-warning "Large allocation " heap 'words))
   (let* ((interrupt-label (generate-label))
 	 (heap-check? intrpt)
 	 (stack-check? (and stack compiler:generate-stack-checks?))
