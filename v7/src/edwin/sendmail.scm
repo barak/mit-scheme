@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.60 2000/06/15 20:50:43 cph Exp $
+;;; $Id: sendmail.scm,v 1.61 2000/06/15 20:58:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -1277,7 +1277,7 @@ Commands available in this mode:
       (lambda (port)
 	(let loop ()
 	  (let ((line (read-line port)))
-	    (and (not (eof-object? port))
+	    (and (not (eof-object? line))
 		 (let ((line (string-trim line)))
 		   (if (or (string-null? line)
 			   (char=? (string-ref line 0) #\#))
