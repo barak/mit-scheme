@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.h,v 1.22 1993/09/09 18:24:19 gjr Exp $
+$Id: uxtrap.h,v 1.23 1993/11/08 06:18:02 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -525,6 +525,13 @@ struct sigcontext {
 }
 
 #endif /* __alpha */
+
+#ifdef _AIX
+/* For now */
+#define SIGCONTEXT		sigcontext
+#define SIGCONTEXT_SP(scp)	0
+#define SIGCONTEXT_PC(scp)	0
+#endif /* _AIX */
 
 #ifndef SIGINFO_T
 #define SIGINFO_T int
@@ -587,15 +594,22 @@ struct sigcontext {
 #endif
 
 #if !(defined (_NEXTOS) && (_NEXTOS_VERSION >= 20))
+#ifdef _AIX
+extern int _etext;
+#define get_etext() (&_etext)
+#else /* not _AIX */
 #ifdef __linux
 extern unsigned int etext;
-#else
+#else /* not __linux */
 #if !(defined (_HPUX) && (_HPUX_VERSION >= 80) && defined (hp9000s300))
 extern long etext;
-#endif
+#endif /* _HPUX ... */
 #endif /* __linux */
+#endif /* _AIX */
+#ifndef get_etext
 #  define get_etext() (&etext)
-#endif
+#endif /* get_etext */
+#endif /* _NEXTOS */
 
 /* Machine/OS-independent section */
 

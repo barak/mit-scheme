@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.82 1993/10/27 01:41:39 gjr Exp $
+$Id: config.h,v 9.83 1993/11/08 06:14:41 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -191,6 +191,7 @@ typedef unsigned long SCHEME_OBJECT;
 #define FASL_APOLLO_68K		16
 #define FASL_APOLLO_PRISM	17
 #define FASL_ALPHA		18
+#define FASL_RS6000		19
 
 #ifdef vax
 
@@ -610,6 +611,15 @@ extern void * alpha_heap_malloc (long);
 #define HAS_FLOOR
 #define HAS_FREXP
 #endif /* apollo */
+
+#ifdef _IBMR2
+#define MACHINE_TYPE          "IBM RS6000"
+#define FASL_INTERNAL_FORMAT   FASL_RS6000
+/* Heap is not in Low Memory. */
+#define FLONUM_MANTISSA_BITS   53
+#define FLONUM_EXPT_SIZE       10
+#define MAX_FLONUM_EXPONENT    1023
+#endif /* _IBMR2 */
 
 #ifdef NATIVE_CODE_IS_C
 #  ifndef HAS_COMPILER_SUPPORT

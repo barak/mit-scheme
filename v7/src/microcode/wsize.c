@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: wsize.c,v 9.32 1992/09/26 02:47:35 cph Exp $
+$Id: wsize.c,v 9.33 1993/11/08 06:20:11 gjr Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,7 +36,8 @@ MIT in each case. */
 #include <math.h>
 #include <errno.h>
 #include <signal.h>
-#include "config.h"
+#include "ansidecl.h"
+/* #include "config.h" */
 
 #ifndef TYPE_CODE_LENGTH
 /* This MUST match object.h */
@@ -51,8 +52,8 @@ MIT in each case. */
 #define true			1
 
 extern int errno;
-extern char * malloc();
-extern free ();
+extern PTR EXFUN (malloc, ());
+extern void EXFUN (free, ());
 
 /* The following hanky-panky courtesy of some buggy compilers. */
 
@@ -186,7 +187,7 @@ main()
   }
   else
   {
-    count = (free (temp));
+    free (temp);
     if (((unsigned long) temp) <
 	(1 << ((char_size * sizeof(long)) - TYPE_CODE_LENGTH)))
       printf ("#define HEAP_IN_LOW_MEMORY     1\n");

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.53 1993/10/27 22:17:55 gjr Exp $
+$Id: ux.h,v 1.54 1993/11/08 06:15:59 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -63,7 +63,7 @@ extern int errno;
 /* As specified by OSF/1 Programmer's reference: */
 extern int EXFUN (ioctl, (int, unsigned long, ...));
 #endif
-#ifndef _SUNOS4
+#if !(defined(_SUNOS4) || defined(_AIX))
 extern int EXFUN (open, (const char *, int, ...));
 #endif
 extern int EXFUN (kill, (pid_t, int));
@@ -143,6 +143,10 @@ extern int EXFUN (kill, (pid_t, int));
 #define HAVE_UNIX_SOCKETS
 
 #endif /* _IRIX4 */
+
+#ifdef _AIX
+#define UNION_WAIT_STATUS
+#endif /* _AIX */
 
 #else /* not _POSIX */
 #ifdef _BSD

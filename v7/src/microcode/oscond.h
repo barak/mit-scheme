@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: oscond.h,v 1.14 1993/06/24 06:09:34 gjr Exp $
+$Id: oscond.h,v 1.15 1993/11/08 06:15:20 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -42,6 +42,11 @@ MIT in each case. */
    machine specification macros.  */
 
 #if defined (__osf__)
+#  define _POSIX
+#  define _BSD4_3
+#endif
+
+#if defined(_AIX)
 #  define _POSIX
 #  define _BSD4_3
 #endif
@@ -148,8 +153,12 @@ MIT in each case. */
 #define _BSD4_2
 #endif
 
-#if defined(_BSD4_2) || defined(_BSD4_3)
-#define _BSD
+#if defined(_BSD4_3)
+#define _BSD 43
+#else
+#if defined(_BSD4_2)
+#define _BSD 42
+#endif
 #endif
 
 #if defined(_BSD) && defined(_SYSV)
