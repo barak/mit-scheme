@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.6 1995/02/15 21:54:14 adams Exp $
+$Id: simplify.scm,v 1.7 1995/02/26 14:59:03 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -463,13 +463,13 @@ MIT in each case. |#
   (let ((body (lambda/body value)))
     (or (QUOTE/? body)
 	(LOOKUP/? body)
-	(and (CALL/? body)
-	     (QUOTE/? (call/operator body))
-	     (known-operator? (quote/text (call/operator body)))
-	     (for-all? (call/cont-and-operands body)
-	       (lambda (element)
-		 (or (QUOTE/? element)
-		     (LOOKUP/? element)))))
+	;;(and (CALL/? body)
+	;;     (QUOTE/? (call/operator body))
+	;;     (known-operator? (quote/text (call/operator body)))
+	;;     (for-all? (call/cont-and-operands body)
+	;;       (lambda (element)
+	;;	 (or (QUOTE/? element)
+	;;	     (LOOKUP/? element)))))
 	(and *after-cps-conversion?*
 	     (CALL/? body)
 	     (<= (length (call/cont-and-operands body))
