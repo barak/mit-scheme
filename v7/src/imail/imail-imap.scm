@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.27 2000/05/10 17:23:29 cph Exp $
+;;; $Id: imail-imap.scm,v 1.28 2000/05/10 20:39:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -106,6 +106,8 @@
   (host define accessor)
   (ip-port define accessor)
   (user-id define accessor)
+  (passphrase define standard
+	      initial-value #f)
   (port define standard
 	initial-value #f)
   (sequence-number define standard
@@ -213,7 +215,7 @@
 		(close-imap-connection connection)
 		(error "Server doesn't support IMAP4rev1:" host)))
 	  (let ((response
-		 (authenticate host user-id
+		 (call-with-memoized-passphrase connection
 		   (lambda (passphrase)
 		     (imap:command:login connection user-id passphrase)))))
 	    (if (imap:response:no? response)
@@ -232,6 +234,48 @@
 
 (define (imap-connection-open? connection)
   (imap-connection-port connection))
+
+(define (call-with-memoized-passphrase connection receiver)
+  (let ((passphrase (imap-connection-passphrase connection)))
+    (if passphrase
+	(call-with-unobscured-passphrase passphrase receiver)
+	(authenticate (imap-connection-host connection)
+		      (imap-connection-user-id connection)
+	  (lambda (passphrase)
+	    (set-imap-connection-passphrase! connection
+					     (obscure-passphrase passphrase))
+	    (receiver passphrase))))))
+
+(define (obscure-passphrase clear-text)
+  (let ((n (string-length clear-text)))
+    (let ((noise (random-byte-vector n)))
+      (let ((obscured-text (make-string (* 2 n))))
+	(string-move! noise obscured-text 0)
+	(do ((i 0 (fix:+ i 1)))
+	    ((fix:= i n))
+	  (vector-8b-set! obscured-text (fix:+ i n)
+			  (fix:xor (vector-8b-ref clear-text i)
+				   (vector-8b-ref noise i))))
+	obscured-text))))
+
+(define (call-with-unobscured-passphrase obscured-text receiver)
+  (let ((n (quotient (string-length obscured-text) 2))
+	(clear-text))
+    (dynamic-wind
+     (lambda ()
+       (set! clear-text (make-string n))
+       unspecific)
+     (lambda ()
+       (do ((i 0 (fix:+ i 1)))
+	   ((fix:= i n))
+	 (vector-8b-set! clear-text i
+			 (fix:xor (vector-8b-ref obscured-text i)
+				  (vector-8b-ref obscured-text (fix:+ i n)))))
+       (receiver clear-text))
+     (lambda ()
+       (string-fill! clear-text #\NUL)
+       (set! clear-text)
+       unspecific))))
 
 ;;;; Folder datatype
 
@@ -629,10 +673,18 @@
 	(error "Server signalled a command error:" (car responses)))))
 
 (define (imap:command connection command . arguments)
-  (imap:wait-for-tagged-response connection
-				 (imap:send-command connection
-						    command arguments)
-				 command))
+  (bind-condition-handler (list condition-type:system-call-error)
+      (lambda (condition)
+	(if (and (memq (system-call-name condition) '(READ WRITE))
+		 (eq? 'BROKEN-PIPE (system-call-error condition)))
+	    (begin
+	      (close-imap-connection connection)
+	      (error "Connection to IMAP server broken; please try again."))))
+    (lambda ()
+      (imap:wait-for-tagged-response connection
+				     (imap:send-command connection
+							command arguments)
+				     command))))
 
 (define imail-trace? #f)
 (define imail-trace-output)
