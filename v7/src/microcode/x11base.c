@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.60 1995/09/25 20:04:19 cph Exp $
+$Id: x11base.c,v 1.61 1995/09/27 16:21:46 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -164,14 +164,18 @@ DEFUN (x_window_arg, (arg), unsigned int arg)
 }
 
 static struct xwindow *
-DEFUN (x_window_to_xw, (window), Window window)
+DEFUN (x_window_to_xw, (display, window),
+       Display * display AND
+       Window window)
 {
   struct xwindow ** scan = ((struct xwindow **) (x_window_table . items));
   struct xwindow ** end = (scan + (x_window_table . length));
   while (scan < end)
     {
       struct xwindow * xw = (*scan++);
-      if ((xw != 0) && ((XW_WINDOW (xw)) == window))
+      if ((xw != 0)
+	  && ((XW_DISPLAY (xw)) == display)
+	  && ((XW_WINDOW (xw)) == window))
 	return (xw);
     }
   return (0);
@@ -303,11 +307,10 @@ DEFUN (catch_x_errors_handler, (display, event),
   longjmp (x_prim_checkpoint, (event -> error_code));
 }
 
-static unsigned char
-DEFUN_VOID (catch_x_errors)
-{
-  bind_x_error_handler (catch_x_errors_handler);
-  return (setjmp (x_prim_checkpoint));
+#define CATCH_X_ERRORS(target)						\
+{									\
+  bind_x_error_handler (catch_x_errors_handler);			\
+  (target) = (setjmp (x_prim_checkpoint));				\
 }
 
 /* Defaults and Attributes */
@@ -751,10 +754,8 @@ DEFUN (xw_process_event, (xw, event),
 	case MappingNotify:	type_name = "MappingNotify"; break;
 	case MotionNotify:	type_name = "MotionNotify"; break;
 	case NoExpose:		type_name = "NoExpose"; break;
-	case PropertyNotify:	type_name = "PropertyNotify"; break;
 	case ReparentNotify:	type_name = "ReparentNotify"; break;
 	case SelectionClear:	type_name = "SelectionClear"; break;
-	case SelectionNotify:	type_name = "SelectionNotify"; break;
 	case SelectionRequest:	type_name = "SelectionRequest"; break;
 	case UnmapNotify:	type_name = "UnmapNotify"; break;
 	case VisibilityNotify:	type_name = "VisibilityNotify"; break;
@@ -790,6 +791,27 @@ DEFUN (xw_process_event, (xw, event),
 	      }
 	  }
 	  break;
+	case PropertyNotify:
+	  {
+	    fprintf (stderr,
+		     "PropertyNotify; window=%d, atom=%d, time=%d, state=%d",
+		     ((event -> xproperty) . window),
+		     ((event -> xproperty) . atom),
+		     ((event -> xproperty) . time),
+		     ((event -> xproperty) . state));
+	    goto debug_done;
+	  }
+	case SelectionNotify:
+	  {
+	    fprintf (stderr,
+		     "SelectionNotify; req=%d, sel=%d, targ=%d, prop=%d, t=%d",
+		     ((event -> xselection) . requestor),
+		     ((event -> xselection) . selection),
+		     ((event -> xselection) . target),
+		     ((event -> xselection) . property),
+		     ((event -> xselection) . time));
+	    goto debug_done;
+	  }
 	default:		type_name = 0; break;
 	}
       if (type_name != 0)
@@ -812,7 +834,8 @@ DEFUN (xw_process_event, (xw, event),
 	}
       break;
     }
-  (* (XW_EVENT_PROCESSOR (xw))) (xw, event);
+  if (xw != 0)
+    (* (XW_EVENT_PROCESSOR (xw))) (xw, event);
 }
 
 enum event_type
@@ -844,7 +867,8 @@ enum event_type
    ((arg), (1 << ((unsigned int) event_type_supremum))))
 
 #define EVENT_ENABLED(xw, type)						\
-  (((XW_EVENT_MASK (xw)) & (1 << ((unsigned int) (type)))) != 0)
+  (((xw) == 0)								\
+   || (((XW_EVENT_MASK (xw)) & (1 << ((unsigned int) (type)))) != 0))
 
 #define EVENT_0 2
 #define EVENT_1 3
@@ -866,7 +890,7 @@ DEFUN (make_event_object, (xw, type, extra),
 {
   SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, (2 + extra), 1));
   VECTOR_SET (result, 0, (LONG_TO_UNSIGNED_FIXNUM ((long) type)));
-  VECTOR_SET (result, 1, (XW_TO_OBJECT (xw)));
+  VECTOR_SET (result, 1, ((xw == 0) ? SHARP_F : (XW_TO_OBJECT (xw))));
   return (result);
 }
 
@@ -994,7 +1018,9 @@ DEFUN (key_event, (xw, event, type),
 static SCHEME_OBJECT
 DEFUN (x_event_to_object, (event), XEvent * event)
 {
-  struct xwindow * xw = (x_window_to_xw ((event -> xany) . window));
+  struct xwindow * xw
+    = (x_window_to_xw (((event -> xany) . display),
+		       ((event -> xany) . window)));
   SCHEME_OBJECT result = SHARP_F;
   switch (event -> type)
     {
@@ -1111,26 +1137,25 @@ DEFUN (x_event_to_object, (event), XEvent * event)
 	{
 	  result = (make_event_object (xw, event_type_selection_clear, 2));
 	  EVENT_ULONG_INTEGER
-	    (result, EVENT_0,
-	     (ulong_to_integer ((event -> xselectionclear) . selection)));
+	    (result, EVENT_0, ((event -> xselectionclear) . selection));
 	  EVENT_ULONG_INTEGER
-	    (result, EVENT_1,
-	     (ulong_to_integer ((event -> xselectionclear) . time)));
+	    (result, EVENT_1, ((event -> xselectionclear) . time));
 	}
       break;
     case SelectionNotify:
       if (EVENT_ENABLED (xw, event_type_selection_notify))
 	{
-	  result = (make_event_object (xw, event_type_selection_notify, 3));
+	  result = (make_event_object (xw, event_type_selection_notify, 5));
 	  EVENT_ULONG_INTEGER
-	    (result, EVENT_0,
-	     (ulong_to_integer ((event -> xselection) . target)));
+	    (result, EVENT_0, ((event -> xselection) . requestor));
 	  EVENT_ULONG_INTEGER
-	    (result, EVENT_1,
-	     (ulong_to_integer ((event -> xselection) . property)));
+	    (result, EVENT_1, ((event -> xselection) . selection));
 	  EVENT_ULONG_INTEGER
-	    (result, EVENT_2,
-	     (ulong_to_integer ((event -> xselection) . time)));
+	    (result, EVENT_2, ((event -> xselection) . target));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_3, ((event -> xselection) . property));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_4, ((event -> xselection) . time));
 	}
       break;
     case SelectionRequest:
@@ -1138,35 +1163,31 @@ DEFUN (x_event_to_object, (event), XEvent * event)
 	{
 	  result = (make_event_object (xw, event_type_selection_request, 5));
 	  EVENT_ULONG_INTEGER
-	    (result, EVENT_0,
-	     (ulong_to_integer ((event -> xselectionrequest) . requestor)));
+	    (result, EVENT_0, ((event -> xselectionrequest) . requestor));
 	  EVENT_ULONG_INTEGER
-	    (result, EVENT_1,
-	     (ulong_to_integer ((event -> xselectionrequest) . selection)));
+	    (result, EVENT_1, ((event -> xselectionrequest) . selection));
 	  EVENT_ULONG_INTEGER
-	    (result, EVENT_2,
-	     (ulong_to_integer ((event -> xselectionrequest) . target)));
+	    (result, EVENT_2, ((event -> xselectionrequest) . target));
 	  EVENT_ULONG_INTEGER
-	    (result, EVENT_3,
-	     (ulong_to_integer ((event -> xselectionrequest) . property)));
+	    (result, EVENT_3, ((event -> xselectionrequest) . property));
 	  EVENT_ULONG_INTEGER
-	    (result, EVENT_4,
-	     (ulong_to_integer ((event -> xselectionrequest) . time)));
+	    (result, EVENT_4, ((event -> xselectionrequest) . time));
 	}
       break;
     case PropertyNotify:
       if (EVENT_ENABLED (xw, event_type_property_notify))
 	{
-	  result = (make_event_object (xw, event_type_property_notify, 3));
+	  result = (make_event_object (xw, event_type_property_notify, 4));
+	  /* Must store window element separately because this window
+	     might not have a corresponding XW object.  */
 	  EVENT_ULONG_INTEGER
-	    (result, EVENT_0,
-	     (ulong_to_integer ((event -> xproperty) . atom)));
+	    (result, EVENT_0, ((event -> xproperty) . window));
 	  EVENT_ULONG_INTEGER
-	    (result, EVENT_1,
-	     (ulong_to_integer ((event -> xproperty) . time)));
+	    (result, EVENT_1, ((event -> xproperty) . atom));
 	  EVENT_ULONG_INTEGER
-	    (result, EVENT_2,
-	     (long_to_integer ((event -> xproperty) . state)));
+	    (result, EVENT_2, ((event -> xproperty) . time));
+	  EVENT_ULONG_INTEGER
+	    (result, EVENT_3, ((event -> xproperty) . state));
 	}
       break;
     case EnterNotify: CONVERT_TRIVIAL_EVENT (event_type_enter);
@@ -1315,8 +1336,13 @@ DEFUN (xd_process_events, (xd, non_block_p, use_select_p),
       if ((event . type) == KeymapNotify)
 	continue;
       {
-	struct xwindow * xw = (x_window_to_xw (event . xany . window));
-	if (xw == 0)
+	struct xwindow * xw
+	  = (x_window_to_xw (display, (event . xany . window)));
+	if ((xw == 0)
+	    && (! (((event . type) == PropertyNotify)
+		   || ((event . type) == SelectionClear)
+		   || ((event . type) == SelectionNotify)
+		   || ((event . type) == SelectionRequest))))
 	  continue;
 	xw_process_event (xw, (&event));
       }
@@ -1440,6 +1466,13 @@ DEFINE_PRIMITIVE ("X-DISPLAY-DESCRIPTOR", Prim_x_display_descriptor, 1, 1, 0)
     (long_to_integer (ConnectionNumber (XD_DISPLAY (x_display_arg (1)))));
 }
 
+DEFINE_PRIMITIVE ("X-MAX-REQUEST-SIZE", Prim_x_max_request_size, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (long_to_integer (XMaxRequestSize (XD_DISPLAY (x_display_arg (1)))));
+}
+
 DEFINE_PRIMITIVE ("X-DISPLAY-PROCESS-EVENTS", Prim_x_display_process_events, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
@@ -1455,6 +1488,15 @@ DEFINE_PRIMITIVE ("X-DISPLAY-PROCESS-EVENTS", Prim_x_display_process_events, 2, 
     else
       PRIMITIVE_RETURN (xd_process_events (xd, 1, 0));
   }
+}
+
+DEFINE_PRIMITIVE ("X-SELECT-INPUT", Prim_x_select_input, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  XSelectInput ((XD_DISPLAY (x_display_arg (1))),
+		(arg_ulong_integer (2)),
+		(arg_integer (3)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-EVENT-MASK", Prim_x_window_event_mask, 1, 1, 0)
@@ -1655,6 +1697,17 @@ DEFINE_PRIMITIVE ("X-WINDOW-ID", Prim_x_window_id, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN (ulong_to_integer (XW_WINDOW (x_window_arg (1))));
+}
+
+DEFINE_PRIMITIVE ("X-ID->WINDOW", Prim_x_id_to_window, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    struct xwindow * xw
+      = (x_window_to_xw ((XD_DISPLAY (x_display_arg (1))),
+			 (arg_ulong_integer (2))));
+    PRIMITIVE_RETURN ((xw == 0) ? SHARP_F : (XW_TO_OBJECT (xw)));
+  }
 }
 
 /* Appearance Control Primitives */
@@ -2166,7 +2219,7 @@ DEFINE_PRIMITIVE ("X-LIST-FONTS", Prim_x_list_fonts, 3, 3,
   }
 }
 
-/* Selections */
+/* Atoms */
 
 DEFINE_PRIMITIVE ("X-INTERN-ATOM", Prim_x_intern_atom, 3, 3, 0)
 {
@@ -2181,9 +2234,11 @@ DEFINE_PRIMITIVE ("X-GET-ATOM-NAME", Prim_x_get_atom_name, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   {
-    PTR position = dstack_position;
-    unsigned char status = (catch_x_errors ());
+    PTR VOLATILE position = dstack_position;
+    unsigned char status;
     SCHEME_OBJECT result;
+
+    CATCH_X_ERRORS (status);
     if (status == 0)
       {
 	char * name
@@ -2198,12 +2253,77 @@ DEFINE_PRIMITIVE ("X-GET-ATOM-NAME", Prim_x_get_atom_name, 2, 2, 0)
     PRIMITIVE_RETURN (result);
   }
 }
+
+/* Window Properties */
 
-static SCHEME_OBJECT EXFUN
-  (convert_32_bit_property_data, (CONST unsigned char *, unsigned long));
-static SCHEME_OBJECT EXFUN
-  (convert_16_bit_property_data, (CONST unsigned char *, unsigned long));
+static SCHEME_OBJECT
+DEFUN (char_ptr_to_prop_data_32, (data, nitems),
+       CONST unsigned char * data AND
+       unsigned long nitems)
+{
+  SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, nitems, 1));
+  unsigned long index;
+  for (index = 0; (index < nitems); index += 1)
+    VECTOR_SET (result, index, (ulong_to_integer (((CARD32 *) data) [index])));
+  return (result);
+}
 
+static SCHEME_OBJECT
+DEFUN (char_ptr_to_prop_data_16, (data, nitems),
+       CONST unsigned char * data AND
+       unsigned long nitems)
+{
+  SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, nitems, 1));
+  unsigned long index;
+  for (index = 0; (index < nitems); index += 1)
+    VECTOR_SET (result, index, (ulong_to_integer (((CARD16 *) data) [index])));
+  return (result);
+}
+
+static CONST char *
+DEFUN (prop_data_32_to_char_ptr, (vector, length_return),
+       SCHEME_OBJECT vector AND
+       unsigned long * length_return)
+{
+  unsigned long nitems = (VECTOR_LENGTH (vector));
+  unsigned long length = (nitems * 4);
+  char * data = (dstack_alloc (length));
+  unsigned long index;
+  for (index = 0; (index < nitems); index += 1)
+    {
+      SCHEME_OBJECT n = (VECTOR_REF (vector, index));
+      if (! (integer_to_ulong_p (n)))
+	return (0);
+      (((CARD32 *) data) [index]) = (integer_to_ulong (n));
+    }
+  (*length_return) = length;
+  return (data);
+}
+
+static CONST char *
+DEFUN (prop_data_16_to_char_ptr, (vector, length_return),
+       SCHEME_OBJECT vector AND
+       unsigned long * length_return)
+{
+  unsigned long nitems = (VECTOR_LENGTH (vector));
+  unsigned long length = (nitems * 2);
+  char * data = (dstack_alloc (length));
+  unsigned long index;
+  for (index = 0; (index < nitems); index += 1)
+    {
+      SCHEME_OBJECT n = (VECTOR_REF (vector, index));
+      unsigned long un;
+      if (! (integer_to_ulong_p (n)))
+	return (0);
+      un = (integer_to_ulong (n));
+      if (un >= 65536)
+	return (0);
+      (((CARD16 *) data) [index]) = un;
+    }
+  (*length_return) = length;
+  return (data);
+}
+
 DEFINE_PRIMITIVE ("X-GET-WINDOW-PROPERTY", Prim_x_get_window_property, 7, 7, 0)
 {
   PRIMITIVE_HEADER (7);
@@ -2247,75 +2367,65 @@ DEFINE_PRIMITIVE ("X-GET-WINDOW-PROPERTY", Prim_x_get_window_property, 7, 7, 0)
 		    && (req_type != actual_type))
 		   ? SHARP_F
 		   : (actual_format == 32)
-		   ? (convert_32_bit_property_data (data, nitems))
+		   ? (char_ptr_to_prop_data_32 (data, nitems))
 		   : (actual_format == 16)
-		   ? (convert_16_bit_property_data (data, nitems))
+		   ? (char_ptr_to_prop_data_16 (data, nitems))
 		   : (memory_to_string (nitems, data))));
       XFree (data);
       PRIMITIVE_RETURN (result);
     }
   }
 }
-
-static SCHEME_OBJECT
-DEFUN (convert_32_bit_property_data, (data, nitems),
-       CONST unsigned char * data AND
-       unsigned long nitems)
-{
-  SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, nitems, 1));
-  unsigned long index;
-  for (index = 0; (index < nitems); index += 1)
-    VECTOR_SET (result, index, (ulong_to_integer (((CARD32 *) data) [index])));
-  return (result);
-}
-
-static SCHEME_OBJECT
-DEFUN (convert_16_bit_property_data, (data, nitems),
-       CONST unsigned char * data AND
-       unsigned long nitems)
-{
-  SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, nitems, 1));
-  unsigned long index;
-  for (index = 0; (index < nitems); index += 1)
-    VECTOR_SET (result, index, (ulong_to_integer (((CARD16 *) data) [index])));
-  return (result);
-}
-
+
 DEFINE_PRIMITIVE ("X-CHANGE-PROPERTY", Prim_x_change_property, 7, 7, 0)
 {
   PRIMITIVE_HEADER (7);
-  CHECK_ARG (7, STRING_P);
   {
+    PTR VOLATILE position = dstack_position;
     Display * display = (XD_DISPLAY (x_display_arg (1)));
     Window window = (arg_ulong_integer (2));
     Atom property = (arg_ulong_integer (3));
     Atom type = (arg_ulong_integer (4));
     int format = (arg_nonnegative_integer (5));
     int mode = (arg_index_integer (6, 3));
-    SCHEME_OBJECT data = (ARG_REF (7));
+    CONST char * data;
+    unsigned long dlen;
+    unsigned char status;
 
-    if (! ((format == 8) || (format == 16) || (format == 32)))
-      error_bad_range_arg (5);
-    if ((format != 8) && (((STRING_LENGTH (data)) % (format / 8)) != 0))
-      error_bad_range_arg (7);
-    {
-      PTR position = dstack_position;
-      unsigned char status = (catch_x_errors ());
-      if (status == 0)
-	{
-	  XChangeProperty (display,
-			   window,
-			   property,
-			   type,
-			   format,
-			   mode,
-			   (STRING_LOC (data, 0)),
-			   ((STRING_LENGTH (data)) / (format / 8)));
-	  dstack_set_position (position);
-	}
-      dstack_set_position (position);
-      PRIMITIVE_RETURN (ulong_to_integer (status));
-    }
+    switch (format)
+      {
+      case 8:
+	CHECK_ARG (7, STRING_P);
+	data = (STRING_LOC ((ARG_REF (7)), 0));
+	dlen = (STRING_LENGTH (ARG_REF (7)));
+	break;
+      case 16:
+	CHECK_ARG (7, VECTOR_P);
+	data = (prop_data_16_to_char_ptr ((ARG_REF (7)), (&dlen)));
+	if (data == 0)
+	  error_bad_range_arg (7);
+	break;
+      case 32:
+	CHECK_ARG (7, VECTOR_P);
+	data = (prop_data_32_to_char_ptr ((ARG_REF (7)), (&dlen)));
+	if (data == 0)
+	  error_bad_range_arg (7);
+	break;
+      default:
+	error_bad_range_arg (5);
+	break;
+      }
+    CATCH_X_ERRORS (status);
+    if (status == 0)
+      {
+	XChangeProperty (display, window, property, type, format, mode,
+			 data, dlen);
+	/* Flush the display queue, because we need to see the errors
+	   immediately while we're looking for them.  */
+	XFlush (display);
+      }
+    dstack_set_position (position);
+    PRIMITIVE_RETURN (ulong_to_integer (status));
   }
 }
 
@@ -2324,9 +2434,11 @@ DEFINE_PRIMITIVE ("X-DELETE-PROPERTY", Prim_x_delete_property, 3, 3, 0)
   PRIMITIVE_HEADER (3);
   XDeleteProperty ((XD_DISPLAY (x_display_arg (1))),
 		   (arg_ulong_integer (2)),
-		   (arg_ulong_integer (2)));
+		   (arg_ulong_integer (3)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
+
+/* Selections */
 
 DEFINE_PRIMITIVE ("X-SET-SELECTION-OWNER", Prim_x_set_selection_owner, 4, 4, 0)
 {
@@ -2358,35 +2470,21 @@ DEFINE_PRIMITIVE ("X-CONVERT-SELECTION", Prim_x_convert_selection, 6, 6, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("X-SEND-SELECTION-NOTIFY", Prim_x_send_selection_notify, 5, 5, 0)
+DEFINE_PRIMITIVE ("X-SEND-SELECTION-NOTIFY", Prim_x_send_selection_notify, 6, 6, 0)
 {
-  PRIMITIVE_HEADER (5);
+  PRIMITIVE_HEADER (6);
   {
     struct xdisplay * xd = (x_display_arg (1));
     Window requestor = (arg_ulong_integer (2));
     XSelectionEvent event;
     (event . type) = SelectionNotify;
+    (event . display) = (XD_DISPLAY (xd));
     (event . requestor) = requestor;
-    (event . property) = (arg_ulong_integer (3));
+    (event . selection) = (arg_ulong_integer (3));
     (event . target) = (arg_ulong_integer (4));
-    (event . time) = (arg_ulong_integer (5));
-    XSendEvent ((XD_DISPLAY (xd)), requestor, True, 0, ((XEvent *) (&event)));
+    (event . property) = (arg_ulong_integer (5));
+    (event . time) = (arg_ulong_integer (6));
+    XSendEvent ((XD_DISPLAY (xd)), requestor, False, 0, ((XEvent *) (&event)));
   }
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("X-MAX-REQUEST-SIZE", Prim_x_max_request_size, 1, 1, 0)
-{
-  PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN
-    (long_to_integer (XMaxRequestSize (XD_DISPLAY (x_display_arg (1)))));
-}
-
-DEFINE_PRIMITIVE ("X-SELECT-INPUT", Prim_x_select_input, 3, 3, 0)
-{
-  PRIMITIVE_HEADER (3);
-  XSelectInput ((XD_DISPLAY (x_display_arg (1))),
-		(arg_ulong_integer (2)),
-		(arg_integer (3)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
