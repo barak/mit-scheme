@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.10 1987/07/20 18:15:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.11 1987/07/21 01:40:20 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -212,6 +212,9 @@ MIT in each case. |#
        (declare-constants uuo-links
 	(declare-constants constants
 	 (LAP
+	  ;; Place holder for the debugging info filename
+	  ,@(let ((debugging-information-label (allocate-constant-label)))
+	      (LAP (SCHEME-OBJECT ,debugging-information-label DEBUGGING-INFO)))
 	  ,@(let ((environment-label (allocate-constant-label)))
 	      (LAP (SCHEME-OBJECT ,environment-label ENVIRONMENT)
 		   (LEA (@PCR ,environment-label) (A 0))))
