@@ -1,6 +1,6 @@
 Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.14 1991/02/28 22:00:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.15 1991/03/01 00:23:01 jinx Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -39,8 +39,7 @@ different file system.
 For questions on Liar not covered by this document, or questions about
 this document, contact liar-implementors@zurich.ai.mit.edu .
 
-Text tagged by ==> is intended primarily for the compiler developers,
-and text tagged by *** is meant for the people writing this document.
+Text tagged by ==> is intended primarily for the compiler developers.
 
 Good luck!
 
@@ -1152,17 +1151,21 @@ not machine-dependent, and should probably be moved to another directory.
 * dassm2.scm:
 	This file contains various utilities for the disassembler.  In
 particular, it contains the code for
-compiled-code-block/bytes-per-object
-compiled-code-block/objects-per-procedure-cache
-compiled-code-block/objects-per-variable-cache
+
+    compiled-code-block/bytes-per-object
+    compiled-code-block/objects-per-procedure-cache
+    compiled-code-block/objects-per-variable-cache
+
 ==> Should these not be in machin.scm?  In particular, the first two
 have corresponding definitions there.
-disassembler/read-variable-cache
-disassembler/read-procedure-cache
-disassembler/instructions
-disassembler/instructions/null?
-disassembler/instructions/read
+
+    disassembler/read-variable-cache
+    disassembler/read-procedure-cache
+    disassembler/instructions
+    disassembler/instructions/null?
+    disassembler/instructions/read
 and the state machine to heuristically disassemble offsets, etc.
+
 *** Describe all of these.
 
 * dassm3.scm:
@@ -1251,12 +1254,8 @@ assembly language instructions.
 The assembler rules use the following syntax:
 
     (DEFINE-INSTRUCTION <opcode>
-      (<pattern1>
-       <qualifier1>				; optional
-       <body1>)
-      (<pattern2>
-       <qualifier2>				; optional
-       <body2>)
+      (<pattern1> <qualifier1> <body1>)
+      (<pattern2> <qualifier2> <body2>)
       ...
       )
 
@@ -1329,8 +1328,6 @@ this syntax is used nowhere.  The early parser does not understand it.
 Should it be flushed?
 
 	5.3 Writing statement rules.
-
-*** Get CPH to examine this carefully.
 
 Statement rules provide the translation between RTL instructions and
 fragments of assembly language.  Most RTL instructions are
@@ -1718,13 +1715,151 @@ instructions.
 
 	5.3.4 Fixnum rules.
 
-*** MISSING: You need multiplication by 4 rules in order to get
-variable-offset vector-ref and vector-set! to work, even if there are
-no other multiplication rules.
+Scheme's generic arithmetic primitives cannot be open-coded fully for
+space reasons.  Most Scheme code that manipulates numbers manipulates
+small integers used as counters, vector indices, etc., and using
+out-of-line arithmetic procedures to operate on them would make the
+code too slow.  The compromise, therefore, is to open-code the common
+small integer case, and to handle the rest out of line.  This, of
+course, does not perform particularly well for the other common case
+of floating point data.
 
+Scheme integers are represented in two formats.  The most common,
+fixnum representation, uses the datum field of the objects to directly
+encode the values.  The other format, bignum representation, stores
+the values in multiple words in memory, and the datum is a pointer to
+this storage.  Scheme generic arithmetic procedures will generate
+fixnums whenever possible, resorting to bignums when the value exceeds
+the range that can be represented in fixnum format.
+
+Since the open-codings provided for the compiler only handle fixnums,
+these open-codings must also detect when the result will not fit in a
+fixnum in order to invoke the out-of-line utility that will handle
+them correctly.  
+
+Most hardware provide facilities for detecting overflow on integer
+operations.  Fixnums cannot use these facilities directly, because of
+the tag bits at the high-end of the word.  To be able to use these
+facilities (and get the sign bit in the right place), Scheme fixnums
+are converted to an internal format before they are operated on, and
+converted back to Scheme object format before storing them in memory
+or returning them as values.
+
+In this internal format, the value has been shifted left so that the
+fixnum sign-bit coincides with the integer sign bit, and a number of
+bits in the least-significant end of the word hold zeros.  The shift
+amount is the length of the type-tag field.
+
+The rules
+    (ASSIGN (REGISTER (? target)) (OBJECT->FIXNUM (REGISTER (? source))))
+and
+    (ASSIGN (REGISTER (? target)) (FIXNUM->OBJECT (REGISTER (? source))))
+perform this translation.
+
+The open-coding of fixnum arithmetic assumes that the sources and the
+result are in this format.  This format is good for value comparisons,
+addition, subtraction, and bitwise logical operations, but must be
+transformed for multiplication, division, and shifting operations.
+
+In addition to open-coding fixnum operations within generic
+arithmetic, fixnum primitives can be invoked directly, and the code
+can be open coded as well.  Under these circumstances, the result will
+not be checked for overflow, and the code generated can be quite
+different.  The RTL instructions that perform fixnum arithmetic have a
+boolean flag that specifies whether overflow conditions should be
+generated or not.
+
+Note that the compiler does not generally require fixnum arithmetic to
+be open coded.  If the names of all the fixnum primitives are listed in
+COMPILER:PRIMITIVES-WITH-NO-OPEN-CODING, all of them will be handled
+by issuing code to invoke them out of line. 
+
+There is one exception to this, however.  The following rules MUST be
+provided:
+
+    (ASSIGN (REGISTER (? target))
+	    (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+			   (OBJECT->FIXNUM (CONSTANT 4))
+			   (OBJECT->FIXNUM (REGISTER (? source)))
+			   #F))
+
+    (ASSIGN (REGISTER (? target))
+	    (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+			   (OBJECT->FIXNUM (REGISTER (? source)))
+			   (OBJECT->FIXNUM (CONSTANT 4))
+			   #F))
+
+The reason is that VECTOR-REF and VECTOR-SET! translate into a
+sequence that uses these patterns when the index is not a compile-time
+constant.
+
 	5.3.5 Rules to invoke the runtime library
 
-*** MISSING:
+Some of the rules issue code that invokes the runtime library.  The
+runtime library is invoked through a primary entry point,
+SCHEME-TO-INTERFACE, typically directly accessible through a dedicated
+processor register.  SCHEME-TO-INTERFACE expects at least one and up
+to five arguments.  The first argument is the index of the runtime
+library service to invoke, and the rest are the parameters to the
+service routine.  These arguments are passed on fixed locations,
+typically registers.  Runtime library utilities return their values
+(if any) in the compiler's value register.  The following is a typical
+example of such an invocation where INVOKE-INTERFACE expects the index
+of a utility, and generates the code that writes the index into the
+appropriate location and jumps to SCHEME-TO-INTERFACE.
+
+    (define-rule statement
+      (INVOCATION:APPLY (? frame-size) (? continuation))
+      (LAP ,@(clear-map!)
+	   ,@(load-rn frame-size 2)
+	   (MOV L (@R+ 14) (R 1))
+	   ,@(invoke-interface code:compiler-apply)))
+
+The code names are typically defined in
+compiler/machines/port/lapgen.scm.
+
+Many of the utilities expect return addresses as their first argument,
+and it is convenient to define a procedure, INVOKE-INTERFACE-JSB which
+receives an index but leaves the appropriate return address in the
+first argument's location.  INVOKE-INTERFACE-JSB can be written by
+using INVOKE-INTERFACE (and SCHEME-TO-INTERFACE), but given the
+frequency of this type of call, it is often written in terms of an
+alternate entry point to the runtime library (eg.
+SCHEME-TO-INTERFACE-JSB).
+
+An example of a more complicated call to the runtime library is
+    (define-rule statement
+      (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension) (? value))
+      (QUALIFIER (and (interpreter-call-argument? extension)
+		      (interpreter-call-argument? value)))
+      (let* ((set-extension
+	      (interpreter-call-argument->machine-register! extension r2))
+	     (set-value (interpreter-call-argument->machine-register! value r3))
+	     (clear-map (clear-map!)))
+	(LAP ,@set-extension
+	     ,@set-value
+	     ,@clear-map
+	     ,@(invoke-interface-jsb code:compiler-assignment-trap))))
+where INTERPRETER-CALL-ARGUMENT->MACHINE-REGISTER! invokes
+CLEAR-REGISTERS! and NEED-REGISTER! besides performing the assignment.
+
+For very frequent calls, the assembly language part of the runtime
+library can provide additional entry points.  The calling convention
+for these would be port-dependent, but frequently they take arguments
+in the same way that SCHEME-TO-INTERFACE and SCHEME-TO-INTERFACE-JSB
+take them, but avoid passing the utility index, and may do part or all
+of the work of the utility in assembly language instead of invoking
+the portable C version.
+
+The following is a possible specialized version of apply
+where the special entry point expects the procedure argument on the
+stack rather than in a fixed register:
+
+    (define-rule statement
+      (INVOCATION:APPLY (? frame-size) (? continuation))
+      (LAP ,@(clear-map!)
+	   ,@(load-rn frame-size 2)
+	    (JMP ,entry:compiler-apply)))
 
 	5.4 Writing predicate rules.
 
@@ -1864,7 +1999,7 @@ this problem.
 sort of).
 Describe the (rtl) primitives on top of which it is written.
 Suggest looking at the 68000 and the Spectrum versions.
-
+
 	5.6 Writing assembler rules.
 
 *** MISSING: Anything here?
@@ -1987,8 +2122,6 @@ You should then be able to invoke the compiler by giving scheme the
 ``-compiler'' option, and use it by invoking CF.
 
 	6.3 Testing the compiler
-
-*** Mention how to test the assembler by using LAP->CODE?
 
 There is no comprehensive test suite for the compiler.  There is,
 however, a small test suite that is likely to catch gross errors.  The
@@ -2224,5 +2357,7 @@ directories, reload, and test again.  Once you determine the procedure
 in which the bug occurs, recompiling the module and examining the
 resulting RTL and LAP programs should lead to identification of the
 bug.
+
+		7. Bibliography
 
-*** Bugs in invoking the interface.
+*** MISSING.
