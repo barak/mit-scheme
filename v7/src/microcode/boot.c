@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.114 2003/03/20 03:51:08 cph Exp $
+$Id: boot.c,v 9.115 2003/03/21 17:28:21 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,1997 Massachusetts Institute of Technology
@@ -386,7 +386,7 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
   OS_initialize ();
   if (I_Am_Master)
     {
-      if (!option_suppress_noise)
+      if (!option_batch_mode)
 	{
 	  outf_console ("MIT/GNU Scheme running under %s\n", OS_Variant);
 	  OS_announcement ();
@@ -743,8 +743,8 @@ DEFINE_PRIMITIVE ("RELOAD-RETRIEVE-STRING", Prim_reload_retrieve_string, 0, 0, 0
   }
 }
 
-DEFINE_PRIMITIVE ("SUPPRESS-NOISE", Prim_suppress_noise, 0, 0, 0)
+DEFINE_PRIMITIVE ("BATCH-MODE?", Prim_batch_mode_p, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (option_suppress_noise));
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (option_batch_mode));
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: term.c,v 1.19 2003/03/20 04:39:06 cph Exp $
+$Id: term.c,v 1.20 2003/03/21 17:28:33 cph Exp $
 
 Copyright 1990,1991,1993,1994,1995,1996 Massachusetts Institute of Technology
 Copyright 2000,2002,2003 Massachusetts Institute of Technology
@@ -114,7 +114,7 @@ DEFUN (termination_prefix, (code), int code)
      message should be considered normal output.  */
   if (code == TERM_HALT)
     {
-      if (!option_suppress_noise)
+      if (!option_batch_mode)
 	{
 	  outf_console ("\n%s.\n", (Term_Messages [code]));
 	  outf_flush_console ();

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.60 2003/03/20 03:51:11 cph Exp $
+$Id: option.c,v 1.61 2003/03/21 17:28:25 cph Exp $
 
 Copyright 1990,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -120,7 +120,7 @@ int option_force_interactive;
 int option_disable_core_dump;
 int option_band_specified;
 int option_empty_list_eq_false;
-int option_suppress_noise;
+int option_batch_mode;
 
 /* String options */
 CONST char ** option_library_path = 0;
@@ -661,7 +661,7 @@ DEFUN (parse_standard_options, (argc, argv), int argc AND CONST char ** argv)
   option_argument ("utab", 1, (&option_raw_utab));
   option_argument ("utabmd", 1, (&option_raw_utabmd));
   option_argument ("empty-list-eq-false", 0, (&option_empty_list_eq_false));
-  option_argument ("suppress-noise", 0, (&option_suppress_noise));
+  option_argument ("batch-mode", 0, (&option_batch_mode));
 #ifdef HAS_COMPILER_SUPPORT
   option_argument ("compiler", 0, (&option_compiler_defaults));
   option_argument ("edwin", 0, (&option_edwin_defaults));
@@ -1161,7 +1161,7 @@ DEFUN_VOID (describe_options)
   describe_boolean_option ("emacs subprocess", option_emacs_subprocess);
   describe_boolean_option ("force interactive", option_force_interactive);
   describe_boolean_option ("disable core dump", option_disable_core_dump);
-  describe_boolean_option ("suppress noise", option_suppress_noise);
+  describe_boolean_option ("suppress noise", option_batch_mode);
   if (option_unused_argc == 0)
     outf_fatal ("  no unused arguments\n");
   else
