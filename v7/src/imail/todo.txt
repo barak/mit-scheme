@@ -1,13 +1,10 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.19 2000/05/18 18:56:58 cph Exp $
+$Id: todo.txt,v 1.20 2000/05/18 18:57:45 cph Exp $
 
 Bug fixes
 ---------
 
 * Implement operations for IMAP: FOLDER-VALID?.
-
-* Implement background thread to periodically send NOOP to IMAP server
-  both to check for new mail and to keep the connection alive.
 
 * Recovery from server disconnection should be more transparent.
   Should attempt to reconnect and signal error only if that fails.
@@ -56,6 +53,9 @@ New features
 
 * Add mail notification in mode line, active across the editor as long
   as there is an IMAP connection open in some buffer.
+
+* Implement background thread to periodically send NOOP to IMAP server
+  both to check for new mail and to keep the connection alive.
 
 * Implement cache that saves information about messages on disk.  This
   should use UIDs for IMAP folders; for other folders perhaps the
