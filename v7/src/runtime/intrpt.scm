@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: intrpt.scm,v 14.14 1993/06/29 22:58:18 cph Exp $
+$Id: intrpt.scm,v 14.15 1993/06/29 23:22:52 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -35,8 +35,7 @@ MIT in each case. |#
 ;;;; Interrupt System
 ;;; package: (runtime interrupt-handler)
 
-(declare (usual-integrations)
-	 (integrate-external "boot"))
+(declare (usual-integrations))
 
 (define (initialize-package!)
   (set! index:interrupt-vector
