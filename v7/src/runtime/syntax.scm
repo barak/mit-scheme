@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.21 1993/03/03 19:56:10 cph Exp $
+$Id: syntax.scm,v 14.22 1993/08/27 20:30:25 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -284,6 +284,8 @@ MIT in each case. |#
   (make-unassigned? name))
 
 (define (syntax/access . chain)
+  (if (not (and (pair? chain) (pair? (cdr chain))))
+      (syntax-error "too few forms" chain))
   (expand-access chain make-access))
 
 (define (syntax/set! name . rest)
