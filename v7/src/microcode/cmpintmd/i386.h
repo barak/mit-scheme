@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.14 1992/02/24 22:12:14 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.15 1992/03/30 21:11:54 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -469,15 +469,15 @@ DEFUN_VOID (i386_reset_hook)
   SETUP_REGISTER (asm_generic_remainder);		/* -19 */
   SETUP_REGISTER (asm_generic_modulo);			/* -18 */
 
-  SETUP_REGISTER (asm_shortcircuit_apply);		/* -17 */
-  SETUP_REGISTER (asm_shortcircuit_apply_size_1);	/* -16 */
-  SETUP_REGISTER (asm_shortcircuit_apply_size_2);	/* -15 */
-  SETUP_REGISTER (asm_shortcircuit_apply_size_3);	/* -14 */
-  SETUP_REGISTER (asm_shortcircuit_apply_size_4);	/* -13 */
-  SETUP_REGISTER (asm_shortcircuit_apply_size_5);	/* -12 */
-  SETUP_REGISTER (asm_shortcircuit_apply_size_6);	/* -11 */
-  SETUP_REGISTER (asm_shortcircuit_apply_size_7);	/* -10 */
-  SETUP_REGISTER (asm_shortcircuit_apply_size_8);	/* -9 */
+  SETUP_REGISTER (asm_sc_apply);			/* -17 */
+  SETUP_REGISTER (asm_sc_apply_size_1);			/* -16 */
+  SETUP_REGISTER (asm_sc_apply_size_2);			/* -15 */
+  SETUP_REGISTER (asm_sc_apply_size_3);			/* -14 */
+  SETUP_REGISTER (asm_sc_apply_size_4);			/* -13 */
+  SETUP_REGISTER (asm_sc_apply_size_5);			/* -12 */
+  SETUP_REGISTER (asm_sc_apply_size_6);			/* -11 */
+  SETUP_REGISTER (asm_sc_apply_size_7);			/* -10 */
+  SETUP_REGISTER (asm_sc_apply_size_8);			/* -9 */
 
 #ifdef _MACH_UNIX
   {
