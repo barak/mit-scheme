@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffer.scm,v 1.165 1994/03/08 20:22:19 cph Exp $
+;;;	$Id: buffer.scm,v 1.166 1994/11/01 22:25:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -129,7 +129,7 @@ The buffer is guaranteed to be deselected at that time."
   (buffer-widen! buffer)
   (region-delete! (buffer-region buffer))
   (buffer-not-modified! buffer)
-  (without-interrupts
+  (with-editor-interrupts-disabled
    (lambda ()
      (undo-local-bindings! buffer #t)
      (%buffer-reset! buffer)
@@ -262,7 +262,7 @@ The buffer is guaranteed to be deselected at that time."
   (group-modified? (buffer-group buffer)))
 
 (define (buffer-not-modified! buffer)
-  (without-interrupts
+  (with-editor-interrupts-disabled
    (lambda ()
      (let ((group (buffer-group buffer)))
        (if (group-modified? group)
@@ -272,7 +272,7 @@ The buffer is guaranteed to be deselected at that time."
 	     (vector-set! buffer buffer-index:auto-saved? #f)))))))
 
 (define (buffer-modified! buffer)
-  (without-interrupts
+  (with-editor-interrupts-disabled
    (lambda ()
      (let ((group (buffer-group buffer)))
        (if (not (group-modified? group))
@@ -322,7 +322,7 @@ The buffer is guaranteed to be deselected at that time."
 
 (define (define-variable-local-value! buffer variable value)
   (let ((value (normalize-variable-value variable value)))
-    (without-interrupts
+    (with-editor-interrupts-disabled
      (lambda ()
        (let ((binding (search-local-bindings buffer variable)))
 	 (if binding
@@ -336,7 +336,7 @@ The buffer is guaranteed to be deselected at that time."
        (invoke-variable-assignment-daemons! buffer variable)))))
 
 (define (undefine-variable-local-value! buffer variable)
-  (without-interrupts
+  (with-editor-interrupts-disabled
    (lambda ()
      (let ((binding (search-local-bindings buffer variable)))
        (if binding
@@ -370,7 +370,7 @@ The buffer is guaranteed to be deselected at that time."
 	 =>
 	 (lambda (binding)
 	   (let ((value (normalize-variable-value variable value)))
-	     (without-interrupts
+	     (with-editor-interrupts-disabled
 	      (lambda ()
 		(set-cdr! binding value)
 		(if (buffer-local-bindings-installed? buffer)
@@ -381,7 +381,7 @@ The buffer is guaranteed to be deselected at that time."
 
 (define (set-variable-default-value! variable value)
   (let ((value (normalize-variable-value variable value)))
-    (without-interrupts
+    (with-editor-interrupts-disabled
      (lambda ()
        (set-variable-%default-value! variable value)
        (if (not (search-local-bindings (current-buffer) variable))
@@ -440,7 +440,7 @@ The buffer is guaranteed to be deselected at that time."
       (set-variable-local-value! (current-buffer) variable value)
       (begin
 	(let ((value (normalize-variable-value variable value)))
-	  (without-interrupts
+	  (with-editor-interrupts-disabled
 	   (lambda ()
 	     (set-variable-%default-value! variable value)
 	     (set-variable-%value! variable value)
@@ -470,7 +470,7 @@ The buffer is guaranteed to be deselected at that time."
       (error:wrong-type-argument mode "major mode" 'SET-BUFFER-MAJOR-MODE!))
   (if (buffer-get buffer 'MAJOR-MODE-LOCKED)
       (editor-error "The major mode of this buffer is locked: " buffer))
-  (without-interrupts
+  (with-editor-interrupts-disabled
    (lambda ()
      (undo-local-bindings! buffer #f)
      (%set-buffer-major-mode! buffer mode)
@@ -495,7 +495,7 @@ The buffer is guaranteed to be deselected at that time."
 (define (enable-buffer-minor-mode! buffer mode)
   (if (not (minor-mode? mode))
       (error:wrong-type-argument mode "minor mode" 'ENABLE-BUFFER-MINOR-MODE!))
-  (without-interrupts
+  (with-editor-interrupts-disabled
    (lambda ()
      (let ((modes (buffer-modes buffer)))
        (if (not (memq mode (cdr modes)))
@@ -512,7 +512,7 @@ The buffer is guaranteed to be deselected at that time."
   (if (not (minor-mode? mode))
       (error:wrong-type-argument mode "minor mode"
 				 'DISABLE-BUFFER-MINOR-MODE!))
-  (without-interrupts
+  (with-editor-interrupts-disabled
    (lambda ()
      (let ((modes (buffer-modes buffer)))
        (if (memq mode (cdr modes))
