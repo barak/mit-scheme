@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.51 1991/08/16 01:31:50 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.52 1991/08/21 16:18:03 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -905,6 +905,7 @@ MIT in each case. |#
 	  edwin-command$rmail-next-undeleted-message
 	  edwin-command$rmail-previous-message
 	  edwin-command$rmail-previous-undeleted-message
+	  edwin-command$rmail-reply
 	  edwin-command$rmail-show-message
 	  edwin-command$rmail-sort-by-author
 	  edwin-command$rmail-sort-by-date
