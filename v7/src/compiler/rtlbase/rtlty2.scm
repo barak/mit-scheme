@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty2.scm,v 1.1 1987/06/17 19:43:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty2.scm,v 1.2 1987/07/19 21:34:13 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -92,6 +92,9 @@ MIT in each case. |#
 
 (define-integrable (rtl:interpreter-call-result:cache-reference)
   (rtl:make-fetch 'INTERPRETER-CALL-RESULT:CACHE-REFERENCE))
+
+(define-integrable (rtl:interpreter-call-result:cache-unassigned?)
+  (rtl:make-fetch 'INTERPRETER-CALL-RESULT:CACHE-UNASSIGNED?))
 
 (define-integrable (rtl:interpreter-call-result:enclose)
   (rtl:make-fetch 'INTERPRETER-CALL-RESULT:ENCLOSE))
