@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.260 1995/06/20 05:59:57 cph Exp $
+$Id: runtime.pkg,v 14.261 1995/07/27 21:08:59 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -222,10 +222,8 @@ MIT in each case. |#
   (files "infstr" "infutl")
   (parent ())
   (export ()
-	  compiled-code-block/filename
 	  compiled-entry/block
 	  compiled-entry/dbg-object
-	  compiled-entry/filename
 	  compiled-entry/offset
 	  compiled-expression/scode
 	  compiled-procedure/name
@@ -234,48 +232,44 @@ MIT in each case. |#
 	  load-debugging-info-on-demand?
 	  uncompress-ports)
   (export (runtime load)
-	  dbg-info-vector/purification-root
-	  dbg-info-vector?
+	  compiled-module?
+	  compiled-module/expression
+	  compiled-module/purification-root
 	  fasload/update-debugging-info!)
-  (export (runtime program-copier)
-	  dbg-info-vector?)
+  ;;(export (runtime program-copier)
+  ;;	  dbg-info-vector?)
   (export (runtime debugger-command-loop)
 	  special-form-procedure-name?)
   (export (runtime environment)
-	  dbg-block/find-name
-	  dbg-block/ic-parent-index
-	  dbg-block/layout
-	  dbg-block/layout-first-offset
-	  dbg-block/layout-vector
-	  dbg-block/normal-closure-index
-	  dbg-block/original-parent
+	  ;;dbg-block/find-name
+	  dbg-block/find-variable
 	  dbg-block/parent
+	  dbg-block/parent-path-prefix
 	  dbg-block/procedure
-	  dbg-block/stack-link
-	  dbg-block/static-link-index
 	  dbg-block/type
+	  dbg-block/variables
 	  dbg-continuation?
 	  dbg-continuation/block
-	  dbg-continuation/offset
 	  dbg-expression?
 	  dbg-procedure?
 	  dbg-procedure/block
+	  dbg-procedure/label
 	  dbg-procedure/name
-	  dbg-procedure/required
-	  dbg-procedure/optional
-	  dbg-procedure/rest
 	  dbg-procedure/source-code
+	  dbg-variable?
 	  dbg-variable/name
-	  dbg-variable/type
-	  dbg-variable/value
-	  dbg-variable?)
+	  dbg-variable/path)
   (export (runtime debugging-info)
 	  dbg-continuation?
-	  dbg-continuation/source-code
+	  dbg-continuation/inner
+	  dbg-continuation/outer
+	  dbg-continuation/type
 	  dbg-procedure?
 	  dbg-procedure/block
 	  dbg-procedure/source-code
 	  dbg-expression?)
+  (export (runtime unparser)
+	  compiled-entry/filename-and-index)
   (export (runtime compress)
 	  uncompress-internal)
   (initialization (initialize-package!)))
@@ -328,6 +322,7 @@ MIT in each case. |#
 	  stack-frame-type/subproblem?
 	  stack-frame-type?
 	  stack-frame/compiled-code?
+	  stack-frame/compiled-interrupt?
 	  stack-frame/dynamic-state
 	  stack-frame/elements
 	  stack-frame/interrupt-mask
@@ -349,7 +344,8 @@ MIT in each case. |#
 	  stack-frame?)
   (export (runtime debugging-info)
 	  stack-frame-type/interrupt-compiled-procedure
-	  stack-frame-type/interrupt-compiled-expression)
+	  stack-frame-type/interrupt-compiled-expression
+	  stack-frame-type/interrupt-compiled-return-address)
   (initialization (initialize-package!)))
 
 (define-package (runtime control-point)
@@ -536,6 +532,8 @@ MIT in each case. |#
 	  interpreter-environment?
 	  make-null-interpreter-environment
 	  system-global-environment?)
+  (export (runtime debugger-utilities)
+	  unavailable?)
   (export (runtime advice)
 	  ic-environment/arguments
 	  ic-environment/procedure)

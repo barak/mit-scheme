@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.43 1995/05/25 18:25:54 ziggy Exp $
+$Id: unpars.scm,v 14.44 1995/07/27 21:10:31 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -611,7 +611,8 @@ MIT in each case. |#
 				    entry
 	      (lambda ()
 		(let ((name (and procedure? (compiled-procedure/name entry))))
-		  (with-values (lambda () (compiled-entry/filename entry))
+		  (with-values
+		      (lambda () (compiled-entry/filename-and-index entry))
 		    (lambda (filename block-number)
 		      (*unparse-char #\()
 		      (if name
