@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: win32com.scm,v 1.4 1996/03/21 16:52:48 adams Exp $
+;;;	$Id: win32com.scm,v 1.5 1996/05/03 06:58:21 cph Exp $
 ;;;
-;;;	Copyright (c) 1994-1996 Massachusetts Institute of Technology
+;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -36,14 +36,12 @@
 ;;;	thereof in any advertising, promotional, or sales literature
 ;;;	without prior written consent from MIT in each case.
 ;;;
-;;;
 
+;;;; Win32 Commands
 ;;; package (edwin win-commands)
 
-;;; Win32 commands
-
 (declare (usual-integrations))
-
+
 (define-command set-icon
   "Set the current window's icon to ICON.
 ICON must be the (string) name of one of the known icons.
@@ -76,7 +74,6 @@ When called interactively, completion is available on the input."
      "mincer_icon"
      "bch_ico"))
 
-
 (define-command set-foreground-color
   "Set foreground (text) color to COLOR."
   "sSet foreground color"
@@ -84,7 +81,7 @@ When called interactively, completion is available on the input."
     (let ((screen (selected-screen)))
       (win32-screen/set-foreground-color! screen (win32/find-color name))
       (update-screen! screen #t))))
-  
+
 (define-command set-background-color
   "Set background (text) color to COLOR."
   "sSet background color"
@@ -102,32 +99,32 @@ When called interactively, completion is available on the input."
       (update-screen! screen #t))))
 
 (define-command set-default-font
-  "Set font to be used for drawing text in new windows."
+  "Set font to be used for drawing text in new frames."
   "sSet default font"
   (lambda (font)
     ((ucode-primitive win32-screen-set-default-font! 1) font)))
-
+
 ;; Missing functionality in win32-screen.
-;;(define-command set-screen-size
-;;  "Set size of editor screen to WIDTH x HEIGHT."
-;;  "nScreen width (chars)\nnScreen height (chars)"
+;;(define-command set-frame-size
+;;  "Set size of current frame to WIDTH x HEIGHT."
+;;  "nFrame width (chars)\nnFrame height (chars)"
 ;;  (lambda (width height)
 ;;    (win32-screen/set-size! (selected-screen) (max 2 width) (max 2 height))))
 
-(define-command set-screen-position
-  "Set position of editor screen to (X,Y)."
-  "nX position (pels)\nnY position (pels)"
+(define-command set-frame-position
+  "Set position of current frame to (X,Y)."
+  "nFrame X position (pels)\nnFrame Y position (pels)"
   (lambda (x y)
     (win32-screen/set-position! (selected-screen) x y)))
 
-(define-command show-screen-size
-  "Show size of editor screen."
+(define-command show-frame-size
+  "Show size of current frame."
   ()
   (lambda ()
     (let ((screen (selected-screen)))
       (call-with-values (lambda () (win32-screen/get-position screen))
-	(lambda (x y r b)		
-	  (message "Screen is "
+	(lambda (x y r b)
+	  (message "Frame is "
 		   (screen-x-size screen)
 		   " chars wide and "
 		   (screen-y-size screen)
@@ -135,19 +132,17 @@ When called interactively, completion is available on the input."
 		   (- r x) "x" (- b y)
 		   " pels)"))))))
 
-(define-command show-screen-position
-  "Show position of editor screen.
+(define-command show-frame-position
+  "Show position of current frame.
 This is the position of the upper left-hand corner of the frame border
-surrounding the screen, relative to the upper left-hand corner of the
+surrounding the frame, relative to the upper left-hand corner of the
 desktop."
   ()
   (lambda ()
     (call-with-values (lambda () (win32-screen/get-position (selected-screen)))
       (lambda (x y r b)
 	r b				; ignored
-	(message "Screen's upper left-hand corner is at (" x "," y ")")))))
-
-
+	(message "Frame's upper left-hand corner is at (" x "," y ")")))))
 
 (define (update-win32-screen-name! screen)
   (let ((window
@@ -163,16 +158,9 @@ desktop."
 		  (string-trim-right
 		   (format-modeline-string window format length)))))))
       (update-name win32-screen/set-name!
-		   (ref-variable screen-name-format buffer)
-		   (ref-variable screen-name-length buffer)))))
+		   (ref-variable frame-name-format buffer)
+		   (ref-variable frame-name-length buffer)))))
 
-(define-variable screen-name-format
-  "If not false, template for displaying window name.
-Has same format as `mode-line-format'."
-  'mode-line-buffer-identification)
-
-(define-variable screen-name-length
-  "Maximum length of window name.
-Used only if `screen-name-format' is non-false."
-  64
-  exact-nonnegative-integer?)
+(define edwin-command$set-screen-position edwin-command$set-frame-position)
+(define edwin-command$show-screen-size edwin-command$show-frame-size)
+(define edwin-command$show-screen-position edwin-command$show-frame-position)
