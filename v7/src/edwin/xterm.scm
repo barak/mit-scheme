@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xterm.scm,v 1.67 2001/06/02 22:25:38 cph Exp $
+;;; $Id: xterm.scm,v 1.68 2002/01/29 04:14:03 cph Exp $
 ;;;
-;;; Copyright (c) 1989-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1989-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -999,15 +999,22 @@
 
 ;;;; Selection Source
 
+(define enable-x-clipboard? #t)
+
 (define (os/interprogram-cut string push?)
   push?
   (if (eq? x-display-type (current-display-type))
       (let ((xterm (screen-xterm (selected-screen))))
-	(own-selection (x-window-display xterm)
-		       'PRIMARY
-		       (x-window-id xterm)
-		       last-focus-time
-		       string))))
+	(let ((own-selection
+	       (lambda (selection)
+		 (own-selection (x-window-display xterm)
+				selection
+				(x-window-id xterm)
+				last-focus-time
+				string))))
+	  (own-selection 'PRIMARY)
+	  (if enable-x-clipboard?
+	      (own-selection 'CLIPBOARD))))))
 
 (define (own-selection display selection window time value)
   (and (eqv? window
@@ -1173,10 +1180,14 @@
        (xterm/interprogram-paste (screen-xterm (selected-screen)))))
 
 (define (xterm/interprogram-paste xterm)
+  (or (and enable-x-clipboard?
+	   (xterm/interprogram-paste-1 xterm 'CLIPBOARD))
+      (xterm/interprogram-paste-1 xterm 'PRIMARY)))
+
+(define (xterm/interprogram-paste-1 xterm selection)
   (with-thread-events-blocked
    (lambda ()
-     (let ((selection 'PRIMARY)
-	   (property '_EDWIN_TMP_)
+     (let ((property '_EDWIN_TMP_)
 	   (time last-focus-time))
        (cond ((display/selection-record (x-window-display xterm)
 					selection time)
