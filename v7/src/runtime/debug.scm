@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 14.35 1993/08/13 00:03:21 cph Exp $
+$Id: debug.scm,v 14.36 1993/10/15 10:01:09 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -105,8 +105,14 @@ MIT in each case. |#
 	     (set-dstate/condition! dstate condition)
 	     (set-current-subproblem!
 	      dstate
-	      (or (stack-frame/skip-non-subproblems stack-frame)
-		  (error "No frames on stack!" stack-frame))
+	      (let loop ((stack-frame stack-frame))
+		(let ((stack-frame
+		       (stack-frame/skip-non-subproblems stack-frame)))
+		  (if (not stack-frame)
+		      (error "No frames on stack!"))
+		  (if (stack-frame/repl-eval-boundary? stack-frame)
+		      (loop (stack-frame/next stack-frame))
+		      stack-frame)))
 	      '())
 	     dstate))))
     (cond ((condition? object)
