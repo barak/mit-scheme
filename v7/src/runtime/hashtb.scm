@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.27 2003/07/29 03:46:04 cph Exp $
+$Id: hashtb.scm,v 1.28 2003/07/30 05:13:46 cph Exp $
 
 Copyright 1990,1991,1993,1994,1995,2003 Massachusetts Institute of Technology
 
@@ -814,7 +814,7 @@ USA.
 
 (define (mark-address-hash-tables!)
   (let loop ((previous #f) (tables address-hash-tables))
-    (if (pair? tables)
+    (if (system-pair? tables)
 	(if (system-pair-car tables)
 	    (begin
 	      (set-table-needs-rehash?! (system-pair-car tables) #t)
