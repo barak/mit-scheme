@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.45 1988/05/03 16:30:39 jinx Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.46 1988/07/15 20:26:31 cph Exp $
 
 (declare (usual-integrations))
 
@@ -115,7 +115,7 @@
 	       (ENTITY)					;10
 	       DELAY					;11
 	       ENVIRONMENT		      		;12
-	       DELAYED					;13
+	       (PROMISE DELAYED)			;13
 	       EXTENDED-LAMBDA				;14
 	       COMMENT					;15
 	       NON-MARKED-VECTOR			;16
@@ -571,4 +571,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.45 1988/05/03 16:30:39 jinx Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.46 1988/07/15 20:26:31 cph Exp $"
