@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.27 1991/02/19 22:45:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.28 1991/02/22 21:16:31 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -304,8 +304,6 @@ MIT in each case. |#
    (RUNTIME HASH)
    (RUNTIME RANDOM-NUMBER)
    (RUNTIME RECORD)
-   (RUNTIME ERROR-HANDLER)
-   (RUNTIME MICROCODE-ERRORS)
    ;; Microcode data structures
    (RUNTIME HISTORY)
    (RUNTIME LAMBDA-ABSTRACTION)
@@ -314,6 +312,9 @@ MIT in each case. |#
    (RUNTIME SCODE-WALKER)
    (RUNTIME CONTINUATION-PARSER)
    (RUNTIME PROGRAM-COPIER)
+   ;; Condition System
+   (RUNTIME ERROR-HANDLER)
+   (RUNTIME MICROCODE-ERRORS)
    ;; I/O
    (RUNTIME CONSOLE-INPUT)
    (RUNTIME CONSOLE-OUTPUT)
