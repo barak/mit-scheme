@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: macros.scm,v 1.6 1997/06/16 08:59:06 cph Exp $
+;;; $Id: macros.scm,v 1.7 1998/03/19 20:29:52 cph Exp $
 ;;;
-;;; Copyright (c) 1993-97 Massachusetts Institute of Technology
+;;; Copyright (c) 1993-98 Massachusetts Institute of Technology
 ;;;
 ;;; This material was developed by the Scheme project at the
 ;;; Massachusetts Institute of Technology, Department of Electrical
@@ -42,11 +42,12 @@
 	 (lambda (s a)
 	   (serror 'DEFINE-CLASS (string-append "Malformed " s ":") a))))
     (call-with-values (lambda () (parse-define-class-name name lose))
-      (lambda (name post-definitions)
+      (lambda (name post-definitions separator)
 	(if (not (list? superclasses))
 	    (lose "superclasses" superclasses))
 	(let ((pre-definitions
-	       (extract-generic-definitions! slot-arguments name lose)))
+	       (extract-generic-definitions! slot-arguments name separator
+					     lose)))
 	  `(BEGIN
 	     ,@pre-definitions
 	     (DEFINE ,name
@@ -78,40 +79,55 @@
 (define (parse-define-class-name name lose)
   (call-with-values (lambda () (parse-define-class-name-1 name lose))
     (lambda (class-name alist)
-      (values class-name
-	      (let ((alist
-		     (if (assq 'PREDICATE alist)
-			 alist
-			 (cons '(PREDICATE) alist))))
-		(append-map
-		 (lambda (option)
-		   (case (car option)
-		     ((PREDICATE)
-		      (let ((pn
-			     (cond ((null? (cdr option))
-				    (default-predicate-name class-name))
-				   ((and (pair? (cdr option))
-					 (or (symbol? (cadr option))
-					     (false? (cadr option)))
-					 (null? (cddr option)))
-				    (cadr option))
-				   (else (lose "class option" option)))))
-			(if pn
-			    `((DEFINE ,pn (INSTANCE-PREDICATE ,class-name)))
-			    '())))
-		     ((CONSTRUCTOR)
-		      (call-with-values
-			  (lambda ()
-			    (parse-constructor-option class-name lose option))
-			(lambda (name slots ii-args)
-			  `((DEFINE ,name
-			      (INSTANCE-CONSTRUCTOR
-			       ,class-name
-			       ',slots
-			       ,@(map (lambda (x) `',x) ii-args)))))))
-		     (else (lose "class option" option))))
-		 alist))))))
-
+      (let ((post-definitions '())
+	    (separator #f))
+	(let ((alist
+	       (if (assq 'PREDICATE alist)
+		   alist
+		   (cons '(PREDICATE) alist)))
+	      (post-def
+	       (lambda (def)
+		 (set! post-definitions (cons def post-definitions))
+		 unspecific)))
+	  (for-each
+	   (lambda (option)
+	     (case (car option)
+	       ((PREDICATE)
+		(let ((pn
+		       (cond ((null? (cdr option))
+			      (default-predicate-name class-name))
+			     ((and (pair? (cdr option))
+				   (or (symbol? (cadr option))
+				       (false? (cadr option)))
+				   (null? (cddr option)))
+			      (cadr option))
+			     (else (lose "class option" option)))))
+		  (if pn
+		      (post-def
+		       `(DEFINE ,pn (INSTANCE-PREDICATE ,class-name))))))
+	       ((CONSTRUCTOR)
+		(call-with-values
+		    (lambda ()
+		      (parse-constructor-option class-name lose option))
+		  (lambda (name slots ii-args)
+		    (post-def
+		     `(DEFINE ,name
+			(INSTANCE-CONSTRUCTOR
+			 ,class-name
+			 ',slots
+			 ,@(map (lambda (x) `',x) ii-args)))))))
+	       ((SEPARATOR)
+		(if (or separator
+			(null? (cdr option))
+			(not (string? (cadr option)))
+			(not (null? (cddr option))))
+		    (lose "class option" option))
+		(set! separator (cadr option))
+		unspecific)
+	       (else (lose "class option" option))))
+	   alist))
+	(values class-name post-definitions (or separator "-"))))))
+
 (define (parse-define-class-name-1 name lose)
   (cond ((symbol? name)
 	 (values name '()))
@@ -143,12 +159,12 @@
   (or (null? x) (and (pair? x) (null? (cdr x)))))
 
 (define (default-predicate-name class-name)
-  (symbol-append (strip-angle-brackets class-name) '?))
+  (intern (string-append (strip-angle-brackets class-name) "?")))
 
 (define (default-constructor-name class-name)
-  (symbol-append 'make- (strip-angle-brackets class-name)))
+  (intern (string-append "make-" (strip-angle-brackets class-name))))
 
-(define (extract-generic-definitions! slot-arguments name lose)
+(define (extract-generic-definitions! slot-arguments name separator lose)
   (let ((definitions '()))
     (for-each
      (lambda (arg)
@@ -173,13 +189,14 @@
 		       (set! definitions
 			     (append! (translate-define-arg (cadr plist)
 							    name
+							    separator
 							    arg)
 				      definitions)))
 		     (loop (cddr plist) (cdr plist)))))))
      slot-arguments)
     definitions))
 
-(define (translate-define-arg arg name slot-argument)
+(define (translate-define-arg arg name separator slot-argument)
   (let ((translate
 	 (lambda (keyword standard? arity generate)
 	   (if (or (and standard? (eq? 'STANDARD arg))
@@ -188,10 +205,12 @@
 	       `((DEFINE
 		   ,(or (plist-lookup keyword (cdr slot-argument) #f)
 			(let ((name
-			       (generate
-				(symbol-append (strip-angle-brackets name)
-					       '-
-					       (car slot-argument)))))
+			       (intern
+				(generate
+				 (string-append (strip-angle-brackets name)
+						separator
+						(symbol->string
+						 (car slot-argument)))))))
 			  (set-cdr! slot-argument
 				    (cons* keyword name (cdr slot-argument)))
 			  name))
@@ -200,9 +219,9 @@
     (append (translate 'ACCESSOR #t 1
 		       (lambda (root) root))
 	    (translate 'MODIFIER #t 2
-		       (lambda (root) (symbol-append 'set- root '!)))
+		       (lambda (root) (string-append "set-" root "!")))
 	    (translate 'INITPRED #f 1
-		       (lambda (root) (symbol-append root '-initialized?))))))
+		       (lambda (root) (string-append root "-initialized?"))))))
 
 (define (plist-lookup key plist default)
   (let loop ((plist plist))
@@ -217,8 +236,8 @@
     (if (and (fix:>= (string-length s) 2)
 	     (char=? #\< (string-ref s 0))
 	     (char=? #\> (string-ref s (fix:- (string-length s) 1))))
-	(string->symbol (substring s 1 (fix:- (string-length s) 1)))
-	symbol)))
+	(substring s 1 (fix:- (string-length s) 1))
+	s)))
 
 (define (transform:define-generic name lambda-list)
   (let ((mname 'DEFINE-GENERIC))
