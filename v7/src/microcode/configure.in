@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_REVISION($Id: configure.in,v 11.1 2000/12/05 21:23:43 cph Exp $)dnl
+AC_REVISION($Id: configure.in,v 11.2 2000/12/06 05:39:04 cph Exp $)dnl
 AC_INIT(boot.c)
 AC_CONFIG_HEADER(config.h)
 
@@ -404,34 +404,36 @@ esac
 
 dnl Add architecture-dependent customizations.
 dnl This is mostly support for native-code compilation.
-scheme_compiler_key=
+scheme_arch=
 OPTIONAL_BASES="${OPTIONAL_BASES} cmpint"
 GC_HEAD_FILES="gccode.h cmpgc.h"
 case "$host_cpu" in
 alpha*)
-    scheme_compiler_key=alpha
+    scheme_arch=alpha
     ;;
 hppa*)
-    scheme_compiler_key=hppa
+    scheme_arch=hppa
     GC_HEAD_FILES="${GC_HEAD_FILES} hppacach.h"
     ;;
 i?86)
-    scheme_compiler_key=i386
+    scheme_arch=i386
     ;;
 m68k|m680?0)
-    scheme_compiler_key=mc68k
+    scheme_arch=mc68k
     ;;
 mips*)
-    scheme_compiler_key=mips
+    scheme_arch=mips
     ;;
 vax)
-    scheme_compiler_key=vax
+    scheme_arch=vax
     ;;
 esac
-if test "${scheme_compiler_key}" != ""; then
+if test "${scheme_arch}" != ""; then
     AC_DEFINE(HAS_COMPILER_SUPPORT)
-    ${ac_cv_prog_LN_S} cmpauxmd/${scheme_compiler_key}.m4 cmpauxmd.m4
-    ${ac_cv_prog_LN_S} cmpintmd/${scheme_compiler_key}.h cmpintmd.h
+    test -f cmpauxmd.m4 \
+      || ${ac_cv_prog_LN_S} cmpauxmd/${scheme_arch}.m4 cmpauxmd.m4
+    test -f cmpintmd.h \
+      || ${ac_cv_prog_LN_S} cmpintmd/${scheme_arch}.h cmpintmd.h
     OPTIONAL_SOURCES="${OPTIONAL_SOURCES} cmpauxmd.m4"
     OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} cmpauxmd.o"
     GC_HEAD_FILES="${GC_HEAD_FILES} cmpintmd.h"
