@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.41 2004/06/27 06:26:33 cph Exp $
+$Id: xml-struct.scm,v 1.42 2004/06/28 03:26:20 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -111,11 +111,12 @@ USA.
   (misc-3 xml-misc-content?))
 
 (define (xml-misc-content? object)
-  (list-of-type? object
-    (lambda (object)
-      (or (xml-comment? object)
-	  (xml-whitespace-string? object)
-	  (xml-processing-instructions? object)))))
+  (list-of-type? object xml-misc-content-item?))
+
+(define (xml-misc-content-item? object)
+  (or (xml-comment? object)
+      (xml-whitespace-string? object)
+      (xml-processing-instructions? object)))
 
 (define (xml-whitespace-string? object)
   (string-composed-of? object char-set:xml-whitespace))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.40 2004/06/27 06:26:13 cph Exp $
+$Id: xml.pkg,v 1.41 2004/06/28 03:25:57 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -235,6 +235,7 @@ USA.
 	  xml-external-id-id
 	  xml-external-id-iri
 	  xml-external-id?
+	  xml-misc-content-item?
 	  xml-misc-content?
 	  xml-parameter-!entity-name
 	  xml-parameter-!entity-value
@@ -275,7 +276,8 @@ USA.
 	  char-set:xml-whitespace
 	  read-xml
 	  read-xml-file
-	  string->xml)
+	  string->xml
+	  xml-processing-instructions-handlers)
   (export (runtime xml)
 	  alphabet:name-initial
 	  alphabet:name-subsequent
