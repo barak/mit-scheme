@@ -21,6 +21,9 @@
 		       ((test "load") "load")
 		       (else (error "Can't find loader.")))))))))))
 
+(define-load-option 'CREF
+  (guarded-system-loader '(cross-reference) "cref"))
+
 (define-load-option 'SOS
   (guarded-system-loader '(runtime object-system) "sos"))
 
