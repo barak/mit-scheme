@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.22 2000/05/15 19:01:57 cph Exp $
+;;; $Id: imail-umail.scm,v 1.23 2000/05/15 19:20:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -45,13 +45,12 @@
       (error:bad-range-argument url 'OPEN-FOLDER))
   (make-umail-folder url))
 
-(define-method %new-folder ((url <umail-url>))
+(define-method %create-folder ((url <umail-url>))
   (if (file-exists? (file-url-pathname url))
-      (error:bad-range-argument url 'NEW-FOLDER))
+      (error:bad-range-argument url 'CREATE-FOLDER))
   (let ((folder (make-umail-folder url)))
     (set-file-folder-messages! folder '())
-    (save-folder folder)
-    folder))
+    (save-folder folder)))
 
 (define (read-umail-file pathname)
   (make-umail-folder (make-umail-url pathname)))

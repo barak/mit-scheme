@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.26 2000/05/15 19:01:54 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.27 2000/05/15 19:20:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -45,16 +45,15 @@
       (error:bad-range-argument url 'OPEN-FOLDER))
   (make-rmail-folder url))
 
-(define-method %new-folder ((url <rmail-url>))
+(define-method %create-folder ((url <rmail-url>))
   (if (file-exists? (file-url-pathname url))
-      (error:bad-range-argument url 'NEW-FOLDER))
+      (error:bad-range-argument url 'CREATE-FOLDER))
   (let ((folder (make-rmail-folder url)))
     (set-file-folder-messages! folder '())
     (set-rmail-folder-header-fields!
      folder
      (compute-rmail-folder-header-fields folder))
-    (save-folder folder)
-    folder))
+    (save-folder folder)))
 
 ;;;; Folder
 

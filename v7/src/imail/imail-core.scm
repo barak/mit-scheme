@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.58 2000/05/15 19:17:09 cph Exp $
+;;; $Id: imail-core.scm,v 1.59 2000/05/15 19:20:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -96,13 +96,10 @@
 ;; Create a new folder named URL.  Signal an error if the folder
 ;; already exists or can't be created.
 
-(define (new-folder url)
-  (let ((url (->url url)))
-    (if (get-memoized-folder url)
-	(error "Folder already exists:" url)
-	(memoize-folder (%new-folder url)))))
+(define (create-folder url)
+  (%create-folder (->url url)))
 
-(define-generic %new-folder (url))
+(define-generic %create-folder (url))
 
 ;; -------------------------------------------------------------------
 ;; Delete the folder named URL.  Signal an error if the folder doesn't
