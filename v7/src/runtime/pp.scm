@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.16 1991/08/16 18:44:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.17 1991/08/16 18:59:54 jinx Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -221,7 +221,7 @@ MIT in each case. |#
 		 (cdr association)
 		 dispatch-default)
 	     subnodes column depth)))))
-
+
 (define (print-guaranteed-node node)
   (cond ((list-node? node)
 	 (print-guaranteed-list-node node))
@@ -265,6 +265,23 @@ MIT in each case. |#
 	(begin
 	  (tab-to column)
 	  (loop (cdr nodes))))))
+
+(define (print-guaranteed-table nodes column all-widths)
+  (define (print-row row widths spaces)
+    (cond ((null? row)
+	   unspecific)
+	  ((null? widths)
+	   (tab-to column)
+	   (print-row row all-widths 0))
+	  (else
+	   (let ((next (car row)))
+	     (pad-with-spaces spaces)
+	     (print-guaranteed-node next)
+	     (print-row (cdr row)
+			(cdr widths)
+			(1+ (- (car widths)
+			       (node-size next))))))))
+  (print-row nodes all-widths 0))
 
 (define (maybe-print-table nodes column depth)
   (define (default)
@@ -275,7 +292,8 @@ MIT in each case. |#
 	 (max-cols (quotient (+ n-nodes 1) 2)))
 
     (define (try-columns n-columns)
-      (let ((nodev (list->vector nodes)))
+      (let ((nodev (list->vector nodes))
+	    (last-size (node-size (vector-ref nodev (-1+ n-nodes)))))
 
 	(define (fit? n-cols widths)
 	  ;; This must check that all rows fit.
@@ -284,11 +302,10 @@ MIT in each case. |#
 	  (and (>= available-space
 		   (+ (-1+ n-cols)
 		      (reduce + 0 widths)))
-	       (let ((last-n (remainder n-nodes n-cols)))
+	       (let ((last-n-1 (remainder (-1+ n-nodes) n-cols)))
 		 (>= available-space
-		     (+ (-1+ last-n)
-			depth
-			(reduce + 0 (list-head widths last-n)))))))
+		     (+ (+ last-n-1 (reduce + 0 (list-head widths last-n-1)))
+			(+ last-size depth))))))
 
 	(define (find-max-width posn step)
 	  (let loop ((posn posn)
@@ -337,23 +354,6 @@ MIT in each case. |#
 		 (default))
 		(else
 		 (try-columns (-1+ n))))))))
-
-(define (print-guaranteed-table nodes column all-widths)
-  (define (print-row row widths spaces)
-    (cond ((null? row)
-	   unspecific)
-	  ((null? widths)
-	   (tab-to column)
-	   (print-row row all-widths 0))
-	  (else
-	   (let ((next (car row)))
-	     (pad-with-spaces spaces)
-	     (print-guaranteed-node next)
-	     (print-row (cdr row)
-			(cdr widths)
-			(1+ (- (car widths)
-			       (node-size next))))))))
-  (print-row nodes all-widths 0))
 
 ;;;; Printers
 
