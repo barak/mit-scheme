@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.63 1991/08/24 02:27:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.64 1991/10/29 22:37:22 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -278,13 +278,16 @@ typedef unsigned long SCHEME_OBJECT;
 
 #define HEAP_IN_LOW_MEMORY
 
+/* data segment bits and mask for all bits */
+
 #define HPPA_QUAD_BIT	0x40000000
+#define HPPA_QUAD_MASK	0xC0000000
 
 #define DATUM_TO_ADDRESS(datum)						\
   ((SCHEME_OBJECT *) (((unsigned long) (datum)) | HPPA_QUAD_BIT))
 
 #define ADDRESS_TO_DATUM(address)					\
-  ((SCHEME_OBJECT) (((unsigned long) (address)) & (~(HPPA_QUAD_BIT))))
+  ((SCHEME_OBJECT) (((unsigned long) (address)) & (~(HPPA_QUAD_MASK))))
 
 #endif /* hp9000s800 */
 
