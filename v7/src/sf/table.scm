@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-%Id: $
+$Id: table.scm,v 4.3 1993/11/20 07:11:46 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
