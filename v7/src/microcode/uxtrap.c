@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.c,v 1.38 2003/05/09 19:45:53 cph Exp $
+$Id: uxtrap.c,v 1.39 2003/05/12 20:02:55 cph Exp $
 
 Copyright 1990,1991,1992,1993,1995,1997 Massachusetts Institute of Technology
 Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -396,7 +396,11 @@ DEFUN_VOID (soft_reset)
 #  include "gccode.h"
 #endif
 
-#if !defined(HAVE_STRUCT_SIGCONTEXT) || !defined(HAS_COMPILER_SUPPORT) || defined(USE_STACKLETS)
+#if defined(HAVE_STRUCT_SIGCONTEXT) && defined(HAS_COMPILER_SUPPORT) && !defined(USE_STACKLETS)
+#  define ENABLE_TRAP_RECOVERY 1
+#endif
+
+#ifndef ENABLE_TRAP_RECOVERY
 
 static struct trap_recovery_info dummy_recovery_info =
 {
@@ -419,7 +423,15 @@ DEFUN (continue_from_trap, (signo, info, scp),
   setup_trap_frame (signo, info, scp, (&dummy_recovery_info), 0);
 }
 
-#else /* HAS_COMPILER_SUPPORT and not USE_STACKLETS */
+SCHEME_OBJECT *
+DEFUN (find_block_address, (pc_value, area_start),
+       char * pc_value AND
+       SCHEME_OBJECT * area_start)
+{
+  return (0);
+}
+
+#else /* ENABLE_TRAP_RECOVERY */
 
 /* Heuristic recovery from Unix signals (traps).
 
@@ -437,7 +449,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
 #define FREE_PARANOIA_MARGIN		0x100
 
 #define C_STACK_SIZE			0x01000000
-
+
 static void
 DEFUN (continue_from_trap, (signo, info, scp),
        int signo AND
@@ -499,7 +511,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
 	&& (sp_register > Stack_Bottom))
      ? sp_register
      : ((SCHEME_OBJECT *) 0));
-
+
   if (pc_in_hyper_space || (pc_in_scheme && ALLOW_ONLY_C))
   {
     /* In hyper space. */
@@ -566,7 +578,6 @@ DEFUN (continue_from_trap, (signo, info, scp),
 	  Free = MemTop;
     }
   }
-
   else /* pc_in_C */
   {
     /* In the interpreter, a primitive, or a compiled code utility. */
@@ -623,7 +634,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
     (*xtra_info++) = ((SCHEME_OBJECT) the_pc);
   setup_trap_frame (signo, info, scp, (&trinfo), new_stack_pointer);
 }
-
+
 /* Find the compiled code block in area which contains `pc_value'.
    This attempts to be more efficient than `find_block_address_in_area'.
    If the pointer is in the heap, it can actually do twice as
@@ -671,7 +682,7 @@ DEFUN (find_block_address, (pc_value, area_start),
   }
   return (find_block_address_in_area (pc_value, area_start));
 }
-
+
 /*
   Find the compiled code block in area which contains `pc_value',
   by scanning sequentially the complete area.
@@ -768,9 +779,7 @@ DEFUN (find_block_address_in_area, (pc_value, area_start),
   return (0);
 }
 
-#endif /* HAS_COMPILER_SUPPORT and not USE_STACKLETS */
-
-
+#endif /* ENABLE_TRAP_RECOVERY */
 
 SCHEME_OBJECT
 DEFUN (find_ccblock, (the_pc),
