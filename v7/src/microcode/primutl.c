@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.63 1993/08/03 22:26:15 gjr Exp $
+$Id: primutl.c,v 9.64 1993/08/04 22:21:35 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -116,8 +116,8 @@ DEFUN (strcmp_ci, (s1, s2), fast char * s1 AND fast char * s2)
   {
     fast int c1 = (*s1++);
     fast int c2 = (*s2++);
-    c1 = (_toupper (c1));
-    c2 = (_toupper (c2));
+    if (islower (c1)) c1 = (_toupper (c1));
+    if (islower (c2)) c2 = (_toupper (c2));
     diff = (c1 - c2);
     if (diff != 0)
       return ((diff > 0) ? 1 : -1);
