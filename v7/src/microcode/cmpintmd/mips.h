@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mips.h,v 1.4 1990/07/30 16:20:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mips.h,v 1.5 1990/08/09 04:24:20 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -115,16 +115,20 @@ typedef unsigned short format_word;
 #define JAL_INSTR(dest)	(JAL_OP | ((dest) >> 2))
 
 #define STORE_ABSOLUTE_ADDRESS(entry_point, address)			\
-{ unsigned long *addr, ep;						\
+{									\
+  unsigned long *addr, ep;						\
 									\
   ep = ((unsigned long) (entry_point));					\
   addr = ((unsigned long *) (address));					\
-  if (((((long) addr) & 0xF0000000) !=					\
-       (((long) entry_point) & 0xF0000000)) ||                          \
-      ((((long) addr) & 0x3) != 0))					\
-    printf("\nSTORE_ABSOLUTE_ADDRESS: Bad addr in JAL 0x%x, 0x%x\n",	\
-	   addr, ep);							\
-  *addr = JAL_INSTR(ep & 0x0FFFFFF);					\
+  if (((((long) addr) & 0xF0000000)					\
+       != (((long) entry_point) & 0xF0000000))				\
+      || ((((long) addr) & 0x3) != 0))					\
+  {									\
+    fprintf (stderr,							\
+	     "\nSTORE_ABSOLUTE_ADDRESS: Bad addr in JAL 0x%x, 0x%x\n",	\
+	     addr, ep);							\
+  }									\
+  *addr = JAL_INSTR (ep & 0x0FFFFFFF);					\
 }
 
 /* Compiled Code Register Conventions */
