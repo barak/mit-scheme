@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.25 1990/08/21 02:20:55 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.26 1990/08/21 02:23:26 jinx Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -354,15 +354,16 @@ MIT in each case. |#
 ;;; The following calls MUST appear as the first thing at the entry
 ;;; point of a procedure.  They assume that the register map is clear
 ;;; and that no register contains anything of value.
-
-;;; **** The only reason that this is true is that no register is live
+;;;
+;;; The only reason that this is true is that no register is live
 ;;; across calls.  If that were not true, then we would have to save
 ;;; any such registers on the stack so that they would be GC'ed
 ;;; appropriately.
 ;;;
-;;; **** This is not strictly true: the dynamic link register may
-;;; contain a valid dynamic link, but the gc handler determines that
-;;; and saves it as appropriate.
+;;; The only exception is the dynamic link register, handled
+;;; specially.  Procedures that require a dynamic link use a different
+;;; interrupt handler that saves and restores the dynamic link
+;;; register.
 
 (define-integrable (simple-procedure-header code-word label entry)
   (let ((gc-label (generate-label)))    
