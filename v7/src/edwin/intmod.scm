@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.49 1992/08/18 23:32:10 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.50 1992/08/21 22:47:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -443,6 +443,7 @@ If this is an error, the debugger examines the error condition."
       (end-input-wait port))))
 
 (define (inferior-repl-eval-region buffer region)
+  (inferior-repl-eval-ok? buffer)
   (call-with-transcript-output-mark buffer
     (lambda (mark)
       (if mark
@@ -468,6 +469,7 @@ If this is an error, the debugger examines the error condition."
 	  (end-input-wait port)))))
 
 (define (inferior-repl-eval-expression buffer expression)
+  (inferior-repl-eval-ok? buffer)
   (call-with-transcript-output-mark buffer
     (lambda (mark)
       (if mark
@@ -481,6 +483,14 @@ If this is an error, the debugger examines the error condition."
       (move-mark-to! (port/mark port) end))
     (enqueue! (port/expression-queue port) expression)
     (end-input-wait port)))
+
+(define (inferior-repl-eval-ok? buffer)
+  (let ((mode (buffer-major-mode buffer)))
+    (if (not (eq? mode (ref-mode-object inferior-repl)))
+	(editor-error
+	 (if (eq? mode (ref-mode-object inferior-cmdl))
+	     "REPL needs response before evaluation will be enabled."
+	     "Can't evaluate -- REPL buffer in anomalous mode.")))))
 
 ;;;; Queue
 
