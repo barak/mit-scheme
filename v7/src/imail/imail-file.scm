@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.79 2001/09/14 02:06:43 cph Exp $
+;;; $Id: imail-file.scm,v 1.80 2001/09/28 00:41:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -23,6 +23,36 @@
 
 (declare (usual-integrations))
 
+;;;; File-folder types
+
+(define-class <file-folder-type> ()
+  (name define accessor)
+  (predicate define accessor))
+
+(define (define-file-folder-type class name predicate)
+  (hash-table/put! file-folder-types
+		   class
+		   ((instance-constructor class '(NAME PREDICATE))
+		    name predicate)))
+
+(define file-folder-types
+  (make-eq-hash-table))
+
+(define (prompt-for-file-folder-type url)
+  (imail-ui:prompt-for-alist-value
+   (string-append "File type for " (url->string url))
+   (map (lambda (type)
+	  (cons (file-folder-type-name type) type))
+	(hash-table/datum-list file-folder-types))))
+
+(define (url-file-folder-type url)
+  (let loop ((types (hash-table/datum-list file-folder-types)))
+    (if (not (pair? types))
+	(error "Unknown folder type:" url))
+    (if ((file-folder-type-predicate (car types)) url)
+	(car types)
+	(loop (cdr types)))))
+
 ;;;; URL
 
 (define-class <pathname-url> (<url>)
@@ -30,24 +60,15 @@
 
 (define-url-protocol "file" <pathname-url>)
 
-(define (pathname-url-constructor class)
-  (let ((procedure
-	 (let ((constructor (instance-constructor class '(PATHNAME))))
-	   (lambda (pathname)
-	     (intern-url (constructor (merge-pathnames pathname))
-			 pathname-container-url)))))
-    (register-pathname-url-constructor class procedure)
-    procedure))
-
-(define (register-pathname-url-constructor class constructor)
-  (hash-table/put! pathname-url-constructors class constructor))
-
-(define (get-pathname-url-constructor class)
-  (or (hash-table/get pathname-url-constructors class #f)
-      (error "Unknown pathname-url class:" class)))
-
-(define pathname-url-constructors
-  (make-eq-hash-table))
+(define (make-pathname-url pathname)
+  (case (file-type-indirect pathname)
+    ((REGULAR) (make-file-url pathname))
+    ((DIRECTORY) (make-directory-url pathname))
+    ((#F)
+     (if (directory-pathname? pathname)
+	 (make-directory-url pathname)
+	 (make-file-url pathname)))
+    (else (error "Pathname refers to illegal file type:" pathname))))
 
 (define (pathname-container-url url)
   (make-directory-url (pathname-container (pathname-url-pathname url))))
@@ -62,67 +83,9 @@
 (define (pathname-container pathname)
   (directory-pathname (directory-pathname-as-file pathname)))
 
-(define (define-pathname-url-predicates class
-	  file-predicate
-	  directory-predicate
-	  pathname-predicate)
-  (let ((constructor (get-pathname-url-constructor class)))
-    (let loop ((entries pathname-url-predicates))
-      (if (pair? entries)
-	  (if (eq? class (vector-ref (car entries) 0))
-	      (begin
-		(vector-set! (car entries) 1 file-predicate)
-		(vector-set! (car entries) 2 directory-predicate)
-		(vector-set! (car entries) 3 pathname-predicate)
-		(vector-set! (car entries) 4 constructor))
-	      (loop (cdr entries)))
-	  (begin
-	    (set! pathname-url-predicates
-		  (cons (vector class
-				file-predicate
-				directory-predicate
-				pathname-predicate
-				constructor)
-			pathname-url-predicates))
-	    unspecific)))))
-
-(define (find-pathname-url-constructor pathname must-exist? if-not-found)
-  (let ((type (file-type-indirect pathname))
-	(search
-	 (lambda (index)
-	   (let loop ((entries pathname-url-predicates))
-	     (and (pair? entries)
-		  (if ((vector-ref (car entries) index) pathname)
-		      (vector-ref (car entries) 4)
-		      (loop (cdr entries))))))))
-    (or (case type
-	  ((REGULAR) (search 1))
-	  ((DIRECTORY) (search 2))
-	  ((#F) (and (not must-exist?) (search 3)))
-	  (else #f))
-	(and if-not-found
-	     (if-not-found pathname type)))))
-
-(define pathname-url-predicates '())
-
 (define-method parse-url-body ((string <string>) (default-url <pathname-url>))
-  (let ((pathname
-	 (parse-pathname-url-body string (pathname-url-pathname default-url))))
-    ((standard-pathname-url-constructor pathname) pathname)))
-
-(define (standard-pathname-url-constructor pathname)
-  (find-pathname-url-constructor pathname #f
-    (lambda (pathname type)
-      (case type
-	((REGULAR) make-file-url)
-	((DIRECTORY) make-directory-url)
-	((#F)
-	 (if (directory-pathname? pathname)
-	     make-directory-url
-	     ;; Default for non-existent files:
-	     make-umail-url))
-	(else
-	 (error "Pathname refers to illegal file type:" pathname))))))
+  (make-pathname-url
+   (parse-pathname-url-body string (pathname-url-pathname default-url))))
 
 (define (parse-pathname-url-body string default-pathname)
   (let ((finish
@@ -171,13 +134,20 @@
 ;;;; File URLs
 
 (define-class <file-url> (<folder-url> <pathname-url>))
-(define make-file-url (pathname-url-constructor <file-url>))
+
+(define make-file-url
+  (let ((constructor (instance-constructor <file-url> '(PATHNAME))))
+    (lambda (pathname)
+      (intern-url (constructor (merge-pathnames pathname))
+		  pathname-container-url))))
 
 (define-method url-exists? ((url <file-url>))
   (file-exists? (pathname-url-pathname url)))
 
 (define-method folder-url-is-selectable? ((url <file-url>))
-  (and (find-pathname-url-constructor (pathname-url-pathname url) #t #f) #t))
+  (and (url-exists? url)
+       (url-file-folder-type url)
+       #t))
 
 (define-method url-corresponding-container ((url <file-url>))
   url
@@ -197,26 +167,20 @@
        (constructor (pathname-as-directory (merge-pathnames pathname)))
        pathname-container-url))))
 
-(register-pathname-url-constructor <directory-url> make-directory-url)
-
 (define-method url-exists? ((url <directory-url>))
   (file-directory? (pathname-url-pathname url)))
 
 (define-method make-content-url ((url <directory-url>) name)
-  (let ((pathname (merge-pathnames name (pathname-url-pathname url))))
-    ((standard-pathname-url-constructor pathname) pathname)))
+  (make-pathname-url (merge-pathnames name (pathname-url-pathname url))))
 
 (define-method container-url-contents ((url <directory-url>))
   (simple-directory-read (pathname-url-pathname url)
     (lambda (name directory result)
       (if (or (string=? name ".") (string=? name ".."))
 	  result
-	  (let* ((pathname
-		  (parse-namestring (string-append directory name) #f #f))
-		 (constructor (pathname-url-filter pathname)))
-	    (if constructor
-		(cons (constructor pathname) result)
-		result))))))
+	  (cons (make-pathname-url
+		 (parse-namestring (string-append directory name) #f #f))
+		result)))))
 
 ;;;; Server operations
 
@@ -227,7 +191,7 @@
    (parse-pathname-url-body
     string
     (directory-pathname (pathname-url-pathname default-url)))
-   pathname-url-filter
+   (lambda (pathname) pathname #t)
    (lambda (string)
      (if-unique (pathname->url-body string)))
    (lambda (prefix get-completions)
@@ -242,17 +206,20 @@
 	(parse-pathname-url-body
 	 string
 	 (directory-pathname (pathname-url-pathname default-url)))
-	pathname-url-filter)))
+	(lambda (pathname) pathname #t))))
 
-(define (pathname-url-filter pathname)
-  (find-pathname-url-constructor pathname #t
-    (lambda (pathname type)
-      pathname
-      (and (eq? type 'DIRECTORY)
-	   make-directory-url))))
+(define-method %create-resource ((url <file-url>))
+  (let ((pathname (pathname-url-pathname url)))
+    (if (file-exists? pathname)
+	(error:bad-range-argument url 'CREATE-RESOURCE))
+    (create-file-folder-file url (prompt-for-file-folder-type url))
+    (open-resource url)))
+
+(define-generic create-file-folder-file (url type))
 
 (define-method %create-resource ((url <directory-url>))
-  (make-directory (pathname-url-pathname url)))
+  (make-directory (pathname-url-pathname url))
+  (maybe-make-resource url make-file-container))
 
 (define-method %delete-resource ((url <file-url>))
   (delete-file (pathname-url-pathname url)))
@@ -289,6 +256,15 @@
 (define (file-folder-pathname folder)
   (pathname-url-pathname (resource-locator folder)))
 
+(define-method open-resource ((url <pathname-url>))
+  (or (and (url-exists? url)
+	   (%open-file-resource url (url-file-folder-type url)))
+      (begin
+	(unmemoize-resource url)
+	(error:bad-range-argument url 'OPEN-RESOURCE))))
+
+(define-generic %open-file-resource (url folder-type))
+
 (define-method close-resource ((folder <file-folder>) no-defer?)
   no-defer?
   (save-resource folder)
@@ -318,27 +294,31 @@
   (vector-ref (file-folder-messages folder) index))
 
 (define-method %append-message ((message <message>) (url <file-url>))
-  (let ((folder (get-memoized-resource url)))
-    (if folder
-	(let ((message (make-message-copy message folder))
-	      (exists?
-	       (or (file-folder-file-modification-time folder)
-		   (file-exists? (file-folder-pathname folder)))))
-	  (without-interrupts
-	   (lambda ()
-	     (set-file-folder-messages!
-	      folder
-	      (let ((messages (file-folder-messages folder)))
-		(let ((n (vector-length messages)))
-		  (let ((messages (vector-grow messages (fix:+ n 1))))
-		    (attach-message! message folder n)
-		    (vector-set! messages n message)
-		    messages))))))
-	  (not exists?))
-	(append-message-to-file message url))))
+  (let ((exists? (url-exists? url)))
+    (let ((folder (get-memoized-resource url)))
+      (if folder
+	  (let ((message (make-message-copy message folder)))
+	    (without-interrupts
+	     (lambda ()
+	       (set-file-folder-messages!
+		folder
+		(let ((messages (file-folder-messages folder)))
+		  (let ((n (vector-length messages)))
+		    (let ((messages (vector-grow messages (fix:+ n 1))))
+		      (attach-message! message folder n)
+		      (vector-set! messages n message)
+		      messages)))))))
+	  (let ((type
+		 (if exists?
+		     (url-file-folder-type url)
+		     (prompt-for-file-folder-type url))))
+	    (if (not exists?)
+		(create-file-folder-file url type))
+	    (append-message-to-file message url type))))
+    (not exists?)))
 
 (define-generic make-message-copy (message folder))
-(define-generic append-message-to-file (message url))
+(define-generic append-message-to-file (message url type))
 
 (define-method expunge-deleted-messages ((folder <file-folder>))
   (without-interrupts

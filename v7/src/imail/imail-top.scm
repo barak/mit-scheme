@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.271 2001/09/14 21:19:29 cph Exp $
+;;; $Id: imail-top.scm,v 1.272 2001/09/28 00:41:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1732,7 +1732,7 @@ Negative argument means search in reverse."
 			    port
 			    (ref-variable imail-default-imap-mailbox
 					  #f)))))
-	((string-ci=? protocol "file") (make-rmail-url "~/RMAIL"))
+	((string-ci=? protocol "file") (make-file-url "~/RMAIL"))
 	(else (error:bad-range-argument protocol))))
 
 (define (imail-default-container)
@@ -1846,6 +1846,7 @@ Negative argument means search in reverse."
 (define *imail-message-wrapper-prefix* #f)
 
 (define imail-ui:message message)
+(define imail-ui:prompt-for-alist-value prompt-for-alist-value)
 (define imail-ui:prompt-for-yes-or-no? prompt-for-yes-or-no?)
 
 (define (imail-ui:body-cache-limit message)

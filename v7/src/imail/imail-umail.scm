@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.49 2001/06/12 00:47:39 cph Exp $
+;;; $Id: imail-umail.scm,v 1.50 2001/09/28 00:41:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -23,39 +23,28 @@
 
 (declare (usual-integrations))
 
-;;;; URL
+(define-class <umail-folder-type> (<file-folder-type>))
 
-(define-class <umail-url> (<file-url>))
-(define make-umail-url (pathname-url-constructor <umail-url>))
-
-(define-pathname-url-predicates <umail-url>
-  (lambda (pathname) (check-file-prefix pathname "From "))
-  (lambda (pathname) pathname #f)
-  (lambda (pathname) (equal? (pathname-type pathname) "mail")))
+(define-file-folder-type <umail-folder-type> "unix mail"
+  (lambda (url)
+    (check-file-prefix (pathname-url-pathname url) "From ")))
 
 ;;;; Server operations
 
-(define-method %create-resource ((url <umail-url>))
-  (if (file-exists? (pathname-url-pathname url))
-      (error:bad-range-argument url 'CREATE-RESOURCE))
-  (let ((folder (make-umail-folder url)))
-    (set-file-folder-messages! folder '#())
-    (set-file-folder-file-modification-time! folder (get-universal-time))
-    (set-file-folder-file-modification-count!
-     folder
-     (object-modification-count folder))
-    (save-resource folder)))
+(define-method create-file-folder-file (url (type <umail-folder-type>))
+  type
+  (call-with-binary-output-file (pathname-url-pathname url)
+    (lambda (port)
+      port
+      unspecific)))
 
 ;;;; Folder
 
 (define-class (<umail-folder> (constructor (locator))) (<file-folder>))
 
-(define-method open-resource ((url <umail-url>))
-  (if (file-readable? (pathname-url-pathname url))
-      (maybe-make-resource url make-umail-folder)
-      (begin
-	(unmemoize-resource url)
-	(error:bad-range-argument url 'OPEN-RESOURCE))))
+(define-method %open-file-resource (url (type <umail-folder-type>))
+  type
+  (maybe-make-resource url make-umail-folder))
 
 ;;;; Message
 
@@ -160,13 +149,11 @@
 	(lambda (message)
 	  (write-umail-message message #t port))))))
 
-(define-method append-message-to-file ((message <message>) (url <umail-url>))
-  (let ((pathname (pathname-url-pathname url)))
-    (let ((exists? (file-exists? pathname)))
-      (call-with-binary-append-file pathname
-	(lambda (port)
-	  (write-umail-message message #t port)))
-      (not exists?))))
+(define-method append-message-to-file (message url (type <umail-folder-type>))
+  type
+  (call-with-binary-append-file (pathname-url-pathname url)
+    (lambda (port)
+      (write-umail-message message #t port))))
 
 (define (write-umail-message message output-flags? port)
   (write-string (umail-message-from-line message) port)

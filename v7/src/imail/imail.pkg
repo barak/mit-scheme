@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.87 2001/06/04 17:42:49 cph Exp $
+;;; $Id: imail.pkg,v 1.88 2001/09/28 00:41:16 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -117,28 +117,27 @@
   (files "imail-file")
   (parent (edwin imail))
   (export (edwin imail)
+	  directory-url?
 	  file-folder-pathname
 	  file-folder?
 	  file-message?
-	  file-url?))
+	  file-url?
+	  make-directory-url
+	  make-file-url))
 
 (define-package (edwin imail file-folder rmail-folder)
   (files "imail-rmail")
   (parent (edwin imail file-folder))
   (export (edwin imail)
-	  make-rmail-url
 	  rmail-folder?
-	  rmail-message?
-	  rmail-url?))
+	  rmail-message?))
 
 (define-package (edwin imail file-folder umail-folder)
   (files "imail-umail")
   (parent (edwin imail file-folder))
   (export (edwin imail)
-	  make-umail-url
 	  umail-folder?
-	  umail-message?
-	  umail-url?)
+	  umail-message?)
   (export (edwin imail file-folder rmail-folder)
 	  read-umail-message
 	  umail-delimiter?))
@@ -327,6 +326,7 @@
 	  imail-ui:message-wrapper
 	  imail-ui:present-user-alert
 	  imail-ui:progress-meter
+	  imail-ui:prompt-for-alist-value
 	  imail-ui:prompt-for-yes-or-no?))
 
 (define-package (edwin imail front-end summary)

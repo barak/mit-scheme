@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.68 2001/06/12 00:47:36 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.69 2001/09/28 00:41:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -23,35 +23,20 @@
 
 (declare (usual-integrations))
 
-;;;; URL
+(define-class <rmail-folder-type> (<file-folder-type>))
 
-(define-class <rmail-url> (<file-url>))
-(define make-rmail-url (pathname-url-constructor <rmail-url>))
+(define-file-folder-type <rmail-folder-type> "Rmail"
+  (lambda (url)
+    (check-file-prefix (pathname-url-pathname url) "BABYL OPTIONS:")))
 
-(define-pathname-url-predicates <rmail-url>
-  (lambda (pathname) (check-file-prefix pathname "BABYL OPTIONS:"))
-  (lambda (pathname) pathname #f)
-  (lambda (pathname)
-    (or (equal? (pathname-type pathname) "rmail")
-	(and (equal? (pathname-name pathname) "RMAIL")
-	     (not (pathname-type pathname))))))
+;;;; Server
 
-;;;; Server operations
+(define-method create-file-folder-file (url (type <rmail-folder-type>))
+  type
+  (call-with-binary-output-file (pathname-url-pathname url)
+    (lambda (port)
+      (write-rmail-file-header (make-rmail-folder-header-fields '()) port))))
 
-(define-method %create-resource ((url <rmail-url>))
-  (if (file-exists? (pathname-url-pathname url))
-      (error:bad-range-argument url 'CREATE-RESOURCE))
-  (let ((folder (make-rmail-folder url)))
-    (set-file-folder-messages! folder '#())
-    (set-rmail-folder-header-fields!
-     folder
-     (compute-rmail-folder-header-fields folder))
-    (set-file-folder-file-modification-time! folder (get-universal-time))
-    (set-file-folder-file-modification-count!
-     folder
-     (object-modification-count folder))
-    (save-resource folder)))
-
 ;;;; Folder
 
 (define-class (<rmail-folder> (constructor (locator))) (<file-folder>)
@@ -73,12 +58,9 @@
 	(make-header-field "Note" "If you are seeing it in rmail,")
 	(make-header-field "Note" "it means the file has no messages in it.")))
 
-(define-method open-resource ((url <rmail-url>))
-  (if (file-readable? (pathname-url-pathname url))
-      (maybe-make-resource url make-rmail-folder)
-      (begin
-	(unmemoize-resource url)
-	(error:bad-range-argument url 'OPEN-RESOURCE))))
+(define-method %open-file-resource (url (type <rmail-folder-type>))
+  type
+  (maybe-make-resource url make-rmail-folder))
 
 ;;;; Message
 
@@ -263,19 +245,11 @@
 	(lambda (message)
 	  (write-rmail-message message port))))))
 
-(define-method append-message-to-file ((message <message>) (url <rmail-url>))
-  (let ((pathname (pathname-url-pathname url)))
-    (let ((exists? (file-exists? pathname)))
-      (if exists?
-	  (call-with-binary-append-file pathname
-	    (lambda (port)
-	      (write-rmail-message message port)))
-	  (call-with-binary-output-file pathname
-	    (lambda (port)
-	      (write-rmail-file-header (make-rmail-folder-header-fields '())
-				       port)
-	      (write-rmail-message message port))))
-      (not exists?))))
+(define-method append-message-to-file (message url (type <rmail-folder-type>))
+  type
+  (call-with-binary-append-file (pathname-url-pathname url)
+    (lambda (port)
+      (write-rmail-message message port))))
 
 (define (write-rmail-file-header header-fields port)
   (write-string "BABYL OPTIONS: -*- rmail -*-" port)
