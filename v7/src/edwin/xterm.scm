@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xterm.scm,v 1.66 2001/03/21 19:25:42 cph Exp $
+;;; $Id: xterm.scm,v 1.67 2001/06/02 22:25:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -1324,10 +1324,12 @@
   ;; X-OPEN-DISPLAY hangs, uninterruptibly, when the X server is
   ;; running the login loop of xdm.  Can this be fixed?
   (or x-display-data
-      (let ((display (x-open-display x-display-name)))
-	(set! x-display-data display)
-	(set! x-display-events (make-queue))
-	display)))
+      (and (implemented-primitive-procedure? x-open-display)
+	   (or x-display-name (get-environment-variable "DISPLAY"))
+	   (let ((display (x-open-display x-display-name)))
+	     (set! x-display-data display)
+	     (set! x-display-events (make-queue))
+	     display))))
 
 (define (initialize-package!)
   (set! screen-list '())
