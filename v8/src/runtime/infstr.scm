@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: infstr.scm,v 1.8 1992/12/03 03:18:37 cph Exp $
+$Id: infstr.scm,v 1.9 1995/07/27 20:59:16 adams Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,18 +37,90 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define-integrable (make-dbg-info-vector info-vector)
-  (cons dbg-info-vector-tag info-vector))
+;;;; Compiled files
+;;
+;; A COMPILED-MODULE structure is the thing that lives in a .com file.
+;; It contains everything that the system needs to know to load and
+;; execute the file.  Note that having a data structure rather than an
+;; scode expression complicates the boot process as make.scm must be
+;; an scode (or compiled) expression.  This can be fixed by editing
+;; the make.com file or by -fasl-ing a .bin file that evals the
+;; module's expression.
 
-(define (dbg-info-vector? object)
-  (and (pair? object) (eq? (car object) dbg-info-vector-tag)))
+(define-structure
+    (compiled-module
+     (type vector)
+     (named
+      ((ucode-primitive string->symbol)
+       "#[(runtime compiler-info)compiled-module]"))
+     (conc-name compiled-module/)
+     (constructor make-compiled-module
+		  (expression all-compiled-code-blocks
+		   dbg-locator purification-root)))
+  (version compiled-module-format:current-version read-only true)
+  (expression false read-only true)	;top level expression of file
+  (all-compiled-code-blocks false)	;in a vector
+  (dbg-locator false)			;how to find debugging info
+  (purification-root false)		;what should be purified?
+  (linkage 'EXECUTE)			;How to link it? (not used yet)
+  (extra false))
 
-(define-integrable (dbg-info-vector/items info-vector)
-  (cdr info-vector))
+(define compiled-module-format:current-version 0)
+(define compiled-module-format:oldest-acceptable-version 0)
 
-(define-integrable dbg-info-vector-tag
-  ((ucode-primitive string->symbol)
-   "#[(runtime compiler-info)dbg-info-vector-tag]"))
+;; A compiled code block's debugging-info slot contains one of
+;;  (1) A DBG-INFO object.
+;;  (1) A pair (dbg-locator . recursive-compilation-number-or-0).  This pair
+;;      is called a `descriptor' in infutl.scm.
+;;  (2) A pair of a (dbg-info . `(2)'), while the dbg info is in core.
+;;  (3) something else => no info
+;; All of the compiled code blocks in a compiled file structurally share
+;; the same DBG-LOCATOR which is also accessible from the COMPILED-MODULE.
+
+(define-structure
+    (dbg-locator
+     (type vector)
+     (named
+      ((ucode-primitive string->symbol)
+       "#[(runtime compiler-info)dbg-locator]"))
+     (constructor make-dbg-locator (file timestamp))
+     (conc-name dbg-locator/)
+     (print-procedure
+      (standard-unparser-method 'DBG-LOCATOR
+	(lambda (locator port)
+	  (write-char #\space port)
+	  (write (->namestring (dbg-locator/file locator)) port)))))
+
+  (file false)				;pathname or canonicalized string
+  (timestamp false read-only true)
+  (status false))			;for system bookkeeping
+
+
+;; Any debugging information that is fasdumped to a file has a
+;; DBG-WRAPPER around it.  The purpose of this is to ensure that
+;; debugging information comes from the same compilation as the
+;; dbg-locator (EQUAL? timestamps), and is in an acceptable format.
+
+(define-structure (dbg-wrapper
+		   (type vector)
+		   (named
+		    ((ucode-primitive string->symbol)
+		     "#[(runtime compiler-info)dbg-wrapper]"))
+		   (constructor make-dbg-wrapper (objects timestamp))
+		   (conc-name dbg-wrapper/))
+  (objects false read-only true) ;a vector indexed by
+  (timestamp false read-only true)
+  (format-version dbg-format:current-version read-only true))
+
+
+;; Change these when the format of any DBG-* object changes, or the path
+;; language is extended.
+
+(define dbg-format:current-version 0)
+(define dbg-format:oldest-acceptable-version 0)
+
+;; A DBG-INFO holds the information pertaining to a single compiled code
+;; block.
 
 (define-structure (dbg-info
 		   (type vector)
@@ -59,57 +131,43 @@ MIT in each case. |#
   (expression false read-only true)	;dbg-expression
   (procedures false read-only true)	;vector of dbg-procedure
   (continuations false read-only true)	;vector of dbg-continuation
-  (labels/desc false read-only false)	;vector of dbg-label, sorted by offset
-  )
-
-(define (dbg-info/labels dbg-info)
-  (let ((labels/desc (dbg-info/labels/desc dbg-info)))
-    (if (vector? labels/desc)
-	labels/desc
-	(let ((labels (read-labels labels/desc)))
-	  (and labels
-	       (begin
-		 (set-dbg-info/labels/desc! dbg-info labels)
-		 labels))))))
+  ;; vector of dbg-label, sorted by offset, or 'DUMPED-SEPARATELY, or #F if
+  ;; not dumped at all.
+  (labels/desc false read-only false))
 
 (define-structure (dbg-expression
 		   (type vector)
 		   (named
 		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-expression]"))
+		     "#[(runtime compiler-info)new-dbg-expression]"))
 		   (conc-name dbg-expression/))
-  (block false read-only true)		;dbg-block
+  (block false)				;dbg-block
   (label false)				;dbg-label
-  )
+  (source-code false))
 
 (define-integrable (dbg-expression/label-offset expression)
   (dbg-label/offset (dbg-expression/label expression)))
+
 
 (define-structure (dbg-procedure
 		   (type vector)
 		   (named
 		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-procedure]"))
-		   (constructor
-		    make-dbg-procedure
-		    (block label type name required optional rest auxiliary
-			   source-code))
-		   (conc-name dbg-procedure/))
-  (block false read-only true)		;dbg-block
-  (label false)				;dbg-label
-  (type false read-only true)
-  (name false read-only true)		;procedure's name
-  (required false read-only true)	;names of required arguments
-  (optional false read-only true)	;names of optional arguments
-  (rest false read-only true)		;name of rest argument, or #F
-  (auxiliary false read-only true)	;names of internal definitions
-  (external-label false)		;for closure, external entry
-  (source-code false read-only true)	;SCode
-  )
+		     "#[(runtime compiler-info)new-dbg-procedure]"))
+		   (conc-name dbg-procedure/)
+		   (constructor make-dbg-procedure (source-code))
+		   (constructor %make-dbg-procedure))
+  (block false read-only false)
+  (label false read-only false)
+  (source-code false read-only true))
+
+(define (dbg-procedure/name dbg-procedure)
+  (let ((scode  (dbg-procedure/source-code dbg-procedure)))
+    (lambda-name scode)))
 
 (define (dbg-procedure/label-offset procedure)
   (dbg-label/offset
-   (or (dbg-procedure/external-label procedure)
+   (or ;;(dbg-procedure/external-label procedure)
        (dbg-procedure/label procedure))))
 
 (define-integrable (dbg-procedure<? x y)
@@ -119,13 +177,13 @@ MIT in each case. |#
 		   (type vector)
 		   (named
 		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-continuation]"))
+		     "#[(runtime compiler-info)new-dbg-continuation]"))
 		   (conc-name dbg-continuation/))
-  (block false read-only true)		;dbg-block
+  (block false)				;dbg-block
   (label false)				;dbg-label
   (type false read-only true)
-  (offset false read-only true)		;difference between sp and block
-  (source-code false read-only true)
+  (outer false)				; source code
+  (inner false)				; source code
   )
 
 (define-integrable (dbg-continuation/label-offset continuation)
@@ -138,117 +196,56 @@ MIT in each case. |#
 		   (type vector)
 		   (named
 		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-block]"))
-		   (constructor
-		    make-dbg-block
-		    (type parent original-parent layout stack-link))
+		     "#[(runtime compiler-info)new-dbg-block]"))
+		   (constructor make-dbg-block (type parent variables))
 		   (conc-name dbg-block/))
   (type false read-only true)		;continuation, stack, closure, ic
   (parent false read-only true)		;parent block, or #F
-  (original-parent false read-only true) ;for closures, closing block
-  (layout false read-only true)		;vector of names, except #F for ic
-  (stack-link false read-only true)	;next block on stack, or #F
-  (procedure false)			;procedure which this is block of
+  (parent-path-prefix false)		;
+  (variables false read-only true)	;vector of variables, except #F for ic
+  (procedure false)			;procedure/entry which this is block of
   )
 
-(define-structure (dbg-variable
-		   (type vector)
-		   (named
-		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-variable]"))
-		   (conc-name dbg-variable/))
-  (name false read-only true)		;symbol
-  (type false read-only true)		;normal, cell, integrated
-  value					;for integrated, the value
-  )
+;;(define-structure (dbg-variable
+;;		   (type vector)
+;;		   (named
+;;		    ((ucode-primitive string->symbol)
+;;		     "#[(runtime compiler-info)new-dbg-variable]"))
+;;		   (conc-name dbg-variable/))
+;;  (name false read-only true)		;symbol
+;;  (path false read-only true))
 
-(let-syntax
-    ((dbg-block-name
-      (macro (name)
-	(let ((symbol (symbol-append 'DBG-BLOCK-NAME/ name)))
-	  `(DEFINE-INTEGRABLE ,symbol
-	     ',((ucode-primitive string->symbol)
-		(string-append "#[(runtime compiler-info)"
-			       (string-downcase (symbol->string symbol))
-			       "]")))))))
-  ;; Various names used in `layout' to identify things that wouldn't
-  ;; otherwise have names.
-  (dbg-block-name dynamic-link)
-  (dbg-block-name ic-parent)
-  (dbg-block-name normal-closure)
-  (dbg-block-name return-address)
-  (dbg-block-name static-link))
+;; Pairs are more compact 
+(define (dbg-variable? object)
+  (and (pair? object) (symbol? (car object))))
+
+(define-integrable (dbg-variable/make name) (cons name #F))
+(define-integrable (dbg-variable/name var) (car var))
+(define-integrable (dbg-variable/path var) (cdr var))
 
-(define (dbg-label/name label)
-  (cond ((dbg-label-2? label) (dbg-label-2/name label))
-	((dbg-label-1? label) (dbg-label-1/name label))
-	(else
-	 (error:wrong-type-argument label "debugging label" 'DBG-LABEL/NAME))))
+(define-integrable (guarantee-dbg-label object procedure)
+  (if (not (pair? object))
+      (error:wrong-type-argument object "debugging label" procedure)))
 
-(define (set-dbg-label/name! label name)
-  (cond ((dbg-label-1? label) (set-dbg-label-1/name! label name))
-	(else
-	 (error:wrong-type-argument label "debugging label"
-				    'SET-DBG-LABEL/NAME!))))
+(define (make-dbg-label name offset)
+  (cons name offset))
+
+(define (dbg-label/name label)
+  (guarantee-dbg-label label 'DBG-LABEL/NAME)
+  (car label))
 
 (define (dbg-label/offset label)
-  (cond ((dbg-label-2? label) (dbg-label-2/offset label))
-	((dbg-label-1? label) (dbg-label-1/offset label))
-	(else
-	 (error:wrong-type-argument label "debugging label"
-				    'DBG-LABEL/OFFSET))))
+  (guarantee-dbg-label label 'DBG-LABEL/OFFSET)
+  (abs (cdr label)))
 
 (define (dbg-label/external? label)
-  (cond ((dbg-label-2? label) (dbg-label-2/external? label))
-	((dbg-label-1? label) (dbg-label-1/external? label))
-	(else
-	 (error:wrong-type-argument label "debugging label"
-				    'DBG-LABEL/EXTERNAL?))))
+  (guarantee-dbg-label label DBG-LABEL/EXTERNAL?)
+  (negative? (cdr label)))
 
 (define (set-dbg-label/external?! label external?)
-  (cond ((dbg-label-2? label) (set-dbg-label-2/external?! label external?))
-	((dbg-label-1? label) (set-dbg-label-1/external?! label external?))
-	(else
-	 (error:wrong-type-argument label "debugging label"
-				    'SET-DBG-LABEL/EXTERNAL?!))))
-
-(define (dbg-label/names label)
-  (cond ((dbg-label-2? label) (dbg-label-2/names label))
-	((dbg-label-1? label) (dbg-label-1/names label))
-	(else
-	 (error:wrong-type-argument label "debugging label"
-				    'DBG-LABEL/NAMES))))
-
-(define (set-dbg-label/names! label names)
-  (cond ((dbg-label-1? label) (set-dbg-label-1/names! label names))
-	(else
-	 (error:wrong-type-argument label "debugging label"
-				    'SET-DBG-LABEL/NAMES!))))
-
-(define-structure (dbg-label-1
-		   (type vector)
-		   (named
-		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-label]"))
-		   (constructor make-dbg-label (name offset))
-		   (conc-name dbg-label-1/))
-  (name false)				;a string, primary name
-  (offset false read-only true)		;mach. dependent offset into code block
-  (external? false)			;if true, can have pointer to this
-  (names (list name))			;names of all labels at this offset
-  )
-
-(define-integrable make-dbg-label-2 cons)
-(define-integrable dbg-label-2? pair?)
-(define-integrable dbg-label-2/name car)
-(define-integrable (dbg-label-2/offset label) (abs (cdr label)))
-(define-integrable (dbg-label-2/external? label) (negative? (cdr label)))
-(define-integrable (dbg-label-2/names label) (list (car label)))
-
-(define (set-dbg-label-2/external?! label external?)
-  (let ((offset (cdr label)))
-    (if (if external?
-	    (not (negative? offset))
-	    (negative? offset))
-	(set-cdr! label (- offset))))
+  (guarantee-dbg-label label 'SET-DBG-LABEL/EXTERNAL?!)
+  (let ((offset (abs (cdr label))))
+    (if external?
+	(set-cdr! label (- offset))
+	(set-cdr! label offset)))
   unspecific)

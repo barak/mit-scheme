@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.58 1995/07/17 20:10:43 adams Exp $
+$Id: infutl.scm,v 1.59 1995/07/27 21:01:09 adams Exp $
 
-Copyright (c) 1988-94 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,10 +48,38 @@ MIT in each case. |#
 	  (,lambda-tag:make-environment . MAKE-ENVIRONMENT)))
   (set! blocks-with-memoized-debugging-info (make-population))
   (add-secondary-gc-daemon! discard-debugging-info!)
+  (let ((fasload-loader (cached-loader fasload-loader)))
+    (set! inf-load-types
+	  `(("inf" . ,fasload-loader)
+	    ("bif" . ,fasload-loader)
+	    ("bci" . ,(compressed-loader "bif" fasload-loader))))
+    (set! bsm-load-types
+	  `(("bsm" . ,fasload-loader)
+	    ("bcs" . ,(compressed-loader "bsm" fasload-loader)))))
+  (initialize-cached-files!)
   (initialize-uncompressed-files!)
   (add-event-receiver! event:after-restore initialize-uncompressed-files!)
   (add-event-receiver! event:before-exit delete-uncompressed-files!)
-  (add-gc-daemon! clean-uncompressed-files!))
+  (add-gc-daemon! clean-uncompressed-files!)
+  (add-gc-daemon! clean-cached-files!))
+
+(define inf-load-types)
+(define bsm-load-types)
+
+
+(define (compiled-code-block/dbg-descriptor block)
+  (let ((info (compiled-code-block/debugging-info block)))
+    (cond ((valid-dbg-descriptor? info)
+	   info)
+	  ((dbg-locator? info)
+	   (cons info 0))
+	  ((not (pair? info))
+	   false)
+	  ((valid-dbg-descriptor? (cdr info))
+	   (cdr info))
+	  ((dbg-locator? (cdr info))
+	   (cons (cdr info) 0))
+	  (else false))))
 
 (define (compiled-code-block/dbg-info block demand-load?)
   (let ((old-info (compiled-code-block/debugging-info block)))
@@ -60,11 +88,26 @@ MIT in each case. |#
 	  ((and (pair? old-info) (dbg-info? (car old-info)))
 	   (car old-info))
 	  (demand-load?
-	   (let ((dbg-info (read-debugging-info old-info)))
+	   (let ((dbg-info (read-debugging-info
+			    (compiled-code-block/dbg-descriptor block))))
 	     (if dbg-info (memoize-debugging-info! block dbg-info))
 	     dbg-info))
 	  (else
 	   false))))
+
+(define (compiled-code-block/labels block demand-load?)
+  (let ((info (compiled-code-block/dbg-info block demand-load?)))
+    (and info
+	 (let ((labels/desc (dbg-info/labels/desc info)))
+	   (if (vector? labels/desc)
+	       labels/desc
+	       (let ((labels
+		      (read-labels (compiled-code-block/dbg-descriptor block))))
+		 (and labels
+		      (begin
+			(set-dbg-info/labels/desc! info labels)
+			labels))))))))
+
 
 (define (discard-debugging-info!)
   (without-interrupts
@@ -74,39 +117,63 @@ MIT in each case. |#
      (set! blocks-with-memoized-debugging-info (make-population))
      unspecific)))
 
-(define (read-debugging-info descriptor)
-  (cond ((string? descriptor)
-	 (let ((binf (read-binf-file descriptor)))
-	   (and binf
-		(if (dbg-info? binf)
-		    binf
-		    (and (vector? binf)
-			 (not (zero? (vector-length binf)))
-			 (vector-ref binf 0))))))
-	((and (pair? descriptor)
-	      (string? (car descriptor))
-	      (exact-nonnegative-integer? (cdr descriptor)))
-	 (let ((binf (read-binf-file (car descriptor))))
-	   (and binf
-		(vector? binf)
-		(< (cdr descriptor) (vector-length binf))
-		(vector-ref binf (cdr descriptor)))))
-	(else
-	 false)))
+(define (valid-dbg-descriptor? object)
+  (and (pair? object)
+       (dbg-locator? (car object))
+       (index-fixnum? (cdr object))))
 
-(define (read-binf-file pathname)
-  (let ((pathname (canonicalize-debug-info-pathname pathname)))
-    (if (file-exists? pathname)
-	(fasload-loader (->namestring pathname))
-	(find-alternate-file-type pathname
-				  `(("inf" . ,fasload-loader)
-				    ("bif" . ,fasload-loader)
-				    ("bci" . ,(compressed-loader "bif")))))))
+(define (read-debugging-info descriptor)
+  (and (valid-dbg-descriptor? descriptor)
+       (let ((binf (read-dbg-file (car descriptor) inf-load-types)))
+	 (select-dbg-info descriptor binf))))
+
+(define (read-labels descriptor)
+  (and (valid-dbg-descriptor? descriptor)
+       (let ((binf (read-dbg-file (car descriptor) bsm-load-types)))
+	 (select-dbg-info descriptor binf))))
+      
+(define (select-dbg-info descriptor dbg-file-contents)
+  (let ((locator  (car descriptor))
+	(index    (cdr descriptor)))
+
+    (define (complain message . other-irritants)
+      (if (not (dbg-locator/status locator))
+	  (begin
+	    (apply warn
+		   (string-append "Bad debugging information: " message ":")
+		   locator
+		   other-irritants)
+	    (set-dbg-locator/status! locator 'BAD)))
+      #F)
+
+    (if (dbg-wrapper? dbg-file-contents)
+	(let ((compile-time (dbg-locator/timestamp locator))
+	      (dbg-time     (dbg-wrapper/timestamp dbg-file-contents))
+	      (objects      (dbg-wrapper/objects dbg-file-contents))
+	      (version      (dbg-wrapper/format-version dbg-file-contents)))
+	  (cond ((not (equal? compile-time dbg-time))
+		 (complain "mismatched timestamps" compile-time dbg-time))
+		((< version dbg-format:oldest-acceptable-version)
+		 (complain "obsolete format version" version))
+		((> version dbg-format:current-version)
+		 (complain "future format version!" version))
+		((or (not (vector? objects))
+		     (>= index (vector-length objects)))
+		 (complain "vector problem" index))
+		(else
+		 (vector-ref objects index))))
+	(complain "not `wrapped'"))))
+
+(define (read-dbg-file locator load-types)
+  (let ((pathname
+	 (canonicalize-debug-info-pathname (dbg-locator/file locator))))
+    (find-alternate-file-type pathname load-types)))
+
 
 (define (find-alternate-file-type base-pathname alist)
-  (let loop ((left alist) (time 0) (file #f) (receiver (lambda (x) x)))
+  (let loop ((left alist) (time 0) (file #f) (receiver (lambda (x t) t x)))
     (if (null? left)
-	(receiver file)
+	(receiver file time)
 	(let ((file* (pathname-new-type base-pathname (caar left)))
 	      (receiver* (cdar left)))
 	  (if (not (file-exists? file*))
@@ -165,7 +232,8 @@ MIT in each case. |#
 		     (find-procedure)))
 	       (lambda ()
 		 (let ((expression (dbg-info/expression dbg-info)))
-		   (if (= offset (dbg-expression/label-offset expression))
+		   (if (and expression
+			    (= offset (dbg-expression/label-offset expression)))
 		       expression
 		       (find-procedure))))
 	       (lambda ()
@@ -184,74 +252,33 @@ MIT in each case. |#
       (compiled-entry/offset (compiled-closure->entry entry))
       (compiled-code-address->offset entry)))
 
-(define (compiled-entry/filename entry)
-  (compiled-code-block/filename (compiled-entry/block entry)))
+(define (compiled-code-block/filename-and-index block)
+  ;; Values (filename block-number), either may be #F. For the unparser.
+  (let ((descriptor  (compiled-code-block/dbg-descriptor block)))
+    (if descriptor
+	(values (canonicalize-debug-info-pathname
+		 (dbg-locator/file (car descriptor)))
+		(cdr descriptor))
+	(values false false))))
 
-(define (compiled-code-block/filename block)
-  (let loop ((info (compiled-code-block/debugging-info block)))
-    (cond ((string? info) (values (canonicalize-debug-info-filename info) #f))
-	  ((not (pair? info)) (values false false))
-	  ((dbg-info? (car info)) (loop (cdr info)))
-	  ((string? (car info))
-	   (values (canonicalize-debug-info-filename (car info))
-		   (and (exact-nonnegative-integer? (cdr info))
-			(cdr info))))
-	  (else (values false false)))))
+(define (compiled-entry/filename-and-index entry)
+  (compiled-code-block/filename-and-index (compiled-entry/block entry)))
 
 (define (dbg-labels/find-offset labels offset)
   (vector-binary-search labels < dbg-label/offset offset))
-
-(define (dbg-info-vector/blocks-vector info)
-  (let ((items (dbg-info-vector/items info)))
-    (cond ((vector? items) items)
-	  ((and (pair? items)
-		(pair? (cdr items))
-		(vector? (cadr items)))
-	   (cadr items))
-	  (else (error "Illegal dbg-info-vector" info)))))
-
-(define (dbg-info-vector/purification-root info)
-  (let ((items (dbg-info-vector/items info)))
-    (cond ((vector? items) false)
-	  ((and (pair? items)
-		(eq? (car items) 'COMPILED-BY-PROCEDURES)
-		(pair? (cdr items))
-		(pair? (cddr items)))
-	   (caddr items))
-	  (else (error "Illegal dbg-info-vector" info)))))
 
 (define (fasload/update-debugging-info! value com-pathname)
-  (let ((process-block
-	 (lambda (block)
-	   (let ((binf-filename
-		  (process-binf-filename
-		   (compiled-code-block/debugging-info block)
-		   com-pathname)))
-	     (set-compiled-code-block/debugging-info! block binf-filename)
-	     binf-filename)))
-	(process-subblocks
-	 (lambda (blocks start binf-filename)
-	   (let ((end (vector-length blocks)))
-	     (let loop ((index start))
-	       (if (< index end)
-		   (begin
-		     (set-car! (compiled-code-block/debugging-info
-				(vector-ref blocks index))
-			       binf-filename)
-		     (loop (1+ index)))))))))
-
-    (cond ((compiled-code-address? value)
-	   (let ((binf-filename
-		  (process-block (compiled-code-address->block value)))
-		 (blocks (load/purification-root value)))
-	     (if (vector? blocks)
-		 (process-subblocks blocks 0 binf-filename))))
-	  ((and (comment? value)
-		(dbg-info-vector? (comment-text value)))
-	   (let ((blocks (dbg-info-vector/blocks-vector (comment-text value))))
-	     (process-subblocks blocks
-				1
-				(process-block (vector-ref blocks 0))))))))
+  (cond ((or (compiled-code-address? value)
+	     (and (comment? value)
+		  (compiled-code-address? (comment-expression value))))
+	 (warn "Recompile " com-pathname))
+	((compiled-module? value)
+	 (let* ((locator   (compiled-module/dbg-locator value))
+		(pathname  (dbg-locator/file locator)))
+	   (set-dbg-locator/file!
+	    locator
+	    (process-binf-filename pathname com-pathname))))
+	(else unspecific)))
 
 (define (process-binf-filename binf-filename com-pathname)
   (and binf-filename
@@ -266,7 +293,7 @@ MIT in each case. |#
 			   (pathname-version com-pathname)))
 	      (pathname-new-type com-pathname (pathname-type binf-pathname))
 	      binf-pathname)))))
-
+
 (define directory-rewriting-rules
   '())
 
@@ -331,47 +358,17 @@ MIT in each case. |#
 	 (if value
 	     (pathname-as-directory value)
 	     (system-library-directory-pathname "SRC"))))))
-
-(define-integrable (dbg-block/layout-first-offset block)
-  (let ((layout (dbg-block/layout block)))
-    (and (pair? layout) (car layout))))
 
-(define-integrable (dbg-block/layout-vector block)
-  (let ((layout (dbg-block/layout block)))
-    (if (pair? layout)
-	(cdr layout)
-	layout)))
-
-(define (dbg-block/dynamic-link-index block)
-  (vector-find-next-element (dbg-block/layout-vector block)
-			    dbg-block-name/dynamic-link))
-
-(define (dbg-block/ic-parent-index block)
-  (vector-find-next-element (dbg-block/layout-vector block)
-			    dbg-block-name/ic-parent))
-
-(define (dbg-block/normal-closure-index block)
-  (vector-find-next-element (dbg-block/layout-vector block)
-			    dbg-block-name/normal-closure))
-
-(define (dbg-block/return-address-index block)
-  (vector-find-next-element (dbg-block/layout-vector block)
-			    dbg-block-name/return-address))
-
-(define (dbg-block/static-link-index block)
-  (vector-find-next-element (dbg-block/layout-vector block)
-			    dbg-block-name/static-link))
-
-(define (dbg-block/find-name block name)
-  (let ((layout (dbg-block/layout-vector block)))
+(define (dbg-block/find-variable block name)
+  (let ((layout (dbg-block/variables block)))
     (let ((end (vector-length layout)))
       (let loop ((index 0))
 	(and (< index end)
-	     (if (let ((item (vector-ref layout index)))
-		   (and (dbg-variable? item)
-			(eq? name (dbg-variable/name item))))
-		 index
-		 (loop (1+ index))))))))
+	     (let ((item (vector-ref layout index)))
+	       (if (and (dbg-variable? item)
+			(eq? name (dbg-variable/name item)))
+		   item
+		   (loop (+ index 1)))))))))
 
 (define (compiled-procedure/name entry)
   (let ((procedure
@@ -403,49 +400,7 @@ MIT in each case. |#
 	       (and scode
 		    (lambda-body scode))))
 	entry)))
-
-;;; Support of BSM files
 
-(define (read-labels descriptor)
-  (cond ((string? descriptor)
-	 (let ((bsm (read-bsm-file descriptor)))
-	   (and bsm ;; bsm are either vectors of pairs or vectors of vectors
-		(if (vector? bsm)
-		    (let ((first (and (not (zero? (vector-length bsm)))
-				      (vector-ref bsm 0))))
-		      (cond ((pair? first) bsm)
-			    ((vector? first) first)
-			    (else false)))))))
-	((and (pair? descriptor)
-	      (string? (car descriptor))
-	      (exact-nonnegative-integer? (cdr descriptor)))
-	 (let ((bsm (read-bsm-file (car descriptor))))
-	   (and bsm
-		(vector? bsm)
-		(< (cdr descriptor) (vector-length bsm))
-		(vector-ref bsm (cdr descriptor)))))
-	(else
-	 false)))
-
-(define (read-bsm-file name)
-  (let ((pathname
-	 (let ((pathname
-		(canonicalize-debug-info-pathname
-		 (rewrite-directory (merge-pathnames name)))))
-	   (if (file-exists? pathname)
-	       pathname
-	       (let loop ((types '("bsm" "bcs")))
-		 (and (not (null? types))
-		      (let ((pathname
-			     (pathname-new-type pathname (car types))))
-			(if (file-exists? pathname)
-			    pathname
-			    (loop (cdr types))))))))))
-    (and pathname
-	 (if (equal? "bcs" (pathname-type pathname))
-	     ((compressed-loader "bsm") pathname)
-	     (fasload-loader pathname)))))
-
 ;;;; Splitting of info structures
 
 (define (inf->bif/bsm inffile)
@@ -456,6 +411,7 @@ MIT in each case. |#
       (inf-structure->bif/bsm binf bifpath bsmpath))))
 
 (define (inf-structure->bif/bsm binf bifpath bsmpath)
+  (error "Needs fixing")
   (let ((bifpath (merge-pathnames bifpath))
 	(bsmpath (and bsmpath (merge-pathnames bsmpath))))
     (let ((bsm (split-inf-structure! binf bsmpath)))
@@ -463,27 +419,20 @@ MIT in each case. |#
       (if bsmpath
 	  (fasdump bsm bsmpath true)))))
 
-(define (split-inf-structure! binf bsmpath)
-  (let ((bsmname (and bsmpath (->namestring bsmpath))))
-    (cond ((dbg-info? binf)
-	   (let ((labels (dbg-info/labels/desc binf)))
-	     (set-dbg-info/labels/desc! binf bsmname)
-	     labels))
-	  ((vector? binf)
-	   (let ((n (vector-length binf)))
-	     (let ((bsm (make-vector n)))
-	       (do ((i 0 (fix:+ i 1)))
-		   ((fix:= i n))
-		 (let ((dbg-info (vector-ref binf i)))
-		   (let ((labels (dbg-info/labels/desc dbg-info)))
-		     (vector-set! bsm i labels)
-		     (set-dbg-info/labels/desc!
-		      dbg-info
-		      (and bsmname (cons bsmname i))))))
-	       bsm)))
-	  (else 
-	   (error "Unknown inf format:" binf)))))
-
+(define (split-inf-structure! binf replacement)
+  (cond ((vector? binf)
+	 (let ((n (vector-length binf)))
+	   (let ((bsm (make-vector n)))
+	     (do ((i 0 (fix:+ i 1)))
+		 ((fix:= i n))
+	       (let ((dbg-info (vector-ref binf i)))
+		 (let ((labels (dbg-info/labels/desc dbg-info)))
+		   (vector-set! bsm i labels)
+		   (set-dbg-info/labels/desc! dbg-info replacement))))
+	     bsm)))
+	(else 
+	 (error "Unknown inf format:" binf))))
+
 ;;;; UNCOMPRESS
 ;;;  A simple extractor for compressed binary info files.
 
@@ -513,6 +462,7 @@ MIT in each case. |#
 	      (begin
 		(string-set! buffer i char)
 		(loop (fix:1+ i))))))))
+
 
 ;;  General version.
 ;;
@@ -717,58 +667,65 @@ MIT in each case. |#
 		(literal-command byte)
 		(copy-command byte)))))))
 
-(define (fasload-loader filename)
+(define (fasload-without-errors filename)
   (call-with-current-continuation
     (lambda (if-fail)
       (bind-condition-handler (list condition-type:fasload-band)
-        (lambda (condition) condition (if-fail false))
+	(lambda (condition) condition (if-fail false))
         (lambda () (fasload filename true))))))
 
-(define (compressed-loader uncompressed-type)
-  (lambda (compressed-file)
-    (lookup-uncompressed-file compressed-file fasload-loader
-      (lambda ()
-	(let ((load-compressed
-	       (lambda (temporary-file)
-		 (call-with-current-continuation
-		  (lambda (k)
-		    (uncompress-internal compressed-file
-					 temporary-file
-					 (lambda (message . irritants)
-					   message irritants
-					   (k #f)))
-		    (fasload-loader temporary-file))))))
-	  (case *save-uncompressed-files?*
-	    ((#F)
-	     (call-with-temporary-file-pathname load-compressed))
-	    ((AUTOMATIC)
-	     (call-with-uncompressed-file-pathname compressed-file
-						   load-compressed))
-	    (else
-	     (call-with-temporary-file-pathname
-	      (lambda (temporary-file)
-		(let ((result (load-compressed temporary-file))
-		      (uncompressed-file
-		       (pathname-new-type compressed-file uncompressed-type)))
-		  (delete-file-no-errors uncompressed-file)
-		  (if (call-with-current-continuation
-		       (lambda (k)
-			 (bind-condition-handler
-			     (list condition-type:file-error
-				   condition-type:port-error)
-			     (lambda (condition) condition (k #t))
-			   (lambda ()
-			     (rename-file temporary-file uncompressed-file)
-			     #f))))
-		      (call-with-current-continuation
-		       (lambda (k)
-			 (bind-condition-handler
-			     (list condition-type:file-error
-				   condition-type:port-error)
-			     (lambda (condition) condition (k unspecific))
-			   (lambda ()
-			     (copy-file temporary-file uncompressed-file))))))
-		  result))))))))))
+(define (fasload-loader filename file-time)
+  file-time				; ignored
+  (fasload-without-errors filename))
+
+(define (compressed-loader uncompressed-type uncompressed-loader)
+  (lambda (compressed-file compressed-time)
+    (lookup-uncompressed-file
+     compressed-file compressed-time uncompressed-loader
+     (lambda ()
+       (define (load-compressed temporary-file)
+	 (call-with-current-continuation
+	  (lambda (k)
+	    (uncompress-internal compressed-file
+				 temporary-file
+				 (lambda (message . irritants)
+				   message irritants
+				   (k #f)))
+	    (uncompressed-loader 
+	     temporary-file
+	     (file-modification-time-direct temporary-file)))))
+       (case *save-uncompressed-files?*
+	 ((#F)
+	  (call-with-temporary-file-pathname load-compressed))
+	 ((AUTOMATIC)
+	  (call-with-uncompressed-file-pathname compressed-file
+						compressed-time
+						load-compressed))
+	 (else
+	  (call-with-temporary-file-pathname
+	   (lambda (temporary-file)
+	     (let ((result (load-compressed temporary-file))
+		   (uncompressed-file
+		    (pathname-new-type compressed-file uncompressed-type)))
+	       (delete-file-no-errors uncompressed-file)
+	       (if (call-with-current-continuation
+		    (lambda (k)
+		      (bind-condition-handler
+		       (list condition-type:file-error
+			     condition-type:port-error)
+		       (lambda (condition) condition (k #t))
+		       (lambda ()
+			 (rename-file temporary-file uncompressed-file)
+			 #f))))
+		   (call-with-current-continuation
+		    (lambda (k)
+		      (bind-condition-handler
+		       (list condition-type:file-error
+			     condition-type:port-error)
+		       (lambda (condition) condition (k unspecific))
+		       (lambda ()
+			 (copy-file temporary-file uncompressed-file))))))
+	       result)))))))))
 
 (define (uncompress-internal ifile ofile if-fail)
   (call-with-binary-input-file (merge-pathnames ifile)
@@ -786,34 +743,51 @@ MIT in each case. |#
 		(uncompress-ports input output (fix:* (file-length ifile) 2))))
 	    (if-fail "Not a recognized compressed file:" ifile))))))
 
-(define (lookup-uncompressed-file compressed-file if-found if-not-found)
+(define-structure (file-entry
+		   (type vector)
+		   (conc-name file-entry/))
+  compressed-name
+  compressed-time
+  uncompressed-name
+  uncompressed-time
+  last-use-time)
+
+(define (lookup-uncompressed-file compressed-file compressed-time
+				  if-found if-not-found)
   (dynamic-wind
    (lambda ()
      (set-car! uncompressed-files (+ (car uncompressed-files) 1)))
    (lambda ()
      (let loop ((entries (cdr uncompressed-files)))
-       (cond ((null? entries)
-	      (if-not-found))
-	     ((and (pathname=? (caar entries) compressed-file)
-		   (cddar entries)
-		   (or (file-exists? (cadar entries))
-		       (begin
-			 (set-cdr! (cdar entries) #f)
-			 #f)))
-	      (dynamic-wind
-	       (lambda () unspecific)
-	       (lambda () (if-found (cadar entries)))
-	       (lambda () (set-cdr! (cdar entries) (real-time-clock)))))
-	     (else
-	      (loop (cdr entries))))))
+       (if (null? entries)
+	   (if-not-found)
+	   (let ((entry (car entries)))
+	     (if (and (pathname=? (file-entry/compressed-name entry)
+				  compressed-file)
+		      (file-entry/uncompressed-name entry)
+		      (= (file-entry/compressed-time entry) compressed-time)
+		      (or (file-exists? (file-entry/uncompressed-name entry))
+			  (begin
+			    (set-file-entry/uncompressed-name! entry #F)
+			    #f)))
+		 (dynamic-wind
+		  (lambda () unspecific)
+		  (lambda () (if-found (file-entry/uncompressed-name entry)
+				       (file-entry/uncompressed-time entry)))
+		  (lambda ()
+		    (set-file-entry/last-use-time! entry (real-time-clock))))
+		 (loop (cdr entries)))))))
    (lambda ()
      (set-car! uncompressed-files (- (car uncompressed-files) 1)))))
 
-(define (call-with-uncompressed-file-pathname compressed-file receiver)
+(define (call-with-uncompressed-file-pathname compressed-file compressed-time
+					      receiver)
   (let ((temporary-file (temporary-file-pathname)))
     (let ((entry
-	   (cons compressed-file
-		 (cons temporary-file (real-time-clock)))))
+	   (make-file-entry
+	    compressed-file compressed-time
+	    temporary-file  (file-modification-time-direct temporary-file)
+	    (real-time-clock))))
       (dynamic-wind
        (lambda () unspecific)
        (lambda ()
@@ -823,28 +797,32 @@ MIT in each case. |#
 		      (cons entry (cdr uncompressed-files)))))
 	 (receiver temporary-file))
        (lambda ()
-	 (set-cdr! (cdr entry) (real-time-clock)))))))
+	 (set-file-entry/last-use-time! entry (real-time-clock)))))))
 
 (define (delete-uncompressed-files!)
   (do ((entries (cdr uncompressed-files) (cdr entries)))
       ((null? entries) unspecific)
-    (deallocate-temporary-file (cadar entries))))
+    (let ((name (file-entry/uncompressed-name (car entries))))
+      (if name
+	  (deallocate-temporary-file name)))))
 
 (define (clean-uncompressed-files!)
   (if (= 0 (car uncompressed-files))
       (let ((time (real-time-clock)))
 	(let loop
 	    ((entries (cdr uncompressed-files))
-	     (prev uncompressed-files))
-	  (if (not (null? entries))
-	      (if (or (not (cddar entries))
-		      (< (- time (cddar entries))
-			 *uncompressed-file-lifetime*))
-		  (loop (cdr entries) entries)
-		  (begin
-		    (set-cdr! prev (cdr entries))
-		    (deallocate-temporary-file (cadar entries))
-		    (loop (cdr entries) prev))))))))
+	     (prev    uncompressed-files))
+	  (if (pair? entries)
+	      (let ((entry (car entries)))
+		(if (or (not (file-entry/uncompressed-name entry))
+			(< (- time (file-entry/last-use-time entry))
+			   *uncompressed-file-lifetime*))
+		    (loop (cdr entries) entries)
+		    (begin
+		      (set-cdr! prev (cdr entries))
+		      (deallocate-temporary-file
+		       (file-entry/uncompressed-name entry))
+		      (loop (cdr entries) prev)))))))))
 
 (define (initialize-uncompressed-files!)
   (set! uncompressed-files (list 0))
@@ -853,3 +831,37 @@ MIT in each case. |#
 (define *save-uncompressed-files?* 'AUTOMATIC)
 (define *uncompressed-file-lifetime* 300000)
 (define uncompressed-files)
+
+(define ((cached-loader loader) filename time)
+  (define (reload)
+    (let ((object  (loader filename time)))
+      (set-cdr! cached-files
+		(cons (cons filename (weak-cons object time))
+		      (cdr cached-files)))
+      object))
+  (if cached-files
+      (let ((entry (assoc filename (cdr cached-files))))
+	(if entry
+	    (let ((object  (weak-car (cdr entry)))
+		  (time*   (weak-cdr (cdr entry))))
+	      (if (and object (= time time*))
+		  object
+		  (reload)))
+	    (reload)))
+      (loader filename time)))
+
+(define (clean-cached-files!)
+  (let loop ((items  (cdr cached-files))
+	     (prev   cached-files))
+    (cond ((null? items))
+	  ((or (not (caar items))
+	       (not (weak-car (cdar items))))
+	   (set-cdr! prev (cdr items))
+	   (loop (cdr items) prev))
+	  (else
+	   (loop (cdr items) (cdr prev))))))
+
+(define (initialize-cached-files!)
+  (set! cached-files (list #F)))
+
+(define cached-files #F)

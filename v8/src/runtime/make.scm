@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.57 1995/04/13 22:24:53 cph Exp $
+$Id: make.scm,v 14.58 1995/07/27 21:03:12 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -256,7 +256,12 @@ MIT in each case. |#
 	   false))))
 
 (define (eval object environment)
-  (let ((value (scode-eval object environment)))
+  (let ((value 
+	 (scode-eval
+	  (if (vector? object)		; compiled-module?
+	      (vector-ref object 2)	; compiled-module/expression
+	      object)
+	  environment)))
     (tty-write-string " evaluated")
     value))
 
@@ -489,6 +494,8 @@ MIT in each case. |#
 
 (let ((roots
        (list->vector
+	;; Make all debugging file names relative to runtime in scheme root
+        ;; directory.
 	((access with-directory-rewriting-rule
 		 (->environment '(RUNTIME COMPILER-INFO)))
 	 (working-directory-pathname)
