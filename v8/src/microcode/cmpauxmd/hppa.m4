@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.38 1995/08/14 22:03:44 adams Exp $
+;;;	$Id: hppa.m4,v 1.39 1995/08/15 00:16:00 adams Exp $
 ;;;
 ;;;	Copyright (c) 1989-1995 Massachusetts Institute of Technology
 ;;;
@@ -1811,18 +1811,16 @@ floating_vector_cons
 define(define_floating_point_util,
 "flonum_$1
 	COPY	22,17				; preserve regs
-	; STW	2,REGBLOCK_VAL(0,rs_regblock)	; preserve val REMOVED by JSM
+	STW	2,REGBLOCK_VAL(0,rs_regblock)	; preserve val
 	COPY	22,17				; preserve regs
 	COPY	21,16
 	COPY	19,15
-	COPY    2,14
         .CALL   ARGW0=FR,ARGW1=FU,RTNVAL=FU     ;fpin=105;fpout=104;
 	BL	$2,2
-	COPY	31,13
-	COPY    14,2
+	COPY	31,14
 	COPY	15,19
 	COPY	16,21
-	; LDW	REGBLOCK_VAL(0,rs_regblock),rs_val	; restore val REMOVED by JSM
+	LDW	REGBLOCK_VAL(0,rs_regblock),rs_val	; restore val
 	COPY	17,22
 	BE	0(5,14)
 	LDW	REGBLOCK_MEMTOP(0,rs_regblock),rs_memtop")
@@ -1841,7 +1839,7 @@ define_floating_point_util(floor,floor)
 
 flonum_atan2
 	COPY	22,17				; preserve regs
-	; STW	2,REGBLOCK_VAL(0,rs_regblock)	; preserve val REMOVED by JSM
+	STW	2,REGBLOCK_VAL(0,rs_regblock)	; preserve val
 	COPY	21,16
 	COPY	19,15
         .CALL   ARGW0=FR,ARGW1=FU,ARGW2=FR,ARGW3=FU,RTNVAL=FU   ;fpin=105,107;fpout=104;
@@ -1849,7 +1847,7 @@ flonum_atan2
 	COPY	31,14
 	COPY	15,19
 	COPY	16,21
-	; LDW	REGBLOCK_VAL(0,rs_regblock),rs_val	; restore val REMOVED by JSM
+	LDW	REGBLOCK_VAL(0,rs_regblock),rs_val	; restore val
 	COPY	17,22
 	BE	0(5,14)
 	LDW	REGBLOCK_MEMTOP(0,rs_regblock),rs_memtop
