@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.28 1992/02/17 22:09:58 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.29 1992/02/18 00:16:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -309,6 +309,8 @@
       (let ((read-until-result
 	     (lambda (time-limit)
 	       (let loop ()
+		 (if (not time-limit)
+		     (update-screens! false))
 		 (let ((event (get-next-event time-limit)))
 		   (cond ((not event)
 			  (if (not time-limit)
@@ -346,9 +348,9 @@
 		     result))))
 	 (lambda ()			;read
 	   (cond (pending-result
-		  => (lambda (key)
+		  => (lambda (result)
 		       (set! pending-result false)
-		       key))
+		       result))
 		 ((fix:< start end)
 		  (let ((char (string-ref string start)))
 		    (set! start (fix:+ start 1))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.12 1992/02/17 22:09:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.13 1992/02/18 00:17:36 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -148,27 +148,17 @@ MIT in each case. |#
 	(start input-buffer-size)
 	(end input-buffer-size)
 	(pending-event false))
-    (let ((fill-buffer
-	   (lambda (type)
+    (let ((read-event
+	   (lambda (block?)
 	     (let loop ()
-	       (if (eq? type 'BLOCKING)
+	       (if block?
 		   (channel-blocking channel)
 		   (channel-nonblocking channel))
 	       (let ((n
 		      (channel-select-then-read
-		       channel string 0 input-buffer-size))
-		     (maybe-process-changes
-		      (lambda (event)
-			(if (eq? type 'NO-PROCESSING)
-			    (begin
-			      (set! pending-event event)
-			      true)
-			    (begin
-			      (process-change-event event)
-			      (loop))))))
+		       channel string 0 input-buffer-size)))
 		 (cond ((not n)
-			(if (eq? type 'BLOCKING)
-			    (error "#F returned from blocking read"))
+			(if block? (error "#F returned from blocking read"))
 			false)
 		       ((fix:> n 0)
 			(set! start 0)
@@ -179,11 +169,9 @@ MIT in each case. |#
 			(string-ref string 0))
 		       ((or (fix:= n event:process-output)
 			    (fix:= n event:process-status))
-			(maybe-process-changes n))
+			n)
 		       ((fix:= n event:interrupt)
-			(if inferior-thread-changes?
-			    (maybe-process-changes n)
-			    (loop)))
+			(if inferior-thread-changes? n (loop)))
 		       ((fix:= n 0)
 			(error "Reached EOF in keyboard input."))
 		       (else
@@ -191,27 +179,47 @@ MIT in each case. |#
 	  (process-pending-event
 	   (lambda ()
 	     (let ((event pending-event))
-	       (set! pending-event false)
-	       (process-change-event event)))))
-      (values
-       (lambda ()			;halt-update?
-	 (or pending-event
-	     (fix:< start end)
-	     (fill-buffer 'NO-PROCESSING)))
-       (lambda ()			;peek-no-hang
-	 (if pending-event (process-pending-event))
-	 (or (fix:< start end)
-	     (fill-buffer 'NONBLOCKING)))
-       (lambda ()			;peek
-	 (if pending-event (process-pending-event))
-	 (if (not (fix:< start end)) (fill-buffer 'BLOCKING))
-	 (string-ref string start))
-       (lambda ()			;read
-	 (if pending-event (process-pending-event))
-	 (if (not (fix:< start end)) (fill-buffer 'BLOCKING))
-	 (let ((char (string-ref string start)))
-	   (set! start (fix:+ start 1))
-	   char))))))
+	       (if event
+		   (begin
+		     (set! pending-event false)
+		     (process-change-event event)))))))
+      (let ((guarantee-input
+	     (lambda ()
+	       (let loop ()
+		 (update-screens! false)
+		 (process-pending-event)
+		 (if (not (fix:< start end))
+		     (let ((event (read-event true)))
+		       (if (fix:fixnum? event)
+			   (begin
+			     (process-change-event event)
+			     (loop)))))))))
+	(values
+	 (lambda ()			;halt-update?
+	   (or pending-event
+	       (fix:< start end)
+	       (let ((event (read-event false)))
+		 (if (fix:fixnum? event)
+		     (set! pending-event event))
+		 event)))
+	 (lambda ()			;peek-no-hang
+	   (process-pending-event)
+	   (let loop ()
+	     (or (fix:< start end)
+		 (let ((event (read-event false)))
+		   (if (fix:fixnum? event)
+		       (begin
+			 (process-change-event event)
+			 (loop))
+		       event)))))
+	 (lambda ()			;peek
+	   (guarantee-input)
+	   (string-ref string start))
+	 (lambda ()			;read
+	   (guarantee-input)
+	   (let ((char (string-ref string start)))
+	     (set! start (fix:+ start 1))
+	     char)))))))
 
 (define-integrable input-buffer-size 16)
 (define-integrable event:process-output -2)
