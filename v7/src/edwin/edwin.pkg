@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.268 2001/02/05 18:15:55 cph Exp $
+$Id: edwin.pkg,v 1.269 2001/02/05 18:55:53 cph Exp $
 
 Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
@@ -1931,3 +1931,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  edwin-command$toggle-pw-form
 	  edwin-command$view-password-file
 	  edwin-mode$password-view))
+
+(define-package (edwin debian-changelog)
+  (files "debian-changelog")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$debian-changelog-add-entry
+	  edwin-command$debian-changelog-add-version
+	  edwin-command$debian-changelog-distribution
+	  edwin-command$debian-changelog-finalize-and-save
+	  edwin-command$debian-changelog-finalize-last-version
+	  edwin-command$debian-changelog-unfinalize-last-version
+	  edwin-command$debian-changelog-urgency
+	  edwin-mode$debian-changelog
+	  edwin-variable$add-log-full-name
+	  edwin-variable$add-log-mailing-address
+	  edwin-variable$debian-changelog-mode-hook))

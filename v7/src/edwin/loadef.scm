@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: loadef.scm,v 1.42 2000/02/29 03:59:26 cph Exp $
+;;; $Id: loadef.scm,v 1.43 2001/02/05 18:55:56 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -22,7 +22,8 @@
 
 (declare (usual-integrations))
 
-;;;; Major Mode Libraries
+;;; ****************
+
 (define-library 'TECHINFO-MODE
   '("techinfo" (EDWIN)))
 
@@ -31,6 +32,8 @@
 
 (define-autoload-command 'techinfo 'TECHINFO-MODE
   "Enter TechInfo mode.")
+
+;;; ****************
 
 (define-library 'TELNET-MODE
   '("telnet" (EDWIN)))
@@ -44,6 +47,8 @@
 (define-variable telnet-mode-hook
   "An event distributor that is invoked when entering Telnet mode."
   (make-event-distributor))
+
+;;; ****************
 
 (define-library 'MIDAS-MODE
   '("midas" (EDWIN)))
@@ -61,6 +66,8 @@
 (define-variable midas-mode-hook
   "An event distributor that is invoked when entering Midas mode."
   (make-event-distributor))
+
+;;; ****************
 
 (define-library 'PASCAL-MODE
   '("pasmod" (EDWIN)))
@@ -88,23 +95,13 @@
 This must be a regular expression, or #F to disable the option."
   false)
 
+;;; ****************
+
 (define-library 'TEXINFO-MODE
   '("tximod" (EDWIN)))
 
 (define-autoload-major-mode 'texinfo 'text "Texinfo" 'TEXINFO-MODE
-  "Major mode for editing Texinfo files.
-
-  These are files that are used as input for TeX to make printed manuals
-and also to be turned into Info files by \\[texinfo-format-buffer] or
-`makeinfo'.  These files must be written in a very restricted and
-modified version of TeX input format.
-
-  Editing commands are like text-mode except that the syntax table is
-set up so expression commands skip Texinfo bracket groups.
-
-  In addition, Texinfo mode provides commands that insert various
-frequently used @-sign commands into the buffer.  You can use these
-commands to save keystrokes.")
+  "Major mode for editing Texinfo files.")
 
 (define-autoload-command 'texinfo-mode 'TEXINFO-MODE
   "Make the current mode be Texinfo mode.")
@@ -116,8 +113,8 @@ commands to save keystrokes.")
 (define-variable texinfo-mode-hook
   "An event distributor that is invoked when entering Texinfo mode."
   (make-event-distributor))
-
-;;;; Other Libraries
+
+;;; ****************
 
 (define-library 'manual
   '("manual" (EDWIN)))
@@ -141,6 +138,8 @@ Section (if any) and topic strings are appended (with space separators)
 and the resulting string is provided to a shell running in a subprocess."
   false
   string-or-false?)
+
+;;; ****************
 
 (define-library 'print
   '("print" (EDWIN)))
@@ -184,7 +183,9 @@ variable's value is #F, the text is printed using LPR-COMMAND."
 
 (define-autoload-command 'print-region 'PRINT
   "Print region contents as with Unix command `lpr -p'.")
-
+
+;;; ****************
+
 (define-library 'SORT
   '("sort" (EDWIN)))
 
@@ -205,6 +206,8 @@ variable's value is #F, the text is printed using LPR-COMMAND."
 
 (define-autoload-command 'sort-columns 'SORT
   "Sort lines by the text in a range of columns.")
+
+;;; ****************
 
 (define-library 'STEPPER
   '("eystep" (EDWIN STEPPER)))
@@ -218,6 +221,8 @@ variable's value is #F, the text is printed using LPR-COMMAND."
 (define-autoload-command 'step-defun 'STEPPER
   "Single-step the definition that the point is in or before.")
 
+;;; ****************
+
 (define-library 'NEWS-READER
   '("nntp" (EDWIN NNTP))
   '("snr" (EDWIN NEWS-READER)))
@@ -228,7 +233,9 @@ Normally uses the server specified by the variable news-server,
 but with a prefix arg prompts for the server name.
 Only one News reader may be open per server; if a previous News reader
 is open the that server, its buffer is selected.")
-
+
+;;; ****************
+
 (define-library 'VERILOG-MODE
   '("verilog" (EDWIN VERILOG)))
 
@@ -255,6 +262,8 @@ is open the that server, its buffer is selected.")
   "Extra indent for continuation lines of structure headers."
   4
   exact-nonnegative-integer?)
+
+;;; ****************
 
 (define-library 'VHDL-MODE
   '("vhdl" (EDWIN VHDL)))
@@ -282,22 +291,14 @@ is open the that server, its buffer is selected.")
   "Extra indent for lines not starting new statements."
   2
   exact-nonnegative-integer?)
-
-;;;; Webster
+
+;;; ****************
 
 (define-library 'WEBSTER
   '("webster" (EDWIN)))
 
 (define-autoload-major-mode 'webster 'read-only "Webster" 'WEBSTER
-  "Major mode for interacting with webster server.
-Commands:
-
-\\[webster-define]	look up the definition of a word
-\\[webster-spellings]	look up possible correct spellings for a word
-\\[webster-define]	look up possible endings for a word
-\\[webster-quit]	close connection to the Webster server
-
-Use webster-mode-hook for customization.")
+  "Major mode for interacting with webster server.")
 
 (define-autoload-command 'webster 'WEBSTER
   "Look up a word in Webster's dictionary.")
@@ -331,7 +332,7 @@ This is usually 103 or 2627."
   "*webster*"
   string?)
 
-;;;; Password Editor
+;;; ****************
 
 (define-library 'PASSWORD-EDIT
   '("pwedit" (EDWIN PASSWORD-EDIT))
@@ -361,6 +362,27 @@ See \\[view-password-file]."
 
 (define-autoload-command 'mouse-toggle-pw-form 'PASSWORD-EDIT
   "Toggle the body of the password form under mouse.")
+
+;;; ****************
+
+(define-library 'DEBIAN-CHANGELOG
+  '("debian-changelog" (EDWIN DEBIAN-CHANGELOG)))
+
+(define-autoload-major-mode 'debian-changelog 'text "Debian changelog"
+  'DEBIAN-CHANGELOG
+  "Major mode for editing Debian-style change logs.")
+
+(define-variable add-log-full-name
+  "Full name of user, for inclusion in ChangeLog headers.
+This defaults to the value `mail-full-name'."
+  #f
+  string-or-false?)
+
+(define-variable add-log-mailing-address
+  "Electronic mail address of user, for inclusion in ChangeLog headers.
+This defaults to the value of `user-mail-address'."
+  #f
+  string-or-false?)
 
 ;;;; DOS-specific commands
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.50 2000/06/08 18:00:43 cph Exp $
+$Id: ed-ffi.scm,v 1.51 2001/02/05 18:55:50 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -93,6 +93,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     ("curren"	(edwin)
 		edwin-syntax-table)
     ("dabbrev"	(edwin)
+		edwin-syntax-table)
+    ("debian-changelog" (edwin debian-changelog)
 		edwin-syntax-table)
     ("debug"	(edwin debugger)
 		edwin-syntax-table)

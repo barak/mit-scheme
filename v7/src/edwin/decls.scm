@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.69 2000/06/08 18:00:42 cph Exp $
+$Id: decls.scm,v 1.70 2001/02/05 18:55:48 cph Exp $
 
-Copyright (c) 1989-2000 Massachusetts Institute of Technology
+Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -127,6 +127,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		"comred"
 		"curren"
 		"dabbrev"
+		"debian-changelog"
 		"debug"
 		"debuge"
 		"dired"
