@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 14.8 1991/02/15 18:04:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 14.9 1991/03/01 06:45:38 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -245,7 +245,10 @@ MIT in each case. |#
 			     (with-simple-restart 'CONTINUE
 				 "Return from advised procedure."
 			       (lambda ()
-				 (advice procedure arguments environment))))
+				 (advice procedure
+					 arguments
+					 value
+					 environment))))
 			   (cdr state))
 		 value)))))))))
 
