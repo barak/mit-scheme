@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.110 1992/02/11 19:01:15 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.111 1992/02/12 23:47:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -356,10 +356,9 @@ ARG lines.  No arg means split equally."
   (let ((window
 	 (let ((window (other-window n)))
 	   (if (current-window? window)
-	       (and (use-multiple-screens?)
-		    (let ((screen (other-screen (selected-screen) false)))
-		      (and screen
-			   (screen-selected-window screen))))
+	       (let ((screen (other-screen (selected-screen) false)))
+		 (and screen
+		      (screen-selected-window screen)))
 	       window))))
     (if (not window)
 	(editor-error "No other window"))
@@ -379,18 +378,20 @@ ARG lines.  No arg means split equally."
 	 (lambda (window)
 	   (select-buffer-in-window buffer window)
 	   (select-window window))))
-    (cond ((not (window-has-no-neighbors? window))
-	   (let ((window*
-		  (list-search-negative (buffer-windows buffer)
-		    (lambda (window*)
-		      (eq? window window*)))))
-	     (if window*
-		 (select-window window*)
-		 (use-window (window1+ window)))))
-	  ((not (use-multiple-screens?))
-	   (use-window (window-split-vertically! window false)))
-	  (else
-	   (select-buffer-other-screen buffer)))))
+    (let loop ((windows (buffer-windows buffer)))
+      (cond ((null? windows)
+	     (let ((window* (next-visible-window window false)))
+	       (cond (window*
+		      (use-window window*))
+		     ((use-multiple-screens?)
+		      (select-buffer-other-screen buffer))
+		     (else
+		      (use-window (window-split-vertically! window false))))))
+	    ((and (not (eq? (car windows) window))
+		  (window-visible? (car windows)))
+	     (select-window (car windows)))
+	    (else
+	     (loop (cdr windows)))))))
 
 (define (select-buffer-other-screen buffer)
   (if (multiple-screens?)
@@ -504,23 +505,11 @@ Also kills any pop up window it may have created."
       window)))
 
 (define (get-buffer-window buffer)
-  (or (let ((start (window0)))
-	(if (eq? buffer (window-buffer start))
-	    start
-	    (let loop ((window (window1+ start)))
-	      (and (not (eq? window start))
-		   (if (eq? buffer (window-buffer window))
-		       window
-		       (loop (window1+ window)))))))
-      (and (use-multiple-screens?)
-	   (or (let ((screen (other-screen (selected-screen) false)))
-		 (and screen
-		      (list-search-positive (screen-window-list screen)
-			(lambda (window)
-			  (eq? buffer window)))))
-	       (let ((windows (buffer-windows buffer)))
-		 (and (not (null? windows))
-		      (car windows)))))))
+  (let loop ((windows (buffer-windows buffer)))
+    (and (not (null? windows))
+	 (if (window-visible? (car windows))
+	     (car windows)
+	     (loop (cdr windows))))))
 
 (define (largest-window)
   (let ((start (window0)))
