@@ -1,8 +1,8 @@
 /* -*- C -*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdrn.c,v 1.4 1992/03/26 04:21:11 cph Exp $
+$Id: bchdrn.c,v 1.5 1993/02/06 05:28:52 gjr Exp $
 
-Copyright (c) 1991-92 Massachusetts Institute of Technology
+Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,9 +34,12 @@ MIT in each case. */
 
 /* Drone program for overlapped I/O in bchscheme. */
 
-#include <setjmp.h>
 #include "ux.h"
 #include "bchdrn.h"
+#if 0
+/* ux.h includes <setjmp.h> indirectly */
+#  include <setjmp.h>
+#endif
 
 #define DEBUG
 /* #define DEBUG_1 */
