@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.27 1987/06/17 19:42:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.28 1987/06/25 22:29:10 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -50,7 +50,7 @@ MIT in each case. |#
       (define :files)
 
 ;      (parse-rcs-header
-;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.27 1987/06/17 19:42:27 cph Exp $"
+;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.28 1987/06/25 22:29:10 cph Exp $"
 ;       (lambda (filename version date time zone author state)
 ;	 (set! :version (car version))
 ;	 (set! :modification (cadr version))))
@@ -91,7 +91,8 @@ MIT in each case. |#
 		 "base/rtlreg.bin"	;RTL: registers
 		 "base/rtlcfg.bin"	;RTL: CFG types
 		 "base/emodel.bin"	;environment model
-		 "base/rtypes.bin"	;RTL analyzer datatypes
+		 "base/rtypes.bin"	;RTL Registers
+		 "base/regset.bin"	;RTL Register Sets
 		 "base/pmlook.bin"	;pattern matcher: lookup
 		 "base/pmpars.bin"	;pattern matcher: parser
 		 ))
