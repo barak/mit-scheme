@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.30 1994/10/03 17:30:36 adams Exp $
+$Id: option.scm,v 14.31 1994/10/08 08:56:09 cph Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -37,7 +37,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define *initial-options-file*  #F)
+(define *initial-options-file* #F)
 
 (define (initial-load-options)
   (or *initial-options-file*
@@ -61,41 +61,40 @@ MIT in each case. |#
   (set! *parent* place)
   unspecific)
 
-(define (load-option name)
+(define (load-option name #!optional no-error?)
+  (let ((no-error? (and (not (default-object? no-error?)) no-error?)))
 
-  (define (load-entry entry)
-    (for-each (lambda (thunk) (thunk)) (cdr entry))
-    (set! loaded-options (cons name loaded-options))
-    unspecific)
+    (define (find-option)
+      (cond ((assq name *options*) => load-entry)
+	    ((force* *parent*)     => search-parent)
+	    (else (error "Unknown option name:" name))))
 
-  (define (search-parent file)
-    (fluid-let ((*options* '())
-		(*parent*  #F))
-      (fluid-let ((load/suppress-loading-message? #T))
-	(load-latest (merge-pathnames file (library-directory-pathname ""))
-		     (make-load-environment)
-		     system-global-syntax-table
-		     #F))
-      (find-option)))
+    (define (load-entry entry)
+      (for-each (lambda (thunk) (thunk)) (cdr entry))
+      (set! loaded-options (cons name loaded-options))
+      unspecific)
 
-  (define (make-load-environment)
-    (eval '(LET () (THE-ENVIRONMENT))  system-global-environment))
+    (define (search-parent file)
+      (fluid-let ((*options* '())
+		  (*parent*  #F))
+	(fluid-let ((load/suppress-loading-message? #T))
+	  (load-latest (merge-pathnames file (library-directory-pathname ""))
+		       (make-load-environment)
+		       system-global-syntax-table
+		       #F))
+	(find-option)))
 
-  (define (find-option)
-    (cond ((assq name *options*) => load-entry)
-	  ((force* *parent*)     => search-parent)
-	  (else
-	   (error "Unknown option name:" name))))
+    (define (make-load-environment)
+      (eval '(LET () (THE-ENVIRONMENT)) system-global-environment))
 
-  (if (not (memq name loaded-options))
-      (find-option))
-  name)
+    (if (not (memq name loaded-options))
+	(find-option))
+    name))
 
 (define loaded-options  '())
 (define *options* '())			; Current options.
 (define *parent*  initial-load-options)	; A thunk or a pathname/string or #F.
-
-
+
 (define (library-file? library-internal-path)
   (let* ((library    (library-directory-pathname ""))
 	 (pathname   (merge-pathnames library-internal-path library)))
