@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.22 1993/08/02 04:22:51 cph Exp $
+$Id: tterm.scm,v 1.23 1993/09/01 18:06:16 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -1080,3 +1080,19 @@ Note that the multiply factors are in tenths of characters.  |#
 	      (vector-set! overhead y (fix:quotient (fix:+ o n) 10))
 	      (loop (fix:1+ y) (fix:- o factor-1) n)))))
     (values overhead factor)))
+
+(define (resize-screen)
+  (let* ((screen (selected-screen))
+	 (state (screen-state screen)))
+    (if (not (terminal-state? state))
+	(editor-error "Not a terminal screen")
+	(let ((port console-output-port)
+	      (desc (terminal-state/description state)))
+	  (let ((x-size (output-port/x-size port))
+		(y-size (output-port/y-size port)))
+	    (without-interrupts
+	     (lambda ()
+	       (set-tn-x-size! desc x-size)
+	       (set-tn-y-size! desc y-size)
+	       (set-screen-size! screen x-size y-size)))
+	    (update-screen! screen #t))))))
