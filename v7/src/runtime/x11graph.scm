@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.22 1992/06/03 18:24:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.23 1992/07/20 20:12:21 arthur Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -76,7 +76,7 @@ MIT in each case. |#
   (x-window-x-size 1)
   (x-window-y-size 1)
 
-  (x-graphics-copy-area 7)
+  (x-graphics-copy-area 8)
   (x-graphics-drag-cursor 3)
   (x-graphics-draw-line 5)
   (x-graphics-draw-point 3)
@@ -591,10 +591,11 @@ MIT in each case. |#
 			      source-x-left source-y-top
 			      width height
 			      destination-x-left destination-y-top)
-  (x-graphics-copy-area (x-graphics-device/xw device)
-			source-x-left source-y-top
-			width height
-			destination-x-left destination-y-top))
+  (let ((xw (x-graphics-device/xw device)))
+    (x-graphics-copy-area xw xw
+			  source-x-left source-y-top
+			  width height
+			  destination-x-left destination-y-top)))
 
 (define (x-graphics/get-default device resource-name class-name)
   (x-display-get-default (x-graphics-device/xd device)

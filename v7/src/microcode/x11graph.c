@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.27 1992/07/01 20:18:40 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.28 1992/07/20 20:12:16 arthur Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -530,25 +530,38 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-SET-DASHES", Prim_x_graphics_set_dashes, 3, 3, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("X-GRAPHICS-COPY-AREA", Prim_x_graphics_copy_area, 7, 7, 0)
+DEFINE_PRIMITIVE ("X-GRAPHICS-COPY-AREA", Prim_x_graphics_copy_area, 8, 8, 0)
 {
   PRIMITIVE_HEADER (7);
   {
-    struct xwindow * xw = x_window_arg (1);
-    unsigned int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
-    float device_width = ((XW_X_SLOPE (xw)) * (arg_real_number (4)));
-    float device_height = ((XW_Y_SLOPE (xw)) * (arg_real_number (5)));
-
-    XCopyArea ((XW_DISPLAY (xw)),
-	       (XW_WINDOW (xw)),
-	       (XW_WINDOW (xw)),
-	       (XW_NORMAL_GC (xw)),
-	       (internal_border_width + (arg_x_coordinate (2, xw))),
-	       (internal_border_width + (arg_y_coordinate (3, xw))),
+    struct xwindow * source_xw = x_window_arg (1);
+    struct xwindow * destination_xw = x_window_arg (2);
+    unsigned int source_internal_border_width
+      = (XW_INTERNAL_BORDER_WIDTH (source_xw));
+    unsigned int destination_internal_border_width
+      = (XW_INTERNAL_BORDER_WIDTH (destination_xw));
+    float device_width
+      = ((XW_X_SLOPE (source_xw)) * (arg_real_number (5)));
+    float device_height
+      = ((XW_Y_SLOPE (source_xw)) * (arg_real_number (6)));
+    Display *source_display = XW_DISPLAY (source_xw);
+    Display *destination_display = XW_DISPLAY (destination_xw);
+    if (source_display != destination_display)
+      error_bad_range_arg (2);
+    XCopyArea (source_display,
+	       (XW_WINDOW (source_xw)),
+	       (XW_WINDOW (destination_xw)),
+	       (XW_NORMAL_GC (source_xw)),
+	       (source_internal_border_width
+		+ (arg_x_coordinate (3, source_xw))),
+	       (source_internal_border_width
+		+ (arg_y_coordinate (4, source_xw))),
 	       (ROUND_FLOAT (device_width)),
 	       (ROUND_FLOAT (device_height)),
-	       (internal_border_width + (arg_x_coordinate (6, xw))),
-	       (internal_border_width + (arg_y_coordinate (7, xw))));
+	       (destination_internal_border_width
+		+ (arg_x_coordinate (7, destination_xw))),
+	       (destination_internal_border_width
+		+ (arg_y_coordinate (8, destination_xw))));
     PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
