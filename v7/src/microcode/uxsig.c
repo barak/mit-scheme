@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.16 1991/08/31 03:59:11 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.17 1991/10/15 18:01:55 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -416,6 +416,21 @@ DEFUN_STD_HANDLER (sighnd_control_g,
     tty_set_next_interrupt_char (CONTROL_G_INTERRUPT_CHAR);
   })
 
+DEFUN_STD_HANDLER (sighnd_control_u,
+  {
+    tty_set_next_interrupt_char (CONTROL_U_INTERRUPT_CHAR);
+  })
+
+DEFUN_STD_HANDLER (sighnd_control_x,
+  {
+    tty_set_next_interrupt_char (CONTROL_X_INTERRUPT_CHAR);
+  })
+
+DEFUN_STD_HANDLER (sighnd_control_b,
+  {
+    tty_set_next_interrupt_char (CONTROL_B_INTERRUPT_CHAR);
+  })
+
 static void EXFUN
   (interactive_interrupt_handler, (struct FULL_SIGCONTEXT * scp));
 
@@ -634,15 +649,24 @@ DEFUN_VOID (UX_initialize_signals)
   bind_handler (SIGPIPE,	SIG_IGN);
   if ((isatty (STDIN_FILENO)) || option_emacs_subprocess)
     {
-      if (!option_emacs_subprocess)
+      if (getenv ("USE_SCHEMATIK_STYLE_INTERRUPTS"))
+        bind_handler (SIGHUP,   sighnd_control_b);
+      else if (!option_emacs_subprocess)
 	bind_handler (SIGHUP,	sighnd_save_then_terminate);
-      bind_handler (SIGQUIT,	sighnd_interactive);
+      if (getenv ("USE_SCHEMATIK_STYLE_INTERRUPTS"))
+        bind_handler (SIGQUIT,  sighnd_control_u);
+      else
+        bind_handler (SIGQUIT,	sighnd_interactive);
       bind_handler (SIGPWR,	sighnd_save_then_terminate);
       bind_handler (SIGTSTP,	sighnd_stop);
       bind_handler (SIGILL,	sighnd_hardware_trap);
       bind_handler (SIGTRAP,	sighnd_hardware_trap);
       bind_handler (SIGBUS,	sighnd_hardware_trap);
       bind_handler (SIGSEGV,	sighnd_hardware_trap);
+      if (getenv ("USE_SCHEMATIK_STYLE_INTERRUPTS"))
+        bind_handler (SIGIOT,   sighnd_control_x);
+      else
+        bind_handler (SIGIOT,	sighnd_software_trap);
       bind_handler (SIGIOT,	sighnd_software_trap);
       bind_handler (SIGEMT,	sighnd_software_trap);
       bind_handler (SIGSYS,	sighnd_software_trap);
