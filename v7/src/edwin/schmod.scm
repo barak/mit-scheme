@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.24 1992/04/01 02:17:07 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.25 1992/04/06 05:35:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -95,7 +95,7 @@ normally they record the associated output in a transcript buffer:
 (define-key 'scheme #\m-z 'eval-defun)
 (define-key 'scheme #\c-m-q 'indent-sexp)
 (define-key 'scheme #\c-m-z 'eval-region)
-(define-key 'scheme #\m-tab 'scheme-complete-symbol)
+(define-key 'scheme #\m-tab 'scheme-complete-variable)
 
 ;;;; Read Syntax
 
@@ -197,52 +197,44 @@ normally they record the associated output in a transcript buffer:
 
 ;;;; Completion
 
-(define-command scheme-complete-symbol
-  "Perform completion on Scheme symbol preceding point.
-That symbol is compared against the symbols that exist
-and any additional characters determined by what is there
-are inserted.
-With prefix arg, only symbols that are bound in the buffer's
-environment are considered."
-  "P"
-  (lambda (bound-only?)
-    (let ((end
-	   (let ((point (current-point)))
-	     (or (re-match-forward "\\(\\sw\\|\\s_\\)+"
-				   point
-				   (group-end point)
-				   false)
-		 (let ((start (group-start point)))
-		   (if (not (and (mark< start point)
-				 (re-match-forward "\\sw\\|\\s_"
-						   (mark-1+ point)
-						   point
-						   false)))
-		       (editor-error "No symbol preceding point"))
-		   point)))))
-      (let ((start (forward-prefix-chars (backward-sexp end 1 'LIMIT) end)))
-	(standard-completion (extract-string start end)
-	  (lambda (prefix if-unique if-not-unique if-not-found)
-	    (let ((completions
-		   (let ((completions (obarray-completions prefix)))
-		     (if (not bound-only?)
-			 completions
-			 (let ((environment (evaluation-environment false)))
-			   (list-transform-positive completions
-			     (lambda (name)
-			       (environment-bound? environment name))))))))
-	      (cond ((null? completions)
-		     (if-not-found))
-		    ((null? (cdr completions))
-		     (if-unique (system-pair-car (car completions))))
-		    (else
-		     (let ((completions (map system-pair-car completions)))
-		       (if-not-unique
-			(string-greatest-common-prefix completions)
-			(lambda () (sort completions string<=?))))))))
-	  (lambda (completion)
-	    (delete-string start end)
-	    (insert-string completion start)))))))
+(define (scheme-complete-symbol bound-only?)
+  (let ((end
+	 (let ((point (current-point)))
+	   (or (re-match-forward "\\(\\sw\\|\\s_\\)+"
+				 point
+				 (group-end point)
+				 false)
+	       (let ((start (group-start point)))
+		 (if (not (and (mark< start point)
+			       (re-match-forward "\\sw\\|\\s_"
+						 (mark-1+ point)
+						 point
+						 false)))
+		     (editor-error "No symbol preceding point"))
+		 point)))))
+    (let ((start (forward-prefix-chars (backward-sexp end 1 'LIMIT) end)))
+      (standard-completion (extract-string start end)
+	(lambda (prefix if-unique if-not-unique if-not-found)
+	  (let ((completions
+		 (let ((completions (obarray-completions prefix)))
+		   (if (not bound-only?)
+		       completions
+		       (let ((environment (evaluation-environment false)))
+			 (list-transform-positive completions
+			   (lambda (name)
+			     (environment-bound? environment name))))))))
+	    (cond ((null? completions)
+		   (if-not-found))
+		  ((null? (cdr completions))
+		   (if-unique (system-pair-car (car completions))))
+		  (else
+		   (let ((completions (map system-pair-car completions)))
+		     (if-not-unique
+		      (string-greatest-common-prefix completions)
+		      (lambda () (sort completions string<=?))))))))
+	(lambda (completion)
+	  (delete-string start end)
+	  (insert-string completion start))))))
 
 (define (obarray-completions prefix)
   (let ((obarray (fixed-objects-item 'OBARRAY)))
@@ -263,3 +255,22 @@ environment are considered."
 			(cons (car symbols) (bucket-loop (cdr symbols)))
 			(bucket-loop (cdr symbols))))))
 	    '())))))
+
+(define-command scheme-complete-symbol
+  "Perform completion on Scheme symbol preceding point.
+That symbol is compared against the symbols that exist
+and any additional characters determined by what is there
+are inserted.
+With prefix arg, only symbols that are bound in the buffer's
+environment are considered."
+  "P"
+  scheme-complete-symbol)
+
+(define-command scheme-complete-variable
+  "Perform completion on Scheme variable name preceding point.
+That name is compared against the bound variables in the evaluation environment
+and any additional characters determined by what is there are inserted.
+With prefix arg, the evaluation environment is ignored and all symbols
+are considered for completion."
+  "P"
+  (lambda (all-symbols?) (scheme-complete-symbol (not all-symbols?))))
