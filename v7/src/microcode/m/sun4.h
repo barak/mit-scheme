@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for Sun 4
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/sun4.h,v 1.1 1990/02/07 21:33:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/sun4.h,v 1.2 1990/06/20 19:54:13 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -35,5 +35,5 @@ MIT in each case. */
 
 #define PROC_TYPE PROC_TYPE_SPARC
 
-#define C_SWITCH_MACHINE -Dsun -Dunix -Dsun4
+#define C_SWITCH_MACHINE -Dsun4
 #define LD_SWITCH_MACHINE  

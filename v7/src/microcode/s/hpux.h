@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for HP-UX
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/hpux.h,v 1.5 1990/04/17 22:20:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/hpux.h,v 1.6 1990/06/20 19:54:58 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -42,9 +42,6 @@ MIT in each case. */
 /* No special libraries are needed for debugging. */
 #define LIB_DEBUG
 
-#define SOURCES_SYSTEM unixprim.c
-#define OBJECTS_SYSTEM unixprim.o
-
 #ifndef HAVE_CURSES
 #define LIBS_SYSTEM -lcurses
 #endif
@@ -53,9 +50,7 @@ MIT in each case. */
 #define INSTALL_PROGRAM cp
 #endif
 
-#ifdef ALTERNATE_CC
-/* If the alternate compiler defines __STDC__ this macro must also be
+/* If the compiler defines __STDC__ this macro must also be
    defined or the include files don't define many necessary symbols.
    In any case this definition does no harm. */
-#define C_SWITCH_SYSTEM -D_HPUX_SOURCE
-#endif
+#define C_SWITCH_SYSTEM -D_HPUX -D_HPUX_SOURCE

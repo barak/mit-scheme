@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for Ultrix
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/ultrix.h,v 1.6 1990/04/12 21:08:14 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/ultrix.h,v 1.7 1990/06/20 19:55:03 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -39,7 +39,7 @@ MIT in each case. */
 /* This says we have curses terminal support for Edwin. */
 #define HAVE_CURSES
 
-#define C_SWITCH_SYSTEM -Dbsd -DULTRIX
+#define C_SWITCH_SYSTEM -D_BSD4_2 -D_ULTRIX
 
 #define LIBS_SYSTEM -ltermcap
 

@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for HP9000 series 800
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k800.h,v 1.4 1990/01/22 22:26:07 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k800.h,v 1.5 1990/06/20 19:54:03 cph Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -40,5 +40,5 @@ MIT in each case. */
 #define STARBASE_DEVICE_DRIVERS -ldd98550
 #endif
 
-#define C_SWITCH_MACHINE -Dspectrum -DTYPE_CODE_LENGTH=6
+#define C_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6
 #define M4_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6
