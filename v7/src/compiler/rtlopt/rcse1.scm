@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.7 1988/04/26 18:52:37 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.8 1988/06/03 14:54:29 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -220,13 +220,21 @@ MIT in each case. |#
 
 (define (assignment-memory-insertion address hash insert-source!
 				     memory-invalidate!)
+  #|
+  ;; This does not cause bugs (false hash number passed to
+  ;; insert-memory-destination! fixed one), but does not do anything
+  ;; useful.  The idea of doing optimization on the address of a
+  ;; memory assignment does not work since the RTL does not
+  ;; distinguish addresses from references.  When the RTL is changed,
+  ;; we can do CSE on the memory address.
   (let ((address (find-cheapest-expression address hash false)))
     (let ((element (insert-source!)))
       (memory-invalidate!)
-      (insert-memory-destination!
-       address
-       element
-       (modulo (+ (symbol-hash 'ASSIGN) hash) (hash-table-size))))))
+      (insert-memory-destination! address element false)))
+  |#
+  (insert-source!)
+  (memory-invalidate!)
+  (mention-registers! address))
 
 (define (trivial-action volatile? insert-source!)
   (if (not volatile?)
