@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for MIPS computers.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/mips.h,v 1.2 1989/07/26 04:16:54 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/mips.h,v 1.3 1990/04/12 21:04:06 jinx Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,3 +38,6 @@ MIT in each case. */
 /* The following crock seems to be needed, since ULTRIX on the vax has
     libg but ULTRIX on the pmax doesn't! */
 #define LIB_DEBUG
+
+/* The following allows optimization of interp.c */
+#define C_SWITCH_MACHINE -Olimit 2000  -DTYPE_CODE_LENGTH=6
