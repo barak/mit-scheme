@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.1 2000/12/08 04:49:57 cph Exp $
+# $Id: Setup.sh,v 1.2 2000/12/08 05:01:15 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -34,9 +34,9 @@ maybe_link ()
     fi
 }
 
-maybe_link ${SUBDIR}/Makefile ../etc/Makefile.std
+maybe_link Makefile ../etc/Makefile.std
 for FN in Clean.sh Stage.sh; do
-    maybe_link ${SUBDIR}/${FN} ../etc/${FN}
+    maybe_link ${FN} ../etc/${FN}
 done
 
 [ -e ed-ffi.scm ] && maybe_link .edwin-ffi ed-ffi.scm

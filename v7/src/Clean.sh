@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.1 2000/12/08 04:49:28 cph Exp $
+# $Id: Clean.sh,v 1.2 2000/12/08 05:04:37 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -45,8 +45,8 @@ maintainer-clean)
 esac
 
 for SUBDIR; do
-    if test -x $${SUBDIR}/Clean.sh; then
-	echo "making ${COMMAND} in $${SUBDIR}"
-	( cd $${SUBDIR} && ./Clean.sh ${COMMAND} ) || exit 1
+    if test -x ${SUBDIR}/Clean.sh; then
+	echo "making ${COMMAND} in ${SUBDIR}"
+	( cd ${SUBDIR} && ./Clean.sh ${COMMAND} ) || exit 1
     fi
 done
