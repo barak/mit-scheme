@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.27 2000/05/15 18:14:45 cph Exp $
+$Id: datime.scm,v 14.28 2000/05/15 18:15:36 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -349,7 +349,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			     (if (< n 100)
 				 (+ 1900 n)
 				 n))
-			   time-zone)))))
+			   zone)))))
 
 (define (universal-time->local-ctime-string time)
   (decoded-time->ctime-string (universal-time->local-decoded-time time)))
