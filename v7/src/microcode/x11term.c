@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.2 1989/04/20 04:33:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.3 1989/04/25 02:24:20 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -987,26 +987,25 @@ DEFINE_PRIMITIVE ("XTERM-READ-CHARS", Prim_xterm_read_chars, 2, 2, 0)
   interval =
     (((ARG_REF (2)) == SHARP_F) ? (-1) : (arg_nonnegative_integer (2)));
   if (interval >= 0)
-    time_limit = ((OS_real_time_clock ()) + (interval));
+    time_limit = ((OS_real_time_clock ()) + interval);
   buffer_length = 4;
   buffer_index = 0;
   buffer = (xterm_malloc (buffer_length));
   scan_buffer = buffer;
   while (1)
     {
-      if (interval < 0)
-	{
-	  if (((XPending (display)) == 0) &&
-	      ((buffer != scan_buffer) || ((xt -> event_flags) != 0)))
-	    break;
-	}
-      else
+      if ((XPending (display)) == 0)
 	{
 	  if ((buffer != scan_buffer) ||
-	      ((OS_real_time_clock ()) >= time_limit))
+	      ((xt -> event_flags) != 0) ||
+	      (interval == 0))
 	    break;
-	  if ((XPending (display)) == 0)
-	    continue;
+	  if (interval > 0)
+	    {
+	      if ((OS_real_time_clock ()) >= time_limit)
+		break;
+	      continue;
+	    }
 	}
       XNextEvent (display, (& event));
       if ((event . type) != KeyPress)
@@ -1040,9 +1039,16 @@ DEFINE_PRIMITIVE ("XTERM-READ-CHARS", Prim_xterm_read_chars, 2, 2, 0)
 	(*scan_buffer++) = (*scan_copy++);
       buffer_index = (scan_buffer - buffer);
     }
-  if (buffer == scan_buffer)
+  /* If we got characters, return them */
+  if (buffer != scan_buffer)
+    PRIMITIVE_RETURN (memory_to_string (buffer_index, buffer));
+  /* If we're in a read with timeout, and we stopped before the
+     timeout was finished, return the amount remaining. */
+  if (interval > 0)
+    interval = (time_limit - (OS_real_time_clock ()));
+  if (interval <= 0)
     PRIMITIVE_RETURN (SHARP_F);
-  PRIMITIVE_RETURN (memory_to_string (buffer_index, buffer));
+  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (interval));
 }
 
 static void
