@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.39 1992/02/18 17:30:10 jinx Exp $
+$Id: gcloop.c,v 9.40 1993/03/10 17:19:52 cph Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -70,6 +70,12 @@ SCHEME_OBJECT
   * (gc_scan_history [GC_SCAN_HISTORY_SIZE]),
   * (gc_to_history [GC_SCAN_HISTORY_SIZE]);
 
+SCHEME_OBJECT gc_object_referenced = SHARP_F;
+SCHEME_OBJECT gc_objects_referencing = SHARP_F;
+unsigned long gc_objects_referencing_count;
+SCHEME_OBJECT * gc_objects_referencing_scan;
+SCHEME_OBJECT * gc_objects_referencing_end;
+
 static int gc_scan_history_index;
 
 #define INITIALIZE_GC_HISTORY()						\
@@ -118,6 +124,9 @@ DEFUN (GCLoop,
        AND SCHEME_OBJECT ** To_Pointer)
 {
   fast SCHEME_OBJECT *To, *Old, Temp, *Low_Constant, New_Address;
+#ifdef ENABLE_GC_DEBUGGING_TOOLS
+  SCHEME_OBJECT object_referencing;
+#endif
 
   INITIALIZE_GC_HISTORY ();
   To = *To_Pointer;
@@ -125,6 +134,9 @@ DEFUN (GCLoop,
   for ( ; Scan != To; Scan++)
   {
     Temp = *Scan;
+#ifdef ENABLE_GC_DEBUGGING_TOOLS
+    object_referencing = Temp;
+#endif
     HANDLE_GC_TRAP();
 
     Switch_by_GC_Type(Temp)

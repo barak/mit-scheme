@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.47 1992/01/15 03:35:48 jinx Exp $
+$Id: memmag.c,v 9.48 1993/03/10 17:19:58 cph Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -338,6 +338,32 @@ DEFUN_VOID (GC)
   *Free++ = Current_State_Point;
   *Free++ = Fluid_Bindings;
 
+#ifdef ENABLE_GC_DEBUGGING_TOOLS
+  if (gc_objects_referencing != SHARP_F)
+    {
+      MEMORY_SET
+	(gc_objects_referencing, 0,
+	 (MAKE_OBJECT
+	  (TC_MANIFEST_NM_VECTOR,
+	   (OBJECT_DATUM (MEMORY_REF (gc_objects_referencing, 0))))));
+      {
+	SCHEME_OBJECT * scan = (VECTOR_LOC (gc_objects_referencing, 0));
+	SCHEME_OBJECT * end =
+	  (VECTOR_LOC (gc_objects_referencing,
+		       (VECTOR_LENGTH (gc_objects_referencing))));
+	while (scan < end)
+	  (*scan++) = SHARP_F;
+      }
+      *Free++ = gc_objects_referencing;
+      gc_objects_referencing_count = 0;
+      gc_objects_referencing_scan =
+	(VECTOR_LOC (gc_objects_referencing, 1));
+      gc_objects_referencing_end =
+	(VECTOR_LOC (gc_objects_referencing,
+		     (VECTOR_LENGTH (gc_objects_referencing))));
+    }
+#endif
+
   /* The 4 step GC */
 
   Result = (GCLoop (Constant_Space, &Free));
@@ -362,6 +388,29 @@ DEFUN_VOID (GC)
     fprintf (stderr, "\nGC-2: Heap Scan ended too early.\n");
     Microcode_Termination (TERM_BROKEN_HEART);
   }
+
+#ifdef ENABLE_GC_DEBUGGING_TOOLS
+  if (gc_objects_referencing != SHARP_F)
+    {
+      UPDATE_GC_OBJECTS_REFERENCING ();
+      MEMORY_SET
+	(gc_objects_referencing, 0,
+	 (MAKE_OBJECT
+	  (TC_MANIFEST_VECTOR,
+	   (OBJECT_DATUM (MEMORY_REF (gc_objects_referencing, 0))))));
+      VECTOR_SET (gc_objects_referencing, 0,
+		  (LONG_TO_UNSIGNED_FIXNUM (gc_objects_referencing_count)));
+      {
+	SCHEME_OBJECT * end = gc_objects_referencing_scan;
+	Result = (GCLoop ((VECTOR_LOC (gc_objects_referencing, 1)), (&end)));
+	if ((end != Result) || (end != gc_objects_referencing_scan))
+	  {
+	    fprintf (stderr, "\nGC-3: Heap Scan ended too early.\n");
+	    Microcode_Termination (TERM_BROKEN_HEART);
+	  }
+      }
+    }
+#endif
 
   Fix_Weak_Chain ();
 
@@ -454,4 +503,23 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   PRIMITIVE_ABORT (PRIM_APPLY);
   /* The following comment is by courtesy of LINT, your friendly sponsor. */
   /*NOTREACHED*/
+}
+
+DEFINE_PRIMITIVE ("GC-TRACE-REFERENCES", Prim_gc_trace_references, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    SCHEME_OBJECT objects_referencing = (ARG_REF (2));
+    if (! ((objects_referencing == SHARP_F)
+	   || ((VECTOR_P (objects_referencing))
+	       && ((VECTOR_LENGTH (objects_referencing)) >= 1))))
+      error_wrong_type_arg (2);
+#ifdef ENABLE_GC_DEBUGGING_TOOLS
+    gc_object_referenced = (ARG_REF (1));
+    gc_objects_referencing = objects_referencing;
+#else /* not ENABLE_GC_DEBUGGING_TOOLS */
+    error_external_return ();
+#endif /* not ENABLE_GC_DEBUGGING_TOOLS */
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.47 1992/02/18 17:30:22 jinx Exp $
+$Id: purify.c,v 9.48 1993/03/10 17:20:04 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -90,12 +90,18 @@ DEFUN (PurifyLoop,
        int GC_Mode)
 {
   fast SCHEME_OBJECT *To, *Old, Temp, *Low_Constant, New_Address;
+#ifdef ENABLE_GC_DEBUGGING_TOOLS
+  SCHEME_OBJECT object_referencing;
+#endif
 
   To = *To_Pointer;
   Low_Constant = Constant_Space;
   for ( ; Scan != To; Scan++)
   {
     Temp = *Scan;
+#ifdef ENABLE_GC_DEBUGGING_TOOLS
+    object_referencing = Temp;
+#endif
     Switch_by_GC_Type(Temp)
     {
       case TC_BROKEN_HEART:

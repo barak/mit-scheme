@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fasdump.c,v 9.54 1993/02/11 02:18:59 adams Exp $
+$Id: fasdump.c,v 9.55 1993/03/10 17:19:29 cph Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -133,6 +133,9 @@ DEFUN (DumpLoop, (Scan, mode), fast SCHEME_OBJECT * Scan AND int mode)
 {
   fast SCHEME_OBJECT *To, *Old, Temp, New_Address, *Fixes;
   long result;
+#ifdef ENABLE_GC_DEBUGGING_TOOLS
+  SCHEME_OBJECT object_referencing;
+#endif
 
   To = NewFree;
   Fixes = Fixup;
@@ -140,6 +143,9 @@ DEFUN (DumpLoop, (Scan, mode), fast SCHEME_OBJECT * Scan AND int mode)
   for ( ; Scan != To; Scan++)
   {
     Temp = *Scan;
+#ifdef ENABLE_GC_DEBUGGING_TOOLS
+    object_referencing = Temp;
+#endif
 
     Switch_by_GC_Type (Temp)
     {

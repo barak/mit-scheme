@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: gccode.h,v 9.46 1992/12/05 03:33:24 cph Exp $
+$Id: gccode.h,v 9.47 1993/03/10 17:19:44 cph Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -250,33 +250,82 @@ do									\
 
 /* GC Type handlers.  These do the actual work. */
 
+#ifdef ENABLE_GC_DEBUGGING_TOOLS
+
+extern SCHEME_OBJECT gc_object_referenced;
+extern SCHEME_OBJECT gc_objects_referencing;
+extern unsigned long gc_objects_referencing_count;
+extern SCHEME_OBJECT * gc_objects_referencing_scan;
+extern SCHEME_OBJECT * gc_objects_referencing_end;
+
+#define TRANSPORT_ONE_THING(transport_code)				\
+{									\
+  if ((gc_object_referenced == (*Old))					\
+      && (gc_objects_referencing != SHARP_F))				\
+    {									\
+      gc_objects_referencing_count += 1;				\
+      if (gc_objects_referencing_scan != gc_objects_referencing_end)	\
+	{								\
+	  UPDATE_GC_OBJECTS_REFERENCING ();				\
+	  (*gc_objects_referencing_scan++) = object_referencing;	\
+	}								\
+    }									\
+  transport_code;							\
+}
+
+#define UPDATE_GC_OBJECTS_REFERENCING()					\
+{									\
+  if (BROKEN_HEART_P (MEMORY_REF (gc_objects_referencing, 0)))		\
+    {									\
+      SCHEME_OBJECT new =						\
+	(MAKE_OBJECT_FROM_OBJECTS					\
+	 (gc_objects_referencing,					\
+	  (MEMORY_REF (gc_objects_referencing, 0))));			\
+      gc_objects_referencing_scan =					\
+	(VECTOR_LOC							\
+	 (new,								\
+	  (gc_objects_referencing_scan					\
+	   - (VECTOR_LOC (gc_objects_referencing, 0)))));		\
+      gc_objects_referencing_end =					\
+	(VECTOR_LOC (new, (VECTOR_LENGTH (new))));			\
+      gc_objects_referencing = new;					\
+    }									\
+}
+
+#else
+
+#define TRANSPORT_ONE_THING(transport_code) transport_code
+
+#endif
+
+
 #define Transport_Cell()						\
 {									\
-  (*To++) = (*Old);							\
+  TRANSPORT_ONE_THING ((*To++) = (*Old));				\
   Pointer_End ();							\
 }
 
 #define Transport_Pair()						\
 {									\
-  (*To++) = (*Old++);							\
-  (*To++) = (*Old);							\
+  TRANSPORT_ONE_THING ((*To++) = (*Old++));				\
+  TRANSPORT_ONE_THING ((*To++) = (*Old));				\
   Pointer_End ();							\
 }
 
 #define Transport_Triple()						\
 {									\
-  (*To++) = (*Old++);							\
-  (*To++) = (*Old++);							\
-  (*To++) = (*Old);							\
+  TRANSPORT_ONE_THING ((*To++) = (*Old++));				\
+  TRANSPORT_ONE_THING ((*To++) = (*Old++));				\
+  TRANSPORT_ONE_THING ((*To++) = (*Old));				\
   Pointer_End ();							\
 }
 
 #define Transport_Quadruple()						\
 {									\
-  (*To++) = (*Old++);							\
-  (*To++) = (*Old++);							\
-  (*To++) = (*Old++);							\
-  (*To++) = (*Old);							\
+  TRANSPORT_ONE_THING ((*To++) = (*Old++));				\
+  TRANSPORT_ONE_THING ((*To++) = (*Old++));				\
+  TRANSPORT_ONE_THING ((*To++) = (*Old++));				\
+  TRANSPORT_ONE_THING ((*To++) = (*Old));				\
   Pointer_End ();							\
 }
 
@@ -336,7 +385,7 @@ do									\
     }									\
   CHECK_TRANSPORT_VECTOR_TERMINATION ();				\
   while (To != Scan)							\
-    (*To++) = (*Old++);							\
+    TRANSPORT_ONE_THING ((*To++) = (*Old++));				\
   Scan = Saved_Scan;							\
 }
 
@@ -356,7 +405,7 @@ do									\
       return (PRIM_INTERRUPT);						\
     }									\
   while (To != Scan)							\
-    (*To++) = (*Old++);							\
+    TRANSPORT_ONE_THING ((*To++) = (*Old++));				\
   Scan = Saved_Scan;							\
 }
 
@@ -422,7 +471,7 @@ extern SCHEME_OBJECT Weak_Chain;
   long Car_Type = (OBJECT_TYPE (*Old));					\
   (*To++) = (OBJECT_NEW_TYPE (TC_NULL, (*Old)));			\
   Old += 1;								\
-  (*To++) = (*Old);							\
+  TRANSPORT_ONE_THING ((*To++) = (*Old));				\
   *Old = (OBJECT_NEW_TYPE (Car_Type, Weak_Chain));			\
   Weak_Chain = Temp;							\
   Pointer_End ();							\
