@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.39 1987/04/16 02:01:51 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.40 1987/05/11 17:52:27 cph Exp $
 
    Utilities for manipulating symbols. 
  */
@@ -38,34 +38,39 @@ MIT in each case. */
 #include "scheme.h"
 #include "primitive.h"
 #include "trap.h"
+#include "stringprim.h"
 
 /* Hashing strings and character lists. */
 
 long
-Do_Hash(String_Ptr, String_Length)
+Do_Hash (String_Ptr, String_Length)
      char *String_Ptr;
      long String_Length;
 {
-  long i, Value, End_Count;
+  fast long i, Value, End_Count;
 
   Value = (LENGTH_MULTIPLIER * String_Length);
-  End_Count = ((String_Length > MAX_HASH_CHARS) ?
-	       MAX_HASH_CHARS :
-		String_Length);
+  End_Count =
+    ((String_Length > MAX_HASH_CHARS) ? MAX_HASH_CHARS : String_Length);
   for (i = 0; i < End_Count; i++)
     Value = ((Value << SHIFT_AMOUNT) + (MAX_CHAR & String_Ptr[i]));
-  return Value;
+  return (Value);
 }
 
-Pointer Hash(Ptr)
-     Pointer Ptr;
+long
+scheme_string_hash (string)
+     Pointer string;
 {
-  long String_Length;
+  return
+    (Do_Hash ((Scheme_String_To_C_String (string)),
+	      (string_length (string))));
+}
 
-  String_Length = Get_Integer(Fast_Vector_Ref(Ptr, STRING_LENGTH));
-  return Make_Non_Pointer(TC_FIXNUM,
-			  Do_Hash(Scheme_String_To_C_String(Ptr),
-				  String_Length));
+Pointer
+Hash (string)
+     Pointer string;
+{
+  return (Make_Signed_Fixnum (scheme_string_hash (string)));
 }
 
 Boolean
@@ -93,49 +98,51 @@ string_equal(String1, String2)
 /* Interning involves hashing the input string and either returning
    an existing symbol with that name from the ObArray or creating a
    new symbol and installing it in the ObArray. The resulting interned
-   symbol is stored in *Un_Interned.
-*/
+   symbol is stored in *Un_Interned. */
+
+/* Set this to be informed of symbols as they are interned. */
+void (*intern_symbol_hook) ();
 
 extern void Intern();
 
 void
-Intern(Un_Interned)
+Intern (Un_Interned)
      Pointer *Un_Interned;
 {
-  long Hashed_Value;
-  Pointer Ob_Array, *Bucket, String, Temp;
+  fast Pointer string, *bucket, symbol;
+  Pointer Ob_Array;
 
-  String = Fast_Vector_Ref(*Un_Interned, SYMBOL_NAME);
-  Temp = Hash(String);
-  Hashed_Value = Get_Integer(Temp);
-  Ob_Array = Get_Fixed_Obj_Slot(OBArray);
-  Hashed_Value %= Vector_Length(Ob_Array);
-  Bucket = Nth_Vector_Loc(Ob_Array, Hashed_Value + 1);
+  string = (Fast_Vector_Ref (*Un_Interned, SYMBOL_NAME));
+  Ob_Array = (Get_Fixed_Obj_Slot (OBArray));
+  bucket =
+    (Nth_Vector_Loc (Ob_Array,
+		     (((scheme_string_hash (string)) %
+		       (Vector_Length (Ob_Array)))
+		      + 1)));
 
-  while (*Bucket != NIL)
-  {
-    if (string_equal(String,
-                     Fast_Vector_Ref(
-				     Vector_Ref(*Bucket, CONS_CAR),
-				     SYMBOL_NAME)))
+  while (*bucket != NIL)
     {
-      *Un_Interned = Vector_Ref(*Bucket, CONS_CAR);
-      return;
+      symbol = (Vector_Ref (*bucket, CONS_CAR));
+      if (string_equal(string, (Fast_Vector_Ref (symbol, SYMBOL_NAME))))
+	{
+	  *Un_Interned = symbol;
+	  return;
+	}
+      bucket = (Nth_Vector_Loc (*bucket, CONS_CDR));
     }
-    Bucket = Nth_Vector_Loc(*Bucket, CONS_CDR);
-  }
 
-/* Symbol does not exist yet in obarray.  Bucket points to the
-   cell containing the final #!NULL in the list.  Replace this
-   with the CONS of the new symbol and #!NULL (i.e. extend the
-   list in the bucket by 1 new element).
-*/
+  /* Symbol does not exist yet in obarray.  bucket points to the
+     cell containing the final '() in the list.  Replace this
+     with the CONS of the new symbol and '() (i.e. extend the
+     list in the bucket by 1 new element). */
 
-  Store_Type_Code(*Un_Interned, TC_INTERNED_SYMBOL);
-  *Bucket = Make_Pointer(TC_LIST, Free);
+  Store_Type_Code (*Un_Interned, TC_INTERNED_SYMBOL);
+  *bucket = (Make_Pointer (TC_LIST, Free));
   Free[CONS_CAR] = *Un_Interned;
   Free[CONS_CDR] = NIL;
   Free += 2;
+  if (intern_symbol_hook)
+    (*intern_symbol_hook) (*Un_Interned);
   return;
 }
 
