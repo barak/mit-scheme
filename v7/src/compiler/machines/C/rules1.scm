@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules1.scm,v 1.2 1993/10/26 03:02:39 jawilson Exp $
+$Id: rules1.scm,v 1.3 1993/10/28 02:55:54 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -76,7 +76,7 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CONS-NON-POINTER (MACHINE-CONSTANT (? type)) (REGISTER (? source))))
-  (let* ((datum (standard-source! source 'LONG))
+  (let* ((datum (standard-source! source 'ULONG))
 	 (target (standard-target! target 'SCHEME_OBJECT)))
     (LAP ,target " = (MAKE_OBJECT (" ,type ", " ,datum "));\n\t")))
 
@@ -357,12 +357,11 @@ MIT in each case. |#
     (lambda (source target)
       (LAP ,target " = (CHAR_TO_ASCII (" ,source "));\n\t"))))
 
-;; is this constant correct???
 (define-rule statement
   ;; store null byte in memory
   (ASSIGN (BYTE-OFFSET (REGISTER (? address))
 		       (MACHINE-CONSTANT (? offset)))
-	  (CHAR->ASCII (CONSTANT #\N\TUL)))
+	  (CHAR->ASCII (CONSTANT #\NUL)))
   (let ((address (standard-source! address 'CHAR*)))
     (LAP ,address "[" ,offset "] = '\\0';\n\t")))
 
