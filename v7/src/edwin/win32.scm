@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: win32.scm,v 1.12 2000/04/30 21:52:35 cph Exp $
+;;; $Id: win32.scm,v 1.13 2000/05/01 03:01:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -275,11 +275,11 @@
       (set-window-pos handle 0 0 0
 		      (- (rect/right rect) (rect/left rect))
 		      (- (rect/bottom rect) (rect/top rect))
-		      (+ SWP_NOMOVE SWP_NOZORDER SWP_NOREDRAW)))))
+		      (+ SWP_NOMOVE SWP_NOZORDER)))))
 
 (define (win32-screen/set-position! screen x y)
   (set-window-pos (screen->handle screen) 0 x y 0 0
-		  (+ SWP_NOSIZE SWP_NOZORDER SWP_NOREDRAW)))
+		  (+ SWP_NOSIZE SWP_NOZORDER)))
 
 (define (win32-screen/get-position screen)
   (let ((rect (make-rect 0 0 0 0)))
