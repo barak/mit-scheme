@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: prompt.scm,v 1.161 1993/10/27 02:14:12 cph Exp $
+;;;	$Id: prompt.scm,v 1.162 1994/03/08 20:28:54 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -311,14 +311,16 @@
 						  string-table
 						  require-match?)))
 
-(define (prompt-for-alist-value prompt alist #!optional default)
+(define (prompt-for-alist-value prompt alist #!optional default ci?)
   (fluid-let ((map-name/external->internal identity-procedure)
 	      (map-name/internal->external identity-procedure))
     (prompt-for-string-table-value prompt
 				   (and (not (default-object? default))
 					default)
 				   'VISIBLE-DEFAULT
-				   (alist->string-table alist)
+				   (alist->string-table
+				    alist
+				    (if (default-object? ci?) #t ci?))
 				   true)))
 
 (define (prompt-for-command prompt)
@@ -609,7 +611,7 @@ a repetition of this command will exit."
 
 (define (flush-completions-list)
   (if (let ((buffer (find-buffer " *Completions*")))
-	(and buffer (eq? buffer (object-unhash *previous-popped-up-buffer*))))
+	(and buffer (eq? buffer (weak-car *previous-popped-up-buffer*))))
       (kill-pop-up-buffer false)))
 
 (define (completion-message string)
