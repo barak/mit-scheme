@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.109 2000/06/05 18:20:38 cph Exp $
+;;; $Id: imail-imap.scm,v 1.110 2000/06/05 18:29:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -663,7 +663,7 @@
       (imap:command:uid-store-flags connection
 				    (imap-message-uid message)
 				    (map imail-flag->imap-flag
-					 (flags-delete "\\recent" flags))))))
+					 (flags-delete "recent" flags))))))
 
 (define (imap-flag->imail-flag flag)
   (let ((entry (assq flag standard-imap-flags)))
@@ -1063,7 +1063,7 @@
 				     (imap-url-mailbox url)
 				     (map imail-flag->imap-flag
 					  (flags-delete
-					   "\\recent"
+					   "recent"
 					   (message-flags message)))
 				     (message-internal-time message)
 				     (message->string message)))))))))
