@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.38 1989/10/28 15:38:53 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.39 1990/06/28 18:18:11 jinx Rel $ */
 
 /* Pure/Constant space utilities. */
 
@@ -117,10 +117,11 @@ Make_Impure(Object, New_Object)
 #if false
       fprintf(stderr, "\nImpurify Non-Pointer (0x%lx)\n", Object);
       Microcode_Termination(TERM_NON_POINTER_RELOCATION);
+      /* fall through */
 #endif
+    case TC_BIG_FLONUM:
       return (ERR_ARG_1_WRONG_TYPE);
 
-    case TC_BIG_FLONUM:
     case TC_FUTURE:
     case_Vector:
       Length = VECTOR_LENGTH (Object) + 1;
@@ -172,33 +173,12 @@ Make_Impure(Object, New_Object)
   Constant_Address -= 2;
   New_Address = Constant_Address;
 
-#ifdef FLOATING_ALIGNMENT
-
-  /* This should be done more cleanly, always align before doing a
-     block, or something like it. -- JINX
-   */
-
-  if (OBJECT_TYPE (Object) == TC_BIG_FLONUM)
+  for (i = Length; --i >= 0; )
   {
-    SCHEME_OBJECT *Start;
-
-    Start = Constant_Address;
-    ALIGN_FLOAT (Constant_Address);
-    for (i = 0; i < Length; i++)
-      *Constant_Address++ = *Obj_Address++;
-    Length = Constant_Address - Start;
+    *Constant_Address++ = *Obj_Address;
+    *Obj_Address++ = MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, i);
   }
-  else
-
-#endif
 
-  {
-    for (i = Length; --i >= 0; )
-    {
-      *Constant_Address++ = *Obj_Address;
-      *Obj_Address++ = MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, i);
-    }
-  }
   *Constant_Address++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
   *Constant_Address++ = MAKE_OBJECT (END_OF_BLOCK, Block_Length + Length);
   *(New_Address + 2 - Block_Length) =
@@ -251,26 +231,16 @@ find_constant_space_block(obj_address)
 {
   fast SCHEME_OBJECT *where, *low_constant;
 
-#ifdef FLOATING_ALIGNMENT
-  fast SCHEME_OBJECT float_align_value;
-
-  float_align_value = MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0);
-#endif
-
   low_constant = Constant_Space;
   where = (Free_Constant - 1);
 
   while (where >= low_constant)
   {
-
-#ifdef FLOATING_ALIGNMENT
-    while (*where == float_align_value)
-      where -= 1;
-#endif
-
     where -= (1 + OBJECT_DATUM (*where));
-    if (where <= obj_address)
-      return (where);
+    if (where < obj_address)
+    {
+      return (where + 1);
+    }
   }
   return ((SCHEME_OBJECT *) NULL);
 }
@@ -287,7 +257,7 @@ Pure_Test(obj_address)
     return (false);
   }
   return
-    ((Boolean) (obj_address <= (block + 1 + (OBJECT_DATUM (*(block + 1))))));
+    ((Boolean) (obj_address <= (block + (OBJECT_DATUM (*block)))));
 }
 
 DEFINE_PRIMITIVE ("PURE?", Prim_pure_p, 1, 1,
