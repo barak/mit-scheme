@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.6 1994/11/26 00:23:03 jmiller Exp $
+$Id: rtlgen.scm,v 1.7 1994/12/14 20:20:16 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -91,6 +91,8 @@ MIT in each case. |#
 	(loop (letrec/body body)))
        ((form/match rtlgen/top-level-trivial-closure-pattern body)
 	=> (lambda (result)
+	     (sample/1 '(rtlgen/procedures-by-kind histogram)
+		       'Top-level-trivial-closure)
 	     (let ((cont-name  (cadr (assq rtlgen/?cont-name result)))
 		   (lam-expr   (cadr (assq rtlgen/?lambda-expression result))))
 	       (if (not (eq? continuation-name cont-name))
@@ -104,6 +106,8 @@ MIT in each case. |#
 		     (values code label))))))
        ((form/match rtlgen/top-level-heap-closure-pattern body)
 	=> (lambda (result)
+	     (sample/1 '(rtlgen/procedures-by-kind histogram)
+		       'Top-level-heap-closure)
 	     (let ((cont-name  (cadr (assq rtlgen/?cont-name result))))
 	       (if (not (eq? continuation-name cont-name))
 		   (fail)
@@ -123,6 +127,7 @@ MIT in each case. |#
   (let ((kind   (vector-ref desc 0))
 	(label  (vector-ref desc 1))
 	(object (vector-ref desc 2)))
+    (sample/1 '(rtlgen/procedures-by-kind histogram) kind)
     (case kind
       ((CONTINUATION) 
        (rtlgen/continuation label object))
@@ -274,6 +279,8 @@ MIT in each case. |#
 
 (define (rtlgen/%body-with-stack-references
 	 label orig-form lam-expr wrap no-stack-refs)
+  (sample/1 '(rtlgen/formals-per-lambda histogram vector)
+	    (lambda-list/count-names (lambda/formals lam-expr)))
   (cond ((form/match rtlgen/continuation-pattern lam-expr)
 	 => (lambda (result)
 	      (let ((lambda-list  (cadr (assq rtlgen/?lambda-list result)))
