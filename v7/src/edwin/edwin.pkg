@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.95 1992/08/18 22:27:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.96 1992/08/27 06:38:31 jinx Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -273,7 +273,6 @@ MIT in each case. |#
   (files "xterm")
   (parent (edwin))
   (export (edwin)
-	  x-display-type
 	  x-screen-auto-raise)
   (export (edwin x-commands)
 	  screen-xterm)
@@ -341,10 +340,8 @@ MIT in each case. |#
   (initialization (initialize-package!)))
 
 (define-package (edwin console-screen)
-  (files "termcap" "ansi" "tterm")
+  (files "termcap" "tterm" "ansi" "bios")
   (parent (edwin))
-  (export (edwin)
-	  console-display-type)
   (import (runtime primitive-io)
 	  channel-type=terminal?
 	  terminal-get-state
