@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: cinden.scm,v 1.15 1996/05/08 05:24:30 cph Exp $
+;;;	$Id: cinden.scm,v 1.16 1997/02/08 07:08:43 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -216,9 +216,10 @@ This is in addition to c-continued-statement-offset."
 		    (loop (line-start m 0))
 		    m))
 	       ((#\,)
-		(loop
-		 (line-start (backward-to-start-of-continued-exp m container)
-			     0)))
+		(let ((ls (line-start m 0)))
+		  (if (mark<= ls container)
+		      #f
+		      (loop (horizontal-space-end ls)))))
 	       (else m))))))
     (if (and mark (not (memv (extract-left-char mark) '(#F #\, #\; #\{ #\}))))
 	;; This line is continuation of preceding line's statement;
