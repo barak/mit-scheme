@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.3 1988/08/05 20:48:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.4 1988/08/15 23:05:26 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -43,7 +43,8 @@ MIT in each case. |#
 ;;;
 ;;;    [] Not supplied => ^G on restore (normal for saving band).
 ;;;    [] String => New world ID message, and ^G on restore.
-;;;    [] Otherwise => Returns normally (very useful for saving bugs!).
+;;;    [] #F => Returns normally on restore.
+;;;    [] Otherwise => Returns normally, running `event:after-restart'.
 ;;;
 ;;; The image saved by DISK-SAVE does not include the "microcode", the
 ;;; one saved by DUMP-WORLD does, and is an executable file.
@@ -69,15 +70,18 @@ MIT in each case. |#
 		  (lambda ()
 		    (set! time-world-saved time)
 		    (event-distributor/invoke! event:after-restore)
-		    (or (not (string? identify))
+		    (if (string? identify)
 			(begin
 			  (set! world-identification identify)
 			  (clear console-output-port)
 			  (abort->top-level
 			   (lambda (cmdl)
 			     (identify-world cmdl)
-			     (event-distributor/invoke!
-			      event:after-restart))))))))))
+			     (event-distributor/invoke! event:after-restart))))
+			(begin
+			  (if identify
+			      (event-distributor/invoke! event:after-restart))
+			  unspecific)))))))
 
 (define (disk-save/kernel filename after-suspend after-restore)
   ((without-interrupts
