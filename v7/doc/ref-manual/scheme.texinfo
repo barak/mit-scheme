@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.106 2001/11/20 22:27:55 cph Exp $
+@comment $Id: scheme.texinfo,v 1.107 2001/11/21 02:01:02 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -299,6 +299,7 @@ Input/Output
 * Port Primitives::             
 * Parser Buffers::              
 * Parser Language::             
+* XML Parser::                  
 
 Port Primitives
 
@@ -5295,13 +5296,14 @@ non-negative integers that are less than the value of this variable
 @node ISO-8859-1 Characters, Character Sets, Internal Representation of Characters, Characters
 @section ISO-8859-1 Characters
 
-MIT Scheme internally uses @acronym{ISO-8859-1} codes for @sc{i/o}, and
-stores character objects in a fashion that makes it convenient to
-convert between @acronym{ISO-8859-1} codes and characters.  Also,
-character strings are implemented as byte vectors whose elements are
-@acronym{ISO-8859-1} codes; these codes are converted to character
-objects when accessed.  For these reasons it is sometimes desirable to
-be able to convert between @acronym{ISO-8859-1} codes and characters.
+MIT Scheme internally uses @acronym{ISO-8859-1} codes for
+@acronym{I/O}, and stores character objects in a fashion that makes it
+convenient to convert between @acronym{ISO-8859-1} codes and
+characters.  Also, character strings are implemented as byte vectors
+whose elements are @acronym{ISO-8859-1} codes; these codes are
+converted to character objects when accessed.  For these reasons it is
+sometimes desirable to be able to convert between @acronym{ISO-8859-1}
+codes and characters.
 
 @cindex ISO-8859-1 character (defn)
 @cindex character, ISO-8859-1 (defn)
@@ -5490,7 +5492,161 @@ characters that are not in @var{char-set}.
 @node Unicode,  , Character Sets, Characters
 @section Unicode
 
-[Not yet written.]
+@cindex Unicode
+MIT Scheme provides rudimentary support for Unicode characters.  In an
+ideal world, Unicode would be the base character set for MIT Scheme,
+but this implementation predates the invention of Unicode.  And
+converting an application of this size is a considerable undertaking.
+So for the time being, the base character set is @acronym{ISO-8859-1}
+and Unicode support is grafted on.
+
+This Unicode support was implemented as a part of the @acronym{XML}
+parser (@pxref{XML Parser}) implementation.  @acronym{XML} uses
+Unicode as its base character set, and any @acronym{XML}
+implementation @emph{must} support Unicode.
+
+The Unicode implementation consists of two parts: @acronym{I/O}
+procedures that read and write @acronym{UTF-8} characters, and an
+@dfn{alphabet} abstraction, which is an efficient implementation of
+sets of Unicode code points (similar to the @code{char-set}
+abstraction).
+
+@cindex Code point, Unicode
+The basic unit in a Unicode implementation is the @dfn{code point}.
+
+@deffn procedure unicode-code-point? object
+Returns @code{#t} if @var{object} is a Unicode code point.  Code
+points are implemented as exact non-negative integers.  Code points
+are further limited, by the Unicode standard, to be strictly less than
+@code{#x80000000}.
+@end deffn
+
+The next few procedures do @acronym{I/O} on code points.
+
+@deffn procedure read-utf8-code-point port
+Reads and returns a @acronym{UTF-8}-encoded code point from
+@var{port}.  Returns an end-of-file object if there are no more
+characters available from @var{port}.  Signals an error if the input
+stream isn't a valid @acronym{UTF-8} encoding.
+@end deffn
+
+@deffn procedure write-utf8-code-point code-point port
+Writes @var{code-point} to @var{port} in the @acronym{UTF-8} encoding.
+@end deffn
+
+@deffn procedure utf8-string->code-point string
+Reads and returns a @acronym{UTF-8}-encoded code point from
+@var{string}.  Equivalent to
+
+@example
+(read-utf8-code-point (string->input-port @var{string}))
+@end example
+@end deffn
+
+@deffn procedure code-point->utf8-string code-point
+Returns a newly-allocated string containing the @acronym{UTF-8}
+encoding of @var{code-point}.  Equivalent to
+
+@example
+@group
+(with-string-output-port
+ (lambda (port)
+   (write-utf8-code-point @var{code-point} port)))
+@end group
+@end example
+@end deffn
+
+@cindex Alphabet, Unicode
+Applications often need to manipulate sets of characters, such as the
+set of alphabetic characters or the set of whitespace characters.  The
+@dfn{alphabet} abstraction provides an efficient implementation of
+sets of Unicode code points.
+
+@deffn procedure alphabet? object
+Returns @code{#t} if @var{object} is a Unicode alphabet, otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn procedure code-points->alphabet items
+Returns a Unicode alphabet containing the code points described by
+@var{items}.  @var{Items} must satisfy
+@code{well-formed-code-points-list?}.
+@end deffn
+
+@deffn procedure alphabet->code-points alphabet
+Returns a well-formed code-points list that describes the code points
+represented by @var{alphabet}.
+@end deffn
+
+@deffn procedure well-formed-code-points-list? object
+Returns @code{#t} if @var{object} is a well-formed code-points list,
+otherwise returns @code{#f}.  A well-formed code-points list is a
+proper list, each element of which is either a code point or a pair of
+code points.  A pair of code points represents a contiguous range of
+code points.  The @sc{car} of the pair is the lower limit, and the
+@sc{cdr} is the upper limit.  Both limits are inclusive, and the lower
+limit must be strictly less than the upper limit.
+@end deffn
+
+@deffn procedure code-point-in-alphabet? code-point alphabet
+Returns @code{#t} if @var{code-point} is a member of @var{alphabet},
+otherwise returns @code{#f}.
+@end deffn
+
+@deffn procedure char-in-alphabet? char alphabet
+Returns @code{#t} if @var{char} is a member of @var{alphabet},
+otherwise returns @code{#f}.  Equivalent to
+
+@example
+(code-point-in-alphabet? (char-code @var{char}) @var{alphabet})
+@end example
+@end deffn
+
+Character sets and alphabets can be converted to one another, provided
+that the alphabet contains only 8-bit code points.  This is true
+because 8-bit code points in Unicode map directly to
+@acronym{ISO-8859-1} characters, which is what character sets contain.
+
+@deffn procedure char-set->alphabet char-set
+Returns a Unicode alphabet containing the code points that correspond
+to characters that are members of @var{char-set}.
+@end deffn
+
+@deffn procedure alphabet->char-set alphabet
+Returns a character set containing the characters that correspond to
+8-bit code points that are members of @var{alphabet}.  (Code points
+outside the 8-bit range are ignored.)
+@end deffn
+
+@deffn procedure string->alphabet string
+Returns a Unicode alphabet containing the code points corresponding to
+the characters in @var{string}.  Equivalent to
+
+@example
+(char-set->alphabet (string->char-set @var{string}))
+@end example
+@end deffn
+
+@deffn procedure alphabet->string alphabet
+Returns a newly-allocated string containing the characters
+corresponding to the 8-bit code points in @var{alphabet}.  (Code
+points outside the 8-bit range are ignored.)
+@end deffn
+
+@deffn procedure 8-bit-alphabet? alphabet
+Returns @code{#t} if @var{alphabet} contains only 8-bit code points,
+otherwise returns @code{#f}.
+@end deffn
+
+@deffn procedure alphabet+ alphabet @dots{}
+Returns a Unicode alphabet that contains each code point that is a
+member of any of the @var{alphabet} arguments.
+@end deffn
+
+@deffn procedure alphabet- alphabet1 alphabet2
+Returns a Unicode alphabet that contains each code point that is a
+member of @var{alphabet1} and is not a member of @var{alphabet2}.
+@end deffn
 
 @node Strings, Lists, Characters, Top
 @chapter Strings
@@ -12006,11 +12162,11 @@ otherwise returns @code{#f}.
 @cindex input
 @cindex output
 @cindex port
-This chapter describes the procedures that are used for input and output
-(@sc{i/o}).  The chapter first describes @dfn{ports} and how they are
-manipulated, then describes the @sc{i/o} operations.  Finally, some
-low-level procedures are described that permit the implementation of
-custom ports and high-performance @sc{i/o}.
+This chapter describes the procedures that are used for input and
+output (@acronym{I/O}).  The chapter first describes @dfn{ports} and
+how they are manipulated, then describes the @acronym{I/O} operations.
+Finally, some low-level procedures are described that permit the
+implementation of custom ports and high-performance @acronym{I/O}.
 
 @menu
 * Ports::                       
@@ -12024,6 +12180,7 @@ custom ports and high-performance @sc{i/o}.
 * Port Primitives::             
 * Parser Buffers::              
 * Parser Language::             
+* XML Parser::                  
 @end menu
 
 @node Ports, File Ports, Input/Output, Input/Output
@@ -12031,13 +12188,14 @@ custom ports and high-performance @sc{i/o}.
 
 @cindex port (defn)
 @findex console-i/o-port
-Scheme uses ports for @sc{i/o}.  A @dfn{port}, which can be treated like
-any other Scheme object, serves as a source or sink for data.  A port
-must be open before it can be read from or written to.  The standard
-@sc{i/o} port, @code{console-i/o-port}, is opened automatically when you
-start Scheme.  When you use a file for input or output, you need to
-explicitly open and close a port to the file (with procedures described
-in this chapter).  Additional procedures let you open ports to strings.
+Scheme uses ports for @acronym{I/O}.  A @dfn{port}, which can be
+treated like any other Scheme object, serves as a source or sink for
+data.  A port must be open before it can be read from or written to.
+The standard @acronym{I/O} port, @code{console-i/o-port}, is opened
+automatically when you start Scheme.  When you use a file for input or
+output, you need to explicitly open and close a port to the file (with
+procedures described in this chapter).  Additional procedures let you
+open ports to strings.
 
 @cindex current input port (defn)
 @cindex input port, current (defn)
@@ -12094,20 +12252,20 @@ also satisfies @code{port?}, @code{input-port?}, and
 @deffnx procedure guarantee-input-port object
 @deffnx procedure guarantee-output-port object
 @deffnx procedure guarantee-i/o-port object
-These procedures check the type of @var{object}, signalling an error of
-type@* @code{condition-type:wrong-type-argument} if it is not a port,
-input port, output port, or @sc{i/o} port, respectively.  Otherwise they
-return @var{object}.
+These procedures check the type of @var{object}, signalling an error
+of type@* @code{condition-type:wrong-type-argument} if it is not a
+port, input port, output port, or @acronym{I/O} port, respectively.
+Otherwise they return @var{object}.
 @findex condition-type:wrong-type-argument
 @end deffn
 
 @cindex standard ports
 The next five procedures return the runtime system's @dfn{standard
-ports}.  All of the standard ports are dynamically bound by the @sc{rep}
-loop; this means that when a new @sc{rep} loop is started, for example
-by an error, each of these ports is dynamically bound to the @sc{i/o}
-port of the @sc{rep} loop.  When the @sc{rep} loop exits, the ports
-revert to their original values.
+ports}.  All of the standard ports are dynamically bound by the
+@sc{rep} loop; this means that when a new @sc{rep} loop is started,
+for example by an error, each of these ports is dynamically bound to
+the @acronym{I/O} port of the @sc{rep} loop.  When the @sc{rep} loop
+exits, the ports revert to their original values.
 
 @deffn procedure current-input-port
 @findex console-input-port
@@ -12140,10 +12298,10 @@ returns the value of @code{console-i/o-port}.
 @end deffn
 
 @deffn procedure interaction-i/o-port
-Returns an @sc{i/o} port suitable for querying or prompting the user.
-The standard prompting procedures use this port by default
-(@pxref{Prompting}).  Initially, @code{interaction-i/o-port} returns the
-value of @code{console-i/o-port}.
+Returns an @acronym{I/O} port suitable for querying or prompting the
+user.  The standard prompting procedures use this port by default
+(@pxref{Prompting}).  Initially, @code{interaction-i/o-port} returns
+the value of @code{console-i/o-port}.
 @end deffn
 
 @deffn procedure with-input-from-port input-port thunk
@@ -12162,8 +12320,9 @@ Binding}).
 @code{with-input-from-port} binds the current input port,
 @code{with-output-to-port} binds the current output port,
 @code{with-notification-output-port} binds the ``notification'' output
-port, @code{with-trace-output-port} binds the ``trace'' output port, and
-@code{with-interaction-i/o-port} binds the ``interaction'' @sc{i/o} port.
+port, @code{with-trace-output-port} binds the ``trace'' output port,
+and @code{with-interaction-i/o-port} binds the ``interaction''
+@acronym{I/O} port.
 @end deffn
 
 @deffn procedure set-current-input-port! input-port
@@ -12181,10 +12340,10 @@ corresponds to the name of the procedure.
 @cindex console, port
 @cindex input port, console
 @cindex output port, console
-@code{console-i/o-port} is an @sc{i/o} port that communicates with the
-``console''.  Under unix, the console is the controlling terminal of the
-Scheme process.  Under Windows and OS/2, the console is the window
-that is created when Scheme starts up.
+@code{console-i/o-port} is an @acronym{I/O} port that communicates
+with the ``console''.  Under unix, the console is the controlling
+terminal of the Scheme process.  Under Windows and OS/2, the console
+is the window that is created when Scheme starts up.
 
 This variable is rarely used; instead programs should use one of the
 standard ports defined above.  This variable should not be modified.
@@ -12197,15 +12356,15 @@ file port, the file is closed.
 @end deffn
 
 @deffn procedure close-input-port port
-Closes @var{port} and returns an unspecified value.  @var{Port} must be
-an input port or an @sc{i/o} port; if it is an @sc{i/o} port, then only
-the input side of the port is closed.
+Closes @var{port} and returns an unspecified value.  @var{Port} must
+be an input port or an @acronym{I/O} port; if it is an @acronym{I/O}
+port, then only the input side of the port is closed.
 @end deffn
 
 @deffn procedure close-output-port port
-Closes @var{port} and returns an unspecified value.  @var{Port} must be
-an output port or an @sc{i/o} port; if it is an @sc{i/o} port, then only
-the output side of the port is closed.
+Closes @var{port} and returns an unspecified value.  @var{Port} must
+be an output port or an @acronym{I/O} port; if it is an @acronym{I/O}
+port, then only the output side of the port is closed.
 @end deffn
 
 @node File Ports, String Ports, Ports, Input/Output
@@ -12270,10 +12429,10 @@ mode creates the file and writes to it in the normal way.
 
 @deffn procedure open-i/o-file filename
 @cindex construction, of file input port
-Takes a filename referring to an existing file and returns an @sc{i/o}
-port capable of both reading and writing the file.  If the file cannot
-be opened, an error of type @code{condition-type:file-operation-error}
-is signalled.
+Takes a filename referring to an existing file and returns an
+@acronym{I/O} port capable of both reading and writing the file.  If
+the file cannot be opened, an error of type
+@code{condition-type:file-operation-error} is signalled.
 @findex condition-type:file-operation-error
 
 This procedure is often used to open special files.  For example, under
@@ -13215,10 +13374,11 @@ in this fashion; because Edwin and Emacs are very similar editors, their
 customizations provide very similar behavior.
 
 @findex interaction-i/o-port
-Each of these procedure accepts an optional argument called @var{port},
-which if given must be an @sc{i/o} port.  If not given, this port
-defaults to the value of @code{(interaction-i/o-port)}; this is
-initially the console @sc{i/o} port.
+Each of these procedure accepts an optional argument called
+@var{port}, which if given must be an @acronym{I/O} port.  If not
+given, this port defaults to the value of
+@code{(interaction-i/o-port)}; this is initially the console
+@acronym{I/O} port.
 
 @deffn procedure prompt-for-command-expression prompt [port]
 Prompts the user for an expression that is to be executed as a command.
@@ -13317,20 +13477,22 @@ Under Edwin or Emacs, the confirmation is read in the minibuffer.
 @cindex port primitives
 
 This section describes the low-level operations that can be used to
-build and manipulate @sc{i/o} ports.
+build and manipulate @acronym{I/O} ports.
 
 The purpose of these operations is twofold: to allow programmers to
-construct new kinds of @sc{i/o} ports, and to provide faster @sc{i/o}
-operations than those supplied by the standard high level procedures.
-The latter is useful because the standard @sc{i/o} operations provide
-defaulting and error checking, and sometimes other features, which are
-often unnecessary.  This interface provides the means to bypass such
-features, thus improving performance.
+construct new kinds of @acronym{I/O} ports, and to provide faster
+@acronym{I/O} operations than those supplied by the standard high
+level procedures.  The latter is useful because the standard
+@acronym{I/O} operations provide defaulting and error checking, and
+sometimes other features, which are often unnecessary.  This interface
+provides the means to bypass such features, thus improving
+performance.
 
-The abstract model of an @sc{i/o} port, as implemented here, is a
+The abstract model of an @acronym{I/O} port, as implemented here, is a
 combination of a set of named operations and a state.  The state is an
-arbitrary object, the meaning of which is determined by the operations.
-The operations are defined by a mapping from names to procedures.
+arbitrary object, the meaning of which is determined by the
+operations.  The operations are defined by a mapping from names to
+procedures.
 
 @cindex port type
 The set of named operations is represented by an object called a
@@ -13391,7 +13553,7 @@ operations; the procedure will provide defaults for any standard
 operations that are not defined.  At a minimum, the following operations
 must be defined: for input ports, @code{read-char} and @code{peek-char};
 for output ports, either @code{write-char} or @code{write-substring}.
-@sc{i/o} ports must supply the minimum operations for both input and
+@acronym{I/O} ports must supply the minimum operations for both input and
 output.
 
 If an operation in @var{operations} is defined to be @code{#f}, then the
@@ -13410,8 +13572,8 @@ standard operations without having to enumerate them.
 @deffnx procedure output-port-type? object
 @deffnx procedure i/o-port-type? object
 These predicates return @code{#t} if @var{object} is a port type,
-input-port type, output-port type, or @sc{i/o}-port type, respectively.
-Otherwise, they return @code{#f}.
+input-port type, output-port type, or @acronym{I/O}-port type,
+respectively.  Otherwise, they return @code{#f}.
 @end deffn
 
 @deffn procedure port-type/operations port-type
@@ -13437,9 +13599,9 @@ The procedures in this section provide means for constructing ports,
 accessing the type of a port, and manipulating the state of a port.
 
 @deffn procedure make-port port-type state
-Returns a new port with type @var{port-type} and the given @var{state}.
-The port will be an input, output, or @sc{i/o} port according to
-@var{port-type}.
+Returns a new port with type @var{port-type} and the given
+@var{state}.  The port will be an input, output, or @acronym{I/O} port
+according to @var{port-type}.
 @end deffn
 
 @deffn procedure port/type port
@@ -13725,10 +13887,10 @@ otherwise, @code{#f} is returned.
 
 @cindex blocking mode, of port
 An interactive port is always in one of two modes: @dfn{blocking} or
-@dfn{non-blocking}.  This mode is independent of the terminal mode: each
-can be changed independent of the other.  Furthermore, if it is an
-interactive @sc{i/o} port, there are separate blocking modes for input
-and for output.
+@dfn{non-blocking}.  This mode is independent of the terminal mode:
+each can be changed independent of the other.  Furthermore, if it is
+an interactive @acronym{I/O} port, there are separate blocking modes
+for input and for output.
 
 If an input port is in blocking mode, attempting to read from it when no
 input is available will cause Scheme to ``block'', i.e.@: suspend
@@ -13799,9 +13961,9 @@ is restored if @var{thunk} escapes from its continuation.
 @cindex terminal mode, of port
 A port that reads from or writes to a terminal has a @dfn{terminal
 mode}; this is either @dfn{cooked} or @dfn{raw}.  This mode is
-independent of the blocking mode: each can be changed independent of the
-other.  Furthermore, a terminal @sc{i/o} port has independent terminal
-modes both for input and for output.
+independent of the blocking mode: each can be changed independent of
+the other.  Furthermore, a terminal @acronym{I/O} port has independent
+terminal modes both for input and for output.
 
 @cindex cooked mode, of terminal port
 A terminal port in cooked mode provides some standard processing to make
@@ -13930,13 +14092,13 @@ Parser buffers and parser-buffer pointers may be distinguished from
 other objects:
 
 @deffn procedure parser-buffer? object
-Return @code{#t} if @var{object} is a parser buffer, otherwise return
-@code{#f}.
+Returns @code{#t} if @var{object} is a parser buffer, otherwise
+returns @code{#f}.
 @end deffn
 
 @deffn procedure parser-buffer-pointer? object
-Return @code{#t} if @var{object} is a parser-buffer pointer, otherwise
-return @code{#f}.
+Returns @code{#t} if @var{object} is a parser-buffer pointer,
+otherwise returns @code{#f}.
 @end deffn
 
 Characters can be read from a parser buffer much as they can be read
@@ -13948,36 +14110,35 @@ buffering capability that facilitates complex matching and
 backtracking.
 
 @deffn procedure read-parser-buffer-char buffer
-Return the next character in @var{buffer}, advancing the internal
+Returns the next character in @var{buffer}, advancing the internal
 pointer past that character.  If there are no more characters
-available, @code{#f} is returned and the internal pointer is
+available, returns @code{#f} and leaves the internal pointer
 unchanged.
 @end deffn
 
 @deffn procedure peek-parser-buffer-char buffer
-Return the next character in @var{buffer}, or @code{#f} if no
-characters are available.  The internal pointer is unchanged by this
-operation.
+Returns the next character in @var{buffer}, or @code{#f} if no
+characters are available.  Leaves the internal pointer unchanged.
 @end deffn
 
 @deffn procedure parser-buffer-ref buffer index
-Return a character in @var{buffer}.  @var{Index} is a non-negative
+Returns a character in @var{buffer}.  @var{Index} is a non-negative
 integer specifying the character to be returned.  If @var{index} is
-zero, return the next available character; if it is one, return the
+zero, returns the next available character; if it is one, returns the
 character after that, and so on.  If @var{index} specifies a position
-after the last character in @var{buffer}, return @code{#f}.  The
-internal pointer is unchanged by this operation.
+after the last character in @var{buffer}, returns @code{#f}.  Leaves
+the internal pointer unchanged.
 @end deffn
 
 The internal pointer of a parser buffer can be read or written:
 
 @deffn procedure get-parser-buffer-pointer buffer
-Return a parser-buffer pointer object corresponding to the internal
+Returns a parser-buffer pointer object corresponding to the internal
 pointer of @var{buffer}.
 @end deffn
 
 @deffn procedure set-parser-buffer-pointer! buffer pointer
-Set the internal pointer of @var{buffer} to the position specified by
+Sets the internal pointer of @var{buffer} to the position specified by
 @var{pointer}.  @var{Pointer} must have been returned from a previous
 call of @code{get-parser-buffer-pointer} on @var{buffer}.
 Additionally, if some of @var{buffer}'s characters have been discarded
@@ -13986,8 +14147,8 @@ the range that was discarded.
 @end deffn
 
 @deffn procedure get-parser-buffer-tail buffer pointer
-Return a newly-allocated string consisting of all of the characters in
-@var{buffer} that fall between @var{pointer} and @var{buffer}'s
+Returns a newly-allocated string consisting of all of the characters
+in @var{buffer} that fall between @var{pointer} and @var{buffer}'s
 internal pointer.  @var{Pointer} must have been returned from a
 previous call of @code{get-parser-buffer-pointer} on @var{buffer}.
 Additionally, if some of @var{buffer}'s characters have been discarded
@@ -13996,10 +14157,10 @@ the range that was discarded.
 @end deffn
 
 @deffn procedure discard-parser-buffer-head! buffer
-Discard all characters in @var{buffer} that have already been read; in
-other words, all characters prior to the internal pointer.  After this
-operation has completed, it is no longer possible to move the internal
-pointer backwards past the current position by calling
+Discards all characters in @var{buffer} that have already been read;
+in other words, all characters prior to the internal pointer.  After
+this operation has completed, it is no longer possible to move the
+internal pointer backwards past the current position by calling
 @code{set-parser-buffer-pointer!}.
 @end deffn
 
@@ -14065,7 +14226,7 @@ The remaining procedures provide information that can be used to
 identify locations in a parser buffer's stream.
 
 @deffn procedure parser-buffer-position-string pointer
-Return a string describing the location of @var{pointer} in terms of
+Returns a string describing the location of @var{pointer} in terms of
 its character and line indexes.  This resulting string is meant to be
 presented to an end user in order to direct their attention to a
 feature in the input stream.  In this string, the indexes are
@@ -14077,11 +14238,11 @@ is equivalent to having specified the buffer's internal pointer.
 
 @deffn procedure parser-buffer-pointer-index pointer
 @deffnx procedure parser-buffer-pointer-line pointer
-Return the character or line index, respectively, of @var{pointer}.
+Returns the character or line index, respectively, of @var{pointer}.
 Both indexes are zero-based.
 @end deffn
 
-@node Parser Language,  , Parser Buffers, Input/Output
+@node Parser Language, XML Parser, Parser Buffers, Input/Output
 @section Parser Language
 
 @cindex Parser language
@@ -14773,6 +14934,11 @@ returned by @var{thunk} is the returned as the value of this
 procedure.  @var{Table} must satisfy @code{parser-macros?}, and
 @var{thunk} must be a procedure of no arguments.
 @end deffn
+
+@node XML Parser,  , Parser Language, Input/Output
+@section XML Parser
+
+[Not yet written.]
 
 @node Operating-System Interface, Error System, Input/Output, Top
 @chapter Operating-System Interface
@@ -17237,9 +17403,10 @@ Usually you will use a port string rather than a number.
 @code{open-tcp-stream-socket} opens a connection to the host specified
 by @var{host-name}.  @var{Host-name} is looked up using the ordinary
 lookup rules for your computer.  The connection is established to the
-service specified by @var{service}.  The returned value is an @sc{i/o}
-port, to which you can read and write characters using ordinary Scheme
-@sc{i/o} procedures such as @code{read-char} and @code{write-char}.
+service specified by @var{service}.  The returned value is an
+@acronym{I/O} port, to which you can read and write characters using
+ordinary Scheme @acronym{I/O} procedures such as @code{read-char} and
+@code{write-char}.
 
 @var{Buffer-size} specifies the size of the read and write buffers used
 by the port; if this is unspecified or @code{#f}, the buffers will hold
@@ -17294,10 +17461,10 @@ of calling @code{host-address-any}.)
 @end deffn
 
 @deffn procedure tcp-server-connection-accept server-socket block? peer-address
-Checks to see if a client has connected to @var{server-socket}.  If so,
-an @sc{i/o} port is returned.  The returned port can be read and written
-using ordinary Scheme @sc{i/o} procedures such as @code{read-char} and
-@code{write-char}.
+Checks to see if a client has connected to @var{server-socket}.  If
+so, an @acronym{I/O} port is returned.  The returned port can be read
+and written using ordinary Scheme @acronym{I/O} procedures such as
+@code{read-char} and @code{write-char}.
 
 The argument @var{block?} says what to do if no client has connected at
 the time of the call.  If @code{#f}, it says to return immediately with
