@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/search.scm,v 1.148 1991/04/21 00:51:57 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/search.scm,v 1.149 1991/04/23 06:47:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -46,8 +46,6 @@
 
 (declare (usual-integrations))
 
-;;;; Character Search and Match
-
 (let-syntax
     ((define-forward-search
        (macro (name find-next)
@@ -126,92 +124,6 @@
     (and index
 	 (fix:+ index 1))))
 
-(define (char-search-forward char start end #!optional case-fold-search)
-  (let ((group (mark-group start))
-	(start-index (mark-index start))
-	(end-index (mark-index end)))
-    (if (not (and (eq? group (mark-group end))
-		  (fix:<= start-index end-index)))
-	(error "Marks incorrectly related:" start end))
-    (let ((index
-	   (if (if (default-object? case-fold-search)
-		   (group-case-fold-search group)
-		   case-fold-search)
-	       (group-find-next-char-ci group start-index end-index char)
-	       (group-find-next-char group start-index end-index char))))
-      (and index
-	   (make-mark group (fix:+ index 1))))))
-
-(define (char-search-backward char start end #!optional case-fold-search)
-  (let ((group (mark-group start))
-	(start-index (mark-index start))
-	(end-index (mark-index end)))
-    (if (not (and (eq? group (mark-group end))
-		  (fix:>= start-index end-index)))
-	(error "Marks incorrectly related:" start end))
-    (let ((index
-	   (if (if (default-object? case-fold-search)
-		   (group-case-fold-search group)
-		   case-fold-search)
-	       (group-find-next-char-ci group end-index start-index char)
-	       (group-find-next-char group end-index start-index char))))
-      (and index
-	   (make-mark group index)))))
-
-(define (char-match-forward char mark #!optional case-fold-search)
-  (let ((group (mark-group mark))
-	(index (mark-index mark)))
-    (and (not (group-end-index? group index))
-	 (if (if (default-object? case-fold-search)
-		 (group-case-fold-search group)
-		 case-fold-search)
-	     (char-ci=? char (group-right-char group index))
-	     (char=? char (group-right-char group index))))))
-
-(define (char-match-backward char mark #!optional case-fold-search)
-  (let ((group (mark-group mark))
-	(index (mark-index mark)))
-    (and (not (group-start-index? group index))
-	 (if (if (default-object? case-fold-search)
-		 (group-case-fold-search group)
-		 case-fold-search)
-	     (char-ci=? char (group-left-char group index))
-	     (char=? char (group-left-char group index))))))
-
-(define (skip-chars-forward pattern #!optional start end limit?)
-  (let ((start (if (default-object? start) (current-point) start)))
-    (let ((end (if (default-object? end) (group-end start) end)))
-      (let ((limit? (if (default-object? limit?) 'LIMIT limit?)))
-	(if (not (mark<= start end))
-	    (error "SKIP-CHARS-FORWARD: Marks incorrectly related" start end))
-	(let ((index
-	       (group-find-next-char-in-set (mark-group start)
-					    (mark-index start)
-					    (mark-index end)
-					    (re-compile-char-set pattern
-								 true))))
-	  (if index
-	      (make-mark (mark-group start) index)
-	      (limit-mark-motion limit? end)))))))
-
-(define (skip-chars-backward pattern #!optional start end limit?)
-  (let ((start (if (default-object? start) (current-point) start)))
-    (let ((end (if (default-object? end) (group-start start) end)))
-      (let ((limit? (if (default-object? limit?) 'LIMIT limit?)))
-	(if (not (mark>= start end))
-	    (error "SKIP-CHARS-BACKWARD: Marks incorrectly related" start end))
-	(let ((index
-	       (group-find-previous-char-in-set (mark-group start)
-						(mark-index end)
-						(mark-index start)
-						(re-compile-char-set pattern
-								     true))))
-	  (if index
-	      (make-mark (mark-group start) (fix:+ index 1))
-	      (limit-mark-motion limit? end)))))))
-
-;;;; String Search and Match
-
 (define (group-match-substring-forward group start end
 				       string string-start string-end)
   (let ((text (group-text group))
@@ -344,34 +256,129 @@
 			  (fix:- string-end (fix:- end gap-start)))
 		   index)))))))
 
-(define (match-forward string mark #!optional case-fold-search)
-  (let ((group (mark-group mark))
-	(start (mark-index mark))
-	(length (string-length string)))
-    (let ((end (fix:+ start length)))
-      (and (fix:<= end (group-end-index group))
-	   (fix:= (if (if (default-object? case-fold-search)
-			  (group-case-fold-search group)
-			  case-fold-search)
-		      (group-match-substring-forward-ci group start end
-							string 0 length)
-		      (group-match-substring-forward group start end
-						     string 0 length))
-		  end)
-	   (make-mark group end)))))
+(define (char-search-forward char start end #!optional case-fold-search)
+  (let ((group (mark-group start))
+	(start-index (mark-index start))
+	(end-index (mark-index end)))
+    (if (not (and (eq? group (mark-group end))
+		  (fix:<= start-index end-index)))
+	(error "Marks incorrectly related:" start end))
+    (let ((index
+	   (if (if (default-object? case-fold-search)
+		   (group-case-fold-search group)
+		   case-fold-search)
+	       (group-find-next-char-ci group start-index end-index char)
+	       (group-find-next-char group start-index end-index char))))
+      (and index
+	   (make-mark group (fix:+ index 1))))))
 
-(define (match-backward string mark #!optional case-fold-search)
-  (let ((group (mark-group mark))
-	(end (mark-index mark))
+(define (char-search-backward char start end #!optional case-fold-search)
+  (let ((group (mark-group start))
+	(start-index (mark-index start))
+	(end-index (mark-index end)))
+    (if (not (and (eq? group (mark-group end))
+		  (fix:>= start-index end-index)))
+	(error "Marks incorrectly related:" start end))
+    (let ((index
+	   (if (if (default-object? case-fold-search)
+		   (group-case-fold-search group)
+		   case-fold-search)
+	       (group-find-previous-char-ci group end-index start-index char)
+	       (group-find-previous-char group end-index start-index char))))
+      (and index
+	   (make-mark group index)))))
+
+(define-macro (default-end-mark start end)
+  `(IF (DEFAULT-OBJECT? ,end)
+       (GROUP-END ,start)
+       (BEGIN
+	 (IF (NOT (MARK<= ,start ,end))
+	     (ERROR "Marks incorrectly related:" ,start ,end))
+	 ,end)))
+
+(define-macro (default-start-mark start end)
+  `(IF (DEFAULT-OBJECT? ,start)
+       (GROUP-START ,end)
+       (BEGIN
+	 (IF (NOT (MARK<= ,start ,end))
+	     (ERROR "Marks incorrectly related:" ,start ,end))
+	 ,start)))
+
+(define (char-match-forward char start #!optional end case-fold-search)
+  (and (mark< start (default-end-mark start end))
+       (let ((group (mark-group start)))
+	 (if (if (default-object? case-fold-search)
+		 (group-case-fold-search group)
+		 case-fold-search)
+	     (char-ci=? char (group-right-char group (mark-index start)))
+	     (char=? char (group-right-char group (mark-index start)))))))
+
+(define (char-match-backward char end #!optional start case-fold-search)
+  (and (mark< (default-start-mark start end) end)
+       (let ((group (mark-group end)))
+	 (if (if (default-object? case-fold-search)
+		 (group-case-fold-search group)
+		 case-fold-search)
+	     (char-ci=? char (group-left-char group (mark-index end)))
+	     (char=? char (group-left-char group (mark-index end)))))))
+
+(define (skip-chars-forward pattern #!optional start end limit?)
+  (let ((start (if (default-object? start) (current-point) start))
+	(limit? (if (default-object? limit?) 'LIMIT limit?)))
+    (let ((end (default-end-mark start end)))
+      (let ((index
+	     (group-find-next-char-in-set (mark-group start)
+					  (mark-index start)
+					  (mark-index end)
+					  (re-compile-char-set pattern true))))
+	(if index
+	    (make-mark (mark-group start) index)
+	    (limit-mark-motion limit? end))))))
+
+(define (skip-chars-backward pattern #!optional end start limit?)
+  (let ((end (if (default-object? end) (current-point) end))
+	(limit? (if (default-object? limit?) 'LIMIT limit?)))
+    (let ((start (default-start-mark start end)))
+      (let ((index
+	     (group-find-previous-char-in-set (mark-group start)
+					      (mark-index start)
+					      (mark-index end)
+					      (re-compile-char-set pattern
+								   true))))
+	(if index
+	    (make-mark (mark-group start) (fix:+ index 1))
+	    (limit-mark-motion limit? start))))))
+
+(define (match-forward string start #!optional end case-fold-search)
+  (let ((end (default-end-mark start end))
+	(group (mark-group start))
+	(start-index (mark-index start))
 	(length (string-length string)))
-    (let ((start (fix:- end length)))
-      (and (fix:>= start (group-start-index group))
+    (let ((i (fix:+ start-index length)))
+      (and (fix:<= i (mark-index end))
 	   (fix:= (if (if (default-object? case-fold-search)
 			  (group-case-fold-search group)
 			  case-fold-search)
-		      (group-match-substring-backward-ci group start end
+		      (group-match-substring-forward-ci group start-index i
+							string 0 length)
+		      (group-match-substring-forward group start-index i
+						     string 0 length))
+		  i)
+	   (make-mark group i)))))
+
+(define (match-backward string end #!optional start case-fold-search)
+  (let ((start (default-start-mark start end))
+	(group (mark-group end))
+	(end-index (mark-index end))
+	(length (string-length string)))
+    (let ((i (fix:- end-index length)))
+      (and (fix:>= i (mark-index start))
+	   (fix:= (if (if (default-object? case-fold-search)
+			  (group-case-fold-search group)
+			  case-fold-search)
+		      (group-match-substring-backward-ci group i end-index
 							 string 0 length)
-		      (group-match-substring-backward group start end
+		      (group-match-substring-backward group i end-index
 						      string 0 length))
-		  start)
-	   (make-mark group start)))))
+		  i)
+	   (make-mark group i)))))

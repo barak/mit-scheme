@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.14 1990/10/03 04:55:57 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.15 1991/04/23 06:47:05 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -75,8 +75,10 @@ normally they record the associated output in a transcript buffer:
   (local-set-variable! comment-indent-hook lisp-comment-indentation)
   (local-set-variable! comment-start ";")
   (local-set-variable! comment-end "")
-  (local-set-variable! paragraph-start "^$")
-  (local-set-variable! paragraph-separate (ref-variable paragraph-start))
+  (let ((separate (string-append "^$\\|" (ref-variable page-delimiter))))
+    (local-set-variable! paragraph-start separate)
+    (local-set-variable! paragraph-separate separate))
+  (local-set-variable! paragraph-ignore-fill-prefix true)
   (local-set-variable! indent-line-procedure (ref-command lisp-indent-line))
   (event-distributor/invoke! (ref-variable scheme-mode-hook)))
 

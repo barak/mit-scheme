@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.47 1991/04/21 00:50:39 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.48 1991/04/23 06:46:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -46,27 +46,11 @@
 
 (declare (usual-integrations))
 
-(define-command fill-paragraph
-  "Fill this (or next) paragraph.
-Point stays the same."
-  ()
-  (lambda ()
-    (fill-region (paragraph-text-region (current-point))
-		 (ref-variable fill-prefix)
-		 (ref-variable fill-column))))
-
-(define-command fill-region
-  "Fill text from point to mark."
-  "r"
-  (lambda (region)
-    (fill-region region
-		 (ref-variable fill-prefix)
-		 (ref-variable fill-column))))
-
 (define-variable-per-buffer fill-column
-  "*Column beyond which automatic line-wrapping should happen.
+  "Column beyond which automatic line-wrapping should happen.
 Automatically becomes local when set in any fashion."
-  70)
+  70
+  exact-nonnegative-integer?)
 
 (define-command set-fill-column
   "Set fill column to argument or current column.
@@ -75,82 +59,277 @@ Otherwise the current position of the cursor is used."
   "P"
   (lambda (argument)
     (let ((column (or argument (current-column))))
-      (local-set-variable! fill-column column)
-      (temporary-message "Fill column set to " (write-to-string column)))))
+      (set-variable! fill-column column)
+      (temporary-message "Fill column set to " (number->string column)))))
 
-(define-variable fill-prefix
+(define-variable-per-buffer fill-prefix
   "String for auto-fill to insert at start of new line, or #F."
-  false)
+  false
+  string-or-false?)
 
 (define-command set-fill-prefix
-  "Set fill-prefix to text between point and start of line."
-  ()
-  (lambda ()
-    (if (line-start? (current-point))
-	(begin
-	  (local-set-variable! fill-prefix false)
-	  (message "Fill prefix cancelled"))
-	(let ((string (extract-string (line-start (current-point) 0))))
-	  (local-set-variable! fill-prefix string)
-	  (message "Fill prefix now \"" (ref-variable fill-prefix) "\"")))))
+  "Set the fill-prefix to the current line up to point.
+Filling expects lines to start with the fill prefix
+and reinserts the fill prefix in each resulting line."
+  "d"
+  (lambda (point)
+    (let ((string (extract-string (line-start point 0) point)))
+      (if (string-null? string)
+	  (begin
+	    (set-variable! fill-prefix false)
+	    (message "fill-prefix cancelled"))
+	  (begin
+	    (set-variable! fill-prefix string)
+	    (message "fill-prefix: \"" string "\""))))))
 
-(define (fill-region region fill-prefix fill-column)
-  (let ((start (region-start region))
-	(end (region-end region)))
-    (let ((start (mark-right-inserting (skip-chars-forward "\n" start end)))
-	  (end (mark-left-inserting (skip-chars-backward "\n" end start))))
-      (with-narrowed-region! (make-region start end)
-	(lambda ()
-	  (let ((point (mark-left-inserting-copy start)))
+(define-command fill-paragraph
+  "Fill paragraph at or after point.
+Prefix arg means justify as well."
+  "d\nP"
+  (lambda (point justify?)
+    ((ref-command fill-region-as-paragraph) (paragraph-text-region point)
+					    justify?)))
+
+(define-command fill-region-as-paragraph
+  "Fill region as one paragraph: break lines to fit fill-column.
+Prefix arg means justify too."
+  "r\nP"
+  (lambda (region justify?)
+    (let ((start (region-start region)))
+      (fill-region-as-paragraph
+       start
+       (region-end region)
+       (mark-local-ref start (ref-variable-object fill-prefix))
+       (mark-local-ref start (ref-variable-object fill-column))
+       justify?))))
+
+(define-command fill-individual-paragraphs
+  "Fill each paragraph in region according to its individual fill prefix."
+  "r\nP"
+  (lambda (region justify?)
+    (let ((start (region-start region)))
+      (fill-individual-paragraphs
+       start
+       (region-end region)
+       (mark-local-ref start (ref-variable-object fill-column))
+       justify?
+       false))))
+
+(define-command fill-region
+  "Fill each of the paragraphs in the region.
+Prefix arg means justify as well."
+  "r\nP"
+  (lambda (region justify?)
+    (let ((start (region-start region)))
+      (fill-region start
+		   (region-end region)
+		   (mark-local-ref start (ref-variable-object fill-prefix))
+		   (mark-local-ref start (ref-variable-object fill-column))
+		   justify?))))
+
+(define-command justify-current-line
+  "Add spaces to line point is in, so it ends at fill-column."
+  "d"
+  (lambda (point)
+    (justify-line point
+		  (mark-local-ref point (ref-variable-object fill-prefix))
+		  (mark-local-ref point (ref-variable-object fill-column)))))
+
+(define (fill-region-as-paragraph start end fill-prefix fill-column justify?)
+  (let ((start (mark-right-inserting-copy (skip-chars-forward "\n" start end)))
+	(end (mark-left-inserting-copy (skip-chars-backward "\n" end start))))
+    (let ((point (mark-left-inserting-copy start)))
+      ;; Delete the fill prefix from every line except the first.
+      (if fill-prefix
+	  (begin
+	    (if (>= (string-length fill-prefix) fill-column)
+		(editor-error "fill-prefix too long for specified width"))
+	    (let ((m (match-forward fill-prefix start end false)))
+	      (if m
+		  (begin
+		    (move-mark-to! point m)
+		    (move-mark-to! start m))))
 	    (let loop ()
-	      (let ((ending (forward-sentence point 1 false)))
-		(if (and ending (not (group-end? ending)))
-		    (begin
-		      (move-mark-to! point ending)
-		      (if (char=? #\newline (mark-right-char point))
-			  (insert-char #\space point))
-		      (loop)))))
-	    (move-mark-to! point start)
-	    (let loop ()
-	      (if fill-prefix
-		  (let ((end (match-forward fill-prefix point)))
-		    (if end
-			(delete-string point end))))
 	      (let ((m (char-search-forward #\newline point end)))
 		(if m
 		    (begin
 		      (move-mark-to! point m)
-		      (delete-left-char point)
-		      (insert-char #\space point)
+		      (let ((m (match-forward fill-prefix point end false)))
+			(if m
+			    (delete-string point m)))
 		      (loop)))))
-	    (delete-horizontal-space end)
-	    (move-mark-to! point start)
-	    (let loop ()
-	      (if (not (group-end? point))
+	    (move-mark-to! point start)))
+      ;; Make sure sentences ending at end of line get an extra space.
+      (let loop ()
+	(let ((m (re-search-forward "[.?!][])\"']*$" point end false)))
+	  (if m
+	      (begin
+		(move-mark-to! point m)
+		(insert-char #\space point)
+		(loop)))))
+      ;; Change all newlines to spaces.
+      (move-mark-to! point start)
+      (let loop ()
+	(let ((m (char-search-forward #\newline point end)))
+	  (if m
+	      (begin
+		(move-mark-to! point m)
+		(delete-left-char point)
+		(insert-char #\space point)
+		(loop)))))
+      ;; Flush excess spaces, except in the paragraph indentation.
+      (move-mark-to! point (skip-chars-forward " \t" start end))
+      (let loop ()
+	(if (re-search-forward "   *" point end false)
+	    (begin
+	      (move-mark-to! point (delete-match))
+	      (insert-string (if (fill:sentence-end? point start) "  " " ")
+			     point)
+	      (loop))))
+      (delete-string (horizontal-space-start end) end)
+      (insert-string "  " end)
+      (move-mark-to! point start)
+      (let loop ()
+	(let ((target (move-to-column point fill-column)))
+	  (if (mark>= target end)
+	      (delete-string (horizontal-space-start end) end)
+	      (begin
+		(move-mark-to!
+		 point
+		 (let ((m (skip-chars-backward "^ \n" target point)))
+		   (if (mark> m point)
+		       m
+		       (skip-chars-forward "^ \n" target end))))
+		(if (mark< point end)
+		    (begin
+		      (delete-horizontal-space point)
+		      (insert-newline point)
+		      (if justify?
+			  (fill:call-with-line-marks (mark-1+ point)
+						     fill-prefix
+			    (lambda (start end)
+			      (fill:justify-line start end fill-column))))
+		      (if fill-prefix (insert-string fill-prefix point))))
+		(loop)))))
+      (mark-temporary! point)
+      (mark-temporary! end)
+      (mark-temporary! start))))
+
+(define (fill-region start end fill-prefix fill-column justify?)
+  (let ((start (mark-right-inserting-copy start))
+	(end (mark-left-inserting-copy end))
+	(point (mark-left-inserting-copy start))
+	(pend (mark-left-inserting-copy start)))
+    (let loop ()
+      (if (mark< point end)
+	  (begin
+	    (move-mark-to! pend
+			   (or (forward-one-paragraph point end fill-prefix)
+			       end))
+	    (if (mark>= (or (backward-one-paragraph pend start fill-prefix)
+			    start)
+			point)
+		(fill-region-as-paragraph point
+					  pend
+					  fill-prefix
+					  fill-column
+					  justify?))
+	    (move-mark-to! point pend)
+	    (loop))))
+    (mark-temporary! pend)
+    (mark-temporary! point)
+    (mark-temporary! end)
+    (mark-temporary! start)))
+
+(define (fill-individual-paragraphs start end fill-column justify? mail?)
+  (let ((start (mark-right-inserting-copy start))
+	(end (mark-left-inserting-copy end))
+	(point (mark-left-inserting-copy start))
+	(pend (mark-left-inserting-copy start)))
+    (let loop ()
+      (move-mark-to! point (skip-chars-forward " \t\n" point end))
+      (if (mark< point end)
+	  (let ((fill-prefix (extract-string (line-start point 0) point)))
+	    (move-mark-to! pend
+			   (or (forward-one-paragraph point end fill-prefix)
+			       end))
+	    (let ((m
+		   (if mail?
+		       (let loop ((m point))
+			 (let ((m*
+				(re-search-forward "^[ \t]*[^ \t\n]*:" m pend
+						   false)))
+			   (if m*
+			       (let ((m* (line-end m* 0)))
+				 (if (mark< m* pend)
+				     (loop (mark1+ m*))
+				     pend))
+			       m)))
+		       point)))
+	      (if (mark= m point)
 		  (begin
-		    (if fill-prefix
-			(insert-string fill-prefix point))
-		    (let ((target (move-to-column point fill-column)))
-		      (if (not (group-end? target))
-			  (let ((end
-				 (let ((end
-					(char-search-backward #\space
-							      (mark1+ target)
-							      point)))
-				   (if end
-				       (mark1+ end)
-				       (let ((m
-					      (char-search-forward #\space
-								   target
-								   end)))
-					 (and m
-					      (mark-1+ m)))))))
-			    (if end
-				(begin
-				  (move-mark-to! point end)
-				  (delete-horizontal-space point)
-				  (insert-newline point)
-				  (loop)))))))))))))))
+		    (fill-region-as-paragraph point pend
+					      fill-prefix fill-column
+					      justify?)
+		    (move-mark-to! point pend)
+		    (loop))
+		  (begin
+		    (move-mark-to! point m)
+		    (loop)))))))
+    (mark-temporary! pend)
+    (mark-temporary! point)
+    (mark-temporary! end)
+    (mark-temporary! start)))
+
+(define (justify-line mark fill-prefix fill-column)
+  (fill:call-with-line-marks mark fill-prefix
+    (lambda (start end)
+      (let ((point (mark-left-inserting-copy start)))
+	(let loop ()
+	  (if (re-search-forward "   *" point end false)
+	      (begin
+		(move-mark-to! point (delete-match))
+		(insert-string (if (fill:sentence-end? point start) "  " " ")
+			       point)
+		(loop))))
+	(mark-temporary! point))
+      (fill:justify-line start end fill-column))))
+
+(define (fill:call-with-line-marks mark fill-prefix procedure)
+  (let ((end (mark-left-inserting-copy (line-end mark 0))))
+    (let ((start
+	   (mark-right-inserting-copy
+	    (skip-chars-forward
+	     " \t"
+	     (let ((start (line-start end 0)))
+	       (or (and fill-prefix
+			(match-forward fill-prefix start end false))
+		   start))
+	     end))))
+      (procedure start end)
+      (mark-temporary! start)
+      (mark-temporary! end))))
+
+(define (fill:justify-line start end fill-column)
+  (let ((point (mark-right-inserting-copy end)))
+    (do ((ncols (- fill-column (mark-column end)) (- ncols 1)))
+	((<= ncols 0))
+      (do ((i (+ 3 (random 3)) (- i 1)))
+	  ((= i 0))
+	(move-mark-to!
+	 point
+	 (skip-chars-backward " "
+			      (or (char-search-backward #\space point start)
+				  (char-search-backward #\space end start)
+				  start)
+			      start)))
+      (insert-char #\space point))
+    (mark-temporary! point)))
+
+(define (fill:sentence-end? point start)
+  (let ((m (skip-chars-backward "])\"'" point start)))
+    (and (not (group-start? m))
+	 (memv (extract-left-char m) '(#\. #\? #\!)))))
 
 (define-command auto-fill-mode
   "Toggle auto-fill mode.
@@ -169,7 +348,7 @@ With argument, turn auto-fill mode on iff argument is positive."
   "Breaks the line if it exceeds the fill column, then inserts a space."
   "p"
   (lambda (argument)
-    (insert-chars #\Space argument)
+    (insert-chars #\space argument)
     (auto-fill-break)))
 
 (define-command auto-fill-newline
@@ -180,7 +359,6 @@ With argument, turn auto-fill mode on iff argument is positive."
     ((ref-command newline) argument)))
 
 (define-minor-mode auto-fill "Fill" "")
-
 (define-key 'auto-fill #\space 'auto-fill-space)
 (define-key 'auto-fill #\return 'auto-fill-newline)
 
@@ -200,10 +378,11 @@ With argument, turn auto-fill mode on iff argument is positive."
        (line-end? (horizontal-space-end point))))
 
 (define-variable-per-buffer left-margin
-  "*Column for the default indent-line-function to indent to.
+  "Column for the default indent-line-function to indent to.
 Linefeed indents to this column in Fundamental mode.
 Automatically becomes local when set in any fashion."
-  0)
+  0
+  exact-nonnegative-integer?)
 
 (define (center-line mark)
   (let ((mark (mark-permanent! mark)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.1 1991/04/21 01:49:14 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.2 1991/04/23 06:47:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -147,9 +147,9 @@ is inserted."
   (let ((point (mark-left-inserting-copy (buffer-start buffer)))
 	(fill
 	 (lambda (start end)
-	   (fill-region (make-region start end)
-			"\t"
-			(ref-variable fill-column)))))
+	   (fill-region-as-paragraph start end
+				     "\t" (ref-variable fill-column)
+				     false))))
     (insert-string "To: " point)
     (if to
 	(begin
@@ -249,10 +249,13 @@ Prefix arg means don't delete this window."
   (lambda (argument)
     ((ref-command mail-send))
     (bury-buffer (current-buffer))
-    (if (and (not argument)
+    (if #|
+	(and (not argument)
 	     (not (window-has-no-neighbors? (current-window)))
 	     (eq? (ref-mode-object rmail)
 		  (buffer-major-mode (window-buffer (other-window)))))
+	|#
+	false
 	(window-delete! (current-window))
 	(select-buffer (previous-buffer)))))
 
@@ -309,11 +312,10 @@ the user from the mailer."
   (skip-chars-backward "\n" (re-match-start 0) start))
 
 (define (mail-match-header-separator start end)
-  (if (not (re-search (string-append
-		       "^"
-		       (re-quote-string (ref-variable mail-header-separator))
-		       "$")
-		      false start end))
+  (if (not (re-search-forward
+	    (string-append
+	     "^" (re-quote-string (ref-variable mail-header-separator)) "$")
+	    start end false))
       (editor-error "Can't find mail-header-separator")))
 
 (define (mail-field-end! start end field)
@@ -321,9 +323,9 @@ the user from the mailer."
       (mail-insert-field end field)))
 
 (define (mail-field-end start end field)
-  (and (re-search (string-append "^" field ":[ \t]*") true start end)
+  (and (re-search-forward (string-append "^" field ":[ \t]*") start end true)
        (let ((field-start (re-match-end 0)))
-	 (if (re-search "^[^ \t]" false field-start end)
+	 (if (re-search-forward "^[^ \t]" field-start end false)
 	     (skip-chars-backward "\n" (re-match-start 0) field-start)
 	     end))))
 
@@ -382,19 +384,33 @@ and don't delete any header fields."
   (let ((start (mark-left-inserting-copy start))
 	(end
 	 (mark-left-inserting-copy
-	  (if (re-search "\n\n" false start end)
+	  (if (re-search-forward "\n\n" start end false)
 	      (mark1+ (re-match-start 0))
 	      end)))
 	(mail-yank-ignored-headers (ref-variable mail-yank-ignored-headers)))
     (do ()
-	((not (re-search mail-yank-ignored-headers true start end)))
+	((not (re-search-forward mail-yank-ignored-headers start end true)))
       (move-mark-to! start (re-match-start 0))
-      (delete-string start
-		     (if (re-search "^[^ \t]" false (line-end start 0) end)
-			 (re-match-start 0)
-			 end)))
+      (delete-string
+       start
+       (if (re-search-forward "^[^ \t]" (line-end start 0) end false)
+	   (re-match-start 0)
+	   end)))
     (mark-temporary! start)
     (mark-temporary! end)))
+
+(define-command mail-fill-yanked-message
+  "Fill the paragraphs of a message yanked into this one.
+Numeric argument means justify as well."
+  "P"
+  (lambda (justify?)
+    (let ((buffer (current-buffer)))
+      (mail-match-header-separator (buffer-start buffer) (buffer-end-buffer))
+      (fill-individual-paragraphs (re-match-end 0)
+				  (buffer-end-buffer)
+				  (ref-variable fill-column)
+				  justify?
+				  true))))
 
 (define (sendmail-send-it)
   (let ((error-buffer
@@ -416,18 +432,19 @@ and don't delete any header fields."
 	  (let ((header-end (mark-left-inserting-copy (delete-match))))
 	    ;; Delete any blank lines in the header.
 	    (do ((start start (replace-match "\n")))
-		((not (re-search "\n\n+" false start header-end))))
+		((not (re-search-forward "\n\n+" start header-end false))))
 	    (expand-mail-aliases start header-end)
-	    (if (re-search "^FCC:" true start header-end)
+	    (if (re-search-forward "^FCC:" start header-end true)
 		(mail-do-fcc temp-buffer header-end))
 	    ;; If there is a From and no Sender, put in a Sender.
-	    (if (and (re-search "^From:" true start header-end)
-		     (not (re-search "^Sender:" true start header-end)))
+	    (if (and (re-search-forward "^From:" start header-end true)
+		     (not
+		      (re-search-forward "^Sender:" start header-end true)))
 		(begin
 		  (insert-string "\nSender: " header-end)
 		  (insert-string user-name header-end)))
 	    ;; Don't send out a blank subject line.
-	    (if (re-search "^Subject:[ \t]*\n" true start header-end)
+	    (if (re-search-forward "^Subject:[ \t]*\n" start header-end true)
 		(delete-match)))
 	  (apply run-synchronous-process
 		 (make-region start end)
@@ -445,7 +462,7 @@ and don't delete any header fields."
 	  (if error-buffer
 	      (let ((end (buffer-end error-buffer)))
 		(do ((start (buffer-start error-buffer) (replace-match "; ")))
-		    ((not (re-search "\n+ *" false start end)))))))))
+		    ((not (re-search-forward "\n+ *" start end false)))))))))
     (kill-buffer temp-buffer)
     (if error-buffer
 	(let ((errors
@@ -475,7 +492,7 @@ and don't delete any header fields."
       ;;   that "^[>]+From " be quoted in the same transparent way.)
       (let ((m (mark-right-inserting-copy (mark+ start 2))))
 	(do ()
-	    ((not (re-search "^From " false m end)))
+	    ((not (re-search-forward "^From " m end false)))
 	  (move-mark-to! m (re-match-end 0))
 	  (insert-string ">" (re-match-start 0)))
 	(mark-temporary! m))
@@ -492,7 +509,7 @@ and don't delete any header fields."
 (define (digest-fcc-headers start header-end)
   (let ((m (mark-right-inserting-copy start)))
     (let loop ((pathnames '()))
-      (if (re-search "^FCC:[ \t]*\\([^ \t\n]+\\)" true m header-end)
+      (if (re-search-forward "^FCC:[ \t]*\\([^ \t\n]+\\)" m header-end true)
 	  (let ((filename
 		 (extract-string (re-match-start 1) (re-match-end 1))))
 	    (move-mark-to! m (line-start (re-match-start 0) 0))
@@ -501,14 +518,6 @@ and don't delete any header fields."
 	  (begin
 	    (mark-temporary! m)
 	    pathnames)))))
-
-(define-integrable (re-search regexp case-fold-search start end)
-  (re-search-buffer-forward (re-compile-pattern regexp case-fold-search)
-			    case-fold-search
-			    false
-			    (mark-group start)
-			    (mark-index start)
-			    (mark-index end)))
 
 (define (guarantee-mail-aliases)
   unspecific)
