@@ -1,6 +1,6 @@
-/* #define DEBUG_INTERFACE */ ### -*-Midas-*-
+/* #define DEBUG_INTERFACE */ /* -*-Midas-*- */
  ###
- ###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mips.m4,v 1.6 1992/08/20 01:20:09 jinx Exp $
+ ###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mips.m4,v 1.7 1992/08/20 01:21:12 jinx Exp $
  ###
  ###	Copyright (c) 1989-1992 Massachusetts Institute of Technology
  ###
