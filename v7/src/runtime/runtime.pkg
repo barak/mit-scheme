@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.51 1989/09/15 18:10:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.52 1989/09/24 15:44:23 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -918,7 +918,8 @@ MIT in each case. |#
 	  microcode-error/code->name
 	  microcode-error/code-limit
 	  microcode-error/name->code
-	  microcode-id/floating-exponent-bits	  microcode-id/floating-mantissa-bits
+	  microcode-id/floating-epsilon
+	  microcode-id/floating-mantissa-bits
 	  microcode-id/modification
 	  microcode-id/operating-system-name
 	  microcode-id/operating-system-variant
