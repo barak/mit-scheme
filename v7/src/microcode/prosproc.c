@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prosproc.c,v 1.16 1995/10/15 00:39:51 cph Exp $
+$Id: prosproc.c,v 1.17 1997/10/22 05:22:31 cph Exp $
 
-Copyright (c) 1990-95 Massachusetts Institute of Technology
+Copyright (c) 1990-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,9 +39,7 @@ MIT in each case. */
 #include "osproc.h"
 
 extern Tchannel EXFUN (arg_channel, (int));
-static int EXFUN (string_vector_p, (SCHEME_OBJECT vector));
-static char ** EXFUN (convert_string_vector, (SCHEME_OBJECT vector));
-
+
 static Tprocess
 DEFUN (arg_process, (argument_number), int argument_number)
 {
@@ -51,135 +49,7 @@ DEFUN (arg_process, (argument_number), int argument_number)
     error_bad_range_arg (argument_number);
   return (process);
 }
-
-#define PROCESS_CHANNEL_ARG(arg, type, channel)				\
-{									\
-  if ((ARG_REF (arg)) == SHARP_F)					\
-    (type) = process_channel_type_none;					\
-  else if ((ARG_REF (arg)) == (LONG_TO_FIXNUM (-1)))			\
-    (type) = process_channel_type_inherit;				\
-  else if ((ARG_REF (arg)) == (LONG_TO_FIXNUM (-2)))			\
-    {									\
-      if (ctty_type != process_ctty_type_explicit)			\
-	error_bad_range_arg (arg);					\
-      (type) = process_channel_type_ctty;				\
-    }									\
-  else									\
-    {									\
-      (type) = process_channel_type_explicit;				\
-      (channel) = (arg_channel (arg));					\
-    }									\
-}
 
-DEFINE_PRIMITIVE ("MAKE-SUBPROCESS", Prim_make_subprocess, 7, 7,
-  "Create a subprocess.\n\
-First arg FILENAME is the program to run.\n\
-Second arg ARGV is a vector of strings to pass to the program as arguments.\n\
-Third arg ENV is a vector of strings to pass as the program's environment;\n\
-  #F means inherit Scheme's environment.\n\
-Fourth arg CTTY specifies the program's controlling terminal:\n\
-  #F means none;\n\
-  -1 means use Scheme's controlling terminal in background;\n\
-  -2 means use Scheme's controlling terminal in foreground;\n\
-  string means open that terminal.\n\
-Fifth arg STDIN is the input channel for the subprocess.\n\
-Sixth arg STDOUT is the output channel for the subprocess.\n\
-Seventh arg STDERR is the error channel for the subprocess.\n\
-  Each channel arg can take these values:\n\
-  #F means none;\n\
-  -1 means use the corresponding channel from Scheme;\n\
-  -2 means use the controlling terminal (valid only when CTTY is a string);\n\
-  otherwise the argument must be a channel.")
-{
-  PRIMITIVE_HEADER (7);
-  CHECK_ARG (2, string_vector_p);
-  {
-    PTR position = dstack_position;
-    CONST char * filename = (STRING_ARG (1));
-    char * CONST * argv =
-      ((char * CONST *) (convert_string_vector (ARG_REF (2))));
-    SCHEME_OBJECT env_object = (ARG_REF (3));
-    char * CONST * env = 0;
-    CONST char * working_directory = 0;
-    enum process_ctty_type ctty_type;
-    char * ctty_name = 0;
-    enum process_channel_type channel_in_type;
-    Tchannel channel_in;
-    enum process_channel_type channel_out_type;
-    Tchannel channel_out;
-    enum process_channel_type channel_err_type;
-    Tchannel channel_err;
-
-    if ((PAIR_P (env_object)) && (STRING_P (PAIR_CDR (env_object))))
-      {
-	working_directory =
-	  ((CONST char *) (STRING_LOC ((PAIR_CDR (env_object)), 0)));
-	env_object = (PAIR_CAR (env_object));
-      }
-    if (env_object != SHARP_F)
-      {
-	if (! (string_vector_p (env_object)))
-	  error_wrong_type_arg (3);
-	env = ((char * CONST *) (convert_string_vector (env_object)));
-      }
-    if ((ARG_REF (4)) == SHARP_F)
-      ctty_type = process_ctty_type_none;
-    else if ((ARG_REF (4)) == (LONG_TO_FIXNUM (-1)))
-      ctty_type = process_ctty_type_inherit_bg;
-    else if ((ARG_REF (4)) == (LONG_TO_FIXNUM (-2)))
-      ctty_type = process_ctty_type_inherit_fg;
-    else
-      {
-	ctty_type = process_ctty_type_explicit;
-	ctty_name = (STRING_ARG (4));
-      }
-    PROCESS_CHANNEL_ARG (5, channel_in_type, channel_in);
-    PROCESS_CHANNEL_ARG (6, channel_out_type, channel_out);
-    PROCESS_CHANNEL_ARG (7, channel_err_type, channel_err);
-    {
-      Tprocess process =
-	(OS_make_subprocess
-	 (filename, argv, env, working_directory,
-	  ctty_type, ctty_name,
-	  channel_in_type, channel_in,
-	  channel_out_type, channel_out,
-	  channel_err_type, channel_err));
-      dstack_set_position (position);
-      PRIMITIVE_RETURN (long_to_integer (process));
-    }
-  }
-}
-
-static int
-DEFUN (string_vector_p, (vector), SCHEME_OBJECT vector)
-{
-  if (! (VECTOR_P (vector)))
-    return (0);
-  {
-    unsigned long length = (VECTOR_LENGTH (vector));
-    SCHEME_OBJECT * scan = (VECTOR_LOC (vector, 0));
-    SCHEME_OBJECT * end = (scan + length);
-    while (scan < end)
-      if (! (STRING_P (*scan++)))
-	return (0);
-  }
-  return (1);
-}
-
-static char **
-DEFUN (convert_string_vector, (vector), SCHEME_OBJECT vector)
-{
-  unsigned long length = (VECTOR_LENGTH (vector));
-  char ** result = (dstack_alloc ((length + 1) * (sizeof (char *))));
-  SCHEME_OBJECT * scan = (VECTOR_LOC (vector, 0));
-  SCHEME_OBJECT * end = (scan + length);
-  char ** scan_result = result;
-  while (scan < end)
-    (*scan_result++) = ((char *) (STRING_LOC ((*scan++), 0)));
-  (*scan_result) = 0;
-  return (result);
-}
-
 #if defined(_OS2) && defined(__IBMC__)
 #define environ _environ
 #endif
@@ -249,7 +119,7 @@ DEFINE_PRIMITIVE ("PROCESS-ID", Prim_process_id, 1, 1,
   "Return the process ID of process PROCESS-NUMBER.")
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (OS_process_id (arg_process (1))));
+  PRIMITIVE_RETURN (ulong_to_integer (OS_process_id (arg_process (1))));
 }
 
 DEFINE_PRIMITIVE ("PROCESS-JOB-CONTROL-STATUS", Prim_process_jc_status, 1, 1, 
@@ -395,4 +265,136 @@ The process must have the same controlling terminal as Scheme.")
     OS_process_continue_foreground (process);
     PRIMITIVE_RETURN (UNSPECIFIC);
   }
+}
+
+/* This primitive is obsolete.  */
+
+static int EXFUN (string_vector_p, (SCHEME_OBJECT vector));
+static CONST char ** EXFUN (convert_string_vector, (SCHEME_OBJECT vector));
+
+#define PROCESS_CHANNEL_ARG(arg, type, channel)				\
+{									\
+  if ((ARG_REF (arg)) == SHARP_F)					\
+    (type) = process_channel_type_none;					\
+  else if ((ARG_REF (arg)) == (LONG_TO_FIXNUM (-1)))			\
+    (type) = process_channel_type_inherit;				\
+  else if ((ARG_REF (arg)) == (LONG_TO_FIXNUM (-2)))			\
+    {									\
+      if (ctty_type != process_ctty_type_explicit)			\
+	error_bad_range_arg (arg);					\
+      (type) = process_channel_type_ctty;				\
+    }									\
+  else									\
+    {									\
+      (type) = process_channel_type_explicit;				\
+      (channel) = (arg_channel (arg));					\
+    }									\
+}
+
+DEFINE_PRIMITIVE ("MAKE-SUBPROCESS", Prim_make_subprocess, 7, 7,
+  "Create a subprocess.\n\
+First arg FILENAME is the program to run.\n\
+Second arg ARGV is a vector of strings to pass to the program as arguments.\n\
+Third arg ENV is a vector of strings to pass as the program's environment;\n\
+  #F means inherit Scheme's environment.\n\
+Fourth arg CTTY specifies the program's controlling terminal:\n\
+  #F means none;\n\
+  -1 means use Scheme's controlling terminal in background;\n\
+  -2 means use Scheme's controlling terminal in foreground;\n\
+  string means open that terminal.\n\
+Fifth arg STDIN is the input channel for the subprocess.\n\
+Sixth arg STDOUT is the output channel for the subprocess.\n\
+Seventh arg STDERR is the error channel for the subprocess.\n\
+  Each channel arg can take these values:\n\
+  #F means none;\n\
+  -1 means use the corresponding channel from Scheme;\n\
+  -2 means use the controlling terminal (valid only when CTTY is a string);\n\
+  otherwise the argument must be a channel.")
+{
+  PRIMITIVE_HEADER (7);
+  CHECK_ARG (2, string_vector_p);
+  {
+    PTR position = dstack_position;
+    CONST char * filename = (STRING_ARG (1));
+    CONST char ** argv = (convert_string_vector (ARG_REF (2)));
+    SCHEME_OBJECT env_object = (ARG_REF (3));
+    CONST char ** env = 0;
+    CONST char * working_directory = 0;
+    enum process_ctty_type ctty_type;
+    char * ctty_name = 0;
+    enum process_channel_type channel_in_type;
+    Tchannel channel_in;
+    enum process_channel_type channel_out_type;
+    Tchannel channel_out;
+    enum process_channel_type channel_err_type;
+    Tchannel channel_err;
+
+    if ((PAIR_P (env_object)) && (STRING_P (PAIR_CDR (env_object))))
+      {
+	working_directory =
+	  ((CONST char *) (STRING_LOC ((PAIR_CDR (env_object)), 0)));
+	env_object = (PAIR_CAR (env_object));
+      }
+    if (env_object != SHARP_F)
+      {
+	if (! (string_vector_p (env_object)))
+	  error_wrong_type_arg (3);
+	env = (convert_string_vector (env_object));
+      }
+    if ((ARG_REF (4)) == SHARP_F)
+      ctty_type = process_ctty_type_none;
+    else if ((ARG_REF (4)) == (LONG_TO_FIXNUM (-1)))
+      ctty_type = process_ctty_type_inherit_bg;
+    else if ((ARG_REF (4)) == (LONG_TO_FIXNUM (-2)))
+      ctty_type = process_ctty_type_inherit_fg;
+    else
+      {
+	ctty_type = process_ctty_type_explicit;
+	ctty_name = (STRING_ARG (4));
+      }
+    PROCESS_CHANNEL_ARG (5, channel_in_type, channel_in);
+    PROCESS_CHANNEL_ARG (6, channel_out_type, channel_out);
+    PROCESS_CHANNEL_ARG (7, channel_err_type, channel_err);
+    {
+      Tprocess process =
+	(OS_make_subprocess
+	 (filename, argv, env, working_directory,
+	  ctty_type, ctty_name,
+	  channel_in_type, channel_in,
+	  channel_out_type, channel_out,
+	  channel_err_type, channel_err));
+      dstack_set_position (position);
+      PRIMITIVE_RETURN (long_to_integer (process));
+    }
+  }
+}
+
+static int
+DEFUN (string_vector_p, (vector), SCHEME_OBJECT vector)
+{
+  if (! (VECTOR_P (vector)))
+    return (0);
+  {
+    unsigned long length = (VECTOR_LENGTH (vector));
+    SCHEME_OBJECT * scan = (VECTOR_LOC (vector, 0));
+    SCHEME_OBJECT * end = (scan + length);
+    while (scan < end)
+      if (! (STRING_P (*scan++)))
+	return (0);
+  }
+  return (1);
+}
+
+static CONST char **
+DEFUN (convert_string_vector, (vector), SCHEME_OBJECT vector)
+{
+  unsigned long length = (VECTOR_LENGTH (vector));
+  char ** result = (dstack_alloc ((length + 1) * (sizeof (char *))));
+  SCHEME_OBJECT * scan = (VECTOR_LOC (vector, 0));
+  SCHEME_OBJECT * end = (scan + length);
+  char ** scan_result = result;
+  while (scan < end)
+    (*scan_result++) = ((char *) (STRING_LOC ((*scan++), 0)));
+  (*scan_result) = 0;
+  return ((CONST char **) result);
 }
