@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsock.c,v 1.12 2002/04/23 13:47:30 cph Exp $
+$Id: ntsock.c,v 1.13 2002/06/17 05:18:29 cph Exp $
 
 Copyright (c) 1997-2002 Massachusetts Institute of Technology
 
@@ -311,11 +311,24 @@ server_channel_write (Tchannel channel, const void * buffer,
   return (0);
 }
 
+/* The runtime system uses this procedure to decide whether an
+   accept() call will block.  So test the socket with select() and
+   return a one-bit answer.  */
+
 static long
 server_channel_n_read (Tchannel channel)
 {
-  error_external_return ();
-  return (0);
+  fd_set fds;
+  struct timeval tv;
+  int ret;
+
+  FD_ZERO (&fds);
+  FD_SET ((CHANNEL_SOCKET (channel)), (&fds));
+  (tv . tv_sec) = 0;
+  (tv . tv_usec) = 0;
+  VALUE_SOCKET_CALL (select, (1, (&fds), 0, 0, (&tv)), ret);
+  /* Zero bytes available means "accept would block", so return -1.  */
+  return ((ret == 0) ? (-1) : 1);
 }
 
 void
