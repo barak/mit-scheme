@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: savres.scm,v 14.38 2003/01/02 01:55:19 cph Exp $
+$Id: savres.scm,v 14.39 2003/01/02 01:56:33 cph Exp $
 
 Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright (c) 1995,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -170,6 +170,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.")
 			    port
 			    #f
 			    1
-			    "|| "
+			    "  "
 			    " || "
-			    " ||")))
+			    "")))
