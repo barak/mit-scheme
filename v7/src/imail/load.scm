@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.7 2000/05/22 13:36:29 cph Exp $
+;;; $Id: load.scm,v 1.8 2000/05/22 15:08:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -38,6 +38,7 @@
 	  '(edwin-command$imail
 	    edwin-command$imail-add-flag
 	    edwin-command$imail-continue
+	    edwin-command$imail-copy-messages
 	    edwin-command$imail-create-folder
 	    edwin-command$imail-delete-backward
 	    edwin-command$imail-delete-folder
@@ -91,5 +92,4 @@
 	    edwin-variable$imail-summary-mode-hook
 	    edwin-variable$imail-summary-pop-up-message
 	    edwin-variable$imail-summary-show-date
-	    edwin-variable$imail-summary-subject-width
-	    imail-copy-folder))
+	    edwin-variable$imail-summary-subject-width))
