@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.9 1989/10/26 06:46:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.10 1990/09/07 00:27:35 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -286,10 +286,21 @@ MIT in each case. |#
 (define (parse-object/bit-string)
   (discard-char)
   (let ((string (read-atom)))
-    (unsigned-integer->bit-string
-     (string-length string)
-     (or (string->number string 2)
-	 (error "READ: bad syntax for bit-string")))))
+    (let ((length (string-length string)))
+      (unsigned-integer->bit-string
+       length
+       (let loop ((index 0) (result 0))
+	 (if (< index length)
+	     (loop (1+ index)
+		   (+ (* result 2)
+		      (case (string-ref string index)
+			((#\0) 0)
+			((#\1) 1)
+			(else
+			 (error "READ: bad bit-string syntax"
+				(string-append "#*" string))))))
+	     result))))))
+
 ;;;; Lists/Vectors
 
 (define (parse-object/list-open)
