@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.66 1997/10/15 03:25:55 adams Exp $
+$Id: opncod.scm,v 4.67 1998/02/21 21:45:18 adams Exp $
 
-Copyright (c) 1988-97 Massachusetts Institute of Technology
+Copyright (c) 1988-1998 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -398,17 +398,34 @@ MIT in each case. |#
 ;; A bunch of these directly use the open coding for fixnum arithmetic.
 ;; This is not reasonable since the port may not include such open codings.
 
+#|
 (define (open-code:range-check index-expression limit-locative)
-  (if (and limit-locative compiler:generate-range-checks?)
-      (pcfg*pcfg->pcfg!
-       (generate-nonnegative-check index-expression)
-       (pcfg/prefer-consequent!
-	(rtl:make-fixnum-pred-2-args
-	 'LESS-THAN-FIXNUM?
-	 (rtl:make-object->fixnum index-expression)
-	 (rtl:make-object->fixnum limit-locative)))
-       (make-null-cfg))
-      (make-null-cfg)))
+  (cond ((and limit-locative compiler:generate-range-checks?)
+	 (pcfg/prefer-consequent!
+	   (rtl:make-fixnum-pred-2-args
+	    'UNSIGNED-LESS-THAN-FIXNUM?
+	    (rtl:make-object->fixnum index-expression)
+	    (rtl:make-object->fixnum limit-locative))))
+	(else
+	 (make-null-cfg))))
+|#
+
+(define (open-code:index-check index-expression limit-locative)
+  (cond ((not limit-locative)
+	 (open-code:index-fixnum-check index-expression))
+	(compiler:generate-range-checks?
+	 (pcfg*pcfg->pcfg!
+	  (open-code:type-check index-expression (ucode-type fixnum))
+	  (pcfg/prefer-consequent!
+	   (rtl:make-fixnum-pred-2-args
+	    'UNSIGNED-LESS-THAN-FIXNUM?
+	    (rtl:make-object->fixnum index-expression)
+	    (rtl:make-object->fixnum limit-locative)))
+	  (make-null-cfg)))
+	(compiler:generate-type-checks?
+	 (open-code:type-check index-expression (ucode-type fixnum)))
+	(else
+	 (make-null-cfg))))
 
 (define (open-code:nonnegative-check expression)
   (if compiler:generate-range-checks?
@@ -426,6 +443,24 @@ MIT in each case. |#
 	(rtl:make-fixnum-pred-1-arg
 	 'NEGATIVE-FIXNUM?
 	 (rtl:make-object->fixnum expression))))))
+
+(define (open-code:index-fixnum-check expression)
+  (if (or compiler:generate-range-checks?
+	  compiler:generate-type-checks?)
+      (generate-index-fixnum-check expression)
+      (make-null-cfg)))
+
+(define (generate-index-fixnum-check expression)
+  (if (rtl:constant? expression)
+      (let ((value (rtl:constant-value expression)))
+	(if (and (object-type? (ucode-type fixnum) value)
+		 (not (negative? value)))
+	    (make-true-pcfg)
+	    (make-false-pcfg)))
+      (pcfg/prefer-consequent!
+       (rtl:make-pred-1-arg
+	'INDEX-FIXNUM?
+	(rtl:make-object->fixnum expression)))))
 
 ;;;; Indexed Memory References
 
@@ -438,8 +473,7 @@ MIT in each case. |#
 	 combination
 	 (cons*
 	  (open-code:type-check object base-type)
-	  (open-code:type-check index (ucode-type fixnum))
-	  (open-code:range-check index (length-expression object))
+	  (open-code:index-check index (length-expression object))
 	  (if value-type
 	      (list (open-code:type-check (caddr expressions) value-type))
 	      '()))
@@ -685,9 +719,8 @@ MIT in each case. |#
 		      (open-code:with-checks
 		       combination
 		       (list
-			(open-code:type-check type (ucode-type fixnum))
-			(open-code:range-check type
-					       (rtl:make-machine-constant
+			(open-code:index-check type
+					       (rtl:make-constant
 						scheme-type-limit)))
 		       (finish
 			(rtl:make-eq-test (rtl:make-object->datum type)
@@ -781,8 +814,7 @@ MIT in each case. |#
      (let ((length (car expressions)))
        (open-code:with-checks
 	combination
-	(list (open-code:type-check length (ucode-type fixnum))
-	      (open-code:nonnegative-check length))
+	(list (open-code:index-fixnum-check length))
 	(let ((assignment
 	       ((index-locative-generator rtl:locative-object-offset
 					  rtl:locative-object-index
@@ -809,8 +841,7 @@ MIT in each case. |#
      (let ((length (car expressions)))
        (open-code:with-checks
 	combination
-	(list (open-code:type-check length (ucode-type fixnum))
-	      (open-code:nonnegative-check length))
+	(list (open-code:index-fixnum-check length))
 	((index-locative-generator rtl:locative-object-offset
 				   rtl:locative-object-index
 				   0
@@ -923,7 +954,7 @@ MIT in each case. |#
        (let ((length (car expressions)))
 	 (open-code:with-checks
 	  combination
-	  (list (open-code:nonnegative-check length)
+	  (list (open-code:index-fixnum-check length)
 		(make-false-pcfg))
 	  (make-null-cfg)
 	  finish
@@ -1032,8 +1063,7 @@ MIT in each case. |#
        (open-code:with-checks
 	combination
 	(list (open-code:type-check object (ucode-type string))
-	      (open-code:type-check length (ucode-type fixnum))
-	      (open-code:nonnegative-check length))
+	      (open-code:index-fixnum-check length))
 	(finish-vector-assignment (rtl:locative-offset object 1)
 				  (rtl:make-object->datum length)
 				  finish)
