@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.15 1996/10/07 18:13:34 cph Exp $
+$Id: datime.scm,v 14.16 1997/01/25 10:38:36 cph Exp $
 
-Copyright (c) 1988-96 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -57,7 +57,7 @@ MIT in each case. |#
   (day #f read-only #t)
   (month #f read-only #t)
   (year #f read-only #t)
-  (day-of-week #f read-only #t)
+  (day-of-week #f)
   (daylight-savings-time #f read-only #t)
   (zone #f))
 
@@ -79,7 +79,12 @@ MIT in each case. |#
 				 -1
 				 #f)))))
     ;; These calls fill in the other fields of the structure.
-    ((ucode-primitive decode-time 2) dt ((ucode-primitive encode-time 1) dt))
+    ;; ENCODE-TIME can easily signal an error, for example on unix
+    ;; machines when the time is prior to 1970.
+    (let ((t (ignore-errors (lambda () ((ucode-primitive encode-time 1) dt)))))
+      (if (condition? t)
+	  (set-decoded-time/day-of-week! dt #f)
+	  ((ucode-primitive decode-time 2) dt t)))
     (if (decoded-time/zone dt)
 	(set-decoded-time/zone! dt (/ (decoded-time/zone dt) 3600)))
     dt))
@@ -118,8 +123,10 @@ MIT in each case. |#
   (> (decoded-time/daylight-savings-time dt) 0))
 
 (define (decoded-time/date-string time)
-  (string-append (day-of-week/long-string (decoded-time/day-of-week time))
-		 " "
+  (string-append (let ((day (decoded-time/day-of-week time)))
+		   (if day
+		       (string-append (day-of-week/long-string day) " ")
+		       ""))
 		 (month/long-string (decoded-time/month time))
 		 " "
 		 (number->string (decoded-time/day time))
@@ -153,8 +160,10 @@ MIT in each case. |#
   ;; provided that time-zone information is available from the C
   ;; library.
   (let ((d2 (lambda (n) (string-pad-left (number->string n) 2 #\0))))
-    (string-append (day-of-week/short-string (decoded-time/day-of-week dt))
-		   ", "
+    (string-append (let ((day (decoded-time/day-of-week dt)))
+		     (if day
+			 (string-append (day-of-week/short-string day) ", ")
+			 ""))
 		   (number->string (decoded-time/day dt))
 		   " "
 		   (month/short-string (decoded-time/month dt))
