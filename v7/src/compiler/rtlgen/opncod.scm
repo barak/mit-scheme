@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.21 1988/11/05 03:03:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.22 1988/11/06 14:40:14 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -241,7 +241,8 @@ MIT in each case. |#
 	    (guard-loop (cdr guards))
 	    alternate)))))
 
-(define (open-code:with-checks checks non-error-cfg error-finish prim-invocation)
+(define (open-code:with-checks checks non-error-cfg error-finish
+			       prim-invocation)
   (let* ((continuation-entry (generate-continuation-entry))
 	 (error-continuation
 	  (scfg*scfg->scfg!
@@ -263,26 +264,29 @@ MIT in each case. |#
 
 (define (open-code:limit-check checkee-locative limit-locative)
   (if compiler:generate-range-checks?
-      (rtl:make-fixnum-pred-2-args 'LESS-THAN-FIXNUM?
+      (pcfg/prefer-consequent!
+       (rtl:make-fixnum-pred-2-args
+	'LESS-THAN-FIXNUM?
 	(rtl:make-object->fixnum checkee-locative)
-	(rtl:make-object->fixnum limit-locative))
+	(rtl:make-object->fixnum limit-locative)))
       (make-null-cfg)))
 
 (define (open-code:range-check checkee-locative limit-locative)
   (if compiler:generate-range-checks?
       (pcfg*pcfg->pcfg!
-	 (open-code:limit-check checkee-locative limit-locative)
-	 (pcfg-invert
-	  (rtl:make-fixnum-pred-1-arg 'NEGATIVE-FIXNUM?
-	   (rtl:make-object->fixnum checkee-locative)))
-	 (make-null-cfg))
+       (open-code:limit-check checkee-locative limit-locative)
+       (pcfg-invert
+	(pcfg/prefer-alternative!
+	 (rtl:make-fixnum-pred-1-arg
+	  'NEGATIVE-FIXNUM?
+	  (rtl:make-object->fixnum checkee-locative))))
+       (make-null-cfg))
       (make-null-cfg)))
 
 (define (open-code:type-check checkee-locative type)
   (if compiler:generate-type-checks?
       (generate-type-test type checkee-locative)
       (make-null-cfg)))
-
 
 (define (generate-continuation-entry)
   (let* ((label (generate-label))
@@ -314,7 +318,8 @@ MIT in each case. |#
 	(if (eq? mu-type (object-type (rtl:constant-value expression)))
 	    (make-true-pcfg)
 	    (make-false-pcfg))
-	(rtl:make-type-test (rtl:make-object->type expression) mu-type))))
+	(pcfg/prefer-consequent!
+	 (rtl:make-type-test (rtl:make-object->type expression) mu-type)))))
 
 ;;;; Open Coders
 
@@ -441,8 +446,7 @@ MIT in each case. |#
 		(open-code:type-check index 'FIXNUM)
 		(open-code:range-check
 		 index
-		 (rtl:make-fetch
-		  (rtl:locative-offset vector 0))))
+		 (rtl:make-fetch (rtl:locative-offset vector 0))))
 	       (generate-index-locative
 		vector
 		index
@@ -461,37 +465,28 @@ MIT in each case. |#
 		(open-code:type-check vector 'VECTOR)
 		(open-code:limit-check
 		 (rtl:make-constant index)
-		 (rtl:make-fetch
-		  (rtl:locative-offset vector 0))))
-	       ((open-code/memory-ref index) expressions finish)
+		 (rtl:make-fetch (rtl:locative-offset vector 0))))
+	       ((open-code/memory-ref (1+ index)) expressions finish)
 	       finish
 	       (make-invocation name expressions)))))))
-
   (let ((define/ref
 	  (lambda (name index)
 	    (define-open-coder/value name
 	      (lambda (operands)
 		operands
 		(return-2 (open-code/memory-ref index) '(0)))))))
-    (define/ref
-      '(CAR SYSTEM-PAIR-CAR CELL-CONTENTS SYSTEM-HUNK3-CXR0) 0)
-    (define/ref
-      '(CDR SYSTEM-PAIR-CDR SYSTEM-HUNK3-CXR1) 1)
+    (define/ref '(CAR SYSTEM-PAIR-CAR CELL-CONTENTS SYSTEM-HUNK3-CXR0) 0)
+    (define/ref '(CDR SYSTEM-PAIR-CDR SYSTEM-HUNK3-CXR1) 1)
     (define/ref 'SYSTEM-HUNK3-CXR2 2))
-
   (for-each
    (lambda (name)
      (define-open-coder/value name
        (lambda (operands)
 	 (or (filter/nonnegative-integer (cadr operands)
-		  (lambda (index)
-		    (return-2
-		     (open-code/constant-vector-ref name (1+ index))
-		     '(0 1))))
-	     (return-2 (open-code/vector-ref name)
-		       '(0 1))))))
+	       (lambda (index)
+		 (return-2 (open-code/constant-vector-ref name index) '(0 1))))
+	     (return-2 (open-code/vector-ref name) '(0 1))))))
    '(VECTOR-REF SYSTEM-VECTOR-REF)))
-
 
 (let ((open-code/general-car-cdr
        (lambda (pattern)
@@ -537,8 +532,7 @@ MIT in each case. |#
 		(open-code:type-check index 'FIXNUM)
 		(open-code:range-check
 		 index
-		 (rtl:make-fetch
-		  (rtl:locative-offset vector 0))))
+		 (rtl:make-fetch (rtl:locative-offset vector 0))))
 	       (generate-index-locative
 		vector
 		index
@@ -557,8 +551,7 @@ MIT in each case. |#
 		(open-code:type-check vector 'VECTOR)
 		(open-code:limit-check
 		 (rtl:make-constant index)
-		 (rtl:make-fetch
-		  (rtl:locative-offset vector 0))))
+		 (rtl:make-fetch (rtl:locative-offset vector 0))))
 	       ((open-code/memory-assignment index) expressions finish)
 	       finish
 	       (make-invocation name expressions)))))))
@@ -589,82 +582,73 @@ MIT in each case. |#
    (lambda (name)
      (define-open-coder/effect name
        (lambda (operands)
-	 (or (filter/nonnegative-integer
-	      (cadr operands)
-	      (lambda (index)
-		(return-2 (open-code/constant-vector-set name (1+ index))
-			  '(0 1 2))))
+	 (or (filter/nonnegative-integer (cadr operands)
+	       (lambda (index)
+		 (return-2 (open-code/constant-vector-set name (1+ index))
+			   '(0 1 2))))
 	     (return-2 (open-code/vector-set name)
 		       '(0 1 2))))))
    '(VECTOR-SET! #| SYSTEM-VECTOR-SET! |#)))
 
-(let ((define-fixnum-2-args
-	(lambda (fixnum-operator)
-	  (define-open-coder/value fixnum-operator
-	    (lambda (operands)
-	      operands
-	      (return-2
-	       (lambda (expressions finish)
-		 (finish (rtl:make-fixnum->object
-			  (rtl:make-fixnum-2-args
-			   fixnum-operator
-			   (rtl:make-object->fixnum (car expressions))
-			   (rtl:make-object->fixnum (cadr expressions))))))
-	       '(0 1)))))))
-  (for-each define-fixnum-2-args
-	    '(PLUS-FIXNUM
-	      MINUS-FIXNUM
-	      MULTIPLY-FIXNUM
-	      #| DIVIDE-FIXNUM |#
-	      #| GCD-FIXNUM |#)))
+(for-each (lambda (fixnum-operator)
+	    (define-open-coder/value fixnum-operator
+	      (lambda (operands)
+		operands
+		(return-2
+		 (lambda (expressions finish)
+		   (finish
+		    (rtl:make-fixnum->object
+		     (rtl:make-fixnum-2-args
+		      fixnum-operator
+		      (rtl:make-object->fixnum (car expressions))
+		      (rtl:make-object->fixnum (cadr expressions))))))
+		 '(0 1)))))
+	  '(PLUS-FIXNUM
+	    MINUS-FIXNUM
+	    MULTIPLY-FIXNUM
+	    #| DIVIDE-FIXNUM |#
+	    #| GCD-FIXNUM |#))
 
-(let ((define-fixnum-1-arg
-	(lambda (fixnum-operator)
-	  (define-open-coder/value fixnum-operator
-	    (lambda (operand)
-	      operand
-	      (return-2
-	       (lambda (expressions finish)
-		 (finish (rtl:make-fixnum->object
-			  (rtl:make-fixnum-1-arg
-			   fixnum-operator
-			   (rtl:make-object->fixnum (car expressions))))))
-	       '(0)))))))
-  (for-each
-   define-fixnum-1-arg
-    '(ONE-PLUS-FIXNUM MINUS-ONE-PLUS-FIXNUM)))
+(for-each (lambda (fixnum-operator)
+	    (define-open-coder/value fixnum-operator
+	      (lambda (operand)
+		operand
+		(return-2
+		 (lambda (expressions finish)
+		   (finish
+		    (rtl:make-fixnum->object
+		     (rtl:make-fixnum-1-arg
+		      fixnum-operator
+		      (rtl:make-object->fixnum (car expressions))))))
+		 '(0)))))
+	  '(ONE-PLUS-FIXNUM MINUS-ONE-PLUS-FIXNUM))
 
-(let ((define-fixnum-pred-2-args
-	(lambda (fixnum-pred)
-	  (define-open-coder/predicate fixnum-pred
-	    (lambda (operands)
-	      operands
-	      (return-2
-	       (lambda (expressions finish)
-		 (finish (rtl:make-fixnum-pred-2-args
-			  fixnum-pred
-			  (rtl:make-object->fixnum (car expressions))
-			  (rtl:make-object->fixnum (cadr expressions)))))
-	       '(0 1)))))))
-  (for-each
-   define-fixnum-pred-2-args
-   '(EQUAL-FIXNUM? LESS-THAN-FIXNUM? GREATER-THAN-FIXNUM?)))
+(for-each (lambda (fixnum-pred)
+	    (define-open-coder/predicate fixnum-pred
+	      (lambda (operands)
+		operands
+		(return-2
+		 (lambda (expressions finish)
+		   (finish
+		    (rtl:make-fixnum-pred-2-args
+		     fixnum-pred
+		     (rtl:make-object->fixnum (car expressions))
+		     (rtl:make-object->fixnum (cadr expressions)))))
+		 '(0 1)))))
+	  '(EQUAL-FIXNUM? LESS-THAN-FIXNUM? GREATER-THAN-FIXNUM?))
 
-(let ((define-fixnum-pred-1-arg
-	(lambda (fixnum-pred)
-	  (define-open-coder/predicate fixnum-pred
-	    (lambda (operand)
-	      operand
-	      (return-2
-	       (lambda (expressions finish)
-		 (finish (rtl:make-fixnum-pred-1-arg
-			  fixnum-pred
-			  (rtl:make-object->fixnum (car expressions)))))
-	       '(0)))))))
-  (for-each
-   define-fixnum-pred-1-arg
-   '(ZERO-FIXNUM? POSITIVE-FIXNUM? NEGATIVE-FIXNUM?)))
-
+(for-each (lambda (fixnum-pred)
+	    (define-open-coder/predicate fixnum-pred
+	      (lambda (operand)
+		operand
+		(return-2
+		 (lambda (expressions finish)
+		   (finish
+		    (rtl:make-fixnum-pred-1-arg
+		     fixnum-pred
+		     (rtl:make-object->fixnum (car expressions)))))
+		 '(0)))))
+	  '(ZERO-FIXNUM? POSITIVE-FIXNUM? NEGATIVE-FIXNUM?))
 
 ;;; Generic arithmetic
 
@@ -673,8 +657,10 @@ MIT in each case. |#
 	(generic-op (rtl:generic-binary-operator expression))
 	(fix-op
 	 (generic->fixnum-op (rtl:generic-binary-operator expression)))
+#|
 	(flo-op
 	 (generic->floatnum-op (rtl:generic-binary-operator expression)))
+|#
 	(op1 (rtl:generic-binary-operand-1 expression))
 	(op2 (rtl:generic-binary-operand-2 expression)))
     (let* ((give-it-up
@@ -758,7 +744,7 @@ MIT in each case. |#
 				      (rtl:make-object->fixnum op2))
 	      (lambda (fix-temp)
 		(pcfg*scfg->scfg!
-		 (rtl:make-overflow-test)
+		 (pcfg/prefer-alternative! (rtl:make-overflow-test))
 		 give-it-up
 		 (finish (rtl:make-fixnum->object fix-temp)))))
 	    generic-2)
@@ -767,10 +753,12 @@ MIT in each case. |#
 (define (generate-generic-unary expression finish is-pred?)
   (let ((continuation-entry (generate-continuation-entry))
 	(generic-op (rtl:generic-unary-operator expression))
-	(fix-op (generic->fixnum-op
-		 (rtl:generic-unary-operator expression)))
-	(flo-op (generic->floatnum-op
-		 (rtl:generic-unary-operator expression)))
+	(fix-op
+	 (generic->fixnum-op (rtl:generic-unary-operator expression)))
+#|
+	(flo-op
+	 (generic->floatnum-op (rtl:generic-unary-operator expression)))
+|#
 	(op (rtl:generic-unary-operand expression)))
     (let* ((give-it-up
 	    (scfg-append!
@@ -814,7 +802,7 @@ MIT in each case. |#
 				     (rtl:make-object->fixnum op))
 	     (lambda (fix-temp)
 	       (pcfg*scfg->scfg!
-		(rtl:make-overflow-test)
+		(pcfg/prefer-alternative! (rtl:make-overflow-test))
 		give-it-up
 		(finish (rtl:make-fixnum->object fix-temp)))))
 	   (if compiler:open-code-flonum-checks?
@@ -837,8 +825,7 @@ MIT in each case. |#
     ((zero?) 'ZERO-FIXNUM?)
     ((positive?) 'POSITIVE-FIXNUM?)
     ((negative?) 'NEGATIVE-FIXNUM?)
-    (else (error "Can't find corresponding fixnum op:"
-		 generic-op))))
+    (else (error "Can't find corresponding fixnum op:" generic-op))))
 
 (define (generic->floatnum-op generic-op)
   (case generic-op
@@ -853,9 +840,7 @@ MIT in each case. |#
     ((zero?) 'ZERO-FLOATNUM?)
     ((positive?) 'POSITIVE-FLOATNUM?)
     ((negative?) 'NEGATIVE-FLOATNUM?)
-    (else (error "Can't find corresponding floatnum op:"
-		 generic-op))))
-
+    (else (error "Can't find corresponding floatnum op:" generic-op))))
 
 (for-each (lambda (generic-op)
 	    (define-open-coder/value generic-op
@@ -913,7 +898,7 @@ MIT in each case. |#
 		  '(0)))))
 	  '(zero? positive? negative?))
 
-;;; Character open-coding
+;;;; Character Primitives
 
 (let ((define-character->fixnum
 	(lambda (character->fixnum rtl:coercion)
@@ -921,16 +906,18 @@ MIT in each case. |#
 	    (lambda (operand)
 	      operand
 	      (return-2 (lambda (expressions finish)
-			  (finish (rtl:make-cons-pointer
-				   (rtl:make-constant (ucode-type fixnum))
-				   (rtl:coercion (car expressions)))))
+			  (finish
+			   (rtl:make-cons-pointer
+			    (rtl:make-constant (ucode-type fixnum))
+			    (rtl:coercion (car expressions)))))
 			'(0)))))))
   (define-character->fixnum 'CHAR->INTEGER rtl:make-object->datum)
   (define-character->fixnum 'CHAR->ASCII rtl:make-char->ascii))
+
+;;;; String Primitives
 
-;;; String
-
-(let ((string-header-size (quotient (* 2 scheme-object-width) 8)))
+(define string-header-size
+  (quotient (* 2 scheme-object-width) 8))
 
 (define-open-coder/value 'STRING-REF
   (lambda (operands)
@@ -938,13 +925,22 @@ MIT in each case. |#
       (lambda (index)
 	(return-2
 	 (lambda (expressions finish)
-	   (finish (rtl:make-cons-pointer
-		    (rtl:make-constant (ucode-type character))
-		    (rtl:make-fetch
-		     (rtl:locative-byte-offset
-		      (car expressions)
-		      (+ string-header-size index))))))
-	 '(0))))))
+	   (let ((string (car expressions)))
+	     (open-code:with-checks
+	      (list
+	       (open-code:type-check string 'STRING)
+	       (open-code:limit-check
+		(rtl:make-constant index)
+		(rtl:make-fetch (rtl:locative-offset string 1))))
+	      (finish
+	       (rtl:make-cons-pointer
+		(rtl:make-constant (ucode-type character))
+		(rtl:make-fetch
+		 (rtl:locative-byte-offset string
+					   (+ string-header-size index)))))
+	      finish
+	      (make-invocation 'STRING-REF expressions))))
+	 '(0 1))))))
 
 (define-open-coder/effect 'STRING-SET!
   (lambda (operands)
@@ -952,26 +948,32 @@ MIT in each case. |#
       (lambda (index)
 	(return-2
 	 (lambda (expressions finish)
-	   (let* ((locative
-		   (rtl:locative-byte-offset (car expressions)
-					     (+ string-header-size index)))
-		  (assignment
-		   (rtl:make-assignment
-		    locative
-		    (rtl:make-char->ascii (cadr expressions)))))
-	     (if finish
-		 (load-temporary-register
-		  scfg*scfg->scfg!
-		  (rtl:make-cons-pointer
-		   (rtl:make-constant (ucode-type character))
-		   (rtl:make-fetch locative))
-		  (lambda (temporary)
-		    (scfg*scfg->scfg! assignment (finish temporary))))
-		 assignment)))
-	 '(0 2))))))
-
-;;; End STRING operations, LET
-)
+	   (let ((string (car expressions))
+		 (value (caddr expressions)))
+	     (open-code:with-checks
+	      (list
+	       (open-code:type-check string 'STRING)
+	       (open-code:limit-check
+		(rtl:make-constant index)
+		(rtl:make-fetch (rtl:locative-offset string 1))))
+	      (let* ((locative
+		      (rtl:locative-byte-offset string
+						(+ string-header-size index)))
+		     (assignment
+		      (rtl:make-assignment locative
+					   (rtl:make-char->ascii value))))
+		(if finish
+		    (load-temporary-register
+		     scfg*scfg->scfg!
+		     (rtl:make-cons-pointer
+		      (rtl:make-constant (ucode-type character))
+		      (rtl:make-fetch locative))
+		     (lambda (temporary)
+		       (scfg*scfg->scfg! assignment (finish temporary))))
+		    assignment))
+	      finish
+	      (make-invocation 'STRING-SET! expressions))))
+	 '(0 1 2))))))
 
 ;;; end COMBINATION/INLINE
 )
