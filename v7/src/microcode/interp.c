@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.84 1994/06/02 19:13:16 cph Exp $
+$Id: interp.c,v 9.85 1995/09/15 05:51:12 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -462,8 +462,8 @@ DEFUN (Interpret, (pop_return_p), Boolean pop_return_p)
    */
 
   bind_interpreter_state (&new_state);
-  preserve_signal_mask ();
   Which_Way = (setjmp (interpreter_catch_env));
+  preserve_signal_mask ();
   Set_Time_Zone (Zone_Working);
   Import_Registers ();
 
