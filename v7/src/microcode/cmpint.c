@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.33 1991/03/22 06:27:54 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.34 1991/03/28 05:23:11 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -2640,7 +2640,7 @@ DEFUN (coerce_to_compiled,
 #endif
 
 #if (REGBLOCK_MINIMUM_LENGTH > COMPILER_REGBLOCK_N_FIXED)
-#  error "cmpint.c and const.h disagree on REGBLOCK_MINIMUM_LENGTH!"
+#  include "ERROR: cmpint.c and const.h disagree on REGBLOCK_MINIMUM_LENGTH!"
 #endif
 
 /* ((sizeof(SCHEME_OBJECT)) / (sizeof(SCHEME_OBJECT))) */
