@@ -16,11 +16,51 @@ dnl You should have received a copy of the GNU General Public License
 dnl along with this program; if not, write to the Free Software
 dnl Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-AC_REVISION([$Id: configure.in,v 1.1 2000/12/08 20:14:24 cph Exp $])
+AC_REVISION([$Id: configure.in,v 1.2 2000/12/08 21:01:23 cph Exp $])
 AC_INIT(ref-manual/scheme.texinfo)
 
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 
-AC_OUTPUT(Makefile)
+INST_TARGETS=
+
+enable_html=yes
+AC_ARG_ENABLE(html, [generate HTML documentation])
+if test "${enable_html}" = "yes"; then
+    htmldir="${libdir}/mit-scheme/doc"
+elif test "${enable_html}" = "no"; then
+    htmldir=
+else
+    htmldir="${enable_html}"
+fi
+test "${htmldir}" = "" || INST_TARGETS="${INST_TARGETS} install-html"
+AC_SUBST(htmldir)
+
+enable_pdf=yes
+AC_ARG_ENABLE(pdf, [generate PDF documentation])
+if test "${enable_pdf}" = "yes"; then
+    pdfdir="${libdir}/mit-scheme/doc"
+elif test "${enable_pdf}" = "no"; then
+    pdfdir=
+else
+    pdfdir="${enable_pdf}"
+fi
+test "${pdfdir}" = "" || INST_TARGETS="${INST_TARGETS} install-pdf"
+AC_SUBST(pdfdir)
+
+enable_ps=yes
+AC_ARG_ENABLE(ps, [generate Postscript documentation])
+if test "${enable_ps}" = "yes"; then
+    psdir="${libdir}/mit-scheme/doc"
+elif test "${enable_ps}" = "no"; then
+    psdir=
+else
+    psdir="${enable_ps}"
+fi
+test "${psdir}" = "" || INST_TARGETS="${INST_TARGETS} install-ps"
+AC_SUBST(psdir)
+
+AC_SUBST(INST_TARGETS)
+
+AC_OUTPUT(Makefile imail/Makefile ref-manual/Makefile sos/Makefile user-manual/Makefile)

@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.1 2000/12/08 20:14:24 cph Exp $
+# $Id: Makefile.in,v 1.2 2000/12/08 21:01:23 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -55,21 +55,49 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 
 # **** END BOILERPLATE ****
 
+htmldir = @htmldir@
+pdfdir = @pdfdir@
+psdir = @psdir@
+INST_TARGETS = @INST_TARGETS@
+
 SUBDIRS = imail ref-manual sos user-manual
+DISTCLEAN_FILES = Makefile */Makefile config.cache config.log config.status
 
-htmldir = $(libdir)/mit-scheme/doc
-pdfdir = $(libdir)/mit-scheme/doc
-psdir = $(libdir)/mit-scheme/doc
-
-all mostlyclean clean distclean maintainer-clean:
+all:
 	@for D in $(SUBDIRS); do \
 	    echo "making $@ in $${D}";\
 	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
 	done
 
+mostlyclean:
+	@for D in $(SUBDIRS); do \
+	    echo "making $@ in $${D}";\
+	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+	done
+
+clean:
+	@for D in $(SUBDIRS); do \
+	    echo "making $@ in $${D}";\
+	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+	done
+
+distclean:
+	@for D in $(SUBDIRS); do \
+	    echo "making $@ in $${D}";\
+	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+	done
+	rm -f $(DISTCLEAN_FILES)
+
+maintainer-clean:
+	@for D in $(SUBDIRS); do \
+	    echo "making $@ in $${D}";\
+	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+	done
+	rm -f $(DISTCLEAN_FILES) configure
+
 tags TAGS:
 
-install: install-info install-html install-pdf install-ps
+install: install-info $(INST_TARGETS)
 
 install-info:
 	$(mkinstalldirs) $(DESTDIR)$(infodir)
