@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm3.scm,v 4.2 1988/01/02 21:02:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm3.scm,v 4.3 1988/04/15 02:22:34 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -407,7 +407,7 @@ MIT in each case. |#
      (cond ((= displacement 0)
 	    `(W ,(make-pc-relative (lambda () (fetch-immediate 'W)))))
 	   ((= displacement -1)
-	    `(L (make-pc-relative (lambda () (fetch-immediate 'L)))))
+	    `(L ,(make-pc-relative (lambda () (fetch-immediate 'L)))))
 	   (else
 	    `(B ,(make-pc-relative (lambda () displacement))))))))
 
