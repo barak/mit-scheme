@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.2 2001/06/26 19:01:17 cph Exp $
+;;; $Id: parser.scm,v 1.3 2001/06/26 21:02:06 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -38,10 +38,10 @@
     (optimize-expression (generate-parser-code expression))))
 
 (define (generate-parser-code expression)
-  (with-buffer-name
-    (lambda ()
-      (with-canonical-parser-expression expression
-	(lambda (expression)
+  (with-canonical-parser-expression expression
+    (lambda (expression)
+      (with-buffer-name
+	(lambda ()
 	  (compile-parser-expression
 	   expression
 	   (no-pointers)
@@ -80,7 +80,8 @@
 ;;;; Canonicalization
 
 (define (with-canonical-parser-expression expression receiver)
-  (let ((bindings '()))
+  (let ((external-bindings (list 'BINDINGS))
+	(internal-bindings (list 'BINDINGS)))
     (define (do-expression expression)
       (cond ((and (pair? expression)
 		  (symbol? (car expression))
@@ -101,49 +102,30 @@
 		(do-expression
 		 `(ALT ,(check-1-arg expression) (SEQ))))
 	       ((MATCH NOISE)
-		(check-1-arg expression)
-		expression)
+		`(,(car expression)
+		  ,(canonicalize-matcher-expression (check-1-arg expression)
+						    external-bindings
+						    internal-bindings)))
 	       ((DEFAULT TRANSFORM ELEMENT-TRANSFORM ENCAPSULATE)
 		(check-2-args expression)
 		`(,(car expression) ,(cadr expression)
 				    ,(do-expression (caddr expression))))
 	       ((SEXP)
-		(let ((expression (check-1-arg expression)))
-		  (if (symbol? expression)
-		      expression
-		      (let loop ((bindings* bindings))
-			(if (pair? bindings*)
-			    (if (equal? expression (caar bindings*))
-				(cdar bindings*)
-				(loop (cdr bindings*)))
-			    (let ((variable (generate-uninterned-symbol)))
-			      (set! bindings
-				    (cons (cons expression variable) bindings))
-			      variable))))))
+		(handle-complex-expression (check-1-arg expression)
+					   internal-bindings))
 	       (else
 		(error "Unknown parser expression:" expression))))
 	    ((symbol? expression)
 	     expression)
 	    (else
 	     (error "Unknown parser expression:" expression))))
-
-    (define (check-1-arg expression)
-      (if (and (pair? (cdr expression))
-	       (null? (cddr expression)))
-	  (cadr expression)
-	  (error "Malformed expression:" expression)))
-
-    (define (check-2-args expression)
-      (if (not (and (pair? (cdr expression))
-		    (pair? (cddr expression))
-		    (null? (cdddr expression))))
-	  (error "Malformed expression:" expression)))
-
     (let ((expression (do-expression expression)))
-      (if (pair? bindings)
-	  `(LET ,(map (lambda (b) `(,(cdr b) ,(car b))) bindings)
-	     ,(receiver expression))
-	  (receiver expression)))))
+      (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
+			   (cdr external-bindings))
+		      (receiver
+		       (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
+					    (cdr internal-bindings))
+				       expression))))))
 
 ;;;; Parsers
 
@@ -168,7 +150,7 @@
 (define-parser (match matcher)
   (with-current-pointer pointers
     (lambda (start-pointers)
-      (compile-matcher matcher start-pointers
+      (compile-matcher-expression matcher start-pointers
 	(lambda (pointers)
 	  (if-succeed pointers
 		      `(VECTOR (GET-PARSER-BUFFER-TAIL
@@ -177,7 +159,7 @@
 	if-fail))))
 
 (define-parser (noise matcher)
-  (compile-matcher matcher pointers
+  (compile-matcher-expression matcher pointers
     (lambda (pointers) (if-succeed pointers `(VECTOR)))
     if-fail))
 

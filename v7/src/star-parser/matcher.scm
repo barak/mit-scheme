@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.2 2001/06/26 19:01:31 cph Exp $
+;;; $Id: matcher.scm,v 1.3 2001/06/26 21:02:04 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -38,23 +38,15 @@
     (optimize-expression (generate-matcher-code expression))))
 
 (define (generate-matcher-code expression)
-  (with-buffer-name
-    (lambda ()
-      (with-canonical-matcher-expression expression
-	(lambda (expression)
+  (with-canonical-matcher-expression expression
+    (lambda (expression)
+      (with-buffer-name
+	(lambda ()
 	  (compile-matcher-expression
 	   expression
 	   (no-pointers)
 	   (simple-backtracking-continuation `#T)
 	   (simple-backtracking-continuation `#F)))))))
-
-;; COMPILE-MATCHER is called by the parser compiler, to generate code
-;; to be embedded into a parser.
-
-(define (compile-matcher expression pointers if-succeed if-fail)
-  (with-canonical-matcher-expression expression
-    (lambda (expression)
-      (compile-matcher-expression expression pointers if-succeed if-fail))))
 
 (define (compile-matcher-expression expression pointers if-succeed if-fail)
   (cond ((and (pair? expression)
@@ -82,82 +74,78 @@
 ;;;; Canonicalization
 
 (define (with-canonical-matcher-expression expression receiver)
-  (let ((bindings '()))
-    (define (do-expression expression)
-      (cond ((and (pair? expression)
-		  (symbol? (car expression))
-		  (list? (cdr expression)))
-	     (case (car expression)
-	       ((ALT SEQ)
-		`(,(car expression)
-		  ,@(flatten-expressions (map do-expression (cdr expression))
-					 (car expression))))
-	       ((*)
-		`(,(car expression)
-		  ,(do-expression (check-1-arg expression))))
-	       ((+)
-		(do-expression
-		 (let ((expression (check-1-arg expression)))
-		   `(SEQ ,expression (* ,expression)))))
-	       ((?)
-		(do-expression
-		 `(ALT ,(check-1-arg expression) (SEQ))))
-	       ((CHAR CHAR-CI NOT-CHAR NOT-CHAR-CI)
-		`(,(car expression)
-		  ,(handle-complex-expression (check-1-arg expression))))
-	       ((STRING)
-		(let ((string (check-1-arg expression)))
-		  (if (and (string? string) (fix:= (string-length string) 1))
-		      `(CHAR ,(string-ref string 0))
-		      `(STRING ,(handle-complex-expression string)))))
-	       ((STRING-CI)
-		(let ((string (check-1-arg expression)))
-		  (if (and (string? string) (fix:= (string-length string) 1))
-		      `(CHAR-CI ,(string-ref string 0))
-		      `(STRING-CI ,(handle-complex-expression string)))))
-	       ((ALPHABET)
-		`(,(car expression)
-		  ,(handle-complex-expression
-		    (let ((arg (check-1-arg expression)))
-		      (if (string? arg)
-			  (if (string-prefix? "^" arg)
-			      `(RE-COMPILE-CHAR-SET ,(string-tail arg 1) #T)
-			      `(RE-COMPILE-CHAR-SET ,arg #F))
-			  arg)))))
-	       ((SEXP)
-		(handle-complex-expression (check-1-arg expression)))
-	       (else
-		(error "Unknown matcher expression:" expression))))
-	    ((symbol? expression)
-	     expression)
-	    (else
-	     (error "Unknown matcher expression:" expression))))
+  (let ((external-bindings (list 'BINDINGS))
+	(internal-bindings (list 'BINDINGS)))
+    (let ((expression
+	   (canonicalize-matcher-expression expression
+					    external-bindings
+					    internal-bindings)))
+      (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
+			   (cdr external-bindings))
+		      (receiver
+		       (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
+					    (cdr internal-bindings))
+				       expression))))))
 
-    (define (check-1-arg expression)
-      (if (and (pair? (cdr expression))
-	       (null? (cddr expression)))
-	  (cadr expression)
-	  (error "Malformed expression:" expression)))
-
-    (define (handle-complex-expression expression)
-      (if (or (char? expression)
-	      (string? expression)
-	      (symbol? expression))
-	  expression
-	  (let loop ((bindings* bindings))
-	    (if (pair? bindings*)
-		(if (equal? expression (caar bindings*))
-		    (cdar bindings*)
-		    (loop (cdr bindings*)))
-		(let ((variable (generate-uninterned-symbol)))
-		  (set! bindings (cons (cons expression variable) bindings))
-		  variable)))))
-
-    (let ((expression (do-expression expression)))
-      (if (pair? bindings)
-	  `(LET ,(map (lambda (b) `(,(cdr b) ,(car b))) bindings)
-	     ,(receiver expression))
-	  (receiver expression)))))
+(define (canonicalize-matcher-expression expression
+					 external-bindings internal-bindings)
+  (define (do-expression expression)
+    (cond ((and (pair? expression)
+		(symbol? (car expression))
+		(list? (cdr expression)))
+	   (case (car expression)
+	     ((ALT SEQ)
+	      `(,(car expression)
+		,@(flatten-expressions (map do-expression (cdr expression))
+				       (car expression))))
+	     ((*)
+	      `(,(car expression)
+		,(do-expression (check-1-arg expression))))
+	     ((+)
+	      (do-expression
+	       (let ((expression (check-1-arg expression)))
+		 `(SEQ ,expression (* ,expression)))))
+	     ((?)
+	      (do-expression
+	       `(ALT ,(check-1-arg expression) (SEQ))))
+	     ((CHAR CHAR-CI NOT-CHAR NOT-CHAR-CI)
+	      `(,(car expression)
+		,(handle-complex-expression (check-1-arg expression)
+					    internal-bindings)))
+	     ((STRING)
+	      (let ((string (check-1-arg expression)))
+		(if (and (string? string) (fix:= (string-length string) 1))
+		    `(CHAR ,(string-ref string 0))
+		    `(STRING
+		      ,(handle-complex-expression string
+						  internal-bindings)))))
+	     ((STRING-CI)
+	      (let ((string (check-1-arg expression)))
+		(if (and (string? string) (fix:= (string-length string) 1))
+		    `(CHAR-CI ,(string-ref string 0))
+		    `(STRING-CI
+		      ,(handle-complex-expression string
+						  internal-bindings)))))
+	     ((ALPHABET)
+	      `(,(car expression)
+		,(let ((arg (check-1-arg expression)))
+		   (if (string? arg)
+		       (handle-complex-expression
+			(if (string-prefix? "^" arg)
+			    `(RE-COMPILE-CHAR-SET ,(string-tail arg 1) #T)
+			    `(RE-COMPILE-CHAR-SET ,arg #F))
+			external-bindings)
+		       (handle-complex-expression arg internal-bindings)))))
+	     ((SEXP)
+	      (handle-complex-expression (check-1-arg expression)
+					 internal-bindings))
+	     (else
+	      (error "Unknown matcher expression:" expression))))
+	  ((symbol? expression)
+	   expression)
+	  (else
+	   (error "Unknown matcher expression:" expression))))
+  (do-expression expression))
 
 ;;;; Matchers
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.2 2001/06/26 18:52:35 cph Exp $
+;;; $Id: shared.scm,v 1.3 2001/06/26 21:02:09 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -33,13 +33,47 @@
 
 (define (with-variable-bindings expressions receiver)
   (let ((variables
-	 (map (lambda (x) x (generate-uninterned-symbol)) expressions)))
-    `(LET ,(map list variables expressions)
-       ,(apply receiver variables))))
+	 (map (lambda (x) x (generate-uninterned-symbol))
+	      expressions)))
+    (maybe-make-let (map list variables expressions)
+		    (apply receiver variables))))
 
 (define (with-variable-binding expression receiver)
   (with-variable-bindings (list expression) receiver))
 
+(define (maybe-make-let bindings body)
+  (if (pair? bindings)
+      `(LET ,bindings ,body)
+      body))
+
+(define (check-1-arg expression)
+  (if (and (pair? (cdr expression))
+	   (null? (cddr expression)))
+      (cadr expression)
+      (error "Malformed expression:" expression)))
+
+(define (check-2-args expression)
+  (if (not (and (pair? (cdr expression))
+		(pair? (cddr expression))
+		(null? (cdddr expression))))
+      (error "Malformed expression:" expression)))
+
+(define (handle-complex-expression expression bindings)
+  (if (or (char? expression)
+	  (string? expression)
+	  (symbol? expression))
+      expression
+      (let loop ((bindings* (cdr bindings)))
+	(if (pair? bindings*)
+	    (if (equal? expression (caar bindings*))
+		(cdar bindings*)
+		(loop (cdr bindings*)))
+	    (let ((variable (generate-uninterned-symbol)))
+	      (set-cdr! bindings
+			(cons (cons expression variable)
+			      (cdr bindings)))
+	      variable)))))
+
 ;;;; Buffer pointers
 
 (define (no-pointers)
