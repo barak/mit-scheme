@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tximod.scm,v 1.14 1991/09/09 23:43:39 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tximod.scm,v 1.15 1991/10/02 09:16:18 cph Exp $
 ;;;
-;;;	Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -53,22 +53,30 @@
     (set-current-major-mode! (ref-mode-object texinfo))))
 
 (define-major-mode texinfo text "Texinfo"
-  "Major mode for editing texinfo files.
-These are files that are input for TeX and also to be turned
-into Info files by \\[texinfo-format-buffer].
-These files must be written in a very restricted and
-modified version of TeX input format."
+  "Major mode for editing Texinfo files.
+
+  These are files that are used as input for TeX to make printed manuals
+and also to be turned into Info files by \\[texinfo-format-buffer] or
+`makeinfo'.  These files must be written in a very restricted and
+modified version of TeX input format.
+
+  Editing commands are like text-mode except that the syntax table is
+set up so expression commands skip Texinfo bracket groups.
+
+  In addition, Texinfo mode provides commands that insert various
+frequently used @-sign commands into the buffer.  You can use these
+commands to save keystrokes."
   (local-set-variable! syntax-table texinfo-mode:syntax-table)
-  (local-set-variable! fill-column 75)
+  (local-set-variable! fill-column 72)
   (local-set-variable! require-final-newline true)
-  (local-set-variable! page-delimiter
-		       (string-append "^@node\\|"
-				      (ref-variable page-delimiter)))
+  (local-set-variable!
+   page-delimiter
+   "^@\\(chapter\\|unnumbered \\|appendix \\|majorheading\\|chapheading\\)")
   (local-set-variable! paragraph-start
-		       (string-append "^\\|^@[a-z]*[ \n]\\|"
+		       (string-append "^\\|^@[a-zA-Z]*[ \n]\\|"
 				      (ref-variable paragraph-start)))
   (local-set-variable! paragraph-separate
-		       (string-append "^\\|^@[a-z]*[ \n]\\|"
+		       (string-append "^\\|^@[a-zA-Z]*[ \n]\\|"
 				      (ref-variable paragraph-separate)))
   (event-distributor/invoke! (ref-variable texinfo-mode-hook)))
 
@@ -78,3 +86,82 @@ modified version of TeX input format."
 (modify-syntax-entry! texinfo-mode:syntax-table #\@ "\\")
 (modify-syntax-entry! texinfo-mode:syntax-table #\DC1 "\\")
 (modify-syntax-entry! texinfo-mode:syntax-table #\' "w")
+
+(define-key 'texinfo '(#\C-c #\C-c #\c) 'texinfo-insert-@code)
+(define-key 'texinfo '(#\C-c #\C-c #\d) 'texinfo-insert-@dfn)
+(define-key 'texinfo '(#\C-c #\C-c #\e) 'texinfo-insert-@end)
+(define-key 'texinfo '(#\C-c #\C-c #\i) 'texinfo-insert-@item)
+(define-key 'texinfo '(#\C-c #\C-c #\k) 'texinfo-insert-@kbd)
+(define-key 'texinfo '(#\C-c #\C-c #\o) 'texinfo-insert-@noindent)
+(define-key 'texinfo '(#\C-c #\C-c #\r) 'texinfo-insert-@refill)
+(define-key 'texinfo '(#\C-c #\C-c #\s) 'texinfo-insert-@samp)
+(define-key 'texinfo '(#\C-c #\C-c #\v) 'texinfo-insert-@var)
+(define-key 'texinfo '(#\C-c #\C-c #\x) 'texinfo-insert-@example)
+
+(define-command texinfo-insert-@code
+  "Insert the string @code in a texinfo buffer."
+  ()
+  (lambda ()
+    (insert-string "@code{}")
+    (set-current-point! (mark-1+ (current-point)))))
+
+(define-command texinfo-insert-@dfn
+  "Insert the string @dfn in a texinfo buffer."
+  ()
+  (lambda ()
+    (insert-string "@dfn{}")
+    (set-current-point! (mark-1+ (current-point)))))
+
+(define-command texinfo-insert-@kbd
+  "Insert the string @kbd in a texinfo buffer."
+  ()
+  (lambda ()
+    (insert-string "@kbd{}")
+    (set-current-point! (mark-1+ (current-point)))))
+
+(define-command texinfo-insert-@samp
+  "Insert the string @samp in a texinfo buffer."
+  ()
+  (lambda ()
+    (insert-string "@samp{}")
+    (set-current-point! (mark-1+ (current-point)))))
+
+(define-command texinfo-insert-@var
+  "Insert the string @var in a texinfo buffer."
+  ()
+  (lambda ()
+    (insert-string "@var{}")
+    (set-current-point! (mark-1+ (current-point)))))
+
+(define-command texinfo-insert-@end
+  "Insert the string `@end ' (end followed by a space) in a texinfo buffer."
+  ()
+  (lambda ()
+    (insert-string "@end ")))
+
+(define-command texinfo-insert-@refill
+  "Insert the string @refill in a texinfo buffer."
+  ()
+  (lambda ()
+    (insert-string "@refill")))
+
+(define-command texinfo-insert-@example
+  "Insert the string @example in a texinfo buffer."
+  ()
+  (lambda ()
+    (insert-string "@example")
+    (insert-newline)))
+
+(define-command texinfo-insert-@item
+  "Insert the string @item in a texinfo buffer."
+  ()
+  (lambda ()
+    (insert-string "@item")
+    (insert-newline)))
+
+(define-command texinfo-insert-@noindent
+  "Insert the string @noindent in a texinfo buffer."
+  ()
+  (lambda ()
+    (insert-string "@noindent")
+    (insert-newline)))
