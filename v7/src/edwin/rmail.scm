@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.45 1995/10/12 22:54:32 cph Exp $
+;;;	$Id: rmail.scm,v 1.46 1995/10/12 23:12:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -660,7 +660,8 @@ This variable is ignored if rmail-pop-procedure is #F."
 			 (list 'FILE
 			       (->namestring
 				(merge-pathnames (cadr password)
-						 (user-homedir-pathname))))))
+						 (user-homedir-pathname))))
+			 #f))
 		(else
 		 (error "Illegal password value in rmail-pop-accounts entry:"
 			password))))
