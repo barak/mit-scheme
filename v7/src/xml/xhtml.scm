@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.6 2004/07/19 04:45:11 cph Exp $
+$Id: xhtml.scm,v 1.7 2004/07/19 17:36:28 cph Exp $
 
 Copyright 2002,2003,2004 Massachusetts Institute of Technology
 
@@ -63,28 +63,17 @@ USA.
 	       (empty? (pair? (cdddr form))))
 	   `(BEGIN
 	      (DEFINE ,(symbol-append 'HTML: name)
-		(STANDARD-HTML-CONSTRUCTOR ',name ',context ,empty?))
+		(STANDARD-XML-ELEMENT-CONSTRUCTOR ',name HTML-IRI ,empty?))
 	      (DEFINE ,(symbol-append 'HTML: name '?)
-		(STANDARD-HTML-PREDICATE ',name))
-	      ',name))
+		(STANDARD-XML-ELEMENT-PREDICATE ',name HTML-IRI))
+	      (DEFINE-HTML-ELEMENT-CONTEXT ',name ',context)))
 	 (ill-formed-syntax form)))))
 
-(define (standard-html-constructor simple context empty?)
-  (let ((name (make-xml-name simple html-iri)))
-    (hash-table/put! element-context-map name context)
-    (if empty?
-	(lambda items
-	  (make-xml-element name (apply xml-attrs items) '()))
-	(lambda (attrs . items)
-	  (make-xml-element name
-			    (if (not attrs) '() attrs)
-			    (flatten-xml-element-contents items))))))
-
-(define (standard-html-predicate simple)
-  (let ((name (make-xml-name simple html-iri)))
-    (lambda (object)
-      (and (xml-element? object)
-	   (xml-name=? (xml-element-name object) name)))))
+(define (define-html-element-context qname context)
+  (hash-table/put! element-context-map
+		   (make-xml-name qname html-iri)
+		   context)
+  qname)
 
 (define (html-element-context elt)
   (guarantee-html-element elt 'HTML-ELEMENT-CONTEXT)
@@ -99,78 +88,6 @@ USA.
 
 (define element-context-map
   (make-eq-hash-table))
-
-(define (xml-attrs . items)
-  (let loop ((items items))
-    (if (pair? items)
-	(let ((item (car items))
-	      (items (cdr items)))
-	  (cond ((and (xml-name? item)
-		      (pair? items))
-		 (let ((value (car items))
-		       (attrs (loop (cdr items))))
-		   (if value
-		       (cons (make-xml-attribute
-			      item
-			      (if (eq? value #t)
-				  (symbol-name item)
-				  (convert-xml-string-value value)))
-			     attrs)
-		       attrs)))
-		((xml-attribute? item)
-		 (cons item (loop items)))
-		((list-of-type? item xml-attribute?)
-		 (append item (loop items)))
-		(else
-		 (error "Unknown item passed to xml-attrs:" item))))
-	'())))
-
-(define (flatten-xml-element-contents item)
-  (letrec
-      ((scan-item
-	(lambda (item tail)
-	  (cond ((pair? item) (scan-list item tail))
-		((or (not item) (null? item)) tail)
-		(else (cons (convert-xml-string-value item) tail)))))
-       (scan-list
-	(lambda (items tail)
-	  (if (pair? items)
-	      (scan-item (car items)
-			 (scan-list (cdr items) tail))
-	      (begin
-		(if (not (null? items))
-		    (error:wrong-type-datum items "list"))
-		tail)))))
-    (scan-item item '())))
-
-(define (convert-xml-string-value value)
-  (cond ((xml-content-item? value) value)
-	((symbol? value) (symbol-name value))
-	((number? value) (number->string value))
-	((xml-namespace-iri? value) (xml-namespace-iri-string value))
-	((list-of-type? value xml-nmtoken?) (nmtokens->string value))
-	(else (error:wrong-type-datum value "string value"))))
-
-(define (nmtokens->string nmtokens)
-  (if (pair? nmtokens)
-      (let ((nmtoken-length
-	     (lambda (nmtoken)
-	       (string-length (symbol-name nmtoken)))))
-	(let ((s
-	       (make-string
-		(let loop ((nmtokens nmtokens) (n 0))
-		  (let ((n (fix:+ n (nmtoken-length (car nmtokens)))))
-		    (if (pair? (cdr nmtokens))
-			(loop (cdr nmtokens) (fix:+ n 1))
-			n))))))
-	  (let loop ((nmtokens nmtokens) (index 0))
-	    (string-move! (symbol-name (car nmtokens)) s index)
-	    (if (pair? (cdr nmtokens))
-		(let ((index (fix:+ index (nmtoken-length (car nmtokens)))))
-		  (string-set! s index #\space)
-		  (loop (cdr nmtokens) (fix:+ index 1)))))
-	  s))
-      (make-string 0)))
 
 (define-html-element a		inline)
 (define-html-element abbr	inline)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.46 2004/07/19 17:20:40 cph Exp $
+$Id: xml.pkg,v 1.47 2004/07/19 17:36:35 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -188,6 +188,8 @@ USA.
 	  set-xml-unparsed-!entity-id!
 	  set-xml-unparsed-!entity-name!
 	  set-xml-unparsed-!entity-notation!
+	  standard-xml-element-constructor
+	  standard-xml-element-predicate
 	  xml-!attlist-definitions
 	  xml-!attlist-name
 	  xml-!attlist?
@@ -205,6 +207,7 @@ USA.
 	  xml-attribute-namespace-decl?
 	  xml-attribute-value
 	  xml-attribute?
+	  xml-attrs
 	  xml-char-data?
 	  xml-comment
 	  xml-comment-text
@@ -298,7 +301,6 @@ USA.
   (files "xhtml")
   (parent (runtime xml))
   (export ()
-	  flatten-xml-element-contents
 	  guarantee-html-element
 	  guarantee-html-element-name
 	  html-dtd
@@ -469,5 +471,4 @@ USA.
 	  html:ul
 	  html:ul?
 	  html:var
-	  html:var?
-	  xml-attrs))
+	  html:var?))

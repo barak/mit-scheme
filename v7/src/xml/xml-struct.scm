@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.43 2004/07/19 04:45:20 cph Exp $
+$Id: xml-struct.scm,v 1.44 2004/07/19 17:36:48 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -453,8 +453,9 @@ USA.
 	     (if (xml-name=? name 'xmlns)
 		 (null-xml-name-prefix)
 		 (xml-name-local name)))))))
+
+;;;; Convenience procedures
 
-;; Convenience procedure
 (define (xml-comment . strings)
   (make-xml-comment
    (let* ((s (apply string-append (map canonicalize-char-data strings)))
@@ -466,3 +467,91 @@ USA.
 	  s
 	  (if (char-whitespace? (wide-string-ref ws (fix:- n 1))) "" " "))
 	 " "))))
+
+(define (standard-xml-element-constructor qname iri empty?)
+  (let ((name (make-xml-name qname iri)))
+    (if empty?
+	(lambda items
+	  (make-xml-element name (apply xml-attrs items) '()))
+	(lambda (attrs . items)
+	  (make-xml-element name
+			    (if (not attrs) '() attrs)
+			    (flatten-xml-element-contents items))))))
+
+(define (standard-xml-element-predicate qname iri)
+  (let ((name (make-xml-name qname iri)))
+    (lambda (object)
+      (and (xml-element? object)
+	   (xml-name=? (xml-element-name object) name)))))
+
+(define (xml-attrs . items)
+  (let loop ((items items))
+    (if (pair? items)
+	(let ((item (car items))
+	      (items (cdr items)))
+	  (cond ((and (xml-name? item)
+		      (pair? items))
+		 (let ((value (car items))
+		       (attrs (loop (cdr items))))
+		   (if value
+		       (cons (make-xml-attribute
+			      item
+			      (if (eq? value #t)
+				  (symbol-name item)
+				  (convert-xml-string-value value)))
+			     attrs)
+		       attrs)))
+		((xml-attribute? item)
+		 (cons item (loop items)))
+		((list-of-type? item xml-attribute?)
+		 (append item (loop items)))
+		(else
+		 (error "Unknown item passed to xml-attrs:" item))))
+	'())))
+
+(define (flatten-xml-element-contents item)
+  (letrec
+      ((scan-item
+	(lambda (item tail)
+	  (cond ((pair? item) (scan-list item tail))
+		((or (not item) (null? item)) tail)
+		(else (cons (convert-xml-string-value item) tail)))))
+       (scan-list
+	(lambda (items tail)
+	  (if (pair? items)
+	      (scan-item (car items)
+			 (scan-list (cdr items) tail))
+	      (begin
+		(if (not (null? items))
+		    (error:wrong-type-datum items "list"))
+		tail)))))
+    (scan-item item '())))
+
+(define (convert-xml-string-value value)
+  (cond ((xml-content-item? value) value)
+	((symbol? value) (symbol-name value))
+	((number? value) (number->string value))
+	((xml-namespace-iri? value) (xml-namespace-iri-string value))
+	((list-of-type? value xml-nmtoken?) (nmtokens->string value))
+	(else (error:wrong-type-datum value "string value"))))
+
+(define (nmtokens->string nmtokens)
+  (if (pair? nmtokens)
+      (let ((nmtoken-length
+	     (lambda (nmtoken)
+	       (string-length (symbol-name nmtoken)))))
+	(let ((s
+	       (make-string
+		(let loop ((nmtokens nmtokens) (n 0))
+		  (let ((n (fix:+ n (nmtoken-length (car nmtokens)))))
+		    (if (pair? (cdr nmtokens))
+			(loop (cdr nmtokens) (fix:+ n 1))
+			n))))))
+	  (let loop ((nmtokens nmtokens) (index 0))
+	    (string-move! (symbol-name (car nmtokens)) s index)
+	    (if (pair? (cdr nmtokens))
+		(let ((index (fix:+ index (nmtoken-length (car nmtokens)))))
+		  (string-set! s index #\space)
+		  (loop (cdr nmtokens) (fix:+ index 1)))))
+	  s))
+      (make-string 0)))
