@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-syntax.scm,v 1.17 2001/10/10 04:26:48 cph Exp $
+;;; $Id: imap-syntax.scm,v 1.18 2001/10/13 05:54:33 cph Exp $
 ;;;
 ;;; Copyright (c) 2000, 2001 Massachusetts Institute of Technology
 ;;;
@@ -107,11 +107,12 @@
 		       url:match:escape))))))
 
 (define imap:parse:enc-mailbox
-  (*parser
-   (map url:decode-string
-	(match (+ (alt (char-set (char-set-union imap:char-set:achar
-						 (string->char-set ":@/")))
-		       url:match:escape))))))
+  (let ((imap:char-set:bchar
+	 (char-set-union imap:char-set:achar (string->char-set ":@/"))))
+    (*parser
+     (map url:decode-string
+	  (match (+ (alt (char-set imap:char-set:bchar)
+			 url:match:escape)))))))
 
 (define imap:parse:section
   (*parser
@@ -137,11 +138,11 @@
 	     ")"))))
 
 (define imap:parse:nz-number
-  (*parser
-   (map string->number
-	(match (seq (char-set (char-set-difference char-set:numeric
-						   (char-set #\0)))
-		    (* (char-set char-set:numeric)))))))
+  (let ((char-set:1-9 (char-set-difference char-set:numeric (char-set #\0))))
+    (*parser
+     (map string->number
+	  (match (seq (char-set char-set:1-9)
+		      (* (char-set char-set:numeric))))))))
 
 (define imap:parse:astring
   (*parser (alt imap:parse:atom imap:parse:string)))
