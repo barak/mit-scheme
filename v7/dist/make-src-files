@@ -29,9 +29,14 @@ find ${destination} -type d -print | xargs chmod g-w
 suffix=`date +%Y%m%d`
 tarfile=src-${suffix}.tar.gz
 zipfile=src-${suffix}.zip
+ucfile=gnulinux-ucode-src-${suffix}.tar.gz
 
-tar czvf ${tarfile} ${destination}
+tar cvzf ${tarfile} ${destination}
 zip -rl ${zipfile} ${destination}
-chmod -w ${tarfile} ${zipfile}
+
+(cd ${destination}/microcode; unxutl/config i386-linux)
+(cd ${destination}; tar cvzf ../${ucfile} microcode)
+
+chmod -w ${tarfile} ${zipfile} ${ucfile}
 
 rm -rf ${destination}
