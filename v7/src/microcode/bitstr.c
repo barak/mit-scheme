@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.32 1987/08/06 19:58:57 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.33 1987/08/17 19:31:42 jinx Exp $
 
    Bit string primitives. 
 
@@ -786,12 +786,16 @@ Built_In_Primitive( Prim_bit_string_to_unsigned, 1,
 
 #define read_bits_initialize()						\
   long end, end_mod, offset;						\
+  Pointer *start;							\
   Primitive_3_Args ();							\
 									\
   CHECK_ARG (3, BIT_STRING_P);						\
   end = (bit_string_length (Arg3));					\
   end_mod = (end % POINTER_LENGTH);					\
-  offset = (arg_nonnegative_integer (2))
+  offset = (arg_nonnegative_integer (2));				\
+  start = read_bits_ptr(Arg1, offset, end);				\
+  compute_read_bits_offset(offset, end)
+
 
 /* (READ-BITS! pointer offset bit-string)
    Read the contents of memory at the address (POINTER,OFFSET)
@@ -801,7 +805,7 @@ Built_In_Primitive (Prim_read_bits_x, 3, "READ-BITS!", 0xDF)
 {
   read_bits_initialize();
 
-  copy_bits ((object_msw_ptr(Arg1, (offset + end))),
+  copy_bits (start,
 	     offset,
 	     (Nth_Vector_Loc (Arg3, (index_to_word (Arg3, (end - 1))))),
 	     ((end_mod == 0) ? 0 : (POINTER_LENGTH - end_mod)),
@@ -819,7 +823,7 @@ Built_In_Primitive (Prim_write_bits_x, 3, "WRITE-BITS!", 0xE0)
 
   copy_bits ((Nth_Vector_Loc (Arg3, (index_to_word (Arg3, (end - 1))))),
 	     ((end_mod == 0) ? 0 : (POINTER_LENGTH - end_mod)),
-	     (object_msw_ptr(Arg1, (offset + end))),
+	     start,
 	     offset,
 	     end);
   PRIMITIVE_RETURN( NIL);
