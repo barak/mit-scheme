@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: errors.h,v 9.39 1993/08/03 08:29:44 gjr Exp $
+$Id: errors.h,v 9.40 1993/08/03 09:08:40 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -283,4 +283,4 @@ MIT in each case. */
 /* 0x1a */		"Backing out of non-primitive"			\
 }
 
-#endif /* SCM_ERRORS_H /*
+#endif /* SCM_ERRORS_H */
