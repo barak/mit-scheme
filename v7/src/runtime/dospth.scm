@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.3 1992/04/16 05:13:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.4 1992/05/26 00:08:03 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -101,8 +101,11 @@ MIT in each case. |#
   (let ((colon (string-find-next-char string #\:)))
     (cond ((not colon)
 	   (receiver false string))
+	  #|
+	  ;; CON:,  PRN:, etc. are valid devices.
 	  ((not (= colon 1))
 	   (error "dos/parse-namestring: Invalid drive name" string))
+	  |#
 	  (else
 	   (receiver (substring string 0 (1+ colon))
 		     (substring string (1+ colon)
