@@ -1,12 +1,12 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Id: config,v 1.30 1998/07/19 20:35:01 cph Exp $
+# $Id: config,v 1.31 2000/01/31 03:32:05 cph Exp $
 # Modelled on the configuration script for GNU CC
 # The section between lines is the copyright prefix from the GNU CC config.
 #----------------------------------------------------------------------
 
 #   Copyright (C) 1988 Free Software Foundation, Inc.
-#   Copyright (C) 1988-1998 Massachusetts Institute of Technology
+#   Copyright (C) 1988-2000 Massachusetts Institute of Technology
 
 #This file is part of GNU CC.
 
@@ -44,7 +44,7 @@ usage()
 	echo "mips-ultrix dec-3100 dec-5100 pmax nws3250 sgi-irix4 sgi-irix6"
 	echo "hp9k300 hp9k400 hp9k700 hp9k800 next"
 	echo "sun3 sun3-os3 sun3-nfp sun3-os3-nfp sun4 sparc"
-	echo "i386-sysv 386bsd umax i386-linux"
+	echo "i386-sysv 386bsd umax i386-linux i386-freebsd"
 	echo "vax-bsd42 vax-bsd43 vax-ultrix"
 	echo "rs6000"
 	if [ -r config.out ]
@@ -98,6 +98,12 @@ discriminate()
  		;;
  	i386-linux)
  		system_file=linux
+ 		machine_file=i386
+ 		cmpint_file=i386.h
+		cmpaux_file=i386.m4
+ 		;;
+ 	i386-freebsd)
+ 		system_file=freebsd
  		machine_file=i386
  		cmpint_file=i386.h
 		cmpaux_file=i386.m4
@@ -310,16 +316,16 @@ perform()
 progname=$0
 
 remove=rm
-hard_link=ln
-symbolic_link='ln -s'
+hard_link="ln -f"
+symbolic_link="ln -sf"
 copy=cp
 move=mv
 edit=sed
 
 #for Test
 #remove="echo rm"
-#hard_link="echo ln"
-#symbolic_link="echo ln -s"
+#hard_link="echo ln -f"
+#symbolic_link="echo ln -sf"
 #copy="echo cp"
 #move="echo mv"
 #edif="echo sed"
