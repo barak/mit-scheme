@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.55 2000/07/05 20:03:20 cph Exp $
+;;; $Id: imail-file.scm,v 1.56 2000/07/05 20:49:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -64,9 +64,15 @@
   (let ((finish
 	 (lambda (string)
 	   (merge-pathnames
-	    (decorated-string-append
-	     "" "/" ""
-	     (map url:decode-string (burst-string string #\/ #f)))
+	    (let ((s
+		   (decorated-string-append
+		    "" "/" ""
+		    (map url:decode-string (burst-string string #\/ #f)))))
+	      (if (and (eq? (host/type-name (pathname-host default-pathname))
+			    'DOS)
+		       (re-string-match "/[a-z]:" s #t))
+		  (string-tail s 1)
+		  s))
 	    default-pathname))))
     (cond ((string-prefix? "//localhost/" string)
 	   (finish (string-tail string (string-length "//localhost"))))
