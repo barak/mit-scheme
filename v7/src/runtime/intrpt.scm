@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: intrpt.scm,v 14.19 1993/08/31 08:52:18 cph Exp $
+$Id: intrpt.scm,v 14.20 1994/01/29 21:36:07 adams Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -69,6 +69,9 @@ MIT in each case. |#
   set-fixed-objects-vector!
   (process-timer-clear 0)
   (real-timer-clear 0))
+
+;; These interrupt bit positions must be allocated to bits that fit in
+;; the datum field of a positive-fixnum.
 
 (define-integrable stack-overflow-slot 0)
 (define-integrable global-gc-slot 1)
