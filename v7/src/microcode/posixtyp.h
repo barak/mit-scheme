@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/posixtyp.h,v 1.1 1990/06/20 19:38:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/posixtyp.h,v 1.2 1990/07/30 16:37:57 jinx Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -66,7 +66,9 @@ typedef unsigned short mode_t;
 
 #ifndef _NLINK_T
 #define _NLINK_T
+#ifndef _ULTRIX
 typedef short nlink_t;
+#endif
 #endif
 
 #ifndef _PID_T

@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for Ultrix
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/ultrix.h,v 1.7 1990/06/20 19:55:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/ultrix.h,v 1.8 1990/07/30 16:34:13 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -39,7 +39,10 @@ MIT in each case. */
 /* This says we have curses terminal support for Edwin. */
 #define HAVE_CURSES
 
-#define C_SWITCH_SYSTEM -D_BSD4_2 -D_ULTRIX
+/* This is in mips.h for some reason. */
+/* #define LIB_DEBUG */
+
+#define C_SWITCH_SYSTEM -D_ULTRIX -D_BSD4_3
 
 #define LIBS_SYSTEM -ltermcap
 
@@ -71,7 +74,10 @@ MIT in each case. */
 
 #define LIBX11_SYSTEM -lc
 
-#define SOURCES_SYSTEM unixprim.c
-#define OBJECTS_SYSTEM unixprim.o
+/* #define SOURCES_SYSTEM unixprim.c */
+/* #define OBJECTS_SYSTEM unixprim.o */
 
 #define ALTERNATE_M4 s/ultrix.m4
+#ifndef INSTALL_PROGRAM
+#define INSTALL_PROGRAM cp
+#endif
