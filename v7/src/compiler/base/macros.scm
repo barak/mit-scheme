@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.10 1990/01/18 22:42:49 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.11 1992/07/05 13:31:40 jinx Exp $
 
-Copyright (c) 1988, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Compiler Macros
+;;; package: (compiler macros)
 
 (declare (usual-integrations))
 
@@ -55,7 +56,6 @@ MIT in each case. |#
 	      (DEFINE-VECTOR-SLOTS ,transform/define-vector-slots)
 	      (DESCRIPTOR-LIST ,transform/descriptor-list)
 	      (ENUMERATION-CASE ,transform/enumeration-case)
-	      (INST ,transform/inst)
 	      (INST-EA ,transform/inst-ea)
 	      (LAP ,transform/lap)
 	      (MAKE-LVALUE ,transform/make-lvalue)
@@ -268,10 +268,6 @@ MIT in each case. |#
 (define transform/lap
   (macro some-instructions
     (list 'QUASIQUOTE some-instructions)))
-
-(define transform/inst
-  (macro (the-instruction)
-    (list 'QUASIQUOTE the-instruction)))
 
 (define transform/inst-ea
   (macro (ea)
