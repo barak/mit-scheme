@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.87 1995/03/08 21:36:54 cph Exp $
+$Id: config.h,v 9.88 1995/06/14 22:58:19 cph Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -414,8 +414,9 @@ typedef unsigned long SCHEME_OBJECT;
    but we don't know about other 386 systems. 
  */
 
-/* Bug in Mach 3.0 for 386s floating point library. */
-#ifndef _MACH_UNIX
+/* Bug in Mach 3.0 for 386s floating point library, and for linux
+   1.2.9 running GCC 2.6.3.  */
+#if !(defined(_MACH_UNIX) || defined(__linux))
 #  define HAS_FLOOR
 #  define HAS_FREXP
 #  define HAS_MODF
