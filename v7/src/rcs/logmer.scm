@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: logmer.scm,v 1.9 1995/11/11 07:56:29 cph Exp $
+$Id: logmer.scm,v 1.10 1995/11/12 05:42:17 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -36,65 +36,65 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define trace-port false)
+(define (rcs-directory-log directory #!optional output-file)
+  (let ((output-file
+	 (merge-pathnames (if (or (default-object? output-file)
+				  (not output-file))
+			      "RCS.log"
+			      output-file)
+			  (pathname-as-directory directory)))
+	(pathnames (rcs-directory-read directory)))
+    (if (let ((time (file-modification-time-indirect output-file)))
+	  (or (not time)
+	      (there-exists? pathnames
+		(lambda (w.r)
+		  (> (file-modification-time-indirect (cdr w.r)) time)))))
+	(let ((port (notification-output-port)))
+	  (newline port)
+	  (write-string "total files: " port)
+	  (write (length pathnames) port)
+	  (let ((entries (read-entries pathnames port)))
+	    (newline port)
+	    (write-string "total entries: " port)
+	    (write (length entries) port)
+	    (let ((entries (sort-entries entries)))
+	      (newline port)
+	      (write-string "sorting finished" port)
+	      (call-with-output-file output-file
+		(lambda (port)
+		  (format/entries entries port)))))))))
 
-(define (rcs-directory-log output-file directory)
-  (format-to-file
-   output-file
-   (fluid-let ((trace-port (nearest-cmdl/port)))
-     (let ((entries
-	    (sort-entries
-	     (let ((entries
-		    (read-entries
-		     (let ((pathnames (rcs-directory-read directory)))
-		       (newline trace-port)
-		       (write-string "total files: " trace-port)
-		       (write (length pathnames) trace-port)
-		       pathnames))))
-	       (newline trace-port)
-	       (write-string "total entries: " trace-port)
-	       (write (length entries) trace-port)
-	       entries))))
-       (newline trace-port)
-       (write-string "sorting finished" trace-port)
-       entries))))
-
-(define (format-to-file output-file entries)
-  (with-output-to-file output-file
-    (lambda ()
-      (format/entries entries))))
-
-(define (format/entries entries)
+(define (format/entries entries port)
   (let ((groups (compress-entries entries)))
     (if (not (null? groups))
 	(begin
-	  (format/group (car groups))
+	  (format/group (car groups) port)
 	  (for-each (lambda (group)
-		      (write-string "----------------------------")
-		      (newline)
-		      (format/group group))
+		      (write-string "----------------------------" port)
+		      (newline port)
+		      (format/group group port))
 		    (cdr groups))))))
 
-(define (format/group group)
+(define (format/group group port)
   (for-each (lambda (entry)
-	      (format/entry (cdr entry) (car entry)))
+	      (format/entry (cdr entry) (car entry) port))
 	    group)
-  (newline)
-  (write-string (delta/log (car (car group))))
-  (newline))
+  (newline port)
+  (write-string (delta/log (car (car group))) port)
+  (newline port))
 
-(define (format/entry filename delta)
-  (write-string "file: ")
-  (write-string filename)
-  (write-string ";  revision: ")
-  (write-string (delta/number delta))
-  (write-string "\ndate: ")
-  (write-string (date->string (delta/date delta)))
-  (write-string ";  author: ")
-  (write-string (delta/author delta))
-  (write-string ";  state: ")
-  (write-string (delta/state delta))
-  (newline))
+(define (format/entry filename delta port)
+  (write-string "file: " port)
+  (write-string filename port)
+  (write-string ";  revision: " port)
+  (write-string (delta/number delta) port)
+  (write-string "\ndate: " port)
+  (write-string (date->string (delta/date delta)) port)
+  (write-string ";  author: " port)
+  (write-string (delta/author delta) port)
+  (write-string ";  state: " port)
+  (write-string (delta/state delta) port)
+  (newline port))
 
 (define (compress-entries entries)
   (if (null? entries)
@@ -115,14 +115,14 @@ MIT in each case. |#
 		      (receiver (cons (car entries) similar)
 				entries*))))))))
 
-(define (read-entries pairs)
+(define (read-entries pairs notification-port)
   (let ((prefix (greatest-common-prefix (map car pairs))))
     (append-map!
      (lambda (w.r)
        (map (let ((filename (->namestring (enough-pathname (car w.r) prefix))))
 	      (lambda (delta)
 		(cons delta filename)))
-	    (read-file (cdr w.r))))
+	    (read-file (cdr w.r) notification-port)))
      pairs)))
 
 (define (sort-entries entries)
@@ -130,12 +130,12 @@ MIT in each case. |#
 	(lambda (x y)
 	  (date<? (delta/date (car y)) (delta/date (car x))))))
 
-(define (read-file pathname)
-  (if trace-port
+(define (read-file pathname notification-port)
+  (if notification-port
       (begin
-	(newline trace-port)
-	(write-string "read-file " trace-port)
-	(write-string (->namestring pathname) trace-port)))
+	(newline notification-port)
+	(write-string "read-file " notification-port)
+	(write-string (->namestring pathname) notification-port)))
   (let ((deltas (rcstext->deltas (rcs/read-file pathname 'LOG-ONLY))))
     (for-each (lambda (delta)
 		(set-delta/log! delta
