@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.16 1995/08/08 16:20:41 adams Exp $
+$Id: midend.scm,v 1.17 1995/08/18 22:16:20 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -157,7 +157,9 @@ Example:
 	   (or (eq? *phases-to-pp/ann* 'all)
 	       (memq *current-phase* *phases-to-pp/ann*)))
       (begin
-	(pp/ann result *code-rewrite-table*)
+	(let ((table *code-rewrite-table*))
+	  (pp/ann result
+		  (lambda (e) (monotonic-strong-eq-hash-table/get table e #F))))
 	(pp `(phase is ,*current-phase*))
 	(bkpt ";; proceed"))))
 |#
