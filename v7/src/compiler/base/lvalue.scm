@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.18 1990/05/03 15:04:56 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.19 1990/11/19 22:50:15 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -257,7 +257,21 @@ MIT in each case. |#
 	 (or (rvalue/constant? value)
 	     (and (rvalue/procedure? value)
 		  (procedure/virtually-open? value))
-	     (lvalue-get lvalue 'INTEGRATED)))))
+	     (lvalue-get lvalue 'INTEGRATED))
+	 (if (lvalue/variable? lvalue)
+	     (let ((block (variable-block lvalue)))
+	       (if (stack-block? block)
+		   (let ((procedure (block-procedure block)))
+		     (cond ((procedure-always-known-operator? procedure)
+			    true)
+			   ((or (memq lvalue
+				      (cdr (procedure-required procedure)))
+				(memq lvalue (procedure-optional procedure))
+				(eq? lvalue (procedure-rest procedure)))
+			    false)
+			   (else true)))
+		   true))
+	     true))))
 
 (define (variable-unused? variable)
   (or (lvalue-integrated? variable)

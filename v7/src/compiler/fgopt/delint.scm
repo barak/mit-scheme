@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/delint.scm,v 1.2 1989/10/26 07:36:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/delint.scm,v 1.3 1990/11/19 22:50:46 cph Rel $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,30 +46,28 @@ MIT in each case. |#
 (define (delete-integrated-parameters! block)
   (let ((deletions '())
 	(procedure (block-procedure block)))
-    (if (procedure-interface-optimizible? procedure)
-	(begin
-	  (let ((delete-integrations
-		 (lambda (get-names set-names!)
-		   (with-values
-		       (lambda ()
-			 (find-integrated-variables (get-names procedure)))
-		     (lambda (not-integrated integrated)
-		       (if (not (null? integrated))
-			   (begin
-			     (set-names! procedure not-integrated)
-			     (set! deletions
-				   (eq-set-union deletions integrated)))))))))
-	    (delete-integrations (lambda (procedure)
-				   (cdr (procedure-required procedure)))
-				 (lambda (procedure required)
-				   (set-cdr! (procedure-required procedure)
-					     required)))
-	    (delete-integrations procedure-optional set-procedure-optional!))
-	  (let ((rest (procedure-rest procedure)))
-	    (if (and rest (variable-unused? rest))
-		(begin
-		  (set! deletions (eq-set-adjoin deletions rest))
-		  (set-procedure-rest! procedure false))))))
+    (let ((delete-integrations
+	   (lambda (get-names set-names!)
+	     (with-values
+		 (lambda ()
+		   (find-integrated-variables (get-names procedure)))
+	       (lambda (not-integrated integrated)
+		 (if (not (null? integrated))
+		     (begin
+		       (set-names! procedure not-integrated)
+		       (set! deletions
+			     (eq-set-union deletions integrated)))))))))
+      (delete-integrations (lambda (procedure)
+			     (cdr (procedure-required procedure)))
+			   (lambda (procedure required)
+			     (set-cdr! (procedure-required procedure)
+				       required)))
+      (delete-integrations procedure-optional set-procedure-optional!))
+    (let ((rest (procedure-rest procedure)))
+      (if (and rest (variable-unused? rest))
+	  (begin
+	    (set! deletions (eq-set-adjoin deletions rest))
+	    (set-procedure-rest! procedure false))))
     (with-values
 	(lambda ()
 	  (find-integrated-bindings (procedure-names procedure)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.16 1990/05/03 15:05:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.17 1990/11/19 22:50:26 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -160,10 +160,6 @@ MIT in each case. |#
   ;; parent frame is found from the operator.  Currently only avoided
   ;; for trivial closures.
   (not (procedure/trivial-closure? procedure)))
-
-(define (procedure-interface-optimizible? procedure)
-  (and (stack-block? (procedure-block procedure))
-       (procedure-always-known-operator? procedure)))
 
 (define-integrable (procedure-application-unique? procedure)
   (null? (cdr (procedure-applications procedure))))

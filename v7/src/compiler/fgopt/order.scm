@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.14 1990/02/02 18:38:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.15 1990/11/19 22:50:55 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -290,18 +290,12 @@ MIT in each case. |#
 	  (if (not (stack-block? model-block))
 	      standard
 	      (let ((thunk
-		     (cond
-
-		      ;; At this point, the following should be true.
-		      ;; (procedure-interface-optimizible? model)
-		      ((procedure-always-known-operator? model) optimized)
-
-		      ;; The behavior of known lexpr closures should
-		      ;; be improved at least when the listification
-		      ;; is trivial (0 or 1 args).
-		      ((procedure-rest model) standard)
-
-		      (else known))))
+		     (cond ((procedure-always-known-operator? model) optimized)
+			   ;; The behavior of known lexpr closures should
+			   ;; be improved at least when the listification
+			   ;; is trivial (0 or 1 args).
+			   ((procedure-rest model) standard)
+			   (else known))))
 		(if (and (procedure/open? model)
 			 (stack-block/static-link? model-block))
 		    (lambda ()
