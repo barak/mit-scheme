@@ -1,0 +1,8 @@
+Problems:
+
+
+[] Stackopt is requitres too much storage.  Investigate.
+
+[] Indexify should be dropped.  For large programs, fully 32% of the
+program (measured in pairs) is %vector-index expressions after
+cleanup/4 (closconv/2 leaves it at about 25%).
