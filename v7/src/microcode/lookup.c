@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookup.c,v 9.59 2001/07/31 03:11:48 cph Exp $
+$Id: lookup.c,v 9.60 2001/08/01 02:17:08 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -82,6 +82,11 @@ extern SCHEME_OBJECT compiled_block_environment
    ? UNASSIGNED_OBJECT							\
    : (value))
 
+#define MAP_FROM_UNASSIGNED(value)					\
+  (((value) == UNASSIGNED_OBJECT)					\
+   ? EXTERNAL_UNASSIGNED_OBJECT						\
+   : (value))
+
 #define EXTERNAL_UNASSIGNED_OBJECT (Get_Fixed_Obj_Slot (Non_Object))
 
 /***** Forward References *****/
@@ -100,12 +105,12 @@ static long handle_cache_reference
   (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, unsigned long, unsigned int);
 static long add_cache_reference
   (SCHEME_OBJECT *, SCHEME_OBJECT, SCHEME_OBJECT, unsigned long, unsigned int);
+static long add_reference
+  (SCHEME_OBJECT, unsigned int, SCHEME_OBJECT, unsigned long);
 static long install_cache
   (SCHEME_OBJECT, SCHEME_OBJECT, unsigned long, unsigned int);
 static long install_operator_cache
   (SCHEME_OBJECT, SCHEME_OBJECT, unsigned long);
-static long add_reference
-  (SCHEME_OBJECT, unsigned int, SCHEME_OBJECT, unsigned long);
 static long update_cache_references
   (SCHEME_OBJECT *, SCHEME_OBJECT, SCHEME_OBJECT);
 static unsigned long split_cache_references
@@ -186,7 +191,7 @@ lookup_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 static long
 lookup_variable_cache (SCHEME_OBJECT cache, SCHEME_OBJECT * value_ret)
 {
-  SCHEME_OBJECT value = (* (GET_CACHE_CELL (cache)));
+  SCHEME_OBJECT value = (GET_CACHE_VALUE (cache));
   switch (get_trap_kind (value))
     {
     case NON_TRAP_KIND:
@@ -264,19 +269,18 @@ long
 assign_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 		 SCHEME_OBJECT value, SCHEME_OBJECT * value_ret)
 {
-  SCHEME_OBJECT * cell;
-
   if (!ENVIRONMENT_P (environment))
     return (ERR_BAD_FRAME);
-  cell
-    = (find_binding_cell (environment,
-			  (((OBJECT_TYPE (symbol)) == TC_VARIABLE)
-			   ? (GET_VARIABLE_SYMBOL (symbol))
-			   : symbol)));
-  if (cell == 0)
-    return (ERR_UNBOUND_VARIABLE);
-
-  return (assign_variable_end (cell, value, value_ret, 0));
+  {
+    SCHEME_OBJECT * cell
+      = (find_binding_cell (environment,
+			    (((OBJECT_TYPE (symbol)) == TC_VARIABLE)
+			     ? (GET_VARIABLE_SYMBOL (symbol))
+			     : symbol)));
+    if (cell == 0)
+      return (ERR_UNBOUND_VARIABLE);
+    return (assign_variable_end (cell, value, value_ret, 0));
+  }
 }
 
 static long
@@ -287,20 +291,13 @@ assign_variable_end (SCHEME_OBJECT * cell, SCHEME_OBJECT value,
   switch (get_trap_kind (old_value))
     {
     case NON_TRAP_KIND:
-      (*cell) = (MAP_TO_UNASSIGNED (value));
-      (*value_ret) = old_value;
-      return (PRIM_DONE);
+    case TRAP_UNASSIGNED:
+      break;
 
     case TRAP_UNBOUND:
-      /* Should only occur in global environment.  */
-      if (!force_p)
-	return (ERR_UNBOUND_VARIABLE);
-      /* fall through */
-
-    case TRAP_UNASSIGNED:
-      (*cell) = (MAP_TO_UNASSIGNED (value));
-      (*value_ret) = EXTERNAL_UNASSIGNED_OBJECT;
-      return (PRIM_DONE);
+      if (force_p)
+	break;
+      return (ERR_UNBOUND_VARIABLE);
 
     case TRAP_COMPILER_CACHED:
       return
@@ -310,38 +307,36 @@ assign_variable_end (SCHEME_OBJECT * cell, SCHEME_OBJECT value,
     default:
       return (ERR_ILLEGAL_REFERENCE_TRAP);
     }
+  (*value_ret) = (MAP_FROM_UNASSIGNED (old_value));
+  (*cell) = (MAP_TO_UNASSIGNED (value));
+  return (PRIM_DONE);
 }
 
 static long
 assign_variable_cache (SCHEME_OBJECT cache, SCHEME_OBJECT value,
 		       SCHEME_OBJECT * value_ret, int force_p)
 {
-  SCHEME_OBJECT * cell = (GET_CACHE_CELL (cache));
-  SCHEME_OBJECT old_value = (*cell);
+  SCHEME_OBJECT old_value = (GET_CACHE_VALUE (cache));
   switch (get_trap_kind (old_value))
     {
     case NON_TRAP_KIND:
-      (*value_ret) = old_value;
+    case TRAP_UNASSIGNED:
       break;
 
     case TRAP_UNBOUND:
-      /* Should only occur in global environment.  */
-      if (!force_p)
-	return (ERR_UNBOUND_VARIABLE);
-      /* fall through */
-
-    case TRAP_UNASSIGNED:
-      (*value_ret) = EXTERNAL_UNASSIGNED_OBJECT;
-      break;
+      if (force_p)
+	break;
+      return (ERR_UNBOUND_VARIABLE);
 
     default:
       return (ERR_ILLEGAL_REFERENCE_TRAP);
     }
+  (*value_ret) = (MAP_FROM_UNASSIGNED (old_value));
   /* Perform the assignment.  If there are any operator references to
      this variable, update their links.  */
   if (PAIR_P (GET_CACHE_REFERENCES_OPERATOR (GET_CACHE_REFERENCES (cache))))
     return (update_uuo_links (cache, (MAP_TO_UNASSIGNED (value))));
-  (*cell) = (MAP_TO_UNASSIGNED (value));
+  SET_CACHE_VALUE (cache, (MAP_TO_UNASSIGNED (value)));
   return (PRIM_DONE);
 }
 
@@ -443,21 +438,18 @@ link_variable (SCHEME_OBJECT target, SCHEME_OBJECT source,
     return (ERR_UNBOUND_VARIABLE);
 
   target_cell = (scan_frame (target, symbol));
-
   if ((target_cell != 0)
       && ((get_trap_kind (*target_cell)) == TRAP_COMPILER_CACHED))
     {
+      SCHEME_OBJECT target_cache = (GET_TRAP_CACHE (*target_cell));
       if (source_kind == TRAP_COMPILER_CACHED)
 	{
-	  RETURN_IF_ERROR
-	    (merge_caches ((GET_TRAP_CACHE (*target_cell)),
-			   (GET_TRAP_CACHE (*source_cell))));
-	  (* (GET_CACHE_CELL (GET_TRAP_CACHE (*target_cell))))
-	    = (* (GET_CACHE_CELL (GET_TRAP_CACHE (*source_cell))));
+	  SCHEME_OBJECT source_cache = (GET_TRAP_CACHE (*source_cell));
+	  RETURN_IF_ERROR (merge_caches (target_cache, source_cache));
+	  SET_CACHE_VALUE (target_cache, (GET_CACHE_VALUE (source_cache)));
 	}
       else
-	(* (GET_CACHE_CELL (GET_TRAP_CACHE (*target_cell))))
-	  = (*source_cell);
+	SET_CACHE_VALUE (target_cache, (*source_cell));
       (*source_cell) = (*target_cell);
       return (PRIM_DONE);
     }
@@ -608,7 +600,7 @@ compiler_assignment_trap (SCHEME_OBJECT cache, SCHEME_OBJECT value,
 {
   return
     (assign_variable_cache
-     ((((* (GET_CACHE_CELL (cache))) == EXPENSIVE_OBJECT)
+     ((((GET_CACHE_VALUE (cache)) == EXPENSIVE_OBJECT)
        /* The cache is a clone.  Get the real cache object.  */
        ? (GET_CACHE_CLONE (cache))
        : cache),
@@ -689,7 +681,7 @@ add_cache_reference (SCHEME_OBJECT * cell,
     return (install_cache (cache, block, offset, reference_kind));
   }
 }
-
+
 /* Add a new cached reference to the cached reference list pointed at
    by slot.  Attempt to reuse pairs which have been "emptied" by the
    garbage collector.  */
@@ -752,7 +744,7 @@ static long
 install_operator_cache (SCHEME_OBJECT cache,
 			SCHEME_OBJECT block, unsigned long offset)
 {
-  SCHEME_OBJECT value = (* (GET_CACHE_CELL (cache)));
+  SCHEME_OBJECT value = (GET_CACHE_VALUE (cache));
   return
     ((REFERENCE_TRAP_P (value))
      ? (make_fake_uuo_link (cache, block, offset))
@@ -917,11 +909,10 @@ update_uuo_links (SCHEME_OBJECT cache, SCHEME_OBJECT new_value)
 	   it and change any assignment references to refer to the
 	   cache itself.  */
 	flush_clone (cache);
-	(* (GET_CACHE_CELL (cache))) = new_value;
       }
     GC_CHECK (n_operators * SPACE_PER_UUO_LINK);
   }
-  (* (GET_CACHE_CELL (cache))) = new_value;
+  SET_CACHE_VALUE (cache, new_value);
   {
     SCHEME_OBJECT operators
       = (GET_CACHE_REFERENCES_OPERATOR (GET_CACHE_REFERENCES (cache)));
