@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 1.2 1987/07/02 20:45:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.1 1987/12/04 20:03:56 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -32,15 +32,52 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Compiler DFG Datatypes: Variable Nodes
+;;;; Left (Hand Side) Values
 
 (declare (usual-integrations))
 
-(define-vnode variable block name assigned? in-cell? normal-offset
-  declarations)
+(define-root-type lvalue
+  forward-links		;lvalues that sink values from here
+  backward-links	;lvalues that source values to here
+  initial-values	;rvalues that are possible sources
+  values-cache		;(see `lvalue-values')
+  known-value		;either #F or the rvalue which is the unique value
+  applications		;applications whose operators are this lvalue
+  passed-in?		;true iff this lvalue gets an unknown value
+  passed-out?		;true iff this lvalue passes its value to unknown place
+  marks			;attribute marks list (see `lvalue-mark-set?')
+  )
+
+;;; Note that the rvalues stored in `initial-values', `values-cache',
+;;; and `known-value' are NEVER references.
+
+(define *lvalues*)
+
+(define (make-lvalue tag . extra)
+  (let ((lvalue
+	 (list->vector
+	  (cons* tag '() '() '() 'NOT-CACHED false '() false false '()
+		 extra))))
+    (set! *lvalues* (cons lvalue *lvalues*))
+    lvalue))
+
+(define (add-lvalue-application! lvalue application)
+  (set-lvalue-applications! lvalue
+			    (cons application
+				  (lvalue-applications lvalue))))
+
+(define-lvalue variable
+  block		;block in which variable is defined
+  name		;name of variable [symbol]
+  assigned?	;true iff variable appears in an assignment
+  in-cell?	;true iff variable requires cell at runtime
+  (normal-offset ;offset of variable within `block'
+   popping-limit) ;popping-limit for continuation variables
+  declarations	;list of declarations for this variable
+  )
 
 (define (make-variable block name)
-  (make-vnode variable-tag block name false false false '()))
+  (make-lvalue variable-tag block name false false false '()))
 
 (define variable-assoc
   (association-procedure eq? variable-name))
@@ -50,27 +87,157 @@ MIT in each case. |#
       (cdr (assq variable (block-closure-offsets block)))
       (variable-normal-offset variable)))
 
-(define-unparser variable-tag
+(define-vector-tag-unparser variable-tag
   (lambda (variable)
     (write-string "VARIABLE ")
     (write (variable-name variable))))
 
-(define-vnode access environment name)
+(define-integrable (lvalue/variable? lvalue)
+  (eq? (tagged-vector/tag lvalue) variable-tag))
 
-(define (make-access environment name)
-  (make-vnode access-tag environment name))
+(let-syntax
+    ((define-named-variable
+      (macro (name)
+	(let ((symbol
+	       (string->symbol
+		(string-append "#["
+			       (string-downcase (symbol->string name))
+			       "]"))))
+	  `(BEGIN (DEFINE-INTEGRABLE
+		    (,(symbol-append 'MAKE- name '-VARIABLE) BLOCK)
+		    (MAKE-VARIABLE BLOCK ',symbol))
+		  (DEFINE-INTEGRABLE
+		    (,(symbol-append 'VARIABLE/ name '-VARIABLE?) LVALUE)
+		    (EQ? (VARIABLE-NAME LVALUE) ',symbol))
+		  (DEFINE (,(symbol-append name '-VARIABLE?) LVALUE)
+		    (AND (VARIABLE? LVALUE)
+			 (EQ? (VARIABLE-NAME LVALUE) ',symbol))))))))
+  (define-named-variable continuation)
+  (define-named-variable value))
+
+;;;; Linking
 
-(define-vnode temporary type conflicts allocation)
+;;; Eventually, links may be triples consisting of a source, a sink,
+;;; and a set of paths.  Each path will be an ordered sequence of
+;;; actions.  Actions will keep track of what paths they are part of,
+;;; and paths will keep track of what links they are part of.  But for
+;;; now, this significantly cheaper representation will do.
 
-(define (make-temporary)
-  (make-vnode temporary-tag false '() false))
+(define (lvalue-connect! lvalue rvalue)
+  (if (rvalue/reference? rvalue)
+      (lvalue-connect!:lvalue lvalue (reference-lvalue rvalue))
+      (lvalue-connect!:rvalue lvalue rvalue)))
 
-(define-vnode value-register)
+(define (lvalue-connect!:rvalue lvalue rvalue)
+  (if (not (memq rvalue (lvalue-initial-values lvalue)))
+      (set-lvalue-initial-values! lvalue
+				  (cons rvalue
+					(lvalue-initial-values lvalue)))))
 
-(define (make-value-register)
-  (make-vnode value-register-tag))
+(define (lvalue-connect!:lvalue to from)
+  (if (not (memq from (lvalue-backward-links to)))
+      (begin
+	(set-lvalue-backward-links! to (cons from (lvalue-backward-links to)))
+	(set-lvalue-forward-links! from (cons to (lvalue-forward-links from)))
+	(for-each (lambda (from)
+		    (lvalue-connect!:lvalue to from))
+		  (lvalue-backward-links from))
+	(for-each (lambda (to)
+		    (lvalue-connect!:lvalue to from))
+		  (lvalue-forward-links to)))))
 
-(define-vnode value-ignore)
+(define (lvalue-values lvalue)
+  ;; No recursion is needed here because the dataflow graph is
+  ;; transitively closed when this is run.
+  (if (eq? 'NOT-CACHED (lvalue-values-cache lvalue))
+      (let ((values
+	     (eq-set-union* (lvalue-initial-values lvalue)
+			    (map lvalue-initial-values
+				 (lvalue-backward-links lvalue)))))
+	(set-lvalue-values-cache! lvalue values)
+	values)
+      (lvalue-values-cache lvalue)))
 
-(define (make-value-ignore)
-  (make-vnode value-ignore-tag))
+(define (reset-lvalue-cache! lvalue)
+  (set-lvalue-values-cache! lvalue 'NOT-CACHED)
+  (for-each (lambda (lvalue)
+	      (set-lvalue-values-cache! lvalue 'NOT-CACHED))
+	    (lvalue-forward-links lvalue)))
+
+;;;; Attribute Marking
+
+(define (lvalue-mark-set! lvalue mark)
+  (if (not (memq mark (lvalue-marks lvalue)))
+      (set-lvalue-marks! lvalue (cons mark (lvalue-marks lvalue)))))
+
+(define (lvalue-mark-clear! lvalue mark)
+  (set-lvalue-marks! lvalue (delq! mark (lvalue-marks lvalue))))
+
+(define-integrable (lvalue-mark-set? lvalue mark)
+  (memq mark (lvalue-marks lvalue)))
+#|
+(define-integrable (variable-auxiliary! variable)
+  (set-variable-auxiliary?! variable true))
+
+(define (variable-assigned! variable)
+  (set-variable-assignments! variable (1+ (variable-assignments variable))))
+
+(define (variable-assigned? variable)
+  (> (variable-assignments variable)
+     (if (variable-auxiliary? variable) 1 0)))
+|#
+(define-integrable (variable-assigned! variable)
+  (set-variable-assigned?! variable true))
+
+(define (lvalue-integrated? lvalue)
+  (let ((value (lvalue-known-value lvalue)))
+    (and value
+	 (or (rvalue/constant? value)
+	     (and (rvalue/procedure? value)
+		  (procedure/open? value))))))
+
+(define (lvalue=? lvalue lvalue*)
+  (or (eq? lvalue lvalue*)
+      (eq-set-same-set? (lvalue/source-set lvalue)
+			(lvalue/source-set lvalue*))))
+
+(define (lvalue/unique-source lvalue)
+  (let ((source-set (lvalue/source-set lvalue)))
+    (and (not (null? source-set))
+	 (null? (cdr source-set))
+	 (car source-set))))
+
+(define (lvalue/source-set lvalue)
+  (list-transform-positive
+      (eq-set-adjoin lvalue (lvalue-backward-links lvalue))
+    lvalue/source?))
+
+(define (lvalue/external-source-set lvalue)
+  (list-transform-positive
+      (eq-set-adjoin lvalue (lvalue-backward-links lvalue))
+    lvalue/external-source?))
+
+(define (lvalue/source? lvalue)
+  (or (lvalue/external-source? lvalue)
+      (lvalue/internal-source? lvalue)))
+
+(define-integrable (lvalue/external-source? lvalue)
+  (eq? 'SOURCE (lvalue-passed-in? lvalue)))
+
+(define-integrable (lvalue/internal-source? lvalue)
+  (not (null? (lvalue-initial-values lvalue))))
+
+(define (variable-in-known-location? block variable)
+  (let ((definition-block (variable-block variable)))
+    (or (not (ic-block? definition-block))
+	;; If the block has no procedure, then we know nothing about
+	;; the locations of its bindings.
+	(and (rvalue/procedure? (block-procedure block))
+	     ;; If IC reference in same block as definition, then
+	     ;; incremental definitions cannot screw us.
+	     (eq? block definition-block)
+	     ;; Make sure that IC variables are bound!  A variable
+	     ;; that is not bound by the code being compiled still has
+	     ;; a "definition" block, which is the outermost IC block
+	     ;; of the expression in which the variable is referenced.
+	     (memq variable (block-bound-variables block))))))

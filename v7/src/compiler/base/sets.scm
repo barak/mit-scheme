@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/sets.scm,v 1.2 1987/06/26 02:22:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/sets.scm,v 4.1 1987/12/04 20:05:03 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -169,3 +169,29 @@ MIT in each case. |#
 (define (eqv-set-same-set? x y)
   (and (eqv-set-subset? x y)
        (eqv-set-subset? y x)))
+
+(define (list->eq-set elements)
+  (if (null? elements)
+      '()
+      (eq-set-adjoin (car elements)
+		     (list->eq-set (cdr elements)))))
+
+(define (list->eqv-set elements)
+  (if (null? elements)
+      '()
+      (eqv-set-adjoin (car elements)
+		      (list->eqv-set (cdr elements)))))
+
+(define (map->eq-set procedure items)
+  (let loop ((items items))
+    (if (null? items)
+	'()
+	(eq-set-adjoin (procedure (car items))
+		       (loop (cdr items))))))
+
+(define (map->eqv-set procedure items)
+  (let loop ((items items))
+    (if (null? items)
+	'()
+	(eqv-set-adjoin (procedure (car items))
+			(loop (cdr items))))))

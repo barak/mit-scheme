@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 1.61 1987/08/07 17:04:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.1 1987/12/04 20:04:06 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -73,12 +73,6 @@ MIT in each case. |#
 		    '()))))
 	     (cdr expression)))))
 
-(define enable-integration-declarations
-  true)
-
-(define enable-expansion-declarations
-  true)
-
 (let ()
 
 (define (parse-define-syntax pattern body if-variable if-lambda)
@@ -89,31 +83,34 @@ MIT in each case. |#
 		 ((symbol? (car pattern))
 		  (if-lambda pattern body))
 		 (else
-		  (error "Illegal name" parse-define-syntax (car pattern))))))
+		  (error "Illegal name" (car pattern))))))
 	((symbol? pattern)
 	 (if-variable pattern body))
 	(else
-	 (error "Illegal name" parse-define-syntax pattern))))
+	 (error "Illegal name" pattern))))
 
 (define lambda-list->bound-names
-  (let ((accumulate
-	 (lambda (lambda-list)
-	   (cons (let ((parameter (car lambda-list)))
-		   (if (pair? parameter) (car parameter) parameter))
-		 (lambda-list->bound-names (cdr lambda-list))))))
-    (named-lambda (lambda-list->bound-names lambda-list)
-      (cond ((symbol? lambda-list)
-	     lambda-list)
-	    ((null? lambda-list) '())
-	    ((not (pair? lambda-list))
-	     (error "Illegal rest variable" lambda-list))
-	    ((eq? (car lambda-list)
-		  (access lambda-optional-tag lambda-package))
-	     (if (pair? (cdr lambda-list))
-		 (accumulate (cdr lambda-list))
-		 (error "Missing optional variable" lambda-list)))
-	    (else
-	     (accumulate lambda-list))))))
+  (letrec ((lambda-list->bound-names
+	    (lambda (lambda-list)
+	      (cond ((null? lambda-list)
+		     '())
+		    ((pair? lambda-list)
+		     (if (eq? (car lambda-list)
+			      (access lambda-optional-tag lambda-package))
+			 (if (pair? (cdr lambda-list))
+			     (accumulate (cdr lambda-list))
+			     (error "Missing optional variable" lambda-list))
+			 (accumulate lambda-list)))
+		    ((symbol? lambda-list)
+		     (list lambda-list))
+		    (else
+		     (error "Illegal rest variable" lambda-list)))))
+	   (accumulate
+	    (lambda (lambda-list)
+	      (cons (let ((parameter (car lambda-list)))
+		      (if (pair? parameter) (car parameter) parameter))
+		    (lambda-list->bound-names (cdr lambda-list))))))
+    lambda-list->bound-names))
 
 (syntax-table-define compiler-syntax-table 'DEFINE-EXPORT
   (macro (pattern . body)
@@ -126,7 +123,7 @@ MIT in each case. |#
 
 (syntax-table-define compiler-syntax-table 'DEFINE-INTEGRABLE
   (macro (pattern . body)
-    (if enable-integration-declarations
+    (if compiler:enable-integration-declarations?
 	(parse-define-syntax pattern body
 	  (lambda (name body)
 	    `(BEGIN (DECLARE (INTEGRATE ,pattern))
@@ -166,35 +163,53 @@ MIT in each case. |#
 	'*THE-NON-PRINTING-OBJECT*
 	`(BEGIN ,@(loop slots index)))))
 
+(syntax-table-define compiler-syntax-table 'DEFINE-ROOT-TYPE
+  (macro (type . slots)
+    (let ((tag-name (symbol-append type '-TAG)))
+      `(BEGIN (DEFINE ,tag-name
+		(MAKE-VECTOR-TAG FALSE ',type FALSE))
+	      (DEFINE ,(symbol-append type '?)
+		(TAGGED-VECTOR/SUBCLASS-PREDICATE ,tag-name))
+	      (DEFINE-VECTOR-SLOTS ,type 1 ,@slots)
+	      (SET-VECTOR-TAG-DESCRIPTION!
+	       ,tag-name
+	       (LAMBDA (,type)
+		 (DESCRIPTOR-LIST ,type ,@slots)))))))
+
 (let-syntax
  ((define-type-definition
-    (macro (name reserved)
+    (macro (name reserved enumeration)
       (let ((parent (symbol-append name '-TAG)))
 	`(SYNTAX-TABLE-DEFINE COMPILER-SYNTAX-TABLE
 			      ',(symbol-append 'DEFINE- name)
 	   (macro (type . slots)
 	     (let ((tag-name (symbol-append type '-TAG)))
 	       `(BEGIN (DEFINE ,tag-name
-			 (MAKE-VECTOR-TAG ,',parent ',type))
+			 (MAKE-VECTOR-TAG ,',parent ',type ,',enumeration))
 		       (DEFINE ,(symbol-append type '?)
-			 (TAGGED-VECTOR-PREDICATE ,tag-name))
+			 (TAGGED-VECTOR/PREDICATE ,tag-name))
 		       (DEFINE-VECTOR-SLOTS ,type ,,reserved ,@slots)
-		       (DEFINE-VECTOR-METHOD ,tag-name ':DESCRIBE
-			 (LAMBDA (,type)
-			   (APPEND!
-			    ((VECTOR-TAG-METHOD ,',parent ':DESCRIBE) ,type)
-			    (DESCRIPTOR-LIST ,type ,@slots))))))))))))
- (define-type-definition snode 4)
- (define-type-definition pnode 5)
- (define-type-definition rvalue 1)
- (define-type-definition vnode 10))
+		       (SET-VECTOR-TAG-DESCRIPTION!
+			,tag-name
+			(LAMBDA (,type)
+			  (APPEND!
+			   ((VECTOR-TAG-DESCRIPTION ,',parent) ,type)
+			   (DESCRIPTOR-LIST ,type ,@slots))))))))))))
+ (define-type-definition snode 4 false)
+ (define-type-definition pnode 5 false)
+ (define-type-definition rvalue 2 rvalue-types)
+ (define-type-definition lvalue 10 false))
 
 (syntax-table-define compiler-syntax-table 'DESCRIPTOR-LIST
   (macro (type . slots)
-    `(LIST ,@(map (lambda (slot)
-		    (let ((ref-name (symbol-append type '- slot)))
-		      ``(,',ref-name ,(,ref-name ,type))))
-		  slots))))
+    (let ((ref-name (lambda (slot) (symbol-append type '- slot))))
+      `(LIST ,@(map (lambda (slot)
+		      (if (pair? slot)
+			  (let ((ref-names (map ref-name slot)))
+			    ``(,',ref-names ,(,(car ref-names) ,type)))
+			  (let ((ref-name (ref-name slot)))
+			    ``(,',ref-name ,(,ref-name ,type)))))
+		    slots)))))
 
 (let ((rtl-common
        (lambda (type prefix components wrap-constructor)
@@ -233,16 +248,6 @@ MIT in each case. |#
       (rtl-common type prefix components
 		  (lambda (expression) `(PREDICATE->PRTL ,expression))))))
 
-(syntax-table-define compiler-syntax-table 'DEFINE-REGISTER-REFERENCES
-  (macro (slot)
-    (let ((name (symbol-append 'REGISTER- slot)))
-      (let ((vector `(,(symbol-append 'RGRAPH- name) *CURRENT-RGRAPH*)))
-	`(BEGIN (DEFINE-INTEGRABLE (,name REGISTER)
-		  (VECTOR-REF ,vector REGISTER))
-		(DEFINE-INTEGRABLE
-		  (,(symbol-append 'SET- name '!) REGISTER VALUE)
-		  (VECTOR-SET! ,vector REGISTER VALUE)))))))
-
 (syntax-table-define compiler-syntax-table 'UCODE-TYPE
   (macro (name)
     (microcode-type name)))
@@ -297,3 +302,57 @@ MIT in each case. |#
 (syntax-table-define compiler-syntax-table 'INST-EA
   (macro (ea)
     (list 'QUASIQUOTE ea)))
+
+(syntax-table-define compiler-syntax-table 'DEFINE-ENUMERATION
+  (macro (name elements)
+    (let ((enumeration (symbol-append name 'S)))
+      `(BEGIN (DEFINE ,enumeration
+		(MAKE-ENUMERATION ',elements))
+	      ,@(map (lambda (element)
+		       `(DEFINE ,(symbol-append name '/ element)
+			  (ENUMERATION/NAME->INDEX ,enumeration ',element)))
+		     elements)))))
+
+(define (macros/case-macro expression clauses predicate default)
+  (let ((need-temp? (not (symbol? expression))))
+    (let ((expression*
+	   (if need-temp?
+	       (generate-uninterned-symbol)
+	       expression)))
+      (let ((body
+	     `(COND
+	       ,@(let loop ((clauses clauses))
+		   (cond ((null? clauses)
+			  (default expression*))
+			 ((eq? (caar clauses) 'ELSE)
+			  (if (null? (cdr clauses))
+			      clauses
+			      (error "ELSE clause not last" clauses)))
+			 (else
+			  `(((OR ,@(map (lambda (element)
+					  (predicate expression* element))
+					(caar clauses)))
+			     ,@(cdar clauses))
+			    ,@(loop (cdr clauses)))))))))
+	(if need-temp?
+	    `(LET ((,expression* ,expression))
+	       ,body)
+	    body)))))
+
+(syntax-table-define compiler-syntax-table 'ENUMERATION-CASE
+  (macro (name expression . clauses)
+    (macros/case-macro expression
+		       clauses
+		       (lambda (expression element)
+			 `(EQ? ,expression ,(symbol-append name '/ element)))
+		       (lambda (expression)
+			 '()))))
+
+(syntax-table-define compiler-syntax-table 'CFG-NODE-CASE
+  (macro (expression . clauses)
+    (macros/case-macro expression
+		       clauses
+		       (lambda (expression element)
+			 `(EQ? ,expression ,(symbol-append element '-TAG)))
+		       (lambda (expression)
+			 `((ELSE (ERROR "Unknown node type" ,expression)))))))

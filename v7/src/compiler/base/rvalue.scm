@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/rvalue.scm,v 1.5 1987/08/07 17:03:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/rvalue.scm,v 4.1 1987/12/04 20:04:48 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -32,11 +32,65 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Compiler DFG Datatypes: Right (Hand Side) Values
+;;;; Right (Hand Side) Values
 
 (declare (usual-integrations))
 
-(define-rvalue constant value)
+(define-root-type rvalue
+  %passed-out?)
+
+(define (make-rvalue tag . extra)
+  (list->vector (cons* tag false extra)))
+
+(define-enumeration rvalue-type
+  (block
+   constant
+   expression
+   procedure
+   reference
+   unassigned-test))
+
+(define (rvalue-values rvalue)
+  (if (rvalue/reference? rvalue)
+      (reference-values rvalue)
+      (list rvalue)))
+
+(define (rvalue-passed-in? rvalue)
+  (and (rvalue/reference? rvalue)
+       (reference-passed-in? rvalue)))
+
+(define (rvalue-passed-out? rvalue)
+  (if (rvalue/reference? rvalue)
+      (reference-passed-out? rvalue)
+      (rvalue-%passed-out? rvalue)))
+
+(define (rvalue-known-value rvalue)
+  (if (rvalue/reference? rvalue)
+      (reference-known-value rvalue)
+      rvalue))
+
+(define (rvalue-known-constant? rvalue)
+  (let ((value (rvalue-known-value rvalue)))
+    (and value
+	 (rvalue/constant? value))))
+
+(define (rvalue-constant-value rvalue)
+  (constant-value (rvalue-known-value rvalue)))
+
+(define (rvalue=? rvalue rvalue*)
+  (if (rvalue/reference? rvalue)
+      (if (rvalue/reference? rvalue*)
+	  (lvalue=? (reference-lvalue rvalue) (reference-lvalue rvalue*))
+	  (eq? (lvalue-known-value (reference-lvalue rvalue)) rvalue*))
+      (if (rvalue/reference? rvalue*)
+	  (eq? rvalue (lvalue-known-value (reference-lvalue rvalue*)))
+	  (eq? rvalue rvalue*))))
+
+;;;; Constant
+
+(define-rvalue constant
+  value)
+
 (define *constants*)
 
 (define (make-constant value)
@@ -47,104 +101,89 @@ MIT in each case. |#
 	  (set! *constants* (cons (cons value constant) *constants*))
 	  constant))))
 
-(define-unparser constant-tag
+(define-vector-tag-unparser constant-tag
   (lambda (constant)
     (write-string "CONSTANT ")
     (write (constant-value constant))))
 
-(define-rvalue block parent children bound-variables free-variables procedure
-  declarations type closures combinations interned-variables closure-offsets frame)
-(define *blocks*)
+(define-integrable (rvalue/constant? rvalue)
+  (eq? (tagged-vector/tag rvalue) constant-tag))
+
+;;;; Reference
 
-(define (make-block parent)
-  (let ((block
-	 (make-rvalue block-tag parent '() '() '() false
-		      '() 'STACK '() '() '() '() false)))
-    (if parent
-	(set-block-children! parent (cons block (block-children parent))))
-    (set! *blocks* (cons block *blocks*))
-    block))
+(define-rvalue reference
+  block
+  lvalue
+  safe?)
 
-(define-unparser block-tag
-  (lambda (block)
-    (write-string "BLOCK")
-    (let ((procedure (block-procedure block)))
-      (if procedure
-	  (begin (write-string " ")
-		 (write (procedure-label procedure)))))))
+(define (make-reference block lvalue safe?)
+  (make-rvalue reference-tag block lvalue safe?))
 
-(define-rvalue reference block variable safe?)
-
-(define (make-reference block variable)
-  (make-rvalue reference-tag block variable false))
-
-(define (make-safe-reference block variable)
-  (make-rvalue reference-tag block variable true))
-
-(define-unparser reference-tag
+(define-vector-tag-unparser reference-tag
   (lambda (reference)
     (write-string "REFERENCE ")
-    (write (variable-name (reference-variable reference)))))
+    (write (variable-name (reference-lvalue reference)))))
+
+(define-integrable (rvalue/reference? rvalue)
+  (eq? (tagged-vector/tag rvalue) reference-tag))
+
+(define-integrable (reference-values reference)
+  (lvalue-values (reference-lvalue reference)))
+
+(define-integrable (reference-passed-in? reference)
+  (lvalue-passed-in? (reference-lvalue reference)))
+
+(define-integrable (reference-passed-out? reference)
+  (lvalue-passed-out? (reference-lvalue reference)))
+
+(define-integrable (reference-known-value reference)
+  (lvalue-known-value (reference-lvalue reference)))
+
+(define (reference-to-known-location? reference)
+  (variable-in-known-location? (reference-block reference)
+			       (reference-lvalue reference)))
 
-(define-rvalue procedure block value fg-edge rgraph externally-visible?
-  closure-block label external-label name required optional rest
-  names values auxiliary original-parameters)
-(define *procedures*)
+;;; This type is only important while we use the `unassigned?' special
+;;; form to perform optional argument defaulting.  When we switch over
+;;; to the new optional argument proposal we can flush this since the
+;;; efficiency of this construct won't matter anymore.
 
-(define (make-procedure block subproblem name required optional rest
-			names values auxiliary)
-  (let ((procedure
-	 (make-rvalue procedure-tag block (subproblem-value subproblem)
-		      (cfg-entry-edge (subproblem-cfg subproblem))
-		      (rgraph-allocate) false false
-		      (generate-label (variable-name name))
-		      (generate-label) name required optional rest
-		      names values auxiliary (vector required optional rest))))
-    (set-block-procedure! block procedure)
-    (vnode-connect! name procedure)
-    (set! *procedures* (cons procedure *procedures*))
-    (symbol-hash-table/insert! *label->object*
-			       (procedure-label procedure)
-			       procedure)
-    procedure))
+(define-rvalue unassigned-test
+  block
+  lvalue)
 
-(define-integrable (procedure-fg-entry procedure)
-  (edge-right-node (procedure-fg-edge procedure)))
+(define (make-unassigned-test block lvalue)
+  (make-rvalue unassigned-test-tag block lvalue))
 
-(define-integrable (unset-procedure-fg-entry! procedure)
-  (set-procedure-fg-edge! procedure false))
+(define-vector-tag-unparser unassigned-test-tag
+  (lambda (unassigned-test)
+    (write-string "UNASSIGNED-TEST ")
+    (write (unassigned-test-lvalue unassigned-test))))
 
-(define-integrable (procedure-original-required procedure)
-  (vector-ref (procedure-original-parameters procedure) 0))
-
-(define-integrable (procedure-original-optional procedure)
-  (vector-ref (procedure-original-parameters procedure) 1))
-
-(define-integrable (procedure-original-rest procedure)
-  (vector-ref (procedure-original-parameters procedure) 2))
-
-(define-unparser procedure-tag
-  (lambda (procedure)
-    (write-string "PROCEDURE ")
-    (write (procedure-label procedure))))
-
-(define-integrable (label->procedure label)
-  (symbol-hash-table/lookup *label->object* label))
+(define-integrable (rvalue/unassigned-test? rvalue)
+  (eq? (tagged-vector/tag rvalue) unassigned-test-tag))
 
-(define-rvalue quotation block value fg-edge rgraph label)
-(define *quotations*)
+;;;; Expression
 
-(define (make-quotation block subproblem)
-  (let ((quotation
-	 (make-rvalue quotation-tag block (subproblem-value subproblem)
-		      (cfg-entry-edge (subproblem-cfg subproblem))
-		      (rgraph-allocate)
-		      (generate-label 'QUOTATION))))
-    (set! *quotations* (cons quotation *quotations*))
-    quotation))
+(define-rvalue expression
+  block
+  continuation
+  entry-edge
+  label)
 
-(define-integrable (quotation-fg-entry quotation)
-  (edge-right-node (quotation-fg-edge quotation)))
+(define *expressions*)
 
-(define-integrable (unset-quotation-fg-entry! quotation)
-  (set-quotation-fg-edge! quotation false))
+(define (make-expression block continuation scfg)
+  (let ((expression
+	 (make-rvalue expression-tag block continuation
+		      (node->edge (cfg-entry-node scfg))
+		      (generate-label 'EXPRESSION))))
+    (set! *expressions* (cons expression *expressions*))
+    (set-block-procedure! block expression)
+    expression))
+
+(define-integrable (rvalue/expression? rvalue)
+  (eq? (tagged-vector/tag rvalue) expression-tag))
+
+(define-integrable (expression-entry-node expression)
+  (edge-next-node (expression-entry-edge expression)))

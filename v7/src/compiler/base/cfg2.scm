@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg2.scm,v 1.3 1987/08/31 21:17:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg2.scm,v 4.1 1987/12/04 20:03:33 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -58,10 +58,8 @@ MIT in each case. |#
     (edges-connect-right! previous-edges snode)
     (create-edge! snode set-snode-next-edge! node)))
 
-(define (node->edge node)
-  (let ((edge (make-edge false false false)))
-    (edge-connect-right! edge node)
-    edge))
+(define-integrable (node->edge node)
+  (create-edge! false false node))
 
 (define-integrable (cfg-entry-edge cfg)
   (node->edge (cfg-entry-node cfg)))
@@ -126,7 +124,7 @@ MIT in each case. |#
       value)))
 
 (define noop-node-tag
-  (make-vector-tag snode-tag 'NOOP))
+  (make-vector-tag snode-tag 'NOOP false))
 
 (define-integrable (make-noop-node)
   (let ((node (make-snode noop-node-tag)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/object.scm,v 1.1 1987/03/19 00:44:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/object.scm,v 4.1 1987/12/04 20:04:24 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,95 +36,144 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (make-vector-tag parent name)
-  (let ((tag (cons '() (or parent vector-tag:object))))
-    (vector-tag-put! tag ':TYPE-NAME name)
-    ((access add-unparser-special-object! unparser-package)
-     tag tagged-vector-unparser)
-    tag))
+(define-structure (vector-tag
+		   (constructor %make-vector-tag (parent name index)))
+  (parent false read-only true)
+  (name false read-only true)
+  (index false read-only true)
+  (%unparser false)
+  (description false)
+  (method-alist '()))
 
-(define *tagged-vector-unparser-show-hash*
-  true)
+(define make-vector-tag
+  (let ((root-tag (%make-vector-tag false 'OBJECT false)))
+    (set-vector-tag-%unparser!
+     root-tag
+     (lambda (object)
+       (write (vector-tag-name (tagged-vector/tag object)))))
+    (named-lambda (make-vector-tag parent name enumeration)
+      (let ((tag
+	     (%make-vector-tag (or parent root-tag)
+			       name
+			       (and enumeration
+				    (enumeration/name->index enumeration
+							     name)))))
+	((access add-unparser-special-object! unparser-package)
+	 tag
+	 tagged-vector/unparse)
+	tag))))
 
-(define (tagged-vector-unparser object)
-  (unparse-with-brackets
-   (lambda ()
-     (write-string "LIAR ")
-     (if *tagged-vector-unparser-show-hash*
-	 (begin (fluid-let ((*unparser-radix* 10))
-		  (write (hash object)))
-		(write-string " ")))
-     (fluid-let ((*unparser-radix* 16))
-       ((vector-method object ':UNPARSE) object)))))
+(define (define-vector-tag-unparser tag unparser)
+  (set-vector-tag-%unparser! tag unparser)
+  (vector-tag-name tag))
 
+(define (vector-tag-unparser tag)
+  (or (vector-tag-%unparser tag)
+      (let ((parent (vector-tag-parent tag)))
+	(if parent
+	    (vector-tag-unparser parent)
+	    (error "Missing unparser" tag)))))
+
 (define (vector-tag-put! tag key value)
-  (let ((entry (assq key (car tag))))
+  (let ((entry (assq key (vector-tag-method-alist tag))))
     (if entry
 	(set-cdr! entry value)
-	(set-car! tag (cons (cons key value) (car tag))))))
+	(set-vector-tag-method-alist! tag
+				      (cons (cons key value)
+					    (vector-tag-method-alist tag))))))
 
 (define (vector-tag-get tag key)
-  (define (loop tag)
-    (and (pair? tag)
-	 (or (assq key (car tag))
-	     (loop (cdr tag)))))
   (let ((value
-	 (or (assq key (car tag))
-	     (loop (cdr tag)))))
+	 (or (assq key (vector-tag-method-alist tag))
+	     (let loop ((tag (vector-tag-parent tag)))
+	       (and tag
+		    (or (assq key (vector-tag-method-alist tag))
+			(loop (vector-tag-parent tag))))))))
     (and value (cdr value))))
 
-(define vector-tag:object
-  (list '()))
-
-(vector-tag-put! vector-tag:object ':TYPE-NAME 'OBJECT)
-
-(define-integrable (vector-tag vector)
-  (vector-ref vector 0))
-
-(define (define-vector-method tag name method)
+(define (define-vector-tag-method tag name method)
   (vector-tag-put! tag name method)
   name)
 
 (define (vector-tag-method tag name)
   (or (vector-tag-get tag name)
-      (error "Unbound method" tag name)))
+      (error "Unbound method" name tag)))
 
-(define-integrable (vector-tag-parent-method tag name)
-  (vector-tag-method (cdr tag) name))
-
-(define-integrable (vector-method vector name)
-  (vector-tag-method (vector-tag vector) name))
-
-(define (define-unparser tag unparser)
-  (define-vector-method tag ':UNPARSE unparser))
-
 (define-integrable make-tagged-vector
   vector)
 
-(define ((tagged-vector-predicate tag) object)
+(define-integrable (tagged-vector/tag vector)
+  (vector-ref vector 0))
+
+(define-integrable (tagged-vector/index vector)
+  (vector-tag-index (tagged-vector/tag vector)))
+
+(define-integrable (tagged-vector/unparser vector)
+  (vector-tag-unparser (tagged-vector/tag vector)))
+
+(define (tagged-vector? object)
   (and (vector? object)
        (not (zero? (vector-length object)))
-       (eq? tag (vector-tag object))))
+       (let ((tag (tagged-vector/tag object)))
+	 (or (vector-tag? tag)
+	     (type-object? tag)))))
 
-(define (tagged-vector-subclass-predicate tag)
-  (define (loop tag*)
-    (or (eq? tag tag*)
-	(and (pair? tag*)
-	     (loop (cdr tag*)))))
+(define (->tagged-vector object)
+  (let ((object (if (integer? object) (unhash object) object)))    (and (tagged-vector? object) object)))
+
+(define (tagged-vector/predicate tag)
   (lambda (object)
     (and (vector? object)
 	 (not (zero? (vector-length object)))
-	 (loop (vector-tag object)))))
+	 (eq? tag (tagged-vector/tag object)))))
 
-(define tagged-vector?
-  (tagged-vector-subclass-predicate vector-tag:object))
-
-(define-unparser vector-tag:object
+(define (tagged-vector/subclass-predicate tag)
   (lambda (object)
-    (write (vector-method object ':TYPE-NAME))))
+    (and (vector? object)
+	 (not (zero? (vector-length object)))
+	 (let loop ((tag* (tagged-vector/tag object)))
+	   (or (eq? tag tag*)
+	       (and (pair? tag*)
+		    (loop (vector-tag-parent tag*))))))))
 
-(define (->tagged-vector object)
-  (or (and (tagged-vector? object) object)
-      (and (integer? object)
-	   (let ((object (unhash object)))
-	     (and (tagged-vector? object) object)))))
+(define (tagged-vector/description object)
+  (if (tagged-vector? object)
+      (let ((tag (tagged-vector/tag object)))
+	(cond ((vector-tag? tag) (vector-tag-description tag))
+	      ((type-object? tag) (type-object-description tag))
+	      (else (error "Unknown vector tag" tag))))
+      (error "Not a tagged vector" object)))
+
+(define (type-object-description type-object)
+  (2d-get type-object type-object-description))
+
+(define (set-type-object-description! type-object description)
+  (2d-put! type-object type-object-description description))
+
+(define (standard-unparser name unparser)
+  (lambda (object)
+    (unparse-with-brackets
+     (lambda ()
+       (standard-unparser/prefix object)
+       (write name)
+       (if unparser
+	   (begin (write-string " ")
+		  (unparser object)))))))
+
+(define (tagged-vector/unparse vector)
+  (unparse-with-brackets
+   (lambda ()
+     (standard-unparser/prefix vector)
+     (fluid-let ((*unparser-radix* 16))
+       ((tagged-vector/unparser vector) vector)))))
+
+(define (standard-unparser/prefix object)
+  (if *tagged-vector-unparse-prefix-string*
+      (begin (write-string *tagged-vector-unparse-prefix-string*)
+	     (write-string " ")))
+  (if *tagged-vector-unparse-show-hash*
+      (begin (write-string (number->string (hash object) 10))
+	     (write-string " "))))
+
+(define *tagged-vector-unparse-prefix-string* "LIAR")
+(define *tagged-vector-unparse-show-hash* true)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.92 1987/11/21 18:43:08 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.1 1987/12/04 20:05:24 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -57,6 +57,15 @@ MIT in each case. |#
 			      set*-only)))))))
     (loop set (list-copy set*) receiver)))
 
+(define (discriminate-items items predicate)
+  (let loop ((items items) (passed '()) (failed '()))
+    (cond ((null? items)
+	   (return-2 passed failed))
+	  ((predicate (car items))
+	   (loop (cdr items) (cons (car items) passed) failed))
+	  (else
+	   (loop (cdr items) passed (cons (car items) failed))))))
+
 (define (generate-label #!optional prefix)
   (if (unassigned? prefix) (set! prefix 'LABEL))
   (string->symbol
@@ -71,7 +80,7 @@ MIT in each case. |#
 	    'FLUID-LET)
 	   (else prefix)))
     "-"
-    (number->string (generate-label-number)))))
+    (number->string (generate-label-number) 10))))
 
 (define *current-label-number*)
 
@@ -103,6 +112,77 @@ MIT in each case. |#
     (let ((value (thunk)))
       (write-line (- (runtime) start))
       value)))
+
+(define (list-filter-indices items indices)
+  (let loop ((items items) (indices indices) (index 0))
+    (cond ((null? indices) '())
+	  ((= (car indices) index)
+	   (cons (car items)
+		 (loop (cdr items) (cdr indices) (1+ index))))
+	  (else
+	   (loop (cdr items) indices (1+ index))))))
+
+(define (there-exists? items predicate)
+  (let loop ((items items))
+    (and (not (null? items))
+	 (or (predicate (car items))
+	     (loop (cdr items))))))
+
+(define (for-all? items predicate)
+  (let loop ((items items))
+    (or (null? items)
+	(and (predicate (car items))
+	     (loop (cdr items))))))
+
+(define (all-eq? items)
+  (if (null? items)
+      (error "ALL-EQ? undefined for empty set"))
+  (or (null? (cdr items))
+      (for-all? (cdr items)
+	(let ((item (car items)))
+	  (lambda (item*)
+	    (eq? item item))))))
+
+(define (all-eq-map? items map)
+  (if (null? items)
+      (error "ALL-EQ-MAP? undefined for empty set"))
+  (let ((item (map (car items))))
+    (if (or (null? (cdr items))
+	    (for-all? (cdr items) (lambda (item*) (eq? item (map item*)))))
+	(return-2 true item)
+	(return-2 false false))))
+
+(define (eq-set-union* set sets)
+  (let loop ((set set) (sets sets) (accum '()))
+    (if (null? sets)
+	(eq-set-union set accum)
+	(loop (car sets) (cdr sets) (eq-set-union set accum)))))
+
+(package (transitive-closure enqueue-node! enqueue-nodes!)
+
+(define *queue*)
+
+(define-export (transitive-closure initialization process-node nodes)
+  (fluid-let ((*queue* true))
+    (if initialization (initialization))
+    (set! *queue* nodes)
+    (let loop ()
+      (if (not (null? *queue*))
+	  (begin (let ((node (car *queue*)))
+		   (set! *queue* (cdr *queue*))
+		   (process-node node))
+		 (loop))))))
+
+(define-export (enqueue-node! node)
+  (if (and (not (eq? *queue* true))
+	   (not (memq node *queue*)))
+      (set! *queue* (cons node *queue*))))
+
+(define-export (enqueue-nodes! nodes)
+  (if (not (eq? *queue* true))
+      (set! *queue* (eq-set-union nodes *queue*))))
+
+)
 
 ;;;; Symbol Hash Tables
 
@@ -159,120 +239,25 @@ MIT in each case. |#
 (define-integrable string-hash-mod
   (ucode-primitive string-hash-mod))
 
-;;;; SCode Interface
+;;;; Type Codes
 
-(let-syntax ((define-scode-operator
-	       (macro (name)
-		 `(DEFINE ,(symbol-append 'SCODE/ name)
-		    (ACCESS ,name SYSTEM-GLOBAL-ENVIRONMENT)))))
-  (define-scode-operator access-components)
-  (define-scode-operator access?)
-  (define-scode-operator assignment?)
-  (define-scode-operator assignment-components)
-  (define-scode-operator assignment-name)
-  (define-scode-operator assignment-value)
-  (define-scode-operator combination-components)
-  (define-scode-operator combination?)
-  (define-scode-operator comment-expression)
-  (define-scode-operator comment-text)
-  (define-scode-operator comment?)
-  (define-scode-operator conditional-components)
-  (define-scode-operator definition-components)
-  (define-scode-operator delay?)
-  (define-scode-operator delay-expression)
-  (define-scode-operator disjunction-components)
-  (define-scode-operator in-package-components)
-  (define-scode-operator lambda-components)
-  (define-scode-operator lambda?)
-  (define-scode-operator make-access)
-  (define-scode-operator make-assignment)
-  (define-scode-operator make-combination)
-  (define-scode-operator make-comment)
-  (define-scode-operator make-conditional)
-  (define-scode-operator make-declaration)
-  (define-scode-operator make-definition)
-  (define-scode-operator make-disjunction)
-  (define-scode-operator make-lambda)
-  (define-scode-operator make-quotation)
-  (define-scode-operator make-sequence)
-  (define-scode-operator make-the-environment)
-  (define-scode-operator make-variable)
-  (define-scode-operator make-unassigned-object)
-  (define-scode-operator open-block-components)
-  (define-scode-operator open-block?)
-  (define-scode-operator primitive-procedure?)
-  (define-scode-operator procedure?)
-  (define-scode-operator quotation-expression)
-  (define-scode-operator sequence-actions)
-  (define-scode-operator unassigned-object?)
-  (define-scode-operator unassigned?-name)
-  (define-scode-operator unbound?-name)
-  (define-scode-operator variable-name)
-  (define-scode-operator variable?))
-
-;;; Scode constants
-
-(define scode/constant?
-  (access scode-constant? system-global-environment))
-
-(define scode/constant?
-  (access scode-constant? system-global-environment))
-
-(define-integrable (scode/constant-value const)
-  const)
-
-(define-integrable (scode/make-constant const)
-  const)
-
-;;; Abolute variables and combinations
-
-(define (scode/make-absolute-reference variable-name)
-  (scode/make-access '() variable-name))
-
-(define (scode/absolute-reference? obj)
-  (and (scode/access? obj)
-       (scode/access-components
-	obj
-	(lambda (environment name)
-	  (null? environment)))))
-
-(define (scode/absolute-reference-name obj)
-  (scode/access-components obj (lambda (ignore name) name)))
-
-(define (scode/make-absolute-combination name operands)
-  (scode/make-combination (scode/make-absolute-reference name) operands))
-
-(define (scode/absolute-combination? obj)
-  (and (scode/combination? obj)
-       (scode/combination-components
-	obj
-	(lambda (op ops)
-	  (scode/absolute-reference? obj)))))
-
-(define (scode/absolute-combination-components obj receiver)
-  (scode/combination-components
-   obj
-   (lambda (op ops)
-     (receiver (scode/absolute-reference-name op) ops))))
-
-(define (scode/error-combination-components combination receiver)
-  (scode/combination-components combination
-    (lambda (operator operands)
-      (receiver (car operands)
-		(let ((irritant (cadr operands)))
-		  (cond ((scode/access? irritant) '())
-			((scode/absolute-combination? irritant)
-			 (scode/absolute-combination-components irritant
-			   (lambda (name operands)
-			     (if (eq? name 'LIST)
-				 operands
-				 (list irritant)))))
-			(else (list irritant))))))))
-
-(define (scode/make-error-combination message operand)
-  (scode/make-absolute-combination
-   'ERROR-PROCEDURE
-   (list message operand (scode/make-the-environment))))
+(let-syntax ((define-type-code
+	       (macro (var-name #!optional type-name)
+		 (if (unassigned? type-name) (set! type-name var-name))
+		 `(DEFINE-INTEGRABLE ,(symbol-append 'TYPE-CODE: var-name)
+		    ',(microcode-type type-name)))))
+  (define-type-code lambda)
+  (define-type-code extended-lambda)
+  (define-type-code procedure)
+  (define-type-code extended-procedure)
+  (define-type-code cell)
+  (define-type-code compiled-expression)
+  (define-type-code compiler-link)
+  (define-type-code compiled-procedure)
+  (define-type-code environment)
+  (define-type-code stack-environment)
+  (define-type-code return-address compiler-return-address)
+  (define-type-code unassigned))
 
 (define (scode/procedure-type-code *lambda)
   (cond ((primitive-type? type-code:lambda *lambda)
@@ -281,33 +266,24 @@ MIT in each case. |#
 	 type-code:extended-procedure)
 	(else
 	 (error "SCODE/PROCEDURE-TYPE-CODE: Unknown lambda type" *lambda))))
-
-(define (scode/make-let names values body)
-  (scode/make-combination (scode/make-lambda lambda-tag:let names '() false '()
-					     '() body)
-			  values))
 
-;;;; Type Codes
+;;;; Primitive Procedures
 
-(let-syntax ((define-type-code
-	       (macro (var-name type-name)
-		 `(define-integrable ,var-name ',(microcode-type type-name)))))
+(define (primitive-procedure? object)
+  (or (eq? compiled-error-procedure object)
+      (scode/primitive-procedure? object)))
 
-(define-type-code type-code:lambda LAMBDA)
-(define-type-code type-code:extended-lambda EXTENDED-LAMBDA)
-(define-type-code type-code:procedure PROCEDURE)
-(define-type-code type-code:extended-procedure EXTENDED-PROCEDURE)
-(define-type-code type-code:cell CELL)
-(define-type-code type-code:compiled-expression COMPILED-EXPRESSION)
-(define-type-code type-code:compiler-link COMPILER-LINK)
-(define-type-code type-code:compiled-procedure COMPILED-PROCEDURE)
-(define-type-code type-code:environment ENVIRONMENT)
-(define-type-code type-code:stack-environment STACK-ENVIRONMENT)
-(define-type-code type-code:return-address COMPILER-RETURN-ADDRESS)
-(define-type-code type-code:unassigned UNASSIGNED)
-)
-
-;;; Disgusting hack to replace microcode implementation.
+(define (normal-primitive-procedure? object)
+  (or (eq? compiled-error-procedure object)
+      (and (scode/primitive-procedure? object)
+	   (primitive-procedure-safe? object))))
+
+(define (primitive-arity-correct? primitive argument-count)
+  (if (eq? primitive compiled-error-procedure)
+      (> argument-count 1)
+      (let ((arity (primitive-procedure-arity primitive)))
+	(or (= arity -1)
+	    (= arity argument-count)))))
 
 (define (primitive-procedure-safe? object)
   (and (primitive-type? (ucode-type primitive) object)
@@ -347,10 +323,6 @@ MIT in each case. |#
 (define lambda-tag:delay
   (make-named-tag "DELAY-LAMBDA"))
 
-;; Primitives are non pointers, but need to be updated by the fasloader;
-;; they cannot appear as immediate constants in the instruction stream.
-;; Therefore, for the purposes of compilation, they are treated as pointers.
-
 (define (non-pointer-object? object)
   (or (primitive-type? (ucode-type false) object)
       (primitive-type? (ucode-type true) object)
@@ -369,17 +341,23 @@ MIT in each case. |#
       (eq? object compiled-error-procedure)))
 
 (define (operator-constant-foldable? operator)
-  (memq operator constant-foldable-operators))
+  (memq operator constant-foldable-primitives))
 
-(define constant-foldable-operators
-  (list primitive-type primitive-type?
-	eq? null? pair? number? complex? real? rational? integer?
-	zero? positive? negative? odd? even? exact? inexact?
-	= < > <= >= max min
-	+ - * / 1+ -1+ abs quotient remainder modulo integer-divide
-	gcd lcm floor ceiling truncate round
-	exp log expt sqrt sin cos tan asin acos atan
-	(ucode-primitive &+) (ucode-primitive &-)
-	(ucode-primitive &*) (ucode-primitive &/)
-	(ucode-primitive &<) (ucode-primitive &>)
-	(ucode-primitive &=) (ucode-primitive &atan)))
+(define constant-foldable-primitives
+  (append!
+   (list-transform-positive
+       (map (lambda (name)
+	      (lexical-reference system-global-environment name))
+	    '(PRIMITIVE-TYPE PRIMITIVE-TYPE?
+	      EQ? NULL? PAIR? NUMBER? COMPLEX? REAL? RATIONAL? INTEGER?
+	      ZERO? POSITIVE? NEGATIVE? ODD? EVEN? EXACT? INEXACT?
+	      = < > <= >= MAX MIN
+	      + - * / 1+ -1+ ABS QUOTIENT REMAINDER MODULO INTEGER-DIVIDE
+	      GCD LCM FLOOR CEILING TRUNCATE ROUND
+	      EXP LOG EXPT SQRT SIN COS TAN ASIN ACOS ATAN))
+     (access primitive-procedure? system-global-environment))
+   (list
+    (ucode-primitive &+) (ucode-primitive &-)
+    (ucode-primitive &*) (ucode-primitive &/)
+    (ucode-primitive &<) (ucode-primitive &>)
+    (ucode-primitive &=) (ucode-primitive &atan))))
