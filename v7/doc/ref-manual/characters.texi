@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: characters.texi,v 1.1 2003/04/15 03:29:29 cph Exp $
+@c $Id: characters.texi,v 1.2 2003/06/20 06:50:14 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -11,10 +11,7 @@
 
 @cindex character (defn)
 Characters are objects that represent printed characters, such as
-letters and digits.@footnote{Some of the details in this section depend
-on the fact that the underlying operating system uses the
-@acronym{ASCII} character set.  This may change when someone ports MIT/GNU
-Scheme to a non-@acronym{ASCII} operating system.}
+letters and digits.
 
 @menu
 * External Representation of Characters::  
@@ -60,12 +57,11 @@ quote them.
 @cindex meta, bucky bit prefix (defn)
 @cindex super, bucky bit prefix (defn)
 @cindex hyper, bucky bit prefix (defn)
-@cindex top, bucky bit prefix (defn)
 A character name may include one or more @dfn{bucky bit} prefixes to
 indicate that the character includes one or more of the keyboard shift
-keys Control, Meta, Super, Hyper, or Top (note that the Control bucky
-bit prefix is not the same as the @acronym{ASCII} control key).  The
-bucky bit prefixes and their meanings are as follows (case is not
+keys Control, Meta, Super, or Hyper (note that the Control bucky bit
+prefix is not the same as the @acronym{ASCII} control key).  The bucky
+bit prefixes and their meanings are as follows (case is not
 significant):
 
 @example
@@ -77,7 +73,6 @@ Meta            M- or Meta-                 1
 Control         C- or Control-              2
 Super           S- or Super-                4
 Hyper           H- or Hyper-                8
-Top             T- or Top-                 16
 @end group
 @end example
 
@@ -207,7 +202,7 @@ Returns @code{#t} if the specified characters are have the appropriate
 order relationship to one another; otherwise returns @code{#f}.  The
 @code{-ci} procedures don't distinguish uppercase and lowercase letters.
 
-Character ordering follows these rules:
+Character ordering follows these portability rules:
 
 @itemize @bullet
 @item
@@ -223,15 +218,15 @@ The lowercase characters are in order; for example, @code{(char<? #\a
 #\b)} returns @code{#t}.
 @end itemize
 
-@cindex standard character
-@cindex character, standard
-@findex char-standard?
-In addition, MIT/GNU Scheme orders those characters that satisfy
-@code{char-standard?} the same way that @acronym{ISO-8859-1} does.
+MIT/GNU Scheme uses a specific character ordering, in which characters
+have the same order as their corresponding integers.  See the
+documentation for @code{char->integer} for further details.
 
-Characters are ordered by first comparing their bucky bits part and then
-their code part.  In particular, characters without bucky bits come
-before characters with bucky bits.
+@strong{Note}: Although character objects can represent all of Unicode,
+the model of alphabetic case used covers only @acronym{ASCII} letters,
+which means that case-insensitive comparisons and case conversions are
+incorrect for non-@acronym{ASCII} letters.  This will eventually be
+fixed.
 @end deffn
 
 @node Miscellaneous Character Operations, Internal Representation of Characters, Comparison of Characters, Characters
@@ -253,6 +248,12 @@ Returns the uppercase or lowercase equivalent of @var{char} if
 @var{char} is a letter; otherwise returns @var{char}.  These procedures
 return a character @var{char2} such that @code{(char-ci=? @var{char}
 @var{char2})}.
+
+@strong{Note}: Although character objects can represent all of Unicode,
+the model of alphabetic case used covers only @acronym{ASCII} letters,
+which means that case-insensitive comparisons and case conversions are
+incorrect for non-@acronym{ASCII} letters.  This will eventually be
+fixed.
 @end deffn
 
 @deffn procedure char->digit char [radix]
@@ -300,22 +301,24 @@ returns @code{#f}.
 @cindex code, of character (defn)
 @cindex bucky bit, of character (defn)
 @cindex ASCII character
-An MIT/GNU Scheme character consists of a @dfn{code} part and a @dfn{bucky
-bits} part.  The MIT/GNU Scheme set of characters can represent more
-characters than @acronym{ASCII} can; it includes characters with Super,
-Hyper, and Top bucky bits, as well as Control and Meta.  Every
-@acronym{ASCII} character corresponds to some MIT/GNU Scheme character, but not
-vice versa.@footnote{Note that the Control bucky bit is different from
-the @acronym{ASCII} control key.  This means that @code{#\SOH} (@acronym{ASCII}
-ctrl-A) is different from @code{#\C-A}.  In fact, the Control bucky bit
-is completely orthogonal to the @acronym{ASCII} control key, making possible
-such characters as @code{#\C-SOH}.}
+An MIT/GNU Scheme character consists of a @dfn{code} part and a
+@dfn{bucky bits} part.  The MIT/GNU Scheme set of characters can
+represent more characters than @acronym{ASCII} can; it includes
+characters with Super and Hyper bucky bits, as well as Control and Meta.
+Every @acronym{ASCII} character corresponds to some MIT/GNU Scheme
+character, but not vice versa.@footnote{Note that the Control bucky bit
+is different from the @acronym{ASCII} control key.  This means that
+@code{#\SOH} (@acronym{ASCII} ctrl-A) is different from @code{#\C-A}.
+In fact, the Control bucky bit is completely orthogonal to the
+@acronym{ASCII} control key, making possible such characters as
+@code{#\C-SOH}.}
 
-MIT/GNU Scheme uses a 16-bit character code with 5 bucky bits.  Normally,
-Scheme uses the least significant 8 bits of the character code to
-contain the @acronym{ISO-8859-1} representation for the character.  The
-representation is expanded in order to allow for the use of
-@acronym{UTF-16} in the future.
+MIT/GNU Scheme uses a 21-bit character code with 4 bucky bits.  The
+character code contains the Unicode code point for the character.  This
+is a change from earlier versions of the system, which used the
+@acronym{ISO-8859-1} code point, but it is upwards compatible with
+previous usage, since @acronym{ISO-8859-1} is a proper subset of
+Unicode.
 
 @deffn procedure make-char code bucky-bits
 @cindex construction, of character
@@ -332,7 +335,6 @@ character; otherwise, the appropriate bits are turned on as follows:
 2               Control
 4               Super
 8               Hyper
-16              Top
 @end group
 @end example
 
@@ -374,6 +376,9 @@ example,
 (char-code #\c-a)                       @result{}  97
 @end group
 @end example
+
+Note that in MIT/GNU Scheme, the value of @code{char-code} is the
+Unicode code point for @var{char}.
 @end deffn
 
 @defvr variable char-code-limit
@@ -424,6 +429,25 @@ then
 @end group
 @end example
 
+In MIT/GNU Scheme, the specific relationship implemented by these
+procedures is as follows:
+
+@example
+@group
+(define (char->integer c)
+  (+ (* (char-bits c) #x200000)
+     (char-code c)))
+
+(define (integer->char n)
+  (make-char (remainder n #x200000)
+             (quotient n #x200000)))
+@end group
+@end example
+
+This implies that @code{char->integer} and @code{char-code} produce
+identical results for characters that have no bucky bits set, and that
+characters are ordered according to their Unicode code points.
+
 Note: If the argument to @code{char->integer} or @code{integer->char} is
 a constant, the compiler will constant-fold the call, replacing it with
 the corresponding result.  This is a very useful way to denote unusual
@@ -433,7 +457,8 @@ character constants or @acronym{ASCII} codes.
 @defvr variable char-integer-limit
 The range of @code{char->integer} is defined to be the exact
 non-negative integers that are less than the value of this variable
-(exclusive).
+(exclusive).  Note, however, that there are some holes in this range,
+because the character code must be a valid Unicode code point.
 @end defvr
 
 @node ISO-8859-1 Characters, Character Sets, Internal Representation of Characters, Characters
@@ -485,10 +510,11 @@ corresponding to @var{code}.
 @cindex character set
 @cindex set, of characters
 
-MIT/GNU Scheme's character-set abstraction is used to represent groups of
-characters, such as the letters or digits.  Character sets may contain
-only @acronym{ISO-8859-1} characters; in the future this may be changed
-to allow the full range of characters.
+MIT/GNU Scheme's character-set abstraction is used to represent groups
+of characters, such as the letters or digits.  Character sets may
+contain only @acronym{ISO-8859-1} characters; use the @dfn{alphabet}
+abstraction (@pxref{Unicode} if you need to cover the entire Unicode
+range.
 
 There is no meaningful external representation for character sets; use
 @code{char-set-members} to examine their contents.  There is (at
@@ -636,68 +662,241 @@ characters that are not in @var{char-set}.
 @section Unicode
 
 @cindex Unicode
-MIT/GNU Scheme provides rudimentary support for Unicode characters.  In an
-ideal world, Unicode would be the base character set for MIT/GNU Scheme,
-but this implementation predates the invention of Unicode.  And
+MIT/GNU Scheme provides rudimentary support for Unicode characters.  In
+an ideal world, Unicode would be the base character set for MIT/GNU
+Scheme.  But MIT/GNU Scheme predates the invention of Unicode, and
 converting an application of this size is a considerable undertaking.
-So for the time being, the base character set is @acronym{ISO-8859-1}
-and Unicode support is grafted on.
+So for the time being, the base character set for @acronym{I/O} and
+strings is @acronym{ISO-8859-1}, and Unicode support is grafted on.
 
 This Unicode support was implemented as a part of the @acronym{XML}
 parser (@pxref{XML Parser}) implementation.  @acronym{XML} uses
 Unicode as its base character set, and any @acronym{XML}
 implementation @emph{must} support Unicode.
 
-The Unicode implementation consists of two parts: @acronym{I/O}
-procedures that read and write @acronym{UTF-8} characters, and an
-@dfn{alphabet} abstraction, which is an efficient implementation of
-sets of Unicode code points (similar to the @code{char-set}
-abstraction).
-
 @cindex Code point, Unicode
-The basic unit in a Unicode implementation is the @dfn{code point}.
+@cindex Wide character
+@cindex Character, wide
+The basic unit in a Unicode implementation is the @dfn{code point}.  The
+character equivalent of a code point is a @dfn{wide character}.
 
 @deffn procedure unicode-code-point? object
-Returns @code{#t} if @var{object} is a Unicode code point.  Code
-points are implemented as exact non-negative integers.  Code points
-are further limited, by the Unicode standard, to be strictly less than
-@code{#x80000000}.
+Returns @code{#t} if @var{object} is a Unicode code point, which are
+implemented as exact non-negative integers.  Code points are further
+limited, by the Unicode standard, to be strictly less than
+@code{#x110000}, with the values @code{#xD800} through @code{#xDFFF},
+@code{#xFFFE}, and @code{#xFFFF} excluded.
 @end deffn
 
-The next few procedures do @acronym{I/O} on code points.
-
-@deffn procedure read-utf8-code-point port
-Reads and returns a @acronym{UTF-8}-encoded code point from
-@var{port}.  Returns an end-of-file object if there are no more
-characters available from @var{port}.  Signals an error if the input
-stream isn't a valid @acronym{UTF-8} encoding.
+@deffn procedure wide-char? object
+Returns @code{#t} if @var{object} is a wide character, specifically if
+@var{object} is a character with no bucky bits and whose code satisfies
+@code{unicode-code-point?}.
 @end deffn
 
-@deffn procedure write-utf8-code-point code-point port
-Writes @var{code-point} to @var{port} in the @acronym{UTF-8} encoding.
+The Unicode implementation consists of three parts:
+
+@itemize @bullet
+@item
+An implementation of @dfn{wide strings}, which are character strings
+that support the full Unicode character set with constant-time access.
+
+@item
+@acronym{I/O} procedures that read and write Unicode characters in
+several external representations, specifically @acronym{UTF-8},
+@acronym{UTF-16}, and @acronym{UTF-32}.
+
+@item
+An @dfn{alphabet} abstraction, which is an efficient implementation of
+sets of Unicode code points (similar to the @code{char-set}
+abstraction).
+@end itemize
+
+@node Wide Strings
+@subsection Wide Strings
+
+@cindex Wide string
+@cindex String, wide
+Wide characters can be combined into @dfn{wide strings}, which are
+similar to strings but can contain any Unicode character sequence.  The
+implementation used for wide strings is guaranteed to provide
+constant-time access to each character in the string.
+
+@deffn procedure wide-string? object
+Returns @code{#t} if @var{object} is a wide string.
 @end deffn
 
-@deffn procedure utf8-string->code-point string
-Reads and returns a @acronym{UTF-8}-encoded code point from
-@var{string}.  Equivalent to
-
-@example
-(read-utf8-code-point (string->input-port @var{string}))
-@end example
+@deffn procedure make-wide-string k [wide-char]
+Returns a newly allocated wide string of length @var{k}.  If @var{char}
+is specified, all elements of the returned string are initialized to
+@var{char}; otherwise the contents of the string are unspecified.
 @end deffn
 
-@deffn procedure code-point->utf8-string code-point
-Returns a newly-allocated string containing the @acronym{UTF-8}
-encoding of @var{code-point}.  Equivalent to
+@deffn procedure wide-string wide-char @dots{}
+Returns a newly allocated wide string consisting of the specified
+characters.
+@end deffn
+
+@deffn procedure wide-string-length wide-string
+Returns the length of @var{wide-string} as an exact non-negative
+integer.
+@end deffn
+
+@deffn procedure wide-string-ref wide-string k
+Returns character @var{k} of @var{wide-string}.  @var{K} must be a valid
+index of @var{string}.
+@end deffn
+
+@deffn procedure wide-string-set! wide-string k wide-char
+Stores @var{char} in element @var{k} of @var{wide-string} and returns an
+unspecified value.  @var{K} must be a valid index of @var{wide-string}.
+@end deffn
+
+@deffn procedure string->wide-string string [start [end]]
+Returns a newly allocated wide string with the same contents as
+@var{string}.  If @var{start} and @var{end} are supplied, they specify a
+substring of @var{string} that is to be converted.  @var{Start} defaults
+to @samp{0}, and @var{end} defaults to @samp{(string-length
+@var{string})}.
+@end deffn
+
+@deffn procedure wide-string->string wide-string [start [end]]
+Returns a newly allocated string with the same contents as
+@var{wide-string}.  The argument @var{wide-string} must satisfy
+@code{wide-string?}.  If @var{start} and @var{end} are supplied, they
+specify a substring of @var{wide-string} that is to be converted.
+@var{Start} defaults to @samp{0}, and @var{end} defaults to
+@samp{(wide-string-length @var{wide-string})}.
+
+It is an error if any character in @var{wide-string} fails to satisfy
+@code{char-ascii?}.
+@end deffn
+
+@deffn procedure open-wide-input-string wide-string [start [end]]
+Returns a new input port that sources the characters of
+@var{wide-string}.  The optional arguments @var{start} and @var{end} may
+be used to specify that the port delivers characters from a substring of
+@var{wide-string}; if not given, @var{start} defaults to @samp{0} and
+@var{end} defaults to @samp{(wide-string-length @var{wide-string})}.
+@end deffn
+
+@deffn procedure open-wide-output-string
+Returns an output port that accepts wide characters and strings and
+accumulates them in a buffer.  Call @code{get-output-string} on the
+returned port to get a wide string containing the accumulated
+characters.
+@end deffn
+
+@deffn procedure call-with-wide-output-string procedure
+Creates a wide-string output port and calls @var{procedure} on that
+port.  The value returned by @var{procedure} is ignored, and the
+accumulated output is returned as a wide string.  This is equivalent to:
 
 @example
 @group
-(with-string-output-port
- (lambda (port)
-   (write-utf8-code-point @var{code-point} port)))
+(define (call-with-wide-output-string procedure)
+  (let ((port (open-wide-output-string)))
+    (procedure port)
+    (get-output-string port)))
 @end group
 @end example
 @end deffn
+
+@node Unicode Representations
+@subsection Unicode Representations
+
+@cindex Unicode external representations
+@cindex external representations, Unicode
+The procedures in this section implement transformations that convert
+between the internal representation of Unicode characters and several
+standard external representations.  These external representations are
+all implemented as sequences of bytes, but they differ in their intended
+usage.
+
+@cindex UTF-8
+@cindex UTF-16
+@cindex UTF-32
+@table @acronym
+@item UTF-8
+Each character is written as a sequence of one to four bytes.
+
+@item UTF-16
+Each character is written as a sequence of one or two 16-bit integers.
+
+@item UTF-32
+Each character is written as a single 32-bit integer.
+@end table
+
+@cindex Big endian
+@cindex Little endian
+@cindex Host endian
+@cindex Endianness
+The @acronym{UTF-16} and @acronym{UTF-32} representations may be
+serialized to and from a byte stream in either @dfn{big-endian} or
+@dfn{little-endian} order.  In big-endian order, the most significant
+byte is first, the next most significant byte is second, etc.@: In
+little-endian order, the least significant byte is first, etc.@: All of
+the @acronym{UTF-16} and @acronym{UTF-32} representation procedures are
+available in both orders, which are indicated by names containing
+@samp{utfNN-be} and @samp{utfNN-le}, respectively.  There are also
+procedures that implement @dfn{host-endian} order, which is either
+big-endian or little-endian depending on the underlying computer
+architecture.
+
+@deffn procedure read-utf8-char port
+@deffnx procedure read-utf16-be-char port
+@deffnx procedure read-utf16-le-char port
+@deffnx procedure read-utf16-char port
+@deffnx procedure read-utf32-be-char port
+@deffnx procedure read-utf32-le-char port
+@deffnx procedure read-utf32-char port
+Each of these procedures reads a single wide character from the given
+@var{port}.  @var{Port} is treated as a stream of bytes encoded in the
+corresponding @samp{utfNN} representation.
+@end deffn
+
+@deffn procedure write-utf8-char wide-char port
+@deffnx procedure write-utf16-be-char wide-char port
+@deffnx procedure write-utf16-le-char wide-char port
+@deffnx procedure write-utf32-be-char wide-char port
+@deffnx procedure write-utf32-le-char wide-char port
+@deffnx procedure write-utf16-char wide-char port
+@deffnx procedure write-utf32-char wide-char port
+Each of these procedures writes @var{wide-char} to the given @var{port}.
+@var{Wide-char} is encoded in the corresponding @samp{utfNN}
+representation and written to @var{port} as a stream of bytes.
+@end deffn
+
+@deffn procedure utf8-string->wide-string string [start [end]]
+@deffnx procedure utf16-be-string->wide-string string [start [end]]
+@deffnx procedure utf16-le-string->wide-string string [start [end]]
+@deffnx procedure utf16-string->wide-string string [start [end]]
+@deffnx procedure utf32-be-string->wide-string string [start [end]]
+@deffnx procedure utf32-le-string->wide-string string [start [end]]
+@deffnx procedure utf32-string->wide-string string [start [end]]
+Each of these procedures converts a byte vector to a wide string.
+@end deffn
+
+@deffn procedure utf8-string-length string [start [end]]
+@deffnx procedure utf16-be-string-length string [start [end]]
+@deffnx procedure utf16-le-string-length string [start [end]]
+@deffnx procedure utf16-string-length string [start [end]]
+@deffnx procedure utf32-be-string-length string [start [end]]
+@deffnx procedure utf32-le-string-length string [start [end]]
+@deffnx procedure utf32-string-length string [start [end]]
+@end deffn
+
+@deffn procedure wide-string->utf8-string string [start [end]]
+@deffnx procedure wide-string->utf16-be-string string [start [end]]
+@deffnx procedure wide-string->utf16-le-string string [start [end]]
+@deffnx procedure wide-string->utf16-string string [start [end]]
+@deffnx procedure wide-string->utf32-be-string string [start [end]]
+@deffnx procedure wide-string->utf32-le-string string [start [end]]
+@deffnx procedure wide-string->utf32-string string [start [end]]
+@end deffn
+
+@node Alphabets
+@subsection Alphabets
 
 @cindex Alphabet, Unicode
 Applications often need to manipulate sets of characters, such as the
@@ -708,6 +907,11 @@ sets of Unicode code points.
 @deffn procedure alphabet? object
 Returns @code{#t} if @var{object} is a Unicode alphabet, otherwise
 returns @code{#f}.
+@end deffn
+
+@deffn procedure alphabet wide-char @dots{}
+Returns a Unicode alphabet containing the wide characters passed as
+arguments.
 @end deffn
 
 @deffn procedure code-points->alphabet items
@@ -731,18 +935,9 @@ code points.  The @sc{car} of the pair is the lower limit, and the
 limit must be strictly less than the upper limit.
 @end deffn
 
-@deffn procedure code-point-in-alphabet? code-point alphabet
-Returns @code{#t} if @var{code-point} is a member of @var{alphabet},
-otherwise returns @code{#f}.
-@end deffn
-
 @deffn procedure char-in-alphabet? char alphabet
 Returns @code{#t} if @var{char} is a member of @var{alphabet},
-otherwise returns @code{#f}.  Equivalent to
-
-@example
-(code-point-in-alphabet? (char-code @var{char}) @var{alphabet})
-@end example
+otherwise returns @code{#f}.
 @end deffn
 
 Character sets and alphabets can be converted to one another, provided
