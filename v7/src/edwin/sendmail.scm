@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.37 1997/11/04 11:04:46 cph Exp $
+;;;	$Id: sendmail.scm,v 1.38 1997/11/06 06:57:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
@@ -486,7 +486,10 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
   (let ((start (buffer-start buffer)))
     (let ((end (mail-match-header-separator start (buffer-end buffer))))
       (or (mail-field-end start end field)
-	  (mail-insert-field (mail-field-end! start end "To") field)))))
+	  (mail-insert-field (or (mail-field-end start end "CC")
+				 (mail-field-end start end "To")
+				 (mail-insert-field end "To"))
+			     field)))))
 
 (define (mail-match-header-separator start end)
   (if (not (re-search-forward
