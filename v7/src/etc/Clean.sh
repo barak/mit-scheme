@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.9 2002/11/21 03:51:18 cph Exp $
+# $Id: Clean.sh,v 1.10 2002/11/21 04:02:34 cph Exp $
 #
 # Copyright (c) 2000, 2001, 2002 Massachusetts Institute of Technology
 #
@@ -59,6 +59,8 @@ maintainer-clean)
     exit 1
     ;;
 esac
+
+. ../etc/functions.sh
 
 if [ "${DIST}" = "yes" ]; then
     if [ -f Makefile.in ] && [ -f Makefile ]; then
