@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.73 1991/09/11 02:11:57 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.74 1991/09/17 22:43:50 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -59,7 +59,7 @@
 			     'NULL-DEFAULT)
 	  (command-argument))))
 
- (define-command replace-string
+(define-command replace-string
   "Replace occurrences of FROM-STRING with TO-STRING.
 Preserve case in each match if  case-replace  and  case-fold-search
 are true and FROM-STRING has no uppercase letters.
