@@ -1,5 +1,5 @@
 -*-Text-*-
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/TODO,v 1.1 1993/10/29 23:00:51 nick Exp $
+$Id: TODO,v 1.2 1995/09/16 20:46:20 adams Exp $
 
 	Things to do to the C microcode:
 
@@ -12,6 +12,7 @@ problem with user-definable names.
 EQV? does not have to do extra work.  Note that fasdump/fasload have
 to be careful about this.  This may not be desirable for strings,
 given the existence of SET-STRING-LENGTH!
+[Why?  IEEE/R4RS does not require empty strings/vectors to be EQV?]
 
 * Check that the microcode backs out of assignment correctly when it
 needs to gc.
@@ -77,9 +78,6 @@ interesting thing is the message the microcode wants to provide.
 
 * Eliminate all fprintf(stderr, <mumble>).  This can be achieved by
 having a message facility available for the microcode.
-
-* Split fixnum types: +fixnum is 0, -fixnum is -1, null is ?.
-Check for implicit 0 type.  Make manifest header be +fixnum.
 
 * Change the representation of compiled procedures for faster external
 calls.
