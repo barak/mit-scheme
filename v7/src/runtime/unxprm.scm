@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.57 1999/12/16 22:24:58 cph Exp $
+$Id: unxprm.scm,v 1.58 1999/12/21 19:25:33 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -321,10 +321,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (dynamic-wind
        (lambda ()
 	 (set! input-channel (file-open-input-channel input-filename))
-	 (set! output-channel
-	       (begin
-		 ((ucode-primitive file-remove-link 1) output-filename)
-		 (file-open-output-channel output-filename)))
+	 (set! output-channel (file-open-output-channel output-filename))
 	 unspecific)
        (lambda ()
 	 (let ((source-length (channel-file-length input-channel))
