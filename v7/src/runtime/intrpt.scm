@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: intrpt.scm,v 14.15 1993/06/29 23:22:52 cph Exp $
+$Id: intrpt.scm,v 14.16 1993/08/31 00:33:13 ziggy Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -70,13 +70,15 @@ MIT in each case. |#
   (process-timer-clear 0)
   (real-timer-clear 0))
 
-(define-integrable stack-overflow-slot 0)
-(define-integrable gc-slot 2)
-(define-integrable character-slot 4)
-(define-integrable after-gc-slot 5)
-(define-integrable timer-slot 6)
-(define-integrable suspend-slot 8)
-(define-integrable illegal-interrupt-slot 9)
+(define-integrable stack-overflow-slot    	 0)
+(define-integrable global-gc-slot		 1)
+(define-integrable gc-slot                	 2)
+(define-integrable character-slot         	 4)
+(define-integrable after-gc-slot		 5)
+(define-integrable timer-slot             	 6)
+(define-integrable suspend-slot           	 8)
+;; Room for Descartes profiler interrupt handlers
+(define-integrable illegal-interrupt-slot	15)
 
 (define index:interrupt-vector)
 (define index:interrupt-mask-vector)
@@ -199,11 +201,7 @@ MIT in each case. |#
 		(if (and (vector? old-interrupt-mask-vector)
 			 (= (vector-length old-interrupt-mask-vector) length))
 		    old-interrupt-mask-vector
-		    (let ((masks (make-vector length)))
-		      (do ((i 0 (+ i 1)))
-			  ((= i length))
-			(vector-set! masks i (- (expt 2 i) 1)))
-		      masks))))
+		    (make-vector length))))
 	     (termination-vector
 	      (let ((length (microcode-termination/code-limit)))
 		(if old-termination-vector
@@ -212,11 +210,23 @@ MIT in each case. |#
 			old-termination-vector)
 		    (make-vector length #f)))))
 
+	 (do ((i
+	       (fix:- (vector-length system-interrupt-vector) 1)
+	       (fix:- i 1)))
+	     ((fix:< i 0))
+	   (if (not (vector-ref system-interrupt-vector i))
+	       (begin
+		 (vector-set! interrupt-mask-vector i
+			      (fix:not (fix:lsh 1 i))))
+		 (vector-set! system-interrupt-vector i
+			      illegal-interrupt-handler))))
+
 	 (vector-set! interrupt-mask-vector stack-overflow-slot
 		      interrupt-mask/none)
 
 	 (vector-set! interrupt-mask-vector gc-slot
-		      interrupt-mask/none)
+		      ;; interrupt-mask/none
+		      (fix:lsh 1 global-gc-slot))
 
 	 (vector-set! system-interrupt-vector timer-slot
 		      timer-interrupt-handler)
@@ -236,11 +246,6 @@ MIT in each case. |#
 	 (vector-set! system-interrupt-vector suspend-slot
 		      suspend-interrupt-handler)
 	 (vector-set! interrupt-mask-vector suspend-slot
-		      interrupt-mask/timer-ok)
-
-	 (vector-set! system-interrupt-vector illegal-interrupt-slot
-		      illegal-interrupt-handler)
-	 (vector-set! interrupt-mask-vector illegal-interrupt-slot
 		      interrupt-mask/timer-ok)
 
 	 (vector-set! termination-vector
