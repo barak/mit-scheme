@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.24 1987/04/17 00:04:05 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.25 1987/05/28 12:22:46 jinx Rel $
  *
  * Preprocessor to find and declare defined primitives.
  *
@@ -98,6 +98,8 @@ typedef int boolean;
     dump(TRUE);								\
   exit(1);								\
 }
+
+void dump();
 
 #ifdef DEBUGGING
 #define dprintf(one, two) fprintf(stderr, one, two)
@@ -136,7 +138,7 @@ main(argc, argv)
      int argc;
      char *argv[];
 {
-  void process(), sort(), dump();
+  void process_argument(), sort();
   FILE *fopen();
 
   name = argv[0];
@@ -184,26 +186,43 @@ main(argc, argv)
     normal_exit();
   }
 
-  while (--argc > 0)
+  if ((argc >= 2) && (strcmp("-l", argv[1]) == 0))
   {
-    file_name = *++argv;
-    if (strcmp("-", file_name)==0)
+    /* The list of files is stored in another file. */
+
+    char fn[100];
+    FILE *file_list_file;
+
+    if ((file_list_file = fopen(argv[2], "r")) == NULL)
     {
-      input = stdin;
-      file_name = "stdin";
-      dprintf("About to process %s\n", "STDIN");
-      process();
-    }
-    else if ((input = fopen(file_name, "r")) == NULL)
-    {
-      fprintf(stderr, "Error: %s can't open %s\n", name, file_name);
+      fprintf(stderr, "Error: %s can't open %s\n", name, argv[2]);
       error_exit(TRUE);
     }
-    else 
+    else
     {
-      dprintf("About to process %s\n", file_name);
-      process();
-      fclose(input);
+      while (fgets(fn, 100, file_list_file) != NULL)
+      {
+	int i;
+
+	i = strlen(fn) - 1;
+	if (i >=0 && fn[i] == '\n')
+	{
+	  fn[i] = '\0';
+	  i--;
+	}
+	if (i > 0 && fn[0] != ';')
+	  process_argument(fn);
+      }
+      fclose(file_list_file);
+    }
+  }
+  else
+  {
+    /* The list of files is in the argument list. */
+
+    while (--argc > 0)
+    {
+      process_argument(*++argv);
     }
   }
   dprintf("About to sort %s\n", "");
@@ -213,6 +232,32 @@ main(argc, argv)
   if (output != stdout)
     fclose(output);
   normal_exit();
+}
+
+void process_argument(fn)
+    char *fn;
+{
+  void process();
+  
+  file_name = fn;
+  if (strcmp("-", file_name)==0)
+  {
+    input = stdin;
+    file_name = "stdin";
+    dprintf("About to process %s\n", "STDIN");
+    process();
+  }
+  else if ((input = fopen(file_name, "r")) == NULL)
+  {
+    fprintf(stderr, "Error: %s can't open %s\n", name, file_name);
+    error_exit(TRUE);
+  }
+  else 
+  {
+    dprintf("About to process %s\n", file_name);
+    process();
+    fclose(input);
+  }
 }
 
 #define DONE 0
@@ -427,13 +472,13 @@ initialize_external()
 }
 
 void
-initialize_from_entry(entry)
-     descriptor *entry;
+initialize_from_entry(primitive_descriptor)
+     descriptor *primitive_descriptor;
 {
-  C_Size = strlen(entry->C_Name);
-  A_Size = strlen(entry->Arity);
-  S_Size = strlen(entry->Scheme_Name);
-  F_Size = strlen(entry->File_Name);
+  C_Size = strlen(primitive_descriptor->C_Name);
+  A_Size = strlen(primitive_descriptor->Arity);
+  S_Size = strlen(primitive_descriptor->Scheme_Name);
+  F_Size = strlen(primitive_descriptor->File_Name);
   return;
 }
 
@@ -555,37 +600,37 @@ print_spaces(how_many)
 }
 
 void
-print_entry(index, entry)
+print_entry(index, primitive_descriptor)
      int index;
-     descriptor *entry;
+     descriptor *primitive_descriptor;
 {
   int index_size;
 
-  fprintf(output, "  %s ", (entry->C_Name));
-  print_spaces(C_Size - (strlen(entry->C_Name)));
+  fprintf(output, "  %s ", (primitive_descriptor->C_Name));
+  print_spaces(C_Size - (strlen(primitive_descriptor->C_Name)));
   fprintf(output, "/%c ", '*');
-  print_spaces(A_Size - (strlen(entry->Arity)));
+  print_spaces(A_Size - (strlen(primitive_descriptor->Arity)));
   fprintf(output,
 	  "%s %s",
-	  (entry->Arity),
-	  (entry->Scheme_Name));
-  print_spaces(S_Size-(strlen(entry->Scheme_Name)));
+	  (primitive_descriptor->Arity),
+	  (primitive_descriptor->Scheme_Name));
+  print_spaces(S_Size-(strlen(primitive_descriptor->Scheme_Name)));
   fprintf(output, " %s ", ((Built_in_p) ? "Primitive" : "External"));
   find_index_size(index, index_size);
   print_spaces(max_index_size - index_size);
-  fprintf(output, "0x%x in %s %c/", index, (entry->File_Name), '*');
+  fprintf(output, "0x%x in %s %c/", index, (primitive_descriptor->File_Name), '*');
   return;
 }
 
 void
-print_procedure(entry, error_string)
-     descriptor *entry;
+print_procedure(primitive_descriptor, error_string)
+     descriptor *primitive_descriptor;
      char *error_string;
 {
   fprintf(output, "Pointer\n");
-  fprintf(output, "%s()\n", (entry->C_Name));
+  fprintf(output, "%s()\n", (primitive_descriptor->C_Name));
   fprintf(output, "{\n");
-  fprintf(output, "  Primitive_%s_Args();\n", (entry->Arity));
+  fprintf(output, "  Primitive_%s_Args();\n", (primitive_descriptor->Arity));
   fprintf(output, "\n");
   fprintf(output, "  %s;\n", error_string);
   fprintf(output, "}\n\n");
