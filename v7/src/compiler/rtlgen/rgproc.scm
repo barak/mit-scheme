@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.10 1990/02/02 18:40:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.11 1990/04/01 22:24:35 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -171,7 +171,9 @@ MIT in each case. |#
 	   ((IC)
 	    (with-values (lambda () (make-ic-cons value 'USE-ENV)) recvr))
 	   ((TRIVIAL-CLOSURE)
-	    (error "Letrec value is trivial closure" value)
+	    ;; This is not an error.
+	    ;; It can be the consequence of bad style.
+	    (warn "Letrec value is trivial closure" value)
 	    (recvr (make-null-cfg)
 		   (make-trivial-closure-cons value)))
 	   ((OPEN-EXTERNAL OPEN-INTERNAL)
