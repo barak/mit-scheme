@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.30 2000/04/23 04:02:38 cph Exp $
+;;; $Id: imail-core.scm,v 1.31 2000/04/27 02:16:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -345,10 +345,8 @@
 
 (define-class (<message> (constructor (header-fields body flags properties)))
     ()
-  (header-fields define standard
-		 accessor header-fields
-		 modifier set-header-fields!)
-  (body define standard)
+  (header-fields define accessor)
+  (body define accessor)
   (flags define standard)
   (modified? define standard
 	     initial-value #t)
@@ -397,7 +395,7 @@
 (define (attach-message message folder)
   (guarantee-folder folder 'ATTACH-MESSAGE)
   (let ((message
-	 (make-message (map copy-header-field (header-fields message))
+	 (make-message (map copy-header-field (message-header-fields message))
 		       (message-body message)
 		       (list-copy (message-flags message))
 		       (alist-copy (message-properties message)))))
@@ -428,7 +426,7 @@
       headers))
 
 (define (message->string message)
-  (string-append (header-fields->string (header-fields message))
+  (string-append (header-fields->string (message-header-fields message))
 		 "\n"
 		 (message-body message)))
 
@@ -671,12 +669,13 @@
 (define (copy-header-field header)
   (record-copy header))
 
+(define (->header-fields object)
+  (cond ((or (pair? object) (null? object)) object)
+	((message? object) (message-header-fields object))
+	(else (error:wrong-type-argument object "header fields" #f))))
+
 (define (get-first-header-field headers name error?)
-  (let loop
-      ((headers
-	(if (or (pair? headers) (null? headers))
-	    headers
-	    (header-fields headers))))
+  (let loop ((headers (->header-fields headers)))
     (cond ((pair? headers)
 	   (if (string-ci=? name (header-field-name (car headers)))
 	       (car headers)
@@ -685,12 +684,7 @@
 	  (else #f))))
 
 (define (get-last-header-field headers name error?)
-  (let loop
-      ((headers
-	(if (or (pair? headers) (null? headers))
-	    headers
-	    (header-fields headers)))
-       (winner #f))
+  (let loop ((headers (->header-fields headers)) (winner #f))
     (cond ((pair? headers)
 	   (loop (cdr headers)
 		 (if (string-ci=? name (header-field-name (car headers)))
@@ -701,10 +695,7 @@
 	  (else winner))))
 
 (define (get-all-header-fields headers name)
-  (list-transform-positive
-      (if (or (pair? headers) (null? headers))
-	  headers
-	  (header-fields headers))
+  (list-transform-positive (->header-fields headers)
     (lambda (header)
       (string-ci=? name (header-field-name header)))))
 

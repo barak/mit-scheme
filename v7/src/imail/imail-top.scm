@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.23 2000/04/27 00:28:09 cph Exp $
+;;; $Id: imail-top.scm,v 1.24 2000/04/27 02:16:43 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -228,8 +228,7 @@ DEL	Scroll to previous screen of this message.
 \\[imail-summary-by-recipients]   Like \\[imail-summary] only just messages with particular recipient(s) are summarized.
 
 \\[imail-toggle-header]	Toggle between full headers and reduced headers.
-	  Normally only reduced headers are shown.
-\\[imail-edit-current-message]	Edit the current message.  C-c C-c to return to IMAIL."
+	  Normally only reduced headers are shown."
   (lambda (buffer)
     (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-revert-buffer)
     (local-set-variable! mode-line-modified "--- " buffer)
@@ -279,7 +278,6 @@ DEL	Scroll to previous screen of this message.
 (define-key 'imail #\i		'imail-input)
 (define-key 'imail #\q		'imail-quit)
 (define-key 'imail #\?		'describe-mode)
-(define-key 'imail #\w		'imail-edit-current-message)
 
 (define (imail-revert-buffer buffer dont-use-auto-save? dont-confirm?)
   dont-use-auto-save?
@@ -458,7 +456,7 @@ With prefix argument N moves backward N messages with these flags."
 		  (insert-string
 		   (header-fields->string
 		    (if full-headers?
-			(header-fields message)
+			(message-header-fields message)
 			(maybe-reformat-headers message buffer)))
 		   mark)
 		  (insert-newline mark)
@@ -515,7 +513,7 @@ With prefix argument N moves backward N messages with these flags."
     (if (eq? 'NONE displayed)
 	(let ((trimmed
 	       (let ((headers
-		      (let ((headers (header-fields message))
+		      (let ((headers (message-header-fields message))
 			    (regexp
 			     (ref-variable imail-ignored-headers buffer)))
 			(if regexp
@@ -811,72 +809,6 @@ While composing the reply, use \\[mail-yank-original] to yank the
   (if (string-prefix-ci? "re:" subject)
       (strip-subject-re (string-trim-left (string-tail subject 3)))
       subject))
-
-;;;; Message editing
-
-(define-command imail-edit-current-message
-  "Edit the current IMAIL message."
-  ()
-  (lambda ()
-    ;; Guarantee that this buffer has both folder and message bindings.
-    (selected-folder)
-    (selected-message)
-    (let ((buffer (selected-buffer)))
-      (set-buffer-major-mode! buffer (ref-mode-object imail-edit))
-      (set-buffer-writeable! buffer)
-      (message
-       (substitute-command-keys
-	"Editing: Type \\[imail-cease-edit] to return to Imail, \\[imail-abort-edit] to abort."
-	buffer)))))
-
-(define-major-mode imail-edit text "IMAIL Edit"
-  "Major mode for editing the contents of an IMAIL message.
-The editing commands are the same as in Text mode,
-together with two commands to return to regular IMAIL:
-  \\[imail-abort-edit] cancels the changes you have made and returns to IMAIL;
-  \\[imail-cease-edit] makes them permanent."
-  (lambda (buffer)
-    (enable-group-undo! (buffer-group buffer))))
-
-(define-key 'imail-edit '(#\c-c #\c-c)	'imail-cease-edit)
-(define-key 'imail-edit '(#\c-c #\c-\])	'imail-abort-edit)
-
-(define-command imail-cease-edit
-  "Finish editing message; switch back to IMAIL proper."
-  ()
-  (lambda ()
-    (call-with-values
-	(lambda ()
-	  (let ((buffer (selected-buffer)))
-	    (set-buffer-writeable! buffer)
-	    (buffer-widen! buffer)
-	    (guarantee-newline (buffer-end buffer))
-	    (let ((body-start
-		   (search-forward "\n\n"
-				   (buffer-start buffer)
-				   (buffer-end buffer)
-				   #f)))
-	      (if body-start
-		  (values (extract-string (buffer-start buffer)
-					  (mark-1+ body-start))
-			  (extract-string body-start
-					  (buffer-end buffer)))
-		  (values (extract-string (buffer-start buffer)
-					  (buffer-end buffer))
-			  "")))))
-      (lambda (headers-string body)
-	(let ((message (selected-message)))
-	  ;; **** The next line could generate an error.  We need to
-	  ;; figure out what to do if that happens.
-	  (set-header-fields! message (string->header-fields headers-string))
-	  (set-message-body! message body)
-	  (select-message (selected-folder) message #t))))))
-
-(define-command imail-abort-edit
-  "Abort edit of current message; restore original contents."
-  ()
-  (lambda ()
-    (select-message (selected-folder) (selected-message) #t)))
 
 ;;;; Miscellany
 

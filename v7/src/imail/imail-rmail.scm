@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.18 2000/04/14 01:45:37 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.19 2000/04/27 02:16:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -42,19 +42,19 @@
 
 (define-method %new-folder ((url <rmail-url>))
   (let ((folder (make-rmail-folder url)))
-    (set-header-fields! folder (compute-rmail-folder-header-fields folder))
+    (set-rmail-folder-header-fields!
+     folder
+     (compute-rmail-folder-header-fields folder))
     (save-folder folder)
     folder))
 
 ;;;; Folder
 
-(define-class (<rmail-folder> (constructor (url))) (<file-folder>))
+(define-class (<rmail-folder> (constructor (url))) (<file-folder>)
+  (header-fields define standard))
 
-(define-method header-fields ((folder <rmail-folder>))
-  (folder-get folder 'RMAIL-HEADER-FIELDS '()))
-
-(define-method set-header-fields! ((folder <rmail-folder>) headers)
-  (folder-put! folder 'RMAIL-HEADER-FIELDS headers))
+(define-method rmail-folder-header-fields ((folder <folder>))
+  (compute-rmail-folder-header-fields folder))
 
 (define-method %write-folder ((folder <folder>) (url <rmail-url>))
   (write-rmail-file folder (file-url-pathname url))
@@ -63,9 +63,6 @@
 
 (define-method poll-folder ((folder <rmail-folder>))
   (rmail-get-new-mail folder))
-
-(define-method header-fields ((folder <folder>))
-  (compute-rmail-folder-header-fields folder))
 
 (define (compute-rmail-folder-header-fields folder)
   (list (make-header-field "Version" " 5")
@@ -88,7 +85,7 @@
 (define-method %revert-folder ((folder <rmail-folder>))
   (call-with-binary-input-file (file-folder-pathname folder)
     (lambda (port)
-      (set-header-fields! folder (read-rmail-prolog port))
+      (set-rmail-folder-header-fields! folder (read-rmail-prolog port))
       (let loop ()
 	(let ((message (read-rmail-message port)))
 	  (if message
@@ -128,16 +125,6 @@
 		  (for-each (lambda (flag)
 			      (set-message-flag message flag))
 			    flags)
-		  (let ((headers (header-fields message)))
-		    (if (and (pair? headers)
-			     (string-ci=? "summary-line"
-					  (header-field-name (car headers))))
-			(begin
-			  (set-message-property
-			   message
-			   (header-field-name (car headers))
-			   (header-field-value (car headers)))
-			  (set-header-fields! message (cdr headers)))))
 		  message))))
 	(if formatted?
 	    (let ((message (finish headers)))
@@ -186,7 +173,7 @@
     (lambda (port)
       (write-string "BABYL OPTIONS: -*- rmail -*-" port)
       (newline port)
-      (write-header-fields (header-fields folder) port)
+      (write-header-fields (rmail-folder-header-fields folder) port)
       (write-char rmail-message:end-char port)
       (for-each (lambda (message) (write-rmail-message message port))
 		(file-folder-messages folder)))))
@@ -194,7 +181,7 @@
 (define (write-rmail-message message port)
   (write-char rmail-message:start-char port)
   (newline port)
-  (let ((headers (header-fields message))
+  (let ((headers (message-header-fields message))
 	(displayed-headers
 	 (get-message-property message "displayed-header-fields" 'NONE)))
     (write-rmail-attributes-line message displayed-headers port)
@@ -234,16 +221,9 @@
 
 (define (write-rmail-properties message port)
   (let ((alist (message-properties message)))
-    (let ((summary-line
-	   (list-search-positive alist
-	     (lambda (n.v)
-	       (string-ci=? "summary-line" (car n.v))))))
-      (if summary-line
-	  (%write-header-field (car summary-line) (cdr summary-line) port)))
     (for-each
      (lambda (n.v)
-       (if (not (or (string-ci=? "summary-line" (car n.v))
-		    (string-ci=? "displayed-header-fields" (car n.v))))
+       (if (not (string-ci=? "displayed-header-fields" (car n.v)))
 	   (write-header-field
 	    (message-property->header-field (car n.v) (cdr n.v))
 	    port)))
@@ -275,7 +255,9 @@
 	  (- (folder-length folder) initial-count)))))
 
 (define (rmail-folder-inbox-list folder)
-  (let ((inboxes (get-first-header-field-value folder "mail" #f)))
+  (let ((inboxes
+	 (get-first-header-field-value (rmail-folder-header-fields folder)
+				       "mail" #f)))
     (cond (inboxes
 	   (map (let ((directory
 		       (directory-pathname (file-folder-pathname folder))))

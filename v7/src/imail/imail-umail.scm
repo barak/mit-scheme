@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.11 2000/04/06 03:26:41 cph Exp $
+;;; $Id: imail-umail.scm,v 1.12 2000/04/27 02:16:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -162,7 +162,7 @@
 		   (message-property->header-field (car n.v) (cdr n.v))
 		   port)))
 	    (message-properties message))
-  (write-header-fields (header-fields message) port)
+  (write-header-fields (message-header-fields message) port)
   (newline port)
   (for-each (lambda (line)
 	      (if (string-prefix-ci? "From " line)
