@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.19 1990/02/08 02:50:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.20 1990/02/27 19:18:26 markf Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -299,6 +299,7 @@ lookup.c \
 memmag.c \
 prim.c \
 primutl.c \
+process.c \
 purify.c \
 purutl.c \
 regex.c \
@@ -342,6 +343,7 @@ lookprm.o \
 lookup.o \
 prim.o \
 primutl.o \
+process.o \
 purutl.o \
 regex.o \
 rgxprim.o \
@@ -443,7 +445,8 @@ scheme.touch os.touch psbmap.touch usrdef.touch :
 scheme.touch : scheme.h config.h bkpt.h object.h scode.h sdata.h \
 	gc.h interp.h stack.h futures.h types.h errors.h returns.h \
 	const.h fixobj.h default.h extern.h prim.h intrpt.h float.h
-os.touch : os.c unix.c vms.c unknown.c scheme.touch zones.h
+os.touch : os.c unix.c vms.c unknown.c scheme.touch zones.h \
+	process.h unixpro.c
 psbmap.touch : config.h object.h bignum.h bignumint.h bitstr.h types.h \
 	sdata.h const.h psbmap.h $(GC_HEAD_FILES) comlin.h comlin.c
 usrdef.touch : usrdef.h config.h object.h prim.h
@@ -527,3 +530,5 @@ cmpint.o : scheme.touch prim.h $(GC_HEAD_FILES)
 cmpaux-hppa.s : cmpaux-hppa.m4
 cmpaux-mc68k.s : cmpaux-mc68k.m4
 cmpaux-vax.s : cmpaux-vax.m4
+
+process.c : scheme.touch process.h prims.h
