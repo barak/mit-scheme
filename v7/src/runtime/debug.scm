@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.26 1991/05/15 21:18:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.27 1991/06/11 17:51:39 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -231,7 +231,7 @@ MIT in each case. |#
 	     (newline)
 	     (let ((subexpression (dstate/subexpression dstate)))
 	       (if (or (debugging-info/undefined-expression? subexpression)
-		       (debugging-info/undefined-expression? subexpression))
+		       (debugging-info/unknown-expression? subexpression))
 		   (debugger-pp expression expression-indentation)
 		   (begin
 		     (debugger-pp
@@ -245,16 +245,15 @@ MIT in each case. |#
 		     (write-string "):")
 		     (newline)
 		     (debugger-pp subexpression expression-indentation)))))
-	    ((or (not (debugging-info/undefined-expression? expression))
-		 (not (debugging-info/noise? expression)))
+	    ((debugging-info/noise? expression)
+	     (write-string ((debugging-info/noise expression) true)))
+	    (else
 	     (write-string
 	      (if (stack-frame/compiled-code? subproblem)
 		  "Compiled code expression unknown"
 		  "Expression unknown"))
 	     (newline)
-	     (write (stack-frame/return-address subproblem)))
-	    (else
-	     (write-string ((debugging-info/noise expression) true)))))
+	     (write (stack-frame/return-address subproblem)))))
     (let ((environment-list (dstate/environment-list dstate)))
       (if (pair? environment-list)
 	  (print-environment (car environment-list))
