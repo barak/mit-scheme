@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comman.scm,v 1.75 1993/10/14 22:43:17 cph Exp $
+$Id: comman.scm,v 1.76 1993/10/15 02:09:17 cph Exp $
 
 Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 
@@ -165,8 +165,8 @@ of that license should have been included along with this file.
   (set-variable-buffer-local?! variable #t))
 
 (define (normalize-variable-value variable value)
-  (if (or (not (variable-value-validity-test variable))
-	  ((variable-value-validity-test variable) value))
+  (if (and (variable-value-validity-test variable)
+	   (not ((variable-value-validity-test variable) value)))
       (editor-error "Invalid value for " (variable-name-string variable)
 		    ": " value))
   (if (variable-value-normalization variable)
