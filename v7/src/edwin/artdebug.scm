@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.17 1992/02/04 04:02:16 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.18 1992/06/01 16:50:47 u6001 Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -1149,11 +1149,13 @@ Prefix argument means do not kill the debugger buffer."
 	   (and (not (null? windows))
 		(apply min (map window-x-size windows)))))))
 
-(define (operation/debugger-failure string)
+(define (operation/debugger-failure port string)
+  port
   (message string)
   (editor-beep))
 
-(define (operation/debugger-message string)
+(define (operation/debugger-message port string)
+  port
   (message string))
 
 (define (debugger-presentation port thunk)
