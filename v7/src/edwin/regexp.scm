@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: regexp.scm,v 1.81 2003/02/14 18:28:13 cph Exp $
+$Id: regexp.scm,v 1.82 2004/11/19 16:46:21 cph Exp $
 
 Copyright 1986,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1999,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -160,39 +161,6 @@ USA.
     (group-delete! group start (re-match-end-index 0))
     (make-mark group start)))
 
-(define-syntax default-end-mark
-  (sc-macro-transformer
-   (lambda (form environment)
-     (let ((start (close-syntax (cadr form) environment))
-	   (end (close-syntax (caddr form) environment)))
-       `(IF (DEFAULT-OBJECT? ,end)
-	    (GROUP-END ,start)
-	    (BEGIN
-	      (IF (NOT (MARK<= ,start ,end))
-		  (ERROR "Marks incorrectly related:" ,start ,end))
-	      ,end))))))
-
-(define-syntax default-start-mark
-  (sc-macro-transformer
-   (lambda (form environment)
-     (let ((start (close-syntax (cadr form) environment))
-	   (end (close-syntax (caddr form) environment)))
-       `(IF (DEFAULT-OBJECT? ,start)
-	    (GROUP-START ,end)
-	    (BEGIN
-	      (IF (NOT (MARK<= ,start ,end))
-		  (ERROR "Marks incorrectly related:" ,start ,end))
-	      ,start))))))
-
-(define-syntax default-case-fold-search
-  (sc-macro-transformer
-   (lambda (form environment)
-     (let ((case-fold-search (close-syntax (cadr form) environment))
-	   (mark (close-syntax (caddr form) environment)))
-       `(IF (DEFAULT-OBJECT? ,case-fold-search)
-	    (GROUP-CASE-FOLD-SEARCH (MARK-GROUP ,mark))
-	    ,case-fold-search)))))
-
 (define (search-forward string start #!optional end case-fold-search)
   (%re-search string start (default-end-mark start end)
 	      (default-case-fold-search case-fold-search start)
@@ -229,6 +197,27 @@ USA.
 		   (mark-index end))))
       (and index
 	   (make-mark group index)))))
+
+(define (default-end-mark start end)
+  (if (default-object? end)
+      (group-end start)
+      (begin
+	(if (not (mark<= start end))
+	    (error "Marks incorrectly related:" start end))
+	end)))
+
+(define (default-start-mark start end)
+  (if (default-object? start)
+      (group-start end)
+      (begin
+	(if (not (mark<= start end))
+	    (error "Marks incorrectly related:" start end))
+	start)))
+
+(define (default-case-fold-search case-fold-search mark)
+  (if (default-object? case-fold-search)
+      (group-case-fold-search (mark-group mark))
+      case-fold-search))
 
 (define (re-match-forward regexp start #!optional end case-fold-search)
   (let ((end (default-end-mark start end))
