@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: undo.scm,v 1.54 1993/01/24 07:06:43 cph Exp $
+;;;	$Id: undo.scm,v 1.55 1993/08/09 19:11:49 jawilson Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -124,6 +124,13 @@
       (begin
 	(if (not (group-modified? group))
 	    (undo-record-first-change! group))
+	(if (group-text-properties group)
+	    (set-group-undo-data!
+	     group
+	     (cons (cons 'REINSERT-PROPERTIES
+			 (vector start end
+				 (group-extract-properties group start end)))
+		   (group-undo-data group))))
 	(set-group-undo-data!
 	 group
 	 (let ((text (group-extract-string group start end))
@@ -138,6 +145,16 @@
 		  (cons* (cons text start)
 			 point
 			 (group-undo-data group)))))))))
+
+(define (undo-record-property-changes! group properties)
+    (if (not (eq? #t (group-undo-data group)))
+	(begin
+	  (if (not (group-modified? group))
+	      (undo-record-first-change! group))
+	  (set-group-undo-data!
+	   group
+	   (cons (cons 'SET-TEXT-PROPERTIES properties)
+		 (group-undo-data group))))))
 
 (define (undo-record-first-change! group)
   (let ((buffer (group-buffer group)))
@@ -289,37 +306,51 @@ A numeric argument serves as a repeat count."
 		  ;; #F means boundary: this step is done.
 		  (finish data)
 		  (begin
-		    (if (fix:fixnum? element)
-			;; Fixnum is a point position.
-			(set-mark-index! point element)
-			(let ((a (car element))
-			      (b (cdr element)))
-			  (cond ((eq? #t a)
-				 ;; (#t . MOD-TIME) means first modification
-				 (if (eqv? b (buffer-modification-time buffer))
-				     (buffer-not-modified! buffer)))
-				((fix:fixnum? a)
-				 ;; (START . END) means insertion
-				 (if (or (fix:< a (group-start-index group))
-					 (fix:> a (group-end-index group))
-					 (fix:> b (group-end-index group)))
-				     (outside-visible-range))
-				 (set-mark-index! point a)
-				 (group-delete! group a b))
-				;; (STRING . START) means deletion
-				((fix:< b 0)
-				 ;; negative START means set point at end
-				 (let ((b (fix:- 0 b)))
-				   (if (or (fix:< b (group-start-index group))
-					   (fix:> b (group-end-index group)))
-				       (outside-visible-range))
-				   (set-mark-index! point b)
-				   (group-insert-string! group b a)))
-				(else
-				 ;; nonnegative START means set point at start
+		    (cond
+		     ;; Fixnum is a point position.
+		     ((fix:fixnum? element)
+		      (set-mark-index! point element))
+		     (else
+		      (let ((a (car element))
+			    (b (cdr element)))
+			(cond ((eq? #t a)
+			       ;; (#t . MOD-TIME) means first modification
+			       (if (eqv? b (buffer-modification-time buffer))
+				   (buffer-not-modified! buffer)))
+			      ((eq? 'SET-TEXT-PROPERTIES a)
+			       (for-each (lambda (entry)
+					   (set-text-properties group
+								(car entry)
+								(cadr entry)
+								(caddr entry)))
+					 b))
+			      ((eq? 'REINSERT-PROPERTIES a)
+			       (group-reinsert-properties! group
+							   (vector-ref b 0)
+							   (vector-ref b 1)
+							   (vector-ref b 2)))
+			      ((fix:fixnum? a)
+			       ;; (START . END) means insertion
+			       (if (or (fix:< a (group-start-index group))
+				       (fix:> a (group-end-index group))
+				       (fix:> b (group-end-index group)))
+				   (outside-visible-range))
+			       (set-mark-index! point a)
+			       (group-delete! group a b))
+			      ;; (STRING . START) means deletion
+			      ((fix:< b 0)
+			       ;; negative START means set point at end
+			       (let ((b (fix:- 0 b)))
 				 (if (or (fix:< b (group-start-index group))
 					 (fix:> b (group-end-index group)))
 				     (outside-visible-range))
-				 (group-insert-string! group b a)
-				 (set-mark-index! point b)))))
+				 (set-mark-index! point b)
+				 (group-insert-string! group b a)))
+			      (else
+			       ;; nonnegative START means set point at start
+			       (if (or (fix:< b (group-start-index group))
+				       (fix:> b (group-end-index group)))
+				   (outside-visible-range))
+			       (group-insert-string! group b a)
+			       (set-mark-index! point b))))))
 		    (loop data)))))))))
