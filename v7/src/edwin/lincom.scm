@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.112 1991/05/14 20:41:01 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.113 1991/05/14 21:20:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -490,15 +490,18 @@ The variable tab-width controls the action."
     (untabify-region (region-start region) (region-end region))))
 
 (define (untabify-region start end)
-  (let ((start (mark-right-inserting-copy start))
+  (let ((start (mark-left-inserting-copy start))
 	(end (mark-left-inserting-copy end)))
-    (do ()
-	((not (char-search-forward #\tab start end)))
-      (let ((tab (re-match-start 0)))
-	(move-mark-to! start (re-match-end 0))
-	(let ((n-spaces (- (mark-column start) (mark-column tab))))
-	  (delete-string tab start)
-	  (insert-chars #\space n-spaces start))))
+    (let loop ()
+      (let ((m (char-search-forward #\tab start end)))
+	(if m
+	    (begin
+	      (move-mark-to! start m)
+	      (let ((tab (mark-1+ start)))
+		(let ((n-spaces (- (mark-column start) (mark-column tab))))
+		  (delete-string tab start)
+		  (insert-chars #\space n-spaces start)))
+	      (loop)))))
     (mark-temporary! start)
     (mark-temporary! end)))
 
