@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.55 2003/07/30 17:25:51 cph Exp $
+$Id: unpars.scm,v 14.56 2004/01/16 05:48:23 cph Exp $
 
 Copyright 1986,1987,1990,1991,1992,1995 Massachusetts Institute of Technology
-Copyright 1996,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 1996,2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -48,8 +48,12 @@ USA.
   (set! *unparse-abbreviate-quotations?* #f)
   (set! system-global-unparser-table (make-system-global-unparser-table))
   (set! *default-list-depth* 0)
-  (set! quoted-symbol-chars
-	(char-set-union char-set/atom-delimiters char-set:upper-case))
+  (set! non-canon-symbol-quoted
+	(char-set-union char-set/atom-delimiters
+			char-set/symbol-quotes))
+  (set! canon-symbol-quoted
+	(char-set-union non-canon-symbol-quoted
+			char-set:upper-case))
   (set-current-unparser-table! system-global-unparser-table))
 
 (define *unparser-radix*)
@@ -66,7 +70,8 @@ USA.
 (define *unparse-abbreviate-quotations?*)
 (define system-global-unparser-table)
 (define *default-list-depth*)
-(define quoted-symbol-chars)
+(define non-canon-symbol-quoted)
+(define canon-symbol-quoted)
 (define *current-unparser-table*)
 
 (define (current-unparser-table)
@@ -340,8 +345,8 @@ USA.
   (let ((s (symbol-name symbol)))
     (if (or (string-find-next-char-in-set s
 					  (if *parser-canonicalize-symbols?*
-					      quoted-symbol-chars
-					      char-set/atom-delimiters))
+					      canon-symbol-quoted
+					      non-canon-symbol-quoted))
 	    (fix:= (string-length s) 0)
 	    (and (char-set-member? char-set/number-leaders (string-ref s 0))
 		 (string->number s)))
