@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.10 1990/11/09 08:43:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.11 1990/11/09 10:10:35 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -132,7 +132,7 @@ MIT in each case. |#
 (define (default-operation/read-string port delimiters)
   (let ((peek-char (input-port/operation/peek-char port))
 	(discard-char (input-port/operation/discard-char port)))
-    (let ((peek-char (let loop () (or (peek-char port) (loop)))))
+    (let ((peek-char (lambda () (let loop () (or (peek-char port) (loop))))))
       (let ((char (peek-char)))
 	(if (eof-object? char)
 	    char
