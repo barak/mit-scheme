@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rgrval.scm,v 4.18 1992/11/08 04:07:53 jinx Exp $
+$Id: rgrval.scm,v 4.19 1992/11/09 18:42:52 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -84,12 +84,14 @@ MIT in each case. |#
 		      (lambda (environment)
 			(wrap-with-continuation-entry
 			 context
-			 (rtl:make-interpreter-call:lookup
-			  environment
-			  (intern-scode-variable!
-			   (reference-context/block context)
-			   name)
-			  safe?))))
+			 (lambda (cont-label)
+			   (rtl:make-interpreter-call:lookup
+			    cont-label
+			    environment
+			    (intern-scode-variable!
+			     (reference-context/block context)
+			     name)
+			    safe?)))))
 		    (rtl:interpreter-call-result:lookup)))
 		 (lambda (name)
 		   (if (memq 'IGNORE-REFERENCE-TRAPS
@@ -129,7 +131,9 @@ MIT in each case. |#
 		 (n4
 		  (wrap-with-continuation-entry
 		   context
-		   (rtl:make-interpreter-call:cache-reference cell safe?)))
+		   (lambda (cont-label)
+		     (rtl:make-interpreter-call:cache-reference
+		      cont-label cell safe?))))
 		 (n5
 		  (rtl:make-assignment
 		   result

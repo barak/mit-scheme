@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.12 1990/05/03 15:11:55 jinx Rel $
+$Id: rgproc.scm,v 4.13 1992/11/09 18:43:08 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -105,15 +105,17 @@ MIT in each case. |#
    (map (let ((block (procedure-block procedure)))
 	  (lambda (name value)
 	    (generate/rvalue value scfg*scfg->scfg!
-	      (lambda (expression)
-		(load-temporary-register scfg*scfg->scfg! expression
-		  (lambda (expression)
-		    (wrap-with-continuation-entry
-		     context
+	     (lambda (expression)
+	       (load-temporary-register scfg*scfg->scfg! expression
+		(lambda (expression)
+		  (wrap-with-continuation-entry
+		   context
+		   (lambda (cont-label)
 		     (rtl:make-interpreter-call:set!
+		      cont-label
 		      (rtl:make-fetch register:environment)
 		      (intern-scode-variable! block (variable-name name))
-		      expression))))))))
+		      expression)))))))))
 	(procedure-names procedure)
 	(procedure-values procedure))))
 

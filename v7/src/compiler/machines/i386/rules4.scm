@@ -1,7 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules4.scm,v 1.6 1992/02/28 20:23:57 jinx Exp $
-$mc68020-Header: rules4.scm,v 4.12 90/05/03 15:17:38 GMT jinx Exp $
+$Id: rules4.scm,v 1.7 1992/11/09 18:47:02 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -38,63 +37,12 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-;;;; Interpreter Calls
+;;;; Variable cache trap handling.
 
 (define-rule statement
-  (INTERPRETER-CALL:ACCESS (? environment) (? name))
-  (QUALIFIER (interpreter-call-argument? environment))
-  (lookup-call code:compiler-access environment name))
-
-(define-rule statement
-  (INTERPRETER-CALL:LOOKUP (? environment) (? name) (? safe?))
-  (QUALIFIER (interpreter-call-argument? environment))
-  (lookup-call (if safe? code:compiler-safe-lookup code:compiler-lookup)
-	       environment name))
-
-(define-rule statement
-  (INTERPRETER-CALL:UNASSIGNED? (? environment) (? name))
-  (QUALIFIER (interpreter-call-argument? environment))
-  (lookup-call code:compiler-unassigned? environment name))
-
-(define-rule statement
-  (INTERPRETER-CALL:UNBOUND? (? environment) (? name))
-  (QUALIFIER (interpreter-call-argument? environment))
-  (lookup-call code:compiler-unbound? environment name))
-
-(define (lookup-call code environment name)
-  (let ((set-environment
-	  (interpreter-call-argument->machine-register! environment edx)))
-    (LAP ,@set-environment
-	 ,@(clear-map (clear-map!))
-	 ,@(load-constant (INST-EA (R ,ebx)) name)
-	 ,@(invoke-interface/call code))))
-
-(define-rule statement
-  (INTERPRETER-CALL:DEFINE (? environment) (? name) (? value))
-  (QUALIFIER (and (interpreter-call-argument? environment)
-		  (interpreter-call-argument? value)))
-  (assignment-call code:compiler-define environment name value))
-
-(define-rule statement
-  (INTERPRETER-CALL:SET! (? environment) (? name) (? value))
-  (QUALIFIER (and (interpreter-call-argument? environment)
-		  (interpreter-call-argument? value)))
-  (assignment-call code:compiler-set! environment name value))
-
-(define (assignment-call code environment name value)
-  (let* ((set-environment
-	  (interpreter-call-argument->machine-register! environment edx))
-	 (set-value (interpreter-call-argument->machine-register! value eax)))
-    (LAP ,@set-environment
-	 ,@set-value
-	 ,@(clear-map!)
-	 (MOV W ,reg:utility-arg-4 (R ,eax))
-	 ,@(load-constant (INST-EA (R ,ebx)) name)
-	 ,@(invoke-interface/call code))))
-
-(define-rule statement
-  (INTERPRETER-CALL:CACHE-REFERENCE (? extension) (? safe?))
+  (INTERPRETER-CALL:CACHE-REFERENCE (? cont) (? extension) (? safe?))
   (QUALIFIER (interpreter-call-argument? extension))
+  cont					; ignored
   (let ((set-extension
 	 (interpreter-call-argument->machine-register! extension edx)))
     (LAP ,@set-extension
@@ -110,9 +58,10 @@ MIT in each case. |#
 				 entry:compiler-reference-trap)))))
 
 (define-rule statement
-  (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension) (? value))
+  (INTERPRETER-CALL:CACHE-ASSIGNMENT (? cont) (? extension) (? value))
   (QUALIFIER (and (interpreter-call-argument? extension)
 		  (interpreter-call-argument? value)))
+  cont					; ignored
   (let* ((set-extension
 	  (interpreter-call-argument->machine-register! extension edx))
 	 (set-value (interpreter-call-argument->machine-register! value ebx)))
@@ -125,10 +74,75 @@ MIT in each case. |#
 	 ,@(invoke-hook/call entry:compiler-assignment-trap))))
 
 (define-rule statement
-  (INTERPRETER-CALL:CACHE-UNASSIGNED? (? extension))
+  (INTERPRETER-CALL:CACHE-UNASSIGNED? (? cont) (? extension))
   (QUALIFIER (interpreter-call-argument? extension))
+  cont					; ignored
   (let ((set-extension
 	 (interpreter-call-argument->machine-register! extension edx)))
     (LAP ,@set-extension
 	 ,@(clear-map!)
 	 ,@(invoke-interface/call code:compiler-unassigned?-trap))))
+
+;;;; Interpreter Calls
+
+;;; All the code that follows is obsolete.  It hasn't been used in a while.
+;;; It is provided in case the relevant switches are turned off, but there
+;;; is no real reason to do this.  Perhaps the switches should be removed.
+
+(define-rule statement
+  (INTERPRETER-CALL:ACCESS (? cont) (? environment) (? name))
+  (QUALIFIER (interpreter-call-argument? environment))
+  cont					; ignored
+  (lookup-call code:compiler-access environment name))
+
+(define-rule statement
+  (INTERPRETER-CALL:LOOKUP (? cont) (? environment) (? name) (? safe?))
+  (QUALIFIER (interpreter-call-argument? environment))
+  cont					; ignored
+  (lookup-call (if safe? code:compiler-safe-lookup code:compiler-lookup)
+	       environment name))
+
+(define-rule statement
+  (INTERPRETER-CALL:UNASSIGNED? (? cont) (? environment) (? name))
+  (QUALIFIER (interpreter-call-argument? environment))
+  cont					; ignored
+  (lookup-call code:compiler-unassigned? environment name))
+
+(define-rule statement
+  (INTERPRETER-CALL:UNBOUND? (? cont) (? environment) (? name))
+  (QUALIFIER (interpreter-call-argument? environment))
+  cont					; ignored
+  (lookup-call code:compiler-unbound? environment name))
+
+(define (lookup-call code environment name)
+  (let ((set-environment
+	  (interpreter-call-argument->machine-register! environment edx)))
+    (LAP ,@set-environment
+	 ,@(clear-map (clear-map!))
+	 ,@(load-constant (INST-EA (R ,ebx)) name)
+	 ,@(invoke-interface/call code))))
+
+(define-rule statement
+  (INTERPRETER-CALL:DEFINE (? cont) (? environment) (? name) (? value))
+  (QUALIFIER (and (interpreter-call-argument? environment)
+		  (interpreter-call-argument? value)))
+  cont					; ignored
+  (assignment-call code:compiler-define environment name value))
+
+(define-rule statement
+  (INTERPRETER-CALL:SET! (? cont) (? environment) (? name) (? value))
+  (QUALIFIER (and (interpreter-call-argument? environment)
+		  (interpreter-call-argument? value)))
+  cont					; ignored
+  (assignment-call code:compiler-set! environment name value))
+
+(define (assignment-call code environment name value)
+  (let* ((set-environment
+	  (interpreter-call-argument->machine-register! environment edx))
+	 (set-value (interpreter-call-argument->machine-register! value eax)))
+    (LAP ,@set-environment
+	 ,@set-value
+	 ,@(clear-map!)
+	 (MOV W ,reg:utility-arg-4 (R ,eax))
+	 ,@(load-constant (INST-EA (R ,ebx)) name)
+	 ,@(invoke-interface/call code))))

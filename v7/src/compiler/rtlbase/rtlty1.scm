@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.19 1991/10/25 00:14:27 cph Exp $
+$Id: rtlty1.scm,v 4.20 1992/11/09 18:42:11 jinx Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -107,24 +107,30 @@ MIT in each case. |#
 (define-rtl-expression address->fixnum rtl: expression)
 
 ;;; Machine integer arithmetic operations
-(define-rtl-expression fixnum-1-arg rtl: operator operand overflow?)
-(define-rtl-expression fixnum-2-args rtl: operator operand-1 operand-2
-  overflow?)
+(define-rtl-expression fixnum-1-arg rtl:
+  operator operand overflow?)
+(define-rtl-expression fixnum-2-args rtl:
+  operator operand-1 operand-2 overflow?)
 
 ;;; Conversion between flonums and machine floats
 (define-rtl-expression float->object rtl: expression)
 (define-rtl-expression object->float rtl: expression)
 
 ;;; Floating-point arithmetic operations
-(define-rtl-expression flonum-1-arg rtl: operator operand overflow?)
-(define-rtl-expression flonum-2-args rtl: operator operand-1 operand-2
-  overflow?)
+(define-rtl-expression flonum-1-arg rtl:
+  operator operand overflow?)
+(define-rtl-expression flonum-2-args rtl:
+  operator operand-1 operand-2 overflow?)
 
-(define-rtl-predicate fixnum-pred-1-arg % predicate operand)
-(define-rtl-predicate fixnum-pred-2-args % predicate operand-1 operand-2)
+(define-rtl-predicate fixnum-pred-1-arg %
+  predicate operand)
+(define-rtl-predicate fixnum-pred-2-args %
+  predicate operand-1 operand-2)
 
-(define-rtl-predicate flonum-pred-1-arg % predicate operand)
-(define-rtl-predicate flonum-pred-2-args % predicate operand-1 operand-2)
+(define-rtl-predicate flonum-pred-1-arg %
+  predicate operand)
+(define-rtl-predicate flonum-pred-2-args %
+  predicate operand-1 operand-2)
 
 (define-rtl-predicate eq-test % expression-1 expression-2)
 (define-rtl-predicate type-test % expression type)
@@ -142,31 +148,50 @@ MIT in each case. |#
 (define-rtl-statement procedure-header rtl: procedure min max)
 (define-rtl-statement closure-header rtl: procedure nentries entry)
 
-(define-rtl-statement interpreter-call:access % environment name)
-(define-rtl-statement interpreter-call:define % environment name value)
-(define-rtl-statement interpreter-call:lookup % environment name safe?)
-(define-rtl-statement interpreter-call:set! % environment name value)
-(define-rtl-statement interpreter-call:unassigned? % environment name)
-(define-rtl-statement interpreter-call:unbound? % environment name)
+(define-rtl-statement interpreter-call:access %
+  continuation environment name)
+(define-rtl-statement interpreter-call:define %
+  continuation environment name value)
+(define-rtl-statement interpreter-call:lookup %
+  continuation environment name safe?)
+(define-rtl-statement interpreter-call:set! %
+  continuation environment name value)
+(define-rtl-statement interpreter-call:unassigned? %
+  continuation environment name)
+(define-rtl-statement interpreter-call:unbound? %
+  continuation environment name)
 
-(define-rtl-statement interpreter-call:cache-assignment % name value)
-(define-rtl-statement interpreter-call:cache-reference % name safe?)
-(define-rtl-statement interpreter-call:cache-unassigned? % name)
+(define-rtl-statement interpreter-call:cache-assignment %
+  continuation name value)
+(define-rtl-statement interpreter-call:cache-reference %
+  continuation name safe?)
+(define-rtl-statement interpreter-call:cache-unassigned? %
+  continuation name)
 
-(define-rtl-statement invocation:apply rtl: pushed continuation)
-(define-rtl-statement invocation:jump rtl: pushed continuation procedure)
-(define-rtl-statement invocation:computed-jump rtl: pushed continuation)
-(define-rtl-statement invocation:lexpr rtl: pushed continuation procedure)
-(define-rtl-statement invocation:computed-lexpr rtl: pushed continuation)
-(define-rtl-statement invocation:uuo-link rtl: pushed continuation name)
-(define-rtl-statement invocation:global-link rtl: pushed continuation name)
-(define-rtl-statement invocation:primitive rtl: pushed continuation procedure)
-(define-rtl-statement invocation:special-primitive rtl: pushed continuation
-  procedure)
-(define-rtl-statement invocation:cache-reference rtl: pushed continuation name)
-(define-rtl-statement invocation:lookup rtl: pushed continuation environment
-  name)
+(define-rtl-statement invocation:apply rtl:
+  pushed continuation)
+(define-rtl-statement invocation:jump rtl:
+  pushed continuation procedure)
+(define-rtl-statement invocation:computed-jump rtl:
+  pushed continuation)
+(define-rtl-statement invocation:lexpr rtl:
+  pushed continuation procedure)
+(define-rtl-statement invocation:computed-lexpr rtl:
+  pushed continuation)
+(define-rtl-statement invocation:uuo-link rtl:
+  pushed continuation name)
+(define-rtl-statement invocation:global-link rtl:
+  pushed continuation name)
+(define-rtl-statement invocation:primitive rtl:
+  pushed continuation procedure)
+(define-rtl-statement invocation:special-primitive rtl:
+  pushed continuation procedure)
+(define-rtl-statement invocation:cache-reference rtl:
+  pushed continuation name)
+(define-rtl-statement invocation:lookup rtl:
+  pushed continuation environment name)
 
-(define-rtl-statement invocation-prefix:move-frame-up rtl: frame-size locative)
-(define-rtl-statement invocation-prefix:dynamic-link rtl: frame-size locative
-  register)
+(define-rtl-statement invocation-prefix:move-frame-up rtl:
+  frame-size locative)
+(define-rtl-statement invocation-prefix:dynamic-link rtl:
+  frame-size locative register)

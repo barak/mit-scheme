@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.22 1991/10/25 00:14:14 cph Exp $
+$Id: rtlcon.scm,v 4.23 1992/11/09 18:42:25 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -166,10 +166,10 @@ MIT in each case. |#
 (define rtl:make-interpreter-call:unbound?)
 (let ((interpreter-lookup-maker
        (lambda (%make)
-	 (lambda (environment name)
+	 (lambda (cont environment name)
 	   (expression-simplify-for-statement environment
 	     (lambda (environment)
-	       (%make environment name)))))))
+	       (%make cont environment name)))))))
   (set! rtl:make-interpreter-call:access
 	(interpreter-lookup-maker %make-interpreter-call:access))
   (set! rtl:make-interpreter-call:unassigned?
@@ -181,38 +181,38 @@ MIT in each case. |#
 (define rtl:make-interpreter-call:set!)
 (let ((interpreter-assignment-maker
        (lambda (%make)
-	 (lambda (environment name value)
+	 (lambda (cont environment name value)
 	   (expression-simplify-for-statement value
 	     (lambda (value)
 	       (expression-simplify-for-statement environment
 		 (lambda (environment)
-		   (%make environment name value)))))))))
+		   (%make cont environment name value)))))))))
   (set! rtl:make-interpreter-call:define
 	(interpreter-assignment-maker %make-interpreter-call:define))
   (set! rtl:make-interpreter-call:set!
 	(interpreter-assignment-maker %make-interpreter-call:set!)))
 
-(define (rtl:make-interpreter-call:lookup environment name safe?)
+(define (rtl:make-interpreter-call:lookup cont environment name safe?)
   (expression-simplify-for-statement environment
     (lambda (environment)
-      (%make-interpreter-call:lookup environment name safe?))))
+      (%make-interpreter-call:lookup cont environment name safe?))))
 
-(define (rtl:make-interpreter-call:cache-assignment name value)
+(define (rtl:make-interpreter-call:cache-assignment cont name value)
   (expression-simplify-for-statement name
     (lambda (name)
       (expression-simplify-for-statement value
 	(lambda (value)
-	  (%make-interpreter-call:cache-assignment name value))))))
+	  (%make-interpreter-call:cache-assignment cont name value))))))
 
-(define (rtl:make-interpreter-call:cache-reference name safe?)
+(define (rtl:make-interpreter-call:cache-reference cont name safe?)
   (expression-simplify-for-statement name
     (lambda (name)
-      (%make-interpreter-call:cache-reference name safe?))))
+      (%make-interpreter-call:cache-reference cont name safe?))))
 
-(define (rtl:make-interpreter-call:cache-unassigned? name)
+(define (rtl:make-interpreter-call:cache-unassigned? cont name)
   (expression-simplify-for-statement name
     (lambda (name)
-      (%make-interpreter-call:cache-unassigned? name))))
+      (%make-interpreter-call:cache-unassigned? cont name))))
 
 ;;;; Expression Simplification
 

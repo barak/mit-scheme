@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.15 1990/05/03 15:12:04 jinx Rel $
+$Id: rgstmt.scm,v 4.16 1992/11/09 18:43:28 jinx Exp $
 
-Copyright (c) 1988, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -57,12 +57,14 @@ MIT in each case. |#
 		      (lambda (expression)
 			(wrap-with-continuation-entry
 			 context
-			 (rtl:make-interpreter-call:set!
-			  environment
-			  (intern-scode-variable!
-			   (reference-context/block context)
-			   name)
-			  expression)))))))
+			 (lambda (cont-label)
+			   (rtl:make-interpreter-call:set!
+			    cont-label
+			    environment
+			    (intern-scode-variable!
+			     (reference-context/block context)
+			     name)
+			    expression))))))))
 	      (lambda (name)
 		(if (memq 'IGNORE-ASSIGNMENT-TRAPS
 			  (variable-declarations lvalue))
@@ -88,7 +90,9 @@ MIT in each case. |#
 		  (n5
 		   (wrap-with-continuation-entry
 		    context
-		    (rtl:make-interpreter-call:cache-assignment cell value)))
+		    (lambda (cont-label)
+		      (rtl:make-interpreter-call:cache-assignment
+		       cont-label cell value))))
 		  ;; Copy prevents premature control merge which confuses CSE
 		  (n6 (rtl:make-assignment cell value)))
 	      (pcfg-consequent-connect! n2 n3)
@@ -115,9 +119,12 @@ MIT in each case. |#
 		  (lambda (expression)
 		    (wrap-with-continuation-entry
 		     context
-		     (rtl:make-interpreter-call:define environment
-						       name
-						       expression))))))))))))
+		     (lambda (cont-label)
+		       (rtl:make-interpreter-call:define
+			cont-label
+			environment
+			name
+			expression)))))))))))))
 
 ;;;; Virtual Returns
 
@@ -286,8 +293,11 @@ MIT in each case. |#
 		     (lambda (environment)
 		       (wrap-with-continuation-entry
 			context
-			(rtl:make-interpreter-call:unassigned? environment
-							       name))))
+			(lambda (cont-label)
+			  (rtl:make-interpreter-call:unassigned?
+			   cont-label
+			   environment
+			   name)))))
 		   (rtl:make-true-test
 		    (rtl:interpreter-call-result:unassigned?))))
 		(lambda (name)
@@ -311,7 +321,10 @@ MIT in each case. |#
 	      (n4
 	       (wrap-with-continuation-entry
 		context
-		(rtl:make-interpreter-call:cache-unassigned? cell)))
+		(lambda (cont-label)
+		  (rtl:make-interpreter-call:cache-unassigned?
+		   cont-label
+		   cell))))
 	      (n5
 	       (rtl:make-true-test
 		(rtl:interpreter-call-result:cache-unassigned?))))

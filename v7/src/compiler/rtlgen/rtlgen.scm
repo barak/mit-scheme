@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 4.28 1992/09/30 21:02:16 cph Exp $
+$Id: rtlgen.scm,v 4.29 1992/11/09 18:42:41 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; RTL Generation
+;;; package: (compiler rtl-generator)
 
 (declare (usual-integrations))
 
@@ -204,11 +205,12 @@ MIT in each case. |#
 	 (and (primitive-procedure? obj)
 	      (special-primitive-handler obj)))))
 
-(define (wrap-with-continuation-entry context scfg)
+(define (wrap-with-continuation-entry context scfg-gen)
   (with-values (lambda () (generate-continuation-entry context))
     (lambda (label setup cleanup)
-      label
-      (scfg-append! setup scfg cleanup))))
+      (scfg-append! setup
+		    (scfg-gen label)
+		    cleanup))))
 
 (define (generate-continuation-entry context)
   (let ((label (generate-label))

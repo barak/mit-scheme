@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.12 1990/05/03 15:17:38 jinx Rel $
+$Id: rules4.scm,v 4.13 1992/11/09 18:46:07 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,10 +33,55 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; LAP Generation Rules: Interpreter Calls
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
+;;;; Variable cache trap handling.
+
+(define-rule statement
+  (INTERPRETER-CALL:CACHE-REFERENCE (? cont) (? extension) (? safe?))
+  (QUALIFIER (interpreter-call-argument? extension))
+  cont					; ignored
+  (let ((set-extension
+	 (interpreter-call-argument->machine-register! extension d2)))
+    (let ((clear-map (clear-map!)))
+      (LAP ,@set-extension
+	   ,@clear-map
+	   (JSR ,(if safe?
+		     entry:compiler-safe-reference-trap
+		     entry:compiler-reference-trap))))))
+
+(define-rule statement
+  (INTERPRETER-CALL:CACHE-ASSIGNMENT (? cont) (? extension) (? value))
+  (QUALIFIER (and (interpreter-call-argument? extension)
+		  (interpreter-call-argument? value)))
+  cont					; ignored
+  (let ((set-extension
+	 (interpreter-call-argument->machine-register! extension d2)))
+    (let ((set-value (interpreter-call-argument->machine-register! value d3)))
+      (let ((clear-map (clear-map!)))
+	(LAP ,@set-extension
+	     ,@set-value
+	     ,@clear-map
+	     (JSR ,entry:compiler-assignment-trap))))))
+
+(define-rule statement
+  (INTERPRETER-CALL:CACHE-UNASSIGNED? (? cont) (? extension))
+  (QUALIFIER (interpreter-call-argument? extension))
+  cont					; ignored
+  (let ((set-extension
+	 (interpreter-call-argument->machine-register! extension d2)))
+    (let ((clear-map (clear-map!)))
+      (LAP ,@set-extension
+	   ,@clear-map
+	   ,@(invoke-interface-jsr code:compiler-unassigned?-trap)))))
+
 ;;;; Interpreter Calls
+
+;;; All the code that follows is obsolete.  It hasn't been used in a while.
+;;; It is provided in case the relevant switches are turned off, but there
+;;; is no real reason to do this.  Perhaps the switches should be removed.
 
 (define (interpreter-call-argument? expression)
   (or (rtl:register? expression)
@@ -70,24 +115,28 @@ MIT in each case. |#
        (error "Unknown expression type" (car expression))))))
 
 (define-rule statement
-  (INTERPRETER-CALL:ACCESS (? environment) (? name))
+  (INTERPRETER-CALL:ACCESS (? cont) (? environment) (? name))
   (QUALIFIER (interpreter-call-argument? environment))
+  cont					; ignored
   (lookup-call code:compiler-access environment name))
 
 (define-rule statement
-  (INTERPRETER-CALL:LOOKUP (? environment) (? name) (? safe?))
+  (INTERPRETER-CALL:LOOKUP (? cont) (? environment) (? name) (? safe?))
   (QUALIFIER (interpreter-call-argument? environment))
+  cont					; ignored
   (lookup-call (if safe? code:compiler-safe-lookup code:compiler-lookup)
 	       environment name))
 
 (define-rule statement
-  (INTERPRETER-CALL:UNASSIGNED? (? environment) (? name))
+  (INTERPRETER-CALL:UNASSIGNED? (? cont) (? environment) (? name))
   (QUALIFIER (interpreter-call-argument? environment))
+  cont					; ignored
   (lookup-call code:compiler-unassigned? environment name))
 
 (define-rule statement
-  (INTERPRETER-CALL:UNBOUND? (? environment) (? name))
+  (INTERPRETER-CALL:UNBOUND? (? cont) (? environment) (? name))
   (QUALIFIER (interpreter-call-argument? environment))
+  cont					; ignored
   (lookup-call code:compiler-unbound? environment name))
 
 (define (lookup-call code environment name)
@@ -100,15 +149,17 @@ MIT in each case. |#
 	   ,@(invoke-interface-jsr code)))))
 
 (define-rule statement
-  (INTERPRETER-CALL:DEFINE (? environment) (? name) (? value))
+  (INTERPRETER-CALL:DEFINE (? cont) (? environment) (? name) (? value))
   (QUALIFIER (and (interpreter-call-argument? environment)
 		  (interpreter-call-argument? value)))
+  cont					; ignored
   (assignment-call code:compiler-define environment name value))
 
 (define-rule statement
-  (INTERPRETER-CALL:SET! (? environment) (? name) (? value))
+  (INTERPRETER-CALL:SET! (? cont) (? environment) (? name) (? value))
   (QUALIFIER (and (interpreter-call-argument? environment)
 		  (interpreter-call-argument? value)))
+  cont					; ignored
   (assignment-call code:compiler-set! environment name value))
 
 (define (assignment-call code environment name value)
@@ -121,38 +172,3 @@ MIT in each case. |#
 	     ,@clear-map
 	     ,@(load-constant name (INST-EA (D 3)))
 	     ,@(invoke-interface-jsr code))))))
-
-(define-rule statement
-  (INTERPRETER-CALL:CACHE-REFERENCE (? extension) (? safe?))
-  (QUALIFIER (interpreter-call-argument? extension))
-  (let ((set-extension
-	 (interpreter-call-argument->machine-register! extension d2)))
-    (let ((clear-map (clear-map!)))
-      (LAP ,@set-extension
-	   ,@clear-map
-	   (JSR ,(if safe?
-		     entry:compiler-safe-reference-trap
-		     entry:compiler-reference-trap))))))
-
-(define-rule statement
-  (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension) (? value))
-  (QUALIFIER (and (interpreter-call-argument? extension)
-		  (interpreter-call-argument? value)))
-  (let ((set-extension
-	 (interpreter-call-argument->machine-register! extension d2)))
-    (let ((set-value (interpreter-call-argument->machine-register! value d3)))
-      (let ((clear-map (clear-map!)))
-	(LAP ,@set-extension
-	     ,@set-value
-	     ,@clear-map
-	     (JSR ,entry:compiler-assignment-trap))))))
-
-(define-rule statement
-  (INTERPRETER-CALL:CACHE-UNASSIGNED? (? extension))
-  (QUALIFIER (interpreter-call-argument? extension))
-  (let ((set-extension
-	 (interpreter-call-argument->machine-register! extension d2)))
-    (let ((clear-map (clear-map!)))
-      (LAP ,@set-extension
-	   ,@clear-map
-	   ,@(invoke-interface-jsr code:compiler-unassigned?-trap)))))
