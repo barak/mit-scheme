@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dosint10.c,v 1.7 1992/10/20 15:31:20 jinx Exp $
+$Id: dosint10.c,v 1.8 1993/06/24 04:25:09 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -510,4 +510,3 @@ DEFINE_PRIMITIVE ("BIOS:SET-TEXT-SIZE!", Prim_bios_set_text_size, 2, 2,
   bios__set_text_size (al, bl);
   PRIMITIVE_RETURN (SHARP_T);
 }
-
