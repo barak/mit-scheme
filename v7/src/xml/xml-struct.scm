@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.20 2003/08/03 05:55:54 cph Exp $
+$Id: xml-struct.scm,v 1.21 2003/08/03 06:20:40 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -40,7 +40,7 @@ USA.
       (write (combo-name-simple name) port))))
 
 (define-record-type <universal-name>
-    (make-universal-name uri local)
+    (make-universal-name uri local combos)
     universal-name?
   (uri universal-name-uri)
   (local universal-name-local)
