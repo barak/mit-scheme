@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.15 1995/08/31 15:25:13 adams Exp $
+$Id: laterew.scm,v 1.16 1995/09/02 20:57:24 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -439,3 +439,64 @@ MIT in each case. |#
       `(CALL (QUOTE ,%word-less-than-unsigned?) '#F
 	     ,index
 	     (CALL ',%vector-length '#F ,vec)))))
+
+(define-rewrite/late %generic-index-check/ref
+  ;; (CALL '%generic-index-check/ref '#F <collection> <index> '#(checks))
+  (lambda (form rands)
+    (let  ((cont (first rands))
+	   (collection (second rands))
+	   (index      (third rands))
+	   (checks     (quote/text (fourth rands))))
+      cont
+      (let ((collection* (laterew/new-name 'COLLECTION))
+	    (collection-tag  (vector-ref checks 0))
+	    (length-ref      (vector-ref checks 1)))
+	(let ((test1
+	       (if collection-tag
+		   `(CALL ',object-type? '#F
+			  ',collection-tag
+			  (LOOKUP ,collection*))
+		   `(QUOTE #T)))
+	      (test2
+	       (if length-ref
+		   `(CALL ',%word-less-than-unsigned? '#F
+			  ,index
+			  (CALL ',length-ref '#F (LOOKUP ,collection*)))
+		   `(QUOTE #T))))
+	  (bind collection* collection
+		(andify test1 test2)))))))
+
+
+(define-rewrite/late %generic-index-check/set!
+  ;; (CALL '%generic-index-check/set! '#F <collection> <index> <elt> '#(checks))
+  (lambda (form rands)
+    (let  ((cont (first rands))
+	   (collection (second rands))
+	   (index      (third rands))
+	   (element    (fourth rands))
+	   (checks     (quote/text (fifth rands))))
+      cont
+      (let ((collection* (laterew/new-name 'COLLECTION))
+	    (collection-tag  (vector-ref checks 0))
+	    (length-ref      (vector-ref checks 1))
+	    (element-tag     (vector-ref checks 2)))
+	(let ((test1
+	       (if collection-tag
+		   `(CALL ',object-type? '#F
+			  ',collection-tag
+			  (LOOKUP ,collection*))
+		   `(QUOTE #T)))
+	      (test2
+	       (if length-ref
+		   `(CALL ',%word-less-than-unsigned? '#F
+			  ,index
+			  (CALL ',length-ref '#F (LOOKUP ,collection*)))
+		   `(QUOTE #T)))
+	      (test3
+	       (if element-tag
+		   `(CALL ',object-type? '#F
+			  ',element-tag
+			  ,element)
+		   `(QUOTE #T))))
+	  (bind collection* collection
+		(andify (andify test1 test2) test3)))))))
