@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: utils.scm,v 1.42 1997/11/04 11:01:25 cph Exp $
+;;;	$Id: utils.scm,v 1.43 1998/01/03 05:03:11 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -293,6 +293,10 @@
 
 (define (list-of-strings? object)
   (list-of-type? object string?))
+
+(define (list-of-pathnames? object)
+  (list-of-type? object
+		 (lambda (object) (or (pathname? object) (string? object)))))
 
 (define (list-of-type? object predicate)
   (and (list? object)

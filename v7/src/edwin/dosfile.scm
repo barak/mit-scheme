@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosfile.scm,v 1.14 1997/12/30 21:19:24 cph Exp $
+;;;	$Id: dosfile.scm,v 1.15 1998/01/03 05:02:52 cph Exp $
 ;;;
-;;;	Copyright (c) 1994-97 Massachusetts Institute of Technology
+;;;	Copyright (c) 1994-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -457,6 +457,9 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
 	      specific
 	      (merge-pathnames ".newsrc" homedir)))
 	(merge-pathnames "newsrc.ini" homedir))))
+
+(define (os/info-default-directory-list)
+  '())
 
 ;;;; Subprocess/Shell Support
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.217 1997/12/23 04:37:03 cph Exp $
+$Id: edwin.pkg,v 1.218 1998/01/03 05:03:18 cph Exp $
 
-Copyright (c) 1989-97 Massachusetts Institute of Technology
+Copyright (c) 1989-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -745,6 +745,7 @@ MIT in each case. |#
 	  edwin-variable$info-current-file
 	  edwin-variable$info-current-node
 	  edwin-variable$info-current-subfile
+	  edwin-variable$info-default-directory-list
 	  edwin-variable$info-directory
 	  edwin-variable$info-directory-list
 	  edwin-variable$info-enable-active-nodes

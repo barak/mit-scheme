@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.80 1997/11/01 07:33:37 cph Exp $
+;;;	$Id: unix.scm,v 1.81 1998/01/03 05:02:32 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-97 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -826,3 +826,8 @@ option, instead taking -P <filename>."
       (if (file-exists? specific)
 	  specific
 	  (merge-pathnames ".newsrc" homedir)))))
+
+(define (os/info-default-directory-list)
+  (list "/usr/local/lib/info"
+	"/usr/local/info"
+	"/usr/info"))

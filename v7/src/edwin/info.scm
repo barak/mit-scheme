@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: info.scm,v 1.125 1997/08/02 06:49:05 cph Exp $
+;;;	$Id: info.scm,v 1.126 1998/01/03 05:02:13 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -93,15 +93,27 @@ This variable is now obsolete; use info-directory-list instead."
 
 (define-variable info-directory-list
   "List of directories to search for Info documentation files.
-Empty list means not yet initialized.  In this case, the environment
-variable INFOPATH is used to initialize it."
+Empty list means not yet initialized.  In this case, Info uses the environment
+variable INFOPATH to initialize it, or `info-default-directory-list'
+if there is no INFOPATH variable in the environment.
+The last element of `info-default-directory-list' is the directory
+where Edwin installs the Info files that come with it."
   '()
-  (lambda (object)
-    (and (list? object)
-	 (for-all? object
-	   (lambda (object)
-	     (or (pathname? object)
-		 (string? object)))))))
+  list-of-pathnames?)
+
+(define-variable info-default-directory-list
+  "Default list of directories to search for Info documentation files.
+They are searched in the order they are given in the list.
+Therefore, the directory of Info files that come with Edwin
+normally should come last (so that local files override standard ones).
+
+Once Info is started, the list of directories to search
+comes from the variable `info-directory-list'.
+This variable `info-default-directory-list' is used as the default
+for initializing `info-directory-list' when Info is started."
+  (append (os/info-default-directory-list)
+	  (list (edwin-info-directory)))
+  list-of-pathnames?)
 
 (define-variable info-suffix-list
   "List of file-name suffixes for Info documentation files."
@@ -503,10 +515,10 @@ except for \\[info-cease-edit] to return to Info."
 
 (define (find-menu)
   (let ((buffer (current-buffer)))
-    (search-forward "\n* menu:"
-		    (buffer-start buffer)
-		    (buffer-end buffer)
-		    true)))
+    (re-search-forward "^\\* menu:"
+		       (buffer-start buffer)
+		       (buffer-end buffer)
+		       #t)))
 
 (define menu-item-regexp
   "\n\\* [ \t]*\\([^:\t\n]*\\)[ \t]*:")
@@ -714,42 +726,146 @@ The name may be an abbreviation of the reference name."
 
 (define (find-node filename nodename)
   (let ((buffer (find-or-create-buffer info-buffer-name)))
-    (let ((pathname (and filename (find-node-1 buffer filename))))
-      (select-buffer buffer)
-      (if (ref-variable info-current-file buffer)
-	  (record-node (ref-variable info-current-file buffer)
-		       (ref-variable info-current-node buffer)
-		       (mark-index (current-point))))
-      ;; Switch files if necessary.
-      (if (and pathname
-	       (not (equal? pathname (ref-variable info-current-file buffer))))
-	  (begin
-	    (read-buffer buffer pathname true)
-	    (if (not (eq? (buffer-major-mode buffer) (ref-mode-object info)))
-		(set-buffer-major-mode! buffer (ref-mode-object info)))
-	    (find-tag-table buffer)
-	    (set-variable! info-current-file pathname)
-	    (set-variable! info-current-subfile false))
-	  (begin
-	    (if (not (eq? (buffer-major-mode buffer) (ref-mode-object info)))
-		(set-buffer-major-mode! buffer (ref-mode-object info)))
-	    (buffer-widen! buffer)))
+    (select-buffer buffer)
+    (if (ref-variable info-current-file buffer)
+	(record-node (ref-variable info-current-file buffer)
+		     (ref-variable info-current-node buffer)
+		     (mark-index (current-point))))
+    (if (and filename (string-ci=? "dir" filename))
+	(initialize-info-buffer buffer (find-dir-node buffer))
+	(let ((pathname (and filename (find-node-1 buffer filename))))
+	  ;; Switch files if necessary.
+	  (if (and pathname
+		   (not (equal? pathname
+				(ref-variable info-current-file buffer))))
+	      (begin
+		(read-buffer buffer pathname #t)
+		(initialize-info-buffer buffer pathname))
+	      (begin
+		(if (not (eq? (buffer-major-mode buffer)
+			      (ref-mode-object info)))
+		    (set-buffer-major-mode! buffer (ref-mode-object info)))
+		(buffer-widen! buffer)))))
       (set-buffer-read-only! buffer)
       (if (string=? nodename "*")
 	  (begin
-	    (set-variable! info-current-subfile false)
+	    (set-variable! info-current-subfile #f)
 	    (set-variable! info-current-node nodename)
 	    (info-set-mode-line! buffer))
-	  (select-node
-	   (let ((end (buffer-end buffer)))
-	     (let loop ((start (node-search-start nodename)))
-	       (let ((node (next-node start end)))
-		 (if (not node) (editor-error "No such node: " nodename))
-		 (if (let ((name (extract-node-name node)))
-		       (and name
-			    (string-ci=? nodename name)))
-		     node
-		     (loop node))))))))))
+	  (select-node (find-node-in-buffer nodename buffer)))))
+
+(define (find-node-in-buffer nodename buffer)
+  (let ((end (buffer-end buffer)))
+    (let loop ((start (node-search-start nodename)))
+      (let ((node (next-node start end)))
+	(if (not node) (editor-error "No such node: " nodename))
+	(if (let ((name (extract-node-name node)))
+	      (and name
+		   (string-ci=? nodename name)))
+	    node
+	    (loop node))))))
+
+(define (initialize-info-buffer buffer pathname)
+  (if (not (eq? (buffer-major-mode buffer) (ref-mode-object info)))
+      (set-buffer-major-mode! buffer (ref-mode-object info)))
+  (find-tag-table buffer)
+  (set-variable! info-current-file pathname)
+  (set-variable! info-current-subfile #f))
+
+(define (find-dir-node buffer)
+  (let ((pathnames (find-dir-node-files buffer)))
+    (if (null? pathnames)
+	(editor-error "Can't find the Info directory node."))
+    (read-buffer buffer (car pathnames) #t)
+    (let ((submenus (append-map find-dir-node-menus (cdr pathnames))))
+      (find-dir-node/insert-node-names buffer submenus)
+      (for-each (lambda (submenu)
+		  (find-dir-node/insert-menu-items buffer submenu))
+		submenus))
+    (car pathnames)))
+
+(define (find-dir-node-files buffer)
+  (let loop ((directories (buffer-directory-list buffer)) (pathnames '()))
+    (if (null? directories)
+	pathnames
+	(loop (cdr directories)
+	      (let ((pathname
+		     (find-node-2 buffer
+				  (merge-pathnames "dir" (car directories)))))
+		(if pathname
+		    (cons pathname pathnames)
+		    pathnames))))))
+
+(define (find-dir-node-menus pathname)
+  (call-with-temporary-buffer " info dir"
+    (lambda (buffer)
+      (insert-file (buffer-end buffer) pathname)
+      (let ((bs (buffer-start buffer))
+	    (be (buffer-end buffer)))
+	(let loop ((start bs) (menus '()))
+	  (let ((ms
+		 (let ((m (re-search-forward "^\\* menu:" start be #t)))
+		   (and m
+			(line-start m 1)))))
+	    (if (not ms)
+		(reverse! menus)
+		(let ((ne (node-end ms)))
+		  (loop ne
+			(cons (cons (extract-node-name (node-start ms bs))
+				    (extract-string ms ne))
+			      menus))))))))))
+
+(define (find-dir-node/insert-node-names buffer submenus)
+  (let ((main-menu
+	 (let ((m
+		(re-search-forward "^\\* menu:"
+				   (buffer-start buffer)
+				   (buffer-end buffer)
+				   #t)))
+	   (if (not m)
+	       (error "Unable to find Info menu in buffer:" buffer))
+	   (mark-left-inserting-copy m)))
+	(menu-items '("top")))
+    (let ((end (node-end main-menu)))
+      (for-each
+       (lambda (submenu)
+	 (let ((nodename (car submenu)))
+	   (if (not (or (list-search-positive menu-items
+			  (lambda (item)
+			    (string-ci=? item nodename)))
+			(re-search-forward (string-append "^\\* "
+							  (re-quote-string
+							   nodename)
+							  "::")
+					   main-menu
+					   end
+					   #t)))
+	       (begin
+		 (set! menu-items (cons nodename menu-items))
+		 (insert-string (string-append "* " nodename "::\n")
+				main-menu)))))
+       submenus))
+    (mark-temporary! main-menu)))
+
+(define (find-dir-node/insert-menu-items buffer submenu)
+  (let ((nodename (car submenu))
+	(menu-entries (cdr submenu)))
+    (let ((m
+	   (let ((node (find-node-in-buffer nodename buffer)))
+	     (if node
+		 (let ((m (mark-left-inserting-copy (node-end node))))
+		   (guarantee-newlines 2 m)
+		   m)
+		 (let ((m (mark-left-inserting-copy (buffer-end buffer))))
+		   (guarantee-newline m)
+		   (insert-string (string-append "\037\nFile: dir\tNode: "
+						 nodename
+						 "\n\n* Menu:\n\n")
+				  m)
+		   m)))))
+      (insert-string menu-entries m)
+      (guarantee-newline m)
+      (mark-temporary! m))))
 
 (define (find-node-1 buffer pathname)
   (let loop
@@ -773,15 +889,22 @@ The name may be an abbreviation of the reference name."
 	 (let ((directories (variable-local-value buffer variable)))
 	   (if (null? directories)
 	       (let ((directories
-		      (let ((dirlist
-			     (lambda (directory)
-			       (list (->namestring directory)))))
-			(cond ((ref-variable info-directory buffer)
-			       => dirlist)
-			      ((get-environment-variable "INFOPATH")
-			       => os/parse-path-string)
-			      (else
-			       (dirlist (edwin-info-directory)))))))
+		      (cond ((ref-variable info-directory buffer)
+			     => (lambda (directory)
+				  (list (->namestring directory))))
+			    ((get-environment-variable "INFOPATH")
+			     => os/parse-path-string)
+			    (else
+			     (let ((dirs
+				    (ref-variable info-default-directory-list
+						  buffer))
+				   (info-dir (edwin-info-directory)))
+			       (map ->namestring
+				    (if (there-exists? dirs
+					  (lambda (dir)
+					    (pathname=? info-dir dir)))
+					dirs
+					(append dirs (list info-dir)))))))))
 		 (set-variable-local-value! buffer variable directories)
 		 directories)
 	       directories)))))
