@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntproc.c,v 1.2 1997/10/24 06:55:43 cph Exp $
+$Id: ntproc.c,v 1.3 1997/10/24 07:24:07 cph Exp $
 
 Copyright (c) 1997 Massachusetts Institute of Technology
 
@@ -103,7 +103,8 @@ static Tprocess allocate_process (void);
 static void allocate_process_abort (void *);
 static HWND find_child_console (DWORD);
 static BOOL CALLBACK find_child_console_1 (HWND, LPARAM);
-static void test_process_status_change (Tprocess);
+static void process_wait_1 (Tprocess, DWORD);
+static void process_death (Tprocess);
 
 void
 NT_initialize_processes (void)
@@ -519,14 +520,34 @@ OS_process_continue_foreground (Tprocess process)
 void
 OS_process_wait (Tprocess process)
 {
+  process_wait_1 (process, 0);
   while (1)
     {
-      test_process_status_change (process);
       if (((PROCESS_RAW_STATUS (process)) != process_status_running)
 	  || (pending_interrupts_p ()))
 	break;
-      Sleep (WIN32_WAIT_INTERVAL);
+      process_wait_1 (process, WIN32_WAIT_INTERVAL);
     }
+}
+
+static void
+process_wait_1 (Tprocess process, DWORD interval)
+{
+  if ((PROCESS_RAW_STATUS (process)) == process_status_running)
+    switch (MsgWaitForMultipleObjects (1,
+				       (& (PROCESS_HANDLE (process))),
+				       FALSE,
+				       interval,
+				       QS_ALLINPUT))
+      {
+      case WAIT_OBJECT_0:
+	process_death (process);
+	break;
+      case WAIT_FAILED:
+	NT_error_api_call ((GetLastError ()),
+			   apicall_MsgWaitForMultipleObjects);
+	break;
+      }
 }
 
 int
@@ -534,42 +555,36 @@ OS_process_any_status_change (void)
 {
   Tprocess process;
   for (process = 0; (process < OS_process_table_size); process += 1)
-    test_process_status_change (process);
+    if ((PROCESS_RAW_STATUS (process)) == process_status_running)
+      switch (WaitForSingleObject ((PROCESS_HANDLE (process)), 0))
+	{
+	case WAIT_OBJECT_0:
+	  process_death (process);
+	  break;
+	case WAIT_FAILED:
+	  NT_error_api_call ((GetLastError ()),
+			     apicall_MsgWaitForMultipleObjects);
+	  break;
+	}
   return (process_tick != sync_tick);
 }
 
 static void
-test_process_status_change (Tprocess process)
+process_death (Tprocess process)
 {
-  if ((PROCESS_RAW_STATUS (process)) == process_status_running)
-    switch (WaitForSingleObject ((PROCESS_HANDLE (process)), 0))
-      {
-      case WAIT_TIMEOUT:
-	break;
-      case WAIT_OBJECT_0:
-	{
-	  DWORD exit_code;
-	  STD_BOOL_API_CALL
-	    (GetExitCodeProcess, ((PROCESS_HANDLE (process)), (&exit_code)));
-	  GRAB_PROCESS_TABLE ();
-	  (PROCESS_RAW_STATUS (process))
-	    = ((exit_code == STATUS_CONTROL_C_EXIT)
-	       ? process_status_signalled
-	       : process_status_exited);
-	  (PROCESS_RAW_REASON (process)) = exit_code;
-	  (PROCESS_TICK (process)) = (++process_tick);
-	  STD_BOOL_API_CALL (CloseHandle, (PROCESS_HANDLE (process)));
-	  (PROCESS_HANDLE (process)) = INVALID_HANDLE_VALUE;
-	  RELEASE_PROCESS_TABLE ();
-	}
-	break;
-      case WAIT_ABANDONED:
-	NT_error_api_call (ERROR_INVALID_HANDLE, apicall_WaitForSingleObject);
-	break;
-      case WAIT_FAILED:
-	NT_error_api_call ((GetLastError ()), apicall_WaitForSingleObject);
-	break;
-      }
+  DWORD exit_code;
+  STD_BOOL_API_CALL
+    (GetExitCodeProcess, ((PROCESS_HANDLE (process)), (&exit_code)));
+  GRAB_PROCESS_TABLE ();
+  (PROCESS_RAW_STATUS (process))
+    = ((exit_code == STATUS_CONTROL_C_EXIT)
+       ? process_status_signalled
+       : process_status_exited);
+  (PROCESS_RAW_REASON (process)) = exit_code;
+  (PROCESS_TICK (process)) = (++process_tick);
+  STD_BOOL_API_CALL (CloseHandle, (PROCESS_HANDLE (process)));
+  (PROCESS_HANDLE (process)) = INVALID_HANDLE_VALUE;
+  RELEASE_PROCESS_TABLE ();
 }
 
 Tprocess
