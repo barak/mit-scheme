@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.147 1991/04/01 06:14:27 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.148 1991/04/12 23:26:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -129,23 +129,54 @@ Argument means don't offer to use auto-save file."
   (let ((method (buffer-get buffer 'REVERT-BUFFER-METHOD)))
     (if method
 	(method buffer dont-use-auto-save? dont-confirm?)
-	(let ((pathname (buffer-pathname buffer)))
-	  (cond ((not pathname)
-		 (editor-error
-		  "Buffer does not seem to be associated with any file"))
-		((not (file-exists? pathname))
-		 (editor-error "File "
-			       (pathname->string pathname)
-			       " no longer exists!"))
-		((or dont-confirm?
-		     (prompt-for-yes-or-no?
-		      (string-append "Revert buffer from file "
-				     (pathname->string pathname))))
-		 (let ((where (mark-index (buffer-point buffer))))
-		   (visit-file buffer pathname)
-		   (set-buffer-point!
-		    buffer
-		    (mark+ (buffer-start buffer) where 'LIMIT)))))))))
+	(let ((auto-save?
+	       (and (not dont-use-auto-save?)
+		    (buffer-auto-saved? buffer)
+		    (buffer-auto-save-pathname buffer)
+		    (file-readable? (buffer-auto-save-pathname buffer))
+		    (prompt-for-confirmation?
+   "Buffer has been auto-saved recently.  Revert from auto-save file"))))
+	  (let ((pathname
+		 (if auto-save?
+		     (buffer-auto-save-pathname buffer)
+		     (buffer-pathname buffer))))
+	    (cond ((not pathname)
+		   (editor-error
+		    "Buffer does not seem to be associated with any file"))
+		  ((not (file-readable? pathname))
+		   (editor-error "File "
+				 (pathname->string pathname)
+				 " no longer "
+				 (if (file-exists? pathname)
+				     "exists"
+				     "readable")
+				 "!"))
+		  ((or dont-confirm?
+		       (prompt-for-yes-or-no?
+			(string-append "Revert buffer from file "
+				       (pathname->string pathname))))
+		   ;; If file was backed up but has changed since, we
+		   ;; should make another backup.
+		   (if (and (not auto-save?)
+			    (not
+			     (verify-visited-file-modification-time? buffer)))
+		       (set-buffer-backed-up?! buffer false))
+		   (let ((where (mark-index (buffer-point buffer)))
+			 (group (buffer-group buffer))
+			 (do-it
+			  (lambda ()
+			    (read-buffer buffer pathname (not auto-save?))
+			    (after-find-file buffer pathname false))))
+		     (if (group-undo-data group)
+			 (begin
+			   ;; Throw away existing undo data.
+			   (disable-group-undo! group)
+			   (do-it)
+			   (enable-group-undo! group))
+			 (do-it))
+		     (set-buffer-point!
+		      buffer
+		      (mark+ (buffer-start buffer) where 'LIMIT))))))))))
 
 (define-command toggle-read-only
   "Change whether this buffer is visiting its file read-only."
@@ -158,27 +189,30 @@ Argument means don't offer to use auto-save file."
        buffer))))
 
 (define (visit-file buffer pathname)
-  (let ((error?
-	 (catch-file-errors (lambda () true)
-	   (lambda ()
-	     (not (read-buffer buffer pathname))))))
-    (let ((pathname (or (buffer-truename buffer) pathname)))
-      (if (file-writable? pathname)
-	  (set-buffer-writeable! buffer)
-	  (set-buffer-read-only! buffer))
-      (let ((msg
-	     (cond ((not (buffer-read-only? buffer))
-		    (and error? "(New file)"))
-		   ((not error?)
-		    "File is write protected")
-		   ((file-attributes pathname)
-		    "File exists, but is read-protected.")
-		   ((file-attributes (pathname-directory-path pathname))
-		    "File not found and directory write-protected")
-		   (else
-		    "File not found and directory doesn't exist"))))
-	(if msg
-	    (message msg)))))
+  (after-find-file buffer
+		   pathname
+		   (catch-file-errors (lambda () true)
+		     (lambda ()
+		       (not (read-buffer buffer pathname true))))))
+
+(define (after-find-file buffer pathname error?)
+  (let ((pathname (or (buffer-truename buffer) pathname)))
+    (if (file-writable? pathname)
+	(set-buffer-writeable! buffer)
+	(set-buffer-read-only! buffer))
+    (let ((msg
+	   (cond ((not (buffer-read-only? buffer))
+		  (and error? "(New file)"))
+		 ((not error?)
+		  "File is write protected")
+		 ((file-attributes pathname)
+		  "File exists, but is read-protected.")
+		 ((file-attributes (pathname-directory-path pathname))
+		  "File not found and directory write-protected")
+		 (else
+		  "File not found and directory doesn't exist"))))
+      (if msg
+	  (message msg))))
   (setup-buffer-auto-save! buffer)
   (initialize-buffer! buffer)
   (let ((filename (os/find-file-initialization-filename pathname)))
@@ -316,12 +350,17 @@ if you wish to make buffer not be visiting any file."
   (set-buffer-truename! buffer false)
   (if pathname
       (begin
-       (let ((name (pathname->buffer-name pathname)))
-	 (if (not (find-buffer name))
-	     (rename-buffer buffer name)))
-       (setup-buffer-auto-save! buffer)
-       (buffer-modified! buffer))
-      (disable-buffer-auto-save! buffer)))
+	(let ((name (pathname->buffer-name pathname)))
+	  (if (not (find-buffer name))
+	      (rename-buffer buffer name)))))
+  (set-buffer-backed-up?! buffer false)
+  (clear-visited-file-modification-time! buffer)
+  (cond ((buffer-auto-save-pathname buffer)
+	 (rename-auto-save-file! buffer))
+	((buffer-pathname buffer)
+	 (setup-buffer-auto-save! buffer)))
+  (if (buffer-pathname buffer)
+      (buffer-modified! buffer)))
 
 (define-command write-file
   "Store buffer in specified file.
@@ -493,15 +532,12 @@ If a file with the new name already exists, confirmation is requested first."
 				  if-unique if-not-unique if-not-found)
   (define (loop directory filenames)
     (let ((unique-case
-	   (lambda (filenames)
-	     (let ((filename (os/make-filename directory (car filenames))))
-	       (if (os/file-directory? filename)
-		   (let ((directory (os/filename-as-directory filename)))
-		     (let ((filenames (os/directory-list directory)))
-		       (if (null? filenames)
-			   (if-unique directory)
-			   (loop directory filenames))))
-		   (if-unique filename)))))
+	   (lambda (filename)
+	     (if-unique
+	      (let ((filename (os/make-filename directory filename)))
+		(if (os/file-directory? filename)
+		    (os/filename-as-directory filename)
+		    filename)))))
 	  (non-unique-case
 	   (lambda (filenames*)
 	     (let ((string (string-greatest-common-prefix filenames*)))
@@ -513,7 +549,7 @@ If a file with the new name already exists, confirmation is requested first."
 				   (lambda (filename)
 				     (string-prefix? string filename))))))))))
       (if (null? (cdr filenames))
-	  (unique-case filenames)
+	  (unique-case (car filenames))
 	  (let ((filtered-filenames
 		 (list-transform-negative filenames
 		   (lambda (filename)
@@ -522,7 +558,7 @@ If a file with the new name already exists, confirmation is requested first."
 	    (cond ((null? filtered-filenames)
 		   (non-unique-case filenames))
 		  ((null? (cdr filtered-filenames))
-		   (unique-case filtered-filenames))
+		   (unique-case (car filtered-filenames)))
 		  (else
 		   (non-unique-case filtered-filenames)))))))
   (let ((directory (pathname-directory-string pathname))
@@ -538,8 +574,7 @@ If a file with the new name already exists, confirmation is requested first."
 			     directory
 			     (os/directory-list directory)))))
 	  (else
-	   (let ((filenames
-		  (os/directory-list-completions directory prefix)))
+	   (let ((filenames (os/directory-list-completions directory prefix)))
 	     (if (null? filenames)
 		 (if-not-found)
 		 (loop directory filenames)))))))
@@ -556,12 +591,12 @@ If a file with the new name already exists, confirmation is requested first."
 		   directory))
 
 (define (canonicalize-filename-completions directory filenames)
-  (map (lambda (filename)
-	 (if (os/file-directory? (os/make-filename directory filename))
-	     (os/filename-as-directory filename)
-	     filename))
-       (sort filenames string<?)))
-
+  (do ((filenames filenames (cdr filenames)))
+      ((null? filenames))
+    (if (os/file-directory? (os/make-filename directory (car filenames)))
+	(set-car! filenames (os/filename-as-directory (car filenames)))))
+  (sort filenames string<?))
+
 (define (completion-ignore-filename? filename)
   (and (not (os/file-directory? filename))
        (there-exists? (ref-variable completion-ignored-extensions)
