@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.40 1989/05/31 01:50:02 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.41 1989/06/16 09:41:53 cph Exp $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
@@ -434,8 +434,6 @@ get_band_parameters(heap_size, const_size)
   return;
 }
 
-extern void Intern();
-
 void
 Intern_Block(Next_Pointer, Stop_At)
      fast Pointer *Next_Pointer, *Stop_At;
@@ -457,19 +455,19 @@ Intern_Block(Next_Pointer, Stop_At)
 	if (OBJECT_TYPE(Vector_Ref(*Next_Pointer, SYMBOL_GLOBAL_VALUE)) ==
 	    TC_BROKEN_HEART)
 	{
-	  Pointer Old_Symbol;
-
-	  Old_Symbol = *Next_Pointer;
-	  Vector_Set(*Next_Pointer, SYMBOL_GLOBAL_VALUE, UNBOUND_OBJECT);
-
-	  /* This is weird.  How come Intern is not checking? */
-	  Intern(Next_Pointer);
-	  Primitive_GC_If_Needed(0);
-
-	  if (*Next_Pointer != Old_Symbol)
+	  Pointer old_symbol = (*Next_Pointer);
+	  Vector_Set (old_symbol, SYMBOL_GLOBAL_VALUE, UNBOUND_OBJECT);
 	  {
-	    Vector_Set(Old_Symbol, SYMBOL_NAME,
-		       Make_New_Pointer(TC_BROKEN_HEART, *Next_Pointer));
+	    extern Pointer intern_symbol ();
+	    Pointer new_symbol = (intern_symbol (old_symbol));
+	    if (new_symbol != old_symbol)
+	      {
+		(*Next_Pointer) = new_symbol;
+		Vector_Set
+		  (old_symbol,
+		   SYMBOL_NAME,
+		   (Make_New_Pointer (TC_BROKEN_HEART, new_symbol)));
+	      }
 	  }
 	}
 	else if (OBJECT_TYPE(Vector_Ref(*Next_Pointer, SYMBOL_NAME)) ==
