@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cpress.scm,v 1.5 1994/07/16 20:48:50 cph Exp $
+$Id: cpress.scm,v 1.6 1994/07/16 21:12:36 cph Exp $
 
 Copyright (c) 1992-94 Massachusetts Institute of Technology
 
@@ -539,11 +539,13 @@ MIT in each case. |#
   (let ((bp command-bp)
 	(ptr (bb-ptr byte-buffer)))
     (if (not (fix:= ptr bp))
-	(write-literal
-	 (fix:- (if (fix:< bp ptr)
-		    ptr
-		    (fix:+ ptr buffer-size))
-		bp))))
+	(let loop
+	    ((nb (fix:- (if (fix:< bp ptr) ptr (fix:+ ptr buffer-size)) bp)))
+	  (if (fix:<= nb literal-max)
+	      (write-literal nb)
+	      (begin
+		(write-literal literal-max)
+		(loop (fix:- nb literal-max)))))))
   (compress-continuation unspecific))
 
 (define (input-port/read-substring port string start end)
