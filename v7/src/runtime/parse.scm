@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.45 2004/01/16 19:04:38 cph Exp $
+$Id: parse.scm,v 14.46 2004/01/16 19:39:53 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
@@ -355,20 +355,47 @@ USA.
 	(discard-char port)
 	(list 'UNQUOTE-SPLICING (read-object port table db)))
       (list 'UNQUOTE (read-object port table db))))
-
+
 (define (handler:string port table db ctx char)
   table db ctx char
   (call-with-output-string
     (lambda (port*)
       (let loop ()
 	(let ((char (read-char/no-eof port)))
-	  (if (not (char=? char #\"))
-	      (begin
-		(write-char (if (char=? char #\\)
-				(read-char/no-eof port)
-				char)
-			    port*)
-		(loop))))))))
+	  (case char
+	    ((#\")
+	     unspecific)
+	    ((#\\)
+	     (let ((char
+		    (let ((char (read-char/no-eof port)))
+		      (cond ((char-ci=? char #\n) #\newline)
+			    ((char-ci=? char #\t) #\tab)
+			    ((char-ci=? char #\v) #\vt)
+			    ((char-ci=? char #\b) #\bs)
+			    ((char-ci=? char #\r) #\return)
+			    ((char-ci=? char #\f) #\page)
+			    ((char-ci=? char #\a) #\bel)
+			    ((char->digit char 8) (octal->char char port))
+			    (else char)))))
+	       (write-char char port*)
+	       (loop)))
+	    (else
+	     (write-char char port*)
+	     (loop))))))))
+
+(define (octal->char c1 port)
+  (let ((d1 (char->digit c1 8)))
+    (if (or (not d1) (fix:> d1 3))
+	(error:illegal-char c1))
+    (let* ((c2 (read-char/no-eof port))
+	   (d2 (char->digit c2 8)))
+      (if (not d2)
+	  (error:illegal-char c2))
+      (let* ((c3 (read-char/no-eof port))
+	     (d3 (char->digit c3 8)))
+	(if (not d3)
+	    (error:illegal-char c3))
+	(integer->char (fix:+ (fix:lsh (fix:+ (fix:lsh d1 3) d2) 3) d3))))))
 
 (define (handler:special port table db ctx char)
   char
