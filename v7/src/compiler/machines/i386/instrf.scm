@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instrf.scm,v 1.10 1992/02/28 20:22:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instrf.scm,v 1.11 1992/08/05 22:13:59 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -57,9 +57,15 @@ MIT in each case. |#
 	       (BYTE (8 #xd8)
 		     (8 (+ ,opcode1 i))))
 
+	      ;; In the following case, the manual uses opcode2
+	      ;; but the instructions (FDIV <-> FDIVR, FSUB <-> FSUBR)
+	      ;; are actually backwards.
+
 	      (((ST (? i)) (ST 0))
 	       (BYTE (8 #xdc)
-		     (8 (+ ,opcode2 i))))
+		     ;; (8 (+ ,opcode2 i))
+		     (8 (+ ,opcode1 i))
+		     ))
 
 	      (()
 	       (BYTE (8 #xde)
