@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.6 1988/12/30 06:43:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.7 1989/04/18 04:09:04 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -314,8 +314,9 @@ that you cannot just vector-ref into.
 					   false))
 
 (define (primitive-procedure-name primitive)
-  ((ucode-primitive get-primitive-name)
-   (object-datum (guarantee-primitive-procedure primitive))))
+  (intern
+   ((ucode-primitive get-primitive-name)
+    (guarantee-primitive-procedure primitive))))
 
 (define (compound-procedure? object)
   (or (object-type? (ucode-type procedure) object)

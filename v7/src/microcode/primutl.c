@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.47 1989/04/15 19:04:24 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.48 1989/04/18 04:09:26 cph Exp $
  *
  * This file contains the support routines for mapping primitive names
  * to numbers within the microcode.  Primitives are written in C
@@ -341,7 +341,7 @@ primitive_name(code)
     scheme_string = User_Vector_Ref(Undefined_Primitives,
 				    (code - MAX_PRIMITIVE));
   }
-  return (string_to_symbol(scheme_string));
+  return (scheme_string);
 }
 
 /*
