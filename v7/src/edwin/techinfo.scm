@@ -36,7 +36,7 @@
 ;;;
 ;;; Author: Brian A. LaMacchia -- bal@zurich.ai.mit.edu
 ;;;
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/techinfo.scm,v 1.1 1992/01/10 18:47:56 bal Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/techinfo.scm,v 1.2 1992/01/10 19:03:41 bal Exp $
 ;;;
 
 (define-variable techinfo-web-buffer 
@@ -63,7 +63,7 @@ attach will not be made."
 
 (define-variable techinfo-history-list 
   "List of TechInfo nodes previously visited."
-  false)
+  '("0"))
 
 (define-variable techinfo-need-to-attach-afs 
   "True if AFS is not available by default, and the NFS->AFS
