@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.29 2003/09/24 22:39:05 cph Exp $
+$Id: xml.pkg,v 1.30 2003/09/25 16:51:12 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -135,7 +135,8 @@ USA.
 	  set-xml-element-name!
 	  set-xml-entity-ref-name!
 	  set-xml-external-id-id!
-	  set-xml-external-id-uri!
+	  set-xml-external-id-iri!
+	  (set-xml-external-id-uri! set-xml-external-id-iri!)
 	  set-xml-parameter-!entity-name!
 	  set-xml-parameter-!entity-value!
 	  set-xml-parameter-entity-ref-name!
@@ -190,7 +191,8 @@ USA.
 	  xml-entity-ref-name
 	  xml-entity-ref?
 	  xml-external-id-id
-	  xml-external-id-uri
+	  xml-external-id-iri
+	  (xml-external-id-uri xml-external-id-iri)
 	  xml-external-id?
 	  xml-intern
 	  xml-name-hash

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.42 2003/09/24 22:39:09 cph Exp $
+$Id: xml-parser.scm,v 1.43 2003/09/25 16:51:18 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -966,10 +966,10 @@ USA.
 (define *general-entities*)
 (define *entity-expansion-nesting* '())
 
-(define (make-external-id id uri p)
+(define (make-external-id id iri p)
   (if *standalone?*
       (perror p "Illegal external reference in standalone document"))
-  (make-xml-external-id id uri))
+  (make-xml-external-id id iri))
 
 ;;;; Document-type declarations
 

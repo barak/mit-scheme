@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.24 2003/08/22 15:13:19 cph Exp $
+$Id: xml-output.scm,v 1.25 2003/09/25 16:51:15 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -445,15 +445,15 @@ USA.
 	  (write-indent col ctx)
 	  (emit-string "PUBLIC " ctx)
 	  (quoted-string (xml-external-id-id id))
-	  (if (xml-external-id-uri id)
+	  (if (xml-external-id-iri id)
 	      (begin
 		(write-indent col ctx)
-		(quoted-string (xml-external-id-uri id)))))
+		(quoted-string (xml-external-id-iri id)))))
 	(begin
 	  (write-indent col ctx)
 	  (emit-string "SYSTEM" ctx)
 	  (emit-string " " ctx)
-	  (quoted-string (xml-external-id-uri id))))))
+	  (quoted-string (xml-external-id-iri id))))))
 
 (define (write-indent col ctx)
   (if col

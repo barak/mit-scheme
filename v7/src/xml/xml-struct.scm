@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.31 2003/09/25 16:48:14 cph Exp $
+$Id: xml-struct.scm,v 1.32 2003/09/25 16:51:20 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -489,7 +489,7 @@ USA.
   (id (lambda (object)
 	(or (not object)
 	    (public-id? object))))
-  (uri (lambda (object)
+  (iri (lambda (object)
 	 (or (not object)
 	     (xml-char-data? object)))
        canonicalize-char-data))
@@ -648,7 +648,7 @@ USA.
 (define-xml-printer external-id
   (lambda (dtd)
     (or (xml-external-id-id dtd)
-	(xml-external-id-uri dtd))))
+	(xml-external-id-iri dtd))))
 
 (define (xml-attribute-value attr)
   (and (pair? (cdr attr))
