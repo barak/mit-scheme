@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.28 1987/05/14 13:50:45 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.29 1987/05/27 14:50:43 cph Exp $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -49,35 +49,48 @@ Setup_Interrupt (Masked_Interrupts)
      long Masked_Interrupts;
 {
   Pointer Int_Vector, Handler;
-  long i, Int_Number, The_Int_Code = IntCode, New_Int_Enb;
+  long i, Int_Number, The_Int_Code, New_Int_Enb;
   long Save_Space;
 
-  Int_Vector = Get_Fixed_Obj_Slot(System_Interrupt_Vector);
+  The_Int_Code = IntCode;
+  Int_Vector = (Get_Fixed_Obj_Slot (System_Interrupt_Vector));
 
-  for (Int_Number=0, i=1;
-       Int_Number < MAX_INTERRUPT_NUMBER;
-       i = i<<1, Int_Number++)
-    if ((Masked_Interrupts & i) != 0)
-      goto OK;
+  /* The interrupt vector is normally of size (MAX_INTERRUPT_NUMBER + 1).
+     We signal all normal interrupts though the first MAX_INTERRUPT_NUMBER
+     slots, and any other (spurious) interrupts through the last slot. */
 
-  fprintf(stderr, "\nInterrupts = 0x%x, Mask= 0x%x, Masked = 0x%x\n",
-         IntCode, IntEnb, Masked_Interrupts);
-  fprintf(stderr, "Int_Vector %x\n", Int_Vector);
-  Microcode_Termination(TERM_NO_INTERRUPT_HANDLER);
+  Int_Number = 0;
+  i = 1;
+  while (true)
+    {
+      if (Int_Number > MAX_INTERRUPT_NUMBER)
+	{
+	  New_Int_Enb = IntEnb;
+	  break;
+	}
+      if ((Masked_Interrupts & i) != 0)
+	{
+	  New_Int_Enb = ((1 << Int_Number) - 1);
+	  break;
+	}
+      Int_Number += 1;
+      i = (i << 1);
+    }
 
-OK:
-  New_Int_Enb = (1<<Int_Number) - 1;
-  Global_Interrupt_Hook();
-  if (Int_Number > Vector_Length(Int_Vector))
-  { fprintf(stderr,
-	    "\nInterrupt out of range: 0x%x (vector length = 0x%x)\n",
-	    Int_Number, Vector_Length(Int_Vector));
-    fprintf(stderr,
-	    "Interrupts = 0x%x, Mask= 0x%x, Masked = 0x%x\n",
-	    IntCode, IntEnb, Masked_Interrupts);
-    Microcode_Termination(TERM_NO_INTERRUPT_HANDLER);
-  }
-  else Handler = User_Vector_Ref(Int_Vector, Int_Number);
+  /* Handle case where interrupt vector is too small. */
+  if (Int_Number >= (Vector_Length (Int_Vector)))
+    {
+      fprintf (stderr,
+	       "\nInterrupt out of range: 0x%x (vector length = 0x%x)\n",
+	       Int_Number, (Vector_Length (Int_Vector)));
+      fprintf (stderr,
+	       "Interrupts = 0x%x, Mask= 0x%x, Masked = 0x%x\n",
+	       IntCode, IntEnb, Masked_Interrupts);
+      Microcode_Termination (TERM_NO_INTERRUPT_HANDLER);
+    }
+
+  Global_Interrupt_Hook ();
+  Handler = (User_Vector_Ref (Int_Vector, Int_Number));
 
 /* Setup_Interrupt continues on the next page */
 

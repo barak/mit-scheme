@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.31 1987/04/29 15:39:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.32 1987/05/27 14:50:14 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -235,10 +235,10 @@ main(argc, argv)
           The_Queue, *Dummy_Hist, The_Utilities;			\
   fast long i;								\
 	/* Interrupt vector */						\
-  Int_Vec = Make_Pointer(TC_VECTOR, Free);				\
-  *Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR,			\
-			     MAX_INTERRUPT_NUMBER + 1);			\
-  for (i=0; i <= MAX_INTERRUPT_NUMBER; i++) *Free++ = NIL;		\
+  Int_Vec = (Make_Pointer (TC_VECTOR, Free));				\
+  *Free++ = (Make_Non_Pointer (TC_MANIFEST_VECTOR,			\
+			       (MAX_INTERRUPT_NUMBER + 2)));		\
+  for (i = 0; (i <= (MAX_INTERRUPT_NUMBER + 1)); i += 1) *Free++ = NIL;	\
 	/* Error vector is not needed at boot time */			\
   Error = NIL;								\
 	/* Dummy History Structure */					\
