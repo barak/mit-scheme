@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.45 1990/04/17 21:56:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.46 1990/10/05 18:57:37 jinx Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -53,6 +53,7 @@ Load_Data(Count, To_Where)
 
 #define INHIBIT_FASL_VERSION_CHECK
 #define INHIBIT_COMPILED_VERSION_CHECK
+#define INHIBIT_CHECKSUMS
 #include "load.c"
 #include "bltdef.h"
 
