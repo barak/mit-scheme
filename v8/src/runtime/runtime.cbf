@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.cbf,v 1.1 1988/11/09 10:35:43 cph Rel $
+$Id: runtime.cbf,v 1.2 1993/08/11 19:13:10 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,4 +32,5 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-(compile-directory ".")
+(fluid-let ((compiler:coalescing-constant-warnings? #f))
+  (compile-directory "."))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.cbf,v 1.2 1989/03/15 19:10:42 cph Rel $
+$Id: edwin.cbf,v 1.3 1993/08/11 19:09:36 cph Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,4 +34,5 @@ MIT in each case. |#
 
 ;;;; Script to incrementally compile the editor (from .bins)
 
-(compile-directory ".")
+(fluid-let ((compiler:coalescing-constant-warnings? #f))
+  (compile-directory "."))
