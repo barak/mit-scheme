@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rexp.scm,v 1.2 2000/04/13 15:43:52 cph Exp $
+;;; $Id: rexp.scm,v 1.3 2000/04/13 15:55:56 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -33,9 +33,9 @@
 		    (and (fix:= 1 (length (cdr rexp)))
 			 (rexp? (cadr rexp))))))
 	     (case (car rexp)
-	       ((GROUP ALTERNATIVES SEQUENCE)
+	       ((ALTERNATIVES SEQUENCE)
 		(for-all? (cdr rexp) rexp?))
-	       ((? * +)
+	       ((GROUP ? * +)
 		(and (one-arg)
 		     (not (and (pair? rexp)
 			       (memq (car rexp) nongroupable-rexp-types)))))
@@ -48,9 +48,9 @@
 		     (assq (cadr rexp) syntax-type-alist)))
 	       (else #f))))))
 
-(define (rexp-group . rexps) `(GROUP ,@rexps))
 (define (rexp-alternatives . rexps) `(ALTERNATIVES ,@rexps))
 (define (rexp-sequence . rexps) `(SEQUENCE ,@rexps))
+(define (rexp-group rexp) `(GROUP ,rexp))
 (define (rexp-optional rexp) `(? ,rexp))
 (define (rexp* rexp) `(* ,rexp))
 (define (rexp+ rexp) `(+ ,rexp))
@@ -69,7 +69,7 @@
 (define (rexp-syntax-char type) `(SYNTAX-CHAR ,type))
 (define (rexp-not-syntax-char type) `(NOT-SYNTAX-CHAR ,type))
 
-(define (rexp-compile-pattern rexp case-fold?)
+(define (rexp-compile rexp case-fold?)
   (re-compile-pattern (rexp->regexp rexp) case-fold?))
 
 (define (rexp->regexp rexp)
@@ -92,7 +92,7 @@
 	     (let ((alternatives
 		    (lambda ()
 		      (separated-append (n-args) "\\|")))
-		   (repeat-arg
+		   (group-arg
 		    (lambda ()
 		      (rexp->regexp (rexp-groupify (one-arg)))))
 		   (syntax-type
@@ -102,12 +102,12 @@
 			    (cdr entry)
 			    (lose))))))
 	       (case (car rexp)
-		 ((GROUP) (string-append "\\(" (alternatives) "\\)"))
 		 ((ALTERNATIVES) (alternatives))
 		 ((SEQUENCE) (apply string-append (n-args)))
-		 ((?) (string-append (repeat-arg) "?"))
-		 ((*) (string-append (repeat-arg) "*"))
-		 ((+) (string-append (repeat-arg) "+"))
+		 ((GROUP) (group-arg))
+		 ((?) (string-append (group-arg) "?"))
+		 ((*) (string-append (group-arg) "*"))
+		 ((+) (string-append (group-arg) "+"))
 		 ((ANY-CHAR) ".")
 		 ((LINE-START) "^")
 		 ((LINE-END) "$")
