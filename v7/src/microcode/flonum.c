@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.38 1992/01/20 16:10:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.39 1992/02/27 18:26:30 mhwu Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -38,7 +38,6 @@ MIT in each case. */
 #include "prims.h"
 #include "zones.h"
 #include <errno.h>
-extern int errno;
 
 double
 DEFUN (arg_flonum, (arg_number), int arg_number)
