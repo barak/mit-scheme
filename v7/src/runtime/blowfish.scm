@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: blowfish.scm,v 1.15 1999/08/13 18:49:07 cph Exp $
+$Id: blowfish.scm,v 1.16 1999/08/14 03:40:26 cph Exp $
 
 Copyright (c) 1997, 1999 Massachusetts Institute of Technology
 
@@ -127,14 +127,21 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (write-blowfish-file-header port)
   (write-string blowfish-file-header-v2 port)
   (newline port)
-  (let ((init-vector (compute-blowfish-cfb-init-vector)))
+  (let ((init-vector (compute-blowfish-init-vector)))
     (write-string init-vector port)
     init-vector))
 
-(define (compute-blowfish-cfb-init-vector)
+(define (compute-blowfish-init-vector)
+  ;; This init vector includes a timestamp with a resolution of
+  ;; milliseconds, plus 20 random bits.  This should make it very
+  ;; difficult to generate two identical vectors.
   (let ((iv (make-string 8)))
     (do ((i 0 (fix:+ i 1))
-	 (t (get-universal-time) (quotient t #x100)))
+	 (t (+ (* (+ (* (get-universal-time) 1000)
+		     (remainder (real-time-clock) 1000))
+		  #x100000)
+	       (random #x100000))
+	    (quotient t #x100)))
 	((fix:= 8 i))
       (vector-8b-set! iv i (remainder t #x100)))
     iv))
