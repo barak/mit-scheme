@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.20 2003/07/30 04:12:12 cph Exp $
+$Id: char.scm,v 14.21 2003/07/31 02:38:45 cph Exp $
 
 Copyright 1986,1987,1988,1991,1995,1997 Massachusetts Institute of Technology
 Copyright 1998,2001,2003 Massachusetts Institute of Technology
@@ -269,12 +269,7 @@ USA.
   (let ((code (char-code char))
 	(bits (char-bits char)))
     (string-append
-     (let loop ((entries named-bits))
-       (if (pair? entries)
-	   (if (fix:= 0 (fix:and (caar entries) bits))
-	       (loop (cdr entries))
-	       (string-append (cadar entries) "-" (loop (cdr entries))))
-	   ""))
+     (bucky-bits->prefix bits)
      (let ((base-char (if (fix:= 0 bits) char (integer->char code))))
        (cond ((->name named-codes code))
 	     ((and (if (default-object? slashify?) #f slashify?)
@@ -294,6 +289,15 @@ USA.
 							n
 							(loop (fix:* 2 n)))))
 						#\0)))))))))
+
+;; This procedure used by Edwin.
+(define (bucky-bits->prefix bits)
+  (let loop ((entries named-bits))
+    (if (pair? entries)
+	(if (fix:= 0 (fix:and (caar entries) bits))
+	    (loop (cdr entries))
+	    (string-append (cadar entries) "-" (loop (cdr entries))))
+	"")))
 
 (define (->code entries string start end)
   (let ((entry
