@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: outf.c,v 1.4 1994/12/02 20:43:35 cph Exp $
+$Id: outf.c,v 1.5 1994/12/02 20:43:46 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
