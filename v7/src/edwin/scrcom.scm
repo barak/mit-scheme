@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/scrcom.scm,v 1.3 1990/10/03 04:56:01 cph Rel $
+;;;	$Id: scrcom.scm,v 1.4 1993/09/01 18:03:14 gjr Exp $
 ;;;
-;;;	Copyright (c) 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1990-1993 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -53,3 +53,9 @@
     (if (null? (cdr (screen-list)))
 	(editor-error "Can't delete the only screen"))
     (delete-screen! (selected-screen))))
+
+(define-command resize-screen
+  "Resize the screen that point is in."
+  ()
+  (lambda ()
+    (resize-screen)))
