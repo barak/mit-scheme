@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.19 1993/04/27 09:22:31 cph Exp $
+$Id: tterm.scm,v 1.20 1993/07/16 19:20:22 gjr Exp $
 
-Copyright (c) 1990-93 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -174,6 +174,8 @@ MIT in each case. |#
 		(let loop ()
 		  (cond (inferior-thread-changes? event:interrupt)
 			((process-output-available?) event:process-output)
+			((not have-select?)
+			 (and block? (read-event block?)))
 			(else
 			 (case (test-for-input-on-descriptor
 				(channel-descriptor-for-select channel)
