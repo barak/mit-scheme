@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntenv.c,v 1.3 1993/07/01 22:29:57 cph Exp $
+$Id: ntenv.c,v 1.4 1993/07/18 20:26:08 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -98,7 +98,7 @@ DEFUN_VOID (OS_process_clock)
 double
 DEFUN_VOID (OS_real_time_clock)
 {
-  return ((((double) (clock ())) * 1000.0) / ((double) CLOCKS_PER_SEC))
+  return ((((double) (clock ())) * 1000.0) / ((double) CLOCKS_PER_SEC));
 }
 
 /* Timer adjustments */
