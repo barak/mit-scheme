@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: tagutl.scm,v 1.53 1994/01/10 19:34:14 cph Exp $
+;;;	$Id: tagutl.scm,v 1.54 1994/01/14 00:43:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -343,7 +343,7 @@ command."
 				'TAGS-LOOP-MODIFIED-TICK
 				(buffer-modified-tick buffer))
 		   buffer)))))
-      (message "Scanning file " (->namestring (buffer-truename buffer)) "...")
+      (message "Scanning file " (->namestring (buffer-pathname buffer)) "...")
       (select-buffer buffer)
       (set-current-point! (buffer-start buffer))
       (set! tags-loop-current-buffer buffer))
