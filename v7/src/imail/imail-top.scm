@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.178 2000/06/20 19:21:06 cph Exp $
+;;; $Id: imail-top.scm,v 1.179 2000/06/20 19:27:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -834,41 +834,42 @@ With prefix argument, prompt even when point is on an attachment."
 
 (define (save-mime-attachment body selector message buffer)
   (let ((filename
-	 (prompt-for-file
-	  "Save attachment as"
-	  (let ((filename
-		 (let ((filename (mime-body-disposition-filename body)))
-		   (and filename
-			(filter-mime-attachment-filename filename)))))
-	    (and filename
-		 (list
-		  (merge-pathnames
-		   filename
-		   (let ((directory
-			  (ref-variable imail-mime-attachment-directory
-					buffer)))
-		     (if directory
-			 (directory-pathname directory)
-			 (buffer-default-directory buffer)))))))))
+	 (let ((history 'IMAIL-SAVE-ATTACHMENT))
+	   (prompt-for-file
+	    "Save attachment as"
+	    (let ((filename
+		   (let ((filename (mime-body-disposition-filename body)))
+		     (and filename
+			  (filter-mime-attachment-filename filename)))))
+	      (and filename
+		   (list
+		    (merge-pathnames
+		     filename
+		     (let ((pathname
+			    (ref-variable imail-mime-attachment-directory
+					  buffer)))
+		       (if pathname
+			   (pathname-as-directory pathname)
+			   (let ((filenames (prompt-history-strings history)))
+			     (if (pair? filenames)
+				 (directory-pathname (car filenames))
+				 (buffer-default-directory buffer)))))))))
+	    'HISTORY history)))
 	(text?
 	 (let ((type (mime-body-type body)))
 	   (or (eq? type 'TEXT)
 	       (eq? type 'MESSAGE)))))
     (if (or (not (file-exists? filename))
 	    (prompt-for-yes-or-no? "File already exists; overwrite"))
-	(begin
-	  ((if text? call-with-output-file call-with-binary-output-file)
-	   filename
-	   (lambda (port)
-	     (call-with-mime-decoding-output-port
-	      (mime-body-one-part-encoding body)
-	      port
-	      text?
-	      (lambda (port)
-		(write-mime-message-body-part message selector #f port)))))
-	  (set-variable! imail-mime-attachment-directory
-			 (directory-pathname filename)
-			 buffer)))))
+	((if text? call-with-output-file call-with-binary-output-file)
+	 filename
+	 (lambda (port)
+	   (call-with-mime-decoding-output-port
+	    (mime-body-one-part-encoding body)
+	    port
+	    text?
+	    (lambda (port)
+	      (write-mime-message-body-part message selector #f port))))))))
 
 (define (filter-mime-attachment-filename filename)
   (let ((filename
