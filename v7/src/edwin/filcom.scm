@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.205 2000/01/05 02:41:55 cph Exp $
+;;; $Id: filcom.scm,v 1.206 2000/02/27 05:35:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -427,22 +427,26 @@ With argument, saves all with no questions."
 			(and exiting?
 			     (ref-variable buffer-offer-save buffer)
 			     (> (buffer-length buffer) 0)))))))))
-    (if (null? buffers)
-	(message "(No files need saving)")
-	(for-each (if (and (not (default-object? no-confirmation?))
-			   no-confirmation?)
-		      (lambda (buffer)
-			(write-buffer-interactive buffer false))
-		      (lambda (buffer)
-			(if (prompt-for-confirmation?
-			     (let ((pathname (buffer-pathname buffer)))
-			       (if pathname
-				   (string-append "Save file "
-						  (->namestring pathname))
-				   (string-append "Save buffer "
-						  (buffer-name buffer)))))
-			    (write-buffer-interactive buffer false))))
-		  buffers))))
+    (for-each (if (and (not (default-object? no-confirmation?))
+		       no-confirmation?)
+		  (lambda (buffer)
+		    (write-buffer-interactive buffer false))
+		  (lambda (buffer)
+		    (if (prompt-for-confirmation?
+			 (let ((pathname (buffer-pathname buffer)))
+			   (if pathname
+			       (string-append "Save file "
+					      (->namestring pathname))
+			       (string-append "Save buffer "
+					      (buffer-name buffer)))))
+			(write-buffer-interactive buffer false))))
+	      buffers)
+    (let ((abbrevs-saved? (maybe-save-abbrevs no-confirmation?)))
+      (if (and (null? buffers) (not abbrevs-saved?))
+	  (message "(No files need saving)")))))
+
+;; **** placeholder
+(define (maybe-save-abbrevs no-confirmation?) no-confirmation? unspecific)
 
 (define-variable-per-buffer buffer-offer-save
   "True in a buffer means offer to save the buffer on exit
