@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.8 1991/03/08 03:13:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.9 1991/03/09 21:33:31 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -53,17 +53,22 @@ MIT in each case. |#
   (list-copy subprocesses))
 
 (define-structure (subprocess
-		   (constructor %make-subprocess)
+		   (constructor %make-subprocess
+				(filename arguments index pty-master
+					  input-channel output-channel))
 		   (conc-name subprocess-))
   (filename false read-only true)
   (arguments false read-only true)
   index
   pty-master
-  (id false read-only true)
   input-channel
   output-channel
-  %input-port
-  %output-port
+  (id ((ucode-primitive process-id 1) index) read-only true)
+  (%input-port false)
+  (%output-port false)
+  (%status false)
+  (exit-reason false)
+  (%status-tick false)
   (properties (make-1d-table) read-only true))
 
 (define (subprocess-get process key)
@@ -71,6 +76,9 @@ MIT in each case. |#
 
 (define (subprocess-put! process key datum)
   (1d-table/put! (subprocess-properties process) key datum))
+
+(define (subprocess-remove! process key)
+  (1d-table/remove! (subprocess-properties process) key))
 
 (define (subprocess-input-port process)
   (without-interrupts
@@ -102,7 +110,7 @@ MIT in each case. |#
 (define (make-subprocess filename arguments environment
 			 ctty stdin stdout stderr
 			 pty-master input-channel output-channel)
-  (let ((index
+  (let ((process
 	 (let ((ctty-allowed? (string? ctty)))
 	   (define-integrable (convert-stdio-arg stdio)
 	     (cond ((not stdio) false)
@@ -112,41 +120,45 @@ MIT in each case. |#
 		   (else
 		    (error:wrong-type-argument stdio "process I/O channel"
 					       'MAKE-SUBPROCESS))))
-	   ((ucode-primitive make-subprocess 7)
-	    filename arguments environment
-	    (cond ((eq? ctty 'BACKGROUND) -1)
-		  ((eq? ctty 'FOREGROUND) -2)
-		  ((or (not ctty) (string? ctty)) ctty)
-		  (else
-		   (error:wrong-type-argument ctty
-					      "process controlling terminal"
-					      'MAKE-SUBPROCESS)))
-	    (convert-stdio-arg stdin)
-	    (convert-stdio-arg stdout)
-	    (convert-stdio-arg stderr)))))
-    (let ((process
-	   (%make-subprocess index
-			     pty-master
-			     ((ucode-primitive process-id 1) index)
-			     input-channel
-			     output-channel
-			     false
-			     false)))
-      (set! subprocesses (cons process subprocesses))
-      (if (eq? ctty 'FOREGROUND)
-	  (do ((status
-		((ucode-primitive process-status 1) index)
-		((ucode-primitive process-continue-foreground 1) index)))
-	      ((not (fix:= status 0)))))
-      process)))
+	   (let ((ctty
+		  (cond ((eq? ctty 'BACKGROUND) -1)
+			((eq? ctty 'FOREGROUND) -2)
+			((or (not ctty) (string? ctty)) ctty)
+			(else
+			 (error:wrong-type-argument
+			  ctty
+			  "process controlling terminal"
+			  'MAKE-SUBPROCESS))))
+		 (stdin (convert-stdio-arg stdin))
+		 (stdout (convert-stdio-arg stdout))
+		 (stderr (convert-stdio-arg stderr)))
+	     (without-interrupts
+	      (lambda ()
+		(let ((index
+		       ((ucode-primitive make-subprocess 7)
+			filename arguments environment
+			ctty stdin stdout stderr)))
+		  (let ((process
+			 (%make-subprocess filename arguments index pty-master
+					   input-channel output-channel)))
+		    (set-subprocess-%status!
+		     process
+		     ((ucode-primitive process-status 1) index))
+		    (set-subprocess-exit-reason!
+		     process
+		     ((ucode-primitive process-reason 1) index))
+		    (set! subprocesses (cons process subprocesses))
+		    process))))))))
+    (if (and (eq? ctty 'FOREGROUND)
+	     (eqv? (%subprocess-status process) 0))
+	(subprocess-continue-foreground process))
+    process))
 
 (define (subprocess-delete process)
   (without-interrupts
    (lambda ()
      (if (subprocess-index process)
 	 (begin
-	   ;; `process-delete' will signal an error if the process is
-	   ;; running or stopped.
 	   ((ucode-primitive process-delete 1) (subprocess-index process))
 	   (set! subprocesses (delq! process subprocesses))
 	   (set-subprocess-index! process false)
@@ -174,36 +186,53 @@ MIT in each case. |#
 		       (channel-close pty-master)))))))))
 
 (define (subprocess-status process)
-  (convert-subprocess-status
-   process
-   ((ucode-primitive process-status 1) (subprocess-index process))))
+  (convert-subprocess-status (%subprocess-status process)))
 
 (define (subprocess-wait process)
-  (let ((index (subprocess-index process)))
-    (let loop ()
-      (let ((status ((ucode-primitive process-wait 1) index)))
-	(case status
-	  ((0) (loop))
-	  (else (convert-subprocess-status process status)))))))
+  (let loop ()
+    ((ucode-primitive process-wait 1) (subprocess-index process))
+    (let ((status (%subprocess-status process)))
+      (if (eqv? status 0)
+	  (loop)
+	  (convert-subprocess-status status)))))
 
 (define (subprocess-continue-foreground process)
-  (let ((index (subprocess-index process)))
-    (let loop ()
-      (let ((status ((ucode-primitive process-continue-foreground 1) index)))
-	(case status
-	  ((0) (loop))
-	  (else (convert-subprocess-status process status)))))))
+  (let loop ()
+    ((ucode-primitive process-continue-foreground 1)
+     (subprocess-index process))
+    (let ((status (%subprocess-status process)))
+      (if (eqv? status 0)
+	  (loop)
+	  (convert-subprocess-status status)))))
 
-(define (convert-subprocess-status process status)
+(define (%subprocess-status process)
+  (without-interrupts
+   (lambda ()
+     (let ((index (subprocess-index process)))
+       (if ((ucode-primitive process-status-sync 1) index)
+	   (begin
+	     (set-subprocess-%status!
+	      process
+	      ((ucode-primitive process-status 1) index))
+	     (set-subprocess-exit-reason!
+	      process
+	      ((ucode-primitive process-reason 1) index))
+	     (set-subprocess-%status-tick! process false))))))
+  (subprocess-%status process))
+
+(define (subprocess-status-tick process)
+  (or (subprocess-%status-tick process)
+      (let ((tick (cons false false)))
+	(set-subprocess-%status-tick! process tick)
+	tick)))
+
+(define (convert-subprocess-status status)
   (case status
     ((0) 'RUNNING)
     ((1) 'STOPPED)
     ((2) 'EXITED)
     ((3) 'SIGNALLED)
     (else (error "Illegal process status:" status))))
-
-(define (subprocess-exit-reason process)
-  ((ucode-primitive process-reason 1) (subprocess-index process)))
 
 (define (subprocess-job-control-status process)
   (let ((n

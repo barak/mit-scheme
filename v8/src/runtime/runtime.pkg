@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.95 1991/03/08 03:13:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.96 1991/03/09 21:33:36 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1955,8 +1955,10 @@ MIT in each case. |#
 	  subprocess-pty-master
 	  subprocess-put!
 	  subprocess-quit
+	  subprocess-remove!
 	  subprocess-signal
 	  subprocess-status
+	  subprocess-status-tick
 	  subprocess-stop
 	  subprocess-wait
 	  subprocess?)
