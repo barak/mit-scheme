@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.3 1989/10/27 07:25:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.4 1989/10/27 23:58:51 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -809,7 +809,8 @@ MIT in each case. |#
 	  (if (rat:< (flo:->rational x) y) x (rat:->flonum y)))
       (if (flonum? y)
 	  (if (rat:< x (flo:->rational y)) (rat:->flonum x) y)
-	  (if (rat:< x y) y x))))
+	  (if (rat:< x y) x y))))
+
 (define (real:* x y)
   (cond ((flonum? x)
 	 (cond ((flonum? y) (flo:* x y))
