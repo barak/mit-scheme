@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.359 2001/02/05 18:33:19 cph Exp $
+$Id: runtime.pkg,v 14.360 2001/02/28 21:42:42 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -3551,6 +3551,24 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (parent ())
   (export ()
 	  make-mhash-keygen-type
+	  mcrypt-algorithm-name
+	  mcrypt-algorithm-names
+	  mcrypt-available?
+	  mcrypt-block-algorithm-mode?
+	  mcrypt-block-algorithm?
+	  mcrypt-block-mode?
+	  mcrypt-context?
+	  mcrypt-encrypt
+	  mcrypt-encrypt-port
+	  mcrypt-end
+	  mcrypt-init
+	  mcrypt-init-vector-size
+	  mcrypt-key-size
+	  mcrypt-mode-name
+	  mcrypt-mode-names
+	  mcrypt-open-module
+	  mcrypt-self-test
+	  mcrypt-supported-key-sizes
 	  md5-available?
 	  md5-file
 	  md5-string
@@ -3558,6 +3576,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  md5-sum->hexadecimal
 	  md5-sum->number
 	  mhash-available?
+	  mhash-context?
 	  mhash-end
 	  mhash-file
 	  mhash-get-block-size

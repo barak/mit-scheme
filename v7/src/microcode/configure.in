@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-dnl Copyright (c) 2000 Massachusetts Institute of Technology
+dnl Copyright (c) 2000-2001 Massachusetts Institute of Technology
 dnl
 dnl This program is free software; you can redistribute it and/or
 dnl modify it under the terms of the GNU General Public License as
@@ -16,9 +16,17 @@ dnl You should have received a copy of the GNU General Public License
 dnl along with this program; if not, write to the Free Software
 dnl Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-AC_REVISION([$Id: configure.in,v 11.3 2000/12/08 17:47:19 cph Exp $])
+AC_REVISION([$Id: configure.in,v 11.4 2001/02/28 21:41:58 cph Exp $])
 AC_INIT(boot.c)
 AC_CONFIG_HEADER(config.h)
+
+dnl Feature options.
+AC_ARG_ENABLE(static-libs,
+[  --enable-static-libs    Link some libraries statically [no]])
+AC_ARG_WITH(mhash,
+[  --with-mhash            Use the mhash library if available [yes]])
+AC_ARG_WITH(mcrypt,
+[  --with-mcrypt           Use the mcrypt library available [yes]])
 
 dnl Substitution variables to be filled in below.
 AS_FLAGS=
@@ -29,6 +37,7 @@ OPTIONAL_BASES=
 OPTIONAL_OBJECTS=
 OPTIONAL_SOURCES=
 STATIC_LIBS=
+QUASI_STATIC_LIBS=
 STATIC_PREFIX=
 STATIC_SUFFIX=
 
@@ -48,11 +57,13 @@ AC_CHECK_LIB(m, exp)
 AC_CHECK_LIB(mhash, mhash_count,
     [scheme_cv_lib_mhash=yes],
     [scheme_cv_lib_mhash=no])
-if test "${scheme_cv_lib_mhash}" = "no"; then
-    AC_CHECK_LIB(md5, MD5Init,
-	[scheme_cv_lib_md5=yes],
-	[scheme_cv_lib_md5=no])
-fi
+AC_CHECK_LIB(md5, MD5Init,
+    [scheme_cv_lib_md5=yes],
+    [scheme_cv_lib_md5=no])
+AC_CHECK_LIB(mcrypt, mcrypt_generic_init,
+    [scheme_cv_lib_mcrypt=yes],
+    [scheme_cv_lib_mcrypt=no],
+    [-lltdl])
 AC_CHECK_LIB(blowfish, BF_set_key,
     [scheme_cv_lib_blowfish=yes],
     [scheme_cv_lib_blowfish=no])
@@ -74,58 +85,54 @@ AC_CHECK_LIB(termcap, tparam,
     [scheme_cv_lib_termcap=yes],
     [scheme_cv_lib_termcap=no])
 
-if test "${scheme_cv_lib_mhash}" = "yes"; then
-    AC_DEFINE(HAVE_LIBMHASH)
-    STATIC_LIBS="${STATIC_LIBS} -lmhash"
-fi
-if test "${scheme_cv_lib_md5}" = "yes"; then
-    AC_DEFINE(HAVE_LIBMD5)
-    STATIC_LIBS="${STATIC_LIBS} -lmd5"
-fi
-if test "${scheme_cv_lib_blowfish}" = "yes"; then
-    AC_DEFINE(HAVE_LIBBLOWFISH)
-    STATIC_LIBS="${STATIC_LIBS} -lblowfish"
-fi
-if test "${scheme_cv_lib_gdbm}" = "yes"; then
-    AC_DEFINE(HAVE_LIBGDBM)
-    STATIC_LIBS="${STATIC_LIBS} -lgdbm"
-fi
-if test "${scheme_cv_lib_ncurses}" = "yes"; then
-    AC_DEFINE(HAVE_LIBNCURSES)
-    STATIC_LIBS="${STATIC_LIBS} -lncurses"
-elif test "${scheme_cv_lib_curses}" = "yes"; then
-    AC_DEFINE(HAVE_LIBCURSES)
-    STATIC_LIBS="${STATIC_LIBS} -lcurses"
-elif test "${scheme_cv_lib_termcap}" = "yes"; then
-    AC_DEFINE(HAVE_LIBTERMCAP)
-    STATIC_LIBS="${STATIC_LIBS} -ltermcap"
-fi
-
-if test "${scheme_cv_lib_mhash}" = "yes"; then
-    OPTIONAL_BASES="${OPTIONAL_BASES} prmhash"
-fi
-if test "${scheme_cv_lib_md5}" = "yes"; then
-    OPTIONAL_BASES="${OPTIONAL_BASES} prmd5"
-fi
-if test "${scheme_cv_lib_blowfish}" = "yes"; then
-    OPTIONAL_BASES="${OPTIONAL_BASES} prbfish"
-fi
-if test "${scheme_cv_lib_gdbm}" = "yes"; then
-    OPTIONAL_BASES="${OPTIONAL_BASES} prgdbm"
-fi
 if test "${ac_cv_lib_dl_dlopen}" = "yes"; then
     OPTIONAL_BASES="${OPTIONAL_BASES} pruxdld"
 fi
+if test "${scheme_cv_lib_mhash}" = "yes" && test "${with_mhash}" != "no"; then
+    AC_DEFINE(HAVE_LIBMHASH)
+    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lmhash"
+    OPTIONAL_BASES="${OPTIONAL_BASES} prmhash"
+elif test "${scheme_cv_lib_md5}" = "yes"; then
+    AC_DEFINE(HAVE_LIBMD5)
+    STATIC_LIBS="${STATIC_LIBS} -lmd5"
+    OPTIONAL_BASES="${OPTIONAL_BASES} prmd5"
+fi
+if test "${scheme_cv_lib_mcrypt}" = "yes" && test "${with_mcrypt}" != "no"; then
+    AC_DEFINE(HAVE_LIBMCRYPT)
+    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lmcrypt -lltdl"
+    OPTIONAL_BASES="${OPTIONAL_BASES} prmcrypt"
+elif test "${scheme_cv_lib_blowfish}" = "yes"; then
+    AC_DEFINE(HAVE_LIBBLOWFISH)
+    STATIC_LIBS="${STATIC_LIBS} -lblowfish"
+    OPTIONAL_BASES="${OPTIONAL_BASES} prbfish"
+fi
+if test "${scheme_cv_lib_gdbm}" = "yes"; then
+    AC_DEFINE(HAVE_LIBGDBM)
+    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lgdbm"
+    OPTIONAL_BASES="${OPTIONAL_BASES} prgdbm"
+fi
 if test "${scheme_cv_lib_ncurses}" = "yes"; then
+    AC_DEFINE(HAVE_LIBNCURSES)
+    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lncurses"
     if test "${scheme_cv_lib_ncurses_has_tparam}" = "no"; then
 	OPTIONAL_BASES="${OPTIONAL_BASES} terminfo"
     fi
 elif test "${scheme_cv_lib_curses}" = "yes"; then
+    AC_DEFINE(HAVE_LIBCURSES)
+    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lcurses"
     OPTIONAL_BASES="${OPTIONAL_BASES} terminfo"
 elif test "${scheme_cv_lib_termcap}" = "yes"; then
+    AC_DEFINE(HAVE_LIBTERMCAP)
+    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -ltermcap"
     OPTIONAL_BASES="${OPTIONAL_BASES} tparam"
 else
     OPTIONAL_BASES="${OPTIONAL_BASES} termcap tparam"
+fi
+
+if test "${enable_static_libs}" = "no"; then
+    LIBS="${LIBS}${QUASI_STATIC_LIBS}"
+else
+    STATIC_LIBS="${STATIC_LIBS}${QUASI_STATIC_LIBS}"
 fi
 
 dnl Checks for header files.
@@ -136,7 +143,7 @@ AC_HEADER_TIME
 AC_CHECK_HEADERS(bsdtty.h fcntl.h limits.h malloc.h sgtty.h stropts.h time.h)
 AC_CHECK_HEADERS(sys/file.h sys/ioctl.h sys/mount.h sys/param.h sys/poll.h)
 AC_CHECK_HEADERS(sys/ptyio.h sys/socket.h sys/time.h sys/un.h sys/vfs.h)
-AC_CHECK_HEADERS(termio.h termios.h unistd.h utime.h)
+AC_CHECK_HEADERS(termcap.h termio.h termios.h unistd.h utime.h)
 
 dnl Checks for typedefs
 AC_TYPE_MODE_T

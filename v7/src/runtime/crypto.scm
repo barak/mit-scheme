@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: crypto.scm,v 14.11 2001/01/29 19:32:57 cph Exp $
+$Id: crypto.scm,v 14.12 2001/02/28 21:42:32 cph Exp $
 
 Copyright (c) 2000-2001 Massachusetts Institute of Technology
 
@@ -292,6 +292,147 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define md5-sum->number mhash-sum->number)
 (define md5-sum->hexadecimal mhash-sum->hexadecimal)
 
+;;;; The mcrypt library
+
+(define mcrypt-algorithm-names-vector)
+(define mcrypt-mode-names-vector)
+(define mcrypt-contexts)
+(define-structure mcrypt-context (index #f read-only #t))
+
+(define (guarantee-mcrypt-context object procedure)
+  (if (not (mcrypt-context? object))
+      (error:wrong-type-argument object "mcrypt context" procedure)))
+
+(define (mcrypt-available?)
+  (implemented-primitive-procedure? (ucode-primitive mcrypt_module_open 2)))
+
+(define (mcrypt-algorithm-names)
+  (names-vector->list mcrypt-algorithm-names-vector))
+
+(define (mcrypt-mode-names)
+  (names-vector->list mcrypt-mode-names-vector))
+
+(define (mcrypt-open-module algorithm mode)
+  (without-interrupts
+   (lambda ()
+     (let ((index ((ucode-primitive mcrypt_module_open 2) algorithm mode)))
+       (let ((context (make-mcrypt-context index)))
+	 (add-to-gc-finalizer! mcrypt-contexts context index)
+	 context)))))
+
+(define (mcrypt-init context key init-vector)
+  (guarantee-mcrypt-context context 'MCRYPT-INIT)
+  (let ((code
+	 ((ucode-primitive mcrypt_generic_init 3)
+	  (mcrypt-context-index context) key init-vector)))
+    (if (not (= code 0))
+	(error "Error code signalled by mcrypt_generic_init:" code))))
+
+(define (mcrypt-encrypt context input input-start input-end
+			output output-start encrypt?)
+  (guarantee-mcrypt-context context 'MCRYPT-ENCRYPT)
+  (substring-move! input input-start input-end output output-start)
+  (let ((code
+	 ((if encrypt?
+	      (ucode-primitive mcrypt_generic 4)
+	      (ucode-primitive mdecrypt_generic 4))
+	  (mcrypt-context-index context)
+	  output
+	  output-start
+	  (fix:+ output-start (fix:- input-end input-start)))))
+    (if (not (= code 0))
+	(error (string-append "Error code signalled by "
+			      (if encrypt?
+				  "mcrypt_generic"
+				  "mdecrypt_generic")
+			      ":")
+	       code))))
+
+(define (mcrypt-end context)
+  (guarantee-mcrypt-context context 'MCRYPT-END)
+  (remove-from-gc-finalizer! mcrypt-contexts context))
+
+(define (mcrypt-generic-unary name context-op module-op)
+  (lambda (object)
+    (cond ((mcrypt-context? object) (context-op (mcrypt-context-index object)))
+	  ((string? object) (module-op object))
+	  (else (error:wrong-type-argument object "mcrypt context" name)))))
+
+(define mcrypt-self-test
+  (mcrypt-generic-unary
+   'MCRYPT-SELF-TEST
+   (ucode-primitive mcrypt_enc_self_test 1)
+   (ucode-primitive mcrypt_module_self_test 1)))
+
+(define mcrypt-block-algorithm-mode?
+  (mcrypt-generic-unary
+   'MCRYPT-BLOCK-ALGORITHM-MODE?
+   (ucode-primitive mcrypt_enc_is_block_algorithm_mode 1)
+   (ucode-primitive mcrypt_module_is_block_algorithm_mode 1)))
+
+(define mcrypt-block-algorithm?
+  (mcrypt-generic-unary
+   'MCRYPT-BLOCK-ALGORITHM?
+   (ucode-primitive mcrypt_enc_is_block_algorithm 1)
+   (ucode-primitive mcrypt_module_is_block_algorithm 1)))
+
+(define mcrypt-block-mode?
+  (mcrypt-generic-unary
+   'MCRYPT-BLOCK-MODE?
+   (ucode-primitive mcrypt_enc_is_block_mode 1)
+   (ucode-primitive mcrypt_module_is_block_mode 1)))
+
+(define mcrypt-key-size
+  (mcrypt-generic-unary
+   'MCRYPT-KEY-SIZE
+   (ucode-primitive mcrypt_enc_get_key_size 1)
+   (ucode-primitive mcrypt_module_get_algo_key_size 1)))
+
+(define mcrypt-supported-key-sizes
+  (mcrypt-generic-unary
+   'MCRYPT-SUPPORTED-KEY-SIZES
+   (ucode-primitive mcrypt_enc_get_supported_key_sizes 1)
+   (ucode-primitive mcrypt_module_get_algo_supported_key_sizes 1)))
+
+(define (mcrypt-init-vector-size context)
+  (guarantee-mcrypt-context context 'MCRYPT-INIT-VECTOR-SIZE)
+  ((ucode-primitive mcrypt_enc_get_iv_size 1)
+   (mcrypt-context-index context)))
+
+(define (mcrypt-algorithm-name context)
+  (guarantee-mcrypt-context context 'MCRYPT-ALGORITHM-NAME)
+  ((ucode-primitive mcrypt_enc_get_algorithms_name 1)
+   (mcrypt-context-index context)))
+
+(define (mcrypt-mode-name context)
+  (guarantee-mcrypt-context context 'MCRYPT-MODE-NAME)
+  ((ucode-primitive mcrypt_enc_get_modes_name 1)
+   (mcrypt-context-index context)))
+
+(define (mcrypt-encrypt-port algorithm mode input output key init-vector
+			     encrypt?)
+  ;; Assumes that INPUT is in blocking mode.
+  (let ((context (mcrypt-open-module algorithm mode))
+	(input-buffer (make-string 4096))
+	(output-buffer (make-string 4096)))
+    (mcrypt-init context key init-vector)
+    (dynamic-wind
+     (lambda ()
+       unspecific)
+     (lambda ()
+       (let loop ()
+	 (let ((n (input-port/read-string! input input-buffer)))
+	   (if (not (fix:= 0 n))
+	       (begin
+		 (mcrypt-encrypt context input-buffer 0 n output-buffer 0
+				 encrypt?)
+		 (write-substring output-buffer 0 n output)
+		 (loop)))))
+       (mcrypt-end context))
+     (lambda ()
+       (string-fill! input-buffer #\NUL)
+       (string-fill! output-buffer #\NUL)))))
+
 ;;;; Package initialization
 
 (define (initialize-package!)
@@ -306,8 +447,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (make-gc-finalizer (ucode-primitive mhash_hmac_end 1)))
 	(set! mhash-keygen-names
 	      (make-names-vector (ucode-primitive mhash_keygen_count 0)
-				 (ucode-primitive mhash_get_keygen_name 1)))
-	unspecific)))
+				 (ucode-primitive mhash_get_keygen_name 1)))))
+  (if (mcrypt-available?)
+      (begin
+	(set! mcrypt-contexts
+	      (make-gc-finalizer (ucode-primitive mcrypt_generic_end 1)))
+	(set! mcrypt-algorithm-names-vector
+	      ((ucode-primitive mcrypt_list_algorithms 0)))
+	(set! mcrypt-mode-names-vector
+	      ((ucode-primitive mcrypt_list_modes 0)))))
+  unspecific)
 
 (define (make-names-vector get-count get-name)
   (let ((n (get-count)))
