@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.37 1994/04/30 06:25:16 cph Exp $
+$Id: option.c,v 1.38 1994/11/20 00:57:29 cph Exp $
 
-Copyright (c) 1990-1994 Massachusetts Institute of Technology
+Copyright (c) 1990-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,6 +39,7 @@ MIT in each case. */
 #include "obstack.h"
 #include "config.h"
 #include "osenv.h"
+#include "osfs.h"
 #include <sys/stat.h>
 
 extern char * getenv ();
@@ -50,7 +51,6 @@ extern int atoi ();
 #include <io.h>
 #include <string.h>
 #else
-extern int access ();
 extern int strlen ();
 #endif
 
@@ -86,7 +86,7 @@ extern void EXFUN (termination_init_error, (void));
 #  define FILE_ABSOLUTE(filename) (((filename) [0]) == SUB_DIRECTORY_DELIMITER)
 #endif
 
-#define FILE_READABLE(filename) ((access ((filename), 4)) >= 0)
+#define FILE_READABLE(filename) ((OS_file_access ((filename), 4)) >= 0)
 
 static int option_summary;
 static int option_large_sizes;
