@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.24 1987/11/20 16:39:02 pas Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.25 1987/12/12 22:06:42 pas Exp $ */
 
 /* CONTAINS:                                                         */
 /* Scheme_Array constructors, and selectors                          */
@@ -208,6 +208,57 @@ Define_Primitive(Prim_Array_Copy, 1, "ARRAY-COPY")
   return Result;
 }
 
+Define_Primitive(Prim_Array_Read_Ascii_File, 2, "ARRAY-READ-ASCII-FILE")
+{ FILE *fp;
+  long Length, allocated_cells;
+  REAL *a;
+  SCHEME_ARRAY Result;
+  Primitive_2_Args();
+  Arg_1_Type(TC_CHARACTER_STRING);                /* filename */
+  Arg_2_Type(TC_FIXNUM);                          /* length of data */
+  Length = Get_Integer(Arg2);
+  if (Length <= 0) Primitive_Error(ERR_ARG_2_BAD_RANGE);
+  Allocate_Array(Result, Length, allocated_cells);
+  if (!(Open_File(Arg1, "r", &fp))) Primitive_Error(ERR_ARG_1_BAD_RANGE);
+  printf("Reading ascii file ...\n"); fflush(stdout);
+  a = Scheme_Array_To_C_Array(Result);
+  C_Array_Read_Ascii_File(a,Length,fp);
+  return Result;
+}
+C_Array_Read_Ascii_File(a,N,fp)           /* 16 ascii decimal digits */
+     REAL *a; long N; FILE *fp;
+{ long i;
+  for (i=0; i<N; i++) {
+    if ( (fscanf(fp, "%lf", &(a[i]))) != 1)
+    { printf("Not enough values read ---\n Last Point was %d with value % .16e \n", i, a[i-1]);
+      return NIL; }}
+  Close_File(fp);
+}
+
+Define_Primitive(Prim_Array_Write_Ascii_File, 2, "ARRAY-WRITE-ASCII-FILE")
+{ FILE *fp;
+  long Length;
+  REAL *a;
+  Primitive_2_Args();
+  Arg_1_Type(TC_ARRAY);
+  Length = Array_Length(Arg1);
+  Arg_2_Type(TC_CHARACTER_STRING);                /* filename */
+  if (!(Open_File(Arg2, "w", &fp))) Primitive_Error(ERR_ARG_2_BAD_RANGE);
+  printf("Writing ascii file ...\n"); fflush(stdout);
+  a = Scheme_Array_To_C_Array(Arg1);
+  C_Array_Write_Ascii_File(a,Length,fp);
+  return NIL;
+}
+C_Array_Write_Ascii_File(a,N,fp)           /* 16 ascii decimal digits */
+     REAL *a; long N; FILE *fp;
+{ long i;
+  for (i=0; i<N; i++) {
+    if (feof(fp)!=0) { printf("Not enough values written ---\n Last Point was %d with value %---\n", (i-1), a[i-1]);
+		       return NIL; }
+    fprintf(fp, "% .16e \n", a[i]); }
+  Close_File(fp);
+}
+
 Define_Primitive(Prim_SubArray, 3, "SUBARRAY")
 { long Length, i, allocated_cells, Start, End, New_Length;
   REAL *To_Here, *From_Here;
@@ -326,29 +377,7 @@ Define_Primitive(Prim_Array_Scale, 2, "ARRAY-SCALE!")
   return Result; 
 }
 
-Define_Primitive(Prim_Array_Log, 1, "ARRAY-LOG!")
-{ long Length, i, allocated_cells;
-  REAL *To_Here, *From_Here;
-  Pointer Result;
-
-  Primitive_1_Args();
-  Arg_1_Type(TC_ARRAY);
-  Length = Array_Length(Arg1);
-
-  Result = Arg1;
-  From_Here = Scheme_Array_To_C_Array(Arg1);
-  To_Here = Scheme_Array_To_C_Array(Result);
-  
-  for (i=0; i < Length; i++) {
-    REAL Value= (*From_Here);
-    if (Value<0.0) Primitive_Error(ERR_ARG_1_BAD_RANGE);   /* log of negative ? */
-    *To_Here++ = ((REAL) log((double) Value));
-    From_Here++ ;
-  }
-  return Result; 
-}
-
-/* The following functions are used in the primitive "ARRAY-FUNCTION!"
+/* The following functions are used in the primitive "ARRAY-UNARY-FUNCTION!"
    for tranforming arrays
    */
 
