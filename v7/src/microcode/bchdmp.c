@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.36 1987/11/17 19:47:34 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.37 1987/11/24 07:58:33 jinx Exp $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -248,7 +248,9 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 
 	  /* The + & -1 are here because of the Scan++ in the for header. */
 	  overflow = (Scan - scan_buffer_top) + 1;
-	  Scan = ((dump_and_reload_scan_buffer((overflow / GC_DISK_BUFFER_SIZE), &success) +
+	  Scan = ((dump_and_reload_scan_buffer((overflow /
+						GC_DISK_BUFFER_SIZE),
+					       &success) +
 		   (overflow % GC_DISK_BUFFER_SIZE)) - 1);
 	  if (!success)
 	  {
@@ -413,7 +415,7 @@ Define_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP")
   fixup_count = -1;
 
   table_top = &saved_free[Space_Before_GC()];
-  table_start = initialize_primitive_table(saved_free, table_end);
+  table_start = initialize_primitive_table(saved_free, table_top);
   if (table_start >= table_top)
   {
     fasdump_exit(0);
@@ -456,8 +458,8 @@ Define_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP")
   tsize = (table_end - table_start);
   hlength = (sizeof(Pointer) * tsize);
   if ((lseek(gc_file,
-	     0,
-	     (sizeof(Pointer) * (length + FASL_HEADER_LENGTH))) == -1) ||
+	     (sizeof(Pointer) * (length + FASL_HEADER_LENGTH)),
+	     0) == -1) ||
       (write(gc_file, ((char *) &table_start[0]), hlength) != hlength))
   {
     fasdump_exit(0);
