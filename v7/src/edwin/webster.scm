@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: webster.scm,v 1.1 1998/08/31 04:15:00 cph Exp $
+$Id: webster.scm,v 1.2 1998/08/31 04:18:19 cph Exp $
 
 Copyright (c) 1998 Massachusetts Institute of Technology
 
@@ -156,6 +156,7 @@ Use webster-mode-hook for customization."
     (local-set-variable!
      mode-line-process
      (lambda (window)
+       window
        (if (and webster-server-port
 		(not (input-port/eof? webster-server-port)))
 	   ": connected"
