@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: loadef.scm,v 1.20 1993/02/25 03:13:14 gjr Exp $
+;;;	$Id: loadef.scm,v 1.21 1993/02/25 08:55:45 gjr Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -232,6 +232,8 @@ variable's value is #F, the text is printed using LPR-COMMAND."
 	"Execute string COMMAND in inferior shell; display output, if any.")
       (define-autoload-command 'shell-command-on-region 'DOSCOM
 	"Execute string COMMAND in inferior shell with region as input.")
+      (define-autoload-procedure 'shell-command '(EDWIN DOSJOB)
+	'DOSCOM)
 
       (define-library 'DOSSHELL
 	'("dosshell" (EDWIN DOSJOB)))
