@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.178 1993/04/27 20:21:14 hal Exp $
+$Id: runtime.pkg,v 14.179 1993/06/10 06:04:40 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -1212,6 +1212,9 @@ MIT in each case. |#
 	  load/suppress-loading-message?
 	  read-file
 	  set-command-line-parser!)
+  (export (package)
+	  suppress-loading-message?
+	  load/purification-root)
   (initialization (initialize-package!)))
 
 (define-package (runtime macros)

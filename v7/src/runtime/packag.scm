@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.12 1992/12/07 19:06:51 cph Exp $
+$Id: packag.scm,v 14.13 1993/06/10 06:04:33 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -163,13 +163,42 @@ MIT in each case. |#
 	    ((load (pathname-new-type pathname "bldr")
 		   system-global-environment
 		   syntax-table false)
-	     (lambda (filename environment)
-	       (load filename environment syntax-table true))
+	     (lambda (component environment)
+	       (cond ((filename->compiled-object filename component)
+		      => (lambda (value)
+			   (purify (load/purification-root value))
+			   (scode-eval value environment)))
+		     (else
+		      (load component environment syntax-table true))))
 	     options))))))
   ;; Make sure that everything we just loaded is purified.  If the
   ;; program runs before it gets purified, some of its run-time state
   ;; can end up being purified also.
   (flush-purification-queue!))
+
+(define (filename->compiled-object system component)
+  (let ((prim (ucode-primitive initialize-c-compiled-block 1)))
+    (and (implemented-primitive-procedure? prim)
+	 (let ((name
+		(let* ((p (->pathname component))
+		       (d (pathname-directory p)))
+		  (string-append
+		   (if (or (not d) (null? d))
+		       system
+		       (car (last-pair d)))
+		   "_"
+		   (string-replace (pathname-name p) ; kludge
+				   #\-
+				   #\_)))))
+	   (if suppress-loading-message?
+	       (prim name)
+	       (let ((port (nearest-cmdl/port)))
+		 (fresh-line port)
+		 (write-string ";Initializing " port)
+		 (write name port)
+		 (let ((value (prim name)))
+		   (write-string " -- done" port)
+		   value)))))))
 
 (define-integrable (package/reference package name)
   (lexical-reference (package/environment package) name))
