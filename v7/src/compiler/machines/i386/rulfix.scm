@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.23 1992/04/14 20:30:35 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.24 1992/04/16 01:38:50 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -434,7 +434,7 @@ MIT in each case. |#
 		   (operate (get-tgt) (register-reference one))))
 		(else
 		 (let ((target (target-register-reference target)))
-		   (LAP (LEA ,target (@RI one two 1)))))))))))  
+		   (LAP (LEA ,target (@RI ,one ,two 1)))))))))))
 
 (define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args
   (fixnum-2-args/standard
