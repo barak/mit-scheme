@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.107 2000/06/20 19:45:37 cph Exp $
+;;; $Id: imail-core.scm,v 1.108 2000/06/20 19:48:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -642,14 +642,13 @@
       (guarantee-header-field-value value 'MAKE-HEADER-FIELD)
       (constructor name value))))
 
-(define (copy-header-field header)
-  (record-copy header))
+(define (guarantee-header-field-name object procedure)
+  (if (not (header-field-name? object))
+      (error:wrong-type-argument object "header-field name" procedure)))
 
-(define (->header-fields object)
-  (cond ((or (pair? object) (null? object)) object)
-	((message? object) (message-header-fields object))
-	((string? object) (string->header-fields object))
-	(else (error:wrong-type-argument object "header fields" #f))))
+(define (guarantee-header-field-value object procedure)
+  (if (not (header-field-value? object))
+      (error:wrong-type-argument object "header-field value" procedure)))
 
 (define (header-field-name? object)
   (and (string? object)
@@ -665,13 +664,19 @@
 		      (char-lwsp? (string-ref object (fix:+ nl 1)))
 		      (loop (fix:+ nl 2)))))))))
 
-(define (guarantee-header-field-name object procedure)
-  (if (not (header-field-name? object))
-      (error:wrong-type-argument object "header-field name" procedure)))
+(define (copy-header-field header)
+  (record-copy header))
 
-(define (guarantee-header-field-value object procedure)
-  (if (not (header-field-value? object))
-      (error:wrong-type-argument object "header-field value" procedure)))
+(define (->header-fields object)
+  (cond ((or (pair? object) (null? object)) object)
+	((message? object) (message-header-fields object))
+	((string? object) (string->header-fields object))
+	(else (error:wrong-type-argument object "header fields" #f))))
+
+(define (header-field-length header)
+  (+ (string-length (header-field-name header))
+     (string-length (header-field-value header))
+     2))
 
 (define (get-first-header-field headers name error?)
   (let loop ((headers (->header-fields headers)))
