@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.19 1995/09/05 21:45:17 adams Exp $
+$Id: midend.scm,v 1.20 1996/03/08 17:19:00 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -36,7 +36,6 @@ MIT in each case. |#
 
 ;;;; Phase structure
 
-(define *phases-to-show* '())
 (define *phases-to-omit* '())
 (define *debugging?* true)
 (define *current-phase-input* false)
@@ -71,9 +70,10 @@ MIT in each case. |#
     
       (define (show? phase)
 	(and phase
-	     (let ((switch *phases-to-show*))
+	     (let ((switch compiler:generate-kmp-files?))
 	       (or (eq? switch 'ALL)
-		   (memq phase switch)))))
+		   (and (pair? switch)
+			(memq phase switch))))))
 
       (define (run-phase program)
 	(if (memq this-phase *phases-to-omit*)
@@ -475,5 +475,5 @@ Example:
 	 (set! compiler:generate-rtl-files? #F)
 	 (set! compiler:generate-lap-files? #F))
         (else
-	 (set! *phases-to-show* what))))
+	 (set! compiler:generate-kmp-files? what))))
 
