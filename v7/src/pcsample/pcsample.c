@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pcsample.c,v 1.3 1995/08/08 22:58:17 adams Exp $
+$Id: pcsample.c,v 1.4 1995/11/19 19:30:17 adams Exp $
 
 Copyright (c) 1990-1995 Massachusetts Institute of Technology
 
@@ -1452,13 +1452,18 @@ DEFINE_PRIMITIVE ("%PC-SAMPLE/SET-ZONE!",
 		  Prim_pc_sample_set_current_zone, 1, 1,
   "(index)\n\
 Set current pc-sampling zone to INDEX (a small exact integer), returning \
-the previous value.")
+the previous value if different, else #F if same.")
 {
     PRIMITIVE_HEADER(1);
     {
 	int  old_zone = current_zone;
-	current_zone = arg_index_integer (1, INITIAL_ZONE_LIMIT);
-	PRIMITIVE_RETURN (LONG_TO_FIXNUM(old_zone));
+	int  new_zone = arg_index_integer (1, INITIAL_ZONE_LIMIT);
+	if (old_zone == new_zone) {
+	    PRIMITIVE_RETURN (SHARP_F);
+	} else {
+	    current_zone = new_zone;
+	    PRIMITIVE_RETURN (LONG_TO_FIXNUM(old_zone));
+	}
     }
 }
 
