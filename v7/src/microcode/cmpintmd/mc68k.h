@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.23 1991/03/26 13:14:54 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.24 1991/03/28 05:36:14 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -112,20 +112,59 @@ extern void EXFUN (NeXT_cacheflush, (void));
 
 /* This only works in HP-UX >= 7.05 */
 
-#  ifdef S2DATA_WT
+#    include <sys/cache.h>
 
 #    ifdef SWITZERLAND
 
 extern void EXFUN (swiss_cachectl, (int, void *, unsigned long));
 
-extern void EXFUN (operate_on_cache_region,(int, char *, unsigned long));
+#      define FLUSH_CACHE_INITIALIZE() swiss_cachectl_init_p = 0
 
+#      ifdef IN_CMPINT_C
+
+  swiss_cachectl_flush_p = 0;
+
+#        include <sys/utsname.h>
+       int mode AND PTR base AND unsigned long count)
+{
+  if (swiss_cachectl_init_p == 0)
+  {
+    int length;
+    char *string, *posn;
+  static int init_p = 0, flush_p = 0;
+
+  if (init_p == 0)
+    extern int EXFUN (getcontext, (char *, int));
+    struct utsname my_desc;
+
+    (void) (uname (&my_desc));
+    flush_p = ((my_desc.release[0] > '7')
+	       || ((my_desc.release[0] == '7')
+		   && ((my_desc.release[2] > '0')
+		       || ((my_desc.release[2] == '0')
+			   && (my_desc.release[3] >= '5')))));
+    init_p = 1;
+  }
+  if (flush_p == 1)
+}
+
+#      endif /* IN_CMPINT_C */
+
+#      define cachectl(m,b,l) swiss_cachectl(m,b,l)
+#    endif /* SWITZERLAND */
+
+extern void
+  EXFUN (operate_on_cache_region, (int, char *, unsigned long));
+
+#    define SPLIT_CACHES
+
+#    define FLUSH_I_CACHE()						\
   (void) (cachectl (CC_IPURGE, 0, 0))
 
 #    define FLUSH_I_CACHE_REGION(addr, nwords)				\
   (operate_on_cache_region (CC_IPURGE, ((char *) (addr)), (nwords)))
 
-#    define FLUSH_I_CACHE_REGION(addr, nwords)			\
+#    define PUSH_D_CACHE_REGION(addr, nwords)				\
 do									\
 {									\
   char *base = ((char *) (addr));					\
@@ -135,24 +174,24 @@ DEFUN (operate_on_cache_region,
        (cachecmd, bptr, nwords),
        int cachecmd AND char * bptr AND unsigned long nwords)
 {
-       (cachecmd, base, nwords),
-       int cachecmd AND char * base AND unsigned long)
+  char * eptr;
+  unsigned long nbytes, quantum;
 
-  char * end;
+  if (nwords == 0)
     return;
   
   nbytes = (nwords * (sizeof (long)));
   eptr = (bptr + (nbytes - 1));
   quantum = ((nbytes <= 0x40) ? 0x10 : 0x1000);
 
-  end = (base + (nbytes - 1));
+  for (bptr = ((char *) (((unsigned long) bptr) & (~(quantum - 1)))),
        eptr = ((char *) (((unsigned long) eptr) & (~(quantum - 1))));
        (bptr <= eptr);
-  for (base = ((char *) (((unsigned long) base) & (~(quantum - 1))))
-       end = ((char *) (((unsigned long) end) & (~(quantum - 1))));
-       (base <= end);
-       base += quantum)
-    (void) (cachectl (cachecmd, base, quantum));
+       bptr += quantum)
+    (void) (cachectl (cachecmd, bptr, quantum));
+  return;
+}
+
 #    endif /* IN_CMPINT_C */
 #  else  /* S2DATA_WT */
 #    define FLUSH_I_CACHE() NOP()
@@ -317,7 +356,7 @@ extdo {									\
 
 #endif /* ADJUST_CLOSURE_AT_CALL */
 
-#  error "COMPILER_PROCESSOR_TYPE unknown"
+/* Execute cache entry size size in longwords.  The cache itself
    contains both the number of arguments provided by the caller and
    code to jump to the destination address.  Before linkage, the cache
    contains the callee's name instead of the jump code.
