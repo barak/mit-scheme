@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg3.scm,v 1.2 1987/08/07 17:03:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg3.scm,v 1.3 1987/08/26 01:07:42 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -188,143 +188,81 @@ MIT in each case. |#
 				     (car second)
 				     (find-non-null (cdr second))))))))))))
 
-(define (pcfg->scfg! pcfg)
-  (make-scfg* (cfg-entry-node pcfg)
-	      (pcfg-consequent-hooks pcfg)
-	      (pcfg-alternative-hooks pcfg)))
-
 (package (scfg*pcfg->pcfg! scfg*pcfg->scfg!)
 
-(define ((scfg*pcfg->cfg! transformer constructor) scfg pcfg)
-  (cond ((not pcfg) (error "SCFG*PCFG->CFG!: Can't have null predicate"))
-	((not scfg) (transformer pcfg))
-	(else
-	 (scfg-next-connect! scfg pcfg)
-	 (constructor (cfg-entry-node scfg)
-		      (pcfg-consequent-hooks pcfg)
-		      (pcfg-alternative-hooks pcfg)))))
+(define ((scfg*pcfg->cfg! constructor) scfg pcfg)
+  (if (not pcfg)
+      (error "SCFG*PCFG->CFG!: Can't have null predicate"))
+  (constructor (if (not scfg)
+		   (cfg-entry-node pcfg)
+		   (begin (scfg-next-connect! scfg pcfg)
+			  (cfg-entry-node scfg)))
+	       (pcfg-consequent-hooks pcfg)
+	       (pcfg-alternative-hooks pcfg)))
 
 (define scfg*pcfg->pcfg!
-  (scfg*pcfg->cfg! identity-procedure make-pcfg))
+  (scfg*pcfg->cfg! make-pcfg))
 
 (define scfg*pcfg->scfg!
-  (scfg*pcfg->cfg! pcfg->scfg! make-scfg*))
+  (scfg*pcfg->cfg! make-scfg*))
 
 )
 
 (package (pcfg*scfg->pcfg! pcfg*scfg->scfg!)
 
-(define ((pcfg*scfg->cfg! transformer constructor) pcfg consequent alternative)
-  (cond ((not pcfg) (error "PCFG*SCFG->CFG!: Can't have null predicate"))
-	((not consequent)
-	 (if (not alternative)
-	     (transformer pcfg)
-	     (begin (pcfg-alternative-connect! pcfg alternative)
-		    (constructor (cfg-entry-node pcfg)
-				 (pcfg-consequent-hooks pcfg)
-				 (scfg-next-hooks alternative)))))
-	((not alternative)
-	 (pcfg-consequent-connect! pcfg consequent)
-	 (constructor (cfg-entry-node pcfg)
-		      (scfg-next-hooks consequent)
-		      (pcfg-alternative-hooks pcfg)))
+(define ((pcfg*scfg->cfg! constructor) pcfg consequent alternative)
+  (if (not pcfg)
+      (error "PCFG*SCFG->CFG!: Can't have null predicate"))
+  (constructor (cfg-entry-node pcfg)
+	       (connect! (pcfg-consequent-hooks pcfg) consequent)
+	       (connect! (pcfg-alternative-hooks pcfg) alternative)))
+
+(define (connect! hooks scfg)
+  (cond ((not scfg) hooks)
+	((null? hooks) '())
 	(else
-	 (pcfg-consequent-connect! pcfg consequent)
-	 (pcfg-alternative-connect! pcfg alternative)
-	 (constructor (cfg-entry-node pcfg)
-		      (scfg-next-hooks consequent)
-		      (scfg-next-hooks alternative)))))
+	 (hooks-connect! hooks (cfg-entry-node scfg))
+	 (scfg-next-hooks scfg))))
 
 (define pcfg*scfg->pcfg!
-  (pcfg*scfg->cfg! identity-procedure make-pcfg))
+  (pcfg*scfg->cfg! make-pcfg))
 
 (define pcfg*scfg->scfg!
-  (pcfg*scfg->cfg! pcfg->scfg! make-scfg*))
+  (pcfg*scfg->cfg! make-scfg*))
 
 )
 
 (package (pcfg*pcfg->pcfg! pcfg*pcfg->scfg!)
 
-(define ((pcfg*pcfg->cfg! transformer constructor) pcfg consequent alternative)
-  (cond ((not pcfg)
-	 (error "PCFG*PCFG->CFG!: Can't have null predicate"))
-	((not consequent)
-	 (if (not alternative)
-	     (transformer pcfg)
-	     (begin (pcfg-alternative-connect! pcfg alternative)
-		    (constructor
-		     (cfg-entry-node pcfg)
-		     (hooks-union (pcfg-consequent-hooks pcfg)
-				  (pcfg-consequent-hooks alternative))
-		     (pcfg-alternative-hooks alternative)))))
-	((not alternative)
-	 (pcfg-consequent-connect! pcfg consequent)
-	 (constructor (cfg-entry-node pcfg)
-		      (pcfg-consequent-hooks consequent)
-		      (hooks-union (pcfg-alternative-hooks consequent)
-				   (pcfg-alternative-hooks pcfg))))
+(define ((pcfg*pcfg->cfg! constructor) pcfg consequent alternative)
+  (if (not pcfg)
+      (error "PCFG*PCFG->CFG!: Can't have null predicate"))
+  (connect! (pcfg-consequent-hooks! pcfg) consequent consequent-select
+    (lambda (cchooks cahooks)
+      (connect! (pcfg-alternative-hooks pcfg) alternative alternative-select
+	(lambda (achooks aahooks)
+	  (constructor (cfg-entry-node pcfg)
+		       (hooks-union cchooks achooks)
+		       (hooks-union cahooks aahooks)))))))
+
+(define (connect! hooks pcfg select receiver)
+  (cond ((not pcfg) (select receiver hooks))
+	((null? hooks) (receiver '() '()))
 	(else
-	 (pcfg-consequent-connect! pcfg consequent)
-	 (pcfg-alternative-connect! pcfg alternative)
-	 (constructor (cfg-entry-node pcfg)
-		      (hooks-union (pcfg-consequent-hooks consequent)
-				   (pcfg-consequent-hooks alternative))
-		      (hooks-union (pcfg-alternative-hooks consequent)
-				   (pcfg-alternative-hooks alternative))))))
+	 (hooks-connect! hooks (cfg-entry-node pcfg))
+	 (receiver (pcfg-consequent-hooks pcfg)
+		   (pcfg-alternative-hooks pcfg)))))
+
+(define (consequent-select receiver hooks)
+  (receiver hooks '()))
+
+(define (alternative-select receiver hooks)
+  (receiver '() hooks))
 
 (define pcfg*pcfg->pcfg!
-  (pcfg*pcfg->cfg! identity-procedure make-pcfg))
+  (pcfg*pcfg->cfg! make-pcfg))
 
 (define pcfg*pcfg->scfg!
-  (pcfg*pcfg->cfg! pcfg->scfg! make-scfg*))
+  (pcfg*pcfg->cfg! make-scfg*))
 
 )
-
-(define (scfg*cfg->cfg! scfg cfg)
-  (if (not scfg)
-      cfg
-      (begin (scfg-next-connect! scfg cfg)
-	     (case (cfg-tag cfg)
-	       ((SNODE-CFG)
-		(make-scfg (cfg-entry-node scfg) (scfg-next-hooks cfg)))
-	       ((PNODE-CFG)
-		(make-pcfg (cfg-entry-node scfg)
-			   (pcfg-consequent-hooks cfg)
-			   (pcfg-alternative-hooks cfg)))
-	       (else
-		(error "Unknown CFG tag" cfg))))))
-
-(define (pcfg*cfg->pcfg! pcfg consequent alternative)
-  (pcfg-consequent-connect! pcfg consequent)
-  (pcfg-alternative-connect! pcfg alternative)
-  (case (cfg-tag consequent)
-    ((SNODE-CFG)
-     (case (cfg-tag alternative)
-       ((SNODE-CFG)
-	(make-pcfg (cfg-entry-node pcfg)
-		   (scfg-next-hooks consequent)
-		   (scfg-next-hooks alternative)))
-       ((PNODE-CFG)
-	(make-pcfg (cfg-entry-node pcfg)
-		   (hooks-union (scfg-next-hooks consequent)
-				(pcfg-consequent-hooks alternative))
-		   (pcfg-alternative-hooks alternative)))
-       (else
-	(error "Unknown CFG tag" alternative))))
-    ((PNODE-CFG)
-     (case (cfg-tag alternative)
-       ((SNODE-CFG)
-	(make-pcfg (cfg-entry-node pcfg)
-		   (pcfg-consequent-hooks consequent)
-		   (hooks-union (pcfg-alternative-hooks consequent)
-				(scfg-next-hooks alternative))))
-       ((PNODE-CFG)
-	(make-pcfg (cfg-entry-node pcfg)
-		   (hooks-union (pcfg-consequent-hooks consequent)
-				(pcfg-consequent-hooks alternative))
-		   (hooks-union (pcfg-alternative-hooks consequent)
-				(pcfg-alternative-hooks alternative))))
-       (else
-	(error "Unknown CFG tag" alternative))))
-    (else
-     (error "Unknown CFG tag" consequent))))
