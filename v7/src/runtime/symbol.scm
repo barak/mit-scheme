@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: symbol.scm,v 1.9 2003/02/14 18:28:34 cph Exp $
+$Id: symbol.scm,v 1.10 2003/03/08 02:25:19 cph Exp $
 
-Copyright (c) 1992-2001 Massachusetts Institute of Technology
+Copyright 1992,1993,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,9 +38,20 @@ USA.
 (define-integrable (uninterned-symbol? object)
   (object-type? (ucode-type uninterned-symbol) object))
 
+(define-integrable (guarantee-symbol object caller)
+  (if (not (symbol? object))
+      (error:wrong-type-argument object "symbol" caller)))
+
+(define-integrable (guarantee-interned-symbol object caller)
+  (if (not (interned-symbol? object))
+      (error:wrong-type-argument object "interned symbol" caller)))
+
+(define-integrable (guarantee-uninterned-symbol object caller)
+  (if (not (uninterned-symbol? object))
+      (error:wrong-type-argument object "uninterned symbol" caller)))
+
 (define (string->uninterned-symbol string)
-  (if (not (string? string))
-      (error:wrong-type-argument string "string" 'STRING->UNINTERNED-SYMBOL))
+  (guarantee-string string 'STRING->UNINTERNED-SYMBOL)
   ((ucode-primitive system-pair-cons) (ucode-type uninterned-symbol)
 				      string
 				      (make-unmapped-unbound-reference-trap)))
@@ -64,8 +75,7 @@ USA.
        (string-downcase string))))
 
 (define (symbol-name symbol)
-  (if (not (symbol? symbol))
-      (error:wrong-type-argument symbol "symbol" 'SYMBOL-NAME))
+  (guarantee-symbol symbol 'SYMBOL-NAME)
   (system-pair-car symbol))
 
 (define-integrable (symbol->string symbol)
