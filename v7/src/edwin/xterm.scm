@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xterm.scm,v 1.72 2003/02/14 18:28:14 cph Exp $
+$Id: xterm.scm,v 1.73 2003/10/24 04:53:51 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1996,1998,1999,2000,2001,2002 Massachusetts Institute of Technology
@@ -1190,7 +1190,7 @@ In either case, it is copied to the primary selection."
 (define-variable x-paste-from-clipboard
   "If true, pasting text copies from the clipboard.
 Otherwise, it is copied from the primary selection."
-  #f
+  #t
   boolean?)
 
 (define (os/interprogram-paste context)
