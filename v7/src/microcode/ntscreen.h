@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.h,v 1.8 1993/09/04 07:06:11 gjr Exp $
+$Id: ntscreen.h,v 1.9 1994/10/25 14:43:27 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -72,7 +72,8 @@ typedef unsigned char SCREEN_ATTRIBUTE;
 #define	SCREEN_EVENT_TYPE_RESIZE	0x0001
 #define	SCREEN_EVENT_TYPE_KEY		0x0002
 #define	SCREEN_EVENT_TYPE_MOUSE		0x0004
-#define SCREEN_EVENT_TYPE_ALL		0x0007
+#define	SCREEN_EVENT_TYPE_CLOSE		0x0008
+#define SCREEN_EVENT_TYPE_ALL		0x000F
 //  b) flags for screen behaviour
 #define SCREEN_MODE_AUTOWRAP		0x0010
 #define SCREEN_MODE_ECHO		0x0020
@@ -83,6 +84,7 @@ typedef unsigned char SCREEN_ATTRIBUTE;
 #define SCREEN_MODE_EDWIN		0x0400
 #define SCREEN_MODE_NEWLINE_CRS		0x0800
 
+
 #define SCREEN_EDWIN_RESIZE_COMMAND	0323		/* M-S */
 
 typedef WORD SCREEN_EVENT_TYPE;
@@ -92,25 +94,31 @@ typedef struct {
   int	virtual_keycode;
   int	virtual_scancode;
   int	control_key_state;
-  unsigned char ch;
+  int   ch;
   int	key_down : 1;
 } SCREEN_KEY_EVENT_RECORD;
 
 // control_key_state flags
 
-#define SCREEN_RIGHT_ALT_PRESSED     0x0001 // the right alt key is pressed.
-#define SCREEN_LEFT_ALT_PRESSED      0x0002 // the left alt key is pressed.
-#define SCREEN_RIGHT_CTRL_PRESSED    0x0004 // the right ctrl key is pressed.
-#define SCREEN_LEFT_CTRL_PRESSED     0x0008 // the left ctrl key is pressed.
-#define SCREEN_SHIFT_PRESSED         0x0010 // the shift key is pressed.
-#define SCREEN_NUMLOCK_ON            0x0020 // the numlock light is on.
-#define SCREEN_SCROLLLOCK_ON         0x0040 // the scrolllock light is on.
-#define SCREEN_CAPSLOCK_ON           0x0080 // the capslock light is on.
-#define SCREEN_ENHANCED_KEY          0x0100 // the key is enhanced.
-#define SCREEN_ALT_KEY_PRESSED       0x0200 // Any alt key pressed
+//#define SCREEN_RIGHT_ALT_PRESSED     0x0001 // the right alt key is pressed.
+//#define SCREEN_LEFT_ALT_PRESSED      0x0002 // the left alt key is pressed.
+//#define SCREEN_RIGHT_CTRL_PRESSED    0x0004 // the right ctrl key is pressed.
+//#define SCREEN_LEFT_CTRL_PRESSED     0x0008 // the left ctrl key is pressed.
+//#define SCREEN_SHIFT_PRESSED         0x0010 // the shift key is pressed.
+//#define SCREEN_NUMLOCK_ON            0x0020 // the numlock light is on.
+//#define SCREEN_SCROLLLOCK_ON         0x0040 // the scrolllock light is on.
+//#define SCREEN_CAPSLOCK_ON           0x0080 // the capslock light is on.
+//#define SCREEN_ENHANCED_KEY          0x0100 // the key is enhanced.
+//#define SCREEN_ALT_KEY_PRESSED       0x0200 // Any alt key pressed
 
-#define SCREEN_ANY_ALT_KEY_MASK						\
-  (SCREEN_RIGHT_ALT_PRESSED | SCREEN_LEFT_ALT_PRESSED | SCREEN_ALT_KEY_PRESSED)
+#define SCREEN_ALT_PRESSED       0x0001 // An alt key is pressed.
+#define SCREEN_CTRL_PRESSED      0x0002 // a ctrl key is pressed.
+#define SCREEN_SHIFT_PRESSED     0x0004 // a shift key is pressed.
+#define SCREEN_NUMLOCK_ON        0x0020 // the numlock light is on.
+#define SCREEN_SCROLLLOCK_ON     0x0040 // the scrolllock light is on.
+#define SCREEN_CAPSLOCK_ON       0x0080 // the capslock light is on.
+
+#define SCREEN_ANY_ALT_KEY_MASK	     SCREEN_ALT_PRESSED
 
 typedef struct {
   int	rows;
@@ -120,8 +128,9 @@ typedef struct {
 typedef struct {
   int	row;
   int	column;
-  int	control_key_state;
-  int	button_state;
+  int	control_key_state;      // 1=control, 2=shift, 3=both, 0=none
+  int	button_state;           // the button being pressed
+  int   up : 1;                 // set for mouse *BUTTONUP messages
   int	mouse_moved  : 1;	// if neither then single click
   int	double_click : 1;
 } SCREEN_MOUSE_EVENT_RECORD;
@@ -140,12 +149,36 @@ typedef struct {
   } event;
 } SCREEN_EVENT;
 
+struct screen_write_char_s
+{
+  RECT rect;
+  int row;
+  int col;
+};
+
+extern int Screen_Width (SCREEN screen);
+extern int Screen_Height (SCREEN screen);
+extern BOOL Screen_SetPosition (SCREEN, int, int);
+
+extern VOID _fastcall clear_screen_rectangle (SCREEN, int, int, int, int);
+extern VOID Screen_CR_to_RECT (RECT *, SCREEN, int, int, int, int);
+extern VOID _fastcall scroll_screen_vertically (SCREEN, int, int, int, int, int);
+extern VOID _fastcall
+  Screen_WriteCharUninterpreted (SCREEN, int, struct screen_write_char_s *);
+extern VOID _fastcall Screen_SetAttributeDirect (SCREEN, SCREEN_ATTRIBUTE);
+extern VOID WriteScreenBlock_NoInvalidRect (SCREEN, int, int, LPSTR, int);
+extern void Enable_Cursor (SCREEN, BOOL);
+
+
+
 BOOL Screen_InitApplication (HANDLE hInstance);
 BOOL Screen_InitInstance (HANDLE hInstance, int nCmdShow);
 
+extern BOOL allow_variable_width_fonts;
+extern double variable_width_font_width_factor;
 
 extern HANDLE Screen_Create (HANDLE, LPCSTR, int);
-extern void Screen_Destroy (BOOL, HANDLE);
+extern VOID   Screen_Destroy (BOOL, HANDLE);
 
 void  Screen_SetAttribute (HANDLE, SCREEN_ATTRIBUTE);
 void  Screen_WriteChar (HANDLE, char);
@@ -158,8 +191,8 @@ int   Screen_GetMode (HANDLE);
 void  Screen_GetSize (HANDLE, int *rows, int *columns);
 
 // The following return false on no events
-BOOL  Screen_GetEvent (HANDLE, SCREEN_EVENT *);
-BOOL  Screen_PeekEvent (HANDLE, SCREEN_EVENT *);
+extern BOOL  Screen_GetEvent (HANDLE, SCREEN_EVENT *);
+extern BOOL  Screen_PeekEvent (HANDLE, SCREEN_EVENT *);
 
 //---------------------------------------------------------------------------
 //  Messages
