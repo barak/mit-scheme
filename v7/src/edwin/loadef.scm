@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.14 1992/01/10 18:52:19 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.15 1992/02/27 19:14:19 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -153,6 +153,16 @@ Otherwise, a new buffer is created for each topic."
 
 (define-library 'print
   '("print" (EDWIN)))
+
+(define-variable lpr-switches
+  "List of strings to pass as extra switch args to lpr when it is invoked."
+  '()
+  list-of-strings?)
+
+(define-variable lpr-command
+  "Shell command for printing a file"
+  "lpr"
+  string?)
 
 (define-autoload-command 'lpr-buffer 'PRINT
   "Print buffer contents with Unix command `lpr'.")

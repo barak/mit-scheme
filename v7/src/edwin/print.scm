@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/print.scm,v 1.4 1991/10/26 22:05:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/print.scm,v 1.5 1992/02/27 19:14:03 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -46,16 +46,6 @@
 
 (declare (usual-integrations))
 
-(define-variable lpr-switches
-  "List of strings to pass as extra switch args to lpr when it is invoked."
-  '()
-  list-of-strings?)
-
-(define-variable lpr-command
-  "Shell command for printing a file"
-  "lpr"
-  string?)
-
 (define-command lpr-buffer
   "Print buffer contents as with Unix command `lpr'.
 Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
