@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.12 1991/08/26 22:06:09 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.13 1991/08/28 14:35:58 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -365,6 +365,16 @@ q	Quit Rmail.
 x	Exit and kill the summary window.
 space   Scroll message in other window forward.
 delete  Scroll message in other window backward.
+.       Go to top of message.
+e       Expunge deleted messages.
+s       Expunge and save RMAIL buffer.
+t       Toggle header of message in RMAIL buffer.
+C-o     Output message to Unix mail file.
+o       Output message to RMAIL file.
+g       Get new mail.
+i       Run RMAIL on another file.
+m       Send a mail message.
+r       Reply to this mail message.
 
 Entering this mode calls value of hook variable rmail-summary-mode-hook."
   (let ((buffer (current-buffer)))
@@ -400,7 +410,6 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
 (define-key 'rmail-summary #\x		'rmail-summary-exit)
 (define-key 'rmail-summary #\.		'rmail-summary-beginning-of-buffer)
 (define-key 'rmail-summary #\e		'rmail-summary-expunge)
-(define-key 'rmail-summary #\x		'rmail-summary-expunge)
 (define-key 'rmail-summary #\s		'rmail-summary-expunge-and-save)
 (define-key 'rmail-summary #\t		'rmail-summary-toggle-header)
 (define-key 'rmail-summary #\c-o	'rmail-summary-output)
@@ -518,15 +527,39 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
 	      (rmail-summary-goto-message-current-line)))))))
 
 (define-command rmail-summary-scroll-message-up
-  "Scroll RMAIL window up."
+  "Scroll RMAIL window up.
+If the line the cursor is on does not correspond to the message 
+shown in the RMAIL buffer, warp to the appropriate message."
   "P"
   (lambda (arg)
-    (select-buffer-other-window rmail-buffer)
-    (let ((window (current-window)))
-      (scroll-window window
-		     (standard-scroll-window-argument window arg 1)
-		     (lambda () true)))
-    (select-buffer-other-window rmail-summary-buffer)))
+    (let ((start (line-start (current-point) 0)))
+      (let ((end (mark+ start 4)))
+	(if end
+	    (let ((the-message-number
+		   (string->number (string-trim (extract-string start end)))))
+	      (if (not (null? the-message-number))
+		  (if (= the-message-number 
+			 (msg-memo/number (buffer-msg-memo rmail-buffer)))
+		      (begin
+			(select-buffer-other-window rmail-buffer)
+			(let ((window (current-window)))
+			  (scroll-window 
+			   window
+			   (standard-scroll-window-argument window arg 1)
+			   (lambda () true)))
+			(select-buffer-other-window rmail-summary-buffer))
+		      (begin
+			(if (char=? (mark-right-char end) #\-)
+			    (begin
+			      (set-buffer-writeable! (current-buffer))
+			      (mark-delete-right-char! end)
+			      (insert-char #\space end)
+			      (set-buffer-read-only! (current-buffer))))
+			(select-buffer-other-window rmail-buffer)
+			((command-procedure
+			  (comtab-entry (mode-comtabs (current-major-mode)) #\j))
+			 the-message-number)
+			(select-buffer-other-window rmail-summary-buffer))))))))))
  
 (define-command rmail-summary-scroll-message-down
   "Scroll RMAIL window down."
@@ -543,6 +576,7 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
   "Delete this message and stay on it."
   '()
   (lambda ()
+    (rmail-summary-goto-message-current-line)
     (let ((the-memo (buffer-msg-memo rmail-buffer)))
       (set-attribute! the-memo 'DELETED))
     (let ((the-mark1
@@ -572,6 +606,7 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
   "Undelete this message and stay here."
   '()
   (lambda ()
+    (rmail-summary-goto-message-current-line)
     (let ((the-memo (buffer-msg-memo rmail-buffer)))
       (if (msg-memo/deleted? the-memo)
 	  (clear-attribute! the-memo 'DELETED))
@@ -671,6 +706,7 @@ Calls whatever function is bound to #\t in RMAIL mode."
 Calls whatever function is bound to #\c-o in RMAIL mode."
   '()
   (lambda ()
+    (rmail-summary-goto-message-current-line)
     (select-buffer-other-window rmail-buffer)
     (let ((the-command
 	   (comtab-entry (mode-comtabs (current-major-mode)) #\c-o)))
@@ -684,6 +720,7 @@ Calls whatever function is bound to #\c-o in RMAIL mode."
 Calls whatever function is bound to #\o in RMAIL mode."
   '()
   (lambda ()
+    (rmail-summary-goto-message-current-line)
     (select-buffer-other-window rmail-buffer)
     (let ((the-command
 	   (comtab-entry (mode-comtabs (current-major-mode)) #\o)))
