@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.7 1993/08/13 00:12:45 cph Exp $
+;;;	$Id: debug.scm,v 1.8 1993/08/13 01:22:17 jbank Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -1000,8 +1000,7 @@ If false show the bindings without frames."
 
 ;;;Determines if a frame is marked
 (define (system-frame? stack-frame)
-  (and (ref-variable debugger-hide-system-code?)
-       (stack-frame/repl-eval-boundary? stack-frame)))
+  (stack-frame/repl-eval-boundary? stack-frame))
 
 ;;;Bad implementation to determine for breaks
 ;;;if a value to proceed with is desired
@@ -1388,13 +1387,17 @@ it has been renamed, it will not be deleted automatically."
 				       false
 				       prev)
 			   (subproblem/reductions subproblem)))))))
-	    (if (or (and limit (>= n limit))
-		    (if (system-frame? frame)
-			(begin (set! beyond-system-code #t) #t)
-			#f)
-		    beyond-system-code)
-		(list (make-continuation-bline continue false prev))
-		(continue)))))))
+	    (cond ((and (not (ref-variable debugger-hide-system-code?))
+			(system-frame? frame))
+		   (loop (stack-frame/next-subproblem frame)
+			 prev
+			 n))
+		  ((or (and limit (>= n limit))
+		       (if (system-frame? frame)
+			   (begin (set! beyond-system-code #t) #t)
+			   #f))
+		   (list (make-continuation-bline continue false prev)))
+		  (else (continue))))))))
 
 (define subproblem-rtd
   (make-record-type
