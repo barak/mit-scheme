@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: prompt.scm,v 1.170 1998/03/08 07:13:11 cph Exp $
+;;;	$Id: prompt.scm,v 1.171 1998/08/30 01:50:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -599,24 +599,28 @@ a repetition of this command will exit."
 ;;;; Support for Completion
 
 (define (standard-completion prefix complete-string insert-completed-string)
-  (complete-string prefix
-    (lambda (completion)
-      (if (not (string=? prefix completion))
-	  (insert-completed-string completion)
-	  (completion-message "Sole completion"))
-      (flush-completions-list))
-    (lambda (completion generate-completions)
-      (cond ((not (string=? prefix completion))
-	     (insert-completed-string completion)
-	     (flush-completions-list))
-	    ((ref-variable completion-auto-help)
-	     (pop-up-generated-completions generate-completions))
-	    (else
-	     (completion-message "Next char not unique"))))
-    (lambda ()
-      (editor-beep)
-      (completion-message "No completions")
-      (flush-completions-list))))
+  (let ((insert-completed-string
+	 (lambda (completion)
+	   (insert-completed-string completion)
+	   (completion-message ""))))
+    (complete-string prefix
+      (lambda (completion)
+	(if (not (string=? prefix completion))
+	    (insert-completed-string completion)
+	    (completion-message "Sole completion"))
+	(flush-completions-list))
+      (lambda (completion generate-completions)
+	(cond ((not (string=? prefix completion))
+	       (insert-completed-string completion)
+	       (flush-completions-list))
+	      ((ref-variable completion-auto-help)
+	       (pop-up-generated-completions generate-completions))
+	      (else
+	       (completion-message "Next char not unique"))))
+      (lambda ()
+	(editor-beep)
+	(completion-message "No completions")
+	(flush-completions-list)))))
 
 (define (pop-up-generated-completions generate-completions)
   (message "Making completion list...")
