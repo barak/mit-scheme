@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.33 1994/12/19 21:12:45 cph Exp $
+$Id: conpar.scm,v 14.34 1994/12/19 21:44:25 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -360,6 +360,10 @@ MIT in each case. |#
 (define-integrable code/special-compiled/restore-interrupt-mask 1)
 (define-integrable code/special-compiled/stack-marker 2)
 (define-integrable code/special-compiled/compiled-code-bkpt 3)
+(define-integrable code/interrupt-restart 4)
+(define-integrable code/restore-regs 5)
+(define-integrable code/apply-compiled 6)
+(define-integrable code/continue-linking 7)
 
 (define (parser/special-compiled type elements state)
   (let ((code (vector-ref elements 1)))
@@ -371,7 +375,11 @@ MIT in each case. |#
 				 type elements state))
 	  ((fix:= code code/special-compiled/stack-marker)
 	   (parser/stack-marker type elements state))
-	  ((fix:= code code/special-compiled/compiled-code-bkpt)
+	  ((or (fix:= code code/special-compiled/compiled-code-bkpt)
+	       (fix:= code code/interrupt-restart)
+	       (fix:= code code/restore-regs)
+	       (fix:= code code/apply-compiled)
+	       (fix:= code code/continue-linking))
 	   (parse/standard-next type elements state false false))
 	  (else
 	   (error "Unknown special compiled frame" code)))))
@@ -540,6 +548,27 @@ MIT in each case. |#
 	     (if (not fsize)
 		 5
 		 (fix:+ 5 fsize))))
+	  ((fix:= code code/interrupt-restart)
+	   (let ((homes-saved (object-datum (element-stream/ref stream 2)))
+		 (regs-saved (object-datum (element-stream/ref stream 3))))
+	     ;; The first reg saved is _always_ the continuation,
+	     ;; part of the next frame.
+	     (fix:- (fix:+
+		     ;; Return code, reflect code, homes saved, regs saved,
+		     ;; and entry point
+		     5
+		     (fix:+ homes-saved regs-saved))
+		    1)))
+	  ((fix:= code code/restore-regs)
+	   (fix:+ 3 (object-datum (element-stream/ref stream 2))))
+	  ((fix:= code code/apply-compiled)
+	   ;; Stream[2] is code entry point, [3] is frame size
+	   (+ 3 (object-datum (element-stream/ref stream 3))))
+	  ((fix:= code code/continue-linking)
+	   ;; return code, reflect code, entry size, original count,
+	   ;; block, environment, offset, last header offset,sections,
+	   ;; return address
+	   (fix:- 10 1))
 	  (else
 	   (default)))))
 
