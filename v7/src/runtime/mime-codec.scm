@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mime-codec.scm,v 14.7 2000/06/27 15:31:11 cph Exp $
+;;; $Id: mime-codec.scm,v 14.8 2000/06/27 16:32:02 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -613,7 +613,8 @@
 (define (decode-binhex40:initialize port text?)
   text?					;ignored
   (make-binhex40-decoding-context
-   (make-binhex40-run-length-decoding-port port)))
+   (make-binhex40-run-length-decoding-port
+    (make-binhex40-deconstructing-port port))))
 
 (define (decode-binhex40:finalize context)
   (let ((state (binhex40-decoding-context/state context)))
@@ -623,7 +624,7 @@
       ((DECODING)
        (error "Missing BinHex 4.0 terminating character."))
       ((IGNORING)
-       unspecific)
+       (close-output-port (binhex40-decoding-context/port context)))
       (else
        (error "Illegal decoder state:" state)))))
 
@@ -772,9 +773,14 @@
 	   (let ((port (binhex40-rld-state/port state))
 		 (char* (binhex40-rld-state/char state)))
 	     (if char*
-		 (write-char char* port))
+		 (begin
+		   (write-char char* port)
+		   (set-binhex40-rld-state/char! state #f)))
 	     (if (binhex40-rld-state/marker-seen? state)
-		 (write-char binhex40-rld-marker port)))))))
+		 (begin
+		   (write-char binhex40-rld-marker port)
+		   (set-binhex40-rld-state/marker-seen?! state #f)))
+	     (close-output-port port))))))
    #f))
 
 (define-structure (binhex40-rld-state
@@ -786,3 +792,81 @@
 
 (define-integrable binhex40-rld-marker
   (integer->char #x90))
+
+;;;; BinHex 4.0 deconstruction
+
+(define (make-binhex40-deconstructing-port port)
+  (make-port binhex40-deconstructing-port-type
+	     (make-binhex40-decon port)))
+
+(define binhex40-deconstructing-port-type
+  (make-port-type
+   `((WRITE-CHAR
+      ,(lambda (port char)
+	 (case (binhex40-decon/state (port/state port))
+	   ((READING-HEADER) (binhex40-decon-reading-header port char))
+	   ((COPYING-DATA) (binhex40-decon-copying-data port char))
+	   ((SKIPPING-TAIL) (binhex40-decon-skipping-tail port))
+	   ((FINISHED) unspecific)
+	   (else (error "Illegal state in BinHex 4.0 deconstructor.")))))
+     (CLOSE-OUTPUT
+      ,(lambda (port)
+	 (if (not (eq? (binhex40-decon/state (port/state port)) 'FINISHED))
+	     (error "Premature EOF in BinHex 4.0 stream.")))))
+   #f))
+
+(define (binhex40-decon-reading-header port char)
+  (let ((state (port/state port)))
+    (let ((index (binhex40-decon/index state)))
+      (if (fix:= index 0)
+	  (begin
+	    (set-binhex40-decon/header!
+	     state (make-string (fix:+ 22 (char->integer char))))
+	    (set-binhex40-decon/index! state 1))
+	  (let ((header (binhex40-decon/header state)))
+	    (string-set! header index char)
+	    (let ((index (fix:+ index 1)))
+	      (if (fix:< index (string-length header))
+		  (set-binhex40-decon/index! state index)
+		  (begin
+		    (set-binhex40-decon/data-length!
+		     state
+		     (binhex40-4byte header (fix:- (string-length header) 10)))
+		    (set-binhex40-decon/index! state 0)
+		    (set-binhex40-decon/state! state 'COPYING-DATA)))))))))
+
+(define (binhex40-decon-copying-data port char)
+  (let ((state (port/state port)))
+    (write-char char (binhex40-decon/port state))
+    (let ((index (+ (binhex40-decon/index state) 1)))
+      (if (< index (binhex40-decon/data-length state))
+	  (set-binhex40-decon/index! state index)
+	  (begin
+	    (set-binhex40-decon/index! state 0)
+	    (set-binhex40-decon/data-length!
+	     state
+	     (+ (let ((header (binhex40-decon/header state)))
+		  (binhex40-4byte header (fix:- (string-length header) 6)))
+		4))
+	    (set-binhex40-decon/state! state 'SKIPPING-TAIL))))))
+
+(define (binhex40-decon-skipping-tail port)
+  (let ((state (port/state port)))
+    (let ((index (+ (binhex40-decon/index state) 1)))
+      (set-binhex40-decon/index! state index)
+      (if (>= index (binhex40-decon/data-length state))
+	  (set-binhex40-decon/state! state 'FINISHED)))))
+
+(define-structure (binhex40-decon (conc-name binhex40-decon/)
+				  (constructor make-binhex40-decon (port)))
+  (port #f read-only #t)
+  (state 'READING-HEADER)
+  (header #f)
+  (index 0)
+  (data-length))
+
+(define (binhex40-4byte string index)
+  (+ (* (vector-8b-ref string index) #x1000000)
+     (* (vector-8b-ref string (fix:+ index 1)) #x10000)
+     (* (vector-8b-ref string (fix:+ index 2)) #x100)
+     (vector-8b-ref string (fix:+ index 3))))
