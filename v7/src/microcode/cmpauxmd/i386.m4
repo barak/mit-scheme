@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.1 1992/02/14 03:45:31 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.2 1992/02/14 20:11:07 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -99,12 +99,12 @@
 
 ####	Utility macros and definitions
 
-define(reference_external,`')		# Declare desire to use an external
-define(extern_c_label,`_$1')		# The actual reference
+define(use_external,`')			# Declare desire to use an external
+define(external_reference,`_$1')	# The actual reference
 
 define(define_c_label,
-`.globl extern_c_label($1)
-extern_c_label($1):')
+`.globl external_reference($1)
+external_reference($1):')
 
 define(define_debugging_label,
 `.globl $1
@@ -113,13 +113,13 @@ $1:')
 define(HEX, `0x$1')
 define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 8))
 define(ADDRESS_MASK, eval(((2 ** (32 - TC_LENGTH)) - 1), 16))
+define(IMMEDIATE, `$$1')
 
 define(REGBLOCK_VAL,8)
 define(REGBLOCK_COMPILER_TEMP,16)
 define(REGBLOCK_LEXPR_ACTUALS,28)
 define(REGBLOCK_PRIMITIVE,32)
 define(REGBLOCK_CLOSURE_FREE,36)
-define(REGBLOCK_CLOSURE_SPACE,40)
 
 define(REGBLOCK_DLINK,REGBLOCK_COMPILER_TEMP)
 define(REGBLOCK_UTILITY_ARG4,REGBLOCK_CLOSURE_FREE)
@@ -128,11 +128,94 @@ define(regs,%esi)
 define(rfree,%edi)
 define(rmask,%ebp)
 
-reference_external(Free)
-reference_external(Registers)
-reference_external(Ext_Stack_Pointer)
+use_external(Free)
+use_external(Registers)
+use_external(Ext_Stack_Pointer)
 
-define(switch_to_scheme_registers,
-	`movl	rmask,??(%ebp)
-	movl	$HEX(ADDRESS_MASK),rmask
-	')
+.globl C_Stack_Pointer
+.comm C_Stack_Pointer,4
+
+.globl C_Frame_Pointer
+.comm C_Frame_Pointer,4
+
+define_c_label(interface_initialize)
+#	This needs to set the floating point mode.
+	ret
+
+define_c_label(C_to_interface)
+	pushl	%ebp					# Link according
+	movl	%esp,%ebp				#  to C's conventions
+	pushl	%edi					# Save callee-saves
+	pushl	%esi					#  registers
+	pushl	%ebx
+	movl	8(%ebp),%edx				# Entry point
+	movl	%ebp,C_Frame_Pointer			# Preserve frame ptr
+	movl	%esp,C_Stack_Pointer			# Preserve stack ptr
+							# Register block = %esi
+	movl	IMMEDIATE(external_reference(Registers)),regs
+	jmp	external_reference(interface_to_scheme)
+
+define_c_label(asm_trampoline_to_interface)
+define_debugging_label(trampoline_to_interface)
+	popl	%ecx					# trampoline storage
+	jmp	scheme_to_interface
+
+define_c_label(asm_scheme_to_interface_call)
+define_debugging_label(scheme_to_interface_call)
+	popl	%ecx					# arg1 = ret. add
+	addl	IMMEDIATE(4),%ecx			# Skip format info
+#	jmp	scheme_to_interface
+
+define_c_label(asm_scheme_to_interface)
+define_debugging_label(scheme_to_interface)
+	movl	%esp,external_reference(Ext_Stack_Pointer)
+	movl	rfree,external_reference(Free)
+	movl	C_Stack_Pointer,%esp
+	movl	C_Frame_Pointer,%ebp
+	pushl	REGBLOCK_UTILITY_ARG4()(regs)		# Utility args
+	pushl	%ebx
+	pushl	%edx
+	pushl	%ecx
+	movl	external_reference(utility_table)(,%eax,4),%eax
+	call	*%eax
+
+define_debugging_label(scheme_to_interface_return)
+	addl	IMMEDIATE(16),%esp			# Pop utility args
+	jmp	*%eax					# Invoke handler
+
+define_c_label(interface_to_scheme)
+	movl	REGBLOCK_VAL()(regs),%eax		# Value/dynamic link
+	movl	IMMEDIATE(HEX(ADDRESS_MASK)),rmask	# = %ebp
+	movl	external_reference(Free),rfree		# Free pointer = %edi
+	movl	external_reference(Ext_Stack_Pointer),%esp
+	movl	%eax,%ecx				# Copy if used
+	andl	rmask,%ecx				# Set up dynamic link
+	movl	%ecx,REGBLOCK_DLINK()(regs)
+	jmp	*%edx					# invoke entry point
+
+define_c_label(interface_to_C)
+	movl	%edx,%eax				# Set up result
+	popl	%ebx					# Restore callee-saves
+	popl	%esi					#  registers
+	popl	%edi
+	leave
+	ret
+
+define(define_jump_indirection,
+`define_c_label(asm_$1)
+	movl	IMMEDIATE(HEX($2)),%eax
+	jmp	scheme_to_interface')
+	
+define(define_call_indirection,
+`define_c_label(asm_$1)
+	movl	IMMEDIATE(HEX($2)),%eax
+	jmp	scheme_to_interface_call')
+	
+define_call_indirection(interrupt_procedure,1a)
+define_call_indirection(interrupt_continuation,1b)
+define_jump_indirection(interrupt_closure,18)
+
+define_c_label(interrupt_dlink)
+	movl	REGBLOCK_DLINK()(regs),%edx
+	movl	IMMEDIATE(HEX(19)),%eax
+	jmp	scheme_to_interface_call
