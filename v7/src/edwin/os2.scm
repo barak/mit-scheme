@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.5 1995/01/23 20:05:42 cph Exp $
+;;;	$Id: os2.scm,v 1.6 1995/01/31 22:06:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -242,11 +242,6 @@ Includes the new backup.  Must be > 0."
 		pathname
 		(loop (+ i 1))))))
       (os/auto-save-pathname pathname #f)))
-
-(define (os2/fs-long-filenames? pathname)
-  (let ((type ((ucode-primitive drive-type 1) (pathname-device pathname))))
-    (or (string-ci=? "hpfs" type)
-	(string-ci=? "nfs" type))))
 
 ;;;; Miscellaneous
 
