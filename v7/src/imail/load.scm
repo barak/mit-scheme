@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.8 2000/05/22 15:08:46 cph Exp $
+;;; $Id: load.scm,v 1.9 2000/05/23 03:55:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -82,6 +82,7 @@
 	    edwin-variable$imail-default-user-id
 	    edwin-variable$imail-delete-after-output
 	    edwin-variable$imail-dont-reply-to-names
+	    edwin-variable$imail-expunge-confirmation
 	    edwin-variable$imail-ignored-headers
 	    edwin-variable$imail-kept-headers
 	    edwin-variable$imail-message-filter

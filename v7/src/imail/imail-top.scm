@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.93 2000/05/23 03:27:07 cph Exp $
+;;; $Id: imail-top.scm,v 1.94 2000/05/23 03:55:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -66,11 +66,21 @@ The procedure is called with one argument, a list of headers,
   #f
   boolean?)
 
+(define-variable imail-expunge-confirmation
+  "Control what kind of confirmation is required for expunging messages.
+The following symbols are permissible values:
+NONE		no confirmation
+BRIEF		`y' or `n'
+VERBOSE		`yes' or `no'
+COMPLETE	`yes' or `no', showing messages to be expunged"
+  'COMPLETE
+  (lambda (object) (memq object '(NONE BRIEF VERBOSE COMPLETE))))
+
 (define-variable imail-reply-with-re
   "True means prepend subject with Re: in replies."
   #f
   boolean?)
-
+
 (define-variable imail-primary-folder
   "URL for the primary folder that you read your mail from."
   #f
@@ -872,7 +882,7 @@ With prefix argument N, undeletes backward N messages,
  or forward if N is negative."
   "p"
   (lambda (delta) ((ref-command imail-undelete-forward) (- delta))))
-
+
 (define-command imail-expunge
   "Actually erase all deleted messages in the folder."
   ()
@@ -886,8 +896,47 @@ With prefix argument N, undeletes backward N messages,
 		     (next-message message)
 		     (previous-message message))
 		 message))))
-      (expunge-deleted-messages folder)
-      (select-message folder message))))
+      (if (let ((confirmation (ref-variable imail-expunge-confirmation)))
+	    (or (eq? confirmation 'NONE)
+		(let ((n (count-messages folder message-deleted?)))
+		  (and (> n 0)
+		       (let ((prompt
+			      (string-append "Expunge "
+					     (number->string n)
+					     " message"
+					     (if (> n 1) "s" "")
+					     " marked for deletion")))
+			 (case (ref-variable imail-expunge-confirmation)
+			   ((BRIEF) (prompt-for-confirmation? prompt))
+			   ((VERBOSE) (prompt-for-yes-or-no? prompt))
+			   ((COMPLETE)
+			    (cleanup-pop-up-buffers
+			     (lambda ()
+			       (imail-expunge-pop-up-messages folder)
+			       (prompt-for-yes-or-no? prompt))))
+			   (else #t)))))))
+	  (begin
+	    (expunge-deleted-messages folder)
+	    (select-message folder message))))))
+
+(define (count-messages folder predicate)
+  (let ((n (folder-length folder)))
+    (do ((i 0 (+ i 1))
+	 (k 0 (if (predicate (get-message folder i)) (+ k 1) k)))
+	((= i n) k))))
+
+(define (imail-expunge-pop-up-messages folder)
+  (pop-up-temporary-buffer " *imail-message*" '(READ-ONLY SHRINK-WINDOW)
+    (lambda (buffer window)
+      (local-set-variable! truncate-partial-width-windows #f buffer)
+      (let ((mark (mark-left-inserting-copy (buffer-point buffer)))
+	    (n (folder-length folder)))
+	(let ((index-digits (exact-nonnegative-integer-digits (- n 1))))
+	  (do ((i 0 (+ i 1)))
+	      ((= i n))
+	    (let ((m (get-message folder i)))
+	      (if (message-deleted? m)
+		  (write-imail-summary-line! m index-digits mark)))))))))
 
 ;;;; Message flags
 
