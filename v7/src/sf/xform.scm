@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xform.scm,v 4.6 1993/09/01 00:10:31 cph Exp $
+$Id: xform.scm,v 4.7 1998/05/18 03:02:53 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -65,6 +65,8 @@ MIT in each case. |#
 	  (begin
 	    (if (not top-level?)
 		(error "Open blocks allowed only at top level:" expression))
+	    (if (not (assq 'USUAL-INTEGRATIONS declarations))
+		(write-string ui-warning (notification-output-port)))
 	    (call-with-values
 		(lambda () (open-block-components expression values))
 	      (lambda (auxiliary declarations body)
@@ -75,6 +77,14 @@ MIT in each case. |#
 				       declarations
 				       body))))
 	  (transform/expression block environment expression)))))
+
+(define ui-warning
+  "
+;This program does not have a USUAL-INTEGRATIONS declaration.
+;Without this declaration, the compiler will be unable to perform
+;many optimizations, and as a result the compiled program will be
+;slower and perhaps larger than it could be.  Please read the MIT
+;Scheme User's Guide for more information about USUAL-INTEGRATIONS.")
 
 (define (transform/expressions block environment expressions)
   (map (lambda (expression)
@@ -112,7 +122,8 @@ MIT in each case. |#
 			     declarations
 			     body))))
 
-(define (transform/open-block* expression block environment auxiliary declarations body)
+(define (transform/open-block* expression block environment auxiliary
+			       declarations body)
   (let ((variables
 	 (map (lambda (name) (variable/make&bind! block name))
 	      auxiliary)))
@@ -252,7 +263,8 @@ MIT in each case. |#
     (lambda (declarations expression*)
       (declaration/make expression
 			(declarations/parse block declarations)
-			(transform/expression block environment expression*)))))
+			(transform/expression block environment
+					      expression*)))))
 
 (define (transform/delay block environment expression)
   (delay/make
@@ -279,10 +291,9 @@ MIT in each case. |#
   (transform/quotation* expression (quotation-expression expression)))
 
 (define (transform/quotation* expression expression*)
-  (call-with-values
-   (lambda () (transform/top-level expression* '()))
-   (lambda (block expression**)
-     (quotation/make expression block expression**))))
+  (call-with-values (lambda () (transform/top-level expression* '()))
+    (lambda (block expression**)
+      (quotation/make expression block expression**))))
 
 (define (transform/sequence block environment expression)
   (sequence/make
