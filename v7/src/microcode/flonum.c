@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.27 1989/09/20 23:08:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.28 1989/09/24 13:49:21 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -253,3 +253,27 @@ DEFINE_PRIMITIVE ("FLONUM-CEILING->EXACT", Prim_flonum_ceiling_to_exact, 1, 1, 0
      FLONUM_EXACT_CONVERSION (flonum_ceiling)
 DEFINE_PRIMITIVE ("FLONUM-ROUND->EXACT", Prim_flonum_round_to_exact, 1, 1, 0)
      FLONUM_EXACT_CONVERSION (flonum_round)
+
+DEFINE_PRIMITIVE ("FLONUM-NORMALIZE", Prim_flonum_normalize, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  Set_Time_Zone (Zone_Math);
+  CHECK_ARG (1, FLONUM_P);
+  PRIMITIVE_RETURN (flonum_normalize (ARG_REF (1))); 
+}
+
+#include "float.h"
+#if (FLT_RADIX != 2)
+#include "error: floating point radix not 2!  Arithmetic won't work."
+#endif
+
+#define FLONUM_CONSTANT(expression)					\
+{									\
+  PRIMITIVE_HEADER (0);							\
+  PRIMITIVE_RETURN (expression);					\
+}
+
+DEFINE_PRIMITIVE ("FLONUM-MANTISSA-DIGITS", Prim_flonum_mantissa_digits, 0, 0, 0)
+     FLONUM_CONSTANT (long_to_integer (DBL_MANT_DIG))
+DEFINE_PRIMITIVE ("FLONUM-EPSILON", Prim_flonum_epsilon, 0, 0, 0)
+     FLONUM_CONSTANT (double_to_flonum ((double) DBL_EPSILON))

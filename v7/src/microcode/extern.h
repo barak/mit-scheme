@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.33 1989/09/20 23:07:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.34 1989/09/24 13:49:05 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -172,6 +172,7 @@ extern SCHEME_OBJECT bignum_to_flonum ();
 extern SCHEME_OBJECT flonum_floor ();
 extern SCHEME_OBJECT flonum_ceiling ();
 extern SCHEME_OBJECT flonum_round ();
+extern SCHEME_OBJECT flonum_normalize ();
 extern Boolean integer_zero_p ();
 extern Boolean integer_negative_p ();
 extern Boolean integer_positive_p ();

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/artutl.c,v 1.1 1989/09/20 23:19:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/artutl.c,v 1.2 1989/09/24 13:49:38 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -155,6 +155,7 @@ Boolean
 flonum_integer_p (x)
      SCHEME_OBJECT x;
 {
+  extern double modf ();
   double iptr;
   return ((modf ((FLONUM_TO_DOUBLE (x)), (&iptr))) == 0);
 }
@@ -163,6 +164,7 @@ SCHEME_OBJECT
 flonum_floor (x)
      SCHEME_OBJECT x;
 {
+  extern double floor ();
   return (double_to_flonum (floor (FLONUM_TO_DOUBLE (x))));
 }
 
@@ -170,6 +172,7 @@ SCHEME_OBJECT
 flonum_ceiling (x)
      SCHEME_OBJECT x;
 {
+  extern double ceil ();
   return (double_to_flonum (ceil (FLONUM_TO_DOUBLE (x))));
 }
 
@@ -180,6 +183,17 @@ flonum_round (x)
   fast double dx = (FLONUM_TO_DOUBLE (x));
   return
     (double_to_flonum (double_truncate ((dx < 0) ? (dx - 0.5) : (dx + 0.5))));
+}
+
+SCHEME_OBJECT
+flonum_normalize (x)
+     SCHEME_OBJECT x;
+{
+  extern double frexp ();
+  int exponent;
+  double significand = (frexp ((FLONUM_TO_DOUBLE (x)), (&exponent)));
+  return (cons ((double_to_flonum (significand)),
+		(double_to_flonum ((double) exponent))));
 }
 
 /* Generic Integer Operations */
