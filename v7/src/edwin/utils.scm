@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.10 1989/03/14 08:03:41 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.11 1989/04/05 18:23:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -99,19 +99,19 @@
   (loop))
 
 (define (char-controlify char)
-  (make-char (char-code char) (controlify (char-bits char))))
+  (if (ascii-controlified? char)
+      char
+      (make-char (char-code char)
+		 (let ((bits (char-bits char)))
+		   (if (odd? (quotient bits 2)) bits (+ bits 2))))))
 
 (define (char-metafy char)
-  (make-char (char-code char) (metafy (char-bits char))))
+  (make-char (char-code char)
+	     (let ((bits (char-bits char)))
+	       (if (odd? bits) bits (1+ bits)))))
 
 (define (char-control-metafy char)
-  (make-char (char-code char) (controlify (metafy (char-bits char)))))
+  (char-controlify (char-metafy char)))
 
 (define (char-base char)
   (make-char (char-code char) 0))
-
-(define (controlify i)
-  (if (odd? (quotient i 2)) i (+ i 2)))
-
-(define (metafy i)
-  (if (odd? i) i (1+ i)))
