@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.10 1995/11/05 14:26:18 adams Exp $
+$Id: typerew.scm,v 1.11 1996/07/17 20:48:42 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -375,7 +375,8 @@ MIT in each case. |#
       (reduce q-env:glb q-env:top envs))
     (let loop ((Qs '()) (Ts '()) (Es '()) (exprs exprs))
       (if (not (pair? exprs))
-	  (receiver (reverse! Qs) (reverse! Ts) (reverse! Es) (glb* Es))
+	  (let ((env* (glb* Es)))	; do before reverse:
+	    (receiver (reverse! Qs) (reverse! Ts) (reverse! Es) env*))
 	  (typerew/expr (car exprs)
 			split-env
 			(lambda (Q T env*)
