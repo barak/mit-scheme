@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/dbgutl.scm,v 14.16 1992/02/13 18:51:54 cph Exp $
+$Id: dbgutl.scm,v 14.17 1995/07/27 20:40:20 adams Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -153,16 +153,19 @@ MIT in each case. |#
     (write-string
      (let ((name
 	    (output-to-string (quotient x-size 2)
-	      (lambda ()
-		(write-dbg-name name (current-output-port))))))
-       (if (unassigned-reference-trap? value)
-	   (string-append name " is unassigned")
-	   (let ((s (string-append name " = ")))
-	     (string-append
-	      s
-	      (output-to-string (max (- x-size (string-length s)) 0)
-		(lambda ()
-		  (write value)))))))
+			      (lambda ()
+				(write-dbg-name name (current-output-port))))))
+       (cond ((unassigned-reference-trap? value)
+	      (string-append name " is unassigned"))
+	     ((unavailable? value)
+	      (string-append name " is unavailable"))
+	     (else
+	      (let ((s (string-append name " = ")))
+		(string-append
+		 s
+		 (output-to-string (max (- x-size (string-length s)) 0)
+				   (lambda ()
+				     (write value))))))))
      port)))
 
 (define (debugger-failure port . objects)
