@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 3.3 1987/10/09 17:18:47 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 3.4 1987/12/17 20:34:34 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -85,7 +85,7 @@ MIT in each case. |#
     SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET
     SUBSTRING-MATCH-FORWARD SUBSTRING-MATCH-BACKWARD
     SUBSTRING-MATCH-FORWARD-CI SUBSTRING-MATCH-BACKWARD-CI
-    SUBSTRING-UPCASE! SUBSTRING-DOWNCASE! STRING-HASH
+    SUBSTRING-UPCASE! SUBSTRING-DOWNCASE! STRING-HASH STRING-HASH-MOD
 
     ;; Byte Vectors (actually, String/Character operations)
     VECTOR-8B-REF VECTOR-8B-SET! VECTOR-8B-FILL!

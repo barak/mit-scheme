@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/string.scm,v 13.42 1987/07/28 01:22:23 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/string.scm,v 13.43 1987/12/17 20:32:25 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -60,7 +60,7 @@
    substring-find-previous-char-in-set
    substring-match-forward substring-match-backward
    substring-match-forward-ci substring-match-backward-ci
-   substring-upcase! substring-downcase! string-hash
+   substring-upcase! substring-downcase! string-hash string-hash-mod
 
    vector-8b-ref vector-8b-set! vector-8b-fill!
    vector-8b-find-next-char vector-8b-find-previous-char
@@ -214,7 +214,7 @@
 	(cons (string-ref string index)
 	      (loop (1+ index)))))
   (loop start))
-
+
 (define (string-copy string)
   (let ((size (string-length string)))
     (let ((result (string-allocate size)))
