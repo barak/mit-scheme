@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.15 2003/02/14 18:28:32 cph Exp $
+$Id: char.scm,v 14.16 2003/02/28 04:36:04 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1991,1995,1997 Massachusetts Institute of Technology
+Copyright 1998,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,36 +34,31 @@ USA.
   char->integer
   integer->char)
 
-(define-integrable char-code-limit #x10000)
-(define-integrable char-bits-limit #x20)
-(define-integrable char-integer-limit #x200000)
+(define-integrable char-code-limit #x200000)
+(define-integrable char-bits-limit #x10)
+(define-integrable char-integer-limit #x2000000)
 
 (define-integrable (%make-char code bits)
-  (integer->char (fix:or (fix:lsh bits 16) code)))
+  (integer->char (fix:or (fix:lsh bits 21) code)))
 
 (define-integrable (%char-code char)
-  (fix:and (char->integer char) #xFFFF))
+  (fix:and (char->integer char) #x1FFFFF))
 
 (define-integrable (%char-bits char)
-  (fix:lsh (fix:and (char->integer char) #x1F0000) -16))
+  (fix:lsh (char->integer char) -21))
 
 (define-integrable (guarantee-char char procedure)
   (if (not (char? char))
       (error:wrong-type-argument char "character" procedure)))
 
 (define (make-char code bits)
-  (if (not (index-fixnum? code))
-      (error:wrong-type-argument code "index fixnum" 'MAKE-CHAR))
-  (if (not (fix:< code char-code-limit))
-      (error:bad-range-argument code 'MAKE-CHAR))
-  (if (not (index-fixnum? bits))
-      (error:wrong-type-argument bits "index fixnum" 'MAKE-CHAR))
-  (if (not (fix:< bits char-bits-limit))
-      (error:bad-range-argument bits 'MAKE-CHAR))
+  (guarantee-limited-index-fixnum code char-code-limit 'MAKE-CHAR)
+  (guarantee-limited-index-fixnum bits char-bits-limit 'MAKE-CHAR)
   (%make-char code bits))
 
 (define (code->char code)
-  (make-char code 0))
+  (guarantee-limited-index-fixnum code char-code-limit 'CODE->CHAR)
+  (%make-char code 0))
 
 (define (char-code char)
   (guarantee-char char 'CHAR-CODE)
@@ -85,12 +81,9 @@ USA.
 	(error:bad-range-argument char 'CHAR->ASCII))
     n))
 
-(define (ascii->char n)
-  (if (not (index-fixnum? n))
-      (error:wrong-type-argument n "index fixnum" 'ASCII->CHAR))
-  (if (not (fix:< n 256))
-      (error:bad-range-argument n 'ASCII->CHAR))
-  (%make-char n 0))
+(define (ascii->char code)
+  (guarantee-limited-index-fixnum code 256 'ASCII->CHAR)
+  (%make-char code 0))
 
 (define (chars->ascii chars)
   (map char->ascii chars))
@@ -203,19 +196,24 @@ USA.
   (set! lower-a-code (fix:- (char->integer #\a) 10))
   (initialize-case-conversions!))
 
+(define (radix? object)
+  (and (index-fixnum? object)
+       (fix:<= 2 object)
+       (fix:<= object 36)))
+
+(define (guarantee-radix object caller)
+  (if (not (radix? object))
+      (error:wrong-type-argument object "radix" caller)))
+
 (define (digit->char digit #!optional radix)
-  (if (not (index-fixnum? digit))
-      (error:wrong-type-argument digit "digit" 'DIGIT->CHAR))
-  (and (fix:<= 0 digit)
-       (fix:< digit
-	      (cond ((default-object? radix)
-		     10)
-		    ((and (fix:fixnum? radix)
-			  (fix:<= 2 radix) (fix:<= radix 36))
-		     radix)
-		    (else
-		     (error:wrong-type-argument radix "radix" 'DIGIT->CHAR))))
-       (string-ref "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" digit)))
+  (guarantee-limited-index-fixnum digit
+				  (if (default-object? radix)
+				      10
+				      (begin
+					(guarantee-radix radix 'DIGIT->CHAR)
+					radix))
+				  'DIGIT->CHAR)
+  (string-ref "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" digit))
 
 (define (char->digit char #!optional radix)
   (guarantee-char char 'CHAR->DIGIT)
@@ -391,7 +389,4 @@ USA.
     ("S" . #x04)
     ("Super" . #x04)
     ("H" . #x08)
-    ("Hyper" . #x08)
-    ("T" . #x10)
-    ("Top" . #x10)
-    ))
+    ("Hyper" . #x08)))

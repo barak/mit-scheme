@@ -1,8 +1,10 @@
 /* -*-C-*-
 
-$Id: object.h,v 9.53 2003/02/14 18:28:21 cph Exp $
+$Id: object.h,v 9.54 2003/02/28 04:34:38 cph Exp $
 
-Copyright (c) 1987-2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
+Copyright 1993,1995,1997,1998,2000,2001 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -338,13 +340,13 @@ extern SCHEME_OBJECT * memory_base;
 /* Character Operations */
 
 #define ASCII_LENGTH CHAR_BIT	/* CHAR_BIT in config.h - 8 for unix  */
-#define CODE_LENGTH 16
-#define BITS_LENGTH 5
-#define MIT_ASCII_LENGTH 21
+#define CODE_LENGTH 21
+#define BITS_LENGTH 4
+#define MIT_ASCII_LENGTH 25
 
-#define CHAR_BITS_META 		01
-#define CHAR_BITS_CONTROL 	02
-#define CHAR_BITS_CONTROL_META	03
+#define CHAR_BITS_META 		0x1
+#define CHAR_BITS_CONTROL 	0x2
+#define CHAR_BITS_CONTROL_META	0x3
 
 #define MAX_ASCII (1L << ASCII_LENGTH)
 #define MAX_CODE (1L << CODE_LENGTH)
