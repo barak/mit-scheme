@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/6001.pkg,v 1.5 1992/09/01 20:11:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/6001.pkg,v 1.6 1992/09/01 22:20:50 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -146,7 +146,7 @@ MIT in each case. |#
 	  ;picture-v-reflect
 	  ))
 
-(define-package (edwin student)
+(define-package (student edwin-extensions)
   (files "edextra")
   (parent (edwin))
   (export (edwin)
