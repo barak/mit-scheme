@@ -1,15 +1,15 @@
 #| -*-Scheme-*-
 
-$Id: edtstr.scm,v 1.25 2003/01/09 20:52:21 cph Exp $
+$Id: edtstr.scm,v 1.26 2003/01/10 18:50:26 cph Exp $
 
-Copyright (c) 1989,1990,1991,1992,2003 Massachusetts Institute of Technology
+Copyright 1989,1990,1991,1992,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
-MIT Scheme is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published
-by the Free Software Foundation; either version 2 of the License,
-or (at your option) any later version.
+MIT Scheme is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
 
 MIT Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,9 +17,8 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with MIT Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT Scheme; if not, write to the Free Software Foundation,
+Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 |#
 
@@ -113,40 +112,32 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
      (lambda ()
        (set-editor-button-event! current-editor old-button-event)))))
 
-(define button-record-type
-  (make-record-type 'BUTTON '(NUMBER DOWN?)))
+(define-record-type button-record-type
+  (%%make-button number down?)
+  button?
+  (number button/number)
+  (down? button/down?))
 
 (define make-down-button)
 (define make-up-button)
 (let ((%make-button
-       (let ((constructor
-	      (record-constructor button-record-type '(NUMBER DOWN?))))
-	 (lambda (buttons number down?)
-	   (or (vector-ref buttons number)
-	       (let ((button (constructor number down?)))
-		 (vector-set! buttons number button)
-		 button)))))
+       (lambda (buttons number down?)
+	 (or (vector-ref buttons number)
+	     (let ((button (%%make-button number down?)))
+	       (vector-set! buttons number button)
+	       button))))
       (down-buttons '#())
       (up-buttons '#()))
   (set! make-down-button
 	(lambda (number)
 	  (if (>= number (vector-length down-buttons))
-	      (set! down-buttons (vector-grow down-buttons (+ number 1))))
+	      (set! down-buttons (vector-grow down-buttons (+ number 1) #f)))
 	  (%make-button down-buttons number #t)))
   (set! make-up-button
 	(lambda (number)
 	  (if (>= number (vector-length up-buttons))
-	      (set! up-buttons (vector-grow up-buttons (+ number 1))))
+	      (set! up-buttons (vector-grow up-buttons (+ number 1) #f)))
 	  (%make-button up-buttons number #f))))
-
-(define button?
-  (record-predicate button-record-type))
-
-(define button/number
-  (record-accessor button-record-type 'NUMBER))
-
-(define button/down?
-  (record-accessor button-record-type 'DOWN?))
 
 (define (down-button? object)
   (and (button? object)
@@ -155,6 +146,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (up-button? object)
   (and (button? object)
        (not (button/down? object))))
+
+(define (button/bucky-bits button)
+  button
+  0)
 
 (set-record-type-unparser-method! button-record-type
   (unparser/standard-method (record-type-name button-record-type)
