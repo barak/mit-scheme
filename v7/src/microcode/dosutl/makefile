@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/dosutl/Attic/makefile,v 1.3 1992/07/28 18:44:40 jinx Exp $
+###	$Id: makefile,v 1.4 1992/09/30 14:37:56 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -45,7 +45,7 @@ TERMCAP_LIBS = # -lcurses
 GRAPHICS_SOURCES = dosfg.c # starbase.c
 GRAPHICS_OBJECTS = dosfg.obj # starbase.obj
 GRAPHICS_LIBS = fgp.lib # -lsb1 -lsb2
-MACHINE_SWITCHES = -3 -mx -DNO_CONST -DHAS_COMPILER_SUPPORT -Di386
+MACHINE_SWITCHES = -3 -mx -DNO_CONST -Di386
 MACHINE_SOURCES = cmpint.c cmpi386.asm
 MACHINE_OBJECTS = cmpint.obj cmpi386.obj
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint2.h cmpi386.h
@@ -57,9 +57,10 @@ CC = ztc
 M4 = # m4
 AS = mlx
 LDFLAGS =
-CFLAGS = -DMIT_SCHEME -DTYPE_CODE_LENGTH=6 $(MACHINE_SWITCHES) -D__STDC__ -Jm -o
+CFLAGS = -DMIT_SCHEME $(MACHINE_SWITCHES) -D__STDC__ -Jm -o
 
-all: bintopsb.exe psbtobin.exe scheme.exe bchscheme.exe # bchdrn.exe
+all: bintopsb.exe psbtobin.exe scheme.exe bchscheme.exe # mswload.exe
+
 .c.obj:
 	$(CC) $(CFLAGS) -c $*.c
 .c.s:
@@ -139,6 +140,7 @@ dosenv.c \
 dosfile.c \
 dosio.c \
 dosconio.c \
+dosprm.c \
 dostty.c \
 dostop.c \
 dosutil.c \
@@ -159,6 +161,7 @@ dosenv.obj \
 dosfile.obj \
 dosio.obj \
 dosconio.obj \
+dosprm.obj \
 dostty.obj \
 dostop.obj \
 dosutil.obj \
@@ -419,4 +422,13 @@ dosxcutl.obj : dosxcutl.asm
 dosint10.obj: dosint10.c dosint10.h
 dosi10.obj: dosi10.asm
 dosx32.obj: dosx32.c
+
+mswload.exe: mswload.obj mswload.def mswload.res
+  blinkx /CO /MO mswload.obj,mswload.exe,mswload.map,,mswload.def,mswload.res
+
+mswload.res: mswload.rc
+  zrc -V mswload.rc
+
+mswload.obj: mswload.c mswload.h
+  ztc -ms -W1 -bx -o -c -g mswload.c
 
