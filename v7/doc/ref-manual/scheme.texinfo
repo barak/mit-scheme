@@ -1,5 +1,5 @@
 \input texinfo @c -*-texinfo-*-
-@comment $Id: scheme.texinfo,v 1.132 2004/10/17 03:06:14 cph Exp $
+@comment $Id: scheme.texinfo,v 1.133 2004/10/17 03:19:46 cph Exp $
 @comment %**start of header
 @setfilename mit-scheme-ref
 @set EDITION 1.102
@@ -15,7 +15,7 @@
 @syncodeindex tp fn
 
 @copying
-This file documents MIT/GNU Scheme @value{VERSION}.
+This manual documents MIT/GNU Scheme @value{VERSION}.
 
 Copyright @copyright{} 1991,1992,1993,1994 Massachusetts Institute of Technology@*
 Copyright @copyright{} 1995,1996,1997,1999 Massachusetts Institute of Technology@*
