@@ -17,7 +17,7 @@ dnl along with this program; if not, write to the Free Software
 dnl Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 dnl 02111-1307, USA.
 
-AC_REVISION([$Id: configure.in,v 11.15 2002/01/29 06:12:55 cph Exp $])
+AC_REVISION([$Id: configure.in,v 11.16 2002/03/15 04:07:43 cph Exp $])
 AC_INIT(boot.c)
 AC_CONFIG_HEADER(config.h)
 
@@ -614,7 +614,7 @@ return 1;
 	fi
     fi
     ;;
-freebsdelf*)
+freebsd*)
     M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
     ;;
 esac
