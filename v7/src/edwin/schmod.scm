@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: schmod.scm,v 1.38 1996/04/24 02:05:35 cph Exp $
+;;;	$Id: schmod.scm,v 1.39 1997/10/02 04:49:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -302,18 +302,24 @@ Otherwise, it is shown in the echo area."
 		  environment))))
 	  (if (procedure? procedure)
 	      (let ((argl (procedure-argl procedure)))
-		(if (and insert? (or (symbol? argl) (list? argl)))
+		(if (and insert?
+			 (let loop ((argl argl))
+			   (or (symbol? argl)
+			       (null? argl)
+			       (and (pair? argl)
+				    (symbol? (car argl))
+				    (loop (cdr argl))))))
 		    (let ((point (mark-left-inserting-copy point)))
-		      (if (symbol? argl)
-			  (begin
-			    (insert-string " . " point)
-			    (insert-string (symbol->string argl) point))
-			  (for-each (lambda (param)
-				      (insert-char #\space point)
-				      (insert-string (write-to-string param)
-						     point))
-				    argl)))
-		    (message argl)))
+		      (let loop ((argl argl))
+			(cond ((pair? argl)
+			       (insert-char #\space point)
+			       (insert-string (symbol->string (car argl))
+					      point))
+			      ((symbol? argl)
+			       (insert-string " . " point)
+			       (insert-string (symbol->string argl) point)))))
+		    (fluid-let ((*unparse-uninterned-symbols-by-name?* #t))
+		      (message argl))))
 	      (editor-error "Expression does not evaluate to a procedure: "
 			    (extract-string start end))))))))
 
