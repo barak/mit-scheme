@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.169 1995/04/17 21:46:25 cph Exp $
+$Id: edwin.pkg,v 1.170 1995/04/30 06:52:22 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -1439,7 +1439,16 @@ MIT in each case. |#
 	  edwin-variable$rmail-primary-inbox-list
 	  edwin-variable$rmail-primary-pop-server
 	  edwin-variable$rmail-reply-with-re
-	  rmail-spool-directory))
+	  prompt-for-rmail-output-filename
+	  rfc822-addresses->string
+	  rfc822-first-address
+	  rfc822-region->babyl
+	  rfc822-region-reply-headers
+	  rfc822-strip-quoted-names
+	  rmail-output-to-rmail-file
+	  rmail-output-to-unix-mail-file
+	  rmail-spool-directory
+	  with-buffer-open))
 
 (define-package (edwin stepper)
   (files "eystep")

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.39 1995/04/23 06:08:53 cph Exp $
+;;;	$Id: rmail.scm,v 1.40 1995/04/30 06:53:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -987,8 +987,9 @@ While composing the message, use \\[mail-yank-original] to yank the
 original message into it."
   ()
   (lambda ()
-    (make-mail-buffer false select-buffer-other-window
-		      false false false false (current-buffer))))
+    (make-mail-buffer '(("To" "") ("Subject" ""))
+		      (current-buffer)
+		      select-buffer-other-window)))
 
 (define-command rmail-continue
   "Continue composing outgoing message previously being composed."
@@ -1004,27 +1005,26 @@ original message into it."
 	  (memo (current-msg-memo)))
       (set-attribute! memo 'FORWARDED)
       (make-mail-buffer
-       false
-       (if (window-has-no-neighbors? (current-window))
-	   select-buffer
-	   select-buffer-other-window)
-       false
        (without-clipping buffer
 	 (lambda ()
 	   (with-values (lambda () (original-header-limits memo))
 	     (lambda (start end)
-	       (string-append
-		"["
-		(let ((from (fetch-first-field "from" start end)))
-		  (if from
-		      (addresses->string (strip-quoted-names from))
-		      ""))
-		": "
-		(or (fetch-first-field "subject" start end) "")
-		"]")))))
-       false
-       false
-       false)
+	       `(("To" "")
+		 ("Subject"
+		  ,(string-append
+		    "["
+		    (let ((from (fetch-first-field "from" start end)))
+		      (if from
+			  (rfc822-addresses->string
+			   (rfc822-strip-quoted-names from))
+			  ""))
+		    ": "
+		    (or (fetch-first-field "subject" start end) "")
+		    "]")))))))
+       #f
+       (if (window-has-no-neighbors? (current-window))
+	   select-buffer
+	   select-buffer-other-window))
       (insert-region (buffer-start buffer)
 		     (buffer-end buffer)
 		     (buffer-end (current-buffer))))))
@@ -1040,59 +1040,74 @@ original message into it."
     (let ((buffer (current-buffer))
 	  (memo (current-msg-memo)))
       (set-attribute! memo 'ANSWERED)
-      (without-clipping buffer
-	(lambda ()
-	  (with-values (lambda () (original-header-limits memo))
-	    (lambda (start end)
-	      (let ((resent-reply-to
-		     (fetch-last-field "resent-reply-to" start end))
-		    (from (fetch-first-field "from" start end)))
-		(make-mail-buffer
-		 false
-		 select-buffer-other-window
-		 (addresses->string
-		  (strip-quoted-names
-		   (or resent-reply-to
-		       (fetch-all-fields "reply-to" start end)
-		       from)))
-		 (let ((subject
-			(or (and resent-reply-to
-				 (fetch-last-field "resent-subject" start end))
-			    (fetch-first-field "subject" start end))))
-		   (if (ref-variable rmail-reply-with-re)
-		       (if (and subject
-				(not (string-prefix-ci? "re: " subject)))
-			   (string-append "Re: " subject)
-			   subject)
-		       (if (and subject (string-prefix-ci? "re: " subject))
-			   (string-tail subject 4)
-			   subject)))
-		 (if resent-reply-to
-		     (make-in-reply-to-field
-		      from
-		      (fetch-last-field "resent-date" start end)
-		      (fetch-last-field "resent-message-id" start end))
-		     (make-in-reply-to-field
-		      from
-		      (fetch-first-field "date" start end)
-		      (fetch-first-field "message-id" start end)))
-		 (and (not just-sender?)
-		      (let ((to
-			     (if resent-reply-to
-				 (fetch-last-field "resent-to" start end)
-				 (fetch-all-fields "to" start end)))
-			    (cc
-			     (if resent-reply-to
-				 (fetch-last-field "resent-cc" start end)
-				 (fetch-all-fields "cc" start end))))
-			(let ((cc
-			       (if (and to cc)
-				   (string-append to ", " cc)
-				   (or to cc))))
-			  (and cc
-			       (addresses->string
-				(dont-reply-to (strip-quoted-names cc)))))))
-		 buffer)))))))))
+      (make-mail-buffer (without-clipping buffer
+			  (lambda ()
+			    (rfc822-region-reply-headers
+			     (call-with-values
+				 (lambda () (original-header-limits memo))
+			       make-region)
+			     (not just-sender?))))
+			buffer
+			select-buffer-other-window))))
+
+(define (rfc822-region-reply-headers region cc?)
+  (let ((start (region-start region))
+	(end (region-end region)))
+    (let ((resent-reply-to (fetch-last-field "resent-reply-to" start end))
+	  (from (fetch-first-field "from" start end)))
+      `(("To"
+	 ,(rfc822-addresses->string
+	   (rfc822-strip-quoted-names
+	    (or resent-reply-to
+		(fetch-all-fields "reply-to" start end)
+		from))))
+	("CC"
+	 ,(and cc?
+	       (let ((to
+		      (if resent-reply-to
+			  (fetch-last-field "resent-to" start end)
+			  (fetch-all-fields "to" start end)))
+		     (cc
+		      (if resent-reply-to
+			  (fetch-last-field "resent-cc" start end)
+			  (fetch-all-fields "cc" start end))))
+		 (let ((cc
+			(if (and to cc)
+			    (string-append to ", " cc)
+			    (or to cc))))
+		   (and cc
+			(let ((addresses
+			       (dont-reply-to
+				(rfc822-strip-quoted-names cc))))
+			  (and (not (null? addresses))
+			       (rfc822-addresses->string addresses))))))))
+	("In-reply-to"
+	 ,(if resent-reply-to
+	      (make-in-reply-to-field
+	       from
+	       (fetch-last-field "resent-date" start end)
+	       (fetch-last-field "resent-message-id" start end))
+	      (make-in-reply-to-field
+	       from
+	       (fetch-first-field "date" start end)
+	       (fetch-first-field "message-id" start end))))
+	("Subject"
+	 ,(let ((subject
+		 (or (and resent-reply-to
+			  (fetch-last-field "resent-subject"
+					    start end))
+		     (fetch-first-field "subject" start end))))
+	    (cond ((not subject) "")
+		  ((ref-variable rmail-reply-with-re)
+		   (if (string-prefix-ci? "re:" subject)
+		       subject
+		       (string-append "Re: " subject)))
+		  (else
+		   (do ((subject
+			 subject
+			 (string-trim-left (string-tail subject 3))))
+		       ((not (string-prefix-ci? "re:" subject))
+			subject))))))))))
 
 (define (original-header-limits memo)
   (let ((start (msg-memo/start memo))
@@ -1156,7 +1171,7 @@ original message into it."
 (define (header-end start end)
   (or (search-forward "\n\n" start end false) end))
 
-(define (strip-quoted-names string)
+(define (rfc822-strip-quoted-names string)
   (let ((address-list (strip-quoted-names-1 (string->rfc822-tokens string))))
     (if (and address-list (null? (cdr address-list)))
 	(car address-list)
@@ -1183,9 +1198,10 @@ original message into it."
 	    (else
 	     (cons (car addresses) (loop (cdr addresses))))))))
 
-(define (addresses->string addresses)
-  (and (not (null? addresses))
-       (separated-append addresses ", ")))
+(define (rfc822-addresses->string addresses)
+  (if (null? addresses)
+      ""
+      (separated-append addresses ", ")))
 
 (define (separated-append tokens separator)
   (if (null? (cdr tokens))
@@ -1436,110 +1452,110 @@ If the file does not exist, ask if it should be created.
 If file is being visited, the message is appended to the
 buffer visiting that file."
   (lambda ()
-    (list
-     (->namestring
-      (get-rmail-output-pathname "Output message to Rmail file"
-				 (ref-variable rmail-last-rmail-file)))))
-  (lambda (filename)
-    (let* ((pathname (->pathname filename))
-	   (filename (->namestring pathname)))
-      (set-variable! rmail-last-rmail-file filename)
-      (let* ((memo (current-msg-memo))
-	     (message
-	      (without-clipping (current-buffer)
-		(lambda ()
-		  (extract-string (msg-memo/start memo)
-				  (msg-memo/end memo))))))
-	(cond ((pathname->buffer pathname)
-	       =>
-	       (lambda (buffer)
-		 (if (current-buffer? buffer)
-		     (editor-error
-		      "Can't output message to same file it's already in"))
-		 (with-buffer-open buffer
-		   (lambda ()
-		     (let ((memo (buffer-msg-memo buffer))
-			   (end (buffer-end buffer)))
-		       (let ((start (mark-right-inserting-copy end))
-			     (end (mark-left-inserting-copy end)))
-			 (if memo
-			     (delete-string (skip-chars-backward " \t\n" end)
-					    end))
-			 (insert-string message end)
-			 (if memo
-			     (begin
-			       (memoize-messages buffer start end)
-			       (select-message buffer memo)))
-			 (mark-temporary! start)
-			 (mark-temporary! end)))))))
-	      ((file-exists? pathname)
-	       (let ((port (open-output-file pathname true)))
-		 (write-string message port)
-		 (close-output-port port)))
-	      ((prompt-for-yes-or-no?
-		(string-append "\"" filename "\" does not exist, create it"))
-	       (call-with-output-file pathname
-		 (lambda (port)
-		   (write-string babyl-initial-header port)
-		   (write-string message port))))
-	      (else
-	       (editor-error "Output file does not exist")))
-	(set-attribute! memo 'FILED)
-	(if (ref-variable rmail-delete-after-output)
-	    ((ref-command rmail-delete-forward) false))))))
+    (list (prompt-for-rmail-output-filename
+	   "Output message to Rmail file"
+	   (ref-variable rmail-last-rmail-file))))
+  (lambda (pathname)
+    (set-variable! rmail-last-rmail-file (->namestring pathname))
+    (let ((memo (current-msg-memo)))
+      (rmail-output-to-rmail-file (make-region (msg-memo/start memo)
+					       (msg-memo/end memo))
+				  pathname)
+      (set-attribute! memo 'FILED)
+      (if (ref-variable rmail-delete-after-output)
+	  ((ref-command rmail-delete-forward) #f)))))
+
+(define (rmail-output-to-rmail-file region pathname)
+  ;; REGION is assumed to be in babyl format.
+  (let ((buffer (pathname->buffer pathname)))
+    (if buffer
+	(begin
+	  (if (eq? buffer (mark-buffer (region-start region)))
+	      (editor-error
+	       "Can't output message to same file it's already in"))
+	  (with-buffer-open buffer
+	    (lambda ()
+	      (let ((memo (buffer-msg-memo buffer))
+		    (end (buffer-end buffer)))
+		(let ((start (mark-right-inserting-copy end))
+		      (end (mark-left-inserting-copy end)))
+		  (if memo
+		      (delete-string (skip-chars-backward " \t\n" end)
+				     end))
+		  (insert-region (region-start region)
+				 (region-end region)
+				 end)
+		  (if memo
+		      (begin
+			(memoize-messages buffer start end)
+			(select-message buffer memo)))
+		  (mark-temporary! start)
+		  (mark-temporary! end))))))
+	(begin
+	  (if (not (file-exists? pathname))
+	      (begin
+		(if (not (prompt-for-yes-or-no?
+			  (string-append "\"" (->namestring pathname)
+					 "\" does not exist, create it")))
+		    (editor-error "Output file does not exist."))
+		(call-with-output-file pathname
+		  (lambda (port)
+		    (write-string babyl-initial-header port)))))
+	  (append-to-file region pathname #f)))))
 
 (define-command rmail-output
   "Append this message to Unix mail file named FILE-NAME."
   (lambda ()
-    (list
-     (->namestring
-      (get-rmail-output-pathname "Output message to Unix mail file"
-				 (ref-variable rmail-last-file)))))
+    (list (prompt-for-rmail-output-filename "Output message to Unix mail file"
+					    (ref-variable rmail-last-file))))
   (lambda (filename)
-    (let* ((pathname (->pathname filename)))
-      (set-variable! rmail-last-file (->namestring pathname))
-      (let ((memo (current-msg-memo)))
-	(let ((buffer (temporary-buffer " rmail output")))
-	  (let ((end (mark-left-inserting-copy (buffer-end buffer))))
-	    (let ((buffer (current-buffer)))
-	      (insert-region (buffer-start buffer) (buffer-end buffer) end))
-	    (insert-newline end)
-	    (let loop ((start (buffer-start buffer)))
-	      (if (re-search-forward "^From " start end true)
-		  (loop (replace-match ">\\&"))))
-	    (mark-temporary! end)
-	    (let ((start (buffer-start buffer)))
-	      (insert-string
-	       (string-append
-		"From "
-		(or (first-address
-		     (fetch-first-field "from" start (header-end start end)))
-		    "unknown")
-		" "
-		(file-time->string (current-file-time))
-		"\n")
-	       start)))
-	  (append-to-file (buffer-region buffer) pathname false)
-	  (kill-buffer buffer))
-	(set-attribute! memo 'FILED)
-	(if (ref-variable rmail-delete-after-output)
-	    ((ref-command rmail-delete-forward) false))))))
+    (set-variable! rmail-last-file (->namestring filename))
+    (let ((memo (current-msg-memo)))
+      (rmail-output-to-unix-mail-file (buffer-region (current-buffer))
+				      filename)
+      (set-attribute! memo 'FILED)
+      (if (ref-variable rmail-delete-after-output)
+	  ((ref-command rmail-delete-forward) #f)))))
 
-(define (get-rmail-output-pathname prompt default)
-  (let ((default (->pathname default)))
-    (let ((name (file-pathname default)))
-      (let ((pathname
-	     (prompt-for-pathname
-	      (string-append prompt " (default " (->namestring name) ")")
-	      (directory-pathname default)
-	      false)))
-	(if (file-directory? pathname)
-	    (merge-pathnames name (pathname-as-directory pathname))
-	    pathname)))))
+(define (rmail-output-to-unix-mail-file region pathname)
+  ;; REGION is assumed to be in RFC-822 format.
+  (let ((buffer (temporary-buffer " rmail output")))
+    (let ((end (mark-left-inserting-copy (buffer-end buffer))))
+      (insert-region (region-start region) (region-end region) end)
+      (insert-newline end)
+      (let loop ((start (buffer-start buffer)))
+	(if (re-search-forward "^From " start end #t)
+	    (loop (replace-match ">\\&"))))
+      (mark-temporary! end)
+      (let ((start (buffer-start buffer)))
+	(insert-string
+	 (string-append
+	  "From "
+	  (or (rfc822-first-address
+	       (fetch-first-field "from" start (header-end start end)))
+	      "unknown")
+	  " "
+	  (file-time->string (current-file-time))
+	  "\n")
+	 start)))
+    (append-to-file (buffer-region buffer) pathname #f)
+    (kill-buffer buffer)))
 
-(define (first-address field)
+(define (prompt-for-rmail-output-filename prompt default)
+  (->namestring
+   (let ((pathname
+	  (prompt-for-pathname
+	   (string-append prompt " (default " (file-namestring default) ")")
+	   (directory-pathname default)
+	   #f)))
+     (if (file-directory? pathname)
+	 (merge-pathnames (file-pathname default)
+			  (pathname-as-directory pathname))
+	 pathname))))
+
+(define (rfc822-first-address field)
   (and field
-       (let ((addresses (strip-quoted-names field)))
+       (let ((addresses (rfc822-strip-quoted-names field)))
 	 (and (not (null? addresses))
 	      (car addresses)))))
 
@@ -1638,7 +1654,7 @@ Leaves original message, deleted, before the undigestified messages."
 	  (delete-string (skip-chars-backward " \t\n" end start) end)
 	  (insert-string "\n\037" end)
 	  (let ((digest-name
-		 (first-address
+		 (rfc822-first-address
 		  (let ((hend (header-end start end)))
 		    (or (fetch-first-field "Reply-To" start hend)
 			(fetch-first-field "To" start hend)
@@ -2032,18 +2048,17 @@ Leaves original message, deleted, before the undigestified messages."
 	     (loop m (+ count 1))))
 	  ((re-match-forward umail-message-start-regexp point end false)
 	   (let ((point (mark-left-inserting-copy point)))
-	     (insert-string babyl-initial-message-start point)
 	     (nuke-pinhead-header point end)
 	     (mark-temporary! point)
-	     (process-message-body
+	     (process-rfc822
 	      point
 	      count
 	      (if (re-search-forward umail-message-end-regexp point end false)
 		  (re-match-start 0)
 		  end))))
 	  ((re-match-forward mmdf-message-start-regexp point end true)
-	   (let ((start (replace-match babyl-initial-message-start)))
-	     (process-message-body
+	   (let ((start (delete-match)))
+	     (process-rfc822
 	      start
 	      count
 	      (if (re-search-forward mmdf-message-end-regexp start end true)
@@ -2053,14 +2068,9 @@ Leaves original message, deleted, before the undigestified messages."
 	   (editor-error "error converting to Babyl format")
 	   true)))
 
-  (define (process-message-body point count mend)
+  (define (process-rfc822 point count mend)
     (let ((mend (mark-left-inserting-copy mend)))
-      (do ((m point (replace-match "\n^_")))
-	  ((not (search-forward "\n\037" m mend false))))
-      (let ((m (match-forward "\037" mend end false)))
-	(if m
-	    (move-mark-to! mend m)
-	    (insert-string "\037" mend)))
+      (rfc822-region->babyl (make-region point mend))
       (mark-temporary! mend)
       (loop mend (+ count 1))))
 
@@ -2072,6 +2082,19 @@ Leaves original message, deleted, before the undigestified messages."
   (with-text-clipped start end
     (lambda ()
       (loop (skip-chars-forward "\n" start end) 0))))
+
+(define (rfc822-region->babyl region)
+  (let ((start (mark-left-inserting-copy (region-start region))))
+    (insert-string babyl-initial-message-start start)
+    (mark-temporary! start)
+    (let ((end (mark-left-inserting-copy (region-end region))))
+      ;; Eliminate babyl message-separation pair from message body.
+      (do ((m start (replace-match "\n^_")))
+	  ((not (search-forward "\n\037" m end #f))))
+      (guarantee-newline end)
+      (if (not (eqv? (integer->char #o37) (extract-right-char end)))
+	  (insert-string "\037" end))
+      (mark-temporary! end))))
 
 (define (convert-buffer-to-babyl-format buffer)
   (with-buffer-open buffer

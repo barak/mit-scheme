@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.23 1995/04/10 20:21:31 cph Exp $
+;;;	$Id: sendmail.scm,v 1.24 1995/04/30 06:54:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -161,61 +161,92 @@ If mail-archive-file-name is non-false, an FCC field with that file name
 is inserted."
   "P"
   (lambda (no-erase?)
-    (make-mail-buffer no-erase? select-buffer false false false false false)))
+    (make-mail-buffer '(("To" "") ("Subject" ""))
+		      #f
+		      select-buffer
+		      (if no-erase?
+			  'KEEP-PREVIOUS-MAIL
+			  'QUERY-DISCARD-PREVIOUS-MAIL))))
 
 (define-command mail-other-window
   "Like `mail' command, but display mail buffer in another window."
   "P"
   (lambda (no-erase?)
-    (make-mail-buffer no-erase? select-buffer-other-window
-		      false false false false false)))
+    (make-mail-buffer '(("To" "") ("Subject" ""))
+		      #f
+		      select-buffer-other-window
+		      (if no-erase?
+			  'KEEP-PREVIOUS-MAIL
+			  'QUERY-DISCARD-PREVIOUS-MAIL))))
 
-(define (make-mail-buffer no-erase? select-buffer
-			  to subject in-reply-to cc reply-buffer)
-  (let ((buffer (find-or-create-buffer "*mail*")))
-    (select-buffer buffer)
-    (if (and (not no-erase?)
-	     (or (not (buffer-modified? buffer))
-		 (prompt-for-confirmation?
-		  "Unsent message being composed; erase it")))
-	(begin
-	  (set-buffer-default-directory! buffer (default-homedir-pathname))
-	  (setup-buffer-auto-save! buffer)
-	  (region-delete! (buffer-unclipped-region buffer))
-	  (mail-setup buffer to subject in-reply-to cc reply-buffer)))))
+(define (make-mail-buffer headers reply-buffer select-buffer
+			  #!optional previous-mail-handling buffer-name mode)
+  (let ((buffer-name
+	 (or (and (not (default-object? buffer-name))
+		  buffer-name)
+	     "*mail*")))
+    (let ((buffer (find-buffer buffer-name))
+	  (continue
+	   (lambda (select?)
+	     (let ((buffer (find-or-create-buffer buffer-name)))
+	       (if select? (select-buffer buffer))
+	       (buffer-reset! buffer)
+	       (set-buffer-default-directory! buffer
+					      (default-homedir-pathname))
+	       (setup-buffer-auto-save! buffer)
+	       (mail-setup buffer headers reply-buffer
+			   (and (not (default-object? mode)) mode))))))
+      (if buffer
+	  (case (if (default-object? previous-mail-handling)
+		    'QUERY-DISCARD-PREVIOUS-MAIL
+		    previous-mail-handling)
+	    ((KEEP-PREVIOUS-MAIL)
+	     (select-buffer buffer))
+	    ((DISCARD-PREVIOUS-MAIL)
+	     (continue #t))
+	    ((QUERY-DISCARD-PREVIOUS-MAIL)
+	     (select-buffer buffer)
+	     (if (or (not (buffer-modified? buffer))
+		     (prompt-for-confirmation?
+		      "Unsent message being composed; erase it"))
+		 (continue #f)))
+	    (else
+	     (error:bad-range-argument previous-mail-handling
+				       'MAKE-MAIL-BUFFER)))
+	  (continue #t)))))
 
-(define (mail-setup buffer to subject in-reply-to cc reply-buffer)
+(define (mail-setup buffer headers reply-buffer #!optional mode)
   (guarantee-mail-aliases)
-  (set-buffer-major-mode! buffer (ref-mode-object mail))
+  (set-buffer-major-mode! buffer
+			  (or (and (not (default-object? mode)) mode)
+			      (ref-mode-object mail)))
   (local-set-variable! mail-reply-buffer reply-buffer)
   (let ((point (mark-left-inserting-copy (buffer-start buffer)))
 	(fill
 	 (lambda (start end)
 	   (fill-region-as-paragraph start end
-				     "\t" (ref-variable fill-column)
+				     "\t" (ref-variable fill-column buffer)
 				     false))))
-    (insert-string "To: " point)
-    (if to
-	(begin
-	  (insert-string to point)
-	  (fill (buffer-start buffer) point)))
-    (insert-newline point)
-    (if cc
-	(let ((start (mark-right-inserting point)))
-	  (insert-string "CC: " point)
-	  (insert-string cc point)
-	  (fill start point)
-	  (insert-newline point)))
-    (if in-reply-to
-	(begin
-	  (insert-string "In-reply-to: " point)
-	  (insert-string in-reply-to point)
-	  (insert-newline point)))
-    (insert-string "Subject: " point)
-    (if subject
-	(insert-string subject point))
-    (insert-newline point)
-    (let ((mail-default-reply-to (ref-variable mail-default-reply-to)))
+    (let ((start (mark-right-inserting-copy point)))
+      (for-each (lambda (header)
+		  (let ((key (car header))
+			(value (cadr header)))
+		    (if value
+			(begin
+			  (move-mark-to! start point)
+			  (insert-string key point)
+			  (insert-string ": " point)
+			  (insert-string value point)
+			  (if (and (not (string-null? value))
+				   (if (null? (cddr header))
+				       (or (string-ci=? key "to")
+					   (string-ci=? key "cc"))
+				       (caddr header)))
+			      (fill start point))
+			  (insert-newline point)))))
+		headers)
+      (mark-temporary! start))
+    (let ((mail-default-reply-to (ref-variable mail-default-reply-to buffer)))
       (let ((mail-default-reply-to
 	     (if (procedure? mail-default-reply-to)
 		 (mail-default-reply-to)
@@ -225,33 +256,45 @@ is inserted."
 	      (insert-string "Reply-to: " point)
 	      (insert-string mail-default-reply-to point)
 	      (insert-newline point)))))
-    (let ((mail-header-function (ref-variable mail-header-function)))
+    (let ((mail-header-function (ref-variable mail-header-function buffer)))
       (if mail-header-function
 	  (mail-header-function point)))
-    (if (ref-variable mail-self-blind)
+    (if (ref-variable mail-self-blind buffer)
 	(begin
 	  (insert-string "BCC: " point)
 	  (insert-string (current-user-name) point)
 	  (insert-newline point)))
-    (let ((mail-archive-file-name (ref-variable mail-archive-file-name)))
+    (let ((mail-archive-file-name
+	   (ref-variable mail-archive-file-name buffer)))
       (if mail-archive-file-name
 	  (begin
 	    (insert-string "FCC: " point)
 	    (insert-string mail-archive-file-name point)
 	    (insert-newline point))))
-    (insert-string (ref-variable mail-header-separator) point)
+    (insert-string (ref-variable mail-header-separator buffer) point)
     (insert-newline point)
     (mark-temporary! point))
-  (set-buffer-point! buffer
-		     (if to
-			 (buffer-end buffer)
-			 (mail-position-on-field buffer "To")))
-  (if (not (or to subject in-reply-to))
-      (buffer-not-modified! buffer))
-  (event-distributor/invoke! (ref-variable mail-setup-hook)))
+  (let ((given-header?
+	 (lambda (name)
+	   (let ((header
+		  (list-search-positive headers
+		    (lambda (header)
+		      (string-ci=? (car header) name)))))
+	     (and header
+		  (cadr header)
+		  (not (string-null? (cadr header))))))))
+    (set-buffer-point! buffer
+		       (if (given-header? "to")
+			   (buffer-end buffer)
+			   (mail-position-on-field buffer "to")))
+    (if (not (or (given-header? "to")
+		 (given-header? "subject")
+		 (given-header? "in-reply-to")))
+	(buffer-not-modified! buffer)))
+  (event-distributor/invoke! (ref-variable mail-setup-hook buffer)))
 
 (define-variable mail-setup-hook
-  "An event distributor invoked immediately after a mail buffer initialized."
+  "An event distributor invoked immediately after a mail buffer is initialized."
   (make-event-distributor))
 
 (define-major-mode mail text "Mail"

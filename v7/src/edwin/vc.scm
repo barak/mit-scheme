@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.20 1995/04/15 06:14:34 cph Exp $
+;;;	$Id: vc.scm,v 1.21 1995/04/30 06:54:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -384,9 +384,11 @@ lock steals will raise an error.
 	(if (not (prompt-for-confirmation?
 		  (string-append "Take the lock on " file:rev " from " owner)))
 	    (editor-error "Steal cancelled."))
-	(let ((mail-buffer (find-or-create-buffer "*VC-mail*")))
-	  (buffer-reset! mail-buffer)
-	  (mail-setup mail-buffer owner file:rev #f #f #f)
+	(make-mail-buffer `(("To" ,owner) ("Subject" ,file:rev))
+			  #f
+			  select-buffer-other-window
+			  'DISCARD-PREVIOUS-MAIL)
+	(let ((mail-buffer (current-buffer)))
 	  (let ((time (get-decoded-time)))
 	    (insert-string (string-append "I stole the lock on "
 					  file:rev
@@ -405,8 +407,7 @@ lock steals will raise an error.
 		(vc-revert-workfile-buffer master #t)
 		;; Send the mail after the steal has completed
 		;; successfully.
-		((variable-default-value variable)))))
-	  (pop-up-buffer mail-buffer #t)))))
+		((variable-default-value variable)))))))))
   (message "Please explain why you are stealing the lock."
 	   "  Type C-c C-c when done."))
 
