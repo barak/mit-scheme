@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: insmac.scm,v 1.14 2002/02/12 00:26:46 cph Exp $
+$Id: insmac.scm,v 1.15 2002/02/13 18:46:04 cph Exp $
 
 Copyright (c) 1992, 1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -49,20 +49,20 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	   (lambda (pattern actions)
 	     (let ((keyword (car pattern))
 		   (categories (car actions))
-		   (mode (cadr actions))
-		   (register (caddr actions))
+		   (mode (close-syntax (cadr actions) environment))
+		   (register (close-syntax (caddr actions) environment))
 		   (tail (cdddr actions)))
 	       `(MAKE-EFFECTIVE-ADDRESS
 		 ',keyword
 		 ',categories
 		 ,(integer-syntaxer mode 'UNSIGNED 2)
 		 ,(integer-syntaxer register 'UNSIGNED 3)
-		 ,(process-tail tail #f)))))))))
+		 ,(process-tail tail #f environment)))))))))
 
-(define (process-tail tail early?)
+(define (process-tail tail early? environment)
   (if (null? tail)
       `()
-      (process-fields tail early?)))
+      (process-fields tail early? environment)))
 
 ;; This one is necessary to distinguish between r/mW mW, etc.
 
@@ -86,78 +86,58 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-integrable *ADDRESS-SIZE* 32)
 (define-integrable *OPERAND-SIZE* 32)
 
-(define (parse-instruction opcode tail early?)
-  (process-fields (cons opcode tail) early?))
+(define (parse-instruction opcode tail early? environment)
+  (process-fields (cons opcode tail) early? environment))
 
-(define (process-fields fields early?)
+(define (process-fields fields early? environment)
   (if (and (null? (cdr fields))
 	   (eq? (caar fields) 'VARIABLE-WIDTH))
-      (expand-variable-width (car fields) early?)
-      (expand-fields fields
-		     early?
-		     (lambda (code size)
-		       (if (not (zero? (remainder size 8)))
-			   (error "process-fields: bad syllable size" size))
-		       code))))
+      (expand-variable-width (car fields) early? environment)
+      (call-with-values (lambda () (expand-fields fields early? environment))
+	(lambda (code size)
+	  (if (not (zero? (remainder size 8)))
+	      (error "process-fields: bad syllable size" size))
+	  code))))
 
-(define (expand-variable-width field early?)
+(define (expand-variable-width field early? environment)
   (let ((binding (cadr field))
 	(clauses (cddr field)))
     `(LIST
       ,(variable-width-expression-syntaxer
 	(car binding)			; name
-	(cadr binding)			; expression
+	(close-syntax (cadr binding) environment) ; expression
 	(map (lambda (clause)
-	       (expand-fields
-		(cdr clause)
-		early?
-		(lambda (code size)
-		  (if (not (zero? (remainder size 8)))
-		      (error "expand-variable-width: bad clause size" size))
-		  `(,code ,size ,@(car clause)))))
+	       (call-with-values
+		   (lambda () (expand-fields (cdr clause) early? environment))
+		 (lambda (code size)
+		   (if (not (zero? (remainder size 8)))
+		       (error "Bad clause size:" size))
+		   `(,code ,size ,@(car clause)))))
 	     clauses)))))
-
-(define (collect-byte components tail receiver)
-  (define (inner components receiver)
-    (if (null? components)
-	(receiver tail 0)
-	(inner (cdr components)
-	       (lambda (byte-tail byte-size)
-		 (let ((size (caar components))
-		       (expression (cadar components))
-		       (type (if (null? (cddar components))
-				 'UNSIGNED
-				 (caddar components))))
-		   (receiver
-		    `(CONS-SYNTAX
-		      ,(integer-syntaxer expression type size)
-		      ,byte-tail)
-		    (+ size byte-size)))))))
-  (inner components receiver))
 
-(define (expand-fields fields early? receiver)
-  (if (null? fields)
-      (receiver ''() 0)
-      (expand-fields (cdr fields) early?
+(define (expand-fields fields early? environment)
+  (if (pair? fields)
+      (call-with-values
+	  (lambda () (expand-fields (cdr fields) early? environment))
        (lambda (tail tail-size)
 	 (case (caar fields)
 	   ;; For opcodes and fixed fields of the instruction
 	   ((BYTE)
 	    ;; (BYTE (8 #xff))
 	    ;; (BYTE (16 (+ foo #x23) SIGNED))
-	    (collect-byte (cdar fields)
-			  tail
-			  (lambda (code size)
-			    (receiver code (+ size tail-size)))))
+	    (call-with-values
+		(lambda () (collect-byte (cdar fields) tail environment))
+	      (lambda (code size)
+		(values code (+ size tail-size)))))
 	   ((ModR/M)
 	    ;; (ModR/M 2 source)	= /2 r/m(source)
 	    ;; (ModR/M r target)	= /r r/m(target)
 	    (if early?
 		(error "No early support for ModR/M -- Fix i386/insmac.scm")
 		(let ((field (car fields)))
-		  (let ((digit-or-reg (cadr field))
-			(r/m (caddr field)))
-		    (receiver
+		  (let ((digit-or-reg (close-syntax (cadr field) environment))
+			(r/m (close-syntax (caddr field) environment)))
+		    (values
 		     `(CONS-SYNTAX
 		       (EA/REGISTER ,r/m)
 		       (CONS-SYNTAX
@@ -170,39 +150,40 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	   ;; For immediate operands whose size depends on the operand
 	   ;; size for the instruction (halfword vs. longword)
 	   ((IMMEDIATE)
-	    (receiver
+	    (values
 	     (let ((field (car fields)))
-	       (let ((value (cadr field))
-		     (mode (if (null? (cddr field))
-			       'OPERAND
-			       (caddr field)))
-		     (domain (if (or (null? (cddr field))
-				     (null? (cdddr field)))
-				 'SIGNED
-				 (cadddr field))))
+	       (let ((value (close-syntax (cadr field) environment))
+		     (mode (if (pair? (cddr field)) (caddr field) 'OPERAND))
+		     (domain
+		      (if (and (pair? (cddr field))
+			       (pair? (cdddr field)))
+			  (cadddr field)
+			  'SIGNED)))
 		 `(CONS-SYNTAX
-		   #|
-		   (COERCE-TO-TYPE ,value
-				   ,(case mode
-				      ((OPERAND)
-				       `*OPERAND-SIZE*)
-				      ((ADDRESS)
-				       `*ADDRESS-SIZE*)
-				      (else
-				       (error "Unknown IMMEDIATE mode" mode)))
-				   ,domain)
-		   |#
 		   ,(integer-syntaxer
 		     value
 		     domain
 		     (case mode
-		       ((OPERAND)
-			*operand-size*)
-		       ((ADDRESS)
-			*address-size*)
-		       (else
-			(error "Unknown IMMEDIATE mode" mode))))
+		       ((OPERAND) *operand-size*)
+		       ((ADDRESS) *address-size*)
+		       (else (error "Unknown IMMEDIATE mode:" mode))))
 		   ,tail)))
 	     tail-size))
 	   (else
-	    (error "expand-fields: Unknown field kind" (caar fields))))))))
+	    (error "Unknown field kind:" (caar fields))))))
+      (values ''() 0)))
+
+(define (collect-byte components tail environment)
+  (let loop ((components components))
+    (if (pair? components)
+	(call-with-values (lambda () (loop (cdr components)))
+	  (lambda (byte-tail byte-size)
+	    (let ((size (caar components))
+		  (expression (close-syntax (cadar components) environment))
+		  (type (if (pair? (cddar components))
+			    (caddar components)
+			    'UNSIGNED)))
+	      (values `(CONS-SYNTAX ,(integer-syntaxer expression type size)
+				    ,byte-tail)
+		      (+ size byte-size)))))
+	(values tail 0))))
