@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: wincom.scm,v 1.124 2000/04/03 16:55:33 cph Exp $
+;;; $Id: wincom.scm,v 1.125 2000/04/07 19:53:16 cph Exp $
 ;;;
-;;; Copyright (c) 1987, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1987, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -497,8 +497,7 @@ Also kills any pop up window it may have created."
     (define (maybe-record-window window)
       (weak-set-car! *minibuffer-scroll-window* window)
       (if select? (select-window window))
-      (and (eq? window (weak-car *previous-popped-up-window*))
-	   window))
+      #f)
 
     (define (find-visible-window buffer)
       (let loop ((windows (buffer-windows buffer)))
