@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.38 2004/10/28 22:53:28 cph Exp $
+$Id: sfile.scm,v 14.39 2004/10/29 16:30:25 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1999,2001,2003,2004 Massachusetts Institute of Technology
@@ -258,10 +258,13 @@ USA.
 
 (define (pathname-type->mime-type type)
   (and (string? type)
-       (or (hash-table/get local-type-map type #f)
-	   (let ((string (os/suffix-mime-type type)))
-	     (and string
-		  (string->mime-type string))))))
+       (let ((mime-type (hash-table/get local-type-map type #f)))
+	 (if mime-type
+	     (and (mime-type? mime-type)
+		  mime-type)
+	     (let ((string (os/suffix-mime-type type)))
+	       (and string
+		    (string->mime-type string)))))))
 
 (define (associate-pathname-type-with-mime-type type mime-type)
   (guarantee-string type 'ASSOCIATE-PATHNAME-TYPE-WITH-MIME-TYPE)
@@ -270,7 +273,7 @@ USA.
 
 (define (disassociate-pathname-type-from-mime-type type)
   (guarantee-string type 'DISASSOCIATE-PATHNAME-TYPE-FROM-MIME-TYPE)
-  (hash-table/remove! local-type-map type))
+  (hash-table/put! local-type-map type 'DISASSOCIATED))
 
 (define-record-type <mime-type>
     (%%make-mime-type top-level subtype)
