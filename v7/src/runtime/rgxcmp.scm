@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rgxcmp.scm,v 1.111 2001/02/05 20:08:15 cph Exp $
+;;; $Id: rgxcmp.scm,v 1.112 2001/02/05 21:47:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -666,20 +666,20 @@
       (let loop
 	  ((chars
 	    (if (input-match? (input-peek) #\])
-		(list (input-read!))
+		(begin (input-discard!) '(#\]))
 		'())))
 	(if (input-end?)
 	    (premature-end))
-	(if (input-match? (input-peek) #\])
-	    (begin
-	      (input-discard!)
-	      (for-each
-	       (lambda (char)
-		 ((ucode-primitive re-char-set-adjoin!) charset
-							(char->ascii char)))
-	       (char-set-members
-		(re-compile-char-set (list->string (reverse! chars)) #f))))
-	    (loop (cons (input-read!) chars))))
+	(let ((char (input-read!)))
+	  (if (input-match? char #\])
+	      (begin
+		(for-each
+		 (lambda (char)
+		   ((ucode-primitive re-char-set-adjoin!) charset
+							  (char->ascii char)))
+		 (char-set-members
+		  (re-compile-char-set (list->string (reverse! chars)) #f))))
+	      (loop (cons char chars)))))
       (output-start! (if invert? re-code:not-char-set re-code:char-set))
       ;; Discard any bitmap bytes that are all 0 at the end of
       ;; the map.  Decrement the map-length byte too.
