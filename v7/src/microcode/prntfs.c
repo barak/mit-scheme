@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntfs.c,v 1.6 1996/10/02 18:58:37 cph Exp $
+$Id: prntfs.c,v 1.7 1996/10/07 17:54:58 cph Exp $
 
 Copyright (c) 1993-96 Massachusetts Institute of Technology
 
@@ -33,25 +33,21 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 /* Unix-specific file-system primitives. */
-/* DOS Immitation */
+/* DOS Imitation */
 
 #include "scheme.h"
 #include "prims.h"
 #include "nt.h"
 #include "osfs.h"
 
-#ifdef WINNT
 #include <sys/utime.h>
-#endif
+#include <memory.h>
+#include <math.h>
 
-extern int EXFUN
-  (NT_read_file_status, (CONST char * filename, struct stat * s));
 extern void EXFUN (OS_file_copy, (CONST char *, CONST char *));
 
-static SCHEME_OBJECT EXFUN (file_attributes_internal, (struct stat * s));
-static void EXFUN (file_mode_string, (struct stat * s, char * a));
-static char EXFUN (file_type_letter, (struct stat * s));
-static void EXFUN (rwx, (unsigned short bits, char * chars));
+static SCHEME_OBJECT file_attributes_internal
+  (DWORD, FILETIME *, FILETIME *, FILETIME *, DWORD, DWORD);
 static SCHEME_OBJECT EXFUN (file_touch, (CONST char * filename));
 static void EXFUN (protect_fd, (int fd));
 
@@ -59,14 +55,130 @@ static void EXFUN (protect_fd, (int fd));
 #define FILE_TOUCH_OPEN_TRIES 5
 #endif
 
+struct file_info
+{
+  DWORD attributes;
+  FILETIME atime;
+  FILETIME mtime;
+  FILETIME ctime;
+  DWORD llength;
+  DWORD hlength;
+};
+
+static HANDLE create_file_for_info (const char *);
+static void close_file_handle (HANDLE);
+
+static int
+get_file_info (const char * namestring, struct file_info * info)
+{
+  HANDLE hfile = INVALID_HANDLE_VALUE;
+  memset (info, 0, (sizeof (*info)));
+  (info -> attributes) = (GetFileAttributes (namestring));
+  if ((info -> attributes) == 0xFFFFFFFF)
+    goto error_return;
+  hfile = (create_file_for_info (namestring));
+  if (hfile == INVALID_HANDLE_VALUE)
+    return (0);
+  if (!GetFileTime (hfile,
+		    (& (info -> ctime)),
+		    (& (info -> atime)),
+		    (& (info -> mtime))))
+    goto error_return;
+  (info -> llength) = (GetFileSize (hfile, (& (info -> hlength))));
+  if ((info -> llength) == 0xFFFFFFFF)
+    goto error_return;
+  close_file_handle (hfile);
+  return (1);
+ error_return:
+  {
+    DWORD code = (GetLastError ());
+    if (hfile != INVALID_HANDLE_VALUE)
+      (void) CloseHandle (hfile);
+    if (! ((code == ERROR_FILE_NOT_FOUND) || (code == ERROR_PATH_NOT_FOUND)))
+      error_system_call (code, syscall_lstat);
+    return (0);
+  }
+}
+
+static HANDLE
+create_file_for_info (const char * namestring)
+{
+  HANDLE hfile
+    = (CreateFile (namestring,
+		   0,
+		   (FILE_SHARE_READ | FILE_SHARE_WRITE),
+		   0,
+		   OPEN_EXISTING,
+		   FILE_FLAG_BACKUP_SEMANTICS,
+		   NULL));
+  if (hfile == INVALID_HANDLE_VALUE)
+    {
+      DWORD code = (GetLastError ());
+      if (! ((code == ERROR_FILE_NOT_FOUND) || (code == ERROR_PATH_NOT_FOUND)))
+	error_system_call (code, syscall_open);
+    }
+  return (hfile);
+}
+
+static void
+close_file_handle (HANDLE hfile)
+{
+  if (!CloseHandle (hfile))
+    error_system_call ((GetLastError ()), syscall_close);
+}
+
+static double ut_zero = 0.0;
+
+static void
+initialize_ut_zero (void)
+{
+  if (ut_zero == 0.0)
+    {
+      SYSTEMTIME st;
+      FILETIME ft;
+      (st . wYear) = 1970;
+      (st . wMonth) = 1;
+      (st . wDay) = 1;
+      (st . wHour) = 0;
+      (st . wMinute) = 0;
+      (st . wSecond) = 0;
+      (st . wMilliseconds) = 0;
+      (void) SystemTimeToFileTime ((&st), (&ft));
+      ut_zero
+	= ((((double) (ft . dwHighDateTime)) * 4294967296.)
+	   + ((double) (ft . dwLowDateTime)));
+    }
+}
+
+unsigned long
+file_time_to_unix_time (FILETIME * ft)
+{
+  double fd
+    = ((((double) (ft -> dwHighDateTime)) * 4294967296.)
+       + ((double) (ft -> dwLowDateTime)));
+  initialize_ut_zero ();
+  if (fd <= ut_zero)
+    return (0);
+  return ((unsigned long) (floor (((fd - ut_zero) + 5000000.) / 10000000.)));
+}
+
+void
+unix_time_to_file_time (unsigned long ut, FILETIME * ft)
+{
+  double ud = (((double) ut) * 10000000.);
+  double udh = (floor (ud / 4294967296.));
+  (ft -> dwHighDateTime) = ((DWORD) udh);
+  (ft -> dwLowDateTime) = ((DWORD) (ud -(udh * 4294967296.)));
+}
+
 DEFINE_PRIMITIVE ("FILE-MODES", Prim_file_modes, 1, 1,
   "Return mode bits of FILE, as an integer.")
 {
-  struct stat stat_result;
+  struct file_info info;
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    ((NT_read_file_status ((STRING_ARG (1)), (&stat_result)))
-     ? (LONG_TO_UNSIGNED_FIXNUM ((stat_result . st_mode) & 07777))
+    ((get_file_info ((STRING_ARG (1)), (&info)))
+     ? (LONG_TO_UNSIGNED_FIXNUM (info . attributes))
      : SHARP_F);
 }
 
@@ -74,19 +186,51 @@ DEFINE_PRIMITIVE ("SET-FILE-MODES!", Prim_set_file_modes, 2, 2,
   "Set the mode bits of FILE to MODE.")
 {
   PRIMITIVE_HEADER (2);
-  if ((NT_chmod ((STRING_ARG (1)), (arg_index_integer (2, 010000)))) < 0)
-    error_system_call (errno, syscall_chmod);
-  PRIMITIVE_RETURN (SHARP_F);
+  if (!SetFileAttributes ((STRING_ARG (1)), (arg_ulong_integer (2))))
+    error_system_call ((GetLastError ()), syscall_chmod);
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("FILE-MOD-TIME", Prim_file_mod_time, 1, 1, 0)
 {
-  struct stat s;
+  struct file_info info;
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    ((NT_read_file_status ((STRING_ARG (1)), (&s)))
-     ? (long_to_integer (s . st_mtime))
+    ((get_file_info ((STRING_ARG (1)), (&info)))
+     ? (ulong_to_integer (file_time_to_unix_time (& (info . mtime))))
      : SHARP_F);
+}
+
+DEFINE_PRIMITIVE ("SET-FILE-TIMES!", Prim_set_file_times, 3, 3,
+  "Change the access and modification times of FILE.\n\
+The second and third arguments are the respective times.\n\
+The file must exist and you must be the owner.")
+{
+  HANDLE hfile;
+  FILETIME atime;
+  FILETIME mtime;
+  PRIMITIVE_HEADER (3);
+
+  hfile
+    = (CreateFile ((STRING_ARG (1)),
+		   GENERIC_WRITE,
+		   FILE_SHARE_READ,
+		   0,
+		   OPEN_EXISTING,
+		   FILE_ATTRIBUTE_NORMAL,
+		   NULL));
+  if (hfile == INVALID_HANDLE_VALUE)
+    error_system_call ((GetLastError ()), syscall_open);
+  unix_time_to_file_time ((arg_ulong_integer (2)), (&atime));
+  unix_time_to_file_time ((arg_ulong_integer (3)), (&mtime));
+  if (!SetFileTime (hfile, 0, (&atime), (&mtime)))
+    {
+      DWORD code = (GetLastError ());
+      (void) CloseHandle (hfile);
+      error_system_call (code, syscall_utime);
+    }
+  close_file_handle (hfile);
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 /* Returns a vector of 10 items:
@@ -106,157 +250,59 @@ DEFINE_PRIMITIVE ("FILE-MOD-TIME", Prim_file_mod_time, 1, 1, 0)
 
    The file_mode_string stuff was gobbled from GNU Emacs. */
 
-#define FILE_ATTRIBUTES_PRIMITIVE(stat_syscall)				\
-{									\
-  struct stat s;							\
-  PRIMITIVE_HEADER (1);							\
-  PRIMITIVE_RETURN							\
-    ((stat_syscall ((STRING_ARG (1)), (&s)))				\
-     ? (file_attributes_internal (&s))					\
-     : SHARP_F);							\
-}
-
 DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1, 1,
   "Given a file name, return attribute information about the file.\n\
 If the file exists and its status information is accessible, the result\n\
 is a vector of 10 items (see the reference manual for details).  Otherwise\n\
 the result is #F.")
-     FILE_ATTRIBUTES_PRIMITIVE (NT_read_file_status)
-
-static SCHEME_OBJECT
-DEFUN (file_attributes_internal, (s), struct stat * s)
 {
-  SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 10, true));
-  SCHEME_OBJECT modes = (allocate_string (10));
-  switch ((s -> st_mode) & S_IFMT)
-    {
-    case S_IFDIR:
-      VECTOR_SET (result, 0, SHARP_T);
-      break;
-#ifdef S_IFLNK
-    case S_IFLNK:
-      VECTOR_SET (result, 0,
-		  (char_pointer_to_string
-		   ((unsigned char *)
-		    (OS_file_soft_link_p
-		     ((CONST char *) (STRING_LOC ((ARG_REF (1)), 0)))))));
-      break;
-#endif
-    default:
-      VECTOR_SET (result, 0, SHARP_F);
-      break;
-    }
-  VECTOR_SET (result, 1, (long_to_integer (s -> st_nlink)));
-  VECTOR_SET (result, 2, (long_to_integer (s -> st_uid)));
-  VECTOR_SET (result, 3, (long_to_integer (s -> st_gid)));
-  VECTOR_SET (result, 4, (long_to_integer (s -> st_atime)));
-  VECTOR_SET (result, 5, (long_to_integer (s -> st_mtime)));
-  VECTOR_SET (result, 6, (long_to_integer (s -> st_ctime)));
-  VECTOR_SET (result, 7, (long_to_integer (s -> st_size)));
-  file_mode_string (s, ((char *) (STRING_LOC (modes, 0))));
+  struct file_info info;
+  SCHEME_OBJECT result;
+  SCHEME_OBJECT modes;
+  PRIMITIVE_HEADER (1);
+
+  if (!get_file_info ((STRING_ARG (1)), (&info)))
+    PRIMITIVE_RETURN (SHARP_F);
+  result = (allocate_marked_vector (TC_VECTOR, 10, true));
+  modes = (allocate_string (6));
+  VECTOR_SET (result, 0,
+	      (BOOLEAN_TO_OBJECT
+	       ((info . attributes) & FILE_ATTRIBUTE_DIRECTORY)));
+  VECTOR_SET (result, 1, (ulong_to_integer (1)));
+  VECTOR_SET (result, 2, (ulong_to_integer (0)));
+  VECTOR_SET (result, 3, (ulong_to_integer (0)));
+#define STORE_FILE_TIME(index, name)					\
+  VECTOR_SET (result, (index),						\
+	      (ulong_to_integer						\
+	       (file_time_to_unix_time (& (info . name)))))
+  STORE_FILE_TIME(4, atime);
+  STORE_FILE_TIME(5, mtime);
+  STORE_FILE_TIME(6, ctime);
+#undef STORE_FILE_TIME
+  {
+    SCHEME_OBJECT l = (ulong_to_integer (info . llength));
+    if ((info . hlength) != 0)
+      l = (integer_add
+	   ((integer_multiply
+	     ((ulong_to_integer (info . hlength)),
+	      (integer_add_1 (ulong_to_integer (0xFFFFFFFF))))),
+	    l));
+    VECTOR_SET (result, 7, l);
+  }
+#define ATTRIBUTE_LETTER(index, mask, letter)				\
+  STRING_SET (modes,							\
+	      (index),							\
+	      (((info . attributes) & (mask)) ? (letter) : '-'))
+  ATTRIBUTE_LETTER (0, FILE_ATTRIBUTE_DIRECTORY, 'd');
+  ATTRIBUTE_LETTER (1, FILE_ATTRIBUTE_READONLY, 'r');
+  ATTRIBUTE_LETTER (2, FILE_ATTRIBUTE_HIDDEN, 'h');
+  ATTRIBUTE_LETTER (3, FILE_ATTRIBUTE_SYSTEM, 's');
+  ATTRIBUTE_LETTER (4, FILE_ATTRIBUTE_ARCHIVE, 'a');
+  ATTRIBUTE_LETTER (5, FILE_ATTRIBUTE_COMPRESSED, 'c');
+#undef ATTRIBUTE_LETTER
   VECTOR_SET (result, 8, modes);
-  VECTOR_SET (result, 9, (long_to_integer (s -> st_ino)));
-  return (result);
-}
-
-/* file_mode_string - set file attribute data
-
-   File_mode_string converts the data in the st_mode field of file
-   status block `s' to a 10 character attribute string, which it
-   stores in the block that `a' points to.
-
-   This attribute string is modelled after the string produced by the
-   Berkeley ls.
-
-   As usual under Unix, the elements of the string are numbered from
-   0.  Their meanings are:
-
-   0	File type.  'd' for directory, 'c' for character special, 'b'
-	for block special, 'm' for multiplex, 'l' for symbolic link,
-	's' for socket, 'p' for fifo, '-' for any other file type
-   1	'r' if the owner may read, '-' otherwise.
-   2	'w' if the owner may write, '-' otherwise.
-   3	'x' if the owner may execute, 's' if the file is set-user-id,
-	'-' otherwise.  'S' if the file is set-user-id, but the
-	execute bit isn't set.  (sys V `feature' which helps to catch
-	screw case.)
-   4	'r' if group members may read, '-' otherwise.
-   5	'w' if group members may write, '-' otherwise.
-   6	'x' if group members may execute, 's' if the file is
-	set-group-id, '-' otherwise.  'S' if it is set-group-id but
-	not executable.
-   7	'r' if any user may read, '-' otherwise.
-   8	'w' if any user may write, '-' otherwise.
-   9	'x' if any user may execute, 't' if the file is "sticky" (will
-	be retained in swap space after execution), '-' otherwise. */
-
-static void
-DEFUN (file_mode_string, (s, a), struct stat * s AND char * a)
-{
-  (a[0]) = (file_type_letter (s));
-  rwx (((unsigned short) (((s -> st_mode) & 0700) << 0)), (& (a [1])));
-  rwx (((unsigned short) (((s -> st_mode) & 0070) << 3)), (& (a [4])));
-  rwx (((unsigned short) (((s -> st_mode) & 0007) << 6)), (& (a [7])));
-#ifdef S_ISUID
-  if (((s -> st_mode) & S_ISUID) != 0)
-    (a[3]) = (((a[3]) == 'x') ? 's' : 'S');
-#endif
-#ifdef S_ISGID
-  if (((s -> st_mode) & S_ISGID) != 0)
-    (a[6]) = (((a [6]) == 'x') ? 's' : 'S');
-#endif
-#ifdef S_ISVTX
-  if (((s -> st_mode) & S_ISVTX) != 0)
-    (a[9]) = (((a [9]) == 'x') ? 't' : 'T');
-#endif
-}
-
-static char
-DEFUN (file_type_letter, (s), struct stat * s)
-{
-  switch ((s -> st_mode) & S_IFMT)
-    {
-    case S_IFDIR:
-      return ('d');
-    case S_IFCHR:
-      return ('c');
-#ifdef S_IFBLK
-    case S_IFBLK:
-      return ('b');
-#endif
-#ifdef S_IFLNK
-    case S_IFLNK:
-      return ('l');
-#endif
-#ifdef S_IFMPC
-/* These do not seem to exist */
-    case S_IFMPC:
-    case S_IFMPB:
-      return ('m');
-#endif
-#ifdef S_IFSOCK
-    case S_IFSOCK:
-      return ('s');
-#endif
-#ifdef S_IFIFO
-    case S_IFIFO:
-      return ('p');
-#endif
-#ifdef S_IFNWK /* hp-ux hack */
-    case S_IFNWK:
-      return ('n');
-#endif
-    default:
-      return ('-');
-    }
-}
-
-static void
-DEFUN (rwx, (bits, chars), unsigned short bits AND char * chars)
-{
-  (chars[0]) = (((bits & S_IREAD) != 0)  ? 'r' : '-');
-  (chars[1]) = (((bits & S_IWRITE) != 0) ? 'w' : '-');
-  (chars[2]) = (((bits & S_IEXEC) != 0)  ? 'x' : '-');
+  VECTOR_SET (result, 9, (ulong_to_integer (0)));
+  PRIMITIVE_RETURN (result);
 }
 
 DEFINE_PRIMITIVE ("FILE-TOUCH", Prim_file_touch, 1, 1,
@@ -357,23 +403,6 @@ DEFUN (protect_fd, (fd), int fd)
   transaction_record_action (tat_always, protect_fd_close, p);
 }
 
-DEFINE_PRIMITIVE ("SET-FILE-TIMES!", Prim_set_file_times, 3, 3,
-  "Change the access and modification times of FILE.\n\
-The second and third arguments are the respective times;\n\
-they are integers are the times in seconds since 00:00:00 GMT, Jan. 1, 1970\n\
-The file must exist and you must be the owner (or superuser).")
-{
-  PRIMITIVE_HEADER (3);
-  {
-    struct utimbuf times;
-    (times . actime) = ((time_t) (arg_integer (2)));
-    (times . modtime) = ((time_t) (arg_integer (3)));
-    STD_VOID_SYSTEM_CALL
-      (syscall_utime, (utime ((STRING_ARG (1)), (&times))));
-    PRIMITIVE_RETURN (SHARP_F);
-  }
-}
-
 DEFINE_PRIMITIVE ("FILE-EQ?", Prim_file_eq_p, 2, 2,
   "True iff the two file arguments are the same file.")
 {
@@ -431,7 +460,8 @@ DEFINE_PRIMITIVE ("NT-GET-FILE-ATTRIBUTES", Prim_NT_get_file_attributes, 1, 1, 0
     if (attributes == 0xFFFFFFFF)
       {
 	DWORD error_code = (GetLastError ());
-	if (error_code != ERROR_FILE_NOT_FOUND)
+	if (! ((error_code == ERROR_FILE_NOT_FOUND)
+	       || (error_code == ERROR_PATH_NOT_FOUND)))
 	  error_system_call (error_code, syscall_stat);
 	PRIMITIVE_RETURN (SHARP_F);
       }
