@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.21 1993/08/30 23:03:28 ziggy Exp $
+$Id: option.scm,v 14.22 1993/09/01 03:22:19 ziggy Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -76,12 +76,13 @@ MIT in each case. |#
     (HASH-TABLE ((RUNTIME HASH-TABLE) (INITIALIZE-PACKAGE!) "hashtb"))
     (KRYPT ((RUNTIME KRYPT) #F "krypt"))
     (SUBPROCESS ((RUNTIME SUBPROCESS) (INITIALIZE-PACKAGE!) "process"))
-    (PC-SAMPLE ((RUNTIME PC-SAMPLE) (INITIALIZE-PACKAGE!) "binutl" "pcsample")
-	       ((RUNTIME PC-SAMPLE INTERP-PROCS) (INITIALIZE-PACKAGE!)
-						                   "pcsiproc")
-	       ((RUNTIME PC-SAMPLE  CODE-BLOCKS) (INITIALIZE-PACKAGE!) 
-						                   "pcscobl")
-	       ((RUNTIME PC-SAMPLE DISPLAY) (INITIALIZE-PACKAGE!)  "pcsdisp")
+    (PC-SAMPLE ((PC-SAMPLE INTERRUPT-HANDLER) (INITIALIZE-PACKAGE!) "pcsboot" 
+					                            "pcsintrp")
+	       ((PC-SAMPLE)                   (INITIALIZE-PACKAGE!) "pcsample" 
+					                            "binutl")
+	       ((PC-SAMPLE INTERP-PROCS)      (INITIALIZE-PACKAGE!) "pcsiproc")
+	       ((PC-SAMPLE  CODE-BLOCKS)      (INITIALIZE-PACKAGE!) "pcscobl")
+	       ((PC-SAMPLE DISPLAY)           (INITIALIZE-PACKAGE!) "pcsdisp")
 	       )
     ))
 
