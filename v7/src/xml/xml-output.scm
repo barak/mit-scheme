@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.28 2003/09/26 19:39:01 cph Exp $
+$Id: xml-output.scm,v 1.29 2004/02/23 20:55:11 cph Exp $
 
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -35,17 +35,18 @@ USA.
     (lambda (port)
       (write-xml-1 xml port options))))
 
-(define (xml->string xml . options)
-  (call-with-output-string
-   (lambda (port)
-     (write-xml-1 xml port options))))
-
 (define (xml->wide-string xml . options)
   (call-with-wide-output-string
    (lambda (port)
      (write-xml-1 xml port options))))
 
+(define (xml->string xml . options)
+  (wide-string->utf8-string (apply xml->wide-string xml options)))
+
 (define (write-xml-1 xml port options)
+  (let ((operation (port/operation port 'SET-CODING)))
+    (if operation
+	(operation port 'UTF-8)))
   (%write-xml xml (make-ctx port options)))
 
 (define-structure (ctx (type-descriptor <ctx>)
@@ -69,7 +70,10 @@ USA.
 	  (write-string ";" port)))))
 
 (define (emit-string string ctx)
-  (write-string string (ctx-port ctx)))
+  (let ((port (ctx-port ctx)))
+    (for-each-wide-char string
+      (lambda (char)
+	(write-char char port)))))
 
 (define (emit-newline ctx)
   (newline (ctx-port ctx)))
