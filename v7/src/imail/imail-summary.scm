@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.34 2000/11/19 23:27:57 cph Exp $
+;;; $Id: imail-summary.scm,v 1.35 2000/12/21 04:36:01 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -227,7 +227,16 @@ SUBJECT is a string of regexps separated by commas."
 	     (if message
 		 (imail-summary-select-message buffer message))))
 	  ((EXPUNGE INCREASE-LENGTH SET-LENGTH)
-	   (maybe-add-command-suffix! rebuild-imail-summary-buffer buffer))))))
+	   (maybe-add-command-suffix! rebuild-imail-summary-buffer buffer)))))
+  (local-set-variable!
+   mode-line-process
+   (string-append ": "
+		  (buffer-get buffer 'IMAIL-SUMMARY-DESCRIPTION "All")
+		  (let ((status (folder-connection-status folder)))
+		    (if (eq? status 'NO-SERVER)
+			""
+			(string-append " " (symbol->string status)))))
+   buffer))
 
 ;;;; Summary content generation
 
@@ -581,12 +590,6 @@ with some additions to make navigation more natural.
     (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-summary-revert-buffer)
     (remove-kill-buffer-hook buffer imail-kill-buffer)
     (local-set-variable! truncate-lines #t buffer)
-    (local-set-variable! mode-line-process
-			 (list ": "
-			       (buffer-get buffer
-					   'IMAIL-SUMMARY-DESCRIPTION
-					   "All"))
-			 buffer)
     (event-distributor/invoke! (ref-variable imail-summary-mode-hook buffer)
 			       buffer)))
 
