@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: io.texi,v 1.7 2004/10/14 03:53:45 cph Exp $
+@c $Id: io.texi,v 1.8 2004/10/14 17:15:36 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -2802,21 +2802,19 @@ procedure.  @var{Table} must satisfy @code{parser-macros?}, and
 @var{thunk} must be a procedure of no arguments.
 @end deffn
 
+
 @node XML Support,  , Parser Language, Input/Output
 @section XML Support
 
-@cindex XML parser
-@cindex parser, XML
 MIT/GNU Scheme provides a simple non-validating @acronym{XML} parser.
 This parser is believed to be conformant with @acronym{XML} 1.0.  It
 passes all of the tests in the "xmltest" directory of the @acronym{XML}
 conformance tests (dated 2001-03-15).  The parser supports @acronym{XML}
 namespaces.  The parser doesn't support external document type
-declarations (@acronym{DTD}s).  The output of the parser is a record
-tree that closely reflects the structure of the @acronym{XML} document.
+declarations (@acronym{DTD}s), and it doesn't yet support @acronym{XML}
+1.1.  The output of the parser is a record tree that closely reflects
+the structure of the @acronym{XML} document.
 
-@cindex XML output
-@cindex output, XML
 MIT/GNU Scheme also provides support for writing an @acronym{XML} record
 tree to an output port.  There is no guarantee that parsing an
 @acronym{XML} document and writing it back out will make a verbatim copy
@@ -2853,6 +2851,10 @@ once before compiling any code that uses it.
 @node XML Input, XML Output, XML Support, XML Support
 @subsection XML Input
 
+@cindex XML parser
+@cindex parser, XML
+@cindex XML input
+@cindex input, XML
 The primary entry point for the @acronym{XML} parser is @code{read-xml},
 which reads characters from a port and returns an @acronym{XML} document
 record.  The character coding of the input is determined by reading some
@@ -2860,6 +2862,24 @@ of the input stream and looking for a byte order mark and/or an encoding
 in the @acronym{XML} declaration.  We support all @acronym{ISO} 8859
 codings, as well as @acronym{UTF-8}, @acronym{UTF-16}, and
 @acronym{UTF-32}.
+
+When an @acronym{XHTML} document is read, the parser provides entity
+definitions for all of the named @acronym{XHTML} characters; for
+example, it defines @code{&nbsp;} and @code{&copy;}.  In order for a
+document to be recognized as @acronym{XHTML}, it must contain an
+@acronym{XHTML} @acronym{DTD}, such as this:
+
+@example
+@group
+<!DOCTYPE html
+          PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+@end group
+@end example
+
+@noindent
+At present the parser recognizes @acronym{XHTML} Strict 1.0 and
+@acronym{XHTML} 1.1 documents.
 
 @deffn procedure read-xml port [pi-handlers]
 Read an @acronym{XML} document from @var{port} and return the
@@ -2917,6 +2937,8 @@ It is roughly equivalent to
 @node XML Output, XML Names, XML Input, XML Support
 @subsection XML Output
 
+@cindex XML output
+@cindex output, XML
 The following procedures serialize @acronym{XML} document records into
 character sequences.  All are virtually identical except for the way
 that the character sequence is represented.
@@ -2933,6 +2955,13 @@ contained @code{xml-declaration} record and its @code{encoding}
 attribute.  If the @code{encoding} is a supported value, the output will
 be encoded as specified; otherwise it will be encoded as
 @acronym{UTF-8}.
+
+When an @acronym{XHTML} document record is written, named
+@acronym{XHTML} characters are translated into their corresponding
+entities.  For example, the character @code{#\U+00A0} is written as
+@code{&nbsp;}.  In order for an @acronym{XML} document record to be
+recognized as @acronym{XHTML}, it must have a @acronym{DTD} record that
+satisfies the predicate @code{html-dtd?}.
 
 @deffn procedure write-xml xml port
 Write @var{xml} to @var{port}.  Note that character encoding will only
@@ -2984,7 +3013,8 @@ Roughly equivalent to
 @node XML Names, XML Structure, XML Output, XML Support
 @subsection XML Names
 
-@cindex XML Names
+@cindex XML names
+@cindex names, XML
 MIT/GNU Scheme implements @acronym{XML} names in a slightly complex way.
 Unfortunately, this complexity is a direct consequence of the definition
 of @acronym{XML} names rather than a mis-feature of this implementation.
@@ -3168,7 +3198,6 @@ The following values are two distinguished @acronym{IRI} records.
 @acronym{XML} namespace recommendation.  This @acronym{IRI} must be used
 with the @code{xmlns} prefix.
 @end defvr
-
 
 
 @deffn procedure make-xml-nmtoken string
