@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.4 2000/07/11 02:29:40 cph Exp $
+@comment $Id: imail.texinfo,v 1.5 2000/07/11 02:50:44 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -245,11 +245,11 @@ In email software like Rmail, where mail is stored in files, filenames
 are used to refer to groups of messages.  Since @sc{imail} folders often
 aren't files, it is necessary to use a more general kind of reference
 for folders.  To this end, @sc{imail} uses @dfn{Uniform Resource
-Locators} (@sc{url}s) to refer to folders.@footnote{@sc{url}s are defined in
-@uref{http://@-www.ietf.org/@-rfc/@-rfc1738.txt, @sc{rfc} 1738} and
-@uref{http://@-www.ietf.org/@-rfc/@-rfc2396.txt, @sc{rfc} 2396}.}
-@sc{imail} supports two kinds of @sc{url}s: @sc{imap} @sc{url}s and file
-@sc{url}s.
+Locators} (@sc{url}s) to refer to folders.@footnote{@sc{url}s are
+defined in @uref{http://@-www.ietf.org/@-rfc/@-rfc1738.txt, @sc{rfc}
+1738} and @uref{http://@-www.ietf.org/@-rfc/@-rfc2396.txt, @sc{rfc}
+2396}.} @sc{imail} currently supports two kinds of @sc{url}s: @sc{imap}
+@sc{url}s and file @sc{url}s.
 
 @menu
 * IMAP URLs::                   
@@ -261,9 +261,8 @@ Locators} (@sc{url}s) to refer to folders.@footnote{@sc{url}s are defined in
 
 @cindex @sc{imap} @sc{url}
 @cindex @sc{url}, @sc{imap}
-@sc{imail} supports three different kinds of @sc{url}, corresponding to
-the three types of folder.  The first kind of @sc{url} is an @sc{imap}
-@sc{url},@footnote{The syntax for @sc{imap} @sc{url}s is defined by
+The first kind of @sc{url} is an @sc{imap} @sc{url},@footnote{The syntax
+for @sc{imap} @sc{url}s is defined by
 @uref{http://@-www.ietf.org/@-rfc/@-rfc2192.txt, @sc{rfc} 2192}, except
 that @sc{imail} uses only a subset of the defined syntax.} which looks
 like this:
@@ -280,13 +279,13 @@ identifies the account to be accessed on the server; this defaults to
 your user name.  @var{Port} is the server's @sc{ip} port; this defaults
 to @code{143} and is normally not specified.
 
-@cindex hierarchical folder
-@var{Mailbox} specifies the @sc{imap} mailbox that is being referred to.
-Since most @sc{imap} servers support @dfn{hierarchical} folders, the
-@var{mailbox} is a structured component indicating the location of the
-folder in the hierarchy, much like filenames or @sc{http} @sc{url}s.
-Here are some examples of @sc{imap} @sc{url}s showing different mailbox
-paths:
+@cindex hierarchical mailbox
+@var{Mailbox} specifies the @sc{imap} mailbox (or folder, in
+@sc{imail}'s terminology) that is being referred to.  Since most
+@sc{imap} servers support hierarchical mailboxes, @var{mailbox} is a
+structured component indicating the location of the folder in the
+hierarchy, much like filenames or @sc{http} @sc{url}s.  Here are some
+examples of @sc{imap} @sc{url}s showing different mailbox paths:
 
 @example
 imap://localhost/inbox
@@ -315,16 +314,16 @@ servers use different separators.  However, @sc{imail} @emph{always}
 uses the forward-slash character as a separator, and translates to the
 server's character as needed.@footnote{This is in opposition to
 @uref{http://@-www.ietf.org/@-rfc/@-rfc2192.txt, @sc{rfc} 2192}, which
-requires use of the server-specific separator.
+specifies use of the server-specific separator.
 @uref{http://@-www.ietf.org/@-rfc/@-rfc2396.txt, @sc{rfc} 2396} and
 @uref{http://@-www.ietf.org/@-rfc/@-rfc2718.txt, @sc{rfc} 2718} provide
 compelling arguments against this design.}
 
 @cindex Cyrus
 Another thing to note about these examples is that @sc{imap}, unlike
-most file systems, allows a folder both to contain messages and to have
-subfolders.  This includes the @samp{inbox} folder, as shown here.  At
-least one server (@uref{http://@-asg.web.cmu.edu/cyrus/, Cyrus}) puts
+most file systems, allows a folder to contain messages @emph{and} to
+have subfolders.  This includes the @samp{inbox} folder, as shown here.
+At least one server (@uref{http://@-asg.web.cmu.edu/cyrus/, Cyrus}) puts
 @emph{all} subfolders for a user account under @samp{inbox}, but this is
 not required by @sc{imap} and is not generally true.
 
@@ -370,10 +369,15 @@ its content.)
 As specified by the @sc{url} standard, @var{pathname} is a
 slash-separated sequence of path components, where unusual characters
 appearing in the components, such as the space character, are specially
-encoded.  In practice, this means that most unix filenames are written
-verbatim, with exceptions for special characters, and with the leading
-slash omitted.  However, @sc{dos}-style filenames, as used by Windows
-and OS/2, must be specially rewritten to conform to this style.
+encoded.  However, @sc{imail} will accept nearly any character in a
+component, and encode it if required; with few exceptions you can type
+any pathname without encoding.  @sc{imail} always displays @sc{url}s
+with proper encoding.
+
+In practice, this means that most unix filenames are written verbatim,
+with exceptions for special characters, and with the leading slash
+omitted.  However, @sc{dos}-style filenames, as used by Windows and
+OS/2, must be specially rewritten to conform to this style.
 
 The rewriting rules for @sc{dos} file @sc{url}s are not specified by the
 standard, so consequently @sc{imail} defines its own rules for this
@@ -393,11 +397,6 @@ becomes the @sc{url}
 @example
 rmail://localhost/C:/My%20Documents/Mail/My%20Mail.rmail
 @end example
-
-@noindent
-Note that this process is much simpler in practice, as @sc{imail} will
-accept almost any character in the path components and transparently
-encode it as needed.
 
 @ifset dontsetme
 @itemize @bullet
@@ -435,10 +434,10 @@ is, at present, a very simple @sc{imap} mail reader: it must be online
 to read and manipulate mail messages.  Mail readers that have this
 property are said to operate in @dfn{online mode}.@footnote{@sc{imap}
 also supports two other modes of operation, called @dfn{offline mode}
-and @dfn{disconnected mode}; at present @sc{imail} does not support
+and @dfn{disconnected mode}; at present @sc{imail} can not operate in
 these alternate modes.} Do not confuse the online @emph{state} with
 online @emph{mode}.  When we refer to online or offline in this
-document, it always means the corresponding state.
+document, it always means the corresponding @emph{state}.
 
 When an @sc{imap} folder is selected in an @sc{imail} buffer, the
 modeline for that buffer shows either @samp{online} or @samp{offline} to
