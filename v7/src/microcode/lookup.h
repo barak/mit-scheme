@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.h,v 9.46 1992/01/15 04:28:52 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.h,v 9.47 1992/02/27 18:31:48 mhwu Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -182,7 +182,8 @@ extern SCHEME_OBJECT
 }
 
 #ifndef Future_Variable_Splice
-#define Future_Variable_Splice(Vbl, Ofs, Val)
+/* Parameter list (Vbl, Ofs, Value) displeased some compilers */
+#define Future_Variable_Splice(a, b, c) 
 #endif
 
 /* SCHEME_OBJECT *cell, env, *hunk; */
