@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.45 2003/03/07 19:09:22 cph Exp $
+$Id: defstr.scm,v 14.46 2003/03/08 02:02:50 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,1997,2000 Massachusetts Institute of Technology
@@ -589,7 +589,7 @@ differences:
   (original option/original))
 
 (define-record-type <slot>
-    (make-slot name default type read-only? index)
+  (make-slot name default type read-only?)
     slot?
   (name slot/name)
   (default slot/default)

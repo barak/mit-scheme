@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.29 2003/03/07 21:16:27 cph Exp $
+$Id: port.scm,v 1.30 2003/03/08 02:03:47 cph Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
@@ -173,8 +173,7 @@ USA.
     port?
   (type port/type)
   (state %port/state %set-port/state!)
-  (thread-mutex port/thread-mutex)
-  (thread-mutex set-port/thread-mutex!))
+  (thread-mutex port/thread-mutex set-port/thread-mutex!))
 
 (define (port/state port)
   (%port/state (base-port port)))
