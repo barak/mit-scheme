@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.37 1991/04/23 06:44:29 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.38 1991/04/26 03:14:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -221,18 +221,18 @@ If you exit (C-G or ESC), you can resume the query-replace
 with the command \\[tags-loop-continue].
 
 See documentation of variable tags-file-name."
-  (lambda () (replace-string-arguments "Tags query replace"))
-  (lambda (source target replace-words-only?)
+  (lambda ()
+    (let ((source (prompt-for-string "Tags query replace (regexp)" false)))
+      (list source
+	    (prompt-for-string
+	     (string-append "Tags query replace " source " with")
+	     false)
+	    (command-argument-standard-value))))
+  (lambda (source target delimited)
     (set! tags-loop-continuation
-	  (let ((replacer
-		 (replace-string 'tags-query-replace
-				 replace-words-only?
-				 true
-				 false)))
-	    (lambda ()
-	      (if (replacer source target)
-		  (clear-message)
-		  (tags-loop-start)))))
+	  (lambda ()
+	    (if (not (replace-string source target delimited true true))
+		(tags-loop-start))))
     (set! tags-loop-pathnames (tags-table-pathnames))
     (tags-loop-start)))
 
