@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: class.scm,v 1.2 1997/06/04 22:29:00 cph Exp $
+;;; $Id: class.scm,v 1.3 1997/06/19 20:12:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -112,16 +112,17 @@
   (class/dispatch-tag class))
 
 (define (subclass? c1 c2)
-  ;; A union specializer can't be a subclass of anything, but a class
-  ;; can be a subclass of a union specializer.
   (guarantee-class c1 'SUBCLASS?)
-  (if (union-specializer? c2)
-      (there-exists? (union-specializer-classes c2)
-	(lambda (c2)
-	  (memq c2 (class/precedence-list c1))))
-      (begin
-	(guarantee-class c2 'SUBCLASS?)
-	(memq c2 (class/precedence-list c1)))))
+  (cond ((class? c2)
+	 (memq c2 (class/precedence-list c1)))
+	((record-type? c2)
+	 (memq (record-type-class c2) (class/precedence-list c1)))
+	((union-specializer? c2)
+	 (there-exists? (union-specializer-classes c2)
+	   (lambda (c2)
+	     (memq c2 (class/precedence-list c1)))))
+	(else
+	 (error:wrong-type-argument c2 "specializer" 'SUBCLASS?))))
 
 (define (guarantee-class class name)
   (if (not (class? class))
