@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.21 1993/12/17 22:20:37 cph Exp $
+@comment $Id: user.texinfo,v 1.22 1993/12/17 22:36:50 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -349,7 +349,7 @@ This section describes how to install MIT Scheme on DOS, Windows 3.1, and
 Windows NT.  We would prefer that the Windows version be used,
 rather than the DOS version, because we intend to maintain the DOS
 version only so long as it is convenient.  For the most part the
-installation any of these platforms uses the same files, and the
+installation on any of these platforms uses the same files, and the
 procedure is similar.  It is possible to install MIT Scheme so that it
 will run under all three operating systems on one computer, but this
 does require some care with the configuration of the system.
