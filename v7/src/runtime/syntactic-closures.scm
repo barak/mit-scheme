@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: syntactic-closures.scm,v 14.7 2002/02/22 01:35:12 cph Exp $
+;;; $Id: syntactic-closures.scm,v 14.8 2002/03/01 05:43:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -45,19 +45,21 @@
   (if (not (list? forms))
       (error:wrong-type-argument forms "list" 'SYNTAX*))
   (guarantee-syntactic-environment environment 'SYNTAX*)
-  (fluid-let ((*rename-suffix* 0))
-    (if (syntactic-environment/top-level? environment)
-	(let ((environment (make-top-level-syntactic-environment environment)))
-	  (compile-body-items/top-level
-	   (classify/body-forms forms
-				environment
-				environment
-				(make-top-level-history forms environment)
-				select-object)))
-	(output/sequence
-	 (compile/expressions forms
-			      environment
-			      (make-top-level-history forms environment))))))
+  (fluid-let ((*rename-database* (initial-rename-database)))
+    (output/post-process-expression
+     (if (syntactic-environment/top-level? environment)
+	 (let ((environment
+		(make-top-level-syntactic-environment environment)))
+	   (compile-body-items/top-level
+	    (classify/body-forms forms
+				 environment
+				 environment
+				 (make-top-level-history forms environment)
+				 select-object)))
+	 (output/sequence
+	  (compile/expressions forms
+			       environment
+			       (make-top-level-history forms environment)))))))
 
 (define (compile-item/top-level item)
   (if (binding-item? item)
@@ -1152,7 +1154,7 @@
      (expander
       (lambda rest
 	(apply syntax-error history rest))))))
-
+
 (define (flatten-body-items items)
   (append-map item->list items))
 
@@ -1160,44 +1162,6 @@
   (if (body-item? item)
       (flatten-body-items (body-item/components item))
       (list item)))
-
-(define *rename-suffix*)
-
-(define (make-rename-state)
-  (delay
-    (let ((n (+ *rename-suffix* 1)))
-      (set! *rename-suffix* n)
-      (number->string n))))
-
-(define (rename-identifier identifier state)
-  (if (interned-symbol? identifier)
-      (string->symbol
-       (string-append "."
-		      (symbol->string identifier)
-		      "."
-		      (force state)))
-      (intern
-       (string-append "."
-		      (symbol->string (identifier->symbol identifier))
-		      "."
-		      (number->string (hash identifier))
-		      "-"
-		      (force state)))))
-
-(define (make-name-generator)
-  (let ((state (make-rename-state)))
-    (lambda (identifier)
-      (rename-identifier identifier state))))
-
-(define (rename-top-level-identifier identifier)
-  (if (symbol? identifier)
-      identifier
-      (intern
-       (string-append "."
-		      (symbol->string (identifier->symbol identifier))
-		      "."
-		      (number->string (hash identifier))
-		      "-0"))))
 
 (define (reverse-syntactic-environments environment procedure)
   (capture-syntactic-environment
