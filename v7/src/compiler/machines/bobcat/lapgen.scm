@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.4 1988/04/22 16:23:56 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.5 1988/05/03 01:04:25 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -311,8 +311,10 @@ MIT in each case. |#
 		 ,effective-address))
       (INST (MOV B (& ,type-code) ,effective-address))))
 	     
-(define fixnum-constant primitive-datum)
-
+(define (fixnum-constant x)
+  (if (<= (abs x) maximum-positive-fixnum)
+      x
+      (error "Not a fixnum" x)))
 
 (define (fixnum-expression? expression)
 ;;; input: an rtl expression
