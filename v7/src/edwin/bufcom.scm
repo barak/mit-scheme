@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.88 1991/05/07 03:10:30 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.89 1991/05/14 02:26:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -184,11 +184,12 @@ Reads the new name in the echo area."
     (rename-buffer (current-buffer) name)))
 
 (define-command normal-mode
-  "Reset mode and local variable bindings to their default values.
-Just like what happens when the file is first visited."
+  "Choose the major mode for this buffer automatically.
+Also sets up any specified local variables of the file.
+Uses the visited file name, the -*- line, and the local variables spec."
   ()
   (lambda ()
-    (initialize-buffer! (current-buffer))))
+    (normal-mode (current-buffer) false)))
 
 (define (save-buffer-changes buffer)
   (if (and (buffer-pathname buffer)

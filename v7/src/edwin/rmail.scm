@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.1 1991/05/08 22:51:35 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.2 1991/05/14 02:28:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -158,7 +158,7 @@ w	Edit the current message.  C-c C-c to return to Rmail."
   (let ((buffer (current-buffer)))
     (local-set-variable! mode-line-modified "--- ")
     (local-set-variable! version-control 'NEVER)
-    ;;(local-set-variable! file-precious-flag true)
+    (local-set-variable! file-precious-flag true)
     (local-set-variable! require-final-newline false)
     (local-set-variable! rmail-last-file (ref-variable rmail-last-file))
     (local-set-variable!

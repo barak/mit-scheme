@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.110 1991/05/06 00:57:03 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.111 1991/05/14 02:26:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -261,7 +261,7 @@ With argument, saves visited file first."
 With prefix arg, silently save all file-visiting buffers, then kill."
   "P"
   (lambda (no-confirmation?)
-    (save-some-buffers no-confirmation?)
+    (save-some-buffers no-confirmation? true)
     (if (prompt-for-yes-or-no? "Kill Scheme")
 	(begin
 	  (set! edwin-finalization
@@ -275,7 +275,7 @@ With prefix arg, silently save all file-visiting buffers, then kill."
 With prefix arg, silently save all file-visiting buffers, then kill."
   "P"
   (lambda (no-confirmation?)
-    (save-some-buffers no-confirmation?)
+    (save-some-buffers no-confirmation? true)
     (if (and (or (not (there-exists? (buffer-list)
 			(lambda (buffer)
 			  (and (buffer-modified? buffer)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.152 1991/05/08 22:49:53 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.153 1991/05/14 02:27:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -58,7 +58,9 @@
 (define (find-file-noselect filename warn?)
   (let ((pathname (pathname->absolute-pathname (->pathname filename))))
     (if (file-directory? pathname)
-	(make-dired-buffer (pathname-as-directory pathname))
+	(if (ref-variable find-file-run-dired)
+	    (make-dired-buffer (pathname-as-directory pathname))
+	    (editor-error (pathname->string pathname) " is a directory."))
 	(let ((buffer (pathname->buffer pathname)))
 	  (if buffer
 	      (begin
@@ -67,6 +69,11 @@
 	      (let ((buffer (new-buffer (pathname->buffer-name pathname))))
 		(visit-file buffer pathname)
 		buffer))))))
+
+(define-variable find-file-run-dired
+  "True says run dired if find-file is given the name of a directory."
+  true
+  boolean?)
 
 (define (find-file-revert buffer)
   (if (not (verify-visited-file-modification-time? buffer))
@@ -189,8 +196,17 @@ Argument means don't offer to use auto-save file."
 
 (define (read-buffer-interactive buffer pathname visit?)
   (let ((truename
-	 (catch-file-errors (lambda () false)
-			    (lambda () (read-buffer buffer pathname visit?)))))
+	 (catch-file-errors
+	  (lambda ()
+	    (if visit?
+		(let loop
+		    ((hooks (ref-variable find-file-not-found-hooks buffer)))
+		  (if (and (not (null? hooks))
+			   (not ((car hooks) buffer)))
+		      (loop (cdr hooks)))))
+	    false)
+	  (lambda ()
+	    (read-buffer buffer pathname visit?)))))
     (let ((pathname (or truename pathname)))
       (let ((msg
 	     (cond ((file-writable? pathname)
@@ -207,14 +223,29 @@ Argument means don't offer to use auto-save file."
 	    (message msg))))
     truename))
 
+(define-variable find-file-not-found-hooks
+  "List of procedures to be called for find-file on nonexistent file.
+These functions are called as soon as the error is detected.
+The functions are called in the order given,
+until one of them returns non-false."
+  '()
+  list?)
+
 (define (after-find-file buffer pathname)
   (if (file-writable? pathname)
       (set-buffer-writeable! buffer)
       (set-buffer-read-only! buffer))
   (setup-buffer-auto-save! buffer)
-  (initialize-buffer! buffer)
+  (normal-mode buffer true)
+  (event-distributor/invoke! (ref-variable find-file-hooks buffer))
   (load-find-file-initialization buffer pathname))
 
+(define-variable find-file-hooks
+  "Event distributor to be invoked after a buffer is loaded from a file.
+The buffer's local variables (if any) will have been processed before the
+invocation."
+  (make-event-distributor))
+
 (define (load-find-file-initialization buffer pathname)
   (let ((filename (os/find-file-initialization-filename pathname)))
     (if (and filename (file-exists? filename))
@@ -290,13 +321,6 @@ If `trim-versions-without-asking' is false, system will query user
 		   ((64) 'BACKUP-BOTH)
 		   (else false)))))
 
-(define-command save-some-buffers
-  "Saves some modified file-visiting buffers.  Asks user about each one.
-With argument, saves all with no questions."
-  "P"
-  (lambda (no-confirmation?)
-    (save-some-buffers no-confirmation?)))
-
 (define (save-buffer buffer backup-mode)
   (if (buffer-modified? buffer)
       (begin
@@ -312,26 +336,47 @@ With argument, saves all with no questions."
 		     "..."))
 	(write-buffer-interactive buffer backup-mode))
       (message "(No changes need to be written)")))
+
+(define-command save-some-buffers
+  "Saves some modified file-visiting buffers.  Asks user about each one.
+With argument, saves all with no questions."
+  "P"
+  (lambda (no-confirmation?)
+    (save-some-buffers no-confirmation? false)))
 
-(define (save-some-buffers #!optional no-confirmation?)
+(define (save-some-buffers no-confirmation? exiting?)
   (let ((buffers
-	 (list-transform-positive (buffer-list)
-	   (lambda (buffer)
-	     (and (buffer-modified? buffer)
-		  (buffer-pathname buffer))))))
+	 (let ((exiting? (and (not (default-object? exiting?)) exiting?)))
+	   (list-transform-positive (buffer-list)
+	     (lambda (buffer)
+	       (and (buffer-modified? buffer)
+		    (or (buffer-pathname buffer)
+			(and exiting?
+			     (ref-variable buffer-offer-save buffer)
+			     (> (buffer-length buffer) 0)))))))))
     (if (null? buffers)
-	(temporary-message "(No files need saving)")
+	(message "(No files need saving)")
 	(for-each (if (and (not (default-object? no-confirmation?))
 			   no-confirmation?)
 		      (lambda (buffer)
 			(write-buffer-interactive buffer false))
 		      (lambda (buffer)
 			(if (prompt-for-confirmation?
-			     (string-append
-			      "Save file "
-			      (pathname->string (buffer-pathname buffer))))
+			     (let ((pathname (buffer-pathname buffer)))
+			       (if pathname
+				   (string-append "Save file "
+						  (pathname->string pathname))
+				   (string-append "Save buffer "
+						  (buffer-name buffer)))))
 			    (write-buffer-interactive buffer false))))
 		  buffers))))
+
+(define-variable-per-buffer buffer-offer-save
+  "True in a buffer means offer to save the buffer on exit
+even if the buffer is not visiting a file.  Automatically local in
+all buffers."
+  false
+  boolean?)
 
 (define-command set-visited-file-name
   "Change name of file visited in current buffer.

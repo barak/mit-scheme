@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.15 1991/04/21 00:52:35 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.16 1991/05/14 02:28:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -46,6 +46,41 @@
 
 (declare (usual-integrations))
 
+(define-variable backup-by-copying-when-linked
+  "True means use copying to create backups for files with multiple names.
+This causes the alternate names to refer to the latest version as edited.
+This variable is relevant only if  backup-by-copying  is false."
+  false
+  boolean?)
+
+(define-variable backup-by-copying-when-mismatch
+  "True means create backups by copying if this preserves owner or group.
+Renaming may still be used (subject to control of other variables)
+when it would not result in changing the owner or group of the file;
+that is, for files which are owned by you and whose group matches
+the default for a new file created there by you.
+This variable is relevant only if  Backup By Copying  is false."
+  false
+  boolean?)
+
+(define-variable version-control
+  "Control use of version numbers for backup files.
+#T means make numeric backup versions unconditionally.
+#F means make them for files that have some already.
+'NEVER means do not make them."
+  false)
+
+(define-variable kept-old-versions
+  "Number of oldest versions to keep when a new numbered backup is made."
+  2
+  exact-nonnegative-integer?)
+
+(define-variable kept-new-versions
+  "Number of newest versions to keep when a new numbered backup is made.
+Includes the new backup.  Must be > 0."
+  2
+  (lambda (n) (and (exact-integer? n) (> n 0))))
+
 (define (os/trim-pathname-string string)
   (let ((end (string-length string)))
     (let loop ((index end))
@@ -62,6 +97,12 @@
 	      (else
 	       (loop (-1+ slash))))))))
 
+(define (os/pathname->display-string pathname)
+  (let ((relative (pathname-relative? pathname (home-directory-pathname))))
+    (if relative
+	(string-append "~/" (pathname->string relative))
+	(pathname->string pathname))))
+
 (define (os/auto-save-pathname pathname buffer)
   (let ((wrap
 	 (lambda (name directory)
@@ -73,42 +114,8 @@
 	(wrap (pathname-name-string pathname)
 	      (pathname-directory-path pathname)))))
 
-(define (os/pathname->display-string pathname)
-  (let ((relative (pathname-relative? pathname (home-directory-pathname))))
-    (if relative
-	(string-append "~/" (pathname->string relative))
-	(pathname->string pathname))))
-
-(define-variable backup-by-copying-when-linked
-  "*Non-false means use copying to create backups for files with multiple names.
-This causes the alternate names to refer to the latest version as edited.
-This variable is relevant only if  Backup By Copying  is false."
- false)
-
-(define-variable backup-by-copying-when-mismatch
-  "*Non-false means create backups by copying if this preserves owner or group.
-Renaming may still be used (subject to control of other variables)
-when it would not result in changing the owner or group of the file;
-that is, for files which are owned by you and whose group matches
-the default for a new file created there by you.
-This variable is relevant only if  Backup By Copying  is false."
-  false)
-
-(define-variable version-control
-  "*Control use of version numbers for backup files.
-#T means make numeric backup versions unconditionally.
-#F means make them for files that have some already.
-'NEVER means do not make them."
-  false)
-
-(define-variable kept-old-versions
-  "*Number of oldest versions to keep when a new numbered backup is made."
-  2)
-
-(define-variable kept-new-versions
-  "*Number of newest versions to keep when a new numbered backup is made.
-Includes the new backup.  Must be > 0"
-  2)
+(define (os/precious-backup-pathname pathname)
+  (string->pathname (string-append (pathname->string pathname) "#")))
 
 (define (os/backup-buffer? truename)
   (and (memv (string-ref (vector-ref (file-attributes truename) 8) 0)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.98 1991/05/02 01:13:09 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.99 1991/05/14 02:27:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -48,6 +48,11 @@
 
 ;;;; Input
 
+(define-variable read-file-message
+  "If true, messages are displayed when files are read into the editor."
+  false
+  boolean?)
+
 (define (read-buffer buffer pathname visit?)
   (set-buffer-writeable! buffer)
   (let ((truename (pathname->input-truename pathname)))
@@ -69,10 +74,6 @@
 	  (undo-done! (buffer-point buffer))))
     truename))
 
-(define (initialize-buffer! buffer)
-  (initialize-buffer-modes! buffer)
-  (initialize-buffer-local-variables! buffer))
-
 (define (insert-file mark filename)
   (%insert-file
    mark
@@ -82,22 +83,16 @@
 	   (editor-error "File " (pathname->string pathname) " not found"))
        truename))))
 
-(define-variable read-file-message
-  "If true, messages are displayed when files are read into the editor."
-  false)
-
 (define (%insert-file mark truename)
-  (let ((doit
-	 (lambda ()
-	   (group-insert-file! (mark-group mark) (mark-index mark) truename))))
-    (if (ref-variable read-file-message)
-	(begin
-	  (temporary-message "Reading file \""
-			     (pathname->string truename)
-			     "\"")
-	  (doit)
-	  (append-message " -- done"))
-	(doit))))
+  (if (ref-variable read-file-message)
+      (let ((msg
+	     (string-append "Reading file \""
+			    (pathname->string truename)
+			    "\"...")))
+	(temporary-message msg)
+	(group-insert-file! (mark-group mark) (mark-index mark) truename)
+	(temporary-message msg "done"))
+      (group-insert-file! (mark-group mark) (mark-index mark) truename)))
 
 (define (group-insert-file! group index truename)
   (let ((channel (file-open-input-channel (pathname->string truename))))
@@ -107,10 +102,7 @@
 	 (move-gap-to! group index)
 	 (guarantee-gap-length! group length)))
       (let ((n
-	     (channel-read channel
-			   (group-text group)
-			   index
-			   (+ index length))))
+	     (channel-read channel (group-text group) index (+ index length))))
 	(without-interrupts
 	 (lambda ()
 	   (let ((gap-start* (fix:+ index n)))
@@ -131,6 +123,10 @@
 	n))))
 
 ;;;; Buffer Mode Initialization
+
+(define (normal-mode buffer find-file?)
+  (initialize-buffer-modes! buffer)
+  (initialize-buffer-local-variables! buffer find-file?))
 
 (define initialize-buffer-modes!)
 (let ()
@@ -186,13 +182,22 @@
 (define-variable local-variable-search-limit
   "The maximum number of characters searched when looking for local variables
 at the end of a file."
-  3000)
+  3000
+  exact-nonnegative-integer?)
+
+(define-variable inhibit-local-variables
+  "True means query before obeying a file's local-variables list.
+This applies when the local-variables list is scanned automatically
+after you find a file.  If you explicitly request such a scan with
+\\[normal-mode], there is no query, regardless of this variable."
+  false
+  boolean?)
 
 (define initialize-buffer-local-variables!)
 (let ()
 
 (set! initialize-buffer-local-variables!
-(named-lambda (initialize-buffer-local-variables! buffer)
+(named-lambda (initialize-buffer-local-variables! buffer find-file?)
   (let ((end (buffer-end buffer)))
     (let ((start
 	   (with-text-clipped
@@ -201,9 +206,15 @@ at the end of a file."
 	    (lambda () (backward-one-page end)))))
       (if start
 	  (if (re-search-forward "Edwin Variables:[ \t]*" start end true)
-	      (parse-local-variables buffer
-				     (re-match-start 0)
-				     (re-match-end 0))))))))
+	      (let ((start (re-match-start 0))
+		    (end (re-match-end 0)))
+		(if (or (not find-file?)
+			(not (ref-variable inhibit-local-variables buffer))
+			(prompt-for-confirmation?
+			 (string-append
+			  "Set local variables as specified at end of "
+			  (pathname-name-string (buffer-pathname buffer)))))
+		    (parse-local-variables buffer start end)))))))))
 
 (define (evaluate sexp)
   (scode-eval (syntax sexp system-global-syntax-table)
@@ -222,13 +233,12 @@ at the end of a file."
       (define (do-line start end)
 	(define (check-suffix mark)
 	  (if (and suffix? (not (match-forward suffix mark)))
-	      (editor-error "Local variables entry is missing the suffix")))
+	      (editor-error "Local variables entry missing suffix")))
 	(let ((m1
 	       (horizontal-space-end
 		(if prefix?
 		    (or (match-forward prefix start end false)
-			(editor-error
-			 "Local variables entry is missing the prefix"))
+			(editor-error "Local variables entry missing prefix"))
 		    start))))
 	  (let ((m2
 		 (let ((m2 (char-search-forward #\: m1 end)))
@@ -242,9 +252,9 @@ at the end of a file."
 		    (lambda (val m4)
 		      (check-suffix (horizontal-space-end m4))
 		      (if (string-ci=? var "Mode")
-			  (let ((mode (string-table-get
-				       editor-modes
-				       (extract-string m3 m4))))
+			  (let ((mode
+				 (string-table-get editor-modes
+						   (extract-string m3 m4))))
 			    (if mode
 				((if (mode-major? mode)
 				     set-buffer-major-mode!
@@ -277,7 +287,6 @@ at the end of a file."
 
       (loop start))))
 
-
 )
 
 ;;;; Output
@@ -286,10 +295,11 @@ at the end of a file."
   "True says silently put a newline at the end whenever a file is saved.
 Neither false nor true says ask user whether to add a newline in each
 such case.  False means don't add newlines."
-  false)
+  false
+  boolean?)
 
 (define-variable make-backup-files
-  "*Create a backup of each file when it is saved for the first time.
+  "Create a backup of each file when it is saved for the first time.
 This can be done by renaming the file or by copying.
 
 Renaming means that Edwin renames the existing file so that it is a
@@ -305,17 +315,33 @@ The file's owner and group are unchanged.
 The choice of renaming or copying is controlled by the variables
 backup-by-copying ,  backup-by-copying-when-linked  and
 backup-by-copying-when-mismatch ."
-  true)
+  true
+  boolean?)
 
 (define-variable backup-by-copying
-  "*True means always use copying to create backup files.
+  "True means always use copying to create backup files.
 See documentation of variable  make-backup-files."
- false)
+ false
+  boolean?)
+
+(define-variable file-precious-flag
+  "True means protect against I/O errors while saving files.
+Some modes set this true in particular buffers."
+  false
+  boolean?)
 
 (define-variable trim-versions-without-asking
-  "*If true, deletes excess backup versions silently.
+  "True means delete excess backup versions silently.
 Otherwise asks confirmation."
-  false)
+  false
+  boolean?)
+
+(define-variable write-file-hooks
+  "List of procedures to be called before writing out a buffer to a file.
+If one of them returns non-false, the file is considered already written
+and the rest are not called."
+  '()
+  list?)
 
 (define (write-buffer-interactive buffer backup-mode)
   (let ((truename (pathname->output-truename (buffer-pathname buffer))))
@@ -335,21 +361,57 @@ Otherwise asks confirmation."
 		(editor-error "Save not confirmed"))
 	    (let ((modes (backup-buffer! buffer truename backup-mode)))
 	      (require-newline buffer)
-	      (if (not (or writable? modes))
-		  (begin
-		    (set! modes (file-modes truename))
-		    (set-file-modes! truename #o777)))
-	      (write-buffer buffer)
+	      (cond ((let loop ((hooks (ref-variable write-file-hooks buffer)))
+		       (and (not (null? hooks))
+			    (or ((car hooks) buffer)
+				(loop (cdr hooks)))))
+		     unspecific)
+		    ((ref-variable file-precious-flag buffer)
+		     (let ((old (os/precious-backup-pathname truename)))
+		       (let ((rename-back?
+			      (catch-file-errors (lambda () false)
+				(lambda ()
+				  (rename-file truename old)
+				  (set! modes (file-modes old))
+				  true))))
+			 (dynamic-wind
+			  (lambda () unspecific)
+			  (lambda ()
+			    (clear-visited-file-modification-time! buffer)
+			    (write-buffer buffer)
+			    (if rename-back?
+				(begin
+				  (set! rename-back? false)
+				  (catch-file-errors
+				   (lambda () unspecific)
+				   (lambda () (delete-file old))))))
+			  (lambda ()
+			    (if rename-back?
+				(begin
+				  (rename-file old truename)
+				  (clear-visited-file-modification-time!
+				   buffer))))))))
+		    (else
+		     (if (and (not writable?)
+			      (not modes)
+			      (file-exists? truename))
+			 (bind-condition-handler
+			     (list condition-type:file-error)
+			     (lambda (condition)
+			       condition
+			       (editor-error
+				"Can't get write permission for file: "
+				(pathname->string truename)))
+			   (lambda ()
+			     (let ((m (file-modes truename)))
+			       (set-file-modes! truename #o777)
+			       (set! modes m)))))
+		     (write-buffer buffer)))
 	      (if modes
-		  (call-with-current-continuation
-		   (lambda (continuation)
-		     (bind-condition-handler (list condition-type:error)
-			 (lambda (condition)
-			   condition
-			   (continuation unspecific))
-		       (lambda ()
-			 (set-file-modes! truename modes))))))))))))
-
+		  (catch-file-errors
+		   (lambda () unspecific)
+		   (lambda () (set-file-modes! truename modes))))))))))
+
 (define (verify-visited-file-modification-time? buffer)
   (let ((truename (buffer-truename buffer))
 	(buffer-time (buffer-modification-time buffer)))
@@ -359,7 +421,7 @@ Otherwise asks confirmation."
 	  (and file-time
 	       (< (abs (- buffer-time file-time)) 2))))))
 
-(define (clear-visited-file-modification-time! buffer)
+(define-integrable (clear-visited-file-modification-time! buffer)
   (set-buffer-modification-time! buffer false))
 
 (define (write-buffer buffer)
@@ -378,46 +440,49 @@ Otherwise asks confirmation."
 					 (file-modification-time truename))))))
 
 (define-variable enable-emacs-write-file-message
-  "If true, generate Emacs-style message when writing files."
-  true
+  "If true, generate Emacs-style message when writing files.
+Otherwise, a message is written both before and after long file writes."
+  false
   boolean?)
 
 (define (write-region region filename message?)
-  (let ((filename (canonicalize-output-filename filename)))
+  (let ((filename (canonicalize-output-filename filename))
+	(start (region-start-index region))
+	(end (region-end-index region)))
     (let ((do-it
 	   (lambda ()
-	     (group-write-to-file (region-group region)
-				  (region-start-index region)
-				  (region-end-index region)
-				  filename))))
+	     (group-write-to-file (region-group region) start end filename))))
       (cond ((not message?)
 	     (do-it))
-	    ((ref-variable enable-emacs-write-file-message)
+	    ((or (ref-variable enable-emacs-write-file-message)
+		 (< (- end start) 50000))
 	     (do-it)
 	     (message "Wrote " filename))
 	    (else
-	     (temporary-message "Writing file \"" filename "\"")
-	     (do-it)
-	     (append-message " -- done"))))
+	     (let ((msg (string-append "Writing file " filename "...")))
+	       (message msg)
+	       (do-it)
+	       (message msg "done")))))
     filename))
 
 (define (append-to-file region filename message?)
-  (let ((filename (canonicalize-overwrite-filename filename)))
+  (let ((filename (canonicalize-overwrite-filename filename))
+	(start (region-start-index region))
+	(end (region-end-index region)))
     (let ((do-it
 	   (lambda ()
-	     (group-append-to-file (region-group region)
-				   (region-start-index region)
-				   (region-end-index region)
-				   filename))))
+	     (group-append-to-file (region-group region) start end filename))))
       (cond ((not message?)
 	     (do-it))
-	    ((ref-variable enable-emacs-write-file-message)
+	    ((or (ref-variable enable-emacs-write-file-message)
+		 (< (- end start) 50000))
 	     (do-it)
 	     (message "Wrote " filename))
 	    (else
-	     (temporary-message "Writing file \"" filename "\"")
-	     (do-it)
-	     (append-message " -- done"))))
+	     (let ((msg (string-append "Writing file " filename "...")))
+	       (message msg)
+	       (do-it)
+	       (message msg "done")))))
     filename))
 
 (define (group-write-to-file group start end filename)
@@ -488,7 +553,8 @@ Otherwise asks confirmation."
 			  (copy-file truename (string->pathname filename))
 			  false))
 		      (lambda ()
-			(if (or (file-symbolic-link? truename)
+			(if (or (ref-variable file-precious-flag buffer)
+				(file-symbolic-link? truename)
 				(ref-variable backup-by-copying buffer)
 				(os/backup-by-copying? truename))
 			    (begin
