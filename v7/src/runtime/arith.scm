@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.60 2004/10/13 02:02:23 cph Exp $
+$Id: arith.scm,v 1.61 2004/10/13 03:22:40 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1999,2001,2002 Massachusetts Institute of Technology
@@ -467,7 +467,7 @@ USA.
 	    (let ((next-left (integer-divide-quotient split))
 		  (n-digits/2 (fix:quotient n-digits 2)))
 	      (if (and leftmost? (zero? next-left))
-		  (separate true
+		  (separate #t
 			    (integer-divide-remainder split)
 			    rest
 			    n-digits/2
@@ -476,13 +476,13 @@ USA.
 			    next-left
 			    rest
 			    n-digits/2
-			    (separate false
+			    (separate #f
 				      (integer-divide-remainder split)
 				      rest
 				      n-digits/2
 				      tail)))))))
 
-    (separate true value stack digits '()))
+    (separate #t value stack digits '()))
 
   (define (n>0 value)
     (if (fix:fixnum? value)
@@ -496,7 +496,7 @@ USA.
 	      (make-power-stack value split-factor '() split-digits)))))
   
   (cond ((not (int:integer? number))
-	 (error:wrong-type-argument number false 'NUMBER->STRING))
+	 (error:wrong-type-argument number #f 'NUMBER->STRING))
 	((int:negative? number)
 	 (list->string (cons #\- (n>0 (int:negate number)))))
 	(else
@@ -518,11 +518,11 @@ USA.
 	       (int:= (ratnum-denominator q) (ratnum-denominator r)))
 	  (if (int:integer? r)
 	      #f
-	      (error:wrong-type-argument r false '=)))
+	      (error:wrong-type-argument r #f '=)))
       (if (ratnum? r)
 	  (if (int:integer? q)
 	      #f
-	      (error:wrong-type-argument q false '=))
+	      (error:wrong-type-argument q #f '=))
 	  (int:= q r))))
 
 (define (rat:< q r)
@@ -717,12 +717,12 @@ USA.
 (define (rat:numerator q)
   (cond ((ratnum? q) (ratnum-numerator q))
 	((int:integer? q) q)
-	(else (error:wrong-type-argument q false 'NUMERATOR))))
+	(else (error:wrong-type-argument q #f 'NUMERATOR))))
 
 (define (rat:denominator q)
   (cond ((ratnum? q) (ratnum-denominator q))
 	((int:integer? q) 1)
-	(else (error:wrong-type-argument q false 'DENOMINATOR))))
+	(else (error:wrong-type-argument q #f 'DENOMINATOR))))
 
 (define-syntax define-integer-coercion
   (sc-macro-transformer
@@ -966,7 +966,7 @@ USA.
 (define (real:exact? x)
   (and (not (flonum? x))
        (or (rat:rational? x)
-	   (error:wrong-type-argument x false 'EXACT?))))
+	   (error:wrong-type-argument x #f 'EXACT?))))
 
 (define (real:zero? x)
   (if (flonum? x) (flo:zero? x) ((copy rat:zero?) x)))
@@ -1007,7 +1007,7 @@ USA.
   (lambda (q)
     (if (rat:rational? q)
 	q
-	(error:wrong-type-argument q false 'INEXACT->EXACT))))
+	(error:wrong-type-argument q #f 'INEXACT->EXACT))))
 
 (define-syntax define-standard-binary
   (sc-macro-transformer
@@ -1093,7 +1093,7 @@ USA.
    (if (flonum? n)
        (if (flo:integer? n)
 	   (flo:->integer n)
-	   (error:wrong-type-argument n false 'EVEN?))
+	   (error:wrong-type-argument n #f 'EVEN?))
        n)))
 
 (define-syntax define-integer-binary
@@ -1282,7 +1282,7 @@ USA.
 
 (define (rec:real-arg name x)
   (if (not (real:zero? (rec:imag-part x)))
-      (error:wrong-type-argument x false name))
+      (error:wrong-type-argument x #f name))
   (rec:real-part x))
 
 (define (complex:= z1 z2)
@@ -1424,7 +1424,7 @@ USA.
 	((real:real? z)
 	 z)
 	(else
-	 (error:wrong-type-argument z false 'CONJUGATE))))
+	 (error:wrong-type-argument z #f 'CONJUGATE))))
 
 (define (complex:/ z1 z2)
   (if (recnum? z1)
@@ -1742,7 +1742,7 @@ USA.
 	       (rec:real-arg 'MAKE-RECTANGULAR x)
 	       (begin
 		 (if (not (real:real? x))
-		     (error:wrong-type-argument x false 'MAKE-RECTANGULAR))
+		     (error:wrong-type-argument x #f 'MAKE-RECTANGULAR))
 		 x)))))
     ((copy complex:%make-rectangular) (check-arg real) (check-arg imag))))
 
@@ -1762,12 +1762,12 @@ USA.
 (define (complex:real-part z)
   (cond ((recnum? z) (rec:real-part z))
 	((real:real? z) z)
-	(else (error:wrong-type-argument z false 'REAL-PART))))
+	(else (error:wrong-type-argument z #f 'REAL-PART))))
 
 (define (complex:imag-part z)
   (cond ((recnum? z) (rec:imag-part z))
 	((real:real? z) 0)
-	(else (error:wrong-type-argument z false 'IMAG-PART))))
+	(else (error:wrong-type-argument z #f 'IMAG-PART))))
 
 (define (complex:exact->inexact z)
   (if (recnum? z)
@@ -1881,18 +1881,21 @@ USA.
 (define >=)
 
 (define (reduce-comparator binary-comparator numbers procedure)
-  (cond ((null? numbers)
-	 true)
-	((null? (cdr numbers))
-	 (if (not (complex:complex? (car numbers)))
-	     (error:wrong-type-argument (car numbers) false procedure))
-	 true)
-	(else
-	 (let loop ((x (car numbers)) (rest (cdr numbers)))
-	   (or (null? rest)
-	       (let ((y (car rest)))
-		 (and (binary-comparator x y)
-		      (loop y (cdr rest)))))))))
+  (if (pair? numbers)
+      (if (pair? (cdr numbers))
+	  (let loop
+	      ((x (car numbers))
+	       (y (cadr numbers))
+	       (rest (cddr numbers)))
+	    (and (binary-comparator x y)
+		 (if (pair? rest)
+		     (loop y (car rest) (cdr rest))
+		     #t)))
+	  (begin
+	    (if (not (complex:complex? (car numbers)))
+		(error:wrong-type-argument (car numbers) #f procedure))
+	    #t))
+      #t))
 
 (define (odd? n)
   (not (complex:even? n)))
@@ -1908,17 +1911,17 @@ USA.
 (define min)
 
 (define (reduce-max/min max/min x1 xs procedure)
-  (if (null? xs)
-      (begin
-	(if (not (complex:complex? x1))
-	    (error:wrong-type-argument x1 false procedure))
-	x1)
+  (if (pair? xs)
       (let loop ((x1 x1) (xs xs))
 	(let ((x1 (max/min x1 (car xs)))
 	      (xs (cdr xs)))
-	  (if (null? xs)
-	      x1
-	      (loop x1 xs))))))
+	  (if (pair? xs)
+	      (loop x1 xs)
+	      x1)))
+      (begin
+	(if (not (complex:complex? x1))
+	    (error:wrong-type-argument x1 #f procedure))
+	x1)))
 
 (define (number->string z #!optional radix)
   (complex:->string
@@ -1938,11 +1941,10 @@ USA.
 (define (parse-format-tail tail)
   (let loop
       ((tail tail)
-       (exactness-expressed false)
-       (radix false)
-       (radix-expressed false))
-    (if (null? tail)
-	(case radix ((B) 2) ((O) 8) ((#F D) 10) ((X) 16))
+       (exactness-expressed #f)
+       (radix #f)
+       (radix-expressed #f))
+    (if (pair? tail)
 	(let ((modifier (car tail))
 	      (tail (cdr tail)))
 	  (let ((specify-modifier
@@ -1979,6 +1981,11 @@ USA.
 		   (loop tail
 			 exactness-expressed
 			 (specify-modifier radix)
-			 (if (null? (cddr modifier)) 'E (caddr modifier))))
+			 (if (pair? (cddr modifier)) (caddr modifier) 'E)))
 		  (else
-		   (error "Illegal format modifier" modifier))))))))
+		   (error "Illegal format modifier" modifier)))))
+	(case radix
+	  ((B) 2)
+	  ((O) 8)
+	  ((D #F) 10)
+	  ((X) 16)))))
