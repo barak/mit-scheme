@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: notify.scm,v 1.13 1993/11/17 22:23:14 cph Exp $
+;;;	$Id: notify.scm,v 1.14 1994/03/04 21:30:40 cph Exp $
 ;;;
-;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -141,19 +141,17 @@ Ignored if notify-show-mail is false."
 	(cons (ref-variable-object notify-show-time) notifier:time)
 	(cons (ref-variable-object notify-show-load) notifier:load-average)))
 
-(define (update-notify-string! string)
-  (set-variable! notify-string
-		 (if (or (string-null? (ref-variable global-mode-string))
-			 (string-null? string))
-		     string
-		     (string-append " " string)))
+(define (notifier:get-string window)
+  window
+  (string-append-separated notifier-element-string notifier-mail-string))
+
+(define (update-notifier-strings! element mail)
+  (set! notifier-element-string element)
+  (set! notifier-mail-string mail)
   (global-window-modeline-event!))
 
-(define-variable notify-string
-  "This is an internal variable.  Don't change it."
-  ""
-  string?)
-
+(define notifier-element-string "")
+(define notifier-mail-string "")
 (define mail-notify-hook-installed? #f)
 (define current-notifier-thread #f)
 (define notifier-thread-registration #f)
@@ -170,13 +168,15 @@ which can show various things including time, load average, and mail status."
 	  (add-event-receiver!
 	   (ref-variable rmail-new-mail-hook)
 	   (lambda ()
-	     (update-notify-string!
+	     (update-notifier-strings!
+	      notifier-element-string
 	      (if (ref-variable notify-show-mail)
 		  (ref-variable notify-mail-not-present)
 		  ""))))
 	  (set! mail-notify-hook-installed? #t)
 	  unspecific))
     ((ref-command kill-notifier))
+    (set-variable! global-mode-string `("" ,notifier:get-string))
     (let ((thread
 	   (create-thread
 	    editor-thread-root-continuation
@@ -193,16 +193,15 @@ which can show various things including time, load average, and mail status."
     unspecific))
 
 (define (notifier)
-  (set-variable! global-mode-string
-		 (reduce string-append-separated
-			 ""
-			 (map (lambda (element)
-				(if (and (car element)
-					 (variable-value (car element)))
-				    ((cdr element))
-				    ""))
-			      notifier-elements)))
-  (update-notify-string!
+  (update-notifier-strings!
+   (reduce string-append-separated
+	   ""
+	   (map (lambda (element)
+		  (if (and (car element)
+			   (variable-value (car element)))
+		      ((cdr element))
+		      ""))
+		notifier-elements))
    (if (and mail-notify-hook-installed?
 	    (ref-variable notify-show-mail))
        (notifier:mail-present)
@@ -228,4 +227,4 @@ which can show various things including time, load average, and mail status."
 	     (set! notifier-thread-registration #f)))
        unspecific))
     (set-variable! global-mode-string "")
-    (update-notify-string! "")))
+    (update-notifier-strings! "" "")))

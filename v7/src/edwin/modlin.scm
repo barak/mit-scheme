@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: modlin.scm,v 1.16 1993/08/10 06:48:48 cph Exp $
+;;;	$Id: modlin.scm,v 1.17 1994/03/04 21:30:33 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -77,7 +77,6 @@ Decimal digits after the % specify field width to which to pad."
        mode-line-buffer-identification
        "   "
        global-mode-string
-       notify-string
        "   %[(%M%m%n"
        mode-line-process
        ")%]----"
