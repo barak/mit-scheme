@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.13 1991/03/14 04:23:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.14 1991/04/24 23:44:28 cph Exp $
 
-Copyright (c) 1990-1 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -504,8 +504,8 @@ DEFUN (OS_open_pty_master, (master_fd, master_fname),
   struct stat stb;
   register int c;
   register int i;
-  char master_name [24];
-  char slave_name [24];
+  static char master_name [24];
+  static char slave_name [24];
   int fd;
 #ifdef PTY_ITERATION
   PTY_ITERATION
