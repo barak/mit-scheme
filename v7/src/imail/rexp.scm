@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rexp.scm,v 1.9 2000/04/13 17:57:57 cph Exp $
+;;; $Id: rexp.scm,v 1.10 2000/04/13 19:47:34 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -86,7 +86,7 @@
 		      ((and (pair? rexp) (eq? 'SEQUENCE (car rexp)))
 		       (cdr rexp))
 		      ((and (pair? rexp) (eq? 'ALTERNATIVES (car rexp)))
-		       (list (rexp-group rexp)))
+		       (list `(GROUP ,rexp)))
 		      (else
 		       (list rexp))))
 	      rexps))
@@ -104,17 +104,18 @@
   `(+ ,(rexp-groupify (apply rexp-sequence rexps))))
 
 (define (rexp-groupify rexp)
-  (let ((no-group (lambda () (error "Expression can't be grouped:" rexp))))
+  (let ((group (lambda () `(GROUP ,rexp)))
+	(no-group (lambda () (error "Expression can't be grouped:" rexp))))
     (cond ((string? rexp)
 	   (case (string-length rexp)
 	     ((0) (no-group))
 	     ((1) rexp)
-	     (else (rexp-group rexp))))
+	     (else (group))))
 	  ((pair? rexp)
 	   (cond ((memq (car rexp) boundary-rexp-types)
 		  (no-group))
 		 ((memq (car rexp) '(ALTERNATIVES SEQUENCE OPTIONAL * +))
-		  (rexp-group rexp))
+		  (group))
 		 (else rexp)))
 	  (else rexp))))
 
