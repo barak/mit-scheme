@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: version.h,v 11.172 2000/05/01 03:09:10 cph Exp $
+$Id: version.h,v 11.173 2000/05/20 18:59:16 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -33,5 +33,5 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #define VERSION		11
 #endif
 #ifndef SUBVERSION
-#define SUBVERSION	168
+#define SUBVERSION	169
 #endif
