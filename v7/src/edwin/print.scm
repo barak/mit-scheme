@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/print.scm,v 1.10 1992/09/01 20:12:17 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/print.scm,v 1.11 1992/09/02 02:04:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -92,14 +92,8 @@ Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
 		(untabify-region (buffer-start temp-buffer)
 				 (buffer-end temp-buffer)))))
 	(shell-command region (buffer-end temp-buffer) false false
-		       (apply string-append
-			      (ref-variable lpr-command source-buffer)
-			      (let loop ((switches switches))
-				(if (null? switches)
-				    (list "")
-				    (cons* " "
-					   (car switches)
-					   (loop (cdr switches)))))))))
+		       (string-append (ref-variable lpr-command source-buffer)
+				      switches))))
     (append-message "done")))
 
 (define (print-region-switches region print-command?)
@@ -126,19 +120,27 @@ Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
 	(string-append "region from " buffer-title))))
 
 (define (print/assemble-switches title additional-switches)
-  (let ((switches (ref-variable lpr-switches)))
-    (append additional-switches
-	    (let ((job-name (or (print/job-name) title)))
-	      (if job-name
-		  (list (string-append "-J \"" job-name "\""))
-		  '()))
-	    (if (and title
-		     (not (there-exists? switches
-			    (lambda (switch)
-			      (string-prefix? "-T" switch)))))
-		(list (string-append "-T \"" title "\""))
-		'())
-	    switches)))
+  (apply string-append
+	 (let loop
+	     ((switches
+	       (let ((switches (ref-variable lpr-switches)))
+		 (append additional-switches
+			 (let ((job-name (or (print/job-name) title)))
+			   (if job-name
+			       (list (string-append "-J \"" job-name "\""))
+			       '()))
+			 (if (and title
+				  (not (there-exists? switches
+					 (lambda (switch)
+					   (string-prefix? "-T" switch)))))
+			     (list (string-append "-T \"" title "\""))
+			     '())
+			 switches))))
+	   (if (null? switches)
+	       (list "")
+	       (cons* " "
+		      (car switches)
+		      (loop (cdr switches)))))))
 
 (define (print/job-name)
   (and lpr-prompt-for-name?
