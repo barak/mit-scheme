@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.29 1992/09/26 02:48:50 cph Exp $
+$Id: option.c,v 1.30 1992/09/30 02:33:54 jinx Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -342,7 +342,7 @@ The following options are only meaningful to bchscheme:
 /* 386 code is large too! */
 
 #ifndef DEFAULT_SMALL_CONSTANT
-#define DEFAULT_SMALL_CONSTANT 430
+#define DEFAULT_SMALL_CONSTANT 435
 #endif
 
 #ifndef DEFAULT_LARGE_CONSTANT
@@ -350,7 +350,7 @@ The following options are only meaningful to bchscheme:
 #endif
 
 #ifndef DEFAULT_EDWIN_CONSTANT
-#define DEFAULT_EDWIN_CONSTANT 850
+#define DEFAULT_EDWIN_CONSTANT 855
 #endif
 
 #endif /* i386 */
