@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 14.4 1991/08/06 22:12:23 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 14.5 1991/08/08 19:54:07 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -134,7 +134,7 @@ MIT in each case. |#
 ;;; SET-CURRENT-HISTORY! is run.
 
 (define (with-new-history thunk)
-  (with-history-disabled
+  ((ucode-primitive with-history-disabled)
     (lambda ()
       ((ucode-primitive set-current-history!)
        (let ((history
@@ -148,9 +148,7 @@ MIT in each case. |#
 
 	     ;; Otherwise, record a dummy reduction, which will appear
 	     ;; in the history.
-	     (begin (record-evaluation-in-history! history
-						   false
-						   system-global-environment)
+	     (begin (record-dummy-reduction-in-history! history)
 		    (push-history! history)))))
       (thunk))))
 
@@ -204,7 +202,7 @@ MIT in each case. |#
 		  (if (marked-reduction? current)
 		      '()
 		      output)))
-	     (if (dummy-compiler-reduction? current)
+	     (if (dummy-reduction? current)
 		 tail
 		 (cons (list (reduction-expression current)
 			     (reduction-environment current))
@@ -213,10 +211,16 @@ MIT in each case. |#
 	  step
 	  (loop (next-reduction current) step)))))
 
-(define (dummy-compiler-reduction? reduction)
+(define (dummy-reduction? reduction)
   (and (false? (reduction-expression reduction))
        (eq? (ucode-return-address pop-from-compiled-code)
-	    (reduction-environment reduction))))
+	    (reduction-environment reduction))))				 
+
+(define (record-dummy-reduction-in-history! history)
+  (record-evaluation-in-history!
+   history
+   false
+   (ucode-return-address pop-from-compiled-code)))
 
 (define (history-superproblem history)
   (if (null? (cdr history))
