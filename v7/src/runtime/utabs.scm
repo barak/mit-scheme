@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 14.9 1992/05/27 21:51:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 14.10 1992/05/27 22:10:29 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -41,7 +41,7 @@ MIT in each case. |#
   (let ((file-name ((ucode-primitive microcode-tables-filename))))
     (if (file-exists? file-name)
 	(read-microcode-tables! file-name)
-	(let ((new-identification (ucode-primitive microcode-identify)))
+	(let ((new-identification ((ucode-primitive microcode-identify))))
 	  (let ((new-vector (vector-copy new-identification))
 		(old-vector (vector-copy identification-vector)))
 	    (let loop ((fields '(CONSOLE-WIDTH CONSOLE-HEIGHT)))
