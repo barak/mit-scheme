@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.28 1987/12/16 19:38:05 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.29 1987/12/17 04:12:31 cph Exp $ */
 
 /* This file contains procedures for handling vectors and conversion
    back and forth to lists. */
@@ -290,7 +290,7 @@ DEFINE_PRIMITIVE ("SYSTEM-LIST-TO-VECTOR", Prim_Sys_List_To_Vector, 2)
   VECTOR_TOUCH (vector1);						\
   start1 = (arg_nonnegative_integer (2));				\
   end1 = (arg_nonnegative_integer (3));					\
-  vector2 = (ARG_VECTOR (2));						\
+  vector2 = (ARG_VECTOR (4));						\
   VECTOR_TOUCH (vector2);						\
   start2 = (arg_nonnegative_integer (5));				\
 									\
