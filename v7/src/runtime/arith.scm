@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.9 1989/11/15 02:46:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.10 1989/11/30 07:52:42 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -238,9 +238,10 @@ MIT in each case. |#
 	    (positive-case n d)))))
 
 (define (int:expt b e)
-  (cond ((or (int:zero? b) (int:= 1 b)) 1)
-	((int:positive? e)
-	 (if (int:= 1 e)
+  (cond ((int:positive? e)
+	 (if (or (int:= 1 e)
+		 (int:zero? b)
+		 (int:= 1 b))
 	     b
 	     (let loop ((b b) (e e) (answer 1))
 	       (let ((qr (int:divide e 2)))
@@ -1365,20 +1366,28 @@ MIT in each case. |#
 ;;;  This is ensured if z is in quadrants III or IV.
 
 (define (complex:asin z)
-  (if (recnum? z)
-      (let ((safe-case
-	     (lambda (z)
-	       (complex:-i*
-		(complex:log
-		 (complex:+ (complex:+i* z)
-			    (complex:sqrt (complex:- 1 (complex:* z z)))))))))
-	(if (let ((imag (rec:imag-part z)))
-	      (or (real:positive? imag)		;get out of Q I and II
-		  (and (real:zero? imag)	;and stay off negative reals
-		       (real:negative? (rec:real-part z)))))
-	    (complex:negate (safe-case (complex:negate z)))
-	    (safe-case z)))
-      ((copy real:asin) z)))
+  (let ((safe-case
+	 (lambda (z)
+	   (complex:-i*
+	    (complex:log
+	     (complex:+ (complex:+i* z)
+			(complex:sqrt (complex:- 1 (complex:* z z)))))))))
+    (let ((unsafe-case
+	   (lambda (z)
+	     (complex:negate (safe-case (complex:negate z))))))
+      (cond ((recnum? z)
+	     (if (let ((imag (rec:imag-part z)))
+		   (or (real:positive? imag)	;get out of Q I and II
+		       (and (real:zero? imag)	;and stay off negative reals
+			    (real:negative? (rec:real-part z)))))
+		 (unsafe-case z)
+		 (safe-case z)))
+	    ((real:< z -1)
+	     (unsafe-case z))
+	    ((real:< 1 z)
+	     (safe-case z))
+	    (else
+	     ((copy real:asin) z))))))
 
 (define (complex:acos z)
   (if (recnum? z)
