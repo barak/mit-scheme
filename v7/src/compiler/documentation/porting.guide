@@ -1,15 +1,20 @@
 Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.2 1991/02/21 21:59:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.3 1991/02/22 22:51:31 jinx Exp $
 
 
 			LIAR PORTING GUIDE
 			(Very Preliminary)
 
 
-Note: This porting guide applies to Liar version 4.78, but most of the
+Notes: 
+
+This porting guide applies to Liar version 4.78, but most of the
 relevant information has not changed for a while, nor is it likely to
 change in a while.
+
+Text preceded with *** is meant mostly for the compiler developers and
+for the people writing this document.
 
 For questions on Liar not covered by this document, or questions about
 this document, contact liar-implementors@zurich.ai.mit.edu .
@@ -28,6 +33,10 @@ and help of the now-extinct BBN Butterfly Lisp group that included Don
 Allen, Seth Steinberg, Larry Stabile, and Anthony Courtemanche.  Don
 Allen, in particular, babysat computers to painstakingly bootstrap the
 first version of the new Liar.
+
+Many of the ideas and algorithms used in Liar, and in particular at
+the RTL level, are taken from the GNU C compiler, written by Richard
+Stallman and many others.
 
 This document was written by Bill Rozas, with modifications and hints
 from the people listed above.
@@ -51,7 +60,7 @@ Liar is a multi-pass compiler, where each major pass has multiple
 subpasses.  Many of the subpasses do not manipulate the whole code
 graph, but instead follow threads that link the relevant parts of the
 graph.
-
+
 Compile-Scode is the main entry point to Liar, although CF is the
 usual entry point.  CF uses COMPILE-SCODE, and assumes that the code
 has been syntaxed by SF producing a .bin file, and dumps the resulting
@@ -262,9 +271,9 @@ major changes.  This assumption conflicts with some current hardware
 that has programmer-visible split data and instruction caches, but
 most of these problems can be resolved if the user is given enough
 control over flushing of the hardware caches.  At some point in the
-future we may provide a C back end for Liar which will resolve some of
-these problems.  Whatever technique the C back end may use can
-probably be emulated by architectures with such a strong division.
+future we may provide a C back end for Liar that solves some of these
+problems.  Whatever technique the C back end may use can probably be
+emulated by architectures with such a strong division.
 
 - Liar assumes that the target machine is a general-register machine.
 Ie. operations are based on processor registers, and there is a
@@ -310,7 +319,7 @@ decoding the address must be cheap as well.  These operations are
 relatively cheap on architectures with bit-field instructions, but
 more expensive if they must be emulated with bitwise boolean
 operations and shifts, as on the MIPS R3000.
-
+
 C. Emulating an existing port.
 
 The simplest way to port Liar is to find an architecture to which Liar
@@ -353,10 +362,10 @@ the various problems.
 
 		3. Compiler operation, RTL rules and LAP rules.
 
-The front end of the compiler translates Scode into a flow-graph and
-then into RTL.  The back end does machine-independent optimization on
-the RTL, generates assembly language (in LAP format) from the RTL, and
-assembles the resulting bits.
+The front end of the compiler translates Scode into a flow-graph that
+is then translated into RTL.  The back end does machine-independent
+optimization on the RTL, generates assembly language (in LAP format)
+from the RTL, and assembles the resulting bits.
 
 Although RTL is a machine-independent language, the particular RTL
 generated for a given program will vary from machine to machine.
@@ -401,9 +410,10 @@ vary from port to port, the final RTL differs for the different ports.
 
 - The open coding of Scheme primitives is port-dependent.  On some
 machines, for example, there is no integer multiply instruction, and
-it would not be advantageous to open code this operation.  The RTL for
-a particular program may reflect the set of primitive operations that
-the back end for the port can open code.
+it may not be advantageous to open code the primitive that multiplies.
+The RTL for a particular program may reflect the set of primitive
+operations that the back end for the port can open code.
+
 
 The RTL program is represented as a control flow-graph where each of
 the nodes has an associated list of RTL statements.  The edges in the
@@ -412,14 +422,12 @@ code, and include a low-level predicate used to choose between the
 alternatives.  Linearization of the graph does not occur at the RTL
 level, but at the LAP level.  There is a debugging RTL linearizer used
 by the RTL output routine.
-
+
 Besides assignments and tests, the RTL has some higher level concepts
 that correspond to procedure headers, continuation (return address)
-headers, etc.
-
-Thus an RTL program is made mostly of register to register operation
-statements, a few conditional tests, and a few higher-level glue
-statements.
+headers, etc.  Thus an RTL program is made mostly of register to
+register operation statements, a few conditional tests, and a few
+higher-level glue statements.
 
 Once a program has been translated to RTL, the RTL code is optimized
 in a machine-independent way by minimizing the number of RTL pseudo
@@ -428,10 +436,10 @@ code, and various other techniques.
 
 The RTL program is then translated into a Lisp-format
 assembly-language program (LAP).  Hardware register allocation occurs
-during this stage.  The register allocator is machine-independent and
-can accommodate different register classes, but does not currently
-accomodate register pairs (hence why floating point operations are not
-currently open coded on the Vax).
+during this translation.  The register allocator is
+machine-independent and can accommodate different register classes,
+but does not currently accomodate register pairs (this is why floating
+point operations are not currently open coded on the Vax).
 
 The register allocator works by considering unused machine registers
 (those not reserved by the port) to be a cache for the pseudo
@@ -442,17 +450,18 @@ machine registers reused.  Thus the most basic facility that the
 register allocator provides is a utility to allocate an alias of a
 particular type for a given pseudo register.
 
-The port defines the types and numbers of machine registers, and the
-register allocator manages the associations between the pseudo
-registers and their aliases and the set of free machine registers.  It
-will also automatically spill the contents of machine registers to
-memory when pressed for machine registers, and reload the values when
+The port defines the types and numbers of machine registers and the
+subset that is available for allocation, and the register allocator
+manages the associations between the pseudo registers and their
+aliases and the set of free machine registers.  The register allocator
+also automatically spills the contents of machine registers to memory
+when pressed for machine registers, and reloads the values when
 necessary.
 
 Thus the resultint LAP program is the collection of the code issued by
 the rules that translate RTL into LAP, the instructions issued behind
 the scenes by the register allocator, and the instructions used to
-linearize the control flow-graph.  
+linearize the control flow graph.
 
 The back end provides a set of rules for the translation of RTL to
 LAP, and a set of procedures that the register allocator and the
@@ -466,23 +475,309 @@ translation between assembly language and machine language for the
 architecture.  Most of these rules output bits to be collected
 together, but some output a set of directives to the bit-level
 assembler to define labels, or choose between alternative encoding of
-the fields depending on the final value.  These alternative encodings
-are typically used for PC-relative quantities.
+the fields depending on the final value of a displacement.  These
+alternative encodings are typically used for PC-relative quantities.
 
-The machine-independent bit-assembler then collects all the bits
-together and keeps track of a virtual program counter used to
-determine the distance between instruction fields.  A relaxation
-process is used to minimize the size of the resulting encoding (ie.
-tension branches, or choose the smallest encoding that will do the job
-when there are alternatives).
+The machine-independent bit-assembler collects all the bits together
+and keeps track of a virtual program counter used to determine the
+distance between instruction fields.  A relaxation process is used to
+minimize the size of the resulting encoding (to tension branches, i.e.
+to choose the smallest encoding that will do the job when there are
+alternatives).
+
+Since most of the RTL rules generate almost fixed assembly language,
+where the only difference is the register numbers, most of the LAP to
+bits translation can be done when the compiler is compiled.  A
+compiler switch, `compiler:enable-expansion-declarations?' allows this
+process to take place.  This mechanism has not been used for a while,
+however, because the resulting compiler was, although somewhat faster,
+considerably bigger.
 
-*** Mention the early syntaxing, but tell them to ignore it.
-*** Mention the switches and what they do.
+Several other compiler parameters and switches control various aspects
+of the operation of the back end.  Most parameters and switches are
+machine independent, and are defined in compiler/base/switch.scm .
+The remaining parameters and switches are defined in
+compiler/machines/port/machin.scm.  All compiler parameters and
+switches are exported to the Scheme global package for easy
+manipulation.
 
+The following switches are of especial importance to the back end
+writer:
+
+compiler:compile-by-procedures?
+	This switch controls whether the compiler should compile each
+top-level lambda expression independently or compile the whole input
+program (or file) as a block.  It is usually set to true, but must be
+set to false for cross-compilation.  The cross-compiler does this
+automatically.
+
+compiler:open-code-primitives?
+	This switch controls whether Liar will open code (inline code)
+MIT Scheme primitives.  It is usually set to true and should probably
+be left that way.  On the other hand, it is possible to do a lot less
+work in porting the compiler by not providing the open coding of
+primitives and turning this switch off.  Note that some of the
+primitives are open coded by the machine-independent portion of the
+compiler, since they depend only on structural information, and not on
+the details of the particular architecture.  In other words, CAR,
+CONS, and many others can be open-coded in a port-independent way
+since their open codings are performed directly in the RTL.  Turning
+this switch to false would prevent the compiler from open coding these
+primitives as well.
+
+compiler:generate-rtl-files?
+compiler:generate-lap-files?
+	These are mostly compiler debugging switches.  They control
+whether the compiler will issue .rtl and .lap files for every file
+compiled.  The .rtl file will contain the RTL for the program, and the
+.lap file will contain the input to the assembler.  Their usual value
+is false.
+
+compiler:open-code-floating-point-arithmetic?
+	This switch is defined in compiler/machines/port/machin.scm
+and determines whether floating point primitives can and should be
+open coded by the compiler or not.  If the port provides open codings
+for them, it should be set to true, otherwise to false.
+
+compiler:primitives-with-no-open-coding
+	This parameter is defined in compiler/machines/port/machin.scm.
+It contains a list of primitive names that the port cannot open code.
+
+*** These last two parameters should probably be combined and their
+sense inverted, ie. there should be a
+compiler:primitives-with-known-open-codings parameter that would
+replace both of the above.  This has the advantage that if the RTL
+level is taught how to deal with additional primitives, but not all
+ports have open codings for them, there is no need to change the
+various machin.scm files.
+
 		4. Description of the files in compiler/machines/port.
-Particular emphasis on machin.scm, assmd.scm, the macro files, and the
-assembler.
 
+The following is the list of files that usually appears in the port
+directory.  The files can be organized differently for each port, but
+it is probably easiest if the same pattern is kept.  In particular,
+the best way to write most is by editting appropriately the files from
+an existing port.
+
+A useful thing to do when writing new port files is to keep
+track of the original version from which you started, and
+additionally, that on which your original is based.  For example, if
+you use machines/mips/assmd.scm as a model for your version, in it you
+would find something like
+  $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.3 1991/02/22 22:51:31 jinx Exp $
+  $MC68020-Header: assmd.scm,v 1.36 89/08/28 18:33:33 GMT cph Exp $
+In order to allow an easier merge in the future, it would
+be good if you transformed this header into
+  $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.3 1991/02/22 22:51:31 jinx Exp $
+  $mips-Header: assmd.scm,v 1.1 90/05/07 04:10:19 GMT jinx Exp $
+  $MC68020-Header: assmd.scm,v 1.36 89/08/28 18:33:33 GMT cph Exp $
+The new $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.3 1991/02/22 22:51:31 jinx Exp $ line would be used by RCS to keep track of the
+versions of your port and the others could be used to find updates to
+the originals that would make updating your port easier.
+
+	Compiler building files:
+
+comp.pkg:
+	This file describes the Scheme package structure of the
+compiler, the files loaded into each package, and what names are
+exported and imported from each package.
+	To write this file, copy the similar file from an existing
+port, change the name of the port (ie. mips -> sparc), and add or
+remove files as appropriate.  You should only need to add or remove
+assembler and LAPGEN files.
+
+comp.cbf:
+	This file is a script that can be used to compile the compiler
+from scratch.  You can copy this file from another port, and change
+the port name.  There is more information in a later section about how
+to build the compiler.
+
+comp.sf:
+	This file is a script that is used to pre-process the compiler
+sources before they are loaded to be interpreted or compiled.  You
+should be able to copy the file from an existing port and replace the
+name of the port.  You should also edit the names of the instruction
+files in the assembler instruction database section, although this
+section is no longer used by default.
+
+The previous three files should be copied or linked to the top-level
+compiler directory.  Ie., compiler/comp.pkg should be a link (symbolic
+preferably) or copy of compiler/machines/port/comp.pkg .
+
+make.scm:
+	This file is used to load the compiler on top of a runtime
+system that has the file syntaxer (SF) loaded, and defines the version
+of the compiler.  The list of files does not appear here because the
+comp.pkg already declares them, and when comp.pkg is pre-processed,
+two files, comp.con, and comp.ldr, that generate the package structure
+and load and link the files, are automatically generated.
+
+decls.scm:
+	This file defines the pre-processing dependencies between the
+various source files.  There are three kinds of pre-processing
+dependencies:
+- Syntactic: Different files need to be processed in different syntax
+tables that define the macros used by the files.
+- Integrations: Different files import integrable (inline) definitions
+from other files, and must be processed in the right sequence in order
+to obtain the maximum effect from the integrations (mostly because of
+transitive steps).
+- Expansions: Certain procedures can be expanded at compiler
+pre-processing time into accumulations of simpler calls.  This is how
+the assembly language in the RTL rules can be translated into bits at
+compiler pre-processing time.  The files that define the
+pre-processing-time expansion functions must be loaded in order to
+process those files that use the procedures that can be expanded.
+decls.scm builds a database of the dependencies.  This database is
+topologically sorted by the some of the code in decls.scm itself in
+order to determine the processing sequence.  Since there are
+circularities in the integration dependencies, some of the files are
+processed multiple times, but the mechanism in decls takes care of
+doing this the correct way.
+You should be able to edit the version from another port in the
+appropriate way.  Mostly you will need to rename the port (ie. mips ->
+sparc), and add/delete instruction and rules files as needed.
+*** decls.scm should probably be split into two sections:  The
+machine-independent dependency management code, and the actual
+declaration of the dependencies for each port.  This would allow us to
+share more of the code, and make the task of rewriting it less daunting.
+
+	Miscellaneous files:
+
+rgspcm.scm:
+	This file declares a set of primitives that can be coded by
+invoking runtime library procedures.  This file is no longer machine
+dependent, since the portable library has made all the sets identical.
+It lives in machines/port for historical reasons, and should probably
+move elsewhere.  Obviously, you can just copy it from another port.
+*** Let's move it or get rid of it!
+
+rulrew.scm:
+	This file defines the simplifier rules that allow more
+efficient use of the hardware's addressing modes and other
+capabilities.  The rules use the same syntax as the LAPGEN rules, but
+belong in the (rule) rewriting database.  Although these rules are
+port-dependent, it should be possible to emulate what other ports have
+done in order to arrive at a correct set.  In addition, examination of
+the assembly language issued by the compiler may lead to further
+beneficial rewriting rules.  A later section of this document
+describes these rules in some detail.  It is possible to start out
+with no port-dependent rules and only add them as local inefficiencies
+are discovered in the output assembly language.
+
+machin.scm:
+	This file defines architecture and port parameters needed by
+various parts of the compiler.  The following is the current list of
+the primary parameters.  The definitions of derived parameters not
+mentioned here should be copied verbatim from existing ports.  Some of
+these parameters are not currently in use, but should all be provided
+for future versions.
+
+- endianness: Should be the symbol LITTLE if an address, when used as
+a byte address, refers to the least significant byte of the longword
+addressed by it.  It should be BIG if it refers to the most
+significant byte of the longword.  Note that the compiler has not been
+ported to any machines where the quantum of addressability is not an
+8-bit byte, so the notion may not apply to those.
+
+- addressing-granularity: How many bits are addressed by the
+addressing quantum.  Ie., increasing an address by 1 will bump the
+address to point past this number of bits.  Again, the compiler has
+not been ported to any machine where this value is not 8.
+
+- scheme-object-width: How many bits are taken up by a Scheme object.
+This should be the number of bits in a C `unsigned long', since Scheme
+objects are declared as such by the portable runtime library.
+
+- scheme-type-width: How many bits at the most-significant end of a
+Scheme object are taken up by the type tag.  Note that the definition
+in the microcode must match this one.  This number is currently 6 for
+systems with a compiler and 8 for systems without one.
+
+- flonum-size: This is the ceiling of the ratio of the size of a C
+`double' to the size of a C `unsigned long'.  It reflects how many
+Scheme units of memory (measured in Scheme objects) the data in a
+Scheme floating point object will take.
+
+- float-alignment: This value defines the bit-alignment constraints
+for a C `double'.  It must be a multiple of scheme-object-width.  If
+floating point values can only be stored at even longword addresses,
+for example, this value should be twice scheme-object-width.
+
+- address-units-per-packed-char: This parameter defines how much to
+increment an address by in order to make it point to the next
+character in a string.  The compiler has not been ported in any
+configuration where this is not 1, but may be if 16-bit characters are
+used in the future.
+
+- signed-fixnum/upper-limit: This parameter should be derived from
+others, but is specified as a constant due to a shortcoming of the
+compiler pre-processing system (expt is not constant-folded).  Use the
+commented-out expression to derive the value for your port.  Note that
+all values that should be derived but are instead specified as
+constants are tagged by a comment containing `***'.
+
+- stack->memory-offset: This procedure is provided to accomodate
+stacks that grow in either direction, but we have not tested any port
+in which the stack grows towards larger addresses, especially because
+the CScheme interpreter imposes its own direction of growth.  It
+should probably be copied verbatim.
+
+- execute-cache-size: This should match EXECUTE_CACHE_ENTRY_SIZE in
+microcode/cmpint-md.h, and is explained in microcode/cmpint.txt .
+*** We should probably rename one or the other to be more alike.
+
+- closure-first-offset, closure-object-first-offset,
+closure-entry-distance, closure-environment-adjustment:
+
+*** Here! ***
+
+
+	LAPGEN files:
+
+*** Mention that the partition could be done differently, but this is
+not bad.  The names are not great.
+
+lapgen.scm:
+
+rules1.scm:
+
+rules2.scm:
+
+rules3.scm:
+
+rules4.scm:
+
+rulfix.scm:
+
+rulflo.scm:
+
+	Assembler files:
+
+assmd.scm:
+
+coerce.scm:
+
+inerly.scm:
+
+insmac.scm:
+
+insutl.scm:
+
+instr<n>.scm:
+
+	Disassembler files:
+
+dassm1.scm:
+
+dassm2.scm:
+
+dassm3.scm:
+
+dinstr.*:
+
+dsyn.scm:
+
 		5. How to test the compiler once the port files have
 been written.
 ?? How to test the assembler by using LAP->CODE .
