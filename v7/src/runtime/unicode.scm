@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.18 2004/05/27 14:03:06 cph Exp $
+$Id: unicode.scm,v 1.19 2004/10/13 04:49:53 cph Exp $
 
 Copyright 2001,2003,2004 Massachusetts Institute of Technology
 
@@ -661,7 +661,9 @@ USA.
     (do ((i start (fix:+ i 1))
 	 (j 0 (fix:+ j 1)))
 	((not (fix:< i end)))
-      (string-set! s j (vector-ref v i)))
+      (if (fix:< (char->integer (vector-ref v i)) #x100)
+	  (string-set! s j (vector-ref v i))
+	  (error:bad-range-argument string 'WIDE-STRING->STRING)))
     s))
 
 ;;;; UTF-32 representation
