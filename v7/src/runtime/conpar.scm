@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.46 2005/02/08 04:19:40 cph Exp $
+$Id: conpar.scm,v 14.47 2005/03/13 05:02:12 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2001,2003,2004,2005 Massachusetts Institute of Technology
@@ -880,14 +880,14 @@ USA.
 (define-guarantee hardware-trap-frame "hardware-trap frame")
 
 (define (hardware-trap-frame/code frame)
-  (guarantee-hardware-trap-frame frame)
+  (guarantee-hardware-trap-frame frame 'hardware-trap-frame/code)
   (let ((code (stack-frame/ref frame hardware-trap/code-index)))
     (cond ((pair? code) (cdr code))
 	  ((string? code) code)
 	  (else #f))))
 
 (define (hardware-trap-frame/print-registers frame)
-  (guarantee-hardware-trap-frame frame)
+  (guarantee-hardware-trap-frame frame 'hardware-trap-frame/print-registers)
   (let ((block (stack-frame/ref frame hardware-trap/extra-info-index)))
     (if block
 	(let ((nregs (- (system-vector-length block) 2)))
@@ -916,7 +916,7 @@ USA.
 (define word-size)
 
 (define (hardware-trap-frame/print-stack frame)
-  (guarantee-hardware-trap-frame frame)
+  (guarantee-hardware-trap-frame frame 'hardware-trap-frame/print-stack)
   (let ((elements
 	 (let ((elements (stack-frame/elements frame)))
 	   (subvector->list elements
@@ -945,7 +945,7 @@ USA.
 	(write-string (number->string value #x10)))))
 
 (define (hardware-trap-frame/describe frame long?)
-  (guarantee-hardware-trap-frame frame)
+  (guarantee-hardware-trap-frame frame 'hardware-trap-frame/describe)
   (let ((name (stack-frame/ref frame hardware-trap/signal-name-index))
 	(state (stack-frame/ref frame hardware-trap/state-index)))
     (if (not name)
