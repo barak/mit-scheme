@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.7 1995/01/17 23:00:51 adams Exp $
+$Id: midend.scm,v 1.8 1995/01/19 23:43:16 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -98,6 +98,7 @@ MIT in each case. |#
       (lambda (program)
 	(set! *current-phase* this-phase)
 	(set! *current-phase-input* (and *debugging?* program))
+	(phase/pre-hook program)
 	(if *announce-phases?*
 	    (begin
 	      (newline)
@@ -122,6 +123,7 @@ MIT in each case. |#
 			    (lambda ()
 			      (show-program "Output from phase " result))))
 		       result)))))
+	  (phase/post-hook program result)
 	  (gather-phase-statistics program result)
 	  result)))))
 
@@ -136,6 +138,27 @@ MIT in each case. |#
   (lambda (program)
     (set! *code-rewrite-table* *previous-code-rewrite-table*)
     (rewrite program)))
+
+(define (phase/pre-hook program)
+  program
+  unspecific)
+
+(define (phase/post-hook program program*)
+  program program*
+  unspecific)
+#|
+Example:
+(define *phase/pp/ann?* #T)
+(define *phases-to-pp/ann* 'all)
+(define (phase/post-hook prog result)
+  (if (and *phase/pp/ann?*
+	   (or (eq? *phases-to-pp/ann* 'all)
+	       (memq *current-phase* *phases-to-pp/ann*)))
+      (begin
+	(pp/ann result *code-rewrite-table*)
+	(pp `(phase is ,*current-phase*))
+	(bkpt ";; proceed"))))
+|#
 
 ;;;; Top level
 
