@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxenv.c,v 1.20 2000/12/05 21:23:49 cph Exp $
+$Id: uxenv.c,v 1.21 2001/04/10 20:49:48 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 #include "ux.h"
@@ -124,6 +125,14 @@ DEFUN (OS_encode_time, (buffer), struct time_structure * buffer)
   error_system_call (ENOSYS, syscall_mktime);
   return (0);
 #endif /* not HAVE_MKTIME */
+}
+
+static void
+DEFUN_VOID (initialize_timezone)
+{
+#ifdef __CYGWIN__
+  tzset ();
+#endif  
 }
 
 #ifdef HAVE_TIMES
@@ -369,6 +378,7 @@ DEFUN_VOID (OS_real_timer_clear)
 void
 DEFUN_VOID (UX_initialize_environment)
 {
+  initialize_timezone ();
   initialize_process_clock ();
   initialize_real_time_clock ();
 #ifndef HAVE_SETITIMER
