@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.13 1995/04/10 14:53:31 adams Exp $
+$Id: cleanup.scm,v 1.14 1995/04/17 18:48:35 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -38,7 +38,7 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (cleanup/top-level program)
-  (cleanup/expr '() program))
+  (cleanup/expr (cleanup/env/initial) program))
 
 (define-macro (define-cleanup-handler keyword bindings . body)
   (let ((proc-name (symbol-append 'CLEANUP/ keyword)))
@@ -56,24 +56,24 @@ MIT in each case. |#
 		     CODE))))))))))
 
 (define-cleanup-handler LOOKUP (env name)
-  (let ((place (cleanup/env/find name env)))
-    (if (not place)
+  (let ((value (cleanup/env/lookup name env)))
+    (if (not value)
 	(free-var-error name)
-	(form/copy (cadr place)))))
+	(form/copy value))))
 
 (define-cleanup-handler LAMBDA (env lambda-list body)
   (let ((renames (cleanup/renamings env (lambda-list->names lambda-list))))
     `(LAMBDA ,(map (lambda (token)
 		     (cleanup/rename renames token))
 		   lambda-list)
-       ,(cleanup/expr (append renames env) body))))
+       ,(cleanup/expr (cleanup/env/extend env renames) body))))
 
 (define-cleanup-handler LETREC (env bindings body)
   (do-letrec-cleanup env bindings body))
 
 (define (do-letrec-cleanup env bindings body)
   (let* ((renames (cleanup/renamings env (map car bindings)))
-	 (env*    (append renames env))
+	 (env*    (cleanup/env/extend env renames))
 	 (body*   (cleanup/expr env* body)))
     (if (null? bindings)
 	body*
@@ -204,8 +204,12 @@ MIT in each case. |#
 	       ;; and poping have to be kept in the right order.
 	       (let* ((old-cont-var (car lambda-list))
 		      (new-cont-var (variable/rename old-cont-var))
-		      (new-env `((,old-cont-var (LOOKUP ,new-cont-var))
-				 ,@env)))
+		      (new-env
+		       (cleanup/env/extend
+			env
+			(list (cleanup/binding/make old-cont-var 
+						    `(LOOKUP ,new-cont-var)))))
+		      )
 		 (build-call-lambda/try3
 		  rator
 		  new-cont-var
@@ -460,49 +464,50 @@ MIT in each case. |#
   ;; expressions for these names in BODY, but first we look at the
   ;; names in these expressions and rename to avoid name capture.
   (let ((bindings* (map (lambda (binding)
-			  (list (car binding)
-				(cleanup/expr env (cadr binding))))
+			  (cleanup/binding/make
+			   (car binding)
+			   (cleanup/expr env (cadr binding))))
 			bindings)))
     (call-with-values
      (lambda ()
        (list-split bindings*
 		   (lambda (binding*)
-		     (QUOTE/? (cadr binding*)))))
+		     (QUOTE/? (cleanup/binding/value binding*)))))
      (lambda (trivial non-trivial)
        (call-with-values
 	(lambda ()
 	  (list-split non-trivial
 		      (lambda (binding*)
-			(cleanup/easy? (cadr binding*)))))
+			(cleanup/easy? (cleanup/binding/value binding*)))))
 	(lambda (easy non-easy)
 	  (let* ((possibly-captured
 		  (map (lambda (binding)
-			 (cleanup/easy/name (cadr binding)))
+			 (cleanup/easy/name (cleanup/binding/value binding)))
 		       easy))
 		 (complex-triplets
 		  ;; (original-name renamed-version value-expression)
 		  (map (lambda (binding)
-			 (let ((name (car binding)))
+			 (let ((name (cleanup/binding/name binding)))
 			   (list name
 				 (if (memq name possibly-captured)
 				     (variable/rename name)
 				     name)
-				 (cadr binding))))
+				 (cleanup/binding/value binding))))
 			non-easy))
-		 (body*
-		  (cleanup/expr
-		   (append trivial
-			   easy
-			   (map (lambda (triplet)
-				  (list (car triplet)
-					`(LOOKUP ,(cadr triplet))))
-				 complex-triplets)
-			   env)
-		   body)))
-	    (if (null? complex-triplets)
-		body*
-		(letify (map cdr complex-triplets)
-			body*)))))))))
+		 (env*
+		  (cleanup/env/extend
+		   env
+		   (map* (append trivial easy)
+			 (lambda (triplet)
+			   (cleanup/binding/make
+			    (car triplet)
+			    `(LOOKUP ,(cadr triplet))))
+			 complex-triplets))))
+	    (let ((body* (cleanup/expr env* body)))
+	      (if (null? complex-triplets)
+		  body*
+		  (letify (map cdr complex-triplets)
+			  body*))))))))))
 
 (define (cleanup/easy? form)
   (cond ((LOOKUP/? form) true)
@@ -575,29 +580,52 @@ MIT in each case. |#
 	 (default))))
 
 (define (cleanup/rename renames token)
-  (let ((place (assq token renames)))
+  (let ((place (cleanup/env/lookup renames token)))
     (if (not place)
 	token
-	(cadr (cadr place)))))
+	(lookup/name place))))
 
 (define (cleanup/renamings env names)
   (map (lambda (name)
-	 (let ((place (cleanup/env/find name env)))
+	 (let ((value (cleanup/env/lookup name env)))
 	   ;; Do not rename if the shadowed binding is disappearing
-	   (if (or (not place)
-		   (QUOTE/? (cadr place)))
-	       `(,name (LOOKUP ,name))
-	       `(,name (LOOKUP ,(variable/rename name))))))
+	   (if (or (not value)
+		   (QUOTE/? value))
+	       (cleanup/binding/make name `(LOOKUP ,name))
+	       (cleanup/binding/make name `(LOOKUP ,(variable/rename name))))))
        names))
 
+;; Environment is a list of frames.  Frames are a list of bindings.
+
 (define (cleanup/env/find name env)
-  ;; ASSQ
-  (let loop ((alist env))
-    (if (pair? alist)
-	(if (eq? name (caar alist))
-	    (car alist)
-	    (loop (cdr alist)))
-	#F)))
+  (let frame-loop ((env env))
+    (and (pair? env)
+	 (let loop ((bindings (car env)))
+	   (cond ((not (pair? bindings))
+		  (frame-loop (cdr env)))
+		 ((eq? name (cleanup/binding/name (car bindings)))
+		  (car bindings))
+		 (else
+		  (loop (cdr bindings))))))))
+
+(define (cleanup/env/lookup name env)
+  (let ((binding  (cleanup/env/find name env)))
+    (and binding
+	 (cleanup/binding/value binding))))
+
+(define (cleanup/env/initial)
+  '())
+
+(define (cleanup/env/extend env new-frame)
+  (cons new-frame env))
+
+;;(define-integrable (cleanup/binding/make name value) (cons name value))
+;;(define-integrable (cleanup/binding/name binding)  (car binding))
+;;(define-integrable (cleanup/binding/value binding) (cdr binding))
+
+(define-integrable (cleanup/binding/make name value) (vector name value))
+(define-integrable (cleanup/binding/name binding)  (vector-ref binding 0))
+(define-integrable (cleanup/binding/value binding) (vector-ref binding 1))
 
 (define (cleanup/expr env expr)
   (if (not (pair? expr))
@@ -642,9 +670,9 @@ MIT in each case. |#
    (lambda (form copy uninteresting)
      copy
      (cond ((and (LOOKUP/? form)
-		 (cleanup/env/find (lookup/name form) env))
-	    => (lambda (place)
-		 (form/copy (cadr place))))
+		 (cleanup/env/lookup (lookup/name form) env))
+	    => (lambda (value)
+		 (form/copy value)))
 	   (else
 	    (uninteresting form))))
    expr))
