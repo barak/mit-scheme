@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.30 1991/09/02 03:29:33 sybok Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.31 1991/09/02 03:41:05 sybok Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -273,9 +273,7 @@ MIT in each case. |#
     (define (get-stepper-hooks)
       (vector-ref (get-fixed-objects-vector)
 		  (ufixed-objects-slot stepper-state)))
-    (define (stepping-off!)
-      (set! (access old-stepper-hooks *old-hook-storage-environment*) null-hooks))
-    (define *old-hook-storage-environment*)
+    (define old-hook-storage-environment)
     (let ((old-stepper-hooks)
 	  (null-hooks (hunk3-cons #f #f #f)))
       (set! *old-hook-storage-environment* (the-environment))
@@ -292,6 +290,8 @@ MIT in each case. |#
 	  (or old-stepper-hooks
 	      null-hooks)))))))
 
-(define stepping-off! (access stepping-off! (procedure-environment without-stepping)))
+(define (stepping-off!)
+  (let ((hook-environment (access old-hook-storage-environment (procedure-environment without-stepping))))
+    (set! (access old-stepper-hooks hook-environment) (access null-hooks hook-environment))))
 
 
