@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.17 1999/01/02 06:19:10 cph Exp $
+$Id: string.scm,v 14.18 1999/04/07 04:05:07 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -236,7 +236,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (list->string chars))
 
 (define char->string string)
-
+
 (define (string->list string)
   (guarantee-string string 'STRING->LIST)
   (%substring->list string 0 (string-length string)))
@@ -279,6 +279,23 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (string-append . strings)
   (%string-append strings))
+
+(define (burst-string string delimiter)
+  (let ((end (string-length string)))
+    (let loop ((start 0) (index 0) (result '()))
+      (cond ((fix:= index end)
+	     (reverse!
+	      (if (fix:< start index)
+		  (cons (substring string start index) result)
+		  result)))
+	    ((char=? delimiter (string-ref string index))
+	     (loop (fix:+ index 1)
+		   (fix:+ index 1)
+		   (if (fix:< start index)
+		       (cons (substring string start index) result)
+		       result)))
+	    (else
+	     (loop start (fix:+ index 1) result))))))
 
 ;;;; Case
 
@@ -566,6 +583,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		  (substring-fill! result 0 i char))
 		(substring-move-right! string 0 length result i)))
 	  result))))
+
+;;;; String Search
+
+;;; This is the obvious dumb implementation.  Boyer-Moore is planned
+;;; for the future.
 
 (define (substring? substring string)
   ;; Returns starting-position or #f if not true.
