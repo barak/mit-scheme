@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dataflow.scm,v 1.13 1995/04/30 17:22:37 adams Exp $
+$Id: dataflow.scm,v 1.14 1995/05/01 03:36:18 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -91,6 +91,8 @@ MIT in each case. |#
 	     (lambda ()
 	       (graph/initialize-links! graph)
 	       (graph/dataflow! graph)
+	       (if (graph/interesting? graph)
+		   (graph/display-statistics! graph))
 	       (graph/cleanup! graph)))
 
 	    (graph/substitite-simple-constants
@@ -98,8 +100,6 @@ MIT in each case. |#
 	    ;;(if compiler:guru?
 	    ;;	(graph/look-for-interesting-nodes graph))
 	    (graph/compiled-procedure-reductions graph)
-	    (if (graph/interesting? graph)
-		(graph/display-statistics! graph))
 
 	    graph)))))
 
