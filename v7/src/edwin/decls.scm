@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.9 1989/08/14 09:22:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.10 1989/08/29 21:39:43 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -50,8 +50,12 @@ MIT in each case. |#
 			  '())
 		      (map bin-file
 			   (list-transform-positive dependencies
-			     (lambda (dependency)
-			       (< source-time (bin-time dependency)))))))))
+			     (if source-time
+				 (lambda (dependency)
+				   (< source-time (bin-time dependency)))
+				 (lambda (dependency)
+				   dependency ;ignore
+				   true))))))))
 	      (if (not (null? reasons))
 		  (begin
 		    (newline)
