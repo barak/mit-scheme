@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.17 2003/03/08 02:14:18 cph Exp $
+$Id: xml-output.scm,v 1.18 2003/03/09 17:17:06 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -53,8 +53,8 @@ USA.
 		       (print-procedure
 			(standard-unparser-method 'XML-OUTPUT-CONTEXT #f)))
   (port #f read-only #t)
-  ;; Either a non-negative integer (# of columns) or #f.
-  (start-indent #f read-only #t))
+  (indent-attributes? #f read-only #t)
+  (indent-dtd? #f read-only #t))
 
 (define (make-ctx port options)
   (apply %make-ctx 'PORT port options))
@@ -69,14 +69,14 @@ USA.
   (newline (ctx-port ctx)))
 
 (define (ctx-start-col ctx)
-  (let ((indent (ctx-start-indent ctx))
-	(col (output-port/column (ctx-port ctx))))
-    (and indent
-	 col
-	 (+ indent col))))
+  (output-port/column (ctx-port ctx)))
 
 (define (ctx-x-size ctx)
   (output-port/x-size (ctx-port ctx)))
+
+(define (dtd-start-col ctx)
+  (and (ctx-indent-dtd? ctx)
+       (ctx-start-col ctx)))
 
 (define-generic %write-xml (object ctx))
 
@@ -141,7 +141,7 @@ USA.
 (define-method %write-xml ((dtd <xml-dtd>) ctx)
   ;;root external internal
   (emit-string "<!DOCTYPE " ctx)
-  (let ((col (ctx-start-col ctx)))
+  (let ((col (dtd-start-col ctx)))
     (write-xml-name (xml-dtd-root dtd) ctx)
     (if (xml-dtd-external dtd)
 	(write-xml-external-id (xml-dtd-external dtd) col ctx))
@@ -278,7 +278,7 @@ USA.
 
 (define-method %write-xml ((decl <xml-!entity>) ctx)
   (emit-string "<!ENTITY " ctx)
-  (let ((col (ctx-start-col ctx)))
+  (let ((col (dtd-start-col ctx)))
     (write-xml-name (xml-!entity-name decl) ctx)
     (emit-string " " ctx)
     (write-entity-value (xml-!entity-value decl) col ctx)
@@ -286,7 +286,7 @@ USA.
 
 (define-method %write-xml ((decl <xml-unparsed-!entity>) ctx)
   (emit-string "<!ENTITY " ctx)
-  (let ((col (ctx-start-col ctx)))
+  (let ((col (dtd-start-col ctx)))
     (write-xml-name (xml-unparsed-!entity-name decl) ctx)
     (emit-string " " ctx)
     (write-xml-external-id (xml-unparsed-!entity-id decl) col ctx)
@@ -296,7 +296,7 @@ USA.
 
 (define-method %write-xml ((decl <xml-parameter-!entity>) ctx)
   (emit-string "<!ENTITY " ctx)
-  (let ((col (ctx-start-col ctx)))
+  (let ((col (dtd-start-col ctx)))
     (emit-string "% " ctx)
     (write-xml-name (xml-parameter-!entity-name decl) ctx)
     (emit-string " " ctx)
@@ -305,7 +305,7 @@ USA.
 
 (define-method %write-xml ((decl <xml-!notation>) ctx)
   (emit-string "<!NOTATION " ctx)
-  (let ((col (ctx-start-col ctx)))
+  (let ((col (dtd-start-col ctx)))
     (write-xml-name (xml-!notation-name decl) ctx)
     (emit-string " " ctx)
     (write-xml-external-id (xml-!notation-id decl) col ctx)
@@ -328,7 +328,9 @@ USA.
   (emit-string ";" ctx))
 
 (define (write-xml-attributes attributes suffix-cols ctx)
-  (let ((col (ctx-start-col ctx)))
+  (let ((col
+	 (and (ctx-indent-attributes? ctx)
+	      (ctx-start-col ctx))))
     (if (and col
 	     (pair? attributes)
 	     (pair? (cdr attributes))
