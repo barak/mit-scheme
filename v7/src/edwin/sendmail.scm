@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.2 1991/04/23 06:47:14 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.3 1991/04/23 07:20:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -405,7 +405,7 @@ Numeric argument means justify as well."
   "P"
   (lambda (justify?)
     (let ((buffer (current-buffer)))
-      (mail-match-header-separator (buffer-start buffer) (buffer-end-buffer))
+      (mail-match-header-separator (buffer-start buffer) (buffer-end buffer))
       (fill-individual-paragraphs (re-match-end 0)
 				  (buffer-end-buffer)
 				  (ref-variable fill-column)
