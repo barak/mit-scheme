@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.1 1988/07/07 16:13:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.2 1988/07/15 08:44:38 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -60,4 +60,5 @@ MIT in each case. |#
     name))
 
 (define options
-  '((FORMAT ((RUNTIME FORMAT) (INITIALIZE-PACKAGE!) "format"))))
+  '((FORMAT ((RUNTIME FORMAT) (INITIALIZE-PACKAGE!) "format"))
+    (STARBASE ((RUNTIME STARBASE-GRAPHICS) (INITIALIZE-PACKAGE!) "Sgraph"))))

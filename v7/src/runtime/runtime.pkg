@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.12 1988/07/14 07:40:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.13 1988/07/15 08:44:46 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -1431,6 +1431,37 @@ MIT in each case. |#
 	  make-scode-walker
 	  scode-walk
 	  scode-walker?)
+  (initialization (initialize-package!)))
+
+(define-package (runtime starbase-graphics)
+  (file-case options
+    ((load) "Sgraph")
+    (else))
+  (parent ())
+  (export ()
+	  clear-graphics
+	  clear-point
+	  draw-line-to
+	  draw-point
+	  graphics-available?
+	  graphics-text
+	  init-graphics
+	  position-pen
+	  print-graphics
+	  x-graphics-available?
+	  x-graphics-close-display
+	  x-graphics-close-window
+	  x-graphics-create-raster
+	  x-graphics-delete-raster
+	  x-graphics-initialize
+	  x-graphics-lower-window
+	  x-graphics-map-window
+	  x-graphics-open-display
+	  x-graphics-open-window
+	  x-graphics-raise-window
+	  x-graphics-start-retain
+	  x-graphics-stop-retain
+	  x-graphics-unmap-window)
   (initialization (initialize-package!)))
 
 (define-package (runtime state-space)
