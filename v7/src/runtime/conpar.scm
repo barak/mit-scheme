@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.2 1988/06/13 11:41:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.3 1988/06/21 04:21:49 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -101,6 +101,9 @@ MIT in each case. |#
    (let ((elements (stack-frame/elements stack-frame)))
      (lambda ()
        (vector-ref elements index)))))
+(define-integrable (stack-frame/return-address stack-frame)
+  (stack-frame-type/address (stack-frame/type stack-frame)))
+
 (define-integrable (stack-frame/return-code stack-frame)
   (stack-frame-type/code (stack-frame/type stack-frame)))
 
@@ -381,6 +384,9 @@ MIT in each case. |#
   (if (not (< code (vector-length stack-frame-types)))
       (error "return-code too large" code))
   (vector-ref stack-frame-types code))
+
+(define-integrable (stack-frame-type/address frame-type)
+  (make-return-address (stack-frame-type/code frame-type)))
 
 (define (initialize-package!)
   (set! stack-frame-types (make-stack-frame-types)))
