@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pic-read.scm,v 1.8 2003/02/14 18:28:00 cph Exp $
+$Id: pic-read.scm,v 1.9 2003/03/08 02:48:36 cph Exp $
 
-Copyright (c) 1991-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1991,1992,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -98,7 +98,7 @@ USA.
 	(error "Object loaded is not a record:" pic-mimic))
     (let ((mimic-type (record-type-descriptor pic-mimic)))
       (if (not (equal? (record-type-field-names mimic-type)
-		       (record-type-field-names picture-type)))
+		       (record-type-field-names <picture>)))
 	  (error "Object loaded is not a picture:" pic-mimic))
       (let ((new-pic
 	     (make-picture ((record-accessor mimic-type 'width) pic-mimic)
