@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.55 1999/04/07 04:09:07 cph Exp $
+$Id: unxprm.scm,v 1.56 1999/09/11 03:27:41 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -218,8 +218,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (or (get-environment-variable "HOME")
       (user-home-directory (current-user-name))))
 
-(define-integrable current-user-name
-  (ucode-primitive current-user-name 0))
+(define (current-user-name)
+  (or (get-environment-variable "USER")
+      ((ucode-primitive current-user-name 0))))
 
 (define (file-time->local-decoded-time time)
   (universal-time->local-decoded-time (file-time->universal-time time)))
