@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.33 1993/11/23 03:51:23 cph Exp $
+;;;	$Id: process.scm,v 1.34 1995/01/06 01:14:37 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -53,13 +53,12 @@
   (set! edwin-processes '())
   (set! process-input-queue (cons '() '()))
   (set-variable! exec-path
-		 (parse-path-string
+		 (os/parse-path-string
 		  (let ((path (get-environment-variable "PATH")))
 		    (if (not path)
 			(error "Can't find PATH environment variable."))
 		    path)))
-  (set-variable! shell-file-name
-		 (or (get-environment-variable "SHELL") "/bin/sh")))
+  (set-variable! shell-file-name (os/shell-file-name)))
 
 (define edwin-processes)
 
@@ -108,11 +107,8 @@ Initialized from the SHELL environment variable."
 (define-integrable (process-arguments process)
   (subprocess-arguments (process-subprocess process)))
 
-(define-integrable (process-input-channel process)
-  (subprocess-input-channel (process-subprocess process)))
-
-(define-integrable (process-output-channel process)
-  (subprocess-output-channel (process-subprocess process)))
+(define-integrable (process-output-port process)
+  (subprocess-output-port (process-subprocess process)))
 
 (define-integrable (process-status-tick process)
   (subprocess-status-tick (process-subprocess process)))
@@ -153,11 +149,18 @@ Initialized from the SHELL environment variable."
    (let ((buffer (process-buffer process)))
      (and buffer
 	  (mark-right-inserting-copy (buffer-end buffer))))))
+
+(define (deregister-process-input process)
+  (let ((registration (process-input-registration process)))
+    (if registration
+	(begin
+	  (set-process-input-registration! process #f)
+	  (deregister-input-thread-event registration)))))
 
 (define (start-process name buffer environment program . arguments)
   (let ((make-subprocess
 	 (let ((directory (buffer-default-directory buffer)))
-	   (let ((filename (find-program program directory))
+	   (let ((filename (os/find-program program directory))
 		 (arguments (list->vector (cons program arguments)))
 		 (pty? (ref-variable process-connection-type buffer)))
 	     (lambda ()
@@ -208,13 +211,6 @@ Initialized from the SHELL environment variable."
 	 (if (buffer-alive? buffer)
 	     (buffer-modeline-event! buffer 'PROCESS-STATUS)))
        (subprocess-delete subprocess)))))
-
-(define (deregister-process-input process)
-  (let ((registration (process-input-registration process)))
-    (if registration
-	(begin
-	  (set-process-input-registration! process #f)
-	  (deregister-input-thread-event registration)))))
 
 (define (get-process-by-name name)
   (let loop ((processes edwin-processes))
@@ -274,34 +270,50 @@ Initialized from the SHELL environment variable."
 		(loop output?))))))))
 
 (define (poll-process-for-output process)
-  (let ((channel (process-input-channel process))
-	(buffer (make-string 512)))
-    (and channel
-	 (channel-open? channel)
-	 (let ((close-input
+  (and (let ((channel (subprocess-input-channel (process-subprocess process))))
+	 (and channel
+	      (channel-open? channel)))
+       (let ((port (subprocess-input-port (process-subprocess process)))
+	     (buffer (make-string 512))
+	     (output? #f))
+	 (let ((read-chars (port/operation port 'READ-CHARS))
+	       (close-input
 		(lambda ()
 		  (deregister-process-input process)
-		  (channel-close channel)
+		  (close-port port)
 		  (%update-global-notification-tick)
-		  (poll-process-for-status-change process))))
-	   (if (process-runnable? process)
-	       (let ((n (channel-read channel buffer 0 512)))
-		 (cond ((not n) #f)
-		       ((> n 0) (output-substring process buffer n))
-		       (else (close-input))))
-	       (close-input))))))
+		  (if (poll-process-for-status-change process)
+		      (set! output? #t)))))
+	   (let loop ()
+	     (if (process-runnable? process)
+		 (let ((n (read-chars port buffer)))
+		   (if n
+		       (if (fix:= n 0)
+			   (close-input)
+			   (begin
+			     (if (output-substring process buffer n)
+				 (set! output? #t))
+			     (loop)))))
+		 (close-input))))
+	 output?)))
 
 (define (process-send-eof process)
   (process-send-char process #\EOT))
 
 (define (process-send-substring process string start end)
-  (channel-write-block (process-output-channel process) string start end))
+  (let ((port (process-output-port process)))
+    (output-port/write-substring port string start end)
+    (output-port/flush-output port)))
 
 (define (process-send-string process string)
-  (channel-write-string-block (process-output-channel process) string))
+  (let ((port (process-output-port process)))
+    (output-port/write-string port string)
+    (output-port/flush-output port)))
 
 (define (process-send-char process char)
-  (channel-write-char-block (process-output-channel process) char))
+  (let ((port (process-output-port process)))
+    (output-port/write-char port char)
+    (output-port/flush-output port)))
 
 (define (process-status-changes?)
   (without-interrupts
@@ -592,39 +604,42 @@ after the listing is made.)"
 				 (loop)
 				 status)))))))
 		 (begin
-		   (let ((channel (subprocess-output-channel process)))
-		     (group-write-to-channel (region-group input-region)
-					     (region-start-index input-region)
-					     (region-end-index input-region)
-					     channel)
-		     (channel-close channel))
+		   (let ((port (subprocess-output-port process)))
+		     (group-write-to-port (region-group input-region)
+					  (region-start-index input-region)
+					  (region-end-index input-region)
+					  port)
+		     (close-port port))
 		   (subprocess-wait process)))))))
       (begin
 	(channel-close (subprocess-output-channel process))
 	(if output-mark
 	    (let ((buffer (make-string 512))
-		  (output-channel (subprocess-input-channel process))
+		  (port (subprocess-input-port process))
 		  (output-mark (mark-left-inserting-copy output-mark)))
-	      (let loop ()
-		(let ((n (channel-read-block output-channel buffer 0 512)))
-		  (if (> n 0)
-		      (begin
-			(insert-substring buffer 0 n output-mark)
-			(loop)))))
-	      (channel-close output-channel)))
+	      (let ((read-chars (port/operation port 'READ-CHARS)))
+		(let loop ()
+		  (let ((n (read-chars port buffer)))
+		    (if (> n 0)
+			(begin
+			  (insert-substring buffer 0 n output-mark)
+			  (loop))))))
+	      (close-port port)))
 	(subprocess-wait process))))
 
 (define (call-with-output-copier process output-mark receiver)
   (let ((channel (subprocess-input-channel process)))
     (let ((copy-output
-	   (let ((buffer (make-string 512)))
-	     (lambda ()
-	       (let loop ()
-		 (let ((n (channel-read channel buffer 0 512)))
-		   (if (and n (> n 0))
-		       (begin
-			 (insert-substring buffer 0 n output-mark)
-			 (loop)))))))))
+	   (let ((port (subprocess-input-port process))
+		 (buffer (make-string 512)))
+	     (let ((read-chars (port/operation port 'READ-CHARS)))
+	       (lambda ()
+		 (let loop ()
+		   (let ((n (read-chars port buffer)))
+		     (if (and n (> n 0))
+			 (begin
+			   (insert-substring buffer 0 n output-mark)
+			   (loop))))))))))
       (channel-nonblocking channel)
       (let ((status (receiver copy-output)))
 	(channel-blocking channel)
@@ -637,6 +652,7 @@ after the listing is made.)"
 	(start-index (region-start-index input-region))
 	(end-index (region-end-index input-region))
 	(channel (subprocess-output-channel process))
+	(port (subprocess-output-port process))
 	(buffer (make-string 512)))
     (channel-nonblocking channel)
     (call-with-protected-continuation
@@ -656,7 +672,9 @@ after the listing is made.)"
 			  (group-copy-substring! group start-index index
 						 buffer 0)
 			  (let* ((end (- index start-index))
-				 (n (channel-write channel buffer 0 end)))
+				 (n
+				  (output-port/write-substring port
+							       buffer 0 end)))
 			    (if n
 				(begin
 				  (set! start-index (+ start-index n))
@@ -737,57 +755,12 @@ Prefix arg means replace the region with it."
 	  (message "(Shell command completed with no output)")))))
 
 (define (shell-command input-region output-mark directory pty? command)
-  (run-synchronous-process input-region output-mark directory pty?
-			   (ref-variable shell-file-name) "-c" command))
+  (apply run-synchronous-process
+	 input-region output-mark directory pty?
+	 (ref-variable shell-file-name)
+	 (os/form-shell-command command)))
 
 ;;; These procedures are not specific to the process abstraction.
-
-(define (find-program program default-directory)
-  (->namestring
-   (let ((lose
-	  (lambda () (error "Can't find program:" (->namestring program)))))
-     (cond ((pathname-absolute? program)
-	    (if (not (file-access program 1)) (lose))
-	    program)
-	   ((not default-directory)
-	    (let loop ((path (ref-variable exec-path)))
-	      (if (null? path) (lose))
-	      (or (and (car path)
-		       (pathname-absolute? (car path))
-		       (let ((pathname (merge-pathnames program (car path))))
-			 (and (file-access pathname 1)
-			      pathname)))
-		  (loop (cdr path)))))
-	   (else
-	    (let ((default-directory (merge-pathnames default-directory)))
-	      (let loop ((path (ref-variable exec-path)))
-		(if (null? path) (lose))
-		(let ((pathname
-		       (merge-pathnames
-			program
-			(cond ((not (car path)) default-directory)
-			      ((pathname-absolute? (car path)) (car path))
-			      (else (merge-pathnames (car path)
-						     default-directory))))))
-		  (if (file-access pathname 1)
-		      pathname
-		      (loop (cdr path)))))))))))
-
-(define (parse-path-string string)
-  (let ((end (string-length string))
-	(substring
-	 (lambda (string start end)
-	   (pathname-as-directory (substring string start end)))))
-    (let loop ((start 0))
-      (if (< start end)
-	  (let ((index (substring-find-next-char string start end #\:)))
-	    (if index
-		(cons (if (= index start)
-			  false
-			  (substring string start index))
-		      (loop (+ index 1)))
-		(list (substring string start end))))
-	  '()))))
 
 (define (process-environment-bind environment . bindings)
   (let ((bindings* (vector->list environment)))
