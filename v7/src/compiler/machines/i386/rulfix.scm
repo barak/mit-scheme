@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.20 1992/02/18 04:35:56 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.21 1992/02/18 21:56:48 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -287,7 +287,8 @@ MIT in each case. |#
 		    (NEG W ,target))
 	       (LAP (SAL W ,target (& ,expt-of-2))))))
 	(else
-	 (LAP (IMUL W ,target (& ,constant))))))
+	 ;; target must be a register!
+	 (LAP (IMUL W ,target ,target (& ,constant))))))
 
 ;;;; Operation tables
 
