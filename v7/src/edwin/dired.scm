@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.147 1994/05/20 19:21:51 cph Exp $
+;;;	$Id: dired.scm,v 1.148 1994/05/20 21:29:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -731,7 +731,7 @@ Actions controlled by variables list-directory-brief-switches
 	(let loop ((filenames (reverse! filenames)) (failures '()))
 	  (cond ((not (null? filenames))
 		 (loop (cdr filenames)
-		       (if (dired-kill-file! (car filenames))
+		       (if (dired-kill-file! (caar filenames) (cdar filenames))
 			   failures
 			   (cons (file-namestring (caar filenames))
 				 failures))))
@@ -755,16 +755,15 @@ Actions controlled by variables list-directory-brief-switches
       (set-buffer-read-only! buffer)
       (if window (shrink-window-if-larger-than-buffer window)))))
 
-(define (dired-kill-file! filename)
+(define (dired-kill-file! filename lstart)
   (let ((deleted?
 	 (if (file-directory? filename)
 	     (delete-directory-no-errors filename)
 	     (delete-file-no-errors filename))))
     (if deleted?
-	(with-read-only-defeated (cdr filename)
+	(with-read-only-defeated lstart
 	  (lambda ()
-	    (delete-string (cdr filename)
-			   (line-start (cdr filename) 1)))))
+	    (delete-string lstart (line-start lstart 1)))))
     deleted?))
 
 (define dired-flag-delete-char #\D)
