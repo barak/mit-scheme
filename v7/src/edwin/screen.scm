@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.101 1992/09/08 18:18:03 cph Exp $
+;;;	$Id: screen.scm,v 1.102 1993/08/13 01:35:02 jawilson Exp $
 ;;;
-;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -315,27 +315,26 @@
       ((screen-debug-trace screen) 'screen screen 'output-char
 				   x y char highlight))
   (let ((new-matrix (screen-new-matrix screen)))
-    (if (not (boolean-vector-ref (matrix-enable new-matrix) y))
-	(begin
-	  (boolean-vector-set! (matrix-enable new-matrix) y true)
-	  (set-screen-needs-update?! screen true)
-	  (initialize-new-line-contents screen y)))
-    (string-set! (vector-ref (matrix-contents new-matrix) y) x char)
-    (cond ((boolean-vector-ref (matrix-highlight-enable new-matrix) y)
+    (cond ((not (boolean-vector-ref (matrix-enable new-matrix) y))
+	   (boolean-vector-set! (matrix-enable new-matrix) y true)
+	   (set-screen-needs-update?! screen true)
+	   (initialize-new-line-contents screen y)
+	   (if highlight
+	       (begin
+		 (boolean-vector-set! (matrix-highlight-enable new-matrix) y true)
+		 (initialize-new-line-highlight screen y)
+		 (boolean-vector-set! (vector-ref (matrix-highlight new-matrix) y)
+				      x highlight))))
+	  ((boolean-vector-ref (matrix-highlight-enable new-matrix) y)
 	   (boolean-vector-set! (vector-ref (matrix-highlight new-matrix) y)
 				x highlight))
 	  (highlight
 	   (boolean-vector-set! (matrix-highlight-enable new-matrix) y true)
-	   (initialize-new-line-highlight screen y)
+	   (boolean-vector-fill! (vector-ref (matrix-highlight new-matrix) y)
+				 false)
 	   (boolean-vector-set! (vector-ref (matrix-highlight new-matrix) y)
-				x highlight)))))
-
-(define (screen-output-substring screen x y string start end highlight)
-  (substring-move-left! string start end
-			(screen-get-output-line screen y x
-						(fix:+ x (fix:- end start))
-						highlight)
-			x))
+				x highlight)))
+    (string-set! (vector-ref (matrix-contents new-matrix) y) x char)))
 
 (define (screen-get-output-line screen y xl xu highlight)
   (if (screen-debug-trace screen)
@@ -343,12 +342,20 @@
 				   y xl xu highlight))
   (let ((new-matrix (screen-new-matrix screen)))
     (let ((full-line? (and (fix:= xl 0) (fix:= xu (screen-x-size screen)))))
-      (if (not (boolean-vector-ref (matrix-enable new-matrix) y))
-	  (begin
-	    (boolean-vector-set! (matrix-enable new-matrix) y true)
-	    (set-screen-needs-update?! screen true)
-	    (if (not full-line?) (initialize-new-line-contents screen y))))
-      (cond ((boolean-vector-ref (matrix-highlight-enable new-matrix) y)
+      (cond ((not (boolean-vector-ref (matrix-enable new-matrix) y))
+	     (boolean-vector-set! (matrix-enable new-matrix) y true)
+	     (set-screen-needs-update?! screen true)
+	     (if (not full-line?) (initialize-new-line-contents screen y))
+	     (if highlight
+		 (begin
+		   (boolean-vector-set! (matrix-highlight-enable new-matrix)
+					y true)
+		   (if (not full-line?)
+		       (initialize-new-line-highlight screen y))
+		   (boolean-subvector-fill!
+		    (vector-ref (matrix-highlight new-matrix) y)
+		    xl xu highlight))))
+	    ((boolean-vector-ref (matrix-highlight-enable new-matrix) y)
 	     (if (and full-line? (not highlight))
 		 (boolean-vector-set! (matrix-highlight-enable new-matrix)
 				      y false)
@@ -357,11 +364,21 @@
 		  xl xu highlight)))
 	    (highlight
 	     (boolean-vector-set! (matrix-highlight-enable new-matrix) y true)
-	     (if (not full-line?) (initialize-new-line-highlight screen y))
+	     (if (not full-line?)
+		 (boolean-vector-fill!
+		  (vector-ref (matrix-highlight new-matrix) y)
+		  false))
 	     (boolean-subvector-fill!
 	      (vector-ref (matrix-highlight new-matrix) y)
 	      xl xu highlight))))
     (vector-ref (matrix-contents new-matrix) y)))
+
+(define (screen-output-substring screen x y string start end highlight)
+  (substring-move-left! string start end
+			(screen-get-output-line screen y x
+						(fix:+ x (fix:- end start))
+						highlight)
+			x))
 
 (define-integrable (initialize-new-line-contents screen y)
   (if (boolean-vector-ref (matrix-enable (screen-current-matrix screen)) y)
