@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.10 1988/11/08 08:21:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.11 1988/12/12 21:30:25 cph Rel $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -49,6 +49,11 @@ MIT in each case. |#
 	  INVOCATION:CACHE-REFERENCE
 	  INVOCATION:LOOKUP)))
 
+(define-integrable (rtl:invocation-prefix? rtl)
+  (memq (rtl:expression-type rtl)
+	'(INVOCATION-PREFIX:DYNAMIC-LINK
+	  INVOCATION-PREFIX:MOVE-FRAME-UP)))
+
 (define-integrable (rtl:trivial-expression? expression)
   (memq (rtl:expression-type expression)
 	'(ASSIGNMENT-CACHE
@@ -77,6 +82,11 @@ MIT in each case. |#
 	      OFFSET-ADDRESS
 	      VARIABLE-CACHE))))
 
+(define-integrable (rtl:volatile-expression? expression)
+  (memq (rtl:expression-type expression)
+	'(POST-INCREMENT
+	  PRE-INCREMENT)))
+
 (define (rtl:machine-register-expression? expression)
   (and (rtl:register? expression)
        (machine-register? (rtl:register-number expression))))
@@ -85,6 +95,10 @@ MIT in each case. |#
   (and (rtl:register? expression)
        (pseudo-register? (rtl:register-number expression))))
 
+(define (rtl:stack-reference-expression? expression)
+  (and (rtl:offset? expression)
+       (interpreter-stack-pointer? (rtl:offset-register expression))))
+
 (define (rtl:map-subexpressions expression procedure)
   (if (rtl:constant? expression)
       (map identity-procedure expression)
@@ -108,6 +122,11 @@ MIT in each case. |#
 	 (lambda (x)
 	   (and (pair? x)
 		(predicate x))))))
+
+(define (rtl:expression-contains? expression predicate)
+  (let loop ((expression expression))
+    (or (predicate expression)
+	(rtl:any-subexpression? expression loop))))
 
 (define (rtl:all-subexpressions? expression predicate)
   (or (rtl:constant? expression)
