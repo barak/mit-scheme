@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.312 1999/02/16 19:44:12 cph Exp $
+$Id: runtime.pkg,v 14.313 1999/02/16 19:49:07 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -1114,6 +1114,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  make-input-port-type
 	  make-output-port
 	  make-output-port-type
+	  make-port
 	  notification-output-port
 	  output-port-type?
 	  output-port/channel
