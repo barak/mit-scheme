@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.40 2000/05/11 00:47:27 cph Exp $
+;;; $Id: imail-top.scm,v 1.41 2000/05/12 17:56:28 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -105,16 +105,17 @@ May be called with an IMAIL folder URL as argument;
   (lambda (url-string)
     (bind-authenticator imail-authenticator
       (lambda ()
-	(let* ((url
+	(let ((folder
+	       (open-folder
 		(if url-string
 		    (imail-parse-partial-url url-string)
-		    (imail-default-url)))
-	       (folder (open-folder url)))
+		    (imail-default-url)))))
 	  (select-buffer
 	   (let ((buffer
 		  (or (imail-folder->buffer folder #f)
 		      (let ((buffer
-			     (new-buffer (folder-presentation-name folder))))
+			     (new-buffer
+			      (url-presentation-name (folder-url folder)))))
 			(associate-imail-folder-with-buffer folder buffer)
 			buffer))))
 	     (select-message folder (first-unseen-message folder) #t)

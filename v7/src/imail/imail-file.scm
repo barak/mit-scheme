@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.20 2000/05/10 17:27:55 cph Exp $
+;;; $Id: imail-file.scm,v 1.21 2000/05/12 17:56:22 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -29,6 +29,9 @@
 
 (define-method url-body ((url <file-url>))
   (pathname->short-name (file-url-pathname url)))
+
+(define-method url-presentation-name ((url <file-url>))
+  (file-namestring (file-url-pathname url)))
 
 ;;;; Server operations
 
@@ -84,9 +87,6 @@
 	   (begin
 	     (set-file-folder-messages! folder 'UNKNOWN)
 	     (for-each detach-message! messages)))))))
-
-(define-method folder-presentation-name ((folder <file-folder>))
-  (url-body (folder-url folder)))
 
 (define-method %folder-valid? ((folder <file-folder>))
   (file-exists? (file-folder-pathname folder)))

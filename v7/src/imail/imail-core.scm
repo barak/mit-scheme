@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.52 2000/05/10 17:03:17 cph Exp $
+;;; $Id: imail-core.scm,v 1.53 2000/05/12 17:56:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -85,6 +85,10 @@
 
 (define url-protocol-parsers
   (make-string-hash-table))
+
+;; Return a string that concisely identifies URL, for use in the
+;; presentation layer.
+(define-generic url-presentation-name (url))
 
 ;;;; Server operations
 
@@ -262,12 +266,6 @@
 ;; penalty.
 
 (define-generic close-folder (folder))
-
-;; -------------------------------------------------------------------
-;; Return a string that concisely identifies FOLDER, for use in the
-;; presentation layer.
-
-(define-generic folder-presentation-name (folder))
 
 ;; -------------------------------------------------------------------
 ;; Return #T if FOLDER represents a real folder, i.e. has a

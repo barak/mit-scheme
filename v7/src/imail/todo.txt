@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.4 2000/05/11 14:46:36 cph Exp $
+$Id: todo.txt,v 1.5 2000/05/12 17:56:46 cph Exp $
 
 Bug fixes
 ---------
@@ -33,9 +33,6 @@ Design changes
   numbers to discover largest prefix range that hasn't changed.
   Binary search can be used which should produce excellent results on
   large folders.  UID FETCH command should be useful for this.
-
-* Eliminate FOLDER-PRESENTATION-NAME in favor of
-  URL-PRESENTATION-NAME.
 
 * Change APPEND-MESSAGE to accept arguments (MESSAGE URL) rather than
   (FOLDER MESSAGE) as currently.  There's no need to have the folder

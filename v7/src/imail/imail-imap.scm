@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.30 2000/05/10 21:24:46 cph Exp $
+;;; $Id: imail-imap.scm,v 1.31 2000/05/12 17:56:24 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -99,6 +99,9 @@
      (if uid
 	 (string-append "/;uid=" uid)
 	 ""))))
+
+(define-method url-presentation-name ((url <imap-url>))
+  (imap-url-mailbox url))
 
 ;;;; Server connection
 
@@ -564,9 +567,6 @@
 
 (define-method close-folder ((folder <imap-folder>))
   (close-imap-connection (imap-folder-connection folder)))
-
-(define-method folder-presentation-name ((folder <imap-folder>))
-  (imap-url-mailbox (folder-url folder)))
 
 (define-method %folder-valid? ((folder <imap-folder>))
   folder
