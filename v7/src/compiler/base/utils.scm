@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 4.27 2003/02/14 18:28:01 cph Exp $
+$Id: utils.scm,v 4.28 2004/07/02 00:51:53 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
-Copyright 1994,2001,2001,2003 Massachusetts Institute of Technology
+Copyright 1994,2001,2001,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -183,22 +183,14 @@ USA.
 (define compiled-error-procedure
   "Compiled error procedure")
 
-(define lambda-tag:delay
-  (intern "#[delay-lambda]"))
+(define-integrable lambda-tag:delay
+  '|#[delay-lambda]|)
 
-(define (non-pointer-object? object)
-  ;; Any reason not to use `object/non-pointer?' here? -- cph
-  (or (object-type? (ucode-type false) object)
-      (object-type? (ucode-type true) object)
-      (fix:fixnum? object)
-      (object-type? (ucode-type character) object)
-      (object-type? (ucode-type unassigned) object)
-      (object-type? (ucode-type the-environment) object)
-      (object-type? (ucode-type manifest-nm-vector) object)
-      (object-type? (ucode-type manifest-special-nm-vector) object)))
+(define-integrable non-pointer-object?
+  object-non-pointer?)
 
 (define (object-immutable? object)
-  (or (non-pointer-object? object)
+  (or (object-non-pointer? object)
       (number? object)
       (symbol? object)
       (scode/primitive-procedure? object)
