@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.6 1992/12/01 14:52:03 gjr Exp $
+$Id: string.scm,v 14.7 1992/12/04 03:04:54 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -237,15 +237,15 @@ MIT in each case. |#
 
 (define (substring-upper-case? string start end)
   (let find-upper ((start start))
-    (or (not (fix:< start end))
-	(let ((char (string-ref string start)))
-	  (if (char-upper-case? char)
-	      (let search-rest ((start (fix:+ start 1)))
-		(or (fix:= start end)
-		    (and (not (char-lower-case? (string-ref string start)))
-			 (search-rest (fix:+ start 1)))))
-	      (and (not (char-lower-case? char))
-		   (find-upper (fix:+ start 1))))))))
+    (and (fix:< start end)
+	 (let ((char (string-ref string start)))
+	   (if (char-upper-case? char)
+	       (let search-rest ((start (fix:+ start 1)))
+		 (or (fix:= start end)
+		     (and (not (char-lower-case? (string-ref string start)))
+			  (search-rest (fix:+ start 1)))))
+	       (and (not (char-lower-case? char))
+		    (find-upper (fix:+ start 1))))))))
 
 (define (string-upcase string)
   (let ((string (string-copy string)))
@@ -260,15 +260,15 @@ MIT in each case. |#
 
 (define (substring-lower-case? string start end)
   (let find-lower ((start start))
-    (or (not (fix:< start end))
-	(let ((char (string-ref string start)))
-	  (if (char-lower-case? char)
-	      (let search-rest ((start (fix:+ start 1)))
-		(or (fix:= start end)
-		    (and (not (char-upper-case? (string-ref string start)))
-			 (search-rest (fix:+ start 1)))))
-	      (and (not (char-upper-case? char))
-		   (find-lower (fix:+ start 1))))))))
+    (and (fix:< start end)
+	 (let ((char (string-ref string start)))
+	   (if (char-lower-case? char)
+	       (let search-rest ((start (fix:+ start 1)))
+		 (or (fix:= start end)
+		     (and (not (char-upper-case? (string-ref string start)))
+			  (search-rest (fix:+ start 1)))))
+	       (and (not (char-upper-case? char))
+		    (find-lower (fix:+ start 1))))))))
 
 (define (string-downcase string)
   (let ((string (string-copy string)))
@@ -277,14 +277,42 @@ MIT in each case. |#
 
 (define (string-downcase! string)
   (substring-downcase! string 0 (string-length string)))
-
+
 (define (string-capitalized? string)
   (substring-capitalized? string 0 (string-length string)))
 
 (define (substring-capitalized? string start end)
-  (and (fix:< start end)
-       (char-upper-case? (string-ref string start))
-       (substring-lower-case? string (fix:+ start 1) end)))
+  ;; Testing for capitalization is somewhat more involved than testing
+  ;; for upper or lower case.  This algorithm requires that the first
+  ;; word be capitalized, and that the subsequent words be either
+  ;; lower case or capitalized.  This is a very general definition of
+  ;; capitalization; if you need something more specific you should
+  ;; call this procedure on the individual words.
+  (letrec
+      ((find-first-word
+	(lambda (start)
+	  (and (fix:< start end)
+	       (let ((char (string-ref string start)))
+		 (if (char-upper-case? char)
+		     (scan-word-tail (fix:+ start 1))
+		     (and (not (char-lower-case? char))
+			  (find-first-word (fix:+ start 1))))))))
+       (scan-word-tail
+	(lambda (start)
+	  (or (fix:= start end)
+	      (let ((char (string-ref string start)))
+		(if (char-lower-case? char)
+		    (scan-word-tail (fix:+ start 1))
+		    (and (not (char-upper-case? char))
+			 (find-subsequent-word (fix:+ start 1))))))))
+       (find-subsequent-word
+	(lambda (start)
+	  (or (fix:= start end)
+	      (let ((char (string-ref string start)))
+		(if (char-alphabetic? char)
+		    (scan-word-tail (fix:+ start 1))
+		    (find-subsequent-word (fix:+ start 1))))))))
+    (find-first-word start)))
 
 (define (string-capitalize string)
   (let ((string (string-copy string)))
@@ -292,10 +320,20 @@ MIT in each case. |#
     string))
 
 (define (string-capitalize! string)
-  (let ((length (string-length string)))
-    (if (zero? length) (error "String must have non-zero length" string))
-    (substring-upcase! string 0 1)
-    (substring-downcase! string 1 length)))
+  (substring-capitalize! string 0 (string-length string)))
+
+(define (substring-capitalize! string start end)
+  ;; This algorithm capitalizes the first word in the substring and
+  ;; downcases the subsequent words.  This is arbitrary, but seems
+  ;; useful if the substring happens to be a sentence.  Again, if you
+  ;; need finer control, parse the words yourself.
+  (let ((index
+	 (substring-find-first-char-in-set string start end
+					   char-set:alphabetic)))
+    (if index
+	(begin
+	  (substring-upcase! string index (fix:+ index 1))
+	  (substring-downcase! string (fix:+ index 1) end)))))
 
 ;;;; Replace
 
