@@ -1,9 +1,27 @@
 #!/bin/sh
+
+# $Id: make-dist-files,v 1.7 2000/11/28 17:32:16 cph Exp $
+#
+# Copyright (c) 2000 Massachusetts Institute of Technology
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
 type=$1
 destination=$2
 
-if [ "${type}" = "" ]
-then
+if [ "${type}" = "" ]; then
   type="std"
 fi
 
@@ -40,131 +58,119 @@ mkdir ${build_dir}/lib
 mkdir ${build_dir}/lib/mit-scheme
 mkdir ${build_dir}/lib/mit-scheme/SRC
 
-for file in scheme bchscheme
-do
-  cpx -v /scheme/v7/linux/microcode/${file} ${build_dir}/bin/.
+for file in scheme bchscheme; do
+  cpx /scheme/v7/linux/microcode/${file} ${build_dir}/bin/.
 done
 
-for file in utabmd.bin ${bands}
-do
-  cpx -v /scheme/v7/linux/lib/${file} ${build_dir}/lib/mit-scheme/.
+for file in utabmd.bin ${bands}; do
+  cpx /scheme/v7/linux/lib/${file} ${build_dir}/lib/mit-scheme/.
 done
-cpx -v /scheme/v7/dist/optiondb.scm ${build_dir}/lib/mit-scheme/.
+cpx /scheme/v7/dist/optiondb.scm ${build_dir}/lib/mit-scheme/.
 
 #
 # Edwin
 #
 mkdir ${build_dir}/lib/mit-scheme/edwin
-for file in info etc
-do
-  cpx -rv /scheme/v7/linux/lib/edwin/${file} ${build_dir}/lib/mit-scheme/edwin/.
+for file in info etc; do
+  cpx -r /scheme/v7/linux/lib/edwin/${file} ${build_dir}/lib/mit-scheme/edwin/.
 done
 
 #
 # Runtime debugging info and autoloads.
 #
-if [ ${type} = 6001 ]
-then
+if [ ${type} = 6001 ]; then
   rundbg=/scheme/v7/linux/runtime-check
 else
   rundbg=/scheme/v7/linux/runtime
 fi
 mkdir ${build_dir}/lib/mit-scheme/SRC/runtime
 ln -s SRC/runtime ${build_dir}/lib/mit-scheme/options
-for file in ${run_opts}
-do
-  cpx -v ${rundbg}/${file}.com ${build_dir}/lib/mit-scheme/SRC/runtime/.
+for file in ${run_opts}; do
+  cpx ${rundbg}/${file}.com ${build_dir}/lib/mit-scheme/SRC/runtime/.
 done
-cpx -v ${rundbg}/*.bci ${build_dir}/lib/mit-scheme/SRC/runtime/.
+cpx ${rundbg}/*.bci ${build_dir}/lib/mit-scheme/SRC/runtime/.
 
 #
 # Edwin debugging info and autoloads.
 #
 mkdir ${build_dir}/lib/mit-scheme/SRC/edwin
 ln -s ../SRC/edwin ${build_dir}/lib/mit-scheme/edwin/autoload
-for file in ${ed_opts}
-do
-  cpx -v /scheme/v7/linux/edwin/${file}.com ${build_dir}/lib/mit-scheme/SRC/edwin/.
+for file in ${ed_opts}; do
+  cpx /scheme/v7/linux/edwin/${file}.com ${build_dir}/lib/mit-scheme/SRC/edwin/.
 done
-cpx -v /scheme/v7/linux/edwin/*.bci ${build_dir}/lib/mit-scheme/SRC/edwin/.
+cpx /scheme/v7/linux/edwin/*.bci ${build_dir}/lib/mit-scheme/SRC/edwin/.
 
 #
 # SOS
 #
 mkdir ${build_dir}/lib/mit-scheme/sos
-cpx -v /scheme/v7/linux/sos/*.com ${build_dir}/lib/mit-scheme/sos/.
-cpx -v /scheme/v7/linux/sos/*.bci ${build_dir}/lib/mit-scheme/sos/.
-cpx -v /scheme/v7/linux/sos/sos.bco ${build_dir}/lib/mit-scheme/sos/.
-cpx -v /scheme/v7/linux/sos/sos.bld ${build_dir}/lib/mit-scheme/sos/.
-cpx -vh /scheme/v7/linux/sos/load.scm ${build_dir}/lib/mit-scheme/sos/.
+cpx /scheme/v7/linux/sos/*.com ${build_dir}/lib/mit-scheme/sos/.
+cpx /scheme/v7/linux/sos/*.bci ${build_dir}/lib/mit-scheme/sos/.
+cpx /scheme/v7/linux/sos/sos.bco ${build_dir}/lib/mit-scheme/sos/.
+cpx /scheme/v7/linux/sos/sos.bld ${build_dir}/lib/mit-scheme/sos/.
+cpx -h /scheme/v7/linux/sos/load.scm ${build_dir}/lib/mit-scheme/sos/.
 
 #
 # IMAIL
 #
 mkdir ${build_dir}/lib/mit-scheme/imail
-cpx -v /scheme/v7/linux/imail/*.com ${build_dir}/lib/mit-scheme/imail/.
-cpx -v /scheme/v7/linux/imail/*.bci ${build_dir}/lib/mit-scheme/imail/.
-cpx -v /scheme/v7/linux/imail/imail.bco ${build_dir}/lib/mit-scheme/imail/.
-cpx -v /scheme/v7/linux/imail/imail.bld ${build_dir}/lib/mit-scheme/imail/.
-cpx -vh /scheme/v7/linux/imail/load.scm ${build_dir}/lib/mit-scheme/imail/.
+cpx /scheme/v7/linux/imail/*.com ${build_dir}/lib/mit-scheme/imail/.
+cpx /scheme/v7/linux/imail/*.bci ${build_dir}/lib/mit-scheme/imail/.
+cpx /scheme/v7/linux/imail/imail.bco ${build_dir}/lib/mit-scheme/imail/.
+cpx /scheme/v7/linux/imail/imail.bld ${build_dir}/lib/mit-scheme/imail/.
+cpx -h /scheme/v7/linux/imail/load.scm ${build_dir}/lib/mit-scheme/imail/.
 
 #
 # Documentation
 #
 doc_dir=${build_dir}/lib/mit-scheme/doc
 mkdir ${doc_dir}
-cpx -v /scheme/v7/src/COPYING ${doc_dir}
-cpx -v /scheme/v7/dist/index.html ${doc_dir}
-cpx -v /scheme/documentation/ref-manual/html/*.html ${doc_dir}
-cpx -v /scheme/documentation/user-manual/html/*.html ${doc_dir}
-cpx -v /scheme/documentation/sos/html/*.html ${doc_dir}
+cpx /scheme/v7/src/COPYING ${doc_dir}
+cpx /scheme/v7/dist/index.html ${doc_dir}
+cpx /scheme/v7/doc/ref-manual/html/*.html ${doc_dir}
+cpx /scheme/v7/doc/user-manual/html/*.html ${doc_dir}
+cpx /scheme/v7/doc/sos/html/*.html ${doc_dir}
+cpx /scheme/v7/doc/imail/html/*.html ${doc_dir}
 
 #
 # Scmutils
 #
-if [ ${type} = scmutils ]
-then
+if [ ${type} = scmutils ]; then
   mech_source=/sw/scmutils
   mech_dest=${build_dir}/scmutils
   mkdir ${mech_dest}
 
-  for dir in `cd ${mech_source};find src -type d -print`
-  do
+  for dir in `cd ${mech_source};find src -type d -print`; do
     mkdir ${mech_dest}/${dir}
-    for file in ${mech_source}/${dir}/*.scm ${mech_source}/${dir}/*.doc ${mech_source}/${dir}/*.c
-    do
-      if [ -f ${file} ]
-      then
-        cpx -v ${file} ${mech_dest}/${dir}/.
+    for file in ${mech_source}/${dir}/*.scm ${mech_source}/${dir}/*.doc ${mech_source}/${dir}/*.c; do
+      if [ -f ${file} ]; then
+        cpx ${file} ${mech_dest}/${dir}/.
       fi
     done
   done
-  cpx -v ${mech_source}/src/copyrigh ${mech_dest}/src/.
-  cpx -v ${mech_source}/src/general/binio/transcript ${mech_dest}/src/general/binio/.
+  cpx ${mech_source}/src/copyrigh ${mech_dest}/src/.
+  cpx ${mech_source}/src/general/binio/transcript ${mech_dest}/src/general/binio/.
   rm -rf ${mech_dest}/src/commentary
   rm -rf ${mech_dest}/src/poly/zuras
 
-  for dir in `cd ${mech_source};find linux -type d -print`
-  do
+  for dir in `cd ${mech_source};find linux -type d -print`; do
     mkdir ${mech_dest}/${dir}
-    for file in ${mech_source}/${dir}/*.bci
-    do
-      if [ -f ${file} ]
-      then
-        cpx -v ${file} ${mech_dest}/${dir}/.
+    for file in ${mech_source}/${dir}/*.bci; do
+      if [ -f ${file} ]; then
+        cpx ${file} ${mech_dest}/${dir}/.
       fi
     done
   done
   rm -rf ${mech_dest}/linux/commentary
-  cpx -v ${mech_source}/dist/edwin-mechanics.com ${mech_dest}/linux/.
+  cpx ${mech_source}/dist/edwin-mechanics.com ${mech_dest}/linux/.
   ln -s ../../scmutils/linux/edwin-mechanics.com ${build_dir}/lib/mit-scheme/.
-  cpx -v ${mech_source}/linux/c-utils/* ${mech_dest}/linux/c-utils/.
+  cpx ${mech_source}/linux/c-utils/* ${mech_dest}/linux/c-utils/.
 
   mkdir ${mech_dest}/manual
-  cpx -v ${mech_source}/manual/refman.txt ${mech_dest}/manual/.
+  cpx ${mech_source}/manual/refman.txt ${mech_dest}/manual/.
 
-  cpx -v ${mech_source}/dist/mechanics ${build_dir}/bin/.
-  cpx -v ${mech_source}/dist/edwin ${build_dir}/bin/.
+  cpx ${mech_source}/dist/mechanics ${build_dir}/bin/.
+  cpx ${mech_source}/dist/edwin ${build_dir}/bin/.
 fi
 
 #
@@ -181,12 +187,11 @@ make_tarfile ()
     chmod 444 ${tarfile}
 }
 
-if [ "${destination}" = "" ]
-then
+if [ "${destination}" = "" ]; then
   pre="`/scheme/v7/dist/release-prefix`-ix86"
   make_tarfile "${pre}-gnu-linux"
   rm -f ${build_dir}/bin/*
-  cpx ../freebsd-bin/* ${build_dir}/bin/.
+  cpx /scheme/v7/dist/freebsd-bin/* ${build_dir}/bin/.
   make_tarfile "${pre}-freebsd"
 else
   make_tarfile ${destination}
