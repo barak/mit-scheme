@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: modes.scm,v 1.29 1999/11/01 01:17:36 cph Exp $
+;;; $Id: modes.scm,v 1.30 1999/11/01 03:38:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -47,9 +47,9 @@
       (error:wrong-type-argument super-mode "major mode" 'MAKE-MODE))
   (let ((sname (symbol->string name))
 	(major? (if major? #t #f))
-	(super-comtabs (if super-mode (mode-comtabs super-mode) '()))
-	(description (doc-string->posn sname description)))
-    (let ((mode (string-table-get editor-modes sname)))
+	(super-comtabs (if super-mode (mode-comtabs super-mode) '())))
+    (let ((mode (string-table-get editor-modes sname))
+	  (description (doc-string->posn sname description)))
       (if mode
 	  (begin
 	    (set-mode-major?! mode major?)
