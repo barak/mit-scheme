@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gctype.c,v 9.26 1987/11/17 08:11:56 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gctype.c,v 9.27 1988/02/12 16:51:15 jinx Exp $
  *
  * This file contains the table which maps between Types and
  * GC Types.
@@ -58,7 +58,7 @@ int GC_Type_Map[MAX_TYPE_CODE + 1] = {
     GC_Pair,			/* TC_COMPILED_PROCEDURE */
     GC_Vector,			/* TC_BIG_FIXNUM */
     GC_Pair,			/* TC_PROCEDURE */
-    GC_Undefined,			/* 0x10 */
+    GC_Pair,			/* TC_ENTITY */
     GC_Pair,			/* TC_DELAY */
     GC_Vector,			/* TC_ENVIRONMENT */
     GC_Pair,			/* TC_DELAYED */
@@ -105,7 +105,7 @@ int GC_Type_Map[MAX_TYPE_CODE + 1] = {
     GC_Pair,			/* TC_WEAK_CONS */
     GC_Quadruple,		/* TC_QUAD */
     GC_Compiled,		/* TC_RETURN_ADDRESS */
-    GC_Pair,			/* TC_COMPILER_LINK */
+    GC_Pair,			/* TC_RATNUM */
     GC_Non_Pointer,		/* TC_STACK_ENVIRONMENT */
     GC_Pair,			/* TC_COMPLEX */
     GC_Vector,			/* TC_COMPILED_CODE_BLOCK */

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.41 1988/02/06 20:41:41 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.42 1988/02/12 16:52:28 jinx Rel $
 
 This file defines the storage for global variables for
 the Scheme Interpreter. */
@@ -157,6 +157,9 @@ long MAX_RETURN = MAX_RETURN_CODE;
 
 extern char *Return_Names[];
 char *Return_Names[] = RETURN_NAME_TABLE;	/* in returns.h */
+
+extern char *Type_Names[];
+char *Type_Names[] = TYPE_NAME_TABLE;		/* in types.h */
 
 extern char *Abort_Names[];
 char *Abort_Names[] = ABORT_NAME_TABLE;		/* in const.h */

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.29 1987/11/17 08:15:39 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.30 1988/02/12 16:52:00 jinx Exp $
  *
  * This file contains the code that copies objects into pure
  * and constant space.
@@ -188,13 +188,16 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
 
       default:
 	fprintf(stderr,
-		"PurifyLoop: Bad type code = 0x%02x\n",
-		Type_Code(Temp));
+		"\nPurifyLoop: Bad type code = 0x%02x\n",
+		OBJECT_TYPE(Temp));
+	fprintf(stderr,
+		"Scan = 0x%lx; Free = 0x%lx; Heap_Bottom = 0x%lx\n",
+		To, Scan, Heap_Bottom);
 	Invalid_Type_Code();
       } /* Switch_by_GC_Type */
   } /* For loop */
   *To_Pointer = To;
-  return To;
+  return (To);
 } /* PurifyLoop */
 
 /* Description of the algorithm for PURIFY:

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.30 1987/06/15 19:25:47 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.31 1988/02/12 16:49:57 jinx Exp $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -152,12 +152,15 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
       default:
 	fprintf(stderr,
 		"\nGCLoop: Bad type code = 0x%02x\n",
-		Type_Code(Temp));
+		OBJECT_TYPE(Temp));
+	fprintf(stderr,
+		"Scan = 0x%lx; Free = 0x%lx; Heap_Bottom = 0x%lx\n",
+		To, Scan, Heap_Bottom);
 	Invalid_Type_Code();
       }
   }
 end_gcloop:
   *To_ptr = To;
   *To_Address_ptr = To_Address;
-  return Scan;
+  return (Scan);
 }

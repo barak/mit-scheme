@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.37 1987/12/04 22:17:11 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.38 1988/02/12 16:51:27 jinx Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -542,16 +542,18 @@ Do_Expression:
 
 Eval_Non_Trapping:
   Eval_Ucode_Hook();
-  switch (Type_Code(Fetch_Expression()))
+  switch (OBJECT_TYPE(Fetch_Expression()))
   {
     case TC_BIG_FIXNUM:         /* The self evaluating items */
     case TC_BIG_FLONUM:
     case TC_CHARACTER_STRING:
     case TC_CHARACTER:
+    case TC_COMPILED_CODE_BLOCK:
     case TC_COMPILED_PROCEDURE:
     case TC_COMPLEX:
     case TC_CONTROL_POINT:
     case TC_DELAYED:
+    case TC_ENTITY:
     case TC_ENVIRONMENT:
     case TC_EXTENDED_PROCEDURE:
     case TC_FIXNUM:
@@ -564,13 +566,16 @@ Eval_Non_Trapping:
     case TC_PRIMITIVE:
     case TC_PROCEDURE:
     case TC_QUAD:
+    case TC_RATNUM:
+    case TC_REFERENCE_TRAP:
+    case TC_RETURN_CODE:
     case TC_UNINTERNED_SYMBOL:
     case TC_TRUE: 
     case TC_VECTOR:
     case TC_VECTOR_16B:
     case TC_VECTOR_1B:
-    case TC_REFERENCE_TRAP:
-      Val = Fetch_Expression(); break;
+      Val = Fetch_Expression();
+      break;
 
     case TC_ACCESS:
      Will_Push(CONTINUATION_SIZE);
@@ -853,7 +858,6 @@ lookup_end_restart:
 
     SITE_EXPRESSION_DISPATCH_HOOK()
 
-    case TC_RETURN_CODE:
     default: Eval_Error(ERR_UNDEFINED_USER_TYPE);
   };
 
@@ -1355,6 +1359,24 @@ Perform_Application:
 
         switch(Type_Code(Function))
         { 
+
+	  case TC_ENTITY:
+	  {
+	    fast long nargs;
+
+	    /* Will_Pushed ommited since frame must be contiguous.
+	       combination code must ensure one more slot.
+	     */
+
+	    /* This code assumes that adding 1 to nargs takes care
+	       of everything, including type code, etc.
+	     */
+	    nargs = Pop();
+	    Push(Fast_Vector_Ref(Function, ENTITY_OPERATOR));
+	    Push(nargs + 1);
+	    /* No interrupts, etc. */
+	    goto Perform_Application;
+	  }
 
 /* Interpret() continues on the next page */
 

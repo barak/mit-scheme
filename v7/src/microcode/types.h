@@ -30,12 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/types.h,v 9.26 1987/11/17 08:18:54 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/types.h,v 9.27 1988/02/12 16:52:46 jinx Exp $
  *
  * Type code definitions, numerical order
  *
  */
 
+/*	Name				Value	Previous Name */
+
 #define TC_NULL	                	0x00
 #define TC_LIST				0x01
 #define TC_CHARACTER			0x02
@@ -52,9 +54,7 @@ MIT in each case. */
 #define TC_COMPILED_PROCEDURE		0x0D
 #define TC_BIG_FIXNUM			0x0E
 #define TC_PROCEDURE			0x0F
-/* 0x10 used to be TC_PRIMITIVE_EXTERNAL */
-/* if it is reused, define PRIMITIVE_EXTERNAL_REUSED below. */
-/* Unused				0x10 */
+#define TC_ENTITY			0x10 /* PRIMITIVE_EXTERNAL */
 #define TC_DELAY			0x11
 #define TC_ENVIRONMENT			0x12
 #define TC_DELAYED			0x13
@@ -71,7 +71,7 @@ MIT in each case. */
 #define TC_INTERNED_SYMBOL		0x1D
 #define TC_CHARACTER_STRING		0x1E
 #define TC_ACCESS			0x1F
-#define TC_HUNK3_A			0x20 /* Used to be EXTENDED_FIXNUM. */
+#define TC_HUNK3_A			0x20 /* EXTENDED_FIXNUM */
 #define TC_DEFINITION			0x21
 #define TC_BROKEN_HEART			0x22
 #define TC_ASSIGNMENT			0x23
@@ -89,26 +89,96 @@ MIT in each case. */
 #define TC_VECTOR_1B			0x2F
 #define TC_PCOMB0			0x30
 #define TC_VECTOR_16B			0x31
-#define TC_REFERENCE_TRAP		0x32 /* Used to be UNASSIGNED. */
+#define TC_REFERENCE_TRAP		0x32 /* UNASSIGNED */
 #define TC_SEQUENCE_3			0x33
 #define TC_CONDITIONAL			0x34
 #define TC_DISJUNCTION			0x35
 #define TC_CELL				0x36
 #define TC_WEAK_CONS			0x37
-#define TC_QUAD				0x38 /* Used to be TC_TRAP. */
+#define TC_QUAD				0x38 /* TRAP */
 #define TC_RETURN_ADDRESS		0x39
-#define TC_COMPILER_LINK		0x3A
+#define TC_RATNUM			0x3A /* COMPILER_LINK */
 #define TC_STACK_ENVIRONMENT		0x3B
 #define TC_COMPLEX			0x3C
 #define TC_COMPILED_CODE_BLOCK		0x3D
 
-/* If you add a new type, don't forget to update gccode.h and gctype.c */
+/* If you add a new type, don't forget to update gccode.h, gctype.c,
+   and the type name table below.
+ */
 
-/* Remove #if false and #endif if type code 0x10 is reused. */
+#define LAST_TYPE_CODE			0X3D
+
+#define TYPE_NAME_TABLE							\
+{									\
+  /* 0x00 */	                "NULL",					\
+  /* 0x01 */			"LIST",					\
+  /* 0x02 */			"CHARACTER",				\
+  /* 0x03 */                 	"SCODE-QUOTE",				\
+  /* 0x04 */			"PCOMB2",				\
+  /* 0x05 */			"UNINTERNED-SYMBOL",			\
+  /* 0x06 */			"BIG-FLONUM",				\
+  /* 0x07 */			"COMBINATION-1",			\
+  /* 0x08 */			"TRUE",					\
+  /* 0x09 */			"EXTENDED-PROCEDURE",			\
+  /* 0x0A */			"VECTOR",				\
+  /* 0x0B */ 			"RETURN-CODE",				\
+  /* 0x0C */			"COMBINATION-2",			\
+  /* 0x0D */			"COMPILED-PROCEDURE",			\
+  /* 0x0E */			"BIG-FIXNUM",				\
+  /* 0x0F */			"PROCEDURE",				\
+  /* 0x10 */			"ENTITY",				\
+  /* 0x11 */			"DELAY",				\
+  /* 0x12 */			"ENVIRONMENT",				\
+  /* 0x13 */			"DELAYED",				\
+  /* 0x14 */			"EXTENDED-LAMBDA",			\
+  /* 0x15 */			"COMMENT",				\
+  /* 0x16 */			"NON-MARKED-VECTOR",			\
+  /* 0x17 */			"LAMBDA",				\
+  /* 0x18 */			"PRIMITIVE",				\
+  /* 0x19 */			"SEQUENCE-2",				\
+  /* 0x1A */			"FIXNUM",				\
+  /* 0x1B */			"PCOMB1",				\
+  /* 0x1C */			"CONTROL-POINT",			\
+  /* 0x1D */			"INTERNED-SYMBOL",			\
+  /* 0x1E */			"CHARACTER-STRING",			\
+  /* 0x1F */			"ACCESS",				\
+  /* 0x20 */			"HUNK3-A",				\
+  /* 0x21 */			"DEFINITION",				\
+  /* 0x22 */			"BROKEN-HEART",				\
+  /* 0x23 */			"ASSIGNMENT",				\
+  /* 0x24 */			"HUNK3-B",				\
+  /* 0x25 */			"IN-PACKAGE",				\
+  /* 0x26 */			"COMBINATION",				\
+  /* 0x27 */			"MANIFEST-NM-VECTOR",			\
+  /* 0x28 */			"COMPILED-EXPRESSION",			\
+  /* 0x29 */			"LEXPR",				\
+  /* 0x2A */  			"PCOMB3",				\
+  /* 0x2B */			"MANIFEST-SPECIAL-NM-VECTOR",		\
+  /* 0x2C */			"VARIABLE",				\
+  /* 0x2D */			"THE-ENVIRONMENT",			\
+  /* 0x2E */			"FUTURE",				\
+  /* 0x2F */			"VECTOR-1B",				\
+  /* 0x30 */			"PCOMB0",				\
+  /* 0x31 */			"VECTOR-16B",				\
+  /* 0x32 */			"REFERENCE-TRAP",			\
+  /* 0x33 */			"SEQUENCE-3",				\
+  /* 0x34 */			"CONDITIONAL",				\
+  /* 0x35 */			"DISJUNCTION",				\
+  /* 0x36 */			"CELL",					\
+  /* 0x37 */			"WEAK-CONS",				\
+  /* 0x38 */			"QUAD",					\
+  /* 0x39 */			"RETURN-ADDRESS",			\
+  /* 0x3A */			"RATNUM",				\
+  /* 0x3B */			"STACK-ENVIRONMENT",			\
+  /* 0x3C */			"COMPLEX",				\
+  /* 0x3D */			"COMPILED-CODE-BLOCK"			\
+  }
+
+/* Flags and aliases */
 
-#if false
+/* Type code 0x10 (used to be TC_PRIMITIVE_EXTERNAL) has been reused. */
+
 #define PRIMITIVE_EXTERNAL_REUSED
-#endif
 
 /* Aliases */
 

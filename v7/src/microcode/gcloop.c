@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.24 1987/04/03 00:13:50 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.25 1988/02/12 16:51:04 jinx Exp $
  *
  * This file contains the code for the most primitive part
  * of garbage collection.
@@ -139,12 +139,15 @@ Pointer **To_Pointer;
 
       default:
 	fprintf(stderr,
-		"GCLoop: Bad type code = 0x%02x\n",
-		Type_Code(Temp));
+		"\nGCLoop: Bad type code = 0x%02x\n",
+		OBJECT_TYPE(Temp));
+	fprintf(stderr,
+		"Scan = 0x%lx; Free = 0x%lx; Heap_Bottom = 0x%lx\n",
+		To, Scan, Heap_Bottom);
 	Invalid_Type_Code();
 
       }	/* Switch_by_GC_Type */
   } /* For loop */
   *To_Pointer = To;
-  return To;
+  return (To);
 } /* GCLoop */

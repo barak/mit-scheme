@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.33 1988/02/06 20:40:12 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.34 1988/02/12 16:50:37 jinx Exp $
 
    This file contains code for fasdump and dump-band.
 */
@@ -196,10 +196,12 @@ DumpLoop(Scan, Dump_Mode)
 
       default:
 	fprintf(stderr,
-		"DumpLoop: Bad type code = 0x%02x\n",
-		Type_Code(Temp));
+		"\nDumpLoop: Bad type code = 0x%02x\n",
+		OBJECT_TYPE(Temp));
+	fprintf(stderr,
+		"Scan = 0x%lx; Free = 0x%lx; Heap_Bottom = 0x%lx\n",
+		To, Scan, Heap_Bottom);
 	Invalid_Type_Code();
-
       }
   }
   NewFree = To;

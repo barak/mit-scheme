@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.41 1988/02/06 20:43:02 jinx Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.42 1988/02/12 16:53:42 jinx Exp $
 
 (declare (usual-integrations))
 
@@ -112,7 +112,7 @@
 	       COMPILED-PROCEDURE 	       		;0D
 	       (BIGNUM BIG-FIXNUM)			;0E
 	       PROCEDURE				;0F
-	       #F					;10
+	       (ENTITY)					;10
 	       DELAY					;11
 	       ENVIRONMENT		      		;12
 	       DELAYED					;13
@@ -154,9 +154,9 @@
 	       WEAK-CONS				;37
 	       QUAD        				;38
 	       COMPILER-RETURN-ADDRESS			;39
-	       COMPILER-LINK				;3A
+	       RATNUM					;3A
 	       STACK-ENVIRONMENT			;3B
-	       COMPLEX       				;3C
+	       (RECNUM COMPLEX)				;3C
 	       COMPILED-CODE-BLOCK			;3D
 	       #F					;3E
 	       #F					;3F
@@ -569,4 +569,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.41 1988/02/06 20:43:02 jinx Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.42 1988/02/12 16:53:42 jinx Exp $"

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.36 1987/12/09 06:31:42 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.37 1988/02/12 16:50:08 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -213,14 +213,17 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
       default:
 	fprintf(stderr,
 		"\npurifyloop: Bad type code = 0x%02x\n",
-		Type_Code(Temp));
+		OBJECT_TYPE(Temp));
+	fprintf(stderr,
+		"Scan = 0x%lx; Free = 0x%lx; Heap_Bottom = 0x%lx\n",
+		To, Scan, Heap_Bottom);
 	Invalid_Type_Code();
       }
   }
 end_purifyloop:
   *To_ptr = To;
   *To_Address_ptr = To_Address;
-  return Scan;
+  return (Scan);
 }
 
 /* This is not paranoia!

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.27 1987/12/04 22:15:07 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.28 1988/02/12 16:50:19 jinx Rel $
  *
  * Utilities to help with debugging
  */
@@ -223,17 +223,23 @@ Print_Expression(Expr, String)
   }
   Do_Printing(Expr, true);
 }
+
+extern char *Type_Names[];
 
 Do_Printing(Expr, Detailed)
      Pointer Expr;
      Boolean Detailed;
 {
   long Temp_Address;
-  Boolean Return_After_Print;
+  Boolean
+    Return_After_Print,
+    handled_p;;
 
-  Temp_Address = Get_Integer(Expr);
+  Temp_Address = OBJECT_DATUM(Expr);
   Return_After_Print = false;
-  switch(Type_Code(Expr))
+  handled_p = false;
+
+  switch(OBJECT_TYPE(Expr))
   { case TC_ACCESS:
       printf("[ACCESS (");
       Expr = Vector_Ref(Expr, ACCESS_NAME);
@@ -252,7 +258,7 @@ Do_Printing(Expr, Detailed)
 
       printf("\"");
       Length = ((long) (Vector_Ref(Expr, STRING_LENGTH)));
-      Next = (char *) Nth_Vector_Loc(Expr, STRING_CHARS);
+      Next = ((char *) Nth_Vector_Loc(Expr, STRING_CHARS));
       for (i = 0; i < Length; i++)
       {
 	This = *Next++;
@@ -273,23 +279,29 @@ Do_Printing(Expr, Detailed)
       goto SPrint;
 
     case TC_FIXNUM:
-    { long A;
+    {
+      long A;
+
       Sign_Extend(Expr, A);
       printf("%d", A);
       return;
     }
 
-    case TC_BIG_FLONUM: printf("%f", Get_Float(Expr)); return;
+    case TC_BIG_FLONUM:
+      printf("%f", Get_Float(Expr));
+      return;
 
     case TC_WEAK_CONS:
-    case TC_LIST: List_Print(Expr); return;
+    case TC_LIST:
+      List_Print(Expr);
+      return;
 
     case TC_NULL:
       if (Temp_Address == 0)
-      { printf("()");
+      {
+	printf("()");
         return;
       }
-      printf("[NULL");
       break;
 
 /* Do_Printing continues on the next page */
@@ -297,20 +309,27 @@ Do_Printing(Expr, Detailed)
 /* Do_Printing, continued */
 
     case TC_UNINTERNED_SYMBOL:
-      printf("[UNINTERNED_SYMBOL ("); goto SPrint;
+      printf("[UNINTERNED_SYMBOL (");
+      goto SPrint;
 
     case TC_INTERNED_SYMBOL:
-    { Pointer Name;
+    {
+      Pointer Name;
       char   *Next_Char;
       long    Length, i;
+
       Return_After_Print = true;
 SPrint:
       Name = Vector_Ref(Expr, SYMBOL_NAME);
       Length = ((long) (Vector_Ref(Name, STRING_LENGTH)));
-      Next_Char = (char *) Nth_Vector_Loc(Name, STRING_CHARS);
-      for (i=0; i < Length; i++)
+      Next_Char = ((char *) Nth_Vector_Loc(Name, STRING_CHARS));
+      for (i = 0; i < Length; i++)
+      {
         printf("%c", *Next_Char++);
-      if (Return_After_Print) return;
+      }
+      if (Return_After_Print)
+	return;
+      handled_p = true;
       printf(")");
       break;
     }
@@ -320,14 +339,13 @@ SPrint:
 /* Do_Printing, continued */
 
   case TC_VARIABLE:
-      if (Detailed) printf("[VARIABLE (");
+      if (Detailed)
+	printf("[VARIABLE (");
       Expr = Vector_Ref(Expr, VARIABLE_SYMBOL);
-      if (!Detailed) Return_After_Print = true;
+      if (!Detailed)
+	Return_After_Print = true;
       goto SPrint;
 
-    case TC_BIG_FIXNUM: printf("[BIG_FIXNUM"); break;
-    case TC_BROKEN_HEART: printf("[BROKEN_HEART"); break;
-    case TC_CHARACTER: printf("[CHARACTER"); break;
     case TC_COMBINATION:
       printf("[COMBINATION (%d args) 0x%x]",
 	     Vector_Length(Expr)-1, Temp_Address);
@@ -337,6 +355,7 @@ SPrint:
         printf(" ...)");
       }
       return;
+
     case TC_COMBINATION_1:
       printf("[COMBINATION_1 0x%x]", Temp_Address);
       if (Detailed)
@@ -364,16 +383,7 @@ SPrint:
 	printf(")");
       }
       return;
-    case TC_CELL: printf("[CELL"); break;
-    case TC_COMMENT: printf("[COMMENT"); break;
-    case TC_COMPILED_EXPRESSION: printf("[COMPILED_EXPRESSION"); break;
-    case TC_COMPILED_PROCEDURE:
-     printf("[COMPILED_PROCEDURE"); break;
-    case TC_CONDITIONAL: printf("[CONDITIONAL"); break;
-    case TC_CONTROL_POINT: printf("[CONTROL_POINT"); break;
-    case TC_DELAY: printf("[DELAY"); break;
-    case TC_DELAYED: printf("[DELAYED"); break;
-    case TC_DISJUNCTION: printf("[DISJUNCTION"); break;
+
     case TC_ENVIRONMENT:
     {
       Pointer procedure;
@@ -387,6 +397,7 @@ SPrint:
       printf(")");
       return;
     }
+
     case TC_EXTENDED_LAMBDA:
       if (Detailed)
 	printf("[EXTENDED_LAMBDA (");
@@ -407,11 +418,6 @@ SPrint:
 
 /* Do_Printing, continued */
 
-    case TC_FUTURE: printf("[FUTURE"); break;
-    case TC_HUNK3_A: printf("[TRIPLE_A"); break;
-    case TC_HUNK3_B: printf("[TRIPLE_B"); break;
-    case TC_IN_PACKAGE: printf("[IN_PACKAGE"); break;
-
     case TC_LAMBDA:
       if (Detailed)
       {
@@ -425,18 +431,12 @@ SPrint:
       }
       return;
 
-    case TC_LEXPR: printf("[LEXPR"); break;
-    case TC_MANIFEST_NM_VECTOR: printf("[MANIFEST_NM_VECTOR"); break;
-    case TC_MANIFEST_SPECIAL_NM_VECTOR:
-      printf("[MANIFEST_SPECIAL_NM_VECTOR"); break;
-    case TC_NON_MARKED_VECTOR: printf("[NON_MARKED_VECTOR"); break;
-    case TC_PCOMB0: printf("[PCOMB0"); break;
-    case TC_PCOMB1: printf("[PCOMB1"); break;
-    case TC_PCOMB2: printf("[PCOMB2"); break;
-    case TC_PCOMB3: printf("[PCOMB3"); break;
     case TC_PRIMITIVE:
-      printf("[PRIMITIVE "); Prt_PName(Expr);
-      printf("]"); return;
+      printf("[PRIMITIVE ");
+      Prt_PName(Expr);
+      printf("]");
+      return;
+
     case TC_PROCEDURE:
       if (Detailed)
       {
@@ -453,7 +453,6 @@ SPrint:
 
 /* Do_Printing, continued */
 
-    case TC_QUAD: printf("[QUAD"); break;
     case TC_REFERENCE_TRAP:
     {
       printf("[REFERENCE-TRAP");
@@ -464,29 +463,37 @@ SPrint:
       printf("]");
       return;
     }
+
     case TC_RETURN_CODE:
       printf("[RETURN_CODE ");
       Print_Return_Name(Expr);
       printf("]");
       return;
-    case TC_SCODE_QUOTE: printf("[SCODE_QUOTE"); break;
-    case TC_SEQUENCE_2: printf("[SEQUENCE_2"); break;
-    case TC_SEQUENCE_3: printf("[SEQUENCE_3"); break;
-    case TC_THE_ENVIRONMENT: printf("[THE_ENVIRONMENT"); break;
+
     case TC_TRUE:
       if (Temp_Address == 0)
       {
 	printf("#T");
         return;
       }
-      printf("[TRUE");
       break;
-    case TC_VECTOR: printf("[VECTOR"); break;
-    case TC_VECTOR_16B: printf("[VECTOR_16B"); break;
-    case TC_VECTOR_1B: printf("[VECTOR_1B"); break;
-    default: printf("[0x%x", Type_Code(Expr));
+
+    default:
+      break;
+  }
+  if (!handled_p)
+  {
+    if (OBJECT_TYPE(Expr) <= LAST_TYPE_CODE)
+    {
+      printf("[%s", Type_Names[OBJECT_TYPE(Expr)]);
+    }
+    else
+    {
+      printf("[0x%02x", OBJECT_TYPE(Expr));
+    }
   }
   printf(" 0x%x]", Temp_Address);
+  return;
 }
 
 Boolean

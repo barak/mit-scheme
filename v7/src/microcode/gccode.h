@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.32 1988/02/06 20:40:56 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.33 1988/02/12 16:50:51 jinx Exp $
  *
  * This file contains the macros for use in code which does GC-like
  * loops over memory.  It is only included in a few files, unlike
@@ -99,8 +99,9 @@ MIT in each case. */
  case TC_LEXPR:						\
  case TC_DISJUNCTION:					\
  case TC_COMPILED_PROCEDURE:				\
- case TC_COMPILER_LINK:					\
- case TC_COMPLEX
+ case TC_COMPLEX:					\
+ case TC_ENTITY:					\
+ case TC_RATNUM
 
 #define case_Pair					\
  case TC_INTERNED_SYMBOL:				\

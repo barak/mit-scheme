@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sdata.h,v 9.27 1987/11/17 08:16:29 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sdata.h,v 9.28 1988/02/12 16:52:13 jinx Rel $
  *
  * Description of the user data objects.  This should parallel the
  * file SDATA.SCM in the runtime system.
@@ -157,6 +157,15 @@ MIT in each case. */
 #define THUNK_VALUE		1
 #define THUNK_ENVIRONMENT	0
 #define THUNK_PROCEDURE		1
+
+/* ENTITY
+   A cons of a procedure and something else.
+   When invoked, it invokes (tail recurses) into the procedure passing
+   the entity and the arguments to it.
+ */
+
+#define ENTITY_OPERATOR		0
+#define ENTITY_DATA		1
 
 /* ENVIRONMENT
  * Associates identifiers with values.

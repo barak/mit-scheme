@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.31 1988/02/10 15:42:58 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.32 1988/02/12 16:49:27 jinx Rel $
  *
  * Dumps Scheme FASL in user-readable form .
  */
@@ -184,6 +184,8 @@ static char string_buffer[10];
   break;								\
 }
 
+char *Type_Names[] = TYPE_NAME_TABLE;
+
 void
 Display(Location, Type, The_Datum)
      long Location, Type, The_Datum;
@@ -210,21 +212,18 @@ Display(Location, Type, The_Datum)
 	printf("TRUE\n");
 	return;
       }
-      NON_POINTER("TRUE");
+      /* fall through */
 
+
+    case TC_CHARACTER:
+    case TC_RETURN_CODE:
+    case TC_PRIMITIVE:
+    case TC_THE_ENVIRONMENT:
+    case TC_PCOMB0:
     case TC_MANIFEST_SPECIAL_NM_VECTOR:
-      NON_POINTER("MANIFEST-SPECIAL-NM");
-
     case TC_MANIFEST_NM_VECTOR:
-      NON_POINTER("MANIFEST-NM-VECTOR");
+      NON_POINTER(Type_Names[Type]);
 
-    case TC_BROKEN_HEART:
-      if (The_Datum == 0)
-      {
-	Points_To = 0;
-      }
-      POINTER("BROKEN-HEART");
-
     case TC_INTERNED_SYMBOL:
       PRINT_OBJECT("INTERNED-SYMBOL", Points_To);
       printf(" = ");
@@ -259,62 +258,21 @@ Display(Location, Type, The_Datum)
 	POINTER("REFERENCE-TRAP");
       }
 
-    case TC_CHARACTER:			NON_POINTER("CHARACTER");
-    case TC_RETURN_CODE:		NON_POINTER("RETURN-CODE");
-    case TC_PRIMITIVE:			NON_POINTER("PRIMITIVE");
-    case TC_THE_ENVIRONMENT:		NON_POINTER("THE-ENVIRONMENT");
-    case TC_PCOMB0:			NON_POINTER("PCOMB0");
-    case TC_LIST:			POINTER("LIST");
-    case TC_SCODE_QUOTE:		POINTER("SCODE-QUOTE");
-    case TC_PCOMB2:			POINTER("PCOMB2");
-    case TC_BIG_FLONUM:			POINTER("FLONUM");
-
-    case TC_COMBINATION_1:		POINTER("COMBINATION-1");
-    case TC_EXTENDED_PROCEDURE:		POINTER("EXTENDED-PROCEDURE");
-    case TC_VECTOR:			POINTER("VECTOR");
-    case TC_COMBINATION_2:		POINTER("COMBINATION-2");
-    case TC_COMPILED_PROCEDURE:		POINTER("COMPILED-PROCEDURE");
-    case TC_BIG_FIXNUM:			POINTER("BIG-FIXNUM");
-    case TC_PROCEDURE:			POINTER("PROCEDURE");
-    case TC_DELAY:			POINTER("DELAY");
-    case TC_ENVIRONMENT:		POINTER("ENVIRONMENT");
-    case TC_DELAYED:			POINTER("DELAYED");
-    case TC_EXTENDED_LAMBDA:		POINTER("EXTENDED-LAMBDA");
-    case TC_COMMENT:			POINTER("COMMENT");
-    case TC_NON_MARKED_VECTOR:		POINTER("NON-MARKED-VECTOR");
-    case TC_LAMBDA:			POINTER("LAMBDA");
-    case TC_SEQUENCE_2:			POINTER("SEQUENCE-2");
-    case TC_PCOMB1:			POINTER("PCOMB1");
-    case TC_CONTROL_POINT:		POINTER("CONTROL-POINT");
-    case TC_ACCESS:			POINTER("ACCESS");
-    case TC_DEFINITION:			POINTER("DEFINITION");
-    case TC_ASSIGNMENT:			POINTER("ASSIGNMENT");
-    case TC_HUNK3_A:			POINTER("HUNK3_A");
-    case TC_HUNK3_B:			POINTER("HUNK3-B");
-    case TC_IN_PACKAGE:			POINTER("IN-PACKAGE");
-    case TC_COMBINATION:		POINTER("COMBINATION");
-    case TC_COMPILED_EXPRESSION:	POINTER("COMPILED-EXPRESSION");
-    case TC_LEXPR:			POINTER("LEXPR");
-    case TC_PCOMB3:			POINTER("PCOMB3");
-    case TC_VARIABLE:			POINTER("VARIABLE");
-    case TC_FUTURE:			POINTER("FUTURE");
-    case TC_VECTOR_1B:			POINTER("VECTOR-1B");
-    case TC_VECTOR_16B:			POINTER("VECTOR-16B");
-    case TC_SEQUENCE_3:			POINTER("SEQUENCE-3");
-    case TC_CONDITIONAL:		POINTER("CONDITIONAL");
-    case TC_DISJUNCTION:		POINTER("DISJUNCTION");
-    case TC_CELL:			POINTER("CELL");
-    case TC_WEAK_CONS:			POINTER("WEAK-CONS");
-    case TC_RETURN_ADDRESS:		POINTER("RETURN-ADDRESS");
-    case TC_COMPILER_LINK:		POINTER("COMPILER_LINK");
-    case TC_STACK_ENVIRONMENT:		POINTER("STACK-ENVIRONMENT");
-    case TC_COMPLEX:			POINTER("COMPLEX");
-    case TC_QUAD:			POINTER("QUAD");
-    case TC_COMPILED_CODE_BLOCK:	POINTER("COMPILED-CODE-BLOCK");
-
+    case TC_BROKEN_HEART:
+      if (The_Datum == 0)
+      {
+	Points_To = 0;
+      }
     default:
-      sprintf(&the_string[0], "0x%02lx ", Type);
-      POINTER(&the_string[0]);
+      if (Type <= LAST_TYPE_CODE)
+      {
+	POINTER(Type_Names[Type]);
+      }
+      else
+      {
+	sprintf(&the_string[0], "0x%02lx ", Type);
+	POINTER(&the_string[0]);
+      }
   }
   PRINT_OBJECT(the_string, Points_To);
   putchar('\n');

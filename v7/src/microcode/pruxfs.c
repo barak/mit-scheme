@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.25 1987/12/18 00:03:51 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.26 1988/02/12 16:53:26 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -153,7 +153,7 @@ DEFINE_PRIMITIVE ("GID->STRING", Prim_gid_to_string, 1)
   PRIMITIVE_RETURN (C_String_To_Scheme_String (entry -> gr_name));
 }
 
-/* Returns a vector of 9 items:
+/* Returns a vector of 10 items:
 
    0 = #T iff the file is a directory
    1 = number of links to the file
@@ -181,7 +181,7 @@ DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1)
   CHECK_ARG (1, STRING_P);
   if ((stat ((Scheme_String_To_C_String (ARG_REF (1))), (& stat_result))) < 0)
     PRIMITIVE_RETURN (NIL);
-  result = (allocate_marked_vector (TC_VECTOR, 9, true));
+  result = (allocate_marked_vector (TC_VECTOR, 10, true));
   modes = (allocate_string (10));
   User_Vector_Set
     (result, 0,
