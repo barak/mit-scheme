@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwiu.scm,v 1.23 1993/01/12 22:06:34 bal Exp $
+;;;	$Id: bufwiu.scm,v 1.24 1993/01/29 23:05:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -403,6 +403,7 @@
 ;;; redisplay.
 
 (define (buffer-window/needs-redisplay? window)
+  (%notice-window-changes! window)
   (or (window-needs-redisplay? window)
       (not (%window-saved-screen window))
       (screen-needs-update? (%window-saved-screen window))))
