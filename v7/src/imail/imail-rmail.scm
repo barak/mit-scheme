@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.8 2000/01/19 20:58:17 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.9 2000/01/20 17:12:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -56,7 +56,7 @@
 (define-method header-fields ((folder <rmail-folder>))
   (folder-get folder 'RMAIL-HEADER-FIELDS '()))
 
-(define (set-rmail-folder-header-fields! folder headers)
+(define-method set-header-fields! ((folder <rmail-folder>) headers)
   (folder-put! folder 'RMAIL-HEADER-FIELDS headers))
 
 (define-method %write-folder ((folder <folder>) (url <rmail-url>))
@@ -88,7 +88,7 @@
 
 (define (read-rmail-folder url port import?)
   (let ((folder (make-rmail-folder url '())))
-    (set-rmail-folder-header-fields! folder (read-rmail-prolog port))
+    (set-header-fields! folder (read-rmail-prolog port))
     (let loop ()
       (let ((message (read-rmail-message port import?)))
 	(if message
