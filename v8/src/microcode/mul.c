@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/mul.c,v 9.27 1989/09/20 23:10:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/mul.c,v 9.28 1990/02/08 00:39:02 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,30 +51,52 @@ extern SCHEME_OBJECT Mul ();
    This is a kludge.  It depends on what register variables
    get assigned to what registers.  It should be entirely
    coded in assembly language.  -- JINX
+
+   With gcc, we do have a half-way decent interface to assembly
+   code, so the register-assignment dependency is removed.  -- KR
 */
 
 SCHEME_OBJECT
-Mul(Arg1, Arg2)
-     SCHEME_OBJECT Arg1, Arg2;
+Mul (Arg1, Arg2)
+     SCHEME_OBJECT Arg1;
+     SCHEME_OBJECT Arg2;
 {
-  register long A, B, C;
-
-  A = (FIXNUM_TO_LONG (Arg1));
-  B = (FIXNUM_TO_LONG (Arg2));
-  asm("	emul	r11,r10,$0,r10");  /* A is in 11, B in 10 */
-  C = A;
-  A = B;	/* What is all this shuffling? -- JINX */
-  B = C;
-  /* B should have high order result, A low order */
-  if (((B == 0)  && (A & (-1 << 23)) == 0) ||
-      ((B == -1) && (A & (-1 << 23)) == (-1 << 23)))
+  register long A = (FIXNUM_TO_LONG (Arg1));
+  register long B = (FIXNUM_TO_LONG (Arg2));
+#if __GNUC__
+#if 0
+  /* GCC isn't yet efficient enough with `long long' -- KR.  */
   {
-    return (LONG_TO_FIXNUM(A));
+    register long long X;
+    asm ("emul %1,%2,$0,%0" : "=g" (X) : "g" (A), "g" (B));
+    return
+      ((((X & (-1 << 23)) == 0) ||
+	((X & (-1 << 23)) == (-1 << 23)))
+       ? (LONG_TO_FIXNUM ((long) X))
+       : SHARP_F);
   }
-  else
+#else
+  /* non-long-long version: */
   {
-    return (SHARP_F);
+    register struct
+      {
+	long low;
+	long high;
+      } X;
+    asm ("emul %1,%2,$0,%0" : "=g" (X) : "g" (A), "g" (B));
+    B = (X . low);
+    A = (X . high);
   }
+#endif
+#else /* not __GNUC__ */
+  asm("	emul r11,r10,$0,r10");  /* A is in 11, B in 10 */
+#endif
+  /* A should have high order result, B low order */
+  return
+    ((((A == 0)  && (B & (-1 << 23)) == 0) ||
+      ((A == -1) && (B & (-1 << 23)) == (-1 << 23)))
+     ? (LONG_TO_FIXNUM (B))
+     : SHARP_F);
 }
 
 #endif /* vax+bsd */
