@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.396 2001/12/20 18:03:39 cph Exp $
+$Id: runtime.pkg,v 14.397 2001/12/21 01:57:19 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -22,7 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 ;;;; Runtime System Packaging
 
-(define-package ())
+(define-package ()
+  (files "make"))
 
 (define-package (package)
   ;; The information appearing here must be exactly duplicated in the

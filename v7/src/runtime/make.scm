@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.77 2001/12/20 21:20:40 cph Exp $
+$Id: make.scm,v 14.78 2001/12/21 01:56:48 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -50,55 +50,68 @@ USA.
 
 (define system-global-environment #f)
 
-;; This definition is replaced later in the boot sequence.
-(define apply (ucode-primitive apply 2))
-
 ;; *MAKE-ENVIRONMENT is referred to by compiled code.  It must go
 ;; before the uses of the-environment later, and after apply above.
 (define (*make-environment parent names . values)
-  (system-list->vector
-   (ucode-type environment)
-   (cons (system-pair-cons (ucode-type procedure)
-			   (system-pair-cons (ucode-type lambda)
-					     unspecific
-					     names)
-			   parent)
-	 values)))
+  (let-syntax ((ucode-type (lambda (name) (microcode-type name))))
+    (system-list->vector
+     (ucode-type environment)
+     (cons (system-pair-cons (ucode-type procedure)
+			     (system-pair-cons (ucode-type lambda)
+					       unspecific
+					       names)
+			     parent)
+	   values))))
 
 (let ((environment-for-package
        (*make-environment system-global-environment
 			  (vector lambda-tag:unnamed))))
 
-(define-primitives
-  (+ integer-add)
-  (- integer-subtract)
-  (< integer-less?)
-  binary-fasload
-  (channel-write 4)
-  exit-with-value
-  (file-exists? 1)
-  garbage-collect
-  get-fixed-objects-vector
-  get-next-constant
-  get-primitive-address
-  get-primitive-name
-  lexical-reference
-  lexical-unreferenceable?
-  (link-variables 4)
-  microcode-identify
-  scode-eval
-  set-fixed-objects-vector!
-  set-interrupt-enables!
-  string->symbol
-  string-allocate
-  string-length
-  substring=?
-  substring-move-right!
-  substring-downcase!
-  (tty-output-channel 0)
-  vector-ref
-  vector-set!
-  with-interrupt-mask)
+(define-syntax ucode-primitive
+  (lambda arguments
+    (apply make-primitive-procedure arguments)))
+
+(define-integrable + (ucode-primitive integer-add))
+(define-integrable - (ucode-primitive integer-subtract))
+(define-integrable < (ucode-primitive integer-less?))
+(define-integrable binary-fasload (ucode-primitive binary-fasload))
+(define-integrable channel-write (ucode-primitive channel-write 4))
+(define-integrable exit-with-value (ucode-primitive exit-with-value))
+(define-integrable file-exists? (ucode-primitive file-exists? 1))
+(define-integrable garbage-collect (ucode-primitive garbage-collect))
+(define-integrable get-next-constant (ucode-primitive get-next-constant))
+(define-integrable get-primitive-name (ucode-primitive get-primitive-name))
+(define-integrable lexical-reference (ucode-primitive lexical-reference))
+(define-integrable link-variables (ucode-primitive link-variables 4))
+(define-integrable microcode-identify (ucode-primitive microcode-identify))
+(define-integrable scode-eval (ucode-primitive scode-eval))
+(define-integrable string->symbol (ucode-primitive string->symbol))
+(define-integrable string-allocate (ucode-primitive string-allocate))
+(define-integrable string-length (ucode-primitive string-length))
+(define-integrable substring=? (ucode-primitive substring=?))
+(define-integrable substring-downcase! (ucode-primitive substring-downcase!))
+(define-integrable tty-output-channel (ucode-primitive tty-output-channel 0))
+(define-integrable vector-ref (ucode-primitive vector-ref))
+(define-integrable vector-set! (ucode-primitive vector-set!))
+(define-integrable with-interrupt-mask (ucode-primitive with-interrupt-mask))
+
+(define-integrable get-fixed-objects-vector
+  (ucode-primitive get-fixed-objects-vector))
+
+(define-integrable get-primitive-address
+  (ucode-primitive get-primitive-address))
+
+(define-integrable lexical-unreferenceable?
+  (ucode-primitive lexical-unreferenceable?))
+
+(define-integrable set-fixed-objects-vector!
+  (ucode-primitive set-fixed-objects-vector!))
+
+(define-integrable set-interrupt-enables!
+  (ucode-primitive set-interrupt-enables!))
+
+(define-integrable substring-move-right!
+  (ucode-primitive substring-move-right!))
 
 (define microcode-identification (microcode-identify))
 (define os-name-string (vector-ref microcode-identification 8))
@@ -284,7 +297,7 @@ USA.
 ;; Construct the package structure.
 ;; Lotta hair here to load the package code before its package is built.
 (eval (file->object "packag" #t #f) environment-for-package)
-((access initialize-package! environment-for-package))
+((lexical-reference environment-for-package 'INITIALIZE-PACKAGE!))
 (let ((export
        (lambda (name)
 	 (link-variables system-global-environment name
@@ -316,7 +329,8 @@ USA.
 	     ((UNIX) "runtime-unx.pkd")
 	     (else "runtime-unk.pkd"))
 	   #f))
-((access construct-packages-from-file environment-for-package) packages-file)
+((lexical-reference environment-for-package 'CONSTRUCT-PACKAGES-FROM-FILE)
+ packages-file)
 
 ;;; Global databases.  Load, then initialize.
 (let ((files1
@@ -367,7 +381,7 @@ USA.
   (package-initialize '(RUNTIME GC-FINALIZER) 'INITIALIZE-PACKAGE! #t)
 
   ;; Load everything else.
-  ((access load-packages-from-file environment-for-package)
+  ((lexical-reference environment-for-package 'LOAD-PACKAGES-FROM-FILE)
    packages-file
    `((SORT-TYPE . MERGE-SORT)
      (OS-TYPE . ,os-name)
@@ -379,7 +393,8 @@ USA.
 		   (or (string=? (car (car files)) filename)
 		       (loop (cdr files))))))))
      (lambda (filename environment)
-       (if (not (or (string=? filename "packag")
+       (if (not (or (string=? filename "make")
+		    (string=? filename "packag")
 		    (file-member? filename files1)
 		    (file-member? filename files2)))
 	   (eval (file->object filename #t #f)
@@ -497,24 +512,25 @@ USA.
 
 (let ((roots
        (list->vector
-	((access with-directory-rewriting-rule
-		 (->environment '(RUNTIME COMPILER-INFO)))
+	((lexical-reference (->environment '(RUNTIME COMPILER-INFO))
+			    'WITH-DIRECTORY-REWRITING-RULE)
 	 (working-directory-pathname)
 	 (pathname-as-directory "runtime")
 	 (lambda ()
 	   (let ((fasload/update-debugging-info!
-		  (access fasload/update-debugging-info!
-			  (->environment '(RUNTIME COMPILER-INFO))))
+		  (lexical-reference (->environment '(RUNTIME COMPILER-INFO))
+				     'FASLOAD/UPDATE-DEBUGGING-INFO!))
 		 (load/purification-root
-		  (access load/purification-root
-			  (->environment '(RUNTIME LOAD)))))
+		  (lexical-reference (->environment '(RUNTIME LOAD))
+				     'LOAD/PURIFICATION-ROOT)))
 	     (map (lambda (entry)
 		    (let ((object (cdr entry)))
 		      (fasload/update-debugging-info! object (car entry))
 		      (load/purification-root object)))
 		  fasload-purification-queue)))))))
-  (set! (access gc-boot-loading? (->environment '(RUNTIME GARBAGE-COLLECTOR)))
-	#f)
+  (lexical-assignment (->environment '(RUNTIME GARBAGE-COLLECTOR))
+		      'GC-BOOT-LOADING?
+		      #f)
   (set! fasload-purification-queue)
   (newline console-output-port)
   (write-string "purifying..." console-output-port)
