@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxdir.scm,v 14.2 1988/06/13 11:59:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxdir.scm,v 14.3 1988/10/21 22:21:28 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -37,52 +37,49 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (set! associate-on-name (association-procedure string=? car))
-  (set! type<? (component<? string<?))
-  (set! version<? (component<? <)))
+(define (directory-read pattern #!optional sort?)
+  (if (if (default-object? sort?) true sort?)
+      (sort (directory-read-nosort pattern) pathname<?)
+      (directory-read-nosort pattern)))
 
-(define (directory-read pattern)
-  "Returns a list of all the files in `pattern' -- correctly handles
-wildcarding of whole pathname components, for example
-
-	*.scm
-	/u/cph/*/foo.*.*
-	foo.*.3
-	bar.*.0
-
-but doesn't do more general wildcarding like
-
-	foo*bar.scm
-"
-  (sort-pathnames
-   (let ((pattern (pathname->absolute-pathname (->pathname pattern))))
-     (map (let ((directory-path (pathname-directory-path pattern)))
-	    (lambda (pathname)
-	      (merge-pathnames directory-path pathname)))
-	  (let ((pathnames
-		 (generate-directory-pathnames
-		  (pathname-directory-string pattern))))
-	    (if (eq? (pathname-version pattern) 'NEWEST)
-		(extract-greatest-versions 
-		 (list-transform-positive pathnames
-		   (lambda (instance)
-		     (match-name&type pattern instance))))
+(define (directory-read-nosort pattern)
+  (let ((pattern
+	 (pathname-default (pathname->absolute-pathname (->pathname pattern))
+			   false false false
+			   'WILD 'WILD 'WILD)))
+    (let ((directory-path (pathname-directory-path pattern)))
+      (let ((pathnames (generate-directory-pathnames directory-path)))
+	(cond ((and (eq? 'WILD (pathname-name pattern))
+		    (eq? 'WILD (pathname-type pattern))
+		    (eq? 'WILD (pathname-version pattern)))
+	       pathnames)
+	      ((not (eq? (pathname-version pattern) 'NEWEST))
+	       (list-transform-positive pathnames
+		 (lambda (instance)
+		   (and (match-component (pathname-name pattern)
+					 (pathname-name instance))
+			(match-component (pathname-type pattern)
+					 (pathname-type instance))
+			(match-component (pathname-version pattern)
+					 (pathname-version instance))))))
+	      (else
+	       (extract-greatest-versions 
 		(list-transform-positive pathnames
 		  (lambda (instance)
-		    (and (match-name&type pattern instance)
-			 (match-component
-			  (pathname-version pattern)
-			  (pathname-version instance)))))))))))
+		    (and (match-component (pathname-name pattern)
+					  (pathname-name instance))
+			 (match-component (pathname-type pattern)
+					  (pathname-type instance))))))))))))
 
-(define (match-name&type pattern instance)
-  (and (match-component (pathname-name pattern) (pathname-name instance))
-       (match-component (pathname-type pattern) (pathname-type instance))))
-
-(define (match-component pattern instance)
-  (or (eq? pattern 'WILD)
-      (equal? pattern instance)))
-
+(define (generate-directory-pathnames pathname)
+  (let loop
+      ((name ((ucode-primitive open-directory) (pathname->string pathname)))
+       (result '()))
+    (if name
+	(loop ((ucode-primitive directory-read))
+	      (cons (merge-pathnames pathname (string->pathname name))
+		    result))
+	(reverse! result))))
 (define (extract-greatest-versions pathnames)
   (let ((name-alist '()))
     (for-each (lambda (pathname)
@@ -106,9 +103,10 @@ but doesn't do more general wildcarding like
     (mapcan (lambda (name-entry)
 	      (map cdr (cdr name-entry)))
 	    name-alist)))
-
-(define (sort-pathnames pathnames)
-  (sort pathnames pathname<?))
+
+(define (match-component pattern instance)
+  (or (eq? pattern 'WILD)
+      (equal? pattern instance)))
 
 (define (pathname<? x y)
   (or (string<? (pathname-name x) (pathname-name y))
@@ -116,7 +114,12 @@ but doesn't do more general wildcarding like
 	   (or (type<? (pathname-type x) (pathname-type y))
 	       (and (equal? (pathname-type x) (pathname-type y))
 		    (version<? (pathname-version x) (pathname-version y)))))))
-
+
+(define (initialize-package!)
+  (set! associate-on-name (association-procedure string=? car))
+  (set! type<? (component<? string<?))
+  (set! version<? (component<? <)))
+
 (define associate-on-name)
 
 (define-integrable (associate-on-type type types)
@@ -129,10 +132,3 @@ but doesn't do more general wildcarding like
 
 (define type<?)
 (define version<?)
-
-(define (generate-directory-pathnames directory-string)
-  (map string->pathname
-       (let loop ((name ((ucode-primitive open-directory) directory-string)))
-	 (if name
-	     (cons name (loop ((ucode-primitive directory-read))))
-	     '()))))
