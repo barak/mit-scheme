@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme32.c,v 1.15 1997/06/26 06:55:29 cph Exp $
+$Id: scheme32.c,v 1.16 1997/10/18 03:51:24 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -126,10 +126,9 @@ struct win32_timer_closure_s
   HWND window;			/* window to send the messages to */
   void (*grab_int_regs) (void);	/* grab interrupt registers */
   void (*release_int_regs) (void); /* release interrupt registers */
+  HANDLE thread_handle;		/* handle of timer thread */
+  int exit_thread;		/* set this true to terminate thread */
 };
-
-/* Setting this to non-zero requests the timer thread to exit.  */
-static int exit_timer_thread;
 
 static UINT __cdecl
 win32_install_async_timer (void ** state_ptr,
@@ -165,8 +164,11 @@ win32_install_async_timer (void ** state_ptr,
   (scm_timer -> window) = window;
   (scm_timer -> grab_int_regs) = grab_int_regs;
   (scm_timer -> release_int_regs) = release_int_regs;
-  exit_timer_thread = 0;
-  if (_beginthreadex (0, 0x2000, timer_thread_proc, scm_timer, 0, (&id)))
+  (scm_timer -> exit_thread) = 0;
+  (scm_timer -> thread_handle)
+    = ((HANDLE)
+       (_beginthreadex (0, 0x2000, timer_thread_proc, scm_timer, 0, (&id))));
+  if (scm_timer -> thread_handle)
     {
       (*state_ptr) = scm_timer;
       return (WIN32_ASYNC_TIMER_OK);
@@ -183,7 +185,12 @@ win32_flush_async_timer (void * state)
 {
   if (state != 0)
     {
-      exit_timer_thread = 1;
+      struct win32_timer_closure_s * scm_timer = state;
+      if (scm_timer -> thread_handle)
+	{
+	  (scm_timer -> exit_thread) = 1;
+	  (void) WaitForSingleObject ((scm_timer -> thread_handle), INFINITE);
+	}
       (void) free (state);
     }
 }
@@ -210,7 +217,7 @@ static unsigned int WINAPI
 timer_thread_proc (void * envptr)
 {
   struct win32_timer_closure_s * scm_timer = envptr;
-  while (!exit_timer_thread)
+  while (! (scm_timer -> exit_thread))
     {
       Sleep (scm_timer -> interval);
       (* (scm_timer -> grab_int_regs)) ();
