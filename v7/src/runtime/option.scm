@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.17 1992/05/30 18:22:46 mhwu Exp $
+$Id: option.scm,v 14.18 1993/02/25 02:48:54 gjr Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -70,11 +70,12 @@ MIT in each case. |#
 
 (define options
   '((ARITHMETIC-INTERFACE ((RUNTIME NUMBER INTERFACE) #F "numint"))
+    (COMPRESS ((RUNTIME COMPRESS) #F "cpress"))
+    (DOSPROCESS ((RUNTIME) #F "dosproc"))
     (FORMAT ((RUNTIME FORMAT) (INITIALIZE-PACKAGE!) "format"))
     (HASH-TABLE ((RUNTIME HASH-TABLE) (INITIALIZE-PACKAGE!) "hashtb"))
     (KRYPT ((RUNTIME KRYPT) #F "krypt"))
     (SUBPROCESS ((RUNTIME SUBPROCESS) (INITIALIZE-PACKAGE!) "process"))
-    (COMPRESS ((RUNTIME COMPRESS) #F "cpress"))
     ))
 
 (define loaded-options
