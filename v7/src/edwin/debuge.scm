@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debuge.scm,v 1.47 1992/11/09 21:02:34 cph Exp $
+;;;	$Id: debuge.scm,v 1.48 1992/11/09 21:23:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -52,7 +52,8 @@
 
 (define (debug-save-buffer buffer)
   (if (and (buffer-modified? buffer)
-	   (buffer-writeable? buffer))
+	   (buffer-writeable? buffer)
+	   (not (minibuffer? buffer)))
       (let ((pathname
 	     (let ((pathname (buffer-pathname buffer)))
 	       (cond ((not pathname)
