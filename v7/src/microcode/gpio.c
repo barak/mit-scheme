@@ -30,12 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gpio.c,v 1.6 1990/07/16 23:17:21 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gpio.c,v 1.7 1990/10/02 21:51:25 jinx Rel $ */
 
 /* Scheme primitives for GPIO */
 
 #include "scheme.h"
 #include "prims.h"
+#include "ux.h"
+#include "uxio.h"
 
 #include <stdio.h>
 #include <fcntl.h> 
@@ -131,36 +133,55 @@ DEFINE_PRIMITIVE ("GPIO-WRITE-CONTROL", Prim_gpio_write_control, 2, 2, 0)
 
 DEFINE_PRIMITIVE ("GPIO-READ-STRING!", Prim_gpio_read_string, 4, 4, 0)
 {
-  int gpio_channel, position, count, result;
+  int gpio_channel, count;
   char *data;
 
   PRIMITIVE_HEADER (4);
 
   gpio_channel = (UNSIGNED_FIXNUM_ARG (1));
-  data = (STRING_ARG (2));
-  position = (UNSIGNED_FIXNUM_ARG (3));
+  data = ((char *) (STRING_LOC ((ARG_REF (2)), (UNSIGNED_FIXNUM_ARG (3)))));
   count = (UNSIGNED_FIXNUM_ARG (4));
 
-  result = (read (gpio_channel, &data[position], count));
-
-  PRIMITIVE_RETURN( LONG_TO_FIXNUM (result));
+  while (1)
+  {
+    long scr;
+    INTERRUPTABLE_EXTENT
+      (scr, (read (gpio_channel, data, count)));
+    if (scr < 0)
+    {
+      UX_prim_check_errno ("read");
+      continue;
+    }
+    if (scr > count)
+      error_external_return ();
+    PRIMITIVE_RETURN( LONG_TO_FIXNUM (scr));
+  }
 }
 
 
 DEFINE_PRIMITIVE ("GPIO-WRITE-STRING", Prim_gpio_write_string, 4, 4, 0)
 {
-  int gpio_channel, position, count, result;
+  int gpio_channel, count;
   char *data;
 
   PRIMITIVE_HEADER (4);
 
   gpio_channel = (UNSIGNED_FIXNUM_ARG (1));
-  data = (STRING_ARG (2));
-  position = (UNSIGNED_FIXNUM_ARG (3));
+  data = ((char *) (STRING_LOC ((ARG_REF (2)), (UNSIGNED_FIXNUM_ARG (3)))));
   count = (UNSIGNED_FIXNUM_ARG (4));
 
-  result = (write (gpio_channel, &data[position], count));
-
-  PRIMITIVE_RETURN( LONG_TO_FIXNUM ( result ));
+  while (1)
+  {
+    long scr;
+    INTERRUPTABLE_EXTENT
+      (scr, (write (gpio_channel, data, count)));
+    if (scr < 0)
+    {
+      UX_prim_check_errno ("write");
+      continue;
+    }
+    if (scr > count)
+      error_external_return ();
+    PRIMITIVE_RETURN( LONG_TO_FIXNUM (scr));
+  }
 }
-
