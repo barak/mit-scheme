@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: envconv.scm,v 1.9 1995/05/11 16:13:54 adams Exp $
+$Id: envconv.scm,v 1.10 1995/06/22 15:18:44 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -47,7 +47,7 @@ MIT in each case. |#
 ;;  of <name> from the referencing frame.
 ;; 2.
 ;;  (CALL (QUOTE ,%variable-cache-ref) (QUOTE #F)
-;;        (LOOKUP <cache-name>) (QUOTE <name>))
+;;        (LOOKUP <cache-name>) (QUOTE #F/#T) (QUOTE <name>))
 ;;  where <cache-name> is a new variable bound to
 ;;  (CALL (QUOTE ,%make-read-variable-cache) (QUOTE #F)
 ;;        (LOOKUP ,env-variable) (QUOTE <name>))
@@ -75,12 +75,17 @@ MIT in each case. |#
 (define *envconv/copying?*)
 (define *envconv/separate-queue*)
 (define *envconv/top-level-program*)
+(define *envconv/top-level-declarations* #F)
 (define *envconv/debug/walking-queue* #F)
+
 
 (define (envconv/top-level program)
   (fluid-let ((*envconv/copying?* false)
 	      (*envconv/separate-queue* '())
-	      (*envconv/top-level-program* program))
+	      (*envconv/top-level-program* program)
+	      (*envconv/top-level-declarations*
+	       (or *envconv/top-level-declarations* ;recursive or first time?
+		   (list 'DECLARE))))
     (let ((result (envconv/trunk 'TOP-LEVEL program
 				 (lambda (copy? program*)
 				   copy? ; ignored
@@ -287,8 +292,18 @@ MIT in each case. |#
   `(QUOTE ,object))
 
 (define-environment-converter DECLARE (env #!rest anything)
-  env					; ignored
-  `(DECLARE ,@anything))
+  (define interesting-declarations
+    '(IGNORE-REFERENCE-TRAPS IGNORE-ASSIGNMENT-TRAPS))
+  (define (interesting-declaration? text)
+    (and (pair? text)
+	 (memq (car text) interesting-declarations)))
+  (call-with-values
+      (lambda ()
+	(list-split anything interesting-declaration?))
+    (lambda (interesting other)
+      (set-cdr! (envconv/env/declarations env)
+		(append interesting (cdr (envconv/env/declarations env))))
+      `(DECLARE ,@other))))
 
 ;;;; Dispatcher
 
@@ -319,6 +334,9 @@ MIT in each case. |#
 
 (define (envconv/expr env expr)
   (envconv/expr-with-name env expr #f))
+
+(define (envconv/expr/top-level env expr)
+  (envconv/expr env expr))
 
 (define (envconv/expr* env exprs)
   (map (lambda (expr)
@@ -382,7 +400,11 @@ MIT in each case. |#
   (wrapper false read-only false)
   (body    false read-only false)
   (result  false read-only false)
-  (block   false read-only false))
+  (block   false read-only false)
+  (declarations (if (eq? context 'TOP-LEVEL)
+		    *envconv/top-level-declarations*
+		    (list 'DECLARE))
+		read-only true))
 
 (define-structure
     (envconv/binding
@@ -491,7 +513,7 @@ MIT in each case. |#
   (let* ((copying* (or (eq? context 'ARBITRARY) *envconv/copying?*))
 	 (env (envconv/env/make 'TOP-LEVEL #f))
 	 (result (fluid-let ((*envconv/copying?* copying*))
-		   (envconv/expr env program)))
+		   (envconv/expr/top-level env program)))
 	 (needs? (or (envconv/env/reified? env)
 		     (not (null? (envconv/env/bindings env)))))
 	 (program*
@@ -772,6 +794,7 @@ MIT in each case. |#
 		       `(CALL (QUOTE ,%variable-cache-ref)
 			      (QUOTE #F)
 			      (LOOKUP ,cell-name)
+			      (QUOTE #F)
 			      (QUOTE ,var-name))))
 		    ((SET!)
 		     (let ((write-cell-name
@@ -785,12 +808,14 @@ MIT in each case. |#
 			     `(CALL (QUOTE ,%safe-variable-cache-ref)
 				    (QUOTE #F)
 				    (LOOKUP ,read-cell-name)
+				    (QUOTE #F) ;ignore-traps?
 				    (QUOTE ,var-name))
 			     `(BEGIN
 				(CALL (QUOTE ,%variable-cache-set!)
 				      (QUOTE #F)
 				      (LOOKUP ,write-cell-name)
 				      ,(set!/expr reference)
+				      (QUOTE ,#F) ;ignore traps?
 				      (QUOTE ,var-name))
 				(LOOKUP ,temp-name)))))
 		    ((UNASSIGNED?)
@@ -801,6 +826,7 @@ MIT in each case. |#
 			      (CALL (QUOTE ,%safe-variable-cache-ref)
 				    (QUOTE #F)
 				    (LOOKUP ,cell-name)
+				    (QUOTE #F) ;ignore-traps?
 				    (QUOTE ,var-name)))))
 
 		    ((CALL)
