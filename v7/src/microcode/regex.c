@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: regex.c,v 1.16 1996/03/04 20:37:25 cph Exp $
+$Id: regex.c,v 1.17 1997/06/06 06:56:42 cph Exp $
 
-Copyright (c) 1987-96 Massachusetts Institute of Technology
+Copyright (c) 1987-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -483,6 +483,12 @@ DEFUN (re_compile_fastmap,
    other => undefined. */
 
 #define RE_MATCH_FAILED (-1)
+
+/* This macro is used by search procedures to decide when a match at a
+   particular place has failed.  If true, the search continues by
+   advancing to the next match point.  */
+#define RE_MATCH_FAILURE_RESULT(result)					\
+  (((result) == RE_MATCH_FAILED) || ((result) == (-4)))
 
 #define ADDRESS_TO_INDEX(address)					\
   ((((address) > gap_start) ? ((address) - gap_length) : (address))	\
@@ -1072,7 +1078,7 @@ DEFUN (name,								\
 	continue;							\
 									\
       match_result = (RE_SEARCH_TEST (match_pc - 1));			\
-      if (match_result == RE_MATCH_FAILED)				\
+      if (RE_MATCH_FAILURE_RESULT (match_result))			\
 	continue;							\
 									\
       return (match_result);						\
@@ -1100,13 +1106,13 @@ DEFINE_RE_SEARCH (re_search_forward)
       while (true)
 	{
 	  match_result = (RE_SEARCH_TEST (match_pc));
-	  if (match_result != RE_MATCH_FAILED)
+	  if (! (RE_MATCH_FAILURE_RESULT (match_result)))
 	    return (match_result);
 	  match_pc += 1;
 	  if (match_pc == gap_start)
 	    match_pc = (buffer -> gap_end);
 	  if (match_pc > match_limit)
-	    return (RE_MATCH_FAILED);
+	    return (match_result);
 	}
     }
 }
@@ -1122,7 +1128,7 @@ DEFINE_RE_SEARCH (re_search_forward)
 	continue;							\
 									\
       match_result = (RE_SEARCH_TEST (match_pc));			\
-      if (match_result == RE_MATCH_FAILED)				\
+      if (RE_MATCH_FAILURE_RESULT (match_result))			\
 	continue;							\
 									\
       RE_SEARCH_BACKWARD_RETURN (match_pc);				\
@@ -1159,13 +1165,13 @@ DEFINE_RE_SEARCH (re_search_backward)
       while (true)
 	{
 	  match_result = (RE_SEARCH_TEST (match_pc));
-	  if (match_result != RE_MATCH_FAILED)
+	  if (! (RE_MATCH_FAILURE_RESULT (match_result)))
 	    RE_SEARCH_BACKWARD_RETURN (match_pc);
 	  if (match_pc == gap_end)
 	    match_pc = (buffer -> gap_start);
 	  match_pc -= 1;
 	  if (match_pc < match_limit)
-	    return (RE_MATCH_FAILED);
+	    RE_SEARCH_BACKWARD_RETURN (match_pc);
 	}
     }
 }
