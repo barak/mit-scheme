@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/rvalue.scm,v 4.1 1987/12/04 20:04:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/rvalue.scm,v 4.2 1987/12/31 10:01:50 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -39,8 +39,9 @@ MIT in each case. |#
 (define-root-type rvalue
   %passed-out?)
 
-(define (make-rvalue tag . extra)
-  (list->vector (cons* tag false extra)))
+;;; converted to a macro.
+;;; (define (make-rvalue tag . extra)
+;;;   (list->vector (cons* tag false extra)))
 
 (define-enumeration rvalue-type
   (block

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 4.2 1987/12/30 06:57:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 4.3 1987/12/31 10:01:31 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -51,8 +51,9 @@ MIT in each case. |#
 (define snode? (tagged-vector/subclass-predicate snode-tag))
 (define-vector-slots snode 4 next-edge)
 
-(define (make-snode tag . extra)
-  (list->vector (cons* tag false '() '() false extra)))
+;;; converted to a macro.
+;;; (define (make-snode tag . extra)
+;;;   (list->vector (cons* tag false '() '() false extra)))
 
 (set-vector-tag-description!
  snode-tag
@@ -64,8 +65,9 @@ MIT in each case. |#
 (define pnode? (tagged-vector/subclass-predicate pnode-tag))
 (define-vector-slots pnode 4 consequent-edge alternative-edge)
 
-(define (make-pnode tag . extra)
-  (list->vector (cons* tag false '() '() false false extra)))
+;;; converted to a macro.
+;;; (define (make-pnode tag . extra)
+;;;   (list->vector (cons* tag false '() '() false false extra)))
 
 (set-vector-tag-description!
  pnode-tag
@@ -78,6 +80,10 @@ MIT in each case. |#
 
 (define (delete-node-previous-edge! node edge)
   (set-node-previous-edges! node (delq! edge (node-previous-edges node))))
+
+;;;; Edge Datatype
+
+(define-structure (edge (type vector)) left-node left-connect right-node)
 
 (define (edge-next-node edge)
   (and edge (edge-right-node edge)))
@@ -90,10 +96,6 @@ MIT in each case. |#
 
 (define-integrable (pnode-alternative pnode)
   (edge-next-node (pnode-alternative-edge pnode)))
-
-;;;; Edge Datatype
-
-(define-structure (edge (type vector)) left-node left-connect right-node)
 
 (define (create-edge! left-node left-connect right-node)
   (let ((edge (make-edge left-node left-connect right-node)))
@@ -119,7 +121,7 @@ MIT in each case. |#
       (begin
 	(set-edge-right-node! edge right-node)
 	(add-node-previous-edge! right-node edge))))
-
+
 (define (edge-disconnect-left! edge)
   (let ((left-node (edge-left-node edge))
 	(left-connect (edge-left-connect edge)))

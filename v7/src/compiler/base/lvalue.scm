@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.2 1987/12/30 06:58:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.3 1987/12/31 10:01:42 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -53,13 +53,14 @@ MIT in each case. |#
 
 (define *lvalues*)
 
-(define (make-lvalue tag . extra)
-  (let ((lvalue
-	 (list->vector
-	  (cons* tag '() '() '() 'NOT-CACHED false '() false false '()
-		 extra))))
-    (set! *lvalues* (cons lvalue *lvalues*))
-    lvalue))
+;;; converted to a macro.
+;;; (define (make-lvalue tag . extra)
+;;;   (let ((lvalue
+;;; 	 (list->vector
+;;; 	  (cons* tag '() '() '() 'NOT-CACHED false '() false false '()
+;;; 		 extra))))
+;;;     (set! *lvalues* (cons lvalue *lvalues*))
+;;;     lvalue))
 
 (define (add-lvalue-application! lvalue application)
   (set-lvalue-applications! lvalue

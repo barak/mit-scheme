@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.2 1987/12/30 06:58:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.3 1987/12/31 10:00:54 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -175,6 +175,17 @@ MIT in each case. |#
 	       ,tag-name
 	       (LAMBDA (,type)
 		 (DESCRIPTOR-LIST ,type ,@slots)))))))
+
+(syntax-table-define compiler-syntax-table 'DESCRIPTOR-LIST
+  (macro (type . slots)
+    (let ((ref-name (lambda (slot) (symbol-append type '- slot))))
+      `(LIST ,@(map (lambda (slot)
+		      (if (pair? slot)
+			  (let ((ref-names (map ref-name slot)))
+			    ``(,',ref-names ,(,(car ref-names) ,type)))
+			  (let ((ref-name (ref-name slot)))
+			    ``(,',ref-name ,(,ref-name ,type)))))
+		    slots)))))
 
 (let-syntax
  ((define-type-definition
@@ -200,16 +211,32 @@ MIT in each case. |#
  (define-type-definition rvalue 2 rvalue-types)
  (define-type-definition lvalue 10 false))
 
-(syntax-table-define compiler-syntax-table 'DESCRIPTOR-LIST
-  (macro (type . slots)
-    (let ((ref-name (lambda (slot) (symbol-append type '- slot))))
-      `(LIST ,@(map (lambda (slot)
-		      (if (pair? slot)
-			  (let ((ref-names (map ref-name slot)))
-			    ``(,',ref-names ,(,(car ref-names) ,type)))
-			  (let ((ref-name (ref-name slot)))
-			    ``(,',ref-name ,(,ref-name ,type)))))
-		    slots)))))
+;;; Kludge to make these compile efficiently.
+
+(syntax-table-define compiler-syntax-table 'MAKE-SNODE
+  (macro (tag . extra)
+    `((ACCESS VECTOR SYSTEM-GLOBAL-ENVIRONMENT)
+      ,tag FALSE '() '() FALSE ,@extra)))
+
+(syntax-table-define compiler-syntax-table 'MAKE-PNODE
+  (macro (tag . extra)
+    `((ACCESS VECTOR SYSTEM-GLOBAL-ENVIRONMENT)
+      ,tag FALSE '() '() FALSE FALSE ,@extra)))
+
+(syntax-table-define compiler-syntax-table 'MAKE-RVALUE
+  (macro (tag . extra)
+    `((ACCESS VECTOR SYSTEM-GLOBAL-ENVIRONMENT)
+      ,tag FALSE ,@extra)))
+
+(syntax-table-define compiler-syntax-table 'MAKE-LVALUE
+  (macro (tag . extra)
+    (let ((result (generate-uninterned-symbol)))
+      `(let ((,result
+	      ((ACCESS VECTOR SYSTEM-GLOBAL-ENVIRONMENT)
+	       ,tag '() '() '() 'NOT-CACHED FALSE '() FALSE FALSE '()
+	       ,@extra)))
+	 (SET! *LVALUES* (CONS ,result *LVALUES*))
+	 ,result))))
 
 (let ((rtl-common
        (lambda (type prefix components wrap-constructor)
