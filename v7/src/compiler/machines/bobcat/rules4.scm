@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.8 1989/11/30 16:06:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.9 1989/12/11 06:17:06 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -130,6 +130,7 @@ MIT in each case. |#
 	 (PEA (@PCR ,(rtl-procedure/external-label (label->object label))))
 	 ,(memory-set-type type (INST-EA (@A 7)))
 	 (MOV L (@A+ 7) (D 4))
+	 ,(load-constant name (INST-EA (D 3)))
 	 ,@(invoke-interface-jsr code))))
 
 (define-rule statement
@@ -138,10 +139,9 @@ MIT in each case. |#
     (let ((clear-map (clear-map!)))
       (LAP ,@set-extension
 	   ,@clear-map
-	   ,@(invoke-interface-jsr
-	      (if safe?
-		  code:compiler-safe-reference-trap
-		  code:compiler-reference-trap))))))
+	   (JSR ,(if safe?
+		     entry:compiler-safe-reference-trap
+		     entry:compiler-reference-trap))))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension) (? value))
@@ -152,7 +152,7 @@ MIT in each case. |#
 	(LAP ,@set-extension
 	     ,@set-value
 	     ,@clear-map
-	     ,@(invoke-interface-jsr code:compiler-assignment-trap))))))
+	     (JSR ,entry:compiler-assignment-trap))))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension)
@@ -166,7 +166,7 @@ MIT in each case. |#
 	     ,(memory-set-type type reg:temp)
 	     ,@clear-map
 	     (MOV L ,reg:temp (D 3))
-	     ,@(invoke-interface-jsr code:compiler-assignment-trap))))))
+	     (JSR ,entry:compiler-assignment-trap))))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT
@@ -179,7 +179,7 @@ MIT in each case. |#
 	 (PEA (@PCR ,(rtl-procedure/external-label (label->object label))))
 	 ,(memory-set-type type (INST-EA (@A 7)))
 	 (MOV L (@A+ 7) (D 3))
-	 ,@(invoke-interface-jsr code:compiler-assignment-trap))))
+	 (JSR ,entry:compiler-assignment-trap))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-UNASSIGNED? (? extension))

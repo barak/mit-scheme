@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.30 1989/12/05 20:52:00 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.31 1989/12/11 06:16:54 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -180,15 +180,27 @@ MIT in each case. |#
   (QUALIFIER (pseudo-register? target))
   (convert-object/constant->register target constant address->fixnum))
 
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (REGISTER (? source))))
+  (QUALIFIER (pseudo-register? target) (pseudo-register? source))
+  ;; See if we can reuse a source alias, because `object->type' can
+  ;; sometimes do a slightly better job when the source and target are
+  ;; the same register.
+  (reuse-pseudo-register-alias! source 'DATA
+    (lambda (source)
+      (delete-dead-registers!)
+      (add-pseudo-register-alias! target source)
+      (let ((source (register-reference source)))
+	(object->type source source)))
+    (lambda ()
+      (let ((source (standard-register-reference source 'DATA false)))
+	(delete-dead-registers!)
+	(object->type source (reference-target-alias! target 'DATA))))))
+
 (define-integrable (convert-object/register->register target source conversion)
   ;; `conversion' often expands into multiple references to `target'.
   (let ((target (move-to-alias-register! source 'DATA target)))
     (conversion target)))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (REGISTER (? source))))
-  (QUALIFIER (pseudo-register? target))
-  (convert-object/register->register target source object->type))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (REGISTER (? source))))
@@ -487,7 +499,8 @@ MIT in each case. |#
 ;;;; Fixnum Operations
 
 (define-rule statement
-  (ASSIGN (? target) (FIXNUM-1-ARG (? operator) (REGISTER (? source)) (? overflow?)))
+  (ASSIGN (? target)
+	  (FIXNUM-1-ARG (? operator) (REGISTER (? source)) (? overflow?)))
   (QUALIFIER (and (machine-operation-target? target)
 		  (pseudo-register? source)))
   overflow?				; ignored
@@ -692,8 +705,8 @@ MIT in each case. |#
 ;;;; CHAR->ASCII/BYTE-OFFSET
 
 (define (load-char-into-register type source target)
+  (delete-dead-registers!)
   (let ((target (reference-target-alias! target 'DATA)))
-    (delete-dead-registers!)
     (LAP ,(load-non-pointer type 0 target)
 	 (MOV B ,source ,target))))
 
@@ -709,10 +722,9 @@ MIT in each case. |#
   (ASSIGN (REGISTER (? target))
 	  (CHAR->ASCII (REGISTER (? source))))
   (QUALIFIER (pseudo-register? target))
-  (let ((source (machine-register-reference source 'DATA)))
-    (delete-dead-registers!)
-    (LAP (BFEXTU ,source (& 24) (& 8)
-		 ,(reference-target-alias! target 'DATA)))))
+  (load-char-into-register 0
+			   (machine-register-reference source 'DATA)
+			   target))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))

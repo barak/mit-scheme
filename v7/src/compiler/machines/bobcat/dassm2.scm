@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.15 1989/11/30 16:06:49 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.16 1989/12/11 06:16:42 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -341,7 +341,39 @@ MIT in each case. |#
 	 '(scheme-to-interface
 	   scheme-to-interface-jsr
 	   trampoline-to-interface
-	   shortcircuit-apply))
+	   shortcircuit-apply
+	   shortcircuit-apply-size-1
+	   shortcircuit-apply-size-2
+	   shortcircuit-apply-size-3
+	   shortcircuit-apply-size-4
+	   shortcircuit-apply-size-5
+	   shortcircuit-apply-size-6
+	   shortcircuit-apply-size-7
+	   shortcircuit-apply-size-8
+	   primitive-apply
+	   primitive-lexpr-apply
+	   error
+	   link
+	   interrupt-closure
+	   interrupt-dlink
+	   interrupt-procedure 
+	   interrupt-continuation
+	   assignment-trap
+	   reference-trap
+	   safe-reference-trap
+	   &+
+	   &-
+	   &*
+	   &/
+	   &=
+	   &<
+	   &>
+	   1+
+	   -1+
+	   zero?
+	   positive?
+	   negative?
+	   ))
       ;; Compiled code temporaries
       ,@(let loop ((i 0) (index first-temp))
 	  (if (= i 256)

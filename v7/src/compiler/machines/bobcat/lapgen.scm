@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.24 1989/12/05 20:39:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.25 1989/12/11 06:16:46 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -182,7 +182,8 @@ MIT in each case. |#
 		    target))
 
 (define (test-non-pointer type datum effective-address)
-  (if (and (zero? type) (zero? datum)
+  (if (and (zero? type)
+	   (zero? datum)
 	   (effective-address/data&alterable? effective-address))
       (INST (TST L ,effective-address))
       (INST (CMPI L
@@ -750,11 +751,27 @@ MIT in each case. |#
 (define scheme-type-mask
   (-1+ (expt 2 scheme-type-width)))
 
-(define (object->type register-reference)
+(define use-68020-instructions? true)
+
+(define (object->type source target)
+  ;; `Source' must be a data register or non-volatile memory reference.
+  ;; `Target' must be a data register reference.
+  ;; Guarantees that the condition codes are set for a zero-compare.
   (if (= scheme-type-width 8)
-      (LAP (RO L L (& 8) ,register-reference))
-      (LAP (RO L L (& ,scheme-type-width) ,register-reference)
-	   (AND B (& ,scheme-type-mask) ,register-reference))))
+      (cond ((equal? source target)
+	     (LAP (RO L L (& ,scheme-type-width) ,target)))
+	    (use-68020-instructions?
+	     (LAP (BFEXTU ,source (& 0) (& ,scheme-type-width) ,target)))
+	    (else
+	     (LAP (MOVE L ,source ,target)
+		  (RO L L (& ,scheme-type-width) ,target))))
+      (if use-68020-instructions?
+	  (LAP (BFEXTU ,source (& 0) (& ,scheme-type-width) ,target))
+	  (LAP ,@(if (equal? source target)
+		     (LAP)
+		     (LAP (MOVE L ,source ,target)))
+	       (RO L L (& ,scheme-type-width) ,target)
+	       (AND B (& ,scheme-type-mask) ,target)))))
 
 ;;;; CHAR->ASCII rules
 
@@ -869,6 +886,37 @@ MIT in each case. |#
     scheme-to-interface-jsr		; Used by rules4, for convenience
     trampoline-to-interface		; Used by trampolines, for convenience
     shortcircuit-apply			; Used by rules3, for speed
+    shortcircuit-apply-size-1		; Small frames, save time and space
+    shortcircuit-apply-size-2
+    shortcircuit-apply-size-3
+    shortcircuit-apply-size-4
+    shortcircuit-apply-size-5
+    shortcircuit-apply-size-6
+    shortcircuit-apply-size-7
+    shortcircuit-apply-size-8
+    primitive-apply			; Common entries to save space
+    primitive-lexpr-apply
+    error
+    link
+    interrupt-closure
+    interrupt-dlink
+    interrupt-procedure 
+    interrupt-continuation
+    assignment-trap
+    reference-trap
+    safe-reference-trap
+    &+
+    &-
+    &*
+    &/
+    &=
+    &<
+    &>
+    1+
+    -1+
+    zero?
+    positive?
+    negative?
     ))
 
 (define-integrable (invoke-interface code)

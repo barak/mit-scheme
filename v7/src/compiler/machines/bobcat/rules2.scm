@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.10 1989/10/26 07:37:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.11 1989/12/11 06:16:59 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -110,36 +110,11 @@ MIT in each case. |#
 			  (predicate/memory-operand-reference memory))))
 
 (define-rule predicate
-  (TYPE-TEST (REGISTER (? register)) (? type))
-  (QUALIFIER (pseudo-register? register))
-  (set-standard-branches! 'EQ)
-  (LAP ,(test-byte type (reference-alias-register! register 'DATA))))
-
-(define-rule predicate
-  (TYPE-TEST (OBJECT->TYPE (REGISTER (? register))) (? type))
-  (QUALIFIER (pseudo-register? register))
-  (set-standard-branches! 'EQ)
-  (let ((reference (move-to-temporary-register! register 'DATA)))
-    (LAP ,@(object->type reference)
-	 ,(test-byte type reference))))
-
-(define-rule predicate
-  (TYPE-TEST (OBJECT->TYPE (? memory)) (? type))
-  (QUALIFIER (predicate/memory-operand? memory))
-  (set-standard-branches! 'EQ)
-  (if (= scheme-type-width 8)
-      (LAP ,(test-byte type (predicate/memory-operand-reference memory)))
-      (let ((temp (reference-temporary-register! 'DATA)))
-	(LAP (MOV L ,(predicate/memory-operand-reference memory) ,temp)
-	     ,@(object->type temp)
-	     ,(test-byte type temp)))))
-
-(define-rule predicate
   (UNASSIGNED-TEST (REGISTER (? register)))
   (set-standard-branches! 'EQ)
   (LAP ,(test-non-pointer (ucode-type unassigned)
 			  0
-			  (standard-register-reference register 'DATA true))))
+			  (standard-register-reference register false true))))
 
 (define-rule predicate
   (UNASSIGNED-TEST (? memory))
@@ -150,9 +125,54 @@ MIT in each case. |#
 			  (predicate/memory-operand-reference memory))))
 
 (define-rule predicate
-  (OVERFLOW-TEST)
-  (set-standard-branches! 'VS)
-  (LAP))
+  (TYPE-TEST (REGISTER (? register)) (? type))
+  (QUALIFIER (pseudo-register? register))
+  (set-standard-branches! 'EQ)
+  (LAP ,(test-byte type (reference-alias-register! register 'DATA))))
+
+(define-rule predicate
+  (TYPE-TEST (OBJECT->TYPE (REGISTER (? register))) (? type))
+  (QUALIFIER (pseudo-register? register))
+  (set-standard-branches! 'EQ)
+  (if (and (zero? type) use-68020-instructions?)
+      (LAP (BFTST ,(standard-register-reference register 'DATA false)
+		  (& 0)
+		  (& ,scheme-type-width)))
+      ;; See if we can reuse a source alias, because `object->type'
+      ;; can sometimes do a slightly better job when the source and
+      ;; temp are the same register.
+      (reuse-pseudo-register-alias! register 'DATA
+	(lambda (source)
+	  (delete-dead-registers!)
+	  (need-register! source)
+	  (let ((source (register-reference source)))
+	    (normal-type-test source source type)))
+	(lambda ()
+	  (let ((source (standard-register-reference register 'DATA false)))
+	    (delete-dead-registers!)
+	    (normal-type-test source
+			      (reference-temporary-register! 'DATA)
+			      type))))))
+
+(define-rule predicate
+  (TYPE-TEST (OBJECT->TYPE (OFFSET (REGISTER (? address)) (? offset)))
+	     (? type))
+  (set-standard-branches! 'EQ)
+  (let ((source (indirect-reference! address offset)))
+    (cond ((= scheme-type-width 8)
+	   (LAP ,(test-byte type source)))
+	  ((and (zero? type) use-68020-instructions?)
+	   (LAP (BFTST ,source (& 0) (& ,scheme-type-width))))
+	  (else
+	   (normal-type-test source
+			     (reference-temporary-register! 'DATA)
+			     type)))))
+
+(define (normal-type-test source target type)
+  (LAP ,@(object->type source target)
+       ,@(if (zero? type)
+	     (LAP)
+	     (LAP ,(test-byte type target)))))
 
 (define-rule predicate
   (EQ-TEST (REGISTER (? register-1)) (REGISTER (? register-2)))
@@ -229,10 +249,21 @@ MIT in each case. |#
 ;;;; Fixnum/Flonum Predicates
 
 (define-rule predicate
+  (OVERFLOW-TEST)
+  (set-standard-branches! 'VS)
+  (LAP))
+
+(define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (REGISTER (? register)))
   (QUALIFIER (pseudo-register? register))
   (set-standard-branches! (fixnum-predicate->cc predicate))
   (test-fixnum (standard-register-reference register 'DATA true)))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate) (OBJECT->FIXNUM (REGISTER (? register))))
+  (QUALIFIER (pseudo-register? register))
+  (set-standard-branches! (fixnum-predicate->cc predicate))
+  (object->fixnum (move-to-temporary-register! register 'DATA)))
 
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (? memory))
