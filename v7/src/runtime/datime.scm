@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.30 2000/05/23 21:51:26 cph Exp $
+$Id: datime.scm,v 14.31 2000/09/11 21:45:15 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -236,6 +236,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (let ((tokens
 	   (let ((tokens (burst-string string char-set:whitespace #t)))
 	     (case (length tokens)
+	       ((4)
+		;; Workaround for very old mail messages with dates in
+		;; the following format: "24 September 1984 18:42-EDT".
+		(let ((tokens* (burst-string (list-ref tokens 3) #\- #f)))
+		  (if (fix:= 2 (length tokens*))
+		      (list (car tokens)
+			    (cadr tokens)
+			    (caddr tokens)
+			    (string-append (car tokens*) ":00")
+			    (cadr tokens*))
+		      (lose))))
 	       ((5) tokens)
 	       ((6)
 		(if (and (fix:= 4 (string-length (car tokens)))
@@ -261,7 +272,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (string->file-time string)
   (decoded-time->file-time (string->decoded-time string)))
-
+
 (define (time-zone->string tz)
   (if (not (time-zone? tz))
       (error:wrong-type-argument tz "time zone" 'TIME-ZONE->STRING))
