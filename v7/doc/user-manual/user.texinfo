@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.44 1996/04/07 21:01:07 cph Exp $
+@comment $Id: user.texinfo,v 1.45 1996/04/08 21:03:50 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -54,9 +54,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.44
+@subtitle Edition 1.45
 @subtitle for Scheme Release 7.4
-@subtitle 7 April 1996
+@subtitle 8 April 1996
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -101,7 +101,7 @@ literature without prior written consent from MIT in each case.
 @end enumerate
 @end titlepage
 
-@node Top, Installation, (dir), (dir)
+@node Top, Introduction, (dir), (dir)
 
 @ifinfo
 Scheme is the UnCommon Lisp.  This Info file is the user's guide for the
@@ -111,6 +111,7 @@ Scheme with Edwin and GNU Emacs.
 @end ifinfo
 
 @menu
+* Introduction::                
 * Installation::                
 * Running Scheme::              
 * Using Scheme::                
@@ -229,13 +230,42 @@ Comparison of Edwin to Emacs
 * Edwin Bugs::                  
 @end menu
 
-@node Installation, Running Scheme, Top, Top
+@node Introduction, Installation, Top, Top
+@unnumbered Introduction
+
+This document describes how to install and use MIT Scheme, the UnCommon
+Lisp.  It gives installation instructions for all of the platforms that
+we support; complete documentation of the command-line options and
+environment variables that control how Scheme works; and rudimentary
+descriptions of how to interact with the evaluator, compile and debug
+programs, and use the editor.  Some additional material, including the
+release notes, is included as appendices.
+
+@cindex Unix
+@cindex OS/2
+@cindex Windows
+@cindex PC
+This document discusses many operating-system specific features of the
+MIT Scheme implementation.  In order to simplify the discussion, we use
+abbreviations to refer to some operating systems.  When the text uses
+the term @dfn{Unix}, this means any of the Unix systems that we support,
+including GNU/Linux, HP-UX, Ultrix, NeXT, and SunOS.  The term
+@dfn{OS/2} means the IBM OS/2 operating system, version 2.1, 2.11, or
+3.0 Warp.  We use the term @dfn{Windows} to collectively refer to the
+Microsoft Windows operating systems: Windows 3.1, Windows 95, and
+Windows NT.  We use the term @dfn{PC} to refer to any computer running
+OS/2 or Windows.  Thus we consider a @dfn{PC} to be a system with a
+@sc{dos}-like file system, using backslashes for directory separators,
+drive letters, @sc{cr-lf} line termination, and (potentially) the
+hideous 8.3 short filenames.
+
+@node Installation, Running Scheme, Introduction, Top
 @chapter Installation
 
 This chapter describes how to install MIT Scheme release 7.4.  The
 release is supported under several different operating systems: Unix,
-OS/2, Windows 3.1, Windows 95, and Windows NT.  Read the section
-detailing the installation for the operating system that you are using.
+OS/2, and Windows.  Read the section detailing the installation for the
+operating system that you are using.
 
 If you are installing on an HP 9000 series 700 or 800, you should also
 read @ref{HP-PA Installation}.
@@ -682,7 +712,7 @@ Documentation for Scheme is included with this release, in the directory
 @item
 @file{user.inf} is the MIT Scheme User's Manual, which describes how to
 run and use Scheme.  It describes all of the environment variables and
-command line options, how to run the compiler and editor, etc.
+command-line options, how to run the compiler and editor, etc.
 
 @item
 @file{scheme.inf} is the MIT Scheme Reference Manual, which documents
@@ -718,7 +748,7 @@ necessary to reboot OS/2 before the changes will take effect.
 @findex MITSCHEME_LIBRARY_PATH
 says where to find Scheme's data files.  This is the only required
 environment variable (but is not required when Scheme is invoked with
-the @samp{-library} command line switch).
+the @samp{-library} command-line option).
 
 @example
 SET MITSCHEME_LIBRARY_PATH=C:\SCHEME\LIB
@@ -800,7 +830,7 @@ Note that we have only tested the DOS version on Microsoft DOS 5.0.
 
 MIT Scheme requires at least a 386SX with 8Mb RAM.
 The bare minimum
-disk space required is 5.5Mb, which gives you a command line interface
+disk space required is 5.5Mb, which gives you a command-line interface
 for Scheme.  We strongly recommend a more advanced environment.  To
 build the Edwin editor band requires an additional 4.3Mb.  The whole
 installation without source code occupies 36Mb of disk.
@@ -1221,13 +1251,6 @@ This chapter describes how to run MIT Scheme.  It also describes how you
 can customize the behavior of MIT Scheme using command-line options and
 environment variables.
 
-@cindex Windows
-@cindex PC
-Within this manual, we will use the term @dfn{Windows} to collectively
-refer to the Microsoft Windows operating systems: Windows 3.1, Windows
-95, and Windows NT.  We will use the term @dfn{PC} to refer to any
-computer running OS/2 or Windows.
-
 @menu
 * Basics of Starting Scheme::   
 * Customizing Scheme::          
@@ -1316,13 +1339,13 @@ You can customize your setup by using a variety of tools:
 @cindex command-line options
 @dfn{Command-line options}.
 Many parameters, like memory usage and the location of libraries, may be
-varied by command line options.  @xref{Command-Line Options}.
+varied by command-line options.  @xref{Command-Line Options}.
 
 @item
 @cindex command scripts
 @dfn{Command scripts or batch files}.
 You might like to write scripts that invoke Scheme with your favorite
-command line options.  For example, you might not have enough memory to
+command-line options.  For example, you might not have enough memory to
 run Edwin or the compiler with its default memory parameters (it will
 print something like ``Not enough memory for this configuration'' and
 halt when started), so you can write a shell script (Unix), @file{.bat}
@@ -1345,7 +1368,7 @@ your home directory into the Edwin environment.  This file is called
 You can use both of these files to define new procedures or commands, or
 to change defaults in the system.
 
-The @samp{-no-init-file} command line option causes Scheme to ignore the
+The @samp{-no-init-file} command-line option causes Scheme to ignore the
 @file{.scheme.init} file (@pxref{Command-Line Options}).
 
 @item
@@ -1636,7 +1659,7 @@ maintenance and development of the MIT Scheme runtime system.
 
 @noindent
 In addition to the above, @file{bchscheme} recognizes the following
-command line options, all of which specify parameters affecting how
+command-line options, all of which specify parameters affecting how
 @file{bchscheme} uses disk storage to do garbage collection:
 
 @table @code
@@ -1699,7 +1722,7 @@ not defined, the value 16 is used.
 @end table
 
 @noindent
-The following command line options are only used by an experimental
+The following command-line options are only used by an experimental
 version of @file{bchscheme} that uses Unix System V-style shared memory,
 and then only if the @file{gcdrone} program is installed in the library
 directory.
@@ -2130,11 +2153,11 @@ under Windows 3.1, Windows 95, and Windows NT.
 
 Under Windows 3.1, Scheme must be run from the Program Manager or the
 File Manager.  Scheme cannot be run from the command line, because only
-DOS programs can be run from the command line.  Windows 95 and Windows
-NT overcome this restriction, but it is still useful to know how to run
-Scheme from the Desktop.
+@sc{dos} programs can be run from the command line.  Windows 95 and
+Windows NT overcome this restriction, but it is still useful to know how
+to run Scheme from the Desktop.
 
-Once an icon is set up to run Scheme with some particular command line
+Once an icon is set up to run Scheme with some particular command-line
 options, Scheme is run by double-clicking that icon.
 The rest of this section gives some tips on how to set up
 Program Manager icons that run Scheme.  If you are unfamiliar with this
@@ -2346,7 +2369,9 @@ type @key{RET} after @kbd{C-g} or @kbd{C-c}, nor is it needed after the
 character that @kbd{C-c} will ask you for.
 
 Here are the definitions of the more common interrupt keys; on systems
-that support @kbd{C-c}, type @kbd{C-c ?} for more possibilities.
+that support @kbd{C-c}, type @kbd{C-c ?} for more possibilities.  Note
+that in any given implementation, only a subset of the following keys is
+available.
 
 @table @asis
 @item @kbd{C-c C-c}
@@ -2565,11 +2590,18 @@ that.
 
 To load files of Scheme code, use the procedure @code{load}:
 
-@deffn {procedure} load filename [environment [syntax-table]]
+@deffn {procedure} load filename [environment [syntax-table [purify?]]]
 @var{Filename} may be a string naming a file, or a list of strings
 naming multiple files.  @var{Environment}, if given, is the environment to
 evaluate the file in; if not given the current @sc{repl} environment is
-used.  Likewise @var{syntax-table} is the syntax table to use.
+used.  Likewise @var{syntax-table} is the syntax table to use.  
+
+@findex purify
+The optional argument @var{purify?} is a boolean that says whether to
+move the contents of the file into constant space after it is loaded but
+before it is evaluated.  This is performed by calling the procedure
+@code{purify} (@pxref{Garbage Collection}).  If @var{purify?} is given
+and true, this is done; otherwise it is not.
 
 @findex pathname-type
 @code{load} determines whether the file to be loaded is binary or source
@@ -2612,8 +2644,65 @@ All pathnames are interpreted relative to a working directory, which is
 initialized when Scheme is started.  The working directory can be
 obtained by calling the procedure @code{pwd} or modified by calling the
 procedure @code{cd}; see the reference manual for details.  Files may be
-loaded when Scheme first starts; see the @code{-load} command-line
+loaded when Scheme first starts; see the @samp{-load} command-line
 option for details.
+
+@deffn {procedure+} load-option symbol [no-error?]
+Loads the option specified by @var{symbol}; if already loaded, does
+nothing.  Returns @var{symbol}; if there is no such option, an error is
+signalled.  However, if @var{no-error?} is specified and true, no error
+is signalled in this case, and @code{#f} is returned.
+
+A number of built-in options are defined:
+
+@table @code
+@item compress
+Code to compress and uncompress files.  Undocumented.  Used by the
+runtime system for compression of compiled-code debugging information.
+
+@item format
+The @code{format} procedure.  Documented in the Reference Manual.
+
+@item hash-table
+The hash-table data type.  Documented in the Reference Manual.
+
+@item ordered-vector
+Code to search and do completion on vectors of ordered elements.
+Undocumented.
+
+@item rb-tree
+The red-black tree data type.  Documented in the Reference Manual.
+
+@item stepper
+Code to step through the evaluation of Scheme expressions.
+Undocumented.  Used by the Edwin command @kbd{M-x step-expression}.
+
+@item subprocess
+Code to run other programs as subprocesses of the Scheme process;
+implemented under Unix and OS/2 only.  Undocumented, but used
+extensively by Edwin.
+
+@item wt-tree
+The weight-balanced tree data type.  Documented in the Reference Manual.
+@end table
+@end deffn
+
+In addition to the built-in options, you may define other options to be
+loaded by @code{load-options} by modifying the file @file{optiondb.scm}
+on the library path.  An example file is included with the distribution;
+normally this file consists of a series of calls to the procedure
+@code{define-load-option}, terminated by the expression
+
+@example
+(further-load-options standard-load-options)
+@end example
+
+@deffn {procedure+} define-load-option symbol thunk @dots{}
+Each @var{thunk} must be a procedure of no arguments.  Defines the load
+option named @var{symbol}.  When the procedure @code{load-option} is
+called with @var{symbol} as an argument, the @var{thunk} arguments are
+executed in order from left to right.
+@end deffn
 
 @node World Images, Garbage Collection, Loading Files, Using Scheme
 @section World Images
@@ -2807,7 +2896,7 @@ collection should be a substantial proportion of the heap size.  If the
 percentage CPU time is consistently high (over 20%), you should consider
 running with a larger heap.  A rough rule of thumb to halve the @sc{gc}
 overhead is to take the amount of free storage, divide by 1000, and add
-this figure to the current value used for the @samp{-heap} command line
+this figure to the current value used for the @samp{-heap} command-line
 option.  Unfortunately there is no way to adjust the heap size without
 restarting Scheme.
 @end deffn
@@ -5141,7 +5230,7 @@ with the record abstraction.
 @code{call-with-current-continuation} is now properly tail-recursive.
 
 @item
-New command-line switch @code{-no-suspend-file} prevents the generation
+New command-line switch @samp{-no-suspend-file} prevents the generation
 of @file{scheme_suspend} files.
 
 @item
