@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.53 1990/04/01 20:10:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.54 1990/04/12 21:05:34 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -586,12 +586,12 @@ longjmp(Exit_Point, NORMAL_EXIT)
 
 #ifdef HAS_COMPILER_SUPPORT
 #ifndef CONSTANT_SIZE
-#define CONSTANT_SIZE		600	/* Default Kcells for constant */
+#define CONSTANT_SIZE		700	/* Default Kcells for constant */
 #endif
 #endif
 
 #ifndef COMPILER_CONSTANT_SIZE
-#define COMPILER_CONSTANT_SIZE	1300
+#define COMPILER_CONSTANT_SIZE	1500
 #endif
 
 #endif /* mips */
