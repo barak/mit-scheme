@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.46 1993/10/05 22:57:50 cph Exp $
+$Id: edwin.ldr,v 1.47 1994/03/04 21:43:44 cph Exp $
 
-Copyright (c) 1989-1993 Massachusetts Institute of Technology
+Copyright (c) 1989-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -83,6 +83,7 @@ MIT in each case. |#
 	    (load-option 'KRYPT)
 	    (load-option 'SUBPROCESS)))
       (load-option 'RB-TREE)
+      (load-option 'HASH-TABLE)
 
       (let ((environment (->environment '(EDWIN))))
 	(load "utils" environment)
