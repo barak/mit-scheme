@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.288 1997/11/01 07:36:14 cph Exp $
+$Id: runtime.pkg,v 14.289 1998/01/08 05:59:11 cph Exp $
 
-Copyright (c) 1988-97 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -2328,6 +2328,8 @@ MIT in each case. |#
 	  subprocess-stop
 	  subprocess-wait
 	  subprocess?)
+  (export (runtime primitive-io)
+	  handle-subprocess-status-change)
   (initialization (initialize-package!)))
 
 (define-package (runtime graphics)

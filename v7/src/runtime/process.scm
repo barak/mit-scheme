@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: process.scm,v 1.20 1997/10/24 06:47:56 cph Exp $
+$Id: process.scm,v 1.21 1998/01/08 05:58:54 cph Exp $
 
-Copyright (c) 1989-97 Massachusetts Institute of Technology
+Copyright (c) 1989-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -127,6 +127,9 @@ MIT in each case. |#
   (let ((port (subprocess-i/o-port process)))
     (and (output-port? port)
 	 port)))
+
+(define (close-subprocess-i/o process)
+  (without-interrupts (lambda () (%close-subprocess-i/o process))))
 
 (define (%close-subprocess-i/o process)
   ;; Assumes that interrupts are locked.
@@ -268,7 +271,7 @@ MIT in each case. |#
     ((2) 'EXITED)
     ((3) 'SIGNALLED)
     (else (error "Illegal process status:" status))))
-
+
 (define (subprocess-job-control-status process)
   (let ((n
 	 ((ucode-primitive process-job-control-status 1)
@@ -279,6 +282,13 @@ MIT in each case. |#
       ((2) 'NO-JOB-CONTROL)
       ((3) 'JOB-CONTROL)
       (else (error "Illegal process job-control status:" n)))))
+
+(define (handle-subprocess-status-change)
+  (if (eq? 'NT microcode-id/operating-system)
+      (for-each (lambda (process)
+		  (if (memq (subprocess-status process) '(EXITED SIGNALLED))
+		      (close-subprocess-i/o process)))
+		subprocesses)))
 
 (define-integrable subprocess-job-control-available?
   (ucode-primitive os-job-control? 0))
@@ -305,7 +315,7 @@ MIT in each case. |#
 
 (define (maybe-close-subprocess-i/o process)
   (if (eq? 'NT microcode-id/operating-system)
-      (without-interrupts (lambda () (%close-subprocess-i/o process)))))
+      (close-subprocess-i/o process)))
 
 (define (subprocess-stop process)
   ((ucode-primitive process-stop 1) (subprocess-index process)))
