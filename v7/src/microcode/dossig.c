@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dossig.c,v 1.3 1992/05/28 19:34:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dossig.c,v 1.4 1992/07/28 14:40:43 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 #include "msdos.h"
-#include "config.h"
+#include "scheme.h"
 #include <signal.h>
 #include <int.h>
 #include "ossig.h"
@@ -637,14 +637,16 @@ DEFUN (control_break_handler, (pd), struct INT_DATA *pd)
 /* Scheme timer emulation; DOS does not have an ITIMER like unix. */
 /* Zero means timer is not set. */
 
-volatile unsigned long scm_itimer_counter = 0;
-volatile unsigned long scm_itimer_reload = 0;
+extern volatile unsigned long scm_itimer_counter;
+extern volatile unsigned long scm_itimer_reload;
+extern int EXFUN (bios_timer_handler, (struct INT_DATA *));
 
 int 
 DEFUN (bios_timer_handler, (pd), struct INT_DATA *pd)
-{ 
+{
   if (scm_itimer_reload != 0)
-  { if (--scm_itimer_counter == 0)
+  {
+    if (--scm_itimer_counter == 0)
     { 
       scm_itimer_counter = scm_itimer_reload;
       request_timer_interrupt();
@@ -731,13 +733,15 @@ static void * stack_exception_fault_stack = ((void *) NULL);
 #define STACK_EXCEPTION_STACK_SIZE	2048
 
 static int
-DEFUN (DPMI_restore_handler, (iv), unsigned iv)
+DEFUN (restore_exception_handler, (iv, restore),
+       unsigned iv
+       AND int EXFUN ((* restore), (unsigned, unsigned short, unsigned)))
 {
   unsigned excp = (iv - NUM_DOS_INTVECT);
 
-  if ((DPMI_restore_exception_handler (excp,
-				       old_excp_handler_cs[excp],
-				       old_excp_handler_eip[excp]))
+  if (((* restore) (excp,
+		    old_excp_handler_cs[excp],
+		    old_excp_handler_eip[excp]))
       != DOS_SUCCESS)
     return (DOS_FAILURE);
   if (excp == DOS_EXCP_Stack_exception)
@@ -746,6 +750,20 @@ DEFUN (DPMI_restore_handler, (iv), unsigned iv)
     stack_exception_fault_stack = ((void *) NULL);
   }
   return (DOS_SUCCESS);
+}
+
+/* The following two procedures would not be here if C had lambda */
+
+static int
+DEFUN (DPMI_restore_handler, (iv), unsigned iv)
+{
+  return (restore_exception_handler (iv, DPMI_restore_exception_handler));
+}
+
+static int
+DEFUN (X32_restore_handler, (iv), unsigned iv)
+{
+  return (restore_exception_handler (iv, X32_restore_exception_handler));
 }
 
 static void
@@ -757,7 +775,17 @@ DEFUN (exception_handler, (trapno, trapcode, scp),
 }
 
 static void
-DEFUN_VOID (DPMI_install_exception_handlers)
+DEFUN (install_exception_handlers, (get_vector, set_handler, restore),
+       int EXFUN ((* get_vector),
+		  (unsigned, unsigned short *, unsigned *))
+       AND int EXFUN ((* set_handler),
+		      (unsigned,
+		       void EXFUN ((*),
+				   (unsigned,
+				    unsigned,
+				    struct sigcontext *)),
+		       void *))
+       AND int EXFUN ((* restore), (unsigned)))
 {
   int i;
 
@@ -767,9 +795,9 @@ DEFUN_VOID (DPMI_install_exception_handlers)
 
     if (excp == DOS_INVALID_TRAP)
       break;
-    if ((DPMI_get_exception_vector (((unsigned) excp),
-				    & old_excp_handler_cs[excp],
-				    & old_excp_handler_eip[excp]))
+    if (((* get_vector) (((unsigned) excp),
+			 & old_excp_handler_cs[excp],
+			 & old_excp_handler_eip[excp]))
 	!= DOS_SUCCESS)
       continue;
     if (excp == DOS_EXCP_Stack_exception)
@@ -779,11 +807,11 @@ DEFUN_VOID (DPMI_install_exception_handlers)
       stack = ((char *) (malloc (STACK_EXCEPTION_STACK_SIZE)));
       if (stack == ((char *) NULL))
 	continue;
-      if ((DPMI_set_exception_handler (((unsigned) excp),
-				       exception_handler,
-				       ((void *)
-					(stack 
-                                         + STACK_EXCEPTION_STACK_SIZE))))
+      if (((* set_handler) (((unsigned) excp),
+			    exception_handler,
+			    ((void *)
+			     (stack 
+			      + STACK_EXCEPTION_STACK_SIZE))))
 	  != DOS_SUCCESS)
       {
 	free (stack);
@@ -791,15 +819,13 @@ DEFUN_VOID (DPMI_install_exception_handlers)
       }
       stack_exception_fault_stack = ((void *) stack);
     }
-    else if ((DPMI_set_exception_handler (((unsigned) excp),
-					  exception_handler,
-					  ((void *) NULL)))
+    else if (((* set_handler) (((unsigned) excp),
+			       exception_handler,
+			       ((void *) NULL)))
 	     != DOS_SUCCESS)
       continue;
-    dos_record_interrupt_interception ((excp + NUM_DOS_INTVECT),
-				       DPMI_restore_handler);
+    dos_record_interrupt_interception ((excp + NUM_DOS_INTVECT), restore);
   }
-  fflush (stdout);
   return;
 }
 
@@ -814,24 +840,90 @@ DEFUN (DOS_restore_keyboard, (intno), unsigned intno)
   return (DOS_SUCCESS);
 }     
 
+static dos_boolean
+DEFUN_VOID (enable_DPMI_exceptions_p)
+{
+  extern int strcmp_ci (char *, char *);
+  char * envvar = (DOS_getenv ("MITSCHEME_DPMI_EXCEPTIONS"));
+
+  if ((envvar == NULL) || ((strcmp_ci (envvar, "true")) == 0))
+    return (dos_true);
+  else
+    return (dos_false);
+}
+
 static void
 DEFUN_VOID (DOS_install_interrupts)
 {
-  scm_int_intercept (DOS_INTVECT_USER_TIMER_TICK, 
-                     bios_timer_handler, 
-                     256);
-  if ((dos_install_kbd_hook ()) == DOS_SUCCESS)
+  extern dos_boolean EXFUN (under_X32_p, (void));
+  
+  if (under_X32_p ())
   {
-    dos_record_interrupt_interception (DOS_INTVECT_SYSTEM_SERVICES,
-				       DOS_restore_keyboard);
-    DOS_keyboard_intercepted_p = true;    
+    extern void EXFUN (X32_asm_initialize, (void));
+    extern int EXFUN (X32_lock_scheme_microcode, (void));
+    extern int EXFUN (X32_interrupt_restore, (unsigned));
+    extern int EXFUN (X32_int_intercept, (unsigned, void (*) (), PTR));
+    extern void EXFUN (X32_timer_interrupt, (void));
+    extern int X32_timer_interrupt_previous;
+
+    X32_asm_initialize ();
+    if ((X32_lock_scheme_microcode ()) != 0)
+    {
+      fprintf (stderr,
+	       "\n;; DOS_install_interrupts (X32): Unable to lock memory.");
+      fprintf (stderr,
+	       "\n;; Timer interrupt not available!\n");
+      fflush (stderr);
+      return;
+    }
+
+    if ((X32_int_intercept (DOS_INTVECT_USER_TIMER_TICK,
+			    X32_timer_interrupt,
+			    ((PTR) &X32_timer_interrupt_previous)))
+	!= 0)
+    {
+      fprintf (stderr,
+	       "\n;; DOS_install_interrupts (X32): Unable to intercept.");
+      fprintf (stderr,
+	       "\n;; Timer interrupt not available!\n");
+      fflush (stderr);
+      return;
+    }
+    else
+      dos_record_interrupt_interception (DOS_INTVECT_USER_TIMER_TICK,
+					 X32_interrupt_restore);
+    if ((dos_install_kbd_hook ()) == DOS_SUCCESS)
+    {
+      dos_record_interrupt_interception (DOS_INTVECT_SYSTEM_SERVICES,
+					 DOS_restore_keyboard);
+      DOS_keyboard_intercepted_p = true;    
+    }
+    install_exception_handlers (X32_get_exception_vector,
+				X32_set_exception_handler,
+				X32_restore_handler);
   }
-  if (under_DPMI_p ())
-    DPMI_install_exception_handlers ();
   else
-    scm_int_intercept (DOS_INTVECT_KB_CTRL_BREAK,
-		       control_break_handler,
+  {
+    scm_int_intercept (DOS_INTVECT_USER_TIMER_TICK, 
+		       bios_timer_handler, 
 		       256);
+
+    if ((dos_install_kbd_hook ()) == DOS_SUCCESS)
+    {
+      dos_record_interrupt_interception (DOS_INTVECT_SYSTEM_SERVICES,
+					 DOS_restore_keyboard);
+      DOS_keyboard_intercepted_p = true;    
+    }
+
+    if (!under_DPMI_p ())
+      scm_int_intercept (DOS_INTVECT_KB_CTRL_BREAK,
+			 control_break_handler,
+			 256);
+    else if (enable_DPMI_exceptions_p ())
+      install_exception_handlers (DPMI_get_exception_vector,
+				  DPMI_set_exception_handler,
+				  DPMI_restore_handler);
+  }
   return;
 }
 
