@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: reduct.scm,v 4.4 1993/01/02 07:33:36 cph Exp $
+$Id: reduct.scm,v 4.5 1993/08/03 20:54:45 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -68,8 +68,8 @@ Examples:
 (replace-operator (map (2 map-2) (3 map-3)))
 
 replaces (map f l) with (map-2 f l)
-and (map (lambda (x) (car x)) (frob l))
-with (map-3 (lambda (x) (car x)) (frob l))
+and (map (lambda (x) (car x)) frob l)
+with (map-3 (lambda (x) (car x)) frob l)
 |#
 
 #|
@@ -156,8 +156,9 @@ Examples:
 ;; the code below work on s-expressions, scode, or other structure.
 ;; The only other assumption made below is that an expanders'
 ;; parameter list is
-;;	(operands if-expanded if-not-expanded block)
+;;	(expr operands if-expanded if-not-expanded block)
 ;; Where
+;;  - expr is the current expression
 ;;  - operands are the arguments to the "procedure" being reduced.
 ;;  - if-expanded is a procedure of 1 argument (the expanded expression)
 ;;  which must be invoked if the expansion (reduction) was succesful.
@@ -167,6 +168,7 @@ Examples:
 
 (define (lookup name block)
   (reference/make
+   false
    block
    (or (block/lookup-name block name false)
        (block/lookup-name (integrate/get-top-level-block) name true))))
@@ -186,7 +188,7 @@ Examples:
     (error "Bad primitive expression" procedure exp))
 
   (define-integrable (constant value)
-    (constant/make value))
+    (constant/make false value))
 
   (cond ((symbol? exp)
 	 (variable/make block exp '()))
@@ -238,10 +240,10 @@ Examples:
 	   (loop (cdr l) done)))))
 
 (define (combine-1 unop x)
-  (combination/make unop (list x)))
+  (combination/make false unop (list x)))
 
 (define (combine-2 binop x y)
-  (combination/make binop (list x y)))
+  (combination/make false binop (list x y)))
 
 ;;;; Building blocks
 
@@ -271,7 +273,8 @@ Examples:
    (lambda (mapper)
      (declare (integrate mapper))
      (lambda (block not-reduced reduced)
-       (combination/make (mapper block)
+       (combination/make false
+			 (mapper block)
 			 (append not-reduced
 				 (list reduced)))))))
 
@@ -311,7 +314,7 @@ Examples:
 		     (lambda (block x y)
 		       (combine-2 (expr block) x y)))))))
 
-      (lambda (operands if-expanded if-not-expanded block)
+      (lambda (expr operands if-expanded if-not-expanded block)
 	(define (group l)
 	  (if (null? (cdr l))
 	      (last block (car l) binop)
@@ -325,24 +328,26 @@ Examples:
 		      (and max-args (> l max-args)))))
 	    (if-not-expanded)
 	    (if-expanded
-	     (let ((l1 (list-head operands spare-args))
-		   (l2 (map2 (list-tail operands spare-args))))
-	       (cond ((null? l2)
-		      (wrap block
-			    l1
-			    (none block)))
-		     ((null? (cdr l2))
-		      (wrap block
-			    l1
-			    (single block
-				    (car l2)
-				    (lambda (block x y)
-				      (binop block x y)))))
-		     (else
-		      (wrap block
-			    l1
-			    (binop block (car l2)
-				   (group (cdr l2)))))))))))))
+	     (reassign
+	      expr
+	      (let ((l1 (list-head operands spare-args))
+		    (l2 (map2 (list-tail operands spare-args))))
+		(cond ((null? l2)
+		       (wrap block
+			     l1
+			     (none block)))
+		      ((null? (cdr l2))
+		       (wrap block
+			     l1
+			     (single block
+				     (car l2)
+				     (lambda (block x y)
+				       (binop block x y)))))
+		      (else
+		       (wrap block
+			     l1
+			     (binop block (car l2)
+				    (group (cdr l2))))))))))))))
 
 (define (group-right spare-args min-args max-args
 		     binop source-block exprs
@@ -522,7 +527,8 @@ Examples:
 					     decl-block)))
 	      (if-not-expanded)
 	      (if-expanded
-	       (combination/make (let ((frob (cdr candidate)))
+	       (combination/make false
+				 (let ((frob (cdr candidate)))
 				   (if (variable? frob)
 				       (lookup (variable/name frob) block)
 				       frob))
