@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.39 2000/05/04 17:40:01 cph Exp $
+;;; $Id: imail-core.scm,v 1.40 2000/05/04 18:52:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -484,6 +484,7 @@
 
 (define flags-member? (member-procedure string-ci=?))
 (define flags-add (add-member-procedure string-ci=?))
+(define flags-delete (delete-member-procedure list-deletor string-ci=?))
 (define flags-delete! (delete-member-procedure list-deletor! string-ci=?))
 
 (define (message-flag? object)

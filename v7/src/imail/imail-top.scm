@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.31 2000/05/04 18:47:18 cph Exp $
+;;; $Id: imail-top.scm,v 1.32 2000/05/04 18:52:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -25,10 +25,6 @@
 ;;;
 ;;; * Try to leverage IMAP MIME parser by building compatible
 ;;;   interface for file-based folders.
-;;;
-;;; * Hook in code to automatically re-open IMAP connections.
-;;;
-;;; * Mark messages as "seen", etc.
 ;;;
 ;;; * Build generic message cache?  Need to figure out when cached
 ;;;   info can be deleted.
@@ -292,20 +288,6 @@ DEL	Scroll to previous screen of this message.
 (define (imail-kill-buffer buffer)
   (imail-close-buffer-folder buffer))
 
-(define-command imail-quit
-  "Quit out of IMAIL."
-  ()
-  (lambda ()
-    ((ref-command imail-save-folder))
-    (imail-close-buffer-folder (selected-buffer))
-    ((ref-command bury-buffer))))
-
-(define-command imail-save-folder
-  "Save the currently selected IMAIL folder."
-  ()
-  (lambda ()
-    (save-folder (selected-folder))))
-
 (define (imail-close-buffer-folder buffer)
   (let ((folder (selected-folder #f buffer)))
     (if folder
@@ -488,19 +470,15 @@ With prefix argument N moves backward N messages with these flags."
   (let ((message (selected-message #f buffer)))
     (and message
 	 (let ((folder (message-folder message))
-	       (index (message-index message))
-	       (flags (message-flags message)))
+	       (index (message-index message)))
 	   (if (and folder index)
-	       (let ((line
-		      (string-append
-		       " "
-		       (number->string (+ 1 index))
-		       "/"
-		       (number->string (folder-length folder)))))
-		 (if (pair? flags)
-		     (string-append line ","
-				    (decorated-string-append "" "," "" flags))
-		     line))
+	       (string-append " "
+			      (number->string (+ 1 index))
+			      "/"
+			      (number->string (folder-length folder))
+			      (decorated-string-append
+			       "," "" ""
+			       (flags-delete "seen" (message-flags message))))
 	       " 0/0")))))
 
 (define (maybe-reformat-headers message buffer)
@@ -805,6 +783,20 @@ While composing the reply, use \\[mail-yank-original] to yank the
       subject))
 
 ;;;; Miscellany
+
+(define-command imail-quit
+  "Quit out of IMAIL."
+  ()
+  (lambda ()
+    ((ref-command imail-save-folder))
+    (imail-close-buffer-folder (selected-buffer))
+    ((ref-command bury-buffer))))
+
+(define-command imail-save-folder
+  "Save the currently selected IMAIL folder."
+  ()
+  (lambda ()
+    (save-folder (selected-folder))))
 
 (define-command imail-toggle-header
   "Show full message headers if pruned headers currently shown, or vice versa."
