@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.12 1988/11/01 22:52:45 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.13 1988/11/08 11:11:27 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -394,21 +394,25 @@ MIT in each case. |#
 	   (B GE B (@PCR ,gc-label))))))
 
 (define-rule statement
-  (CONS-CLOSURE (ENTRY:PROCEDURE (? internal-label)) (? min) (? max) (? size))
-  (let* ((temp (allocate-temporary-register! 'ADDRESS))
-	 (temp-ref (register-reference temp)))
+  (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (CONSTANT (? type))
+			(CONS-CLOSURE (ENTRY:PROCEDURE (? internal-label))
+				      (? min) (? max) (? size))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((temporary (reference-temporary-register! 'ADDRESS))
+	(target (reference-target-alias! target 'DATA)))
     (LAP (LEA (@PCR ,(rtl-procedure/external-label
 		      (label->object internal-label)))
-	      ,temp-ref)
-	 ,(load-non-pointer (ucode-type manifest-closure) (+ 3 size)
+	      ,temporary)
+	 ,(load-non-pointer (ucode-type manifest-closure)
+			    (+ 3 size)
 			    (INST-EA (@A+ 5)))
-	 (MOVE L (& ,(+ (* (make-procedure-code-word min max) #x10000)
-			#x8))
+	 (MOVE L (& ,(+ (* (make-procedure-code-word min max) #x10000) 8))
 	       (@A+ 5))
-	 (MOVE L (A 5) ,reg:enclose-result)
-	 (MOVE B (& ,(ucode-type compiled-entry)) ,reg:enclose-result)
-	 (MOVE W (& #x4eb9) (@A+ 5))			; (JSR (L <entry>))
-	 (MOVE L ,temp-ref (@A+ 5))
+	 (MOVE L (A 5) ,target)
+	 (OR L (& ,(make-non-pointer-literal type 0)) ,target)
+	 (MOVE W (& #x4eb9) (@A+ 5))	; (JSR (L <entry>))
+	 (MOVE L ,temporary (@A+ 5))
 	 (CLR W (@A+ 5))
 	 ,@(increment-machine-register 13 size))))
 

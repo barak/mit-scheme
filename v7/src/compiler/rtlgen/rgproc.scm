@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.4 1988/11/01 04:55:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.5 1988/11/08 11:14:32 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -155,8 +155,8 @@ MIT in each case. |#
 		  (error "Letrec value is trivial closure" value)
 		  (recvr (make-null-cfg)
 			 (make-trivial-closure-cons value)))
-		(recvr (make-non-trivial-closure-cons value)
-		       (rtl:interpreter-call-result:enclose))))
+		(recvr (make-null-cfg)
+		       (make-non-trivial-closure-cons value))))
 	   ((IC)
 	    (make-ic-cons value 'USE-ENV recvr))
 	   ((OPEN-EXTERNAL OPEN-INTERNAL)

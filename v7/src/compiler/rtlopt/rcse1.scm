@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.14 1988/11/05 02:59:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.15 1988/11/08 11:15:07 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -311,11 +311,6 @@ MIT in each case. |#
 
 (define-trivial-one-arg-method 'INVOCATION:LOOKUP
   rtl:invocation:lookup-environment rtl:set-invocation:lookup-environment!)
-(define-cse-method 'CONS-CLOSURE
-  (lambda (statement)
-    statement
-    (expression-invalidate! (interpreter-register:enclose))))
-
 (define-cse-method 'INVOCATION-PREFIX:MOVE-FRAME-UP
   (lambda (statement)
     (expression-replace! rtl:invocation-prefix:move-frame-up-locative

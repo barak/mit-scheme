@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.10 1988/11/04 10:28:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.11 1988/11/08 11:14:49 cph Exp $
 #| -*-Scheme-*-
 Copyright (c) 1988 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.10 1988/11/04 10:28:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.11 1988/11/08 11:14:49 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -160,12 +160,11 @@ promotional, or sales literature without prior written consent from
 	   (load-temporary-register
 	    (lambda (assignment reference)
 	      (return-2
-	       (scfg-append!
-		(make-non-trivial-closure-cons procedure)
+	       (scfg*scfg->scfg!
 		assignment
 		(load-closure-environment procedure offset reference))
 	       reference))
-	    (rtl:interpreter-call-result:enclose)
+	    (make-non-trivial-closure-cons procedure)
 	    identity-procedure)))
 	 (else
        (make-ic-cons procedure offset
@@ -286,13 +285,15 @@ promotional, or sales literature without prior written consent from
    (rtl:make-entry:procedure (procedure-label procedure))))
 
 (define (make-non-trivial-closure-cons procedure)
-  (with-procedure-arity-encoding procedure
-   (lambda (min max)
-     (rtl:make-cons-closure
-      (rtl:make-entry:procedure (procedure-label procedure))
-      min
-      max
-      (procedure-closure-size procedure)))))
+  (rtl:make-cons-pointer
+   (rtl:make-constant type-code:compiled-entry)
+   (with-procedure-arity-encoding procedure
+     (lambda (min max)
+       (rtl:make-cons-closure
+	(rtl:make-entry:procedure (procedure-label procedure))
+	min
+	max
+	(procedure-closure-size procedure))))))
 
 (define (with-procedure-arity-encoding procedure receiver)
   (let* ((min (1+ (length (procedure-required-arguments procedure))))
