@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.70 1999/05/28 05:02:51 cph Exp $
+@comment $Id: scheme.texinfo,v 1.71 1999/06/22 00:42:46 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -95,9 +95,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.70
+@subtitle Edition 1.71
 @subtitle for Scheme Release 7.5
-@subtitle 28 May 1999
+@subtitle 21 June 1999
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -249,6 +249,7 @@ Strings
 * Cutting and Pasting Strings::  
 * Searching Strings::           
 * Matching Strings::            
+* Regular Expressions::         
 * Modification of Strings::     
 * Variable-Length Strings::     
 * Byte Vectors::                
@@ -5651,6 +5652,7 @@ between uppercase and lowercase.  The versions that ignore case include
 * Cutting and Pasting Strings::  
 * Searching Strings::           
 * Matching Strings::            
+* Regular Expressions::         
 * Modification of Strings::     
 * Variable-Length Strings::     
 * Byte Vectors::                
@@ -6110,12 +6112,12 @@ short patterns of less than 4 characters, the naive string-search
 algorithm is used.  For longer patterns, the Boyer-Moore string-search
 algorithm is used.
 
-@deffn {procedure+} string-search-forward string pattern
-@deffnx {procedure+} substring-search-forward string start end pattern
-@var{Pattern} must be a string.  Searches @var{string} to see if it
-contains @var{pattern} as a substring.  The search is performed from
-left to right; if successful, returns the index of the first character
-of the match.  Otherwise, returns @code{#f}.
+@deffn {procedure+} string-search-forward pattern string
+@deffnx {procedure+} substring-search-forward pattern string start end
+@var{Pattern} must be a string.  Searches @var{string} for the leftmost
+occurrence of the substring @var{pattern}.  If successful, the index of
+the first character of the matched substring is returned; otherwise,
+@code{#f} is returned.
 
 @code{substring-search-forward} limits its search to the specified
 substring of @var{string}; @code{string-search-forward} searches all of
@@ -6123,24 +6125,24 @@ substring of @var{string}; @code{string-search-forward} searches all of
 
 @example
 @group
-(string-search-forward "pirate" "rat")
+(string-search-forward "rat" "pirate")
     @result{} 2
-(string-search-forward "pirate rating" "rat")
+(string-search-forward "rat" "pirate rating")
     @result{} 2
-(substring-search-forward "pirate rating" 4 13 "rat")
+(substring-search-forward "rat" "pirate rating" 4 13)
     @result{} 7
-(substring-search-forward "pirate rating" 9 13 "rat")
+(substring-search-forward "rat" "pirate rating" 9 13)
     @result{} #f
 @end group
 @end example
 @end deffn
 
-@deffn {procedure+} string-search-backward string pattern
-@deffnx {procedure+} substring-search-backward string start end pattern
-@var{Pattern} must be a string.  Searches @var{string} to see if it
-contains @var{pattern} as a substring.  The search is performed from
-right to left; if successful, returns the index after the last character
-of the match.  Otherwise, returns @code{#f}.
+@deffn {procedure+} string-search-backward pattern string
+@deffnx {procedure+} substring-search-backward pattern string start end
+@var{Pattern} must be a string.  Searches @var{string} for the rightmost
+occurrence of the substring @var{pattern}.  If successful, the index to
+the right of the last character of the matched substring is returned;
+otherwise, @code{#f} is returned.
 
 @code{substring-search-backward} limits its search to the specified
 substring of @var{string}; @code{string-search-backward} searches all of
@@ -6148,37 +6150,37 @@ substring of @var{string}; @code{string-search-backward} searches all of
 
 @example
 @group
-(string-search-backward "pirate" "rat")
+(string-search-backward "rat" "pirate")
     @result{} 5
-(string-search-backward "pirate rating" "rat")
+(string-search-backward "rat" "pirate rating")
     @result{} 10
-(substring-search-backward "pirate rating" 1 8 "rat")
+(substring-search-backward "rat" "pirate rating" 1 8)
     @result{} 5
-(substring-search-backward "pirate rating" 9 13 "rat")
+(substring-search-backward "rat" "pirate rating" 9 13)
     @result{} #f
 @end group
 @end example
 @end deffn
 
-@deffn {procedure+} string-search-all string pattern
-@deffnx {procedure+} substring-search-all string start end pattern
+@deffn {procedure+} string-search-all pattern string
+@deffnx {procedure+} substring-search-all pattern string start end
 @var{Pattern} must be a string.  Searches @var{string} to find all
-occurrences of @var{pattern}.  Returns a list of the occurrences; each
-element of the list is an index pointing to the first character of an
-occurrence.
+occurrences of the substring @var{pattern}.  Returns a list of the
+occurrences; each element of the list is an index pointing to the first
+character of an occurrence.
 
 @code{substring-search-all} limits its search to the specified substring
 of @var{string}; @code{string-search-all} searches all of @var{string}.
 
 @example
 @group
-(string-search-all "pirate" "rat")
+(string-search-all "rat" "pirate")
     @result{} (2)
-(string-search-all "pirate rating" "rat")
+(string-search-all "rat" "pirate rating")
     @result{} (2 7)
-(substring-search-all "pirate rating" 4 13 "rat")
+(substring-search-all "rat" "pirate rating" 4 13)
     @result{} (7)
-(substring-search-all "pirate rating" 9 13 "rat")
+(substring-search-all "rat" "pirate rating" 9 13)
     @result{} ()
 @end group
 @end example
@@ -6186,7 +6188,7 @@ of @var{string}; @code{string-search-all} searches all of @var{string}.
 
 @deffn {procedure+} substring? pattern string
 @var{Pattern} must be a string.  Searches @var{string} to see if it
-contains @var{pattern} as a substring.  Returns @code{#t} if
+contains the substring @var{pattern}.  Returns @code{#t} if
 @var{pattern} is a substring of @var{string}, otherwise returns
 @code{#f}.
 
@@ -6260,7 +6262,7 @@ is also in @var{char-set}.  For the substring procedure, the index
 returned is relative to the entire string, not just the substring.
 @end deffn
 
-@node Matching Strings, Modification of Strings, Searching Strings, Strings
+@node Matching Strings, Regular Expressions, Searching Strings, Strings
 @section Matching Strings
 @cindex matching, of strings
 
@@ -6333,7 +6335,139 @@ procedures don't distinguish uppercase and lowercase letters.
 @end example
 @end deffn
 
-@node Modification of Strings, Variable-Length Strings, Matching Strings, Strings
+@node Regular Expressions, Modification of Strings, Matching Strings, Strings
+@section Regular Expressions
+@cindex searching, for regular expression
+@cindex regular expression, searching string for
+
+MIT Scheme provides support for using regular expressions to search and
+match strings.  This manual does not define regular expressions; instead
+see @ref{Regexps, , Syntax of Regular Expressions, emacs, The Emacs
+Editor}.
+
+The regular-expression support is a run-time-loadable option.  To use
+it, execute
+
+@example
+(load-option 'regular-expression)
+@end example
+
+@noindent
+once before calling any of the procedures defined here.
+
+Procedures that perform regular-expression match and search accept
+standardized arguments.  @var{Regexp} is the regular expression; it is a
+string.  @var{String} is the string being matched or searched.
+Procedures that operate on substrings also accept @var{start} and
+@var{end} index arguments with the usual meaning.  The optional argument
+@var{case-fold?} says whether the match/search is case-sensitive; if
+@var{case-fold?} is @code{#f}, it is case-sensitive, otherwise it is
+case-insensitive.  The optional argument @var{syntax-table} is a
+character syntax table that defines the character syntax, such as which
+characters are legal word constituents.  This feature is primarily for
+Edwin, so character syntax tables will not be documented here.
+Supplying @code{#f} for (or omitting) @var{syntax-table} will select the
+default character syntax, equivalent to Edwin's @code{fundamental}
+mode.
+
+@deffn {procedure+} re-string-match regexp string [case-fold? [syntax-table]]
+@deffnx {procedure+} re-substring-match regexp string start end [case-fold? [syntax-table]]
+These procedures match @var{regexp} against the respective string or
+substring, returning @code{#f} for no match, or the index of the first
+character after the matched substring if the match succeeds.  Here is an
+example showing how to extract the matched substring:
+
+@example
+@group
+(let ((index
+       (re-substring-match @var{regexp}
+                           @var{string} @var{start} @var{end})))
+  (and index
+       (substring @var{string} @var{start} index)))
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} re-string-search-forward regexp string [case-fold? [syntax-table]]
+@deffnx {procedure+} re-substring-search-forward regexp string start end [case-fold? [syntax-table]]
+Searches @var{string} for the leftmost substring matching @var{regexp}.
+If successful, the index of the first character of the matched substring
+is returned; otherwise @code{#f} is returned.
+
+@code{re-substring-search-forward} limits its search to the specified
+substring of @var{string}; @code{re-string-search-forward} searches all
+of @var{string}.
+@end deffn
+
+@deffn {procedure+} re-string-search-backward regexp string [case-fold? [syntax-table]]
+@deffnx {procedure+} re-substring-search-backward regexp string start end [case-fold? [syntax-table]]
+Searches @var{string} for the rightmost substring matching @var{regexp}.
+If successful, the index of the character just after the matched
+substring is returned; otherwise @code{#f} is returned.
+
+@code{re-substring-search-backward} limits its search to the specified
+substring of @var{string}; @code{re-string-search-backward} searches all
+of @var{string}.
+@end deffn
+
+A feature of the regular-expression matching process is a set of ten
+index registers that are set when a successful match occurs (the
+registers are left unchanged by a failed match).  Each index register
+corresponds to an instance of the regular-expression grouping operator
+@samp{\(}, and records the start index (inclusive) and end index
+(exclusive) of the matched group.  These registers are numbered from
+@code{1} to @code{9}, corresponding left-to-right to the grouping
+operators in the expression.  Additionally, register @code{0}
+corresponds to the entire substring matching the regular expression.
+
+@deffn {procedure+} re-match-start-index n
+@deffnx {procedure+} re-match-end-index n
+@var{N} must be an exact integer between @code{0} and @code{9}
+inclusive.  @code{re-match-start-index} returns the start index of the
+corresponding regular-expression register, and @code{re-match-end-index}
+returns the corresponding end index.  If the matched regular expression
+contained @var{m} grouping operators, then the values of these
+procedures are undefined for @var{n} strictly greater than @var{m}.
+
+Note that the registers referred to by these procedures are reused by
+the next regular-expression match or search.
+@end deffn
+
+@deffn {procedure+} re-registers
+@deffnx {procedure+} re-registers? object
+@deffnx {procedure+} set-re-registers! registers
+@code{re-registers} returns the current regular-expression registers as
+an object; the returned object will not be modified by subsequent calls
+to regular-expression match and search procedures.  The structure of
+this object is deliberately unspecified, but @code{re-registers?} is
+true only of these objects.  The procedure @code{set-re-registers!}
+accepts one of these objects and sets the regular-expression registers
+to the values it contains; it is the inverse of @code{re-registers}.
+@end deffn
+
+@deffn {procedure+} preserving-re-registers thunk
+This procedure executes @var{thunk} in a way that preserves the values
+of the current regular-expression registers.  In other words, the values
+of these registers will be the same both before and after the call to
+@code{preserving-re-registers}, even if @var{thunk} performs
+regular-expression matching (which would normally overwrite the
+values).
+@end deffn
+
+@deffn {procedure+} regexp-group alternative @dots{}
+Each @var{alternative} must be a regular expression.  The returned value
+is a new regular expression that consists of the @var{alternative}s
+combined by a grouping operator.  For example:
+
+@example
+@group
+(regexp-group "foo" "bar" "baz")
+  @result{} "\\(foo\\|bar\\|baz\\)"
+@end group
+@end example
+@end deffn
+
+@node Modification of Strings, Variable-Length Strings, Regular Expressions, Strings
 @section Modification of Strings
 @cindex modification, of string
 @cindex replacement, of string component
@@ -15472,6 +15606,8 @@ overhead.
 @node Subprocesses, Miscellaneous OS Facilities, Machine Time, Operating-System Interface
 @section Subprocesses
 
+@cindex subprocess
+@cindex synchronous subprocess
 MIT Scheme provides the ability to run and control subprocesses.  This
 support is divided into two parts: a low-level set of primitives that
 maps directly to the underlying operating system's process-control
@@ -15483,6 +15619,16 @@ they are started and stopped in synchrony with a Scheme procedure call.
 This chapter documents Scheme's high-level synchronous-subprocess
 support.  The low-level support is not documented but is available for
 those who are willing to read the source code.
+
+Synchronous-subprocess support is a run-time-loadable option.  To use
+it, execute
+
+@example
+(load-option 'synchronous-subprocess)
+@end example
+
+@noindent
+once before calling it.
 
 @menu
 * Subprocess Procedures::       
