@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.21 1990/12/28 01:34:25 hal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.22 1991/08/06 22:13:25 arthur Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -227,7 +227,7 @@ MIT in each case. |#
 ;;; before calling `parser/standard' -- for example,
 ;;; RESTORE-TO-STATE-POINT changes the `dynamic-state' component.
 
-(define (parser/standard type elements state)
+(define (parse/standard-next type elements state history?)
   (let ((n-elements (parser-state/n-elements state))
 	(history-subproblem?
 	 (stack-frame-type/history-subproblem? type))
@@ -241,7 +241,7 @@ MIT in each case. |#
      (parser-state/dynamic-state state)
      (parser-state/fluid-bindings state)
      (parser-state/interrupt-mask state)
-     (if (and history-subproblem? (stack-frame-type/subproblem? type))
+     (if history?
 	 history
 	 undefined-history)
      previous-history-offset
@@ -260,6 +260,21 @@ MIT in each case. |#
 			n-elements
 			(parser-state/next-control-point state)
 			type))))
+
+(define (parser/standard type elements state)
+  (parse/standard-next type elements state
+		       (and (stack-frame-type/history-subproblem? type)
+			    (stack-frame-type/subproblem? type))))
+
+(define (parser/standard-compiled type elements state)
+  (parse/standard-next
+   type elements state
+   (let ((stream (parser-state/element-stream state)))
+     (and (stream-pair? stream)
+	  (eq? (return-address->stack-frame-type
+		(element-stream/head stream)
+		true)
+	       stack-frame-type/return-to-interpreter)))))
 
 (define (parser/restore-dynamic-state type elements state)
   ;; Possible problem: the dynamic state really consists of all of the
@@ -494,7 +509,7 @@ MIT in each case. |#
   (set! stack-frame-type/compiled-return-address
 	(make-stack-frame-type false true false
 			       length/compiled-return-address
-			       parser/standard))
+			       parser/standard-compiled))
   (set! stack-frame-type/return-to-interpreter
 	(make-stack-frame-type false false true
 			       1
