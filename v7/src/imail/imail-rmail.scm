@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.49 2000/07/05 20:02:20 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.50 2000/09/11 21:55:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -167,7 +167,8 @@
 					displayed-headers
 					(or time
 					    (header-fields->internal-time
-					     headers))))))))
+					     headers)
+					    (get-universal-time))))))))
 	(if formatted?
 	    (finish headers displayed-headers)
 	    (finish displayed-headers 'UNDEFINED))))))
