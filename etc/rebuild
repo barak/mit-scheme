@@ -1,6 +1,6 @@
 #!/bin/csh -f
 
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/rebuild,v 1.4 1991/08/23 02:38:27 arthur Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/rebuild,v 1.5 1991/08/28 22:42:48 arthur Exp $
 
 # Arguments: runtimeversion compilerversion edwinversion 6001version
 
@@ -117,7 +117,14 @@ else
 endif
 
 echo \(write-line\ \'\(finished\ recompilation\)\) >>$script
-echo \(\%exit\)\) >>$script
+
+# This begin is inside the BEGIN
+echo \(\%exit 0\)\) >>$script
+#   but this one is not
+echo \(\%exit 1\) >> $script
+# That way, the first one will be executed if no error occurs in the BEGIN,
+#  returning zero, but the second will be executed if an error does occur,
+#  returning one.  Similar hack used everywhere.
 
 if (("$runtime" == "") \
     && ("$complr" == "") \
@@ -157,7 +164,8 @@ if ("$runtime" != "") then
 (begin
   (disk-save "../tmp/runtime.com")
   (write-line '(saved runtime band))
-  (%exit))
+  (%exit 0))
+(%exit 1)
 *END*
   set result="$status"
   if ("$result" != 0) then
@@ -185,7 +193,8 @@ if ("$complr" != "") then
   (load "make.com")
   (disk-save "../tmp/complr.com")
   (write-line '(saved compiler band))
-  (%exit))
+  (%exit 0))
+(%exit 1)
 *END*
   set result="$status"
   if ("$result" != 0) then
@@ -211,7 +220,8 @@ if ("$edwin" != "") then
   (load "make.com")
   (disk-save "../tmp/edwin.com")
   (write-line '(saved edwin band))
-  (%exit))
+  (%exit 0))
+(%exit 1)
 *END*
   set result="$status"
   if ("$result" != 0) then
@@ -235,7 +245,8 @@ if (("$edwin" != "") || ("$complr" != "")) then
   (load "make.com")
   (disk-save "../tmp/c+e.com")
   (write-line '(saved c+e band))
-  (%exit))
+  (%exit 0))
+(%exit 1)
 *END*
   set result="$status"
   if ("$result" != 0) then
@@ -262,7 +273,8 @@ if ("$student" != "") then
   (load "make.com")
   (disk-save "../tmp/6001.com")
   (write-line '(saved 6001 band))
-  (%exit))
+  (%exit 0))
+(%exit 1)
 *END*
   set result="$status"
   if ("$result" != 0) then
