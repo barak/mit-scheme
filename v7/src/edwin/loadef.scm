@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: loadef.scm,v 1.17 1992/11/05 20:45:32 cph Exp $
+;;;	$Id: loadef.scm,v 1.18 1992/11/05 23:31:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -136,7 +136,7 @@ modified version of TeX input format.")
 (define-variable texinfo-mode-hook
   "An event distributor that is invoked when entering Texinfo mode."
   (make-event-distributor))
-
+
 ;;;; Other Libraries
 
 (define-library 'manual
@@ -193,3 +193,24 @@ variable's value is #F, the text is printed using LPR-COMMAND."
 
 (define-autoload-command 'print-region 'PRINT
   "Print region contents as with Unix command `lpr -p'.")
+
+(define-library 'SORT
+  '("sort" (EDWIN)))
+
+(define-autoload-command 'sort-lines 'SORT
+  "Sort lines by their text.")
+
+(define-autoload-command 'sort-pages 'SORT
+  "Sort pages by their text.")
+
+(define-autoload-command 'sort-paragraphs 'SORT
+  "Sort paragraphs by their text.")
+
+(define-autoload-command 'sort-fields 'SORT
+  "Sort lines by the text of a field.")
+
+(define-autoload-command 'sort-numeric-fields 'SORT
+  "Sort lines by the numeric value of a field.")
+
+(define-autoload-command 'sort-columns 'SORT
+  "Sort lines by the text in a range of columns.")
