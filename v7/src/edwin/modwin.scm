@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.30 1989/08/09 13:17:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.31 1989/08/11 11:30:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -65,12 +65,10 @@
 		screen x-start y-start
 		(string-pad-right (modeline-string superior) x-size #\-)
 		xl xu))))
-	(if (and (variable-local-value
-		  (window-buffer superior)
-		  (ref-variable-object mode-line-inverse-video))
-		 (let ((x-size (screen-x-size screen)))
-		   (or (= x-size (window-x-size superior))
-		       (= x-size (window-x-size (window-superior superior))))))	    (with-inverse-video! screen thunk)
+	(if (variable-local-value
+	     (window-buffer superior)
+	     (ref-variable-object mode-line-inverse-video))
+	    (with-inverse-video! screen thunk)
 	    (thunk))))  true)
 
 (define (with-inverse-video! screen thunk)
