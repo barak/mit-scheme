@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.12 1995/04/15 15:49:38 adams Exp $
+$Id: fakeprim.scm,v 1.13 1995/04/19 22:53:02 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -502,7 +502,7 @@ MIT in each case. |#
 (cookie-call %primitive-apply cont 'NARGS 'primitive-object #!rest values)
 
 (define %arity-dispatcher-tag
-  (make-constant "#[arity-dispatcher-tag]"))
+  (make-constant "#[(microcode)arity-dispatcher-tag]"))
 
 (define %unspecific
   ;; Magic cookie representing an ignorable value
