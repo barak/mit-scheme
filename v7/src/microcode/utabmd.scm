@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.36 1987/07/14 04:57:04 mhwu Rel $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.37 1987/08/06 19:10:08 jinx Exp $
 
 (declare (usual-integrations))
 
@@ -449,7 +449,7 @@
 	       EXP-FLONUM				;$76
 	       LN-FLONUM				;$77
 	       SQRT-FLONUM				;$78
-	       PRIMITIVE-FASLOAD			;$79
+	       #F #| PRIMITIVE-FASLOAD |#		;$79
 	       GET-FIXED-OBJECTS-VECTOR			;$7A
 	       SET-FIXED-OBJECTS-VECTOR!		;$7B
 	       LIST->VECTOR				;$7C
@@ -510,7 +510,7 @@
 	       STRING-UPCASE     			;$B3
 	       PRIMITIVE-PURIFY				;$B4
 	       COMPILED-CODE-ADDRESS->BLOCK		;$B5
-	       COMPLETE-GARBAGE-COLLECT			;$B6
+	       #F #| COMPLETE-GARBAGE-COLLECT |#	;$B6
 	       DUMP-BAND				;$B7
 	       SUBSTRING-SEARCH				;$B8
 	       LOAD-BAND				;$B9
@@ -598,15 +598,15 @@
 	       #F					;$10B
 	       TTY-MOVE-CURSOR				;$10C
 	       #F					;$10D
-	       CURRENT-DATE				;$10E
-	       CURRENT-TIME				;$10F
-	       TRANSLATE-FILE				;$110
+	       #F #| CURRENT-DATE |#			;$10E
+	       #F #| CURRENT-TIME |#			;$10F
+	       #F #| TRANSLATE-FILE |#			;$110
 	       COPY-FILE				;$111
 	       RENAME-FILE				;$112
 	       REMOVE-FILE				;$113
 	       LINK-FILE				;$114
 	       MAKE-DIRECTORY				;$115
-	       VOLUME-NAME				;$116
+	       #F #| VOLUME-NAME |#			;$116
 	       SET-WORKING-DIRECTORY-PATHNAME!		;$117
 	       RE-MATCH-SUBSTRING			;$118
 	       RE-SEARCH-SUBSTRING-FORWARD		;$119
@@ -628,12 +628,12 @@
 	       CURRENT-HOUR				;$129
 	       CURRENT-MINUTE				;$12A
 	       CURRENT-SECOND				;$12B
-	       INIT-FLOPPY				;$12C
-	       ZERO-FLOPPY				;$12D
-	       PACK-VOLUME				;$12E
-	       LOAD-PICTURE				;$12F
-	       STORE-PICTURE				;$130
-	       LOOKUP-SYSTEM-SYMBOL			;$131
+	       #F #| INIT-FLOPPY |#			;$12C
+	       #F #| ZERO-FLOPPY |#			;$12D
+	       #F #| PACK-VOLUME |#			;$12E
+	       #F #| LOAD-PICTURE |#			;$12F
+	       #F #| STORE-PICTURE |#			;$130
+	       #F #| LOOKUP-SYSTEM-SYMBOL |#		;$131
 	       #F					;$132
 	       #F					;$133
 	       CLEAR-TO-END-OF-LINE			;$134
@@ -681,21 +681,21 @@
 	       #F					;$15E
 	       #F					;$15F
 	       #F					;$160
-	       EXTRACT-NON-MARKED-VECTOR		;$161
-	       UNSNAP-LINKS!				;$162
-	       SAFE-PRIMITIVE?				;$163
-	       SUBSTRING-READ				;$164
-	       SUBSTRING-WRITE				;$165
+	       #F #| EXTRACT-NON-MARKED-VECTOR |#	;$161
+	       #F #| UNSNAP-LINKS! |#			;$162
+	       #F #| SAFE-PRIMITIVE? |#			;$163
+	       #F #| SUBSTRING-READ |#			;$164
+	       #F #| SUBSTRING-WRITE |#			;$165
 	       SCREEN-X-SIZE				;$166
 	       SCREEN-Y-SIZE				;$167
-	       SCREEN-WRITE-CURSOR			;$168
-	       SCREEN-WRITE-CHARACTER			;$169
-	       SCREEN-WRITE-SUBSTRING			;$16A 
-	       NEXT-FILE-MATCHING			;$16B
+	       #F #| SCREEN-WRITE-CURSOR |#		;$168
+	       #F #| SCREEN-WRITE-CHARACTER |#		;$169
+	       #F #| SCREEN-WRITE-SUBSTRING |#		;$16A 
+	       #F #| NEXT-FILE-MATCHING |#		;$16B
 	       #F					;$16C
-	       TTY-WRITE-BYTE				;$16D
-	       FILE-READ-BYTE				;$16E
-	       FILE-WRITE-BYTE				;$16F
+	       #F #| TTY-WRITE-BYTE |#			;$16D
+	       #F #| FILE-READ-BYTE |#			;$16E
+	       #F #| FILE-WRITE-BYTE |#			;$16F
 	       #F #| SAVE-SCREEN |#			;$170
 	       #F #| RESTORE-SCREEN! |#			;$171
 	       #F #| SUBSCREEN-CLEAR! |#		;$172
@@ -727,7 +727,7 @@
 	       #F #| GRAPHICS-CLEAR |#			;$18C
 	       #F #| GRAPHICS-SET-LINE-STYLE |#		;$18D
 	       ERROR-PROCEDURE				;$18E
-	       VOLUME-EXISTS?		                ;$18F
+	       BIT-STRING-XOR!		                ;$18F
 	       RE-CHAR-SET-ADJOIN!			;$190
 	       RE-COMPILE-FASTMAP			;$191
 	       RE-MATCH-BUFFER				;$192
@@ -863,4 +863,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.36 1987/07/14 04:57:04 mhwu Rel $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.37 1987/08/06 19:10:08 jinx Exp $"
