@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/bitstr.scm,v 13.43 1987/05/26 13:24:56 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/bitstr.scm,v 13.44 1987/07/27 22:02:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -41,13 +41,14 @@
 
 (declare (usual-integrations))
 
-(in-package system-global-environment
-(let-syntax ()
-  (define-macro (define-primitives . names)
-    `(BEGIN ,@(map (lambda (name)
-		     `(DEFINE ,name
-			,(make-primitive-procedure name)))
-		   names)))
+(let-syntax ((define-primitives
+	       (macro names
+		 `(BEGIN ,@(map (lambda (name)
+				  `(LOCAL-ASSIGNMENT
+				    SYSTEM-GLOBAL-ENVIRONMENT
+				    ',name
+				    ,(make-primitive-procedure name)))
+				names)))))
   (define-primitives
    bit-string-allocate make-bit-string bit-string?
    bit-string-length bit-string-ref bit-string-clear! bit-string-set!
@@ -57,7 +58,7 @@
    bit-substring-move-right!
    bit-string->unsigned-integer unsigned-integer->bit-string
    read-bits! write-bits!
-   bit-substring-find-next-set-bit)))
+   bit-substring-find-next-set-bit))
 
 (define (bit-string-append x y)
   (let ((x-length (bit-string-length x))
