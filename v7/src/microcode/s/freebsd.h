@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for FreeBSD
 
-$Id: freebsd.h,v 1.2 2000/02/01 01:50:54 cph Exp $
+$Id: freebsd.h,v 1.3 2000/02/01 04:08:27 cph Exp $
 
 Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
@@ -34,7 +34,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #define M4_SWITCH_SYSTEM -P "define(SUPPRESS_LEADING_UNDERSCORE,1)"
 
-#define LIBS_TERMCAP LINUX_STATIC_LIBS (-lncurses -ltermcap)
+#define LIBS_TERMCAP LINUX_STATIC_LIBS (-ltermcap)
 #define HAVE_TERMINFO
 
 #define LD_SWITCH_SYSTEM -export-dynamic
