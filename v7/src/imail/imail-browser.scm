@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-browser.scm,v 1.4 2001/06/02 05:55:41 cph Exp $
+;;; $Id: imail-browser.scm,v 1.5 2001/06/03 01:37:57 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -50,10 +50,16 @@ To do:
 	     (string-append (url-presentation-name url)
 			    "-browser"))))
       (set-buffer-imail-container! buffer container)
+      (add-kill-buffer-hook buffer close-browser-container)
       (set-buffer-imail-url-selector! buffer browser-selected-url)
       (receive-modification-events container notice-container-events)
       (rebuild-imail-browser-buffer buffer)
       (select-buffer buffer))))
+
+(define (close-browser-container buffer)
+  (let ((container (selected-container #f buffer)))
+    (if container
+	(close-resource container #t))))
 
 (define (browser-selected-url mark)
   (let ((info (browser-line-info #f mark)))
@@ -197,18 +203,25 @@ To do:
 (define (browser-expanded-containers buffer)
   (buffer-get buffer 'IMAIL-BROWSER-EXPANDED-CONTAINERS '()))
 
-(define (add-browser-expanded-container! buffer container)
-  (buffer-put! buffer
-	       'IMAIL-BROWSER-EXPANDED-CONTAINERS
-	       (let ((containers (browser-expanded-containers buffer)))
-		 (if (memq container containers)
-		     containers
-		     (cons container containers)))))
+(define (add-browser-expanded-container! buffer url)
+  (let ((container (open-resource url)))
+    (receive-modification-events container notice-container-events)
+    (buffer-put! buffer
+		 'IMAIL-BROWSER-EXPANDED-CONTAINERS
+		 (let ((containers (browser-expanded-containers buffer)))
+		   (if (memq container containers)
+		       containers
+		       (cons container containers))))))
 
-(define (remove-browser-expanded-container! buffer container)
-  (buffer-put! buffer
-	       'IMAIL-BROWSER-EXPANDED-CONTAINERS
-	       (delq! container (browser-expanded-containers buffer))))
+(define (remove-browser-expanded-container! buffer url)
+  (let ((container (get-memoized-resource url #f)))
+    (if container
+	(begin
+	  (close-resource container #f)
+	  (buffer-put! buffer
+		       'IMAIL-BROWSER-EXPANDED-CONTAINERS
+		       (delq! container
+			      (browser-expanded-containers buffer)))))))
 
 (define (find-browser-line-for url buffer)
   (let loop ((mark (buffer-start buffer)))
@@ -345,9 +358,7 @@ Each line summarizes a single mail folder.
 			(loop (line-start end 1 'LIMIT))
 			(delete-string start end)))
 		  (update-container-line-marker mark #\+)
-		  (let ((container (get-memoized-resource container #f)))
-		    (if container
-			(remove-browser-expanded-container! buffer container)))
+		  (remove-browser-expanded-container! buffer container)
 		  (browser-line-info-container-collapsed! info))
 		(begin
 		  (let ((mark
@@ -358,10 +369,7 @@ Each line summarizes a single mail folder.
 					  mark)
 		    (mark-temporary! mark))
 		  (update-container-line-marker mark #\-)
-		  (let ((container (open-resource container)))
-		    (receive-modification-events container
-						 notice-container-events)
-		  (add-browser-expanded-container! buffer container))
+		  (add-browser-expanded-container! buffer container)
 		  (browser-line-info-container-expanded! info)))))))))
 
 (define-command imail-browser-revert

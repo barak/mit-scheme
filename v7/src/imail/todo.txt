@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.126 2001/06/03 01:23:54 cph Exp $
+$Id: todo.txt,v 1.127 2001/06/03 01:41:49 cph Exp $
 
 Bug fixes
 ---------
@@ -17,12 +17,6 @@ Bug fixes
   server is severed.  In fact it is running as long as the buffer is
   around.  It should be started when the connection is established,
   and stopped when the connection is dropped.
-
-* M-x imail-browse-container should open a connection to the IMAP
-  server and leave it open as long as the buffer is around.  The
-  connection need not be "owned", as is true for folder buffers,
-  because server operations do not require selection.  Merely
-  incrementing the reference count is sufficient.
 
 * The RENAME-FOLDER operation must change the folder object to refer
   to the new URL rather than the old.  The operation must close the

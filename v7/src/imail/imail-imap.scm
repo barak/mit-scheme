@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.176 2001/06/03 01:22:45 cph Exp $
+;;; $Id: imail-imap.scm,v 1.177 2001/06/03 01:39:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -764,7 +764,9 @@
   (messages define standard
 	    initial-value '#()))
 
-(define-class (<imap-container> (constructor (locator))) (<container>))
+(define-class (<imap-container> (constructor (locator))) (<container>)
+  (connection define standard
+	      initial-value #f))
 
 (define (reset-imap-folder! folder)
   (without-interrupts
@@ -1556,11 +1558,30 @@
 ;;;; Container operations
 
 (define-method %open-resource ((url <imap-container-url>))
-  (make-imap-container url))
+  (let ((container (make-imap-container url)))
+    (guarantee-imap-connection-open
+     (without-interrupts
+      (lambda ()
+	(let ((connection (get-compatible-imap-connection url)))
+	  (set-imap-container-connection! container connection)
+	  (increment-connection-reference-count! connection)
+	  connection))))
+    container))
 
 (define-method %close-resource ((container <imap-container>) no-defer?)
-  container no-defer?
-  unspecific)
+  (let ((connection
+	 (without-interrupts
+	  (lambda ()
+	    (let ((connection (imap-container-connection container)))
+	      (if connection
+		  (begin
+		    (set-imap-container-connection! container #f)
+		    (decrement-connection-reference-count! connection)))
+	      connection)))))
+    (if connection
+	(begin
+	  (maybe-close-imap-connection connection 0 no-defer?)
+	  (object-modified! container 'STATUS)))))
 
 (define-method save-resource ((container <imap-container>))
   container
