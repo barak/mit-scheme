@@ -7,7 +7,7 @@ source=/scheme/v7/src
 destination="${prefix}/src"
 mkdir ${destination}
 
-for file in 6001 ChangeLog COPYING Makefile.std TAGS compiler cref edwin microcode rcs runtime sf sos win32
+for file in 6001 ChangeLog COPYING Makefile.std TAGS compiler cref edwin imail microcode rcs runtime sf sos win32
 do
   cpx -E ${source}/${file} ${destination}
 done

@@ -33,7 +33,7 @@ scmutils)
   ;;
 esac
 
-run_opts="optiondb numint cpress format gdbm hashtb ordvec rbtree ystep process syncproc wttree rgxcmp chrsyn regexp krypt"
+run_opts="optiondb numint cpress format gdbm hashtb mime-codec ordvec rbtree ystep process syncproc wttree rgxcmp chrsyn regexp krypt"
 ed_opts="techinfo telnet midas pasmod tximod manual print sort eystep nntp snr verilog vhdl webster pwedit pwparse"
 
 build_dir="build-$$"
@@ -101,6 +101,16 @@ cpx -v /scheme/v7/linux/sos/*.bci ${build_dir}/lib/mit-scheme/sos/.
 cpx -v /scheme/v7/linux/sos/sos.bco ${build_dir}/lib/mit-scheme/sos/.
 cpx -v /scheme/v7/linux/sos/sos.bld ${build_dir}/lib/mit-scheme/sos/.
 cpx -vh /scheme/v7/linux/sos/load.scm ${build_dir}/lib/mit-scheme/sos/.
+
+#
+# IMAIL
+#
+mkdir ${build_dir}/lib/mit-scheme/imail
+cpx -v /scheme/v7/linux/imail/*.com ${build_dir}/lib/mit-scheme/imail/.
+cpx -v /scheme/v7/linux/imail/*.bci ${build_dir}/lib/mit-scheme/imail/.
+cpx -v /scheme/v7/linux/imail/imail.bco ${build_dir}/lib/mit-scheme/imail/.
+cpx -v /scheme/v7/linux/imail/imail.bld ${build_dir}/lib/mit-scheme/imail/.
+cpx -vh /scheme/v7/linux/imail/load.scm ${build_dir}/lib/mit-scheme/imail/.
 
 #
 # Documentation
