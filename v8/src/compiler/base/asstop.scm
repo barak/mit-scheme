@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asstop.scm,v 1.1 1994/11/19 02:01:20 adams Exp $
+$Id: asstop.scm,v 1.2 1994/11/26 19:14:49 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -110,6 +110,7 @@ MIT in each case. |#
 	      (*interned-static-variables*)
 	      (*interned-uuo-links*)
 	      (*interned-variables*)
+	      (*block-profiles*)
 	      (*label-bindings*)
 	      (*code-vector*)
 	      (*entry-points*)
@@ -129,6 +130,7 @@ MIT in each case. |#
   (set! *interned-static-variables*)
   (set! *interned-uuo-links*)
   (set! *interned-variables*)
+  (set! *block-profiles*)
   (set! *label-bindings*)
   (set! *code-vector*)
   (set! *entry-points*)
@@ -147,6 +149,7 @@ MIT in each case. |#
   (set! *interned-static-variables* '())
   (set! *interned-uuo-links* '())
   (set! *interned-variables* '())
+  (set! *block-profiles* '())
   unspecific)
 
 ;;;; Assembler and linker
@@ -240,7 +243,7 @@ MIT in each case. |#
     (lambda ()
       (set-debugging-info!
        *code-vector*
-       (and *use-debugging-info?*
+       (if  *use-debugging-info?*
 	    (let ((info
 		   (info-generation-phase-3
 		    (last-reference *dbg-expression*)
@@ -268,7 +271,8 @@ MIT in each case. |#
 				   (map (lambda (other) (vector-ref other 1))
 					others)))))
 		      pathname)
-		     *info-output-filename*))))))))
+		     *info-output-filename*)))
+	    *input-filename-for-temporary-info-info*)))))
 
 (define (recursive-compilation-results)
   (sort *recursive-compilation-results*
