@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.9 1995/04/23 04:42:19 cph Exp $
+###	$Id: makefile,v 1.10 1995/10/08 15:43:38 cph Exp $
 ###
 ###	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ###
@@ -39,19 +39,19 @@
 
 ####	 Makefile for Scheme under OS/2
 
-# This makefile is configured for use with GNU make, the IBM C Set++/2
-# compiler, and the GNU assembler included with the gcc/2 package.
-# Unfortunately, the output from the GNU assembler requires two .lib
-# files from gcc/2 as well; these files are referenced here using
-# absolute pathnames.
+# This makefile is configured for use with GNU make, the IBM Visual
+# Age C++ compiler, and the GNU assembler included with the GCC/2
+# package.  Unfortunately, the output from the GNU assembler requires
+# two .lib files from GCC/2 as well; these files are referenced here
+# using absolute pathnames.
 
 # The makefile can also be configured to compile Scheme using gcc/2.
 # The changes required are to comment out the first block of
 # definitions starting with "CC = icc", and to uncomment the
 # definitions starting with "CC = gcc ...".  Then, change all the
 # instances of "/Fe" to "-o ".  At the present time, this program
-# doesn't work when compiled with gcc/2, but that is only because it
-# depends on two 16-bit API calls that gcc/2 is unable to generate
+# doesn't work when compiled with GCC/2, but that is only because it
+# depends on two 16-bit API calls that GCC/2 is unable to generate
 # calling sequences for.  This can be fixed with a tiny bit of
 # assembly language, or even a simple interface library precompiled
 # with icc.
@@ -67,20 +67,24 @@ USER_PRIM_SOURCES =
 USER_PRIM_OBJECTS =
 USER_LIBS =
 
+# Definitions for IBM Visual Age C++ version 3.0.
+# Substitute /O+ for /Ti+, and delete /B"/DBGPACK", to optimize.
+# Substitute /B"/EXEPACK" for /B"/EXEPACK:2" for non-Warp executable.
 CC = icc
-ICC_FLAGS = /Gd- /Gm+ /Q+
-DEBUG_CFLAGS = /Ti+ /O- /Oi- /Debug
-OPTIMIZE_CFLAGS = /O
-CFLAGS = -DMIT_SCHEME -D__STDC__ $(DEBUG_CFLAGS) $(ICC_FLAGS)
-DEBUG_LDFLAGS = $(DEBUG_CFLAGS)
-OPTIMIZE_LDFLAGS =
-LDFLAGS = $(DEBUG_LDFLAGS) $(ICC_FLAGS) /B"/PM:pm"
+CFLAGS = /Gm+ /Q+ /Wall- /Ti+ /DMIT_SCHEME
+LDFLAGS = /Gm+ /Q+ /Wall- /Ti+ /B"/DBGPACK" /B"/PMTYPE:PM" /B"/EXEPACK:2"
+
+# Alternate definitions for IBM C Set++/2 version 2.1:
+#CC = icc
+#CFLAGS = /Gd- /Gm+ /Q+ /Ti+ /O- /Oi- /Debug -DMIT_SCHEME
+#LDFLAGS = /Gd- /Gm+ /Q+ /Ti+ /O- /Oi- /Debug /B"/PM:pm"
 
 .SUFFIXES:
 .SUFFIXES: .c .obj
 .c.obj:
 	$(CC) $(CFLAGS) /C $<
 
+# Alternate definitions for GCC/2:
 #CC = gcc -Uunix -U__unix__ -U__unix -D__GCC2__
 #CFLAGS = -g -DMIT_SCHEME
 #LDFLAGS = -g
@@ -305,7 +309,7 @@ BCHSOURCES = $(CORE_SOURCES) $(BCH_GC_SOURCES)
 BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) $(OS2_OBJECTS) \
 	$(OS_PRIM_OBJECTS) bchdef.$(OBJ)
 
-#all: bintopsb.exe psbtobin.exe scheme.exe bchschem.exe
+all: bintopsb.exe psbtobin.exe scheme.exe bchschem.exe
 
 clean:
 	rm -f *.$(OBJ) *.exe *.tch usrdef.c bchdef.c
