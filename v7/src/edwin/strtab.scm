@@ -1,0 +1,262 @@
+;;; -*-Scheme-*-
+;;;
+;;;	Copyright (c) 1985 Massachusetts Institute of Technology
+;;;
+;;;	This material was developed by the Scheme project at the
+;;;	Massachusetts Institute of Technology, Department of
+;;;	Electrical Engineering and Computer Science.  Permission to
+;;;	copy this software, to redistribute it, and to use it for any
+;;;	purpose is granted, subject to the following restrictions and
+;;;	understandings.
+;;;
+;;;	1. Any copy made of this software must include this copyright
+;;;	notice in full.
+;;;
+;;;	2. Users of this software agree to make their best efforts (a)
+;;;	to return to the MIT Scheme project any improvements or
+;;;	extensions that they make, so that these may be included in
+;;;	future releases; and (b) to inform MIT of noteworthy uses of
+;;;	this software.
+;;;
+;;;	3.  All materials developed as a consequence of the use of
+;;;	this software shall duly acknowledge such use, in accordance
+;;;	with the usual standards of acknowledging credit in academic
+;;;	research.
+;;;
+;;;	4. MIT has made no warrantee or representation that the
+;;;	operation of this software will be error-free, and MIT is
+;;;	under no obligation to provide any services, by way of
+;;;	maintenance, update, or otherwise.
+;;;
+;;;	5.  In conjunction with products arising from the use of this
+;;;	material, there shall be no use of the name of the
+;;;	Massachusetts Institute of Technology nor of any adaptation
+;;;	thereof in any advertising, promotional, or sales literature
+;;;	without prior written consent from MIT in each case.
+;;;
+
+;;;; String Tables
+
+(declare (usual-integrations))
+
+(define (make-string-table #!optional initial-size)
+  (if (unassigned? initial-size) (set! initial-size 10))
+  (vector string-table-tag
+	  (vector-cons initial-size '())
+	  0))
+
+(define (alist->string-table alist)
+  (let ((v (list->vector
+	    (sort alist
+		  (lambda (x y)
+		    (string-ci<? (car x) (car y)))))))
+    (vector string-table-tag v (vector-length v))))
+
+(define string-table-tag
+  "String Table")
+
+(declare (integrate string-table-vector set-string-table-vector!
+		    string-table-size set-string-table-size!))
+
+(define (string-table-vector table)
+  (declare (integrate table))
+  (vector-ref table 1))
+
+(define (string-table-size table)
+  (declare (integrate table))
+  (vector-ref table 2))
+
+(define (set-string-table-vector! table vector)
+  (declare (integrate table vector))
+  (vector-set! table 1 vector))
+
+(define (set-string-table-size! table size)
+  (declare (integrate table size))
+  (vector-set! table 2 size))
+
+(define (make-string-table-entry string value)
+  (cons string value))
+
+(declare (integrate string-table-entry-string set-string-table-entry-string!
+		    string-table-entry-value set-string-table-entry-value!))
+
+(define (string-table-entry-string entry)
+  (declare (integrate entry))
+  (car entry))
+
+(define (set-string-table-entry-string! entry string)
+  (declare (integrate entry string))
+  (set-car! entry string))
+
+(define (string-table-entry-value entry)
+  (declare (integrate entry))
+  (cdr entry))
+
+(define (set-string-table-entry-value! entry value)
+  (declare (integrate entry value))
+  (set-cdr! entry value))
+
+(define (string-table-search table string1 if-found if-not-found)
+  (let ((vector (string-table-vector table)))
+    (define (loop low high)
+      (if (< high low)
+	  (if-not-found low)
+	  (let ((index (quotient (+ high low) 2)))
+	    (let ((entry (vector-ref vector index)))
+	      (string-compare-ci string1 (string-table-entry-string entry)
+		(lambda ()
+		  (if-found index entry))
+		(lambda ()
+		  (loop low (-1+ index)))
+		(lambda ()
+		  (loop (1+ index) high)))))))
+    (loop 0 (-1+ (string-table-size table)))))
+
+(define (string-table-get table string #!optional if-not-found)
+  (string-table-search table string
+    (lambda (index entry)
+      (string-table-entry-value entry))
+    (if (unassigned? if-not-found)
+	(lambda (index) #!FALSE)
+	if-not-found)))
+
+(define (string-table-put! table string value)
+  (string-table-search table string
+    (lambda (index entry)
+      (set-string-table-entry-string! entry string)
+      (set-string-table-entry-value! entry value))
+    (lambda (index)
+      (let ((vector (string-table-vector table))
+	    (size (string-table-size table))
+	    (entry (make-string-table-entry string value)))
+	(let ((max-size (vector-length vector)))
+	  (if (= size max-size)
+	      (let ((new-vector (vector-grow vector (* max-size 2))))
+		(set-string-table-vector! table new-vector)
+		(set! vector new-vector)))
+	  (subvector-move-right! vector index size vector (1+ index))
+	  (vector-set! vector index entry))
+	(set-string-table-size! table (1+ size))))))
+
+(define (string-table-remove! table string)
+  (string-table-search table string
+    (lambda (index entry)
+      (let ((vector (string-table-vector table))
+	    (size (string-table-size table)))
+	(subvector-move-left! vector (1+ index) size vector index)
+	(let ((new-size (-1+ size)))
+	  (vector-set! vector new-size '())
+	  (set-string-table-size! table new-size)))
+      #!TRUE)
+    (lambda (index)
+      #!FALSE)))
+
+(define string-table-complete)
+(define string-table-completions)
+(let ()
+
+(set! string-table-complete
+(named-lambda (string-table-complete table string
+			       if-unambiguous if-ambiguous if-not-found)
+  (string-table-complete* table string
+    if-unambiguous
+    (lambda (close-match gcs lower upper)
+      (if-ambiguous close-match gcs))
+    if-not-found)))
+
+(set! string-table-completions
+(named-lambda (string-table-completions table string)
+  (string-table-complete* table string
+    list
+    (lambda (close-match gcs lower upper)
+      (define (loop index)
+	(if (= index upper)
+	    '()
+	    (cons (string-table-entry-string
+		   (vector-ref (string-table-vector table) index))
+		  (loop (1+ index)))))
+      (loop lower))
+    (lambda ()
+      '()))))
+
+(define (string-table-complete* table string
+				if-unambiguous if-ambiguous if-not-found)
+  (let ((size (string-length string))
+	(table-size (string-table-size table)))
+    (define (entry-string index)
+      (string-table-entry-string (vector-ref (string-table-vector table)
+					     index)))
+    (define (perform-search index)
+      (let ((close-match (entry-string index)))
+	(define (match-entry index)
+	  (string-match-forward-ci close-match (entry-string index)))
+
+	(define (scan-up gcs receiver)
+	  (define (loop gcs index)
+	    (if (= index table-size)
+		(receiver gcs table-size)
+		(let ((match (match-entry index)))
+		  (if (< match size)
+		      (receiver gcs index)
+		      (loop (min gcs match) (1+ index))))))
+	  (loop gcs (1+ index)))
+
+	(define (scan-down gcs receiver)
+	  (define (loop gcs index)
+	    (if (zero? index)
+		(receiver gcs 0)
+		(let ((new-index (-1+ index)))
+		  (let ((match (match-entry new-index)))
+		    (if (< match size)
+			(receiver gcs index)
+			(loop (min gcs match) new-index))))))
+	  (loop gcs index))
+
+	(if (string-prefix-ci? string close-match)
+	    (scan-up (string-length close-match)
+	      (lambda (gcs upper)
+		(scan-down gcs
+		  (lambda (gcs lower)
+		    (if (= lower (-1+ upper))
+			(if-unambiguous (entry-string lower))
+			(if-ambiguous close-match gcs lower upper))))))
+	    (if-not-found))))
+    (string-table-search table string
+      (lambda (index entry)
+	(perform-search index))
+      (lambda (index)
+	(if (= index table-size)
+	    (if-not-found)
+	    (perform-search index))))))
+
+)
+
+(define (string-table-apropos table string)
+  (let ((end (string-table-size table)))
+    (define (loop index)
+      (if (= index end)
+	  '()
+	  (let ((entry (vector-ref (string-table-vector table) index)))
+	    (if (substring-ci? string (string-table-entry-string entry))
+		(cons (string-table-entry-value entry) (loop (1+ index)))
+		(loop (1+ index))))))
+    (loop 0)))
+
+(define (substring-ci? string1 string2)
+  (or (string-null? string1)
+      (let ((char (string-ref string1 0))
+	    (end1 (string-length string1))
+	    (end2 (string-length string2)))
+	(define (loop start2)
+	  (let ((index (substring-find-next-char-ci string2 start2 end2 char)))
+	    (and index
+		 (if (= (-1+ end1)
+			(substring-match-forward-ci string1 1 end1
+						    string2 (1+ index) end2))
+		     index
+		     (loop (1+ index))))))
+	(loop 0))))
+
+;;; Edwin Variables:
+;;; Scheme Environment: edwin-package
+;;; End:
