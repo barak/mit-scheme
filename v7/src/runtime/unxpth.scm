@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxpth.scm,v 14.19 1995/09/11 19:07:16 cph Exp $
+$Id: unxpth.scm,v 14.20 1995/10/18 05:00:46 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -240,7 +240,9 @@ MIT in each case. |#
 		  (or (eq? 'ABSOLUTE (car directory))
 		      (pair? (cdr directory)))))
 	(error:bad-range-argument pathname 'DIRECTORY-PATHNAME-AS-FILE))
-    (if (null? (cdr directory))
+    (if (or (%pathname-name pathname)
+	    (%pathname-type pathname)
+	    (null? (cdr directory)))
 	;; Root directory can't be represented as a file, because the
 	;; name field of a pathname must be a non-null string.  We
 	;; could signal an error here, but instead we'll just return

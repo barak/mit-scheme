@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.29 1995/09/11 21:25:45 cph Exp $
+$Id: dospth.scm,v 1.30 1995/10/18 05:00:30 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -300,13 +300,10 @@ MIT in each case. |#
 		  (or (eq? 'ABSOLUTE (car directory))
 		      (pair? (cdr directory)))))
 	(error:bad-range-argument pathname 'DIRECTORY-PATHNAME-AS-FILE))
-    (if (null? (cdr directory))
-	(%%make-pathname (%pathname-host pathname)
-			 (%pathname-device pathname)
-			 directory
-			 ""
-			 #f
-			 'UNSPECIFIC)
+    (if (or (%pathname-name pathname)
+	    (%pathname-type pathname)
+	    (null? (cdr directory)))
+	pathname
 	(call-with-values
 	    (lambda ()
 	      (parse-name
