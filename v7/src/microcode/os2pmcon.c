@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.6 1995/05/02 20:54:02 cph Exp $
+$Id: os2pmcon.c,v 1.7 1995/05/07 05:53:20 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -345,6 +345,8 @@ console_clear_all (void)
 int
 OS2_pm_console_getch (void)
 {
+  if (console_closedp)
+    return (-1);
   if ((readahead_repeat == 0) && (readahead_insert == 0))
     while (1)
       {
@@ -382,6 +384,7 @@ OS2_pm_console_getch (void)
 		break;
 	      }
 	    case mt_close_event:
+	      console_closedp = 1;
 	      {
 		wid_t wid = (SM_CLOSE_EVENT_WID (message));
 		OS2_destroy_message (message);
@@ -389,7 +392,6 @@ OS2_pm_console_getch (void)
 	      }
 	      OS2_close_qid (console_event_qid);
 	      OS2_close_std_tqueue (console_tqueue);
-	      console_closedp = 1;
 	      goto do_read;
 	    default:
 	      OS2_logic_error ("Unknown message type received by PM console.");
@@ -462,6 +464,8 @@ OS2_pm_console_write (const char * data, size_t size)
 {
   const char * end = (data + size);
   const char * nonprint;
+  if (console_closedp)
+    return;
   grab_console_lock ();
   while (data < end)
     {
