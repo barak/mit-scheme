@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for Harris HCX computers
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hcx.h,v 1.1 1989/09/19 17:51:29 cph Rel $
+$Id: hcx.h,v 1.2 1992/11/18 15:32:50 gjr Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,4 +33,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+#ifndef PROC_TYPE
 #define PROC_TYPE PROC_TYPE_HCX
+#endif /* PROC_TYPE */
+

@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for Apollo 68k
 
-$Id: apoll68k.h,v 1.2 1992/09/26 02:46:51 cph Exp $
+$Id: apoll68k.h,v 1.3 1992/11/18 15:32:04 gjr Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 Copyright (c) 1991 Michael K. Gschwind
 
 This material was developed by the Scheme project at the Massachusetts
@@ -34,7 +34,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+#ifndef PROC_TYPE
 #define PROC_TYPE PROC_TYPE_UNKNOWN
+#endif /* PROC_TYPE */
 
 #ifndef ALTERNATE_CC
 

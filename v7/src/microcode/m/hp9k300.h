@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for HP9000 series 300 (or 200)
 
-$Id: hp9k300.h,v 1.9 1992/09/26 02:46:52 cph Exp $
+$Id: hp9k300.h,v 1.10 1992/11/18 15:33:39 gjr Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,7 +40,9 @@ MIT in each case. */
 /* Change this to PROC_TYPE_68000 if your machine is a series 200 or a
    model 310. 
  */
+#ifndef PROC_TYPE
 #define PROC_TYPE PROC_TYPE_68020
+#endif /* PROC_TYPE */
 
 /* The M4_SWITCH_MACHINE must contain -DHP if using HP C, -DGCC, if using
    GCC, and nothing special if using PCC.
