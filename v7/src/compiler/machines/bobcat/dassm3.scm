@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm3.scm,v 4.1 1987/12/30 07:04:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm3.scm,v 4.2 1988/01/02 21:02:45 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -172,8 +172,8 @@ MIT in each case. |#
 	       (undefined-instruction)
 	       `(,keyword ,size (& ,(fetch-immediate size)) (SR))))
 	  (else
-	   (let ((ea (decode-ea-d&a)))
-	     `(,keyword ,size (& ,(fetch-immediate size)) ,ea))))))
+	   (let ((immediate (fetch-immediate size)))
+	     `(,keyword ,size (& ,immediate) ,(decode-ea-d&a)))))))
 
 (define %ORI (logical-immediate 'ORI))
 (define %ANDI (logical-immediate 'ANDI))
@@ -183,8 +183,8 @@ MIT in each case. |#
   (let ((size (decode-bwl (extract *ir 6 8))))
     (if (null? size)
 	(undefined-instruction)
-	(let ((ea (decode-ea-d&a)))
-	  `(,keyword ,size (& ,(fetch-immediate size)) ,ea)))))
+	(let ((immediate (fetch-immediate size)))
+	  `(,keyword ,size (& ,immediate) ,(decode-ea-d&a))))))
 
 (define %SUBI (arithmetic-immediate 'SUBI))
 (define %ADDI (arithmetic-immediate 'ADDI))
