@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prim.c,v 9.36 1993/06/24 07:09:17 gjr Exp $
+$Id: prim.c,v 9.37 1993/10/27 23:55:26 gjr Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -76,7 +76,8 @@ Assert: (= (OBJECT-DATUM (MAKE-NON-POINTER-OBJECT X)) X).")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    (LONG_TO_UNSIGNED_FIXNUM (arg_index_integer (1, (1UL << DATUM_LENGTH))));
+    (LONG_TO_UNSIGNED_FIXNUM
+     (arg_index_integer (1, (((unsigned long) 1) << DATUM_LENGTH))));
 }
 
 DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-SET-TYPE", Prim_prim_obj_set_type, 2, 2,

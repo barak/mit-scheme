@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bignmint.h,v 1.3 1993/06/24 07:07:01 gjr Exp $
+$Id: bignmint.h,v 1.4 1993/10/27 23:57:07 gjr Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -98,8 +98,8 @@ extern void abort ();
 
 #define BIGNUM_DIGIT_LENGTH (((sizeof (bignum_digit_type)) * CHAR_BIT) - 2)
 #define BIGNUM_HALF_DIGIT_LENGTH (BIGNUM_DIGIT_LENGTH / 2)
-#define BIGNUM_RADIX		 (1UL << BIGNUM_DIGIT_LENGTH)
-#define BIGNUM_RADIX_ROOT	 (1UL << BIGNUM_HALF_DIGIT_LENGTH)
+#define BIGNUM_RADIX (((unsigned long) 1) << BIGNUM_DIGIT_LENGTH)
+#define BIGNUM_RADIX_ROOT (((unsigned long) 1) << BIGNUM_HALF_DIGIT_LENGTH)
 #define BIGNUM_DIGIT_MASK	 (BIGNUM_RADIX - 1)
 #define BIGNUM_HALF_DIGIT_MASK	 (BIGNUM_RADIX_ROOT - 1)
 
