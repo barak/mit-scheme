@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.23 1993/09/01 18:06:16 gjr Exp $
+$Id: tterm.scm,v 1.24 1993/09/02 20:22:07 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -1090,9 +1090,12 @@ Note that the multiply factors are in tenths of characters.  |#
 	      (desc (terminal-state/description state)))
 	  (let ((x-size (output-port/x-size port))
 		(y-size (output-port/y-size port)))
-	    (without-interrupts
-	     (lambda ()
-	       (set-tn-x-size! desc x-size)
-	       (set-tn-y-size! desc y-size)
-	       (set-screen-size! screen x-size y-size)))
-	    (update-screen! screen #t))))))
+	    (if (or (not (= x-size (screen-x-size screen)))
+		    (not (= y-size (screen-y-size screen))))
+		(begin
+		  (without-interrupts
+		   (lambda ()
+		     (set-tn-x-size! desc x-size)
+		     (set-tn-y-size! desc y-size)
+		     (set-screen-size! screen x-size y-size)))
+		  (update-screen! screen #t))))))))
