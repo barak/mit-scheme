@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pros2fs.c,v 1.2 1995/01/05 23:45:59 cph Exp $
+$Id: pros2fs.c,v 1.3 1995/01/31 22:11:35 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -380,4 +380,11 @@ DEFINE_PRIMITIVE ("DRIVE-TYPE", Prim_drive_type, 1, 1, 0)
     error_bad_range_arg (1);
   type = (OS2_drive_type (STRING_REF (arg, 0)));
   PRIMITIVE_RETURN (char_pointer_to_string ((type == 0) ? "unknown" : type));
+}
+
+DEFINE_PRIMITIVE ("CURRENT-PID", Prim_current_pid, 0, 0,
+  "Return Scheme's PID.")
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (long_to_integer (OS2_scheme_pid));
 }
