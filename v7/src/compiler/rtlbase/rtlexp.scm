@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.5 1988/05/09 19:51:39 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.6 1988/05/19 15:20:13 markf Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -78,7 +78,10 @@ MIT in each case. |#
 (define (rtl:fixnum-valued-expression? expression)
   (if (rtl:register? expression)
       (register-contains-fixnum? (rtl:register-number expression))
-      (rtl:object->fixnum? expression)))
+      (or (rtl:object->fixnum? expression)
+	  (rtl:fixnum-1-arg? expression)
+	  (rtl:fixnum-2-args? expression))))
+
 
 (define (rtl:optimizable? expression)
   ;;; In order to avoid a combinatorial explosion in the number of

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.7 1988/05/09 19:52:24 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.8 1988/05/19 15:22:46 markf Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -470,15 +470,24 @@ MIT in each case. |#
 (define-expression-method 'OBJECT->ADDRESS
   (object-selector rtl:make-object->address))
 
+(define-expression-method 'FIXNUM->OBJECT
+  (object-selector rtl:make-fixnum->object))
+
 (define-expression-method 'OBJECT->FIXNUM
   (lambda (receiver scfg-append! expression)
-    (expression-simplify* expression scfg-append!
-      (lambda (s-expression)
-	(assign-to-temporary
-	  (rtl:make-object->fixnum s-expression)
-	  scfg-append!
-	  (lambda (temporary)
-	    (receiver temporary)))))))
+    (cond ((or (rtl:fixnum-valued-expression? expression)
+	       (rtl:constant? expression))
+	   (expression-simplify* expression scfg-append!
+	     (lambda (s-constant)
+	       (receiver s-constant))))
+	  (else
+	   (expression-simplify* expression scfg-append!
+	     (lambda (s-expression)
+	       (assign-to-temporary
+		(rtl:make-object->fixnum s-expression)
+		scfg-append!
+		(lambda (temporary)
+		  (receiver temporary)))))))))
 
 (define-expression-method 'CONS-POINTER
   (lambda (receiver scfg-append! type datum)
