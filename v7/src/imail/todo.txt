@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.105 2000/06/30 03:11:08 cph Exp $
+$Id: todo.txt,v 1.106 2000/06/30 03:16:15 cph Exp $
 
 Bug fixes
 ---------
@@ -25,31 +25,24 @@ New features
   Use this to extend M-x imail-rename-folder to work in all cases by
   using copy/delete when rename inapplicable.
 
+* Write folder browser for IMAP servers.  Implement
+  AVAILABLE-FOLDER-NAMES.
+
 * Examine spec for text/enriched and see if it can be incorporated
   into the reader.
-
-* When yanking a message into a reply buffer, need option to quote the
-  original message using MIME, rather than the current copy-and-indent
-  mechanism.
-
-* Set the IMAIL buffer's modification bit to indicate whether the
-  folder is locally modified.  Meaningful only for file folders.  Hook
-  up the save-folder code into M-x save-some-buffers.
 
 * Implement cache that saves information about messages on disk.  This
   should use UIDs for IMAP folders; for other folders perhaps the
   message ID can be used.  (Or perhaps no cache is required for
   non-IMAP folders.)
 
+* Set the IMAIL buffer's modification bit to indicate whether the
+  folder is locally modified.  Meaningful only for file folders.  Hook
+  up the save-folder code into M-x save-some-buffers.
+
 * Implement file backup when writing file folders.
 
-* Write folder browser for IMAP servers.  Implement
-  AVAILABLE-FOLDER-NAMES.
-
 * Generate file I/O messages when reading and writing file folders.
-
-* Implement something closer to the IMAP COPY operation, e.g.
-  APPEND-MESSAGES.
 
 Design changes
 --------------
@@ -63,6 +56,9 @@ Design changes
 
 * Repackage the code so that each file now in the core is in a
   separate package.
+
+* Implement something closer to the IMAP COPY operation, e.g.
+  APPEND-MESSAGES.  Use this to make folder copying faster.
 
 * Reimplement UID synchronization.  Take advantage of monotonic UID
   numbers to discover largest prefix range that hasn't changed.
