@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/os.h,v 1.1 1990/06/20 19:36:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/os.h,v 1.2 1990/11/28 20:51:00 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -36,6 +36,7 @@ MIT in each case. */
 #define SCM_OS_H
 
 #include "ansidecl.h"
+#include "oscond.h"
 #include "posixtype.h"
 
 typedef unsigned int Tchannel;

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.35 1990/11/21 07:01:03 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.36 1990/11/28 20:52:09 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -639,7 +639,7 @@ cmpaux-mc68k.s : cmpaux-mc68k.m4
 cmpaux-vax.s : cmpaux-vax.m4
 
 osscheme.o : scheme.touch posixtype.h os.h osscheme.h
-ostty.o : ansidecl.h posixtype.h os.h ostty.h osscheme.h
+ostty.o : ansidecl.h oscond.h posixtype.h os.h ostty.h osscheme.h
 
 error.o ptrvec.o transact.o : ansidecl.h dstack.h
 wind.o : ansidecl.h dstack.h obstack.h
