@@ -38,7 +38,7 @@
 ;;;; RTL Register Lifetime Analysis
 ;;;  Based on the GNU C Compiler
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rlife.scm,v 1.51 1986/12/18 06:11:04 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rlife.scm,v 1.52 1986/12/18 12:11:09 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -164,9 +164,10 @@
 		     (not (regset-member? needed register))))))))
 
 (define (rtl-snode-delete! rnode)
-  (let ((previous (node-previous-disconnect! rnode))
-	(next (snode-next-disconnect! rnode))
+  (let ((previous (node-previous rnode))
+	(next (snode-next rnode))
 	(bblock (rnode-bblock rnode)))
+    (snode-delete! rnode)
     (if (eq? rnode (bblock-entry bblock))
 	(if (eq? rnode (bblock-exit bblock))
 	    (set! *bblocks* (delq! bblock *bblocks*))

@@ -38,7 +38,7 @@
 ;;;; RTL Common Subexpression Elimination
 ;;;  Based on the GNU C Compiler
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.94 1986/12/17 08:00:35 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.95 1986/12/18 12:10:53 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -54,6 +54,7 @@
   (walk-rnode block))
 
 (define (walk-rnode rnode)
+  (if (node-previous>1? rnode) (state:reset!)) ;Easy non-optimal solution.
   ((vector-method rnode walk-rnode) rnode))
 
 (define-vector-method rtl-snode-tag walk-rnode
