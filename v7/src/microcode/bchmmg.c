@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.68 1992/02/03 23:02:15 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.69 1992/02/10 13:29:50 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -176,14 +176,14 @@ DEFUN (io_error_always_abort, (operation_name, noise),
   return (1);
 }
 
+extern char EXFUN (userio_choose_option,
+		   (CONST char *, CONST char *, CONST char **));
+extern int EXFUN (userio_confirm, (CONST char *));
+
 int 
 DEFUN (io_error_retry_p, (operation_name, noise),
        char * operation_name AND char * noise)
 {
-  extern char EXFUN (userio_choose_option,
-		     (const char *, const char *, const char **));
-  extern int EXFUN (userio_confirm, (const char *));
-
   static CONST char * retry_choices [] =
     {
       "A = abort the operation",
@@ -483,13 +483,14 @@ static long default_sleep_period = 20 MILLISEC;
 #define GET_SLEEP_DELTA()	default_sleep_period
 #define SET_SLEEP_DELTA(value)	default_sleep_period = (value)
 
+extern int EXFUN (select, (int, int *, int *, int *, struct timeval *));
+
 static void
 DEFUN (sleep_awaiting_drones, (microsec, mask),
        unsigned int microsec AND unsigned long mask)
 {
   int dummy, saved_errno;
   struct timeval timeout;
-  extern int EXFUN (select, (int, int *, int *, int *, struct timeval *));
 
   dummy = 0;
   timeout.tv_sec = 0;
@@ -677,13 +678,14 @@ DEFUN (probe_gc_drone, (drone), struct drone_info * drone)
   return (result == 0);
 }
 
+static void EXFUN (handle_drone_death, (struct drone_info *));
+
 static void
 DEFUN (probe_all_gc_drones, (wait_p), int wait_p)
 {
   int count;
   unsigned long running;
   struct drone_info * drone;
-  static void EXFUN (handle_drone_death, (struct drone_info *));
 
   do {
     for (count = 0, drone = gc_drones, running = ((unsigned long) 0);
@@ -712,14 +714,14 @@ DEFUN (probe_all_gc_drones, (wait_p), int wait_p)
   return;
 }
 
+static void EXFUN (open_gc_file, (long, int));
+
 static int
 DEFUN (sysV_initialize, (first_time_p, size, r_overlap, w_overlap, drfnam),
        int first_time_p
        AND long size AND int r_overlap AND int w_overlap
        AND CONST char * drfnam)
 {
-  static void EXFUN (open_gc_file, (long, int));
-
   SCHEME_OBJECT * bufptr;
   int cntr;
   long buffer_space, shared_size, malloc_size;
@@ -937,11 +939,11 @@ DEFUN (sysV_initialize, (first_time_p, size, r_overlap, w_overlap, drfnam),
   return (0);
 }
 
+static void EXFUN (close_gc_file, (int));
+
 static void
 DEFUN (sysV_shutdown, (final_time_p), int final_time_p)
 {
-  static void EXFUN (close_gc_file, (int));
-
   /* arg should be (n_gc_drones > 0), see sysV_initialize */
   if (final_time_p)
     close_gc_file (1);
@@ -1805,12 +1807,13 @@ DEFUN (termination_open_gc_file, (operation, extra),
   /*NOTREACHED*/
 }
 
+extern char * EXFUN (mktemp, (char *));
+extern long EXFUN (lseek, (int, long, int));
+
 static void
 DEFUN (open_gc_file, (size, unlink_p),
        long size AND int unlink_p)
 {
-  extern char * EXFUN (mktemp, (char *));
-  extern long EXFUN (lseek, (int, long, int));
   struct stat file_info;
   int position, flags;
   Boolean exists_p;
@@ -1891,7 +1894,7 @@ DEFUN (open_gc_file, (size, unlink_p),
   keep_gc_file_p = (exists_p || option_gc_keep);
   if (!keep_gc_file_p && unlink_p)
   {
-    extern int EXFUN (unlink, (const char *));
+    extern int EXFUN (unlink, (CONST char *));
 
     (void) (unlink (gc_file_name));
   }

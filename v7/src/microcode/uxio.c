@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.18 1992/02/04 04:37:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.19 1992/02/10 13:26:10 jinx Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -65,11 +65,11 @@ DEFUN_VOID (UX_channel_close_all)
       OS_channel_close_noerror (channel);
 }
 
+extern void EXFUN (add_reload_cleanup, (void (*) (void)));
+
 void
 DEFUN_VOID (UX_initialize_channels)
 {
-  extern void EXFUN (add_reload_cleanup, (void (*) (void)));
-
   OS_channel_table_size = (UX_SC_OPEN_MAX ());
   channel_table =
     (UX_malloc (OS_channel_table_size * (sizeof (struct channel))));
@@ -238,12 +238,13 @@ DEFUN (OS_channel_write_dump_file, (channel, buffer, nbytes),
   return ((scr < 0) ? 0 : scr);
 }
 
+extern int EXFUN (strlen, (const char *));
+
 void
 DEFUN (OS_channel_write_string, (channel, string),
        Tchannel channel AND
        CONST char * string)
 {
-  extern int EXFUN (strlen, (const char *));
   unsigned long length = (strlen (string));
   if ((OS_channel_write (channel, string, length)) != length)
     error_external_return ();
@@ -359,19 +360,19 @@ DEFUN (OS_channel_unregister, (channel), Tchannel channel)
 }
 
 #ifdef HAVE_SELECT
-CONST int UX_have_select_p = 1;
+  CONST int UX_have_select_p = 1;
+  extern int EXFUN (UX_select,
+		    (int, SELECT_TYPE *, SELECT_TYPE *, SELECT_TYPE *,
+		     struct timeval *));
+  extern int EXFUN (UX_process_any_status_change, (void));
 #else
-CONST int UX_have_select_p = 0;
+  CONST int UX_have_select_p = 0;
 #endif
 
 enum select_input
 DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
 {
 #ifdef HAVE_SELECT
-  extern int EXFUN (UX_select,
-		    (int, SELECT_TYPE *, SELECT_TYPE *, SELECT_TYPE *,
-		     struct timeval *));
-  extern int EXFUN (UX_process_any_status_change, (void));
   int status_change_p;
   int nfds;
   SELECT_TYPE readable;
