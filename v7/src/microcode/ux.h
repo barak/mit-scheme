@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.48 1993/06/28 02:26:53 cph Exp $
+$Id: ux.h,v 1.49 1993/07/17 05:07:46 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -195,12 +195,15 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 #  define SYSTEM_VARIANT "386BSD"
 #endif
 
+/* no longer needed */
+#if 0
 #ifdef sonyrisc
 /* <limits.h> will redefine these. */
 #undef DBL_MAX
 #undef DBL_MIN
 #undef FLT_MAX
 #undef FLT_MIN
+#endif
 #endif
 
 #include <limits.h>
