@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.41 2001/03/21 05:30:53 cph Exp $
+$Id: string.scm,v 14.42 2001/03/21 05:41:41 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -289,7 +289,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		 (if (< i n)
 		     `((STRING-SET! STRING2 (FIX:+ START2 ,i)
 				    (STRING-REF STRING1 (FIX:+ START1 ,i)))
-		       ,@(loop (+ i 1))))))))
+		       ,@(loop (+ i 1)))
+		     '())))))
        (unrolled-move-right
 	(lambda (n)
 	  `(BEGIN
@@ -297,7 +298,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		 (if (< i n)
 		     `(,@(loop (+ i 1))
 		       (STRING-SET! STRING2 (FIX:+ START2 ,i)
-				    (STRING-REF STRING1 (FIX:+ START1 ,i))))))
+				    (STRING-REF STRING1 (FIX:+ START1 ,i))))
+		     '()))
 	     (STRING-SET! STRING2 START2 (STRING-REF STRING1 START1))))))
     (let ((n (fix:- end1 start1)))
       (if (or (not (eq? string2 string1)) (fix:< start2 start1))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rgxcmp.scm,v 1.113 2001/03/21 05:39:59 cph Exp $
+;;; $Id: rgxcmp.scm,v 1.114 2001/03/21 05:42:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -17,7 +17,7 @@
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
 ;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+;;; 02111-1307, USA.
 
 ;;;; Regular Expression Pattern Compiler
 ;;;  Translated from GNU (thank you RMS!)
