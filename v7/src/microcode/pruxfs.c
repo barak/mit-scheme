@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.33 1988/11/12 06:47:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.34 1989/03/14 01:59:01 cph Rel $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -217,11 +217,60 @@ otherwise returns #F.")
   struct stat stat_result;
   PRIMITIVE_HEADER (1);
 
-  CHECK_ARG (1, STRING_P);
-  if ((stat ((Scheme_String_To_C_String (ARG_REF (1))), (& stat_result))) < 0)
+  if ((stat ((STRING_ARG (1)), (& stat_result))) < 0)
     PRIMITIVE_RETURN (SHARP_F);
   PRIMITIVE_RETURN
     ((((stat_result . st_mode) & S_IFMT) == S_IFDIR) ? SHARP_T : SHARP_F);
+}
+
+DEFINE_PRIMITIVE ("FILE-MODES", Prim_file_modes, 1, 1,
+  "Return mode bits of FILE, as an integer.")
+{
+  struct stat stat_result;
+  PRIMITIVE_HEADER (1);
+
+  if ((stat ((STRING_ARG (1)), (& stat_result))) < 0)
+    PRIMITIVE_RETURN (SHARP_F);
+  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM ((stat_result . st_mode) & 07777));
+}
+
+DEFINE_PRIMITIVE ("SET-FILE-MODES!", Prim_set_file_modes, 2, 2,
+  "Return mode bits of FILE, as an integer.")
+{
+  PRIMITIVE_HEADER (2);
+
+  if ((chmod ((STRING_ARG (1)), (arg_index_integer (2, 010000)))) < 0)
+    error_external_return ();
+  PRIMITIVE_RETURN (SHARP_F);
+}
+
+DEFINE_PRIMITIVE ("FILE-ACCESS", Prim_file_access, 2, 2, 0)
+{
+  char * filename;
+  PRIMITIVE_HEADER (1);
+
+  PRIMITIVE_RETURN
+    (((access ((STRING_ARG (1)), (arg_index_integer (2, 8)))) >= 0)
+     ? SHARP_T
+     : SHARP_F);
+}
+
+DEFINE_PRIMITIVE ("CURRENT-UID", Prim_current_uid, 0, 0,
+  "Return the effective uid of Scheme, as an integer.")
+{
+  unsigned short geteuid ();
+  PRIMITIVE_HEADER (0);
+
+  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (geteuid ()));
+}
+
+DEFINE_PRIMITIVE ("CURRENT-GID", Prim_current_gid, 0, 0,
+  "Return the effective gid of Scheme, as an integer.")
+{
+  unsigned short getegid ();
+  PRIMITIVE_HEADER (0);
+
+  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (getegid ()));
 }
 
 /* The following is originally from GNU Emacs. */
