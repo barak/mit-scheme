@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 4.7 1990/10/19 22:25:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 4.8 1990/10/24 15:09:57 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -262,6 +262,43 @@ MIT in each case. |#
       (make-combination (ucode-primitive cons)
 			(list (car rest)
 			      (list-expansion-loop (cdr rest))))))
+
+(define (values-expansion operands if-expanded if-not-expanded block)
+  if-not-expanded
+  (if-expanded
+   (let ((block (block/make block true)))
+     (let ((variables
+	    (map (lambda (operand)
+		   operand
+		   (variable/make block
+				  (string->uninterned-symbol "value")
+				  '()))
+		 operands)))
+       (set-block/bound-variables! block variables)
+       (combination/make
+	(procedure/make
+	 block lambda-tag:let variables '() false
+	 (let ((block (block/make block true)))
+	   (let ((variable (variable/make block 'RECEIVER '())))
+	     (let ((variables* (list variable)))
+	       (set-block/bound-variables! block variables*)
+	       (procedure/make
+		block lambda-tag:unnamed variables* '() false
+		(combination/make (reference/make block variable)
+				  (map (lambda (variable)
+					 (reference/make block variable))
+				       variables)))))))
+	operands)))))
+
+(define (with-values-expansion operands if-expanded if-not-expanded block)
+  block
+  (if (and (pair? operands)
+	   (pair? (cdr operands))
+	   (null? (cddr operands)))
+      (if-expanded
+       (combination/make (combination/make (car operands) '())
+			 (cdr operands)))
+      (if-not-expanded)))
 
 ;;;; General CAR/CDR Encodings
 
@@ -452,8 +489,10 @@ MIT in each case. |#
     seventh
     sixth
     third
+    values
     vector?
     weak-pair?
+    with-values
     zero?
     ))
 
@@ -524,8 +563,10 @@ MIT in each case. |#
    seventh-expansion
    sixth-expansion
    third-expansion
+   values-expansion
    vector?-expansion
    weak-pair?-expansion
+   with-values-expansion
    zero?-expansion
    ))
 
