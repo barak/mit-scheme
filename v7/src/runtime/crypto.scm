@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: crypto.scm,v 14.8 2000/04/11 16:00:12 cph Exp $
+$Id: crypto.scm,v 14.9 2000/04/11 16:01:42 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -140,7 +140,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		    (if (or (default-object? salt) (not salt))
 			(error "Salt required:"
 			       (vector-ref mhash-keygen-names id)))
-		    (let ((n (mhash-keygen-salt-size name)))
+		    (let ((n
+			   ((ucode-primitive mhash_get_keygen_salt_size 1)
+			    id)))
 		      (if (not (or (= n 0)
 				   (= n (string-length salt))))
 			  (error "Salt size incorrect:"
