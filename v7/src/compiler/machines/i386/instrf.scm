@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instrf.scm,v 1.3 1992/02/13 05:57:19 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instrf.scm,v 1.4 1992/02/13 05:59:28 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -95,12 +95,12 @@ MIT in each case. |#
 
 (define-instruction FBLD
   (((? source mW))
-   (BYTE (#x d8))
+   (BYTE (#xd8))
    (ModR/M 4 source)))
 
 (define-instruction FBSTP
   (((? target mW))
-   (BYTE (#x df))
+   (BYTE (#xdf))
    (ModR/M 6 target)))
 
 (define-trivial-instruction FCHS   #xd9 #xe0)
