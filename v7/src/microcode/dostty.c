@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dostty.c,v 1.2 1992/07/28 18:19:19 jinx Exp $
+$Id: dostty.c,v 1.3 1992/10/07 06:23:35 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -96,51 +96,53 @@ DEFUN_VOID (OS_tty_command_clear)
 #define DEFAULT_TTY_Y_SIZE 25
 #endif
 
-int 
+void
 pc_gestalt_screen_x_size (void)
 {
-  char* psTemp;
+  char *psTemp;
 
-  psTemp = getenv("MITSCHEME_COLUMNS");
-  if (NULL == psTemp)
-    {
-      union REGS rIn;
-      union REGS rOut;
-      rIn.h.ah = 0x0F;
-      rIn.h.al = 0x00;
-      int86(0x10,&rIn,&rOut);
-      tty_x_size = rOut.h.ah;
-    }
+  psTemp = (getenv ("MITSCHEME_COLUMNS"));
+  if (psTemp == NULL)
+  {
+    union REGS regs;
+
+    regs.h.ah = 0x0F;
+    regs.h.al = 0x00;
+    int10h (&regs, &regs);
+    tty_x_size = regs.h.ah;
+  }
   else
-    {
-      tty_x_size = atoi(psTemp);
-      if (0 == tty_x_size)
-        tty_x_size = DEFAULT_TTY_X_SIZE; /* atoi failed, use default */
-    }
+  {
+    tty_x_size = (atoi (psTemp));
+    if (tty_x_size == 0)
+      tty_x_size = DEFAULT_TTY_X_SIZE; /* atoi failed, use default */
+  }
+  return;
 }
 
-int 
+void
 pc_gestalt_screen_y_size (void)
 {
-  char* psTemp;
+  char *psTemp;
 
-  psTemp = getenv("MITSCHEME_LINES");
-  if (NULL == psTemp)
-    {
-      union REGS rIn;
-      union REGS rOut;
-      rIn.x.ax = 0x1130;
-      rIn.h.bh = 0x00;
-      rIn.h.dl = DEFAULT_TTY_Y_SIZE-1;
-      int86(0x10,&rIn,&rOut);
-      tty_y_size = rOut.h.dl + 1;
-    }
+  psTemp = (getenv ("MITSCHEME_LINES"));
+  if (psTemp == NULL)
+  {
+    union REGS regs;
+
+    regs.x.ax = 0x1130;
+    regs.h.bh = 0x00;
+    regs.h.dl = DEFAULT_TTY_Y_SIZE-1;
+    int10h (&regs, &regs);
+    tty_y_size = regs.h.dl + 1;
+  }
   else
-    {
-      tty_y_size = atoi(psTemp);
-      if (0 == tty_y_size)
-        tty_y_size = DEFAULT_TTY_Y_SIZE; /* atoi failed, use default */
-    }
+  {
+    tty_y_size = (atoi (psTemp));
+    if (tty_y_size == 0)
+      tty_y_size = DEFAULT_TTY_Y_SIZE; /* atoi failed, use default */
+  }
+  return;
 }
 
 void
@@ -154,25 +156,23 @@ DEFUN_VOID (DOS_initialize_tty)
   tty_x_size = (-1);
   tty_y_size = (-1);
   tty_command_beep = ALERT_STRING;
-  tty_command_clear = 0;
-
+  tty_command_clear = "\033[2J";
 
   /* Figure out the size of the terminal. Tries environment variables.
      If that fails, use default values. */
 
-  tty_x_size = pc_gestalt_screen_x_size();
-  tty_y_size = pc_gestalt_screen_y_size();
-
-  if (tty_command_clear == 0)
-    tty_command_clear = "\033[2J";
+  pc_gestalt_screen_x_size ();
+  pc_gestalt_screen_y_size ();
+  return;
 }
 
 /* Fake TERMCAP capability */
 short ospeed;
 char PC;
 
-int tputs (string, nlines, outfun)
-     register char *string;
+int 
+tputs (string, nlines, outfun)
+     register char * string;
      int nlines;
      register int (*outfun) ();
 {
@@ -181,22 +181,22 @@ int tputs (string, nlines, outfun)
   if (string == (char *) 0)
     return;
   while (*string >= '0' && *string <= '9')
-    {
-      padcount += *string++ - '0';
-      padcount *= 10;
-    }
+  {
+    padcount += *string++ - '0';
+    padcount *= 10;
+  }
   if (*string == '.')
-    {
-      string++;
-      padcount += *string++ - '0';
-    }
+  {
+    string++;
+    padcount += *string++ - '0';
+  }
   if (*string == '*')
-    {
-      string++;
-      padcount *= nlines;
-    }
+  {
+    string++;
+    padcount *= nlines;
+  }
   while (*string)
     (*outfun) (*string++);
 
-  return 0;
+  return (0);
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosx32.c,v 1.3 1992/10/01 18:20:41 jinx Exp $
+$Id: dosx32.c,v 1.4 1992/10/07 06:23:35 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -35,22 +35,27 @@ MIT in each case. */
 #include <int.h>
 #include <stdio.h>
 #include "ansidecl.h"
+#include "msdos.h"
 #include "dosio.h"
 #include "dossys.h"
+
+#ifdef getDS
+#undef getDS
+#endif
+
+#ifdef getCS
+#undef getCS
+#endif
+
+extern unsigned short EXFUN (getCS, (void));
+extern unsigned short EXFUN (getDS, (void));
 
 /* Exports */
 
-extern int EXFUN (X32_lock_scheme_microcode, (void));
-
 extern int EXFUN (under_X32_p, (void));
-
+extern int EXFUN (X32_lock_scheme_microcode, (void));
 extern int EXFUN (X32_interrupt_restore, (unsigned));
-
 extern int EXFUN (X32_int_intercept, (unsigned, void (*) (void), PTR));
-
-extern unsigned short EXFUN (getCS, (void));
-
-extern unsigned short EXFUN (getDS, (void));
 
 int
 DEFUN_VOID (under_X32_p)
@@ -59,7 +64,7 @@ DEFUN_VOID (under_X32_p)
   
   regs.x.bx = (getDS ());
   regs.x.ax = 0x3504;
-  int86 (0x21, &regs, &regs);
+  intdos (&regs, &regs);
   return ((regs.e.flags & 1) == 0);
 }
 
@@ -97,7 +102,7 @@ DEFUN (lock_unlock, (operation, segment, offset, size),
   regs.e.ecx = base;
   segread (&sregs);
   sregs.es = segment;
-  int86x (0x21, &regs, &regs, &sregs);
+  intdosx (&regs, &regs, &sregs);
   return (((regs.e.flags & 1) != 0) ? -1 : 0);
 }
 
@@ -223,7 +228,7 @@ DEFUN (X32_do_restore, (iv, area),
   regs.e.edx = area->protected_offset;
   regs.e.ebx = area->real_handler;
   sregs.ds = area->protected_segment;
-  int86x (0x21, &regs, &regs, &sregs);
+  intdosx (&regs, &regs, &sregs);
   return (((regs.e.flags & 0x1) == 0) ? 0 : -1);
 }
 
@@ -242,7 +247,7 @@ DEFUN (X32_do_install, (iv, handler),
   regs.h.cl = iv;
   regs.e.edx = ((unsigned) handler);
   sregs.ds = (getCS ());
-  int86x (0x21, &regs, &regs, &sregs);
+  intdosx (&regs, &regs, &sregs);
   if ((regs.e.flags & 1) != 0)
     return (-1);
   return (0);
@@ -315,7 +320,7 @@ DEFUN (X32_int_intercept, (iv, handler, ptr),
   {
     regs.x.ax = 0x2503;
     regs.h.cl = iv;
-    int86 (0x21, &regs, &regs);
+    intdos (&regs, &regs);
     if ((regs.e.flags & 1) != 0)
       return (-1);
     area->real_handler = regs.e.ebx;
@@ -327,7 +332,7 @@ DEFUN (X32_int_intercept, (iv, handler, ptr),
     regs.x.ax = 0x2502;
     regs.h.cl = iv;
     segread (&sregs);
-    int86x (0x21, &regs, &regs, &sregs);
+    intdosx (&regs, &regs, &sregs);
     if ((regs.e.flags & 1) != 0)
       return (-1);
 
@@ -346,18 +351,18 @@ DEFUN (X32_int_intercept, (iv, handler, ptr),
   return (0);
 }
 
-extern int EXFUN (X32_subprocess, (char *, int, int, int));
-extern int EXFUN (X32_system, (char *));
-extern int EXFUN (system, (char *));
+extern int EXFUN (X32_subprocess, (const char *, int, int, int));
+extern int EXFUN (X32_system, (const char *));
+extern int EXFUN (system, (const char *));
 
 static int
-DEFUN (dummy_system, (command), char * command)
+DEFUN (dummy_system, (command), const char * command)
 {
   return (-1);
 }
 
 static int
-DEFUN (X32_DPMI_system, (command), char * command)
+DEFUN (X32_DPMI_system, (command), const char * command)
 {
   /* Plain system does not work in X32 under DPMI
      in the presence of our timer interrupt handler.
@@ -391,12 +396,12 @@ DEFUN (X32_DPMI_system, (command), char * command)
   return (result);
 }
 
-int EXFUN (which_system, (char *));
+int EXFUN (which_system, (const char *));
 
-static int EXFUN ((* fsystem), (char *)) = which_system;
+static int EXFUN ((* fsystem), (const char *)) = which_system;
 
 static int
-DEFUN (which_system, (command), char * command)
+DEFUN (which_system, (command), const char * command)
 {
   if (! (under_X32_p ()))
     fsystem = dummy_system;
@@ -408,7 +413,7 @@ DEFUN (which_system, (command), char * command)
 }
 
 int
-DEFUN (X32_system, (command), char * command)
+DEFUN (X32_system, (command), const char * command)
 {
   return (((* fsystem) (command)));
 }
@@ -464,7 +469,7 @@ DEFUN (restore_io_handle, (handle, saved_handle),
 
 int
 DEFUN (X32_subprocess, (command, in_spec, out_spec, err_spec),
-       char * command
+       const char * command
        AND int in_spec
        AND int out_spec
        AND int err_spec)

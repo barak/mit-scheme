@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dossys.c,v 1.3 1992/09/17 13:31:53 jinx Exp $
+$Id: dossys.c,v 1.4 1992/10/07 06:23:33 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -34,59 +34,63 @@ MIT in each case. */
 
 #include <dos.h>
 #include <stdio.h>
+#include "msdos.h"
 #include "dossys.h"
 
+#ifdef UNUSED
 int 
 dos_keyboard_input_available_p (void)
 {
-  union REGS inregs, outregs;
+  union REGS regs;
   
-  inregs.h.ah = 0x0B;
-  intdos (&inregs, &outregs);
-  return (outregs.h.al != 0);
+  regs.h.ah = 0x0B;
+  intdos (&regs, &regs);
+  return (regs.h.al != 0);
 }
 
 unsigned char 
 dos_get_keyboard_character (void)
 {
-  union REGS inregs, outregs;
+  union REGS regs;
   
-  inregs.h.ah = 0x07;
-  intdos (&inregs, &outregs);
-  return ((unsigned char) (outregs.h.al));
+  regs.h.ah = 0x07;
+  intdos (&regs, &regs);
+  return ((unsigned char) (regs.h.al));
 }
+#endif /* UNUSED */
 
 int 
 dos_poll_keyboard_character (unsigned char * result)
 {
-  union REGS inregs, outregs;
+  union REGS regs;
   
-  inregs.h.ah = 0x06;
-  inregs.h.dl = 0xFF;
-  intdos (&inregs, &outregs);
-  *result = ((unsigned char) (outregs.h.al));
-  return ((outregs.x.flags & 0x40) == 0);
+  regs.h.ah = 0x06;
+  regs.h.dl = 0xFF;
+  intdos (&regs, &regs);
+  *result = ((unsigned char) (regs.h.al));
+  return ((regs.x.flags & 0x40) == 0);
 }
 
-void 
+void
 dos_console_write_character (unsigned char character)
 {
-  union REGS inregs, outregs;
+  union REGS regs;
   
-  inregs.h.ah = 0x06;
-  inregs.h.dl = character;
-  intdos (&inregs, &outregs);
+  regs.h.ah = 0x06;
+  regs.h.dl = character;
+  intdos (&regs, &regs);
   return;
 }
 
 int 
 dos_console_write (void * vbuffer, size_t nsize)
 {
-  union REGS inregs, outregs;
   unsigned char * buffer = vbuffer;
+  union REGS inregs, outregs;
   int i;  
   
-  for (inregs.h.ah = 0x06, i=0; i < nsize; i++)
+  inregs.h.ah = 0x06;
+  for (i = 0; i < nsize; i++)
   {
     inregs.h.dl = buffer[i];
     intdos (&inregs, &outregs);
@@ -96,233 +100,243 @@ dos_console_write (void * vbuffer, size_t nsize)
 
 /* DOS I/O functions using handles */
 
+#ifdef UNUSED
 handle_t 
 dos_open_file_with_handle (unsigned char * name, int mode)
 {
-  union REGS inregs, outregs;
+  union REGS regs;
   struct SREGS segregs;
   
-  inregs.e.edx = ((unsigned long) name);
+  regs.e.edx = ((unsigned long) name);
   segread (&segregs);
-  inregs.h.ah = 0x3D;
-  inregs.h.al = mode;
-  intdosx (&inregs, &outregs, &segregs);
-  return ((outregs.x.cflag) ? DOS_FAILURE : ((unsigned int) outregs.x.ax));
+  regs.h.ah = 0x3D;
+  regs.h.al = mode;
+  intdosx (&regs, &regs, &segregs);
+  return ((regs.x.cflag) ? DOS_FAILURE : ((unsigned int) regs.x.ax));
 }
 
 int 
 dos_close_file_with_handle (handle_t handle)
 {
-  union REGS inregs, outregs;
+  union REGS regs;
   
-  inregs.x.bx = handle;
-  inregs.h.al = 0x3E;
-  intdos (&inregs, &outregs);
-  return ((outregs.x.cflag) ? DOS_FAILURE : DOS_SUCCESS);
+  regs.x.bx = handle;
+  regs.h.al = 0x3E;
+  intdos (&regs, &regs);
+  return ((regs.x.cflag) ? DOS_FAILURE : DOS_SUCCESS);
 }
 
 int 
 dos_read_file_with_handle (handle_t handle, void * buffer, size_t nbytes)
 {
-  union REGS inregs, outregs;
+  union REGS regs;
   struct SREGS segregs;
   
-  inregs.x.bx = handle;  
-  inregs.e.edx = ((unsigned long) buffer);
-  inregs.e.ecx = nbytes;
+  regs.x.bx = handle;  
+  regs.e.edx = ((unsigned long) buffer);
+  regs.e.ecx = nbytes;
   segread (&segregs);
-  inregs.h.ah = 0x3F;
-  intdosx (&inregs, &outregs, &segregs);
-  return ((outregs.x.cflag) ? DOS_FAILURE : outregs.e.eax);
+  regs.h.ah = 0x3F;
+  intdosx (&regs, &regs, &segregs);
+  return ((regs.x.cflag) ? DOS_FAILURE : regs.e.eax);
 }
 
 int 
 dos_write_file_with_handle (handle_t handle, void * buffer, size_t nbytes)
 {
-  union REGS inregs, outregs;
+  union REGS regs;
   struct SREGS segregs;
   
-  inregs.x.bx = handle;
-  inregs.e.edx = (unsigned long) buffer;
-  inregs.e.ecx = nbytes;
+  regs.x.bx = handle;
+  regs.e.edx = (unsigned long) buffer;
+  regs.e.ecx = nbytes;
   segread (&segregs);
-  inregs.h.ah = 0x40;
-  intdosx (&inregs, &outregs, &segregs);
-  return ((outregs.x.cflag) ? DOS_FAILURE : outregs.e.eax);
+  regs.h.ah = 0x40;
+  intdosx (&regs, &regs, &segregs);
+  return ((regs.x.cflag) ? DOS_FAILURE : regs.e.eax);
 }
   
 int 
 dos_get_device_status_with_handle (handle_t handle)
 { 
-  union REGS inregs, outregs;
+  union REGS regs;
   
-  inregs.x.bx = handle;
-  inregs.x.ax = 0x4400;
-  intdos (&inregs, &outregs);
-  return ((outregs.x.cflag) ? DOS_FAILURE : ((unsigned int) outregs.x.dx));
+  regs.x.bx = handle;
+  regs.x.ax = 0x4400;
+  intdos (&regs, &regs);
+  return ((regs.x.cflag) ? DOS_FAILURE : ((unsigned int) regs.x.dx));
 }
   
 int 
 dos_set_device_status_with_handle (handle_t handle, int mode)
 { 
   int original_mode;
-  union REGS inregs, outregs;
+  union REGS regs;
   
   original_mode = dos_get_device_status_with_handle(handle);
   if (original_mode == DOS_FAILURE)
     return (DOS_FAILURE);
-  inregs.x.dx = mode;
-  inregs.x.bx = handle;
-  inregs.x.ax = 0x4401;
-  intdos (&inregs, &outregs);
-  return ((outregs.x.cflag) ? DOS_FAILURE : original_mode);
+  regs.x.dx = mode;
+  regs.x.bx = handle;
+  regs.x.ax = 0x4401;
+  intdos (&regs, &regs);
+  return ((regs.x.cflag) ? DOS_FAILURE : original_mode);
 }  
+#endif /* UNUSED */
 
 void 
 dos_get_version (version_t *version_number)
 {
-  union REGS inregs, outregs;
+  union REGS regs;
 
   /* Use old style version number because we may be running below DOS 5.0 */
-  inregs.h.al = 0x01;
-  inregs.h.ah = 0x30;
-  intdos (&inregs, &outregs);
-  version_number -> major = outregs.h.al;
-  version_number -> minor = outregs.h.ah;
+  regs.h.al = 0x01;
+  regs.h.ah = 0x30;
+  intdos (&regs, &regs);
+  version_number -> major = regs.h.al;
+  version_number -> minor = regs.h.ah;
   if ((version_number -> major) >= 5)
   { /* Get the real version. */
-    inregs.x.ax = 0x3306;
-    intdos (&inregs, &outregs);
-    version_number -> major = outregs.h.bl;
-    version_number -> minor = outregs.h.bh;
+    regs.x.ax = 0x3306;
+    intdos (&regs, &regs);
+    version_number -> major = regs.h.bl;
+    version_number -> minor = regs.h.bh;
   }
   return;
 }
 
+#ifdef UNUSED
 void 
 dos_reset_drive (void)
 {
-  union REGS inregs, outregs;
+  union REGS regs;
   
-  inregs.h.al = 0x0d;
-  intdos (&inregs, &outregs);
+  regs.h.al = 0x0d;
+  intdos (&regs, &regs);
   return;
 }
 
 int 
 dos_set_verify_flag (int verify_p)
 {
-  union REGS inregs, outregs;
+  union REGS regs;
   int old_flag;
   
-  inregs.h.ah = 0x54;
-  intdos(&inregs, &outregs);
-  old_flag = outregs.h.al;
-  inregs.h.al = (verify_p) ? 1 : 0;
-  inregs.h.ah = 0x2E;
-  intdos(&inregs, &outregs);
+  regs.h.ah = 0x54;
+  intdos (&regs, &regs);
+  old_flag = regs.h.al;
+  regs.h.al = ((verify_p) ? 1 : 0);
+  regs.h.ah = 0x2E;
+  intdos (&regs, &regs);
   return (old_flag);
 }
+#endif /* UNUSED */
 
 int 
 dos_set_ctrl_c_check_flag (int check_p)
 {
-  union REGS inregs, outregs;
+  union REGS regs;
   int old_flag;
   
-  inregs.x.ax = 0x3300;
-  intdos(&inregs, &outregs);
-  old_flag = outregs.h.dl;
-  inregs.h.dl = (check_p) ? 1 : 0;
-  inregs.x.ax = 0x3301;
-  intdos(&inregs, &outregs);
+  regs.x.ax = 0x3300;
+  intdos (&regs, &regs);
+  old_flag = regs.h.dl;
+  regs.h.dl = ((check_p) ? 1 : 0);
+  regs.x.ax = 0x3301;
+  intdos (&regs, &regs);
   return (old_flag);
 }
 
 int 
 dos_rename_file (const char * old, const char * new)
 {
-  union REGS inregs, outregs;
+  union REGS regs;
   struct SREGS segregs;
   
-  inregs.e.edx = (unsigned long) old;
-  inregs.e.edi = (unsigned long) new;
-  segread(&segregs);
+  regs.e.edx = ((unsigned long) old);
+  regs.e.edi = ((unsigned long) new);
+  segread (&segregs);
   segregs.es = segregs.ds;
-  inregs.h.ah = 0x56;
-  intdosx(&inregs, &outregs, &segregs);
-  if (outregs.x.cflag)
+  regs.h.ah = 0x56;
+  intdosx (&regs, &regs, &segregs);
+  if (regs.x.cflag)
     return (DOS_FAILURE);
   else
     return (DOS_SUCCESS);
 }
 
+#ifdef UNUSED
 int 
 dos_get_machine_name (char * name)
 {
-  union REGS inregs, outregs;
+  union REGS regs;
   struct SREGS segregs;
   
-  inregs.e.edx = ((unsigned long) name);
-  segregs.ds = getDS();
-  inregs.x.ax = 0x5E00;
-  intdosx(&inregs, &outregs, &segregs);
-  if ((outregs.x.cflag) || (outregs.h.ch == 0))
+  regs.e.edx = ((unsigned long) name);
+  segread (&segregs);
+  regs.x.ax = 0x5E00;
+  intdosx (&regs, &regs, &segregs);
+  if ((regs.x.cflag) || (regs.h.ch == 0))
     return (DOS_FAILURE);
   else
-    return (outregs.h.cl);
+    return (regs.h.cl);
 }
+#endif /* UNUSED */
 
 int 
 dos_drive_letter_to_number (char letter)
 {
   if (letter == '\0')
     return 0;
-  else if ((letter >= 'a')&&(letter <= 'z'))
+  else if ((letter >= 'a') && (letter <= 'z'))
     return ((letter - 'a') + 1);
-  else if ((letter >= 'A')&&(letter <= 'Z'))
+  else if ((letter >= 'A') && (letter <= 'Z'))
     return ((letter - 'A') + 1);
   else
     return (-1);
 }
 
+#ifdef UNUSED
 char 
 dos_drive_number_to_letter (int number)
 {
-  if ((number >= 1)&&(number <= 26))
+  if ((number >= 1) && (number <= 26))
     return ('A' + (number - 1));
   else
     return ('\0');
 }
+#endif /* UNUSED */
 
 int 
 dos_set_default_drive (int drive_number)
 {
-  union REGS inregs, outregs;
+  union REGS regs;
   
   if (drive_number > 0)
   {	
-    inregs.h.dl = drive_number - 1;
-    inregs.h.ah = 0x0E;
-    intdos(&inregs, &outregs);
+    regs.h.dl = (drive_number - 1);
+    regs.h.ah = 0x0E;
+    intdos (&regs, &regs);
   }
   return (DOS_SUCCESS);
 }
     
+#ifdef UNUSED
 int
 dos_get_default_drive (int drive_number)
 {
-  union REGS inregs, outregs;
+  union REGS regs;
   
-  inregs.h.ah = 0x19;
-  intdos (&inregs, &outregs);
-  return (outregs.h.al + 1);
+  regs.h.ah = 0x19;
+  intdos (&regs, &regs);
+  return ((regs.h.al) + 1);
 }
+#endif /* UNUSED */
 
 dos_boolean 
 dos_pathname_as_filename (char * name, char * buffer)
 { /* Returns whether directory encountered is top level */
-  unsigned int end_index = strlen(name) - 1;
+  unsigned int end_index = ((strlen (name)) - 1);
 
   /* The runtime system comes down with a name that has a back slash
      at the end.  This will choke DOS.
@@ -415,7 +429,7 @@ DOS_canonicalize_filename (char * aliased, char * direct)
   regs.e.edx = ((unsigned) &intrpt);
   /* Int 21h, ax = 2511h: Issue real mode interrupt. */
   regs.x.ax = 0x2511;
-  int86x (0x21, &regs, &regs, &sregs);
+  intdosx (&regs, &regs, &sregs);
   if (regs.e.cflag != 0)
     return (-1);
   strncpy (direct, pRealModeBuffer, RETURN_BUFFER_SIZE);
@@ -429,16 +443,15 @@ char *pRealModeBuffer = NULL;
 void
 DOS_initialize_real_mode (void)
 {
-  union REGS rIn;
-  union REGS rOut;
+  union REGS regs;
 
-  rIn.h.ah = 0x48;
-  rIn.x.bx = 256;
-  int86 (0x21, &rIn, &rOut);
-  if (rOut.e.cflag == 0)
+  regs.h.ah = 0x48;
+  regs.x.bx = 256;
+  intdos (&regs, &regs);
+  if (regs.e.cflag == 0)
   {
-    pRealModeBuffer = ((char *) rOut.e.ebx);
-    RealModeBufferParagraph = rOut.x.ax;
+    pRealModeBuffer = ((char *) regs.e.ebx);
+    RealModeBufferParagraph = regs.x.ax;
   }
   return;
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosexcp.c,v 1.4 1992/09/19 19:05:17 jinx Exp $
+$Id: dosexcp.c,v 1.5 1992/10/07 06:23:27 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -37,6 +37,7 @@ MIT in each case. */
 #include <stdlib.h>
 #include <string.h>
 #include <dos.h>
+#include "msdos.h"
 #include "dossys.h"
 #include "dosinsn.h"
 #include "dosexcp.h"
@@ -46,23 +47,23 @@ DPMI_get_exception_vector (unsigned exception,
 			   unsigned short * cs_selector,
 			   unsigned * code_offset)
 {
-  union REGS regs1, regs2;
+  union REGS regs;
 
   if (exception > 0x1f)
   {
     errno = EINVAL;
     return (DOS_FAILURE);
   }
-  regs1.e.eax = 0x202;
-  regs1.e.ebx = exception;
-  int86 (0x31, &regs1, &regs2);
-  if ((regs2.e.flags & 1) != 0)
+  regs.e.eax = 0x202;
+  regs.e.ebx = exception;
+  intDPMI (&regs, &regs);
+  if ((regs.e.flags & 1) != 0)
   {
     errno = EINVAL;
     return (DOS_FAILURE);
   }
-  * cs_selector = regs2.x.cx;
-  * code_offset = regs2.e.edx;
+  * cs_selector = regs.x.cx;
+  * code_offset = regs.e.edx;
   return (DOS_SUCCESS);
 }
 
@@ -82,7 +83,7 @@ DPMI_set_exception_vector (unsigned exception,
   regs.e.ebx = exception;
   regs.e.ecx = cs_selector;
   regs.e.edx = code_offset;
-  int86 (0x31, &regs, &regs);
+  intDPMI (&regs, &regs);
   if ((regs.e.flags & 1) != 0)
   {
     errno = EINVAL;
@@ -208,7 +209,7 @@ DPMI_free_scheme_stack (unsigned short ss)
 
   regs.x.ax = 0x1;
   regs.x.bx = ss;
-  int86 (0x31, &regs, &regs);
+  intDPMI (&regs, &regs);
   return ((regs.e.cflag != 0) ? DOS_FAILURE : DOS_SUCCESS);
 }
 
@@ -232,7 +233,7 @@ DPMI_alloc_scheme_stack (unsigned short * ds,
 
   regs.x.ax = 0x0;		/* Allocate LDT Descriptor */
   regs.x.cx = 1;
-  int86 (0x31, &regs, &regs);
+  intDPMI (&regs, &regs);
   if (regs.e.cflag != 0)
     return (DOS_FAILURE);
   ss_sel = regs.x.ax;
@@ -241,7 +242,7 @@ DPMI_alloc_scheme_stack (unsigned short * ds,
   regs.x.ax = 0xb;		/* Get Descriptor */
   regs.x.bx = css_sel;
   regs.e.edi = ((unsigned long) &descriptor[0]);
-  int86x (0x31, &regs, &regs, &sregs);
+  intDPMIx (&regs, &regs, &sregs);
   if (regs.e.cflag != 0)
   {
 fail:
@@ -261,7 +262,7 @@ fail:
   regs.x.ax = 0xc;		/* Set Descriptor */
   regs.x.bx = ss_sel;
   regs.e.edi = ((unsigned long) &descriptor[0]);
-  int86x (0x31, &regs, &regs, &sregs);
+  intDPMIx (&regs, &regs, &sregs);
   if (regs.e.cflag != 0)
     goto fail;
 
@@ -286,7 +287,7 @@ X32_get_exception_vector (unsigned exception,
   segread (&sregs);
   regs.e.eax = 0x2532;
   regs.h.cl = exception;
-  int86x (0x21, &regs, &regs, &sregs);
+  intdosx (&regs, &regs, &sregs);
   if ((regs.e.flags & 1) != 0)
   {
     errno = EINVAL;
@@ -316,7 +317,7 @@ X32_set_exception_vector (unsigned exception,
   sregs.ds = cs_selector;
   regs.e.edx = code_offset;
 
-  int86x (0x21, &regs, &regs, &sregs);
+  intdosx (&regs, &regs, &sregs);
   if ((regs.e.flags & 1) != 0)
   {
     errno = EINVAL;

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/msdos.h,v 1.2 1992/07/06 23:42:02 jinx Exp $
+$Id: msdos.h,v 1.3 1992/10/07 06:23:36 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -32,11 +32,11 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* Unix system include file */
+/* DOS system include file */
 
-#ifndef SCM_DOS_H
-#define SCM_DOS_H
-
+#ifndef SCM_MSDOS_H
+#define SCM_MSDOS_H
+
 #define SYSTEM_NAME "dos"
 #define SYSTEM_VARIANT "MS-DOS"
 
@@ -524,8 +524,14 @@ extern int EXFUN
 #define DOS_SC_OPEN_MAX() 16
 #endif
 
+/* Interrupts */
+
+#define int10h(in,out)		int86 (0x10, in, out)
+#define intDPMI(in,out)		int86 (0x31, in, out)
+#define intDPMIx(in,out,seg)	int86x (0x31, in, out, seg)
+
 /* Doesn't really go anywhere */
 #define INTERRUPT_CHAIN_NEXT	0
 #define INTERRUPT_RETURN	1
 
-extern void EXFUN (console_write_string, (void * string));
+#endif /* SCM_MSDOS_H */

@@ -1,5 +1,6 @@
 /* -*-C-*-
-$Id: doskbd.c,v 1.9 1992/09/06 16:24:03 jinx Exp $
+
+$Id: doskbd.c,v 1.10 1992/10/07 06:23:30 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -289,18 +290,18 @@ dos_boolean
 under_QEMM_386_p (void)
 {
   unsigned int i;
-  union REGS iregs, oregs;
+  union REGS regs;
 
-  iregs.h.al = 0x01;
-  iregs.x.bx = 0x5145;
-  iregs.x.cx = 0x4d4d;
-  iregs.x.dx = 0x3432;
+  regs.h.al = 0x01;
+  regs.x.bx = 0x5145;
+  regs.x.cx = 0x4d4d;
+  regs.x.dx = 0x3432;
 
   for (i = 0xc0; i <= 0xff; i++)
   {
-    iregs.h.ah = i;
-    int86 (0x2f, &iregs, &oregs);
-    if (oregs.x.bx == 0x4f4b)
+    regs.h.ah = i;
+    int86 (0x2f, &regs, &regs);
+    if (regs.x.bx == 0x4f4b)
       return (dos_true);
   }
   return (dos_false);
@@ -420,7 +421,7 @@ DPMI_PM_getvector (unsigned vecnum, unsigned * eip, unsigned * cs)
   
   regs.x.ax = 0x204;
   regs.h.bl = (vecnum & 0xff);
-  int86 (0x31, &regs, &regs);
+  intDPMI (&regs, &regs);
   * eip = regs.e.edx;
   * cs = ((unsigned) regs.x.cx);
   return;
@@ -435,7 +436,7 @@ DPMI_PM_setvector (unsigned vecnum, unsigned eip, unsigned cs)
   regs.h.bl = (vecnum & 0xff);
   regs.e.edx = eip;
   regs.x.cx = ((unsigned short) cs);
-  int86 (0x31, &regs, &regs);
+  intDPMI (&regs, &regs);
   return (((regs.e.flags & 1) == 0) ? DOS_SUCCESS : DOS_FAILURE);
 }
 
@@ -446,7 +447,7 @@ DPMI_RM_getvector (unsigned vecnum, unsigned short * ip, unsigned short * cs)
   
   regs.x.ax = 0x200;
   regs.h.bl = (vecnum & 0xff);
-  int86 (0x31, &regs, &regs);
+  intDPMI (&regs, &regs);
   * ip = regs.x.dx;
   * cs = regs.x.cx;
   return;
@@ -461,7 +462,7 @@ DPMI_RM_setvector (unsigned vecnum, unsigned short ip, unsigned short cs)
   regs.h.bl = (vecnum & 0xff);
   regs.x.cx = cs;
   regs.x.dx = ip;
-  int86 (0x31, &regs, &regs);
+  intDPMI (&regs, &regs);
   return (((regs.e.flags & 1) == 0) ? DOS_SUCCESS : DOS_FAILURE);
 }
 
@@ -507,7 +508,7 @@ DPMI_allocate_RM_call_back (unsigned short * cb_ip,
   regs.e.edi = RM_regs;
   sregs.es = ds;
 
-  int86x (0x31, &regs, &regs, &sregs);
+  intDPMIx (&regs, &regs, &sregs);
   * cb_ip = regs.x.dx;
   * cb_cs = regs.x.cx;
   return (((regs.e.flags & 1) == 0) ? DOS_SUCCESS : DOS_FAILURE);
@@ -521,7 +522,7 @@ DPMI_free_RM_call_back (unsigned short cb_ip, unsigned short cb_cs)
   regs.x.ax = 0x304;
   regs.x.cx = cb_cs;
   regs.x.dx = cb_ip;
-  int86 (0x31, &regs, &regs);
+  intDPMI (&regs, &regs);
   return (((regs.e.flags & 1) == 0) ? DOS_SUCCESS : DOS_FAILURE);
 }
 
@@ -538,7 +539,7 @@ DPMI_allocate_DOS_block (unsigned short size,
   
   regs.x.ax = 0x100;
   regs.x.bx = ((((unsigned) size) + 15) >> 4);	/* paragraphs */
-  int86 (0x31, & regs, & regs);
+  intDPMI (&regs, &regs);
   * rm_seg = regs.x.ax;
   * pm_sel = regs.x.dx;
   return (((regs.e.flags & 1) == 0) ? DOS_SUCCESS : DOS_FAILURE);
@@ -551,7 +552,7 @@ DPMI_free_DOS_block (unsigned short selector)
   
   regs.x.ax = 0x101;
   regs.x.dx = selector;
-  int86 (0x31, & regs, & regs);
+  intDPMI (&regs, &regs);
   return (((regs.e.flags & 1) == 0) ? DOS_SUCCESS : DOS_FAILURE);
 }
 
@@ -568,7 +569,7 @@ DOSX_allocate_DOS_block (unsigned short size,
   
   regs.x.ax = 0x25c0;
   regs.x.bx = ((((unsigned) size) + 15) >> 4);	/* paragraphs */
-  int86 (0x21, & regs, & regs);
+  intdos (&regs, &regs);
   if ((regs.e.flags & 1) == 0)
   {
     * rm_seg = regs.x.ax;
@@ -584,7 +585,7 @@ DOSX_allocate_DOS_block (unsigned short size,
 
   regs.h.ah = 0x48;
   regs.x.bx = ((((unsigned) size) + 15) >> 4);	/* paragraphs */
-  int86 (0x21, & regs, & regs);
+  intdos (&regs, &regs);
   * rm_seg = regs.x.ax;
   if ((regs.e.flags & 1) != 0)
   {
@@ -604,7 +605,7 @@ DOSX_free_DOS_block (unsigned short seg)
   
   regs.x.ax = 0x25c1;
   regs.x.cx = seg;
-  int86 (0x21, & regs, & regs);
+  intdos (&regs, &regs);
 
 #else /* not 0 */
 
@@ -613,7 +614,7 @@ DOSX_free_DOS_block (unsigned short seg)
   regs.h.ah = 0x49;
   segread (&sregs);
   sregs.es = seg;
-  int86x (0x21, & regs, & regs, & sregs);
+  intdosx (&regs, &regs, &sregs);
 
 #endif /* 0 */
   return (((regs.e.flags & 1) == 0) ? DOS_SUCCESS : DOS_FAILURE);
@@ -632,7 +633,7 @@ DOSX_PM_getvector (unsigned vecnum, unsigned * eip, unsigned * cs)
   regs.x.ax = 0x2502;
   regs.h.cl = (vecnum & 0xff);
   segread (&sregs);
-  int86x (0x21, &regs, &regs, &sregs);
+  intdosx (&regs, &regs, &sregs);
   * eip = regs.e.ebx;
   * cs = ((unsigned) sregs.es);
   return;
@@ -649,7 +650,7 @@ DOSX_installvector (unsigned vecnum, unsigned eip, unsigned cs)
   regs.e.edx = eip;
   segread (&sregs);
   sregs.ds = cs;
-  int86x (0x21, &regs, &regs, &sregs);
+  intdosx (&regs, &regs, &sregs);
   return;
 }
 
@@ -666,7 +667,7 @@ DOSX_restore_vector (unsigned vecnum, unsigned eip,
   regs.e.ebx = rmode;
   regs.x.ax = 0x2507;
   regs.h.cl = (vecnum & 0xff);
-  int86x (0x21, &regs, &regs, &sregs);
+  intdosx (&regs, &regs, &sregs);
   return;
 }
 
@@ -681,7 +682,7 @@ DOSX_RM_getvector (unsigned vecnum, unsigned * vector)
 
   regs.x.ax = 0x2503;
   regs.h.cl = (vecnum & 0xff);
-  int86 (0x21, &regs, &regs);
+  intdos (&regs, &regs);
   * vector = regs.e.ebx;
   return;
 }
@@ -698,7 +699,7 @@ DOSX_RM_setvector (unsigned vecnum, unsigned rm_address)
   regs.x.ax = 0x2505;
   regs.h.cl = (vecnum & 0xff);
   regs.e.ebx = rm_address;
-  int86 (0x31, &regs, &regs);
+  intdos (&regs, &regs);
   return (((regs.e.flags & 1) == 0) ? DOS_SUCCESS : DOS_FAILURE);
 }
 
@@ -714,8 +715,8 @@ DOSX_convert_PM_to_RM_address (unsigned short sel, unsigned offset,
   sregs.es = sel;
   regs.e.ebx = offset;
   regs.e.ecx = length;
-  regs.e.eax = 0x250F;
-  int86x (0x21, &regs, &regs, &sregs);
+  regs.e.eax = 0x250f;
+  intdosx (&regs, &regs, &sregs);
   * rm_address = regs.e.ecx;
   return (((regs.e.flags & 1) == 0) ? DOS_SUCCESS : DOS_FAILURE);
 }
@@ -882,7 +883,7 @@ make_RM_handler (unsigned * size, unsigned * offset, unsigned * delta)
   union REGS regs;
 
   regs.x.ax = 0x2509;
-  int86 (0x21, &regs, &regs);
+  intdos (&regs, &regs);
   start_offset = ((unsigned long) RM_keyboard_pattern_start);
   pattern_start = ((((unsigned long) regs.x.bx) << 4) + start_offset);
 

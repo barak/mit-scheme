@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dossig.c,v 1.11 1992/09/30 14:31:42 jinx Exp $
+$Id: dossig.c,v 1.12 1992/10/07 06:23:32 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -32,8 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-#include "msdos.h"
 #include "scheme.h"
+#include "msdos.h"
 #include <signal.h>
 #include <int.h>
 #include "ossig.h"
@@ -48,9 +48,15 @@ MIT in each case. */
 #include <cerror.h>
 #endif
 
+#ifndef fileno
+#define fileno(fp)	((fp)->_file)
+#endif
+
 cc_t EXFUN (DOS_interactive_interrupt_handler, (void));
 
 /* Signal Manipulation */
+
+#ifdef UNUSED
 
 static Tsignal_handler
 DEFUN (current_handler, (signo), int signo)
@@ -68,6 +74,8 @@ DEFUN (current_handler, (signo), int signo)
 #define ABORT_HANDLER DOS_signal
 #define EXIT_HANDLER DOS_signal
 
+#endif /* UNUSED */
+
 /* These could be implemented, at least under DPMI by examining
    and setting the virtual interrupt state.
  */
@@ -75,18 +83,22 @@ DEFUN (current_handler, (signo), int signo)
 void
 DEFUN_VOID (preserve_signal_mask)
 {
+  return;
 }
 
 void
 DEFUN_VOID (block_signals)
 {
+  return;
 }
 
 void
 DEFUN_VOID (unblock_signals)
 {
+  return;
 }
 
+#ifdef UNUSED
 /* Signal Descriptors */
 
 enum dfl_action { dfl_terminate, dfl_ignore, dfl_stop };
@@ -236,6 +248,7 @@ DEFUN (ta_abort_handler, (ap), PTR ap)
   ABORT_HANDLER ((((struct handler_record *) ap) -> signo),
 		 (((struct handler_record *) ap) -> handler));
 }
+#endif /* UNUSED */
 
 #define CONTROL_B_INTERRUPT_CHAR	'B'
 #define CONTROL_G_INTERRUPT_CHAR	'G'
@@ -245,6 +258,7 @@ DEFUN (ta_abort_handler, (ap), PTR ap)
 #define TERMINATE_INTERRUPT_CHAR	'@'
 #define NO_INTERRUPT_CHAR		'0'
 
+#ifdef UNUSED
 static void
 DEFUN (echo_keyboard_interrupt, (c, dc), cc_t c AND cc_t dc)
 {
@@ -277,7 +291,10 @@ DEFUN_STD_HANDLER (sighnd_control_c,
       tty_set_next_interrupt_char (int_char);
   })
 
+#endif /* UNUSED */
+
 /* Keyboard interrupt */
+
 #define KB_INT_TABLE_SIZE		((256) + 1)
 
 #define CONTROL_BREAK			'\0'		/* A lie. */
@@ -366,7 +383,7 @@ DEFUN_VOID (update_interrupt_characters)
   }
   return;
 }
-
+
 unsigned int
 DEFUN_VOID (OS_ctty_num_int_chars)
 {
@@ -406,6 +423,33 @@ DEFUN (OS_ctty_set_int_char_handlers, (new_int_handlers),
     int_handlers[i] = new_int_handlers[i];
   update_interrupt_characters ();
   return;
+}
+
+extern long EXFUN (text_write, (int, CONST unsigned char *, size_t));
+
+static void
+DEFUN (console_write_string, (string), unsigned char * string)
+{
+  (void) text_write ((fileno (stdout)), string, (strlen (string)));
+  return;
+}
+
+static void
+DEFUN (console_write_character, (c), unsigned char c)
+{
+  (void) text_write ((fileno (stdout)), &c, 1);
+  return;
+}
+
+static unsigned char
+DEFUN_VOID (console_read_character)
+{
+  unsigned char c;
+  extern int EXFUN (dos_read, (int, PTR, size_t, int, int));
+
+  /* non-buffered, non-blocking read. */
+  (void) dos_read ((fileno (stdin)), &c, 1, 0, 0);
+  return (c);
 }
 
 void
@@ -558,8 +602,8 @@ DEFUN_VOID (DOS_interactive_interrupt_handler)
     console_write_string
       ("\nKeyboard interrupt, type character (? for help): ");
     
-    response = (dos_get_keyboard_character ());
-    dos_console_write_character (response);
+    response = (console_read_character ());
+    console_write_character (response);
     
     switch (response)
     {
@@ -589,8 +633,8 @@ DEFUN_VOID (DOS_interactive_interrupt_handler)
       case 'Q':
       {
 	console_write_string ("\nTerminate scheme (y or n)? ");
-	response = (dos_get_keyboard_character ());
-	dos_console_write_character (response);
+	response = (console_read_character ());
+	console_write_character (response);
 	if ((response == 'y') || (response == 'Y'))
 	{
 	  console_write_string ("\n");
@@ -616,9 +660,9 @@ DEFUN_VOID (DOS_interactive_interrupt_handler)
 
       default:
       {
-	char temp[128];
+	unsigned char temp[128];
 
-	sprintf(temp, "\nIllegal interrupt character: [%c]", response);
+	sprintf (temp, "\nIllegal interrupt character: [%c]", response);
 	console_write_string (temp);
 	print_interrupt_help ();
 	break;
@@ -628,22 +672,16 @@ DEFUN_VOID (DOS_interactive_interrupt_handler)
 }
   
 void
-DEFUN (stop_signal_default, (signo), int signo)
+DEFUN_VOID (OS_restartable_exit)
 {
   return;
 }
 
-void EXFUN ((*stop_signal_hook), (int signo));
+#ifdef UNUSED
 
 #define IF_POSIX_SIGNALS(code) do {} while (0)
 
 DEFUN_STD_HANDLER (sighnd_stop, {})
-
-void
-DEFUN_VOID (OS_restartable_exit)
-{
-  stop_signal_default (SIGTSTP);
-}
 
 #ifdef HAVE_ITIMER
 
@@ -710,14 +748,10 @@ DEFUN_STD_HANDLER (sighnd_software_trap,
    case we just hope that child terminations don't happen too close to
    one another to cause problems. */
 
-void EXFUN ((*subprocess_death_hook), (pid_t pid, wait_status_t * status));
-
-#define WAITPID(status) (DOS_wait (status))
-#define BREAK break
-
 DEFUN_STD_HANDLER (sighnd_dead_subprocess,
   {
   })
+#endif /* UNUSED */
 
 /* PC specific low-level interrupt hooks. */
 /* Control-Break Interrupt. */
@@ -1218,6 +1252,8 @@ DEFUN_VOID (DOS_restore_interrupts)
 
 /* Signal Bindings */
 
+#ifdef UNUSED
+
 static void
 DEFUN (bind_handler, (signo, handler),
        int signo AND
@@ -1227,13 +1263,15 @@ DEFUN (bind_handler, (signo, handler),
       && ((handler != ((Tsignal_handler) sighnd_stop)))
       && ((current_handler (signo)) == SIG_DFL))
     INSTALL_HANDLER (signo, handler);
+  return;
 }
+
+#endif /* UNUSED */
 
 void
 DEFUN_VOID (DOS_initialize_signals)
 {
-  stop_signal_hook = 0;
-  subprocess_death_hook = 0;
+#ifdef UNUSED
   initialize_signal_descriptors ();
   bind_handler (SIGINT,		sighnd_control_c);
   bind_handler (SIGTERM,	sighnd_control_g);
@@ -1262,6 +1300,9 @@ DEFUN_VOID (DOS_initialize_signals)
 	scan += 1;
       }
   }
-  DOS_initialize_interrupts();
-  DOS_install_interrupts();
+#else /* UNUSED */
+  DOS_initialize_interrupts ();
+  DOS_install_interrupts ();
+#endif /* UNUSED */
+  return;
 }

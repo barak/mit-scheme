@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosinsn.h,v 1.1 1992/05/05 06:55:13 jinx Exp $
+$Id: dosinsn.h,v 1.2 1992/10/07 06:23:28 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -35,6 +35,18 @@ MIT in each case. */
 #ifndef _DOSINSN_H_
 #  define _DOSINSN_H_
 
+#ifdef getDS
+#undef getDS
+#endif
+
+#ifdef getCS
+#undef getCS
+#endif
+
+#ifdef getSS
+#undef getSS
+#endif
+
 extern unsigned short getCS (void);
 extern unsigned short getDS (void);
 extern unsigned short getSS (void);

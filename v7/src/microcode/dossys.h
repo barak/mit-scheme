@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dossys.h,v 1.1 1992/05/05 06:55:13 jinx Exp $
+$Id: dossys.h,v 1.2 1992/10/07 06:23:34 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -50,35 +50,45 @@ typedef struct version_struct
 typedef int handle_t;
 
 /* Console Character I/O */
-extern int dos_keyboard_input_available_p(void);
-extern unsigned char dos_get_keyboard_character(void);
-extern int dos_poll_keyboard_character(unsigned char *result);
-extern void dos_console_write_character(unsigned char character);
-extern int dos_console_write(void * vbuffer, size_t nsize);
+#ifdef UNUSED
+extern int dos_keyboard_input_available_p (void);
+extern unsigned char dos_get_keyboard_character (void);
+#endif /* UNUSED */
+extern int dos_poll_keyboard_character (unsigned char *result);
+extern void dos_console_write_character (unsigned char character);
+extern int dos_console_write (void * vbuffer, size_t nsize);
 
 /* Handle I/O */
-extern handle_t dos_open_file_with_handle(unsigned char * name, int mode);
-extern int dos_close_file_with_handle(handle_t handle);
+#ifdef UNUSED
+extern handle_t dos_open_file_with_handle (unsigned char * name, int mode);
+extern int dos_close_file_with_handle (handle_t handle);
 extern int dos_read_file_with_handle
 	    (handle_t handle, void * buffer, size_t nbytes);
 extern int dos_write_file_with_handle
 	    (handle_t handle, void * buffer, size_t nbytes);
-extern int dos_get_device_status_with_handle(handle_t handle);
-extern int dos_set_device_status_with_handle(handle_t handle, int mode);
+extern int dos_get_device_status_with_handle (handle_t handle);
+extern int dos_set_device_status_with_handle (handle_t handle, int mode);
+#endif /* UNUSED */
 
 /* Misc */
-extern void dos_get_version(version_t * version_number);
-extern void dos_reset_drive(void);
-extern int dos_set_verify_flag(int verify_p);
-extern int dos_set_ctrl_c_check_flag(int check_p);
-extern int dos_rename_file(const char *old, const char *new);
-extern int dos_get_machine_name(char *name);
-extern int dos_drive_letter_to_number(char letter);
-extern char dos_drive_number_to_letter(int number);
-extern int dos_get_default_drive(int drive_number);
-extern int dos_set_default_drive(int drive_number);
-extern int dos_pathname_as_filename(char * name, char * buffer);
-extern int dos_split_filename(char * name, char * device, char * filename);
+extern void dos_get_version (version_t * version_number);
+#ifdef UNUSED
+extern void dos_reset_drive (void);
+extern int dos_set_verify_flag (int verify_p);
+#endif /* UNUSED */
+extern int dos_set_ctrl_c_check_flag (int check_p);
+extern int dos_rename_file (const char *old, const char *new);
+#ifdef UNUSED
+extern int dos_get_machine_name (char *name);
+#endif /* UNUSED */
+extern int dos_drive_letter_to_number (char letter);
+#ifdef UNUSED
+extern char dos_drive_number_to_letter (int number);
+extern int dos_get_default_drive (int drive_number);
+#endif /* UNUSED */
+extern int dos_set_default_drive (int drive_number);
+extern int dos_pathname_as_filename (char * name, char * buffer);
+extern int dos_split_filename (char * name, char * device, char * filename);
 
 /* Keyboard control */
 
@@ -86,7 +96,7 @@ extern dos_boolean DOS_keyboard_intercepted_p;
 extern int dos_restore_kbd_hook (void);
 extern int dos_install_kbd_hook (void);
 extern unsigned char dos_set_kbd_modifier_mask (unsigned char);
-
+
 /* DOS Interrupt Vectors */
 #define DOS_INTVECT_DIVIDE_BY_0		(0x00)
 #define DOS_INTVECT_SINGLE_STEP		(0x01)

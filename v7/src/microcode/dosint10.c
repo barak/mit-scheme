@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosint10.c,v 1.2 1992/09/15 20:35:42 jinx Exp $
+$Id: dosint10.c,v 1.3 1992/10/07 06:23:28 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -43,23 +43,17 @@ MIT in each case. */
   The coordinates (0x00,0x00) is the upper-left corner.
 */
 
-#include "dosint10.h"
 #include "scheme.h"
 #include "prims.h"
+#include "msdos.h"
+#include "dosint10.h"
 
-#define DEBUG_WRITE(message) \
-  {\
-    FILE *debug_file = fopen("\\tmp\\debug.fil","ab");\
-    fputs(message,debug_file);\
-    fputs("\n",debug_file);\
-    fclose(debug_file);\
-  }
-
 /**********************************************************************/
 
 #define MAP map_ansi_sys_color_to_bios_attribute
 
-int map_ansi_sys_color_to_bios_attribute(int iANSIcode)
+static int 
+map_ansi_sys_color_to_bios_attribute (int iANSIcode)
 {
   /*
     ANSI.SYS color mappings (ISO 6429 standard) to video memory attributes:
@@ -114,7 +108,7 @@ int REVERSE_VIDEO = UNINITIALIZED;
 extern unsigned long RealModeBufferParagraph;
 extern char *pRealModeBuffer;
 
-void 
+static void 
 bios_initialize_variables (void)
 /*
   If valid environment variables exist, use values. Otherwise
@@ -130,43 +124,40 @@ bios_initialize_variables (void)
     DISPLAY_ROWS = tty_y_size-1;
 
   if (FOREGROUND_ATTRIBUTE == UNINITIALIZED)
+  {
+    psTemp = (getenv ("EDWIN_FOREGROUND"));
+    if (NULL == psTemp)
+      FOREGROUND_ATTRIBUTE = _0B(0,0,0,0,0,1,1,1); /* White */
+    else
     {
-      psTemp = getenv("EDWIN_FOREGROUND");
-      if (NULL == psTemp)
-        {
-          FOREGROUND_ATTRIBUTE = _0B(0,0,0,0,0,1,1,1); /* White */
-        }
+      if (atoi(psTemp) == 0)
+	FOREGROUND_ATTRIBUTE = _0B(0,0,0,0,0,1,1,1); /* White */
       else
-        {
-          if (atoi(psTemp) == 0)
-            FOREGROUND_ATTRIBUTE = _0B(0,0,0,0,0,1,1,1); /* White */
-          else
-            FOREGROUND_ATTRIBUTE = MAP(atoi(psTemp));
-        }
+	FOREGROUND_ATTRIBUTE = MAP(atoi(psTemp));
     }
+  }
 
   if (BACKGROUND_ATTRIBUTE == UNINITIALIZED)
+  {
+    psTemp = (getenv ("EDWIN_BACKGROUND"));
+    if (NULL == psTemp)
+      BACKGROUND_ATTRIBUTE = _0B(0,0,0,0,0,0,0,0) << 4; /* Black */
+    else
     {
-      psTemp = getenv("EDWIN_BACKGROUND");
-      if (NULL == psTemp)
-        {
-          BACKGROUND_ATTRIBUTE = _0B(0,0,0,0,0,0,0,0) << 4; /* Black */
-        }
+      if (atoi(psTemp) == 0)
+	BACKGROUND_ATTRIBUTE = _0B(0,0,0,0,0,0,0,0) << 4; /* Black */
       else
-        {
-          if (atoi(psTemp) == 0)
-            BACKGROUND_ATTRIBUTE = _0B(0,0,0,0,0,0,0,0) << 4; /* Black */
-          else
-            BACKGROUND_ATTRIBUTE = MAP(atoi(psTemp)) << 4;
-        }
+	BACKGROUND_ATTRIBUTE = MAP(atoi(psTemp)) << 4;
     }
+  }
 
   NORMAL_VIDEO = (FOREGROUND_ATTRIBUTE | BACKGROUND_ATTRIBUTE);
   REVERSE_VIDEO = ((FOREGROUND_ATTRIBUTE << 4) | (BACKGROUND_ATTRIBUTE >> 4));
   return;
 }
-
-void bios_uninitialize_variables(void)
+
+static void 
+bios_uninitialize_variables (void)
 {
   DISPLAY_COLUMNS = UNINITIALIZED;
   DISPLAY_ROWS = UNINITIALIZED;
@@ -174,370 +165,309 @@ void bios_uninitialize_variables(void)
   BACKGROUND_ATTRIBUTE = UNINITIALIZED;
   NORMAL_VIDEO = UNINITIALIZED;
   REVERSE_VIDEO = UNINITIALIZED;
+  return;
+}
+
+static void 
+bios__scroll_up_rectangle (int iBlankAttribute, int iLines,
+			   int iUpperLeftX, int iUpperLeftY,
+			   int iBottomRightX, int iBottomRightY)
+{
+  union REGS regs;
+
+  regs.h.ah = 0x06;
+  regs.h.al = iLines;
+  regs.h.bh = iBlankAttribute;
+  regs.h.ch = iUpperLeftY;
+  regs.h.cl = iUpperLeftX;
+  regs.h.dh = iBottomRightY;
+  regs.h.dl = iBottomRightX;
+  int10h (&regs, &regs);
+  return;
+}
+
+static void 
+bios__scroll_down_rectangle (int iBlankAttribute, int iLines,
+			     int iUpperLeftX, int iUpperLeftY,
+			     int iBottomRightX, int iBottomRightY)
+{
+  union REGS regs;
+
+  regs.h.ah = 0x07;
+  regs.h.al = iLines;
+  regs.h.bh = iBlankAttribute;
+  regs.h.ch = iUpperLeftY;
+  regs.h.cl = iUpperLeftX;
+  regs.h.dh = iBottomRightY;
+  regs.h.dl = iBottomRightX;
+  int10h (&regs, &regs);
+  return;
+}
+
+static void 
+bios__set_cursor_position (int iPageNumber, int iColumn, int iRow)
+{
+  union REGS regs;
+
+  regs.h.ah = 0x02;
+  regs.h.bh = iPageNumber;
+  regs.h.dh = iRow;
+  regs.h.dl = iColumn;
+  int10h (&regs, &regs);
+  return;
 }
 
-void bios__scroll_up_rectangle(int iBlankAttribute, int iLines,
-  int iUpperLeftX, int iUpperLeftY,
-  int iBottomRightX, int iBottomRightY)
+static void 
+bios__write_char_with_attribute (char cChar, int iPageNumber,
+				 int iAttribute, int iRepeatCount)
+     /* Note: no special characters are recognized */
 {
-  union REGS rIn;
-  union REGS rOut;
+  union REGS regs;
 
-  rIn.h.ah = 0x06;
-  rIn.h.al = iLines;
-  rIn.h.bh = iBlankAttribute;
-  rIn.h.ch = iUpperLeftY;
-  rIn.h.cl = iUpperLeftX;
-  rIn.h.dh = iBottomRightY;
-  rIn.h.dl = iBottomRightX;
-  int86(0x10,&rIn,&rOut);
+  regs.h.ah = 0x09;
+  regs.h.al = cChar;
+  regs.h.bh = iPageNumber;
+  regs.h.bl = iAttribute;
+  regs.x.cx = iRepeatCount;
+  int10h (&regs, &regs);
+  return;
 }
 
-void bios__scroll_down_rectangle(int iBlankAttribute, int iLines,
-  int iUpperLeftX, int iUpperLeftY,
-  int iBottomRightX, int iBottomRightY)
-{
-  union REGS rIn;
-  union REGS rOut;
-
-  rIn.h.ah = 0x07;
-  rIn.h.al = iLines;
-  rIn.h.bh = iBlankAttribute;
-  rIn.h.ch = iUpperLeftY;
-  rIn.h.cl = iUpperLeftX;
-  rIn.h.dh = iBottomRightY;
-  rIn.h.dl = iBottomRightX;
-  int86(0x10,&rIn,&rOut);
-}
-
-void bios__set_cursor_position(int iPageNumber, int iColumn, int iRow)
-{
-  union REGS rIn;
-  union REGS rOut;
-
-  rIn.h.ah = 0x02;
-  rIn.h.bh = iPageNumber;
-  rIn.h.dh = iRow;
-  rIn.h.dl = iColumn;
-  int86(0x10,&rIn,&rOut);
-}
-
-void bios__write_char_with_attribute(char cChar, int iPageNumber,
-  int iAttribute, int iRepeatCount)
-  /* Note: no special characters are recognized */
-{
-  union REGS rIn;
-  union REGS rOut;
-
-  rIn.h.ah = 0x09;
-  rIn.h.al = cChar;
-  rIn.h.bh = iPageNumber;
-  rIn.h.bl = iAttribute;
-  rIn.x.cx = iRepeatCount;
-
-  int86(0x10,&rIn,&rOut);
-}
-
-void bios__teletype_output_char(char cChar, int iPageNumber,
-  int iGraphicsModeForegroundColor)
+static void 
+bios__teletype_output_char (char cChar, int iPageNumber,
+			    int iGraphicsModeForegroundColor)
   /* Note: CR/LF/BS/BEL recognized */
 {
-  union REGS rIn;
-  union REGS rOut;
+  union REGS regs;
 
-  rIn.h.ah = 0x0E;
-  rIn.h.al = cChar;
-  rIn.h.bh = iPageNumber;
-  rIn.h.bl = iGraphicsModeForegroundColor;
-
-  int86(0x10,&rIn,&rOut);
+  regs.h.ah = 0x0E;
+  regs.h.al = cChar;
+  regs.h.bh = iPageNumber;
+  regs.h.bl = iGraphicsModeForegroundColor;
+  int10h (&regs, &regs);
+  return;
 }
 
-void bios__set_video_mode(int iModeNumber)
+static void 
+bios__set_video_mode (int iModeNumber)
 {
-  union REGS rIn;
-  union REGS rOut;
+  union REGS regs;
 
-  rIn.h.ah = 0x00;
-  rIn.h.al = iModeNumber;
-  int86(0x10,&rIn,&rOut);
+  regs.h.ah = 0x00;
+  regs.h.al = iModeNumber;
+  int10h (&regs, &regs);
+  return;
 }
 
-void bios__set_cursor_size(int iBlinkMode, int iTopScan, int iBottomScan)
+static void
+bios__set_cursor_size (int iBlinkMode, int iTopScan, int iBottomScan)
 {
-  union REGS rIn;
-  union REGS rOut;
+  union REGS regs;
 
-  rIn.h.ah = 0x01;
-  rIn.h.ch = (((iBlinkMode & _0B(0,0,0,0,0,0,1,1)) << 5)
-	      | (iTopScan & _0B(0,0,0,1,1,1,1,1)));
-  rIn.h.cl = (iBottomScan & _0B(0,0,0,1,1,1,1,1));
-  int86(0x10,&rIn,&rOut);
+  regs.h.ah = 0x01;
+  regs.h.ch = (((iBlinkMode & _0B(0,0,0,0,0,0,1,1)) << 5)
+	       | (iTopScan & _0B(0,0,0,1,1,1,1,1)));
+  regs.h.cl = (iBottomScan & _0B(0,0,0,1,1,1,1,1));
+  int10h (&regs, &regs);
+  return;
 }
 
-void bios_clear_line(int iCol, int iRow, int iFirstUnusedX)
+static void 
+bios_clear_line (int iCol, int iRow, int iFirstUnusedX)
 {
-  bios__scroll_up_rectangle(NORMAL_VIDEO, 0, iCol, iRow, iFirstUnusedX, iRow);
+  bios__scroll_up_rectangle (NORMAL_VIDEO, 0, iCol, iRow, iFirstUnusedX, iRow);
+  return;
 }
 
-void bios_clear_region(int iUpperLeftX, int iUpperLeftY,
-  int iBottomRightX, int iBottomRightY)
+static void
+bios_clear_region (int iUpperLeftX, int iUpperLeftY,
+		   int iBottomRightX, int iBottomRightY)
 {
-  bios__scroll_up_rectangle(NORMAL_VIDEO, 0,
-    iUpperLeftX, iUpperLeftY, iBottomRightX, iBottomRightY);
+  bios__scroll_up_rectangle (NORMAL_VIDEO, 0,
+			     iUpperLeftX, iUpperLeftY,
+			     iBottomRightX, iBottomRightY);
+  return;
 }
 
-void bios_clear_screen(void)
+static void
+bios_clear_screen (void)
 {
-  bios__scroll_up_rectangle(NORMAL_VIDEO, 0x00,
-    0, 0, DISPLAY_COLUMNS, DISPLAY_ROWS);
+  bios__scroll_up_rectangle (NORMAL_VIDEO, 0x00,
+			     0, 0, DISPLAY_COLUMNS, DISPLAY_ROWS);
+  return;
 }
 
-void bios_get_cursor_position(int *x, int *y)
+static void
+bios_get_cursor_position (int * x, int * y)
 {
-  union REGS rIn;
-  union REGS rOut;
+  union REGS regs;
 
-  rIn.h.ah = 0x03;
-  rIn.h.bh = 0x00; /* page number */
-  int86(0x10,&rIn,&rOut);
-  *y = rOut.h.dh;
-  *x = rOut.h.dl;
+  regs.h.ah = 0x03;
+  regs.h.bh = 0x00; /* page number */
+  int10h (&regs, &regs);
+  *y = regs.h.dh;
+  *x = regs.h.dl;
+  return;
 }
 
-void bios_write_string_attributed(char *pString, long lLength, int iColumn,
-  int iRow, int iSingleAttribute)
+static void
+bios_write_string_attributed (char * pString, long lLength, int iColumn,
+			      int iRow, int iSingleAttribute)
 {
-  strncpy(pRealModeBuffer,pString,lLength);
-  asm_bios__write_string_attr(1,0,iSingleAttribute,lLength,
-    iColumn,iRow,((RealModeBufferParagraph << 16) + 0));
+  strncpy (pRealModeBuffer, pString, lLength);
+  asm_bios__write_string_attr (1, 0, iSingleAttribute, lLength,
+			       iColumn, iRow,
+			       ((RealModeBufferParagraph << 16) + 0));
+  return;
 }
 
-#ifdef USE_MAIN
-
-int main()
+DEFINE_PRIMITIVE ("BIOS:BEEP", Prim_bios_beep, 0, 0, 0)
 {
- char BIGSTR[] = \
-    "12345678911234567892123456789312345678941234567895123456789612345678971234567898"
-    "þþ2þþþþþþ1þþþþþþþþþ2þþþþþþþþþ3þþþþþþþþþ4þþþþþþþþþ5þþþþþþþþþ6þþþþþþþþþ7þþþþþþþþþ8"
-    "12345678911234567892123456789312345678941234567895123456789612345678971234567898"
-    "þþ4þþþþþþ1þþþþþþþþþ2þþþþþþþþþ3þþþþþþþþþ4þþþþþþþþþ5þþþþþþþþþ6þþþþþþþþþ7þþþþþþþþþ8"
-    "12345678911234567892123456789312345678941234567895123456789612345678971234567898"
-    "þþ6þþþþþþ1þþþþþþþþþ2þþþþþþþþþ3þþþþþþþþþ4þþþþþþþþþ5þþþþþþþþþ6þþþþþþþþþ7þþþþþþþþþ8"
-    "12345678911234567892123456789312345678941234567895123456789612345678971234567898"
-    "þþ8þþþþþþ1þþþþþþþþþ2þþþþþþþþþ3þþþþþþþþþ4þþþþþþþþþ5þþþþþþþþþ6þþþþþþþþþ7þþþþþþþþþ8"
-    "12345678911234567892123456789312345678941234567895123456789612345678971234567898"
-    "þþ10þþþþþ1þþþþþþþþþ2þþþþþþþþþ3þþþþþþþþþ4þþþþþþþþþ5þþþþþþþþþ6þþþþþþþþþ7þþþþþþþþþ8"
-    "12345678911234567892123456789312345678941234567895123456789612345678971234567898"
-    "þþ12þþþþþ1þþþþþþþþþ2þþþþþþþþþ3þþþþþþþþþ4þþþþþþþþþ5þþþþþþþþþ6þþþþþþþþþ7þþþþþþþþþ8"
-    "12345678911234567892123456789312345678941234567895123456789612345678971234567898"
-    "þþ14þþþþþ1þþþþþþþþþ2þþþþþþþþþ3þþþþþþþþþ4þþþþþþþþþ5þþþþþþþþþ6þþþþþþþþþ7þþþþþþþþþ8"
-    "12345678911234567892123456789312345678941234567895123456789612345678971234567898"
-    "þþ16þþþþþ1þþþþþþþþþ2þþþþþþþþþ3þþþþþþþþþ4þþþþþþþþþ5þþþþþþþþþ6þþþþþþþþþ7þþþþþþþþþ8"
-    "12345678911234567892123456789312345678941234567895123456789612345678971234567898"
-    "þþ18þþþþþ1þþþþþþþþþ2þþþþþþþþþ3þþþþþþþþþ4þþþþþþþþþ5þþþþþþþþþ6þþþþþþþþþ7þþþþþþþþþ8"
-    "12345678911234567892123456789312345678941234567895123456789612345678971234567898"
-    "þþ20þþþþþ1þþþþþþþþþ2þþþþþþþþþ3þþþþþþþþþ4þþþþþþþþþ5þþþþþþþþþ6þþþþþþþþþ7þþþþþþþþþ8"
-    "12345678911234567892123456789312345678941234567895123456789612345678971234567898"
-    "þþ22þþþþþ1þþþþþþþþþ2þþþþþþþþþ3þþþþþþþþþ4þþþþþþþþþ5þþþþþþþþþ6þþþþþþþþþ7þþþþþþþþþ8"
-    "12345678911234567892123456789312345678941234567895123456789612345678971234567898"
-    "þþ24þþþþþ1þþþþþþþþþ2þþþþþþþþþ3þþþþþþþþþ4þþþþþþþþþ5þþþþþþþþþ6þþþþþþþþþ7þþþþþþþþþ8"
-    "1234567891123456789212345678931234567894123456789512345678961234567897123456789";
-
-  int i,j,k;
-
-  printf(BIGSTR);
-  bios_initialize();
-
-  for (j=0; j<=24; j++)
-    {
-      for (i=0; i<=79; i++)
-        {
-          bios__set_cursor_position(0x00,i,j);
-          bios__write_char_with_attribute(i+j,0x00,_0B(0,0,0,1,1,1,0,0),0x01);
-        }
-    }
-
-  for (i=0; i<=24; i++)
-  {
-    bios__scroll_down_rectangle(i*4, 1, 0, 0, 39, 24);
-    bios__scroll_up_rectangle(i*4, 1, 40, 0, 79, 24);
-  }
-
-  for (i=0; i<=24; i=i+2)
-  {
-    bios_clear_line(i);
-  }
-
-  for (i=0; i<=255; i++)
-  {
-    bios__teletype_output_char(i,0x00,0x00);
-  }
-
-  {
-    char *pcTemp;
-    pcTemp = BIGSTR;
-    while (0x00 != *pcTemp)
-      {
-        bios__teletype_output_char(*pcTemp,0x00,0x00);
-        pcTemp++;
-      }
-  }
-
-  printf("\n%s",BIGSTR);
-  for (i=5; i<75; i=i+4)
-  {
-    bios_clear_region(i,5,i+2,20);
-  }
-
+  PRIMITIVE_HEADER (0);
+  bios__teletype_output_char ('\007', 0, 0x00);
+  PRIMITIVE_RETURN (SHARP_T);
 }
 
-#endif /* USE_MAIN */
-
-DEFINE_PRIMITIVE("BIOS:BEEP", Prim_bios_beep, 0, 0, 0)
+DEFINE_PRIMITIVE ("BIOS:CLEAR-LINE!", Prim_bios_clear_line, 3, 3, 0)
 {
-  PRIMITIVE_HEADER(0);
-  bios__teletype_output_char('\007',0,0x00);
-  PRIMITIVE_RETURN(SHARP_T);
+  PRIMITIVE_HEADER (3);
+  bios_clear_line ((arg_integer (1)), (arg_integer (2)), (arg_integer (3)));
+  PRIMITIVE_RETURN (SHARP_T);
 }
 
-DEFINE_PRIMITIVE("BIOS:CLEAR-LINE!", Prim_bios_clear_line, 3, 3, 0)
-{
-  PRIMITIVE_HEADER(3);
-  bios_clear_line(arg_integer(1),arg_integer(2),arg_integer(3));
-  PRIMITIVE_RETURN(SHARP_T);
-}
-
-DEFINE_PRIMITIVE("BIOS:CLEAR-RECTANGLE!", Prim_bios_clear_rectangle, 5, 5, 0)
+DEFINE_PRIMITIVE ("BIOS:CLEAR-RECTANGLE!", Prim_bios_clear_rectangle, 5, 5, 0)
   /* xl xu yl yu highlight */
 {
-  PRIMITIVE_HEADER(5);
-  bios_clear_region(arg_integer(1),arg_integer(3),arg_integer(2),arg_integer(4));
-  PRIMITIVE_RETURN(SHARP_T);
+  PRIMITIVE_HEADER (5);
+  bios_clear_region ((arg_integer (1)), (arg_integer (3)),
+		     (arg_integer (2)), (arg_integer (4)));
+  PRIMITIVE_RETURN (SHARP_T);
 }
 
-DEFINE_PRIMITIVE("BIOS:CLEAR-SCREEN!", Prim_bios_clear_screen, 0, 0, 0)
+DEFINE_PRIMITIVE ("BIOS:CLEAR-SCREEN!", Prim_bios_clear_screen, 0, 0, 0)
 {
-  PRIMITIVE_HEADER(0);
-  bios_clear_screen();
-  PRIMITIVE_RETURN(SHARP_T);
+  PRIMITIVE_HEADER (0);
+  bios_clear_screen ();
+  PRIMITIVE_RETURN (SHARP_T);
 }
 
-DEFINE_PRIMITIVE("BIOS:DISCARD!", Prim_bios_discard, 0, 0, 0)
+DEFINE_PRIMITIVE ("BIOS:DISCARD!", Prim_bios_discard, 0, 0, 0)
 {
-  PRIMITIVE_HEADER(0);
-  bios_uninitialize_variables();
-  PRIMITIVE_RETURN(SHARP_T);
+  PRIMITIVE_HEADER (0);
+  bios_uninitialize_variables ();
+  PRIMITIVE_RETURN (SHARP_T);
 }
 
-DEFINE_PRIMITIVE("BIOS:ENTER!", Prim_bios_enter, 0, 0, 0)
+DEFINE_PRIMITIVE ("BIOS:ENTER!", Prim_bios_enter, 0, 0, 0)
 {
-  PRIMITIVE_HEADER(0);
-  bios_initialize_variables ();
-  bios_clear_screen();
-  bios__set_cursor_position(0,0,DISPLAY_ROWS);
-  PRIMITIVE_RETURN(SHARP_T);
+  PRIMITIVE_HEADER (0);
+  bios_initialize_variables  ();
+  bios_clear_screen ();
+  bios__set_cursor_position (0, 0, DISPLAY_ROWS);
+  PRIMITIVE_RETURN (SHARP_T);
 }
 
-DEFINE_PRIMITIVE("BIOS:EXIT!", Prim_bios_exit, 0, 0, 0)
+DEFINE_PRIMITIVE ("BIOS:EXIT!", Prim_bios_exit, 0, 0, 0)
 {
-  PRIMITIVE_HEADER(0);
-  bios__set_cursor_position(0,0,DISPLAY_ROWS);
-  PRIMITIVE_RETURN(SHARP_T);
+  PRIMITIVE_HEADER (0);
+  bios__set_cursor_position (0, 0, DISPLAY_ROWS);
+  PRIMITIVE_RETURN (SHARP_T);
 }
-
+
 /*
   flush!, modeline-event!, and discretionary-flush have no meaning
   for BIOS output, no corresponding primitives have been defined.
 */
 
-DEFINE_PRIMITIVE("BIOS:SCROLL-LINES-DOWN!", Prim_bios_scroll_lines_down, 5, 5, 0)
+DEFINE_PRIMITIVE ("BIOS:SCROLL-LINES-DOWN!", Prim_bios_scroll_lines_down,
+		  5, 5, 0)
   /* xl xu yl yu amount */
 {
-  PRIMITIVE_HEADER(5);
-  bios__scroll_down_rectangle(NORMAL_VIDEO,arg_integer(5),
-    arg_integer(1),arg_integer(3),arg_integer(2),arg_integer(4));
-  PRIMITIVE_RETURN(SHARP_T);
+  PRIMITIVE_HEADER (5);
+  bios__scroll_down_rectangle (NORMAL_VIDEO, (arg_integer (5)),
+			       (arg_integer (1)), (arg_integer (3)),
+			       (arg_integer (2)), (arg_integer (4)));
+  PRIMITIVE_RETURN (SHARP_T);
 }
 
-DEFINE_PRIMITIVE("BIOS:SCROLL-LINES-UP!", Prim_bios_scroll_lines_up, 5, 5, 0)
+DEFINE_PRIMITIVE ("BIOS:SCROLL-LINES-UP!", Prim_bios_scroll_lines_up, 5, 5, 0)
 {
-  PRIMITIVE_HEADER(5);
-  bios__scroll_up_rectangle(NORMAL_VIDEO,arg_integer(5),
-    arg_integer(1),arg_integer(3),arg_integer(2),arg_integer(4));
-  PRIMITIVE_RETURN(SHARP_T);
+  PRIMITIVE_HEADER (5);
+  bios__scroll_up_rectangle (NORMAL_VIDEO, (arg_integer (5)),
+			     (arg_integer (1)), (arg_integer (3)),
+			     (arg_integer (2)), (arg_integer (4)));
+  PRIMITIVE_RETURN (SHARP_T);
 }
 
 /*
   console-wrap-update! has no meaning for BIOS output, no primitive defined.
 */
 
-DEFINE_PRIMITIVE("BIOS:WRITE-CHAR!", Prim_bios_write_char, 2, 2, 0)
+DEFINE_PRIMITIVE ("BIOS:WRITE-CHAR!", Prim_bios_write_char, 2, 2, 0)
   /* char highlight */
 {
-  PRIMITIVE_HEADER(2);
-  if (BOOLEAN_ARG(2))
-    {
-      int x,y;
-      bios_get_cursor_position(&x,&y);
-      bios__scroll_up_rectangle(REVERSE_VIDEO,1,x,y,x,y);
-      bios__teletype_output_char(arg_ascii_char(1),0,0);
-    }
-  else
-    bios__teletype_output_char(arg_ascii_char(1),0,0);
-  PRIMITIVE_RETURN(SHARP_T);
-}
-
-DEFINE_PRIMITIVE("BIOS:WRITE-CURSOR!", Prim_bios_write_cursor, 2, 2, 0)
-{
-  PRIMITIVE_HEADER(2);
-  bios__set_cursor_position(0,arg_integer(1),arg_integer(2));
-  PRIMITIVE_RETURN(SHARP_T);
-}
-
-DEFINE_PRIMITIVE("BIOS:WRITE-SUBSTRING!", Prim_bios_write_substring, 4, 4, 0)
-  /* string start end highlight */
-{
-  long start, end;
-  PRIMITIVE_HEADER(4);
-
-  start = arg_integer (2);
-  end = arg_integer (3);
-  if (start > end)
-    PRIMITIVE_RETURN(SHARP_F);
-
+  PRIMITIVE_HEADER (2);
+  if (BOOLEAN_ARG (2))
   {
     int x, y;
 
     bios_get_cursor_position (&x, &y);
-    bios_write_string_attributed (((STRING_ARG(1)) + start), (end - start),
-                                  x, y,
-                                  ((BOOLEAN_ARG(4))
-                                   ? REVERSE_VIDEO
-                                   : NORMAL_VIDEO));
+    bios__scroll_up_rectangle (REVERSE_VIDEO, 1, x, y, x, y);
+    bios__teletype_output_char ((arg_ascii_char (1)), 0, 0);
   }
-
-  PRIMITIVE_RETURN(SHARP_T);
+  else
+    bios__teletype_output_char ((arg_ascii_char (1)), 0, 0);
+  PRIMITIVE_RETURN (SHARP_T);
 }
 
-DEFINE_PRIMITIVE("BIOS:SET-VIDEO-MODE!", Prim_bios_set_video_mode, 1, 1, 0)
+DEFINE_PRIMITIVE ("BIOS:WRITE-CURSOR!", Prim_bios_write_cursor, 2, 2, 0)
 {
-  PRIMITIVE_HEADER(1);
-  bios__set_video_mode(arg_integer(1));
-  pc_gestalt_screen_x_size();
-  pc_gestalt_screen_y_size();
-  bios_initialize_variables();
-  bios_clear_screen();
-  bios__set_cursor_position(0,0,DISPLAY_ROWS);
-  PRIMITIVE_RETURN(SHARP_T);
+  PRIMITIVE_HEADER (2);
+  bios__set_cursor_position (0, (arg_integer (1)), (arg_integer (2)));
+  PRIMITIVE_RETURN (SHARP_T);
+}
+
+DEFINE_PRIMITIVE ("BIOS:WRITE-SUBSTRING!", Prim_bios_write_substring, 4, 4, 0)
+  /* string start end highlight */
+{
+  int x, y;
+  long start, end;
+  PRIMITIVE_HEADER (4);
+
+  start = (arg_integer (2));
+  end = (arg_integer (3));
+  if (start > end)
+    PRIMITIVE_RETURN (SHARP_F);
+
+  bios_get_cursor_position (&x, &y);
+  bios_write_string_attributed (((STRING_ARG(1)) + start), (end - start),
+				x, y,
+				((BOOLEAN_ARG (4))
+				 ? REVERSE_VIDEO
+				 : NORMAL_VIDEO));
+
+  PRIMITIVE_RETURN (SHARP_T);
 }
 
-DEFINE_PRIMITIVE("BIOS:SET-CURSOR-SIZE!",Prim_bios_set_cursor_size, 3, 3, 0)
+DEFINE_PRIMITIVE ("BIOS:SET-VIDEO-MODE!", Prim_bios_set_video_mode, 1, 1, 0)
 {
-  extern void pc_gestalt_x_size(void);
-  extern void pc_gestalt_y_size(void);
+  extern void pc_gestalt_screen_x_size (void);
+  extern void pc_gestalt_screen_y_size (void);
+  PRIMITIVE_HEADER (1);
 
-  PRIMITIVE_HEADER(3);
-  bios__set_cursor_size(arg_integer(1),arg_integer(2),arg_integer(3));
-  PRIMITIVE_RETURN(SHARP_T);
+  bios__set_video_mode (arg_integer(1));
+  pc_gestalt_screen_x_size ();
+  pc_gestalt_screen_y_size ();
+  bios_initialize_variables ();
+  bios_clear_screen ();
+  bios__set_cursor_position (0, 0, DISPLAY_ROWS);
+  PRIMITIVE_RETURN (SHARP_T);
+}
+
+DEFINE_PRIMITIVE ("BIOS:SET-CURSOR-SIZE!", Prim_bios_set_cursor_size, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  bios__set_cursor_size ((arg_integer (1)), (arg_integer (2)),
+			 (arg_integer (3)));
+  PRIMITIVE_RETURN (SHARP_T);
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosio.c,v 1.1 1992/05/05 06:55:13 jinx Exp $
+$Id: dosio.c,v 1.2 1992/10/07 06:23:29 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -36,7 +36,7 @@ MIT in each case. */
 #include "dosio.h"
 #include "osterm.h"
 
-#ifdef __STDC__
+#ifndef fileno
 #define fileno(fp)	((fp)->_file)
 #endif
 
@@ -52,6 +52,7 @@ DEFUN_VOID (DOS_channel_close_all)
   for (channel = 0; (channel < OS_channel_table_size); channel += 1)
     if (CHANNEL_OPEN_P (channel))
       OS_channel_close_noerror (channel);
+  return;
 }
 
 void
@@ -73,6 +74,7 @@ DEFUN_VOID (DOS_initialize_channels)
   }
   add_reload_cleanup (DOS_channel_close_all);
   OS_channels_registered = 0;
+  return;
 }
 
 void
@@ -81,6 +83,7 @@ DEFUN_VOID (DOS_reset_channels)
   DOS_free (channel_table);
   channel_table = 0;
   OS_channel_table_size = 0;
+  return;
 }
 
 Tchannel
@@ -88,13 +91,13 @@ DEFUN_VOID (channel_allocate)
 {
   Tchannel channel = 0;
   while (1)
-    {
-      if (channel == OS_channel_table_size)
-	error_out_of_channels ();
-      if (CHANNEL_CLOSED_P (channel))
-	return (channel);
-      channel += 1;
-    }
+  {
+    if (channel == OS_channel_table_size)
+      error_out_of_channels ();
+    if (CHANNEL_CLOSED_P (channel))
+      return (channel);
+    channel += 1;
+  }
 }
 
 int
@@ -107,31 +110,34 @@ void
 DEFUN (OS_channel_close, (channel), Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
-    {
-      if (CHANNEL_REGISTERED (channel))
-	OS_channel_unregister (channel);
-      STD_VOID_SYSTEM_CALL
-	(syscall_close, (DOS_close (CHANNEL_DESCRIPTOR (channel))));
-      MARK_CHANNEL_CLOSED (channel);
-    }
+  {
+    if (CHANNEL_REGISTERED (channel))
+      OS_channel_unregister (channel);
+    STD_VOID_SYSTEM_CALL
+      (syscall_close, (DOS_close (CHANNEL_DESCRIPTOR (channel))));
+    MARK_CHANNEL_CLOSED (channel);
+  }
+  return;
 }
 
 void
 DEFUN (OS_channel_close_noerror, (channel), Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
-    {
-      if (CHANNEL_REGISTERED (channel))
-	OS_channel_unregister (channel);
-      DOS_close (CHANNEL_DESCRIPTOR (channel));
-      MARK_CHANNEL_CLOSED (channel);
-    }
+  {
+    if (CHANNEL_REGISTERED (channel))
+      OS_channel_unregister (channel);
+    DOS_close (CHANNEL_DESCRIPTOR (channel));
+    MARK_CHANNEL_CLOSED (channel);
+  }
+  return;
 }
 
 static void
 DEFUN (channel_close_on_abort_1, (cp), PTR cp)
 {
   OS_channel_close (* ((Tchannel *) cp));
+  return;
 }
 
 void
@@ -140,6 +146,7 @@ DEFUN (OS_channel_close_on_abort, (channel), Tchannel channel)
   Tchannel * cp = (dstack_alloc (sizeof (Tchannel)));
   (*cp) = (channel);
   transaction_record_action (tat_abort, channel_close_on_abort_1, cp);
+  return;
 }
 
 enum channel_type
@@ -169,16 +176,32 @@ DEFUN (OS_terminal_drain_output, (channel), Tchannel channel)
   return;
 }
 
+extern int EXFUN (dos_read, (int, PTR, size_t, int, int));
+
+int
+DEFUN (dos_read, (fd, buffer, nbytes, buffered_p, blocking_p),
+       int fd AND PTR buffer AND size_t nbytes AND int buffered_p AND int blocking_p)
+{
+  if (nbytes == 0)
+    return (0);
+  else if (fd == (fileno (stdin)))
+    return (console_read (buffer, nbytes, buffered_p, blocking_p));
+  else
+    return (DOS_read (fd, buffer, nbytes));
+}
+
+int
 DEFUN (dos_channel_read, (channel, buffer, nbytes),
        Tchannel channel AND PTR buffer AND size_t nbytes)
 {
   if (nbytes == 0)
     return 0;
-  else if (CHANNEL_DESCRIPTOR (channel) == fileno(stdin))
-    return console_read(buffer, nbytes, 
-			CHANNEL_BUFFERED(channel), CHANNEL_BLOCKING_P(channel));
+  else if ((CHANNEL_DESCRIPTOR (channel)) == (fileno (stdin)))
+    return (console_read (buffer, nbytes, 
+			  (CHANNEL_BUFFERED (channel)),
+			  (CHANNEL_BLOCKING_P (channel))));
   else
-    return DOS_read ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes);
+    return (DOS_read ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes));
 }
 
 long
@@ -187,7 +210,7 @@ DEFUN (OS_channel_read, (channel, buffer, nbytes),
 {
   while (1)
   {
-    long scr = dos_channel_read(channel, buffer, nbytes);    
+    long scr = (dos_channel_read (channel, buffer, nbytes));
     if (scr < 0)
     {
       if (errno == ERRNO_NONBLOCK)
@@ -206,16 +229,16 @@ static int
 DEFUN (dos_write, (fd, buffer, nbytes),
        int fd AND CONST unsigned char * buffer AND size_t nbytes)
 {
-  return ( (fd == fileno(stdout))
-	   ? dos_console_write(buffer, nbytes)
-	   : write(fd, buffer, nbytes) );
+  return ((fd == (fileno (stdout)))
+	  ? (dos_console_write (buffer, nbytes))
+	  : (DOS_write (fd, buffer, nbytes)));
 }
 
 #define Syscall_Write(fd, buffer, size, so_far)		\
 do							\
 { size_t _size = (size);				\
   int _written;						\
-  _written = dos_write((fd), (buffer), (_size));	\
+  _written = dos_write ((fd), (buffer), (_size));	\
   if (_size != _written)				\
     return ((_written < 0) ? -1 : (so_far) + _written); \
 } while (0)
@@ -228,22 +251,21 @@ DEFUN (text_write, (fd, buffer, nbytes),
   CONST unsigned char *start;
   size_t i;
 
-  for (i=0, start=buffer; i < nbytes; start = &buffer[i])
+  for (i = 0, start = buffer; i < nbytes; start = &buffer[i])
   { size_t len;
 
-    while ((i < nbytes)&&(buffer[i] != LINEFEED)) i++;
+    while ((i < nbytes) && (buffer[i] != LINEFEED)) i++;
     len = (&buffer[i] - start);
 
-    Syscall_Write(fd, start, len, (i - len));
+    Syscall_Write (fd, start, len, (i - len));
 
-    if ((i < nbytes)&&(buffer[i] == LINEFEED))
+    if ((i < nbytes) && (buffer[i] == LINEFEED))
     { /* We are sitting on a linefeed. Write out CRLF */
       /* This backs out incorrectly if only CR is written out */
-      Syscall_Write(fd, crlf, sizeof(crlf), i);
+      Syscall_Write (fd, crlf, (sizeof (crlf)), i);
       i = i + 1; /* Skip over special character */
     }
   }
-
   return nbytes;
 }
 
@@ -253,15 +275,17 @@ long
 DEFUN (OS_channel_write, (channel, buffer, nbytes),
        Tchannel channel AND CONST PTR buffer AND size_t nbytes)
 {
-  if (nbytes == 0) return (0);
+  if (nbytes == 0)
+    return (0);
 
   while (1)
-  { int fd, scr;
+  {
+    int fd, scr;
 
     fd = CHANNEL_DESCRIPTOR(channel);
-    scr = ((CHANNEL_COOKED(channel))
-	   ? text_write(fd, buffer, nbytes)
-	   : dos_write(fd, buffer, nbytes));
+    scr = ((CHANNEL_COOKED (channel))
+	   ? (text_write (fd, buffer, nbytes))
+	   : (dos_write (fd, buffer, nbytes)));
 	      
     if (scr < 0)
     {
@@ -274,7 +298,6 @@ DEFUN (OS_channel_write, (channel, buffer, nbytes),
     return scr;
   }
 }
-
 
 size_t
 DEFUN (OS_channel_read_load_file, (channel, buffer, nbytes),
@@ -466,18 +489,19 @@ DEFUN (OS_channel_unregister, (channel), Tchannel channel)
     }
 }
 
-
+
 /* No SELECT in DOS */
 long
 DEFUN (OS_channel_select_then_read, (channel, buffer, nbytes),
        Tchannel channel AND
        PTR buffer AND
        size_t nbytes)
-{ /* We can't really select amonst channels in DOS, but still need
-     to keep track of whether the read was interrupted. */
+{ /* We can't really select amongst channels in DOS, but still need
+     to keep track of whether the read was interrupted.
+   */
   while (1)
   {
-    long scr = dos_channel_read(channel, buffer, nbytes);
+    long scr = (dos_channel_read (channel, buffer, nbytes));
 
     if (scr < 0)
     {
@@ -486,7 +510,8 @@ DEFUN (OS_channel_select_then_read, (channel, buffer, nbytes),
       else if (errno == EINTR)
 	return -4;
       else
-      { DOS_prim_check_errno (syscall_read);
+      {
+	DOS_prim_check_errno (syscall_read);
 	continue;
       }
     }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosconio.c,v 1.7 1992/09/24 01:34:59 cph Exp $
+$Id: dosconio.c,v 1.8 1992/10/07 06:23:25 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -326,7 +326,7 @@ long
 DEFUN (console_read, (buffer, nbytes, buffered_p, blocking_p),
        char * buffer AND unsigned nbytes AND int buffered_p AND int blocking_p)
 { 
-  System_Error_Reset();
+  System_Error_Reset ();
   do
   { /* Get all pending characters into the buffer */
     while (typeahead_available_p ())
@@ -350,15 +350,6 @@ DEFUN (console_read, (buffer, nbytes, buffered_p, blocking_p),
   } while (blocking_p);	/* Keep reading for blocking channel. */
   /* This means there is nothing available, don't block */
   System_Error_Return (ERRNO_NONBLOCK);
-}
-
-extern int EXFUN
- (text_write, (int fd AND CONST unsigned char * buffer AND size_t nbytes));
-
-void
-DEFUN (console_write_string, (string), void * string)
-{
-  text_write ((fileno(stdout)), string, strlen((char *) string));
   return;
 }
 
