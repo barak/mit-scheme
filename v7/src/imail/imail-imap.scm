@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.16 2000/05/04 17:40:04 cph Exp $
+;;; $Id: imail-imap.scm,v 1.17 2000/05/04 22:21:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -185,7 +185,8 @@
 (define memoized-imap-connections '())
 
 (define (guarantee-imap-connection-open connection)
-  (if (not (imap-connection-port connection))
+  (if (imap-connection-port connection)
+      #f
       (let ((host (imap-connection-host connection))
 	    (ip-port (imap-connection-ip-port connection))
 	    (user-id (imap-connection-user-id connection)))
@@ -205,7 +206,8 @@
 	  (if (not (memq 'IMAP4REV1 (imap:command:capability connection)))
 	      (begin
 		(close-imap-connection connection)
-		(error "Server doesn't support IMAP4rev1:" host)))))))
+		(error "Server doesn't support IMAP4rev1:" host))))
+	#t)))
 
 (define (close-imap-connection connection)
   (let ((port (imap-connection-port connection)))
@@ -224,12 +226,10 @@
   (connection define accessor)
   (allowed-flags define standard)
   (permanent-flags define standard)
-  (uidvalidity define standard
-	       initial-value #f)
-  (first-unseen define standard
-		initial-value #f)
-  (messages define standard
-	    initializer (lambda () (make-vector 0))))
+  (permanent-keywords? define standard)
+  (uidvalidity define standard)
+  (first-unseen define standard)
+  (messages define standard initial-value '#()))
 
 (define-class <imap-message> (<message>)
   (uid define accessor)
@@ -245,20 +245,8 @@
       (constructor 'UNCACHED 'UNCACHED (map imap-flag->imail-flag flags)
 		   '() uid length envelope))))
 
-(define (imap-flag->imail-flag flag)
-  (let ((s (symbol->string flag)))
-    (if (string-prefix? "\\" s)
-	(string-tail s 1)
-	s)))
-
-(define (imail-flag->imap-flag flag folder)
-  (intern
-   (if (flags-member? flag (imap-folder-allowed-flags folder))
-       (string-append "\\" flag)
-       flag)))
-
 (let ((demand-loader
-       (lambda (generic slot-name item-name transform)
+       (lambda (generic slot-name item-name noun transform)
 	 (let ((modifier (slot-modifier <imap-message> slot-name)))
 	   (define-method generic ((message <imap-message>))
 	     (if (eq? 'UNCACHED (call-next-method message))
@@ -267,25 +255,74 @@
 		  (transform
 		   (translate-string-line-endings
 		    (car
-		     (imap:command:uid-fetch (imap-folder-connection
-					      (message-folder message))
-					     (imap-message-uid message)
-					     (list item-name)))))))
+		     (let ((index (message-index message)))
+		       ((imail-message-wrapper "Reading " noun
+					       " for message "
+					       (number->string (+ index 1)))
+			(lambda ()
+			  (imap:command:fetch (imap-folder-connection
+					       (message-folder message))
+					      index
+					      (list item-name))))))))))
 	     (call-next-method message))))))
-  (demand-loader message-header-fields 'HEADER-FIELDS 'RFC822.HEADER
+  (demand-loader message-header-fields 'HEADER-FIELDS 'RFC822.HEADER "headers"
 		 (lambda (string)
 		   (lines->header-fields
 		    (except-last-pair! (string->lines string)))))
-  (demand-loader message-body 'BODY 'RFC822.TEXT identity-procedure))
-
-(define-method set-message-flags! ((message <imap-message>) flags)
-  ;; **** synchronize here.
-  ???
-  (call-next-method message flags))
+  (demand-loader message-body 'BODY 'RFC822.TEXT "body" identity-procedure))
 
+(define-method set-message-flags! ((message <imap-message>) flags)
+  (call-next-method message flags)
+  (let ((old-flags (message-flags message))
+	(folder (message-folder message))
+	(index (message-index message)))
+    (let ((connection (imap-folder-connection folder))
+	  (diff
+	   (lambda (f1 f2)
+	     (map imail-flag->imap-flag
+		  (list-transform-positive (flags-difference f1 f2)
+		    (let ((flags (imap-folder-permanent-flags folder))
+			  (keywords? (imap-folder-permanent-keywords? folder)))
+		      (lambda (flag)
+			(if (string-prefix? "\\" flag)
+			    (flags-member? flag flags)
+			    keywords?))))))))
+      (imap:command:store-flags+ connection index (diff flags old-flags))
+      (imap:command:store-flags- connection index (diff old-flags flags)))))
+
+(define (flags-difference f1 f2)
+  (if (pair? f1)
+      (if (flags-member? (car f1) f2)
+	  (flags-difference (cdr f1) f2)
+	  (cons (car f1) (flags-difference (cdr f1) f2)))
+      '()))
+
+(define (imap-flag->imail-flag flag)
+  (case flag
+    ((\ANSWERED) "answered")
+    ((\DELETED) "deleted")
+    ((\SEEN) "seen")
+    (else (symbol->string flag))))
+
+(define (imail-flag->imap-flag flag)
+  (cond ((string-ci=? flag "answered") '\ANSWERED)
+	((string-ci=? flag "deleted") '\DELETED)
+	((string-ci=? flag "seen") '\SEEN)
+	(else (intern flag))))
+
+(define (reset-imap-folder! folder)
+  (without-interrupts
+   (lambda ()
+     (for-each-vector-element (imap-folder-messages folder) detach-message)
+     (set-imap-folder-allowed-flags! folder '())
+     (set-imap-folder-permanent-flags! folder '())
+     (set-imap-folder-permanent-keywords?! folder #f)
+     (set-imap-folder-uidvalidity! folder #f)
+     (set-imap-folder-first-unseen! folder #f)
+     (set-imap-folder-messages! folder '#()))))
+
 (define (set-imap-folder-length! folder count)
-  (let ((v (imap-folder-messages folder))
-	(connection (imap-folder-connection folder)))
+  (let ((v (imap-folder-messages folder)))
     (let ((v* (vector-grow v count #f)))
       (fill-messages-vector folder v* (vector-length v))
       (set-imap-folder-messages! folder v*)))
@@ -301,8 +338,10 @@
   (let ((connection (imap-folder-connection folder))
 	(end (vector-length messages)))
     (do ((responses
-	  (imap:command:fetch-range connection 0 end
-				    '(UID FLAGS RFC822.SIZE ENVELOPE))
+	  ((imail-message-wrapper "Reading message outlines")
+	   (lambda ()
+	     (imap:command:fetch-range connection 0 end
+				       '(UID FLAGS RFC822.SIZE ENVELOPE))))
 	  (cdr responses))
 	 (index start (fix:+ index 1)))
 	((fix:= index end))
@@ -341,15 +380,25 @@
 ;;;; Folder operations
 
 (define-method %open-folder ((url <imap-url>))
-  (let ((connection (get-imap-connection url)))
-    (let ((folder (make-imap-folder url connection)))
-      (select-imap-folder connection folder)
-      (if (not (imap:command:select connection (imap-url-mailbox url)))
-	  (select-imap-folder connection #f))
-      folder)))
+  (let ((folder (make-imap-folder url (get-imap-connection url))))
+    (guarantee-imap-folder-open folder)
+    folder))
+
+(define (guarantee-imap-folder-open folder)
+  (let ((connection (imap-folder-connection folder)))
+    (and (guarantee-imap-connection-open connection)
+	 (begin
+	   (reset-imap-folder! folder)
+	   (select-imap-folder connection folder)
+	   (if (not
+		(imap:command:select connection
+				     (imap-url-mailbox (folder-url folder))))
+	       (select-imap-folder connection #f))
+	   #t))))
 
 (define-method close-folder ((folder <imap-folder>))
-  (close-imap-connection (imap-folder-connection folder)))
+  (close-imap-connection (imap-folder-connection folder))
+  (reset-imap-folder! folder))
 
 (define-method folder-presentation-name ((folder <imap-folder>))
   (imap-url-mailbox (folder-url folder)))
@@ -359,33 +408,29 @@
   #t)
 
 (define-method folder-length ((folder <imap-folder>))
+  (guarantee-imap-folder-open folder)
   (vector-length (imap-folder-messages folder)))
 
 (define-method %get-message ((folder <imap-folder>) index)
-  (let ((messages (imap-folder-messages folder)))
-    (or (vector-ref messages index)
-	(let ((message
-	       (apply make-imap-message
-		      (imap:command:fetch (imap-folder-connection folder)
-					  index
-					  '(UID FLAGS RFC822.SIZE
-						ENVELOPE)))))
-	  (vector-set! messages index message)
-	  (set-message-index! message index)
-	  message))))
+  (guarantee-imap-folder-open folder)
+  (vector-ref (imap-folder-messages folder) index))
 
 (define-method first-unseen-message ((folder <imap-folder>))
+  (guarantee-imap-folder-open folder)
   (let ((unseen (imap-folder-first-unseen folder)))
     (and unseen
 	 (get-message folder unseen))))
 
 (define-method append-message ((folder <imap-folder>) (message <message>))
+  (guarantee-imap-folder-open folder)
   ???)
 
 (define-method expunge-deleted-messages ((folder <imap-folder>))
-  ???)
+  (guarantee-imap-folder-open folder)
+  (imap:command:expunge (imap-folder-connection folder)))
 
 (define-method search-folder ((folder <imap-folder>) criteria)
+  (guarantee-imap-folder-open folder)
   ???)
 
 (define-method folder-sync-status ((folder <imap-folder>))
@@ -399,7 +444,8 @@
   unspecific)
 
 (define-method discard-folder-cache ((folder <imap-folder>))
-  (close-imap-connection (imap-folder-connection folder)))
+  (close-imap-connection (imap-folder-connection folder))
+  (reset-imap-folder! folder))
 
 ;;;; IMAP command invocation
 
@@ -409,10 +455,15 @@
 				 connection 'CAPABILITY)))
 
 (define (imap:command:login connection user-id passphrase)
-  (imap:command:no-response connection 'LOGIN user-id passphrase))
+  ((imail-message-wrapper "Logging in as " user-id)
+   (lambda ()
+     (imap:command:no-response connection 'LOGIN user-id passphrase))))
 
 (define (imap:command:select connection mailbox)
-  (imap:response:ok? (imap:command:no-response connection 'SELECT mailbox)))
+  ((imail-message-wrapper "Select mailbox " mailbox)
+   (lambda ()
+     (imap:response:ok?
+      (imap:command:no-response connection 'SELECT mailbox)))))
 
 (define (imap:command:fetch connection index items)
   (let ((response
@@ -445,6 +496,19 @@
     (map (lambda (item)
 	   (imap:response:fetch-attribute response item))
 	 items)))
+
+(define (imap:command:store-flags+ connection index flags)
+  (if (pair? flags)
+      (imap:command:no-response connection 'STORE index '+FLAGS.SILENT flags)))
+
+(define (imap:command:store-flags- connection index flags)
+  (if (pair? flags)
+      (imap:command:no-response connection 'STORE index '-FLAGS.SILENT flags)))
+
+(define (imap:command:expunge connection)
+  ((imail-message-wrapper "Expunging messages")
+   (lambda ()
+     (imap:command:no-response connection 'EXPUNGE))))
 
 (define (imap:command:noop connection)
   (imap:command:no-response connection 'NOOP))
@@ -625,14 +689,14 @@
 	    (- (imap:response-code:unseen code) 1))
 	   (folder-modified! folder)))
 	((imap:response-code:permanentflags? code)
-	 (let ((folder (selected-imap-folder connection)))
+	 (let ((pflags (imap:response-code:permanentflags code))
+	       (folder (selected-imap-folder connection)))
+	   (set-imap-folder-permanent-keywords?!
+	    folder
+	    (if (memq '\* pflags) #t #f))
 	   (set-imap-folder-permanent-flags!
 	    folder
-	    (map (lambda (flag)
-		   (if (eq? '\* flag)
-		       'USER-DEFINED
-		       (imap-flag->imail-flag flag)))
-		 (imap:response-code:permanentflags code)))
+	    (map imap-flag->imail-flag (delq '\* pflags)))
 	   (folder-modified! folder)))
 	((imap:response-code:alert? code)
 	 (imail-present-user-alert
