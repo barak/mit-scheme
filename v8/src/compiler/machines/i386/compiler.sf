@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf,v 1.1 1995/10/25 19:19:32 ssmith Exp $
+$Id: compiler.sf,v 1.2 1995/10/25 19:27:00 ssmith Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -65,7 +65,7 @@ MIT in each case. |#
       (sf-and-load '("base/switch") '(COMPILER))
       (sf-and-load '("base/macros") '(COMPILER MACROS))
       ((access initialize-package! (->environment '(COMPILER MACROS))))
-      (sf-and-load '("machines/spectrum/decls") '(COMPILER DECLARATIONS))
+      (sf-and-load '("machines/i386/decls") '(COMPILER DECLARATIONS))
       (let ((environment (->environment '(COMPILER DECLARATIONS))))
 	(set! (access source-file-expression environment) "*.scm")
 	((access initialize-package! environment)))
@@ -74,19 +74,19 @@ MIT in each case. |#
       (fluid-let ((sf/default-syntax-table
 		   (access compiler-syntax-table
 			   (->environment '(COMPILER MACROS)))))
-	(sf-and-load '("machines/spectrum/machin") '(COMPILER)))
+	(sf-and-load '("machines/i386/machin") '(COMPILER)))
       (fluid-let ((sf/default-declarations
 		   '((integrate-external "insseq")
 		     (integrate-external "machin")
 		     (usual-definition (set expt)))))
-	(sf-and-load '("machines/spectrum/assmd") '(COMPILER ASSEMBLER)))
+	(sf-and-load '("machines/i386/assmd") '(COMPILER ASSEMBLER)))
       (sf-and-load '("back/syntax") '(COMPILER LAP-SYNTAXER))
-      (sf-and-load '("machines/spectrum/coerce" "back/asmmac"
-					      "machines/spectrum/insmac")
+      (sf-and-load '("machines/i386/coerce" "back/asmmac"
+					      "machines/i386/insmac")
 		   '(COMPILER LAP-SYNTAXER))
       (sf-and-load '("base/scode") '(COMPILER))
       (sf-and-load '("base/pmerly") '(COMPILER PATTERN-MATCHER/EARLY))
-      (sf-and-load '("machines/spectrum/inerly" "back/syerly")
+      (sf-and-load '("machines/i386/inerly" "back/syerly")
 		   '(COMPILER LAP-SYNTAXER))))
 
 (if (lexical-unreferenceable? (->environment '()) '%matchup)
@@ -107,7 +107,7 @@ MIT in each case. |#
 		  (load/suppress-loading-message? false))
 	(write-string "\n\n---- Pre-loading instruction sets ----")
 	(for-each (lambda (name)
-		    (load (string-append "machines/spectrum/" name ".scm")
+		    (load (string-append "machines/i386/" name ".scm")
 			  '(COMPILER LAP-SYNTAXER)
 			  early-syntax-table))
 		  '("instr1" "instr2" "instr3")))))
