@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.5 1992/12/01 22:07:02 gjr Exp $
+$Id: compiler.pkg,v 1.6 1993/02/25 02:18:00 gjr Exp $
 
-Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
+Copyright (c) 1992-1993 Digital Equipment Corporation (D.E.C.)
 
 This software was developed at the Digital Equipment Corporation
 Cambridge Research Laboratory.  Permission to copy this software, to
@@ -599,6 +599,7 @@ case.
 	 )
   (parent (compiler))
   (export (compiler)
+	  available-machine-registers
 	  fits-in-16-bits-signed?
 	  fits-in-16-bits-unsigned?
 	  top-16-of-32-bits-only?

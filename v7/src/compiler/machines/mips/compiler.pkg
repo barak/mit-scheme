@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.12 1992/11/18 03:52:03 gjr Exp $
+$Id: compiler.pkg,v 1.13 1993/02/25 02:16:39 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -604,6 +604,7 @@ MIT in each case. |#
 	 )
   (parent (compiler))
   (export (compiler)
+	  available-machine-registers
 	  fits-in-16-bits-signed?
 	  fits-in-16-bits-unsigned?
 	  top-16-bits-only?
@@ -660,6 +661,7 @@ MIT in each case. |#
   (export (compiler top-level)
 	  assemble))
 
+#|
 (define-package (compiler disassembler)
   (files "machines/mips/mips"
 	 "machines/mips/dassm1"
@@ -677,3 +679,4 @@ MIT in each case. |#
 	  dbg-label/external?
 	  dbg-label/name
 	  dbg-labels/find-offset))
+|#

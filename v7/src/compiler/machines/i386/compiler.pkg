@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.14 1992/11/18 03:50:07 gjr Exp $
+$Id: compiler.pkg,v 1.15 1993/02/25 02:15:14 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -603,6 +603,7 @@ MIT in each case. |#
 	 )
   (parent (compiler))
   (export (compiler)
+	  available-machine-registers
 	  lap-generator/match-rtl-instruction
 	  lap:make-entry-point
 	  lap:make-label-statement
@@ -656,6 +657,7 @@ MIT in each case. |#
   (export (compiler top-level)
 	  assemble))
 
+#|
 (define-package (compiler disassembler)
   (files "machines/i386/dassm1"
 	 "machines/i386/dassm2"
@@ -672,3 +674,4 @@ MIT in each case. |#
 	  dbg-label/external?
 	  dbg-label/name
 	  dbg-labels/find-offset))
+|#
