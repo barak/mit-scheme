@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.37 2004/10/28 22:39:56 cph Exp $
+$Id: sfile.scm,v 14.38 2004/10/28 22:53:28 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1999,2001,2003,2004 Massachusetts Institute of Technology
@@ -258,9 +258,19 @@ USA.
 
 (define (pathname-type->mime-type type)
   (and (string? type)
-       (let ((string (os/suffix-mime-type type)))
-	 (and string
-	      (string->mime-type string)))))
+       (or (hash-table/get local-type-map type #f)
+	   (let ((string (os/suffix-mime-type type)))
+	     (and string
+		  (string->mime-type string))))))
+
+(define (associate-pathname-type-with-mime-type type mime-type)
+  (guarantee-string type 'ASSOCIATE-PATHNAME-TYPE-WITH-MIME-TYPE)
+  (guarantee-mime-type mime-type 'ASSOCIATE-PATHNAME-TYPE-WITH-MIME-TYPE)
+  (hash-table/put! local-type-map type mime-type))
+
+(define (disassociate-pathname-type-from-mime-type type)
+  (guarantee-string type 'DISASSOCIATE-PATHNAME-TYPE-FROM-MIME-TYPE)
+  (hash-table/remove! local-type-map type))
 
 (define-record-type <mime-type>
     (%%make-mime-type top-level subtype)
@@ -299,19 +309,19 @@ USA.
 (define interned-mime-types)
 (define unusual-interned-mime-types)
 (define char-set:mime-token)
+(define local-type-map)
+
 (define (initialize-package!)
   (set! interned-mime-types
-	(let ((e (vector-length top-level-mime-types)))
-	  (let ((v (make-vector e)))
-	    (do ((i 0 (fix:+ i 1)))
-		((not (fix:< i e)))
-	      (vector-set! v i (make-eq-hash-table)))
-	    v)))
-  (set! unusual-interned-mime-types
-	(make-equal-hash-table))
+	(vector-map (lambda (token) token (make-eq-hash-table))
+		    top-level-mime-types))
+  (set! unusual-interned-mime-types (make-equal-hash-table))
   (set! char-set:mime-token
 	(char-set-difference (ascii-range->char-set #x21 #x7F)
 			     (string->char-set "()<>@,;:\\\"/[]?=")))
+  (set! local-type-map (make-string-hash-table))
+  (associate-pathname-type-with-mime-type "scm"
+					  (make-mime-type 'TEXT 'X-SCHEME))
   unspecific)
 
 (define (mime-type->string mime-type)

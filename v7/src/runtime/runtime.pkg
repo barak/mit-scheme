@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.503 2004/10/28 19:38:18 cph Exp $
+$Id: runtime.pkg,v 14.504 2004/10/28 22:53:20 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -415,6 +415,7 @@ USA.
   (export ()
 	  <mime-type>
 	  allocate-temporary-file
+	  associate-pathname-type-with-mime-type
 	  call-with-temporary-file-pathname
 	  call-with-temporary-filename
 	  current-file-time
@@ -423,6 +424,7 @@ USA.
 	  delete-file
 	  delete-file-no-errors
 	  directory-file-names
+	  disassociate-pathname-type-from-mime-type
 	  error:not-mime-token
 	  error:not-mime-token-string
 	  error:not-mime-type
