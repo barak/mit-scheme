@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.29 1993/10/19 08:06:33 cph Exp $
+@comment $Id: scheme.texinfo,v 1.30 1993/10/19 23:46:58 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -4194,7 +4194,7 @@ allows for infinities, NaNs, and non-flonum representations.
 @defvr {variable+} flonum-unparser-cutoff
 This variable controls the action of @code{number->string} when
 @var{number} is a flonum (and consequently controls all printing of
-flonums).  This variable can have the following values:
+flonums); it can have the following values:
 
 @itemize @bullet
 @item
@@ -4217,6 +4217,9 @@ result so that it is as accurate as possible.  For example:
 (fluid-let ((flonum-unparser-cutoff '(relative 5)))
   (number->string (* 4 (atan 1 1))))
                                     @result{} "3.1416"
+(fluid-let ((flonum-unparser-cutoff '(relative 5)))
+  (number->string (* 4000 (atan 1 1))))
+                                    @result{} "3141.6"
 @end group
 @end example
 
@@ -4562,6 +4565,19 @@ object; otherwise, it defaults to the value of the variable
 @code{*random-state*}.  This object is used to maintain the state of the
 pseudo-random-number generator and is altered as a side effect of the
 @code{random} procedure.
+
+@example
+@group
+(random 1.0)    @result{} .32744744667719056
+(random 1.0)    @result{} .01668326768172354
+(random 10)     @result{} 3
+(random 10)     @result{} 8
+(random 100)    @result{} 38
+(random 100)    @result{} 63
+(random 100/3)  @result{} 130501475769920525/6755399441055744
+(random 100/3)  @result{} 170571694016427575/13510798882111488
+@end group
+@end example
 @end deffn
 
 @defvr {variable+} *random-state*
@@ -4574,9 +4590,10 @@ side effect on this data structure.  This variable may be changed, using
 
 @deffn {procedure+} make-random-state [state]
 This procedure returns a new random-state object, suitable for use as
-the value of the variable @code{*random-state*}.  If @var{state} is not
-given or @code{#f}, @code{make-random-state} returns a @emph{copy} of
-the current random-number state object (the value of the variable
+the value of the variable @code{*random-state*}, or as the @var{state}
+argument to @code{random}.  If @var{state} is not given or @code{#f},
+@code{make-random-state} returns a @emph{copy} of the current
+random-number state object (the value of the variable
 @code{*random-state*}).  If @var{state} is a random-state object, a copy
 of that object is returned.  If @var{state} is @code{#t}, then a new
 random-state object is returned that has been ``randomly'' initialized
@@ -6968,7 +6985,7 @@ Like @code{reduce} except that it is right-associative.
 @end deffn
 
 @deffn {procedure+} fold-right procedure initial list
-Combines all of the elements of @var{list} using the binary operations
+Combines all of the elements of @var{list} using the binary operation
 @var{procedure}.  Unlike @code{reduce} and @code{reduce-right},
 @var{initial} is always used:
 
@@ -6979,28 +6996,32 @@ Combines all of the elements of @var{list} using the binary operations
 @end example
 
 @code{Fold-right} has interesting properties because it establishes a
-homomorphism between (@code{cons},@code{()}) and
-(@var{procedure},@var{initial}).  It can be thought of as replacing the
-pairs in the spine of the list with @var{procedure} and replacing the
-@code{()} at the end with @var{initial}.  Many the classical list
-processing procedures can be expressed in terms of @code{fold-right}, at
-least for the simple versions that take a fixed number of arguments.
+homomorphism between (@code{cons}, @code{()}) and (@var{procedure},
+@var{initial}).  It can be thought of as replacing the pairs in the
+spine of the list with @var{procedure} and replacing the @code{()} at
+the end with @var{initial}.  Many of the classical list processing
+procedures can be expressed in terms of @code{fold-right}, at least for
+the simple versions that take a fixed number of arguments:
 
 @example
-(define (copy-list list) (fold-right cons '() list))
+@group
+(define (copy-list list)
+  (fold-right cons '() list))
 
-(define (append list1 list2) (fold-right cons list2 list1))
+(define (append list1 list2)
+  (fold-right cons list2 list1))
 
 (define (map p list) 
   (fold-right (lambda (x r) (cons (p x) r)) '() list))
 
 (define (reverse items)
   (fold-right (lambda (x r) (append r (list x))) '() items))
+@end group
 @end example
 @end deffn
 
 @deffn {procedure+} fold-left procedure initial list
-Combines all the elements of @var{list} using the binary procedure
+Combines all the elements of @var{list} using the binary operation
 @var{procedure}.  Elements are combined starting with @var{initial} and
 then the elements of @var{list} from left to right.  Whereas
 @code{fold-right} is recursive in nature, capturing the essence of
@@ -7008,15 +7029,17 @@ then the elements of @var{list} from left to right.  Whereas
 is iterative in nature, combining the elements as the list is traversed.
 
 @example
+@group
 (fold-left list '() '(1 2 3 4))         @result{}  ((((() 1) 2) 3) 4)
 
-(define (length list) (fold-left 1+ 0 list))
+(define (length list)
+  (fold-left 1+ 0 list))
 
 (define (reverse items)
   (fold-left (lambda (x y) (cons y x)) () items))
+@end group
 @end example
 @end deffn
-
 
 @deffn {procedure+} there-exists? list predicate
 @var{Predicate} must be a procedure of one argument.  Applies
@@ -8891,8 +8914,8 @@ customizable growth parameters, and customizable hash functions.
 The average times for the insertion, deletion, and lookup operations on
 a hash table are bounded by a constant.  The space required by the table
 is linearly proportional to the number of associations in the table; in
-the current implementation the constant of proportionality is
-approximately five words per association.
+the current implementation, with the default resizing parameters, the
+constant of proportionality is approximately five words per association.
 
 @cindex run-time-loadable option
 @cindex option, run-time-loadable
@@ -8940,7 +8963,7 @@ said to hold its keys @dfn{strongly}; otherwise it holds its keys
 @findex eq?
 Returns a newly allocated hash table that accepts arbitrary objects as
 keys, and compares those keys with @code{eq?}.  The keys are held
-weakly.
+weakly.  These are the fastest of the standard hash tables.
 
 @findex make-symbol-hash-table
 For compatibility with old code, @code{make-symbol-hash-table} is a
@@ -8952,6 +8975,8 @@ synonym for this procedure.
 Returns a newly allocated hash table that accepts arbitrary objects as
 keys, and compares those keys with @code{eqv?}.  The keys are held
 weakly, except that booleans, characters, and numbers are held strongly.
+These hash tables are a little slower than those made by
+@code{make-eq-hash-table}.
 
 @findex make-object-hash-table
 For compatibility with old code, @code{make-object-hash-table} is a
@@ -8962,7 +8987,8 @@ synonym for this procedure.
 @findex equal?
 Returns a newly allocated hash table that accepts arbitrary objects as
 keys, and compares those keys with @code{equal?}.  The keys are held
-strongly.
+strongly.  These hash tables are quite a bit slower than those made by
+@code{make-eq-hash-table}.
 @end deffn
 
 @deffn {procedure+} make-string-hash-table [initial-size]
@@ -9005,15 +9031,18 @@ weakly.
 Some examples showing how some standard hash-table constructors could have
 been defined:
 
-@findex hash
-@findex modulo
+@findex eq-hash-mod
+@findex eq?
+@findex equal-hash-mod
+@findex equal?
 @findex string-hash-mod
 @findex string=?
 @example
 (define make-eq-hash-table
-  (weak-hash-table/constructor
-   (lambda (object modulus) (modulo (hash object) modulus))
-   eq?))
+  (weak-hash-table/constructor eq-hash-mod eq?))
+
+(define make-equal-hash-table
+  (strong-hash-table/constructor equal-hash-mod equal?))
 
 (define make-string-hash-table
   (strong-hash-table/constructor string-hash-mod string=?))
@@ -9071,8 +9100,11 @@ bounded by a constant.
 
 @deffn {procedure+} hash-table/count hash-table
 Returns the number of associations in @var{hash-table} as an exact
-non-negative integer.  The average and worst-case times required by this
-operation are bounded by a constant.
+non-negative integer.  If @var{hash-table} holds its keys weakly, this
+is a conservative upper bound that may count some associations whose
+keys have recently been reclaimed by the garbage collector.  The average
+and worst-case times required by this operation are bounded by a
+constant.
 @end deffn
 
 @deffn {procedure+} hash-table->alist hash-table
@@ -9080,22 +9112,22 @@ Returns the contents of @var{hash-table} as a newly allocated alist.
 Each element of the alist is a pair @code{(@var{key} . @var{datum})}
 where @var{key} is one of the keys of @var{hash-table}, and @var{datum}
 is its associated datum.  The average and worst-case times required by
-this operation are proportional to the number of associations in the
-table.
+this operation are linearly proportional to the number of associations
+in the table.
 @end deffn
 
 @deffn {procedure+} hash-table/key-list hash-table
 Returns a newly allocated list of the keys in @var{hash-table}.  The
-average and worst-case times required by this operation are proportional
-to the number of associations in the table.
+average and worst-case times required by this operation are linearly
+proportional to the number of associations in the table.
 @end deffn
 
 @deffn {procedure+} hash-table/datum-list hash-table
 Returns a newly allocated list of the datums in @var{hash-table}.  Each
 element of the list corresponds to one of the associations in
-@var{hash-table}, so if the table contains multiple associations with
-the same datum, so will this list.  The average and worst-case times
-required by this operation are proportional to the number of
+@var{hash-table}; if the table contains multiple associations with the
+same datum, so will this list.  The average and worst-case times
+required by this operation are linearly proportional to the number of
 associations in the table.
 @end deffn
 
@@ -9119,8 +9151,9 @@ preferable because it is faster.
 is invoked on the datum of the association.  Otherwise,
 @var{if-not-found} is invoked with no arguments.  In either case, the
 result yielded by the invoked procedure is returned as the result of
-@code{hash-table/lookup}.  The average time required by this operation
-is bounded by a constant.
+@code{hash-table/lookup} (@code{hash-table/lookup} @emph{reduces} into
+the invoked procedure, i.e.@: calls it tail-recursively).  The average
+time required by this operation is bounded by a constant.
 @end deffn
 
 @node Resizing of Hash Tables, Address Hashing, Basic Hash Table Operations, Hash Tables
@@ -9158,7 +9191,7 @@ parameters:
 
 @itemize @bullet
 @item
-The table's @var{initial-size} may be specified when the table is
+Each table's @var{initial-size} may be specified when the table is
 created.
 
 @item
@@ -9171,15 +9204,16 @@ of the table's physical size to its usable size.
 @end itemize
 
 @cindex initial size, of hash table
-If the programmer knows that the table will initially contain a
-specific number of items, @var{initial-size} can be given when the table
-is created.  If @var{initial-size} is an exact non-negative integer, it
+If the programmer knows that the table will initially contain a specific
+number of items, @var{initial-size} can be given when the table is
+created.  If @var{initial-size} is an exact non-negative integer, it
 specifies the initial usable size of the hash table; the table will not
 change size until the number of items in the table exceeds
-@var{initial-size}, after which the table will resize itself
-automatically in the usual way.  Otherwise, if @var{initial-size} is not
-given or is @code{#f}, the table is initialized to an unspecified size
-and automatic resizing is immediately enabled.
+@var{initial-size}, after which automatic resizing is enabled and
+@var{initial-size} no longer has any effect.  Otherwise, if
+@var{initial-size} is not given or is @code{#f}, the table is
+initialized to an unspecified size and automatic resizing is immediately
+enabled.
 
 @cindex rehash size, of hash table (defn)
 The @dfn{rehash size} specifies how much to increase the usable size of
@@ -9200,18 +9234,18 @@ The default rehash size of a newly constructed hash table is @code{2.0}.
 size is almost always undesirable; this option is provided solely for
 compatibility with the Common Lisp hash-table mechanism.  The reason for
 this has to do with the time penalty for resizing the hash table.  The
-time needed to resize a hash table is proportional to the number of
-associations in the table.  This resizing cost is @dfn{amortized} across
-the insertions required to fill the table to the point where it needs to
-grow again.  If the table grows by an amount proportional to the number
-of associations, then the cost of resizing and the increase in size are
-both proportional to the number of associations, so the @dfn{amortized
-cost} of an insertion operation is still bounded by a constant.
-However, if the table grows by a constant amount, this is not true: the
-amortized cost of an insertion is not bounded by a constant.  Thus,
-using a constant rehash size means that the average cost of an insertion
-increases proportionally with the number of associations in the hash
-table.
+time needed to resize a hash table is linearly proportional to the
+number of associations in the table.  This resizing cost is
+@dfn{amortized} across the insertions required to fill the table to the
+point where it needs to grow again.  If the table grows by an amount
+linearly proportional to the number of associations, then the cost of
+resizing and the increase in size are both linearly proportional to the
+number of associations, so the @dfn{amortized cost} of an insertion
+operation is still bounded by a constant.  However, if the table grows
+by a constant amount, this is not true: the amortized cost of an
+insertion is not bounded by a constant.  Thus, using a constant rehash
+size means that the average cost of an insertion increases
+proportionally with the number of associations in the hash table.
 
 @cindex rehash threshold, of hash table (defn)
 The @dfn{rehash threshold} is a real number, between zero exclusive and
@@ -9249,7 +9283,7 @@ Returns the rehash threshold of @var{hash-table}.
 Sets the rehash threshold of @var{hash-table} to @var{x} and returns an
 unspecified result.  This operation does not change the usable size of
 the table, but it usually changes the physical size of the table, which
-causes the associations to be rehashed.
+causes the table to be rehashed.
 @end deffn
 
 @node Address Hashing, Low-Level Hash Table Operations, Resizing of Hash Tables, Hash Tables
@@ -9265,13 +9299,13 @@ and takes the same amount of time for any object.
 
 The disadvantage of address hashing is that the garbage collector
 changes the addresses of most objects.  The hash-table implementation
-compensates for this disadvantage by noticing garbage collections and
-rehashing tables that use address hashing.  Thus, in order to use these
-procedures for key hashing, it is necessary to tell the hash-table
-implementation (by means of the @var{rehash-after-gc?} argument to the
-constructor-constructor procedure) that the hash numbers computed by
-your key-hashing procedure must be recomputed after a garbage
-collection.
+compensates for this disadvantage by automatically rehashing tables that
+use address hashing when garbage collections occur.  Thus, in order to
+use these procedures for key hashing, it is necessary to tell the
+hash-table implementation (by means of the @var{rehash-after-gc?}
+argument to the ``constructor-constructor'' procedure) that the hash
+numbers computed by your key-hashing procedure must be recomputed after
+a garbage collection.
 
 @deffn {procedure+} eq-hash object
 This procedure returns a hash number for @var{object}.  The result is
@@ -9324,7 +9358,9 @@ non-negative integer that is less than the modulus.
 
 @item key=?
 A equivalence predicate that accepts two keys and is true iff they are
-the same key.
+the same key.  If this predicate is true of two keys, then
+@var{key-hash} must return the same value for each of these keys (given
+the same modulus in both cases).
 
 @item make-entry
 A procedure that accepts a key and a datum as arguments and returns an
@@ -9351,7 +9387,7 @@ the entry's datum to be the object, and returns an unspecified
 result.
 
 @item rehash-after-gc?
-The optional argument that, if true, says that the values returned by
+An optional argument that, if true, says the values returned by
 @var{key-hash} might change after a garbage collection.  If so, the
 hash-table implementation arranges for the table to be rehashed when
 necessary.  (@pxref{Address Hashing}, for information about hash
@@ -9418,10 +9454,11 @@ but it may be used for other things as well.  In particular, it is used
 in the generation of the written representation for some objects
 (@pxref{Custom Output}).
 
-All of these procedures accept an optional argument called @var{table}.
-If given, this argument must be an object-hash table as constructed by
-@code{hash-table/make} (see below); this table contains the
-object-integer associations.  If not given, a default table is used.
+All of these procedures accept an optional argument called @var{table};
+this table contains the object-integer associations.  If given, this
+argument must be an object-hash table as constructed by
+@code{hash-table/make} (see below).  If not given, a default table is
+used.
 
 @deffn {procedure+} hash object [table]
 @findex eq?
