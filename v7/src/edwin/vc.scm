@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.36 2000/03/24 21:49:05 cph Exp $
+;;; $Id: vc.scm,v 1.37 2000/03/25 01:36:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -382,7 +382,7 @@ merge in the changes into your working copy."
 		    (let ((keep? (or keep? (vc-keep-workfiles? workfile))))
 		      (lambda (comment)
 			(vc-backend-register workfile revision comment keep?)
-			(vc-update-workfile-buffer workfile keep?)))
+			(vc-resync-workfile-buffer workfile keep?)))
 		    #f)))
 
 (define (vc-checkout master revision?)
@@ -435,7 +435,7 @@ merge in the changes into your working copy."
 						"*** empty log message ***"
 						comment)
 					    keep?)
-			(vc-update-workfile-buffer (vc-master-workfile master)
+			(vc-resync-workfile-buffer (vc-master-workfile master)
 						   keep?)))
 		    (lambda ()
 		      (event-distributor/invoke!
@@ -1767,6 +1767,10 @@ the value of vc-log-mode-hook."
 (define (trunk-revision? revision)
   (re-string-match "\\`[0-9]+\\.[0-9]+\\'" revision))
 
+(define (vc-get-revision revision? prompt)
+  (and revision?
+       (vc-normalize-revision (prompt-for-string prompt #f))))
+
 (define (vc-normalize-revision revision)
   (and revision
        (not (string-null? revision))
@@ -1786,20 +1790,6 @@ the value of vc-log-mode-hook."
 (define (vc-keep-workfiles? master)
   (or (eq? vc-type:cvs (vc-master-type master))
       (ref-variable vc-keep-workfiles (vc-workfile-buffer master))))
-
-(define (vc-update-workfile-buffer workfile keep?)
-  ;; Depending on VC-KEEP-WORKFILES, either revert the workfile
-  ;; buffer to show the updated workfile, or kill the buffer.
-  (let ((buffer (pathname->buffer workfile)))
-    (if buffer
-	(if keep?
-	    (vc-revert-buffer buffer #t)
-	    (kill-buffer buffer)))))
-
-(define (vc-get-revision revision prompt)
-  (vc-normalize-revision (if (or (not revision) (string? revision))
-			     revision
-			     (prompt-for-string prompt #f))))
 
 (define (->workfile object)
   (cond ((vc-master? object) (vc-master-workfile object))
@@ -1837,12 +1827,19 @@ the value of vc-log-mode-hook."
 		 error?)
 	    (editor-error "Aborted"))
 	(save-buffer buffer #f))))
-
+
+(define (vc-resync-workfile-buffer workfile keep?)
+  (let ((buffer (pathname->buffer workfile)))
+    (if buffer
+	(if keep?
+	    (vc-revert-buffer buffer #t)
+	    (kill-buffer buffer)))))
+
 (define (vc-revert-workfile-buffer master dont-confirm?)
   (let ((buffer (vc-workfile-buffer master)))
     (if buffer
 	(vc-revert-buffer buffer dont-confirm?))))
-
+
 (define (vc-revert-buffer buffer dont-confirm?)
   ;; Revert BUFFER, try to keep point and mark where user expects them
   ;; in spite of changes due to expanded version-control keywords.
