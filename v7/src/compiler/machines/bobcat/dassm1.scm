@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.6 1988/06/15 20:47:59 jrm Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.7 1988/07/16 21:47:47 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -90,7 +90,7 @@ MIT in each case. |#
          (lambda (info)
 	   (fluid-let ((disassembler/write-offsets? 	true)
 		       (disassembler/write-addresses? 	true)
-		       (disassembler/base-address (primitive-datum the-block)))
+		       (disassembler/base-address (object-datum the-block)))
 	     (newline)
 	     (newline)
 	     (disassembler/write-compiled-code-block the-block info)))
