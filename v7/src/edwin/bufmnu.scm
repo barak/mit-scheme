@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufmnu.scm,v 1.121 1992/11/12 18:00:15 cph Exp $
+;;;	$Id: bufmnu.scm,v 1.122 1992/11/13 21:04:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -132,7 +132,13 @@ d or k -- mark that buffer to be deleted, and move down.
 C-d -- mark that buffer to be deleted, and move up.
 x -- delete or save marked buffers.
 u -- remove all kinds of marks from current line.
-Delete -- back up a line and remove marks.")
+Delete -- back up a line and remove marks."
+  (local-set-variable! truncate-lines true)
+  (event-distributor/invoke! (ref-variable buffer-menu-mode-hook)))
+
+(define-variable buffer-menu-mode-hook
+  "An event distributor that is invoked when entering Buffer-menu mode."
+  (make-event-distributor))
 
 (define-key 'buffer-menu #\m 'buffer-menu-mark)
 (define-key 'buffer-menu #\q 'buffer-menu-quit)
