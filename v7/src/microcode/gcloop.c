@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.21 1987/01/22 14:26:27 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.22 1987/02/03 15:56:10 jinx Exp $
  *
  * This file contains the code for the most primitive part
  * of garbage collection.
@@ -38,11 +38,8 @@ MIT in each case. */
  */
 
 #include "scheme.h"
-#include "primitive.h"
 #include "gccode.h"
 
-#ifndef butterfly
-
 #define GC_Pointer(Code)					\
 Old = Get_Pointer(Temp);					\
 Code
@@ -154,240 +151,3 @@ Pointer **To_Pointer;
   *To_Pointer = To;
   return To;
 } /* GCLoop */
-
-/* Flip into unused heap */
-
-void GCFlip()
-{ Pointer *Temp;
-  Temp = Unused_Heap;
-  Unused_Heap = Heap_Bottom;
-  Heap_Bottom = Temp;
-  Temp = Unused_Heap_Top;
-  Unused_Heap_Top = Heap_Top;
-  Heap_Top = Temp;
-  Free = Heap_Bottom;
-  Set_Mem_Top(Heap_Top - GC_Reserve);
-  Weak_Chain = NIL;
-}
-
-/* Here is the code which "prunes" objects from weak cons cells.  See
-   the picture in gccode.h for a description of the structure built by
-   the GC.  This code follows the chain of weak cells (in old space) and
-   either updates the new copy's CAR with the relocated version of the
-   object, or replaces it with NIL.
-
-   This code could be implemented as a GC daemon, just like
-   REHASH-GC-DAEMON, but there is no "good" way of getting Weak_Chain
-   to it.  Note that Weak_Chain points to Old Space unless no weak
-   conses were found.
-
-   This code should be reimplemented so it does not need to look at both
-   old and new space at the same time.  Only the "real" garbage collector
-   should be allowed to do that.
-*/
-
-void Fix_Weak_Chain()
-{ fast Pointer *Old_Weak_Cell, *Scan, Old_Car, Temp, *Old, *Low_Constant;
-  Low_Constant = Constant_Space;
-  while (Weak_Chain != NIL)
-  { Old_Weak_Cell = Get_Pointer(Weak_Chain);
-    Scan = Get_Pointer(*Old_Weak_Cell++);
-    Weak_Chain = *Old_Weak_Cell;
-    Old_Car = *Scan;
-    Temp = Make_New_Pointer(Type_Code(Weak_Chain), Old_Car);
-    Weak_Chain = Make_New_Pointer(TC_NULL, Weak_Chain);
-
-    switch(GC_Type(Temp))
-    { case GC_Non_Pointer:
-        *Scan = Temp;
-	continue;
-
-      /* Normal pointer types, the broken heart is in the first word.
-         Note that most special types are treated normally here.
-	 The BH code updates *Scan if the object has been relocated.
-	 Otherwise it falls through and we replace it with a full NIL.
-	 Eliminating this assignment would keep old data (pl. of datum).
-       */
-
-      case GC_Cell:
-      case GC_Pair:
-      case GC_Triple:
-      case GC_Quadruple:
-      case GC_Vector:
-	Old = Get_Pointer(Old_Car);
-	if (Old >= Low_Constant)
-	{ *Scan = Temp;
-	  continue;
-	}
-	Normal_BH(false, continue);
-	*Scan = NIL;
-	continue;
-
-      case GC_Compiled:
-	Old = Get_Pointer(Old_Car);
-	if (Old >= Low_Constant)
-	{ *Scan = Temp;
-	  continue;
-	}
-	Compiled_BH(false, continue);
-	*Scan = NIL;
-	continue;
-
-      case GC_Special:
-      case GC_Undefined:
-      default:			/* Non Marked Headers and Broken Hearts */
-        fprintf(stderr,
-		"\nFix_Weak_Chain: Bad Object: Type = 0x%02x; Datum = %x\n",
-		Type_Code(Temp), Datum(Temp));
-	Microcode_Termination(TERM_INVALID_TYPE_CODE);
-    }
-  }
-  return;
-}
-
-/* Here is the set up for the full garbage collection:
-
-   - First it makes the constant space and stack into one large area
-   by "hiding" the gap between them with a non-marked header.
-   
-   - Then it saves away all the relevant microcode registers into new
-   space, making this the root for garbage collection.
-
-   - Then it does the actual garbage collection in 4 steps:
-     1) Trace constant space.
-     2) Trace objects pointed out by the root and constant space.
-     3) Trace the Precious objects, remembering where consing started.
-     4) Update all weak pointers.
-
-   - Finally it restores the microcode registers from the copies in
-   new space.
-*/
-
-void GC()
-{ Pointer *Root, *Result, *Check_Value,
-  	  The_Precious_Objects, *Root2;
-
-  /* Save the microcode registers so that they can be relocated */
-  Terminate_Old_Stacklet();
-  Terminate_Constant_Space(Check_Value);
-
-  Root = Free;
-  The_Precious_Objects = Get_Fixed_Obj_Slot(Precious_Objects);
-  Set_Fixed_Obj_Slot(Precious_Objects, NIL);
-  Set_Fixed_Obj_Slot(Lost_Objects_Base, NIL);
-
-  *Free++ = Fixed_Objects;
-  *Free++ = Make_Pointer(TC_HUNK3, History);
-  *Free++ = Undefined_Externals;
-  *Free++ = Get_Current_Stacklet();
-  *Free++ = ((Previous_Restore_History_Stacklet == NULL) ?
-	     NIL :
-	     Make_Pointer(TC_CONTROL_POINT, Previous_Restore_History_Stacklet));
-  *Free++ = Current_State_Point;
-  *Free++ = Fluid_Bindings;
-
-  /* The 4 step GC */
-  Result = GCLoop(Constant_Space, &Free);
-  if (Result != Check_Value)
-  { fprintf(stderr, "\nGC: Constant Scan ended too early.\n");
-    Microcode_Termination(TERM_BROKEN_HEART);
-  }
-  Result = GCLoop(Root, &Free);
-  if (Free != Result)
-  { fprintf(stderr, "\nGC-1: Heap Scan ended too early.\n");
-    Microcode_Termination(TERM_BROKEN_HEART);
-  }
-  Root2 = Free;
-  *Free++ = The_Precious_Objects;
-  Result = GCLoop(Root2, &Free);
-  if (Free != Result)
-  { fprintf(stderr, "\nGC-2: Heap Scan ended too early.\n");
-    Microcode_Termination(TERM_BROKEN_HEART);
-  }
-  Fix_Weak_Chain();
-
-  /* Make the microcode registers point to the copies in new-space. */
-  Fixed_Objects = *Root++;
-  Set_Fixed_Obj_Slot(Precious_Objects, *Root2);
-  Set_Fixed_Obj_Slot(Lost_Objects_Base, Make_Pointer(TC_ADDRESS, Root2));
-
-  History = Get_Pointer(*Root++);
-  Undefined_Externals = *Root++;
-  Set_Current_Stacklet(*Root);
-  Root += 1;			/* Set_Current_Stacklet is sometimes a No-Op! */
-  if (*Root == NIL)
-  { Previous_Restore_History_Stacklet = NULL;
-    Root += 1;
-  }
-  else Previous_Restore_History_Stacklet = Get_Pointer(*Root++);
-  Current_State_Point = *Root++;
-  Fluid_Bindings = *Root++;
-  Free_Stacklets = NULL;
-  return;
-}
-
-/* (GARBAGE_COLLECT SLACK)
-      [Primitive number 0x3A]
-      Requests a garbage collection leaving the specified amount of slack
-      for the top of heap check on the next GC.  The primitive ends by invoking
-      the GC daemon process if there is one.
-*/
-
-Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
-{ Pointer GC_Daemon_Proc;
-  Primitive_1_Arg();
-
-  Arg_1_Type(TC_FIXNUM);
-  if (Free > Heap_Top)
-  { fprintf(stderr, "\nGC has been delayed too long, and you are truly out of room!\n");
-    fprintf(stderr, "Free=0x%x, MemTop=0x%x, Heap_Top=0x%x\n", Free, MemTop, Heap_Top);
-    Microcode_Termination(TERM_EXIT);
-  }
-  GC_Reserve = Get_Integer(Arg1);
-  GCFlip();
-  Weak_Chain = NULL;
-  GC();
-  IntCode &= ~INT_GC;
-  if (GC_Check(GC_Space_Needed))
-  { fprintf(stderr, "\nGC just ended.  The free pointer is at 0x%x, the top of this heap\n",
-	   Free);
-    fprintf(stderr, "is at 0x%x, and we are trying to cons 0x%x objects.  Dead!\n",
-	   MemTop, GC_Space_Needed);
-    Microcode_Termination(TERM_EXIT);
-  }
-  GC_Daemon_Proc = Get_Fixed_Obj_Slot(GC_Daemon);
-  if (GC_Daemon_Proc == NIL) return FIXNUM_0 + (MemTop - Free);
-  Pop_Primitive_Frame(1);
- Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS+1));
-  Store_Return(RC_NORMAL_GC_DONE);
-  Store_Expression(FIXNUM_0 + (MemTop - Free));
-  Save_Cont();
-  Push(GC_Daemon_Proc);
-  Push(STACK_FRAME_HEADER);
- Pushed();
-  longjmp(*Back_To_Eval, PRIM_APPLY);
-  /* The following comment is by courtesy of LINT, your friendly sponsor. */
-  /*NOTREACHED*/
-}
-#endif butterfly
-
-/* (GET_NEXT_CONSTANT)
-      [Primitive number 0xE4]
-      Returns the next free address in constant space.
-*/
-Built_In_Primitive(Prim_Get_Next_Constant, 0, "GET-NEXT-CONSTANT")
-{ Pointer *Next_Address = Free_Constant+1;
-  Primitive_0_Args();
-  return Make_Pointer(TC_ADDRESS, Next_Address);
-}
-
-/* (GC_TYPE OBJECT)
-      [Primitive number 0xBC]
-      Returns a fixnum indicating the GC type of the object.  The object
-      is NOT touched first.
-*/
-
-Built_In_Primitive(Prim_Gc_Type, 1, "GC-TYPE")
-{ Primitive_1_Arg(); 
-  return Make_Non_Pointer(TC_FIXNUM, GC_Type(Arg1));
-}
