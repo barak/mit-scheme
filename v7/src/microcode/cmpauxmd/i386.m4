@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.35 1995/01/06 17:39:39 cph Exp $
+###	$Id: i386.m4,v 1.36 1995/02/26 03:34:36 cph Exp $
 ###
 ###	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ###
@@ -518,6 +518,18 @@ IFOS2(`	OP(pop,l)	REG(eax)	# Pop struct return into registers
 	jmp	IJMP(REG(eax))				# Invoke handler
 
 define_c_label(interface_to_scheme)
+IF387(`
+	OP(cmp,l)	TW(IMM(0),EDR(i387_presence))
+	je	interface_to_scheme_proceed
+	ffree	ST(0)					# Free floating "regs"
+	ffree	ST(1)
+	ffree	ST(2)
+	ffree	ST(3)
+	ffree	ST(4)
+	ffree	ST(5)
+	ffree	ST(6)
+	ffree	ST(7)
+interface_to_scheme_proceed:')
 ifdef(`WINNT',
 `	mov	edi,_Free				; Free pointer = %edi
 	sub	edi,_winnt_address_delta		; as a scheme offset
@@ -582,6 +594,7 @@ IF387(`
 	ffree	ST(4)
 	ffree	ST(5)
 	ffree	ST(6)
+	ffree	ST(7)
 interface_to_C_proceed:')
 
 	OP(mov,l)	TW(REG(edx),REG(eax))		# Set up result
