@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.10 1991/08/06 15:38:59 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.11 1991/08/06 15:55:10 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -122,7 +122,7 @@
 		(lambda (key)
 		  (emacs-key-name key false))
 		(lambda (key)
-		  (key->name (unmap-alias-key key))))))
+		  (key-name (unmap-alias-key key))))))
        (let loop ((keys (cdr keys)))
 	 (if (null? keys)
 	     ""

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.14 1991/08/06 15:39:15 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.15 1991/08/06 15:54:48 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -120,7 +120,10 @@
 	     (isearch-append-char state char))))))
 
 (define (nonincremental-search forward? regexp?)
-  (cond ((char=? (remap-alias-key (ref-variable search-yank-word-char))
+  (cond ((let ((key (remap-alias-key (ref-variable search-yank-word-char))))
+	   (and (char? key)
+		(char=?
+		 key
 		 (prompt-for-typein
 		  (if regexp?
 		      (prompt-for-string/prompt
@@ -130,7 +133,7 @@
 		       (if forward? "Search" "Search backward")
 		       (write-to-string (ref-variable search-last-string))))
 		  false
-		  (lambda () (keyboard-peek-char))))
+		  (lambda () (keyboard-peek))))))
 	 (if forward?
 	     (ref-command-object word-search-forward)
 	     (ref-command-object word-search-backward)))

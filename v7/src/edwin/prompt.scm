@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.147 1991/08/06 15:38:39 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.148 1991/08/06 15:54:57 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -643,7 +643,7 @@ a repetition of this command will exit."
 		     (let ((command (comtab-entry comtab chars)))
 		       (if (memq command extension-commands)
 			   (inner-loop
-			    (fluid-let ((execute-extended-chars? false))
+			    (fluid-let ((execute-extended-keys? false))
 			      (dispatch-on-command command)))
 			   chars))))))))))))
 
