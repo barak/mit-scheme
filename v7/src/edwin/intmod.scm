@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: intmod.scm,v 1.100 1999/08/26 18:20:44 cph Exp $
+;;; $Id: intmod.scm,v 1.101 1999/10/23 03:02:22 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -59,22 +59,27 @@ Otherwise, only evaluation of expressions in the REPL buffer itself do this."
       (procedure false)))
 
 (define-command repl
-  "Run an inferior read-eval-print loop (REPL), with I/O through buffer *scheme*.
-If buffer exists, just select it; otherwise create it and start REPL.
-REPL uses current evaluation environment."
-  ()
-  (lambda ()
+  "Run an inferior read-eval-print loop (REPL), with I/O through a buffer.
+With no arguments, selects the current evaluation buffer,
+ or creates a new one if there is none.
+With one C-u, creates a new REPL buffer unconditionally.
+With two C-u's, creates a new REPL buffer with a new evaluation environment.
+  (Otherwise USER-INITIAL-ENVIRONMENT is used.)"
+  "p"
+  (lambda (argument)
     (select-buffer
-     (or (find-buffer initial-buffer-name)
-	 (let ((current-buffer (current-buffer)))
-	   (let ((environment (evaluation-environment current-buffer)))
-	     (let ((buffer (create-buffer initial-buffer-name)))
-	       (start-inferior-repl! buffer
-				     environment
-				     (evaluation-syntax-table current-buffer
-							      environment)
-				     false)
-	       buffer)))))))
+     (let ((make-new
+	    (lambda (environment)
+	      (let ((buffer (new-buffer initial-buffer-name)))
+		(start-inferior-repl! buffer
+				      environment
+				      (environment-syntax-table environment)
+				      #f)
+		buffer))))
+       (if (>= argument 16)
+	   (make-new (extend-ic-environment system-global-environment))
+	   (or (and (< argument 4) (current-repl-buffer* #f))
+	       (make-new user-initial-environment)))))))
 
 (define (start-inferior-repl! buffer environment syntax-table message)
   (set-buffer-major-mode! buffer (ref-mode-object inferior-repl))
