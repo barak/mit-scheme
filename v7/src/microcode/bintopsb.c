@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bintopsb.c,v 9.63 1993/11/16 04:50:02 gjr Exp $
+$Id: bintopsb.c,v 9.64 1994/01/06 19:51:22 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -2126,8 +2126,9 @@ DEFUN_VOID (do_it)
 
     Heap_Start = (NROOTS + (TRAP_MAX_IMMEDIATE + 1));
     Heap_Objects_Start = (Heap_Start + Heap_Count);
-    Mem_Base[(Heap_Start - NROOTS) + 0]
-      = dumped_utilities;
+    if (! band_p)
+      dumped_utilities = SHARP_F;
+    Mem_Base[(Heap_Start - NROOTS) + 0] = dumped_utilities;
     if (dumped_utilities != SHARP_F)
     {
       /* This knows the format of the utilities vector. */ 
