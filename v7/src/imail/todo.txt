@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.17 2000/05/17 17:20:14 cph Exp $
+$Id: todo.txt,v 1.18 2000/05/18 17:16:58 cph Exp $
 
 Bug fixes
 ---------
@@ -44,7 +44,7 @@ Design changes
 New features
 ------------
 
-* Write summary browser for folders.
+* Add progress feedback when reading very long message bodies.
 
 * Implement URL completion.
 
