@@ -37,7 +37,7 @@
 
 ;;;; Control Flow Graph Abstraction
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.137 1986/12/15 05:25:37 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.138 1986/12/16 23:45:57 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -100,6 +100,19 @@
 (define-integrable (make-entry-holder)
   (vector entry-holder-tag false))
 
+(define (node->holder node)
+  (let ((holder (make-entry-holder)))
+    (entry-holder-connect! holder node)
+    holder))
+
+(define (set-entry-holder-next! entry-holder node)
+  (entry-holder-disconnect! entry-holder)
+  (entry-holder-connect! entry-holder node))
+
+(define-vector-method entry-holder-tag ':DESCRIBE
+  (lambda (entry-holder)
+    `((ENTRY-HOLDER-&NEXT ,(entry-holder-&next entry-holder)))))
+
 (define exit-holder-tag (make-vector-tag cfg-node-tag 'EXIT-HOLDER))
 
 (define (exit-holder? node)
@@ -107,6 +120,10 @@
 
 (define-integrable (make-exit-holder)
   (vector exit-holder-tag '()))
+
+(define-vector-method exit-holder-tag ':DESCRIBE
+  (lambda (exit-holder)
+    `((NODE-PREVIOUS ,(node-previous exit-holder)))))
 
 (define (next-reference node)
   (and node (not (exit-holder? node)) node))
@@ -122,11 +139,6 @@
 
 (define-integrable (entry-holder-next entry)
   (next-reference (entry-holder-&next entry)))
-
-(define (node->holder node)
-  (let ((holder (make-entry-holder)))
-    (entry-holder-connect! holder node)
-    holder))
 
 (define-integrable (entry-holder-hook? hook)
   (entry-holder? (hook-node hook)))
@@ -186,6 +198,9 @@
 (define-integrable (frame-entry-node frame)
   (entry-holder-next (frame-&entry frame)))
 
+(define (frame-describe frame)
+  `((FRAME-&ENTRY ,(frame-&entry frame))))
+
 (define sframe-tag (make-vector-tag frame-tag 'SFRAME))
 (define-vector-slots sframe 2 &next)
 
@@ -195,17 +210,32 @@
 (define-integrable (sframe-next-hooks sframe)
   (node-previous (sframe-&next sframe)))
 
+(define-vector-method sframe-tag ':DESCRIBE
+  (lambda (sframe)
+    (append! (frame-describe sframe)
+	     `((SFRAME-&NEXT ,(sframe-&next sframe))))))
+
 (define (scfg->sframe scfg)
   (let ((entry (make-entry-holder))
-	(exit (make-exit-holder)))
+	(next (make-exit-holder)))
     (entry-holder-connect! entry (cfg-entry-node scfg))
-    (hooks-connect! (scfg-next-hooks scfg) exit)
-    (make-sframe entry exit)))
+    (hooks-connect! (scfg-next-hooks scfg) next)
+    (make-sframe entry next)))
+
+(define (sframe-replace-cfg! sframe scfg)
+  (let ((entry (frame-&entry sframe))
+	(next (sframe-&next sframe)))
+    (node-disconnect! entry (entry-holder-&next entry))
+    (hooks-disconnect! (node-previous next) next)
+    (entry-holder-connect! entry (cfg-entry-node scfg))
+    (hooks-connect! (scfg-next-hooks scfg) next)))
 
 (define (sframe->scfg sframe)
-  (make-scfg (frame-entry-node sframe)
-	     (sframe-next-hooks sframe)))
-
+  (let ((entry (frame-entry-node sframe)))
+    (if entry
+	(make-scfg entry (sframe-next-hooks sframe))
+	(make-null-cfg))))
+
 (define pframe-tag (make-vector-tag frame-tag 'PFRAME))
 (define-vector-slots pframe 2 &consequent &alternative)
 
@@ -218,6 +248,12 @@
 (define-integrable (pframe-alternative-hooks pframe)
   (node-previous (pframe-&alternative pframe)))
 
+(define-vector-method pframe-tag ':DESCRIBE
+  (lambda (pframe)
+    (append! (frame-describe pframe)
+	     `((PFRAME-&CONSEQUENT ,(pframe-&consequent pframe))
+	       (PFRAME-&ALTERNATIVE ,(pframe-&alternative pframe))))))
+
 (define (pcfg->pframe pcfg)
   (let ((entry (make-entry-holder))
 	(consequent (make-exit-holder))
@@ -227,10 +263,24 @@
     (hooks-connect! (pcfg-alternative-hooks pcfg) alternative)
     (make-pframe entry consequent alternative)))
 
+(define (pframe-replace-cfg! pframe pcfg)
+  (let ((entry (frame-&entry pframe))
+	(consequent (pframe-&consequent pframe))
+	(alternative (pframe-&alternative pframe)))
+    (node-disconnect! entry (entry-holder-&next entry))
+    (hooks-disconnect! (node-previous consequent) consequent)
+    (hooks-disconnect! (node-previous alternative) alternative)
+    (entry-holder-connect! entry (cfg-entry-node pcfg))
+    (hooks-connect! (pcfg-consequent-hooks pcfg) consequent)
+    (hooks-connect! (pcfg-alternative-hooks pcfg) alternative)))
+
 (define (pframe->scfg pframe)
-  (make-scfg (frame-entry-node pframe)
-	     (pframe-consequent-hooks pframe)
-	     (pframe-alternative-hooks pframe)))
+  (let ((entry (frame-entry-node pframe)))
+    (if entry
+	(make-scfg entry
+		   (pframe-consequent-hooks pframe)
+		   (pframe-alternative-hooks pframe))
+	(make-null-cfg))))
 
 ;;;; Noops
 
@@ -639,6 +689,13 @@
       (begin (hook-disconnect! hook next)
 	     (hook-connect! hook (cfg-entry-node scfg))
 	     (hooks-connect! (scfg-next-hooks scfg) next))))
+
+(define (node-insert-scfg! node scfg)
+  (if scfg
+      (let ((previous (node-previous node)))
+	(hooks-disconnect! previous node)
+	(hooks-connect! previous (cfg-entry-node scfg))
+	(hooks-connect! (scfg-next-hooks scfg) node))))
 
 ;;; end USING-SYNTAX
 )
