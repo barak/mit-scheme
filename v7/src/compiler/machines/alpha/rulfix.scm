@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.1 1992/08/29 13:51:33 jinx Exp $
+$Id: rulfix.scm,v 1.2 1992/12/01 22:07:38 gjr Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
 
@@ -349,7 +349,7 @@ case.
       (handler src tgt)
       (let ((temp (standard-temporary!)))
 	(LAP (COPY ,src ,temp)
-	     ,@(handler tmp tgt)))))
+	     ,@(handler temp tgt)))))
 
 (define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args
   (lambda (tgt value shift-amount overflow?)
