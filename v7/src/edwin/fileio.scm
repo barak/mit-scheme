@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.132 1995/10/03 21:12:25 cph Exp $
+;;;	$Id: fileio.scm,v 1.133 1996/03/04 20:46:35 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -656,7 +656,8 @@ Otherwise, a message is written both before and after long file writes."
 (define (require-newline buffer)
   (let ((require-final-newline? (ref-variable require-final-newline buffer)))
     (if require-final-newline?
-	(without-group-clipped! (buffer-group buffer)
+	(with-text-clipped (buffer-absolute-start buffer)
+			   (buffer-absolute-end buffer)
 	  (lambda ()
 	    (let ((end (buffer-end buffer)))
 	      (if (let ((last-char (extract-left-char end)))
