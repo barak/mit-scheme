@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/char.scm,v 14.3 1991/08/28 13:36:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/char.scm,v 14.4 1995/11/03 21:24:01 adams Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -192,28 +192,35 @@ MIT in each case. |#
   (loop alist))
 
 (define (digit->char digit #!optional radix)
-  (cond ((default-object? radix) (set! radix 10))
-	((not (and (<= 2 radix) (<= radix 36)))
-	 (error "DIGIT->CHAR: Bad radix" radix)))
-  (and (<= 0 digit) (< digit radix)
-       (code->char (if (< digit 10)
-		       (+ digit 0-code)
-		       (+ (- digit 10) upper-a-code)))))
+  (define exact-integer? fix:fixnum?)	; good enough
+  (let ((radix
+	 (cond ((default-object? radix) 10)
+	       ((and (exact-integer? radix) (<= 2 radix) (<= radix 36)) radix)
+	       (else (error:wrong-type-argument radix "Radix" 'DIGIT->CHAR)))))
+    (if (exact-integer? digit)
+	(and (<= 0 digit) (< digit radix)
+	     (string-ref "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" digit))
+	(error:wrong-type-argument digit "exact integer" 'DIGIT->CHAR))))
+
 
 (define (char->digit char #!optional radix)
-  (cond ((default-object? radix) (set! radix 10))
-	((not (and (<= 2 radix) (<= radix 36)))
-	 (error "CHAR->DIGIT: Bad radix" radix)))
-  (and (zero? (char-bits char))
-       (let ((code (char-code char)))
-	 (define (try base-digit base-code)
-	   (let ((n (+ base-digit (- code base-code))))
-	     (and (<= base-digit n)
-		  (< n radix)
-		  n)))
-	 (or (try 0 0-code)
-	     (try 10 upper-a-code)
-	     (try 10 lower-a-code)))))
+  (define exact-integer? fix:fixnum?)	; good enough
+  (let ((radix
+	 (cond ((default-object? radix)  10)
+	       ((and (exact-integer? radix) (<= 2 radix) (<= radix 36)) radix)
+	       (else (error:wrong-type-argument radix "Radix" 'CHAR->DIGIT)))))
+    (if (not (char? char))
+	(error:wrong-type-argument char "character" 'CHAR->DIGIT))
+    (and (zero? (char-bits char))
+	 (let ((code (char-code char)))
+	   (define (try base-digit base-code)
+	     (let ((n (fix:+ base-digit (fix:- code base-code))))
+	       (and (<= base-digit n)
+		    (< n radix)
+		    n)))
+	   (or (try 0 0-code)
+	       (try 10 upper-a-code)
+	       (try 10 lower-a-code))))))
 
 (define (name->char string)
   (let ((end (string-length string))
