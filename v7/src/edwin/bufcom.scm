@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufcom.scm,v 1.101 1996/04/23 23:08:44 cph Exp $
+;;;	$Id: bufcom.scm,v 1.102 1997/04/17 03:49:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -139,7 +139,34 @@ Reads the new name in the echo area."
 (define (kill-buffer-interactive buffer)
   (if (not (other-buffer buffer)) (editor-error "Only one buffer"))
   (save-buffer-changes buffer)
-  (kill-buffer buffer))
+  (if (for-all? (ref-variable kill-buffer-query-procedures buffer)
+	(lambda (procedure)
+	  (procedure buffer)))
+      (kill-buffer buffer)
+      (message "Buffer not killed.")))
+
+(define (kill-buffer-query-modified buffer)
+  (or (not (and (buffer-pathname buffer)
+		(buffer-modified? buffer)
+		(buffer-writable? buffer)))
+      (prompt-for-yes-or-no?
+       (string-append "Buffer "
+		      (buffer-name buffer)
+		      " modified; kill anyway"))))
+
+(define (kill-buffer-query-process buffer)
+  (or (not (get-buffer-process buffer))
+      (prompt-for-yes-or-no?
+       (string-append "Buffer "
+		      (buffer-name buffer)
+		      " has an active process; kill anyway"))))
+
+(define-variable kill-buffer-query-procedures
+  "List of procedures called to query before killing a buffer.
+Each procedure is called with one argument, the buffer being killed.
+If any procedure returns #f, the buffer is not killed."
+  (list kill-buffer-query-modified kill-buffer-query-process)
+  (lambda (object) (and (list? object) (for-all? object procedure?))))
 
 (define-command kill-some-buffers
   "For each buffer, ask whether to kill it."
@@ -162,7 +189,7 @@ Reads the new name in the echo area."
 			(create-buffer initial-buffer-name)
 			(kill-buffer dummy)))))
 	    (buffer-list)))
-
+
 (define-command normal-mode
   "Choose the major mode for this buffer automatically.
 Also sets up any specified local variables of the file.
