@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2.h,v 1.1 1994/11/28 03:42:53 cph Exp $
+$Id: os2.h,v 1.2 1994/12/02 20:43:13 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -59,6 +59,7 @@ MIT in each case. */
 #include "os2thrd.h"
 #include "os2ctty.h"
 #include "os2cthrd.h"
+#include "os2pm.h"
 
 #define OS2_MAX_FILE_HANDLES() 20
 
