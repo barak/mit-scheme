@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.34 1989/03/14 01:59:01 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.35 1989/08/07 03:14:18 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -350,6 +350,12 @@ static void filemodestring ();
 static void rwx ();
 static void setst ();
 
+/* If system does not have symbolic links, it does not have lstat.
+   In that case, use ordinary stat instead.  */
+#ifndef S_IFLNK
+#define lstat stat
+#endif
+
 DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1, 1, 
   "Given a file name, returns attribute information about the file.\n\
 If the file exists and its status information is accessible, the result\n\
@@ -364,7 +370,7 @@ the result is #F.")
   PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, STRING_P);
-  if ((stat ((Scheme_String_To_C_String (ARG_REF (1))), (& stat_result))) < 0)
+  if ((lstat ((Scheme_String_To_C_String (ARG_REF (1))), (& stat_result))) < 0)
     PRIMITIVE_RETURN (SHARP_F);
   result = (allocate_marked_vector (TC_VECTOR, 10, true));
   modes = (allocate_string (10));
