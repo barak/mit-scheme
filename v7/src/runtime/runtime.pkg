@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.344 2000/04/11 15:19:18 cph Exp $
+$Id: runtime.pkg,v 14.345 2000/04/12 02:36:13 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -3564,6 +3564,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (else))
   (parent ())
   (export ()
+	  char-set->regexp
 	  guarantee-re-register
 	  guarantee-re-registers
 	  preserving-re-registers
