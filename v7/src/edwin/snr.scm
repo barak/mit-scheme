@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.9 1996/05/14 01:55:25 cph Exp $
+;;;	$Id: snr.scm,v 1.10 1996/05/15 04:40:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -741,7 +741,8 @@ With negative argument -N, show the N oldest unread articles."
 	  (if (news-group:subscribed? group)
 	      (begin
 		(read-news-group-headers buffer group)
-		(update-screens! '(IGNORE-INPUT)))))))))
+		(update-screens! '(IGNORE-INPUT))))))
+      (news-server-buffer:save-groups buffer))))
 
 (define-command news-read-group-headers
   "Read the unread headers for the News group indicated by point.
@@ -766,10 +767,12 @@ This command has no effect in the all-groups buffer."
   (lambda ()
     (let ((buffer (current-buffer)))
       (if (news-server-buffer? buffer)
-	  (for-each-vector-element (news-server-buffer:groups buffer)
-	    (lambda (group)
-	      (refresh-news-group buffer group)
-	      (update-screens! '(IGNORE-INPUT))))))))
+	  (begin
+	    (for-each-vector-element (news-server-buffer:groups buffer)
+	      (lambda (group)
+		(refresh-news-group buffer group)
+		(update-screens! '(IGNORE-INPUT))))
+	    (news-server-buffer:save-groups buffer))))))
 
 (define-command news-refresh-group
   "Update the unread-message estimate for the News group indicated by point.
@@ -3225,7 +3228,7 @@ With prefix arg, replaces the file with the list information."
 			 (let ((item (get-item ls)))
 			   (if (and item (or (not predicate) (predicate item)))
 			       (values item n)
-			       (let ((ls (line-start start -1 #f)))
+			       (let ((ls (line-start ls -1 #f)))
 				 (if ls
 				     (loop ls)
 				     (values #f n))))))
@@ -3537,14 +3540,17 @@ With prefix arg, replaces the file with the list information."
       value)))
 
 (define (news-group:get-headers group argument buffer)
-  (let ((all? (command-argument-multiplier-only? argument))
+  (let ((connection (news-group:connection group))
+	(all? (command-argument-multiplier-only? argument))
 	(limit
 	 (and argument
 	      (not (command-argument-multiplier-only? argument))
 	      (command-argument-value argument))))
+    (if (and all? (nntp-connection:closed? connection))
+	(nntp-connection:reopen connection))
     (if (and (ref-variable news-refresh-group-when-selected
 			   (news-server-buffer buffer #f))
-	     (not (nntp-connection:closed? (news-group:connection group))))
+	     (not (nntp-connection:closed? connection)))
 	(news-group:update-ranges! group))
     (call-with-values
 	(lambda ()
