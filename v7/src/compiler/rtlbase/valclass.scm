@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: valclass.scm,v 1.7 2003/02/13 02:38:27 cph Exp $
+$Id: valclass.scm,v 1.8 2003/02/13 02:59:28 cph Exp $
 
 Copyright 1989,1990,1999,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -84,8 +84,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
        (let* ((name->variable
 	       (lambda (name)
 		 (symbol-append 'VALUE-CLASS= name)))
-	      (variable (name->variable name))
-	      (var-ref (close-syntax variable environment)))
+	      (variable (name->variable name)))
 	 `(BEGIN
 	    (DEFINE ,variable
 	      (MAKE-VALUE-CLASS
