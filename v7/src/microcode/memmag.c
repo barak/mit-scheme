@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.60 1996/03/27 23:12:45 adams Exp $
+$Id: memmag.c,v 9.61 1996/03/27 23:13:07 adams Exp $
 
-Copyright (c) 1987-95 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
