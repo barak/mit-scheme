@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.16 1991/05/05 00:40:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.17 1992/01/14 19:23:41 jinx Exp $
 
-Copyright (c) 1989-1991 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,6 +45,15 @@ See cmpint.txt, cmpint.c, cmpint-md.h, and cmpaux-md.m4 for more details.
 #define CMPGC_H_INCLUDED
 
 #define NOP() do {} while (0) /* A useful macro */
+
+/* These are needed whether or not there is a compiler,
+   so their definition must be outside the HAS_COMPILER_SUPPORT ifdef.
+ */
+
+#define OPERATOR_LINKAGE_KIND			0x000000
+#define REFERENCE_LINKAGE_KIND			0x010000
+#define ASSIGNMENT_LINKAGE_KIND			0x020000
+#define GLOBAL_OPERATOR_LINKAGE_KIND		0x030000
 
 #ifdef HAS_COMPILER_SUPPORT
 
@@ -229,11 +238,6 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 
 /* Linkage sections */
 
-#define OPERATOR_LINKAGE_KIND			0x000000
-#define REFERENCE_LINKAGE_KIND			0x010000
-#define ASSIGNMENT_LINKAGE_KIND			0x020000
-#define GLOBAL_OPERATOR_LINKAGE_KIND		0x030000
-
 #define READ_LINKAGE_KIND(header)					\
   ((header) & 0xff0000)
 
@@ -343,8 +347,6 @@ typedef unsigned short format_word;
 
 #define READ_LINKAGE_KIND(header)					\
   (GC_NO_COMPILER_EXPR ((int)))
-
-#define OPERATOR_LINKAGE_KIND 0
 
 #define READ_CACHE_LINKAGE_COUNT(header)				\
   (GC_NO_COMPILER_EXPR ((int)))
