@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.35 1992/08/29 13:08:29 jinx Exp $
+$Id: ux.h,v 1.36 1992/08/29 13:36:41 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -349,7 +349,9 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 #define HAVE_SIGCONTEXT
 #define HAVE_SOCKETS
 #define HAVE_SYMBOLIC_LINKS
+#ifndef __osf__
 #define HAVE_TRUNCATE
+#endif
 #define HAVE_UNIX_SOCKETS
 #define HAVE_VFORK
 
