@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapopt.scm,v 1.4 1998/02/14 07:12:14 adams Exp $
+$Id: lapopt.scm,v 1.5 1998/02/22 00:17:32 adams Exp $
 
-Copyright (c) 1992-1998 Massachusetts Institute of Technology
+Copyright (c) 1992-1997 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -69,7 +69,7 @@ MIT in each case. |#
     (match-sequence pats (cdr things) dict (cons (car things) comments)
 		    success fail))
 
-  (cond ((not (pair? pats)) ; i.e. null
+  (cond ((not (pair? pats))		; i.e. null
 	 (if (and (pair? things)
 		  (comment? (car things)))
 	     (eat-comment)
@@ -91,34 +91,39 @@ MIT in each case. |#
   predicate				; (lambda (dict) ...) -> bool
   constructor)				; (lambda (dict) ...) -> lap
 
+(define *rules* (make-eq-hash-table))
+
 
-(define *rules* '())
-(define *rule-window* 0)		; length of longest pattern
+;; Rules are indexed by the last opcode in the pattern.
 
 (define (define-lapopt name pattern predicate constructor)
-  (set! *rules*
-	(cons (make-rule name
-			 (reverse pattern)
-			 (if ((access procedure? system-global-environment)
-			      predicate)
-			     predicate
-			     (lambda (dict) dict #T))
-			 constructor)
-	      *rules*))
-  (set! *rule-window* (max *rule-window* (length pattern)))
+  (let ((pattern (reverse pattern)))
+    (let ((rule (make-rule name
+			   pattern
+			   (if ((access procedure? system-global-environment)
+				predicate)
+			       predicate
+			       (lambda (dict) dict #T))
+			   constructor)))
+      (if (or (not (pair? pattern))
+	      (not (pair? (car pattern))))
+	  (error "Illegal LAPOPT pattern - must end with opcode"
+		 (reverse pattern)))
+      (let ((key (caar pattern)))
+	(hash-table/put! *rules* key
+			 (cons rule (hash-table/get *rules* key '()))))))
   name)
 
+(define (find-rules instruction)
+  (hash-table/get *rules* (car instruction) '()))
+  
 ;; Rules are tried in the reverse order in which they are defined.
 ;;
 ;; Rules are matched against the LAP from the bottom up.
 ;;
-;; Once a rule has been applied, the rewritten LAP is matched again*,
-;; so a rule must rewrite to something different to avoid a loop.  (A
-;; good way to ensure this is to always rewrite to fewer
-;; instructions.)
-;;
-;; *The matching `rewinds' slightly to ensure all patterns that might
-;; overlap the rewritten LAP are considered.
+;; Once a rule has been applied, the rewritten LAP is matched again,
+;; so a rule must rewrite to something different to avoid a loop.
+;; (One way to ensure this is to always rewrite to fewer instructions.)
 
 (define (rewrite-lap lap)
   (let loop ((unseen (reverse lap)) (finished '()))
@@ -126,7 +131,7 @@ MIT in each case. |#
 	finished
 	(if (comment? (car unseen))
 	    (loop (cdr unseen) (cons (car unseen) finished))
-	    (let try-rules ((rules *rules*))
+	    (let try-rules ((rules (find-rules (car unseen))))
 	      (if (null? rules)
 		  (loop (cdr unseen) (cons (car unseen) finished))
 		  (let ((rule (car rules)))
@@ -138,28 +143,17 @@ MIT in each case. |#
 		     (lambda (dict comments unseen*)
 		       (let ((dict (alist->dict dict)))
 			 (if ((rule-predicate rule) dict)
-			     (let* ((insns ((rule-constructor rule) dict))
-				    (rewritten
-				     (cons
-				      `(COMMENT (LAP-OPT ,(rule-name rule)))
-				      (append comments insns))))
-			       (let backup-loop
-				   ((i (- *rule-window* (length insns)))
-				    (unseen
-				     (append (reverse rewritten) unseen*))
-				    (finished finished))
-				 (if (and (> i 0) (pair? finished))
-				     (backup-loop
-				      (if (eq? (caar finished) 'COMMENT)
-					  i
-					  (- i 1))
-				      (cons (car finished) unseen)
-				      (cdr finished))
-				     (loop unseen finished))))
+			     (let ((rewritten
+				    (cons
+				     `(COMMENT (LAP-OPT ,(rule-name rule)))
+				     (append comments
+					     ((rule-constructor rule) dict)))))
+			       (loop (append (reverse rewritten) unseen*)
+				     finished))
 			     (try-rules (cdr rules)))))
 		     (lambda ()
 		       (try-rules (cdr rules)))))))))))
-
+
 ;; The DICT passed to the rule predicate and action procedures is a
 ;; procedure mapping pattern names to their matched values.
 
@@ -167,7 +161,8 @@ MIT in each case. |#
   (lambda (symbol)
     (cond ((assq symbol dict) => cdr)
 	  (else (error "Undefined lapopt pattern symbol" symbol dict)))))
-
+
+
 (define-lapopt 'PUSH-POP->MOVE
   `((PUSH (? reg1))
     (POP  (? reg2)))
@@ -295,11 +290,6 @@ MIT in each case. |#
    (bit-string-or (signed-integer->bit-string 32 x)
 		  (signed-integer->bit-string 32 y))))
 
-(define (and-32-signed x y)
-  (bit-string->signed-integer
-   (bit-string-and (signed-integer->bit-string 32 x)
-		   (signed-integer->bit-string 32 y))))
-
 (define (ror-32-signed w count)
   (let ((bs (signed-integer->bit-string 32 w)))
     (bit-string->signed-integer
@@ -318,23 +308,14 @@ MIT in each case. |#
     `((OR W (R ,(dict 'reg))
 	  (& ,(or-32-signed (dict 'const-1) (dict 'const-2)))))))
 
-(define-lapopt 'AND-AND
-  `((AND W (R (? reg)) (& (? const-1)))
-    (AND W (R (? reg)) (& (? const-2))))
-  #F
-  (lambda (dict)
-    `((AND W (R ,(dict 'reg))
-	   (& ,(and-32-signed (dict 'const-1) (dict 'const-2)))))))
-
 ;; These rules match a whole fixnum detag-AND/OR-retag operation.  In
 ;; principle, these operations could be done in rulfix.scm, but the
 ;; instruction combiner wants all the intermediate steps.
 
-
-;; Relies on OR-OR collapsing the constant with the tag injection
 (define-lapopt 'FIXNUM-OR-CONST-IN-PLACE
   `((SAL W (? reg) (& ,scheme-type-width))
     (OR W (? reg) (& (? const)))
+    (OR W (? reg) (& ,fixnum-tag))
     (ROR W (? reg) (& ,scheme-type-width)))
   #F
   (lambda (dict)
@@ -342,33 +323,18 @@ MIT in each case. |#
 	  (& ,(careful-object-datum
 	       (sar-32 (dict 'const) scheme-type-width)))))))
 
-(define-lapopt 'FIXNUM-AND-OR-CONST-IN-PLACE
+(define-lapopt 'FIXNUM-AND-CONST-IN-PLACE
   `((SAL W (? reg) (& ,scheme-type-width))
-    (AND W (? reg) (& (? const-1)))
-    (OR W (? reg) (& (? const-2)))
+    (AND W (? reg) (& (? const)))
+    (OR W (? reg) (& ,fixnum-tag))
     (ROR W (? reg) (& ,scheme-type-width)))
   #F
   (lambda (dict)
-    (let ((and-value
-	   (careful-object-datum (sar-32 (dict 'const-1) scheme-type-width)))
-	  (or-value
-	   (careful-object-datum (sar-32 (dict 'const-2) scheme-type-width))))
-      (define (tagged value) (make-non-pointer-literal fixnum-tag value))
-      ;; Either AND must keep the tag bits, or OR must inject them, so
-      ;; at least one of AND or OR must be a 32-bit pattern.  Choose to
-      ;; minimize code size, break ties in favor of GC safely on
-      ;; illegal operands.
-      (cond ((zero? or-value)
-	     `((AND W ,(dict 'reg) (& ,(tagged and-value)))))
-	    ((fits-in-signed-byte? and-value)
-	     `((AND W ,(dict 'reg) (& ,and-value))
-	       (OR W ,(dict 'reg)  (& ,(tagged or-value)))))
-	    ((fits-in-signed-byte? or-value)
-	     `((AND W ,(dict 'reg) (& ,(tagged and-value)))
-	       (OR W ,(dict 'reg)  (& ,or-value))))
-	    (else			; neither fits
-	     `((AND W ,(dict 'reg) (& ,(tagged and-value)))
-	       (OR W ,(dict 'reg)  (& ,(tagged or-value)))))))))
+    `((AND W ,(dict 'reg)
+	   (& ,(make-non-pointer-literal
+		fixnum-tag
+		(careful-object-datum
+		 (sar-32 (dict 'const) scheme-type-width))))))))
 
 ;; FIXNUM-NOT.  The first (partial) pattern uses the XOR operation to
 ;; put the tag bits in the low part of the result.  This pattern
