@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.10 1987/08/24 14:39:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.11 1987/08/24 21:20:47 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -122,7 +122,7 @@ MIT in each case. |#
 	    (receiver
 	     `(APPEND-SYNTAX!
 	       ,(if early?
-		    `(EA-VALUE-EARLY '(cadar fields) ,(caddar fields))
+		    `(EA-VALUE-EARLY ',(cadar fields) ,(caddar fields))
 		    `(EA-VALUE ,(caddar fields)))
 	       ,tail)
 	     tail-size))
