@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.31 1993/09/01 23:26:40 cph Exp $
+$Id: x11graph.scm,v 1.32 1993/09/08 22:39:24 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -53,6 +53,7 @@ MIT in each case. |#
   (x-window-beep 1)
   (x-window-clear 1)
   (x-window-event-mask 1)
+  (x-window-flush 1)
   (x-window-iconify 1)
   (x-window-id 1)
   (x-window-lower 1)
@@ -88,6 +89,7 @@ MIT in each case. |#
   (x-graphics-map-y-coordinate 2)
   (x-graphics-move-cursor 3)
   (x-graphics-open-window 3)
+  (x-graphics-reconfigure 3)
   (x-graphics-reset-clip-rectangle 1)
   (x-graphics-set-clip-rectangle 5)
   (x-graphics-set-dashes 3)
@@ -136,16 +138,16 @@ MIT in each case. |#
 (define-integrable event-type:visibility 14)
 (define-integrable number-of-event-types 15)
 
-;; This mask contains button-down, configure, delete-window, map, unmap,
-;; and visibility.
-(define-integrable default-event-mask #x5c05)
+;; This mask contains button-down, button-up,configure, enter,
+;; focus-in, focus-out, key-press, leave, motion, delete-window, map,
+;; unmap, and visibility.
+(define-integrable event-mask:normal #x5dff)
 
 ;; This mask additionally contains take-focus.
-(define-integrable system-event-mask #x7c05)
+(define-integrable event-mask:ignore-focus #x7dff)
 
-;; This mask contains button-down, button-up, enter, focus-in,
-;; focus-out, key-press, leave, and motion.
-(define-integrable user-event-mask #x01fb)
+;; This mask contains button-down.
+(define-integrable user-event-mask:default #x0001)
 
 ;;;; Protection lists
 
@@ -367,21 +369,23 @@ MIT in each case. |#
     (let ((event
 	   (let loop ()
 	     (if (queue-empty? queue)
-		 (let ((event
-			(and (eq? 'INPUT-AVAILABLE
-				  (test-for-input-on-descriptor
-				   (x-display-descriptor
-				    (x-display/xd display))
-				   #t))
-			     (x-display-process-events (x-display/xd display)
-						       1))))
-		   (if event
-		       (process-event display event))
+		 (begin
+		   (%read-and-process-event display)
 		   (loop))
 		 (dequeue! queue)))))
       (if (not block-events?)
 	  (unblock-thread-events))
       event)))
+
+(define (%read-and-process-event display)
+  (let ((event
+	 (and (eq? 'INPUT-AVAILABLE
+		   (test-for-input-on-descriptor
+		    (x-display-descriptor (x-display/xd display))
+		    #t))
+	      (x-display-process-events (x-display/xd display) 1))))
+    (if event
+	(process-event display event))))
 
 (define (discard-events display)
   (let ((queue (x-display/event-queue display))
@@ -397,88 +401,80 @@ MIT in each case. |#
 	       (loop)))))
     (if (not block-events?)
 	(unblock-thread-events))))
-
-(define (read-event-of-type display event-type)
-  (let loop ()
-    (let ((event (read-event display)))
-      (if (fix:= (vector-ref event 0) event-type)
-	  event
-	  (loop)))))
 
 (define (process-event display event)
-  (let ((handler (vector-ref event-handlers (vector-ref event 0))))
-    (and handler
-	 (let ((window
-		(search-protection-list
-		 (x-display/window-list display)
-		 (let ((xw (vector-ref event 1)))
-		   (lambda (window)
-		     (eq? (x-window/xw window) xw))))))
-	   (and window
-		(handler window event))))))
-
-(define event-previewer-interval
-  1000)
+  (without-interrupts
+   (lambda ()
+     (let ((window
+	    (search-protection-list (x-display/window-list display)
+	      (let ((xw (vector-ref event 1)))
+		(lambda (window)
+		  (eq? (x-window/xw window) xw))))))
+       (if window
+	   (begin
+	     (let ((handler (vector-ref event-handlers (vector-ref event 0))))
+	       (if handler
+		   (handler window event)))
+	     (if (not (fix:= 0
+			     (fix:and (fix:lsh 1 (vector-ref event 0))
+				      (x-window/user-event-mask window))))
+		 (begin
+		   ;; This would prefer to be the graphics device, but
+		   ;; that's not available from here.
+		   (vector-set! event 1 window)
+		   (enqueue!/unsafe
+		    (x-display/event-queue (x-window/display window))
+		    event)))))))))
 
 (define event-handlers
   (make-vector number-of-event-types false))
 
 (define-integrable (define-event-handler event-type handler)
   (vector-set! event-handlers event-type handler))
+
+(define-event-handler event-type:configure
+  (lambda (window event)
+    window
+    (x-graphics-reconfigure (vector-ref event 1)
+			    (vector-ref event 2)
+			    (vector-ref event 3))))
 
 (define-event-handler event-type:delete-window
   (lambda (window event)
     event
-    (without-interrupts (lambda () (close-x-window window)))
-    false))
+    (close-x-window window)))
 
 (define-event-handler event-type:map
   (lambda (window event)
     event
-    (set-x-window/mapped?! window true)
-    false))
+    (set-x-window/mapped?! window #t)))
 
 (define-event-handler event-type:unmap
   (lambda (window event)
     event
-    (set-x-window/mapped?! window false)
-    false))
+    (set-x-window/mapped?! window #f)))
 
 (define-event-handler event-type:visibility
   (lambda (window event)
     (case (vector-ref event 2)
       ((0) (set-x-window/visibility! window 'UNOBSCURED))
       ((1) (set-x-window/visibility! window 'PARTIALLY-OBSCURED))
-      ((2) (set-x-window/visibility! window 'OBSCURED)))
-    false))
+      ((2) (set-x-window/visibility! window 'OBSCURED)))))
 
 (let ((mouse-event-handler
        (lambda (window event)
+	 window
 	 (let ((xw (vector-ref event 1)))
-	   (vector-set! event 1 window)
 	   (vector-set! event 2
 			(x-graphics-map-x-coordinate xw
 						     (vector-ref event 2)))
 	   (vector-set! event 3
 			(x-graphics-map-y-coordinate xw
-						     (vector-ref event 3))))
-	 (enqueue! (x-display/event-queue (x-window/display window)) event)
-	 true)))
+						     (vector-ref event 3)))))))
+  ;; ENTER and LEAVE events should be modified to have X,Y coordinates.
   (define-event-handler event-type:button-down mouse-event-handler)
   (define-event-handler event-type:button-up mouse-event-handler)
   (define-event-handler event-type:motion mouse-event-handler))
-
-(let ((user-event-handler
-       (lambda (window event)
-	 (vector-set! event 1 window)
-	 (enqueue! (x-display/event-queue (x-window/display window)) event)
-	 true)))
-  ;; ENTER and LEAVE events should be modified to have X,Y coordinates.
-  (define-event-handler event-type:enter user-event-handler)
-  (define-event-handler event-type:focus-in user-event-handler)
-  (define-event-handler event-type:focus-out user-event-handler)
-  (define-event-handler event-type:key-press user-event-handler)
-  (define-event-handler event-type:leave user-event-handler))
 
 ;;;; Standard Operations
 
@@ -488,8 +484,9 @@ MIT in each case. |#
 			    (constructor make-x-window (xw display)))
   xw
   (display false read-only true)
-  (mapped? false)
-  (visibility false))
+  (mapped? 'NEVER)
+  (visibility false)
+  (user-event-mask user-event-mask:default))
 
 (define-integrable (x-graphics-device/xw device)
   (x-window/xw (graphics-device/descriptor device)))
@@ -501,25 +498,10 @@ MIT in each case. |#
   (x-display/xd (x-window/display (graphics-device/descriptor device))))
 
 (define-integrable (x-graphics-device/mapped? device)
-  (x-window/mapped? (graphics-device/descriptor device)))
+  (eq? #t (x-window/mapped? (graphics-device/descriptor device))))
 
 (define-integrable (x-graphics-device/visibility device)
   (x-window/visibility (graphics-device/descriptor device)))
-
-(define (x-graphics/open display geometry #!optional suppress-map?)
-  (let ((display
-	 (if (x-display? display)
-	     display
-	     (x-graphics/open-display display))))
-    (let ((xw
-	   (x-graphics-open-window (x-display/xd display)
-				   geometry
-				   (and (not (default-object? suppress-map?))
-					suppress-map?))))
-      (x-window-set-event-mask xw default-event-mask)
-      (let ((window (make-x-window xw display)))
-	(add-to-protection-list! (x-display/window-list display) window xw)
-	window))))
 
 (define (x-graphics/close-window device)
   (without-interrupts
@@ -547,6 +529,65 @@ MIT in each case. |#
 				    (if (negative? y) "" "+")
 				    (number->string y))
 		     "")))
+
+(define (x-graphics/open display geometry #!optional suppress-map?)
+  (let ((display
+	 (if (x-display? display)
+	     display
+	     (x-graphics/open-display display))))
+    (call-with-values
+	(lambda ()
+	  (decode-suppress-map-arg (and (not (default-object? suppress-map?))
+					suppress-map?)
+				   'MAKE-GRAPHICS-DEVICE))
+      (lambda (map? resource class)
+	(let ((xw
+	       (x-graphics-open-window (x-display/xd display)
+				       geometry
+				       (vector #f resource class))))
+	  (x-window-set-event-mask xw event-mask:normal)
+	  (let ((window (make-x-window xw display)))
+	    (add-to-protection-list! (x-display/window-list display) window xw)
+	    (if map? (map-window window))
+	    window))))))
+
+(define (map-window window)
+  (let ((xw (x-window/xw window)))
+    (x-window-map xw)
+    ;; If this is the first time that this window has been mapped, we
+    ;; need to wait for a MAP event before continuing.
+    (if (not (boolean? (x-window/mapped? window)))
+	(begin
+	  (x-window-flush xw)
+	  (let ((block-events? (block-thread-events))
+		(display (x-window/display window)))
+	    (let loop ()
+	      (if (not (eq? #t (x-window/mapped? window)))
+		  (begin
+		    (%read-and-process-event display)
+		    (loop))))
+	    (if (not block-events?)
+		(unblock-thread-events)))))))
+
+(define (decode-suppress-map-arg suppress-map? procedure)
+  (cond ((boolean? suppress-map?)
+	 (values (not suppress-map?) "schemeGraphics" "SchemeGraphics"))
+	((and (pair? suppress-map?)
+	      (string? (car suppress-map?))
+	      (string? (cdr suppress-map?)))
+	 (values #f (car suppress-map?) (cdr suppress-map?)))
+	((and (vector? suppress-map?)
+	      (fix:= (vector-length suppress-map?) 3)
+	      (boolean? (vector-ref suppress-map? 0))
+	      (string? (vector-ref suppress-map? 1))
+	      (string? (vector-ref suppress-map? 2)))
+	 (values (vector-ref suppress-map? 0)
+		 (vector-ref suppress-map? 1)
+		 (vector-ref suppress-map? 2)))
+	(else
+	 (error:wrong-type-argument suppress-map?
+				    "X suppress-map arg"
+				    procedure))))
 
 (define (x-graphics/clear device)
   (x-window-clear (x-graphics-device/xw device)))
@@ -677,25 +718,14 @@ MIT in each case. |#
   ;; Tell the window to participate in the TAKE-FOCUS protocol.  Since
   ;; there is no handler for this event, focus will never be given to
   ;; the window.
-  (let ((xw (x-graphics-device/xw device)))
-    (x-window-set-event-mask xw
-			     (fix:or system-event-mask
-				     (fix:and user-event-mask
-					      (x-window-event-mask xw))))))
+  (x-window-set-event-mask (x-graphics-device/xw device)
+			   event-mask:ignore-focus))
 
 (define (x-graphics/enable-keyboard-focus device)
-  (let ((xw (x-graphics-device/xw device)))
-    (x-window-set-event-mask xw
-			     (fix:or default-event-mask
-				     (fix:and user-event-mask
-					      (x-window-event-mask xw))))))
+  (x-window-set-event-mask (x-graphics-device/xw device) event-mask:normal))
 
 (define (x-graphics/select-user-events device mask)
-  (let ((xw (x-graphics-device/xw device)))
-    (x-window-set-event-mask
-     xw
-     (fix:or (fix:and user-event-mask mask)
-	     (fix:and system-event-mask (x-window-event-mask xw))))))
+  (set-x-window/user-event-mask! (graphics-device/descriptor device) mask))
 
 (define (x-graphics/query-pointer device)
   (let* ((window (x-graphics-device/xw device))
@@ -711,6 +741,13 @@ MIT in each case. |#
     (values (vector-ref event 2)
 	    (vector-ref event 3)
 	    (vector-ref event 4))))
+
+(define (read-event-of-type display event-type)
+  (let loop ()
+    (let ((event (read-event display)))
+      (if (fix:= (vector-ref event 0) event-type)
+	  event
+	  (loop)))))
 
 (define (x-graphics/read-user-event device)
   (read-event (x-graphics/display device)))
@@ -747,7 +784,7 @@ MIT in each case. |#
 ;;;; Window Management Operations
 
 (define (x-graphics/map-window device)
-  (x-window-map (x-graphics-device/xw device)))
+  (map-window (graphics-device/descriptor device)))
 
 (define (x-graphics/withdraw-window device)
   (x-window-withdraw (x-graphics-device/xw device)))
