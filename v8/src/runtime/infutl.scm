@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.55 1994/01/29 00:51:58 gjr Exp $
+$Id: infutl.scm,v 1.56 1994/03/11 05:15:08 cph Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -664,7 +664,11 @@ MIT in each case. |#
        (cond ((null? entries)
 	      (if-not-found))
 	     ((and (pathname=? (caar entries) compressed-file)
-		   (cddar entries))
+		   (cddar entries)
+		   (or (file-exists? (cadar entries))
+		       (begin
+			 (set-cdr! (cdar entries) #f)
+			 #f)))
 	      (dynamic-wind
 	       (lambda () unspecific)
 	       (lambda () (if-found (cadar entries)))
