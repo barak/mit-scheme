@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.77 1993/11/02 22:19:34 cph Exp $
+;;;	$Id: intmod.scm,v 1.78 1994/04/22 05:05:34 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -50,18 +50,25 @@
 (define-variable repl-enable-transcript-buffer
   "If true, record input and output from inferior REPLs in transcript buffer.
 This flag has effect only when ENABLE-TRANSCRIPT-BUFFER is also true."
-  true
+  #t
   boolean?)
 
 (define-variable repl-error-decision
   "If true, errors in REPL evaluation force the user to choose an option.
 Otherwise, they start a nested error REPL."
-  false
+  #f
   boolean?)
 
 (define-variable repl-mode-locked
   "If true, user cannot change the mode of REPL and CMDL buffers."
-  true
+  #t
+  boolean?)
+
+(define-variable inferior-repl-write-results
+  "If true, results of evaluation commands are written in the REPL buffer.
+This includes evaluation of expressions in other buffers.
+Otherwise, only evaluation of expressions in the REPL buffer itself do this."
+  #t
   boolean?)
 
 (define (call-with-transcript-output-mark buffer procedure)
@@ -527,14 +534,14 @@ If this is an error, the debugger examines the error condition."
 			 (region-end region)
 			 mark))))
   (let ((port (buffer-interface-port buffer)))
-    (let ((end
-	   (let ((end (buffer-end buffer))
-		 (end* (region-end region)))
-	     (if (mark~ end end*)
-		 end*
-		 end))))
-      (set-buffer-point! buffer end)
-      (move-mark-to! (port/mark port) end))
+    (move-mark-to! (port/mark port)
+		   (let ((end (buffer-end buffer))
+			 (end* (region-end region)))
+		     (if (mark~ end end*)
+			 (begin
+			   (set-buffer-point! buffer end*)
+			   end*)
+			 end)))
     (let ((queue (port/expression-queue port)))
       (bind-condition-handler (list condition-type:error)
 	  evaluation-error-handler
@@ -560,9 +567,7 @@ If this is an error, the debugger examines the error condition."
 	     (write-to-string expression))
 	   mark))))
   (let ((port (buffer-interface-port buffer)))
-    (let ((end (buffer-end buffer)))
-      (set-buffer-point! buffer end)
-      (move-mark-to! (port/mark port) end))
+    ;;(move-mark-to! (port/mark port) (buffer-end buffer))
     (enqueue! (port/expression-queue port) (cons expression 'EXPRESSION))
     (end-input-wait port)))
 
@@ -621,7 +626,7 @@ If this is an error, the debugger examines the error condition."
 	(port/copy interface-port-template
 		   (make-interface-port-state
 		    thread
-		    (mark-left-inserting-copy (buffer-end buffer))
+		    (mark-right-inserting-copy (buffer-end buffer))
 		    (make-ring (ref-variable comint-input-ring-size))
 		    (make-queue)
 		    false
@@ -714,13 +719,13 @@ If this is an error, the debugger examines the error condition."
 
 (define (operation/write-result port expression value hash-number)
   (let ((buffer (port/buffer port)))
-    (case (operation/current-expression-context port expression)
-      ((EXPRESSION OTHER-BUFFER)
-       (transcript-write value
-			 (and (ref-variable enable-transcript-buffer buffer)
-			      (transcript-buffer))))
-      (else
-       (default/write-result port expression value hash-number)))))
+    (if (and (not (ref-variable inferior-repl-write-results buffer))
+	     (memq (operation/current-expression-context port expression)
+		   '(EXPRESSION OTHER-BUFFER)))
+	(transcript-write value
+			  (and (ref-variable enable-transcript-buffer buffer)
+			       (transcript-buffer)))
+	(default/write-result port expression value hash-number))))
 
 (define (enqueue-output-string! port string)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
@@ -749,7 +754,7 @@ If this is an error, the debugger examines the error condition."
 
 (define (process-output-queue port)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok))
-	(mark (port/mark port))
+	(mark (mark-left-inserting-copy (port/mark port)))
 	(result #t))
     (call-with-transcript-output-mark (port/buffer port)
       (lambda (transcript-mark)
@@ -777,6 +782,8 @@ If this is an error, the debugger examines the error condition."
 		  (if transcript-mark
 		      (region-insert-string! transcript-mark
 					     (car strings)))))))))
+    (move-mark-to! (port/mark port) mark)
+    (mark-temporary! mark)
     (set-interrupt-enables! interrupt-mask)
     result))
 
@@ -981,4 +988,4 @@ If this is an error, the debugger examines the error condition."
      (READ ,operation/read)
      (CURRENT-EXPRESSION-CONTEXT ,operation/current-expression-context)
      (WRITE-RESULT ,operation/write-result))
-   false))
+   #f))

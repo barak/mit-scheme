@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.146 1994/03/16 23:26:50 cph Exp $
+$Id: edwin.pkg,v 1.147 1994/04/22 05:05:41 cph Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -665,6 +665,7 @@ MIT in each case. |#
 	  edwin-command$repl
 	  edwin-mode$inferior-cmdl
 	  edwin-mode$inferior-repl
+	  edwin-variable$inferior-repl-write-results
 	  edwin-variable$repl-enable-transcript-buffer
 	  edwin-variable$repl-error-decision
 	  inferior-repl-eval-expression
