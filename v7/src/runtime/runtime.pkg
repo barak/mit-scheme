@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.377 2001/10/05 15:43:46 cph Exp $
+$Id: runtime.pkg,v 14.378 2001/10/05 15:58:18 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -3754,3 +3754,31 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  make-decode-base64-port
 	  make-decode-binhex40-port
 	  make-decode-quoted-printable-port))
+
+(define-package (runtime url)
+  (file-case options
+    ((load) "url")
+    (else))
+  (parent ())
+  (export ()
+	  url:char-set:escaped
+	  url:char-set:extra
+	  url:char-set:national
+	  url:char-set:punctuation
+	  url:char-set:reserved
+	  url:char-set:safe
+	  url:char-set:unescaped
+	  url:char-set:unreserved
+	  url:decode-string
+	  url:decode-substring
+	  url:encode-string
+	  url:encode-substring
+	  url:rexp:escape
+	  url:rexp:host
+	  url:rexp:hostname
+	  url:rexp:hostnumber
+	  url:rexp:hostport
+	  url:rexp:uchar
+	  url:rexp:xchar
+	  url:string-encoded?
+	  url:substring-encoded?))
