@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.7 2000/01/19 05:37:56 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.8 2000/01/19 20:58:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -41,15 +41,23 @@
   (read-rmail-file (file-url-pathname url) #f))
 
 (define-method %new-folder ((url <rmail-url>))
-  (let ((folder (make-rmail-folder url 'COMPUTE '())))
+  (let ((folder (make-rmail-folder url '())))
+    (set-rmail-folder-header-fields!
+     folder
+     (compute-rmail-folder-header-fields folder))
     (save-folder folder)
     folder))
 
 ;;;; Folder
 
 (define-class (<rmail-folder> (constructor (url header-fields messages)))
-    (<file-folder>)
-  (header-fields accessor header-fields define modifier))
+    (<file-folder>))
+
+(define-method header-fields ((folder <rmail-folder>))
+  (folder-get folder 'RMAIL-HEADER-FIELDS '()))
+
+(define (set-rmail-folder-header-fields! folder headers)
+  (folder-put! folder 'RMAIL-HEADER-FIELDS headers))
 
 (define-method %write-folder ((folder <folder>) (url <rmail-url>))
   (write-rmail-file folder (file-url-pathname url) #f))
@@ -57,40 +65,19 @@
 (define-method poll-folder ((folder <rmail-folder>))
   (rmail-get-new-mail folder))
 
-(define-method initialize-instance ((folder <rmail-folder>))
-  (if (eq? 'COMPUTE (header-fields folder))
-      (set-rmail-folder-header-fields!
-       folder
-       (compute-rmail-folder-header-fields folder))))
-
 (define-method header-fields ((folder <folder>))
   (compute-rmail-folder-header-fields folder))
 
 (define (compute-rmail-folder-header-fields folder)
   (list (make-header-field "Version" " 5")
-	(make-header-field
-	 "Labels"
-	 (let ((labels (compute-rmail-folder-labels folder)))
-	   (if (pair? labels)
-	       (apply string-append
-		      (car labels)
-		      (map (lambda (label) (string-append "," label))
-			   (cdr labels)))
-	       "")))
+	(make-header-field "Labels"
+			   (separated-append
+			    (flags->rmail-labels (folder-flags folder))
+			    ","))
 	(make-header-field "Note" "   This is the header of an rmail file.")
 	(make-header-field "Note" "   If you are seeing it in rmail,")
 	(make-header-field "Note"
 			   "    it means the file has no messages in it.")))
-
-(define (compute-rmail-folder-labels folder)
-  (flags->rmail-labels
-   (let ((n (count-messages folder)))
-     (let loop ((index 0) (flags '()))
-       (if (< index n)
-	   (loop (+ index 1)
-		 (union-of-lists (message-flags (get-message folder index))
-				 flags))
-	   flags)))))
 
 ;;;; Read RMAIL file
 
@@ -100,7 +87,8 @@
       (read-rmail-folder (make-rmail-url pathname) port import?))))
 
 (define (read-rmail-folder url port import?)
-  (let ((folder (make-rmail-folder url (read-rmail-prolog port) '())))
+  (let ((folder (make-rmail-folder url '())))
+    (set-rmail-folder-header-fields! folder (read-rmail-prolog port))
     (let loop ()
       (let ((message (read-rmail-message port import?)))
 	(if message
@@ -366,35 +354,26 @@
 ;;;; Attributes and labels
 
 (define (rmail-markers->flags attributes labels)
-  (let loop
-      ((strings (remove-equal-duplicates (append attributes labels)))
-       (flags '()))
+  (let loop ((strings (append attributes labels)) (flags '()))
     (if (pair? strings)
-	(loop (cdr strings)
-	      (cons (if (list-search-positive rmail-attributes
-			  (lambda (attribute)
-			    (string-ci=? attribute (car strings))))
-			(rmail-attribute->flag (car strings))
-			(rmail-label->flag (car strings)))
-		    flags))
+	(loop (cdr strings) (cons (car strings) flags))
 	(reverse!
-	 (if (memq 'UNSEEN flags)
-	     (delq! 'UNSEEN flags)
-	     (cons 'SEEN flags))))))
+	 (if (flags-member? "unseen" flags)
+	     (flags-delete! "unseen" flags)
+	     (cons "seen" flags))))))
 
 (define (flags->rmail-markers flags)
   (let loop
-      ((flags (if (memq 'SEEN flags) (delq! 'SEEN flags) (cons 'UNSEEN flags)))
+      ((flags
+	(if (flags-member? "seen" flags)
+	    (flags-delete! "seen" flags)
+	    (cons "unseen" flags)))
        (attributes '())
        (labels '()))
     (if (pair? flags)
-	(if (flag-is-rmail-attribute? (car flags))
-	    (loop (cdr flags)
-		  (cons (flag->rmail-attribute (car flags)) attributes)
-		  labels)
-	    (loop (cdr flags)
-		  attributes
-		  (cons (flag->rmail-label (car flags)) labels)))
+	(if (member (car flags) rmail-attributes)
+	    (loop (cdr flags) (cons (car flags) attributes) labels)
+	    (loop (cdr flags) attributes (cons (car flags) labels)))
 	(values (reverse! attributes) (reverse! labels)))))
 
 (define (flags->rmail-labels flags)
@@ -403,25 +382,6 @@
       attributes
       labels)))
 
-(define (flag-is-rmail-attribute? flag)
-  (memq flag rmail-attribute-flags))
-
-(define (flag->rmail-attribute flag)
-  (symbol->string flag))
-
-(define (rmail-attribute->flag attribute)
-  (intern attribute))
-
-(define (flag->rmail-label flag)
-  (if (symbol? flag)
-      (string-append "standard:" (symbol->string flag))
-      flag))
-
-(define (rmail-label->flag label)
-  (if (string-prefix? "standard:" label)
-      (intern (string-tail label 9))
-      label))
-
 ;;;; Syntactic Markers
 
 (define rmail-message:headers-separator
@@ -438,9 +398,6 @@
 
 (define rmail-attributes
   '("deleted" "answered" "unseen" "filed" "forwarded" "edited" "resent"))
-
-(define rmail-attribute-flags
-  (map intern rmail-attributes))
 
 ;;;; Utilities
 
