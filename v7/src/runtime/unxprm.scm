@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.70 2004/10/28 22:58:01 cph Exp $
+$Id: unxprm.scm,v 1.71 2005/03/31 05:06:59 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1997,1998,1999,2000 Massachusetts Institute of Technology
-Copyright 2001,2003,2004 Massachusetts Institute of Technology
+Copyright 2001,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -116,7 +116,9 @@ USA.
   (inode-number #f read-only #t))
 
 (define (file-length filename)
-  (file-attributes/length (file-attributes-direct filename)))
+  (let ((attrs (file-attributes-direct filename)))
+    (and attrs
+	 (file-attributes/length attrs))))
 
 (define (file-modification-time-direct filename)
   ((ucode-primitive file-mod-time 1)
