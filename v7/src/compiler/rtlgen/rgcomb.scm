@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.12 1989/10/26 07:39:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.13 1989/11/21 22:21:34 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -90,17 +90,25 @@ MIT in each case. |#
 	    (generate/procedure-entry/inline callee))
 	   (else
 	    (enqueue-procedure! callee)
-	    (if (procedure-rest callee)
-		(rtl:make-invocation:lexpr
-		 (if (stack-block/static-link? (procedure-block callee))
-		     (-1+ frame-size)
-		     frame-size)
-		 continuation
-		 (procedure-label callee))
+	    (if (not (procedure-rest callee))
 		(rtl:make-invocation:jump
 		 frame-size
 		 continuation
-		 (procedure-label callee))))))))
+		 (procedure-label callee))
+		(let* ((callee-block (procedure-block callee))
+		       (core
+			(lambda (frame-size)
+			  (rtl:make-invocation:lexpr
+			   (if (stack-block/static-link? callee-block)
+			       (-1+ frame-size)
+			       frame-size)
+			   continuation
+			   (procedure-label callee)))))
+		  (if (not (block/dynamic-link? callee-block))
+		      (core frame-size)
+		      (scfg*scfg->scfg!
+		       (rtl:make-push-link)
+		       (core (1+ frame-size)))))))))))
 
 (define (invocation/apply model operator frame-size continuation prefix)
   model operator			; ignored

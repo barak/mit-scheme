@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.8 1989/04/21 17:10:15 markf Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.9 1989/11/21 22:21:12 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -72,8 +72,13 @@ MIT in each case. |#
 		((procedure-rest procedure)
 		 (with-values (lambda () (procedure-arity-encoding procedure))
 		   (lambda (min max)
-		     (rtl:make-procedure-header (procedure-label procedure)
-						min max))))
+		     (if (open-procedure-needs-dynamic-link? procedure)
+			 (scfg*scfg->scfg!
+			  (rtl:make-procedure-header (procedure-label procedure)
+						     (1+ min) (-1+ max))
+			  (rtl:make-pop-link))
+			 (rtl:make-procedure-header (procedure-label procedure)
+						    min max)))))
 		(else
 		 (rtl:make-open-procedure-header (procedure-label procedure))))
 	  (setup-stack-frame procedure context))))
