@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: nntp.scm,v 1.27 2003/02/14 18:28:12 cph Exp $
+$Id: nntp.scm,v 1.28 2004/02/17 05:52:20 cph Exp $
 
 Copyright 1995,1996,1997,1998,1999,2003 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -63,8 +64,7 @@ USA.
     (let ((port
 	   (open-tcp-stream-socket (or (nntp-connection:proxy connection)
 				       (nntp-connection:server connection))
-				   "nntp"
-				   nntp-socket-buffer-size)))
+				   "nntp")))
       (set-nntp-connection:port! connection port)
       (set-nntp-connection:banner! connection (input-port/read-line port)))
     (set-nntp-connection:current-group! connection #f)

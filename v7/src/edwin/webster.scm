@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: webster.scm,v 1.7 2003/02/14 18:28:14 cph Exp $
+$Id: webster.scm,v 1.8 2004/02/17 05:52:26 cph Exp $
 
-Copyright (c) 1998-2000 Massachusetts Institute of Technology
+Copyright 1998,2000,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -48,16 +48,13 @@ USA.
 	       (string=? "MATCHS" line)
 	       (string-prefix? "DEFINITION " line))
 	   (let loop ((lines '()))
-	     (call-with-values
-		 (lambda () (webster-read-line webster-server-port))
-	       (lambda (line end?)
-		 (cond ((not end?)
-			(loop (cons line lines)))
-		       ((null? lines)
-			(message line))
-		       (else
-			 (webster-show-output
-			  (reverse! (cons line lines)))))))))
+	     (receive (line end?) (webster-read-line webster-server-port)
+	       (cond ((not end?)
+		      (loop (cons line lines)))
+		     ((pair? lines)
+		      (webster-show-output (reverse! (cons line lines))))
+		     (else
+		      (message line))))))
 	  (else
 	   (error "Unrecognized response from Webster server:" line)))))
 
@@ -66,10 +63,10 @@ USA.
     (values line
 	    (let ((delim (read-char port)))
 	      (or (eof-object? delim)
-		  (not (char=? #\newline delim)))))))
+		  (not (char=? delim #\newline)))))))
 
 (define webster-line-delimiters
-  (char-set #\newline (integer->char 0) (integer->char #o200)))
+  (char-set #\newline #\U+00 #\U+80))
 
 (define webster-server-port #f)
 
@@ -83,11 +80,11 @@ USA.
 	 (lambda ()
 	   (set! webster-server-port
 		 (open-tcp-stream-socket server
-					 (ref-variable webster-port buffer)
-					 4096))))
+					 (ref-variable webster-port buffer)))
+	   unspecific))
 	(global-window-modeline-event!
 	 (lambda (window) window 'WEBSTER-CONNECTION-STATUS)))))
-
+
 (define (input-port/eof? port)
   ((port/operation port 'EOF?) port))
 
@@ -97,7 +94,7 @@ USA.
     (if port (close-port port)))
   (global-window-modeline-event!
    (lambda (window) window 'WEBSTER-CONNECTION-STATUS)))
-
+
 (define (webster-show-output lines)
   (let ((buffer (find-or-create-buffer (ref-variable webster-buffer-name))))
     (set-buffer-major-mode! buffer (ref-mode-object webster))

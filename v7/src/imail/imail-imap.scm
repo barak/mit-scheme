@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.201 2004/02/16 05:48:59 cph Exp $
+$Id: imail-imap.scm,v 1.202 2004/02/17 05:53:31 cph Exp $
 
 Copyright 1999,2000,2001,2003,2004 Massachusetts Institute of Technology
 
@@ -580,9 +580,8 @@ USA.
       (let ((url (imap-connection-url connection)))
 	(let ((port
 	       (open-tcp-stream-socket (imap-url-host url)
-				       (or (imap-url-port url) "imap2")
-				       #f
-				       "\n")))
+				       (or (imap-url-port url) "imap2"))))
+	  (port/set-line-ending port 'NEWLINE)
 	  (let ((response
 		 (imap:catch-no-response #f
 		   (lambda ()
