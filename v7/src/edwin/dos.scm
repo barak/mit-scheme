@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dos.scm,v 1.1 1992/05/12 15:29:45 mhwu Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dos.scm,v 1.2 1992/06/04 03:08:17 mhwu Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -323,11 +323,12 @@ Includes the new backup.  Must be > 0."
 	       (string-suffix? extension filename))))))
 
 (define (os/completion-ignored-extensions)
-  (append '(".bin" ".com" ".ext" ".inf"
-		   ".psb" ".moc" ".fni"
-		   ".bco" ".bld" ".bad" ".glo" ".fre"
-		   ".obj" ".exe" ".pif"
-		   ".dvi" ".toc" ".log" ".aux")
+  (append '(".bin" ".com" ".ext"
+	    ".inf" ".bif" ".bsm" ".bci" ".bcs"
+  	    ".psb" ".moc" ".fni"
+  	    ".bco" ".bld" ".bad" ".glo" ".fre"
+	    ".obj" ".exe" ".pif" ".grp"
+	    ".dvi" ".toc" ".log" ".aux")
 	  (list-copy dos/backup-suffixes)))
 
 (define-variable completion-ignored-extensions
