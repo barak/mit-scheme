@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.93 2000/06/01 18:46:44 cph Exp $
+;;; $Id: imail-core.scm,v 1.94 2000/06/02 02:41:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -818,6 +818,14 @@
 (define-generic mime-body-type (body))
 (define-generic mime-body-subtype (body))
 
+(define-method write-instance ((body <mime-body>) port)
+  (write-instance-helper 'MIME-BODY body port 
+    (lambda ()
+      (write-char #\space port)
+      (write (mime-body-type body) port)
+      (write-char #\/ port)
+      (write (mime-body-subtype body) port))))
+
 (define-class <mime-body-one-part> (<mime-body>)
   (id define accessor)
   (description define accessor)
@@ -861,7 +869,7 @@
   (parts define accessor))
 
 (define-method mime-body-type ((body <mime-body-multipart>)) body 'MULTIPART)
-
+
 (define-class (<mime-envelope>
 	       (constructor (date subject from sender reply-to to cc bcc
 				  in-reply-to message-id)))
