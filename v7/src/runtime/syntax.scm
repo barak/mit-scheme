@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.29 1998/04/30 21:28:01 cph Exp $
+$Id: syntax.scm,v 14.30 1998/04/30 22:24:48 cph Exp $
 
 Copyright (c) 1988-98 Massachusetts Institute of Technology
 
@@ -130,9 +130,13 @@ MIT in each case. |#
   *syntax-top-level?*)
 
 (define (environment-syntax-table environment)
-  (lexical-reference environment syntax-table-tag))
+  (environment-lookup environment syntax-table-tag))
 
 (define (set-environment-syntax-table! environment table)
+  (if (not (interpreter-environment? environment))
+      (error:wrong-type-argument environment
+				 "interpreter environment"
+				 'SET-ENVIRONMENT-SYNTAX-TABLE!))
   (local-assignment environment syntax-table-tag table))
 
 (define-integrable syntax-table-tag
