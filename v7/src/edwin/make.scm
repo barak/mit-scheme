@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 3.106 2001/02/28 20:03:21 cph Exp $
+$Id: make.scm,v 3.107 2001/03/16 20:20:03 cph Exp $
 
 Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Edwin: System Construction
@@ -45,4 +46,4 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				     ((UNIX) "edwinunx")
 				     (else "edwinunk"))))))
 	'QUERY)))))
-(add-identification! "Edwin" 3 107)
+(add-identification! "Edwin" 3 108)
