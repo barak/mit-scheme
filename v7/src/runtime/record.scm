@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.24 1996/04/24 04:23:11 cph Exp $
+$Id: record.scm,v 1.25 1997/06/05 03:06:03 cph Exp $
 
-Copyright (c) 1989-96 Massachusetts Institute of Technology
+Copyright (c) 1989-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -175,14 +175,13 @@ MIT in each case. |#
   (if (not (or (not method) (procedure? method)))
       (error:wrong-type-argument method "unparser method"
 				 'SET-RECORD-TYPE-UNPARSER-METHOD!))
-  (remove-generic-procedure-generators
-   unparse-record
-   (list (make-dispatch-tag #f) record-type))
-  (add-generic-procedure-generator unparse-record
-    (lambda (generic tags)
-      generic
-      (and (eq? (cadr tags) (record-type-dispatch-tag record-type))
-	   method))))
+  (let ((tag (record-type-dispatch-tag record-type)))
+    (remove-generic-procedure-generators unparse-record
+					 (list (make-dispatch-tag #f) tag))
+    (add-generic-procedure-generator unparse-record
+      (lambda (generic tags)
+	generic
+	(and (eq? (cadr tags) tag) method)))))
 
 (define (record-constructor record-type #!optional field-names)
   (guarantee-record-type record-type 'RECORD-CONSTRUCTOR)
