@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.44 1992/11/08 18:13:16 jinx Exp $
+$Id: global.scm,v 14.45 1992/12/22 20:59:33 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -138,8 +138,10 @@ MIT in each case. |#
   (lambda (receiver)
     (apply receiver objects)))
 
-(define-integrable (with-values thunk receiver)
+(define (call-with-values thunk receiver)
   ((thunk) receiver))
+
+(define with-values call-with-values)
 
 (define (write-to-string object #!optional max)
   (if (default-object? max) (set! max false))
@@ -230,13 +232,13 @@ MIT in each case. |#
    (->environment to)
    (->environment from)
    name))
-
+
 (define-integrable (object-non-pointer? object)
   (zero? (object-gc-type object)))
 
 (define-integrable (object-pointer? object)
   (not (object-non-pointer? object)))
-
+
 (define (impurify object)
   (if (and (object-pointer? object) (object-pure? object))
       ((ucode-primitive primitive-impurify) object))
@@ -290,18 +292,18 @@ MIT in each case. |#
   unspecific)
 
 (define (obarray->list #!optional obarray)
-  (let ((table (if (default-object? obarray)
-		   (fixed-objects-item 'OBARRAY)
-		   obarray)))
-    (let per-bucket ((index (-1+ (vector-length table))) (accumulator '()))
-      (if (< index 0)
+  (let ((obarray
+	 (if (default-object? obarray)
+	     (fixed-objects-item 'OBARRAY)
+	     obarray)))
+    (let per-bucket
+	((index (fix:- (vector-length obarray) 1))
+	 (accumulator '()))
+      (if (fix:< index 0)
 	  accumulator
 	  (let per-symbol
-	      ((bucket (vector-ref table index))
+	      ((bucket (vector-ref obarray index))
 	       (accumulator accumulator))
 	    (if (null? bucket)
-		(per-bucket (-1+ index) accumulator)
-		(per-symbol
-		 (cdr bucket)
-		 (cons (car bucket) accumulator))))))))
-
+		(per-bucket (fix:- index 1) accumulator)
+		(per-symbol (cdr bucket) (cons (car bucket) accumulator))))))))

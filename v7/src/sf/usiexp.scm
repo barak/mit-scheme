@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.12 1992/12/07 18:42:23 cph Exp $
+$Id: usiexp.scm,v 4.13 1992/12/22 21:00:55 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -311,7 +311,7 @@ MIT in each case. |#
 				       variables)))))))
 	operands)))))
 
-(define (with-values-expansion operands if-expanded if-not-expanded block)
+(define (call-with-values-expansion operands if-expanded if-not-expanded block)
   block
   (if (and (pair? operands)
 	   (pair? (cdr operands))
@@ -481,6 +481,7 @@ MIT in each case. |#
     cadddr
     caddr
     cadr
+    call-with-values
     cdaaar
     cdaadr
     cdaar
@@ -560,6 +561,7 @@ MIT in each case. |#
    cadddr-expansion
    caddr-expansion
    cadr-expansion
+   call-with-values-expansion
    cdaaar-expansion
    cdaadr-expansion
    cdaar-expansion
@@ -606,7 +608,7 @@ MIT in each case. |#
    values-expansion
    vector?-expansion
    weak-pair?-expansion
-   with-values-expansion
+   call-with-values-expansion
    zero?-expansion
    ))
 
