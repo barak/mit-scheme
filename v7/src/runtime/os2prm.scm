@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.2 1994/12/19 21:08:01 cph Exp $
+$Id: os2prm.scm,v 1.3 1995/01/06 00:39:38 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -213,6 +213,15 @@ MIT in each case. |#
 ;; These two aliases are needed by the DOS pathname parser.
 (define dos/current-home-directory os2/current-home-directory)
 (define dos/user-home-directory os2/user-home-directory)
+
+(define (os/default-end-of-line-translation)
+  "\r\n")
+
+(define (os/default-end-of-file-marker/input)
+  #f)
+
+(define (os/default-end-of-file-marker/output)
+  #f)
 
 (define (initialize-system-primitives!)
   (discard-select-registry-result-vectors!)
@@ -304,4 +313,4 @@ MIT in each case. |#
 	    (vector-ref os2/select-result-values result))))))
 
 (define os2/select-result-values
-  '#(INPUT-AVAILABLE #F INTERRUPT))
+  '#(INPUT-AVAILABLE #F INTERRUPT PROCESS-STATUS-CHANGE))

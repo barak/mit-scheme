@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.31 1994/11/20 05:12:40 cph Exp $
+$Id: unxprm.scm,v 1.32 1995/01/06 00:39:31 cph Exp $
 
-Copyright (c) 1988-94 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -279,6 +279,15 @@ MIT in each case. |#
 (define (delete-directory name)
   ((ucode-primitive directory-delete 1)
    (->namestring (pathname-as-directory (merge-pathnames name)))))
+
+(define (os/default-end-of-line-translation)
+  #f)
+
+(define (os/default-end-of-file-marker/input)
+  #f)
+
+(define (os/default-end-of-file-marker/output)
+  #f)
 
 ;;; Queues after-restart daemon to clean up environment space
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.20 1994/12/19 21:10:45 cph Exp $
+$Id: dospth.scm,v 1.21 1995/01/06 00:39:50 cph Exp $
 
-Copyright (c) 1992-94 Massachusetts Institute of Technology
+Copyright (c) 1992-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -359,21 +359,18 @@ MIT in each case. |#
 
 (define (default/dos/end-of-line-string pathname)
   pathname				; ignored
-  "\r\n")
-
-;; Scheme understands files that end in ^Z, but does not create them
+  (os/default-end-of-line-translation))
 
 (define (dos/end-of-file-marker/input pathname)
   (hook/dos/end-of-file-marker/input pathname))
 
 (define (default/dos/end-of-file-marker/input pathname)
   pathname				; ignored
-  #\Call				; ^Z
-  )
+  (os/default-end-of-file-marker/input))
 
 (define (dos/end-of-file-marker/output pathname)
   (hook/dos/end-of-file-marker/output pathname))
 
 (define (default/dos/end-of-file-marker/output pathname)
   pathname				; ignored
-  #f)
+  (os/default-end-of-file-marker/output))

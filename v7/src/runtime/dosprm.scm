@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.23 1994/12/19 21:00:54 cph Exp $
+$Id: dosprm.scm,v 1.24 1995/01/06 00:39:44 cph Exp $
 
-Copyright (c) 1992-94 Massachusetts Institute of Technology
+Copyright (c) 1992-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -282,6 +282,15 @@ MIT in each case. |#
   ;; to handle the trailing back-slash.
   ((ucode-primitive directory-delete 1)
    (->namestring (merge-pathnames name))))
+
+(define (os/default-end-of-line-translation)
+  "\r\n")
+
+(define (os/default-end-of-file-marker/input)
+  #f)
+
+(define (os/default-end-of-file-marker/output)
+  #f)
 
 (define (initialize-system-primitives!)
   (let ((reset!
