@@ -1,10 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.127 2001/06/03 01:41:49 cph Exp $
+$Id: todo.txt,v 1.128 2001/06/03 06:03:47 cph Exp $
 
 Bug fixes
 ---------
-
-* Add key binding for M-x imail-browse-container to imail-mode.
 
 * Various changes to Dired that might affect our browsers: RET selects
   the current object (preferred to f).  D command does immediate

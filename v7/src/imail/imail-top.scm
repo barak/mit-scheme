@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.262 2001/06/03 01:23:45 cph Exp $
+;;; $Id: imail-top.scm,v 1.263 2001/06/03 06:02:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -480,6 +480,7 @@ Instead, these commands are available:
 (define-key 'imail #\space	'scroll-up)
 (define-key 'imail #\rubout	'scroll-down)
 (define-key 'imail #\?		'describe-mode)
+(define-key 'imail #\^		'imail-browser-view-container)
 (define-key 'imail '(#\c-c #\c-n)	'imail-next-same-subject)
 (define-key 'imail '(#\c-c #\c-p)	'imail-previous-same-subject)
 (define-key 'imail '(#\c-c #\c-t #\c-e)	'imail-toggle-mime-entity)

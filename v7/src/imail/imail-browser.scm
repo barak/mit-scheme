@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-browser.scm,v 1.5 2001/06/03 01:37:57 cph Exp $
+;;; $Id: imail-browser.scm,v 1.6 2001/06/03 06:02:48 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -35,26 +35,23 @@ To do:
 
 (declare (usual-integrations))
 
-(define-command imail-browse-container
-  "Visit a buffer showing the contents of an IMAIL container."
-  (lambda ()
-    (list (prompt-for-container "Browse container" #f
-				'HISTORY 'IMAIL-BROWSE-CONTAINER
-				'HISTORY-INDEX 0
-				'REQUIRE-MATCH? #t)))
-  (lambda (url-string)
-    (let* ((url (imail-parse-partial-url url-string))
-	   (container (open-resource url))
-	   (buffer
-	    (new-buffer
-	     (string-append (url-presentation-name url)
-			    "-browser"))))
-      (set-buffer-imail-container! buffer container)
-      (add-kill-buffer-hook buffer close-browser-container)
-      (set-buffer-imail-url-selector! buffer browser-selected-url)
-      (receive-modification-events container notice-container-events)
-      (rebuild-imail-browser-buffer buffer)
-      (select-buffer buffer))))
+(define (imail-browse-container url)
+  (select-buffer (get-imail-browser-buffer url)))
+
+(define (get-imail-browser-buffer url)
+  (or (list-search-positive (buffer-list)
+	(lambda (buffer)
+	  (eq? (selected-container-url #f buffer) url)))
+      (let ((container (open-resource url))
+	    (buffer
+	     (new-buffer
+	      (string-append (url-presentation-name url) "-browser"))))
+	(set-buffer-imail-container! buffer container)
+	(add-kill-buffer-hook buffer close-browser-container)
+	(set-buffer-imail-url-selector! buffer browser-selected-url)
+	(receive-modification-events container notice-container-events)
+	(rebuild-imail-browser-buffer buffer)
+	buffer)))
 
 (define (close-browser-container buffer)
   (let ((container (selected-container #f buffer)))
@@ -298,9 +295,9 @@ Each line summarizes a single mail folder.
 (define-key 'imail-browser #\R 'imail-browser-do-rename)
 
 (define-key 'imail-browser #\? 'describe-mode)
-(define-key 'imail-browser #\c 'imail-browser-view-container)
+(define-key 'imail-browser #\c 'imail-browser-view-selected-container)
 (define-key 'imail-browser #\d 'imail-browser-flag-folder-deletion)
-(define-key 'imail-browser #\f 'imail-browser-view-folder)
+(define-key 'imail-browser #\f 'imail-browser-view-selected-folder)
 (define-key 'imail-browser #\g 'imail-browser-revert)
 (define-key 'imail-browser #\h 'describe-mode)
 (define-key 'imail-browser #\m 'imail-browser-mark-folder)
@@ -308,11 +305,12 @@ Each line summarizes a single mail folder.
 (define-key 'imail-browser #\t 'imail-browser-toggle-container)
 (define-key 'imail-browser #\u 'imail-browser-unmark)
 (define-key 'imail-browser #\x 'imail-browser-do-flagged-delete)
+(define-key 'imail-browser #\^ 'imail-browser-view-container)
 
 (define-key 'imail-browser #\rubout 'imail-browser-backup-unmark)
 (define-key 'imail-browser #\M-rubout 'imail-browser-unmark-all-folders)
 
-(define-command imail-browser-view-folder
+(define-command imail-browser-view-selected-folder
   ""
   ()
   (lambda ()
@@ -321,15 +319,33 @@ Each line summarizes a single mail folder.
 	  ((ref-command imail) (url->string url))
 	  (editor-error "Not a selectable folder.")))))
 
-(define-command imail-browser-view-container
+(define-command imail-browser-view-selected-container
   ""
   ()
   (lambda ()
     (let ((info (browser-line-info)))
       (let ((container (browser-line-info-container-url info)))
 	(if container
-	    ((ref-command imail-browse-container) (url->string container))
+	    (imail-browse-container container)
 	    (editor-error "Not a selectable container."))))))
+
+(define-command imail-browser-view-container
+  ""
+  (lambda ()
+    (list
+     (and (command-argument)
+	  (prompt-for-container "Browse IMAIL container" #f
+				'HISTORY 'IMAIL-BROWSER-VIEW-CONTAINER
+				'REQUIRE-MATCH? #t))))
+  (lambda (url-string)
+    (imail-browse-container
+     (or (and url-string (imail-parse-partial-url url-string))
+	 (let ((resource
+		(or (selected-container #f)
+		    (selected-folder #f))))
+	   (if resource
+	       (container-url-for-prompt resource)
+	       (editor-error "This is not an IMAIL buffer.")))))))
 
 (define-command imail-browser-mouse-toggle-container
   ""
