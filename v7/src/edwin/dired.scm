@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.126 1992/08/18 00:07:57 jawilson Exp $
+;;;	$Id: dired.scm,v 1.127 1992/09/23 23:04:55 jinx Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -43,6 +43,7 @@
 ;;;
 
 ;;;; Directory Editor
+;; package: (edwin dired)
 
 (declare (usual-integrations))
 
@@ -122,7 +123,6 @@ Also:
 
 (define dired-flag-delete-char #\D)
 (define dired-flag-copy-char #\C)
-
 
 (define-command dired
   "\"Edit\" directory DIRNAME--delete, rename, print, etc. some files in it.
@@ -184,12 +184,6 @@ Type `h' after entering dired for more info."
 		(buffer-end buffer)))
 	0)))))
 
-(define-variable dired-listing-switches
-  "Switches passed to ls for dired.  MUST contain the 'l' option.
-CANNOT contain the 'F' option."
-  "-al"
-  string?)
-
 (define-variable dired-kept-versions
   "When cleaning directory, number of versions to keep."
   2
@@ -218,76 +212,12 @@ CANNOT contain the 'F' option."
   (buffer-not-modified! buffer)
   (set-buffer-read-only! buffer))
 
-(define (read-directory pathname switches mark)
-  (let ((directory (directory-pathname pathname)))
-    (if (file-directory? pathname)
-	(or (run-synchronous-process false mark directory false
-				     (find-program "ls" false)
-				     switches
-				     (->namestring pathname))
-	    (let ((dir (->namestring (pathname-as-directory pathname))))
-	      (generate-dired-listing! (string-append dir "*.*") mark)))
-	(or (shell-command false mark directory false
-			   (string-append "ls "
-					  switches
-					  " "
-					  (file-namestring pathname)))
-	    (generate-dired-listing! pathname mark)))))
-
-
 (define (add-dired-entry pathname)
   (let ((lstart (line-start (current-point) 0))
 	(directory (directory-pathname pathname)))
-    (if (pathname=? (buffer-default-directory (mark-buffer lstart)) directory)
-	(let ((start (mark-right-inserting lstart)))
-	  (if (run-synchronous-process false lstart directory false
-				       (find-program "ls" directory)
-				       "-d"
-				       (ref-variable dired-listing-switches)
-				       (->namestring pathname))
-	      (begin
-		(insert-string "  " start)
-		(let ((start (mark-right-inserting (dired-filename-start start))))
-		  (insert-string
-		   (file-namestring
-		    (extract-and-delete-string start (line-end start 0)))
-		   start)))
-	      (let ((start (mark-left-inserting lstart)))
-		(insert-string "  " start)
-		(generate-dired-entry! pathname start)))))))
-
-;;; Scheme version of ls
-
-(define (generate-dired-listing! pathname point)
-  (let ((files (directory-read (->namestring (merge-pathnames pathname)))))
-    (for-each (lambda (file) (generate-dired-entry! file point))
-	      files)))
-
-(define (generate-dired-entry! file point)
-  (define (file-attributes/ls-time-string attr)
-    ;; Swap year around to the start
-    (let ((time-string ((ucode-primitive file-time->string 1)
-			(file-attributes/modification-time attr))))
-      (if (string? time-string)
-	  (or (let ((len (string-length time-string)))
-		(and (fix:> len 5) ;; Grap the space char as well
-		     (string-append (substring time-string (fix:- len 5) len)
-				    " "
-				    (substring time-string 0 (fix:- len 5)))))
-	      ""))))
-
-  (let ((name (file-namestring file)) (attr (file-attributes file)))
-    (let ((entry (string-append
-		  (string-pad-right	; Mode string
-		   (file-attributes/mode-string attr) 12 #\Space)
-		  (string-pad-left    ; Length
-		   (number->string (file-attributes/length attr)) 10 #\Space)
-		  (string-pad-right   ; Mod time
-		   (file-attributes/ls-time-string attr) 26 #\Space)
-		  name)))
-      (insert-string entry point)
-      (insert-newline point))))
-
+    (if (pathname=? (buffer-default-directory (mark-buffer lstart))
+		    directory)
+	(insert-dired-entry! pathname directory lstart))))
 
 (define-command dired-find-file
   "Read the current file into a buffer."
@@ -410,68 +340,6 @@ CANNOT contain the 'F' option."
 	  (lambda ()
 	    (add-dired-entry to)))
 	(set-current-point! (dired-filename-start lstart))))))
-
-(define-command dired-chmod
-  "Change mode of this file."
-  "sChange to Mode"
-  (lambda (mode) (dired-change-line "chmod" mode)))
-
-(define-command dired-chgrp
-  "Change group of this file."
-  "sChange to Group"
-  (lambda (group) (dired-change-line "chgrp" group)))
-
-(define-command dired-chown
-  "Change owner of this file."
-  "sChange to Owner"
-  (lambda (owner) (dired-change-line "chown" owner)))
-
-
-(define-command dired-compress
-  "Compress a file."
-  '()
-  (lambda ()
-    (let ((pathname (dired-current-pathname)))
-      (let ((directory (directory-pathname pathname)))
-	(run-synchronous-process false false directory false
-				 (find-program "compress" directory)
-				 ""
-				 (->namestring pathname)))
-      (dired-redisplay
-       (pathname-new-type 
-	pathname
-	(let ((old-type (pathname-type pathname)))
-	  (cond ((not old-type)
-		 "Z")
-		((string=? old-type "Z")
-		 old-type)
-		(else
-		 (string-append old-type ".Z")))))))))
-
-(define-command dired-uncompress
-  "Uncompress a file."
-  '()
-  (lambda ()
-    (let ((pathname (dired-current-pathname)))
-      (let ((directory (directory-pathname pathname)))
-	(run-synchronous-process false false directory false
-				 (find-program "uncompress" directory)
-				 ""
-				 (->namestring pathname)))
-      (dired-redisplay
-       (if (and (pathname-type pathname)
-		(string=? (pathname-type pathname) "Z"))
-	   (pathname-new-type pathname false)
-	   pathname)))))
-
-(define (dired-change-line program argument)
-  (let ((pathname (dired-current-pathname)))
-    (let ((directory (directory-pathname pathname)))
-      (run-synchronous-process false false directory false
-			       (find-program program directory)
-			       argument
-			       (->namestring pathname)))
-    (dired-redisplay pathname)))
 
 (define (dired-redisplay pathname)
   (let ((lstart (mark-right-inserting (line-start (current-point) 0))))
@@ -680,20 +548,9 @@ CANNOT contain the 'F' option."
 
 ;;;; List Directory
 
-(define-variable list-directory-brief-switches
-  "Switches for list-directory to pass to `ls' for brief listing,"
-  "-CF"
-  string?)
-
-(define-variable list-directory-verbose-switches
-  "Switches for list-directory to pass to `ls' for verbose listing,"
-  "-l"
-  string?)
-
 (define-command list-directory
-  "Display a list of files in or matching DIRNAME, a la `ls'.
-DIRNAME is globbed by the shell if necessary.
-Prefix arg (second arg if noninteractive) means supply -l switch to `ls'.
+  "Display a list of files in or matching DIRNAME.
+Prefix arg (second arg if noninteractive) means display a verbose listing.
 Actions controlled by variables list-directory-brief-switches
  and list-directory-verbose-switches."
   (lambda ()
