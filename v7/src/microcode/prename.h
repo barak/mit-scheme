@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prename.h,v 1.4 1990/06/20 17:41:41 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prename.h,v 1.5 1991/10/02 21:17:20 jinx Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -55,7 +55,8 @@ static struct primitive_alias aliases [] =
     { "OPEN-DIRECTORY", "DIRECTORY-OPEN" },
     { "SCREEN-X-SIZE", "TTY-X-SIZE" },
     { "SCREEN-Y-SIZE", "TTY-Y-SIZE" },
-    { "FILE-SYMLINK?", "FILE-SOFT-LINK?" }
+    { "FILE-SYMLINK?", "FILE-SOFT-LINK?" },
+    { "X-GRAPHICS-SET-CLASS-HINT", "X-WINDOW-SET-CLASS-HINT" }
   };
 
-#define N_ALIASES 20
+#define N_ALIASES 21

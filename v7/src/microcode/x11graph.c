@@ -1,6 +1,7 @@
+
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.16 1991/07/24 19:42:14 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.17 1991/10/02 21:16:39 jinx Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -365,33 +366,6 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
       }
     }
   }
-}
-
-DEFINE_PRIMITIVE ("X-GRAPHICS-SET-CLASS-HINT",
-		  Prim_x_graphics_set_class_hint, 4, 4,
-  "(X-GRAPHICS-SET-CLASS-HINT DISPLAY WINDOW RESOURCE_CLASS RESOURCE_NAME)\n\
-Set the XA_WM_CLASS property of WINDOW on DISPLAY to RESOURCE_CLASS\n\
-and RESOURCE_NAME.")
-{
-  PRIMITIVE_HEADER (4);
-  {
-    struct xdisplay * xd = (x_display_arg (1));
-    Display * display = (XD_DISPLAY (xd));
-    struct xwindow * xw = (x_window_arg (2));
-    Window window = (XW_WINDOW (xw));
-    XClassHint *class_hint;
-
-    CHECK_ARG (3, STRING_P);
-    CHECK_ARG (4, STRING_P);
-    class_hint = XAllocClassHint ();
-    if (class_hint == NULL)
-      error_external_return ();
-    class_hint->res_class = STRING_ARG (3);
-    class_hint->res_name = STRING_ARG (4);
-    XSetClassHint (display, window, class_hint);
-    XFree ((caddr_t) class_hint);
-  }
-  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-DRAW-LINE", Prim_x_graphics_draw_line, 5, 5,
