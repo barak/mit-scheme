@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ansi.scm,v 1.4 1993/07/29 00:01:20 gjr Exp $
+$Id: ansi.scm,v 1.5 1993/09/01 17:59:16 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -136,11 +136,11 @@ MIT in each case. |#
        false				; ts-enter-delete-mode
        false ;"\033[4h"			; ts-enter-insert-mode
        standout;"\033[7m"		; ts-enter-standout-mode
-       false				; ts-enter-termcap-mode
+       (and full? "\033[1p")		; ts-enter-termcap-mode
        false				; ts-exit-delete-mode
        false ;"\033[4l"			; ts-exit-insert-mode
        normal;"\033[0m"			; ts-exit-standout-mode
-       false				; ts-exit-termcap-mode
+       (and full? "\033[0p")		; ts-exit-termcap-mode
        "\n"				; ts-forward-scroll
        false				; ts-forward-scroll-multi
        (and full? "\033[@")		; ts-insert-char
