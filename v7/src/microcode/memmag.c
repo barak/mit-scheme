@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.24 1987/02/07 15:25:07 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.25 1987/02/08 12:28:47 jinx Exp $ */
 
 /* Memory management top level.
 
@@ -333,7 +333,6 @@ Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
   }
   GC_Reserve = Get_Integer(Arg1);
   GCFlip();
-  Weak_Chain = NULL;
   GC();
   IntCode &= ~INT_GC;
   if (GC_Check(GC_Space_Needed))
