@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.3 1994/03/08 21:24:44 cph Exp $
+;;;	$Id: vc.scm,v 1.4 1994/03/08 21:40:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -538,27 +538,31 @@ A prefix argument means do not revert the buffer afterwards."
 	(set-buffer-pathname! log-buffer #f)
 	(if (vc-master? master)
 	    (vc-mode-line master log-buffer))
-	(buffer-put! log-buffer
-		     'VC-LOG-FINISH-ENTRY
-		     (vc-finish-entry master
-				      finish-entry
-				      after
-				      (let ((window
-					     (pop-up-buffer log-buffer #t)))
-					(and window
-					     (hash window)))))
+	(let ((window (current-window)))
+	  (let ((log-window (pop-up-buffer log-buffer #t)))
+	    (buffer-put! log-buffer
+			 'VC-LOG-FINISH-ENTRY
+			 (vc-finish-entry master
+					  finish-entry
+					  after
+					  (weak-cons log-window #f)
+					  (weak-cons window #f)))))
 	(message msg "  Type C-c C-c when done."))))
 
-(define (vc-finish-entry master finish-entry after window)
+(define (vc-finish-entry master finish-entry after log-window window)
   (lambda (log-buffer)
     ;; If a new window was created to hold the log buffer, and the
     ;; log buffer is still selected in that window, delete it.
-    (let ((window (and window (unhash window))))
+    (let ((log-window (weak-car log-window)))
+      (if (and log-window
+	       (window-live? log-window)
+	       (eq? log-buffer (window-buffer log-window))
+	       (not (window-has-no-neighbors? log-window)))
+	  (window-delete! log-window)))
+    (let ((window (weak-car window)))
       (if (and window
-	       (window-live? window)
-	       (eq? log-buffer (window-buffer window))
-	       (not (window-has-no-neighbors? window)))
-	  (window-delete! window)))
+	       (window-live? window))
+	  (select-window window)))
     (guarantee-newline (buffer-end log-buffer))
     (if (vc-master? master)
 	(guarantee-vc-master-valid master))
@@ -836,7 +840,7 @@ the value of vc-log-mode-hook."
 ;;;; RCS Commands
 
 (define vc-type:rcs
-  (make-vc-type 'RCS "$Id: vc.scm,v 1.3 1994/03/08 21:24:44 cph Exp $"))
+  (make-vc-type 'RCS "$Id: vc.scm,v 1.4 1994/03/08 21:40:02 cph Exp $"))
 
 (define-vc-master-template vc-type:rcs
   (lambda (pathname)
