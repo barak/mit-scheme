@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/compiler.pkg,v 1.9 1992/05/14 03:05:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/compiler.pkg,v 1.10 1992/05/26 20:23:38 mhwu Exp $
 $MC68020-Header: comp.pkg,v 1.30 90/05/03 15:16:59 GMT jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
@@ -179,7 +179,8 @@ MIT in each case. |#
 	  *rtl-procedures*
 	  *rtl-graphs*)
   (import (runtime compiler-info)
-	  make-dbg-info-vector)
+	  make-dbg-info-vector
+	  inf-structure->bif/bsm)
   (import (runtime unparser)
 	  *unparse-uninterned-symbols-by-name?*))
 
