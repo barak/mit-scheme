@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.58 1996/04/07 16:24:10 cph Exp $
+@comment $Id: scheme.texinfo,v 1.59 1996/04/07 16:25:32 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -108,7 +108,7 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.58
+@subtitle Edition 1.59
 @subtitle for Scheme Release 7.4
 @subtitle 6 April 1996
 @author by Chris Hanson
@@ -18514,10 +18514,6 @@ calling convention.
 @c @c @summarycontents
 @c 
 @c @contents
-@c 
-@c @c Local Variables:
-@c @c eval: (auto-save-mode -1)
-@c @c End:
 @c 
 @c @bye
 
