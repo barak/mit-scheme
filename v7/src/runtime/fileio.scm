@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/fileio.scm,v 1.3 1992/02/10 15:57:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/fileio.scm,v 1.4 1992/04/16 05:12:36 jinx Exp $
 
-Copyright (c) 1991-92 Massachusetts Institute of Technology
+Copyright (c) 1991-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -101,10 +101,13 @@ MIT in each case. |#
 	 (channel (file-open-input-channel (->namestring pathname)))
 	 (port
 	  (port/copy input-file-template
-		     (make-file-state (make-input-buffer channel
-							 input-buffer-size)
-				      false
-				      pathname))))
+		     (make-file-state
+		      (make-input-buffer channel
+					 input-buffer-size
+					 (pathname-newline-translation
+					  pathname))
+		      false
+		      pathname))))
     (set-channel-port! channel port)
     port))
 
@@ -117,10 +120,13 @@ MIT in each case. |#
 		(file-open-output-channel filename))))
 	 (port
 	  (port/copy output-file-template
-		     (make-file-state false
-				      (make-output-buffer channel
-							  output-buffer-size)
-				      pathname))))
+		     (make-file-state
+		      false
+		      (make-output-buffer channel
+					  output-buffer-size
+					  (pathname-newline-translation
+					   pathname))
+		      pathname))))
     (set-channel-port! channel port)
     port))
 
@@ -128,17 +134,72 @@ MIT in each case. |#
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-io-channel (->namestring pathname)))
 	 (port
-	  (port/copy i/o-file-template
+	  (let ((translation (pathname-newline-translation pathname)))
+	    (port/copy i/o-file-template
+		       (make-file-state (make-input-buffer
+					 channel
+					 input-buffer-size
+					 translation)
+					(make-output-buffer
+					 channel
+					 output-buffer-size
+					 translation)
+					pathname)))))
+    (set-channel-port! channel port)
+    port))
+
+(define (pathname-newline-translation pathname)
+  (let ((end-of-line (pathname-end-of-line-string pathname)))
+    (and (not (string=? "\n" end-of-line))
+	 end-of-line)))
+
+(define input-buffer-size 512)
+(define output-buffer-size 512)
+
+(define (open-binary-input-file filename)
+  (let* ((pathname (merge-pathnames filename))
+	 (channel (file-open-input-channel (->namestring pathname)))
+	 (port
+	  (port/copy input-file-template
 		     (make-file-state (make-input-buffer channel
-							 input-buffer-size)
-				      (make-output-buffer channel
-							  output-buffer-size)
+							 input-buffer-size
+							 false)
+				      false
 				      pathname))))
     (set-channel-port! channel port)
     port))
 
-(define input-buffer-size 512)
-(define output-buffer-size 512)
+(define (open-binary-output-file filename #!optional append?)
+  (let* ((pathname (merge-pathnames filename))
+	 (channel
+	  (let ((filename (->namestring pathname)))
+	    (if (and (not (default-object? append?)) append?)
+		(file-open-append-channel filename)
+		(file-open-output-channel filename))))
+	 (port
+	  (port/copy output-file-template
+		     (make-file-state false
+				      (make-output-buffer channel
+							  output-buffer-size
+							  false)
+				      pathname))))
+    (set-channel-port! channel port)
+    port))
+
+(define (open-binary-i/o-file filename)
+  (let* ((pathname (merge-pathnames filename))
+	 (channel (file-open-io-channel (->namestring pathname)))
+	 (port
+	  (port/copy i/o-file-template
+		     (make-file-state (make-input-buffer channel
+							 input-buffer-size
+							 false)
+				      (make-output-buffer channel
+							  output-buffer-size
+							  false)
+				      pathname))))
+    (set-channel-port! channel port)
+    port))
 
 (define-structure (file-state (type vector)
 			      (conc-name file-state/))

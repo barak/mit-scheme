@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.2 1992/04/14 18:13:54 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.3 1992/04/16 05:13:05 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -61,7 +61,8 @@ MIT in each case. |#
 		  dos/pathname->truename
 		  dos/user-homedir-pathname
 		  dos/init-file-pathname
-		  dos/pathname-simplify))
+		  dos/pathname-simplify
+		  dos/end-of-line-string))
 
 (define (initialize-package!)
   (add-pathname-host-type! 'DOS make-dos-host-type))
@@ -340,3 +341,7 @@ MIT in each case. |#
 				 (->namestring pathname*))
 				pathname*)))))))
       pathname))
+
+(define (dos/end-of-line-string pathname)
+  pathname				; ignored
+  "\r\n")

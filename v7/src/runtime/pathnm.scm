@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.19 1992/04/11 23:48:35 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.20 1992/04/16 05:12:44 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -150,6 +150,11 @@ these rules:
 
 (define (pathname-version pathname)
   (%pathname-version (->pathname pathname)))
+
+(define (pathname-end-of-line-string pathname)
+  (let ((pathname (->pathname pathname)))
+    ((host-operation/end-of-line-string (%pathname-host pathname))
+     pathname)))
 
 (define (pathname=? x y)
   (let ((x (->pathname x))
@@ -437,7 +442,8 @@ these rules:
   (operation/pathname->truename false read-only true)
   (operation/user-homedir-pathname false read-only true)
   (operation/init-file-pathname false read-only true)
-  (operation/pathname-simplify false read-only true))
+  (operation/pathname-simplify false read-only true)
+  (operation/end-of-line-string false read-only true))
 
 (define-structure (host
 		   (named (string->symbol "#[(runtime pathname)host]"))
@@ -490,6 +496,9 @@ these rules:
 
 (define (host-operation/pathname-simplify host)
   (host-type/operation/pathname-simplify (host/type host)))
+
+(define (host-operation/end-of-line-string host)
+  (host-type/operation/end-of-line-string (host/type host)))
 
 ;;;; File System Stuff
 
@@ -569,7 +578,8 @@ these rules:
 			name all))))
     (make-host-type index name
 		    fail fail fail fail fail
-		    fail fail fail fail fail)))
+		    fail fail fail fail fail
+		    fail)))
 
 (define available-host-types
   '())

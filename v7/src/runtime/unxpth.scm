@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.10 1992/04/11 23:48:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.11 1992/04/16 05:12:55 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -49,7 +49,8 @@ MIT in each case. |#
 		  unix/pathname->truename
 		  unix/user-homedir-pathname
 		  unix/init-file-pathname
-		  unix/pathname-simplify))
+		  unix/pathname-simplify
+		  unix/end-of-line-string))
 
 (define (initialize-package!)
   (add-pathname-host-type! 'UNIX make-unix-host-type))
@@ -303,3 +304,7 @@ MIT in each case. |#
 				 (->namestring pathname*))
 				pathname*)))))))
       pathname))
+
+(define (unix/end-of-line-string pathname)
+  pathname				; ignored
+  "\n")

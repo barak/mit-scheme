@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.146 1992/04/13 18:24:27 hal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.147 1992/04/16 05:12:18 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -648,6 +648,9 @@ MIT in each case. |#
   (files "fileio")
   (parent ())
   (export ()
+	  open-binary-i/o-file
+	  open-binary-input-file
+	  open-binary-output-file
 	  open-i/o-file
 	  open-input-file
 	  open-output-file)
@@ -1438,6 +1441,7 @@ MIT in each case. |#
 	  pathname-default-version
 	  pathname-device
 	  pathname-directory
+	  pathname-end-of-line-string
 	  pathname-host
 	  pathname-name
 	  pathname-new-device
