@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.6 1993/10/28 04:45:25 gjr Exp $
+$Id: liarc.h,v 1.7 1993/10/30 03:02:05 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -76,8 +76,6 @@ union machine_word_u
 
 typedef union machine_word_u machine_word;
 
-#define ERROR_UNKNOWN_DISPATCH( pc ) lose_big ("Unknown tag.")
-
 #define ADDRESS_UNITS_PER_OBJECT	(sizeof (SCHEME_OBJECT))
 #define ADDRESS_UNITS_PER_FLOAT		(sizeof (double))
 
@@ -113,9 +111,9 @@ typedef union machine_word_u machine_word;
   double num = (src);							\
   SCHEME_OBJECT * val;							\
 									\
-  ALIGN_FLOAT (free_pointer);						\
-  val = free_pointer;							\
-  free_pointer += (1 + (BYTES_TO_WORDS (sizeof (double))));		\
+  ALIGN_FLOAT (Rhp);							\
+  val = Rhp;								\
+  Rhp += (1 + (BYTES_TO_WORDS (sizeof (double))));			\
   * val = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,				\
 			(BYTES_TO_WORDS (sizeof (double)))));		\
   (* ((double *) (val + 1))) = num;					\
@@ -134,10 +132,10 @@ typedef union machine_word_u machine_word;
 
 #ifdef USE_GLOBAL_VARIABLES
 
-#define value_reg Val
-#define free_pointer Free
-#define register_block Regs
-#define stack_pointer Stack_Pointer
+#define Rvl Val
+#define Rhp Free
+#define Rrb Regs
+#define Rsp Stack_Pointer
 
 #define DECLARE_VARIABLES() int unsed_variable_to_keep_C_happy
 #define UNCACHE_VARIABLES() do {} while (0)
@@ -147,110 +145,47 @@ typedef union machine_word_u machine_word;
 
 #define REGISTER register
 
-#define register_block Regs
+#define Rrb Regs
 
 #define DECLARE_VARIABLES()						\
-REGISTER SCHEME_OBJECT value_reg = Val;					\
-REGISTER SCHEME_OBJECT * free_pointer = Free;				\
-REGISTER SCHEME_OBJECT * stack_pointer = Stack_Pointer
+REGISTER SCHEME_OBJECT Rvl = Val;					\
+REGISTER SCHEME_OBJECT * Rhp = Free;					\
+REGISTER SCHEME_OBJECT * Rsp = Stack_Pointer
 
 #define UNCACHE_VARIABLES() do						\
 {									\
-  Stack_Pointer = stack_pointer;					\
-  Free = free_pointer;							\
-  Val = value_reg;							\
+  Stack_Pointer = Rsp;							\
+  Free = Rhp;								\
+  Val = Rvl;								\
 } while (0)
 
 #define CACHE_VARIABLES() do						\
 {									\
-  value_reg = Val;							\
-  free_pointer = Free;							\
-  stack_pointer = Stack_Pointer;					\
+  Rvl = Val;								\
+  Rhp = Free;								\
+  Rsp = Stack_Pointer;							\
 } while (0)
 
 #endif /* USE_GLOBAL_VARIABLES */
 
-#define REPEAT_DISPATCH() do						\
-{									\
-  if ((LABEL_PROCEDURE (my_pc)) != current_C_proc)			\
-  {									\
-    UNCACHE_VARIABLES ();						\
-    return (my_pc);							\
-  }									\
-  /* fall through. */							\
-} while (0)
-
-#ifdef USE_SHORTCKT_JUMP
-
 #define JUMP(destination) do						\
 {									\
-  my_pc = (destination);						\
-  goto repeat_dispatch;							\
+  Rpc = (destination);							\
+  goto perform_dispatch;						\
 } while(0)
 
-#define JUMP_EXTERNAL(destination) do					\
-{									\
-  my_pc = (destination);						\
-  if ((LABEL_PROCEDURE (my_pc)) == current_C_proc)			\
-  {									\
-    CACHE_VARIABLES ();							\
-    goto perform_dispatch;						\
-  }									\
-  return (my_pc);							\
-} while (0)
+#define JUMP_EXECUTE_CHACHE(label)					\
+  JUMP ((SCHEME_OBJECT *) (current_block[label]))
 
-#define JUMP_EXECUTE_CHACHE(entry) do					\
-{									\
-  my_pc = ((SCHEME_OBJECT *) current_block[entry]);			\
-  goto repeat_dispatch;							\
-} while (0)
+#define POP_RETURN() goto pop_return
 
-#define POP_RETURN() goto pop_return_repeat_dispatch
-
-#define POP_RETURN_REPEAT_DISPATCH() do					\
-{									\
-  my_pc = (OBJECT_ADDRESS (*stack_pointer++));				\
-  /* fall through to repeat_dispatch */					\
-} while (0)
-
-#else /* not USE_SHORTCKT_JUMP */
-
-#define JUMP(destination) do						\
-{									\
-  UNCACHE_VARIABLES ();							\
-  return (destination);							\
-} while (0)
-
-#define JUMP_EXTERNAL(destination) return (destination)
-
-#define JUMP_EXECUTE_CHACHE(entry) do					\
-{									\
-  SCHEME_OBJECT* destination						\
-    = ((SCHEME_OBJECT *) current_block[entry]);				\
-									\
-  JUMP (destination);							\
-} while (0)
-
-#define POP_RETURN() do							\
-{									\
-    SCHEME_OBJECT target = *stack_pointer++;				\
-    SCHEME_OBJECT destination = (OBJECT_ADDRESS (target));		\
-    JUMP (destination);							\
-} while (0)
-
-#define POP_RETURN_REPEAT_DISPATCH() do					\
-{									\
-} while (0)
-
-#endif /* USE_SHORTCKT_JUMP */
-
 #define INVOKE_PRIMITIVE(prim, nargs) do				\
 {									\
   primitive = (prim);							\
   primitive_nargs = (nargs);						\
   goto invoke_primitive;						\
 } while (0)
-
+
 #define INVOKE_PRIMITIVE_CODE() do					\
 {									\
   SCHEME_OBJECT * destination;						\
@@ -259,7 +194,8 @@ REGISTER SCHEME_OBJECT * stack_pointer = Stack_Pointer
   PRIMITIVE_APPLY (Val, primitive);					\
   POP_PRIMITIVE_FRAME (primitive_nargs);				\
   destination = (OBJECT_ADDRESS (STACK_POP ()));			\
-  JUMP_EXTERNAL (destination);						\
+  CACHE_VARIABLES ();							\
+  JUMP (destination);							\
 } while(0)
 
 #define INVOKE_INTERFACE_CODE() do					\
@@ -267,48 +203,49 @@ REGISTER SCHEME_OBJECT * stack_pointer = Stack_Pointer
   SCHEME_OBJECT * destination;						\
 									\
   UNCACHE_VARIABLES ();							\
-  destination = (invoke_utility (subtmp_code, subtmp_1, subtmp_2,	\
-				 subtmp_3, subtmp_4));			\
-  JUMP_EXTERNAL (destination);						\
+  destination = (invoke_utility (utlarg_code, utlarg_1, utlarg_2,	\
+				 utlarg_3, utlarg_4));			\
+  CACHE_VARIABLES ();							\
+  JUMP (destination);							\
 } while (0)
 
 #define INVOKE_INTERFACE_4(code, one, two, three, four) do		\
 {									\
-  subtmp_4 = ((long) (four));						\
-  subtmp_3 = ((long) (three));						\
-  subtmp_2 = ((long) (two));						\
-  subtmp_1 = ((long) (one));						\
-  subtmp_code = (code);							\
+  utlarg_4 = ((long) (four));						\
+  utlarg_3 = ((long) (three));						\
+  utlarg_2 = ((long) (two));						\
+  utlarg_1 = ((long) (one));						\
+  utlarg_code = (code);							\
   goto invoke_interface_4;						\
 } while (0)
 
 #define INVOKE_INTERFACE_3(code, one, two, three) do			\
 {									\
-  subtmp_3 = ((long) (three));						\
-  subtmp_2 = ((long) (two));						\
-  subtmp_1 = ((long) (one));						\
-  subtmp_code = (code);							\
+  utlarg_3 = ((long) (three));						\
+  utlarg_2 = ((long) (two));						\
+  utlarg_1 = ((long) (one));						\
+  utlarg_code = (code);							\
   goto invoke_interface_3;						\
 } while (0)
 
 #define INVOKE_INTERFACE_2(code, one, two) do				\
 {									\
-  subtmp_2 = ((long) (two));						\
-  subtmp_1 = ((long) (one));						\
-  subtmp_code = (code);							\
+  utlarg_2 = ((long) (two));						\
+  utlarg_1 = ((long) (one));						\
+  utlarg_code = (code);							\
   goto invoke_interface_2;						\
 } while (0)
 
 #define INVOKE_INTERFACE_1(code, one) do				\
 {									\
-  subtmp_1 = ((long) (one));						\
-  subtmp_code = (code);							\
+  utlarg_1 = ((long) (one));						\
+  utlarg_code = (code);							\
   goto invoke_interface_1;						\
 } while (0)
 
 #define INVOKE_INTERFACE_0(code) do					\
 {									\
-  subtmp_code = (code);							\
+  utlarg_code = (code);							\
   goto invoke_interface_0;						\
 } while (0)
 
@@ -352,63 +289,98 @@ REGISTER SCHEME_OBJECT * stack_pointer = Stack_Pointer
  : (((source1) >= 0)							\
     ? (- ((source1) / (- (source2))))					\
     : ((- (source1)) / (- (source2)))))
-
-#define CLOSURE_HEADER(offset) do					\
-{									\
-  SCHEME_OBJECT * entry = ((SCHEME_OBJECT *) my_pc[1]);			\
-  current_block = (entry - offset);					\
-  *--stack_pointer = (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY, my_pc));	\
-} while (0)
-
-#define CLOSURE_INTERRUPT_CHECK(code) do				\
-{									\
-  if (((long) free_pointer)						\
-      >= ((long) (register_block[REGBLOCK_MEMTOP])))			\
-    INVOKE_INTERFACE_0 (code);						\
-} while (0)
 
 #define INTERRUPT_CHECK(code, entry_point) do				\
 {									\
-  if (((long) free_pointer)						\
-      >= ((long) (register_block[REGBLOCK_MEMTOP])))			\
+  if (((long) Rhp) >= ((long) (Rrb[REGBLOCK_MEMTOP])))			\
     INVOKE_INTERFACE_1 (code, &current_block[entry_point]);		\
 } while (0)
 
 #define DLINK_INTERRUPT_CHECK(code, entry_point) do			\
 {									\
-  if (((long) free_pointer)						\
-      >= ((long) (register_block[REGBLOCK_MEMTOP])))			\
-    INVOKE_INTERFACE_2 (code, &current_block[entry_point],		\
-			dynamic_link);					\
+  if (((long) Rhp) >= ((long) (Rrb[REGBLOCK_MEMTOP])))			\
+    INVOKE_INTERFACE_2 (code, &current_block[entry_point], Rdl);	\
 } while (0)
 
-struct compiled_file
-{
-  int number_of_procedures;
-  char ** names;
-  void * EXFUN ((**procs), (void));
-};
+#define CLOSURE_HEADER(offset) do					\
+{									\
+  SCHEME_OBJECT * entry = ((SCHEME_OBJECT *) Rpc[1]);			\
+  current_block = (entry - offset);					\
+  *--Rsp = (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY, Rpc));		\
+} while (0)
 
-/* This does nothing in the sources. */
+#define CLOSURE_INTERRUPT_CHECK(code) do				\
+{									\
+  if (((long) Rhp) >= ((long) (Rrb[REGBLOCK_MEMTOP])))			\
+    INVOKE_INTERFACE_0 (code);						\
+} while (0)
+
+/* Linking and initialization */
+
+#define DECLARE_SUBCODE(name, nentries, decl_code, code) do		\
+{									\
+  int result = (declare_compiled_code (name, nentries,			\
+				       decl_code, code));		\
+									\
+  if (result != 0)							\
+    return (result);							\
+} while (0)
+
+#define DECLARE_SUBDATA(name, decl_data, data) do			\
+{									\
+  int result = (declare_compiled_data (name, decl_data, data));		\
+									\
+  if (result != 0)							\
+    return (result);							\
+} while (0)
 
 #ifndef COMPILE_FOR_DYNAMIC_LOADING
 
-# define DECLARE_COMPILED_CODE(string, decl, code)			\
-  extern void EXFUN (decl, (void));					\
-  extern SCHEME_OBJECT * EXFUN (code, (SCHEME_OBJECT *));
+/* This does nothing in the sources. */
+
+# define DECLARE_COMPILED_CODE(name, nentries, decl_code, code)		\
+  extern int EXFUN (decl_code, (void));					\
+  extern SCHEME_OBJECT * EXFUN (code, (SCHEME_OBJECT *, unsigned long));
+
+# define DECLARE_COMPILED_DATA(name, decl_data, data)			\
+  extern int EXFUN (decl_data, (void));					\
+  extern SCHEME_OBJECT * EXFUN (data, (unsigned long));
+
+# define DECLARE_DYNAMIC_INITIALIZATION()
 
 #else /* COMPILE_FOR_DYNAMIC_LOADING */
 
-# define DECLARE_COMPILED_CODE(string, decl, code)			\
-  extern void EXFUN (dload_initialize_file, (void));			\
+# define DECLARE_COMPILED_CODE(name, nentries, decl_code, code)		\
+  static int								\
+  DEFUN_VOID (dload_initialize_code)					\
+  {									\
+    int EXFUN (decl_code, (void));					\
+    SCHEME_OBJECT * EXFUN (code, (SCHEME_OBJECT *, unsigned long));	\
 									\
-  void									\
+    return (declare_compiled_code (name, nentries,			\
+				   decl_code, code));			\
+  }
+
+# define DECLARE_COMPILED_DATA(name, decl_data, data)			\
+  static int								\
+  DEFUN_VOID (dload_initialize_data)					\
+  {									\
+    int EXFUN (decl_data, (void));					\
+    SCHEME_OBJECT * EXFUN (data, (unsigned long));			\
+									\
+    return (declare_compiled_data (name, decl_data, data));		\
+  }
+
+# define DECLARE_DYNAMIC_INITIALIZATION()				\
+  extern int EXFUN (dload_initialize_file, (void));			\
+									\
+  int									\
   DEFUN_VOID (dload_initialize_file)					\
   {									\
-    void EXFUN (decl, (void));						\
-    SCHEME_OBJECT * EXFUN (code, (SCHEME_OBJECT *));			\
-									\
-    declare_compiled_code (string, decl, code);				\
+    int result = (dload_initialize_code ());				\
+    if (result != 0)							\
+      return (result);							\
+    return (dload_initialize_data ());					\
   }
 
 #endif /* COMPILE_FOR_DYNAMIC_LOADING */
@@ -422,20 +394,21 @@ struct compiled_file
 extern RCONSM_TYPE(rconsm);
 
 extern int
+  EXFUN (multiply_with_overflow, (long, long, long *)),
   EXFUN (declare_compiled_code,
 	 (char *,
-	  void EXFUN ((*), (void)),
-	  SCHEME_OBJECT * EXFUN ((*), (SCHEME_OBJECT *)))),
-  EXFUN (multiply_with_overflow, (long, long, long *));
+	  unsigned long,
+	  int EXFUN ((*), (void)),
+	  SCHEME_OBJECT * EXFUN ((*), (SCHEME_OBJECT *, unsigned long)))),
+  EXFUN (declare_compiled_data,
+	 (char *,
+	  int EXFUN ((*), (void)),
+	  SCHEME_OBJECT * EXFUN ((*), (unsigned long)))),
+  EXFUN (NO_SUBBLOCKS, (void));
 
 extern SCHEME_OBJECT
   EXFUN (initialize_subblock, (char *)),
-   * EXFUN (invoke_utility, (int, long, long, long, long));
-
-extern void
-  EXFUN (NO_SUBBLOCKS, (void)),
-  EXFUN (lose_big, (char *)),
-  EXFUN (error_band_already_built, (void));
+  * EXFUN (invoke_utility, (int, long, long, long, long));
 
 extern double
   EXFUN (acos, (double)),

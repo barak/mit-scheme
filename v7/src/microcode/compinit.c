@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: compinit.c,v 1.2 1993/06/09 20:36:38 jawilson Exp $
+$Id: compinit.c,v 1.3 1993/10/30 03:02:11 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -35,20 +35,31 @@ MIT in each case. */
 #include "liarc.h"
 
 #undef DECLARE_COMPILED_CODE
+#undef DECLARE_COMPILED_DATA
 
-#define DECLARE_COMPILED_CODE(name, decl, code) do			\
+#define DECLARE_COMPILED_CODE(name, nentries, decl_code, code) do	\
 {									\
-  extern void EXFUN (decl, (void));					\
-  extern SCHEME_OBJECT * EXFUN (code, (SCHEME_OBJECT *));		\
-  if ((declare_compiled_code (name, decl, code)) == 0)			\
-    lose_big_1 ("DECLARE_COMPILED_CODE: duplicate tag", name);		\
+  extern int EXFUN (decl_code, (void));					\
+  extern SCHEME_OBJECT * EXFUN (code,					\
+				(SCHEME_OBJECT *, unsigned long));	\
+  int result =								\
+    (declare_compiled_code (name, nentries, decl_code, code));		\
+  if (result != 0)							\
+    return (result);							\
 } while (0)
 
-extern void EXFUN (lose_big_1, (char *, char *));
+#define DECLARE_COMPILED_DATA(name, decl_data, data) do			\
+{									\
+  extern int EXFUN (decl_data, (void));					\
+  extern SCHEME_OBJECT * EXFUN (data, (unsigned long));			\
+  int result = (declare_compiled_data (name, decl_data, data));		\
+  if (result != 0)							\
+    return (result);							\
+} while (0)
 
-void
+int
 DEFUN_VOID (initialize_compiled_code_blocks)
 {
 #include "compinit.h"
-  return;
+  return (0);
 }

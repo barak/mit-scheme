@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.73 1993/10/26 02:57:43 gjr Exp $
+$Id: cmpint.c,v 1.74 1993/10/30 03:04:27 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -133,7 +133,8 @@ typedef instruction * utility_result;
 extern void EXFUN (C_to_interface, (void *));
 extern utility_result interface_to_C_hook;
 
-static long C_return_value;
+extern long C_return_value;
+long C_return_value;
 
 /* Convenience macros */
 
@@ -3041,6 +3042,10 @@ utility_table_entry utility_table[] =
   UTE(comutil_compiled_code_bkpt),		/* 0x3c */
   UTE(comutil_compiled_closure_bkpt)		/* 0x3d */
   };
+
+extern long MAX_TRAMPOLINE;
+long MAX_TRAMPOLINE = ((sizeof (utility_table))
+		       / (sizeof (utility_table_entry)));
 
 /* Support for trap handling. */
 

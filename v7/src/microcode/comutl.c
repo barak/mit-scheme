@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: comutl.c,v 1.28 1993/10/26 02:58:01 gjr Exp $
+$Id: comutl.c,v 1.29 1993/10/30 03:04:19 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -170,7 +170,8 @@ DEFINE_PRIMITIVE ("BUILTIN-INDEX->NAME", Prim_builtin_index_to_name, 1, 1,
 
 /* This is only meaningful for the C back end. */
 
-DEFINE_PRIMITIVE ("INITIALIZE-C-COMPILED-BLOCK", Prim_initialize_C_compiled_block, 1, 1,
+DEFINE_PRIMITIVE ("INITIALIZE-C-COMPILED-BLOCK",
+		  Prim_initialize_C_compiled_block, 1, 1,
   "Given the tag of a compiled object, return the object.")
 {
 #ifdef NATIVE_CODE_IS_C
