@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.61 2004/06/27 06:26:26 cph Exp $
+$Id: xml-parser.scm,v 1.62 2004/06/28 03:27:04 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -251,9 +251,12 @@ USA.
 (define *internal-dtd?*)
 (define *elt-decls*)
 (define *att-decls*)
-(define *pi-handlers*)
+(define *pi-handlers* '())
 (define *in-dtd?*)
 (define *prefix-bindings*)
+
+(define (xml-processing-instructions-handlers)
+  *pi-handlers*)
 
 (define parse-misc			;[27]
   (*parser
@@ -620,7 +623,7 @@ USA.
 
 ;;;; Processing instructions
 
-(define (pi-parser valid-content?) ;[16,17]
+(define (pi-parser valid-content-item?) ;[16,17]
   (let ((description "processing instructions")
 	(start "<?")
 	(end "?>"))
@@ -637,7 +640,7 @@ USA.
 		 (let ((entry (assq name *pi-handlers*)))
 		   (if entry
 		       (let ((content ((cadr entry) text)))
-			 (if (not (valid-content? content))
+			 (if (not (list-of-type? content valid-content-item?))
 			     (perror p
 				     "Illegal output from XML processor"
 				     name))
@@ -650,22 +653,20 @@ USA.
 		  (values "")))))))))
 
 (define parse-pi:misc
-  (pi-parser xml-misc-content?))
+  (pi-parser xml-misc-content-item?))
 
 (define parse-pi:element
-  (pi-parser xml-content?))
+  (pi-parser xml-content-item?))
 
 (define parse-pi:internal-markup-decl
   (pi-parser
    (lambda (object)
-     (list-of-type? object
-       (lambda (object)
-	 (or (xml-!element? object)
-	     (xml-!attlist? object)
-	     (xml-!entity? object)
-	     (xml-!notation? object)
-	     (xml-comment? object)
-	     (xml-processing-instructions? object)))))))
+     (or (xml-!element? object)
+	 (xml-!attlist? object)
+	 (xml-!entity? object)
+	 (xml-!notation? object)
+	 (xml-comment? object)
+	 (xml-processing-instructions? object)))))
 
 ;;;; References
 
