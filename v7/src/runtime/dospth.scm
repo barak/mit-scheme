@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.1 1992/04/11 23:48:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.2 1992/04/14 18:13:54 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -99,7 +99,7 @@ MIT in each case. |#
 (define (with-namestring-device-and-path string receiver)
   (let ((colon (string-find-next-char string #\:)))
     (cond ((not colon)
-	   (receiver 'UNSPECIFIC string))
+	   (receiver false string))
 	  ((not (= colon 1))
 	   (error "dos/parse-namestring: Invalid drive name" string))
 	  (else
@@ -175,7 +175,9 @@ MIT in each case. |#
 			       (%pathname-type pathname))))
 
 (define (unparse-device device)
-  (if (eq? device 'UNSPECIFIC) "" device))
+  (if (or (not device) (eq? device 'UNSPECIFIC))
+      ""
+      device))
 
 (define (unparse-directory directory)
   (cond ((not directory)
@@ -217,7 +219,7 @@ MIT in each case. |#
   (%make-pathname
    host
    (cond ((string? device) device)
-	 ((memq device '(#F UNSPECIFIC)) 'UNSPECIFIC)
+	 ((memq device '(#F UNSPECIFIC)) device)
 	 (else
 	  (error:wrong-type-argument device "pathname device" 'MAKE-PATHNAME)))
    (cond ((not directory)
