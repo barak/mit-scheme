@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.14 1992/01/24 00:32:40 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.15 1992/01/24 23:05:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -459,127 +459,150 @@ after the listing is made.)"
 
 (define (run-synchronous-process input-region output-mark directory pty?
 				 program . arguments)
-  (let ((process false)
-	(start-process
-	 (lambda ()
-	   (start-subprocess
-	    program
-	    (list->vector
-	     (cons (os/filename-non-directory program) arguments))
-	    false
-	    pty?))))
-    (dynamic-wind
-     (lambda ()
-       (if (not process)
-	   (set! process
-		 (if directory
-		     (with-working-directory-pathname directory start-process)
-		     (start-process))))
-       unspecific)
-     (lambda ()
-       (call-with-output-copier process output-mark
-	 (lambda (copy-output)
-	   (call-with-input-copier process input-region
-	     (lambda (copy-input)
-	       (let loop ()
-		 (copy-input)
-		 (copy-output)
-		 (let ((status (subprocess-status process)))
-		   (if (eq? status 'RUNNING)
-		       (loop)
-		       status))))))))
-     (lambda ()
-       (if (and process (not (eq? process 'DELETED)))
-	   (begin
-	     (subprocess-delete process)
-	     (set! process 'DELETED)))
-       unspecific))))
+  (let ((process false))
+    (intercept-^g-interrupts
+	(lambda ()
+	  (if (and process (not (eq? process 'DELETED)))
+	      (begin
+		(subprocess-delete process)
+		(set! process 'DELETED)))
+	  (^G-signal))
+      (lambda ()
+	(set! process
+	      (let ((start-process
+		     (lambda ()
+		       (start-subprocess
+			program
+			(list->vector
+			 (cons (os/filename-non-directory program) arguments))
+			false
+			pty?))))
+		(if directory
+		    (with-working-directory-pathname directory start-process)
+		    (start-process))))
+	(let* ((output-mark
+		(and output-mark (mark-left-inserting-copy output-mark)))
+	       (status
+		(synchronous-process-wait process input-region output-mark))
+	       (reason (subprocess-exit-reason process)))
+	  (let ((abnormal-termination
+		 (lambda (message)
+		   (if output-mark
+		       (begin
+			 (guarantee-newlines 2 output-mark)
+			 (insert-string "Process " output-mark)
+			 (insert-string message output-mark)
+			 (insert-string " " output-mark)
+			 (insert-string (number->string reason) output-mark)
+			 (insert-string "." output-mark)
+			 (insert-newline output-mark))))))
+	    (case status
+	      ((STOPPED)
+	       (abnormal-termination "stopped with signal")
+	       (subprocess-kill process)
+	       (subprocess-wait process))
+	      ((SIGNALLED)
+	       (abnormal-termination "terminated with signal"))
+	      ((EXITED)
+	       (if (not (eqv? 0 reason))
+		   (abnormal-termination "exited abnormally with code")))))
+	  (if output-mark
+	      (mark-temporary! output-mark))
+	  (cons status reason))))))
 
-(define (call-with-output-copier process output-mark receiver)
-  (let ((output-mark (and output-mark (mark-left-inserting output-mark))))
-    (let ((status
-	   (if output-mark
-	       (let ((output-channel (subprocess-input-channel process)))
-		 (let ((copy-output
-			(let ((buffer (make-string 512)))
-			  (lambda ()
-			    (let loop ()
-			      (let ((n (channel-read output-channel
-						     buffer 0 512)))
-				(if (and n (positive? n))
-				    (begin
-				      (insert-substring buffer 0 n output-mark)
-				      (loop)))))))))
-		   (channel-nonblocking output-channel)
-		   (let ((status (receiver copy-output)))
-		     (channel-blocking output-channel)
-		     (copy-output)
-		     status)))
-	       (receiver (lambda () unspecific)))))
-      (let ((reason (subprocess-exit-reason process)))
-	(let ((abnormal-termination
-	       (lambda (message)
-		 (if output-mark
-		     (begin
-		       (guarantee-newlines 2 output-mark)
-		       (insert-string "Process " output-mark)
-		       (insert-string message output-mark)
-		       (insert-string " " output-mark)
-		       (insert-string (number->string reason) output-mark)
-		       (insert-string "." output-mark)
-		       (insert-newline output-mark))))))
-	  (case status
-	    ((STOPPED)
-	     (abnormal-termination "stopped with signal")
-	     (subprocess-kill process)
-	     (subprocess-wait process))
-	    ((SIGNALLED)
-	     (abnormal-termination "terminated with signal"))
-	    ((EXITED)
-	     (if (not (eqv? 0 reason))
-		 (abnormal-termination "exited abnormally with code")))))
-	(subprocess-delete process)
-	(cons status reason)))))
-
-(define (call-with-input-copier process input-region receiver)
+(define (synchronous-process-wait process input-region output-mark)
   (if input-region
-      (let ((group (region-group input-region))
-	    (start-index (region-start-index input-region))
-	    (end-index (region-end-index input-region))
-	    (input-channel (subprocess-output-channel process)))
-	(channel-nonblocking input-channel)
-	(call-with-current-continuation
-	 (lambda (continuation)
-	   (bind-condition-handler (list condition-type:system-call-error)
-	       (lambda (condition)
-		 (if (and (eq? 'WRITE (system-call-name condition))
-			  (eq? 'BROKEN-PIPE (system-call-error condition)))
-		     (continuation (subprocess-wait process))))
-	     (lambda ()
-	       (receiver
-		(letrec
-		    ((loop
-		      (lambda ()
-			(if (< start-index end-index)
-			    (let ((index (min (+ start-index 512) end-index)))
-			      (let ((buffer
-				     (group-extract-string group
-							   start-index
-							   index)))
-				(let ((n
-				       (channel-write input-channel
-						      buffer
-						      0
-						      (string-length buffer))))
-				  (if n
-				      (begin
-					(set! start-index (+ start-index n))
-					(loop))))))
-			    (channel-close input-channel)))))
-		  loop)))))))
+      (call-with-current-continuation
+       (lambda (continuation)
+	 (bind-condition-handler (list condition-type:system-call-error)
+	     (lambda (condition)
+	       (if (and (eq? 'WRITE (system-call-name condition))
+			(eq? 'BROKEN-PIPE (system-call-error condition)))
+		   (continuation (subprocess-wait process))))
+	   (lambda ()
+	     (if output-mark
+		 (call-with-output-copier process output-mark
+		   (lambda (copy-output)
+		     (call-with-input-copier process input-region
+		       (lambda (copy-input)
+			 (let loop ()
+			   (copy-input)
+			   (copy-output)
+			   (let ((status (subprocess-status process)))
+			     (if (eq? status 'RUNNING)
+				 (loop)
+				 status)))))))
+		 (begin
+		   (group-write-to-channel (region-group region)
+					   (region-start-index region)
+					   (region-end-index region)
+					   (subprocess-output-channel process))
+		   (subprocess-wait process)))))))
       (begin
 	(channel-close (subprocess-output-channel process))
-	(receiver (lambda () unspecific)))))
+	(if output-mark
+	    (let ((buffer (make-string 512))
+		  (output-channel (subprocess-input-channel process))
+		  (output-mark (mark-left-inserting-copy output-mark)))
+	      (let loop ()
+		(let ((n (channel-read output-channel buffer 0 512)))
+		  (if (> n 0)
+		      (begin
+			(insert-substring buffer 0 n output-mark)
+			(if (= n 512)
+			    (loop))))))))
+	(subprocess-wait process))))
+
+(define (call-with-output-copier process output-mark receiver)
+  (let ((channel (subprocess-input-channel process)))
+    (let ((copy-output
+	   (let ((buffer (make-string 512)))
+	     (lambda ()
+	       (let loop ()
+		 (let ((n (channel-read channel buffer 0 512)))
+		   (if (and n (positive? n))
+		       (begin
+			 (insert-substring buffer 0 n output-mark)
+			 (if (= n 512)
+			     (loop))))))))))
+      (channel-nonblocking channel)
+      (let ((status (receiver copy-output)))
+	(channel-blocking channel)
+	(copy-output)
+	status))))
+
+(define (call-with-input-copier process input-region receiver)
+  (let ((group (region-group input-region))
+	(start-index (region-start-index input-region))
+	(end-index (region-end-index input-region))
+	(channel (subprocess-output-channel process))
+	(buffer (make-string 512)))
+    (channel-nonblocking channel)
+    (call-with-current-continuation
+     (lambda (continuation)
+       (bind-condition-handler (list condition-type:system-call-error)
+	   (lambda (condition)
+	     (if (and (eq? 'WRITE (system-call-name condition))
+		      (eq? 'BROKEN-PIPE (system-call-error condition)))
+		 (continuation (subprocess-wait process))))
+	 (lambda ()
+	   (receiver
+	    (letrec
+		((loop
+		  (lambda ()
+		    (if (< start-index end-index)
+			(let ((index (min (+ start-index 512) end-index)))
+			  (group-copy-substring! group start-index index
+						 buffer 0)
+			  (let* ((end (- index start-index))
+				 (n (channel-write channel buffer 0 end)))
+			    (if n
+				(begin
+				  (set! start-index (+ start-index n))
+				  (if (= n end)
+				      (loop))))))
+			(channel-close channel)))))
+	      loop))))))))
 
 (define system-call-name
   (condition-accessor condition-type:system-call-error 'SYSTEM-CALL))
