@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: curren.scm,v 1.104 1992/09/10 02:43:53 cph Exp $
+;;;	$Id: curren.scm,v 1.105 1992/11/13 21:40:06 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -100,7 +100,7 @@
 	     (screen-exit! screen*)
 	     (let ((window (screen-selected-window screen)))
 	       (undo-leave-window! window)
-	       (change-selected-buffer (window-buffer window) true
+	       (change-selected-buffer window (window-buffer window) true
 		 (lambda ()
 		   (set-editor-selected-screen! current-editor screen))))
 	     (set-current-message! message)
@@ -183,7 +183,7 @@
      (undo-leave-window! window)
      (let ((screen (window-screen window)))
        (if (selected-screen? screen)
-	   (change-selected-buffer (window-buffer window) true
+	   (change-selected-buffer window (window-buffer window) true
 	     (lambda ()
 	       (screen-select-window! screen window)))
 	   (begin
@@ -413,7 +413,7 @@
    (lambda ()
      (undo-leave-window! window)
      (if (current-window? window)
-	 (change-selected-buffer buffer record?
+	 (change-selected-buffer window buffer record?
 	   (lambda ()
 	     (set-window-buffer! window buffer)))
 	 (set-window-buffer! window buffer)))))
@@ -424,8 +424,9 @@ The new buffer and the window in which it is selected are passed as arguments.
 The buffer is guaranteed to be selected at that time."
   (make-event-distributor))
 
-(define (change-selected-buffer buffer record? selection-thunk)
+(define (change-selected-buffer window buffer record? selection-thunk)
   (change-local-bindings! (current-buffer) buffer selection-thunk)
+  (set-buffer-point! buffer (window-point window))
   (if record?
       (bufferset-select-buffer! (current-bufferset) buffer))
   (if (not (minibuffer? buffer))
@@ -464,12 +465,10 @@ The buffer is guaranteed to be selected at that time."
   (set-window-point! (current-window) mark))
 
 (define (set-buffer-point! buffer mark)
-  (let ((windows (buffer-windows buffer)))
-    (if (null? windows)
-	(%set-buffer-point! buffer mark)
-	(for-each (lambda (window)
-		    (set-window-point! window mark))
-		  windows))))
+  (let ((window (current-window)))
+    (if (eq? buffer (window-buffer window))
+	(set-window-point! window mark)
+	(%set-buffer-point! buffer mark))))
 
 (define (with-current-point point thunk)
   (let ((old-point))
