@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.65 1990/11/14 13:30:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.66 1990/11/15 23:17:06 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -460,6 +460,29 @@ DEFINE_PRIMITIVE ("MICROCODE-TABLES-FILENAME", Prim_microcode_tables_filename, 0
   PRIMITIVE_RETURN (char_pointer_to_string (option_utabmd_file));
 }
 
+DEFINE_PRIMITIVE ("MICROCODE-LIBRARY-PATH", Prim_microcode_library_path, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  {
+    CONST char ** scan = option_library_path;
+    CONST char ** end = option_library_path;
+    while (1)
+      if ((*end++) == 0)
+	{
+	  end -= 1;
+	  break;
+	}
+    {
+      SCHEME_OBJECT result =
+	(allocate_marked_vector (TC_VECTOR, (end - scan), 1));
+      SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
+      while (scan < end)
+	(*scan_result++) = (char_pointer_to_string (*scan++));
+      PRIMITIVE_RETURN (result);
+    }
+  }
+}
+
 static SCHEME_OBJECT
 DEFUN (argv_to_object, (argc, argv), int argc AND CONST char ** argv)
 {
@@ -490,7 +513,7 @@ DEFINE_PRIMITIVE ("GET-UNUSED-COMMAND-LINE", Prim_get_unused_command_line, 0, 0,
     PRIMITIVE_RETURN (result);
   }
 }
-
+
 DEFINE_PRIMITIVE ("RELOAD-SAVE-STRING", Prim_reload_save_string, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
