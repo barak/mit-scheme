@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm2.scm,v 4.3 1988/02/11 21:12:27 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm2.scm,v 4.4 1988/03/08 18:22:37 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -32,7 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; VMS Disassembler: Top Level
+;;;; VAX Disassembler: Top Level
 
 (declare (usual-integrations))
 
@@ -71,20 +71,34 @@ MIT in each case. |#
 (define *valid?)
 
 (define (disassemble-one-instruction block offset symbol-table state receiver)
+  (define (make-losing-instruction *ir size)
+    (case size
+      ((B)
+       `(DC B ,(bit-string->unsigned-integer *ir)))
+      ((W)
+       `(DC W ,(bit-string->unsigned-integer
+		(bit-string-append *ir (get-byte)))))
+      ((L)
+       `(DC L ,(bit-string->unsigned-integer
+		(bit-string-append (bit-string-append *ir (get-byte))
+				   (get-word)))))))
+  
   (fluid-let ((*block block)
 	      (*current-offset offset)
 	      (*symbol-table symbol-table)
 	      (*ir)
 	      (*valid? true))
-    (set! *ir (get-word))
     (let ((instruction
-	   (if (external-label-marker? symbol-table offset state)
-	       (make-dc 'W *ir)
-	       (let ((instruction
-		      (((vector-ref opcode-dispatch (extract *ir 12 16))))))
-		 (if *valid?
-		     instruction
-		     (make-dc 'W *ir))))))
+	   (let ((byte (get-byte)))
+	     (if (external-label-marker? symbol-table offset state)
+		 (make-losing-instruction byte 'W)
+		 (let ((instruction
+			((vector-ref
+			  opcode-dispatch
+			  (bit-string->unsigned-integer byte)))))
+		   (if *valid?
+		       instruction
+		       (make-losing-instruction byte 'B)))))))
       (receiver *current-offset
 		instruction
 		(disassembler/next-state instruction state)))))
@@ -142,18 +156,18 @@ MIT in each case. |#
     word))
 
 ;;;; Compiler specific information
+(define-integrable (lookup-special-register reg table)
+  (assq reg table))
 
-(define make-register-offset)
-(define interpreter-register?)
+(define-integrable (special-register reg-pair)
+  (cdr reg-pair))
 
-(let ()
-
-(define (register-maker assignments)
-  (lambda (mode register)
-    (list mode
-	  (if disassembler/symbolize-output?
-	      (cdr (assq register assignments))
-	      register))))
+(define (make-register register)
+  (let ((special (and disassembler/symbolize-output?
+		      (assq register register-assignments))))
+    (if special
+	(cdr special)
+	register)))
 
 (define register-assignments
   '((0 . 0)	;serves multiple functions, not handled now
@@ -173,7 +187,27 @@ MIT in each case. |#
     (14 . STACK-POINTER)
     (15 . PC)))
 
-(set! make-register-offset
+(define (make-offset deferred? register size offset)
+  (let ((key (if deferred? '@@RO '@RO)))
+    (if (not disassembler/symbolize-output?)
+	`(,key ,size ,register ,offset)
+	(let ((special
+	       (lookup-special-register register register-assignments)))
+	  (if special
+	      (if (eq? (special-register special) 'REGS)
+		  (let ((interpreter-register
+			 (lookup-special-register offset 
+						  interpreter-register-assignments)))
+		    (cond ((not interpreter-register)
+			   `(,key ,size REGS ,offset))
+			  ((not deferred?)
+			   (special-register interpreter-register))
+			  (else
+			   `(@ ,(special-register interpreter-register)))))
+		  `(,key ,size ,(special-register special) ,offset))
+	      `(,key ,size ,register ,offset))))))
+
+(define make-register-offset
   (lambda (register offset)
     (if disassembler/symbolize-output?
 	(or (and (= register interpreter-register-pointer)
@@ -184,13 +218,13 @@ MIT in each case. |#
 		  ,offset))
 	`(@RO ,register ,offset))))
 
-(set! interpreter-register?
+(define interpreter-register?
   (lambda (effective-address)
     (case (car effective-address)
       ((@RO)
-       (and (= (cadr effective-address) interpreter-register-pointer)
+       (and (eq? (caddr effective-address) 'REGS-POINTER)
 	    (let ((entry
-		   (assq (caddr effective-address)
+		   (assq (cadddr effective-address)
 			 interpreter-register-assignments)))
 	      (and entry
 		   (cdr entry)))))
@@ -234,12 +268,18 @@ MIT in each case. |#
 	   uuo-link-multiple &+ &- &* &/ &= &< &> 1+ -1+ zero? positive? negative?
 	   cache-assignment cache-assignment-multiple primitive-lexpr-apply)))))
 
-)
 
-(define (make-pc-relative thunk)
-  (let ((reference-offset *current-offset))
-    (let ((pco (thunk)))
-      (offset->pc-relative pco reference-offset))))
+(define (make-pc-relative deferred? size pco)
+  ;; This assumes that pco was just extracted.
+  ;; VAX PC relative modes are defined with respect to the pc
+  ;; immediately after the PC relative field.
+  (let ((absolute (+ pco *current-offset)))
+    (if disassembler/symbolize-output?
+	(let ((answ (disassembler/lookup-symbol *symbol-table absolute)))
+	  (if answ
+	      `(,(if deferred? '@@PCR '@PCR) ,answ)
+	      `(,(if deferred? '@@PCO '@PCO) ,size ,pco)))
+	`(,(if deferred? '@@PCO '@PCO) ,size ,pco))))
 
 (define (offset->pc-relative pco reference-offset)
   (if disassembler/symbolize-output?
