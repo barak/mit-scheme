@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookup.c,v 9.54 1993/09/09 18:17:46 gjr Exp $
+$Id: lookup.c,v 9.55 1995/07/26 23:44:54 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -1809,7 +1809,7 @@ compiler_cache_retry:
 		      block,
 		      ((local_reference_p (env, compiler_cache_variable))
 		       ? (MAKE_OBJECT (TC_CHARACTER, offset))
-		       : (MAKE_OBJECT (TC_FIXNUM, offset)))));
+		       : (MAKE_OBJECT (TC_POSITIVE_FIXNUM, offset)))));
     if (return_value != PRIM_DONE)
     {
       compiler_cache_epilog ();

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookup.h,v 9.48 1993/06/24 07:08:58 gjr Exp $
+$Id: lookup.h,v 9.49 1995/07/26 23:45:49 adams Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -64,8 +64,8 @@ extern SCHEME_OBJECT
 #define LOCAL_REF			TC_NULL
 #define GLOBAL_REF			TC_UNINTERNED_SYMBOL
 #define FORMAL_REF			TC_CHARACTER
-#define AUX_REF				TC_FIXNUM
-#define UNCOMPILED_REF			TC_TRUE
+#define AUX_REF				TC_POSITIVE_FIXNUM
+#define UNCOMPILED_REF			TC_CONSTANT
 
 /* Common constants. */
 
@@ -79,7 +79,7 @@ extern SCHEME_OBJECT
 #define UNCOMPILED_VARIABLE		0x20000000
 #endif
 
-#if (TC_TRUE != 0x08)
+#if (TC_CONSTANT != 0x08)
 #include "error:lookup.h and types.h are inconsistent"
 #endif
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.12 1993/11/13 03:46:40 gjr Exp $
+$Id: liarc.h,v 1.13 1995/07/26 23:40:20 adams Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -117,7 +117,7 @@ typedef union machine_word_u machine_word;
 #define MAKE_PRIMITIVE_PROCEDURE(name,arity) (MAKE_PRIMITIVE (name, arity))
 
 #define MAKE_LINKER_HEADER(kind,count)					\
-  (OBJECT_NEW_TYPE (TC_FIXNUM,						\
+  (OBJECT_NEW_TYPE (TC_POSITIVE_FIXNUM,					\
 		    (MAKE_LINKAGE_SECTION_HEADER ((kind), (count)))))
 
 #define ALLOCATE_VECTOR(len) (MAKE_VECTOR ((len), SHARP_F, true))
