@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.19 1993/09/16 22:44:33 adams Exp $
+$Id: ntscreen.c,v 1.20 1994/01/28 04:04:47 gjr Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -3208,6 +3208,7 @@ MIT_post_char_message (CONST MSG * lpmsg, WPARAM the_char)
 #define VK_UNDERSCORE	189
 
 #define ASCII_CONTROLIFY(ascii)	((ascii) - '@')
+#define ASCII_METAFY(ascii)	((ascii) | 0200)
 
 static BOOL _fastcall
 MIT_controlify (WPARAM virtual_key, WPARAM * control_char)
@@ -3249,29 +3250,38 @@ MIT_TranslateMessage (CONST MSG * lpmsg)
       switch (virtual_key)
       {
         case VK_LEFT:
-	  return (MIT_post_char_message (lpmsg, ((WPARAM) 'B'-64)));
+	  return (MIT_post_char_message (lpmsg, (ASCII_CONTROLIFY ('B'))));
 
         case VK_RIGHT:
-	  return (MIT_post_char_message (lpmsg, ((WPARAM) 'F'-64)));
+	  return (MIT_post_char_message (lpmsg, (ASCII_CONTROLIFY ('F'))));
 
         case VK_UP:
-	  return (MIT_post_char_message (lpmsg, ((WPARAM) 'P'-64)));
+	  return (MIT_post_char_message (lpmsg, (ASCII_CONTROLIFY ('P'))));
 
         case VK_DOWN:
-	  return (MIT_post_char_message (lpmsg, ((WPARAM) 'N'-64)));
+	  return (MIT_post_char_message (lpmsg, (ASCII_CONTROLIFY ('N'))));
 
         case VK_HOME:
-	  return (MIT_post_char_message (lpmsg, ((WPARAM) 'A'-64)));
+	  return (MIT_post_char_message (lpmsg, (ASCII_CONTROLIFY ('A'))));
 
         case VK_END:
-	  return (MIT_post_char_message (lpmsg, ((WPARAM) 'E'-64)));
+	  return (MIT_post_char_message (lpmsg, (ASCII_CONTROLIFY ('E'))));
 
 	case VK_BACK:
-	  return (MIT_post_char_message (lpmsg, ((WPARAM) ASCII_DEL)));
+	  return (MIT_post_char_message (lpmsg, ASCII_DEL));
 
 	case VK_DELETE:
-	  return (MIT_post_char_message (lpmsg, ((WPARAM) 'D'-64)));
+	  return (MIT_post_char_message (lpmsg, (ASCII_CONTROLIFY ('D'))));
 	  
+	case VK_PRIOR:
+	  return (MIT_post_char_message (lpmsg, (ASCII_METAFY ('v'))));
+
+	case VK_NEXT:
+	  return (MIT_post_char_message (lpmsg, (ASCII_CONTROLIFY ('V'))));
+
+	case VK_INSERT:
+	  return (MIT_post_char_message (lpmsg, (ASCII_CONTROLIFY ('O'))));
+
 	case VK_SPACE:
 	  if ((((DWORD) (GetKeyState (VK_CONTROL))) & 0x8000) != 0)
 	    return (MIT_post_char_message (lpmsg, ((WPARAM) '\0')));
