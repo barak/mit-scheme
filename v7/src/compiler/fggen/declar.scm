@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/declar.scm,v 1.2 1987/10/05 20:44:08 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/declar.scm,v 1.3 1988/11/02 21:54:15 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,10 +39,15 @@ MIT in each case. |#
 (define (process-top-level-declarations! block declarations)
   (process-declarations!
    block
-   ;; Kludge!
-   (if (assq 'UUO-LINK declarations)
-       declarations
-       (cons '(UUO-LINK ALL) declarations))))
+   (let loop
+       ((declarations declarations)
+	(defaults compiler:default-top-level-declarations))
+     (if (null? defaults)
+	 declarations
+	 (loop (if (assq (caar defaults) declarations)
+		   declarations
+		   (cons (car defaults) declarations))
+	       (cdr defaults))))))
 
 (define (process-declarations! block declarations)
   (for-each (lambda (declaration)
@@ -83,6 +88,11 @@ MIT in each case. |#
   (let loop ((specification specification))
     (cond ((eq? specification 'BOUND) (block-bound-variables block))
 	  ((eq? specification 'FREE) (block-free-variables block))
+	  ((eq? specification 'ASSIGNED)
+	   (list-transform-positive
+	       (append (block-bound-variables block)
+		       (block-free-variables block))
+	     variable-assigned?))
 	  ((eq? specification 'NONE) '())
 	  ((eq? specification 'ALL)
 	   (append (block-bound-variables block)
@@ -125,6 +135,8 @@ MIT in each case. |#
 	   (symbol-list? (cdr object)))))
 
 )
-
+
 (define-declaration 'UUO-LINK boolean-variable-property)
 (define-declaration 'CONSTANT boolean-variable-property)
+(define-declaration 'IGNORE-REFERENCE-TRAPS boolean-variable-property)
+(define-declaration 'IGNORE-ASSIGNMENT-TRAPS boolean-variable-property)
