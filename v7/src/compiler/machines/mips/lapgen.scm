@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.12 1992/12/28 22:01:14 cph Exp $
+$Id: lapgen.scm,v 1.13 1993/12/18 08:49:05 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -185,16 +185,20 @@ MIT in each case. |#
 ;;;; Regularized Machine Instructions
 
 (define (adjusted:high n)
-  (let ((n (->unsigned n)))
-    (if (< (remainder n #x10000) #x8000)
-	(quotient n #x10000)
-	(+ (quotient n #x10000) 1))))
+  (if (fits-in-16-bits-signed? n)
+      0
+      (let ((n (->unsigned n)))
+	(if (< (remainder n #x10000) #x8000)
+	    (quotient n #x10000)
+	    (+ (quotient n #x10000) 1)))))
 
 (define (adjusted:low n)
-  (let ((remainder (remainder (->unsigned n) #x10000)))
-    (if (< remainder #x8000)
-	remainder
-	(- remainder #x10000))))
+  (if (fits-in-16-bits-signed? n)
+      n
+      (let ((remainder (remainder (->unsigned n) #x10000)))
+	(if (< remainder #x8000)
+	    remainder
+	    (- remainder #x10000)))))
 
 (define-integrable (top-16-bits n)
   (quotient (->unsigned n) #x10000))
