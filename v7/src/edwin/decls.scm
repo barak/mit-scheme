@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.44 1993/01/09 01:16:04 cph Exp $
+$Id: decls.scm,v 1.45 1993/01/12 10:50:39 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -209,8 +209,8 @@ MIT in each case. |#
 	      "edtfrm"))
   (sf-class "window" "class")
   (sf-class "utlwin" "window" "class")
-  (sf-class "bufwin" "utlwin" "window" "class" "buffer" "struct")
-  (sf-class "bufwfs" "bufwin" "utlwin" "window" "class" "buffer" "struct")
-  (sf-class "bufwiu" "bufwin" "utlwin" "window" "class" "buffer" "struct")
-  (sf-class "bufwmc" "bufwin" "utlwin" "window" "class" "buffer" "struct")
+  (sf-class "bufwin" "window" "class" "buffer" "struct")
+  (sf-class "bufwfs" "bufwin" "window" "class" "buffer" "struct")
+  (sf-class "bufwiu" "bufwin" "window" "class" "buffer" "struct")
+  (sf-class "bufwmc" "bufwin" "window" "class" "buffer" "struct")
   (sf-class "buffrm" "bufwin" "window" "class" "struct"))

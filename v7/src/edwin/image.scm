@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: image.scm,v 1.129 1993/01/09 01:16:13 cph Exp $
+;;;	$Id: image.scm,v 1.130 1993/01/12 10:50:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -46,32 +46,26 @@
 
 (declare (usual-integrations))
 
-(define (string-line-columns string column tab-width)
-  (substring-line-columns string 0 (string-length string) column tab-width))
-
-(define (substring-line-columns string start end column tab-width)
-  (if tab-width
-      (let loop ((index start) (column column))
-	(if (fix:= index end)
-	    (cons index column)
-	    (let ((ascii (vector-8b-ref string index)))
-	      (if (fix:= ascii (char->integer #\newline))
-		  (cons index column)
-		  (loop (fix:+ index 1)
-			(fix:+ column
-			       (if (fix:= ascii (char->integer #\tab))
-				   (fix:- tab-width
-					  (fix:remainder column tab-width))
-				   (vector-ref char-image-lengths ascii))))))))
-      (let loop ((index start) (column column))
-	(if (fix:= index end)
-	    (cons index column)
-	    (let ((ascii (vector-8b-ref string index)))
-	      (if (fix:= ascii (char->integer #\newline))
-		  (cons index column)
-		  (loop (fix:+ index 1)
-			(fix:+ column
-			       (vector-ref char-image-lengths ascii)))))))))
+(define (group-columns group start end column tab-width)
+  (let ((text (group-text group))
+	(gap-start (group-gap-start group))
+	(gap-end (group-gap-end group))
+	(gap-length (group-gap-length group)))
+    (cond ((fix:<= end gap-start)
+	   (substring-columns text start end column tab-width))
+	  ((fix:<= gap-start start)
+	   (substring-columns text
+			      (fix:+ start gap-length)
+			      (fix:+ end gap-length)
+			      column
+			      tab-width))
+	  (else
+	   (substring-columns text
+			      gap-end
+			      (fix:+ end gap-length)
+			      (substring-columns text start gap-start
+						 column tab-width)
+			      tab-width)))))
 
 (define (string-columns string column tab-width)
   (substring-columns string 0 (string-length string) column tab-width))
@@ -93,47 +87,6 @@
 			  (vector-ref char-image-lengths
 				      (vector-8b-ref string index)))))
 	  ((fix:= index end) column))))
-
-(define-integrable (substring-column->index string start end start-column
-					    tab-width column)
-  (car (%substring-column->index string start end start-column tab-width
-				 column)))
-
-(define (%substring-column->index string start end start-column tab-width
-				  column)
-  ;; If COLUMN falls in the middle of a multi-column character, the
-  ;; index returned is that of the character.  Thinking of the index
-  ;; as a pointer between characters, the value is the pointer to the
-  ;; left of the multi-column character.  Only if COLUMN reaches
-  ;; across the character will the right-hand pointer be returned.
-  ;; Various things depend on this.
-  (if tab-width
-      (let loop ((index start) (c start-column))
-	(if (or (fix:= c column)
-		(fix:= index end)
-		(fix:= (char->integer #\newline) (vector-8b-ref string index)))
-	    (cons index c)
-	    (let ((c
-		   (fix:+ c
-			  (let ((ascii (vector-8b-ref string index)))
-			    (if (fix:= ascii (char->integer #\tab))
-				(fix:- tab-width (fix:remainder c tab-width))
-				(vector-ref char-image-lengths ascii))))))
-	      (if (fix:> c column)
-		  (cons index c)
-		  (loop (fix:+ index 1) c)))))
-      (let loop ((index start) (c start-column))
-	(if (or (fix:= c column)
-		(fix:= index end)
-		(fix:= (char->integer #\newline) (vector-8b-ref string index)))
-	    (cons index c)
-	    (let ((c
-		   (fix:+ c
-			  (vector-ref char-image-lengths
-				      (vector-8b-ref string index)))))
-	      (if (fix:> c column)
-		  (cons index c)
-		  (loop (fix:+ index 1) c)))))))
 
 (define-integrable char-image-lengths
   '#(2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
@@ -146,6 +99,7 @@
      4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4))
 
 (define (group-line-columns group start end column tab-width)
+  ;; Like GROUP-COLUMNS, but stops at line end.
   (let ((text (group-text group))
 	(gap-start (group-gap-start group))
 	(gap-end (group-gap-end group))
@@ -174,54 +128,106 @@
 						tab-width)))
 		   (cons (fix:- (car i&c) gap-length) (cdr i&c)))))))))
 
-(define (group-columns group start end column tab-width)
-  (let ((text (group-text group))
-	(gap-start (group-gap-start group))
-	(gap-end (group-gap-end group))
-	(gap-length (group-gap-length group)))
-    (cond ((fix:<= end gap-start)
-	   (substring-columns text start end column tab-width))
-	  ((fix:<= gap-start start)
-	   (substring-columns text
-			      (fix:+ start gap-length)
-			      (fix:+ end gap-length)
-			      column
-			      tab-width))
-	  (else
-	   (substring-columns text
-			      gap-end
-			      (fix:+ end gap-length)
-			      (substring-columns text start gap-start
-						 column tab-width)
-			      tab-width)))))
+(define (string-line-columns string column tab-width)
+  (substring-line-columns string 0 (string-length string) column tab-width))
 
+(define (substring-line-columns string start end column tab-width)
+  (if tab-width
+      (let loop ((index start) (column column))
+	(if (fix:= index end)
+	    (cons index column)
+	    (let ((ascii (vector-8b-ref string index)))
+	      (if (fix:= ascii (char->integer #\newline))
+		  (cons index column)
+		  (loop (fix:+ index 1)
+			(fix:+ column
+			       (if (fix:= ascii (char->integer #\tab))
+				   (fix:- tab-width
+					  (fix:remainder column tab-width))
+				   (vector-ref char-image-lengths ascii))))))))
+      (let loop ((index start) (column column))
+	(if (fix:= index end)
+	    (cons index column)
+	    (let ((ascii (vector-8b-ref string index)))
+	      (if (fix:= ascii (char->integer #\newline))
+		  (cons index column)
+		  (loop (fix:+ index 1)
+			(fix:+ column
+			       (vector-ref char-image-lengths ascii)))))))))
+
 (define (group-column->index group start end start-column column tab-width)
   (let ((text (group-text group))
 	(gap-start (group-gap-start group))
 	(gap-end (group-gap-end group))
 	(gap-length (group-gap-length group)))
     (cond ((fix:<= end gap-start)
-	   (substring-column->index text start end start-column tab-width
-				    column))
+	   (substring-column->index text start end start-column column
+				    tab-width))
 	  ((fix:<= gap-start start)
-	   (fix:- (substring-column->index text
+	   (let ((result
+		  (substring-column->index text
 					   (fix:+ start gap-length)
 					   (fix:+ end gap-length)
 					   start-column
-					   tab-width
-					   column)
-		  gap-length))
+					   column
+					   tab-width)))
+	     (vector-set! result 0 (fix:- (vector-ref result 0) gap-length))
+	     result))
 	  (else
-	   (let ((i&c
-		  (%substring-column->index text start gap-start
-					    start-column tab-width column)))
-	     (if (and (fix:< (cdr i&c) column)
-		      (not (char=? #\newline (string-ref text (car i&c)))))
-		 (fix:- (substring-column->index text gap-end
+	   (let ((result
+		  (substring-column->index text start gap-start
+					   start-column column tab-width)))
+	     (if (and (fix:< (vector-ref result 1) column)
+		      (not (char=? #\newline
+				   (string-ref text (vector-ref result 0)))))
+		 (let ((result
+			(substring-column->index text
+						 gap-end
 						 (fix:+ end gap-length)
-						 (cdr i&c) tab-width column)
-			gap-length)
-		 (car i&c)))))))
+						 (fix:+ (vector-ref result 1)
+							(vector-ref result 2))
+						 column
+						 tab-width)))
+		   (vector-set! result 0
+				(fix:- (vector-ref result 0) gap-length))
+		   result)
+		 result))))))
+
+(define (substring-column->index string start end start-column column
+				 tab-width)
+  ;; If COLUMN falls in the middle of a multi-column character, the
+  ;; index returned is that of the character.  Thinking of the index
+  ;; as a pointer between characters, the value is the pointer to the
+  ;; left of the multi-column character.  Only if COLUMN reaches
+  ;; across the character will the right-hand pointer be returned.
+  ;; Various things depend on this.
+  (if tab-width
+      (let loop ((index start) (c start-column))
+	(if (or (fix:= c column)
+		(fix:= index end)
+		(fix:= (char->integer #\newline) (vector-8b-ref string index)))
+	    (vector index c 0)
+	    (let ((c
+		   (fix:+ c
+			  (let ((ascii (vector-8b-ref string index)))
+			    (if (fix:= ascii (char->integer #\tab))
+				(fix:- tab-width (fix:remainder c tab-width))
+				(vector-ref char-image-lengths ascii))))))
+	      (if (fix:> c column)
+		  (vector index column (fix:- c column))
+		  (loop (fix:+ index 1) c)))))
+      (let loop ((index start) (c start-column))
+	(if (or (fix:= c column)
+		(fix:= index end)
+		(fix:= (char->integer #\newline) (vector-8b-ref string index)))
+	    (vector index c 0)
+	    (let ((c
+		   (fix:+ c
+			  (vector-ref char-image-lengths
+				      (vector-8b-ref string index)))))
+	      (if (fix:> c column)
+		  (vector index column (fix:- c column))
+		  (loop (fix:+ index 1) c)))))))
 
 (define (substring-image! string string-start string-end
 			  image image-start image-end

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: undo.scm,v 1.52 1993/01/10 10:48:22 cph Exp $
+;;;	$Id: undo.scm,v 1.53 1993/01/12 10:50:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -250,7 +250,8 @@ A numeric argument serves as a repeat count."
 (define (undo-start buffer)
   (let ((undo-data (group-undo-data (buffer-group buffer))))
     (if (eq? #t undo-data)
-	(editor-error "No undo information in this buffer:" buffer))
+	(editor-error "No undo information in this buffer: "
+		      (buffer-name buffer)))
     undo-data))
 
 (define (undo-more buffer undo-data n)
@@ -258,7 +259,8 @@ A numeric argument serves as a repeat count."
     (if (> n 0)
 	(begin
 	  (if (null? undo-data)
-	      (editor-error "No further undo information:" buffer))
+	      (editor-error "No further undo information: "
+			    (buffer-name buffer)))
 	  (loop (undo-one-step buffer undo-data) (- n 1)))
 	undo-data)))
 
@@ -269,8 +271,8 @@ A numeric argument serves as a repeat count."
 	(outside-visible-range
 	 (lambda ()
 	   (editor-error
-	    "Changes to be undone are outside visible portion of buffer:"
-	    buffer))))
+	    "Changes to be undone are outside visible portion of buffer: "
+	    (buffer-name buffer)))))
     (let ((finish
 	   (lambda (data)
 	     (set-buffer-point! buffer point)

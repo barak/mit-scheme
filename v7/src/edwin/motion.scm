@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: motion.scm,v 1.84 1993/01/09 01:16:18 cph Exp $
+;;;	$Id: motion.scm,v 1.85 1993/01/12 10:50:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -204,9 +204,10 @@
   (let ((group (mark-group mark))
 	(index (mark-index mark)))
     (make-mark group
-	       (group-column->index group
-				    (line-start-index group index)
-				    (group-end-index group)
-				    0
-				    column
-				    (group-tab-width group)))))
+	       (vector-ref (group-column->index group
+						(line-start-index group index)
+						(group-end-index group)
+						0
+						column
+						(group-tab-width group))
+			   0))))

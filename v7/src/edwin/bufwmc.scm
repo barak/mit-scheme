@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwmc.scm,v 1.15 1993/01/09 01:15:59 cph Exp $
+;;;	$Id: bufwmc.scm,v 1.16 1993/01/12 10:50:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -68,12 +68,10 @@
   (let ((start (%window-line-start-index window index))
 	(group (%window-group window))
 	(tab-width (%window-tab-width window)))
-    (column->x (cdr (group-line-columns group start
-					(%window-group-end-index window)
-					0 tab-width))
+    (column->x (group-columns group start index 0 tab-width)
 	       (window-x-size window)
 	       (%window-truncate-lines? window)
-	       (group-columns group start index 0 tab-width))))
+	       (%window-line-end-index? window index))))
 
 (define (buffer-window/index->y window index)
   (with-values (lambda () (start-point-for-index window index))
@@ -88,12 +86,10 @@
 	    (tab-width (%window-tab-width window)))
 	(let ((xy
 	       (column->coordinates
-		(cdr (group-line-columns group line-start-index
-					 (%window-group-end-index window)
-					 0 tab-width))
+		(group-columns group line-start-index index 0 tab-width)
 		(window-x-size window)
 		(%window-truncate-lines? window)
-		(group-columns group line-start-index index 0 tab-width))))
+		(%window-line-end-index? window index))))
 	  (cons (car xy)
 		(fix:+ (cdr xy)
 		       (predict-y window
@@ -208,9 +204,12 @@
 		  (if (fix:< index start)
 		      (loop start y)
 		      (fix:+ y
-			     (column->y columns x-size truncate-lines?
-					(group-columns group start index
-						       0 tab-width)))))))
+			     (column->y (group-columns group start index
+						       0 tab-width)
+					x-size
+					truncate-lines?
+					(%window-line-end-index? window
+								 index)))))))
 	    (let ((group-end (%window-group-end-index window)))
 	      (let loop ((start start) (y y))
 		(let ((e&c
@@ -222,11 +221,13 @@
 						   x-size
 						   truncate-lines?)))
 		      (fix:+ y
-			     (column->y (cdr e&c)
+			     (column->y (group-columns group start index
+						       0 tab-width)
 					x-size
 					truncate-lines?
-					(group-columns group start index
-						       0 tab-width)))))))))))
+					(%window-line-end-index?
+					 window
+					 index)))))))))))
 
 (define (predict-y-limited window start y index yl yu)
   ;; Like PREDICT-Y, except returns #F if the result is not in the
@@ -260,14 +261,16 @@
 			   (let ((y
 				  (fix:+
 				   y
-				   (column->y columns
-					      x-size
-					      truncate-lines?
-					      (group-columns group
+				   (column->y (group-columns group
 							     start
 							     index
 							     0
-							     tab-width)))))
+							     tab-width)
+					      x-size
+					      truncate-lines?
+					      (%window-line-end-index?
+					       window
+					       index)))))
 			     (and (fix:<= yl y)
 				  (fix:< y yu)
 				  y)))))))
@@ -286,14 +289,16 @@
 			   (let ((y
 				  (fix:+
 				   y
-				   (column->y (cdr e&c)
-					      x-size
-					      truncate-lines?
-					      (group-columns group
+				   (column->y (group-columns group
 							     start
 							     index
 							     0
-							     tab-width)))))
+							     tab-width)
+					      x-size
+					      truncate-lines?
+					      (%window-line-end-index?
+					       window
+					       index)))))
 			     (and (fix:<= yl y)
 				  (fix:< y yu)
 				  y)))))))))))
@@ -318,14 +323,16 @@
 						   truncate-lines?)))
 		      (let ((y
 			     (fix:+ y
-				    (column->y (cdr e&c)
-					       x-size
-					       truncate-lines?
-					       (group-columns group
+				    (column->y (group-columns group
 							      start
 							      index
 							      0
-							      tab-width)))))
+							      tab-width)
+					       x-size
+					       truncate-lines?
+					       (%window-line-end-index?
+						window
+						index)))))
 			(and (fix:<= 0 y)
 			     (fix:< y y-size))))))))))
 
@@ -351,16 +358,18 @@
 						truncate-lines?))))
 		   (if (fix:< y y-start)
 		       (loop start y-start)
-		       (group-column->index
-			group start end 0
-			(let ((column
-			       (coordinates->column x
-						    (fix:- y y-start)
-						    x-size)))
-			  (if (fix:< column columns)
-			      column
-			      columns))
-			tab-width))))))
+		       (vector-ref
+			(group-column->index
+			 group start end 0
+			 (let ((column
+				(coordinates->column x
+						     (fix:- y y-start)
+						     x-size)))
+			   (if (fix:< column columns)
+			       column
+			       columns))
+			 tab-width)
+			0))))))
 	(let ((group-end (%window-group-end-index window)))
 	  (let loop ((start start) (y-start y-start))
 	    (let ((e&c (group-line-columns group start group-end 0 tab-width)))
@@ -372,99 +381,202 @@
 		(if (fix:>= y y-end)
 		    (and (fix:< (car e&c) group-end)
 			 (loop (fix:+ (car e&c) 1) y-end))
-		    (group-column->index
-		     group start (car e&c) 0
-		     (let ((column
-			    (coordinates->column x
-						 (fix:- y y-start)
-						 x-size)))
-		       (if (fix:< column (cdr e&c))
-			   column
-			   (cdr e&c)))
-		     tab-width)))))))))
+		    (vector-ref (group-column->index
+				 group start (car e&c) 0
+				 (let ((column
+					(coordinates->column x
+							     (fix:- y y-start)
+							     x-size)))
+				   (if (fix:< column (cdr e&c))
+				       column
+				       (cdr e&c)))
+				 tab-width)
+				0)))))))))
 
-(define (predict-start-line window index y)
-  (let ((start (%window-line-start-index window index))
-	(group (%window-group window))
+(define (compute-window-start window index y-index)
+  ;; INDEX is an index into WINDOW's buffer, and Y-INDEX is the
+  ;; desired y coordinate, in WINDOW's coordinate space, at which
+  ;; INDEX is desired to appear.  Returns a vector of values:
+  ;; 0 START-LINE, index at start of first line that is visible in the
+  ;;   window.
+  ;; 1 Y-START, coordinate at which START-LINE will appear.  Negative
+  ;;   if START-LINE is less than START, otherwise zero.
+  ;; 2 START, index of first visible char (in upper left corner).
+  ;; 3 START-COLUMN, first visible column of window.  Positive if
+  ;;   START is greater than START-LINE, otherwise zero.
+  ;; 4 START-PARTIAL.  If START char is fully visible, this is zero.
+  ;;   Otherwise this is positive and indicates the number of columns
+  ;;   that *are* visible.
+  ;; 5 #F means that it's not possible to place the INDEX char at
+  ;;   Y-INDEX, but that the other values are a starting point that
+  ;;   gets the INDEX char as close as possible to Y-INDEX.
+  ;;   Otherwise, this is #T indicating that the starting point is
+  ;;   satisfactory.
+  (if (%window-truncate-lines? window)
+      (compute-window-start-tl window index y-index)
+      (compute-window-start-ntl window index y-index)))
+
+(define (compute-window-start-tl window index y-index)
+  (let ((group (%window-group window)))
+    (let ((group-start (group-display-start-index group))
+	  (group-end (group-display-end-index group)))
+      (let ((start
+	     (let ((index
+		    (group-find-previous-char group group-start index
+					      #\newline)))
+	       (if index
+		   (fix:+ index 1)
+		   group-start))))
+	(cond ((fix:= y-index 0)
+	       (vector start y-index start 0 0 #t))
+	      ((fix:< y-index 0)
+	       (let loop ((start start) (y-start y-index))
+		 (let ((nl
+			(group-find-next-char group start group-end
+					      #\newline)))
+		   (if nl
+		       (let ((start (fix:+ nl 1))
+			     (y-start (fix:+ y-start 1)))
+			 (if (fix:= y-start 0)
+			     (vector start y-start start 0 0 #t)
+			     (loop start y-start)))
+		       (vector start 0 start 0 0 #f)))))
+	      ((fix:= start group-start)
+	       (vector start 0 start 0 0 #f))
+	      (else
+	       (let loop ((end (fix:- start 1)) (y-start y-index))
+		 (let ((nl
+			(group-find-previous-char group group-start end
+						  #\newline))
+		       (y-start (fix:- y-start 1)))
+		   (cond ((fix:= y-start 0)
+			  (let ((start (if nl (fix:+ nl 1) group-start)))
+			    (vector start y-start start 0 0 #t)))
+			 ((not nl)
+			  (vector group-start 0 group-start 0 0 #f))
+			 (else
+			  (loop nl y-start)))))))))))
+
+(define (compute-window-start-ntl window index y-index)
+  (let ((group (%window-group window))
 	(tab-width (%window-tab-width window))
-	(x-size (window-x-size window))
-	(truncate-lines? (%window-truncate-lines? window))
-	(group-end (%window-group-end-index window)))
-    (let ((y
-	   (fix:- y
-		  (column->y (cdr (group-line-columns group
-						      start
-						      group-end
-						      0
-						      tab-width))
-			     x-size
-			     truncate-lines?
-			     (group-columns group start index 0 tab-width)))))
-      (cond ((fix:= y 0)
-	     (values start y))
-	    ((fix:< y 0)
-	     (let loop ((start start) (y y))
-	       (let ((e&c
-		      (group-line-columns group start group-end
-					  0 tab-width)))
-		 (let ((y-end
-			(fix:+ y
-			       (column->y-size (cdr e&c)
+	(x-size (window-x-size window)))
+    (let ((group-start (group-display-start-index group))
+	  (group-end (group-display-end-index group))
+	  (x-max (fix:- x-size 1)))
+      (let ((start
+	     (let ((index
+		    (group-find-previous-char group group-start index
+					      #\newline)))
+	       (if index
+		   (fix:+ index 1)
+		   group-start))))
+	(let ((y-start
+	       (fix:- y-index
+		      (column->y (group-columns group start index 0 tab-width)
+				 x-size
+				 #f
+				 (%window-line-end-index? window index)))))
+	  (cond ((fix:= y-start 0)
+		 (vector start y-start start 0 0 #t))
+		((fix:< y-start 0)
+		 (let loop ((start start) (y-start y-start))
+		   (let* ((column (fix:* (fix:- 0 y-start) x-max))
+			  (icp
+			   (group-column->index group start group-end
+						0 column tab-width)))
+		     (cond ((fix:= (vector-ref icp 1) column)
+			    (vector start
+				    y-start
+				    (vector-ref icp 0)
+				    (vector-ref icp 1)
+				    (vector-ref icp 2)
+				    #t))
+			   ((fix:= (vector-ref icp 0) group-end)
+			    (vector start 0 start 0 0 #f))
+			   (else
+			    (loop (fix:+ (vector-ref icp 0) 1)
+				  (fix:+
+				   y-start
+				   (column->y-size (vector-ref icp 1)
+						   x-size
+						   #f))))))))
+		((fix:= start group-start)
+		 (vector start 0 start 0 0 #f))
+		(else
+		 (let loop ((end (fix:- start 1)) (y-start y-start))
+		   (let ((nl
+			  (group-find-previous-char group group-start end
+						    #\newline)))
+		     (let ((start (if nl (fix:+ nl 1) group-start)))
+		       (let ((y-start
+			      (fix:-
+			       y-start
+			       (column->y-size (group-columns group start end
+							      0 tab-width)
 					       x-size
-					       truncate-lines?))))
-		   (if (and (fix:<= y-end 0)
-			    (fix:< (car e&c) group-end))
-		       (loop (fix:+ (car e&c) 1) y-end)
-		       (values start y))))))
-	    (else
-	     (let ((group-start (%window-group-start-index window)))
-	       (let loop ((start start) (y y))
-		 (if (fix:<= start group-start)
-		     (values start 0)
-		     (let* ((end (fix:- start 1))
-			    (start
-			     (or (%find-previous-newline group end group-start)
-				 group-start))
-			    (columns
-			     (group-columns group start end 0 tab-width))
-			    (y-start
-			     (fix:- y
-				    (column->y-size columns
-						    x-size
-						    truncate-lines?))))
-		       (if (fix:<= y-start 0)
-			   (values start y-start)
-			   (loop start y-start)))))))))))
+					       #f))))
+			 (cond ((fix:= y-start 0)
+				(vector start y-start start 0 0 #t))
+			       ((fix:< y-start 0)
+				(let ((icp
+				       (group-column->index
+					group start end
+					0 (fix:* (fix:- 0 y-start) x-max)
+					tab-width)))
+				  (vector start
+					  y-start
+					  (vector-ref icp 0)
+					  (vector-ref icp 1)
+					  (vector-ref icp 2)
+					  #t)))
+			       ((not nl)
+				(vector group-start 0 group-start 0 0 #f))
+			       (else
+				(loop nl y-start))))))))))))))
 
-(define (predict-start-index window start y-start)
-  ;; Assumes (AND (%WINDOW-LINE-START-INDEX? WINDOW START) (<= Y-START 0))
-  (if (fix:= 0 y-start)
-      start
-      (let ((group (%window-group window))
-	    (tab-width (%window-tab-width window))
-	    (x-size (window-x-size window)))
-	(let ((e&c
-	       (group-line-columns group
-				   start
-				   (%window-group-end-index window)
-				   0
-				   tab-width))
-	      (y (fix:- 0 y-start)))
-	  (let ((index
-		 (group-column->index group start (car e&c) 0
-				      (let ((column
-					     (coordinates->column 0 y x-size)))
-					(if (fix:< column (cdr e&c))
-					    column
-					    (cdr e&c)))
-				      tab-width)))
-	    (if (let ((xy
-		       (column->coordinates (cdr e&c)
-					    x-size
-					    (%window-truncate-lines? window)
-					    (group-columns group start index
-							   0 tab-width))))
-		  (and (fix:= (car xy) 0)
-		       (fix:= (cdr xy) y)))
-		index
-		(fix:+ index 1)))))))
+;;;; Column<->Coordinate Utilities
+
+(define (column->y-size column-size x-size truncate-lines?)
+  ;; Assume X-SIZE > 1.
+  (cond ((or truncate-lines? (fix:< column-size x-size))
+	 1)
+	((fix:= (fix:remainder column-size (fix:- x-size 1)) 0)
+	 (fix:quotient column-size (fix:- x-size 1)))
+	(else
+	 (fix:+ (fix:quotient column-size (fix:- x-size 1)) 1))))
+
+(define (column->coordinates column x-size truncate-lines? line-end?)
+  (let ((x-max (fix:- x-size 1)))
+    (cond ((fix:< column x-max)
+	   (cons column 0))
+	  (truncate-lines?
+	   (cons x-max 0))
+	  ((and line-end? (fix:= (fix:remainder column x-max) 0))
+	   (cons x-max (fix:- (fix:quotient column x-max) 1)))
+	  (else
+	   (cons (fix:remainder column x-max)
+		 (fix:quotient column x-max))))))
+
+(define (column->x column x-size truncate-lines? line-end?)
+  (let ((x-max (fix:- x-size 1)))
+    (cond ((fix:< column x-max)
+	   column)
+	  (truncate-lines?
+	   x-max)
+	  ((and line-end? (fix:= (fix:remainder column x-max) 0))
+	   x-max)
+	  (else
+	   (fix:remainder column x-max)))))
+
+(define (column->y column x-size truncate-lines? line-end?)
+  (let ((x-max (fix:- x-size 1)))
+    (cond ((or truncate-lines? (fix:< column x-max))
+	   0)
+	  ((and line-end? (fix:= (fix:remainder column x-max) 0))
+	   (fix:- (fix:quotient column x-max) 1))
+	  (else
+	   (fix:quotient column x-max)))))
+
+(define-integrable (coordinates->column x y x-size)
+  (fix:+ x (fix:* y (fix:- x-size 1))))

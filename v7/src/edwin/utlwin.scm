@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utlwin.scm,v 1.57 1991/04/01 10:08:00 cph Exp $
+;;;	$Id: utlwin.scm,v 1.58 1993/01/12 10:50:41 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -45,64 +45,6 @@
 ;;;; Utility Windows
 
 (declare (usual-integrations))
-
-;;;; Column<->Coordinate Utilities
-
-(define (column->x-size column-size y-size truncate-lines?)
-  ;; Assume Y-SIZE > 0.
-  (cond (truncate-lines?
-	 column-size)
-	((fix:= (fix:remainder column-size y-size) 0)
-	 (fix:quotient column-size y-size))
-	(else
-	 (fix:+ (fix:quotient column-size y-size) 1))))
-
-(define (column->y-size column-size x-size truncate-lines?)
-  ;; Assume X-SIZE > 1.
-  (cond ((or truncate-lines? (fix:< column-size x-size))
-	 1)
-	((fix:= (fix:remainder column-size (fix:- x-size 1)) 0)
-	 (fix:quotient column-size (fix:- x-size 1)))
-	(else
-	 (fix:+ (fix:quotient column-size (fix:- x-size 1)) 1))))
-
-(define (column->coordinates column-size x-size truncate-lines? column)
-  (let ((-1+x-size (fix:- x-size 1)))
-    (cond ((fix:< column -1+x-size)
-	   (cons column 0))
-	  (truncate-lines?
-	   (cons -1+x-size 0))
-	  ((and (fix:= (fix:remainder column -1+x-size) 0)
-		(fix:= column column-size))
-	   (cons -1+x-size
-		 (fix:-1+ (fix:quotient column -1+x-size))))
-	  (else
-	   (cons (fix:remainder column -1+x-size)
-		 (fix:quotient column -1+x-size))))))
-
-(define (column->x column-size x-size truncate-lines? column)
-  (let ((-1+x-size (fix:- x-size 1)))
-    (cond ((fix:< column -1+x-size)
-	   column)
-	  (truncate-lines?
-	   -1+x-size)
-	  ((and (fix:= (fix:remainder column -1+x-size) 0)
-		(fix:= column column-size))
-	   -1+x-size)
-	  (else
-	   (fix:remainder column -1+x-size)))))
-
-(define (column->y column-size x-size truncate-lines? column)
-  (cond ((or truncate-lines? (fix:< column (fix:- x-size 1)))
-	 0)
-	((and (fix:= (fix:remainder column (fix:- x-size 1)) 0)
-	      (fix:= column column-size))
-	 (fix:- (fix:quotient column (fix:- x-size 1)) 1))
-	(else
-	 (fix:quotient column (fix:- x-size 1)))))
-
-(define-integrable (coordinates->column x y x-size)
-  (fix:+ x (fix:* y (fix:- x-size 1))))
 
 ;;;; Blank Window
 

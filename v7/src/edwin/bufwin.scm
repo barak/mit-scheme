@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwin.scm,v 1.298 1993/01/09 09:43:59 cph Exp $
+;;;	$Id: bufwin.scm,v 1.299 1993/01/12 10:50:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -132,6 +132,18 @@
    ;; START-LINE-MARK is #F, otherwise it is guaranteed to be
    ;; non-positive.
    start-line-y
+
+   ;; This is the number of columns between START-LINE-MARK
+   ;; (inclusive) and START-MARK (exclusive).  In other words, it is
+   ;; the starting column of START-MARK.  This is undefined if
+   ;; START-MARK is #F.
+   start-column
+
+   ;; If the character to the right of START-MARK is completely
+   ;; visible, this is zero.  Otherwise, this is the number of columns
+   ;; of that character that are visible.  This is undefined if
+   ;; START-MARK is #F.
+   start-partial
 
    ;; This contains the buffer's MODIFIED-TICK from the last time that
    ;; redisplay completed for this window.
@@ -331,6 +343,20 @@
 (define-integrable (%set-window-start-line-y! window y)
   (with-instance-variables buffer-window window (y)
     (set! start-line-y y)))
+
+(define-integrable (%window-start-column window)
+  (with-instance-variables buffer-window window () start-column))
+
+(define-integrable (%set-window-start-column! window column)
+  (with-instance-variables buffer-window window (column)
+    (set! start-column column)))
+
+(define-integrable (%window-start-partial window)
+  (with-instance-variables buffer-window window () start-partial))
+
+(define-integrable (%set-window-start-partial! window partial)
+  (with-instance-variables buffer-window window (partial)
+    (set! start-partial partial)))
 
 (define-integrable (%window-modified-tick window)
   (with-instance-variables buffer-window window () modified-tick))
@@ -766,7 +792,7 @@
   (%set-window-buffer! window false)
   (%set-window-point! window false)
   (if (%window-start-line-mark window)
-      (clear-start-mark! window))
+      (clear-window-start! window))
   (%clear-window-incremental-redisplay-state! window))
 
 (define (%clear-window-incremental-redisplay-state! window)
@@ -886,7 +912,6 @@
 	    ((%window-debug-trace window) 'window window 'scroll-y-relative!
 					  y-delta))
 	(guarantee-start-mark! window)
-	;; if (> Y-DELTA 0) and line inferiors valid, use them.
 	(set-new-coordinates! window
 			      (%window-start-line-index window)
 			      (fix:- (%window-start-line-y window) y-delta)
@@ -901,14 +926,12 @@
   (if (not (and (fix:<= 0 y-point)
 		(fix:< y-point (window-y-size window))))
       (error:bad-range-argument y-point 'WINDOW-SCROLL-Y-ABSOLUTE!))
-  (with-values
-      (lambda ()
-	(predict-start-line window (%window-point-index window) y-point))
-    (lambda (start y-start)
-      (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-	(set-start-mark! window start y-start)
-	(set-interrupt-enables! mask)
-	unspecific))))
+  (let ((cws
+	 (compute-window-start window (%window-point-index window) y-point)))
+    (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+      (set-window-start! window cws)
+      (set-interrupt-enables! mask)
+      unspecific)))
 
 (define (buffer-window/y-center window)
   (let ((y-size (window-y-size window)))
@@ -928,12 +951,13 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
 	 (<= 0 cursor-centering-point 100))))
 
 (define (set-new-coordinates! window index y point-y)
-  (with-values (lambda () (predict-start-line window index y))
-    (lambda (start y-start)
+  (let ((cws (compute-window-start window index y)))
+    (let ((start (vector-ref cws 0))
+	  (y-start (vector-ref cws 1)))
       (cond ((predict-index-visible? window start y-start
 				     (%window-point-index window))
 	     (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-	       (set-start-mark! window start y-start)
+	       (set-window-start! window cws)
 	       (set-interrupt-enables! mask)
 	       unspecific))
 	    (point-y
@@ -942,28 +966,30 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
 		window
 		(or (predict-index window start y-start 0 point-y)
 		    (%window-group-end-index window)))
-	       (set-start-mark! window start y-start)
+	       (set-window-start! window cws)
 	       (set-interrupt-enables! mask)
 	       unspecific))))))
 
-(define (set-start-mark! window start-line y-start)
-  (if (fix:= y-start 0)
-      (if (%window-start-line-mark window)
-	  (begin
-	    (set-mark-index! (%window-start-line-mark window) start-line)
-	    (if (not (eq? (%window-start-line-mark window)
-			  (%window-start-mark window)))
-		(begin
-		  (mark-temporary! (%window-start-mark window))
-		  (%set-window-start-mark! window
-					   (%window-start-line-mark window)))))
-	  (let ((mark
-		 (make-permanent-mark (%window-group window)
-				      start-line
-				      false)))
-	    (%set-window-start-line-mark! window mark)
-	    (%set-window-start-mark! window mark)))
-      (let ((start (predict-start-index window start-line y-start)))
+(define (set-window-start! window cws)
+  (let ((start-line (vector-ref cws 0))
+	(start (vector-ref cws 2)))
+    (if (fix:= start-line start)
+	(if (%window-start-line-mark window)
+	    (begin
+	      (set-mark-index! (%window-start-line-mark window) start-line)
+	      (if (not (eq? (%window-start-line-mark window)
+			    (%window-start-mark window)))
+		  (begin
+		    (mark-temporary! (%window-start-mark window))
+		    (%set-window-start-mark!
+		     window
+		     (%window-start-line-mark window)))))
+	    (let ((mark
+		   (make-permanent-mark (%window-group window)
+					start-line
+					false)))
+	      (%set-window-start-line-mark! window mark)
+	      (%set-window-start-mark! window mark)))
 	(if (%window-start-line-mark window)
 	    (begin
 	      (set-mark-index! (%window-start-line-mark window) start-line)
@@ -980,17 +1006,21 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
 	      (%set-window-start-mark!
 	       window
 	       (make-permanent-mark group start false))))))
-  (%set-window-start-line-y! window y-start)
+  (%set-window-start-line-y! window (vector-ref cws 1))
+  (%set-window-start-column! window (vector-ref cws 3))
+  (%set-window-start-partial! window (vector-ref cws 4))
   (if (eq? (%window-point-moved? window) 'SINCE-START-SET)
       (%set-window-point-moved?! window true))
   (window-needs-redisplay! window))
 
-(define-integrable (clear-start-mark! window)
+(define-integrable (clear-window-start! window)
   (mark-temporary! (%window-start-line-mark window))
   (%set-window-start-line-mark! window false)
   (mark-temporary! (%window-start-mark window))
   (%set-window-start-mark! window false)
-  (%set-window-start-line-y! window 0))
+  (%set-window-start-line-y! window 0)
+  (%set-window-start-column! window 0)
+  (%set-window-start-partial! window 0))
 
 (define (guarantee-start-mark! window)
   (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
@@ -1001,9 +1031,7 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
 (define (%guarantee-start-mark! window)
   (let ((index-at!
 	 (lambda (index y)
-	   (with-values (lambda () (predict-start-line window index y))
-	     (lambda (start y-start)
-	       (set-start-mark! window start y-start))))))
+	   (set-window-start! window (compute-window-start window index y)))))
     (if (not (%window-start-line-mark window))
 	(index-at! (%window-point-index window)
 		   (buffer-window/y-center window))
@@ -1032,7 +1060,9 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
 				      (%window-current-end-index window))))
 		       (let ((start-y (%window-start-line-y window))
 			     (y-size (window-y-size window))
-			     (scroll-step (ref-variable scroll-step)))
+			     (scroll-step
+			      (ref-variable scroll-step
+					    (%window-buffer window))))
 			 (if (fix:= 0 scroll-step)
 			     (if (predict-y-limited window start-line
 						    start-y point

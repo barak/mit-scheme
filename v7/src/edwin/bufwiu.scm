@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwiu.scm,v 1.21 1993/01/09 09:44:07 cph Exp $
+;;;	$Id: bufwiu.scm,v 1.22 1993/01/12 10:50:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -79,7 +79,7 @@
 			       (fix:<= start wstart))
 			   (fix:<= wlstart end)))
 		    (begin
-		      (clear-start-mark! window)
+		      (clear-window-start! window)
 		      (window-needs-redisplay! window)))
 		;; If this change affects POINT, invalidate it.  It's
 		;; not necessary to request a display update here
@@ -131,7 +131,7 @@
 	     (or (fix:>= start (%window-start-line-index window))
 		 (fix:< end (%window-start-index window))))
 	(begin
-	  (clear-start-mark! window)
+	  (clear-window-start! window)
 	  (window-needs-redisplay! window)))
     (let ((point (%window-point-index window)))
       (cond ((fix:< point start)
