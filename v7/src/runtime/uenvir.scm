@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.42 2001/11/02 17:08:02 cph Exp $
+$Id: uenvir.scm,v 14.43 2001/11/02 17:09:51 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -113,7 +113,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (cond ((interpreter-environment? environment)
 	 (interpreter-environment/bound? environment name))
 	((stack-ccenv? environment)
-	 (stack-ccenv/bound? environment name)
+	 (stack-ccenv/bound? environment name))
 	((closure-ccenv? environment)
 	 (closure-ccenv/bound? environment name))
 	(else
