@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/machines/i386/lapopt.scm,v 1.5 1995/01/12 16:28:23 ssmith Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/machines/i386/lapopt.scm,v 1.6 1995/01/12 16:34:48 ssmith Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -47,7 +47,7 @@ MIT in each case. |#
     (define ins-vars '())
     (define instruction-data
       '((1 12 (a) (b) () mov ? (? a) (? b))
-	(1 12 (a) () () lea (? a) ())
+	(1 12 (a) () () lea (? a) ?)
 	(0 #f () () () comment ?)
 	(0 #f () () () scheme-object ? ?)
 	(0 #f () () () label ?)
@@ -75,11 +75,11 @@ MIT in each case. |#
 	    (if data
 		(if (eq? (car data) 'R)
 		    (cons (cadr data)
-			  (make-my-list (cdr a)))
-		    (make-my-list (cdr a)))
+			  (make-reg-list (cdr a)))
+		    (make-reg-list (cdr a)))
 		(if (number? (car a))
 		    (cons (car a)
-			  (make-my-list (cdr a)))
+			  (make-reg-list (cdr a)))
 		    (begin
 		      (pp (car a))
 		      ()))))
