@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: gcnote.scm,v 14.12 1999/01/02 06:11:34 cph Exp $
+$Id: gcnote.scm,v 14.13 2000/03/25 03:24:44 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -90,8 +90,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (gc-statistics)))
 
 (define (print-statistic statistic port)
-  (newline port)
-  (write-string (gc-statistic->string statistic) port))
+  (fresh-line port)
+  (write-string (gc-statistic->string statistic) port)
+  (newline port))
 
 (define (gc-statistic->string statistic)
   (let* ((ticks/second 1000)
