@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.21 1989/11/28 05:03:10 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.22 1989/11/28 13:07:50 jinx Exp $
  *
  * Compiled code interface.  Portable version.
  * This file requires a bit of assembly language from cmpaux-md.m4
@@ -82,7 +82,6 @@ MIT in each case. */
 #include "intrpt.h"	/* Interrupt processing macros */
 #include "gc.h"		/* Request_GC, etc. */
 #include "sdata.h"	/* ENTITY_OPERATOR */
-#include "cmpgc.h"      /* Compiled code object relocation */
 #include "errors.h"     /* Error codes and Termination codes */
 #include "returns.h"	/* Return addresses in the interpreter */
 #include "fixobj.h"	/* To find the error handlers */
@@ -92,8 +91,10 @@ MIT in each case. */
 #include "extern.h"	/* External decls (missing Cont_Debug, etc.) */
 #include "trap.h"       /* UNASSIGNED_OBJECT, TRAP_EXTENSION_TYPE */
 #include "prims.h"      /* LEXPR */
-#include "cmpint2.h"    /* Compiled code object destructuring */
 #include "prim.h"	/* Primitive_Procedure_Table, etc. */
+#define IN_CMPINT_C
+#include "cmpint2.h"    /* Compiled code object destructuring */
+#include "cmpgc.h"      /* Compiled code object relocation */
 
 /* Make noise words invisible to the C compiler. */
 
