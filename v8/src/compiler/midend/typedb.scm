@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typedb.scm,v 1.8 1996/07/22 17:49:20 adams Exp $
+$Id: typedb.scm,v 1.9 1996/07/23 14:49:42 adams Exp $
 
 Copyright (c) 1996 Massachusetts Institute of Technology
 
@@ -89,6 +89,25 @@ MIT in each case. |#
 		  'effect-sensitive effect:string-set!
 		  'effect effect:allocation))
 
+(let ((list-or-vector (type:or type:list type:vector)))
+  (define-operator-type 'SORT
+    (procedure-type (list list-or-vector type:procedure)
+		    list-or-vector
+		    'effect-sensitive effect:unknown))
+  (define-operator-type 'SORT!
+    (procedure-type (list list-or-vector type:procedure)
+		    list-or-vector
+		    'effect-sensitive effect:unknown)))
+
+(define-operator-type 'FOR-EACH
+  (procedure-type (cons* type:procedure type:list)
+		  type:unspecified
+		  'effect-sensitive effect:unknown))
+
+(define-operator-type 'MAP
+  (procedure-type (cons* type:procedure type:list)
+		  type:list
+		  'effect-sensitive effect:unknown))
 
 ;; The following error:* procedures have return type empty, which means
 ;; the procedure never returns.  This is only true if there are no
@@ -299,8 +318,7 @@ MIT in each case. |#
     type:flonum-vector type:vector-length type:flonum  effect:flo:vector-set!)
   (define-indexed 'BIT-STRING-REF  'BIT-STRING-SET!
     type:bit-string type:string-length type:boolean effect:bit-string-set!))
-
-
+
 (let ()
   (define ((unchecked-function domain* range) . ops)
     (for-each
@@ -310,6 +328,18 @@ MIT in each case. |#
 	     (make-list (primitive-procedure-arity op) domain*) range
 	     'function 'unchecked)))
       ops))
+
+  (define ((checked-function domain* range) . ops)
+    (let ((arity #F))
+      (pp domain*)
+      (for-each
+	  (lambda (op)
+	    (if (exact-integer? op)
+		(set! arity op)
+		(define-operator-type op
+		  (primitive-procedure-type (make-list arity domain*) range
+					    'function))))
+	ops)))
 
   ((unchecked-function type:flonum type:flonum)
    flo:+ flo:- flo:* flo:/ flo:negate flo:abs flo:sqrt
@@ -325,7 +355,22 @@ MIT in each case. |#
    fix:andc fix:and fix:or fix:xor fix:not fix:lsh)
 
   ((unchecked-function type:fixnum type:boolean)
-   fix:= fix:< fix:> fix:zero? fix:negative? fix:positive?))
+   fix:= fix:< fix:> fix:zero? fix:negative? fix:positive?)
+
+  ((checked-function type:exact-integer type:exact-integer)
+   2 int:+ int:- int:* int:quotient int:remainder)
+
+  ((checked-function type:exact-integer  type:boolean)
+   2 int:= int:< int:>
+   1 int:zero? int:negative? int:positive?)
+
+  (let-syntax ((p (macro spec (apply make-primitive-procedure spec))))
+    ((checked-function type:number type:number)
+     2 %+ %- %* %/ (p &+) (p &-) (p &*) (p &/))
+    ((checked-function type:number type:boolean)
+     2 %< %= %> (p &=) (p &<) (p &>)))
+  )
+   
 
 (for-each
     (lambda (name)
