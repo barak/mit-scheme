@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.43 2000/04/20 04:09:19 cph Exp $
+$Id: ntscreen.c,v 1.44 2000/04/20 20:49:08 cph Exp $
 
 Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
@@ -2095,13 +2095,9 @@ process_keydown (HWND handle, UINT message, WPARAM wparam, LPARAM lparam)
       return (1);
     }
 
-  /* If no modifiers other than shift or the lock keys are involved,
-     TranslateMessage will do something reasonable, so use it.  */
+  /* Let TranslateMessage handle anything not involving Alt or Ctrl.  */
   if (((get_modifiers ())
-       &~ (SCREEN_SHIFT_PRESSED
-	   | SCREEN_CAPSLOCK_ON
-	   | SCREEN_NUMLOCK_ON
-	   | SCREEN_SCROLLLOCK_ON))
+       & (SCREEN_ALT_PRESSED | SCREEN_CONTROL_PRESSED))
       == 0)
     {
       use_translate_message (handle, message, wparam, lparam);
