@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.34 1990/01/18 22:46:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.35 1990/02/24 04:01:42 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -465,6 +465,10 @@ MIT in each case. |#
   (rtl:make-cons-pointer (rtl:make-machine-constant (ucode-type character))
 			 (rtl:make-fetch locative)))
 
+(define (rtl:vector-8b-fetch locative)
+  (rtl:make-cons-pointer (rtl:make-machine-constant (ucode-type fixnum))
+			 (rtl:make-fetch locative)))
+
 (define (rtl:string-assignment locative value)
   (rtl:make-assignment locative (rtl:make-char->ascii value)))
 
@@ -486,6 +490,9 @@ MIT in each case. |#
 
 (define finish-string-assignment
   (assignment-finisher rtl:string-assignment rtl:string-fetch))
+
+(define finish-vector-8b-assignment
+  (assignment-finisher rtl:make-assignment rtl:vector-8b-fetch))
 
 ;;;; Open Coders
 
@@ -743,11 +750,30 @@ MIT in each case. |#
    (or compiler:generate-type-checks?
        compiler:generate-range-checks?)))
 
+(define-open-coder/value 'VECTOR-8B-REF
+  (simple-open-coder
+   (string-memory-reference 'VECTOR-8B-REF false
+     (lambda (locative expressions finish)
+       expressions
+       (finish (rtl:vector-8b-fetch locative))))
+   '(0 1)
+   (or compiler:generate-type-checks?
+       compiler:generate-range-checks?)))
+
 (define-open-coder/effect 'STRING-SET!
   (simple-open-coder
    (string-memory-reference 'STRING-SET! (ucode-type character)
      (lambda (locative expressions finish)
        (finish-string-assignment locative (caddr expressions) finish)))
+   '(0 1 2)
+   (or compiler:generate-type-checks?
+       compiler:generate-range-checks?)))
+
+(define-open-coder/effect 'VECTOR-8B-SET!
+  (simple-open-coder
+   (string-memory-reference 'VECTOR-8B-SET! (ucode-type fixnum)
+     (lambda (locative expressions finish)
+       (finish-vector-8b-assignment locative (caddr expressions) finish)))
    '(0 1 2)
    (or compiler:generate-type-checks?
        compiler:generate-range-checks?)))
