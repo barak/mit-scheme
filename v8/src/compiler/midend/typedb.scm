@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typedb.scm,v 1.2 1995/09/05 19:04:43 adams Exp $
+$Id: typedb.scm,v 1.3 1995/10/25 18:35:15 adams Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -56,7 +56,7 @@ MIT in each case. |#
 
 (define-operator-type 'ERROR:WRONG-TYPE-ARGUMENT
   ;; return type empty => Never returns 
-  (procedure-type (list type:any type:any) type:empty
+  (procedure-type (list type:any type:any type:any) type:empty
 		  'function))
 
 (define-operator-type 'EXACT->INEXACT
@@ -64,6 +64,18 @@ MIT in each case. |#
 
 (define-operator-type 'INEXACT->EXACT
   (procedure-type (list type:number) type:exact-number 'function))
+
+(define-operator-type 'CEILING->EXACT
+  (procedure-type (list type:number) type:exact-integer 'function))
+
+(define-operator-type 'FLOOR->EXACT
+  (procedure-type (list type:number) type:exact-integer 'function))
+
+(define-operator-type 'ROUND->EXACT
+  (procedure-type (list type:number) type:exact-integer 'function))
+
+(define-operator-type 'TRUNCATE->EXACT
+  (procedure-type (list type:number) type:exact-integer 'function))
 
 (define-operator-type (make-primitive-procedure 'CAR)
   (primitive-procedure-type (list type:pair) type:any
