@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/window.scm,v 1.150 1989/08/14 09:23:13 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/window.scm,v 1.151 1990/10/06 21:10:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -399,8 +399,7 @@
   (vector-ref (cdr inferior) 0))
 
 (define-integrable (%set-inferior-x-start! inferior x-start)
-  (vector-set! (cdr inferior) 0 x-start)
-  unspecific)
+  (vector-set! (cdr inferior) 0 x-start))
 
 (define (set-inferior-x-start! inferior x-start)
   (%set-inferior-x-start! inferior x-start)
@@ -418,8 +417,7 @@
   (vector-ref (cdr inferior) 1))
 
 (define-integrable (%set-inferior-y-start! inferior y-start)
-  (vector-set! (cdr inferior) 1 y-start)
-  unspecific)
+  (vector-set! (cdr inferior) 1 y-start))
 
 (define (set-inferior-y-start! inferior y-start)
   (%set-inferior-y-start! inferior y-start)
@@ -437,14 +435,16 @@
   (receiver (inferior-x-start inferior)
 	    (inferior-y-start inferior)))
 
+(define (%set-inferior-start! inferior x-start y-start)
+  (%set-inferior-x-start! inferior x-start)
+  (%set-inferior-y-start! inferior y-start))
+
 (define (set-inferior-start! inferior x-start y-start)
-  (vector-set! (cdr inferior) 0 x-start)
-  (vector-set! (cdr inferior) 1 y-start)
+  (%set-inferior-start! inferior x-start y-start)
   (inferior-needs-redisplay! inferior))
 
 (define-integrable (inferior-redisplay-flags inferior)
   (vector-ref (cdr inferior) 2))
 
 (define-integrable (set-inferior-redisplay-flags! inferior flags)
-  (vector-set! (cdr inferior) 2 flags)
-  unspecific)
+  (vector-set! (cdr inferior) 2 flags))
