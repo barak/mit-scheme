@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: win32.scm,v 1.7 1997/01/02 04:39:45 cph Exp $
+;;;	$Id: win32.scm,v 1.8 1997/04/03 04:44:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-97 Massachusetts Institute of Technology
 ;;;
@@ -532,13 +532,15 @@
 		 (set-interrupt-enables! mask)
 		 event:process-status)
 		(else
-		 (let ((handle* (win32-screen-current-focus)))
+		 (let ((handle* (win32-screen-current-focus))
+		       (wait
+			(lambda ()
+			  (test-for-input-on-descriptor
+			   ;; console-channel-descriptor here
+			   ;; means "input from message queue".
+			   console-channel-descriptor block?))))
 		   (if (eqv? handle handle*)
-		       (let ((flag
-			      (test-for-input-on-descriptor
-			       ;; console-channel-descriptor here
-			       ;; means "input from message queue".
-			       console-channel-descriptor block?)))
+		       (let ((flag (wait)))
 			 (set-interrupt-enables! mask)
 			 (case flag
 			   ((#F) #f)
@@ -554,7 +556,9 @@
 						 select-screen
 						 screen*))
 			     (and block?
-				  (read-event-1 handle block?))))))))))))
+				  (begin
+				    (wait)
+				    (read-event-1 handle block?)))))))))))))
 
 (define (read-event-2 handle)
   (and handle
