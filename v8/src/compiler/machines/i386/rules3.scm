@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.7 1995/01/11 22:14:41 ssmith Exp $
+$Id: rules3.scm,v 1.8 1995/01/12 19:51:19 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -968,7 +968,7 @@ MIT in each case. |#
   (profile-info/add 'INVOCATION:REGISTER)
   (let ((addr (standard-source! reg)))
     (LAP ,@(clear-map!)
-	 (JMP (@R ,addr)))))
+	 (JMP (R ,addr)))))
 
 ;; NOTE for this procedure, we may need to alter the return address
 ;; that's pushed onto the stack...  I'm not sure what the best way to
@@ -1021,7 +1021,7 @@ MIT in each case. |#
 	   (CMP B (@RO B ,addr -3) 0)
 	   ;; This is ugly - oh well
 	   (JNE (@PCR ,label))
-	   (JMP (@R ,addr))
+	   (JMP (R ,addr))
 	   (LABEL ,label)
 	   ,@(copy obj* regnum:first-arg)
 	   ,@(%invocation:apply frame-size)))))
