@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.162 1987/05/15 19:51:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.163 1987/05/16 09:00:05 allen Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -803,7 +803,7 @@ MIT in each case. |#
   (SETUP-LEXPR (? label))
   (disable-frame-pointer-offset!
    (let ((procedure (label->procedure label)))
-     `(,@(procedure-header label false)
+     `(,@(procedure-header procedure false)
        (MOVE W
 	     (& ,(+ (length (procedure-required procedure))
 		    (length (procedure-optional procedure))
