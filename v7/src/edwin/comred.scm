@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comred.scm,v 1.105 1993/08/25 02:32:59 cph Exp $
+;;;	$Id: comred.scm,v 1.106 1993/09/15 20:30:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -66,12 +66,12 @@
   unspecific)
 
 (define (top-level-command-reader init)
-  (do ((init init #f)) (#f)
-    (with-keyboard-macro-disabled
-     (lambda ()
-       (bind-condition-handler (list condition-type:abort-current-command)
-	   handle-abort-condition
-	 (lambda () (command-reader init)))))))
+  (with-keyboard-macro-disabled
+   (lambda ()
+     (bind-condition-handler (list condition-type:abort-current-command)
+	 handle-abort-condition
+       (lambda ()
+	 (command-reader init))))))
 
 (define (command-reader #!optional initialization)
   (fluid-let ((*last-command* false)
@@ -142,6 +142,7 @@
 (define (return-to-command-loop input)
   (let ((restart (find-restart 'ABORT-EDITOR-COMMAND)))
     (if (not restart) (error "Missing ABORT-EDITOR-COMMAND restart."))
+    (keyboard-macro-disable)
     (invoke-restart restart input)))
 
 (define (get-next-keyboard-char)
