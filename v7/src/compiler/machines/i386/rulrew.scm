@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulrew.scm,v 1.10 1992/02/28 20:23:57 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulrew.scm,v 1.11 1992/03/31 20:48:14 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rulrew.scm,v 1.4 1991/10/25 06:50:06 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -171,7 +171,8 @@ MIT in each case. |#
 		 (? operand-1)
 		 (REGISTER (? operand-2 register-known-value))
 		 (? overflow?))
-  (QUALIFIER (rtl:constant-fixnum-test operand-2 (lambda (n) n true)))
+  (QUALIFIER
+   (and (rtl:constant-fixnum-test operand-2 (lambda (n) n true))))
   (rtl:make-fixnum-2-args 'MULTIPLY-FIXNUM operand-1 operand-2 overflow?))
 
 (define-rule rewriting
@@ -181,6 +182,7 @@ MIT in each case. |#
 		 (? overflow?))
   (QUALIFIER
    (and (memq operator '(PLUS-FIXNUM MINUS-FIXNUM))
+	(rtl:register? operand-1)
 	(rtl:constant-fixnum-test operand-2 zero?)))
   (rtl:make-fixnum-2-args operator operand-1 operand-2 overflow?))
 
@@ -191,10 +193,20 @@ MIT in each case. |#
 		 (? overflow?))
   (QUALIFIER
    (and (memq operator '(FIXNUM-QUOTIENT FIXNUM-REMAINDER))
+	(rtl:register? operand-1)
 	(rtl:constant-fixnum-test operand-2
 	  (lambda (n)
 	    (integer-power-of-2? (abs n))))))
   (rtl:make-fixnum-2-args operator operand-1 operand-2 overflow?))
+
+(define-rule rewriting
+  (FIXNUM-2-ARGS FIXNUM-LSH
+		 (? operand-1)
+		 (REGISTER (? operand-2 register-known-value))
+		 #F)
+  (QUALIFIER (and (rtl:register? operand-1)
+		  (rtl:constant-fixnum-test operand-2 (lambda (n) n true))))
+  (rtl:make-fixnum-2-args 'FIXNUM-LSH operand-1 operand-2 #F))
 
 (define (rtl:constant-fixnum? expression)
   (and (rtl:constant? expression)
