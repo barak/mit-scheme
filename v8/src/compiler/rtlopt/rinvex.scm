@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rinvex.scm,v 1.1 1994/11/19 02:06:38 adams Exp $
+$Id: rinvex.scm,v 1.2 1994/11/26 19:03:36 adams Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -278,7 +278,9 @@ MIT in each case. |#
 	    INTERRUPT-CHECK:CLOSURE
 	    INTERRUPT-CHECK:SIMPLE-LOOP
 	    PRESERVE
-	    RESTORE))
+	    RESTORE
+	    PROFILE-COUNT
+	    PROFILE-DATA))
 
 (define (define-one-arg-method type get set)
   (define-method type

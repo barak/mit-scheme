@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rcse1.scm,v 1.1 1994/11/19 02:06:38 adams Exp $
+$Id: rcse1.scm,v 1.2 1994/11/26 19:03:22 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -659,5 +659,8 @@ MIT in each case. |#
 			 statement
 			 trivial-action)
     (method/unknown-invocation statement)))
+
+(define-cse-method 'PROFILE-COUNT method/noop)
+(define-cse-method 'PROFILE-DATA method/noop)
 
 ;; End of new stuff
