@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.5 1990/08/16 20:10:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.6 1990/10/02 22:44:20 cph Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -43,14 +43,15 @@ MIT in each case. |#
   (x-close-display 1)
   (x-close-all-displays 0)
   (x-close-window 1)
-  (x-window-read-event-flags! 1)
+  (x-display-flush 1)
+  (x-display-process-events 2)
   (x-window-x-size 1)
   (x-window-y-size 1)
   (x-window-map 1)
   (x-window-unmap 1)
   (x-window-beep 1)
   (x-window-clear 1)
-  (x-window-flush 1)
+  (x-window-display 1)
   (x-window-get-default 3)
   (x-window-set-foreground-color 2)
   (x-window-set-background-color 2)
@@ -77,43 +78,42 @@ MIT in each case. |#
   (x-graphics-set-function 2)
   (x-graphics-set-fill-style 2)
   (x-graphics-set-line-style 2)
-  (x-graphics-set-dashes 3)
-  (x-graphics-process-events 1))
+  (x-graphics-set-dashes 3))
 
 (define (initialize-package!)
   (set! x-graphics-device-type
 	(make-graphics-device-type
 	 `((available? ,operation/available?)
-	   (clear ,x-window-clear)
-	   (close ,x-close-window)
+	   (clear ,operation/clear)
+	   (close ,operation/close)
 	   (coordinate-limits ,operation/coordinate-limits)
 	   (device-coordinate-limits ,operation/device-coordinate-limits)
-	   (drag-cursor ,x-graphics-drag-cursor)
-	   (draw-line ,x-graphics-draw-line)
-	   (draw-point ,x-graphics-draw-point)
-	   (draw-text ,x-graphics-draw-string)
+	   (drag-cursor ,operation/drag-cursor)
+	   (draw-line ,operation/draw-line)
+	   (draw-point ,operation/draw-point)
+	   (draw-text ,operation/draw-text)
 	   (flush ,operation/flush)
-	   (get-default ,x-window-get-default)
-	   (map-window ,x-window-map)
-	   (move-cursor ,x-graphics-move-cursor)
-	   (move-window ,x-window-set-position)
+	   (get-default ,operation/get-default)
+	   (map-window ,operation/map-window)
+	   (move-cursor ,operation/move-cursor)
+	   (move-window ,operation/move-window)
 	   (open ,operation/open)
-	   (reset-clip-rectangle ,x-graphics-reset-clip-rectangle)
-	   (resize-window ,x-window-set-size)
-	   (set-background-color ,x-window-set-background-color)
-	   (set-border-color ,x-window-set-border-color)
-	   (set-border-width ,x-window-set-border-width)
-	   (set-clip-rectangle ,x-graphics-set-clip-rectangle)
-	   (set-coordinate-limits ,x-graphics-set-vdc-extent)
-	   (set-drawing-mode ,x-graphics-set-function)
-	   (set-font ,x-window-set-font)
-	   (set-foreground-color ,x-window-set-foreground-color)
-	   (set-internal-border-width ,x-window-set-internal-border-width)
+	   (reset-clip-rectangle ,operation/reset-clip-rectangle)
+	   (resize-window ,operation/resize-window)
+	   (set-background-color ,operation/set-background-color)
+	   (set-border-color ,operation/set-border-color)
+	   (set-border-width ,operation/set-border-width)
+	   (set-clip-rectangle ,operation/set-clip-rectangle)
+	   (set-coordinate-limits ,operation/set-coordinate-limits)
+	   (set-drawing-mode ,operation/set-drawing-mode)
+	   (set-font ,operation/set-font)
+	   (set-foreground-color ,operation/set-foreground-color)
+	   (set-internal-border-width ,operation/set-internal-border-width)
 	   (set-line-style ,operation/set-line-style)
-	   (set-mouse-color ,x-window-set-mouse-color)
-	   (set-mouse-shape ,x-window-set-mouse-shape)
-	   (starbase-filename ,x-window-starbase-filename)
-	   (unmap-window ,x-window-unmap))))
+	   (set-mouse-color ,operation/set-mouse-color)
+	   (set-mouse-shape ,operation/set-mouse-shape)
+	   (starbase-filename ,operation/starbase-filename)
+	   (unmap-window ,operation/unmap-window))))
   unspecific)
 
 (define x-graphics-device-type)
@@ -130,53 +130,173 @@ MIT in each case. |#
 				    (if (negative? y) "" "+")
 				    (number->string y))
 		     "")))
+
+(define-structure (x-graphics-device (conc-name x-graphics-device/))
+  (window false read-only true)
+  (display false read-only true))
 
+(define (x-graphics-device/process-events! device)
+  (let ((xd (x-graphics-device/display device)))
+    (let loop ()
+      (if (x-display-process-events xd 0)
+	  (loop)))))
+
 (define (operation/available?)
   (implemented-primitive-procedure? x-graphics-open-window))
 
-(define (operation/open display geometry #!optional suppress-map?)
-  (x-graphics-open-window
-   (if (or (not display) (string? display))
-       (let ((d (x-open-display display)))
-	 (if (not d)
-	     (error "unable to open display" display))
-	 d)
-       display)
-   geometry
-   (and (not (default-object? suppress-map?))
-	suppress-map?)))
+(define (operation/clear device)
+  (x-graphics-device/process-events! device)
+  (x-window-clear (x-graphics-device/window device)))
 
-(define (operation/flush xw)
-  (x-window-flush xw)
-  (x-graphics-process-events xw))
+(define (operation/close device)
+  (x-graphics-device/process-events! device)
+  (x-close-window (x-graphics-device/window device)))
 
-(define (operation/device-coordinate-limits xw)
-  (x-graphics-process-events xw)
-  (values 0 (-1+ (x-window-y-size xw)) (-1+ (x-window-x-size xw)) 0))
-
-(define (operation/coordinate-limits xw)
-  (let ((limits (x-graphics-vdc-extent xw)))
+(define (operation/coordinate-limits device)
+  (x-graphics-device/process-events! device)
+  (let ((limits (x-graphics-vdc-extent (x-graphics-device/window device))))
     (values (vector-ref limits 0)
 	    (vector-ref limits 1)
 	    (vector-ref limits 2)
 	    (vector-ref limits 3))))
 
-(define (operation/set-line-style xw line-style)
-  (cond ((not (and (exact-nonnegative-integer? line-style)
-		   (< line-style 8)))
-	 (error "Illegal line style" line-style))
-	((zero? line-style)
-	 (x-graphics-set-line-style xw 0))
-	(else
-	 (x-graphics-set-line-style xw 2)
-	 (x-graphics-set-dashes
-	  xw
-	  0
-	  (vector-ref '#("\010\010"
-			 "\001\001"
-			 "\015\001\001\001"
-			 "\013\001\001\001\001\001"
-			 "\013\005"
-			 "\014\001\002\001"
-			 "\011\001\002\001\002\001")
-		      (-1+ line-style))))))
+(define (operation/device-coordinate-limits device)
+  (x-graphics-device/process-events! device)
+  (let ((xw (x-graphics-device/window device)))
+    (values 0 (-1+ (x-window-y-size xw)) (-1+ (x-window-x-size xw)) 0)))
+
+(define (operation/drag-cursor device x y)
+  (x-graphics-device/process-events! device)
+  (x-graphics-drag-cursor (x-graphics-device/window device) x y))
+
+(define (operation/draw-line device x-start y-start x-end y-end)
+  (x-graphics-device/process-events! device)
+  (x-graphics-draw-line (x-graphics-device/window device)
+			x-start y-start x-end y-end))
+
+(define (operation/draw-point device x y)
+  (x-graphics-device/process-events! device)
+  (x-graphics-draw-point (x-graphics-device/window device) x y))
+
+(define (operation/draw-text device x y string)
+  (x-graphics-device/process-events! device)
+  (x-graphics-draw-string (x-graphics-device/window device) x y string))
+
+(define (operation/flush device)
+  (x-display-flush (x-graphics-device/display device))
+  (x-graphics-device/process-events! device))
+
+(define (operation/get-default device resource-name class-name)
+  (x-graphics-device/process-events! device)
+  (x-window-get-default (x-graphics-device/window device)
+			resource-name class-name))
+
+(define (operation/map-window device)
+  (x-graphics-device/process-events! device)
+  (x-window-map (x-graphics-device/window device)))
+
+(define (operation/move-cursor device x y)
+  (x-graphics-device/process-events! device)
+  (x-graphics-move-cursor (x-graphics-device/window device) x y))
+
+(define (operation/move-window device x y)
+  (x-graphics-device/process-events! device)
+  (x-window-set-position (x-graphics-device/window device) x y))
+
+(define (operation/open display geometry #!optional suppress-map?)
+  (let ((xw
+	 (x-graphics-open-window
+	  (if (or (not display) (string? display))
+	      (let ((d (x-open-display display)))
+		(if (not d)
+		    (error "unable to open display" display))
+		d)
+	      display)
+	  geometry
+	  (and (not (default-object? suppress-map?))
+	       suppress-map?))))
+    (make-x-graphics-device xw (x-window-display xw))))
+
+(define (operation/reset-clip-rectangle device)
+  (x-graphics-device/process-events! device)
+  (x-graphics-reset-clip-rectangle (x-graphics-device/window device)))
+
+(define (operation/resize-window device width height)
+  (x-graphics-device/process-events! device)
+  (x-window-set-size (x-graphics-device/window device) width height))
+
+(define (operation/set-background-color device color)
+  (x-graphics-device/process-events! device)
+  (x-window-set-background-color (x-graphics-device/window device) color))
+
+(define (operation/set-border-color device color)
+  (x-graphics-device/process-events! device)
+  (x-window-set-border-color (x-graphics-device/window device) color))
+
+(define (operation/set-border-width device width)
+  (x-graphics-device/process-events! device)
+  (x-window-set-border-width (x-graphics-device/window device) width))
+
+(define (operation/set-coordinate-limits device x-left y-bottom x-right y-top)
+  (x-graphics-device/process-events! device)
+  (x-graphics-set-vdc-extent (x-graphics-device/window device)
+			     x-left y-bottom x-right y-top))
+
+(define (operation/set-clip-rectangle device x-left y-bottom x-right y-top)
+  (x-graphics-device/process-events! device)
+  (x-graphics-set-clip-rectangle (x-graphics-device/window device)
+				 x-left y-bottom x-right y-top))
+
+(define (operation/set-drawing-mode device mode)
+  (x-graphics-device/process-events! device)
+  (x-graphics-set-function (x-graphics-device/window device) mode))
+
+(define (operation/set-font device font)
+  (x-graphics-device/process-events! device)
+  (x-window-set-font (x-graphics-device/window device) font))
+
+(define (operation/set-foreground-color device color)
+  (x-graphics-device/process-events! device)
+  (x-window-set-foreground-color (x-graphics-device/window device) color))
+
+(define (operation/set-internal-border-width device width)
+  (x-graphics-device/process-events! device)
+  (x-window-set-internal-border-width (x-graphics-device/window device) width))
+
+(define (operation/set-line-style device line-style)
+  (x-graphics-device/process-events! device)
+  (if (not (and (exact-nonnegative-integer? line-style)
+		(< line-style 8)))
+      (error:illegal-datum line-style 'SET-LINE-STYLE))
+  (let ((xw (x-graphics-device/window device)))
+    (if (zero? line-style)
+	(x-graphics-set-line-style xw 0)
+	(begin
+	  (x-graphics-set-line-style xw 2)
+	  (x-graphics-set-dashes
+	   xw
+	   0
+	   (vector-ref '#("\010\010"
+			  "\001\001"
+			  "\015\001\001\001"
+			  "\013\001\001\001\001\001"
+			  "\013\005"
+			  "\014\001\002\001"
+			  "\011\001\002\001\002\001")
+		       (-1+ line-style)))))))
+
+(define (operation/set-mouse-color device color)
+  (x-graphics-device/process-events! device)
+  (x-window-set-mouse-color (x-graphics-device/window device) color))
+
+(define (operation/set-mouse-shape device shape)
+  (x-graphics-device/process-events! device)
+  (x-window-set-mouse-shape (x-graphics-device/window device) shape))
+
+(define (operation/starbase-filename device)
+  (x-graphics-device/process-events! device)
+  (x-window-starbase-filename (x-graphics-device/window device)))
+
+(define (operation/unmap-window device)
+  (x-graphics-device/process-events! device)
+  (x-window-unmap (x-graphics-device/window device)))
