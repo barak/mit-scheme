@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmerly.scm,v 1.7 1988/06/14 08:32:44 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmerly.scm,v 1.8 1994/02/02 03:35:09 adams Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -251,7 +251,7 @@ MIT in each case. |#
   (let ((name (car var+pattern))
 	(expression (cdr var+pattern)))
     (let ((var (assq name variables)))
-      (cond ((null? var)
+      (cond ((not var)
 	     (error "match-bind: nonexistent variable"
 		    name variables))
 	    ((null? (cdr var))
@@ -445,7 +445,7 @@ MIT in each case. |#
 
 (define (path-step step path expression receiver)
   (let ((info (assq path path-compressions)))
-    (cond ((null? info)
+    (cond ((not info)
 	   (receiver step expression))
 	  ((null? (cadr info))
 	   (receiver step
@@ -480,7 +480,7 @@ MIT in each case. |#
 (define (find-transformer expression)
   (and (symbol? expression)
        (let ((place (assq expression *transformers*)))
-	 (and (not (null? place))
+	 (and place
 	      (cdr place)))))
 
 ;;;; Database transformers
@@ -558,7 +558,7 @@ MIT in each case. |#
 	   (receiver false false))
 	  ((symbol? exp)
 	   (let ((pair (assq exp alist)))
-	     (if (null? pair)
+	     (if (not pair)
 		 (transformer-fail receiver)
 		 (transformer-result receiver name rename (cdr pair) exp))))
 	  ((evaluation? exp)
@@ -610,7 +610,7 @@ MIT in each case. |#
 		      (apply-transformer texp name rename exp receiver))
 		     (else
 		      (let ((place (assq (car symbols) alist)))
-			(if (null? place)
+			(if (not place)
 			    (transformer-fail receiver)
 			    (begin (bit-string-set! mask (cdr place))
 				   (loop (cdr symbols))))))))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: proced.scm,v 4.18 1994/02/02 01:48:25 gjr Exp $
+$Id: proced.scm,v 4.19 1994/02/02 03:32:52 adams Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -88,24 +88,24 @@ MIT in each case. |#
 		      (list-copy optional)
 		      (if (eq? type continuation-type/procedure)
 			  rest
-			  '())
-		      (generate-label name)	; label
-		      false			; applications
-		      false			; always-known-operator?
-		      false			; closure-cons
-		      false			; closure-context
-		      false			; closure-offset
-		      false			; register
-		      false			; closure-size
-		      false			; target-block
-		      false			; initial-callees
-		      false			; free-callees/callees
-		      false			; free-callers/callers
-		      false			; virtual-closure?
-		      '()			; closure-reasons
-		      '()			; variables/side-effects
-		      '()			; alist
-		      false			; debugging-info
+			  '())		;initial continuation/combinations
+		      (generate-label name)
+		      '()		;applications
+		      false		;always-known-operator?
+		      false		;closure-cons
+		      false		;closure-context
+		      false		;closure-offset
+		      false		;register
+		      false		;closure-size
+		      false		;target-block
+		      '()               ;initial-callees
+		      '()		;[free-]callees
+		      '()		;[free-]callers
+		      false		;virtual-closure?
+		      '()		;closure-reasons
+		      '()		;variables or side-effects
+		      '()		;alist
+		      false		;debugging-info
 		      )))
     (set! *procedures* (cons procedure *procedures*))
     (set-block-procedure! block procedure)
@@ -303,7 +303,7 @@ MIT in each case. |#
 (define (add-closure-reason! procedure reason1 reason2)
   (let ((reasons (procedure-closure-reasons procedure)))
     (let ((slot (assq reason1 reasons)))
-      (cond ((null? slot)
+      (cond ((false? slot)
 	     (set-procedure-closure-reasons!
 	      procedure
 	      (cons (cons reason1
