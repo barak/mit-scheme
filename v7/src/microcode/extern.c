@@ -30,25 +30,23 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.c,v 9.26 1988/08/15 20:45:38 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.c,v 9.27 1988/08/15 23:08:55 cph Exp $ */
 
 #include "scheme.h"
 #include "prims.h"
 
 /* Mapping between the internal and external representations of
-   primitives and return addresses.
- */
+   primitives and return addresses.  */
 
-/* (MAP-CODE-TO-MACHINE-ADDRESS TYPE-CODE VALUE-CODE) For return codes
-   and primitives, this returns the internal representation of the
-   return address or primitive address given the external
-   representation.  Currently in CScheme these two are the same for
-   return codes, but for primitives there are two parts to the code.
-   In the 68000 assembly version the internal representation is an
-   actual address in memory.
-*/
+DEFINE_PRIMITIVE ("MAP-CODE-TO-MACHINE-ADDRESS", Prim_map_code_to_address, 2, 2,
+  "For return codes and primitives, this returns the internal
+representation of the return address or primitive address given the
+external representation.
 
-DEFINE_PRIMITIVE ("MAP-CODE-TO-MACHINE-ADDRESS", Prim_map_code_to_address, 2, 2, 0)
+This accepts two arguments, TYPE-CODE and VALUE-CODE.  TYPE-CODE is
+the microcode type of the object to be returned; it must be either a
+return address or primitive procedure type.  VALUE-CODE is the index
+number (i.e. external representation) of the desired result.")
 {
   Pointer result;
   long tc, number;
@@ -88,14 +86,11 @@ DEFINE_PRIMITIVE ("MAP-CODE-TO-MACHINE-ADDRESS", Prim_map_code_to_address, 2, 2,
   PRIMITIVE_RETURN(result);
 }
 
-/* (MAP-MACHINE-ADDRESS-TO-CODE TYPE-CODE ADDRESS)
-   This is the inverse operation for MAP_CODE_TO_ADDRESS.
-   Given a machine ADDRESS and a TYPE-CODE (either return code or
-   primitive) it finds the number for the external representation
-   for the internal address.
-*/
-
-DEFINE_PRIMITIVE ("MAP-MACHINE-ADDRESS-TO-CODE", Prim_map_address_to_code, 2, 2, 0)
+DEFINE_PRIMITIVE ("MAP-MACHINE-ADDRESS-TO-CODE", Prim_map_address_to_code, 2, 2,
+  "This is the inverse operation of `map-code-to-machine-address'.  Given
+a machine ADDRESS and a TYPE-CODE (either return code or primitive
+procedure), it finds the number for the external representation for
+the internal address.")
 {
   long tc, number;
   Primitive_2_Args();
@@ -122,10 +117,8 @@ DEFINE_PRIMITIVE ("MAP-MACHINE-ADDRESS-TO-CODE", Prim_map_address_to_code, 2, 2,
   PRIMITIVE_RETURN(MAKE_UNSIGNED_FIXNUM(number));
 }
 
-DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-ARITY", Prim_map_prim_address_to_arity, 1, 1, 
-  "Given the internal representation of PRIMITIVE (in CScheme the
-internal and external representations are the same), return the
-number of arguments it requires.")
+DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-ARITY", Prim_primitive_procedure_arity, 1, 1,
+  "Given a primitive procedure, returns the number of arguments it requires.")
 {
   extern long primitive_to_arity();
   long answer;
@@ -141,10 +134,8 @@ number of arguments it requires.")
   PRIMITIVE_RETURN(MAKE_SIGNED_FIXNUM(answer));
 }
 
-DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-DOCUMENTATION", Prim_map_prim_address_to_documentation, 1, 1, 
-  "Given the internal representation of PRIMITIVE (in CScheme the
-internal and external representations are the same), return the
-number of arguments it requires.")
+DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-DOCUMENTATION", Prim_primitive_procedure_documentation, 1, 1,
+  "Given a primitive procedure, returns its documentation string.")
 {
   extern char * primitive_to_documentation ();
   char * answer;
@@ -160,14 +151,10 @@ number of arguments it requires.")
      ? SHARP_F
      : (C_String_To_Scheme_String (answer)));
 }
-
-/* (GET-PRIMITIVE-COUNTS)
-   Returns a CONS of the number of primitives defined in this
-   interpreter and the number of primitives referenced but not
-   defined.
-*/
 
-DEFINE_PRIMITIVE ("GET-PRIMITIVE-COUNTS", Prim_get_primitive_counts, 0, 0, 0)
+DEFINE_PRIMITIVE ("GET-PRIMITIVE-COUNTS", Prim_get_primitive_counts, 0, 0,
+  "Returns a pair of the number of primitives defined in this interpreter
+and the number of primitives referenced but not defined.")
 {
   Primitive_0_Args();
 
@@ -175,13 +162,10 @@ DEFINE_PRIMITIVE ("GET-PRIMITIVE-COUNTS", Prim_get_primitive_counts, 0, 0, 0)
   *Free++ = MAKE_UNSIGNED_FIXNUM(NUMBER_OF_UNDEFINED_PRIMITIVES());
   PRIMITIVE_RETURN(Make_Pointer(TC_LIST, Free - 2));
 }
-
-/* (GET-PRIMITIVE-NAME n)
-   Given a number, return the string for the name of the corresponding
-   primitive procedure.  It causes an error if the number is out of range.
-*/
 
-DEFINE_PRIMITIVE ("GET-PRIMITIVE-NAME", Prim_get_primitive_name, 1, 1, 0)
+DEFINE_PRIMITIVE ("GET-PRIMITIVE-NAME", Prim_get_primitive_name, 1, 1,
+  "Given a primitive procedure, returns the string for the name of that
+procedure.")
 {
   extern Pointer primitive_name();
   long Number, TC;
@@ -200,17 +184,14 @@ DEFINE_PRIMITIVE ("GET-PRIMITIVE-NAME", Prim_get_primitive_name, 1, 1, 0)
   PRIMITIVE_RETURN(primitive_name(Number));
 }
 
-/* (GET-PRIMITIVE-ADDRESS name arity)
-   Given a symbol (name), return the primitive object corresponding
-   to this name.  
-   arity is the number of arguments which the primitive should expect.
-   If arity is false, NIL is returned if the primitive is not
-   implemented even if the name alredy exists.
-   If arity is an integer, a primitive object will always be returned,
-   whether the corresponding primitive is implemented or not.
-*/
-
-DEFINE_PRIMITIVE ("GET-PRIMITIVE-ADDRESS", Prim_get_primitive_address, 2, 2, 0)
+DEFINE_PRIMITIVE ("GET-PRIMITIVE-ADDRESS", Prim_get_primitive_address, 2, 2,
+  "Given a symbol NAME, return the primitive object corresponding to this
+name.
+ARITY is the number of arguments which the primitive should expect.
+If ARITY is #F, #F is returned if the primitive is not implemented,
+even if the name already exists.
+If ARITY is an integer, a primitive object will always be returned,
+whether the corresponding primitive is implemented or not.")
 {
   extern Pointer find_primitive();
   Boolean intern_p, allow_p;
