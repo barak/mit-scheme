@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.14 1996/10/15 19:04:59 cph Exp $
+;;;	$Id: snr.scm,v 1.15 1996/10/23 22:14:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -3579,16 +3579,16 @@ With prefix arg, replaces the file with the list information."
   (let ((headers (news-group:get-headers group argument buffer))
 	(msg "Threading headers... "))
     (message msg)
-    (let ((value
-	   (list->vector
-	    (organize-headers-into-threads
-	     headers
-	     (ref-variable news-group-show-context-headers buffer)
-	     #f
-	     (ref-variable news-split-threads-on-subject-changes buffer)
-	     (ref-variable news-join-threads-with-same-subject buffer)))))
+    (let ((threads
+	   (organize-headers-into-threads
+	    headers
+	    (ref-variable news-group-show-context-headers buffer)
+	    #f
+	    (ref-variable news-split-threads-on-subject-changes buffer)
+	    (ref-variable news-join-threads-with-same-subject buffer))))
       (message msg "done")
-      value)))
+      (list->vector
+       (list-transform-negative threads news-thread:all-articles-seen?)))))
 
 (define (news-group:get-headers group argument buffer)
   (let ((connection (news-group:connection group))
@@ -3625,7 +3625,7 @@ With prefix arg, replaces the file with the list information."
 		  (let ((t (get-universal-time))
 			(show-ignored? (not all?)))
 		    (lambda (header)
-		      (and (news-header:ignore? header table t)
+		      (and (news-header:ignore?! header table t)
 			   (begin
 			     (set-news-header:status! header #\I)
 			     (article-number-seen! group
@@ -3756,7 +3756,7 @@ With prefix arg, replaces the file with the list information."
 
 ;;;; Ignored-Subjects Database
 
-(define (news-header:ignore? header table t)
+(define (news-header:ignore?! header table t)
   (let ((subject (canonicalize-subject (news-header:subject header))))
     (and (not (fix:= 0 (string-length subject)))
 	 (hash-table/get table subject #f)
@@ -3770,6 +3770,14 @@ With prefix arg, replaces the file with the list information."
 				t)
 	       (news-group:ignored-subjects-modified! group)))
 	   #t))))
+
+(define (news-header:ignore? header)
+  (let ((table
+	 (news-group:get-ignored-subjects (news-header:group header) #f)))
+    (and table
+	 (hash-table/get table
+			 (canonicalize-subject (news-header:subject header))
+			 #f))))
 
 (define (news-group:article-ignored! group header buffer)
   (let ((subject (canonicalize-subject (news-header:subject header))))
@@ -4020,18 +4028,20 @@ With prefix arg, replaces the file with the list information."
 
 (define (get-news-header-extra header write?)
   (or (news-header:reader-hook header)
-      (let ((extra
-	     (make-news-header-extra
-	      (if (or (not (news-header:real? header))
-		      (let ((number (news-header:number header)))
-			(or (not number)
-			    (member-of-ranges? (news-group:ranges-seen
-						(news-header:group header))
-					       number))))
-		  #\D
-		  #\space))))
+      (let ((extra (make-news-header-extra (initial-header-status header))))
 	(if write? (set-news-header:reader-hook! header extra))
 	extra)))
+
+(define (initial-header-status header)
+  (cond ((or (not (news-header:real? header))
+	     (not (news-header:number header)))
+	 #\D)
+	((member-of-ranges? (news-group:ranges-seen
+			     (news-header:group header))
+			    (news-header:number header))
+	 (if (news-header:ignore? header) #\I #\D))
+	(else
+	 #\space)))
 
 (define (news-header:status header)
   (news-header-extra:status (get-news-header-extra header #f)))
