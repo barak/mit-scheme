@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.82 2000/05/22 03:36:52 cph Exp $
+;;; $Id: imail-core.scm,v 1.83 2000/05/22 15:07:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -422,16 +422,27 @@
 (define-method message-internal-time ((message <message>))
   (let loop ((headers (get-all-header-fields message "received")) (winner #f))
     (if (pair? headers)
-	(call-with-values
-	    (lambda ()
-	      (rfc822:received-header-components
-	       (header-field-value (car headers))))
-	  (lambda (from by via with id for time)
-	    from by via with id for	;ignored
-	    (loop (cdr headers)
-		  (if (or (not winner) (< time winner)) time winner))))
+	(loop (cdr headers)
+	      (let ((time (received-header-time (car headers))))
+		(if (and time (or (not winner) (< time winner)))
+		    time
+		    winner)))
 	(or winner
 	    (message-time message)))))
+
+(define (received-header-time header)
+  (let ((time
+	 (ignore-errors
+	  (lambda ()
+	    (call-with-values
+		(lambda ()
+		  (rfc822:received-header-components
+		   (header-field-value header)))
+	      (lambda (from by via with id for time)
+		from by via with id for	;ignored
+		time))))))
+    (and (not (condition? time))
+	 time)))
 
 (define (message-time message)
   (let ((date (get-first-header-field-value message "date" #f)))
