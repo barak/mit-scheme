@@ -1,6 +1,6 @@
 -*- Text -*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.7 1991/01/23 18:56:21 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.8 1991/01/23 18:57:31 jinx Exp $
 
 	Remarks:
 
@@ -747,8 +747,8 @@ instruction to jump to the new location.
 => STORE_EXECUTE_CACHE_CODE stores the fixed instructions (opcodes),
 if any, in an execute cache cell.  If the opcodes depend on the actual
 target address, this macro should be a NOP, and all the work should be
-done by STORE_EXECUTE_CACHE_CODE.  These two macros are separated to
-avoid extra work at garbage collection time on architectures where
+done by STORE_EXECUTE_CACHE_ADDRESS.  These two macros are separated
+to avoid extra work at garbage collection time on architectures where
 some or all of the code need not change.  In the example above, this
 macro would store the jump opcode.
 
