@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.18 1992/05/26 05:55:47 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.19 1992/07/07 00:44:54 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -71,7 +71,11 @@ MIT in each case. |#
 
 (define (call-with-temporary-filename receiver)
   (let find-eligible-directory
-      ((eligible-directories '("." "/tmp" "/usr/tmp")))
+      ((eligible-directories 
+	(let ((tmp (or (get-environment-variable "TEMP")
+		       (get-environment-variable "TMP")))
+	      (others '("." "/tmp" "/usr/tmp")))
+	  (if (not tmp) others (cons tmp others)))))
     (if (null? eligible-directories)
 	(error "Can't locate directory for temporary file")
 	(let ((dir (->namestring
@@ -94,7 +98,6 @@ MIT in each case. |#
 			 (lambda () (if (file-exists? name)
 					(delete-file name))))))))
 	      (find-eligible-directory (cdr eligible-directories)))))))
-    
 
 (define (file-attributes-direct filename)
   ((ucode-primitive file-attributes)
@@ -133,9 +136,50 @@ MIT in each case. |#
 (define file-modification-time
   file-modification-time-indirect)
 
-(define-integrable get-environment-variable
-  (ucode-primitive get-environment-variable))
+(define get-environment-variable)
+(define set-environment-variable!)
+(define delete-environment-variable!)
+(define reset-environment-variables!)
 
+(let ((environment-variables '()))
+  ;; Kludge: since getenv returns false for unbound,
+  ;; that can also be the marker for a deleted variable
+  (define-integrable *variable-deleted* false)
+
+  (set! get-environment-variable
+	(lambda (variable)
+	  (cond ((not (string? variable))
+		 (error "GET-ENVIRONMENT-VARIABLE: Variable must be a string"
+			variable))
+		((assoc variable environment-variables)
+		 =>
+		 cdr)
+		(else ((ucode-primitive get-environment-variable)
+		       variable)))))
+
+  (set! set-environment-variable!
+	(lambda (variable value)
+	  (cond ((not (string? variable))
+		 (error "SET-ENVIRONMENT-VARIABLE!: Variable must be a string"
+			variable value))
+		((assoc variable environment-variables)
+		 =>
+		 (lambda (pair)
+		   (set-cdr! pair value)))
+		(else
+		 (set! environment-variables
+		       (cons (cons variable value)
+			     environment-variables))))
+	  unspecific))
+
+  (set! delete-environment-variable!
+	(lambda (variable)
+	  (set-environment-variable! variable *variable-deleted*)))
+
+  (set! reset-environment-variables!
+	(lambda () (set! environment-variables '())))
+) ; End LET
+
 (define (unix/user-home-directory user-name)
   (let ((directory ((ucode-primitive get-user-home-directory) user-name)))
     (if (not directory)
@@ -176,5 +220,14 @@ MIT in each case. |#
   ((ucode-primitive file-touch) (->namestring (merge-pathnames filename))))
 
 (define (make-directory name)
-  ((ucode-primitive directory-make)
+  ((ucode-primitive directory-make 1)
    (->namestring (pathname-as-directory (merge-pathnames name)))))
+
+(define (delete-directory name)
+  ((ucode-primitive directory-delete 1)
+   (->namestring (pathname-as-directory (merge-pathnames name)))))
+
+;;; Queues after-restart daemon to clean up environment space
+
+(define (initialize-system-primitives!)
+  (add-event-receiver! event:after-restart reset-environment-variables!))
