@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.41 1998/06/20 05:41:58 cph Exp $
+;;;	$Id: snr.scm,v 1.42 1998/09/07 07:10:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-98 Massachusetts Institute of Technology
 ;;;
@@ -443,14 +443,11 @@ Only one News reader may be open per server; if a previous News reader
   (nntp-connection:close (news-server-buffer:connection buffer)))
 
 (define (news-server-buffer:save-groups buffer)
-  (let ((groups (news-server-buffer:groups buffer)))
-    (write-groups-init-file (news-server-buffer:connection buffer)
-			    groups
-			    buffer)
-    (for-each-vector-element groups
-      (lambda (group)
-	(write-ignored-subjects-file group
-				     (find-news-group-buffer buffer group))))))
+  (write-groups-init-file buffer)
+  (for-each-vector-element (news-server-buffer:groups buffer)
+    (lambda (group)
+      (write-ignored-subjects-file group
+				   (find-news-group-buffer buffer group)))))
 
 (define (initialize-news-groups-buffer buffer groups)
   (let ((mark (mark-left-inserting-copy (buffer-start buffer)))
@@ -791,9 +788,7 @@ With prefix argument, updates the next several News groups."
   (news-group:get-unread-headers group buffer)
   (update-news-groups-buffers buffer group)
   (write-ignored-subjects-file group buffer)
-  (write-groups-init-file (news-server-buffer:connection buffer)
-			  (news-server-buffer:groups buffer)
-			  buffer))
+  (write-groups-init-file buffer))
 
 (define-command news-refresh-groups
   "Update the unread-message estimates for all of the News groups shown.
@@ -1159,10 +1154,7 @@ This shows News groups that have been created since the last time that
 			       (loop next)))))))))
        (news-group:purge-and-compact-headers! group buffer)
        (set-news-group:ignored-subjects! group 'UNKNOWN)
-       (let ((buffer (news-server-buffer buffer #t)))
-	 (write-groups-init-file (news-group:connection group)
-				 (news-server-buffer:groups buffer)
-				 buffer))))))
+       (write-groups-init-file buffer)))))
 
 (define (news-group-buffer:select group-buffer window)
   (news-group-buffer:delete-context-window group-buffer window))
@@ -1648,6 +1640,9 @@ This mode's commands include:
 \\[news-collapse-threads]	collapse all threads
 \\[news-expand-threads]	expand all threads
 
+\\[news-output-article]	output this article to a mail file
+\\[news-output-article-to-rmail-file]	output this article to an RMAIL file
+
 \\[news-catch-up-group]	mark all articles as read and return to news-groups buffer
 \\[news-expunge-group]	remove marked threads from the article list
 \\[news-revert-group]	refresh the article list from the news server
@@ -1679,6 +1674,8 @@ This mode's commands include:
 (define-key 'news-group #\N 'news-group-next-unread-article)
 (define-key 'news-group #\M-n 'news-group-next-thread)
 (define-key 'news-group #\M-N 'news-group-next-thread-article)
+(define-key 'news-group #\o 'news-output-article-to-rmail-file)
+(define-key 'news-group #\c-o 'news-output-article)
 (define-key 'news-group #\p 'news-group-previous-unread-header)
 (define-key 'news-group #\P 'news-group-previous-unread-article)
 (define-key 'news-group #\M-p 'news-group-previous-thread)
@@ -2073,14 +2070,19 @@ This unmarks the article indicated by point and any other articles in
   "Select a buffer containing the News article indicated by point."
   ()
   (lambda ()
-    (let ((group-buffer (current-buffer))
-	  (header (current-news-header)))
-      (if (news-header:real? header)
-	  (select-buffer
-	   (or (find-news-article-buffer group-buffer header)
-	       (make-news-article-buffer group-buffer header)
-	       (editor-error "Article no longer available from server.")))
-	  (editor-error "Can't select a placeholder article.")))))
+    (select-buffer
+     (let ((buffer (current-buffer)))
+       (cond ((news-article-buffer? buffer)
+	      buffer)
+	     ((news-group-buffer? buffer)
+	      (call-with-values
+		  (lambda ()
+		    (get-article-buffer buffer (current-news-header)))
+		(lambda (buffer new?)
+		  new?
+		  buffer)))
+	     (else
+	      (editor-error "No article selected.")))))))
 
 (define-command news-toggle-thread
   "Expand or collapse the current thread."
@@ -2356,6 +2358,31 @@ Otherwise, the standard pruned header is shown."
 (define (delete-news-header buffer)
   (let ((start (buffer-start buffer)))
     (delete-string start (mark1+ (mail-header-end start)))))
+
+(define (with-current-article-buffer receiver)
+  (let ((buffer (current-buffer)))
+    (cond ((news-article-buffer? buffer)
+	   (receiver buffer))
+	  ((news-group-buffer? buffer)
+	   (call-with-values
+	       (lambda ()
+		 (get-article-buffer buffer (current-news-header)))
+	     (lambda (buffer new?)
+	       (receiver buffer)
+	       (if new? (kill-buffer buffer)))))
+	  (else
+	   (editor-error "No article selected.")))))
+
+(define (get-article-buffer group-buffer header)
+  (if (not (news-header:real? header))
+      (editor-error "Can't select a placeholder article."))
+  (let ((buffer (find-news-article-buffer group-buffer header)))
+    (if buffer
+	(values buffer #f)
+	(let ((buffer (make-news-article-buffer group-buffer header)))
+	  (if (not buffer)
+	      (editor-error "Article no longer available from server."))
+	  (values buffer #t)))))
 
 ;;;; News-Article Mode
 
@@ -2609,10 +2636,12 @@ If file is being visited, the article is appended to the
     (set-variable! rmail-last-rmail-file (->namestring pathname))
     (with-editor-interrupts-disabled
       (lambda ()
-	(let ((buffer (get-article-output-buffer (current-buffer))))
-	  (rfc822-region->babyl (buffer-region buffer))
-	  (rmail-output-to-rmail-file (buffer-region buffer) pathname)
-	  (kill-buffer buffer))))))
+	(with-current-article-buffer
+	  (lambda (buffer)
+	    (let ((buffer (get-article-output-buffer buffer)))
+	      (rfc822-region->babyl (buffer-region buffer))
+	      (rmail-output-to-rmail-file (buffer-region buffer) pathname)
+	      (kill-buffer buffer))))))))
 
 (define-command news-output-article
   "Append this article to Unix mail file named FILE-NAME."
@@ -2623,9 +2652,11 @@ If file is being visited, the article is appended to the
     (set-variable! rmail-last-file (->namestring pathname))
     (with-editor-interrupts-disabled
       (lambda ()
-	(let ((buffer (get-article-output-buffer (current-buffer))))
-	  (rmail-output-to-unix-mail-file (buffer-region buffer) pathname)
-	  (kill-buffer buffer))))))
+	(with-current-article-buffer
+	  (lambda (buffer)
+	    (let ((buffer (get-article-output-buffer buffer)))
+	      (rmail-output-to-unix-mail-file (buffer-region buffer) pathname)
+	      (kill-buffer buffer))))))))
 
 (define (get-article-output-buffer buffer)
   (let ((buffer* (temporary-buffer " news conversion")))
@@ -3066,29 +3097,32 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 	   entries
 	   (map (convert-entry connection) entries))))))
 
-(define (write-groups-init-file connection groups buffer)
-  (let ((server (nntp-connection:server connection)))
-    (write-init-file
-     (groups-init-file-pathname server)
-     buffer
-     4
-     (let loop ((groups (vector->list groups)) (entries '()))
-       (if (null? groups)
-	   entries
-	   (loop (cdr groups)
-		 (let ((group (car groups)))
-		   (if (and (not (news-group:subscribed? group))
-			    (ranges-empty? (news-group:ranges-deleted group))
-			    (ranges-empty? (news-group:ranges-marked group))
-			    (ranges-empty? (news-group:ranges-browsed group)))
-		       entries
-		       (cons (vector (news-group:name group)
-				     (news-group:subscribed? group)
-				     (news-group:server-info group)
-				     (news-group:ranges-deleted group)
-				     (news-group:ranges-marked group)
-				     (news-group:ranges-browsed group))
-			     entries)))))))))
+(define (write-groups-init-file buffer)
+  (let ((server-buffer (news-server-buffer buffer #t)))
+    (let ((server (news-server-buffer:server server-buffer))
+	  (groups (news-server-buffer:groups server-buffer)))
+      (write-init-file
+       (groups-init-file-pathname server)
+       server-buffer
+       4
+       (let loop ((groups (vector->list groups)) (entries '()))
+	 (if (null? groups)
+	     entries
+	     (loop
+	      (cdr groups)
+	      (let ((group (car groups)))
+		(if (and (not (news-group:subscribed? group))
+			 (ranges-empty? (news-group:ranges-deleted group))
+			 (ranges-empty? (news-group:ranges-marked group))
+			 (ranges-empty? (news-group:ranges-browsed group)))
+		    entries
+		    (cons (vector (news-group:name group)
+				  (news-group:subscribed? group)
+				  (news-group:server-info group)
+				  (news-group:ranges-deleted group)
+				  (news-group:ranges-marked group)
+				  (news-group:ranges-browsed group))
+			  entries))))))))))
 
 (define (groups-init-file-pathname server)
   (init-file-pathname server "groups"))
