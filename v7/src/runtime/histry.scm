@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 13.45 1987/04/17 00:54:28 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 13.46 1987/06/02 11:26:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -208,7 +208,7 @@
 		    (delay
 		     (let ((next (shallower-vertebra current)))
 		       (if (eq? next history)
-			   '()
+			   the-empty-history
 			   (loop next)))))
 	      '()))))
 
