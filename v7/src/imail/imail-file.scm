@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.54 2000/07/05 19:16:55 cph Exp $
+;;; $Id: imail-file.scm,v 1.55 2000/07/05 20:03:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -43,30 +43,30 @@
   (file-exists? (file-url-pathname url)))
 
 (define (pathname->url-body pathname)
-  (case (host/type-name (pathname-host pathname))
-    ((UNIX)
-     (->namestring pathname))
-    ((DOS)
-     (let ((string (string-replace (->namestring pathname) #\\ #\/)))
-       (if (pathname-device pathname)
-	   (string-append "/" string)
-	   string)))
-    (else (error "Unknown host type:" pathname))))
+  (string-append (let ((device (pathname-device pathname)))
+		   (if (string? device)
+		       (string-append "/" device ":")
+		       ""))
+		 (let ((directory (pathname-directory pathname)))
+		   (if (pair? directory)
+		       (string-append
+			(if (eq? (car directory) 'ABSOLUTE) "/" "")
+			(decorated-string-append
+			 "" "" "/"
+			 (map (lambda (string)
+				(url:encode-string
+				 (if (eq? string 'UP) ".." string)))
+			      (cdr directory))))
+		       ""))
+		 (url:encode-string (file-namestring pathname))))
 
 (define (parse-file-url-body string default-pathname)
   (let ((finish
 	 (lambda (string)
 	   (merge-pathnames
-	    (case (host/type-name (pathname-host default-pathname))
-	      ((UNIX) string)
-	      ((DOS)
-	       (if (and (fix:>= (string-length string) 3)
-			(char=? (string-ref string 0) #\/)
-			(char-alphabetic? (string-ref string 1))
-			(char=? (string-ref string 0) #\:))
-		   (string-tail string 1)
-		   string))
-	      (else (error "Unknown host type:" default-pathname)))
+	    (decorated-string-append
+	     "" "/" ""
+	     (map url:decode-string (burst-string string #\/ #f)))
 	    default-pathname))))
     (cond ((string-prefix? "//localhost/" string)
 	   (finish (string-tail string (string-length "//localhost"))))
@@ -326,15 +326,17 @@
   (header-fields->internal-time message))
 
 (define (header-fields->internal-time headers)
-  (let loop ((headers (get-all-header-fields headers "received")) (winner #f))
-    (if (pair? headers)
-	(loop (cdr headers)
-	      (let ((time (received-header-time (car headers))))
-		(if (and time (or (not winner) (< time winner)))
-		    time
-		    winner)))
-	(or winner
-	    (message-time message)))))
+  (or (let loop
+	  ((headers (get-all-header-fields headers "received")) (winner #f))
+	(if (pair? headers)
+	    (loop (cdr headers)
+		  (let ((time (received-header-time (car headers))))
+		    (if (and time (or (not winner) (< time winner)))
+			time
+			winner)))
+	    winner))
+      (message-time headers)))
+      
 
 (define (received-header-time header)
   (let ((time
