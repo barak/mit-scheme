@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.10 1991/05/02 06:10:03 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.11 1991/05/06 22:47:15 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -39,41 +39,48 @@ MIT in each case. |#
 
 (define *current-bblock*)
 (define *pending-bblocks*)
+(define *insert-rtl?*)
 
 (define (generate-lap rgraphs remote-links process-constants-block)
-  (with-new-node-marks
-   (lambda ()
-     (for-each cgen-rgraph rgraphs)
-     (for-each (lambda (remote-link)
-		 (vector-set! remote-link
-			      0
-			      (constant->label (vector-ref remote-link 0)))
-		 unspecific)
-	       remote-links)
-     (with-values
-	 (lambda ()
-	   (generate/constants-block *interned-constants*
-				     *interned-variables*
-				     *interned-assignments*
-				     *interned-uuo-links*))
-       (or process-constants-block
-	   (lambda (constants-code environment-label free-ref-label n-sections)
-	     (LAP ,@constants-code
-		  ,@(generate/quotation-header environment-label
-					       (or free-ref-label
-						   environment-label)
-					       n-sections)
-		  ,@(let loop ((remote-links remote-links))
-		      (if (null? remote-links)
-			  (LAP)
-			  (LAP ,@(let ((remote-link (car remote-links)))
-				   (generate/remote-link
-				    (vector-ref remote-link 0)
-				    (vector-ref remote-link 1)
-				    (or (vector-ref remote-link 2)
-					(vector-ref remote-link 1))
-				    (vector-ref remote-link 3)))
-			       ,@(loop (cdr remote-links))))))))))))
+  (fluid-let ((*insert-rtl?*
+	       (and compiler:generate-lap-files?
+		    compiler:intersperse-rtl-in-lap?)))
+    (with-new-node-marks
+      (lambda ()
+	(for-each cgen-rgraph rgraphs)
+	(for-each (lambda (remote-link)
+		    (vector-set! remote-link
+				 0
+				 (constant->label (vector-ref remote-link 0)))
+		    unspecific)
+		  remote-links)
+	(with-values
+	    (lambda ()
+	      (generate/constants-block *interned-constants*
+					*interned-variables*
+					*interned-assignments*
+					*interned-uuo-links*
+					*interned-global-links*
+					*interned-static-variables*))
+	  (or process-constants-block
+	      (lambda (constants-code environment-label free-ref-label
+				      n-sections)
+		(LAP ,@constants-code
+		     ,@(generate/quotation-header environment-label
+						  (or free-ref-label
+						      environment-label)
+						  n-sections)
+		     ,@(let loop ((remote-links remote-links))
+			 (if (null? remote-links)
+			     (LAP)
+			     (LAP ,@(let ((remote-link (car remote-links)))
+				      (generate/remote-link
+				       (vector-ref remote-link 0)
+				       (vector-ref remote-link 1)
+				       (or (vector-ref remote-link 2)
+					   (vector-ref remote-link 1))
+				       (vector-ref remote-link 3)))
+				  ,@(loop (cdr remote-links)))))))))))))
 
 (define (cgen-rgraph rgraph)
   (fluid-let ((*current-rgraph* rgraph)
@@ -165,6 +172,9 @@ MIT in each case. |#
 		(let ((instructions (match-result)))
 		  (delete-dead-registers!)
 		  (LAP ,@*prefix-instructions*
+		       ,@(if *insert-rtl?*
+			     (LAP (COMMENT (RTL ,rtl)))
+			     (LAP))
 		       ,@instructions
 		       ,@*suffix-instructions*))))
 	    (begin (error "CGEN-RINST: No matching rules" rtl)
