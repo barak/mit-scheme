@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: win32.scm,v 1.3 1994/11/03 04:41:31 adams Exp $
+;;;	$Id: win32.scm,v 1.4 1995/06/28 23:29:17 adams Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -533,8 +533,11 @@
 	    result))
       (let ((interrupt-mask
 	     ;;(set-interrupt-enables! 5)
-	     (set-interrupt-enables! interrupt-mask/gc-ok))
-	    )
+	     ;;(set-interrupt-enables! interrupt-mask/gc-ok)
+	     ;; Include INTERRUPT-BIT/GLOBAL-1 so that messages are dispatched
+	     ;; to the screen by the interrupt-handler.
+	     (set-interrupt-enables!
+	      (fix:or interrupt-mask/gc-ok interrupt-bit/global-1))))
 	(if (eq? block? 'IN-UPDATE)
 	    (and screen-handle
 		 (let ((result  (win32-screen-get-event screen-handle)))
