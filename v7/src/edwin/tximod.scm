@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: tximod.scm,v 1.28 2003/02/14 18:28:13 cph Exp $
+$Id: tximod.scm,v 1.29 2004/10/14 17:28:46 cph Exp $
 
-Copyright 1987-2001 Massachusetts Institute of Technology
+Copyright 1987,1989,1990,1991,1992,1994 Massachusetts Institute of Technology
+Copyright 1996,2000,2001,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -219,11 +220,34 @@ The default is not to surround any existing words with the braces."
 				    (re-match-end 1))
 		     (insert-newline)))
 	      (insert-string "@end ")))))))
-
+
 (define texinfo-environment-regexp
   (string-append
-   "^@\\(f?table\\|enumerate\\|itemize"
-   "\\|ifhtml\\|ifinfo\\|iftex\\|ifset\\|ifclear\\|format"
-   "\\|example\\|quotation\\|lisp\\|smallexample\\|smalllisp\\|display"
-   "\\|flushleft\\|flushright\\|ignore\\|group\\|tex\\|html\\|cartouche"
-   "\\|menu\\|titlepage\\|end\\|def[a-z]*[a-wyz]\\>\\)"))
+   "^@"
+   (regexp-group "cartouche"
+		 "copying"
+		 "def[a-z]*[a-wyz]\\>"
+		 "display"
+		 "end"
+		 "enumerate"
+		 "example"
+		 "f?table"
+		 "flushleft"
+		 "flushright"
+		 "format"
+		 "group"
+		 "html"
+		 "ifclear"
+		 "ifhtml"
+		 "ifinfo"
+		 "ifset"
+		 "iftex"
+		 "ignore"
+		 "itemize"
+		 "lisp"
+		 "menu"
+		 "quotation"
+		 "smallexample"
+		 "smalllisp"
+		 "tex"
+		 "titlepage")))
