@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2conio.c,v 1.4 1994/12/19 22:30:47 cph Exp $
+$Id: os2conio.c,v 1.5 1995/01/05 23:39:57 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -114,7 +114,9 @@ OS2_initialize_console (void)
 		OS2_scheme_tqueue);
   console_writer_qid = (CHANNEL_CONTEXT_WRITER_QID (console_context));
   OS2_open_qid (console_writer_qid, (OS2_make_std_tqueue ()));
-  (void) OS2_beginthread (console_thread, 0, 0x4000);
+  (CHANNEL_CONTEXT_FIRST_READ_P (console_context)) = 0;
+  (CHANNEL_CONTEXT_TID (console_context))
+    = (OS2_beginthread (console_thread, 0, 0x4000));
 }
 
 static void
@@ -205,6 +207,7 @@ process_input_char (char c)
       do_rubout ();
       break;
     case '\r':
+      do_self_insert ('\r');
       do_self_insert ('\n');
       finish_line ();
       break;
@@ -362,7 +365,7 @@ console_output_cooked (Tchannel channel, int new, int * pold)
   if (new < 0)
     (* pold) = output_cooked_p;
   else
-    output_cooked_p = new;
+    output_cooked_p = (new ? 1 : 0);
 }
 
 static void
@@ -374,7 +377,7 @@ write_char (char c, int cooked_p)
 void
 OS2_console_write (const char * data, size_t size)
 {
-  write_output (data, size, 1);
+  write_output (data, size, 2);
 }
 
 static void
@@ -386,7 +389,7 @@ write_output (const char * data, size_t size, int cooked_p)
   char * out = output_translation;
   char * out_limit = (out + ((sizeof (output_translation)) - 4));
   char c;
-  if (!cooked_p)
+  if (cooked_p == 0)
     write_output_1 (scan, end);
   else
     while (1)
@@ -399,13 +402,17 @@ write_output (const char * data, size_t size, int cooked_p)
 	    out = output_translation;
 	  }
 	c = (*scan++);
-	if ((isprint (c)) || (c == '\f') || (c == '\a'))
-	  (*out++) = c;
-	else if (c == '\n')
+	if ((cooked_p == 2) && (c == '\n'))
 	  {
 	    (*out++) = '\r';
-	    (*out++) = '\012';
+	    (*out++) = '\n';
 	  }
+	else if ((isprint (c))
+		 || (c == '\f')
+		 || (c == '\a')
+		 || (c == '\r')
+		 || (c == '\n'))
+	  (*out++) = c;
 	else if (c < 0x20)
 	  {
 	    (*out++) = '^';
