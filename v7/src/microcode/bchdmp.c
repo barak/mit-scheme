@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchdmp.c,v 9.67 1992/08/30 14:09:28 jinx Exp $
+$Id: bchdmp.c,v 9.68 1993/02/06 05:27:26 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -240,6 +240,20 @@ do {									\
   BCH_STORE_CLOSURE_ENTRY_ADDRESS (Temp, Scan);				\
 }
 
+int
+DEFUN (eta_read, (fid, buffer, size),
+       int fid AND char * buffer AND int size)
+{
+  return (read (fid, buffer, size));
+}
+
+int
+DEFUN (eta_write, (fid, buffer, size),
+       int fid AND char * buffer AND int size)
+{
+  return (write (fid, buffer, size));
+}
+
 Boolean
 DEFUN (fasdump_exit, (length), long length)
 {
@@ -276,7 +290,7 @@ DEFUN (fasdump_exit, (length), long length)
   dump_file_name = ((char *) NULL);
 
   fixes = fixup;
-
+
 next_buffer:
 
   while (fixes != fixup_buffer_end)
@@ -287,11 +301,8 @@ next_buffer:
 
   if (fixup_count >= 0)
   {
-#if defined(_SYSV3) && !defined(_HPUX)
-    extern int EXFUN (read, (int, char *, int));
-#endif
     if ((retrying_file_operation
-	 (read, real_gc_file, ((char *) fixup_buffer),
+	 (eta_read, real_gc_file, ((char *) fixup_buffer),
 	  (gc_file_start_position + (fixup_count << gc_buffer_byte_shift)),
 	  gc_buffer_bytes, "read", "the fixup buffer",
 	  &gc_file_current_position, io_error_retry_p))
@@ -315,10 +326,6 @@ next_buffer:
 Boolean
 DEFUN_VOID (reset_fixes)
 {
-#if defined(_SYSV3) && !defined(_HPUX)
-    extern int EXFUN (write, (int, char *, int));
-#endif
-
   long start;
 
   fixup_count += 1;
@@ -326,7 +333,7 @@ DEFUN_VOID (reset_fixes)
 
   if (((start + gc_buffer_bytes) > gc_file_end_position)
       || ((retrying_file_operation
-	   (write, real_gc_file, ((char *) fixup_buffer),
+	   (eta_write, real_gc_file, ((char *) fixup_buffer),
 	    start, gc_buffer_bytes, "write", "the fixup buffer",
 	    &gc_file_current_position, io_error_always_abort))
 	  != gc_buffer_bytes))
