@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.20 1993/09/10 19:15:44 cph Exp $
+$Id: thread.scm,v 1.21 1993/12/23 06:58:54 cph Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -261,13 +261,18 @@ MIT in each case. |#
 
 (define (restart-thread thread discard-events? event)
   (guarantee-thread thread restart-thread)
-  (without-interrupts
-   (lambda ()
-     (if (not (eq? 'STOPPED (thread/execution-state thread)))
-	 (error:bad-range-argument thread restart-thread))
-     (if discard-events? (ring/discard-all (thread/pending-events thread)))
-     (if event (%signal-thread-event thread event))
-     (thread-running thread))))
+  (let ((discard-events?
+	 (if (eq? discard-events? 'ASK)
+	     (prompt-for-confirmation
+	      "Restarting other thread; discard events in its queue")
+	     discard-events?)))
+    (without-interrupts
+     (lambda ()
+       (if (not (eq? 'STOPPED (thread/execution-state thread)))
+	   (error:bad-range-argument thread restart-thread))
+       (if discard-events? (ring/discard-all (thread/pending-events thread)))
+       (if event (%signal-thread-event thread event))
+       (thread-running thread)))))
 
 (define (disallow-preempt-current-thread)
   (set-thread/execution-state! (current-thread) 'RUNNING-WITHOUT-PREEMPTION))
