@@ -1,13 +1,13 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme], [14.14], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.3 2004/01/18 06:04:46 cph Exp $])
+AC_INIT([MIT/GNU Scheme], [14.15], [bug-mit-scheme@gnu.org], [mit-scheme])
+AC_REVISION([$Id: configure.ac,v 1.4 2005/01/06 19:08:43 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
 
 AC_COPYRIGHT(
-[Copyright 2000,2002,2003,2004 Massachusetts Institute of Technology
+[Copyright 2000,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,7 +29,7 @@ USA.
 
 AH_TOP([/*
 
-Copyright 2000,2002,2003 Massachusetts Institute of Technology
+Copyright 2000,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -124,6 +124,8 @@ AC_ARG_WITH([mcrypt],
 [[  --with-mcrypt           Use mcrypt library if available [yes]]])
 AC_ARG_WITH([gdbm],
 [[  --with-gdbm             Use gdbm library if available [yes]]])
+AC_ARG_WITH([db4],
+[[  --with-db4              Use Berkeley DB v4 library if available [yes]]])
 AC_ARG_WITH([libpq],
 [[  --with-libpq            Use PostgreSQL libpq library if available [yes]]])
 
@@ -200,6 +202,17 @@ AC_CHECK_LIB([pq], [PQconnectdb],
     [scheme_cv_lib_pq=yes],
     [scheme_cv_lib_pq=no])
 
+AC_MSG_CHECKING([for db_create in -ldb-4])
+save_LIBS="$LIBS"
+LIBS="-ldb-4 $LIBS"
+AC_TRY_LINK(
+    [#include <db.h>],
+    [DB * db; db_create ((&db), 0, 0);],
+    [scheme_cv_lib_db4=yes],
+    [scheme_cv_lib_db4=no])
+LIBS="$save_LIBS"
+AC_MSG_RESULT(${scheme_cv_lib_db4})
+
 dnl Checks for header files.
 AC_HEADER_DIRENT
 AC_HEADER_STDC
@@ -210,8 +223,8 @@ AC_CHECK_HEADERS([sys/file.h sys/ioctl.h sys/mount.h sys/param.h sys/poll.h])
 AC_CHECK_HEADERS([sys/ptyio.h sys/socket.h sys/time.h sys/un.h sys/vfs.h])
 AC_CHECK_HEADERS([stdbool.h termio.h termios.h unistd.h utime.h])
 AC_CHECK_HEADERS([openssl/blowfish.h openssl/md5.h blowfish.h md5.h])
-AC_CHECK_HEADERS([mhash.h mcrypt.h gdbm.h curses.h term.h dlfcn.h sys/mman.h])
-AC_CHECK_HEADERS([postgresql/libpq-fe.h])
+AC_CHECK_HEADERS([mhash.h mcrypt.h gdbm.h db.h curses.h term.h dlfcn.h])
+AC_CHECK_HEADERS([sys/mman.h postgresql/libpq-fe.h])
 
 dnl Checks for typedefs
 AC_TYPE_MODE_T
@@ -530,6 +543,7 @@ test "${with_openssl:-yes}" = "yes" || scheme_cv_lib_crypto="no"
 test "${with_mhash:-yes}" = "yes" || scheme_cv_lib_mhash="no"
 test "${with_mcrypt:-yes}" = "yes" || scheme_cv_lib_mcrypt="no"
 test "${with_gdbm:-yes}" = "yes" || scheme_cv_lib_gdbm="no"
+test "${with_db4:-yes}" = "yes" || scheme_cv_lib_db4="no"
 test "${with_libpq:-yes}" = "yes" || scheme_cv_lib_pq="no"
 
 dnl OK, now some complex logic to handle the crypto stuff.
@@ -651,6 +665,20 @@ if test "${scheme_cv_lib_gdbm}" = "yes"; then
 	else
 	    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lgdbm"
 	    OPTIONAL_BASES="${OPTIONAL_BASES} prgdbm"
+	fi
+    fi
+fi
+
+dnl db4 support.
+if test "${scheme_cv_lib_db4}" = "yes"; then
+    AC_DEFINE([HAVE_LIBDB4], [1],
+	[Define if db4 library is present.])
+    if test "${ac_cv_header_db_h}" = "yes"; then
+	if test "${enable_dynamic_modules}" = "yes"; then
+	    MODULE_BASES="${MODULE_BASES} prdb4"
+	else
+	    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -ldb-4"
+	    OPTIONAL_BASES="${OPTIONAL_BASES} prdb4"
 	fi
     fi
 fi
