@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.11 1995/04/27 23:18:52 adams Exp $
+$Id: simplify.scm,v 1.12 1995/05/18 20:34:21 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,6 +37,10 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+
+(define *simplify/open-code-expression-limit* 'DONT)
+;; Maximun `size' of open coded expression
+
 (define (simplify/top-level program)
   (simplify/expr #F program))
 
@@ -490,6 +494,26 @@ MIT in each case. |#
 	;;       (lambda (element)
 	;;	 (or (QUOTE/? element)
 	;;	     (LOOKUP/? element)))))
+	(and (number? *simplify/open-code-expression-limit*)
+	     (form/simple&side-effect-free? body)
+	     (let* ((quota 
+		     (+ *simplify/open-code-expression-limit*
+			(length (lambda/formals value))))
+		    (small?
+		     (simplify/expression-small? body quota)))
+	       (and small?
+		    (begin
+		      (if compiler:guru?
+			  (pp `(Small-procedure-inlined:
+				,value
+				(cost:
+				 ,(- quota small?)
+				 initial-quota:
+				 ,*simplify/open-code-expression-limit*
+				 + ,(length (lambda/formals value))
+				 remaining-quota:
+				 ,small?))))
+		      small?))))
 	(and *after-cps-conversion?*
 	     (CALL/? body)
 	     (<= (call/count-dynamic-operands body)
@@ -501,20 +525,73 @@ MIT in each case. |#
 		     (LOOKUP/? element)
 		     (form/static? element))))))))
 
+(define *simplify/operator-open-coding-costs* (make-eq-hash-table))
+
+(let ()
+  (define (cost operator value)
+    (hash-table/put! *simplify/operator-open-coding-costs* operator value))
+  (cost not 0)
+  (cost %vector-index -2)
+  (cost %heap-closure-ref -2)
+  (cost %stack-closure-ref -2))
+
+(define (simplify/expression-small? expr quota)
+  (define (sub a b)
+    (and a b
+	 (let ((q (- a b)))
+	   (and (> q 0) q))))
+  (define (small?* exprs quota)
+    (cond ((not quota) #F)
+	  ((null? exprs) quota)
+	  (else (small?* (cdr exprs) (small? (car exprs) 'SUBPROBLEM quota)))))
+  (define (small? expr context quota)
+    (cond ((not quota) #F)
+	  ((QUOTE/? expr)
+	   (if (eq? context 'PREDICATE) quota (sub quota 1)))
+	  ((LOOKUP/? expr) (sub quota 1))
+	  ((LAMBDA/? expr) (sub quota 1))
+	  ((form/static? expr) quota)
+	  ((LETREC/? expr)
+	   (small? (letrec/body expr) context 'quota))
+	  ((LET/? expr)
+	   (small?* (map second bindings)
+		    (small? (let/body expr) 'SUBPROBLEM quota)))
+	  ((and (CALL/? expr)
+		(equal? (call/continuation expr) '(QUOTE #F)))
+	   (let ((rator (call/operator expr)))
+	     (cond ((QUOTE/? rator)
+		    (small?* (call/operands expr)
+			     (sub quota
+				  (- (hash-table/get
+				      *simplify/operator-open-coding-costs*
+				      (quote/text rator)
+				      1)
+				     (call/count-static-operands expr)))))
+		   (else #F))))
+	  ((IF/? expr)
+	   (small?* (cddr expr) (small? (cadr expr) 'PREDICATE quota)))
+	  (else #F)))
+  
+  (small? expr 'SUBPROBLEM quota))
+
 (define (call/count-dynamic-operands call)
-  (let ((count (length (call/operands call))))
-    (- count
-       (if (QUOTE/? (call/operator call))
-	   (let ((rator  (quote/text (call/operator call))))
-	     (cond ((eq? rator %invoke-remote-cache)      2)
-		   ((eq? rator %invoke-operator-cache)    2)
-		   ((eq? rator %internal-apply)           1)
-		   ((eq? rator %internal-apply-unchecked) 1)
-		   ((eq? rator %primitive-apply)          2)
-		   ((eq? rator %cell-ref)                 1)
-		   ((eq? rator %cell-set!)                1)
-		   (else                                  0)))
-	   0))))
+  (- (length (call/operands call))
+     (call/count-static-operands call)))
+
+(define (call/count-static-operands call)
+  (if (QUOTE/? (call/operator call))
+      (let ((rator  (quote/text (call/operator call))))
+	(cond ((eq? rator %invoke-remote-cache)      2)
+	      ((eq? rator %invoke-operator-cache)    2)
+	      ((eq? rator %internal-apply)           1)
+	      ((eq? rator %internal-apply-unchecked) 1)
+	      ((eq? rator %primitive-apply)          2)
+	      ((eq? rator %cell-ref)                 1)
+	      ((eq? rator %cell-set!)                1)
+	      ((eq? rator %multicell-ref)            2)
+	      ((eq? rator %multicell-set!)           2)
+	      (else                                  0)))
+      0))
 
 (define (simplify/expr env expr)
   (if (not (pair? expr))
