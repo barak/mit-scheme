@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.33 1993/10/21 15:04:31 cph Exp $
+$Id: unpars.scm,v 14.34 1994/03/24 18:29:08 gjr Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -312,6 +312,7 @@ MIT in each case. |#
 	((null? object) (*unparse-string "()"))
 	((eq? object #t) (*unparse-string "#t"))
 	((undefined-value? object) (*unparse-string "#[undefined-value]"))
+	((eq? object lambda-auxiliary-tag) (*unparse-string "#!aux"))
 	((eq? object lambda-optional-tag) (*unparse-string "#!optional"))
 	((eq? object lambda-rest-tag) (*unparse-string "#!rest"))
 	(else (unparse/default object))))
