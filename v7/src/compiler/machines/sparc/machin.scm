@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/sparc/machin.scm,v 1.1 1993/06/08 06:11:02 gjr Exp $
+$Id: machin.scm,v 1.2 1993/06/29 22:29:10 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -49,8 +49,11 @@ MIT in each case. |#
 (define-integrable scheme-datum-width
   (- scheme-object-width scheme-type-width))
 
-(define-integrable flonum-size 2)
+(define-integrable float-width 64)
 (define-integrable float-alignment 64)
+
+(define-integrable address-units-per-float
+  (quotient float-width addressing-granularity))
 
 ;;; It is currently required that both packed characters and objects
 ;;; be integrable numbers of address units.  Furthermore, the number
@@ -406,4 +409,6 @@ MIT in each case. |#
     INTEGER-QUOTIENT INTEGER-REMAINDER &/ QUOTIENT REMAINDER
     FLONUM-SIN FLONUM-COS FLONUM-TAN FLONUM-ASIN FLONUM-ACOS
     FLONUM-ATAN FLONUM-EXP FLONUM-LOG FLONUM-TRUNCATE FLONUM-ROUND
-    FLONUM-REMAINDER FLONUM-SQRT))
+    FLONUM-REMAINDER FLONUM-SQRT
+    VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS
+    FLOATING-VECTOR-REF FLOATING-VECTOR-SET!))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.2 1993/06/10 01:06:33 jawilson Exp $
+$Id: machin.scm,v 1.3 1993/06/29 22:28:16 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -54,7 +54,7 @@ MIT in each case. |#
 ;;; rethink the character addressing strategy.
 
 (define address-units-per-object "ADDRESS_UNITS_PER_OBJECT")
-
+(define-integrable address-units-per-float "ADDRESS_UNITS_PER_FLOAT")
 (define-integrable address-units-per-packed-char 1)
 
 ;; We expect a C long to be at least 32 bits wide,
@@ -306,7 +306,11 @@ MIT in each case. |#
   true)
 
 (define compiler:primitives-with-no-open-coding
-  '(DIVIDE-FIXNUM GCD-FIXNUM  &/ FLONUM-SIN FLONUM-COS FLONUM-TAN FLONUM-ASIN FLONUM-ACOS
+  '(
+    DIVIDE-FIXNUM GCD-FIXNUM  &/ FLONUM-SIN FLONUM-COS FLONUM-TAN
+    FLONUM-ASIN FLONUM-ACOS
     FLONUM-ATAN FLONUM-EXP FLONUM-LOG FLONUM-TRUNCATE FLONUM-ROUND
-    FLONUM-REMAINDER FLONUM-SQRT))
+    FLONUM-REMAINDER FLONUM-SQRT
+    VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS
+    FLOATING-VECTOR-REF FLOATING-VECTOR-SET!))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 4.11 1993/01/08 00:05:10 cph Exp $
+$Id: machin.scm,v 4.12 1993/06/29 22:26:39 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -54,8 +54,11 @@ MIT in each case. |#
 (define-integrable scheme-datum-width
   (- scheme-object-width scheme-type-width))
 
-(define-integrable flonum-size 2)
+(define-integrable float-width 64)
 (define-integrable float-alignment 32)
+
+(define-integrable address-units-per-float
+  (quotient float-width addressing-granularity))
 
 ;;; It is currently required that both packed characters and objects
 ;;; be integrable numbers of address units.  Furthermore, the number
@@ -299,4 +302,6 @@ MIT in each case. |#
   false)
 
 (define compiler:primitives-with-no-open-coding
-  '(DIVIDE-FIXNUM GCD-FIXNUM &/))
+  '(DIVIDE-FIXNUM GCD-FIXNUM &/
+    VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS
+    FLOATING-VECTOR-REF FLOATING-VECTOR-SET!))
