@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.18 1996/07/22 23:12:49 adams Exp $
+$Id: typerew.scm,v 1.19 1996/07/23 02:27:12 adams Exp $
 
 Copyright (c) 1994-1996 Massachusetts Institute of Technology
 
@@ -465,12 +465,11 @@ MIT in each case. |#
 (define (typerew/remember new old)
   (code-rewrite/remember new old))
 
-(define (typerew/remember* equivalent-subform new-form)
-  (let ((info (code-rewrite/original-form new-form)))
+(define (typerew/remember* new-form old)
+  (let ((info (code-rewrite/original-form old)))
     (if info
-	(code-rewrite/remember* equivalent-subform info)
-	equivalent-subform)))
-			  
+	(code-rewrite/remember* new-form info)
+	new-form)))
 
 (define (typerew/new-name prefix)
   (new-variable prefix))
@@ -1971,13 +1970,12 @@ MIT in each case. |#
 	  (unsafe-mutation (typerew-simple-operator-replacement %mutator)))
 
       (define (make-checked-mutation checks)
-	(lambda (checks)
-	  (typerew-operator-replacement/diamond-3-3-3
-	   (lambda (collection index element)
-	     `(CALL ',%generic-index-check/set! '#F
-		    ,collection ,index ,element (QUOTE ,checks)))
-	   %mutator
-	   mutator)))
+	(typerew-operator-replacement/diamond-3-3-3
+	 (lambda (collection index element)
+	   `(CALL ',%generic-index-check/set! '#F
+		  ,collection ,index ,element (QUOTE ,checks)))
+	 %mutator
+	 mutator))
 
       (define-typerew-replacement-method mutator 3
 	(lambda (form collection index element)
