@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 1.1 1987/06/13 20:58:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 1.2 1987/06/15 22:05:31 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -102,16 +102,14 @@ MIT in each case. |#
     ;; heuristic that works reasonably well since if the value is a
     ;; pointer, we will probably want to dereference it, which
     ;; requires that we first mask it.
-    `((MOVE L ,source
-	    ,(register-reference (allocate-alias-register! target 'DATA))))))
+    `((MOVE L ,source ,(reference-alias-register! target 'DATA)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (POST-INCREMENT (REGISTER 15) 1))
   (QUALIFIER (pseudo-register? target))
   (record-pop!)
   (delete-dead-registers!)
-  `((MOVE L (@A+ 7)
-	  ,(register-reference (allocate-alias-register! target 'DATA)))))
+  `((MOVE L (@A+ 7) ,(reference-alias-register! target 'DATA))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
