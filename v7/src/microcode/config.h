@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.24 1987/04/16 02:20:07 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.25 1987/05/30 23:04:34 jinx Exp $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -337,6 +337,13 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define MAX_FLONUM_EXPONENT	127
 #define HAS_FLOOR
 #define HAS_FREXP
+/* Sun C compiler bug. */
+#define double_into_fixnum(what, target)				\
+{									\
+  long for_suns_sake = ((long) what);					\
+									\
+  target = Make_Non_Pointer(TC_FIXNUM, for_suns_sake);			\
+}
 #endif
 
 #ifdef butterfly
