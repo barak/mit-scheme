@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.6 1997/04/20 05:10:43 cph Exp $
+$Id: char.scm,v 14.7 1997/10/15 03:20:42 adams Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -38,11 +38,8 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define-primitives
-  make-char char-code char-bits char->integer integer->char char->ascii
+  char? make-char char-code char-bits char->integer integer->char char->ascii
   char-ascii? ascii->char char-upcase char-downcase)
-
-(define-integrable (char? object)
-  (object-type? (ucode-type character) object))
 
 (define-integrable char-code-limit #x80)
 (define-integrable char-bits-limit #x20)

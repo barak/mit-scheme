@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 1.4 1997/07/09 14:39:47 adams Exp $
+$Id: gconst.scm,v 1.5 1997/10/15 03:21:19 adams Exp $
 
 Copyright (c) 1987-93 Massachusetts Institute of Technology
 
@@ -47,6 +47,7 @@ MIT in each case. |#
     %RECORD-LENGTH
     %RECORD-REF
     %RECORD-SET!
+    %RECORD?
     *THE-NON-PRINTING-OBJECT*
     ASCII->CHAR
     BIT-STRING->UNSIGNED-INTEGER
@@ -82,6 +83,7 @@ MIT in each case. |#
     CHAR-INTEGER-LIMIT
     CHAR-UPCASE
     CHAR:NEWLINE
+    CHAR?
     COMPILED-CODE-ADDRESS->BLOCK
     COMPILED-CODE-ADDRESS->OFFSET
     CONS
@@ -285,6 +287,7 @@ MIT in each case. |#
     VECTOR-LENGTH
     VECTOR-REF
     VECTOR-SET!
+    VECTOR?
     WITH-HISTORY-DISABLED
     WITH-INTERRUPT-MASK
     WRITE-BITS!

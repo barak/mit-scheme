@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vector.scm,v 14.10 1997/02/23 06:16:12 cph Exp $
+$Id: vector.scm,v 14.11 1997/10/15 03:20:51 adams Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -38,7 +38,7 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define-primitives
- vector-length vector-ref vector-set!
+ vector? vector-length vector-ref vector-set!
  list->vector vector subvector->list
  subvector-move-right! subvector-move-left! subvector-fill!)
 
@@ -56,9 +56,6 @@ MIT in each case. |#
       (error:bad-range-argument start procedure))
   (if (not (fix:<= end (vector-length vector)))
       (error:bad-range-argument end procedure)))
-
-(define-integrable (vector? object)
-  (object-type? (ucode-type vector) object))
 
 (define (make-vector size #!optional fill)
   (if (not (index-fixnum? size))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.37 1997/07/31 18:33:07 adams Exp $
+$Id: usiexp.scm,v 4.38 1997/10/15 03:22:26 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -471,13 +471,7 @@ MIT in each case. |#
 	(if-expanded (make-type-test expr block type (car operands)))
 	(if-not-expanded))))
 
-(define char?-expansion (type-test-expansion (ucode-type character)))
-(define cell?-expansion (type-test-expansion (ucode-type cell)))
-(define vector?-expansion (type-test-expansion (ucode-type vector)))
-(define %record?-expansion (type-test-expansion (ucode-type record)))
 (define weak-pair?-expansion (type-test-expansion (ucode-type weak-cons)))
-(define flo:flonum?-expansion (type-test-expansion (ucode-type big-flonum)))
-(define fix:fixnum?-expansion (type-test-expansion (ucode-type fixnum)))
 
 (define (exact-integer?-expansion expr operands if-expanded if-not-expanded
 				  block)
@@ -584,7 +578,6 @@ MIT in each case. |#
 
 (define usual-integrations/expansion-names
   '(
-    %record?
     *
     +
     -
@@ -626,9 +619,7 @@ MIT in each case. |#
     cddddr
     cdddr
     cddr
-    cell?
     char=?
-    char?
     complex?
     cons*
     eighth
@@ -640,9 +631,6 @@ MIT in each case. |#
     fix:<=
     fix:=
     fix:>=
-    fix:fixnum?
-    fix:zero?
-    flo:flonum?
     fourth
     int:->flonum
     int:integer?
@@ -662,7 +650,6 @@ MIT in each case. |#
     symbol?
     third
     values
-    vector?
     weak-pair?
     with-values
     zero?
@@ -670,7 +657,6 @@ MIT in each case. |#
 
 (define usual-integrations/expansion-values
   (list
-   %record?-expansion
    *-expansion
    +-expansion
    --expansion
@@ -712,9 +698,7 @@ MIT in each case. |#
    cddddr-expansion
    cdddr-expansion
    cddr-expansion
-   cell?-expansion
    char=?-expansion
-   char?-expansion
    complex?-expansion
    cons*-expansion
    eighth-expansion
@@ -726,9 +710,6 @@ MIT in each case. |#
    fix:<=-expansion
    fix:=-expansion
    fix:>=-expansion
-   fix:fixnum?-expansion
-   fix:zero?-expansion
-   flo:flonum?-expansion
    fourth-expansion
    int:->flonum-expansion
    exact-integer?-expansion
@@ -748,7 +729,6 @@ MIT in each case. |#
    symbol?-expansion
    third-expansion
    values-expansion
-   vector?-expansion
    weak-pair?-expansion
    call-with-values-expansion
    zero?-expansion

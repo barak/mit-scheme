@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.65 1997/10/14 14:20:05 adams Exp $
+$Id: opncod.scm,v 4.66 1997/10/15 03:25:55 adams Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -620,8 +620,14 @@ MIT in each case. |#
 	 (lambda (name type)
 	   (define-open-coder/predicate name
 	     (simple-open-coder (open-code/type-test type) '(0) false)))))
-    (simple-type-test 'PAIR? (ucode-type pair))
-    (simple-type-test 'STRING? (ucode-type string))
+    (simple-type-test 'CHAR?    (ucode-type character))
+    (simple-type-test 'CELL?    (ucode-type cell))
+    (simple-type-test 'PAIR?    (ucode-type pair))
+    (simple-type-test 'STRING?  (ucode-type string))
+    (simple-type-test 'VECTOR?  (ucode-type vector))
+    (simple-type-test '%RECORD? (ucode-type record))
+    (simple-type-test 'FIXNUM?  (ucode-type fixnum))
+    (simple-type-test 'FLONUM?  (ucode-type flonum))
     (simple-type-test 'BIT-STRING? (ucode-type vector-1b))))
 
 (define-open-coder/predicate 'EQ?
@@ -630,6 +636,22 @@ MIT in each case. |#
      combination
      (finish (rtl:make-eq-test (car expressions) (cadr expressions))))
    '(0 1)
+   false))
+
+(define-open-coder/predicate 'EQUAL-FIXNUM?
+  (simple-open-coder
+   (lambda (combination expressions finish)
+     combination
+     (finish (rtl:make-eq-test (car expressions) (cadr expressions))))
+   '(0 1)
+   false))
+
+(define-open-coder/predicate 'ZERO-FIXNUM?
+  (simple-open-coder
+   (lambda (combination expressions finish)
+     combination
+     (finish (rtl:make-eq-test (car expressions) (rtl:make-constant 0))))
+   '(0)
    false))
 
 (define-open-coder/predicate 'INDEX-FIXNUM?

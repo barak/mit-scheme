@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.52 1997/07/09 15:12:26 adams Exp $
+$Id: rtlgen.scm,v 1.53 1997/10/15 03:23:20 adams Exp $
 
-Copyright (c) 1994-96 Massachusetts Institute of Technology
+Copyright (c) 1994-1997 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -3259,10 +3259,10 @@ MIT in each case. |#
 		      (else
 		       (rtlgen/branch/false state)))))))))
   (define-simple-tag-test 'CELL?       (machine-tag 'CELL))
+  (define-simple-tag-test 'CHAR?       (machine-tag 'CHARACTER))
   (define-simple-tag-test 'PAIR?       (machine-tag 'PAIR))
-  ;; These two are not primitives (yet)
-  ;;(define-simple-tag-test 'VECTOR?     (machine-tag 'VECTOR))
-  ;;(define-simple-tag-test '%RECORD?    (machine-tag 'RECORD))
+  (define-simple-tag-test 'VECTOR?     (machine-tag 'VECTOR))
+  (define-simple-tag-test '%RECORD?    (machine-tag 'RECORD))
   (define-simple-tag-test 'STRING?     (machine-tag 'STRING))
   (define-simple-tag-test 'BIT-STRING? (machine-tag 'VECTOR-1B))
   (define-simple-tag-test 'FLONUM?     (machine-tag 'FLONUM))

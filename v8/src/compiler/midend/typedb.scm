@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: typedb.scm,v 1.15 1997/07/31 10:39:52 adams Exp $
+$Id: typedb.scm,v 1.16 1997/10/15 03:23:50 adams Exp $
 
-Copyright (c) 1996 Massachusetts Institute of Technology
+Copyright (c) 1996-1997 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -386,5 +386,5 @@ MIT in each case. |#
     (lambda (name)
       (define-operator-type (make-primitive-procedure name)
 	(primitive-procedure-type (list type:any) type:boolean 'function)))
-  '(BIT-STRING?  CELL?  FIXNUM?  FLONUM?  INDEX-FIXNUM?  NOT  NULL?
-		 PAIR?  STRING?  INTEGER?))
+  '(BIT-STRING?  CELL?  CHAR?    FIXNUM?  FLONUM?  INDEX-FIXNUM?  NOT  NULL?
+		 PAIR?  STRING?  INTEGER? VECTOR?  %RECORD?))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 4.21 1997/07/15 16:05:10 adams Exp $
+$Id: gconst.scm,v 4.22 1997/10/15 03:22:10 adams Exp $
 
 Copyright (c) 1987-1994 Massachusetts Institute of Technology
 
@@ -47,6 +47,7 @@ MIT in each case. |#
     %RECORD-LENGTH
     %RECORD-REF
     %RECORD-SET!
+    %RECORD?
     *THE-NON-PRINTING-OBJECT*
     ASCII->CHAR
     BIT-STRING->UNSIGNED-INTEGER
@@ -70,6 +71,7 @@ MIT in each case. |#
     CAR
     CDR
     CELL-CONTENTS
+    CELL?
     CHAR->ASCII
     CHAR->INTEGER
     CHAR-ASCII?
@@ -81,6 +83,7 @@ MIT in each case. |#
     CHAR-INTEGER-LIMIT
     CHAR-UPCASE
     CHAR:NEWLINE
+    CHAR?
     COMPILED-CODE-ADDRESS->BLOCK
     COMPILED-CODE-ADDRESS->OFFSET
     CONS
@@ -95,11 +98,12 @@ MIT in each case. |#
     FIX:-1+
     FIX:1+
     FIX:<
-    ;; FIX:= handled by expanding it to EQ?
+    FIX:=
     FIX:>
     FIX:AND
     FIX:ANDC
     FIX:DIVIDE
+    FIX:FIXNUM?
     FIX:GCD
     FIX:LSH
     FIX:NEGATIVE?
@@ -109,7 +113,7 @@ MIT in each case. |#
     FIX:QUOTIENT
     FIX:REMAINDER
     FIX:XOR
-    ;; FIX:ZERO? handled by expanding it to (EQ? x 0)
+    FIX:ZERO?
     FLO:*
     FLO:+
     FLO:-
@@ -127,6 +131,7 @@ MIT in each case. |#
     FLO:COS
     FLO:EXP
     FLO:EXPT
+    FLO:FLONUM?
     FLO:FLOOR
     FLO:FLOOR->EXACT
     FLO:LOG
@@ -280,6 +285,7 @@ MIT in each case. |#
     VECTOR-LENGTH
     VECTOR-REF
     VECTOR-SET!
+    VECTOR?
     WITH-HISTORY-DISABLED
     WITH-INTERRUPT-MASK
     WRITE-BITS!

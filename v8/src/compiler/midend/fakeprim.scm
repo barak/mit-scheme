@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.29 1997/07/09 15:12:44 adams Exp $
+$Id: fakeprim.scm,v 1.30 1997/10/15 03:22:57 adams Exp $
 
 Copyright (c) 1994-96 Massachusetts Institute of Technology
 
@@ -1037,9 +1037,8 @@ MIT in each case. |#
 	      '(SIDE-EFFECT-FREE)
 	      '(PROPER-PREDICATE))))
   (list not eq? null? false?
-	boolean? cell? pair? string? bit-string?
-	;; these two no not exist as primitives (SF expands to OBJECT-TYPE?)
-	;;   vector? %record?
+	boolean? cell? char? pair? string? bit-string?
+	vector? %record?
 	fixnum? index-fixnum? flo:flonum? object-type?
 	fix:= fix:> fix:< fix:<= fix:>=
 	fix:zero? fix:positive? fix:negative? 

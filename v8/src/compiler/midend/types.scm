@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: types.scm,v 1.5 1996/07/27 03:31:38 adams Exp $
+$Id: types.scm,v 1.6 1997/10/15 03:24:22 adams Exp $
 
-Copyright (c) 1995-1996 Massachusetts Institute of Technology
+Copyright (c) 1995-1997 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -442,8 +442,10 @@ MIT in each case. |#
   (define (def-prim name . types)
     (apply define-predicate-test-types (make-primitive-procedure name) types))
 
+  (def-prim '%RECORD?       type:%record)
   (def-prim 'BIT-STRING?    type:bit-string)
   (def-prim 'CELL?          type:cell)
+  (def-prim 'CHAR?          type:character)
   (def-prim 'FIXNUM?        type:fixnum)
   (def-prim 'FLONUM?        type:flonum)
   (def-prim 'INDEX-FIXNUM?  type:fixnum>=0)
@@ -451,6 +453,7 @@ MIT in each case. |#
   (def-prim 'NULL?          type:empty-list)
   (def-prim 'PAIR?          type:pair)
   (def-prim 'STRING?        type:string)
+  (def-prim 'VECTOR?        type:vector)
   (def-prim 'INTEGER?       type:exact-integer)
   (define-predicate-test-types %compiled-entry? type:compiled-entry)
   )

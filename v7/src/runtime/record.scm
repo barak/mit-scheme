@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.26 1997/06/25 03:27:54 cph Exp $
+$Id: record.scm,v 1.27 1997/10/15 03:21:02 adams Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -41,6 +41,7 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define-primitives
+  (%record? 1)
   (%record -1)
   (%record-length 1)
   (%record-ref 2)
@@ -48,9 +49,6 @@ MIT in each case. |#
   (primitive-object-ref 2)
   (primitive-object-set! 3)
   (primitive-object-set-type 2))
-
-(define-integrable (%record? object)
-  (object-type? (ucode-type record) object))
 
 (define (%make-record length #!optional object)
   (if (not (exact-integer? length))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 1.15 1997/07/31 18:32:58 adams Exp $
+$Id: usiexp.scm,v 1.16 1997/10/15 03:21:37 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -434,16 +434,8 @@ MIT in each case. |#
 			 get-the-types))))))
 	  (if-not-expanded))))
 
-  (define char?-expansion
-    (type-test-expansion (cross-sf/ucode-type 'character)))
-  (define vector?-expansion
-    (type-test-expansion (cross-sf/ucode-type 'vector)))
-  (define %record?-expansion
-    (type-test-expansion (cross-sf/ucode-type 'record)))
   (define weak-pair?-expansion
     (type-test-expansion (cross-sf/ucode-type 'weak-cons)))
-  (define flo:flonum?-expansion
-    (unary-arithmetic (ucode-primitive flonum?)))
 
   (define fixnum-ucode-types
     (let ((-ve  (cross-sf/ucode-type 'negative-fixnum))
@@ -536,8 +528,7 @@ MIT in each case. |#
 	`(,(car spec) . ,(apply global-operator spec))))
 
   (define usual-integrations/expansion-alist
-    `((%record?           . ,%record?-expansion)
-      (*                  . ,*-expansion)
+    `((*                  . ,*-expansion)
       (+                  . ,+-expansion)
       (-                  . ,--expansion)
       (-1+                . ,-1+-expansion)
@@ -579,7 +570,6 @@ MIT in each case. |#
       (cdddr              . ,cdddr-expansion)
       (cddr               . ,cddr-expansion)
       (char=?             . ,char=?-expansion)
-      (char?              . ,char?-expansion)
       (complex?           . ,complex?-expansion)
       (cons*              . ,cons*-expansion)
       (eighth             . ,eighth-expansion)
@@ -607,7 +597,6 @@ MIT in each case. |#
       (symbol?            . ,symbol?-expansion)
       (third              . ,third-expansion)
       (values             . ,values-expansion)
-      (vector?            . ,vector?-expansion)
       (weak-pair?         . ,weak-pair?-expansion)
       (with-values        . ,call-with-values-expansion)
       (zero?              . ,zero?-expansion)
