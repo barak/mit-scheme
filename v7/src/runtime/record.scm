@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.44 2003/03/14 20:06:02 cph Exp $
+$Id: record.scm,v 1.45 2003/03/14 20:10:20 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003 Massachusetts Institute of Technology
@@ -493,27 +493,20 @@ USA.
 	(let ((constructor (record-constructor rtd:structure-type)))
 	  (lambda (physical-type name field-names field-indexes default-inits
 				 unparser-method tag length)
-	    (let ((inits
-		   (if (vector? default-inits)
-		       (vector-copy default-inits)
-		       (list->vector default-inits))))
-	      (let ((n (vector-length inits)))
-		(do ((i 0 (fix:+ i 1)))
-		    ((not (fix:< i n)))
-		  (if (not (vector-ref inits i))
-		      (vector-set! inits i (lambda () #f)))))
-	      (constructor physical-type
-			   name
-			   (if (vector? field-names)
-			       field-names
-			       (list->vector field-names))
-			   (if (vector? field-indexes)
-			       field-indexes
-			       (list->vector field-indexes))
-			   inits
-			   unparser-method
-			   tag
-			   length)))))
+	    (constructor physical-type
+			 name
+			 (if (vector? field-names)
+			     field-names
+			     (list->vector field-names))
+			 (if (vector? field-indexes)
+			     field-indexes
+			     (list->vector field-indexes))
+			 (if (vector? default-inits)
+			     (vector-copy default-inits)
+			     (list->vector default-inits))
+			 unparser-method
+			 tag
+			 length))))
   (set! structure-type?
 	(record-predicate rtd:structure-type))
   (set! structure-type/physical-type
