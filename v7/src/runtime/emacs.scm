@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.27 1999/06/21 03:46:54 cph Exp $
+$Id: emacs.scm,v 14.28 2001/02/27 17:16:12 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -234,28 +234,33 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (reset-console-port!)
   ;; This is a kludge.  Maybe this method shouldn't be used.
-  (let ((new-port (select-console-port)))
+  (let* ((new-port (select-console-port))
+	 (old-port?
+	  (lambda (port)
+	    (and (or (eq? port the-console-port)
+		     (eq? port emacs-console-port))
+		 (not (eq? port new-port)))))
+	 (replacement-port
+	  (lambda (port)
+	    (cond ((old-port? port) new-port)
+		  ((and (transcriptable-port? port)
+			(old-port? (encapsulated-port/port port)))
+		   (make-transcriptable-port new-port))
+		  (else #f)))))
     (if (let ((port console-i/o-port))
 	  (or (eq? port the-console-port)
 	      (eq? port emacs-console-port)))
 	(set-console-i/o-port! new-port))
     (do ((pairs standard-port-accessors (cdr pairs)))
 	((null? pairs))
-      (if (let ((port ((caar pairs))))
-	    (or (eq? port the-console-port)
-		(eq? port emacs-console-port)))
-	  ((cdar pairs) new-port)))
+      (let ((port (replacement-port ((caar pairs)))))
+	(if port
+	    ((cdar pairs) port))))
     (do ((cmdl (nearest-cmdl) (cmdl/parent cmdl)))
 	((not cmdl))
-      (let ((port (cmdl/port cmdl)))
-	(cond ((or (eq? port the-console-port)
-		   (eq? port emacs-console-port))
-	       (set-cmdl/port! cmdl new-port))
-	      ((and (transcriptable-port? port)
-		    (let ((port (encapsulated-port/port port)))
-		      (or (eq? port the-console-port)
-			  (eq? port emacs-console-port))))
-	       (set-cmdl/port! cmdl (make-transcriptable-port new-port))))))))
+      (let ((port (replacement-port (cmdl/port cmdl))))
+	(if port
+	    (set-cmdl/port! cmdl port))))))
 
 (define (select-console-port)
   (set! console-output-channel (port/output-channel the-console-port))
