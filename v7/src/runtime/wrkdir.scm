@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/wrkdir.scm,v 14.2 1988/06/13 12:00:56 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/wrkdir.scm,v 14.3 1991/11/04 20:30:42 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,6 +37,46 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define (initialize-package!)
+  (reset!)
+  (add-event-receiver! event:after-restore reset!))
+
+(define (reset!)
+  (let ((pathname
+	 (simplify-directory
+	  (pathname-as-directory
+	   ((ucode-primitive working-directory-pathname))))))
+    (set! *working-directory-pathname* pathname)
+    (set! *default-pathname-defaults* pathname))
+  (set! hook/set-working-directory-pathname!
+	default/set-working-directory-pathname!)
+  unspecific)
+
+(define *working-directory-pathname*)
+
+(define (working-directory-pathname)
+  *working-directory-pathname*)
+
+(define (set-working-directory-pathname! name)
+  (let ((pathname
+	 (pathname-as-directory
+	  (merge-pathnames name *working-directory-pathname*))))
+    (if (not (file-directory? pathname))
+	(error "Not a valid directory:" pathname))
+    (let ((pathname (simplify-directory pathname)))
+      (if (eq? *default-pathname-defaults* *working-directory-pathname*)
+	  (set! *default-pathname-defaults* pathname))
+      (set! *working-directory-pathname* pathname)
+      ((ucode-primitive set-working-directory-pathname! 1)
+       (->namestring pathname))
+      (hook/set-working-directory-pathname! pathname)
+      pathname)))
+
+(define hook/set-working-directory-pathname!)
+(define (default/set-working-directory-pathname! pathname)
+  pathname
+  false)
+
 (define (with-working-directory-pathname name thunk)
   (let ((old-pathname))
     (dynamic-wind (lambda ()
@@ -47,6 +87,29 @@ MIT in each case. |#
 		    (set! name (working-directory-pathname))
 		    (set-working-directory-pathname! old-pathname)))))
 
-(define (hook/set-working-directory-pathname! pathname)
-  pathname
-  false)
+(define (simplify-directory pathname)
+  (or (and (implemented-primitive-procedure? (ucode-primitive file-eq? 2))
+	   (let ((directory (pathname-directory pathname)))
+	     (and (pair? directory)
+		  (let ((directory*
+			 (cons (car directory)
+			       (reverse!
+				(let loop
+				    ((elements (reverse (cdr directory))))
+				  (if (null? elements)
+				      '()
+				       (let ((head (car elements))
+					     (tail (loop (cdr elements))))
+					 (if (and (eq? head 'UP)
+						  (not (null? tail))
+						  (not (eq? (car tail) 'UP)))
+					     (cdr tail)
+					     (cons head tail)))))))))
+		    (and (not (equal? directory directory*))
+			 (let ((pathname*
+				(pathname-new-directory pathname directory*)))
+			   (and ((ucode-primitive file-eq? 2)
+				 (->namestring pathname)
+				 (->namestring pathname*))
+				pathname*)))))))
+      pathname))

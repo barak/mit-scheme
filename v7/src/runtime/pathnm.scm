@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.15 1991/10/29 14:31:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.16 1991/11/04 20:29:39 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -36,71 +36,83 @@ MIT in each case. |#
 ;;; package: (runtime pathname)
 
 (declare (usual-integrations))
-#|
-A pathname component is normally one of:
-
-* A string, which is the literal component.
-
-* 'WILD, meaning that the component is wildcarded.  Such components
-may have special meaning to certain directory operations.
-
-* #F, meaning that the component was not supplied.  This has special
-meaning to `merge-pathnames', in which such components are
-substituted.
-
-* 'UNSPECIFIC, which means the same thing as #F except that it is
-never defaulted by `merge-pathnames'.  Normally there is no way to
-specify such a component value with `string->pathname'.
-
-A pathname consists of 5 components, not all necessarily meaningful,
-as follows:
-
-* The DEVICE is usually a physical device, as in the Twenex `ps:'.
-
-* The DIRECTORY is a list of components.  If the first component is
-'ROOT, then the directory path is absolute.  Otherwise it is relative.
-Two special components allowed only in directories are the symbols
-'SELF and 'UP which are equivalent to Unix' "." and ".." respectively.
-
-* The NAME is the proper name part of the filename.
-
-* The TYPE usually indicates something about the contents of the file.
-Certain system procedures will default the type to standard type
-strings.
-
-* The VERSION is special.  Unlike an ordinary component, it is never a
-string, but may be either a positive integer, 'NEWEST, 'UNSPECIFIC,
-'WILD, or #F.  Many system procedures will default the version to
-'NEWEST, which means to search the directory for the highest version
-numbered file.
-
-This file requires the following procedures and variables which define
-the conventions for the particular file system in use:
-
-(symbol->pathname symbol)
-(pathname-parse string (lambda (device directory name type version)))
-(pathname-unparse device directory name type version)
-(pathname-unparse-name name type version)
-(pathname-as-directory pathname)
-(pathname-newest pathname)
-working-directory-package
-(access reset! working-directory-package)
-init-file-pathname
-(home-directory-pathname)
-(working-directory-pathname)
-(set-working-directory-pathname! name)
-
-See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
 
-;;;; Basic Pathnames
+#|
 
+When examining pathname components, programs must be prepared to
+encounter any of the following situations:
+
+* The host can be a host object.
+
+* Any component except the host can be #F, which means the component
+  has not been specified.
+
+* Any component except the can be 'UNSPECIFIC, which means the
+  component has no meaning in this particular pathname.
+
+* The device, name, and type can be non-null strings.
+
+* The directory can be a non-empty list of non-null strings and
+  symbols, whose first element is either 'ABSOLUTE or 'RELATIVE.
+
+* The version can be any symbol or any positive exact integer.  The
+  symbol 'NEWEST refers to the largest version number that already
+  exists in the file system when reading, overwriting, appending,
+  superseding, or directory-listing an existing file; it refers to the
+  smallest version number greater than any existing version number
+  when creating a new file.
+
+When examining wildcard components of a wildcard pathname, programs
+must be prepared to encounter any of the following additional values
+in any component (except the host) or any element of a list that is
+the directory component:
+
+* The symbol 'WILD, which matches anything.
+
+* A string containing implementation-dependent special wildcard
+  characters.
+
+* Any object, representing an implementation-dependent wildcard
+  pattern.
+
+When constructing a pathname from components, programs must follow
+these rules:
+
+* Any component may be #F.  Specifying #F for the host results in
+  using a default host rather than an actual #F value.
+
+* The host may be a host object.
+
+* The device, name, and type may be strings.  There are
+  implementation-dependent limits on the number and type of characters
+  in these strings.  A plausible assumption is that letters (of a
+  single case) and digits are acceptable to most file system.
+
+* The directory may be a list of strings and symbols whose first
+  element is either 'ABSOLUTE or 'RELATIVE.  There are
+  implementation-dependent limits on the length and contents of the
+  list.
+
+* The version may be 'NEWEST.
+
+* Any component may be taken from the corresponding component of
+  another pathname.  When the two pathnames are for different file
+  systems, an appropriate translation occurs.  If no meaningful
+  translation is possible, an error is signalled.
+
+* When constructing a wildcard pathname, the name, type, or version
+  may be 'WILD, which matches anything.
+
+|#
+
 (define-structure (pathname
 		   (named (string->symbol "#[(runtime pathname)pathname]"))
-		   (copier pathname-copy)
+		   (constructor %make-pathname)
+		   (conc-name %pathname-)
 		   (print-procedure
 		    (unparser/standard-method 'PATHNAME
 		      (lambda (state pathname)
-			(unparse-object state (pathname->string pathname))))))
+			(unparse-object state (->namestring pathname))))))
   (host false read-only true)
   (device false read-only true)
   (directory false read-only true)
@@ -108,353 +120,421 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
   (type false read-only true)
   (version false read-only true))
 
-(define (pathname-components pathname receiver)
-  (receiver (pathname-host pathname)
-	    (pathname-device pathname)
-	    (pathname-directory pathname)
-	    (pathname-name pathname)
-	    (pathname-type pathname)
-	    (pathname-version pathname)))
+(define (->pathname object)
+  (pathname-arg object false '->PATHNAME))
+
+(define (pathname-arg object defaults operator)
+  (cond ((pathname? object) object)
+	((string? object) (parse-namestring object false defaults))
+	(else (error:wrong-type-argument object "pathname" operator))))
+
+(define (make-pathname host device directory name type version)
+  (let ((host (if host (guarantee-host host 'MAKE-PATHNAME) local-host)))
+    ((host-operation/make-pathname host)
+     host device directory name type version)))
+
+(define (pathname-host pathname)
+  (%pathname-host (->pathname pathname)))
+
+(define (pathname-device pathname)
+  (%pathname-device (->pathname pathname)))
+
+(define (pathname-directory pathname)
+  (%pathname-directory (->pathname pathname)))
+
+(define (pathname-name pathname)
+  (%pathname-name (->pathname pathname)))
+
+(define (pathname-type pathname)
+  (%pathname-type (->pathname pathname)))
+
+(define (pathname-version pathname)
+  (%pathname-version (->pathname pathname)))
+
+(define (pathname=? x y)
+  (let ((x (->pathname x))
+	(y (->pathname y)))
+    (and (eq? (%pathname-host x) (%pathname-host y))
+	 (equal? (%pathname-device x) (%pathname-device y))
+	 (equal? (%pathname-directory x) (%pathname-directory y))
+	 (equal? (%pathname-name x) (%pathname-name y))
+	 (equal? (%pathname-type x) (%pathname-type y))
+	 (equal? (%pathname-version x) (%pathname-version y)))))
 
 (define (pathname-absolute? pathname)
   (let ((directory (pathname-directory pathname)))
     (and (pair? directory)
-	 (eq? (car directory) 'ROOT))))
+	 (eq? (car directory) 'ABSOLUTE))))
 
-(define (pathname-relative? pathname pathname*)
-  (and (equal? (pathname-host pathname)
-	       (pathname-host pathname*))
-       (equal? (pathname-device pathname)
-	       (pathname-device pathname*))
-       (let loop
-	   ((directory (pathname-directory pathname))
-	    (directory* (pathname-directory pathname*)))
-	 (if (null? directory*)
-	     (make-pathname false
-			    false
-			    directory
-			    (pathname-name pathname)
-			    (pathname-type pathname)
-			    (pathname-version pathname))
-	     (and (not (null? directory))
-		  (equal? (car directory) (car directory*))
-		  (loop (cdr directory) (cdr directory*)))))))
-
-(define (pathname-directory-path pathname)
-  (make-pathname (pathname-host pathname)
-		 (pathname-device pathname)
-		 (pathname-directory pathname)
-		 false
-		 false
-		 false))
-
-(define (pathname-name-path pathname)
-  (make-pathname false
-		 false
-		 false
-		 (pathname-name pathname)
-		 (pathname-type pathname)
-		 (pathname-version pathname)))
+(define (pathname-wild? pathname)
+  (let ((pathname (->pathname pathname)))
+    ((host-operation/pathname-wild? (%pathname-host pathname)) pathname)))
 
-(define (pathname-new-host pathname host)
-  (make-pathname host
-		 (pathname-device pathname)
-		 (pathname-directory pathname)
-		 (pathname-name pathname)
-		 (pathname-type pathname)
-		 (pathname-version pathname)))
+(define (directory-pathname pathname)
+  (let ((pathname (->pathname pathname)))
+    (%make-pathname (%pathname-host pathname)
+		    (%pathname-device pathname)
+		    (%pathname-directory pathname)
+		    false
+		    false
+		    false)))
+
+(define (file-pathname pathname)
+  (let ((pathname (->pathname pathname)))
+    (%make-pathname (%pathname-host pathname)
+		    false
+		    false
+		    (%pathname-name pathname)
+		    (%pathname-type pathname)
+		    (%pathname-version pathname))))
+
+(define (pathname-as-directory pathname)
+  (let ((pathname (->pathname pathname)))
+    ((host-operation/pathname-as-directory (%pathname-host pathname))
+     pathname)))
+
+(define (directory-pathname-as-file pathname)
+  (let ((pathname (->pathname pathname)))
+    ((host-operation/directory-pathname-as-file (%pathname-host pathname))
+     pathname)))
 
 (define (pathname-new-device pathname device)
-  (make-pathname (pathname-host pathname)
-		 device
-		 (pathname-directory pathname)
-		 (pathname-name pathname)
-		 (pathname-type pathname)
-		 (pathname-version pathname)))
+  (let ((pathname (->pathname pathname)))
+    (%make-pathname (%pathname-host pathname)
+		    device
+		    (%pathname-directory pathname)
+		    (%pathname-name pathname)
+		    (%pathname-type pathname)
+		    (%pathname-version pathname))))
 
 (define (pathname-new-directory pathname directory)
-  (make-pathname (pathname-host pathname)
-		 (pathname-device pathname)
-		 directory
-		 (pathname-name pathname)
-		 (pathname-type pathname)
-		 (pathname-version pathname)))
+  (let ((pathname (->pathname pathname)))
+    (%make-pathname (%pathname-host pathname)
+		    (%pathname-device pathname)
+		    directory
+		    (%pathname-name pathname)
+		    (%pathname-type pathname)
+		    (%pathname-version pathname))))
 
 (define (pathname-new-name pathname name)
-  (make-pathname (pathname-host pathname)
-		 (pathname-device pathname)
-		 (pathname-directory pathname)
-		 name
-		 (pathname-type pathname)
-		 (pathname-version pathname)))
+  (let ((pathname (->pathname pathname)))
+    (%make-pathname (%pathname-host pathname)
+		    (%pathname-device pathname)
+		    (%pathname-directory pathname)
+		    name
+		    (%pathname-type pathname)
+		    (%pathname-version pathname))))
 
 (define (pathname-new-type pathname type)
-  (make-pathname (pathname-host pathname)
-		 (pathname-device pathname)
-		 (pathname-directory pathname)
-		 (pathname-name pathname)
-		 type
-		 (pathname-version pathname)))
+  (let ((pathname (->pathname pathname)))
+    (%make-pathname (%pathname-host pathname)
+		    (%pathname-device pathname)
+		    (%pathname-directory pathname)
+		    (%pathname-name pathname)
+		    type
+		    (%pathname-version pathname))))
 
 (define (pathname-new-version pathname version)
-  (make-pathname (pathname-host pathname)
-		 (pathname-device pathname)
-		 (pathname-directory pathname)
-		 (pathname-name pathname)
-		 (pathname-type pathname)
-		 version))
+  (let ((pathname (->pathname pathname)))
+    (%make-pathname (%pathname-host pathname)
+		    (%pathname-device pathname)
+		    (%pathname-directory pathname)
+		    (%pathname-name pathname)
+		    (%pathname-type pathname)
+		    version)))
 
-(define (pathname-default-host pathname host)
-  (if (pathname-host pathname)
-      pathname
-      (pathname-new-host pathname host)))
-
 (define (pathname-default-device pathname device)
-  (if (pathname-device pathname)
-      pathname
-      (pathname-new-device pathname device)))
+  (let ((pathname (->pathname pathname)))
+    (if (%pathname-device pathname)
+	pathname
+	(pathname-new-device pathname device))))
 
 (define (pathname-default-directory pathname directory)
-  (if (pathname-directory pathname)
-      pathname
-      (pathname-new-directory pathname directory)))
+  (let ((pathname (->pathname pathname)))
+    (if (%pathname-directory pathname)
+	pathname
+	(pathname-new-directory pathname directory))))
 
 (define (pathname-default-name pathname name)
-  (if (pathname-name pathname)
-      pathname
-      (pathname-new-name pathname name)))
+  (let ((pathname (->pathname pathname)))
+    (if (%pathname-name pathname)
+	pathname
+	(pathname-new-name pathname name))))
 
 (define (pathname-default-type pathname type)
-  (if (pathname-type pathname)
-      pathname
-      (pathname-new-type pathname type)))
+  (let ((pathname (->pathname pathname)))
+    (if (%pathname-type pathname)
+	pathname
+	(pathname-new-type pathname type))))
 
 (define (pathname-default-version pathname version)
-  (if (pathname-version pathname)
-      pathname
-      (pathname-new-version pathname version)))
+  (let ((pathname (->pathname pathname)))
+    (if (%pathname-version pathname)
+	pathname
+	(pathname-new-version pathname version))))
 
-(define (pathname-default pathname host device directory name type version)
-  (make-pathname (or (pathname-host pathname) host)
-		 (or (pathname-device pathname) device)
-		 (or (pathname-directory pathname) directory)
-		 (or (pathname-name pathname) name)
-		 (or (pathname-type pathname) type)
-		 (or (pathname-version pathname) version)))
+(define (pathname-default pathname device directory name type version)
+  (let ((pathname (->pathname pathname)))
+    (%make-pathname (%pathname-host pathname)
+		    (or (%pathname-device pathname) device)
+		    (or (%pathname-directory pathname) directory)
+		    (or (%pathname-name pathname) name)
+		    (or (%pathname-type pathname) type)
+		    (or (%pathname-version pathname) version))))
 
 ;;;; Pathname Syntax
 
-(define (->pathname object)
-  (cond ((pathname? object) object)
-	((string? object) (string->pathname object))
-	((symbol? object) (symbol->pathname object))
-	(else (error "Unable to coerce into pathname" object))))
+(define (parse-namestring namestring #!optional host defaults)
+  (let ((host
+	 (if (and (not (default-object? host)) host)
+	     (begin
+	       (if (not (host? host))
+		   (error:wrong-type-argument host "host" 'PARSE-NAMESTRING))
+	       host)
+	     (pathname-host
+	      (if (and (not (default-object? defaults)) defaults)
+		  defaults
+		  *default-pathname-defaults*)))))
+    (cond ((string? namestring)
+	   ((host-operation/parse-namestring host) namestring host))
+	  ((pathname? namestring)
+	   (if (not (eq? host (pathname-host namestring)))
+	       (error:bad-range-argument namestring 'PARSE-NAMESTRING))
+	   namestring)
+	  (else
+	   (error:wrong-type-argument namestring "namestring"
+				      'PARSE-NAMESTRING)))))
 
-(define (string->pathname string)
-  (parse-pathname string make-pathname))
+(define (->namestring pathname)
+  (let ((pathname (->pathname pathname)))
+    (string-append (host-namestring pathname)
+		   (pathname->namestring pathname))))
 
-(define (pathname->string pathname)
-  (pathname-unparse (pathname-host pathname)
-		    (pathname-device pathname)
-		    (pathname-directory pathname)
-		    (pathname-name pathname)
-		    (pathname-type pathname)
-		    (pathname-version pathname)))
+(define (file-namestring pathname)
+  (pathname->namestring (file-pathname pathname)))
 
-(define (pathname-directory-string pathname)
-  (pathname-unparse (pathname-host pathname)
-		    (pathname-device pathname)
-		    (pathname-directory pathname)
-		    false
-		    false
-		    false))
+(define (directory-namestring pathname)
+  (pathname->namestring (directory-pathname pathname)))
 
-(define (pathname-name-string pathname)
-  (pathname-unparse false
-		    false
-		    false
-		    (pathname-name pathname)
-		    (pathname-type pathname)
-		    (pathname-version pathname)))
+(define (host-namestring pathname)
+  (let ((host (host/name (pathname-host pathname))))
+    (if host
+	(string-append host "::")
+	"")))
+
+(define (enough-namestring pathname #!optional defaults)
+  (let ((defaults (and (not (default-object? defaults)) defaults)))
+    (let ((pathname (enough-pathname pathname defaults)))
+      (let ((namestring (pathname->namestring pathname)))
+	(if (eq? (%pathname-host pathname) (%pathname-host defaults))
+	    namestring
+	    (string-append (host-namestring pathname) namestring))))))
+
+(define (pathname->namestring pathname)
+  ((host-operation/pathname->namestring (%pathname-host pathname)) pathname))
 
 ;;;; Pathname Merging
 
-(define (pathname->absolute-pathname pathname)
-  (merge-pathnames pathname (working-directory-pathname)))
+(define *default-pathname-defaults*)
 
-(define (merge-pathnames pathname default)
-  (make-pathname
-   (or (pathname-host pathname) (pathname-host default))
-   (or (pathname-device pathname) (pathname-device default))
-   (simplify-directory
-    (let ((directory (pathname-directory pathname))
-	  (default (pathname-directory default)))
-      (cond ((null? directory) default)
-	    ((or (eq? directory 'UNSPECIFIC)
-		 (null? default)
-		 (eq? default 'UNSPECIFIC))
-	     directory)
-	    ((pair? directory)
-	     (cond ((eq? (car directory) 'ROOT) directory)
-		   ((pair? default) (append default directory))
-		   (else (error "Illegal pathname directory" default))))
-	    (else (error "Illegal pathname directory" directory)))))
-   (or (pathname-name pathname) (pathname-name default))
-   (or (pathname-type pathname) (pathname-type default))
-   (or (pathname-version pathname) (pathname-version default))))
+(define (merge-pathnames pathname #!optional defaults default-version)
+  (let* ((defaults
+	   (if (and (not (default-object? defaults)) defaults)
+	       (->pathname defaults)
+	       *default-pathname-defaults*))
+	 (pathname (pathname-arg pathname defaults 'MERGE-PATHNAMES)))
+    (make-pathname
+     (or (%pathname-host pathname) (%pathname-host defaults))
+     (or (%pathname-device pathname)
+	 (and (%pathname-host pathname)
+	      (eq? (%pathname-host pathname) (%pathname-host defaults))
+	      (%pathname-device defaults)))
+     (let ((directory (%pathname-directory pathname))
+	   (default (%pathname-directory defaults)))
+       (cond ((not directory)
+	      default)
+	     ((and (pair? directory)
+		   (eq? (car directory) 'RELATIVE)
+		   (pair? default))
+	      (append default (cdr directory)))
+	     (else
+	      directory)))
+     (or (%pathname-name pathname) (%pathname-name defaults))
+     (or (%pathname-type pathname) (%pathname-type defaults))
+     (or (%pathname-version pathname)
+	 (and (not (%pathname-name pathname)) (%pathname-version defaults))
+	 (if (default-object? default-version)
+	     'NEWEST
+	     default-version)))))
 
-(define (simplify-directory directory)
-  (if (or (null? directory)
-	  (not (list? directory)))
-      directory
-      (let ((head (car directory))
-	    (tail (delq 'SELF (cdr directory))))
-	(if (eq? head 'ROOT)
-	    (cons 'ROOT (simplify-tail (simplify-root-tail tail)))
-	    (simplify-tail (cons head tail))))))
-
-(define (simplify-root-tail directory)
-  (if (and (not (null? directory))
-	   (eq? (car directory) 'UP))
-      (simplify-root-tail (cdr directory))
-      directory))
-
-(define (simplify-tail directory)
-  (reverse!
-   (let loop ((elements (reverse directory)))
-     (if (null? elements)
-	 '()
-	 (let ((head (car elements))
-	       (tail (loop (cdr elements))))
-	   (if (and (eq? head 'UP)
-		    (not (null? tail))
-		    (not (eq? (car tail) 'UP)))
-	       (cdr tail)
-	       (cons head tail)))))))
+(define (enough-pathname pathname #!optional defaults)
+  (let* ((defaults
+	   (if (and (not (default-object? defaults)) defaults)
+	       (->pathname defaults)
+	       *default-pathname-defaults*))
+	 (pathname (pathname-arg pathname defaults 'ENOUGH-PATHNAME)))
+    (let ((usual
+	   (lambda (component default)
+	     (and (or (symbol? component)
+		      (not (equal? component default)))
+		  component))))
+      (make-pathname
+       (and (or (symbol? (%pathname-host pathname))
+		(not (eq? (%pathname-host pathname)
+			  (%pathname-host defaults))))
+	    (%pathname-host pathname))
+       (let ((device (%pathname-device pathname)))
+	 (and (or (symbol? device)
+		  (not (equal? device (%pathname-device defaults)))
+		  (not (eq? (%pathname-host pathname)
+			    (%pathname-host defaults))))
+	      device))
+       (let ((directory (%pathname-directory pathname))
+	     (default (%pathname-directory defaults)))
+	 (if (or (not directory)
+		 (symbol? directory)
+		 (not (eq? (car directory) (car default))))
+	     directory
+	     (let loop
+		 ((components (cdr directory)) (components* (cdr default)))
+	       (cond ((null? components*)
+		      (cons 'RELATIVE components))
+		     ((and (not (null? components))
+			   (equal? (car components) (car components*)))
+		      (loop (cdr components) (cdr components*)))
+		     (else
+		      directory)))))
+       (usual (%pathname-name pathname) (%pathname-name defaults))
+       (usual (%pathname-type pathname) (%pathname-type defaults))
+       (let ((version (%pathname-version pathname)))
+	 (and (or (symbol? version)
+		  (not (equal? version (%pathname-version defaults)))
+		  (%pathname-name pathname))
+	      version))))))
 
-;;;; Truenames
+;;;; Host Abstraction
+;;;  A lot of hair to make pathnames fasdumpable.
 
-(define (canonicalize-input-filename filename)
-  (pathname->string (canonicalize-input-pathname filename)))
+(define host-types)
+(define local-host)
 
-(define (canonicalize-input-pathname filename)
-  (let ((pathname (->pathname filename)))
-    (or (pathname->input-truename pathname)
-	(canonicalize-input-pathname
-	 (error:file-operation pathname
-			       "find"
-			       "file"
-			       "file does not exist"
-			       canonicalize-input-pathname
-			       (list filename))))))
+(define-structure (host-type
+		   (constructor %make-host-type)
+		   (conc-name host-type/))
+  (name false read-only true)
+  (operation/parse-namestring false read-only true)
+  (operation/pathname->namestring false read-only true)
+  (operation/make-pathname false read-only true)
+  (operation/pathname-wild? false read-only true)
+  (operation/pathname-as-directory false read-only true)
+  (operation/directory-pathname-as-file false read-only true)
+  (operation/pathname->truename false read-only true)
+  (operation/user-homedir-pathname false read-only true)
+  (operation/init-file-pathname false read-only true))
 
-(define (pathname->input-truename pathname)
-  (let ((pathname (pathname->absolute-pathname pathname))
-	(truename-exists?
-	 (lambda (pathname)
-	   (and ((ucode-primitive file-exists? 1) (pathname->string pathname))
-		pathname))))
-    (cond ((not (eq? 'NEWEST (pathname-version pathname)))
-	   (truename-exists? pathname))
-	  ((not pathname-newest)
-	   (truename-exists? (pathname-new-version pathname false)))
-	  (else
-	   (pathname-newest pathname)))))
+(define (make-host-type name . operations)
+  (let ((type (apply %make-host-type name operations)))
+    (let loop ((types host-types))
+      (cond ((null? types)
+	     (set! host-types (cons type host-types)))
+	    ((eq? name (host-type/name (car types)))
+	     (set-car! types type))
+	    (else
+	     (loop (cdr types)))))
+    type))
 
-(define (canonicalize-output-filename filename)
-  (pathname->string (canonicalize-output-pathname filename)))
+(define-structure (host
+		   (named (string->symbol "#[(runtime pathname)host]"))
+		   (constructor %make-host)
+		   (conc-name host/))
+  (type-name false read-only true)
+  (name false read-only true))
 
-(define-integrable (canonicalize-output-pathname filename)
-  (pathname->output-truename (->pathname filename)))
+(define (make-host type name)
+  (%make-host (host-type/name type) name))
 
-(define (pathname->output-truename pathname)
-  (let ((pathname (pathname->absolute-pathname pathname)))
-    (if (eq? 'NEWEST (pathname-version pathname))
-	(pathname-new-version
-	 pathname
-	 (and pathname-newest
-	      (let ((greatest (pathname-newest pathname)))
-		(if greatest
-		    (let ((version (pathname-version greatest)))
-		      (and version
-			   (1+ version)))
-		    1))))
-	pathname)))
+(define (host/type host)
+  (let ((name (host/type-name host)))
+    (let loop ((types host-types))
+      (cond ((null? types) (error "Unknown host type:" host))
+	    ((eq? name (host/type-name (car types))) (car types))
+	    (else (loop (cdr types)))))))
 
-(define (canonicalize-overwrite-filename filename)
-  (pathname->string (canonicalize-overwrite-pathname filename)))
+(define (guarantee-host host operation)
+  (if (not (host? host))
+      (error:wrong-type-argument host "host" operation))
+  host)
 
-(define-integrable (canonicalize-overwrite-pathname filename)
-  (pathname->overwrite-truename (->pathname filename)))
+(define (host-operation/parse-namestring host)
+  (host-type/operation/parse-namestring (host/type host)))
 
-(define (pathname->overwrite-truename pathname)
-  (let ((pathname (pathname->absolute-pathname pathname)))
-    (cond ((not (eq? 'NEWEST (pathname-version pathname)))
-	   pathname)
-	  ((not pathname-newest)
-	   (pathname-new-version pathname false))
-	  ((pathname-newest pathname))
-	  (else
-	   (pathname-new-version pathname 1)))))
+(define (host-operation/pathname->namestring host)
+  (host-type/operation/pathname->namestring (host/type host)))
 
-(define (file-exists? filename)
-  (let ((pathname (pathname->absolute-pathname (->pathname filename)))
-	(pathname-exists?
-	 (lambda (pathname)
-	   ((ucode-primitive file-exists? 1) (pathname->string pathname)))))
-    (cond ((not (eq? 'NEWEST (pathname-version pathname)))
-	   (pathname-exists? pathname))
-	  ((not pathname-newest)
-	   (pathname-exists? (pathname-new-version pathname false)))
-	  (else
-	   (pathname-newest pathname)))))
+(define (host-operation/make-pathname host)
+  (host-type/operation/make-pathname (host/type host)))
+
+(define (host-operation/pathname-wild? host)
+  (host-type/operation/pathname-wild? (host/type host)))
+
+(define (host-operation/pathname-as-directory host)
+  (host-type/operation/pathname-as-directory (host/type host)))
+
+(define (host-operation/directory-pathname-as-file host)
+  (host-type/operation/directory-pathname-as-file (host/type host)))
+
+(define (host-operation/pathname->truename host)
+  (host-type/operation/pathname->truename (host/type host)))
+
+(define (host-operation/user-homedir-pathname host)
+  (host-type/operation/user-homedir-pathname (host/type host)))
+
+(define (host-operation/init-file-pathname host)
+  (host-type/operation/init-file-pathname (host/type host)))
 
-(define (init-file-truename)
-  (let ((pathname (init-file-pathname)))
-    (and pathname
-	 (or (pathname->input-truename
-	      (merge-pathnames pathname (working-directory-pathname)))
-	     (pathname->input-truename
-	      (merge-pathnames pathname (home-directory-pathname)))))))
+;;;; File System Stuff
 
-(define (initialize-package!)
-  (reset-library-directory-path!)
-  (add-event-receiver! event:after-restore reset-library-directory-path!))
+(define (->truename pathname)
+  (let ((pathname (merge-pathnames pathname)))
+    ((host-operation/pathname->truename (%pathname-host pathname)) pathname)))
 
-(define (reset-library-directory-path!)
-  (set! library-directory-path
-	(if (implemented-primitive-procedure? microcode-library-path)
-	    (map (lambda (filename)
-		   (pathname-as-directory (string->pathname filename)))
-		 (vector->list (microcode-library-path)))
-	    (list 
-	     (pathname-directory-path
-	      (string->pathname (microcode-tables-filename))))))
-  unspecific)
+(define (user-homedir-pathname #!optional host)
+  (let ((host
+	 (if (and (not (default-object? host)) host)
+	     (guarantee-host host 'USER-HOMEDIR-PATHNAME)
+	     local-host)))
+    ((host-operation/user-homedir-pathname host) host)))
 
-(define-primitives
-  (microcode-library-path 0)
-  (microcode-tables-filename 0))
-
-(define library-directory-path)
+(define (init-file-pathname #!optional host)
+  (let ((host
+	 (if (and (not (default-object? host)) host)
+	     (guarantee-host host 'INIT-FILE-PATHNAME)
+	     local-host)))
+    ((host-operation/init-file-pathname host) host)))
 
 (define (system-library-pathname pathname)
-  (if (and (pathname-absolute? pathname)
-	   (pathname->input-truename pathname))
-      pathname
-      (let loop ((directories library-directory-path))
-	(if (null? directories)
-	    (system-library-pathname
-	     (->pathname
-	      (error:file-operation pathname
-				    "find"
-				    "file"
-				    "no such file in system library path"
-				    system-library-pathname
-				    (list pathname))))
-	    (or (pathname->input-truename
-		 (merge-pathnames pathname (car directories)))
-		(loop (cdr directories)))))))
+  (let ((try-directory
+	 (lambda (directory)
+	   (let ((pathname (merge-pathnames pathname directory)))
+	     (and (file-exists? pathname)
+		  pathname))))
+	(loser
+	 (lambda ()
+	   (system-library-pathname
+	    (->pathname
+	     (error:file-operation pathname
+				   "find"
+				   "file"
+				   "no such file in system library path"
+				   system-library-pathname
+				   (list pathname)))))))
+    (if (pathname-absolute? pathname)
+	(if (file-exists? pathname) pathname (loser))
+	(let loop ((directories library-directory-path))
+	  (if (null? directories)
+	      (loser)
+	      (or (try-directory (car directories))
+		  (loop (cdr directories))))))))
 
 (define (system-library-directory-pathname pathname)
   (if (not pathname)
@@ -469,3 +549,19 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
 	       (if (file-directory? pathname)
 		   (pathname-as-directory pathname)
 		   (loop (cdr directories))))))))
+
+(define library-directory-path)
+
+(define (initialize-package!)
+  (reset-package!)
+  (add-event-receiver! event:after-restore reset-package!))
+
+(define (reset-package!)
+  (set! host-types '())
+  (set! local-host (make-host (make-unix-host-type) false))
+  (set! *default-pathname-defaults*
+	(make-pathname local-host false false false false false))
+  (set! library-directory-path
+	(map pathname-as-directory
+	     (vector->list ((ucode-primitive microcode-library-path 0)))))
+  unspecific)

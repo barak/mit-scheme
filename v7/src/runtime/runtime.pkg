@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.124 1991/10/29 14:32:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.125 1991/11/04 20:29:45 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -52,9 +52,7 @@ MIT in each case. |#
     ;;((quick-sort) "qsort")
     (else))
   (file-case os-type
-    ((unix) "unxpth" "unxprm")
-    ;;((vms) "vmspth")
-    ;;(else "unkpth")
+    ((unix) "unxprm")
     (else)))
 
 (define-package (package)
@@ -450,8 +448,7 @@ MIT in each case. |#
     (else))
   (parent ())
   (export ()
-	  directory-read)
-  (initialization (initialize-package!)))
+	  directory-read))
 
 (define-package (runtime emacs-interface)
   (files "emacs")
@@ -655,8 +652,6 @@ MIT in each case. |#
   (parent ())
   (export ()
 	  open-input-file)
-  (export (runtime load)
-	  open-input-file/internal)
   (initialization (initialize-package!)))
 
 (define-package (runtime file-output)
@@ -1382,78 +1377,56 @@ MIT in each case. |#
   (files "pathnm")
   (parent ())
   (export ()
+	  *default-pathname-defaults*
+	  ->namestring
 	  ->pathname
-	  canonicalize-input-filename
-	  canonicalize-input-pathname
-	  canonicalize-output-filename
-	  canonicalize-output-pathname
-	  canonicalize-overwrite-filename
-	  canonicalize-overwrite-pathname
-	  file-exists?
-	  init-file-truename
+	  ->truename
+	  directory-namestring
+	  directory-pathname
+	  directory-pathname-as-file
+	  enough-namestring
+	  enough-pathname
+	  file-namestring
+	  file-pathname
+	  host-namestring
+	  host?
+	  init-file-pathname
+	  local-host
 	  make-pathname
 	  merge-pathnames
-	  pathname->absolute-pathname
-	  pathname->input-truename
-	  pathname->output-truename
-	  pathname->string
+	  parse-namestring
 	  pathname-absolute?
-	  pathname-components
-	  pathname-copy
+	  pathname-as-directory
 	  pathname-default
 	  pathname-default-device
 	  pathname-default-directory
-	  pathname-default-host
 	  pathname-default-name
 	  pathname-default-type
 	  pathname-default-version
 	  pathname-device
 	  pathname-directory
-	  pathname-directory-path
-	  pathname-directory-string
 	  pathname-host
 	  pathname-name
-	  pathname-name-path
-	  pathname-name-string
 	  pathname-new-device
 	  pathname-new-directory
-	  pathname-new-host
 	  pathname-new-name
 	  pathname-new-type
 	  pathname-new-version
-	  pathname-relative?
 	  pathname-type
 	  pathname-version
+	  pathname-wild?
+	  pathname=?
 	  pathname?
-	  string->pathname
 	  system-library-directory-pathname
-	  system-library-pathname)
-  (export (runtime pathname-parser)
-	  simplify-directory)
+	  system-library-pathname
+	  user-homedir-pathname)
   (initialization (initialize-package!)))
 
-(define-package (runtime pathname-parser)
-  (file-case os-type
-    ((unix) "unxpar")
-    ;;((vms) "vmspar")
-    ;;(else "unkpar")
-    (else))
-  (parent (runtime pathname))
-  (export ()
-	  pathname-as-directory)
-  (export (runtime pathname)
-	  parse-pathname))
-
-(define-package (runtime pathname-unparser)
-  (file-case os-type
-    ((unix) "unxunp")
-    ;;((vms) "vmsunp")
-    ;;(else "unkunp")
-    (else))
+(define-package (runtime pathname unix)
+  (files "unxpth")
   (parent (runtime pathname))
   (export (runtime pathname)
-	  pathname-unparse
-	  pathname-unparse-name))
+	  make-unix-host-type))
 
 (define-package (runtime population)
   (files "poplat")
@@ -1518,7 +1491,6 @@ MIT in each case. |#
 	  channel-write-string-block
 	  channel?
 	  close-all-open-files
-	  copy-file
 	  file-length
 	  file-open-append-channel
 	  file-open-input-channel
@@ -2078,30 +2050,6 @@ MIT in each case. |#
 	  starbase-graphics-device-type)
   (initialization (initialize-package!)))
 
-(define-package (runtime old-starbase-graphics)
-  (file-case options
-    ((load) "Sgraph")
-    (else))
-  (parent ())
-  (export ()
-	  clear-graphics
-	  clear-point
-	  draw-line-to
-	  draw-point
-	  graphics-available?
-	  graphics-text
-	  init-graphics
-	  position-pen
-	  print-graphics
-	  print-graphics-inverse
-	  set-graphics-drawing-mode
-	  set-graphics-line-style
-	  with-graphics-drawing-mode
-	  with-graphics-line-style
-	  x-graphics-available?
-	  x-graphics-initialize)
-  (initialization (initialize-package!)))
-
 (define-package (runtime state-space)
   (files "wind")
   (parent ())
@@ -2288,11 +2236,6 @@ MIT in each case. |#
   (initialization (initialize-package!)))
 
 (define-package (runtime working-directory)
-  (file-case os-type
-    ((unix) "unxcwd")
-    ;;((vms) "vmscwd")
-    ;;(else "unkcwd")
-    (else))
   (files "wrkdir")
   (parent ())
   (export ()

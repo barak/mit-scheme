@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 14.7 1989/10/26 06:47:10 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 14.8 1991/11/04 20:30:06 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -106,11 +106,10 @@ MIT in each case. |#
 				(prompt-for-confirmation "Load compiled")
 				compiled?))))
     (set-system/files! system
-		       (map (lambda (file) (pathname->string (car file)))
-			    files))
+		       (map (lambda (file) (->namestring (car file))) files))
     (for-each (lambda (file scode)
 		(newline) (write-string "Eval ")
-		(write (pathname->string (car file)))
+		(write (->namestring (car file)))
 		(scode-eval scode (cdr file)))
 	      files
 	      (let loop ((files (map car files)))
@@ -136,13 +135,14 @@ MIT in each case. |#
 	  (receiver (cons (car list) head) tail)))))
 
 (define (format-files-list files-lists compiled?)
-  (mapcan (lambda (files-list)
-	    (map (lambda (filename)
-		   (let ((pathname (->pathname filename)))
-		     (cons (if (and (not compiled?)
-				    (equal? "com" (pathname-type pathname)))
-			       (pathname-new-type pathname "bin")
-			       pathname)
-			   (car files-list))))
-		 (cdr files-list)))
-	  files-lists))
+  (append-map! (lambda (files-list)
+		 (map (lambda (filename)
+			(let ((pathname (->pathname filename)))
+			  (cons (if (and (not compiled?)
+					 (equal? "com"
+						 (pathname-type pathname)))
+				    (pathname-new-type pathname "bin")
+				    pathname)
+				(car files-list))))
+		      (cdr files-list)))
+	       files-lists))

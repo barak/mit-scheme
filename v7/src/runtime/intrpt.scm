@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.6 1991/02/15 18:05:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.7 1991/11/04 20:29:09 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -114,8 +114,8 @@ MIT in each case. |#
 	    condition
 	    (muffle-warning))
 	(lambda ()
-	  (if (not (disk-save (merge-pathnames (string->pathname "scheme_suspend")
-					       (home-directory-pathname))
+	  (if (not (disk-save (merge-pathnames "scheme_suspend"
+					       (user-homedir-pathname))
 			      true))
 	      (%exit)))))))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.6 1991/05/09 03:22:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.7 1991/11/04 20:30:27 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -32,19 +32,233 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Miscellaneous Pathnames -- Unix
-;;; package: ()
+;;;; Unix Pathnames
+;;; package: (runtime pathname unix)
 
 (declare (usual-integrations))
 
-(define (symbol->pathname symbol)
-  (string->pathname (string-downcase (symbol->string symbol))))
+(define (make-unix-host-type)
+  (make-host-type 'UNIX
+		  unix/parse-namestring
+		  unix/pathname->namestring
+		  unix/make-pathname
+		  unix/pathname-wild?
+		  unix/pathname-as-directory
+		  unix/directory-pathname-as-file
+		  unix/pathname->truename
+		  unix/user-homedir-pathname
+		  unix/init-file-pathname))
+
+;;;; Pathname Parser
 
-(define (home-directory-pathname)
-  (pathname-as-directory (string->pathname (unix/current-home-directory))))
+(define (unix/parse-namestring string host)
+  (let ((end (string-length string)))
+    (let ((components
+	   (let ((components (substring-components string 0 end #\/)))
+	     (append (expand-directory-prefixes (car components))
+		     (cdr components)))))
+      (parse-name (car (last-pair components))
+	(lambda (name type)
+	  (%make-pathname host
+			  'UNSPECIFIC
+			  (let ((components (except-last-pair components)))
+			    (and (not (null? components))
+				 (simplify-directory
+				  (if (string=? "" (car components))
+				      (cons 'ABSOLUTE
+					    (map parse-directory-component
+						 (cdr components)))
+				      (cons 'RELATIVE
+					    (map parse-directory-component
+						 components))))))
+			  name
+			  type
+			  'UNSPECIFIC))))))
 
-(define (init-file-pathname)
-  (string->pathname ".scheme.init"))
+(define (simplify-directory directory)
+  (if (and (eq? (car directory) 'RELATIVE) (null? (cdr directory)))
+      false
+      directory))
+
+(define (parse-directory-component component)
+  (if (string=? ".." component)
+      'UP
+      component))
 
-(define pathname-newest
-  false)
+(define (expand-directory-prefixes string)
+  (if (string-null? string)
+      (list string)
+      (case (string-ref string 0)
+	((#\$)
+	 (let ((name (string-tail string 1)))
+	   (let ((value (get-environment-variable name)))
+	     (if (not value)
+		 (error "Unbound environment variable:" name))
+	     (string-components value #\/))))
+	((#\~)
+	 (let ((user-name (substring string 1 (string-length string))))
+	   (string-components
+	    (if (string-null? user-name)
+		(unix/current-home-directory)
+		(unix/user-home-directory user-name))
+	    #\/)))
+	(else (list string)))))
+
+(define (string-components string delimiter)
+  (substring-components string 0 (string-length string) delimiter))
+
+(define (substring-components string start end delimiter)
+  (let loop ((start start))
+    (let ((index (substring-find-next-char string start end delimiter)))
+      (if index
+	  (cons (substring string start index) (loop (+ index 1)))
+	  (list (substring string start end))))))
+
+(define (parse-name string receiver)
+  (let ((end (string-length string)))
+    (let ((dot (substring-find-previous-char string 0 end #\.)))
+      (if (or (not dot)
+	      (= dot 0)
+	      (= dot (- end 1))
+	      (char=? #\. (string-ref string (- dot 1))))
+	  (receiver (cond ((= end 0) false)
+			  ((string=? "*" string) 'WILD)
+			  (else string))
+		    false)
+	  (receiver (extract string 0 dot)
+		    (extract string (+ dot 1) end))))))
+
+(define (extract string start end)
+  (if (substring=? string start end "*" 0 1)
+      'WILD
+      (substring string start end)))
+
+;;;; Pathname Unparser
+
+(define (unix/pathname->namestring pathname)
+  (string-append (unparse-directory (%pathname-directory pathname))
+		 (unparse-name (%pathname-name pathname)
+			       (%pathname-type pathname))))
+
+(define (unparse-directory directory)
+  (cond ((not directory)
+	 "")
+	((pair? directory)
+	 (string-append
+	  (if (eq? (car directory) 'ABSOLUTE) "/" "")
+	  (let loop ((directory (cdr directory)))
+	    (if (null? directory)
+		""
+		(string-append (unparse-directory-component (car directory))
+			       "/"
+			       (loop (cdr directory)))))))
+	(else
+	 (error "Illegal pathname directory:" directory))))
+
+(define (unparse-directory-component component)
+  (cond ((eq? component 'UP) "..")
+	((string? component) component)
+	(else (error "Illegal pathname directory component:" component))))
+
+(define (unparse-name name type)
+  (let ((name (or (unparse-component name) ""))
+	(type (unparse-component type)))
+    (if type
+	(string-append name "." type)
+	name)))
+
+(define (unparse-component component)
+  (cond ((or (not component) (string? component)) component)
+	((eq? component 'WILD) "*")
+	(else (error "Illegal pathname component:" component))))
+
+;;;; Pathname Constructors
+
+(define (unix/make-pathname host device directory name type version)
+  (%make-pathname
+   host
+   (if (memq device '(#F UNSPECIFIC))
+       'UNSPECIFIC
+       (error:wrong-type-argument device "pathname device" 'MAKE-PATHNAME))
+   (cond ((not directory)
+	  directory)
+	 ((and (list? directory)
+	       (not (null? directory))
+	       (memq (car directory) '(RELATIVE ABSOLUTE))
+	       (for-all? (cdr directory)
+		 (lambda (element)
+		   (if (string? element)
+		       (not (string-null? element))
+		       (eq? element 'UP)))))
+	  (simplify-directory directory))
+	 (else
+	  (error:wrong-type-argument directory "pathname directory"
+				     'MAKE-PATHNAME)))
+   (if (or (memq name '(#F WILD))
+	   (and (string? name) (not (string-null? name))))
+       name
+       (error:wrong-type-argument name "pathname name" 'MAKE-PATHNAME))
+   (if (or (memq type '(#F WILD))
+	   (and (string? type) (not (string-null? type))))
+       type
+       (error:wrong-type-argument type "pathname type" 'MAKE-PATHNAME))
+   (if (memq version '(#F UNSPECIFIC WILD NEWEST))
+       'UNSPECIFIC
+       (error:wrong-type-argument version "pathname version" 'MAKE-PATHNAME))))
+
+(define (unix/pathname-as-directory pathname)
+  (let ((name (%pathname-name pathname))
+	(type (%pathname-type pathname)))
+    (if (or name type)
+	(%make-pathname
+	 (%pathname-host pathname)
+	 'UNSPECIFIC
+	 (let ((directory (%pathname-directory pathname))
+	       (component
+		(parse-directory-component (unparse-name name type))))
+	   (cond ((not (pair? directory))
+		  (list 'RELATIVE component))
+		 ((equal? component ".")
+		  directory)
+		 (else
+		  (append directory (list component)))))
+	 false
+	 false
+	 'UNSPECIFIC)
+	pathname)))
+
+(define (unix/directory-pathname-as-file pathname)
+  (let ((directory (%pathname-directory pathname)))
+    (if (not (and (pair? directory) (pair? (cdr directory))))
+	(error:bad-range-argument pathname 'DIRECTORY-PATHNAME-AS-FILE))
+    (parse-name (unparse-directory-component (car (last-pair directory)))
+      (lambda (name type)
+	(%make-pathname (%pathname-host pathname)
+			'UNSPECIFIC
+			(simplify-directory (except-last-pair directory))
+			name
+			type
+			'UNSPECIFIC)))))
+
+;;;; Miscellaneous
+
+(define (unix/pathname-wild? pathname)
+  (or (eq? 'WILD (%pathname-name pathname))
+      (eq? 'WILD (%pathname-type pathname))))
+
+(define (unix/pathname->truename pathname)
+  (if (eq? true (file-exists? pathname))
+      pathname
+      (unix/pathname->truename
+       (error:file-operation pathname "find" "file" "file does not exist"
+			     unix/pathname->truename (list pathname)))))
+
+(define (unix/user-homedir-pathname host)
+  (and (eq? host local-host)
+       (pathname-as-directory (unix/current-home-directory))))
+
+(define (unix/init-file-pathname host)
+  (let ((pathname
+	 (merge-pathnames ".scheme.init" (unix/user-homedir-pathname host))))
+    (and (file-exists? pathname)
+	 pathname)))

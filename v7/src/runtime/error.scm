@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.27 1991/10/29 14:31:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.28 1991/11/04 20:28:45 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -882,10 +882,7 @@ MIT in each case. |#
 	      (write-string " " port)
 	      (write-string noun port)
 	      (write-string " " port)
-	      (write (let ((filename (access-condition condition 'FILENAME)))
-		       (if (pathname? filename)
-			   (pathname->string filename)
-			   filename))
+	      (write (->namestring (access-condition condition 'FILENAME))
 		     port)
 	      (write-string " because: " port)
 	      (let ((reason (access-condition condition 'REASON)))

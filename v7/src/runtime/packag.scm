@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/packag.scm,v 14.9 1989/08/11 02:59:22 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/packag.scm,v 14.10 1991/11/04 20:29:35 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -112,7 +112,7 @@ MIT in each case. |#
 
 (define (package/system-loader filename options load-interpreted?)
   (let ((pathname (->pathname filename)))
-    (with-working-directory-pathname (pathname-directory-path pathname)
+    (with-working-directory-pathname (directory-pathname pathname)
       (lambda ()
 	(fluid-let ((load/default-types
 		     (if (if (eq? load-interpreted? 'QUERY)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.8 1991/03/06 23:03:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.9 1991/11/04 20:28:37 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -199,7 +199,7 @@ MIT in each case. |#
        (eq? console-output-port (cmdl/output-port cmdl))))
 
 (define (emacs/set-working-directory-pathname! pathname)
-  (transmit-signal-with-argument #\w (pathname->string pathname)))
+  (transmit-signal-with-argument #\w (->namestring pathname)))
 
 (define (emacs/clean-input/flush-typeahead character)
   character

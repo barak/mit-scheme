@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/starbase.scm,v 1.4 1990/01/22 23:36:36 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/starbase.scm,v 1.5 1991/11/04 20:30:02 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -190,7 +190,7 @@ MIT in each case. |#
 
 (define (operation/write-image-file device filename invert?)
   (starbase-write-image-file (starbase-device/descriptor device)
-			     (canonicalize-output-filename filename)
+			     (->namestring (merge-pathnames filename))
 			     invert?))
 
 (define (operation/text-height device)

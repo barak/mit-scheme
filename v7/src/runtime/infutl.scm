@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.21 1991/04/15 20:47:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.22 1991/11/04 20:29:04 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -227,11 +227,10 @@ MIT in each case. |#
 
 (define (process-binf-filename binf-filename com-pathname)
   (and binf-filename
-       (pathname->string
+       (->namestring
 	(rewrite-directory
-	 (let ((binf-pathname
-		(pathname->absolute-pathname
-		 (->pathname binf-filename))))
+	 (let ((binf-pathname (merge-pathnames binf-filename))
+	       (com-pathname (merge-pathnames com-pathname)))
 	   (if (and (equal? (pathname-name binf-pathname)
 			    (pathname-name com-pathname))
 		    (not (equal? (pathname-type binf-pathname)
@@ -245,8 +244,8 @@ MIT in each case. |#
   '())
 
 (define (add-directory-rewriting-rule! match replace)
-  (let ((match (pathname->absolute-pathname (->pathname match)))
-	(replace (pathname->absolute-pathname (->pathname replace))))
+  (let ((match (merge-pathnames match))
+	(replace (merge-pathnames replace)))
     (let ((rule
 	   (list-search-positive directory-rewriting-rules
 	     (lambda (rule)
@@ -274,10 +273,14 @@ MIT in each case. |#
 	pathname)))
 
 (define (directory-prefix? x y)
-  (or (null? y)
-      (and (not (null? x))
-	   (equal? (car x) (car y))
-	   (directory-prefix? (cdr x) (cdr y)))))
+  (and (pair? x)
+       (pair? y)
+       (eq? (car x) (car y))
+       (let loop ((x (cdr x)) (y (cdr y)))
+	 (or (null? y)
+	     (and (not (null? x))
+		  (equal? (car x) (car y))
+		  (loop (cdr x) (cdr y)))))))
 
 (define-integrable (dbg-block/layout-first-offset block)
   (let ((layout (dbg-block/layout block)))

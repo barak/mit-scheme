@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.29 1991/05/06 03:19:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.30 1991/11/04 20:29:26 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -332,7 +332,6 @@ MIT in each case. |#
    (RUNTIME OUTPUT-PORT)
    (RUNTIME PATHNAME)
    (RUNTIME WORKING-DIRECTORY)
-   (RUNTIME DIRECTORY)
    (RUNTIME LOAD)
    ;; Syntax
    (RUNTIME PARSER)
@@ -380,9 +379,7 @@ MIT in each case. |#
 		       (->environment '(RUNTIME LOAD)))))
 	  (map (lambda (entry)
 		 (let ((object (cdr entry)))
-		   (fasload/update-debugging-info!
-		    object
-		    (pathname->absolute-pathname (->pathname (car entry))))
+		   (fasload/update-debugging-info! object (car entry))
 		   (load/purification-root object)))
 	       fasload-purification-queue)))))
   (set! fasload-purification-queue)

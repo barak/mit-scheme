@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.27 1991/10/26 16:20:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.28 1991/11/04 20:29:14 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -432,54 +432,6 @@ MIT in each case. |#
 
 (define (pty-master-hangup channel)
   ((ucode-primitive pty-master-hangup 1) (channel-descriptor channel)))
-
-;;;; File Copying
-
-(define (copy-file from to)
-  (file-copy (canonicalize-input-filename from)
-	     (canonicalize-output-filename to)))
-
-(define (file-copy input-filename output-filename)
-  (let ((input-channel false)
-	(output-channel false))
-    (dynamic-wind
-     (lambda ()
-       (set! input-channel (file-open-input-channel input-filename))
-       (set! output-channel
-	     (begin
-	       ((ucode-primitive file-remove-link 1) output-filename)
-	       (file-open-output-channel output-filename)))
-       unspecific)
-     (lambda ()
-       (let ((source-length (file-length input-channel))
-	     (buffer-length 8192))
-	 (if (zero? source-length)
-	     0
-	     (let* ((buffer (make-string buffer-length))
-		    (transfer
-		     (lambda (length)
-		       (let ((n-read
-			      (channel-read-block input-channel
-						  buffer
-						  0
-						  length)))
-			 (if (positive? n-read)
-			     (channel-write-block output-channel
-						  buffer
-						  0
-						  n-read))
-			 n-read))))
-	       (let loop ((source-length source-length))
-		 (if (< source-length buffer-length)
-		     (transfer source-length)
-		     (let ((n-read (transfer buffer-length)))
-		       (if (= n-read buffer-length)
-			   (+ (loop (- source-length buffer-length))
-			      buffer-length)
-			   n-read))))))))
-     (lambda ()
-       (if output-channel (channel-close output-channel))
-       (if input-channel (channel-close input-channel))))))
 
 ;;;; Buffered Output
 

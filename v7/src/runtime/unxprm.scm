@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.15 1991/10/29 14:32:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.16 1991/11/04 20:30:21 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -39,41 +39,46 @@ MIT in each case. |#
 
 (define (file-directory? filename)
   ((ucode-primitive file-directory?)
-   (pathname->string (pathname->absolute-pathname (->pathname filename)))))
+   (->namestring (merge-pathnames filename))))
 
 (define (file-symbolic-link? filename)
-  ((ucode-primitive file-symlink?)
-   (pathname->string (pathname->absolute-pathname (->pathname filename)))))
+  ((ucode-primitive file-symlink?) (->namestring (merge-pathnames filename))))
 
 (define (file-modes filename)
-  ((ucode-primitive file-modes)
-   (pathname->string (pathname->absolute-pathname (->pathname filename)))))
+  ((ucode-primitive file-modes) (->namestring (merge-pathnames filename))))
 
 (define-integrable (set-file-modes! filename modes)
-  ((ucode-primitive set-file-modes!) (canonicalize-input-filename filename)
+  ((ucode-primitive set-file-modes!) (->namestring (merge-pathnames filename))
 				     modes))
 
-(define (unix/file-access filename amode)
-  ((ucode-primitive file-access)
-   (pathname->string (pathname->absolute-pathname (->pathname filename)))
-   amode))
+(define (file-access filename amode)
+  ((ucode-primitive file-access) (->namestring (merge-pathnames filename))
+				 amode))
+
+;; upwards compatability
+(define unix/file-access file-access)
+
+(define (file-readable? filename)
+  (file-access filename 4))
 
 (define (file-writable? filename)
-  (let ((pathname (pathname->absolute-pathname (->pathname filename))))
-    (let ((filename (pathname->string pathname)))
+  (let ((pathname (merge-pathnames filename)))
+    (let ((filename (->namestring pathname)))
       (or ((ucode-primitive file-access) filename 2)
 	  (and (not ((ucode-primitive file-exists?) filename))
-	       ((ucode-primitive file-access)
-		(pathname-directory-string pathname)
-		2))))))
+	       ((ucode-primitive file-access) (directory-namestring pathname)
+					      2))))))
 
-(define (file-attributes filename)
+(define (file-attributes-direct filename)
   ((ucode-primitive file-attributes)
-   (pathname->string (pathname->absolute-pathname (->pathname filename)))))
+   (->namestring (merge-pathnames filename))))
 
 (define (file-attributes-indirect filename)
   ((ucode-primitive file-attributes-indirect)
-   (pathname->string (pathname->absolute-pathname (->pathname filename)))))
+   (->namestring (merge-pathnames filename))))
+
+(define file-attributes
+  file-attributes-direct)
 
 (define-structure (file-attributes
 		   (type vector)
@@ -90,9 +95,16 @@ MIT in each case. |#
   (mode-string false read-only true)
   (inode-number false read-only true))
 
-(define (file-modification-time filename)
+(define (file-modification-time-direct filename)
+  ((ucode-primitive file-mod-time 1)
+   (->namestring (merge-pathnames filename))))
+
+(define (file-modification-time-indirect filename)
   ((ucode-primitive file-mod-time-indirect 1)
-   (pathname->string (pathname->absolute-pathname (->pathname filename)))))
+   (->namestring (merge-pathnames filename))))
+
+(define file-modification-time
+  file-modification-time-indirect)
 
 (define-integrable get-environment-variable
   (ucode-primitive get-environment-variable))
@@ -134,27 +146,8 @@ MIT in each case. |#
   (ucode-primitive system))
 
 (define (file-touch filename)
-  (let ((filename
-	 (pathname->string
-	  (let ((pathname (pathname->absolute-pathname (->pathname filename))))
-	    (if (let ((version (pathname-version pathname)))
-		  (or (not version)
-		      (exact-integer? version)))
-		pathname
-		(or (pathname->input-truename pathname)
-		    (pathname-new-version pathname false)))))))
-    (let ((result ((ucode-primitive file-touch) filename)))
-      (if (string? result)
-	  (error:file-operation filename
-				"touch"
-				"file"
-				result
-				(ucode-primitive file-touch)
-				(list filename)))
-      result)))
+  ((ucode-primitive file-touch) (->namestring (merge-pathnames filename))))
 
 (define (make-directory name)
   ((ucode-primitive directory-make)
-   (pathname->string
-    (pathname-as-directory
-     (pathname->absolute-pathname (->pathname name))))))
+   (->namestring (pathname-as-directory (merge-pathnames name)))))

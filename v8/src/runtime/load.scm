@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.29 1991/10/29 14:31:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.30 1991/11/04 20:29:20 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -38,16 +38,14 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! hook/process-command-line default/process-command-line)
   (set! load-noisily? false)
   (set! load/loading? false)
   (set! load/suppress-loading-message? false)
   (set! load/default-types '("com" "bin" "scm"))
   (set! load/default-find-pathname-with-type search-types-in-order)
   (set! fasload/default-types '("com" "bin"))
-  (add-event-receiver! event:after-restart
-		       (lambda ()
-			 (process-command-line))))
+  (set! hook/process-command-line default/process-command-line)
+  (add-event-receiver! event:after-restart process-command-line))
 
 (define load-noisily?)
 (define load/loading?)
@@ -58,25 +56,22 @@ MIT in each case. |#
 (define fasload/default-types)
 
 (define (read-file filename)
-  (call-with-input-file
-      (pathname-default-version (->pathname filename) 'NEWEST)
+  (call-with-input-file (pathname-default-version filename 'NEWEST)
     (lambda (port)
       (stream->list (read-stream port)))))
 
 (define (fasload filename #!optional suppress-loading-message?)
-  (fasload/internal
-   (find-true-pathname (->pathname filename) fasload/default-types)
-   (if (default-object? suppress-loading-message?)
-       load/suppress-loading-message?
-       suppress-loading-message?)))
+  (fasload/internal (find-pathname filename fasload/default-types)
+		    (if (default-object? suppress-loading-message?)
+			load/suppress-loading-message?
+			suppress-loading-message?)))
 
-(define (fasload/internal true-pathname suppress-loading-message?)
+(define (fasload/internal pathname suppress-loading-message?)
   (let ((value
-	 (let ((true-filename (pathname->string true-pathname)))
-	   (loading-message suppress-loading-message? true-filename
-	     (lambda ()
-	       ((ucode-primitive binary-fasload) true-filename))))))
-    (fasload/update-debugging-info! value true-pathname)
+	 (loading-message suppress-loading-message? pathname
+	   (lambda ()
+	     ((ucode-primitive binary-fasload) (->namestring pathname))))))
+    (fasload/update-debugging-info! value pathname)
     value))
 
 (define (load-noisily filename #!optional environment syntax-table purify?)
@@ -90,18 +85,18 @@ MIT in each case. |#
 	  (if (default-object? purify?) default-object purify?))))
 
 (define (load-init-file)
-  (let ((truename (init-file-truename)))
-    (if truename
-	(load truename user-initial-environment)))
+  (let ((pathname (init-file-pathname)))
+    (if pathname
+	(load pathname user-initial-environment)))
   unspecific)
 
-(define (loading-message suppress-loading-message? true-filename do-it)
+(define (loading-message suppress-loading-message? pathname do-it)
   (if suppress-loading-message?
       (do-it)
       (let ((port (cmdl/output-port (nearest-cmdl))))
 	(newline port)
 	(write-string "Loading " port)
-	(write true-filename port)
+	(write (enough-namestring pathname) port)
 	(let ((value (do-it)))
 	  (write-string " -- done" port)
 	  value))))
@@ -134,15 +129,12 @@ MIT in each case. |#
 	    (let ((kernel
 		   (lambda (filename last-file?)
 		     (let ((value
-			    (let ((pathname (->pathname filename)))
-			      (load/internal
-			       pathname
-			       (find-true-pathname pathname
-						   load/default-types)
-			       environment
-			       syntax-table
-			       purify?
-			       load-noisily?))))
+			    (load/internal
+			     (find-pathname filename load/default-types)
+			     environment
+			     syntax-table
+			     purify?
+			     load-noisily?)))
 		       (cond (last-file? value)
 			     (load-noisily? (write-line value)))))))
 	      (let ((value
@@ -168,7 +160,7 @@ MIT in each case. |#
 
 (define default-object
   "default-object")
-
+
 (define (load-latest . args)
   (fluid-let ((load/default-find-pathname-with-type find-latest-file))
     (apply load args)))
@@ -176,53 +168,48 @@ MIT in each case. |#
 (define (fasload-latest . args)
   (fluid-let ((load/default-find-pathname-with-type find-latest-file))
     (apply fasload args)))
-
-(define (find-true-pathname pathname default-types)
-  (or (pathname->input-truename pathname)
-      (let ((pathname (pathname-default-version pathname 'NEWEST)))
-	(if (pathname-type pathname)
-	    (pathname->input-truename pathname)
-	    (load/default-find-pathname-with-type pathname default-types)))
-      (find-true-pathname
-       (->pathname
-	(error:file-operation pathname
-			      "find"
-			      "file"
-			      "file does not exist"
-			      find-true-pathname
-			      (list pathname default-types)))
-       default-types)))
+
+(define (find-pathname filename default-types)
+  (let ((pathname (merge-pathnames filename)))
+    (if (file-exists? pathname)
+	pathname
+	(or (and (not (pathname-type pathname))
+		 (load/default-find-pathname-with-type pathname default-types))
+	    (find-pathname
+	     (error:file-operation filename
+				   "find"
+				   "file"
+				   "file does not exist"
+				   find-pathname
+				   (list filename default-types))
+	     default-types)))))
 
 (define (search-types-in-order pathname default-types)
   (let loop ((types default-types))
     (and (not (null? types))
-	 (or (pathname->input-truename
-	      (pathname-new-type pathname (car types)))
-	     (loop (cdr types))))))
+	 (let ((pathname (pathname-new-type pathname (car types))))
+	   (if (file-exists? pathname)
+	       pathname
+	       (loop (cdr types)))))))
 
 (define (find-latest-file pathname default-types)
   (let loop
       ((types default-types)
        (latest-pathname false)
-       (latest-modification-time 0))
+       (latest-time 0))
     (if (not (pair? types))
 	latest-pathname
-	(let ((truename
-	       (pathname->input-truename
-		(pathname-new-type pathname (car types))))
+	(let ((pathname (pathname-new-type pathname (car types)))
 	      (skip
 	       (lambda ()
-		 (loop (cdr types) latest-pathname latest-modification-time))))
-	  (if (not truename)
-	      (skip)
-	      (let ((modification-time (file-modification-time truename)))
-		(if (> modification-time latest-modification-time)
-		    (loop (cdr types) truename modification-time)
-		    (skip))))))))
+		 (loop (cdr types) latest-pathname latest-time))))
+	  (let ((time (file-modification-time-indirect pathname)))
+	    (if (and time (> time latest-time))
+		(loop (cdr types) pathname time)
+		(skip)))))))
 
-(define (load/internal pathname true-pathname environment syntax-table
-		       purify? load-noisily?)
-  (let* ((port (open-input-file/internal pathname true-pathname))
+(define (load/internal pathname environment syntax-table purify? load-noisily?)
+  (let* ((port (open-input-file pathname))
 	 (fasl-marker (peek-char port)))
     (if (and (not (eof-object? fasl-marker))
 	     (= 250 (char->ascii fasl-marker)))
@@ -230,8 +217,7 @@ MIT in each case. |#
 	  (close-input-port port)
 	  (extended-scode-eval
 	   (let ((scode
-		  (fasload/internal true-pathname
-				    load/suppress-loading-message?)))
+		  (fasload/internal pathname load/suppress-loading-message?)))
 	     (if purify? (purify (load/purification-root scode)))
 	     scode)
 	   (if (eq? environment default-object)
@@ -244,13 +230,10 @@ MIT in each case. |#
 	      (write-stream (value-stream)
 			    (lambda (value)
 			      (hook/repl-write (nearest-repl) value)))
-	      (loading-message load/suppress-loading-message?
-			       (pathname->string true-pathname)
-			       (lambda ()
-				 (write-stream (value-stream)
-					       (lambda (value)
-						 value
-						 false)))))))))
+	      (loading-message load/suppress-loading-message? pathname
+		(lambda ()
+		  (write-stream (value-stream)
+				(lambda (value) value false)))))))))
 
 (define (load/purification-root scode)
   (or (and (comment? scode)
@@ -296,16 +279,10 @@ MIT in each case. |#
 	    value))
       unspecific))
 
-(define-primitives
-  (get-unused-command-line 0))
-
 (define (process-command-line)
-  (hook/process-command-line
-   (and (implemented-primitive-procedure? get-unused-command-line)
-	(get-unused-command-line))))
+  (hook/process-command-line ((ucode-primitive get-unused-command-line 0))))
 
 (define hook/process-command-line)
-
 (define (default/process-command-line unused-command-line)
   (if unused-command-line
       (letrec ((unused-command-line-length (vector-length unused-command-line))

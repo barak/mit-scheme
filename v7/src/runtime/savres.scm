@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.21 1991/07/12 18:00:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.22 1991/11/04 20:29:54 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -66,9 +66,7 @@ MIT in each case. |#
        filename
        (lambda ()
 	 (set! time-world-saved time)
-	 (if (string? identify)
-	     unspecific
-	     false))
+	 (if (string? identify) unspecific false))
        (lambda ()
 	 (set! time-world-saved time)
 	 (reset-gc-after-restore!)
@@ -85,7 +83,7 @@ MIT in each case. |#
 	       (else
 		(event-distributor/invoke! event:after-restart)
 		true)))))))
-
+
 (define (disk-save/kernel filename after-suspend after-restore)
   ((without-interrupts
     (lambda ()
@@ -93,21 +91,18 @@ MIT in each case. |#
        (lambda (continuation)
 	 (let ((fixed-objects (get-fixed-objects-vector))
 	       (dynamic-state (current-dynamic-state))
-	       (filename (canonicalize-output-filename filename)))
+	       (filename (->namestring (merge-pathnames filename))))
 	   (fluid-let ()
 	     ((ucode-primitive call-with-current-continuation)
 	      (lambda (restart)
 		(gc-flip)
-		(do ()
-		    (((ucode-primitive dump-band) restart filename))
+		(do () (((ucode-primitive dump-band) restart filename))
 		  (with-simple-restart 'RETRY "Try again."
 		    (lambda ()
 		      (error "Disk save failed:" filename))))
 		(continuation after-suspend)))
 	     ((ucode-primitive set-fixed-objects-vector!) fixed-objects)
 	     (set-current-dynamic-state! dynamic-state)
-	     ;; This instruction is a noop, so I flushed it -- cph.
-	     ;; (enable-interrupts! interrupt-mask/none)
 	     (read-microcode-tables!)
 	     after-restore))))))))
 
@@ -117,24 +112,29 @@ MIT in each case. |#
       (if ((ucode-primitive dump-world 1) filename)
 	  after-restore
 	  after-suspend)))))
-
+
 (define (disk-restore #!optional filename)
   ;; Force order of events -- no need to run event:before-exit if
   ;; there's an error here.
   (let ((filename
-	 (pathname->string
+	 (->namestring
 	  (if (default-object? filename)
-	      (canonicalize-input-pathname
+	      (merge-pathnames
 	       (let ((filename ((ucode-primitive reload-band-name))))
 		 (if (not filename)
 		     (error "no default band name available"))
 		 filename))
-	      (let ((pathname (->pathname filename)))
-		(or (pathname->input-truename pathname)
+	      (let ((pathname (->pathname filename))
+		    (try
+		     (lambda (pathname)
+		       (let ((pathname (merge-pathnames pathname)))
+			 (and (file-exists? pathname)
+			      pathname)))))
+		(or (try pathname)
 		    (if (pathname-type pathname)
 			(system-library-pathname pathname)
 			(let ((pathname (pathname-new-type pathname "com")))
-			  (or (pathname->input-truename pathname)
+			  (or (try pathname)
 			      (system-library-pathname pathname))))))))))
     (event-distributor/invoke! event:before-exit)
     ((ucode-primitive load-band) filename)))
