@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: wabbit.c,v 1.1 1994/02/15 04:37:44 gjr Exp $
+$Id: wabbit.c,v 1.2 1994/02/15 07:39:35 gjr Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -46,7 +46,7 @@ MIT in each case. */
 extern SCHEME_OBJECT Weak_Chain;
 
 extern SCHEME_OBJECT *
-  EXFUN (wabbit_hunt_gcloop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
+  EXFUN (wabbit_hunting_gcloop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
 
 extern void
   EXFUN (wabbit_season, (SCHEME_OBJECT));
@@ -60,13 +60,16 @@ extern void
 /* Wabbit hunting code */
 /* Be wary, wary, quiet... */
 
+#define TC_HEADLESS_REFERENCE		TC_NULL
+#define TC_REFERENCE_TO_STACK		TC_STACK_ENVIRONMENT
+#define TC_REFERENCE_TO_CONSTANT_SPACE	TC_CHARACTER
+
 Boolean
   wabbit_holes_discarded_p,
   wabbit_holes_overwritten_p,
   wabbit_all_dead_p;  
 
 SCHEME_OBJECT
-  hare_marker,
   * wabbit_holes,
   * wabbit_holes_hi,
   * wabbit_lo_address,
@@ -75,6 +78,8 @@ SCHEME_OBJECT
   * wabbit_buffer_lo,
   * wabbit_buffer_ptr,
   * wabbit_buffer_hi,
+  * old_wabbit_buffer,
+  * old_wabbit_buffer_end,
   * hares_lo,
   * hares_hi;
 
@@ -82,7 +87,7 @@ SCHEME_OBJECT
 #define ELMER_HUNG_FACTOR	20	/* 1 / (Sales tax in MA in 1994) */
 #define RAJIV_SURATI_FACTOR     -20     /* -1 * ELMER_HUNG_FACTOR */
 
-void EXFUN (kill_da_wabbit, (SCHEME_OBJECT *, SCHEME_OBJECT *));
+void EXFUN (kill_da_wabbit, (SCHEME_OBJECT *, SCHEME_OBJECT));
 Boolean EXFUN (discard_wabbit_holes_p, (SCHEME_OBJECT *, SCHEME_OBJECT *));
 
 /* We need not check wabbit_lo_address by construction:
@@ -91,10 +96,14 @@ Boolean EXFUN (discard_wabbit_holes_p, (SCHEME_OBJECT *, SCHEME_OBJECT *));
    the wabbit of Seville, a.k.a. the wabbit vector.
  */
 
-#define WABBIT_P(addr) (((addr) < wabbit_hi_address)			\
-			&& ((addr) != wabbit_of_Seville))
+#define WABBIT_P(addr)							\
+  (((addr) < wabbit_hi_address)						\
+   && ((addr) != wabbit_of_Seville))
 
-#define HARE_P(addr) ((* addr) == hare_marker)
+#define HARE_P(addr)							\
+  (((OBJECT_TYPE (* addr)) == TC_BROKEN_HEART)				\
+   && ((OBJECT_ADDRESS (* addr)) >= old_wabbit_buffer)			\
+   && ((OBJECT_ADDRESS (* addr)) < old_wabbit_buffer_end))
 
 #define RECORD_WABBIT_HOLE(tag, address) do				\
 {									\
@@ -103,10 +112,10 @@ Boolean EXFUN (discard_wabbit_holes_p, (SCHEME_OBJECT *, SCHEME_OBJECT *));
     *--wabbit_holes = (MAKE_POINTER_OBJECT (tag, address));		\
 } while (0)
 
-#define KILL_DA_WABBIT(where, last_block) do				\
+#define KILL_DA_WABBIT(where, last_object) do				\
 {									\
   if ((wabbit_buffer_ptr + 2) <= wabbit_buffer_hi)			\
-    kill_da_wabbit (where, last_block);					\
+    kill_da_wabbit (where, last_object);					\
   else									\
     wabbit_all_dead_p = false;						\
 } while (0)
@@ -166,14 +175,14 @@ Boolean EXFUN (discard_wabbit_holes_p, (SCHEME_OBJECT *, SCHEME_OBJECT *));
   if (old_space_addr < low_heap)					\
   {									\
     if (HARE_P (old_space_addr))					\
-      KILL_DA_WABBIT (scan, ((SCHEME_OBJECT *) NULL));			\
+      KILL_DA_WABBIT (scan, SHARP_F);					\
     continue;								\
   }									\
   if ((OBJECT_TYPE (* old_space_addr)) == TC_BROKEN_HEART)		\
   {									\
     new_space_addr = (OBJECT_ADDRESS (* old_space_addr));		\
     if (WABBIT_P (new_space_addr))					\
-      KILL_DA_WABBIT (scan, ((SCHEME_OBJECT *) NULL));			\
+      KILL_DA_WABBIT (scan, SHARP_F);					\
     * scan = (MAKE_OBJECT_FROM_OBJECTS (this_object,			\
 					(* old_space_addr)));		\
     continue;								\
@@ -208,20 +217,20 @@ Boolean EXFUN (discard_wabbit_holes_p, (SCHEME_OBJECT *, SCHEME_OBJECT *));
   RELOCATE_NORMAL_END ();						\
 }
 
-#define RELOCATE_RAW_POINTER(tag, copy_code, last_block)		\
+#define RELOCATE_RAW_POINTER(tag, copy_code, last_object)		\
 {									\
   old_space_addr = ((SCHEME_OBJECT *) this_object);			\
   if (old_space_addr < low_heap)					\
   {									\
     if (HARE_P (old_space_addr))					\
-      KILL_DA_WABBIT (scan, last_block);				\
+      KILL_DA_WABBIT (scan, last_object);				\
     continue;								\
   }									\
   if ((OBJECT_TYPE (* old_space_addr)) == TC_BROKEN_HEART)		\
   {									\
     new_space_addr = (OBJECT_ADDRESS (* old_space_addr));		\
     if (WABBIT_P (new_space_addr))					\
-      KILL_DA_WABBIT (scan, last_block);				\
+      KILL_DA_WABBIT (scan, last_object);				\
     * scan = ((SCHEME_OBJECT) new_space_addr);				\
     continue;								\
   }									\
@@ -237,21 +246,21 @@ Boolean EXFUN (discard_wabbit_holes_p, (SCHEME_OBJECT *, SCHEME_OBJECT *));
   }									\
 }
 
-#define RELOCATE_COMPILED_ENTRY(last_block)				\
+#define RELOCATE_COMPILED_ENTRY(last_object)				\
 {									\
   Get_Compiled_Block (old_space_addr,					\
 		      ((SCHEME_OBJECT *) this_entry));			\
   if (old_space_addr < low_heap)					\
   {									\
     if (HARE_P (old_space_addr))					\
-      KILL_DA_WABBIT (scan, last_block);				\
+      KILL_DA_WABBIT (scan, last_object);				\
     new_entry = this_entry;						\
   }									\
   else if ((OBJECT_TYPE (* old_space_addr)) == TC_BROKEN_HEART)		\
   {									\
     new_space_addr = (OBJECT_ADDRESS (* old_space_addr));		\
     if (WABBIT_P (new_space_addr))					\
-      KILL_DA_WABBIT (scan, last_block);				\
+      KILL_DA_WABBIT (scan, last_object);				\
     new_entry =								\
       ((SCHEME_OBJECT)							\
        (RELOCATE_COMPILED_INTERNAL (this_entry,				\
@@ -276,65 +285,148 @@ Boolean EXFUN (discard_wabbit_holes_p, (SCHEME_OBJECT *, SCHEME_OBJECT *));
 }
 
 SCHEME_OBJECT *
-DEFUN (wabbit_hunt_gcloop, (scan, new_space_free_loc),
+DEFUN (wabbit_hunting_gcloop, (scan, new_space_free_loc),
        fast SCHEME_OBJECT * scan
        AND SCHEME_OBJECT ** new_space_free_loc)
 {
+  long last_nmv_length;
   fast SCHEME_OBJECT
     * new_space_free, * old_space_addr, this_object,
-    * low_heap, * new_space_addr, this_entry, new_entry,
-    * last_cc_block_start, * last_nmv;
+    * low_heap, * new_space_addr, this_entry, new_entry;
+  SCHEME_OBJECT
+    last_object, * last_object_end, * last_nmv, * last_hare, last_hare_head,
+    magic_cookie, saved_cookie, * saved_addr;
 
-  last_cc_block_start = ((SCHEME_OBJECT *) NULL);
-  last_nmv = ((SCHEME_OBJECT *) NULL);
+  magic_cookie = SHARP_F;
+  last_object = SHARP_F;
+  last_nmv = (scan - 2);	/* Make comparison fail until */
+  last_nmv_length = 0;		/* an NMV is found. */
+  last_hare = (scan - 2);	/* Same here */
+  last_hare_head = SHARP_F;
   new_space_free = * new_space_free_loc;
   low_heap = Constant_Top;
   for ( ; scan != new_space_free; scan++)
   {
     this_object = * scan;
 
+repeat_dispatch:
     Switch_by_GC_Type (this_object)
     {
       case TC_BROKEN_HEART:
-        if (scan == (OBJECT_ADDRESS (this_object)))
+        old_space_addr = (OBJECT_ADDRESS (this_object));
+        if (scan == old_space_addr)
 	{
-	  * new_space_free_loc = new_space_free;
-	  return (scan);
+	  if (this_object == magic_cookie)
+	  {
+	    magic_cookie = SHARP_F;
+	    last_hare = (scan - 1);
+	    last_hare_head = scan[-1];
+	    saved_addr[0] = scan[-1];
+	    scan[-1] = (MAKE_BROKEN_HEART (saved_addr));
+	    *scan = saved_cookie;
+	    this_object = saved_cookie;
+	    goto repeat_dispatch;
+	  }
+	  else
+	  {
+	    * new_space_free_loc = new_space_free;
+	    return (scan);
+	  }
 	}
-	else if (this_object != hare_marker)
+	else if ((old_space_addr < old_wabbit_buffer)
+		 || (old_space_addr >= old_wabbit_buffer_end))
 	{
 	  sprintf (gc_death_message_buffer,
-		   "wabbit_hunt_gcloop: broken heart (0x%lx) in scan",
+		   "wabbit_hunting_gcloop: broken heart (0x%lx) in scan",
 		   this_object);
 	  gc_death (TERM_BROKEN_HEART, gc_death_message_buffer,
 		    scan, new_space_free);
 	  /*NOTREACHED*/
 	}
+	else
+        {
+	  SCHEME_OBJECT old_head = old_space_addr[0];
+
+	  switch (GC_Type_Map [(OBJECT_TYPE (old_head))])
+	  {
+	    default:
+	    case GC_Non_Pointer:
+	      last_hare = scan;
+	      last_hare_head = old_head;
+	      break;
+
+	    case GC_Special:
+	      if (((OBJECT_TYPE (old_head)) != TC_REFERENCE_TRAP)
+		  || ((OBJECT_DATUM (old_head)) <= TRAP_MAX_IMMEDIATE))
+	      {
+		this_object = old_head;
+		last_hare = scan;
+		last_hare_head = old_head;
+		goto repeat_dispatch;
+	      }
+	      /* fall through */
+
+	    case GC_Cell:
+	    case GC_Pair:
+	    case GC_Triple:
+	    case GC_Quadruple:
+	    case GC_Vector:
+	      if ((OBJECT_ADDRESS (old_head)) == scan)
+	      {
+		last_hare = scan;
+		last_hare_head = old_head;
+		KILL_DA_WABBIT (scan, old_head);
+		break;
+	      }
+	      /* fall through */
+
+	    case GC_Compiled:
+	      saved_addr = old_space_addr;
+	      saved_cookie = scan[1];
+	      magic_cookie = (MAKE_BROKEN_HEART (scan + 1));
+	      scan[1] = magic_cookie;
+	      this_object = old_head;
+	      *scan = old_head;
+	      goto repeat_dispatch;
+	  }
+	}
 	break;
 
       case TC_MANIFEST_NM_VECTOR:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
-	if (((OBJECT_TYPE (scan[-1])) != TC_MANIFEST_VECTOR)
-	    || ((last_nmv != ((SCHEME_OBJECT *) NULL))
-		&& ((last_nmv + (1 + (OBJECT_DATUM (* last_nmv))))
-		    == scan)))
-	  last_cc_block_start = ((SCHEME_OBJECT *) NULL);
+	if ((last_nmv + (1 + last_nmv_length)) == scan)
+	  last_object = SHARP_F;
+	else if ((OBJECT_TYPE (scan[-1])) == TC_MANIFEST_VECTOR)
+	{
+	  last_object
+	    = (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, (scan - 1)));
+	  last_object_end = (scan + (OBJECT_DATUM (scan [-1])));
+	}
+	else if (((scan - 1) == last_hare)
+		 && ((OBJECT_TYPE (last_hare_head)) == TC_MANIFEST_VECTOR))
+	{
+	  last_object
+	    = (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, (scan - 1)));
+	  last_object_end = (scan + (OBJECT_DATUM (last_hare_head)));
+	}
 	else
-	  last_cc_block_start = (scan - 1);
+	  last_object = SHARP_F;
 
 	last_nmv = scan;
-	scan += (OBJECT_DATUM (this_object));
+	last_nmv_length = (OBJECT_DATUM (this_object));
+	scan += last_nmv_length;
 	break;
 
       /* Compiled code relocation. */
 
       case TC_LINKAGE_SECTION:
       {
-	if ((last_cc_block_start == ((SCHEME_OBJECT *) NULL))
-	    || ((last_cc_block_start
-		 + (1 + (OBJECT_DATUM (* last_cc_block_start))))
-		< scan))
-	  last_cc_block_start = scan;
+	if ((last_object == SHARP_F) || (last_object_end < scan))
+	{
+	  last_object = (MAKE_POINTER_OBJECT (TC_HEADLESS_REFERENCE, scan));
+	  last_object_end
+	    = (scan + (1 + (READ_CACHE_LINKAGE_COUNT (this_object))));
+	}
 	  
 	switch (READ_LINKAGE_KIND (this_object))
 	{
@@ -353,7 +445,7 @@ DEFUN (wabbit_hunt_gcloop, (scan, new_space_free_loc),
 		 scan += 1)
 	    {
 	      this_object = (* scan);
-	      RELOCATE_RAW_POINTER (TC_QUAD, COPY_QUADRUPLE (), last_cc_block);
+	      RELOCATE_RAW_POINTER (TC_QUAD, COPY_QUADRUPLE (), last_object);
 	    }
 	    scan -= 1;
 	    break;
@@ -376,7 +468,7 @@ DEFUN (wabbit_hunt_gcloop, (scan, new_space_free_loc),
 	      scan = ((SCHEME_OBJECT *) word_ptr);
 	      word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
 	      EXTRACT_OPERATOR_LINKAGE_ADDRESS (this_entry, scan);
-	      RELOCATE_COMPILED_ENTRY (last_cc_block);
+	      RELOCATE_COMPILED_ENTRY (last_object);
 	      STORE_OPERATOR_LINKAGE_ADDRESS (new_entry, scan);
 	    }
 	    scan = end_scan;
@@ -405,7 +497,8 @@ DEFUN (wabbit_hunt_gcloop, (scan, new_space_free_loc),
 	fast char * word_ptr;
 	SCHEME_OBJECT * area_end;
 
-	last_cc_block_start = scan;
+	last_object = (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, scan));
+	last_object_end = (scan + (1 + (OBJECT_DATUM (this_object))));
 	START_CLOSURE_RELOCATION (scan);
 	scan += 1;
 	count = (MANIFEST_CLOSURE_COUNT (scan));
@@ -417,19 +510,20 @@ DEFUN (wabbit_hunt_gcloop, (scan, new_space_free_loc),
 	  scan = ((SCHEME_OBJECT *) (word_ptr));
 	  word_ptr = (NEXT_MANIFEST_CLOSURE_ENTRY (word_ptr));
 	  EXTRACT_CLOSURE_ENTRY_ADDRESS (this_entry, scan);
-	  RELOCATE_COMPILED_ENTRY (last_cc_block);
+	  RELOCATE_COMPILED_ENTRY (last_object);
 	  STORE_CLOSURE_ENTRY_ADDRESS (new_entry, scan);
 	}
 
 	scan = area_end;
 	END_CLOSURE_RELOCATION (scan);
+	last_object = SHARP_F;
 	break;
       }
 
       case_compiled_entry_point:
       {
 	this_entry = ((SCHEME_OBJECT) (OBJECT_ADDRESS (this_object)));
-	RELOCATE_COMPILED_ENTRY ((SCHEME_OBJECT *) NULL);
+	RELOCATE_COMPILED_ENTRY (SHARP_F);
 	(* scan) = (MAKE_POINTER_OBJECT ((OBJECT_TYPE (this_object)),
 					 ((SCHEME_OBJECT *) new_entry)));
 	continue;
@@ -483,7 +577,7 @@ DEFUN (wabbit_hunt_gcloop, (scan, new_space_free_loc),
 
       default:
 	sprintf (gc_death_message_buffer,
-		 "wabbit_hunt_gcloop: bad type code (0x%02x)",
+		 "wabbit_hunting_gcloop: bad type code (0x%02x)",
 		 (OBJECT_TYPE (this_object)));
 	gc_death (TERM_INVALID_TYPE_CODE,
 		  gc_death_message_buffer,
@@ -499,13 +593,13 @@ DEFUN (wabbit_hunt_gcloop, (scan, new_space_free_loc),
   * new_space_free_loc = new_space_free;
   return (new_space_free);
 
-} /* wabbit_hunt_gcloop */
+} /* wabbit_hunting_gcloop */
 
 void
 DEFUN (wabbit_season, (wabbit_descriptor),
        SCHEME_OBJECT wabbit_descriptor)
 {
-  long n_wabbits, buf_len;
+  long n_wabbits, buf_len, ctr;
   SCHEME_OBJECT
     * result, * area, * saved_area, * wabbit_ptr,
     wabbit_buffer, wabbit_vector, * wabbit_vector_ptr;
@@ -526,28 +620,21 @@ DEFUN (wabbit_season, (wabbit_descriptor),
   wabbit_lo_address = saved_area;
   wabbit_hi_address = saved_area;
   wabbit_of_Seville = saved_area;
-  hare_marker = (MAKE_BROKEN_HEART (wabbit_of_Seville));
 
   wabbit_vector_ptr = (MEMORY_LOC (wabbit_vector, 0));
-  while (n_wabbits >= 0)
-  {
+  for (ctr = n_wabbits; ctr >= 0; ctr -= 1)
     *area++ = *wabbit_vector_ptr++;
-    n_wabbits -= 1;
-  }
+
   MEMORY_SET (wabbit_vector, 0, (MAKE_BROKEN_HEART (saved_area)));
   *area = (MAKE_BROKEN_HEART (area));
   Free = (area + 1);
   
-  result = (wabbit_hunt_gcloop (saved_area, &Free));
+  result = (wabbit_hunting_gcloop (saved_area, &Free));
   if (result != area)
   {
     outf_fatal ("\nwabbit_hunt Wabbit scan ended too early.\n");
     Microcode_Termination (TERM_BROKEN_HEART);
   }
-
-  /* Check whether any wabbits are hares, and if so, mark them so. */
-  /* *** HERE *** */
-
 
   *area = SHARP_F;		/* Remove broken heart on Valentine's day */
   wabbit_lo_address = (area + 1);
@@ -565,8 +652,67 @@ DEFUN (wabbit_season, (wabbit_descriptor),
   wabbit_buffer_hi = (wabbit_buffer_lo + (1 + buf_len));
   * wabbit_buffer_lo = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, buf_len));
   wabbit_buffer_ptr = (wabbit_buffer_lo + 3);
+
+  /* Check whether any wabbits are hares, and if so, mark them so. */
 
-  result = (wabbit_hunt_gcloop (wabbit_lo_address, &Free));
+  old_wabbit_buffer = ((OBJECT_ADDRESS (wabbit_buffer)) + 3);
+  old_wabbit_buffer[-1] = (MAKE_BROKEN_HEART (old_wabbit_buffer - 1));
+
+  wabbit_vector_ptr = (MEMORY_LOC (wabbit_vector, 1));
+  
+  for (area = old_wabbit_buffer, ctr = n_wabbits; --ctr >= 0; )
+  {
+    SCHEME_OBJECT wabbit = *wabbit_vector_ptr++;
+    SCHEME_OBJECT old_head;
+
+    switch (GC_Type_Map [(OBJECT_TYPE (wabbit))])
+    {
+      case GC_Non_Pointer:
+        /* Sucker -- should crash his scheme */
+        break;
+
+      case GC_Special:
+	if (((OBJECT_TYPE (wabbit)) != TC_REFERENCE_TRAP)
+	    || ((OBJECT_DATUM (wabbit)) <= TRAP_MAX_IMMEDIATE))
+	  break;
+	/* fall through */
+
+      case GC_Cell:
+      case GC_Pair:
+      case GC_Triple:
+      case GC_Quadruple:
+      case GC_Vector:
+	if ((OBJECT_ADDRESS (wabbit)) >= Constant_Top)
+	  break;
+	old_head = (MEMORY_REF (wabbit, 0));
+	MEMORY_SET (wabbit, 0, (MAKE_BROKEN_HEART (area)));
+	*area++ = old_head;
+	*area++ = wabbit;
+	break;
+
+      case GC_Compiled:
+      {
+	SCHEME_OBJECT * block;
+
+	if ((OBJECT_ADDRESS (wabbit)) >= Constant_Top)
+	  break;
+
+	Get_Compiled_Block (block, (OBJECT_ADDRESS (wabbit)));
+	old_head = *block;
+	*block = (MAKE_BROKEN_HEART (area));
+	*area++ = old_head;
+	*area++ = (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, block));
+	break;
+      }
+
+      default:
+	/* Loser -- shouldn't happen */
+	break;
+    }
+  }
+  old_wabbit_buffer_end = area;
+
+  result = (wabbit_hunting_gcloop (wabbit_lo_address, &Free));
   if (Free != result)
   {
     outf_fatal ("\nwabbit_hunt: heap scan ended too early.\n");
@@ -579,6 +725,13 @@ void
 DEFUN (duck_season, (wabbit_descriptor),
        SCHEME_OBJECT wabbit_descriptor)
 {
+  SCHEME_OBJECT * ptr;
+
+  /* Restore hares' heads */
+
+  for (ptr = old_wabbit_buffer; ptr < old_wabbit_buffer_end; ptr += 2)
+    MEMORY_SET (ptr[1], 0, ptr[0]);
+
   wabbit_buffer_lo[2] =
     (LONG_TO_UNSIGNED_FIXNUM (wabbit_buffer_ptr - (wabbit_buffer_lo + 1)));
   while (wabbit_buffer_ptr < wabbit_buffer_hi)
@@ -679,13 +832,9 @@ DEFUN (discard_wabbit_holes_p, (scan, free),
   return (free < wabbit_holes);
 }
 
-#define TC_HEADLESS_REFERENCE		TC_NULL
-#define TC_REFERENCE_TO_STACK		TC_STACK_ENVIRONMENT
-#define TC_REFERENCE_TO_CONSTANT_SPACE	TC_CHARACTER
-
 void
-DEFUN (kill_da_wabbit, (where, last_block),
-       SCHEME_OBJECT * where AND SCHEME_OBJECT * last_block)
+DEFUN (kill_da_wabbit, (where, current_object),
+       SCHEME_OBJECT * where AND SCHEME_OBJECT current_object)
 {
   SCHEME_OBJECT * hole, wabbit, * wabbit_addr;
   long offset, max_offset;
@@ -696,14 +845,10 @@ DEFUN (kill_da_wabbit, (where, last_block),
   {
     SCHEME_OBJECT head;
 
-    if (last_block != ((SCHEME_OBJECT *) NULL))
+    if (current_object != SHARP_F)
     {
-      offset = (where - last_block);
-      if (((OBJECT_TYPE (* last_block)) == TC_MANIFEST_VECTOR)
-	  || ((OBJECT_TYPE (* last_block)) == TC_MANIFEST_CLOSURE))
-	head = (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, last_block));
-      else
-	head = (MAKE_POINTER_OBJECT (TC_HEADLESS_REFERENCE, last_block));
+      offset = (where - (OBJECT_ADDRESS (current_object)));
+      head = current_object;
     }
     else
     {
@@ -834,7 +979,7 @@ DEFUN_VOID (fix_weak_chain_and_hunt_wabbits)
 	{
 	  new_space_addr = (OBJECT_ADDRESS (* old_space_addr));
 	  if (WABBIT_P (new_space_addr))
-	    KILL_DA_WABBIT (scan);
+	    KILL_DA_WABBIT (scan, (MAKE_POINTER_OBJECT (TC_WEAK_CONS, scan)));
 	    
 	  * scan = (RELOCATE_COMPILED (this_object,
 				       new_space_addr,
@@ -856,7 +1001,7 @@ DEFUN_VOID (fix_weak_chain_and_hunt_wabbits)
         outf_fatal
 	  ("\nfix_weak_chain_and_hunt_wabbits: Bad Object: 0x%08lx.\n",
 	   this_object);
-	Microcode_Termination (TERM_INVALID_TYPE_CODE);
+	* scan = SHARP_F;
 	/*NOTREACHED*/
     }
   }
