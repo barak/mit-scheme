@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.53 1992/10/27 22:00:04 jinx Exp $
+$Id: cmpint.c,v 1.54 1992/11/04 00:02:24 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -613,7 +613,7 @@ DEFUN (apply_compiled_from_primitive, (arity), int arity)
       {
 	operator = (MEMORY_REF (procedure, ENTITY_OPERATOR));
 	if (!COMPILED_CODE_ADDRESS_P (operator))
-	  break;
+	  goto defer_application;
 	STACK_PUSH (procedure);
 	frame_size += 1;
 	procedure = operator;
@@ -640,11 +640,12 @@ DEFUN (apply_compiled_from_primitive, (arity), int arity)
     /* For now, fall through */
 
     default:
+defer_application:
+      STACK_PUSH (procedure);
+      STACK_PUSH (frame_size);
       break;
   }
 
-  STACK_PUSH (procedure);
-  STACK_PUSH (frame_size);
   STACK_PUSH (apply_in_interpreter);
   Stack_Pointer = (STACK_LOC (- arity));
   return (SHARP_F);
