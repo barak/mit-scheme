@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osscheme.h,v 1.4 1991/08/26 15:00:14 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osscheme.h,v 1.5 1992/02/04 00:35:24 jinx Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -44,7 +44,7 @@ extern int option_emacs_subprocess;
 extern int EXFUN (executing_scheme_primitive_p, (void));
 
 extern void EXFUN (debug_edit_flags, (void));
-extern void EXFUN (debug_back_trace, (void));
+extern void EXFUN (debug_back_trace, (FILE *));
 extern void EXFUN (debug_examine_memory, (long address, CONST char * label));
 
 extern void EXFUN (error_out_of_channels, (void));

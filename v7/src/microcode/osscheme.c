@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osscheme.c,v 1.4 1992/01/20 16:27:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osscheme.c,v 1.5 1992/02/04 00:35:36 jinx Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -112,9 +112,9 @@ DEFUN (set_interrupt_mask, (mask), long mask)
 }
 
 void
-DEFUN_VOID (debug_back_trace)
+DEFUN (debug_back_trace, (stream), FILE * stream)
 {
-  Back_Trace (stdout);
+  Back_Trace (stream);
 }
 
 void
