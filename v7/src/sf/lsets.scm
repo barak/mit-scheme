@@ -1,5 +1,7 @@
 #| -*-Scheme-*-
 
+$Id: lsets.scm,v 4.2 1993/11/17 23:05:33 adams Exp $
+
 Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
