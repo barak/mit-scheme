@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.26 1990/03/26 23:45:38 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.27 1990/04/03 04:50:30 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -210,7 +210,7 @@ MIT in each case. |#
      (phase/link)
      *result*)))
 
-(define (compile-recursively scode procedure-result?)
+(define (compile-recursively scode procedure-result? procedure-name)
   ;; Used by the compiler when it wants to compile subexpressions as
   ;; separate code-blocks.
   ;; The rtl output should be fixed.
@@ -250,7 +250,7 @@ MIT in each case. |#
 			  (compiler-phase/visible
 			   (string-append
 			    "Compiling procedure: "
-			    (write-to-string (lambda-name scode)))
+			    (write-to-string procedure-name))
 			   do-it))
 			do-it))
 		  (lambda ()

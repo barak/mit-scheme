@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.24 1990/02/02 18:38:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.25 1990/04/03 04:51:16 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Flow Graph Generation
+;;; package: (compiler fg-generator)
 
 (declare (usual-integrations))
 
@@ -745,15 +746,32 @@ MIT in each case. |#
 	     (make-constant
 	      (compile-recursively
 	       (scode/quotation-expression expression)
+	       false
 	       false))))
 	   ((COMPILE-PROCEDURE)
-	    (if (not (scode/lambda? expression))
-		(error "Bad compile-procedure directive" comment))
-	    (if compiler:compile-by-procedures?
-		(continue/rvalue-constant
-		 block continuation
-		 (make-constant (compile-recursively expression true)))
-		(generate/expression block continuation expression)))
+	    (let ((process
+		   (lambda (name)
+		     (if compiler:compile-by-procedures?
+			 (continue/rvalue-constant
+			  block continuation
+			  (make-constant
+			   (compile-recursively expression true name)))
+			 (generate/expression block continuation expression))))
+		  (fail
+		   (lambda ()
+		     (error "Bad compile-procedure directive" comment))))
+	      (cond ((scode/lambda? expression)
+		     (process (lambda-name expression)))
+		    ((scode/open-block? expression)
+		     (scode/open-block-components
+		      expression
+		      (lambda (names decls body)
+			decls		; ignored
+			(if (and (null? names) (scode/lambda? body))
+			    (process (lambda-name body))
+			    (fail)))))
+		    (else
+		     (fail)))))
 	   ((ENCLOSE)
 	    (generate/enclose block continuation expression))
 	   (else

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/canon.scm,v 1.7 1989/09/13 20:44:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/canon.scm,v 1.8 1990/04/03 04:50:50 jinx Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Scode canonicalization.
+;;; package: (compiler fg-generator)
 
 ;;; canonicalize/top-level translates scode expressions into
 ;;; equivalent scode expressions where all implicit first class
@@ -97,21 +98,24 @@ ARBITRARY:	The expression may be executed more than once.  It
   needs?				; requires environment binding
   splice?)				; top level can be moved
 
+(define *top-level-declarations*)
+
 (define (canonicalize/top-level expression)
   (if (eq? compiler:package-optimization-level 'NONE)
       expression
-      (let ((result
-	     (canonicalize/expression
-	      expression '()
-	      (if (and compiler:cache-free-variables?
-		       (not (eq? compiler:package-optimization-level 'LOW)))
-		  'TOP-LEVEL
-		  'FIRST-CLASS))))
-	(if (canout-needs? result)
-	    (canonicalize/bind-environment (canout-expr result)
-					   (scode/make-the-environment)
-					   expression)
-	    (canout-expr result)))))
+      (fluid-let ((*top-level-declarations* '()))
+	(let ((result
+	       (canonicalize/expression
+		expression '()
+		(if (and compiler:cache-free-variables?
+			 (not (eq? compiler:package-optimization-level 'LOW)))
+		    'TOP-LEVEL
+		    'FIRST-CLASS))))
+	  (if (canout-needs? result)
+	      (canonicalize/bind-environment (canout-expr result)
+					     (scode/make-the-environment)
+					     expression)
+	      (canout-expr result))))))
 
 (define (canonicalize/optimization-low? context)
   (or (eq? context 'FIRST-CLASS)
@@ -331,7 +335,9 @@ ARBITRARY:	The expression may be executed more than once.  It
 	     compiler:compile-by-procedures?)
 	(make-canout
 	 (scode/make-directive
-	  (canout-expr canout)
+	  (if (null? *top-level-declarations*)
+	      (canout-expr canout)
+	      (make-open-block '() *top-level-declarations* (canout-expr canout)))
 	  '(COMPILE-PROCEDURE)
 	  expr)
 	 true
@@ -359,10 +365,12 @@ ARBITRARY:	The expression may be executed more than once.  It
 	 (scode/open-block-components
 	  expr
 	  (lambda (names decls body)
-	    (canonicalize/expression
-	     (unscan-defines names decls body)
-	     bound
-	     context))))))
+	    (fluid-let ((*top-level-declarations*
+			 (append decls *top-level-declarations*)))
+	      (canonicalize/expression
+	       (unscan-defines names decls body)
+	       bound
+	       context)))))))
 
 ;;;; Hairier expressions
 
