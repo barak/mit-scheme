@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/framex.scm,v 14.6 1989/04/05 04:25:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/framex.scm,v 14.7 1989/04/05 04:30:25 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -66,7 +66,9 @@ MIT in each case. |#
 		   (with-output-to-string
 		     (lambda ()
 		       (display "Unknown (methodless) ")
-		       (pp frame)))))
+		       (if long?
+			   (pp frame)
+			   (write frame))))))
 		undefined-environment)
 	(method frame))))
 
