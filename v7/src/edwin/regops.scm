@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regops.scm,v 1.82 1991/04/02 19:55:52 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regops.scm,v 1.83 1991/04/24 00:41:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -78,25 +78,23 @@
   (group-delete! (region-group region)
 		 (region-start-index region)
 		 (region-end-index region)))
-
+
 (define (mark-left-char mark)
-  (if (group-start? mark)
-      (error "No left char: MARK-LEFT-CHAR" mark))
-  (group-left-char (mark-group mark) (mark-index mark)))
+  (and (not (group-start? mark))
+       (group-left-char (mark-group mark) (mark-index mark))))
 
 (define (mark-right-char mark)
-  (if (group-end? mark)
-      (error "No right char: MARK-RIGHT-CHAR" mark))
-  (group-right-char (mark-group mark) (mark-index mark)))
+  (and (not (group-end? mark))
+       (group-right-char (mark-group mark) (mark-index mark))))
 
 (define (mark-delete-left-char! mark)
   (if (group-start? mark)
-      (error "No left char: MARK-DELETE-LEFT-CHAR!" mark))
+      (error "No left char:" mark))
   (group-delete-left-char! (mark-group mark) (mark-index mark)))
 
 (define (mark-delete-right-char! mark)
   (if (group-end? mark)
-      (error "No right char: MARK-DELETE-RIGHT-CHAR!" mark))
+      (error "No right char:" mark))
   (group-delete-right-char! (mark-group mark) (mark-index mark)))
 
 ;;; **** This is not a great thing to do.  It will screw up any marks
@@ -104,33 +102,37 @@
 ;;; Conceptually we just want the characters to be altered.
 
 (define (region-transform! region operation)
-  (let ((m (mark-permanent! (region-start region))))
-    (let ((string (operation (region->string region))))
-      (region-delete! region)
-      (region-insert-string! m string))))
+  (let ((m (mark-right-inserting-copy (region-start region)))
+	(string (operation (region->string region))))
+    (region-delete! region)
+    (region-insert-string! m string)
+    (mark-temporary! m)))
 
 ;;;; Clipping
 
-(define (region-clip! region)
-  (let ((group (region-group region))
-	(start (mark-right-inserting (region-start region)))
-	(end (mark-left-inserting (region-end region))))
-    (record-clipping! group (mark-index start) (mark-index end))
-    (vector-set! group group-index:start-mark start)
-    (vector-set! group group-index:end-mark end)
-    (vector-set! group group-index:display-start start)
-    (vector-set! group group-index:display-end end))
-  unspecific)
+(define (group-narrow! group start end)
+  (record-clipping! group start end)
+  (%group-narrow! group start end))
 
-(define (group-un-clip! group)
-  (let ((start (make-permanent-mark group 0 false))
-	(end (make-permanent-mark group (group-length group) true)))
-    (record-clipping! group 0 (group-length group))
+(define (%group-narrow! group start end)
+  (let ((start (make-permanent-mark group start false))
+	(end (make-permanent-mark group end true)))
     (vector-set! group group-index:start-mark start)
     (vector-set! group group-index:end-mark end)
     (vector-set! group group-index:display-start start)
-    (vector-set! group group-index:display-end end))
-  unspecific)
+    (vector-set! group group-index:display-end end)))
+
+(define (group-widen! group)
+  (record-clipping! group 0 (group-length group))
+  (%group-widen! group))
+
+(define (%group-widen! group)
+  (%group-narrow! group 0 (group-length group)))
+
+(define (region-clip! region)
+  (group-narrow! (region-group region)
+		 (region-start-index region)
+		 (region-end-index region)))
 
 (define (with-region-clipped! new-region thunk)
   (let ((group (region-group new-region))
@@ -151,7 +153,7 @@
   (let ((old-region))
     (dynamic-wind (lambda ()
 		    (set! old-region (group-region group))
-		    (group-un-clip! group))
+		    (group-widen! group))
 		  thunk
 		  (lambda ()
 		    (region-clip! old-region)
