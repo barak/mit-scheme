@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/rcs.pkg,v 1.3 1991/10/10 01:27:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/rcs.pkg,v 1.4 1991/10/10 01:29:29 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -34,7 +34,7 @@ MIT in each case. |#
 
 ;;;; RCS Packaging
 
-(global-definitions "SCM/runtime/runtim")
+(global-definitions "../runtime/runtim")
 
 (define-package (rcs)
   (files "object")

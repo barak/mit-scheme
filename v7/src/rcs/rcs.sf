@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/Attic/rcs.sf,v 1.4 1991/10/10 01:27:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/Attic/rcs.sf,v 1.5 1991/10/10 01:29:21 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -37,7 +37,7 @@ MIT in each case. |#
 
 ;; Guarantee that the package modeller is loaded.
 (if (not (name->package '(CROSS-REFERENCE)))
-    (with-working-directory-pathname "SCM/cref" (lambda () (load "make"))))
+    (with-working-directory-pathname "../cref" (lambda () (load "make"))))
 
 (cref/generate-constructors "rcs")
 (sf "rcs.con" "rcs.bcon")
