@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.16 1990/01/20 07:32:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.17 1990/01/22 03:01:34 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -335,9 +335,10 @@ MIT in each case. |#
   ;; Copy the contents of `source-register' to `machine-register'.
   (if (machine-register? source-register)
       (LAP ,@(clear-registers! machine-register)
-	   (if (eqv? source-register machine-register)
-	       (LAP)
-	       (register->register-transfer source-register machine-register)))
+	   ,@(if (eqv? source-register machine-register)
+		 (LAP)
+		 (register->register-transfer source-register
+					      machine-register)))
       (if (is-alias-for-register? machine-register source-register)
 	  (clear-registers! machine-register)
 	  (let ((source-reference
