@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.4 1989/07/05 19:08:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.5 1989/07/14 02:53:54 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -402,8 +402,7 @@ x_close_window (index)
   Display * display;
 
   xw = ((struct xwindow *) ((x_window_table . items) [index]));
-  ((struct xwindow *) ((x_window_table . items) [index])) =
-    ((struct xwindow *) 0);
+  ((x_window_table . items) [index]) = 0;
   display = (XW_DISPLAY (xw));
   {
     void (* deallocator) () = (xw -> deallocator);
@@ -427,7 +426,7 @@ x_close_display (index)
   Display * display;
 
   display = ((Display *) ((x_display_table . items) [index]));
-  ((Display *) ((x_display_table . items) [index])) = ((Display *) 0);
+  ((x_display_table . items) [index]) = 0;
   {
     struct xwindow ** items = ((struct xwindow **) (x_window_table . items));
     int length = (x_window_table . length);
