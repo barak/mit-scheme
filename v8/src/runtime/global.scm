@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.29 1991/09/02 03:24:33 sybok Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.30 1991/09/02 03:29:33 sybok Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -263,7 +263,7 @@ MIT in each case. |#
 ;; encountered on each entry to the thunk. It might be better to
 ;; restore the hooks to the initial state. I flipped a coin.
 
-(define *old-hook-storage-environment*)
+
 
 (let-syntax ((ufixed-objects-slot
 	      (macro (name)
@@ -273,7 +273,9 @@ MIT in each case. |#
     (define (get-stepper-hooks)
       (vector-ref (get-fixed-objects-vector)
 		  (ufixed-objects-slot stepper-state)))
-
+    (define (stepping-off!)
+      (set! (access old-stepper-hooks *old-hook-storage-environment*) null-hooks))
+    (define *old-hook-storage-environment*)
     (let ((old-stepper-hooks)
 	  (null-hooks (hunk3-cons #f #f #f)))
       (set! *old-hook-storage-environment* (the-environment))
@@ -290,5 +292,6 @@ MIT in each case. |#
 	  (or old-stepper-hooks
 	      null-hooks)))))))
 
-(define (stepping-off!)
-  (set! (access old-stepper-hooks *old-hook-storage-environment*) null-hooks))
+(define stepping-off! (access stepping-off! (procedure-environment without-stepping)))
+
+
