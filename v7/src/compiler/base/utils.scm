@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 4.28 2004/07/02 00:51:53 cph Exp $
+$Id: utils.scm,v 4.29 2004/08/15 04:54:45 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
 Copyright 1994,2001,2001,2003,2004 Massachusetts Institute of Technology
@@ -186,11 +186,20 @@ USA.
 (define-integrable lambda-tag:delay
   '|#[delay-lambda]|)
 
-(define-integrable non-pointer-object?
-  object-non-pointer?)
+(define (non-pointer-object? object)
+  ;; Use of OBJECT-NON-POINTER? appears to cause problems.
+  ;; This should be figured out when I have more time.  -- cph
+  (or (object-type? (ucode-type false) object)
+      (object-type? (ucode-type true) object)
+      (fix:fixnum? object)
+      (object-type? (ucode-type character) object)
+      (object-type? (ucode-type unassigned) object)
+      (object-type? (ucode-type the-environment) object)
+      (object-type? (ucode-type manifest-nm-vector) object)
+      (object-type? (ucode-type manifest-special-nm-vector) object)))
 
 (define (object-immutable? object)
-  (or (object-non-pointer? object)
+  (or (non-pointer-object? object)
       (number? object)
       (symbol? object)
       (scode/primitive-procedure? object)
