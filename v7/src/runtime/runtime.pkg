@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.107 1991/05/15 21:18:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.108 1991/05/15 22:02:07 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -625,6 +625,8 @@ MIT in each case. |#
 	  write-restart-report)
   (export (runtime microcode-errors)
 	  write-operator)
+  (export (runtime rep)
+	  dynamic-handler-frames)
   (initialization (initialize-package!)))
 
 (define-package (runtime event-distributor)
