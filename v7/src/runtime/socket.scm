@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.6 1995/11/13 07:20:52 cph Exp $
+$Id: socket.scm,v 1.7 1996/05/17 17:49:45 cph Exp $
 
-Copyright (c) 1990-95 Massachusetts Institute of Technology
+Copyright (c) 1990-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,7 +50,7 @@ MIT in each case. |#
 (define (open-tcp-stream-socket-channel host-name service)
   (let ((host (vector-ref (get-host-by-name host-name) 0))
 	(port (tcp-service->port service)))
-    (without-interrupts
+    (without-background-interrupts
      (lambda ()
        (make-channel
 	((ucode-primitive open-tcp-stream-socket 2) host port))))))
@@ -61,12 +61,12 @@ MIT in each case. |#
       ((ucode-primitive get-host-by-name 1) host-name))))
 
 (define (open-unix-stream-socket-channel filename)
-  (without-interrupts
+  (without-background-interrupts
    (lambda ()
      (make-channel ((ucode-primitive open-unix-stream-socket 1) filename)))))
 
 (define (open-tcp-server-socket service)
-  (without-interrupts
+  (without-background-interrupts
    (lambda ()
      (make-channel
       ((ucode-primitive open-tcp-server-socket 1)
@@ -89,7 +89,7 @@ MIT in each case. |#
 	   (with-channel-blocking server-socket false
 	     (lambda ()
 	       (let loop ()
-		 (or (without-interrupts
+		 (or (without-background-interrupts
 		      (lambda ()
 			(let ((descriptor
 			       ((ucode-primitive tcp-server-connection-accept
