@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: macros.scm,v 1.4 1997/06/12 07:33:58 cph Exp $
+;;; $Id: macros.scm,v 1.5 1997/06/15 07:02:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1993-97 Massachusetts Institute of Technology
 ;;;
@@ -100,24 +100,14 @@
 			    `((DEFINE ,pn (INSTANCE-PREDICATE ,class-name)))
 			    '())))
 		     ((CONSTRUCTOR)
-		      (cond ((and (pair? (cdr option))
-				  (symbol? (cadr option))
-				  (pair? (cddr option))
-				  (and (list? (caddr option))
-				       (for-all? (caddr option) symbol?))
-				  (null? (cdddr option)))
-			     `((DEFINE ,(cadr option)
-				 (INSTANCE-CONSTRUCTOR ,class-name
-						       ',(caddr option)))))
-			    ((and (pair? (cdr option))
-				  (and (list? (cadr option))
-				       (for-all? (cadr option) symbol?))
-				  (null? (cddr option)))
-			     `((DEFINE ,(default-constructor-name class-name)
-				 (INSTANCE-CONSTRUCTOR ,class-name
-						       ',(cadr option)))))
-			    (else
-			     (lose "class option" option))))
+		      (call-with-values
+			  (lambda ()
+			    (parse-constructor-option class-name lose option))
+			(lambda (name slots call-init-instance?)
+			  `((DEFINE ,name
+			      (INSTANCE-CONSTRUCTOR ,class-name
+						    ',slots
+						    ',call-init-instance?))))))
 		     (else (lose "class option" option))))
 		 alist))))))
 
@@ -134,6 +124,25 @@
 			    (list option)))
 		      (cdr name))))
 	(else (lose "class name" name))))
+
+(define (parse-constructor-option class-name lose option)
+  (cond ((match `(,symbol? ,list-of-symbols? . ,optional?)
+		(cdr option))
+	 (values (cadr option)
+		 (caddr option)
+		 (if (null? (cdddr option)) #f (cadddr option))))
+	((match `(,list-of-symbols? . ,optional?) (cdr option))
+	 (values (default-constructor-name class-name)
+		 (cadr option)
+		 (if (null? (cddr option)) #f (caddr option))))
+	(else
+	 (lose "class option" option))))
+
+(define (list-of-symbols? x)
+  (and (list? x) (for-all? x symbol?)))
+
+(define (optional? x)
+  (or (null? x) (and (pair? x) (null? (cdr x)))))
 
 (define (default-predicate-name class-name)
   (symbol-append (strip-angle-brackets class-name) '?))
