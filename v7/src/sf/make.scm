@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.43 2003/02/14 18:28:34 cph Exp $
+$Id: make.scm,v 4.44 2003/04/25 03:46:17 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1990,1991,1994 Massachusetts Institute of Technology
+Copyright 1995,1998,1999,2000,2001,2002 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,4 +40,4 @@ USA.
        (load-package-set "sf")))
     ((package/reference (find-package '(SCODE-OPTIMIZER))
 			'USUAL-INTEGRATIONS/CACHE!))))
-(add-subsystem-identification! "SF" '(4 40))
+(add-subsystem-identification! "SF" '(4 41))

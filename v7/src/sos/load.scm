@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.14 2003/02/14 18:28:35 cph Exp $
+$Id: load.scm,v 1.15 2003/04/25 03:48:28 cph Exp $
 
-Copyright 1995-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1997,1998,1999,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -23,8 +23,7 @@ USA.
 
 |#
 
-(load-option 'HASH-TABLE)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (load-package-set "sos")))
-(add-identification! "SOS" 1 7)
+(add-identification! "SOS" 1 8)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.42 2003/02/14 18:28:14 cph Exp $
+$Id: load.scm,v 1.43 2003/04/25 03:49:30 cph Exp $
 
-Copyright 1999-2002 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -25,11 +25,10 @@ USA.
 
 ;;;; IMAIL mail reader: loader
 
-(load-option 'HASH-TABLE)
 (load-option 'REGULAR-EXPRESSION)
 (load-option 'SOS)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (fluid-let ((*allow-package-redefinition?* #t))
       (load-package-set "imail"))))
-(add-subsystem-identification! "IMAIL" '(1 19))
+(add-subsystem-identification! "IMAIL" '(1 20))
