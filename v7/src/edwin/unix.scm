@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.53 1995/09/13 23:01:05 cph Exp $
+;;;	$Id: unix.scm,v 1.54 1995/09/27 16:23:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -731,10 +731,3 @@ Otherwise, messages remain on the server and will be re-fetched later."
 		       (string-append " "
 				      (number->string
 				       (decoded-time/year dt)))))))
-
-(define (os/interprogram-cut string push?)
-  string push?
-  unspecific)
-
-(define (os/interprogram-paste)
-  #f)
