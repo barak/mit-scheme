@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.87 1997/03/30 06:23:43 cph Exp $
+;;;	$Id: intmod.scm,v 1.88 1997/08/03 06:44:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
@@ -162,6 +162,7 @@ REPL uses current evaluation environment."
 	    (global-repl-buffer)))))
 
 (define (global-repl-buffer)
+  (set! repl-buffers (list-transform-positive repl-buffers buffer-alive?))
   (let ((buffers repl-buffers))
     (and (not (null? buffers))
 	 (car buffers))))
