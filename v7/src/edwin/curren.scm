@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.96 1992/02/11 19:01:11 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.97 1992/02/11 22:35:09 bal Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -235,6 +235,13 @@
 					  window)))))))
 	  (else
 	   window))))
+
+(define (global-window-modeline-event!)
+  (let ((window0 (window0)))
+    (let loop ((window (window1+ window0)))
+      (window-modeline-event! window 'GLOBAL-MODELINE)
+      (if (not (eq? window window0))
+	  (loop (window1+ window))))))
 
 (define (typein-window)
   (screen-typein-window (selected-screen)))
