@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.79 1993/06/15 19:04:55 gjr Exp $
+$Id: config.h,v 9.80 1993/06/15 19:05:18 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -591,7 +591,9 @@ extern void * alpha_heap_malloc (long);
 #endif /* apollo */
 
 #ifdef NATIVE_CODE_IS_C
-#  define HAS_COMPILER_SUPPORT
+#  ifndef HAS_COMPILER_SUPPORT
+#    define HAS_COMPILER_SUPPORT
+#  endif
 #  ifndef TYPE_CODE_LENGTH
 #    define TYPE_CODE_LENGTH 6
 #  endif
