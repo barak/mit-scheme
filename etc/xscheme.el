@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.23 1989/04/28 22:59:40 cph Rel $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.24 1990/02/09 00:57:43 cph Exp $
 
 (require 'scheme)
 
@@ -177,13 +177,15 @@ Blank lines separate paragraphs.  Semicolons start comments.
 \\{scheme-interaction-mode-map}
 
 Entry to this mode calls the value of scheme-interaction-mode-hook
-with no args, if that value is non-nil."
+with no args, if that value is non-nil.
+ Likewise with the value of scheme-mode-hook.
+ scheme-interaction-mode-hook is called after scheme-mode-hook."
   (interactive)
   (kill-all-local-variables)
   (scheme-interaction-mode-initialize)
   (scheme-mode-variables)
   (make-local-variable 'xscheme-previous-send)
-  (run-hooks 'scheme-interaction-mode-hook))
+  (run-hooks 'scheme-mode-hook 'scheme-interaction-mode-hook))
 
 (defun scheme-interaction-mode-initialize ()
   (use-local-map scheme-interaction-mode-map)
