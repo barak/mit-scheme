@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.7 1989/04/05 18:14:26 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.8 1989/04/23 23:18:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -50,17 +50,20 @@
 (define (make-changes-daemon window)
   (lambda (group start end)
     (with-instance-variables buffer-window window (group start end)
-      (cond ((not start-changes-mark)
-	     (set! start-changes-mark (%make-permanent-mark group start false))
-	     (set! end-changes-mark (%make-permanent-mark group end true)))
-	    ((< start (mark-index start-changes-mark))
-	     (set! start-changes-mark
-		   (%make-permanent-mark group start false)))
-	    ((> end (mark-index end-changes-mark))
-	     (set! end-changes-mark (%make-permanent-mark group end true))))
-      (if (and (>= end (mark-index start-line-mark))
-	       (<= start (mark-index end-mark)))
-	  (setup-redisplay-flags! redisplay-flags)))))
+      (let ((start (group-index->position group start false))
+	    (end (group-index->position group end true)))
+	(cond ((not start-changes-mark)
+	       (set! start-changes-mark
+		     (%make-permanent-mark group start false))
+	       (set! end-changes-mark (%make-permanent-mark group end true)))
+	      ((< start (mark-position start-changes-mark))
+	       (set-mark-position! start-changes-mark start))
+	      ((> end (mark-position end-changes-mark))
+	       (set-mark-position! end-changes-mark end)))
+	(if (and (not (car redisplay-flags))
+		 (>= end (mark-position start-line-mark))
+		 (<= start (mark-position end-mark)))
+	    (setup-redisplay-flags! redisplay-flags))))))
 
 ;;; It is assumed that the clip daemon is called before the clipping
 ;;; has been performed, so that we can get the old clipping limits.
@@ -72,15 +75,18 @@
 	  (begin
 	    (set! start-clip-mark (group-display-start group))
 	    (set! end-clip-mark (group-display-end group))))
-      (let ((window-start (mark-index start-line-mark))
-	    (window-end (mark-index end-mark)))
-	(if (or (> start window-start)
-		(< end window-end)
-		(and (< start window-start)
-		     (= window-start (mark-index start-clip-mark)))
-		(and (> end window-end)
-		     (= window-end (mark-index end-clip-mark))))
-	    (setup-redisplay-flags! redisplay-flags))))))
+      (if (not (car redisplay-flags))
+	  (let ((start (group-index->position group start false))
+		(end (group-index->position group end true))
+		(window-start (mark-position start-line-mark))
+		(window-end (mark-position end-mark)))
+	    (if (or (> start window-start)
+		    (< end window-end)
+		    (and (< start window-start)
+			 (= window-start (mark-position start-clip-mark)))
+		    (and (> end window-end)
+			 (= window-end (mark-position end-clip-mark))))
+		(setup-redisplay-flags! redisplay-flags)))))))
 
 (define (update-buffer-window! window screen x-start y-start
 			       xl xu yl yu display-style)
