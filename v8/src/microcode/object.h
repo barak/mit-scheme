@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/object.h,v 9.37 1992/02/10 13:05:22 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/object.h,v 9.38 1992/06/05 19:31:16 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -84,13 +84,13 @@ MIT in each case. */
 #define DATUM_LENGTH		(OBJECT_LENGTH - TYPE_CODE_LENGTH)
 /* FIXNUM_LENGTH does NOT include the sign bit! */
 #define FIXNUM_LENGTH		(DATUM_LENGTH - 1)
-#define FIXNUM_SIGN_BIT		(1 << FIXNUM_LENGTH)
-#define SIGN_MASK		((long) (-1 << FIXNUM_LENGTH))
-#define SMALLEST_FIXNUM		((long) (-1 << FIXNUM_LENGTH))
-#define BIGGEST_FIXNUM		((1 << FIXNUM_LENGTH) - 1)
+#define FIXNUM_SIGN_BIT		(1L << FIXNUM_LENGTH)
+#define SIGN_MASK		((long) (-1L << FIXNUM_LENGTH))
+#define SMALLEST_FIXNUM		((long) (-1L << FIXNUM_LENGTH))
+#define BIGGEST_FIXNUM		((1L << FIXNUM_LENGTH) - 1)
 #define HALF_DATUM_LENGTH	(DATUM_LENGTH / 2)
-#define HALF_DATUM_MASK		((1 << HALF_DATUM_LENGTH) - 1)
-#define DATUM_MASK		((1 << DATUM_LENGTH) - 1)
+#define HALF_DATUM_MASK		((1L << HALF_DATUM_LENGTH) - 1)
+#define DATUM_MASK		((1L << DATUM_LENGTH) - 1)
 #define TYPE_CODE_MASK		(~ DATUM_MASK)
 
 #endif /* DATUM_LENGTH */
@@ -344,10 +344,10 @@ extern SCHEME_OBJECT * memory_base;
 #define CHAR_BITS_CONTROL 	02
 #define CHAR_BITS_CONTROL_META	03
 
-#define MAX_ASCII (1 << ASCII_LENGTH)
-#define MAX_CODE (1 << CODE_LENGTH)
-#define MAX_BITS (1 << BITS_LENGTH)
-#define MAX_MIT_ASCII (1 << MIT_ASCII_LENGTH)
+#define MAX_ASCII (1L << ASCII_LENGTH)
+#define MAX_CODE (1L << CODE_LENGTH)
+#define MAX_BITS (1L << BITS_LENGTH)
+#define MAX_MIT_ASCII (1L << MIT_ASCII_LENGTH)
 
 #define MASK_ASCII (MAX_ASCII - 1)
 #define CHAR_MASK_CODE (MAX_CODE - 1)
@@ -389,7 +389,8 @@ extern SCHEME_OBJECT * memory_base;
 
 #define FIXNUM_TO_LONG(fixnum)						\
   ((((long) (fixnum)) ^ ((long) FIXNUM_SIGN_BIT))			\
-   - ((long) ((TC_FIXNUM << DATUM_LENGTH) | FIXNUM_SIGN_BIT)))
+   - ((long) ((((unsigned long) TC_FIXNUM) << DATUM_LENGTH)		\
+	      | FIXNUM_SIGN_BIT)))
 
 #define FIXNUM_TO_DOUBLE(fixnum) ((double) (FIXNUM_TO_LONG (fixnum)))
 
