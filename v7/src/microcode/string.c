@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.31 1988/08/15 20:55:43 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.32 1989/04/28 03:47:37 cph Rel $ */
 
 /* String primitives. */
 
@@ -120,6 +120,26 @@ DEFINE_PRIMITIVE ("SET-STRING-LENGTH!", Prim_set_string_length, 2, 2, 0)
   result = (string_length (string));
   set_string_length (string, length);
   PRIMITIVE_RETURN (Make_Unsigned_Fixnum (result));
+}
+
+DEFINE_PRIMITIVE ("SET-STRING-MAXIMUM-LENGTH!", Prim_set_string_maximum_length, 2, 2, 0)
+{
+  fast Pointer string;
+  fast long length;
+  PRIMITIVE_HEADER (2);
+
+  CHECK_ARG (1, STRING_P);
+  string = (ARG_REF (1));
+  length = (arg_nonnegative_integer (2));
+  if (length > (maximum_string_length (string)))
+    error_bad_range_arg (2);
+
+  Vector_Set (string,
+	      STRING_HEADER,
+	      (Make_Non_Pointer (TC_MANIFEST_NM_VECTOR,
+				 ((BYTES_TO_POINTERS (length + 1)) + 1))));
+  set_string_length (string, length);
+  PRIMITIVE_RETURN (Make_Non_Pointer (TC_TRUE, 1));
 }
 
 long
