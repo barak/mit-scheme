@@ -1,6 +1,6 @@
--*-Scheme-*-
+#| -*-Scheme-*-
 
-$Id: test-parser.scm,v 1.7 2003/01/26 06:33:15 cph Exp $
+$Id: test-parser.scm,v 1.8 2003/01/26 06:35:21 cph Exp $
 
 Copyright 2001 Massachusetts Institute of Technology
 

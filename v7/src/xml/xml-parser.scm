@@ -1,6 +1,6 @@
--*-Scheme-*-
+#| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.17 2003/01/26 06:33:36 cph Exp $
+$Id: xml-parser.scm,v 1.18 2003/01/26 06:35:41 cph Exp $
 
 Copyright 2001,2002 Massachusetts Institute of Technology
 

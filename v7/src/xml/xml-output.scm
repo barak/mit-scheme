@@ -1,6 +1,6 @@
--*-Scheme-*-
+#| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.10 2003/01/26 06:33:30 cph Exp $
+$Id: xml-output.scm,v 1.11 2003/01/26 06:35:34 cph Exp $
 
 Copyright 2001,2002 Massachusetts Institute of Technology
 

@@ -1,6 +1,6 @@
--*-Scheme-*-
+#| -*-Scheme-*-
 
-$Id: parser-macro.scm,v 1.6 2003/01/26 06:33:09 cph Exp $
+$Id: parser-macro.scm,v 1.7 2003/01/26 06:35:15 cph Exp $
 
 Copyright 2001 Massachusetts Institute of Technology
 
