@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.5 1993/07/27 21:08:25 gjr Exp $
+###	$Id: makefile,v 1.6 1993/08/03 08:39:41 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -364,8 +364,8 @@ interp.obj : scheme.tch locks.h trap.h lookup.h history.h cmpint.h zones.h prmco
 	$(cc) $(cflags) $(cdebug) -Ox -c $*.c
 	$(cvobj) $*.obj
 hooks.obj : scheme.tch prims.h winder.h history.h
-utils.obj : scheme.tch prims.h winder.h history.h cmpint.h
-primutl.obj : scheme.tch prims.h prename.h
+utils.obj : scheme.tch prims.h winder.h history.h cmpint.h syscall.h
+primutl.obj : scheme.tch prims.h prename.h syscall.h
 hunk.obj list.obj step.obj vector.obj sysprim.obj daemon.obj prim.obj extern.obj : \
 	scheme.tch prims.h
 lookup.obj debug.obj intern.obj : scheme.tch prims.h lookup.h trap.h locks.h
@@ -427,7 +427,7 @@ prostty.obj : ostty.h osctty.h ossig.h osfile.h osio.h $(OS_PRIM_DEPENDENCIES)
 prmcon.obj : scheme.tch prims.h prmcon.h $(OS_PRIM_DEPENDENCIES)
 
 NT_DEPENDENCIES = oscond.h ansidecl.h posixtyp.h intext.h \
-		   dstack.h os.h osscheme.h nt.h ntsys.h
+		   dstack.h os.h osscheme.h nt.h ntsys.h syscall.h
 ntenv.obj : osenv.h $(NT_DEPENDENCIES)
 ntfile.obj : osfile.h osio.h ntio.h $(NT_DEPENDENCIES)
 ntfs.obj : osfs.h $(NT_DEPENDENCIES)
@@ -439,15 +439,15 @@ ntutil.obj : ntutil.h $(NT_DEPENDENCIES)
 ntsig.obj : ossig.h osctty.h ostty.h critsec.h ntexcp.h ntkbd.h $(NT_DEPENDENCIES) ntscmlib.h
 nttrap.obj: nttrap.h ntexcp.h $(NT_DEPENDENCIES)
 ntsys.obj: ntsys.h
-prntenv.obj : $(NT_DEPENDENCIES)
-prntfs.obj : $(NT_DEPENDENCIES) scheme.h prims.h osfs.h
-cmpauxmd.obj : cmpauxmd.asm
 ntexcp.obj : ntexcp.h ntsys.h ntinsn.h
 ntgui.obj : ntgui.c $(NT_DEPENDENCIES) scheme.tch ntscreen.h
 ntkbd.obj : ntkbd.h ntsys.h ntinsn.h
 ntasutl.obj : ntasutl.asm
 ntkbutl.obj : ntkbutl.asm
 ntscreen.obj : ntscreen.c ntscreen.h
+prntenv.obj : $(NT_DEPENDENCIES)
+prntfs.obj : $(NT_DEPENDENCIES) scheme.h prims.h osfs.h
+cmpauxmd.obj : cmpauxmd.asm
 
 ntscmlib.obj : ntscmlib.c ntscmlib.h makefile
 

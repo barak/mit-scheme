@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.71 1993/07/29 07:01:26 gjr Exp $
+$Id: ymkfile,v 1.72 1993/08/03 08:36:19 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -690,7 +690,7 @@ foo $(USER_PRIM_OBJECTS) : $(HEAD_FILES)
 interp.o : scheme.tch locks.h trap.h lookup.h history.h cmpint.h zones.h prmcon.h
 hooks.o : scheme.tch prims.h winder.h history.h
 utils.o : scheme.tch prims.h winder.h history.h cmpint.h
-primutl.o : scheme.tch prims.h prename.h
+primutl.o : scheme.tch prims.h prename.h $(GC_HEAD_FILES) syscall.h
 
 hunk.o list.o step.o vector.o sysprim.o daemon.o prim.o extern.o : \
 	scheme.tch prims.h
@@ -761,9 +761,10 @@ ostty.o : ansidecl.h oscond.h posixtyp.h os.h ostty.h osscheme.h
 error.o ptrvec.o transact.o : ansidecl.h dstack.h outf.h
 wind.o : ansidecl.h dstack.h obstack.h
 obstack.o : obstack.h
+util.o : syscall.h
 
 $(UNIX_OBJECTS) pruxenv.o pruxfs.o pruxio.o pruxsock.o : oscond.h ansidecl.h \
-       posixtyp.h intext.h dstack.h os.h osscheme.h ux.h
+       posixtyp.h intext.h dstack.h os.h osscheme.h ux.h syscall.h
 uxctty.o : osctty.h ossig.h
 uxenv.o : osenv.h
 uxfile.o : osfile.h osio.h uxio.h

@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.6 1993/06/24 15:49:51 gjr Exp $
+###	$Id: makefile,v 1.7 1993/08/03 08:38:16 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -297,14 +297,6 @@ primitive_tables :
 	rm -f usrdef.c usrdef.obj bchdef.c bchdef.obj
 
 COMMON_OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(DOS_OBJECTS) $(OS_PRIM_OBJECTS)
-6003_SOURCES = $(X_SOURCES) $(TERMCAP_OBJECTS) $(GRAPHICS_SOURCES)\
-	  Sgraph_ar.c fft.c array.c\
-	      image.c
-6003_OBJECTS = $(X_OBJECTS) $(TERMCAP_OBJECTS) $(GRAPHICS_OBJECTS)\
-	  Sgraph_ar.obj fft.obj array.obj\
-	      image.obj usr6003.obj
-6003_LIB =  $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(TERMCAP_LIBS)\
-	-lm
 
 scheme.tch : scheme.h oscond.h ansidecl.h dstack.h obstack.h config.h \
 	bkpt.h object.h scode.h sdata.h gc.h interp.h stack.h futures.h \
@@ -386,6 +378,7 @@ ostty.obj : ansidecl.h oscond.h posixtype.h os.h ostty.h osscheme.h
 error.obj ptrvec.obj transact.obj : ansidecl.h dstack.h
 wind.obj : ansidecl.h dstack.h obstack.h
 obstack.obj : obstack.h
+util.o : syscall.h
 
 OS_PRIM_DEPENDENCIES = scheme.tch prims.h posixtype.h os.h
 prosenv.obj : osenv.h ostop.h $(OS_PRIM_DEPENDENCIES)
@@ -398,7 +391,7 @@ prostty.obj : ostty.h osctty.h ossig.h osfile.h osio.h $(OS_PRIM_DEPENDENCIES)
 prmcon.obj : scheme.tch prims.h prmcon.h $(OS_PRIM_DEPENDENCIES)
 
 DOS_DEPENDENCIES = oscond.h ansidecl.h posixtype.h intext.h \
-		   dstack.h os.h osscheme.h msdos.h dossys.h
+		   dstack.h os.h osscheme.h msdos.h dossys.h syscall.h
 dosenv.obj : osenv.h $(DOS_DEPENDENCIES)
 dosfile.obj : osfile.h osio.h dosio.h $(DOS_DEPENDENCIES)
 dosfs.obj : osfs.h $(DOS_DEPENDENCIES)
@@ -410,9 +403,6 @@ dosutil.obj : dosutil.h $(DOS_DEPENDENCIES)
 dossig.obj : ossig.h osctty.h ostty.h critsec.h dosexcp.h doskbd.h $(DOS_DEPENDENCIES)
 dostrap.obj: dostrap.h dosexcp.h $(DOS_DEPENDENCIES)
 dossys.obj: dossys.h
-prdosenv.obj : $(DOS_DEPENDENCIES)
-prdosfs.obj : $(DOS_DEPENDENCIES) scheme.h prims.h osfs.h
-cmpauxmd.obj : cmpauxmd.asm
 dosexcp.obj : dosexcp.h dossys.h dosinsn.h
 doskbd.obj : doskbd.h dossys.h dosinsn.h
 dosasutl.obj : dosasutl.asm
@@ -421,6 +411,9 @@ dosxcutl.obj : dosxcutl.asm
 dosint10.obj: dosint10.c dosint10.h
 dosi10.obj: dosi10.asm
 dosx32.obj: dosx32.c
+prdosenv.obj : $(DOS_DEPENDENCIES)
+prdosfs.obj : $(DOS_DEPENDENCIES) scheme.h prims.h osfs.h
+cmpauxmd.obj : cmpauxmd.asm
 
 clean:
   del *.tch
