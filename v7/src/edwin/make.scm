@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 3.99 1999/03/03 05:29:57 cph Exp $
+$Id: make.scm,v 3.100 2000/02/29 02:53:47 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -45,4 +45,4 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				     ((UNIX) "edwinunx")
 				     (else "edwinunk"))))))
 	'QUERY)))))
-(add-identification! "Edwin" 3 99)
+(add-identification! "Edwin" 3 100)
