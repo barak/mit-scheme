@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.2 2000/01/07 23:08:48 cph Exp $
+;;; $Id: imail-core.scm,v 1.3 2000/01/07 23:14:07 cph Exp $
 ;;;
 ;;; Copyright (c) 1999 Massachusetts Institute of Technology
 ;;;
@@ -438,9 +438,9 @@
   (make-header-field
    (string-append message-property:prefix name)
    (if (header-field-value? value)
-       (string-append message-property:single-marker value)
+       (string-append message-property:string-marker value)
        (apply string-append
-	      message-property:multiple-marker
+	      message-property:headers-marker
 	      (map (lambda (line)
 		     (string-append "\n" line))
 		   (quote-lines
@@ -453,11 +453,11 @@
        (cons (string-tail (header-field-name header)
 			  (string-length message-property:prefix))
 	     (let ((value (header-field-value header)))
-	       (cond ((string-prefix? message-property:single-marker value)
+	       (cond ((string-prefix? message-property:string-marker value)
 		      (string-tail
 		       value
-		       (string-length message-property:single-marker)))
-		     ((string-prefix? message-property:multiple-marker value)
+		       (string-length message-property:string-marker)))
+		     ((string-prefix? message-property:headers-marker value)
 		      (lines->header-fields
 		       (unquote-lines
 			(cdr (burst-string value #\newline #f)))))
@@ -465,8 +465,8 @@
 		      (error "Malformed message-property value:" value)))))))
 
 (define message-property:prefix "X-IMAIL-PROPERTY-")
-(define message-property:single-marker "[single]")
-(define message-property:multiple-marker "[multiple]")
+(define message-property:string-marker "[string]")
+(define message-property:headers-marker "[headers]")
 
 ;;;; Header fields
 
