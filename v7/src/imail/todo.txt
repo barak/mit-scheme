@@ -1,8 +1,20 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.124 2001/06/01 02:23:19 cph Exp $
+$Id: todo.txt,v 1.125 2001/06/02 22:30:07 cph Exp $
 
 Bug fixes
 ---------
+
+* Add feature to close connections immediately when M-x imail-quit is
+  executed.
+
+* Add key binding for M-x imail-browse-container to imail-mode.
+
+* Various changes to Dired that might affect our browsers: RET selects
+  the current object (preferred to f).  D command does immediate
+  delete.  t command means toggle sense of marked lines (*t also does
+  this, perhaps is preferable).  Name of command bound to x is now
+  dired-do-flagged-delete.  S and H do links.  P prints file.  ^ runs
+  dired on parent directory of this directory.
 
 * The PROBE-FOLDER thread is left running even when connection to
   server is severed.  In fact it is running as long as the buffer is
