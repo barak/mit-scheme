@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/shell.scm,v 1.5 1991/08/28 14:52:00 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/shell.scm,v 1.6 1991/10/03 10:19:45 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -148,7 +148,7 @@ Otherwise, one argument `-i' is passed to the shell."
   "cd")
 
 (define-variable shell-dirstack-query
-  "Command used by shell-resync-dirlist to query shell."
+  "Command used by shell-resync-dirs to query shell."
   "dirs")
 
 (define-variable shell-dirstack
@@ -190,15 +190,60 @@ Otherwise, one argument `-i' is passed to the shell."
 		 => shell-process-pushd)
 		((try (ref-variable shell-popd-regexp))
 		 => shell-process-popd))))))
+
+(define (shell-process-pushd arg)
+  (let ((default-directory
+	  (pathname->string (buffer-default-directory (current-buffer))))
+	(dirstack (ref-variable shell-dirstack)))
+    (if (string-null? arg)
+	;; no arg -- swap pwd and car of shell stack
+	(if (null? dirstack)
+	    (message "Directory stack empty")
+	    (begin
+	      (set-variable! shell-dirstack
+			     (cons default-directory (cdr dirstack)))
+	      (shell-process-cd (car dirstack))))
+	(let ((num (shell-extract-num arg)))
+	  (if num			; pushd +n
+	      (if (> num (length dirstack))
+		  (message "Directory stack not that deep")
+		  (let ((dirstack
+			 (let ((dirstack (cons default-directory dirstack)))
+			   (append (list-tail dirstack num)
+				   (list-head dirstack
+					      (- (length dirstack) num))))))
+		    (set-variable! shell-dirstack (cdr dirstack))
+		    (shell-process-cd (car dirstack))))
+	      (begin
+		(set-variable! shell-dirstack
+			       (cons default-directory dirstack))
+		(shell-process-cd arg)))))))
 
-(define (shell-process-popd filename)
-  filename
-  unspecific)
+(define (shell-process-popd arg)
+  (let ((dirstack (ref-variable shell-dirstack))
+	(num
+	 (if (string-null? arg)
+	     0
+	     (shell-extract-num arg))))
+    (cond ((not num)
+	   (message "Bad popd"))
+	  ((>= num (length dirstack))
+	   (message "Directory stack empty"))
+	  ((= num 0)
+	   (set-variable! shell-dirstack (cdr dirstack))
+	   (shell-process-cd (car dirstack)))
+	  (else
+	   (if (= num 1)
+	       (set-variable! shell-dirstack (cdr dirstack))
+	       (let ((pair (list-tail dirstack (- num 1))))
+		 (set-cdr! pair (cddr pair))))
+	   (shell-dirstack-message)))))
 
-(define (shell-process-pushd filename)
-  filename
-  unspecific)
-
+(define (shell-extract-num string)
+  (and (re-match-string-forward (re-compile-pattern "^\\+[1-9][0-9]*$" false)
+				false false string)
+       (string->number string)))
+
 (define (shell-process-cd filename)
   (call-with-current-continuation
    (lambda (continuation)
@@ -238,3 +283,62 @@ Otherwise, one argument `-i' is passed to the shell."
     (message "Directory tracking "
 	     (if (ref-variable shell-dirtrack?) "on" "off")
 	     ".")))
+
+(define-command shell-resync-dirs
+  "Resync the buffer's idea of the current directory stack.
+This command queries the shell with the command bound to
+shell-dirstack-query (default \"dirs\"), reads the next
+line output and parses it to form the new directory stack.
+DON'T issue this command unless the buffer is at a shell prompt.
+Also, note that if some other subprocess decides to do output
+immediately after the query, its output will be taken as the
+new directory stack -- you lose.  If this happens, just do the
+command again."
+  ()
+  (lambda ()
+    (let ((process (current-process)))
+      (let ((mark (process-mark process)))
+	(set-current-point! mark)
+	(let ((pending-input
+	       ;; Kill any pending input.
+	       (extract-and-delete-string mark (group-end mark)))
+	      (point (mark-left-inserting-copy (current-point))))
+	  ;; Insert the command, then send it to the shell.
+	  (let ((dirstack-query (ref-variable shell-dirstack-query)))
+	    (insert-string dirstack-query point)
+	    (move-mark-to! (ref-variable comint-last-input-end) point)
+	    (insert-newline point)
+	    (move-mark-to! mark point)
+	    (process-send-string process (string-append dirstack-query "\n")))
+	  ;; Wait for a line of output.
+	  (let ((output-line
+		 (let ((output-start (mark-right-inserting-copy point)))
+		   (do ()
+		       ((re-match-forward ".*\n" output-start)
+			(mark-temporary! output-start)
+			(extract-string (re-match-start 0)
+					(mark-1+ (re-match-end 0))))
+		     (accept-process-output)))))
+	    ;; Restore any pending input.
+	    (insert-string pending-input point)
+	    (mark-temporary! point)
+	    (let ((dirlist (shell-tokenize-dirlist output-line)))
+	      (set-variable! shell-dirstack (cdr dirlist))
+	      (shell-process-cd (car dirlist)))))))))
+
+(define (shell-tokenize-dirlist string)
+  (let ((end (string-length string)))
+    (let skip-spaces ((start 0))
+      (cond ((= start end)
+	     '())
+	    ((char=? #\space (string-ref string start))
+	     (skip-spaces (+ start 1)))
+	    (else
+	     (let skip-nonspaces ((index (+ start 1)))
+	       (cond ((= index end)
+		      (list (substring string start end)))
+		     ((char=? #\space (string-ref string index))
+		      (cons (substring string start index)
+			    (skip-spaces (+ index 1))))
+		     (else
+		      (skip-nonspaces (+ index 1))))))))))
