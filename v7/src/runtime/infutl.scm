@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.66 2001/12/20 18:05:07 cph Exp $
+$Id: infutl.scm,v 1.67 2002/10/21 15:10:21 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -674,8 +674,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (fasload-loader filename)
   (call-with-current-continuation
     (lambda (if-fail)
-      (bind-condition-handler (list condition-type:fasload-band)
-        (lambda (condition) condition (if-fail #f))
+      (bind-condition-handler (list condition-type:fasload-error
+				    condition-type:bad-range-argument)
+	  (lambda (condition) condition (if-fail #f))
         (lambda () (fasload filename #t))))))
 
 (define (compressed-loader uncompressed-type)
@@ -756,8 +757,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			 #f)))
 	      (dynamic-wind
 	       (lambda () unspecific)
-	       (lambda () (if-found (cadar entries)))
-	       (lambda () (set-cdr! (cdar entries) (real-time-clock)))))
+	       (lambda ()
+		 (or (if-found (cadar entries))
+		     (begin
+		       (set-cdr! (cdar entries) #f)
+		       (loop (cdr entries)))))
+	       (lambda ()
+		 (if (cddar entries)
+		     (set-cdr! (cdar entries) (real-time-clock))))))
 	     (else
 	      (loop (cdr entries))))))
    (lambda ()
