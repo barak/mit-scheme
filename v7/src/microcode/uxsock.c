@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.12 1993/09/09 18:21:59 gjr Exp $
+$Id: uxsock.c,v 1.13 1993/10/27 22:19:14 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -48,7 +48,9 @@ MIT in each case. */
 #include "prims.h"
 #include "limits.h"
 
+#ifndef _SUNOS4
 extern struct servent * EXFUN (getservbyname, (CONST char *, CONST char *));
+#endif
 extern struct hostent * EXFUN (gethostbyname, (CONST char *));
 
 Tchannel

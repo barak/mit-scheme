@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.52 1993/09/09 18:19:58 gjr Exp $
+$Id: ux.h,v 1.53 1993/10/27 22:17:55 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -59,7 +59,7 @@ extern int errno;
 
 /* These seem to be missing from versions of unistd.h */
 
-#if !(defined(_HPUX) || defined(sonyrisc))
+#if !(defined(_HPUX) || defined(sonyrisc) || defined(_SUNOS4))
 /* As specified by OSF/1 Programmer's reference: */
 extern int EXFUN (ioctl, (int, unsigned long, ...));
 #endif
@@ -999,6 +999,8 @@ extern int EXFUN (UX_sigsuspend, (CONST sigset_t * set));
 
 #ifdef _POSIX
 
+#define HAVE_SIGSET_OPS
+
 #ifdef EMULATE_FPATHCONF
 
 /* These values match HP-UX, and the index in the table in the 
@@ -1046,6 +1048,10 @@ extern clock_t EXFUN (UX_SC_CLK_TCK, (void));
 #endif
 
 #else /* not _POSIX */
+
+#ifdef _SUNOS4
+#define HAVE_SIGSET_OPS
+#endif
 
 #define UX_PC_VDISABLE(fildes) '\377'
 

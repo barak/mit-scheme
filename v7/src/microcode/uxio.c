@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.31 1993/09/09 23:03:19 cph Exp $
+$Id: uxio.c,v 1.32 1993/10/27 22:18:36 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -368,7 +368,7 @@ DEFUN (OS_channel_blocking, (channel), Tchannel channel)
 
 /* select(2) system call */
 
-#if defined(_HPUX) && (_HPUX_VERSION >= 80)
+#if (defined(_HPUX) && (_HPUX_VERSION >= 80)) || defined(_SUNOS4)
 #define SELECT_DECLARED
 #endif
 

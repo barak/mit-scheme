@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.11 1993/02/18 05:15:19 gjr Exp $
+$Id: ux.c,v 1.12 1993/10/27 22:16:43 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -415,7 +415,7 @@ DEFUN_VOID (UX_SC_CLK_TCK)
 
 #endif /* _POSIX */
 
-#ifndef _POSIX
+#ifndef HAVE_SIGSET_OPS
 
 int
 DEFUN (UX_sigemptyset, (set), sigset_t * set)
