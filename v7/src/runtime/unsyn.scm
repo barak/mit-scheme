@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 13.48 1987/11/17 20:12:08 jinx Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 13.49 1988/02/18 16:46:02 jrm Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -273,6 +273,11 @@
 (define (unsyntax-COMBINATION-object combination)
   (combination-components combination
     (lambda (operator operands)
+
+      (define (unsyntax-default)
+	(cons (unsyntax-object operator)
+	      (unsyntax-objects operands)))
+
       (cond ((and (or (eq? operator cons)
 		      (and (variable? operator)
 			   (eq? (variable-name operator) 'CONS)))
@@ -289,9 +294,7 @@
 		(unsyntax-error-like-form operands 'ERROR))
 	       ((BREAKPOINT-PROCEDURE)
 		(unsyntax-error-like-form operands 'BKPT))
-	       (else
-		(cons (unsyntax-object operator)
-		      (unsyntax-objects operands)))))
+	       (else (unsyntax-default))))
 	    ((lambda? operator)
 	     (lambda-components** operator
 	       (lambda (name required optional rest body)
@@ -311,15 +314,16 @@
 							    body))
 			   ((eq? name lambda-tag:make-environment)
 			    (unsyntax-make-environment required operands body))
-			   (else
+			   #|
+		            Old way when named-lambda was a letrec
 			    `(LET ,name
 			       ,(unsyntax-let-bindings required operands)
 			       ,@(unsyntax-sequence body))))
-		     (cons (unsyntax-object operator)
-			   (unsyntax-objects operands))))))
-	    (else
-	     (cons (unsyntax-object operator)
-		   (unsyntax-objects operands)))))))
+			   |#
+			   (else (unsyntax-default)))
+		     (unsyntax-default)))))
+	    (else (unsyntax-default))))))
+
 
 (define (unsyntax-error-like-form operands name)
   (cons* name
