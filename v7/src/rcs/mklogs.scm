@@ -15,6 +15,6 @@
   (make-log "/scheme/src/cref")
   (make-log "/scheme/src/edwin")
   (make-log "/scheme/src/sicp")
-  (make-log "/scheme/src/compiler" "back" "base" "documentation" "etc" "fggen"
-	    "fgopt" "rtlbase" "rtlgen" "rtlopt" "machines/bobcat"
+  (make-log "/scheme/src/compiler" "back" "base" "fggen" "fgopt"
+	    "rtlbase" "rtlgen" "rtlopt" "machines/bobcat"
 	    "machines/mips" "machines/spectrum" "machines/vax"))
