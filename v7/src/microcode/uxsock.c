@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsock.c,v 1.4 1991/06/15 00:40:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsock.c,v 1.5 1991/07/03 03:08:22 arthur Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -152,10 +152,14 @@ DEFUN (OS_server_connection_accept, (channel, peer_host, peer_port),
 {
   static struct sockaddr_in address;
   int address_length = (sizeof (struct sockaddr_in));
-  int s =
-    (UX_accept
-     ((CHANNEL_DESCRIPTOR (channel)), (&address), (&address_length)));
-  if (s == (-1))
+  int s;
+
+  while ((s = (UX_accept ((CHANNEL_DESCRIPTOR (channel)),
+			  (&address),
+			  (&address_length))))
+	 < 0)
+  {
+    if (errno != EINTR)
     {
 #ifdef EAGAIN
       if (errno == EAGAIN)
@@ -167,6 +171,7 @@ DEFUN (OS_server_connection_accept, (channel, peer_host, peer_port),
 #endif
       error_system_call (errno, syscall_accept);
     }
+  }
   if (peer_host != 0)
     {
       char * scan = ((char *) (& (address . sin_addr)));
