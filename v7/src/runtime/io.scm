@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.3 1989/09/20 15:03:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.4 1990/02/27 19:39:34 markf Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -84,13 +84,17 @@ MIT in each case. |#
 ;;;	- false:  input channel
 ;;;	- 0:	  closed channel
 
-(define ((open-channel-wrapper direction) filename)
+(define ((open-channel-wrapper direction) filename-or-process)
   (without-interrupts
    (lambda ()
      (let ((channel
 	    (make-physical-channel
-	     (file-open-channel filename direction)
-	     filename
+	     (if (process? filename-or-process)
+		 (if direction
+		     (process-get-input-channel filename-or-process)
+		     (process-get-output-channel filename-or-process))
+		 (file-open-channel filename-or-process direction))
+	     filename-or-process
 	     direction)))
        (with-absolutely-no-interrupts
 	(lambda ()
