@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.13 1991/03/28 05:38:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.14 1991/04/27 00:43:40 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -174,9 +174,7 @@ DEFUN (OS_channel_read, (channel, buffer, nbytes),
     return (0);
   while (1)
     {
-      long scr;
-      INTERRUPTABLE_EXTENT
-	(scr, (UX_read ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes)));
+      long scr = (UX_read ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes));
       if (scr < 0)
 	{
 #ifdef ERRNO_NONBLOCK
@@ -206,9 +204,7 @@ DEFUN (OS_channel_write, (channel, buffer, nbytes),
     return (0);
   while (1)
     {
-      long scr;
-      INTERRUPTABLE_EXTENT
-	(scr, (UX_write ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes)));
+      long scr = (UX_write ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes));
       if (scr < 0)
 	{
 #ifdef ERRNO_NONBLOCK

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gpio.c,v 1.8 1991/01/24 11:24:57 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gpio.c,v 1.9 1991/04/27 00:43:27 cph Exp $ */
 
 /* Scheme primitives for GPIO */
 
@@ -144,9 +144,7 @@ DEFINE_PRIMITIVE ("GPIO-READ-STRING!", Prim_gpio_read_string, 4, 4, 0)
 
   while (1)
   {
-    long scr;
-    INTERRUPTABLE_EXTENT
-      (scr, (read (gpio_channel, data, count)));
+    long scr = (read (gpio_channel, data, count));
     if (scr < 0)
     {
       UX_prim_check_errno (syscall_read);
@@ -172,9 +170,7 @@ DEFINE_PRIMITIVE ("GPIO-WRITE-STRING", Prim_gpio_write_string, 4, 4, 0)
 
   while (1)
   {
-    long scr;
-    INTERRUPTABLE_EXTENT
-      (scr, (write (gpio_channel, data, count)));
+    long scr = (write (gpio_channel, data, count));
     if (scr < 0)
     {
       UX_prim_check_errno (syscall_write);

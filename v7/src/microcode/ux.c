@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.c,v 1.7 1991/03/01 00:55:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.c,v 1.8 1991/04/27 00:43:33 cph Exp $
 
 Copyright (c) 1990-1 Massachusetts Institute of Technology
 
@@ -479,6 +479,10 @@ DEFUN (UX_sigismember, (set, signo), CONST sigset_t * set AND int signo)
 #define UX_sigvec sigvec
 #endif
 
+#ifndef SV_INTERRUPT
+#define SV_INTERRUPT 0
+#endif
+
 int
 DEFUN (UX_sigaction, (signo, act, oact),
        int signo AND
@@ -493,8 +497,7 @@ DEFUN (UX_sigaction, (signo, act, oact),
     {
       (vec -> sv_handler) = (act -> sa_handler);
       (vec -> sv_mask) = (act -> sa_mask);
-      /* Ignore SA_NOCLDSTOP since we won't use it. */
-      (vec -> sv_flags) = 0;
+      (vec -> sv_flags) = SV_INTERRUPT;
     }
   if ((UX_sigvec (signo, vec, ovec)) < 0)
     return (-1);
