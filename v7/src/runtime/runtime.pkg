@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.97 1991/03/10 22:42:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.98 1991/03/11 23:48:12 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1466,6 +1466,10 @@ MIT in each case. |#
 	  channel-port
 	  channel-read
 	  channel-read-block
+	  channel-register
+	  channel-registered?
+	  channel-select-then-read
+	  channel-unregister
 	  channel-table
 	  channel-type
 	  channel-type=block-device?
@@ -1947,6 +1951,7 @@ MIT in each case. |#
 	  subprocess-exit-reason
 	  subprocess-filename
 	  subprocess-get
+	  subprocess-global-status-tick
 	  subprocess-id
 	  subprocess-input-channel
 	  subprocess-input-port

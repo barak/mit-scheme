@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.21 1991/03/10 22:42:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.22 1991/03/11 23:48:00 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -200,6 +200,10 @@ MIT in each case. |#
 	(ucode-primitive channel-close 1)
 	(ucode-primitive channel-nonblocking 1)
 	(ucode-primitive channel-read 4)
+	(ucode-primitive channel-register 1)
+	(ucode-primitive channel-registered? 1)
+	(ucode-primitive channel-select-then-read 4)
+	(ucode-primitive channel-unregister 1)
 	(ucode-primitive channel-write 4)
 	(ucode-primitive file-length-new 1)
 	(ucode-primitive file-position 1)
@@ -278,6 +282,19 @@ MIT in each case. |#
 		     (channel-blocking channel)
 		     (channel-nonblocking channel)))))))
       (thunk)))
+
+(define (channel-registered? channel)
+  ((ucode-primitive channel-registered? 1) (channel-descriptor channel)))
+
+(define (channel-register channel)
+  ((ucode-primitive channel-register 1) (channel-descriptor channel)))
+
+(define (channel-unregister channel)
+  ((ucode-primitive channel-unregister 1) (channel-descriptor channel)))
+
+(define (channel-select-then-read channel buffer start end)
+  ((ucode-primitive channel-select-then-read 4) (channel-descriptor channel)
+						buffer start end))
 
 (define (channel-table)
   (fluid-let ((traversing? true))

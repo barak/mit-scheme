@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.9 1991/03/09 21:33:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.10 1991/03/11 23:48:06 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -39,6 +39,7 @@ MIT in each case. |#
 
 (define subprocesses)
 (define scheme-subprocess-environment)
+(define global-status-tick)
 
 (define (initialize-package!)
   (reset-package!)
@@ -47,6 +48,7 @@ MIT in each case. |#
 (define (reset-package!)
   (set! subprocesses '())
   (set! scheme-subprocess-environment ((ucode-primitive scheme-environment 0)))
+  (set! global-status-tick (cons false false))
   unspecific)
 
 (define (subprocess-list)
@@ -226,6 +228,15 @@ MIT in each case. |#
 	(set-subprocess-%status-tick! process tick)
 	tick)))
 
+(define (subprocess-global-status-tick)
+  (without-interrupts
+   (lambda ()
+     (if ((ucode-primitive process-status-sync-all 0))
+	 (let ((tick (cons false false)))
+	   (set! global-status-tick tick)
+	   tick)
+	 global-status-tick))))
+
 (define (convert-subprocess-status status)
   (case status
     ((0) 'RUNNING)
@@ -233,7 +244,7 @@ MIT in each case. |#
     ((2) 'EXITED)
     ((3) 'SIGNALLED)
     (else (error "Illegal process status:" status))))
-
+
 (define (subprocess-job-control-status process)
   (let ((n
 	 ((ucode-primitive process-job-control-status 1)
@@ -265,7 +276,7 @@ MIT in each case. |#
 
 (define (subprocess-stop process)
   ((ucode-primitive process-stop 1) (subprocess-index process)))
-
+
 (define (start-batch-subprocess filename arguments environment)
   (make-subprocess filename arguments environment
 		   false false false false
