@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile.cmn,v 1.8 1996/05/17 17:10:18 cph Exp $
+###	$Id: makefile.cmn,v 1.9 1996/10/03 04:19:53 cph Exp $
 ###
 ###	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ###
@@ -286,8 +286,7 @@ usrdef.c : $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.tch \
 
 bchdef.c : $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) usrdef.tch \
 	findprim.exe
-	.\findprim $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) \
-	> bchdef.c
+	.\findprim $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) > bchdef.c
 
 cmpauxmd.$(ASM) : cmpauxmd.m4
 
