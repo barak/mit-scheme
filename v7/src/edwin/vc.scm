@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.24 1996/05/14 01:51:42 cph Exp $
+;;;	$Id: vc.scm,v 1.25 1996/12/16 04:57:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -1101,6 +1101,7 @@ the value of vc-log-mode-hook."
 	(vc-run-command master 0 "co"
 			"-f"
 			(rcs-rev-switch "-u" revision)
+			(rcs-mtime-switch master)
 			(vc-workfile-pathname master))))))
 
 (define-vc-type-operation 'CHECKIN vc-type:rcs
