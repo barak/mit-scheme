@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.54 2000/05/17 17:31:26 cph Exp $
+;;; $Id: imail-top.scm,v 1.55 2000/05/17 17:52:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -875,20 +875,28 @@ While composing the reply, use \\[mail-yank-original] to yank the
   "Probe the mail server for new mail.
 Selects the first new message if any new mail.
 Currently useful only for IMAP folders."
-  "P"
-  (lambda (specific-input?)
-    (if specific-input?
-	(dispatch-on-command (ref-command-object imail-input))
-	(let ((folder (selected-folder)))
-	  (let ((length (folder-length folder))
-		(unseen (first-unseen-message folder)))
-	    (probe-folder folder)
-	    (let ((length* (folder-length folder)))
-	      (if (> length* length)
-		  (select-message folder
-				  (if unseen
-				      length
-				      (first-unseen-message folder))))))))))
+  ()
+  (lambda ()
+    (let ((folder (selected-folder)))
+      (let ((count (folder-modification-count folder))
+	    (last (last-message folder)))
+	(probe-folder folder)
+	(if (> (folder-modification-count folder) count)
+	    (select-message
+	     folder
+	     (or (cond ((not last)
+			(first-message folder))
+		       ((message-attached? last folder)
+			(next-message last))
+		       ((message-index last)
+			=> (lambda (index)
+			     (let ((index (+ index 1)))
+			       (if (< index (folder-length folder))
+				   (get-message folder index)
+				   (first-unseen-message folder)))))
+		       (else (first-unseen-message folder)))
+		 (selected-message #f)))
+	    (message "(No changes to mail folder)"))))))
 
 (define-command imail-save-folder
   "Save the currently selected IMAIL folder."
