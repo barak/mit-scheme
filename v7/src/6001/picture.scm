@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.14 1992/09/01 20:42:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.15 1992/09/01 20:43:12 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -304,10 +304,6 @@ MIT in each case. |#
 	      (fasdump picture (pathname-new-type path-name "pic"))
 	      (fasdump picture path-name)))
 	(error:wrong-type-argument picture "picture" 'PICTURE-WRITE))))
-
-;;; This writes a picture in raw pgm format.  If all values are between
-;;; 0 and 255, then the values are written as is.  Otherwise they are compressed
-;;; to lie in the range 0 to 255.
 
 (define (picture->pgm-file pic file)
   (let* ((width (picture-width pic))
