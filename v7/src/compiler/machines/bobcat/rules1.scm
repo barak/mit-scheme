@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.35 1991/05/28 19:14:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -703,11 +703,15 @@ MIT in each case. |#
 	   (FMOVE D ,source (@A+ 5))))))
 
 (define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (@ADDRESS->FLOAT (REGISTER (? source))))
-  (let ((source (indirect-reference! source 1)))
+  (ASSIGN (REGISTER (? target)) (OBJECT->FLOAT (REGISTER (? source))))
+  (let ((source (standard-move-to-temporary! source 'DATA))
+	(temp (allocate-temporary-register! 'ADDRESS)))
     (delete-dead-registers!)
-    (LAP (FMOVE D ,source ,(reference-target-alias! target 'FLOAT)))))
+    (LAP ,@(object->address source)
+	 (MOV L ,source ,(register-reference temp))
+	 (FMOVE D
+		,(offset-reference temp 1)
+		,(reference-target-alias! target 'FLOAT)))))
 
 (define-rule statement
   (ASSIGN (? target)

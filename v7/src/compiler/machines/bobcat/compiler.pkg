@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.33 1991/07/25 02:34:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.34 1991/10/25 06:49:28 cph Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -590,6 +590,7 @@ MIT in each case. |#
 	 "machines/bobcat/instr4"	;  "        "
 	 "machines/bobcat/flinstr1"	;68881 Floating Point Instructions
 	 "machines/bobcat/flinstr2"	;  "        "	  "	   "
+	 "machines/bobcat/mc68ktgl"	;68020/68040 selection
 	 )
   (parent (compiler))
   (export (compiler)

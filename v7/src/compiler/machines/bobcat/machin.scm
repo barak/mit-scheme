@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.25 1991/05/28 19:14:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.26 1991/10/25 06:49:34 cph Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,6 +39,7 @@ MIT in each case. |#
 
 ;;;; Architecture Parameters
 
+(define use-pre/post-increment? true)
 (define-integrable endianness 'BIG)
 (define-integrable addressing-granularity 8)
 (define-integrable scheme-object-width 32)

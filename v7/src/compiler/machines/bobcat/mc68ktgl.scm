@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/mc68ktgl.scm,v 1.1 1991/03/24 23:53:02 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/mc68ktgl.scm,v 1.2 1991/10/25 06:49:53 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -33,58 +33,33 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 (declare (usual-integrations))
-
-(in-package (->environment '(compiler lap-syntaxer))
-  
-;; This procedure toggles the closure format for the mc68k back end.
 
 (define (mc68k/toggle-closure-format #!optional new-format)
-  (let ((new-format
-	 (cond ((not (default-object? new-format))
-		new-format)
-	       ((eq? MC68K/closure-format 'MC68020)
-		'MC68040)
-	       (else
-		'MC68020))))
-    (if (not (eq? new-format MC68K/closure-format))
-	(case new-format
-	  ((MC68020)
-	   (set! mc68k/closure-format
-		 'MC68020)
-	   (set! closure-first-offset
-		 MC68020/closure-first-offset)
-	   (set! closure-object-first-offset
-		 MC68020/closure-object-first-offset)
-	   (set! closure-entry-distance
-		 MC68020/closure-entry-distance)
-	   (set! closure-environment-adjustment
-		 MC68020/closure-environment-adjustment)
-	   (set! generate/closure-header
-		 MC68020/closure-header)
-	   (set! generate/cons-closure
-		 MC68020/cons-closure)
-	   (set! generate/cons-multiclosure
-		 MC68020/cons-multiclosure))
-	  ((MC68040)
-	   (set! mc68k/closure-format
-		 'MC68040)
-	   (set! closure-first-offset
-		 MC68040/closure-first-offset)
-	   (set! closure-object-first-offset
-		 MC68040/closure-object-first-offset)
-	   (set! closure-entry-distance
-		 MC68040/closure-entry-distance)
-	   (set! closure-environment-adjustment
-		 MC68040/closure-environment-adjustment)
-	   (set! generate/closure-header
-		 MC68040/closure-header)
-	   (set! generate/cons-closure
-		 MC68040/cons-closure)
-	   (set! generate/cons-multiclosure
-		 MC68040/cons-multiclosure))
-	  (error "MC68K/toggle-closure-format: Unknown format"
-		 new-format)))
-    (warn "MC68K/closure-format is now" MC68K/closure-format)
-    MC68K/closure-format))
-
-) ;; End of in-package.
+  (case (if (default-object? new-format)
+	    (if (eq? MC68K/closure-format 'MC68020)
+		'MC68040
+		'MC68020)
+	    new-format)
+    ((MC68020)
+     (set! closure-first-offset MC68020/closure-first-offset)
+     (set! closure-object-first-offset MC68020/closure-object-first-offset)
+     (set! closure-entry-distance MC68020/closure-entry-distance)
+     (set! closure-environment-adjustment
+	   MC68020/closure-environment-adjustment)
+     (set! generate/closure-header MC68020/closure-header)
+     (set! generate/cons-closure MC68020/cons-closure)
+     (set! generate/cons-multiclosure MC68020/cons-multiclosure)
+     (set! mc68k/closure-format 'MC68020))
+    ((MC68040)
+     (set! closure-first-offset MC68040/closure-first-offset)
+     (set! closure-object-first-offset MC68040/closure-object-first-offset)
+     (set! closure-entry-distance MC68040/closure-entry-distance)
+     (set! closure-environment-adjustment
+	   MC68040/closure-environment-adjustment)
+     (set! generate/closure-header MC68040/closure-header)
+     (set! generate/cons-closure MC68040/cons-closure)
+     (set! generate/cons-multiclosure MC68040/cons-multiclosure)
+     (set! mc68k/closure-format 'MC68040))
+    (else
+     (error "Unknown closure format:" new-format)))
+  MC68K/closure-format)
