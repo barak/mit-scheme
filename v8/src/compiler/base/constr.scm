@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/base/constr.scm,v 1.1 1994/11/19 02:02:36 adams Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/base/constr.scm,v 1.2 1995/06/28 00:05:46 adams Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -32,6 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
+(declare (usual-integrations))
+
 ;;; Procedures for managing a set of ordering constraints
 
 (define-structure (constraint
