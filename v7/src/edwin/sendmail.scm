@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.7 1991/05/06 01:05:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.8 1991/05/07 03:21:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -252,9 +252,6 @@ Prefix arg means don't delete this window."
 		  (buffer-major-mode (window-buffer (other-window)))))
 	(window-delete! (current-window))
 	(select-buffer (previous-buffer)))))
-
-(define-major-mode rmail fundamental "RMAIL"
-  "Not implemented")
 
 (define-command mail-send
   "Send the message in the current buffer.
