@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: curren.scm,v 1.117 1995/05/05 06:25:50 cph Exp $
+;;;	$Id: curren.scm,v 1.118 1995/06/07 19:01:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -98,7 +98,7 @@ The screen is guaranteed to be deselected at that time."
 		 (set-editor-screens! current-editor
 				      (delq! screen
 					     (editor-screens current-editor))))
-	       (save-buffers-kill-edwin)))))))
+	       ((ref-command save-buffers-kill-scheme) #t)))))))
 
 (define (select-screen screen)
   (without-interrupts
