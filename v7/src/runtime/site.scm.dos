@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.dos,v 1.1 1992/05/13 00:56:46 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.dos,v 1.2 1992/05/27 17:46:07 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -35,11 +35,11 @@ MIT in each case. |#
 ;;;; Switzerland site specific stuff
 
 (declare (usual-integrations))
-
+
 ;;; Local hacks
 
 (define (call/cc . args)
-  (warn "call/cc: Invoking the C compiler:" command-line)
+  (warn "call/cc: Invoking the C compiler:" args)
   (warn "Segmentation fault (core dumped)"))
 
 ;;; Normalization of various directory structures.
@@ -49,27 +49,11 @@ MIT in each case. |#
 	       (->environment '(runtime compiler-info)))))
   (for-each
    (lambda (path)
-     (add-directory-rewriting-rule! path "/scheme/"))
-   '("/scheme/300/"
-     "/altdorf/scheme/300/"
-     "/nfs/altdorf/root/scheme/300/"
-     "/scheme/800/"
-     "/altdorf/scheme/800"
-     "/nfs/altdorf/root/scheme/800/"
-     "/scheme/700/"
-     "/altdorf/scheme/700"
-     "/nfs/altdorf/root/scheme/700/"
-     "/scheme/SONY/"
-     "/nfs/altdorf/root/scheme/SONY/"))
-  (for-each
-   (lambda (path)
      (add-directory-rewriting-rule! path "/scheme/runtime"))
    '("/scheme/runtime/scm/"
      "/scheme/runtime/bin/"
-     "/scheme/runtime/com/"))
-  )
+     "/scheme/runtime/com/")))
 
-
 ;;; Dos specific:
 ;;; Timer hook to get interrupt keys
 
@@ -82,6 +66,4 @@ MIT in each case. |#
   (let ((sv (vector-ref
 	     (get-fixed-objects-vector)
 	     (fixed-objects-vector-slot 'SYSTEM-INTERRUPT-VECTOR))))
-    (vector-set! sv timer-slot typeahead-timer-interrupt))
-
-  )
+    (vector-set! sv timer-slot typeahead-timer-interrupt)))
