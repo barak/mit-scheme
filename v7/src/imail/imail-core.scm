@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.54 2000/05/12 18:22:46 cph Exp $
+;;; $Id: imail-core.scm,v 1.55 2000/05/15 12:54:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -121,7 +121,7 @@
 ;; -------------------------------------------------------------------
 ;; Move the folder named URL to NEW-URL.  Signal an error if the
 ;; folder doesn't exist, if NEW-URL already refers to a folder, or if
-;; the move can't be performed for some reason.  This operation can be
+;; the move can't be performed for some reason.  This operation can
 ;; also be used to convert between protocols, e.g. to move a folder
 ;; from a server to a file.
 
