@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.39 1993/12/16 23:28:51 cph Exp $
+$Id: error.scm,v 14.40 1993/12/17 00:03:57 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -302,43 +302,31 @@ MIT in each case. |#
   (name false read-only true)
   (reporter false read-only true)
   (effector false read-only true)
+  (interactor false)
   (properties (make-1d-table) read-only true))
 
-(define (bind-restart name reporter effector receiver)
-  (if name (guarantee-symbol name 'BIND-RESTART))
+(define (with-restart name reporter effector interactor thunk)
+  (if name (guarantee-symbol name 'WITH-RESTART))
   (if (not (or (string? reporter) (procedure-of-arity? reporter 1)))
-      (error:wrong-type-argument reporter "restart reporter" 'BIND-RESTART))
+      (error:wrong-type-argument reporter "restart reporter" 'WITH-RESTART))
   (if (not (procedure? effector))
-      (error:wrong-type-argument effector "restart effector" 'BIND-RESTART))
-  (let ((restart (%make-restart name reporter effector)))
+      (error:wrong-type-argument effector "restart effector" 'WITH-RESTART))
+  (if (not (procedure? interactor))
+      (error:wrong-type-argument interactor "restart interactor"
+				 'WITH-RESTART))
+  (let ((restart (%make-restart name reporter effector interactor)))
     (fluid-let ((*bound-restarts* (cons restart *bound-restarts*)))
       (receiver restart))))
 
 (define (with-simple-restart name reporter thunk)
   (call-with-current-continuation
    (lambda (continuation)
-     (bind-restart name reporter (lambda () (continuation unspecific))
-       (lambda (restart)
-	 restart
-	 (thunk))))))
+     (with-restart name reporter (lambda () (continuation unspecific)) values
+       thunk))))
 
 (define (restart/name restart)
   (guarantee-restart restart 'RESTART/NAME)
   (%restart/name restart))
-
-(define (restart/effector restart)
-  (guarantee-restart restart 'RESTART/EFFECTOR)
-  (%restart/effector restart))
-
-(define (restart/properties restart)
-  (guarantee-restart restart 'RESTART/PROPERTIES)
-  (%restart/properties restart))
-
-(define (restart/put! restart key datum)
-  (1d-table/put! (restart/properties restart) key datum))
-
-(define (restart/get restart key)
-  (1d-table/get (restart/properties restart) key false))
 
 (define (write-restart-report restart port)
   (guarantee-restart restart 'WRITE-RESTART-REPORT)
@@ -347,6 +335,33 @@ MIT in each case. |#
     (if (string? reporter)
 	(write-string reporter port)
 	(reporter port))))
+
+(define (restart/effector restart)
+  (guarantee-restart restart 'RESTART/EFFECTOR)
+  (%restart/effector restart))
+
+(define (restart/interactor restart)
+  (guarantee-restart restart 'RESTART/INTERACTOR)
+  (%restart/interactor restart))
+
+(define (restart/properties restart)
+  (guarantee-restart restart 'RESTART/PROPERTIES)
+  (%restart/properties restart))
+
+(define (restart/get restart key)
+  (if (eq? key 'INTERACTIVE)
+      (restart/interactor restart)
+      (1d-table/get (restart/properties restart) key false)))
+
+(define (restart/put! restart key datum)
+  (if (eq? key 'INTERACTIVE)
+      (set-restart/interactor! restart datum)
+      (1d-table/put! (restart/properties restart) key datum)))
+
+(define (bind-restart name reporter effector receiver)
+  (with-restart name reporter effector #f
+    (lambda ()
+      (receiver (car *bound-restarts*)))))
 
 (define (invoke-restart restart . arguments)
   (guarantee-restart restart 'INVOKE-RESTART)
@@ -356,11 +371,12 @@ MIT in each case. |#
   (guarantee-restart restart 'INVOKE-RESTART-INTERACTIVELY)
   (hook/invoke-restart
    (%restart/effector restart)
-   (let ((interactive
-	 (1d-table/get (%restart/properties restart) 'INTERACTIVE false)))
-     (if (not interactive)
-	 '()
-	 (with-values interactive list)))))
+   (call-with-values
+       (let ((interactor (%restart/interactor restart)))
+	 (if (not interactor)
+	     (error:bad-range-argument restart 'INVOKE-RESTART-INTERACTIVELY))
+	 interactor)
+     list)))
 
 (define hook/invoke-restart)
 
@@ -369,6 +385,12 @@ MIT in each case. |#
     (if (null? restarts)
 	'()
 	(cons (car restarts) (loop (cdr restarts))))))
+
+(define (first-bound-restart)
+  (let ((restarts *bound-restarts*))
+    (if (null? restarts)
+	(error:no-such-restart #f))
+    (car restarts)))
 
 (define (%find-restart name restarts)
   (let loop ((restarts restarts))
@@ -598,27 +620,26 @@ MIT in each case. |#
 			     (cons* continuation
 				    'BOUND-RESTARTS
 				    field-values))))
-		 (bind-restart 'USE-VALUE
+		 (with-restart 'USE-VALUE
 		     (if (string? use-value-message)
 			 use-value-message
 			 (use-value-message condition))
 		     continuation
-		   (lambda (restart)
-		     (restart/put! restart 'INTERACTIVE
-		       (let ((prompt
-			      (if (string? use-value-prompt)
-				  use-value-prompt
-				  (use-value-prompt condition))))
-			 (lambda ()
-			   (values (prompt-for-evaluated-expression prompt)))))
-		     (bind-restart 'RETRY
+		     (let ((prompt
+			    (if (string? use-value-prompt)
+				use-value-prompt
+				(use-value-prompt condition))))
+		       (lambda ()
+			 (values (prompt-for-evaluated-expression prompt))))
+		   (lambda ()
+		     (with-restart 'RETRY
 			 (if (string? retry-message)
 			     retry-message
 			     (retry-message condition))
 			 (lambda ()
 			   (continuation (list-ref field-values index)))
-		       (lambda (restart)
-			 (restart/put! restart 'INTERACTIVE values)
+			 values
+		       (lambda ()
 			 (signal-condition condition)
 			 (default-handler condition)))))))))))
       constructor)))
