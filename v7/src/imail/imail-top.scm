@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.124 2000/06/03 02:11:02 cph Exp $
+;;; $Id: imail-top.scm,v 1.125 2000/06/05 13:27:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1572,15 +1572,14 @@ With prefix argument, prompt even when point is on an attachment."
 
 (define (save-mime-attachment body selector message buffer)
   (let ((filename
-	 (prompt-for-file "Save attachment as"
-			  (list
-			   (merge-pathnames
-			    (filter-mime-attachment-filename
-			     (mime-body-disposition-filename body))
-			    (or (buffer-get buffer
-					    'IMAIL-MIME-ATTACHMENT-DIRECTORY
-					    #f)
-				(buffer-default-directory buffer)))))))
+	 (prompt-for-file
+	  "Save attachment as"
+	  (let ((filename (mime-body-disposition-filename body)))
+	    (and filename
+		 (list
+		  (merge-pathnames (filter-mime-attachment-filename filename)
+		   (or (buffer-get buffer 'IMAIL-MIME-ATTACHMENT-DIRECTORY #f)
+		       (buffer-default-directory buffer)))))))))
     (if (or (not (file-exists? filename))
 	    (prompt-for-yes-or-no? "File already exists; overwrite"))
 	(begin
