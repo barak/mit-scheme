@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 13.41 1987/01/23 00:16:30 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 13.42 1987/02/09 23:10:13 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -109,13 +109,7 @@
 (define (parse-unsigned-real chars receiver)
   (parse-prefix chars false false false
     (lambda (chars radix exactness precision)
-      (fluid-let ((*radix*
-		   (cdr (assv radix
-			      '((#F . 10)
-				(#\b . 2)
-				(#\o . 8)
-				(#\d . 10)
-				(#\x . 16))))))
+      (define (finish)
 	(parse-body chars
 	  (lambda (chars real)
 	    (parse-suffix chars
@@ -131,7 +125,16 @@
 			      ((#\l) ->long-flonum))
 			    (if exponent
 				(* real (expt 10 exponent))
-				real))))))))))))
+				real)))))))))
+      (if radix
+	  (fluid-let ((*radix*
+		       (cdr (assv radix
+				  '((#\b . 2)
+				    (#\o . 8)
+				    (#\d . 10)
+				    (#\x . 16))))))
+	    (finish))
+	  (finish)))))
 
 (define (parse-prefix chars radix exactness precision receiver)
   (and (not (null? chars))
