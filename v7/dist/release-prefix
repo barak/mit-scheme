@@ -1,5 +1,5 @@
 
-# $Id: release-prefix,v 1.6 2001/03/05 20:47:50 cph Exp $
+# $Id: release-prefix,v 1.7 2001/04/06 19:05:42 cph Exp $
 #
 # Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
@@ -19,15 +19,22 @@
 
 get_release ()
 {
-    fgrep Release /scheme/v7/src/runtime/version.scm | awk '{ print $3 "." $4 "." $5 }' | tr -d \(\)\'
+    fgrep Release /scheme/v7/src/runtime/version.scm \
+	| awk 'BEGIN { OFS = "." }
+	       NF == 5 { print $3, $4, $5 }
+	       NF == 6 { print $3, $4, $5, $6 }
+	       NF == 7 { print $3, $4, $5, $6, $7 }' \
+	| tr -d \(\)\'\"
 }
 
 get_release_prefix ()
 {
-    echo "scheme-$(get_release)"
+    v="${1:-$(get_release)}"
+    echo "scheme-${v}"
 }
 
 get_release_tag ()
 {
-    echo "release-$(get_release | tr . -)"
+    v="${1:-$(get_release)}"
+    echo "release-$(echo "${v}" | tr . -)"
 }
