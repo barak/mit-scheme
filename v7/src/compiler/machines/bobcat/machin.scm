@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.11 1988/08/29 22:46:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.12 1988/11/03 06:31:15 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -169,10 +169,21 @@ MIT in each case. |#
 (define-integrable (interpreter-register:unbound?)
   (rtl:make-machine-register d0))
 
+(define-integrable (interpreter-value-register)
+  (rtl:make-offset (interpreter-regs-pointer) 2))
+
 (define (interpreter-value-register? expression)
   (and (rtl:offset? expression)
        (interpreter-regs-pointer? (rtl:offset-register expression))
        (= 2 (rtl:offset-number expression))))
+
+(define-integrable (interpreter-environment-register)
+  (rtl:make-offset (interpreter-regs-pointer) 3))
+
+(define (interpreter-environment-register? expression)
+  (and (rtl:offset? expression)
+       (interpreter-regs-pointer? (rtl:offset-register expression))
+       (= 3 (rtl:offset-number expression))))
 
 (define-integrable (interpreter-free-pointer)
   (rtl:make-machine-register regnum:free-pointer))
