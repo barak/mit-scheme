@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syncproc.scm,v 1.5 1999/01/31 20:48:23 cph Exp $
+$Id: syncproc.scm,v 1.6 1999/02/01 03:28:31 cph Exp $
 
 Copyright (c) 1999 Massachusetts Institute of Technology
 
@@ -34,11 +34,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (input #f read-only #t)
   ;; How to do line translation on data sent to the subprocess.
   (input-line-translation 'DEFAULT read-only #t)
+  ;; What size is the input buffer?
+  (input-buffer-size 512 read-only #t)
   ;; Where to put output data that is received from the subprocess.
   ;; Either an output port, or #F meaning to discard any output.
   (output (current-output-port) read-only #t)
   ;; How to do line translation on data received from the subprocess.
   (output-line-translation 'DEFAULT read-only #t)
+  ;; What size is the output buffer?
+  (output-buffer-size 512 read-only #t)
   ;; A thunk that is periodically called while the subprocess is
   ;; running, to allow the calling program to notice output from the
   ;; subprocess and show it to the user.  Can also be #F.
@@ -63,7 +67,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (run-synchronous-subprocess program arguments . options)
   (run-synchronous-subprocess-1 program arguments
 				(apply make-subprocess-context options)))
-
+
 (define (run-synchronous-subprocess-1 program arguments context)
   (let* ((directory (subprocess-context/working-directory context))
 	 (process #f))
@@ -139,14 +143,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (condition-signaller condition-type:subprocess-signalled
 		       '(SUBPROCESS REASON)
 		       standard-error-handler))
-
-(define condition-type:subprocess-exited
-  (abnormal-termination-type 'SUBPROCESS-EXITED "exited abnormally with code"))
-
-(define error:subprocess-exited
-  (condition-signaller condition-type:subprocess-exited
-		       '(SUBPROCESS REASON)
-		       standard-error-handler))
 
 (define (synchronous-process-wait process context)
   ;; Initialize the subprocess line-translation appropriately.
@@ -157,12 +153,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (call-with-input-copier process
 			    (subprocess-context/input context)
 			    (subprocess-context/output context)
-			    512
+			    (subprocess-context/input-buffer-size context)
       (lambda (copy-input)
 	(call-with-output-copier process
 				 (subprocess-context/output context)
 				 (subprocess-context/input context)
-				 512
+				 (subprocess-context/output-buffer-size
+				  context)
 	  (lambda (copy-output)
 	    (if copy-input
 		(if copy-output
