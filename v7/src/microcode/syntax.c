@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: syntax.c,v 1.27 2003/02/14 18:28:23 cph Exp $
+$Id: syntax.c,v 1.28 2004/12/17 03:46:22 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1991,1993,1996 Massachusetts Institute of Technology
+Copyright 2000,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -883,6 +884,8 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 		}
 	    }
 	}
+      in_comment = 0;
+      continue;
 
     not_in_comment:
       in_comment = 0;
