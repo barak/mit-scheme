@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insutl.scm,v 1.5 1987/08/22 22:01:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insutl.scm,v 1.6 1987/08/22 22:44:35 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -61,13 +61,17 @@ MIT in each case. |#
 
 ;;;; Addressing modes
 
-;; Missing: index and immediate modes.
-
 (define-ea-database
   ((S (? value))
    (R)
    (BYTE (6 value)
 	 (2 0)))
+
+  ((X (? n) (? base ea-i-?))
+   (R M W V)
+   (BYTE (4 n)
+	 (4 4))
+   (OPERAND ? base))
 
   ((R (? n))
    (R M W V)
@@ -130,6 +134,12 @@ MIT in each case. |#
 	 (4 15))
    (BYTE (32 off SIGNED)))
 
+  ((& (? value))
+   (R M W A V I)
+   (BYTE (4 15)
+	 (4 8))
+   (IMMEDIATE value))
+
   ((@& (? value))			; Absolute
    (R M W A V I)
    (BYTE (4 15)
@@ -212,52 +222,16 @@ MIT in each case. |#
 
 ;;;; Effective address processing
 
-;; Handling of index and immediate modes
-;; Index mode:
-;;   (X (? n) (? base ea))
-;;   base is prefixed by (BYTE (4 n) (4 4)).
-;; Immediate mode:
-;;   (& (? value))
-;;   The operand size dependent value is preceeded by
-;;   (BYTE (4 15) (4 8)) 
+(define *immediate-type*)
 
 (define (process-ea expression type)
-  (define (wrap keyword cats reg mode value)
-    (make-effective-address
-     keyword
-     cats
-     (cons-syntax
-      (syntax-evaluation reg coerce-4-bit-unsigned)
-      (cons-syntax (syntax-evaluation mode coerce-4-bit-unsigned)
-		   value))))
-
-  (define (kernel expression)
+  (fluid-let ((*immediate-type*
+	       (if (eq? '? type) *immediate-type* type)))
     (let ((match (pattern-lookup ea-database expression)))
       (cond (match (match))
-	    ((and (pair? expression) (eq? (car expression) '&))
-	     (wrap '& '(R A V I)	; M and W unpredictable
-		   15 8
-		   (cons-syntax
-		    (coerce-to-type (cadr expression) type)
-		    '())))
-	    ;; Guarantee idempotency for early processing.
-	    ((effective-address? expression)
-	     expression)
-	    (else #F))))
-	  
-  (cond ((not (pair? expression))
-	 ;; Guarantee idempotency for early processing.
-	 (if (effective-address? object)
-	     object
-	     #F))
-	((eq? (car expression) 'X)
-	 (let ((base (kernel (caddr expression))))
-	   (and base
-		(memq 'I (ea-categories base))
-		(wrap 'X '(R M W A V)
-		      (cadr expression) 4
-		      (ea-value result)))))
-	(else (kernel expression))))
+	    ;; Guarantee idempotency for early instruction processing.
+	    ((effective-address? expression) expression)
+	    (else #F)))))
 
 (define (coerce-to-type expression type)
   (syntax-evaluation
@@ -269,8 +243,8 @@ MIT in each case. |#
      ((d f g h l o q)
       (error "coerce-to-type: Unimplemented type" type))
      (else (error "coerce-to-type: Unknown type" type)))))
-
-;;;; Transformers
+
+;;; Transformers
 
 (define-symbol-transformer cc
   (NEQ . #x2) (NEQU . #x2) (EQL . #x3) (EQLU . #x3)
@@ -288,6 +262,8 @@ MIT in each case. |#
 	 (or (eq? (car expression) '@PCR)
 	     (eq? (car expression) '@PCO))
 	 expression)))
+
+;;;; Effective address transformers
 
 (define-ea-transformer ea-a-b a b)
 (define-ea-transformer ea-a-d a d)
@@ -324,3 +300,4 @@ MIT in each case. |#
 (define-ea-transformer ea-w-o w o)
 (define-ea-transformer ea-w-q w q)
 (define-ea-transformer ea-w-w w w)
+(define-ea-transformer ea-i-? i ?)

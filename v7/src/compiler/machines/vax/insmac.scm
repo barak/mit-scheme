@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.7 1987/08/22 22:10:08 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.8 1987/08/22 22:44:15 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -51,7 +51,7 @@ MIT in each case. |#
 	     `(MAKE-EFFECTIVE-ADDRESS
 	       ',keyword
 	       ',categories
-	       ,(process-fields value))))))))
+	       ,(process-fields value false))))))))
 
 (syntax-table-define assembler-syntax-table 'DEFINE-EA-TRANSFORMER
   (macro (name category type)
@@ -76,25 +76,22 @@ MIT in each case. |#
   (macro (name value)
     `(define ,name ,value)))
 
-(define ea-value-operator 'EA-VALUE)
-
 (define (parse-instruction opcode tail early?)
-  (if early?
-      (fluid-let ((ea-value-operator 'EA-VALUE-EARLY))
-	(process-fields (cons opcode tail)))
-      (process-fields (cons opcode tail))))
+  (process-fields (cons opcode tail) early?))
 
-(define (process-fields fields)
+(define (process-fields fields early?)
   (if (and (null? (cdr fields))
 	   (eq? (caar fields) 'VARIABLE-WIDTH))
-      (expand-variable-width (car fields))
+      (expand-variable-width (car fields)
+			     (if early? 'EA-VALUE-EARLY 'EA-VALUE))
       (expand-fields fields
+		     (if early? 'EA-VALUE-EARLY 'EA-VALUE)
 		     (lambda (code size)
 		       (if (not (zero? (remainder size 8)))
 			   (error "process-fields: bad syllable size" size))
 		       code))))
 
-(define (expand-variable-width field)
+(define (expand-variable-width field ea-value-operator)
   (let ((binding (cadr field))
 	(clauses (cddr field)))
     `(LIST
@@ -104,16 +101,17 @@ MIT in each case. |#
 	(map (lambda (clause)
 	       (expand-fields
 		(cdr clause)
+		ea-value-operator
 		(lambda (code size)
 		  (if (not (zero? (remainder size 8)))
 		      (error "expand-variable-width: bad clause size" size))
 		  `(,code ,size ,@(car clause)))))
 	     clauses)))))
 
-(define (expand-fields fields receiver)
+(define (expand-fields fields ea-value-operator receiver)
   (if (null? fields)
       (receiver ''() 0)
-      (expand-fields (cdr fields)
+      (expand-fields (cdr fields) ea-value-operator
        (lambda (tail tail-size)
 	 (case (caar fields)
 	   ((BYTE)
@@ -134,9 +132,15 @@ MIT in each case. |#
 		   ,(displacement-syntaxer expression size)
 		   ,tail)
 		 (+ size tail-size)))))
+	   ((IMMEDIATE)
+	    (receiver
+	     `(CONS-SYNTAX
+	       (COERCE-TO-TYPE ,(cadar fields) *IMMEDIATE-TYPE*)
+	       ,tail)
+	     tail-size))
 	   (else
 	    (error "expand-fields: Unknown field kind" (caar fields))))))))
-
+
 (define (displacement-syntaxer expression size)
   (cond ((not (pair? expression))
 	 `(SYNTAX-DISPLACEMENT ,expression
