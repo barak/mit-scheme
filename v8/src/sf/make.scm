@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/make.scm,v 3.6 1987/05/08 02:48:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/make.scm,v 3.7 1987/05/09 00:51:39 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -51,7 +51,6 @@ MIT in each case. |#
     (define package/declarations (make-environment))
     (define package/copy	(make-environment))
     (define package/free	(make-environment))
-    (define package/safe?	(make-environment))
     (define package/change-type	(make-environment))))
 
 (in-package package/scode-optimizer
@@ -60,7 +59,7 @@ MIT in each case. |#
     (make-environment
       (define :name "SF")
       (define :version 3)
-      (define :modification 6)
+      (define :modification 7)
       (define :files)
 
       (define :files-lists
@@ -91,8 +90,6 @@ MIT in each case. |#
 	       '("copy.bin"))		;Copy Expressions
 	 (cons package/free
 	       '("free.bin"))		;Free Variable Analysis
-	 (cons package/safe?
-	       '("safep.bin"))		;Safety Analysis
 	 (cons package/change-type
 	       '("chtype.bin"))		;Type interning
 	 ))))
