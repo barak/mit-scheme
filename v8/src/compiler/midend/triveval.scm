@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: triveval.scm,v 1.3 1994/11/26 16:55:36 gjr Exp $
+$Id: triveval.scm,v 1.4 1995/03/20 02:01:28 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -428,6 +428,7 @@ MIT in each case. |#
     (declare-operator %stack-closure-ref stack-closure-ref)
     (declare-operator %fetch-stack-closure fetch-stack-closure)
     (declare-operator %internal-apply funcall)
+    (declare-operator %internal-apply-unchecked funcall)
     (declare-operator %primitive-apply funcall)
     ; (declare-operator %invoke-continuation identity-procedure)
     (declare-operator %vector-index vector-index)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dataflow.scm,v 1.8 1995/02/11 02:04:02 adams Exp $
+$Id: dataflow.scm,v 1.9 1995/03/20 02:02:02 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -377,7 +377,8 @@ MIT in each case. |#
                (use dataflow/handler/%stack-closure-ref))
 	      ((eq? operator %heap-closure-set!)
 	       (use dataflow/handler/%heap-closure-set!))
-              ((eq? operator %internal-apply)
+              ((or (eq? operator %internal-apply)
+		   (eq? operator %internal-apply-unchecked))
                (use dataflow/handler/%internal-apply))
 	      ((eq? operator %fetch-stack-closure)
                (use dataflow/handler/%fetch-stack-closure))
@@ -608,8 +609,9 @@ MIT in each case. |#
 
 
 (define (dataflow/handler/%internal-apply env graph form rator cont rands)
-  ;; (CALL ',%internal-apply <continuation> 'NARGS <procedure> <value>*)
-  ;;       ------rator------ -----cont----- ----------rands------------
+  ;; (CALL ',%internal-apply           <cont> 'NARGS <procedure> <value>*)
+  ;; (CALL ',%internal-apply-unchecked <cont> 'NARGS <procedure> <value>*)
+  ;;       ------rator------           -cont- ----------rands------------
   ;;
   ;; Treated like a normal call
   rator					; ignore

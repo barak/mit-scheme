@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: widen.scm,v 1.6 1995/02/27 21:33:26 adams Exp $
+$Id: widen.scm,v 1.7 1995/03/20 02:01:15 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -606,13 +606,15 @@ MIT in each case. |#
 
 (define (widen/handler/%internal-apply
 	 graph name-map form rator cont rands)
-  ;; (CALL ',%internal-apply <continuation> 'NARGS <procedure> <value>*)
-  ;;       ------ rator ---- ------cont --- --------- rands -----------
+  ;; (CALL ',%internal-apply           <cont> 'NARGS <procedure> <value>*)
+  ;; (CALL ',%internal-apply-unchecked <cont> 'NARGS <procedure> <value>*)
+  ;;       ------ rator ----           -cont- --------- rands -----------
   form					; Not used
   (let ((widened-operands
 	 (widen/flatten-expr* graph name-map (cddr rands))))
     (widen/simple-rewrite
-     `(CALL ,rator ,(widen->expr graph name-map cont)
+     `(CALL ,rator
+	    ,(widen->expr graph name-map cont)
 	    ',(length widened-operands)
 	    ,(widen->expr graph name-map (second rands))
 	    . ,widened-operands)
@@ -668,7 +670,8 @@ MIT in each case. |#
                (use widen/handler/%heap-closure-ref))
               ((eq? operator %stack-closure-ref)
                (use widen/handler/%stack-closure-ref))
-              ((eq? operator %internal-apply)
+              ((or (eq? operator %internal-apply)
+		   (eq? operator %internal-apply-unchecked))
                (use widen/handler/%internal-apply))
 	      ((eq? operator %fetch-stack-closure)
                (use widen/handler/%fetch-stack-closure))

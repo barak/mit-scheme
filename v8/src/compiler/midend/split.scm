@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: split.scm,v 1.3 1994/11/25 23:06:58 adams Exp $
+$Id: split.scm,v 1.4 1995/03/20 02:01:39 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -168,8 +168,9 @@ MIT in each case. |#
 	       (for-every mutable-call-sites
 		 (lambda (site)
 		   (let ((form (application/text site)))
-		     ;; FORM is (CALL ',%internal-apply <continuation>
-		     ;;               <nargs> <operator> <operand>...)
+		     ;; FORM is (CALL ',%internal-apply[-unchecked]
+		     ;;               <continuation> <nargs>
+		     ;;               <operator> <operand>...)
 		     ;; The debugging information previously associated
 		     ;; with the whole call must now be associated with
 		     ;; _both_ the BEGIN and the inner CALL.
@@ -219,7 +220,7 @@ MIT in each case. |#
 		     ;; direct to the top-level LAMBDA
 		     (let ((form (application/text site)))
 		       ;; FORM is
-		       ;;   (CALL ',%internal-apply <continuation>
+		       ;;   (CALL ',%internal-apply[-unchecked] <continuation>
 		       ;;         <nargs> <operator> <operand>...)
 		       (form/rewrite! form
 			 (case format
