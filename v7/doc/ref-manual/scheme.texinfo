@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.50 1995/04/20 16:03:24 adams Exp $
+@comment $Id: scheme.texinfo,v 1.51 1995/05/21 08:52:21 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -69,7 +69,7 @@
 @ifinfo
 This file documents the MIT Scheme system.
 
-Copyright @copyright{} 1988-94 Massachusetts Institute of Technology
+Copyright @copyright{} 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and Computer
@@ -108,9 +108,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.44 beta
-@subtitle for Scheme Release 7.3
-@subtitle 14 August 1994
+@subtitle Edition 1.51 beta
+@subtitle for Scheme Release 7.4
+@subtitle 21 May 1995
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -118,7 +118,7 @@ literature without prior written consent from MIT in each case.
 @page
 
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1988-94 Massachusetts Institute of Technology
+Copyright @copyright{} 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and Computer
@@ -431,6 +431,7 @@ Graphics
 * Custom Graphics Operations::  
 * Images::                      
 * Win32 Graphics::              Graphics on Microsoft Windows and Windows NT
+* OS/2 Graphics::               
 * X Graphics::                  
 * Starbase Graphics::           
 
@@ -438,6 +439,14 @@ Win32 Graphics
 
 * Win32 Graphics Type::         
 * Custom Operations for Win32 Graphics::  Custom Operations for Win32 Graphics Devices
+
+OS/2 Graphics
+
+* OS/2 Graphics Type::          
+* Color Operations for OS/2 Graphics::  
+* Window Operations for OS/2 Graphics::  
+* Event Operations for OS/2 Graphics::  
+* Miscellaneous Operations for OS/2 Graphics::  
 
 X Graphics
 
@@ -7740,7 +7749,7 @@ find all the set bits and display their indexes:
 	      (if (< next end)
 		  (loop (+ next 1)))))))))
 @end example
-@end defn
+@end deffn
 
 @node Cutting and Pasting Bit Strings, Bitwise Operations on Bit Strings, Selecting Bit String Components, Bit Strings
 @section Cutting and Pasting Bit Strings
@@ -15662,6 +15671,7 @@ either an exact integer or an inexact real.
 * Custom Graphics Operations::  
 * Images::                      
 * Win32 Graphics::              Graphics on Microsoft Windows and Windows NT
+* OS/2 Graphics::               
 * X Graphics::                  
 * Starbase Graphics::           
 @end menu
@@ -16134,7 +16144,7 @@ from left to right.  There must be at least @code{(* (image/height
 @var{image}) (image/width @var{image}))} bytes in @var{bytes}.
 @end deffn
 
-@node Win32 Graphics, X Graphics, Images, Graphics
+@node Win32 Graphics, OS/2 Graphics, Images, Graphics
 @section Win32 Graphics
 @cindex Win32 graphics
 
@@ -16355,7 +16365,377 @@ to the rectangle of the same dimensions at @var{destination-x-left} and
 @var{destination-y-top}.
 @end defop
 
-@node X Graphics, Starbase Graphics, Win32 Graphics, Graphics
+@node OS/2 Graphics, X Graphics, Win32 Graphics, Graphics
+@section OS/2 Graphics
+@cindex OS/2 graphics
+
+MIT Scheme supports graphics under the OS/2 Presentation Manager in OS/2
+version 2.1 and later.  The OS/2 graphics device type is implemented as
+a top level window.  In addition to the usual operations, there are
+operations to control the size, position, and colors of a graphics
+window.  OS/2 graphics devices support images, which are implemented as
+memory presentation spaces.
+
+The custom graphics operations defined in this section are invoked using
+the procedure @code{graphics-operation}.  For example,
+
+@example
+(graphics-operation device 'set-foreground-color "blue")
+@end example
+
+@menu
+* OS/2 Graphics Type::          
+* Color Operations for OS/2 Graphics::  
+* Window Operations for OS/2 Graphics::  
+* Event Operations for OS/2 Graphics::  
+* Miscellaneous Operations for OS/2 Graphics::  
+@end menu
+
+@node OS/2 Graphics Type, Color Operations for OS/2 Graphics,  , OS/2 Graphics
+@subsection OS/2 Graphics Type
+
+OS/2 graphics devices are created by specifying the symbol @code{os/2}
+as the @var{graphics-device-type} argument to
+@code{make-graphics-device}.  The OS/2 graphics device type is
+implemented as a top-level window and supports color drawing in addition
+to the standard Scheme graphics operations.
+
+Graphics devices are opened as follows:
+
+@example
+(make-graphics-device 'os/2 #!optional @var{width} @var{height})
+@end example
+
+@noindent
+where @var{width} and @var{height} specify the size, in pixels, of the
+drawing area in the graphics window (i.e.@: excluding the frame).
+
+@node Color Operations for OS/2 Graphics, Window Operations for OS/2 Graphics, OS/2 Graphics Type, OS/2 Graphics
+@subsection Color Operations for OS/2 Graphics
+
+These operations control the colors used when drawing on an OS/2
+graphics device.
+
+@defop {operation+} os2-graphics-device color?
+@findex color?
+This operation returns @code{#t} if the display supports color.
+@end defop
+
+@defop {operation+} os2-graphics-device set-background-color color-name
+@defopx {operation+} os2-graphics-device set-foreground-color color-name
+@findex set-background-color
+@findex set-foreground-color
+@cindex color
+These operations change the colors associated with a window.
+@var{Color-name} must be of one of the valid color specification forms
+listed below.  @code{set-background-color} and
+@code{set-foreground-color} change the colors to be used when drawing,
+but have no effect on anything drawn prior to their invocation.  Because
+changing the background color affects the entire window, we recommend
+calling @code{graphics-clear} on the window's device afterwards.
+
+The foreground color affects the drawing of text, points, and lines.
+Colors are specified in one of these ways:
+
+@table @asis
+@item An integer between @code{0} and @code{#xffffff} inclusive
+This is the OS/2 internal RGB value.
+
+@item By name
+A limited number of names are understood by the system.  Names are
+strings, e.g.@: @code{"red"}, @code{"blue"}, @code{"black"}.  More names
+can be registered with the @code{define-color} operation.
+
+@item RGB (Red-Green-Blue) triples
+A triple is a list of three integers between @code{0} and @code{#xff}
+inclusive which specify the intensity of the red, green and blue
+components of the color.  Thus @code{#(0 0 0)} is black, @code{(0 0
+128)} is dark blue and @code{#(255 255 255)} is white.
+@end table
+
+@noindent
+If the color is not available in the graphics device then the nearest
+available color is used instead.
+@end defop
+
+@defop {operation+} os2-graphics-device define-color name spec
+Define the string @var{name} to be the color specified by @var{spec}.
+@var{Spec} may be any acceptable color specification.  Note that the
+color names defined this way are available to any OS/2 graphics device,
+and the names do @emph{not} have to be defined for each device.
+
+Color names defined by this interface may also be used when setting the
+colors of the Scheme console window, or the colors of Edwin editor
+windows.
+@end defop
+
+@defop {operation+} os2-graphics-device find-color name
+Looks up a color previously defined by @code{define-color}.  This
+returns the color in its most efficient form for operations
+@code{set-foreground-color} or @code{set-background-color}.
+@end defop
+
+@node Window Operations for OS/2 Graphics, Event Operations for OS/2 Graphics, Color Operations for OS/2 Graphics, OS/2 Graphics
+@subsection Window Operations for OS/2 Graphics
+
+These operations control the window that contains the OS/2 graphics
+device.  They provide facilities to change the window's size and
+position; to raise and lower the window relative to other windows on the
+desktop; to hide or minimize the window, and to restore it from the
+hidden or minimized state; to activate or deactivate the window (that
+is, control the keyboard focus); and to control the text that appears in
+the window's title bar.
+
+@defop {operation+} os2-graphics-device window-position
+This operation returns the position of the graphics-device window on the
+desktop.  The position is returned as two values
+(@pxref{Continuations}), which are the x and y coordinates of the
+position.  These coordinates are in units of pels (pixels), and measure
+the distance between the lower left hand corner of the desktop and the
+lower left hand corner of the graphics device window's frame.
+@end defop
+
+@defop {operation+} os2-graphics-device set-window-position x y
+The graphics-device window is moved to the screen position specified by
+@var{x} and @var{y}.  The coordinates @var{x} and @var{y} are in units
+of pels (pixels), and measure the distance between the lower left hand
+corner of the desktop and the lower left hand corner of the graphics
+device window's frame.
+@end defop
+
+@defop {operation+} os2-graphics-device window-size
+This operation returns the size of the client area of the
+graphics-device window.  The client area is the part of the window that
+you draw on; it does not include the window frame, title bar, etc.  The
+size is returned as two values (@pxref{Continuations}), which are the
+width and height of the client area in units of pels (pixels).
+@end defop
+
+@defop {operation+} os2-graphics-device set-window-size width height
+This operation sets the size of the client area of the graphics-device
+window to the specified @var{width} and @var{height}, which are in units
+of pels (pixels).  The client area is the part of the window that you
+draw on; it does not include the window frame, title bar, etc.
+@end defop
+
+@defop {operation+} os2-graphics-device window-frame-size
+This operation returns the size of the graphics-device window's frame.
+This includes the client area, as well as the border, title bar, etc.
+The size is returned as two values (@pxref{Continuations}), which are
+the width and height of the frame in units of pels (pixels).
+
+The frame size is useful in conjunction with the window position and the
+desktop size to determine relative placement of the window or to
+guarantee that the entire window is visible on the desktop.
+@end defop
+
+@defop {operation+} os2-graphics-device desktop-size
+This operation returns the size of the OS/2 desktop.  The size is
+returned as two values (@pxref{Continuations}), which are the width and
+height of the frame in units of pels (pixels).
+@end defop
+
+@defop {operation+} os2-graphics-device raise-window
+This operation raises the graphics-device window so that it is on top of
+any other windows on the desktop.
+@end defop
+
+@defop {operation+} os2-graphics-device lower-window
+This operation lowers the graphics-device window so that it is below all
+other windows on the desktop.
+@end defop
+
+@defop {operation+} os2-graphics-device hide-window
+This operation hides the graphics-device window.  The window disappears
+from the desktop, but still appears in the window list.
+@end defop
+
+@defop {operation+} os2-graphics-device minimize-window
+This operation minimizes the graphics-device window.  The window
+disappears from the desktop, but still appears in the window list.
+Depending on how you have configured your desktop, the window may appear
+as an icon, either on the desktop or in the minimized window viewer.
+@end defop
+
+@defop {operation+} os2-graphics-device maximize-window
+This operation maximizes the graphics-device window.  This causes the
+window to fill the entire desktop.
+@end defop
+
+@defop {operation+} os2-graphics-device restore-window
+This operation restores the graphics-device window to its normal state.
+If the window is hidden or minimized, it is shown again, at its former
+position on the desktop.  If the window is maximized, it is returned to
+its normal size.
+@end defop
+
+@defop {operation+} os2-graphics-device activate-window
+This operation makes the graphics-device window be the active window.
+This causes the window to be put in front of all other windows on the
+desktop, highlights its frame, and gives it the keyboard focus.
+@end defop
+
+@defop {operation+} os2-graphics-device deactivate-window
+This operation deactivates the graphics-device window if it was active
+(otherwise it has no effect).  This causes some other window to be
+chosen to be active in its place.
+@end defop
+
+@defop {operation+} os2-graphics-device set-window-title title
+This operation changes the text that appears in the graphics device
+window's title bar.  The new text is given by @var{title}, which must be
+a string.
+@end defop
+
+@node Event Operations for OS/2 Graphics, Miscellaneous Operations for OS/2 Graphics, Window Operations for OS/2 Graphics, OS/2 Graphics
+@subsection Event Operations for OS/2 Graphics
+
+These operations allow you to read some of the events that are generated
+by the Presentation Manager and put in the message queue of a
+graphics-device window.
+
+@defop {operation+} os2-graphics-device read-button
+This operation waits for the user to push a mouse button inside the
+client area of the graphics-device window.  It then returns four values
+(@pxref{Continuations}) which are: the button number; the x and y
+coordinates of the mouse pointer at the time the button was pressed, in
+pels (pixels) relative to the lower left hand corner of the client area;
+and the graphics device that the mouse pointer was over at the time the
+button was pressed.
+
+Note that this operation only works when button events are selected
+(which is the default).
+@end defop
+
+@defop {operation+} os2-graphics-device select-user-events mask
+This operation sets the event-selection mask for the graphics device to
+@var{mask}.  The event-selection mask is an exact non-negative integer
+that specifies which types of incoming events are to be saved in the
+user-event queue for later retrieval by the @code{read-user-event}
+operation.  The mask is specified by setting the bits corresponding to
+the event types that you are interested in, as follows:
+
+@example
+Number  Mask    Description
+------  -----   -----------
+0       #x01    Button press/release
+1       #x02    Close (a command to close the window)
+2       #x04    Focus change
+3       #x08    Key press/release
+4       #x10    Paint
+5       #x20    Size change
+6       #x40    Visibility change
+@end example
+
+@noindent
+Note that this operation does not affect any events that are already in
+the user-event queue.  Changing the mask only affects what events will
+be added to the queue in the future.
+@end defop
+
+@defop {operation+} os2-graphics-device read-user-event
+This operation returns the next user event available from the user-event
+queue.  If there are no events in the queue, the operation waits for an
+event to arrive before returning.
+@end defop
+
+An event is a vector whose first element is the event-type number, whose
+second element is the graphics device that the event refers to, and
+whose remaining elements provide information about the event.  Here is a
+table of the possible event types and their vector layout:
+
+@table @code
+@item #(0 @var{device} @var{number} @var{type} @var{x} @var{y} @var{flags})
+A button event.  @var{Number} is the button number, for example button
+number @code{0} is usually the left mouse button, @code{1} is usually
+the right button, etc.  @var{Type} specifies what occurred: @code{0}
+means the button was pressed, @code{1} means the button was released,
+@code{2} means the button was clicked, and @code{3} means the button was
+double clicked.  @var{X} and @var{y} are the position of the mouse
+pointer at the time of the event, in units of pels (pixels) measured
+from the lower left corner of the client area of the associated window.
+Finally, @var{flags} specifies what shift keys were pressed at the time
+of the button event; it is a mask word created by combining zero or more
+of the following flags: @code{#x08} means the shift key was pressed,
+@code{#x10} means the control key was pressed, and @code{#x20} means the
+alt key was pressed.
+
+@item #(1 @var{device})
+A close event.  The user has selected the close button from the system
+menu, or typed Alt-f4.
+
+@item #(2 @var{device} @var{gained?})
+A focus event.  If @var{gained?} is @code{#t}, the keyboard focus is
+being gained, and if @var{gained?} is @code{#f}, it is being lost.
+
+@item #(3 @var{device} @var{code} @var{flags} @var{repeat})
+A keyboard event.  This is much too complicated to describe here.  See
+the OS/2 toolkit documentation for details.
+
+@item #(4 @var{device} @var{xl} @var{xh} @var{yl} @var{yh})
+A paint event.  Part of the graphics-device window that was obscured has
+been revealed and the Presentation Manager is informing the window that
+it must repaint that area.  Scheme will take care of the painting for
+you, so this event isn't very useful.
+
+@item #(5 @var{device} @var{width} @var{height})
+A size-change event.  The size of the graphics-device window has
+changed, and @var{width} and @var{height} specify the new size in pels
+(pixels).
+
+@item #(6 @var{device} @var{shown?})
+A visibility event.  Indicates that the graphics-device window has been
+hidden or revealed.  If @var{shown?} is @code{#f}, the window is hidden,
+and if it is @code{#t}, the window is shown.
+@end table
+
+@defop {operation+} os2-graphics-device discard-events
+This operation discards any events that are in the user-event queue.
+This is sometimes useful when you want to prompt the user for some input
+and don't want to consider any previous input.
+@end defop
+
+@node Miscellaneous Operations for OS/2 Graphics,  , Event Operations for OS/2 Graphics, OS/2 Graphics
+@subsection Miscellaneous Operations for OS/2 Graphics
+
+These operations allow you to: change the font used for drawing text in
+a graphics-device window; take a snapshot of a graphics-device window
+and return it as an image object; and draw multiple lines efficiently.
+
+@defop {operation+} os2-graphics-device set-font font-name
+This operation sets the font used for drawing text in the
+graphics-device window.  @var{Font-name} is a string describing the
+font; this string is in the form "<point-size>.<family-name>", for
+example, @code{"10.Courier"}.  You may specify any fixed-pitch font
+family, in any point size which is supported for that font family.  This
+includes both image fonts and outline fonts.
+@end defop
+
+@defop {operation+} os2-graphics-device capture-image x-left y-bottom x-right y-top
+This operation creates and returns an image which contains part of the
+client area of the graphics-device window.  The portion of the client
+area that is selected is specified by the four coordinate arguments,
+which are given in the current virtual coordinates for the device.
+@xref{Images} for more information about manipulating images.
+@end defop
+
+@defop {operation+} os2-graphics-device draw-lines xv yv
+This operation draws multiple disjoint lines; it is like multiple calls
+to @code{graphics-draw-line} but much faster.  The arguments @var{xv}
+and @var{yv} are vectors of coordinates; these vectors must be the same
+length, and the length must a multiple of two.  The contents of the
+vectors are alternating start/end pairs.  For example, the following are
+equivalent:
+
+@example
+(graphics-draw-line device xs ys xe ye)
+(graphics-operation device 'draw-lines
+                    (vector xs xe)
+                    (vector ys ye))
+@end example
+@end defop
+
+@node X Graphics, Starbase Graphics, OS/2 Graphics, Graphics
 @section X Graphics
 @cindex X graphics
 
