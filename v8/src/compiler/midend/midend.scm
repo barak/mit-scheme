@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.6 1995/01/05 22:29:51 adams Exp $
+$Id: midend.scm,v 1.7 1995/01/17 23:00:51 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -406,12 +406,14 @@ MIT in each case. |#
  (compiler:debug)
  (compiler:debug '(phase-names...))"
 
+  (set! compiler:guru? #T)
   (set! compiler:generate-kmp-files? #T)
   (set! compiler:generate-rtl-files? #T)
   (set! compiler:generate-lap-files? #T)
 
   (cond ((default-object? what))
         ((equal? what '#F)
+	 (set! compiler:guru? #F)
 	 (set! compiler:generate-kmp-files? #F)
 	 (set! compiler:generate-rtl-files? #F)
 	 (set! compiler:generate-lap-files? #F))
