@@ -37,7 +37,7 @@
 
 ;;;; RTL Generation
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.4 1987/01/01 18:50:17 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.5 1987/02/11 22:55:14 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -304,87 +304,85 @@
 ;;;; Expressions
 
 (define (rvalue->sexpression rvalue offset receiver)
-  (rvalue->expression rvalue offset (prepend-to-scfg receiver)))
-
-(define ((prepend-to-scfg receiver) expression prefix)
-  (scfg-append! prefix (receiver expression)))
+  (rvalue->expression rvalue offset scfg*scfg->scfg! receiver))
 
 (define (rvalue->pexpression rvalue offset receiver)
-  (rvalue->expression rvalue offset (prepend-to-pcfg receiver)))
+  (rvalue->expression rvalue offset scfg*pcfg->pcfg! receiver))
 
-(define ((prepend-to-pcfg receiver) expression prefix)
-  (scfg*pcfg->pcfg! prefix (receiver expression)))
-
-(define (rvalue->expression rvalue offset receiver)
-  ((vector-method rvalue rvalue->expression) rvalue offset receiver))
+(define (rvalue->expression rvalue offset scfg-append! receiver)
+  ((vector-method rvalue rvalue->expression)
+   rvalue offset scfg-append! receiver))
 
 (define (define-rvalue->expression tag generator)
   (define-vector-method tag rvalue->expression generator))
 
-(define (constant->expression constant offset receiver)
-  (receiver (rtl:make-constant (constant-value constant))
-	    (make-null-cfg)))
+(define (constant->expression constant offset scfg-append! receiver)
+  (receiver (rtl:make-constant (constant-value constant))))
 
 (define-rvalue->expression constant-tag
   constant->expression)
 
 (define-rvalue->expression block-tag
-  (lambda (block offset receiver)
-    (receiver (rtl:make-fetch register:environment) (make-null-cfg))))
+  (lambda (block offset scfg-append! receiver)
+    (receiver (rtl:make-fetch register:environment))))
 
 (define-rvalue->expression value-register-tag
-  (lambda (value-register offset receiver)
-    (receiver (rtl:make-fetch register:value) (make-null-cfg))))
+  (lambda (value-register offset scfg-append! receiver)
+    (receiver (rtl:make-fetch register:value))))
 
 (define-rvalue->expression reference-tag
-  (lambda (reference offset receiver)
+  (lambda (reference offset scfg-append! receiver)
     (reference->expression (reference-block reference)
 			   (reference-variable reference)
 			   offset
+			   scfg-append!
 			   receiver)))
 
-(define (reference->expression block variable offset receiver)
+(define (reference->expression block variable offset scfg-append! receiver)
   (if (vnode-known-constant? variable)
-      (constant->expression (vnode-known-value variable) offset receiver)
+      (constant->expression (vnode-known-value variable) offset scfg-append!
+			    receiver)
       (find-variable block variable offset
 	(lambda (locative)
-	  (receiver (rtl:make-fetch locative) (make-null-cfg)))
+	  (receiver (rtl:make-fetch locative)))
 	(lambda (environment name)
-	  (receiver (rtl:interpreter-call-result:lookup)
-		    (rtl:make-interpreter-call:lookup
-		     environment
-		     (intern-scode-variable! block name)))))))
-
+	  (scfg-append! (rtl:make-interpreter-call:lookup
+			 environment
+			 (intern-scode-variable! block name))
+			(receiver (rtl:interpreter-call-result:lookup)))))))
+
 (define-rvalue->expression temporary-tag
-  (lambda (temporary offset receiver)
+  (lambda (temporary offset scfg-append! receiver)
     (if (vnode-known-constant? temporary)
-	(constant->expression (vnode-known-value temporary) offset receiver)
+	(constant->expression (vnode-known-value temporary) offset scfg-append!
+			      receiver)
 	(let ((type (temporary-type temporary)))
 	  (cond ((not type)
-		 (receiver (rtl:make-fetch temporary)
-			   (make-null-cfg)))
+		 (receiver (rtl:make-fetch temporary)))
 		((eq? type 'VALUE)
-		 (receiver (rtl:make-fetch register:value)
-			   (make-null-cfg)))
+		 (receiver (rtl:make-fetch register:value)))
 		(else (error "Illegal temporary reference" type)))))))
 
 (define-rvalue->expression access-tag
-  (lambda (*access offset receiver)
-    (receiver (rtl:interpreter-call-result:access)
-	      (rtl:make-interpreter-call:access (access-environment *access)
-						(access-name *access)))))
-
+  (lambda (*access offset scfg-append! receiver)
+    (rvalue->expression (access-environment *access) offset scfg-append!
+      (lambda (expression)
+	(scfg-append! (rtl:make-interpreter-call:access expression
+							(access-name *access))
+		      (receiver (rtl:interpreter-call-result:access)))))))
+
 (define-rvalue->expression procedure-tag
-  (lambda (procedure offset receiver)
+  (lambda (procedure offset scfg-append! receiver)
     ((cond ((ic-procedure? procedure) rvalue->expression:ic-procedure)
 	   ((closure-procedure? procedure)
 	    rvalue->expression:closure-procedure)
 	   ((stack-procedure? procedure)
 	    (error "RVALUE->EXPRESSION: Stack procedure reference" procedure))
 	   (else (error "Unknown procedure type" procedure)))
-     procedure offset receiver)))
+     procedure offset scfg-append! receiver)))
 
-(define (rvalue->expression:ic-procedure procedure offset receiver)
+(define (rvalue->expression:ic-procedure procedure offset scfg-append!
+					 receiver)
   ;; IC procedures have their entry points linked into their headers
   ;; at load time by the linker.
   (let ((header
@@ -402,21 +400,20 @@
     (receiver (rtl:make-typed-cons:pair
 	       (rtl:make-constant (scode:procedure-type-code header))
 	       (rtl:make-constant header)
-	       (rtl:make-fetch register:environment))
-	      (make-null-cfg))))
+	       (rtl:make-fetch register:environment)))))
 
-(define (rvalue->expression:closure-procedure procedure offset receiver)
+(define (rvalue->expression:closure-procedure procedure offset scfg-append!
+					      receiver)
   (let ((block (block-parent (procedure-block procedure))))
-    (define (finish environment prefix)
+    (define (finish environment)
       (receiver (rtl:make-typed-cons:pair
 		 (rtl:make-constant type-code:compiled-procedure)
 		 (rtl:make-entry:procedure procedure)
-		 environment)
-		prefix))
+		 environment)))
     (cond ((not block)
-	   (finish (rtl:make-constant false) (make-null-cfg)))
+	   (finish (rtl:make-constant false)))
 	  ((ic-block? block)
-	   (finish (rtl:make-fetch register:environment) (make-null-cfg)))
+	   (finish (rtl:make-fetch register:environment)))
 	  ((closure-block? block)
 	   (let ((closure-block (procedure-closure-block procedure)))
 	     (define (loop variables n receiver)
@@ -433,11 +430,11 @@
 				       pushes))))))
 
 	     (define (make-frame n pushes)
-	       (finish (rtl:interpreter-call-result:enclose)
-		       (scfg*->scfg!
-			(reverse!
-			 (cons (rtl:make-interpreter-call:enclose n)
-			       pushes)))))
+	       (scfg-append! (scfg*->scfg!
+			      (reverse!
+			       (cons (rtl:make-interpreter-call:enclose n)
+				     pushes)))
+			     (finish (rtl:interpreter-call-result:enclose))))
 
 	     (define (loser locative)
 	       (error "Closure parent not IC block"))
