@@ -30,11 +30,11 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.9 1989/10/26 04:23:27 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.10 1989/10/27 13:26:24 jinx Exp $
  *
  * This file corresponds to
- * $COMPILER-Header: compiler.c,v 9.35 88/10/26 20:02:13 GMT cph Exp $
- * $MC68020-Header: cmp68020.m4,v 9.86 89/04/19 02:24:19 GMT arthur Exp $
+ * $COMPILER-Header: compiler.c,v 9.37 89/10/25 14:55:45 GMT jinx Exp $
+ * $MC68020-Header: cmp68020.m4,v 9.93 89/10/26 07:49:23 GMT cph Exp $
  *
  * Compiled code interface.  Portable version.
  * This file requires a bit of assembly language described in cmpaux.m4
@@ -77,17 +77,22 @@ MIT in each case. */
 /* Macro imports */
 
 #include "config.h"     /* SCHEME_OBJECT type and machine dependencies */
-#include "object.h"     /* Making and destructuring Scheme objects */
-#include "sdata.h"      /* Needed by const.h */
 #include "types.h"      /* Needed by const.h */
-#include "errors.h"     /* Error codes and Termination codes */
 #include "const.h"      /* REGBLOCK_MINIMUM_LENGTH and PRIM_... codes */
-#include "trap.h"       /* UNASSIGNED_OBJECT, TRAP_EXTENSION_TYPE */
-#include "interp.h"     /* Interpreter state and primitive destructuring */
-#include "prims.h"      /* LEXPR */
-#include "cmpint.h"     /* Compiled code object destructuring */
+#include "object.h"     /* Making and destructuring Scheme objects */
+#include "intrpt.h"	/* Interrupt processing macros */
+#include "gc.h"		/* Request_GC, etc. */
 #include "cmpgc.h"      /* Compiled code object relocation */
+#include "errors.h"     /* Error codes and Termination codes */
+#include "returns.h"	/* Return addresses in the interpreter */
+#include "fixobj.h"	/* To find the error handlers */
+#include "stack.h"	/* Stacks and stacklets */
+#include "interp.h"     /* Interpreter state and primitive destructuring */
 #include "default.h"    /* Metering_Apply_Primitive */
+#include "extern.h"	/* External decls (missing Cont_Debug, etc.) */
+#include "trap.h"       /* UNASSIGNED_OBJECT, TRAP_EXTENSION_TYPE */
+#include "prims.h"      /* LEXPR */
+#include "cmpint2.h"     /* Compiled code object destructuring */
 
 /* Make noise words invisible to the C compiler. */
 
@@ -97,13 +102,16 @@ MIT in each case. */
 
 /* Structure returned by SCHEME_UTILITYs */
 
+typedef	char	instruction;	/* (instruction *) is a pointer to a 
+				   native instruction. */ 
+
 struct utility_result
 {
   void (*interface_dispatch)();
   union additional_info
   {
     long                code_to_interpreter;
-    machine_word        *entry_point;
+    instruction        *entry_point;
   } extra;
 };
 
@@ -207,7 +215,22 @@ extern C_TO_SCHEME long
   enter_compiled_expression(),
   apply_compiled_procedure(),
   return_to_compiled_code(),
-  comp_link_caches_restart();
+  comp_link_caches_restart(),
+  comp_op_lookup_trap_restart(),
+  comp_interrupt_restart(),
+  comp_assignment_trap_restart(),
+  comp_cache_lookup_apply_restart(),
+  comp_lookup_trap_restart(),
+  safe_lookup_trap_restart(),
+  comp_unassigned_p_trap_restart(),
+  comp_access_restart(),
+  comp_reference_restart(),
+  comp_safe_reference_restart(),
+  comp_unassigned_p_restart(),
+  comp_unbound_p_restart(),
+  comp_assignment_restart(),
+  comp_definition_restart(),
+  comp_lookup_apply_restart();
 
 extern SCHEME_UTILITY struct utility_result
   comutil_return_to_interpreter(),
@@ -354,6 +377,8 @@ struct utility_result
 #define TRAMPOLINE_K_4_2			0xf
 #define TRAMPOLINE_K_4_1			0x10
 #define TRAMPOLINE_K_4_0			0x11
+
+#define TRAMPOLINE_K_OTHER			TRAMPOLINE_K_INTERPRETED
 
 /* Main compiled code entry points.
    These are the primary entry points that the interpreter
@@ -376,9 +401,9 @@ enter_compiled_expression()
   {
     /* It self evaluates. */
     Val = (Fetch_Expression ());
-    return (PRIM_DONE);
+    return (C_to_interface ((instruction *) (OBJECT_ADDRESS (STACK_POP ()))));
   }
-  return (C_to_interface((machine_word *) compiled_entry_address));
+  return (C_to_interface ((instruction *) compiled_entry_address));
 }
 
 C_TO_SCHEME long
@@ -386,14 +411,14 @@ apply_compiled_procedure()
 {
   static long setup_compiled_invocation();
   SCHEME_OBJECT nactuals, procedure;
-  machine_word *procedure_entry;
+  instruction *procedure_entry;
   long result;
 
   nactuals = (STACK_POP ());
   procedure = (STACK_POP ());
-  procedure_entry = ((machine_word *) (OBJECT_ADDRESS (procedure)));
+  procedure_entry = ((instruction *) (OBJECT_ADDRESS (procedure)));
   result = setup_compiled_invocation ((OBJECT_DATUM (nactuals)),
-                                      (procedure_entry));
+                                      ((machine_word *) procedure_entry));
   if (result == PRIM_DONE)
   {
     /* Go into compiled code. */
@@ -414,10 +439,10 @@ apply_compiled_procedure()
 C_TO_SCHEME long
 return_to_compiled_code ()
 {
-  machine_word *compiled_entry_address;
+  instruction *compiled_entry_address;
 
   compiled_entry_address =
-    ((machine_word *) (OBJECT_ADDRESS (STACK_POP ())));
+    ((instruction *) (OBJECT_ADDRESS (STACK_POP ())));
   return (C_to_interface (compiled_entry_address));
 }
 
@@ -687,11 +712,12 @@ comutil_apply (procedure, nactuals, ignore_3, ignore_4)
     case TC_COMPILED_ENTRY:
     callee_is_compiled:
     {
-      machine_word *entry_point;
+      instruction *entry_point;
 
-      entry_point = ((machine_word *) (OBJECT_ADDRESS (procedure)));
+      entry_point = ((instruction *) (OBJECT_ADDRESS (procedure)));
       RETURN_UNLESS_EXCEPTION
-        ((setup_compiled_invocation (nactuals, entry_point)),
+        ((setup_compiled_invocation (nactuals,
+				     ((machine_word *) entry_point))),
          entry_point);
     }
 
@@ -747,7 +773,7 @@ comutil_apply (procedure, nactuals, ignore_3, ignore_4)
     default:
     {
       STACK_PUSH (procedure);
-      STACK_PUSH (MAKE_UNSIGNED_FIXNUM (nactuals));
+      STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
       RETURN_TO_C (PRIM_APPLY);
     }
   }
@@ -781,7 +807,7 @@ comutil_error (nactuals, ignore_2, ignore_3, ignore_4)
 
 SCHEME_UTILITY struct utility_result
 comutil_lexpr_apply (entry_address, nactuals, ignore_3, ignore_4)
-     register machine_word *entry_address;
+     register instruction *entry_address;
      long nactuals;
      long ignore_3, ignore_4;
 {
@@ -799,7 +825,7 @@ comutil_lexpr_apply (entry_address, nactuals, ignore_3, ignore_4)
                  ((kind) |						\
                   (((kind) != OPERATOR_LINKAGE_KIND) ?			\
                    (count) :						\
-                   ((count) * OPERATOR_LINK_ENTRY_SIZE)))))
+                   ((count) * EXECUTE_CACHE_ENTRY_SIZE)))))
 
 static long
 link_cc_block (block_address, offset, last_header_offset,
@@ -807,8 +833,9 @@ link_cc_block (block_address, offset, last_header_offset,
      register SCHEME_OBJECT block_address;
      register long offset;
      long last_header_offset, sections, original_count;
-     machine_word *ret_add;
+     instruction *ret_add;
 {
+  Boolean execute_p;
   register long entry_size, count;
   register SCHEME_OBJECT block;
   SCHEME_OBJECT header;
@@ -823,12 +850,14 @@ link_cc_block (block_address, offset, last_header_offset,
     kind = (READ_LINKAGE_KIND (header));
     if (kind == OPERATOR_LINKAGE_KIND)
     {
-      entry_size = OPERATOR_LINK_ENTRY_SIZE;
+      execute_p = true;
+      entry_size = EXECUTE_CACHE_ENTRY_SIZE;
       cache_handler = compiler_cache_operator;
       count = (READ_OPERATOR_LINKAGE_COUNT (header));
     }
     else
     {
+      execute_p = false;
       entry_size = 1;
       cache_handler = ((kind == REFERENCE_LINKAGE_KIND) ?
                        compiler_cache_lookup :
@@ -855,10 +884,17 @@ link_cc_block (block_address, offset, last_header_offset,
 
     for (offset += 1; ((--count) >= 0); offset += entry_size)
     {
-      result = ((*cache_handler)
-                ((block_address[offset]), /* name of variable */
-                 block,
-                 offset));
+      SCHEME_OBJECT name;
+
+      if (!execute_p)
+      {
+	name = (block[offset]);
+      }
+      else
+      {
+	EXTRACT_EXECUTE_CACHE_SYMBOL(name, &(block[offset]));
+      }
+      result = ((*cache_handler)(name, block, offset));
 
       if (result != PRIM_DONE)
       {
@@ -872,13 +908,13 @@ link_cc_block (block_address, offset, last_header_offset,
 	 */
 
         STACK_PUSH (ENTRY_TO_OBJECT (ret_add));
-        STACK_PUSH (MAKE_UNSIGNED_FIXNUM (sections + 1));
-        STACK_PUSH (MAKE_UNSIGNED_FIXNUM (last_header_offset));
-        STACK_PUSH (MAKE_UNSIGNED_FIXNUM (offset - 1));
+        STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (sections + 1));
+        STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (last_header_offset));
+        STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (offset - 1));
         STACK_PUSH (block);
-	STACK_PUSH (MAKE_UNSIGNED_FIXNUM (count + 1));
+	STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (count + 1));
 
-        Store_Expresion (MAKE_UNSIGNED_FIXNUM (total_count));
+        Store_Expresion (LONG_TO_UNSIGNED_FIXNUM (total_count));
         Store_Return (RC_COMP_LINK_CACHES_RESTART);
         Save_Cont ();
 
@@ -909,7 +945,7 @@ link_cc_block (block_address, offset, last_header_offset,
 
 SCHEME_UTILITY struct utility_result
 comutil_link (ret_add, block_address, constant_address, sections)
-     machine_word *ret_add;
+     instruction *ret_add;
      SCHEME_OBJECT *block_address, *constant_address;
      long sections;
 {
@@ -938,7 +974,7 @@ comp_link_caches_restart ()
 {
   SCHEME_OBJECT block;
   long original_count, offset, last_header_offset, sections, code;
-  machine_word *ret_add;
+  instruction *ret_add;
 
   original_count = (OBJECT_DATUM (Fetch_Expression ()));
   STACK_POP ();			/* Pop count, not needed */
@@ -946,7 +982,7 @@ comp_link_caches_restart ()
   offset = (OBJECT_DATUM (STACK_POP ()));
   last_header_offset = (OBJECT_DATUM (STACK_POP ()));
   sections = (OBJECT_DATUM (STACK_POP ()));
-  ret_add = ((machine_word *) (OBJECT_ADDRES (STACK_POP ())));
+  ret_add = ((instruction *) (OBJECT_ADDRESS (STACK_POP ())));
   code = (link_cc_block ((OBJECT_ADDRESS (block)),
                          offset,
                          last_header_offset,
@@ -1082,7 +1118,7 @@ comutil_operator_lookup_trap (tramp_data, ignore_2, ignore_3, ignore_4)
   code = (complr_operator_reference_trap (&true_operator, (tramp_data[0])));
   cache_cell = (MEMORY_LOC ((tramp_data[1]),
 			    (OBJECT_DATUM (tramp_data[2]))));
-  EXTRACT_OPERATOR_LINK_ARITY (nargs, cache_cell);
+  EXTRACT_EXECUTE_CACHE_ARITY (nargs, cache_cell);
   if (code == PRIM_DONE)
   {
     return (comutil_apply (true_operator, nargs, 0, 0));
@@ -1095,12 +1131,12 @@ comutil_operator_lookup_trap (tramp_data, ignore_2, ignore_3, ignore_4)
     /* This could be done by bumpint tramp_data to the entry point.
        It would probably be better.
      */
-    EXTRACT_OPERATOR_LINK_ADDRESS (trampoline, cache_cell);
+    EXTRACT_EXECUTE_CACHE_ADDRESS (trampoline, cache_cell);
     environment = (compiled_block_environment (tramp_data[1]));
     name = (compiler_var_error ((tramp_data[0]), environment));
 
     STACK_PUSH(ENTRY_TO_OBJECT(trampoline));
-    STACK_PUSH(MAKE_UNSIGNED_FIXNUM(nargs)); /* For debugger */
+    STACK_PUSH(LONG_TO_UNSIGNED_FIXNUM(nargs)); /* For debugger */
     STACK_PUSH(environment);    /* For debugger */
     Store_Expression(name);
     Store_Return(RC_COMP_OP_REF_TRAP_RESTART);
@@ -1128,9 +1164,9 @@ comp_op_lookup_trap_restart ()
   old_trampoline = (OBJECT_ADDRESS (STACK_POP ()));
   code_block = ((TRAMPOLINE_STORAGE (old_trampoline))[1]);
   offset = (OBJECT_DATUM ((TRAMPOLINE_STORAGE (old_trampoline))[2]));
-  EXTRACT_OPERATOR_LINK_ADDRESS (new_procedure,
+  EXTRACT_EXECUTE_CACHE_ADDRESS (new_procedure,
 				 (MEMORY_LOC (code_block, offset)));
-  return (C_to_interface ((machine_word *) (OBJECT_ADDRESS (new_procedure))));
+  return (C_to_interface ((instruction *) (OBJECT_ADDRESS (new_procedure))));
 }
 
 /* ARITY Mismatch handling
@@ -1313,9 +1349,9 @@ comutil_interrupt_closure (ignore_1, ignore_2, ignore_3, ignore_4)
   {
     SCHEME_OBJECT *entry_point;
 
-    EXTRACT_COMPILED_CLOSURE_ENTRY_ADDRESS(entry_point,
-                                           (OBJECT_ADDRESS (STACK_REF (0))));
-    RETURN_TO_SCHEME(((machine_word *) entry_point) +
+    EXTRACT_CLOSURE_ENTRY_ADDRESS(entry_point,
+				  (OBJECT_ADDRESS (STACK_REF (0))));
+    RETURN_TO_SCHEME(((instruction *) entry_point) +
                      CLOSURE_SKIPPED_CHECK_OFFSET);
   }
   else
@@ -1338,7 +1374,7 @@ comutil_interrupt_closure (ignore_1, ignore_2, ignore_3, ignore_4)
 
 SCHEME_UTILITY struct utility_result
 comutil_interrupt_procedure (entry_point, state, ignore_3, ignore_4)
-     machine_word *entry_point;
+     instruction *entry_point;
      SCHEME_OBJECT state;
      long ignore_3, ignore_4;
 {
@@ -1361,7 +1397,7 @@ comutil_interrupt_procedure (entry_point, state, ignore_3, ignore_4)
 
 SCHEME_UTILITY struct utility_result
 comutil_interrupt_continuation (return_address, ignore_2, ignore_3, ignore_4)
-     machine_word *return_address;
+     instruction *return_address;
      long ignore_2, ignore_3, ignore_4;
 {
   return (comutil_interrupt_procedure (return_address, Val, 0, 0));
@@ -1371,7 +1407,7 @@ comutil_interrupt_continuation (return_address, ignore_2, ignore_3, ignore_4)
 
 SCHEME_UTILITY struct utility_result
 comutil_interrupt_ic_procedure (entry_point, ignore_2, ignore_3, ignore_4)
-     machine_word *entry_point;
+     instruction *entry_point;
      long ignore_2, ignore_3, ignore_4;
 {
   return (comutil_interrupt_procedure (entry_point, (Fetch_Env()), 0, 0));
@@ -1380,9 +1416,9 @@ comutil_interrupt_ic_procedure (entry_point, ignore_2, ignore_3, ignore_4)
 C_TO_SCHEME long
 comp_interrupt_restart ()
 {
-  Store_Env(Fetch_Expression());
-  Val = Fetch_Expression();
-  return (C_to_interface((machine_word *) (OBJECT_ADDRESS (STACK_POP ()))));
+  Store_Env (Fetch_Expression());
+  Val = (Fetch_Expression ());
+  return (C_to_interface ((instruction *) (OBJECT_ADDRESS (STACK_POP ()))));
 }
 
 /* Other TRAPS */
@@ -1391,7 +1427,7 @@ comp_interrupt_restart ()
 
 SCHEME_UTILITY struct utility_result
 comutil_assignment_trap (return_address, extension_addr, value, ignore_4)
-     machine_word *return_address;
+     instruction *return_address;
      SCHEME_OBJECT *extension_addr, value;
      long ignore_4;
 {
@@ -1435,7 +1471,7 @@ comp_assignment_trap_restart ()
   code = (Symbol_Lex_Set (environment, name, value));
   if (code == PRIM_DONE)
   {
-    return (C_to_interface(OBJECT_ADDRESS (STACK_POP ())));
+    return (C_to_interface (OBJECT_ADDRESS (STACK_POP ())));
   }
   else
   {
@@ -1469,12 +1505,12 @@ comutil_cache_lookup_apply (extension_addr, block_address, nactuals, ignore_4)
 
     block = (MAKE_CC_BLOCK (block_address));
     STACK_PUSH (block);
-    STACK_PUSH (MAKE_UNSIGNED_FIXNUM (nactuals));
+    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
     environment = (compiled_block_environment (block));
     STACK_PUSH (environment);
     name = (compiler_var_error (extension, environment));
     Store_Expression (name);
-    Store_Return (RC_COMP_CACHE_LOOKUP_RESTART);
+    Store_Return (RC_COMP_CACHE_REF_APPLY_RESTART);
     Save_Cont ();
     RETURN_TO_C (code);
   }
@@ -1507,7 +1543,7 @@ comp_cache_lookup_apply_restart ()
   {
     STACK_PUSH (environment);
     Store_Expression (name);
-    Store_Return (RC_COMP_CACHE_LOOKUP_RESTART);
+    Store_Return (RC_COMP_CACHE_REF_APPLY_RESTART);
     Save_Cont ();
     return (code);
   }
@@ -1521,7 +1557,7 @@ comp_cache_lookup_apply_restart ()
 #define CMPLR_REF_TRAP (name,c_trap,ret_code,restart_name,c_lookup)	\
 SCHEME_UTILITY struct utility_result					\
 name (return_address, extension_addr, ignore_3, ignore_4)		\
-     machine_word *return_address;					\
+     instruction *return_address;					\
      SCHEME_OBJECT *extension_addr;					\
      long ignore_3, ignore_4;						\
 {									\
@@ -1596,61 +1632,33 @@ CMPLR_REF_TRAP(comutil_unassigned_p_trap,
                Symbol_Lex_unassigned_p);
 
 /* NUMERIC ROUTINES
-   These just call the C primitives for now.
+   Invoke the arithmetic primitive in the fixed objects vector.
+   The Scheme arguments are expected on the Scheme stack.
  */
 
-static char *comp_arith_names[] =
-{
-  "-1+",                        /* 0 */
-  "&/",                         /* 1 */
-  "&=",                         /* 2 */
-  "&>",                         /* 3 */
-  "1+",                         /* 4 */
-  "&<",                         /* 5 */
-  "&-",                         /* 6 */
-  "&*",                         /* 7 */
-  "NEGATIVE?",                  /* 8 */
-  "&+",                         /* 9 */
-  "POSITIVE?",                  /* 10 */
-  "ZERO?"                       /* 11 */
-};
-
-static SCHEME_OBJECT
-comp_arith_prims[(sizeof(comp_arith_names))/(sizeof(char *))];
-
-#define COMPILER_ARITH_PRIM (name, index)				\
+#define COMPILER_ARITH_PRIM (name, fobj_index, arity)			\
 SCHEME_UTILITY struct utility_result					\
 name (ignore_1, ignore_2, ignore_3, ignore_4)				\
      long ignore_1, ignore_2, ignore_3, ignore_4;			\
 {									\
-  return (comutil_primitive_apply (comp_arith_prims [index]));		\
+  SCHEME_OBJECT handler;						\
+									\
+  handler = (Get_Fixed_Obj_Slot (fobj_index));				\
+  return (comutil_apply (handler, (arity), 0, 0));			\
 }
 
-COMPILER_ARITH_PRIM (comutil_decrement, 0);
-COMPILER_ARITH_PRIM (comutil_divide, 1);
-COMPILER_ARITH_PRIM (comutil_equal, 2);
-COMPILER_ARITH_PRIM (comutil_greater, 3);
-COMPILER_ARITH_PRIM (comutil_increment, 4);
-COMPILER_ARITH_PRIM (comutil_less, 5);
-COMPILER_ARITH_PRIM (comutil_minus, 6);
-COMPILER_ARITH_PRIM (comutil_multiply, 7);
-COMPILER_ARITH_PRIM (comutil_negative, 8);
-COMPILER_ARITH_PRIM (comutil_plus, 9);
-COMPILER_ARITH_PRIM (comutil_positive, 10);
-COMPILER_ARITH_PRIM (comutil_zero, 11);
-
-static void
-initialize_compiler_arithmetic ()
-{
-  extern SCHEME_OBJECT make_primitive();
-  int i;
-
-  for (i = 0; i < ((sizeof(comp_arith_names)) / (sizeof(char *))); i++)
-  {
-    comp_arith_prims[i] = make_primitive(comp_arith_names[i]);
-  }
-  return;
-}
+COMPILER_ARITH_PRIM (comutil_decrement, GENERIC_TRAMPOLINE_PREDECESSOR, 2);
+COMPILER_ARITH_PRIM (comutil_divide, GENERIC_TRAMPOLINE_DIVIDE, 3);
+COMPILER_ARITH_PRIM (comutil_equal, GENERIC_TRAMPOLINE_EQUAL_P, 3);
+COMPILER_ARITH_PRIM (comutil_greater, GENERIC_TRAMPOLINE_GREATER_P, 3);
+COMPILER_ARITH_PRIM (comutil_increment, GENERIC_TRAMPOLINE_SUCCESSOR, 2);
+COMPILER_ARITH_PRIM (comutil_less, GENERIC_TRAMPOLINE_LESS_P, 3);
+COMPILER_ARITH_PRIM (comutil_minus, GENERIC_TRAMPOLINE_MINUS, 3);
+COMPILER_ARITH_PRIM (comutil_multiply, GENERIC_TRAMPOLINE_MULTIPLY, 3);
+COMPILER_ARITH_PRIM (comutil_negative, GENERIC_TRAMPOLINE_NEGATIVE_P, 2);
+COMPILER_ARITH_PRIM (comutil_plus, GENERIC_TRAMPOLINE_PLUS, 3);
+COMPILER_ARITH_PRIM (comutil_positive, GENERIC_TRAMPOLINE_POSITIVE_P, 2);
+COMPILER_ARITH_PRIM (comutil_zero, GENERIC_TRAMPOLINE_ZERO_P, 2);
 
 /*
   Obsolete SCHEME_UTILITYs used to handle first class environments.
@@ -1663,7 +1671,7 @@ initialize_compiler_arithmetic ()
 #define CMPLR_REFERENCE(util_name, c_proc, ret_code, restart_name)	\
 SCHEME_UTILITY struct utility_result					\
 util_name (ret_add, environment, variable, ignore_4)			\
-     machine_word *ret_add;						\
+     instruction *ret_add;						\
      SCHEME_OBJECT environment, variable;				\
      long ignore_4;							\
 {									\
@@ -1714,7 +1722,7 @@ restart_name ()								\
 #define CMPLR_ASSIGNMENT(util_name, c_proc, ret_code, restart_name)	\
 SCHEME_UTILITY struct utility_result					\
 util_name (ret_add, environment, variable, value)			\
-     machine_word *ret_add;						\
+     instruction *ret_add;						\
      SCHEME_OBJECT environment, variable, value;			\
 {									\
   extern long c_proc();							\
@@ -1814,7 +1822,7 @@ comutil_lookup_apply (environment, variable, nactuals, ignore_4)
   }
   else
   {
-    STACK_PUSH (MAKE_UNSIGNED_FIXNUM (nactuals));
+    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
     STACK_PUSH (variable);
     Store_Expression (environment);
     Store_Return (RC_COMP_LOOKUP_APPLY_RESTART);
@@ -1832,7 +1840,7 @@ comp_lookup_apply_restart ()
 
   environment = (Fetch_Expression ());
   variable = (STACK_POP ());
-  code = (c_proc (environment, variable));
+  code = (Lex_Ref (environment, variable));
   if (code == PRIM_DONE)
   {
     SCHEME_OBJECT nactuals;
@@ -1973,11 +1981,11 @@ C_UTILITY SCHEME_OBJECT
 compiled_closure_to_entry (entry)
      SCHEME_OBJECT entry;
 {
-  SCHEME_OBJECT *real_entry, *block;
+  SCHEME_OBJECT *real_entry;
 
-  Get_Compiled_Block (blck, (OBJECT_ADDRESS (entry)));
-  EXTRACT_COMPILED_CLOSURE_ENTRY_ADDRESS (real_entry, block);
-  return ENTRY_TO_OBJECT(real_entry);
+  EXTRACT_CLOSURE_ENTRY_ADDRESS (real_entry,
+				 (OBJECT_ADDRESS (entry)));
+  return (ENTRY_TO_OBJECT (real_entry));
 }
 
 /*
@@ -2107,7 +2115,7 @@ extract_uuo_link (block, offset)
   SCHEME_OBJECT *cache_address, *compiled_entry_address;
 
   cache_address = (MEMORY_LOC (block, offset));
-  EXTRACT_OPERATOR_LINK_ADDRESS (compiled_entry_address, cache_address);
+  EXTRACT_EXECUTE_CACHE_ADDRESS (compiled_entry_address, cache_address);
   return ENTRY_TO_OBJECT(compiled_entry_address);
 }
 
@@ -2118,14 +2126,17 @@ store_uuo_link (entry, cache_address)
   SCHEME_OBJECT *entry_address;
 
   entry_address = (OBJECT_ADDRESS (entry));
-  STORE_OPERATOR_LINK_INSTRUCTION (cache_address);
-  STORE_OPERATOR_LINK_ADDRESS (cache_address, entry_address);
+  STORE_EXECUTE_CACHE_CODE (cache_address);
+  STORE_EXECUTE_CACHE_ADDRESS (cache_address, entry_address);
   return;
 }
 
 /* This makes a fake compiled procedure which traps to kind handler when
-   invoked.
+   invoked.  WARNING: this won't work if instruction alignment is more
+   restricted than simple longword alignment.
  */
+
+#define TRAMPOLINE_SIZE	(TRAMPOLINE_ENTRY_SIZE + 2)
 
 static long
 make_trampoline (slot, format_word, kind, size, value1, value2, value3)
@@ -2134,7 +2145,7 @@ make_trampoline (slot, format_word, kind, size, value1, value2, value3)
      long kind, size;
      SCHEME_OBJECT value1, value2, value3;
 {
-  SCHEME_OBJECT *block, *local_free;
+  SCHEME_OBJECT *block, *local_free, *entry_point;
 
   if (GC_Check (TRAMPOLINE_SIZE + size))
   {
@@ -2145,22 +2156,17 @@ make_trampoline (slot, format_word, kind, size, value1, value2, value3)
   local_free = Free;
   Free += (TRAMPOLINE_SIZE + size);
   block = local_free;
-  *local_free++ = (MAKE_OBJECT (TC_MANIFEST_VECTOR,
-				((TRAMPOLINE_SIZE - 1) + size)));
-  *local_free++ = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,
-				(TRAMPOLINE_ENTRY_SIZE + 1)));
-  local_free += 1;
-
-  /* Note: at this point local_free is the address of the actual
-     entry point of the trampoline procedure.  The distance (in chars)
-     to the beginning of the block should be CC_BLOCK_FIRST_ENTRY_OFFSET.
-   */
-
-  (COMPILED_ENTRY_FORMAT_WORD (local_free)) = format_word;
-  (COMPILED_ENTRY_OFFSET_WORD (local_free)) =
-    (MAKE_OFFSET_WORD (local_free, block, false));
-  STORE_TRAMPOLINE_ENTRY (local_free, kind);
-  block = local_free;
+  *local_free[0] = (MAKE_OBJECT (TC_MANIFEST_VECTOR,
+				 ((TRAMPOLINE_SIZE - 1) + size)));
+  *local_free[1] = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,
+				 (TRAMPOLINE_ENTRY_SIZE + 1)));
+  local_free += TRAMPOLINE_BLOCK_TO_ENTRY;
+  entry_point = local_free;
+  local_free = TRAMPLINE_STORAGE(entry_point);
+  (COMPILED_ENTRY_FORMAT_WORD (entry_point)) = format_word;
+  (COMPILED_ENTRY_OFFSET_WORD (entry_point)) =
+    (MAKE_OFFSET_WORD (entry_point, block, false));
+  STORE_TRAMPOLINE_ENTRY (entry_point, kind);
 
   if ((--size) >= 0)
   {
@@ -2174,7 +2180,7 @@ make_trampoline (slot, format_word, kind, size, value1, value2, value3)
   {
     *local_free++ = value3;
   }
-  *slot = (ENTRY_TO_OBJECT (block));
+  *slot = (ENTRY_TO_OBJECT (entry_point));
   return (PRIM_DONE);
 }
 
@@ -2206,7 +2212,7 @@ make_apply_trampoline (slot, kind, procedure, nactuals)
 			   kind,
 			   2,
 			   procedure,
-			   (MAKE_UNSIGNED_FIXNUM (nactuals)),
+			   (LONG_TO_UNSIGNED_FIXNUM (nactuals)),
 			   SHARP_F));
 }
 
@@ -2268,7 +2274,7 @@ make_uuo_link (procedure, extension, block, offset)
   SCHEME_OBJECT trampoline, *cache_address;
 
   cache_address = (MEMORY_LOC (block, offset));
-  EXTRACT_OPERATOR_LINK_ARITY (nactuals, cache_address);
+  EXTRACT_EXECUTE_CACHE_ARITY (nactuals, cache_address);
   /* nactuals >= 0 */
 
   switch (OBJECT_TYPE (procedure))
@@ -2327,11 +2333,12 @@ make_uuo_link (procedure, extension, block, offset)
       }
       else
       {
-        kind = TRAMPOLINE_K_INTERPRETED;
+        kind = TRAMPOLINE_K_OTHER;
       }
       break;
     }
 
+    case TC_PROCEDURE: /* and some others... */
     default:
     uuo_link_interpreted:
     {
@@ -2368,7 +2375,7 @@ make_fake_uuo_link (extension, block, offset)
 			     3,
 			     extension,
 			     block,
-			     (MAKE_UNSIGNED_FIXNUM (offset))));
+			     (LONG_TO_UNSIGNED_FIXNUM (offset))));
   if (result != PRIM_DONE)
   {
     return (result);
@@ -2402,7 +2409,7 @@ coerce_to_compiled (procedure, arity, location)
 			     TRAMPOLINE_K_APPLY,
 			     2,
 			     procedure,
-			     (MAKE_UNSIGNED_FIXNUM (frame_size)),
+			     (LONG_TO_UNSIGNED_FIXNUM (frame_size)),
 			     SHARP_F));
   }
   (*location) = procedure;
@@ -2417,14 +2424,14 @@ coerce_to_compiled (procedure, arity, location)
 #define COMPILER_REGBLOCK_N_HOOKS		64
 #define COMPILER_REGBLOCK_N_TEMPS		128
 
-#if (REGBLOCK_MINIMUM_LENGTH > COMPILER_REGBLOCK_FIXED_LENGTH)
+#if (REGBLOCK_MINIMUM_LENGTH > COMPILER_REGBLOCK_N_FIXED)
 #include "error: cmpint.c and const.h disagree on REGBLOCK_MINIMUM_LENGTH!"
 #endif
 
 #define COMPILER_FIXED_SIZE	1	/* ((sizeof(long)) / (sizeof(long))) */
 
 #ifndef COMPILER_HOOK_SIZE
-#define COMPILER_HOOK_SIZE	(OPERATOR_LINK_ENTRY_SIZE)
+#define COMPILER_HOOK_SIZE	(EXECUTE_CACHE_ENTRY_SIZE)
 #endif
 
 #ifndef COMPILER_TEMP_SIZE
@@ -2448,8 +2455,12 @@ long
 
 SCHEME_OBJECT
   compiler_utilities,
-  return_to_interpreter,
+  return_to_interpreter;
+
+#ifndef ASM_REGISTER_BLOCK
+SCHEME_OBJECT
   Registers[REGBLOCK_LENGTH];
+#endif
 
 static void
 compiler_reset_internal ()
@@ -2458,10 +2469,9 @@ compiler_reset_internal ()
 
   return_to_interpreter =
     (ENTRY_TO_OBJECT ((SCHEME_OBJECT *)
-		      (((char *) (OBJECT_ADDRESS (compiler_utilities))) +
-		       CC_BLOCK_FIRST_ENTRY_OFFSET)));
+		      ((OBJECT_ADDRESS (compiler_utilities)) +
+		       TRAMPOLINE_BLOCK_TO_ENTRY)));
 
-  initialize_compiler_arithmetic ();
   return;
 }
 
@@ -2469,6 +2479,8 @@ C_UTILITY void
 compiler_reset (new_block)
      SCHEME_OBJECT new_block;
 {
+  /* Called after a disk restore */
+
   if ((OBJECT_TYPE (new_block)) != TC_COMPILED_CODE_BLOCK)
   {
     extern void compiler_reset_error ();
@@ -2487,6 +2499,8 @@ C_UTILITY void
 compiler_initialize (fasl_p)
      long fasl_p;
 {
+  /* Start-up of whole interpreter */
+
   long code;
   SCHEME_OBJECT trampoline, *block, *block;
 
@@ -2518,7 +2532,3 @@ compiler_initialize (fasl_p)
   }
   return;
 }
-
-/* *** To do *** 
-   - change interpreter to match this.
- */
