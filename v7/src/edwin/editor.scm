@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.201 1991/03/16 00:01:46 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.202 1991/05/14 02:04:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -264,11 +264,7 @@ with the contents of the startup message."
 	 (message "Scheme error")
 	 (%editor-error))
 	(else
-	 (message
-	  "Internal error: "
-	  (with-string-output-port
-	   (lambda (port)
-	     (write-condition-report condition port))))
+	 (message (condition/report-string condition))
 	 (%editor-error))))
 
 (define-variable debug-on-internal-error
