@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.68 2001/05/23 21:20:09 cph Exp $
+;;; $Id: imail-file.scm,v 1.69 2001/05/23 21:29:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -203,18 +203,6 @@
     ((standard-pathname-url-constructor pathname) pathname)))
 
 ;;;; Server operations
-
-(define-method container-url-contents ((url <directory-url>))
-  (simple-directory-read (pathname-url-pathname url)
-    (lambda (name directory result)
-      (if (or (string=? name ".") (string=? name ".."))
-	  result
-	  (let* ((pathname
-		  (parse-namestring (string-append directory name) #f #f))
-		 (constructor (pathname-url-filter pathname)))
-	    (if constructor
-		(cons (constructor pathname) result)
-		result))))))
 
 (define-method %url-complete-string
     ((string <string>) (default-url <pathname-url>)
@@ -479,6 +467,22 @@
 (define-method first-unseen-message-index ((folder <file-folder>))
   folder
   0)
+
+;;;; Container
+
+(define-class (<file-container> (constructor (locator))) (<container>))
+
+(define-method container-contents ((container <file-container>))
+  (simple-directory-read (pathname-url-pathname (resource-locator container))
+    (lambda (name directory result)
+      (if (or (string=? name ".") (string=? name ".."))
+	  result
+	  (let* ((pathname
+		  (parse-namestring (string-append directory name) #f #f))
+		 (constructor (pathname-url-filter pathname)))
+	    (if constructor
+		(cons (constructor pathname) result)
+		result))))))
 
 ;;;; Message
 

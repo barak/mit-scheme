@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.156 2001/05/23 21:20:17 cph Exp $
+;;; $Id: imail-imap.scm,v 1.157 2001/05/23 21:30:02 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -215,7 +215,7 @@
 			  (string-replace prefix (string-ref delimiter 0) #\/))
 		      prefix)))))))
 
-(define-method container-url-contents ((url <imap-container-url>))
+(define (imap-container-url-contents url)
   (with-open-imap-connection url
     (lambda (connection)
       (map (lambda (response)
@@ -579,7 +579,12 @@
 	    (imap:command:logout connection))
 	(close-imap-connection connection))))
 
-;;;; Folder datatype
+;;;; Folder and container datatypes
+
+(define-class (<imap-container> (constructor (locator))) (<container>))
+
+(define-method container-contents ((container <imap-container>))
+  (imap-container-url-contents (resource-locator container)))
 
 (define-class (<imap-folder> (constructor (locator connection))) (<folder>)
   (connection define accessor)
