@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: outf.c,v 1.3 1993/07/18 20:26:48 gjr Exp $
+$Id: outf.c,v 1.4 1994/12/02 20:43:35 cph Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -127,14 +127,13 @@ DEFUN (voutf_fatal, (format, args), CONST char *format AND va_list args)
     _vsnprintf (&fatal_buf[end], max_fatal_buf - end, format, args);
 }
 
-
-void  popup_outf_flush_fatal()
+void
+DEFUN_VOID (popup_outf_flush_fatal)
 {
     fprintf(stderr,"%s", fatal_buf); fflush(stderr);
     MessageBox(0,fatal_buf,"MIT-Scheme terminating", MB_OK|MB_TASKMODAL);
     fatal_buf[0] = 0;
 }
-
 
 void
 DEFUN (voutf_master_tty, (chan, format, args),
@@ -151,30 +150,61 @@ DEFUN (voutf_master_tty, (chan, format, args),
     }
 }
 
-#endif
+#else /* not WINNT */
+#ifdef _OS2
 
+static void
+voutf_os2_console (const char * format, va_list args)
+{
+  extern void OS2_console_write (const char *, size_t);
+  char buffer [4096];
+  vsprintf (buffer, format, args);
+  OS2_console_write (buffer, (strlen (buffer)));
+}
+
+#endif /* _OS2 */
+#endif /* not WINNT */
+
 void
 DEFUN (voutf, (chan, format, ap),
        CONST outf_channel chan AND
-       CONST char *format AND
+       CONST char * format AND
        va_list ap)
 {
 #ifdef WINNT
-         if (chan==fatal_output) voutf_fatal(format, ap);
-    else if (chan==console_output) voutf_master_tty(chan, format, ap);
-    else if (chan==error_output)   voutf_master_tty(chan, format, ap);
-    else
-#endif
-    vfprintf(outf_channel_to_FILE(chan), format, ap);
+
+  if (chan == fatal_output)
+    voutf_fatal (format, ap);
+  else if ((chan == console_output) || (chan == error_output))
+    voutf_master_tty (chan, format, ap);
+  else
+    vfprintf ((outf_channel_to_FILE (chan)), format, ap);
+
+#else /* not WINNT */
+#ifdef _OS2
+
+  if ((chan == fatal_output)
+      || (chan == console_output)
+      || (chan == error_output))
+    voutf_os2_console (format, ap);
+  else
+    vfprintf ((outf_channel_to_FILE (chan)), format, ap);
+    
+#else /* not _OS2 */
+
+    vfprintf ((outf_channel_to_FILE (chan)), format, ap);
+
+#endif /* not _OS2 */
+#endif /* not WINNT */
 }
 
 void
-DEFUN (outf_flush, (chan),  outf_channel chan)
+DEFUN (outf_flush, (chan), outf_channel chan)
 {
 #ifdef WINNT
-    if (chan==fatal_output)  popup_outf_flush_fatal();
-    else
+  if (chan == fatal_output)
+    popup_outf_flush_fatal ();
+  else
 #endif
-    fflush(outf_channel_to_FILE(chan));
+    fflush (outf_channel_to_FILE (chan));
 }
-
