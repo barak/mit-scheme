@@ -1,6 +1,6 @@
 #!/bin/csh -f
 
-# $Id: rebuild-7.4-linux,v 1.1 1996/12/06 17:07:43 adams Exp $
+# $Id: rebuild-7.4-linux,v 1.2 1996/12/09 21:17:38 cph Exp $
 
 # Arguments: runtimeversion compilerversion edwinversion 6001version
 
@@ -26,6 +26,7 @@
 # Stage 1: Choose architecture and directories
 
 set root="/scheme/7.4/linux"
+set student_constant=" -constant 2000"
 
 set src="/scheme/7.4/src"
 set scheme="scheme"
