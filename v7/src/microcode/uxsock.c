@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.30 2003/02/14 18:28:24 cph Exp $
+$Id: uxsock.c,v 1.31 2003/07/09 22:53:38 cph Exp $
 
-Copyright (c) 1990-2001 Massachusetts Institute of Technology
+Copyright 1993,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
+Copyright 2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -251,13 +252,24 @@ DEFUN (OS_bind_tcp_server_socket, (channel, host, port),
        unsigned int port)
 {
   struct sockaddr_in address;
+  int one = 1;
+
   (address . sin_family) = AF_INET;
   memcpy ((& (address . sin_addr)), host, (sizeof (address . sin_addr)));
   (address . sin_port) = port;
+
   STD_VOID_SYSTEM_CALL
-    (syscall_bind, (UX_bind ((CHANNEL_DESCRIPTOR (channel)),
-			     ((struct sockaddr *) (&address)),
-			     (sizeof (struct sockaddr_in)))));
+    (syscall_setsockopt,
+     (setsockopt ((CHANNEL_DESCRIPTOR (channel)),
+		  SOL_SOCKET,
+		  SO_REUSEADDR,
+		  (&one),
+		  (sizeof (one)))));
+  STD_VOID_SYSTEM_CALL
+    (syscall_bind,
+     (UX_bind ((CHANNEL_DESCRIPTOR (channel)),
+	       ((struct sockaddr *) (&address)),
+	       (sizeof (struct sockaddr_in)))));
 }
 
 #ifndef SOCKET_LISTEN_BACKLOG
