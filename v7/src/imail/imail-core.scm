@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.74 2000/05/19 16:32:50 cph Exp $
+;;; $Id: imail-core.scm,v 1.75 2000/05/19 20:03:12 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -170,7 +170,7 @@
   (modification-count define standard
 		      initial-value 0)
   (modification-event define accessor
-		      initial-value (make-event-distributor)))
+		      initializer make-event-distributor))
 
 (define-method write-instance ((folder <folder>) port)
   (write-instance-helper 'FOLDER folder port 
