@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: editor.scm,v 1.237 1994/11/14 01:31:44 cph Exp $
+;;;	$Id: editor.scm,v 1.238 1995/01/06 01:01:50 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -183,6 +183,16 @@
   (find-preferred preferences))
 
 (define (standard-editor-initialization)
+  (with-editor-interrupts-disabled
+   (lambda ()
+     (if (and (not init-file-loaded?)
+	      (not inhibit-editor-init-file?))
+	 (begin
+	   (let ((filename (os/init-file-name)))
+	     (if (file-exists? filename)
+		 (load-edwin-file filename '(EDWIN) #t)))
+	   (set! init-file-loaded? #t)
+	   unspecific))))
   (start-inferior-repl!
    (current-buffer)
    (nearest-repl/environment)
@@ -196,29 +206,17 @@
 	    (newline port)))
 	 (cmdl-message/strings
 	  "You are in an interaction window of the Edwin editor."
-	  "Type C-h for help.  C-h m will describe some commands."))))
-  (with-editor-interrupts-disabled
-   (lambda ()
-     (if (not init-file-loaded?)
-	 (begin
-	   (let ((filename (os/init-file-name)))
-	     (if (file-exists? filename)
-		 (let ((buffer (temporary-buffer " *dummy*")))
-		   (with-selected-buffer buffer
-		     (lambda ()
-		       (load-edwin-file filename '(EDWIN) true)))
-		   (kill-buffer buffer))))
-	   (set! init-file-loaded? true)
-	   unspecific)))))
+	  "Type C-h for help.  C-h m will describe some commands.")))))
 
-(define inhibit-editor-init-file? false)
-(define init-file-loaded? false)
+(define inhibit-editor-init-file? #f)
+(define init-file-loaded? #f)
 
 (define-variable inhibit-startup-message
   "True inhibits the initial startup messages.
 This is for use in your personal init file, once you are familiar
 with the contents of the startup message."
-  false)
+  #f
+  boolean?)
 
 (define (reset-editor)
   (without-interrupts
