@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.18 1993/09/30 17:08:17 adams Exp $
+$Id: list.scm,v 14.19 1994/02/16 07:57:01 gjr Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -490,22 +490,25 @@ MIT in each case. |#
 	    (error:wrong-type-argument list "list" 'REDUCE-RIGHT))
 	initial)))
 
-(define (fold-left procedure initial list)
-  (if (pair? list)
-      (fold-left procedure (procedure initial (car list)) (cdr list))
-      (begin
-	(if (not (null? list))
-	    (error:wrong-type-argument list "list" 'FOLD-LEFT))
-	initial)))
+(define (fold-left procedure initial olist)
+  (let fold ((initial initial)
+	     (list olist))
+    (if (pair? list)
+	(fold (procedure initial (car list))
+	      (cdr list))
+	(begin
+	  (if (not (null? list))
+	      (error:wrong-type-argument olist "list" 'FOLD-LEFT))
+	  initial))))
 
-(define (fold-right procedure initial list)
-  (if (pair? list)
-      (procedure (car list) (fold-right procedure initial (cdr list)))
-      (begin
-	(if (not (null? list))
-	    (error:wrong-type-argument list "list" 'FOLD-RIGHT))
-	initial)))
-
+(define (fold-right procedure initial olist)
+  (let fold ((list olist))
+    (if (pair? list)
+	(procedure (car list) (fold (cdr list)))
+	(begin
+	  (if (not (null? list))
+	      (error:wrong-type-argument olist "list" 'FOLD-RIGHT))
+	  initial))))
 
 ;;;; Generalized List Operations
 
