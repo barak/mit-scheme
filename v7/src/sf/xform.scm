@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 4.2 1988/10/29 00:07:15 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 4.3 1990/06/11 16:34:51 jinx Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -205,6 +205,9 @@ MIT in each case. |#
 		     (transform/expression block environment body))
 	      (transform/open-block block environment expression))))
       (transform/expression block environment expression)))
+
+#|
+;; In-package no longer scans the body, so definitions at top-level are legal.
 
 (define (transform/definition block environment expression)
   block environment ; ignored
@@ -212,6 +215,26 @@ MIT in each case. |#
     (lambda (name value)
       value ; ignored
       (error "Unscanned definition encountered.  Unable to proceed." name))))
+|#
+
+(define (transform/definition block environment expression)
+  (definition-components expression
+    (lambda (name value)
+      (if (not (top-level-block? block))
+	  (error "Unscanned definition encountered.  Unable to proceed." name)
+	  (transform/combination
+	   block environment
+	   (make-combination
+	    (make-primitive-procedure 'local-assignment)
+	    (list (make-the-environment)
+		  name
+		  value)))))))
+
+;; Kludge!
+
+(define (top-level-block? block)
+  (let ((parent (block/parent block)))
+    (and parent (eq? parent global-block))))
 
 (define (transform/access block environment expression)
   (access-components expression
