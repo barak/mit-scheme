@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxterm.c,v 1.23 1993/11/08 06:17:10 gjr Exp $
+$Id: uxterm.c,v 1.24 1995/06/30 00:05:11 cph Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -641,17 +641,16 @@ DEFUN (OS_pty_master_send_signal, (channel, sig), Tchannel channel AND int sig)
   STD_VOID_SYSTEM_CALL
     (syscall_ioctl_TIOCSIGSEND,
      (UX_ioctl ((CHANNEL_DESCRIPTOR (channel)), TIOCSIGSEND, sig)));
-#else /* not TIOCSIGSEND */
-#if defined(TIOCPGRP) && defined(HAVE_BSD_JOB_CONTROL)
-  int fd = (CHANNEL_DESCRIPTOR (channel));
+#else
+#if defined(HAVE_POSIX_SIGNALS) || defined(HAVE_BSD_JOB_CONTROL)
   int gid;
-  STD_VOID_SYSTEM_CALL
-    (syscall_ioctl_TIOCGPGRP, (UX_ioctl (fd, TIOCGPGRP, (&gid))));
+  STD_UINT_SYSTEM_CALL
+    (syscall_tcgetpgrp, gid, (UX_tcgetpgrp (CHANNEL_DESCRIPTOR (channel))));
   STD_VOID_SYSTEM_CALL (syscall_kill, (UX_kill ((-gid), sig)));
-#else /* not TIOCGPGRP or not HAVE_BSD_JOB_CONTROL */
+#else
   error_unimplemented_primitive ();
-#endif /* TIOCGPGRP and HAVE_BSD_JOB_CONTROL */
-#endif /* TIOCSIGSEND */
+#endif /* not (HAVE_POSIX_SIGNALS or HAVE_BSD_JOB_CONTROL) */
+#endif /* not TIOCSIGSEND */
 }
 
 #else /* not HAVE_PTYS */
