@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: chrset.scm,v 14.6 1998/02/13 23:53:21 adams Exp $
+$Id: chrset.scm,v 14.7 1998/02/14 00:06:37 adams Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -79,7 +79,7 @@ MIT in each case. |#
 (define (char-set-members char-set)
   (define (loop code)
     (cond ((fix:>= code 256) '())
-	  ((zero? (vector-8b-ref char-set code)) (loop (fix:+ code 1)))
+	  ((fix:zero? (vector-8b-ref char-set code)) (loop (fix:+ code 1)))
 	  (else (cons (ascii->char code) (loop (fix:+ code 1))))))
   (loop 0))
 
