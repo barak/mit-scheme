@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.21 1997/06/26 07:05:11 cph Exp $
+$Id: nttop.c,v 1.22 1997/08/24 04:03:53 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -302,6 +302,10 @@ w32_error_message (DWORD rc)
 	if (c == '\0')
 	  break;
       }
+    if (((to - 3) >= result)
+	&& ((to[-3]) == '\r')
+	&& ((to[-2]) == '\n'))
+      (to[-3]) = '\0';
   }
   (void) LocalFree (buffer);
   return (result);
