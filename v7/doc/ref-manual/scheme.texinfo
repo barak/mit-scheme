@@ -4064,7 +4064,7 @@ $0^0$ is defined to be equal to 1.
 @end deffn
 
 @deffn procedure make-rectangular x1 x2
-@deffnx procedure make-polar x1 x2
+@deffnx procedure make-polar x3 x4
 @deffnx procedure real-part z
 @deffnx procedure imag-part z
 @deffnx procedure magnitude z
