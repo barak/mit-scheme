@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 13.43 1987/04/24 13:36:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 13.44 1987/06/26 04:31:51 jinx Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -368,14 +368,13 @@
 ;;;  or the print-name of a symbol wasn't worth the speed that would
 ;;;  be gained by keeping it around.
 
-(declare (integrate symbol-length *unparse-symbol))
+(declare (integrate symbol-length))
 
 (define (symbol-length symbol)
   (declare (integrate symbol))
   (string-length (symbol->string symbol)))
 
 (define (*unparse-symbol symbol)
-  (declare (integrate symbol))
   (*unparse-string (symbol->string symbol)))
 
 (define (make-prefix-node prefix subnode)
