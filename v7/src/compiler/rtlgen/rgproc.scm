@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.9 1989/11/21 22:21:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.10 1990/02/02 18:40:00 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -74,8 +74,10 @@ MIT in each case. |#
 		   (lambda (min max)
 		     (if (open-procedure-needs-dynamic-link? procedure)
 			 (scfg*scfg->scfg!
-			  (rtl:make-procedure-header (procedure-label procedure)
-						     (1+ min) (-1+ max))
+			  (rtl:make-procedure-header
+			   (procedure-label procedure)
+			   (1+ min)
+			   (-1+ max))
 			  (rtl:make-pop-link))
 			 (rtl:make-procedure-header (procedure-label procedure)
 						    min max)))))
@@ -107,12 +109,15 @@ MIT in each case. |#
       (scfg*->scfg! (map cellify-variable variables)))
 
     (define (cellify-variable variable)
-      (if (variable-in-cell? variable)
+      (if (and (variable-in-cell? variable)
+	       (not (and (variable-source-node variable)
+			 (procedure-inline-code? procedure))))
 	  (let ((locative
 		 (let ((register (variable/register variable)))
 		   (or register
-		       (stack-locative-offset (rtl:make-fetch register:stack-pointer)
-					      (variable-offset block variable))))))
+		       (stack-locative-offset
+			(rtl:make-fetch register:stack-pointer)
+			(variable-offset block variable))))))
 	    (rtl:make-assignment
 	     locative
 	     (rtl:make-cell-cons (rtl:make-fetch locative))))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.13 1989/10/26 07:36:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.14 1990/02/02 18:38:54 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -72,27 +72,30 @@ MIT in each case. |#
 	 (order-subproblems/out-of-line application subproblems rest)))
     ((RETURN)
      (values
-      (linearize-subproblems! continuation-type/effect subproblems rest)
+      (linearize-subproblems! continuation-type/effect subproblems '() rest)
       subproblems))
     (else
      (error "Unknown application type" application))))
 
-(define (linearize-subproblems! continuation-type subproblems rest)
+(define (linearize-subproblems! continuation-type subproblems alist rest)
   (set-subproblem-types! subproblems continuation-type)
-  (linearize-subproblems subproblems rest))
+  (linearize-subproblems subproblems alist rest))
 
-(define (linearize-subproblem! continuation-type subproblem rest)
+(define (linearize-subproblem! continuation-type subproblem lvalue rest)
   (set-subproblem-type! subproblem continuation-type)
-  (linearize-subproblem subproblem rest))
+  (linearize-subproblem subproblem lvalue rest))
 
-(define (linearize-subproblems subproblems rest)
+(define (linearize-subproblems subproblems alist rest)
   (let loop ((subproblems subproblems))
     (if (null? subproblems)
 	rest
 	(linearize-subproblem (car subproblems)
+			      (let ((entry (assq (car subproblems) alist)))
+				(and entry
+				     (cdr entry)))
 			      (loop (cdr subproblems))))))
 
-(define (linearize-subproblem subproblem rest)
+(define (linearize-subproblem subproblem lvalue rest)
   (let ((continuation (subproblem-continuation subproblem))
 	(prefix (subproblem-prefix subproblem)))
     (if (subproblem-canonical? subproblem)
@@ -113,9 +116,16 @@ MIT in each case. |#
 	  (if (eq? continuation-type/effect
 		   (virtual-continuation/type continuation))
 	      (make-null-cfg)
-	      (make-virtual-return (virtual-continuation/context continuation)
-				   continuation
-				   (subproblem-rvalue subproblem)))
+	      (let ((cfg
+		     (make-virtual-return
+		      (virtual-continuation/context continuation)
+		      continuation
+		      (subproblem-rvalue subproblem))))
+		(if lvalue
+		    (let ((node (cfg-entry-node cfg)))
+		      (set-variable-source-node! lvalue node)
+		      (set-virtual-return/target-lvalue! node lvalue)))
+		cfg))
 	  rest)))))
 
 (define (order-subproblems/inline combination subproblems rest)
@@ -137,7 +147,10 @@ MIT in each case. |#
 		(values
 		 (linearize-subproblem! continuation-type/effect
 					operator
-					(linearize-subproblems simple rest))
+					false
+					(linearize-subproblems simple
+							       '()
+							       rest))
 		 (cons operator simple)))
 	      (let ((push-set (cdr complex))
 		    (value-set (cons (car complex) simple)))
@@ -151,10 +164,13 @@ MIT in each case. |#
 		 (linearize-subproblem!
 		  continuation-type/effect
 		  operator
+		  false
 		  (linearize-subproblems
 		   push-set
+		   '()
 		   (linearize-subproblems
 		    value-set
+		    '()
 		    (scfg*node->node!
 		     (scfg*->scfg!
 		      (reverse!
@@ -186,28 +202,75 @@ MIT in each case. |#
    subproblems))
 
 (define (order-subproblems/out-of-line combination subproblems rest)
-  (with-values
-      (combination-ordering (combination/context combination)
-			    (car subproblems)
-			    (cdr subproblems)
-			    (combination/model combination))
-    (lambda (effect-subproblems push-subproblems)
-      (set-combination/frame-size! combination (length push-subproblems))
-      (with-values
-	  (lambda ()
-	    (order-subproblems/maybe-overwrite-block
-	     combination push-subproblems rest
-	     (lambda ()
-	       (values (linearize-subproblems! continuation-type/push
-					       push-subproblems
-					       rest)
-		       push-subproblems))))
-	(lambda (cfg push-subproblem-order)
-	  (values (linearize-subproblems! continuation-type/effect
-					  effect-subproblems
-					  cfg)
-		  (append effect-subproblems push-subproblem-order)))))))
+  (let ((alist (add-defaulted-subproblems! combination subproblems)))
+    (with-values
+	(combination-ordering (combination/context combination)
+			      (car subproblems)
+			      (cdr subproblems)
+			      (combination/model combination))
+      (lambda (effect-subproblems push-subproblems)
+	(set-combination/frame-size! combination (length push-subproblems))
+	(with-values
+	    (lambda ()
+	      (order-subproblems/maybe-overwrite-block
+	       combination push-subproblems rest alist
+	       (lambda ()
+		 (values (linearize-subproblems! continuation-type/push
+						 push-subproblems
+						 alist
+						 rest)
+			 push-subproblems))))
+	  (lambda (cfg push-subproblem-order)
+	    (values (linearize-subproblems! continuation-type/effect
+					    effect-subproblems
+					    alist
+					    cfg)
+		    (append effect-subproblems push-subproblem-order))))))))
 
+(define (add-defaulted-subproblems! combination subproblems)
+  (let ((model (combination/model combination)))
+    (if (and model
+	     (rvalue/procedure? model)
+	     (stack-block? (procedure-block model))
+	     (or (procedure-always-known-operator? model)
+		 (not (procedure-rest model))))
+	(let ((n-unassigned
+	       (let ((n-supplied (length (cdr subproblems)))
+		     (n-required
+		      (length (cdr (procedure-original-required model)))))
+		 (let ((n-expected
+			(+ n-required
+			   (length (procedure-original-optional model)))))
+		   (if (or (< n-supplied n-required)
+			   (and (> n-supplied n-expected)
+				(not (procedure-rest model))))
+		       (warn "wrong number of arguments"
+			     n-supplied
+			     (error-irritant/noise char:newline)
+			     (error-irritant/noise "in call to procedure")
+			     (procedure-name model)
+			     (error-irritant/noise char:newline)
+			     (error-irritant/noise
+			      "minimum/maximum number of arguments:")
+			     n-required
+			     n-expected))
+		   (- n-expected n-supplied))))
+	      (parallel (application-parallel-node combination)))
+	  (if (positive? n-unassigned)
+	      (set-parallel-subproblems!
+	       parallel
+	       (append! subproblems
+			(make-unassigned-subproblems
+			 (combination/context combination)
+			 n-unassigned
+			 '()))))
+	  (map (lambda (variable subproblem)
+		 (cons subproblem variable))
+	       (append (cdr (procedure-original-required model))
+		       (procedure-original-optional model))
+	       (cdr (parallel-subproblems parallel))))
+	'())))
+
 (define (combination-ordering context operator operands model)
   (let ((standard
 	 (lambda ()
@@ -256,14 +319,12 @@ MIT in each case. |#
   (with-values
       (lambda ()
 	(sort-subproblems/out-of-line operands callee))
-    (lambda (n-unassigned integrated non-integrated)
+    (lambda (integrated non-integrated)
       (handle-operator context
 		       operator
 		       (operator-needed? (subproblem-rvalue operator))
 		       integrated
-		       (make-unassigned-subproblems context
-						    n-unassigned
-						    non-integrated)))))
+		       non-integrated))))
 
 (define (known-combination-ordering context operator operands procedure)
   (if (and (not (procedure/closure? procedure))
@@ -276,18 +337,7 @@ MIT in each case. |#
        (and (procedure/closure? procedure)
 	    (closure-procedure-needs-operator? procedure)))
    '()
-   (make-unassigned-subproblems
-    context
-    (let ((n-supplied (length operands))
-	  (n-required
-	   (length (cdr (procedure-original-required procedure))))
-	  (n-optional (length (procedure-original-optional procedure))))
-      (let ((n-expected (+ n-required n-optional)))
-	(if (or (< n-supplied n-required) (> n-supplied n-expected))
-	    (error "known-combination-ordering: wrong number of arguments"
-		   procedure n-supplied n-expected))
-	(- n-expected n-supplied)))
-    (reverse operands))))
+   (reverse operands)))
 
 (define (handle-operator context operator operator-needed? effect push)
   (if operator-needed?
@@ -328,63 +378,34 @@ MIT in each case. |#
 			 all-subproblems
 			 '()
 			 '()))
-    (lambda (required subproblems integrated non-integrated)
-      (let ((unassigned-count 0))
-	(if (not (null? required))
-	    (begin
-	      ;; This is a wrong number of arguments case, so the code
-	      ;; we generate will not be any good.
-	      ;; The missing arguments are defaulted.
-	      (error "sort-subproblems/out-of-line: Too few arguments"
-		     callee all-subproblems)
-	      ;; This does not take into account potential integrated
-	      ;; required parameters, but they better not be integrated
-	      ;; if they are not always provided!
-	      (set! unassigned-count (length required))))
-	(with-values
-	    (lambda ()
-	      (sort-integrated (procedure-original-optional callee)
-			       subproblems
-			       integrated
-			       non-integrated))
-	  (lambda (optional subproblems integrated non-integrated)
-	    (let ((rest (procedure-original-rest callee)))
-	      (cond ((not (null? optional))
-		     (values (if rest
-				 0	; unassigned-count might work too
-				 ;; In this case the caller will
-				 ;; make slots for the optionals.
-				 (+ unassigned-count
-				    (length
-				     (list-transform-negative optional
-				       lvalue-integrated?))))
+    (lambda (subproblems integrated non-integrated)
+      (with-values
+	  (lambda ()
+	    (sort-integrated (procedure-original-optional callee)
+			     subproblems
 			     integrated
 			     non-integrated))
-		    ((and (not (null? subproblems)) (not rest))
-		     (error "sort-subproblems/out-of-line: Too many arguments"
-			    callee all-subproblems)
-		     ;; This is a wrong number of arguments case, so
-		     ;; the code we generate will not be any good.
-		     ;; The extra arguments are dropped!  Note that in
-		     ;; this case unassigned-count should be 0, since
-		     ;; we cannot have both too many and too few
-		     ;; arguments simultaneously.
-		     (values unassigned-count
-			     integrated
-			     non-integrated))
-		    ((and rest (variable-unused? rest))
-		     (values unassigned-count
-			     (append! (reverse subproblems) integrated)
-			     non-integrated))
-		    (else
-		     (values unassigned-count
-			     integrated
-			     (append! (reverse subproblems)
-				      non-integrated)))))))))))
+	(lambda (subproblems integrated non-integrated)
+	  (let ((rest (procedure-original-rest callee)))
+	    (cond ((and (not (null? subproblems)) (not rest))
+		   ;; This is a wrong number of arguments case, so
+		   ;; the code we generate will not be any good.
+		   ;; The extra arguments are dropped!
+		   (values integrated
+			   non-integrated))
+		  ((and rest (variable-unused? rest))
+		   (values (append! (reverse subproblems) integrated)
+			   non-integrated))
+		  (else
+		   (values integrated
+			   (append! (reverse subproblems)
+				    non-integrated))))))))))
 
 (define (sort-integrated lvalues subproblems integrated non-integrated)
-  (cond ((or (null? lvalues) (null? subproblems))
-	 (values lvalues subproblems integrated non-integrated))
+  (cond ((null? lvalues)
+	 (values subproblems integrated non-integrated))
+	((null? subproblems)
+	 (error "sort-integrated: not enough subproblems" lvalues))
 	((variable-unused? (car lvalues))
 	 (sort-integrated (cdr lvalues)
 			  (cdr subproblems)

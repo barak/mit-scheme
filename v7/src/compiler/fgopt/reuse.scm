@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/reuse.scm,v 1.4 1989/10/26 07:37:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/reuse.scm,v 1.5 1990/02/02 18:38:59 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -80,7 +80,7 @@ MIT in each case. |#
    applications))
 
 (define (order-subproblems/maybe-overwrite-block combination subproblems rest
-						 if-no-overwrite)
+						 alist if-no-overwrite)
   (let ((caller-block (combination/block combination))
 	;; This reduces code size.
 	(if-no-overwrite (lambda () (if-no-overwrite))))
@@ -109,13 +109,12 @@ MIT in each case. |#
 			   non-terminal-nodes
 			   rest))
 		      (lambda (cfg subproblem-ordering)
-			(let ((cfg (linearize-subproblems!
-				    continuation-type/push
-				    extra-subproblems
-				    cfg)))
-			  (values
-			   cfg
-			   (append extra-subproblems subproblem-ordering))))))
+			(values
+			 (linearize-subproblems! continuation-type/push
+						 extra-subproblems
+						 alist
+						 cfg)
+			 (append extra-subproblems subproblem-ordering)))))
 		  (if-no-overwrite))))
 	  (if-no-overwrite)))))
 
@@ -270,6 +269,7 @@ MIT in each case. |#
 	      continuation-type/register
 	      continuation-type/push)
 	  (node-value (car nodes))
+	  false
 	  (generate-assignments (cdr nodes)
 				(overwrite (car nodes) rest))))
 	(else
@@ -293,6 +293,7 @@ MIT in each case. |#
 	rest)
       (linearize-subproblem! continuation-type/register
 			     (node-value node)
+			     false
 			     (overwrite node rest))))
 
 (define (node/noop? node)

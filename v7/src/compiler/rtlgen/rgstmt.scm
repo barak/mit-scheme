@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.11 1990/01/18 22:47:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.12 1990/02/02 18:40:04 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -77,27 +77,28 @@ MIT in each case. |#
   (load-temporary-register scfg*scfg->scfg!
 			   (rtl:make-assignment-cache name)
     (lambda (cell)
-      (let ((contents (rtl:make-fetch cell)))
-	(let ((n2 (rtl:make-type-test (rtl:make-object->type contents)
-				      (ucode-type reference-trap)))
-	      (n3 (rtl:make-unassigned-test contents))
-	      (n4 (rtl:make-assignment cell value))
-	      (n5
-	       (load-temporary-register scfg*scfg->scfg! value
-		 (lambda (value)
+      (load-temporary-register scfg*scfg->scfg! value
+	(lambda (value)
+	  (let ((contents (rtl:make-fetch cell)))
+	    (let ((n2 (rtl:make-type-test (rtl:make-object->type contents)
+					  (ucode-type reference-trap)))
+		  (n3 (rtl:make-unassigned-test contents))
+		  (n4 (rtl:make-assignment cell value))
+		  (n5
 		   (wrap-with-continuation-entry
 		    context
-		    (rtl:make-interpreter-call:cache-assignment cell value)))))
-	      ;; Copy prevents premature control merge which confuses CSE
-	      (n6 (rtl:make-assignment cell value)))
-	  (pcfg-consequent-connect! n2 n3)
-	  (pcfg-alternative-connect! n2 n4)
-	  (pcfg-consequent-connect! n3 n6)
-	  (pcfg-alternative-connect! n3 n5)
-	  (make-scfg (cfg-entry-node n2)
-		     (hooks-union (scfg-next-hooks n4)
-				  (hooks-union (scfg-next-hooks n5)
-					       (scfg-next-hooks n6)))))))))
+		    (rtl:make-interpreter-call:cache-assignment cell value)))
+		  ;; Copy prevents premature control merge which confuses CSE
+		  (n6 (rtl:make-assignment cell value)))
+	      (pcfg-consequent-connect! n2 n3)
+	      (pcfg-alternative-connect! n2 n4)
+	      (pcfg-consequent-connect! n3 n6)
+	      (pcfg-alternative-connect! n3 n5)
+	      (make-scfg (cfg-entry-node n2)
+			 (hooks-union
+			  (scfg-next-hooks n4)
+			  (hooks-union (scfg-next-hooks n5)
+				       (scfg-next-hooks n6)))))))))))
 
 (define (generate/definition definition)
   (let ((context (definition-context definition))
@@ -157,6 +158,14 @@ MIT in each case. |#
 		   ((rvalue/continuation? operand)
 		    ;; This is a pun set up by the FG generator.
 		    (generate/continuation-cons operand))
+		   ((let ((variable (virtual-return/target-lvalue return)))
+		      (and variable
+			   (variable-in-cell? variable)
+			   (procedure-inline-code?
+			    (block-procedure (variable-block variable)))))
+		    (generate/rvalue operand scfg*scfg->scfg!
+		      (lambda (expression)
+			(rtl:make-push (rtl:make-cell-cons expression)))))
 		   (else
 		    (operand->push operand))))
 	    (else
@@ -169,7 +178,7 @@ MIT in each case. |#
   (generate/rvalue operand scfg*scfg->scfg!
     (lambda (expression)
       (rtl:make-assignment register expression))))
-
+
 (define (load-temporary-register receiver expression generator)
   (let ((temporary (rtl:make-pseudo-register)))
     ;; Force assignment to be made before `generator' is called.  This
@@ -191,7 +200,7 @@ MIT in each case. |#
 	  (scfg*scfg->scfg!
 	   extra
 	   (rtl:make-push-return (continuation/label continuation)))))))
-
+
 (define (generate/pop pop)
   (rtl:make-pop (continuation*/register (pop-continuation pop))))
 

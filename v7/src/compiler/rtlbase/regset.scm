@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/regset.scm,v 1.2 1988/06/14 08:36:51 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/regset.scm,v 1.3 1990/02/02 18:39:46 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,6 +37,51 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define-integrable (make-regset n-registers)
+  (make-bit-string n-registers false))
+
+(define (for-each-regset-member regset procedure)
+  (let ((end (bit-string-length regset)))
+    (let loop ((start 0))
+      (let ((register (bit-substring-find-next-set-bit regset start end)))
+	(if register
+	    (begin
+	      (procedure register)
+	      (loop (1+ register))))))))
+
+(define (regset->list regset)
+  (let ((end (bit-string-length regset)))
+    (let loop ((start 0))
+      (let ((register (bit-substring-find-next-set-bit regset start end)))
+	(if register
+	    (cons register (loop (1+ register)))
+	    '())))))
+
+(define-integrable (regset-clear! regset)
+  (bit-string-fill! regset false))
+
+(define-integrable (regset-disjoint? x y)
+  (regset-null? (regset-intersection x y)))
+
+(define-integrable regset-allocate bit-string-allocate)
+(define-integrable regset-adjoin! bit-string-set!)
+(define-integrable regset-delete! bit-string-clear!)
+(define-integrable regset-member? bit-string-ref)
+(define-integrable regset=? bit-string=?)
+(define-integrable regset-null? bit-string-zero?)
+
+(define-integrable regset-copy! bit-string-move!)
+(define-integrable regset-union! bit-string-or!)
+(define-integrable regset-difference! bit-string-andc!)
+(define-integrable regset-intersection! bit-string-and!)
+
+(define-integrable regset-copy bit-string-copy)
+(define-integrable regset-union bit-string-or)
+(define-integrable regset-difference bit-string-andc)
+(define-integrable regset-intersection bit-string-and)
+
+#| Alternate representation.
+
+(define-integrable (make-regset n-registers)
   n-registers
   (list 'REGSET))
 
@@ -49,8 +94,6 @@ MIT in each case. |#
 
 (define-integrable (regset->list regset)
   (list-copy (cdr regset)))
-
-(define-integrable regset-copy list-copy)
 
 (define-integrable (regset-clear! regset)
   (set-cdr! regset '()))
@@ -86,6 +129,8 @@ MIT in each case. |#
 (define (regset-intersection! destination source)
   (set-cdr! destination (eq-set-intersection (cdr source) (cdr destination))))
 
+(define-integrable regset-copy list-copy)
+
 (define-integrable (regset-union x y)
   (cons 'REGSET (eq-set-union (cdr x) (cdr y))))
 
@@ -94,64 +139,5 @@ MIT in each case. |#
 
 (define-integrable (regset-intersection x y)
   (cons 'REGSET (eq-set-intersection (cdr x) (cdr y))))
-
-#| Alternate representation.
-
-(define-integrable (make-regset n-registers)
-  (make-bit-string n-registers false))
-
-(define (for-each-regset-member regset procedure)
-  (let ((end (bit-string-length regset)))
-    (define (loop register)
-      (if register
-	  (begin (procedure register)
-		 (loop (bit-substring-find-next-set-bit regset
-							(1+ register)
-							end)))))
-    (loop (bit-substring-find-next-set-bit regset 0 end))))
-
-(define (regset->list regset)
-  (let ((end (bit-string-length regset)))
-    (define (loop register)
-      (if register
-	  (cons register
-		(loop (bit-substring-find-next-set-bit regset
-						       (1+ register)
-						       end)))
-	  '()))
-    (loop (bit-substring-find-next-set-bit regset 0 end))))
-
-(define (regset-copy regset)
-  (let ((result (bit-string-allocate (bit-string-length regset))))
-    (regset-copy! result regset)
-    result))
-
-(define-integrable (regset-clear! regset)
-  (bit-string-fill! regset false))
-
-(define-integrable (regset-disjoint? x y)
-  (regset-null? (regset-intersection x y)))
-
-(define-integrable regset-allocate bit-string-allocate)
-(define-integrable regset-adjoin! bit-string-set!)
-(define-integrable regset-delete! bit-string-clear!)
-(define-integrable regset-member? bit-string-ref)
-(define-integrable regset=? bit-string=?)
-(define-integrable regset-null? bit-string-zero?)
-(define-integrable regset-copy! bit-string-move!)
-(define-integrable regset-union! bit-string-or!)
-(define-integrable regset-difference! bit-string-andc!)
-(define-integrable regset-intersection! bit-string-and!)
-
-(package (regset-union regset-difference regset-intersection)
-  (let ((wrap-operator
-	 (lambda (operator)
-	   (lambda (x y)
-	     (let ((result (regset-copy x)))
-	       (operator result y)
-	       result)))))
-    (define-export regset-union (wrap-operator regset-union!))
-    (define-export regset-difference (wrap-operator regset-difference!))
-    (define-export regset-intersection (wrap-operator regset-intersection!))))
 
 |#

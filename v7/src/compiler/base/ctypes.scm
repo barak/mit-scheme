@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.14 1989/10/26 07:35:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.15 1990/02/02 18:38:09 cph Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -254,6 +254,15 @@ MIT in each case. |#
 
 (define-integrable (node/virtual-return? node)
   (eq? (tagged-vector/tag node) virtual-return-tag))
+
+(define-integrable (virtual-return/target-lvalue return)
+  (cfg-node-get return virtual-return/target-lvalue/tag))
+
+(define-integrable (set-virtual-return/target-lvalue! return lvalue)
+  (cfg-node-put! return virtual-return/target-lvalue/tag lvalue))
+
+(define virtual-return/target-lvalue/tag
+  "target-lvalue")
 
 (define (make-push block rvalue)
   (make-virtual-return block

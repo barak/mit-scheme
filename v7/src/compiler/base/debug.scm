@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.12 1990/01/18 22:42:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.13 1990/02/02 18:38:12 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -112,13 +112,15 @@ MIT in each case. |#
 
 (define (write-instructions thunk)
   (fluid-let ((*show-instruction* write)
-	      (*unparser-radix* 16))
+	      (*unparser-radix* 16)
+	      (*unparse-uninterned-symbols-by-name?* true))
     (thunk)))
 
 (define (pp-instructions thunk)
   (fluid-let ((*show-instruction* pretty-print)
 	      (*pp-primitives-by-name* false)
-	      (*unparser-radix* 16))
+	      (*unparser-radix* 16)
+	      (*unparse-uninterned-symbols-by-name?* true))
     (thunk)))
 
 (define *show-instruction*)

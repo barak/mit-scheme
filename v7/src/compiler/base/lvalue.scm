@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.16 1989/10/26 07:35:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.17 1990/02/02 18:38:16 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -87,6 +87,7 @@ MIT in each case. |#
   stack-overwrite-target?
 		;true iff variable is the target of a stack overwrite
   indirection	;alias for this variable [variable or #f]
+  source-node	;virtual-return that initializes this variable, or #f
   )
 
 (define continuation-variable/type variable-in-cell?)
@@ -94,7 +95,7 @@ MIT in each case. |#
 
 (define (make-variable block name)
   (make-lvalue variable-tag block name '() false false '() false false
-	       false false))
+	       false false false))
 
 (define variable-assoc
   (association-procedure eq? variable-name))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.9 1990/01/18 22:42:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.10 1990/02/02 18:37:27 cph Rel $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -260,7 +260,8 @@ registers into some interesting sorting order.
   (make-register-map (map-entries:replace map
 					  entry
 					  (let ((home (map-entry-home entry)))
-					    (make-map-entry home (not home)
+					    (make-map-entry home
+							    (not home)
 							    (list alias))))
 		     (map-registers:add* map
 					 ;; **** Kludge -- again, EQ? is
@@ -389,6 +390,42 @@ registers into some interesting sorting order.
 	  (and (map-entry-home entry)
 	       (map-entry-saved-into-home? entry)
 	       (reallocate-alias entry))))))
+
+(define (allocate-register-without-spill? map type needed-registers)
+  ;; True iff a register of `type' can be allocated without saving any
+  ;; registers into their homes.
+  (or (free-register-exists? map type needed-registers)
+      (map-entries:search map
+	(lambda (entry)
+	  (let ((alias (map-entry:find-alias entry type needed-registers)))
+	    (and alias
+		 (free-register-exists?
+		  map
+		  (if (register-types-compatible? type false) false type)
+		  (cons alias needed-registers))))))))
+
+(define (free-register-exists? map type needed-registers)
+  ;; True iff a register of `type' can be allocated without first
+  ;; saving its contents.
+  (or (allocate-register-without-unload? map type needed-registers)
+      (map-entries:search map
+	(lambda (entry)
+	  (and (map-entry-home entry)
+	       (map-entry-saved-into-home? entry)
+	       (map-entry:find-alias entry type needed-registers))))))
+
+(define (allocate-register-without-unload? map type needed-registers)
+  ;; True iff a register of `type' can be allocated without displacing
+  ;; any pseudo-registers from the register map.
+  (or (list-search-positive (map-registers map)
+	(lambda (alias)
+	  (and (register-type? alias type)
+	       (not (memv alias needed-registers)))))
+      (map-entries:search map
+	(lambda (entry)
+	  (and (map-entry:find-alias entry type needed-registers)
+	       (or (not (map-entry-home entry))
+		   (not (null? (cdr (map-entry-aliases entry))))))))))
 
 ;;;; Allocator Operations
 

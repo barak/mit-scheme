@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.25 1990/01/18 22:43:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.26 1990/02/02 18:39:26 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -394,8 +394,8 @@ MIT in each case. |#
 	 (filename/append "machines/bobcat" "machin"))
 	(rtl-base
 	 (filename/append "rtlbase"
-			  "regset" "rgraph" "rtlcfg" "rtlobj"
-			  "rtlreg" "rtlty1" "rtlty2"))
+			  "rgraph" "rtlcfg" "rtlobj" "rtlreg" "rtlty1"
+			  "rtlty2"))
 	(cse-base
 	 (filename/append "rtlopt"
 			  "rcse1" "rcse2" "rcseep" "rcseht" "rcserq" "rcsesr"))
@@ -463,7 +463,6 @@ MIT in each case. |#
     (define-integration-dependencies "machines/bobcat" "machin" "rtlbase"
       "rtlreg" "rtlty1" "rtlty2")
 
-    (define-integration-dependencies "rtlbase" "regset" "base")
     (define-integration-dependencies "rtlbase" "rgraph" "base" "cfg1" "cfg2")
     (define-integration-dependencies "rtlbase" "rgraph" "machines/bobcat"
       "machin")
@@ -518,8 +517,14 @@ MIT in each case. |#
 
     (file-dependency/integration/join cse-base cse-base)
 
-    (define-integration-dependencies "rtlopt" "rcseht" "base" "object")
-    (define-integration-dependencies "rtlopt" "rcserq" "base" "object")
+    (file-dependency/integration/join
+     (filename/append "rtlopt" "ralloc" "rcompr" "rdebug" "rlife")
+     (filename/append "rtlbase" "regset"))
+
+    (file-dependency/integration/join
+     (filename/append "rtlopt" "rcseht" "rcserq")
+     (filename/append "base" "object"))
+
     (define-integration-dependencies "rtlopt" "rlife"  "base" "cfg2")
 
     (let ((dependents
@@ -541,7 +546,7 @@ MIT in each case. |#
     (define-integration-dependencies "back" "lapgn1" "base"
       "cfg1" "cfg2" "utils")
     (define-integration-dependencies "back" "lapgn1" "rtlbase"
-      "regset" "rgraph" "rtlcfg")
+      "rgraph" "rtlcfg")
     (define-integration-dependencies "back" "lapgn2" "rtlbase" "rtlreg")
     (define-integration-dependencies "back" "lapgn3" "rtlbase" "rtlcfg")
     (define-integration-dependencies "back" "linear" "base" "cfg1" "cfg2")

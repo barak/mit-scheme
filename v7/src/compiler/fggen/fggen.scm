@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.23 1989/10/26 07:36:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.24 1990/02/02 18:38:34 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -623,20 +623,26 @@ MIT in each case. |#
   (scode/assignment-components expression
     (lambda (name value)
       (if (continuation/effect? continuation)
-	  (generate/assignment* make-assignment find-name 'ASSIGNMENT-CONTINUE
-				block continuation expression name value)
+	  (generate/assignment* make-assignment
+				find-name
+				'ASSIGNMENT-CONTINUE
+				block
+				continuation
+				expression
+				name
+				value)
 	  (generate/combination
 	   block
 	   continuation
-	   (let ((old-value-temp (generate-uninterned-symbol))
-		 (new-value-temp (generate-uninterned-symbol)))
-	     (scode/make-let (list old-value-temp new-value-temp)
-			     (list (scode/make-safe-variable name) value)
-			     (scode/make-assignment
-			      name
-			      (scode/make-variable new-value-temp))
-			     (scode/make-variable old-value-temp))))))))
-
+	   (let ((old-value (generate-uninterned-symbol))
+		 (new-value (generate-uninterned-symbol)))
+	     (scode/make-let (list new-value)
+			     (list value)
+	       (scode/make-let (list old-value)
+			       (list (scode/make-safe-variable name))
+		 (scode/make-assignment name (scode/make-variable new-value))
+		 (scode/make-variable old-value)))))))))
+
 (define (generate/definition block continuation expression)
   (scode/definition-components expression
     (lambda (name value)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.17 1990/01/22 03:01:34 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.18 1990/02/02 18:37:22 cph Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -312,8 +312,12 @@ MIT in each case. |#
 	       ;; desirable because the register will be used again.
 	       ;; Otherwise, this is the last use of this register, so we
 	       ;; might as well just use the register's home.
-	       (if (and (dead-register? register)
-			(register-saved-into-home? register))
+	       (if (and (register-saved-into-home? register)
+			(or (dead-register? register)
+			    (not (allocate-register-without-unload?
+				  *register-map*
+				  preferred-type
+				  *needed-registers*))))
 		   (pseudo-register-home register)
 		   (reference-alias-register! register preferred-type)))))
 	(let ((no-preference
