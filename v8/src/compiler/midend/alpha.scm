@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: alpha.scm,v 1.4 1994/11/26 22:07:13 gjr Exp $
+$Id: alpha.scm,v 1.5 1995/01/19 04:51:16 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -81,10 +81,12 @@ MIT in each case. |#
 	   (and block
 		(for-each
 		 (lambda (var)
-		   (set-new-dbg-variable/name!
-		    var
-		    (alphaconv/env/lookup (new-dbg-variable/original-name var)
-					  env*)))
+		   (let ((expr (new-dbg-variable/expression var)))
+		     (if (not (LOOKUP/? expr))
+			 (internal-error "expression not a LOOKUP" var))
+		     (set-car! (cdr expr)
+			       (alphaconv/env/lookup (new-dbg-variable/name var)
+						     env*))))
 		 (new-dbg-block/variables block)))))))
 
 (define-alphaconv CALL (state env rator cont #!rest rands)
