@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.11 1996/10/07 17:55:38 cph Exp $
+$Id: ntfs.c,v 1.12 1996/10/09 15:40:15 cph Exp $
 
 Copyright (c) 1992-96 Massachusetts Institute of Technology
 
@@ -270,37 +270,36 @@ DEFUN (OS_directory_valid_p, (index), long index)
 }
 
 unsigned int
-DEFUN (OS_directory_open, (name), CONST char * name)
+DEFUN (OS_directory_open, (name), CONST char * search_pattern)
 {
-  char filename[128], searchname[128];
-  nt_dir * dir = NT_malloc(sizeof(nt_dir));
-
+  char pattern [MAX_PATH];
+  nt_dir * dir = (malloc (sizeof (nt_dir)));
   if (dir == 0)
     error_system_call (ENOMEM, syscall_malloc);
-
-  if (nt_pathname_as_filename (name, filename))
-    sprintf (searchname, "%s*.*", filename);
-  else
-    sprintf (searchname, "%s\\*.*", filename);
-
-  dir->handle = FindFirstFile(searchname, &(dir->entry));
-  if (dir->handle == INVALID_HANDLE_VALUE)
-    error_system_call (errno, syscall_opendir);
-
-  dir->more = TRUE;
+  strcpy (pattern, search_pattern);
+  {
+    unsigned int len = (strlen (pattern));
+    if ((len > 0) && ((pattern [len - 1]) == '\\'))
+      strcat (pattern, "*.*");
+  }
+  (dir -> handle) = (FindFirstFile (pattern, (& (dir -> entry))));
+  if ((dir -> handle) == INVALID_HANDLE_VALUE)
+    {
+      free (dir);
+      error_system_call (errno, syscall_opendir);
+    }
+  (dir -> more) = TRUE;
   return (allocate_directory_pointer (dir));
 }
 
 CONST char *
 DEFUN (OS_directory_read, (index), unsigned int index)
 {
-  nt_dir * dir = REFERENCE_DIRECTORY (index);
-
-  if (dir == 0 || !dir->more)
-    return 0;
-
-  GET_DIRECTORY_ENTRY_NAME(dir->entry, dir->pathname);
-  dir->more = FindNextFile(dir->handle, &(dir->entry));
+  nt_dir * dir = (REFERENCE_DIRECTORY (index));
+  if ((dir == 0) || (! (dir -> more)))
+    return (0);
+  GET_DIRECTORY_ENTRY_NAME ((dir -> entry), (dir -> pathname));
+  (dir -> more) = (FindNextFile ((dir -> handle), (& (dir -> entry))));
   return (dir -> pathname);
 }
 
@@ -309,19 +308,25 @@ DEFUN (OS_directory_read_matching, (index, prefix),
        unsigned int index AND
        CONST char * prefix)
 {
-  error_unimplemented_primitive ();
-  return (0);
+  unsigned int n = (strlen (prefix));
+  while (1)
+    {
+      CONST char * pathname = (OS_directory_read (index));
+      if (pathname == 0)
+	return (0);
+      if ((strnicmp (pathname, prefix, n)) == 0)
+	return (pathname);
+    }
 }
 
 void
 DEFUN (OS_directory_close, (index), unsigned int index)
-{ 
-  nt_dir * dir = REFERENCE_DIRECTORY (index);
-
+{
+  nt_dir * dir = (REFERENCE_DIRECTORY (index));
   if (dir)
-  {
-    FindClose(dir->handle);
-    NT_free(dir);
-  }
+    {
+      FindClose (dir -> handle);
+      free (dir);
+    }
   DEALLOCATE_DIRECTORY (index);
 }
