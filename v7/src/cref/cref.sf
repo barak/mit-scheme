@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/cref.sf,v 1.3 1991/02/16 17:44:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/cref.sf,v 1.4 1992/06/04 02:57:18 mhwu Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -35,14 +35,23 @@ MIT in each case. |#
 (sf/set-default-syntax-table! system-global-syntax-table)
 (sf-conditionally "object")
 (sf-directory ".")
-(if (not (name->package '(CROSS-REFERENCE)))
-    (with-working-directory-pathname "../cref"
-      (lambda ()
-	(if (not (file-exists? "cref.bcon"))
-	    (sf "triv.con" "cref.bcon"))
-	(if (not (file-exists? "cref.bldr"))
-	    (sf "triv.ldr" "cref.bldr"))
-	(load "make"))))
-(cref/generate-constructors "cref")
-(sf "cref.con" "cref.bcon")
-(sf "cref.ldr" "cref.bldr")
+
+;; Before runtime system is built this next thunk is the one
+;; used.
+(with-working-directory-pathname "../cref" ; this is rather useless
+  (lambda ()
+    (if (not (file-exists? "cref.bcon"))
+	(sf "triv.con" "cref.bcon"))
+    (if (not (file-exists? "cref.bldr"))
+	(sf "triv.ldr" "cref.bldr"))))
+
+;; After the runtime system is built, more elaborate work is done
+(with-working-directory-pathname "../cref" ; this is rather useless
+  (lambda ()
+    (if (file-exists? "../runtime/runtime.glob")
+	(begin
+	  (if (not (name->package '(CROSS-REFERENCE)))
+	      (load "make"))
+	  (cref/generate-constructors "cref")
+	  (sf "cref.con" "cref.bcon")
+	  (sf "cref.ldr" "cref.bldr")))))
