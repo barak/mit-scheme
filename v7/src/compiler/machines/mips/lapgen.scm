@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.13 1993/12/18 08:49:05 cph Exp $
+$Id: lapgen.scm,v 1.14 1997/03/30 23:33:17 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -396,13 +396,20 @@ MIT in each case. |#
   ; Branch if immediate <comp> source
   (let ((cc (invert-condition-noncommutative comp)))
     ;; This machine does register <op> immediate; you can
-    ;; now think of cc in this way
+    ;; now think of cc in this way.
     (if (zero? immediate)
-	(begin
-	  (branch-generator! cc
-	    `(BEQ 0 ,source) `(BLTZ ,source) `(BGTZ ,source)
-	    `(BNE 0 ,source) `(BGEZ ,source) `(BLEZ ,source))
-	  (LAP))
+	(let ((use-cc
+	       (lambda (cc)
+		 (branch-generator! cc
+		   `(BEQ 0 ,source) `(BLTZ ,source) `(BGTZ ,source)
+		   `(BNE 0 ,source) `(BGEZ ,source) `(BLEZ ,source))
+		 (LAP))))
+	  (case cc
+	    ((<<) (compare-false))
+	    ((>>=) (compare-true))
+	    ((<<=) (use-cc '=))
+	    ((>>) (use-cc '<>))
+	    (else (use-cc cc))))
 	(with-values (lambda () (immediate->register immediate))
 	  (lambda (prefix alias)
 	    (LAP ,@prefix
@@ -411,32 +418,51 @@ MIT in each case. |#
 (define (compare condition r1 r2)
   ; Branch if r1 <cc> r2
   (if (= r1 r2)
-      (let ((branch
-	     (lambda (label) (LAP (BGEZ 0 (@PCR ,label)) (NOP))))
-	    (dont-branch
-	     (lambda (label) label (LAP))))
-	(if (memq condition '(< > <>))
-	    (set-current-branches! dont-branch branch)
-	    (set-current-branches! branch dont-branch))
-	(LAP))
-      (let ((temp (and (memq condition '(< > <= >=)) (standard-temporary!))))
+      (if (memq condition '(< > <> << >>))
+	  (compare-false)
+	  (compare-true))
+      (let ((temp
+	     (and (memq condition '(< > <= >= << >> <<= >>=))
+		  (standard-temporary!))))
 	(branch-generator! condition
 	  `(BEQ ,r1 ,r2) `(BNE ,temp 0) `(BNE ,temp 0)
 	  `(BNE ,r1 ,r2) `(BEQ ,temp 0) `(BEQ ,temp 0))
 	(case condition
 	  ((= <>) (LAP))
 	  ((< >=) (LAP (SLT ,temp ,r1 ,r2)))
-	  ((> <=) (LAP (SLT ,temp ,r2 ,r1)))))))
+	  ((> <=) (LAP (SLT ,temp ,r2 ,r1)))
+	  ((<< >>=) (LAP (SLTU ,temp ,r1 ,r2)))
+	  ((>> <<=) (LAP (SLTU ,temp ,r2 ,r1)))))))
 
+(define (compare-true)
+  (set-current-branches!
+   (lambda (label) (LAP (BGEZ 0 (@PCR ,label)) (NOP)))
+   (lambda (label) label (LAP)))
+  (LAP))
+
+(define (compare-false)
+  (set-current-branches!
+   (lambda (label) label (LAP))
+   (lambda (label) (LAP (BGEZ 0 (@PCR ,label)) (NOP))))
+  (LAP))
+
 (define (branch-generator! cc = < > <> >= <=)
   (let ((forward
 	 (case cc
-	   ((=)   =) ((<)  <)  ((>)  >)
-	   ((<>) <>) ((>=) >=) ((<=) <=)))
+	   ((=) =)
+	   ((< <<) <)
+	   ((> >>) >)
+	   ((<>) <>)
+	   ((>= >>=) >=)
+	   ((<= <<=) <=)))
 	(inverse
 	 (case cc
-	   ((=)  <>) ((<)  >=) ((>)  <=)
-	   ((<>) =)  ((>=) <)  ((<=) >))))
+	   ((=) <>)
+	   ((< <<) >=)
+	   ((> >>) <=)
+	   ((<>) =)
+	   ((>= >>=) <)
+	   ((<= <<=) >))))
     (set-current-branches!
      (lambda (label)
        (LAP (,@forward (@PCR ,label)) (NOP)))
@@ -463,7 +489,11 @@ MIT in each case. |#
     (>		<=		<)
     (<>		=		<>)
     (<=		>		>=)
-    (>=		<		<=)))
+    (>=		<		<=)
+    (<<		>>=		>>)
+    (>>		<<=		<<)
+    (<<=	>>		>>=)
+    (>>=	<<		<<=)))
 
 ;;;; Miscellaneous
 
@@ -624,7 +654,7 @@ MIT in each case. |#
   ;; Jump to scheme-to-interface
   (LAP (JR ,regnum:scheme-to-interface)
        (ADDI ,regnum:interface-index 0 ,(* 4 code))))
-
+
 (define (load-interface-args! first second third fourth)
   (let ((clear-regs
 	 (apply clear-registers!

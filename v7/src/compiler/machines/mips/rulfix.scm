@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.9 1993/01/08 00:04:44 cph Exp $
+$Id: rulfix.scm,v 1.10 1997/03/30 23:33:06 cph Exp $
 
-Copyright (c) 1989-1993 Massachusetts Institute of Technology
+Copyright (c) 1989-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -612,4 +612,6 @@ MIT in each case. |#
     ((EQUAL-FIXNUM?) '=)
     ((LESS-THAN-FIXNUM?) '<)
     ((GREATER-THAN-FIXNUM?) '>)
+    ((UNSIGNED-LESS-THAN-FIXNUM?) '<<)
+    ((UNSIGNED-GREATER-THAN-FIXNUM?) '>>)
     (else (error "unknown fixnum predicate" predicate))))
