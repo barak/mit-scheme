@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.13 1997/09/26 19:52:52 adams Exp $
+$Id: graphics.scm,v 1.14 1998/01/30 09:07:25 cph Exp $
 
-Copyright (c) 1993-97 Massachusetts Institute of Technology
+Copyright (c) 1993-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -115,8 +115,8 @@ MIT in each case. |#
 	      (invalidate-rect hwnd #f #f)
 	      (update-window hwnd)
 	      ))
-	(release-dc hwnd hdc)
 	(select-palette hdc oldpal #f)
+	(release-dc hwnd hdc)
 	redisplay))
 
     (cond
@@ -150,14 +150,31 @@ MIT in each case. |#
 	(release-dc hwnd hdc)
 	(win32-device/clear window)
 	0))
+
+     ((= msg WM_CLOSE)
+      ;; Ignore WM_CLOSE.  This is a workaround for a nasty bug in
+      ;; Windows NT 4.0.  The bug is reproduced by making graphics
+      ;; windows and closing them with the close button; the result is
+      ;; the BSOD.
+      0)
      
      ((= msg WM_DESTROY)
-      (delete-dc (win32-device/hdc window))
-      (delete-object (win32-device/bitmap window))
-      (delete-object (win32-device/palette window))
-      (set-win32-device/hdc! window 0)
+      (let ((bitmap-dc (win32-device/hdc window)))
+	(if (not (eqv? 0 bitmap-dc))
+	    (begin
+	      (delete-dc bitmap-dc)
+	      (set-win32-device/hdc! window #f))))
+      (let ((bitmap (win32-device/bitmap window)))
+	(if bitmap
+	    (begin
+	      (delete-object bitmap)
+	      (set-win32-device/bitmap! window #f))))
+      (let ((palette (win32-device/palette window)))
+	(if palette
+	    (begin
+	      (delete-object palette)
+	      (set-win32-device/palette! window #f))))
       (set-win32-device/hwnd! window #f)
-      (set-win32-device/palette! window #f)
       0)
 
      ((= msg WM_PAINT)
@@ -676,11 +693,9 @@ MIT in each case. |#
     unspecific))
 
 
-(define (close-descriptor des)
-  (if (and des
-	   (win32-device/hwnd des))
-      (send-message (win32-device/hwnd des) WM_CLOSE 0 0))
-  unspecific)
+(define (close-descriptor descriptor)
+  (if (and descriptor (win32-device/hwnd descriptor))
+      (destroy-window (win32-device/hwnd descriptor))))
 
 (define (win32-graphics/close device)
   (close-descriptor (graphics-device/descriptor device)))
