@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.26 1994/12/01 19:01:09 adams Exp $
+$Id: parse.scm,v 14.27 1994/12/02 01:50:28 adams Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -502,28 +502,40 @@ MIT in each case. |#
 	(list 'UNQUOTE-SPLICING (parse-object/dispatch)))
       (list 'UNQUOTE (parse-object/dispatch))))
 
+
 (define-accretor (parse-object/string-quote)
+  ;; This version uses a string output port to collect the string fragments
+  ;; because string ports store the string efficiently and append the
+  ;; string fragments in amortized linear time.
+  ;;
+  ;; The common case for a string with no escapes is handled efficiently by
+  ;; lifting the code out of the loop.
+
   (discard-char)
-  (let loop ((fragments '()))
-    (let ((head (read-string char-set/string-delimiters)))
-      (if (char=? #\" (read-char))
-	  (if (null? fragments)
-	      head
-	      (apply string-append (reverse! (cons head fragments))))
-	  (let ((char
-		 (let ((char (read-char)))
-		   (cond ((char-ci=? char #\n) #\Newline)
-			 ((char-ci=? char #\t) #\Tab)
-			 ((char-ci=? char #\v) #\VT)
-			 ((char-ci=? char #\b) #\BS)
-			 ((char-ci=? char #\r) #\Return)
-			 ((char-ci=? char #\f) #\Page)
-			 ((char-ci=? char #\a) #\BEL)
-			 ((char->digit char 8)
-			  (let ((c2 (read-char)))
-			    (octal->char char c2 (read-char))))
-			 (else char)))))
-	    (loop (cons* (string char) head fragments)))))))
+  (let ((head (read-string char-set/string-delimiters)))
+    (if (char=? #\" (read-char))
+	head
+	(with-string-output-port
+	 (lambda (port)
+	   (write-string head port)
+	   (let loop ()
+	     (let ((char
+		    (let ((char (read-char)))
+		      (cond ((char-ci=? char #\n) #\Newline)
+			    ((char-ci=? char #\t) #\Tab)
+			    ((char-ci=? char #\v) #\VT)
+			    ((char-ci=? char #\b) #\BS)
+			    ((char-ci=? char #\r) #\Return)
+			    ((char-ci=? char #\f) #\Page)
+			    ((char-ci=? char #\a) #\BEL)
+			    ((char->digit char 8)
+			     (let ((c2 (read-char)))
+			       (octal->char char c2 (read-char))))
+			    (else char)))))
+	       (write-char char port)
+	       (write-string (read-string char-set/string-delimiters) port)
+	       (if (char=? #\\ (read-char))
+		   (loop)))))))))
 
 (define (octal->char c1 c2 c3)
   (let ((d1 (char->digit c1 8))
