@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: ttyio.scm,v 1.20 2004/10/06 18:46:59 cph Exp $
+$Id: ttyio.scm,v 1.21 2005/03/20 16:09:46 cph Exp $
 
 Copyright 1991,1993,1996,1999,2003,2004 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -113,11 +114,11 @@ USA.
     (if ((port-type/char-ready? generic-i/o-type) port)
 	(let ((char ((port-type/read-char generic-i/o-type) port)))
 	  (if (not (eof-object? char))
-	      (if (char-whitespace? char)
-		  (begin
-		    (maybe-echo-input port char)
-		    (loop))
-		  ((port-type/unread-char generic-i/o-type) port char))))))
+	      (begin
+		(maybe-echo-input port char)
+		(if (char-whitespace? char)
+		    (loop)
+		    ((port-type/unread-char generic-i/o-type) port char)))))))
   (output-port/discretionary-flush port))
 
 (define (maybe-echo-input port char)
