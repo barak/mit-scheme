@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.23 1987/08/10 20:27:42 pas Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.24 1987/10/13 03:42:27 pas Exp $ */
 
 #include "scheme.h"
 #include "primitive.h"
@@ -611,9 +611,9 @@ C_Image_Periodic_Shift(Array, New_Array, nrows, ncols, ver_shift, hor_shift)
   for (i=0;i<nrows;i++) { 
     for (j=0;j<ncols;j++) {
       ver_index = (i+ver_shift) % nrows;
-      if (ver_index<0) ver_index = nrows-ver_index;             /* wrapping around */
+      if (ver_index<0) ver_index = nrows+ver_index;             /* wrapping around */
       hor_index = (j+hor_shift) % ncols;
-      if (hor_index<0) hor_index = ncols-hor_index;
+      if (hor_index<0) hor_index = ncols+hor_index;
       *To_Here++ = Array[ver_index*ncols + hor_index];
     }}
 }
