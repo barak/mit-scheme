@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bitstr.c,v 9.53 1995/01/24 00:17:25 cph Exp $
+$Id: bitstr.c,v 9.54 1995/01/25 20:54:55 cph Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -504,58 +504,43 @@ DEFUN (copy_bits,
       else
 	{
 	  long mask1 = (LOW_MASK (offset1));
-	  long mask2 = (ANY_MASK (offset2, offset1));
 	  long dest_buffer;
 	  {
 	    long mask = (ANY_MASK (head, offset1));
 	    dest_buffer
-	      = (((BIT_STRING_WORD (destination)) &~ mask)
-		 | (((* (DEC_BIT_STRING_PTR (source))) << offset1) & mask));
+	      = (((BIT_STRING_WORD (destination))
+		  &~ (LOW_MASK (head + offset1)))
+		 | (((* (DEC_BIT_STRING_PTR (source))) & (LOW_MASK (head)))
+		    << offset1));
 	  }
 	  nbits -= head;
-	  if (nbits >= OBJECT_LENGTH)
+	  while (nbits >= OBJECT_LENGTH)
 	    {
-	      dest_buffer &= mask2;
-	      while (nbits >= OBJECT_LENGTH)
-		{
-		  (* (DEC_BIT_STRING_PTR (destination)))
-		    = (dest_buffer
-		       | (((BIT_STRING_WORD (source)) >> offset2) & mask1));
-		  dest_buffer = ((* (DEC_BIT_STRING_PTR (source))) << offset1);
-		  nbits -= OBJECT_LENGTH;
-		}
+	      (* (DEC_BIT_STRING_PTR (destination)))
+		= (dest_buffer
+		   | (((BIT_STRING_WORD (source)) >> offset2) & mask1));
+	      dest_buffer = ((* (DEC_BIT_STRING_PTR (source))) << offset1);
+	      nbits -= OBJECT_LENGTH;
 	    }
-	  if (nbits > 0)
+	  if (nbits <= offset1)
+	    (BIT_STRING_WORD (destination))
+	      = (dest_buffer
+		 | ((BIT_STRING_WORD (destination))
+		    & (LOW_MASK (offset1 - nbits)))
+		 | (((BIT_STRING_WORD (source)) >> offset2)
+		    & (ANY_MASK (nbits, (offset1 - nbits)))));
+	  else
 	    {
-	      if (nbits <= offset1)
-		{
-		  long mask = (ANY_MASK (nbits, (offset1 - nbits)));
-		  /* This path through copy bits didn't work in certain
-		   cases.  The line below seems to fix it.  This was an
-		   empirical test, and I don't understand it enough to
-		   tell if it is correct, but I think it is, and I did
-		   a few tests.  This is probably what is broken if you
-		   are here poking around trying to fix something.
-		   ~JRM */
-		  dest_buffer &=~ mask;
-		  (BIT_STRING_WORD (destination))
-		    = (dest_buffer
-		       | ((BIT_STRING_WORD (destination))
-			  & (LOW_MASK (offset1 - nbits)))
-		       | (((BIT_STRING_WORD (source)) >> offset2)
-			  & mask));
-		}
-	      else
-		{
-		  long mask;
-		  (* (DEC_BIT_STRING_PTR (destination)))
-		    = (dest_buffer
-		       | (((BIT_STRING_WORD (source)) >> offset2) & mask1));
-		  mask = (LOW_MASK (OBJECT_LENGTH - nbits));
-		  (BIT_STRING_WORD (destination))
-		    = (((BIT_STRING_WORD (destination)) &~ mask)
-		       | (((BIT_STRING_WORD (source)) << offset1) & mask));
-		}
+	      (* (DEC_BIT_STRING_PTR (destination)))
+		= (dest_buffer
+		   | (((BIT_STRING_WORD (source)) >> offset2) & mask1));
+	      nbits -= offset1;
+	      {
+		long mask = (LOW_MASK (OBJECT_LENGTH - nbits));
+		(BIT_STRING_WORD (destination))
+		  = (((BIT_STRING_WORD (destination)) & mask)
+		     | (((BIT_STRING_WORD (source)) << offset1) &~ mask));
+	      }
 	    }
 	}
     }
