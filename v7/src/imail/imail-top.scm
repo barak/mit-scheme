@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.139 2000/06/08 04:16:07 cph Exp $
+;;; $Id: imail-top.scm,v 1.140 2000/06/08 17:16:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1044,23 +1044,23 @@ With prefix argument N moves backward N messages with these flags."
 (define-method insert-mime-message-part
     (message (body <mime-body-multipart>) enclosure selector mark)
   enclosure
-  (let ((parts (mime-body-multipart-parts body)))
-    (if (eq? (mime-body-subtype body) 'ALTERNATIVE)
-	(insert-mime-message-part message (car parts) body `(,@selector 0)
-				  mark)
-	(let ((boundary (mime-body-parameter body 'BOUNDARY "----------")))
-	  (do ((parts parts (cdr parts))
-	       (i 0 (fix:+ i 1)))
-	      ((null? parts))
-	    (if (fix:> i 0)
-		(begin
-		  (insert-newline mark)
-		  (insert-string "--" mark)
-		  (insert-string boundary mark)
-		  (insert-newline mark)
-		  (insert-newline mark)))
-	    (insert-mime-message-part message (car parts) body `(,@selector ,i)
-				      mark))))))
+  (let ((boundary (mime-body-parameter body 'BOUNDARY "----------")))
+    (do ((parts (mime-body-multipart-parts body) (cdr parts))
+	 (i 0 (fix:+ i 1)))
+	((null? parts))
+      (if (fix:> i 0)
+	  (begin
+	    (insert-newline mark)
+	    (insert-string "--" mark)
+	    (insert-string boundary mark)
+	    (insert-newline mark)
+	    (insert-newline mark)))
+      (let ((part (car parts))
+	    (selector `(,@selector ,i)))
+	(if (and (fix:> i 0)
+		 (eq? (mime-body-subtype body) 'ALTERNATIVE))
+	    (insert-mime-message-attachment 'ALTERNATIVE part selector mark)
+	    (insert-mime-message-part message part body selector mark))))))
 
 (define-method insert-mime-message-part
     (message (body <mime-body-message>) enclosure selector mark)
@@ -1081,48 +1081,55 @@ With prefix argument N moves backward N messages with these flags."
 
 (define-method insert-mime-message-part
     (message (body <mime-body-text>) enclosure selector mark)
-  (if (re-string-match (string-append "\\`"
-				      (regexp-group "us-ascii"
-						    "iso-8859-[0-9]+"
-						    "windows-[0-9]+")
-				      "\\'")
-		       (mime-body-parameter body 'CHARSET "us-ascii")
-		       #t)
-      (let ((text
-	     (message-mime-body-part
-	      message
-	      (if (or (not enclosure)
-		      (and (eq? (mime-body-type enclosure) 'MESSAGE)
-			   (eq? (mime-body-subtype enclosure) 'RFC822)))
-		  `(,@selector TEXT)
-		  selector)
-	      #t)))
-	(call-with-auto-wrapped-output-mark mark
-	  (lambda (port)
-	    (case (let ((encoding
-			 (and enclosure
-			      (eq? (mime-body-type enclosure) 'MESSAGE)
-			      (eq? (mime-body-subtype enclosure) 'RFC822)
-			      (mime-body-one-part-encoding enclosure))))
-		    (if (and encoding
-			     (not (memq encoding '(7BIT 8BIT BINARY))))
-			;; This is completely illegal, but Netscape does
-			;; this so we'd better handle it.
-			encoding
-			(mime-body-one-part-encoding body)))
-	      ((QUOTED-PRINTABLE)
-	       (decode-quoted-printable-string text port #t))
-	      ((BASE64)
-	       (decode-base64-string text port #t))
-	      (else
-	       (write-string text port)))))
-	(guarantee-newline mark))
-      (insert-mime-message-binary message body enclosure selector mark)))
+  (let* ((message-enclosure?
+	  (and enclosure
+	       (eq? (mime-body-type enclosure) 'MESSAGE)
+	       (eq? (mime-body-subtype enclosure) 'RFC822)))
+	 (encoding
+	  (let ((encoding
+		 (and message-enclosure?
+		      (mime-body-one-part-encoding enclosure))))
+	    (if (and encoding (not (memq encoding '(7BIT 8BIT BINARY))))
+		;; This is illegal, but Netscape does it.
+		encoding
+		(mime-body-one-part-encoding body)))))
+    (if (and (eq? (mime-body-subtype body) 'PLAIN)
+	     (known-mime-encoding? encoding)
+	     (re-string-match (string-append "\\`"
+					     (regexp-group "us-ascii"
+							   "iso-8859-[0-9]+"
+							   "windows-[0-9]+")
+					     "\\'")
+			      (mime-body-parameter body 'CHARSET "us-ascii")
+			      #t))
+	(let ((text
+	       (message-mime-body-part
+		message
+		(if (or (not enclosure) message-enclosure?)
+		    `(,@selector TEXT)
+		    selector)
+		#t)))
+	  (call-with-auto-wrapped-output-mark mark
+	    (lambda (port)
+	      (case encoding
+		((QUOTED-PRINTABLE)
+		 (decode-quoted-printable-string text port #t))
+		((BASE64)
+		 (decode-base64-string text port #t))
+		(else
+		 (write-string text port)))))
+	  (guarantee-newline mark))
+	(insert-mime-message-binary message body enclosure selector mark))))
 
 (define (insert-mime-message-binary message body enclosure selector mark)
   message enclosure
+  (insert-mime-message-attachment 'ATTACHMENT class body selector mark))
+
+(define (insert-mime-message-attachment class body selector mark)
   (let ((start (mark-right-inserting-copy mark)))
-    (insert-string "<IMAIL-ATTACHMENT " mark)
+    (insert-string "<IMAIL-" mark)
+    (insert-string (string-upcase (symbol->string class)) mark)
+    (insert-string " " mark)
     (let ((column (mark-column mark)))
       (let ((name (mime-attachment-name body selector #f)))
 	(if name
@@ -1142,10 +1149,13 @@ With prefix argument N moves backward N messages with these flags."
 	    (insert-string "charset=" mark)
 	    (insert (mime-body-parameter body 'CHARSET "us-ascii") mark)
 	    (insert-newline mark)))
-      (change-column column mark)
-      (insert-string "encoding=" mark)
-      (insert (mime-body-one-part-encoding body) mark)
-      (insert-newline mark)
+      (let ((encoding (mime-body-one-part-encoding body)))
+	(if (not (known-mime-encoding? encoding))
+	    (begin
+	      (change-column column mark)
+	      (insert-string "encoding=" mark)
+	      (insert encoding mark)
+	      (insert-newline mark))))
       (change-column column mark)
       (insert-string "length=" mark)
       (insert (mime-body-one-part-n-octets body) mark))
@@ -1153,6 +1163,9 @@ With prefix argument N moves backward N messages with these flags."
     (region-put! start mark 'IMAIL-MIME-ATTACHMENT (cons body selector))
     (mark-temporary! start))
   (insert-newline mark))
+
+(define (known-mime-encoding? encoding)
+  (memq encoding '(7BIT 8BIT BINARY QUOTED-PRINTABLE BASE64)))
 
 (define (mime-attachment-name body selector provide-default?)
   (or (mime-body-parameter body 'NAME #f)
