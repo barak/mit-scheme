@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: intmod.scm,v 1.111 2001/02/27 17:43:24 cph Exp $
+;;; $Id: intmod.scm,v 1.112 2001/02/27 17:47:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -869,7 +869,7 @@ If this is an error, the debugger examines the error condition."
 (define (operation/fresh-lines port n)
   (enqueue-output-operation!
    port
-   (lambda (mark transcript?) transcript? (guarantee-newlines mark n) #t)))
+   (lambda (mark transcript?) transcript? (guarantee-newlines n mark) #t)))
 
 (define (operation/beep port)
   (enqueue-output-operation!
