@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.20 2000/06/15 02:38:05 cph Exp $
+;;; $Id: imail-summary.scm,v 1.21 2000/06/15 19:13:23 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -406,9 +406,8 @@ with some additions to make navigation more natural.
   (make-event-distributor))
 
 (define (imail-summary-revert-buffer buffer dont-use-auto-save? dont-confirm?)
-  dont-use-auto-save? dont-confirm?
-  (if (or dont-confirm?
-	  (prompt-for-yes-or-no? "Revert summary buffer"))
+  dont-use-auto-save?
+  (if (or dont-confirm? (prompt-for-yes-or-no? "Revert summary buffer"))
       (rebuild-imail-summary-buffer buffer)))
 
 (define-key 'imail-summary #\space	'imail-summary-select-message)
