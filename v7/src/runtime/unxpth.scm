@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.5 1989/04/05 04:25:52 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.6 1991/05/09 03:22:03 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,12 +36,12 @@ MIT in each case. |#
 ;;; package: ()
 
 (declare (usual-integrations))
-
+
 (define (symbol->pathname symbol)
   (string->pathname (string-downcase (symbol->string symbol))))
 
 (define (home-directory-pathname)
-  (pathname-as-directory (string->pathname (get-environment-variable "HOME"))))
+  (pathname-as-directory (string->pathname (unix/current-home-directory))))
 
 (define (init-file-pathname)
   (string->pathname ".scheme.init"))

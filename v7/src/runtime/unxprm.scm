@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.11 1991/02/15 18:07:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.12 1991/05/09 03:22:24 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -94,27 +94,32 @@ MIT in each case. |#
   ((ucode-primitive file-mod-time-indirect 1)
    (pathname->string (pathname->absolute-pathname (->pathname filename)))))
 
-(define (get-environment-variable name)
-  (or ((ucode-primitive get-environment-variable) name)
-      (error "GET-ENVIRONMENT-VARIABLE: Unbound name" name)))
+(define-integrable get-environment-variable
+  (ucode-primitive get-environment-variable))
 
-(define (get-user-home-directory user-name)
-  (or ((ucode-primitive get-user-home-directory) user-name)
-      (error "User has no home directory" user-name)))
+(define (unix/user-home-directory user-name)
+  (let ((directory (ucode-primitive get-user-home-directory)))
+    (if (not directory)
+	(error "Can't find user's home directory:" user-name))
+    directory))
 
-(define unix/current-user-name
+(define (unix/current-home-directory)
+  (or (get-environment-variable "HOME")
+      (get-user-home-directory (unix/current-user-name))))
+
+(define-integrable unix/current-user-name
   (ucode-primitive current-user-name))
 
-(define unix/current-uid
+(define-integrable unix/current-uid
   (ucode-primitive current-uid))
 
-(define unix/current-gid
+(define-integrable unix/current-gid
   (ucode-primitive current-gid))
 
-(define unix/current-file-time
+(define-integrable unix/current-file-time
   (ucode-primitive current-file-time))
 
-(define unix/file-time->string
+(define-integrable unix/file-time->string
   (ucode-primitive file-time->string))
 
 (define (unix/uid->string uid)
@@ -125,7 +130,7 @@ MIT in each case. |#
   (or ((ucode-primitive gid->string) gid)
       (number->string gid 10)))
 
-(define unix/system
+(define-integrable unix/system
   (ucode-primitive system))
 
 (define (file-touch filename)
