@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.12 1992/08/13 19:13:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.13 1992/08/14 03:50:58 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -129,11 +129,16 @@ MIT in each case. |#
       (let ((len (string-length component)))
 	(cond ((substring-find-previous-char component 0 len #\.)
 	       ;; Handle screwy directories with dots in their names.
-	       (parse-name component
-			   (lambda (before after)
-			     (string-append (->field before)
-					    "."
-					    (->field after)))))
+	       =>
+	       (lambda (posn)
+		 (parse-name component
+			     (lambda (before after)
+			       (let ((before (->field before)))
+				 (if (string=? before component)
+				     component
+				     (string-append before
+						    "."
+						    (->field after))))))))
 	      ((> len 8)
 	       (substring component 0 8))
 	      (else
