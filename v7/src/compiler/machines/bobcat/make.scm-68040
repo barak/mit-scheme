@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.15 1987/04/27 20:11:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.16 1987/05/07 00:26:03 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -65,14 +65,14 @@ MIT in each case. |#
     (make-environment
       (define :name "Liar (Bobcat 68020)")
       (define :version 1)
-      (define :modification 15)
+      (define :modification 16)
       (define :files)
 
-;      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.15 1987/04/27 20:11:22 cph Exp $"
+;      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.16 1987/05/07 00:26:03 cph Exp $"
 ;	(lambda (filename version date time author state)
 ;	  (set! :version (car version))
 ;	  (set! :modification (cadr version))))
-
+
       (define :files-lists
 	(list
 	 (cons system-global-environment
@@ -103,7 +103,7 @@ MIT in each case. |#
 		 "base/rtlcfg.bin"	;RTL: CFG types
 		 "base/emodel.bin"	;environment model
 		 "base/rtypes.bin"	;RTL analyzer datatypes
-		 "base/pmlook.com"	;pattern matcher: lookup
+		 "base/pmlook.bin"	;pattern matcher: lookup
 		 "base/pmpars.bin"	;pattern matcher: parser
 		 ))
 
@@ -117,22 +117,26 @@ MIT in each case. |#
 
 	 (cons rtl-generator-package
 	       '("front-end/rtlgen.bin"	;RTL generator
-		 "front-end/rgcomb.bin"	;RTL generator: combinations
+		 "front-end/rgproc.bin"	;RTL generator: Procedure Headers
+		 "front-end/rgstmt.bin"	;RTL generator: Statements
+		 "front-end/rgpred.bin"	;RTL generator: Predicates
+		 "front-end/rgrval.bin"	;RTL generator: RValues
+		 "front-end/rgcomb.bin"	;RTL generator: Combinations
+		 "front-end/rgpcom.bin"	;RTL generator: Primitive open-coding
 		 "base/linear.bin"	;linearization
 		 ))
 
 	 (cons rtl-cse-package
 	       '("front-end/rcse.bin"	;RTL common subexpression eliminator
-		 "front-end/rcseep.com"	;CSE expression predicates
-		 "front-end/rcsesr.com"	;CSE stack references
-		 "front-end/rcseht.com"	;CSE hash table
-		 "front-end/rcsesa.com"	;CSE state abstraction
-		 "front-end/rcserq.com"	;CSE register/quantity abstractions
+		 "front-end/rcseep.bin"	;CSE expression predicates
+		 "front-end/rcseht.bin"	;CSE hash table
+		 "front-end/rcsesa.bin"	;CSE state abstraction
+		 "front-end/rcserq.bin"	;CSE register/quantity abstractions
 		 ))
 
 	 (cons rtl-analyzer-package
 	       '("front-end/rlife.bin"	;RTL register lifetime analyzer
-		 "front-end/rdeath.com"	;RTL dead code eliminations
+		 "front-end/rdeath.bin"	;RTL dead code eliminations
 		 "front-end/rdebug.bin"	;RTL optimizer debugging output
 		 "front-end/ralloc.bin"	;RTL register allocator
 		 ))
@@ -144,7 +148,7 @@ MIT in each case. |#
 		 ))
 
 	 (cons lap-syntaxer-package
-	       '("back-end/syntax.com"	;Generic syntax phase
+	       '("back-end/syntax.bin"	;Generic syntax phase
 		 "machines/bobcat/coerce.bin" ;Coercions: integer -> bit string
 		 "back-end/asmmac.bin"	;Macros for hairy syntax
 		 "machines/bobcat/insmac.bin" ;Macros for hairy syntax
