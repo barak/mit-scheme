@@ -61,10 +61,17 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #define	AND		,
 #define	NOARGS		void
-#define	CONST		const
 #define	VOLATILE	volatile
 #define	SIGNED		signed
 #define	DOTS		, ...
+
+/* Some systems don't declare their libraries correctly, making CONST
+   impossible to have. */
+#ifdef NO_CONST
+#define CONST
+#else
+#define	CONST		const
+#endif
 
 #define	EXFUN(name, proto)		name proto
 #define	DEFUN(name, arglist, args)	name(args)
