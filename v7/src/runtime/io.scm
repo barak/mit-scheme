@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.44 1995/08/01 05:05:08 cph Exp $
+$Id: io.scm,v 14.45 1996/02/22 19:02:25 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -733,9 +733,9 @@ MIT in each case. |#
   (channel false read-only true)
   string
   start-index
-  ;; END-INDEX is zero iff CHANNEL is closed.
   end-index
   line-translation			; string that maps to newline
+  ;; REAL-END is zero iff CHANNEL is closed.
   real-end)
 
 (define (input-buffer-size translation buffer-size)
@@ -766,7 +766,7 @@ MIT in each case. |#
 (define (input-buffer/close buffer)
   (without-interrupts
    (lambda ()
-     (set-input-buffer/end-index! buffer 0)
+     (set-input-buffer/real-end! buffer 0)
      (channel-close (input-buffer/channel buffer)))))
 
 (define (input-buffer/size buffer)
@@ -777,7 +777,7 @@ MIT in each case. |#
   ;; Discards any buffered characters.
   (without-interrupts
    (lambda ()
-     (if (fix:= (input-buffer/end-index buffer) 0)
+     (if (fix:= (input-buffer/real-end buffer) 0)
 	 0
 	 (let ((string-size
 		(input-buffer-size (input-buffer/line-translation buffer)
@@ -816,7 +816,7 @@ MIT in each case. |#
   ;; Assumption:
   ;; (and (fix:= (input-buffer/start-index buffer)
   ;;		 (input-buffer/end-index buffer))
-  ;;	  (not (fix:= 0 (input-buffer/end-index buffer))))
+  ;;	  (not (fix:= 0 (input-buffer/real-end buffer))))
   (let ((channel (input-buffer/channel buffer))
 	(delta
 	 (fix:- (input-buffer/real-end buffer)
@@ -839,13 +839,16 @@ MIT in each case. |#
 	       (let ((end-index (fix:+ delta n-read)))
 		 (if (fix:= n-read 0)
 		     (channel-close channel))
-		 (set-input-buffer/start-index! buffer 0)
-		 (set-input-buffer/end-index! buffer end-index)
-		 (set-input-buffer/real-end! buffer end-index)
-		 (if (and (input-buffer/line-translation buffer)
-			  (not (fix:= end-index 0)))
-		     (input-buffer/translate! buffer)
-		     end-index)))))))
+		 (input-buffer/after-fill! buffer end-index)))))))
+
+(define (input-buffer/after-fill! buffer end-index)
+  (set-input-buffer/start-index! buffer 0)
+  (set-input-buffer/end-index! buffer end-index)
+  (set-input-buffer/real-end! buffer end-index)
+  (if (and (input-buffer/line-translation buffer)
+	   (not (fix:= end-index 0)))
+      (input-buffer/translate! buffer)
+      end-index))
 
 (define-integrable (input-buffer/fill* buffer)
   (let ((n (input-buffer/fill buffer)))
@@ -885,16 +888,16 @@ MIT in each case. |#
 			(input-buffer/fill* buffer)))))))))))
 
 (define (char-ready? buffer fill)
-  (let ((end-index (input-buffer/end-index buffer)))
-    (and (not (fix:= end-index 0))
-	 (or (fix:< (input-buffer/start-index buffer) end-index)
-	     (fill buffer)))))
+  (and (not (fix:= (input-buffer/real-end buffer) 0))
+       (or (fix:< (input-buffer/start-index buffer)
+		  (input-buffer/end-index buffer))
+	   (fill buffer))))
 
 (define (input-buffer/eof? buffer)
   ;; This returns true iff it knows that it is at EOF.
   ;; If BUFFER is non-blocking with no input available, it returns false.
   (and (not (input-buffer/char-ready? buffer 0))
-       (fix:= (input-buffer/end-index buffer) 0)))
+       (fix:= (input-buffer/real-end buffer) 0)))
 
 (define (input-buffer/translate! buffer)
   (with-values
@@ -906,7 +909,7 @@ MIT in each case. |#
     (lambda (logical-end real-end)
       (set-input-buffer/end-index! buffer logical-end)
       (set-input-buffer/real-end! buffer real-end)
-      logical-end)))
+      (and (fix:> logical-end 0) logical-end))))
 
 (define (substring/input-translate! string translation start end)
   ;; This maps a multi-character (perhaps only 1) sequence into a
@@ -976,12 +979,11 @@ MIT in each case. |#
 (define (input-buffer/read-char buffer)
   (without-interrupts
    (lambda ()
-     (let ((start-index (input-buffer/start-index buffer))
-	   (end-index (input-buffer/end-index buffer)))
-       (cond ((fix:< start-index end-index)
+     (let ((start-index (input-buffer/start-index buffer)))
+       (cond ((fix:< start-index (input-buffer/end-index buffer))
 	      (set-input-buffer/start-index! buffer (fix:+ start-index 1))
 	      (string-ref (input-buffer/string buffer) start-index))
-	     ((fix:= end-index 0)
+	     ((fix:= (input-buffer/real-end buffer) 0)
 	      eof-object)
 	     (else
 	      (let ((n (input-buffer/fill buffer)))
@@ -994,11 +996,10 @@ MIT in each case. |#
 (define (input-buffer/peek-char buffer)
   (without-interrupts
    (lambda ()
-     (let ((start-index (input-buffer/start-index buffer))
-	   (end-index (input-buffer/end-index buffer)))
-       (cond ((fix:< start-index end-index)
+     (let ((start-index (input-buffer/start-index buffer)))
+       (cond ((fix:< start-index (input-buffer/end-index buffer))
 	      (string-ref (input-buffer/string buffer) start-index))
-	     ((fix:= end-index 0)
+	     ((fix:= (input-buffer/real-end buffer) 0)
 	      eof-object)
 	     (else
 	      (let ((n (input-buffer/fill buffer)))
@@ -1034,7 +1035,7 @@ MIT in each case. |#
 		     (if (channel-open? (input-buffer/channel buffer))
 			 (read-directly (fix:+ index available))
 			 (fix:+ index available))))))
-	    ((or (fix:= bend 0)
+	    ((or (fix:= (input-buffer/real-end buffer) 0)
 		 (channel-closed? (input-buffer/channel buffer)))
 	     index)
 	    (else
@@ -1127,5 +1128,4 @@ MIT in each case. |#
 	     (if (fix:> contents-size (string-length string))
 		 (input-buffer/set-size buffer contents-size))
 	     (substring-move-left! contents 0 contents-size string 0)
-	     (set-input-buffer/start-index! buffer 0)
-	     (set-input-buffer/end-index! buffer contents-size)))))))
+	     (input-buffer/after-fill! buffer contents-size)))))))
