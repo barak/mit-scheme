@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.28 1994/08/05 20:34:56 cph Exp $
+$Id: arith.scm,v 1.29 1994/08/12 04:37:04 cph Exp $
 
-Copyright (c) 1989-93 Massachusetts Institute of Technology
+Copyright (c) 1989-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1759,9 +1759,7 @@ MIT in each case. |#
 	((null? (cddr zs))
 	 (complex:+ (car zs) (cadr zs)))
 	(else
-	 (complex:+ (car zs)
-		    (complex:+ (cadr zs)
-			       (reduce complex:+ 0 (cddr zs)))))))
+	 (reduce complex:+ 0 zs))))
 
 (define 1+ complex:1+)
 (define -1+ complex:-1+)
@@ -1776,9 +1774,7 @@ MIT in each case. |#
 	((null? (cddr zs))
 	 (complex:* (car zs) (cadr zs)))
 	(else
-	 (complex:* (car zs)
-		    (complex:* (cadr zs)
-			       (reduce complex:* 1 (cddr zs)))))))
+	 (reduce complex:* 1 zs))))
 
 (define (- z1 . zs)
   (cond ((null? zs)
@@ -1786,10 +1782,7 @@ MIT in each case. |#
 	((null? (cdr zs))
 	 (complex:- z1 (car zs)))
 	(else
-	 (complex:- z1
-		    (complex:+ (car zs)
-			       (complex:+ (cadr zs)
-					  (reduce complex:+ 0 (cddr zs))))))))
+	 (complex:- z1 (reduce complex:+ 0 zs)))))
 
 (define conjugate complex:conjugate)
 
@@ -1799,10 +1792,7 @@ MIT in each case. |#
 	((null? (cdr zs))
 	 (complex:/ z1 (car zs)))
 	(else
-	 (complex:/ z1
-		    (complex:* (car zs)
-			       (complex:* (cadr zs)
-					  (reduce complex:* 1 (cddr zs))))))))
+	 (complex:/ z1 (reduce complex:* 1 zs)))))
 
 (define abs complex:abs)
 
