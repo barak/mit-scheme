@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.59 1995/09/18 22:52:36 cph Exp $
+$Id: x11base.c,v 1.60 1995/09/25 20:04:19 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -2380,4 +2380,13 @@ DEFINE_PRIMITIVE ("X-MAX-REQUEST-SIZE", Prim_x_max_request_size, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
     (long_to_integer (XMaxRequestSize (XD_DISPLAY (x_display_arg (1)))));
+}
+
+DEFINE_PRIMITIVE ("X-SELECT-INPUT", Prim_x_select_input, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  XSelectInput ((XD_DISPLAY (x_display_arg (1))),
+		(arg_ulong_integer (2)),
+		(arg_integer (3)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
