@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap-url.scm,v 1.3 2000/04/13 16:40:23 cph Exp $
+;;; $Id: imail-imap-url.scm,v 1.4 2000/04/13 16:42:16 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -183,7 +183,8 @@
 (define imap:rexp:enc-user imap:rexp:achar+)
 
 (define imap:rexp:iauth
-  (rexp-sequence ";AUTH=" (regexp-alternatives "*" imap:rexp:enc-auth-type)))
+  (rexp-sequence (rexp-case-fold ";AUTH=")
+		 (rexp-alternatives "*" imap:rexp:enc-auth-type)))
 
 (define imap:rexp:iuserauth
   (rexp-alternatives (rexp-sequence imap:rexp:enc-user
@@ -197,18 +198,18 @@
 
 (define imap:rexp:imailboxlist
   (rexp-sequence (rexp-optional imap:rexp:enc-list-mailbox)
-		 ";TYPE="
-		 (rexp-alternatives "LIST" "LSUB")))
+		 (rexp-case-fold ";TYPE=")
+		 (rexp-case-fold (rexp-alternatives "LIST" "LSUB"))))
 
 (define imap:rexp:nz-number
   (rexp-sequence (char-set-difference char-set:numeric (char-set #\0))
 		 (rexp* char-set:numeric)))
 
 (define imap:rexp:uidvalidity
-  (rexp-sequence ";UIDVALIDITY=" imap:rexp:nz-number))
+  (rexp-sequence (rexp-case-fold ";UIDVALIDITY=") imap:rexp:nz-number))
 
 (define imap:rexp:iuid
-  (rexp-sequence ";UID=" imap:rexp:nz-number))
+  (rexp-sequence (rexp-case-fold ";UID=") imap:rexp:nz-number))
 
 (define imap:rexp:imessagelist
   (rexp-sequence imap:rexp:enc-mailbox
@@ -220,5 +221,6 @@
 		 (rexp-optional imap:rexp:uidvalidity)
 		 imap:rexp:iuid
 		 (rexp-optional
-		  (rexp-sequence "/;SECTION=" imap:rexp:enc-section))))
+		  (rexp-sequence (rexp-case-fold "/;SECTION=")
+				 imap:rexp:enc-section))))
 		 
