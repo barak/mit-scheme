@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.17 1993/09/16 01:38:39 adams Exp $
+@comment $Id: scheme.texinfo,v 1.18 1993/09/16 02:33:20 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -12895,7 +12895,6 @@ rotated axes cannot be drawn.  The rectange applies to the center of the
 line used to draw the ellipse; if the line width has been set to greater
 than 1 then the ellipse will spill outside the bounding rectange by half
 of the line width.
-@findex 
 @end defop
 
 
@@ -12916,7 +12915,6 @@ draws a solid triangular region between the points (0,0), (0,1) and
 
 
 @defop {operation+} win32-graphics-device load-bitmap pathname
-@findex load-bitmap
 @cindex bitmaps
 The graphics device contents and size are initialized from the windows
 bitmap file at @var{pathname}.  If no file type is supplied then a .BMP
@@ -12954,14 +12952,12 @@ of this parameter is 1 pixel.
 @defop {operation+} win32-graphics-device set-window-name name
 This sets the window title to the string @var{name}.  The window is
 given the name "Scheme Graphics" at creation.
-@findex 
 @end defop
 
 @defop {operation+} win32-graphics-device set-font handle
 Set the font for draw text.
 Currently not well supported.
 If you can get a Win32 font handle it can be used here.
-@findex 
 @end defop
 
 
@@ -13256,7 +13252,7 @@ This is the device type for Starbase graphics devices.  A Starbase
 device is opened as follows:
 
 @example
-(make-graphics-device starbase-graphics-device-type
+(make-graphics-device 'STARBASE
                       @var{device-name}
                       @var{driver-name})
 @end example
