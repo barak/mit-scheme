@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.51 2003/12/29 05:07:54 uid67408 Exp $
+$Id: xml-parser.scm,v 1.52 2003/12/29 07:38:23 uid67408 Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -362,7 +362,7 @@ USA.
 	  #t
 	  (begin
 	    (if (not (match-utf8-char-in-alphabet buffer alphabet))
-		(let ((p (get-parser-buffer-pointer b))
+		(let ((p (get-parser-buffer-pointer buffer))
 		      (c (peek-parser-buffer-char buffer)))
 		  ;; Not quite right -- we should be getting the next
 		  ;; UTF-8 character, but this gets the next byte.
