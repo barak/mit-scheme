@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.192 2000/06/26 19:08:18 cph Exp $
+;;; $Id: imail-top.scm,v 1.193 2000/06/26 19:30:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -183,9 +183,16 @@ Either #F or a pathname."
 
 (define-variable imail-mime-show-alternatives
   "If true, all parts of a multipart/alternative message are shown.
-\(Only one of the parts will be shown in line; the others as attachments.)
+ (Only one of the parts will be shown in-line; the others as attachments.)
 Otherwise, only one of the parts is shown."
   #f
+  boolean?)
+
+(define-variable imail-global-mail-notification
+  "If true, all buffer modelines say if there is unseen mail.
+ (This checks only for unseen mail in the primary folder.)
+Otherwise, only the IMAIL buffer for that folder has an indicator."
+  #t
   boolean?)
 
 (define-command imail
@@ -1819,6 +1826,14 @@ Negative argument means search in reverse."
 	  (local-set-variable! mode-line-process
 			       (imail-mode-line-summary-string buffer)
 			       buffer)
+	  (if (and (ref-variable imail-global-mail-notification buffer)
+		   (eq? (folder-url folder) (imail-default-url)))
+	      (begin
+		(set-variable! global-mode-string
+			       (if (> (count-unseen-messages folder) 0)
+				   "[New Mail]"
+				   ""))
+		(global-window-modeline-event!)))
 	  (buffer-modeline-event! buffer 'PROCESS-STATUS)))))
 
 (define (imail-mode-line-summary-string buffer)
@@ -1838,15 +1853,10 @@ Negative argument means search in reverse."
 		    (else "0")))
 	    "/"
 	    (number->string n)
-	    (let loop ((i 0) (unseen 0))
-	      (cond ((< i n)
-		     (loop (+ i 1)
-			   (if (message-unseen? (get-message folder i))
-			       (+ unseen 1)
-			       unseen)))
-		    ((> unseen 0)
-		     (string-append " (" (number->string unseen) " unseen)"))
-		    (else "")))
+	    (let ((unseen (count-unseen-messages folder)))
+	      (if (> unseen 0)
+		  (string-append " (" (number->string unseen) " unseen)")
+		  ""))
 	    (let ((flags
 		   (if message
 		       (flags-delete "seen" (message-flags message))
@@ -1854,6 +1864,15 @@ Negative argument means search in reverse."
 	      (if (pair? flags)
 		  (string-append " " (decorated-string-append "" "," "" flags))
 		  "")))))))
+
+(define (count-unseen-messages folder)
+  (let ((n (folder-length folder)))
+    (do ((i 0 (+ i 1))
+	 (unseen 0
+		 (if (message-unseen? (get-message folder i))
+		     (+ unseen 1)
+		     unseen)))
+	((= i n) unseen))))
 
 ;;;; Probe-folder thread
 
