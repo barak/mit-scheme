@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: schmod.scm,v 1.29 1992/11/17 17:49:48 cph Exp $
+;;;	$Id: schmod.scm,v 1.30 1992/11/18 21:55:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -134,10 +134,10 @@ The following commands evaluate Scheme expressions:
 (modify-syntax-entry! scheme-mode:syntax-table #\space " ")
 (modify-syntax-entry! scheme-mode:syntax-table #\tab " ")
 (modify-syntax-entry! scheme-mode:syntax-table #\page " ")
-(modify-syntax-entry! scheme-mode:syntax-table #\[ " ")
-(modify-syntax-entry! scheme-mode:syntax-table #\] " ")
-(modify-syntax-entry! scheme-mode:syntax-table #\{ " ")
-(modify-syntax-entry! scheme-mode:syntax-table #\} " ")
+(modify-syntax-entry! scheme-mode:syntax-table #\[ "(]")
+(modify-syntax-entry! scheme-mode:syntax-table #\] ")[")
+(modify-syntax-entry! scheme-mode:syntax-table #\{ "(}")
+(modify-syntax-entry! scheme-mode:syntax-table #\} "){")
 (modify-syntax-entry! scheme-mode:syntax-table #\| "  23")
 
 (modify-syntax-entry! scheme-mode:syntax-table #\; "< ")
