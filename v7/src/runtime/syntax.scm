@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.23 1994/01/31 04:48:59 gjr Exp $
+$Id: syntax.scm,v 14.24 1994/02/22 21:14:00 cph Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -43,10 +43,14 @@ MIT in each case. |#
   (set! system-global-syntax-table (make-system-global-syntax-table))
   (set! user-initial-syntax-table
 	(make-syntax-table system-global-syntax-table))
-  (set! hook/syntax-expression default/syntax-expression))
+  (set! hook/syntax-expression default/syntax-expression)
+  unspecific)
 
 (define system-global-syntax-table)
 (define user-initial-syntax-table)
+(define *syntax-table*)
+(define *current-keyword* #f)
+(define *syntax-top-level?*)
 
 (define (make-system-global-syntax-table)
   (let ((table (make-syntax-table)))
@@ -91,36 +95,56 @@ MIT in each case. |#
 
 ;;;; Top Level Syntaxers
 
-(define *syntax-table*)
-(define *current-keyword* false)
-
 (define (syntax expression #!optional table)
-  (cond ((default-object? table)
-	 (set! table
-	       (if (unassigned? *syntax-table*)
-		   (nearest-repl/syntax-table)
-		   *syntax-table*)))
-	((not (syntax-table? table))
-	 (error "SYNTAX: not a syntax table" table)))
-  (syntax-top-level syntax-expression table expression))
+  (syntax* (list expression) (if (default-object? table) #f table)))
 
 (define (syntax* expressions #!optional table)
-  (cond ((default-object? table)
-	 (set! table
-	       (if (unassigned? *syntax-table*)
-		   (nearest-repl/syntax-table)
-		   *syntax-table*)))
-	((not (syntax-table? table))
-	 (error "SYNTAX: not a syntax table" table)))
-  (syntax-top-level syntax-sequence table expressions))
+  (fluid-let ((*syntax-table*
+	       (cond ((or (default-object? table) (not table))
+		      (if (unassigned? *syntax-table*)
+			  (nearest-repl/syntax-table)
+			  *syntax-table*))
+		     ((syntax-table? table)
+		      table)
+		     (else
+		      (error:wrong-type-argument table
+						 "syntax table"
+						 'SYNTAX*))))
+	      (*current-keyword* #f))
+    (syntax-sequence #t expressions)))
 
-(define (syntax-top-level syntax-expression table expression)
-  (fluid-let ((*syntax-table* table)
-	      (*current-keyword* false))
-    (syntax-expression expression)))
+(define (syntax/top-level?)
+  *syntax-top-level?*)
+
+(define-integrable (syntax-subsequence expressions)
+  (syntax-sequence #f expressions))
+
+(define (syntax-sequence top-level? original-expressions)
+  (make-scode-sequence
+   (syntax-sequence-internal top-level? original-expressions)))
+
+(define (syntax-sequence-internal top-level? original-expressions)
+  (if (null? original-expressions)
+      (syntax-error "no subforms in sequence")
+      (let process ((expressions original-expressions))
+	(cond ((pair? expressions)
+	       ;; Force eval order.  This is required so that special
+	       ;; forms such as `define-syntax' work correctly.
+	       (let ((first (syntax-expression top-level? (car expressions))))
+		 (cons first (process (cdr expressions)))))
+	      ((null? expressions)
+	       '())
+	      (else
+	       (syntax-error "bad sequence" original-expressions))))))
+
+(define-integrable (syntax-subexpression expression)
+  (syntax-expression #f expression))
+
+(define (syntax-expression top-level? expression)
+  (hook/syntax-expression top-level? expression *syntax-table*))
 
 (define hook/syntax-expression)
-(define (default/syntax-expression expression syntax-table)
+(define (default/syntax-expression top-level? expression syntax-table)
   (cond
    ((pair? expression)
     (if (not (list? expression))
@@ -130,21 +154,23 @@ MIT in each case. |#
       (if transform
 	  (if (primitive-syntaxer? transform)
 	      (transform-apply (primitive-syntaxer/transform transform)
-			       expression)
-	      (let ((result (transform-apply transform expression)))
+			       (car expression)
+			       (cons top-level? (cdr expression)))
+	      (let ((result
+		     (fluid-let ((*syntax-top-level?* top-level?))
+		       (transform-apply transform
+					(car expression)
+					(cdr expression)))))
 		(if (syntax-closure? result)
 		    (syntax-closure/expression result)
-		    (syntax-expression result))))
-	  (make-combination (syntax-expression (car expression))
-			    (syntax-expressions (cdr expression))))))
+		    (syntax-expression top-level? result))))
+	  (make-combination (syntax-subexpression (car expression))
+			    (map syntax-subexpression (cdr expression))))))
    ((symbol? expression)
     (make-variable expression))
    (else
     expression)))
-
-(define (syntax-expression expression)
-  (hook/syntax-expression expression *syntax-table*))
-
+
 ;;; Two overlapping kludges here.  This should go away and be replaced
 ;;; by a true syntactic closure mechanism like that described by
 ;;; Bawden and Rees.
@@ -174,13 +200,13 @@ MIT in each case. |#
 
 (define primitive-syntaxer-tag
   "primitive-syntaxer")
-
-(define (transform-apply transform expression)
-  (fluid-let ((*current-keyword* (car expression)))
-    (let ((n-arguments (length (cdr expression))))
+
+(define (transform-apply transform keyword arguments)
+  (fluid-let ((*current-keyword* keyword))
+    (let ((n-arguments (length arguments)))
       (if (not (procedure-arity-valid? transform n-arguments))
 	  (syntax-error "incorrect number of subforms" n-arguments)))
-    (apply transform (cdr expression))))
+    (apply transform arguments)))
 
 (define (syntax-error message . irritants)
   (apply error
@@ -192,29 +218,6 @@ MIT in each case. |#
 					    message)
 			     message))
 	  irritants)))
-
-(define (syntax-expressions expressions)
-  (if (null? expressions)
-      '()
-      (cons (syntax-expression (car expressions))
-	    (syntax-expressions (cdr expressions)))))
-
-(define (syntax-sequence original-expressions)
-  (make-scode-sequence (syntax-sequence-internal original-expressions)))
-
-(define (syntax-sequence-internal original-expressions)
-  (if (null? original-expressions)
-      (syntax-error "no subforms in sequence")
-      (let process ((expressions original-expressions))
-	(cond ((pair? expressions)
-	       ;; Force eval order.  This is required so that special
-	       ;; forms such as `define-syntax' work correctly.
-	       (let ((first (syntax-expression (car expressions))))
-		 (cons first (process (cdr expressions)))))
-	      ((null? expressions)
-	       '())
-	      (else
-	       (syntax-error "bad sequence" original-expressions))))))
 
 (define (syntax-bindings bindings receiver)
   (if (not (list? bindings))
@@ -237,14 +240,14 @@ MIT in each case. |#
 (define (expand-access chain cont)
   (if (symbol? (car chain))
       (cont (if (null? (cddr chain))
-		(syntax-expression (cadr chain))
+		(syntax-subexpression (cadr chain))
 		(expand-access (cdr chain) make-access))
 	    (car chain))
       (syntax-error "non-symbolic variable" (car chain))))
 
 (define (expand-binding-value rest)
   (cond ((null? rest) (make-unassigned-reference-trap))
-	((null? (cdr rest)) (syntax-expression (car rest)))
+	((null? (cdr rest)) (syntax-subexpression (car rest)))
 	(else (syntax-error "too many forms in value" rest))))
 
 (define (expand-disjunction forms)
@@ -252,8 +255,8 @@ MIT in each case. |#
       false
       (let process ((forms forms))
 	(if (null? (cdr forms))
-	    (syntax-expression (car forms))
-	    (make-disjunction (syntax-expression (car forms))
+	    (syntax-subexpression (car forms))
+	    (make-disjunction (syntax-subexpression (car forms))
 			      (process (cdr forms)))))))
 
 (define (expand-lambda pattern actions receiver)
@@ -270,36 +273,44 @@ MIT in each case. |#
    (syntax-lambda-body actions)))
 
 (define (syntax-lambda-body body)
-  (syntax-sequence
+  (syntax-subsequence
    (if (and (not (null? body))
 	    (not (null? (cdr body)))
 	    (string? (car body)))
-       (cdr body)		;discard documentation string.
+       (cdr body)			;discard documentation string.
        body)))
 
 ;;;; Basic Syntax
 
-(define (syntax/scode-quote expression)
-  (make-quotation (syntax-expression expression)))
+(define (syntax/scode-quote top-level? expression)
+  top-level?
+  (make-quotation (syntax-subexpression expression)))
 
-(define (syntax/quote expression)
+(define (syntax/quote top-level? expression)
+  top-level?
   expression)
 
-(define (syntax/the-environment)
+(define (syntax/the-environment top-level?)
+  top-level?
   (make-the-environment))
 
-(define (syntax/unassigned? name)
+(define (syntax/unassigned? top-level? name)
+  top-level?
   (make-unassigned? name))
 
-(define (syntax/access . chain)
+(define (syntax/access top-level? . chain)
+  top-level?
   (if (not (and (pair? chain) (pair? (cdr chain))))
       (syntax-error "too few forms" chain))
   (expand-access chain make-access))
 
-(define (syntax/set! name . rest)
-  ((invert-expression (syntax-expression name)) (expand-binding-value rest)))
+(define (syntax/set! top-level? name . rest)
+  top-level?
+  ((invert-expression (syntax-subexpression name))
+   (expand-binding-value rest)))
 
-(define (syntax/define pattern . rest)
+(define (syntax/define top-level? pattern . rest)
+  top-level?
   (let ((make-definition
 	 (lambda (name value)
 	   (if (syntax-table-ref *syntax-table* name)
@@ -330,41 +341,46 @@ MIT in each case. |#
 	  (else
 	   (syntax-error "bad pattern" pattern)))))
 
-(define (syntax/begin . actions)
-  (syntax-sequence actions))
+(define (syntax/begin top-level? . actions)
+  (syntax-sequence top-level? actions))
 
-(define (syntax/in-package environment . body)
-  (make-in-package (syntax-expression environment)
-		   (make-sequence (syntax-sequence-internal body))))
+(define (syntax/in-package top-level? environment . body)
+  top-level?
+  (make-in-package (syntax-subexpression environment)
+		   (make-sequence (syntax-sequence-internal #t body))))
 
-(define (syntax/delay expression)
-  (make-delay (syntax-expression expression)))
+(define (syntax/delay top-level? expression)
+  top-level?
+  (make-delay (syntax-subexpression expression)))
 
 ;;;; Conditionals
 
-(define (syntax/if predicate consequent . rest)
-  (make-conditional (syntax-expression predicate)
-		    (syntax-expression consequent)
+(define (syntax/if top-level? predicate consequent . rest)
+  top-level?
+  (make-conditional (syntax-subexpression predicate)
+		    (syntax-subexpression consequent)
 		    (cond ((null? rest)
 			   undefined-conditional-branch)
 			  ((null? (cdr rest))
-			   (syntax-expression (car rest)))
+			   (syntax-subexpression (car rest)))
 			  (else
 			   (syntax-error "too many forms" (cdr rest))))))
 
-(define (syntax/or . expressions)
+(define (syntax/or top-level? . expressions)
+  top-level?
   (expand-disjunction expressions))
 
-(define (syntax/cond . clauses)
+(define (syntax/cond top-level? . clauses)
+  top-level?
   (define (loop clause rest)
     (cond ((not (pair? clause))
 	   (syntax-error "bad COND clause" clause))
 	  ((eq? (car clause) 'ELSE)
 	   (if (not (null? rest))
 	       (syntax-error "ELSE not last clause" rest))
-	   (syntax-sequence (cdr clause)))
+	   (syntax-subsequence (cdr clause)))
 	  ((null? (cdr clause))
-	   (make-disjunction (syntax-expression (car clause)) (next rest)))
+	   (make-disjunction (syntax-subexpression (car clause)) (next rest)))
 	  ((and (pair? (cdr clause))
 		(eq? (cadr clause) '=>))
 	   (if (not (and (pair? (cddr clause))
@@ -373,16 +389,16 @@ MIT in each case. |#
 	   (let ((predicate (string->uninterned-symbol "PREDICATE")))
 	     (make-closed-block lambda-tag:let
 				(list predicate)
-				(list (syntax-expression (car clause)))
-	       (let ((predicate (syntax-expression predicate)))
+				(list (syntax-subexpression (car clause)))
+	       (let ((predicate (syntax-subexpression predicate)))
 		 (make-conditional
 		  predicate
-		  (make-combination* (syntax-expression (caddr clause))
+		  (make-combination* (syntax-subexpression (caddr clause))
 				     predicate)
 		  (next rest))))))
 	  (else
-	   (make-conditional (syntax-expression (car clause))
-			     (syntax-sequence (cdr clause))
+	   (make-conditional (syntax-subexpression (car clause))
+			     (syntax-subsequence (cdr clause))
 			     (next rest)))))
 
   (define (next rest)
@@ -394,17 +410,20 @@ MIT in each case. |#
 
 ;;;; Procedures
 
-(define (syntax/lambda pattern . body)
+(define (syntax/lambda top-level? pattern . body)
+  top-level?
   (make-simple-lambda pattern (syntax-lambda-body body)))
 
-(define (syntax/named-lambda pattern . body)
+(define (syntax/named-lambda top-level? pattern . body)
+  top-level?
   (expand-lambda pattern body
     (lambda (pattern body)
       (if (pair? pattern)
 	  (make-named-lambda (car pattern) (cdr pattern) body)
 	  (syntax-error "illegal named-lambda list" pattern)))))
 
-(define (syntax/let name-or-pattern pattern-or-first . rest)
+(define (syntax/let top-level? name-or-pattern pattern-or-first . rest)
+  top-level?
   (if (symbol? name-or-pattern)
       (syntax-bindings pattern-or-first
 	(lambda (names values)
@@ -414,18 +433,18 @@ MIT in each case. |#
 	  (make-combination
 	   (make-letrec (list name-or-pattern)
 			(list (make-named-lambda name-or-pattern names
-						 (syntax-sequence rest)))
+						 (syntax-subsequence rest)))
 			(make-variable name-or-pattern))
 	   values)))
       (syntax-bindings name-or-pattern
 	(lambda (names values)
 	  (make-closed-block
 	   lambda-tag:let names values
-	   (syntax-sequence (cons pattern-or-first rest)))))))
+	   (syntax-subsequence (cons pattern-or-first rest)))))))
 
 ;;;; Syntax Extensions
 
-(define (syntax/let-syntax bindings . body)
+(define (syntax/let-syntax top-level? bindings . body)
   (syntax-bindings bindings
     (lambda (names values)
       (fluid-let ((*syntax-table*
@@ -435,26 +454,28 @@ MIT in each case. |#
 			   (cons name (syntax-eval value)))
 			 names
 			 values))))
-	(syntax-sequence body)))))
+	(syntax-sequence top-level? body)))))
 
-(define (syntax/using-syntax table . body)
-  (let ((table* (syntax-eval (syntax-expression table))))
+(define (syntax/using-syntax top-level? table . body)
+  (let ((table* (syntax-eval (syntax-subexpression table))))
     (if (not (syntax-table? table*))
 	(syntax-error "not a syntax table" table))
     (fluid-let ((*syntax-table* table*))
-      (syntax-sequence body))))
+      (syntax-sequence top-level? body))))
 
-(define (syntax/define-syntax name value)
+(define (syntax/define-syntax top-level? name value)
+  top-level?
   (if (not (symbol? name))
       (syntax-error "illegal name" name))
   (syntax-table-define *syntax-table* name
-    (syntax-eval (syntax-expression value)))
+    (syntax-eval (syntax-subexpression value)))
   name)
 
-(define (syntax/define-macro pattern . body)
+(define (syntax/define-macro top-level? pattern . body)
+  top-level?
   (let ((keyword (car pattern)))
     (syntax-table-define *syntax-table* keyword
-      (syntax-eval (apply syntax/named-lambda (cons pattern body))))
+      (syntax-eval (apply syntax/named-lambda #f pattern body)))
     keyword))
 
 (define-integrable (syntax-eval scode)
@@ -462,8 +483,8 @@ MIT in each case. |#
 
 ;;;; FLUID-LET
 
-(define (syntax/fluid-let bindings . body)
-  (syntax/fluid-let/current bindings body))
+(define (syntax/fluid-let top-level? bindings . body)
+  (syntax/fluid-let/current top-level? bindings body))
 
 (define syntax/fluid-let/current)
 
@@ -475,24 +496,26 @@ MIT in each case. |#
 	  ((COMMON-LISP) syntax/fluid-let/common-lisp)
 	  (else (error "SET-FLUID-LET-TYPE!: unknown type" type)))))
 
-(define (syntax/fluid-let/shallow bindings body)
+(define (syntax/fluid-let/shallow top-level? bindings body)
   (if (null? bindings)
-      (syntax-sequence body)
+      (syntax-sequence top-level? body)
       (syntax-fluid-bindings/shallow bindings
 	(lambda (names values transfers-in transfers-out)
 	  (make-closed-block lambda-tag:fluid-let names values
 	    (make-combination*
 	     (make-absolute-reference 'SHALLOW-FLUID-BIND)
 	     (make-thunk (make-scode-sequence transfers-in))
-	     (make-thunk (syntax-sequence body))
+	     (make-thunk (syntax-subsequence body))
 	     (make-thunk (make-scode-sequence transfers-out))))))))
 
-(define (syntax/fluid-let/deep bindings body)
+(define (syntax/fluid-let/deep top-level? bindings body)
+  top-level?
   (syntax/fluid-let/deep* (ucode-primitive add-fluid-binding! 3)
 			  bindings
 			  body))
 
-(define (syntax/fluid-let/common-lisp bindings body)
+(define (syntax/fluid-let/common-lisp top-level? bindings body)
+  top-level?
   (syntax/fluid-let/deep* (ucode-primitive make-fluid-binding! 3)
 			  bindings
 			  body))
@@ -505,7 +528,7 @@ MIT in each case. |#
       (make-scode-sequence*
        (make-scode-sequence
 	(syntax-fluid-bindings/deep add-fluid-binding! bindings))
-       (syntax-sequence body))))))
+       (syntax-subsequence body))))))
 
 (define (syntax-fluid-bindings/shallow bindings receiver)
   (if (null? bindings)
@@ -515,7 +538,7 @@ MIT in each case. |#
 	  (let ((binding (car bindings)))
 	    (if (pair? binding)
 		(let ((transfer
-		       (let ((reference (syntax-expression (car binding))))
+		       (let ((reference (syntax-subexpression (car binding))))
 			 (let ((assignment (invert-expression reference)))
 			   (lambda (target source)
 			     (make-assignment
@@ -542,7 +565,7 @@ MIT in each case. |#
 
 (define (syntax-fluid-binding/deep add-fluid-binding! binding)
   (if (pair? binding)
-      (let ((name (syntax-expression (car binding)))
+      (let ((name (syntax-subexpression (car binding)))
 	    (finish
 	     (lambda (environment name)
 	       (make-combination* add-fluid-binding!
@@ -579,12 +602,13 @@ MIT in each case. |#
 ;;; DECLARATION objects all contain lists of standard declarations.
 ;;; Each standard declaration is a proper list with symbolic keyword.
 
-(define (syntax/declare . declarations)
+(define (syntax/declare top-level? . declarations)
+  top-level?
   (make-block-declaration (map process-declaration declarations)))
 
-(define (syntax/local-declare declarations . body)
+(define (syntax/local-declare top-level? declarations . body)
   (make-declaration (process-declarations declarations)
-		    (syntax-sequence body)))
+		    (syntax-sequence top-level? body)))
 
 ;;; These two procedures use `error' instead of `syntax-error' because
 ;;; they are also called when the syntaxer is not running.
