@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/types.h,v 9.31 1989/09/20 23:12:21 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/types.h,v 9.32 1991/01/24 04:31:04 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -98,11 +98,12 @@ MIT in each case. */
 #define TC_STACK_ENVIRONMENT		0x3B
 #define TC_COMPLEX			0x3C
 #define TC_COMPILED_CODE_BLOCK		0x3D
+#define TC_RECORD			0x3E
 
 /* If you add a new type, don't forget to update gccode.h, gctype.c,
    and the type name table below. */
 
-#define LAST_TYPE_CODE			0X3D
+#define LAST_TYPE_CODE			0x3E
 #define MIN_TYPE_CODE_LENGTH		6
 
 #ifdef TYPE_CODE_LENGTH
