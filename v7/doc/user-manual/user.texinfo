@@ -226,7 +226,7 @@ Device Independent Bitmap Utilities
 * Other parts of the DIB Utilities implementation::  
 @end menu
 
-@node Installation, Release Notes, , Top
+@node Installation, Release Notes, Top, Top
 @chapter Installation
 
 
@@ -660,10 +660,10 @@ General release notes
 * DOS::                         
 @end menu
 
-@node Unix Release Notes, ,  , Release Notes
+@node Unix Release Notes, C-Backend Release Notes,  , Release Notes
 @section Unix Release Notes
 
-@node C-Backend Release Notes, , Unix Release Notes, Release Notes
+@node C-Backend Release Notes, DOS, Unix Release Notes, Release Notes
 @section C-Backend Release Notes
 
 @node DOS,  , C-Backend Release Notes, Release Notes
@@ -3556,7 +3556,7 @@ These are differences in design, unlikely to be `fixed'.
 Edwin's keyboard character set is a superset of Emacs'.  Edwin has
 support for real MIT-style bucky bits.  Under X windows (and perhaps
 other systems) Edwin can distinguish between @kbd{C-a} and @kbd{C-a},
-@kbd{C-SPC} and @kbd{C-@}, etc.  When running on a terminal or a PC/DOS
+@kbd{C-SPC} and @kbd{C-@@}, etc.  When running on a terminal or a PC/DOS
 console, the input set is limited to 8-bit ASCII as in Emacs.
 
 @item
