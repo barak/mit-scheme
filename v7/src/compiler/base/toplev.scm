@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.27 1990/04/03 04:50:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.28 1990/05/03 15:03:49 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Compiler Top Level
+;;; package: (compiler top-level)
 
 (declare (usual-integrations))
 
@@ -167,7 +168,7 @@ MIT in each case. |#
 (define compiler:abort-handled? false)
 (define compiler:abort-continuation)
 
-;;; Example of `lap->code' usage:
+;;; Example of `lap->code' usage (MC68020):
 
 #|
 (define bar
@@ -176,7 +177,11 @@ MIT in each case. |#
   (scode-eval
    (lap->code
     'start
-    `((pea (@pcr proc))
+    `((entry-point start)
+      (dc uw #xffff)
+      (block-offset start)
+      (label start)
+      (pea (@pcr proc))
       (or b (& ,(* (microcode-type 'compiled-entry) 4)) (@a 7))
       (mov l (@a+ 7) (@ao 6 8))
       (and b (& #x3) (@a 7))
@@ -719,14 +724,18 @@ MIT in each case. |#
 		      (if (not (procedure-continuation? procedure))
 			  (begin
 			    (set-procedure-free-callees! procedure '())
-			    (set-procedure-free-callers! procedure '())
-			    (set-procedure-variables! procedure '()))))
+			    (set-procedure-free-callers! procedure '()))))
 		    *procedures*)))))
 
 (define (phase/setup-block-types)
   (compiler-subphase "Block Type Determination"
     (lambda ()
       (setup-block-types! *root-block*)
+      (if (not compiler:preserve-data-structures?)
+	  (for-each (lambda (procedure)
+		      (if (not (procedure-continuation? procedure))
+			  (set-procedure-variables! procedure '())))
+		    *procedures*))
       (setup-closure-contexts! *root-expression* *procedures*))))
 
 (define (phase/compute-call-graph)
