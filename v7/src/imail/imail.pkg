@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.39 2000/05/22 13:25:33 cph Exp $
+;;; $Id: imail.pkg,v 1.40 2000/05/22 13:52:25 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -162,6 +162,7 @@
 	  imap:response-code:permanentflags?
 	  imap:response-code:read-only?
 	  imap:response-code:read-write?
+	  imap:response-code:trycreate?
 	  imap:response-code:uidnext
 	  imap:response-code:uidnext?
 	  imap:response-code:uidvalidity

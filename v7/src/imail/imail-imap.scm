@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.68 2000/05/22 13:30:18 cph Exp $
+;;; $Id: imail-imap.scm,v 1.69 2000/05/22 13:52:07 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -732,20 +732,37 @@
 	     url new-url)))
 
 (define-method %append-message ((message <message>) (url <imap-url>))
-  (let ((folder (message-folder message)))
+  (let ((folder (message-folder message))
+	(maybe-create
+	 (lambda (connection thunk)
+	   (let ((response (thunk)))
+	     (if (imap:response:no? response)
+		 (if (imap:response-code:trycreate?
+		      (imap:response:response-text-code response))
+		     (begin
+		       (imap:command:create connection (imap-url-mailbox url))
+		       (let ((response (thunk)))
+			 (if (imap:response:no? response)
+			     (imap:server-error response))))
+		     (imap:server-error response)))))))
     (if (let ((url* (folder-url folder)))
 	  (and (imap-url? url*)
 	       (compatible-imap-urls? url url*)))
-	(imap:command:copy (imap-folder-connection folder)
-			   (message-index message)
-			   (imap-url-mailbox url))
+	(let ((connection (imap-folder-connection folder)))
+	  (maybe-create connection
+	    (lambda ()
+	      (imap:command:uid-copy connection
+				     (imap-message-uid message)
+				     (imap-url-mailbox url)))))
 	(with-open-imap-connection url
 	  (lambda (connection)
-	    (imap:command:append connection
-				 (imap-url-mailbox url)
-				 (message-flags message)
-				 (message-internal-time message)
-				 (message->string message)))))))
+	    (maybe-create connection
+	      (lambda ()
+		(imap:command:append connection
+				     (imap-url-mailbox url)
+				     (message-flags message)
+				     (message-internal-time message)
+				     (message->string message)))))))))
 
 (define-method available-folder-names ((url <imap-url>))
   url
@@ -880,14 +897,14 @@
 (define (imap:command:rename connection from to)
   (imap:command:no-response connection 'RENAME from to))
 
-(define (imap:command:copy connection index mailbox)
-  (imap:command:no-response connection 'COPY (+ index 1) mailbox))
+(define (imap:command:uid-copy connection uid mailbox)
+  (imap:command:no-response-1 connection 'UID 'COPY uid mailbox))
 
 (define (imap:command:append connection mailbox flags time text)
-  (imap:command:no-response connection 'APPEND mailbox
-			    (and (pair? flags) flags)
-			    (imap:universal-time->date-time time)
-			    (cons 'LITERAL text)))
+  (imap:command:no-response-1 connection 'APPEND mailbox
+			      (and (pair? flags) flags)
+			      (imap:universal-time->date-time time)
+			      (cons 'LITERAL text)))
 
 (define (imap:command:search connection . key-plist)
   (apply imap:command:single-response imap:response:search? connection
