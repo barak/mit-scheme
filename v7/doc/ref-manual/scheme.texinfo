@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.93 2000/09/05 00:10:45 cph Exp $
+@comment $Id: scheme.texinfo,v 1.94 2001/02/23 17:47:26 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -18,6 +18,11 @@
 @comment
 @comment **** begin CLTL ****
 @comment **** end CLTL ****
+
+@dircategory Programming Languages
+@direntry
+* MIT Scheme Ref: (mit-scheme-ref).	MIT Scheme Reference Manual
+@end direntry
 
 @tex
 % Don't let TeX put extra vspace around math displays ($$ ... $$),

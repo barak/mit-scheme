@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.21 2000/12/29 04:01:57 cph Exp $
+@comment $Id: imail.texinfo,v 1.22 2001/02/23 17:46:50 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -11,6 +11,11 @@
 @headings double
 @syncodeindex pg cp
 @syncodeindex tp cp
+
+@dircategory Programming Languages
+@direntry
+* IMAIL: (mit-scheme-imail).		IMAP/MIME mail reader for MIT Scheme
+@end direntry
 
 @ifinfo
 This file documents the use of MIT Scheme.
