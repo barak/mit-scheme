@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntfs.c,v 1.10 1997/01/05 23:41:16 cph Exp $
+$Id: prntfs.c,v 1.11 1997/02/20 05:26:20 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -153,7 +153,7 @@ file_time_to_unix_time (FILETIME * ft)
 void
 unix_time_to_file_time (unsigned long ut, FILETIME * ft)
 {
-  double ud = (((double) ut) * 10000000.);
+  double ud = ((((double) ut) * 10000000.) + ut_zero);
   double udh = (floor (ud / 4294967296.));
   (ft -> dwHighDateTime) = ((DWORD) udh);
   (ft -> dwLowDateTime) = ((DWORD) (ud -(udh * 4294967296.)));
