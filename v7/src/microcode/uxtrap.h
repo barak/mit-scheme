@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.13 1992/04/30 04:05:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.14 1992/06/05 20:10:27 jinx Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -366,7 +366,7 @@ struct full_sigcontext
 #endif /* _SYSV4 */
 #endif /* mips */
 
-#ifdef i386
+#if defined(i386) && defined(_MACH_UNIX)
 /* The following are true for Mach (BSD 4.3 compatible).
    I don't know about SCO or other versions.
  */
