@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosprm.scm,v 1.8 1992/05/31 06:15:39 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosprm.scm,v 1.9 1992/07/07 00:44:27 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -96,7 +96,6 @@ MIT in each case. |#
 			 (lambda () (if (file-exists? name)
 					(delete-file name))))))))
 	      (find-eligible-directory (cdr eligible-directories)))))))
-    
 
 (define (file-attributes-direct filename)
   ((ucode-primitive file-attributes)
@@ -135,7 +134,6 @@ MIT in each case. |#
 (define file-modification-time
   file-modification-time-indirect)
 
-
 (define get-environment-variable)
 (define set-environment-variable!)
 (define delete-environment-variable!)
@@ -166,7 +164,7 @@ MIT in each case. |#
 		       (set! environment-variables
 			     (cons (cons variable value)
 				   environment-variables)))))
-	      (error "SET-ENVIRONMENT-VARIABLE: Variable must be a string"
+	      (error "SET-ENVIRONMENT-VARIABLE!: Variable must be a string"
 		     variable value))
 	  unspecific))
   (set! delete-environment-variable!
@@ -175,7 +173,7 @@ MIT in each case. |#
   (set! reset-environment-variables!
 	(lambda () (set! environment-variables '())))
 ) ; End LET
-
+
 (define (dos/user-home-directory user-name)
   (let ((directory ((ucode-primitive get-user-home-directory) user-name)))
     (if (not directory)
@@ -196,15 +194,22 @@ MIT in each case. |#
   (ucode-primitive file-time->string))
 
 (define (file-touch filename)
-  ((ucode-primitive file-touch) (->namestring (merge-pathnames filename))))
+  ((ucode-primitive file-touch)
+   (->namestring (merge-pathnames filename))))
 
 (define (make-directory name)
-  ((ucode-primitive directory-make)
-   (->namestring (pathname-as-directory (merge-pathnames name)))))
+  ;; No pathname-as-directory here because DOS does not know how
+  ;; to handle the trailing back-slash.
+  ((ucode-primitive directory-make 1)
+   (->namestring (merge-pathnames name))))
 
+(define (delete-directory name)
+  ;; No pathname-as-directory here because DOS does not know how
+  ;; to handle the trailing back-slash.
+  ((ucode-primitive directory-delete 1)
+   (->namestring (merge-pathnames name))))
 
 ;;; Queues after-restart daemon to clean up environment space
 
 (define (initialize-system-primitives!)
   (add-event-receiver! event:after-restart reset-environment-variables!))
-  
