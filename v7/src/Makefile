@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.10 2000/12/06 05:52:48 cph Exp $
+# $Id: Makefile,v 1.11 2000/12/07 22:00:20 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -22,28 +22,31 @@ SCHEME_SUBDIRS = 6001 compiler cref edwin imail rcs runtime sf sos win32
 SUBDIRS = $(SCHEME_SUBDIRS) microcode
 
 all:
-	echo "No ALL action"
+	( cd microcode && $(MAKE) $@ )
+	etc/create-dirs.sh
+	scheme -compiler -heap 4000 < etc/compile.scm
+	etc/build-bands.sh
 
 setup:
 	@for SUBDIR in $(SCHEME_SUBDIRS); do \
 	    echo "making $@ in $${SUBDIR}"; \
 	    test -f $${SUBDIR}/Makefile \
 	    || ln -s ../Makefile.std $${SUBDIR}/Makefile; \
-	    (cd $${SUBDIR} && $(MAKE) $@) || exit 1; \
+	    ( cd $${SUBDIR} && $(MAKE) $@ ) || exit 1; \
 	done
-	(cd microcode && ./Setup.sh)
+	( cd microcode && ./Setup.sh )
 
 tags TAGS:
 	@for SUBDIR in $(SUBDIRS); do \
 	    echo "making $@ in $${SUBDIR}"; \
-	    (cd $${SUBDIR} && $(MAKE) $@) || exit 1; \
+	    ( cd $${SUBDIR} && $(MAKE) $@ ) || exit 1; \
 	done
 
 mostlyclean clean distclean:
 	@for SUBDIR in $(SUBDIRS); do \
 	    if test -f $${SUBDIR}/Makefile; then \
 		echo "making $@ in $${SUBDIR}"; \
-		(cd $${SUBDIR} && $(MAKE) $@); \
+		( cd $${SUBDIR} && $(MAKE) $@ ); \
 	    fi; \
 	done
 
@@ -51,9 +54,9 @@ maintainer-clean:
 	@for SUBDIR in $(SCHEME_SUBDIRS); do \
 	    if test -f $${SUBDIR}/Makefile; then \
 		echo "making $@ in $${SUBDIR}"; \
-		(cd $${SUBDIR} && $(MAKE) $@); \
+		( cd $${SUBDIR} && $(MAKE) $@ ); \
 	    fi; \
 	done
-	(cd microcode && ./Mclean.sh)
+	( cd microcode && ./Mclean.sh )
 
 .PHONY: all setup tags TAGS mostlyclean clean distclean maintainer-clean
