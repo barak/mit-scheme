@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for NeXT
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/next.h,v 1.1 1990/09/06 19:02:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/next.h,v 1.2 1991/01/02 18:19:36 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -34,5 +34,5 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 #define PROC_TYPE PROC_TYPE_68020
-#define C_SWITCH_MACHINE -DNeXT
+#define C_SWITCH_MACHINE -DNeXT -DTYPE_CODE_LENGTH=6
 #define LD_SWITCH_MACHINE
