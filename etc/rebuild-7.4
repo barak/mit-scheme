@@ -1,15 +1,22 @@
 #!/bin/csh -f
 
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/rebuild-7.4,v 1.2 1991/08/21 17:48:27 jinx Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/rebuild-7.4,v 1.3 1991/08/22 21:09:04 arthur Exp $
 
-# Arguments: runtimeversion compilerversion edwinversion
+# Arguments: runtimeversion compilerversion edwinversion 6001version
+
 # The versions can be omitted, and if they are, the current version
 # as determined by the appropriate RCS file (e.g. runtime/version.scm)
 # is built.
+
 # If a version is the string "none", the corresponding band is not built,
 # nor is the corresponding subsystem recompiled.
-# If either the compiler or edwin are re-built, the combined (c+e) band
+
+# If either the compiler or edwin is re-built, the combined (c+e) band
 # is re-built as well.
+
+# If the 6.001 (student) band is re-built, the range- and type-checked
+# runtime system (runtime-check) is recompiled first.
+
 # This script silently ignores additional arguments.
 
 # Stage 1: Choose architecture and directories
@@ -83,10 +90,35 @@ else
   set edwin=""
 endif
 
-echo \(write-line\ \'\(finished\ recompilation\ \)\) >>$script
+if ("$4" != "none") then
+  if (("$4" == "") || ("$4" == "next")) then
+    set stver=`rcsversion /scheme/src/6001/make.scm`
+  else
+    set stver="$4"
+  endif
+  echo "### Making 6.001 student band version $stver..."
+  set student="$root/lib/BACKUP/6001-$stver.Z"
+  echo \(cd\ \"../runtime-check\"\) >> $script
+  echo \(load\ \"runtim.cbf\"\) >> $script
+  echo "###   (Must syntax Edwin in order to syntax the 6.001 make.scm file.)"
+  if ("$edwin" == "") then
+    echo \(cd\ \"../edwin\"\) >> $script
+    echo \(load\ \"edwin.sf\"\) >> $script
+  endif
+  echo \(cd\ \"../6001\"\) >> $script
+  echo \(load\ \"6001.sf\"\) >> $script
+  echo \(load\ \"6001.cbf\"\) >> $script
+else
+  set student=""
+endif
+
+echo \(write-line\ \'\(finished\ recompilation\)\) >>$script
 echo \(\%exit\)\) >>$script
 
-if (("$runtime" == "") && ("$complr" == "") && ("$edwin" == "")) then
+if (("$runtime" == "") \
+    && ("$complr" == "") \
+    && ("$edwin" == "") \
+    && ("$student" == "")) then
   echo "### No systems to rebuild."
   rm -f "$script" "$lock"
   exit 0
@@ -125,17 +157,17 @@ if ("$runtime" != "") then
     exit "$result"
   endif
   set runband="$root/tmp/runtime.com"
-  set band="-band $runband"
+  set runbandarg="-band $runband"
 else
   set runband=""
-  set band=""
+  set runbandarg=""
 endif
 
 
 if ("$complr" != "") then
   cd $root/sf
   rm -f ../tmp/complr.com
-  scheme -large $band -no-init-file <<*END*
+  scheme -large $runbandarg -no-init-file <<*END*
 (begin
   (load "make.com")
   (cd "../compiler")
@@ -151,17 +183,17 @@ if ("$complr" != "") then
     exit "$result"
   endif
   set compband="$root/tmp/complr.com"
-  set cband="-band $compband"
+  set cbandarg="-band $compband"
 else
   set compband=""
-  set cband=""
+  set cbandarg=""
 endif
 
 
 if ("$edwin" != "") then
   cd $root/edwin
   rm -f ../tmp/edwin.com
-  scheme -large $band -no-init-file <<*END*
+  scheme -large $runbandarg -no-init-file <<*END*
 (begin
   (load "make.com")
   (disk-save "../tmp/edwin.com")
@@ -174,16 +206,16 @@ if ("$edwin" != "") then
     rm -f ../tmp/runtime.com ../tmp/complr.com ../tmp/edwin.com "$lock"
     exit "$result"
   endif
-  set edband="$root/tmp/edwin.com"
+  set edwinband="$root/tmp/edwin.com"
 else
-  set edband=""
+  set edwinband=""
 endif
 
 
-if (("$edwin" != "") || ("$complr" != 0)) then
+if (("$edwin" != "") || ("$complr" != "")) then
   cd $root/edwin
   rm -f ../tmp/c+e.com
-  scheme -constant 2000 -heap 2000 -compiler $cband -no-init-file <<*END*
+  scheme -constant 2000 -heap 2000 -compiler $cbandarg -no-init-file <<*END*
 (begin
   (load "make.com")
   (disk-save "../tmp/c+e.com")
@@ -199,6 +231,31 @@ if (("$edwin" != "") || ("$complr" != 0)) then
   endif
 else
   set fullband=""
+endif
+
+
+if ("$student" != "") then
+  cd $root/runtime-check
+  rm -f ../tmp/6001.com
+  scheme -large -fasl make.com -no-init-file <<*END*
+(begin
+  (cd "../edwin")
+  (load "make.com")
+  (cd "../6001")
+  (load "make.com")
+  (disk-save "../tmp/6001.com")
+  (write-line '(saved 6001 band))
+  (%exit))
+*END*
+  set result="$status"
+  if ("$result" != 0) then
+    echo "### Re-building 6.001 student band failed."
+    rm -f ../tmp/runtime.com ../tmp/complr.com ../tmp/edwin.com ../tmp/6001.com "$lock"
+    exit "$result"
+  endif
+  set studband="$root/tmp/6001.com"
+else
+  set studband=""
 endif
 
 
@@ -239,11 +296,11 @@ if ("$edwin" != "") then
     mv -f "$edwin" "$backup"
     echo "###" mv -f "$edwin" "$backup"
   endif
-  echo "### compress <$edband >$edwin"
-  compress <$edband >$edwin
+  echo "### compress <$edwinband >$edwin"
+  compress <$edwinband >$edwin
   chmod a-w $edwin
-  echo "###" mv -f "$edband" /usr/local/lib/mit-scheme/edwin.com
-  mv -f "$edband" /usr/local/lib/mit-scheme/edwin.com
+  echo "###" mv -f "$edwinband" /usr/local/lib/mit-scheme/edwin.com
+  mv -f "$edwinband" /usr/local/lib/mit-scheme/edwin.com
 endif
 
 if ("$fullband" != "") then
@@ -251,17 +308,31 @@ if ("$fullband" != "") then
   mv -f "$fullband" /usr/local/lib/mit-scheme/c+e.com
 endif
 
+if ("$student" != "") then
+  set backup=`nextver $student`
+  if ("$backup" != "$student") then
+    mv -f "$student" "$backup"
+    echo "###" mv -f "$student" "$backup"
+  endif
+  echo "### compress <$studband >$student"
+  compress <$studband >$student
+  chmod a-w $student
+  echo "###" mv -f "$studband" /usr/local/lib/mit-scheme/6001.com
+  mv -f "$studband" /usr/local/lib/mit-scheme/6001.com
+endif
+
 rm -f "$lock"
 echo "### Done."
 exit 0
 
 abort_and_exit:
+  echo ""
   echo "### Aborting -- Cleaning up..."
   if ("`jobs`" != "") then
     kill %1
     wait
   endif
   cd "$root/tmp"
-  rm -f "$script" runtime.com complr.com edwin.com c+e.com "$lock"
+  rm -f "$script" runtime.com complr.com edwin.com c+e.com 6001.com "$lock"
   echo "### Cleaned up."
   exit 1
