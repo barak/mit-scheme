@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xdoc.pkg,v 1.2 2004/11/22 19:45:27 cph Exp $
+$Id: xdoc.pkg,v 1.3 2004/11/22 20:08:46 cph Exp $
 
 Copyright 2004 Massachusetts Institute of Technology
 
@@ -191,6 +191,7 @@ USA.
 	  db-get-persistent-value
 	  db-get-ps-structure
 	  db-get-saved-output
+	  db-get-user-password
 	  db-intern-global-value!
 	  db-intern-persistent-value!
 	  db-known-user?

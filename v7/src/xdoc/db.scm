@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: db.scm,v 1.3 2004/11/22 19:45:23 cph Exp $
+$Id: db.scm,v 1.4 2004/11/22 20:08:42 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -614,6 +614,21 @@ USA.
 		    ", " (if enabled? "TRUE" "FALSE")
 		    ")")
 	#t)))
+
+(define (db-get-user-password user-name)
+  (let ((result
+	 (db-run-query "SELECT enabled_p, password"
+		       " FROM users"
+		       " WHERE user_name = " (db-quote user-name))))
+    (if (> (pgsql-n-tuples result) 0)
+	(let ((password
+	       (and (string=? (pgsql-get-value result 0 0) "t")
+		    (pgsql-get-value result 0 1))))
+	  (pgsql-clear result)
+	  password)
+	(begin
+	  (pgsql-clear result)
+	  #f))))
 
 (define (db-change-user-password user-name password)
   (guarantee-known-user user-name)
