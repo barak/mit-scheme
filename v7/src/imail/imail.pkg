@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.72 2000/07/05 00:12:56 cph Exp $
+;;; $Id: imail.pkg,v 1.73 2000/07/05 00:20:59 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -147,6 +147,8 @@
   (files "imap-syntax")
   (parent (edwin imail))
   (export (edwin imail imap-folder)
+	  imap:decode-mailbox-name
+	  imap:encode-mailbox-name
 	  imap:parse:enc-mailbox
 	  imap:server-parser
 	  imap:string-may-be-quoted?
