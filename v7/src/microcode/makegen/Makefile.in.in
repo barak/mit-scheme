@@ -1,4 +1,4 @@
-# $Id: Makefile.in.in,v 1.2 2000/12/05 21:23:50 cph Exp $
+# $Id: Makefile.in.in,v 1.3 2000/12/05 22:29:53 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -218,6 +218,9 @@ psbtobin: $(psbtobin_OBJECTS) $(psbtobin_DEPENDENCIES)
 	-rm -f psbtobin
 	$(LINK) $(psbtobin_LDFLAGS) $(psbtobin_OBJECTS) $(psbtobin_LIBS)
 
+setup:
+	( cd cmpauxmd && $(MAKE) )
+
 tags: TAGS
 TAGS:
 	etags -r '/^DEF[A-Za-z_ \t(]+"\([^"]+\)"/' *.[ch]
@@ -238,7 +241,7 @@ maintainer-clean: distclean
 	  ( cd $$subdir && $(MAKE) $@ ) || exit 1; \
 	done
 
-.PHONY: all tags TAGS mostlyclean clean distclean maintainer-clean
+.PHONY: all setup tags TAGS mostlyclean clean distclean maintainer-clean
 
 # **** File dependencies ****
 
