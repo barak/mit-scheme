@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.95 2001/07/17 02:36:50 cph Exp $
+@comment $Id: scheme.texinfo,v 1.96 2001/11/14 05:53:37 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -7235,18 +7235,24 @@ procedure.
 @cindex filtering, of list
 @cindex deletion, of list element
 
-@deffn {procedure+} list-transform-positive list predicate
-@deffnx {procedure+} list-transform-negative list predicate
+@deffn {procedure+} keep-matching-items list predicate
+@deffnx {procedure+} delete-matching-items list predicate
 These procedures return a newly allocated copy of @var{list} containing
 only the elements for which @var{predicate} is (respectively) true or
 false.  @var{Predicate} must be a procedure of one argument.
 
 @example
 @group
-(list-transform-positive '(1 2 3 4 5) odd?) @result{} (1 3 5)
-(list-transform-negative '(1 2 3 4 5) odd?) @result{} (2 4)
+(keep-matching-items '(1 2 3 4 5) odd?) @result{} (1 3 5)
+(delete-matching-items '(1 2 3 4 5) odd?) @result{} (2 4)
 @end group
 @end example
+
+@findex list-transform-positive
+@findex list-transform-negative
+For compatibility, the procedure @code{list-transform-positive} is an
+alias for @code{keep-matching-items}, and @code{list-transform-negative}
+is an alias for @code{delete-matching-items}.
 @end deffn
 
 @deffn {procedure+} delq element list
@@ -7345,14 +7351,18 @@ with the appropriate elements removed.  The procedure returned by
 @section Searching Lists
 @cindex searching, of list
 
-@deffn {procedure+} list-search-positive list predicate
-@deffnx {procedure+} list-search-negative list predicate
+@deffn {procedure+} find-matching-item list predicate
 Returns the first element in @var{list} for which @var{predicate} is
-(respectively) true or false; returns @code{#f} if it doesn't find such
-an element.  (This means that if @var{predicate} is true (false) for
-@code{#f}, it may be impossible to distinguish a successful result from
-an unsuccessful one.)  @var{Predicate} must be a procedure of one
-argument.
+true; returns @code{#f} if it doesn't find such an element.  (This means
+that if @var{predicate} is true for @code{#f}, it may be impossible to
+distinguish a successful result from an unsuccessful one.)
+@var{Predicate} must be a procedure of one argument.
+
+@findex list-search-positive
+@findex list-search-negative
+For compatibility, @code{list-search-positive} is an alias for
+@code{find-matching-item}.  @code{list-search-negative} is similar but
+the sense of the predicate is reversed.
 @end deffn
 
 @deffn procedure memq object list
