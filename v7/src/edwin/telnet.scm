@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: telnet.scm,v 1.12 1997/11/20 05:27:45 cph Exp $
+$Id: telnet.scm,v 1.13 1997/11/20 05:51:14 cph Exp $
 
 Copyright (c) 1991-97 Massachusetts Institute of Technology
 
@@ -77,31 +77,29 @@ If port number is typed after hostname (separated by a space),
 use it instead of the default."
   "sTelnet to host\nP"
   (lambda (host new-process?)
-    (let ((buffer
-	   (let ((mode (ref-mode-object telnet))
-		 (buffer-name
-		   (let ((buffer-name (string-append "*" host "-telnet*")))
-		     (if (not new-process?)
-			 buffer-name
-			 (new-buffer buffer-name)))))
-	     (if (re-string-match "\\([^ ]+\\) \\([^ ]+\\)" host)
-		 (let ((host
-			(substring host
-				   (re-match-start-index 1)
-				   (re-match-end-index 1)))
-		       (port
-			(substring host
-				   (re-match-start-index 2)
-				   (re-match-end-index 2))))
-		   (if (not (exact-nonnegative-integer? (string->number port)))
-		       (editor-error "Port must be a positive integer: " port))
-		   (make-comint mode buffer-name "telnet" host port))
-		 (make-comint mode buffer-name "telnet" host)))))
-      (let ((process (get-buffer-process buffer)))
-	(if process
-	    (add-process-filter process
-				(standard-process-filter telnet-filter))))
-      (select-buffer buffer))))
+    (select-buffer
+     (let ((mode (ref-mode-object telnet))
+	   (buffer-name
+	     (let ((buffer-name (string-append "*" host "-telnet*")))
+	       (if (not new-process?)
+		   buffer-name
+		   (new-buffer buffer-name)))))
+       (if (re-string-match "\\([^ ]+\\) \\([^ ]+\\)" host)
+	   (let ((host
+		  (substring host
+			     (re-match-start-index 1)
+			     (re-match-end-index 1)))
+		 (port
+		  (substring host
+			     (re-match-start-index 2)
+			     (re-match-end-index 2))))
+	     (if (not (exact-nonnegative-integer? (string->number port)))
+		 (editor-error "Port must be a positive integer: " port))
+	     (make-comint mode buffer-name "telnet" host port))
+	   (make-comint mode buffer-name "telnet" host))))))
+
+(add-event-receiver! (ref-variable telnet-mode-hook)
+		     comint-strip-carriage-returns)
 
 (define-command telnet-send-input
   "Send input to telnet process.
@@ -127,69 +125,3 @@ With prefix arg, the character is repeated that many times."
 	     (process-send-char process char))
 	    ((> argument 1)
 	     (process-send-string process (make-string argument char)))))))
-
-(define (telnet-filter mark string start end)
-  (let ((index (mark-index mark))
-	(new-string (telnet-filter-substring string start end)))
-    (let ((new-length (string-length new-string)))
-      (group-insert-substring! (mark-group mark) index new-string 0 new-length)
-      (set-mark-index! mark (+ index new-length)))))
-
-(define (telnet-filter-substring string start end)
-  (substring-substitute string start end
-			(ref-variable telnet-replacee)
-			(ref-variable telnet-replacement)))
-
-(define-variable telnet-replacee
-  "String to replace in telnet output."
-  (string #\return))
-
-(define-variable telnet-replacement
-  "String to use as replacement in telnet output."
-  "")
-
-(define (substring-substitute string start end source target)
-  (let ((length (fix:- end start))
-	(slength (string-length source))
-	(tlength (string-length target)))
-    (let ((alloc-length
-	   (fix:+ length
-		  (fix:* (fix:quotient length slength)
-			 tlength)))
-	  (char (string-ref source 0)))
-      (let ((result (string-allocate alloc-length)))
-
-	(define (loop copy-index read-index write-index)
-	  (if (fix:>= read-index end)
-	      (done copy-index write-index)
-	      (let ((index
-		     (substring-find-next-char string read-index end char)))
-		(cond ((not index)
-		       (done copy-index write-index))
-		      ((or (fix:= slength 1)
-			   (substring-prefix? source 0 slength
-					      string index end))
-		       (substring-move-right! string copy-index index
-					      result write-index)
-		       (let ((next-write
-			      (fix:+ write-index (fix:- index copy-index)))
-			     (next-read (fix:+ index slength)))
-			 (if (not (fix:= tlength 0))
-			     (substring-move-right! target 0 tlength
-						    result next-write))
-			 (loop next-read
-			       next-read
-			       (fix:+ next-write tlength))))
-		      (else
-		       (loop copy-index (fix:+ index 1) write-index))))))
-
-	(define (done copy-index write-index)
-	  (if (fix:< copy-index end)
-	      (substring-move-right! string copy-index end
-				     result write-index))
-	  (set-string-length! result
-			      (fix:+ write-index
-				     (fix:- end copy-index)))
-	  result)
-
-	(loop start start 0)))))

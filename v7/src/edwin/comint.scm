@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comint.scm,v 1.24 1997/06/14 01:22:05 cph Exp $
+$Id: comint.scm,v 1.25 1997/11/20 05:51:30 cph Exp $
 
 Copyright (c) 1991-97 Massachusetts Institute of Technology
 
@@ -51,8 +51,8 @@ license should have been included along with this file. |#
 	  (or (not process)
 	      (not (process-runnable? process))))
 	(begin
-	  (set-buffer-major-mode! buffer mode)
-	  (comint-exec buffer (buffer-name buffer) program switches)))
+	  (comint-exec buffer (buffer-name buffer) program switches)
+	  (set-buffer-major-mode! buffer mode)))
     buffer))
 
 (define (comint-exec buffer name program switches)
@@ -96,6 +96,25 @@ This is a good thing to set in mode hooks."
 (define-variable comint-program-name
   "File name of program that is running in this buffer."
   false)
+
+(define (comint-strip-carriage-returns buffer)
+  (let ((process (get-buffer-process buffer)))
+    (if process
+	(add-process-filter process process-filter:strip-carriage-returns))))
+
+(define process-filter:strip-carriage-returns
+  (standard-process-filter
+   (lambda (mark string start end)
+     (let ((group (mark-group mark)))
+       (let loop ((start start))
+	 (let ((cr
+		(or (substring-find-next-char string start end #\return)
+		    end))
+	       (index (mark-index mark)))
+	   (group-insert-substring! group index string start cr)
+	   (set-mark-index! mark (fix:+ index (fix:- cr start)))
+	   (if (not (fix:= cr end))
+	       (loop (fix:+ cr 1)))))))))
 
 (define-major-mode comint fundamental "Comint"
   "Major mode for interacting with an inferior interpreter.
