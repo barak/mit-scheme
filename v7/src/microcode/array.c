@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.41 1989/12/29 20:41:06 pas Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.42 1990/01/15 18:09:25 pas Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -190,6 +190,13 @@ DEFINE_PRIMITIVE ("ARRAY-SET!", Prim_array_set, 3, 3, 0)
   PRIMITIVE_RETURN (double_to_flonum (old_value));
 }
 
+/*____________________ file readers ___________
+  ascii and 2bint formats 
+  ______________________________________________*/
+
+/* Reading data from files 
+   To read REAL numbers, use "lf" for double, "%f" for float 
+   */
 #if (REAL_IS_DEFINED_DOUBLE == 1)
 #define REALREAD  "%lf"
 #define REALREAD2 "%lf %lf"
@@ -199,31 +206,66 @@ DEFINE_PRIMITIVE ("ARRAY-SET!", Prim_array_set, 3, 3, 0)
 #endif
 
 static void
-C_Array_Read_Ascii_File (a, N, fp)
+C_Array_Read_Ascii_File (a, N, fp)          /* 16 ascii decimal digits */
+     REAL * a;
+     long N;
+     FILE * fp;
+{ 
+  fast long i;
+  for (i = 0; (i < N); i += 1)
+    {
+      if ((fscanf (fp, REALREAD, (&(a[i])))) != 1)
+	{ printf("Not enough values read ---\n last value a[%d] = % .16e \n", (i-1), a[i-1]);
+	  error_external_return (); }
+    }
+  return;
+}
+
+/* 2BINT FORMAT = integer stored in 2 consecutive bytes.
+   On many machines, "putw" and "getw" use 4 byte integers (C int)
+   so use "putc" "getc" as shown below.
+   */
+
+static void
+C_Array_Read_2bint_File (a, N, fp)
      REAL * a;
      long N;
      FILE * fp;
 {
   fast long i;
+  fast int msd;
   for (i = 0; (i < N); i += 1)
     {
-      if ((fscanf (fp, REALREAD, (& (a [i])))) != 1)
+      if (feof (fp))
 	error_external_return ();
+      msd = (getc (fp));
+      (a [i]) = ((REAL) ((msd << 8) | (getc (fp))));
     }
   return;
 }
 
-DEFINE_PRIMITIVE ("ARRAY-READ-ASCII-FILE", Prim_array_read_ascii_file, 2, 2, 0)
+DEFINE_PRIMITIVE ("ARRAY-READ-FROM-FILE", Prim_array_read_from_file, 3,3, 0)
 {
-  PRIMITIVE_HEADER (2);
-  CHECK_ARG (1, STRING_P);
+  PRIMITIVE_HEADER (3);
+  CHECK_ARG (1, STRING_P);	/* 1 = filename */
+  /*                               2 = length of data */
+  CHECK_ARG (3, FIXNUM_P);	/* 3 = format of data   0=ascii 1=2bint  */
   {
     fast long length = (arg_nonnegative_integer (2));
     fast SCHEME_OBJECT result = (allocate_array (length));
-    fast FILE * fp = (fopen ((ARG_REF (1)), "r"));
-    if (fp == ((FILE *) 0))
+    int format;
+    fast FILE * fp;
+    if ( (fp = fopen((STRING_ARG (1)), "r")) == NULL)
       error_bad_range_arg (1);
-    C_Array_Read_Ascii_File ((ARRAY_CONTENTS (result)), length, fp);
+    
+    format = arg_nonnegative_integer(3);
+    if (format==0)
+      C_Array_Read_Ascii_File ((ARRAY_CONTENTS (result)), length, fp);
+    else if (format==1)
+      C_Array_Read_2bint_File ((ARRAY_CONTENTS (result)), length, fp);
+    else
+      error_bad_range_arg(3);	/* illegal format code */
+    
     if ((fclose (fp)) != 0)
       error_external_return ();
     PRIMITIVE_RETURN (result);
@@ -231,7 +273,7 @@ DEFINE_PRIMITIVE ("ARRAY-READ-ASCII-FILE", Prim_array_read_ascii_file, 2, 2, 0)
 }
 
 static void
-C_Array_Write_Ascii_File (a, N, fp)
+C_Array_Write_Ascii_File (a, N, fp)           /* 16 ascii decimal digits */
      REAL * a;
      long N;
      FILE * fp;
@@ -253,7 +295,7 @@ DEFINE_PRIMITIVE ("ARRAY-WRITE-ASCII-FILE", Prim_array_write_ascii_file, 2, 2, 0
   CHECK_ARG (2, STRING_P);
   {
     fast SCHEME_OBJECT array = (ARG_REF (1));
-    fast FILE * fp = (fopen ((ARG_REF (2)), "w"));
+    fast FILE * fp = (fopen((STRING_ARG (2)), "w"));
     if (fp == ((FILE *) 0))
       error_bad_range_arg (2);
     C_Array_Write_Ascii_File
@@ -265,42 +307,9 @@ DEFINE_PRIMITIVE ("ARRAY-WRITE-ASCII-FILE", Prim_array_write_ascii_file, 2, 2, 0
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
-static void
-C_Array_Read_2bint_File (a, N, fp)
-     REAL * a;
-     long N;
-     FILE * fp;
-{
-  fast long i;
-  fast int msd;
-  for (i = 0; (i < N); i += 1)
-    {
-      if (feof (fp))
-	error_external_return ();
-      msd = (getc (fp));
-      (a [i]) = ((REAL) ((msd << 8) | (getc (fp))));
-    }
-  return;
-}
 
-DEFINE_PRIMITIVE ("ARRAY-READ-2BINT-FILE", Prim_array_read_2bint_file, 2, 2, 0)
-{
-  FILE * fp;
-  PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, STRING_P);
-  fp = (fopen ((ARG_REF (1)), "r"));
-  if (fp == ((FILE *) 0))
-    error_bad_range_arg (1);
-  {
-    fast long length = (arg_nonnegative_integer (2));
-    fast SCHEME_OBJECT result = (allocate_array (length));
-    C_Array_Read_2bint_File ((ARRAY_CONTENTS (result)), length, fp);
-    if ((fclose (fp)) != 0)
-      error_external_return ();
-    PRIMITIVE_RETURN (result);
-  }
-}
+
+
 
 DEFINE_PRIMITIVE ("SUBARRAY-COPY!", Prim_subarray_copy, 5, 5, 0)
 {

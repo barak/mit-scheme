@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.30 1990/01/02 18:35:32 pas Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.31 1990/01/15 18:09:34 pas Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -133,69 +133,42 @@ write_2bint (fp, datum)
     error_external_return ();
   return;
 }
-
-DEFINE_PRIMITIVE ("READ-IMAGE-FROM-ASCII-FILE", Prim_read_image_from_ascii_file, 1, 1, 0)
+
+
+DEFINE_PRIMITIVE ("IMAGE-READ-ASCII", Prim_read_image_ascii, 1, 1, 0)
 {
   fast FILE * fp;
-  long nrows;
-  long ncols;
+  long nrows, ncols;
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, STRING_P);
-  fp = (fopen ((ARG_REF (1)), "r"));
-  if (fp == ((FILE *) 0))
+  if ( (fp = fopen((STRING_ARG (1)), "r")) == NULL) 
     error_bad_range_arg (1);
   fscanf (fp, "%d %d \n", (&nrows), (&ncols));
   if ((ferror (fp)) || ((ncols > 512) || (nrows > 512)))
-    error_external_return ();
+    { printf("read-image-ascii-file: problem with rows,cols \n");
+      error_bad_range_arg (1); }
   {
     fast long length = (nrows * ncols);
     SCHEME_OBJECT array = (allocate_array (length));
     fast REAL * scan = (ARRAY_CONTENTS (array));
     while ((length--) > 0)
-      {
-	int one;
-	int two;
-	fscanf (fp, "%d%d", (&one), (&two));
+      { long number;
+	fscanf (fp, "%d", (&number));
 	if (ferror (fp))
 	  error_external_return ();
-	(*scan++) = ((REAL) one);
-	(*scan++) = ((REAL) two);
+	(*scan++) = ((REAL) number);
       }
-    if ((fclose (fp)) != 0)
-      error_external_return ();
+    if ((fclose (fp)) != 0) error_external_return ();
     PRIMITIVE_RETURN (MAKE_IMAGE (nrows, ncols, array));
   }
 }
 
-DEFINE_PRIMITIVE ("READ-IMAGE-FROM-CBIN-FILE", Prim_read_image_from_cbin_file, 1, 1, 0)
+DEFINE_PRIMITIVE ("IMAGE-READ-2BINT", Prim_read_image_2bint, 1, 1, 0)
 {
-  fast FILE * fp;
+  FILE *fp, *fopen();
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, STRING_P);
-  fp = (fopen ((ARG_REF (1)), "r"));
-  if (fp == ((FILE *) 0))
-    error_bad_range_arg (1);
-  {
-    int nrows = (read_word (fp));
-    int ncols = (read_word (fp));
-    long length = (nrows * ncols);
-    SCHEME_OBJECT array = (allocate_array (length));
-    fast REAL * scan = (ARRAY_CONTENTS (array));
-    while ((length--) > 0)
-      (*scan++) = (read_word (fp));
-    if ((fclose (fp)) != 0)
-      error_external_return ();
-    PRIMITIVE_RETURN (MAKE_IMAGE (nrows, ncols, array));
-  }
-}
-
-DEFINE_PRIMITIVE ("READ-IMAGE-FROM-2BINT-FILE", Prim_read_image_from_2bint_file, 1, 1, 0)
-{
-  fast FILE * fp;
-  PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, STRING_P);
-  fp = (fopen ((ARG_REF (1)), "r"));
-  if (fp == ((FILE *) 0))
+  if ( ( fp = (fopen((STRING_ARG (1)), "r")) ) == NULL) 
     error_bad_range_arg (1);
   {
     int nrows = (read_word (fp));
@@ -211,37 +184,12 @@ DEFINE_PRIMITIVE ("READ-IMAGE-FROM-2BINT-FILE", Prim_read_image_from_2bint_file,
   }
 }
 
-DEFINE_PRIMITIVE ("WRITE-IMAGE-2BINT", Prim_write_image_2bint, 2, 2, 0)
-{
-  int nrows;
-  int ncols;
-  SCHEME_OBJECT array;
-  fast FILE * fp;
-  PRIMITIVE_HEADER (2);
-  arg_image (1, (&nrows), (&ncols), (&array));
-  CHECK_ARG (2, STRING_P);
-  fp = (fopen ((ARG_REF (2)), "2"));
-  if (fp == ((FILE *) 0))
-    error_bad_range_arg (2);
-  {
-    fast long length = (nrows * ncols);
-    fast REAL * scan = (ARRAY_CONTENTS (array));
-    write_word (fp, nrows);
-    write_word (fp, ncols);
-    while ((length--) > 0)
-      write_2bint (fp, ((int) (*scan++)));
-  }
-  if ((fclose (fp)) != 0)
-    error_external_return ();
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("READ-IMAGE-FROM-CTSCAN-FILE", Prim_read_image_from_ctscan_file, 1, 1, 0)
+DEFINE_PRIMITIVE ("IMAGE-READ-CTSCAN", Prim_read_image_ctscan, 1, 1, 0)
 {
   fast FILE * fp;
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, STRING_P);
-  fp = (fopen ((ARG_REF (1)), "r"));
+  fp = (fopen((STRING_ARG (1)), "r"));
   if (fp == ((FILE *) 0))
     error_bad_range_arg (1);
   Primitive_GC_If_Needed (BYTES_TO_WORDS (512 * (sizeof (int))));
@@ -275,6 +223,30 @@ DEFINE_PRIMITIVE ("READ-IMAGE-FROM-CTSCAN-FILE", Prim_read_image_from_ctscan_fil
   }
 }
 
+
+DEFINE_PRIMITIVE ("IMAGE-READ-CBIN", Prim_read_image_cbin, 1, 1, 0)
+{
+  fast FILE * fp;
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, STRING_P);
+  fp = (fopen ((STRING_ARG (1)), "r"));
+  if (fp == ((FILE *) 0))
+    error_bad_range_arg (1);
+  {
+    int nrows = (read_word (fp));
+    int ncols = (read_word (fp));
+    long length = (nrows * ncols);
+    SCHEME_OBJECT array = (allocate_array (length));
+    fast REAL * scan = (ARRAY_CONTENTS (array));
+    while ((length--) > 0)
+      (*scan++) = (read_word (fp));
+    if ((fclose (fp)) != 0)
+      error_external_return ();
+    PRIMITIVE_RETURN (MAKE_IMAGE (nrows, ncols, array));
+  }
+}
+
+
 Image_Mirror_Upside_Down (Array,nrows,ncols,Temp_Row)
      REAL * Array;
      long nrows;
@@ -290,7 +262,7 @@ Image_Mirror_Upside_Down (Array,nrows,ncols,Temp_Row)
     C_Array_Copy(Temp_Row, M_row,    ncols);
   }
 }
-
+
 /* The following does not work, to be fixed. */
 DEFINE_PRIMITIVE ("IMAGE-DOUBLE-TO-FLOAT!", Prim_image_double_to_float, 1, 1, 0)
 {
@@ -319,7 +291,8 @@ DEFINE_PRIMITIVE ("IMAGE-DOUBLE-TO-FLOAT!", Prim_image_double_to_float, 1, 1, 0)
   SET_VECTOR_LENGTH (array, ((Length * FLOAT_SIZE) + 1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
+
+
 DEFINE_PRIMITIVE ("SUBIMAGE-COPY!", Prim_subimage_copy, 12, 12, 0)
 {
   long r1, c1, r2, c2, at1r, at1c, at2r, at2c, mr, mc;
@@ -369,7 +342,7 @@ subimage_copy (x,y, r1,c1,r2,c2, at1r,at1c,at2r,at2c, mr,mc)
     yrow = yrow + c2;
   }
 }
-
+
 /* image-operation-2
    groups together procedures     that use 2 image-arrays
    (usually side-effecting the 2nd image, but not necessarily) */
