@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gc.scm,v 14.11 1993/09/20 19:10:58 gjr Exp $
+$Id: gc.scm,v 14.12 1993/09/20 19:12:59 gjr Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -81,7 +81,10 @@ MIT in each case. |#
 
   (cond ((not (null? pure-space-queue))
 	 (let ((result (purify-internal pure-space-queue true safety-margin)))
-	   (cond ((not (car result))
+	   (cond ((not (pair? result))
+		  ;; Wrong phase -- wait until next time.
+		  (real-default))
+		 ((not (car result))
 		  (set! pure-space-queue (cdr pure-space-queue))
 		  (queued-purification-failure))
 		 ((eq? (car result) true)
@@ -93,7 +96,9 @@ MIT in each case. |#
 	((not (null? constant-space-queue))
 	 (let ((result
 		(purify-internal constant-space-queue false safety-margin)))
-	   (cond ((not (car result))
+	   (cond ((not (pair? result))
+		  (real-default))
+		 ((not (car result))
 		  (set! constant-space-queue (cdr constant-space-queue))
 		  (queued-purification-failure))
 		 ((eq? (car result) true)
@@ -116,12 +121,12 @@ MIT in each case. |#
 		      (purify-internal item
 				       pure-space?
 				       default-safety-margin)))
-		 (cond ((not (car result))
-			(error "PURIFY: not enough room in constant space"
-			       item))
-		       ((not (eq? (car result) true))
+		 (cond ((not (pair? result))
 			;; Wrong phase -- try again.
 			(loop))
+		       ((not (car result))
+			(error "PURIFY: not enough room in constant space"
+			       item))
 		       (else
 			unspecific)))))
 	    (pure-space?
