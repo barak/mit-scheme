@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prdosenv.c,v 1.9 1992/10/21 00:02:10 jinx Exp $
+$Id: prdosenv.c,v 1.10 1993/01/12 19:47:20 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,14 +40,6 @@ MIT in each case. */
 #include "msdos.h"
 #include "dosio.h"
 
-DEFINE_PRIMITIVE ("CURRENT-FILE-TIME", Prim_current_file_time, 0, 0,
-  "Return the current file system time stamp.\n\
-This is an integer whose units are in seconds.")
-{
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (long_to_integer (DOS_time (NULL)));
-}
-
 DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1,
   "Convert a file system time stamp into a date/time string.")
 {

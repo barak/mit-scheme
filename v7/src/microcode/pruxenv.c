@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pruxenv.c,v 1.13 1992/10/21 00:06:20 jinx Exp $
+$Id: pruxenv.c,v 1.14 1993/01/12 19:47:26 gjr Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,14 +47,6 @@ MIT in each case. */
 
 extern char ** environ;
 
-DEFINE_PRIMITIVE ("CURRENT-FILE-TIME", Prim_current_file_time, 0, 0,
-  "Return the current file system time stamp.\n\
-This is an integer whose units are in seconds.")
-{
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (long_to_integer (UX_time (0)));
-}
-
 DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1,
   "Convert a file system time stamp into a date/time string.")
 {
