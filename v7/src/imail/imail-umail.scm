@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.10 2000/04/06 03:25:27 cph Exp $
+;;; $Id: imail-umail.scm,v 1.11 2000/04/06 03:26:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -68,7 +68,7 @@
 (define-method %revert-folder ((folder <umail-folder>))
   (set-file-folder-messages!
    folder
-   (call-with-binary-input-file pathname
+   (call-with-binary-input-file (file-folder-pathname folder)
      (lambda (port)
        (let ((from-line (read-line port)))
 	 (if (eof-object? from-line)
