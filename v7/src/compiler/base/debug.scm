@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.2 1987/12/30 06:58:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.3 1988/04/06 17:31:26 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -130,7 +130,8 @@ MIT in each case. |#
 
 (define (show-rtl-instruction rtl)
   (if (memq (car rtl)
-	    '(LABEL PROCEDURE-HEAP-CHECK CONTINUATION-HEAP-CHECK SETUP-LEXPR))
+	    '(LABEL CONTINUATION-ENTRY CONTINUATION-HEADER IC-PROCEDURE-HEADER
+		    OPEN-PROCEDURE-HEADER PROCEDURE-HEADER CLOSURE-HEADER))
       (newline))
   (*show-instruction* rtl))
 
