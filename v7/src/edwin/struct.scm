@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: struct.scm,v 1.85 1993/01/10 10:54:43 cph Exp $
+;;;	$Id: struct.scm,v 1.86 1993/08/09 19:15:15 jawilson Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -107,7 +107,8 @@
   modified?
   point
   buffer
-  shrink-length)
+  shrink-length
+  text-properties)
 
 (define (make-group buffer)
   (let ((group (%make-group)))
@@ -132,6 +133,7 @@
     (vector-set! group group-index:point (make-permanent-mark group 0 true))
     (vector-set! group group-index:buffer buffer)
     (vector-set! group group-index:shrink-length 0)
+    (vector-set! group group-index:text-properties false)
     group))
 
 (define (group-length group)
@@ -175,6 +177,9 @@
 
 (define-integrable (set-group-marks! group marks)
   (vector-set! group group-index:marks marks))
+
+(define-integrable (set-group-text-properties! group properties)
+  (vector-set! group group-index:text-properties properties))
 
 (define (group-region group)
   (%make-region (group-start-mark group) (group-end-mark group)))
