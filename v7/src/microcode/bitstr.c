@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bitstr.c,v 9.54 1995/01/25 20:54:55 cph Exp $
+$Id: bitstr.c,v 9.55 1995/03/06 21:45:34 cph Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -508,10 +508,13 @@ DEFUN (copy_bits,
 	  {
 	    long mask = (ANY_MASK (head, offset1));
 	    dest_buffer
-	      = (((BIT_STRING_WORD (destination))
-		  &~ (LOW_MASK (head + offset1)))
-		 | (((* (DEC_BIT_STRING_PTR (source))) & (LOW_MASK (head)))
-		    << offset1));
+	      = (((head + offset1) < OBJECT_LENGTH)
+		 ? ((BIT_STRING_WORD (destination))
+		    &~ (LOW_MASK (head + offset1)))
+		 : 0);
+	    dest_buffer
+	      |= (((* (DEC_BIT_STRING_PTR (source))) & (LOW_MASK (head)))
+		  << offset1);
 	  }
 	  nbits -= head;
 	  while (nbits >= OBJECT_LENGTH)
