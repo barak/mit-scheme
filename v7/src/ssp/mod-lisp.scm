@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.21 2004/11/25 04:19:53 cph Exp $
+$Id: mod-lisp.scm,v 1.22 2004/11/26 15:14:15 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -30,13 +30,9 @@ USA.
 (declare (usual-integrations))
 
 (define (start-mod-lisp-server)
-  (start-server-internal 3000
-			 (host-address-loopback)
-			 (cond ((file-directory? "/web/www/") "/web/www/")
-			       ((file-directory? "/var/www/") "/var/www/")
-			       (else (error "No server root?")))))
+  (start-server-internal 3000 (host-address-loopback)))
 
-(define (start-server-internal tcp-port tcp-host server-root)
+(define (start-server-internal tcp-port tcp-host)
   (let ((socket (open-tcp-server-socket tcp-port tcp-host)))
     (dynamic-wind
      (lambda () unspecific)
@@ -52,7 +48,7 @@ USA.
 	      (write-response
 	       (let ((generate-response
 		      (lambda ()
-			(handle-request (read-request port) server-root))))
+			(handle-request (read-request port)))))
 		 (if debug-internal-errors?
 		     (generate-response)
 		     (let ((response
@@ -100,75 +96,38 @@ USA.
 
 ;;;; Request handler
 
-(define (handle-request request server-root)
-  (let ((url (http-message-url request)))
+(define (handle-request request)
+  (let ((response (make-http-message))
+	(pathname (http-message-pathname request)))
     (if trace-requests?
 	(pp `(REQUEST (,(http-message-method request)
-		       ,url
+		       ,(http-message-url request)
 		       ,@(http-message-url-parameters request))
 		      (COOKIES ,@(http-message-cookies request))
 		      ,@(map (lambda (p)
 			       (list (car p) (cdr p)))
 			     (http-message-headers request)))))
-    (receive (root-dir relative) (url->relative url server-root)
-      (fluid-let ((*root-dir* root-dir))
-	(let ((response (make-http-message)))
-	  (let ((expand
-		 (lambda (pathname default-type handler)
-		   (set-status-header response 200)
-		   (set-content-type-header response default-type)
-		   (if handler
-		       (mod-lisp-expander request
-					  response
-					  pathname
-					  handler
-					  (get-subtree-authenticator relative))
-		       (set-entity response (->pathname pathname))))))
-	    (receive (default-type handler) (get-subtree-handler relative)
-	      (let ((pathname (merge-pathnames relative root-dir)))
-		(if handler
-		    (expand pathname default-type handler)
-		    (begin
-		      (maybe-parse-post-variables request)
-		      (handle-request:default request
-					      response
-					      pathname
-					      expand))))))
-	  response)))))
+    (let ((expand
+	   (lambda (default-type handler)
+	     (set-status-header response 200)
+	     (set-content-type-header response default-type)
+	     (if handler
+		 (mod-lisp-expander request response pathname handler)
+		 (set-entity response (->pathname pathname))))))
+      (receive (handler default-type) (http-message-handler request)
+	(if handler
+	    (expand default-type handler)
+	    (begin
+	      (maybe-parse-post-variables request)
+	      (let ((type (file-content-type pathname)))
+		(expand type
+			(get-mime-handler type)))))))
+    response))
 
-(define *root-dir*)
-(define trace-requests? #f)
-
-(define (handle-request:default request response pathname expand)
-  (let ((pathname
-	 (case (file-type-indirect pathname)
-	   ((REGULAR) pathname)
-	   ((DIRECTORY) (find-index-page pathname))
-	   (else #f))))
-    (if pathname
-	(let ((type (file-content-type pathname)))
-	  (expand pathname
-		  type
-		  (get-mime-handler type)))
-	(status-response! response 404 (http-message-url request)))))
-
-(define (find-index-page directory)
-  (let ((directory (pathname-as-directory directory)))
-    (let ((filename
-	   (find-matching-item default-index-pages
-	     (lambda (filename)
-	       (file-exists? (merge-pathnames filename directory))))))
-      (and filename
-	   (merge-pathnames filename directory)))))
-
-(define default-index-pages
-  '("index.html" "index.xhtml" "index.ssp" "index.xml"))
-
-(define (mod-lisp-expander request response pathname expander authenticator)
+(define (mod-lisp-expander request response pathname expander)
   (fluid-let ((*in-mod-lisp?* #t)
 	      (*current-request* request)
 	      (*current-response* response)
-	      (*current-pathname* pathname)
 	      (*current-user-name* #f)
 	      (expander-eval
 	       (lambda (expression environment)
@@ -177,7 +136,7 @@ USA.
 		     (eval expression environment))))))
     (run-hooks-in-list mod-lisp-before-expander-hooks request)
     (let ((value
-	   (let ((user-name (and authenticator (authenticator))))
+	   (let ((user-name ((http-message-authenticator request))))
 	     (cond ((or (string? user-name) (not user-name))
 		    (set! *current-user-name* user-name)
 		    (set-entity response
@@ -194,6 +153,7 @@ USA.
       (run-hooks-in-list mod-lisp-after-expander-hooks request response)
       value)))
 
+(define trace-requests? #f)
 (define mod-lisp-before-expander-hooks (make-hook-list))
 (define mod-lisp-after-expander-hooks (make-hook-list))
 
@@ -202,118 +162,7 @@ USA.
 (define *in-mod-lisp?* #f)
 (define *current-request*)
 (define *current-response*)
-(define *current-pathname*)
 (define *current-user-name*)
-
-(define (url->relative url server-root)
-  (cond ((rewrite-homedir url)
-	 => (lambda (path)
-	      (cond ((string-prefix? server-root path)
-		     (values server-root
-			     (string-tail path (string-length server-root))))
-		    ((string-prefix? "/" path)
-		     (values "/" (string-tail path 1)))
-		    (else
-		     (error "Unknown home path:" path)))))
-	((string-prefix? "/" url)
-	 (values server-root (string-tail url 1)))
-	(else
-	 (error "Unknown URL root:" url))))
-
-(define (rewrite-homedir url)
-  (let ((regs (re-string-match "^/~\\([^/]+\\)\\(.*\\)$" url)))
-    (and regs
-	 (rewrite-homedir-hook (re-match-extract url regs 1)
-			       (let ((path (re-match-extract url regs 2)))
-				 (if (string-prefix? "/" path)
-				     (string-tail path 1)
-				     path))))))
-
-(define (rewrite-homedir-hook user-name path)
-  (let ((dir
-	 (ignore-errors
-	  (lambda ()
-	    (user-home-directory user-name)))))
-    (and (not (condition? dir))
-	 (string-append (->namestring dir)
-			"public_html/"
-			path))))
-
-(define (get-subtree-handler relative)
-  (let ((v
-	 (search-for-nearest-directory relative
-				       (lambda (v) (vector-ref v 0))
-				       subtree-handlers)))
-    (if v
-	(values (vector-ref v 1) (vector-ref v 2))
-	(values #f #f))))
-
-(define (define-subtree-handler pathname default-type handler)
-  (set! subtree-handlers
-	(add-directory-item (vector (pathname-as-directory pathname)
-				    default-type
-				    handler)
-			    (lambda (v) (vector-ref v 0))
-			    subtree-handlers))
-  unspecific)
-
-(define subtree-handlers '())
-
-(define (get-subtree-authenticator relative)
-  (let ((p
-	 (search-for-nearest-directory relative
-				       (lambda (p) (car p))
-				       subtree-authenticators)))
-    (and p
-	 (cdr p))))
-
-(define (define-subtree-authenticator pathname authenticator)
-  (set! subtree-authenticators
-	(add-directory-item (cons (pathname-as-directory pathname)
-				  authenticator)
-			    car
-			    subtree-authenticators))
-  unspecific)
-
-(define subtree-authenticators '())
-
-;;;; MIME stuff
-
-(define (file-content-type pathname)
-  (or (let ((extension (pathname-type pathname)))
-	(and (string? extension)
-	     (hash-table/get mime-extensions extension #f)))
-      (let ((t (pathname-mime-type pathname)))
-	(and t
-	     (symbol (mime-type/top-level t)
-		     '/
-		     (mime-type/subtype t))))))
-
-(define (get-mime-handler type)
-  (hash-table/get mime-handlers type #f))
-
-(define (define-mime-handler type handle-request)
-  (cond ((symbol? type)
-	 (hash-table/put! mime-handlers type handle-request))
-	((and (pair? type)
-	      (symbol? (car type))
-	      (for-all? (cdr type) string?))
-	 (hash-table/put! mime-handlers (car type) handle-request)
-	 (for-each (lambda (extension)
-		     (let ((index
-			    (->namestring
-			     (pathname-new-type "index" extension))))
-		       (if (not (member index default-index-pages))
-			   (set! default-index-pages
-				 (append default-index-pages
-					 (list index)))))
-		     (hash-table/put! mime-extensions extension (car type)))
-		   (cdr type)))
-	(else
-	 (error:wrong-type-argument type "MIME type" 'DEFINE-MIME-HANDLER))))
-
-(define mime-handlers (make-eq-hash-table))
-(define mime-extensions (make-string-hash-table))
 
 ;;;; Read request
 
@@ -460,15 +309,15 @@ USA.
 	      'SET-COOKIE
 	      (let* ((%attr
 		      (lambda (key name map-value)
-			(let ((value (get-keyword-value attrs key #f)))
-			  (if value
+			(let ((value (get-keyword-value attrs key)))
+			  (if (default-object? value)
+			      ""
 			      (string-append "; "
 					     (symbol-name name)
 					     "="
 					     (if map-value
 						 (map-value value)
-						 value))
-			      ""))))
+						 value))))))
 		     (attr
 		      (lambda (name map-value)
 			(%attr name name map-value))))
@@ -676,6 +525,9 @@ USA.
 (define http-message-cookie
   (message-keyword-proc http-message-cookies
 			'HTTP-MESSAGE-COOKIE))
+
+(define (http-message-pathname message)
+  (http-message-header message 'script-filename #t))
 
 ;;;; Request/response accessors
 
@@ -687,6 +539,9 @@ USA.
 
 (define (http-request-url)
   (http-message-url *current-request*))
+
+(define (http-request-pathname)
+  (http-message-pathname *current-request*))
 
 (define (http-request-header-bindings)
   (http-message-headers *current-request*))
@@ -728,9 +583,6 @@ USA.
 		  (cons (cdar bindings) strings)
 		  strings))
 	(reverse! strings))))
-
-(define (http-request-pathname)
-  *current-pathname*)
 
 (define (http-response-header keyword datum #!optional overwrite?)
   (guarantee-symbol keyword 'HTTP-RESPONSE-HEADER)
@@ -751,9 +603,37 @@ USA.
 (define (http-status-response code . extra)
   (guarantee-exact-nonnegative-integer code 'HTTP-STATUS-RESPONSE)
   (status-response! *current-response* code extra))
+
+;;;; MIME stuff
 
-(define (server-root-dir)
-  *root-dir*)
+(define (file-content-type pathname)
+  (or (let ((extension (pathname-type pathname)))
+	(and (string? extension)
+	     (hash-table/get mime-extensions extension #f)))
+      (let ((t (pathname-mime-type pathname)))
+	(and t
+	     (symbol (mime-type/top-level t)
+		     '/
+		     (mime-type/subtype t))))))
+
+(define (get-mime-handler type)
+  (hash-table/get mime-handlers type #f))
+
+(define (define-mime-handler type handle-request)
+  (cond ((symbol? type)
+	 (hash-table/put! mime-handlers type handle-request))
+	((and (pair? type)
+	      (symbol? (car type))
+	      (for-all? (cdr type) string?))
+	 (hash-table/put! mime-handlers (car type) handle-request)
+	 (for-each (lambda (extension)
+		     (hash-table/put! mime-extensions extension (car type)))
+		   (cdr type)))
+	(else
+	 (error:wrong-type-argument type "MIME type" 'DEFINE-MIME-HANDLER))))
+
+(define mime-handlers (make-eq-hash-table))
+(define mime-extensions (make-string-hash-table))
 
 (define (html-content-type)
   (if (let ((type (http-browser-type)))
@@ -822,6 +702,70 @@ USA.
 			".")
   (http-response-header 'location url))
 
+;;;; URL bindings
+
+(define (http-message-authenticator message)
+  (let ((authenticator
+	 (url-binding-value (http-message-url message) 'authenticator)))
+    (if (default-object? authenticator)
+	(lambda () #f)
+	authenticator)))
+
+(define (http-message-handler message)
+  (let ((url (http-message-url message)))
+    (let ((handler (url-binding-value url 'handler)))
+      (if (default-object? handler)
+	  (values #f #f)
+	  (values handler (url-binding-value url 'default-type #t))))))
+
+(define (url-binding-value url name #!optional error?)
+  (let loop ((bindings url-bindings) (binding #f))
+    (cond ((pair? bindings)
+	   (loop (cdr bindings)
+		 (if (and (string-prefix? (caar bindings) url)
+			  (assq name (cdar bindings))
+			  (or (not binding)
+			      (fix:> (string-length (caar bindings))
+				     (string-length binding))))
+		     (car bindings)
+		     binding)))
+	  (binding
+	   (cdr (assq name (cdr binding))))
+	  (else
+	   (if (if (default-object? error?) #f error?)
+	       (error:bad-range-argument name 'url-binding-value))
+	   #!default))))
+
+(define (define-subtree-handler url default-type handler)
+  (define-url-bindings url
+    'default-type default-type
+    'handler handler))
+
+(define (define-url-bindings url . klist)
+  (guarantee-keyword-list klist 'define-url-bindings)
+  (let* ((binding
+	  (find-matching-item url-bindings
+	    (lambda (binding)
+	      (string=? (car binding) url)))))
+    (if binding
+	(do ((klist klist (cddr klist)))
+	    ((not (pair? klist)))
+	  (let ((name (car klist))
+		(value (cadr klist)))
+	    (let ((p (assq name (cdr binding))))
+	      (if p
+		  (set-cdr! p value)
+		  (set-cdr! binding
+			    (cons (cons name value)
+				  (cdr binding)))))))
+	(begin
+	  (set! url-bindings
+		(cons (cons url (keyword-list->alist klist))
+		      url-bindings))
+	  unspecific))))
+
+(define url-bindings '())
+
 ;;;; Utilities
 
 (define (port->port-copy input output #!optional buffer-size)
@@ -864,43 +808,6 @@ USA.
 	    (command/earlier-subproblem dstate port)
 	    (loop))))))
 
-(define (search-for-nearest-directory key item-key items)
-  (let ((key (pathname-directory key))
-	(dlen (lambda (item) (length (pathname-directory (item-key item))))))
-    (let loop ((items items) (win #f))
-      (if (pair? items)
-	  (loop (cdr items)
-		(if (and (directory-prefix?
-			  (pathname-directory (item-key (car items)))
-			  key)
-			 (or (not win)
-			     (> (dlen (car items)) (dlen win))))
-		    (car items)
-		    win))
-	  win))))
-
-(define (directory-prefix? d1 d2)
-  (and (eq? (car d1) (car d2))
-       (let loop ((d1 (cdr d1)) (d2 (cdr d2)))
-	 (or (not (pair? d1))
-	     (and (pair? d2)
-		  (equal? (car d1) (car d2))
-		  (loop (cdr d1) (cdr d2)))))))
-
-(define (add-directory-item item item-key items)
-  (let ((pathname (item-key item)))
-    (if (pathname-absolute? pathname)
-	(error:wrong-type-argument pathname "relative pathname"
-				   'add-directory-item))
-    (let loop ((items* items))
-      (if (pair? items*)
-	  (if (pathname=? (item-key (car items*)) pathname)
-	      (begin
-		(set-car! items* item)
-		items)
-	      (loop (cdr items*)))
-	  (cons item items)))))
-
 ;;;; Logging
 
 (define (start-logging-requests pathname)

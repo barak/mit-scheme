@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xmlrpc.scm,v 1.4 2004/10/30 01:25:48 cph Exp $
+$Id: xmlrpc.scm,v 1.5 2004/11/26 15:14:33 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -27,7 +27,7 @@ USA.
 
 (declare (usual-integrations))
 
-(define-subtree-handler "xmlrpc" 'text/xml
+(define-subtree-handler "/xmlrpc/" 'text/xml
   (lambda (pathname port)
     (if (eq? (http-request-method) 'post)
 	(let ((entity (http-request-entity)))
