@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: findprim.c,v 9.47 1993/06/24 03:32:03 gjr Exp $
+$Id: findprim.c,v 9.48 1993/08/03 08:29:50 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -166,12 +166,12 @@ typedef pseudo_void (* TOKEN_PROCESSOR) ();
 TOKEN_PROCESSOR token_processors [4];
 
 char * the_kind;
-char default_kind [] = "Primitive";
+char default_kind [] = "Static_Primitive";
 char built_in_kind [] = "Primitive";
 char external_kind [] = "External";
 
 char * the_variable;
-char default_variable [] = "MAX_PRIMITIVE";
+char default_variable [] = "MAX_STATIC_PRIMITIVE";
 char built_in_variable [] = "MAX_PRIMITIVE";
 char external_variable [] = "MAX_EXTERNAL_PRIMITIVE";
 
@@ -580,8 +580,10 @@ DEFUN (print_primitives, (output, limit),
 
   /* Print the procedure table. */
 #ifdef ASSUME_ANSIDECL
-  fprintf (output, "\f\nSCHEME_OBJECT EXFUN ((* (%s_Procedure_Table [])), (void)) = {\n",
-	   the_kind);
+  fprintf
+    (output,
+     "\f\nSCHEME_OBJECT EXFUN ((* (%s_Procedure_Table [])), (void)) = {\n",
+     the_kind);
 #else
   fprintf (output, "\f\nSCHEME_OBJECT (* (%s_Procedure_Table [])) () = {\n",
 	   the_kind);

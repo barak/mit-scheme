@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.60 1993/07/29 07:11:02 gjr Exp $
+$Id: cmpint.c,v 1.61 1993/08/03 08:29:39 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -2588,22 +2588,17 @@ loop:
     case TC_PRIMITIVE:
     {
       long arity;
-      extern long EXFUN (primitive_to_arity, (SCHEME_OBJECT));
 
-      arity = primitive_to_arity (procedure);
+      arity = (PRIMITIVE_ARITY (procedure));
       if (arity == (nactuals - 1))
       {
 	nactuals = 0;
         kind = TRAMPOLINE_K_PRIMITIVE;
       }
       else if (arity == LEXPR_PRIMITIVE_ARITY)
-      {
         kind = TRAMPOLINE_K_LEXPR_PRIMITIVE;
-      }
       else
-      {
         kind = TRAMPOLINE_K_OTHER;
-      }
       break;
     }
 
@@ -2931,7 +2926,7 @@ DEFUN (pc_to_utility_index, (pc), unsigned long pc)
       || (pc >= (UTIL_TABLE_PC_REF (last_util_table_index))))
     return (-1);
   else if (pc < (UTIL_TABLE_PC_REF (1)))
-    return ((pc_to_builtin_index (pc)) ? -1 : 0);
+    return (((pc_to_builtin_index (pc)) == -1) ? 0 : -1);
   else
   {
     int low, high, middle;

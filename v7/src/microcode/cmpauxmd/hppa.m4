@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.29 1993/07/29 07:02:17 gjr Exp $
+;;;	$Id: hppa.m4,v 1.30 1993/08/03 08:28:43 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -121,7 +121,6 @@ define(TC_LENGTH, ifdef("TYPE_CODE_LENGTH", TYPE_CODE_LENGTH, 8))
 define(QUAD_MASK, eval(2 ** (TC_LENGTH - 2)))
 define(LOW_TC_BIT, eval(TC_LENGTH - 1))
 define(DATUM_LENGTH, eval(32 - TC_LENGTH))
-define(HALF_DATUM_LENGTH, eval(DATUM_LENGTH/2))
 define(FIXNUM_LENGTH, DATUM_LENGTH)
 define(FIXNUM_POS, eval(FIXNUM_LENGTH - 1))
 define(FIXNUM_BIT, eval(TC_LENGTH + 1))
@@ -933,7 +932,7 @@ stack_and_interrupt_check_signal_interrupt
 	BE	0(5,31)				; return
 	NOP
 
-;;; The following all have the same interface:
+;;; invoke_primitive and *cons all have the same interface:
 ;;; The "return address" in r31 points to a word containing
 ;;; the distance between itself and the word in memory containing
 ;;; the primitive object.
@@ -945,10 +944,10 @@ invoke_primitive
 	ADDIL	L'hppa_primitive_table-$global$,27
 	LDWX	26(0,31),26			; get primitive
 	LDW	R'hppa_primitive_table-$global$(1),25
-	EXTRU	26,31,HALF_DATUM_LENGTH,24	; get primitive index
+	EXTRU	26,31,DATUM_LENGTH,24		; get primitive index
 	STW	26,32(0,4)			; store primitive
 	ADDIL	L'Primitive_Arity_Table-$global$,27
-	LDO	R'Primitive_Arity_Table-$global$(1),18
+	LDW	R'Primitive_Arity_Table-$global$(1),18
 	LDWX,S	24(0,25),25			; find primitive entry point
 	ADDIL	L'Ext_Stack_Pointer-$global$,27
 	STW	22,R'Ext_Stack_Pointer-$global$(1) ; Update stack pointer
@@ -967,6 +966,15 @@ invoke_primitive
 	STW	0,32(0,4)			; clear primitive
 	B	ep_interface_to_scheme_2
 	DEP	5,TC_START,TC_LENGTH,26		; return address as address
+
+;;; The BLE in invoke_primitive can jump here.
+;;; The primitive index is in gr24
+
+cross_segment_call
+	ADDIL	L'Primitive_Procedure_Table-$global$,27
+	LDW	R'Primitive_Procedure_Table-$global$(1),22
+	LDWX,S	24(0,22),22
+	B	$$dyncall			; ignore the return address
 
 vector_cons
 	LDW	0(0,22),26			; length as fixnum
@@ -1173,6 +1181,7 @@ define(builtin,"ADDIL L'$1-known_pc,3
 	builtin(shortcircuit_apply_8)
 	builtin(stack_and_interrupt_check)
 	builtin(invoke_primitive)
+	builtin(cross_segment_call)
 	builtin(vector_cons)
 	builtin(string_allocate)
 	builtin(floating_vector_cons)
@@ -1427,8 +1436,10 @@ interface_limit
 	.IMPORT	hppa_utility_table,DATA
 	.IMPORT	hppa_primitive_table,DATA
 	.IMPORT	Primitive_Arity_Table,DATA
+	.IMPORT	Primitive_Procedure_Table,DATA
 	.SPACE	$TEXT$
 	.SUBSPA $CODE$
+        .IMPORT $$dyncall,MILLICODE
         .IMPORT $$remI,MILLICODE
 	.IMPORT declare_builtin,CODE
 	.IMPORT	sin,CODE
@@ -1444,14 +1455,15 @@ interface_limit
 	.IMPORT	floor,CODE
 	.IMPORT	atan2,CODE
 	.EXPORT C_to_interface,PRIV_LEV=3,ARGW0=GR,RTNVAL=GR
-	.EXPORT interface_initialize,PRIV_LEV=3
+	.EXPORT ep_interface_to_scheme,PRIV_LEV=3
 	.EXPORT scheme_to_interface_ble,PRIV_LEV=3
 	.EXPORT trampoline_to_interface,PRIV_LEV=3
 	.EXPORT scheme_to_interface,PRIV_LEV=3
 	.EXPORT hook_jump_table,PRIV_LEV=3
+	.EXPORT cross_segment_call,PRIV_LEV=3
+	.EXPORT	flonum_atan2,PRIV_LEV=3
+	.EXPORT ep_interface_to_C,PRIV_LEV=3
+	.EXPORT interface_initialize,PRIV_LEV=3
 	.EXPORT cache_flush_region,PRIV_LEV=3
 	.EXPORT cache_flush_all,PRIV_LEV=3
-	.EXPORT ep_interface_to_C,PRIV_LEV=3
-	.EXPORT ep_interface_to_scheme,PRIV_LEV=3
-	.EXPORT	flonum_atan2,PRIV_LEV=3
 	.END

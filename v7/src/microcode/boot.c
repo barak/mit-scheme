@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.81 1993/06/29 22:53:46 cph Exp $
+$Id: boot.c,v 9.82 1993/08/03 08:29:38 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -158,12 +158,15 @@ DEFUN (main_name, (argc, argv),
     }
   else
     {
+      extern void EXFUN (initialize_primitives, (void));
+
       Heap_Size = option_heap_size;
       Stack_Size = option_stack_size;
       Constant_Size = option_constant_size;
       Setup_Memory ((BLOCKS_TO_BYTES (Heap_Size)),
 		    (BLOCKS_TO_BYTES (Stack_Size)),
 		    (BLOCKS_TO_BYTES (Constant_Size)));
+      initialize_primitives ();
       if (! option_fasl_file)
 	{
 	  compiler_initialize (0);

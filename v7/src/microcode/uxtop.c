@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.10 1993/02/06 05:45:28 gjr Exp $
+$Id: uxtop.c,v 1.11 1993/08/03 08:30:09 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -191,8 +191,8 @@ DEFUN_VOID (OS_restore_external_state)
   UX_ctty_restore_external_state ();
 }
 
-static enum syserr_names
-DEFUN (error_code_to_syserr, (code), int code)
+enum syserr_names
+DEFUN (OS_error_code_to_syserr, (code), int code)
 {
   switch (code)
     {
@@ -242,7 +242,7 @@ DEFUN (error_code_to_syserr, (code), int code)
     default:		return (syserr_unknown);
     }
 }
-
+
 static int
 DEFUN (syserr_to_error_code, (syserr), enum syserr_names syserr)
 {
@@ -293,16 +293,6 @@ DEFUN (syserr_to_error_code, (syserr), enum syserr_names syserr)
     case syserr_too_many_open_files_in_system:		return (ENFILE);
     default: return (0);
     }
-}
-
-void
-DEFUN (error_system_call, (code, name), int code AND enum syscall_names name)
-{
-  extern unsigned int syscall_error_code;
-  extern unsigned int syscall_error_name;
-  syscall_error_code = ((unsigned int) (error_code_to_syserr (code)));
-  syscall_error_name = ((unsigned int) name);
-  signal_error_from_primitive (ERR_IN_SYSTEM_CALL);
 }
 
 CONST char *

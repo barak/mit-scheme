@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppa.h,v 1.43 1993/07/29 07:02:09 gjr Exp $
+$Id: hppa.h,v 1.44 1993/08/03 08:28:51 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -709,6 +709,12 @@ DEFUN_VOID (flush_i_cache_initialize)
   push_d_cache_region (((PTR) (address)),				\
 		       ((unsigned long) (nwords)));			\
 } while (0)
+
+extern void EXFUN (hppa_update_primitive_table, (int, int));
+extern Boolean EXFUN (hppa_grow_primitive_table, (int));
+
+#define UPDATE_PRIMITIVE_TABLE_HOOK hppa_update_primitive_table
+#define GROW_PRIMITIVE_TABLE_HOOK hppa_grow_primitive_table
 
 /* This is not completely true.  Some models (eg. 850) have combined caches,
    but we have to assume the worst.
@@ -732,28 +738,46 @@ DEFUN (assemble_17, (inst), union ble_inst inst)
   return off.value;
 }
 
+static unsigned long hppa_closure_hook = 0;
+
 static unsigned long
 DEFUN (C_closure_entry_point, (closure), unsigned long C_closure)
 {
-  if ((C_closure & 0x3) == 0x2)
+  if ((C_closure & 0x3) != 0x2)
+    return (C_closure);
+  else
   {
     long offset;
+    extern int etext;
+    unsigned long entry_point;
     char * blp = (* ((char **) (C_closure - 2)));
 
     blp = ((char *) (((unsigned long) blp) & ~3));
     offset = (assemble_17 (* ((union ble_inst *) blp)));
-    return ((unsigned long) ((blp + 8) + offset));
+    entry_point = ((unsigned long) ((blp + 8) + offset));
+    return ((entry_point < ((unsigned long) &etext))
+	    ? entry_point
+	    : hppa_closure_hook);
   }
-  else
-    return (C_closure);
 }
+
+static void
+DEFUN (transform_procedure_entries, (len, otable, ntable),
+       long len AND PTR * otable AND PTR * ntable)
+{
+  long counter;
+  
+  for (counter = 0; counter < len; counter++)
+    ntable[counter] =
+      ((PTR) (C_closure_entry_point ((unsigned long) (otable [counter]))));
+  return;
+}       
 
-PTR *
+static PTR *
 DEFUN (transform_procedure_table, (table_length, old_table),
        long table_length AND PTR * old_table)
 {
   PTR * new_table;
-  long counter;
 
   new_table = ((PTR *) (malloc (table_length * (sizeof (PTR)))));
   if (new_table == ((PTR *) NULL))
@@ -762,16 +786,13 @@ DEFUN (transform_procedure_table, (table_length, old_table),
 		(table_length * (sizeof (PTR))));
     exit (1);
   }
-
-  for (counter = 0; counter < table_length; counter++)
-    new_table[counter] =
-      ((PTR) (C_closure_entry_point ((unsigned long) (old_table [counter]))));
+  transform_procedure_entries (table_length, old_table, new_table);
   return (new_table);
 }
 
 #define UTIL_TABLE_PC_REF(index)					\
   (C_closure_entry_point (UTIL_TABLE_PC_REF_REAL (index)))
-
+
 #ifdef _BSD4_3
 #  include <sys/mman.h>
 #  define VM_PROT_SCHEME (PROT_READ | PROT_WRITE | PROT_EXEC)
@@ -803,41 +824,60 @@ DEFUN_VOID (change_vm_protection)
 #endif
   return;
 }
-
+
 /* This loads the cache information structure for use by flush_i_cache,
    sets the floating point flags correctly, and accommodates the c
    function pointer closure format problems for utilities for HP-UX >= 8.0 .
    It also changes the VM protection of the heap, if necessary.
  */
 
-extern PTR * hppa_utility_table, * hppa_primitive_table;
-PTR * hppa_utility_table, * hppa_primitive_table;
+extern PTR * hppa_utility_table;
+extern PTR * hppa_primitive_table;
 
-void
-DEFUN (hppa_reset_hook, (utility_length, utility_table,
-			 primitive_length, primitive_table),
-       long utility_length AND PTR * utility_table
-       AND long primitive_length AND PTR * primitive_table)
+PTR * hppa_utility_table = ((PTR *) NULL);
+
+static void
+DEFUN (hppa_reset_hook, (utility_length, utility_table),
+       long utility_length AND PTR * utility_table)
 {
   extern void EXFUN (interface_initialize, (void));
+  extern void EXFUN (cross_segment_call, (void));
 
   flush_i_cache_initialize ();
   interface_initialize ();
   change_vm_protection ();
-  hppa_utility_table =
-    (transform_procedure_table (utility_length, utility_table));
-  hppa_primitive_table =
-    (transform_procedure_table (primitive_length, primitive_table));
+  hppa_closure_hook = (C_closure_entry_point ((unsigned long) cross_segment_call));
+  hppa_utility_table
+    = (transform_procedure_table (utility_length, utility_table));
   return;
 }
 
 #define ASM_RESET_HOOK() do						\
 {									\
   hppa_reset_hook (((sizeof (utility_table)) / (sizeof (PTR))),		\
-		   ((PTR *) (&utility_table[0])),			\
-		   (MAX_PRIMITIVE + 1),					\
-		   ((PTR *) (&Primitive_Procedure_Table[0])));		\
+		   ((PTR *) (&utility_table[0])));			\
 } while (0)
+
+PTR * hppa_primitive_table = ((PTR *) NULL);
+
+void
+DEFUN (hppa_update_primitive_table, (low, high), int low AND int high)
+{
+  transform_procedure_entries ((high - low),
+			       ((PTR *) (Primitive_Procedure_Table + low)),
+			       (hppa_primitive_table + low));
+  return;
+}
+
+Boolean 
+DEFUN (hppa_grow_primitive_table, (new_size), int new_size)
+{
+  PTR * new_table
+    = ((PTR *) (realloc (hppa_primitive_table, (new_size * (sizeof (PTR))))));
+  if (new_table != ((PTR *) NULL))
+    hppa_primitive_table = new_table;
+  return (new_table != ((PTR *) NULL));
+}
 
 #endif /* IN_CMPINT_C */
 

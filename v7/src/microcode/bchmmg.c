@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.77 1993/07/27 21:00:46 gjr Exp $
+$Id: bchmmg.c,v 9.78 1993/08/03 08:29:35 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -3024,8 +3024,6 @@ DEFUN (GC, (weak_pair_transport_initialized_p),
 
   *free_buffer++ = Fixed_Objects;
   *free_buffer++ = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, History));
-  *free_buffer++ = Undefined_Primitives;
-  *free_buffer++ = Undefined_Primitives_Arity;
   *free_buffer++ = Get_Current_Stacklet ();
   *free_buffer++ = ((Prev_Restore_History_Stacklet == NULL) ?
 		    SHARP_F :
@@ -3099,8 +3097,6 @@ DEFUN (GC, (weak_pair_transport_initialized_p),
     (Lost_Objects_Base, (LONG_TO_UNSIGNED_FIXNUM (ADDRESS_TO_DATUM (root2))));
 
   History = (OBJECT_ADDRESS (*root++));
-  Undefined_Primitives = *root++;
-  Undefined_Primitives_Arity = *root++;
 
   Set_Current_Stacklet (*root);
   root += 1;

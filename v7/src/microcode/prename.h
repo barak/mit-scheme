@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prename.h,v 1.7 1993/01/12 19:49:25 gjr Exp $
+$Id: prename.h,v 1.8 1993/08/03 08:29:57 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -34,29 +34,37 @@ MIT in each case. */
 
 /* Definitions of aliases for primitives. */
 
-static struct primitive_alias aliases [] =
-  {
-    { "NULL?", "NOT" },
-    { "FALSE?", "NOT" },
-    { "PRIMITIVE-TYPE", "OBJECT-TYPE" },
-    { "PRIMITIVE-TYPE?", "OBJECT-TYPE?" },
-    { "&MAKE-OBJECT", "PRIMITIVE-OBJECT-SET-TYPE" },
-    { "SYSTEM-MEMORY-REF", "PRIMITIVE-OBJECT-REF" },
-    { "PRIMITIVE-OBJECT-NEW-TYPE", "PRIMITIVE-OBJECT-SET-TYPE" },
-    { "FILE-CLOSE-CHANNEL", "CHANNEL-CLOSE" },
-    { "PHOTO-OPEN", "TRANSCRIPT-ON" },
-    { "PHOTO-CLOSE", "TRANSCRIPT-OFF" },
-    { "GET-NEXT-INTERRUPT-CHARACTER", "TTY-NEXT-INTERRUPT-CHAR" },
-    { "CHECK-AND-CLEAN-UP-INPUT-CHANNEL", "TTY-CLEAN-INTERRUPTS" },
-    { "REMOVE-FILE", "FILE-REMOVE" },
-    { "RENAME-FILE", "FILE-RENAME" },
-    { "COPY-FILE", "FILE-COPY" },
-    { "MAKE-DIRECTORY", "DIRECTORY-MAKE" },
-    { "SCREEN-X-SIZE", "TTY-X-SIZE" },
-    { "SCREEN-Y-SIZE", "TTY-Y-SIZE" },
-    { "FILE-SYMLINK?", "FILE-SOFT-LINK?" },
-    { "X-GRAPHICS-SET-CLASS-HINT", "X-WINDOW-SET-CLASS-HINT" },
-    { "CURRENT-FILE-TIME", "ENCODED-TIME" }
-  };
+#ifndef SCM_PRENAME_H
+#define SCM_PRENAME_H
 
-#define N_ALIASES 21
+struct primitive_alias_s
+{
+  char * alias;
+  char * name;
+};
+
+static struct primitive_alias_s primitive_aliases [] =
+{
+  { "FALSE?", "NOT" },
+  { "PRIMITIVE-TYPE", "OBJECT-TYPE" },
+  { "PRIMITIVE-TYPE?", "OBJECT-TYPE?" },
+  { "&MAKE-OBJECT", "PRIMITIVE-OBJECT-SET-TYPE" },
+  { "SYSTEM-MEMORY-REF", "PRIMITIVE-OBJECT-REF" },
+  { "PRIMITIVE-OBJECT-NEW-TYPE", "PRIMITIVE-OBJECT-SET-TYPE" },
+  { "FILE-CLOSE-CHANNEL", "CHANNEL-CLOSE" },
+  { "GET-NEXT-INTERRUPT-CHARACTER", "TTY-NEXT-INTERRUPT-CHAR" },
+  { "REMOVE-FILE", "FILE-REMOVE" },
+  { "RENAME-FILE", "FILE-RENAME" },
+  { "COPY-FILE", "FILE-COPY" },
+  { "MAKE-DIRECTORY", "DIRECTORY-MAKE" },
+  { "SCREEN-X-SIZE", "TTY-X-SIZE" },
+  { "SCREEN-Y-SIZE", "TTY-Y-SIZE" },
+  { "FILE-SYMLINK?", "FILE-SOFT-LINK?" },
+  { "X-GRAPHICS-SET-CLASS-HINT", "X-WINDOW-SET-CLASS-HINT" },
+  { "CURRENT-FILE-TIME", "ENCODED-TIME" }
+};
+
+#define N_PRIMITIVE_ALIASES						\
+  ((sizeof (primitive_aliases)) / (sizeof (struct primitive_alias_s)))
+
+#endif /* SCM_PRENAME_H */

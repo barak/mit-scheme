@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: errors.h,v 9.38 1993/02/23 02:38:22 gjr Exp $
+$Id: errors.h,v 9.39 1993/08/03 08:29:44 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -33,6 +33,9 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 /* Error and termination code declarations. */
+
+#ifndef SCM_ERRORS_H
+#define SCM_ERRORS_H
 
 /* All error and termination codes must be positive
  * to allow primitives to return either an error code
@@ -279,3 +282,5 @@ MIT in each case. */
 /* 0x19 */		"User requested termination after trap",	\
 /* 0x1a */		"Backing out of non-primitive"			\
 }
+
+#endif /* SCM_ERRORS_H /*

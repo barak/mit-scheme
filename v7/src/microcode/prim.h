@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prim.h,v 9.43 1993/06/24 07:09:18 gjr Exp $
+$Id: prim.h,v 9.44 1993/08/03 08:29:58 gjr Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,28 +34,47 @@ MIT in each case. */
 
 /* Primitive declarations.
    Note that the following cannot be changed without changing
-   Findprim.c. */
+   findprim.c.
+ */
 
-extern SCHEME_OBJECT EXFUN ((*(Primitive_Procedure_Table[])), (void));
-extern int Primitive_Arity_Table[];
-extern int Primitive_Count_Table[];
-extern char *Primitive_Name_Table[];
-extern char *Primitive_Documentation_Table[];
+#ifndef SCM_PRIM_H
+#define SCM_PRIM_H
+
+typedef SCHEME_OBJECT EXFUN ((* primitive_procedure_t), (void));
+
+extern primitive_procedure_t * Primitive_Procedure_Table;
+extern int * Primitive_Arity_Table;
+extern int * Primitive_Count_Table;
+extern char ** Primitive_Name_Table;
+extern char ** Primitive_Documentation_Table;
 extern long MAX_PRIMITIVE;
 
-#define CHUNK_SIZE 20		/* Grow undefined vector by this much */
+extern SCHEME_OBJECT EXFUN (Prim_unimplemented, (void));
 
-extern SCHEME_OBJECT Undefined_Primitives;
-extern SCHEME_OBJECT Undefined_Primitives_Arity;
+#define PRIMITIVE_NUMBER(primitive) (OBJECT_DATUM (primitive))
 
-/* Utility macros */
+#define MAKE_PRIMITIVE_OBJECT(index) (MAKE_OBJECT (TC_PRIMITIVE, (index)))
 
-#define NUMBER_OF_DEFINED_PRIMITIVES() (MAX_PRIMITIVE + 1)
+#define IMPLEMENTED_PRIMITIVE_P(prim)					\
+  ((Primitive_Procedure_Table[(PRIMITIVE_NUMBER (prim))])		\
+   != Prim_unimplemented)
 
-#define NUMBER_OF_UNDEFINED_PRIMITIVES()				\
-  ((Undefined_Primitives == SHARP_F)					\
-   ? 0									\
-   : (UNSIGNED_FIXNUM_TO_LONG (VECTOR_REF (Undefined_Primitives, 0))))
+#define NUMBER_OF_PRIMITIVES()	(MAX_PRIMITIVE)
 
-#define NUMBER_OF_PRIMITIVES()						\
-  ((NUMBER_OF_UNDEFINED_PRIMITIVES ()) + (NUMBER_OF_DEFINED_PRIMITIVES ()))
+#define PRIMITIVE_ARITY(prim)						\
+  (Primitive_Arity_Table [PRIMITIVE_NUMBER (prim)])
+
+#define PRIMITIVE_DOCUMENTATION(prim)					\
+  (Primitive_Documentation_Table[(PRIMITIVE_NUMBER (prim))])
+
+#define PRIMITIVE_NAME(prim)						\
+  (Primitive_Name_Table[(PRIMITIVE_NUMBER (prim))])
+
+#define PRIMITIVE_N_PARAMETERS(prim) (PRIMITIVE_ARITY (prim))
+
+#define PRIMITIVE_N_ARGUMENTS(prim)					\
+  (((PRIMITIVE_ARITY (prim)) == LEXPR_PRIMITIVE_ARITY)			\
+   ? ((long) (Regs[REGBLOCK_LEXPR_ACTUALS]))				\
+   : (PRIMITIVE_ARITY (prim)))
+
+#endif /* SCM_PRIM_H */

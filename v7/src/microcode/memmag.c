@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.51 1993/07/27 21:00:50 gjr Exp $
+$Id: memmag.c,v 9.52 1993/08/03 08:29:52 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -344,8 +344,6 @@ DEFUN_VOID (GC)
 
   *Free++ = Fixed_Objects;
   *Free++ = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, History));
-  *Free++ = Undefined_Primitives;
-  *Free++ = Undefined_Primitives_Arity;
   *Free++ = Get_Current_Stacklet ();
   *Free++ =
     ((Prev_Restore_History_Stacklet == NULL)
@@ -440,8 +438,6 @@ DEFUN_VOID (GC)
     (Lost_Objects_Base, (LONG_TO_UNSIGNED_FIXNUM (ADDRESS_TO_DATUM (Root2))));
 
   History = (OBJECT_ADDRESS (*Root++));
-  Undefined_Primitives = *Root++;
-  Undefined_Primitives_Arity = *Root++;
 
   Set_Current_Stacklet (*Root);
   Root += 1;

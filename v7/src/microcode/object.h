@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: object.h,v 9.40 1992/12/02 18:11:14 cph Exp $
+$Id: object.h,v 9.41 1993/08/03 08:29:56 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,7 +33,10 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 /* This file defines the macros which define and manipulate Scheme
-   objects.  This is the lowest level of abstraction in this program. */
+   objects.  This is the lowest level of abstraction in this program. 
+*/
+#ifndef SCM_OBJECT_H
+#define SCM_OBJECT_H
 
 /* The value in "Wsize.c" for `TYPE_CODE_LENGTH' must match this!! */
 #ifndef TYPE_CODE_LENGTH
@@ -511,3 +514,5 @@ if ((ADDRESS_CONSTANT_P (OBJECT_ADDRESS (Old_Pointer))) &&		\
 #define ALIGN_FLOAT(Where)
 
 #endif /* not FLOATING_ALIGNMENT */
+
+#endif /* SCM_OBJECT_H */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.5 1993/07/27 21:00:55 gjr Exp $
+$Id: nttop.c,v 1.6 1993/08/03 08:29:55 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -137,8 +137,8 @@ DEFUN (OS_quit, (code, abnormal_p), int code AND int abnormal_p)
 #define EAGAIN ERRNO_NONBLOCK
 #endif
 
-static enum syserr_names
-DEFUN (error_code_to_syserr, (code), int code)
+enum syserr_names
+DEFUN (OS_error_code_to_syserr, (code), int code)
 {
   switch (code)
   {
@@ -183,16 +183,6 @@ DEFUN (syserr_to_error_code, (syserr), enum syserr_names syserr)
     case syserr_too_many_open_files:			return (EMFILE);
     default: 						return (0);
   }
-}
-
-void
-DEFUN (error_system_call, (code, name), int code AND enum syscall_names name)
-{
-  extern unsigned int syscall_error_code;
-  extern unsigned int syscall_error_name;
-  syscall_error_code = ((unsigned int) (error_code_to_syserr (code)));
-  syscall_error_name = ((unsigned int) name);
-  signal_error_from_primitive (ERR_IN_SYSTEM_CALL);
 }
 
 CONST char *

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: usrdef.h,v 9.39 1993/06/24 07:10:05 gjr Exp $
+$Id: usrdef.h,v 9.40 1993/08/03 08:30:02 gjr Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,6 +34,9 @@ MIT in each case. */
 
 /* Macros and header for usrdef.c and variants. */
 
+#ifndef SCM_USRDEF_H
+#define SCM_USRDEF_H
+
 #include "ansidecl.h"
 #include "config.h"
 #include "object.h"
@@ -41,6 +44,18 @@ MIT in each case. */
 #include "prim.h"
 #include "prims.h"
 
+extern SCHEME_OBJECT EXFUN ((* (Static_Primitive_Procedure_Table[])), (void));
+extern int Static_Primitive_Arity_Table[];
+extern int Static_Primitive_Count_Table[];
+extern char * Static_Primitive_Name_Table[];
+extern char * Static_Primitive_Documentation_Table[];
+extern long MAX_STATIC_PRIMITIVE;
+
+extern SCHEME_OBJECT
+  EXFUN (declare_primitive, (char *, primitive_procedure_t, int, int, char *));
+
 extern void
   EXFUN (Microcode_Termination, (int)),
   EXFUN (signal_error_from_primitive, (long));
+
+#endif /* SCM_USRDEF_H */

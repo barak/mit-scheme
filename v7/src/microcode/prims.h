@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prims.h,v 9.42 1993/07/23 19:43:45 nick Exp $
+$Id: prims.h,v 9.43 1993/08/03 08:29:59 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,6 +35,9 @@ MIT in each case. */
 /* This file contains some macros for defining primitives,
    for argument type or value checking, and for accessing
    the arguments. */
+
+#ifndef SCM_PRIMS_H
+#define SCM_PRIMS_H
 
 #include "ansidecl.h"
 
@@ -135,3 +138,5 @@ extern long EXFUN (arg_ascii_integer, (int));
   ((FLONUM_P (ARG_REF (arg)))						\
    ? ((double *) (VECTOR_LOC (ARG_REF(arg), 0)))			\
    : ((error_wrong_type_arg (arg)), ((double *) 0)))
+
+#endif /* SCM_PRIMS_H */

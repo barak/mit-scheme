@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.68 1993/06/24 04:44:55 gjr Exp $
+$Id: fasload.c,v 9.69 1993/08/03 08:29:48 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -66,8 +66,7 @@ extern SCHEME_OBJECT * load_renumber_table;
 extern SCHEME_OBJECT compiler_utilities;
 
 extern SCHEME_OBJECT EXFUN (intern_symbol, (SCHEME_OBJECT));
-extern void EXFUN (install_primitive_table,
-		   (SCHEME_OBJECT *, long, Boolean));
+extern void EXFUN (install_primitive_table, (SCHEME_OBJECT *, long));
 extern void EXFUN (compiler_reset_error, (void));
 extern void EXFUN (compiler_initialize, (long));
 extern void EXFUN (compiler_reset, (SCHEME_OBJECT));
@@ -266,9 +265,7 @@ DEFUN (read_file_end, (mode), int mode)
   {
     SET_CONSTANT_TOP ();
     if (mode != MODE_CHANNEL)
-    {
       OS_channel_close_noerror (load_channel);
-    }
     signal_error_from_primitive (ERR_IO_ERROR);
   }
   computed_checksum =
@@ -284,9 +281,7 @@ DEFUN (read_file_end, (mode), int mode)
       Primitive_Table_Size)
   {
     if (mode != MODE_CHANNEL)
-    {
       OS_channel_close_noerror (load_channel);
-    }
     signal_error_from_primitive (ERR_IO_ERROR);
   }
   computed_checksum =
@@ -297,15 +292,11 @@ DEFUN (read_file_end, (mode), int mode)
   Free += Primitive_Table_Size;
 
   if (mode != MODE_CHANNEL)
-  {
     OS_channel_close_noerror (load_channel);
-  }
 
   if ((computed_checksum != ((unsigned long) 0)) &&
       (dumped_checksum != SHARP_F))
-  {
     signal_error_from_primitive (ERR_IO_ERROR);
-  }
   return (table);
 }
 
@@ -407,6 +398,15 @@ static SCHEME_OBJECT *Relocate_Temp;
    block of memory.
 */
 
+static long
+DEFUN (primitive_dumped_number, (datum), unsigned long datum)
+{
+  unsigned long high_bits = (datum >> HALF_DATUM_LENGTH);
+  return ((high_bits != 0) ? high_bits : datum);
+}
+
+#define PRIMITIVE_DUMPED_NUMBER(prim) (primitive_dumped_number (OBJECT_DATUM (prim)))
+
 static void
 DEFUN (Relocate_Block, (Scan, Stop_At),
        fast SCHEME_OBJECT * Scan AND fast SCHEME_OBJECT * Stop_At)
@@ -433,13 +433,13 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 	break;
 
       case TC_PRIMITIVE:
-	*Scan++ = (load_renumber_table [PRIMITIVE_NUMBER (Temp)]);
+	*Scan++ = (load_renumber_table [PRIMITIVE_DUMPED_NUMBER (Temp)]);
 	break;
 
       case TC_PCOMB0:
 	*Scan++ =
 	  OBJECT_NEW_TYPE
-	    (TC_PCOMB0, (load_renumber_table [PRIMITIVE_NUMBER (Temp)]));
+	    (TC_PCOMB0, (load_renumber_table [PRIMITIVE_DUMPED_NUMBER (Temp)]));
         break;
 
       case TC_MANIFEST_NM_VECTOR:
@@ -578,35 +578,9 @@ DEFUN (check_primitive_numbers, (table, length),
 {
   fast long count, top;
 
-  top = (NUMBER_OF_DEFINED_PRIMITIVES ());
-  if (length < top)
-  {
-    top = length;
-  }
-
-  for (count = 0; count < top; count += 1)
-  {
-    if (table[count] != (MAKE_PRIMITIVE_OBJECT (0, count)))
-    {
+  for (count = 0; count < length; count += 1)
+    if (table[count] != (MAKE_PRIMITIVE_OBJECT (count)))
       return (false);
-    }
-  }
-  /* Is this really correct?  Can't this screw up if there
-     were more implemented primitives in the dumping microcode
-     than in the loading microcode and they all fell after the
-     last implemented primitive in the loading microcode?
-   */
-  if (length == top)
-  {
-    return (true);
-  }
-  for (count = top; count < length; count += 1)
-  {
-    if (table[count] != (MAKE_PRIMITIVE_OBJECT (count, top)))
-    {
-      return (false);
-    }
-  }
   return (true);
 }
 
@@ -727,9 +701,7 @@ DEFUN (load_file, (mode), int mode)
   if ((!band_p) && (dumped_utilities != SHARP_F))
   {
     if (compiler_utilities == SHARP_F)
-    {
       signal_error_from_primitive (ERR_FASLOAD_COMPILED_MISMATCH);
-    }
 
     const_relocation =
       (COMPUTE_RELOCATION ((OBJECT_ADDRESS (compiler_utilities)),
@@ -740,9 +712,7 @@ DEFUN (load_file, (mode), int mode)
 		    (1 + (VECTOR_LENGTH (compiler_utilities))))));
   }
   else
-  {
     const_relocation = (COMPUTE_RELOCATION (Orig_Constant, Const_Base));
-  }
   stack_relocation = (COMPUTE_RELOCATION (Stack_Top, Dumped_Stack_Top));
 
 #ifdef BYTE_INVERSION
@@ -751,24 +721,21 @@ DEFUN (load_file, (mode), int mode)
 
   /* Setup the primitive table */
 
-  install_primitive_table (primitive_table,
-			   Primitive_Table_Length,
-			   (mode == MODE_BAND));
+  install_primitive_table (primitive_table, Primitive_Table_Length);
 
-  if ((mode != MODE_BAND)				||
-      (heap_relocation != ((relocation_type) 0))	||
-      (const_relocation != ((relocation_type) 0))	||
-      (stack_relocation != ((relocation_type) 0))	||
-      (!check_primitive_numbers(load_renumber_table,
-				Primitive_Table_Length)))
+  if ((mode != MODE_BAND)
+      || (heap_relocation != ((relocation_type) 0))
+      || (const_relocation != ((relocation_type) 0))
+      || (stack_relocation != ((relocation_type) 0))
+      || (! (check_primitive_numbers (load_renumber_table,
+				      Primitive_Table_Length))))
   {
     /* We need to relocate.  Oh well. */
     if (Reloc_Debug)
-    {
-      outf_console ("heap_relocation = %ld = %lx; const_relocation = %ld = %lx\n",
-	      ((long) heap_relocation), ((long) heap_relocation),
-	      ((long) const_relocation), ((long) const_relocation));
-    }
+      outf_console
+	("heap_relocation = %ld = %lx; const_relocation = %ld = %lx\n",
+	 ((long) heap_relocation), ((long) heap_relocation),
+	 ((long) const_relocation), ((long) const_relocation));
 
     /*
       Relocate the new data.

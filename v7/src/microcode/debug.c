@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: debug.c,v 9.44 1993/06/24 04:23:41 gjr Exp $
+$Id: debug.c,v 9.45 1993/08/03 08:29:42 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -803,10 +803,9 @@ static Boolean
 DEFUN (print_primitive_name, (stream, primitive),
        outf_channel stream AND SCHEME_OBJECT primitive)
 {
-  extern char * EXFUN (primitive_to_name, (SCHEME_OBJECT));
-  char *name;
+  char * name;
 
-  name = primitive_to_name(primitive);
+  name = (PRIMITIVE_NAME (primitive));
   if (name == ((char *) NULL))
   {
     outf (stream, "Unknown primitive 0x%08x", PRIMITIVE_NUMBER(primitive));
@@ -822,19 +821,15 @@ DEFUN (print_primitive_name, (stream, primitive),
 void
 DEFUN (Print_Primitive, (primitive), SCHEME_OBJECT primitive)
 {
-  extern long EXFUN (primitive_to_arity, (SCHEME_OBJECT));
   char buffer[40];
   int NArgs, i;
 
   outf_console ("Primitive: ");
   if (print_primitive_name (console_output, primitive))
-  {
-    NArgs = primitive_to_arity(primitive);
-  }
+    NArgs = (PRIMITIVE_ARITY (primitive));
   else
-  {
     NArgs = 3;	        /* Unknown primitive */
-  }
+
   outf_console ("\n");
 
   for (i = 0; i < NArgs; i++)

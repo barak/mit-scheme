@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: extern.c,v 9.33 1993/06/24 07:08:24 gjr Exp $
+$Id: extern.c,v 9.34 1993/08/03 08:29:45 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -60,12 +60,9 @@ number (i.e. external representation) of the desired result.")
       PRIMITIVE_RETURN (MAKE_OBJECT (tc, number));
 
     case TC_PRIMITIVE:
-      if (number >= (NUMBER_OF_PRIMITIVES ()))
+      if (number > (NUMBER_OF_PRIMITIVES ()))
 	error_bad_range_arg (2);
-      PRIMITIVE_RETURN
-	((number > MAX_PRIMITIVE)
-	 ? (MAKE_PRIMITIVE_OBJECT (number, (MAX_PRIMITIVE + 1)))
-	 : (MAKE_PRIMITIVE_OBJECT (0, number)));
+      PRIMITIVE_RETURN (MAKE_PRIMITIVE_OBJECT (number));
 
     default:
       error_bad_range_arg (1);
@@ -112,25 +109,24 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-ARITY", Prim_primitive_procedure_arity, 1
   CHECK_ARG (1, PRIMITIVE_P);
   {
     fast SCHEME_OBJECT primitive = (ARG_REF (1));
-    extern long EXFUN (primitive_to_arity, (SCHEME_OBJECT));
-    if ((PRIMITIVE_NUMBER (primitive)) >= (NUMBER_OF_PRIMITIVES ()))
+    if ((PRIMITIVE_NUMBER (primitive)) > (NUMBER_OF_PRIMITIVES ()))
       error_bad_range_arg (1);
-    PRIMITIVE_RETURN (LONG_TO_FIXNUM (primitive_to_arity (primitive)));
+    PRIMITIVE_RETURN (LONG_TO_FIXNUM (PRIMITIVE_ARITY (primitive)));
   }
 }
 
-DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-DOCUMENTATION", Prim_primitive_procedure_doc, 1, 1,
+DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-DOCUMENTATION",
+		  Prim_primitive_procedure_doc, 1, 1,
   "Given a primitive procedure, return its documentation string.")
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, PRIMITIVE_P);
   {
     fast SCHEME_OBJECT primitive = (ARG_REF (1));
-    if ((PRIMITIVE_NUMBER (primitive)) >= (NUMBER_OF_PRIMITIVES ()))
+    if ((PRIMITIVE_NUMBER (primitive)) > (NUMBER_OF_PRIMITIVES ()))
       error_bad_range_arg (1);
     {
-      extern char * EXFUN (primitive_to_documentation, (SCHEME_OBJECT));
-      fast char * answer = (primitive_to_documentation (primitive));
+      fast char * answer = (PRIMITIVE_DOCUMENTATION (primitive));
       PRIMITIVE_RETURN
 	((answer == ((char *) 0))
 	 ? SHARP_F
@@ -146,8 +142,8 @@ the cdr is the count of undefined primitives that are referenced.")
 {
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN
-    (cons ((LONG_TO_UNSIGNED_FIXNUM (NUMBER_OF_DEFINED_PRIMITIVES ())),
-	   (LONG_TO_UNSIGNED_FIXNUM (NUMBER_OF_UNDEFINED_PRIMITIVES ()))));
+    (cons ((LONG_TO_UNSIGNED_FIXNUM ((NUMBER_OF_PRIMITIVES ()))),
+	   (LONG_TO_UNSIGNED_FIXNUM (0))));
 }
 
 DEFINE_PRIMITIVE ("GET-PRIMITIVE-NAME", Prim_get_primitive_name, 1, 1,
@@ -160,10 +156,11 @@ DEFINE_PRIMITIVE ("GET-PRIMITIVE-NAME", Prim_get_primitive_name, 1, 1,
       error_wrong_type_arg (1);
     {
       fast long number = (PRIMITIVE_NUMBER (primitive));
-      extern SCHEME_OBJECT EXFUN (primitive_name, (int));
-      if ((number < 0) || (number >= NUMBER_OF_PRIMITIVES()))
+      if ((number < 0) || (number > (NUMBER_OF_PRIMITIVES ())))
 	error_bad_range_arg (1);
-      PRIMITIVE_RETURN (primitive_name (number));
+      PRIMITIVE_RETURN
+	(char_pointer_to_string ((unsigned char *)
+				 (PRIMITIVE_NAME (primitive))));
     }
   }
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.h,v 9.37 1993/06/24 05:45:06 gjr Exp $
+$Id: interp.h,v 9.38 1993/08/03 08:29:51 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -159,7 +159,7 @@ extern int EXFUN (abort_to_interpreter_argument, (void));
 #define Store_Expression(P)	Expression = (P)
 #define Store_Env(P)		Env = (P)
 #define Store_Return(P)							\
-  Return = MAKE_OBJECT (TC_RETURN_CODE, (P))
+  Return = (MAKE_OBJECT (TC_RETURN_CODE, (P)))
 
 #define Save_Env()		STACK_PUSH (Env)
 #define Restore_Env()		Env = (STACK_POP ())
@@ -205,42 +205,6 @@ extern int EXFUN (abort_to_interpreter_argument, (void));
 
 /* Primitive utility macros */
 
-/* A primitive object has two components (besides the type code), a
-   table index in the low 12 bits (assuming datum fields are 24 bits
-   wide), and a virtual index in the upper 12 bits.  The table index
-   is always guaranteed to be a valid entry into
-   Primitive_Procedure_Table.  For unimplemented primitives it is the
-   index of the last entry in the table, which causes an error when
-   invoked.  For implemented primitives it is the real index.  The
-   virtual index is 0 for implemented primitives (for histerical
-   reasons), and the actual virtual index (higher than any real table
-   index) for unimplemented primitives.
- */
-
-#define PRIMITIVE_TABLE_INDEX(primitive)				\
-((primitive) & HALF_DATUM_MASK)
-
-#define PRIMITIVE_VIRTUAL_INDEX(primitive)				\
-(((primitive) >> HALF_DATUM_LENGTH) & HALF_DATUM_MASK)
-
-#define MAKE_PRIMITIVE_OBJECT(virtual, real)				\
-(MAKE_OBJECT (TC_PRIMITIVE, (((virtual) << HALF_DATUM_LENGTH) | (real))))
-
-/* Does this fail for the first unimplemented primitive if there are no
-   implemented primitives?
- */
-
-#define IMPLEMENTED_PRIMITIVE_P(primitive)				\
-(PRIMITIVE_VIRTUAL_INDEX(primitive) == 0)
-
-#define PRIMITIVE_NUMBER(primitive)					\
-((IMPLEMENTED_PRIMITIVE_P(primitive))	?				\
- (PRIMITIVE_TABLE_INDEX(primitive))	:				\
- (PRIMITIVE_VIRTUAL_INDEX(primitive)))
-
-/* This will automagically cause an error if the primitive is
-   not implemented. */
-
 #ifndef ENABLE_DEBUGGING_TOOLS
 
 #define PRIMITIVE_APPLY PRIMITIVE_APPLY_INTERNAL
@@ -254,10 +218,6 @@ extern SCHEME_OBJECT EXFUN
 
 #endif
 
-extern char * EXFUN (primitive_to_name, (SCHEME_OBJECT primitive));
-extern long EXFUN (primitive_to_arity, (SCHEME_OBJECT primitive));
-extern long EXFUN (primitive_to_arguments, (SCHEME_OBJECT primitive));
-
 #define PRIMITIVE_APPLY_INTERNAL(loc, primitive)			\
 {									\
   (Regs[REGBLOCK_PRIMITIVE]) = (primitive);				\
@@ -265,26 +225,17 @@ extern long EXFUN (primitive_to_arguments, (SCHEME_OBJECT primitive));
     /* Save the dynamic-stack position. */				\
     PTR PRIMITIVE_APPLY_INTERNAL_position = dstack_position;		\
     (loc) =								\
-      ((*								\
-	(Primitive_Procedure_Table					\
-	 [PRIMITIVE_TABLE_INDEX (primitive)]))				\
+      ((* (Primitive_Procedure_Table [PRIMITIVE_NUMBER (primitive)]))	\
        ());								\
     /* If the primitive failed to unwind the dynamic stack, lose. */	\
     if (PRIMITIVE_APPLY_INTERNAL_position != dstack_position)		\
       {									\
 	outf_fatal ("\nPrimitive slipped the dynamic stack: %s\n",	\
-		    (primitive_to_name (primitive)));			\
+		    (PRIMITIVE_NAME (primitive)));			\
 	Microcode_Termination (TERM_EXIT);				\
       }									\
   }									\
   (Regs[REGBLOCK_PRIMITIVE]) = SHARP_F;					\
 }
 
-/* This is only valid for implemented primitives. */
-
-#define PRIMITIVE_ARITY(primitive)					\
-  (Primitive_Arity_Table [PRIMITIVE_TABLE_INDEX (primitive)])
-
-#define PRIMITIVE_N_PARAMETERS primitive_to_arity
-#define PRIMITIVE_N_ARGUMENTS primitive_to_arguments
 #define POP_PRIMITIVE_FRAME(arity) Stack_Pointer = (STACK_LOC (arity))

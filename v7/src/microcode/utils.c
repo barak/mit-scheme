@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.59 1993/06/29 22:53:54 cph Exp $
+$Id: utils.c,v 9.60 1993/08/03 08:30:06 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -39,6 +39,7 @@ MIT in each case. */
 #include "winder.h"
 #include "history.h"
 #include "cmpint.h"
+#include "syscall.h"
 
 /* Helper procedures for Setup_Interrupt, which follows. */
 
@@ -361,13 +362,35 @@ DEFUN (error_bad_range_arg, (n), int n)
     }
   signal_error_from_primitive (error_code);
 }
-
+
 void
 DEFUN_VOID (error_external_return)
 {
   signal_error_from_primitive (ERR_EXTERNAL_RETURN);
 }
-
+
+unsigned int syscall_error_code;
+unsigned int syscall_error_name;
+
+void
+DEFUN (error_in_system_call, (err, name),
+       enum syserr_names err AND enum syscall_names name)
+{
+  syscall_error_code = ((unsigned int) err);
+  syscall_error_name = ((unsigned int) name);
+  signal_error_from_primitive (ERR_IN_SYSTEM_CALL);
+  /*NOTREACHED*/
+}
+
+void
+DEFUN (error_system_call, (code, name),
+       int code AND enum syscall_names name)
+{
+  error_in_system_call ((OS_error_code_to_syserr, (code)),
+			name);
+  /*NOTREACHED*/
+}
+
 long
 DEFUN (arg_integer, (arg_number), int arg_number)
 {
@@ -489,9 +512,6 @@ DEFUN (interpreter_applicable_p, (object), fast SCHEME_OBJECT object)
  * turn off interrupts, and call it with two arguments: Error-Code
  * and Interrupt-Enables.
  */
-
-unsigned int syscall_error_code;
-unsigned int syscall_error_name;
 
 void
 DEFUN (Do_Micro_Error, (Err, From_Pop_Return),
