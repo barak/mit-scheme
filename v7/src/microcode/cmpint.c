@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.87 1996/01/04 23:30:48 cph Exp $
+$Id: cmpint.c,v 1.88 1996/01/04 23:59:47 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -3442,9 +3442,39 @@ DEFUN (declare_builtin, (builtin, name),
       termination_init_error ();
     }
   }
-  builtins[n_builtins] = builtin;
-  builtin_names[n_builtins++] = name;
-  return;
+  {
+    unsigned int low = 0;
+    unsigned int high = n_builtins;
+    while (1)
+      {
+	if (low < high)
+	  {
+	    unsigned int middle = ((low + high) / 2);
+	    if (builtin < (builtins[middle]))
+	      high = middle;
+	    else if (builtin > (builtins[middle]))
+	      low = (middle + 1);
+	    else
+	      {
+		(builtin_names[middle]) = name;
+		return;
+	      }
+	  }
+	else
+	  {
+	    unsigned int scan = n_builtins;
+	    while (low < scan)
+	      {
+		(builtins [scan]) = (builtins [scan - 1]);
+		(builtin_names [scan]) = (builtin_names [scan - 1]);
+		scan -= 1;
+	      }
+	    (builtins [low]) = builtin;
+	    (builtin_names [low]) = name;
+	    return;
+	  }
+      }
+  }
 }
 
 char *
