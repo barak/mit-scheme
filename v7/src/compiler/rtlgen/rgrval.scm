@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.5 1987/05/22 00:10:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.6 1987/05/27 18:36:40 cph Exp $
 #| -*-Scheme-*-
 Copyright (c) 1987 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.5 1987/05/22 00:10:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.6 1987/05/27 18:36:40 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -50,6 +50,11 @@ promotional, or sales literature without prior written consent from
     (lambda (prefix expression)
       (return-2 prefix (transform expression)))))
 
+(define (expression-value/temporary prefix result)
+  (let ((temporary (make-temporary)))
+    (return-2 (scfg*scfg->scfg! prefix (rtl:make-assignment temporary result))
+	      (rtl:make-fetch temporary))))
+(define-method-table-entry 'CONSTANT rvalue-methods
 (define (generate/constant constant)
   (expression-value/simple (rtl:make-constant (constant-value constant))))
 
@@ -69,7 +74,7 @@ promotional, or sales literature without prior written consent from
 	  (lambda (locative)
 	    (expression-value/simple (rtl:make-fetch locative)))
 	  (lambda (environment name)
-	    (return-2
+	    (expression-value/temporary
 	     (rtl:make-interpreter-call:lookup
 	      environment
 	      (intern-scode-variable! (reference-block reference) name)
@@ -86,7 +91,7 @@ promotional, or sales literature without prior written consent from
   (lambda (*access)
     (transmit-values (generate/rvalue (access-environment *access))
       (lambda (prefix expression)
-	(return-2
+	(expression-value/temporary
 	 (scfg*scfg->scfg!
 	  prefix
 	  (rtl:make-interpreter-call:access expression (access-name *access)))
@@ -162,7 +167,7 @@ promotional, or sales literature without prior written consent from
 						      parent))
 				pushes)
 			  pushes))))
-	       (return-2
+	       (expression-value/temporary
 		(scfg*->scfg!
 		 (reverse!
 		  (cons (rtl:make-interpreter-call:enclose (length pushes))
