@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.11 1995/05/01 02:43:24 adams Exp $
+$Id: compiler.pkg,v 1.12 1995/07/27 14:20:23 adams Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -174,7 +174,13 @@ MIT in each case. |#
 	  *rtl-procedures*
 	  *rtl-graphs*)
   (import (runtime compiler-info)
-	  make-dbg-info-vector
+	  make-compiled-module
+	  compiled-module?
+	  compiled-module/expression
+	  make-dbg-locator
+	  dbg-locator/file
+	  dbg-locator/timestamp
+	  make-dbg-wrapper
 	  split-inf-structure!)
   (import (runtime unparser)
 	  *unparse-uninterned-symbols-by-name?*))
@@ -245,46 +251,59 @@ MIT in each case. |#
 	  make-dbg-expression
 	  dbg-expression/block
 	  dbg-expression/label
+	  set-dbg-expression/block!
 	  set-dbg-expression/label!
 
-	  make-dbg-procedure
-	  dbg-procedure/block
-	  dbg-procedure/label
-	  set-dbg-procedure/label!
-	  dbg-procedure/name
-	  dbg-procedure/required
-	  dbg-procedure/optional
-	  dbg-procedure/rest
-	  dbg-procedure/auxiliary
-	  dbg-procedure/external-label
-	  set-dbg-procedure/external-label!
-	  dbg-procedure<?
+	  ;;make-dbg-procedure
+	  ;;dbg-procedure/block
+	  ;;dbg-procedure/label
+	  ;;dbg-procedure/external-label
+	  ;;set-dbg-procedure/external-label!
+	  ;;dbg-procedure<?
 
 	  make-dbg-continuation
 	  dbg-continuation/block
 	  dbg-continuation/label
+	  set-dbg-continuation/block!
 	  set-dbg-continuation/label!
 	  dbg-continuation<?
 
-	  make-dbg-block
-	  dbg-block/parent
-	  dbg-block/layout
-	  dbg-block/stack-link
-	  set-dbg-block/procedure!
+	  ;;make-dbg-block
+	  ;;dbg-block/parent
+	  ;;dbg-block/layout
+	  ;;dbg-block/stack-link
+	  ;;set-dbg-block/procedure!
 
-	  make-dbg-variable
-	  dbg-variable/value
-	  set-dbg-variable/value!
+	  ;;make-dbg-variable
+	  ;;dbg-variable/value
+	  ;;set-dbg-variable/value!
 
-	  dbg-block-name/dynamic-link
-	  dbg-block-name/ic-parent
-	  dbg-block-name/normal-closure
-	  dbg-block-name/return-address
-	  dbg-block-name/static-link
-
-	  make-dbg-label-2
+	  make-dbg-label
 	  dbg-label/offset
-	  set-dbg-label/external?!))
+	  dbg-label/external?
+	  set-dbg-label/external?!)
+
+  (import (compiler midend)
+	  new-dbg-procedure/block
+	  new-dbg-procedure/label
+	  set-new-dbg-procedure/block!
+	  set-new-dbg-procedure/label!
+	  new-dbg-procedure<?
+
+	  new-dbg-block?
+	  new-dbg-block/parent
+	  new-dbg-block/parent-path-prefix
+	  new-dbg-block/procedure
+	  new-dbg-block/type
+	  new-dbg-block/variables
+	  set-new-dbg-block/parent!
+	  new-dbg-block/parent-path-prefix!
+	  set-new-dbg-block/variables!
+
+	  new-dbg-variable?
+	  new-dbg-variable/name
+	  new-dbg-variable/path
+	  set-new-dbg-variable/path!))
 
 (define-package (compiler constraints)
    (files "base/constr")
@@ -499,10 +518,10 @@ MIT in each case. |#
 	  code:-alist
 	  hook:-alist)
   (import (runtime compiler-info)
-	  compiled-code-block/dbg-info
-	  dbg-info-vector/blocks-vector
-	  dbg-info-vector?
-	  dbg-info/labels
+	  compiled-code-block/labels
+	  compiled-entry/filename-and-index
+	  compiled-module?
+	  compiled-module/all-compiled-code-blocks
 	  dbg-label/external?
 	  dbg-label/name
 	  dbg-labels/find-offset))
@@ -543,13 +562,14 @@ MIT in each case. |#
   (parent (compiler))
   (import (runtime compiler-info)
 	  make-dbg-expression
-	  make-dbg-procedure
+	  ;;make-dbg-procedure
 	  make-dbg-continuation
 	  make-dbg-block
-	  set-dbg-block/procedure!
-	  make-dbg-variable
-	  dbg-variable/value
-	  set-dbg-variable/value!)
+	  ;;set-dbg-block/procedure!
+	  ;;make-dbg-variable
+	  ;;dbg-variable/value
+	  ;;set-dbg-variable/value!
+	  )
   (export (compiler top-level)
 	  kmp/pp kmp/ppp
 	  *envconv/compile-by-procedures?*
@@ -565,7 +585,9 @@ MIT in each case. |#
 	  internal-error
 	  internal-warning)
   (export ()
-	  compiler:debug))
+	  compiler:debug)
+  (import (runtime compiler-info)
+	  dbg-label/offset))
 
 (define-package (compiler rtl-parser)
   (files "rtlbase/rtlpars")
