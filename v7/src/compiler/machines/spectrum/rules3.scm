@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 4.37 1992/09/30 19:28:50 cph Exp $
+$Id: rules3.scm,v 4.38 1993/02/18 05:57:06 gjr Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -212,7 +212,7 @@ MIT in each case. |#
 
 (define (optimized-primitive-invocation hook)
   (LAP ,@(clear-map!)
-       ,@(invoke-hook hook)))
+       ,@(invoke-hook/no-return hook)))
 
 ;;;; Invocation Prefixes
 
