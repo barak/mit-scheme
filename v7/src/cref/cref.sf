@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cref.sf,v 1.14 2001/12/17 17:40:58 cph Exp $
+$Id: cref.sf,v 1.15 2001/12/20 03:35:56 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -20,9 +20,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
 |#
 
-(sf/set-default-syntax-table! system-global-syntax-table)
-(sf-conditionally "object")
-(sf-directory ".")
+(fluid-let ((sf/default-syntax-table (->environment '())))
+  (sf-conditionally "object")
+  (sf-directory "."))
 
 (let ((package-set (package-set-pathname "cref")))
   (if (not (file-exists? package-set))
