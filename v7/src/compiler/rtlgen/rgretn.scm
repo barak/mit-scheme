@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.6 1988/08/18 06:50:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.7 1988/08/29 23:14:17 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -75,7 +75,11 @@ MIT in each case. |#
 	 (if not-on-stack?
 	     (return-operator/pop-frames block operator offset 0)
 	     (scfg*scfg->scfg!
-	      (return-operator/pop-frames block operator offset 1)
+	      (return-operator/pop-frames
+	       block
+	       operator
+	       offset
+	       (if (continuation/always-known-operator? continuation) 0 1))
 	      (generate/continuation-entry/pop-extra continuation)))
 	 operand
 	 offset
