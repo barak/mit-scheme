@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.4 1991/05/15 19:10:11 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.5 1991/05/16 17:47:23 hal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -888,7 +888,7 @@ original message into it."
 			(or (and resent-reply-to
 				 (fetch-last-field "resent-subject" start end))
 			    (fetch-first-field "subject" start end))))
-		   (if (string-prefix-ci? "re: " subject)
+		   (if (and subject (string-prefix-ci? "re: " subject))
 		       (string-tail subject 4)
 		       subject))
 		 (if resent-reply-to
