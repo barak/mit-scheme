@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.90 1995/06/30 00:04:25 cph Exp $
+$Id: ymkfile,v 1.91 1997/05/01 01:17:49 cph Exp $
 
-Copyright (c) 1989-95 Massachusetts Institute of Technology
+Copyright (c) 1989-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -680,7 +680,7 @@ psbmap.tch : config.h object.h bignum.h bignmint.h bitstr.h types.h \
 	sdata.h const.h psbmap.h $(GC_HEAD_FILES) comlin.h comlin.c
 usrdef.tch : usrdef.h config.h object.h prim.h
 
-#if defined(__linux) && defined(__GNUC__)
+#ifdef USE_BUILT_IN_LIMITS_FILES
 
 /* `hard-par' dies trying to generate float.h under linux (using GCC 2.6.3).
    However, the built-in limits file generates all the constants we need.  */
@@ -692,7 +692,7 @@ float.h :
 	rm -f float.h
 	echo "#include <float.h>" > float.h
 
-#else /* not (__linux && __GNUC__) */
+#else /* not USE_BUILT_IN_LIMITS_FILES */
 
 limits.h : hard-par
 	rm -f limits.h
@@ -703,7 +703,7 @@ float.h : hard-par
 hard-par : hard-par.c
 	$(CC) -DNO_SC $(LDFLAGS) -o hard-par hard-par.c
 
-#endif /* not (__linux && __GNUC__) */
+#endif /* not USE_BUILT_IN_LIMITS_FILES */
 
 hppacach.o : hppacach.h
 
