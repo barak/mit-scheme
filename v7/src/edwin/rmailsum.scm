@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.23 1992/08/03 21:45:33 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.24 1992/11/09 18:32:45 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -48,7 +48,7 @@
 
 (define-variable rmailsum-rcs-header
   "The RCS header of the rmailsum.scm file."
-  "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.23 1992/08/03 21:45:33 cph Exp $"
+  "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.24 1992/11/09 18:32:45 bal Exp $"
   string?)
 
 (define-variable-per-buffer rmail-buffer
@@ -342,19 +342,11 @@ RECIPIENTS is a string of names separated by commas."
 		  (skip-chars-backward " " (line-end the-mark 0))))
 		(len (string-length from))
 		(mch (string-find-next-char-in-set from (char-set #\@ #\%))))
-	   (substring
-	    (string-append
-	     (if (or (not mch) (<= len 25))
-		 (string-tail from (max 0 (- len 25)))
-		 (let ((lo
-			(cond ((< (- mch 9) 0) 0)
-			      ((< len (+ mch 16))
-			       (- len 25))
-			      (else
-			       (- mch 9)))))
-		   (substring from lo (min len (+ lo 25)))))
-	     "                         ")
-	    0 25))))
+	   (string-pad-right
+	    (if (not mch)
+		(string-head from (if (> len 25) 25 len))
+		(string-head from (min mch 25)))
+	    25))))
    "  #"
    (let ((the-mark
 	  (re-search-forward "^Subject:" the-begin the-end)))
