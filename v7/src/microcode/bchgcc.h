@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.29 1987/06/30 19:26:56 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.30 1987/08/10 21:11:21 jinx Rel $ */
 
 #include "gccode.h"
 #ifdef bsd
@@ -42,7 +42,7 @@ MIT in each case. */
 /* All of these are in objects (Pointer), not bytes. */
 
 #define GC_EXTRA_BUFFER_SIZE	512
-#define GC_DISK_BUFFER_SIZE	4096
+#define GC_DISK_BUFFER_SIZE	1024
 #define GC_BUFFER_SPACE		(GC_DISK_BUFFER_SIZE + GC_EXTRA_BUFFER_SIZE)
 #define GC_BUFFER_BYTES		(GC_DISK_BUFFER_SIZE * sizeof(Pointer))
 
