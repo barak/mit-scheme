@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tximod.scm,v 1.13 1990/10/03 04:56:12 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tximod.scm,v 1.14 1991/09/09 23:43:39 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -76,5 +76,5 @@ modified version of TeX input format."
 (modify-syntax-entry! texinfo-mode:syntax-table #\" " ")
 (modify-syntax-entry! texinfo-mode:syntax-table #\\ " ")
 (modify-syntax-entry! texinfo-mode:syntax-table #\@ "\\")
-(modify-syntax-entry! texinfo-mode:syntax-table #\C-Q "\\")
+(modify-syntax-entry! texinfo-mode:syntax-table #\DC1 "\\")
 (modify-syntax-entry! texinfo-mode:syntax-table #\' "w")
