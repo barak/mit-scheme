@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prdb4.c,v 1.1 2005/01/06 19:09:06 cph Exp $
+$Id: prdb4.c,v 1.2 2005/03/20 22:01:45 cph Exp $
 
 Copyright 2004,2005 Massachusetts Institute of Technology
 
@@ -406,9 +406,9 @@ DEFINE_PRIMITIVE ("DB4:DB-DEL", Prim_db4_db_del, 4, 4, 0)
   }
 }
 
-DEFINE_PRIMITIVE ("DB4:DB-ENV-CREATE", Prim_db4_db_env_create, 3, 3, 0)
+DEFINE_PRIMITIVE ("DB4:DB-ENV-CREATE", Prim_db4_db_env_create, 2, 2, 0)
 {
-  PRIMITIVE_HEADER (3);
+  PRIMITIVE_HEADER (2);
   CHECK_ARG (2, WEAK_PAIR_P);
   {
     DB_ENV * db_env;

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: berkeley-db.scm,v 1.2 2005/03/20 16:56:14 cph Exp $
+$Id: berkeley-db.scm,v 1.3 2005/03/20 22:01:58 cph Exp $
 
 Copyright 2004,2005 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ USA.
   (db4:db-create 3)
   (db4:db-del 4)
   (db4:db-env-close 2)
-  (db4:db-env-create 3)
+  (db4:db-env-create 2)
   (db4:db-env-get-home 2)
   (db4:db-env-get-open-flags 2)
   (db4:db-env-lock-get 6)
