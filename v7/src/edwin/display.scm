@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/display.scm,v 1.5 1992/04/22 21:03:33 mhwu Exp $
+;;;	$Id: display.scm,v 1.6 1994/11/03 04:38:53 adams Exp $
 ;;;
-;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-1994 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -107,11 +107,9 @@
 (define (editor-display-types)
   (list-transform-positive display-types display-type/available?))
 
-(define (name->display-type name fail?)
+(define (name->display-type name)
   (let ((display-type
 	 (list-search-positive display-types
 	   (lambda (display-type)
 	     (eq? name (display-type/name display-type))))))
-    (if (and (not display-type) fail?)
-	(error "Unknown display-type name" name))
     display-type))

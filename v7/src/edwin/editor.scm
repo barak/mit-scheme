@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: editor.scm,v 1.235 1994/03/08 20:24:33 cph Exp $
+;;;	$Id: editor.scm,v 1.236 1994/11/03 04:40:33 adams Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -146,8 +146,13 @@
 		       (let ((name (and (not (null? args))
                                         (car args))))
 			 (if name
-                             (name->display-type name true)
-			     (default-display-type '(CONSOLE))))
+			     (let ((display-type (name->display-type name)))
+			       (if display-type
+				   (if (display-type/available? display-type)
+				       display-type
+				       (error "Requested display type not available:" display-type))
+				   (error "Unknown display type name:" name)))
+			     (default-display-type '() )))
 		       (if (null? args)
 			   '()
 			   (cdr args))))
@@ -160,7 +165,7 @@
 
 (define (default-display-type preferences)
   (define (fail)
-    (error "can't find usable display type"))
+    (error "Can't find any usable display type"))
 
   (define (find-any)
     (let ((types (editor-display-types)))
@@ -171,9 +176,7 @@
   (define (find-preferred display-type-names)
     (if (null? display-type-names)
 	(find-any)
-	(let ((next (name->display-type 
-		     (car display-type-names)
-		     false)))
+	(let ((next (name->display-type (car display-type-names))))
 	  (if (and next 
 		   (display-type/available? next))
 	      next

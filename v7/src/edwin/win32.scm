@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: win32.scm,v 1.2 1994/11/02 19:16:53 adams Exp $
+;;;	$Id: win32.scm,v 1.3 1994/11/03 04:41:31 adams Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -282,11 +282,14 @@
 
 (define win32-display-type)
 
+(define (win32-screen-available?)
+  (implemented-primitive-procedure? win32-screen-create!))
+
 (define (initialize-package!)
   (set! win32-display-type 
 	(make-display-type 'win32
-			   true
-			   true
+			   true        ; multiple screens?
+			   win32-screen-available?
 			   (lambda geometry
 			     geometry
 			     (make-win32-screen))
