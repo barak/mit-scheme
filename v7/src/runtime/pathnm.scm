@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.18 1991/11/05 20:37:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.19 1992/04/11 23:48:35 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -535,6 +535,8 @@ these rules:
 	      (or (try-directory (car directories))
 		  (loop (cdr directories))))))))
 
+(define library-directory-path)
+
 (define (system-library-directory-pathname pathname)
   (if (not pathname)
       (let ((pathname
@@ -548,20 +550,72 @@ these rules:
 	       (if (file-directory? pathname)
 		   (pathname-as-directory pathname)
 		   (loop (cdr directories))))))))
+
+(define known-host-types
+  '((UNIX . 0)
+    (DOS . 1)
+    (VMS . 2)))
 
-(define library-directory-path)
+(define (make-unimplemented-host-type index)
+  (let* ((name (let loop ((types known-host-types))
+		 (cond ((null? types)
+			'UNKNOWN)
+		       ((= index (cdar types))
+			(caar types))
+		       (else
+			(loop (cdr types))))))
+	 (fail (lambda all
+		 (error "(runtime pathname): Unimplemented host type"
+			name all))))
+    (make-host-type index name
+		    fail fail fail fail fail
+		    fail fail fail fail fail)))
 
-(define (initialize-package!)
-  (reset-package!)
-  (add-event-receiver! event:after-restore reset-package!))
+(define available-host-types
+  '())
+
+(define (add-pathname-host-type! name constructor)
+  (let ((host-type (constructor
+		    (let ((place (assq name known-host-types)))
+		      (if (not place)
+			  (error "add-host-type!: Unknown host type"
+				 name)
+			  (cdr place)))))
+	 (place (assq name available-host-types)))
+    (if place
+	(set-cdr! place host-type)
+	(set! available-host-types
+	      (cons (cons name host-type)
+		    available-host-types)))
+    unspecific))
 
 (define (reset-package!)
-  (let ((unix-host-type (make-unix-host-type 0)))
-    (set! host-types (vector unix-host-type))
-    (set! local-host (make-host unix-host-type false)))
+  (let* ((host-type
+	  (cdr
+	   (let ((os-type (intern (microcode-identification-item
+				  'OS-NAME-STRING))))
+	    (or (assq os-type available-host-types)
+		(error "(runtime pathname) reset-package!: Unknown OS type"
+		       os-type)))))
+	 (len (length known-host-types))
+	 (vec (make-vector len false)))
+    (do ((types available-host-types (cdr types)))
+	((null? types))
+      (let ((type (cdar types)))
+	(vector-set! vec (host-type/index type) type)))
+    (do ((i 0 (1+ i)))
+	((>= i len))
+      (if (not (vector-ref vec i))
+	  (vector-set! vec i (make-unimplemented-host-type i))))
+    (set! host-types vec)
+    (set! local-host (make-host host-type false)))
   (set! *default-pathname-defaults*
 	(make-pathname local-host false false false false false))
   (set! library-directory-path
 	(map pathname-as-directory
 	     (vector->list ((ucode-primitive microcode-library-path 0)))))
   unspecific)
+
+(define (initialize-package!)
+  (reset-package!)
+  (add-event-receiver! event:after-restore reset-package!))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.34 1992/02/25 22:55:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.35 1992/04/11 23:48:12 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,7 +48,7 @@ MIT in each case. |#
   binary-fasload
   (channel-write 4)
   environment-link-name
-  exit
+  exit-with-value
   (file-exists? 1)
   garbage-collect
   get-fixed-objects-vector
@@ -56,6 +56,7 @@ MIT in each case. |#
   get-primitive-address
   get-primitive-name
   lexical-reference
+  lexical-unreferenceable?
   microcode-identify
   scode-eval
   set-fixed-objects-vector!
@@ -93,7 +94,7 @@ MIT in each case. |#
   (tty-write-char newline-char)
   (tty-write-string message)
   (tty-write-char newline-char)
-  (exit))
+  (exit-with-value 1))
 
 ;;;; GC, Interrupts, Errors
 
@@ -145,23 +146,37 @@ MIT in each case. |#
     (tty-write-string " evaluated")
     value))
 
-(define (package-initialize package-name procedure-name)
-  (tty-write-char newline-char)
-  (tty-write-string "initialize: (")
-  (let loop ((name package-name))
-    (if (not (null? name))
-	(begin
-	  (if (not (eq? name package-name))
-	      (tty-write-string " "))
-	  (tty-write-string (system-pair-car (car name)))
-	  (loop (cdr name)))))
-  (tty-write-string ")")
-  (if (not (eq? procedure-name 'INITIALIZE-PACKAGE!))
-      (begin
-	(tty-write-string " [")
-	(tty-write-string (system-pair-car procedure-name))
-	(tty-write-string "]")))
-  ((lexical-reference (package-reference package-name) procedure-name)))
+(define (package-initialize package-name procedure-name mandatory?)
+  (define (print-name string)
+    (tty-write-char newline-char)
+    (tty-write-string string)
+    (tty-write-string " (")
+    (let loop ((name package-name))
+      (if (not (null? name))
+	  (begin
+	    (if (not (eq? name package-name))
+		(tty-write-string " "))
+	    (tty-write-string (system-pair-car (car name)))
+	    (loop (cdr name)))))
+    (tty-write-string ")"))
+
+  (let ((env (package-reference package-name)))
+    (cond ((not (lexical-unreferenceable? env procedure-name))
+	   (print-name "initialize:")
+	   (if (not (eq? procedure-name 'INITIALIZE-PACKAGE!))
+	       (begin
+		 (tty-write-string " [")
+		 (tty-write-string (system-pair-car procedure-name))
+		 (tty-write-string "]")))
+	   ((lexical-reference env procedure-name)))
+	  ((not mandatory?)
+	   (print-name "* skipping:"))
+	  (else
+	   ;; Missing mandatory package! Report it and die.
+	   (print-name "Package")
+	   (tty-write-string " is missing initialization procedure ")
+	   (tty-write-string (system-pair-car procedure-name))
+	   (fatal-error "Could not initialize a required package.")))))
 
 (define (package-reference name)
   (package/environment (find-package name)))
@@ -170,7 +185,7 @@ MIT in each case. |#
   (let loop ((packages packages))
     (if (not (null? packages))
 	(begin
-	  (package-initialize (car packages) 'INITIALIZE-PACKAGE!)
+	  (package-initialize (car packages) 'INITIALIZE-PACKAGE! false)
 	  (loop (cdr packages))))))
 
 (define (string-append x y)
@@ -236,65 +251,66 @@ MIT in each case. |#
 (package/add-child! system-global-package 'PACKAGE environment-for-package)
 (eval (fasload "runtim.bcon" #f) system-global-environment)
 
-;; Global databases.  Load, then initialize.
-(let loop
-    ((files
-      '(("gcdemn" . (RUNTIME GC-DAEMONS))
-	("poplat" . (RUNTIME POPULATION))
-	("prop1d" . (RUNTIME 1D-PROPERTY))
-	("events" . (RUNTIME EVENT-DISTRIBUTOR))
-	("gdatab" . (RUNTIME GLOBAL-DATABASE))
-	("boot" . ())
-	("queue" . ())
-	("gc" . (RUNTIME GARBAGE-COLLECTOR))
-	("equals" . ())
-	("list" . (RUNTIME LIST))
-	("record" . (RUNTIME RECORD)))))
-  (if (not (null? files))
-      (begin
-	(eval (fasload (map-filename (car (car files))) #t)
-	      (package-reference (cdr (car files))))
-	(loop (cdr files)))))
-(package-initialize '(RUNTIME GC-DAEMONS) 'INITIALIZE-PACKAGE!)
-(package-initialize '(RUNTIME POPULATION) 'INITIALIZE-PACKAGE!)
-(package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-PACKAGE!)
-(package-initialize '(RUNTIME EVENT-DISTRIBUTOR) 'INITIALIZE-PACKAGE!)
-(package-initialize '(RUNTIME GLOBAL-DATABASE) 'INITIALIZE-PACKAGE!)
-(package-initialize '(RUNTIME POPULATION) 'INITIALIZE-UNPARSER!)
-(package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-UNPARSER!)
-(package-initialize '(RUNTIME EVENT-DISTRIBUTOR) 'INITIALIZE-UNPARSER!)
-(package-initialize '(PACKAGE) 'INITIALIZE-UNPARSER!)
-(package-initialize '(RUNTIME GARBAGE-COLLECTOR) 'INITIALIZE-PACKAGE!)
-(lexical-assignment (package-reference '(RUNTIME GARBAGE-COLLECTOR))
-		    'CONSTANT-SPACE/BASE
-		    constant-space/base)
-(package-initialize '(RUNTIME LIST) 'INITIALIZE-PACKAGE!)
-(package-initialize '(RUNTIME RECORD) 'INITIALIZE-PACKAGE!)
+;;; Global databases.  Load, then initialize.
+(let ((sine-qua-non
+       '(("gcdemn" . (RUNTIME GC-DAEMONS))
+	 ("poplat" . (RUNTIME POPULATION))
+	 ("prop1d" . (RUNTIME 1D-PROPERTY))
+	 ("events" . (RUNTIME EVENT-DISTRIBUTOR))
+	 ("gdatab" . (RUNTIME GLOBAL-DATABASE))
+	 ("boot" . ())
+	 ("queue" . ())
+	 ("gc" . (RUNTIME GARBAGE-COLLECTOR))
+	 ("equals" . ())
+	 ("list" . (RUNTIME LIST))
+	 ("record" . (RUNTIME RECORD)))))
+  (let loop ((files sine-qua-non))
+    (if (not (null? files))
+	(begin
+	  (eval (fasload (map-filename (car (car files))) #t)
+		(package-reference (cdr (car files))))
+	  (loop (cdr files)))))
+  (package-initialize '(RUNTIME GC-DAEMONS) 'INITIALIZE-PACKAGE! true)
+  (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-PACKAGE! true)
+  (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-PACKAGE! true)
+  (package-initialize '(RUNTIME EVENT-DISTRIBUTOR) 'INITIALIZE-PACKAGE! true)
+  (package-initialize '(RUNTIME GLOBAL-DATABASE) 'INITIALIZE-PACKAGE! true)
+  (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-UNPARSER! true)
+  (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-UNPARSER! true)
+  (package-initialize '(RUNTIME EVENT-DISTRIBUTOR) 'INITIALIZE-UNPARSER! true)
+  (package-initialize '(PACKAGE) 'INITIALIZE-UNPARSER! true)
+  (package-initialize '(RUNTIME GARBAGE-COLLECTOR) 'INITIALIZE-PACKAGE! true)
+  (lexical-assignment (package-reference '(RUNTIME GARBAGE-COLLECTOR))
+		      'CONSTANT-SPACE/BASE
+		      constant-space/base)
+  (package-initialize '(RUNTIME LIST) 'INITIALIZE-PACKAGE! true)
+  (package-initialize '(RUNTIME RECORD) 'INITIALIZE-PACKAGE! true)
 
 ;; Load everything else.
-((eval (fasload "runtim.bldr" #f) system-global-environment)
- (lambda (filename environment)
-   (if (not (or (string=? filename "packag")
-		(string=? filename "gcdemn")
-		(string=? filename "poplat")
-		(string=? filename "prop1d")
-		(string=? filename "events")
-		(string=? filename "gdatab")
-		(string=? filename "boot")
-		(string=? filename "queue")
-		(string=? filename "gc")
-		(string=? filename "equals")
-		(string=? filename "list")
-		(string=? filename "record")))
-       (eval (fasload (map-filename filename) #t) environment))
-   unspecific)
- `((SORT-TYPE . MERGE-SORT)
-   (OS-TYPE . ,(intern os-name-string))
-   (OPTIONS . NO-LOAD)))
+;; Note: The following code needs MAP* and MEMBER-PROCEDURE
+;; from runtime/list. Fortunately that file has already been loaded.
 
-(package-initialize '(RUNTIME MICROCODE-TABLES) 'READ-MICROCODE-TABLES!)
+  ((eval (fasload "runtim.bldr" #f) system-global-environment)
+   (let ((to-avoid
+	  (cons "packag"
+		(map* (if (and (implemented-primitive-procedure? file-exists?)
+			       (file-exists? "runtim.bad"))
+			  (fasload "runtim.bad" #f)
+			  '())
+		      car
+		      sine-qua-non)))
+	 (string-member? (member-procedure string=?)))
+     (lambda (filename environment)
+       (if (not (string-member? filename to-avoid))
+	   (eval (fasload (map-filename filename) #t) environment))
+       unspecific))
+   `((SORT-TYPE . MERGE-SORT)
+     (OS-TYPE . ,(intern os-name-string))
+     (OPTIONS . NO-LOAD))))
+
+(package-initialize '(RUNTIME MICROCODE-TABLES) 'READ-MICROCODE-TABLES! true)
 
-;; Funny stuff is done.  Rest of sequence is standardized.
+;;; Funny stuff is done.  Rest of sequence is standardized.
 (package-initialization-sequence
  '(
    ;; Microcode interface
@@ -333,6 +349,10 @@ MIT in each case. |#
    (RUNTIME STRING-INPUT)
    (RUNTIME STRING-OUTPUT)
    (RUNTIME TRUNCATED-STRING-OUTPUT)
+   ;; These MUST be done before (RUNTIME PATHNAME) 
+   ;; Typically only one of them is loaded.
+   (RUNTIME PATHNAME UNIX)
+   (RUNTIME PATHNAME DOS)
    (RUNTIME PATHNAME)
    (RUNTIME WORKING-DIRECTORY)
    (RUNTIME LOAD)
@@ -364,7 +384,7 @@ MIT in each case. |#
    ;; Emacs -- last because it grabs the kitchen sink.
    (RUNTIME EMACS-INTERFACE)))
 
-(package-initialize '(RUNTIME CONTINUATION-PARSER) 'INITIALIZE-SPECIAL-FRAMES!)
+(package-initialize '(RUNTIME CONTINUATION-PARSER) 'INITIALIZE-SPECIAL-FRAMES! false)
 
 (let ((filename (map-filename "site")))
   (if (file-exists? filename)

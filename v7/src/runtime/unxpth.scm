@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.9 1992/02/13 18:26:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.10 1992/04/11 23:48:27 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,6 +50,9 @@ MIT in each case. |#
 		  unix/user-homedir-pathname
 		  unix/init-file-pathname
 		  unix/pathname-simplify))
+
+(define (initialize-package!)
+  (add-pathname-host-type! 'UNIX make-unix-host-type))
 
 ;;;; Pathname Parser
 

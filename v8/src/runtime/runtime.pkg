@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.144 1992/04/06 19:54:43 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.145 1992/04/11 23:48:00 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -53,6 +53,7 @@ MIT in each case. |#
     (else))
   (file-case os-type
     ((unix) "unxprm")
+    ((dos) "dosprm")
     (else)))
 
 (define-package (package)
@@ -435,6 +436,7 @@ MIT in each case. |#
 (define-package (runtime directory)
   (file-case os-type
     ((unix) "unxdir")
+    ((dos) "dosdir")
     ;;(else "unkdir")
     (else))
   (parent ())
@@ -1455,10 +1457,18 @@ MIT in each case. |#
   (initialization (initialize-package!)))
 
 (define-package (runtime pathname unix)
-  (files "unxpth")
   (parent (runtime pathname))
-  (export (runtime pathname)
-	  make-unix-host-type))
+  (file-case os-type
+   ((unix) "unxpth")
+   (else))
+  (initialization (initialize-package!)))
+
+(define-package (runtime pathname dos)
+  (parent (runtime pathname))
+  (file-case os-type
+   ((dos) "dospth")
+   (else))
+  (initialization (initialize-package!)))
 
 (define-package (runtime population)
   (files "poplat")
