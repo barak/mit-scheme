@@ -27,7 +27,7 @@ _asm_scheme_to_interface:
 scheme_to_interface:
 	movl	d6,a6@(regblock_val)
 	movl	a5,_Free
-	movl	sp,_Ext_Stack_Pointer
+	movl	sp,_sp_register
 	movl	c_save_stack,sp
 	movl	a7@,a6
 	movl	d4,a7@-
@@ -49,7 +49,7 @@ _interface_to_scheme:
 interface_to_scheme_internal:
 	movl	a6,a7@
 	movl	sp,c_save_stack
-	movl	_Ext_Stack_Pointer,sp
+	movl	_sp_register,sp
 	movl	_Free,a5
 	lea	_Registers,a6
 	movl	#address_mask,d7
@@ -138,7 +138,7 @@ _asm_interrupt_dlink:
 	.globl	_asm_primitive_apply
 _asm_primitive_apply:
 	movl	a5,_Free
-	movl	sp,_Ext_Stack_Pointer
+	movl	sp,_sp_register
 	movl	c_save_stack,sp
 	movl	a7@,a6
 	movl	d1,a7@-
@@ -341,7 +341,7 @@ shortcircuit_apply_size_8_1:
 	.globl	_asm_allocate_closure
 _asm_allocate_closure:
 	movl	a5,_Free
-	movl	sp,_Ext_Stack_Pointer
+	movl	sp,_sp_register
 	movl	c_save_stack,sp
 	movl	a7@,a6
 	movl	a1,a7@-
@@ -354,7 +354,7 @@ _asm_allocate_closure:
 	movl	a7@+,a1
 	movl	a6,a7@
 	movl	sp,c_save_stack
-	movl	_Ext_Stack_Pointer,sp
+	movl	_sp_register,sp
 	movl	_Free,a5
 	lea	_Registers,a6
 	movl	#address_mask,d7

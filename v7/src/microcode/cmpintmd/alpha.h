@@ -1,8 +1,9 @@
 /* -*- C -*-
 
-$Id: alpha.h,v 1.6 2001/12/16 06:01:33 cph Exp $
+$Id: alpha.h,v 1.7 2002/07/02 18:14:15 cph Exp $
 
-Copyright (c) 1992-1993, 2001 Digital Equipment Corporation (D.E.C.)
+Copyright (c) 1992-1993 Digital Equipment Corporation (D.E.C.)
+Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 
 This software was developed at the Digital Equipment Corporation
 Cambridge Research Laboratory.  Permission to copy this software, to
@@ -543,7 +544,7 @@ DEFUN (interface_initialize, (table),
   extern void __remq();
 
   Registers[REGBLOCK_ADDRESS_OF_STACK_POINTER] =
-    ((SCHEME_OBJECT) &Ext_Stack_Pointer);
+    ((SCHEME_OBJECT) &sp_register);
   Registers[REGBLOCK_ADDRESS_OF_FREE] =
     ((SCHEME_OBJECT) &Free);
   Registers[REGBLOCK_ADDRESS_OF_UTILITY_TABLE] =

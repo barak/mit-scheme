@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: stack.h,v 9.38 1999/01/02 06:11:34 cph Exp $
+$Id: stack.h,v 9.39 2002/07/02 18:15:28 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* This file contains macros for manipulating stacks and stacklets. */
@@ -53,9 +54,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 {									\
   if ((Stack_Pointer - (N)) < Stack_Guard)				\
   {									\
-    Export_Registers();							\
     Allocate_New_Stacklet((N));						\
-    Import_Registers();							\
   }									\
 }
 

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.15 2000/12/05 21:23:45 cph Exp $
+$Id: liarc.h,v 1.16 2002/07/02 18:15:23 cph Exp $
 
-Copyright (c) 1992-2000 Massachusetts Institute of Technology
+Copyright (c) 1992-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 #ifndef LIARC_INCLUDED
@@ -62,7 +63,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 extern PTR dstack_position;
 extern SCHEME_OBJECT * Free;
-extern SCHEME_OBJECT * Ext_Stack_Pointer;
+extern SCHEME_OBJECT * sp_register;
 extern SCHEME_OBJECT Registers[];
 
 union machine_word_u

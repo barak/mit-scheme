@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.57 2002/03/11 21:39:18 cph Exp $
+### $Id: i386.m4,v 1.58 2002/07/02 18:13:28 cph Exp $
 ###
 ### Copyright (c) 1992-2002 Massachusetts Institute of Technology
 ###
@@ -360,7 +360,7 @@ DECLARE_DATA_SEGMENT()
 declare_alignment(2)
 
 use_external_data(EVR(Free))
-use_external_data(EVR(Ext_Stack_Pointer))
+use_external_data(EVR(sp_register))
 use_external_data(EVR(utility_table))
 
 ifdef(`WIN32',`
@@ -566,7 +566,7 @@ IF387(`
 	ffree	ST(7)
 scheme_to_interface_proceed:
 ')
-	OP(mov,l)	TW(REG(esp),EVR(Ext_Stack_Pointer))
+	OP(mov,l)	TW(REG(esp),EVR(sp_register))
 	OP(mov,l)	TW(rfree,EVR(Free))
 
 	OP(mov,l)	TW(EVR(C_Stack_Pointer),REG(esp))
@@ -628,7 +628,7 @@ interface_to_scheme_proceed:
 	OP(mov,l)	TW(LOF(REGBLOCK_VAL(),regs),REG(eax)) # Value/dynamic link
 	OP(mov,l)	TW(IMM(ADDRESS_MASK),rmask)	# = %ebp
 
-	OP(mov,l)	TW(EVR(Ext_Stack_Pointer),REG(esp))
+	OP(mov,l)	TW(EVR(sp_register),REG(esp))
 	OP(mov,l)	TW(REG(eax),REG(ecx))		# Preserve if used
 	OP(and,l)	TW(rmask,REG(ecx))		# Restore potential dynamic link
 	OP(mov,l)	TW(REG(ecx),LOF(REGBLOCK_DLINK(),regs))

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: interp.h,v 9.42 2000/12/05 21:23:45 cph Exp $
+$Id: interp.h,v 9.43 2002/07/02 18:15:18 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* Macros used by the interpreter and some utilities. */
@@ -24,69 +25,54 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 extern void EXFUN (abort_to_interpreter, (int argument));
 extern int EXFUN (abort_to_interpreter_argument, (void));
 
-                     /********************/
-                     /* OPEN CODED RACKS */
-                     /********************/
-
-/* Move from register to static storage and back */
-
-/* Note defined() cannot be used because VMS does not understand it. */
-
-#ifdef In_Main_Interpreter
-#ifndef ENABLE_DEBUGGING_TOOLS
-#define Cache_Registers
-#endif
-#endif
-
-#ifdef Cache_Registers
-
-#define Regs		Reg_Block
-#define Stack_Pointer	Reg_Stack_Pointer
-#define History		Reg_History
-
-#define Import_Registers()						\
-{									\
-  Reg_Stack_Pointer = Ext_Stack_Pointer;				\
-  Reg_History = Ext_History;						\
-}
-
-#define Export_Registers()						\
-{									\
-  Ext_History = Reg_History;						\
-  Ext_Stack_Pointer = Reg_Stack_Pointer;				\
-}
-
-/* Importing History is required for C_call_scheme for work correctly because
-   the recursive call to Interpret() can rotate the history:
-*/
-#define IMPORT_REGS_AFTER_PRIMITIVE()                                   \
-{                                                                       \
-    Reg_History = Ext_History;                                          \
-}
-
-#define EXPORT_REGS_BEFORE_PRIMITIVE Export_Registers
-
-#else
-
 #define Regs		Registers
-#define Stack_Pointer	Ext_Stack_Pointer
-#define History		Ext_History
+#define Stack_Pointer	sp_register
+#define History		history_register
 
-#define Import_Registers()
-#define Export_Registers()
+#define Env		(Registers[REGBLOCK_ENV])
+#define Val		(Registers[REGBLOCK_VAL])
+#define Expression	(Registers[REGBLOCK_EXPR])
+#define Return		(Registers[REGBLOCK_RETURN])
 
-#define IMPORT_REGS_AFTER_PRIMITIVE()
-#define EXPORT_REGS_BEFORE_PRIMITIVE()
+/* Fetch from register */
 
-#endif
+#define Fetch_Expression()	(Registers[REGBLOCK_EXPR])
+#define Fetch_Env()		(Registers[REGBLOCK_ENV])
+#define Fetch_Return()		(Registers[REGBLOCK_RETURN])
 
-#define Import_Val()
-#define Import_Registers_Except_Val()		Import_Registers()
+/* Store into register */
 
-#define Env		Regs[REGBLOCK_ENV]
-#define Val		Regs[REGBLOCK_VAL]
-#define Expression	Regs[REGBLOCK_EXPR]
-#define Return		Regs[REGBLOCK_RETURN]
+#define Store_Expression(P)	(Registers[REGBLOCK_EXPR]) = (P)
+#define Store_Env(P)		(Registers[REGBLOCK_ENV]) = (P)
+#define Store_Return(P)							\
+  (Registers[REGBLOCK_RETURN]) = (MAKE_OBJECT (TC_RETURN_CODE, (P)))
+
+/* Note: Save_Cont must match the definitions in sdata.h */
+
+#define Save_Cont()							\
+{									\
+  STACK_PUSH (Registers[REGBLOCK_EXPR]);				\
+  STACK_PUSH (Registers[REGBLOCK_RETURN]);				\
+}
+
+#define Restore_Cont()							\
+{									\
+  Registers[REGBLOCK_RETURN] = (STACK_POP ());				\
+  Registers[REGBLOCK_EXPR] = (STACK_POP ());				\
+}
+
+#define Stop_Trapping() Trapping = 0
+
+/* Saving history is required for C_call_scheme to work correctly
+   because the recursive call to Interpret() can rotate the history.
+   */
+
+#define APPLY_PRIMITIVE_FROM_INTERPRETER(location, primitive)		\
+{									\
+  SCHEME_OBJECT * APFI_saved_history = history_register;		\
+  PRIMITIVE_APPLY ((location), (primitive));				\
+  history_register = APFI_saved_history;				\
+}
 
 /* Internal_Will_Push is in stack.h. */
 
@@ -94,22 +80,22 @@ extern int EXFUN (abort_to_interpreter_argument, (void));
 
 #define Will_Push(N)							\
 {									\
-  SCHEME_OBJECT *Will_Push_Limit;					\
+  SCHEME_OBJECT * Will_Push_Limit;					\
 									\
-  Internal_Will_Push((N));						\
+  Internal_Will_Push ((N));						\
   Will_Push_Limit = (STACK_LOC (- (N)))
 
 #define Pushed()							\
-  if (Stack_Pointer < Will_Push_Limit)					\
-  {									\
-    Stack_Death();							\
-  }									\
+  if (sp_register < Will_Push_Limit)					\
+    {									\
+      Stack_Death ();							\
+    }									\
 }
 
 #else
 
 #define Will_Push(N)			Internal_Will_Push(N)
-#define Pushed()			/* No op */
+#define Pushed()
 
 #endif
 
@@ -120,8 +106,8 @@ extern int EXFUN (abort_to_interpreter_argument, (void));
  */
 
 #define Will_Eventually_Push(N)		Internal_Will_Push(N)
-#define Finished_Eventual_Pushing(M)	/* No op */
-
+#define Finished_Eventual_Pushing(M)
+
 /* Primitive stack operations:
    These operations hide the direction of stack growth.
    `Throw' in "stack.h", `Allocate_New_Stacklet' in "utils.c",
@@ -140,46 +126,10 @@ extern int EXFUN (abort_to_interpreter_argument, (void));
 #define STACK_LOCATIVE_POP(locative)					\
   (* (STACK_LOCATIVE_INCREMENT (locative)))
 
-#define STACK_PUSH(object) (STACK_LOCATIVE_PUSH (Stack_Pointer)) = (object)
-#define STACK_POP() (STACK_LOCATIVE_POP (Stack_Pointer))
-#define STACK_LOC(offset) (STACK_LOCATIVE_OFFSET (Stack_Pointer, (offset)))
-#define STACK_REF(offset) (STACK_LOCATIVE_REFERENCE (Stack_Pointer, (offset)))
-
-/* Fetch from register */
-
-#define Fetch_Expression()	Expression
-#define Fetch_Env()		Env
-#define Fetch_Return()		Return
-
-/* Store into register */
-
-#define Store_Expression(P)	Expression = (P)
-#define Store_Env(P)		Env = (P)
-#define Store_Return(P)							\
-  Return = (MAKE_OBJECT (TC_RETURN_CODE, (P)))
-
-#define Save_Env()		STACK_PUSH (Env)
-#define Restore_Env()		Env = (STACK_POP ())
-#define Restore_Then_Save_Env()	Env = (STACK_REF (0))
-
-/* Note: Save_Cont must match the definitions in sdata.h */
-
-#define Save_Cont()							\
-{									\
-  STACK_PUSH (Expression);						\
-  STACK_PUSH (Return);							\
-}
-
-#define Restore_Cont()							\
-{									\
-  Return = (STACK_POP ());						\
-  Expression = (STACK_POP ());						\
-}
-
-#define Stop_Trapping()							\
-{									\
-  Trapping = false;							\
-}
+#define STACK_PUSH(object) (STACK_LOCATIVE_PUSH (sp_register)) = (object)
+#define STACK_POP() (STACK_LOCATIVE_POP (sp_register))
+#define STACK_LOC(offset) (STACK_LOCATIVE_OFFSET (sp_register, (offset)))
+#define STACK_REF(offset) (STACK_LOCATIVE_REFERENCE (sp_register, (offset)))
 
 /* Primitive utility macros */
 
@@ -198,7 +148,7 @@ extern SCHEME_OBJECT EXFUN
 
 #define PRIMITIVE_APPLY_INTERNAL(loc, primitive)			\
 {									\
-  (Regs[REGBLOCK_PRIMITIVE]) = (primitive);				\
+  (Registers[REGBLOCK_PRIMITIVE]) = (primitive);			\
   {									\
     /* Save the dynamic-stack position. */				\
     PTR PRIMITIVE_APPLY_INTERNAL_position = dstack_position;		\
@@ -213,10 +163,10 @@ extern SCHEME_OBJECT EXFUN
 	Microcode_Termination (TERM_EXIT);				\
       }									\
   }									\
-  (Regs[REGBLOCK_PRIMITIVE]) = SHARP_F;					\
+  (Registers[REGBLOCK_PRIMITIVE]) = SHARP_F;				\
 }
 
-#define POP_PRIMITIVE_FRAME(arity) Stack_Pointer = (STACK_LOC (arity))
+#define POP_PRIMITIVE_FRAME(arity) sp_register = (STACK_LOC (arity))
 
 typedef struct interpreter_state_s * interpreter_state_t;
 

@@ -1,8 +1,8 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;; $Id: hppa.m4,v 1.39 2000/12/05 21:23:50 cph Exp $
+;;; $Id: hppa.m4,v 1.40 2002/07/02 18:13:23 cph Exp $
 ;;;
-;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1989-2000, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,8 +16,8 @@ changecom(`;');;; -*-Midas-*-
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-;;;
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; HP Precision Architecture assembly language part of the compiled
 ;;;; code interface. See cmpint.txt, cmpint.c, cmpint-hppa.h, and
@@ -155,8 +155,8 @@ ep_interface_to_scheme
 	LDW	8(0,4),2			; Move interpreter reg to val
 	COPY	2,19				; Restore dynamic link if any
 	DEP	5,LOW_TC_BIT,TC_LENGTH,19
-	ADDIL	L'Ext_Stack_Pointer-$global$,27
-	LDW	R'Ext_Stack_Pointer-$global$(1),22 ; Setup stack pointer
+	ADDIL	L'sp_register-$global$,27
+	LDW	R'sp_register-$global$(1),22	; Setup stack pointer
 
 ep_interface_to_scheme_2
 	LDW	0(0,4),20			; Setup memtop
@@ -175,9 +175,9 @@ scheme_to_interface
 	STW	2,8(0,4)			; Move val to interpreter reg
 	ADDIL	L'hppa_utility_table-$global$,27
 	LDW	R'hppa_utility_table-$global$(1),29
-	ADDIL	L'Ext_Stack_Pointer-$global$,27
+	ADDIL	L'sp_register-$global$,27
 	LDWX,S	28(0,29),29			; Find handler
-	STW	22,R'Ext_Stack_Pointer-$global$(1) ; Update stack pointer
+	STW	22,R'sp_register-$global$(1)	; Update stack pointer
 	ADDIL	L'Free-$global$,27
 	STW	21,R'Free-$global$(1)		; Update free
 	ifelse(ASM_DEBUG,1,"ADDIL	L'interface_counter-$global$,27
@@ -925,8 +925,8 @@ invoke_primitive
 	ADDIL	L'Primitive_Arity_Table-$global$,27
 	LDW	R'Primitive_Arity_Table-$global$(1),18
 	LDWX,S	24(0,25),25			; find primitive entry point
-	ADDIL	L'Ext_Stack_Pointer-$global$,27
-	STW	22,R'Ext_Stack_Pointer-$global$(1) ; Update stack pointer
+	ADDIL	L'sp_register-$global$,27
+	STW	22,R'sp_register-$global$(1)	; Update stack pointer
 	ADDIL	L'Free-$global$,27
 	LDWX,S	24(0,18),18			; primitive arity
 	STW	21,R'Free-$global$(1)		; Update free	
@@ -934,8 +934,8 @@ invoke_primitive
 	BLE	0(4,25)				; Call primitive
 	COPY	31,2				; Setup return address
 
-	ADDIL	L'Ext_Stack_Pointer-$global$,27
-	LDW	R'Ext_Stack_Pointer-$global$(1),22 ; Setup stack pointer
+	ADDIL	L'sp_register-$global$,27
+	LDW	R'sp_register-$global$(1),22	; Setup stack pointer
 	COPY	28,2				; Move result to val
 	SH2ADD	18,22,22			; pop frame
 	LDWM	4(0,22),26			; return address as object
@@ -1563,7 +1563,7 @@ undivert(1)
 	.SUBSPA $BSS$,QUAD=1,ALIGN=8,ACCESS=31,ZERO
 	.IMPORT $global$,DATA
 	.IMPORT	Registers,DATA
-	.IMPORT	Ext_Stack_Pointer,DATA
+	.IMPORT	sp_register,DATA
 	.IMPORT	Free,DATA
 	.IMPORT	hppa_utility_table,DATA
 	.IMPORT	hppa_primitive_table,DATA

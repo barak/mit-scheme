@@ -1,8 +1,8 @@
 ### -*-Midas-*-
 ###
-### $Id: vax.m4,v 1.4 2000/12/05 21:23:50 cph Exp $
+### $Id: vax.m4,v 1.5 2002/07/02 18:14:00 cph Exp $
 ###
-### Copyright (c) 1991-2000 Massachusetts Institute of Technology
+### Copyright (c) 1991-2000, 2002 Massachusetts Institute of Technology
 ###
 ### This program is free software; you can redistribute it and/or
 ### modify it under the terms of the GNU General Public License as
@@ -16,8 +16,8 @@
 ###
 ### You should have received a copy of the GNU General Public License
 ### along with this program; if not, write to the Free Software
-### Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-###
+### Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+### 02111-1307, USA.
 
 #### Vax assembly language (BSD as Syntax) part of the compiled code
 #### interface.  See cmpint.txt, cmpaux.txt, cmpint.c, cmpint-vax.h,
@@ -147,7 +147,7 @@ define(dlink,fp)
 ASMSET(regblock_val,8)
 ASMSET(address_mask,ADDRESS_MASK)
 
-reference_c_variable(Ext_Stack_Pointer)
+reference_c_variable(sp_register)
 reference_c_variable(Free)
 reference_c_variable(Registers)
 reference_c_variable(utility_table)
@@ -190,7 +190,7 @@ define_c_procedure(C_to_interface)
 define_c_label(interface_to_scheme)
 					# Swap to C registers
 	movl	sp,c_save_stack
-	movl	extern_c_variable(Ext_Stack_Pointer),sp
+	movl	extern_c_variable(sp_register),sp
 	movl	extern_c_variable(Free),rfree
 					# Scheme return value
 	movl	regblock_val(regs),rval
@@ -220,7 +220,7 @@ define_c_label(asm_scheme_to_interface)
 					# Swap to C registers
 	movl	rval,regblock_val(regs)
 	movl	rfree,extern_c_variable(Free)
-	movl	sp,extern_c_variable(Ext_Stack_Pointer)
+	movl	sp,extern_c_variable(sp_register)
 	movl	c_save_stack,sp
 	movl	(sp),fp
 	movl	4(sp),ap

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: extern.h,v 9.60 2001/07/31 03:11:21 cph Exp $
+$Id: extern.h,v 9.61 2002/07/02 18:15:07 cph Exp $
 
-Copyright (c) 1987-2001 Massachusetts Institute of Technology
+Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -91,7 +91,7 @@ extern SCHEME_OBJECT
   * Unused_Heap_Top,	/* Top of unused heap */
   * Unused_Heap_Bottom,	/* Bottom of unused heap */
   * Stack_Guard,	/* Guard area at end of stack */
-  * Ext_Stack_Pointer,	/* Next available slot in control stack */
+  * sp_register,	/* Next available slot in control stack */
   * Stack_Bottom,	/* Bottom of control stack */
   * Stack_Top,		/* Top of control stack */
   * Free_Constant,	/* Next free word in constant space */
@@ -99,7 +99,7 @@ extern SCHEME_OBJECT
   * Constant_Top,	/* Top of constant+pure space */
   * Local_Heap_Base,	/* Per-processor CONSing area */
   * Free_Stacklets,	/* Free list of stacklets */
-  * Ext_History,	/* History register */
+  * history_register,	/* History register */
   Current_State_Point,	/* Dynamic state point */
   Fluid_Bindings;	/* Fluid bindings AList */
 

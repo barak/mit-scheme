@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: storage.c,v 9.57 2000/12/05 21:23:48 cph Exp $
+$Id: storage.c,v 9.58 2002/07/02 18:15:33 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* This file defines the storage for the interpreter's global variables. */
@@ -36,7 +37,7 @@ SCHEME_OBJECT
   * Unused_Heap_Top,	/* Top of unused heap */
   * Unused_Heap_Bottom,	/* Bottom of unused heap */
   * Stack_Guard,	/* Guard area at end of stack */
-  * Ext_Stack_Pointer,	/* Next available slot in control stack */
+  * sp_register,	/* Next available slot in control stack */
   * Stack_Bottom,	/* Bottom of control stack */
   * Stack_Top,		/* Top of control stack */
   * Free_Constant,	/* Next free word in constant space */
@@ -44,7 +45,7 @@ SCHEME_OBJECT
   * Constant_Top,	/* Top of constant+pure space */
   * Local_Heap_Base,	/* Per-processor CONSing area */
   * Free_Stacklets,	/* Free list of stacklets */
-  * Ext_History,	/* History register */
+  * history_register,	/* History register */
   Current_State_Point,	/* Dynamic state point */
   Fluid_Bindings,	/* Fluid bindings AList */
   * last_return_code;	/* Address of the most recent return code in the stack.
