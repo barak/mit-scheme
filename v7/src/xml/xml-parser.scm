@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml-parser.scm,v 1.5 2001/07/10 17:50:17 cph Exp $
+;;; $Id: xml-parser.scm,v 1.6 2001/07/10 19:34:32 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -517,6 +517,32 @@
 
 ;;;; Normalization
 
+(define (normalize-attribute-value value p)
+  (with-string-output-port
+    (lambda (port)
+      (let normalize-value ((value value))
+	(if (string? value)
+	    (let ((buffer (string->parser-buffer value)))
+	      (let loop ()
+		(let ((char (peek-parser-buffer-char buffer)))
+		  (cond ((not char)
+			 unspecific)
+			((or (char=? char #\tab)
+			     (char=? char #\newline))
+			 (write-char #\space port)
+			 (read-parser-buffer-char buffer)
+			 (loop))
+			((char=? char #\&)
+			 (normalize-value
+			  (vector-ref (parse-reference buffer)
+				      0))
+			 (loop))
+			(else
+			 (write-char char port)
+			 (read-parser-buffer-char buffer)
+			 (loop))))))
+	    (perror p "Reference to external entity in attribute"))))))
+
 (define (normalize-line-endings string #!optional always-copy?)
   (if (string-find-next-char string #\return)
       (let ((end (string-length string)))
@@ -555,88 +581,9 @@
 	       always-copy?)
 	  (string-copy string)
 	  string)))
-
-(define (normalize-attribute-value value p)
-  (with-string-output-port
-    (lambda (port)
-      (let normalize-value ((value value))
-	(if (string? value)
-	    (let ((buffer (string->parser-buffer value)))
-	      (let loop ()
-		(let ((char (peek-parser-buffer-char buffer)))
-		  (cond ((not char)
-			 unspecific)
-			((or (char=? char #\tab)
-			     (char=? char #\newline))
-			 (write-char #\space port)
-			 (read-parser-buffer-char buffer)
-			 (loop))
-			((char=? char #\&)
-			 (normalize-value
-			  (vector-ref (parse-reference buffer)
-				      0))
-			 (loop))
-			(else
-			 (write-char char port)
-			 (read-parser-buffer-char buffer)
-			 (loop))))))
-	    (perror p "Reference to external entity in attribute"))))))
 
-;;;; Document-type declarations
+;;;; Parameter entities
 
-(define parse-dtd			;[28]
-  (*parser
-   (top-level
-    (encapsulate
-	(lambda (v)
-	  (make-xml-dtd (vector-ref v 0)
-			(vector-ref v 1)
-			(vector-ref v 2)))
-      (sbracket "document-type declaration" "<!DOCTYPE" ">"
-	(require-success "Malformed document type"
-	  (seq S
-	       parse-name
-	       (map (lambda (external)
-		      (if external (set! *internal-dtd?* #f))
-		      external)
-		    (alt (seq S parse-external-id)
-			 (values #f)))
-	       S?
-	       (alt (seq (sbracket "internal DTD" "[" "]"
-			   parse-internal-subset)
-			 S?)
-		    (values '())))))))))
-
-(define (parse-internal-subset buffer)
-  (fluid-let ((*parameter-entities* '()))
-    (let loop ((elements '#()))
-      (let ((v
-	     (or (parse-internal-markup-decl buffer)
-		 (parse-decl-separator buffer))))
-	(if v
-	    (loop (vector-append elements v))
-	    (vector (vector->list elements)))))))
-
-(define parse-decl-separator		;[28a]
-  (*parser
-   (alt (with-pointer p
-	  (map (lambda (value)
-		 (parse-coalesced-element parse-external-subset-decl
-					  (list " " value " ")
-					  "parameter-entity value"
-					  p))
-	       parse-parameter-entity-reference))
-	S)))
-
-(define parse-internal-markup-decl	;[29]
-  (*parser
-   (alt parse-!element
-	parse-!attlist
-	parse-!entity
-	parse-!notation
-	parse-processing-instructions
-	parse-comment)))
-
 (define (make-parameter-entity name value)
   (let ((entity (make-xml-parameter-!entity name value)))
     (if (and (not (eq? *parameter-entities* 'STOP))
@@ -681,13 +628,9 @@
 	     (loop (cdr entities))))))
 
 (define *parameter-entities*)
-
-(define parse-external-subset-decl	;[31]
-  (*parser
-   (* (alt parse-external-markup-decl
-	   parse-conditional-section
-	   parse-decl-separator))))
 
+;;;; General parsed entities
+
 (define (dereference-entity name p)
   (if (eq? *general-entities* 'STOP)
       (uninterpreted-entity name)
@@ -745,6 +688,61 @@
   (if *standalone?*
       (perror p "Illegal external reference in standalone document"))
   (make-xml-external-id id uri))
+
+;;;; Document-type declarations
+
+(define parse-dtd			;[28]
+  (*parser
+   (top-level
+    (encapsulate
+	(lambda (v)
+	  (make-xml-dtd (vector-ref v 0)
+			(vector-ref v 1)
+			(vector-ref v 2)))
+      (sbracket "document-type declaration" "<!DOCTYPE" ">"
+	(require-success "Malformed document type"
+	  (seq S
+	       parse-name
+	       (map (lambda (external)
+		      (if external (set! *internal-dtd?* #f))
+		      external)
+		    (alt (seq S parse-external-id)
+			 (values #f)))
+	       S?
+	       (alt (seq (sbracket "internal DTD" "[" "]"
+			   parse-internal-subset)
+			 S?)
+		    (values '())))))))))
+
+(define (parse-internal-subset buffer)
+  (fluid-let ((*parameter-entities* '()))
+    (let loop ((elements '#()))
+      (let ((v
+	     (or (parse-internal-markup-decl buffer)
+		 (parse-decl-separator buffer))))
+	(if v
+	    (loop (vector-append elements v))
+	    (vector (vector->list elements)))))))
+
+(define parse-decl-separator		;[28a]
+  (*parser
+   (alt (with-pointer p
+	  (map (lambda (value)
+		 (parse-coalesced-element parse-external-subset-decl
+					  (list " " value " ")
+					  "parameter-entity value"
+					  p))
+	       parse-parameter-entity-reference))
+	S)))
+
+(define parse-internal-markup-decl	;[29]
+  (*parser
+   (alt parse-!element
+	parse-!attlist
+	parse-!entity
+	parse-!notation
+	parse-processing-instructions
+	parse-comment)))
 
 (define parse-!element			;[45]
   (letrec
@@ -951,6 +949,20 @@
    (char-set-union char-set:alphanumeric
 		   (string->char-set " \r\n-'()+,./:=?;!*#@$_%"))))
 
+;;;; External subset
+
+;; This is hairy because parameter-entity references can appear almost
+;; anywhere within DTD declarations, when the declarations appear in
+;; the external subset.  Rather than make the declaration parsing
+;; rules overly complex, we do a pre-pass to expand references in the
+;; interior of each declaration, and then reparse the expanded text.
+
+(define parse-external-subset-decl	;[31]
+  (*parser
+   (* (alt parse-external-markup-decl
+	   parse-conditional-section
+	   parse-decl-separator))))
+
 (define external-decl-parser
   (let ((a1 (char-set-difference char-set:xml-char (char-set #\% #\" #\' #\>)))
 	(a2 (char-set-difference char-set:xml-char (char-set #\")))
@@ -997,6 +1009,8 @@
 	  parse-!entity
 	  parse-!notation))))
 
+;;;; Conditional sections
+
 (define parse-conditional-section	;[61]
   (*parser
    (alt parse-!ignore-section
