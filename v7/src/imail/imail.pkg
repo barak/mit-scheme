@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.81 2001/03/19 19:29:45 cph Exp $
+;;; $Id: imail.pkg,v 1.82 2001/05/18 19:21:12 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -353,3 +353,8 @@
 	  edwin-variable$imail-summary-subject-width)
   (export (edwin imail front-end)
 	  write-imail-summary-line!))
+
+(define-package (edwin imail front-end folder-browser)
+  ;;(files "imail-browser")
+  (parent (edwin imail front-end))
+  (export (edwin)))
