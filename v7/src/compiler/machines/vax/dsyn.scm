@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dsyn.scm,v 1.9 2001/12/19 21:39:30 cph Exp $
+$Id: dsyn.scm,v 1.10 2001/12/21 18:28:31 cph Exp $
 
 Copyright (c) 1987, 1989, 1999, 2001 Massachusetts Institute of Technology
 
@@ -24,19 +24,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (declare (usual-integrations))
 
 ;;;; Instruction decoding
-
+#|
 (define (initialize-package!)
-  (set-environment-syntax-table!
-   (->environment '(COMPILER DISASSEMBLER))
-   (make-syntax-table (->environment '(COMPILER))))
-  (syntax-table/define (->environment '(COMPILER DISASSEMBLER))
-		       'DEFINE-INSTRUCTION
-    transform/define-instruction))
+  (environment-define-macro (->environment '(COMPILER DISASSEMBLER))
+			    'DEFINE-INSTRUCTION
+			    transform/define-instruction))
+|#
 
 (define instructions-disassembled-specially
   '(BYTE WORD LONG BUG B BR BSB))
 
-(define transform/define-instruction
+(define-syntax define-instruction
   (lambda (name . patterns)
     (if (memq name instructions-disassembled-specially)
 	''()
