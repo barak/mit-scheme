@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.20 1989/04/17 17:07:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.21 1989/04/21 17:22:51 markf Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -274,6 +274,32 @@ MIT in each case. |#
 	  dbg-label/offset
 	  set-dbg-label/name!
 	  set-dbg-label/external?!))
+
+(define-package (compiler constraints)
+   (files "base/constr")
+   (parent (compiler))
+   (export (compiler)
+	   make-constraint
+	   constraint/element
+	   constraint/graph-head
+	   constraint/afters
+	   constraint/closed?
+	   constraint-add!
+	   add-constraint-element!
+	   add-constraint-set!
+	   make-constraint-graph
+	   constraint-graph/entry-nodes
+	   constraint-graph/closed?
+	   close-constraint-graph!
+	   close-constraint-node!
+	   order-per-constraints
+	   order-per-constraints/extracted
+	   legal-ordering-per-constraints?
+	   with-new-constraint-marks
+	   constraint-marked?
+	   constraint-mark!
+	   transitively-close-dag!
+	   reverse-postorder))
 
 (define-package (compiler fg-generator)
   (files "fggen/canon"			;SCode canonicalizer
@@ -294,13 +320,11 @@ MIT in each case. |#
 (define-package (compiler fg-optimizer)
   (files "fgopt/outer"			;outer analysis
 	 "fgopt/sideff"			;side effect analysis
-	 "fgopt/desenv"			;environment design
 	 )
   (parent (compiler))
   (export (compiler top-level)
 	  clear-call-graph!
 	  compute-call-graph!
-	  design-environment-frames!
 	  outer-analysis
 	  side-effect-analysis))
 
@@ -338,6 +362,16 @@ MIT in each case. |#
   (files "fgopt/conect")
   (parent (compiler fg-optimizer))
   (export (compiler top-level) connectivity-analysis))
+
+(define-package (compiler fg-optimizer delete-integrated-parameters)
+  (files "fgopt/delint")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) delete-integrated-parameters))
+
+(define-package (compiler fg-optimizer design-environment-frames)
+  (files "fgopt/desenv")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) design-environment-frames!))
 
 (define-package (compiler fg-optimizer setup-block-types)
   (files "fgopt/blktyp")
@@ -377,6 +411,12 @@ MIT in each case. |#
   (export (compiler top-level) setup-frame-adjustments)
   (export (compiler fg-optimizer subproblem-ordering)
 	  order-subproblems/maybe-overwrite-block))
+
+(define-package (compiler fg-optimizer subproblem-ordering parameter-analysis)
+   (files "fgopt/param")
+   (parent (compiler fg-optimizer subproblem-ordering))
+   (export (compiler fg-optimizer subproblem-ordering)
+	   parameter-analysis))
 
 (define-package (compiler rtl-generator)
   (files "rtlgen/rtlgen"		;RTL generator
@@ -407,6 +447,8 @@ MIT in each case. |#
   (parent (compiler rtl-generator))
   (export (compiler rtl-generator) combination/inline)
   (export (compiler fg-optimizer simplicity-analysis)
+	  combination/inline/simple?)
+  (export (compiler fg-optimizer subproblem-ordering parameter-analysis)
 	  combination/inline/simple?)
   (export (compiler top-level) open-coding-analysis))
 
