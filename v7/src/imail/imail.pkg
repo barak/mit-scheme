@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.23 2000/04/28 16:48:41 cph Exp $
+;;; $Id: imail.pkg,v 1.24 2000/04/28 20:57:38 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -179,9 +179,9 @@
   (files "imail-util"
 	 "imail-core"
 	 "imail-file"
-	 "imail-imap"
 	 "imail-rmail"
 	 "imail-umail"
+	 "imail-imap"
 	 "imail-top")
   (parent (edwin))
   (import (edwin rmail)
