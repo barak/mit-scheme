@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: txtprp.scm,v 1.12 1993/10/05 23:05:18 cph Exp $
+;;;	$Id: txtprp.scm,v 1.13 1993/10/06 00:59:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1993 Massachusetts Institute of Technology
 ;;;
@@ -77,9 +77,6 @@
   (if (and (group-text-properties group) (fix:< index (group-length group)))
       (interval-property (find-interval group index) key default)
       default))
-
-(define (local-comtabs mark)
-  (get-text-property (mark-group mark) (mark-index mark) 'COMMAND-TABLE #f))
 
 (define (next-property-change group start end)
   (validate-region-arguments group start end 'NEXT-PROPERTY-CHANGE)
@@ -263,6 +260,22 @@
 ;;; immediately adjacent to one another, insertions may occur in
 ;;; between the regions, but not inside of them.
 
+(define (subgroup-read-only group start end)
+  (add-text-property group start end 'READ-ONLY (list 'READ-ONLY)))
+
+(define (subgroup-writable group start end)
+  (remove-text-property group start end 'READ-ONLY))
+
+(define (region-read-only region)
+  (subgroup-read-only (region-group region)
+		      (region-start-index region)
+		      (region-end-index region)))
+
+(define (region-writable region)
+  (subgroup-writable (region-group region)
+		     (region-start-index region)
+		     (region-end-index region)))
+
 (define (text-not-insertable? group start)
   ;; Assumes that (GROUP-TEXT-PROPERTIES GROUP) is not #F.
   (and (not (eq? 'FULLY (group-writable? group)))
@@ -290,6 +303,33 @@
 		  (let ((next (next-interval interval)))
 		    (and next
 			 (loop next))))))))
+
+;;;; Miscellaneous Properties
+
+(define (highlight-subgroup group start end highlight)
+  (if highlight
+      (add-text-property group start end 'HIGHLIGHTED highlight)
+      (remove-text-property group start end 'HIGHLIGHTED)))
+
+(define (highlight-region region highlight)
+  (highlight-subgroup (region-group region)
+		      (region-start-index region)
+		      (region-end-index region)
+		      highlight))
+
+(define (local-comtabs mark)
+  (get-text-property (mark-group mark) (mark-index mark) 'COMMAND-TABLE #f))
+
+(define (set-subgroup-local-comtabs! group start end comtabs)
+  (if comtabs
+      (add-text-property group start end 'COMMAND-TABLE comtabs)
+      (remove-text-property group start end 'COMMAND-TABLE)))
+
+(define (set-region-local-comtabs! region comtabs)
+  (set-subgroup-local-comtabs! (region-group region)
+			       (region-start-index region)
+			       (region-end-index region)
+			       comtabs))
 
 ;;;; Insertion and Deletion
 

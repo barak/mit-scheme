@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.134 1993/10/05 23:05:56 cph Exp $
+$Id: edwin.pkg,v 1.135 1993/10/06 00:59:11 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -840,12 +840,20 @@ MIT in each case. |#
 	  add-text-property
 	  get-text-properties
 	  get-text-property
+	  highlight-region
+	  highlight-subgroup
 	  local-comtabs
 	  next-property-change
 	  next-specific-property-change
 	  previous-property-change
 	  previous-specific-property-change
-	  remove-text-property)
+	  region-read-only
+	  region-writable
+	  remove-text-property
+	  set-region-local-comtabs!
+	  set-subgroup-local-comtabs!
+	  subgroup-read-only
+	  subgroup-writable)
   (export (edwin group-operations)
 	  text-not-deleteable?
 	  text-not-insertable?

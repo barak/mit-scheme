@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.19 1993/09/09 21:21:33 cph Exp $
+;;;	$Id: debug.scm,v 1.20 1993/10/06 00:59:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -49,42 +49,19 @@
 
 ;;;; Text prop setup stuff
 
-(define (with-output-property port key datum thunk)
-  (let ((start (mark-index (port/mark port))))
+(define (with-output-highlighted port thunk)
+  (let ((start (mark-temporary-copy (port/mark port))))
     (thunk)
-    (let ((end (mark-index (port/mark port))))
-      (add-text-property (mark-group (port/mark port))
-			 start
-			 end
-			 key
-			 datum))))
-
-(define (readable-between start end)
-  (remove-text-property (mark-group start)
-			(mark-index start)
-			(mark-index end)
-			'READ-ONLY))
-
-(define (dehigh-between start end)
-  (remove-text-property (mark-group start)
-			(mark-index start)
-			(mark-index end)
-			'HIGHLIGHTED))
+    (highlight-region (make-region start (port/mark port)) #t)))
 
 (define (read-only-between start end)
-  (add-text-property (mark-group start)
-		     (mark-index start)
-		     (mark-index end)
-		     'READ-ONLY
-		     (generate-uninterned-symbol)))
+  (region-read-only (make-region start end)))
 
-(define (highlight-region start end)
-  (if (not (mark<= start end))
-      (error "Marks incorrectly related:" start end))
-  (group-highlight (mark-group start) (mark-index start) (mark-index end)))
+(define (readable-between start end)
+  (region-writable (make-region start end)))
 
-(define (group-highlight group start end)
-  (add-text-property group start end 'HIGHLIGHTED #t))
+(define (dehigh-between start end)
+  (highlight-region (make-region start end) #f))
 
 (define (debugger-pp-highlight-subexpression expression subexpression
  					     indentation port)
@@ -119,13 +96,12 @@
     (let ((lend (line-end start 0)))
       (if (mark<= lend end)
  	  (begin
- 	    (highlight-region (horizontal-space-end start)
- 			      (horizontal-space-start lend))
+ 	    (highlight-region (horizontal-space-region start) #t)
  	    (loop (mark1+ lend)))
 	  (let ((start (horizontal-space-end start))
 		(end (horizontal-space-start end)))
 	    (if (mark< start end)
-		(highlight-region start end)))))))
+		(highlight-region (make-region start end) #t)))))))
 
 ;;;; Browsers
 
@@ -345,7 +321,11 @@
 
 (define (highlight-the-number mark)
   (let ((end (re-search-forward "[RSE][0-9]+ " mark (line-end mark 0))))
-    (highlight-region mark (if (mark? end) (mark- end 1) (line-end mark 0)))))
+    (highlight-region (make-region mark
+				   (if (mark? end)
+				       (mark- end 1)
+				       (line-end mark 0)))
+		      #t)))
 
 (define (unselect-bline browser)
   (let ((bline (browser/selected-line browser)))
@@ -1106,7 +1086,7 @@ The buffer below describes the current subproblem or reduction.
 			 (newline port)
 			 (newline port)
 			 (write-string "  " port)
-			 (with-output-property port 'HIGHLIGHTED #t
+			 (with-output-highlighted port
 			   (lambda ()
 			     (write-condition-report object port)))
 			 (newline port)))
