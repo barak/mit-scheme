@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchdmp.c,v 9.80 1995/10/09 05:52:16 cph Exp $
+$Id: bchdmp.c,v 9.81 1995/10/15 00:35:36 cph Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -95,13 +95,20 @@ static char FASDUMP_FILENAME[] = "\\tmp\\faXXXXXX";
 #endif /* WINNT */
 
 #ifdef _OS2
-#include "os2.h"
 
-#if defined(__IBMC__) || defined(__EMX__)
+#include "os2.h"
+#define FASDUMP_FILENAME_DEFINED
+static char FASDUMP_FILENAME[] = "\\tmp\\faXXXXXX";
+
+#ifdef __EMX__
+#include <io.h>
+#endif
+
+#if defined(__IBMC__) || defined(__WATCOMC__)
+
 #include <io.h>
 #include <sys\stat.h>
 #include <fcntl.h>
-#endif
 
 #ifndef F_OK
 #define F_OK 0
@@ -142,8 +149,7 @@ DEFUN (mktemp, (fname), unsigned char * fname)
   return ((char *) fname);
 }
 
-#define FASDUMP_FILENAME_DEFINED
-static char FASDUMP_FILENAME[] = "\\tmp\\faXXXXXX";
+#endif /* __IBMC__ or __WATCOMC__ */
 #endif /* _OS2 */
 
 #ifndef FASDUMP_FILENAME_DEFINED
