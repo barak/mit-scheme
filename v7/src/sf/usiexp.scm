@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 3.0 1987/03/10 13:25:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 3.1 1987/05/04 23:50:20 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -304,4 +304,9 @@ MIT in each case. |#
 	second-expansion third-expansion fourth-expansion fifth-expansion
 	sixth-expansion seventh-expansion eighth-expansion
 	make-string-expansion identity-procedure-expansion
+	))
+
+(define usual-integrations/expansion-alist
+  (map cons
+       usual-integrations/expansion-names
        usual-integrations/expansion-values))
