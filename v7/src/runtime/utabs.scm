@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 13.43 1987/04/03 00:53:27 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 13.44 1987/04/13 18:25:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -128,18 +128,26 @@
 (define types-slot)
 
 (define renamed-user-object-types
-  '((FIXNUM . NUMBER) (BIG-FIXNUM . NUMBER) (BIG-FLONUM . NUMBER)
-    (EXTENDED-FIXNUM . NUMBER)
+  '((FIXNUM . NUMBER)
+    (BIGNUM . NUMBER)
+    (FLONUM . NUMBER)
+    (COMPLEX . NUMBER)
+    (INTERNED-SYMBOL . SYMBOL)
+    (UNINTERNED-SYMBOL . SYMBOL)
     (EXTENDED-PROCEDURE . PROCEDURE)
-    (LEXPR . LAMBDA) (EXTENDED-LAMBDA . LAMBDA)
-    (COMBINATION-1 . COMBINATION) (COMBINATION-2 . COMBINATION)
+    (COMPILED-PROCEDURE . PROCEDURE)
+    (PRIMITIVE . PRIMITIVE-PROCEDURE)
+    (PRIMITIVE-EXTERNAL . PRIMITIVE-PROCEDURE)
+    (LEXPR . LAMBDA)
+    (EXTENDED-LAMBDA . LAMBDA)
+    (COMBINATION-1 . COMBINATION)
+    (COMBINATION-2 . COMBINATION)
     (PRIMITIVE-COMBINATION-0 . COMBINATION)
     (PRIMITIVE-COMBINATION-1 . COMBINATION)
     (PRIMITIVE-COMBINATION-2 . COMBINATION)
     (PRIMITIVE-COMBINATION-3 . COMBINATION)
-    (SEQUENCE-2 . SEQUENCE) (SEQUENCE-3 . SEQUENCE)
-    (INTERN-SYMBOL . SYMBOL)
-    (PRIMITIVE . PRIMITIVE-PROCEDURE)))
+    (SEQUENCE-2 . SEQUENCE)
+    (SEQUENCE-3 . SEQUENCE)))
 
 (set! microcode-type-name
 (named-lambda (microcode-type-name type)
@@ -259,7 +267,7 @@
 	(else
 	 (error "Not a primitive procedure" primitive-procedure-name
 		primitive-procedure)))))
-
+
 (define (name->code slot type name)
   (or (and (pair? name)
 	   (eq? (car name) type)
@@ -338,5 +346,4 @@
 (snarf-version)
 
 ;;; end MICROCODE-SYSTEM.
-))
 ))
