@@ -139,6 +139,8 @@
 	       edwin-syntax-table)
     ("nvector" (edwin)
 	       syntax-table/system-internal)
+    ("occur"   (edwin occurrence)
+	       edwin-syntax-table)
     ("pasmod"  (edwin)
 	       edwin-syntax-table)
     ("paths"   (edwin)

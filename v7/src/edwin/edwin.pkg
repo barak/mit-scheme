@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.85 1992/04/08 17:57:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.86 1992/04/09 17:22:26 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -1032,3 +1032,18 @@ MIT in each case. |#
   (import (runtime debugger-utilities)
 	  show-environment-bindings)
   (initialization (initialize-bochser-mode!)))
+
+(define-package (edwin occurrence)
+  (files "occur")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$count-matches
+	  edwin-command$delete-matching-lines
+	  edwin-command$delete-non-matching-lines
+	  edwin-command$flush-lines
+	  edwin-command$how-many
+	  edwin-command$keep-lines
+	  edwin-command$occur
+	  edwin-command$occur-mode-goto-occurrence
+	  edwin-mode$occur
+	  edwin-variable$list-matching-lines-default-context-lines))
