@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2sock.c,v 1.3 1996/05/18 06:10:25 cph Exp $
+$Id: os2sock.c,v 1.4 1997/11/01 07:18:06 cph Exp $
 
-Copyright (c) 1990-96 Massachusetts Institute of Technology
+Copyright (c) 1990-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -148,6 +148,33 @@ OS_get_host_by_name (const char * host_name)
 {
   struct hostent * entry = (gethostbyname ((char *) host_name));
   return ((entry == 0) ? 0 : (entry -> h_addr_list));
+}
+
+#define HOSTNAMESIZE 1024
+
+const char *
+OS_get_host_name (void)
+{
+  char host_name [HOSTNAMESIZE];
+  VOID_SOCKET_CALL (gethostname, (host_name, HOSTNAMESIZE));
+  {
+    char * result = (OS_malloc ((strlen (host_name)) + 1));
+    strcpy (result, host_name);
+    return (result);
+  }
+}
+
+const char *
+OS_canonical_host_name (const char * host_name)
+{
+  struct hostent * entry = (gethostbyname (this_host_name));
+  if (entry == 0)
+    return (0);
+  {
+    char * result = (OS_malloc ((strlen (entry -> h_name)) + 1));
+    strcpy (result, (entry -> h_name));
+    return (result);
+  }
 }
 
 #ifndef SOCKET_LISTEN_BACKLOG

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.14 1996/05/18 06:09:25 cph Exp $
+$Id: uxsock.c,v 1.15 1997/11/01 07:19:03 cph Exp $
 
-Copyright (c) 1990-96 Massachusetts Institute of Technology
+Copyright (c) 1990-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -119,6 +119,32 @@ DEFUN (OS_get_host_by_name, (host_name), CONST char * host_name)
     return (addresses);
   }
 #endif
+}
+
+CONST char *
+DEFUN_VOID (OS_get_host_name)
+{
+  char host_name [HOSTNAMESIZE];
+  STD_VOID_SYSTEM_CALL
+    (syscall_gethostname, (UX_gethostname (host_name, HOSTNAMESIZE)));
+  {
+    char * result = (OS_malloc ((strlen (host_name)) + 1));
+    strcpy (result, host_name);
+    return (result);
+  }
+}
+
+CONST char *
+DEFUN (OS_canonical_host_name, (host_name), CONST char * host_name)
+{
+  struct hostent * entry = (gethostbyname (this_host_name));
+  if (entry == 0)
+    return (0);
+  {
+    char * result = (OS_malloc ((strlen (entry -> h_name)) + 1));
+    strcpy (result, (entry -> h_name));
+    return (result);
+  }
 }
 
 Tchannel

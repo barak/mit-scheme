@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxsock.h,v 1.5 1993/06/24 07:10:15 gjr Exp $
+$Id: uxsock.h,v 1.6 1997/11/01 07:19:26 cph Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,6 +43,8 @@ extern int EXFUN
    (CONST char * service_name, CONST char * protocol_name));
 extern unsigned int EXFUN (OS_host_address_length, (void));
 extern char ** EXFUN (OS_get_host_by_name, (CONST char * host_name));
+CONST char * EXFUN (OS_get_host_name, (void));
+CONST char * EXFUN (OS_canonical_host_name, (CONST char *));
 
 #ifdef HAVE_UNIX_SOCKETS
 extern Tchannel EXFUN (OS_open_unix_stream_socket, (CONST char * filename));

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntapi.h,v 1.7 1997/10/26 08:04:41 cph Exp $
+$Id: ntapi.h,v 1.8 1997/11/01 07:17:50 cph Exp $
 
 Copyright (c) 1997 Massachusetts Institute of Technology
 
@@ -80,6 +80,8 @@ enum syscall_names
   apicall_bind,
   apicall_closesocket,
   apicall_connect,
+  apicall_gethostbyname,
+  apicall_gethostname,
   apicall_ioctlsocket,
   apicall_listen,
   apicall_recv,
@@ -924,6 +926,8 @@ static char * syscall_names_table [] =
   "BIND",
   "CLOSE-SOCKET",
   "CONNECT",
+  "GET-HOST-BY-NAME",
+  "GET-HOST-NAME",
   "IOCTL-SOCKET",
   "LISTEN",
   "RECV",

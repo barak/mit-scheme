@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2api.h,v 1.9 1996/05/10 18:47:42 cph Exp $
+$Id: os2api.h,v 1.10 1997/11/01 07:18:13 cph Exp $
 
-Copyright (c) 1994-96 Massachusetts Institute of Technology
+Copyright (c) 1994-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -117,6 +117,8 @@ enum syscall_names
   syscall_accept,
   syscall_bind,
   syscall_connect,
+  syscall_gethostbyname,
+  syscall_gethostname,
   syscall_listen,
   syscall_recv,
   syscall_send,
@@ -971,6 +973,8 @@ static char * syscall_names_table [] =
   "accept",
   "bind",
   "connect",
+  "get-host-by-name",
+  "get-host-name",
   "listen",
   "recv",
   "send",

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsock.c,v 1.1 1997/10/26 08:03:37 cph Exp $
+$Id: ntsock.c,v 1.2 1997/11/01 07:18:46 cph Exp $
 
 Copyright (c) 1997 Massachusetts Institute of Technology
 
@@ -126,6 +126,42 @@ OS_get_host_by_name (const char * host_name)
 {
   struct hostent * entry = (gethostbyname (host_name));
   return ((entry == 0) ? 0 : (entry -> h_addr_list));
+}
+
+const char *
+OS_get_host_name (void)
+{
+  unsigned int name_length = 128;
+  char * name = (OS_malloc (name_length));
+  while (1)
+    {
+      if ((gethostname (name, name_length)) != SOCKET_ERROR)
+	break;
+      {
+	DWORD code = (WSAGetLastError ());
+	if (code != WSAEFAULT)
+	  {
+	    OS_free (name);
+	    NT_error_api_call (code, apicall_gethostname);
+	  }
+      }
+      name_length *= 2;
+      name = (OS_realloc (name, name_length));
+    }
+  return (OS_realloc (name, ((strlen (name)) + 1)));
+}
+
+const char *
+OS_canonical_host_name (const char * host_name)
+{
+  struct hostent * entry = (gethostbyname (host_name));
+  if (entry == 0)
+    return (0);
+  {
+    char * result = (OS_malloc ((strlen (entry -> h_name)) + 1));
+    strcpy (result, (entry -> h_name));
+    return (result);
+  }
 }
 
 #ifndef SOCKET_LISTEN_BACKLOG
