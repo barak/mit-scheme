@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpauxmd/hppa.m4,v 1.6 1989/12/03 13:09:51 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpauxmd/hppa.m4,v 1.7 1989/12/06 10:55:37 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -151,7 +151,7 @@ interface_to_scheme
 	.CALL	RTNVAL=GR		; out=28
 	BLE	0(5,26)			; Invoke entry point
 	COPY	31,3			; Setup scheme_to_interface_ble
-
+
 scheme_to_interface_ble
 	ADDI	4,31
 trampoline_to_interface
@@ -169,7 +169,59 @@ scheme_to_interface
 	COPY	31,2			; Setup return address
 	BV	0(28)			; Call receiver
 	COPY	29,26			; Setup entry point
+
+;; This sequence of NOPs is provided to allow for modification of
+;; the sequence that appears above without having to recompile the
+;; world.  The compiler "knows" the distance between
+;; scheme_to_interface_ble and hook_jump_table (100 bytes)
 
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+
+hook_jump_table				; scheme_to_interface + 100
+store_closure_code
+	B	store_closure_code_real+4
+	LDIL	L'0x23400000,20		; LDIL opcode and register
+
+;; On arrival, 31 has a return address and 1 contains the address to
+;; which the closure should jump.  The appropriate instructions (LDIL
+;; and BLE and SUBI) are pushed on the heap.
+
+store_closure_code_real
+	LDIL	L'0x23400000,20		; LDIL opcode and register
+	EXTRU	1,0,1,5
+	DEP	5,31,1,20
+	EXTRU	1,11,11,5
+	DEP	5,30,11,20
+	EXTRU	1,13,2,5
+	DEP	5,17,2,20
+	EXTRU	1,18,5,5
+	DEP	5,15,5,20
+	STWM	20,4(0,21)		; Store LDIL instruction
+	LDIL	L'0xe740c002,20		; BLE opcode, register and nullify
+	LDO	R'0xe740c002(20),20
+	EXTRU	1,19,1,5
+	DEP	5,29,1,20
+	EXTRU	1,29,10,5
+	DEP	5,28,10,20
+	STWM	20,4(0,21)		; Store BLE instruction
+	LDIL	L'0xb7ff07f4,20
+	LDO	R'0xb7ff07f4(20),20
+	STWM	20,4(0,21)		; Store ADDI instruction
+	LDW	0(0,4),20		; Reload memtop
+	BV	0(31)			; Return
+	LDI	QUAD_MASK,5		; Restore register 5
+
 interface_to_C
 	COPY	29,28			; Setup C value
         LDW     -132(0,30),2		; Restore return address
@@ -215,4 +267,5 @@ $THISMODULE$
 	.EXPORT scheme_to_interface_ble,PRIV_LEV=3
 	.EXPORT trampoline_to_interface,PRIV_LEV=3
 	.EXPORT scheme_to_interface,PRIV_LEV=3
+	.EXPORT store_closure_code,PRIV_LEV=3
 	.END
