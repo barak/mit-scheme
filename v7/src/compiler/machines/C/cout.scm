@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.17 1993/11/16 02:10:31 gjr Exp $
+$Id: cout.scm,v 1.18 1993/11/16 16:09:15 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -744,7 +744,8 @@ MIT in each case. |#
 	(string-append
 	 (substring string 0 index)
 	 (C-quotify-string-char (string-ref string index))
-	 (C-quotify (substring string (1+ index) (string-length string)))))))
+	 (C-quotify-string
+	  (substring string (1+ index) (string-length string)))))))
 
 (define (C-quotify-string-char char)
   (cond ((char-set-member? char-set:C-named-chars char)
