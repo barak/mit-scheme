@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppa.h,v 1.39 1993/02/06 06:03:53 gjr Exp $
+$Id: hppa.h,v 1.40 1993/06/12 22:31:31 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -92,19 +92,7 @@ typedef unsigned short format_word;
    pointers.  We don't want that for the assembly language entry points.
  */
 
-#ifdef __GNUC__
-   /* Under GCC version 1, function pointers are NOT closures.
-      Under version 2.2.2, they are not closures either.
-    */
-#  if (__GNUC__ >= 3)
-#    include "Fix cmpint-hppa.h to define C_FUNC_PTR_IS_CLOSURE if necessary"
-#  endif
-#else /* Assume HP C -- Test for HP-UX >= 8.0 */
-#  include <magic.h>
-#  ifdef SHL_MAGIC
-#    define C_FUNC_PTR_IS_CLOSURE
-#  endif
-#endif
+#define C_FUNC_PTR_IS_CLOSURE
 
 #ifndef C_FUNC_PTR_IS_CLOSURE
 #  define interface_to_C ep_interface_to_C
@@ -781,22 +769,17 @@ DEFUN (transform_procedure_table, (table_length, old_table),
 
   for (counter = 0; counter < table_length; counter++)
   {
-#ifdef C_FUNC_PTR_IS_CLOSURE
-    char * C_closure, * blp;
-    long offset;
-
-    /* This is correct for HP C for HP-UX >= 8.0.
-       Is it also correct for GCC 2?
-     */
-
-    C_closure = ((char *) (old_table [counter]));
-    blp = (* ((char **) (C_closure - 2)));
-    blp = ((char *) (((unsigned long) blp) & ~3));
-    offset = (assemble_17 (* ((union ble_inst *) blp)));
-    new_table[counter] = ((PTR) ((blp + 8) + offset));
-#else
-    new_table[counter] = ((PTR) (old_table [counter]));
-#endif
+    char * C_closure = ((char *) (old_table [counter]));
+    if ((((unsigned long) C_closure) & 0x3) == 0x2)
+    {
+      long offset;
+      char * blp = (* ((char **) (C_closure - 2)));
+      blp = ((char *) (((unsigned long) blp) & ~3));
+      offset = (assemble_17 (* ((union ble_inst *) blp)));
+      new_table[counter] = ((PTR) ((blp + 8) + offset));
+    }
+    else
+      new_table[counter] = ((PTR) (old_table [counter]));
   }
   return (new_table);
 }
