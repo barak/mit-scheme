@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-browser.scm,v 1.1 2001/05/26 03:00:53 cph Exp $
+;;; $Id: imail-browser.scm,v 1.2 2001/05/26 03:02:29 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -91,8 +91,7 @@ To do:
 	    (sort (container-url-contents container-1) browser-url<?)))
 
 (define (insert-browser-line url container-url mark)
-  (let ((start (mark-right-inserting-copy mark))
-	(info (make-browser-line-info url)))
+  (let ((info (make-browser-line-info url)))
     (with-region-marked mark
       (lambda (start end)
 	(region-put! start end 'IMAIL-BROWSER-LINE-INFO info))
