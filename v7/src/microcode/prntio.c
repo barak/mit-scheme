@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntio.c,v 1.10 1999/01/02 06:11:34 cph Exp $
+$Id: prntio.c,v 1.11 1999/02/23 06:13:14 cph Exp $
 
 Copyright (c) 1993-1999 Massachusetts Institute of Technology
 
@@ -141,7 +141,7 @@ wait_for_multiple_objects_1 (unsigned long n_channels, Tchannel * channels,
 	  if (pending_interrupts_p ())
 	    return (-2);
 	}
-      else if (Screen_PeekEvent (master_tty_window, 0))
+      else if (Screen_pending_events_p ())
 	return (console_index);
       else
 	{
