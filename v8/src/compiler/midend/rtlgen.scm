@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.48 1996/07/22 16:24:01 adams Exp $
+$Id: rtlgen.scm,v 1.49 1996/07/26 23:43:03 adams Exp $
 
 Copyright (c) 1994-96 Massachusetts Institute of Technology
 
@@ -245,22 +245,27 @@ MIT in each case. |#
 
 (define (rtlgen/wrap-trivial-closure label dbg-form body lambda-list saved-size)
   saved-size				; only continuations have this
-  (let ((frame-size (lambda-list/count-names lambda-list)))
-    (cons `(TRIVIAL-CLOSURE ,label
-			    ,(new-dbg-procedure->old-dbg-procedure
-			      label
-			      'TRIVIAL-CLOSURE
-			      (rtlgen/debugging-info dbg-form))
-			    ,@(map
-			       (lambda (value)
-				 `(MACHINE-CONSTANT ,value))
-			       (lambda-list/arity-info lambda-list)))
-	  (rtlgen/wrap-with-interrupt-check/procedure
-	   true
-	   body
-	   `(INTERRUPT-CHECK:PROCEDURE
-	     ,label
-	     (MACHINE-CONSTANT ,frame-size))))))
+  (let ((frame-size (lambda-list/count-names lambda-list))
+	(procedure-header
+	 `(TRIVIAL-CLOSURE ,label
+			   ,(new-dbg-procedure->old-dbg-procedure
+			     label
+			     'TRIVIAL-CLOSURE
+			     (rtlgen/debugging-info dbg-form))
+			   ,@(map
+			      (lambda (value)
+				`(MACHINE-CONSTANT ,value))
+			      (lambda-list/arity-info lambda-list)))))
+    (if (rtlgen/omit-interrupt-check? label)
+	(cons procedure-header
+	      body)
+	(cons procedure-header
+	      (rtlgen/wrap-with-interrupt-check/procedure
+	       true
+	       body
+	       `(INTERRUPT-CHECK:PROCEDURE
+		 ,label
+		 (MACHINE-CONSTANT ,frame-size)))))))
 
 (define (rtlgen/wrap-procedure label dbg-form body lambda-list saved-size)
   saved-size				; only continuations have this
@@ -616,10 +621,20 @@ MIT in each case. |#
 
 (define (rtlgen/wrap-with-interrupt-check/procedure external? body desc)
   external?				;ignored
+
+  #|
+  (pp `((desc , desc)
+	(external? , external?)
+	(*rtlgen/form-calls-external?* , *rtlgen/form-calls-external?*)
+	(*rtlgen/form-calls-internal?* , *rtlgen/form-calls-internal?*)
+	(*rtlgen/words-allocated* , *rtlgen/words-allocated*)
+	(*rtlgen/max-stack-depth* , *rtlgen/max-stack-depth*)))
+  |#
+
   (rtlgen/wrap-with-intrpt-check
    ;;  This change is required since the internal procedures are being
    ;;  compiled as external procedures (trivial closures) at the
-   ;;  moment (this so that they can share entry points).
+   ;;  moment (this so that they can share entry points).  Old code:
    ;;(and (rtlgen/generate-interrupt-checks?)
    ;;	(or *rtlgen/form-calls-external?*
    ;;	    (and (not external?)
@@ -1767,7 +1782,8 @@ MIT in each case. |#
 				       (cddr rands))) ; exprs
 	((eq? rator* %primitive-apply/compatible)
 	 (verify-rands 2)		; arity, primitive
-	 (set! *rtlgen/form-calls-external?* true)
+	 (if (rtlgen/primitive-is-apply-like? (second rands))
+	     (set! *rtlgen/form-calls-external?* true))
 	 (rtlgen/invoke-primitive/compatible state
 					     (first rands)  ; nargs
 					     (second rands) ; prim
@@ -4457,6 +4473,17 @@ MIT in each case. |#
 	 
 
 ;; Kludges
+
+(define rtlgen/primitive-is-apply-like?
+  (let ((apply-like-primitives
+	 (map make-primitive-procedure
+	      '(apply
+		within-control-point scode-eval force
+		execute-at-new-state-point return-to-application
+		with-stack-marker with-interrupt-mask
+		with-interrupts-reduced with-history-disabled))))
+    (lambda (primitive)
+      (memq primitive apply-like-primitives))))
 
 (define *rtlgen/omit-internal-interrupt-checks?* #T)
 
