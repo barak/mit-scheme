@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: generic.scm,v 1.6 2003/03/10 20:53:34 cph Exp $
+$Id: generic.scm,v 1.7 2003/07/22 02:12:56 cph Exp $
 
 Copyright 1996,2003 Massachusetts Institute of Technology
 
@@ -389,7 +389,7 @@ USA.
 	     ((2) expression-tag)
 	     (else default-tag))))))
     (let ((boolean-tag (make-built-in-tag 'BOOLEAN)))
-      (if (> microcode-id/version 11)
+      (if (fix:= (object-type #f) (object-type #t))
 	  (assign-type 'CONSTANT
 		       (lambda (default-tag)
 			 (lambda (object)
