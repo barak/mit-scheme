@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.23 1987/06/18 19:18:57 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.24 1987/06/18 19:54:28 jinx Exp $
  *
  * This file contains default definitions for some hooks which 
  * various machines require.  These machines define these hooks
@@ -115,6 +115,10 @@ extern Pointer Swap_Temp;
 #endif
 
 /* Used in BOOT.C */
+
+#ifndef main_type
+#define main_type void
+#endif
 
 #ifndef term_type
 #define term_type void
