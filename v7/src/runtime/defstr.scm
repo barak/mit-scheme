@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.2 1988/06/16 06:26:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.3 1988/10/29 00:12:22 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -69,11 +69,11 @@ kind.  In Common Lisp, the structures are tagged with symbols, but
 that depends on the Common Lisp package system to help generate unique
 tags; Scheme has no such way of generating unique symbols.
 
-* The NAMED option may optionally take an argument, which should be
-the name of a variable.  If used, structure instances will be tagged
-with that variable's value.  If the structure has a PRINT-PROCEDURE
-(the default) the variable must be defined when the defstruct is
-evaluated.
+* The NAMED option may optionally take an argument, which is normally
+the name of a variable (any expression may be used, but it will be
+evaluated whenever the tag name is needed).  If used, structure
+instances will be tagged with that variable's value.  The variable
+must be defined when the defstruct is evaluated.
 
 * The TYPE option is restricted to the values VECTOR and LIST.
 
@@ -108,6 +108,10 @@ evaluated.
       (parse/options name-and-options '())))
 
 (define (parse/options name options)
+  (if (not (symbol? name))
+      (error "Structure name must be a symbol" name))
+  (if (not (list? options))
+      (error "Structure options must be a list" options))
   (let ((conc-name (symbol-append name '-))
 	(constructor-seen? false)
 	(keyword-constructor? false)
@@ -115,11 +119,11 @@ evaluated.
 	(boa-constructors '())
 	(copier-name false)
 	(predicate-name (symbol-append name '?))
-	(print-procedure print-procedure/default)
+	(print-procedure default-value)
 	(type-seen? false)
 	(type 'STRUCTURE)
 	(named-seen? false)
-	(tag-name name)
+	(tag-name default-value)
 	(offset 0)
 	(include false))
 
@@ -130,22 +134,23 @@ evaluated.
 	      (error "Structure option used with wrong number of arguments"
 		     keyword
 		     arguments)))
+
+	(define (symbol-option default)
+	  (parse/option-value symbol? keyword (car arguments) default))
+
 	(case keyword
 	  ((CONC-NAME)
 	   (check-arguments 0 1)
 	   (set! conc-name
 		 (and (not (null? arguments))
-		      (parse/option-value (car arguments)
-					  (symbol-append name '-)))))
+		      (symbol-option (symbol-append name '-)))))
 	  ((KEYWORD-CONSTRUCTOR)
 	   (check-arguments 0 1)
 	   (set! constructor-seen? true)
 	   (set! keyword-constructor? true)
 	   (if (not (null? (cdr arguments)))
 	       (set! constructor-name
-		     (parse/option-value (car arguments)
-					 (symbol-append 'make- name)))))
-
+		     (symbol-option (symbol-append 'make- name)))))
 	  ((CONSTRUCTOR)
 	   (check-arguments 0 2)
 	   (cond ((null? arguments)
@@ -153,26 +158,25 @@ evaluated.
 		 ((null? (cdr arguments))
 		  (set! constructor-seen? true)
 		  (set! constructor-name
-			(parse/option-value (car arguments)
-					    (symbol-append 'make- name))))
+			(symbol-option (symbol-append 'make- name))))
 		 (else
 		  (set! boa-constructors (cons arguments boa-constructors)))))
 	  ((COPIER)
 	   (check-arguments 0 1)
 	   (if (not (null? arguments))
-	       (set! copier-name
-		     (parse/option-value (car arguments)
-					 (symbol-append 'copy- name)))))
+	       (set! copier-name (symbol-option (symbol-append 'copy- name)))))
+
 	  ((PREDICATE)
 	   (check-arguments 0 1)
 	   (if (not (null? arguments))
-	       (set! predicate-name
-		     (parse/option-value (car arguments)
-					 (symbol-append name '?)))))
+	       (set! predicate-name (symbol-option (symbol-append name '?)))))
 	  ((PRINT-PROCEDURE)
 	   (check-arguments 1 1)
 	   (set! print-procedure
-		 (parse/option-value (car arguments) false)))
+		 (parse/option-value (lambda (x) x true)
+				     keyword
+				     (car arguments)
+				     false)))
 	  ((NAMED)
 	   (check-arguments 0 1)
 	   (set! named-seen? true)
@@ -192,7 +196,7 @@ evaluated.
 	  |#
 	  (else
 	   (error "Unrecognized structure option" keyword)))))
-
+
     (for-each (lambda (option)
 		(if (pair? option)
 		    (parse/option (car option) (cdr option))
@@ -208,7 +212,7 @@ evaluated.
 	    boa-constructors
 	    copier-name
 	    predicate-name
-	    (if (eq? print-procedure print-procedure/default)
+	    (if (eq? print-procedure default-value)
 		`(,(absolute 'UNPARSER/STANDARD-METHOD) ',name)
 		print-procedure)
 	    type
@@ -216,13 +220,16 @@ evaluated.
 		  ((eq? type 'VECTOR) 'VECTOR)
 		  ((eq? type 'LIST) 'LIST)
 		  (else (error "Unsupported structure type" type)))
-	    (or (not type-seen?) named-seen?)
-	    tag-name
+	    (and (or (not type-seen?) named-seen?)
+		 (if (eq? tag-name default-value) 'DEFAULT true))
+	    (if (eq? tag-name default-value)
+		name
+		tag-name)
 	    offset
 	    include
 	    '())))
 
-(define print-procedure/default
+(define default-value
   "default")
 
 ;;;; Parse Slot-Descriptions
@@ -242,6 +249,8 @@ evaluated.
   structure
   (let ((kernel
 	 (lambda (name default options)
+	   (if (not (list? options))
+	       (error "Structure slot options must be a list" options))
 	   (let ((type #T)
 		 (read-only? false))
 	     (define (loop options)
@@ -249,10 +258,17 @@ evaluated.
 		   (begin
 		     (case (car options)
 		       ((TYPE)
-			(set! type (parse/option-value (cadr options) true)))
+			(set! type
+			      (parse/option-value symbol?
+						  (car options)
+						  (cadr options)
+						  true)))
 		       ((READ-ONLY)
 			(set! read-only?
-			      (parse/option-value (cadr options) true)))
+			      (parse/option-value boolean?
+						  (car options)
+						  (cadr options)
+						  true)))
 		       (else
 			(error "Unrecognized structure slot option"
 			       (car options))))
@@ -267,11 +283,18 @@ evaluated.
 	    (kernel (car slot-description) false '()))
 	(kernel slot-description false '()))))
 
-(define (parse/option-value name default)
-  (case name
-    ((FALSE NIL) #F)
-    ((TRUE T) default)
-    (else name)))
+(define (parse/option-value predicate keyword option default)
+  (case option
+    ((FALSE NIL)
+     #F)
+    ((TRUE T)
+     default)
+    (else
+     (if (not (or (predicate option)
+		  (not option)
+		  (eq? option default)))
+	 (error "Structure option has incorrect type" keyword option))
+     option)))
 
 ;;;; Descriptive Structure
 
@@ -517,8 +540,8 @@ evaluated.
 (define (type-definitions structure)
   (cond ((not (structure/named? structure))
 	 '())
-	((eq? (structure/tag-name structure) (structure/name structure))
-	 `((DEFINE ,(structure/name structure)
+	((eq? (structure/named? structure) 'DEFAULT)
+	 `((DEFINE ,(structure/tag-name structure)
 	     ',structure)))
 	(else
 	 `((NAMED-STRUCTURE/SET-TAG-DESCRIPTION!

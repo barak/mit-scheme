@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambda.scm,v 14.2 1988/06/16 06:28:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambda.scm,v 14.3 1988/10/29 00:12:28 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -407,10 +407,8 @@ MIT in each case. |#
 (define set-lambda-body!)
 (define lambda-bound)
 
-(define-integrable block-declaration-tag
-  (string->symbol "#[Block Declaration]"))
-
-(define-structure (block-declaration (named block-declaration-tag))
+(define-structure (block-declaration
+		   (named (string->symbol "#[Block Declaration]")))
   (text false read-only true))
 
 ;;;; Simple Lambda/Lexpr

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.1 1988/06/13 11:49:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.2 1988/10/29 00:12:42 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -95,6 +95,7 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
 ;;;; Basic Pathnames
 
 (define-structure (pathname
+		   (named (string->symbol "#[(runtime pathname)pathname]"))
 		   (copier pathname-copy)
 		   (print-procedure
 		    (unparser/standard-method 'PATHNAME

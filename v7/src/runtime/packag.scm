@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/packag.scm,v 14.4 1988/08/05 20:48:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/packag.scm,v 14.5 1988/10/29 00:12:38 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -67,6 +67,16 @@ MIT in each case. |#
 	  (and child
 	       (loop (cdr path) child))))))
 
+(define (environment->package environment)
+  (and (not (lexical-unreferenceable? environment package-name-tag))
+       (let ((package (lexical-reference environment package-name-tag)))
+	 (and (package? package)
+	      (eq? environment (package/environment package))
+	      package))))
+
+(define-integrable package-name-tag
+  (string->symbol "#[(package)package-name-tag]"))
+
 (define (find-package name)
   (let loop ((path name) (package system-global-package))
     (if (null? path)
@@ -87,6 +97,8 @@ MIT in each case. |#
       (error "Package already has child of given name" package name))
   (let ((child (make-package package name environment)))
     (set-package/children! package (cons child (package/children package)))
+    (if (not (environment->package environment))
+	(local-assignment environment package-name-tag child))
     child))
 
 (define system-global-package)

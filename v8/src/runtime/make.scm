@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.4 1988/07/07 16:13:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.5 1988/10/29 00:12:33 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -227,7 +227,8 @@ MIT in each case. |#
       environment-for-package)
 ((access initialize-package! environment-for-package))
 (let loop ((names
-	    '(FIND-PACKAGE
+	    '(ENVIRONMENT->PACKAGE
+	      FIND-PACKAGE
 	      NAME->PACKAGE
 	      PACKAGE/ADD-CHILD!
 	      PACKAGE/CHILD
@@ -369,4 +370,4 @@ MIT in each case. |#
 
 )
 
-(initial-top-level-repl)
+(package/add-child! system-global-package 'USER user-initial-environment)(initial-top-level-repl)

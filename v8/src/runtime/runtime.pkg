@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.21 1988/10/12 07:48:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.22 1988/10/29 00:12:53 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -62,6 +62,7 @@ MIT in each case. |#
   (files "packag")
   (parent ())
   (export ()
+	  environment->package
 	  find-package
 	  name->package
 	  package/add-child!
@@ -1206,6 +1207,7 @@ MIT in each case. |#
 	  nearest-repl/environment
 	  nearest-repl/syntax-table
 	  out
+	  pe
 	  proceed
 	  prompt-for-command-char
 	  prompt-for-confirmation

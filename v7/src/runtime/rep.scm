@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.7 1988/08/05 20:51:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.8 1988/10/29 00:12:47 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -376,8 +376,13 @@ MIT in each case. |#
 (define hook/repl-write)
 
 (define (default/repl-environment repl environment)
-  repl environment
-  false)
+  (let ((package (environment->package environment))
+	(port (cmdl/output-port repl)))
+    (if package
+	(begin
+	  (write-string "\n;Package: " port)
+	  (write (package/name package) port))))
+  unspecific)
 
 (define (default/repl-read repl)
   (let ((s-expression (read (cmdl/input-port repl))))
@@ -430,6 +435,13 @@ MIT in each case. |#
 
 (define user-repl-environment)
 (define user-repl-syntax-table)
+
+(define (pe)
+  (let ((environment (nearest-repl/environment)))
+    (let ((package (environment->package environment)))
+      (if package
+	  (package/name package)
+	  environment))))
 
 (define (ge environment)
   (let ((repl (nearest-repl))
