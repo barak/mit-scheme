@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.1 1987/12/30 07:05:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.2 1987/12/31 10:26:18 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -63,6 +63,12 @@ MIT in each case. |#
   (let ((reference (move-to-temporary-register! register 'DATA)))
     (LAP (RO L L (& 8) ,reference)
 	 ,(test-byte type reference))))
+
+(define-rule predicate
+  (TYPE-TEST (OBJECT->TYPE (OFFSET (REGISTER (? register)) (? offset)))
+	     (? type))
+  (set-standard-branches! 'EQ)
+  (LAP ,(test-byte type (indirect-reference! register offset))))
 
 (define-rule predicate
   (UNASSIGNED-TEST (REGISTER (? register)))
