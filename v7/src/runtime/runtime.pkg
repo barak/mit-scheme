@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.500 2004/10/18 05:05:44 cph Exp $
+$Id: runtime.pkg,v 14.501 2004/10/22 04:47:42 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -2466,6 +2466,7 @@ USA.
 	  pathname-device
 	  pathname-directory
 	  pathname-host
+	  pathname-mime-type
 	  pathname-name
 	  pathname-new-device
 	  pathname-new-directory

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.52 2004/02/16 05:37:14 cph Exp $
+$Id: os2prm.scm,v 1.53 2004/10/22 04:47:29 cph Exp $
 
 Copyright 1994,1995,1997,1998,1999,2000 Massachusetts Institute of Technology
 Copyright 2001,2003,2004 Massachusetts Institute of Technology
@@ -285,6 +285,11 @@ USA.
 (define (copy-file from to)
   ((ucode-primitive os2-copy-file 2) (->namestring (merge-pathnames from))
 				     (->namestring (merge-pathnames to))))
+
+(define (os/pathname-mime-type pathname)
+  ;; **** not yet implemented ****
+  pathname
+  #f)
 
 (define (init-file-specifier->pathname specifier)
 
