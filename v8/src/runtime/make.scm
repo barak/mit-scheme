@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.46 1993/06/09 05:47:01 jawilson Exp $
+$Id: make.scm,v 14.47 1993/06/25 21:08:16 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -396,6 +396,7 @@ MIT in each case. |#
    (RUNTIME STATE-SPACE)
    (RUNTIME MICROCODE-TABLES)
    (RUNTIME APPLY)
+   (RUNTIME HASH)			; First GC daemon!
    (RUNTIME PRIMITIVE-IO)
    (RUNTIME SAVE/RESTORE)
    (RUNTIME SYSTEM-CLOCK)
@@ -406,7 +407,6 @@ MIT in each case. |#
    (RUNTIME GENSYM)
    (RUNTIME STREAM)
    (RUNTIME 2D-PROPERTY)
-   (RUNTIME HASH)
    (RUNTIME RANDOM-NUMBER)
    ;; Microcode data structures
    (RUNTIME HISTORY)
