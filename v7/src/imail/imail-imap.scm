@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.187 2001/09/28 19:22:56 cph Exp $
+;;; $Id: imail-imap.scm,v 1.188 2001/09/29 02:58:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1045,8 +1045,13 @@
        '(\SEEN \ANSWERED \FLAGGED \DELETED \DRAFT \RECENT)))
 
 (define-method message-internal-time ((message <imap-message>))
-  (imap:response:fetch-attribute (fetch-message-items message '(INTERNALDATE))
-				 'INTERNALDATE))
+  (imap:response:fetch-attribute
+   (fetch-message-items message
+			'(INTERNALDATE)
+			(string-append
+			 " internal date for message "
+			 (number->string (+ (%message-index message) 1))))
+   'INTERNALDATE))
 
 (define-method message-length ((message <imap-message>))
   (with-imap-message-open message
@@ -1094,13 +1099,9 @@
       (let ((suffix
 	     (string-append " " noun " for message "
 			    (number->string (+ (%message-index message) 1)))))
-	((imail-ui:message-wrapper "Reading" suffix)
-	 (lambda ()
-	   (imap:read-literal-progress-hook imail-ui:progress-meter
-	     (lambda ()
-	       (fetch-message-items message keywords)
-	       (if (not (initpred message))
-		   (error (string-append "Unable to obtain" suffix))))))))))
+	(fetch-message-items message keywords suffix)
+	(if (not (initpred message))
+	    (error (string-append "Unable to obtain" suffix))))))
 
 (let ((reflector
        (lambda (generic-procedure slot-name guarantee)
@@ -1436,13 +1437,6 @@
 			 (eqv? uidvalidity* uidvalidity))
 		    (remove-expunged-messages folder directory)
 		    (begin
-		      (call-with-append-file "/tmp/foo"
-			(lambda (port)
-			  (write `(uidvalidity= ,uidvalidity ,uidvalidity*)
-				 port)
-			  (newline port)
-			  (write `(delete-directory-contents ,directory) port)
-			  (newline port)))
 		      (delete-directory-contents directory)
 		      (simple-write-file uidvalidity up))))
 	      (begin
@@ -1451,10 +1445,6 @@
 		(simple-write-file uidvalidity up)))))))
 
 (define (remove-expunged-messages folder directory)
-  (call-with-append-file "/tmp/foo"
-    (lambda (port)
-      (write `(remove-expunged-messages ,folder ,directory) port)
-      (newline port)))
   (for-each (lambda (pathname)
 	      (let ((ns (file-namestring pathname)))
 		(if (not (or (string=? ns ".")
@@ -1478,9 +1468,9 @@
 		    (else message)))))
 	#f)))
 
-(define (fetch-message-items message keywords)
+(define (fetch-message-items message keywords suffix)
   (if (equal? keywords '(FLAGS))
-      (fetch-message-items-1 message keywords)
+      (fetch-message-items-1 message keywords suffix)
       (let ((alist
 	     (map (lambda (keyword)
 		    (cons keyword
@@ -1500,7 +1490,8 @@
 	  (if (pair? uncached)
 	      (let ((response
 		     (fetch-message-items-1 message
-					    (map car uncached))))
+					    (map car uncached)
+					    suffix)))
 		(cache-fetch-response message response
 		  (lambda (keyword)
 		    (assq keyword alist))
@@ -1523,12 +1514,16 @@
 (define message-items-cached-as-string
   '(RFC822.HEADER))
 
-(define (fetch-message-items-1 message keywords)
-  (with-imap-message-open message
-    (lambda (connection)
-      (imap:command:uid-fetch connection
-			      (imap-message-uid message)
-			      keywords))))
+(define (fetch-message-items-1 message keywords suffix)
+  ((imail-ui:message-wrapper "Reading" suffix)
+   (lambda ()
+     (imap:read-literal-progress-hook imail-ui:progress-meter
+       (lambda ()
+	 (with-imap-message-open message
+	   (lambda (connection)
+	     (imap:command:uid-fetch connection
+				     (imap-message-uid message)
+				     keywords))))))))
 
 (define (fetch-message-body-part message section)
   (let ((keyword (imap-body-section->keyword section)))
@@ -1664,10 +1659,6 @@
       ((input-port/custom-operation port 'REST->STRING) port))))
 
 (define (delete-file-recursively pathname)
-  (call-with-append-file "/tmp/foo"
-    (lambda (port)
-      (write `(delete-file-recursively ,pathname) port)
-      (newline port)))
   (if (file-directory? pathname)
       (begin
 	(delete-directory-contents (pathname-as-directory pathname))
@@ -1675,10 +1666,6 @@
       (delete-file-no-errors pathname)))
 
 (define (delete-directory-contents directory)
-  (call-with-append-file "/tmp/foo"
-    (lambda (port)
-      (write `(delete-directory-contents ,directory) port)
-      (newline port)))
   (for-each (lambda (pathname)
 	      (if (not (let ((ns (file-namestring pathname)))
 			 (or (string=? ns ".")
