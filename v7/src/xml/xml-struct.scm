@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.15 2003/07/13 03:45:04 cph Exp $
+$Id: xml-struct.scm,v 1.16 2003/07/25 17:23:42 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -74,7 +74,8 @@ USA.
 (define-syntax define-xml-type
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(IDENTIFIER * (IDENTIFIER EXPRESSION)) (cdr form))
+     (if (syntax-match? '(IDENTIFIER * (IDENTIFIER EXPRESSION ? EXPRESSION))
+			(cdr form))
 	 (let ((root (symbol-append 'XML- (cadr form)))
 	       (slots (cddr form)))
 	   (let ((rtd (symbol-append '< root '>))
@@ -99,7 +100,13 @@ USA.
 		      (NAMED-LAMBDA (,constructor ,@slot-vars)
 			,@(map (lambda (slot var) (test slot var constructor))
 			       slots slot-vars)
-			(CONSTRUCTOR ,@slot-vars))))
+			(CONSTRUCTOR
+			 ,@(map (lambda (slot var)
+				  (if (pair? (cddr slot))
+				      `(,(caddr slot) ,var)
+				      var))
+				slots
+				slot-vars)))))
 		  ,@(map (lambda (slot var)
 			   (let* ((accessor (symbol-append root '- (car slot)))
 				  (modifier (symbol-append 'SET- accessor '!)))
@@ -159,7 +166,7 @@ USA.
 
 (define-xml-type element
   (name xml-name?)
-  (attributes xml-attribute-list?)
+  (attributes xml-attribute-list? canonicalize-attributes)
   (contents xml-content?))
 
 (define (xml-attribute-list? object)
@@ -188,19 +195,57 @@ USA.
       (xml-processing-instructions? object)
       (xml-entity-ref? object)))
 
-(define (xml-char-data? object)
-  (or (string? object)
-      (wide-string? object)))
-
 (define-xml-type comment
-  (text xml-char-data?))
+  (text xml-char-data? canonicalize-char-data))
 
 (define-xml-type processing-instructions
   (name
    (lambda (object)
      (and (xml-name? object)
 	  (not (string-ci=? "xml" (symbol-name object))))))
-  (text xml-char-data?))
+  (text xml-char-data? canonicalize-char-data))
+
+(define (xml-char-data? object)
+  (or (string? object)
+      (wide-char? object)
+      (wide-string? object)))
+
+(define (canonicalize-attributes attributes)
+  (map (lambda (a)
+	 (cons (car a)
+	       (canonicalize-content (cdr a))))
+       attributes))
+
+(define (canonicalize-content content)
+  (coalesce-adjacent-strings
+   (map (lambda (item) (canonicalize-char-data item #f))
+	content)))
+
+(define (canonicalize-char-data object)
+  (cond ((wide-char? object)
+	 (call-with-output-string
+	   (lambda (port)
+	     (write-utf8-char object port))))
+	((wide-string? object) (wide-string->utf8-string object))
+	(else object)))
+
+(define (coalesce-adjacent-strings items)
+  (letrec
+      ((search
+	(lambda (items)
+	  (if (pair? items)
+	      (if (string? (car items))
+		  (append (car items) (cdr items))
+		  (cons (car items) (search (cdr items))))
+	      '())))
+       (append
+	(lambda (string items)
+	  (if (pair? items)
+	      (if (string? (car items))
+		  (append (string-append string (car items)) (cdr items))
+		  (cons* string (car items) (search (cdr items))))
+	      '()))))
+    (search items)))
 
 (define-xml-type dtd
   (root xml-name?)
@@ -323,7 +368,11 @@ USA.
 
 (define-xml-type parameter-!entity
   (name xml-name?)
-  (value entity-value?))
+  (value entity-value?
+	 (lambda (v)
+	   (if (pair? v)
+	       (canonicalize-content v)
+	       v))))
 
 (define (entity-value? object)
   (or (and (pair? object)
