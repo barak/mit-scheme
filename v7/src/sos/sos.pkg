@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: sos.pkg,v 1.8 1999/01/02 06:19:10 cph Exp $
+$Id: sos.pkg,v 1.9 2000/02/21 23:13:11 cph Exp $
 
-Copyright (c) 1995-1999 Massachusetts Institute of Technology
+Copyright (c) 1995-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -151,6 +151,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  method-procedure
 	  method-specializers
 	  method?
+	  sort-methods
 	  specializer-classes
 	  specializer=?
 	  specializer?
