@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.14 1990/06/28 16:36:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.15 1990/06/28 18:09:25 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -625,10 +625,18 @@ MIT in each case. |#
       offset
       (heuristic (stream-cdr stream) (1+ offset))))
 
+(define (hardware-trap-frame? frame)
+  (and (stack-frame? frame)
+       (eq? (stack-frame/type frame)
+	    stack-frame-type/hardware-trap)))
+
+(define (hardware-trap-frame/code frame)
+  (guarantee-hardware-trap-frame frame)
+  (let ((code (stack-frame/ref frame hardware-trap/code-index)))
+    (and (pair? code) (cdr code))))	
+
 (define (guarantee-hardware-trap-frame frame)
-  (if (or (not (stack-frame? frame))
-	  (not (eq? (stack-frame/type frame)
-		    stack-frame-type/hardware-trap)))
+  (if (not (hardware-trap-frame? frame))
       (error "guarantee-hardware-trap-frame: invalid" frame)))
 
 (define (hardware-trap-frame/print-registers frame)

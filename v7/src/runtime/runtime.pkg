@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.69 1990/06/22 01:04:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.70 1990/06/28 18:09:44 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -297,9 +297,11 @@ MIT in each case. |#
   (export ()
 	  continuation->stack-frame
 	  continuation/first-subproblem
+	  hardware-trap-frame?
 	  hardware-trap-frame/describe
 	  hardware-trap-frame/print-registers
 	  hardware-trap-frame/print-stack
+	  hardware-trap-frame/code
 	  microcode-return/code->type
 	  stack-frame->continuation
 	  stack-frame-type/code
