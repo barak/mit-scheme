@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.9 1995/11/04 16:57:43 adams Exp $
+$Id: typerew.scm,v 1.10 1995/11/05 14:26:18 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -1181,7 +1181,7 @@ MIT in each case. |#
 	       (lambda (t q env form receiver)
 		 form			; ignored
 		 (result receiver range q
-			 (q-env:restrict (q-env:glb/1 env q1 t1)
+			 (q-env:restrict (q-env:glb/1 env q t)
 					 effect)))))
 	(let* ((arg-type     (first spec))
 	       (result-type  (second spec)))
@@ -1560,6 +1560,7 @@ MIT in each case. |#
 
   (define-typerew-replacement-method 'EXPT 2
     (lambda (form base exponent)
+      form				; ignored
       (let* ((t-exponent (typerew/type exponent)))
 	(cond ((and (type:subset? t-exponent type:fixnum)
 		    (or (equal? base '(QUOTE -1))
@@ -1582,10 +1583,18 @@ MIT in each case. |#
 	effect:none)
 
       (define-typerew-binary-variants-replacement-method primitive
-	type:fixnum             type:fixnum             type:any       fix:op
-	type:flonum             type:flonum             type:any       flo:op
-	(type:not type:fixnum)  type:any                type:any       %op
-	type:any                (type:not type:fixnum)  type:any       %op)))
+	type:fixnum             type:fixnum             type:any      fix:op
+	type:flonum             type:flonum             type:any      flo:op
+	(type:not type:fixnum)  type:any                type:any      %op
+	type:any                (type:not type:fixnum)  type:any      %op)
+
+      (define-typerew-binary-variants-type-method  %op
+	type:number             type:number             type:boolean
+	effect:none)
+
+      (define-typerew-binary-variants-replacement-method %op
+	type:fixnum             type:fixnum             type:any      fix:op
+	type:flonum             type:flonum             type:any      flo:op)))
 
   (define-relational-method  '&<  fix:<  flo:<  %<)
   (define-relational-method  '&>  fix:>  flo:>  %>))
@@ -1594,6 +1603,9 @@ MIT in each case. |#
       (EQ? (make-primitive-procedure 'EQ?))
       (INT= (make-primitive-procedure 'INTEGER-EQUAL?)))
   (define-typerew-binary-variants-type-method  &=
+    type:number                 type:number             type:boolean
+    effect:none)
+  (define-typerew-binary-variants-type-method  %=
     type:number                 type:number             type:boolean
     effect:none)
   (define-typerew-binary-variants-type-method  INT=
@@ -1607,7 +1619,11 @@ MIT in each case. |#
     type:exact-number       type:fixnum             type:any    EQ?
     type:flonum             type:flonum             type:any    flo:=
     (type:not type:fixnum)  type:any                type:any    %=
-    type:any                (type:not type:fixnum)  type:any    %=)  
+    type:any                (type:not type:fixnum)  type:any    %=)
+  (define-typerew-binary-variants-replacement-method  %=
+    type:fixnum             type:exact-number       type:any    EQ?
+    type:exact-number       type:fixnum             type:any    EQ?
+    type:flonum             type:flonum             type:any    flo:=)
   (define-typerew-binary-variants-replacement-method  INT=
     type:fixnum             type:exact-integer      type:any    EQ?
     type:exact-integer      type:fixnum             type:any    EQ?))    
@@ -1827,4 +1843,3 @@ MIT in each case. |#
 	      (form-map/put! cache e annotation)
 	      annotation))))
     (pp/ann program annotate)))
-
