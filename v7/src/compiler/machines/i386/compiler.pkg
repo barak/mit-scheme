@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/compiler.pkg,v 1.6 1992/02/28 20:23:57 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/compiler.pkg,v 1.7 1992/05/14 03:04:40 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/comp.pkg,v 1.32 1991/05/06 23:09:24 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -623,9 +623,11 @@ MIT in each case. |#
   (parent (compiler lap-syntaxer))
   (export (compiler lap-syntaxer)
 	  linearize-lap
-	  bblock-linearize-lap)
+	  bblock-linearize-lap
+	  add-end-of-block-code!)
   (export (compiler top-level)
-	  linearize-lap))
+	  linearize-lap
+	  initialize-lap-linearizer!))
 
 (define-package (compiler lap-optimizer)
   (files "machines/i386/lapopt")
