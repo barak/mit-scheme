@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: snr.scm,v 1.60 2001/03/16 21:54:31 cph Exp $
+;;; $Id: snr.scm,v 1.61 2001/08/06 00:56:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-2001 Massachusetts Institute of Technology
 ;;;
@@ -2937,7 +2937,7 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
   (let ((article-buffer (selected-buffer)))
     (prepare-mail-buffer-for-sending article-buffer
       (lambda (h-start h-end b-start b-end)
-	(news-post-process-headers h-start h-end article-buffer)
+	(news-post-process-headers h-start h-end b-start b-end article-buffer)
 	(let ((m (mail-field-start h-start h-end "X-Mailer")))
 	  (if m
 	      (let ((ls (line-start m 0)))
@@ -2981,34 +2981,33 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 		(nntp-connection:close connection)
 		(finish result))))))))
 
-(define (news-post-process-headers start end lookup-context)
-  (let ((start (mark-left-inserting-copy start)))
-    (if (not (mail-field-end start end "From"))
+(define (news-post-process-headers h-start h-end b-start b-end lookup-context)
+  (let ((h-start (mark-left-inserting-copy h-start)))
+    (if (not (mail-field-end h-start h-end "From"))
 	(insert-string (mail-from-string #f)
-		       (mail-insert-field start "From")))
-    (if (not (mail-field-end start end "Date"))
+		       (mail-insert-field h-start "From")))
+    (if (not (mail-field-end h-start h-end "Date"))
 	(insert-string (universal-time->string (get-universal-time))
-		       (mail-insert-field start "Date")))
-    (if (not (mail-field-end start end "Subject"))
-	(mail-insert-field start "Subject"))
-    (if (not (mail-field-end start end "Lines"))
-	(insert-string (number->string
-			(count-lines (line-start end 1 'ERROR)
-				     (group-end end)))
-		       (mail-insert-field start "Lines")))
-    (let ((region (mail-field-region start end "Newsgroups")))
+		       (mail-insert-field h-start "Date")))
+    (if (not (mail-field-end h-start h-end "Subject"))
+	(mail-insert-field h-start "Subject"))
+    (if (not (mail-field-end h-start h-end "Lines"))
+	(insert-string (number->string (count-lines b-start b-end))
+		       (mail-insert-field h-start "Lines")))
+    (let ((region (mail-field-region h-start h-end "Newsgroups")))
       (if region
 	  (news-post-canonicalize-newsgroups region)
-	  (mail-insert-field start "Newsgroups")))
-    (if (not (mail-field-end start end "Message-id"))
+	  (mail-insert-field h-start "Newsgroups")))
+    (if (not (mail-field-end h-start h-end "Message-id"))
 	(insert-string
-	 (news-post-default-message-id (mail-field-region start end "Subject")
+	 (news-post-default-message-id (mail-field-region h-start h-end
+							  "Subject")
 				       lookup-context)
-	 (mail-insert-field end "Message-id")))
-    (if (not (mail-field-end start end "Path"))
+	 (mail-insert-field h-end "Message-id")))
+    (if (not (mail-field-end h-start h-end "Path"))
 	(insert-string (news-post-default-path)
-		       (mail-insert-field end "Path")))
-    (mark-temporary! start)))
+		       (mail-insert-field h-end "Path")))
+    (mark-temporary! h-start)))
 
 (define (news-post-canonicalize-newsgroups region)
   (let ((start (mark-right-inserting-copy (region-start region)))
