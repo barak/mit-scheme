@@ -1,0 +1,212 @@
+Oct 11
+
+* Fix make-stack-closure substitution on test/stack2.scm
+
+* Fix preservation bug in edwin/comred.scm.  map-entries must have a
+  non-empty alias list but state-preservations creates states with an
+  empty list.  Perhaps the restoring code must create an alias list?
+
+----------------------------------------------------------------------
+Aug 21:
+
+rbtree:
+  When batch compiled (script compile-all.script) the following error
+  occurs, but it does not manifest when compiled from the command
+  line:
+
+        Compiling procedure: make-rb-tree...
+	...
+The object (- #[uninterned-symbol 6026 trivial-closure297] (+ #[uninterned-symbol 6027 label-24] 11)), passed as the first argument to integer-less?, is not the correct type.
+
+
+----------------------------------------------------------------------
+Aug 15: All files compile.
+
+Problems:
+
+conpar:
+  Doesnt understand new stack frames [Fixed: correct size in format word]
+
+port:
+  Tries to apply #f when first input entered [Fixed: alpha]
+
+ttyio:
+  infinite loop (SIGSEGV under gdb) during initialization -
+  set-channel-port is being called with `29' as the channel structure.
+  The occurs in the continuation of a call to LIST with 29 args -
+  coincidence? [Fixed]
+  
+----------------------------------------------------------------------
+Aug 7: All files compile.
+
+Problems:
+
+parse:
+  SIGBUS at very end of cold load [Fixed]
+
+port:
+  Tries to apply #f when first input entered [Fixed]
+
+rep:
+  Infinite loop at startup [Fixed]
+
+ttyio:
+  infinite loop during initialization [Fixed]
+  
+unxprm:
+  ^C^C causes GC death [gone away]
+
+unsyn:
+  (unsyntax (make-combination cons '(1 2)))
+	does	=>  #[primitive-procedure cons]
+	should	=>  (#[primitive-procedure cons] 1 2)
+  [fixed: name capture]
+
+----------------------------------------------------------------------
+Pre 7 Aug:
+* All files make it through the compiler
+
+* The following files compile but don't cold load:
+
+parse: test case is p2.scm.  The problem is that a temporary register
+is preserved across a procedure call with many arguments, and the new
+calling conventions uses that same register as an argument register.
+
+unpars:
+  infinite loop during initialization
+
+syntax:
+  infinite consing loop during initialization
+
+pathnm, ttyio:
+  infinite loop during initialization
+
+x11graph:
+  SIGSEGV during initialization (stack overflow)
+  Now: infinite loop durimg initialization
+
+port: dies when trying to do initial REP read from console
+
+unsyn: wrong results for (pp pp)
+	(pp (lambda () #F))
+	;The object (unassigned? #[compiled-procedure 1 () #xC #x1040F0]) is not applicable.
+
+rep: formerly unpreserved registers [test case
+unpreserve4.scm]
+
+apply: SIGBUS [during syntaxing] when you evaluate
+  (lambda () (make-environment (define x 3) (define y 4)))
+  (lambda () (define x) (define y) 1)
+
+make: hardware trap when -fasl'ed
+
+usrint: ^C^C (/^G) causes irrecoverable double SIGSEGVs
+
+unxprm: repeated ^C^C causes double SIGSEGVs, strongly correlated with
+        this file being loaded compiled.
+
+alphabetical list:
+  apply
+  make
+  parse
+  pathnm
+  port
+  rep
+  syntax
+  ttyio
+  unpars
+  unsyn
+  unxprm
+  usrint
+  x11graph
+
+* Unisolated Errors
+
+There are sporadic various faults (SIGSEGV, SIGILL) to do with
+handling interrupts.
+
+
+====== Things to do =======
+
+In midend/simplify, the code for simplify/open-code? and
+do-simplification would be better written to call a new graph
+procedure like make-breaks-cycle? but with a set of starting nodes
+that are known to be not open codable anyway -- i.e. move the test
+code from simplify/open-code? to do-simplification.
+
+
+----------------------------------------------------------------------
+
+Files with Long parameter list warning:
+codwlk
+defstr
+graphics
+make
+pathnm
+wttree
+
+Files with Call with large number of parameters warning:
+codwlk	graphics	x11graph
+cpress	hashtb	rep	unpars
+debug	io	starbase
+defstr	ntpth	syntax
+dospth	numint	ttyio
+fileio	parse	unsyn
+format	pathnm	unxpth
+genio	prgcop	wttree
+
+
+unxprm gives a SIGSEGV for C-c C-c
+port gives a SIGSEGV for return
+
+----------------------------------------------------------------------
+
+Arity of continuations.
+
+Currently there is no way to know the arity of a continuation because
+previously they were all single result continuations.  Fixing this
+will require adjusting the format words
+
+Changes: INTERRUPT-CHECK:CONTINUATION, RETURN-ADDRESS
+
+----------------------------------------------------------------------
+
+Stackopt & compat.
+
+Compat ensures that the names in a frame vector are unique.  Without
+this, a frame could contain duplicate names when arguments are passed
+on the stack, either as multiple identical arguments (foo x x) or
+because some value is both passed as a stack argument and is one of
+the value sin the continuation's stack closure.  Currently stackopt
+cant handle duplicates, but it would be nice if it could because
+potentially allows stackopt more freedom in assigning slots.
+______________________________________________________________________
+
+Task list:
+
+* rewrite continuation parser [partially done]
+  Needs to understand new reflect codes.
+
+* write alpha converter [partially done]
+
+* change kmp/pp & friends to print uninterned symbols with hash
+  numbers [Done]
+
+* write alpha-unconverter
+
+* fix preservation of computed results (preserve1.scm)
+
+* Go through all transformations and ensure that they maintain
+  alpha-renaming.
+
+* Stop lambda-lifter from passing ignored-continuations, even when
+  they are referenced (i.e replace or remove references)
+
+* Debugging information.
+
+* Install and test widen and split. [done]
+
+* Dataflow: %heap-closure-set!: Currently dataflow does the `natural'
+  thing and confuses the initial value of the closure slot and the
+  value assigned by %heap-closure-set!, which degrades the information
+  available to widen and split.	
