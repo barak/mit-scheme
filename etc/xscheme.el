@@ -20,16 +20,19 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.27 1991/01/08 04:49:24 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.28 1991/05/15 00:52:50 cph Exp $
 
 (require 'scheme)
 
+;;;###autoload
 (defvar scheme-program-name "scheme"
   "*Program invoked by the `run-scheme' command.")
 
+;;;###autoload
 (defvar scheme-band-name nil
   "*Band loaded by the `run-scheme' command.")
 
+;;;###autoload
 (defvar scheme-program-arguments nil
   "*Arguments passed to the Scheme program by the `run-scheme' command.")
 
@@ -69,6 +72,7 @@ Is processed with `substitute-command-keys' first.")
 (xscheme-evaluation-commands scheme-mode-map)
 (xscheme-interrupt-commands scheme-mode-map)
 
+;;;###autoload
 (defun run-scheme (command-line)
   "Run an inferior Scheme process.
 Output goes to the buffer `*scheme*'.

@@ -1,5 +1,5 @@
 ;; Scheme mode, and its idiosyncratic commands.
-;; Copyright (C) 1986, 1987, 1988 Free Software Foundation, Inc.
+;; Copyright (C) 1986, 1987, 1988, 1991 Free Software Foundation, Inc.
 ;; Adapted from Lisp mode by Bill Rozas, jinx@prep.
 
 ;; This file is part of GNU Emacs.
@@ -24,7 +24,7 @@
 ;; of special forms.  Probably the code should be merged at some point 
 ;; so that there is sharing between both libraries.
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/scheme.el,v 1.7 1988/07/15 20:20:00 cph Rel $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/scheme.el,v 1.8 1991/05/15 00:52:37 cph Exp $
 
 (provide 'scheme)
 
@@ -119,6 +119,7 @@
       (setq scheme-mode-map (make-sparse-keymap))
       (scheme-mode-commands scheme-mode-map)))
 
+;;;###autoload
 (defun scheme-mode ()
   "Major mode for editing Scheme code.
 Editing commands are similar to those of lisp-mode.
@@ -147,12 +148,7 @@ if that value is non-nil."
   (setq major-mode 'scheme-mode)
   (setq mode-name "Scheme"))
 
-(autoload 'run-scheme "xscheme"
-  "Run an inferior Scheme process.
-Output goes to the buffer `*scheme*'.
-With argument, asks for a command line."
-  t)
-
+;;;###autoload
 (defvar scheme-mit-dialect t
   "If non-nil, scheme mode is specialized for MIT Scheme.
 Set this to nil if you normally use another dialect.")
