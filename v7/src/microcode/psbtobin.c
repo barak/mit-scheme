@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbtobin.c,v 9.43 1991/03/24 05:06:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbtobin.c,v 9.44 1991/07/03 01:32:34 cph Exp $
 
-Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -92,7 +92,7 @@ DEFUN_VOID (inconsistency)
   quit (1);
   /*NOTREACHED*/
 }
-
+
 #define OUT(c)	return ((long) ((c) & MAX_CHAR))
 
 long
@@ -414,7 +414,7 @@ DEFUN_VOID (compute_max)
   the_max = Result;
   return (Result);
 }
-
+
 long
 DEFUN (read_signed_decimal, (stream),
        fast FILE *stream)
@@ -564,7 +564,7 @@ DEFUN (Read_External, (N, Table, To),
 	*Table++ = (MAKE_OBJECT (TC_CHARACTER, the_char_code));
 	continue;
       }
-
+
       case TC_BIG_FLONUM:
       {
 	double The_Flonum = (read_a_flonum ());
@@ -720,7 +720,7 @@ DEFUN (Read_Pointers_and_Relocate, (how_many, to),
 	  }
 	}
 	continue;
-
+
       case TC_COMPILED_ENTRY:
       {
 	SCHEME_OBJECT *temp;
@@ -838,7 +838,7 @@ DEFUN (print_external_objects, (area_name, Table, N),
 		 (N - (Table_End - Table)),
 		 ((char *) MEMORY_LOC (*Table, STRING_CHARS)));
 	break;
-
+
       case TC_BIG_FIXNUM:
 	fprintf (stderr,
 		 "Table[%6d] = Bignum\n",
@@ -888,7 +888,7 @@ DEFUN (when, (what, message),
  fprintf (stderr, (format), (value));					\
  fprintf (stderr, "\n");						\
 }
-
+
 #else /* not DEBUG */
 
 #define DEBUGGING(action)
@@ -958,7 +958,7 @@ DEFUN_VOID (Read_Header_and_Allocate)
 	     PORTABLE_VERSION, FASL_FORMAT_VERSION, FASL_SUBVERSION);
     quit (1);
   }
-
+
   READ_HEADER ("Flags", "%ld", Flags);
   READ_FLAGS (Flags);
 
@@ -982,7 +982,7 @@ DEFUN_VOID (Read_Header_and_Allocate)
 	     FASL_INTERNAL_FORMAT);
     quit (1);
   }
-
+
   READ_HEADER ("Heap Count", "%ld", Heap_Count);
   READ_HEADER ("Dumped Heap Base", "%ld", Dumped_Heap_Base);
   READ_HEADER ("Heap Objects", "%ld", Heap_Objects);
@@ -1059,12 +1059,16 @@ DEFUN_VOID (do_it)
     }
 
     Stack_Top = &Heap[Size];
+    DEBUGGING (fprintf (stderr, "Stack_Top: 0x%x\n", Stack_Top));
 
     Heap_Table = &Heap[0];
     Heap_Base = &Heap_Table[Heap_Objects];
     ALIGN_FLOAT (Heap_Base);
     Heap_Object_Base =
       Read_External (Heap_Objects, Heap_Table, Heap_Base);
+    DEBUGGING (print_external_objects ("Heap", Heap_Table, Heap_Objects));
+    DEBUGGING (fprintf (stderr, "Heap_Base: 0x%x\n", Heap_Base));
+    DEBUGGING (fprintf (stderr, "Heap_Object_Base: 0x%x\n", Heap_Object_Base));
 
     /* The various 2s below are for SNMV headers. */
 
@@ -1072,23 +1076,26 @@ DEFUN_VOID (do_it)
     Pure_Base = &Pure_Table[Pure_Objects + 2];
     Pure_Object_Base =
       Read_External (Pure_Objects, Pure_Table, Pure_Base);
+    DEBUGGING (print_external_objects ("Pure", Pure_Table, Pure_Objects));
+    DEBUGGING (fprintf (stderr, "Pure_Base: 0x%x\n", Pure_Base));
+    DEBUGGING (fprintf (stderr, "Pure_Object_Base: 0x%x\n", Pure_Object_Base));
 
     Constant_Table = &Heap[Size - Constant_Objects];
     Constant_Base = &Pure_Object_Base[Pure_Count + 2];
     Constant_Object_Base =
       Read_External (Constant_Objects, Constant_Table, Constant_Base);
+    DEBUGGING (print_external_objects ("Constant",
+				       Constant_Table,
+				       Constant_Objects));
+    DEBUGGING (fprintf (stderr, "Constant_Base: 0x%x\n", Constant_Base));
+    DEBUGGING (fprintf (stderr, "Constant_Object_Base: 0x%x\n",
+			Constant_Object_Base));
 
     primitive_table = &Constant_Object_Base[Constant_Count + 2];
 
     WHEN ((primitive_table > Constant_Table),
 	  "primitive_table overran Constant_Table");
 
-    DEBUGGING (print_external_objects ("Heap", Heap_Table, Heap_Objects));
-    DEBUGGING (print_external_objects ("Pure", Pure_Table, Pure_Objects));
-    DEBUGGING (print_external_objects ("Constant",
-				       Constant_Table,
-				       Constant_Objects));
-
     /* Read the normal objects */
 
     Free =
@@ -1133,7 +1140,7 @@ DEFUN_VOID (do_it)
       fprintf (stderr,
 	       "NOTE: The binary file contains primitives with unknown arity.\n");
     }
-
+
     /* Dump the objects */
 
   {
@@ -1158,7 +1165,7 @@ DEFUN_VOID (do_it)
 			Primitive_Table_Length));
     DEBUGGING (fprintf (stderr, "Primitive_Table_Size = %ld\n",
 			(primitive_table_end - primitive_table)));
-
+
     /* Is there a Pure/Constant block? */
 
     if ((Constant_Objects == 0) && (Constant_Count == 0) &&

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbmap.h,v 9.32 1989/11/30 03:04:07 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbmap.h,v 9.33 1991/07/03 01:32:18 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -78,8 +78,30 @@ extern double frexp(), ldexp();
 #define float_to_pointer						\
   BYTES_TO_WORDS(sizeof(double))
 
-#define flonum_to_pointer(nchars)					\
-  ((nchars) * (1 + float_to_pointer))
+#ifndef FLOATING_ALIGNMENT
+
+#define flonum_to_pointer(nfloats)					\
+  ((nfloats) * (1 + float_to_pointer))
+
+#else /* FLOATING_ALIGNMENT */
+
+/* When computing the space needed for flonums, the worst case is that
+   every flonum needs alignment.  To estimate the space needed, add
+   padding to each flonum to round it up to an alignment boundary.  */
+
+#define flonum_to_pointer(nfloats)					\
+  ((nfloats)								\
+   * (((((1 + float_to_pointer) * (sizeof (char)))			\
+	& FLOATING_ALIGNMENT)						\
+       == 0)								\
+      ? (1 + float_to_pointer)						\
+      : ((((1 + float_to_pointer) * (sizeof (char)))			\
+	  + ((FLOATING_ALIGNMENT + 1)					\
+	     - (((1 + float_to_pointer) * (sizeof (char)))		\
+		& FLOATING_ALIGNMENT)))					\
+	 / (sizeof (char)))))
+
+#endif /* FLOATING_ALIGNMENT */
 
 #define char_to_pointer(nchars)						\
   BYTES_TO_WORDS(nchars)
