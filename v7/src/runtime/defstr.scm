@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.44 2003/03/07 18:45:58 cph Exp $
+$Id: defstr.scm,v 14.45 2003/03/07 19:09:22 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,1997,2000 Massachusetts Institute of Technology
@@ -554,123 +554,48 @@ differences:
 
 ;;;; Descriptive Structure
 
-(define structure-rtd
-  (make-record-type
-   "structure"
-   '(CONTEXT CONC-NAME CONSTRUCTORS KEYWORD-CONSTRUCTORS COPIER PREDICATE
-	     PRINT-PROCEDURE TYPE NAMED? TYPE-DESCRIPTOR TAG-EXPRESSION
-	     SAFE-ACCESSORS? OFFSET SLOTS)))
+(define-record-type <structure>
+    (make-structure context conc-name constructors keyword-constructors copier
+		    predicate print-procedure type named? type-descriptor
+		    tag-expression safe-accessors? offset slots)
+    structure?
+  (context structure/context)
+  (conc-name structure/conc-name)
+  (constructors structure/constructors)
+  (keyword-constructors structure/keyword-constructors)
+  (copier structure/copier)
+  (predicate structure/predicate)
+  (print-procedure structure/print-procedure)
+  (type structure/type)
+  (named? structure/tagged?)
+  (type-descriptor structure/type-descriptor)
+  (tag-expression structure/tag-expression)
+  (safe-accessors? structure/safe-accessors?)
+  (offset structure/offset)
+  (slots structure/slots))
 
-(define make-structure
-  (record-constructor structure-rtd))
+(define-record-type <parser-context>
+    (make-parser-context name environment closing-environment)
+    parser-context?
+  (name parser-context/name)
+  (environment parser-context/environment)
+  (closing-environment parser-context/closing-environment))
 
-(define structure?
-  (record-predicate structure-rtd))
+(define-record-type <option>
+    (make-option keyword arguments original)
+    option?
+  (keyword option/keyword)
+  (arguments option/arguments)
+  (original option/original))
 
-(define structure/context
-  (record-accessor structure-rtd 'CONTEXT))
-
-(define structure/conc-name
-  (record-accessor structure-rtd 'CONC-NAME))
-
-(define structure/constructors
-  (record-accessor structure-rtd 'CONSTRUCTORS))
-
-(define structure/keyword-constructors
-  (record-accessor structure-rtd 'KEYWORD-CONSTRUCTORS))
-
-(define structure/copier
-  (record-accessor structure-rtd 'COPIER))
-
-(define structure/predicate
-  (record-accessor structure-rtd 'PREDICATE))
-
-(define structure/print-procedure
-  (record-accessor structure-rtd 'PRINT-PROCEDURE))
-
-(define structure/type
-  (record-accessor structure-rtd 'TYPE))
-
-(define structure/tagged?
-  (record-accessor structure-rtd 'NAMED?))
-
-(define structure/type-descriptor
-  (record-accessor structure-rtd 'TYPE-DESCRIPTOR))
-
-(define structure/tag-expression
-  (record-accessor structure-rtd 'TAG-EXPRESSION))
-
-(define structure/safe-accessors?
-  (record-accessor structure-rtd 'SAFE-ACCESSORS?))
-
-(define structure/offset
-  (record-accessor structure-rtd 'OFFSET))
-
-(define structure/slots
-  (record-accessor structure-rtd 'SLOTS))
-
-(define parser-context-rtd
-  (make-record-type "parser-context"
-		    '(NAME ENVIRONMENT CLOSING-ENVIRONMENT)))
-
-(define make-parser-context
-  (record-constructor parser-context-rtd))
-
-(define parser-context?
-  (record-predicate parser-context-rtd))
-
-(define parser-context/name
-  (record-accessor parser-context-rtd 'NAME))
-
-(define parser-context/environment
-  (record-accessor parser-context-rtd 'ENVIRONMENT))
-
-(define parser-context/closing-environment
-  (record-accessor parser-context-rtd 'CLOSING-ENVIRONMENT))
-
-
-(define option-rtd
-  (make-record-type "option" '(KEYWORD ARGUMENTS ORIGINAL)))
-
-(define make-option
-  (record-constructor option-rtd))
-
-(define option?
-  (record-predicate option-rtd))
-
-(define option/keyword
-  (record-accessor option-rtd 'KEYWORD))
-
-(define option/arguments
-  (record-accessor option-rtd 'ARGUMENTS))
-
-(define option/original
-  (record-accessor option-rtd 'ORIGINAL))
-
-
-(define slot-rtd
-  (make-record-type "slot" '(NAME DEFAULT TYPE READ-ONLY? INDEX)))
-
-(define make-slot
-  (record-constructor slot-rtd '(NAME DEFAULT TYPE READ-ONLY?)))
-
-(define slot/name
-  (record-accessor slot-rtd 'NAME))
-
-(define slot/default
-  (record-accessor slot-rtd 'DEFAULT))
-
-(define slot/type
-  (record-accessor slot-rtd 'TYPE))
-
-(define slot/read-only?
-  (record-accessor slot-rtd 'READ-ONLY?))
-
-(define slot/index
-  (record-accessor slot-rtd 'INDEX))
-
-(define set-slot/index!
-  (record-modifier slot-rtd 'INDEX))
+(define-record-type <slot>
+    (make-slot name default type read-only? index)
+    slot?
+  (name slot/name)
+  (default slot/default)
+  (type slot/type)
+  (read-only? slot/read-only?)
+  (index slot/index set-slot/index!))
 
 (define slot-assoc
   (association-procedure eq? slot/name))
