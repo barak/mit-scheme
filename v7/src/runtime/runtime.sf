@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.sf,v 14.6 1991/03/01 01:01:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.sf,v 14.7 1992/05/12 04:15:23 mhwu Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,3 +42,4 @@ MIT in each case. |#
 (cref/generate-constructors "runtim")
 (sf "runtim.con" "runtim.bcon")
 (sf "runtim.ldr" "runtim.bldr")
+(fasdump (read-file "runtim.avd") "runtim.bad")
