@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.89 1998/03/02 19:05:12 cph Exp $
+;;;	$Id: intmod.scm,v 1.90 1998/03/08 08:25:25 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -54,10 +54,13 @@ This flag has effect only when ENABLE-TRANSCRIPT-BUFFER is also true."
   boolean?)
 
 (define-variable repl-error-decision
-  "If true, errors in REPL evaluation force the user to choose an option.
-Otherwise, they start a nested error REPL."
-  #f
-  boolean?)
+  "Controls how errors in an inferior REPL are handled.
+There are three meaningful values:
+#F	a nested error REPL is started
+PROMPT	the user is prompted to decide whether to start the debugger
+6001	like PROMPT, except that the error is always aborted"
+  'PROMPT
+  (lambda (object) (or (boolean? object) (memv object '(6001 PROMPT)))))
 
 (define-variable repl-mode-locked
   "If true, user cannot change the mode of REPL and CMDL buffers."
@@ -295,44 +298,56 @@ REPL uses current evaluation environment."
 	 (set-global-run-light! #f)))))
 
 (define (error-decision repl condition)
-  (if (ref-variable repl-error-decision)
-      (let ((port (cmdl/port repl)))
-	(if (interface-port? port)
-	    (begin
-	      (enqueue-output-operation! port
-		(lambda (mark transcript?)
-		  (if (and (not transcript?)
-			   (not (buffer-visible? (mark-buffer mark))))
-		      (begin
-			(message "Evaluation error in "
-				 (buffer-name (mark-buffer mark))
-				 " buffer")
-			(editor-beep)))
-		  #t))
-	      (dynamic-wind
-	       (lambda () unspecific)
+  (let ((port (cmdl/port repl)))
+    (if (interface-port? port)
+	(let ((start-debugger
 	       (lambda ()
-		 (let loop ()
-		   (fresh-line port)
-		   (write-string
-		    ";Type D to debug error, Q to quit back to REP loop: "
-		    port)
-		   (let ((char (read-command-char port (cmdl/level repl))))
-		     (write-char char port)
-		     (cond ((char-ci=? char #\d)
-			    (fresh-line port)
-			    (write-string ";Starting debugger..." port)
-			    (enqueue-output-operation! port
-			      (lambda (mark transcript?)
-				mark
-				(if (not transcript?)
-				    (start-continuation-browser port
-								condition))
-				#t)))
-			   ((not (char-ci=? char #\q))
-			    (beep port)
-			    (loop))))))
-	       cmdl-interrupt/abort-top-level))))))
+		 (enqueue-output-operation! port
+		   (lambda (mark transcript?)
+		     mark
+		     (if (not transcript?)
+			 (start-continuation-browser port
+						     condition))
+		     #t)))))
+	  (case (ref-variable repl-error-decision)
+	    ((6001 #T)
+	     (enqueue-output-operation! port
+	       (lambda (mark transcript?)
+		 (if (and (not transcript?)
+			  (not (buffer-visible? (mark-buffer mark))))
+		     (begin
+		       (message "Evaluation error in "
+				(buffer-name (mark-buffer mark))
+				" buffer")
+		       (editor-beep)))
+		 #t))
+	     (dynamic-wind
+	      (lambda () unspecific)
+	      (lambda ()
+		(let loop ()
+		  (fresh-line port)
+		  (write-string
+		   ";Type D to debug error, Q to quit back to REP loop: "
+		   port)
+		  (let ((char (read-command-char port (cmdl/level repl))))
+		    (write-char char port)
+		    (cond ((char-ci=? char #\d)
+			   (fresh-line port)
+			   (write-string ";Starting debugger..." port)
+			   (start-debugger))
+			  ((not (char-ci=? char #\q))
+			   (beep port)
+			   (loop))))))
+	      cmdl-interrupt/abort-top-level))
+	    ((PROMPT)
+	     (if (and (ref-variable-object debug-on-evaluation-error)
+		      (let ((start? (ref-variable debugger-start-on-error?)))
+			(if (eq? 'ASK start?)
+			    (begin
+			      (beep)
+			      (prompt-for-confirmation "Start debugger"))
+			    start?)))
+		 (start-debugger))))))))
 
 ;;;; Modes
 
