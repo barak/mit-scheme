@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.24 1987/04/21 15:22:08 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.25 1987/04/29 15:50:43 cph Exp $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -875,6 +875,39 @@ Apply_Primitive (Primitive_Number)
   }
   return Result;
 }
+#endif
+
+#ifdef ENABLE_PRIMITIVE_PROFILING
+
+/* The profiling mechanism is enabled by storing a cons of two vectors
+   in the fixed objects vector.  The car will record the profiling for
+   built-in primitives, and the cdr for user defined primitives.  Both
+   vectors should be initialized to contain all zeros. */
+
+void
+record_primitive_entry (primitive)
+     Pointer primitive;
+{
+  if ((Fixed_Objects != NIL) &&
+      ((Get_Fixed_Obj_Slot (Primitive_Profiling_Table)) != NIL))
+    {
+      Pointer table;
+      long index;
+
+      /* Test for TC_PRIMITIVE_EXTERNAL rather than TC_PRIMITIVE here
+	 because the compiled code interface will use 0 rather than
+	 TC_PRIMITIVE. */
+      table =
+	(Vector_Ref
+	 ((Get_Fixed_Obj_Slot (Primitive_Profiling_Table)),
+	  (((pointer_type (primitive)) == TC_PRIMITIVE_EXTERNAL) ? 1 : 0)));
+      index = (1 + (pointer_datum (primitive)));
+      Vector_Set (table, index,
+		  (Make_Unsigned_Fixnum
+		   (1 + (Get_Integer (Vector_Ref (table, index))))));
+    }
+}
+
 #endif
 
 Pointer
