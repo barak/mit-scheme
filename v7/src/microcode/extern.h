@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.26 1987/06/05 04:13:51 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.27 1987/06/23 22:01:36 cph Rel $
  *
  * External declarations.
  *
@@ -81,6 +81,7 @@ extern Pointer
  *Free_Stacklets,	/* Free list of stacklets */
  *Constant_Space,	/* Bottom of constant+pure space */
  *Free_Constant,	/* Next free cell in constant+pure area */
+ *Constant_Top,		/* Top of constant+pure space */
  *Heap_Top,		/* Top of current heap space */
  *Heap_Bottom,		/* Bottom of current heap space */
  *Unused_Heap_Top,	/* Top of unused heap for GC */

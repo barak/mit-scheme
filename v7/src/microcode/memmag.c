@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.29 1987/04/21 15:01:18 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.30 1987/06/23 22:00:09 cph Rel $ */
 
 /* Memory management top level.
 
@@ -82,17 +82,18 @@ extern void Clear_Memory(), Setup_Memory(), Reset_Memory();
    special: it always points to a cell which is in use. */
 
 void
-Clear_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
+Clear_Memory (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
      int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
 {
-  Heap_Top = Heap_Bottom + Our_Heap_Size;
+  Heap_Top = (Heap_Bottom + Our_Heap_Size);
   Local_Heap_Base = Heap_Bottom;
-  Unused_Heap_Top = Heap_Bottom + 2*Our_Heap_Size;
-  Set_Mem_Top(Heap_Top - GC_Reserve);
+  Unused_Heap_Top = (Heap_Bottom + (2 * Our_Heap_Size));
+  Set_Mem_Top (Heap_Top - GC_Reserve);
   Free = Heap_Bottom;
+  Constant_Top = (Constant_Space + Our_Constant_Size);
   Free_Constant = Constant_Space;
-  Set_Pure_Top();
-  Initialize_Stack();
+  Set_Pure_Top ();
+  Initialize_Stack ();
   return;
 }
 

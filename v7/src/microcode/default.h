@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.24 1987/06/18 19:54:28 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.25 1987/06/23 22:02:41 cph Exp $
  *
  * This file contains default definitions for some hooks which 
  * various machines require.  These machines define these hooks
@@ -80,40 +80,30 @@ extern Pointer Swap_Temp;
 (Swap_Temp = *(P), *(P) = (S), Swap_Temp) 
 #endif
 
-#ifndef Set_Pure_Top
 #ifndef USE_STACKLETS
-#define Set_Pure_Top()	 			\
-  Align_Float(Free_Constant);			\
-  Set_Stack_Guard(Free_Constant+STACK_GUARD_SIZE)
-#define Test_Pure_Space_Top(New_Top)		\
-  ((New_Top+STACK_GUARD_SIZE) <= Stack_Pointer)
-#define Absolute_Stack_Base	Free_Constant
+
+#define Absolute_Stack_Base Constant_Top
 
 #ifndef Initialize_Stack
 #define Initialize_Stack()						\
+do									\
+{									\
   Stack_Top = Highest_Allocated_Address;				\
   Stack_Pointer = Stack_Top;						\
-  Set_Stack_Guard(Free_Constant + STACK_GUARD_SIZE)
+  Set_Stack_Guard (Absolute_Stack_Base + STACK_GUARD_SIZE);		\
+} while (0)
 #endif
 
-#else	/* Stacklets in use */
-
-#define Set_Pure_Top()	Align_Float(Free_Constant)
-#define Test_Pure_Space_Top(New_Top)		\
-   (New_Top <= Highest_Allocated_Address)
 #endif
+
+#ifndef Set_Pure_Top
+#define Set_Pure_Top()	Align_Float (Free_Constant)
+#endif
+
+#ifndef Test_Pure_Space_Top
+#define Test_Pure_Space_Top(New_Top) ((New_Top) <= Constant_Top)
 #endif
 
-/* Character IO hooks.  Used extensively. */
-
-#ifndef OS_Put_C
-#define	OS_Put_C		putc
-#endif
-
-#ifndef OS_Get_C
-#define OS_Get_C		getc
-#endif
-
 /* Used in BOOT.C */
 
 #ifndef main_type

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.31 1987/06/15 19:25:57 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.32 1987/06/23 22:00:37 cph Rel $ */
 
 /* Memory management top level.  Garbage collection to disk.
 
@@ -167,15 +167,16 @@ close_gc_file()
 }
 
 void 
-Clear_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
+Clear_Memory (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
      int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
 {
-  Heap_Top = Heap_Bottom + Our_Heap_Size;
-  Set_Mem_Top(Heap_Top - GC_Reserve);
+  Heap_Top = (Heap_Bottom + Our_Heap_Size);
+  Set_Mem_Top (Heap_Top - GC_Reserve);
   Free = Heap_Bottom;
+  Constant_Top = (Constant_Space + Our_Constant_Size);
   Free_Constant = Constant_Space;
-  Set_Pure_Top();
-  Initialize_Stack();
+  Set_Pure_Top ();
+  Initialize_Stack ();
   return;
 }
 

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.21 1987/04/16 02:29:23 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.22 1987/06/23 22:01:13 cph Rel $ */
 
 /* This file contains macros for manipulating stacks and stacklets. */
 
@@ -234,17 +234,19 @@ Pushed()
 /* Full size stack in a statically allocated area */
 
 #define Stack_Check(P)							\
+do									\
 {									\
   if ((P) <= Stack_Guard)						\
-    { if ((P) <= Absolute_Stack_Base)					\
+    {									\
+      if ((P) <= Absolute_Stack_Base)					\
 	Microcode_Termination (TERM_STACK_OVERFLOW);			\
       Request_Interrupt (INT_Stack_Overflow);				\
     }									\
-}
+} while (0)
 
-#define Internal_Will_Push(N)		Stack_Check(Stack_Pointer - (N))
+#define Internal_Will_Push(N) Stack_Check(Stack_Pointer - (N))
 
-#define Stack_Allocation_Size(Stack_Blocks)	(Stack_Blocks)
+#define Stack_Allocation_Size(Stack_Blocks) (Stack_Blocks)
 
 #define Terminate_Old_Stacklet()
 

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.34 1987/06/05 04:15:27 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.35 1987/06/23 22:01:53 cph Rel $
 
 This file defines the storage for global variables for
 the Scheme Interpreter. */
@@ -52,6 +52,7 @@ Pointer
  *Free_Stacklets,	/* Free list of stacklets */
  *Constant_Space,	/* Bottom of constant+pure space */
  *Free_Constant,	/* Next free cell in constant+pure area */
+ *Constant_Top,		/* Top of constant+pure space */
  *Heap_Top,		/* Top of current heap */
  *Heap_Bottom,		/* Bottom of current heap */
  *Unused_Heap_Top,	/* Top of other heap */
