@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.8 2000/04/07 19:08:18 cph Exp $
+;;; $Id: imail-util.scm,v 1.9 2000/04/13 20:14:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -205,21 +205,6 @@
 				  (string-move! prefix string index)))))
 	string)
       ""))
-
-(define (string-move! from to index)
-  (let ((end (string-length from)))
-    (if (fix:< end 32)
-	;; When transferring less than 32 bytes, it's faster to do
-	;; inline than to call the primitive.
-	(let loop ((fi 0) (ti index))
-	  (if (fix:= fi end)
-	      ti
-	      (begin
-		(string-set! to ti (string-ref from fi))
-		(loop (fix:+ fi 1) (fix:+ ti 1)))))
-	(begin
-	  (substring-move-left! from 0 end to index)
-	  (fix:+ index end)))))
 
 (define (read-lines port)
   (source->list (lambda () (read-line port))))
