@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwmc.scm,v 1.8 1990/11/02 03:23:08 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwmc.scm,v 1.9 1991/03/16 08:10:55 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -228,6 +228,46 @@
 		       (fix:+ y (%window-column->y-size window columns)))
 		 (fix:+ y (%window-line-y window columns start index))))))))
 
+(define (predict-y-limited window start y index yl yu)
+  ;; Like PREDICT-Y, except returns #F if the result is not in the
+  ;; range specified by YL and YU.  Prevents long search to find INDEX
+  ;; when it is far away from the window.
+  (cond ((fix:= index start)
+	 (and (fix:<= yl y)
+	      (fix:< y yu)
+	      y))
+	((fix:< index start)
+	 (let loop ((start start) (y y))
+	   (and (fix:<= yl y)
+		(let* ((end (fix:- start 1))
+		       (start (%window-line-start-index window end))
+		       (columns (%window-column-length window start end 0))
+		       (y (fix:- y (%window-column->y-size window columns))))
+		  (if (fix:< index start)
+		      (loop start y)
+		      (let ((y
+			     (fix:+ y
+				    (%window-line-y window columns start
+						    index))))
+			(and (fix:<= yl y)
+			     (fix:< y yu)
+			     y)))))))
+	(else
+	 (let loop ((start start) (y y))
+	   (and (fix:< y yu)
+		(let* ((end (%window-line-end-index window start))
+		       (columns (%window-column-length window start end 0)))
+		  (if (fix:> index end)
+		      (loop (fix:+ end 1)
+			    (fix:+ y (%window-column->y-size window columns)))
+		      (let ((y
+			     (fix:+ y
+				    (%window-line-y window columns start
+						    index))))
+			(and (fix:<= yl y)
+			     (fix:< y yu)
+			     y)))))))))
+
 (define (predict-index-visible? window start y index)
   (and (fix:>= index start)
        (let ((y-size (window-y-size window)))

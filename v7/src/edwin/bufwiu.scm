@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.14 1991/03/15 23:48:02 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.15 1991/03/16 08:11:11 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -171,10 +171,10 @@
       (let ((start (%window-current-start-index window))
 	    (end (%window-current-end-index window)))
 	(cond ((and (%window-start-clip-mark window)
-		    (or (not (and (fix:<= (%window-group-start-index window) start)
-				  (fix:<= end (%window-group-end-index window))))
+		    (or (fix:< start (%window-group-start-index window))
 			(fix:< (%window-group-start-index window)
 			       (%window-start-clip-index window))
+			(fix:< (%window-group-end-index window) end)
 			(fix:< (%window-end-clip-index window)
 			       (%window-group-end-index window))))
 	       (preserve-nothing! window))
@@ -218,18 +218,14 @@
    (generate-line-inferiors window
 			    (%window-start-line-index window)
 			    (%window-start-line-y window))))
-
+
 (define (preserve-contiguous-region! window inferiors start)
   (let ((wlstart (%window-start-line-index window))
 	(wlsy (%window-start-line-y window)))
     (set-line-inferiors!
      window
      (with-values
-	 (lambda ()
-	   (scroll-lines! window
-			  inferiors
-			  start
-			  (predict-y window wlstart wlsy start)))
+	 (lambda () (maybe-scroll window inferiors start wlstart wlsy))
        (lambda (inferiors start)
 	 (if (null? inferiors)
 	     (generate-line-inferiors window wlstart wlsy)
@@ -237,12 +233,17 @@
 
 (define-integrable (fill-edges! window inferiors start)
   (fill-top window (fill-bottom! window inferiors start) start))
-
+
 (define (preserve-all! window start)
   (let ((wlstart (%window-start-line-index window))
 	(wlsy (%window-start-line-y window))
 	(inferiors (%window-line-inferiors window)))
-    (let ((scroll-down
+    (let ((regenerate
+	   (lambda ()
+	     (set-line-inferiors!
+	      window
+	      (generate-line-inferiors window wlstart wlsy))))
+	  (scroll-down
 	   (lambda (y-start)
 	     (set-line-inferiors!
 	      window
@@ -284,9 +285,24 @@
 		     (else
 		      (scroll-down wlsy)))))
 	    ((fix:< wlstart start)
-	     (scroll-down (predict-y window wlstart wlsy start)))
+	     (let ((y
+		    (predict-y-limited window wlstart wlsy start
+				       (inferior-y-start (car inferiors))
+				       (window-y-size window))))
+	       (if (not y)
+		   (regenerate)
+		   (scroll-down y))))
 	    (else
-	     (scroll-up (predict-y window wlstart wlsy start)))))))
+	     (let ((y
+		    (predict-y-limited
+		     window wlstart wlsy start
+		     (fix:- 1
+			    (fix:- (inferior-y-end (car (last-pair inferiors)))
+				   (inferior-y-start (car inferiors))))
+		     1)))
+	       (if (not y)
+		   (regenerate)
+		   (scroll-up y))))))))
 
 (define (preserve-top-and-bottom! window start start-changes end-changes end)
   (let ((wlstart (%window-start-line-index window))
@@ -301,19 +317,12 @@
       (set-cdr! middle-tail '())
       (with-values
 	  (lambda ()
-	    (scroll-lines! window
-			   top-inferiors
-			   start
-			   (predict-y window wlstart wlsy start)))
+	    (maybe-scroll window top-inferiors start wlstart wlsy))
 	(lambda (top-inferiors top-start)
 	  (with-values
 	      (lambda ()
-		(let ((bottom-start (fix:+ end-changes 1)))
-		  (scroll-lines! window
-				 bottom-inferiors
-				 bottom-start
-				 (predict-y window wlstart wlsy
-					    bottom-start))))
+		(maybe-scroll window bottom-inferiors (fix:+ end-changes 1)
+			      wlstart wlsy))
 	    (lambda (bottom-inferiors bottom-start)
 	      (set-line-inferiors!
 	       window
@@ -332,6 +341,21 @@
 							     bottom-start)
 					       bottom-start)
 				 top-start)))))))))))
+
+(define (maybe-scroll window inferiors start wlstart wlsy)
+  (let ((y
+	 (predict-y-limited
+	  window
+	  wlstart
+	  wlsy
+	  start
+	  (fix:- 1
+		 (fix:- (inferior-y-end (car (last-pair inferiors)))
+			(inferior-y-start (car inferiors))))
+	  (window-y-size window))))
+    (if (not y)
+	(values '() start)
+	(scroll-lines! window inferiors start y))))
 
 (define (changed-inferiors-tail inferiors end end-changes)
   (let find-end

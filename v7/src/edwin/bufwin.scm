@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.288 1991/03/15 23:47:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.289 1991/03/16 08:11:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -818,34 +818,52 @@
   (without-interrupts (lambda () (%guarantee-start-mark! window))))
 
 (define (%guarantee-start-mark! window)
-  (let* ((index-at!
-	  (lambda (index y)
-	    (with-values (lambda () (predict-start-line window index y))
-	      (lambda (start y-start)
-		(set-start-mark! window start y-start)))))
-	 (point-at! (lambda (y) (index-at! (%window-point-index window) y)))
-	 (recenter! (lambda () (point-at! (buffer-window/y-center window)))))
-    (cond ((not (%window-start-line-mark window))
-	   (recenter!))
-	  ((not (%window-line-start-index? window
-					   (%window-start-line-index window)))
-	   (index-at! (%window-start-index window) 0))
-	  ((eq? (%window-point-moved? window) 'SINCE-START-SET)
-	   (let ((y
-		  (predict-y window
-			     (%window-start-line-index window)
-			     (%window-start-line-y window)
-			     (%window-point-index window))))
-	     (cond ((fix:< y 0)
-		    (let ((y (fix:+ y (ref-variable scroll-step))))
-		      (if (fix:< y 0)
-			  (recenter!)
-			  (point-at! y))))
-		   ((fix:>= y (window-y-size window))
-		    (let ((y (fix:- y (ref-variable scroll-step))))
-		      (if (fix:>= y (window-y-size window))
-			  (recenter!)
-			  (point-at! y))))))))))
+  (let ((index-at!
+	 (lambda (index y)
+	   (with-values (lambda () (predict-start-line window index y))
+	     (lambda (start y-start)
+	       (set-start-mark! window start y-start))))))
+    (if (not (%window-start-line-mark window))
+	(index-at! (%window-point-index window)
+		   (buffer-window/y-center window))
+	(let ((start-line (%window-start-line-index window)))
+	  (cond ((not (%window-line-start-index? window start-line))
+		 (index-at! (%window-start-index window) 0))
+		((eq? (%window-point-moved? window) 'SINCE-START-SET)
+		 (let ((point (%window-point-index window)))
+		   (if (or (%window-start-clip-mark window)
+			   (%window-start-changes-mark window)
+			   (not (%window-current-start-mark window))
+			   (fix:< point (%window-current-start-index window))
+			   (fix:> point (%window-current-end-index window))
+			   (fix:< (inferior-y-start
+				   (car (%window-line-inferiors window)))
+				  0))
+		       (let ((start-y (%window-start-line-y window))
+			     (y-size (window-y-size window))
+			     (scroll-step (ref-variable scroll-step)))
+			 (if (fix:= 0 scroll-step)
+			     (if (not (predict-y-limited window start-line
+							 start-y point
+							 0 y-size))
+				 (index-at! point
+					    (buffer-window/y-center window)))
+			     (let ((y
+				    (predict-y-limited window start-line
+						       start-y point
+						       (fix:- 0 scroll-step)
+						       (fix:+ y-size
+							      scroll-step))))
+			       (cond ((not y)
+				      (index-at!
+				       point
+				       (buffer-window/y-center window)))
+				     ((fix:< y 0)
+				      (index-at! point (fix:+ y scroll-step)))
+				     ((fix:>= y y-size)
+				      (index-at!
+				       point
+				       (fix:- y scroll-step)))))))))))))))
 
 (define-variable scroll-step
   "*The number of lines to try scrolling a window by when point moves out.
