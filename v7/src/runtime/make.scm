@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.90 2003/02/28 04:40:06 cph Exp $
+$Id: make.scm,v 14.91 2003/04/14 19:56:18 cph Exp $
 
 Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright (c) 1993,1994,1995,1996,1997 Massachusetts Institute of Technology
@@ -437,6 +437,7 @@ USA.
    ;; Basic data structures
    (RUNTIME NUMBER)
    ((RUNTIME NUMBER) INITIALIZE-DRAGON4! #t)
+   (RUNTIME MISCELLANEOUS-GLOBAL)
    (RUNTIME CHARACTER)
    (RUNTIME CHARACTER-SET)
    (RUNTIME GENSYM)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.60 2003/04/14 18:19:23 cph Exp $
+$Id: global.scm,v 14.61 2003/04/14 19:56:15 cph Exp $
 
 Copyright 1988,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1998,2000,2001,2003 Massachusetts Institute of Technology
@@ -72,17 +72,25 @@ USA.
   system-vector-set!)
 
 (define (host-big-endian?)
+  host-big-endian?-saved)
+
+(define host-big-endian?-saved)
+
+(define (initialize-package!)
   ;; Assumptions:
   ;; * Word length is 32 or 64 bits.
   ;; * Type codes are at most 8 bits.
   ;; * Zero is a non-pointer type code.
-  (case (object-datum
-	 (vector-ref (object-new-type (ucode-type vector)
-				      "\000\001\002\000\000\003\004\000")
-		     1))
-    ((#x00010200 #x0001020000030400) #t)
-    ((#x00020100 #x0004030000020100) #f)
-    (else (error "Unable to determine endianness of host."))))
+  (set! host-big-endian?-saved
+	(case (object-datum
+	       (vector-ref
+		(object-new-type (ucode-type vector)
+				 "\000\001\002\000\000\003\004\000")
+		1))
+	  ((#x00010200 #x0001020000030400) #t)
+	  ((#x00020100 #x0004030000020100) #f)
+	  (else (error "Unable to determine endianness of host."))))
+  unspecific)
 
 ;;;; Potpourri
 
