@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: insmac.scm,v 1.130 2002/02/13 18:45:24 cph Exp $
+$Id: insmac.scm,v 1.131 2002/02/14 15:58:56 cph Exp $
 
 Copyright (c) 1988, 1990, 1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -30,10 +30,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   'EA-DATABASE)
 
 (define-syntax define-ea-database
-  (sc-macro-transformer
+  (rsc-macro-transformer
    (lambda (form environment)
-     `(DEFINE ,ea-database-name
-	,(compile-database (cdr form) environment
+     `(,(close-syntax 'DEFINE environment)
+       ,ea-database-name
+       ,(compile-database (cdr form) environment
 	  (lambda (pattern actions)
 	    (if (null? (cddr actions))
 		(make-position-dependent pattern actions environment)
@@ -74,16 +75,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(mode (cadr actions))
 	(register (caddr actions))
 	(extension (cdddr actions)))
-    `(MAKE-EFFECTIVE-ADDRESS
+    `(,(close-syntax 'MAKE-EFFECTIVE-ADDRESS environment)
       ',keyword
-      ,(integer-syntaxer (close-syntax mode environment) 'UNSIGNED 3)
-      ,(integer-syntaxer (close-syntax register environment) 'UNSIGNED 3)
-      (LAMBDA (IMMEDIATE-SIZE INSTRUCTION-TAIL)
-	IMMEDIATE-SIZE			;ignore if not referenced
-	,(if (pair? extension)
-	     `(CONS-SYNTAX ,(close-syntax (car extension) environment)
-			   INSTRUCTION-TAIL)
-	     'INSTRUCTION-TAIL))
+      ,(integer-syntaxer mode 'UNSIGNED 3)
+      ,(integer-syntaxer register 'UNSIGNED 3)
+      (,(close-syntax 'LAMBDA environment)
+       (IMMEDIATE-SIZE INSTRUCTION-TAIL)
+       IMMEDIATE-SIZE			;ignore if not referenced
+       ,(if (pair? extension)
+	    `(,(close-syntax 'CONS-SYNTAX environment)
+	      ,(car extension)
+	      INSTRUCTION-TAIL)
+	    `INSTRUCTION-TAIL))
       ',categories)))
 
 (define (make-position-dependent pattern actions environment)
@@ -94,19 +97,23 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  (mode (cadr code))
 	  (register (caddr code))
 	  (extension (cadddr code)))
-      `(LET ((,name (GENERATE-LABEL 'MARK)))
-	 (make-effective-address
-	  ',keyword
-	  ,(process-ea-field mode environment)
-	  ,(process-ea-field register environment)
-	  (LAMBDA (IMMEDIATE-SIZE INSTRUCTION-TAIL)
-	    IMMEDIATE-SIZE		;ignore if not referenced
-	    ,(if (pair? extension)
-		 `(CONS (LIST 'LABEL ,(close-syntax name environment))
-			(CONS-SYNTAX ,(close-syntax extension environment)
-				     INSTRUCTION-TAIL))
-		 `INSTRUCTION-TAIL))
-	  ',categories)))))
+      `(,(close-syntax 'LET environment)
+	((,name (,(close-syntax 'GENERATE-LABEL environment) 'MARK)))
+	(,(close-syntax 'MAKE-EFFECTIVE-ADDRESS environment)
+	 ',keyword
+	 ,(process-ea-field mode environment)
+	 ,(process-ea-field register environment)
+	 (,(close-syntax 'LAMBDA environment)
+	  (IMMEDIATE-SIZE INSTRUCTION-TAIL)
+	  IMMEDIATE-SIZE		;ignore if not referenced
+	  ,(if (pair? extension)
+	       `(,(close-syntax 'CONS environment)
+		 (,(close-syntax 'LIST environment) 'LABEL ,name)
+		 (,(close-syntax 'CONS-SYNTAX environment)
+		  ,extension
+		  INSTRUCTION-TAIL))
+	       `INSTRUCTION-TAIL))
+	 ',categories)))))
 
 (define (process-ea-field field environment)
   (if (exact-integer? field)
@@ -115,11 +122,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    (clauses (cddr field)))
 	(variable-width-expression-syntaxer
 	 (car binding)
-	 (close-syntax (cadr binding) environment)
+	 (cadr binding)
 	 (map (lambda (clause)
-		`((LIST
-		   ,(integer-syntaxer (close-syntax (cadr clause) environment)
-				      'UNSIGNED 3))
+		`((,(close-syntax 'LIST environment)
+		   ,(integer-syntaxer (cadr clause) 'UNSIGNED 3))
 		  3
 		  ,@(car clause)))
 	      clauses)))))

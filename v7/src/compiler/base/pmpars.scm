@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pmpars.scm,v 1.6 2002/02/12 00:29:16 cph Exp $
+$Id: pmpars.scm,v 1.7 2002/02/14 15:57:00 cph Exp $
 
 Copyright (c) 1988, 1999, 2002 Massachusetts Institute of Technology
 
@@ -91,19 +91,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        names))
 
 (define (rule-result-expression variables qualifiers body environment)
-  (reverse-syntactic-environments environment
-    (lambda (environment)
-      (call-with-values
-	  (lambda () (process-transformations variables environment))
-	(lambda (outer-vars inner-vars xforms xqualifiers)
-	  (let ((r-lambda (close-syntax 'LAMBDA environment))
-		(r-let (close-syntax 'LET environment))
-		(r-and (close-syntax 'AND environment)))
-	    `(,r-lambda ,outer-vars
-			(,r-let ,(map list inner-vars xforms)
-				(,r-and ,@xqualifiers
-					,@qualifiers
-					(,r-lambda () ,body))))))))))
+  (call-with-values (lambda () (process-transformations variables environment))
+    (lambda (outer-vars inner-vars xforms xqualifiers)
+      (let ((r-lambda (close-syntax 'LAMBDA environment))
+	    (r-let (close-syntax 'LET environment))
+	    (r-and (close-syntax 'AND environment)))
+	`(,r-lambda ,outer-vars
+		    (,r-let ,(map list inner-vars xforms)
+			    (,r-and ,@xqualifiers
+				    ,@qualifiers
+				    (,r-lambda () ,body))))))))
 
 (define (process-transformations variables environment)
   (let ((r-map (close-syntax 'MAP environment))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: insmac.scm,v 1.15 2002/02/13 18:46:04 cph Exp $
+$Id: insmac.scm,v 1.16 2002/02/14 15:58:08 cph Exp $
 
 Copyright (c) 1992, 1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -42,27 +42,25 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   'EA-DATABASE)
 
 (define-syntax define-ea-database
-  (sc-macro-transformer
+  (rsc-macro-transformer
    (lambda (form environment)
-     `(DEFINE ,ea-database-name
-	,(compile-database (cdr form) environment
-	   (lambda (pattern actions)
-	     (let ((keyword (car pattern))
-		   (categories (car actions))
-		   (mode (close-syntax (cadr actions) environment))
-		   (register (close-syntax (caddr actions) environment))
-		   (tail (cdddr actions)))
-	       `(MAKE-EFFECTIVE-ADDRESS
-		 ',keyword
-		 ',categories
-		 ,(integer-syntaxer mode 'UNSIGNED 2)
-		 ,(integer-syntaxer register 'UNSIGNED 3)
-		 ,(process-tail tail #f environment)))))))))
-
-(define (process-tail tail early? environment)
-  (if (null? tail)
-      `()
-      (process-fields tail early? environment)))
+     `(,(close-syntax 'DEFINE environment)
+       ,ea-database-name
+       ,(compile-database (cdr form) environment
+	  (lambda (pattern actions)
+	    (let ((keyword (car pattern))
+		  (categories (car actions))
+		  (mode (cadr actions))
+		  (register (caddr actions))
+		  (tail (cdddr actions)))
+	      `(,(close-syntax 'MAKE-EFFECTIVE-ADDRESS environment)
+		',keyword
+		',categories
+		,(integer-syntaxer mode 'UNSIGNED 2)
+		,(integer-syntaxer register 'UNSIGNED 3)
+		,(if (null? tail)
+		     `()
+		     (process-fields tail #f environment))))))))))
 
 ;; This one is necessary to distinguish between r/mW mW, etc.
 
@@ -96,16 +94,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (call-with-values (lambda () (expand-fields fields early? environment))
 	(lambda (code size)
 	  (if (not (zero? (remainder size 8)))
-	      (error "process-fields: bad syllable size" size))
+	      (error "Bad syllable size:" size))
 	  code))))
 
 (define (expand-variable-width field early? environment)
   (let ((binding (cadr field))
 	(clauses (cddr field)))
-    `(LIST
+    `(,(close-syntax 'LIST environment)
       ,(variable-width-expression-syntaxer
-	(car binding)			; name
-	(close-syntax (cadr binding) environment) ; expression
+	(car binding)
+	(cadr binding)
 	(map (lambda (clause)
 	       (call-with-values
 		   (lambda () (expand-fields (cdr clause) early? environment))
@@ -126,40 +124,40 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    ;; (BYTE (8 #xff))
 	    ;; (BYTE (16 (+ foo #x23) SIGNED))
 	    (call-with-values
-		(lambda () (collect-byte (cdar fields) tail environment))
+		(lambda ()
+		  (collect-byte (cdar fields) tail environment))
 	      (lambda (code size)
 		(values code (+ size tail-size)))))
 	   ((ModR/M)
 	    ;; (ModR/M 2 source)	= /2 r/m(source)
 	    ;; (ModR/M r target)	= /r r/m(target)
 	    (if early?
-		(error "No early support for ModR/M -- Fix i386/insmac.scm")
-		(let ((field (car fields)))
-		  (let ((digit-or-reg (close-syntax (cadr field) environment))
-			(r/m (close-syntax (caddr field) environment)))
-		    (values
-		     `(CONS-SYNTAX
-		       (EA/REGISTER ,r/m)
-		       (CONS-SYNTAX
-			,(integer-syntaxer digit-or-reg 'UNSIGNED 3)
-			(CONS-SYNTAX
-			 (EA/MODE ,r/m)
-			 (APPEND-SYNTAX! (EA/EXTRA ,r/m)
-					 ,tail))))
-		     (+ 8 tail-size))))))
+		(error "No early support for ModR/M -- Fix i386/insmac.scm"))
+	    (let ((field (car fields)))
+	      (let ((digit-or-reg (cadr field))
+		    (r/m (caddr field)))
+		(values `(,(close-syntax 'CONS-SYNTAX environment)
+			  (,(close-syntax 'EA/REGISTER environment) ,r/m)
+			  (,(close-syntax 'CONS-SYNTAX environment)
+			   ,(integer-syntaxer digit-or-reg 'UNSIGNED 3)
+			   (,(close-syntax 'CONS-SYNTAX environment)
+			    (,(close-syntax 'EA/MODE environment) ,r/m)
+			    (,(close-syntax 'APPEND-SYNTAX! environment)
+			     (,(close-syntax 'EA/EXTRA environment) ,r/m)
+			     ,tail))))
+			(+ 8 tail-size)))))
 	   ;; For immediate operands whose size depends on the operand
 	   ;; size for the instruction (halfword vs. longword)
 	   ((IMMEDIATE)
 	    (values
 	     (let ((field (car fields)))
-	       (let ((value (close-syntax (cadr field) environment))
+	       (let ((value (cadr field))
 		     (mode (if (pair? (cddr field)) (caddr field) 'OPERAND))
 		     (domain
-		      (if (and (pair? (cddr field))
-			       (pair? (cdddr field)))
+		      (if (and (pair? (cddr field)) (pair? (cdddr field)))
 			  (cadddr field)
 			  'SIGNED)))
-		 `(CONS-SYNTAX
+		 `(,(close-syntax 'CONS-SYNTAX environment)
 		   ,(integer-syntaxer
 		     value
 		     domain
@@ -171,7 +169,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	     tail-size))
 	   (else
 	    (error "Unknown field kind:" (caar fields))))))
-      (values ''() 0)))
+      (values `'() 0)))
 
 (define (collect-byte components tail environment)
   (let loop ((components components))
@@ -179,11 +177,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(call-with-values (lambda () (loop (cdr components)))
 	  (lambda (byte-tail byte-size)
 	    (let ((size (caar components))
-		  (expression (close-syntax (cadar components) environment))
+		  (expression (cadar components))
 		  (type (if (pair? (cddar components))
 			    (caddar components)
 			    'UNSIGNED)))
-	      (values `(CONS-SYNTAX ,(integer-syntaxer expression type size)
-				    ,byte-tail)
+	      (values `(,(close-syntax 'CONS-SYNTAX environment)
+			,(integer-syntaxer expression type size)
+			,byte-tail)
 		      (+ size byte-size)))))
 	(values tail 0))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 4.27 2002/02/12 00:25:26 cph Exp $
+$Id: macros.scm,v 4.28 2002/02/14 15:57:10 cph Exp $
 
 Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -306,7 +306,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (ill-formed-syntax form)))
 
 (define-syntax define-rule
-  (sc-macro-transformer
+  (rsc-macro-transformer
    (lambda (form environment)
      (if (syntax-match? '(IDENTIFIER DATUM + DATUM) (cdr form))
 	 (let ((type (cadr form))
@@ -315,10 +315,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	   (call-with-values (lambda () (parse-rule pattern body))
 	     (lambda (pattern variables qualifiers actions)
 	       `(,(case type
-		    ((STATEMENT) 'ADD-STATEMENT-RULE!)
-		    ((PREDICATE) 'ADD-STATEMENT-RULE!)
-		    ((REWRITING) 'ADD-REWRITING-RULE!)
-		    (else (close-syntax type environment)))
+		    ((STATEMENT PREDICATE)
+		     (close-syntax 'ADD-STATEMENT-RULE! environment))
+		    ((REWRITING)
+		     (close-syntax 'ADD-REWRITING-RULE! environment))
+		    (else type))
 		 ',pattern
 		 ,(rule-result-expression variables
 					  qualifiers
