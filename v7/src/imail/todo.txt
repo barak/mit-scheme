@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.9 2000/05/15 19:08:47 cph Exp $
+$Id: todo.txt,v 1.10 2000/05/15 19:11:52 cph Exp $
 
 Bug fixes
 ---------
@@ -39,8 +39,8 @@ Bug fixes
 Design changes
 --------------
 
-* Eliminate COPY-FOLDER operation.  Implement something closer to the
-  IMAP COPY operation, e.g. APPEND-MESSAGES.
+* Implement something closer to the IMAP COPY operation, e.g.
+  APPEND-MESSAGES.
 
 * Reimplement UID synchronization.  Take advantage of monotonic UID
   numbers to discover largest prefix range that hasn't changed.

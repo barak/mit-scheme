@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.56 2000/05/15 19:01:46 cph Exp $
+;;; $Id: imail-core.scm,v 1.57 2000/05/15 19:11:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -137,25 +137,13 @@
 (define-generic %move-folder (url new-url))
 
 (define-method %move-folder ((url <url>) (new-url <url>))
-  (%copy-folder url new-url)
-  (%delete-folder url))
-
-;; -------------------------------------------------------------------
-;; Copy the folder named URL to be NEW-URL.  Signal an error if the
-;; folder doesn't exist, if NEW-URL already refers to a folder, or if
-;; the copy can't be performed for some reason.
-
-(define (copy-folder url new-url)
-  (%copy-folder (->url url) (->url new-url)))
-
-(define-generic %copy-folder (url new-url))
-
-(define-method %copy-folder ((url <url>) (new-url <url>))
+  (%new-folder new-url)
   (let ((folder (open-folder url)))
     (let ((n (folder-length folder)))
       (do ((i 0 (+ i 1)))
 	  ((= i n))
-	(%append-message (get-message folder i) new-url)))))
+	(%append-message (get-message folder i) new-url))))
+  (%delete-folder url))
 
 ;; -------------------------------------------------------------------
 ;; Insert a copy of MESSAGE in FOLDER at the end of the existing

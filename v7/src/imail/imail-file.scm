@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.22 2000/05/12 18:22:50 cph Exp $
+;;; $Id: imail-file.scm,v 1.23 2000/05/15 19:11:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -38,9 +38,9 @@
 (define-method %delete-folder ((url <file-url>))
   (delete-file (file-url-pathname url)))
 
-;;; The next two methods only work when operating on two URLs of the
-;;; same class.  Otherwise, it's necessary to do format conversions;
-;;; this is handled at a higher level in the class heirarchy.
+;;; The next method only works when operating on two URLs of the same
+;;; class.  Otherwise, it's necessary to do format conversions; this
+;;; is handled at a higher level in the class heirarchy.
 
 (define-computed-method %move-folder ((uc1 <file-url>) (uc2 <file-url>))
   (and (eq? uc1 uc2)
@@ -48,11 +48,6 @@
 	 ;; **** Not really correct -- must handle cases where RENAME-FILE
 	 ;; fails, such as moving across file systems under unix.
 	 (rename-file (file-url-pathname url) (file-url-pathname new-url)))))
-
-(define-computed-method %copy-folder ((uc1 <file-url>) (uc2 <file-url>))
-  (and (eq? uc1 uc2)
-       (lambda (url new-url)
-	 (copy-file (file-url-pathname url) (file-url-pathname new-url)))))
 
 (define-method available-folder-names ((url <file-url>))
   url

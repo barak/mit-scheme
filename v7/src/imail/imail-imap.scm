@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.34 2000/05/15 19:01:50 cph Exp $
+;;; $Id: imail-imap.scm,v 1.35 2000/05/15 19:11:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -514,9 +514,6 @@
   ???)
 
 (define-method %move-folder ((url <imap-url>) (new-url <imap-url>))
-  ???)
-
-(define-method %copy-folder ((url <imap-url>) (new-url <imap-url>))
   ???)
 
 (define-method %append-message ((message <message>) (url <imap-url>))
