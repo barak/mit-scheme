@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.47 1996/02/13 00:02:45 cph Exp $
+;;;	$Id: rmail.scm,v 1.48 1996/03/01 07:31:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -603,7 +603,7 @@ This variable is ignored if rmail-pop-procedure is #F."
 		  (string? (cadr object))
 		  (let ((password (caddr object)))
 		    (or (string? password)
-			(memq password '(PROMPT-ONCE PROMPT-ALWAYS))
+			(symbol? password)
 			(and (pair? password)
 			     (eq? 'FILE (car password))
 			     (pair? (cdr password))
@@ -624,9 +624,8 @@ This variable is ignored if rmail-pop-procedure is #F."
 	       (let ((value
 		      (insert
 		       (let ((filename
-			      (procedure
-			       server user-name password
-			       (buffer-default-directory buffer))))
+			      (procedure server user-name password
+					 (buffer-default-directory buffer))))
 			 (if save-password?
 			     ;; Password is saved only after
 			     ;; successful execution of the client, to
@@ -643,9 +642,7 @@ This variable is ignored if rmail-pop-procedure is #F."
     (if entry
 	(let ((user-name (cadr entry))
 	      (password (caddr entry)))
-	  (cond ((string? password)
-		 (values user-name password #f))
-		((eq? 'PROMPT-ONCE password)
+	  (cond ((eq? 'PROMPT-ONCE password)
 		 (let ((password
 			(get-saved-pop-server-password server user-name)))
 		   (if password
@@ -655,6 +652,8 @@ This variable is ignored if rmail-pop-procedure is #F."
 			       #t))))
 		((eq? 'PROMPT-ALWAYS password)
 		 (values user-name (prompt-for-pop-server-password server) #f))
+		((or (string? password) (symbol? password))
+		 (values user-name password #f))
 		((and (pair? password) (eq? 'FILE (car password)))
 		 (values user-name
 			 (list 'FILE
@@ -1515,9 +1514,10 @@ buffer visiting that file."
 			  (string-append "\"" (->namestring pathname)
 					 "\" does not exist, create it")))
 		    (editor-error "Output file does not exist."))
-		(call-with-binary-output-file pathname
-		  (lambda (port)
-		    (write-string babyl-initial-header port)))))
+		(call-with-temporary-buffer " rmail output"
+		  (lambda (buffer)
+		    (insert-string babyl-initial-header (buffer-start buffer))
+		    (write-region (buffer-region buffer) pathname #f)))))
 	  (let ((buf (->buffer (region-group region)))
 		(var (ref-variable-object translate-file-data-on-output))
 		(val))
