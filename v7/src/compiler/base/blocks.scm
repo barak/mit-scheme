@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.9 1988/12/16 13:35:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.10 1989/04/21 16:58:46 markf Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -78,7 +78,9 @@ from the continuation, and then "glued" into place afterwards.
   frame-size		;for stack-allocated frames, size in words
   procedure		;procedure for which this is invocation block, if any
   bound-variables	;list of variables bound by this block
-  free-variables	;list of variables free in this block
+  free-variables	;list of variables free in this block or any children
+  variables-nontransitively-free
+  			;list of variables free in this block
   declarations		;list of declarations
   applications		;list of applications lexically within this block
   interned-variables	;alist of interned SCode variable objects
@@ -87,6 +89,10 @@ from the continuation, and then "glued" into place afterwards.
   stack-link		;for stack block, adjacent block on stack
   popping-limits	;for stack block (see continuation analysis)
   popping-limit		;for stack block (see continuation analysis)
+  layout-frozen?	;used by frame reuse to tell parameter
+			;analysis not to alter this block's layout
+			;(i.e., don't make any of the block's
+			;procedure's parameters be passed by register)
   )
 
 (define *blocks*)
@@ -94,8 +100,8 @@ from the continuation, and then "glued" into place afterwards.
 (define (make-block parent type)
   (let ((block
 	 (make-rvalue block-tag (enumeration/name->index block-types type)
-		      parent '() '() false false '() '() '() '() '() '() false
-		      false 'UNKNOWN 'UNKNOWN 'UNKNOWN)))
+		      parent '() '() false false '()'() '() '() '() '() '()
+		      false false 'UNKNOWN 'UNKNOWN 'UNKNOWN false)))
     (if parent
 	(set-block-children! parent (cons block (block-children parent))))
     (set! *blocks* (cons block *blocks*))
