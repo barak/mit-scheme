@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stackopt.scm,v 1.3 1994/11/25 17:08:10 jmiller Exp $
+$Id: stackopt.scm,v 1.4 1995/01/20 22:23:42 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -800,7 +800,7 @@ End of Big Note A |#
 				  (list common (iota sup-index)))
 				common))
 		    (lambda (pair)
-		      (continuation-variable? (car pair)))))
+		      (referenced-continuation-variable? (car pair)))))
     (lambda (cont-variables rest)
       ;; At least the continuation variable must be shared if there are
       ;; any children frames, and the continuation must be in slot 0.
@@ -808,8 +808,8 @@ End of Big Note A |#
 	     ;; This is no longer true.  A better test would be that the
 	     ;; continuation variables must be shared across non-leaf models
 	     ;; (if (not (null? (stackopt/model/children model)))
-	     ;; 	(internal-error "No continuation variables shared"
-	     ;;			model common))
+	     ;;     (internal-error "No continuation variables shared"
+	     ;;                     model common))
 	     (stackopt/constrain* rest))
 	    ((not (null? (cdr cont-variables)))
 	     (internal-error "Too many continuation variables"
