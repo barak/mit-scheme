@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 1.3 1987/06/22 18:23:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 1.4 1987/06/23 02:17:02 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -39,22 +39,38 @@ MIT in each case. |#
 (package (generate/procedure-header)
 
 (define-export (generate/procedure-header procedure body)
-  (if (procedure/ic? procedure)
-      (scfg-append!
-       (rtl:make-procedure-heap-check procedure)
-       (rtl:make-assignment register:frame-pointer
-			    (rtl:make-fetch register:stack-pointer))
-       body)
-      (scfg-append!
-       ((if (or (procedure-rest procedure)
-		(and (procedure/closure? procedure)
-		     (not (null? (procedure-optional procedure)))))
-	    rtl:make-setup-lexpr
-	    rtl:make-procedure-heap-check)
-	procedure)
-       (setup-stack-frame procedure)
-       body)))
+  (scfg*scfg->scfg!
+   (if (procedure/ic? procedure)
+       (setup-ic-frame procedure)
+       (scfg*scfg->scfg!
+	((if (or (procedure-rest procedure)
+		 (and (procedure/closure? procedure)
+		      (not (null? (procedure-optional procedure)))))
+	     rtl:make-setup-lexpr
+	     rtl:make-procedure-heap-check)
+	 procedure)
+	(setup-stack-frame procedure)))
+   body))
 
+(define (setup-ic-frame procedure)
+  (scfg-append!
+   (rtl:make-procedure-heap-check procedure)
+   (rtl:make-assignment register:frame-pointer
+			(rtl:make-fetch register:stack-pointer))
+   (scfg*->scfg!
+    (map (let ((block (procedure-block procedure)))
+	   (lambda (name value)
+	     (transmit-values (generate/rvalue value)
+	       (lambda (prefix expression)
+		 (scfg*scfg->scfg!
+		  prefix
+		  (rtl:make-interpreter-call:set!
+		   register:environment
+		   (intern-scode-variable! block name)
+		   expression))))))
+	 (procedure-names procedure)
+	 (procedure-values procedure)))))
+
 (define (setup-stack-frame procedure)
   (let ((block (procedure-block procedure)))
     (define (cellify-variables variables)
