@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.3 1990/10/03 04:55:41 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.4 1990/10/09 16:24:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -140,6 +140,9 @@ If #F, the normal method is used."
 		 (else
 		  (display-mode-element
 		   value window line column min-end max-end)))))
+	((procedure? element)
+	 (display-mode-element (element window)
+			       window line column min-end max-end))
 	(else
 	 (display-string "*invalid*" line column min-end max-end))))
 

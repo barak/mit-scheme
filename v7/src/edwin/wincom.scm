@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.97 1990/10/03 04:56:16 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.98 1990/10/09 16:24:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -60,6 +60,11 @@ Do not set this variable below 1."
 (define-variable next-screen-context-lines
   "*Number of lines of continuity when scrolling by screenfuls."
   2)
+
+(define-variable use-multiple-screens
+  "If true, commands try to use multiple screens rather than multiple windows.
+Has no effect unless multiple-screen support is available."
+  false)
 
 (define-variable pop-up-windows
   "True enables the use of pop-up windows."
@@ -291,7 +296,12 @@ ARG lines.  No arg means split equally."
   "Delete the current window from the screen."
   ()
   (lambda ()
-    (window-delete! (current-window))))
+    (let ((window (current-window)))
+      (if (and (window-has-no-neighbors? window)
+	       (use-multiple-screens?)
+	       (other-screen (selected-screen)))
+	  (delete-screen! (selected-screen))
+	  (window-delete! window)))))
 
 (define-command delete-other-windows
   "Make the current window fill the screen."
@@ -304,16 +314,57 @@ ARG lines.  No arg means split equally."
   "P"
   (lambda (argument)
     (select-window (other-window-interactive argument))))
-
+
 (define (other-window-interactive n)
-  (let ((window (other-window n)))
-    (if (eq? window (current-window))
-	(editor-error "No other window")
-	window)))
+  (let ((window
+	 (let ((window (other-window n)))
+	   (if (current-window? window)
+	       (and (use-multiple-screens?)
+		    (let ((screen (other-screen (selected-screen))))
+		      (and screen
+			   (screen-selected-window screen))))
+	       window))))
+    (if (not window)
+	(editor-error "No other window"))
+    window))
 
 (define (disallow-typein)
   (if (typein-window? (current-window))
       (editor-error "Not implemented for typein window")))
+
+(define (use-multiple-screens?)
+  (and (ref-variable use-multiple-screens)
+       (multiple-screens?)))
+
+(define (select-buffer-other-window buffer)
+  (let ((window (current-window))
+	(use-window
+	 (lambda (window)
+	   (select-buffer-in-window buffer window)
+	   (select-window window))))
+    (cond ((not (window-has-no-neighbors? window))
+	   (let ((window*
+		  (list-search-negative (buffer-windows buffer)
+		    (lambda (window*)
+		      (eq? window window*)))))
+	     (if window*
+		 (select-window window*)
+		 (use-window (window1+ window)))))
+	  ((not (use-multiple-screens?))
+	   (use-window (window-split-vertically! window false)))
+	  (else
+	   (select-buffer-other-screen buffer)))))
+
+(define (select-buffer-other-screen buffer)
+  (if (multiple-screens?)
+      (select-screen
+       (let ((screen (other-screen (selected-screen))))
+	 (if screen
+	     (begin
+	       (select-buffer-in-window buffer (screen-selected-window screen))
+	       screen)
+	     (make-screen buffer))))
+      (editor-error "Display doesn't support multiple screens")))
 
 ;;;; Pop-up Buffers
 
@@ -329,19 +380,21 @@ Also kills any pop up window it may have created."
 	      (*previous-popped-up-buffer* (object-hash false)))
     (dynamic-wind (lambda () unspecific)
 		  thunk
-		  kill-pop-up-buffer)))
+		  (lambda () (kill-pop-up-buffer false)))))
 
-(define (kill-pop-up-buffer #!optional error-if-none?)
+(define (kill-pop-up-buffer error-if-none?)
   (let ((window (object-unhash *previous-popped-up-window*)))
-    (if (and window (window-visible? window))
+    (if window
 	(begin
 	  (set! *previous-popped-up-window* (object-hash false))
-	  (window-delete! window))))
+	  (if (and (window-visible? window)
+		   (not (window-has-no-neighbors? window)))
+	      (window-delete! window)))))
   (let ((buffer (object-unhash *previous-popped-up-buffer*)))
     (cond ((and buffer (buffer-alive? buffer))
 	   (set! *previous-popped-up-buffer* (object-hash false))
 	   (kill-buffer-interactive buffer))
-	  ((and (not (default-object? error-if-none?)) error-if-none?)
+	  (error-if-none?
 	   (editor-error "No previous pop up buffer")))))
 
 (define *previous-popped-up-buffer* (object-hash false))
@@ -377,9 +430,19 @@ Also kills any pop up window it may have created."
 		 (let ((limit (* 2 (ref-variable window-minimum-height))))
 		   (if (< (ref-variable split-height-threshold) limit)
 		       (set-variable! split-height-threshold limit))
-		   (cond ((ref-variable preserve-window-arrangement)
+		   (cond ((and (use-multiple-screens?)
+			       (other-screen (selected-screen)))
+			  =>
+			  (lambda (screen)
+			    (pop-into-window (screen-selected-window screen))))
+			 ((ref-variable preserve-window-arrangement)
 			  (pop-into-window (largest-window)))
-			 ((ref-variable pop-up-windows)
+			 ((not (ref-variable pop-up-windows))
+			  (pop-into-window (lru-window)))
+			 ((use-multiple-screens?)
+			  (maybe-record-window
+			   (screen-selected-window (make-screen buffer))))
+			 (else
 			  (let ((window (largest-window)))
 			    (if (and (>= (window-y-size window)
 					 (ref-variable split-height-threshold))
@@ -395,22 +458,29 @@ Also kills any pop up window it may have created."
 							 (window1+ window))))
 					   (>= (window-y-size window) limit))
 				      (pop-up-window window)
-				      (pop-into-window window))))))
-			 (else
-			  (pop-into-window (lru-window)))))))))
+				      (pop-into-window window))))))))))))
       (set! *previous-popped-up-window* (object-hash window))
       (set! *previous-popped-up-buffer* (object-hash buffer))
       window)))
 
 (define (get-buffer-window buffer)
-  (let ((start (window0)))
-    (if (eq? buffer (window-buffer start))
-	start
-	(let loop ((window (window1+ start)))
-	  (and (not (eq? window start))
-	       (if (eq? buffer (window-buffer window))
-		   window
-		   (loop (window1+ window))))))))
+  (or (let ((start (window0)))
+	(if (eq? buffer (window-buffer start))
+	    start
+	    (let loop ((window (window1+ start)))
+	      (and (not (eq? window start))
+		   (if (eq? buffer (window-buffer window))
+		       window
+		       (loop (window1+ window)))))))
+      (and (use-multiple-screens?)
+	   (or (let ((screen (other-screen (selected-screen))))
+		 (and screen
+		      (list-search-positive (screen-window-list screen)
+			(lambda (window)
+			  (eq? buffer window)))))
+	       (let ((windows (buffer-windows buffer)))
+		 (and (not (null? windows))
+		      (car windows)))))))
 
 (define (largest-window)
   (let ((start (window0)))

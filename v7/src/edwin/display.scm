@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/display.scm,v 1.1 1989/08/12 08:33:51 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/display.scm,v 1.2 1990/10/09 16:23:54 cph Exp $
 ;;;
-;;;	Copyright (c) 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -49,8 +49,14 @@
 
 (define-structure (display-type
 		   (conc-name display-type/)
-		   (constructor %make-display-type))
+		   (constructor %make-display-type)
+		   (print-procedure
+		    (unparser/standard-method 'DISPLAY-TYPE
+		      (lambda (state display-type)
+			(unparse-object state
+					(display-type/name display-type))))))
   (name false read-only true)
+  (multiple-screens? false read-only true)
   (operation/available? false read-only true)
   (operation/make-screen false read-only true)
   (operation/make-input-port false read-only true)
@@ -59,6 +65,7 @@
   (operation/with-interrupts-disabled false read-only true))
 
 (define (make-display-type name
+			   multiple-screens?
 			   available?
 			   make-screen
 			   make-input-port
@@ -67,6 +74,7 @@
 			   with-interrupts-disabled)
   (let ((display-type
 	 (%make-display-type name
+			     multiple-screens?
 			     available?
 			     make-screen
 			     make-input-port
@@ -77,46 +85,33 @@
     display-type))
 
 (define display-types '())
-(define edwin-display-type false)
 
 (define (display-type/available? display-type)
   ((display-type/operation/available? display-type)))
 
-(define (make-editor-screen . args)
-  (apply (display-type/operation/make-screen edwin-display-type) args))
+(define (display-type/make-screen display-type args)
+  (apply (display-type/operation/make-screen display-type) args))
 
-(define (make-editor-input-port screen)
-  ((display-type/operation/make-input-port edwin-display-type) screen))
+(define (display-type/make-input-port display-type screen)
+  ((display-type/operation/make-input-port display-type) screen))
 
-(define (with-editor-interrupts thunk)
-  ((display-type/operation/with-interrupt-source edwin-display-type) thunk))
+(define (display-type/with-interrupt-source display-type thunk)
+  ((display-type/operation/with-interrupt-source display-type) thunk))
 
-(define (with-editor-interrupts-enabled thunk)
-  ((display-type/operation/with-interrupts-enabled edwin-display-type) thunk))
+(define (display-type/with-interrupts-enabled display-type thunk)
+  ((display-type/operation/with-interrupts-enabled display-type) thunk))
 
-(define (with-editor-interrupts-disabled thunk)
-  ((display-type/operation/with-interrupts-disabled edwin-display-type) thunk))
-
-(define (initialize-display-type!)
-  (set! edwin-display-type
-	(cond (edwin-display-type)
-	      ((display-type/available? x-display-type) x-display-type)
-	      ((list-search-positive display-types display-type/available?))
-	      (else (error "No display available"))))
-  unspecific)
+(define (display-type/with-interrupts-disabled display-type thunk)
+  ((display-type/operation/with-interrupts-disabled display-type) thunk))
 
 (define (editor-display-types)
-  (map display-type/name
-       (list-transform-positive display-types display-type/available?)))
+  (list-transform-positive display-types display-type/available?))
 
-(define (editor-display-type)
-  (and edwin-display-type (display-type/name edwin-display-type)))
-
-(define (set-editor-display-type! type-name)
-  (set! edwin-display-type
-	(and type-name
-	     (or (list-search-positive display-types
-		   (lambda (display-type)
-		     (eq? type-name (display-type/name display-type))))
-		 (error "Unknown display-type name" type-name))))
-  unspecific)
+(define (name->display-type name)
+  (let ((display-type
+	 (list-search-positive display-types
+	   (lambda (display-type)
+	     (eq? name (display-type/name display-type))))))
+    (if (not display-type)
+	(error "Unknown display-type name" name))
+    display-type))

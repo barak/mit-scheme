@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwfs.scm,v 1.7 1989/08/14 09:21:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwfs.scm,v 1.8 1990/10/09 16:23:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -188,34 +188,65 @@
     (redraw-screen! window 0)))
 
 (define (scroll-lines-down! window inferiors y-start)
+  ;; Returns new list of new inferiors.
   (with-instance-variables buffer-window window (inferiors y-start)
-    ;; Returns new list of new inferiors.
-    (let loop ((inferiors inferiors) (y-start y-start))
-      (if (or (null? inferiors)
-	      (not (fix:< y-start y-size)))
-	  '()
-	  (begin
-	    (set-inferior-start! (car inferiors) 0 y-start)
-	    (cons (car inferiors)
-		  (loop (cdr inferiors)
-			(inferior-y-end (car inferiors)))))))))
+    (let ((scrolled?
+	   (let ((yl (inferior-y-start (car inferiors))))
+	     (let ((amount (fix:- y-start yl)))
+	       (and (fix:< yl saved-yu)
+		    (fix:< amount (fix:- saved-yu saved-yl))
+		    (screen-scroll-lines-down! saved-screen
+					       (fix:+ saved-xl saved-x-start)
+					       (fix:+ saved-xu saved-x-start)
+					       (fix:+ (fix:max yl saved-yl)
+						      saved-y-start)
+					       (fix:+ saved-yu saved-y-start)
+					       amount))))))
+      (let loop ((inferiors inferiors) (y-start y-start))
+	(%set-inferior-y-start! (car inferiors) y-start)
+	(if (not scrolled?)
+	    (inferior-needs-redisplay! (car inferiors)))
+	(cons (car inferiors)
+	      (let ((inferiors (cdr inferiors))
+		    (y-start (inferior-y-end (car inferiors))))
+		(if (or (null? inferiors)
+			(not (fix:< y-start y-size)))
+		    '()
+		    (loop inferiors y-start))))))))
 
 (define (scroll-lines-up! window inferiors y-start start-index)
+  ;; Returns new list of new inferiors.
   (with-instance-variables buffer-window window (inferiors y-start start-index)
-    ;; Returns new list of new inferiors.
-    (let loop
-	((inferiors inferiors) (y-start y-start) (start-index start-index))
-      (set-inferior-start! (car inferiors) 0 y-start)
-      (cons (car inferiors)
-	    (if (null? (cdr inferiors))
-		(fill-bottom window
-			     (inferior-y-end (car inferiors))
-			     (line-end-index (buffer-group buffer)
-					     start-index))
-		(let ((y-start (inferior-y-end (car inferiors))))
-		  (if (fix:< y-start y-size)
-		      (loop (cdr inferiors)
-			    y-start
-			    (fix:+ start-index
-				   (line-inferior-length inferiors)))
-		      '())))))))
+    (let ((scrolled?
+	   (let ((yl (inferior-y-start (car inferiors))))
+	     (let ((amount (fix:- yl y-start)))
+	       (and (fix:< yl saved-yu)
+		    (fix:< amount (fix:- saved-yu saved-yl))
+		    (screen-scroll-lines-up! saved-screen
+					     (fix:+ saved-xl saved-x-start)
+					     (fix:+ saved-xu saved-x-start)
+					     (fix:+ (fix:max y-start saved-yl)
+						    saved-y-start)
+					     (fix:+ saved-yu saved-y-start)
+					     amount))))))
+      (let loop
+	  ((inferiors inferiors) (y-start y-start) (start-index start-index))
+	(%set-inferior-y-start! (car inferiors) y-start)
+	(if (not scrolled?)
+	    (inferior-needs-redisplay! (car inferiors)))
+	(cons (car inferiors)
+	      (let ((y-start (inferior-y-end (car inferiors))))
+		(cond ((null? (cdr inferiors))
+		       (fill-bottom window
+				    y-start
+				    (line-end-index (buffer-group buffer)
+						    start-index)))
+		      ((fix:< y-start y-size)
+		       (loop (cdr inferiors)
+			     y-start
+			     (fix:+ start-index
+				    (line-inferior-length inferiors))))
+		      (else '()))))))))
+
+(define-integrable (fix:max x y)
+  (if (fix:> x y) x y))

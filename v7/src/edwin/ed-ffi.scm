@@ -193,8 +193,6 @@
 	       edwin-syntax-table)
     ("window"  (edwin window)
 	       class-syntax-table)
-    ("winmis"  (edwin window)
-	       class-syntax-table)
     ("winout"  (edwin window-output-port)
 	       syntax-table/system-internal)
     ("winren"  (edwin)

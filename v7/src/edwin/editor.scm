@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.196 1990/10/06 00:15:39 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.197 1990/10/09 16:24:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -55,35 +55,33 @@
 		 (*auto-save-keystroke-count* 0))
        (within-editor edwin-editor
 	 (lambda ()
-	   (with-editor-interrupts
+	   (with-current-local-bindings!
 	     (lambda ()
-	       (with-current-local-bindings!
+	       (bind-condition-handler '() internal-error-handler
 		 (lambda ()
-		   (bind-condition-handler '() internal-error-handler
-		     (lambda ()
-		       (dynamic-wind
-			(lambda () (update-screens! true))
-			(lambda ()
-			  (let ((cmdl (nearest-cmdl))
-				(message (cmdl-message/null)))
-			    (let ((input-port (cmdl/input-port cmdl)))
-			      (input-port/immediate-mode input-port
-				(lambda ()
-				  (make-cmdl cmdl
-					     input-port
-					     (cmdl/output-port cmdl)
-					     (lambda (cmdl)
-					       cmdl ;ignore
-					       (top-level-command-reader
-						edwin-initialization)
-					       message)
-					     false
-					     message))))))
-			(lambda () unspecific)))))))))))))
+		   (dynamic-wind
+		    (lambda () (update-screens! true))
+		    (lambda ()
+		      (let ((cmdl (nearest-cmdl))
+			    (message (cmdl-message/null)))
+			(let ((input-port (cmdl/input-port cmdl)))
+			  (input-port/immediate-mode input-port
+			    (lambda ()
+			      (make-cmdl cmdl
+					 input-port
+					 (cmdl/output-port cmdl)
+					 (lambda (cmdl)
+					   cmdl ;ignore
+					   (top-level-command-reader
+					    edwin-initialization)
+					   message)
+					 false
+					 message))))))
+		    (lambda () unspecific)))))))))))
   (if edwin-finalization (edwin-finalization))
   unspecific)
 
-(define create-editor-args (list false))
+(define create-editor-args (list 'X))
 (define editor-abort)
 (define edwin-editor false)
 
@@ -97,18 +95,16 @@
 ;; reset and then reenter the editor.
 (define edwin-finalization false)
 
-(define (create-editor display-type . make-screen-args)
+(define (create-editor display-type-name . make-screen-args)
   (reset-editor)
   (initialize-typein!)
   (initialize-typeout!)
   (initialize-syntax-table!)
   (initialize-command-reader!)
-  (if display-type
-      (set-editor-display-type! display-type)
-      (initialize-display-type!))
   (set! edwin-editor
-	(let ((screen (apply make-editor-screen make-screen-args)))
-	  (make-editor "Edwin" screen)))
+	(make-editor "Edwin"
+		     (name->display-type display-type-name)
+		     make-screen-args))
   (set! edwin-initialization
 	(lambda ()
 	  (set! edwin-initialization false)
@@ -124,7 +120,14 @@
 		       (screen-discard! screen))
 		     (editor-screens edwin-editor))
 	   (set! edwin-editor false)
+	   (set! *previous-popped-up-buffer* (object-hash false))
+	   (set! *previous-popped-up-window* (object-hash false))
 	   unspecific)))))
+
+(define (reset-editor-windows)
+  (for-each (lambda (screen)
+	      (send (screen-root-window screen) ':salvage!))
+	    (editor-screens edwin-editor)))
 
 (define (standard-editor-initialization)
   (if (not init-file-loaded?)
@@ -176,7 +179,14 @@ with the contents of the startup message."
   (fluid-let ((current-editor editor)
 	      (recursive-edit-continuation false)
 	      (recursive-edit-level 0))
-    (using-screen (selected-screen) thunk)))
+    (dynamic-wind
+     (lambda ()
+       (screen-enter! (selected-screen)))
+     (lambda ()
+       (display-type/with-interrupt-source (editor-display-type editor)
+					   thunk))
+     (lambda ()
+       (screen-exit! (selected-screen))))))
 
 (define (within-editor?)
   (not (unassigned? current-editor)))

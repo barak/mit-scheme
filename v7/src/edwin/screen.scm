@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.83 1990/10/06 00:16:20 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.84 1990/10/09 16:24:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -58,13 +58,14 @@
 				 operation/inverse-video!
 				 operation/modeline-event!
 				 operation/normal-video!
+				 operation/scroll-lines-down!
+				 operation/scroll-lines-up!
 				 operation/start-update!
 				 operation/subscreen-clear!
 				 operation/wipe!
 				 operation/write-char!
 				 operation/write-cursor!
 				 operation/write-substring!
-				 operation/write-substrings!
 				 x-size
 				 y-size)))
   (state false read-only true)
@@ -77,13 +78,14 @@
   (operation/inverse-video! false read-only true)
   (operation/modeline-event! false read-only true)
   (operation/normal-video! false read-only true)
+  (operation/scroll-lines-down! false read-only true)
+  (operation/scroll-lines-up! false read-only true)
   (operation/start-update! false read-only true)
   (operation/subscreen-clear! false read-only true)
   (operation/wipe! false read-only true)
   (operation/write-char! false read-only true)
   (operation/write-cursor! false read-only true)
   (operation/write-substring! false read-only true)
-  (operation/write-substrings! false read-only true)
   (operation/x-size false read-only true)
   (operation/y-size false read-only true)
   (root-window false)
@@ -98,15 +100,8 @@
    (make-editor-frame
     screen
     buffer
-    (bufferset-find-or-create-buffer bufferset (make-typein-buffer-name 0)))))
+    (bufferset-find-or-create-buffer bufferset (make-typein-buffer-name -1)))))
 
-(define (using-screen screen thunk)
-  (dynamic-wind (lambda ()
-		  ((screen-operation/enter! screen) screen))
-		thunk
-		(lambda ()
-		  ((screen-operation/exit! screen) screen))))   
-
 (define (with-screen-in-update! screen thunk)
   (call-with-current-continuation
    (lambda (continuation)
@@ -172,14 +167,44 @@
   ((screen-operation/write-substring! screen) screen x y string start end))
 
 (define (screen-write-substrings! screen x y strings bil biu bjl bju)
-  ((screen-operation/write-substrings! screen)
-   screen x y strings bil biu bjl bju))
+  (let ((write-substring! (screen-operation/write-substring! screen)))
+    (clip (screen-x-size screen) x bil biu
+      (lambda (bxl ail aiu)
+	(clip (screen-y-size screen) y bjl bju
+	  (lambda (byl ajl aju)
+	    (let loop ((y byl) (j ajl))
+	      (if (fix:< j aju)
+		  (begin
+		    (write-substring! screen bxl y
+				      (vector-ref strings j) ail aiu)
+		    (loop (fix:1+ y) (fix:1+ j)))))))))))
+
+(define (clip axu x bil biu receiver)
+  (let ((ail (fix:- bil x)))
+    (if (fix:< ail biu)
+	(let ((aiu (fix:+ ail axu)))
+	  (cond ((not (fix:positive? x))
+		 (receiver 0 ail (if (fix:< aiu biu) aiu biu)))
+		((fix:< x axu)
+		 (receiver x bil (if (fix:< aiu biu) aiu biu))))))))
+
+(define (screen-scroll-lines-down! screen xl xu yl yu amount)
+  ((screen-operation/scroll-lines-down! screen) screen xl xu yl yu amount))
+
+(define (screen-scroll-lines-up! screen xl xu yl yu amount)
+  ((screen-operation/scroll-lines-up! screen) screen xl xu yl yu amount))
 
 (define (screen-enter! screen)
-  ((screen-operation/enter! screen) screen))
+  ((screen-operation/enter! screen) screen)
+  (screen-modeline-event! screen
+			  (screen-selected-window screen)
+			  'SELECT-SCREEN))
 
 (define (screen-exit! screen)
-  ((screen-operation/exit! screen) screen))
+  ((screen-operation/exit! screen) screen)
+  (screen-modeline-event! screen
+			  (screen-selected-window screen)
+			  'DESELECT-SCREEN))
 
 (define (screen-discard! screen)
   (for-each (lambda (window) (send window ':kill!))
@@ -188,11 +213,11 @@
 
 (define (screen-modeline-event! screen window type)
   ((screen-operation/modeline-event! screen) screen window type))
-
+
 (define-integrable (screen-selected-window screen)
   (editor-frame-selected-window (screen-root-window screen)))
 
-(define-integrable (screen-select-window! screen window)
+(define (screen-select-window! screen window)
   (editor-frame-select-window! (screen-root-window screen) window)
   (screen-modeline-event! screen window 'SELECT-WINDOW))
 

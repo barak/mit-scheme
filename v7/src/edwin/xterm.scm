@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.11 1990/10/06 00:16:37 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.12 1990/10/09 16:24:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -62,6 +62,7 @@
   (x-window-set-name 2)
   (xterm-clear-rectangle! 6)
   (xterm-draw-cursor 1)
+  (xterm-enable-cursor 2)
   (xterm-erase-cursor 1)
   (xterm-open-window 3)
   (xterm-restore-contents 6)
@@ -80,7 +81,8 @@
 		   (conc-name xterm-screen-state/))
   (xterm false read-only true)
   (display false read-only true)
-  (redisplay-flag true))
+  (redisplay-flag true)
+  (selected? true))
 
 (define screen-list)
 
@@ -104,13 +106,14 @@
 			xterm-screen/inverse-video!
 			xterm-screen/modeline-event!
 			xterm-screen/normal-video!
+			xterm-screen/scroll-lines-down!
+			xterm-screen/scroll-lines-up!
 			xterm-screen/start-update!
 			xterm-screen/subscreen-clear!
 			xterm-screen/wipe!
 			xterm-screen/write-char!
 			xterm-screen/write-cursor!
 			xterm-screen/write-substring!
-			xterm-screen/write-substrings!
 			(xterm-x-size xterm)
 			(xterm-y-size xterm)))))
     (set! screen-list (cons screen screen-list))
@@ -131,6 +134,12 @@
 (define-integrable (set-screen-redisplay-flag! screen flag)
   (set-xterm-screen-state/redisplay-flag! (screen-state screen) flag))
 
+(define-integrable (screen-selected? screen)
+  (xterm-screen-state/selected? (screen-state screen)))
+
+(define-integrable (set-screen-selected?! screen selected?)
+  (set-xterm-screen-state/selected?! (screen-state screen) selected?))
+
 (define (xterm->screen xterm)
   (let loop ((screens screen-list))
     (and (not (null? screens))
@@ -139,10 +148,13 @@
 	     (loop (cdr screens))))))
 
 (define (xterm-screen/start-update! screen)
-  (xterm-erase-cursor (screen-xterm screen)))
+  (xterm-enable-cursor (screen-xterm screen) false))
 
 (define (xterm-screen/finish-update! screen)
-  (xterm-draw-cursor (screen-xterm screen))
+  (if (screen-selected? screen)
+      (let ((xterm (screen-xterm screen)))
+	(xterm-enable-cursor xterm true)
+	(xterm-draw-cursor xterm)))
   (if (screen-redisplay-flag screen)
       (begin
 	(update-xterm-screen-names! screen)
@@ -158,12 +170,18 @@
   (set-screen-redisplay-flag! screen true))
 
 (define (xterm-screen/enter! screen)
-  screen				; ignored
-  unspecific)
+  (set-screen-selected?! screen true)
+  (let ((xterm (screen-xterm screen)))
+    (xterm-enable-cursor xterm true)
+    (xterm-draw-cursor xterm))
+  (xterm-screen/flush! screen))
 
 (define (xterm-screen/exit! screen)
-  screen				; ignored
-  unspecific)
+  (set-screen-selected?! screen false)
+  (let ((xterm (screen-xterm screen)))
+    (xterm-enable-cursor xterm false)
+    (xterm-erase-cursor xterm))
+  (xterm-screen/flush! screen))
 
 (define (xterm-screen/inverse-video! screen)
   screen				; ignored
@@ -172,7 +190,15 @@
 (define (xterm-screen/normal-video! screen)
   screen				; ignored
   unspecific)
-
+
+(define (xterm-screen/scroll-lines-down! screen xl xu yl yu amount)
+  (xterm-scroll-lines-down (screen-xterm screen) xl xu yl yu amount 0)
+  true)
+
+(define (xterm-screen/scroll-lines-up! screen xl xu yl yu amount)
+  (xterm-scroll-lines-up (screen-xterm screen) xl xu yl yu amount 0)
+  true)
+
 (define (xterm-screen/beep screen)
   (x-window-beep (screen-xterm screen))
   (xterm-screen/flush! screen))
@@ -189,32 +215,6 @@
 (define (xterm-screen/write-substring! screen x y string start end)
   (xterm-write-substring! (screen-xterm screen) x y string start end
 			  (screen-highlight screen)))
-
-(define (xterm-screen/write-substrings! screen x y strings bil biu bjl bju)
-  (let ((xterm (screen-xterm screen))
-	(highlight (screen-highlight screen)))
-    (clip (screen-x-size screen) x bil biu
-      (lambda (bxl ail aiu)
-	(clip (screen-y-size screen) y bjl bju
-	  (lambda (byl ajl aju)
-	    (let loop ((y byl) (j ajl))
-	      (if (fix:< j aju)
-		  (begin
-		    (xterm-write-substring! xterm
-					    bxl y
-					    (vector-ref strings j)
-					    ail aiu
-					    highlight)
-		    (loop (fix:1+ y) (fix:1+ j)))))))))))
-
-(define (clip axu x bil biu receiver)
-  (let ((ail (fix:- bil x)))
-    (if (fix:< ail biu)
-	(let ((aiu (fix:+ ail axu)))
-	  (cond ((not (fix:positive? x))
-		 (receiver 0 ail (if (fix:< aiu biu) aiu biu)))
-		((fix:< x axu)
-		 (receiver x bil (if (fix:< aiu biu) aiu biu))))))))
 
 (define (xterm-screen/subscreen-clear! screen xl xu yl yu)
   (xterm-clear-rectangle! (screen-xterm screen) xl xu yl yu
@@ -442,6 +442,7 @@
   (set! screen-list '())
   (set! x-display-type
 	(make-display-type 'X
+			   true
 			   get-x-display
 			   make-xterm-screen
 			   make-xterm-input-port

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.13 1990/10/03 04:54:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.14 1990/10/09 16:23:47 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -171,8 +171,7 @@ MIT in each case. |#
 	    '("comwin"
 	      "modwin"
 	      "buffrm"
-	      "edtfrm"
-	      "winmis"))
+	      "edtfrm"))
   (sf-edwin "grpops" "struct")
   (sf-edwin "regops" "struct")
   (sf-edwin "motion" "struct")

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.10 1990/10/06 00:15:49 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.11 1990/10/09 16:24:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -48,6 +48,7 @@
 
 (define-structure (editor (constructor %make-editor))
   (name false read-only true)
+  (display-type false read-only true)
   (screens false)
   (selected-screen false)
   (bufferset false read-only true)
@@ -56,37 +57,29 @@
   (input-port false read-only true)
   (button-event false))
 
-(define (make-editor name screen)
+(define (make-editor name display-type make-screen-args)
   (let ((initial-buffer (make-buffer initial-buffer-name initial-buffer-mode)))
-    (let ((bufferset (make-bufferset initial-buffer)))
+    (let ((bufferset (make-bufferset initial-buffer))
+	  (screen (display-type/make-screen display-type make-screen-args)))
       (initialize-screen-root-window! screen bufferset initial-buffer)
       (%make-editor name
+		    display-type
 		    (list screen)
 		    screen
 		    bufferset
 		    (make-ring 10)
 		    (make-ring 100)
-		    (make-editor-input-port screen)
+		    (display-type/make-input-port display-type screen)
 		    false))))
 
-(define (editor-add-screen! editor screen)
-  (set-editor-screens! editor
-		       (append! (editor-screens editor)
-				(list screen))))
+(define-integrable (current-display-type)
+  (editor-display-type current-editor))
 
-(define (editor-delete-screen! editor screen)
-  (let ((screens (delq! screen (editor-screens editor))))
-    (if (null? screens)
-	(error "deleted only editor screen" editor))
-    (set-editor-screens! editor screens)
-    (if (eq? screen (editor-selected-screen editor))
-	(set-editor-selected-screen! editor (car screens)))))
+(define-integrable (with-editor-interrupts-enabled thunk)
+  (display-type/with-interrupts-enabled (current-display-type) thunk))
 
-(define (screen-list)
-  (editor-screens (if (within-editor?) current-editor edwin-editor)))
-
-(define-integrable (selected-screen)
-  (editor-selected-screen current-editor))
+(define-integrable (with-editor-interrupts-disabled thunk)
+  (display-type/with-interrupts-disabled (current-display-type) thunk))
 
 (define-integrable (current-bufferset)
   (editor-bufferset current-editor))
