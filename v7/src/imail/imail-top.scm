@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.3 2000/01/15 05:25:32 cph Exp $
+;;; $Id: imail-top.scm,v 1.4 2000/01/18 20:58:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -224,19 +224,22 @@ DEL	Scroll to previous screen of this message.
 (define-key 'imail-edit '(#\c-c #\c-])	'imail-abort-edit)
 
 (define (imail-revert-buffer buffer dont-use-auto-save? dont-confirm?)
-  )
+  ???)
 
 (define (imail-kill-buffer buffer)
-  )
+  ???)
 
 (define-command imail-input
   "Append messages to this folder from a specified folder."
   "sInput from imail folder"
   (lambda (url-string)
-    ))
+    ???))
 
 (define-command imail-quit
-  )
+  ""
+  ()
+  (lambda ()
+    ???))
 
 (define-command imail-synchronize
   "Synchronize the current folder with the master copy on the server.
