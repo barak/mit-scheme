@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.13 2004/08/12 06:31:43 cph Exp $
+$Id: xhtml.scm,v 1.14 2004/11/17 05:48:35 cph Exp $
 
 Copyright 2002,2003,2004 Massachusetts Institute of Technology
 
@@ -36,7 +36,10 @@ USA.
 
 (define (guarantee-html-element object caller)
   (if (not (html-element? object))
-      (error:wrong-type-argument object "XHTML element" caller)))
+      (error:not-html-element object caller)))
+
+(define (error:not-html-element object caller)
+  (error:wrong-type-argument object "HTML element" caller))
 
 (define (html-element-name? object)
   (and (xml-name? object)
@@ -44,7 +47,10 @@ USA.
 
 (define (guarantee-html-element-name object caller)
   (if (not (html-element-name? object))
-      (error:wrong-type-argument object "XHTML element name" caller)))
+      (error:not-html-element-name object caller)))
+
+(define (error:not-html-element-name object caller)
+  (error:wrong-type-argument object "HTML element name" caller))
 
 (define (html-external-id? object)
   (and (xml-external-id? object)
@@ -75,11 +81,8 @@ USA.
        (html-external-id? (xml-dtd-external object))
        (null? (xml-dtd-internal object))))
 
-(define html-1.0-dtd
-  (make-xml-dtd 'html html-1.0-external-id '()))
-
-(define html-1.1-dtd
-  (make-xml-dtd 'html html-1.1-external-id '()))
+(define html-1.0-dtd (make-xml-dtd 'html html-1.0-external-id '()))
+(define html-1.1-dtd (make-xml-dtd 'html html-1.1-external-id '()))
 
 (define (html-1.0-document attrs . items)
   (%make-document html-1.0-dtd attrs items))
@@ -253,18 +256,13 @@ USA.
 	     'content value))
 
 (define (html:style-attr . keyword-list)
-  (let loop ((bindings keyword-list))
-    (if (and (pair? bindings)
-	     (symbol? (car bindings))
-	     (pair? (cdr bindings))
-	     (string? (cadr bindings)))
+  (guarantee-keyword-list keyword-list 'HTML:STYLE-ATTR)
+  (if (pair? bindings)
+      (let loop ((bindings keyword-list))
 	(string-append (symbol-name (car bindings))
 		       ": "
 		       (cadr bindings)
 		       (if (pair? (cddr bindings))
 			   (string-append "; " (loop (cddr bindings)))
-			   ";"))
-	(begin
-	  (if (not (null? bindings))
-	      (error:wrong-type-argument keyword-list "keyword list" 'STYLE))
-	  ""))))
+			   ";")))
+      ""))
