@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.34 2004/01/06 06:22:32 cph Exp $
+$Id: random.scm,v 14.35 2004/01/09 20:22:22 cph Exp $
 
 Copyright 1988,1989,1993,1994,1995,1996 Massachusetts Institute of Technology
 Copyright 1998,1999,2000,2001,2003,2004 Massachusetts Institute of Technology
@@ -159,7 +159,9 @@ USA.
   (flo:/ (int:->flonum (%random-integer flimit state)) flimit.))
 
 (define (random-byte-vector n #!optional state)
-  (let ((state (if (default-object? state) #f state))
+  (let ((state
+	 (guarantee-random-state (if (default-object? state) #f state)
+				 'RANDOM-BYTE-VECTOR))
 	(s (make-string n)))
     (do ((i 0 (fix:+ i 1)))
 	((fix:= i n))
