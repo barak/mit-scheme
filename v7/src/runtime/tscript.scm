@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: tscript.scm,v 1.3 1999/02/18 03:54:26 cph Exp $
+$Id: tscript.scm,v 1.4 1999/06/21 03:46:49 cph Exp $
 
 Copyright (c) 1990, 1999 Massachusetts Institute of Technology
 
@@ -29,7 +29,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		   (constructor make-encap-state ()))
   (transcript-port #f))
 
-(define (encap? object)
+(define (transcriptable-port? object)
   (and (encapsulated-port? object)
        (encap-state? (encapsulated-port/state object))))
 
@@ -50,7 +50,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (transcript-on filename)
   (let ((encap (nearest-cmdl/port)))
-    (if (not (encap? encap))
+    (if (not (transcriptable-port? encap))
 	(error "Transcript not supported for this REPL."))
     (if (encap/tport encap)
 	(error "transcript already turned on"))
@@ -58,7 +58,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (transcript-off)
   (let ((encap (nearest-cmdl/port)))
-    (if (not (encap? encap))
+    (if (not (transcriptable-port? encap))
 	(error "Transcript not supported for this REPL."))
     (let ((tport (encap/tport encap)))
       (if tport

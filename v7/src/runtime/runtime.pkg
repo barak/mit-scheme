@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.328 1999/05/13 03:04:25 cph Exp $
+$Id: runtime.pkg,v 14.329 1999/06/21 03:47:29 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -850,6 +850,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  transcript-on)
   (export (runtime rep)
 	  make-transcriptable-port)
+  (export (runtime emacs-interface)
+	  make-transcriptable-port
+	  transcriptable-port?)
   (initialization (initialize-package!)))
 
 (define-package (runtime format)
