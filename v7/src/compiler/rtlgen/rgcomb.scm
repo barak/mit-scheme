@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.18 1987/05/16 19:48:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.19 1987/05/18 17:50:48 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -245,8 +245,7 @@ MIT in each case. |#
 
 ;;;; Calls
 
-(define (make-call/apply combination operator operands prefix
-			 continuation)
+(define (make-call/apply combination operator operands prefix continuation)
   (make-call true combination operator operands
     (lambda (frame-size)
       (rtl:make-invocation:apply frame-size
@@ -283,8 +282,7 @@ MIT in each case. |#
 
 (define make-call/ic make-call/apply)
 
-(define (make-call/primitive combination operator operands prefix
-			     continuation)
+(define (make-call/primitive combination operator operands prefix continuation)
   (make-call false combination operator operands
     (lambda (frame-size)
       (rtl:make-invocation:primitive
@@ -326,14 +324,13 @@ MIT in each case. |#
     (internal-call combination prefix continuation extra)))
 
 (define (internal-call combination prefix continuation extra)
-  (lambda (frame-size)
-    (let ((operator (combination-known-operator combination))
-	  (frame-size (+ frame-size extra)))
+  (lambda (number-pushed)
+    (let ((operator (combination-known-operator combination)))
       ((if (procedure-rest operator)
 	   rtl:make-invocation:lexpr
 	   rtl:make-invocation:jump)
-       frame-size
-       (prefix combination frame-size)
+       number-pushed
+       (prefix combination (+ number-pushed extra))
        continuation
        operator))))
 
