@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: struct.scm,v 1.93 2000/03/23 03:19:20 cph Exp $
+;;; $Id: struct.scm,v 1.94 2001/05/22 16:16:34 cph Exp $
 ;;;
-;;; Copyright (c) 1985, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1985, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Text Data Structures
 
@@ -196,6 +197,19 @@
 			    (mark-index start)
 			    (mark-index end)
 			    thunk))
+
+(define (without-text-clipped group thunk)
+  (let ((group
+	 (cond ((group? group) group)
+	       ((buffer? group) (buffer-group group))
+	       ((mark? group) (mark-group group))
+	       (else
+		(error:wrong-type-argument group "text group"
+					   'WITHOUT-TEXT-CLIPPED)))))
+    (with-group-text-clipped! group
+			      (group-absolute-start group)
+			      (group-absolute-end group)
+			      thunk)))
 
 (define (text-clip start end)
   (if (not (mark<= start end))
