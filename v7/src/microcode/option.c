@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.23 1992/06/01 19:47:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.24 1992/06/05 04:38:41 jinx Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -350,7 +350,7 @@ The following options are only meaningful to bchscheme:
 #endif
 
 #ifndef DEFAULT_EDWIN_CONSTANT
-#define DEFAULT_EDWIN_CONSTANT 845
+#define DEFAULT_EDWIN_CONSTANT 850
 #endif
 
 #endif /* i386 */
