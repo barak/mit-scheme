@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.90 2000/05/25 05:01:40 cph Exp $
+;;; $Id: imail-imap.scm,v 1.91 2000/05/25 05:16:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -328,16 +328,17 @@
 		   (lambda (condition)
 		     (let ((response (imap:server-error:response condition)))
 		       (if (imap:response:no? response)
-			   (error
-			    "Unable to log in:"
-			    (imap:response:response-text-string response)))))
+			   (begin
+			     (imail-delete-stored-pass-phrase url)
+			     (error "Unable to log in:"
+				    (imap:response:response-text-string
+				     response))))))
 		 (lambda ()
-		   (imail-call-with-pass-phrase
-		    (imap-connection-url connection)
-		    (lambda (pass-phrase)
-		      (imap:command:login connection
-					  (imap-url-user-id url)
-					  pass-phrase)))))
+		   (imail-call-with-pass-phrase url
+		     (lambda (pass-phrase)
+		       (imap:command:login connection
+					   (imap-url-user-id url)
+					   pass-phrase)))))
 	       (set! finished? #t))
 	     (lambda ()
 	       (if (not finished?)

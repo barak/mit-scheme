@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.108 2000/05/25 05:06:38 cph Exp $
+;;; $Id: imail-top.scm,v 1.109 2000/05/25 05:17:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -292,6 +292,9 @@ regardless of the folder type."
 		    (set-up-pass-phrase-timer! entry key retention-time)
 		    entry)))
 	     (receiver pass-phrase)))))))
+
+(define (imail-delete-stored-pass-phrase url)
+  (hash-table/remove! memoized-pass-phrases (url-pass-phrase-key url)))
 
 (define (set-up-pass-phrase-timer! entry key retention-time)
   ;; A race condition can occur when the timer event is re-registered.
