@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: autold.scm,v 1.57 2001/03/21 19:25:13 cph Exp $
+;;;$Id: autold.scm,v 1.58 2001/12/18 21:34:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -176,7 +176,7 @@ Second arg is prefix arg when called interactively."
 		(lambda (entry)
 		  (load (merge-pathnames (car entry) directory)
 			(cadr entry)
-			edwin-syntax-table
+			(cadr entry)
 			(or (null? (cddr entry)) (caddr entry))))
 		(cdr library)))
 	     (if (not (memq (car library) loaded-libraries))
@@ -224,4 +224,4 @@ Second arg PURIFY? means purify the file's contents after loading;
        (lambda ()
 	 (fluid-let ((load/suppress-loading-message? #t)
 		     (*parser-canonicalize-symbols?* #t))
-	   (load filename environment edwin-syntax-table purify?)))))))
+	   (load filename environment environment purify?)))))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.275 2001/10/30 19:25:15 cph Exp $
+$Id: edwin.pkg,v 1.276 2001/12/18 21:35:04 cph Exp $
 
 Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
@@ -120,13 +120,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (edwin class-macros)
   (files "clsmac")
-  (parent ())
-  (export (edwin)
-	  class-syntax-table))
+  (parent (edwin)))
 
 (define-package (edwin class-macros transform-instance-variables)
   (files "xform")
-  (parent ())
+  (parent (edwin class-macros))
   (export (edwin class-macros)
 	  transform-instance-variables))
 
@@ -143,14 +141,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-package (edwin macros)
   (files "macros")
-  (parent ())
-  (export (edwin)
-	  edwin-syntax-table)
-  (export (edwin class-macros)
-	  edwin-syntax-table)
+  (parent (edwin))
   (export (edwin)
 	  canonicalize-name
 	  command-name->scheme-name
+	  edwin-syntax-table
 	  mode-name->scheme-name
 	  variable-name->scheme-name))
 

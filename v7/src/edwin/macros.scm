@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: macros.scm,v 1.65 1999/11/01 03:40:23 cph Exp $
+;;; $Id: macros.scm,v 1.66 2001/12/18 21:35:11 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -22,10 +22,20 @@
 
 (declare (usual-integrations))
 
-(define edwin-syntax-table
-  (make-syntax-table syntax-table/system-internal))
+(define edwin-environment (->environment '(EDWIN)))
+(define edwin-syntax-table edwin-environment) ;upwards compatibility
 
-(syntax-table-define edwin-syntax-table 'DEFINE-COMMAND
+(set-environment-syntax-table! edwin-environment
+			       (make-syntax-table (->environment '())))
+
+(let ((runtime-environment (->environment '(RUNTIME))))
+  (for-each
+   (lambda (name)
+     (syntax-table/define edwin-environment name
+			  (syntax-table/ref runtime-environment name)))
+   (syntax-table/defined-names runtime-environment)))
+
+(syntax-table/define edwin-environment 'DEFINE-COMMAND
   (lambda (name description interactive procedure)
     (let ((name (canonicalize-name name)))
       (let ((scheme-name (command-name->scheme-name name)))
@@ -43,16 +53,16 @@
 				 ,@(cddr procedure))
 			      procedure)))))))
 
-(syntax-table-define edwin-syntax-table 'REF-COMMAND-OBJECT
+(syntax-table/define edwin-environment 'REF-COMMAND-OBJECT
   (lambda (name)
     (command-name->scheme-name (canonicalize-name name))))
 
-(syntax-table-define edwin-syntax-table 'REF-COMMAND
+(syntax-table/define edwin-environment 'REF-COMMAND
   (lambda (name)
     `(COMMAND-PROCEDURE
       ,(command-name->scheme-name (canonicalize-name name)))))
 
-(syntax-table-define edwin-syntax-table 'COMMAND-DEFINED?
+(syntax-table/define edwin-environment 'COMMAND-DEFINED?
   (lambda (name)
     (let ((variable-name (command-name->scheme-name (canonicalize-name name))))
       `(let ((env (->environment '(EDWIN))))
@@ -83,23 +93,23 @@
 			`((SET-VARIABLE-VALUE-NORMALIZATION!
 			   ,scheme-name
 			   ,normalization))))))))))
-  (syntax-table-define edwin-syntax-table 'DEFINE-VARIABLE
+  (syntax-table/define edwin-environment 'DEFINE-VARIABLE
     (variable-definition false))
-  (syntax-table-define edwin-syntax-table 'DEFINE-VARIABLE-PER-BUFFER
+  (syntax-table/define edwin-environment 'DEFINE-VARIABLE-PER-BUFFER
     (variable-definition true)))
 
-(syntax-table-define edwin-syntax-table 'REF-VARIABLE-OBJECT
+(syntax-table/define edwin-environment 'REF-VARIABLE-OBJECT
   (lambda (name)
     (variable-name->scheme-name (canonicalize-name name))))
 
-(syntax-table-define edwin-syntax-table 'REF-VARIABLE
+(syntax-table/define edwin-environment 'REF-VARIABLE
   (lambda (name #!optional buffer)
     (let ((name (variable-name->scheme-name (canonicalize-name name))))
       (if (default-object? buffer)
 	  `(VARIABLE-VALUE ,name)
 	  `(VARIABLE-LOCAL-VALUE ,buffer ,name)))))
 
-(syntax-table-define edwin-syntax-table 'SET-VARIABLE!
+(syntax-table/define edwin-environment 'SET-VARIABLE!
   (lambda (name #!optional value buffer)
     (let ((name (variable-name->scheme-name (canonicalize-name name)))
 	  (value (if (default-object? value) '#F value)))
@@ -107,7 +117,7 @@
 	  `(SET-VARIABLE-VALUE! ,name ,value)
 	  `(SET-VARIABLE-LOCAL-VALUE! ,buffer ,name ,value)))))
 
-(syntax-table-define edwin-syntax-table 'LOCAL-SET-VARIABLE!
+(syntax-table/define edwin-environment 'LOCAL-SET-VARIABLE!
   (lambda (name #!optional value buffer)
     `(DEFINE-VARIABLE-LOCAL-VALUE!
       ,(if (default-object? buffer) '(CURRENT-BUFFER) buffer)
@@ -117,7 +127,7 @@
 (define (variable-name->scheme-name name)
   (symbol-append 'EDWIN-VARIABLE$ name))
 
-(syntax-table-define edwin-syntax-table 'DEFINE-MAJOR-MODE
+(syntax-table/define edwin-environment 'DEFINE-MAJOR-MODE
   (lambda (name super-mode-name display-name description
 		#!optional initialization)
     (let ((name (canonicalize-name name))
@@ -147,7 +157,7 @@
 			     (initialization)
 			     (else `(LAMBDA (BUFFER) BUFFER UNSPECIFIC)))))))))
 
-(syntax-table-define edwin-syntax-table 'DEFINE-MINOR-MODE
+(syntax-table/define edwin-environment 'DEFINE-MINOR-MODE
   (lambda (name display-name description #!optional initialization)
     (let ((name (canonicalize-name name)))
       `(DEFINE ,(mode-name->scheme-name name)
@@ -161,7 +171,7 @@
 			 initialization
 			 `(LAMBDA (BUFFER) BUFFER UNSPECIFIC)))))))
 
-(syntax-table-define edwin-syntax-table 'REF-MODE-OBJECT
+(syntax-table/define edwin-environment 'REF-MODE-OBJECT
   (lambda (name)
     (mode-name->scheme-name (canonicalize-name name))))
 

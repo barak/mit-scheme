@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fileio.scm,v 1.155 2001/07/06 21:14:38 cph Exp $
+;;; $Id: fileio.scm,v 1.156 2001/12/18 21:35:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -430,10 +430,10 @@ after you find a file.  If you explicitly request such a scan with
       (loop start))))
 
 (define (evaluate sexp)
-  (scode-eval (syntax sexp edwin-syntax-table) edwin-environment))
+  (eval sexp edwin-environment))
 
 (define edwin-environment
-  (->environment '(edwin)))
+  (->environment '(EDWIN)))
 
 initialize-buffer-local-variables!))
 

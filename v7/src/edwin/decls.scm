@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.70 2001/02/05 18:55:48 cph Exp $
+$Id: decls.scm,v 1.71 2001/12/18 21:34:56 cph Exp $
 
 Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
@@ -27,7 +27,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (bin-file (lambda (file) (string-append file ".bin")))
        (bin-time (lambda (file) (file-modification-time (bin-file file))))
        (sf-dependent
-	(lambda (syntax-table)
+	(lambda (environment)
 	  (lambda (source . dependencies)
 	    (let ((reasons
 		   (let ((source-time (bin-time source)))
@@ -56,18 +56,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				(write reason))
 			      reasons)
 		    (newline)
-		    (fluid-let ((sf/default-syntax-table
-				 (lexical-reference (->environment '(EDWIN))
-						    syntax-table))
+		    (fluid-let ((sf/default-syntax-table environment)
 				(sf/default-declarations
 				 (map (lambda (dependency)
 					`(integrate-external ,dependency))
 				      dependencies)))
 		      (sf source))))))))
-       (sf-global (sf-dependent 'syntax-table/system-internal))
-       (sf-edwin (sf-dependent 'edwin-syntax-table))
-       (sf-class (sf-dependent 'class-syntax-table)))
-  (for-each sf-global
+       (sf-edwin (sf-dependent (->environment '(EDWIN))))
+       (sf-class (sf-dependent (->environment '(EDWIN WINDOW)))))
+  (for-each sf-edwin
 	    '("ansi"
 	      "bios"
 	      "class"
@@ -95,10 +92,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      "winren"
 	      "xform"
 	      "xterm"))
-  (sf-global "tterm" "termcap")
+  (sf-edwin "tterm" "termcap")
   (let ((includes '("struct" "comman" "modes" "buffer" "edtstr")))
     (let loop ((files includes) (includes '()))
-      (if (not (null? files))
+      (if (pair? files)
 	  (begin
 	    (apply sf-edwin (car files) includes)
 	    (loop (cdr files) (cons (car files) includes)))))

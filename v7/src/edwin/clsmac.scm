@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: clsmac.scm,v 1.3 1999/01/02 06:11:34 cph Exp $
+;;;$Id: clsmac.scm,v 1.4 2001/12/18 21:34:54 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989, 1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989, 1999, 2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Class/Object System
 
@@ -28,13 +29,13 @@
 ;;; likely will not ever, be supported as a part of the Scheme system.
 ;;; ******************************************************************
 
-(define class-syntax-table
-  (make-syntax-table edwin-syntax-table))
+(define window-environment
+  (->environment '(EDWIN WINDOW)))
 
-(define ((scode-macro-spreader transform) expression)
-  (apply transform (cdr expression)))
+(set-environment-syntax-table! window-environment
+			       (make-syntax-table (->environment '(EDWIN))))
 
-(syntax-table-define class-syntax-table 'DEFINE-CLASS
+(syntax-table/define window-environment 'DEFINE-CLASS
   (lambda (name superclass variables)
     (guarantee-symbol "Class name" name)
     (if (not (null? superclass))
@@ -49,20 +50,20 @@
 		   ,(if (null? superclass) false superclass)
 		   ',variables))))
 
-(syntax-table-define class-syntax-table 'DEFINE-METHOD
+(syntax-table/define window-environment 'DEFINE-METHOD
   (lambda (class bvl . body)
     (syntax-class-definition class bvl body
       (lambda (name expression)
 	(make-syntax-closure
 	 (make-method-definition class name expression))))))
 
-(syntax-table-define class-syntax-table 'WITH-INSTANCE-VARIABLES
+(syntax-table/define window-environment 'WITH-INSTANCE-VARIABLES
   (lambda (class self free-names . body)
     (guarantee-symbol "Self name" self)
     (make-syntax-closure
      (syntax-class-expression class self free-names body))))
 
-(syntax-table-define class-syntax-table '=>
+(syntax-table/define window-environment '=>
   (lambda (object operation . arguments)
     (guarantee-symbol "Operation name" operation)
     (let ((obname (string->uninterned-symbol "object")))
@@ -71,7 +72,7 @@
 	  ,obname
 	  ,@arguments)))))
 
-(syntax-table-define class-syntax-table 'USUAL=>
+(syntax-table/define window-environment 'USUAL=>
   (lambda (object operation . arguments)
     (guarantee-symbol "Operation name" operation)
     (if (not *class-name*)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.221 2001/12/17 04:41:46 cph Exp $
+;;; $Id: filcom.scm,v 1.222 2001/12/18 21:35:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -214,9 +214,7 @@ procedures are called."
 		      (catch-file-errors (lambda (condition) condition #f)
 			(lambda ()
 			  (fluid-let ((load/suppress-loading-message? #t))
-			    (load pathname
-				  '(EDWIN)
-				  edwin-syntax-table))))))))))
+			    (load pathname '(EDWIN)))))))))))
 	  (if (and (procedure? database)
 		   (procedure-arity-valid? database 1))
 	      (database buffer)
