@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.172 1987/06/01 11:21:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.173 1987/06/01 16:09:21 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -288,11 +288,18 @@ MIT in each case. |#
   `(,(load-constant source (coerce->any target))))
 
 (define-rule statement
+  (ASSIGN (REGISTER (? target)) (VARIABLE-CACHE (? name)))
+  (QUALIFIER (pseudo-register? target))
+  `((MOVE L
+	  (@PCR ,(free-reference-label name))
+	  ,(reference-assignment-alias! target 'DATA))))
+
+(define-rule statement
   (ASSIGN (REGISTER (? target)) (REGISTER (? source)))
   (QUALIFIER (pseudo-register? target))
   (move-to-alias-register! source 'DATA target)
   '())
-
+
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (REGISTER (? source))))
   (QUALIFIER (pseudo-register? target))
@@ -304,7 +311,7 @@ MIT in each case. |#
   (QUALIFIER (pseudo-register? target))
   (let ((target (move-to-alias-register! source 'DATA target)))
     `((RO L L (& 8) ,target))))
-
+
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OFFSET (REGISTER (? address)) (? offset)))
   (QUALIFIER (pseudo-register? target))
@@ -806,6 +813,44 @@ MIT in each case. |#
 	  (JSR ,entry)
 	  ,@(make-external-label (generate-label)))))))
 
+(define-rule statement
+  (INTERPRETER-CALL:CACHE-REFERENCE (? extension) (? safe?))
+  (let ((set-extension (expression->machine-register! extension a0)))
+    (let ((clear-map (clear-map!)))
+      `(,@set-extension
+	,@clear-map
+	(JSR ,(if safe?
+		  entry:compiler-safe-reference-trap
+		  entry:compiler-reference-trap))
+	,@(make-external-label (generate-label))))))
+
+(define-rule statement
+  (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension) (? value))
+  (QUALIFIER (not (eq? 'CONS-POINTER (car value))))
+  (let ((set-extension (expression->machine-register! extension a0)))
+    (let ((set-value (expression->machine-register! value a1)))
+      (let ((clear-map (clear-map!)))
+	`(,@set-extension
+	  ,@set-value
+	  ,@clear-map
+	  (JSR ,entry:compiler-assignment-trap)
+	  ,@(make-external-label (generate-label)))))))
+
+(define-rule statement
+  (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension)
+				     (CONS-POINTER (CONSTANT (? type))
+						   (REGISTER (? datum))))
+  (let ((set-extension (expression->machine-register! extension a0)))
+    (let ((datum (coerce->any datum)))
+      (let ((clear-map (clear-map!)))
+	`(,@set-extension
+	  (MOVE L ,datum ,reg:temp)
+	  (MOVE B (& ,type) ,reg:temp)
+	  ,@clear-map
+	  (MOVE L ,reg:temp (A 1))
+	  (JSR ,entry:compiler-assignment-trap)
+	  ,@(make-external-label (generate-label)))))))
+
 ;;; This is invoked by the top level of the LAP generator.
 
 (define (generate/quotation-header block-label constants references uuo-links)
@@ -816,16 +861,17 @@ MIT in each case. |#
 	  ,@(map declare-constant uuo-links)
 	  ,@(map declare-constant constants)
 	  (SCHEME-OBJECT ,environment-label ,false)
-	  (MOVE L (@AO 6 12) (@PCR ,environment-label))
+	  (LEA (@PCR ,environment-label) (A 0))
+	  (MOVE L (@AO 6 12) (@A 0))
 	  (LEA (@PCR ,block-label) (A 0))
 	  ,@(mapcan (lambda (reference)
 		      `((LEA (@PCR ,(cdr reference)) (A 1))
-			(JSR ,entry:cache-variable)
+			(JSR ,entry:compiler-cache-variable)
 			,@(make-external-label (generate-label))))
 		    references)
 	  ,@(mapcan (lambda (uuo-link)
 		      `((LEA (@PCR ,(cdr uuo-link)) (A 1))
-			(JSR ,entry:uuo-link)
+			(JSR ,entry:compiler-uuo-link)
 			,@(make-external-label (generate-label))))
 		    uuo-links)))
       (map declare-constant constants)))
