@@ -1,26 +1,35 @@
 -*- Text -*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.1 1989/06/02 14:48:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.2 1989/11/23 21:32:46 jinx Exp $
 
 	Remarks:
 
 This file describes the compiled code data structures and the macros
-defined in cmpint.h and required by cmpint.c and cmpgc.h .
-The "settable" fields in the various files are described in the
-paragraphs marked with "=>".
+defined in cmpint-md.h and required by cmpint.c and cmpgc.h .
+
+cmpint-md.h is the machine dependent header file that defines many of
+these parameters.  A new version must be written for each
+architecture.
+
+The "settable" fields in cmpint-md.h are described in the paragraphs
+marked with "=>".
+
+In the following, word and longword are the size of an item that fills
+a processor register, typically 32 bits.  Halfword is half this size,
+and byte is typically 8 bits.
 
 	Description of compiled code objects and relevant types:
 
-The Scheme compiler compiles scode expressions (including procedure
-definitions) into native code.  As its output, it produces compiled
-expression Scheme objects.  These expression can be given to
-scode-eval with an environment, and the compiled code corresponding
-to the expressions will be executed.
+The Scheme compiler compiles scode expressions (often procedure
+definitions) into native code.  As its output, it produces Scheme
+objects that represent compiled expressions.  To execute these
+expressions, they are passed as arguments to scode-eval together with
+an environment.
 
 Typically these expressions will construct some pointers to compiled
 procedures and define them in the environment.  These procedures can
 then be invoked normally from the read-eval-print loop, from
-interpreted code or from other compiled code.
+interpreted code, or from other compiled code.
 
 In the course of their computation, these procedures will need to
 call other procedures and then proceed the computation.  In order to
@@ -29,34 +38,35 @@ stack, and these will eventually be popped and "jumped through" to
 return.
 
 Compiled code and objects referenced by it are collected into
-"vector-like" objects called compiled code blocks.
+"vector-like" objects called compiled-code blocks.
 
 The above four classes of objects (compiled expressions, compiled
-procedures, compiled return addresses, and compiled code blocks) are
+procedures, compiled return addresses, and compiled-code blocks) are
 implemented using two microcode types:
 
-TC_COMPILED_CODE_BLOCK is used to implement compiled code blocks.  It
+TC_COMPILED_CODE_BLOCK is used to implement compiled-code blocks.  It
 is a vector type, that is, it is a pointer type, the word addressed by
 the pointer contains the length of the vector (not including the
 length header word), and the rest of the words (length) follow at
 increasing addresses in memory.  Typically the first word after the
 header is a non-marked-vector header, and the instructions follow it.
-The length field of this non-marked-vector covers all of the
-instructions, but may leave space for objects at the end of the
-compiled code block.  This additional space at the end of the block is
-called the "constants" section, since it is used, among other things,
-to keep copies of constant objects used by the compiled code.  See the
-picture below for a diagram of the typical layout.
+The non-marked-vector header covers all the instructions, but the
+vector may contain arbitrary objects after the instructions, covered
+only by the normal vector header.  The optional, additional space at
+the end of the block is called the "constants" section, since it is
+used, among other things, to keep copies of constant objects used by
+the compiled code.  See the picture below for a diagram of the typical
+layout.
 
 TC_COMPILED_ENTRY is used to implement compiled expressions,
 compiled return addresses, compiled procedures, and some other entry
-points that the compiler and the compiled code interface need.  A
+points that the compiler and the compiled-code interface need.  A
 compiled entry is a non-standard pointer type described below. 
 
 	Description of compiled entries:
 
 The address portion of a compiled entry object points to an
-instruction in the "middle" of a compiled code block.
+instruction in the "middle" of a compiled-code block.
 
 In order for the garbage collector to be able to move the whole
 block as a unit it must be able to determine the address of the
@@ -69,10 +79,10 @@ preceding the instruction.  These bytes are called the offset field of
 a compiled entry object, and typically encode the distance (in bytes)
 between the beginning of the block and the compiled entry.
 
-A few bytes preceding the offset field are called the format field
-and encode the type of compiled entry (procedure vs.  expression,
-etc) and some type-specific information (number of arguments, offset
-to next return address on the stack, etc.).
+A few bytes preceding the offset field are called the format field and
+encode the type of compiled entry (procedure vs. expression, etc.) and
+some type-specific information (number of arguments, offset to next
+return address on the stack, etc.).
 
 	Encoding of the offset field:
 
@@ -81,7 +91,7 @@ decoded as follows:
 
 If the low order bit is 0 the offset is a simple offset, ie.
 subtracting the offset from the address of the compiled entry
-results in the address of the compiled code block that contains the
+results in the address of the compiled-code block that contains the
 entry.
 
 If the low order bit is 1, it is a continued offset, ie. subtracting
@@ -95,8 +105,8 @@ The rest of the bits (typically 15) are some encoding of the offset:
 odd addresses), this field is the offset itself.
 
 - If instructions have alignment constraints (ie. halfword alignment
-on MC68K, or longword alignment on many RISCs), this field shifted
-appropriately is the offset.  In this way, no bits are wasted, and
+on MC68K, or longword alignment on many RISCs), this field is the
+offset shifted appropriately.  In this way, no bits are wasted, and
 the range of offsets is increased.
 
 For example,
@@ -104,9 +114,10 @@ For example,
 The DEC VAX can have instructions at any byte location.  The 15 bits
 are the offset.
 
-The MC68020 can have instructions only at halfword boundaries.  The
-15 bit field shifted left by 1 is the real offset.  Note that in
-this case, if the low bit of the word is 0, the word is the real offset.
+The MC68020 can have instructions only at halfword boundaries.  The 15
+bit field shifted left by 1 is the real offset.  Note that in this
+case, if the low bit of the offset field is 0, the offset field is the
+real offset.
 
 The HP Precision Architecture, and many other RISCs, can have
 instructions only at longword boundaries.  The 15 bit field shifted
@@ -123,14 +134,14 @@ following way:
 It is 0xfffe for compiler generated entries, 0xfffd for
 compiler-interface generated entries.
 
-- For compiled code return addresses which have saved dynamic
-links it is always 0xfffc (-4).  The next item on the stack is
-then a dynamic link.
+- For compiled return addresses which have saved dynamic links it is
+always 0xfffc (-4).  The next item on the stack is then a dynamic
+link.
 
 - For the special return address `return_to_interpreter' it is
 always 0xfffb (-5).
 
-- For all other compiled code return addresses the low order byte is
+- For all other compiled return addresses the low order byte is
 between 0x80 and 0xdf inclusive, and the high order byte is between
 0x80 and 0xff inclusive.  In this case, the least significant 7 bits
 of the high order byte and the least significant 6 bits of the low
@@ -140,8 +151,8 @@ reversed with the bits from the high order byte being the low order
 bits in the result.  This information is used by the debugger to
 "parse" the stack into frames.
 
-- For compiled procedures, the format word describes the arity (number
-of parameters) and the format of the frame on the stack:
+- For compiled procedures, the format field describes the arity
+(number of parameters) and the format of the frame on the stack:
 
 The high order byte is (1+ REQ) where REQ is the number of
 required arguments.  Note that REQ must be less than 127!
@@ -153,7 +164,7 @@ is the number of named optional arguments, and REST? is 1 if
 the procedure has a rest parameter (ie. it is a "lexpr"), or 0
 otherwise.  Note that FRAME-SIZE must be less than 127!
 
-	Picture of typical compiled code block and entry:
+	Picture of typical compiled-code block and entry:
 						   
 						   
 		  ----------------------------------------	     
@@ -171,7 +182,7 @@ otherwise.  Note that FRAME-SIZE must be less than 127!
 		  |					 |	|     |
 		  |					 |	|     |
 		  ----------------------------------------	|     |
-		  |   format_word_1 |	offset_word_1	 |	|     |
+		  |   format_field_1 |	offset_field_1	 |	|     |
 		  ----------------------------------------	|     |
   entry_address_1 |	      movel arg0,reg0		 |	|     |
 		  ----------------------------------------	|     |
@@ -184,7 +195,7 @@ otherwise.  Note that FRAME-SIZE must be less than 127!
 		  |					 |	|     |	   
 		  |					 |	|     |	   
 		  ----------------------------------------	|      > tl
-		  |   format_word_2 |	offset_word_2	 |	|     |	   
+		  |   format_field_2 |	offset_field_2	 |	|     |	   
 		  ----------------------------------------	|     |	   
   entry_address_2 |	andl pointer_mask,arg0,reg0	 |	|     |	   
 		  ----------------------------------------	|     |	   
@@ -213,7 +224,7 @@ otherwise.  Note that FRAME-SIZE must be less than 127!
 	Description of picture:
 
 [TC_COMPILED_CODE_BLOCK | start_address] would be the object
-representing the compiled code block.
+representing the compiled-code block.
 
 [TC_COMPILED_ENTRY | entry_address_1] would represent entry1.
 
@@ -223,8 +234,8 @@ representing the compiled code block.
 entry_address_1 is close enough to start_address not to need an
 extension, but entry_address_2 is not, then
 
-offset_word_1 = ((entry_address_1 - start_address) >> 1)
-offset_word_2 = (((entry_address_2 - entry_address_1) >> 1) | 1)
+offset_field_1 = ((entry_address_1 - start_address) >> 1)
+offset_field_2 = (((entry_address_2 - entry_address_1) >> 1) | 1)
 
 note that entry_address_1 - start_address is a multiple of 4 because
 of the alignment assumption.
@@ -233,8 +244,8 @@ of the alignment assumption.
 entry_address_1 is close enough to start_address not to need an
 extension, but entry_address_2 is not, then
 
-offset_word_1 = (entry_address_1 - start_address)
-offset_word_2 = ((entry_address_2 - entry_address_1) | 1)
+offset_field_1 = (entry_address_1 - start_address)
+offset_field_2 = ((entry_address_2 - entry_address_1) | 1)
 
 note that entry_address_1 - start_address is a multiple of 2 because
 of the alignment assumption.
@@ -243,30 +254,30 @@ of the alignment assumption.
 entry_address_1 is close enough to start_address not to need an
 extension, but entry_address_2 is not, then
 
-offset_word_1 = ((entry_address_1 - start_address) << 1)
-offset_word_2 = (((entry_address_2 - entry_address_1) << 1) | 1)
+offset_field_1 = ((entry_address_1 - start_address) << 1)
+offset_field_2 = (((entry_address_2 - entry_address_1) << 1) | 1)
 
 The length of the "constants" section is (tl - il).
 There are (tl + 1) total words in the object.
 
-=> In cmpint.h PC_ZERO_BITS should be defined to be the number of bits
+=> In cmpint-md.h PC_ZERO_BITS should be defined to be the number of bits
 in instruction addresses which are always 0 (0 if no alignment
 constraints, 1 if halfword, etc.).
 
-=> In cmpint.h machine_word should be 'typedefd' to be the size of the
-descriptor fields.  It is assumed that the offset word and the format
-word are the same size.
+=> In cmpint-md.h machine_word should be 'typedefd' to be the size of the
+descriptor fields.  It is assumed that the offset field and the format
+field are the same size.
 
 	Compiled closures:
 
 Most compiled procedures are represented as a simple compiled entry
-pointing to the compiled code block generated by the compiler.
+pointing to the compiled-code block generated by the compiler.
 
 Some procedures, called closures, have free variables whose locations
 cannot be allocated statically at compiled time.  The compiler will
-generate code to construct a tiny compiled code block on the fly and
+generate code to construct a tiny compiled-code block on the fly and
 make the compiled procedure be an entry point pointing to this
-dynamically allocated compiled code block.
+dynamically allocated compiled-code block.
 
 For example, consider the following code,
 
@@ -285,7 +296,7 @@ Compiled closures are implemented in the following way: The entry
 corresponding to the procedure points to a jump-to-subroutine (or
 branch-and-link) instruction.  The target of this jump is the code
 corresponding to the body of the procedure.  This code resides in the
-compiled code block that the compiler generated.  The free variables
+compiled-code block that the compiler generated.  The free variables
 follow the jump-to-subroutine instruction (after aligning to
 longword).
 
@@ -297,14 +308,14 @@ a standard place (stack or link register).  This "return address" is
 the address of the free variables of the procedure, so the code can
 reference them by using indirect loads through the "return address".
 
-Conceptually the code above would be compiled as (see cmpaux.m4 for a
-description of the abstract assembly language)
+Conceptually the code above would be compiled as (in pseudo-assembly
+language):
 
 foo:	
 	movl	rfree,reg0
 	movl	&[TC_MANIFEST_CLOSURE | 4],reg1	; gc header
 	movl	reg1,0(reg0)
-	movl	&[format_word | gc_offset],reg1	; entry descriptor
+	movl	&[format_field | offset_field],reg1	; entry descriptor
 	movl	reg1,NEXT_WORD(reg0)
 	movl	&[jsr opcode],reg1		; jsr absolute opcode/prefix
 	movl	reg1,2*NEXT_WORD(reg0)
@@ -329,7 +340,7 @@ Thus the closure would look like
 	----------------------------------------
 	| MANIFEST_CLOSURE |                 4 |
 	----------------------------------------
-	|   format_word    |    offset_word    |
+	|   format_field   |    offset_field   |
 	----------------------------------------
 entry	|   jsr opcode                         |
 	----------------------------------------
@@ -341,28 +352,23 @@ retadd	|   value of x                         |
 and retlnk would get the address of retadd at runtime.  Thus x_offset
 would be 0.
 
-=> The macro COMPILED_CLOSURE_ENTRY_SIZE in cmpint.h specifies how
-many words there are in a compiled closure before the first free
-variable and after the MANIFEST_CLOSURE header.
+=> The macro COMPILED_CLOSURE_ENTRY_SIZE in cmpint-md.h specifies the
+size of a compiled closure entry (there may be many in a single
+compiled closure object) in machine_word's.  In the example above this
+would be 6 machine_word's (2 format and gc, 2 for jsr opcode, and 2
+for the address of the real entry point).
 
-=> The macro COMPILED_CLOSURE_ENTRY_ADDRESS in cmpint.h returns the
-address of the location where the real entry point is stored when
-given the address of the first word in the closure object.
+=> The macro EXTRACT_CLOSURE_ENTRY_ADDRESS in cmpint-md.h is used to
+extract the real address of the entry point from a closure object when
+given the address of the closure entry.  Note that the real entry
+point may be smeared out over multiple instructions.  In the example
+above, given the address of a closure for lambda-1, it would extract
+the address of lambda-1.
 
-IMPORTANT: The macros and code in cmpgc.h assume that each closure has
-exactly one entry point.  That is, different procedures closed in the
-same environment do not share closure structure.  This may not be true
-in the future, at which point these macros may have to be changed.
-A possibility which allows the macros not to be changed is to put
-multiple manifest closure headers in the closure (one per entry
-point).  All the gc offsets would point to the first header, but the
-other headers would be there to determine how many entry points the
-closure contained.
-
-IMPORTANT: The current macros and code assume that the address of the
-entry point is contained in a (long)word by itself.  If it is encoded
-in an instruction or various instructions, some of the macros (and
-code in the garbage collector) will have to be rewritten.
+=> The macro STORE_CLOSURE_ENTRY_ADDRESS in cmpint-md.h is the inverse
+of EXTRACT_CLOSURE_ENTRY_ADDRESS.  That is, given the address of a
+closure entry point, and a real entry point, it stores the real entry
+point in the closure object.  In the example above, 
 
 	External calls from compiled code:
 
@@ -378,7 +384,7 @@ This is done as follows:
 
 For each external procedure called with a fixed number of arguments
 (more on this below), a small contiguous space is allocated in the
-"constants" section of the compiled code block.
+"constants" section of the compiled-code block.
 
 This space initially contains the name of the external variable
 whose value is being invoked, and the number of arguments (+ 1 for
@@ -390,41 +396,41 @@ arguments matches and the callee (target procedure) is compiled, or by
 an an absolute jump to some utility code generated on the fly to
 interface the caller and the callee (usually called a trampoline
 procedure).  Note that both procedures need not be in the same
-compiled code block.
+compiled-code block.
 
-The fixed code in the code section of the compiled code block contains
+The fixed code in the code section of the compiled-code block contains
 a branch instruction to this space allocated in the "constants"
 section.
 
-When the compiled code block is loaded, a linker is invoked which
-resolves these references and replaces the name and arguments with
-machine-specific code to do the absolute jump.  It also remembers the
+When the compiled-code block is loaded, a linker that resolves these
+references and replaces the name and arguments with machine-specific
+code to do the absolute jump is invoked.  The linker also records the
 locations of all such jump instructions so that a subsequent
 redefinition or assigment of the same name will cause the jump
-instruction to be replaced by a new one to the correct value.
-Note that the number of arguments needs to be checked only by the
-linker, so no instructions are issued to check it at run time.  It is
-for this reason that the number of arguments is part of the
-information left by the compiler in the "constants" section.
+instruction to be replaced by a new one to the correct value.  Note
+that the number of arguments needs to be checked only by the linker,
+so no instructions are issued to check it at run time.  It is for this
+reason that the number of arguments is part of the information left by
+the compiler in the "constants" section.
 
-These entries in the "constants" section are called "UUO" links for
-historical reasons.  They must be large enough to contain the
-instructions required for an absolute jump (and possibly some delay
-slot instructions in a RISC-style machine), and the number of
-arguments passed in the call.  This number of arguments is not used in
-the call sequence, but is used by the linker when initially linking
+These entries in the "constants" section are called execute caches or
+"UUO" links for historical reasons.  They must be large enough to
+contain the instructions required for an absolute jump (and possibly
+some delay slot instructions in a RISC-style machine), and the number
+of arguments passed in the call.  This number of arguments is not used
+in the call sequence, but is used by the linker when initially linking
 and when relinking because of redefinition or assignment.
 
 All such "UUO" links are contiguous in the "constants" section, and
 the whole lot is preceded by a GC header of type TC_LINKAGE_SECTION
 which contains two fields:
 
-The least significant half word of the header contains the size in
-long words of the "UUO" section (note that each link may take up more
-than one longword).  The remaining bits (excepting the type code) MUST
-be 0.  Note that if a file makes enough external calls that this
-halfword field cannot hold the size, the links must be separated into
-multiple blocks each with its own header.
+The least significant halfword of the header contains the size in
+longwords of the "UUO" section (note that each link entry may take up
+more than one longword).  The remaining bits (excepting the type code)
+MUST be 0.  If a file makes enough external calls that this halfword
+field cannot hold the size, the links must be separated into multiple
+blocks each with its own header.
 
 Occasionally a procedure is called with more than one number of
 arguments within the same file.  For example, the LIST procedure may
@@ -446,7 +452,6 @@ The code in the code section would be
 	push	<some list>
 	branch	sort-uuo-link
 
-
 In the constants section there would be a label
 which would contain the following after linking	
 	
@@ -467,24 +472,51 @@ not necessarily longword aligned (MC68020 and VAX, for example), the
 padding bits for the instruction can be used to contain the argument
 count.
 
-=> In cmpint.h the macro OPERATOR_LINK_ENTRY_SIZE specifies how long
-(in longwords) each "UUO" link entry is.  This includes the size of
-the instruction(s) and the argument count.  For the example above this
-would be 3, assuming that the jump instruction and the absolute
+=> In cmpint-md.h the macro EXECUTE_CACHE_ENTRY_SIZE specifies how
+long (in longwords) each "UUO" link entry is.  This includes the size
+of the instruction(s) and the argument count.  For the example above
+this would be 3, assuming that the jump instruction and the absolute
 address take two words together (the third is for the argument count).
 Note that on RISC machines, this size may have to include the size of
-the branch delay slot instruction.  This branach delay slot
-instruction need not be a NOP.  By choosing the instructions for the
-procedure entry header consistenly with this, this slot can be used in
-most cases.
+the branch delay slot instruction.  This branch delay slot instruction
+need not be a NOP.  By choosing the instructions for the procedure
+entry header consistenly with this, this slot can be used in many
+cases.
 
-=> In cmpint.h the macro OPERATOR_LINK_ENTRY_ADDRESS specifies where
-the absolute address of the called procedure's entry point is stored
-when given the address of the first word in the UUO link.  The code
-currently assumes that this address is not "spread" into multiple
-words, and that no bits must be cleared from the word that contains
-this address.  This will be fixed soon, since on many RISC machines,
-there are no full address space absolute jump instructions, and the
-opcode bits are part of the word.  On many machines a two instruction
-sequence must be used, with some of the bits of the absolute address
-appearing in each of the instructions.
+=> In cmpint-md.h the macro EXTRACT_EXECUTE_CACHE_ARITY specifies how
+to read the argument count from a "UUO" link entry when given the
+address of the entry.  In the above example, it would extract 3 from
+the address labelled sort-uuo-link.
+
+=> In cmpint-md.h the macro EXTRACT_EXECUTE_CACHE_SYMBOL specifies how
+to read the symbol from a "UUO" link entry (before it is actually
+linked) when given the address of an entry.  In the above example, it
+would extract the symbol SORT from sort-uuo-link.
+
+=> The macro EXTRACT_EXECUTE_CACHE_ADDRESS in cmpint-md.h fetches the
+real entry point stored in a "UUO" link entry when given the address
+of the entry.  In the above example, it would extract the entry point
+of the sort procedure when given the address of the jump instruction
+(labelled as sort-uuo-link).
+
+=> STORE_EXECUTE_CACHE_CODE is the inverse of this, ie. when given a
+target entry point and the address of an execute cache entry, it
+stores the entry point there.  In the above example, given a new entry
+point for sort, and sort-uuo-link, it would modify the jump
+instruction to jump to the new location.
+
+=> STORE_EXECUTE_CACHE_CODE stores the fixed instructions (opcodes),
+if any, in an execute cache cell.  If the opcodes depend on the actual
+target address, this macro should be a NOP, and all the work should be
+done by STORE_EXECUTE_CACHE_CODE.  These two macros are separated to
+avoid extra work at garbage collection time on architectures where
+some or all of the code need not change.  In the above example, this
+macro would store the jump opcode.
+
+Missing:
+	
+- Description of interrupts (CLOSURE_SKIPPED_CHECK_OFFSET and 
+ENTRY_SKIPPED_CHECK_OFFSET).
+- Description of trampolines + A6_OFFSET.
+- Description of cmpaux-md.m4, register conventions, etc.,
+ASM_RESET_HOOK, ASM_REGISTER_BLOCK.
