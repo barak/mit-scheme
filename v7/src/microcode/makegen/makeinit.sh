@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: makeinit.sh,v 1.2 2000/12/05 21:23:50 cph Exp $
+# $Id: makeinit.sh,v 1.3 2000/12/05 21:46:17 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -27,7 +27,7 @@ fi
 scheme -heap 2000 <<EOF
 (load "makegen/makegen.scm")
 (generate-makefile "makegen/Makefile.in.in"
-		   "makegen/Makefile.deps"
+		   "Makefile.deps"
 		   "Makefile.in")
 EOF
 ./config.status
