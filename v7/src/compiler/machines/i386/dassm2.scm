@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/dassm2.scm,v 1.7 1992/08/19 03:18:54 jinx Exp $
-$MC68020-Header: /scheme/compiler/bobcat/RCS/dassm2.scm,v 4.18 1991/05/07 13:46:04 jinx Exp $
+$Id: dassm2.scm,v 1.8 1997/10/10 21:06:19 adams Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1997 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -68,9 +67,10 @@ MIT in each case. |#
     (if (and end-offset (< offset end-offset))
 	(disassemble-one-instruction
 	 block offset symbol-table state
-	 (lambda (offset* instruction state)
+	 (lambda (offset* instruction comment state)
 	   (make-instruction offset
 			     instruction
+			     comment
 			     (lambda () (loop offset* state)))))
 	'())))
 
@@ -80,11 +80,13 @@ MIT in each case. |#
 (define (disassembler/instructions/read instruction-stream receiver)
   (receiver (instruction-offset instruction-stream)
 	    (instruction-instruction instruction-stream)
+	    (instruction-comment instruction-stream)
 	    (instruction-next instruction-stream)))
 
 (define-structure (instruction (type vector))
   (offset false read-only true)
   (instruction false read-only true)
+  (comment false read-only true)
   (next false read-only true))
 
 (define *block)
@@ -107,21 +109,31 @@ MIT in each case. |#
 			 (if label
 			     `(BLOCK-OFFSET ,label)
 			     `(WORD U ,word))
+			 #F
 			 'INSTRUCTION)))
 	    ((external-label-marker? symbol-table offset state)
 	     (let ((word (next-unsigned-16-bit-word)))
 	       (receiver *current-offset
 			 `(WORD U ,word)
+			 'ENTRY
 			 'EXTERNAL-LABEL-OFFSET)))
+	    ((eq? state 'PRIMITIVE-LONG-OFFSET)
+	     (let ((offset (next-unsigned-32-bit-word)))
+	       (receiver *current-offset
+			 `(LONG U ,offset)
+			 (+ offset *current-offset -4)
+			 'EXTERNAL-LABEL)))
 	    (else
 	     (let ((instruction (disassemble-next-instruction)))
 	       (if (or *valid? (not (eq? 'BYTE (car instruction))))
 		   (receiver *current-offset
 			     instruction
+			     (disassembler/guess-comment instruction state)
 			     (disassembler/next-state instruction state))
 		   (let ((inst `(BYTE U ,(caddr instruction))))
 		     (receiver (1+ start-offset)
 			       inst
+			       #F
 			       (disassembler/next-state inst state))))))))))
 
 (define (disassembler/initial-state)
@@ -129,18 +141,33 @@ MIT in each case. |#
 
 (define (disassembler/next-state instruction state)
   state					; ignored
-  (if (and disassembler/compiled-code-heuristics?
-	   (or (memq (car instruction) '(JMP RET))
-	       (and (eq? (car instruction) 'CALL)
-		    (let ((operand (cadr instruction)))
-		      (or (and (pair? operand)
-			       (eq? (car operand) 'ENTRY))
-			  (let ((entry
-				 (interpreter-register? operand)))
-			    (and entry
-				 (eq? (car entry) 'ENTRY))))))))
-      'EXTERNAL-LABEL
-      'INSTRUCTION))
+  (cond ((equal? instruction '(CALL (ENTRY SHORT-PRIMITIVE-APPLY)))
+	 'PRIMITIVE-LONG-OFFSET)
+	((and disassembler/compiled-code-heuristics?
+	      (or (memq (car instruction) '(JMP RET))
+		  (and (eq? (car instruction) 'CALL)
+		       (let ((operand (cadr instruction)))
+			 (or (and (pair? operand)
+				  (eq? (car operand) 'ENTRY))
+			     (let ((entry
+				    (interpreter-register? operand)))
+			       (and entry
+				    (eq? (car entry) 'ENTRY))))))))
+	 'EXTERNAL-LABEL)
+	(else
+	 'INSTRUCTION)))
+
+(define (disassembler/guess-comment instruction state)
+  state ; ignored
+  (let loop ((insn instruction))
+    (and (pair? insn)
+	 (if (and (eq? (car insn) '@PCO)
+		  (pair? (cdr insn))
+		  (exact-integer? (cadr insn))
+		  (not (zero? (cadr insn))))
+	     (+ (cadr insn) *current-offset)
+	     (or (loop (car insn))
+		 (loop (cdr insn)))))))
 
 (define (disassembler/lookup-symbol symbol-table offset)
   (and symbol-table

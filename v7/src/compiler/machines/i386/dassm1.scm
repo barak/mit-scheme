@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dassm1.scm,v 1.7 1997/07/15 16:05:24 adams Exp $
+$Id: dassm1.scm,v 1.8 1997/10/10 21:06:06 adams Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-1997 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -131,17 +131,27 @@ MIT in each case. |#
 (define (disassembler/write-instruction-stream symbol-table instruction-stream)
   (fluid-let ((*unparser-radix* 16))
     (disassembler/for-each-instruction instruction-stream
-      (lambda (offset instruction)
-	(disassembler/write-instruction symbol-table
-					offset
-					(lambda () (display instruction)))))))
+      (lambda (offset instruction comment)
+	(disassembler/write-instruction
+	 symbol-table
+	 offset
+	 (lambda ()
+	   (if comment
+	       (let ((s (with-output-to-string
+			  (lambda () (display instruction)))))
+		 (if (< (string-length s) 40)
+		     (write-string (string-pad-right s 40))
+		     (write-string s))
+		 (write-string "; ")
+		 (display comment))
+	       (write instruction))))))))
 
 (define (disassembler/for-each-instruction instruction-stream procedure)
   (let loop ((instruction-stream instruction-stream))
     (if (not (disassembler/instructions/null? instruction-stream))
 	(disassembler/instructions/read instruction-stream
-	  (lambda (offset instruction instruction-stream)
-	    (procedure offset instruction)
+	  (lambda (offset instruction comment instruction-stream)
+	    (procedure offset instruction comment)
 	    (loop (instruction-stream)))))))
 
 (define (disassembler/write-constants-block block symbol-table)
