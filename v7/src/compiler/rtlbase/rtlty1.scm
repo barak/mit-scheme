@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 1.7 1987/05/31 22:56:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 1.8 1987/06/01 11:20:22 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -45,7 +45,7 @@ MIT in each case. |#
 (define-rtl-expression post-increment rtl: register number)
 
 (define-rtl-expression cons-pointer rtl: type datum)
-(define-rtl-expression constant rtl: value)
+(define-rtl-expression constant % value)
 (define-rtl-expression variable-cache rtl: name)
 (define-rtl-expression entry:continuation % continuation)
 (define-rtl-expression entry:procedure % procedure)
@@ -118,7 +118,7 @@ MIT in each case. |#
 (define (rtl:make-constant value)
   (if (scode/unassigned-object? value)
       (rtl:make-unassigned)
-      (rtl:make-constant value)))
+      (%make-constant value)))
 
 ;;;; Locatives
 
