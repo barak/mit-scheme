@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookprm.c,v 1.17 2001/12/21 04:36:01 cph Exp $
+$Id: lookprm.c,v 1.18 2001/12/23 18:28:52 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -113,9 +113,9 @@ DEFINE_PRIMITIVE ("LEXICAL-REFERENCE-TYPE", Prim_lexical_reference_type, 2, 2,
 Returns a index integer indicating the type of object stored in the\n\
 binding of SYMBOL within ENVIRONMENT.  The following values are defined:\n\
 \n\
-0 means unbound
-1 means unassigned
-2 means a normal binding
+0 means unbound\n\
+1 means unassigned\n\
+2 means a normal binding\n\
 3 means a macro binding")
 {
   PRIMITIVE_HEADER (2);
