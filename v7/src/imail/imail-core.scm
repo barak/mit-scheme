@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.12 2000/01/19 05:39:13 cph Exp $
+;;; $Id: imail-core.scm,v 1.13 2000/01/19 05:54:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -323,60 +323,60 @@
 
 ;;;; Message type
 
-(define-class <message> ()
+(define-class (<message> (constructor (header-fields body flags properties)))
+    ()
   (header-fields define standard
 		 accessor header-fields
 		 modifier set-header-fields!)
   (body define standard)
   (flags define standard)
   (properties define standard)
-  (folder define accessor)
+  (folder define standard)
   (index define standard))
 
 (define (guarantee-message message procedure)
   (if (not (message? message))
       (error:wrong-type-argument message "IMAIL message" procedure)))
 
-(define make-detached-message
-  (let ((constructor
-	 (instance-constructor <message>
-			       '(HEADER-FIELDS BODY FLAGS PROPERTIES))))
-    (lambda (headers body)
-      (let loop ((headers headers) (headers* '()) (flags '()) (properties '()))
-	(cond ((not (pair? headers))
-	       (constructor (reverse! headers*)
-			    body
-			    (reverse! flags)
-			    (reverse! properties)))
-	      ((header-field->message-flags (car headers))
-	       => (lambda (flags*)
-		    (loop (cdr headers)
-			  headers*
-			  (append! (reverse! (cdr flags*)) flags)
-			  properties)))
-	      ((header-field->message-property (car headers))
-	       => (lambda (property)
-		    (loop (cdr headers)
-			  headers*
-			  flags
-			  (cons property properties))))
-	      (else
-	       (loop (cdr headers)
-		     (cons (car headers) headers*)
-		     flags
-		     properties)))))))
+(define (make-detached-message headers body)
+  (let loop ((headers headers) (headers* '()) (flags '()) (properties '()))
+    (cond ((not (pair? headers))
+	   (make-message (reverse! headers*)
+			 body
+			 (reverse! flags)
+			 (reverse! properties)))
+	  ((header-field->message-flags (car headers))
+	   => (lambda (flags*)
+		(loop (cdr headers)
+		      headers*
+		      (append! (reverse! (cdr flags*)) flags)
+		      properties)))
+	  ((header-field->message-property (car headers))
+	   => (lambda (property)
+		(loop (cdr headers)
+		      headers*
+		      flags
+		      (cons property properties))))
+	  (else
+	   (loop (cdr headers)
+		 (cons (car headers) headers*)
+		 flags
+		 properties)))))
 
-(define %copy-message
-  (let ((constructor
-	 (instance-constructor <message>
-			       '(HEADER-FIELDS BODY FLAGS PROPERTIES FOLDER))))
-    (lambda (message folder)
-      (guarantee-folder folder '%COPY-MESSAGE)
-      (constructor (map copy-header-field (header-fields message))
-		   (message-body message)
-		   (list-copy (message-flags message))
-		   (alist-copy (message-properties message))
-		   folder))))
+(define (attach-message message folder)
+  (guarantee-folder folder 'ATTACH-MESSAGE)
+  (let ((message
+	 (make-message (map copy-header-field (header-fields message))
+		       (message-body message)
+		       (list-copy (message-flags message))
+		       (alist-copy (message-properties message))
+		       folder)))
+    (set-message-folder! message folder)
+    message))
+
+(define (detach-message message)
+  (set-message-folder! message #f)
+  (set-message-index! message #f))
 
 (define (maybe-strip-imail-headers strip? headers)
   (if strip?
