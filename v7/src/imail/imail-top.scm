@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.110 2000/05/25 22:16:42 cph Exp $
+;;; $Id: imail-top.scm,v 1.111 2000/05/25 22:24:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -155,19 +155,21 @@ regardless of the folder type."
 	    (if url-string
 		(imail-parse-partial-url url-string)
 		(imail-default-url)))))
-      (select-buffer
-       (let ((buffer
-	      (or (imail-folder->buffer folder #f)
-		  (let ((buffer
-			 (new-buffer
-			  (url-presentation-name (folder-url folder)))))
-		    (associate-imail-with-buffer buffer folder #f)
-		    buffer))))
-	 (select-message folder
-			 (or (first-unseen-message folder)
-			     (selected-message #f buffer))
-			 #t)
-	 buffer)))))
+      (let ((buffer (imail-folder->buffer folder #f)))
+	(if buffer
+	    (begin
+	      (select-buffer buffer)
+	      ((ref-command imail-get-new-mail)))
+	    (begin
+	      (let ((buffer
+		     (new-buffer
+		      (url-presentation-name (folder-url folder)))))
+		(associate-imail-with-buffer buffer folder #f)
+		(select-buffer buffer))
+	      (select-message folder
+			      (or (first-unseen-message folder)
+				  (selected-message #f))
+			      #t)))))))
 
 (define (prompt-for-imail-url-string prompt . options)
   (let ((get-option
@@ -474,7 +476,7 @@ variable's documentation (using \\[describe-variable]) for details:
 (define-key 'imail #\-		'imail-delete-folder)
 (define-key 'imail #\q		'imail-quit)
 (define-key 'imail #\?		'describe-mode)
-
+
 (define (imail-revert-buffer buffer dont-use-auto-save? dont-confirm?)
   dont-use-auto-save?
   (let ((folder (selected-folder #t buffer)))

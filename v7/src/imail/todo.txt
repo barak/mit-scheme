@@ -1,11 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.51 2000/05/25 22:16:53 cph Exp $
+$Id: todo.txt,v 1.52 2000/05/25 22:24:20 cph Exp $
 
 Bug fixes
 ---------
-
-* M-x imail should run M-x imail-get-new-mail when started.  This
-  probably means that OPEN-FOLDER need not initiate a connection.
 
 * M-x imail-copy-messages re-reads the target folder UIDs for each
   message that is written, when the target folder is not being
