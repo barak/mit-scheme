@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.11 1990/05/10 19:25:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.12 1990/07/03 19:47:57 markf Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -85,7 +85,8 @@ MIT in each case. |#
 		(FLUID-LET ,syntax/fluid-let)
 		(LOCAL-DECLARE ,syntax/local-declare)
 		(NAMED-LAMBDA ,syntax/named-lambda)
-		(SCODE-QUOTE ,syntax/scode-quote)))
+		(SCODE-QUOTE ,syntax/scode-quote)
+		(DYNAMIC-STATE-LET ,syntax/dynamic-state-let)))
     table))
 
 ;;;; Top Level Syntaxers
@@ -523,6 +524,19 @@ MIT in each case. |#
 	      (else
 	       (syntax-error "binding name illegal" (car binding)))))
       (syntax-error "binding not a pair" binding)))
+
+(define (syntax/dynamic-state-let state-space bindings . body)
+  (if (null? bindings)
+      (syntax-sequence body)
+      (syntax-fluid-bindings/shallow bindings
+	(lambda (names values transfers-in transfers-out)
+	  (make-closed-block lambda-tag:dynamic-state-let names values
+	    (make-combination*
+	     (make-absolute-reference 'EXECUTE-AT-NEW-STATE-POINT)
+	     (syntax-expression state-space)
+	     (make-thunk (make-scode-sequence transfers-in))
+	     (make-thunk (syntax-sequence body))
+	     (make-thunk (make-scode-sequence transfers-out))))))))
 
 ;;;; Extended Assignment Syntax
 
@@ -616,6 +630,9 @@ MIT in each case. |#
 
 (define-integrable lambda-tag:let
   (string->symbol "#[let-procedure]"))
+
+(define-integrable lambda-tag:dynamic-state-let
+  (string->symbol "#[dynamic-state-let-procedure]"))
 
 (define-integrable lambda-tag:fluid-let
   (string->symbol "#[fluid-let-procedure]"))
