@@ -1,0 +1,34 @@
+/* -*- C -*-
+   Switzerland local additions to the makefile
+   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ynws3250.lcl,v 1.1 1992/12/07 22:15:13 cph Exp $
+ */
+
+COMMON_OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJECTS)
+
+/* For GJS's signal processing stuff */
+
+SIG_SOURCES = $(X_SOURCES) $(TERMCAP_OBJECTS)\
+	SOURCES_SYSTEM SOURCES_MACHINE fft.c array.c image.c
+SIG_OBJECTS = $(X_OBJECTS) $(TERMCAP_OBJECTS)\
+	OBJECTS_SYSTEM OBJECTS_MACHINE fft.o array.o image.o usrSIG.o
+SIG_LIB =  $(USER_LIBS) $(X_LIB) $(TERMCAP_LIBS)\
+	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
+
+world: all scmsig
+
+everything: world Ppband
+
+install.world: install scmsig
+	-mv -f $(BINDIR)/scmsig $(BINDIR)/scmsig.busy
+	rm -f $(BINDIR)/scmsig.busy
+	$(INSTALL) scmsig $(BINDIR)/scmsig
+
+scmsig : $(COMMON_OBJECTS) $(SIG_OBJECTS)
+	@ECHO "#** Re-linking" $@ because of $?
+	rm -f $@
+	$(CC) $(LDFLAGS) -o $@ $(COMMON_OBJECTS) $(SIG_OBJECTS) $(SIG_LIB)
+
+usrSIG.c : $(SIG_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xmakefile
+	@ECHO "#** Re-making" $@ because of $?
+	rm -f usrSIG.c
+	./Findprim $(SIG_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrSIG.c
