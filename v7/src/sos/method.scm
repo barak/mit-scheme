@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: method.scm,v 1.8 1997/06/19 21:52:15 cph Exp $
+;;; $Id: method.scm,v 1.9 1997/06/25 06:18:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -216,7 +216,21 @@
 	   (if result
 	       (begin
 		 (set! results
-		       (cons (make-method (method-specializers method) result)
+		       (cons (cond ((concrete-method? result)
+				    (if (not (restricted-specializers?
+					      (method-specializers result)
+					      (method-specializers method)))
+					(error
+					 "Computed method not restricted:"
+					 result method))
+				    result)
+				   ((procedure? result)
+				    (make-method (method-specializers method)
+						 result))
+				   (else
+				    (error
+				     "Illegal result from computed method:"
+				     result method)))
 			     results))
 		 unspecific))))
        (list-transform-positive methods computed-method?))
@@ -247,6 +261,18 @@
 			       (cdr (memq (car s1)
 					  (class-precedence-list
 					   (car classes))))))))))))
+
+(define (restricted-specializers? s1 s2)
+  (let loop ((s1 s1) (s2 s2))
+    (or (null? s2)
+	(if (null? s1)
+	    (for-all? s2
+	      (lambda (s)
+		(subclass? <object> s)))
+	    (and (for-all? (specializer-classes (car s1))
+		   (lambda (c)
+		     (subclass? c (car s2))))
+		 (loop (cdr s1) (cdr s2)))))))
 
 ;;;; Method Specializers
 
@@ -360,12 +386,6 @@
 (define <method>
   (make-class '<METHOD> '() '(SPECIALIZERS PROCEDURE)))
 
-(define make-method
-  (let ((%make (instance-constructor <method> '(SPECIALIZERS PROCEDURE))))
-    (lambda (specializers procedure)
-      (%make (guarantee-specializers specializers #t 'MAKE-METHOD)
-	     procedure))))
-
 (define (method? object)
   (instance-of? object <method>))
 
@@ -376,8 +396,22 @@
   (make-generic-procedure 1 'METHOD-PROCEDURE))
 
 
+(define <concrete-method>
+  (make-class '<CONCRETE-METHOD> (list <method>) '()))
+
+(define (concrete-method? object)
+  (instance-of? object <concrete-method>))
+
+(define make-method
+  (let ((%make
+	 (instance-constructor <concrete-method> '(SPECIALIZERS PROCEDURE))))
+    (lambda (specializers procedure)
+      (%make (guarantee-specializers specializers #t 'MAKE-METHOD)
+	     procedure))))
+
+
 (define <chained-method>
-  (make-class '<CHAINED-METHOD> (list <method>) '()))
+  (make-class '<CHAINED-METHOD> (list <concrete-method>) '()))
 
 (define make-chained-method
   (let ((%make
