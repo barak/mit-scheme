@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.19 2000/05/12 18:23:03 cph Exp $
+;;; $Id: imail-umail.scm,v 1.20 2000/05/15 17:51:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -157,8 +157,9 @@
 			    "unknown")
 			port)
 	  (write-string " " port)
-	  (write-string (universal-time->unix-ctime (get-universal-time))
-			port))))
+	  (write-string
+	   (universal-time->local-ctime-string (get-universal-time))
+	   port))))
   (newline port)
   (write-header-field
    (message-flags->header-field (message-flags message))
@@ -177,25 +178,6 @@
 	      (write-string line port)
 	      (newline port))
 	    (string->lines (message-body message))))
-
-(define (universal-time->unix-ctime time)
-  (decoded-time->unix-ctime (universal-time->local-decoded-time time)))
-
-(define (decoded-time->unix-ctime dt)
-  (string-append
-   (day-of-week/short-string (decoded-time/day-of-week dt))
-   " "
-   (month/short-string (decoded-time/month dt))
-   " "
-   (string-pad-left (number->string (decoded-time/day dt)) 2)
-   " "
-   (string-pad-left (number->string (decoded-time/hour dt)) 2 #\0)
-   ":"
-   (string-pad-left (number->string (decoded-time/minute dt)) 2 #\0)
-   ":"
-   (string-pad-left (number->string (decoded-time/second dt)) 2 #\0)
-   " "
-   (number->string (decoded-time/year dt))))
 
 ;;;; Detection of unix "from" lines.
 
