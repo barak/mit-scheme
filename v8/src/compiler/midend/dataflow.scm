@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dataflow.scm,v 1.16 1995/07/28 21:28:59 adams Exp $
+$Id: dataflow.scm,v 1.17 1995/08/10 22:23:05 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -63,52 +63,60 @@ MIT in each case. |#
 ;; If set to a number, dataflow/top-level declines to do the dataflow on
 ;; a graph containing more than *maximum-node-count*, and returns #F
 ;; instead of the graph.
-;;(define *maximum-node-count* #F)
-(define *maximum-node-count* 10000)
+(define *maximum-node-count* #F)
+;;(define *maximum-node-count* 10000)
+(define *warning-node-count* 10000)
 
 (define (dataflow/top-level program)
-  (let* ((env          (dataflow/make-env))
-         (graph        (make-graph program))
-         (result-node  (dataflow/expr env graph program)))
-    (fluid-let ((*node-count* (graph/node-count graph)))
-      (sample/1 '(dataflow/graph-size histogram) *node-count*)
-      (if (and *maximum-node-count*
-	       (> *node-count* *maximum-node-count*))
-	  (begin
-	    (internal-warning "Graph too big" graph 'has *node-count* 'nodes
-			      `(*maximum-node-count* is ,*maximum-node-count*))
-	    #F)
-	  (begin
-	    (if result-node
-		(initial-link-nodes! result-node (graph/escape-node graph)))
-	    (dataflow/make-globals-escape! env graph)
-	    (if (> (graph/node-count graph) 5000)
-		(pp `(big graph: ,(graph/node-count graph) nodes ,graph
-			  *maximum-node-count* is ,*maximum-node-count*)))
-	    ((if (graph/interesting? graph)
-		 show-time
-		 (lambda (thunk) (thunk)))
-	     (lambda ()
-	       (graph/initialize-links! graph)
-	       (graph/dataflow! graph)
-	       (if (graph/interesting? graph)
-		   (graph/display-statistics! graph))
-	       (graph/cleanup! graph)))
 
-	    (graph/substitite-simple-constants
-	     graph graph/read-eqv?-preserving-constant?)
-	    ;;(if compiler:guru?
-	    ;;	(graph/look-for-interesting-nodes graph))
-	    (graph/compiled-procedure-reductions graph)
+  (define (do-dataflow)
+    (let* ((env          (dataflow/make-env))
+	   (graph        (make-graph program))
+	   (result-node  (dataflow/expr env graph program)))
+      (fluid-let ((*node-count* (graph/node-count graph)))
+	(sample/1 '(dataflow/graph-size histogram) *node-count*)
+	(if (and *maximum-node-count*
+		 (> *node-count* *maximum-node-count*))
+	    (begin
+	      (internal-warning
+	       "Graph too big" graph 'has *node-count* 'nodes
+	       `(*maximum-node-count* is ,*maximum-node-count*))
+	      #F)
+	    (begin
+	      (if result-node
+		  (initial-link-nodes! result-node (graph/escape-node graph)))
+	      (dataflow/make-globals-escape! env graph)
+	      (if (> (graph/node-count graph) *warning-node-count*)
+		  (user-warning
+		   "Big dataflow graph"
+		   (graph/node-count graph) 'nodes
+		   `(*maximum-node-count* is ,*maximum-node-count*)))
+	      (graph/initialize-links! graph)
+	      (graph/dataflow! graph)
+	      (graph/cleanup! graph)
+	      
+	      (graph/substitite-simple-constants
+	       graph graph/read-eqv?-preserving-constant?)
+	      (graph/compiled-procedure-reductions graph)
 
-	    graph)))))
+	      graph)))))
 
-(define (graph/interesting? g)
-  g
-  #F
-  ;(> (graph/node-count g) 10000)
-)
+  (let ((graph  (with-abort-restart  do-dataflow)))
+    (or graph
+	(begin
+	  (user-warning "Dataflow graph too large to fit in heap")
+	  #F))))
 
+(define (with-abort-restart thunk)
+  (call-with-current-continuation
+   (lambda (continuation)
+     (with-restart
+      'ABORT
+      "ABORT-R"
+      (lambda (#!optional message)
+	(continuation #F))
+      values
+      thunk))))
 
 (define-macro (define-dataflow-handler keyword bindings . body)
   (let ((proc-name (symbol-append 'DATAFLOW/ keyword)))
