@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.22 1989/11/28 13:07:50 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.23 1989/11/30 05:42:46 jinx Exp $
  *
  * Compiled code interface.  Portable version.
  * This file requires a bit of assembly language from cmpaux-md.m4
@@ -2463,23 +2463,30 @@ coerce_to_compiled (procedure, arity, location)
 
 /* Initialization */
 
-#define COMPILER_INTERFACE_VERSION		2
+#define COMPILER_INTERFACE_VERSION		3
 
+#ifndef COMPILER_REGBLOCK_N_FIXED
 #define COMPILER_REGBLOCK_N_FIXED		16
+#endif
+
+#ifndef COMPILER_REGBLOCK_N_TEMPS
 #define COMPILER_REGBLOCK_N_TEMPS		256
+#endif
+
+#ifndef COMPILER_REGBLOCK_EXTRA_SIZE
+#define COMPILER_REGBLOCK_EXTRA_SIZE		0
+#endif
 
 #if (REGBLOCK_MINIMUM_LENGTH > COMPILER_REGBLOCK_N_FIXED)
 #include "error: cmpint.c and const.h disagree on REGBLOCK_MINIMUM_LENGTH!"
 #endif
 
-#define COMPILER_FIXED_SIZE	1	/* ((sizeof(long)) / (sizeof(long))) */
+/* ((sizeof(SCHEME_OBJECT)) / (sizeof(SCHEME_OBJECT))) */
+
+#define COMPILER_FIXED_SIZE	1
 
 #ifndef COMPILER_TEMP_SIZE
-#define COMPILER_TEMP_SIZE	((sizeof (double)) / (sizeof (long)))
-#endif
-
-#ifndef COMPILER_REGBLOCK_EXTRA_SIZE
-#define COMPILER_REGBLOCK_EXTRA_SIZE		0
+#define COMPILER_TEMP_SIZE	((sizeof (double)) / (sizeof (SCHEME_OBJECT)))
 #endif
 
 #define REGBLOCK_LENGTH							\
@@ -2501,10 +2508,8 @@ SCHEME_OBJECT
   compiler_utilities,
   return_to_interpreter;
 
-#ifndef ASM_REGISTER_BLOCK
 SCHEME_OBJECT
   Registers[REGBLOCK_LENGTH];
-#endif
 
 static void
 compiler_reset_internal ()
