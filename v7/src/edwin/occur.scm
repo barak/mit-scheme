@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: occur.scm,v 1.9 2003/05/31 03:15:18 cph Exp $
+$Id: occur.scm,v 1.10 2004/10/23 04:01:09 cph Exp $
 
-Copyright 1992,1995,1997,2000,2003 Massachusetts Institute of Technology
+Copyright 1992,1995,1997,2000,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -150,16 +150,10 @@ in the buffer that the occurrences were found in.")
   (lambda ()
     (let ((mark
 	   (let ((point (current-point)))
-	     (let ((index (mark-index point))
-		   (occurrences (buffer-get (mark-buffer point) 'OCCURRENCES)))
-	       (if (or (null? occurrences)
-		       (< index (caar occurrences)))
+	     (let ((r (region-get point 'OCCURRENCE #f)))
+	       (if (not r)
 		   (editor-error "No occurrence selected."))
-	       (let loop ((occurrences occurrences))
-		 (if (or (null? (cdr occurrences))
-			 (< index (caadr occurrences)))
-		     (cdar occurrences)
-		     (loop (cdr occurrences))))))))
+	       (region-start r)))))
       (let ((buffer (mark-buffer mark)))
 	(if (not (buffer-alive? buffer))
 	    (editor-error "Buffer in which occurences were found is deleted."))
@@ -196,26 +190,23 @@ It serves as a menu to find any of the occurrences in this buffer.
   (command-interactive-specification (ref-command-object occur))
   (command-procedure (ref-command-object occur)))
 
-(define (pop-up-occur-buffer start end regexp n-lines)
-  (let ((occur-buffer (temporary-buffer "*Occur*")))
+(define (pop-up-occur-buffer start end regexp nlines)
+  (let ((occurrences (re-occurrences start end regexp))
+	(occur-buffer (temporary-buffer "*Occur*")))
     (let ((output (mark-left-inserting-copy (buffer-start occur-buffer))))
-      (insert-string "Lines matching " output)
+      (insert-string (write-to-string (length occurrences)) output)
+      (insert-string " lines matching " output)
       (insert-string (write-to-string regexp) output)
       (insert-string " in buffer " output)
       (insert-string (buffer-name (mark-buffer start)) output)
       (insert-string ".\n" output)
       (set-buffer-major-mode! occur-buffer (ref-mode-object occur))
-      (let ((occurrences
-	     (format-occurrences
-	      (let ((occurrences (re-occurrences start end regexp)))
-		(for-each mark-permanent! occurrences)
-		occurrences)
-	      (or n-lines
-		  (ref-variable list-matching-lines-default-context-lines
-				start))
-	      output)))
-	(buffer-put! occur-buffer 'OCCURRENCES occurrences)
-	(message (number->string (length occurrences)) " matching lines."))
+      (format-occurrences occurrences
+			  (or nlines
+			      (ref-variable
+			       list-matching-lines-default-context-lines
+			       start))
+			  output)
       (mark-temporary! output))
     (set-buffer-point! occur-buffer (buffer-start occur-buffer))
     (pop-up-buffer occur-buffer #f)))
@@ -230,60 +221,60 @@ It serves as a menu to find any of the occurrences in this buffer.
       (let ((match
 	     (re-search-buffer-forward pattern syntax-table group start end)))
 	(if match
-	    (loop (line-end-index group match)
-		  (cons (make-temporary-mark group
-					     (line-start-index group match)
-					     #f)
+	    (loop (line-end-index group (re-match-end-index 0))
+		  (cons (make-region (mark-right-inserting (re-match-start 0))
+				     (mark-left-inserting (re-match-end 0)))
 			occurrences))
 	    (reverse! occurrences))))))
 
 (define (format-occurrences occurrences nlines output)
-  (if (pair? occurrences)
-      (let loop
-	  ((occurrences occurrences)
-	   (previous (group-start (car occurrences)))
-	   (line 1)
-	   (alist '()))
-	(let ((lstart (car occurrences))
-	      (index (mark-index output)))
-	  (let ((line (+ line (count-lines previous lstart))))
-	    (format-occurrence lstart line nlines output)
-	    (if (pair? (cdr occurrences))
-		(begin
-		  (if (not (= nlines 0))
-		      (insert-string "--------\n" output))
-		  (loop (cdr occurrences)
-			lstart
-			line
-			(cons (cons index lstart) alist)))
-		(reverse! alist)))))
-      '()))
+  (let loop
+      ((occurrences occurrences)
+       (prev-ls #f)
+       (line 1))
+    (let ((r (car occurrences))
+	  (m (mark-right-inserting-copy output)))
+      (let ((ls (line-start (region-start r) 0)))
+	(let ((line (+ line (count-lines (or prev-ls (group-start ls)) ls))))
+	  (format-occurrence ls (line-start (region-end r) 0)
+			     line nlines
+			     output)
+	  (region-put! m output 'OCCURRENCE r)
+	  (if (pair? (cdr occurrences))
+	      (begin
+		(if (not (= nlines 0))
+		    (insert-string "--------\n" output))
+		(loop (cdr occurrences) ls line))))))))
 
-(define (format-occurrence lstart line nlines output)
-  (let ((tag (pad-on-left-to (number->string line) 3)))
-    (let ((empty
-	   (and (not (= nlines 0))
-		(make-string (string-length tag) #\space))))
-      (if (not (= nlines 0))
-	  (let loop ((lstart* (line-start lstart (- (abs nlines)) 'LIMIT)))
-	    (if (not (mark= lstart* lstart))
-		(let ((next (line-start lstart* 1 'ERROR)))
+(define (format-occurrence rs re line nlines output)
+  (let ((empty "       "))
+    (if (not (= nlines 0))
+	(let loop ((ls (line-start rs (- (abs nlines)) 'LIMIT)))
+	  (if (mark< ls rs)
+	      (let ((ls* (line-start ls 1 'ERROR)))
+		(insert-string empty output)
+		(insert-string ":" output)
+		(insert-region ls ls* output)
+		(loop ls*)))))
+    (let loop ((ls rs))
+      (let ((le (line-end ls 0)))
+	(insert-string (if (mark= ls rs)
+			   (pad-on-left-to (number->string line) 7)
+			   empty)
+		       output)
+	(insert-string ":" output)
+	(insert-region ls le output)
+	(insert-newline output)
+	(if (mark< le re)
+	    (loop (line-start ls 1 'LIMIT)))))
+    (if (> nlines 0)
+	(let ((ls (line-start rs 1 #f)))
+	  (if ls
+	      (let loop ((ls ls) (n nlines))
+		(let ((le (line-end ls 0)))
 		  (insert-string empty output)
 		  (insert-string ":" output)
-		  (insert-region lstart* next output)
-		  (loop next)))))
-      (insert-string tag output)
-      (insert-string ":" output)
-      (insert-region lstart (line-end lstart 0) output)
-      (insert-newline output)
-      (if (> nlines 0)
-	  (let ((lstart (line-start lstart 1 #f)))
-	    (if lstart
-		(let loop ((lstart lstart) (n nlines))
-		  (let ((lend (line-end lstart 0)))
-		    (insert-string empty output)
-		    (insert-string ":" output)
-		    (insert-region lstart lend output)
-		    (insert-newline output)
-		    (if (and (not (group-end? lend)) (> n 1))
-			(loop (mark1+ lend) (- n 1)))))))))))
+		  (insert-region ls le output)
+		  (insert-newline output)
+		  (if (and (not (group-end? le)) (> n 1))
+		      (loop (mark1+ le) (- n 1))))))))))
