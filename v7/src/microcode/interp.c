@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.25 1987/05/29 02:23:02 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.26 1987/05/31 16:36:05 cph Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -846,14 +846,15 @@ Pop_Return:
       define_compiler_restart (RC_COMP_REFERENCE_RESTART,
 			       comp_reference_restart)
 
-      define_compiler_restart (RC_COMP_ACCESS_RESTART, comp_access_restart)
+      define_compiler_restart (RC_COMP_ACCESS_RESTART,
+			       comp_access_restart)
 
       define_compiler_restart (RC_COMP_UNASSIGNED_P_RESTART,
 			       comp_unassigned_p_restart)
 
       define_compiler_restart (RC_COMP_UNBOUND_P_RESTART,
 			       comp_unbound_p_restart)
-
+
       define_compiler_restart (RC_COMP_ASSIGNMENT_RESTART,
 			       comp_assignment_restart)
 
@@ -872,10 +873,20 @@ Pop_Return:
       define_compiler_restart (RC_COMP_ASSIGNMENT_TRAP_RESTART,
 			       comp_assignment_trap_restart)
 
-      define_compiler_restart (RC_COMP_UUO_LINK_RESTART, comp_uuo_link_restart)
+      define_compiler_restart (RC_COMP_UUO_LINK_RESTART,
+			       comp_uuo_link_restart)
 
       define_compiler_restart (RC_COMP_UUO_LINK_TRAP_RESTART,
 			       comp_uuo_link_trap_restart)
+
+      define_compiler_restart (RC_COMP_CACHE_REFERENCE_APPLY_RESTART,
+			       comp_cache_reference_apply_restart)
+
+      define_compiler_restart (RC_COMP_SAFE_REFERENCE_TRAP_RESTART,
+			       comp_safe_reference_trap_restart)
+
+      define_compiler_restart (RC_COMP_UNASSIGNED_P_TRAP_RESTART,
+			       comp_unassigned_p_trap_restart)
 
     case RC_REENTER_COMPILED_CODE:
       compiled_code_restart();
