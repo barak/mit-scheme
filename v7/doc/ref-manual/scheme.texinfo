@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.75 1999/08/09 18:12:11 cph Exp $
+@comment $Id: scheme.texinfo,v 1.76 1999/08/13 21:25:08 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -95,9 +95,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.74
+@subtitle Edition 1.76
 @subtitle for Scheme Release 7.5
-@subtitle 3 August 1999
+@subtitle 13 August 1999
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -16068,18 +16068,21 @@ these ports will signal an error if you do not have administrative
 privileges.
 @end deffn
 
-@deffn {procedure+} tcp-server-connection-accept server-socket block?
+@deffn {procedure+} tcp-server-connection-accept server-socket block? peer-address
 Checks to see if a client has connected to @var{server-socket}.  If so,
-two values are returned: an @sc{i/o} port, and a string representing the
-@sc{IP} address of the client (this is the 4-byte @sc{IP} number, where
-each character in the string is one of the bytes).  The returned port
-can be read and written using ordinary Scheme @sc{i/o} procedures such
-as @code{read-char} and @code{write-char}.
+an @sc{i/o} port is returned.  The returned port can be read and written
+using ordinary Scheme @sc{i/o} procedures such as @code{read-char} and
+@code{write-char}.
 
 The argument @var{block?} says what to do if no client has connected at
 the time of the call.  If @code{#f}, it says to return immediately with
 two values of @code{#f}.  Otherwise, the call waits until a client
 connects.
+
+The argument @var{peer-address} is either @code{#f} or an @sc{ip}
+address as allocated by @code{allocate-host-address}.  If it is an
+@sc{ip} address, the address is modified to be the address of the client
+making the connection.
 
 Note that closing the port returned by this procedure does not affect
 @var{server-socket}; it just closes the particular client connection
@@ -16135,6 +16138,84 @@ this string and ignore the @code{"Build"} suffix.  This is because the
 suffix may contain information about service packs or fixes, while the
 prefix will be constant for a particular version of Windows.
 @end defvr
+
+The next few procedures provide access to the @dfn{domain name service}
+(@sc{dns}), which maintains associations between internet host names
+such as @code{"www.swiss.ai.mit.edu"} and @sc{ip} addresses, such as
+@code{18.23.0.16}.  In MIT Scheme, we represent an internet host name as
+a string, and an @sc{ip} address as a byte vector of length 4 (byte
+vectors are just character strings that are accessed using
+@code{vector-8b-ref} rather than @code{string-ref}).  The bytes in an
+@sc{ip} address read in the same order as they do when written out:
+
+@example
+(get-host-by-name "www.swiss") @result{} #("\022\027\000\020")
+@end example
+
+@deffn {procedure+} get-host-by-name host-name
+Looks up the internet host name @var{host-name} using the @sc{dns},
+returning a vector of @sc{ip} addresses for the corresponding host, or
+@code{#f} if there is no such host.  Usually the returned vector has
+only one element, but if a host has more than one network interface, the
+vector might have more than one element.
+
+@example
+(get-host-by-name "www.swiss") @result{} #("\022\027\000\020")
+@end example
+@end deffn
+
+@deffn {procedure+} get-host-by-address ip-address
+Does a reverse @sc{dns} lookup on @var{ip-address}, returning the
+internet host name corresponding to that address, or @code{#f} if there
+is no such host.
+
+@example
+(get-host-by-address "\022\027\000\020") @result{} "swissnet.ai.mit.edu"
+@end example
+@end deffn
+
+@deffn {procedure+} canonical-host-name host-name
+Finds the ``canonical'' internet host name for @var{host-name}.  For
+example:
+
+@example
+@group
+(canonical-host-name "zurich")    @result{} "zurich.ai.mit.edu"
+(canonical-host-name "www.swiss") @result{} "swissnet.ai.mit.edu"
+@end group
+@end example
+
+@noindent
+In both examples, the default internet domain @samp{ai.mit.edu} is added
+to @var{host-name}.  In the second example, @code{"www.swiss"} is an
+alias for another computer named @code{"swissnet"}.
+@end deffn
+
+@deffn {procedure+} get-host-name
+Returns the string that identifies the computer that MIT Scheme is
+running on.  Usually this is an unqualified internet host name, i.e.@:
+the host name without the domain suffix:
+
+@example
+(get-host-name) @result{} "aarau"
+@end example
+@end deffn
+
+@deffn {procedure+} os/hostname
+Returns the canonical internet host name of the computer that MIT Scheme
+is running on.  So, in contrast to the example for @code{get-host-name}:
+
+@example
+(os/hostname) @result{} "aarau.ai.mit.edu"
+@end example
+@end deffn
+
+@deffn {procedure+} allocate-host-address
+Allocates and returns an @sc{ip} address object.  This is just a string
+of a fixed length (current 4 bytes) into which an @sc{ip} address may be
+stored.  This procedure is used to generate an appropriate argument to
+be passed to @code{tcp-server-connection-accept}.
+@end deffn
 
 @node Error System, Graphics, Operating-System Interface, Top
 @chapter Error System
