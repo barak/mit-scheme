@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.9 1995/04/06 18:33:25 adams Exp $
+$Id: simplify.scm,v 1.10 1995/04/09 04:45:59 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -594,8 +594,17 @@ MIT in each case. |#
     result))
 
 
-(define simplify/env/frame-lookup
-    (association-procedure (lambda (x y) (eq? x y)) simplify/binding/name))
+;; The profiler says a lot of time is being spent here in large programs:
+;;(define simplify/env/frame-lookup
+;;    (association-procedure (lambda (x y) (eq? x y)) simplify/binding/name))
+
+(define (simplify/env/frame-lookup name bindings)
+  (let loop ((bindings bindings))
+    (if (pair? bindings)
+	(if (eq? name (simplify/binding/name (car bindings)))
+	    (car bindings)
+	    (loop (cdr bindings)))
+	#F)))
 
 (define (simplify/lookup*! env name reference kind)
   ;; kind = 'OPERATOR, 'ORDINARY or 'DBG-INFO
