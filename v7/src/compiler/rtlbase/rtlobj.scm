@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlobj.scm,v 4.4 1988/12/16 13:36:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlobj.scm,v 4.5 1988/12/23 06:23:16 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -86,7 +86,9 @@ MIT in each case. |#
 (define-structure (rtl-continuation
 		   (conc-name rtl-continuation/)
 		   (constructor make-rtl-continuation
-				(rgraph label entry-edge debugging-info))
+				(rgraph label entry-edge
+					next-continuation-offset
+					debugging-info))
 		   (print-procedure
 		    (standard-unparser "RTL-CONTINUATION"		      (lambda (state continuation)
 			(unparse-object
@@ -95,6 +97,7 @@ MIT in each case. |#
   (rgraph false read-only true)
   (label false read-only true)
   (entry-edge false read-only true)
+  (next-continuation-offset false read-only true)
   (debugging-info false read-only true))
 
 (define-integrable (rtl-continuation/entry-node continuation)
