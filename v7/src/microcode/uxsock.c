@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.24 2000/10/01 02:18:55 cph Exp $
+$Id: uxsock.c,v 1.25 2000/10/17 17:16:17 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -49,6 +49,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 extern struct servent * EXFUN (getservbyname, (CONST char *, CONST char *));
 extern struct hostent * EXFUN (gethostbyname, (CONST char *));
 extern char * EXFUN (strncpy, (char *, CONST char *, size_t));
+#endif
+
+#ifdef __linux
+#define HAVE_SOCKLEN_T
+#endif
+#ifndef HAVE_SOCKLEN_T
+typedef int socklen_t;
 #endif
 
 static void do_connect (int, struct sockaddr *, socklen_t);
