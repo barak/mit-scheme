@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.45 1996/12/01 17:11:07 adams Exp $
+$Id: x11graph.scm,v 1.46 1997/05/15 00:11:39 cph Exp $
 
-Copyright (c) 1989-96 Massachusetts Institute of Technology
+Copyright (c) 1989-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,6 +52,7 @@ MIT in each case. |#
   (x-window-beep 1)
   (x-window-clear 1)
   (x-window-colormap 1)
+  (x-window-depth 1)
   (x-window-event-mask 1)
   (x-window-flush 1)
   (x-window-iconify 1)
@@ -180,6 +181,7 @@ MIT in each case. |#
 	   (get-colormap ,x-graphics/get-colormap)
 	   (get-default ,x-graphics/get-default)
 	   (iconify-window ,x-graphics/iconify-window)
+	   (image-depth ,x-graphics/image-depth)
 	   (lower-window ,x-graphics/lower-window)
 	   (map-window ,x-graphics/map-window)
 	   (move-cursor ,x-graphics/move-cursor)
@@ -206,6 +208,7 @@ MIT in each case. |#
 	   (set-mouse-shape ,x-graphics/set-mouse-shape)
 	   (set-window-name ,x-graphics/set-window-name)
 	   (starbase-filename ,x-graphics/starbase-filename)
+	   (visual-info ,x-graphics/visual-info)
 	   (withdraw-window ,x-graphics/withdraw-window))))
   (set! display-list (make-protection-list))
   (add-gc-daemon! close-lost-displays-daemon)
@@ -941,14 +944,40 @@ MIT in each case. |#
 
 (define (x-colormap/store-colors colormap color-vector)
   (x-store-colors (colormap/descriptor colormap) color-vector))
-
+
 (define (x-graphics/color? device)
-  (let ((info
-	 (x-get-visual-info (x-graphics-device/xw device)
-			    #f #f #f #f #f #f #f #f #f)))
+  (let ((info (x-graphics/visual-info device)))
     (let ((n (vector-length info)))
       (let loop ((index 0))
 	(and (not (fix:= index n))
-	     (let ((info (vector-ref info index)))
-	       (or (memv (vector-ref info 4) '(2 3 4 5))
-		   (loop (fix:+ index 1)))))))))
+	     (or (let ((class (x-visual-info/class (vector-ref info index))))
+		   (or (eq? x-visual-class:static-color class)
+		       (eq? x-visual-class:pseudo-color class)
+		       (eq? x-visual-class:true-color class)
+		       (eq? x-visual-class:direct-color class)))
+		 (loop (fix:+ index 1))))))))
+
+(define (x-graphics/image-depth device)
+  (x-window-depth (x-graphics-device/xw device)))
+
+(define (x-graphics/visual-info device)
+  (x-get-visual-info (x-graphics-device/xw device) #f #f #f #f #f #f #f #f #f))
+
+(define-structure (visual-info (type vector) (conc-name x-visual-info/))
+  (visual #f read-only #t)
+  (visual-id #f read-only #t)
+  (screen #f read-only #t)
+  (depth #f read-only #t)
+  (class #f read-only #t)
+  (red-mask #f read-only #t)
+  (green-mask #f read-only #t)
+  (blue-mask #f read-only #t)
+  (colormap-size #f read-only #t)
+  (bits-per-rgb #f read-only #t))
+
+(define-integrable x-visual-class:static-gray 0)
+(define-integrable x-visual-class:gray-scale 1)
+(define-integrable x-visual-class:static-color 2)
+(define-integrable x-visual-class:pseudo-color 3)
+(define-integrable x-visual-class:true-color 4)
+(define-integrable x-visual-class:direct-color 5)
