@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: types.scm,v 1.2 1995/09/05 19:07:29 adams Exp $
+$Id: types.scm,v 1.3 1996/07/19 23:53:58 adams Exp $
 
 Copyright (c) 1995-1995 Massachusetts Institute of Technology
 
@@ -118,6 +118,9 @@ MIT in each case. |#
   (type:bitwise (lambda (b1 b2) (fix:zero? (fix:and b1 b2)))
 		(lambda (r1 r2 r3)
 		  (and r1 r2 r3))))
+
+(define type:equal?
+  (type:bitwise fix:= (lambda (r1 r2 r3) (and r1 r2 r3))))
 		
 (define (type:or* . types)
   (reduce type:or type:empty types))
@@ -256,6 +259,7 @@ MIT in each case. |#
   (alias  type:flonum-vector    type:flonum)
 
   (alias  type:unspecified type:any)
+
   )
 
 ;; Note: these are processed in last-to-first order to construct a description.
@@ -271,7 +275,7 @@ MIT in each case. |#
 (define-type-name type:any    'type:ANY)
 
 
-;;;; Correspondence between tyepcodes and primitive types
+;;;; Correspondence between typecodes and primitive types
 ;;
 
 ;; The tag is `covered' by this type.
@@ -361,14 +365,32 @@ MIT in each case. |#
 		   ((< x min-small-fixnum)      type:big-fixnum-ve)
 		   (else (internal-error "Unclassified FIXNUM" x))))
 	    ((object-type? (object-type #F) x)
-	     (cond ((eq? x #F)  type:false)
-		   ((eq? x #T)  type:true)
+	     (cond ((eq? x #F)          type:false)
+		   ((eq? x #T)          type:true)
 		   ((eq? x unspecific)  type:unspecific-frob)
-		   ((eq? x '()) type:empty-list)
-		   (else type:other-constant)))
+		   ((eq? x '())         type:empty-list)
+		   (else                type:other-constant)))
 	    (else
 	     ;; The returned value might not be unitary.
 	     (type:typecode->type (object-type x)))))))
+
+
+(define type:->constant?
+  ;; return a quoted constant if the type describes that constant,
+  ;; otherwise return #F
+  (let ((cover (type:or* type:exact-zero type:exact-one type:exact-minus-one
+			 type:false type:true
+			 type:empty-list type:unspecific-frob)))
+    (lambda (type)
+      (cond ((not (type:subset? type cover))    #F) ; quick exit
+	    ((type:equal? type type:false)            `(QUOTE #F))
+	    ((type:equal? type type:true)             `(QUOTE #T))
+	    ((type:equal? type type:exact-zero)       `(QUOTE 0))
+	    ((type:equal? type type:exact-one)        `(QUOTE 1))
+	    ((type:equal? type type:exact-minus-one)  `(QUOTE -1))
+	    ((type:equal? type type:empty-list)       `(QUOTE ()))
+	    ((type:equal? type type:unspecific-frob)  `(QUOTE ,unspecific))
+	    (else  #F)))))
 
 ;;(define (type:->covering-tags type)
 ;;  "Return a list of tags that cover TYPE")
@@ -484,7 +506,7 @@ MIT in each case. |#
     (let loop ((qualifiers qualifiers))
       (cond ((not (pair? qualifiers))
 	     (make-procedure-type asserted-domain domain range
-				  effects-observed effects-performed
+				  effects-performed effects-observed
 				  implementation-type))
 	    ((eq? (car qualifiers) 'EFFECT-FREE)
 	     (set! effects-performed effect:none)
