@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: wincom.scm,v 1.126 2000/07/28 15:14:19 cph Exp $
+;;; $Id: wincom.scm,v 1.127 2000/10/20 04:30:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1987, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -469,6 +469,21 @@ Also kills any pop up window it may have created."
 	(weak-set-car! *previous-popped-up-window* #f)
 	(weak-set-car! *previous-popped-up-buffer* #f))))
 
+(define (pop-up-buffer-option options name default)
+  (let loop ((options options))
+    (if (pair? options)
+	(let ((option (car options)))
+	  (cond ((eq? name option)
+		 #t)
+		((and (pair? option)
+		      (eq? name (car option))
+		      (pair? (cdr option))
+		      (null? (cddr option)))
+		 (cadr option))
+		(else
+		 (loop (cdr options)))))
+	default)))
+
 (define *previous-popped-up-window* (weak-cons #f #f))
 (define *previous-popped-up-buffer* (weak-cons #f #f))
 (define *minibuffer-scroll-window* (weak-cons #f #f))
@@ -481,7 +496,10 @@ Also kills any pop up window it may have created."
 	(options (if (default-object? options) '() options)))
 
     (define (pop-up-window window)
-      (let ((window (window-split-vertically! window #f)))
+      (let ((window
+	     (window-split-vertically!
+	      window
+	      (pop-up-buffer-option options 'HEIGHT #f))))
 	(weak-set-car! *previous-popped-up-window* window)
 	(weak-set-cdr! *previous-popped-up-window* (window-y-size window))
 	(pop-into-window window)
@@ -502,7 +520,9 @@ Also kills any pop up window it may have created."
 	(and (not (null? windows))
 	     (let ((window (car windows)))
 	       (if (and (window-visible? window)
-			(or (not (memq 'NOT-CURRENT-WINDOW options))
+			(or (not (pop-up-buffer-option options
+						       'NOT-CURRENT-WINDOW
+						       #f))
 			    (not (current-window? window))))
 		   window
 		   (loop (cdr windows)))))))
