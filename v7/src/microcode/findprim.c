@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.36 1989/02/19 20:02:52 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.37 1989/04/15 19:04:16 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -210,6 +210,7 @@ TOKEN_PROCESSOR scan ();
 boolean whitespace ();
 int compare_descriptors ();
 int read_index ();
+int strcmp_ci ();
 pseudo_void create_alternate_entry ();
 pseudo_void create_builtin_entry ();
 pseudo_void create_normal_entry ();
@@ -1196,11 +1197,32 @@ compare_descriptors (d1, d2)
 
   dprintf ("comparing \"%s\"", (d1 -> scheme_name));
   dprintf(" and \"%s\".\n", (d2 -> scheme_name));
-  value = (strcmp ((d1 -> scheme_name), (d2 -> scheme_name)));
+  value = (strcmp_ci ((d1 -> scheme_name), (d2 -> scheme_name)));
   if (value > 0)
     return (1);
   else if (value < 0)
     return (-1);
   else
     return (0);
+}
+
+int
+strcmp_ci (s1, s2)
+     fast char * s1;
+     fast char * s2;
+{
+  int length1 = (strlen (s1));
+  int length2 = (strlen (s2));
+  fast int length = ((length1 < length2) ? length1 : length2);
+
+  while ((length--) > 0)
+    {
+      fast int c1 = (*s1++);
+      fast int c2 = (*s2++);
+      if (islower (c1)) c1 = (_toupper (c1));
+      if (islower (c2)) c2 = (_toupper (c2));
+      if (c1 < c2) return (-1);
+      if (c1 > c2) return (1);
+    }
+  return (length1 - length2);
 }

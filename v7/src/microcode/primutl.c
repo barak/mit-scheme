@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.46 1988/08/15 20:53:13 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.47 1989/04/15 19:04:24 cph Exp $
  *
  * This file contains the support routines for mapping primitive names
  * to numbers within the microcode.  Primitives are written in C
@@ -42,11 +42,33 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
+#include <ctype.h>
 
 Pointer Undefined_Primitives = NIL;
 Pointer Undefined_Primitives_Arity = NIL;
 
 /* Common utilities. */
+
+static int
+strcmp_ci (s1, s2)
+     fast char * s1;
+     fast char * s2;
+{
+  int length1 = (strlen (s1));
+  int length2 = (strlen (s2));
+  fast int length = ((length1 < length2) ? length1 : length2);
+
+  while ((length--) > 0)
+    {
+      fast int c1 = (*s1++);
+      fast int c2 = (*s2++);
+      if (islower (c1)) c1 = (_toupper (c1));
+      if (islower (c2)) c2 = (_toupper (c2));
+      if (c1 < c2) return (-1);
+      if (c1 > c2) return (1);
+    }
+  return (length1 - length2);
+}
 
 struct primitive_alias
   {
@@ -67,7 +89,7 @@ primitive_alias_to_name (alias)
   alias_end = (alias_ptr + N_ALIASES);
   while (alias_ptr < alias_end)
     {
-      if ((strcmp (alias, (alias_ptr -> alias))) == 0)
+      if ((strcmp_ci (alias, (alias_ptr -> alias))) == 0)
 	return (alias_ptr -> name);
       alias_ptr += 1;
     }
@@ -122,7 +144,6 @@ primitive_name_to_code(name, table, size)
      fast char *table[];
      int size;
 {
-  extern int strcmp();
   fast int low, high, middle, result;
 
   name = (primitive_alias_to_name (name));
@@ -132,7 +153,7 @@ primitive_name_to_code(name, table, size)
   while(low < high)
   {
     middle = ((low + high) / 2);
-    result = strcmp(name, table[middle]);
+    result = strcmp_ci(name, table[middle]);
     if (result < 0)
     {
       high = (middle - 1);
@@ -151,7 +172,7 @@ primitive_name_to_code(name, table, size)
      If division were to round up, we would have to use high.
    */
 
-  if (strcmp(name, table[low]) == 0)
+  if (strcmp_ci(name, table[low]) == 0)
   {
     return ((long) low);
   }
@@ -335,7 +356,6 @@ search_for_primitive(scheme_name, c_name, intern_p, allow_p, arity)
      Boolean intern_p, allow_p;
      int arity;
 {
-  extern int strcmp();
   long i, Max, old_arity;
   Pointer *Next;
 
@@ -373,7 +393,7 @@ search_for_primitive(scheme_name, c_name, intern_p, allow_p, arity)
       Pointer temp;
 
       temp = *Next++;
-      if (strcmp(c_name, Scheme_String_To_C_String(temp)) == 0)
+      if (strcmp_ci(c_name, Scheme_String_To_C_String(temp)) == 0)
       {
 	if (arity != UNKNOWN_PRIMITIVE_ARITY)
 	{
