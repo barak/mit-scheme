@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.14 1992/02/18 20:56:12 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.15 1992/05/04 20:41:27 jinx Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,7 +52,30 @@ extern struct obstack scratch_obstack;
 extern CONST char * scheme_program_name;
 extern void EXFUN (termination_init_error, (void));
 
-#define FILE_ABSOLUTE(filename) (((filename) [0]) == SUB_DIRECTORY_DELIMITER)
+#ifndef SUB_DIRECTORY_DELIMITER
+#  ifdef DOS386
+#    define SUB_DIRECTORY_DELIMITER '\\'
+#  else
+#    define SUB_DIRECTORY_DELIMITER '/'
+#  endif
+#endif
+
+#ifndef PATH_DELIMITER
+#  ifdef DOS386
+#    define PATH_DELIMITER ';'
+#  else
+#    define PATH_DELIMITER ':'
+#  endif
+#endif
+
+#ifdef DOS386
+#  define FILE_ABSOLUTE(filename)			\
+     ((((filename) [0]) == SUB_DIRECTORY_DELIMITER)	\
+      || (((filename) [1]) == ':'))
+#else
+#  define FILE_ABSOLUTE(filename) (((filename) [0]) == SUB_DIRECTORY_DELIMITER)
+#endif
+
 #define FILE_READABLE(filename) ((access ((filename), 4)) >= 0)
 
 static int option_summary;
@@ -243,14 +266,6 @@ The following options are only meaningful to bchscheme:
   overlapped I/O.  Each implies a drone process to manage it, if supported.
 */
 
-#ifndef SUB_DIRECTORY_DELIMITER
-#ifdef DOS386
-#define SUB_DIRECTORY_DELIMITER	'\\'
-#else
-#define SUB_DIRECTORY_DELIMITER '/'
-#endif
-#endif
-
 #ifndef LIBRARY_PATH_VARIABLE
 #define LIBRARY_PATH_VARIABLE "MITSCHEME_LIBRARY_PATH"
 #endif
@@ -750,7 +765,7 @@ DEFUN (parse_path_string, (path), CONST char * path)
       while (1)
 	{
 	  int c = (*scan++);
-	  if ((c == '\0') || (c == ':'))
+	  if ((c == '\0') || (c == PATH_DELIMITER))
 	    {
 	      end = (scan - 1);
 	      break;
