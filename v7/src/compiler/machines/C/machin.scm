@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.5 1993/10/28 02:55:01 gjr Exp $
+$Id: machin.scm,v 1.6 1993/11/08 22:41:40 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -64,7 +64,7 @@ MIT in each case. |#
 (define-integrable max-tag-width 8)
 
 (define-integrable guaranteed-long/upper-limit
-  (expt 2 min-long-width))
+  (expt 2 (-1+ min-long-width)))
 (define-integrable guaranteed-long/lower-limit
   (- (-1+ guaranteed-long/upper-limit)))
 
