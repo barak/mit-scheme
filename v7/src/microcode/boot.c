@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.92 1994/12/02 20:38:40 cph Exp $
+$Id: boot.c,v 9.93 1994/12/19 22:24:43 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -487,13 +487,22 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
 }
 
 #ifdef WINNT
-  extern void EXFUN (WinntEnterHook, (void (*) (void)));
-# define HOOK_ENTER_INTERPRETER WinntEnterHook
-#endif
 
-#ifndef HOOK_ENTER_INTERPRETER
-#  define HOOK_ENTER_INTERPRETER(func) func ()
-#endif
+extern void EXFUN (WinntEnterHook, (void (*) (void)));
+#define HOOK_ENTER_INTERPRETER WinntEnterHook
+
+#else /* not WINNT */
+#ifdef _OS2
+
+extern void EXFUN (OS2_enter_interpreter, (void (*) (void)));
+#define HOOK_ENTER_INTERPRETER OS2_enter_interpreter
+
+#else /* not _OS2 */
+
+#define HOOK_ENTER_INTERPRETER(func) func ()
+
+#endif /* not _OS2 */
+#endif /* not WINNT */
 
 static void
 DEFUN_VOID (Do_Enter_Interpreter)
