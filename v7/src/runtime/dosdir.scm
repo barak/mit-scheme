@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosdir.scm,v 1.3 1992/08/06 13:45:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosdir.scm,v 1.4 1992/08/08 16:23:06 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -37,6 +37,8 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define directory-read/adjust-patterns? true)
+
 (define (directory-read pattern #!optional sort?)
   (if (if (default-object? sort?) true sort?)
       (sort (directory-read-nosort pattern) pathname<?)
@@ -44,7 +46,7 @@ MIT in each case. |#
 
 (define (directory-read-nosort pattern)
   (let ((pattern
-	 (let ((pattern (merge-pathnames pattern)))
+	 (let ((pattern (adjust-directory-pattern (merge-pathnames pattern))))
 	   (let ((name (pathname-name pattern))
 		 (type (pathname-type pattern)))
 	     (if (or name type)
@@ -72,6 +74,17 @@ MIT in each case. |#
 		     (lambda (instance)
 		       (and (match-name (pathname-name instance))
 			    (match-type (pathname-type instance))))))))))))
+
+(define (adjust-directory-pattern pathname)
+  (if (and directory-read/adjust-patterns?
+	   (not (pathname-type pathname))
+	   (let ((name (pathname-name pathname)))
+	     (and (string? name)
+		  (let ((len (string-length name)))
+		    (and (> len 0)
+			 (char=? (string-ref name (-1+ len)) #\*))))))
+      (pathname-new-type pathname 'WILD)
+      pathname))
 
 (define (generate-directory-pathnames pathname)
   (let ((channel (directory-channel-open (->namestring pathname))))
