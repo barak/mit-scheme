@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.7 2000/04/27 02:35:13 cph Exp $
+;;; $Id: imap-response.scm,v 1.8 2000/04/28 16:14:16 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -478,6 +478,12 @@
 
 (define (imap:response:recent-count response)
   (cadr response))
+
+(define (imap:response:fetch-attribute response keyword)
+  (let ((entry (assq keyword (cdr response))))
+    (if (not entry)
+	(error "Missing FETCH attribute:" keyword))
+    (cadr entry)))
 
 (define (imap:response-code:alert? code) (eq? (car code) 'ALERT))
 (define (imap:response-code:newname? code) (eq? (car code) 'NEWNAME))
