@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.9 1988/10/20 17:59:30 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.10 1988/10/26 12:33:00 markf Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -164,8 +164,7 @@ MIT in each case. |#
      (if (ic-block? block)
 	 (rtl:make-pop register:environment)
 	 (make-null-cfg))
-     (if (and (not (continuation/always-known-operator? continuation))
-	      (block/dynamic-link? block))
+     (if (block/dynamic-link? block)
 	 (rtl:make-pop-link)
 	 (make-null-cfg)))))
 
