@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for Linux
 
-$Id: linux.h,v 1.12 1997/05/05 07:29:11 cph Exp $
+$Id: linux.h,v 1.13 1997/10/02 19:52:53 adams Exp $
 
 Copyright (c) 1995-97 Massachusetts Institute of Technology
 
@@ -51,7 +51,7 @@ MIT in each case. */
 #define LIBS_TERMCAP -ltermcap
 #endif
 
-#define LD_SWITCH_SYSTEM
+#define LD_SWITCH_SYSTEM -export-dynamic
 
 #ifndef DISABLE_DLD_SUPPORT
 /* These definitions configure the microcode to support dynamic loading. */
