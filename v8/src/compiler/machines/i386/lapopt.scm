@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/machines/i386/lapopt.scm,v 1.3 1995/01/12 16:16:21 ssmith Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/machines/i386/lapopt.scm,v 1.4 1995/01/12 16:22:32 ssmith Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -124,5 +124,5 @@ MIT in each case. |#
     (if (null? inst)
 	(pp times)
 	(loop (cdr inst)
-	      (+ times (car get-instruction-info)))))
+	      (+ times (car (get-instruction-info (car inst)))))))
   instructions)
