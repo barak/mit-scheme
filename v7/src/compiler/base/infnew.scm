@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/infnew.scm,v 4.8 1990/05/03 15:04:52 jinx Rel $
+$Id: infnew.scm,v 4.9 1992/12/29 19:51:57 gjr Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -276,34 +276,43 @@ MIT in each case. |#
 				  unspecific)))
 			    (car label-binding)))
 		label-bindings)
-      (let ((map-label
+      (let ((map-label/fail
 	     (lambda (label)
 	       (btree-lookup labels string<? car (system-pair-car label)
 		 cdr
 		 (lambda (name)
-		   (error "Missing label" name))))))
+		   (error "Missing label" name)))))
+	    (map-label/false
+	     (lambda (label)
+	       (btree-lookup labels string<? car (system-pair-car label)
+		 cdr
+		 (lambda (name)
+		   name			; ignored
+		   false)))))
 	(for-each (lambda (label)
-		    (set-dbg-label/external?! (map-label label) true))
+		    (set-dbg-label/external?! (map-label/fail label) true))
 		  external-labels)
 	(if expression
 	    (set-dbg-expression/label!
 	     expression
-	     (map-label (dbg-expression/label expression))))
+	     (map-label/fail (dbg-expression/label expression))))
 	(for-each
 	 (lambda (procedure)
-	   (set-dbg-procedure/label!
-	    procedure
-	    (map-label (dbg-procedure/label procedure)))
-	   (let ((label (dbg-procedure/external-label procedure)))
-	     (if label
-		 (set-dbg-procedure/external-label! procedure
-						    (map-label label)))))
+	   (let* ((internal-label (dbg-procedure/label procedure))
+		  (mapped-label (map-label/false internal-label)))
+	     (set-dbg-procedure/label! procedure mapped-label)
+	     (cond ((dbg-procedure/external-label procedure)
+		    => (lambda (label)
+			 (set-dbg-procedure/external-label! procedure			 
+							    (map-label/fail label))))
+		   ((not mapped-label)
+		    (error "Missing label" internal-label)))))
 	 procedures)
 	(for-each
 	 (lambda (continuation)
 	   (set-dbg-continuation/label!
 	    continuation
-	    (map-label (dbg-continuation/label continuation))))
+	    (map-label/fail (dbg-continuation/label continuation))))
 	 continuations)))
     (make-dbg-info
      expression
@@ -347,10 +356,15 @@ MIT in each case. |#
 	      (else
 	       (min-suffix distinguished))))))
 
+(define char-set:label-separators
+  (char-set #\- #\_))
+
 (define (min-suffix names)
   (let ((suffix-number
 	 (lambda (name)
-	   (let ((index (string-find-previous-char name #\-)))
+	   (let ((index (string-find-previous-char-in-set
+			 name
+			 char-set:label-separators)))
 	     (if (not index)
 		 (error "Illegal label name" name))
 	     (let ((suffix (string-tail name (1+ index))))
@@ -358,14 +372,18 @@ MIT in each case. |#
 		 (if (not result)
 		     (error "Illegal label suffix" suffix))
 		 result))))))
-    (car (sort names (lambda (x y) (< (suffix-number x) (suffix-number y)))))))
+    (car (sort names (lambda (x y)
+		       (< (suffix-number x)
+			  (suffix-number y)))))))
 
 (define (standard-name? string prefix)
   (let ((index (string-match-forward-ci string prefix))
 	(end (string-length string)))
     (and (= index (string-length prefix))
 	 (>= (- end index) 2)
-	 (char=? #\- (string-ref string index))
+	 (let ((next (string-ref string index)))
+	   (or (char=? #\- next)
+	       (char=? #\_ next)))
 	 (let loop ((index (1+ index)))
 	   (or (= index end)
 	       (and (char-numeric? (string-ref string index))
