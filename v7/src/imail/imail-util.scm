@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.3 2000/01/14 18:09:12 cph Exp $
+;;; $Id: imail-util.scm,v 1.4 2000/01/19 20:58:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -26,15 +26,6 @@
   (if (not (index-fixnum? index))
       (error:wrong-type-argument index "index" procedure)))
 
-(define (union-of-lists l1 l2)
-  (let loop ((l1 l1) (l2 l2))
-    (if (pair? l1)
-	(loop (cdr l1)
-	      (if (member (car l1) l2)
-		  l2
-		  (cons (car l1) l2)))
-	l2)))
-
 (define (source->list source)
   (let ((item (source)))
     (if (eof-object? item)
@@ -56,18 +47,6 @@
 	  item)
 	(make-eof-object #f))))
 
-(define (cut-list items predicate)
-  (if (or (not (pair? items)) (predicate (car items)))
-      (values '() items)
-      (let ((head (list (car items))))
-	(values head
-		(let loop ((prev head) (this (cdr items)))
-		  (if (or (not (pair? this)) (predicate (car this)))
-		      this
-		      (let ((next (list (car this))))
-			(set-cdr! prev next)
-			(loop next (cdr this)))))))))
-
 (define (cut-list! items predicate)
   (if (or (not (pair? items)) (predicate (car items)))
       (values '() items)
@@ -86,6 +65,27 @@
 	      (find-next (cdr items) (cons (car items) group))
 	      (loop items (cons (reverse! group) groups))))
 	(reverse! groups))))
+
+(define (count-matching-items items predicate)
+  (let loop ((items items) (count 0))
+    (if (pair? items)
+	(loop (cdr items)
+	      (if (predicate (car items))
+		  (fix:+ count 1)
+		  count))
+	count)))
+
+(define (remove-duplicates items predicate)
+  (let loop ((items items) (items* '()))
+    (if (pair? items)
+	(loop (cdr items)
+	      (if (let loop ((items* (cdr items)))
+		    (and (pair? items*)
+			 (or (predicate (car items) (car items*))
+			     (loop (cdr items*)))))
+		  items*
+		  (cons (car items) items*)))
+	(reverse! items*))))
 
 ;; The cryptic LWSP means Linear White SPace.  We use it because it
 ;; is the terminology from RFC 822.
@@ -170,19 +170,3 @@
     (if (eof-object? line)
 	(error "Premature end of file:" port))
     line))
-
-(define (remove-equal-duplicates items)
-  (if (pair? items)
-      (if (member (car items) (cdr items))
-	  (remove-equal-duplicates (cdr items))
-	  (cons (car items) (remove-equal-duplicates (cdr items))))
-      '()))
-
-(define (count-matching-items items predicate)
-  (let loop ((items items) (count 0))
-    (if (pair? items)
-	(loop (cdr items)
-	      (if (predicate (car items))
-		  (fix:+ count 1)
-		  count))
-	count)))
