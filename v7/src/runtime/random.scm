@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.32 2004/01/05 21:04:38 cph Exp $
+$Id: random.scm,v 14.33 2004/01/06 05:54:32 cph Exp $
 
 Copyright 1988,1989,1993,1994,1995,1996 Massachusetts Institute of Technology
 Copyright 1998,1999,2000,2001,2003,2004 Massachusetts Institute of Technology
@@ -164,7 +164,7 @@ USA.
   (let ((state (if (default-object? state) #f state)))
     (if (or (eq? #t state) (int:integer? state))
 	;; Use good random source if available
-	(if (file-exists? "/dev/urandom")
+	(if (file-readable? "/dev/urandom")
 	    (call-with-input-file "/dev/urandom"
 	      (lambda (port)
 		(initial-random-state
