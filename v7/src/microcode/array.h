@@ -30,27 +30,29 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.22 1987/04/16 02:06:23 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.23 1987/10/19 20:51:06 pas Rel $ */
 
-/* The following two macros determine what kind of arrays we deal with.
-   Use float to save space for image-processing 
-   */
 
 #define REAL float
 #define REAL_SIZE ((sizeof(Pointer)+sizeof(REAL)-1)/ sizeof(Pointer))
+/* REAL should be either double or float.
+ */
 
-
-/****************** Scheme_Array *****************/
-/*  using NON_MARKED_VECTOR                      */
-/* This assumes that object.h is included also */
+/* Scheme_Arrays are implemented as NON_MARKED_VECTOR's.
+   Do not forget to include object.h
+   */
 
 #define TC_ARRAY TC_NON_MARKED_VECTOR
 #define TC_MANIFEST_ARRAY TC_MANIFEST_NM_VECTOR
-#define ARRAY_HEADER 0                                      /* NM_VECTOR_HEADER  */
-/* contains the number of actual cells (words) allocated, used in gc */
-#define ARRAY_LENGTH 1                                      /* NM_ENTRY_COUNT */
-#define ARRAY_DATA 2                                        /* NM_DATA */
+#define ARRAY_HEADER 0                               /* NM_VECTOR_HEADER  */
+/* Contains the number of actual cells (words) allocated, used in gc */
+#define ARRAY_LENGTH 1                               /* NM_ENTRY_COUNT */
+#define ARRAY_DATA 2                                 /* NM_DATA */
 #define ARRAY_HEADER_SIZE 2
+
+#define SCHEME_ARRAY Pointer
+/* C type for a scheme array
+ */
 
 #define Array_Ref(P,N)      ((Get_Pointer(P))[N+2])
 
@@ -60,22 +62,57 @@ MIT in each case. */
    ((REAL *) Nth_Vector_Loc(Scheme_Array, ARRAY_DATA))
 
 #define Array_Length(Scheme_Array)                  \
-   ((long) Vector_Ref(Scheme_Array, ARRAY_LENGTH))
+  ((long) Vector_Ref(Scheme_Array, ARRAY_LENGTH))
 
 #define Allocate_Array(result, Length, allocated_cells)		                \
-  allocated_cells = (Length*REAL_SIZE) + ARRAY_HEADER_SIZE;	                \
+{ allocated_cells = (Length*REAL_SIZE) + ARRAY_HEADER_SIZE;	                \
   Primitive_GC_If_Needed(allocated_cells);			                \
   result = Make_Pointer(TC_ARRAY, Free);                                        \
   Free[ARRAY_HEADER] = Make_Non_Pointer(TC_MANIFEST_ARRAY, allocated_cells-1);  \
   Free[ARRAY_LENGTH] = Length;                                                  \
-  Free = Free+allocated_cells;
+  Free = Free+allocated_cells; }
 
-
-/* SOME MORE MACROS */
-  
-#define ARRAY_MAX_LENGTH 1000000                                              /* 4 Mbytes */
+#define ARRAY_MAX_LENGTH 1000000
+/* This is 4 Mbytes for what it's worth... */
 
-#define Make_List_From_3_Pointers(pointer1, pointer2, pointer3, Result)   \
+/* The following Macros implement useful procs on arrays 
+ */
+
+/* Array_Scale
+ */
+#define C_Array_Scale(a,scale, len)  \
+{ register long i; for (i=0;i<len;i++) a[i] = a[i] * scale; }
+
+#define Array_Scale(ar,scale) \
+  C_Array_Scale(Scheme_Array_To_C_Array(ar), \
+		scale,                       \
+		Array_Length(ar))
+
+/* Array_Copy
+ */
+#define C_Array_Copy(ar1,ar2, len) \
+{ register long i; for (i=0; i<len; i++) ar2[i] = ar1[i]; }
+
+#define Array_Copy(ar1,ar2) \
+  C_Array_Copy(Scheme_Array_To_C_Array(ar1), \
+	       Scheme_Array_To_C_Array(ar2), \
+	       Array_Length(ar1))
+
+/* Array_Add_Into_Second_One
+   */
+#define C_Array_Add_Into_Second_One(ar1,ar2,len) \
+{ register long i; for (i=0; i<len; i++) ar2[i] = ar1[i] + ar2[i]; }
+
+#define Array_Add_Into_Second_One(ar1,ar2) \
+  C_Array_Add_Into_Second_One(Scheme_Array_To_C_Array(ar1), \
+			      Scheme_Array_To_C_Array(ar2), \
+			      Array_Length(ar1))
+
+
+/* More Macros about random things
+ */
+
+#define Make_List_From_3_Pointers(pointer1, pointer2, pointer3, Result)  \
 { Primitive_GC_If_Needed(6);                \
   Result = Make_Pointer(TC_LIST, Free);     \
   *Free++ = pointer1;                       \
@@ -83,17 +120,15 @@ MIT in each case. */
   *Free++ = pointer2;                       \
   *Free++ = Make_Pointer(TC_LIST, Free+1);  \
   *Free++ = pointer3;                       \
-  *Free++ = NIL;                            \
-}
-  
+  *Free++ = NIL; }
+
 #define Float_Range_Check(variable, Scheme_Pointer, Low, High, Error_Message)       \
 { REAL value;                                                                       \
   int err;                                                                          \
   err = Scheme_Number_To_REAL(Scheme_Pointer, &value);                              \
   if ((err == 1) || (err == 2)) Primitive_Error(Error_Message);                     \
   if ((value<Low) || (value>High)) Primitive_Error(Error_Message);                  \
-  variable = ((float) value);                                                       \
-}
+  variable = ((float) value); }
 
 #define REAL_Range_Check(variable, Scheme_Pointer, Low, High, Error_Message)       \
 { REAL value;                                                                      \
@@ -101,15 +136,14 @@ MIT in each case. */
   err = Scheme_Number_To_REAL(Scheme_Pointer, &value);                             \
   if ((err == 1) || (err == 2)) Primitive_Error(Error_Message);                    \
   if ((value<Low) || (value>High)) Primitive_Error(Error_Message);                 \
-  else variable = value;                                                           \
-}
+  else variable = value; }
 
 #define C_Make_Polar(Real, Imag, Mag_Cell, Phase_Cell)                         \
 { double double_Real=((double) Real), double_Imag=((double) Imag);             \
   Mag_Cell = (REAL) sqrt((double_Real*double_Real)+(double_Imag*double_Imag)); \
-  Phase_Cell = (REAL) atan2(double_Imag, double_Real);                         \
-}
-/* atan has no problem with division by zero */
+  Phase_Cell = (REAL) atan2(double_Imag, double_Real); }
+/* atan has no problem with division by zero
+ */
 
 #define Linear_Map(slope,offset,From,To) { (To) = (((slope)*(From))+offset); }
 
@@ -126,15 +160,13 @@ MIT in each case. */
 /* FROM ARRAY.C */
 extern int    Scheme_Number_To_REAL();
 extern int    Scheme_Number_To_Double();
-extern void   C_Array_Copy();        /* REAL *From_Array,*To_Array; long Length; */
 
-extern void   C_Array_Find_Min_Max();          /* Find the index of the minimum (*nmin), maximum (*nmax). */
+extern void   C_Array_Find_Min_Max();   /* Find the index of the minimum (*nmin), maximum (*nmax). */
 extern void   C_Array_Find_Average();
 extern void   C_Array_Make_Histogram();  /* REAL *Array,*Histogram; long Length,npoints */
 
-
-/* DATATYPE CONVERSIONS */
-
+/* Datatype Conversions
+ */
 /* macro: REAL *Scheme_Array_To_C_Array(); */
 extern Pointer C_Array_To_Scheme_Array();
 /* there is also a macro: Allocate_Array(Result,Length,allocated_cells); 
@@ -147,12 +179,14 @@ extern Pointer C_Array_To_Scheme_Vector();
 extern void    Scheme_Vector_To_C_Array(); 
 /* Pointer Scheme_Vector; REAL *Array; 
  */
-
 
 /* FROM BOB-XT.C */
-extern void   Find_Offset_Scale_For_Linear_Map();   /* REAL Min,Max, New_Min,New_Max, *Offset,*Scale; */
+extern void Find_Offset_Scale_For_Linear_Map();
+/* REAL Min,Max, New_Min,New_Max, *Offset,*Scale;
+ */
 
-
+/* other macros
+ */
 #define My_Store_Flonum_Result(Ans, Value_Cell) 		        \
   (Value_Cell) = (Allocate_Float( ((double) Ans)));
 
