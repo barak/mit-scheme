@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 13.49 1987/06/02 13:13:29 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 13.50 1987/07/07 20:27:14 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -858,7 +858,7 @@
 (define ((fluid-let-maker marker which-kind) #!optional name)
   (if (unassigned? name) (set! name 'FLUID-LET))
   (if (eq? name 'FLUID-LET) (set! *fluid-let-type* marker))
-  (add-syntax! name which-kind))
+  (syntax-table-define system-global-syntax-table name which-kind))
   
 (set! shallow-fluid-let!
   (fluid-let-maker 'SHALLOW syntax-fluid-let-form-shallow))
