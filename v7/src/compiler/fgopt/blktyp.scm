@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.13 1989/10/26 07:36:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.14 1990/04/01 22:18:32 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -97,11 +97,11 @@ MIT in each case. |#
 	(lambda (closure-frame-block size)
 	  (set-block-parent! block closure-frame-block)
 	  (set-procedure-closure-size! procedure size)))
-      (if (if previously-trivial?
-	      (not (procedure/trivial-closure? procedure))
-	      (procedure/trivial-closure? procedure))
-	  (error "trivial procedure becoming non-trivial or vice-versa"
-		 procedure))
+      (if previously-trivial?
+	  (if (not (procedure/trivial-closure? procedure))
+	      (error "trivial procedure becoming non-trivial" procedure))
+	  (if (procedure/trivial-closure? procedure)
+	      (warn "non-trivial procedure becoming trivial" procedure)))
       (set-block-children! parent (delq! block (block-children parent)))
       (if (eq? parent original-parent)
 	  (set-block-disowned-children!
