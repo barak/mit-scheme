@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.255 2001/05/26 02:51:06 cph Exp $
+;;; $Id: imail-top.scm,v 1.256 2001/05/26 03:09:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -2034,7 +2034,7 @@ Negative argument means search in reverse."
 	  (and selector
 	       (selector mark)))
 	(and (if (default-object? error?) #t error?)
-	     (error "No selected URL:" mark)))))
+	     (error "No URL at this location.")))))
 
 (define (set-buffer-imail-url-selector! buffer selector)
   (buffer-put! buffer 'IMAIL-URL-SELECTOR selector))
