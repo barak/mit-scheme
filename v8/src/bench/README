@@ -1,0 +1,23 @@
+What lives here:
+
+  *.scm		Benchmark sources, under RCS control
+  run.scm	Control program to run & time all programs
+  library.scm	Library of free procedures from benchmarks.
+
+  LOG/		Log files from various runs.
+  LOG/compare-logs compare run times from given logs
+
+________________________________________________________________________
+
+How to make a benchmark directory:
+
+	mkdir my-bench
+	cd my-bench
+	ln -s ..../bench SRC
+	ls -s SRC/*.scm .
+	
+Running your custom compiler:
+
+	(sf (directory-read "*.scm"))
+	(compile-directory ".")
+________________________________________________________________________
