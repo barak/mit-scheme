@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.72 1999/06/22 00:47:08 cph Exp $
+@comment $Id: scheme.texinfo,v 1.73 1999/06/22 18:31:35 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -95,9 +95,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.71
+@subtitle Edition 1.73
 @subtitle for Scheme Release 7.5
-@subtitle 21 June 1999
+@subtitle 22 June 1999
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -6420,8 +6420,8 @@ corresponds to an instance of the regular-expression grouping operator
 operators in the expression.  Additionally, register @code{0}
 corresponds to the entire substring matching the regular expression.
 
-@deffn {procedure+} re-match-start-index n
-@deffnx {procedure+} re-match-end-index n
+@deffn {procedure+} re-match-start-index n [registers]
+@deffnx {procedure+} re-match-end-index n [registers]
 @var{N} must be an exact integer between @code{0} and @code{9}
 inclusive.  @code{re-match-start-index} returns the start index of the
 corresponding regular-expression register, and @code{re-match-end-index}
@@ -6429,8 +6429,12 @@ returns the corresponding end index.  If the matched regular expression
 contained @var{m} grouping operators, then the values of these
 procedures are undefined for @var{n} strictly greater than @var{m}.
 
-Note that the registers referred to by these procedures are reused by
-the next regular-expression match or search.
+If @var{registers} is specified and not @code{#f}, it must be a
+registers object as returned by the procedure @code{re-registers}; in
+that case these procedures refer to @var{registers} rather than the
+internal registers.  Note that the internal registers referred to by
+these procedures are reused by the next regular-expression match or
+search.
 @end deffn
 
 @deffn {procedure+} re-registers
