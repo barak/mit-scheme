@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/rvalue.scm,v 1.2 1987/07/09 23:19:37 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/rvalue.scm,v 1.3 1987/07/10 01:09:34 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -59,7 +59,7 @@ MIT in each case. |#
 (define (make-block parent)
   (let ((block
 	 (make-rvalue block-tag parent '() '() '() false
-		      '() 'STACK '() '() '() '())))
+		      '() 'STACK '() '() '() '() false)))
     (if parent
 	(set-block-children! parent (cons block (block-children parent))))
     (set! *blocks* (cons block *blocks*))
