@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.26 1987/12/13 00:12:39 pas Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.27 1988/01/07 21:35:51 pas Exp $ */
 
 /* CONTAINS:                                                         */
 /* Scheme_Array constructors, and selectors                          */
@@ -850,6 +850,17 @@ Define_Primitive(Prim_Array_Complex_Multiplication_Into_Second_One, 4, "ARRAY-CO
   }
   return NIL;
 }
+void C_Array_Complex_Multiply_Into_First_One(a,b,c,d, length)
+     REAL *a,*b,*c,*d; long length;
+{ long i;
+  REAL temp;
+  for (i=0;i<length;i++) {
+    temp = a[i]*c[i] - b[i]*d[i];
+    b[i] = a[i]*d[i] + b[i]*c[i];
+    a[i] = temp;
+  }
+}
+
 
 Define_Primitive(Prim_Array_Division_Into_First_One, 3, "ARRAY-DIVISION-INTO-FIRST-ONE!")
 { long Length, i;
@@ -1060,14 +1071,6 @@ double hamming(t, length) double t, length;
   else return (0);
 }
 
-double hanning(t, length) double t, length;
-{ double twopi = 6.28318530717958;
-  double pi = twopi/2.;
-  double t_bar = cos(twopi * (t / length));
-  if ((t<length) && (t>0.0))     return(.5 * (1 - t_bar));
-  else                           return (0);
-}
-
 double unit_square_wave(t) double t;
 { double twopi = 6.28318530717958;
   double fmod(), fabs();
@@ -1088,6 +1091,52 @@ double unit_triangle_wave(t) double t;
   else if (t_bar<pi)             return(t_bar/pi); 
   else if (t_bar<three_pi_half)  return((twopi-t_bar)/pi);
   else                           return (-((twopi-t_bar)/pi));
+}
+
+Define_Primitive(Prim_Array_Hanning, 2, "ARRAY-HANNING")
+{ long length, hanning_power, allocated_cells;
+  SCHEME_ARRAY answer; 
+  void C_Array_Make_Hanning();
+  Primitive_2_Args();
+  Arg_1_Type(TC_FIXNUM);
+  Arg_2_Type(TC_FIXNUM);
+  length = Get_Integer(Arg1);
+  hanning_power = Get_Integer(Arg2);
+  
+  Allocate_Array(answer, length, allocated_cells);
+  C_Array_Make_Hanning( (Scheme_Array_To_C_Array(answer)), length, hanning_power);
+  return answer;
+}
+void C_Array_Make_Hanning(f1, length, power)
+     REAL f1[]; long length, power;
+{ double window_length;
+  long i;
+  double integer_power(), hanning();
+  window_length = ((double) length);
+  for (i=0;i<length;i++)
+  { f1[i] = ((REAL)
+	     hanning(((double) i), window_length));
+    f1[i] = (REAL) integer_power(((double) f1[i]), power); }
+}
+double hanning(t, length) double t, length;
+{ double twopi = 6.283185307179586476925287;
+  double t_bar;
+  t_bar = cos(twopi * (t / length));
+  if ((t<length) && (t>0.0))     return(.5 * (1 - t_bar));
+  else                           return (0.0);
+}
+double integer_power(a, n) double a; long n;
+{ double b;
+  double integer_power();
+
+  if (n<0) exit(-1);
+  else if (n==0) return(1.0);
+  else if (n==1) return(a);
+  else if ((n%2) == 0)
+  { b = integer_power(a, n/2);
+    return(b*b); }
+  else
+  { return(a * integer_power(a, (n-1))); }
 }
 
 Define_Primitive(Prim_Sample_Aperiodic_Function, 3, "SAMPLE-APERIODIC-FUNCTION")
