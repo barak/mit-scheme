@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.15 2000/07/26 03:27:56 cph Exp $
+@comment $Id: imail.texinfo,v 1.16 2000/07/26 16:36:56 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -27,8 +27,8 @@ Free Documentation License".
 
 @titlepage
 @title{IMAIL User's Manual}
-@subtitle Edition 0.8 for IMAIL Version 1.4
-@subtitle 25 July 2000
+@subtitle Edition 1.0 for IMAIL Version 1.4
+@subtitle 26 July 2000
 @author by Chris Hanson
 
 @page
@@ -1444,15 +1444,89 @@ summary window, then exits from @acronym{IMAIL} by saving the
 @node Other Commands,  , Summaries, Commands
 @section Other Commands
 
-@example
-(@code{imail-bury})
-(@code{imail-disconnect})
-(@code{imail-quit})
-(@code{imail-save-folder})
+This section documents a handful of commands and variables that don't
+fit into any of the other documentation categories.
 
-(@code{imail-body-cache-limit})
-(@code{imail-pass-phrase-retention-time})
-@end example
+@table @kbd
+@item q
+Quit out of @acronym{IMAIL} (@code{imail-quit}).
+
+@item M-d
+Disconnect from the @acronym{IMAP} server (@code{imail-disconnect}).
+
+@item b
+Bury the @acronym{IMAIL} buffer (@code{imail-bury}).
+
+@item s
+Save changes in the current folder to disk (@code{imail-save-folder}).
+@end table
+
+@kindex q
+@findex imail-quit
+@cindex close folder
+@cindex folder, close
+When you are finished reading mail in a folder, use the @kbd{q} command
+(@code{imail-quit}).  This command @dfn{closes} the folder, then buries
+the buffer.  Closing a folder has different effects, depending on the
+type of folder.  Closing an @acronym{IMAP} folder causes @acronym{IMAIL}
+to disconnect from the @acronym{IMAP} server (go offline).  Closing a
+file folder saves any changes out to the corresponding file.  In both
+cases, internal data structures may be dropped, requiring them to be
+rebuilt, should the folder later be re-opened.  In no case are any
+changes made to the folder's contents; in particular, deleted messages
+are @emph{not} expunged.
+
+On @acronym{IMAP} folders, the @kbd{q} command is equivalent to @kbd{M-d
+b}.  On file folders, the @kbd{q} command is equivalent to @kbd{s b}.
+
+@kindex M-d
+@findex imail-disconnect
+The @kbd{M-d} command (@code{imail-disconnect}) disconnects
+@acronym{IMAIL} from the @acronym{IMAP} server (goes offline).  This has
+no effect on file folders.
+
+@kindex b
+@findex imail-bury
+The @kbd{b} command (@code{imail-bury}) buries the selected
+@acronym{IMAIL} buffer.  @dfn{Burying} a buffer means moving it to the
+bottom of the buffer list and selecting another buffer from the top of
+the list.  This is similar to the command @code{bury-buffer}, except
+that any summary buffer associated with this buffer is also buried, and
+if a window was created to hold the summary buffer, it is deleted.
+
+@kindex s
+@findex imail-save-folder
+The @kbd{s} command (@code{imail-save-folder}) saves out any changes to
+the selected @acronym{IMAIL} folder.  For file folders, this means
+writing the folder back out to its file.  For @acronym{IMAP} folders,
+this no effect.  In no case are any changes made to the folder's
+contents; in particular, deleted messages are @emph{not} expunged.
+
+@vindex imail-body-cache-limit
+@acronym{IMAIL} normally caches @acronym{IMAP} message bodies in memory
+in order to increase performance.  The variable
+@code{imail-body-cache-limit} gives you some control over how this
+caching is done.  @code{imail-body-cache-limit} is normally set to a
+positive integer, meaning that any message body or in-line
+@acronym{MIME} entity whose size in bytes is less than this number is
+cached.  However, caching can be entirely disabled by setting
+@code{imail-body-cache-limit} to @code{#f}, or made unconditional by
+setting it to @code{#t}.
+
+@vindex imail-pass-phrase-retention-time
+Another thing that @acronym{IMAIL} caches is @acronym{IMAP} passwords.
+This is done so that you don't have to keep typing your password
+whenever you connect to a new @acronym{IMAP} folder.  However, this is
+also a security risk, because the password is kept in Scheme's memory.
+The variable @code{imail-pass-phrase-retention-time} says how long
+passwords are cached, in minutes.  Normally this is set to 30 minutes,
+but if you are paranoid you can set it to zero to disable password
+caching altogether.  Scheme keeps track of the use of each password,
+and deletes its copy of the password when it has expired.  Additionally,
+Scheme stores passwords in an obscured form, to prevent them being seen
+during casual browsing through memory structures, but this does
+@emph{not} provide any protection against a deliberate attempt to find
+the password.
 
 @node GNU Free Documentation License, Key Index, Commands, Top
 @unnumbered GNU Free Documentation License
