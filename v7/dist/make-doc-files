@@ -55,6 +55,6 @@ chmod 444 ${zipfile}
 
 rm -rf doc-html
 mkdir doc-html
-mv ${tldir}/*.html doc-html
+mv ${tldir}/COPYING ${tldir}/*.html doc-html
 
 rm -rf ${prefix}
