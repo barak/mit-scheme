@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gensym.scm,v 14.3 1990/02/20 15:58:32 jinx Rel $
+$Id: gensym.scm,v 14.4 1994/06/19 18:27:10 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,27 +36,32 @@ MIT in each case. |#
 ;;; package: (runtime gensym)
 
 (declare (usual-integrations))
-
+
 (define (generate-uninterned-symbol #!optional argument)
-  (if (not (default-object? argument))
-      (cond ((string? argument)
-	     (set! name-prefix argument))
-	    ((symbol? argument)
-	     (set! name-prefix (symbol->string argument)))
-	    ((exact-nonnegative-integer? argument)
-	     (set! name-counter argument))
-	    (else
-	     (error "GENERATE-UNINTERNED-SYMBOL: Bad argument" argument))))
-  (string->uninterned-symbol
-   (string-append name-prefix
-		  (number->string
-		   (let ((result name-counter))
-		     (set! name-counter (1+ name-counter))
-		     result)))))
+  (let ((prefix
+	 (cond ((or (default-object? argument) (not argument))
+		name-prefix)
+	       ((string? argument)
+		argument)
+	       ((symbol? argument)
+		(symbol->string argument))
+	       ((exact-nonnegative-integer? argument)
+		(set! name-counter argument)
+		name-prefix)
+	       (else
+		(error:wrong-type-argument argument "symbol or integer"
+					   'GENERATE-UNINTERNED-SYMBOL)))))
+    (string->uninterned-symbol
+     (string-append prefix
+		    (number->string
+		     (let ((result name-counter))
+		       (set! name-counter (1+ name-counter))
+		       result))))))
 
 (define name-counter)
 (define name-prefix)
 
 (define (initialize-package!)
   (set! name-counter 0)
-  (set! name-prefix "G"))
+  (set! name-prefix "G")
+  unspecific)
