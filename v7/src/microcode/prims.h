@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.25 1987/05/23 09:33:12 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.26 1987/05/23 14:31:17 jinx Exp $ */
 
 /* This file contains some macros for defining primitives,
    for argument type or value checking, and for accessing
@@ -46,17 +46,21 @@ Pointer C_Name()
 extern Pointer C_Name();						\
 Pointer C_Name()
 
-/* Preambles for primitive procedures.  These store the arguments into
- * local variables for fast access.
- */
-
-#define PRIMITIVE_RETURN(value)	return (value)
-
 #ifdef ENABLE_PRIMITIVE_PROFILING
 #define primitive_entry_hook() record_primitive_entry (Fetch_Expression ())
 #else
 #define primitive_entry_hook() {}
 #endif
+
+/* Primitives return by performing one of the following operations. */
+
+#define PRIMITIVE_RETURN(value)	return (value)
+
+#define PRIMITIVE_ABORT(action)	longjmp(*Back_To_Eval, (action))
+
+/* Preambles for primitive procedures.  These store the arguments into
+ * local variables for fast access.
+ */
 
 #define Primitive_0_Args()	primitive_entry_hook ()
 
