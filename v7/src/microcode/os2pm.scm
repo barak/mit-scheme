@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2pm.scm,v 1.2 1995/11/03 01:29:45 cph Exp $
+$Id: os2pm.scm,v 1.3 1995/11/04 00:08:40 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -1018,6 +1018,7 @@ MIT in each case. */
 	     (ushort mask)))
 
 (define-pm-procedure menu_set_item_attributes
+  (value ("BOOL" successp))
   (arguments qid
 	     ("HWND" menu)
 	     (ushort id)

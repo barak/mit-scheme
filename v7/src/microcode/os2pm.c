@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.21 1995/11/03 01:29:14 cph Exp $
+$Id: os2pm.c,v 1.22 1995/11/04 00:08:27 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -2025,13 +2025,13 @@ menu_get_item_attributes (qid_t qid, HWND menu, USHORT id, USHORT submenup,
 				    (MPFROMSHORT (mask)))));
 }
 
-static void
+static BOOL
 menu_set_item_attributes (qid_t qid, HWND menu, USHORT id, USHORT submenup,
 			  USHORT mask, USHORT attributes)
 {
-  (void) WinSendMsg (menu, MM_SETITEMATTR,
-		     (MPFROM2SHORT (id, submenup)),
-		     (MPFROM2SHORT (mask, attributes)));
+  return (LONGFROMMR (WinSendMsg (menu, MM_SETITEMATTR,
+				  (MPFROM2SHORT (id, submenup)),
+				  (MPFROM2SHORT (mask, attributes)))));
 }
 
 static HWND

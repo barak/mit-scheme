@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2pm.c,v 1.11 1995/11/03 01:30:21 cph Exp $
+$Id: pros2pm.c,v 1.12 1995/11/04 00:08:15 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -872,13 +872,13 @@ DEFINE_PRIMITIVE ("OS2MENU-GET-ITEM-ATTRIBUTES", Prim_OS2_menu_get_item_attribut
 DEFINE_PRIMITIVE ("OS2MENU-SET-ITEM-ATTRIBUTES", Prim_OS2_menu_set_item_attributes, 5, 5, 0)
 {
   PRIMITIVE_HEADER (5);
-  OS2_menu_set_item_attributes (pm_qid,
-				(HWND_ARG (1)),
-				(USHORT_ARG (2)),
-				(BOOLEAN_ARG (3)),
-				(USHORT_ARG (4)),
-				(USHORT_ARG (5)));
-  PRIMITIVE_RETURN (UNSPECIFIC);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (OS2_menu_set_item_attributes (pm_qid,
+						      (HWND_ARG (1)),
+						      (USHORT_ARG (2)),
+						      (BOOLEAN_ARG (3)),
+						      (USHORT_ARG (4)),
+						      (USHORT_ARG (5)))));
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-LOAD-MENU", Prim_OS2_window_load_menu, 3, 3, 0)
