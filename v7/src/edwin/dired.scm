@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.100 1989/04/25 02:02:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.101 1989/04/25 22:06:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -235,7 +235,8 @@ C-] -- abort Dired; this is like \\[kill-buffer] on this buffer."
       (editor-error "No file on this line")))
 
 (define (dired-filename-line? lstart)
-  (mark>= lstart (buffer-get (current-buffer) 'DIRED-HEADER-END)))
+  (and (mark>= lstart (buffer-get (current-buffer) 'DIRED-HEADER-END))
+       (not (group-end? lstart))))
 
 (define (dired-pathname lstart)
   (merge-pathnames
