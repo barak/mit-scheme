@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.23 1988/12/12 21:52:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.24 1988/12/14 00:01:34 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -273,7 +273,11 @@ MIT in each case. |#
 
 (define (open-code:type-check checkee-locative type)
   (if compiler:generate-type-checks?
-      (generate-type-test type checkee-locative)
+      (generate-type-test type
+			  checkee-locative
+			  make-false-pcfg
+			  make-true-pcfg
+			  identity-procedure)
       (make-null-cfg)))
 
 (define (generate-continuation-entry)
@@ -300,14 +304,15 @@ MIT in each case. |#
       continuation-label
       primitive))))
 
-(define (generate-type-test type expression)
+(define (generate-type-test type expression if-false if-true if-test)
   (let ((mu-type (microcode-type type)))
     (if (rtl:constant? expression)
 	(if (eq? mu-type (object-type (rtl:constant-value expression)))
-	    (make-true-pcfg)
-	    (make-false-pcfg))
-	(pcfg/prefer-consequent!
-	 (rtl:make-type-test (rtl:make-object->type expression) mu-type)))))
+	    (if-true)
+	    (if-false))
+	(if-test
+	 (pcfg/prefer-consequent!
+	  (rtl:make-type-test (rtl:make-object->type expression) mu-type))))))
 
 ;;;; Open Coders
 
@@ -648,52 +653,69 @@ MIT in each case. |#
 	(op1 (rtl:generic-binary-operand-1 expression))
 	(op2 (rtl:generic-binary-operand-2 expression)))
     (let ((give-it-up
-	   (scfg-append!
-	    (generate-primitive
-	     generic-op
-	     (cddr expression)
-	     (rtl:continuation-entry-continuation
-	      (rinst-rtl
-	       (bblock-instructions
-		(cfg-entry-node continuation-entry)))))
-	    continuation-entry
-	    (if is-pred?
-		(finish
-		 (rtl:make-true-test (rtl:make-fetch register:value)))
-		(expression-simplify-for-statement
-		 (rtl:make-fetch register:value)
-		 finish)))))
+	   (lambda ()
+	     (scfg-append!
+	      (generate-primitive
+	       generic-op
+	       (cddr expression)
+	       (rtl:continuation-entry-continuation
+		(rinst-rtl
+		 (bblock-instructions
+		  (cfg-entry-node continuation-entry)))))
+	      continuation-entry
+	      (if is-pred?
+		  (finish
+		   (rtl:make-true-test (rtl:make-fetch register:value)))
+		  (expression-simplify-for-statement
+		   (rtl:make-fetch register:value)
+		   finish))))))
       (if is-pred?
-	  (pcfg*scfg->scfg!
-	   (generate-type-test 'FIXNUM op1)
-	   (pcfg*scfg->scfg!
-	    (generate-type-test 'FIXNUM op2)
-	    (finish
-	     (if (eq? fix-op 'EQUAL-FIXNUM?)
-		 ;; This produces better code.
-		 (rtl:make-eq-test op1 op2)
-		 (rtl:make-fixnum-pred-2-args
-		  fix-op
-		  (rtl:make-object->fixnum op1)
-		  (rtl:make-object->fixnum op2))))
-	    give-it-up)
-	   give-it-up)
-	  (pcfg*scfg->scfg!
-	   (generate-type-test 'FIXNUM op1)
-	   (pcfg*scfg->scfg!
-	    (generate-type-test 'FIXNUM op2)
-	    (load-temporary-register scfg*scfg->scfg!
-				     (rtl:make-fixnum-2-args
-				      fix-op
-				      (rtl:make-object->fixnum op1)
-				      (rtl:make-object->fixnum op2))
-	      (lambda (fix-temp)
-		(pcfg*scfg->scfg!
-		 (pcfg/prefer-alternative! (rtl:make-overflow-test))
-		 give-it-up
-		 (finish (rtl:make-fixnum->object fix-temp)))))
-	    give-it-up)
-	   give-it-up)))))
+	  (generate-binary-type-test 'FIXNUM op1 op2
+	    give-it-up
+	    (lambda ()
+	      (finish
+	       (if (eq? fix-op 'EQUAL-FIXNUM?)
+		   ;; This produces better code.
+		   (rtl:make-eq-test op1 op2)
+		   (rtl:make-fixnum-pred-2-args
+		    fix-op
+		    (rtl:make-object->fixnum op1)
+		    (rtl:make-object->fixnum op2))))))
+	  (let ((give-it-up (give-it-up)))
+	    (generate-binary-type-test 'FIXNUM op1 op2
+	      (lambda ()
+		give-it-up)
+	      (lambda ()
+		(load-temporary-register scfg*scfg->scfg!
+					 (rtl:make-fixnum-2-args
+					  fix-op
+					  (rtl:make-object->fixnum op1)
+					  (rtl:make-object->fixnum op2))
+		  (lambda (fix-temp)
+		    (pcfg*scfg->scfg!
+		     (pcfg/prefer-alternative! (rtl:make-overflow-test))
+		     give-it-up
+		     (finish (rtl:make-fixnum->object fix-temp))))))))))))
+
+(define (generate-binary-type-test type op1 op2 give-it-up do-it)
+  (generate-type-test type op1
+    give-it-up
+    (lambda ()
+      (generate-type-test type op2
+	give-it-up
+	do-it
+	(lambda (test)
+	  (pcfg*scfg->scfg! test (do-it) (give-it-up)))))
+    (lambda (test)
+      (generate-type-test type op2
+	give-it-up
+	(lambda ()
+	  (pcfg*scfg->scfg! test (do-it) (give-it-up)))
+	(lambda (test*)
+	  (let ((give-it-up (give-it-up)))
+	    (pcfg*scfg->scfg! test
+			      (pcfg*scfg->scfg! test* (do-it) give-it-up)
+			      give-it-up)))))))
 
 (define (generate-generic-unary expression finish is-pred?)
   (let ((continuation-entry (generate-continuation-entry))
@@ -701,42 +723,51 @@ MIT in each case. |#
 	(fix-op
 	 (generic->fixnum-op (rtl:generic-unary-operator expression)))
 	(op (rtl:generic-unary-operand expression)))
-    (let* ((give-it-up
-	    (scfg-append!
-	     (generate-primitive
-	      generic-op
-	      (cddr expression)
-	      (rtl:continuation-entry-continuation
-	       (rinst-rtl
-		(bblock-instructions
-		 (cfg-entry-node continuation-entry)))))
-	     continuation-entry
-	     (if is-pred?
-		 (finish
-		  (rtl:make-true-test (rtl:make-fetch register:value)))
-		 (expression-simplify-for-statement
-		  (rtl:make-fetch register:value)
-		  finish)))))
+    (let ((give-it-up
+	   (lambda ()
+	     (scfg-append!
+	      (generate-primitive
+	       generic-op
+	       (cddr expression)
+	       (rtl:continuation-entry-continuation
+		(rinst-rtl
+		 (bblock-instructions
+		  (cfg-entry-node continuation-entry)))))
+	      continuation-entry
+	      (if is-pred?
+		  (finish
+		   (rtl:make-true-test (rtl:make-fetch register:value)))
+		  (expression-simplify-for-statement
+		   (rtl:make-fetch register:value)
+		   finish))))))
       (if is-pred?
-	  (pcfg*scfg->scfg!
-	   (generate-type-test 'FIXNUM op)
-	   (finish
-	    (rtl:make-fixnum-pred-1-arg
-	    fix-op
-	    (rtl:make-object->fixnum op)))
-	   give-it-up)
-	  (pcfg*scfg->scfg!
-	   (generate-type-test 'FIXNUM op)
-	   (load-temporary-register scfg*scfg->scfg!
-				    (rtl:make-fixnum-1-arg
-				     fix-op
-				     (rtl:make-object->fixnum op))
-	     (lambda (fix-temp)
-	       (pcfg*scfg->scfg!
-		(pcfg/prefer-alternative! (rtl:make-overflow-test))
-		give-it-up
-		(finish (rtl:make-fixnum->object fix-temp)))))
-	   give-it-up)))))
+	  (generate-unary-type-test 'FIXNUM op
+	    give-it-up
+	    (lambda ()
+	      (finish
+	       (rtl:make-fixnum-pred-1-arg fix-op
+					   (rtl:make-object->fixnum op)))))
+	  (let ((give-it-up (give-it-up)))
+	    (generate-unary-type-test 'FIXNUM op
+	      (lambda ()
+		give-it-up)
+	      (lambda ()
+		(load-temporary-register scfg*scfg->scfg!
+					 (rtl:make-fixnum-1-arg
+					  fix-op
+					  (rtl:make-object->fixnum op))
+		  (lambda (fix-temp)
+		    (pcfg*scfg->scfg!
+		     (pcfg/prefer-alternative! (rtl:make-overflow-test))
+		     give-it-up
+		     (finish (rtl:make-fixnum->object fix-temp))))))))))))
+
+(define (generate-unary-type-test type op give-it-up do-it)
+  (generate-type-test type op
+    give-it-up
+    do-it
+    (lambda (test)
+      (pcfg*scfg->scfg! test (do-it) (give-it-up)))))
 
 (define (generic->fixnum-op generic-op)
   (case generic-op
