@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crsend.scm,v 1.4 1990/06/07 19:52:33 cph Rel $
-$MC68020-Header: toplev.scm,v 4.16 89/04/26 05:09:52 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crsend.scm,v 1.5 1991/02/06 03:04:59 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,7 +41,7 @@ MIT in each case. |#
 (define (cross-compile-bin-file-end input-string #!optional output-string)
   (compiler-pathnames input-string
 		      (and (not (default-object? output-string)) output-string)
-		      (make-pathname false false false false "bits.x" 'NEWEST)
+		      (make-pathname false false false false "moc" 'NEWEST)
     (lambda (input-pathname output-pathname)
       output-pathname			;ignore
       (cross-compile-scode-end (fasload input-pathname)))))
