@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.33 1988/02/10 15:41:50 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.34 1988/03/12 15:58:02 jinx Rel $
  *
  * This File contains the code to translate internal format binary
  * files to portable format.
@@ -650,7 +650,7 @@ print_a_flonum(val)
   Old_Contents = *Old_Address;						\
 									\
   Mem_Base[(Scn)] =							\
-   Make_Non_Pointer(TC_COMPILED_EXPRESSION,				\
+   Make_Non_Pointer(TC_COMPILED_ENTRY,					\
 		    (compiled_entry_pointer - compiled_entry_table));	\
 									\
   offset = (((char *) saved) - ((char *) Old_Address));			\
@@ -903,6 +903,7 @@ Process_Area(Code, Area, Bound, Obj, FObj)
 
     Switch_by_GC_Type(This)
     {
+
 #ifndef PRIMITIVE_EXTERNAL_REUSED
 
       case TC_PRIMITIVE_EXTERNAL:
@@ -950,6 +951,15 @@ Process_Area(Code, Area, Bound, Obj, FObj)
 	}
 	*Area += 1;
 	break;
+
+      case TC_MANIFEST_CLOSURE:
+      case TC_LINKAGE_SECTION:
+      {
+	fprintf(stderr,
+		"%s: File contains linked compiled code.\n",
+		program_name);
+	quit(1);
+      }
 
       case_compiled_entry_point:
 	compiled_p = true;
@@ -1149,7 +1159,7 @@ print_objects(from, to)
 	fprintf(portable_file, "%lx\n", ((unsigned long) *from++));
       }
     }
-    else if (the_type == TC_COMPILED_EXPRESSION)
+    else if (the_type == TC_COMPILED_ENTRY)
     {
       Pointer base;
       long offset;
@@ -1158,7 +1168,7 @@ print_objects(from, to)
       base = compiled_entry_table[the_datum + 1];
 
       fprintf(portable_file, "%02x %lx %02x %lx\n",
-	      TC_COMPILED_EXPRESSION, offset,
+	      TC_COMPILED_ENTRY, offset,
 	      OBJECT_TYPE(base), OBJECT_DATUM(base));
     }
     else
@@ -1191,7 +1201,7 @@ when(what, message)
   return;
 }
 
-#define PRINT_HEADER(name, format, obj)					\
+#define WRITE_HEADER(name, format, obj)					\
 {									\
   fprintf(portable_file, (format), (obj));				\
   fprintf(portable_file, "\n");						\
@@ -1206,7 +1216,7 @@ when(what, message)
 
 #define WHEN(what, message)
 
-#define PRINT_HEADER(name, format, obj)					\
+#define WRITE_HEADER(name, format, obj)					\
 {									\
   fprintf(portable_file, (format), (obj));				\
   fprintf(portable_file, "\n");						\
@@ -1471,38 +1481,38 @@ do_it()
 
   /* Header */
 
-  PRINT_HEADER("Portable Version", "%ld", PORTABLE_VERSION);
-  PRINT_HEADER("Machine", "%ld", FASL_INTERNAL_FORMAT);
-  PRINT_HEADER("Version", "%ld", FASL_FORMAT_VERSION);
-  PRINT_HEADER("Sub Version", "%ld", FASL_SUBVERSION);
-  PRINT_HEADER("Flags", "%ld", (MAKE_FLAGS()));
+  WRITE_HEADER("Portable Version", "%ld", PORTABLE_VERSION);
+  WRITE_HEADER("Machine", "%ld", FASL_INTERNAL_FORMAT);
+  WRITE_HEADER("Version", "%ld", FASL_FORMAT_VERSION);
+  WRITE_HEADER("Sub Version", "%ld", FASL_SUBVERSION);
+  WRITE_HEADER("Flags", "%ld", (MAKE_FLAGS()));
 
-  PRINT_HEADER("Heap Count", "%ld", (Free - NROOTS));
-  PRINT_HEADER("Heap Base", "%ld", NROOTS);
-  PRINT_HEADER("Heap Objects", "%ld", Objects);
+  WRITE_HEADER("Heap Count", "%ld", (Free - NROOTS));
+  WRITE_HEADER("Heap Base", "%ld", NROOTS);
+  WRITE_HEADER("Heap Objects", "%ld", Objects);
 
   /* Currently Constant and Pure not supported, but the header is ready */
 
-  PRINT_HEADER("Pure Count", "%ld", 0);
-  PRINT_HEADER("Pure Base", "%ld", Free_Constant);
-  PRINT_HEADER("Pure Objects", "%ld", 0);
+  WRITE_HEADER("Pure Count", "%ld", 0);
+  WRITE_HEADER("Pure Base", "%ld", Free_Constant);
+  WRITE_HEADER("Pure Objects", "%ld", 0);
 
-  PRINT_HEADER("Constant Count", "%ld", 0);
-  PRINT_HEADER("Constant Base", "%ld", Free_Constant);
-  PRINT_HEADER("Constant Objects", "%ld", 0);
+  WRITE_HEADER("Constant Count", "%ld", 0);
+  WRITE_HEADER("Constant Base", "%ld", Free_Constant);
+  WRITE_HEADER("Constant Objects", "%ld", 0);
 
-  PRINT_HEADER("& Dumped Object", "%ld", (OBJECT_DATUM(Mem_Base[0])));
+  WRITE_HEADER("& Dumped Object", "%ld", (OBJECT_DATUM(Mem_Base[0])));
 
-  PRINT_HEADER("Number of flonums", "%ld", NFlonums);
-  PRINT_HEADER("Number of integers", "%ld", NIntegers);
-  PRINT_HEADER("Number of bits in integers", "%ld", NBits);
-  PRINT_HEADER("Number of bit strings", "%ld", NBitstrs);
-  PRINT_HEADER("Number of bits in bit strings", "%ld", NBBits);
-  PRINT_HEADER("Number of character strings", "%ld", NStrings);
-  PRINT_HEADER("Number of characters in strings", "%ld", NChars);
+  WRITE_HEADER("Number of flonums", "%ld", NFlonums);
+  WRITE_HEADER("Number of integers", "%ld", NIntegers);
+  WRITE_HEADER("Number of bits in integers", "%ld", NBits);
+  WRITE_HEADER("Number of bit strings", "%ld", NBitstrs);
+  WRITE_HEADER("Number of bits in bit strings", "%ld", NBBits);
+  WRITE_HEADER("Number of character strings", "%ld", NStrings);
+  WRITE_HEADER("Number of characters in strings", "%ld", NChars);
 
-  PRINT_HEADER("Number of primitives", "%ld", Primitive_Table_Length);
-  PRINT_HEADER("Number of characters in primitives", "%ld", NPChars);
+  WRITE_HEADER("Number of primitives", "%ld", Primitive_Table_Length);
+  WRITE_HEADER("Number of characters in primitives", "%ld", NPChars);
 
   if (!compiled_p)
   {
@@ -1510,11 +1520,11 @@ do_it()
     dumped_interface_version = 0;
   }
 
-  PRINT_HEADER("CPU type", "%ld", dumped_processor_type);
-  PRINT_HEADER("Compiled code interface version", "%ld",
+  WRITE_HEADER("CPU type", "%ld", dumped_processor_type);
+  WRITE_HEADER("Compiled code interface version", "%ld",
 	       dumped_interface_version);
 #if false
-  PRINT_HEADER("Compiler utilities vector", "%ld",
+  WRITE_HEADER("Compiler utilities vector", "%ld",
 	       OBJECT_DATUM(dumped_utilities));
 #endif
 
@@ -1597,7 +1607,11 @@ do_it()
 
 /* Top Level */
 
-Boolean ci_version_sup_p, ci_processor_sup_p;
+static Boolean
+  help_p = false,
+  help_sup_p,
+  ci_version_sup_p,
+  ci_processor_sup_p;
 
 /* The boolean value here is what value to store when the option is present. */
 
@@ -1613,6 +1627,7 @@ static struct keyword_struct
 	    &ci_version_sup_p),
     KEYWORD("ci_processor", &compiler_processor_type, INT_KYWRD, "%ld",
 	    &ci_processor_sup_p),
+    KEYWORD("help", &help_p, BOOLEAN_KYWRD, BFRMT, &help_sup_p),
     OUTPUT_KEYWORD(),
     INPUT_KEYWORD(),
     END_KEYWORD()
@@ -1623,6 +1638,11 @@ main(argc, argv)
      char *argv[];
 {
   parse_keywords(argc, argv, options, false);
+  if (help_sup_p && help_p)
+  {
+    print_usage_and_exit(options, 0);
+    /*NOTREACHED*/
+  }
   setup_io();
   do_it();
   quit(0);

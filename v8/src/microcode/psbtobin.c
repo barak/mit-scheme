@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.32 1988/02/10 15:43:12 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.33 1988/03/12 15:58:27 jinx Rel $
  *
  * This File contains the code to translate portable format binary
  * files to internal format.
@@ -527,34 +527,34 @@ Move_Memory(From, N, To)
 #endif
 
 void
-Relocate_Objects(From, N, disp)
-     fast Pointer *From;
-     long N;
+Relocate_Objects(from, how_many, disp)
+     fast Pointer *from;
      fast long disp;
+     long how_many;
 {
   fast Pointer *Until;
 
-  Until = &From[N];
-  while (From < Until)
+  Until = &from[how_many];
+  while (from < Until)
   {
-    switch(Type_Code(*From))
+    switch(OBJECT_TYPE(*from))
     {
       case TC_FIXNUM:
       case TC_CHARACTER:
-        From += 1;
+        from += 1;
         break;
 
       case TC_BIG_FIXNUM:
       case TC_BIG_FLONUM:
       case TC_CHARACTER_STRING:
-	*From++ == Make_Object(Type_Code(*From), (disp + Datum(*From)));
+	*from++ == Make_Object(OBJECT_TYPE(*from), (disp + OBJECT_DATUM(*from)));
 	break;
 
       default:
 	fprintf(stderr,
 		"%s: Unknown External Object Reference with Type 0x%02x",
 		program_name,
-		Type_Code(*From));
+		OBJECT_TYPE(*from));
 	inconsistency();
     }
   }
@@ -596,18 +596,18 @@ static Pointer *Relocate_Temp;
 #endif
 
 Pointer *
-Read_Pointers_and_Relocate(N, To)
-     fast long N;
-     fast Pointer *To;
+Read_Pointers_and_Relocate(how_many, to)
+     fast long how_many;
+     fast Pointer *to;
 {
   int The_Type;
   long The_Datum;
 
 #if false
-  Align_Float(To);
+  Align_Float(to);
 #endif
 
-  while (--N >= 0)
+  while (--how_many >= 0)
   {
     VMS_BUG(The_Type = 0);
     VMS_BUG(The_Datum = 0);
@@ -615,36 +615,36 @@ Read_Pointers_and_Relocate(N, To)
     switch(The_Type)
     {
       case CONSTANT_CODE:
-	*To++ = Constant_Table[The_Datum];
+	*to++ = Constant_Table[The_Datum];
 	continue;
 	
       case HEAP_CODE:
-	*To++ = Heap_Table[The_Datum];
+	*to++ = Heap_Table[The_Datum];
 	continue;
 	
       case TC_MANIFEST_NM_VECTOR:
-	*To++ = Make_Non_Pointer(The_Type, The_Datum);
+	*to++ = Make_Non_Pointer(The_Type, The_Datum);
         {
 	  fast long count;
 	  
 	  count = The_Datum;
-	  N -= count;
+	  how_many -= count;
 	  while (--count >= 0)
 	  {
-	    VMS_BUG(*To = 0);
-	    fscanf(portable_file, "%lx", To++);
+	    VMS_BUG(*to = 0);
+	    fscanf(portable_file, "%lx", to++);
 	  }
 	}
 	continue;
 
-      case TC_COMPILED_EXPRESSION:
+      case TC_COMPILED_ENTRY:
       {
 	Pointer *temp;
 	long base_type, base_datum;
 
 	fscanf(portable_file, "%02x %lx", &base_type, &base_datum);
 	temp = Relocate(base_datum);
-	*To++ = Make_Pointer(base_type,
+	*to++ = Make_Pointer(base_type,
 			     ((Pointer *) (&(((char *) temp)[The_Datum]))));
 	break;
       }
@@ -652,7 +652,7 @@ Read_Pointers_and_Relocate(N, To)
       case TC_BROKEN_HEART:
 	if (The_Datum != 0)
 	{
-	  fprintf(stderr, "%s: Broken Heart Found\n", program_name);
+	  fprintf(stderr, "%s: Broken Heart found.\n", program_name);
 	  inconsistency();
 	}
 	/* fall through */
@@ -661,27 +661,35 @@ Read_Pointers_and_Relocate(N, To)
       case TC_PRIMITIVE:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
       case_simple_Non_Pointer:
-	*To++ = Make_Non_Pointer(The_Type, The_Datum);
+	*to++ = Make_Non_Pointer(The_Type, The_Datum);
 	continue;
+
+      case TC_MANIFEST_CLOSURE:
+      case TC_LINKAGE_SECTION:
+      {
+	fprintf(stderr, "%s: File contains linked compiled code.\n",
+		program_name);
+	inconsistency();
+      }
 
       case TC_REFERENCE_TRAP:
 	if (The_Datum <= TRAP_MAX_IMMEDIATE)
 	{
-	  *To++ = Make_Non_Pointer(The_Type, The_Datum);
+	  *to++ = Make_Non_Pointer(The_Type, The_Datum);
 	  continue;
 	}
 	/* It is a pointer, fall through. */
 
       default:
 	/* Should be stricter */
-	*To++ = Make_Pointer(The_Type, Relocate(The_Datum));
+	*to++ = Make_Pointer(The_Type, Relocate(The_Datum));
 	continue;
     }
   }
 #if false
-  Align_Float(To);
+  Align_Float(to);
 #endif
-  return (To);
+  return (to);
 }
 
 static Boolean primitive_warn = false;
@@ -1103,10 +1111,15 @@ do_it()
 
 /* Top level */
 
+static Boolean
+  help_p = false,
+  help_sup_p;
+
 static struct keyword_struct
   options[] = {
     KEYWORD("allow_nmv", &allow_nmv_p, BOOLEAN_KYWRD, BFRMT, NULL),
     KEYWORD("allow_cc", &allow_compiled_p, BOOLEAN_KYWRD, BFRMT, NULL),
+    KEYWORD("help", &help_p, BOOLEAN_KYWRD, BFRMT, &help_sup_p),
     OUTPUT_KEYWORD(),
     INPUT_KEYWORD(),
     END_KEYWORD()
@@ -1117,6 +1130,11 @@ main(argc, argv)
      char *argv[];
 {
   parse_keywords(argc, argv, options, false);
+  if (help_sup_p && help_p)
+  {
+    print_usage_and_exit(options, 0);
+    /*NOTREACHED*/
+  }
   setup_io();
   do_it();
   quit(0);
