@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm2.scm,v 4.6 1989/05/17 20:28:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm2.scm,v 4.7 1989/05/19 12:14:30 jinx Exp $
 $MC68020-Header: dassm2.scm,v 4.12 88/12/30 07:05:13 GMT cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
@@ -130,20 +130,32 @@ MIT in each case. |#
 	      (*current-offset offset)
 	      (*symbol-table symbol-table)
 	      (*valid? true))
-    (let ((instruction
-	   (let ((byte (get-byte)))
-	     (if (external-label-marker? symbol-table offset state)
-		 (make-data-deposit byte 'W)
-		 (let ((instruction
-			((vector-ref
-			  opcode-dispatch
-			  (bit-string->unsigned-integer byte)))))
-		   (if *valid?
-		       instruction
-		       (make-data-deposit byte 'B)))))))
-      (receiver *current-offset
-		instruction
-		(disassembler/next-state instruction state)))))
+    (let* ((byte (get-byte))
+	   (start-offset *current-offset))
+      ;; External label markers come in two parts:
+      ;; An entry type descriptor, and a gc offset.
+      (if (or (eq? state 'EXTERNAL-LABEL-OFFSET)
+	      (external-label-marker? symbol-table offset state))
+	  (let ((instruction (make-data-deposit byte 'W)))
+	    (receiver *current-offset
+		      instruction
+		      (if (eq? state 'EXTERNAL-LABEL-OFFSET)
+			  'INSTRUCTION
+			  'EXTERNAL-LABEL-OFFSET)))
+	  (let ((instruction
+		 ((vector-ref
+		   opcode-dispatch
+		   (bit-string->unsigned-integer byte)))))
+	    (if *valid?
+		(receiver *current-offset
+			  instruction
+			  (disassembler/next-state instruction state))
+		(begin
+		  (set! *current-offset start-offset)
+		  (let ((instruction (make-data-deposit byte 'B)))
+		    (receiver *current-offset
+			      instruction
+			      (disassembler/next-state instruction state))))))))))
 
 (define (disassembler/initial-state)
   'INSTRUCTION-NEXT)
@@ -188,14 +200,14 @@ MIT in each case. |#
 (define (make-data-deposit *ir size)
   (case size
     ((B)
-     `(BYTE ,(bit-string->unsigned-integer *ir)))
+     `(BYTE U ,(bit-string->unsigned-integer *ir)))
     ((W)
-     `(WORD ,(bit-string->unsigned-integer
-	      (bit-string-append *ir (get-byte)))))
+     `(WORD U ,(bit-string->unsigned-integer
+		(bit-string-append *ir (get-byte)))))
     ((L)
-     `(LONG ,(bit-string->unsigned-integer
-	      (bit-string-append (bit-string-append *ir (get-byte))
-				 (get-word)))))))
+     `(LONG U ,(bit-string->unsigned-integer
+		(bit-string-append (bit-string-append *ir (get-byte))
+				   (get-word)))))))
   
 (define (read-procedure offset)
   (with-absolutely-no-interrupts
