@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.162 1991/11/05 20:38:29 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.163 1991/11/06 21:56:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -516,9 +516,8 @@ If a file with the new name already exists, confirmation is requested first."
 (define (set-default-directory directory)
   (let ((buffer (current-buffer)))
     (let ((directory
-	   (pathname-simplify
-	    (pathname-as-directory
-	     (merge-pathnames directory (buffer-default-directory buffer))))))
+	   (pathname-as-directory
+	    (merge-pathnames directory (buffer-default-directory buffer)))))
       (if (not (file-directory? directory))
 	  (editor-error (->namestring directory) " is not a directory"))
       (if (not (file-access directory 1))
