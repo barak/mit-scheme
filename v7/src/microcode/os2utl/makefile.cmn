@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile.cmn,v 1.2 1995/10/15 00:42:44 cph Exp $
+###	$Id: makefile.cmn,v 1.3 1995/10/16 17:26:29 cph Exp $
 ###
 ###	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ###
@@ -48,7 +48,7 @@ USER_LIBS =
 
 SCHEME_SOURCES = $(USER_PRIM_SOURCES) missing.c
 SCHEME_OBJECTS = $(USER_PRIM_OBJECTS) missing.$(OBJ)
-SCHEME_LIB = $(USER_LIBS) $(SYSTEM_LIBS)
+SCHEME_LIB = $(USER_LIBS)
 
 CORE_SOURCES = \
 $(MACHINE_SOURCES) \
@@ -255,9 +255,15 @@ BCHSOURCES = $(CORE_SOURCES) $(BCH_GC_SOURCES)
 BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) $(OS2_OBJECTS) \
 	$(OS_PRIM_OBJECTS) bchdef.$(OBJ)
 
-clean:
-	del *.$(OBJ) *.exe *.tch cmpauxmd.$(ASM) usrdef.c bchdef.c \
-	$(SYSTEM_CLEAN)
+clean :
+	del *.$(OBJ)
+	del *.exe
+	del *.tch
+	del *.err
+	del *.sym
+	del cmpauxmd.$(ASM)
+	del usrdef.c
+	del bchdef.c
 
 findprim.exe : findprim.$(OBJ)
 asmcvt.exe : asmcvt.$(OBJ)

@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile.gcc,v 1.2 1995/10/15 00:43:16 cph Exp $
+###	$Id: makefile.gcc,v 1.3 1995/10/16 17:26:33 cph Exp $
 ###
 ###	Copyright (c) 1995 Massachusetts Institute of Technology
 ###
@@ -49,8 +49,6 @@ CC = gcc -Uunix -U__unix__ -U__unix -D__GCC2__
 GCCFLAGS = -O -g
 CFLAGS = $(GCCFLAGS) -DMIT_SCHEME
 LDFLAGS = $(GCCFLAGS)
-SYSTEM_LIBS =
-SYSTEM_CLEAN =
 M4 = m4
 M4FLAGS = -DOS2
 AS = as

@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile.wcc,v 1.1 1995/10/15 00:43:49 cph Exp $
+###	$Id: makefile.wcc,v 1.2 1995/10/16 17:26:13 cph Exp $
 ###
 ###	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ###
@@ -47,8 +47,6 @@ ASM = asm
 CC = wcc386
 M4 = m4
 AS = wasm
-SYSTEM_LIBS =
-SYSTEM_CLEAN = *.err *.sym
 
 # Compiler options.
 # [DEBUG] marks options used for debugging.
