@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.8 1993/08/13 01:22:17 jbank Exp $
+;;;	$Id: debug.scm,v 1.9 1993/08/13 01:56:57 jawilson Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -116,10 +116,14 @@
  	    (highlight-region (horizontal-space-end start)
  			      (horizontal-space-start lend))
  	    (loop (mark1+ lend)))
- 	  (highlight-region (horizontal-space-end start)
- 			    (horizontal-space-start end))))))
+	  (let ((start (horizontal-space-end start))
+		(end (horizontal-space-start end)))
+	    (if (mark< start end)
+		(highlight-region start end)))))))
  
 (define (highlight-region start end)
+  (if (not (mark<= start end))
+      (error "Marks incorrectly related:" start end))
   (group-highlight (mark-group start) (mark-index start) (mark-index end)))
  
 (define (group-highlight group start end)
