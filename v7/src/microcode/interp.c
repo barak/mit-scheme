@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.71 1992/12/02 18:34:52 cph Exp $
+$Id: interp.c,v 9.72 1992/12/09 23:38:37 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -1531,6 +1531,8 @@ apply_dispatch:
 	  {
 	    SCHEME_OBJECT record_type = (VECTOR_REF (Function, 0));
 	    if ((RECORD_P (record_type))
+		&& ((OBJECT_TYPE (FAST_MEMORY_REF (record_type, 0)))
+		    == TC_TRUE)
 		&& ((VECTOR_LENGTH (record_type)) >= 2)
 		&& ((VECTOR_REF (record_type, 1)) != SHARP_F)
 		&& ((VECTOR_REF (record_type, 1)) != Function))
