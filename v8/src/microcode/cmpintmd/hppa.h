@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppa.h,v 1.49 1994/02/01 02:45:56 gjr Exp $
+$Id: hppa.h,v 1.50 1994/02/04 01:01:15 gjr Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -640,7 +640,7 @@ DEFUN (assemble_12, (inst), union branch_inst inst)
 static unsigned long hppa_closure_hook = 0;
 
 static unsigned long
-DEFUN (C_closure_entry_point, (closure), unsigned long C_closure)
+DEFUN (C_closure_entry_point, (C_closure), unsigned long C_closure)
 {
   if ((C_closure & 0x3) != 0x2)
     return (C_closure);
