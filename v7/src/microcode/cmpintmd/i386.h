@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.11 1992/02/16 03:04:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.12 1992/02/18 01:50:54 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -216,15 +216,19 @@ typedef unsigned short format_word;
 
 #define PC_ZERO_BITS                    	0
 
-/* For the relocation of PC-relative JMP and CALL instructions */
+/* For the relocation of PC-relative JMP and CALL instructions.
+   This is used during GC/relocation, when the displacement
+   is incorrect, since it was computed with respect to the
+   location in old space.
+ */
 
 extern long i386_pc_displacement_relocation;
 
-#define EXTRACT_ADDRESS_FROM_DISPLACEMENT(loc, instr_address) do	\
+#define EXTRACT_ADDRESS_FROM_DISPLACEMENT(loc, instr_addr) do		\
 {									\
   long displacement_address, new_displacement;				\
 									\
-  displacement_address = (((long) (instr_address)) + 1);		\
+  displacement_address = (((long) (instr_addr)) + 1);			\
   new_displacement = ((* ((long *) displacement_address))		\
 		      + i386_pc_displacement_relocation);		\
   (* ((long *) displacement_address)) = new_displacement;		\
@@ -287,10 +291,29 @@ do {									\
   (target) = (* (((SCHEME_OBJECT *) (address)) + 1));			\
 } while (0)
 
-#define EXTRACT_EXECUTE_CACHE_ADDRESS(target, address) do		\
+/* This is used during GC/relocation.
+   The displacement stored in the instruction refers to the old space
+   location.
+ */   
+
+#define EXTRACT_OPERATOR_LINKAGE_ADDRESS(target, address) do		\
 {									\
   EXTRACT_ADDRESS_FROM_DISPLACEMENT (target,				\
 				     (((long) (address)) + 3));		\
+} while (0)
+
+/* This is used when not relocating.
+   The displacement refers to the current location of the instruction.
+ */
+
+#define EXTRACT_EXECUTE_CACHE_ADDRESS(loc, cache_addr) do		\
+{									\
+  long displacement_address, displacement;				\
+									\
+  displacement_address = (((long) (cache_addr)) + 4);			\
+  displacement = (* ((long *) displacement_address));			\
+  (loc) = ((SCHEME_OBJECT)						\
+	   ((displacement_address + 4) + displacement));		\
 } while (0)
 
 #define STORE_EXECUTE_CACHE_ADDRESS(address, entry_address) do		\
