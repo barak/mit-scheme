@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.37 1990/11/14 17:38:50 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.38 1992/03/31 01:14:16 jinx Exp $
 $MC68020-Header: rules1.scm,v 4.33 90/05/03 15:17:28 GMT jinx Exp $
 $MC68020-Header: lapgen.scm,v 4.35 90/07/20 15:53:40 GMT jinx Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -72,6 +72,7 @@ MIT in each case. |#
   (ASSIGN (REGISTER (? target)) (FIXNUM->ADDRESS (REGISTER (? source))))
   (standard-unary-conversion source target fixnum->address))
 
+#|
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
@@ -87,6 +88,27 @@ MIT in each case. |#
 			 (OBJECT->FIXNUM (CONSTANT 4))
 			 #F))
   (standard-unary-conversion source target object->index-fixnum))
+|#
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+			 (OBJECT->FIXNUM (CONSTANT (? value)))
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 #F))
+  (QUALIFIER (integer-log-base-2? value))
+  (standard-unary-conversion source target
+			     (make-scaled-object->fixnum value)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 (OBJECT->FIXNUM (CONSTANT (? value)))
+			 #F))
+  (QUALIFIER (integer-log-base-2? value))
+  (standard-unary-conversion source target
+			     (make-scaled-object->fixnum value)))
 
 #|
 ;; Superseded by code below
@@ -117,8 +139,20 @@ MIT in each case. |#
 (define-integrable (object->fixnum src tgt)
   (LAP (SHD () ,src 0 ,scheme-datum-width ,tgt)))
 
+#|
 (define-integrable (object->index-fixnum src tgt)
   (LAP (SHD () ,src 0 ,(- scheme-datum-width 2) ,tgt)))
+|#
+
+(define (make-scaled-object->fixnum factor)
+  (let ((shift (integer-log-base-2? factor)))
+    (cond ((not shift)
+	   (error "make-scaled-object->fixnum: Not a power of 2" factor))
+	  ((> shift scheme-datum-width)
+	   (error "make-scaled-object->fixnum: shift too large" shift))
+	  (else
+	   (lambda (src tgt)
+	     (LAP (SHD () ,src 0 ,(- scheme-datum-width shift) ,tgt)))))))
 
 (define-integrable (address->fixnum src tgt)
   (LAP (SHD () ,src 0 ,scheme-datum-width ,tgt)))
