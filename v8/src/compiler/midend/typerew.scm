@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.8 1995/11/04 04:38:39 adams Exp $
+$Id: typerew.scm,v 1.9 1995/11/04 16:57:43 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -1263,6 +1263,20 @@ MIT in each case. |#
   (def  'FLOOR->EXACT     FLO:FLOOR->EXACT)
   (def  'ROUND->EXACT     FLO:ROUND->EXACT)
   (def  'TRUNCATE->EXACT  FLO:TRUNCATE->EXACT))
+
+(let ()
+  (define (def op flo:op)
+    (define-typerew-unary-variants-type-method op
+      type:number        type:real          effect:none
+      type:flonum        type:flonum
+      type:exact-number  type:exact-real)
+    (define-typerew-unary-variants-replacement-method op
+      type:flonum        type:flonum     FLO:op))
+  (def  'CEILING   FLO:CEILING)
+  (def  'FLOOR     FLO:FLOOR)
+  (def  'ROUND     FLO:ROUND)
+  (def  'TRUNCATE  FLO:TRUNCATE))
+
 
 (define-typerew-unary-variants-type-method 'COS
   type:number     type:number       effect:none
