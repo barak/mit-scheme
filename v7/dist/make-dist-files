@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-dist-files,v 1.17 2001/03/10 02:40:21 cph Exp $
+# $Id: make-dist-files,v 1.18 2001/04/06 20:58:43 cph Exp $
 #
 # Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
@@ -16,16 +16,19 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+# USA.
 
 set -e
 
-TYPE=$1
-DESTINATION=$2
-
-if [ "${TYPE}" = "" ]; then
-  TYPE="std"
+if [ $# -gt 3 ]; then
+    echo "usage: ${0} [TYPE [VERSION [DESTINATION]]]"
+    exit 1
 fi
+
+TYPE="${1:-std}"
+VERSION="${2}"
+DESTINATION="${3}"
 
 case "${TYPE}" in
 6001|all|std|scmutils)
@@ -36,10 +39,12 @@ case "${TYPE}" in
   ;;
 esac
 
-. /scheme/v7/dist/release-prefix
+DIST_DIR="/scheme/v7/dist"
+
+. "${DIST_DIR}/release-prefix"
 
 TL_DIR="$(pwd)"
-BUILD_DIR_REL="$(get_release_prefix)"
+BUILD_DIR_REL="$(get_release_prefix "${VERSION}")"
 BUILD_DIR="${TL_DIR}/${BUILD_DIR_REL}"
 SRC_FILE="${BUILD_DIR}-src.tar.gz"
 STAMP_BUILD="${TL_DIR}/stamp-build"
@@ -55,7 +60,7 @@ if [ ! -f "${SRC_FILE}" ]; then
 fi
 
 MKINSTALLDIRS="/scheme/v7/src/mkinstalldirs"
-INSTALL="install"
+INSTALL="install -p"
 INSTALL_DATA="${INSTALL} -m 644"
 
 # It takes a lot of work to build the image.
@@ -91,9 +96,11 @@ if [ ! -f "${STAMP_IMAGE}" ]; then
 	infodir=/usr/local/lib/mit-scheme/edwin/info
     make install-html DESTDIR="${IMAGE_DIR}"
 
-    ${INSTALL_DATA} /usr/local/info/dir "${AUXDIR}/edwin/info/."
-    ${INSTALL_DATA} /usr/local/info/r4rs.* "${AUXDIR}/edwin/info/."
-    ${INSTALL_DATA} /usr/local/info/r5rs.* "${AUXDIR}/edwin/info/."
+    if [ -d /usr/local/info ]; then
+	${INSTALL_DATA} /usr/local/info/dir "${AUXDIR}/edwin/info/."
+	${INSTALL_DATA} /usr/local/info/r4rs.* "${AUXDIR}/edwin/info/."
+	${INSTALL_DATA} /usr/local/info/r5rs.* "${AUXDIR}/edwin/info/."
+    fi
 
     ALL_BANDS="runtime.com compiler.com edwin.com all.com 6001.com"
     case ${TYPE} in
@@ -131,45 +138,58 @@ if [ ! -f "${STAMP_IMAGE}" ]; then
     #
     # Scmutils
     #
-    if [ ${TYPE} = scmutils ]; then
-	MECH_SOURCE=/sw/scmutils
-	MECH_DEST=${IMAGE_DIR}/usr/local/scmutils
-	${MKINSTALLDIRS} ${MECH_DEST}
+    if [ "${TYPE}" = "scmutils" ]; then
+	MECH_SOURCE="/sw/scmutils"
+	MECH_DEST="${IMAGE_DIR}/usr/local/scmutils"
+	${MKINSTALLDIRS} "${MECH_DEST}"
 
 	for DIR in $(cd ${MECH_SOURCE};find src -type d -print); do
-	    ${MKINSTALLDIRS} ${MECH_DEST}/${DIR}
-	    for FILE in ${MECH_SOURCE}/${DIR}/*.scm \
-			${MECH_SOURCE}/${DIR}/*.doc \
-			${MECH_SOURCE}/${DIR}/*.c
-	    do
-		[ -f ${FILE} ] && ${INSTALL_DATA} ${FILE} ${MECH_DEST}/${DIR}/.
+	    ${MKINSTALLDIRS} "${MECH_DEST}/${DIR}"
+	    for FILE in ${MECH_SOURCE}/${DIR}/*.doc; do
+		[ -f ${FILE} ] \
+		    && ${INSTALL_DATA} "${FILE}" "${MECH_DEST}/${DIR}/."
+	    done
+	    for SUFFIX in scm c; do
+		for FILE in ${MECH_SOURCE}/${DIR}/*.${SUFFIX}; do
+		    if [ -f "${FILE}" ]; then
+			TFILE="${MECH_DEST}/${DIR}/$(basename "${FILE}")"
+			rm -f "${TFILE}"
+			cat "${DIST_DIR}/copyright.${SUFFIX}" "${FILE}" \
+			    > "${TFILE}"
+			chtime "${FILE}" "${TFILE}"
+		    fi
+		done
 	    done
 	done
-	${INSTALL_DATA} ${MECH_SOURCE}/src/copyrigh ${MECH_DEST}/src/copyright
-	${INSTALL_DATA} ${MECH_SOURCE}/src/general/binio/transcript \
-	    ${MECH_DEST}/src/general/binio/.
-	rm -rf ${MECH_DEST}/src/commentary
-	rm -rf ${MECH_DEST}/src/poly/zuras
+	${INSTALL_DATA} "${MECH_SOURCE}/src/copyrigh" \
+	    "${MECH_DEST}/src/copyright"
+	${INSTALL_DATA} "/scheme/v7/src/COPYING" "${MECH_DEST}/src/."
+	${INSTALL_DATA} "${MECH_SOURCE}/src/general/binio/transcript" \
+	    "${MECH_DEST}/src/general/binio/."
+	rm -rf "${MECH_DEST}/src/commentary"
+	rm -rf "${MECH_DEST}/src/poly/zuras"
 
 	for DIR in $(cd ${MECH_SOURCE};find linux -type d -print); do
-	    ${MKINSTALLDIRS} ${MECH_DEST}/${DIR}
+	    ${MKINSTALLDIRS} "${MECH_DEST}/${DIR}"
 	    for FILE in ${MECH_SOURCE}/${DIR}/*.bci; do
-		[ -f ${FILE} ] && ${INSTALL_DATA} ${FILE} ${MECH_DEST}/${DIR}/.
+		[ -f ${FILE} ] \
+		    && ${INSTALL_DATA} "${FILE}" "${MECH_DEST}/${DIR}/."
 	    done
 	done
-	rm -rf ${MECH_DEST}/linux/commentary
+	rm -rf "${MECH_DEST}/linux/commentary"
 
-	${INSTALL_DATA} ${MECH_SOURCE}/dist/edwin-mechanics.com \
-	    ${MECH_DEST}/linux/.
-	ln -s ../../scmutils/linux/edwin-mechanics.com ${AUXDIR}/.
+	${INSTALL_DATA} "${MECH_SOURCE}/dist/edwin-mechanics.com" \
+	    "${MECH_DEST}/linux/."
+	ln -s "../../scmutils/linux/edwin-mechanics.com" "${AUXDIR}/."
 	${INSTALL_DATA} ${MECH_SOURCE}/linux/c-utils/* \
-	    ${MECH_DEST}/linux/c-utils/.
+	    "${MECH_DEST}/linux/c-utils/."
 
-	${MKINSTALLDIRS} ${MECH_DEST}/manual
-	${INSTALL_DATA} ${MECH_SOURCE}/manual/refman.txt ${MECH_DEST}/manual/.
+	${MKINSTALLDIRS} "${MECH_DEST}/manual"
+	${INSTALL_DATA} "${MECH_SOURCE}/manual/refman.txt" \
+	    "${MECH_DEST}/manual/."
 
-	${INSTALL} ${MECH_SOURCE}/dist/mechanics ${BINDIR}/.
-	${INSTALL} ${MECH_SOURCE}/dist/edwin ${BINDIR}/.
+	${INSTALL} "${MECH_SOURCE}/dist/mechanics" "${BINDIR}/."
+	${INSTALL} "${MECH_SOURCE}/dist/edwin" "${BINDIR}/."
     fi
 
     #
@@ -181,47 +201,53 @@ if [ ! -f "${STAMP_IMAGE}" ]; then
     touch "${STAMP_IMAGE}"
 fi
 
-make_tarfile ()
-{
-    TARFILE="${TL_DIR}/${1}.tar.gz"
-    [ -e "${TARFILE}" ] && rm -f "${TARFILE}"
-    (cd ${IMAGE_DIR}/usr/local; tar cvzf "${TARFILE}" *)
-    chmod 444 "${TARFILE}"
-}
+if [ "${TYPE}" != "scmutils" ]; then
 
-if [ "${DESTINATION}" = "" ]; then
-  PRE="$(get_release_prefix)-ix86"
-  make_tarfile "${PRE}-gnu-linux"
-  ${INSTALL} /scheme/v7/dist/freebsd-bin/* "${BINDIR}/."
-  make_tarfile "${PRE}-freebsd"
-else
-  make_tarfile "${DESTINATION}"
+    make_tarfile ()
+    {
+	TARFILE="${TL_DIR}/${1}.tar.gz"
+	[ -e "${TARFILE}" ] && rm -f "${TARFILE}"
+	(cd ${IMAGE_DIR}/usr/local; tar cvzf "${TARFILE}" *)
+	chmod 444 "${TARFILE}"
+    }
+
+    if [ "${DESTINATION}" = "" ]; then
+      PRE="${BUILD_DIR_REL}-ix86"
+      make_tarfile "${PRE}-gnu-linux"
+      ${INSTALL} ${DIST_DIR}/freebsd-bin/* "${BINDIR}/."
+      make_tarfile "${PRE}-freebsd"
+    else
+      make_tarfile "${DESTINATION}"
+    fi
+
+    rm -rf "${STAMP_IMAGE}" "${IMAGE_DIR}"
+
+    make_doc_file ()
+    {
+	DOCFILE="${BUILD_DIR}-${2}.${3}"
+	rm -f "${DOCFILE}"
+	(cd "${TL_DIR}"; ${1} "${DOCFILE}" "${BUILD_DIR_REL}/${2}")
+	chmod a-w "${DOCFILE}"
+    }
+
+    for TYPE in html info pdf ps; do
+	IMAGE_ROOT="doc-${TYPE}"
+	IMAGE_DIR="${BUILD_DIR}/${IMAGE_ROOT}"
+	rm -rf "${IMAGE_DIR}"
+	mkdir "${IMAGE_DIR}"
+	(
+	    cd "${BUILD_DIR}/doc"
+	    make "install-${TYPE}" "${TYPE}dir=${IMAGE_DIR}"
+	)
+	make_doc_file "tar cvzf" "${IMAGE_ROOT}" "tar.gz"
+	make_doc_file "zip -r" "${IMAGE_ROOT}" "zip"
+	case "${TYPE}" in
+	html | pdf)
+	    rm -rf "${TL_DIR}/${IMAGE_ROOT}"
+	    mv -f "${IMAGE_DIR}" "${TL_DIR}/."
+	    ;;
+	esac
+    done
+
+    rm -rf "${STAMP_BUILD}" "${BUILD_DIR}"
 fi
-
-rm -rf "${STAMP_IMAGE}" "${IMAGE_DIR}"
-
-make_doc_file ()
-{
-    DOCFILE="${BUILD_DIR}-${2}.${3}"
-    rm -f "${DOCFILE}"
-    (cd "${TL_DIR}"; ${1} "${DOCFILE}" "${BUILD_DIR_REL}/${2}")
-    chmod a-w "${DOCFILE}"
-}
-
-for TYPE in html info pdf ps; do
-    IMAGE_ROOT="doc-${TYPE}"
-    IMAGE_DIR="${BUILD_DIR}/${IMAGE_ROOT}"
-    rm -rf "${IMAGE_DIR}"
-    mkdir "${IMAGE_DIR}"
-    (cd "${BUILD_DIR}/doc"; make "install-${TYPE}" "${TYPE}dir=${IMAGE_DIR}")
-    make_doc_file "tar cvzf" "${IMAGE_ROOT}" "tar.gz"
-    make_doc_file "zip -r" "${IMAGE_ROOT}" "zip"
-    case "${TYPE}" in
-    html | pdf)
-	rm -rf "${TL_DIR}/${IMAGE_ROOT}"
-	mv -f "${IMAGE_DIR}" "${TL_DIR}/."
-	;;
-    esac
-done
-
-rm -rf "${STAMP_BUILD}" "${BUILD_DIR}"
