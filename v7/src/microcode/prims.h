@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.27 1987/06/18 21:15:37 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.28 1987/07/23 21:50:25 cph Rel $ */
 
 /* This file contains some macros for defining primitives,
    for argument type or value checking, and for accessing
@@ -52,12 +52,17 @@ Pointer C_Name()
 #define primitive_entry_hook() {}
 #endif
 
+/* This is new header for primitives, which gives better control over
+   variable allocation than older `Primitive_N_Args' macros. */
+
+#define PRIMITIVE_HEADER(n_args) primitive_entry_hook ()
+
 /* Primitives return by performing one of the following operations. */
 
 #define PRIMITIVE_RETURN(value)	return (value)
 
 #define PRIMITIVE_ABORT(action)	longjmp(*Back_To_Eval, (action))
-
+
 /* Preambles for primitive procedures.  These store the arguments into
  * local variables for fast access.
  */
@@ -66,6 +71,8 @@ Pointer C_Name()
 
 #define Primitive_1_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
 				primitive_entry_hook ()
+
+#define Primitive_1_Arg()	Primitive_1_Args()
 
 #define Primitive_2_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
 				fast Pointer Arg2 = Stack_Ref(1);	\
@@ -96,7 +103,7 @@ Pointer C_Name()
 				fast Pointer Arg5 = Stack_Ref(4);	\
 				fast Pointer Arg6 = Stack_Ref(5);	\
 				primitive_entry_hook ()
-
+
 #define Primitive_7_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
 				fast Pointer Arg2 = Stack_Ref(1);	\
 				fast Pointer Arg3 = Stack_Ref(2);	\
@@ -106,46 +113,66 @@ Pointer C_Name()
 				fast Pointer Arg7 = Stack_Ref(6);	\
 				primitive_entry_hook ()
 
-#define Primitive_1_Arg()	Primitive_1_Args()
+#define Primitive_8_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
+				fast Pointer Arg2 = Stack_Ref(1);	\
+				fast Pointer Arg3 = Stack_Ref(2);	\
+				fast Pointer Arg4 = Stack_Ref(3);	\
+				fast Pointer Arg5 = Stack_Ref(4);	\
+				fast Pointer Arg6 = Stack_Ref(5);	\
+				fast Pointer Arg7 = Stack_Ref(6);	\
+				fast Pointer Arg8 = Stack_Ref(7);	\
+				primitive_entry_hook ()
+
+#define Primitive_9_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
+				fast Pointer Arg2 = Stack_Ref(1);	\
+				fast Pointer Arg3 = Stack_Ref(2);	\
+				fast Pointer Arg4 = Stack_Ref(3);	\
+				fast Pointer Arg5 = Stack_Ref(4);	\
+				fast Pointer Arg6 = Stack_Ref(5);	\
+				fast Pointer Arg7 = Stack_Ref(6);	\
+				fast Pointer Arg8 = Stack_Ref(7);	\
+				fast Pointer Arg9 = Stack_Ref(8);	\
+				primitive_entry_hook ()
+
+#define Primitive_10_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
+				fast Pointer Arg2 = Stack_Ref(1);	\
+				fast Pointer Arg3 = Stack_Ref(2);	\
+				fast Pointer Arg4 = Stack_Ref(3);	\
+				fast Pointer Arg5 = Stack_Ref(4);	\
+				fast Pointer Arg6 = Stack_Ref(5);	\
+				fast Pointer Arg7 = Stack_Ref(6);	\
+				fast Pointer Arg8 = Stack_Ref(7);	\
+				fast Pointer Arg9 = Stack_Ref(8);	\
+				fast Pointer Arg10 = Stack_Ref(9);	\
+				primitive_entry_hook ()
 
 /* Various utilities */
 
-#define Primitive_Error(Err_No)					\
-{								\
-  signal_error_from_primitive (Err_No);				\
+#define Primitive_Error signal_error_from_primitive
+#define Primitive_Interrupt signal_interrupt_from_primitive
+#define Special_Primitive_Interrupt specl_interrupt_from_primitive
+
+#define Primitive_GC(Amount)						\
+{									\
+  Request_GC (Amount);							\
+  Primitive_Interrupt ();						\
 }
 
-#define Primitive_Interrupt()					\
-{								\
-  signal_interrupt_from_primitive ();				\
+#define Primitive_GC_If_Needed(Amount)					\
+  if (GC_Check (Amount)) Primitive_GC(Amount)
+
+#define Range_Check(To_Where, P, Low, High, Error)			\
+{									\
+  To_Where = Get_Integer (P);						\
+  if ((To_Where < (Low)) || (To_Where > (High)))			\
+    Primitive_Error (Error);						\
 }
 
-#define Special_Primitive_Interrupt(Local_Mask)			\
-{								\
-  specl_interrupt_from_primitive (Local_Mask);			\
-}
-
-#define Primitive_GC(Amount)					\
-{								\
-  Request_GC (Amount);						\
-  Primitive_Interrupt ();					\
-}
-
-#define Primitive_GC_If_Needed(Amount)				\
-if (GC_Check (Amount)) Primitive_GC(Amount)
-
-#define Range_Check(To_Where, P, Low, High, Error)		\
-{								\
-  To_Where = Get_Integer (P);					\
-  if ((To_Where < (Low)) || (To_Where > (High)))		\
-    Primitive_Error (Error);					\
-}
-
-#define Sign_Extend_Range_Check(To_Where, P, Low, High, Error)	\
-{								\
-  Sign_Extend ((P), To_Where);					\
-  if ((To_Where < (Low)) || (To_Where > (High)))		\
-    Primitive_Error (Error);					\
+#define Sign_Extend_Range_Check(To_Where, P, Low, High, Error)		\
+{									\
+  Sign_Extend ((P), To_Where);						\
+  if ((To_Where < (Low)) || (To_Where > (High)))			\
+    Primitive_Error (Error);						\
 }
 
 #define CHECK_ARG(argument, type_p)					\
@@ -159,6 +186,9 @@ do									\
 
 extern long arg_nonnegative_integer ();
 extern long arg_index_integer ();
+extern long object_to_long ();
+extern Pointer allocate_non_marked_vector ();
+extern Pointer allocate_marked_vector ();
 
 /* Instances of the following should be flushed. */
 
@@ -201,3 +231,17 @@ do { if ((GC_Type (Arg2)) != GCTC) error_wrong_type_arg (2); } while (0)
 
 #define Arg_3_GC_Type(GCTC)                                     \
 do { if ((GC_Type (Arg3)) != GCTC) error_wrong_type_arg (3); } while (0)
+
+#define FIXNUM_ARG arg_fixnum
+
+#define UNSIGNED_FIXNUM_ARG(arg)					\
+  ((FIXNUM_P (ARG_REF (arg)))						\
+   ? (UNSIGNED_FIXNUM_VALUE (ARG_REF (arg)))				\
+   : ((long) (error_wrong_type_arg (arg))))
+
+#define STRING_ARG(arg)							\
+  ((STRING_P (ARG_REF (arg)))						\
+   ? (Scheme_String_To_C_String (ARG_REF (arg)))			\
+   : ((char *) (error_wrong_type_arg (arg))))
+
+#define BOOLEAN_ARG(arg) ((ARG_REF (arg)) != NIL)
