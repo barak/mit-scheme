@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.194 1993/09/15 20:26:09 adams Exp $
+$Id: runtime.pkg,v 14.195 1993/09/30 17:09:53 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -1145,6 +1145,8 @@ MIT in each case. |#
 	  except-last-pair!
 	  fifth
 	  first
+	  fold-left
+	  fold-right
 	  for-each
 	  fourth
 	  general-car-cdr
