@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.38 1993/12/05 06:15:08 cph Exp $
+$Id: x11graph.scm,v 1.39 1994/11/06 18:06:46 adams Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -538,7 +538,8 @@ MIT in each case. |#
 (define x-graphics-default-geometry "512x512")
 (define x-graphics-default-display-name #f)
 
-(define (x-graphics/open #!optional display geometry suppress-map?)
+(define (x-graphics/open descriptor->device
+			 #!optional display geometry suppress-map?)
   (let ((display
 	 (let ((display
 		(and (not (default-object? display))
@@ -563,7 +564,7 @@ MIT in each case. |#
 	  (let ((window (make-x-window xw display)))
 	    (add-to-protection-list! (x-display/window-list display) window xw)
 	    (if map? (map-window window))
-	    window))))))
+	    (descriptor->device window)))))))
 
 (define (map-window window)
   (let ((xw (x-window/xw window)))
