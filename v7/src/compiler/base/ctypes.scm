@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.40 1987/03/19 00:32:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.41 1987/03/19 23:06:16 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -40,6 +40,8 @@ MIT in each case. |#
 
 (define (make-assignment block lvalue rvalue)
   (vnode-connect! lvalue rvalue)
+  (if (variable? lvalue)
+      (set-variable-assignments! lvalue (1+ (variable-assignments lvalue))))
   (snode->scfg (make-snode assignment-tag block lvalue rvalue)))
 
 (define-snode definition block lvalue rvalue)
