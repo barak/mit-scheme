@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.35 1990/10/06 00:00:30 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.36 1991/03/15 23:40:26 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -47,6 +47,10 @@
 
 (declare (usual-integrations))
 
+(define-variable tags-table-pathname
+  "Pathname of current tags table."
+  false)
+
 (define-command visit-tags-table
   "Tell tags commands to use tag table file FILE.
 FILE should be the name of a file created with the `etags' program.

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/cinden.scm,v 1.3 1989/04/28 22:48:19 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/cinden.scm,v 1.4 1991/03/15 23:37:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -46,6 +46,30 @@
 
 (declare (usual-integrations))
 
+(define-variable c-indent-level
+  "Indentation of C statements with respect to containing block."
+  2)
+
+(define-variable c-brace-offset
+  "Extra indentation for braces, compared with other text in same context."
+  0)
+
+(define-variable c-brace-imaginary-offset
+  "Imagined indentation of a C open brace that actually follows a statement."
+  0)
+
+(define-variable c-argdecl-indent
+  "Indentation level of declarations of C function arguments."
+  5)
+
+(define-variable c-label-offset
+  "Offset of C label lines and case statements relative to usual indentation."
+  -2)
+
+(define-variable c-continued-statement-offset
+  "Extra indent for lines not starting new statements."
+  2)
+
 (define (c-indent-line start)
   (maybe-change-indentation (c-indent-line:indentation start) start))
 

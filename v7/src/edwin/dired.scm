@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.104 1989/08/07 08:44:35 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.105 1991/03/15 23:38:39 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -46,79 +46,6 @@
 
 (declare (usual-integrations))
 
-(define-command dired
-  "\"Edit\" directory DIRNAME--delete, rename, print, etc. some files in it.
-Dired displays a list of files in DIRNAME.
-You can move around in it with the usual commands.
-You can flag files for deletion with C-d
-and then delete them by typing `x'.
-Type `h' after entering dired for more info."
-  "DDired (directory)"
-  (lambda (directory)
-    (select-buffer (make-dired-buffer directory))))
-
-(define-command dired-other-window
-  "\"Edit\" directory DIRNAME.  Like \\[dired] but selects in another window."
-  "DDired in other window (directory)"
-  (lambda (directory)
-    (select-buffer-other-window (make-dired-buffer directory))))
-
-(define (make-dired-buffer directory)
-  (let ((pathname (->pathname directory)))
-    (let ((buffer (get-dired-buffer pathname)))
-      (set-buffer-major-mode! buffer (ref-mode-object dired))
-      (set-buffer-truename! buffer pathname)
-      (buffer-put! buffer 'REVERT-BUFFER-METHOD revert-dired-buffer)
-      (fill-dired-buffer! buffer)
-      buffer)))
-
-(define (get-dired-buffer pathname)
-  (or (list-search-positive (buffer-list)
-	(lambda (buffer)
-	  (and (eq? (ref-mode-object dired) (buffer-major-mode buffer))
-	       (pathname=? pathname (buffer-truename buffer)))))
-      (new-buffer (pathname->buffer-name pathname))))
-
-(define (revert-dired-buffer buffer dont-use-auto-save? dont-confirm?)
-  dont-use-auto-save? dont-confirm?	;ignore
-  (fill-dired-buffer! buffer))
-
-(define (fill-dired-buffer! buffer)
-  (set-buffer-writeable! buffer)
-  (region-delete! (buffer-region buffer))
-  (let ((pathname (buffer-truename buffer)))
-    (temporary-message
-     (string-append "Reading directory "
-		    (pathname->string pathname)
-		    "..."))
-    (let ((pathnames (read&sort-directory pathname)))
-      (let ((lines (map os/make-dired-line pathnames))
-	    (point (buffer-point buffer)))
-	(append-message "done")
-	(for-each (lambda (line pathname)
-		    (if (not line)
-			(begin
-			  (insert-string "can't find file: " point)
-			  (insert-string (pathname-name-string pathname) point)
-			  (insert-newline point))))
-		  lines
-		  pathnames)
-	(insert-string "Directory " point)
-	(insert-string (pathname->string pathname) point)
-	(insert-newlines 2 point)
-	(buffer-put! buffer 'DIRED-HEADER-END (mark-right-inserting point))
-	(for-each (lambda (line)
-		    (if line
-			(begin
-			  (insert-string line point)
-			  (insert-newline point))))
-		  lines))))
-  (buffer-not-modified! buffer)
-  (set-buffer-read-only! buffer)
-  (add-buffer-initialization! buffer
-    (lambda ()
-      (set-dired-point! (buffer-get (current-buffer) 'DIRED-HEADER-END)))))
-
 (define-major-mode dired fundamental "Dired"
   "Major mode for editing a list of files.
 Each line describes a file in the directory.
@@ -147,6 +74,87 @@ C-] -- abort Dired; this is like \\[kill-buffer] on this buffer."
 (define-key 'dired #\q 'dired-quit)
 (define-key 'dired #\c-\] 'dired-abort)
 (define-key 'dired #\? 'dired-summary)
+
+(define-command dired
+  "\"Edit\" directory DIRNAME--delete, rename, print, etc. some files in it.
+Dired displays a list of files in DIRNAME.
+You can move around in it with the usual commands.
+You can flag files for deletion with C-d
+and then delete them by typing `x'.
+Type `h' after entering dired for more info."
+  "DDired (directory)"
+  (lambda (directory)
+    (select-buffer (make-dired-buffer directory))))
+
+(define-command dired-other-window
+  "\"Edit\" directory DIRNAME.  Like \\[dired] but selects in another window."
+  "DDired in other window (directory)"
+  (lambda (directory)
+    (select-buffer-other-window (make-dired-buffer directory))))
+
+(define (make-dired-buffer directory)
+  (let ((directory (->pathname directory)))
+    (let ((buffer (get-dired-buffer directory)))
+      (set-buffer-major-mode! buffer (ref-mode-object dired))
+      (set-buffer-default-directory! buffer
+				     (pathname-directory-path directory))
+      (buffer-put! buffer 'REVERT-BUFFER-METHOD revert-dired-buffer)
+      (buffer-put! buffer 'DIRED-DIRECTORY directory)
+      (fill-dired-buffer! buffer directory)
+      buffer)))
+
+(define (get-dired-buffer directory)
+  (or (list-search-positive (buffer-list)
+	(lambda (buffer)
+	  (let ((directory* (buffer-get buffer 'DIRED-DIRECTORY)))
+	    (and directory*
+		 (pathname=? directory* directory)))))
+      (new-buffer (pathname->buffer-name directory))))
+
+(define (dired-buffer-directory buffer)
+  (or (buffer-get buffer 'DIRED-DIRECTORY)
+      (let ((directory (buffer-default-directory buffer)))
+	(buffer-put! buffer 'DIRED-DIRECTORY directory)
+	directory)))
+
+(define (revert-dired-buffer buffer dont-use-auto-save? dont-confirm?)
+  dont-use-auto-save? dont-confirm?	;ignore
+  (fill-dired-buffer! buffer (dired-buffer-directory buffer)))
+
+(define (fill-dired-buffer! buffer pathname)
+  (set-buffer-writeable! buffer)
+  (region-delete! (buffer-region buffer))
+  (temporary-message
+   (string-append "Reading directory "
+		  (pathname->string pathname)
+		  "..."))
+  (let ((pathnames (read&sort-directory pathname)))
+    (let ((lines (map os/make-dired-line pathnames))
+	  (point (buffer-point buffer)))
+      (append-message "done")
+      (for-each (lambda (line pathname)
+		  (if (not line)
+		      (begin
+			(insert-string "can't find file: " point)
+			(insert-string (pathname-name-string pathname) point)
+			(insert-newline point))))
+		lines
+		pathnames)
+      (insert-string "Directory " point)
+      (insert-string (pathname->string pathname) point)
+      (insert-newlines 2 point)
+      (buffer-put! buffer 'DIRED-HEADER-END (mark-right-inserting point))
+      (for-each (lambda (line)
+		  (if line
+		      (begin
+			(insert-string line point)
+			(insert-newline point))))
+		lines)))
+  (buffer-not-modified! buffer)
+  (set-buffer-read-only! buffer)
+  (add-buffer-initialization! buffer
+    (lambda ()
+      (set-dired-point! (buffer-get (current-buffer) 'DIRED-HEADER-END)))))
 
 (define-command dired-find-file
   "Read the current file into a buffer."
@@ -245,7 +253,7 @@ C-] -- abort Dired; this is like \\[kill-buffer] on this buffer."
 
 (define (dired-pathname lstart)
   (merge-pathnames
-   (pathname-directory-path (buffer-truename (current-buffer)))
+   (pathname-directory-path (dired-buffer-directory (current-buffer)))
    (string->pathname (region->string (os/dired-filename-region lstart)))))
 
 (define (dired-mark char n)
@@ -299,6 +307,12 @@ C-] -- abort Dired; this is like \\[kill-buffer] on this buffer."
       (delete-string (cdr filename) (mark1+ (line-end (cdr filename) 0))))))
 
 ;;;; List Directory
+
+(define-variable list-directory-unpacked
+  "If not false, \\[list-directory] puts one file on each line.
+Normally it packs many onto a line.
+This has no effect if \\[list-directory] is invoked with an argument."
+  false)
 
 (define-command list-directory
   "Generate a directory listing."

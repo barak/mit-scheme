@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.96 1991/02/15 18:13:44 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.97 1991/03/15 23:39:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -57,6 +57,24 @@
 	  ((ref-command info-directory))))))
 
 (define info-buffer-name "*info*")
+
+(define-variable info-enable-edit
+  "If true, the \\[info-edit] command in Info can edit the current node."
+  false)
+
+(define-variable info-enable-active-nodes
+  "If true, allows Info to execute Scheme code associated with nodes.
+The Scheme code is executed when the node is selected."
+  true)
+
+(define-variable info-directory
+  "If not false, default directory for Info documentation files.
+Otherwise the standard directory is used."
+  false)
+
+(define-variable info-previous-search
+  "Default search string for Info \\[info-search] command to search for."
+  false)
 
 (define-variable info-history
   "List of info nodes user has visited.
@@ -596,8 +614,7 @@ The name may be an abbreviation of the reference name."
 			(if (let ((directory (pathname-directory pathname)))
 			      (and (pair? directory)
 				   (eq? (car directory) 'SELF)))
-			    (pathname-directory-path
-			     (current-default-pathname))
+			    (buffer-default-directory (current-buffer))
 			    (let ((info-directory
 				   (ref-variable info-directory)))
 			      (if info-directory

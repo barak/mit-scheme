@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/c-mode.scm,v 1.44 1990/10/03 04:54:21 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/c-mode.scm,v 1.45 1991/03/15 23:37:29 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -49,8 +49,7 @@
 (define-command c-mode
   "Enter C mode."
   ()
-  (lambda ()
-    (set-current-major-mode! (ref-mode-object c))))
+  (lambda () (set-current-major-mode! (ref-mode-object c))))
 
 (define-major-mode c fundamental "C"
   "Major mode for editing C code.
@@ -62,24 +61,24 @@ Delete converts tabs to spaces as it moves back.
 The characters { } ; : correct indentation when typed.
 
 Variables controlling indentation style:
- C Auto Newline
+ c-auto-newline
     Non-false means automatically newline before and after braces,
     and after colons and semicolons, inserted in C code.
- C Indent Level
+ c-indent-level
     Indentation of C statements within surrounding block.
     The surrounding block's indentation is the indentation
     of the line on which the open-brace appears.
- C Continued Statement Offset
+ c-continued-statement-offset
     Extra indentation given to a substatement, such as the
     then-clause of an if or body of a while.
- C Brace Offset
+ c-brace-offset
     Extra indentation for line if it starts with an open brace.
- C Brace Imaginary Offset
+ c-brace-imaginary-offset
     An open brace following other text is treated as if it were
     this far to the right of the start of its line.
- C Argdecl Indent
+ c-argdecl-indent
     Indentation level of declarations of C function arguments.
- C Label Offset
+ c-label-offset
     Extra indentation for line that is a label, or case or default."
 
   (local-set-variable! syntax-table c-mode:syntax-table)
@@ -94,7 +93,11 @@ Variables controlling indentation style:
   (local-set-variable! comment-end " */")
   (local-set-variable! comment-column 32)
   (event-distributor/invoke! (ref-variable c-mode-hook)))
-
+
+(define-variable c-mode-hook
+  "An event distributor that is invoked when entering C mode."
+  (make-event-distributor))
+
 (define-key 'c #\linefeed 'reindent-then-newline-and-indent)
 (define-key 'c #\{ 'electric-c-brace)
 (define-key 'c #\} 'electric-c-brace)
@@ -116,7 +119,7 @@ Variables controlling indentation style:
 (modify-syntax-entry! c-mode:syntax-table #\< ".")
 (modify-syntax-entry! c-mode:syntax-table #\> ".")
 (modify-syntax-entry! c-mode:syntax-table #\' "\"")
-
+
 (define (c-mode:comment-locate start)
   (and (re-search-forward "/\\*[ \t]*" start (line-end start 0))
        (cons (re-match-start 0) (re-match-end 0))))
@@ -126,7 +129,12 @@ Variables controlling indentation style:
       0
       (max (1+ (mark-column (horizontal-space-start start)))
 	   (ref-variable comment-column))))
-
+
+(define-variable c-auto-newline
+  "Non-false means automatically newline before and after braces,
+and after colons and semicolons, inserted in C code."
+  false)
+
 (define-command electric-c-brace
   "Insert character and correct line's indentation."
   "P"
