@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autosv.scm,v 1.19 1989/04/15 00:46:35 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autosv.scm,v 1.20 1989/04/23 23:15:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,25 +41,28 @@
 
 (declare (usual-integrations))
 
-(define-variable auto-save-visited-file
-  "If not false, auto save into the visited file."
+(define-variable auto-save-visited-file-name
+  "*True says auto-save a buffer in the file it is visiting, when practical.
+Normally auto-save files are written under other names."
   false)
 
 (define-variable auto-save-default
-  "If not false, auto save all visited files."
+  "*True says by default do auto-saving of every file-visiting buffer."
   true)
 
 (define-variable auto-save-interval
-  "The number of keystrokes between auto saves."
+  "*Number of keyboard input characters between auto-saves.
+Zero means disable autosaving."
   300)
 
 (define-variable delete-auto-save-files
-  "If not false, delete auto save files when normal saves happen."
-  false)
+  "*True means delete a buffer's auto-save file
+when the buffer is saved for real."
+  true)
 
 (define-command auto-save-mode
-  "Toggle Auto Save mode.
-With argument, turn Auto Save mode on iff argument is positive."
+  "Toggle auto-saving of contents of current buffer.
+With arg, turn auto-saving on if arg is positive, else off."
   "P"
   (lambda (argument)
     (let ((buffer (current-buffer)))
@@ -83,7 +86,7 @@ With argument, turn Auto Save mode on iff argument is positive."
    buffer
    (let ((pathname (buffer-pathname buffer)))
      (if (and pathname
-	      (ref-variable auto-save-visited-file))
+	      (ref-variable auto-save-visited-file-name))
 	 pathname
 	 (os/auto-save-pathname pathname (buffer-name buffer))))))
 
