@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: crypto.scm,v 14.7 2000/04/11 15:24:54 cph Exp $
+$Id: crypto.scm,v 14.8 2000/04/11 16:00:12 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -127,13 +127,30 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ((ucode-primitive mhash_get_keygen_max_key_size 1)
    (keygen-name->id name 'MHASH-KEYGEN-MAX-KEY-SIZE)))
 
-(define (mhash-keygen type passphrase)
+(define (mhash-keygen type passphrase #!optional salt)
   (if (not (mhash-keygen-type? type))
       (error:wrong-type-argument type "mhash type" 'MHASH-KEYGEN))
-  (let ((keyword (make-string (mhash-keygen-type-key-length type))))
+  (let ((id (mhash-keygen-type-id type))
+	(keyword (make-string (mhash-keygen-type-key-length type)))
+	(v (mhash-keygen-type-parameter-vector type)))
     (if (not ((ucode-primitive mhash_keygen 4)
-	      (mhash-keygen-type-id type)
-	      (mhash-keygen-type-parameter-vector type)
+	      id
+	      (if ((ucode-primitive mhash_keygen_uses_salt 1) id)
+		  (begin
+		    (if (or (default-object? salt) (not salt))
+			(error "Salt required:"
+			       (vector-ref mhash-keygen-names id)))
+		    (let ((n (mhash-keygen-salt-size name)))
+		      (if (not (or (= n 0)
+				   (= n (string-length salt))))
+			  (error "Salt size incorrect:"
+				 (string-length salt)
+				 (error-irritant/noise "; should be:")
+				 n)))
+		    (let ((v (vector-copy v)))
+		      (vector-set! v 0 salt)
+		      v))
+		  v)
 	      keyword
 	      passphrase))
 	(error "Error signalled by mhash_keygen."))
@@ -144,7 +161,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (key-length #f read-only #t)
   (parameter-vector #f read-only #t))
 
-(define (make-mhash-keygen-type name key-length . parameters)
+(define (make-mhash-keygen-type name key-length hash-names #!optional count)
   (if (not (index-fixnum? key-length))
       (error:wrong-type-argument key-length "key length"
 				 'MAKE-MHASH-KEYGEN-TYPE))
@@ -152,46 +169,37 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	     (or (= m 0)
 		 (<= key-length m))))
       (error:bad-range-argument key-length 'MAKE-MHASH-KEYGEN-TYPE))
-  (let ((n-algorithms (mhash-keygen-uses-hash-algorithm name))
-	(uses-salt? (mhash-keygen-uses-salt? name))
-	(uses-count? (mhash-keygen-uses-count? name)))
-    (if (not (= (length parameters)
-		(+ n-algorithms
-		   (if uses-salt? 1 0)
-		   (if uses-count? 1 0))))
-	(error "Wrong number of parameters supplied:"
-	       parameters
-	       (error-irritant/noise "; should be:")
-	       `(,@(make-list n-algorithms 'HASH-TYPE)
-		 ,@(if uses-salt? '(SALT) '())
-		 ,@(if uses-count? '(COUNT) '()))))
-    (let ((n (+ 2 n-algorithms)))
-      (let ((v (make-vector n)))
-	(vector-set! v 0
-		     (and uses-salt?
-			  (let ((salt (list-ref parameters n-algorithms))
-				(n (mhash-keygen-salt-size name)))
-			    (if (not (or (= n 0)
-					 (= n (string-length salt))))
-				(error "Salt size incorrect:"
-				       (string-length salt)
-				       (error-irritant/noise "; should be:")
-				       n))
-			    salt)))
-	(vector-set! v 1
-		     (and uses-count?
-			  (list-ref parameters
-				    (if uses-salt?
-					(+ n-algorithms 1)
-					n-algorithms))))
-	(do ((i 2 (fix:+ i 1))
-	     (names parameters (cdr names)))
-	    ((fix:= i n))
-	  (vector-set! v i
-		       (mhash-name->id (car names) 'MAKE-MHASH-KEYGEN-TYPE)))
-	(%make-mhash-keygen-type (keygen-name->id name 'MAKE-MHASH-KEYGEN-TYPE)
-				 key-length
-				 v)))))
+  (%make-mhash-keygen-type
+   (keygen-name->id name 'MAKE-MHASH-KEYGEN-TYPE)
+   key-length
+   (let ((n-algorithms (mhash-keygen-uses-hash-algorithm name))
+	 (hash-names
+	  (if (list? hash-names) hash-names (list hash-names))))
+     (let ((m (length hash-names)))
+       (if (not (= n-algorithms m))
+	   (error "Wrong number of hash types supplied:"
+		  m
+		  (error-irritant/noise "; should be:")
+		  n-algorithms)))
+     (let ((n (+ 2 n-algorithms)))
+       (let ((v (make-vector n)))
+	 (vector-set! v 0 #f)
+	 (vector-set!
+	  v 1
+	  (and (mhash-keygen-uses-count? name)
+	       (begin
+		 (if (or (default-object? count) (not count))
+		     (error "Iteration count required:" name))
+		 (if (not (and (exact-integer? count)
+			       (positive? count)))
+		     (error:bad-range-argument count 'MAKE-MHASH-KEYGEN-TYPE))
+		 count)))
+	 (do ((i 2 (fix:+ i 1))
+	      (names hash-names (cdr names)))
+	     ((fix:= i n))
+	   (vector-set! v i
+			(mhash-name->id (car names) 'MAKE-MHASH-KEYGEN-TYPE)))
+	 v)))))
 
 (define (mhash-available?)
   (implemented-primitive-procedure? (ucode-primitive mhash 4)))
