@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.5 1993/10/26 19:38:22 gjr Exp $
+$Id: compiler.pkg,v 1.6 1993/11/13 03:32:25 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -153,6 +153,12 @@ MIT in each case. |#
 	  compile-bin-file
 	  compile-procedure
 	  compile-scode
+	  compiler:c-compiler-name
+	  compiler:c-compiler-switches
+	  compiler:c-linker-name
+	  compiler:c-linker-output-extension
+	  compiler:c-linker-switches
+	  compiler:invoke-c-compiler?
 	  compiler:reset!
 	  ;; cross-compile-bin-file
 	  ;; cross-compile-bin-file-end
