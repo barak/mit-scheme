@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.45 1987/04/13 18:44:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.46 1987/04/27 17:33:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -193,35 +193,31 @@
 (let ()
 
 (set! load-system!
-(named-lambda (load-system! system #!optional compiled?)
-  (if (unassigned? compiled?) (set! compiled? (query "Load compiled")))
-  (define (loop files)
-    (if (null? files)
-	'()
-	(split-list files 20
-	  (lambda (head tail)
-	    (fasload-files head
-	      (lambda (eval-list pure-list constant-list)
-		(if (not (null? pure-list))
-		    (begin (newline) (write-string "Purify")
-			   (purify (list->vector pure-list) true)))
-		(if (not (null? constant-list))
-		    (begin (newline) (write-string "Constantify")
-			   (purify (list->vector constant-list) false)))
-		(append! eval-list (loop tail))))))))
-  (let ((files (format-files-list (access :files-lists system) compiled?)))
-    (set! (access :files system)
-	  (map (lambda (file) (pathname->string (car file))) files))
-    (for-each (lambda (file scode)
-		(newline) (write-string "Eval ")
-		(write (pathname->string (car file)))
-		(scode-eval scode (cdr file)))
-	      files
-	      (loop (map car files)))
-    (newline)
-    (write-string "Done"))
-  (add-system! system)
-  *the-non-printing-object*))
+  (named-lambda (load-system! system #!optional compiled?)
+    (if (unassigned? compiled?) (set! compiled? (query "Load compiled")))
+    (define (loop files)
+      (if (null? files)
+	  '()
+	  (split-list files 20
+	    (lambda (head tail)
+	      (let ((scode (map fasload head)))
+		(newline)
+		(write-string "Purify")
+		(purify (list->vector scode) true)
+		(append! scode (loop tail)))))))
+    (let ((files (format-files-list (access :files-lists system) compiled?)))
+      (set! (access :files system)
+	    (map (lambda (file) (pathname->string (car file))) files))
+      (for-each (lambda (file scode)
+		  (newline) (write-string "Eval ")
+		  (write (pathname->string (car file)))
+		  (scode-eval scode (cdr file)))
+		files
+		(loop (map car files)))
+      (newline)
+      (write-string "Done"))
+    (add-system! system)
+    *the-non-printing-object*))
 
 (define (split-list list n receiver)
   (if (or (not (pair? list)) (zero? n))
@@ -230,29 +226,6 @@
 	(lambda (head tail)
 	  (receiver (cons (car list) head) tail)))))
 
-(define (fasload-files pathnames receiver)
-  (if (null? pathnames)
-      (receiver '() '() '())
-      (fasload-file (car pathnames)
-	(lambda (scode)
-	  (fasload-files (cdr pathnames)
-	    (lambda (eval-list pure-list constant-list)
-	      (receiver (cons scode eval-list)
-			(cons scode pure-list)
-			constant-list))))
-	(lambda (scode)
-	  (fasload-files (cdr pathnames)
-	    (lambda (eval-list pure-list constant-list)
-	      (receiver (cons scode eval-list)
-			pure-list
-			(cons scode constant-list))))))))
-
-(define (fasload-file pathname if-pure if-not-pure)
-  (let ((type (pathname-type pathname)))
-    (cond ((string-ci=? "bin" type) (if-pure (fasload pathname)))
-	  ((string-ci=? "com" type) (if-not-pure (fasload pathname)))
-	  (else (error "Unknown file type" type)))))
-
 (define (format-files-list files-lists compiled?)
   (mapcan (lambda (files-list)
 	    (map (lambda (filename)
