@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: outf.h,v 1.2 1993/06/24 08:22:21 gjr Exp $
+$Id: outf.h,v 1.3 1993/06/28 02:28:34 cph Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -35,7 +35,6 @@ MIT in each case. */
 #ifndef SCM_OUTF_H
 #define SCM_OUTF_H
 
-#include <stdarg.h>
 #include <stdio.h>
 #include "ansidecl.h"
 
@@ -45,8 +44,6 @@ extern void EXFUN (outf, (outf_channel chan, CONST char *format  DOTS));
 extern void EXFUN (outf_console, (CONST char *format  DOTS));
 extern void EXFUN (outf_error, (CONST char *format  DOTS));
 extern void EXFUN (outf_fatal, (CONST char *format  DOTS));
-extern void EXFUN (voutf,
-                   (CONST outf_channel chan, CONST char *format, va_list ap));
 
 extern void EXFUN (outf_flush, (outf_channel chan));
 extern void EXFUN (outf_flush_console, (void));
