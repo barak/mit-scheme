@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.15 1990/06/04 20:45:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.16 1990/06/04 20:46:42 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -224,7 +224,9 @@ MIT in each case. |#
 	      (loading-message load/suppress-loading-message? true-filename
 			       (lambda ()
 				 (write-stream (value-stream)
-					       (lambda (value) value false)))))))))
+					       (lambda (value)
+						 value
+						 false)))))))))
 
 (define (load/purification-root scode)
   (or (and (comment? scode)
