@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.27 1987/03/09 14:23:54 cph Exp $
+
 Copyright (c) 1987 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,10 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.26 1987/02/15 16:10:52 jinx Exp $
- *
- * This file contains the code to support startup of
- * the SCHEME interpreter.
+/* This file contains the code to support startup of
+   the SCHEME interpreter.
   
  The command line (when not running a dumped executable version) may 
  take the following forms:
@@ -81,6 +81,7 @@ for details.  They are created by defining a macro Command_Line_Args.
 #include "primitive.h"
 #include "prims.h"
 #include "version.h"
+#include "character.h"
 #ifndef islower
 #include <ctype.h>
 #endif
@@ -370,37 +371,46 @@ Enter_Interpreter()
 #define ID_RELEASE		0		/* Scheme system release */
 #define ID_MICRO_VERSION	1		/* Microcode version */
 #define ID_MICRO_MOD		2		/* Microcode modification */
-#define ID_PRINTER_WIDTH	3
-#define ID_PRINTER_LENGTH	4
-#define ID_NEW_LINE_CHARACTER	5
-#define ID_FLONUM_PRECISION	6
-#define ID_FLONUM_EXPONENT	7		/* Number of bits */
+#define ID_PRINTER_WIDTH	3		/* Width of console (chars) */
+#define ID_PRINTER_LENGTH	4		/* Height of console (chars) */
+#define ID_NEW_LINE_CHARACTER	5		/* #\Newline */
+#define ID_FLONUM_PRECISION	6		/* Flonum mantissa (bits) */
+#define ID_FLONUM_EXPONENT	7		/* Flonum exponent (bits) */
+#define ID_OS_NAME		8		/* OS name (string) */
+#define ID_OS_VARIANT		9		/* OS variant (string) */
 
-Built_In_Primitive(Prim_Microcode_Identify, 0, "MICROCODE-IDENTIFY")
-{ Pointer *Result =  Free;
+Built_In_Primitive (Prim_Microcode_Identify, 0, "MICROCODE-IDENTIFY")
+{
+  Pointer *Result;
   long i;
-  Primitive_0_Args();
+  Primitive_0_Args ();
 
-  Primitive_GC_If_Needed(IDENTITY_LENGTH + VECTOR_DATA);
-  *Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, IDENTITY_LENGTH);
-  for (i=IDENTITY_LENGTH; --i >= 0; ) *Free++ = NIL;
-  Result[ID_RELEASE+VECTOR_DATA] =
-    C_String_To_Scheme_String(RELEASE);
-  Result[ID_MICRO_VERSION+VECTOR_DATA] =
-    FIXNUM_0+VERSION;
-  Result[ID_MICRO_MOD+VECTOR_DATA] =
-    FIXNUM_0+SUBVERSION;
-  Result[ID_PRINTER_WIDTH+VECTOR_DATA] =
-    FIXNUM_0+NColumns();
-  Result[ID_PRINTER_LENGTH+VECTOR_DATA] =
-    FIXNUM_0+NLines();
-  Result[ID_NEW_LINE_CHARACTER+VECTOR_DATA] =
-    Make_Non_Pointer(TC_CHARACTER, '\n');
-  Result[ID_FLONUM_PRECISION+VECTOR_DATA] =
-    FIXNUM_0+FLONUM_MANTISSA_BITS;
-  Result[ID_FLONUM_EXPONENT+VECTOR_DATA] =
-    FIXNUM_0+FLONUM_EXPT_SIZE;
-  return Make_Pointer(TC_VECTOR, Result);
+  Primitive_GC_If_Needed (IDENTITY_LENGTH + VECTOR_DATA);
+  Result = Free;
+  *Free++ = (Make_Non_Pointer (TC_MANIFEST_VECTOR, IDENTITY_LENGTH));
+  for (i = 0; (i < IDENTITY_LENGTH); i -= 1)
+    *Free++ = NIL;
+  Result[(ID_RELEASE + VECTOR_DATA)]
+    = (C_String_To_Scheme_String (RELEASE));
+  Result[(ID_MICRO_VERSION + VECTOR_DATA)]
+    = (Make_Unsigned_Fixnum (VERSION));
+  Result[(ID_MICRO_MOD + VECTOR_DATA)]
+    = (Make_Unsigned_Fixnum (SUBVERSION));
+  Result[(ID_PRINTER_WIDTH + VECTOR_DATA)]
+    = (Make_Unsigned_Fixnum (NColumns ()));
+  Result[(ID_PRINTER_LENGTH + VECTOR_DATA)]
+    = (Make_Unsigned_Fixnum (NLines ()));
+  Result[(ID_NEW_LINE_CHARACTER + VECTOR_DATA)]
+    = (c_char_to_scheme_char ('\n'));
+  Result[(ID_FLONUM_PRECISION + VECTOR_DATA)]
+    = (Make_Unsigned_Fixnum (FLONUM_MANTISSA_BITS));
+  Result[(ID_FLONUM_EXPONENT + VECTOR_DATA)]
+    = (Make_Unsigned_Fixnum (FLONUM_EXPT_SIZE));
+  Result[(ID_OS_NAME + VECTOR_DATA)]
+    = (C_String_To_Scheme_String (OS_Name));
+  Result[(ID_OS_VARIANT + VECTOR_DATA)]
+    = (C_String_To_Scheme_String (OS_Variant));
+  return (Make_Pointer (TC_VECTOR, Result));
 }
 
 Built_In_Primitive(Prim_Microcode_Tables_Filename,
