@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.77 1999/08/19 14:50:58 cph Exp $
+@comment $Id: scheme.texinfo,v 1.78 1999/08/19 15:08:52 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -5215,12 +5215,11 @@ ctrl-A) is different from @code{#\C-A}.  In fact, the Control bucky bit
 is completely orthogonal to the @sc{ascii} control key, making possible
 such characters as @code{#\C-SOH}.}
 
-MIT Scheme uses a 7-bit @sc{ascii} character code with 5 bucky
-bits.  The least significant bucky bit, Meta, is stored adjacent to the
-MSB of the character code, allowing the least significant 8 bits of a
-character object to be interpreted as ordinary @sc{ascii} with a meta
-bit.  This is compatible with standard practice for 8-bit characters
-when meta bits are employed.
+MIT Scheme uses a 16-bit character code with 5 bucky bits.  Normally,
+Scheme uses the least significant 7 bits of the character code to
+contain the @sc{ascii} representation for the character.  The
+representation is expanded in order to allow for future accomodation of
+international character sets.
 
 @deffn {procedure+} make-char code bucky-bits
 @cindex construction, of character
@@ -5329,14 +5328,10 @@ then
 @end group
 @end example
 
-Note: if @var{char} is a character constant for which
-@code{char->integer} returns an integer strictly less than 256, then the
-compiler will constant-fold the call, replacing it with the
-corresponding integer.  Likewise, if @var{k} is an integer constant
-strictly less than 256, the compiler will constant-fold a call to
-@code{integer->char}, replacing it with the corresponding character.
-This is a very useful way to denote unusual character constants or
-@sc{ascii} codes.
+Note: If the argument to @code{char->integer} or @code{integer->char} is
+a constant, the compiler will constant-fold the call, replacing it with
+the corresponding result.  This is a very useful way to denote unusual
+character constants or @sc{ascii} codes.
 @end deffn
 
 @defvr {variable+} char-integer-limit
