@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bittop.scm,v 1.19 1993/12/18 07:15:57 cph Exp $
+$Id: bittop.scm,v 1.20 1993/12/18 21:43:01 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -43,7 +43,6 @@ MIT in each case. |#
 (define *the-symbol-table*)
 (define *start-label*)
 (define *end-label*)
-(define *padding-present?*)
 
 ;;;; Assembler top level procedure
 
@@ -53,8 +52,7 @@ MIT in each case. |#
 	      (*entry-points* (make-queue))
 	      (*the-symbol-table* (make-symbol-table))
 	      (*start-label* start-label)
-	      (*end-label* (generate-uninterned-symbol 'END-LABEL-))
-	      (*padding-present?* false))
+	      (*end-label* (generate-uninterned-symbol 'END-LABEL-)))
     (initialize-symbol-table!)
     (with-values
 	(lambda ()
@@ -101,8 +99,7 @@ MIT in each case. |#
 	  (lambda (any-modified? number-of-vars)
 	    (cond (any-modified?
 		   (continue false count))
-		  ((or (zero? number-of-vars)
-		       (not *padding-present?*))
+		  ((zero? number-of-vars)
 		   count)
 		  (else
 		   (continue (not widening?) count)))))))
@@ -441,7 +438,6 @@ MIT in each case. |#
 		      (add-to-queue! *entry-points* (cadr this))
 		      (process-trivial-directive))
 		     ((PADDING)
-		      (set! *padding-present?* true)
 		      (let ((directive (->padding-directive this)))
 			(new-directive! directive)
 			(after-padding
