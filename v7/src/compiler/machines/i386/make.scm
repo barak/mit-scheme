@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.4 1993/03/01 17:37:19 gjr Exp $
+$Id: make.scm,v 1.5 1996/12/25 06:39:51 cph Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,6 +38,5 @@ MIT in each case. |#
 
 (let* ((val ((load "base/make") "Intel i386"))
        (env (->environment '(compiler))))
-  (set! (access compiler:generate-stack-checks? env) false)
   (set! (access compiler:compress-top-level? env) true)
   val)
