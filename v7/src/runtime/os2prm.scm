@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.17 1995/04/23 05:53:47 cph Exp $
+$Id: os2prm.scm,v 1.18 1995/07/07 06:37:24 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -115,7 +115,7 @@ MIT in each case. |#
 		   " "
 		   (month/short-string (decoded-time/month dt))
 		   " "
-		   (number->string (modulo (decoded-time/year dt) 100))
+		   (number->string (decoded-time/year dt))
 		   " "
 		   (d2 (decoded-time/hour dt))
 		   ":"
