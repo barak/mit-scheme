@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.25 1987/10/05 18:32:13 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.26 1988/04/27 04:12:44 jinx Exp $
  *
  * This file contains hooks and handles for the new fluid bindings
  * scheme for multiprocessors.
@@ -118,7 +118,7 @@ Pointer
     case TRAP_UNASSIGNED_DANGEROUS:
     case TRAP_FLUID_DANGEROUS:
     case TRAP_COMPILER_CACHED_DANGEROUS:
-      return deep_lookup(env, hunk[VARIABLE_SYMBOL], hunk, false);
+      return deep_lookup(env, hunk[VARIABLE_SYMBOL], hunk);
 
     case TRAP_COMPILER_CACHED:
     case TRAP_FLUID:
@@ -243,7 +243,7 @@ Define_Primitive(Prim_Add_Fluid_Binding, 3, "ADD-FLUID-BINDING!")
 
     case TC_INTERNED_SYMBOL:
     case TC_UNINTERNED_SYMBOL:
-      cell = deep_lookup(Arg1, Arg2, fake_variable_object, false);
+      cell = deep_lookup(Arg1, Arg2, fake_variable_object);
       break;
 
     default:
@@ -283,7 +283,7 @@ Define_Primitive(Prim_Make_Fluid_Binding, 3, "MAKE-FLUID-BINDING!")
 
     case TC_INTERNED_SYMBOL:
     case TC_UNINTERNED_SYMBOL:
-      cell = deep_lookup(Arg1, Arg2, fake_variable_object, false);
+      cell = deep_lookup(Arg1, Arg2, fake_variable_object);
       break;
 
     default:
