@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.53 2000/05/17 17:20:01 cph Exp $
+;;; $Id: imail-top.scm,v 1.54 2000/05/17 17:31:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -293,6 +293,7 @@ DEL	Scroll to previous screen of this message.
 (define-key 'imail #\u		'imail-undelete-previous-message)
 (define-key 'imail #\x		'imail-expunge)
 
+(define-key 'imail #\g		'imail-get-new-mail)
 (define-key 'imail #\s		'imail-save-folder)
 
 (define-key 'imail #\c-m-h	'imail-summary)
@@ -870,6 +871,25 @@ While composing the reply, use \\[mail-yank-original] to yank the
       (close-folder folder))
     ((ref-command bury-buffer))))
 
+(define-command imail-get-new-mail
+  "Probe the mail server for new mail.
+Selects the first new message if any new mail.
+Currently useful only for IMAP folders."
+  "P"
+  (lambda (specific-input?)
+    (if specific-input?
+	(dispatch-on-command (ref-command-object imail-input))
+	(let ((folder (selected-folder)))
+	  (let ((length (folder-length folder))
+		(unseen (first-unseen-message folder)))
+	    (probe-folder folder)
+	    (let ((length* (folder-length folder)))
+	      (if (> length* length)
+		  (select-message folder
+				  (if unseen
+				      length
+				      (first-unseen-message folder))))))))))
+
 (define-command imail-save-folder
   "Save the currently selected IMAIL folder."
   ()
@@ -885,7 +905,7 @@ While composing the reply, use \\[mail-yank-original] to yank the
      (selected-message)
      #t
      (not (buffer-get (selected-buffer) 'IMAIL-FULL-HEADERS? #f)))))
-
+
 (define-command imail-search
   "Show message containing next match for given string.
 Negative argument means search in reverse."
