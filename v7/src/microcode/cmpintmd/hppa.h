@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.21 1991/05/07 17:31:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.22 1991/07/11 03:59:15 cph Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -676,10 +676,22 @@ do {									\
 
 #define SPLIT_CACHES
 
+#ifdef IN_CMPINT_C
+
 /* This loads the cache information structure for use by flush_i_cache.
  */
 
-#define ASM_RESET_HOOK() flush_i_cache_initialize ()
+#define ASM_RESET_HOOK hppa_reset_hook
+
+void
+DEFUN_VOID (hppa_reset_hook)
+{
+  extern void interface_initialize ();
+  flush_i_cache_initialize ();
+  interface_initialize ();
+}
+
+#endif /* IN_CMPINT_C */
 
 /* Derived parameters and macros.
 

@@ -1,8 +1,8 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.15 1991/05/15 16:21:50 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.16 1991/07/11 03:58:59 cph Exp $
 ;;;
-;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -727,6 +727,28 @@ interface_to_C
         LDWM    -112(0,30),3		; Restore last reg, pop frame
         .PROCEND			;in=26;out=28;
 
+;;;; Procedure to initialize this interface.
+;;;
+;;; C signature:
+;;;
+;;; void initialize_interface (void);
+
+interface_initialize
+	.PROC
+	.CALLINFO CALLER,FRAME=0
+	.ENTRY
+	LDO	4(30),30
+	FSTWS	0,0(30)
+	LDW	0(30),22
+	LDI	30,21			; enable V, Z, O, U traps
+	OR	21,22,22
+	STW	22,0(30)
+	FLDWS	0(30),0
+	BV	0(2)
+	.EXIT
+	LDO	-4(30),30
+	.PROCEND
+
 ;;;; Routine to flush some locations from the processor cache.
 ;;; 
 ;;; Its C signature is
@@ -951,6 +973,7 @@ interface_limit
 	.SPACE	$TEXT$
 	.SUBSPA $CODE$
 	.EXPORT C_to_interface,PRIV_LEV=3,ARGW0=GR,RTNVAL=GR
+	.EXPORT interface_initialize,PRIV_LEV=3
 	.EXPORT interface_to_scheme,PRIV_LEV=3
 	.EXPORT interface_to_C,PRIV_LEV=3
 	.EXPORT scheme_to_interface_ble,PRIV_LEV=3
