@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpauxmd/hppa.m4,v 1.9 1990/08/07 15:36:22 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpauxmd/hppa.m4,v 1.10 1990/08/08 20:08:52 jinx Rel $
 ;;;
 ;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -488,18 +488,19 @@ cache_flush_region
 	.PROC
         .CALLINFO CALLER,FRAME=0
 	.ENTRY
+	LDO	3(25),25		; add 3 to round up in next inst.
 	SHD	0,25,2,25		; divide count (in longs) by 4
 	COPY	25,28			; save for FIC loop
 	COPY	26,29			; save for FIC loop
 	LDI	16,1			; increment
 ;;;
 flush_cache_fdc_loop
-	ADDIB,>	-1,25,flush_cache_fdc_loop
+	ADDIB,>=	-1,25,flush_cache_fdc_loop
 	FDC,M	1(0,26)
 	SYNC
 ;;;
 flush_cache_fic_loop
-	ADDIB,>	-1,28,flush_cache_fic_loop
+	ADDIB,>=	-1,28,flush_cache_fic_loop
 	FIC,M	1(5,29)
 	BV	0(2)
 	.EXIT
@@ -513,15 +514,16 @@ flush_cache_fic_loop
 ;;; void
 ;;; cache_flush_all (cache_set, cache_info)
 ;;;      unsigned int cache_set;
-;;;      struct pdc_cache_result *cache_info;
+;;;      struct pdc_cache_rtn_block *cache_info;
 ;;;
 ;;; cache_set is a bit mask of the flags I_CACHE (1) and D_CACHE (2).
 ;;; the requested cache (or both) is flushed.
 ;;;
-;;; struct pdc_cache_format is the structure returned by the PDC_CACHE
-;;; processor-dependent-code call, and stored in the kernel variable (HP-UX)
-;;; "cache_tlb_parms".
-;;; Only the cache parameters (and not the TLB parameters) are used.
+;;; struct pdc_cache_rtn_block is defined in <machine/pdc_rqsts.h> and
+;;; is the structure returned by the PDC_CACHE
+;;; processor-dependent-code call, and stored in the kernel variable
+;;; (HP-UX) "cache_tlb_parms".  Only the cache parameters (and not the
+;;; TLB parameters) are used.
 
 cache_flush_all
 	.PROC
