@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 1.44 1987/03/19 00:53:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 1.45 1987/05/07 00:24:20 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -83,6 +83,7 @@ MIT in each case. |#
 
 (define (rtl:machine-register? rtl-register)
   (case rtl-register
+    ((FRAME-POINTER) (interpreter-frame-pointer))
     ((STACK-POINTER) (interpreter-stack-pointer))
     ((INTERPRETER-CALL-RESULT:ACCESS) (interpreter-register:access))
     ((INTERPRETER-CALL-RESULT:LOOKUP) (interpreter-register:lookup))
@@ -92,8 +93,8 @@ MIT in each case. |#
 
 (define (rtl:interpreter-register? rtl-register)
   (case rtl-register
-    ((MEMORY_TOP) 0)
-    ((STACK_GUARD) 1)
+    ((MEMORY-TOP) 0)
+    ((STACK-GUARD) 1)
     ((VALUE) 2)
     ((ENVIRONMENT) 3)
     ((TEMPORARY) 4)
@@ -131,10 +132,10 @@ MIT in each case. |#
   (= (register-renumber x) (register-renumber y)))
 
 (define available-machine-registers
-  (list d0 d1 d2 d3 d4 d5 d6 a0 a1 a2 a3 a4))
+  (list d0 d1 d2 d3 d4 d5 d6 a0 a1 a2 a3))
 
 (define-integrable (register-contains-address? register)
-  (memv register '(13 14 15)))
+  (memv register '(12 13 14 15)))
 
 (define register-type
   (let ((types (make-vector 16)))
@@ -158,6 +159,7 @@ MIT in each case. |#
 (define mask-reference
   '(D 7))
 
+(define regnum:frame-pointer a4)
 (define regnum:free-pointer a5)
 (define regnum:regs-pointer a6)
 (define regnum:stack-pointer a7)
@@ -176,6 +178,12 @@ MIT in each case. |#
 
 (define-integrable (interpreter-register:unbound?)
   (rtl:make-machine-register d0))
+
+(define-integrable (interpreter-frame-pointer)
+  (rtl:make-machine-register regnum:frame-pointer))
+
+(define-integrable (interpreter-frame-pointer? register)
+  (= (rtl:register-number register) regnum:frame-pointer))
 
 (define-integrable (interpreter-free-pointer)
   (rtl:make-machine-register regnum:free-pointer))
