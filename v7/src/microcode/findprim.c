@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.25 1987/05/28 12:22:46 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.26 1987/08/06 20:01:43 jinx Exp $
  *
  * Preprocessor to find and declare defined primitives.
  *
@@ -633,7 +633,7 @@ print_procedure(primitive_descriptor, error_string)
   fprintf(output, "  Primitive_%s_Args();\n", (primitive_descriptor->Arity));
   fprintf(output, "\n");
   fprintf(output, "  %s;\n", error_string);
-  fprintf(output, "}\n\n");
+  fprintf(output, "}\n");
   return;
 }
 
@@ -654,7 +654,7 @@ print_primitives(last)
     fprintf(output, ",\n");
   }
   print_entry(last, Result_Buffer[last]);
-  fprintf(output, "\n};\n\n");
+  fprintf(output, "\n};\n\f\n");
 
   /* Print the arity table. */
   
@@ -665,7 +665,7 @@ print_primitives(last)
     fprintf(output, "  %s,\n", ((Result_Buffer[count])->Arity));
   }
   fprintf(output, "  %s\n", ((Result_Buffer[last])->Arity));
-  fprintf(output, "};\n\n");
+  fprintf(output, "};\n\f\n");
 
   /* Print the names table. */
   
@@ -747,10 +747,11 @@ dump(check)
       print_procedure(&Inexistent_Entry, &Inexistent_Error_String[0]);
     }
     else
-      fprintf(output, "       %s();\n\n", &(Data_Buffer[end].C_Name)[0]);
+      fprintf(output, "       %s();\n", &(Data_Buffer[end].C_Name)[0]);
 
   }
 
+  fprintf(output, "\f\n");
   print_primitives((max < 0) ? 0 : max);
   return;
 }
