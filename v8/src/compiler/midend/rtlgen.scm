@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.8 1995/01/26 23:15:39 adams Exp $
+$Id: rtlgen.scm,v 1.9 1995/01/28 02:42:01 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -1279,9 +1279,9 @@ MIT in each case. |#
     (call-with-values
      (lambda () (%matchup (cdr bindings) '(handler state) '(cdr form)))
      (lambda (names code)
-       `(define ,proc-name
-	  (let ((handler (lambda ,(cons (car bindings) names) ,@body)))
-	    (named-lambda (,proc-name state form)
+       `(DEFINE ,proc-name
+	  (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
+	    (NAMED-LAMBDA (,proc-name STATE FORM)
 	      ,code)))))))
 
 (define-rtl-generator/stmt LET (state bindings body)
@@ -1513,6 +1513,7 @@ MIT in each case. |#
   (rtlgen/stmt state body))
 
 (define (rtlgen/letrec/bindings bindings)
+  (sample/1 '(rtlgen/bindings-per-letrec histogram) (length bindings))
   (set! *rtlgen/delayed-objects*
 	(fold-right (lambda (binding rest)
 		      (cons (cons (car binding)
