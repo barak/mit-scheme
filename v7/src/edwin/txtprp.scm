@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: txtprp.scm,v 1.21 2001/01/24 04:24:23 cph Exp $
+;;; $Id: txtprp.scm,v 1.22 2001/01/25 04:44:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1993-2001 Massachusetts Institute of Technology
 ;;;
@@ -25,7 +25,7 @@
 
 (define (add-text-property group start end key datum #!optional no-overwrite?)
   (validate-region-arguments group start end 'ADD-TEXT-PROPERTY)
-  (validate-symbol-argument key 'ADD-TEXT-PROPERTY)
+  (validate-key-argument key 'ADD-TEXT-PROPERTY)
   (modify-text-properties group start end
     (if (not (if (default-object? no-overwrite?) #f no-overwrite?))
 	(lambda (properties)
@@ -37,7 +37,7 @@
 
 (define (remove-text-property group start end key)
   (validate-region-arguments group start end 'REMOVE-TEXT-PROPERTY)
-  (validate-symbol-argument key 'REMOVE-TEXT-PROPERTY)
+  (validate-key-argument key 'REMOVE-TEXT-PROPERTY)
   (modify-text-properties group start end
     (lambda (properties)
       (not (eq? (properties/lookup properties key no-datum) no-datum)))
@@ -52,7 +52,7 @@
 
 (define (get-text-property group index key default)
   (validate-point-arguments group index 'GET-TEXT-PROPERTY)
-  (validate-symbol-argument key 'GET-TEXT-PROPERTY)
+  (validate-key-argument key 'GET-TEXT-PROPERTY)
   (if (and (group-text-properties group) (fix:< index (group-length group)))
       (interval-property (find-interval group index) key default)
       default))
@@ -75,7 +75,7 @@
 
 (define (next-specific-property-change group start end key)
   (validate-region-arguments group start end 'NEXT-SPECIFIC-PROPERTY-CHANGE)
-  (validate-symbol-argument key 'NEXT-SPECIFIC-PROPERTY-CHANGE)
+  (validate-key-argument key 'NEXT-SPECIFIC-PROPERTY-CHANGE)
   (and (group-text-properties group)
        (fix:< start end)
        (let ((interval (find-interval group start)))
@@ -90,7 +90,7 @@
 
 (define (previous-specific-property-change group start end key)
   (validate-region-arguments group start end 'PREV-SPECIFIC-PROPERTY-CHANGE)
-  (validate-symbol-argument key 'PREV-SPECIFIC-PROPERTY-CHANGE)
+  (validate-key-argument key 'PREV-SPECIFIC-PROPERTY-CHANGE)
   (and (group-text-properties group)
        (fix:< start end)
        (let ((interval (find-interval group (fix:- end 1))))
@@ -215,8 +215,8 @@
   (if (not (group? group))
       (error:wrong-type-argument group "group" procedure)))
 
-(define (validate-symbol-argument key procedure)
-  (if (not (interned-symbol? key))
+(define (validate-key-argument key procedure)
+  (if (not (or (interned-symbol? key) (variable? key)))
       (error:wrong-type-argument key "symbol" procedure)))
 
 (define no-datum
