@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: lincom.scm,v 1.123 1999/01/02 06:11:34 cph Exp $
+;;; $Id: lincom.scm,v 1.124 2000/02/25 14:20:43 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -363,7 +363,10 @@ With argument COLUMN, indent each line to that column."
   "Insert a newline.  With arg, insert that many newlines."
   "*P"
   (lambda (argument)
-    (insert-newlines (command-argument-numeric-value argument))))
+    (self-insert #\newline
+		 (command-argument-numeric-value argument)
+		 ;; Don't do auto-fill if argument supplied.
+		 (not argument))))
 
 (define-command split-line
   "Move rest of this line vertically down.

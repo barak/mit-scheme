@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: basic.scm,v 1.132 1999/01/28 06:03:18 cph Exp $
+;;; $Id: basic.scm,v 1.133 2000/02/25 14:20:56 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -23,12 +23,28 @@
 (declare (usual-integrations))
 
 (define-command self-insert-command
-  "Insert the character used to invoke this.
-With an argument, insert the character that many times."
-  "P"
-  (lambda (argument)
-    (insert-chars (last-command-key)
-		  (command-argument-numeric-value argument))))
+  "Insert the character you type.
+Whichever character you type to run this command is inserted."
+  "p"
+  (lambda (n)
+    (let ((char (last-command-key)))
+      (if (not (char? char))
+	  (editor-error "self-insert-command only works on character keys."))
+      (self-insert char n #t))))
+
+(define (self-insert char n allow-auto-fill?)
+  (if (> n 0)
+      (begin
+	(if (and (current-minor-mode? (ref-mode-object abbrev))
+		 (not (char=? #\w (char-syntax char)))
+		 (buffer-writable? (selected-buffer))
+		 (eqv? #\w (char-syntax (extract-left-char))))
+	    ((ref-command expand-abbrev)))
+	(insert-chars char n)
+	(if (and (or (char=? #\space char)
+		     (char=? #\newline char))
+		 (current-minor-mode? (ref-mode-object auto-fill)))
+	    (auto-fill-break)))))
 
 (define (read-quoted-char prompt-string)
   (let ((read-ascii-char

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fill.scm,v 1.61 2000/02/23 17:37:03 cph Exp $
+;;; $Id: fill.scm,v 1.62 2000/02/25 14:20:32 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -315,6 +315,8 @@ Prefix arg means justify as well."
     (and (not (group-start? m))
 	 (memv (extract-left-char m) '(#\. #\? #\!)))))
 
+;;;; Auto Fill
+
 (define-command auto-fill-mode
   "Toggle auto-fill mode.
 With argument, turn auto-fill mode on iff argument is positive."
@@ -327,50 +329,8 @@ With argument, turn auto-fill mode on iff argument is positive."
 	  (enable-current-minor-mode! mode)
 	  (disable-current-minor-mode! mode)))))
 
-(define-command &auto-fill-space
-  "Breaks the line if it exceeds the fill column, then inserts a space."
-  "p"
-  (lambda (argument)
-    (conditionally-override-key (ref-command-object &auto-fill-space)
-				(ref-command-object self-insert-command)
-				(lambda ()
-				  (insert-chars #\space argument)
-				  (auto-fill-break)))))
-
-(define-command &auto-fill-newline
-  "Breaks the line if it exceeds the fill column, then inserts a newline."
-  "P"
-  (lambda (argument)
-    (conditionally-override-key (ref-command-object &auto-fill-newline)
-				(ref-command-object newline)
-				(lambda ()
-				  (auto-fill-break)
-				  ((ref-command newline) argument)))))
-
-(define (conditionally-override-key overriding overridden action)
-  ;; This looks at the context in which the auto-fill commands are
-  ;; invoked, and performs the auto-fill action only when the context
-  ;; is the expected one.
-  (let ((command
-	 (local-comtab-entry
-	  (let ((comtabs (current-comtabs)))
-	    (let ((tail
-		   (memq (minor-mode-comtab (ref-mode-object auto-fill))
-			 comtabs)))
-	      (if (or (null? tail) (null? (cdr tail)))
-		  comtabs
-		  (cdr tail))))
-	  (current-command-key)
-	  (current-point))))
-    (if (or (eq? command overriding)
-	    (eq? command overridden)
-	    (eq? command (ref-command-object undefined)))
-	(action)
-	(dispatch-on-command command))))
-
-(define-minor-mode auto-fill "Fill" "")
-(define-key 'auto-fill #\space '&auto-fill-space)
-(define-key 'auto-fill #\return '&auto-fill-newline)
+(define-minor-mode auto-fill "Fill"
+  "Minor mode in which lines are automatically wrapped when long enough.")
 
 (define (auto-fill-break)
   (let ((point (current-point)))
@@ -378,7 +338,7 @@ With argument, turn auto-fill mode on iff argument is positive."
 	(if (re-search-backward "[^ \t][ \t]+"
 				(move-to-column
 				 point
-				 (1+ (ref-variable fill-column)))
+				 (+ (ref-variable fill-column) 1))
 				(line-start point 0))
 	    (with-current-point (re-match-end 0)
 	      (ref-command indent-new-comment-line))))))
