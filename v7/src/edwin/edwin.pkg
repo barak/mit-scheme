@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.248 2000/03/25 18:48:58 cph Exp $
+$Id: edwin.pkg,v 1.249 2000/03/26 01:27:13 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -1106,8 +1106,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    edwin-variable$vc-make-backup-files
 	    edwin-variable$vc-mode-line-status
 	    edwin-variable$vc-rcs-preserve-mod-times
-	    edwin-variable$vc-suppress-confirm
-	    vc-after-save))
+	    edwin-variable$vc-suppress-confirm))
 
   (define-package (edwin rcs-parse)
     (files "rcsparse")
