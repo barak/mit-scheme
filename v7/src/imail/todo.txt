@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.103 2000/06/30 02:57:24 cph Exp $
+$Id: todo.txt,v 1.104 2000/06/30 03:10:02 cph Exp $
 
 Bug fixes
 ---------
@@ -27,9 +27,6 @@ New features
 
 * Examine spec for text/enriched and see if it can be incorporated
   into the reader.
-
-* Support the "flagged" message flag by highlighting messages with
-  this flag in the summary buffer.
 
 * When yanking a message into a reply buffer, need option to quote the
   original message using MIME, rather than the current copy-and-indent
