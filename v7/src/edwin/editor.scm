@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.214 1992/02/10 15:48:53 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.215 1992/02/17 22:00:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -62,6 +62,7 @@
      (fluid-let ((editor-abort continuation)
 		 (current-editor edwin-editor)
 		 (editor-thread (current-thread))
+		 (editor-thread-root-continuation)
 		 (editor-initial-threads '())
 		 (inferior-thread-changes? false)
 		 (recursive-edit-continuation false)
@@ -78,6 +79,8 @@
 		   (lambda ()
 		     (call-with-current-continuation
 		      (lambda (root-continuation)
+			(set! editor-thread-root-continuation
+			      root-continuation)
 			(do ((thunks (let ((thunks editor-initial-threads))
 				       (set! editor-initial-threads '())
 				       thunks)
@@ -99,6 +102,7 @@
 (define edwin-editor false)
 (define current-editor)
 (define editor-thread)
+(define editor-thread-root-continuation)
 (define editor-initial-threads)
 (define edwin-continuation)
 
@@ -149,8 +153,8 @@
 (define (standard-editor-initialization)
   (start-inferior-repl!
    (current-buffer)
-   user-initial-environment
-   user-initial-syntax-table
+   (nearest-repl/environment)
+   (nearest-repl/syntax-table)
    (and (not (ref-variable inhibit-startup-message))
 	(cmdl-message/append
 	 (cmdl-message/active
@@ -215,15 +219,9 @@ with the contents of the startup message."
 	      (send (screen-root-window screen) ':salvage!))
 	    (editor-screens edwin-editor)))
 
-;;; There is a problem with recursive edits and multiple screens.
-;;; When you switch screens the recursive edit aborts. The problem
-;;; is that a top level ^G in a recursive edit aborts the recursive
-;;; edit and a ^G is signalled when you switch screens. I think that
-;;; ^G should not abort a recursive edit.
-
 (define (enter-recursive-edit)
   (let ((value
-	 (call-with-protected-continuation
+	 (call-with-current-continuation
 	   (lambda (continuation)
 	     (fluid-let ((recursive-edit-continuation continuation)
 			 (recursive-edit-level (1+ recursive-edit-level)))
@@ -233,12 +231,9 @@ with the contents of the startup message."
 				    (window-modeline-event! window
 							    'RECURSIVE-EDIT))
 				  (window-list)))))
-		 (dynamic-wind
-		  (lambda () unspecific)
-		  (lambda ()
-		    (recursive-edit-event!)
-		    (command-reader))
-		  recursive-edit-event!)))))))
+		 (dynamic-wind recursive-edit-event!
+			       command-reader
+			       recursive-edit-event!)))))))
     (if (eq? value 'ABORT)
 	(abort-current-command)
 	(begin
@@ -337,7 +332,7 @@ This does not affect editor errors or evaluation errors."
 (define (intercept-^G-interrupts interceptor thunk)
   (let ((signal-tag "signal-tag"))
     (let ((value
-	   (call-with-protected-continuation
+	   (call-with-current-continuation
 	     (lambda (continuation)
 	       (fluid-let ((*^G-interrupt-handler*
 			    (lambda () (continuation signal-tag))))
