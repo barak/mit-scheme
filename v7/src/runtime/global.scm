@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.46 1993/10/21 11:49:45 cph Exp $
+$Id: global.scm,v 14.47 1995/03/20 20:14:10 adams Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -149,9 +149,21 @@ MIT in each case. |#
       (with-output-to-truncated-string max (lambda () (write object)))))
 
 (define (pa procedure)
-  (if (not (procedure? procedure))
-      (error "Must be a procedure" procedure))
-  (pp (unsyntax-lambda-list (procedure-lambda procedure))))
+  (cond ((not (procedure? procedure))
+	 (error "Must be a procedure" procedure))
+	((procedure-lambda procedure)
+	 => (lambda (scode)
+	      (pp (unsyntax-lambda-list scode))))
+	((and (primitive-procedure? procedure)
+	      (primitive-procedure-documentation procedure))
+	 => (lambda (documentation)
+	      (newline)
+	      (display documentation)))
+	(else
+	 (newline)
+	 (display "No documentation or debugging info for ")
+	 (display procedure)
+	 (display "."))))
 
 (define (pwd)
   (working-directory-pathname))
