@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: logmer.scm,v 1.6 1995/07/29 16:55:56 adams Exp $
+$Id: logmer.scm,v 1.7 1995/11/11 07:24:17 cph Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,7 +38,7 @@ MIT in each case. |#
 
 (define trace-port false)
 
-(define (rcs-directory-log output-file . directories)
+(define (rcs-directory-log output-file directory)
   (format-to-file
    output-file
    (fluid-let ((trace-port (nearest-cmdl/port)))
@@ -46,8 +46,7 @@ MIT in each case. |#
 	    (sort-entries
 	     (let ((entries
 		    (read-entries
-		     (let ((pathnames
-			    (append-map! rcs-directory-read directories)))
+		     (let ((pathnames (rcs-directory-read directory)))
 		       (newline trace-port)
 		       (write-string "total files: " trace-port)
 		       (write (length pathnames) trace-port)
@@ -176,10 +175,53 @@ MIT in each case. |#
 			  input*)
 		      (cons (car input) output))))))))
 
-(define (rcs-directory-read filename)
-  (list-transform-positive (directory-read (pathname-as-directory filename))
-    (lambda (pathname)
-      (string-suffix? ",v" (file-namestring pathname)))))
+(define (rcs-directory-read pathname)
+  (let ((files '()))
+    (define (scan-directory pathname)
+      (for-each scan-file
+		(directory-read (pathname-as-directory pathname) #f)))
+
+    (define (scan-file pathname)
+      (let ((attributes (file-attributes-direct pathname)))
+	(let ((type (file-attributes/type attributes)))
+	  (cond ((not type)
+		 (maybe-add-file pathname))
+		((eq? type #t)
+		 (if (not (member (file-namestring pathname) '("." "..")))
+		     (scan-directory pathname)))
+		((string? type)
+		 (let ((pathname
+			(merge-pathnames type (directory-pathname pathname))))
+		   (if (regular-file? pathname)
+		       (maybe-add-file (pathname-simplify pathname)))))))))
+
+    (define (maybe-add-file pathname)
+      (if (and (not (ignored-file-name? pathname))
+	       (under-rcs-control? pathname))
+	  (begin
+	    (set! files (cons pathname files))
+	    unspecific)))
+
+    (define (under-rcs-control? pathname)
+      (let ((directory (directory-pathname pathname))
+	    (name (string-append (file-namestring pathname) ",v")))
+	(or (regular-file?
+	     (merge-pathnames name (merge-pathnames "RCS/" directory)))
+	    (regular-file? (merge-pathnames name directory)))))
+
+    (define (regular-file? pathname)
+      (let ((attributes (file-attributes pathname)))
+	(and attributes
+	     (not (file-attributes/type attributes)))))
+
+    (define (ignored-file-name? pathname)
+      (let ((name (file-namestring pathname)))
+	(or (string-suffix? ",v" name)
+	    (string-suffix? "~" name)
+	    (string-prefix? "#" name))))
+
+    (scan-directory pathname)
+    files))
 
 (define (greatest-common-prefix pathnames)
   (if (null? pathnames)
