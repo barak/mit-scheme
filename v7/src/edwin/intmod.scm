@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.67 1993/10/16 04:56:45 cph Exp $
+;;;	$Id: intmod.scm,v 1.68 1993/10/16 06:02:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -170,19 +170,20 @@ REPL uses current evaluation environment."
   (set! repl-buffers '())
   unspecific)
 
-(define (wait-for-input port level mode ready?)
-  (signal-thread-event editor-thread
-    (lambda ()
-      (maybe-switch-modes! port mode)
-      (let ((buffer (port/buffer port)))
-	(define-variable-local-value! buffer
-	  (ref-variable-object mode-line-process)
-	  (list ": "
-		'RUN-LIGHT
-		(if (equal? level "1")
-		    ""
-		    (string-append " [level: " (or level "?") "]"))))
-	(set-run-light! buffer #f))))
+(define (wait-for-input port mode ready?)
+  (let ((level (nearest-cmdl/level)))
+    (signal-thread-event editor-thread
+      (lambda ()
+	(maybe-switch-modes! port mode)
+	(let ((buffer (port/buffer port)))
+	  (define-variable-local-value! buffer
+	    (ref-variable-object mode-line-process)
+	    (list ": "
+		  'RUN-LIGHT
+		  (if (= level 1)
+		      ""
+		      (string-append " [level: " (number->string level) "]"))))
+	  (set-run-light! buffer #f)))))
   ;; This doesn't do any output, but prods the editor to notice that
   ;; the modeline has changed and a redisplay is needed.
   (inferior-thread-output! (port/output-registration port))
@@ -301,27 +302,26 @@ REPL uses current evaluation environment."
 				 " buffer")
 			(editor-beep)))
 		  #t))
-	      (let ((level (number->string (cmdl/level repl))))
-		(let loop ()
-		  (fresh-line port)
-		  (write-string
-		   ";Type D to debug error, Q to quit back to REP loop: "
-		   port)
-		  (let ((char (read-command-char port level)))
-		    (write-char char port)
-		    (cond ((char-ci=? char #\d)
-			   (fresh-line port)
-			   (write-string ";Starting debugger..." port)
-			   (enqueue-output-operation! port
-			     (lambda (mark transcript?)
-			       mark
-			       (if (not transcript?)
-				   (start-continuation-browser port
-							       condition))
-			       #t)))
-			  ((not (char-ci=? char #\q))
-			   (beep port)
-			   (loop))))))
+	      (let loop ()
+		(fresh-line port)
+		(write-string
+		 ";Type D to debug error, Q to quit back to REP loop: "
+		 port)
+		(let ((char (read-command-char port)))
+		  (write-char char port)
+		  (cond ((char-ci=? char #\d)
+			 (fresh-line port)
+			 (write-string ";Starting debugger..." port)
+			 (enqueue-output-operation! port
+			   (lambda (mark transcript?)
+			     mark
+			     (if (not transcript?)
+				 (start-continuation-browser port
+							     condition))
+			     #t)))
+			((not (char-ci=? char #\q))
+			 (beep port)
+			 (loop)))))
 	      (cmdl-interrupt/abort-top-level))))))
 
 ;;;; Modes
@@ -792,11 +792,11 @@ If this is an error, the debugger examines the error condition."
 (define (operation/read port parser-table)
   parser-table
   (standard-prompt-spacing port)
-  (read-expression port (number->string (nearest-cmdl/level))))
+  (read-expression port))
 
 (define read-expression
   (let ((empty (cons '() '())))
-    (lambda (port level)
+    (lambda (port)
       (let ((queue (port/expression-queue port))
 	    (mode (ref-mode-object inferior-repl))
 	    (ready?
@@ -806,7 +806,7 @@ If this is an error, the debugger examines the error condition."
 	  (let ((element (dequeue! queue empty)))
 	    (if (eq? element empty)
 		(begin
-		  (wait-for-input port level mode ready?)
+		  (wait-for-input port mode ready?)
 		  (loop))
 		(begin
 		  (set-port/current-queue-element! port element)
@@ -900,40 +900,39 @@ If this is an error, the debugger examines the error condition."
 	(add-select-buffer-hook buffer hook))))
 
 (define (operation/prompt-for-command-expression port prompt)
-  (read-expression port (parse-command-prompt port prompt)))
+  (parse-command-prompt port prompt)
+  (read-expression port))
 
 (define (operation/prompt-for-command-char port prompt)
-  (read-command-char port (parse-command-prompt port prompt)))
+  (parse-command-prompt port prompt)
+  (read-command-char port))
 
-(define (read-command-char port level)
+(define (read-command-char port)
   (set-port/command-char! port false)
-  (wait-for-input port level (ref-mode-object inferior-cmdl) port/command-char)
+  (wait-for-input port (ref-mode-object inferior-cmdl) port/command-char)
   (port/command-char port))
 
 (define (parse-command-prompt port prompt)
   (standard-prompt-spacing port)
-  (let ((index
-	 (re-match-string-forward (re-compile-pattern "\\([0-9]+\\) " false)
-				  false false prompt)))
-    (let ((level
-	   (and index
-		(substring prompt
-			   (re-match-start-index 1)
-			   (re-match-end-index 1))))
-	  (tail (if index (string-tail prompt index) prompt)))
-      (if (not (and suppress-standard-prompts?
-		    (or (string=? tail user-initial-prompt)
-			(member tail standard-prompts))))
-	  (begin
-	    (write-string prompt port)
-	    (if (let ((n (string-length prompt)))
-		  (and (> n 0)
-		       (not (char=? #\space (string-ref prompt (- n 1))))))
-		(write-char #\space port))))
-      level)))
+  (let ((prompt
+	 (let ((prefix
+		(string-append (number->string (nearest-cmdl/level)) " ")))
+	   (if (and (string-prefix? prefix prompt)
+		    (not (string=? prefix prompt)))
+	       (string-tail prompt (string-length prefix))
+	       prompt))))
+    (if (not (and suppress-standard-prompts?
+		  (or (string=? prompt user-initial-prompt)
+		      (member prompt standard-prompts))))
+	(begin
+	  (write-string prompt port)
+	  (if (let ((n (string-length prompt)))
+		(and (> n 0)
+		     (not (char=? #\space (string-ref prompt (- n 1))))))
+	      (write-char #\space port))))))
 
 (define suppress-standard-prompts? #t)
-(define standard-prompts '("]=>" "error>" "break>" "bkpt>"))
+(define standard-prompts '("]=>" "error>" "break>" "bkpt>" "debug>" "where>"))
 
 ;;; Miscellaneous
 
