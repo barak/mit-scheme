@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.10 2000/04/28 18:43:46 cph Exp $
+;;; $Id: imap-response.scm,v 1.11 2000/05/08 04:29:12 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -122,12 +122,18 @@
 		 (case x
 		   ((ALERT PARSE READ-ONLY READ-WRITE TRYCREATE)
 		    '())
+		   ((BADCHARSET)
+		    (if (char=? #\space (peek-char-no-eof port))
+			(begin
+			  (discard-char port)
+			  (read-list port read-astring))
+			'()))
 		   ((NEWNAME)
 		    (discard-known-char #\space port)
 		    (let ((old (read-xstring port)))
 		      (discard-known-char #\space port)
 		      (list old (read-xstring port))))
-		   ((UIDVALIDITY UNSEEN)
+		   ((UIDNEXT UIDVALIDITY UNSEEN)
 		    (discard-known-char #\space port)
 		    (list (read-nz-number port)))
 		   ((PERMANENTFLAGS)
@@ -480,15 +486,6 @@
 (define (imap:response:capabilities response)
   (cdr response))
 
-(define (imap:find-response responses keyword error?)
-  (if (pair? responses)
-      (if (eq? (caar responses) keyword)
-	  (car responses)
-	  (imap:find-response (cdr responses) keyword error?))
-      (and error?
-	   (error "Missing response keyword:" keyword))))
-
-
 (define (imap:response:status-response? response)
   (memq (car response) '(OK NO BAD PREAUTH BYE)))
 
@@ -511,11 +508,13 @@
     (cadr entry)))
 
 (define (imap:response-code:alert? code) (eq? (car code) 'ALERT))
+(define (imap:response-code:badcharset? code) (eq? (car code) 'BADCHARSET))
 (define (imap:response-code:newname? code) (eq? (car code) 'NEWNAME))
 (define (imap:response-code:parse? code) (eq? (car code) 'PARSE))
 (define (imap:response-code:read-only? code) (eq? (car code) 'READ-ONLY))
 (define (imap:response-code:read-write? code) (eq? (car code) 'READ-WRITE))
 (define (imap:response-code:trycreate? code) (eq? (car code) 'TRYCREATE))
+(define (imap:response-code:uidnext? code) (eq? (car code) 'UIDNEXT))
 (define (imap:response-code:uidvalidity? code) (eq? (car code) 'UIDVALIDITY))
 (define (imap:response-code:unseen? code) (eq? (car code) 'UNSEEN))
 
@@ -524,6 +523,7 @@
 
 (define (imap:response-code:newname-old code) (cadr code))
 (define (imap:response-code:newname-new code) (caddr code))
+(define (imap:response-code:uidnext code) (cadr code))
 (define (imap:response-code:uidvalidity code) (cadr code))
 (define (imap:response-code:unseen code) (cadr code))
 (define (imap:response-code:permanentflags code) (cdr code))
