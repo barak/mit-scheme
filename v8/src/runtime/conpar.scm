@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.26 1993/08/13 00:03:19 cph Exp $
+$Id: conpar.scm,v 14.27 1993/09/01 22:15:56 gjr Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -811,14 +811,14 @@ MIT in each case. |#
 		    (reverse elements))
 	  (newline)
 	  (write-string ";; Top of the stack")))))
-
+
 (define (write-hex value)
   (if (< value #x10)
       (write value)
       (begin
 	(write-string "#x")
 	(write-string (number->string value #x10)))))
-
+
 (define (hardware-trap-frame/describe frame long?)
   (guarantee-hardware-trap-frame frame)
   (let ((name (stack-frame/ref frame hardware-trap/signal-name-index))
@@ -865,7 +865,27 @@ MIT in each case. |#
 		      (loop (car info)))
 		     (else
 		      (loop (cdr info)))))))
-	  ((3)
-	   (write-string " at an unknown compiled code location."))
+	  ((3)				; probably compiled-code
+	   (write-string " at an unknown compiled-code location."))
+	  ((4)				; builtin (i.e. hook)
+	   (let* ((index (stack-frame/ref frame hardware-trap/pc-info1-index))
+		  (name ((ucode-primitive builtin-index->name 1) index)))
+	     (if name
+		 (begin
+		   (write-string " in assembly-language utility ")
+		   (write-string name))
+		 (begin
+		   (write-string " in unknown assembly-language utility ")
+		   (write-hex index)))))
+	  ((5)				; utility
+	   (let* ((index (stack-frame/ref frame hardware-trap/pc-info1-index))
+		  (name ((ucode-primitive utility-index->name 1) index)))
+	     (if name
+		 (begin
+		   (write-string " in compiled-code utility ")
+		   (write-string name))
+		 (begin
+		   (write-string " in unknown compiled-code utility ")
+		   (write-hex index)))))
 	  (else
 	   (error "hardware-trap/describe: Unknown state" state))))))
