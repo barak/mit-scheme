@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.33 1989/04/05 05:46:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.34 1989/04/15 01:24:38 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -1355,6 +1355,7 @@ MIT in each case. |#
 	  string->symbol
 	  string->uninterned-symbol
 	  symbol->string
+	  symbol->string/downcase?
 	  symbol-append
 	  symbol-hash
 	  symbol?
@@ -1394,6 +1395,8 @@ MIT in each case. |#
 	  unassigned?-name
 	  unassigned??
 	  undefined-conditional-branch)
+  (export (runtime debugging-info)
+	  %make-combination)
   (initialization (initialize-package!)))
 
 (define-package (runtime scode-data)
