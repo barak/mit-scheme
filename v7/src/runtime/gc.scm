@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gc.scm,v 14.9 1993/06/29 22:58:15 cph Exp $
+$Id: gc.scm,v 14.10 1993/09/18 05:47:35 gjr Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -78,20 +78,26 @@ MIT in each case. |#
 (define (default/gc-flip safety-margin)
   (cond ((not (null? pure-space-queue))
 	 (let ((result (purify-internal pure-space-queue true safety-margin)))
-	   (if (car result)
-	       (set! pure-space-queue '())
-	       (begin
-		 (set! pure-space-queue (cdr pure-space-queue))
-		 (queued-purification-failure)))
+	   (cond ((not (car result))
+		  (set! pure-space-queue (cdr pure-space-queue))
+		  (queued-purification-failure))
+		 ((eq? (car result) true)
+		  (set! pure-space-queue '()))
+		 (else
+		  ;; Wrong phase -- wait until next time.
+		  unspecific))
 	   (cdr result)))
 	((not (null? constant-space-queue))
 	 (let ((result
 		(purify-internal constant-space-queue false safety-margin)))
-	   (if (car result)
-	       (set! constant-space-queue '())
-	       (begin
-		 (set! constant-space-queue (cdr constant-space-queue))
-		 (queued-purification-failure)))
+	   (cond ((not (car result))
+		  (set! constant-space-queue (cdr constant-space-queue))
+		  (queued-purification-failure))
+		 ((eq? (car result) true)
+		  (set! constant-space-queue '()))
+		 (else
+		  ;; Wrong phase -- wait until next time.
+		  unspecific))
 	   (cdr result)))
 	(else
 	 (gc-flip-internal safety-margin))))
@@ -102,10 +108,19 @@ MIT in each case. |#
 (define (default/purify item pure-space? queue?)
   (if (not (if pure-space? (object-pure? item) (object-constant? item)))
       (cond ((not queue?)
-	     (if (not (car (purify-internal item
-					    pure-space?
-					    default-safety-margin)))
-		 (error "PURIFY: not enough room in constant space" item)))
+	     (let loop ()
+	       (let ((result
+		      (purify-internal item
+				       pure-space?
+				       default-safety-margin)))
+		 (cond ((not (car result))
+			(error "PURIFY: not enough room in constant space"
+			       item))
+		       ((not (eq? (car result) true))
+			;; Wrong phase -- try again.
+			(loop))
+		       (else
+			unspecific)))))
 	    (pure-space?
 	     (with-absolutely-no-interrupts
 	      (lambda ()
