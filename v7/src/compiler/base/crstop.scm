@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: crstop.scm,v 1.11 1992/10/19 19:11:40 jinx Exp $
+$Id: crstop.scm,v 1.12 1993/01/05 15:57:31 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -135,7 +135,8 @@ MIT in each case. |#
   (objects false read-only true)
   (object-width false read-only true))
 
-(define-structure (cc-vector (constructor cc-vector/make)
+(define-structure (cc-vector (type vector)
+			     (constructor cc-vector/make)
 			     (conc-name cc-vector/))
   (code-vector false read-only true)
   (entry-label false read-only true)
