@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpauxmd/hppa.m4,v 1.18 1991/08/13 18:23:38 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpauxmd/hppa.m4,v 1.19 1992/02/05 01:44:36 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -78,6 +78,8 @@ changecom(`;');;; -*-Midas-*-
 ;;;;    register.  Two word structures are returned in super temporary
 ;;;;    registers as well.  On HPPA: gr28 is used for long returns,
 ;;;;	gr28/gr29 are used for two word structure returns.
+;;;;	GCC returns two word structures differently: It passes
+;;;;	the address of the structure in gr28!	
 ;;;;
 ;;;;	6) Floating point registers are not preserved by this
 ;;;;	interface.  The interface is only called from the Scheme
@@ -132,6 +134,10 @@ define(TC_FALSE, 0)
 define(TC_TRUE, 0x8)
 define(SHARP_F, eval(TC_FALSE * (2 ** DATUM_LENGTH)))
 define(SHARP_T, eval(TC_TRUE * (2 ** DATUM_LENGTH)))
+define(C_FRAME_SIZE,
+       ifdef("HPC", 112,
+	     ifdef("GCC", 120,
+	           `Unknown C compiler: bad frame size')))
 
 	.SPACE  $TEXT$
 	.SUBSPA $CODE$,QUAD=0,ALIGN=8,ACCESS=44,CODE_ONLY
@@ -140,7 +146,7 @@ C_to_interface
 	.CALLINFO CALLER,FRAME=28,SAVE_RP
 	.ENTRY
 	STW	2,-20(0,30)		; Save return address
-	STWM	3,112(30)		; Save first reg, allocate frame
+	STWM	3,eval(C_FRAME_SIZE)(30)	; Save first reg, allocate frame
 	STW	4,-108(30)		; Save the other regs
 	STW	5,-104(30)
 	STW	6,-100(30)
@@ -195,9 +201,12 @@ scheme_to_interface
 	LDW	R'interface_limit-$global$(0,1),22
 	COMB,=,N	21,22,interface_break
 interface_proceed")
+	ifdef("GCC", "LDO	-116(30),28")
 	.CALL	ARGW0=GR,ARGW1=GR,ARGW2=GR,ARGW3=GR,RTNVAL=GR
 	BLE	0(4,29)			; Call handler
 	COPY	31,2			; Setup return address
+	ifdef("GCC", "LDW	-116(30),28
+		      LDW	-112(30),29")
 	BV	0(28)			; Call receiver
 	COPY	29,26			; Setup entry point
 
@@ -213,9 +222,9 @@ interface_proceed")
 	NOP
 	NOP
 	NOP")
+	ifdef("GCC","","NOP
 	NOP
-	NOP
-	NOP
+	NOP")
 
 hook_jump_table				; scheme_to_interface + 100
 store_closure_code_hook
@@ -706,7 +715,7 @@ define_generic_unary_predicate(zero,2d,=)
 
 ep_interface_to_C
 	COPY	29,28			; Setup C value
-        LDW     -132(0,30),2		; Restore return address
+        LDW     -eval(C_FRAME_SIZE+20)(0,30),2		; Restore return address
         LDW     -52(0,30),18		; Restore saved registers
         LDW     -56(0,30),17
         LDW     -60(0,30),16
@@ -724,7 +733,7 @@ ep_interface_to_C
         LDW     -108(0,30),4
         BV      0(2)			; Return
         .EXIT
-        LDWM    -112(0,30),3		; Restore last reg, pop frame
+        LDWM    -eval(C_FRAME_SIZE)(0,30),3	; Restore last reg, pop frame
         .PROCEND			;in=26;out=28;
 
 ;;;; Procedure to initialize this interface.
@@ -995,4 +1004,6 @@ interface_limit
 	.EXPORT hook_jump_table,PRIV_LEV=3
 	.EXPORT cache_flush_region,PRIV_LEV=3
 	.EXPORT cache_flush_all,PRIV_LEV=3
+	.EXPORT ep_interface_to_C,PRIV_LEV=3
+	.EXPORT ep_interface_to_scheme,PRIV_LEV=3
 	.END
