@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 13.47 1987/06/04 00:02:13 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 13.48 1987/06/11 21:30:21 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -92,7 +92,8 @@
 	proceed-value-filter
 	(lambda ()
 	  (set-interrupt-enables! interrupt-enables)
-	  (handler (continuation-expression (rep-continuation)))))))))
+	  (handler error-code
+		   (continuation-expression (rep-continuation)))))))))
 
 (define (wrapped-error-handler wrapper)
   (access handler (procedure-environment wrapper)))
@@ -143,7 +144,7 @@ using the current read-eval-print environment."))
 
 (define ((make-error-handler direction-alist operator-alist
 			     default-handler default-combination-handler)
-	 expression)
+	 error-code expression)
   ((let direction-loop ((alist direction-alist))
      (cond ((null? alist)
 	    (cond ((combination? expression)
@@ -369,21 +370,6 @@ using the current read-eval-print environment."))
 
 (define-bad-frame-error access? access-environment)
 (define-bad-frame-error in-package? in-package-environment)
-
-#|
-(define define-assignment-to-procedure-error
-  (define-specific-error 'ASSIGN-LAMBDA-NAME
-    "Attempt to assign procedure's name"))
-
-(define-assignment-to-procedure-error assignment? assignment-name)
-(define-assignment-to-procedure-error definition? definition-name)
-(define-assignment-to-procedure-error
-  (list (make-primitive-procedure 'LEXICAL-ASSIGNMENT)
-	(make-primitive-procedure 'LOCAL-ASSIGNMENT)
-	(make-primitive-procedure 'ADD-FLUID-BINDING! true)
-	(make-primitive-procedure 'MAKE-FLUID-BINDING! true))
-  combination-second-operand)
-|#
 
 ;;;; Application Errors
 
@@ -483,7 +469,7 @@ using the current read-eval-print environment."))
 ;;;; System Errors
 
 (define-total-error-handler 'BAD-ERROR-CODE
-  (lambda (error-code)
+  (lambda (error-code expression)
     (start-error-rep "Bad Error Code -- get a wizard"
 		     (error-code-or-name error-code))))
 
@@ -496,11 +482,10 @@ using the current read-eval-print environment."))
   identity-procedure)
 
 (define-total-error-handler 'WRITE-INTO-PURE-SPACE
-  (lambda (error-code)
+  (lambda (error-code expression)
     (newline)
     (write-string "Automagically IMPURIFYing an object....")
-    (impurify (combination-first-operand
-	       (continuation-expression (rep-continuation))))))
+    (impurify (combination-first-operand expression))))
  
 (define-default-error 'UNDEFINED-USER-TYPE
   "Undefined Type Code -- get a wizard"
