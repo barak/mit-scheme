@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.45 1989/11/26 17:38:39 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.46 1990/01/23 08:30:29 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -396,6 +396,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
     }
   Fasdump_Free_Calc(NewFree, NewMemTop, Orig_New_Free);
   Fixup = NewMemTop;
+  ALIGN_FLOAT (NewFree);
   New_Object = NewFree;
   *NewFree++ = Object;
 
@@ -421,10 +422,6 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
 
     *New_Free++ = SHARP_F;
     DUMPLOOP(New_Object, PURE_COPY);
-#if false
-    /* Can't align. */
-    ALIGN_FLOAT (NewFree);
-#endif
     Pure_Length = ((NewFree - New_Object) + 1);
     *NewFree++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
     *NewFree++ = MAKE_OBJECT (CONSTANT_PART, Pure_Length);
@@ -452,10 +449,6 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
 
   {
     DUMPLOOP(New_Object, NORMAL_GC);
-#if false
-    /* Aligning might screw up some of the counters. */
-    ALIGN_FLOAT (NewFree);
-#endif
     Length = (NewFree - New_Object);
     table_start = NewFree;
     table_end = cons_primitive_table(NewFree, Fixup, &table_length);
