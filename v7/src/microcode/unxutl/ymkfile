@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.82 1993/10/30 03:01:57 gjr Exp $
+$Id: ymkfile,v 1.83 1993/10/31 19:24:09 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -275,7 +275,7 @@ const.h \
 interp.h \
 prim.h \
 $(GC_HEAD_FILES)
-cmpauxmd.o : cmpauxmd.c liarc.tch bignum.h
+cmpauxmd.o : cmpauxmd.c liarc.tch prims.h bignum.h bitstr.h
 compinit.o : compinit.c liarc.tch compinit.h
 /* The following includes liarc.tch in case COMPILED_SOURCES is empty,
    to prevent fgrep from reading stdin.
