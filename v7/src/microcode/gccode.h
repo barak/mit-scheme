@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: gccode.h,v 9.53 1993/12/07 20:36:00 gjr Exp $
+$Id: gccode.h,v 9.54 1995/07/26 23:27:53 adams Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -52,14 +52,22 @@ MIT in each case. */
 
 #define case_simple_Non_Pointer						\
   case TC_NULL:								\
-  case TC_TRUE:								\
+  case TC_CONSTANT:							\
   case TC_RETURN_CODE:							\
   case TC_THE_ENVIRONMENT
 
+#if (TC_POSITIVE_FIXNUM != TC_NEGATIVE_FIXNUM)
 #define case_Fasload_Non_Pointer					\
-  case TC_FIXNUM:							\
+  case TC_POSITIVE_FIXNUM:						\
+  case TC_NEGATIVE_FIXNUM:						\
   case TC_CHARACTER:							\
   case_simple_Non_Pointer
+#else
+#define case_Fasload_Non_Pointer					\
+  case TC_POSITIVE_FIXNUM:						\
+  case TC_CHARACTER:							\
+  case_simple_Non_Pointer
+#endif
 
 #define case_Non_Pointer						\
   case TC_PRIMITIVE:							\
@@ -414,6 +422,21 @@ extern void EXFUN (check_transport_vector_lossage,
     }									\
 }
 
+#define CHECK_TRANSPORT_VECTOR_TERMINATION()				\
+{									\
+  if (! ((To <= Scan)							\
+	 && (((Constant_Space <= To) && (To < Heap_Bottom))		\
+	     ? ((Constant_Space <= Scan) && (Scan < Heap_Bottom))	\
+	     : ((Heap_Bottom <= Scan) && (Scan < Heap_Top)))))		\
+    check_transport_vector_lossage (Scan, Saved_Scan, To);		\
+  if ((OBJECT_DATUM (*Old)) > 65536)					\
+    {									\
+      outf_error ("\nWarning: copying large vector: %d\n",		\
+	          (OBJECT_DATUM (*Old)));				\
+      outf_flush_error ();						\
+    }									\
+}
+
 #else /* not ENABLE_GC_DEBUGGING_TOOLS */
 
 #define CHECK_TRANSPORT_VECTOR_TERMINATION()
@@ -501,6 +524,8 @@ Move_Vector:								\
  */
 
 extern SCHEME_OBJECT Weak_Chain;
+
+#define EMPTY_WEAK_CHAIN   (OBJECT_NEW_TYPE(TC_NULL, 0))
 
 #define Transport_Weak_Cons()						\
 {									\
