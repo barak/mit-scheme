@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 1.8 1995/01/10 20:38:07 cph Exp $
+$Id: object.scm,v 1.9 1995/06/20 19:12:31 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -36,12 +36,13 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define-structure (package-description
-		   (type vector)
-		   (named
-		    (string->symbol "#[(cross-reference)package-description]"))
-		   (constructor make-package-description (name parent))
-		   (conc-name package-description/))
+(define-structure
+    (package-description
+     (type vector)
+     (named
+      (string->symbol "#[(cross-reference)package-description]"))
+     (constructor make-package-description (name parent))
+     (conc-name package-description/))
   (name #f read-only #t)
   (file-cases '())
   (parent #f read-only #t)
@@ -49,21 +50,29 @@ MIT in each case. |#
   (exports '())
   (imports '()))
 
-(define-structure (pmodel
-		   (type vector)
-		   (named (string->symbol "#[(cross-reference)pmodel]"))
-		   (conc-name pmodel/))
+(define-structure
+    (pmodel
+     (type vector)
+     (named (string->symbol "#[(cross-reference)pmodel]"))
+     (conc-name pmodel/))
   (root-package false read-only true)
   (primitive-package false read-only true)
   (packages false read-only true)
   (extra-packages false read-only true)
   (pathname false read-only true))
 
-(define-structure (package
-		   (type vector)
-		   (named (string->symbol "#[(cross-reference)package]"))
-		   (constructor make-package (name parent))
-		   (conc-name package/))
+(define-structure
+    (package
+     (type vector)
+     (named (string->symbol "#[(cross-reference)package]"))
+     (constructor make-package (name parent))
+     (conc-name package/)
+     (print-procedure
+      (standard-unparser-method 'PACKAGE
+	(lambda (package port)
+	  (write-char #\space port)
+	  (write (package/name package) port)))))
+
   (name #f read-only #t)
   (file-cases '())
   (files '())
@@ -100,11 +109,19 @@ MIT in each case. |#
 (define-integrable (file-case-clause/files clause)
   (cdr clause))
 
-(define-structure (binding
-		   (type vector)
-		   (named (string->symbol "#[(cross-reference)binding]"))
-		   (constructor %make-binding (package name value-cell))
-		   (conc-name binding/))
+(define-structure
+    (binding
+     (type vector)
+     (named (string->symbol "#[(cross-reference)binding]"))
+     (constructor %make-binding (package name value-cell))
+     (conc-name binding/)
+     (print-procedure
+      (standard-unparser-method 'BINDING
+	(lambda (binding port)
+	  (write-char #\space port)
+	  (write (binding/name binding) port)
+	  (write-char #\space port)
+	  (write (package/name (binding/package binding)) port)))))
   (package false read-only true)
   (name false read-only true)
   (value-cell false read-only true)
@@ -127,20 +144,22 @@ MIT in each case. |#
 (define (binding/internal? binding)
   (eq? binding (binding/source-binding binding)))
 
-(define-structure (value-cell
-		   (type vector)
-		   (named (string->symbol "#[(cross-reference)value-cell]"))
-		   (constructor make-value-cell ())
-		   (conc-name value-cell/))
+(define-structure
+    (value-cell
+     (type vector)
+     (named (string->symbol "#[(cross-reference)value-cell]"))
+     (constructor make-value-cell ())
+     (conc-name value-cell/))
   (bindings '())
   (expressions '())
   (source-binding false))
 
-(define-structure (link
-		   (type vector)
-		   (named (string->symbol "#[(cross-reference)link]"))
-		   (constructor %make-link)
-		   (conc-name link/))
+(define-structure
+    (link
+     (type vector)
+     (named (string->symbol "#[(cross-reference)link]"))
+     (constructor %make-link)
+     (conc-name link/))
   (source false read-only true)
   (destination false read-only true))
 
@@ -150,22 +169,31 @@ MIT in each case. |#
 			(cons link (binding/links source-binding)))
     link))
 
-(define-structure (expression
-		   (type vector)
-		   (named (string->symbol "#[(cross-reference)expression]"))
-		   (constructor make-expression (package file type))
-		   (conc-name expression/))
+(define-structure
+    (expression
+     (type vector)
+     (named (string->symbol "#[(cross-reference)expression]"))
+     (constructor make-expression (package file type))
+     (conc-name expression/))
   (package false read-only true)
   (file false read-only true)
   (type false read-only true)
   (references '())
   (value-cell false))
 
-(define-structure (reference
-		   (type vector)
-		   (named (string->symbol "#[(cross-reference)reference]"))
-		   (constructor %make-reference (package name))
-		   (conc-name reference/))
+(define-structure
+    (reference
+     (type vector)
+     (named (string->symbol "#[(cross-reference)reference]"))
+     (constructor %make-reference (package name))
+     (conc-name reference/)
+     (print-procedure
+      (standard-unparser-method 'REFERENCE
+	(lambda (reference port)
+	  (write-char #\space port)
+	  (write (reference/name reference) port)
+	  (write-char #\space port)
+	  (write (package/name (reference/package reference)) port)))))
   (package false read-only true)
   (name false read-only true)
   (expressions '())
