@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.1 1992/09/10 05:19:33 cph Exp $
+$Id: floppy.scm,v 1.2 1992/09/10 08:17:59 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -39,12 +39,10 @@ MIT in each case. |#
 ;;;; Login and Logout
 
 (define (standard-login-initialization)
-  (with-editor-interrupts-disabled
-   (lambda ()
-     (set! floppy-contents-loaded? false)
-     (set-default-directory working-directory)
-     (set-working-directory-pathname! working-directory)
-     (standard-configuration 'login login-loop)))
+  (set! floppy-contents-loaded? false)
+  (set-default-directory working-directory)
+  (set-working-directory-pathname! working-directory)
+  (standard-configuration 'login login-loop)
   (message "Login completed."))
 
 (define floppy-contents-loaded?)
@@ -77,10 +75,12 @@ N	Login without floppy.  Select this option if you do not have
 
 Q	Quit.  Select this option if you do not want to log in.")
   (let loop ()
-    (let ((char (prompt-for-char "Please choose an option")))
+    (let ((char
+	   (prompt-for-char
+	    "Please choose a login option (default: L)")))
       (case char
 	((#\f #\F) (first-login))
-	((#\l #\L) (normal-login))
+	((#\l #\L #\space #\return) (normal-login))
 	((#\n #\N) (no-floppy-login))
 	((#\q #\Q) (exit-scheme))
 	(else (editor-beep) (loop))))))
@@ -198,14 +198,7 @@ Answer \"no\" if you want to return to the editor without logging out.")
 		       (if (prompt-for-yes-or-no?
 			    "Log out without saving files")
 			   (exit-scheme)
-			   (begin
-			     (append-string
-			      "
-----------------------------------------------------------------------
-Use M-x checkpoint-floppy to save your files.
-")
-			     (sit-for (* 5 1000))
-			     (abort-current-command))))))
+			   (abort-current-command)))))
 		(if (not floppy-contents-loaded?)
 		    (begin
 		      (append-string "You logged in without a floppy disk.\n")
@@ -269,9 +262,6 @@ Floppy successfully initialized.")
 Initializing floppy.
 
 Please wait, this will take about five minutes.
-
-Please do not type control-G; if you abort the initialization you will
-be unable to use the floppy unless you initialize it again.
 ")
     (call-with-current-continuation
      (lambda (k)
@@ -417,7 +407,10 @@ then answer \"yes\" to the prompt below.")
 			  floppy-directory))
       (lambda (files-to-copy pairs files-to-delete)
 	(for-each (lambda (pair)
-		    (if (> (file-record/time (car pair))
+		    ;; Compensate for one-minute time-stamp
+		    ;; granularity.  At worst, this will cause a few
+		    ;; files to be copied when it isn't necessary.
+		    (if (> (+ (file-record/time (car pair)) 60)
 			   (file-record/time (cdr pair)))
 			(set! files-to-copy
 			      (cons (car pair) files-to-copy))))
@@ -801,23 +794,25 @@ M-x rename-file, or use the `r' command in Dired.")
 			    set*-only)))))))))
 
 (define (standard-configuration command thunk)
-  (let loop ()
-    (call-with-current-continuation
-     (lambda (k)
-       (with-saved-configuration
-	(lambda ()
-	  (delete-other-windows (current-window))
-	  (let ((buffer
-		 (temporary-buffer
-		  (string-append
-		   " *"
-		   (symbol->string command)
-		   "-dialog*"))))
-	    (select-buffer buffer)
-	    (handle-floppy-errors
-	     (lambda () (within-continuation k loop))
-	     default-floppy-abort-handler
-	     thunk))))))))
+  (with-editor-interrupts-disabled
+   (lambda ()
+     (let loop ()
+       (call-with-current-continuation
+	(lambda (k)
+	  (with-saved-configuration
+	   (lambda ()
+	     (delete-other-windows (current-window))
+	     (let ((buffer
+		    (temporary-buffer
+		     (string-append
+		      " *"
+		      (symbol->string command)
+		      "-dialog*"))))
+	       (select-buffer buffer)
+	       (handle-floppy-errors
+		(lambda () (within-continuation k loop))
+		default-floppy-abort-handler
+		thunk))))))))))
 
 (define (with-saved-configuration thunk)
   (let ((screen (selected-screen)))
