@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/cgen.scm,v 3.1 1987/03/10 14:56:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/cgen.scm,v 3.2 1987/03/13 04:11:49 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -34,8 +34,7 @@ MIT in each case. |#
 
 ;;;; SCode Optimizer: Generate SCode from Expression
 
-(declare (usual-integrations)
-	 (integrate-external (access integrations package/scode-optimizer)))
+(declare (usual-integrations))
 
 (define (cgen/external quotation)
   (fluid-let ((flush-declarations? true))

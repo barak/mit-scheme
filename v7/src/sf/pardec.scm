@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 3.0 1987/03/10 13:25:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 3.1 1987/03/13 04:13:19 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,96 +36,55 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (declarations/known? declaration)
-  (assq (car declaration) known-declarations))
+(define (declarations/make-null)
+  (declarations/make '() '() '()))
 
 (define (declarations/parse block declarations)
-  (return-2
-   declarations
-   (accumulate
-    (lambda (declaration bindings)
-      (let ((association (assq (car declaration) known-declarations)))
-	(if (not association)
-	    bindings
-	    (transmit-values (cdr association)
-	      (lambda (before-bindings? parser)
-		(let ((block
-		       (if before-bindings?
-			   (let ((block (block/parent block)))
-			     (if (block/parent block)
-				 (warn "Declaration not at top level"
-				       declaration))
-			     block)
-			   block)))
-		  (parser block (bindings/cons block before-bindings?) bindings
-			  (cdr declaration))))))))
-    (return-2 '() '())
-    declarations)))
-
-(define (declarations/rename declarations rename)
-  (declarations/map declarations
-    (lambda (bindings)
-      (map (lambda (binding)
-	     (transmit-values binding
-	       (lambda (applicator binder names)
-		 (return-3 applicator binder (map rename names)))))
-	   bindings))))
-
-(define (declarations/binders declarations)
-  (transmit-values declarations
-    (lambda (original bindings)
-      (call-multiple (lambda (bindings)
-		       (lambda (operations)
-			 (accumulate (lambda (binding operations)
-				       (transmit-values binding
-					 (lambda (applicator binder names)
-					   (applicator binder operations
-						       names))))
-				     operations bindings)))
-		     bindings))))
-
-(define (declarations/original declarations)
-  (transmit-values declarations
-    (lambda (original bindings)
-      original)))
-
-(define (declarations/map declarations procedure)
-  (transmit-values declarations
-    (lambda (original bindings)
-      (return-2 original (call-multiple procedure bindings)))))
+  (transmit-values
+      (accumulate
+       (lambda (declaration bindings)
+	 (let ((association (assq (car declaration) known-declarations)))
+	   (if (not association)
+	       bindings
+	       (transmit-values (cdr association)
+		 (lambda (before-bindings? parser)
+		   (let ((block
+			  (if before-bindings?
+			      (let ((block (block/parent block)))
+				(if (block/parent block)
+				    (warn "Declaration not at top level"
+					  declaration))
+				block)
+			      block)))
+		     (parser block
+			     (bindings/cons block before-bindings?)
+			     bindings
+			     (cdr declaration))))))))
+       (return-2 '() '())
+       declarations)
+    (lambda (before after)
+      (declarations/make declarations before after))))
 
 (define (bindings/cons block before-bindings?)
-  (lambda (bindings applicator names global?)
+  (lambda (bindings global? operation export? names values)
     (let ((result
-	   (if global?
-	       (return-3 applicator operations/bind-global names)
-	       (return-3 applicator operations/bind
-			 (block/lookup-names block names)))))
+	   (binding/make global? operation export?
+			 (if global? names (block/lookup-names block names))
+			 values)))
       (transmit-values bindings
-	(lambda (before-bindings after-bindings)
+	(lambda (before after)
 	  (if before-bindings?
-	      (return-2 (cons result before-bindings) after-bindings)
-	      (return-2 before-bindings (cons result after-bindings))))))))
+	      (return-2 (cons result before) after)
+	      (return-2 before (cons result after))))))))
 
 (define (bind/values table/cons table operation export? names values)
-  (table/cons table
-	      (lambda (binder operations names)
-		(binder operations operation export? names values))
-	      names
-	      (not export?)))
+  (table/cons table (not export?) operation export? names values))
 
 (define (bind/no-values table/cons table operation export? names)
-  (table/cons table
-	      (lambda (binder operations names)
-		(binder operations operation export? names))
-	      names
-	      false))
-
-(define (accumulate cons table items)
-  (let loop ((table table) (items items))
-    (if (null? items)
-	table
-	(loop (cons (car items) table) (cdr items)))))
+  (table/cons table false operation export? names 'NO-VALUES))
+
+(define (declarations/known? declaration)
+  (assq (car declaration) known-declarations))
 
 (define (define-declaration name before-bindings? parser)
   (let ((entry (assq name known-declarations)))
@@ -137,6 +96,111 @@ MIT in each case. |#
 
 (define known-declarations
   '())
+
+(define (accumulate cons table items)
+  (let loop ((table table) (items items))
+    (if (null? items)
+	table
+	(loop (cons (car items) table) (cdr items)))))
+
+(define (declarations/binders declarations)
+  (let ((procedure
+	 (lambda (bindings)
+	   (lambda (operations)
+	     (accumulate (lambda (binding operations)
+			   ((if (binding/global? binding)
+				operations/bind-global
+				operations/bind)
+			    operations
+			    (binding/operation binding)
+			    (binding/export? binding)
+			    (binding/names binding)
+			    (binding/values binding)))
+			 operations
+			 bindings)))))
+    (return-2 (procedure (declarations/before declarations))
+	      (procedure (declarations/after declarations)))))
+
+(define (declarations/for-each-variable declarations procedure)
+  (declarations/for-each-binding declarations
+    (lambda (binding)
+      (if (not (binding/global? binding))
+	  (for-each procedure (binding/names binding))))))
+
+(define (declarations/for-each-binding declarations procedure)
+  (let ((procedure
+	 (lambda (bindings)
+	   (for-each procedure bindings))))
+    (procedure (declarations/before declarations))
+    (procedure (declarations/after declarations))))
+
+(define (declarations/map declarations per-name per-value)
+  (declarations/map-binding declarations
+    (lambda (binding)
+      (let ((global? (binding/global? binding))
+	    (names (binding/names binding))
+	    (values (binding/values binding)))
+	(binding/make global?
+		      (binding/operation binding)
+		      (binding/export? binding)
+		      (if global? names (map per-name names))
+		      (if (eq? values 'NO-VALUES)
+			  values
+			  (map per-value values)))))))
+
+(define (declarations/map-binding declarations procedure)
+  (let ((procedure
+	 (lambda (bindings)
+	   (map procedure bindings))))
+    (declarations/make (declarations/original declarations)
+		       (procedure (declarations/before declarations))
+		       (procedure (declarations/after declarations)))))
+
+(declare (integrate-operator declarations/make declarations/original
+			     declarations/before declarations/after))
+
+(define (declarations/make original before after)
+  (declare (integrate original before after))
+  (vector original before after))
+
+(define (declarations/original declarations)
+  (declare (integrate declarations))
+  (vector-ref declarations 0))
+
+(define (declarations/before declarations)
+  (declare (integrate declarations))
+  (vector-ref declarations 1))
+
+(define (declarations/after declarations)
+  (declare (integrate declarations))
+  (vector-ref declarations 2))
+
+(declare (integrate-operator binding/make binding/global? binding/operation
+			     binding/export? binding/names binding/values))
+
+(define (binding/make global? operation export? names values)
+  (declare (integrate global? operation export? names values))
+  (vector global? operation export? names values))
+
+(define (binding/global? binding)
+  (declare (integrate binding))
+  (vector-ref binding 0))
+
+(define (binding/operation binding)
+  (declare (integrate binding))
+  (vector-ref binding 1))
+
+(define (binding/export? binding)
+  (declare (integrate binding))
+  (vector-ref binding 2))
+
+(define (binding/names binding)
+  (declare (integrate binding))
+  (vector-ref binding 3))
+
+(define (binding/values binding)
+  (declare (integrate binding))
+  (vector-ref binding 4))
 
 ;;;; Integration of System Constants
 
@@ -182,8 +246,8 @@ MIT in each case. |#
   (let ((finish
 	 (lambda (variable-name primitive-name)
 	   (return-2 (block/lookup-name block variable-name)
-		     (make-primitive-procedure
-		      (constant->integration-info primitive-name))))))
+		     (constant->integration-info
+		      (make-primitive-procedure primitive-name))))))
     (cond ((and (pair? specification)
 		(symbol? (car specification))
 		(pair? (cdr specification))
@@ -210,10 +274,8 @@ MIT in each case. |#
        (bind/values table/cons table (vector-ref extern 1) false
 		    (list (vector-ref extern 0))
 		    (list
-		     (expression->integration-info
-		      (transform/expression-with-block
-		       block
-		       (vector-ref extern 2))))))
+		     (intern-type (vector-ref extern 2)
+				  (vector-ref extern 3)))))
      table
      (mapcan read-externs-file
 	     (mapcan specification->pathnames specifications)))))
@@ -226,19 +288,18 @@ MIT in each case. |#
 	(map ->pathname value)
 	(list (->pathname value)))))
 
-(define (expression->integration-info expression)
-  (lambda ()
-    expression))
-
 (define (operations->external operations environment)
   (operations/extract-external operations
     (lambda (variable operation info if-ok if-not)
       (let ((finish
 	     (lambda (value)
 	       (if-ok
-		(vector (variable/name variable)
-			operation
-			(cgen/expression-with-declarations value))))))
+		(transmit-values (copy/expression/extern value)
+		  (lambda (block expression)
+		    (vector (variable/name variable)
+			    operation
+			    block
+			    expression)))))))
 	(if info
 	    (finish info)
 	    (variable/final-value variable environment finish if-not))))))

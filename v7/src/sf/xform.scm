@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 3.1 1987/03/10 14:58:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 3.2 1987/03/13 04:14:48 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -34,8 +34,7 @@ MIT in each case. |#
 
 ;;;; SCode Optimizer: Transform Input Expression
 
-(declare (usual-integrations)
-	 (integrate-external (access integrations package/scode-optimizer)))
+(declare (usual-integrations))
 
 ;;; GLOBAL-BLOCK is used to handle (USUAL-INTEGRATIONS), as follows.
 ;;; This declaration refers to a large group of names, which are
@@ -98,7 +97,9 @@ MIT in each case. |#
 
 (define ((transform/open-block* block environment) auxiliary declarations body)
   (let ((variables (map (lambda (name) (variable/make block name)) auxiliary)))
-    (block/set-bound-variables! block variables)
+    (block/set-bound-variables! block
+				(append (block/bound-variables block)
+					variables))
     (block/set-declarations! block (declarations/parse block declarations))
     (let ((environment (environment/bind environment variables)))
 

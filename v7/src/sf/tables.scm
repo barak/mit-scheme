@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/tables.scm,v 3.0 1987/03/10 13:25:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/tables.scm,v 3.1 1987/03/13 04:14:10 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -65,11 +65,11 @@ MIT in each case. |#
 		(cons name (vector export? operation value)))
 	      names values)))
 
-(define (operations/bind operations operation export? names #!optional values)
+(define (operations/bind operations operation export? names values)
   (cons (let ((make-binding
 	       (lambda (name value)
 		 (cons name (vector export? operation value)))))
-	  (if (unassigned? values)
+	  (if (eq? values 'NO-VALUES)
 	      (map* (car operations)
 		    (lambda (name) (make-binding name false))
 		    names)

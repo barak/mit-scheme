@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 3.1 1987/03/10 14:57:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 3.2 1987/03/13 04:13:46 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -34,8 +34,7 @@ MIT in each case. |#
 
 ;;;; SCode Optimizer: Beta Substitution
 
-(declare (usual-integrations)
-	 (integrate-external (access integrations package/scode-optimizer)))
+(declare (usual-integrations))
 
 (define (integrate/top-level block expression)
   (let ((operations (operations/bind-block (operations/make) block))
@@ -310,17 +309,17 @@ MIT in each case. |#
 (define (integrate/name reference info environment)
   (let ((variable (reference/variable reference)))
     (let ((finish
-	   (lambda (value)
-	     (copy/expression (reference/block reference) value))))
+	   (lambda (value uninterned)
+	     (copy/expression (reference/block reference) value uninterned))))
       (if info
-	  (finish (info))
+	  (transmit-values info finish)
 	  (environment/lookup environment variable
 	    (lambda (value)
 	      (if (delayed-integration? value)
 		  (if (delayed-integration/in-progress? value)
 		      reference
-		      (finish (delayed-integration/force value)))
-		  (finish value)))
+		      (finish (delayed-integration/force value) '()))
+		  (finish value '())))
 	    (lambda () reference))))))
 
 (define (variable/final-value variable environment if-value if-not)

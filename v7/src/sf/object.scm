@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/object.scm,v 3.0 1987/03/10 13:25:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/object.scm,v 3.1 1987/03/13 04:12:53 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -43,7 +43,9 @@ MIT in each case. |#
     (let ((enumerand (symbol-append name '/ENUMERAND)))
       `(BEGIN
 	 (DEFINE ,enumerand
-	   (NAME->ENUMERAND ,(symbol-append 'ENUMERATION/ enumeration) ',name))
+	   (ENUMERATION/NAME->ENUMERAND ,(symbol-append 'ENUMERATION/
+							enumeration)
+					',name))
 	 ((ACCESS ADD-UNPARSER-SPECIAL-OBJECT! UNPARSER-PACKAGE) ,enumerand
 	  (LAMBDA (OBJECT)
 	    (UNPARSE-WITH-BRACKETS
@@ -75,15 +77,21 @@ MIT in each case. |#
 		(DECLARE (INTEGRATE ,@slots))
 		(OBJECT/ALLOCATE ,(symbol-append name '/ENUMERAND) ,@slots))
 	      (DEFINE-TYPE ,name ,enumeration ,slots)))))
+
+;;;; Objects
 
 (declare (integrate object/allocate)
-	 (integrate-operator object/enumerand))
+	 (integrate-operator object/enumerand object/set-enumerand!))
 
 (define object/allocate vector)
 
 (define (object/enumerand object)
   (declare (integrate object))
   (vector-ref object 0))
+
+(define (object/set-enumerand! object enumerand)
+  (declare (integrate object enumerand))
+  (vector-set! object 0 enumerand))
 
 (define (object/predicate enumerand)
   (lambda (object)
@@ -94,18 +102,25 @@ MIT in each case. |#
 ;;;; Enumerations
 
 (define (enumeration/make names)
-  (let ((enumeration (make-vector (length names))))
-    (let loop ((names names) (index 0))
-      (if (not (null? names))
-	  (begin
-	    (vector-set! enumeration index
-			 (vector enumeration (car names) index))
-	    (loop (cdr names) (1+ index)))))
-    enumeration))
+  (let ((enumerands 
+	 (let loop ((names names) (index 0))
+	   (if (null? names)
+	       '()
+	       (cons (vector false (car names) index)
+		     (loop (cdr names) (1+ index)))))))
+    (let ((enumeration
+	   (cons (list->vector enumerands)
+		 (map (lambda (enumerand)
+			(cons (enumerand/name enumerand) enumerand))
+		      enumerands))))
+      (for-each (lambda (enumerand)
+		  (vector-set! enumerand 0 enumeration))
+		enumerands)
+      enumeration)))
 
 (declare (integrate-operator enumerand/enumeration enumerand/name
 			     enumerand/index enumeration/cardinality
-			     index->enumerand))
+			     enumeration/index->enumerand))
 
 (define (enumerand/enumeration enumerand)
   (declare (integrate enumerand))
@@ -121,20 +136,18 @@ MIT in each case. |#
 
 (define (enumeration/cardinality enumeration)
   (declare (integrate enumeration))
-  (vector-length enumeration))
+  (vector-length (car enumeration)))
 
-(define (index->enumerand enumerand index)
-  (declare (integrate enumerand index))
-  (vector-ref enumerand index))
+(define (enumeration/index->enumerand enumeration index)
+  (declare (integrate enumeration index))
+  (vector-ref (car enumeration) index))
 
-(define (name->enumerand enumeration name)
-  (let ((length (enumeration/cardinality enumeration)))
-    (let loop ((index 0))
-      (and (< index length)
-	   (let ((enumerand (index->enumerand enumeration index)))
-	     (if (eqv? name (enumerand/name enumerand))
-		 enumerand
-		 (loop (1+ index))))))))
+(define (enumeration/name->enumerand enumeration name)
+  (cdr (or (assq name (cdr enumeration))
+	   (error "Unknown enumeration name" name))))
+
+(define (enumeration/name->index enumeration name)
+  (enumerand/index (enumeration/name->enumerand enumeration name)))
 
 ;;;; Random Types
 
@@ -146,12 +159,12 @@ MIT in each case. |#
      )))
 
 (define-type block random
-  (parent children safe? declarations bound-variables expression))
+  (parent children safe? declarations bound-variables))
 
 (define (block/make parent safe?)
   (let ((block
-	 (object/allocate block/enumerand parent '() safe? '() '()
-			  false)))
+	 (object/allocate block/enumerand parent '() safe?
+			  (declarations/make-null) '())))
     (if parent
 	(block/set-children! parent (cons block (block/children parent))))
     block))
@@ -159,7 +172,10 @@ MIT in each case. |#
 (define-type delayed-integration random
   (state environment operations value))
 
+(declare (integrate-operator delayed-integration/make))
+
 (define (delayed-integration/make operations expression)
+  (declare (integrate operations expression))
   (object/allocate delayed-integration/enumerand 'NOT-INTEGRATED false
 		   operations expression))
 
@@ -174,7 +190,9 @@ MIT in each case. |#
     variable))
 
 (define open-block/value-marker
-  "value marker")
+  ;; This must be an interned object because we will fasdump it and
+  ;; fasload it back in.
+  (make-named-tag "open-block/value-marker"))
 
 ;;;; Expression Types
 
@@ -203,8 +221,7 @@ MIT in each case. |#
 (define (expression/make-method-definer dispatch-vector)
   (lambda (type-name method)
     (vector-set! dispatch-vector
-		 (enumerand/index
-		  (name->enumerand enumeration/expression type-name))
+		 (enumeration/name->index enumeration/expression type-name)
 		 method)))
 
 (declare (integrate-operator expression/method name->method))
@@ -217,7 +234,7 @@ MIT in each case. |#
   ;; Useful for debugging
   (declare (integrate dispatch-vector name))
   (vector-ref dispatch-vector
-	      (enumerand/index (name->enumerand enumeration/expression name))))
+	      (enumeration/name->index enumeration/expression name)))
 
 (define-simple-type access expression (environment name))
 (define-simple-type assignment expression (block variable value))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/toplev.scm,v 3.0 1987/03/10 13:25:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/toplev.scm,v 3.1 1987/03/13 04:14:20 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -53,8 +53,10 @@ Currently this optimization is not implemented.")
 		      environment)))
       (error "INTEGRATE/PROCEDURE: Not a compound procedure" procedure)))
 
-(define (integrate/sexp s-expression declarations receiver)
-  (integrate/simple phase:syntax (list s-expression) declarations receiver))
+(define (integrate/sexp s-expression syntax-table declarations receiver)
+  (integrate/simple (lambda (s-expressions)
+		      (phase:syntax s-expressions syntax-table))
+		    (list s-expression) declarations receiver))
 
 (define (integrate/scode scode declarations receiver)
   (integrate/simple identity-procedure scode declarations receiver))
@@ -71,6 +73,52 @@ Currently only the 68000 implementation needs this."
   (if (unassigned? spec-string) (set! spec-string false))
   (fluid-let ((wrapping-hook wrap-with-control-point))
     (syntax-file input-string bin-string spec-string)))
+
+(define (sf/set-file-syntax-table! pathname syntax-table)
+  (let ((pathname (pathname->absolute-pathname (->pathname pathname))))
+    (let ((association (find-file-info/assoc pathname)))
+      (if association
+	  (set-cdr! association
+		    (transmit-values (cdr association)
+		      (lambda (ignore declarations)
+			(return-2 syntax-table declarations))))
+	  (set! file-info
+		(cons (cons pathname (return-2 syntax-table '()))
+		      file-info))))))
+
+(define (sf/add-file-declarations! pathname declarations)
+  (let ((pathname (pathname->absolute-pathname (->pathname pathname))))
+    (let ((association (find-file-info/assoc pathname)))
+      (if association
+	  (set-cdr! association
+		    (transmit-values (cdr association)
+		      (lambda (syntax-table declarations*)
+			(return-2 syntax-table
+				  (append! declarations*
+					   (list-copy declarations))))))
+	  (set! file-info
+		(cons (cons pathname (return-2 false declarations))
+		      file-info))))))
+
+(define file-info
+  '())
+
+(define (find-file-info pathname)
+  (let ((association
+	 (find-file-info/assoc (pathname->absolute-pathname pathname))))
+    (if association
+	(cdr association)
+	(return-2 false '()))))
+
+(define (find-file-info/assoc pathname)
+  (list-search-positive file-info
+    (lambda (entry)
+      (pathname=? (car entry) pathname))))
+
+(define (pathname=? x y)
+  (and (equal? (pathname-device x) (pathname-device y))
+       (equal? (pathname-directory x) (pathname-directory y))
+       (equal? (pathname-name x) (pathname-name y))))
 
 ;;;; File Syntaxer
 
@@ -129,7 +177,11 @@ Currently only the 68000 implementation needs this."
     (write bin-filename)
     (write-string " ")
     (write spec-filename)
-    (transmit-values (integrate/file input-pathname '() spec-pathname)
+    (transmit-values
+	(transmit-values (find-file-info input-pathname)
+	  (lambda (syntax-table declarations)
+	    (integrate/file input-pathname syntax-table declarations
+			    spec-pathname)))
       (lambda (expression externs events)
 	(fasdump (wrapping-hook
 		  (make-comment `((SOURCE-FILE . ,input-filename)
@@ -168,8 +220,10 @@ Currently only the 68000 implementation needs this."
 			    sf/default-externs-pathname)))
 
 (define (write-externs-file pathname externs)
-  (if (not (null? externs))
-      (fasdump externs pathname)))
+  (cond ((not (null? externs))
+	 (fasdump externs pathname))
+	((file-exists? pathname)
+	 (delete-file pathname))))
 
 (define (print-spec identifier names)
   (newline)
@@ -214,9 +268,9 @@ Currently only the 68000 implementation needs this."
 
 ;;;; Optimizer Top Level
 
-(define (integrate/file file-name declarations compute-free?)
+(define (integrate/file file-name syntax-table declarations compute-free?)
   (integrate/kernel (lambda ()
-		      (phase:syntax (phase:read file-name)))
+		      (phase:syntax (phase:read file-name) syntax-table))
 		    declarations))
 
 (define (integrate/simple preprocessor input declarations receiver)
@@ -254,9 +308,11 @@ Currently only the 68000 implementation needs this."
   (mark-phase "Read")
   (read-file filename))
 
-(define (phase:syntax s-expression)
+(define (phase:syntax s-expression #!optional syntax-table)
+  (if (or (unassigned? syntax-table) (not syntax-table))
+      (set! syntax-table (make-syntax-table system-global-syntax-table)))
   (mark-phase "Syntax")
-  (syntax* s-expression (make-syntax-table system-global-syntax-table)))
+  (syntax* s-expression syntax-table))
 
 (define (phase:transform scode)
   (mark-phase "Transform")

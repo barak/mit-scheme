@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/free.scm,v 3.1 1987/03/10 14:54:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/free.scm,v 3.2 1987/03/13 04:12:30 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -34,8 +34,7 @@ MIT in each case. |#
 
 ;;;; SCode Optimizer: Free Variable Analysis
 
-(declare (usual-integrations)
-	 (integrate-external (access integrations package/scode-optimizer)))
+(declare (usual-integrations))
 
 (define (free/expressions expressions)
   (if (null? expressions)

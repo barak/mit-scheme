@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/make.scm,v 3.2 1987/03/10 14:54:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/make.scm,v 3.3 1987/03/13 04:12:41 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,6 +38,8 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define sf)
+(define sf/set-file-syntax-table!)
+(define sf/add-file-declarations!)
 (load "$zcomp/base/load" system-global-environment)
 
 (load-system system-global-environment
@@ -45,51 +47,55 @@ MIT in each case. |#
 	     '(SYSTEM-GLOBAL-ENVIRONMENT)
 	     '(
 	       (PACKAGE/SCODE-OPTIMIZER
-		"mvalue.bin"		;Multiple Value Support
-		"eqsets.bin"		;Set Data Abstraction
+		"mvalue"		;Multiple Value Support
+		"eqsets"		;Set Data Abstraction
 
-		"object.bin"		;Data Structures
-		"emodel.bin"		;Environment Model
-		"gconst.bin"		;Global Primitives List
-		"usicon.bin"		;Usual Integrations: Constants
-		"tables.bin"		;Table Abstractions
-		"packag.bin"		;Global packaging
+		"object"		;Data Structures
+		"emodel"		;Environment Model
+		"gconst"		;Global Primitives List
+		"usicon"		;Usual Integrations: Constants
+		"tables"		;Table Abstractions
+		"packag"		;Global packaging
 		)
 
 	       (PACKAGE/TOP-LEVEL
-		"toplev.bin"		;Top Level
+		"toplev"		;Top Level
 		)
 
 	       (PACKAGE/TRANSFORM
-		"xform.bin"		;SCode -> Internal
+		"xform"			;SCode -> Internal
 		)
 
 	       (PACKAGE/INTEGRATE
-		"subst.bin"		;Beta Substitution Optimizer
+		"subst"			;Beta Substitution Optimizer
 		)
 
 	       (PACKAGE/CGEN
-		"cgen.bin"		;Internal -> SCode
+		"cgen"			;Internal -> SCode
 		)
 
 	       (PACKAGE/EXPANSION
-		"usiexp.bin"		;Usual Integrations: Expanders
+		"usiexp"		;Usual Integrations: Expanders
 		)
 
-	       (PACKAGE/DECLARATION-PARSER
-		"pardec.bin"		;Declaration Parser
+	       (PACKAGE/DECLARATIONS
+		"pardec"		;Declaration Parser
 		)
 
 	       (PACKAGE/COPY
-		"copy.bin"		;Copy Expressions
+		"copy"			;Copy Expressions
 		)
 
 	       (PACKAGE/FREE
-		"free.bin"		;Free Variable Analysis
+		"free"			;Free Variable Analysis
 		)
 
 	       (PACKAGE/SAFE?
-		"safep.bin"		;Safety Analysis
+		"safep"			;Safety Analysis
+		)
+
+	       (PACKAGE/CHANGE-TYPE
+		"chtype"		;Type interning
 		)
 
 	       ))
@@ -102,7 +108,7 @@ MIT in each case. |#
     (make-environment
       (define :name "SF")
       (define :version 3)
-      (define :modification 1)))
+      (define :modification 2)))
 
   (add-system! scode-optimizer/system)
 

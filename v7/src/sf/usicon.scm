@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usicon.scm,v 3.0 1987/03/10 13:25:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usicon.scm,v 3.1 1987/03/13 04:14:39 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -39,10 +39,6 @@ MIT in each case. |#
 (define usual-integrations/constant-names)
 (define usual-integrations/constant-values)
 
-(define (constant->integration-info constant)
-  (lambda ()
-    (constant/make constant)))
-
 (define (usual-integrations/delete-constant! name)
   (set! global-constant-objects (delq! name global-constant-objects))
   (usual-integrations/cache!))
@@ -58,4 +54,7 @@ MIT in each case. |#
 		     (error "USUAL-INTEGRATIONS: not a constant" name))
 		 (constant->integration-info object)))
 	     usual-integrations/constant-names))
+  'DONE)
+
+(define (constant->integration-info constant)
   (return-2 (constant/make constant) '()))
