@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/datime.scm,v 14.3 1990/06/21 23:19:39 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/datime.scm,v 14.4 1993/01/12 19:52:14 gjr Exp $
 
-Copyright (c) 1988, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,7 +48,7 @@ MIT in each case. |#
 		   (type vector)
 		   (named decoded-time-structure-tag)
 		   (conc-name decoded-time/)
-		   (constructor false))
+		   (constructor make-decoded-time ()))
   (second false read-only true)
   (minute false read-only true)
   (hour false read-only true)
@@ -57,8 +57,19 @@ MIT in each case. |#
   (year false read-only true)
   (day-of-week false read-only true))
 
+(define (decode-time time)
+  (let ((result (make-decoded-time)))
+    ((ucode-primitive decode-time 2) result time)
+    result))
+
+(define (encode-time dt)
+  ((ucode-primitive encode-time 1) dt))
+
+(define (get-time)
+  ((ucode-primitive encoded-time 0)))
+
 (define (get-decoded-time)
-  ((ucode-primitive get-decoded-time 1) decoded-time-structure-tag))
+  (decode-time (get-time)))
 
 (define (decoded-time/date-string time)
   (string-append

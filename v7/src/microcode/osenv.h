@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: osenv.h,v 1.2 1992/10/20 23:57:09 jinx Exp $
+$Id: osenv.h,v 1.3 1993/01/12 19:48:12 gjr Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,7 +48,9 @@ struct time_structure
   unsigned int day_of_week;
 };
 
-extern void EXFUN (OS_current_time, (struct time_structure * ts));
+extern time_t EXFUN (OS_encoded_time, ());
+extern void EXFUN (OS_decode_time, (time_t, struct time_structure * ts));
+extern time_t EXFUN (OS_encode_time, (struct time_structure * ts));
 extern clock_t EXFUN (OS_process_clock, (void));
 extern clock_t EXFUN (OS_real_time_clock, (void));
 extern void EXFUN (OS_process_timer_set, (clock_t first, clock_t interval));

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dosenv.c,v 1.2 1992/10/21 00:02:44 jinx Exp $
+$Id: dosenv.c,v 1.3 1993/01/12 19:48:36 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,12 +36,18 @@ MIT in each case. */
 #include "osenv.h"
 #include <stdlib.h>
 
-void
-DEFUN (OS_current_time, (buffer), struct time_structure * buffer)
+time_t
+DEFUN_VOID (OS_encoded_time)
 {
   time_t t;
-  struct tm * ts;
   STD_UINT_SYSTEM_CALL (syscall_time, t, (DOS_time (0)));
+  return (t);
+}
+
+void
+DEFUN (OS_decode_time, (t, buffer), time_t t AND struct time_structure * buffer)
+{
+  struct tm * ts;
   STD_PTR_SYSTEM_CALL (syscall_localtime, ts, (DOS_localtime (&t)));
   (buffer -> year) = ((ts -> tm_year) + 1900);
   (buffer -> month) = ((ts -> tm_mon) + 1);
@@ -56,6 +62,27 @@ DEFUN (OS_current_time, (buffer), struct time_structure * buffer)
   }
 }
 
+time_t
+DEFUN (OS_encode_time ,(buffer), struct time_structure * buffer)
+{
+  time_t t;
+  struct tm ts_s, * ts;
+  ts = &ts_s;
+  (ts -> tm_year) = ((buffer -> year) - 1900);
+  (ts -> tm_mon) = ((buffer -> month) - 1);
+  (ts -> tm_mday) = (buffer -> day);
+  (ts -> tm_hour) = (buffer -> hour);
+  (ts -> tm_min) = (buffer -> minute);
+  (ts -> tm_sec) = (buffer -> second);
+  {
+    /* In localtime() encoding, 0 is Sunday; in ours, it's Monday. */
+    int wday = (buffer -> day_of_week);
+    (ts -> tm_wday) = ((wday == 6) ? 0 : (wday + 1));
+  }
+  STD_UINT_SYSTEM_CALL (syscall_mktime, t, (DOS_mktime (ts)));
+  return (t);
+}
+
 clock_t
 DEFUN_VOID (OS_process_clock)
 {
@@ -64,15 +91,11 @@ DEFUN_VOID (OS_process_clock)
   return (clock()*((clock_t) (1000/CLOCKS_PER_SEC)));
 }
 
-
-
 clock_t
 DEFUN_VOID (OS_real_time_clock)
 {
   return (clock()*((clock_t) (1000/CLOCKS_PER_SEC)));
 }
-
-
 
 /* Timer adjustments */
 #define PC_TIMER_TICKS_PER_SECOND	(18.2)

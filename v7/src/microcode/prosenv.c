@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prosenv.c,v 1.7 1992/10/20 23:59:33 jinx Exp $
+$Id: prosenv.c,v 1.8 1993/01/12 19:48:19 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,15 +39,22 @@ MIT in each case. */
 #include "osenv.h"
 #include "ostop.h"
 
+/* This primitive is obsolete.
+   Left here for a while for compatibility purposes (booting old bands).
+ */
+
 DEFINE_PRIMITIVE ("GET-DECODED-TIME", Prim_get_decoded_time, 1, 1,
   "Return a vector with the current decoded time;\n\
 arg TAG is used to tag the vector.\n\
 The vector's elements are:\n\
   #(TAG second minute hour day month year day-of-week)")
 {
+  time_t t;
   struct time_structure ts;
   PRIMITIVE_HEADER (1);
-  OS_current_time (&ts);
+
+  t = (OS_encoded_time ());
+  OS_decode_time (t, &ts);
   {
     SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 8, 1));
     FAST_VECTOR_SET (result, 0, (ARG_REF (1)));
@@ -61,43 +68,56 @@ The vector's elements are:\n\
     PRIMITIVE_RETURN (result);
   }
 }
-
-DEFINE_PRIMITIVE ("CURRENT-YEAR", Prim_current_year, 0, 0,
-  "This is an obsolete primitive; use `get-decoded-time' instead.")
+
+DEFINE_PRIMITIVE ("ENCODED-TIME", Prim_encoded_time, 0, 0,
+  "Return the current time as an integer.")
 {
+  PRIMITIVE_RETURN (long_to_integer ((long) (OS_encoded_time ())));
+}
+
+DEFINE_PRIMITIVE ("DECODE-TIME", Prim_decode_time, 2, 2,
+  "Fill a vector with the second argument decoded.\n\
+The vector's elements are:\n\
+  #(TAG second minute hour day month year day-of-week)")
+{
+  SCHEME_OBJECT vec;
   struct time_structure ts;
-  PRIMITIVE_HEADER (0);
-  OS_current_time (&ts);
-  PRIMITIVE_RETURN (long_to_integer ((ts . year) - 1900));
+  PRIMITIVE_HEADER (1);
+
+  vec = (VECTOR_ARG (1));
+  if ((VECTOR_LENGTH (vec)) != 8)
+    error_bad_range_arg (1);
+  OS_decode_time (((time_t) (arg_integer (2))), &ts);
+  FAST_VECTOR_SET (vec, 1, (long_to_integer (ts . second)));
+  FAST_VECTOR_SET (vec, 2, (long_to_integer (ts . minute)));
+  FAST_VECTOR_SET (vec, 3, (long_to_integer (ts . hour)));
+  FAST_VECTOR_SET (vec, 4, (long_to_integer (ts . day)));
+  FAST_VECTOR_SET (vec, 5, (long_to_integer (ts . month)));
+  FAST_VECTOR_SET (vec, 6, (long_to_integer (ts . year)));
+  FAST_VECTOR_SET (vec, 7, (long_to_integer (ts . day_of_week)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-#define DATE_PRIMITIVE(element)						\
-{									\
-  struct time_structure ts;						\
-  PRIMITIVE_HEADER (0);							\
-  OS_current_time (&ts);						\
-  PRIMITIVE_RETURN (long_to_integer (ts . element));			\
+DEFINE_PRIMITIVE ("ENCODE-TIME", Prim_encode_time, 1, 1,
+  "Return the file time corresponding to the time structure given.")
+{
+  SCHEME_OBJECT vec;
+  struct time_structure ts;
+  PRIMITIVE_HEADER (1);
+
+  vec = (VECTOR_ARG (1));
+  if ((VECTOR_LENGTH (vec)) != 8)
+    error_bad_range_arg (1);
+
+  ts.second = (integer_to_long (FAST_VECTOR_REF (vec, 1)));
+  ts.minute = (integer_to_long (FAST_VECTOR_REF (vec, 2)));
+  ts.hour = (integer_to_long (FAST_VECTOR_REF (vec, 3)));
+  ts.day = (integer_to_long (FAST_VECTOR_REF (vec, 4)));
+  ts.month = (integer_to_long (FAST_VECTOR_REF (vec, 5)));
+  ts.year = (integer_to_long (FAST_VECTOR_REF (vec, 6)));
+  ts.day_of_week = (integer_to_long (FAST_VECTOR_REF (vec, 7)));
+  PRIMITIVE_RETURN (long_to_integer ((long) (OS_encode_time (&ts))));
 }
-
-DEFINE_PRIMITIVE ("CURRENT-MONTH", Prim_current_month, 0, 0,
-  "This is an obsolete primitive; use `get-decoded-time' instead.")
-     DATE_PRIMITIVE (month)
-
-DEFINE_PRIMITIVE ("CURRENT-DAY", Prim_current_day, 0, 0,
-  "This is an obsolete primitive; use `get-decoded-time' instead.")
-     DATE_PRIMITIVE (day)
-
-DEFINE_PRIMITIVE ("CURRENT-HOUR", Prim_current_hour, 0, 0,
-  "This is an obsolete primitive; use `get-decoded-time' instead.")
-     DATE_PRIMITIVE (hour)
-
-DEFINE_PRIMITIVE ("CURRENT-MINUTE", Prim_current_minute, 0, 0,
-  "This is an obsolete primitive; use `get-decoded-time' instead.")
-     DATE_PRIMITIVE (minute)
-
-DEFINE_PRIMITIVE ("CURRENT-SECOND", Prim_current_second, 0, 0,
-  "This is an obsolete primitive; use `get-decoded-time' instead.")
-     DATE_PRIMITIVE (second)
 
 DEFINE_PRIMITIVE ("SYSTEM-CLOCK", Prim_system_clock, 0, 0,
   "Return the current process time in units of milliseconds.")

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxenv.c,v 1.8 1992/10/21 00:06:14 jinx Exp $
+$Id: uxenv.c,v 1.9 1993/01/12 19:48:31 gjr Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,12 +35,18 @@ MIT in each case. */
 #include "ux.h"
 #include "osenv.h"
 
-void
-DEFUN (OS_current_time, (buffer), struct time_structure * buffer)
+time_t
+DEFUN_VOID (OS_encoded_time)
 {
   time_t t;
-  struct tm * ts;
   STD_UINT_SYSTEM_CALL (syscall_time, t, (UX_time (0)));
+  return (t);
+}
+
+void
+DEFUN (OS_decode_time, (t, buffer), time_t t AND struct time_structure * buffer)
+{
+  struct tm * ts;
   STD_PTR_SYSTEM_CALL (syscall_localtime, ts, (UX_localtime (&t)));
   (buffer -> year) = ((ts -> tm_year) + 1900);
   (buffer -> month) = ((ts -> tm_mon) + 1);
@@ -55,6 +61,33 @@ DEFUN (OS_current_time, (buffer), struct time_structure * buffer)
   }
 }
 
+time_t
+DEFUN (OS_encode_time ,(buffer), struct time_structure * buffer)
+{
+  time_t t;
+  struct tm ts_s, * ts;
+  ts = &ts_s;
+  (ts -> tm_year) = ((buffer -> year) - 1900);
+  (ts -> tm_mon) = ((buffer -> month) - 1);
+  (ts -> tm_mday) = (buffer -> day);
+  (ts -> tm_hour) = (buffer -> hour);
+  (ts -> tm_min) = (buffer -> minute);
+  (ts -> tm_sec) = (buffer -> second);
+#if 0
+  {
+    /* In localtime() encoding, 0 is Sunday; in ours, it's Monday. */
+    int wday = (buffer -> day_of_week);
+    (ts -> tm_wday) = ((wday == 6) ? 0 : (wday + 1));
+  }
+#else
+  (ts -> tm_wday) = 0;
+#endif
+  (ts -> tm_yday) = 0;
+  (ts -> tm_isdst) = -1;	/* Let mktime figure it out */
+  STD_UINT_SYSTEM_CALL (syscall_mktime, t, (UX_mktime (ts)));
+  return (t);
+}
+
 #ifdef HAVE_TIMES
 
 static clock_t initial_process_clock;
