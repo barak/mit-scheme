@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/object.h,v 9.38 1992/06/05 19:31:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/object.h,v 9.39 1992/08/05 02:48:03 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -130,6 +130,10 @@ MIT in each case. */
 
 /* Machine dependencies */
 
+#ifndef HEAP_MALLOC
+#  define HEAP_MALLOC malloc
+#endif
+
 #ifdef HEAP_IN_LOW_MEMORY	/* Storing absolute addresses */
 
 typedef long relocation_type;	/* Used to relocate pointers on fasload */
@@ -138,7 +142,8 @@ typedef long relocation_type;	/* Used to relocate pointers on fasload */
    word reserved exclusively for use by the garbage collector. */
 #define ALLOCATE_HEAP_SPACE(space)					\
   (Heap =								\
-    ((SCHEME_OBJECT *) (malloc ((sizeof (SCHEME_OBJECT)) * (space)))),	\
+    ((SCHEME_OBJECT *)							\
+     (HEAP_MALLOC ((sizeof (SCHEME_OBJECT)) * (space)))),		\
    ((Heap + (space)) - 1))
 
 #ifndef DATUM_TO_ADDRESS
@@ -161,7 +166,8 @@ extern SCHEME_OBJECT * memory_base;
    word reserved exclusively for use by the garbage collector. */
 #define ALLOCATE_HEAP_SPACE(space)					\
   (memory_base =							\
-    ((SCHEME_OBJECT *) (malloc ((sizeof (SCHEME_OBJECT)) * (space)))),	\
+    ((SCHEME_OBJECT *)							\
+     (HEAP_MALLOC ((sizeof (SCHEME_OBJECT)) * (space)))),		\
    Heap = memory_base,							\
    ((memory_base + (space)) - 1))
 
