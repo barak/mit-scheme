@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.122 2000/06/02 20:42:35 cph Exp $
+;;; $Id: imail-top.scm,v 1.123 2000/06/03 01:57:31 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -519,6 +519,7 @@ variable's documentation (using \\[describe-variable]) for details:
 (define-key 'imail #\o		'imail-output)
 (define-key 'imail #\m-o	'imail-copy-messages)
 (define-key 'imail #\m-c	'imail-copy-folder)
+(define-key 'imail #\c-o	'imail-save-attachment)
 (define-key 'imail #\+		'imail-create-folder)
 (define-key 'imail #\-		'imail-delete-folder)
 (define-key 'imail #\q		'imail-quit)
@@ -692,6 +693,8 @@ With prefix argument N moves backward N messages with these flags."
 			     (loop (- n 1) next next))))))))))
       (if operation (operation (selected-message)))))
 
+;;;; Message selection
+
 (define (select-message folder selector #!optional force? full-headers?)
   (let ((buffer (imail-folder->buffer folder #t))
 	(message
@@ -748,6 +751,249 @@ With prefix argument N moves backward N messages with these flags."
 	(message-seen message))
     (folder-event folder 'SELECT-MESSAGE message)))
 
+(define (selected-folder #!optional error? buffer)
+  (let ((buffer
+	 (chase-imail-buffer
+	  (if (or (default-object? buffer) (not buffer))
+	      (selected-buffer)
+	      buffer))))
+    (let ((folder (buffer-get buffer 'IMAIL-FOLDER 'UNKNOWN)))
+      (if (eq? 'UNKNOWN folder)
+	  (error "IMAIL-FOLDER property not bound:" buffer))
+      (or folder
+	  (and (if (default-object? error?) #t error?)
+	       (error:bad-range-argument buffer 'SELECTED-FOLDER))))))
+
+(define (selected-message #!optional error? buffer)
+  (or (let ((buffer
+	     (if (or (default-object? buffer) (not buffer))
+		 (selected-buffer)
+		 buffer)))
+	(let ((method (navigator/selected-message buffer)))
+	  (if method
+	      (method buffer)
+	      (let ((buffer (chase-imail-buffer buffer)))
+		(let ((message (buffer-get buffer 'IMAIL-MESSAGE 'UNKNOWN)))
+		  (if (eq? message 'UNKNOWN)
+		      (error "IMAIL-MESSAGE property not bound:" buffer))
+		  (and message
+		       (let ((folder (selected-folder #f buffer)))
+			 (if (message-attached? message folder)
+			     message
+			     (let ((message
+				    (let ((index
+					   (and folder
+						(message-detached? message)
+						(message-index message))))
+				      (and index
+					   (< index (folder-length folder))
+					   (get-message folder index)))))
+			       (buffer-put! buffer 'IMAIL-MESSAGE message)
+			       message)))))))))
+      (and (if (default-object? error?) #t error?)
+	   (error "No selected IMAIL message."))))
+
+(define (maybe-reformat-headers headers buffer)
+  (let ((headers
+	 (cond ((ref-variable imail-kept-headers buffer)
+		=> (lambda (regexps)
+		     (append-map!
+		      (lambda (regexp)
+			(list-transform-positive headers
+			  (lambda (header)
+			    (re-string-match regexp
+					     (header-field-name header)
+					     #t))))
+		      regexps)))
+	       ((ref-variable imail-ignored-headers buffer)
+		=> (lambda (regexp)
+		     (list-transform-negative headers
+		       (lambda (header)
+			 (re-string-match regexp
+					  (header-field-name header)
+					  #t)))))
+	       (else headers)))
+	(filter (ref-variable imail-message-filter buffer)))
+    (if filter
+	(map (lambda (n.v)
+	       (make-header-field (car n.v) (cdr n.v)))
+	     (filter (map (lambda (header)
+			    (cons (header-field-name header)
+				  (header-field-value header)))
+			  headers)))
+	headers)))
+
+;;;; Buffer associations
+
+(define (associate-imail-with-buffer buffer folder message)
+  (without-interrupts
+   (lambda ()
+     (buffer-put! buffer 'IMAIL-FOLDER folder)
+     (buffer-put! buffer 'IMAIL-MESSAGE message)
+     (store-property! folder 'BUFFER buffer)
+     (set-buffer-default-directory!
+      buffer
+      (if (file-folder? folder)
+	  (directory-pathname (file-folder-pathname folder))
+	  (user-homedir-pathname)))
+     (add-event-receiver! (folder-modification-event folder)
+       (lambda (folder type parameters)
+	 type parameters
+	 (maybe-add-command-suffix! notice-folder-modifications folder)))
+     (add-kill-buffer-hook buffer delete-associated-buffers)
+     (add-kill-buffer-hook buffer stop-probe-folder-thread)
+     (start-probe-folder-thread buffer))))
+
+(define (delete-associated-buffers folder-buffer)
+  (for-each (lambda (buffer)
+	      (if (buffer-alive? buffer)
+		  (kill-buffer buffer)))
+	    (buffer-get folder-buffer 'IMAIL-ASSOCIATED-BUFFERS '())))
+
+(define (imail-folder->buffer folder error?)
+  (or (let ((buffer (get-property folder 'BUFFER #f)))
+	(and buffer
+	     (if (buffer-alive? buffer)
+		 buffer
+		 (begin
+		   (remove-property! folder 'BUFFER)
+		   #f))))
+      (and error? (error:bad-range-argument folder 'IMAIL-FOLDER->BUFFER))))
+
+(define (associate-buffer-with-imail-buffer folder-buffer buffer)
+  (without-interrupts
+   (lambda ()
+     (buffer-put! buffer 'IMAIL-FOLDER-BUFFER folder-buffer)
+     (let ((buffers (buffer-get folder-buffer 'IMAIL-ASSOCIATED-BUFFERS '())))
+       (if (not (memq buffer buffers))
+	   (buffer-put! folder-buffer 'IMAIL-ASSOCIATED-BUFFERS
+			(cons buffer buffers))))
+     (add-kill-buffer-hook buffer dissociate-buffer-from-imail-buffer))))
+
+(define (dissociate-buffer-from-imail-buffer buffer)
+  (without-interrupts
+   (lambda ()
+     (let ((folder-buffer (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)))
+       (if folder-buffer
+	   (begin
+	     (buffer-remove! buffer 'IMAIL-FOLDER-BUFFER)
+	     (buffer-put! folder-buffer 'IMAIL-ASSOCIATED-BUFFERS
+			  (delq! buffer
+				 (buffer-get folder-buffer
+					     'IMAIL-ASSOCIATED-BUFFERS
+					     '()))))))
+     (remove-kill-buffer-hook buffer dissociate-buffer-from-imail-buffer))))
+
+(define (chase-imail-buffer buffer)
+  (or (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)
+      buffer))
+
+;;;; Mode-line updates
+
+(define (notice-folder-modifications folder)
+  (let ((buffer (imail-folder->buffer folder #f)))
+    (if buffer
+	(begin
+	  (local-set-variable! mode-line-process
+			       (imail-mode-line-summary-string buffer)
+			       buffer)
+	  (buffer-modeline-event! buffer 'PROCESS-STATUS)))))
+
+(define (imail-mode-line-summary-string buffer)
+  (let ((folder (selected-folder #f buffer))
+	(message (selected-message #f buffer)))
+    (and folder
+	 (let ((status (folder-connection-status folder)))
+	   (string-append
+	    (if (eq? status 'NO-SERVER)
+		""
+		(string-append " " (symbol->string status)))
+	    (if (and message (message-attached? message folder))
+		(let ((index (message-index message)))
+		  (if index
+		      (let ((n (folder-length folder)))
+			(string-append
+			 " "
+			 (number->string (+ 1 index))
+			 "/"
+			 (number->string n)
+			 (let loop ((i 0) (unseen 0))
+			   (if (< i n)
+			       (loop (+ i 1)
+				     (if (message-unseen?
+					  (get-message folder i))
+					 (+ unseen 1)
+					 unseen))
+			       (if (> unseen 0)
+				   (string-append " ("
+						  (number->string unseen)
+						  " unseen)")
+				   "")))
+			 (let ((flags
+				(flags-delete "seen" (message-flags message))))
+			   (if (pair? flags)
+			       (string-append
+				" "
+				(decorated-string-append "" "," "" flags))
+			       ""))))
+		      " 0/0"))
+		""))))))
+
+;;;; Probe-folder thread
+
+(define (start-probe-folder-thread buffer)
+  (stop-probe-folder-thread buffer)
+  (let ((folder (buffer-get buffer 'IMAIL-FOLDER #f))
+	(interval (ref-variable imail-update-interval #f)))
+    (if (and folder interval
+	     (not (get-property folder 'PROBE-REGISTRATION #f)))
+	(let ((registration (list #f)))
+	  (set-car! registration
+		    (register-inferior-thread!
+		     (let ((thread
+			    (create-thread
+			     editor-thread-root-continuation
+			     (probe-folder-thread registration
+						  (* 1000 interval)))))
+		       (detach-thread thread)
+		       thread)
+		     (probe-folder-output-processor
+		      (weak-cons folder unspecific))))
+	  (store-property! folder 'PROBE-REGISTRATION registration)))))
+
+(define ((probe-folder-thread registration interval))
+  (do () (#f)
+    (let ((registration (car registration)))
+      (cond ((eq? registration 'KILL-THREAD) (exit-current-thread unspecific))
+	    (registration (inferior-thread-output! registration))))
+    (sleep-current-thread interval)))
+
+(define ((probe-folder-output-processor folder))
+  (let ((folder (weak-car folder)))
+    (and folder
+	 (eq? (folder-connection-status folder) 'ONLINE)
+	 (begin
+	   (probe-folder folder)
+	   #t))))
+
+(define (stop-probe-folder-thread buffer)
+  (without-interrupts
+   (lambda ()
+     (let ((folder (buffer-get buffer 'IMAIL-FOLDER #f)))
+       (if folder
+	   (begin
+	     (let ((holder (get-property folder 'PROBE-REGISTRATION #f)))
+	       (if holder
+		   (begin
+		     (let ((registration (car holder)))
+		       (if (and registration
+				(not (eq? registration 'KILL-THREAD)))
+			   (deregister-inferior-thread! registration)))
+		     (set-car! holder 'KILL-THREAD))))
+	     (remove-property! folder 'PROBE-REGISTRATION)))))))
+
+;;;; MIME message formatting
+
 (define (insert-mime-message-body message mark)
   (insert-mime-message-part message
 			    (message-mime-body-structure message)
@@ -804,15 +1050,14 @@ With prefix argument N moves backward N messages with these flags."
 		    encoding
 		    (mime-body-one-part-encoding body)))
 	  ((QUOTED-PRINTABLE)
-	   (insert-auto-wrapped-string (decode-quoted-printable-string text)
-				       #t
-				       mark))
+	   (call-with-auto-wrapped-output-mark mark #t
+	     (lambda (port)
+	       (decode-quoted-printable-string text port))))
 	  ((BASE64)
-	   (call-with-values (lambda () (decode-base64-text-string text #f))
-	     (lambda (decoded-text pending-return?)
-	       (insert-auto-wrapped-string decoded-text #t mark)
-	       (if pending-return?
-		   (insert-char #\return mark)))))
+	   (call-with-auto-wrapped-output-mark mark #t
+	     (lambda (port)
+	       (if (decode-base64-text-string text #f port)
+		   (write-char #\return port)))))
 	  (else
 	   (insert-auto-wrapped-string text #f mark)))
 	(guarantee-newline mark))
@@ -845,16 +1090,7 @@ With prefix argument N moves backward N messages with these flags."
     (insert-string "<IMAIL-ATTACHMENT " mark)
     (let ((column (mark-column mark)))
       (insert-string "name=" mark)
-      (insert (or (mime-body-parameter body 'NAME #f)
-		  (string-append
-		   "unnamed-attachment-"
-		   (if (null? selector)
-		       "0"
-		       (decorated-string-append
-			"" "." ""
-			(map (lambda (n) (number->string (+ n 1)))
-			     selector)))))
-	      mark)
+      (insert (mime-attachment-name body selector) mark)
       (insert-newline mark)
       (change-column column mark)
       (insert-string "type=" mark)
@@ -867,28 +1103,59 @@ With prefix argument N moves backward N messages with these flags."
       (insert (mime-body-one-part-encoding body) mark))
     (insert-string ">" mark)
     (insert-newline mark)
-    (add-text-property (mark-group mark)
-		       (mark-index start)
-		       (mark-index mark)
-		       'IMAIL-MIME-ATTACHMENT
-		       (cons body selector))))
+    (region-put! start mark 'IMAIL-MIME-ATTACHMENT (cons body selector))))
+
+(define (mime-attachment-name body selector)
+  (or (mime-body-parameter body 'NAME #f)
+      (string-append "unnamed-attachment-"
+		     (if (null? selector)
+			 "0"
+			 (decorated-string-append
+			  "" "." ""
+			  (map (lambda (n) (number->string (+ n 1)))
+			       selector))))))
+
+(define (mark-mime-attachment mark)
+  (region-get mark 'IMAIL-MIME-ATTACHMENT #f))
+
+(define (buffer-mime-attachments buffer)
+  (let ((end (buffer-end buffer)))
+    (let loop ((start (buffer-start buffer)) (attachments '()))
+      (let ((index
+	     (next-specific-property-change (mark-group start)
+					    (mark-index start)
+					    (mark-index end)
+					    'IMAIL-MIME-ATTACHMENT))
+	    (attachments
+	     (let ((attachment (region-get start 'IMAIL-MIME-ATTACHMENT #f)))
+	       (if attachment
+		   (cons attachment attachments)
+		   attachments))))
+	(if index
+	    (loop (make-mark (mark-group start) index) attachments)
+	    (reverse! attachments))))))
 
 (define (insert-auto-wrapped-string string encoded? mark)
+  (call-with-auto-wrapped-output-mark mark encoded?
+    (lambda (port)
+      (write-string string port))))
+
+(define (call-with-auto-wrapped-output-mark mark encoded? generator)
   (let ((mode
 	 (if encoded?
 	     (ref-variable imail-auto-wrap-mime-encoded mark)
 	     (ref-variable imail-auto-wrap mark))))
     (cond ((not mode)
-	   (insert-string string mark))
+	   (call-with-output-mark mark generator))
 	  ((eq? mode 'FILL)
-	   (insert-filled-string string mark))
+	   (call-with-filled-output-mark mark generator))
 	  (else
-	   (insert-wrapped-string string mark)))))
+	   (call-with-wrapped-output-mark mark generator)))))
 
-(define (insert-wrapped-string string mark)
+(define (call-with-wrapped-output-mark mark generator)
   (let ((start (mark-right-inserting-copy mark))
 	(end (mark-left-inserting-copy mark)))
-    (insert-string string mark)
+    (call-with-output-mark mark generator)
     (let ((m (mark-left-inserting-copy (line-end start 0))))
       (let loop ()
 	(delete-horizontal-space m)
@@ -901,249 +1168,14 @@ With prefix argument N moves backward N messages with these flags."
     (mark-temporary! start)
     (mark-temporary! end)))
 
-(define (insert-filled-string string mark)
+(define (call-with-filled-output-mark mark generator)
   (let ((start (mark-right-inserting-copy mark))
 	(end (mark-left-inserting-copy mark)))
-    (insert-string string mark)
+    (call-with-output-mark mark generator)
     (fill-individual-paragraphs start end
 				(ref-variable fill-column start) #f #f)
     (mark-temporary! start)
     (mark-temporary! end)))
-
-(define (associate-imail-with-buffer buffer folder message)
-  (without-interrupts
-   (lambda ()
-     (buffer-put! buffer 'IMAIL-FOLDER folder)
-     (buffer-put! buffer 'IMAIL-MESSAGE message)
-     (store-property! folder 'BUFFER buffer)
-     (set-buffer-default-directory!
-      buffer
-      (if (file-folder? folder)
-	  (directory-pathname (file-folder-pathname folder))
-	  (user-homedir-pathname)))
-     (add-event-receiver! (folder-modification-event folder)
-       (lambda (folder type parameters)
-	 type parameters
-	 (maybe-add-command-suffix! notice-folder-modifications folder)))
-     (add-kill-buffer-hook buffer delete-associated-buffers)
-     (add-kill-buffer-hook buffer stop-probe-folder-thread)
-     (start-probe-folder-thread buffer))))
-
-(define (delete-associated-buffers folder-buffer)
-  (for-each (lambda (buffer)
-	      (if (buffer-alive? buffer)
-		  (kill-buffer buffer)))
-	    (buffer-get folder-buffer 'IMAIL-ASSOCIATED-BUFFERS '())))
-
-(define (associate-buffer-with-imail-buffer folder-buffer buffer)
-  (without-interrupts
-   (lambda ()
-     (buffer-put! buffer 'IMAIL-FOLDER-BUFFER folder-buffer)
-     (let ((buffers (buffer-get folder-buffer 'IMAIL-ASSOCIATED-BUFFERS '())))
-       (if (not (memq buffer buffers))
-	   (buffer-put! folder-buffer 'IMAIL-ASSOCIATED-BUFFERS
-			(cons buffer buffers))))
-     (add-kill-buffer-hook buffer dissociate-buffer-from-imail-buffer))))
-
-(define (dissociate-buffer-from-imail-buffer buffer)
-  (without-interrupts
-   (lambda ()
-     (let ((folder-buffer (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)))
-       (if folder-buffer
-	   (begin
-	     (buffer-remove! buffer 'IMAIL-FOLDER-BUFFER)
-	     (buffer-put! folder-buffer 'IMAIL-ASSOCIATED-BUFFERS
-			  (delq! buffer
-				 (buffer-get folder-buffer
-					     'IMAIL-ASSOCIATED-BUFFERS
-					     '()))))))
-     (remove-kill-buffer-hook buffer dissociate-buffer-from-imail-buffer))))
-
-(define (chase-imail-buffer buffer)
-  (or (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)
-      buffer))
-
-(define (start-probe-folder-thread buffer)
-  (stop-probe-folder-thread buffer)
-  (let ((folder (buffer-get buffer 'IMAIL-FOLDER #f))
-	(interval (ref-variable imail-update-interval #f)))
-    (if (and folder interval
-	     (not (get-property folder 'PROBE-REGISTRATION #f)))
-	(let ((registration (list #f)))
-	  (set-car! registration
-		    (register-inferior-thread!
-		     (let ((thread
-			    (create-thread
-			     editor-thread-root-continuation
-			     (probe-folder-thread registration
-						  (* 1000 interval)))))
-		       (detach-thread thread)
-		       thread)
-		     (probe-folder-output-processor
-		      (weak-cons folder unspecific))))
-	  (store-property! folder 'PROBE-REGISTRATION registration)))))
-
-(define ((probe-folder-thread registration interval))
-  (do () (#f)
-    (let ((registration (car registration)))
-      (cond ((eq? registration 'KILL-THREAD) (exit-current-thread unspecific))
-	    (registration (inferior-thread-output! registration))))
-    (sleep-current-thread interval)))
-
-(define ((probe-folder-output-processor folder))
-  (let ((folder (weak-car folder)))
-    (and folder
-	 (eq? (folder-connection-status folder) 'ONLINE)
-	 (begin
-	   (probe-folder folder)
-	   #t))))
-
-(define (stop-probe-folder-thread buffer)
-  (without-interrupts
-   (lambda ()
-     (let ((folder (buffer-get buffer 'IMAIL-FOLDER #f)))
-       (if folder
-	   (begin
-	     (let ((holder (get-property folder 'PROBE-REGISTRATION #f)))
-	       (if holder
-		   (begin
-		     (let ((registration (car holder)))
-		       (if (and registration
-				(not (eq? registration 'KILL-THREAD)))
-			   (deregister-inferior-thread! registration)))
-		     (set-car! holder 'KILL-THREAD))))
-	     (remove-property! folder 'PROBE-REGISTRATION)))))))
-
-(define (selected-folder #!optional error? buffer)
-  (let ((buffer
-	 (chase-imail-buffer
-	  (if (or (default-object? buffer) (not buffer))
-	      (selected-buffer)
-	      buffer))))
-    (let ((folder (buffer-get buffer 'IMAIL-FOLDER 'UNKNOWN)))
-      (if (eq? 'UNKNOWN folder)
-	  (error "IMAIL-FOLDER property not bound:" buffer))
-      (or folder
-	  (and (if (default-object? error?) #t error?)
-	       (error:bad-range-argument buffer 'SELECTED-FOLDER))))))
-
-(define (imail-folder->buffer folder error?)
-  (or (let ((buffer (get-property folder 'BUFFER #f)))
-	(and buffer
-	     (if (buffer-alive? buffer)
-		 buffer
-		 (begin
-		   (remove-property! folder 'BUFFER)
-		   #f))))
-      (and error? (error:bad-range-argument folder 'IMAIL-FOLDER->BUFFER))))
-
-(define (selected-message #!optional error? buffer)
-  (or (let ((buffer
-	     (if (or (default-object? buffer) (not buffer))
-		 (selected-buffer)
-		 buffer)))
-	(let ((method (navigator/selected-message buffer)))
-	  (if method
-	      (method buffer)
-	      (let ((buffer (chase-imail-buffer buffer)))
-		(let ((message (buffer-get buffer 'IMAIL-MESSAGE 'UNKNOWN)))
-		  (if (eq? message 'UNKNOWN)
-		      (error "IMAIL-MESSAGE property not bound:" buffer))
-		  (and message
-		       (let ((folder (selected-folder #f buffer)))
-			 (if (message-attached? message folder)
-			     message
-			     (let ((message
-				    (let ((index
-					   (and folder
-						(message-detached? message)
-						(message-index message))))
-				      (and index
-					   (< index (folder-length folder))
-					   (get-message folder index)))))
-			       (buffer-put! buffer 'IMAIL-MESSAGE message)
-			       message)))))))))
-      (and (if (default-object? error?) #t error?)
-	   (error "No selected IMAIL message."))))
-
-(define (notice-folder-modifications folder)
-  (let ((buffer (imail-folder->buffer folder #f)))
-    (if buffer
-	(begin
-	  (local-set-variable! mode-line-process
-			       (imail-mode-line-summary-string buffer)
-			       buffer)
-	  (buffer-modeline-event! buffer 'PROCESS-STATUS)))))
-
-(define (imail-mode-line-summary-string buffer)
-  (let ((folder (selected-folder #f buffer))
-	(message (selected-message #f buffer)))
-    (and folder
-	 (let ((status (folder-connection-status folder)))
-	   (string-append
-	    (if (eq? status 'NO-SERVER)
-		""
-		(string-append " " (symbol->string status)))
-	    (if (and message (message-attached? message folder))
-		(let ((index (message-index message)))
-		  (if index
-		      (let ((n (folder-length folder)))
-			(string-append
-			 " "
-			 (number->string (+ 1 index))
-			 "/"
-			 (number->string n)
-			 (let loop ((i 0) (unseen 0))
-			   (if (< i n)
-			       (loop (+ i 1)
-				     (if (message-unseen?
-					  (get-message folder i))
-					 (+ unseen 1)
-					 unseen))
-			       (if (> unseen 0)
-				   (string-append " ("
-						  (number->string unseen)
-						  " unseen)")
-				   "")))
-			 (let ((flags
-				(flags-delete "seen" (message-flags message))))
-			   (if (pair? flags)
-			       (string-append
-				" "
-				(decorated-string-append "" "," "" flags))
-			       ""))))
-		      " 0/0"))
-		""))))))
-
-(define (maybe-reformat-headers headers buffer)
-  (let ((headers
-	 (cond ((ref-variable imail-kept-headers buffer)
-		=> (lambda (regexps)
-		     (append-map!
-		      (lambda (regexp)
-			(list-transform-positive headers
-			  (lambda (header)
-			    (re-string-match regexp
-					     (header-field-name header)
-					     #t))))
-		      regexps)))
-	       ((ref-variable imail-ignored-headers buffer)
-		=> (lambda (regexp)
-		     (list-transform-negative headers
-		       (lambda (header)
-			 (re-string-match regexp
-					  (header-field-name header)
-					  #t)))))
-	       (else headers)))
-	(filter (ref-variable imail-message-filter buffer)))
-    (if filter
-	(map (lambda (n.v)
-	       (make-header-field (car n.v) (cdr n.v)))
-	     (filter (map (lambda (header)
-			    (cons (header-field-name header)
-				  (header-field-value header)))
-			  headers)))
-	headers)))
 
 ;;;; Navigation hooks
 
@@ -1480,6 +1512,115 @@ If it doesn't exist, it is created first."
 		 (if (= n 1) "" "s")
 		 " copied to "
 		 (url->string to))))))
+
+;;;; Attachments
+
+(define-command imail-save-attachment
+  "Save the attachment at point.
+If point is not on an attachment, prompts for the attachment to save.
+With prefix argument, prompt even when point is on an attachment."
+  "P"
+  (lambda (always-prompt?)
+    (let ((attachment
+	   (maybe-prompt-for-mime-attachment (current-point) always-prompt?)))
+      (save-mime-attachment (car attachment)
+			    (cdr attachment)
+			    (selected-message)
+			    (selected-buffer)))))
+
+(define (maybe-prompt-for-mime-attachment mark always-prompt?)
+  (let ((attachment (mark-mime-attachment mark)))
+    (if (and attachment (not always-prompt?))
+	attachment
+	(let ((attachments (buffer-mime-attachments (mark-buffer mark))))
+	  (if (null? attachments)
+	      (editor-error "This message has no attachments."))
+	  (let ((alist
+		 (uniquify-mime-attachment-names
+		  (map (lambda (b.s)
+			 (cons (mime-attachment-name (car b.s) (cdr b.s))
+			       b.s))
+		       attachments))))
+	    (prompt-for-alist-value "Save attachment"
+				    alist
+				    (and attachment
+					 (let ((entry
+						(list-search-positive alist
+						  (lambda (entry)
+						    (eq? (cdr entry)
+							 attachment)))))
+					   (and entry
+						(car entry))))
+				    #f))))))
+
+(define (uniquify-mime-attachment-names alist)
+  (let loop ((alist alist) (converted '()))
+    (if (pair? alist)
+	(loop (cdr alist)
+	      (cons (cons (let ((name (caar alist)))
+			    (let loop ((name* name) (n 1))
+			      (if (there-exists? converted
+				    (lambda (entry)
+				      (string=? (car entry) name*)))
+				  (loop (string-append
+					 name "<" (number->string n) ">")
+					(+ n 1))
+				  name*)))
+			  (cdar alist))
+		    converted))
+	(reverse! converted))))
+
+(define (save-mime-attachment body selector message buffer)
+  (let ((filename
+	 (prompt-for-file "Save attachment as"
+			  (list
+			   (merge-pathnames
+			    (filter-mime-attachment-filename
+			     (mime-body-disposition-filename body))
+			    (or (buffer-get buffer
+					    'IMAIL-MIME-ATTACHMENT-DIRECTORY
+					    #f)
+				(buffer-default-directory buffer)))))))
+    (buffer-put! buffer 'IMAIL-MIME-ATTACHMENT-DIRECTORY
+		 (directory-pathname filename))
+    (call-with-binary-output-file filename
+      (lambda (port)
+	(let ((string (message-mime-body-part message selector)))
+	  (case (mime-body-one-part-encoding body)
+	    ((QUOTED-PRINTABLE) (decode-quoted-printable-string string port))
+	    ((BASE64) (decode-base64-binary-string string port))
+	    (else (write-string string port))))))))
+
+(define (mime-body-disposition-filename body)
+  (let ((disposition (mime-body-disposition body)))
+    (and disposition
+	 (let ((entry (assq 'FILENAME (cdr disposition))))
+	   (and entry
+		(cdr entry))))))
+
+(define (filter-mime-attachment-filename filename)
+  (let ((filename
+	 (let ((index
+		(string-find-previous-char-in-set
+		 filename
+		 char-set:mime-attachment-filename-delimiters)))
+	   (if index
+	       (string-tail filename (+ index 1))
+	       filename))))
+    (and (not (string-find-next-char-in-set
+	       filename
+	       char-set:rejected-mime-attachment-filename))
+	 (if (eq? microcode-id/operating-system 'UNIX)
+	     (string-replace filename #\space #\_)
+	     filename))))
+
+(define char-set:mime-attachment-filename-delimiters
+  (char-set #\/ #\\ #\:))
+
+(define char-set:rejected-mime-attachment-filename
+  (char-set-invert
+   (char-set-difference char-set:graphic
+			char-set:mime-attachment-filename-delimiters)))
 
 ;;;; Sending mail
 
