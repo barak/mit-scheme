@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xcom.scm,v 1.13 1996/04/23 23:07:18 cph Exp $
+;;;	$Id: xcom.scm,v 1.14 1996/12/10 22:49:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -46,6 +46,7 @@
   (x-window-clear 1)
   (x-window-lower 1)
   (x-window-raise 1)
+  (x-window-get-position 1)
   (x-window-set-background-color 2)
   (x-window-set-border-color 2)
   (x-window-set-border-width 2)
@@ -57,6 +58,8 @@
   (x-window-set-mouse-shape 2)
   (x-window-set-position 3)
   (x-window-set-size 3)
+  (x-window-x-size 1)
+  (x-window-y-size 1)
   (xterm-x-size 1)
   (xterm-y-size 1)
   (xterm-set-size 3))
@@ -109,18 +112,6 @@
 	    (editor-error "Unknown font name: " font))
 	(xterm-set-size xterm x-size y-size)))))
 
-(define-command set-frame-size
-  "Set size of selected frame to WIDTH x HEIGHT."
-  "nFrame width (chars)\nnFrame height (chars)"
-  (lambda (width height)
-    (xterm-set-size (current-xterm) (max 2 width) (max 2 height))))
-
-(define-command set-frame-position
-  "Set position of selected frame to (X,Y)."
-  "nX position (pixels)\nnY position (pixels)"
-  (lambda (x y)
-    (x-window-set-position (current-xterm) x y)))
-
 (define-command set-border-width
   "Set border width of selected frame to WIDTH."
   "nSet border width"
@@ -133,6 +124,44 @@
   "nSet internal border width"
   (lambda (width)
     (x-window-set-internal-border-width (current-xterm) (max 0 width))))
+
+(define-command show-frame-size
+  "Show size of editor frame."
+  ()
+  (lambda ()
+    (let ((screen (selected-screen)))
+      (message "Frame is "
+	       (screen-x-size screen)
+	       " chars wide and "
+	       (screen-y-size screen)
+	       " chars high ("
+	       (x-window-x-size (screen-xterm screen))
+	       "x"
+	       (x-window-y-size (screen-xterm screen))
+	       " pixels)"))))
+
+(define-command set-frame-size
+  "Set size of selected frame to WIDTH x HEIGHT."
+  "nFrame width (chars)\nnFrame height (chars)"
+  (lambda (width height)
+    (xterm-set-size (current-xterm) (max 2 width) (max 2 height))))
+
+(define-command show-frame-position
+  "Show position of editor frame.
+This is the position of the upper left-hand corner of the frame border
+surrounding the frame, relative to the upper left-hand corner of the
+desktop."
+  ()
+  (lambda ()
+    (let ((x.y (x-window-get-position (current-xterm))))
+      (message "Frame's upper left-hand corner is at ("
+	       (car x.y) "," (cdr x.y) ")"))))
+
+(define-command set-frame-position
+  "Set position of selected frame to (X,Y)."
+  "nX position (pixels)\nnY position (pixels)"
+  (lambda (x y)
+    (x-window-set-position (current-xterm) x y)))
 
 (define-command set-frame-name
   "Set name of selected frame to NAME.
