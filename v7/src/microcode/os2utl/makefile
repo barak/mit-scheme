@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.12 1995/10/15 00:42:29 cph Exp $
+###	$Id: makefile,v 1.13 1995/11/04 00:58:42 cph Exp $
 ###
 ###	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ###
@@ -40,6 +40,10 @@
 #### Makefile for Scheme under OS/2
 
 all: scheme.exe bchschem.exe bintopsb.exe psbtobin.exe
+
+# Uncomment exactly one of the following two lines:
+debug_mode = debug
+#debug_mode = optimize
 
 # Uncomment exactly one of the following include statements to
 # customize this makefile for your compiler.  All of the

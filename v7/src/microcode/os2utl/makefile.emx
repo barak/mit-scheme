@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile.emx,v 1.5 1995/10/30 08:08:32 cph Exp $
+###	$Id: makefile.emx,v 1.6 1995/11/04 00:59:46 cph Exp $
 ###
 ###	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ###
@@ -44,10 +44,14 @@
 # macro preprocessor, and the RC program included with the IBM OS/2
 # Toolkit.
 
+GCCFLAGS := -Zmt -O
+ifeq ($(debug_mode),debug)
+GCCFLAGS := $(GCCFLAGS) -g
+endif
+
 OBJ = o
 ASM = s
 CC = gcc
-GCCFLAGS = -Zmt -O -g
 CFLAGS = $(GCCFLAGS) -DMIT_SCHEME -D__OS2__
 LDFLAGS = $(GCCFLAGS)
 M4 = m4
@@ -64,9 +68,6 @@ ASFLAGS =
 %.o : %.s
 	$(AS) $(ASFLAGS) -o $@ $<
 
-%.res : %.rc
-	rc -r $<
-
 %.exe :
 	$(CC) $(LDFLAGS) -o $(basename $@) $^
 	emxbind -bq $(basename $@)
@@ -74,14 +75,14 @@ ASFLAGS =
 
 include os2utl\makefile.cmn
 
-scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) os2pmcon.res
+scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) scheme.res
 	$(CC) $(LDFLAGS) -o $(basename $@) \
 	$(OBJECTS) $(SCHEME_OBJECTS) $(SCHEME_LIB)
-	emxbind -bpq $(basename $@) -ros2pmcon.res
+	emxbind -bpq $(basename $@) -rscheme.res
 	del $(basename $@)
 
-bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS)
+bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) bchschem.res
 	$(CC) $(LDFLAGS) -o $(basename $@) \
 	$(OBJECTS) $(SCHEME_OBJECTS) $(SCHEME_LIB)
-	emxbind -bpq $(basename $@) -ros2pmcon.res
+	emxbind -bpq $(basename $@) -rbchschem.res
 	del $(basename $@)

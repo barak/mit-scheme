@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile.wcc,v 1.5 1995/10/30 08:09:51 cph Exp $
+###	$Id: makefile.wcc,v 1.6 1995/11/04 00:59:37 cph Exp $
 ###
 ###	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ###
@@ -64,7 +64,6 @@ AS = wasm
 # /mf		use flat memory model (default)
 # /od		disable optimization (default with /d2)
 # /oe		enable in-line user-code expansion [OPTIMIZE]
-# /op		force IEEE floating-point semantics
 # /ox		enable various optimizations [OPTIMIZE]
 # /s		remove stack overflow checks
 # /sg		generate calls to grow stack
@@ -73,7 +72,15 @@ AS = wasm
 # /ze		enable language extensions (default)
 # /zp4		use 4-byte alignment
 # /zq		operate quietly
-CFLAGS = /4r /bm /d2 /fpi /fp3 /op /s /sg /w0 /zc /zp4 /zq /dMIT_SCHEME
+CFLAGS := /4r /bm /fpi /fp3 /s /sg /w0 /zc /zp4 /zq /dMIT_SCHEME
+
+ifeq ($(debug_mode),debug)
+CFLAGS := $(CFLAGS) /d2
+else
+ifeq ($(debug_mode),optimize)
+CFLAGS := $(CFLAGS) /d1+ /oe /ox
+endif
+endif
 
 # Linker options.
 #
@@ -81,7 +88,7 @@ CFLAGS = /4r /bm /d2 /fpi /fp3 /op /s /sg /w0 /zc /zp4 /zq /dMIT_SCHEME
 # option caseexact	use case-sensitive comparison for identifiers
 # option quiet		operate quietly
 # option symfile	put debug info in .sym file
-LDFLAGS = debug all option caseexact option quiet
+LDFLAGS := debug all option caseexact option quiet option symfile
 
 # M4 options.
 #
@@ -100,16 +107,16 @@ M4FLAGS = -DOS2 -DDASM -DWCC386R
 # /fp3		generate in-line 387 insns
 # /mf		use flat memory model
 # /zq		operate quietly
-ASFLAGS = /d1 /fpi /fp3 /mf /zq
+ASFLAGS := /fpi /fp3 /mf /zq
+ifeq ($(debug_mode),debug)
+ASFLAGS := $(ASFLAGS) /d1
+endif
 
 %.obj : %.c
 	$(CC) $(CFLAGS) $<
 
 %.obj : %.asm
 	$(AS) $(ASFLAGS) /fo=$@ $<
-
-%.res : %.rc
-	rc -r $<
 
 %.exe :
 	wlink system os2v2 $(LDFLAGS) name $@ file { $^ }
@@ -119,12 +126,12 @@ include os2utl\makefile.cmn
 cmpauxmd.asm : cmpauxmd.m4 asmcvt.exe
 	.\asmcvt pre < $< | $(M4) $(M4FLAGS) | .\asmcvt post > $@
 
-scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) os2pmcon.res
+scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) scheme.res
 	wlink system os2v2_pm name $@ $(LDFLAGS) \
 	file { $(OBJECTS) $(SCHEME_OBJECTS) } $(SCHEME_LIB)
-	rc os2pmcon.res $@
+	rc scheme.res $@
 
-bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) os2pmcon.res
+bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) bchschem.res
 	wlink system os2v2_pm name $@ $(LDFLAGS) \
 	file { $(OBJECTS) $(SCHEME_OBJECTS) } $(SCHEME_LIB)
-	rc os2pmcon.res $@
+	rc bchschem.res $@

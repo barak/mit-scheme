@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile.gcc,v 1.4 1995/10/17 23:06:21 cph Exp $
+###	$Id: makefile.gcc,v 1.5 1995/11/04 00:59:53 cph Exp $
 ###
 ###	Copyright (c) 1995 Massachusetts Institute of Technology
 ###
@@ -43,10 +43,14 @@
 # development system (compiler, assembler, linker, etc.), and the GNU
 # m4 macro preprocessor.
 
+GCCFLAGS := -O
+ifeq ($(debug_mode),debug)
+GCCFLAGS := $(GCCFLAGS) -g
+endif
+
 OBJ = obj
 ASM = asm
 CC = gcc -Uunix -U__unix__ -U__unix -D__GCC2__
-GCCFLAGS = -O -g
 CFLAGS = $(GCCFLAGS) -DMIT_SCHEME
 LDFLAGS = $(GCCFLAGS)
 M4 = m4
@@ -68,8 +72,10 @@ ASFLAGS = -I
 
 include os2utl\makefile.cmn
 
-scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS)
+scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) scheme.res
 	$(CC) $(LDFLAGS) -o $@ $^ $(SCHEME_LIB)
+	rc scheme.res $@
 
-bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS)
+bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) bchschem.res
 	$(CC) $(LDFLAGS) -o $@ $^ $(SCHEME_LIB)
+	rc bchschem.res $@
