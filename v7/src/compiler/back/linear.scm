@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.9 1990/01/18 22:42:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.10 1990/04/01 22:26:21 jinx Exp $
 
 Copyright (c) 1987, 1988, 1990 Massachusetts Institute of Technology
 
@@ -76,7 +76,7 @@ MIT in each case. |#
 
   (define (linearize-sblock-next bblock label)
     (if (node-marked? bblock)
-	(LAP ,(lap:make-unconditional-branch label))
+	(lap:make-unconditional-branch label)
 	(linearize-bblock bblock)))
 
   (define (linearize-pblock pblock cn an)
@@ -85,7 +85,7 @@ MIT in each case. |#
 	    (heed-preference pblock cn an
 	      (lambda (generator cn an)
 		(LAP ,@(generator (bblock-label cn))
-		     ,(lap:make-unconditional-branch (bblock-label an)))))
+		     ,@(lap:make-unconditional-branch (bblock-label an)))))
 	    (LAP ,@((pblock-consequent-lap-generator pblock)
 		    (bblock-label cn))
 		 ,@(linearize-bblock an)))
@@ -124,7 +124,7 @@ MIT in each case. |#
 			     (alternative (linearize-bblock-1 an)))
 			 (LAP ,@(generator clabel)
 			      ,@alternative
-			      ,(lap:make-unconditional-branch jlabel)
+			      ,@(lap:make-unconditional-branch jlabel)
 			      ,@consequent
 			      ,(lap:make-label-statement jlabel)
 			      ,@(linearize-next cn))))))))))
