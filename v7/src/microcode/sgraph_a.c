@@ -30,13 +30,21 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.2 1987/05/29 17:40:27 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.3 1988/07/15 09:03:54 cph Exp $ */
 
 #include "scheme.h"
 #include "primitive.h"
 #include "flonum.h"
 #include "Sgraph.h"
 #include "array.h"
+
+#ifndef STARBASE_COLOR_TABLE_START
+#define STARBASE_COLOR_TABLE_START 0
+#endif
+
+#ifndef STARBASE_COLOR_TABLE_SIZE
+#define STARBASE_COLOR_TABLE_SIZE 16
+#endif
 
 float Color_Table[STARBASE_COLOR_TABLE_SIZE][3];
 
@@ -265,9 +273,7 @@ C_Clear_Rectangle(Box)
   clear_view_surface(screen_handle);
   make_picture_current(screen_handle);
   clear_control(screen_handle, CLEAR_DISPLAY_SURFACE); /* back to the default */
-  clip_rectangle(screen_handle,
-		 STARBASE_XMIN, STARBASE_XMAX,
-		 STARBASE_YMIN, STARBASE_YMAX);
+  clip_rectangle(screen_handle, sb_xmin, sb_xmax, sb_ymin, sb_ymax);
 }
 
 Define_Primitive(Prim_Box_Move, 2, "BOX-MOVE") 

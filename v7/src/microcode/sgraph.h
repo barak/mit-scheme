@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,29 +30,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph.h,v 1.2 1988/03/11 02:54:59 arthur Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph.h,v 1.3 1988/07/15 09:03:46 cph Exp $ */
 
 #include <starbase.c.h>
-
-/* Defaults (300h color display) can be overriden in the Makefile. */
-
-#ifndef STARBASE_DRIVER_NAME
-
-#define STARBASE_DRIVER_NAME "hp300h"
-
-#define STARBASE_COLOR_TABLE_START 		0
-#define STARBASE_COLOR_TABLE_SIZE 		16
-
-/* Screen Boundaries */
-
-#define STARBASE_XMIN		-512.0
-#define STARBASE_YMIN		-384.0
-#define STARBASE_ZMIN		   0.0
-#define STARBASE_XMAX		 511.0
-#define STARBASE_YMAX		 383.0
-#define STARBASE_ZMAX		   0.0
-
-#endif
 
 /* Bobcat graphics primitives. Interface to the Starbase package*/
 
@@ -64,28 +44,57 @@ MIT in each case. */
 #define MAX_NUMBER_OF_CORNERS   512
 #define TWICE_MAX_NUMBER_OF_CORNERS  (2 * MAX_NUMBER_OF_CORNERS)
 
-#define DEFAULT_REPLACEMENT_RULE 3
-
 extern int screen_handle;
-extern int locator_handle;     /* mouse, ignored if not present */
 extern long replacement_rule;
-extern float xposition, yposition;
-extern float Color_Table[STARBASE_COLOR_TABLE_SIZE][3];
-
+extern float xposition;
+extern float yposition;
+
+extern char * sb_device;
+extern char * sb_driver;
+extern float sb_xmin;
+extern float sb_xmax;
+extern float sb_ymin;
+extern float sb_ymax;
+extern float sb_zmin;
+extern float sb_zmax;
+
 /* Generic dispatch of coordinates. No BIGNUM support yet. */
 
-#define Make_Flonum( pointer, flonum, integer, error)		\
-{								\
-  switch( Type_Code( pointer))					\
-    {								\
-    case TC_FIXNUM:						\
-      Sign_Extend( pointer, integer);				\
-      flonum = ((float) integer);				\
-      break;							\
-    case TC_BIG_FLONUM:						\
-      flonum = (float) Get_Float( pointer);			\
-      break;							\
-    default:							\
-      Primitive_Error( error);					\
-    }								\
+#define Make_Flonum(pointer, flonum, integer, error)			\
+{									\
+  switch (Type_Code (pointer))						\
+    {									\
+    case TC_FIXNUM:							\
+      Sign_Extend (pointer, integer);					\
+      flonum = ((float) integer);					\
+      break;								\
+    case TC_BIG_FLONUM:							\
+      flonum = ((float) (Get_Float (pointer)));				\
+      break;								\
+    default:								\
+      Primitive_Error (error);						\
+    }									\
+}
+
+/* Easier to use flonum arg conversion. */
+#define FLONUM_ARG(argno, target)					\
+{									\
+  fast Pointer argument;						\
+  fast long fixnum_value;						\
+									\
+  argument = (ARG_REF (argno));						\
+  switch (Type_Code (argument))						\
+    {									\
+    case TC_FIXNUM:							\
+      Sign_Extend (argument, fixnum_value);				\
+      target = ((float) fixnum_value);					\
+      break;								\
+									\
+    case TC_BIG_FLONUM:							\
+      target = ((float) (Get_Float (argument)));			\
+      break;								\
+									\
+    default:								\
+      error_wrong_type_arg (argno);					\
+    }									\
 }
