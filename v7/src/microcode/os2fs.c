@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2fs.c,v 1.5 1995/02/07 23:53:05 cph Exp $
+$Id: os2fs.c,v 1.6 1995/10/23 06:16:20 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -159,11 +159,22 @@ OS2_drive_type (char drive_letter)
   (name [2]) = '\0';
   STD_API_CALL
     (dos_query_fs_attach, (name, 0, FSAIL_QUERYNAME, buffer, (& size)));
-  return
-    ((((buffer -> iType) == FSAT_LOCALDRV)
+  if (((buffer -> iType) == FSAT_LOCALDRV)
       || ((buffer -> iType) == FSAT_REMOTEDRV))
-     ? ((buffer -> szName) + (buffer -> cbName) + 1)
-     : 0);
+    {
+      char * fsdname = ((buffer -> szName) + (buffer -> cbName) + 1);
+      if ((buffer -> iType) == FSAT_REMOTEDRV)
+	/* This bit of magic causes the "attach data" to be appended
+	   to the driver name, with a colon separator.  In the case of
+	   an NFS drive, the "attach data" is the mount information,
+	   e.g. "martigny:/zu".  This information is valuable, because
+	   it can be used to make crude inferences about the file
+	   system on the remote machine.  */
+	(fsdname [buffer -> cbFSDName]) = ':';
+      return (fsdname);
+    }
+  else
+    return (0);
 }
 
 const char *
