@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.39 1997/05/03 08:47:26 cph Exp $
+$Id: arith.scm,v 1.40 1997/06/12 21:10:28 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -95,6 +95,26 @@ MIT in each case. |#
 (define rec:pi/2 (flo:* 2. (flo:atan2 1. 1.)))
 (define rec:pi (flo:* 2. rec:pi/2))
 
+(define flo:significand-digits-base-2)
+(define flo:significand-digits-base-10)
+(define int:flonum-integer-limit)
+
+(define (initialize-microcode-dependencies!)
+  (let ((p microcode-id/floating-mantissa-bits))
+    (set! flo:significand-digits-base-2 p)
+    ;; Add two here because first and last digits may be
+    ;; "partial" in the sense that each represents less than the
+    ;; `flo:log10/log2' bits.  This is a kludge, but doing the
+    ;; "right thing" seems hard.  See Steele&White for a discussion of
+    ;; this phenomenon.
+    (set! flo:significand-digits-base-10
+	  (int:+ 2
+		 (flo:floor->exact
+		  (flo:/ (int:->flonum p)
+			 (flo:/ (flo:log 10.) (flo:log 2.))))))
+    (set! int:flonum-integer-limit (int:expt 2 p)))
+  unspecific)
+
 (define (initialize-package!)
   (initialize-microcode-dependencies!)
   (add-event-receiver! event:after-restore initialize-microcode-dependencies!)
@@ -119,7 +139,7 @@ MIT in each case. |#
       (set-trampoline! 'GENERIC-TRAMPOLINE-QUOTIENT complex:quotient)
       (set-trampoline! 'GENERIC-TRAMPOLINE-REMAINDER complex:remainder)
       (set-trampoline! 'GENERIC-TRAMPOLINE-MODULO complex:modulo)))
-
+
   ;; The binary cases for the following operators rely on the fact that the
   ;; &<mumble> operators, either interpreted or open-coded by the
   ;; compiler, calls the GENERIC-TRAMPOLINE version above, are set to
@@ -147,10 +167,10 @@ MIT in each case. |#
 			    ((UCODE-PRIMITIVE ,primitive-binary) Z1 Z2))))))))
     (commutative + complex:+ 0 &+)
     (commutative * complex:* 1 &*))
-		  
+
   (let-syntax
       ((non-commutative
-	(macro (name generic-unary generic-binary 
+	(macro (name generic-unary generic-binary
 		     generic-inverse inverse-identity primitive-binary)
 	  `(SET! ,name
 		 (MAKE-ENTITY
@@ -166,7 +186,7 @@ MIT in each case. |#
 			    ((UCODE-PRIMITIVE ,primitive-binary) Z1 Z2))))))))
     (non-commutative -  complex:negate  complex:-  complex:+  0  &-)
     (non-commutative /  complex:invert  complex:/  complex:*  1  &/))
-		  
+
   (let-syntax
       ((relational
 	(macro (name generic-binary primitive-binary correct-type? negated?)
@@ -175,7 +195,7 @@ MIT in each case. |#
 		  (NAMED-LAMBDA (,name SELF . ZS)
 		    SELF		; ignored
 		    (REDUCE-COMPARATOR ,generic-binary ZS ',name))
-		  (VECTOR 
+		  (VECTOR
 		   (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
 		   (NAMED-LAMBDA (,(symbol-append 'NULLARY- name)) #T)
 		   (NAMED-LAMBDA (,(symbol-append 'UNARY- name) Z)
@@ -187,12 +207,11 @@ MIT in each case. |#
 			   (NOT ((UCODE-PRIMITIVE ,primitive-binary) Z1 Z2)))
 			`(NAMED-LAMBDA (,(symbol-append 'BINARY- name) Z1 Z2)
 			   ((UCODE-PRIMITIVE ,primitive-binary) Z1 Z2)))))))))
-	  
-    (relational  =  complex:=  &=  complex:complex? #F)
-    (relational  <  complex:<  &<  complex:real?    #F)
-    (relational  >  complex:>  &>  complex:real?    #F)
-    (relational  <= (lambda (x y) (not (complex:< y x)))  &>  complex:real? #T)
-    (relational  >= (lambda (x y) (not (complex:< x y)))  &<  complex:real? #T))
+    (relational =  complex:=  &=  complex:complex? #F)
+    (relational <  complex:<  &<  complex:real?    #F)
+    (relational >  complex:>  &>  complex:real?    #F)
+    (relational <= (lambda (x y) (not (complex:< y x)))  &>  complex:real? #T)
+    (relational >= (lambda (x y) (not (complex:< x y)))  &<  complex:real? #T))
 
   (let-syntax
       ((max/min
@@ -202,7 +221,7 @@ MIT in each case. |#
 		  (NAMED-LAMBDA (,name SELF X . XS)
 		    SELF		; ignored
 		    (REDUCE-MAX/MIN ,generic-binary X XS ',name))
-		  (VECTOR 
+		  (VECTOR
 		   (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
 		   #F
 		   (NAMED-LAMBDA (,(symbol-append 'UNARY- name) X)
@@ -213,26 +232,6 @@ MIT in each case. |#
     (max/min max complex:max)
     (max/min min complex:min))
 
-  unspecific)
-
-(define flo:significand-digits-base-2)
-(define flo:significand-digits-base-10)
-(define int:flonum-integer-limit)
-
-(define (initialize-microcode-dependencies!)
-  (let ((p microcode-id/floating-mantissa-bits))
-    (set! flo:significand-digits-base-2 p)
-    ;; Add two here because first and last digits may be
-    ;; "partial" in the sense that each represents less than the
-    ;; `flo:log10/log2' bits.  This is a kludge, but doing the
-    ;; "right thing" seems hard.  See Steele&White for a discussion of
-    ;; this phenomenon.
-    (set! flo:significand-digits-base-10
-	  (int:+ 2
-		 (flo:floor->exact
-		  (flo:/ (int:->flonum p)
-			 (flo:/ (flo:log 10.) (flo:log 2.))))))
-    (set! int:flonum-integer-limit (int:expt 2 p)))
   unspecific)
 
 (define (int:max n m)
@@ -449,7 +448,7 @@ MIT in each case. |#
 	(define-integrable (push-char! char)
 	  (string-set! string index char)
 	  (set! index (1+ index)))
-      
+
 	(define-integrable (push! value)
 	  (push-char! (digit->char value radix)))
 
@@ -1579,7 +1578,7 @@ MIT in each case. |#
       ((copy real:tan) z)))
 
 ;;; Complex arguments -- ASIN
-;;;   The danger in the complex case happens for large y when 
+;;;   The danger in the complex case happens for large y when
 ;;;     z = iy.  In this case iz + sqrt(1-z^2) --> -y + y.
 ;;;   A clever way out of this difficulty uses symmetry to always
 ;;;     take the benevolent branch of the square root.
@@ -1792,7 +1791,7 @@ MIT in each case. |#
 (define (inexact? z)
   (not (complex:exact? z)))
 
-;; Replaced with arity dispatched version defined version in INITIALIZE-PACKAGE!
+;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!
 
 (define =)
 (define <)
@@ -1824,7 +1823,7 @@ MIT in each case. |#
 (define even? complex:even?)
 
 
-;; Replaced with arity dispatched version defined version in INITIALIZE-PACKAGE!
+;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!
 
 (define +)
 (define *)
@@ -1924,6 +1923,9 @@ MIT in each case. |#
 (define angle complex:angle)
 (define exact->inexact complex:exact->inexact)
 (define inexact->exact complex:inexact->exact)
+
+(define (square z)
+  (complex:* z z))
 
 (define (number->string z #!optional radix)
   (complex:->string
