@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for Sony NEWS-OS version 5
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/newsos5.h,v 1.1 1992/04/30 04:06:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/newsos5.h,v 1.2 1992/08/17 17:32:13 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -35,6 +35,8 @@ MIT in each case. */
 
 #include "s/sysv4.h"
 
+#ifndef ALTERNATE_CC
 /* This is required for version 5.0.2 or later.
    Comment this out if you have 5.0.1.  */
 #define LD_SWITCH_SYSTEM -non_shared
+#endif
