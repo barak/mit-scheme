@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/toplev.scm,v 4.3 1988/10/30 14:27:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/toplev.scm,v 4.4 1989/06/09 16:56:35 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -97,7 +97,7 @@ Currently only the 68000 implementation needs this."
   (pathname-map/lookup file-info/declarations
 		       pathname
 		       identity-procedure
-		       (lambda () '())))
+		       (lambda () sf/default-declarations)))
 
 (define (pathname/normalize pathname)
   (pathname-default-type (pathname->absolute-pathname (->pathname pathname))
@@ -111,6 +111,9 @@ Currently only the 68000 implementation needs this."
 
 (define sf/default-syntax-table
   false)
+
+(define sf/default-declarations
+  '())
 
 (define sf/top-level-definitions
   '())
