@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: Mclean.sh,v 1.2 2000/12/06 05:54:17 cph Exp $
+# $Id: Mclean.sh,v 1.3 2000/12/06 05:54:55 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -21,4 +21,4 @@
 # Program to do "maintainer-clean" rule.
 
 test ! -f Makefile && test -f configure && ./configure
-test -f Makefile && make maintainer-clean
+test ! -f Makefile || make maintainer-clean
