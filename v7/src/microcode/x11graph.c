@@ -1,7 +1,7 @@
 
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.21 1992/02/11 18:57:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.22 1992/02/11 19:38:06 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -298,8 +298,8 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
     struct drawing_attributes attributes;
     struct xwindow_methods methods;
     XSetWindowAttributes wattributes;
-    CONST char * resource_name;
-    CONST char * resource_class;
+    CONST char * resource_name = RESOURCE_NAME;
+    CONST char * resource_class = RESOURCE_CLASS;
     int map_p;
 
     x_decode_window_map_arg

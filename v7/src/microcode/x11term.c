@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.18 1992/02/11 18:58:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.19 1992/02/11 19:38:16 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -485,8 +485,8 @@ DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3, 0)
     Display * display = (XD_DISPLAY (xd));
     struct drawing_attributes attributes;
     struct xwindow_methods methods;
-    CONST char * resource_name;
-    CONST char * resource_class;
+    CONST char * resource_name = RESOURCE_NAME;
+    CONST char * resource_class = RESOURCE_CLASS;
     int map_p;
     
     x_decode_window_map_arg
