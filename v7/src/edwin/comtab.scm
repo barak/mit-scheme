@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comtab.scm,v 1.63 1993/08/10 06:35:40 cph Exp $
+;;;	$Id: comtab.scm,v 1.64 1993/10/06 01:50:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -152,7 +152,7 @@
        (list? object)
        (for-all? object comtab?)))
 
-(define (valid-key? object)
+(define (comtab-key? object)
   (or (key? object)
       (prefixed-key? object)
       (button? object)))
@@ -179,7 +179,7 @@
 (define (comtab-alias? object)
   (and (pair? object)
        (valid-comtabs? (car object))
-       (valid-key? (cdr object))))
+       (comtab-key? (cdr object))))
 
 (define (comtab-alias/dereference datum)
   (lookup-key (car datum) (cdr datum)))
