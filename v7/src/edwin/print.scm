@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: print.scm,v 1.12 1992/11/05 20:45:41 cph Exp $
+;;;	$Id: print.scm,v 1.13 1997/12/26 23:45:28 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -81,7 +81,10 @@ Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
 	(title (print-region-title-string region)))
     (let ((call-printer
 	   (lambda (region)
-	     ((or (ref-variable lpr-procedure buffer) print-region/default)
+	     ((or (ref-variable lpr-procedure buffer)
+		  (case microcode-id/operating-system
+		    ((NT) print-region/nt)
+		    (else print-region/default)))
 	      region print-headers? title buffer)))
 	  (width (ref-variable tab-width buffer)))
       (if (= width 8)
@@ -105,6 +108,14 @@ Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
 		  (ref-variable lpr-command buffer)
 		  (print/assemble-switches title
 					   (if print-headers? '("-p") '())))))
+
+(define (print-region/nt region print-headers? title buffer)
+  print-headers? title
+  (call-with-temporary-file-pathname
+   (lambda (pathname)
+     (write-region region pathname #f #t)
+     (shell-command #f #f #f #f
+		    (string-append "print " (->namestring pathname))))))
 
 (define (print-region-title-string region)
   (let ((buffer-title
