@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.14 1995/04/23 03:20:38 cph Exp $
+$Id: os2prm.scm,v 1.15 1995/04/23 05:10:07 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -143,6 +143,18 @@ MIT in each case. |#
 	 (month   (remainder time 16))
 	 (year    (quotient  time 16)))
     (make-decoded-time (* twosecs 2) minutes hours day month (+ 1980 year))))
+
+(define (encode-file-time dt)
+  (let ((f (lambda (i j k) (+ (* i j) k))))
+    (f (f (f (f (f (let ((year (decoded-time/year dt)))
+		     (if (< year 1980)
+			 (error "Can't encode years earlier than 1980:" year))
+		     year)
+		   16 (decoded-time/month dt))
+		32 (decoded-time/day dt))
+	     32 (decoded-time/hour dt))
+	  64 (decoded-time/minute dt))
+       32 (quotient (decoded-time/second dt) 2))))
 
 (define (file-attributes filename)
   ((ucode-primitive file-info 1)
