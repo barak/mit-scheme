@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.17 1997/11/12 22:58:59 cph Exp $
+$Id: ntprm.scm,v 1.18 1997/12/23 02:27:11 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -267,7 +267,9 @@ MIT in each case. |#
 	(trydir (get-environment-variable "USERDIR"))))
      (%system-root-directory
       (lambda ()
-	(let ((sysroot (trydir (get-environment-variable "SystemRoot"))))
+	(let ((sysroot
+	       (or (trydir (get-environment-variable "SystemRoot"))
+		   (trydir (get-environment-variable "winbootdir")))))
 	  (if (not sysroot)
 	      (error "Unable to find Windows system root."))
 	  (pathname-new-directory sysroot '(ABSOLUTE))))))
