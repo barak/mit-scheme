@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: prompt.scm,v 1.166 1995/09/11 21:24:41 cph Exp $
+;;;	$Id: prompt.scm,v 1.167 1995/09/11 22:43:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -208,7 +208,10 @@
 	      (*default-type*
 	       (if (default-object? default-type)
 		   'VISIBLE-DEFAULT
-		   default-type)))
+		   default-type))
+	      (completion-procedure/complete-string #f)
+	      (completion-procedure/list-completions #f)
+	      (completion-procedure/verify-final-value? #f))
     (%prompt-for-string prompt
 			(if (default-object? mode)
 			    (ref-mode-object minibuffer-local)
@@ -484,14 +487,16 @@ a repetition of this command will exit."
 	      (editor-failure))))))))
 
 (define (verify-final-value? string error-continuation)
-  (bind-condition-handler (list condition-type:error)
-      (lambda (condition)
-	condition
-	(editor-beep)
-	(temporary-typein-message " [Error]")
-	(error-continuation unspecific))
-    (lambda ()
-      (completion-procedure/verify-final-value? string))))
+  (if completion-procedure/verify-final-value?
+      (bind-condition-handler (list condition-type:error)
+	  (lambda (condition)
+	    condition
+	    (editor-beep)
+	    (temporary-typein-message " [Error]")
+	    (error-continuation unspecific))
+	(lambda ()
+	  (completion-procedure/verify-final-value? string)))
+      #t))
 
 ;;;; Completion Primitives
 
