@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.2 1989/11/27 16:12:48 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.3 1989/11/27 18:16:04 jinx Exp $
  *
  * Compiled code interface macros.
  *
@@ -91,61 +91,43 @@ typedef unsigned short format_word;
    w, w1, and the top and bottom bits of w2) are zero.
  */
 
-/* This does the full decoding, unnecessary */
-
-#if 0
 #define EXTRACT_ABSOLUTE_ADDRESS(target, address)			\
 {									\
-  unsigned long ldil_inst, ble_inst, w, w1, w2, offset;			\
+  unsigned long *addr, ldil_inst, ble_inst, ldil_offset, ble_offset;	\
 									\
-  ldil_inst = ((long *) (address))[0];					\
-  ble_inst = ((long *) (address))[1];					\
+  addr = ((unsigned long *) (address));					\
+  ldil_inst = *addr++;							\
+  ble_inst = *addr;							\
 									\
-  w = (ble_inst & 1);							\
-  w1 = ((ble_inst >> 16) & ((1 << 6) - 1));				\
-  w2 = ((ble_inst >> 2) & ((1 << 12) - 1));				\
+  ldil_offset = (((ldil_inst & 1) << 20) |				\
+		 ((ldil_inst & ((1 << 12) - (1 << 1))) << (9 - 1)) |	\
+		 ((ldil_inst & ((1 << 16) - (1 << 14))) >> (14 - 7)) |	\
+		 ((ldil_inst & ((1 << 21) - (1 << 16))) >> (16 - 2)) |	\
+		 ((ldil_inst & ((1 << 14) - (1 << 12))) >> (12 - 0)));	\
+  ble_offset = ((ble_inst >> 3) & ((1 << 10) - 1));			\
 									\
-  offset = ((w << 16) | (w1 << 11) |					\
-	    ((w2 & 1) << 10) | (w2 >> 1));				\
-  if (w != 0)								\
-  {									\
-    offset |= (((1 << 16) - 1) << 17);					\
-  }									\
-									\
-  ((long) (target)) =							\
-    (((long) ((ldil_inst & ((1 << 22) - 1)) << 11)) +			\
-     ((long) (offset << 2)));						\
-}
-#endif
-
-/* This does the partial decoding needed. */
-
-#define EXTRACT_ABSOLUTE_ADDRESS(target, address)			\
-{									\
-  unsigned long ldil_inst, ble_inst, offset;				\
-									\
-  ldil_inst = ((long *) (address))[0];					\
-  ble_inst = ((long *) (address))[1];					\
-									\
-  offset = ((ble_inst >> 3) & ((1 << 10) - 1));				\
-									\
-  ((long) (target)) =							\
-    (((ldil_inst & ((1 << 22) - 1)) << 11) +				\
-     (offset << 2));							\
+  ((long) (target)) = ((ldil_offset << 11) + (ble_offset << 2));	\
 }
 
 #define STORE_ABSOLUTE_ADDRESS(absadd, address, nullify_p)		\
 {									\
-  unsigned long actual_address, offset;					\
+  unsigned long actual_address, ldil_offset, ble_offset;		\
 									\
   actual_address = ((long) (real_entry_point));				\
+									\
+  ldil_offset = (actual_address >> 11);					\
 									\
   /* LDIL	L'actual_address,26 */					\
 									\
   ((unsigned long *) (entry_point))[0] =				\
-    ((0x8 << 26) | (26 << 21) | (actual_address >> 11));		\
+    ((0x8 << 26) | (26 << 21) |						\
+     ((ldil_offset & ((1 << 7) - (1 << 2))) << (16 - 2)) |		\
+     ((ldil_offset & ((1 << 9) - (1 << 7))) << (14 - 7)) |		\
+     ((ldil_offset & ((1 << 2) - 1)) << (12 - 0))	 |		\
+     ((ldil_offset & ((1 << 20) - (1 << 9))) >> (9 - 1)) |		\
+     ((ldil_offset & (1 << 20)) >> 20));				\
 									\
-  offset = ((actual_address & ((1 << 12) - 1)) >> 2);			\
+  ble_offset = ((actual_address & ((1 << 12) - 1)) >> 2);		\
 									\
   /* BLE	R'actual_address(5,26)					\
      The following instruction is nullified if nullify_p is true.	\
@@ -154,7 +136,7 @@ typedef unsigned short format_word;
    */									\
 									\
   ((unsigned long *) (entry_point))[1] =				\
-    ((0x39 << 26) | (26 << 21) | (5 << 13) | ((offset << 1) << 2) |	\
+    ((0x39 << 26) | (26 << 21) | (5 << 13) | ((ble_offset << 1) << 2) |	\
      ((nullify_p) ? 2 : 0));						\
 }
 
