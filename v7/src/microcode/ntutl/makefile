@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.8 1993/08/21 03:20:09 gjr Exp $
+###	$Id: makefile,v 1.9 1993/08/23 01:40:13 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -66,7 +66,7 @@ sysflags = $(guiflags)
 syslibs = $(guilibs)
 cvobj = cvtomf
 
-all: ntscmlib.dll scheme.exe # bchschem.exe bintopsb.exe psbtobin.exe
+all: ntscmlib.dll scheme.exe bchschem.exe # bintopsb.exe psbtobin.exe
 
 .c.obj:
 	$(cc) $(cflags) $(cdebug) -c $*.c
