@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.31 2000/04/30 22:17:19 cph Exp $
+$Id: edextra.scm,v 1.32 2000/12/01 06:41:21 cph Exp $
 
 Copyright (c) 1992-2000 Massachusetts Institute of Technology
 
@@ -384,8 +384,6 @@ option the file from the problem set will not be installed.
 (set! editor-can-exit? false)
 (set! scheme-can-quit? false)
 (set! paranoid-exit? true)
-(if (eq? 'X (graphics-type-name (graphics-type #f)))
-    (set! x-screen-auto-raise true))
 
 (set-variable! enable-transcript-buffer true)
 (set-variable! evaluate-in-inferior-repl true)
