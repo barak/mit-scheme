@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules1.scm,v 1.3 1993/10/28 02:55:54 gjr Exp $
+$Id: rules1.scm,v 1.4 1993/10/28 15:06:59 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -345,10 +345,9 @@ MIT in each case. |#
 		       (MACHINE-CONSTANT (? offset))))
   (standard-unary-conversion address 'CHAR* target 'ULONG
     (lambda (address target)
-      (LAP ,target " = ((ulong) (((unsigned char *) " ,address ")["
+      (LAP ,target " = ((unsigned long) (((unsigned char *) " ,address ")["
 	   ,offset "]));\n\t"))))
 
-;*
 (define-rule statement
   ;; convert char object to ASCII byte
   (ASSIGN (REGISTER (? target))
