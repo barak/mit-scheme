@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.69 1996/05/04 17:38:55 cph Exp $
+;;;	$Id: unix.scm,v 1.70 1996/05/11 08:46:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -713,25 +713,29 @@ option, instead taking -P <filename>."
 (define (unix/pop-client server user-name password directory)
   (let ((target (->namestring (merge-pathnames ".popmail" directory))))
     (let ((buffer (temporary-buffer "*popclient*")))
-      (let ((status.reason
-	     (unix/call-with-pop-client-password-options password
-	       (lambda (password-options)
-		 (let ((args
-			(append (list "-u" user-name)
-				password-options
-				(list "-o" target server))))
-		   (apply run-synchronous-process #f (buffer-end buffer) #f #f
-			  "popclient"
-			  "-3"
-			  (if (ref-variable rmail-pop-delete)
-			      args
-			      (cons "-k" args))))))))
-	(if (and (eq? 'EXITED (car status.reason))
-		 (memv (cdr status.reason) '(0 1)))
-	    (kill-buffer buffer)
-	    (begin
-	      (pop-up-buffer buffer)
-	      (editor-error "Error getting mail from POP server.")))))
+      (cleanup-pop-up-buffers
+       (lambda ()
+	 (pop-up-buffer buffer)
+	 (let ((status.reason
+		(unix/call-with-pop-client-password-options password
+		  (lambda (password-options)
+		    (let ((args
+			   (append (list "-u" user-name)
+				   password-options
+				   (list "-o" target server))))
+		      (apply run-synchronous-process
+			     #f (buffer-end buffer) #f #f
+			     "popclient"
+			     "-3"
+			     (if (ref-variable rmail-pop-delete)
+				 args
+				 (cons "-k" args))))))))
+	   (if (and (eq? 'EXITED (car status.reason))
+		    (memv (cdr status.reason) '(0 1)))
+	       (kill-pop-up-buffer buffer)
+	       (begin
+		 (keep-pop-up-buffer buffer)
+		 (editor-error "Error getting mail from POP server.")))))))
     target))
 
 (define (unix/call-with-pop-client-password-options password receiver)

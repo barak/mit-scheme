@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.30 1996/05/04 17:38:12 cph Exp $
+;;;	$Id: os2.scm,v 1.31 1996/05/11 08:46:35 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -335,24 +335,27 @@ filename suffix \".gz\"."
 			       "popmail.tmp")
 			   directory))))
     (let ((buffer (temporary-buffer "*popclient*")))
-      (let ((status.reason
-	     (let ((args
-		    (list "-u" user-name
-			  "-p" (os2-pop-client-password password)
-			  "-o" target
-			  server)))
-	       (apply run-synchronous-process #f (buffer-end buffer) #f #f
-		      "popclient"
-		      "-3"
-		      (if (ref-variable rmail-pop-delete)
-			  args
-			  (cons "-k" args))))))
-	(if (and (eq? 'EXITED (car status.reason))
-		 (memv (cdr status.reason) '(0 1)))
-	    (kill-buffer buffer)
-	    (begin
-	      (pop-up-buffer buffer)
-	      (editor-error "Error getting mail from POP server.")))))
+      (cleanup-pop-up-buffers
+       (lambda ()
+	 (pop-up-buffer buffer)
+	 (let ((status.reason
+		(let ((args
+		       (list "-u" user-name
+			     "-p" (os2-pop-client-password password)
+			     "-o" target
+			     server)))
+		  (apply run-synchronous-process #f (buffer-end buffer) #f #f
+			 "popclient"
+			 "-3"
+			 (if (ref-variable rmail-pop-delete)
+			     args
+			     (cons "-k" args))))))
+	   (if (and (eq? 'EXITED (car status.reason))
+		    (memv (cdr status.reason) '(0 1)))
+	       (kill-pop-up-buffer buffer)
+	       (begin
+		 (keep-pop-up-buffer buffer)
+		 (editor-error "Error getting mail from POP server.")))))))
     target))
 
 (define (os2-pop-client-password password)
