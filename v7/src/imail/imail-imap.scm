@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.59 2000/05/19 05:02:51 cph Exp $
+;;; $Id: imail-imap.scm,v 1.60 2000/05/19 20:08:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -515,10 +515,10 @@
   (imap-folder-connection (message-folder message)))
 
 (define-method %set-message-flags! ((message <imap-message>) flags)
-  (imap:command:store-flags (imap-message-connection message)
-			    (message-index message)
-			    (map imail-flag->imap-flag
-				 (flags-delete "\\recent" flags))))
+  (imap:command:uid-store-flags (imap-message-connection message)
+				(imap-message-uid message)
+				(map imail-flag->imap-flag
+				     (flags-delete "\\recent" flags))))
 
 (define (imap-flag->imail-flag flag)
   (case flag
@@ -775,8 +775,8 @@
 					     "*")))
 				  items))
 
-(define (imap:command:store-flags connection index flags)
-  (imap:command:no-response connection 'STORE (+ index 1) 'FLAGS flags))
+(define (imap:command:uid-store-flags connection uid flags)
+  (imap:command:no-response connection 'UID 'STORE uid 'FLAGS flags))
 
 (define (imap:command:expunge connection)
   ((imail-message-wrapper "Expunging messages")
