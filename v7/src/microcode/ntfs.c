@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.3 1993/06/24 02:00:59 gjr Exp $
+$Id: ntfs.c,v 1.4 1993/07/21 06:02:28 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -145,9 +145,8 @@ DEFUN (OS_directory_make, (name), CONST char * name)
 void
 DEFUN (OS_directory_delete, (name), CONST char * name)
 {
-  STD_VOID_SYSTEM_CALL (syscall_mkdir, (RemoveDirectory(name)));
+  STD_VOID_SYSTEM_CALL (syscall_rmdir, (RemoveDirectory (name)));
 }
-
 
 /* This is such that directory open does not return the first file */
 #define DIR_UNALLOCATED (-1L)
