@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.74 1992/09/24 01:33:37 cph Exp $
+$Id: boot.c,v 9.75 1992/11/23 04:00:50 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -362,8 +362,9 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
   }
 
   /* Setup registers */
-  INITIALIZE_INTERRUPTS();
-  Env = MAKE_OBJECT (GLOBAL_ENV, 0);
+  INITIALIZE_INTERRUPTS ();
+  SET_INTERRUPT_MASK (0);
+  Env = (MAKE_OBJECT (GLOBAL_ENV, 0));
   Trapping = false;
   Return_Hook_Address = NULL;
 
