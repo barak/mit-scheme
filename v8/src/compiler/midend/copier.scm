@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: copier.scm,v 1.2 1994/11/20 00:41:36 jmiller Exp $
+$Id: copier.scm,v 1.3 1994/11/26 19:05:34 gjr Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -45,8 +45,7 @@ MIT in each case. |#
        `(define ,proc-name
 	  (let ((handler (lambda ,(cons (car bindings) names) ,@body)))
 	    (named-lambda (,proc-name state form)
-	      (copier/remember ,code
-			       form))))))))
+	      ,code)))))))
 
 (define-copier-handler LOOKUP (state name)
   state					; ignored
@@ -166,7 +165,3 @@ MIT in each case. |#
   (lmap (lambda (expr)
 	  (copier/expr state expr))
 	exprs))
-
-(define-integrable (copier/remember new old)
-  old					; ignored for now and forever
-  new)
