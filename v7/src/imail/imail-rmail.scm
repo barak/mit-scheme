@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.60 2001/03/19 22:51:50 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.61 2001/03/20 04:03:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -181,37 +181,58 @@
 
 (define (read-rmail-attributes-line port)
   (let ((line (read-required-line port)))
-    (let ((parts (map string-trim (burst-string line #\, #f))))
-      (if (not (and (fix:= 2 (count-matching-items parts string-null?))
-		    (or (string=? "0" (car parts))
-			(string=? "1" (car parts)))
-		    (string-null? (car (last-pair parts)))))
-	  (error "Malformed RMAIL message-attributes line:" line))
-      (call-with-values
-	  (lambda () (cut-list! (except-last-pair (cdr parts)) string-null?))
-	(lambda (attributes labels)
-	  (values
-	   (string=? "1" (car parts))
-	   (rmail-markers->flags attributes
-				 (if (pair? labels) (cdr labels) labels))))))))
+    (let ((n (string-length line))
+	  (lose
+	   (lambda ()
+	     (error "Malformed RMAIL message-attributes line:" line))))
+      (if (not (and (fix:>= n 3)
+		    (char=? (string-ref line 1) #\,)))
+	  (lose))
+      (values (cond ((char=? (string-ref line 0) #\0) #f)
+		    ((char=? (string-ref line 0) #\1) #t)
+		    (else (lose)))
+	      (let loop ((i 2) (flags '()) (unseen? #f))
+		(if (fix:< i n)
+		    (if (or (char=? (string-ref line i) #\space)
+			    (char=? (string-ref line i) #\,))
+			(loop (fix:+ i 1) flags unseen?)
+			(let scan-token ((i* (fix:+ i 1)))
+			  (if (or (fix:= i* n)
+				  (char=? (string-ref line i*) #\space)
+				  (char=? (string-ref line i*) #\,))
+			      (let ((flag (substring line i i*)))
+				(if (string-ci=? flag "unseen")
+				    (loop i* flags #t)
+				    (loop i* (cons flag flags) unseen?)))
+			      (scan-token (fix:+ i* 1)))))
+		    (if unseen?
+			(reverse! flags)
+			(cons "seen" (reverse! flags)))))))))
 
 (define (read-rmail-alternate-headers port)
   (let ((start (xstring-port/position port)))
     (make-file-external-ref
      start
-     (let loop ()
-       (let ((line (read-required-line port)))
-	 (cond ((string-null? line)
-		(let ((end (- (xstring-port/position port) 1)))
-		  (if (not (string=? rmail-message:headers-separator
-				     (read-required-line port)))
-		      (error "Missing RMAIL headers-separator string:" port))
-		  end))
-	       ((string=? line rmail-message:headers-separator)
-		(- (xstring-port/position port)
-		   (+ (string-length line) 1)))
-	       (else
-		(loop))))))))
+     (let* ((separator rmail-message:headers-separator)
+	    (s0 (string-ref separator 0))
+	    (sl (string-length separator)))
+       (let loop ()
+	 (let ((char (read-required-char port)))
+	   (cond ((char=? char #\newline)
+		  (let ((end (- (xstring-port/position port) 1)))
+		    (if (not (string=? separator (read-required-line port)))
+			(error "Missing RMAIL headers-separator string:" port))
+		    end))
+		 ((char=? char s0)
+		  (let ((line (read-required-line port)))
+		    (if (substring=? line 0 (string-length line)
+				     separator 1 sl)
+			(- (xstring-port/position port)
+			   (+ (string-length line) 1))
+			(loop))))
+		 (else
+		  (skip-to-line-start port)
+		  (loop)))))))))
 
 (define (read-rmail-displayed-headers port)
   (let ((start (xstring-port/position port)))
