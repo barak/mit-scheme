@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.23 1987/04/16 02:05:40 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.24 1987/04/17 00:04:05 jinx Exp $
  *
  * Preprocessor to find and declare defined primitives.
  *
@@ -81,11 +81,16 @@ typedef int boolean;
 #define FALSE 0
 
 #ifdef vms
-#define void int
+/* VMS version 3 has no void. */
+/* #define void */
 #define normal_exit() return
 #else
 #define normal_exit() exit(0)
 #endif
+
+/* The 4.2 bsd vax compiler has a bug which forces the following. */
+
+#define pseudo_void	int
 
 #define error_exit(do_it)						\
 {									\
@@ -125,7 +130,7 @@ static FILE *input, *output;
 static char *name;
 static char *file_name;
 
-static void (*create_entry)();
+static pseudo_void (*create_entry)();
 
 main(argc, argv)
      int argc;
@@ -388,7 +393,7 @@ static int F_Size = 0;
 #define DONT_CAP FALSE
 #define DO_CAP TRUE
 
-void
+pseudo_void
 create_external_entry()
 {
   if (buffer_index >= BUFFER_SIZE)
@@ -445,7 +450,7 @@ read_index(arg)
   return result;
 }
 
-void
+pseudo_void
 create_builtin_entry()
 {
   static char index_buffer[STRING_SIZE];
