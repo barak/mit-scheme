@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.8 1993/10/09 07:15:46 cph Exp $
+$Id: hashtb.scm,v 1.9 1993/10/09 08:15:05 cph Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
@@ -643,6 +643,14 @@ MIT in each case. |#
 (define address-hash-tables)
 (define make-string-hash-table)
 
+(define (hash-table/strong-constructor key-hash key=?)
+  (hash-table/constructor key-hash key=? cons #t car cdr set-cdr!))
+
+(define (hash-table/weak-constructor key-hash key=?)
+  (hash-table/constructor
+   key-hash key=?
+   weak-cons weak-pair/car? weak-car weak-cdr weak-set-cdr!))
+
 ;; Define old names for compatibility:
 (define hash-table/entry-value hash-table/entry-datum)
 (define hash-table/set-entry-value! hash-table/set-entry-datum!)
@@ -652,32 +660,12 @@ MIT in each case. |#
 (define (initialize-package!)
   (set! address-hash-tables '())
   (add-primitive-gc-daemon! mark-address-hash-tables!)
-  (set! make-eq-hash-table
-	(hash-table/constructor eq-hash
-				eq?
-				weak-cons
-				weak-pair/car?
-				weak-car
-				weak-cdr
-				weak-set-cdr!))
-  (set! make-eqv-hash-table
-	(hash-table/constructor eqv-hash
-				eqv?
-				weak-cons
-				weak-pair/car?
-				weak-car
-				weak-cdr
-				weak-set-cdr!))
+  (set! make-eq-hash-table (hash-table/weak-constructor eq-hash eq?))
+  (set! make-eqv-hash-table (hash-table/weak-constructor eqv-hash eqv?))
   (set! make-object-hash-table make-eqv-hash-table)
   (set! make-symbol-hash-table make-eq-hash-table)
   (set! make-string-hash-table
-	(hash-table/constructor string-hash-mod
-				string=?
-				cons
-				#t
-				car
-				cdr
-				set-cdr!))
+	(hash-table/strong-constructor string-hash-mod string=?))
   unspecific)
 
 (define-integrable (guarantee-hash-table object procedure)
