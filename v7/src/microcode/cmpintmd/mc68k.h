@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.19 1991/03/22 04:36:00 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.20 1991/03/22 06:28:50 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -94,6 +94,82 @@ extern void hppa_store_absolute_address ();
 
 #ifdef _NEXTOS
 
+extern void EXFUN (NeXT_cacheflush, (void));
+
+#  ifdef IN_CMPINT_C
+
+#endif /* _NEXTOS */
+#  define FLUSH_I_CACHE()			asm ("trap #2")
+#ifdef __hpux
+
+/* The following is a test for HP-UX >= 7.05 */
+
+#  include <sys/time.h>
+#  include <sys/resource.h>
+#  include <sys/proc.h>
+
+#  if defined(S2DATA_WT) || defined(SWITZERLAND)
+
+/* This only works in HP-UX >= 7.05 */
+
+#  ifdef S2DATA_WT
+
+#    ifdef SWITZERLAND
+
+extern void EXFUN (swiss_cachectl, (int, void *, unsigned long));
+
+extern void EXFUN (operate_on_cache_region,(int, char *, unsigned long));
+
+  (void) (cachectl (CC_IPURGE, 0, 0))
+
+#    define FLUSH_I_CACHE_REGION(addr, nwords)				\
+  (operate_on_cache_region (CC_IPURGE, ((char *) (addr)), (nwords)))
+
+#    define FLUSH_I_CACHE_REGION(addr, nwords)			\
+do									\
+{									\
+  char *base = ((char *) (addr));					\
+  (operate_on_cache_region (CC_FLUSH, ((char *) (addr)), (nwords)))
+void 
+DEFUN (operate_on_cache_region,
+       (cachecmd, bptr, nwords),
+       int cachecmd AND char * bptr AND unsigned long nwords)
+{
+       (cachecmd, base, nwords),
+       int cachecmd AND char * base AND unsigned long)
+
+  char * end;
+    return;
+  
+  nbytes = (nwords * (sizeof (long)));
+  eptr = (bptr + (nbytes - 1));
+  quantum = ((nbytes <= 0x40) ? 0x10 : 0x1000);
+
+  end = (base + (nbytes - 1));
+       eptr = ((char *) (((unsigned long) eptr) & (~(quantum - 1))));
+       (bptr <= eptr);
+  for (base = ((char *) (((unsigned long) base) & (~(quantum - 1))))
+       end = ((char *) (((unsigned long) end) & (~(quantum - 1))));
+       (base <= end);
+       base += quantum)
+    (void) (cachectl (cachecmd, base, quantum));
+#    endif /* IN_CMPINT_C */
+#  else  /* S2DATA_WT */
+#    define FLUSH_I_CACHE() NOP()
+#  endif /* S2DATA_WT */
+#endif /* __hpux */
+
+#ifndef FLUSH_CACHE_INITIALIZE
+#  define FLUSH_CACHE_INITIALIZE() NOP()
+#endif /* FLUSH_CACHE_INITIALIZE */
+
+#ifndef PUSH_D_CACHE_REGION
+#  define PUSH_D_CACHE_REGION(addr, nwords) FLUSH_I_CACHE_REGION(addr, nwords)
+#endif /* not PUSH_D_CACHE_REGION */
+
+#if (COMPILER_PROCESSOR_TYPE == COMPILER_MC68020_TYPE)
+
+/* 68k magic.
    On the 68k, when closures are invoked, the closure corresponding
    to the first entry point is what's needed on the top of the stack.
    Note that it is needed for environment only, not for code.
@@ -162,78 +238,6 @@ extdo {									\
 
 #  define ADJUST_CLOSURE_AT_CALL(entry_point, location) NOP()
 
-/* Cache flushing. */
-
-#  ifdef _NEXTOS
-
-#    define SPLIT_CACHES
-#    define FLUSH_I_CACHE()			asm ("trap #2")
-#    define FLUSH_I_CACHE_REGION(addr,nwords)	FLUSH_I_CACHE()
-
-#  endif /* _NEXTOS */
-
-#  ifdef __hpux
-
-/* The following is a test for HP-UX >= 7.05 */
-
-#    include <sys/time.h>
-#    include <sys/resource.h>
-#    include <sys/proc.h>
-
-#    ifdef S2DATA_WT
-
-/* This only works in HP-UX >= 7.05 */
-
-#      include <sys/cache.h>
-
-extern void EXFUN (operate_on_cache_region,(int, char *, unsigned long));
-
-#      define SPLIT_CACHES
-
-#      define FLUSH_I_CACHE()						\
-  (void) (cachectl (CC_IPURGE, 0, 0))
-
-#      define FLUSH_I_CACHE_REGION(addr, nwords)			\
-  (operate_on_cache_region (CC_IPURGE, ((char *) (addr)), (nwords)))
-
-#      define PUSH_D_CACHE_REGION(addr, nwords)				\
-  (operate_on_cache_region (CC_FLUSH, ((char *) (addr)), (nwords)))
-
-#      ifdef IN_CMPINT_C
-
-void 
-DEFUN (operate_on_cache_region,
-       (cachecmd, base, nwords),
-       int cachecmd AND char * base AND unsigned long)
-{
-  char * end;
-  unsigned long nbytes, quantum;
-
-  if (nwords == 0)
-    return;
-  
-  nbytes = (nwords * (sizeof (long)));
-  end = (base + (nbytes - 1));
-  quantum = ((nbytes <= 0x40) ? 0x10 : 0x1000);
-
-  for (base = ((char *) (((unsigned long) base) & (~(quantum - 1))))
-       end = ((char *) (((unsigned long) end) & (~(quantum - 1))));
-       (base <= end);
-       base += quantum)
-    (void) (cachectl (cachecmd, base, quantum));
-  return;
-}
-
-#      endif /* IN_CMPINT_C */
-#    else  /* S2DATA_WT */
-#      define FLUSH_I_CACHE() NOP()
-#    endif /* S2DATA_WT */
-#  endif /* hpux */
-
-#    ifndef FLUSH_I_CACHE
-#      error "Cache flushing code needed for MC68040s"
-#    endif
-
 /* Manifest closure entry block size. 
    Size in bytes of a compiled closure's header excluding the
    TC_MANIFEST_CLOSURE header.
@@ -316,15 +320,6 @@ DEFUN (operate_on_cache_region,
 #  error "COMPILER_PROCESSOR_TYPE unknown"
    contains both the number of arguments provided by the caller and
    code to jump to the destination address.  Before linkage, the cache
-
-
-#ifndef FLUSH_I_CACHE_REGION
-#  define FLUSH_I_CACHE_REGION(addr, nwords) NOP()
-#endif /* not FLUSH_I_CACHE_REGION */
-
-#ifndef PUSH_D_CACHE_REGION
-#  define PUSH_D_CACHE_REGION(addr, nwords) FLUSH_I_CACHE_REGION(addr, nwords)
-#endif /* not PUSH_D_CACHE_REGION */
    contains the callee's name instead of the jump code.
  */
 
