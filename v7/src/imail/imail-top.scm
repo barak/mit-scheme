@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.253 2001/05/26 01:55:10 cph Exp $
+;;; $Id: imail-top.scm,v 1.254 2001/05/26 02:13:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -2006,6 +2006,13 @@ Negative argument means search in reverse."
 
 (define (set-buffer-imail-container! buffer container)
   (buffer-put! buffer 'IMAIL-CONTAINER container))
+
+(define (selected-container-url #!optional error? buffer)
+  (let ((container
+	 (selected-container (if (default-object? error?) #t error?)
+			     (if (default-object? buffer) #f buffer))))
+    (and container
+	 (resource-locator container))))
 
 (define (selected-url-string #!optional error? mark)
   (let ((url
