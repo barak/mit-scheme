@@ -1,7 +1,7 @@
 
-# $Id: Makefile.in,v 1.6 2003/02/14 19:22:43 cph Exp $
+# $Id: Makefile.in,v 1.7 2004/10/14 04:03:19 cph Exp $
 #
-# Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+# Copyright 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -67,21 +67,21 @@ INFO_TARGET = mit-scheme-imail.info
 
 all: $(INFO_TARGET) imail.html imail.pdf imail.ps
 
-$(INFO_TARGET): imail.texinfo gfdl.texinfo
+$(INFO_TARGET): imail.texinfo
 	rm -f $(INFO_TARGET)*
 	makeinfo --output=$(INFO_TARGET) imail.texinfo
 
-imail.html: imail.texinfo gfdl.texinfo
+imail.html: imail.texinfo
 	rm -f imail*.html
 	texi2html -split_chapter imail.texinfo
 
-imail.pdf: imail.texinfo gfdl.texinfo
+imail.pdf: imail.texinfo
 	texi2pdf imail.texinfo
 
 imail.ps: imail.dvi
 	dvips -o $@ $^
 
-imail.dvi: imail.texinfo gfdl.texinfo
+imail.dvi: imail.texinfo
 	texi2dvi imail.texinfo
 
 AUX_SUFFIXES = aux log toc

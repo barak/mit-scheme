@@ -1,7 +1,7 @@
 
-# $Id: Makefile.in,v 1.6 2003/02/14 19:22:43 cph Exp $
+# $Id: Makefile.in,v 1.7 2004/10/14 04:03:55 cph Exp $
 #
-# Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+# Copyright 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -67,21 +67,21 @@ INFO_TARGET = mit-scheme-user.info
 
 all: $(INFO_TARGET) user.html user.pdf user.ps
 
-$(INFO_TARGET): user.texinfo gfdl.texinfo
+$(INFO_TARGET): user.texinfo
 	rm -f $(INFO_TARGET)*
 	makeinfo --output=$(INFO_TARGET) user.texinfo
 
-user.html: user.texinfo gfdl.texinfo
+user.html: user.texinfo
 	rm -f user*.html
 	texi2html -split_chapter user.texinfo
 
-user.pdf: user.texinfo gfdl.texinfo
+user.pdf: user.texinfo
 	texi2pdf user.texinfo
 
 user.ps: user.dvi
 	dvips -o $@ $^
 
-user.dvi: user.texinfo gfdl.texinfo
+user.dvi: user.texinfo
 	texi2dvi user.texinfo
 
 AUX_SUFFIXES = aux log toc
