@@ -1,6 +1,6 @@
 /* -*- C -*-
    Switzerland local additions to the makefile
-   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y300.lcl,v 1.14 1990/11/10 16:33:18 jinx Exp $
+   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y300.lcl,v 1.15 1990/11/14 11:40:00 cph Exp $
  */
 
 /* These extra files are for 6003.  They assume we're using HP-UX. */
@@ -51,7 +51,7 @@ LYN_LIB =  $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(CTERM_LIB)\
 	-lm
 
 
-world: all bchscheme scm6003 # kitscheme
+world: all bchscheme scm6003 kitscheme
 
 everything: world Bintopsb Ppband
 
