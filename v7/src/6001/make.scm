@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/make.scm,v 15.13 1992/09/01 22:26:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/make.scm,v 15.14 1992/09/03 15:44:57 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -62,6 +62,8 @@ MIT in each case. |#
   (set-variable-value! edwin-variable$repl-error-decision true)
   (set-variable-value! edwin-variable$version-control true)
   (set-variable-value! edwin-variable$trim-versions-without-asking true)
+  (set-variable-value! edwin-variable$enable-compressed-files false)
+  (set-variable-value! edwin-variable$enable-encrypted-files false)
   (set-variable-value!
    edwin-variable$mail-default-reply-to
    (let ((default-reply-to false))
