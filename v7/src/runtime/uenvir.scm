@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.34 1994/12/15 22:19:37 adams Exp $
+$Id: uenvir.scm,v 14.35 1995/02/09 21:23:49 adams Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -342,17 +342,22 @@ MIT in each case. |#
 	  (error "Unable to obtain closing environment (missing block info)"
 		 entry))
       (let ((parent (dbg-block/parent block)))
-	(case (dbg-block/type parent)
-	  ((CLOSURE)
-	   (make-closure-ccenv (dbg-block/original-parent block)
-			       parent
-			       entry))
-	  ((IC)
-	   (guarantee-interpreter-environment
-	    (compiled-code-block/environment
-	     (compiled-code-address->block entry))))
-	  (else
-	   (error "Illegal procedure parent block" parent)))))))
+	(define (use-compile-code-block-environment)
+	  (guarantee-interpreter-environment
+	   (compiled-code-block/environment
+	    (compiled-code-address->block entry))))
+	(if parent
+	    (case (dbg-block/type parent)
+	      ((CLOSURE)
+	       (make-closure-ccenv (dbg-block/original-parent block)
+				   parent
+				   entry))
+	      ((IC)
+	       (use-compile-code-block-environment))
+	      (else
+	       (error "Illegal procedure parent block" parent)))
+	    ;; This happens when the procedure has no free variables:
+	    (use-compile-code-block-environment))))))
 
 (define (stack-ccenv/has-parent? environment)
   (if (dbg-block/parent (stack-ccenv/block environment))
