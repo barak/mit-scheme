@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: syntax.scm,v 1.79 1997/03/03 23:03:00 cph Exp $
+;;;	$Id: syntax.scm,v 1.80 1998/06/28 20:09:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
@@ -96,10 +96,13 @@
 	      (string->list ".,;:?!#@~^'`"))
     table))
 
-(define (make-syntax-table)
+(define (make-syntax-table #!optional table)
   (%make-syntax-table
-   (vector-copy (syntax-table/entries standard-syntax-table))))
-
+   (vector-copy
+    (syntax-table/entries (if (or (default-object? table) (not table))
+			      standard-syntax-table
+			      table)))))
+
 (define (char->syntax-code syntax-table char)
   ((ucode-primitive char->syntax-code) (syntax-table/entries syntax-table)
 				       char))
@@ -134,7 +137,7 @@
 		"7")
 	    (if (fix:= 0 (fix:and #x02 cbits)) "" "8")))
 	 (if (fix:= 0 (fix:and #x100000 entry)) "" "p")))))
-
+
 (define (substring-find-next-char-of-syntax string start end
 					    syntax-table syntax)
   (let loop ((index start))
@@ -193,7 +196,7 @@ which is selected so you can see it."
 			 (write-char #\tab)))
 		   (describe-syntax-entry entry)
 		   (loop end))))))))))
-
+
 (define (describe-syntax-entry entry)
   (let ((code (fix:and #x0f entry)))
     (if (> code 12)
