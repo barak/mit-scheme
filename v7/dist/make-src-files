@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# $Id: make-src-files,v 1.19 2001/11/26 20:26:36 cph Exp $
+# $Id: make-src-files,v 1.20 2002/06/18 17:59:21 cph Exp $
 #
-# Copyright (c) 2000-2001 Massachusetts Institute of Technology
+# Copyright (c) 2000-2002 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,10 +21,19 @@
 
 . /scheme/v7/dist/release-prefix
 
+if [ $# -eq 0 ]; then
+  VERSION="$(get_release)"
+elif [ $# -eq 1 ]; then
+  VERSION="${1}"
+else
+  echo "usage: $0 [VERSION]"
+  exit 1
+fi
+
 INSTALL="install"
 INSTALL_DATA="${INSTALL} -m 644"
-PREFIX="$(get_release_prefix)"
-TAG="$(get_release_tag)"
+PREFIX="$(get_release_prefix "${VERSION}")"
+TAG="$(get_release_tag "${VERSION}")"
 CVS="cvs -d /scheme/cvsroot"
 
 rm -rf ${PREFIX}
