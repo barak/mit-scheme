@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.32 2004/02/25 21:00:49 cph Exp $
+$Id: xml-output.scm,v 1.33 2004/02/26 01:52:24 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -57,9 +57,6 @@ USA.
   (wide-string->utf8-string (apply xml->wide-string xml options)))
 
 (define (write-xml-1 xml port options)
-  (let ((operation (port/operation port 'SET-CODING)))
-    (if operation
-	(operation port 'UTF-8)))
   (%write-xml xml (make-ctx port options)))
 
 (define-structure (ctx (type-descriptor <ctx>)
