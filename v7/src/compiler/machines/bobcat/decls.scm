@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.1 1987/12/30 07:03:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.2 1988/01/06 18:30:09 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -51,9 +51,9 @@ MIT in each case. |#
   (mapcan (lambda (subdirectory)
 	    (map (lambda (pathname)
 		   (string-append subdirectory "/" (pathname-name pathname)))
-		 (directory-read (string-append subdirectory "/*.scm"))))
+		 (directory-read (string-append subdirectory "/*.bin"))))
 	  '("back" "base" "fggen" "fgopt" "rtlbase" "rtlgen" "rtlopt"
-		    "machines/bobcat")))
+		   "machines/bobcat")))
 
 (define source-hash
   (make/hash-table 101
