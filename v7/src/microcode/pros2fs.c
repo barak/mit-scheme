@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2fs.c,v 1.5 1995/04/23 02:42:47 cph Exp $
+$Id: pros2fs.c,v 1.6 1995/04/23 02:44:25 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -409,7 +409,7 @@ DEFINE_PRIMITIVE ("DOS-QUERY-MEMORY", Prim_dos_query_memory, 2, 2, 0)
   }
 }
 
-DEFINE_PRIMITIVE ("OS2-TIMEZONE", Prim_OS2_timezone, 0, 0, 0)
+DEFINE_PRIMITIVE ("OS2-TIME-ZONE", Prim_OS2_timezone, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN (long_to_integer (OS2_timezone ()));
