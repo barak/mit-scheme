@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.23 1991/11/26 07:06:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.24 1992/03/25 23:51:47 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -65,6 +65,7 @@ MIT in each case. |#
 (define *pp-lists-as-tables?* true)
 (define *pp-forced-x-size* false)
 (define *pp-avoid-circularity?* false)
+(define *pp-default-as-code?* 'IF-SCODE)
 
 (define (pp object #!optional port . rest)
   (let ((port (if (default-object? port) (current-output-port) port)))
@@ -85,7 +86,10 @@ MIT in each case. |#
 (define (pretty-print object #!optional port as-code? indentation)
   (let ((as-code?
 	 (if (default-object? as-code?)
-	     (not (scode-constant? object))
+	     (let ((default *pp-default-as-code?*))
+	       (if (boolean? default)
+		   default
+		   (not (scode-constant? object))))
 	     as-code?)))
     (pp-top-level (let ((sexp
 			 (if (scode-constant? object)
