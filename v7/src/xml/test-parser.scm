@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: test-parser.scm,v 1.12 2004/02/24 01:51:00 cph Exp $
+$Id: test-parser.scm,v 1.13 2004/02/24 20:49:08 cph Exp $
 
 Copyright 2001,2004 Massachusetts Institute of Technology
 
@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
 
 |#
-
+
 (define (run-xml-tests #!optional root)
   (let ((root
 	 (merge-pathnames "xmlconf/xmltest/"
@@ -40,32 +40,42 @@ USA.
 			   "not-wf/sa" "not-wf/ext-sa" "not-wf/not-sa"))))
 
 (define (test-directory directory)
-  (map (lambda (pathname)
-	 (write-string ";")
-	 (write-string (file-namestring pathname))
-	 (write-string ":\t")
-	 (let ((v (ignore-errors (lambda () (read-xml-file pathname)))))
-	   (cond ((not v)
-		  (write-string "No match."))
-		 ((condition? v)
-		  (write-condition-report v (current-output-port)))
-		 (else
-		  (let ((s (ignore-errors (lambda () (xml->wide-string v)))))
-		    (if (condition? s)
-			(begin
-			  (write-string "Can't write: ")
-			  (write-condition-report s (current-output-port)))
-			(let ((x (ignore-errors (lambda () (string->xml s)))))
-			  (if (condition? x)
-			      (begin
-				(write-string "Can't re-read: ")
-				(write-condition-report x
-							(current-output-port)))
-			      (write-string "Parsed")))))))
-	   (fresh-line)
-	   v))
-       (directory-read
-	(merge-pathnames "*.xml" (pathname-as-directory directory)))))
+  (call-with-temporary-file-pathname
+   (lambda (temp)
+     (map (lambda (pathname)
+	    (write-string ";")
+	    (write-string (file-namestring pathname))
+	    (write-string ":\t")
+	    (let ((v (ignore-errors (lambda () (read-xml-file pathname)))))
+	      (cond ((not v)
+		     (write-string "No match."))
+		    ((condition? v)
+		     (write-condition-report v (current-output-port)))
+		    (else
+		     (let ((???
+			    (lambda (operation thunk)
+			      (let ((c (ignore-errors thunk)))
+				(if (condition? c)
+				    (begin
+				      (write-string "Can't ")
+				      (write-string operation)
+				      (write-string ": ")
+				      (write-condition-report
+				       c
+				       (current-output-port))
+				      #f)
+				    #t)))))
+		       (if (??? "write"
+				(lambda ()
+				  (write-xml-file v temp)))
+			   (if (??? "re-read"
+				    (lambda ()
+				      (read-xml-file temp)))
+			       (write-string "Parsed"))))))
+	      (fresh-line)
+	      v))
+	  (directory-read
+	   (merge-pathnames "*.xml" (pathname-as-directory directory)))))))
 
 (define (run-output-tests output #!optional root)
   (let ((root
