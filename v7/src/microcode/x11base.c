@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.56 1994/09/28 21:07:21 cph Exp $
+$Id: x11base.c,v 1.57 1995/07/25 16:45:29 adams Exp $
 
-Copyright (c) 1989-93 Massachusetts Institute of Technology
+Copyright (c) 1989-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,6 +40,9 @@ MIT in each case. */
 #include "uxselect.h"
 #include "osio.h"
 #include "x11.h"
+
+extern void EXFUN (block_signals, (void));
+extern void EXFUN (unblock_signals, (void));
 
 #ifndef X_DEFAULT_FONT
 #define X_DEFAULT_FONT "fixed"
@@ -1267,9 +1270,12 @@ DEFINE_PRIMITIVE ("X-OPEN-DISPLAY", Prim_x_open_display, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   INITIALIZE_ONCE ();
   {
-    struct xdisplay * xd = (x_malloc (sizeof (struct xdisplay)));
+    struct xdisplay * xd = (x_malloc (sizeof (struct xdisplay)));    
+    /* Added 7/95 by Nick in an attempt to fix problem Hal was having with SWAT over PPP (i.e. slow connections) */
+    block_signals ();
     (XD_DISPLAY (xd)) =
       (XOpenDisplay (((ARG_REF (1)) == SHARP_F) ? 0 : (STRING_ARG (1))));
+    unblock_signals ();
     if ((XD_DISPLAY (xd)) == 0)
       {
 	free (xd);
