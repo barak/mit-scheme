@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.61 2000/04/03 16:57:08 cph Exp $
+;;; $Id: vc.scm,v 1.62 2000/04/06 02:31:23 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -477,34 +477,50 @@ merge in the changes into your working copy."
     (if master
 	(let ((do-checkin
 	       (lambda ()
-		 (let ((buffer (find-file-noselect workfile #t)))
-		   (if from-dired?
-		       (pop-up-buffer buffer #f #t)
-		       (select-buffer buffer))
+		 (let* ((buffer
+			 (let ((buffer (pathname->buffer workfile)))
+			   (and buffer
+				(find-file-revert buffer))))
+			(shown? #f)
+			(show
+			 (lambda ()
+			   (if (not shown?)
+			       (begin
+				 (if from-dired?
+				     (pop-up-buffer buffer #f #t)
+				     (select-buffer buffer))
+				 (set! shown? #t))))))
 		   ;; If the file on disk is newer, then the user just
 		   ;; said no to rereading it.  So the user probably
 		   ;; wishes to overwrite the file with the buffer's
 		   ;; contents, and check that in.
-		   (cond ((verify-visited-file-modification-time? buffer)
+		   (cond ((not buffer) unspecific)
+			 ((verify-visited-file-modification-time? buffer)
 			  (vc-save-buffer buffer #t))
-			 ((prompt-for-yes-or-no?
-			   "Replace file on disk with buffer contents")
+			 ((begin
+			    (show)
+			    (prompt-for-yes-or-no?
+			     "Replace file on disk with buffer contents"))
 			  (save-buffer buffer #f))
-			 (else
-			  (editor-error "Aborted")))
+			 (else (editor-error "Aborted")))
 		   ;; Revert if file is unchanged and buffer is too.
 		   ;; If buffer is modified, that means the user just
 		   ;; said no to saving it; in that case, don't
 		   ;; revert, because the user might intend to save
 		   ;; after finishing the log entry.
-		   (cond ((or (buffer-modified? buffer)
+		   (cond ((or (and buffer (buffer-modified? buffer))
 			      (vc-workfile-modified? master))
 			  (vc-checkin master revision? comment))
 			 ;; DO NOT revert the file without asking the
 			 ;; user!
-			 ((prompt-for-yes-or-no? "Revert to master version")
+			 ((prompt-for-yes-or-no?
+			   (if buffer
+			       (begin (show) "Revert to master version")
+			       (string-append "Revert "
+					      (file-namestring workfile)
+					      " to master version")))
 			  (vc-backend-revert master)
-			  (vc-revert-buffer buffer #t))))))
+			  (if buffer (vc-revert-buffer buffer #t)))))))
 	      (do-checkout
 	       (lambda ()
 		 (vc-save-workfile-buffer workfile)
