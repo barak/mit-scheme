@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.56 1993/11/22 22:45:43 cph Exp $
+$Id: ux.h,v 1.57 1993/11/22 23:17:46 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -946,16 +946,12 @@ extern int EXFUN
 #define BSD_DEV_TTY "/dev/tty"
 #endif
 
-#if !defined(_POSIX) && defined(_BSD) && !defined(_SUNOS) && !defined(_ULTRIX)
+#if !defined(_POSIX) && defined(_BSD) && !defined(_SUNOS)
 #define L_ctermid ((strlen (BSD_DEV_TTY)) + 1);
 extern char * EXFUN (UX_ctermid, (char * s));
-#else
-#define UX_ctermid ctermid
-#endif
-
-#if !defined(_POSIX) && defined(_BSD) && !defined(_SUNOS)
 extern int EXFUN (UX_kill, (pid_t pid, int sig));
 #else
+#define UX_ctermid ctermid
 #define UX_kill kill
 #endif
 
