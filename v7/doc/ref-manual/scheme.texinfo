@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.37 1993/11/12 20:16:27 nick Exp $
+@comment $Id: scheme.texinfo,v 1.38 1993/11/16 21:59:15 nick Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -7881,7 +7881,7 @@ otherwise returns @code{#f}.
 @deffnx {procedure+} false? object
 @cindex false, predicate for
 @cindex inverse, of boolean object
-These procedures returns @code{#t} if @var{object} is false; otherwise
+These procedures return @code{#t} if @var{object} is false; otherwise
 they return @code{#f}.  In other words they @emph{invert} boolean
 values.  These two procedures have identical semantics; their names are
 different to give different connotations to the test.
@@ -9105,7 +9105,7 @@ predicate that is used to compare keys, and whether or not the table
 allows its keys to be reclaimed by the garbage collector.  If a table
 prevents its keys from being reclaimed by the garbage collector, it is
 said to hold its keys @dfn{strongly}; otherwise it holds its keys
-@dfn{weakly}.
+@dfn{weakly} (@pxref{Weak Pairs}).
 
 @deffn {procedure+} make-eq-hash-table [initial-size]
 @findex eq?
