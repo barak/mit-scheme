@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.66 1991/10/26 21:54:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.67 1991/10/29 13:44:08 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -659,11 +659,11 @@ MIT in each case. |#
   (parent (edwin))
   (export (edwin)
 	  c-indent-expression
-	  c-indent-line:indentation
-	  c-inside-parens?
+	  c-indent-line
 	  edwin-variable$c-argdecl-indent
 	  edwin-variable$c-brace-imaginary-offset
 	  edwin-variable$c-brace-offset
+	  edwin-variable$c-continued-brace-offset
 	  edwin-variable$c-continued-statement-offset
 	  edwin-variable$c-indent-level
 	  edwin-variable$c-label-offset))
