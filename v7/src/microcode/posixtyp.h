@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: posixtyp.h,v 1.6 1993/02/06 05:37:01 gjr Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/posixtyp.h,v 1.7 1993/02/11 02:32:45 adams Exp $
 
-Copyright (c) 1990-1993 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -86,6 +86,21 @@ MIT in each case. */
 #endif
 
 #endif
+
+#ifdef WINNT
+#include <sys/types.h>
+#include <time.h>
+/*#define _MODE_T*/
+#define _NLINK_T
+#define _PID_T
+#define _CLOCK_T
+#define _TIME_T
+#define _SIZE_T
+#define _OFF_T
+#define off_t _off_t
+/*#define _CC_T*/
+#endif
+
 
 #ifndef _MODE_T
 #define _MODE_T
