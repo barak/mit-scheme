@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.47 1997/10/22 05:15:55 cph Exp $
+$Id: unxprm.scm,v 1.48 1997/10/22 07:26:34 cph Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -466,6 +466,6 @@ MIT in each case. |#
 
 (define (os/make-subprocess filename arguments environment working-directory
 			    ctty stdin stdout stderr)
-  ((ucode-primitive make-subprocess 7) filename arguments
-				       (cons environment working-directory)
-				       ctty stdin stdout stderr))
+  ((ucode-primitive ux-make-subprocess 8)
+   filename arguments environment working-directory
+   ctty stdin stdout stderr))
