@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dassm2.scm,v 1.1 1994/11/19 02:08:04 adams Exp $
+$Id: dassm2.scm,v 1.2 1995/07/27 14:22:18 adams Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -290,3 +290,4 @@ MIT in each case. |#
 ;; global variable used by runtime/udata.scm -- Moby yuck!
 
 (set! compiled-code-block/bytes-per-object 4)
+unspecific
