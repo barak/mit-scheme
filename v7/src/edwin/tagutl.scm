@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: tagutl.scm,v 1.52 1993/10/26 21:46:08 cph Exp $
+;;;	$Id: tagutl.scm,v 1.53 1994/01/10 19:34:14 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -327,7 +327,9 @@ command."
 (define (tags-loop-start)
   (let ((pathnames tags-loop-pathnames))
     (if (null? pathnames)
-	(editor-error "All files processed."))
+	(begin
+	  (set! tags-loop-continuation false)
+	  (editor-error "All files processed.")))
     (set! tags-loop-pathnames (cdr pathnames))
     (let ((buffer
 	   (let ((buffer (pathname->buffer (car pathnames))))
@@ -349,14 +351,16 @@ command."
 
 (define (smart-buffer-kill)
   (let ((buffer tags-loop-current-buffer))
-    (if (and (ref-variable new-tags-behavior? buffer)
-	     (let ((tick (buffer-get buffer 'TAGS-LOOP-MODIFIED-TICK)))
-	       (and tick
-		    (fix:= tick (buffer-modified-tick buffer)))))
-	(kill-buffer buffer)
-	(buffer-remove! buffer 'TAGS-LOOP-MODIFIED-TICK)))
-  (set! tags-loop-current-buffer #f)
-  unspecific)
+    (if buffer
+	(begin
+	  (if (and (ref-variable new-tags-behavior? buffer)
+		   (let ((tick (buffer-get buffer 'TAGS-LOOP-MODIFIED-TICK)))
+		     (and tick
+			  (fix:= tick (buffer-modified-tick buffer)))))
+	      (kill-buffer buffer)
+	      (buffer-remove! buffer 'TAGS-LOOP-MODIFIED-TICK))
+	  (set! tags-loop-current-buffer #f)
+	  unspecific))))
 
 (define (buffer-modified-tick buffer)
   (group-modified-tick (buffer-group buffer)))
