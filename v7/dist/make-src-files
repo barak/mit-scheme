@@ -5,12 +5,13 @@ rm -rf ${prefix}
 mkdir ${prefix}
 source=/scheme/v7/src
 destination="${prefix}/src"
-mkdir ${destination}
 
-for file in 6001 ChangeLog COPYING Makefile.std TAGS compiler cref edwin imail microcode rcs runtime sf sos win32
-do
-  cpx -E ${source}/${file} ${destination}
-done
+(
+    cd ${prefix}
+    cvs -d /scheme/cvsroot checkout -d src v7/src
+    cd src
+    etc/build-tree.sh
+)
 
 find ${destination} -type d -name CVS -print | xargs rm -rf
 find ${destination} -type f -print | xargs chmod a-w
