@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.284 1990/10/03 04:54:16 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.285 1990/10/05 23:32:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -365,7 +365,7 @@ and this buffer is not full-screen width."
 
 (define (line-inferiors-changed! window)
   (with-instance-variables buffer-window window ()
-    (define (loop inferiors start)
+    (let loop ((inferiors line-inferiors) (start (mark-index start-line-mark)))
       (if (null? (cdr inferiors))
 	  (begin
 	    (set! last-line-inferior (car inferiors))
@@ -377,9 +377,10 @@ and this buffer is not full-screen width."
 					  true))))
 	  (loop (cdr inferiors)
 		(fix:+ start (line-inferior-length inferiors)))))
-    (loop line-inferiors (mark-index start-line-mark))
-    (if (not override-inferior)
-	(set! inferiors (cons* cursor-inferior blank-inferior line-inferiors)))
+    (set! inferiors
+	  (if override-inferior
+	      (list override-inferior cursor-inferior blank-inferior)
+	      (cons* cursor-inferior blank-inferior line-inferiors)))
     unspecific))
 
 (define (y->inferiors window y)
