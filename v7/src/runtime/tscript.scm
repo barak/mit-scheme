@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: tscript.scm,v 1.8 2004/11/04 03:00:47 cph Exp $
+$Id: tscript.scm,v 1.9 2004/11/23 19:38:48 cph Exp $
 
 Copyright 1990,1999,2004 Massachusetts Institute of Technology
 
@@ -28,14 +28,14 @@ USA.
 
 (declare (usual-integrations))
 
-(define (transcript-on filename)
-  (let ((port (nearest-cmdl/port)))
+(define (transcript-on filename #!optional port)
+  (let ((port (if (default-object? port) (nearest-cmdl/port) port)))
     (if (port/transcript port)
 	(error "Transcript already turned on."))
     (set-port/transcript! port (open-output-file filename))))
 
-(define (transcript-off)
-  (let ((port (nearest-cmdl/port)))
+(define (transcript-off #!optional port)
+  (let ((port (if (default-object? port) (nearest-cmdl/port) port)))
     (let ((transcript-port (port/transcript port)))
       (if transcript-port
 	  (begin
