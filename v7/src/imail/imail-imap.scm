@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.9 2000/05/02 21:08:57 cph Exp $
+;;; $Id: imail-imap.scm,v 1.10 2000/05/02 21:42:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -220,9 +220,8 @@
 
 ;;;; Folder datatype
 
-(define-class (<imap-folder> (constructor (connection url))) (<folder>)
+(define-class (<imap-folder> (constructor (url connection))) (<folder>)
   (connection define accessor)
-  (url accessor folder-url)
   (allowed-flags define standard)
   (permanent-flags define standard)
   (uidvalidity define standard
@@ -318,7 +317,7 @@
 
 (define-method %open-folder ((url <imap-url>))
   (let ((connection (get-imap-connection url)))
-    (let ((folder (make-imap-folder connection url)))
+    (let ((folder (make-imap-folder url connection)))
       (select-imap-folder connection folder)
       (if (not (imap:command:select connection (imap-url-mailbox url)))
 	  (select-imap-folder connection #f))

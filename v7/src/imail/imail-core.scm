@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.34 2000/05/02 21:09:43 cph Exp $
+;;; $Id: imail-core.scm,v 1.35 2000/05/02 21:42:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -81,26 +81,6 @@
 
 (define-generic url-user-id (url))
 (define-method url-user-id ((url <url>)) url #f)
-
-(define (get-memoized-folder url)
-  (let ((folder (hash-table/get memoized-folders url #f)))
-    (and folder
-	 (let ((folder (weak-car folder)))
-	   (if (and folder (%folder-valid? folder))
-	       folder
-	       (begin
-		 (unmemoize-folder url)
-		 #f))))))
-
-(define (memoize-folder folder)
-  (hash-table/put! memoized-folders (folder-url folder) (weak-cons folder #f))
-  folder)
-
-(define (unmemoize-folder url)
-  (hash-table/remove! memoized-folders url))
-
-(define memoized-folders
-  (make-eq-hash-table))
 
 ;;;; Server operations
 
@@ -208,6 +188,7 @@
 ;;;; Folder type
 
 (define-class <folder> ()
+  (url define accessor)
   (modified? define standard
 	     initial-value #t)
   (modification-event define accessor
@@ -254,6 +235,26 @@
 	(set-folder-modified?! folder #f)
 	(event-distributor/invoke! (folder-modification-event folder)
 				   folder))))
+
+(define (get-memoized-folder url)
+  (let ((folder (hash-table/get memoized-folders url #f)))
+    (and folder
+	 (let ((folder (weak-car folder)))
+	   (if (and folder (%folder-valid? folder))
+	       folder
+	       (begin
+		 (unmemoize-folder url)
+		 #f))))))
+
+(define (memoize-folder folder)
+  (hash-table/put! memoized-folders (folder-url folder) (weak-cons folder #f))
+  folder)
+
+(define (unmemoize-folder url)
+  (hash-table/remove! memoized-folders url))
+
+(define memoized-folders
+  (make-eq-hash-table))
 
 ;;;; Folder operations
 
@@ -285,11 +286,6 @@
   (eq? folder (get-memoized-folder (folder-url folder))))
 
 (define-generic %folder-valid? (folder))
-
-;; -------------------------------------------------------------------
-;; Return the URL of FOLDER.
-
-(define-generic folder-url (folder))
 
 ;; -------------------------------------------------------------------
 ;; Return the number of messages in FOLDER.
