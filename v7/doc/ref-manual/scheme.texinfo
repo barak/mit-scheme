@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.84 1999/12/21 21:00:27 cph Exp $
+@comment $Id: scheme.texinfo,v 1.85 1999/12/22 20:42:31 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -95,9 +95,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.84
+@subtitle Edition 1.85
 @subtitle for Scheme Release 7.5
-@subtitle 21 December 1999
+@subtitle 22 December 1999
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -15332,7 +15332,7 @@ Converts an argument in decoded-time format to universal-time format.
 (decoded-time->universal-time (local-decoded-time))
     @result{} 3134411942
 (decoded-time->universal-time (global-decoded-time))
-    @result{} 3134408347
+    @result{} 3134411947
 @end group
 @end example
 @end deffn
@@ -15345,7 +15345,7 @@ Converts an argument in decoded-time format to file-time format.
 (decoded-time->file-time (local-decoded-time))
     @result{} 925423191
 (decoded-time->file-time (global-decoded-time))
-    @result{} 925419595
+    @result{} 925423195
 @end group
 @end example
 @end deffn
