@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.9 1991/04/26 05:25:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.10 1991/06/21 03:40:23 gjs Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -530,4 +530,36 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-SET-DASHES", Prim_x_graphics_set_dashes, 3, 3, 0)
        dash_list_length);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-GRAPHICS-MAP-X-COORDINATE", Prim_x_graphics_map_x_coordinate, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    unsigned int xp = (arg_nonnegative_integer (2));
+    int bx = (xp - (XW_INTERNAL_BORDER_WIDTH (xw)));
+    PRIMITIVE_RETURN
+      (x_coordinate_map
+       (xw,
+	((bx < 0) ? 0
+	 : (bx >= (XW_X_SIZE (xw))) ? ((XW_X_SIZE (xw)) - 1)
+	 : bx)));
+  }
+}
+
+DEFINE_PRIMITIVE ("X-GRAPHICS-MAP-Y-COORDINATE", Prim_x_graphics_map_y_coordinate, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    unsigned int yp = (arg_nonnegative_integer (2));
+    int by = (yp - (XW_INTERNAL_BORDER_WIDTH (xw)));
+    PRIMITIVE_RETURN
+      (y_coordinate_map
+       (xw,
+	((by < 0) ? 0
+	 : (by >= (XW_Y_SIZE (xw))) ? ((XW_Y_SIZE (xw)) - 1)
+	 : by)));
+  }
 }
