@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ssp.pkg,v 1.3 2004/10/28 19:54:57 cph Exp $
+$Id: ssp.pkg,v 1.4 2004/10/29 05:47:42 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -30,20 +30,6 @@ USA.
 
 (define-package (runtime ssp)
   (parent (runtime)))
-
-(define-package (runtime ssp xhtml-expander)
-  (files "xhtml-expander")
-  (parent (runtime ssp))
-  (export ()
-	  expand-xhtml-file
-	  read/expand-xml-file)
-  (export (runtime ssp)
-	  expander-eval
-	  make-expansion-environment)
-  (export (runtime ssp-expander-environment)
-	  emit
-	  define-sabbr
-	  get-sabbr))
 
 (define-package (runtime ssp-expander-environment)
   (files "expenv")
@@ -104,6 +90,20 @@ USA.
 	  http-response-header
 	  http-status-response
 	  server-root-dir))
+
+(define-package (runtime ssp xhtml-expander)
+  (files "xhtml-expander")
+  (parent (runtime ssp))
+  (export ()
+	  expand-xhtml-file
+	  read/expand-xml-file)
+  (export (runtime ssp)
+	  expander-eval
+	  make-expansion-environment)
+  (export (runtime ssp-expander-environment)
+	  emit
+	  define-sabbr
+	  get-sabbr))
 
 (define-package (runtime ssp xdoc)
   (files "xdoc")
