@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/notify.scm,v 1.1 1992/02/14 22:29:49 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/notify.scm,v 1.2 1992/02/17 22:10:28 bal Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -87,13 +87,17 @@
 
 (define mail-notify-hook-installed? false)
 
-(define (install-mail-notify-hook!)
+(define (install-mail-notify-hook! load-notify?)
   (if (not mail-notify-hook-installed?)
       (begin
        (add-event-receiver!
 	(ref-variable rmail-new-mail-hook)
 	(lambda ()
-	  (set-variable! notify-string mail-not-present-string)
+	  (set-variable! 
+	   notify-string 
+	   (if load-notify?
+	       (string-append (get-load-average-string) mail-not-present-string)
+	       mail-not-present-string))
 	  (global-window-modeline-event!)
 	  (update-screens! false)))
        (set! mail-notify-hook-installed? true))))
@@ -121,7 +125,7 @@
        thread))))
 
 (define (mail-notify)
-  (install-mail-notify-hook!)
+  (install-mail-notify-hook! false)
   (start-notifier 
    (make-notifier
     (lambda ()
@@ -130,7 +134,7 @@
 	  mail-not-present-string)))))
 
 (define (mail-and-load-notify)
-  (install-mail-notify-hook!)
+  (install-mail-notify-hook! true)
   (start-notifier
    (make-notifier
     (lambda ()
