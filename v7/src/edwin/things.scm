@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: things.scm,v 1.87 2000/04/04 16:52:14 cph Exp $
+;;; $Id: things.scm,v 1.88 2000/06/02 17:29:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1985, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -282,10 +282,11 @@
     (if (not (= column (mark-column point)))
 	(change-column column point))))
 
-(define (change-column column point)
-  (let ((point (mark-permanent! point)))
-    (delete-horizontal-space point)
-    (insert-horizontal-space column point)))
+(define (change-column column mark)
+  (let ((mark (mark-left-inserting-copy mark)))
+    (delete-horizontal-space mark)
+    (insert-horizontal-space column mark)
+    (mark-temporary! mark)))
 
 ;;;; Lines
 
