@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.13 1996/04/24 03:22:03 cph Exp $
+$Id: datime.scm,v 14.14 1996/05/04 17:30:08 cph Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -49,7 +49,8 @@ MIT in each case. |#
 		   (named decoded-time-structure-tag)
 		   (conc-name decoded-time/)
 		   (constructor %make-decoded-time)
-		   (constructor allocate-decoded-time ()))
+		   (constructor allocate-decoded-time ())
+		   (copier))
   (second #f read-only #t)
   (minute #f read-only #t)
   (hour #f read-only #t)
@@ -91,7 +92,12 @@ MIT in each case. |#
     result))
 
 (define (encode-universal-time dt)
-  ((ucode-primitive encode-time 1) dt))
+  ((ucode-primitive encode-time 1)
+   (if (decoded-time/zone dt)
+       (let ((dt* (copy-decoded-time dt)))
+	 (set-decoded-time/zone! dt* (* (decoded-time/zone dt*) 3600))
+	 dt*)
+       dt)))
 
 (define (get-universal-time)
   ((ucode-primitive encoded-time 0)))
