@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.13 1989/11/06 22:03:29 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.14 1989/11/07 06:37:27 jinx Exp $
  *
  * This file corresponds to
  * $COMPILER-Header: compiler.c,v 9.37 89/10/25 14:55:45 GMT jinx Exp $
@@ -2041,14 +2041,15 @@ compiled_closure_to_entry (entry)
 
 C_UTILITY void
 compiled_entry_type (entry, buffer)
-     SCHEME_OBJECT entry, *buffer;
+     SCHEME_OBJECT entry;
+     long *buffer;
 {
   long kind, min_arity, max_arity, field1, field2;
   SCHEME_OBJECT *entry_address;
 
   entry_address = (OBJECT_ADDRESS (entry));
-  max_arity = (COMPILED_ENTRY_FORMAT_HIGH (entry_address));
-  min_arity = (COMPILED_ENTRY_FORMAT_LOW (entry_address));
+  max_arity = (COMPILED_ENTRY_MAXIMUM_ARITY (entry_address));
+  min_arity = (COMPILED_ENTRY_MINIMUM_ARITY (entry_address));
   field1 = min_arity;
   field2 = max_arity;
   if (min_arity >= 0)
