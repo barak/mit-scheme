@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.5 1988/10/15 17:19:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.6 1989/02/10 22:13:50 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -129,7 +129,8 @@ MIT in each case. |#
 		("#\\" ,parse-object/char-quote)
 		(("#f" "#F") ,parse-object/false)
 		(("#t" "#T") ,parse-object/true)
-		("#!" ,parse-object/named-constant)))
+		("#!" ,parse-object/named-constant)
+		("#@" ,parse-object/unhash)))
     table))
 
 ;;;; Top Level
@@ -477,3 +478,14 @@ MIT in each case. |#
 	     (parse-error "No object by this name" object-name)))))
 
 (define named-objects)
+
+(define (parse-object/unhash)
+  (discard-char)
+  (let ((number (parse-object/dispatch)))
+    (if (not (integer? number))	(parse-error "Invalid unhash syntax" number)
+	(let ((object (object-unhash number)))
+	  ;; This knows that 0 is the hash of #f.
+	  (if (and (false? object) (not (zero? number)))
+	      (parse-error "Invalid hash number" number)
+	      ;; (list 'QUOTE object)
+	      object)))))
