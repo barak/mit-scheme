@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.125 2000/06/05 13:27:42 cph Exp $
+;;; $Id: imail-top.scm,v 1.126 2000/06/05 17:32:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1100,7 +1100,11 @@ With prefix argument N moves backward N messages with these flags."
       (insert-newline mark)
       (change-column column mark)
       (insert-string "encoding=" mark)
-      (insert (mime-body-one-part-encoding body) mark))
+      (insert (mime-body-one-part-encoding body) mark)
+      (insert-newline mark)
+      (change-column column mark)
+      (insert-string "length=" mark)
+      (insert (mime-body-one-part-n-octets body) mark))
     (insert-string ">" mark)
     (insert-newline mark)
     (region-put! start mark 'IMAIL-MIME-ATTACHMENT (cons body selector))))
