@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.37 2003/03/08 05:28:29 cph Exp $
+$Id: record.scm,v 1.38 2003/03/10 06:05:53 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003 Massachusetts Institute of Technology
@@ -318,10 +318,8 @@ USA.
 		(do ((indexes indexes (cdr indexes))
 		     (values field-values (cdr values)))
 		    ((not (pair? indexes))
-		     (if (not (null? values))
-			 (lose)))
-		  (if (not (pair? values))
-		      (lose))
+		     (if (not (null? values)) (lose)))
+		  (if (not (pair? values)) (lose))
 		  (%record-set! record (car indexes) (car values)))
 		(let ((v (%record-type-default-values record-type))
 		      (n (vector-length defaults)))
@@ -330,7 +328,8 @@ USA.
 		    (%record-set!
 		     record
 		     (vector-ref defaults i)
-		     (vector-ref v (fix:- (vector-ref defaults i) 1))))))))))
+		     (vector-ref v (fix:- (vector-ref defaults i) 1)))))
+		record)))))
       constructor)))
 
 (define (record-keyword-constructor record-type)
