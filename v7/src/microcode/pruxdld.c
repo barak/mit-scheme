@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxdld.c,v 1.15 2002/11/20 19:46:13 cph Exp $
+$Id: pruxdld.c,v 1.16 2003/01/05 23:30:21 cph Exp $
 
 Copyright (c) 1993-2001 Massachusetts Institute of Technology
 
@@ -79,7 +79,7 @@ Load the shared library FILENAME and return a handle for it.")
 DEFINE_PRIMITIVE ("OBJECT-LOOKUP-SYMBOL", Prim_object_lookup_symbol, 3, 3,
 		  "(HANDLE SYMBOL TYPE)\n\
 Look up SYMBOL, a Scheme string, in the dynamically-loaded file\n\
-referenced by HANDLE.  TYPE is obsolete and must be specified as zero.
+referenced by HANDLE.  TYPE is obsolete and must be specified as zero.\n\
 Returns the symbol's address, or signals an error if no such symbol.")
 {
   PRIMITIVE_HEADER (3);
