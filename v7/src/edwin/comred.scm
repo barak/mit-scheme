@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comred.scm,v 1.109 1993/10/26 18:42:29 cph Exp $
+;;;	$Id: comred.scm,v 1.110 1993/12/17 00:09:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -129,7 +129,7 @@
 (define (bind-abort-editor-command thunk)
   (call-with-current-continuation
    (lambda (continuation)
-     (bind-restart 'ABORT-EDITOR-COMMAND "Return to the editor command loop."
+     (with-restart 'ABORT-EDITOR-COMMAND "Return to the editor command loop."
 	 (lambda (#!optional input)
 	   (within-continuation continuation
 	     (lambda ()
@@ -137,7 +137,8 @@
 		   (begin
 		     (reset-command-state!)
 		     (apply-input-event input))))))
-       (lambda (restart) restart (thunk))))))
+	 values
+       thunk))))
 
 (define (return-to-command-loop condition)
   (let ((restart (find-restart 'ABORT-EDITOR-COMMAND)))

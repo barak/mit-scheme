@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.220 1993/12/05 06:15:14 cph Exp $
+$Id: runtime.pkg,v 14.221 1993/12/17 00:05:06 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -609,6 +609,7 @@ MIT in each case. |#
 	  error:wrong-type-argument
 	  error:wrong-type-datum
 	  find-restart
+	  first-bound-restart
 	  format-error-message
 	  hook/invoke-condition-handler
 	  ignore-errors
@@ -619,6 +620,7 @@ MIT in each case. |#
 	  muffle-warning
 	  restart/effector
 	  restart/get
+	  restart/interactor
 	  restart/name
 	  restart/properties
 	  restart/put!
@@ -632,6 +634,7 @@ MIT in each case. |#
 	  store-value
 	  use-value
 	  warn
+	  with-restart
 	  with-simple-restart
 	  write-condition-report
 	  write-restart-report)

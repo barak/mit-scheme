@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.36 1993/12/14 22:22:49 cph Exp $
+$Id: uerror.scm,v 14.37 1993/12/17 00:05:57 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -93,7 +93,7 @@ MIT in each case. |#
 ;;;; Restart Bindings
 
 (define (unbound-variable/store-value continuation environment name thunk)
-  (bind-restart 'STORE-VALUE
+  (with-restart 'STORE-VALUE
       (lambda (port)
 	(write-string "Define " port)
 	(write name port)
@@ -101,15 +101,13 @@ MIT in each case. |#
       (lambda (value)
 	(local-assignment environment name value)
 	(continuation unspecific))
-    (lambda (restart)
-      (restart/put! restart 'INTERACTIVE
-	(let ((prompt (string-append "Define " (write-to-string name) " as")))
-	  (lambda ()
-	    (values (prompt-for-evaluated-expression prompt environment)))))
-      (thunk))))
+      (let ((prompt (string-append "Define " (write-to-string name) " as")))
+	(lambda ()
+	  (values (prompt-for-evaluated-expression prompt environment))))
+    thunk))
 
 (define (unassigned-variable/store-value continuation environment name thunk)
-  (bind-restart 'STORE-VALUE
+  (with-restart 'STORE-VALUE
       (lambda (port)
 	(write-string "Set " port)
 	(write name port)
@@ -117,46 +115,40 @@ MIT in each case. |#
       (lambda (value)
 	(environment-assign! environment name value)
 	(continuation unspecific))
-    (lambda (restart)
-      (restart/put! restart 'INTERACTIVE
-	(let ((prompt (string-append "Set " (write-to-string name) " to")))
-	  (lambda ()
-	    (values (prompt-for-evaluated-expression prompt environment)))))
-      (thunk))))
+      (let ((prompt (string-append "Set " (write-to-string name) " to")))
+	(lambda ()
+	  (values (prompt-for-evaluated-expression prompt environment))))
+    thunk))
 
 (define (variable/use-value continuation environment name thunk)
   (let ((continuation (continuation/next-continuation continuation)))
     (if continuation
-	(bind-restart 'USE-VALUE
+	(with-restart 'USE-VALUE
 	    (lambda (port)
 	      (write-string "Specify a value to use instead of " port)
 	      (write name port)
 	      (write-string "." port))
 	    continuation
-	  (lambda (restart)
-	    (restart/put! restart 'INTERACTIVE
-	      (let ((prompt
-		     (string-append "Value to use instead of "
-				    (write-to-string name))))
-		(lambda ()
-		  (values
-		   (prompt-for-evaluated-expression prompt environment)))))
-	    (thunk)))
+	    (let ((prompt
+		   (string-append "Value to use instead of "
+				  (write-to-string name))))
+	      (lambda ()
+		(values
+		 (prompt-for-evaluated-expression prompt environment))))
+	  thunk)
 	(thunk))))
 
 (define (inapplicable-object/use-value continuation operands thunk)
   (let ((continuation (continuation/next-continuation continuation)))
     (if continuation
-	(bind-restart 'USE-VALUE "Specify a procedure to use in its place."
+	(with-restart 'USE-VALUE "Specify a procedure to use in its place."
 	    (lambda (operator)
 	      (within-continuation continuation
 		(lambda ()
 		  (apply operator operands))))
-	  (lambda (restart)
-	    (restart/put! restart 'INTERACTIVE
-	      (lambda ()
-		(values (prompt-for-evaluated-expression "New procedure"))))
-	    (thunk)))
+	    (lambda ()
+	      (values (prompt-for-evaluated-expression "New procedure")))
+	  thunk)
 	(thunk))))
 
 (define (illegal-arg-signaller type)
@@ -169,17 +161,15 @@ MIT in each case. |#
 (define (illegal-argument/use-value continuation operator operands index thunk)
   (let ((continuation (continuation/next-continuation continuation)))
     (if continuation
-	(bind-restart 'USE-VALUE "Specify an argument to use in its place."
+	(with-restart 'USE-VALUE "Specify an argument to use in its place."
 	    (lambda (operand)
 	      (within-continuation continuation
 		(lambda ()
 		  (apply operator
 			 (substitute-element operands index operand)))))
-	  (lambda (restart)
-	    (restart/put! restart 'INTERACTIVE
-	      (lambda ()
-		(values (prompt-for-evaluated-expression "New argument"))))
-	    (thunk)))
+	    (lambda ()
+	      (values (prompt-for-evaluated-expression "New argument")))
+	  thunk)
 	(thunk))))
 
 (define (file-operation-signaller)
@@ -198,36 +188,33 @@ MIT in each case. |#
 				  verb noun thunk)
   (let ((continuation (continuation/next-continuation continuation)))
     (if continuation
-	(bind-restart 'USE-VALUE
+	(with-restart 'USE-VALUE
 	    (string-append "Try to " verb " a different " noun ".")
 	    (lambda (operand)
 	      (within-continuation continuation
 		(lambda ()
 		  (apply operator
 			 (substitute-element operands index operand)))))
-	  (let ((prompt
-		 (string-append "New "
-				noun
-				" name (an expression to be evaluated)")))
-	    (lambda (restart)
-	      (restart/put! restart 'INTERACTIVE
-		(lambda ()
-		  (values (prompt-for-evaluated-expression prompt))))
-	      (thunk))))
+	    (let ((prompt
+		   (string-append "New "
+				  noun
+				  " name (an expression to be evaluated)")))
+	      (lambda ()
+		(values (prompt-for-evaluated-expression prompt))))
+	  thunk)
 	(thunk))))
 
 (define (file-operation/retry continuation operator operands verb noun thunk)
   (let ((continuation (continuation/next-continuation continuation)))
     (if continuation
-	(bind-restart 'RETRY
+	(with-restart 'RETRY
 	    (string-append "Try to " verb " the same " noun " again.")
 	    (lambda ()
 	      (within-continuation continuation
 		(lambda ()
 		  (apply operator operands))))
-	  (lambda (restart)
-	    (restart/put! restart 'INTERACTIVE values)
-	    (thunk)))
+	    values
+	  thunk)
 	(thunk))))
 
 (define (substitute-element list index element)

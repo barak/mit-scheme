@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: schmod.scm,v 1.35 1993/12/10 19:25:09 cph Exp $
+;;;	$Id: schmod.scm,v 1.36 1993/12/17 00:09:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -210,7 +210,7 @@ The following commands evaluate Scheme expressions:
 	    (WITHIN-CONTINUATION . 1)
 
 	    (MAKE-CONDITION-TYPE . 3)
-	    (BIND-RESTART . 3)
+	    (WITH-RESTART . 4)
 	    (WITH-SIMPLE-RESTART . 2)
 	    (BIND-CONDITION-HANDLER . 2)
 	    (LIST-TRANSFORM-POSITIVE . 1)

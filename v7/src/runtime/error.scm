@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.40 1993/12/17 00:03:57 cph Exp $
+$Id: error.scm,v 14.41 1993/12/17 00:11:59 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -316,7 +316,7 @@ MIT in each case. |#
 				 'WITH-RESTART))
   (let ((restart (%make-restart name reporter effector interactor)))
     (fluid-let ((*bound-restarts* (cons restart *bound-restarts*)))
-      (receiver restart))))
+      (thunk))))
 
 (define (with-simple-restart name reporter thunk)
   (call-with-current-continuation
@@ -355,7 +355,7 @@ MIT in each case. |#
 
 (define (restart/put! restart key datum)
   (if (eq? key 'INTERACTIVE)
-      (set-restart/interactor! restart datum)
+      (set-%restart/interactor! restart datum)
       (1d-table/put! (restart/properties restart) key datum)))
 
 (define (bind-restart name reporter effector receiver)

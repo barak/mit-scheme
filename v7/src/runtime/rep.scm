@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.45 1993/12/06 19:34:06 cph Exp $
+$Id: rep.scm,v 14.46 1993/12/17 00:09:03 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -189,7 +189,7 @@ MIT in each case. |#
 (define (bind-abort-restart cmdl thunk)
   (call-with-current-continuation
    (lambda (continuation)
-     (bind-restart 'ABORT
+     (with-restart 'ABORT
 	 (string-append "Return to "
 			(if (repl? cmdl)
 			    "read-eval-print"
@@ -206,9 +206,13 @@ MIT in each case. |#
 		(port/set-default-directory port
 					    (working-directory-pathname))))
 	     (if (default-object? message) "Abort!" message))))
-       (lambda (restart)
-	 (restart/put! restart cmdl-abort-restart-tag cmdl)
+	 values
+       (lambda ()
+	 (restart/put! (first-bound-restart) cmdl-abort-restart-tag cmdl)
 	 (thunk))))))
+
+(define (cmdl-abort-restart? restart)
+  (restart/get restart cmdl-abort-restart-tag))
 
 (define *nearest-cmdl*)
 
@@ -363,7 +367,7 @@ MIT in each case. |#
 
 (define (invoke-abort restart message)
   (let ((effector (restart/effector restart)))
-    (if (restart/get restart cmdl-abort-restart-tag)
+    (if (cmdl-abort-restart? restart)
 	(effector message)
 	(effector))))
 
@@ -599,12 +603,13 @@ MIT in each case. |#
   (let loop ((restarts restarts))
     (if (null? restarts)
 	'()
-	(cons (car restarts)
-	      (if (restart/get (car restarts) cmdl-abort-restart-tag)
-		  (list-transform-positive (cdr restarts)
-		    (lambda (restart)
-		      (restart/get restart cmdl-abort-restart-tag)))
-		  (loop (cdr restarts)))))))
+	(let ((rest
+	       (if (cmdl-abort-restart? (car restarts))
+		   (list-transform-positive (cdr restarts) cmdl-abort-restart?)
+		   (loop (cdr restarts)))))
+	  (if (restart/interactor (car restarts))
+	      (cons (car restarts) rest)
+	      rest)))))
 
 (define-structure (repl-state
 		   (conc-name repl-state/)
@@ -820,13 +825,13 @@ MIT in each case. |#
   (call-with-current-continuation
    (lambda (restart-continuation)
      (let ((continuation (or continuation restart-continuation)))
-       (bind-restart 'CONTINUE
+       (with-restart 'CONTINUE
 	   (if (string=? "bkpt>" prompt)
 	       "Return from BKPT."
 	       "Continue from breakpoint.")
 	   (lambda () (restart-continuation unspecific))
-	 (lambda (restart)
-	   restart
+	   values
+	 (lambda ()
 	   (call-with-values
 	       (lambda ()
 		 (get-breakpoint-environment continuation environment message))

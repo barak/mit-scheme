@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: advice.scm,v 14.13 1993/10/21 11:49:41 cph Exp $
+$Id: advice.scm,v 14.14 1993/12/17 00:05:20 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -228,13 +228,12 @@ MIT in each case. |#
 	(call-with-current-continuation
 	 (lambda (continuation)
 	   (fluid-let ((advice-continuation continuation))
-	     (bind-restart 'USE-VALUE
+	     (with-restart 'USE-VALUE
 		 "Return a value from the advised procedure."
 		 continuation
-	       (lambda (restart)
-		 (restart/put! restart 'INTERACTIVE
-		   (lambda ()
-		     (prompt-for-evaluated-expression "Procedure value")))
+		 (lambda ()
+		   (prompt-for-evaluated-expression "Procedure value"))
+	       (lambda ()
 		 (for-each (lambda (advice)
 			     (with-simple-restart 'CONTINUE
 				 "Continue with advised procedure."
