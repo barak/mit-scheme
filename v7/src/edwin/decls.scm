@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.32 1992/02/14 22:31:40 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.33 1992/03/24 23:31:57 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -121,6 +121,7 @@ MIT in each case. |#
 		"calias"
 		"cinden"
 		"comint"
+		"compile"
 		"comtab"
 		"comred"
 		"curren"

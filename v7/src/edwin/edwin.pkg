@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.79 1992/03/13 10:48:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.80 1992/03/24 23:32:05 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -73,6 +73,7 @@ MIT in each case. |#
 	 "basic"			; basic commands
 	 "bufcom"			; buffer commands
 	 "comint"			; command interpreter process stuff
+	 "compile"			; compilation subprocess
 	 "evlcom"			; evaluation commands
 	 "filcom"			; file commands
 	 "fill"				; text fill commands
