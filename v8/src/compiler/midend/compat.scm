@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compat.scm,v 1.14 1996/07/24 17:07:07 adams Exp $
+$Id: compat.scm,v 1.15 1996/07/26 00:59:26 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -623,8 +623,13 @@ MIT in each case. |#
 		      ,@(compat/expr* env rands))))))
 
 
-(let ()
-  (define (known-operator->primitive env form rator cont rands)
+;; PRIMITIVE procedures are reflected into the standard C coded primitives,
+;; so there is there no reason to target the machine registers --
+;; they'd wind up on the Scheme stack anyway since that's the only
+;; place C can see them.
+
+(define-rewrite/compat %primitive-apply
+  (lambda (env form rator cont rands)
     form				; ignored
     (let ((quote-arity      (first rands))
 	  (quote-primitive  (second rands)))
@@ -632,7 +637,9 @@ MIT in each case. |#
 	    (primitive  (quote/text quote-primitive)))
 	(if (and (primitive-procedure? primitive)
 		 (exact-nonnegative-integer? arity)
-		 (eqv? arity (primitive-procedure-arity primitive)))
+		 (let ((prim-arity (primitive-procedure-arity primitive)))
+		   (or (negative? prim-arity) ; i.e. LEXPR
+		       (eqv? arity prim-arity))))
 	    (compat/->stack-closure
 	     env cont (cddr rands)
 	     (lambda (cont*)
@@ -648,15 +655,8 @@ MIT in each case. |#
 			  `(CALL (QUOTE ,%internal-apply)
 				 ,cont
 				 ,@rands)
-			  form))))))
-
-  ;; Because these are reflected into the standard C coded primitives,
-  ;; there's no reason to target the machine registers -- they'd wind
-  ;; up on the Scheme stack anyway since that's the only place C can
-  ;; see them!
-  (define-rewrite/compat %primitive-apply known-operator->primitive))
-
-
+			  form)))))))
+
 (define (compat/->stack-closure env cont rands gen)
   (define (compat/->stack-names rands)
     (compat/uniquify-append
