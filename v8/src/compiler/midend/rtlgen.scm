@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.40 1995/09/05 19:04:13 adams Exp $
+$Id: rtlgen.scm,v 1.41 1995/09/08 16:49:08 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -44,6 +44,8 @@ MIT in each case. |#
 (define *rtlgen/fold-tag-predicates?* true)
 (define *rtlgen/fold-simple-value-tests?* #T)
 
+(define *rtlgen/quick&dirty-interrupt-check-map*)
+
 ;; Does not currently work if #F:
 (define *rtlgen/pre-load-stack-frame?* #T)
 
@@ -52,7 +54,8 @@ MIT in each case. |#
   (fluid-let ((*rtlgen/object-queue* (queue/make))
 	      (*rtlgen/delayed-objects* '())
 	      (*rtlgen/procedures* '())
-	      (*rtlgen/continuations* '()))
+	      (*rtlgen/continuations* '())
+	      (*rtlgen/quick&dirty-interrupt-check-map* (make-form-map)))
     (call-with-values
 	(lambda ()
 	  (if *procedure-result?*
@@ -219,9 +222,12 @@ MIT in each case. |#
 			     (rtlgen/debugging-info dbg-form))
 			   (MACHINE-CONSTANT ,frame-size)
 			   (MACHINE-CONSTANT 1))
-	  (rtlgen/wrap-with-interrupt-check/continuation
-	   body
-	   `(INTERRUPT-CHECK:CONTINUATION ,label (MACHINE-CONSTANT 2))))))
+	  ;; Kludge
+	  (if (rtlgen/quick&dirty/forbid-interrupt-check? dbg-form)
+	      body
+	      (rtlgen/wrap-with-interrupt-check/continuation
+	       body
+	       `(INTERRUPT-CHECK:CONTINUATION ,label (MACHINE-CONSTANT 2)))))))
 
 (define (rtlgen/wrap-closure label dbg-form body lambda-list saved-size)
   saved-size				; only continuations have this
@@ -2558,6 +2564,7 @@ MIT in each case. |#
 
 (define (rtlgen/expr/make-return-address state rand)
   state					; ignored
+  (rtlgen/quick&dirty/forbid-interrupt-check! rand)
   (rtlgen/continuation-label->object
    (rtlgen/enqueue-object! rand 'CONTINUATION)))  
 
@@ -4422,7 +4429,9 @@ MIT in each case. |#
 	       ,@rtlgen/?closure-elts*)))
 	 
 
-(define *rtlgen/omit-internal-interrupt-checks?* #F)
+;; Kludges
+
+(define *rtlgen/omit-internal-interrupt-checks?* #T)
 
 (define (rtlgen/omit-interrupt-check? procedure-name)
   (and *rtlgen/omit-internal-interrupt-checks?*
@@ -4439,6 +4448,14 @@ MIT in each case. |#
       (like? 'cons-)
       (like? 'next-)
       (like? 'receiver-)))
+
+(define (rtlgen/quick&dirty/forbid-interrupt-check! form)
+  (form-map/put! *rtlgen/quick&dirty-interrupt-check-map* form #T))
+
+(define (rtlgen/quick&dirty/forbid-interrupt-check? form)
+  (form-map/get *rtlgen/quick&dirty-interrupt-check-map* form #F))
+
+
 
 (define (rtlgen/check-declarations declarations)
   (define (check-declaration declaration)
