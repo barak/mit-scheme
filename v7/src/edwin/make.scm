@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/make.scm,v 3.50 1991/06/18 21:10:05 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/make.scm,v 3.51 1991/07/09 00:21:33 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -37,4 +37,4 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (package/system-loader "edwin" '() 'QUERY)
-(add-system! (make-system "Edwin" 3 50 '()))
+(add-system! (make-system "Edwin" 3 51 '()))
