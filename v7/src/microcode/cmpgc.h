@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.2 1989/10/23 21:36:48 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.3 1989/10/26 04:25:29 jinx Exp $
    $MC68020-Header: cmp68kgc.h,v 9.30 89/03/27 23:14:31 GMT jinx Exp $
 
 Utilities to relocate compiled code in garbage collection-like processes. 
@@ -39,6 +39,9 @@ This file is conditionally included by gccode.h.
 
 See cmpint.txt, cmpint.h, cmpint.c, and cmpaux.m4 for more details.
 */
+
+#ifndef CMPGC_H_INCLUDED
+#define CMPGC_H_INCLUDED
 
 #include "cmpint.h"
 
@@ -211,3 +214,5 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 #define PLAUSIBLE_CC_BLOCK_P(block)					\
 ((*((machine_word *) (((char *) block) + CC_BLOCK_FIRST_GC_OFFSET))) ==	\
    ((BYTE_OFFSET_TO_OFFSET_WORD(CC_BLOCK_FIRST_ENTRY_OFFSET))))
+
+#endif /* CMPGC_H_INCLUDED */
