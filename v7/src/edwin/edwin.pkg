@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.40 1991/05/18 03:06:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.41 1991/05/20 19:41:50 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -711,6 +711,12 @@ MIT in each case. |#
   (files "tags")
   (parent (edwin))
   (export (edwin)
+	  edwin-command$find-tag
+	  edwin-command$find-tag-other-window
+	  edwin-command$tags-loop-continue
+	  edwin-command$tags-query-replace
+	  edwin-command$tags-search
+	  edwin-command$visit-tags-table
 	  edwin-variable$tags-table-pathname))
 
 (define-package (edwin rcs)
