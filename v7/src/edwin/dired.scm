@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.159 1995/10/31 08:10:19 cph Exp $
+;;;	$Id: dired.scm,v 1.160 1996/03/01 07:46:00 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -912,7 +912,9 @@ Actions controlled by variables list-directory-brief-switches
 
 (define (dired-kill-file! filename lstart)
   (let ((deleted?
-	 (if (file-directory? filename)
+	 (if (let ((attributes (file-attributes-direct filename)))
+	       (and attributes
+		    (eq? #t (file-attributes/type attributes))))
 	     (delete-directory-no-errors filename)
 	     (delete-file-no-errors filename))))
     (if deleted?
