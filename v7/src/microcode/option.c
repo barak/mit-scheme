@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.49 1999/05/11 03:34:08 cph Exp $
+$Id: option.c,v 1.50 2000/01/06 04:22:28 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -27,6 +27,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "osenv.h"
 #include "osfs.h"
 #include <sys/stat.h>
+
+#if ((defined (WINNT)) && (defined (__WATCOMC__)))
+#define USE_WINNT_NATIVE_IO
+#include "nt.h"
+#include "ntio.h"
+#endif
 
 extern char * getenv ();
 extern void free ();
@@ -1013,12 +1019,35 @@ DEFUN (conflicting_options, (option1, option2),
 #define SCHEME_WORDS_TO_BLOCKS(n) (((n) + 1023) / 1024)
 
 static int
-DEFUN (read_band_sizes, (filename, constant_size, heap_size),
+DEFUN (read_band_header, (filename, header),
        CONST char * filename AND
-       unsigned long * constant_size AND
-       unsigned long * heap_size)
+       SCHEME_OBJECT * header)
 {
-  SCHEME_OBJECT header [FASL_HEADER_LENGTH];
+#ifdef USE_WINNT_NATIVE_IO
+
+  HANDLE handle
+    = (CreateFile (filename,
+		   GENERIC_READ,
+		   (FILE_SHARE_READ | FILE_SHARE_WRITE),
+		   0,
+		   OPEN_EXISTING,
+		   (FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN),
+		   0));
+  DWORD bytes_to_read = ((sizeof (SCHEME_OBJECT)) * FASL_HEADER_LENGTH);
+  DWORD bytes_read;
+  if (handle == INVALID_HANDLE_VALUE)
+    return (0);
+  if (! ((ReadFile (handle, header, bytes_to_read, (&bytes_read), 0))
+	 && (bytes_read == bytes_to_read)))
+    {
+      CloseHandle (handle);
+      return (0);
+    }
+  CloseHandle (handle);
+  return (1);
+
+#else /* not USE_WINNT_NATIVE_IO */
+
   FILE * stream = (fopen (filename, "r"));
   if (stream == 0)
     return (0);
@@ -1029,6 +1058,20 @@ DEFUN (read_band_sizes, (filename, constant_size, heap_size),
       return (0);
     }
   fclose (stream);
+  return (1);
+
+#endif /* not USE_WINNT_NATIVE_IO */
+}
+
+static int
+DEFUN (read_band_sizes, (filename, constant_size, heap_size),
+       CONST char * filename AND
+       unsigned long * constant_size AND
+       unsigned long * heap_size)
+{
+  SCHEME_OBJECT header [FASL_HEADER_LENGTH];
+  if (!read_band_header (filename, header))
+    return (0);
   (*constant_size)
     = (SCHEME_WORDS_TO_BLOCKS
        (OBJECT_DATUM (header [FASL_Offset_Const_Count])));
