@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: io.texi,v 1.5 2004/02/06 18:15:40 cph Exp $
+@c $Id: io.texi,v 1.6 2004/10/12 23:33:27 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -2808,20 +2808,21 @@ procedure.  @var{Table} must satisfy @code{parser-macros?}, and
 @cindex XML parser
 @cindex parser, XML
 MIT/GNU Scheme provides a simple non-validating @acronym{XML} parser.
-This parser is mostly conformant, with the exception that it doesn't
-support @acronym{UTF-16}.  The parser also does not support external
-document type declarations (@acronym{DTD}s).  The output of the parser
-is a record tree that closely reflects the structure of the
-@acronym{XML} document.
+This parser is believed to be conformant with @acronym{XML} 1.0.  It
+passes all of the tests in the "xmltest" directory of the @acronym{XML}
+conformance tests (dated 2001-03-15).  The parser supports @acronym{XML}
+namespaces.  The parser doesn't support external document type
+declarations (@acronym{DTD}s).  The output of the parser is a record
+tree that closely reflects the structure of the @acronym{XML} document.
 
 @cindex XML output
 @cindex output, XML
-There is also an output mechanism that writes an @acronym{XML} record
-tree to a port.  There is no guarantee that parsing an @acronym{XML}
-document and writing it back out will make a verbatim copy of the
-document.  The output will be semantically identical but may have
-small syntactic differences.  For example, comments are discarded by
-the parser, and entities are substituted during the parsing process.
+MIT/GNU Scheme also provides support for writing an @acronym{XML} record
+tree to an output port.  There is no guarantee that parsing an
+@acronym{XML} document and writing it back out will make a verbatim copy
+of the document.  The output will be semantically identical but may have
+small syntactic differences.  For example, entities are substituted
+during the parsing process.
 
 The purpose of the @acronym{XML} support is to provide a mechanism for
 reading and writing simple @acronym{XML} documents.  In the future
@@ -2841,49 +2842,196 @@ execute
 @noindent
 once before compiling any code that uses it.
 
-The @acronym{XML} interface consists of an input procedure, an output
-procedure, and a set of record types.
+@menu
+* XML Input::                   
+* XML Output::                  
+* XML Names::                   
+* XML Structure::               
+@end menu
 
-@deffn procedure parse-xml-document buffer
-This procedure parses an @acronym{XML} input stream and returns a
-newly-allocated @acronym{XML} record tree.  The @var{buffer} argument
-must be a parser buffer (@pxref{Parser Buffers}).  Most errors in the
-input stream are detected and signalled, with information identifying
-the location of the error where possible.  Note that the input stream
-is assumed to be @acronym{UTF-8}.
+
+@node XML Input, XML Output, XML Parser, XML Parser
+@subsection XML Input
+
+The primary entry point for the @acronym{XML} parser is @code{read-xml},
+which reads characters from a port and returns an @acronym{XML} document
+record.  The character coding of the input is determined by reading some
+of the input stream and looking for a byte order mark and/or an encoding
+in the @acronym{XML} declaration.  We support all @acronym{ISO} 8859
+codings, as well as @acronym{UTF-8}, @acronym{UTF-16}, and
+@acronym{UTF-32}.
+
+@deffn procedure read-xml port [pi-handlers]
+Read an @acronym{XML} document from @var{port} and return the
+corresponding @acronym{XML} document record.
+
+@var{Pi-handlers}, if specified, must be an association list.  Each
+element of @var{pi-handlers} must be a list of two elements: a symbol
+and a procedure.  When the parser encounters processing instructions
+with a name that appears in @var{pi-handlers}, the procedure is called
+with one argument, which is the text of the processing instructions.
+The procedure must return a list of @acronym{XML} structure records that
+are legal for the context of the processing instructions.
 @end deffn
 
-@deffn procedure write-xml xml-document port
-This procedure writes an @acronym{XML} record tree to @var{port}.  The
-@var{xml-document} argument must be a record of type
-@code{xml-document}, which is the root record of an @acronym{XML}
-record tree.  The output is encoded in @acronym{UTF-8}.
-@end deffn
-
-@cindex XML names
-@cindex names, XML
-@acronym{XML} names are represented in memory as symbols.  All symbols
-appearing within @acronym{XML} records are @acronym{XML} names.
-Because @acronym{XML} names are case sensitive, there is a procedure
-to intern these symbols:
-
-@deffn procedure xml-intern string
-@cindex XML name
-Returns the @acronym{XML} name called @var{string}.  @acronym{XML}
-names are represented as symbols, but unlike ordinary Scheme symbols,
-they are case sensitive.  The following is true for any two strings
-@var{string1} and @var{string2}:
+@deffn procedure read-xml-file pathname [pi-handlers]
+This convenience procedure simplifies reading @acronym{XML} from a file.
+It is roughly equivalent to
 
 @example
 @group
-(let ((name1 (xml-intern @var{string1}))
-      (name2 (xml-intern @var{string2})))
-  (if (string=? @var{string1} @var{string2})
-      (eq? name1 name2)
-      (not (eq? name1 name2))))
+(define (read-xml-file pathname #!optional pi-handlers)
+  (call-with-input-file pathname
+    (lambda (port)
+      (read-xml port
+                (if (default-object? pi-handlers)
+                    '()
+                    pi-handlers)))))
 @end group
 @end example
 @end deffn
+
+@deffn procedure string->xml string [start [end [pi-handlers]]]
+This convenience procedure simplifies reading @acronym{XML} from a
+string.  The @var{string} argument may be a string or a wide string.
+It is roughly equivalent to
+
+@example
+@group
+(define (string->xml string #!optional start end pi-handlers)
+  (read-xml (open-input-string string
+                               (if (default-object? start)
+                                   0
+                                   start)
+                               (if (default-object? end)
+                                   (string-length string)
+                                   end))
+            (if (default-object? pi-handlers)
+                '()
+                pi-handlers)))
+@end group
+@end example
+@end deffn
+
+
+
+@node XML Output, XML Names, XML Input, XML Parser
+@subsection XML Output
+
+@deffn procedure write-xml xml-document port
+@end deffn
+
+@deffn procedure write-xml-file xml-document pathname
+@end deffn
+
+@deffn procedure xml->string xml
+@end deffn
+
+@deffn procedure xml->wide-string xml
+@end deffn
+
+
+
+@node XML Names, XML Structure, XML Output, XML Parser
+@subsection XML Names
+
+@deffn procedure make-xml-name qname iri
+@end deffn
+
+@deffn procedure xml-name? object
+@end deffn
+
+@deffn procedure xml-name-qname xml-name
+@end deffn
+
+@deffn procedure xml-name-iri xml-name
+@end deffn
+
+@deffn procedure xml-name-string xml-name
+@end deffn
+
+@deffn procedure xml-name-prefix xml-name
+@end deffn
+
+@deffn procedure xml-name-local xml-name
+@end deffn
+
+@deffn procedure xml-name=? xml-name-1 xml-name-2
+@end deffn
+
+
+@deffn procedure make-xml-qname string
+@end deffn
+
+@deffn procedure xml-qname? object
+@end deffn
+
+@deffn procedure xml-qname-string xml-qname
+@end deffn
+
+@deffn procedure xml-qname-prefix xml-qname
+@end deffn
+
+@deffn procedure xml-qname-local xml-qname
+@end deffn
+
+
+@deffn procedure null-xml-name-prefix
+@end deffn
+
+@deffn procedure null-xml-name-prefix? object
+@end deffn
+
+
+@deffn procedure make-xml-namespace-iri string
+@end deffn
+
+@deffn procedure xml-namespace-iri? object
+@end deffn
+
+@deffn procedure xml-namespace-iri-string xml-namespace-iri
+@end deffn
+
+@deffn procedure null-xml-namespace-iri
+@end deffn
+
+@deffn procedure null-xml-namespace-iri? object
+@end deffn
+
+
+@deffn procedure make-xml-nmtoken string
+@end deffn
+
+@deffn procedure xml-nmtoken? object
+@end deffn
+
+@deffn procedure xml-nmtoken-string xml-nmtoken
+@end deffn
+
+
+@defvr variable xml-iri
+@end defvr
+
+@defvr variable xmlns-iri
+@end defvr
+
+
+@deffn procedure string-is-xml-name? string
+@end deffn
+
+@deffn procedure string-is-xml-nmtoken? string
+@end deffn
+
+
+@deffn procedure make-xml-name-hash-table [initial-size]
+@end deffn
+
+@deffn procedure xml-name-hash xml-name modulus
+@end deffn
+
+
+@node XML Structure,  , XML Names, XML Parser
+@subsection XML Structure
 
 The output from the @acronym{XML} parser and the input to the
 @acronym{XML} output procedure is a complex data structure composed of
@@ -2981,16 +3129,13 @@ The @code{xml-declaration} record represents the @samp{<?xml @dots{}
 @findex set-xml-element-name!
 @findex set-xml-element-attributes!
 @findex set-xml-element-contents!
-The @code{xml-element} record represents general @acronym{XML}
-elements; the bulk of a typical @acronym{XML} document consists of
-these elements.  @var{Name} is the element name (a symbol).
-@var{Attributes} is a list of attributes; each attribute is a pair
-whose @sc{car} is the attribute name (a symbol), and whose @sc{cdr} is
-the attribute value (a string).  @var{Contents} is a list of the
-contents of the element.  Each element of this list is either a
-string, an @code{xml-element} record, an
-@code{xml-processing-instructions} record, or an
-@code{xml-uninterpreted} record.
+The @code{xml-element} record represents general @acronym{XML} elements;
+the bulk of a typical @acronym{XML} document consists of these elements.
+@var{Name} is the element name (an @acronym{XML} name).
+@var{Attributes} is a list of @acronym{XML} attribute objects.
+@var{Contents} is a list of the contents of the element.  Each element
+of this list is either a string, an @code{xml-element} record or an
+@code{xml-processing-instructions} record.
 @end deftp
 
 @deftp {record type} xml-processing-instructions name text
@@ -3008,22 +3153,6 @@ will be processed by another interpreter; for example they might
 contain @acronym{PHP} programs.  The @var{name} field is the processor
 name (a symbol), and the @var{text} field is the body of the
 instructions (a string).
-@end deftp
-
-@deftp {record type} xml-uninterpreted text
-@vindex <xml-uninterpreted>
-@findex xml-uninterpreted?
-@findex make-xml-uninterpreted
-@findex xml-uninterpreted-text
-@findex set-xml-uninterpreted-text!
-Some documents contain entity references that can't be expanded by the
-parser, perhaps because the document requires an external
-@acronym{DTD}.  Such references are left uninterpreted in the output
-by wrapping them in @code{xml-uninterpreted} records.  In some
-situations, for example when they are embedded in attribute values,
-the surrounding text is also included in the @code{xml-uninterpreted}
-record.  The @var{text} field contains the uninterpreted @acronym{XML}
-text (a string).
 @end deftp
 
 @deftp {record type} xml-dtd root external internal
@@ -3112,13 +3241,11 @@ correspond to the @acronym{XML} keywords of the same names.
 
 @item
 A list @samp{(#FIXED @var{value})} corresponds to the @samp{#FIXED
-"@var{value}"} syntax.  @var{Value} is represented as a string, but
-might also be an @code{xml-uninterpreted} record.
+"@var{value}"} syntax.  @var{Value} is represented as a string.
 
 @item
 A list @samp{(DEFAULT @var{value})} corresponds to the
-@samp{"@var{value}"} syntax.  @var{Value} is represented as a string,
-but might also be an @code{xml-uninterpreted} record.
+@samp{"@var{value}"} syntax.  @var{Value} is represented as a string.
 @end itemize
 @end deftp
 
@@ -3130,10 +3257,9 @@ but might also be an @code{xml-uninterpreted} record.
 @findex xml-!entity-value
 @findex set-xml-!entity-name!
 @findex set-xml-!entity-value!
-The @code{xml-!entity} record represents a general entity
-declaration.  @var{Name} is an @acronym{XML} name for the entity.
-@var{Value} is the entity's value, either a string, an
-@code{xml-uninterpreted} record, or an @code{xml-external-id} record.
+The @code{xml-!entity} record represents a general entity declaration.
+@var{Name} is an @acronym{XML} name for the entity.  @var{Value} is the
+entity's value, either a string or an @code{xml-external-id} record.
 @end deftp
 
 @deftp {record type} xml-parameter-!entity name value
@@ -3146,8 +3272,8 @@ declaration.  @var{Name} is an @acronym{XML} name for the entity.
 @findex set-xml-parameter-!entity-value!
 The @code{xml-parameter-!entity} record represents a parameter entity
 declaration.  @var{Name} is an @acronym{XML} name for the entity.
-@var{Value} is the entity's value, either a string, an
-@code{xml-uninterpreted} record, or an @code{xml-external-id} record.
+@var{Value} is the entity's value, either a string or an
+@code{xml-external-id} record.
 @end deftp
 
 @deftp {record type} xml-unparsed-!entity name id notation
