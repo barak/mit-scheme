@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.160 1996/03/01 07:46:00 cph Exp $
+;;;	$Id: dired.scm,v 1.161 1996/04/10 01:06:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -650,7 +650,7 @@ When renaming multiple or marked files, you specify a directory."
 
 (define (dired-create-many-files filenames singular-verb plural-verb operation)
   (let ((destination
-	 (pathname-directory
+	 (directory-pathname
 	  (cleanup-pop-up-buffers
 	   (lambda ()
 	     (dired-pop-up-files-window filenames)
@@ -666,8 +666,9 @@ When renaming multiple or marked files, you specify a directory."
 	     (loop (cdr filenames)
 		   (if (operation (cdar filenames)
 				  (caar filenames)
-				  (pathname-new-directory (caar filenames)
-							  destination))
+				  (merge-pathnames
+				   (file-pathname (caar filenames))
+				   destination))
 		       (cons (file-namestring (caar filenames)) failures)
 		       failures)))
 	    ((not (null? failures))
