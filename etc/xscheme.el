@@ -696,6 +696,7 @@ Control returns to the top level rep loop."
 	     (setq xscheme-control-g-disabled-p t))
 	   (message xscheme-control-g-message-string)
 	   (interrupt-process xscheme-process-name)
+	   (sleep-for 0.1)
 	   (xscheme-send-char 0)))))
 
 (defconst xscheme-control-g-message-string
@@ -720,6 +721,7 @@ Control returns to the top level rep loop."
   "Send a ^A type interrupt to the Scheme process."
   (interactive "cInterrupt character to send: ")
   (quit-process xscheme-process-name)
+  (sleep-for 0.1)
   (xscheme-send-char char)
   (if (and mark-p xscheme-control-g-synchronization-p)
       (xscheme-send-char 0)))
