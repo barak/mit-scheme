@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.10 1987/04/18 00:26:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.11 1987/05/03 20:39:41 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -78,7 +78,18 @@ MIT in each case. |#
     cfg))
 
 (define-integrable (generate:next-is-null? next rest-generator)
-  (and (not next) (not rest-generator)))
+  (and (not next)
+       (not rest-generator)))
+
+(define (rvalue->sexpression rvalue offset receiver)
+  (transmit-values (generate:rvalue rvalue offset)
+    (lambda (prefix expression)
+      (scfg*scfg->scfg! prefix (receiver expression)))))
+
+(define (rvalue->pexpression rvalue offset receiver)
+  (transmit-values (generate:rvalue rvalue offset)
+    (lambda (prefix expression)
+      (scfg*pcfg->pcfg! prefix (receiver expression)))))
 
 (define (generate:procedure procedure)
   (set-procedure-rtl-entry!
@@ -156,15 +167,16 @@ MIT in each case. |#
 	 (error "Unknown letrec binding value" value))))
 
 (define (letrec-close block variable value)
-  (make-closure-environment value 0 scfg*scfg->scfg!
-    (lambda (environment)
-      (rtl:make-assignment
-       (closure-procedure-environment-locative
-	(find-variable block variable 0
-	  (lambda (locative) locative)
-	  (lambda (nearest-ic-locative name)
-	    (error "Missing closure variable" variable))))
-       environment))))
+  (transmit-values (make-closure-environment value 0)
+    (lambda (prefix environment)
+      (scfg*scfg->scfg! prefix
+			(rtl:make-assignment
+			 (closure-procedure-environment-locative
+			  (find-variable block variable 0
+			    (lambda (locative) locative)
+			    (lambda (nearest-ic-locative name)
+			      (error "Missing closure variable" variable))))
+			 environment)))))
 
 (define (setup-auxiliary variables pushes)
   (if (null? variables)
@@ -320,165 +332,4 @@ MIT in each case. |#
 	    (nearest-ic-block-expression (unbound-test-block test) offset)
 	    (variable-name variable))
 	   (rtl:make-true-test (rtl:interpreter-call-result:unbound?)))
-	  (make-false-pcfg)))))
-
-;;;; Expressions
-
-(define (rvalue->sexpression rvalue offset receiver)
-  (rvalue->expression rvalue offset scfg*scfg->scfg! receiver))
-
-(define (rvalue->pexpression rvalue offset receiver)
-  (rvalue->expression rvalue offset scfg*pcfg->pcfg! receiver))
-
-(define (rvalue->expression rvalue offset scfg-append! receiver)
-  ((vector-method rvalue rvalue->expression)
-   rvalue offset scfg-append! receiver))
-
-(define (define-rvalue->expression tag generator)
-  (define-vector-method tag rvalue->expression generator))
-
-(define (constant->expression constant offset scfg-append! receiver)
-  (receiver (rtl:make-constant (constant-value constant))))
-
-(define-rvalue->expression constant-tag constant->expression)
-
-(define-rvalue->expression block-tag
-  (lambda (block offset scfg-append! receiver)
-    (receiver (rtl:make-fetch register:environment))))
-
-(define-rvalue->expression reference-tag
-  (lambda (reference offset scfg-append! receiver)
-    (reference->expression (reference-block reference)
-			   (reference-variable reference)
-			   offset
-			   scfg-append!
-			   receiver)))
-
-(define (reference->expression block variable offset scfg-append! receiver)
-  (if (vnode-known-constant? variable)
-      (constant->expression (vnode-known-value variable) offset scfg-append!
-			    receiver)
-      (find-variable block variable offset
-	(lambda (locative)
-	  (receiver (rtl:make-fetch locative)))
-	(lambda (environment name)
-	  (scfg-append! (rtl:make-interpreter-call:lookup
-			 environment
-			 (intern-scode-variable! block name))
-			(receiver (rtl:interpreter-call-result:lookup)))))))
-
-(define-rvalue->expression temporary-tag
-  (lambda (temporary offset scfg-append! receiver)
-    (if (vnode-known-constant? temporary)
-	(constant->expression (vnode-known-value temporary) offset scfg-append!
-			      receiver)
-	(let ((type (temporary-type temporary)))
-	  (cond ((not type) (receiver (rtl:make-fetch temporary)))
-		((eq? type 'VALUE) (receiver (rtl:make-fetch register:value)))
-		(else (error "Illegal temporary reference" type)))))))
-
-(define-rvalue->expression access-tag
-  (lambda (*access offset scfg-append! receiver)
-    (rvalue->expression (access-environment *access) offset scfg-append!
-      (lambda (expression)
-	(scfg-append! (rtl:make-interpreter-call:access expression
-							(access-name *access))
-		      (receiver (rtl:interpreter-call-result:access)))))))
-
-(define-rvalue->expression procedure-tag
-  (lambda (procedure offset scfg-append! receiver)
-    (case (procedure/type procedure)
-      ((CLOSURE)
-       (make-closure-environment procedure offset scfg-append!
-	 (lambda (environment)
-	   (receiver (make-closure-cons procedure environment)))))
-      ((IC)
-       (receiver (make-ic-cons procedure)))
-      ((OPEN-EXTERNAL OPEN-INTERNAL)
-       (error "Reference to open procedure" procedure))
-      (else
-       (error "Unknown procedure type" procedure)))))
-
-(define (make-ic-cons procedure)
-  ;; IC procedures have their entry points linked into their headers
-  ;; at load time by the linker.
-  (let ((header
-	 (scode/make-lambda (variable-name (procedure-name procedure))
-			    (map variable-name (procedure-required procedure))
-			    (map variable-name (procedure-optional procedure))
-			    (let ((rest (procedure-rest procedure)))
-			      (and rest (variable-name rest)))
-			    (map variable-name
-				 (append (procedure-auxiliary procedure)
-					 (procedure-names procedure)))
-			    '()
-			    false)))
-    (set! *ic-procedure-headers*
-	  (cons (cons procedure header)
-		*ic-procedure-headers*))
-    (rtl:make-typed-cons:pair
-     (rtl:make-constant (scode/procedure-type-code header))
-     (rtl:make-constant header)
-     ;; Is this right if the procedure is being closed
-     ;; inside another IC procedure?
-     (rtl:make-fetch register:environment))))
-
-(define (make-closure-environment procedure offset scfg-append! receiver)
-  (let ((block (block-parent (procedure-block procedure))))
-    (define (ic-locative closure-block block offset)
-      (let ((loser
-	     (lambda (locative)
-	       (error "Closure parent not IC block"))))
-	(find-block closure-block block offset loser loser
-	  (lambda (locative nearest-ic-locative) locative))))
-    (cond ((not block)
-	   (receiver (rtl:make-constant false)))
-	  ((ic-block? block)
-	   (receiver
-	    (let ((closure-block (procedure-closure-block procedure)))
-	      (if (ic-block? closure-block)
-		  (rtl:make-fetch register:environment)
-		  (ic-locative closure-block block offset)))))
-	  ((closure-block? block)
-	   (let ((closure-block (procedure-closure-block procedure)))
-	     (define (loop variables n)
-	       (cond ((null? variables)
-		      (return-3 offset n '()))
-		     ((integrated-vnode? (car variables))
-		      (loop (cdr variables) n))
-		     (else 
-		      (transmit-values (loop (cdr variables) (1+ n))
-			(lambda (offset n pushes)
-			  (return-3
-			   (1+ offset)
-			   n
-			   (cons (rtl:make-push
-				  (rtl:make-fetch
-				   (find-closure-variable closure-block
-							  (car variables)
-							  offset)))
-				 pushes)))))))
-
-	     (define (make-frame n pushes)
-	       (scfg-append! (scfg*->scfg!
-			      (reverse!
-			       (cons (rtl:make-interpreter-call:enclose n)
-				     pushes)))
-			     (receiver (rtl:interpreter-call-result:enclose))))
-
-	     (transmit-values (loop (block-bound-variables block) 0)
-	       (lambda (offset n pushes)
-		 (let ((parent (block-parent block)))
-		   (if parent
-		       (make-frame (1+ n)
-				   (cons (rtl:make-push
-					  (ic-locative closure-block parent
-						       offset))
-					 pushes))
-		       (make-frame n pushes)))))))
-	  (else (error "Unknown block type" block)))))
-
-(define (make-closure-cons procedure environment)
-  (rtl:make-typed-cons:pair (rtl:make-constant type-code:compiled-procedure)
-			    (rtl:make-entry:procedure procedure)
   "node rtl arguments")
