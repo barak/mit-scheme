@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.6 1991/03/16 08:13:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.7 1991/04/11 03:18:53 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -35,7 +35,63 @@ MIT in each case. |#
 ;;;; Termcap(3) Screen Implementation
 
 (declare (usual-integrations))
-
+
+(define (make-console-screen)
+  (let ((description (console-termcap-description)))
+    (cond ((not (output-port/baud-rate console-output-port))
+	   (error "standard output not a terminal"))
+	  ((not description)
+	   (error "terminal type not set"))
+	  ((not (termcap-description? description))
+	   (error "unknown terminal type" description))
+	  ((not (sufficiently-powerful? description))
+	   (error "terminal type not powerful enough"
+		  (terminal-type-name description)))
+	  ((not (no-undesirable-characteristics? description))
+	   (error "terminal type has undesirable characteristics"
+		  (terminal-type-name description))))
+    (let ((baud-rate (output-port/baud-rate console-output-port))
+	  (x-size (output-port/x-size console-output-port))
+	  (y-size (output-port/y-size console-output-port)))
+      (make-screen (with-values
+		       (lambda ()
+			 (compute-scrolling-costs description
+						  baud-rate
+						  x-size
+						  y-size))
+		     (lambda (insert-line-cost
+			      insert-line-next-cost
+			      delete-line-cost
+			      delete-line-next-cost
+			      scroll-region-cost)
+		       (make-terminal-state description
+					    (baud-rate->index baud-rate)
+					    baud-rate
+					    insert-line-cost
+					    insert-line-next-cost
+					    delete-line-cost
+					    delete-line-next-cost
+					    scroll-region-cost)))
+		   console-beep
+		   console-clear-line!
+		   console-clear-rectangle!
+		   console-clear-screen!
+		   console-discard!
+		   console-enter!
+		   console-exit!
+		   console-flush!
+		   console-modeline-event!
+		   console-discretionary-flush
+		   console-scroll-lines-down!
+		   console-scroll-lines-up!
+		   console-wrap-update!
+		   console-write-char!
+		   console-write-cursor!
+		   console-write-substring!
+		   (fix:1+ (fix:quotient baud-rate 2400))
+		   x-size
+		   y-size))))
+
 (define-primitives
   (baud-rate->index 1)
   (tty-get-interrupt-enables 0)
@@ -55,50 +111,12 @@ MIT in each case. |#
 
 (define (output-port/y-size port)
   ((output-port/custom-operation port 'Y-SIZE) port))
-
+
 (define (console-available?)
   (let ((description (console-termcap-description)))
     (and (termcap-description? description)
 	 (sufficiently-powerful? description)
 	 (no-undesirable-characteristics? description))))
-
-(define (make-console-screen)
-  (let ((description (console-termcap-description)))
-    (cond ((not (output-port/baud-rate console-output-port))
-	   (error "standard output not a terminal"))
-	  ((not description)
-	   (error "terminal type not set"))
-	  ((not (termcap-description? description))
-	   (error "unknown terminal type" description))
-	  ((not (sufficiently-powerful? description))
-	   (error "terminal type not powerful enough"
-		  (terminal-type-name description)))
-	  ((not (no-undesirable-characteristics? description))
-	   (error "terminal type has undesirable characteristics"
-		  (terminal-type-name description))))
-    (let ((baud-rate (output-port/baud-rate console-output-port)))
-      (make-screen (make-terminal-state description
-					(baud-rate->index baud-rate)
-					baud-rate)
-		   console-beep
-		   console-clear-line!
-		   console-clear-rectangle!
-		   console-clear-screen!
-		   console-discard!
-		   console-enter!
-		   console-exit!
-		   console-flush!
-		   console-modeline-event!
-		   console-discretionary-flush
-		   console-scroll-lines-down!
-		   console-scroll-lines-up!
-		   console-wrap-update!
-		   console-write-char!
-		   console-write-cursor!
-		   console-write-substring!
-		   (fix:1+ (fix:quotient baud-rate 2400))
-		   (output-port/x-size console-output-port)
-		   (output-port/y-size console-output-port)))))
 
 (define (console-termcap-description)
   (if (eq? console-description 'UNKNOWN)
@@ -281,11 +299,23 @@ MIT in each case. |#
 
 (define-structure (terminal-state
 		   (constructor make-terminal-state
-				(description baud-rate-index baud-rate))
+				(description
+				 baud-rate-index
+				 baud-rate
+				 insert-line-cost
+				 insert-line-next-cost
+				 delete-line-cost
+				 delete-line-next-cost
+				 scroll-region-cost))
 		   (conc-name terminal-state/))
   (description false read-only true)
   (baud-rate-index false read-only true)
   (baud-rate false read-only true)
+  (insert-line-cost false read-only true)
+  (insert-line-next-cost false read-only true)
+  (delete-line-cost false read-only true)
+  (delete-line-next-cost false read-only true)
+  (scroll-region-cost false read-only true)
   (cursor-x false)
   (cursor-y false)
   (standout-mode? false)
@@ -293,50 +323,38 @@ MIT in each case. |#
   (delete-mode? false)
   (scroll-region false))
 
-(define-integrable (screen-description screen)
-  (terminal-state/description (screen-state screen)))
-
-(define-integrable (screen-baud-rate-index screen)
-  (terminal-state/baud-rate-index (screen-state screen)))
-
-(define-integrable (screen-baud-rate screen)
-  (terminal-state/baud-rate (screen-state screen)))
-
-(define-integrable (screen-cursor-x screen)
-  (terminal-state/cursor-x (screen-state screen)))
-
-(define-integrable (set-screen-cursor-x! screen cursor-x)
-  (set-terminal-state/cursor-x! (screen-state screen) cursor-x))
-
-(define-integrable (screen-cursor-y screen)
-  (terminal-state/cursor-y (screen-state screen)))
-
-(define-integrable (set-screen-cursor-y! screen cursor-y)
-  (set-terminal-state/cursor-y! (screen-state screen) cursor-y))
-
-(define-integrable (screen-standout-mode? screen)
-  (terminal-state/standout-mode? (screen-state screen)))
-
-(define-integrable (set-screen-standout-mode?! screen standout-mode?)
-  (set-terminal-state/standout-mode?! (screen-state screen) standout-mode?))
-
-(define-integrable (screen-insert-mode? screen)
-  (terminal-state/insert-mode? (screen-state screen)))
-
-(define-integrable (set-screen-insert-mode?! screen insert-mode?)
-  (set-terminal-state/insert-mode?! (screen-state screen) insert-mode?))
-
-(define-integrable (screen-delete-mode? screen)
-  (terminal-state/delete-mode? (screen-state screen)))
-
-(define-integrable (set-screen-delete-mode?! screen delete-mode?)
-  (set-terminal-state/delete-mode?! (screen-state screen) delete-mode?))
-
-(define-integrable (screen-scroll-region screen)
-  (terminal-state/scroll-region (screen-state screen)))
-
-(define-integrable (set-screen-scroll-region! screen scroll-region)
-  (set-terminal-state/scroll-region! (screen-state screen) scroll-region))
+(let-syntax ((define-accessor
+	       (macro (name)
+		 `(DEFINE-INTEGRABLE (,(symbol-append 'SCREEN- name) SCREEN)
+		    (,(symbol-append 'TERMINAL-STATE/ name)
+		     (SCREEN-STATE SCREEN)))))
+	     (define-updater
+	       (macro (name)
+		 `(DEFINE-INTEGRABLE
+		    (,(symbol-append 'SET-SCREEN- name '!) SCREEN ,name)
+		    (,(symbol-append 'SET-TERMINAL-STATE/ name '!)
+		     (SCREEN-STATE SCREEN)
+		     ,name)))))
+  (define-accessor description)
+  (define-accessor baud-rate-index)
+  (define-accessor baud-rate)
+  (define-accessor insert-line-cost)
+  (define-accessor insert-line-next-cost)
+  (define-accessor delete-line-cost)
+  (define-accessor delete-line-next-cost)
+  (define-accessor scroll-region-cost)
+  (define-accessor cursor-x)
+  (define-updater  cursor-x)
+  (define-accessor cursor-y)
+  (define-updater  cursor-y)
+  (define-accessor standout-mode?)
+  (define-updater  standout-mode?)
+  (define-accessor insert-mode?)
+  (define-updater  insert-mode?)
+  (define-accessor delete-mode?)
+  (define-updater  delete-mode?)
+  (define-accessor scroll-region)
+  (define-updater  scroll-region))
 
 ;;;; Console Screen Operations
 
@@ -400,7 +418,7 @@ MIT in each case. |#
 	(exit-insert-mode screen)
 	(move-cursor screen x y)
 	(highlight-if-desired screen highlight)
-	(output-char screen char)
+	(output-port/write-char console-output-port char)
 	(record-cursor-after-output screen (fix:1+ x)))))
 
 (define (console-write-substring! screen x y string start end highlight)
@@ -417,9 +435,7 @@ MIT in each case. |#
 				 (screen-x-size screen))))
 		   (fix:-1+ end)
 		   end)))
-	  (do ((i start (fix:1+ i)))
-	      ((fix:= i end))
-	    (output-char screen (string-ref string i)))
+	  (output-port/write-substring console-output-port string start end)
 	  (record-cursor-after-output screen (fix:+ x (fix:- end start)))))))
 
 (define (console-clear-line! screen x y first-unused-x)
@@ -458,30 +474,51 @@ MIT in each case. |#
     (and (insert/delete-line-ok? description)
 	 (fix:= xl 0)
 	 (fix:= xu (screen-x-size screen))
-	 (begin
-	   (let ((y-size (screen-y-size screen)))
+	 (let ((y-size (screen-y-size screen))
+	       (yu* (fix:- yu amount)))
+	   (let ((draw-cost (scroll-draw-cost screen yl yu*)))
 	     (if (or (fix:= yu y-size)
 		     (scroll-region-ok? description))
-		 (insert-lines screen yl yu amount)
-		 (begin
-		   (delete-lines screen (fix:- yu amount) y-size amount)
-		   (insert-lines screen yl y-size amount))))
-	   'CLEARED))))
+		 (and (fix:< (insert-lines-cost screen yl yu amount) draw-cost)
+		      (begin
+			(insert-lines screen yl yu amount)
+			'CLEARED))
+		 (and (fix:<
+		       (fix:+ (delete-lines-cost screen yu* y-size amount)
+			      (insert-lines-cost screen yl y-size amount))
+		       draw-cost)
+		      (begin
+			(delete-lines screen yu* y-size amount)
+			(insert-lines screen yl y-size amount)
+			'CLEARED))))))))
 
 (define (console-scroll-lines-up! screen xl xu yl yu amount)
   (let ((description (screen-description screen)))
     (and (insert/delete-line-ok? description)
 	 (fix:= xl 0)
 	 (fix:= xu (screen-x-size screen))
-	 (begin
-	   (let ((y-size (screen-y-size screen)))
-	     (if (or (fix:= yu y-size)
-		     (scroll-region-ok? description))
-		 (delete-lines screen yl yu amount)
-		 (begin
-		   (delete-lines screen yl y-size amount)
-		   (insert-lines screen (fix:- yu amount) y-size amount))))
-	   'CLEARED))))
+	 (let ((y-size (screen-y-size screen))
+	       (draw-cost (scroll-draw-cost screen (fix:+ yl amount) yu)))
+	   (if (or (fix:= yu y-size)
+		   (scroll-region-ok? description))
+	       (and (fix:< (delete-lines-cost screen yl yu amount) draw-cost)
+		    (begin
+		      (delete-lines screen yl yu amount)
+		      'CLEARED))
+	       (let ((yu* (fix:- yu amount)))
+		 (and (fix:<
+		       (fix:+ (delete-lines-cost screen yl y-size amount)
+			      (insert-lines-cost screen yu* y-size amount))
+		       draw-cost)
+		      (begin
+			(delete-lines screen yl y-size amount)
+			(insert-lines screen yu* y-size amount)
+			'CLEARED))))))))
+
+(define (scroll-draw-cost screen yl yu)
+  (do ((yl yl (fix:+ yl 1))
+       (cost 0 (fix:+ cost (screen-line-draw-cost screen yl))))
+      ((fix:= yl yu) cost)))
 
 ;;;; Termcap Commands
 
@@ -529,7 +566,7 @@ MIT in each case. |#
 		       first-unused-x)))
 	      (do ((x (screen-cursor-x screen) (fix:1+ x)))
 		  ((fix:= x first-unused-x))
-		(output-space screen))
+		(output-port/write-char console-output-port #\space))
 	      (record-cursor-after-output screen first-unused-x)))))))
 
 (define (clear-multi-char screen n)
@@ -554,87 +591,113 @@ MIT in each case. |#
 			   x-end))))
 		(do ((x cursor-x (fix:1+ x)))
 		    ((fix:= x x-end))
-		  (output-space screen))
+		  (output-port/write-char console-output-port #\space))
 		(record-cursor-after-output screen x-end))))))))
 
 (define (insert-lines screen yl yu n)
-  (let ((description (screen-description screen))
+  (let ((y-size (screen-y-size screen))
+	(description (screen-description screen))
 	(n-lines (fix:- yu yl)))
-    (let ((y-size (screen-y-size screen)))
-      (cond ((ts-insert-line description)
-	     =>
-	     (lambda (ts-insert-line)
-	       (if (not (fix:= yu y-size))
-		   (set-scroll-region screen yl yu))
-	       (move-cursor screen 0 yl)
-	       (exit-standout-mode screen)
-	       (let ((ts-insert-multi-line (ts-insert-multi-line description)))
-		 (if (and (fix:> n 1) ts-insert-multi-line)
-		     (output-n screen
-			       (parameterize-1 ts-insert-multi-line n)
-			       n-lines)
-		     (do ((i 0 (fix:1+ i)))
-			 ((fix:= i n))
-		       (output-n screen ts-insert-line n-lines))))
-	       (clear-scroll-region screen)))
-	    ((ts-reverse-scroll description)
-	     =>
-	     (lambda (ts-reverse-scroll)
-	       (set-scroll-region screen yl yu)
-	       (move-cursor screen 0 yl)
-	       (exit-standout-mode screen)
-	       (do ((i 0 (fix:1+ i)))
-		   ((fix:= i n))
-		 (output-n screen ts-reverse-scroll n-lines))
-	       (clear-scroll-region screen)
-	       (if (and (tf-memory-above-screen description)
-			(fix:= yl 0)
-			(fix:= yu y-size))
-		   (let ((x-size (screen-x-size screen)))
-		     (do ((y 0 (fix:1+ y)))
-			 ((fix:= y n))
-		       (move-cursor screen 0 y)
-		       (clear-line screen x-size))))))
-	    (else
-	     (error "can't insert lines" screen))))))
+    (cond ((ts-insert-line description)
+	   =>
+	   (lambda (ts-insert-line)
+	     (if (not (fix:= yu y-size))
+		 (set-scroll-region screen yl yu))
+	     (move-cursor screen 0 yl)
+	     (exit-standout-mode screen)
+	     (let ((ts-insert-multi-line (ts-insert-multi-line description)))
+	       (if (and (fix:> n 1) ts-insert-multi-line)
+		   (output-n screen
+			     (parameterize-1 ts-insert-multi-line n)
+			     n-lines)
+		   (do ((i 0 (fix:1+ i)))
+		       ((fix:= i n))
+		     (output-n screen ts-insert-line n-lines))))
+	     (clear-scroll-region screen)))
+	  ((ts-reverse-scroll description)
+	   =>
+	   (lambda (ts-reverse-scroll)
+	     (set-scroll-region screen yl yu)
+	     (move-cursor screen 0 yl)
+	     (exit-standout-mode screen)
+	     (do ((i 0 (fix:1+ i)))
+		 ((fix:= i n))
+	       (output-n screen ts-reverse-scroll n-lines))
+	     (clear-scroll-region screen)
+	     (if (and (tf-memory-above-screen description)
+		      (fix:= yl 0)
+		      (fix:= yu y-size))
+		 (let ((x-size (screen-x-size screen)))
+		   (do ((y 0 (fix:1+ y)))
+		       ((fix:= y n))
+		     (move-cursor screen 0 y)
+		     (clear-line screen x-size))))))
+	  (else
+	   (error "can't insert lines" screen)))))
 
+(define (insert-lines-cost screen yl yu n)
+  (if (and (ts-insert-line (screen-description screen))
+	   (fix:= yu (screen-y-size screen)))
+      (fix:+ (vector-ref (screen-insert-line-cost screen) yl)
+	     (fix:* (vector-ref (screen-insert-line-next-cost screen) yl)
+		    (fix:- n 1)))
+      (fix:+ (screen-scroll-region-cost screen)
+	     (let ((yl (fix:+ yl (fix:- (screen-y-size screen) yu))))
+	       (fix:+ (vector-ref (screen-insert-line-cost screen) yl)
+		      (fix:* (vector-ref (screen-insert-line-next-cost screen)
+					 yl)
+			     (fix:- n 1)))))))
+
 (define (delete-lines screen yl yu n)
-  (let ((description (screen-description screen))
+  (let ((y-size (screen-y-size screen))
+	(description (screen-description screen))
 	(n-lines (fix:- yu yl)))
-    (let ((y-size (screen-y-size screen)))
-      (cond ((ts-delete-line description)
-	     =>
-	     (lambda (ts-delete-line)
-	       (if (not (fix:= yu y-size))
-		   (set-scroll-region screen yl yu))
-	       (move-cursor screen 0 yl)
-	       (exit-standout-mode screen)
-	       (let ((ts-delete-multi-line (ts-delete-multi-line description)))
-		 (if (and (fix:> n 1) ts-delete-multi-line)
-		     (output-n screen
-			       (parameterize-1 ts-delete-multi-line n)
-			       n-lines)
-		     (do ((i 0 (fix:1+ i)))
-			 ((fix:= i n))
-		       (output-n screen ts-delete-line n-lines))))))
-	    ((ts-forward-scroll description)
-	     =>
-	     (lambda (ts-forward-scroll)
-	       (set-scroll-region screen yl yu)
-	       (move-cursor screen 0 (fix:-1+ yu))
-	       (exit-standout-mode screen)
-	       (do ((i 0 (fix:1+ i)))
-		   ((fix:= i n))
-		 (output-n screen ts-forward-scroll n-lines))))
-	    (else
-	     (error "can't delete lines" screen)))
-      (if (and (tf-memory-below-screen description)
-	       (not (screen-scroll-region screen))
-	       (fix:> n 0))
-	  (begin
-	    (move-cursor screen 0 (fix:- y-size n))
-	    (clear-to-bottom screen)))
-      (clear-scroll-region screen))))
+    (cond ((ts-delete-line description)
+	   =>
+	   (lambda (ts-delete-line)
+	     (if (not (fix:= yu y-size))
+		 (set-scroll-region screen yl yu))
+	     (move-cursor screen 0 yl)
+	     (exit-standout-mode screen)
+	     (let ((ts-delete-multi-line (ts-delete-multi-line description)))
+	       (if (and (fix:> n 1) ts-delete-multi-line)
+		   (output-n screen
+			     (parameterize-1 ts-delete-multi-line n)
+			     n-lines)
+		   (do ((i 0 (fix:1+ i)))
+		       ((fix:= i n))
+		     (output-n screen ts-delete-line n-lines))))))
+	  ((ts-forward-scroll description)
+	   =>
+	   (lambda (ts-forward-scroll)
+	     (set-scroll-region screen yl yu)
+	     (move-cursor screen 0 (fix:-1+ yu))
+	     (exit-standout-mode screen)
+	     (do ((i 0 (fix:1+ i)))
+		 ((fix:= i n))
+	       (output-n screen ts-forward-scroll n-lines))))
+	  (else
+	   (error "can't delete lines" screen)))
+    (if (and (tf-memory-below-screen description)
+	     (not (screen-scroll-region screen))
+	     (fix:> n 0))
+	(begin
+	  (move-cursor screen 0 (fix:- y-size n))
+	  (clear-to-bottom screen)))
+    (clear-scroll-region screen)))
+
+(define (delete-lines-cost screen yl yu n)
+  (if (and (ts-delete-line (screen-description screen))
+	   (fix:= yu (screen-y-size screen)))
+      (fix:+ (vector-ref (screen-delete-line-cost screen) yl)
+	     (fix:* (vector-ref (screen-delete-line-next-cost screen) yl)
+		    (fix:- n 1)))
+      (fix:+ (screen-scroll-region-cost screen)
+	     (let ((yl (fix:+ yl (fix:- (screen-y-size screen) yu))))
+	       (fix:+ (vector-ref (screen-delete-line-cost screen) yl)
+		      (fix:* (vector-ref (screen-delete-line-next-cost screen)
+					 yl)
+			     (fix:- n 1)))))))
 
 (define (set-scroll-region screen yl yu)
   (let ((y-size (tn-y-size (screen-description screen))))
@@ -657,30 +720,33 @@ MIT in each case. |#
 
 (define (%set-scroll-region screen yl yu)
   (output-1 screen
-	    (let ((description (screen-description screen)))
-	      (cond ((ts-set-scroll-region description)
-		     =>
-		     (lambda (ts-set-scroll-region)
-		       (parameterize-2 ts-set-scroll-region yl (fix:-1+ yu))))
-		    ((ts-set-scroll-region-1 description)
-		     =>
-		     (lambda (ts-set-scroll-region-1)
-		       (let ((y-size (screen-y-size screen)))
-			 (parameterize-4 ts-set-scroll-region-1
-					 y-size
-					 yl
-					 (fix:- y-size yu)
-					 y-size))))
-		    ((ts-set-window description)
-		     =>
-		     (lambda (ts-set-window)
-		       (parameterize-4 ts-set-window
-				       yl (fix:-1+ yu)
-				       0 (fix:-1+ (screen-x-size screen)))))
-		    (else
-		     (error "can't set scroll region" screen)))))
+	    (let ((s
+		   (%set-scroll-region-string (screen-description screen)
+					      (screen-x-size screen)
+					      (screen-y-size screen)
+					      yl
+					      yu)))
+	      (if (not s)
+		  (error "can't set scroll region" screen))
+	      s))
   (set-screen-cursor-x! screen false)
   (set-screen-cursor-y! screen false))
+
+(define (%set-scroll-region-string description x-size y-size yl yu)
+  (cond ((ts-set-scroll-region description)
+	 =>
+	 (lambda (ts-set-scroll-region)
+	   (parameterize-2 ts-set-scroll-region yl (fix:-1+ yu))))
+	((ts-set-scroll-region-1 description)
+	 =>
+	 (lambda (ts-set-scroll-region-1)
+	   (parameterize-4 ts-set-scroll-region-1
+			   y-size yl (fix:- y-size yu) y-size)))
+	((ts-set-window description)
+	 =>
+	 (lambda (ts-set-window)
+	   (parameterize-4 ts-set-window yl (fix:-1+ yu) 0 (fix:-1+ x-size))))
+	(else false)))
 
 (define (highlight-if-desired screen highlight)
   (if highlight
@@ -733,62 +799,67 @@ MIT in each case. |#
 	(maybe-output-1 screen
 			(ts-exit-delete-mode (screen-description screen))))))
 
-(define (move-cursor screen x y)
+(define-integrable (move-cursor screen x y)
+  (if (not (and (screen-cursor-x screen)
+		(fix:= x (screen-cursor-x screen))
+		(fix:= y (screen-cursor-y screen))))
+      (%move-cursor screen x y)))
+
+(define (%move-cursor screen x y)
   (let ((description (screen-description screen))
 	(cursor-x (screen-cursor-x screen))
-	(cursor-y (screen-cursor-y screen)))
-    (if (not (and cursor-x (fix:= x cursor-x) (fix:= y cursor-y)))
-	(let ((y-size (screen-y-size screen))
-	      (trivial-command (lambda (command) (output-1 screen command)))
-	      (general-case
-	       (lambda ()
-		 (output-1 screen
-			   (parameterize-2 (ts-cursor-move description)
-					   y x)))))
-	  (if (not (tf-standout-mode-motion description))
-	      (exit-standout-mode screen))
-	  (if (not (tf-insert-mode-motion description))
-	      (exit-insert-mode screen))
-	  (cond ((and (fix:= x 0)
-		      (fix:= y 0)
-		      (ts-cursor-upper-left description))
-		 => trivial-command)
-		((and (fix:= x 0)
-		      (fix:= y (fix:-1+ y-size))
-		      (ts-cursor-lower-left description))
-		 => trivial-command)
-		((not cursor-x)
-		 (general-case))
-		((fix:= y cursor-y)
-		 (cond ((and (fix:= x (fix:-1+ cursor-x))
-			     (ts-cursor-left description))
-			=> trivial-command)
-		       ((and (fix:= x (fix:1+ cursor-x))
-			     (ts-cursor-right description))
-			=> trivial-command)
-		       ((and (fix:= x 0)
-			     (ts-cursor-line-start description))
-			=> trivial-command)
-		       ((ts-cursor-move-x description)
-			=>
-			(lambda (ts-cursor-move-x)
-			  (output-1 screen
-				    (parameterize-1 ts-cursor-move-x x))))
-		       (else
-			(general-case))))
-		((fix:= x cursor-x)
-		 (cond ((and (fix:= y (fix:-1+ cursor-y))
-			     (ts-cursor-up description))
-			=> trivial-command)
-		       ((and (fix:= y (fix:1+ cursor-y))
-			     (ts-cursor-down description))
-			=> trivial-command)
-		       (else
-			(general-case))))
-		(else
-		 (general-case)))
-	  (set-screen-cursor-x! screen x)
-	  (set-screen-cursor-y! screen y)))))
+	(cursor-y (screen-cursor-y screen))
+	(y-size (screen-y-size screen))
+	(trivial-command (lambda (command) (output-1 screen command))))
+    (let ((general-case
+	   (lambda ()
+	     (output-1 screen
+		       (parameterize-2 (ts-cursor-move description)
+				       y x)))))
+      (if (not (tf-standout-mode-motion description))
+	  (exit-standout-mode screen))
+      (if (not (tf-insert-mode-motion description))
+	  (exit-insert-mode screen))
+      (cond ((and (fix:= x 0)
+		  (fix:= y 0)
+		  (ts-cursor-upper-left description))
+	     => trivial-command)
+	    ((and (fix:= x 0)
+		  (fix:= y (fix:-1+ y-size))
+		  (ts-cursor-lower-left description))
+	     => trivial-command)
+	    ((not cursor-x)
+	     (general-case))
+	    ((fix:= y cursor-y)
+	     (cond ((and (fix:= x (fix:-1+ cursor-x))
+			 (ts-cursor-left description))
+		    => trivial-command)
+		   ((and (fix:= x (fix:1+ cursor-x))
+			 (ts-cursor-right description))
+		    => trivial-command)
+		   ((and (fix:= x 0)
+			 (ts-cursor-line-start description))
+		    => trivial-command)
+		   ((ts-cursor-move-x description)
+		    =>
+		    (lambda (ts-cursor-move-x)
+		      (output-1 screen
+				(parameterize-1 ts-cursor-move-x x))))
+		   (else
+		    (general-case))))
+	    ((fix:= x cursor-x)
+	     (cond ((and (fix:= y (fix:-1+ cursor-y))
+			 (ts-cursor-up description))
+		    => trivial-command)
+		   ((and (fix:= y (fix:1+ cursor-y))
+			 (ts-cursor-down description))
+		    => trivial-command)
+		   (else
+		    (general-case))))
+	    (else
+	     (general-case)))))
+  (set-screen-cursor-x! screen x)
+  (set-screen-cursor-y! screen y))
 
 (define (record-cursor-after-output screen cursor-x)
   (let ((description (screen-description screen)))
@@ -854,10 +925,116 @@ MIT in each case. |#
 (define (maybe-output-n screen command n-lines)
   (if command
       (output-n screen command n-lines)))
+
+(define (compute-scrolling-costs description baud-rate x-size y-size)
+  (with-values
+      (lambda ()
+	(i/d-line-cost-vectors description
+			       baud-rate
+			       y-size
+			       (ts-insert-multi-line description)
+			       (or (ts-insert-line description)
+				   (ts-reverse-scroll description))))
+    (lambda (insert-line-cost insert-line-next-cost)
+      (with-values
+	  (lambda ()
+	    (i/d-line-cost-vectors description
+				   baud-rate
+				   y-size
+				   (ts-delete-multi-line description)
+				   (or (ts-delete-line description)
+				       (ts-forward-scroll description))))
+	(lambda (delete-line-cost delete-line-next-cost)
+	  (values insert-line-cost
+		  insert-line-next-cost
+		  delete-line-cost
+		  delete-line-next-cost
+		  (let ((string
+			 (%set-scroll-region-string description
+						    x-size
+						    y-size
+						    0
+						    y-size)))
+		    (if string
+			(fix:* 2 (string-cost description baud-rate string 0))
+			0))))))))
 
-(define-integrable (output-char screen char)
-  screen
-  (output-port/write-char console-output-port char))
+(define (i/d-line-cost-vectors description baud-rate y-size
+			       multi-line one-line)
+  (let ((extra
+	 ;; Discourage long scrolls slightly on fast lines.  This
+	 ;; says that scrolling nearly the full length of the screen
+	 ;; is not worth it if reprinting takes less than 1/4
+	 ;; second.
+	 (fix:quotient baud-rate (fix:* 40 y-size)))
+	(string-cost
+	 (lambda (string n)
+	   (string-cost description baud-rate string n))))
+    (cond (multi-line
+	   (let ((c (string-cost multi-line 0)))
+	     (scrolling-vectors y-size
+				c
+				(fix:- (string-cost multi-line 10) c)
+				extra
+				0)))
+	  (one-line
+	   (let ((c (string-cost one-line 0)))
+	     (scrolling-vectors y-size
+				0
+				0
+				(fix:+ c extra)
+				(fix:- (string-cost one-line 10) c))))
+	  (else
+	   (values false false)))))
 
-(define-integrable (output-space screen)
-  (output-char screen #\space))
+(define-integrable (string-cost description baud-rate string n-lines)
+  (string-length
+   (termcap-pad-string string
+		       n-lines
+		       (baud-rate->index baud-rate)
+		       (ts-pad-char description))))
+
+#| Calculate the insert and delete line costs.
+
+We keep the ID costs in a precomputed array based on the position at
+which the I or D is performed.  Also, there are two kinds of ID costs:
+the "once-only" and the "repeated".  This is to handle both those
+terminals that are able to insert N lines at a time (once-only) and
+those that must repeatedly insert one line.
+
+The cost to insert N lines at line L (0-origin indexing) is
+
+	(+ (+ IL-OV1 (* IL-PF1 (- Y-SIZE L)))
+	   (* N (+ IL-OVN (* IL-PFN (- Y-SIZE L)))))
+
+IL-OV1 represents the basic insert line overhead.  IL-PF1 is the
+padding required to allow the terminal time to move a line: insertion
+at line L changes (- Y-SIZE L) lines.
+
+The first subexpression above is the overhead; the second is the
+multiply factor.  Both are dependent only on the position at which the
+insert is performed.  We store the overhead in INSERT-LINE-COST and
+the multiply factor in INSERT-LINE-NEXT-COST.  Note however that any
+insertion must include at least one multiply factor.  Rather than
+compute this as INSERT-LINE-COST[line]+INSERT-LINE-NEXT-COST[line], we
+add INSERT-LINE-NEXT-COST into INSERT-LINE-COST.  This is reasonable
+because of the particular algorithm used.
+
+Deletion is essentially the same as insertion. 
+
+Note that the multiply factors are in tenths of characters.  |#
+
+(define (scrolling-vectors y-size overhead-1 factor-1 overhead-n factor-n)
+  (let ((overhead (make-vector y-size))
+	(factor (make-vector y-size)))
+    (let loop
+	((y 0)
+	 (o (fix:+ (fix:* overhead-1 10) (fix:* factor-1 y-size)))
+	 (n (fix:+ (fix:* overhead-n 10) (fix:* factor-n y-size))))
+      (if (fix:< y y-size)
+	  (begin
+	    (vector-set! factor y (fix:quotient n 10))
+	    (let ((n (fix:- n factor-n)))
+	      (vector-set! overhead y (fix:quotient (fix:+ o n) 10))
+	      (loop (fix:1+ y) (fix:- o factor-1) n)))))
+    (values overhead factor)))
