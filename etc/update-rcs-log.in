@@ -3,25 +3,4 @@
 (begin
   (cd "/scheme/8.0/700/rcs")
   (load-latest "make")
-  (for-each
-   (let ((rcs-directory-log (access rcs-directory-log (->environment '(RCS)))))
-     (lambda (directory)
-       (rcs-directory-log
-	(merge-pathnames "RCS.log" (pathname-as-directory directory))
-	directory)))
-   '("/scheme/8.0/src/6001"
-     "/scheme/8.0/src/bench"
-     "/scheme/8.0/src/compiler"
-     "/scheme/8.0/src/cref"
-     "/scheme/8.0/src/edwin"
-     "/scheme/8.0/src/microcode"
-     "/scheme/8.0/src/rcs"
-     "/scheme/8.0/src/runtime"
-     "/scheme/8.0/src/sf"
-     "/scheme/8.0/src/win32"
-
-     "/scheme/7.4/src/compiler"
-     "/scheme/7.4/src/microcode"
-     "/scheme/7.4/src/runtime"
-     "/scheme/7.4/src/sf"
-     )))
+  (load-latest "mklogs"))
