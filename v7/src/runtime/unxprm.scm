@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.67 2004/10/18 05:05:52 cph Exp $
+$Id: unxprm.scm,v 1.68 2004/10/28 03:22:07 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1997,1998,1999,2000 Massachusetts Institute of Technology
@@ -147,76 +147,107 @@ USA.
      (or access-time (file-access-time-direct filename))
      (or modification-time (file-modification-time-direct filename)))))
 
-(define get-environment-variable)
-(define set-environment-variable!)
-(define delete-environment-variable!)
-(define reset-environment-variables!)
+(define environment-variables)
 
-(let ((environment-variables '()))
-  ;; Kludge: since getenv returns #f for unbound,
-  ;; that can also be the marker for a deleted variable
-  (define-integrable *variable-deleted* #f)
+(define (get-environment-variable name)
+  (guarantee-string name 'GET-ENVIRONMENT-VARIABLE)
+  (let ((value (hash-table/get environment-variables name 'NONE)))
+    (if (eq? value 'NONE)
+	(let ((value ((ucode-primitive get-environment-variable 1) name)))
+	  (hash-table/put! environment-variables name value)
+	  value)
+	value)))
 
-  (set! get-environment-variable
-	(lambda (variable)
-	  (cond ((not (string? variable))
-		 (error "GET-ENVIRONMENT-VARIABLE: Variable must be a string"
-			variable))
-		((assoc variable environment-variables)
-		 =>
-		 cdr)
-		(else ((ucode-primitive get-environment-variable 1)
-		       variable)))))
+(define (set-environment-variable! name value)
+  (guarantee-string name 'SET-ENVIRONMENT-VARIABLE!)
+  (if value
+      (guarantee-string value 'SET-ENVIRONMENT-VARIABLE!))
+  (hash-table/put! environment-variables name value))
 
-  (set! set-environment-variable!
-	(lambda (variable value)
-	  (cond ((not (string? variable))
-		 (error "SET-ENVIRONMENT-VARIABLE!: Variable must be a string"
-			variable value))
-		((assoc variable environment-variables)
-		 =>
-		 (lambda (pair)
-		   (set-cdr! pair value)))
-		(else
-		 (set! environment-variables
-		       (cons (cons variable value)
-			     environment-variables))))
-	  unspecific))
+(define (delete-environment-variable! name)
+  (guarantee-string name 'DELETE-ENVIRONMENT-VARIABLE!)
+  (hash-table/remove! environment-variables name))
 
-  (set! delete-environment-variable!
-	(lambda (variable)
-	  (set-environment-variable! variable *variable-deleted*)))
-
-  (set! reset-environment-variables!
-	(lambda () (set! environment-variables '()))))
+(define (reset-environment-variables!)
+  (hash-table/clear! environment-variables))
 
 (define (initialize-system-primitives!)
+  (set! environment-variables (make-string-hash-table))
   (add-event-receiver! event:after-restart reset-environment-variables!))
+
+(define (os/suffix-mime-type suffix)
+  (import-mime-types)
+  (hash-table/get mime-types suffix #f))
 
-(define (os/pathname-mime-type pathname)
-  (let ((suffix (pathname-type pathname)))
-    (and (string? suffix)
-	 (or (search-mime-types-file "~/.mime.types" suffix)
-	     (search-mime-types-file "/etc/mime.types" suffix)))))
+(define (initialize-mime-types!)
+  (set! mime-types (make-string-hash-table))
+  (set! mime-types-files (make-vector (length mime-types-pathnames) (list #f)))
+  unspecific)
 
-(define (search-mime-types-file pathname suffix)
-  (and (file-readable? pathname)
-       (call-with-input-file pathname
-	 (lambda (port)
-	   (let loop ()
-	     (let ((line (read-line port)))
-	       (and (not (eof-object? line))
-		    (let ((line (string-trim line)))
+(define mime-types)
+(define mime-types-files)
+
+(define mime-types-pathnames
+  '("/etc/mime.types" "~/.mime.types"))
+
+(define (import-mime-types)
+  (if (let loop ((pathnames mime-types-pathnames) (index 0) (changed? #f))
+	(if (pair? pathnames)
+	    (loop (cdr pathnames)
+		  (fix:+ index 1)
+		  (boolean/or (import-mime-types-file (car pathnames) index)
+			      changed?))
+	    changed?))
+      (with-thread-events-blocked
+	(lambda ()
+	  (hash-table/clear! mime-types)
+	  (for-each-vector-element mime-types-files
+	    (lambda (p)
+	      (for-each (lambda (entry)
+			  (let ((type (car entry)))
+			    (for-each (lambda (suffix)
+					(hash-table/put! mime-types
+							 suffix
+							 type))
+				      (cdr entry))))
+			(cdr p))))))))
+
+(define (import-mime-types-file pathname index)
+  (let ((changed? #f))
+    (let loop ((t (file-modification-time pathname)))
+      (with-thread-events-blocked
+	(lambda ()
+	  (let ((t* (car (vector-ref mime-types-files index))))
+	    (cond ((eqv? t* t)
+		   unspecific)
+		  (t
+		   (vector-set! mime-types-files
+				index
+				(cons t (read-mime-types-file pathname)))
+		   (set! changed? #t))
+		  (t*
+		   (vector-set! mime-types-files
+				index
+				(list #f))
+		   (set! changed? #t))))))
+      (let ((t* (file-modification-time pathname)))
+	(if (not (eqv? t* t))
+	    (loop t*))))
+    changed?))
+
+(define (read-mime-types-file pathname)
+  (call-with-input-file pathname
+    (lambda (port)
+      (let loop ((entries '()))
+	(let ((line (read-line port)))
+	  (if (eof-object? line)
+	      (reverse! entries)
+	      (loop (let ((line (string-trim line)))
 		      (if (or (string-null? line)
 			      (char=? (string-ref line 0) #\#))
-			  (loop)
-			  (let ((tokens
-				 (burst-string line char-set:whitespace #t)))
-			    (if (there-exists? (cdr tokens)
-				  (lambda (suffix*)
-				    (string=? suffix* suffix)))
-				(car tokens)
-				(loop))))))))))))
+			  entries
+			  (cons (burst-string line char-set:whitespace #t)
+				entries))))))))))
 
 (define (user-home-directory user-name)
   (let ((directory ((ucode-primitive get-user-home-directory 1) user-name)))

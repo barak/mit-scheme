@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.38 2004/10/22 04:47:34 cph Exp $
+$Id: pathnm.scm,v 14.39 2004/10/28 03:21:47 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,2000,2001 Massachusetts Institute of Technology
@@ -289,19 +289,21 @@ these rules:
 		    (or (%pathname-version pathname) version))))
 
 (define (pathname-mime-type pathname)
-  (let ((type (os/pathname-mime-type pathname)))
-    (and type
-	 (begin
-	   (guarantee-string type 'PATHNAME-MIME-TYPE)
-	   (let ((parts (burst-string type #\/ #f)))
-	     (if (not (and (pair? parts)
-			   (mime-token? (car parts))
-			   (pair? (cdr parts))
-			   (mime-token? (cadr parts))
-			   (null? (cddr parts))))
-		 (error "Malformed MIME-type string:" type))
-	     (cons (intern (car parts))
-		   (intern (cadr parts))))))))
+  (let ((suffix (pathname-type pathname)))
+    (and (string? suffix)
+	 (let ((type (os/suffix-mime-type suffix)))
+	   (and type
+		(begin
+		  (guarantee-string type 'PATHNAME-MIME-TYPE)
+		  (let ((parts (burst-string type #\/ #f)))
+		    (if (not (and (pair? parts)
+				  (mime-token? (car parts))
+				  (pair? (cdr parts))
+				  (mime-token? (cadr parts))
+				  (null? (cddr parts))))
+			(error "Malformed MIME-type string:" type))
+		    (cons (intern (car parts))
+			  (intern (cadr parts))))))))))
 
 (define (mime-token? string)
   (let ((end (string-length string)))
