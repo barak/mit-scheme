@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 4.33 1988/12/13 13:13:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 4.34 1988/12/15 17:29:35 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -41,4 +41,4 @@ MIT in each case. |#
 	    ((package/reference (find-package name) 'INITIALIZE-PACKAGE!)))
 	  '((COMPILER MACROS)
 	    (COMPILER DECLARATIONS)))
-(add-system! (make-system "Liar" 4 33 '()))
+(add-system! (make-system "Liar" 4 34 '()))
