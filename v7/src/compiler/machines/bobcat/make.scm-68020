@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68020,v 4.86 1991/06/12 20:54:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68020,v 4.87 1991/07/25 07:24:04 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -45,4 +45,4 @@ MIT in each case. |#
 ((package/reference (find-package '(COMPILER LAP-SYNTAXER))
 		    'MC68K/toggle-closure-format)
  'MC68020)
-(add-system! (make-system "Liar (Motorola MC68020)" 4 86 '()))
+(add-system! (make-system "Liar (Motorola MC68020)" 4 87 '()))
