@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: x11graph.c,v 1.32 1993/12/05 06:09:30 cph Exp $
+$Id: x11graph.c,v 1.33 1994/09/26 23:08:46 cph Exp $
 
-Copyright (c) 1989-93 Massachusetts Institute of Technology
+Copyright (c) 1989-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -495,7 +495,7 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-SET-FUNCTION", Prim_x_graphics_set_function, 2, 2,
 }
 
 static XPoint *
-DEFUN (floating_vector_point_args, (xw, x_index, y_index),
+DEFUN (floating_vector_point_args, (xw, x_index, y_index, return_n_points),
        struct xwindow * xw AND
        unsigned int x_index AND
        unsigned int y_index AND
