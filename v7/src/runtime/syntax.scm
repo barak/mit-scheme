@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 13.46 1987/05/21 16:40:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 13.47 1987/05/29 16:49:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -440,7 +440,9 @@
    (lambda (pattern . body)
      (expand-lambda pattern body
        (lambda (pattern body)
-	 (make-named-lambda (car pattern) (cdr pattern) body))))))
+	 (if (pair? pattern)
+	     (make-named-lambda (car pattern) (cdr pattern) body)
+	     (syntax-error "Illegal named-lambda list" pattern))))))
 
 (define syntax-LET-form
   (spread-arguments
