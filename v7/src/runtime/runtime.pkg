@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.284 1997/07/15 05:16:12 adams Exp $
+$Id: runtime.pkg,v 14.285 1997/07/15 16:33:29 adams Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -333,10 +333,8 @@ MIT in each case. |#
   (export ()
 	  *save-uncompressed-files?*
 	  *uncompressed-file-lifetime*
-	  compiled-code-block/filename
 	  compiled-entry/block
 	  compiled-entry/dbg-object
-	  compiled-entry/filename
 	  compiled-entry/offset
 	  compiled-expression/scode
 	  compiled-procedure/name
@@ -387,6 +385,8 @@ MIT in each case. |#
 	  dbg-procedure/block
 	  dbg-procedure/source-code
 	  dbg-expression?)
+  (export (runtime unparser)
+	  compiled-entry/filename-and-index)
   (export (runtime compress)
 	  uncompress-internal)
   (initialization (initialize-package!)))

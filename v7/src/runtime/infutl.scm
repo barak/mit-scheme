@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.58 1995/07/17 20:10:43 adams Exp $
+$Id: infutl.scm,v 1.59 1997/07/15 16:33:38 adams Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -184,10 +184,10 @@ MIT in each case. |#
       (compiled-entry/offset (compiled-closure->entry entry))
       (compiled-code-address->offset entry)))
 
-(define (compiled-entry/filename entry)
-  (compiled-code-block/filename (compiled-entry/block entry)))
+(define (compiled-entry/filename-and-index entry)
+  (compiled-code-block/filename-and-index (compiled-entry/block entry)))
 
-(define (compiled-code-block/filename block)
+(define (compiled-code-block/filename-and-index block)
   (let loop ((info (compiled-code-block/debugging-info block)))
     (cond ((string? info) (values (canonicalize-debug-info-filename info) #f))
 	  ((not (pair? info)) (values false false))
