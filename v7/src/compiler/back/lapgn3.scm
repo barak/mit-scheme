@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 4.9 1992/04/07 15:54:39 jinx Exp $
+$Id: lapgn3.scm,v 4.10 1992/10/19 19:14:11 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -152,7 +152,3 @@ MIT in each case. |#
 		  (lambda (new)
 		    (set! *interned-global-links* new))
 		  "GLOBAL-"))
-
-(define-integrable (set-current-branches! consequent alternative)
-  (set-pblock-consequent-lap-generator! *current-bblock* consequent)
-  (set-pblock-alternative-lap-generator! *current-bblock* alternative))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.14 1992/05/14 03:00:40 jinx Exp $
+$Id: linear.scm,v 4.15 1992/10/19 19:14:03 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -203,5 +203,6 @@ MIT in each case. |#
 	     ,@(code-thunk)))
   'done)
 
-(define (initialize-lap-linearizer!)
-  (set! *end-of-block-code* (LAP)))
+(define-integrable (set-current-branches! consequent alternative)
+  (set-pblock-consequent-lap-generator! *current-bblock* consequent)
+  (set-pblock-alternative-lap-generator! *current-bblock* alternative))
