@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.34 2001/08/20 21:02:13 cph Exp $
+$Id: packag.scm,v 14.35 2001/09/25 05:11:31 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -457,7 +457,7 @@ USA.
 	    (if (pair? file-case)
 		(let ((option (lookup-option (car file-case) options)))
 		  (if (not option)
-		      (error "Missing key:" key))
+		      (error "Missing key:" (car file-case)))
 		  (let ((clauses (cdr file-case)))
 		    (let ((n (vector-length clauses)))
 		      (do ((i 0 (fix:+ i 1)))
