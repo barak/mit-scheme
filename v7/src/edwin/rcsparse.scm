@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rcsparse.scm,v 1.2 1997/04/02 08:17:13 cph Exp $
+$Id: rcsparse.scm,v 1.3 1997/06/25 07:25:08 cph Exp $
 
 Copyright (c) 1991-97 Massachusetts Institute of Technology
 
@@ -200,61 +200,73 @@ MIT in each case. |#
 
 ;;;; Delta Search
 
-(define (rcs-find-delta admin number)
+(define (rcs-find-delta admin number error?)
   (if number
       (let ((n-fields (rcs-number-length number))
 	    (head (rcs-admin/head admin)))
 	(if (fix:= n-fields 1)
 	    (let loop ((delta head))
-	      (if (not delta)
-		  (error:bad-range-argument number 'RCS-FIND-DELTA))
-	      (if (string-prefix? number (rcs-delta/number delta))
-		  delta
-		  (loop (rcs-delta/next delta))))
+	      (if delta
+		  (if (string-prefix? number (rcs-delta/number delta))
+		      delta
+		      (loop (rcs-delta/next delta)))
+		  (and error?
+		       (error:bad-range-argument number 'RCS-FIND-DELTA))))
 	    (let loop ((branch head) (i 1))
 	      (let* ((i (fix:+ i 1))
-		     (delta (find-revision branch (rcs-number-head number i))))
-		(if (fix:= n-fields i)
-		    delta
-		    (let* ((i (fix:+ i 1))
-			   (branch
-			    (find-branch delta (rcs-number-head number i))))
-		      (if (fix:= n-fields i)
-			  (last-revision branch)
-			  (loop branch i))))))))
+		     (delta
+		      (find-revision branch
+				     (rcs-number-head number i error?)
+				     error?)))
+		(and delta
+		     (if (fix:= n-fields i)
+			 delta
+			 (let* ((i (fix:+ i 1))
+				(branch
+				 (find-branch delta
+					      (rcs-number-head number i error?)
+					      error?)))
+			   (and branch
+				(if (fix:= n-fields i)
+				    (last-revision branch)
+				    (loop branch i))))))))))
       (if (rcs-admin/branch admin)
-	  (rcs-find-delta admin (rcs-admin/branch admin))
+	  (rcs-find-delta admin (rcs-admin/branch admin) error?)
 	  (rcs-admin/head admin))))
 
 (define (last-revision delta)
   (if (rcs-delta/next delta)
       (last-revision (rcs-delta/next delta))
       delta))
+
+(define (find-revision delta number error?)
+  (and number
+       (let loop ((delta delta))
+	 (if delta
+	     (if (string=? number (rcs-delta/number delta))
+		 delta
+		 (loop (rcs-delta/next delta)))
+	     (and error?
+		  (error:bad-range-argument number 'RCS-FIND-DELTA))))))
 
-(define (find-revision delta number)
-  (let loop ((delta delta))
-    (if (not delta)
-	(error:bad-range-argument number 'RCS-FIND-DELTA))
-    (if (string=? number (rcs-delta/number delta))
-	delta
-	(loop (rcs-delta/next delta)))))
+(define (find-branch delta number error?)
+  (and number
+       (let loop ((branches (rcs-delta/branches delta)))
+	 (if (not (null? branches))
+	     (if (string-prefix? number (rcs-delta/number (car branches)))
+		 (car branches)
+		 (loop (cdr branches)))
+	     (and error?
+		  (error:bad-range-argument number 'RCS-FIND-DELTA))))))
 
-(define (find-branch delta number)
-  (let loop ((branches (rcs-delta/branches delta)))
-    (if (null? branches)
-	(error:bad-range-argument number 'RCS-FIND-DELTA))
-    (if (string-prefix? number (rcs-delta/number (car branches)))
-	(car branches)
-	(loop (cdr branches)))))
-
-(define (rcs-number-head number n-fields)
+(define (rcs-number-head number n-fields error?)
   (let ((end (string-length number)))
     (let loop ((i 0) (n-fields n-fields))
       (if (fix:= i end)
-	  (begin
-	    (if (fix:> n-fields 1)
-		(error:bad-range-argument n-fields 'RCS-FIND-DELTA))
-	    number)
+	  (if (fix:> n-fields 1)
+	      (and error?
+		   (error:bad-range-argument n-fields 'RCS-FIND-DELTA))
+	      number)
 	  (let ((i* (fix:+ i 1)))
 	    (if (char=? #\. (string-ref number i))
 		(let ((n-fields (fix:- n-fields 1)))
