@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.26 1992/05/26 17:31:58 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.27 1992/05/26 18:41:31 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -386,7 +386,7 @@ MIT in each case. |#
 	(let ((pathname (merge-pathnames filename)))
 	  (find-alternate-file-type pathname
 				    `(("bsm" . ,fasload-loader)
-				      ("bcs" . compressed-loader)))))))	
+				      ("bcs" . ,compressed-loader)))))))
 
 (define (process-bsym-filename name)
   (->namestring
