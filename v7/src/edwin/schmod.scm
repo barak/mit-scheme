@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: schmod.scm,v 1.52 2001/07/12 21:57:06 cph Exp $
+;;; $Id: schmod.scm,v 1.53 2001/11/02 17:10:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -188,6 +188,11 @@ The following commands evaluate Scheme expressions:
 	    (WITH-RESTART . 4)
 	    (WITH-SIMPLE-RESTART . 2)
 	    (BIND-CONDITION-HANDLER . 2)
+	    (KEEP-MATCHING-ITEMS . 1)
+	    (KEEP-MATCHING-ITEMS! . 1)
+	    (DELETE-MATCHING-ITEMS . 1)
+	    (DELETE-MATCHING-ITEMS! . 1)
+	    (FIND-MATCHING-ITEM . 1)
 	    (LIST-TRANSFORM-POSITIVE . 1)
 	    (LIST-TRANSFORM-NEGATIVE . 1)
 	    (LIST-SEARCH-POSITIVE . 1)
