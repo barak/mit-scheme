@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.14 2001/11/09 21:37:58 cph Exp $
+;;; $Id: shared.scm,v 1.15 2001/11/11 05:45:57 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -23,6 +23,11 @@
 
 (declare (usual-integrations))
 
+(define *buffer-name*)
+(define debug:disable-substitution-optimizer? #f)
+(define debug:disable-peephole-optimizer? #f)
+(define debug:trace-substitution? #f)
+
 (define (generate-external-procedure expression preprocessor generator)
   (fluid-let ((*id-counters* '()))
     (let ((external-bindings (list 'BINDINGS))
@@ -33,6 +38,9 @@
 	(maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
 			     (cdr external-bindings))
 	  `(LAMBDA (,b)
+	     ;; Note that PROTECT is used here as a marker to identify
+	     ;; code that has potential side effects.  See below for
+	     ;; an explanation.
 	     ,(fluid-let ((*buffer-name* `(PROTECT ,b)))
 		(maybe-make-let (map (lambda (b)
 				       (list (cdr b) (car b)))
@@ -42,83 +50,9 @@
 		     (if debug:disable-substitution-optimizer?
 			 expression
 			 (optimize-by-substitution expression))))))))))))
-
-(define *buffer-name*)
-(define debug:disable-substitution-optimizer? #f)
-(define debug:disable-peephole-optimizer? #f)
-(define debug:trace-substitution? #f)
-
-(define (maybe-make-let bindings body)
-  (if (pair? bindings)
-      `((LAMBDA ,(map car bindings) ,body)
-	,@(map cadr bindings))
-      body))
-
-(define (with-value-binding expression generator)
-  `(,(let ((v (make-value-identifier)))
-       `(LAMBDA (,v)
-	  ,(generator v)))
-    ,expression))
-
-(define (call-with-pointer pointer procedure)
-  (if pointer
-      (procedure pointer)
-      `(,(let ((p (make-ptr-identifier)))
-	   `(LAMBDA (,p)
-	      ,(procedure p)))
-	,(fetch-pointer))))
-
-(define (fetch-pointer)
-  `(GET-PARSER-BUFFER-POINTER ,*buffer-name*))
-
-(define (backtracking-kf pointer generate-body)
-  (make-kf-lambda
-   (lambda ()
-     `(BEGIN
-	(SET-PARSER-BUFFER-POINTER! ,*buffer-name* ,pointer)
-	,(generate-body)))))
-
-(define (make-kf-lambda generator)
-  (make-delayed-lambda make-kf-identifier (list) generator))
-
-(define (make-matcher-ks-lambda generator)
-  (make-delayed-lambda make-ks-identifier
-		       (list make-kf-identifier)
-		       generator))
-
-(define (make-parser-ks-lambda generator)
-  (make-delayed-lambda make-ks-identifier
-		       (list make-value-identifier make-kf-identifier)
-		       generator))
 
-(define (make-kf-identifier)
-  (generate-identifier 'KF))
+;;;; Support for preprocessing
 
-(define (make-ks-identifier)
-  (generate-identifier 'KS))
-
-(define (make-ptr-identifier)
-  (generate-identifier 'P))
-
-(define (make-value-identifier)
-  (generate-identifier 'V))
-
-(define (generate-identifier prefix)
-  (string->uninterned-symbol
-   (string-append
-    (symbol-name prefix)
-    (number->string
-     (let ((entry (assq prefix *id-counters*)))
-       (if entry
-	   (let ((n (cdr entry)))
-	     (set-cdr! entry (+ n 1))
-	     n)
-	   (begin
-	     (set! *id-counters* (cons (cons prefix 2) *id-counters*))
-	     1)))))))
- 
-(define *id-counters*)
-
 (define (check-0-args expression)
   (if (not (null? (cdr expression)))
       (error "Malformed expression:" expression)))
@@ -165,6 +99,8 @@
 		  (symbol? (car object))
 		  (loop (cdr object)))))))
 
+;;;; Parser macros
+
 (define parser-macros-rtd
   (make-record-type "parser-macros" '(PARENT MATCHER-TABLE PARSER-TABLE)))
 
@@ -235,7 +171,98 @@
 (define *parser-macros*
   *global-parser-macros*)
 
-;;;; Substitution optimization
+;;;; Support for code generation
+
+(define (maybe-make-let bindings body)
+  (if (pair? bindings)
+      `((LAMBDA ,(map car bindings) ,body)
+	,@(map cadr bindings))
+      body))
+
+(define (with-value-binding expression generator)
+  `(,(let ((v (make-value-identifier)))
+       `(LAMBDA (,v)
+	  ,(generator v)))
+    ,expression))
+
+(define (call-with-pointer pointer procedure)
+  (if pointer
+      (procedure pointer)
+      `(,(let ((p (make-ptr-identifier)))
+	   `(LAMBDA (,p)
+	      ,(procedure p)))
+	,(fetch-pointer))))
+
+(define (fetch-pointer)
+  `(GET-PARSER-BUFFER-POINTER ,*buffer-name*))
+
+(define (backtracking-kf pointer generate-body)
+  (make-kf-lambda
+   (lambda ()
+     `(BEGIN
+	(SET-PARSER-BUFFER-POINTER! ,*buffer-name* ,pointer)
+	,(generate-body)))))
+
+(define (make-kf-lambda generator)
+  (make-delayed-lambda make-kf-identifier (list) generator))
+
+(define (make-matcher-ks-lambda generator)
+  (make-delayed-lambda make-ks-identifier
+		       (list make-kf-identifier)
+		       generator))
+
+(define (make-parser-ks-lambda generator)
+  (make-delayed-lambda make-ks-identifier
+		       (list make-value-identifier make-kf-identifier)
+		       generator))
+
+(define (make-kf-identifier)
+  (generate-identifier 'KF))
+
+(define (make-ks-identifier)
+  (generate-identifier 'KS))
+
+(define (make-ptr-identifier)
+  (generate-identifier 'P))
+
+(define (make-value-identifier)
+  (generate-identifier 'V))
+
+(define (generate-identifier prefix)
+  (string->uninterned-symbol
+   (string-append
+    (symbol-name prefix)
+    (number->string
+     (let ((entry (assq prefix *id-counters*)))
+       (if entry
+	   (let ((n (cdr entry)))
+	     (set-cdr! entry (+ n 1))
+	     n)
+	   (begin
+	     (set! *id-counters* (cons (cons prefix 2) *id-counters*))
+	     1)))))))
+ 
+(define *id-counters*)
+
+;;;; Substitution optimizer 
+
+;;; The substitution optimizer assumes that the generated code has a
+;;; simplified syntax.  It further assumes that all code written by
+;;; the end user has been wrapped with PROTECT forms, and it ignores
+;;; anything in those forms.  Because virtually anything can appear
+;;; inside a PROTECT, it's assumed that the presence of PROTECT
+;;; implies a possible side-effect.  To simplify detection of side
+;;; effects, the buffer name is wrapped in PROTECT, to imply that all
+;;; operations on the buffer contain side effects.
+
+;;; Note that the WITH-POINTER forms use a stylized binding in which
+;;; the operand of the binding always contains PROTECT.  This often
+;;; produces non-optimal code, but in the absence of the PROTECT, the
+;;; binding will be discarded by the optimizer.  The reason for this
+;;; is that the references to the binding are themselves stored within
+;;; PROTECT forms, and thus not seen by the optimizer.  A better way
+;;; to deal with this would be to identify these bindings somehow, and
+;;; refuse to discard them.
 
 (define (bind-delayed-lambdas body-generator . operands)
   `(,(let ((parameters (map (lambda (operand) ((car operand))) operands)))
@@ -271,52 +298,52 @@
 	    ,(optimize-by-substitution (caddr expression))))
 	((LET)
 	 (maybe-resubstitute
-	  (let ((identifier (cadr expression))
-		(bindings
+	  (call-with-values
+	      (lambda ()
+		(discard-unused-loop-bindings
+		 (cadr expression)
 		 (map (lambda (binding)
 			`(,(car binding)
 			  ,(optimize-by-substitution (cadr binding))))
-		      (caddr expression)))
-		(body (optimize-by-substitution (cadddr expression))))
-	    (let ((discards
-		   (map (lambda (count operand)
-			  (and (= 0 count)
-			       (operand-discardable? operand)))
-			(count-references (map car bindings) body)
-			(map cadr bindings))))
-	      (if (there-exists? discards (lambda (discard) discard))
-		  `(LET ,identifier
-		       ,(apply-discards discards bindings)
-		     ,(discard-unused-operands-1 identifier discards body))
-		  `(LET ,identifier ,bindings ,body))))
+		      (caddr expression))
+		 (optimize-by-substitution (cadddr expression))))
+	    (lambda (identifier bindings body)
+	      `(LET ,identifier ,bindings ,body)))
 	  expression))
 	((PROTECT)
 	 expression)
 	((VECTOR-APPEND)
+	 ;; This seems redundant, since the peephole optimizer does
+	 ;; this too.  But it's needed to simplify value-aggregation
+	 ;; expressions so that they are properly recognized by
+	 ;; OPERAND-COPYABLE?.  For example, it's common to have a
+	 ;; procedure whose body is (VECTOR-APPEND (VECTOR) V), which
+	 ;; simplifies to V.  And a procedure whose body is a variable
+	 ;; reference may be freely copied.
 	 (optimize-group-expression (map optimize-by-substitution expression)
 				    '(VECTOR)))
 	(else
-	 (let ((expression (map optimize-by-substitution expression)))
-	   (if (lambda-expression? (car expression))
-	       (let ((body (caddr (car expression))))
-		 (call-with-values
-		     (lambda ()
-		       (compute-bindings-and-substitutions
-			(cadr (car expression))
-			(cdr expression)
-			body))
-		   (lambda (bindings substitutions)
-		     (maybe-resubstitute
-		      (call-with-values
-			  (lambda ()
-			    (discard-unused-operands
-			     bindings
-			     (maybe-apply-substitutions substitutions
-							body)))
-			maybe-make-let)
-		      expression))))
-	       expression))))
+	 (substitute-let-expression
+	  (map optimize-by-substitution expression))))
       expression))
+
+(define (substitute-let-expression expression)
+  (let ((operator (car expression))
+	(operands (cdr expression)))
+    (if (lambda-expression? operator)
+	(let ((body (caddr operator)))
+	  (call-with-values
+	      (lambda () (compute-substitutions (cadr operator) operands body))
+	    (lambda (bindings substitutions)
+	      (maybe-resubstitute
+	       (call-with-values
+		   (lambda ()
+		     (discard-parameters-from-operands
+		      bindings
+		      (apply-substitutions substitutions body)))
+		 maybe-make-let)
+	       expression))))
+	expression)))
 
 (define (maybe-resubstitute result expression)
   (if (equal? result expression)
@@ -332,92 +359,7 @@
 	      (newline)))
 	(optimize-by-substitution result))))
 
-(define (discard-unused-operands bindings body)
-  (let loop ((bindings bindings) (body body) (bindings* '()))
-    (if (pair? bindings)
-	(let ((identifier (car (car bindings)))
-	      (operand (cadr (car bindings))))
-	  (if (lambda-expression? operand)
-	      (let ((discards
-		     (map (lambda (count) (= 0 count))
-			  (count-references (cadr operand) (caddr operand)))))
-		(if (there-exists? discards (lambda (discard) discard))
-		    (loop (cdr bindings)
-			  (discard-unused-operands-1 identifier discards body)
-			  (cons (list identifier
-				      `(LAMBDA ,(apply-discards discards
-								(cadr operand))
-					 ,(caddr operand)))
-				bindings*))
-		    (loop (cdr bindings)
-			  body
-			  (cons (car bindings) bindings*))))
-	      (loop (cdr bindings)
-		    body
-		    (cons (car bindings) bindings*))))
-	(values (reverse! bindings*) body))))
-
-(define (apply-discards discards items)
-  (if (pair? discards)
-      (if (car discards)
-	  (apply-discards (cdr discards) (cdr items))
-	  (cons (car items) (apply-discards (cdr discards) (cdr items))))
-      '()))
-
-(define (discard-unused-operands-1 identifier discards expression)
-  (let loop ((expression expression))
-    (if (pair? expression)
-	(if (eq? identifier (car expression))
-	    (call-with-values
-		(lambda ()
-		  (discard-unused-operands-2 discards (cdr expression)))
-	      (lambda (kept not-discarded)
-		(let ((call (cons identifier kept)))
-		  (if (pair? not-discarded)
-		      `(BEGIN ,@not-discarded ,call)
-		      call))))
-	    (case (car expression)
-	      ((LAMBDA)
-	       (if (memq identifier (cadr expression))
-		   expression
-		   `(LAMBDA ,(cadr expression)
-		      ,(loop (caddr expression)))))
-	      ((LET)
-	       `(LET ,(cadr expression)
-		  ,(map (lambda (binding)
-			  `(,(car binding) ,(loop (cadr binding))))
-			(caddr expression))
-		  ,(if (or (eq? identifier (cadr expression))
-			   (assq identifier (caddr expression)))
-		       (cadddr expression)
-		       (loop (cadddr expression)))))
-	      ((PROTECT)
-	       expression)
-	      (else
-	       (map loop expression))))
-	expression)))
-
-(define (discard-unused-operands-2 discards operands)
-  (let loop
-      ((discards discards)
-       (operands operands)
-       (kept '())
-       (not-discarded '()))
-    (if (pair? discards)
-	(if (car discards)
-	    (loop (cdr discards)
-		  (cdr operands)
-		  kept
-		  (if (operand-discardable? (car operands))
-		      not-discarded
-		      (cons (car operands) not-discarded)))
-	    (loop (cdr discards)
-		  (cdr operands)
-		  (cons (car operands) kept)
-		  not-discarded))
-	(values (reverse! kept) (reverse! not-discarded)))))
-
-(define (compute-bindings-and-substitutions identifiers operands body)
+(define (compute-substitutions identifiers operands body)
   (let loop
       ((identifiers identifiers)
        (operands operands)
@@ -451,29 +393,7 @@
 		       substitutions))))
 	(values (reverse! bindings) substitutions))))
 
-(define (operand-copyable? operand)
-  (or (symbol? operand)
-      (and (lambda-expression? operand)
-	   (or (boolean? (caddr operand))
-	       (symbol? (caddr operand))))
-      (equal? operand '(VECTOR))))
-
-(define (operand-substitutable? operand body)
-  (or (lambda-expression? operand)
-      (not (and (tree-memq 'PROTECT operand)
-		(tree-memq 'PROTECT body)))))
-
-(define (operand-discardable? operand)
-  (not (tree-memq 'PROTECT operand)))
-
-(define (tree-memq item tree)
-  (let loop ((tree tree))
-    (if (pair? tree)
-	(or (loop (car tree))
-	    (loop (cdr tree)))
-	(eq? item tree))))
-
-(define (maybe-apply-substitutions substitutions expression)
+(define (apply-substitutions substitutions expression)
   (if (pair? substitutions)
       (let loop ((expression expression) (substitutions substitutions))
 	(cond ((pair? expression)
@@ -515,7 +435,152 @@
 	      (else expression)))
       expression))
 
+;;; Procedures that discard unused parameters and operands.
+
+(define (discard-unused-loop-bindings identifier bindings body)
+  ;; Discard unused parameters of a LET loop.
+  (let ((discards
+	 (map (lambda (count operand)
+		(and (= 0 count)
+		     (operand-discardable? operand)))
+	      (count-references (map car bindings) body)
+	      (map cadr bindings))))
+    (if (there-exists? discards (lambda (discard) discard))
+	(values identifier
+		(apply-discards-to-list discards bindings)
+		(apply-discards-to-calls identifier discards body))
+	(values identifier bindings body))))
+
+(define (discard-parameters-from-operands bindings body)
+  ;; Discard unused parameters from LAMBDA expressions that are
+  ;; operands of a LET.  (The unused parameters of the LET itself were
+  ;; previously discarded.)
+  (let loop ((bindings bindings) (body body) (bindings* '()))
+    (if (pair? bindings)
+	(let ((identifier (car (car bindings)))
+	      (operand (cadr (car bindings))))
+	  (call-with-values
+	      (lambda ()
+		(discard-parameters-from-operand identifier operand body))
+	    (lambda (operand body)
+	      (loop (cdr bindings)
+		    body
+		    (cons (list identifier operand) bindings*)))))
+	(values (reverse! bindings*) body))))
+
+(define (discard-parameters-from-operand identifier operand body)
+  (if (lambda-expression? operand)
+      (let ((identifiers (cadr operand))
+	    (body* (caddr operand)))
+	(let ((discards
+	       (map (lambda (count) (= 0 count))
+		    (count-references identifiers body*))))
+	  (if (there-exists? discards (lambda (discard) discard))
+	      (values `(LAMBDA ,(apply-discards-to-list discards identifiers)
+			 ,body*)
+		      (apply-discards-to-calls identifier discards body))
+	      (values operand body))))
+      (values operand body)))
+
+(define (apply-discards-to-calls identifier discards expression)
+  ;; Find each call to IDENTIFIER in EXPRESSION and apply DISCARDS to
+  ;; the operands of the call.
+  (let loop ((expression expression))
+    (if (pair? expression)
+	(if (eq? identifier (car expression))
+	    (call-with-values
+		(lambda ()
+		  (apply-discards-to-operands discards (cdr expression)))
+	      (lambda (kept not-discarded)
+		(let ((call (cons identifier kept)))
+		  (if (pair? not-discarded)
+		      `(BEGIN ,@not-discarded ,call)
+		      call))))
+	    (case (car expression)
+	      ((LAMBDA)
+	       (if (memq identifier (cadr expression))
+		   expression
+		   `(LAMBDA ,(cadr expression)
+		      ,(loop (caddr expression)))))
+	      ((LET)
+	       `(LET ,(cadr expression)
+		  ,(map (lambda (binding)
+			  `(,(car binding) ,(loop (cadr binding))))
+			(caddr expression))
+		  ,(if (or (eq? identifier (cadr expression))
+			   (assq identifier (caddr expression)))
+		       (cadddr expression)
+		       (loop (cadddr expression)))))
+	      ((PROTECT)
+	       expression)
+	      (else
+	       (map loop expression))))
+	expression)))
+
+(define (apply-discards-to-operands discards operands)
+  (let loop
+      ((discards discards)
+       (operands operands)
+       (kept '())
+       (not-discarded '()))
+    (if (pair? discards)
+	(if (car discards)
+	    (loop (cdr discards)
+		  (cdr operands)
+		  kept
+		  (if (operand-discardable? (car operands))
+		      not-discarded
+		      (cons (car operands) not-discarded)))
+	    (loop (cdr discards)
+		  (cdr operands)
+		  (cons (car operands) kept)
+		  not-discarded))
+	(values (reverse! kept) (reverse! not-discarded)))))
+
+(define (apply-discards-to-list discards items)
+  (if (pair? discards)
+      (if (car discards)
+	  (apply-discards-to-list (cdr discards) (cdr items))
+	  (cons (car items)
+		(apply-discards-to-list (cdr discards) (cdr items))))
+      '()))
+
+;;; Predicates that control the substitution process.
+
+(define (operand-copyable? operand)
+  ;; Returns true iff OPERAND can be freely copied.  Any variable that
+  ;; is bound to such an operand is eliminated by beta substitution.
+  (or (symbol? operand)
+      (and (lambda-expression? operand)
+	   (or (boolean? (caddr operand))
+	       (symbol? (caddr operand))))
+      (equal? operand '(VECTOR))))
+
+(define (operand-substitutable? operand body)
+  ;; Returns true iff OPERAND can be moved from a binding site to a
+  ;; reference site.  If a variable is bound to one of these operands
+  ;; and has only one reference, it can be eliminated by beta
+  ;; substitution.
+  (or (lambda-expression? operand)
+      (not (and (expression-may-have-side-effects? operand)
+		(expression-may-have-side-effects? body)))))
+
+(define (operand-discardable? operand)
+  ;; Returns true iff OPERAND can be removed from the program,
+  ;; provided that its value is unused.  Basically this tests for the
+  ;; potential presence of side effects in OPERAND.
+  (not (expression-may-have-side-effects? operand)))
+
+(define (expression-may-have-side-effects? expression)
+  (let loop ((tree expression))
+    (if (pair? tree)
+	(or (loop (car tree))
+	    (loop (cdr tree)))
+	(eq? 'PROTECT tree))))
+
 (define (count-references identifiers expression)
+  ;; For each element of IDENTIFIERS, count the number of references
+  ;; in EXPRESSION.  Result is a list of counts.
   (let ((alist
 	 (map (lambda (identifier)
 		(cons identifier 0))
@@ -550,6 +615,8 @@
     (map cdr alist)))
 
 (define (strip-protection-wrappers expression)
+  ;; Remove PROTECT wrappers from EXPRESSION.  Used after substitution
+  ;; optimization is complete.
   (if (pair? expression)
       (case (car expression)
 	((LAMBDA)
@@ -568,7 +635,7 @@
 	 (map strip-protection-wrappers expression)))
       expression))
 
-;;;; Code optimizer
+;;;; Peephole optimizer
 
 (define (optimize-expression expression)
   (if debug:disable-peephole-optimizer?
