@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: slot.scm,v 1.5 1997/06/25 03:28:58 cph Exp $
+;;; $Id: slot.scm,v 1.6 1997/06/25 05:31:31 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -41,7 +41,7 @@
   (name #f read-only #t)
   (class #f read-only #t)
   (index #f read-only #t)
-  (properties #f read-only #t))
+  (properties #f))
 
 (define (slot-name slot)
   (guarantee-slot-descriptor slot 'SLOT-NAME)
@@ -129,7 +129,12 @@
 	     (lambda (keyword maker)
 	       (let ((accessor (slot-property slot keyword #f)))
 		 (if accessor
-		     (add-method accessor (maker class name)))))))
+		     (begin
+		       (add-method accessor (maker class name))
+		       (set-slot-descriptor/properties!
+			slot
+			(del-assq! keyword
+				   (slot-descriptor/properties slot)))))))))
        (install 'ACCESSOR slot-accessor-method)
        (install 'MODIFIER slot-modifier-method)
        (install 'INITPRED slot-initpred-method)))
