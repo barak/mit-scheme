@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchgcc.h,v 9.59 1999/01/02 06:11:34 cph Exp $
+$Id: bchgcc.h,v 9.60 2000/01/18 02:59:13 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -80,10 +80,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #  define BCH_STORE_OPERATOR_LINKAGE_ADDRESS STORE_OPERATOR_LINKAGE_ADDRESS
 #endif
 
-
+#ifdef _POSIX
+# include <sys/types.h>
+#else /* not _POSIX */
 #ifndef __osf__
 # define ssize_t int
-#endif /* __osf__ */
+#endif /* not __osf__ */
+#endif /* not _POSIX */
 
 extern char * EXFUN (error_name, (int));
 

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bintopsb.c,v 9.69 1999/01/02 06:06:43 cph Exp $
+$Id: bintopsb.c,v 9.70 2000/01/18 02:52:54 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -2460,7 +2460,7 @@ static struct keyword_struct
     END_KEYWORD ()
     };
 
-void
+int
 DEFUN (main, (argc, argv), int argc AND char **argv)
 {
   parse_keywords (argc, argv, options, false);
@@ -2491,4 +2491,5 @@ DEFUN (main, (argc, argv), int argc AND char **argv)
   setup_io ("rb", "w");
   do_it ();
   quit (0);
+  return (0);
 }

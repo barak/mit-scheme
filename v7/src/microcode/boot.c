@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.100 1999/01/02 06:11:34 cph Exp $
+$Id: boot.c,v 9.101 2000/01/18 02:52:58 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -88,17 +88,13 @@ DEFUN (usage, (error_string), CONST char * error_string)
 
 /* Exit is done in a different way on some operating systems (eg. VMS)  */
 
-#ifndef main_type
-#define main_type void
-#endif
-
 #ifndef main_name
 #define main_name main
 #endif
 
 #define FILE_READABLE(filename) ((access ((filename), 4)) >= 0)
 
-main_type
+
 DEFUN (main_name, (argc, argv),
        int argc AND CONST char ** argv)
 {
@@ -204,6 +200,7 @@ DEFUN (main_name, (argc, argv),
 	}
     }
   termination_init_error ();
+  return (0);
 }
 
 static SCHEME_OBJECT

@@ -1,8 +1,8 @@
 /* -*- C -*-
 
-$Id: bchdrn.c,v 1.7 1999/01/02 06:11:34 cph Exp $
+$Id: bchdrn.c,v 1.8 2000/01/18 02:54:18 cph Exp $
 
-Copyright (c) 1991-1999 Massachusetts Institute of Technology
+Copyright (c) 1991-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -472,7 +472,7 @@ DEFUN_VOID (start_drones)
   /*NOTREACHED*/
 }
 
-void
+int
 DEFUN (main, (argc, argv), int argc AND char ** argv)
 {
   int count, nargs;
@@ -530,6 +530,7 @@ DEFUN (main, (argc, argv), int argc AND char ** argv)
 
   start_drones ();
   /*NOTREACHED*/
+  return (0);
 }
 
 #define MAIN main

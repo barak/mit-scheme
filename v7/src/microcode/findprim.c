@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: findprim.c,v 9.52 1999/01/02 06:11:34 cph Exp $
+$Id: findprim.c,v 9.53 2000/01/18 02:53:44 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -240,7 +240,7 @@ void EXFUN (skip_token, (void));
 void EXFUN (sort, (void));
 void EXFUN (update_from_entry, (struct descriptor * primitive_descriptor));
 
-void
+int
 DEFUN (main, (argc, argv),
        int argc AND
        char **argv)
@@ -344,6 +344,7 @@ DEFUN (main, (argc, argv),
   if (output != stdout)
     fclose (output);
   NORMAL_EXIT ();
+  return (0);
 }
 
 void
