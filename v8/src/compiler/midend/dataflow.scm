@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dataflow.scm,v 1.10 1995/03/21 18:14:12 adams Exp $
+$Id: dataflow.scm,v 1.11 1995/03/22 01:06:49 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -97,7 +97,7 @@ MIT in each case. |#
 	     graph graph/read-eqv?-preserving-constant?)
 	    ;;(if compiler:guru?
 	    ;;	(graph/look-for-interesting-nodes graph))
-	    (graph/reduce-%internal-apply graph)
+	    (graph/compiled-procedure-reductions graph)
 	    (if (graph/interesting? graph)
 		(graph/display-statistics! graph))
 
@@ -2306,8 +2306,10 @@ MIT in each case. |#
 				   (value-set/singletons values))))
 		    (else unspecific)))))
     (graph/nodes graph)))
-
-(define (graph/reduce-%internal-apply graph)
+
+(define (graph/compiled-procedure-reductions graph)
+  ;; What can we optimize certain known operators if we know that all of
+  ;; the operands are compiled procedures (and all of the same arity).
   (define (match? lambda-expr remove-closure? arity)
     (call-with-values
 	(lambda () (lambda-list/parse (lambda/formals lambda-expr)))
@@ -2325,27 +2327,55 @@ MIT in each case. |#
 		   arity))
 	  (else #F)))
   (define (inspect application)
-    (if (call/%internal-apply? (application/text application))
-	(let* ((node    (application/operator-node application))
-	       (values  (node/values node))
-	       (call-arity
-		(length (cdr (application/operand-nodes application)))))
-	  (cond ((value-set/unknown? values))
-		((value-set/unique-value values))
-		((for-all? (value-set/singletons values)
-		   (lambda (value)
-		     (value/arity-matches? value call-arity)))
-		 (if compiler:guru?
-		     (begin
-		       (display "\n;; Call site ") (display node)
-		       (display " multiple procedures arity ")
-		       (display call-arity) (display ": ")
-		       (display (map (lambda (p) (or (value/procedure? p)
-						     (value/closure/kind p)))
-				     (value-set/singletons values)))))
-		 (form/rewrite! (second (application/text application))
-		   `(QUOTE ,%internal-apply-unchecked)))
-		(else unspecific)))))
+    (let ((text (application/text application)))
+      (cond ((call/%internal-apply? text)
+	     (let* ((node    (application/operator-node application))
+		    (values  (node/values node))
+		    (call-arity		; sans continuation
+		     (length (cdr (application/operand-nodes application)))))
+	       (cond ((value-set/unknown? values))
+		     ((value-set/unique-value values))
+		     ((for-all? (value-set/singletons values)
+			(lambda (value)
+			  (value/arity-matches? value call-arity)))
+		      (if compiler:guru?
+			  (begin
+			    (display "\n;; Call site ") (display node)
+			    (display " multiple procedures arity ")
+			    (display call-arity) (display ": ")
+			    (display (map (lambda (p)
+					    (or (value/procedure? p)
+						(value/closure/kind p)))
+					  (value-set/singletons values)))))
+		      (form/rewrite! (second (application/text application))
+			`(QUOTE ,%internal-apply-unchecked)))
+		     (else unspecific))))
+	    ((call/%compiled-entry?? text)
+	     (let* ((node    (second (application/operand-nodes application)))
+		    (values  (node/values node)))
+	       (cond ((value-set/unknown? values))
+		     ((for-all? (value-set/singletons values)
+			(lambda (value)
+			  (or (value/closure? value)
+			      (value/procedure? value))))
+		      (if compiler:guru?
+			  (pp `(rewrite: ,text => (QUOTE #T))))
+		      (form/rewrite! text `(QUOTE ,#T))))))
+	    ((call/%compiled-entry-maximum-arity?? text)
+	     (let* ((node    (third (application/operand-nodes application)))
+		    (values  (node/values node))
+		    (arity+1 (first (call/operands text))))
+	       (cond ((not (QUOTE/? arity+1)))
+		     ((value-set/unknown? values))
+		     ((for-all? (value-set/singletons values)
+			(lambda (value)
+			  (value/arity-matches? value
+						(- (quote/text arity+1) 1))))
+		      (if compiler:guru?
+			  (pp `(rewrite: ,text => (QUOTE #T))))
+		      (form/rewrite! text `(QUOTE ,#T))))))
+	  
+	    (else unspecific))))
   (for-each inspect (graph/applications graph)))
 
 (define (graph/cleanup! graph)
