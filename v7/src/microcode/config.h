@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.88 1995/06/14 22:58:19 cph Exp $
+$Id: config.h,v 9.89 1995/07/27 01:26:34 adams Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -294,6 +294,20 @@ typedef unsigned long SCHEME_OBJECT;
 
 #define ADDRESS_TO_DATUM(address)					\
   ((SCHEME_OBJECT) (((unsigned long) (address)) & (~(HPPA_QUAD_MASK))))
+
+/* SHARP_F is a magic value:
+   Typecode TC_CONSTANT, high datum bits #b100, low datum bits are the top
+   TYPE_CODE_LENGTH bits of HPPA_QUAD_BIT
+
+   SHARP_F is stored in gr5 for access by compiled code.  This allows
+   us to generate #F and test against #F quickly, and also to use gr5
+   for compiled OBJECT->ADDRESS operations.  If we ever go to 5bit
+   typecodes we will be able to dispense with this overloading.
+
+   See also cmpauxmd/hppa.m4
+*/
+
+#define SHARP_F         0x22000010
 
 #endif /* hp9000s800 */
 
