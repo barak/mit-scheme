@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.17 1992/08/11 02:34:29 jinx Exp $
+$Id: dassm1.scm,v 4.18 1993/07/03 16:28:10 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -76,7 +76,9 @@ MIT in each case. |#
 			   (compiled-code-block/dbg-info (car blocks)
 							 symbol-table?))
 			  (if (not (null? (cdr blocks)))
-			      (write-char #\page)))))))))))))
+			      (begin
+				(write-char #\page)
+				(newline))))))))))))))
 
 (define disassembler/base-address)
 
@@ -94,6 +96,20 @@ MIT in each case. |#
   (let ((symbol-table (and info (dbg-info/labels info))))
     (write-string "Disassembly of ")
     (write block)
+    (let loop ((info (compiled-code-block/debugging-info block)))
+      (cond ((string? info)
+	     (write-string " (")
+	     (write-string info)
+	     (write-string ")"))
+	    ((not (pair? info)))
+	    ((vector? (car info))
+	     (loop (cdr info)))
+	    (else
+	       (write-string " (Block ")
+	       (write (cdr info))
+	       (write-string " in ")
+	       (write-string (car info))
+	       (write-string ")"))))
     (write-string ":\n")
     (write-string "Code:\n\n")
     (disassembler/write-instruction-stream
