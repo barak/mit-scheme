@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ystep.scm,v 1.6 2003/03/10 20:53:34 cph Exp $
+$Id: ystep.scm,v 1.7 2003/03/13 03:11:12 cph Exp $
 
 Copyright 1994,1997,2003 Massachusetts Institute of Technology
 
@@ -371,7 +371,7 @@ USA.
       (set-ynode-children! new-node children)
       (for-each (lambda (c) (set-ynode-parent! c new-node)) children)
       (let loop ((node new-node))
-	(ynode-needs-redisplay! ynode)
+	(ynode-needs-redisplay! node)
 	(for-each loop (ynode-children node)))
       new-node)))
 

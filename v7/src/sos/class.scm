@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: class.scm,v 1.15 2003/02/14 18:28:35 cph Exp $
+$Id: class.scm,v 1.16 2003/03/13 03:10:20 cph Exp $
 
 Copyright 1995,1997,2002,2002,2003 Massachusetts Institute of Technology
 
@@ -27,7 +27,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define-structure (class (conc-name class/)
+(define-structure (class (type-descriptor class-rtd)
+			 (conc-name class/)
 			 (constructor %make-class
 				      (name direct-superclasses direct-slots))
 			 (print-procedure

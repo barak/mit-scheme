@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.39 2003/02/14 18:28:34 cph Exp $
+$Id: thread.scm,v 1.40 2003/03/13 03:12:15 cph Exp $
 
 Copyright 1991,1992,1993,1998,1999,2001 Massachusetts Institute of Technology
 Copyright 2003 Massachusetts Institute of Technology
@@ -998,7 +998,7 @@ USA.
   (without-interrupts
    (lambda ()
      (let ((owner (thread-mutex/owner mutex)))
-       (if (and thread (not (eq? owner (current-thread))))
+       (if (and owner (not (eq? owner (current-thread))))
 	   (error "Don't own mutex:" mutex))
        (%unlock-thread-mutex mutex owner)))))
 
