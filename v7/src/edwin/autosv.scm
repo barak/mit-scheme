@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autosv.scm,v 1.27 1991/05/14 02:03:05 cph Exp $
+;;;	$Id: autosv.scm,v 1.28 1993/08/24 06:11:48 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -102,16 +102,50 @@ This file is not the file you visited; that changes only when you save."
       (disable-buffer-auto-save! buffer)))
 
 (define (enable-buffer-auto-save! buffer)
-  (set-buffer-auto-save-pathname!
-   buffer
-   (let ((pathname (buffer-pathname buffer)))
-     (if (and pathname (ref-variable auto-save-visited-file-name))
-	 pathname
-	 (os/auto-save-pathname pathname buffer)))))
+  (let ((pathname
+	 (let ((pathname (buffer-pathname buffer)))
+	   (if (and pathname (ref-variable auto-save-visited-file-name))
+	       pathname
+	       (os/auto-save-pathname pathname buffer)))))
+    (without-interrupts
+     (lambda ()
+       (set-buffer-auto-save-pathname! buffer pathname)
+       (add-group-microcode-entry (buffer-group buffer)
+				  (->namestring pathname))
+       (add-kill-buffer-hook buffer auto-save-kill-buffer-hook)))))
 
 (define (disable-buffer-auto-save! buffer)
-  (set-buffer-auto-save-pathname! buffer false))
+  (without-interrupts
+   (lambda ()
+     (set-buffer-auto-save-pathname! buffer false)
+     (remove-group-microcode-entry (buffer-group buffer))
+     (remove-kill-buffer-hook buffer auto-save-kill-buffer-hook))))
 
+(define (auto-save-kill-buffer-hook buffer)
+  (without-interrupts
+   (lambda ()
+     (remove-group-microcode-entry (buffer-group buffer)))))
+
+(define add-group-microcode-entry)
+(define remove-group-microcode-entry)
+(let ((index (fixed-objects-vector-slot 'EDWIN-AUTO-SAVE)))
+  (set! add-group-microcode-entry
+	(lambda (group namestring)
+	  (let ((vector (get-fixed-objects-vector)))
+	    (let ((alist (vector-ref vector index)))
+	      (let ((entry (assq group alist)))
+		(if entry
+		    (set-cdr! entry namestring)
+		    (vector-set! vector
+				 index
+				 (cons (cons group namestring) alist))))))))
+  (set! remove-group-microcode-entry
+	(lambda (group)
+	  (let ((vector (get-fixed-objects-vector)))
+	    (vector-set! vector
+			 index
+			 (del-assq! group (vector-ref vector index)))))))
+
 (define (delete-auto-save-file! buffer)
   (and (ref-variable delete-auto-save-files)
        (let ((auto-save-pathname (buffer-auto-save-pathname buffer)))
