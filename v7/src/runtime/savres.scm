@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.20 1991/07/12 17:58:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.21 1991/07/12 18:00:42 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -131,10 +131,11 @@ MIT in each case. |#
 		 filename))
 	      (let ((pathname (->pathname filename)))
 		(or (pathname->input-truename pathname)
-		    (let ((pathname
-			   (pathname-default-type pathname "com")))
-		      (or (pathname->input-truename pathname)
-			  (system-library-pathname pathname)))))))))
+		    (if (pathname-type pathname)
+			(system-library-pathname pathname)
+			(let ((pathname (pathname-new-type pathname "com")))
+			  (or (pathname->input-truename pathname)
+			      (system-library-pathname pathname))))))))))
     (event-distributor/invoke! event:before-exit)
     ((ucode-primitive load-band) filename)))
 
