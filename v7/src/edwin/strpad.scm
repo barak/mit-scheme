@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/strpad.scm,v 1.6 1991/10/19 07:09:54 cph Exp $
+;;;	$Id: strpad.scm,v 1.7 1994/11/14 02:00:15 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -45,7 +45,7 @@
 ;;;; String Padding Stuff
 
 (declare (usual-integrations))
-
+
 (define (pad-on-right-to string n)
   (let ((l (string-length string)))
     (if (> n l)
@@ -71,8 +71,16 @@
     (let ((x-size
 	   (if (default-object? x-size) (output-port/x-size port) x-size)))
       (let ((n-per-line (max 1 (quotient (+ x-size 1) (+ 2 n)))))
-	(do ((strings strings (cdr strings))
-	     (i 1 (if (< i n-per-line) (+ i 1) (begin (newline port) 1))))
-	    ((null? strings) unspecific)
-	  (if (> i 1) (write-string "  " port))
-	  (write-string (pad-on-right-to (car strings) n) port))))))
+	(if (not (null? strings))
+	    (let loop ((strings strings) (i 0))
+	      (write-string (pad-on-right-to (car strings) n) port)
+	      (let ((strings (cdr strings))
+		    (i (+ i 1)))
+		(if (not (null? strings))
+		    (if (< i n-per-line)
+			(begin
+			  (write-string "  " port)
+			  (loop strings i))
+			(begin
+			  (newline port)
+			  (loop strings 0)))))))))))
