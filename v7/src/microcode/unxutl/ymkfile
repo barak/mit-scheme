@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.54 1992/02/20 16:33:15 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.55 1992/05/05 05:04:59 jinx Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -406,6 +406,7 @@ prosfile.c \
 prosfs.c \
 prosio.c \
 prosproc.c \
+prospty.c \
 prosterm.c \
 prostty.c \
 pruxenv.c \
@@ -486,6 +487,7 @@ prosfile.o \
 prosfs.o \
 prosio.o \
 prosproc.o \
+prospty.o \
 prosterm.o \
 prostty.o \
 pruxenv.o \
@@ -708,7 +710,7 @@ obstack.o : obstack.h
 
 $(UNIX_OBJECTS) pruxenv.o pruxfs.o pruxsock.o : oscond.h ansidecl.h \
        posixtype.h intext.h dstack.h os.h osscheme.h ux.h
-uxctty.o : osctty.h
+uxctty.o : osctty.h ossig.h
 uxenv.o : osenv.h
 uxfile.o : osfile.h osio.h uxio.h
 uxfs.o : osfs.h
@@ -716,7 +718,7 @@ uxio.o : osio.h uxio.h uxselect.h
 uxproc.o : osproc.h uxproc.h osio.h uxio.h osterm.h
 uxsig.o : ossig.h osctty.h ostty.h uxtrap.h uxutil.h critsec.h
 uxsock.o : uxsock.h osio.h uxio.h prims.h
-uxterm.o : osterm.h uxterm.h osio.h uxio.h
+uxterm.o : osterm.h uxterm.h osio.h uxio.h ospty.h
 uxtop.o : ostop.h uxtop.h osctty.h uxutil.h errors.h option.h
 uxtrap.o : scheme.touch uxtrap.h uxutil.h option.h $(GC_HEAD_FILES)
 uxtty.o : ostty.h osenv.h osio.h uxio.h osterm.h uxterm.h
@@ -730,8 +732,9 @@ prosfile.o : osfile.h
 prosfs.o : osfs.h
 prosio.o : osio.h
 prosproc.o : osproc.h
+prospty.o : osterm.h osio.h ospty.h
 prosterm.o : osterm.h osio.h
-prostty.o : ostty.h osctty.h ossig.h osfile.h osio.h
+prostty.o : ostty.h osctty.h osfile.h osio.h
 
 prmcon.o : scheme.touch prims.h prmcon.h
 
