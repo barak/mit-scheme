@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.17 1992/03/07 18:54:33 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.18 1992/03/11 20:06:32 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -112,7 +112,7 @@ ifdef(`DISABLE_387',
       `define(IFN387,`')')
 
 ifdef(`DOS',
-      `define(use_external_data,`	extrn $1')',
+      `define(use_external_data,`	extrn _$1')',
       `define(use_external_data,`')')
 
 ifdef(`DOS',
@@ -120,7 +120,7 @@ ifdef(`DOS',
       `define(use_external_code,`')')
 
 ifdef(`DOS',
-      `define(external_data_reference,`$1')',
+      `define(external_data_reference,`_$1')',
       `define(external_data_reference,`_$1')')
 
 define(EDR,`external_data_reference($1)')
@@ -134,7 +134,7 @@ ifdef(`DOS',
       `define(define_code,`	.globl _$1')')
 
 ifdef(`DOS',
-      `define(define_data,`	public $1')',
+      `define(define_data,`	public _$1')',
       `define(define_data,`	.globl _$1')')
 
 define(define_c_label,
