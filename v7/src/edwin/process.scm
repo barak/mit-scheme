@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.51 1996/05/24 07:33:41 cph Exp $
+;;;	$Id: process.scm,v 1.52 1997/11/19 23:40:59 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -404,8 +404,7 @@ Initialized from the SHELL environment variable."
   (cond ((process-filter process)
 	 =>
 	 (lambda (filter)
-	   (filter string 0 length)
-	   true))
+	   (filter process string 0 length)))
 	((process-mark process)
 	 =>
 	 (lambda (mark)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: telnet.scm,v 1.10 1997/03/04 06:43:46 cph Exp $
+$Id: telnet.scm,v 1.11 1997/11/19 23:40:53 cph Exp $
 
 Copyright (c) 1991-97 Massachusetts Institute of Technology
 
@@ -128,17 +128,16 @@ With prefix arg, the character is repeated that many times."
 	    ((> argument 1)
 	     (process-send-string process (make-string argument char)))))))
 
-(define (make-telnet-filter process)
-  (lambda (string start end)
-    (let ((mark (process-mark process)))
-      (and mark
-	   (let ((index (mark-index mark))
-		 (new-string (telnet-filter-substring string start end)))
-	     (let ((new-length (string-length new-string)))
-	       (group-insert-substring! (mark-group mark) index
-					new-string 0 new-length)
-	       (set-mark-index! mark (+ index new-length))
-	       true))))))
+(define (telnet-filter process string start end)
+  (let ((mark (process-mark process)))
+    (and mark
+	 (let ((index (mark-index mark))
+	       (new-string (telnet-filter-substring string start end)))
+	   (let ((new-length (string-length new-string)))
+	     (group-insert-substring! (mark-group mark) index
+				      new-string 0 new-length)
+	     (set-mark-index! mark (+ index new-length))
+	     #t)))))
 
 (define (telnet-filter-substring string start end)
   (substring-substitute string start end
