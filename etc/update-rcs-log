@@ -9,16 +9,22 @@ exec > /scheme/etc/update-rcs-log.out 2>&1
 
 export PATH="/usr/local/bin:${PATH}"
 
+CVS2CL="$(which cvs2cl)"
+if [ -z "${CVS2CL}" ]; then
+    echo "cvs2cl not found."
+    exit 1
+fi
+
+COMMON="--revisions --usermap /scheme/v7/src/etc/usermap --domain zurich.csail.mit.edu --stdout --no-wrap --separate-header"
 GOPTS_SCHEME="-d :ext:anoncvs@subversions.gnu.org:/cvsroot/mit-scheme"
 GOPTS_HTML="-d :ext:anoncvs@savannah.gnu.org:/webcvs/mit-scheme"
-UM="/scheme/v7/src/etc/usermap"
 O="ChangeLog"
 N="${O}.new"
 
 generate_log_gopts ()
 {
     cd "${1}"
-    cvs2cl --global-opts "${2}" --revisions --usermap "${UM}" --stdout > "${N}"
+    cvs2cl --global-opts "${2}" ${COMMON} > "${N}"
     if cmp "${N}" "${O}"; then
 	rm -f "${N}"
     elif [ -s "${N}" ]; then
@@ -38,7 +44,7 @@ generate_log_gopts /scheme/v7/html "${GOPTS_HTML}"
 generate_log ()
 {
     cd "${1}"
-    cvs2cl --revisions --usermap "${UM}" --stdout > "${N}"
+    cvs2cl ${COMMON} > "${N}"
     if cmp "${N}" "${O}"; then
 	rm -f "${N}"
     else
