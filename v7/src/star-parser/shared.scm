@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.21 2001/11/20 04:13:00 cph Exp $
+;;; $Id: shared.scm,v 1.22 2001/12/20 16:13:18 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -398,11 +398,11 @@
       (begin
 	(if debug:trace-substitution?
 	    (begin
+	      (fresh-line)
 	      (pp expression)
-	      (newline)
 	      (write-string "==>")
-	      (pp result)
 	      (newline)
+	      (pp result)
 	      (newline)))
 	(optimize-by-substitution result))))
 

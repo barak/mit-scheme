@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.41 2001/12/20 06:52:03 cph Exp $
+$Id: syntax.scm,v 14.42 2001/12/20 16:13:18 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -66,11 +66,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	      (DEFINE-MACRO ,syntax/define-macro)
 	      (LET-SYNTAX ,syntax/let-syntax)
 	      (MACRO ,syntax/lambda)
-	      (USING-SYNTAX ,syntax/using-syntax)
 
 	      ;; Environment extensions
 	      (ACCESS ,syntax/access)
-	      (IN-PACKAGE ,syntax/in-package)
 	      (THE-ENVIRONMENT ,syntax/the-environment)
 	      (UNASSIGNED? ,syntax/unassigned?)
 	      ;; To facilitate upgrade to new option argument mechanism.
@@ -338,11 +336,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (syntax/begin top-level? . actions)
   (syntax-sequence top-level? actions))
 
-(define (syntax/in-package top-level? environment . body)
-  top-level?
-  (make-in-package (syntax-subexpression environment)
-		   (make-scode-sequence (syntax-sequence-internal #t body))))
-
 (define (syntax/delay top-level? expression)
   top-level?
   (make-delay (syntax-subexpression expression)))
@@ -449,13 +442,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			 names
 			 values))))
 	(syntax-sequence top-level? body)))))
-
-(define (syntax/using-syntax top-level? table . body)
-  (let ((table* (syntax-eval (syntax-subexpression table))))
-    (if (not (syntax-table? table*))
-	(syntax-error "not a syntax table" table))
-    (fluid-let ((*syntax-table* table*))
-      (syntax-sequence top-level? body))))
 
 (define (syntax/define-syntax top-level? name value)
   top-level?

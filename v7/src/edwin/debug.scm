@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debug.scm,v 1.58 2001/12/19 05:25:21 cph Exp $
+;;; $Id: debug.scm,v 1.59 2001/12/20 16:13:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-2001 Massachusetts Institute of Technology
 ;;;
@@ -1673,13 +1673,14 @@ once it has been renamed, it will not be deleted automatically.")
 	    (let ((indentation 
 		   (+ (string-length name1)
 		      (string-length separator))))
-	      (write-string (string-tail (with-output-to-string
-					   (lambda ()
-					     (pp value
-						 (current-output-port)
-						 #t
-						 indentation)))
-					 indentation)
+	      (write-string (string-tail
+			     (with-output-to-string
+			       (lambda ()
+				 (pretty-print value
+					       (current-output-port)
+					       #t
+					       indentation)))
+			     indentation)
 			    port)))))
     (debugger-newline port)))
 

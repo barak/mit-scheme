@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.34 2001/04/03 03:44:02 cph Exp $
+$Id: thread.scm,v 1.35 2001/12/20 16:13:18 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -508,6 +508,24 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    (lambda ()
      (%deregister-input-thread-event tentry)
      (%maybe-toggle-thread-timer))))
+
+(define (deregister-input-descriptor-events descriptor)
+  (without-interrupts
+   (lambda ()
+     (let loop ((dentry input-registrations))
+       (if dentry
+	   (if (eqv? descriptor (dentry/descriptor dentry))
+	       (begin
+		 (if (not (eq? 'PROCESS-STATUS-CHANGE descriptor))
+		     (remove-from-select-registry! input-registry descriptor))
+		 (let ((prev (dentry/prev dentry))
+		       (next (dentry/next dentry)))
+		   (if prev
+		       (set-dentry/next! prev next)
+		       (set! input-registrations next))
+		   (if next
+		       (set-dentry/prev! next prev))))
+	       (loop (dentry/next dentry))))))))
 
 (define (%register-input-thread-event descriptor thread event
 				      permanent? front?)

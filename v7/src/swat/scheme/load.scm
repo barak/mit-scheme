@@ -19,10 +19,7 @@
 
 
 
-(let ((swat-env
-       (in-package system-global-environment
-	 (let ()
-	   (the-environment)))))
+(let ((swat-env (extend-interpreter-environment system-global-environment)))
 
   (package/add-child!  (find-package '())  'SWAT  swat-env)
 
@@ -595,7 +592,6 @@
       remember-on-canvas!
       remove-child!
       ;;remove-from-protection-list!
-      remove-from-registry
       reset-sensitivity!
       rest-segments
       restart-uitk
@@ -1010,10 +1006,10 @@
     (directory-pathname (current-load-pathname))
   (lambda ()
 
-    (in-package (->environment '(SWAT))
+    (let ((swat-env (->environment '(SWAT))))
       ;; These get overriden when TK is loaded
-      (define (tk-doevents) 'tk-doevents)
-      (define (tk-init dsp) 'tk-init))
+      (environment-define-name swat-env 'TK-DOEVENTS (lambda () 'TK-DOEVENTS))
+      (environment-define-name swat-env 'TK-INIT (lambda () 'TK-INIT)))
 
     ;; Dynamically load the microcode.  Order important.
     (load "dynload/scxl")

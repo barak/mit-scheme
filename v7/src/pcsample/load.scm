@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.5 1999/01/02 06:11:34 cph Exp $
+$Id: load.scm,v 1.6 2001/12/20 16:13:18 cph Exp $
 
-Copyright (c) 1995-1999 Massachusetts Institute of Technology
+Copyright (c) 1995-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,22 +16,14 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; System Packaging
 
 (declare (usual-integrations))
 
-;; This kludge keeps the 7.4 and 8.0 sources the same:
-
-(let ((compiler-info (->environment '(runtime compiler-info))))
-  (if (environment-bound? compiler-info 'COMPILED-ENTRY/FILENAME)
-      (in-package compiler-info
-	(define compiled-entry/filename-and-index compiled-entry/filename)
-	(define compiled-code-block/filename-and-index
-	  compiled-code-block/filename))))
-
 (package/system-loader "pcs" '() 'QUERY)
 (add-identification! "PC Sampler" 1 0)
 

@@ -349,29 +349,8 @@ end of debugging stuff
   (deregister-input-thread-event registration)
   'OK)
 
-(define remove-from-registry
-  ;; This is called with a file descriptor when the file is closed to
-  ;; remove any registered requests for activity on the file.
-  (in-package (->environment '(runtime thread))
-    (lambda (descriptor)
-      (let loop ((dentry input-registrations))
-	(cond ((null? dentry) 'NOT-FOUND)
-	      ((eq? descriptor (dentry/descriptor dentry))
-	       (without-interrupts
-		(lambda ()
-		  (remove-from-select-registry! input-registry descriptor)
-		  (let ((prev (dentry/prev dentry))
-			(next (dentry/next dentry)))
-		    (if prev
-			(set-dentry/next! prev next)
-			(set! input-registrations next))
-		    (if next
-			(set-dentry/prev! next prev)))))
-	       'REMOVED)
-	      (else (loop (dentry/next dentry))))))))
-
 (define (shut-down-event-server display-number)
-  (remove-from-registry (%XConnectionNumber display-number)))
+  (deregister-input-descriptor-events (%XConnectionNumber display-number)))
 
 
 ;;;Delayed events

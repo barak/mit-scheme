@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: kmacro.scm,v 1.43 2001/07/21 05:49:25 cph Exp $
+;;; $Id: kmacro.scm,v 1.44 2001/12/20 16:13:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1985, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -166,7 +166,7 @@ To make a macro permanent so you can call it even after
 
 (define-command write-kbd-macro
   "Save keyboard macro in file.
-Use LOAD to load the file.
+Use \\[load-file] to load the file.
 With argument, also record the keys it is bound to."
   "P"
   (lambda (argument)
@@ -184,20 +184,19 @@ With argument, also record the keys it is bound to."
 	    (buffer (temporary-buffer "*write-keyboard-macro-temp*")))
 	(call-with-output-mark (buffer-point buffer)
 	  (lambda (port)
-	    (pretty-print
-	     `(IN-PACKAGE EDWIN-PACKAGE
-		(KEYBOARD-MACRO-DEFINE
-		 ',name
-		 ',(string-table-get named-keyboard-macros name))
-		,@(if argument
-		      (map (lambda (key)
-			     `(DEFINE-KEY 'FUNDAMENTAL ',key ',name))
-			   (comtab-key-bindings
-			    (mode-comtabs (ref-mode-object fundamental))
-			    (name->command name)))
-		      '()))
-	     port
-	     #t)))
+	    (pp `(KEYBOARD-MACRO-DEFINE
+		  ',name
+		  ',(string-table-get named-keyboard-macros name))
+		port
+		#t)
+	    (if argument
+		(for-each (lambda (key)
+			    (pp `(DEFINE-KEY 'FUNDAMENTAL ',key ',name)
+				port
+				#t))
+			  (comtab-key-bindings
+			   (mode-comtabs (ref-mode-object fundamental))
+			   (name->command name))))))
 	(set-buffer-pathname! buffer pathname)
 	(write-buffer buffer)
 	(kill-buffer buffer)))))

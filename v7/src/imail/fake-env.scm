@@ -3,8 +3,8 @@
 	 (let ((package (name->package parent)))
 	   (package/add-child! package
 			       name
-			       (in-package (package/environment package)
-				 (make-environment)))))))
+			       (extend-interpreter-environment
+				(package/environment package)))))))
   (new-child '(EDWIN) 'IMAIL)
   (new-child '(EDWIN IMAIL) 'IMAP-RESPONSE)
   (new-child '(EDWIN IMAIL) 'IMAP-SYNTAX)

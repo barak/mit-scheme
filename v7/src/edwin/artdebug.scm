@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: artdebug.scm,v 1.29 2001/12/19 05:25:08 cph Exp $
+;;; $Id: artdebug.scm,v 1.30 2001/12/20 16:13:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
 ;;;
@@ -662,8 +662,7 @@ Move to the last subproblem if the subproblem number is too high."
 		  (write-string string port)))
 	       (pp (lambda (obj)
 		     (fresh-line port)
-		     (pretty-print obj port #t)
-		     (newline port))))
+		     (pp obj port #t))))
 		     
 	   (if (dstate/reduction-number dstate)
 	       (pp (reduction-expression (dstate/reduction dstate)))
