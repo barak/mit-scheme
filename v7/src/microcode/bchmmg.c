@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.82 1993/10/14 19:12:41 gjr Exp $
+$Id: bchmmg.c,v 9.83 1993/11/09 18:25:52 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -544,8 +544,18 @@ static long default_sleep_period = 20 MILLISEC;
 #define GET_SLEEP_DELTA()	default_sleep_period
 #define SET_SLEEP_DELTA(value)	default_sleep_period = (value)
 
-#if !(defined(_HPUX) && (_HPUX_VERSION >= 80))
-extern int EXFUN (select, (int, int *, int *, int *, struct timeval *));
+#ifdef FD_SET
+#define SELECT_TYPE fd_set
+#else
+#define SELECT_TYPE int
+#define FD_SETSIZE ((sizeof (int)) * CHAR_BIT)
+#define FD_SET(n, p) ((*(p)) |= (1 << (n)))
+#define FD_CLR(n, p) ((*(p)) &= ~(1 << (n)))
+#define FD_ISSET(n, p) (((*(p)) & (1 << (n))) != 0)
+#define FD_ZERO(p) ((*(p)) = 0)
+extern int EXFUN (select,
+		  (int, SELECT_TYPE *, SELECT_TYPE *, SELECT_TYPE *,
+		   struct timeval *));
 #endif
 
 static void
@@ -560,7 +570,11 @@ DEFUN (sleep_awaiting_drones, (microsec, mask),
   timeout.tv_usec = microsec;
 
   *wait_mask = mask;
-  dummy = (select (0, &dummy, &dummy, &dummy, &timeout));
+  dummy = (select (0,
+		   ((SELECT_TYPE *) &dummy),
+		   ((SELECT_TYPE *) &dummy),
+		   ((SELECT_TYPE *) &dummy),
+		   &timeout));
   *wait_mask = ((unsigned long) 0);
   saved_errno = errno;
 
