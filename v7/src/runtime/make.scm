@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.78 2001/12/21 01:56:48 cph Exp $
+$Id: make.scm,v 14.79 2001/12/21 05:17:59 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -62,6 +62,8 @@ USA.
 					       names)
 			     parent)
 	   values))))
+
+(define environment-define-macro)
 
 (let ((environment-for-package
        (*make-environment system-global-environment
@@ -70,6 +72,10 @@ USA.
 (define-syntax ucode-primitive
   (lambda arguments
     (apply make-primitive-procedure arguments)))
+
+(define-syntax ucode-type
+  (lambda (name)
+    (microcode-type name)))
 
 (define-integrable + (ucode-primitive integer-add))
 (define-integrable - (ucode-primitive integer-subtract))
@@ -112,6 +118,15 @@ USA.
 
 (define-integrable substring-move-right!
   (ucode-primitive substring-move-right!))
+
+;; This definition is replaced later in the boot sequence.
+(set! environment-define-macro
+      (lambda (environment name transformer)
+	(local-assignment environment
+			  name
+			  ((ucode-primitive primitive-object-set-type)
+			   (ucode-type reference-trap)
+			   (cons 15 transformer)))))
 
 (define microcode-identification (microcode-identify))
 (define os-name-string (vector-ref microcode-identification 8))
@@ -429,6 +444,7 @@ USA.
    (RUNTIME SCODE-WALKER)
    (RUNTIME CONTINUATION-PARSER)
    (RUNTIME PROGRAM-COPIER)
+   (RUNTIME ENVIRONMENT)
    ;; Generic Procedures
    ((RUNTIME GENERIC-PROCEDURE EQHT) INITIALIZE-ADDRESS-HASHING! #t)
    ((RUNTIME GENERIC-PROCEDURE) INITIALIZE-GENERIC-PROCEDURES! #t)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.48 2001/12/21 04:37:46 cph Exp $
+$Id: uenvir.scm,v 14.49 2001/12/21 05:18:22 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -25,6 +25,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (declare (usual-integrations))
 
+(define (initialize-package!)
+  ;; This variable is predefined in "make.scm" for the boot sequence.
+  ;; Otherwise it would be defined here.
+  (set! environment-define-macro real-environment-define-macro)
+  unspecific)
+
 (define (environment? object)
   (or (system-global-environment? object)
       (ic-environment? object)
@@ -189,14 +195,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(else
 	 (illegal-environment environment 'ENVIRONMENT-DEFINE))))
 
-(define (environment-define-macro environment name value)
-  (cond ((interpreter-environment? environment)
-	 (interpreter-environment/define-macro environment name value))
-	((or (stack-ccenv? environment)
-	     (closure-ccenv? environment))
-	 (error:bad-range-argument environment 'ENVIRONMENT-DEFINE-MACRO))
-	(else
-	 (illegal-environment environment 'ENVIRONMENT-DEFINE-MACRO))))
+(define real-environment-define-macro
+  (named-lambda (environment-define-macro environment name value)
+    (cond ((interpreter-environment? environment)
+	   (interpreter-environment/define-macro environment name value))
+	  ((or (stack-ccenv? environment)
+	       (closure-ccenv? environment))
+	   (error:bad-range-argument environment 'ENVIRONMENT-DEFINE-MACRO))
+	  (else
+	   (illegal-environment environment 'ENVIRONMENT-DEFINE-MACRO)))))
 
 (define (illegal-environment object procedure)
   (error:wrong-type-argument object "environment" procedure))
@@ -311,12 +318,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   unspecific)
 
 (define (interpreter-environment/define environment name value)
-  (local-assignment environment name value)
-  unspecific)
+  (local-assignment environment name value))
 
 (define (interpreter-environment/define-macro environment name value)
-  (local-assignment environment name (macro->unmapped-reference-trap value))
-  unspecific)
+  (local-assignment environment name (macro->unmapped-reference-trap value)))
 
 (define (ic-environment/bound-names environment)
   (map-ic-environment-bindings environment

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.46 2001/12/20 21:28:41 cph Exp $
+$Id: syntax.scm,v 14.47 2001/12/21 05:18:17 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -437,12 +437,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(syntax-sequence top-level? body)))))
 
 (define (syntax/define-syntax top-level? name value)
-  top-level?
   (if (not (symbol? name))
       (syntax-error "illegal name" name))
-  (syntax-table/define *syntax-table* name
-    (syntax-eval (syntax-subexpression value)))
-  name)
+  (syntax-table/define *syntax-table*
+		       name
+		       (syntax-eval (syntax-subexpression value)))
+  (if top-level?
+      (syntax-expression
+       top-level?
+       `((ACCESS ENVIRONMENT-DEFINE-MACRO #F) (THE-ENVIRONMENT) ',name ,value))
+      name))
 
 (define-integrable (syntax-eval scode)
   (extended-scode-eval scode syntaxer/default-environment))
