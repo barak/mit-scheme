@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.54 1995/10/31 00:51:52 adams Exp $
+@comment $Id: scheme.texinfo,v 1.55 1995/11/07 04:45:28 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -5336,6 +5336,11 @@ character set.
 Returns a character set consisting of @var{chars}, which must be a list
 of @sc{ascii} characters.  This is equivalent to @code{(apply char-set
 @var{chars})}.
+@end deffn
+
+@deffn {procedure+} string->char-set string
+Returns a character set consisting of all the characters that occur in
+@var{string}.
 @end deffn
 
 @deffn {procedure+} ascii-range->char-set lower upper
