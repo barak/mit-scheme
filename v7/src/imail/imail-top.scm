@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.231 2001/01/24 19:17:36 cph Exp $
+;;; $Id: imail-top.scm,v 1.232 2001/01/24 22:53:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -903,8 +903,10 @@ With prefix argument, prompt even when point is on an attachment."
 
 (define (toggle-mime-entity info mark message)
   (set-mime-info-expanded?! info (not (mime-info-expanded? info)))
-  (let ((region (specific-property-region mark 'IMAIL-MIME-INFO))
+  (let ((region (mime-entity-region mark))
 	(buffer (mark-buffer mark)))
+    (if (not region)
+	(error "No MIME entity at mark:" mark))
     (let ((point (mark-right-inserting-copy (buffer-point buffer))))
       (with-read-only-defeated mark
 	(lambda ()
@@ -2382,6 +2384,11 @@ Negative argument means search in reverse."
 	(if mark
 	    (loop mark attachments)
 	    (reverse! attachments))))))
+
+(define (mime-entity-region mark)
+  (specific-property-region mark 'IMAIL-MIME-INFO
+    (lambda (i1 i2)
+      (mime-body-enclosed? (mime-info-body i1) (mime-info-body i2)))))
 
 (define (mime-attachment? info)
   (not (mime-info-inline? info)))
