@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.26 2000/05/02 21:10:43 cph Exp $
+;;; $Id: imail-top.scm,v 1.27 2000/05/02 22:19:34 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -20,8 +20,23 @@
 
 ;;;; IMAIL mail reader: top level
 
-;;; **** Must be able to handle malformed headers in incoming mail.
-;;; Generating a low-level error in this situation is unacceptable.
+;;; * Must be able to handle malformed headers in incoming mail.
+;;;   Generating a low-level error in this situation is unacceptable.
+;;;
+;;; * Try to leverage IMAP MIME parser by building compatible
+;;;   interface for file-based folders.
+;;;
+;;; * Hook in code to automatically re-open IMAP connections.
+;;;
+;;; * Mark messages as "seen", etc.
+;;;
+;;; * Build generic message cache?  Need to figure out when cached
+;;;   info can be deleted.
+;;;
+;;; * The following operations are all ways of doing synchronization,
+;;;   so try to figure out a more unified viewpoint: POLL-FOLDER,
+;;;   SYNCHRONIZE-FOLDER, SAVE-FOLDER, MAYBE-REVERT-FOLDER,
+;;;   REVERT-FOLDER.
 
 (declare (usual-integrations))
 
