@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unix.scm,v 1.98 1999/08/10 16:54:48 cph Exp $
+;;; $Id: unix.scm,v 1.99 1999/09/11 05:06:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -345,9 +345,9 @@ Includes the new backup.  Must be > 0."
 	  visit?
 	  (let ((type (pathname-type pathname)))
 	    (cond ((equal? "gz" type)
-		   (read-compressed-file "gzip -d" pathname mark))
+		   (read-compressed-file "gzip -cd" pathname mark))
 		  ((equal? "bz2" type)
-		   (read-compressed-file "bzip2 -d" pathname mark))
+		   (read-compressed-file "bzip2 -cd" pathname mark))
 		  ((equal? "Z" type)
 		   (read-compressed-file "uncompress" pathname mark))))))
     ,@(os-independent/read-file-methods)))
@@ -358,9 +358,9 @@ Includes the new backup.  Must be > 0."
 	  visit?
 	  (let ((type (pathname-type pathname)))
 	    (cond ((equal? "gz" type)
-		   (write-compressed-file "gzip" region pathname))
+		   (write-compressed-file "gzip -c" region pathname))
 		  ((equal? "bz2" type)
-		   (write-compressed-file "bzip2" region pathname))
+		   (write-compressed-file "bzip2 -c" region pathname))
 		  ((equal? "Z" type)
 		   (write-compressed-file "compress" region pathname))))))
     ,@(os-independent/write-file-methods)))
