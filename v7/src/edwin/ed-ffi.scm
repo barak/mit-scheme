@@ -203,7 +203,7 @@
 	       edwin-syntax-table)
     ("syntax"  (edwin)
 	       edwin-syntax-table)
-    ("tags"    (edwin tags)
+    ("tagutl"  (edwin tags)
 	       edwin-syntax-table)
     ("techinfo"   (edwin)
 	       edwin-syntax-table)

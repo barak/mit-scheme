@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.37 1992/05/12 15:45:23 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.38 1992/05/26 16:09:32 jinx Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -183,7 +183,7 @@ MIT in each case. |#
 		"shell"
 		"simple"
 		"syntax"
-		"tags"
+		"tagutl"
 		"techinfo"
 		"telnet"
 		"texcom"

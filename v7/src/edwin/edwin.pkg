@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.92 1992/05/21 17:59:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.93 1992/05/26 16:08:57 jinx Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -801,7 +801,7 @@ MIT in each case. |#
   (parent (edwin)))
 
 (define-package (edwin tags)
-  (files "tags")
+  (files "tagutl")
   (parent (edwin))
   (export (edwin)
 	  edwin-command$find-tag
