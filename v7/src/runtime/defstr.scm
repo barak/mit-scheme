@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.28 1995/05/16 04:43:48 adams Exp $
+$Id: defstr.scm,v 14.29 1995/07/10 21:15:01 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -333,7 +333,7 @@ differences:
 	    (values slot-description false '())))
     (lambda (name default options)
       (if (not (list? options))
-	  (error "Structure slot options must be a list" options))
+	  (error "Structure slot options must be a list:" options))
       (let ((type true)
 	    (read-only? false)
 	    (options-seen '()))
@@ -550,10 +550,10 @@ differences:
 	  (if (not (null? arguments))
 	      (begin
 		(if (null? (cdr arguments))
-		    (error "Keyword list does not have even length"
+		    (error "Keyword list does not have even length:"
 			   argument-list))
 		(set-cdr! (or (assq (car arguments) alist)
-			      (error "Unknown keyword" (car arguments)))
+			      (error "Unknown keyword:" (car arguments)))
 			  (cadr arguments))
 		(loop (cddr arguments)))))
 	(map cdr alist))))
@@ -571,7 +571,7 @@ differences:
 	    (let ((name->slot
 		   (lambda (name)
 		     (or (slot-assoc name (structure/slots structure))
-			 (error "Not a defined structure slot" name)))))
+			 (error "Not a defined structure slot:" name)))))
 	      (let ((required (map name->slot required))
 		    (optional (map name->slot optional))
 		    (rest (and rest (name->slot rest))))
