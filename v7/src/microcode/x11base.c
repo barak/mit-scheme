@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.38 1992/03/16 19:39:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.39 1992/05/21 22:11:36 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -395,7 +395,7 @@ DEFUN (x_default_attributes,
       (x_get_default
        (display, resource_name, resource_class,
 	"borderWidth", "BorderWidth", 0));
-    (attributes -> border_width) = ((s == 0) ? 2 : (atoi (s)));
+    (attributes -> border_width) = ((s == 0) ? 1 : (atoi (s)));
   }
   {
     char * s =
