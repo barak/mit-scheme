@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.32 1995/05/10 03:33:08 adams Exp $
+$Id: arith.scm,v 1.33 1995/11/03 22:44:19 adams Exp $
 
 Copyright (c) 1989-94 Massachusetts Institute of Technology
 
@@ -397,7 +397,7 @@ MIT in each case. |#
 ;; performance would move the barriers around.
 
 (define (int:->string number radix)
-  (define-integrable (digits->string value digits)
+  (define (digits->string value digits)
     (list->string
      (if (eq? number value)
 	 digits
@@ -407,16 +407,22 @@ MIT in each case. |#
     (digits->string
      value
      (let loop ((n value) (tail '()))
-       (cond ((not (int:zero? n))
-	      (let ((qr (integer-divide n radix)))
-		(loop (integer-divide-quotient qr)
-		      (cons (digit->char (integer-divide-remainder qr)
-					 radix)
-			    tail))))
-	     ((null? tail)
-	      '(#\0))
-	     (else
-	      tail)))))
+       (if (fix:fixnum? n)
+	   (let fixnum-loop ((n n) (tail tail))
+	     (cond ((not (fix:zero? n))
+		    (fixnum-loop (fix:quotient n radix)
+				 (cons (digit->char (fix:remainder n radix)
+						    radix)
+				       tail)))
+		   ((null? tail)
+		    '(#\0))
+		   (else
+		    tail)))
+	   (let ((qr (integer-divide n radix)))
+	     (loop (integer-divide-quotient qr)
+		   (cons (digit->char (integer-divide-remainder qr)
+				      radix)
+			 tail)))))))
 
   (define (print-medium value)
     (digits->string value
