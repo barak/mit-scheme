@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.97 2001/11/16 20:04:02 cph Exp $
+@comment $Id: scheme.texinfo,v 1.98 2001/11/16 21:02:36 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -186,7 +186,7 @@ Characters
 * Comparison of Characters::    
 * Miscellaneous Character Operations::  
 * Internal Representation of Characters::  
-* ISO-8859-1 Characters::            
+* ISO-8859-1 Characters::       
 * Character Sets::              
 
 Strings
@@ -202,6 +202,11 @@ Strings
 * Modification of Strings::     
 * Variable-Length Strings::     
 * Byte Vectors::                
+
+Regular Expressions
+
+* Regular-expression procedures::  
+* REXP abstraction::            
 
 Lists
 
@@ -4878,7 +4883,7 @@ Scheme to a non-@acronym{ASCII} operating system.}
 * Comparison of Characters::    
 * Miscellaneous Character Operations::  
 * Internal Representation of Characters::  
-* ISO-8859-1 Characters::            
+* ISO-8859-1 Characters::       
 * Character Sets::              
 @end menu
 
@@ -6289,13 +6294,18 @@ procedures don't distinguish uppercase and lowercase letters.
 
 @node Regular Expressions, Modification of Strings, Matching Strings, Strings
 @section Regular Expressions
-@cindex searching, for regular expression
-@cindex regular expression, searching string for
 
 MIT Scheme provides support for using regular expressions to search and
 match strings.  This manual does not define regular expressions; instead
 see @ref{Regexps, , Syntax of Regular Expressions, emacs, The Emacs
 Editor}.
+
+In addition to providing standard regular-expression support, MIT
+Scheme also provides the @acronym{REXP} abstraction.  This is an
+alternative way to write regular expressions that is easier to read
+and understand than the standard notation.  Regular expressions
+written in this notation can be translated into the standard
+notation.
 
 The regular-expression support is a run-time-loadable option.  To use
 it, execute
@@ -6306,6 +6316,16 @@ it, execute
 
 @noindent
 once before calling any of the procedures defined here.
+
+@menu
+* Regular-expression procedures::  
+* REXP abstraction::            
+@end menu
+
+@node Regular-expression procedures, REXP abstraction, Regular Expressions, Regular Expressions
+@subsection Regular-expression procedures
+@cindex searching, for regular expression
+@cindex regular expression, searching string for
 
 Procedures that perform regular-expression match and search accept
 standardized arguments.  @var{Regexp} is the regular expression; it is a
@@ -6412,6 +6432,183 @@ combined by a grouping operator.  For example:
 (regexp-group "foo" "bar" "baz")
   @result{} "\\(foo\\|bar\\|baz\\)"
 @end group
+@end example
+@end deffn
+
+@node REXP abstraction,  , Regular-expression procedures, Regular Expressions
+@subsection REXP abstraction
+
+@cindex REXP abstraction
+In addition to providing standard regular-expression support, MIT
+Scheme also provides the @acronym{REXP} abstraction.  This is an
+alternative way to write regular expressions that is easier to read
+and understand than the standard notation.  Regular expressions
+written in this notation can be translated into the standard notation.
+
+The @acronym{REXP} abstraction is a set of combinators that are
+composed into a complete regular expression.  Each combinator directly
+corresponds to a particular piece of regular-expression notation.  For
+example, the expression @code{(rexp-any-char)} corresponds to the
+@code{.} character in standard regular-expression notation, while
+@code{(rexp* @var{rexp})} corresponds to the @code{*} character.
+
+The primary advantages of @acronym{REXP} are that it makes the nesting
+structure of regular expressions explicit, and that it simplifies the
+description of complex regular expressions by allowing them to be
+built up using straightforward combinators.
+
+@deffn {procedure+} rexp? object
+Returns @code{#t} if @var{object} is a @acronym{REXP} expression, or
+@code{#f} otherwise.  A @acronym{REXP} is one of: a string, which
+represents the pattern matching that string; a character set, which
+represents the pattern matching a character in that set; or an object
+returned by calling one of the procedures defined here.
+@end deffn
+
+@deffn {procedure+} rexp-any-char
+Returns a @acronym{REXP} that matches any single character except a
+newline.  This is equivalent to the @code{.} construct.
+@end deffn
+
+@deffn {procedure+} rexp-line-start
+Returns a @acronym{REXP} that matches the start of a line.  This is
+equivalent to the @code{^} construct.
+@end deffn
+
+@deffn {procedure+} rexp-line-end
+Returns a @acronym{REXP} that matches the end of a line.  This is
+equivalent to the @code{$} construct.
+@end deffn
+
+@deffn {procedure+} rexp-string-start
+Returns a @acronym{REXP} that matches the start of the text being
+matched.  This is equivalent to the @code{\`} construct.
+@end deffn
+
+@deffn {procedure+} rexp-string-end
+Returns a @acronym{REXP} that matches the end of the text being
+matched.  This is equivalent to the @code{\'} construct.
+@end deffn
+
+@deffn {procedure+} rexp-word-edge
+Returns a @acronym{REXP} that matches the start or end of a word.
+This is equivalent to the @code{\b} construct.
+@end deffn
+
+@deffn {procedure+} rexp-not-word-edge
+Returns a @acronym{REXP} that matches anywhere that is not the start
+or end of a word.  This is equivalent to the @code{\B} construct.
+@end deffn
+
+@deffn {procedure+} rexp-word-start
+Returns a @acronym{REXP} that matches the start of a word.
+This is equivalent to the @code{\<} construct.
+@end deffn
+
+@deffn {procedure+} rexp-word-end
+Returns a @acronym{REXP} that matches the end of a word.
+This is equivalent to the @code{\>} construct.
+@end deffn
+
+@deffn {procedure+} rexp-word-char
+Returns a @acronym{REXP} that matches any word-constituent character.
+This is equivalent to the @code{\w} construct.
+@end deffn
+
+@deffn {procedure+} rexp-not-word-char
+Returns a @acronym{REXP} that matches any character that isn't a word
+constituent.  This is equivalent to the @code{\W} construct.
+@end deffn
+
+The next two procedures accept a @var{syntax-type} argument specifying
+the syntax class to be matched against.  This argument is a symbol
+selected from the following list.  Each symbol is followed by the
+equivalent character used in standard regular-expression notation.
+@code{whitespace} (space character),
+@code{punctuation} (@code{.}),
+@code{word} (@code{w}),
+@code{symbol} (@code{_}),
+@code{open} (@code{(}),
+@code{close} (@code{)}),
+@code{quote} (@code{'}),
+@code{string-delimiter} (@code{"}),
+@code{math-delimiter} (@code{$}),
+@code{escape} (@code{\}),
+@code{char-quote} (@code{/}),
+@code{comment-start} (@code{<}),
+@code{comment-end} (@code{>}).
+
+@deffn {procedure+} rexp-syntax-char syntax-type
+Returns a @acronym{REXP} that matches any character of type
+@var{syntax-type}.  This is equivalent to the @code{\s} construct.
+@end deffn
+
+@deffn {procedure+} rexp-not-syntax-char syntax-type
+Returns a @acronym{REXP} that matches any character not of type
+@var{syntax-type}.  This is equivalent to the @code{\S} construct.
+@end deffn
+
+@deffn {procedure+} rexp-sequence rexp @dots{}
+Returns a @acronym{REXP} that matches each @var{rexp} argument in
+sequence.  If no @var{rexp} argument is supplied, the result matches
+the null string.  This is equivalent to concatenating the regular
+expressions corresponding to each @var{rexp} argument.
+@end deffn
+
+@deffn {procedure+} rexp-alternatives rexp @dots{}
+Returns a @acronym{REXP} that matches any of the @var{rexp}
+arguments.  This is equivalent to concatenating the regular
+expressions corresponding to each @var{rexp} argument, separating them
+by the @code{\|} construct.
+@end deffn
+
+@deffn {procedure+} rexp-group rexp @dots{}
+@code{rexp-group} is like @code{rexp-sequence}, except that the result
+is marked as a match group.  This is equivalent to the @code{\(}
+... @code{\)} construct.
+@end deffn
+
+The next three procedures in principal accept a single @acronym{REXP}
+argument.  For convenience, they accept multiple arguments, which are
+converted into a single argument by @code{rexp-group}.  Note, however,
+that if only one @acronym{REXP} argument is supplied, and it's very
+simple, no grouping occurs.
+
+@deffn {procedure+} rexp* rexp @dots{}
+Returns a @acronym{REXP} that matches zero or more instances of the
+pattern matched by the @var{rexp} arguments.  This is equivalent to
+the @code{*} construct.
+@end deffn
+
+@deffn {procedure+} rexp+ rexp @dots{}
+Returns a @acronym{REXP} that matches one or more instances of the
+pattern matched by the @var{rexp} arguments.  This is equivalent to
+the @code{+} construct.
+@end deffn
+
+@deffn {procedure+} rexp-optional rexp @dots{}
+Returns a @acronym{REXP} that matches zero or one instances of the
+pattern matched by the @var{rexp} arguments.  This is equivalent to
+the @code{?} construct.
+@end deffn
+
+@deffn {procedure+} rexp-case-fold rexp
+Returns a @acronym{REXP} that matches the same pattern as @var{rexp},
+but is insensitive to character case.  This has no equivalent in
+standard regular-expression notation.
+@end deffn
+
+@deffn {procedure+} rexp->regexp rexp
+Converts @var{rexp} to standard regular-expression notation, returning
+a newly-allocated string.
+@end deffn
+
+@deffn {procedure+} rexp-compile rexp
+Converts @var{rexp} to standard regular-expression notation, then
+compiles it and returns the compiled result.  Equivalent to
+
+@example
+(re-compile-pattern (rexp->regexp @var{rexp}) #f)
 @end example
 @end deffn
 
