@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: instr1.scm,v 1.1 1992/08/29 13:51:23 jinx Exp $
+$Id: instr1.scm,v 1.2 1993/11/12 14:53:35 jmiller Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
 
@@ -283,3 +283,8 @@ case.
   ;; BIS R31 R31 R31
   (()
    (LONG (6 #x11) (5 31) (5 31) (3 0) (1 0) (7 #x20) (5 31))))
+
+(define-instruction UWORD
+  ;; Directly insert 32 bit word into output stream
+  ((? expression)
+   (LONG (32 expression UNSIGNED))))
