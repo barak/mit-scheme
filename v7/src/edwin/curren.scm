@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.134 2000/10/26 05:06:04 cph Exp $
+;;; $Id: curren.scm,v 1.135 2000/10/26 05:13:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -465,17 +465,18 @@ The frame is guaranteed to be deselected at that time."
 			   #f))
 
 (define (select-buffer-in-window buffer window record?)
-  (without-interrupts
-   (lambda ()
-     (if (not (eq? buffer (window-buffer window)))
-	 (begin
-	   (undo-leave-window! window)
-	   (if (selected-window? window)
-	       (change-selected-buffer window buffer record?
-		 (lambda ()
-		   (set-window-buffer! window buffer)))
-	       (set-window-buffer! window buffer))))))
-  (maybe-select-buffer-layout window buffer))
+  (with-interrupt-mask interrupt-mask/gc-ok
+    (lambda (interrupt-mask)
+      (if (not (eq? buffer (window-buffer window)))
+	  (begin
+	    (undo-leave-window! window)
+	    (if (selected-window? window)
+		(change-selected-buffer window buffer record?
+		  (lambda ()
+		    (set-window-buffer! window buffer)))
+		(set-window-buffer! window buffer))
+	    (set-interrupt-enables! interrupt-mask)
+	    (maybe-select-buffer-layout window buffer))))))
 
 (define (change-selected-buffer window buffer record? selection-thunk)
   (change-local-bindings! (selected-buffer) buffer selection-thunk)
