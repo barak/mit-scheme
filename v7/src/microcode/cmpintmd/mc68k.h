@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.27 1991/05/28 19:02:04 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.28 1992/01/15 17:05:22 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -88,9 +88,13 @@ procedures and continuations differ from closures) */
 #define ENTRY_SKIPPED_CHECK_OFFSET 	4
 #define CLOSURE_SKIPPED_CHECK_OFFSET 	10
 
-extern unsigned long hppa_extract_absolute_address ();
-extern void hppa_store_absolute_address ();
+/* The length of the GC recovery code that precedes an entry.
+   On the 68K a "jsr n(a6)" instruction.
  */
+
+#define ENTRY_PREFIX_LENGTH		4
+
+/* Cache flushing. */
 
 #ifdef _NEXTOS
 
@@ -260,8 +264,10 @@ DEFUN (operate_on_cache_region,
    It is used when interrupts are disabled, in order not to get into a loop.
    Note that if closure entry points were always longword-aligned, there
    would be no need for this nonsense.
-extern void EXFUN (flush_i_cache, (void));
-extdo {									\
+ */
+
+#  define ADJUST_CLOSURE_AT_CALL(entry_point, location)			\
+do {									\
   long magic_constant;							\
 									\
   magic_constant = (* ((long *) (((char *) (entry_point)) + 2)));	\

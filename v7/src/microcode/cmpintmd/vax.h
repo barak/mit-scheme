@@ -1,6 +1,7 @@
 /* -*-C-*-
 
-$Header: /scheme/users/jinx/microcode/RCS/cmpint-hppa.h,v 1.24 1991/08/13 18:23:23 jinx Exp j@
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/vax.h,v 1.2 1992/01/15 17:07:18 jinx Exp $
+
 Copyright (c) 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts

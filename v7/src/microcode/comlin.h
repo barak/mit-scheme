@@ -30,12 +30,17 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comlin.h,v 1.2 1988/08/15 20:43:59 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comlin.h,v 1.3 1992/01/15 17:11:26 jinx Exp $
  *
  * This file contains definitions for the scheme command parser.
  *
  */
 
+#ifndef COMLIN_H_INCLUDED
+#define COMLIN_H_INCLUDED
+
+#include "ansidecl.h"
+
 #ifndef boolean
 #define boolean	int
 #define true	1
@@ -86,5 +91,7 @@ struct keyword_struct
 
 extern char *program_name;
 
-extern void parse_keywords();
+extern void EXFUN (parse_keywords,
+		   (int, char **, struct keyword_struct *, boolean));
 
+#endif /* COMLIN_H_INCLUDED */

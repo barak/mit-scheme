@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.25 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.26 1992/01/15 17:03:14 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -88,8 +88,12 @@ typedef unsigned short format_word;
    instructions, an LDIL and a BLE instruction.
  */
 
-extern unsigned long hppa_extract_absolute_address ();
-extern void hppa_store_absolute_address ();
+extern unsigned long
+  EXFUN (hppa_extract_absolute_address, (unsigned long *));
+
+extern void
+  EXFUN (hppa_store_absolute_address,
+	 (unsigned long *, unsigned long, unsigned long));
 
 #define EXTRACT_ABSOLUTE_ADDRESS(target, address)			\
 {									\
@@ -260,14 +264,16 @@ DEFUN (hppa_store_absolute_address, (addr, sourcev, nullify_p),
 
 static struct pdc_cache_dump cache_info;
 
-extern void EXFUN (flush_i_cache, (void));
-extern void EXFUN (push_d_cache_region, (PTR, unsigned long));
+extern void
+  EXFUN (flush_i_cache, (void)),
+  EXFUN (push_d_cache_region, (PTR, unsigned long));
 
 void
 DEFUN_VOID (flush_i_cache)
 {
-  extern void EXFUN (cache_flush_all,
-		     (unsigned int, struct pdc_cache_result *));
+  extern void
+    EXFUN (cache_flush_all, (unsigned int, struct pdc_cache_result *));
+
   struct pdc_cache_result * cache_desc;
   
   cache_desc = ((struct pdc_cache_result *) &(cache_info.cache_format));
@@ -300,7 +306,9 @@ void
 DEFUN (push_d_cache_region, (start_address, block_size),
        PTR start_address AND unsigned long block_size)
 {
-  extern void EXFUN (cache_flush_region, (PTR, long, unsigned int));
+  extern void
+    EXFUN (cache_flush_region, (PTR, long, unsigned int));
+
   struct pdc_cache_result * cache_desc;
   
   cache_desc = ((struct pdc_cache_result *) &(cache_info.cache_format));
@@ -518,9 +526,11 @@ procedures and continuations differ from closures) */
 ((((SCHEME_OBJECT *) tramp) - TRAMPOLINE_BLOCK_TO_ENTRY) +		\
  (2 + TRAMPOLINE_ENTRY_SIZE)) 
 
-#define STORE_TRAMPOLINE_ENTRY(entry_address, index)			\
+#define STORE_TRAMPOLINE_ENTRY(entry_address, index) do			\
 {									\
-  extern void cache_flush_region ();					\
+  extern void								\
+    EXFUN (cache_flush_region, (PTR, long, unsigned int));		\
+									\
   unsigned long *PC;							\
 									\
   PC = ((unsigned long *) (entry_address));				\
@@ -536,7 +546,7 @@ procedures and continuations differ from closures) */
 	       (((unsigned long) (index)) << 1));			\
   cache_flush_region (PC, (TRAMPOLINE_ENTRY_SIZE - 1),			\
 		      (I_CACHE | D_CACHE));				\
-}
+} while (0)
 
 /* Execute cache entries.
 
@@ -658,7 +668,8 @@ procedures and continuations differ from closures) */
 
 #define FLUSH_I_CACHE() do						\
 {									\
-  extern void EXFUN (flush_i_cache, (void));				\
+  extern void								\
+    EXFUN (flush_i_cache, (void));					\
 									\
   flush_i_cache ();							\
 } while (0)
@@ -670,7 +681,8 @@ procedures and continuations differ from closures) */
 
 #define FLUSH_I_CACHE_REGION(address, nwords) do			\
 {									\
-  extern void EXFUN (cache_flush_region, (PTR, long, unsigned int));	\
+  extern void								\
+    EXFUN (cache_flush_region, (PTR, long, unsigned int));		\
 									\
   cache_flush_region (((PTR) (address)), ((long) (nwords)),		\
 		      (D_CACHE | I_CACHE));				\
@@ -683,7 +695,8 @@ procedures and continuations differ from closures) */
 
 #define PUSH_D_CACHE_REGION(address, nwords) do				\
 {									\
-  extern void EXFUN (push_d_cache_region, (PTR, unsigned long));	\
+  extern void								\
+    EXFUN (push_d_cache_region, (PTR, unsigned long));			\
 									\
   push_d_cache_region (((PTR) (address)),				\
 		       ((unsigned long) (nwords)));			\
@@ -763,7 +776,8 @@ void
 DEFUN (hppa_reset_hook, (table_length, utility_table),
        long table_length AND PTR * utility_table)
 {
-  extern void EXFUN (interface_initialize, (void));
+  extern void
+    EXFUN (interface_initialize, (void));
 
   flush_i_cache_initialize ();
   interface_initialize ();
