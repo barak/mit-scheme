@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.120 1992/02/10 12:03:33 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.121 1992/02/10 15:31:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -289,7 +289,7 @@ With argument, saves visited file first."
     (if argument (save-buffer (current-buffer) false))
     (if (not (and scheme-can-quit? (subprocess-job-control-available?)))
 	(editor-error "Scheme cannot be suspended"))
-    (quit)))
+    (quit-scheme)))
 
 (define-command suspend-edwin
   "Stop Edwin and return to Scheme."
