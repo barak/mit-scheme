@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.35 1995/08/02 21:42:07 cph Exp $
+$Id: usiexp.scm,v 4.36 1997/07/31 10:40:38 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -550,7 +550,8 @@ MIT in each case. |#
 				  block)
   block
   (if (and (pair? operands)
-	   (string? (car operands))
+	   (constant? (car operands))
+	   (string? (constant/value (car operands)))
 	   (null? (cdr operands)))
       (if-expanded
        (constant/make (and expr (object/scode expr))
@@ -560,7 +561,8 @@ MIT in each case. |#
 (define (intern-expansion expr operands if-expanded if-not-expanded block)
   block
   (if (and (pair? operands)
-	   (string? (car operands))
+	   (constant? (car operands))
+	   (string? (constant/value (car operands)))
 	   (null? (cdr operands)))
       (if-expanded
        (constant/make (and expr (object/scode expr))

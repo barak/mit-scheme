@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typedb.scm,v 1.14 1997/07/11 02:35:04 adams Exp $
+$Id: typedb.scm,v 1.15 1997/07/31 10:39:52 adams Exp $
 
 Copyright (c) 1996 Massachusetts Institute of Technology
 
@@ -53,6 +53,10 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define-operator-type 'STRING->SYMBOL
+  (procedure-type (list type:string) type:interned-symbol
+		  'effect-sensitive effect:string-set!))
+
+(define-operator-type 'INTERN
   (procedure-type (list type:string) type:interned-symbol
 		  'effect-sensitive effect:string-set!))
 

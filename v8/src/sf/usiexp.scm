@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 1.13 1996/07/22 19:04:06 adams Exp $
+$Id: usiexp.scm,v 1.14 1997/07/31 10:39:37 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -489,7 +489,8 @@ MIT in each case. |#
 				    block)
     block
     (if (and (pair? operands)
-	     (string? (car operands))
+	     (constant? (car operands))
+	     (string? (constant/value (car operands)))
 	     (null? (cdr operands)))
 	(if-expanded
 	 (constant/make (and expr (object/scode expr))
@@ -646,6 +647,7 @@ MIT in each case. |#
     FLOOR->EXACT
     FOR-EACH
     INEXACT->EXACT
+    INTERN
     LIST-REF
     LOG
     MAKE-STRING
