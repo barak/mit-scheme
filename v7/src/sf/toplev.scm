@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.19 2001/12/20 06:36:23 cph Exp $
+$Id: toplev.scm,v 4.20 2001/12/21 18:27:27 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -263,9 +263,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 ;;;; Optimizer Top Level
 
-(define (integrate/file file-name syntax-table declarations)
+(define (integrate/file file-name environment declarations)
   (integrate/kernel (lambda ()
-		      (phase:syntax (phase:read file-name) syntax-table))
+		      (phase:syntax (phase:read file-name) environment))
 		    declarations))
 
 (define (integrate/simple preprocessor input declarations receiver)
@@ -308,13 +308,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (mark-phase "Read")
   (read-file filename))
 
-(define (phase:syntax s-expression #!optional syntax-table)
+(define (phase:syntax s-expression environment)
   (mark-phase "Syntax")
-  (syntax* s-expression
-	   (make-syntax-table
-	    (if (or (default-object? syntax-table) (not syntax-table))
-		system-global-environment
-		syntax-table))))
+  (syntax* s-expression (or environment system-global-environment)))
 
 (define (phase:transform scode)
   (mark-phase "Transform")
