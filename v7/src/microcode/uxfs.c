@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfs.c,v 1.1 1990/06/20 19:37:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfs.c,v 1.2 1990/06/22 01:44:14 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -105,7 +105,7 @@ DEFUN (OS_file_remove_link, (name), CONST char * name)
 {
   struct stat s;
   if (((UX_lstat (name, (&s))) == 0) &&
-      (((((s . st_mode) & S_IFMT) == S_IFREG) && ((s . st_nlink) > 1))
+      ((((s . st_mode) & S_IFMT) == S_IFREG)
 #ifdef HAVE_SYMBOLIC_LINKS
        || (((s . st_mode) & S_IFMT) == S_IFLNK)
 #endif
