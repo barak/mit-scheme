@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.4 1991/04/21 00:51:34 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.5 1991/04/29 10:19:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -571,25 +571,36 @@ after the listing is made.)"
 ;;; These procedures are not specific to the process abstraction.
 
 (define (find-program program default-directory)
-  (let ((program (->pathname program))
-	(default-directory (pathname->absolute-pathname default-directory))
-	(lose (lambda () (error "Can't find program:" program))))
-    (if (pathname-absolute? program)
-	(begin
-	  (if (not (unix/file-access program 1)) (lose))
-	  (pathname->string program))
-	(let loop ((path (ref-variable exec-path)))
-	  (if (null? path) (lose))
-	  (let ((pathname
-		 (merge-pathnames
-		  program
-		  (cond ((not (car path)) default-directory)
-			((pathname-absolute? (car path)) (car path))
-			(else
-			 (merge-pathnames (car path) default-directory))))))
-	    (if (unix/file-access pathname 1)
-		(pathname->string pathname)
-		(loop (cdr path))))))))
+  (pathname->string
+   (let ((program (->pathname program))
+	 (lose (lambda () (error "Can't find program:" program))))
+     (cond ((pathname-absolute? program)
+	    (if (not (unix/file-access program 1)) (lose))
+	    program)
+	   ((not default-directory)
+	    (let loop ((path (ref-variable exec-path)))
+	      (if (null? path) (lose))
+	      (or (and (car path)
+		       (pathname-absolute? (car path))
+		       (let ((pathname (merge-pathnames program (car path))))
+			 (and (unix/file-access pathname 1)
+			      pathname)))
+		  (loop (cdr path)))))
+	   (else
+	    (let ((default-directory
+		   (pathname->absolute-pathname default-directory)))
+	      (let loop ((path (ref-variable exec-path)))
+		(if (null? path) (lose))
+		(let ((pathname
+		       (merge-pathnames
+			program
+			(cond ((not (car path)) default-directory)
+			      ((pathname-absolute? (car path)) (car path))
+			      (else (merge-pathnames (car path)
+						     default-directory))))))
+		  (if (unix/file-access pathname 1)
+		      pathname
+		      (loop (cdr path)))))))))))
 
 (define (parse-path-string string)
   (let ((end (string-length string))
