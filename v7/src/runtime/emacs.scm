@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.12 1992/02/26 22:39:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.13 1992/02/27 01:12:02 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -258,9 +258,8 @@ MIT in each case. |#
 			(port/operation-names the-console-port)))
 	 (port/state the-console-port)))
   ;; YUCCH!  Kludge to copy mutex of console port into emacs port.
-  ((record-modifier port-rtd 'THREAD-MUTEX)
-   emacs-console-port
-   (port/thread-mutex the-console-port))
+  (set-port/thread-mutex! emacs-console-port
+			  (port/thread-mutex the-console-port))
   (set-console-i/o-port! (select-console-port))
   (add-event-receiver! event:after-restore reset-console-port!))
 
