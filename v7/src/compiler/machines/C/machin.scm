@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.6 1993/11/08 22:41:40 gjr Exp $
+$Id: machin.scm,v 1.7 1993/11/09 03:58:40 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -107,14 +107,14 @@ MIT in each case. |#
      ;; Manifest closure header, number of entries, then entries.
      (+ 1 1 (* closure-entry-size nentries)))))
 
-;; Bump from one entry point to another -- distance in BYTES
+;; Bump from one entry point to another -- distance in addressing units.
 
 (define (closure-entry-distance nentries entry entry*) ; for now
   nentries				; ignored
   (let ((entry-delta (- entry* entry)))
     (if (zero? entry-delta)
 	0
-	(string-append "((sizeof (SCHEME_OBJECT)) * "
+	(string-append "(CLOSURE_ENTRY_DELTA * "
 		       (number->string
 			(* closure-entry-size entry-delta))
 		       ")"))))
