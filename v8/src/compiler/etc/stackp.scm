@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/stackp.scm,v 1.4 1988/11/08 07:21:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/stackp.scm,v 1.5 1988/12/31 06:41:50 cph Rel $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -58,7 +58,9 @@ MIT in each case. |#
   (let write-stack-stream
       ((stream (continuation->stream continuation)) (n 0))
     (if (not (stream-null? stream))
-	(begin (if (return-address? (stream-car stream))
+	(begin (if (let ((object (stream-car stream)))
+		     (or (return-address? object)
+			 (compiled-return-address? object)))
 		   (newline))
 	       (newline)
 	       (write n)
@@ -75,12 +77,11 @@ MIT in each case. |#
 
 (define (continuation->stream continuation)
   (let stack-frame->stream ((frame (continuation->stack-frame continuation)))
-    (cons-stream (stack-frame/return-address frame)
-		 (let ((length (stack-frame/length frame)))
-		   (let loop ((n 0))
-		     (if (< n length)
-			 (cons-stream (stack-frame/ref frame n) (loop (1+ n)))
-			 (let ((next (stack-frame/next frame)))
-			   (if next
-			       (stack-frame->stream next)
-			       (stream)))))))))
+    (let ((length (stack-frame/length frame)))
+      (let loop ((n 0))
+	(if (< n length)
+	    (cons-stream (stack-frame/ref frame n) (loop (1+ n)))
+	    (let ((next (stack-frame/next frame)))
+	      (if next
+		  (stack-frame->stream next)
+		  (stream))))))))
