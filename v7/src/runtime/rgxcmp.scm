@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rgxcmp.scm,v 1.110 1999/05/13 03:04:08 cph Exp $
+;;; $Id: rgxcmp.scm,v 1.111 2001/02/05 20:08:15 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -240,61 +240,50 @@
 
 ;;;; Char-Set Compiler
 
-(define re-compile-char-set
-  (cached-procedure 16
-    (lambda (pattern negate?)
-      (let ((length (string-length pattern))
-	    (char-set (string-allocate 256)))
-	(let ((kernel
-	       (lambda (start background foreground)
-		 (let ((adjoin!
-			(lambda (ascii)
-			  (vector-8b-set! char-set ascii foreground))))
-		   (vector-8b-fill! char-set 0 256 background)
-		   (let loop
-		       ((pattern
-			 (quote-pattern
-			  (substring->list pattern start length))))
-		     (cond ((null? pattern)
-			    unspecific)
-			   ((null? (cdr pattern))
-			    (adjoin! (char->ascii (car pattern))))
-			   ((char=? (cadr pattern) #\-)
-			    (if (not (null? (cddr pattern)))
-				(begin
-				  (let ((end (char->ascii (caddr pattern))))
-				    (let loop
-					((index (char->ascii (car pattern))))
-				      (if (fix:<= index end)
-					  (begin
-					    (vector-8b-set! char-set
-							    index
-							    foreground)
-					    (loop (fix:1+ index))))))
-				  (loop (cdddr pattern)))
-				(error "Terminating hyphen.")))
-			   (else
-			    (adjoin! (char->ascii (car pattern)))
-			    (loop (cdr pattern)))))))))
-	  (if (and (not (fix:zero? length))
-		   (char=? (string-ref pattern 0) #\^))
-	      (if negate?
-		  (kernel 1 0 1)
-		  (kernel 1 1 0))
-	      (if negate?
-		  (kernel 0 1 0)
-		  (kernel 0 0 1))))
-	char-set))))
+;;; Special characters:
+;;; #\] must appear as first character.
+;;; #\- must appear as first or last character, or it may appear
+;;;     immediately after a range.
+;;; #\^ must appear anywhere except as the first character in the set.
 
-(define (quote-pattern pattern)
-  (cond ((null? pattern) '())
-	((not (char=? (car pattern) #\\))
-	 (cons (car pattern)
-	       (quote-pattern (cdr pattern))))
-	((not (null? (cdr pattern)))
-	 (cons (cadr pattern) (quote-pattern (cddr pattern))))
-	(else
-	 (error "RE-COMPILE-CHAR-SET: Terminating backslash"))))
+(define (re-compile-char-set pattern negate?)
+  (let ((length (string-length pattern))
+	(char-set (string-allocate 256)))
+    (let ((kernel
+	   (lambda (start background foreground)
+	     (let ((adjoin!
+		    (lambda (ascii)
+		      (vector-8b-set! char-set ascii foreground))))
+	       (vector-8b-fill! char-set 0 256 background)
+	       (let loop
+		   ((pattern (substring->list pattern start length)))
+		 (if (pair? pattern)
+		     (if (and (pair? (cdr pattern))
+			      (char=? (cadr pattern) #\-)
+			      (pair? (cddr pattern)))
+			 (begin
+			   (let ((end (char->ascii (caddr pattern))))
+			     (let loop
+				 ((index (char->ascii (car pattern))))
+			       (if (fix:<= index end)
+				   (begin
+				     (vector-8b-set! char-set
+						     index
+						     foreground)
+				     (loop (fix:+ index 1))))))
+			   (loop (cdddr pattern)))
+			 (begin
+			   (adjoin! (char->ascii (car pattern)))
+			   (loop (cdr pattern))))))))))
+      (if (and (not (fix:zero? length))
+	       (char=? (string-ref pattern 0) #\^))
+	  (if negate?
+	      (kernel 1 0 1)
+	      (kernel 1 1 0))
+	  (if negate?
+	      (kernel 0 1 0)
+	      (kernel 0 0 1))))
+    char-set))
 
 ;;;; Translation Tables
 
@@ -668,58 +657,43 @@
 
 (define-pattern-char #\[
   (lambda ()
-    (output-start! (cond ((input-end?) (premature-end))
-			 ((input-match? (input-peek) #\^)
-			  (input-discard!)
-			  re-code:not-char-set)
-			 (else re-code:char-set)))
-    (let ((charset (string-allocate 32)))
-      (define (loop)
-	(cond ((input-end?) (premature-end))
-	      ((input-match? (input-peek) #\])
-	       (input-discard!)
-	       (trim 31))
-	      (else (element))))
-
-      (define (element)
-	(let ((char (input-peek)))
-	  (input-discard!)
-	  (cond ((input-end?)
-		 (premature-end))
-		((input-match? (input-peek) #\-)
-		 (input-discard!)
-		 (if (input-end?)
-		     (premature-end)
-		     (let ((char* (input-peek)))
-		       (input-discard!)
-		       (let loop ((char char))
-			 (if (not (fix:> char char*))
-			     (begin
-			       ((ucode-primitive re-char-set-adjoin!) charset
-								      char)
-			       (loop (fix:1+ char))))))))
-		(else
-		 ((ucode-primitive re-char-set-adjoin!) charset char))))
-	(loop))
-
+    (if (input-end?)
+	(premature-end))
+    (let ((invert?
+	   (and (input-match? (input-peek) #\^)
+		(begin (input-discard!) #t)))
+	  (charset (make-string 32 (ascii->char 0))))
+      (let loop
+	  ((chars
+	    (if (input-match? (input-peek) #\])
+		(list (input-read!))
+		'())))
+	(if (input-end?)
+	    (premature-end))
+	(if (input-match? (input-peek) #\])
+	    (begin
+	      (input-discard!)
+	      (for-each
+	       (lambda (char)
+		 ((ucode-primitive re-char-set-adjoin!) charset
+							(char->ascii char)))
+	       (char-set-members
+		(re-compile-char-set (list->string (reverse! chars)) #f))))
+	    (loop (cons (input-read!) chars))))
+      (output-start! (if invert? re-code:not-char-set re-code:char-set))
       ;; Discard any bitmap bytes that are all 0 at the end of
       ;; the map.  Decrement the map-length byte too.
-      (define (trim n)
-	(cond ((not (fix:zero? (vector-8b-ref charset n)))
-	       (output! (fix:1+ n))
+      (let loop ((n 31))
+	(cond ((not (fix:= 0 (vector-8b-ref charset n)))
+	       (output! (fix:+ n 1))
 	       (let loop ((i 0))
 		 (output! (vector-8b-ref charset i))
 		 (if (fix:< i n)
-		     (loop (fix:1+ i)))))
-	      ((fix:zero? n)
+		     (loop (fix:+ i 1)))))
+	      ((fix:= 0 n)
 	       (output! 0))
 	      (else
-	       (trim (fix:-1+ n)))))
-
-      (vector-8b-fill! charset 0 32 0)
-      (cond ((input-end?) (premature-end))
-	    ((input-match? (input-peek) #\]) (element))
-	    (else (loop))))))
+	       (loop (fix:- n 1))))))))
 
 ;;;; Alternative Groups
 
