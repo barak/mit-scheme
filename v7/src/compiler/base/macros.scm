@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.1 1987/12/04 20:04:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.2 1987/12/30 06:58:58 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -195,8 +195,8 @@ MIT in each case. |#
 			  (APPEND!
 			   ((VECTOR-TAG-DESCRIPTION ,',parent) ,type)
 			   (DESCRIPTOR-LIST ,type ,@slots))))))))))))
- (define-type-definition snode 4 false)
- (define-type-definition pnode 5 false)
+ (define-type-definition snode 5 false)
+ (define-type-definition pnode 6 false)
  (define-type-definition rvalue 2 rvalue-types)
  (define-type-definition lvalue 10 false))
 

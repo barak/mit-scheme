@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rgspcm.scm,v 1.1 1987/09/03 05:13:59 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rgspcm.scm,v 4.1 1987/12/30 07:05:38 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,26 +36,37 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (define-standard-special-handler &prim &prim-name)
-  (define-special-primitive-handler &prim
-    (lambda (combination prefix continuation)
-      (lambda (number-pushed)
-	(rtl:make-invocation:special-primitive
-	 &prim-name
-	 (1+ number-pushed)
-	 (prefix combination number-pushed)
-	 continuation)))))
+(define (define-special-primitive-handler name handler)
+  (let ((primitive (make-primitive-procedure name true)))
+    (let ((entry (assq primitive special-primitive-handlers)))
+      (if entry
+	  (set-cdr! entry handler)
+	  (set! special-primitive-handlers
+		(cons (cons primitive handler)
+		      special-primitive-handlers)))))
+  name)
 
-(let-syntax ((primitive (macro (name) (make-primitive-procedure name))))
-  (define-standard-special-handler (primitive &+) '&+)
-  (define-standard-special-handler (primitive &-) '&-)
-  (define-standard-special-handler (primitive &*) '&*)
-  (define-standard-special-handler (primitive &/) '&/)
-  (define-standard-special-handler (primitive &=) '&=)
-  (define-standard-special-handler (primitive &<) '&<)
-  (define-standard-special-handler (primitive &>) '&>)
-  (define-standard-special-handler 1+ '1+)
-  (define-standard-special-handler -1+ '-1+)
-  (define-standard-special-handler zero? 'zero?)
-  (define-standard-special-handler positive? 'positive?)
-  (define-standard-special-handler negative? 'negative?))
+(define (special-primitive-handler primitive)
+  (let ((entry (assq primitive special-primitive-handlers)))
+    (and entry
+	 (cdr entry))))
+
+(define special-primitive-handlers
+  '())
+
+(define (define-special-primitive/standard primitive)
+  (define-special-primitive-handler primitive
+    rtl:make-invocation:special-primitive))
+
+(define-special-primitive/standard '&+)
+(define-special-primitive/standard '&-)
+(define-special-primitive/standard '&*)
+(define-special-primitive/standard '&/)
+(define-special-primitive/standard '&=)
+(define-special-primitive/standard '&<)
+(define-special-primitive/standard '&>)
+(define-special-primitive/standard '1+)
+(define-special-primitive/standard '-1+)
+(define-special-primitive/standard 'zero?)
+(define-special-primitive/standard 'positive?)
+(define-special-primitive/standard 'negative?)

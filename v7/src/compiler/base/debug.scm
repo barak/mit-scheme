@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.1 1987/12/04 20:00:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.2 1987/12/30 06:58:32 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -40,6 +40,59 @@ MIT in each case. |#
   (let ((object (->tagged-vector object)))
     (write-line object)
     (for-each pp ((tagged-vector/description object) object))))
+
+(define (debug/find-procedure name)
+  (let loop ((procedures *procedures*))
+    (and (not (null? procedures))
+	 (if (and (not (procedure-continuation? (car procedures)))
+		  (or (eq? name (procedure-name (car procedures)))
+		      (eq? name (procedure-label (car procedures)))))
+	     (car procedures)
+	     (loop (cdr procedures))))))
+
+(define (debug/find-continuation number)
+  (let ((label
+	 (string->symbol (string-append "CONTINUATION-"
+					(number->string number 10)))))
+    (let loop ((procedures *procedures*))
+      (and (not (null? procedures))
+	   (if (and (procedure-continuation? (car procedures))
+		    (eq? label (procedure-label (car procedures))))
+	       (car procedures)
+	       (loop (cdr procedures)))))))
+
+(define (debug/find-entry-node node)
+  (let ((node (->tagged-vector node)))
+    (if (eq? (expression-entry-node *root-expression*) node)
+	(write-line *root-expression*))
+    (for-each (lambda (procedure)
+		(if (eq? (procedure-entry-node procedure) node)
+		    (write-line procedure)))
+	      *procedures*)))
+
+(define (debug/where object)
+  (cond ((compiled-code-block? object)
+	 (write-line (compiled-code-block/debugging-info object)))
+	((compiled-code-address? object)
+	 (write-line
+	  (compiled-code-block/debugging-info
+	   (compiled-code-address->block object)))
+	 (write-string "\nOffset: ")
+	 (write-string
+	  (number->string (compiled-code-address->offset object)
+			  '(HEUR (RADIX X S)))))	((compiled-procedure? object)
+	 (debug/where (compiled-procedure-entry object)))
+	(else
+	 (error "debug/where -- what?" object))))
+
+(define (compiler:write-rtl-file pathname)
+  (let ((pathname (->pathname pathname)))
+    (write-instructions
+     (lambda ()
+       (with-output-to-file (pathname-new-type pathname "rtl")
+	 (lambda ()
+	   (for-each show-rtl-instruction
+		     (fasload (pathname-new-type pathname "brtl")))))))))
 
 (define (dump-rtl filename)
   (write-instructions
@@ -81,7 +134,7 @@ MIT in each case. |#
       (newline))
   (*show-instruction* rtl))
 
-(package (show-fg)
+(package (show-fg show-fg-node)
 
 (define *procedure-queue*)
 (define *procedures*)
@@ -103,6 +156,16 @@ MIT in each case. |#
 	   (fg/print-entry-node (procedure-entry-node procedure))))))
     (write-string "\n\n---------- Blocks ----------")
     (fg/print-blocks (expression-block *root-expression*))))
+
+(define-export (show-fg-node node)
+  (fluid-let ((*procedure-queue* false))
+    (with-new-node-marks
+     (lambda ()
+       (fg/print-entry-node
+	(let ((node (->tagged-vector node)))
+	  (if (procedure? node)
+	      (procedure-entry-node node)
+	      node)))))))
 
 (define (fg/print-entry-node node)
   (if node
@@ -146,16 +209,19 @@ MIT in each case. |#
 	  ((TRUE-TEST)
 	   (fg/print-rvalue (true-test-rvalue node))
 	   (fg/print-node (pnode-consequent node))
-	   (fg/print-node (pnode-alternative node)))))))
+	   (fg/print-node (pnode-alternative node)))
+	  ((FG-NOOP)
+	   (fg/print-node (snode-next node)))))))
 
 (define (fg/print-rvalue rvalue)
-  (let ((rvalue (rvalue-known-value rvalue)))
-    (if (and rvalue
-	     (rvalue/procedure? rvalue)
-	     (not (memq rvalue *procedures*)))
-	(begin
-	  (set! *procedures* (cons rvalue *procedures*))
-	  (enqueue! *procedure-queue* rvalue)))))
+  (if *procedure-queue*
+      (let ((rvalue (rvalue-known-value rvalue)))
+	(if (and rvalue
+		 (rvalue/procedure? rvalue)
+		 (not (memq rvalue *procedures*)))
+	    (begin
+	      (set! *procedures* (cons rvalue *procedures*))
+	      (enqueue! *procedure-queue* rvalue))))))
 
 (define (fg/print-subproblem subproblem)
   (fg/print-object subproblem)

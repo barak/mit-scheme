@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 4.1 1987/12/04 20:17:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 4.2 1987/12/30 07:07:18 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -39,17 +39,17 @@ MIT in each case. |#
 (define-snode sblock)
 (define-pnode pblock)
 
-(define-vector-slots bblock 5
+(define-vector-slots bblock 6
   instructions
-  (live-at-entry register-map)
+  live-at-entry
   live-at-exit
-  (new-live-at-exit frame-pointer-offset)
+  (new-live-at-exit register-map)
   label)
 
 (define (make-sblock instructions)
   (make-pnode sblock-tag instructions false false false false))
 
-(define-vector-slots pblock 10
+(define-vector-slots pblock 11
   consequent-lap-generator
   alternative-lap-generator)
 
@@ -74,8 +74,10 @@ MIT in each case. |#
        (lambda (bblock)
 	 (descriptor-list bblock
 			  instructions
+			  live-at-entry
+			  live-at-exit
 			  register-map
-			  frame-pointer-offset))))
+			  label))))
   (set-vector-tag-description!
    sblock-tag
    (lambda (sblock)
@@ -90,7 +92,7 @@ MIT in each case. |#
 			       consequent-lap-generator
 			       alternative-lap-generator)))))
 
-(define (rinst-dead-register? rinst register)
+(define-integrable (rinst-dead-register? rinst register)
   (memq register (rinst-dead-registers rinst)))
 
 (package (bblock-compress!)
@@ -160,3 +162,16 @@ MIT in each case. |#
 	  (set-rgraph-bblocks! *current-rgraph*
 			       (delq! bblock
 				      (rgraph-bblocks *current-rgraph*)))))))
+
+(define (make-linearizer map-inst bblock-linearize)
+  (lambda (rgraphs)
+    (with-new-node-marks
+     (lambda ()
+       (map-inst (lambda (rgraph)
+		   (map-inst (lambda (edge)
+			       (let ((bblock (edge-right-node edge)))
+				 (if (node-marked? bblock)
+				     '()
+				     (bblock-linearize bblock))))
+			     (rgraph-entry-edges rgraph)))
+	       rgraphs)))))

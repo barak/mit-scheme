@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg3.scm,v 1.4 1987/08/31 21:50:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg3.scm,v 4.1 1987/12/30 06:58:08 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -68,7 +68,7 @@ MIT in each case. |#
   (vector-ref pcfg 3))
 
 (define-integrable (make-null-cfg) false)
-(define-integrable cfg-null? false?)
+(define-integrable cfg-null? false?)
 (define-integrable (snode->scfg snode)
   (node->scfg snode set-snode-next-edge!))
 
@@ -85,6 +85,21 @@ MIT in each case. |#
   (make-pcfg node
 	     (list (make-hook node set-node-consequent!))
 	     (list (make-hook node set-node-alternative!))))
+
+(define (snode->pcfg-false snode)
+  (make-pcfg snode
+	     (make-null-hooks)
+	     (list (make-hook snode set-snode-next-edge!))))
+
+(define (snode->pcfg-true snode)
+  (make-pcfg snode
+	     (list (make-hook snode set-snode-next-edge!))
+	     (make-null-hooks)))
+
+(define (pcfg-invert pcfg)
+  (make-pcfg (cfg-entry-node pcfg)
+	     (pcfg-alternative-hooks pcfg)
+	     (pcfg-consequent-hooks pcfg)))
 
 ;;;; Hook Datatype
 
@@ -99,6 +114,12 @@ MIT in each case. |#
 (define hook-member?
   (member-procedure hook=?))
 
+(define-integrable (make-null-hooks)
+  '())
+
+(define-integrable hooks-null?
+  null?)
+
 (define (hooks-union x y)
   (let loop ((x x))
     (cond ((null? x) y)
@@ -112,34 +133,59 @@ MIT in each case. |#
 
 (define (hook-connect! hook node)
   (create-edge! (hook-node hook) (hook-connect hook) node))
+
+;;;; Simplicity Tests
+
+(define (scfg-simple? scfg)
+  (cfg-branch-simple? (cfg-entry-node scfg) (scfg-next-hooks scfg)))
+
+(define (pcfg-simple? pcfg)
+  (let ((entry-node (cfg-entry-node pcfg)))
+    (and (cfg-branch-simple? entry-node (pcfg-consequent-hooks pcfg))
+	 (cfg-branch-simple? entry-node (pcfg-alternative-hooks pcfg)))))
+
+(define (cfg-branch-simple? entry-node hooks)
+  (and (not (null? hooks))
+       (null? (cdr hooks))
+       (eq? entry-node (hook-node (car hooks)))))
+
+(define (scfg-null? scfg)
+  (or (cfg-null? scfg)
+      (cfg-branch-null? (cfg-entry-node scfg)
+			(scfg-next-hooks scfg))))
+
+(define (pcfg-true? pcfg)
+  (and (hooks-null? (pcfg-alternative-hooks pcfg))
+       (cfg-branch-null? (cfg-entry-node pcfg)
+			 (pcfg-consequent-hooks pcfg))))
+
+(define (pcfg-false? pcfg)
+  (and (hooks-null? (pcfg-consequent-hooks pcfg))
+       (cfg-branch-null? (cfg-entry-node pcfg)
+			 (pcfg-alternative-hooks pcfg))))
+
+(define (cfg-branch-null? entry-node hooks)
+  (and (cfg-branch-simple? entry-node hooks)
+       (cfg-node/noop? entry-node)))
+
+;;;; Node-result Constructors
 
 (define (scfg*node->node! scfg next-node)
-  (if (cfg-null? scfg)
+  (if (scfg-null? scfg)
       next-node
-      (begin (if next-node
-		 (hooks-connect! (scfg-next-hooks scfg) next-node))
-	     (cfg-entry-node scfg))))
+      (begin
+	(hooks-connect! (scfg-next-hooks scfg) next-node)
+	(cfg-entry-node scfg))))
 
 (define (pcfg*node->node! pcfg consequent-node alternative-node)
   (if (cfg-null? pcfg)
       (error "PCFG*NODE->NODE!: Can't have null predicate"))
-  (if consequent-node
-      (hooks-connect! (pcfg-consequent-hooks pcfg) consequent-node))
-  (if alternative-node
-      (hooks-connect! (pcfg-alternative-hooks pcfg) alternative-node))
-  (cfg-entry-node pcfg))
-
-(define (scfg-simple? scfg)
-  (cfg-simple? scfg scfg-next-hooks))
-
-(define (pcfg-simple? pcfg)
-  (and (cfg-simple? pcfg pcfg-consequent-hooks)
-       (cfg-simple? pcfg pcfg-alternative-hooks)))
-
-(define-integrable (cfg-simple? cfg cfg-hooks)
-  (and (not (null? (cfg-hooks cfg)))
-       (null? (cdr (cfg-hooks cfg)))
-       (eq? (cfg-entry-node cfg) (hook-node (car (cfg-hooks cfg))))))
+  (cond ((pcfg-true? pcfg) consequent-node)
+	((pcfg-false? pcfg) alternative-node)
+	(else
+	 (hooks-connect! (pcfg-consequent-hooks pcfg) consequent-node)
+	 (hooks-connect! (pcfg-alternative-hooks pcfg) alternative-node)
+	 (cfg-entry-node pcfg))))
 
 ;;;; CFG Construction
 
@@ -153,8 +199,8 @@ MIT in each case. |#
   (hooks-connect! (pcfg-alternative-hooks pcfg) (cfg-entry-node cfg)))
 
 (define (scfg*scfg->scfg! scfg scfg*)
-  (cond ((not scfg) scfg*)
-	((not scfg*) scfg)
+  (cond ((scfg-null? scfg) scfg*)
+	((scfg-null? scfg*) scfg)
 	(else
 	 (scfg-next-connect! scfg scfg*)
 	 (make-scfg (cfg-entry-node scfg) (scfg-next-hooks scfg*)))))
@@ -164,41 +210,53 @@ MIT in each case. |#
 
 (define scfg*->scfg!
   (let ()
+    (define (find-non-null scfgs)
+      (if (and (not (null? scfgs))
+	       (scfg-null? (car scfgs)))
+	  (find-non-null (cdr scfgs))
+	  scfgs))
+
     (define (loop first second rest)
       (scfg-next-connect! first second)
       (if (null? rest)
 	  second
 	  (loop second (car rest) (find-non-null (cdr rest)))))
 
-    (define (find-non-null scfgs)
-      (if (or (null? scfgs)
-	      (car scfgs))
-	  scfgs
-	  (find-non-null (cdr scfgs))))
-
     (named-lambda (scfg*->scfg! scfgs)
       (let ((first (find-non-null scfgs)))
-	(and (not (null? first))
-	     (let ((second (find-non-null (cdr first))))
-	       (if (null? second)
-		   (car first)
-		   (make-scfg (cfg-entry-node (car first))
-			      (scfg-next-hooks
-			       (loop (car first)
-				     (car second)
-				     (find-non-null (cdr second))))))))))))
+	(if (null? first)
+	    (make-null-cfg)
+	    (let ((second (find-non-null (cdr first))))
+	      (if (null? second)
+		  (car first)
+		  (make-scfg (cfg-entry-node (car first))
+			     (scfg-next-hooks
+			      (loop (car first)
+				    (car second)
+				    (find-non-null (cdr second))))))))))))
 
 (package (scfg*pcfg->pcfg! scfg*pcfg->scfg!)
 
 (define ((scfg*pcfg->cfg! constructor) scfg pcfg)
-  (if (not pcfg)
+  (if (cfg-null? pcfg)
       (error "SCFG*PCFG->CFG!: Can't have null predicate"))
-  (constructor (if (not scfg)
-		   (cfg-entry-node pcfg)
-		   (begin (scfg-next-connect! scfg pcfg)
-			  (cfg-entry-node scfg)))
-	       (pcfg-consequent-hooks pcfg)
-	       (pcfg-alternative-hooks pcfg)))
+  (cond ((scfg-null? scfg)
+	 (constructor (cfg-entry-node pcfg)
+		      (pcfg-consequent-hooks pcfg)
+		      (pcfg-alternative-hooks pcfg)))
+	((pcfg-true? pcfg)
+	 (constructor (cfg-entry-node scfg)
+		      (scfg-next-hooks scfg)
+		      (make-null-hooks)))
+	((pcfg-false? pcfg)
+	 (constructor (cfg-entry-node scfg)
+		      (make-null-hooks)
+		      (scfg-next-hooks scfg)))
+	(else
+	 (scfg-next-connect! scfg pcfg)
+	 (constructor (cfg-entry-node scfg)
+		      (pcfg-consequent-hooks pcfg)
+		      (pcfg-alternative-hooks pcfg)))))
 
 (define-export scfg*pcfg->pcfg!
   (scfg*pcfg->cfg! make-pcfg))
@@ -207,22 +265,32 @@ MIT in each case. |#
   (scfg*pcfg->cfg! make-scfg*))
 
 )
-
+
 (package (pcfg*scfg->pcfg! pcfg*scfg->scfg!)
 
 (define ((pcfg*scfg->cfg! constructor) pcfg consequent alternative)
-  (if (not pcfg)
+  (if (cfg-null? pcfg)
       (error "PCFG*SCFG->CFG!: Can't have null predicate"))
-  (constructor (cfg-entry-node pcfg)
-	       (connect! (pcfg-consequent-hooks pcfg) consequent)
-	       (connect! (pcfg-alternative-hooks pcfg) alternative)))
+  (cond ((pcfg-true? pcfg)
+	 (constructor (cfg-entry-node consequent)
+		      (scfg-next-hooks consequent)
+		      (make-null-hooks)))
+	((pcfg-false? pcfg)
+	 (constructor (cfg-entry-node consequent)
+		      (make-null-hooks)
+		      (scfg-next-hooks consequent)))
+	(else
+	 (constructor (cfg-entry-node pcfg)
+		      (connect! (pcfg-consequent-hooks pcfg) consequent)
+		      (connect! (pcfg-alternative-hooks pcfg) alternative)))))
 
 (define (connect! hooks scfg)
-  (cond ((not scfg) hooks)
-	((null? hooks) '())
-	(else
-	 (hooks-connect! hooks (cfg-entry-node scfg))
-	 (scfg-next-hooks scfg))))
+  (if (or (hooks-null? hooks)
+	  (scfg-null? scfg))
+      hooks
+      (begin
+	(hooks-connect! hooks (cfg-entry-node scfg))
+	(scfg-next-hooks scfg))))
 
 (define-export pcfg*scfg->pcfg!
   (pcfg*scfg->cfg! make-pcfg))
@@ -235,29 +303,44 @@ MIT in each case. |#
 (package (pcfg*pcfg->pcfg! pcfg*pcfg->scfg!)
 
 (define ((pcfg*pcfg->cfg! constructor) pcfg consequent alternative)
-  (if (not pcfg)
+  (if (cfg-null? pcfg)
       (error "PCFG*PCFG->CFG!: Can't have null predicate"))
-  (connect! (pcfg-consequent-hooks pcfg) consequent consequent-select
-    (lambda (cchooks cahooks)
-      (connect! (pcfg-alternative-hooks pcfg) alternative alternative-select
-	(lambda (achooks aahooks)
-	  (constructor (cfg-entry-node pcfg)
-		       (hooks-union cchooks achooks)
-		       (hooks-union cahooks aahooks)))))))
+  (cond ((pcfg-true? pcfg)
+	 (constructor (cfg-entry-node consequent)
+		      (pcfg-consequent-hooks consequent)
+		      (pcfg-alternative-hooks consequent)))
+	((pcfg-true? pcfg)
+	 (constructor (cfg-entry-node alternative)
+		      (pcfg-consequent-hooks alternative)
+		      (pcfg-alternative-hooks alternative)))
+	(else
+	 (connect! (pcfg-consequent-hooks pcfg)
+		   consequent
+		   consequent-select
+	   (lambda (cchooks cahooks)
+	     (connect! (pcfg-alternative-hooks pcfg)
+		       alternative
+		       alternative-select
+	       (lambda (achooks aahooks)
+		 (constructor (cfg-entry-node pcfg)
+			      (hooks-union cchooks achooks)
+			      (hooks-union cahooks aahooks)))))))))
 
 (define (connect! hooks pcfg select receiver)
-  (cond ((not pcfg) (select receiver hooks))
-	((null? hooks) (receiver '() '()))
+  (cond ((hooks-null? hooks) (receiver (make-null-hooks) (make-null-hooks)))
+	((cfg-null? pcfg) (select receiver hooks))
+	((pcfg-true? pcfg) (consequent-select receiver hooks))
+	((pcfg-false? pcfg) (alternative-select receiver hooks))
 	(else
 	 (hooks-connect! hooks (cfg-entry-node pcfg))
 	 (receiver (pcfg-consequent-hooks pcfg)
 		   (pcfg-alternative-hooks pcfg)))))
 
-(define (consequent-select receiver hooks)
-  (receiver hooks '()))
+(define-integrable (consequent-select receiver hooks)
+  (receiver hooks (make-null-hooks)))
 
-(define (alternative-select receiver hooks)
-  (receiver '() hooks))
+(define-integrable (alternative-select receiver hooks)
+  (receiver (make-null-hooks) hooks))
 
 (define-export pcfg*pcfg->pcfg!
   (pcfg*pcfg->cfg! make-pcfg))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 1.8 1987/11/18 22:32:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.1 1987/12/30 07:05:45 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,6 +38,52 @@ MIT in each case. |#
 
 ;;;; Transfers to Registers
 
+(define-rule statement
+  (ASSIGN (REGISTER 15) (REGISTER (? source)))
+  (LAP (MOV L ,(coerce->any source) (A 7))))
+
+(define-rule statement
+  (ASSIGN (REGISTER 15) (OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
+  (QUALIFIER (pseudo-register? source))
+  (LAP (LEA ,(indirect-reference! source offset) (A 7))))
+
+(define-rule statement
+  (ASSIGN (REGISTER 15) (OFFSET-ADDRESS (REGISTER 15) (? n)))
+  (increment-anl 7 n))
+
+(define-rule statement
+  (ASSIGN (REGISTER 12) (REGISTER 15))
+  (LAP (MOV L (A 7) (A 4))))
+
+(define-rule statement
+  (ASSIGN (REGISTER 12) (OFFSET-ADDRESS (REGISTER 15) (? offset)))
+  (LAP (LEA (@AO 7 ,(* 4 offset)) (A 4))))
+
+;;; The following rule always occurs immediately after an instruction
+;;; of the form
+;;;
+;;; (ASSIGN (REGISTER (? source)) (POST-INCREMENT (REGISTER 15) 1))
+;;;
+;;; in which case it could be implemented very efficiently using the
+;;; sequence
+;;;
+;;; (LAP (CLR (@A 7)) (MOV L (@A+ 7) (A 4)))
+;;;
+;;; but unfortunately we have no mechanism to take advantage of this.
+
+(define-rule statement
+  (ASSIGN (REGISTER 12) (OBJECT->ADDRESS (REGISTER (? source))))
+  (QUALIFIER (pseudo-register? source))
+  (if (and (dead-register? source)
+	   (register-has-alias? source 'DATA))
+      (let ((source (register-reference (register-alias source 'DATA))))
+	(LAP (AND L ,mask-reference ,source)
+	     (MOV L ,source (A 4))))
+      (let ((temp (reference-temporary-register! 'DATA)))
+	(LAP (MOV L ,(coerce->any source) ,temp)
+	     (AND L ,mask-reference ,temp)
+	     (MOV L ,temp (A 4))))))
+
 ;;; All assignments to pseudo registers are required to delete the
 ;;; dead registers BEFORE performing the assignment.  This is because
 ;;; the register being assigned may be PSEUDO-REGISTER=? to one of the
@@ -45,25 +91,11 @@ MIT in each case. |#
 ;;; happened after the assignment.
 
 (define-rule statement
-  (ASSIGN (REGISTER 12) (REGISTER 15))
-  (enable-frame-pointer-offset! 0)
-  (LAP))
-
-(define-rule statement
-  (ASSIGN (REGISTER 15) (OFFSET-ADDRESS (REGISTER 15) (? n)))
-  (decrement-frame-pointer-offset! n (increment-anl 7 n)))
-
-(define-rule statement
   (ASSIGN (REGISTER (? target)) (OFFSET-ADDRESS (REGISTER 15) (? n)))
   (QUALIFIER (pseudo-register? target))
   (LAP
    (LEA (@AO 7 ,(* 4 n))
 	,(reference-assignment-alias! target 'ADDRESS))))
-
-(define-rule statement
-  (ASSIGN (REGISTER 15) (REGISTER (? source)))
-  (disable-frame-pointer-offset!
-   (LAP (MOV L ,(coerce->any source) (A 7)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (CONSTANT (? source)))
@@ -119,7 +151,6 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (POST-INCREMENT (REGISTER 15) 1))
   (QUALIFIER (pseudo-register? target))
-  (record-pop!)
   (delete-dead-registers!)
   (LAP (MOV L
 	    (@A+ 7)
@@ -162,7 +193,6 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (POST-INCREMENT (REGISTER 15) 1))
-  (record-pop!)
   (LAP (MOV L
 	    (@A+ 7)
 	    ,(indirect-reference! a n))))
@@ -204,7 +234,7 @@ MIT in each case. |#
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (ENTRY:PROCEDURE (? label)))
   (let ((temporary
 	 (register-reference (allocate-temporary-register! 'ADDRESS))))
-    (LAP (LEA (@PCR ,(procedure-external-label (label->procedure label)))
+    (LAP (LEA (@PCR ,(rtl-procedure/external-label (label->object label)))
 	      ,temporary)
 	 (MOV L ,temporary (@A+ 5))
 	 (MOV B (& ,(ucode-type compiled-expression)) (@AO 5 -4)))))
@@ -213,46 +243,27 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (CONSTANT (? object)))
-  (record-push!
-   (LAP ,(load-constant object (INST-EA (@-A 7))))))
+  (LAP ,(load-constant object (INST-EA (@-A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (UNASSIGNED))
-  (record-push!
-   (LAP ,(load-non-pointer (ucode-type unassigned) 0 (INST-EA (@-A 7))))))
+  (LAP ,(load-non-pointer (ucode-type unassigned) 0 (INST-EA (@-A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (REGISTER (? r)))
-  (record-push!
-   (if (= r regnum:frame-pointer)
-       (LAP (PEA ,(offset-reference regnum:stack-pointer
-				    (frame-pointer-offset)))
-	    (MOV B (& ,(ucode-type stack-environment)) (@A 7)))
-       (LAP (MOV L ,(coerce->any r) (@-A 7))))))
+  (LAP (MOV L ,(coerce->any r) (@-A 7))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
 	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? r))))
-  (record-push!
-   (LAP (MOV L ,(coerce->any r) (@-A 7))
-	(MOV B (& ,type) (@A 7)))))
+  (LAP (MOV L ,(coerce->any r) (@-A 7))
+       (MOV B (& ,type) (@A 7))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (OFFSET (REGISTER (? r)) (? n)))
-  (record-push!
-   (LAP (MOV L ,(indirect-reference! r n) (@-A 7)))))
-
-(define-rule statement
-  (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
-	  (OFFSET-ADDRESS (REGISTER 12) (? n)))
-  (record-push!
-   (LAP (PEA ,(offset-reference regnum:stack-pointer
-				(+ n (frame-pointer-offset))))
-	(MOV B (& ,(ucode-type stack-environment)) (@A 7)))))
+  (LAP (MOV L ,(indirect-reference! r n) (@-A 7))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (ENTRY:CONTINUATION (? label)))
-  (record-continuation-frame-pointer-offset! label)
-  (record-push!
-   (LAP (PEA (@PCR ,label))
-	(MOV B (& ,(ucode-type compiler-return-address)) (@A 7)))))
+  (LAP (PEA (@PCR ,label))
+       (MOV B (& ,(ucode-type compiler-return-address)) (@A 7))))

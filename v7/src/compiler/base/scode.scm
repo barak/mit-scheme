@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/scode.scm,v 4.1 1987/12/04 20:04:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/scode.scm,v 4.2 1987/12/30 06:59:28 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -76,14 +76,17 @@ MIT in each case. |#
     make-variable variable? variable-components variable-name
     ))
 
-(define-integrable (scode/make-constant const)
-  const)
+(define-integrable (scode/make-constant value) value)
+(define-integrable (scode/constant-value constant) constant)
+(define scode/constant? (access scode-constant? system-global-environment))
 
-(define scode/constant?
-  (access scode-constant? system-global-environment))
-
-(define-integrable (scode/constant-value const)
-  const)
+(define (scode/make-let names values . body)
+  (scan-defines (scode/make-sequence body)
+    (lambda (auxiliary declarations body)
+      (scode/make-combination
+       (scode/make-lambda lambda-tag:let names '() false
+			  auxiliary declarations body)
+       values))))
 
 ;;;; Absolute variables and combinations
 

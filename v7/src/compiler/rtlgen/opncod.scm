@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.1 1987/12/04 20:30:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.2 1987/12/30 07:09:53 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -75,7 +75,7 @@ MIT in each case. |#
 
 ;;;; Code Generator
 
-(define-export (combination/inline combination offset)
+(define-export (combination/inline combination)
   (generate/return* (combination/block combination)
 		    (combination/continuation combination)
 		    (let ((inliner (combination/inliner combination)))
@@ -98,7 +98,7 @@ MIT in each case. |#
 						   expressions
 						   finish))
 			 false)))
-		    offset))
+		    (node/offset combination)))
 
 (define (invoke/effect->effect generator expressions)
   (generator expressions false))
@@ -188,6 +188,12 @@ MIT in each case. |#
 
 ;;;; Open Coders
 
+(define-open-coder/predicate 'NULL?
+  (lambda (operands)
+    (return-2 (lambda (expressions finish)
+		(finish (pcfg-invert (rtl:make-true-test (car expressions)))))
+	      '(0))))
+
 (let ((open-code/type-test
        (lambda (type)
 	 (lambda (expressions finish)
@@ -216,7 +222,7 @@ MIT in each case. |#
   (define-open-coder/predicate 'EQ?
     (lambda (operands)
       (return-2 open-code/eq-test '(0 1)))))
-
+
 (let ((open-code/pair-cons
        (lambda (type)
 	 (lambda (expressions finish)
@@ -270,7 +276,7 @@ MIT in each case. |#
     (lambda (operands)
       (filter/nonnegative-integer (cadr operands)
 	(lambda (index)
-	  (return-2 (open-code/memory-ref index) '(0)))))))
+	  (return-2 (open-code/memory-ref (1+ index)) '(0)))))))
 
 (let ((open-code/general-car-cdr
        (lambda (pattern)
@@ -321,7 +327,7 @@ MIT in each case. |#
     (lambda (operands)
       (filter/nonnegative-integer (cadr operands)
 	(lambda (index)
-	  (return-2 (open-code/memory-assignment index) '(0 2)))))))
+	  (return-2 (open-code/memory-assignment (1+ index)) '(0 2)))))))
 
 ;;; end COMBINATION/INLINE
 )

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.191 1987/11/25 01:39:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.1 1987/12/30 07:05:00 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -191,20 +191,18 @@ MIT in each case. |#
   (memq (lap:ea-keyword effective-address) '(A D)))
 
 (define (indirect-reference! register offset)
-  (if (= register regnum:frame-pointer)
-      (offset-reference regnum:stack-pointer (+ offset (frame-pointer-offset)))
-      (offset-reference
-       (if (machine-register? register)
-	   register
-	   (or (register-alias register false)
-	       ;; This means that someone has written an address out
-	       ;; to memory, something that should happen only when the
-	       ;; register block spills something.
-	       (begin (warn "Needed to load indirect register!" register)
-		      ;; Should specify preference for ADDRESS but will
-		      ;; accept DATA if no ADDRESS registers available.
-		      (load-alias-register! register 'ADDRESS))))
-       offset)))
+  (offset-reference
+   (if (machine-register? register)
+       register
+       (or (register-alias register false)
+	   ;; This means that someone has written an address out
+	   ;; to memory, something that should happen only when the
+	   ;; register block spills something.
+	   (begin (warn "Needed to load indirect register!" register)
+		  ;; Should specify preference for ADDRESS but will
+		  ;; accept DATA if no ADDRESS registers available.
+		  (load-alias-register! register 'ADDRESS))))
+   offset))
 
 (define (coerce->any register)
   (if (machine-register? register)

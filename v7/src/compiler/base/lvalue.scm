@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.1 1987/12/04 20:03:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.2 1987/12/30 06:58:51 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -75,6 +75,9 @@ MIT in each case. |#
    popping-limit) ;popping-limit for continuation variables
   declarations	;list of declarations for this variable
   )
+
+(define continuation-variable/type variable-in-cell?)
+(define set-continuation-variable/type! set-variable-in-cell?!)
 
 (define (make-variable block name)
   (make-lvalue variable-tag block name false false false '()))
@@ -228,16 +231,17 @@ MIT in each case. |#
   (not (null? (lvalue-initial-values lvalue))))
 
 (define (variable-in-known-location? block variable)
-  (let ((definition-block (variable-block variable)))
-    (or (not (ic-block? definition-block))
-	;; If the block has no procedure, then we know nothing about
-	;; the locations of its bindings.
-	(and (rvalue/procedure? (block-procedure block))
-	     ;; If IC reference in same block as definition, then
-	     ;; incremental definitions cannot screw us.
-	     (eq? block definition-block)
-	     ;; Make sure that IC variables are bound!  A variable
-	     ;; that is not bound by the code being compiled still has
-	     ;; a "definition" block, which is the outermost IC block
-	     ;; of the expression in which the variable is referenced.
-	     (memq variable (block-bound-variables block))))))
+  (or (variable/value-variable? variable)
+      (let ((definition-block (variable-block variable)))
+	(or (not (ic-block? definition-block))
+	    ;; If the block has no procedure, then we know nothing about
+	    ;; the locations of its bindings.
+	    (and (rvalue/procedure? (block-procedure block))
+		 ;; If IC reference in same block as definition, then
+		 ;; incremental definitions cannot screw us.
+		 (eq? block definition-block)
+		 ;; Make sure that IC variables are bound!  A variable
+		 ;; that is not bound by the code being compiled still has
+		 ;; a "definition" block, which is the outermost IC block
+		 ;; of the expression in which the variable is referenced.
+		 (memq variable (block-bound-variables block)))))))

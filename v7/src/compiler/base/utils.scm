@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.1 1987/12/04 20:05:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.2 1987/12/30 06:56:48 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -108,9 +108,16 @@ MIT in each case. |#
 	    irritants))
 
 (define (show-time thunk)
-  (let ((start (runtime)))
+  (let ((process-start (process-time-clock))
+	(real-start (real-time-clock)))
     (let ((value (thunk)))
-      (write-line (- (runtime) start))
+      (let ((process-end (process-time-clock))
+	    (real-end (real-time-clock)))
+	(newline)
+	(write-string "process time: ")
+	(write (- process-end process-start))
+	(write-string "; real time: ")
+	(write (- real-end real-start)))
       value)))
 
 (define (list-filter-indices items indices)
@@ -184,61 +191,6 @@ MIT in each case. |#
 
 )
 
-;;;; Symbol Hash Tables
-
-(define (symbol-hash-table/make n-buckets)
-  (make-vector n-buckets '()))
-
-(define (symbol-hash-table/modify! table symbol if-found if-not-found)
-  (let ((hash (string-hash-mod (symbol->string symbol) (vector-length table))))
-    (let ((bucket (vector-ref table hash)))
-      (let ((entry (assq symbol bucket)))
-	(if entry
-	    (set-cdr! entry (if-found (cdr entry)))
-	    (vector-set! table hash
-			 (cons (cons symbol (if-not-found))
-			       bucket)))))))
-
-(define (symbol-hash-table/lookup* table symbol if-found if-not-found)
-  (let ((value
-	 (assq symbol
-	       (vector-ref table
-			   (string-hash-mod (symbol->string symbol)
-					    (vector-length table))))))
-    (if value
-	(if-found (cdr value))
-	(if-not-found))))
-
-(define (symbol-hash-table/insert! table symbol item)
-  (symbol-hash-table/modify! table symbol
-			     (lambda (old-value) item)
-			     (lambda () item)))
-
-(define (symbol-hash-table/lookup table symbol)
-  (symbol-hash-table/lookup* table symbol
-			     identity-procedure
-			     (lambda () (error "Missing item" symbol))))
-
-(define (symbol-hash-table/bindings table)
-  (apply append (vector->list table)))
-
-(define (symbol-hash-table/positive-bindings table predicate)
-  (mapcan (lambda (bucket)
-	    (list-transform-positive bucket
-	      (lambda (entry)
-		(predicate (cdr entry)))))
-	  (vector->list table)))
-
-(define (symbol-hash-table/negative-bindings table predicate)
-  (mapcan (lambda (bucket)
-	    (list-transform-negative bucket
-	      (lambda (entry)
-		(predicate (cdr entry)))))
-	  (vector->list table)))
-
-(define-integrable string-hash-mod
-  (ucode-primitive string-hash-mod))
-
 ;;;; Type Codes
 
 (let-syntax ((define-type-code
@@ -280,40 +232,52 @@ MIT in each case. |#
 
 (define (primitive-arity-correct? primitive argument-count)
   (if (eq? primitive compiled-error-procedure)
-      (> argument-count 1)
+      (positive? argument-count)
       (let ((arity (primitive-procedure-arity primitive)))
 	(or (= arity -1)
 	    (= arity argument-count)))))
 
 (define (primitive-procedure-safe? object)
   (and (primitive-type? (ucode-type primitive) object)
-       (not (memq object
-		  (let-syntax ((primitives
-				(macro names
-				  `'(,@(map make-primitive-procedure names)))))
-		    (primitives call-with-current-continuation
-				non-reentrant-call-with-current-continuation
-				scode-eval
-				apply
-				garbage-collect
-				primitive-fasdump
-				set-current-history!
-				with-history-disabled
-				force
-				primitive-purify
-				;;complete-garbage-collect
-				dump-band
-				primitive-impurify
-				with-threaded-continuation
-				within-control-point
-				with-interrupts-reduced
-				primitive-eval-step
-				primitive-apply-step
-				primitive-return-step
-				execute-at-new-state-point
-				translate-to-state-point
-				with-interrupt-mask
-				error-procedure))))))
+       (not (memq object unsafe-primitive-procedures))))
+
+(define unsafe-primitive-procedures
+  (let-syntax ((primitives
+		(macro names
+		  `'(,@(map (lambda (spec)
+			      (if (pair? spec)
+				  (apply make-primitive-procedure spec)
+				  (make-primitive-procedure spec)))
+			    names)))))
+    (primitives scode-eval
+		apply
+		force
+		error-procedure
+		within-control-point
+		call-with-current-continuation
+		non-reentrant-call-with-current-continuation
+		with-threaded-continuation
+		with-interrupt-mask
+		with-interrupts-reduced
+		execute-at-new-state-point
+		translate-to-state-point
+		set-current-history!
+		with-history-disabled
+		garbage-collect
+		primitive-purify
+		primitive-impurify
+		primitive-fasdump
+		dump-band
+		load-band
+		(primitive-eval-step 3)
+		(primitive-apply-step 3)
+		(primitive-return-step 2)
+		(dump-world 1)
+		(complete-garbage-collect 1)
+		(with-saved-fluid-bindings 1)
+		(global-interrupt 3)
+		(get-work 1)
+		(master-gc-loop 1))))
 
 ;;;; Special Compiler Support
 

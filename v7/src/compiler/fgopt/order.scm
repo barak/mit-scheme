@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.1 1987/12/04 19:28:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.2 1987/12/30 06:44:43 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -82,7 +82,8 @@ MIT in each case. |#
 	  (if (eq? continuation-type/effect
 		   (virtual-continuation/type continuation))
 	      (make-null-cfg)
-	      (make-virtual-return continuation
+	      (make-virtual-return (virtual-continuation/block continuation)
+				   continuation
 				   (subproblem-rvalue subproblem)))
 	  rest)))))
 
@@ -147,15 +148,17 @@ MIT in each case. |#
 
 (define (order-subproblems/out-of-line block operator operands callee)
   (set-subproblem-type! operator (operator-type (subproblem-rvalue operator)))
-  (if (and callee
-	   (rvalue/procedure? callee)
-	   (procedure/open? callee))
-      (generate/static-link
-       block
-       callee
-       (if (procedure-interface-optimizible? callee)
-	   (optimized-combination-ordering block operator operands callee)
-	   (standard-combination-ordering operator operands)))
+  (if (and callee (rvalue/procedure? callee))
+      (let ((rest
+	     (if (procedure-interface-optimizible? callee)
+		 (optimized-combination-ordering block
+						 operator
+						 operands
+						 callee)
+		 (standard-combination-ordering operator operands))))
+	(if (procedure/open? callee)
+	    (generate/static-link block callee rest)
+	    rest))
       (standard-combination-ordering operator operands)))
 
 (define (optimized-combination-ordering block operator operands callee)
@@ -196,7 +199,7 @@ MIT in each case. |#
 
 (define (sort-subproblems/out-of-line subproblems callee)
   (transmit-values
-      (sort-integrated (procedure-original-required callee)
+      (sort-integrated (cdr (procedure-original-required callee))
 		       subproblems
 		       '()
 		       '())
@@ -247,7 +250,8 @@ MIT in each case. |#
 (define (operator-type operator)
   (let ((callee (rvalue-known-value operator)))
     (cond ((not callee)
-	   (if (reference? operator)
+	   (if (and (reference? operator)
+		    (not (reference-to-known-location? operator)))
 	       continuation-type/effect
 	       continuation-type/apply))
 	  ((rvalue/constant? callee)

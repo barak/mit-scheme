@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 1.5 1987/11/21 18:45:34 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 4.1 1987/12/30 06:53:31 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -82,58 +82,3 @@ MIT in each case. |#
 (define-integrable (set-current-branches! consequent alternative)
   (set-pblock-consequent-lap-generator! *current-bblock* consequent)
   (set-pblock-alternative-lap-generator! *current-bblock* alternative))
-
-;;;; Frame Pointer
-
-(define *frame-pointer-offset*)
-
-(define (disable-frame-pointer-offset! instructions)
-  (set! *frame-pointer-offset* false)
-  instructions)
-
-(define (enable-frame-pointer-offset! offset)
-  (if (not offset) (error "Null frame-pointer offset"))
-  (set! *frame-pointer-offset* offset))
-
-(define (record-push! instructions)
-  (if *frame-pointer-offset*
-      (set! *frame-pointer-offset* (1+ *frame-pointer-offset*)))
-  instructions)
-
-(define (record-pop!)
-  (if *frame-pointer-offset*
-      (set! *frame-pointer-offset* (-1+ *frame-pointer-offset*))))
-
-(define (decrement-frame-pointer-offset! n instructions)
-  (if *frame-pointer-offset*
-      (set! *frame-pointer-offset*
-	    (and (<= n *frame-pointer-offset*) (- *frame-pointer-offset* n))))
-  instructions)
-
-(define (guarantee-frame-pointer-offset!)
-  (if (not *frame-pointer-offset*) (error "Frame pointer not initialized")))
-
-(define (increment-frame-pointer-offset! n instructions)
-  (guarantee-frame-pointer-offset!)
-  (set! *frame-pointer-offset* (+ *frame-pointer-offset* n))
-  instructions)
-
-(define (frame-pointer-offset)
-  (guarantee-frame-pointer-offset!)
-  *frame-pointer-offset*)
-
-(define (record-continuation-frame-pointer-offset! label)
-  (guarantee-frame-pointer-offset!)
-  (let ((continuation (label->continuation label))
-	(offset *frame-pointer-offset*))
-    (cond ((not (continuation-frame-pointer-offset continuation))
-	   (set-continuation-frame-pointer-offset! continuation offset))
-	  ((not (= (continuation-frame-pointer-offset continuation) offset))
-	   (error "Continuation frame-pointer offset mismatch" continuation)))
-    (enqueue! *continuation-queue* continuation)))
-
-(define (record-bblock-frame-pointer-offset! bblock offset)
-  (cond ((not (bblock-frame-pointer-offset bblock))
-	 (set-bblock-frame-pointer-offset! bblock offset))
-	((not (and offset (= (bblock-frame-pointer-offset bblock) offset)))
-	 (error "Basic block frame-pointer offset mismatch" bblock offset))))

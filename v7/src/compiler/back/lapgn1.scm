@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.42 1987/10/05 20:39:46 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.1 1987/12/30 06:53:23 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,7 +37,6 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define *block-start-label*)
-(define *continuation-queue*)
 (define *entry-bblock*)
 (define *current-bblock*)
 (define *dead-registers*)
@@ -60,44 +59,54 @@ MIT in each case. |#
 					    *interned-uuo-links*))))))
 
 (define (cgen-rgraph rgraph)
-  (fluid-let ((*current-rgraph* rgraph)
-	      (*continuation-queue* (make-queue)))
-    (cgen-entry (rgraph-edge rgraph))
-    (queue-map! *continuation-queue*
-      (lambda (continuation)
-	(cgen-entry (continuation-rtl-edge continuation))))))
-
+  (fluid-let ((*current-rgraph* rgraph))
+    (for-each (lambda (edge)
+		(if (not (node-marked? (edge-right-node edge)))
+		    (cgen-entry edge)))
+	      (rgraph-entry-edges rgraph))))
+
 (define (cgen-entry edge)
   (let ((bblock (edge-right-node edge)))
     (fluid-let ((*entry-bblock* bblock))
       (let loop ((bblock bblock))
-	(let ((offset (cgen-bblock bblock)))
-	  (let ((cgen-right
-		 (lambda (edge)
-		   (let ((next (edge-next-node edge)))
-		     (if next
-			 (begin
-			   (record-bblock-frame-pointer-offset! next offset)
-			   (if (node-previous>1? next)
-			       (let ((sblock
-				      (make-sblock
-				       (clear-map-instructions
-					(bblock-register-map bblock)))))
-				 (node-mark! sblock)
-				 (edge-insert-snode! edge sblock)))
-			   (if (not (node-marked? next))
-			       (loop next))))))))
-	    (if (sblock? bblock)
-		(cgen-right (snode-next-edge bblock))
-		(begin (cgen-right (pnode-consequent-edge bblock))
-		       (cgen-right (pnode-alternative-edge bblock))))))))))
+	(cgen-bblock bblock)
+	(let ((cgen-right
+	       (lambda (edge)
+		 (let ((next (edge-next-node edge)))
+		   (if next
+		       (begin
+			 (if (node-previous>1? next)
+			     (clear-map-between bblock edge next))
+			 (if (not (node-marked? next))
+			     (loop next))))))))
+	  (if (sblock? bblock)
+	      (cgen-right (snode-next-edge bblock))
+	      (begin (cgen-right (pnode-consequent-edge bblock))
+		     (cgen-right (pnode-alternative-edge bblock)))))))))
+
+(define (clear-map-between bblock edge bblock*)
+  (let ((map
+	 (let ((map (bblock-register-map bblock))
+	       (live-at-entry (bblock-live-at-entry bblock*)))
+	   (let ((deletions
+		  (list-transform-negative (register-map-live-homes map)
+		    (lambda (pseudo-register)
+		      (regset-member? live-at-entry pseudo-register)))))
+	     (if (not (null? deletions))
+		 (delete-pseudo-registers map
+					  deletions
+					  (lambda (map aliases) map))
+		 map)))))
+    (if (not (register-map-clear? map))
+	(let ((sblock (make-sblock (clear-map-instructions map))))
+	  (node-mark! sblock)
+	  (edge-insert-snode! edge sblock)))))
 
 (define (cgen-bblock bblock)
   ;; This procedure is coded out of line to facilitate debugging.
   (node-mark! bblock)
   (fluid-let ((*current-bblock* bblock)
-	      (*register-map* (bblock-input-register-map bblock))
-	      (*frame-pointer-offset* (bblock-frame-pointer-offset bblock)))
+	      (*register-map* (bblock-input-register-map bblock)))
     (set-bblock-instructions! bblock
 			      (let loop ((rinst (bblock-instructions bblock)))
 				(if (rinst-next rinst)
@@ -105,8 +114,7 @@ MIT in each case. |#
 				      (LAP ,@instructions
 					   ,@(loop (rinst-next rinst))))
 				    (cgen-rinst rinst))))
-    (set-bblock-register-map! bblock *register-map*)
-    *frame-pointer-offset*))
+    (set-bblock-register-map! bblock *register-map*)))
 
 (define (cgen-rinst rinst)
   (let ((rtl (rinst-rtl rinst)))

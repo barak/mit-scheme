@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.1 1987/12/04 20:31:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.2 1987/12/30 07:10:38 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,10 +38,11 @@ MIT in each case. |#
 
 ;;;; Assignments
 
-(define (generate/assignment assignment offset)
+(define (generate/assignment assignment)
   (let ((block (assignment-block assignment))
 	(lvalue (assignment-lvalue assignment))
-	(rvalue (assignment-rvalue assignment)))
+	(rvalue (assignment-rvalue assignment))
+	(offset (node/offset assignment)))
     (if (lvalue-integrated? lvalue)
 	(make-null-cfg)
 	(generate/rvalue rvalue offset scfg*scfg->scfg!
@@ -67,6 +68,7 @@ MIT in each case. |#
 	      (n3 (rtl:make-unassigned-test contents))
 	      (n4 (rtl:make-assignment cell value))
 	      (n5 (rtl:make-interpreter-call:cache-assignment cell value))
+	      ;; Copy prevents premature control merge which confuses CSE
 	      (n6 (rtl:make-assignment cell value)))
 	  (scfg-next-connect! n1 n2)
 	  (pcfg-consequent-connect! n2 n3)
@@ -78,10 +80,11 @@ MIT in each case. |#
 				  (hooks-union (scfg-next-hooks n5)
 					       (scfg-next-hooks n6)))))))))
 
-(define (generate/definition definition offset)
+(define (generate/definition definition)
   (let ((block (definition-block definition))
 	(lvalue (definition-lvalue definition))
-	(rvalue (definition-rvalue definition)))
+	(rvalue (definition-rvalue definition))
+	(offset (node/offset definition)))
     (generate/rvalue rvalue offset scfg*scfg->scfg!
       (lambda (expression)
 	(transmit-values (find-definition-variable block lvalue offset)
@@ -92,34 +95,38 @@ MIT in each case. |#
 
 ;;;; Virtual Returns
 
-(define (generate/virtual-return return offset)
+(define (generate/virtual-return return)
   (let ((operator (virtual-return-operator return))
-	(operand (virtual-return-operand return)))
-    (enumeration-case continuation-type (virtual-continuation/type operator)
-      ((EFFECT)
-       (return-2 (make-null-cfg) offset))
-      ((REGISTER VALUE)
-       (return-2 (operand->register operand
-				    offset
-				    (virtual-continuation/register operator))
-		 offset))
-      ((PUSH)
-       (let ((block (virtual-continuation/block operator)))
-	 (cond ((rvalue/block? operand)
-		(return-2
-		 (rtl:make-push
-		  (rtl:make-environment
-		   (block-ancestor-or-self->locative block
-						     operand
-						     offset)))
-		 (1+ offset)))
-	       ((rvalue/continuation? operand)
-		;; This is a pun set up by the FG generator.
-		(generate/continuation-cons block operand offset))
-	       (else
-		(return-2 (operand->push operand offset) (1+ offset))))))
-      (else
-       (error "Unknown continuation type" return)))))
+	(operand (virtual-return-operand return))
+	(offset (node/offset return)))
+    (if (virtual-continuation/reified? operator)
+	(generate/trivial-return (virtual-return-block return)
+				 (virtual-continuation/reification operator)
+				 operand
+				 offset)
+	(enumeration-case continuation-type
+	    (virtual-continuation/type operator)
+	  ((EFFECT)
+	   (make-null-cfg))
+	  ((REGISTER VALUE)
+	   (operand->register operand
+			      offset
+			      (virtual-continuation/register operator)))
+	  ((PUSH)
+	   (let ((block (virtual-continuation/block operator)))
+	     (cond ((rvalue/block? operand)
+		    (rtl:make-push
+		     (rtl:make-environment
+		      (block-ancestor-or-self->locative block
+							operand
+							offset))))
+		   ((rvalue/continuation? operand)
+		    ;; This is a pun set up by the FG generator.
+		    (generate/continuation-cons block operand))
+		   (else
+		    (operand->push operand offset)))))
+	  (else
+	   (error "Unknown continuation type" return))))))
 
 (define (operand->push operand offset)
   (generate/rvalue operand offset scfg*scfg->scfg! rtl:make-push))
@@ -129,62 +136,50 @@ MIT in each case. |#
     (lambda (expression)
       (rtl:make-assignment register expression))))
 
-(package (generate/continuation-cons)
+(define (generate/continuation-cons block continuation)
+  (let ((closing-block (continuation/closing-block continuation)))
+    (scfg*scfg->scfg!
+     (if (ic-block? closing-block)
+	 (rtl:make-push (rtl:make-fetch register:environment))
+	 (make-null-cfg))
+     (if (continuation/always-known-operator? continuation)
+	 (make-null-cfg)
+	 (begin
+	   (enqueue-continuation! continuation)
+	   (scfg*scfg->scfg!
+	    (if (and (stack-block? closing-block)
+		     (stack-block/dynamic-link? closing-block))
+		(rtl:make-push-link)
+		(make-null-cfg))
+	    (rtl:make-push-return (continuation/label continuation))))))))
 
-(define-export (generate/continuation-cons block continuation offset)
-  (set-continuation/offset! continuation offset)
-  (let ((values
-	 (let ((values
-		(if (continuation/dynamic-link? continuation)
-		    (return-2 (rtl:make-push-link) (1+ offset))
-		    (return-2 (make-null-cfg) offset))))
-	   (if (continuation/always-known-operator? continuation)
-	       values
-	       (begin
-		 (enqueue-continuation! continuation)
-		 (push-prefix values
-			      (rtl:make-push-return
-			       (continuation/label continuation))))))))
-    (if (ic-block? (continuation/closing-block continuation))
-	(push-prefix values
-		     (rtl:make-push (rtl:make-fetch register:environment)))
-	values)))
-
-(define (push-prefix values prefix)
-  (transmit-values values
-    (lambda (scfg offset)
-      (return-2 (scfg*scfg->scfg! prefix scfg) (1+ offset)))))
-
-)
-
-(define (generate/pop pop offset)
+(define (generate/pop pop)
   (rtl:make-pop (continuation*/register (pop-continuation pop))))
 
 ;;;; Predicates
 
-(define (generate/true-test true-test offset)
+(define (generate/true-test true-test)
   (generate/predicate (true-test-rvalue true-test)
 		      (pnode-consequent true-test)
 		      (pnode-alternative true-test)
-		      offset))
+		      (node/offset true-test)))
 
 (define (generate/predicate rvalue consequent alternative offset)
   (if (rvalue/unassigned-test? rvalue)
       (generate/unassigned-test rvalue consequent alternative offset)
       (let ((value (rvalue-known-value rvalue)))
 	(if value
-	    (generate/known-predicate value consequent alternative offset)
+	    (generate/known-predicate value consequent alternative)
 	    (pcfg*scfg->scfg!
 	     (generate/rvalue rvalue offset scfg*pcfg->pcfg!
 	       rtl:make-true-test)
-	     (generate/node consequent offset)
-	     (generate/node alternative offset))))))
+	     (generate/node consequent)
+	     (generate/node alternative))))))
 
-(define (generate/known-predicate value consequent alternative offset)
+(define (generate/known-predicate value consequent alternative)
   (generate/node (if (and (constant? value) (false? (constant-value value)))
 		     alternative
-		     consequent)
-		 offset))
+		     consequent)))
 
 (define (generate/unassigned-test rvalue consequent alternative offset)
   (let ((block (unassigned-test-block rvalue))
@@ -201,13 +196,13 @@ MIT in each case. |#
 		   (rtl:make-true-test
 		    (rtl:interpreter-call-result:unassigned?))))
 		generate/cached-unassigned?)
-	      (generate/node consequent offset)
-	      (generate/node alternative offset)))
+	      (generate/node consequent)
+	      (generate/node alternative)))
 	    ((and (rvalue/constant? value)
 		  (scode/unassigned-object? (constant-value value)))
-	     (generate/node consequent offset))
+	     (generate/node consequent))
 	    (else
-	     (generate/node alternative offset))))))
+	     (generate/node alternative))))))
 
 (define (generate/cached-unassigned? name)
   (let ((temp (rtl:make-pseudo-register)))

@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.1 1987/12/04 20:31:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.2 1987/12/30 07:10:29 cph Exp $
 #| -*-Scheme-*-
 Copyright (c) 1987 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.1 1987/12/04 20:31:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.2 1987/12/30 07:10:29 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -63,7 +63,7 @@ promotional, or sales literature without prior written consent from
   (transmit-values expression-value
     (lambda (prefix expression)
       (return-2 prefix (transform expression)))))
-
+
    result
   (lambda (constant offset)
     (generate/constant constant)))
@@ -74,49 +74,27 @@ promotional, or sales literature without prior written consent from
   (lambda (constant)
   (lambda (block offset)
 (define-method-table-entry 'BLOCK rvalue-methods
-
+
     block ;; ignored
   (lambda (reference offset)
     (let ((block (reference-block reference))
 (define-method-table-entry 'REFERENCE rvalue-methods
   (lambda (reference)
-      (let ((standard-case
-	     (lambda ()
-	       (if (value-variable? lvalue)
-		   (expression-value/simple
-		    (rtl:make-fetch
-		     (let ((continuation (block-procedure block)))
-		       (if (continuation/always-known-operator? continuation)
-			   (continuation/register continuation)
-			   register:value))))
-		   (find-variable block lvalue offset
-		     (lambda (locative)
-		       (expression-value/simple (rtl:make-fetch locative)))
-		     (lambda (environment name)
-		       (expression-value/temporary
-			(rtl:make-interpreter-call:lookup
-			 environment
-			 (intern-scode-variable! block name)
-			 safe?)
-			(rtl:interpreter-call-result:lookup)))
-		     (lambda (name)
-		       (generate/cached-reference name safe?)))))))
-	(let ((value (lvalue-known-value lvalue)))
-	  (cond ((not value)
-		 (standard-case))
-		((not (rvalue/procedure? value))
-		 (generate/rvalue* value offset))
-		((and (procedure/closure? value)
-		      (block-ancestor-or-self? block (procedure-block value)))
-		 (expression-value/simple
-		  (rtl:make-fetch
-		   (stack-locative-offset
-		    (block-ancestor-or-self->locative block
-						      (procedure-block value)
-						      offset)
-		    (procedure-closure-offset value)))))
-		(else
-		 (standard-case))))))))
+      (let ((value (lvalue-known-value lvalue)))
+	(if (and value (not (rvalue/procedure? value)))
+	    (generate/rvalue* value offset)
+	    (find-variable block lvalue offset
+	      (lambda (locative)
+		(expression-value/simple (rtl:make-fetch locative)))
+	      (lambda (environment name)
+		(expression-value/temporary
+		 (rtl:make-interpreter-call:lookup
+		  environment
+		  (intern-scode-variable! block name)
+		  safe?)
+		 (rtl:interpreter-call-result:lookup)))
+	      (lambda (name)
+		(generate/cached-reference name safe?))))))))
 
 (define (generate/cached-reference name safe?)
   (let ((temp (rtl:make-pseudo-register))
@@ -170,7 +148,7 @@ promotional, or sales literature without prior written consent from
        (if (not (procedure-virtual-closure? procedure))
 	   (error "Reference to open procedure" procedure))
 	    ;; inside another IC procedure?
-(define (make-closure-environment procedure offset)
+(define-export (make-closure-environment procedure offset)
   (let ((block (procedure-closing-block procedure)))
 (define (make-non-trivial-closure-cons procedure block**)
 	   (expression-value/simple (rtl:make-constant false)))
@@ -183,29 +161,33 @@ promotional, or sales literature without prior written consent from
 		      (closure-ic-locative closure-block block offset)))
 		(rtl:make-constant false))))
 	  ((closure-block? block)
-	   (let ((closure-block (procedure-closure-block procedure)))
-	     (define (loop variables)
-	       (cond ((null? variables) '())
-		     ((lvalue-integrated? (car variables))
-		      (loop (cdr variables)))
-		     (else
-		      (cons (rtl:make-push
-			     (rtl:make-fetch
-			      (find-closure-variable closure-block
-						     (car variables)
-						     offset)))
-			    (loop (cdr variables))))))
+	   (let ((closure-block (procedure-closure-block procedure))
+		 (entries (block-closure-offsets block)))
+	     (define (loop entries offset)
+	     (let loop
+		   '()
+		   (cons (rtl:make-push
+			  (rtl:make-fetch
+			   (let ((variable (caar entries)))
+			     (if (eq? (lvalue-known-value variable)
+				      (block-procedure closure-block))
+				 (block-closure-locative closure-block offset)
+				 (find-closure-variable closure-block
+							variable
+							offset)))))
+			 (loop (cdr entries) (-1+ offset)))))
 
 	     (let ((pushes
-		    (let ((parent (block-parent block))
-			  (pushes (loop (block-bound-variables block))))
-		      (if (and parent (ic-block/use-lookup? parent))
-			  (cons (rtl:make-push
-				 (closure-ic-locative closure-block
-						      parent
-						      offset))
-				pushes)
-			  pushes))))
+		    (let ((offset (+ offset (length entries))))
+		      (let ((parent (block-parent block))
+			    (pushes (loop entries (-1+ offset))))
+			(if (and parent (ic-block/use-lookup? parent))
+			    (cons (rtl:make-push
+				   (closure-ic-locative closure-block
+							parent
+							offset))
+				  pushes)
+			    pushes)))))
 	       (expression-value/temporary
 		(scfg*->scfg!
 		 (reverse!

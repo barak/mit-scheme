@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtline.scm,v 4.1 1987/12/04 20:18:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtline.scm,v 4.2 1987/12/30 07:07:37 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -32,7 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Linearizer for CFG
+;;;; RTL linearizer
 
 (declare (usual-integrations))
 
@@ -43,8 +43,6 @@ MIT in each case. |#
 ;;; has already been linearized, that it has a label, since this
 ;;; implies that it has more than one previous neighbor.
 
-;;;; RTL linearizer
-
 (package (bblock-linearize-rtl)
 
 (define-export (bblock-linearize-rtl bblock)
@@ -96,21 +94,6 @@ MIT in each case. |#
 		    (bblock-linearize-rtl cn)))))))
 
 )
-
-;;;; Linearizers
-
-(define (make-linearizer map-inst bblock-linearize)
-  (lambda (rgraphs)
-    (with-new-node-marks
-     (lambda ()
-       (map-inst (lambda (rgraph)
-		   (map-inst (lambda (edge)
-			       (let ((bblock (edge-right-node edge)))
-				 (if (node-marked? bblock)
-				     '()
-				     (bblock-linearize bblock))))
-			     (rgraph-entry-edges rgraph)))
-	       rgraphs)))))
 
 (define linearize-rtl
   (make-linearizer mapcan bblock-linearize-rtl))

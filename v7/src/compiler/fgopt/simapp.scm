@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simapp.scm,v 4.1 1987/12/04 19:06:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simapp.scm,v 4.2 1987/12/30 06:45:00 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -111,14 +111,16 @@ MIT in each case. |#
 			   (loop (cdr parameters) (cdr operands)))))))
 	      ((rvalue/constant? operator)
 	       (let ((value (constant-value operator)))
-		 (if (primitive-procedure? value)
-		     (if (not (primitive-arity-correct? value
-							(-1+ number-supplied)))
-			 (warn
-			  "Primitive called with wrong number of arguments"
-			  value
-			  number-supplied))
-		     (warn "Inapplicable operator" value))))
+		 (cond ((primitive-procedure? value)
+			(if (not
+			     (primitive-arity-correct? value
+						       (-1+ number-supplied)))
+			    (warn
+			     "Primitive called with wrong number of arguments"
+			     value
+			     number-supplied)))
+		       ((not (scode/unassigned-object? value))
+			(warn "Inapplicable operator" value)))))
 	      (else
 	       (warn "Inapplicable operator" operator)))))))
 

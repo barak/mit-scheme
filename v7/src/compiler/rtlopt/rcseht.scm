@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.1 1987/12/08 13:55:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.2 1987/12/30 07:13:28 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -145,7 +145,7 @@ MIT in each case. |#
 
 (define (hash-table-delete-class! predicate)
   (let table-loop ((i 0))
-    (if (< i n-buckets)
+    (if (< i (hash-table-size))
 	(let bucket-loop ((element (hash-table-ref i)))
 	  (if element
 	      (begin (if (predicate element)

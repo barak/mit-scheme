@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.1 1987/12/04 20:30:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.2 1987/12/30 07:10:01 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,35 +38,29 @@ MIT in each case. |#
 
 (package (generate/combination)
 
-(define (generate/combination combination offset)
+(define (generate/combination combination)
   (if (combination/inline? combination)
-      (combination/inline combination offset)
-      (combination/normal combination offset)))
+      (combination/inline combination)
+      (combination/normal combination)))
 
-(define (combination/normal combination offset)
+(define (combination/normal combination)
   (let ((block (combination/block combination))
 	(operator (combination/operator combination))
 	(frame-size (combination/frame-size combination))
-	(continuation (combination/continuation combination)))
+	(continuation (combination/continuation combination))
+	(offset (node/offset combination)))
     (let ((callee (rvalue-known-value operator)))
       (let ((finish
 	     (lambda (invocation callee-external?)
-	       (if (return-operator/subproblem? continuation)
-		   (invocation operator
-			       offset
-			       frame-size
-			       (continuation/label continuation)
-			       invocation-prefix/null)
-		   (invocation operator
-			       offset
-			       frame-size
-			       false
-			       (generate/invocation-prefix
-				block
-				offset
-				callee
-				continuation
-				callee-external?))))))
+	       (invocation operator
+			   offset
+			   frame-size
+			   (and (return-operator/subproblem? continuation)
+				(continuation/label continuation))
+			   (generate/invocation-prefix block
+						       callee
+						       continuation
+						       callee-external?)))))
 	(cond ((not callee)
 	       (finish (if (reference? operator)
 			   invocation/reference
@@ -93,7 +87,7 @@ MIT in each case. |#
 (define (invocation/jump operator offset frame-size continuation prefix)
   (let ((callee (rvalue-known-value operator)))
     (scfg*scfg->scfg!
-     (prefix frame-size)
+     (prefix offset frame-size)
      (if (procedure-inline-code? callee)
 	 (generate/procedure-entry/inline callee)
 	 (begin
@@ -106,10 +100,10 @@ MIT in each case. |#
 	    (procedure-label callee)))))))
 
 (define (invocation/apply operator offset frame-size continuation prefix)
-  (invocation/apply* frame-size continuation prefix))
+  (invocation/apply* offset frame-size continuation prefix))
 
-(define (invocation/apply* frame-size continuation prefix)
-  (scfg*scfg->scfg! (prefix frame-size)
+(define (invocation/apply* offset frame-size continuation prefix)
+  (scfg*scfg->scfg! (prefix offset frame-size)
 		    (rtl:make-invocation:apply frame-size continuation)))
 
 (define invocation/ic
@@ -120,14 +114,9 @@ MIT in each case. |#
 
 (define (invocation/primitive operator offset frame-size continuation prefix)
   (scfg*scfg->scfg!
-   (prefix frame-size)
-   (let ((primitive
-	  (let ((primitive (constant-value (rvalue-known-value operator))))
-	    (if (eq? primitive compiled-error-procedure)
-		primitive
-		(primitive-procedure-name primitive)))))
-     ((if (memq primitive special-primitive-handlers)
-	  rtl:make-invocation:special-primitive
+   (prefix offset frame-size)
+   (let ((primitive (constant-value (rvalue-known-value operator))))
+     ((or (special-primitive-handler primitive)
 	  rtl:make-invocation:primitive)
       (1+ frame-size)
       continuation
@@ -137,35 +126,37 @@ MIT in each case. |#
 
 (define-export (invocation/reference operator offset frame-size continuation
 				     prefix)
-  (let ((block (reference-block operator))
-	(variable (reference-lvalue operator)))
-    (find-variable block variable offset
-      (lambda (locative)
-	(scfg*scfg->scfg!
-	 (rtl:make-push (rtl:make-fetch locative))
-	 (invocation/apply* (1+ frame-size) continuation prefix)))
-      (lambda (environment name)
-	(invocation/lookup frame-size
-			   continuation
-			   (prefix frame-size)
-			   environment
-			   (intern-scode-variable! block name)))
-      (lambda (name)
-	(if (memq 'UUO-LINK (variable-declarations variable))
-	    (invocation/uuo-link frame-size
-				 continuation
-				 (prefix frame-size)
-				 name)
-	    (invocation/cache-reference frame-size
-					continuation
-					prefix
-					name))))))
-
-(define (invocation/lookup frame-size
-			   continuation
-			   prefix
-			   environment
-			   variable)
+  (if (reference-to-known-location? operator)
+      (invocation/apply* offset frame-size continuation prefix)
+      (let ((block (reference-block operator))
+	    (variable (reference-lvalue operator)))
+	(find-variable block variable offset
+	  (lambda (locative)
+	    (scfg*scfg->scfg!
+	     (rtl:make-push (rtl:make-fetch locative))
+	     (invocation/apply* (1+ offset)
+				(1+ frame-size)
+				continuation
+				prefix)))
+	  (lambda (environment name)
+	    (invocation/lookup frame-size
+			       continuation
+			       (prefix offset frame-size)
+			       environment
+			       (intern-scode-variable! block name)))
+	  (lambda (name)
+	    (if (memq 'UUO-LINK (variable-declarations variable))
+		(invocation/uuo-link frame-size
+				     continuation
+				     (prefix offset frame-size)
+				     name)
+		(invocation/cache-reference offset
+					    frame-size
+					    continuation
+					    prefix
+					    name)))))))
+
+(define (invocation/lookup frame-size continuation prefix environment variable)
   (let ((make-invocation
 	 (lambda (environment)
 	   (expression-simplify-for-statement environment
@@ -179,14 +170,14 @@ MIT in each case. |#
 	(scfg-append! (rtl:make-assignment register:environment environment)
 		      prefix
 		      (make-invocation register:environment)))))
-
+
 (define (invocation/uuo-link frame-size continuation prefix name)
   (scfg*scfg->scfg! prefix
 		    (rtl:make-invocation:uuo-link (1+ frame-size)
 						  continuation
 						  name)))
 
-(define (invocation/cache-reference frame-size continuation prefix name)
+(define (invocation/cache-reference offset frame-size continuation prefix name)
   (let* ((temp (rtl:make-pseudo-register))
 	 (cell (rtl:make-fetch temp))
 	 (contents (rtl:make-fetch cell)))
@@ -197,10 +188,13 @@ MIT in each case. |#
 	  (n3
 	   (scfg*scfg->scfg!
 	    (rtl:make-push contents)
-	    (invocation/apply* (1+ frame-size) continuation prefix)))
+	    (invocation/apply* (1+ offset)
+			       (1+ frame-size)
+			       continuation
+			       prefix)))
 	  (n4
 	   (scfg*scfg->scfg!
-	    (prefix frame-size)
+	    (prefix offset frame-size)
 	    (expression-simplify-for-statement cell
 	      (lambda (cell)
 		(rtl:make-invocation:cache-reference (1+ frame-size)
@@ -218,71 +212,96 @@ MIT in each case. |#
 
 ;;;; Prefixes
 
-(package (generate/invocation-prefix invocation-prefix/null)
+(package (generate/invocation-prefix)
 
 (define-export (generate/invocation-prefix block
-					   offset
 					   callee
 					   continuation
 					   callee-external?)
-  (let ((caller (block-procedure block)))
-    (cond ((or (not (rvalue/procedure? caller))
-	       (procedure/ic? caller))
-	   invocation-prefix/null)
-	  ((procedure/external? caller)
-	   (if callee-external?
-	       (invocation-prefix/move-frame-up block offset block)
-	       invocation-prefix/null))
-	  (callee-external?
-	   (invocation-prefix/erase-to block
-				       offset
-				       continuation
-				       (stack-block/external-ancestor block)))
-	  (else
-	   (let ((block* (procedure-block callee)))
-	     (cond ((block-child? block block*)
-		    invocation-prefix/null)
-		   ((block-sibling? block block*)
-		    (invocation-prefix/move-frame-up block offset block))
-		   (else
-		    (invocation-prefix/erase-to
-		     block
-		     offset
-		     continuation
-		     (block-farthest-uncommon-ancestor block block*)))))))))
+  (prefix-append
+   (generate/link-prefix block callee continuation callee-external?)
+   (let ((caller (block-procedure block)))
+     (cond ((or (return-operator/subproblem? continuation)
+		(not (rvalue/procedure? caller))
+		(procedure/ic? caller))
+	    prefix/null)
+	   ((procedure/external? caller)
+	    (if callee-external?
+		(invocation-prefix/move-frame-up block block)
+		prefix/null))
+	   (callee-external?
+	    (invocation-prefix/erase-to block
+					continuation
+					(stack-block/external-ancestor block)))
+	   (else
+	    (let ((block* (procedure-block callee)))
+	      (if (block-child? block block*)
+		  prefix/null
+		  (invocation-prefix/erase-to block
+					      continuation
+					      (block-farthest-uncommon-ancestor
+					       block
+					       (block-parent block*))))))))))
 
-(define (invocation-prefix/erase-to block offset continuation callee-limit)
+(define (prefix-append prefix prefix*)
+  (lambda (offset frame-size)
+    (scfg*scfg->scfg! (prefix offset frame-size) (prefix* offset frame-size))))
+
+(define (prefix/null offset frame-size)
+  (make-null-cfg))
+
+(define (generate/link-prefix block callee continuation callee-external?)
+  (cond ((not (and (not callee-external?)
+		   (internal-block/dynamic-link? (procedure-block callee))))
+	 prefix/null)
+	((return-operator/subproblem? continuation)
+	 link-prefix/subproblem)
+	((block/dynamic-link? block)
+	 prefix/null)
+	(else
+	 (link-prefix/reduction
+	  block
+	  (reduction-continuation/popping-limit continuation)))))
+
+(define (link-prefix/subproblem offset frame-size)
+  (rtl:make-assignment
+   register:dynamic-link
+   (rtl:make-address
+    (stack-locative-offset (rtl:make-fetch register:stack-pointer)
+			   frame-size))))
+
+(define (link-prefix/reduction block block*)
+  (lambda (offset frame-size)
+    (rtl:make-assignment register:dynamic-link
+			 (popping-limit/locative block offset block* 0))))
+
+(define (invocation-prefix/erase-to block continuation callee-limit)
   (let ((popping-limit (reduction-continuation/popping-limit continuation)))
     (if popping-limit
 	(invocation-prefix/move-frame-up block
-					 offset
 					 (if (block-ancestor? callee-limit
 							      popping-limit)
 					     callee-limit
 					     popping-limit))
-	(invocation-prefix/dynamic-link
-	 (popping-limit/locative block offset callee-limit 0)))))
-
-;;; The invocation prefix is always one of the following:
+	(invocation-prefix/dynamic-link block callee-limit))))
 
-(define-export (invocation-prefix/null frame-size)
-  (make-null-cfg))
+(define (invocation-prefix/move-frame-up block block*)
+  (lambda (offset frame-size)
+    (expression-simplify-for-statement
+     (popping-limit/locative block offset block* 0)
+     (lambda (locative)
+       (rtl:make-invocation-prefix:move-frame-up frame-size locative)))))
 
-(define (invocation-prefix/move-frame-up block offset block*)
-  (invocation-prefix/move-frame-up*
-   (popping-limit/locative block offset block* 0)))
-
-(define (invocation-prefix/move-frame-up* locative)
-  (lambda (frame-size)
-    (expression-simplify-for-statement locative
-      (lambda (locative)
-	(rtl:make-invocation-prefix:move-frame-up frame-size locative)))))
-
-(define (invocation-prefix/dynamic-link locative)
-  (lambda (frame-size)
-    (expression-simplify-for-statement locative
-      (lambda (locative)
-	(rtl:make-invocation-prefix:dynamic-link frame-size locative)))))
+(define (invocation-prefix/dynamic-link block block*)
+  (lambda (offset frame-size)
+    (expression-simplify-for-statement
+     (popping-limit/locative block offset block* 0)
+     (lambda (locative)
+       (expression-simplify-for-statement (interpreter-dynamic-link)
+	 (lambda (dynamic-link)
+	   (rtl:make-invocation-prefix:dynamic-link frame-size
+						    locative
+						    dynamic-link)))))))
 
 ;;; end GENERATE/INVOCATION-PREFIX
 )

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.1 1987/12/04 19:27:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.2 1987/12/30 06:44:12 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -66,17 +66,28 @@ simple techniques it generates more information than is needed.
 
 (define-export (identify-closure-limits! procedures applications assignments)
   (for-each initialize-closure-limit! procedures)
+  (for-each close-passed-out! procedures)
   (for-each close-application-arguments! applications)
   (for-each close-assignment-values! assignments))
 
 (define (initialize-closure-limit! procedure)
   (if (not (procedure-continuation? procedure))
-      (set-procedure-closing-limit!
-       procedure
-       (and (not (procedure-passed-out? procedure))
-	    (procedure-closing-block procedure)))))
+      (set-procedure-closing-limit! procedure
+				    (procedure-closing-block procedure))))
+
+(define (close-passed-out! procedure)
+  (if (and (not (procedure-continuation? procedure))
+	   (procedure-passed-out? procedure))
+      (close-procedure! procedure false)))
 
 (define (close-application-arguments! application)
+  ;; Note that case where all procedures are closed in same block can
+  ;; be solved by introduction of another kind of closure, which has a
+  ;; fixed environment but carries around a pointer to the code.
+  (if (application/combination? application)
+      (let ((operator (application-operator application)))
+	(if (not (rvalue-known-value operator))
+	    (close-rvalue! operator false))))
   (close-values!
    (application-operand-values application)
    (let ((procedure (rvalue-known-value (application-operator application))))
@@ -88,7 +99,7 @@ simple techniques it generates more information than is needed.
 (define (close-assignment-values! assignment)
   (close-rvalue! (assignment-rvalue assignment)
 		 (variable-block (assignment-lvalue assignment))))
-
+
 (define-integrable (close-rvalue! rvalue binding-block)
   (close-values! (rvalue-values rvalue) binding-block))
 
@@ -108,11 +119,26 @@ simple techniques it generates more information than is needed.
       (if (not (eq? new-closing-limit closing-limit))
 	  (begin
 	    (set-procedure-closing-limit! procedure new-closing-limit)
-	    (for-each-block-descendent! (procedure-block procedure)
-	      (lambda (block)
-		(for-each (lambda (application)
-			    (close-rvalue! (application-operator application)
-					   new-closing-limit))
-			  (block-applications block)))))))))
+	    ;; The following line forces the procedure's type to CLOSURE.
+	    (set-procedure-closure-block! procedure true)
+	    (close-callees! (procedure-block procedure) new-closing-limit))))))
+
+(define (close-callees! block new-closing-limit)
+  (for-each-callee! block
+    (lambda (value)
+      (if (not (block-ancestor-or-self? (procedure-block value) block))
+	  (close-procedure! value new-closing-limit)))))
+
+(define (for-each-callee! block procedure)
+  (for-each-block-descendent! block
+    (lambda (block*)
+      (for-each (lambda (application)
+		  (for-each (lambda (value)
+			      (if (and (rvalue/procedure? value)
+				       (not (procedure-continuation? value)))
+				  (procedure value)))
+			    (rvalue-values
+			     (application-operator application))))
+		(block-applications block*)))))
 
 )

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndblk.scm,v 4.1 1987/12/04 20:30:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndblk.scm,v 4.2 1987/12/30 07:09:45 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,32 +37,53 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (find-variable start-block variable offset if-compiler if-ic if-cached)
-  (find-block/variable start-block variable offset
-    (lambda (offset-locative)
-      (lambda (block locative)
-	(if-compiler
-	 (let ((locative
-		(offset-locative locative (variable-offset block variable))))
+  (if (variable/value-variable? variable)
+      (if-compiler
+       (let ((continuation (block-procedure start-block)))
+	 (if (continuation/always-known-operator? continuation)
+	     (continuation/register continuation)
+	     register:value)))
+      (find-variable-internal start-block variable offset
+	(lambda (locative)
+	  (if-compiler
 	   (if (variable-in-cell? variable)
 	       (rtl:make-fetch locative)
-	       locative)))))
-    (lambda (block locative)
-      (cond ((variable-in-known-location? start-block variable)
-	     (if-compiler
-	      (rtl:locative-offset locative (variable-offset block variable))))
-	    ((ic-block/use-lookup? block)
-	     (if-ic locative (variable-name variable)))
-	    (else
-	     (if-cached (variable-name variable)))))))
+	       locative)))
+	(lambda (block locative)
+	  (cond ((variable-in-known-location? start-block variable)
+		 (if-compiler
+		  (rtl:locative-offset locative
+				       (variable-offset block variable))))
+		((ic-block/use-lookup? block)
+		 (if-ic locative (variable-name variable)))
+		(else
+		 (if-cached (variable-name variable))))))))
 
 (define (find-closure-variable block variable offset)
-  (find-block/variable block variable offset
-    (lambda (offset-locative)
-      (lambda (block locative)
-	(offset-locative locative (variable-offset block variable))))
+  (find-variable-internal block variable offset
+    identity-procedure
     (lambda (block locative)
       (error "Closure variable in IC frame" variable))))
 
+(define (find-variable-internal block variable offset if-compiler if-ic)
+  (let ((rvalue (lvalue-known-value variable)))
+    (if (and rvalue
+	     (rvalue/procedure? rvalue)
+	     (procedure/closure? rvalue)
+	     (block-ancestor-or-self? block (procedure-block rvalue)))
+	(if-compiler
+	 (stack-locative-offset
+	  (block-ancestor-or-self->locative block
+					    (procedure-block rvalue)
+					    offset)
+	  (procedure-closure-offset rvalue)))
+	(find-block/variable block variable offset
+	  (lambda (offset-locative)
+	    (lambda (block locative)
+	      (if-compiler
+	       (offset-locative locative (variable-offset block variable)))))
+	  if-ic))))
+
 (define (find-definition-variable block lvalue offset)
   (find-block/variable block lvalue offset
     (lambda (offset-locative)
@@ -75,9 +96,11 @@ MIT in each case. |#
   (find-block block
 	      offset
 	      (lambda (block)
-		(or (memq variable (block-bound-variables block))
-		    (and (not (block-parent block))
-			 (memq variable (block-free-variables block)))))
+		(if block
+		    (or (memq variable (block-bound-variables block))
+			(and (not (block-parent block))
+			     (memq variable (block-free-variables block))))
+		    (error "Unable to find variable" variable)))
     (lambda (block locative)
       ((enumeration-case block-type (block-type block)
 	 ((STACK) (if-known stack-locative-offset))
@@ -113,6 +136,12 @@ MIT in each case. |#
 							    block*
 							    offset)
 			  (+ extra (block-frame-size block*)))))
+
+(define (block-closure-locative block offset)
+  ;; BLOCK must be the invocation block of a closure.
+  (stack-locative-offset (rtl:make-fetch register:stack-pointer)
+			 (+ (procedure-closure-offset (block-procedure block))
+			    offset)))
 
 (package (find-block)
 
@@ -150,6 +179,7 @@ MIT in each case. |#
 	     (else (error "Illegal procedure parent" parent)))
 	   (error "Block has no parent" block))))
     ((CLOSURE) closure-block/parent-locative)
+    ((CONTINUATION) continuation-block/parent-locative)
     (else (error "Illegal parent block type" block))))
 
 (define (find-block/same-block? block)
@@ -163,13 +193,18 @@ MIT in each case. |#
       locative)))
 
 (define (internal-block/parent-locative block locative)
-  (let ((links (block-stack-link block)))
-    (if (null? links)
-	(stack-block/static-link-locative block locative)
+  (let ((link (block-stack-link block)))
+    (if link
 	(find-block/specific
-	 (car links)
+	 link
 	 (block-parent block)
-	 (stack-locative-offset locative (block-frame-size block))))))
+	 (stack-locative-offset locative (block-frame-size block)))
+	(stack-block/static-link-locative block locative))))
+
+(define (continuation-block/parent-locative block locative)
+  (stack-locative-offset locative
+			 (+ (block-frame-size block)
+			    (continuation/offset (block-procedure block)))))
 
 (define (stack-block/static-link-locative block locative)
   (rtl:make-fetch

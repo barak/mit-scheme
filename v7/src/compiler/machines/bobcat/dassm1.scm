@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 1.1 1987/08/07 17:12:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.1 1987/12/30 07:04:31 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -32,31 +32,100 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; 68000 Disassembler
+;;;; Disassembler: User Level
 
 (declare (usual-integrations))
 
-(define disassembler:symbolize-output? true)
+;;; Flags that control disassembler behavior
+(define disassembler/symbolize-output? true)
+(define disassembler/compiled-code-heuristics? true)
+(define disassembler/write-offsets? true)
 
-(define disassembly-stream)
-(define setup-table!) ;; Temporary
-(define compiler:write-lap-file)
-(define compiler:write-constants-file)
+;;; Operations exported from the disassembler package
+(define disassembler/instructions)
+(define disassembler/instructions/null?)
+(define disassembler/instructions/read)
+(define disassembler/lookup-symbol)
 
-;;; Little bit of abstraction for instructions shipped outside
+(define (compiler:write-lap-file filename #!optional symbol-table?)
+  (let ((pathname (->pathname filename)))
+    (with-output-to-file (pathname-new-type pathname "lap")
+      (lambda ()
+	(disassembler/write-compiled-code-block
+	 (compiled-code-block/read-file (pathname-new-type pathname "com"))
+	 (let ((pathname (pathname-new-type pathname "binf")))
+	   (and (if (unassigned? symbol-table?)
+		    (file-exists? pathname)
+		    symbol-table?)
+		(compiler-info/symbol-table
+		 (compiler-info/read-file pathname)))))))))
 
-(define-integrable (make-instruction offset label? code)
-  (cons* offset label? code))
+(define (disassembler/write-compiled-code-block block symbol-table)
+  (write-string "Code:\n\n")
+  (disassembler/write-instruction-stream
+   symbol-table
+   (disassembler/instructions/compiled-code-block block symbol-table))
+  (write-string "\nConstants:\n\n")
+  (disassembler/write-constants-block block symbol-table))
 
-(define-integrable instruction-offset car)
-(define-integrable instruction-label? cadr)
-(define-integrable instruction-code cddr)
+(define (disassembler/instructions/compiled-code-block block symbol-table)
+  (disassembler/instructions block
+			     (compiled-code-block/code-start block)
+			     (compiled-code-block/code-end block)
+			     symbol-table))
 
-;; INSTRUCTION-STREAM-CONS is (cons <head> (delay <tail>))
+(define (disassembler/instructions/address start-address end-address)
+  (disassembler/instructions false start-address end-address false))
+
+(define (disassembler/write-instruction-stream symbol-table instruction-stream)
+  (fluid-let ((*unparser-radix* 16))
+    (disassembler/for-each-instruction instruction-stream
+      (lambda (offset instruction)
+	(disassembler/write-instruction
+	 symbol-table
+	 offset
+	 (lambda ()
+	   (let ((string
+		  (with-output-to-string
+		    (lambda ()
+		      (display instruction)))))
+	     (string-downcase! string)
+	     (write-string string))))))))
 
-(define-integrable instruction-stream? pair?)
-(define-integrable instruction-stream-null? null?)
-(define-integrable instruction-stream-head car)
+(define (disassembler/for-each-instruction instruction-stream procedure)
+  (let loop ((instruction-stream instruction-stream))
+    (if (not (disassembler/instructions/null? instruction-stream))
+	(disassembler/instructions/read instruction-stream
+	  (lambda (offset instruction instruction-stream)
+	    (procedure offset instruction)
+	    (loop (instruction-stream)))))))
 
-(define-integrable (instruction-stream-tail stream)
-  (force (cdr stream)))
+(define (disassembler/write-constants-block block symbol-table)
+  (fluid-let ((*unparser-radix* 16))
+    (let ((end (compiled-code-block/constants-end block)))
+      (let loop ((index (compiled-code-block/constants-start block)))
+	(if (< index end)
+	    (begin
+	      (disassembler/write-instruction
+	       symbol-table
+	       (compiled-code-block/index->offset index)
+	       (lambda () (write (system-vector-ref block index))))
+	      (loop (1+ index))))))))
+
+(define (disassembler/write-instruction symbol-table offset write-instruction)
+  (if symbol-table
+      (let ((label (disassembler/lookup-symbol symbol-table offset)))
+	(if label
+	    (begin (write-char #\Tab)
+		   (write-string (string-downcase label))
+		   (write-char #\:)
+		   (newline)))))
+  (if disassembler/write-offsets?
+      (begin (write-string
+	      ((access unparse-number-heuristically number-unparser-package)
+	       offset 16 false false))
+	     (write-char #\Tab)))
+  (if symbol-table
+      (write-string "    "))
+  (write-instruction)
+  (newline))

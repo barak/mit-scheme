@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.1 1987/12/04 20:00:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.2 1987/12/30 06:57:42 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -236,12 +236,23 @@ from the continuation, and then "glued" into place afterwards.
     (for-each loop (block-children block))))
 
 (define-integrable (internal-block/parent-known? block)
-  (not (null? (block-stack-link block))))
+  (block-stack-link block))
+
+(define (stack-block/static-link? block)
+  (and (block-parent block)
+       (or (not (stack-block? (block-parent block)))
+	   (not (internal-block/parent-known? block)))))
 
 (define-integrable (stack-block/continuation-lvalue block)
   (procedure-continuation-lvalue (block-procedure block)))
 
-(define (stack-block/static-link? block)
-  (and (not (null? (block-free-variables block)))
-       (or (not (stack-block? (block-parent block)))
-	   (not (internal-block/parent-known? block)))))
+(define (block/dynamic-link? block)
+  (and (stack-block? block)
+       (stack-block/dynamic-link? block)))
+
+(define (stack-block/dynamic-link? block)
+  (and (stack-parent? block)
+       (internal-block/dynamic-link? block)))
+
+(define-integrable (internal-block/dynamic-link? block)
+  (not (variable-popping-limit (stack-block/continuation-lvalue block))))

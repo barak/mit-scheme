@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm3.scm,v 1.1 1987/08/07 17:12:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm3.scm,v 4.1 1987/12/30 07:04:49 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -32,12 +32,10 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; 68000 Disassembler
+;;;; 68000 Disassembler: Internals
 
 (declare (usual-integrations))
 
-;;; Insides of the disassembler
-
 (define opcode-dispatch
   (vector (lambda ()
 	    ((vector-ref bit-manipulation/MOVEP/immediate-dispatch
@@ -549,19 +547,20 @@ MIT in each case. |#
 (define (make-fetcher size-in-bits)
   (let ((size-in-bytes (quotient size-in-bits 8)))
     (lambda ()
-      (let ((word (bit-string-allocate size-in-bits)))
-	(with-interrupt-mask interrupt-mask-none
-          (lambda (old)
-	    (read-bits! (+ (primitive-datum *block) *current-offset) 0 word)))
+      (let ((word (read-bits *current-offset size-in-bits)))
 	(set! *current-offset (+ *current-offset size-in-bytes))
 	word))))
 
 (define get-word (make-fetcher 16))
 (define get-longword (make-fetcher 32))
-(define-integrable (extract bit-string start end)
+(declare (integrate-operator extract extract+))
+
+(define (extract bit-string start end)
+  (declare (integrate bit-string start end))
   (bit-string->unsigned-integer (bit-substring bit-string start end)))
 
-(define-integrable (extract+ bit-string start end)
+(define (extract+ bit-string start end)
+  (declare (integrate bit-string start end))
   (bit-string->signed-integer (bit-substring bit-string start end)))
 
 ;;; Symbolic representation of bit strings

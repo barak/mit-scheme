@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlreg.scm,v 4.1 1987/12/04 20:18:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlreg.scm,v 4.2 1987/12/30 07:07:50 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,15 +38,14 @@ MIT in each case. |#
 
 (define *machine-register-map*)
 
-(define (with-machine-register-map thunk)
-  (fluid-let ((*machine-register-map*
-	       (let ((map (make-vector number-of-machine-registers)))
-		 (let loop ((n 0))
-		   (if (< n number-of-machine-registers)
-		       (begin (vector-set! map n (%make-register n))
-			      (loop (1+ n)))))
-		 map)))
-    (thunk)))
+(define (initialize-machine-register-map!)
+  (set! *machine-register-map*
+	(let ((map (make-vector number-of-machine-registers)))
+	  (let loop ((n 0))
+	    (if (< n number-of-machine-registers)
+		(begin (vector-set! map n (%make-register n))
+		       (loop (1+ n)))))
+	  map)))
 
 (define-integrable (rtl:make-machine-register n)
   (vector-ref *machine-register-map* n))

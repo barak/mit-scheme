@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 1.90 1987/07/08 22:01:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.1 1987/12/30 06:53:36 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -386,6 +386,11 @@ REGISTER-RENUMBERs are equal.
 		  (save-into-home-instruction entry))
 	(receiver map '()))))
 
+(define (pseudo-register-saved-into-home? map register)
+  (let ((entry (map-entries:find-home map register)))
+    (or (not entry)
+	(map-entry-saved-into-home? entry))))
+
 (define (delete-machine-register map register)
   (let ((entry (map-entries:find-alias map register)))
     (if entry
@@ -435,6 +440,19 @@ REGISTER-RENUMBERs are equal.
 (define (save-into-home-instruction entry)
   (register->home-transfer (map-entry:any-alias entry)
 			   (map-entry-home entry)))
+
+(define (register-map-live-homes map)
+  (let loop ((entries (map-entries map)))
+    (if (null? entries)
+	'()
+	(let ((home (map-entry-home (car entries)))
+	      (rest (loop (cdr entries))))
+	  (if home
+	      (cons home rest)
+	      rest)))))
+
+(define (register-map-clear? map)
+  (for-all? (map-entries map) map-entry-saved-into-home?))
 
 ;;;; Map Coercion
 

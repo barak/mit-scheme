@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/contin.scm,v 4.1 1987/12/04 20:00:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/contin.scm,v 4.2 1987/12/30 06:58:17 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -44,7 +44,7 @@ MIT in each case. |#
     (let ((required (list (make-value-variable block))))
       (set-block-bound-variables! block required)
       (make-procedure type block 'CONTINUATION required '() false '() '()
-		      (make-fg-noop)))))
+		      (snode->scfg (make-fg-noop))))))
 
 (define-enumeration continuation-type
   (effect
@@ -74,11 +74,6 @@ MIT in each case. |#
 (define-integrable set-continuation/returns! set-procedure-applications!)
 (define-integrable continuation/always-known-operator?
   procedure-always-known-operator?)
-(define-integrable continuation/dynamic-link? procedure-closing-limit)
-(define-integrable set-continuation/dynamic-link?!
-  set-procedure-closing-limit!)
-(define-integrable continuation/lvalues procedure-closure-block)
-(define-integrable set-continuation/lvalues! set-procedure-closure-block!)
 (define-integrable continuation/offset procedure-closure-offset)
 (define-integrable set-continuation/offset! set-procedure-closure-offset!)
 (define-integrable continuation/passed-out? procedure-passed-out?)
@@ -108,9 +103,14 @@ MIT in each case. |#
       (continuation/closing-block operator)))
 
 (define (continuation/frame-size continuation)
-  (cond ((continuation/always-known-operator? continuation) 0)
-	((continuation/dynamic-link? continuation) 2)
-	(else 1)))
+  (let ((closing-block (continuation/closing-block continuation)))
+    (+ (if (ic-block? closing-block) 1 0)
+       (if (continuation/always-known-operator? continuation)
+	   0
+	   (if (and (stack-block? closing-block)
+		    (stack-block/dynamic-link? closing-block))
+	       2
+	       1)))))
 
 (define (uni-continuation? rvalue)
   (and (rvalue/procedure? rvalue)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.1 1987/12/04 20:17:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.2 1987/12/30 07:07:25 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -81,28 +81,25 @@ MIT in each case. |#
   (rtl:make-cons-pointer (rtl:make-constant (ucode-type stack-environment))
 			 address))
 
-(define (rtl:make-push-link)
-  (scfg*scfg->scfg!
-   (rtl:make-push
-    (rtl:make-cons-pointer (rtl:make-constant (ucode-type stack-environment))
-			   (rtl:make-fetch register:dynamic-link)))
-   (rtl:make-assignment register:dynamic-link
-			(rtl:make-fetch register:stack-pointer))))
-
 (define-integrable (rtl:make-push-return continuation)
   (rtl:make-push (rtl:make-entry:continuation continuation)))
 
-(define (rtl:make-unlink-return)
-  (scfg*scfg->scfg!
-   (rtl:make-pop-link)
-   (rtl:make-pop-return)))
+(define (rtl:make-push-link)
+  (rtl:make-push
+   (rtl:make-cons-pointer (rtl:make-constant (ucode-type stack-environment))
+			  (rtl:make-fetch register:dynamic-link))))
 
 (define (rtl:make-pop-link)
-  (scfg*scfg->scfg!
-   (rtl:make-assignment register:stack-pointer
-			(rtl:make-fetch register:dynamic-link))
-   (rtl:make-assignment register:dynamic-link
-			(rtl:make-object->address (stack-pop-address)))))
+  (rtl:make-assignment register:dynamic-link
+		       (rtl:make-object->address (stack-pop-address))))
+
+(define (rtl:make-stack-pointer->link)
+  (rtl:make-assignment register:dynamic-link
+		       (rtl:make-fetch register:stack-pointer)))
+
+(define (rtl:make-link->stack-pointer)
+  (rtl:make-assignment register:stack-pointer
+		       (rtl:make-fetch register:dynamic-link)))
 
 ;;; Interpreter Calls
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlobj.scm,v 4.1 1987/12/04 20:18:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlobj.scm,v 4.2 1987/12/30 07:07:44 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -60,8 +60,8 @@ MIT in each case. |#
 (define-structure (rtl-procedure
 		   (conc-name rtl-procedure/)
 		   (constructor make-rtl-procedure
-				(rgraph label entry-edge n-required n-optional
-					rest? closure?))
+				(rgraph label entry-edge name n-required
+					n-optional rest? closure? type))
 		   (print-procedure
 		    (standard-unparser 'RTL-PROCEDURE
 		      (lambda (procedure)
@@ -69,10 +69,13 @@ MIT in each case. |#
   (rgraph false read-only true)
   (label false read-only true)
   (entry-edge false read-only true)
+  (name false read-only true)
   (n-required false read-only true)
   (n-optional false read-only true)
   (rest? false read-only true)
-  (closure? false read-only true))
+  (closure? false read-only true)
+  (type false read-only true)
+  (%external-label false))
 
 (set-type-object-description!
  rtl-procedure
@@ -80,13 +83,23 @@ MIT in each case. |#
    `((RTL-PROCEDURE/RGRAPH ,(rtl-procedure/rgraph procedure))
      (RTL-PROCEDURE/LABEL ,(rtl-procedure/label procedure))
      (RTL-PROCEDURE/ENTRY-EDGE ,(rtl-procedure/entry-edge procedure))
+     (RTL-PROCEDURE/NAME ,(rtl-procedure/name procedure))
      (RTL-PROCEDURE/N-REQUIRED ,(rtl-procedure/n-required procedure))
      (RTL-PROCEDURE/N-OPTIONAL ,(rtl-procedure/n-optional procedure))
      (RTL-PROCEDURE/REST? ,(rtl-procedure/rest? procedure))
-     (RTL-PROCEDURE/CLOSURE? ,(rtl-procedure/closure? procedure)))))
+     (RTL-PROCEDURE/CLOSURE? ,(rtl-procedure/closure? procedure))
+     (RTL-PROCEDURE/TYPE ,(rtl-procedure/type procedure))
+     (RTL-PROCEDURE/%EXTERNAL-LABEL
+      ,(rtl-procedure/%external-label procedure)))))
 
 (define-integrable (rtl-procedure/entry-node procedure)
   (edge-right-node (rtl-procedure/entry-edge procedure)))
+
+(define (rtl-procedure/external-label procedure)
+  (or (rtl-procedure/%external-label procedure)
+      (let ((label (generate-label (rtl-procedure/name procedure))))
+	(set-rtl-procedure/%external-label! procedure label)
+	label)))
 
 (define-structure (rtl-continuation
 		   (conc-name rtl-continuation/)
@@ -110,3 +123,25 @@ MIT in each case. |#
 
 (define-integrable (rtl-continuation/entry-node continuation)
   (edge-right-node (rtl-continuation/entry-edge continuation)))
+
+(define (make/label->object expression procedures continuations)
+  (let ((hash-table
+	 (symbol-hash-table/make
+	  (1+ (+ (length procedures) (length continuations))))))
+    (symbol-hash-table/insert! hash-table
+			       (rtl-expr/label expression)
+			       expression)    (for-each (lambda (procedure)
+		(symbol-hash-table/insert! hash-table
+					   (rtl-procedure/label procedure)
+					   procedure))
+	      procedures)
+    (for-each (lambda (continuation)
+		(symbol-hash-table/insert! hash-table
+					   (rtl-continuation/label continuation)
+					   continuation))
+	      continuations)
+    (make/label->object* hash-table)))
+
+(define (make/label->object* hash-table)
+  (lambda (label)
+    (symbol-hash-table/lookup hash-table label)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.1 1987/12/04 20:04:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.2 1987/12/30 06:59:17 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -84,7 +84,8 @@ MIT in each case. |#
 	    (write-string "PROCEDURE ")
 	    (write (procedure-label procedure)))
 	  (begin
-	    (write-string "CONTINUATION ")
+	    (write (procedure-label procedure))
+	    (write-string " ")
 	    (write type))))))
 
 (define-integrable (rvalue/procedure? rvalue)
@@ -141,15 +142,15 @@ MIT in each case. |#
   (null? (cdr (procedure-applications procedure))))
 
 (define (procedure-inline-code? procedure)
-  (and (procedure-always-known-operator? procedure)
+  (and (procedure/open? procedure)
+       (procedure-always-known-operator? procedure)
        (procedure-application-unique? procedure)))
 
-(define (open-procedure-needs-static-link? procedure)
-  (let ((block (procedure-block procedure)))
-    (let ((parent (block-parent block)))
-      (and parent
-	   (or (not (stack-block? parent))
-	       (not (internal-block/parent-known? block)))))))
+(define-integrable (open-procedure-needs-static-link? procedure)
+  (stack-block/static-link? (procedure-block procedure)))
+
+(define-integrable (open-procedure-needs-dynamic-link? procedure)
+  (stack-block/dynamic-link? (procedure-block procedure)))
 
 ;;;; Procedure Types
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.1 1987/12/04 20:35:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.2 1987/12/30 07:05:19 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -215,6 +215,3 @@ MIT in each case. |#
 (define lap:make-label-statement)
 (define lap:make-unconditional-branch)
 (define lap:make-entry-point)
-
-(define special-primitive-handlers
-  '())

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 1.4 1987/08/07 22:52:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.1 1987/12/30 07:06:20 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -66,27 +66,25 @@ MIT in each case. |#
 
 (define-rule statement
   (INTERPRETER-CALL:ENCLOSE (? number-pushed))
-  (decrement-frame-pointer-offset!
-   number-pushed
-   (LAP (MOV L (A 5) ,reg:enclose-result)
-	(MOV B (& ,(ucode-type vector)) ,reg:enclose-result)
-	,(load-non-pointer (ucode-type manifest-vector) number-pushed
-			   (INST-EA (@A+ 5)))
-     
-	,@(generate-n-times
-	   number-pushed 5
-	   (lambda () (INST (MOV L (@A+ 7) (@A+ 5))))
-	   (lambda (generator)
-	     (generator (allocate-temporary-register! 'DATA)))))
-   #| Alternate sequence which minimizes code size. ;
-   DO NOT USE THIS!  The `clear-registers!' call does not distinguish between
-   registers containing objects and registers containing unboxed things, and
-   as a result can write unboxed stuff to memory.
-   (LAP ,@(clear-registers! a0 a1 d0)
-	(MOV W (& ,number-pushed) (D 0))
-	(JSR ,entry:compiler-enclose))
-   |#
-   ))
+  (LAP (MOV L (A 5) ,reg:enclose-result)
+       (MOV B (& ,(ucode-type vector)) ,reg:enclose-result)
+       ,(load-non-pointer (ucode-type manifest-vector) number-pushed
+			  (INST-EA (@A+ 5)))
+
+       ,@(generate-n-times
+	  number-pushed 5
+	  (lambda () (INST (MOV L (@A+ 7) (@A+ 5))))
+	  (lambda (generator)
+	    (generator (allocate-temporary-register! 'DATA)))))
+  #| Alternate sequence which minimizes code size. ;
+  DO NOT USE THIS!  The `clear-registers!' call does not distinguish between
+  registers containing objects and registers containing unboxed things, and
+  as a result can write unboxed stuff to memory.
+  (LAP ,@(clear-registers! a0 a1 d0)
+       (MOV W (& ,number-pushed) (D 0))
+       (JSR ,entry:compiler-enclose))
+  |#
+  )
 
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? environment) (? name) (? value))
@@ -182,48 +180,3 @@ MIT in each case. |#
 	   ,@clear-map
 	   (JSR ,entry:compiler-unassigned?-trap)
 	   ,@(make-external-label (generate-label))))))
-
-;;;; Poppers
-
-(define-rule statement
-  (MESSAGE-RECEIVER:CLOSURE (? frame-size))
-  (record-push!
-   (LAP (MOV L (& ,(* frame-size 4)) (@-A 7)))))
-
-(define-rule statement
-  (MESSAGE-RECEIVER:STACK (? frame-size))
-  (record-push!
-   (LAP (MOV L
-	     (& ,(+ #x00100000 (* frame-size 4)))
-	     (@-A 7)))))
-
-(define-rule statement
-  (MESSAGE-RECEIVER:SUBPROBLEM (? label))
-  (record-continuation-frame-pointer-offset! label)
-  (increment-frame-pointer-offset!
-   2
-   (LAP (PEA (@PCR ,label))
-	(MOV B (& ,type-code:return-address) (@A 7))
-	(MOV L (& #x00200000) (@-A 7)))))
-
-(define (apply-closure-sequence frame-size receiver-offset label)
-  (LAP ,(load-dnw frame-size 1)
-       (LEA (@AO 7 ,(* (+ receiver-offset (frame-pointer-offset)) 4))
-	    (A 0))
-       (LEA (@PCR ,label) (A 1))
-       (JMP ,popper:apply-closure)))
-
-(define (apply-stack-sequence frame-size receiver-offset n-levels label)
-  (LAP (MOVEQ (& ,n-levels) (D 0))
-       ,(load-dnw frame-size 1)
-       (LEA (@AO 7 ,(* (+ receiver-offset (frame-pointer-offset)) 4))
-	    (A 0))
-       (LEA (@PCR ,label) (A 1))
-       (JMP ,popper:apply-stack)))
-
-(define-rule statement
-  (MESSAGE-SENDER:VALUE (? receiver-offset))
-  (disable-frame-pointer-offset!
-   (LAP ,@(clear-map!)
-	,@(increment-anl 7 (+ receiver-offset (frame-pointer-offset)))
-	(JMP ,popper:value))))

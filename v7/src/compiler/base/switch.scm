@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.1 1987/12/04 20:05:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.2 1987/12/30 06:59:45 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,11 +36,13 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define compiler:enable-integration-declarations? false)
-(define compiler:enable-expansion-declarations? false)
-(define compiler:preserve-data-structures? true)
+(define compiler:enable-integration-declarations? true)
+(define compiler:enable-expansion-declarations? true)
+(define compiler:show-subphases? false)
+(define compiler:preserve-data-structures? false)
 (define compiler:code-compression? true)
 (define compiler:cache-free-variables? true)
 (define compiler:implicit-self-static? false)
 (define compiler:cse? true)
 (define compiler:open-code-primitives? true)
+(define compiler:generate-rtl-files? false)

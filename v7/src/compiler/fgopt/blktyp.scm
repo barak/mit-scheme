@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.1 1987/12/04 19:23:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.2 1987/12/30 06:43:54 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -40,8 +40,6 @@ MIT in each case. |#
 
 (define-export (setup-block-types! root-block)
   (define (loop block)
-    ;; **** Why is this here?  Leave comment.
-    (set-block-applications! block '())
     (enumeration-case block-type (block-type block)
       ((PROCEDURE)
        (if (block-passed-out? block)
@@ -65,21 +63,23 @@ MIT in each case. |#
   (loop root-block))
 
 (define (maybe-close-procedure! block)
-  (let ((procedure (block-procedure block)))
-    (if (close-procedure? procedure)
-	(let ((parent (block-parent block)))
-	  (set-procedure-closure-block! procedure parent)
-	  (set-block-parent!
-	   block
-	   ((find-closure-bindings parent)
-	    (list-transform-negative (block-free-variables block)
-	      (lambda (lvalue)
-		(eq? (lvalue-known-value lvalue) procedure)))
-	    '()))
-	  (set-block-children! parent (delq! block (block-children parent)))
-	  (set-block-disowned-children!
-	   parent
-	   (cons block (block-disowned-children parent)))))))
+  (if (close-procedure? (block-procedure block))      (close-procedure! block)))
+
+(define (close-procedure! block)
+  (let ((procedure (block-procedure block))
+	(parent (block-parent block)))
+    (set-procedure-closure-block! procedure parent)
+    (set-block-parent!
+     block
+     ((find-closure-bindings parent)
+      (list-transform-negative (block-free-variables block)
+	(lambda (lvalue)
+	  (eq? (lvalue-known-value lvalue) procedure)))
+      '()))
+    (set-block-children! parent (delq! block (block-children parent)))
+    (set-block-disowned-children!
+     parent
+     (cons block (block-disowned-children parent)))))
 
 (define (find-closure-bindings block)
   (lambda (free-variables bound-variables)

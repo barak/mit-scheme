@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.1 1987/12/04 20:32:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.2 1987/12/30 07:10:47 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -39,24 +39,20 @@ MIT in each case. |#
 (define *generation-queue*)
 (define *queued-procedures*)
 (define *queued-continuations*)
-(define *memoizations*)
 
 (define (generate/top-level expression)
-  (with-machine-register-map
-   (lambda ()
-     (fluid-let ((*generation-queue* (make-queue))
-		 (*queued-procedures* '())
-		 (*queued-continuations* '())
-		 (*memoizations* '()))
-       (set! *rtl-expression* (generate/expression expression))
-       (queue-map! *generation-queue* (lambda (thunk) (thunk)))
-       (set! *rtl-graphs*
-	     (list-transform-positive (reverse! *rtl-graphs*)
-	       (lambda (rgraph)
-		 (not (null? (rgraph-entry-edges rgraph))))))
-       (for-each rgraph/compress! *rtl-graphs*)
-       (set! *rtl-procedures* (reverse! *rtl-procedures*))
-       (set! *rtl-continuations* (reverse! *rtl-continuations*))))))
+  (fluid-let ((*generation-queue* (make-queue))
+	      (*queued-procedures* '())
+	      (*queued-continuations* '()))
+    (set! *rtl-expression* (generate/expression expression))
+    (queue-map! *generation-queue* (lambda (thunk) (thunk)))
+    (set! *rtl-graphs*
+	  (list-transform-positive (reverse! *rtl-graphs*)
+	    (lambda (rgraph)
+	      (not (null? (rgraph-entry-edges rgraph))))))
+    (for-each rgraph/compress! *rtl-graphs*)
+    (set! *rtl-procedures* (reverse! *rtl-procedures*))
+    (set! *rtl-continuations* (reverse! *rtl-continuations*))))
 
 (define (enqueue-procedure! procedure)
   (if (not (memq procedure *queued-procedures*))
@@ -81,58 +77,62 @@ MIT in each case. |#
 
 (define (generate/expression expression)
   (transmit-values
-      (generate/rgraph
-       (lambda ()
-	 (generate/node (expression-entry-node expression) 0)))
+      (generate/rgraph (expression-entry-node expression) generate/node)
     (lambda (rgraph entry-edge)
       (make-rtl-expr rgraph (expression-label expression) entry-edge))))
 
 (define (generate/procedure procedure)
   (transmit-values
       (generate/rgraph
-       (lambda ()
+       (procedure-entry-node procedure)
+       (lambda (node)
 	 (generate/procedure-header
 	  procedure
-	  (generate/node (procedure-entry-node procedure) 0)
+	  (generate/node node)
 	  false)))
     (lambda (rgraph entry-edge)
       (make-rtl-procedure
        rgraph
        (procedure-label procedure)
        entry-edge
-       (length (procedure-original-required procedure))
+       (procedure-name procedure)
+       (length (cdr (procedure-original-required procedure)))
        (length (procedure-original-optional procedure))
        (and (procedure-original-rest procedure) true)
-       (and (procedure/closure? procedure) true)))))
+       (and (procedure/closure? procedure) true)
+       (procedure/type procedure)))))
 
 (define (generate/procedure-entry/inline procedure)
   (generate/procedure-header procedure
-			     (generate/node (procedure-entry-node procedure) 0)
+			     (generate/node (procedure-entry-node procedure))
 			     true))
 
 (define (generate/continuation continuation)
-  (let ((label (continuation/label continuation))
-	(node (continuation/entry-node continuation))
-	(offset (continuation/offset continuation)))
+  (let ((label (continuation/label continuation)))
     (transmit-values
 	(generate/rgraph
-	 (lambda ()
+	 (continuation/entry-node continuation)
+	 (lambda (node)
 	   (scfg-append!
 	    (rtl:make-continuation-heap-check label)
 	    (generate/continuation-entry/ic-block continuation)
+	    (if (block/dynamic-link?
+		 (continuation/closing-block continuation))
+		(rtl:make-pop-link)
+		(make-null-cfg))
 	    (enumeration-case continuation-type
 		(continuation/type continuation)
 	      ((PUSH)
 	       (scfg*scfg->scfg!
 		(rtl:make-push (rtl:make-fetch register:value))
-		(generate/node node (1+ offset))))
+		(generate/node node)))
 	      ((REGISTER)
 	       (scfg*scfg->scfg!
 		(rtl:make-assignment (continuation/register continuation)
 				     (rtl:make-fetch register:value))
-		(generate/node node offset)))
+		(generate/node node)))
 	      (else
-	       (generate/node node offset))))))
+	       (generate/node node))))))
       (lambda (rgraph entry-edge)
 	(make-rtl-continuation rgraph label entry-edge)))))
 
@@ -141,55 +141,67 @@ MIT in each case. |#
       (rtl:make-pop register:environment)
       (make-null-cfg)))
 
-(define (generate/node/memoize node offset)
-  (let ((entry (assq node *memoizations*)))
-    (cond ((not entry)
-	   (let ((entry (cons node false)))
-	     (set! *memoizations* (cons entry *memoizations*))
-	     (let ((result (generate/node node offset)))
-	       (set-cdr! entry (cons offset result))
-	       result)))
-	  ((not (cdr entry))
-	   (error "GENERATE/NODE/MEMOIZE: loop" node))
-	  ((not (= offset (cadr entry)))
-	   (error "GENERATE/NODE/MEMOIZE: mismatched offsets" node))
-	  (else (cddr entry)))))
+(define (generate/node node)
+  (let ((memoization (cfg-node-get node memoization-tag)))
+    (cond ((not memoization)
+	   (cfg-node-put! node memoization-tag loop-memoization-marker)
+	   (let ((result (generate/node/no-memoize node)))
+	     (cfg-node-put! node memoization-tag result)
+	     result))
+	  ((eq? memoization loop-memoization-marker)
+	   (error "GENERATE/NODE: loop" node))
+	  (else memoization))))
 
-(define (generate/node node offset)
+(define memoization-tag
+  "rtlgen-memoization-tag")
+
+(define loop-memoization-marker
+  "rtlgen-loop-memoization-marker")
+
+(define (generate/node/no-memoize node)
   (cfg-node-case (tagged-vector/tag node)
     ((APPLICATION)
      (if (snode-next node)
 	 (error "Application node has next" node))
      (case (application-type node)
-       ((COMBINATION) (generate/combination node offset))
-       ((RETURN) (generate/return node offset))
+       ((COMBINATION) (generate/combination node))
+       ((RETURN) (generate/return node))
        (else (error "Unknown application type" node))))
     ((VIRTUAL-RETURN)
-     (transmit-values (generate/virtual-return node offset)
-       (lambda (scfg offset)
-	 (scfg*scfg->scfg! scfg
-			   (generate/node (snode-next node) offset)))))
+     (scfg*scfg->scfg! (generate/virtual-return node)
+		       (generate/node (snode-next node))))
     ((POP)
-     (scfg*scfg->scfg! (generate/pop node offset)
-		       (generate/node (snode-next node) offset)))
+     (scfg*scfg->scfg! (generate/pop node)
+		       (generate/node (snode-next node))))
     ((ASSIGNMENT)
-     (scfg*scfg->scfg! (generate/assignment node offset)
-		       (generate/node (snode-next node) offset)))
+     (scfg*scfg->scfg! (generate/assignment node)
+		       (generate/node (snode-next node))))
     ((DEFINITION)
-     (scfg*scfg->scfg! (generate/definition node offset)
-		       (generate/node (snode-next node) offset)))
+     (scfg*scfg->scfg! (generate/definition node)
+		       (generate/node (snode-next node))))
     ((TRUE-TEST)
-     (generate/true-test node offset))))
+     (generate/true-test node))
+    ((FG-NOOP)
+     (generate/node (snode-next node)))))
 
-(define (generate/rgraph generator)
-  (let ((rgraph (make-rgraph number-of-machine-registers)))
-    (set! *rtl-graphs* (cons rgraph *rtl-graphs*))
+(define (generate/rgraph node generator)
+  (let ((rgraph (node->rgraph node)))
     (let ((entry-node
 	   (cfg-entry-node
 	    (fluid-let ((*current-rgraph* rgraph))
-	      (with-new-node-marks generator)))))
+	      (with-new-node-marks (lambda () (generator node)))))))
       (add-rgraph-entry-node! rgraph entry-node)
       (return-2 rgraph (node->edge entry-node)))))
+
+(define (node->rgraph node)
+  (let ((color
+	 (or (node/subgraph-color node)
+	     (error "node lacking subgraph color" node))))
+    (or (subgraph-color/rgraph color)
+	(let ((rgraph (make-rgraph number-of-machine-registers)))
+	  (set-subgraph-color/rgraph! color rgraph)
+	  (set! *rtl-graphs* (cons rgraph *rtl-graphs*))
+	  rgraph))))
 
 (define (rgraph/compress! rgraph)
   (with-new-node-marks

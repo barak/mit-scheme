@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simple.scm,v 4.1 1987/12/04 19:28:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simple.scm,v 4.2 1987/12/30 06:45:09 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -93,7 +93,7 @@ MIT in each case. |#
   (continuation-simple? (return/operator return) continuation))
 
 (define (virtual-return-simple? return continuation)
-  (continuation-simple? (virtual-return-operator return) continuation))
+  (node-simple? (snode-next return) continuation))
 
 (define (continuation-simple? rvalue continuation)
   (or (eq? rvalue continuation)

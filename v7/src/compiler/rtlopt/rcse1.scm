@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.1 1987/12/08 13:55:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.2 1987/12/30 07:13:08 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -148,7 +148,16 @@ MIT in each case. |#
     (lambda (volatile? insert-source!)
       (let ((address (rtl:assign-address statement)))
 	(cond ((rtl:register? address)
-	       (register-expression-invalidate! address)
+	       (if (interpreter-stack-pointer? address)
+		   (let ((expression (rtl:assign-expression statement)))
+		     (if (and (rtl:offset? expression)
+			      (interpreter-stack-pointer?
+			       (rtl:offset-register expression)))
+			 (stack-pointer-adjust! (rtl:offset-number expression))
+			 (begin
+			   (stack-invalidate!)
+			   (stack-pointer-invalidate!))))
+		   (register-expression-invalidate! address))
 	       (if (and (not volatile?)
 			(not (rtl:machine-register-expression?
 			      (rtl:assign-expression statement))))
@@ -243,14 +252,6 @@ MIT in each case. |#
 (define-cse-method 'INVOCATION:SPECIAL-PRIMITIVE method/noop)
 (define-cse-method 'INVOCATION:UUO-LINK method/noop)
 
-(define (method/trash-stack statement)
-  (stack-invalidate!)
-  (stack-pointer-invalidate!))
-
-(define-cse-method 'SETUP-LEXPR method/trash-stack)
-(define-cse-method 'INVOCATION-PREFIX:MOVE-FRAME-UP method/trash-stack)
-(define-cse-method 'INVOCATION-PREFIX:DYNAMIC-LINK method/trash-stack)
-
 (define-cse-method 'INTERPRETER-CALL:ENCLOSE
   (lambda (statement)
     (let ((n (rtl:interpreter-call:enclose-size statement)))
@@ -271,6 +272,33 @@ MIT in each case. |#
 			 rtl:set-invocation:lookup-environment!
 			 statement
 			 trivial-action)))
+
+(define-cse-method 'SETUP-LEXPR
+  (lambda (statement)
+    (stack-invalidate!)
+    (stack-pointer-invalidate!)))
+
+(define-cse-method 'INVOCATION-PREFIX:MOVE-FRAME-UP
+  (lambda (statement)
+    (expression-replace! rtl:invocation-prefix:move-frame-up-locative
+			 rtl:set-invocation-prefix:move-frame-up-locative!
+			 statement
+			 trivial-action)
+    (stack-invalidate!)
+    (stack-pointer-invalidate!)))
+
+(define-cse-method 'INVOCATION-PREFIX:DYNAMIC-LINK
+  (lambda (statement)
+    (expression-replace! rtl:invocation-prefix:dynamic-link-locative
+			 rtl:set-invocation-prefix:dynamic-link-locative!
+			 statement
+			 trivial-action)
+    (expression-replace! rtl:invocation-prefix:dynamic-link-register
+			 rtl:set-invocation-prefix:dynamic-link-register!
+			 statement
+			 trivial-action)
+    (stack-invalidate!)
+    (stack-pointer-invalidate!)))
 
 (define (define-lookup-method type get-environment set-environment! register)
   (define-cse-method type

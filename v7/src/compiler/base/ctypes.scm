@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.1 1987/12/04 20:03:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.2 1987/12/30 06:58:24 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -156,9 +156,13 @@ MIT in each case. |#
 
 (define (make-assignment block lvalue rvalue)
   (lvalue-connect! lvalue rvalue)
+  (variable-assigned! lvalue)
   (let ((assignment (make-snode assignment-tag block lvalue rvalue)))
     (set! *assignments* (cons assignment *assignments*))
     (snode->scfg assignment)))
+
+(define-integrable (node/assignment? node)
+  (eq? (tagged-vector/tag node) assignment-tag))
 
 (define-snode definition
   block
@@ -169,26 +173,42 @@ MIT in each case. |#
   (lvalue-connect! lvalue rvalue)
   (snode->scfg (make-snode definition-tag block lvalue rvalue)))
 
+(define-integrable (node/definition? node)
+  (eq? (tagged-vector/tag node) definition-tag))
+
 (define-pnode true-test
   rvalue)
 
 (define (make-true-test rvalue)
   (pnode->pcfg (make-pnode true-test-tag rvalue)))
 
+(define-integrable (node/true-test? node)
+  (eq? (tagged-vector/tag node) true-test-tag))
+
 (define-snode fg-noop)
 
 (define (make-fg-noop)
-  (snode->scfg (make-snode fg-noop-tag)))
+  (make-snode fg-noop-tag))
 
+(define-integrable (node/fg-noop? node)
+  (eq? (tagged-vector/tag node) fg-noop-tag))
+
+(cfg-node-tag/noop! fg-noop-tag)
+
 (define-snode virtual-return
+  block
   operator
   operand)
 
-(define (make-virtual-return operator operand)
-  (snode->scfg (make-snode virtual-return-tag operator operand)))
+(define (make-virtual-return block operator operand)
+  (snode->scfg (make-snode virtual-return-tag block operator operand)))
+
+(define-integrable (node/virtual-return? node)
+  (eq? (tagged-vector/tag node) virtual-return-tag))
 
 (define (make-push block rvalue)
-  (make-virtual-return (virtual-continuation/make block continuation-type/push)
+  (make-virtual-return block
+		       (virtual-continuation/make block continuation-type/push)
 		       rvalue))
 
 (define-snode pop
@@ -196,3 +216,30 @@ MIT in each case. |#
 
 (define (make-pop continuation)
   (snode->scfg (make-snode pop-tag continuation)))
+
+(define-integrable (node/pop? node)
+  (eq? (tagged-vector/tag node) pop-tag))
+
+(define-integrable (node/subgraph-color node)
+  (cfg-node-get node node/subgraph-color-tag))
+
+(define-integrable (set-node/subgraph-color! node color)
+  (cfg-node-put! node node/subgraph-color-tag color))
+
+(define node/subgraph-color-tag
+  "subgraph-color-tag")
+
+(define-integrable (node/offset node)
+  (cfg-node-get node node/offset-tag))
+
+(define-integrable (set-node/offset! node offset)
+  (cfg-node-put! node node/offset-tag offset))
+
+(define node/offset-tag
+  "node/offset-tag")
+
+(define-structure (subgraph-color
+		   (conc-name subgraph-color/)
+		   (constructor make-subgraph-color ()))
+  (nodes '())
+  (rgraph false))

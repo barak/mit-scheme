@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/subprb.scm,v 4.1 1987/12/04 20:05:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/subprb.scm,v 4.2 1987/12/30 06:59:38 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -73,10 +73,6 @@ known that the continuation need not be used.
 
 (define-integrable (subproblem-canonical? subproblem)
   (procedure? (subproblem-continuation subproblem)))
-
-(define-integrable (subproblem-block subproblem)
-  ;; This is defined only for non-canonical subproblems.
-  (virtual-continuation/block (subproblem-continuation subproblem)))
 
 (define (subproblem-type subproblem)
   (let ((continuation (subproblem-continuation subproblem)))

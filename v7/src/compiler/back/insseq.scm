@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/insseq.scm,v 1.3 1987/08/13 02:00:21 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/insseq.scm,v 4.1 1987/12/30 06:51:12 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,9 +36,6 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define lap:syntax-instruction)
-(define instruction-append)
-
 (define (instruction-sequence->directives insts)
   (if (null? insts)
       '()

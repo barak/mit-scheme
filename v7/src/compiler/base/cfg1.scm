@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 4.1 1987/12/04 20:03:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 4.2 1987/12/30 06:57:50 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -40,19 +40,19 @@ MIT in each case. |#
 
 (define cfg-node-tag (make-vector-tag false 'CFG-NODE false))
 (define cfg-node? (tagged-vector/subclass-predicate cfg-node-tag))
-(define-vector-slots node 1 generation previous-edges)
+(define-vector-slots node 1 generation alist previous-edges)
 
 (set-vector-tag-description!
  cfg-node-tag
  (lambda (node)
-   (descriptor-list node generation previous-edges)))
+   (descriptor-list node generation alist previous-edges)))
 
 (define snode-tag (make-vector-tag cfg-node-tag 'SNODE false))
 (define snode? (tagged-vector/subclass-predicate snode-tag))
-(define-vector-slots snode 3 next-edge)
+(define-vector-slots snode 4 next-edge)
 
 (define (make-snode tag . extra)
-  (list->vector (cons* tag false '() false extra)))
+  (list->vector (cons* tag false '() '() false extra)))
 
 (set-vector-tag-description!
  snode-tag
@@ -62,10 +62,10 @@ MIT in each case. |#
 
 (define pnode-tag (make-vector-tag cfg-node-tag 'PNODE false))
 (define pnode? (tagged-vector/subclass-predicate pnode-tag))
-(define-vector-slots pnode 3 consequent-edge alternative-edge)
+(define-vector-slots pnode 4 consequent-edge alternative-edge)
 
 (define (make-pnode tag . extra)
-  (list->vector (cons* tag false '() false false extra)))
+  (list->vector (cons* tag false '() '() false false extra)))
 
 (set-vector-tag-description!
  pnode-tag
@@ -145,3 +145,19 @@ MIT in each case. |#
 
 (define (edges-disconnect-right! edges)
   (for-each edge-disconnect-right! edges))
+
+;;;; Node Properties
+
+(define (cfg-node-get node key)
+  (let ((entry (assq key (node-alist node))))
+    (and entry
+	 (cdr entry))))
+
+(define (cfg-node-put! node key item)
+  (let ((entry (assq key (node-alist node))))
+    (if entry
+	(set-cdr! entry item)
+	(set-node-alist! node (cons (cons key item) (node-alist node))))))
+
+(define (cfg-node-remove! node key)
+  (set-node-alist! node (del-assq! key (node-alist node))))

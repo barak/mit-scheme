@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.1 1987/12/04 20:18:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.2 1987/12/30 07:07:57 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -88,4 +88,5 @@ MIT in each case. |#
 (define-rtl-statement invocation:uuo-link rtl: pushed continuation name)
 
 (define-rtl-statement invocation-prefix:move-frame-up rtl: frame-size locative)
-(define-rtl-statement invocation-prefix:dynamic-link rtl: frame-size locative)
+(define-rtl-statement invocation-prefix:dynamic-link rtl: frame-size locative
+  register)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg2.scm,v 4.1 1987/12/04 20:03:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg2.scm,v 4.2 1987/12/30 06:58:00 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -41,10 +41,12 @@ MIT in each case. |#
 (define (snode-delete! snode)
   (let ((previous-edges (node-previous-edges snode))
 	(next-edge (snode-next-edge snode)))
-    (let ((node (edge-right-node next-edge)))
-      (edges-disconnect-right! previous-edges)
-      (edge-disconnect! next-edge)
-      (edges-connect-right! previous-edges node))))
+    (if next-edge
+	(let ((node (edge-right-node next-edge)))
+	  (edges-disconnect-right! previous-edges)
+	  (edge-disconnect! next-edge)
+	  (edges-connect-right! previous-edges node))
+	(edges-disconnect-right! previous-edges))))
 
 (define (edge-insert-snode! edge snode)
   (let ((next (edge-right-node edge)))
@@ -115,6 +117,32 @@ MIT in each case. |#
 
 ;;;; Noops
 
+(package (cfg-node-tag/noop! cfg-node-tag/noop?)
+
+(define-export (cfg-node-tag/noop! tag)
+  (vector-tag-put! tag noop-tag-property true))
+
+(define-export (cfg-node-tag/noop? tag)
+  (vector-tag-get tag noop-tag-property))
+
+(define noop-tag-property
+  "noop-tag-property")
+
+)
+
+(define-integrable (cfg-node/noop? node)
+  (cfg-node-tag/noop? (tagged-vector/tag node)))
+
+(define noop-node-tag
+  (make-vector-tag snode-tag 'NOOP false))
+
+(cfg-node-tag/noop! noop-node-tag)
+
+(define-integrable (make-noop-node)
+  (let ((node (make-snode noop-node-tag)))
+    (set! *noop-nodes* (cons node *noop-nodes*))
+    node))
+
 (define *noop-nodes*)
 
 (define (cleanup-noop-nodes thunk)
@@ -123,25 +151,11 @@ MIT in each case. |#
       (for-each snode-delete! *noop-nodes*)
       value)))
 
-(define noop-node-tag
-  (make-vector-tag snode-tag 'NOOP false))
-
-(define-integrable (make-noop-node)
-  (let ((node (make-snode noop-node-tag)))
-    (set! *noop-nodes* (cons node *noop-nodes*))
-    node))
-
 (define (make-false-pcfg)
-  (let ((node (make-noop-node)))
-    (make-pcfg node
-	       '()
-	       (list (make-hook node set-snode-next-edge!)))))
+  (snode->pcfg-false (make-noop-node)))
 
 (define (make-true-pcfg)
-  (let ((node (make-noop-node)))
-    (make-pcfg node
-	       (list (make-hook node set-snode-next-edge!))
-	       '())))
+  (snode->pcfg-true (make-noop-node)))
 
 ;;;; Miscellaneous
 

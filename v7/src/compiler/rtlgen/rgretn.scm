@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.1 1987/12/04 20:31:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.2 1987/12/30 07:10:22 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,11 +36,14 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (generate/return return offset)
+(define (generate/return return)
   (generate/return* (return/block return)
 		    (return/operator return)
 		    (trivial-return-operand (return/operand return))
-		    offset))
+		    (node/offset return)))
+
+(define (generate/trivial-return block operator operand offset)
+  (generate/return* block operator (trivial-return-operand operand) offset))
 
 (define (trivial-return-operand operand)
   (make-return-operand
@@ -74,9 +77,7 @@ MIT in each case. |#
 	 continuation)
 	(scfg-append!
 	 (if (and continuation (continuation/effect? continuation))
-	     (scfg*scfg->scfg!
-	      (effect-prefix operand offset)
-	      (rtl:make-assignment register:value (rtl:make-constant false)))
+	     (effect-prefix operand offset)
 	     ((return-operand/value-generator operand)
 	      offset
 	      (lambda (expression)
@@ -95,67 +96,64 @@ MIT in each case. |#
     (scfg-append!
      (effect-prefix operand offset)
      (common-prefix block operator offset continuation)
-     (generate/node/memoize (continuation/entry-node continuation)
-			    (continuation/offset continuation)))))
+     (generate/node (continuation/entry-node continuation)))))
 
 (define-method-table-entries '(REGISTER VALUE) simple-methods
   (lambda (block operator operand offset continuation)
     (scfg-append!
      (if (lvalue-integrated? (continuation/parameter continuation))
 	 (effect-prefix operand offset)
-	 (value-prefix operand offset continuation))
+	 ((return-operand/value-generator operand)
+	  offset
+	  (lambda (expression)
+	    (rtl:make-assignment (continuation/register continuation)
+				 expression))))
      (common-prefix block operator offset continuation)
-     (generate/node/memoize (continuation/entry-node continuation)
-			    (continuation/offset continuation)))))
+     (generate/node (continuation/entry-node continuation)))))
 
 (define-method-table-entry 'PUSH simple-methods
   (lambda (block operator operand offset continuation)
     (scfg*scfg->scfg!
      (let ((prefix (common-prefix block operator offset continuation)))
        (if (cfg-null? prefix)
-	   ((return-operand/value-generator operand)
-	    offset
-	    (lambda (expression)
-	      (rtl:make-push expression)))
-	   (scfg-append!
-	    (value-prefix operand offset continuation)
-	    prefix
-	    (rtl:make-push
-	     (rtl:make-fetch (continuation/register continuation))))))
-     (generate/node/memoize (continuation/entry-node continuation)
-			    (1+ (continuation/offset continuation))))))
+	   ((return-operand/value-generator operand) offset rtl:make-push)
+	   (use-temporary-register operand offset prefix rtl:make-push)))
+     (generate/node (continuation/entry-node continuation)))))
 
 (define-method-table-entry 'PREDICATE simple-methods
   (lambda (block operator operand offset continuation)
     (let ((node (continuation/entry-node continuation))
-	  (offset* (continuation/offset continuation))
 	  (value (return-operand/known-value operand))
 	  (prefix (common-prefix block operator offset continuation)))
       (if value
 	  (scfg-append!
 	   (effect-prefix operand offset)
 	   prefix
-	   (generate/node/memoize (if (and (rvalue/constant? value)
-					   (false? (constant-value value)))
-				      (pnode-alternative node)
-				      (pnode-consequent node))
-				  offset*))
+	   (generate/node (if (and (rvalue/constant? value)
+				   (false? (constant-value value)))
+			      (pnode-alternative node)
+			      (pnode-consequent node))))
 	  (let ((finish
 		 (lambda (pcfg)
 		   (pcfg*scfg->scfg!
 		    pcfg
-		    (generate/node/memoize (pnode-consequent node) offset*)
-		    (generate/node/memoize (pnode-alternative node)
-					   offset*)))))
+		    (generate/node (pnode-consequent node))
+		    (generate/node (pnode-alternative node))))))
 	    (if (cfg-null? prefix)
 		((return-operand/predicate-generator operand) offset finish)
-		(scfg-append!
-		 (value-prefix operand offset continuation)
-		 prefix
-		 (finish
-		  (rtl:make-true-test
-		   (rtl:make-fetch
-		    (continuation/register continuation)))))))))))
+		(use-temporary-register operand offset prefix
+		  (lambda (expression)
+		    (finish (rtl:make-true-test expression))))))))))
+
+(define (use-temporary-register operand offset prefix finish)
+  (let ((register (rtl:make-pseudo-register)))
+    (scfg-append!
+     ((return-operand/value-generator operand)
+      offset
+      (lambda (expression)
+	(rtl:make-assignment register expression)))
+     prefix
+     (finish (rtl:make-fetch register)))))
 
 (define (return-operator/pop-frames block operator offset extra)
   (if (or (ic-block? block)
@@ -169,7 +167,7 @@ MIT in each case. |#
 							 popping-limit
 							 extra))
 	    (scfg*scfg->scfg!
-	     (rtl:make-pop-link)
+	     (rtl:make-link->stack-pointer)
 	     (if (zero? extra)
 		 (make-null-cfg)
 		 (rtl:make-assignment register:stack-pointer
@@ -177,12 +175,6 @@ MIT in each case. |#
 				       (stack-locative-offset
 					(rtl:make-fetch register:stack-pointer)
 					extra)))))))))
-
-(define (value-prefix operand offset continuation)
-  ((return-operand/value-generator operand)
-   offset
-   (lambda (expression)
-     (rtl:make-assignment (continuation/register continuation) expression))))
 
 (define-integrable (effect-prefix operand offset)
   ((return-operand/effect-generator operand) offset))

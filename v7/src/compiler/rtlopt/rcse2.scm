@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.1 1987/12/08 13:55:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.2 1987/12/30 07:13:20 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -94,8 +94,13 @@ MIT in each case. |#
 (define (non-object-invalidate!)
   (hash-table-delete-class!
    (lambda (element)
-     (memq (rtl:expression-type (element-expression element))
-	   '(OBJECT->ADDRESS OBJECT->DATUM OBJECT->TYPE)))))
+     (let ((expression (element-expression element)))
+       (if (rtl:register? expression)
+	   (register-contains-address? (rtl:register-number expression))
+	   (memq (rtl:expression-type expression)
+		 '(OBJECT->ADDRESS OBJECT->DATUM
+				   OBJECT->TYPE
+				   OFFSET-ADDRESS)))))))
 
 (define (element-address-varies? element)
   (and (element-in-memory? element)

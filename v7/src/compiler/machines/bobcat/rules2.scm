@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 1.3 1987/07/27 23:19:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.1 1987/12/30 07:05:55 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -172,12 +172,10 @@ MIT in each case. |#
 
 (define-rule predicate
   (EQ-TEST (POST-INCREMENT (REGISTER 15) 1) (REGISTER (? register)))
-  (record-pop!)
   (eq-test/register*memory register (INST-EA (@A+ 7))))
 
 (define-rule predicate
   (EQ-TEST (REGISTER (? register)) (POST-INCREMENT (REGISTER 15) 1))
-  (record-pop!)
   (eq-test/register*memory register (INST-EA (@A+ 7))))
 
 (define-rule predicate

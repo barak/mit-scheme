@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/folcon.scm,v 4.1 1987/12/04 19:06:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/folcon.scm,v 4.2 1987/12/30 06:44:31 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -75,20 +75,12 @@ MIT in each case. |#
 
 (define (delete-if-known! lvalue)
   (if (and (not (lvalue-known-value lvalue))
-	   (null? (lvalue-backward-links lvalue)))
+	   (for-all? (lvalue-backward-links lvalue) lvalue-known-value))
       (let ((value (car (lvalue-values lvalue))))
 	(for-each (lambda (lvalue*)
-		    (set-lvalue-backward-links!
-		     lvalue*
-		     (delq! lvalue (lvalue-backward-links lvalue*)))
-		    ;; This is needed because, previously, LVALUE*
-		    ;; inherited this value from LVALUE.
-		    (lvalue-connect!:rvalue lvalue* value)
 		    (if (lvalue-mark-set? lvalue* 'KNOWABLE)
 			(enqueue-node! lvalue*)))
 		  (lvalue-forward-links lvalue))
-	(set-lvalue-forward-links! lvalue '())
-	(set-lvalue-initial-values! lvalue (list value))
 	(set-lvalue-known-value! lvalue value))))
 
 (define (fold-combinations combinations)
