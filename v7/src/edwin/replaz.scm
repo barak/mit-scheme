@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.75 1991/09/25 18:33:34 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.76 1991/09/25 18:36:03 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -246,11 +246,13 @@ C-R to enter recursive edit, C-W to delete match and recursive edit,
   "Print the number of occurrences of a given regexp following point."
   "sHow many matches for (regexp)"
   (lambda (regexp)
-    (let loop ((start (current-point)) (n 0))
-      (let ((mark (re-search-forward regexp start (group-end start))))
-	(if (not mark)
-	    (message (write-to-string n) " occurrences")
-	    (loop mark (1+ n)))))))
+    (let* ((start (current-point))
+	   (end (group-end start)))
+      (let loop ((start start) (n 0))
+	(let ((mark (re-search-forward regexp start end)))
+	  (if (not mark)
+	      (message (write-to-string n) " occurrences")
+	      (loop mark (1+ n))))))))
 
 (define-command list-matching-lines
   "Show all lines following point containing a match for a given regexp.
