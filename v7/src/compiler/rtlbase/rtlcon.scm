@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 1.13 1987/09/03 05:15:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.1 1987/12/04 20:17:34 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -67,44 +67,83 @@ MIT in each case. |#
     (lambda (expression)
       (%make-unassigned-test expression))))
 
-;;; Some statements vanish, converted into lower-level patterns.
-
 (define (rtl:make-pop locative)
   (locative-dereference-for-statement locative
-    (lambda (address)
-      (%make-assign address (stack-pop-address)))))
-
-(define (rtl:make-pop-frame n)
-  (rtl:make-assignment
-   register:stack-pointer
-   (rtl:make-address
-    (stack-locative-offset (rtl:make-fetch register:stack-pointer) n))))
+    (lambda (locative)
+      (%make-assign locative (stack-pop-address)))))
 
 (define (rtl:make-push expression)
   (expression-simplify-for-statement expression
     (lambda (expression)
       (%make-assign (stack-push-address) expression))))
 
-(define (rtl:make-push-return continuation)
-  (%make-assign (stack-push-address)
-		(rtl:make-entry:continuation continuation)))
+(define-integrable (rtl:make-address->environment address)
+  (rtl:make-cons-pointer (rtl:make-constant (ucode-type stack-environment))
+			 address))
+
+(define (rtl:make-push-link)
+  (scfg*scfg->scfg!
+   (rtl:make-push
+    (rtl:make-cons-pointer (rtl:make-constant (ucode-type stack-environment))
+			   (rtl:make-fetch register:dynamic-link)))
+   (rtl:make-assignment register:dynamic-link
+			(rtl:make-fetch register:stack-pointer))))
+
+(define-integrable (rtl:make-push-return continuation)
+  (rtl:make-push (rtl:make-entry:continuation continuation)))
+
+(define (rtl:make-unlink-return)
+  (scfg*scfg->scfg!
+   (rtl:make-pop-link)
+   (rtl:make-pop-return)))
+
+(define (rtl:make-pop-link)
+  (scfg*scfg->scfg!
+   (rtl:make-assignment register:stack-pointer
+			(rtl:make-fetch register:dynamic-link))
+   (rtl:make-assignment register:dynamic-link
+			(rtl:make-object->address (stack-pop-address)))))
 
 ;;; Interpreter Calls
 
-(define ((interpreter-lookup-maker %make) environment name)
+(define rtl:make-interpreter-call:access)
+(define rtl:make-interpreter-call:cache-unassigned?)
+(define rtl:make-interpreter-call:unassigned?)
+(define rtl:make-interpreter-call:unbound?)
+(let ((interpreter-lookup-maker
+       (lambda (%make)
+	 (lambda (environment name)
+	   (expression-simplify-for-statement environment
+	     (lambda (environment)
+	       (%make environment name)))))))
+  (set! rtl:make-interpreter-call:access
+	(interpreter-lookup-maker %make-interpreter-call:access))
+  (set! rtl:make-interpreter-call:cache-unassigned?
+	(interpreter-lookup-maker %make-interpreter-call:cache-unassigned?))
+  (set! rtl:make-interpreter-call:unassigned?
+	(interpreter-lookup-maker %make-interpreter-call:unassigned?))
+  (set! rtl:make-interpreter-call:unbound?
+	(interpreter-lookup-maker %make-interpreter-call:unbound?)))
+
+(define rtl:make-interpreter-call:define)
+(define rtl:make-interpreter-call:set!)
+(let ((interpreter-assignment-maker
+       (lambda (%make)
+	 (lambda (environment name value)
+	   (expression-simplify-for-statement value
+	     (lambda (value)
+	       (expression-simplify-for-statement environment
+		 (lambda (environment)
+		   (%make environment name value)))))))))
+  (set! rtl:make-interpreter-call:define
+	(interpreter-assignment-maker %make-interpreter-call:define))
+  (set! rtl:make-interpreter-call:set!
+	(interpreter-assignment-maker %make-interpreter-call:set!)))
+
+(define (rtl:make-interpreter-call:lookup environment name safe?)
   (expression-simplify-for-statement environment
     (lambda (environment)
-      (%make environment name))))
-
-(define ((interpreter-assignment-maker %make) environment name value)
-  (expression-simplify-for-statement value
-    (lambda (value)
-      (expression-simplify-for-statement environment
-	(lambda (environment)
-	  (%make environment name value))))))
-
-(define rtl:make-interpreter-call:access
-  (interpreter-lookup-maker %make-interpreter-call:access))
+      (%make-interpreter-call:lookup environment name safe?))))
 
 (define (rtl:make-interpreter-call:cache-assignment name value)
   (expression-simplify-for-statement name
@@ -117,77 +156,6 @@ MIT in each case. |#
   (expression-simplify-for-statement name
     (lambda (name)
       (%make-interpreter-call:cache-reference name safe?))))
-
-(define (rtl:make-interpreter-call:cache-unassigned? name)
-  (expression-simplify-for-statement name
-    (lambda (name)
-      (%make-interpreter-call:cache-unassigned? name))))
-
-(define rtl:make-interpreter-call:define
-  (interpreter-assignment-maker %make-interpreter-call:define))
-
-(define (rtl:make-interpreter-call:lookup environment name safe?)
-  (expression-simplify-for-statement environment
-    (lambda (environment)
-      (%make-interpreter-call:lookup environment name safe?))))
-
-(define rtl:make-interpreter-call:set!
-  (interpreter-assignment-maker %make-interpreter-call:set!))
-
-(define rtl:make-interpreter-call:unassigned?
-  (interpreter-lookup-maker %make-interpreter-call:unassigned?))
-
-(define rtl:make-interpreter-call:unbound?
-  (interpreter-lookup-maker %make-interpreter-call:unbound?))
-
-;;;; Invocations
-
-(define (rtl:make-invocation:apply frame-size prefix continuation)
-  (%make-invocation:apply
-   frame-size prefix (and continuation (continuation-label continuation))))
-
-(define (rtl:make-invocation:cache-reference frame-size prefix continuation
-					     extension)
-  (expression-simplify-for-statement extension
-   (lambda (extension)
-     (%make-invocation:cache-reference
-      frame-size prefix (and continuation (continuation-label continuation))
-      extension))))
-
-(define (rtl:make-invocation:jump frame-size prefix continuation procedure)
-  (%make-invocation:jump
-   frame-size prefix (and continuation (continuation-label continuation))
-   (procedure-label procedure)))
-
-(define (rtl:make-invocation:lexpr frame-size prefix continuation procedure)
-  (%make-invocation:lexpr
-   frame-size prefix (and continuation (continuation-label continuation))
-   (procedure-label procedure)))
-
-(define (rtl:make-invocation:lookup frame-size prefix continuation
-				    environment name)
-  (expression-simplify-for-statement environment
-    (lambda (environment)
-      (%make-invocation:lookup
-       frame-size prefix (and continuation (continuation-label continuation))
-       environment name))))
-
-(define (rtl:make-invocation:primitive frame-size prefix continuation
-				       procedure)
-  (%make-invocation:primitive
-   frame-size prefix (and continuation (continuation-label continuation))
-   procedure))
-
-(define (rtl:make-invocation:special-primitive name frame-size
-					       prefix continuation)
-  (%make-invocation:special-primitive
-   name frame-size prefix
-   (and continuation (continuation-label continuation))))
-
-(define (rtl:make-invocation:uuo-link frame-size prefix continuation name)
-  (%make-invocation:uuo-link
-   frame-size prefix (and continuation (continuation-label continuation))
-   name))
 
 ;;;; Expression Simplification
 
@@ -213,26 +181,24 @@ MIT in each case. |#
 	       (if-register register)
 	       (if-memory (interpreter-regs-pointer)
 			  (rtl:interpreter-register->offset locative)))))
-	((temporary? locative)
-	 (if-register (temporary->register locative)))
 	((pair? locative)
 	 (case (car locative)
+	   ((REGISTER)
+	    (if-register locative))
 	   ((FETCH)
-	    (locative-fetch (cadr locative) scfg-append!
-	      (lambda (register)
-		(if-memory register 0))))
+	    (locative-fetch (cadr locative) 0 scfg-append! if-memory))
 	   ((OFFSET)
 	    (let ((fetch (cadr locative)))
 	      (if (and (pair? fetch) (eq? (car fetch) 'FETCH))
-		  (locative-fetch (cadr fetch) scfg-append!
-		    (lambda (register)
-		      (if-memory register (caddr locative))))
+		  (locative-fetch (cadr fetch)
+				  (caddr locative)
+				  scfg-append!
+				  if-memory)
 		  (error "LOCATIVE-DEREFERENCE: Bad OFFSET" locative))))
 	   ((CONSTANT)
 	    (assign-to-temporary locative scfg-append!
 	      (lambda (register)
-		(assign-to-temporary (rtl:make-object->address register)
-				     scfg-append!
+		(assign-to-address-temporary register scfg-append!
 		  (lambda (register)
 		    (if-memory register 0))))))
 	   (else
@@ -240,22 +206,49 @@ MIT in each case. |#
 	(else
 	 (error "LOCATIVE-DEREFERENCE: Illegal locative" locative))))
 
-(define (locative-fetch locative scfg-append! receiver)
-  (locative-fetch-1 locative scfg-append!
-    (lambda (register)
-      (if (register-contains-address? (rtl:register-number register))
-	  (receiver register)
-	  (assign-to-temporary (rtl:make-object->address register)
-			       scfg-append!
-			       receiver)))))
+(define (locative-fetch locative offset scfg-append! receiver)
+  (let ((receiver
+	 (lambda (register)
+	   (guarantee-address register scfg-append!
+	     (lambda (address)
+	       (receiver address offset))))))
+    (locative-dereference locative scfg-append!
+      receiver
+      (lambda (register offset)
+	(assign-to-temporary (rtl:make-offset register offset)
+			     scfg-append!
+			     receiver)))))
 
-(define (locative-fetch-1 locative scfg-append! receiver)
+(define (locative-fetch-1 locative offset scfg-append! receiver)
   (locative-dereference locative scfg-append!
-    receiver
-    (lambda (register offset)
-      (assign-to-temporary (rtl:make-offset register offset)
-			   scfg-append!
-			   receiver))))
+    (lambda (register)
+      (receiver register offset))
+    (lambda (register offset*)
+      (receiver (rtl:make-offset register offset*) offset))))
+
+(define (guarantee-address expression scfg-append! receiver)
+  (if (rtl:address-expression? expression)
+      (receiver expression)
+      (guarantee-register expression scfg-append!
+	(lambda (register)
+	  (assign-to-address-temporary register scfg-append! receiver)))))
+
+(define (rtl:address-expression? expression)
+  (if (rtl:register? expression)
+      (register-contains-address? (rtl:register-number expression))
+      (rtl:object->address? expression)))
+
+(define (guarantee-register expression scfg-append! receiver)
+  (if (rtl:register? expression)
+      (receiver expression)
+      (assign-to-temporary expression scfg-append! receiver)))
+
+(define (generate-offset-address expression offset scfg-append! receiver)
+  (guarantee-address expression scfg-append!
+    (lambda (address)
+      (guarantee-register address scfg-append!
+	(lambda (register)
+	  (receiver (rtl:make-offset-address register offset)))))))
 
 (define-export (expression-simplify-for-statement expression receiver)
   (expression-simplify expression scfg*scfg->scfg! receiver))
@@ -263,22 +256,35 @@ MIT in each case. |#
 (define-export (expression-simplify-for-predicate expression receiver)
   (expression-simplify expression scfg*pcfg->pcfg! receiver))
 
+(define (expression-simplify* expression scfg-append! receiver)
+  (expression-simplify expression
+		       scfg-append!
+		       (expression-receiver scfg-append! receiver)))
+
+(define ((expression-receiver scfg-append! receiver) expression)
+  (if (rtl:trivial-expression? expression)
+      (receiver expression)
+      (assign-to-temporary expression scfg-append! receiver)))
+
 (define (expression-simplify expression scfg-append! receiver)
-  (let ((entry (assq (car expression) expression-methods))
-	(receiver (expression-receiver scfg-append! receiver)))
+  (let ((entry (assq (car expression) expression-methods)))
     (if entry
 	(apply (cdr entry) receiver scfg-append! (cdr expression))
 	(receiver expression))))
 
-(define ((expression-receiver scfg-append! receiver) expression)
-  (if (memq (car expression)
-	    '(REGISTER CONSTANT ENTRY:CONTINUATION ENTRY:PROCEDURE UNASSIGNED))
-      (receiver expression)
-      (assign-to-temporary expression scfg-append! receiver)))
-
 (define (assign-to-temporary expression scfg-append! receiver)
   (let ((pseudo (rtl:make-pseudo-register)))
+    (if (rtl:object->address? expression)
+	(add-rgraph-address-register! *current-rgraph*
+				      (rtl:register-number pseudo)))
     (scfg-append! (%make-assign pseudo expression) (receiver pseudo))))
+
+(define (assign-to-address-temporary expression scfg-append! receiver)
+  (let ((pseudo (rtl:make-pseudo-register)))
+    (add-rgraph-address-register! *current-rgraph*
+				  (rtl:register-number pseudo))
+    (scfg-append! (%make-assign pseudo (rtl:make-object->address expression))
+		  (receiver pseudo))))
 
 (define (define-expression-method name method)
   (let ((entry (assq name expression-methods)))
@@ -289,20 +295,28 @@ MIT in each case. |#
 
 (define expression-methods
   '())
-
-(define-expression-method 'ADDRESS
+
+(define (address-method generator)
   (lambda (receiver scfg-append! locative)
     (locative-dereference-1 locative scfg-append! locative-fetch-1
       (lambda (register)
 	(error "Can't take ADDRESS of a register" locative))
-      (lambda (register offset)
-	(receiver (if (zero? offset)
-		      register
-		      (rtl:make-offset-address register offset)))))))
-
+      (generator receiver scfg-append!))))
+
+(define-expression-method 'ADDRESS
+  (address-method
+   (lambda (receiver scfg-append!)
+     (lambda (expression offset)
+       (if (zero? offset)
+	   (guarantee-address expression scfg-append! receiver)
+	   (generate-offset-address expression
+				    offset
+				    scfg-append!
+				    receiver))))))
+
 (define-expression-method 'CELL-CONS
   (lambda (receiver scfg-append! expression)
-    (expression-simplify expression scfg-append!
+    (expression-simplify* expression scfg-append!
       (lambda (expression)
 	(let ((free (interpreter-free-pointer)))
 	  (assign-to-temporary
@@ -313,6 +327,21 @@ MIT in each case. |#
 	      (%make-assign (rtl:make-post-increment free 1) expression)
 	      (receiver temporary)))))))))
 
+(define-expression-method 'ENVIRONMENT
+  (address-method
+   (lambda (receiver scfg-append!)
+     (lambda (expression offset)
+       (if (zero? offset)
+	   (receiver
+	    (if (rtl:address-expression? expression)
+		(rtl:make-address->environment expression)
+		expression))
+	   (generate-offset-address expression offset scfg-append!
+	     (lambda (expression)
+	       (assign-to-temporary expression scfg-append!
+		 (lambda (register)
+		  (receiver (rtl:make-address->environment register)))))))))))
+
 (define-expression-method 'FETCH
   (lambda (receiver scfg-append! locative)
     (locative-dereference locative scfg-append!
@@ -324,11 +353,11 @@ MIT in each case. |#
   (lambda (receiver scfg-append! type car cdr)
     (let ((free (interpreter-free-pointer)))
       (let ((target (rtl:make-post-increment free 1)))
-	(expression-simplify type scfg-append!
+	(expression-simplify* type scfg-append!
 	  (lambda (type)
-	    (expression-simplify car scfg-append!
+	    (expression-simplify* car scfg-append!
 	      (lambda (car)
-		 (expression-simplify cdr scfg-append!
+		 (expression-simplify* cdr scfg-append!
 		   (lambda (cdr)
 		     (assign-to-temporary (rtl:make-cons-pointer type free)
 					  scfg-append!
@@ -338,17 +367,26 @@ MIT in each case. |#
 			  (scfg-append! (%make-assign target cdr)
 					(receiver temporary)))))))))))))))
 
-(define-expression-method 'OBJECT->TYPE
+(define (object-selector make-object-selector)
   (lambda (receiver scfg-append! expression)
-    (expression-simplify expression scfg-append!
+    (expression-simplify* expression scfg-append!
       (lambda (expression)
-	(receiver (rtl:make-object->type expression))))))
+	(receiver (make-object-selector expression))))))
+
+(define-expression-method 'OBJECT->TYPE
+  (object-selector rtl:make-object->type))
+
+(define-expression-method 'OBJECT->DATUM
+  (object-selector rtl:make-object->datum))
+
+(define-expression-method 'OBJECT->ADDRESS
+  (object-selector rtl:make-object->address))
 
 (define-expression-method 'CONS-POINTER
   (lambda (receiver scfg-append! type datum)
-    (expression-simplify type scfg-append!
+    (expression-simplify* type scfg-append!
       (lambda (type)
-	(expression-simplify datum scfg-append!
+	(expression-simplify* datum scfg-append!
 	  (lambda (datum)
 	    (receiver (rtl:make-cons-pointer type datum))))))))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty2.scm,v 1.2 1987/07/19 21:34:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty2.scm,v 4.1 1987/12/04 20:18:28 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -40,27 +40,8 @@ MIT in each case. |#
 (define-integrable rtl:address-register second)
 (define-integrable rtl:address-number third)
 (define-integrable rtl:invocation-pushed second)
-(define-integrable rtl:invocation-prefix third)
-(define-integrable rtl:invocation-continuation fourth)
+(define-integrable rtl:invocation-continuation third)
 (define-integrable rtl:test-expression second)
-
-(define-integrable (rtl:make-entry:continuation continuation)
-  (%make-entry:continuation (continuation-label continuation)))
-
-(define-integrable (rtl:make-entry:procedure procedure)
-  (%make-entry:procedure (procedure-label procedure)))
-
-(define-integrable (rtl:make-continuation-heap-check continuation)
-  (%make-continuation-heap-check (continuation-label continuation)))
-
-(define-integrable (rtl:make-procedure-heap-check procedure)
-  (%make-procedure-heap-check (procedure-label procedure)))
-
-(define-integrable (rtl:make-setup-lexpr procedure)
-  (%make-setup-lexpr (procedure-label procedure)))
-
-(define-integrable (rtl:make-message-receiver:subproblem continuation)
-  (%make-message-receiver:subproblem (continuation-label continuation)))
 
 (define (rtl:make-constant value)
   (if (scode/unassigned-object? value)
@@ -78,11 +59,11 @@ MIT in each case. |#
 (define-integrable register:environment
   'ENVIRONMENT)
 
-(define-integrable register:frame-pointer
-  'FRAME-POINTER)
-
 (define-integrable register:stack-pointer
   'STACK-POINTER)
+
+(define-integrable register:dynamic-link
+  'DYNAMIC-LINK)
 
 (define-integrable register:value
   'VALUE)
@@ -116,14 +97,17 @@ MIT in each case. |#
 
 ;;; Expressions that are used in the intermediate form.
 
-(define-integrable (rtl:make-fetch locative)
-  `(FETCH ,locative))
-
 (define-integrable (rtl:make-address locative)
   `(ADDRESS ,locative))
 
+(define-integrable (rtl:make-environment locative)
+  `(ENVIRONMENT ,locative))
+
 (define-integrable (rtl:make-cell-cons expression)
   `(CELL-CONS ,expression))
+
+(define-integrable (rtl:make-fetch locative)
+  `(FETCH ,locative))
 
 (define-integrable (rtl:make-typed-cons:pair type car cdr)
   `(TYPED-CONS:PAIR ,type ,car ,cdr))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 1.14 1987/10/05 20:22:15 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.1 1987/12/04 20:18:20 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -44,12 +44,12 @@ MIT in each case. |#
 (define-rtl-expression pre-increment rtl: register number)
 (define-rtl-expression post-increment rtl: register number)
 
+(define-rtl-expression assignment-cache rtl: name)
 (define-rtl-expression cons-pointer rtl: type datum)
 (define-rtl-expression constant % value)
 (define-rtl-expression variable-cache rtl: name)
-(define-rtl-expression assignment-cache rtl: name)
-(define-rtl-expression entry:continuation % continuation)
-(define-rtl-expression entry:procedure % procedure)
+(define-rtl-expression entry:continuation rtl: continuation)
+(define-rtl-expression entry:procedure rtl: procedure)
 (define-rtl-expression offset-address rtl: register number)
 (define-rtl-expression unassigned rtl:)
 
@@ -59,36 +59,33 @@ MIT in each case. |#
 (define-rtl-predicate unassigned-test % expression)
 
 (define-rtl-statement assign % address expression)
-(define-rtl-statement continuation-heap-check % continuation)
-(define-rtl-statement procedure-heap-check % procedure)
-(define-rtl-statement return rtl:)
-(define-rtl-statement setup-lexpr % procedure)
+(define-rtl-statement continuation-heap-check rtl: continuation)
+(define-rtl-statement procedure-heap-check rtl: procedure)
+(define-rtl-statement setup-lexpr rtl: procedure)
+(define-rtl-statement pop-return rtl:)
 
 (define-rtl-statement interpreter-call:access % environment name)
-(define-rtl-statement interpreter-call:cache-assignment % name value)
-(define-rtl-statement interpreter-call:cache-reference % name safe?)
-(define-rtl-statement interpreter-call:cache-unassigned? % name)
 (define-rtl-statement interpreter-call:define % environment name value)
-(define-rtl-statement interpreter-call:enclose rtl: size)
 (define-rtl-statement interpreter-call:lookup % environment name safe?)
 (define-rtl-statement interpreter-call:set! % environment name value)
 (define-rtl-statement interpreter-call:unassigned? % environment name)
 (define-rtl-statement interpreter-call:unbound? % environment name)
 
-(define-rtl-statement invocation:apply % pushed prefix continuation)
-(define-rtl-statement invocation:cache-reference % pushed prefix continuation
-  name)
-(define-rtl-statement invocation:jump % pushed prefix continuation procedure)
-(define-rtl-statement invocation:lexpr % pushed prefix continuation procedure)
-(define-rtl-statement invocation:lookup % pushed prefix continuation
-  environment name)
-(define-rtl-statement invocation:primitive % pushed prefix continuation
-  procedure)
-(define-rtl-statement invocation:special-primitive % name pushed prefix
-  continuation)
-(define-rtl-statement invocation:uuo-link % pushed prefix continuation name)
+(define-rtl-statement interpreter-call:cache-assignment % name value)
+(define-rtl-statement interpreter-call:cache-reference % name safe?)
+(define-rtl-statement interpreter-call:cache-unassigned? % name)
+(define-rtl-statement interpreter-call:enclose rtl: size)
 
-(define-rtl-statement message-sender:value rtl: size)
-(define-rtl-statement message-receiver:closure rtl: size)
-(define-rtl-statement message-receiver:stack rtl: size)
-(define-rtl-statement message-receiver:subproblem % continuation)
+(define-rtl-statement invocation:apply rtl: pushed continuation)
+(define-rtl-statement invocation:cache-reference rtl: pushed continuation name)
+(define-rtl-statement invocation:jump rtl: pushed continuation procedure)
+(define-rtl-statement invocation:lexpr rtl: pushed continuation procedure)
+(define-rtl-statement invocation:lookup rtl: pushed continuation environment
+  name)
+(define-rtl-statement invocation:primitive rtl: pushed continuation procedure)
+(define-rtl-statement invocation:special-primitive rtl: pushed continuation
+  procedure)
+(define-rtl-statement invocation:uuo-link rtl: pushed continuation name)
+
+(define-rtl-statement invocation-prefix:move-frame-up rtl: frame-size locative)
+(define-rtl-statement invocation-prefix:dynamic-link rtl: frame-size locative)

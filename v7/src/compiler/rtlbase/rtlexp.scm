@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 1.3 1987/09/03 05:16:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.1 1987/12/04 20:17:56 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,7 +36,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (rtl:invocation? rtl)
+(define-integrable (rtl:invocation? rtl)
   (memq (rtl:expression-type rtl)
 	'(INVOCATION:APPLY
 	  INVOCATION:JUMP
@@ -45,6 +45,15 @@ MIT in each case. |#
 	  INVOCATION:PRIMITIVE
 	  INVOCATION:SPECIAL-PRIMITIVE
 	  INVOCATION:UUO-LINK)))
+
+(define-integrable (rtl:trivial-expression? rtl)
+  (memq (rtl:expression-type rtl)
+	'(REGISTER
+	  CONSTANT
+	  ENTRY:CONTINUATION
+	  ENTRY:PROCEDURE
+	  UNASSIGNED
+	  VARIABLE-CACHE)))
 
 (define (rtl:machine-register-expression? expression)
   (and (rtl:register? expression)
@@ -69,19 +78,17 @@ MIT in each case. |#
 
 (define (rtl:any-subexpression? expression predicate)
   (and (not (rtl:constant? expression))
-       ((there-exists?
-	 (lambda (x)
-	   (and (pair? x)
-		(predicate x))))
-	(cdr expression))))
+       (there-exists? (cdr expression)
+		      (lambda (x)
+			(and (pair? x)
+			     (predicate x))))))
 
 (define (rtl:all-subexpressions? expression predicate)
   (or (rtl:constant? expression)
-      ((for-all?
-	(lambda (x)
-	  (or (not (pair? x))
-	      (predicate x))))
-       (cdr expression))))
+      (for-all? (cdr expression)
+		(lambda (x)
+		  (or (not (pair? x))
+		      (predicate x))))))
 
 (define (rtl:reduce-subparts expression operator initial if-expression if-not)
   (let ((remap

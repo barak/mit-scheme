@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rgraph.scm,v 1.2 1987/08/11 06:11:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rgraph.scm,v 4.1 1987/12/04 20:17:21 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,10 +38,10 @@ MIT in each case. |#
 
 (define-structure (rgraph (type vector)
 			  (copier false)
-			  (constructor false))
-  edge
+			  (constructor make-rgraph (n-registers)))
   n-registers
-  continuations
+  (address-registers (reverse initial-address-registers))
+  entry-edges
   bblocks
   register-bblock
   register-n-refs
@@ -49,24 +49,22 @@ MIT in each case. |#
   register-live-length
   register-crosses-call?
   )
-(define (rgraph-allocate)
-  (make-vector 9 false))
+(define (add-rgraph-address-register! rgraph register)
+  (set-rgraph-address-registers! rgraph
+				 (cons register
+				       (rgraph-address-registers rgraph))))
+
+(define (add-rgraph-entry-node! rgraph node)
+  (set-rgraph-entry-edges! rgraph
+			   (cons (node->edge node)
+				 (rgraph-entry-edges rgraph))))
 
 (define-integrable rgraph-register-renumber rgraph-register-bblock)
 (define-integrable set-rgraph-register-renumber! set-rgraph-register-bblock!)
 (define *rgraphs*)
 (define *current-rgraph*)
 
-(define (rgraph-entry-edges rgraph)
-  (cons (rgraph-edge rgraph)
-	(map continuation-rtl-edge (rgraph-continuations rgraph))))
-
 (define (rgraph-initial-edges rgraph)
-  (cons (rgraph-edge rgraph)
-	(let loop ((continuations (rgraph-continuations rgraph)))
-	  (if (null? continuations)
-	      '()
-	      (let ((edge (continuation-rtl-edge (car continuations))))
-		(if (node-previous=0? (edge-right-node edge))
-		    (cons edge (loop (cdr continuations)))
-		    (loop (cdr continuations))))))))
+  (list-transform-positive (rgraph-entry-edges rgraph)
+    (lambda (edge)
+      (node-previous=0? (edge-right-node edge)))))

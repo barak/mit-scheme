@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 1.5 1987/08/08 23:21:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 4.1 1987/12/04 20:17:27 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -41,11 +41,9 @@ MIT in each case. |#
 
 (define-vector-slots bblock 5
   instructions
-  (live-at-entry
-   register-map)
+  (live-at-entry register-map)
   live-at-exit
-  (new-live-at-exit
-   frame-pointer-offset)
+  (new-live-at-exit frame-pointer-offset)
   label)
 
 (define (make-sblock instructions)
@@ -78,17 +76,19 @@ MIT in each case. |#
 			  instructions
 			  register-map
 			  frame-pointer-offset))))
-  (define-vector-method sblock-tag ':DESCRIBE
-    (lambda (sblock)
-      (append! ((vector-tag-method snode-tag ':DESCRIBE) sblock)
-	       (bblock-describe sblock))))
-  (define-vector-method pblock-tag ':DESCRIBE
-    (lambda (pblock)
-      (append! ((vector-tag-method pnode-tag ':DESCRIBE) pblock)
-	       (bblock-describe pblock)
-	       (descriptor-list pblock
-				consequent-lap-generator
-				alternative-lap-generator)))))
+  (set-vector-tag-description!
+   sblock-tag
+   (lambda (sblock)
+     (append! ((vector-tag-description snode-tag) sblock)
+	      (bblock-describe sblock))))
+  (set-vector-tag-description!
+   pblock-tag
+   (lambda (pblock)
+     (append! ((vector-tag-description pnode-tag) pblock)
+	      (bblock-describe pblock)
+	      (descriptor-list pblock
+			       consequent-lap-generator
+			       alternative-lap-generator)))))
 
 (define (rinst-dead-register? rinst register)
   (memq register (rinst-dead-registers rinst)))
@@ -157,6 +157,6 @@ MIT in each case. |#
 	(set-bblock-instructions! bblock instructions)
 	(begin
 	  (snode-delete! bblock)
-	  (let ((rgraph *current-rgraph*))
-	    (set-rgraph-bblocks! rgraph
-				 (delq! bblock (rgraph-bblocks rgraph))))))))
+	  (set-rgraph-bblocks! *current-rgraph*
+			       (delq! bblock
+				      (rgraph-bblocks *current-rgraph*)))))))
