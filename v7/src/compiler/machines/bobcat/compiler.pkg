@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.4 1988/07/20 07:35:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.5 1988/08/18 01:47:27 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -96,7 +96,8 @@ MIT in each case. |#
   (files "machines/bobcat/decls")
   (parent (compiler))
   (export (compiler)
-	  sc)
+	  sc
+	  syntax-files!)
   (import (scode-optimizer top-level)
 	  sf/internal
 	  sf/pathname-defaulting)
