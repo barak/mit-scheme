@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unix.scm,v 1.94 1999/02/01 16:09:25 cph Exp $
+;;; $Id: unix.scm,v 1.95 1999/06/06 18:26:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -23,27 +23,28 @@
 (declare (usual-integrations))
 
 (define-variable backup-by-copying-when-symlink
-  "True means use copying to create backups for a symbolic name.
+  "#T means use copying to create backups for a symbolic name.
 This causes the actual names to refer to the latest version as edited.
 'QUERY means ask whether to backup by copying and write through, or rename.
-This variable is relevant only if  backup-by-copying  is false."
-  false)
+This variable is relevant only if  backup-by-copying  is #F."
+  #f
+  (lambda (object) (memq object '(#F #T QUERY))))
 
 (define-variable backup-by-copying-when-linked
-  "True means use copying to create backups for files with multiple names.
+  "#T means use copying to create backups for files with multiple names.
 This causes the alternate names to refer to the latest version as edited.
 This variable is relevant only if  backup-by-copying  is false."
-  false
+  #f
   boolean?)
 
 (define-variable backup-by-copying-when-mismatch
-  "True means create backups by copying if this preserves owner or group.
+  "#T means create backups by copying if this preserves owner or group.
 Renaming may still be used (subject to control of other variables)
 when it would not result in changing the owner or group of the file;
 that is, for files which are owned by you and whose group matches
 the default for a new file created there by you.
 This variable is relevant only if  Backup By Copying  is false."
-  false
+  #f
   boolean?)
 
 (define-variable version-control
@@ -51,7 +52,8 @@ This variable is relevant only if  Backup By Copying  is false."
 #T means make numeric backup versions unconditionally.
 #F means make them for files that have some already.
 'NEVER means do not make them."
-  false)
+  #f
+  (lambda (object) (memq object '(#F #T NEVER))))
 
 (define-variable kept-old-versions
   "Number of oldest versions to keep when a new numbered backup is made."
@@ -236,7 +238,7 @@ Includes the new backup.  Must be > 0."
 	      result))))))
 
 (define os/encoding-pathname-types
-  '("Z" "gz" "KY" "ky" "bf"))
+  '("Z" "gz" "bz2" "KY" "ky" "bf"))
 
 (define unix/backup-suffixes
   (cons "~"
@@ -344,6 +346,8 @@ Includes the new backup.  Must be > 0."
 	  (let ((type (pathname-type pathname)))
 	    (cond ((equal? "gz" type)
 		   (read-compressed-file "gzip -d" pathname mark))
+		  ((equal? "bz2" type)
+		   (read-compressed-file "bzip2 -d" pathname mark))
 		  ((equal? "Z" type)
 		   (read-compressed-file "uncompress" pathname mark))))))
     (,(read/write-encrypted-file? #f)
@@ -358,6 +362,8 @@ Includes the new backup.  Must be > 0."
 	  (let ((type (pathname-type pathname)))
 	    (cond ((equal? "gz" type)
 		   (write-compressed-file "gzip" region pathname))
+		  ((equal? "bz2" type)
+		   (write-compressed-file "bzip2" region pathname))
 		  ((equal? "Z" type)
 		   (write-compressed-file "compress" region pathname))))))
     (,(read/write-encrypted-file? #t)
@@ -379,10 +385,10 @@ Includes the new backup.  Must be > 0."
 ;;;; Compressed Files
 
 (define-variable enable-compressed-files
-  "If true, compressed files are automatically uncompressed when read,
+  "If #T, compressed files are automatically uncompressed when read,
 and recompressed when written.  A compressed file is identified by one
-of the filename suffixes \".gz\" or \".Z\"."
-  true
+of the filename suffixes \".gz\", \".bz2\", or \".Z\"."
+  #t
   boolean?)
 
 (define (read/write-compressed-file? group pathname)
@@ -390,7 +396,7 @@ of the filename suffixes \".gz\" or \".Z\"."
        (member (pathname-type pathname) unix/compressed-file-suffixes)))
 
 (define unix/compressed-file-suffixes
-  '("gz" "Z"))
+  '("gz" "bz2" "Z"))
 
 (define (read-compressed-file program pathname mark)
   (message "Uncompressing file " (->namestring pathname) "...")
@@ -441,7 +447,7 @@ of the filename suffixes \".gz\" or \".Z\"."
 ;;;; Encrypted files
 
 (define-variable enable-encrypted-files
-  "If true, encrypted files are automatically decrypted when read,
+  "If #T, encrypted files are automatically decrypted when read,
 and recrypted when written.  An encrypted file is identified by the
 filename suffixes \".bf\" and \".ky\"."
   #t
@@ -624,13 +630,13 @@ Value is a list of strings."
 ;;;; POP Mail
 
 (define-variable rmail-pop-delete
-  "If true, messages are deleted from the POP server after being retrieved.
+  "If #T, messages are deleted from the POP server after being retrieved.
 Otherwise, messages remain on the server and will be re-fetched later."
   #t
   boolean?)
 
 (define-variable rmail-popclient-is-debian
-  "If true, the popclient running on this machine is Debian popclient.
+  "If #T, the popclient running on this machine is Debian popclient.
 Otherwise, it is the standard popclient.  Debian popclient differs from
 standard popclient in that it does not accept the -p <password>
 option, instead taking -P <filename>."
