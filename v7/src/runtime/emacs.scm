@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.34 2004/09/14 19:51:56 cph Exp $
+$Id: emacs.scm,v 14.35 2004/09/14 20:06:19 cph Exp $
 
 Copyright 1986,1987,1991,1993,1994,1999 Massachusetts Institute of Technology
 Copyright 2001,2003,2004 Massachusetts Institute of Technology
@@ -214,61 +214,43 @@ USA.
 
 ;;;; Initialization
 
-(define emacs-console-port)
+(define vanilla-console-port-type)
+(define emacs-console-port-type)
 
 (define (initialize-package!)
-  (set! emacs-console-port
-	(make-port (make-port-type
-		    `((PROMPT-FOR-EXPRESSION ,emacs/prompt-for-expression)
-		      (PROMPT-FOR-COMMAND-CHAR ,emacs/prompt-for-command-char)
-		      (PROMPT-FOR-COMMAND-EXPRESSION
-		       ,emacs/prompt-for-command-expression)
-		      (PROMPT-FOR-CONFIRMATION ,emacs/prompt-for-confirmation)
-		      (DEBUGGER-FAILURE ,emacs/debugger-failure)
-		      (DEBUGGER-MESSAGE ,emacs/debugger-message)
-		      (DEBUGGER-PRESENTATION ,emacs/debugger-presentation)
-		      (WRITE-RESULT ,emacs/write-result)
-		      (SET-DEFAULT-DIRECTORY ,emacs/set-default-directory)
-		      (READ-START ,emacs/read-start)
-		      (READ-FINISH ,emacs/read-finish)
-		      (GC-START ,emacs/gc-start)
-		      (GC-FINISH ,emacs/gc-finish))
-		    (port/type the-console-port))
-		   (port/state the-console-port)))
-  ;; YUCCH!  Kludge to copy mutex of console port into emacs port.
-  (set-port/thread-mutex! emacs-console-port
-			  (port/thread-mutex the-console-port))
-  (set-console-i/o-port! (select-console-port))
-  (add-event-receiver! event:after-restore reset-console-port!))
+  (set! vanilla-console-port-type (port/type the-console-port))
+  (set! emacs-console-port-type
+	(make-port-type
+	 `((PROMPT-FOR-EXPRESSION ,emacs/prompt-for-expression)
+	   (PROMPT-FOR-COMMAND-CHAR ,emacs/prompt-for-command-char)
+	   (PROMPT-FOR-COMMAND-EXPRESSION
+	    ,emacs/prompt-for-command-expression)
+	   (PROMPT-FOR-CONFIRMATION ,emacs/prompt-for-confirmation)
+	   (DEBUGGER-FAILURE ,emacs/debugger-failure)
+	   (DEBUGGER-MESSAGE ,emacs/debugger-message)
+	   (DEBUGGER-PRESENTATION ,emacs/debugger-presentation)
+	   (WRITE-RESULT ,emacs/write-result)
+	   (SET-DEFAULT-DIRECTORY ,emacs/set-default-directory)
+	   (READ-START ,emacs/read-start)
+	   (READ-FINISH ,emacs/read-finish)
+	   (GC-START ,emacs/gc-start)
+	   (GC-FINISH ,emacs/gc-finish))
+	 vanilla-console-port-type))
+  (add-event-receiver! event:after-restore
+		       (lambda ()
+			 (set-port/type! the-console-port
+					 (select-console-port-type)))))
 
-(define (reset-console-port!)
-  ;; This is a kludge.  Maybe this method shouldn't be used.
-  (let* ((new-port (select-console-port))
-	 (replace-port
-	  (lambda (get set)
-	    (if (let ((port (get)))
-		  (or (eq? port the-console-port)
-		      (eq? port emacs-console-port)))
-		(set new-port)))))
-    (replace-port (lambda () console-i/o-port) set-console-i/o-port!)
-    (do ((pairs standard-port-accessors (cdr pairs)))
-	((null? pairs))
-      (replace-port (caar pairs) (cdar pairs)))
-    (do ((cmdl (nearest-cmdl) (cmdl/parent cmdl)))
-	((not cmdl))
-      (replace-port (lambda () (cmdl/port cmdl))
-		    (lambda (port) (set-cmdl/port! cmdl port))))))
-
-(define (select-console-port)
+(define (select-console-port-type)
   (if ((ucode-primitive under-emacs? 0))
       (begin
 	(set! hook/clean-input/flush-typeahead
 	      emacs/clean-input/flush-typeahead)
 	(set! hook/^G-interrupt emacs/^G-interrupt)
 	(set! hook/error-decision emacs/error-decision)
-	emacs-console-port)
+	emacs-console-port-type)
       (begin
 	(set! hook/clean-input/flush-typeahead #f)
 	(set! hook/^G-interrupt #f)
 	(set! hook/error-decision #f)
-	the-console-port)))
+	vanilla-console-port-type)))
