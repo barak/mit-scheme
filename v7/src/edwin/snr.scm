@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.4 1996/04/24 02:55:06 cph Exp $
+;;;	$Id: snr.scm,v 1.5 1996/05/03 19:55:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -2310,8 +2310,10 @@ Kill the current buffer in either case."
 
 (define (news-article-header-action-command select-next action)
   (let ((buffer (current-buffer)))
-    (let ((group-buffer (buffer-tree:parent buffer #t)))
-      (let loop ((header (news-article-buffer:header buffer)))
+    (let ((group-buffer (buffer-tree:parent buffer #t))
+	  (header (news-article-buffer:header buffer)))
+      (if action (action group-buffer header))
+      (let loop ((header header))
 	(let ((header (select-next group-buffer header)))
 	  (if (not header)
 	      (begin
@@ -2322,7 +2324,6 @@ Kill the current buffer in either case."
 			 (make-news-article-buffer group-buffer header))))
 		(if article-buffer
 		    (begin
-		      (if action (action group-buffer header))
 		      (news-group-buffer:move-to-header group-buffer header)
 		      (select-buffer article-buffer))
 		    (loop header)))))))
