@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: c.c,v 1.8 1993/10/30 17:53:48 gjr Exp $
+$Id: c.c,v 1.9 1993/10/30 18:11:31 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -213,6 +213,9 @@ DEFUN (declare_compiled_code,
     unsigned long new_entries_size = ((compiled_entries_size == 0)
 				      ? 100
 				      : ((compiled_entries_size * 3) / 2));
+    if (new_entries_size <= n_dispatch)
+      new_entries_size = (n_dispatch + 1);
+
     new_entries = ((struct compiled_entry_s *)
 		   (lrealloc (compiled_entries,
 			      (new_entries_size
