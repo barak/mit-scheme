@@ -383,7 +383,6 @@ license notices just after the title page:
 
 @smallexample
 @group
-
   Copyright (C)  @var{year}  @var{your name}.
   Permission is granted to copy, distribute and/or modify this document
   under the terms of the GNU Free Documentation License, Version 1.1
@@ -394,6 +393,7 @@ license notices just after the title page:
   Free Documentation License''.
 @end group
 @end smallexample
+
 If you have no Invariant Sections, write ``with no Invariant Sections''
 instead of saying which ones are invariant.  If you have no
 Front-Cover Texts, write ``no Front-Cover Texts'' instead of
