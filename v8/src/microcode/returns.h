@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/returns.h,v 9.36 1989/09/20 23:11:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/returns.h,v 9.37 1990/01/29 22:31:02 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -119,10 +119,11 @@ MIT in each case. */
 /* formerly RC_COMP_CACHE_ASSIGN_RESTART	0x5A */
 #define RC_COMP_LINK_CACHES_RESTART	0x5B
 #define RC_HARDWARE_TRAP		0x5C
+#define RC_INTERNAL_APPLY_VAL		0x5D
 
 /* When adding return codes, add them to the table below as well! */
 
-#define MAX_RETURN_CODE			0x5C
+#define MAX_RETURN_CODE			0x5D
 
 #define RETURN_NAME_TABLE						\
 {									\
@@ -218,5 +219,6 @@ MIT in each case. */
 /* 0x59 */		"COMPILER_UNASSIGNED_P_TRAP_RESTART",		\
 /* 0x5A */		"",						\
 /* 0x5B */		"COMPILER_LINK_CACHES_RESTART",			\
-/* 0x5C */		"HARDWARE_TRAP"					\
+/* 0x5C */		"HARDWARE_TRAP",				\
+/* 0x5D */		"INTERNAL_APPLY_VAL"				\
 }

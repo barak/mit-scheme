@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/framex.scm,v 14.9 1989/07/13 18:38:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/framex.scm,v 14.10 1990/01/29 22:34:56 jinx Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -241,6 +241,9 @@ MIT in each case. |#
 
 	    (,(method/application-frame 3)
 	     INTERNAL-APPLY)
+
+	    (,(method/application-frame 3)
+	     INTERNAL-APPLY-VAL)
 
 	    (,(method/application-frame 1)
 	     REPEAT-PRIMITIVE)

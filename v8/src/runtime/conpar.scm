@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.11 1989/12/07 05:35:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.12 1990/01/29 22:34:18 jinx Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -561,7 +561,8 @@ MIT in each case. |#
 
     (let ((length (length/application-frame 2 0)))
       (standard-subproblem 'COMBINATION-APPLY length)
-      (standard-subproblem 'INTERNAL-APPLY length))
+      (standard-subproblem 'INTERNAL-APPLY length)
+      (standard-subproblem 'INTERNAL-APPLY-VAL length))
 
     (standard-subproblem 'COMPILER-LOOKUP-APPLY-RESTART
 			 (length/application-frame 4 1))

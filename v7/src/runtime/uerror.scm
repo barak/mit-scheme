@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.11 1989/12/07 05:06:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.12 1990/01/29 22:35:09 jinx Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -411,36 +411,45 @@ MIT in each case. |#
 	   (list (irritant (expression-only-frame/expression frame)))
 	   repl-environment))))
 
+    (define (define-apply-handler definer)
+      (for-each definer '(INTERNAL-APPLY INTERNAL-APPLY-VAL)))
+
     (define (define-internal-apply-handler error-type environment irritant
 	      . operators)
-      (define-error-handler error-type 'INTERNAL-APPLY
-	(apply internal-apply-frame/operator-filter operators)
-	(lambda (condition-type frame)
-	  (make-error-condition
-	   condition-type
-	   (list (internal-apply-frame/select frame irritant))
-	   (if environment
-	       (internal-apply-frame/select frame environment)
-	       repl-environment)))))
+      (define-apply-handler
+       (lambda (return-address)
+	 (define-error-handler error-type return-address
+	   (apply internal-apply-frame/operator-filter operators)
+	   (lambda (condition-type frame)
+	     (make-error-condition
+	      condition-type
+	      (list (internal-apply-frame/select frame irritant))
+	      (if environment
+		  (internal-apply-frame/select frame environment)
+		  repl-environment)))))))
 
     (define (define-operator-handler error-type)
-      (define-error-handler error-type 'INTERNAL-APPLY true
-	(lambda (condition-type frame)
-	  (make-error-condition condition-type
-				(list (internal-apply-frame/operator frame))
-				repl-environment))))
+      (define-apply-handler
+	(lambda (return-address)
+	  (define-error-handler error-type return-address true
+	    (lambda (condition-type frame)
+	      (make-error-condition condition-type
+				    (list (internal-apply-frame/operator frame))
+				    repl-environment))))))
 
     (define (define-operand-handler error-type irritant #!optional filter)
-      (define-error-handler error-type 'INTERNAL-APPLY
-	(if (default-object? filter) true filter)
-	(lambda (condition-type frame)
-	  (make-error-condition
-	   condition-type
-	   (list (internal-apply-frame/select frame irritant)
-		 (error-irritant/noise char:newline)
-		 (error-irritant/noise "within procedure")
-		 (internal-apply-frame/operator frame))
-	   repl-environment))))
+      (define-apply-handler
+	(lambda (return-address)
+	  (define-error-handler error-type return-address
+	    (if (default-object? filter) true filter)
+	    (lambda (condition-type frame)
+	      (make-error-condition
+	       condition-type
+	       (list (internal-apply-frame/select frame irritant)
+		     (error-irritant/noise char:newline)
+		     (error-irritant/noise "within procedure")
+		     (internal-apply-frame/operator frame))
+	       repl-environment))))))
 
     (define (define-reference-trap-handler error-type frame-type)
       (define-error-handler error-type frame-type true
