@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.4 1991/08/06 22:58:51 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.5 1991/08/13 02:31:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -100,17 +100,17 @@
 ;;; 	(string-match recipients (or (mail-fetch-field "From") ""))
 ;;; 	(if (not primary-only)
 ;;; 	    (string-match recipients (or (mail-fetch-field "Cc") ""))))))
-
+
 (define rmail-new-summary 
   (lambda (description function . args)
     (guarantee-rmail-summary-variables)
     (message "Computing summary lines...")
     (if (not rmail-summary-buffer)
 	(set! rmail-summary-buffer
-	      (temporary-buffer (string-append (buffer-name (current-buffer)) "-summary"))))
+	      (temporary-buffer
+	       (string-append (buffer-name (current-buffer)) "-summary"))))
     (let ((summary-msgs ())
-	  (the-current-message-number (msg-memo/number (current-msg-memo)))
-	  (new-summary-line-count 0))
+	  (the-current-message-number (msg-memo/number (current-msg-memo))))
       (let loop ((the-memo (msg-memo/first (current-msg-memo))))
 	(let ((next-memo (msg-memo/next the-memo)))
 	  (if (or (not function)
@@ -147,25 +147,27 @@
 
 (define (rmail-make-summary-line memo)
   (let ((new-summary-line-count 0))
-    (let ((line (or (vector-ref rmail-summary-vector (-1+ (msg-memo/number memo)))
-		    (begin
-		      (set! new-summary-line-count
-			    (1+ new-summary-line-count))
-		      (if (= 0 (modulo new-summary-line-count 10))
-			  (message "Computing summary lines..."
-				   new-summary-line-count))
-		      (rmail-make-summary-line-1 memo)
-		      (vector-ref rmail-summary-vector (-1+ (msg-memo/number memo)))
-		      ))))
+    (let ((line
+	   (or (vector-ref rmail-summary-vector (-1+ (msg-memo/number memo)))
+	       (begin
+		 (set! new-summary-line-count
+		       (1+ new-summary-line-count))
+		 (if (= 0 (modulo new-summary-line-count 10))
+		     (message "Computing summary lines..."
+			      new-summary-line-count))
+		 (rmail-make-summary-line-1 memo)
+		 (vector-ref rmail-summary-vector (-1+ (msg-memo/number memo)))
+		 ))))
       ;; Fix up the part of the summary that says "deleted" or "unseen".
-      (string-set! line 4
-		   (if (msg-memo/deleted? memo) #\D
-		       (if (char=? #\0 (string-ref (extract-string (msg-memo/start memo)
-								   (msg-memo/end memo))
-						   2))
-			   #\- #\space)))
+      (string-set!
+       line 4
+       (if (msg-memo/deleted? memo) #\D
+	   (if (char=? #\0 (string-ref (extract-string (msg-memo/start memo)
+						       (msg-memo/end memo))
+				       2))
+	       #\- #\space)))
       line)))
-
+
 (define (rmail-make-summary-line-1 memo)
   (with-buffer-open 
    (current-buffer)
@@ -173,12 +175,7 @@
      (let ((old-point (current-point))
 	   (start (msg-memo/start memo))
 	   (end (msg-memo/end memo)))
-       (let ((lim
-	      (begin
-		(set-current-point! start)
-		((ref-command next-line) 2)
-		(current-point)))
-	     (pos)
+       (let ((pos)
 	     (labels
 	      (begin
 		(set-current-point! start)
@@ -200,11 +197,12 @@
 		       "Summary-line: "
 		       (extract-string point (line-end point 0)))
 		      (begin
-			(string-tail (extract-string point
-						     (begin
-						       ((ref-command next-line) 1)
-						       (current-point)))
-				     14))
+			(string-tail
+			 (extract-string point
+					 (begin
+					   ((ref-command next-line) 1)
+					   (current-point)))
+			 14))
 		      false)))))
 	 ;; If we didn't get a valid status line from the message,
 	 ;; make a new one and put it in the message.
@@ -229,7 +227,7 @@
 			 labels
 			 (string-tail line (1+ pos))))))
        (set-current-point! old-point)))))
-
+
 (define (rmail-make-basic-summary-line the-begin)
   (string-append
    (let ((the-mark
@@ -238,14 +236,20 @@
 	 "      "
 	 (let ((the-end-of-line (line-end the-mark 0)))
 	   (cond
-	    ((re-search-forward "\\([^0-9:]\\)\\([0-3]?[0-9]\\)\\([- \t_]+\\)\\([adfjmnos][aceopu][bcglnprtvy]\\)" the-mark the-end-of-line)
+	    ((re-search-forward "\\([^0-9:]\\)\\([0-3]?[0-9]\\)\\([- \t_]+\\)\\([adfjmnos][aceopu][bcglnprtvy]\\)"
+				the-mark the-end-of-line)
 	     (string-append
-	      (string-pad-left (extract-string (re-match-start 2) (re-match-end 2)) 2)
+	      (string-pad-left (extract-string (re-match-start 2)
+					       (re-match-end 2))
+			       2)
 	      "-"
 	      (extract-string (re-match-start 4) (re-match-end 4))))
-	    ((re-search-forward "\\([^a-z]\\)\\([adfjmnos][acepou][bcglnprtvy]\\)\\([-a-z \t_]*\\)\\([0-9][0-9]?\\)" the-mark the-end-of-line)
+	    ((re-search-forward "\\([^a-z]\\)\\([adfjmnos][acepou][bcglnprtvy]\\)\\([-a-z \t_]*\\)\\([0-9][0-9]?\\)"
+				the-mark the-end-of-line)
 	     (string-append
-	      (string-pad-left (extract-string (re-match-start 4) (re-match-end 4)) 2)
+	      (string-pad-left (extract-string (re-match-start 4)
+					       (re-match-end 4))
+			       2)
 	      "-"
 	      (extract-string (re-match-start 2) (re-match-end 2))))
 	    (else
@@ -280,15 +284,20 @@
      (if the-mark
 	 (let ((the-start (skip-chars-forward " \t" the-mark)))
 	   (extract-string the-start (line-end the-start 0)))
-	 (let ((the-start (re-search-forward "[\n][\n]+" the-begin (group-end the-begin))))
+	 (let ((the-start
+		(re-search-forward "[\n][\n]+"
+				   the-begin
+				   (group-end the-begin))))
 	   (extract-string the-start (line-end the-start 0)))))
    "\n"))
 
 (define (mail-extract-real-name address-start address-end)
-  (cond ((re-search-forward "[ \t\"]*\\<\\(.*\\)\\>[\" \t]*<.*>" address-start address-end)
+  (cond ((re-search-forward "[ \t\"]*\\<\\(.*\\)\\>[\" \t]*<.*>"
+			    address-start address-end)
 	 (extract-string (re-match-start 1) (re-match-end 1)))
 	;; Chris VanHaren (Athena User Consultant) <vanharen>
-	((re-search-forward "[ \t\"]*\\<\\(.*\\)\\>.*(.*).*<.*>.*" address-start address-end)
+	((re-search-forward "[ \t\"]*\\<\\(.*\\)\\>.*(.*).*<.*>.*"
+			    address-start address-end)
 	 (extract-string (re-match-start 1) (re-match-end 1)))
 	((re-search-forward ".*(\\(.*\\))" address-start address-end)
 	 (extract-string (re-match-start 1) (re-match-end 1)))
@@ -297,7 +306,7 @@
 	((re-search-forward " *\\<\\(.*\\)\\> *" address-start address-end)
 	 (extract-string (re-match-start 1) (re-match-end 1)))
 	(else
-	 address)))
+	 (extract-string address-start address-end))))
 
 (define-major-mode rmail-summary read-only "RMAIL Summary"
   "Major mode in effect in Rmail summary buffer.
@@ -323,24 +332,29 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
   (event-distributor/invoke! (ref-variable rmail-summary-mode-hook)))
 
 (define (guarantee-rmail-summary-variables)
-  (let ((number-of-messages (msg-memo/number (msg-memo/last (current-msg-memo)))))
+  (let ((number-of-messages
+	 (msg-memo/number (msg-memo/last (current-msg-memo)))))
     (set! rmail-buffer (current-buffer))
     (set! rmail-summary-vector (make-vector number-of-messages #F))))
 
 (define-key 'rmail-summary #\j		'rmail-summary-show-message)
 (define-key 'rmail-summary #\n		'rmail-summary-next-undeleted-message)
-(define-key 'rmail-summary #\p		'rmail-summary-previous-undeleted-message)
+(define-key 'rmail-summary #\p
+  'rmail-summary-previous-undeleted-message)
 (define-key 'rmail-summary #\m-n	'rmail-summary-next-message)
 (define-key 'rmail-summary #\m-p	'rmail-summary-previous-message)
 (define-key 'rmail-summary #\c-m-n	'rmail-summary-next-labeled-message)
-(define-key 'rmail-summary #\c-m-p	'rmail-summary-previous-labeled-message)
+(define-key 'rmail-summary #\c-m-p
+  'rmail-summary-previous-labeled-message)
 (define-key 'rmail-summary #\space	'rmail-summary-scroll-message-up)
 (define-key 'rmail-summary #\rubout	'rmail-summary-scroll-message-down)
 (define-key 'rmail-summary #\d		'rmail-summary-delete-message-forward)
 (define-key 'rmail-summary #\D    	'rmail-summary-delete-message-backward)
 (define-key 'rmail-summary #\M-d        'rmail-summary-delete-message)
-(define-key 'rmail-summary #\u		'rmail-summary-undelete-message-backward)
-(define-key 'rmail-summary #\U   	'rmail-summary-undelete-message-forward)
+(define-key 'rmail-summary #\u
+  'rmail-summary-undelete-message-backward)
+(define-key 'rmail-summary #\U
+  'rmail-summary-undelete-message-forward)
 (define-key 'rmail-summary #\M-u	'rmail-summary-undelete-message)
 (define-key 'rmail-summary #\q		'rmail-summary-quit)
 (define-key 'rmail-summary #\x		'rmail-summary-exit)
@@ -369,11 +383,12 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
 ;;; (define-key 'rmail #\>		'rmail-last-message)
 ;;; (define-key 'rmail #\?		'describe-mode)
 ;;; (define-key 'rmail #\w		'rmail-edit-current-message)
-
+
 (define (make-rmail-summary-handler-prefix-arg key)
   (lambda (arg)
     (select-buffer-other-window rmail-buffer)
-    ((command-procedure (comtab-entry (mode-comtabs (current-major-mode)) key)) arg)
+    ((command-procedure
+      (comtab-entry (mode-comtabs (current-major-mode)) key)) arg)
     (select-buffer-other-window rmail-summary-buffer)))
 
 (define-command rmail-summary-show-message
@@ -404,7 +419,9 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
 	    (if (not (null? the-message-number))
 		(begin
 		  (select-buffer-other-window rmail-buffer)
-		  ((command-procedure (comtab-entry (mode-comtabs (current-major-mode)) #\j)) the-message-number)
+		  ((command-procedure
+		    (comtab-entry (mode-comtabs (current-major-mode)) #\j))
+		   the-message-number)
 		  (select-buffer-other-window rmail-summary-buffer))))))))
 
 (define-command rmail-summary-next-message
@@ -420,7 +437,7 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
   (lambda (arg)
     (set-current-point! (line-start (current-point) (- arg)))
     (rmail-summary-goto-message-current-line)))
-
+
 (define-command rmail-summary-next-undeleted-message 
   "Goto ARGth next undeleted message."
   "p"
@@ -495,7 +512,7 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
 	(delete-string the-mark (mark1+ the-mark))
 	(insert-string "D" the-mark)
 	(set-buffer-read-only! (current-buffer))))))
-
+
 (define-command rmail-summary-delete-message-forward
   "Delete this message and move to next undeleted message."
   '()
@@ -532,7 +549,9 @@ and undelete it."
   '()
   (lambda ()
     (let ((the-mark
-	   (re-search-backward "^....D" (line-end (current-point) 0) (buffer-start (current-buffer)))))
+	   (re-search-backward "^....D"
+			       (line-end (current-point) 0)
+			       (buffer-start (current-buffer)))))
       (if the-mark
 	  (begin
 	    (set-current-point! (line-start the-mark 0))
@@ -545,7 +564,9 @@ and undelete it."
   '()
   (lambda ()
     (let ((the-mark
-	   (re-search-forward "^....D" (line-start (current-point) 0) (buffer-end (current-buffer)))))
+	   (re-search-forward "^....D"
+			      (line-start (current-point) 0)
+			      (buffer-end (current-buffer)))))
       (if the-mark
 	  (begin
 	    (set-current-point! (line-start the-mark 0))

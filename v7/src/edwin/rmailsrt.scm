@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsrt.scm,v 1.1 1991/08/05 16:40:11 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsrt.scm,v 1.2 1991/08/13 02:31:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -61,13 +61,10 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
     (rmail-sort-messages 
      reverse
      (lambda (memo)
-       (fetch-first-field "date" 
-			  (msg-memo/start memo)
-			  (msg-memo/end memo)))
+       (fetch-first-field "date" (msg-memo/start memo) (msg-memo/end memo)))
      (lambda (x y)
-       (string<?
-	(rmail-sortable-date-string x)
-	(rmail-sortable-date-string y))))))
+       (string<? (rmail-sortable-date-string x)
+		 (rmail-sortable-date-string y))))))
 
 (define-command rmail-sort-by-subject 
   "Sort messages of current Rmail file by subject.
@@ -78,15 +75,13 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
      reverse
      (let ((re-pattern (re-compile-pattern "^\\(re:[ \t]+\\)*" true)))
        (lambda (memo)
-	 (let ((key (or (fetch-first-field 
-			 "subject" 
-			 (msg-memo/start memo)
-			 (msg-memo/end memo))
-			""))
-	       (case-fold-search true))
+	 (let ((key
+		(or (fetch-first-field "subject" 
+				       (msg-memo/start memo)
+				       (msg-memo/end memo))
+		    "")))
 	   ;; Remove `Re:'
-	   (if (re-match-string-forward 
-		re-pattern true false key)
+	   (if (re-match-string-forward re-pattern true false key)
 	       (string-tail key (re-match-end-index 0))
 	       key))))
      string<?)))
@@ -128,11 +123,9 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
   (lambda (reverse)
     (rmail-sort-messages
      reverse
-     (lambda (memo)
-       (count-lines (msg-memo/start memo) (msg-memo/end memo)))
+     (lambda (memo) (count-lines (msg-memo/start memo) (msg-memo/end memo)))
      <)))
 
-
 (define rmail-sort-messages
   (lambda (reverse keyfunc cmpfunc)
     (let* ((current-msg-num (msg-memo/number (current-msg-memo)))
@@ -186,7 +179,7 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
       (set-buffer-msg-memo! (current-buffer) false)
       (memoize-buffer (current-buffer))
       (show-message (current-buffer) current-msg-num))))
-
+
 ;; Copy of the function gnus-comparable-date in gnus.el
 
 (define rmail-sortable-date-string
@@ -208,15 +201,27 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 	   true false date)
 	  (string-append
 	   ;; Year
-	   (let ((year (string->number (substring date (re-match-start-index 3) (re-match-end-index 3)))))
+	   (let ((year
+		  (string->number
+		   (substring date
+			      (re-match-start-index 3)
+			      (re-match-end-index 3)))))
 	     (let ((y1 (modulo year 100)))
 	       (string-pad-left (number->string y1) 2)))
 	   ;; Month
 	   (cdr
 	    (assoc
-	     (string-upcase (substring (substring date (re-match-start-index 2) (re-match-end-index 2)) 0 3)) month))
+	     (string-upcase
+	      (substring (substring date
+				    (re-match-start-index 2)
+				    (re-match-end-index 2))
+			 0 3))
+	     month))
 	   ;; Day
-	   (let ((day (substring date (re-match-start-index 1) (re-match-end-index 1))))
+	   (let ((day
+		  (substring date
+			     (re-match-start-index 1)
+			     (re-match-end-index 1))))
 	     (string-pad-left day 2))
 	   ;; Time
 	   (substring date (re-match-start-index 4) (re-match-end-index 4)))
@@ -231,8 +236,7 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 
 (define mail-strip-quoted-names
   (lambda (address)
-    (let ((pos)
-	  (address address))
+    (let ((pos))
       (if (re-match-string-forward (re-compile-pattern "\\`[ \t\n]*" true)
 				   true false address)
 	  (set! address (string-tail address (re-match-end-index 0))))
@@ -257,8 +261,9 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 	      (re-compile-pattern
 	       "[ \t]*\"\\([^\"\\]\\|\\\\.\\|\\\\\n\\)*\"[ \t\n]*"
 	       true)))
-	 (set! pos (re-match-substring-forward the-pattern true false address
-					       the-pos (string-length address)))
+	 (set! pos
+	       (re-match-substring-forward the-pattern true false address
+					   the-pos (string-length address)))
 	 (if pos
 	     (if (and (> (string-length address) (re-match-end-index 0))
 		      (char=? (string-ref address (re-match-end-index 0)) #\@))
@@ -283,5 +288,3 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 	       (set! address (mail-string-delete address junk-beg junk-end))
 	       (loop)))))
      address)))
-
-
