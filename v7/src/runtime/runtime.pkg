@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.445 2003/04/17 02:52:12 cph Exp $
+$Id: runtime.pkg,v 14.446 2003/06/08 04:07:12 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1597,6 +1597,7 @@ USA.
 	  add-to-gc-finalizer!
 	  gc-finalizer-elements
 	  gc-finalizer?
+	  make-gc-finalized-object
 	  make-gc-finalizer
 	  remove-all-from-gc-finalizer!
 	  remove-from-gc-finalizer!

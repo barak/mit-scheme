@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: gcfinal.scm,v 14.5 2003/02/14 18:28:32 cph Exp $
+$Id: gcfinal.scm,v 14.6 2003/06/08 04:07:08 cph Exp $
 
-Copyright (c) 2000, 2002 Massachusetts Institute of Technology
+Copyright 2000,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -79,7 +79,7 @@ USA.
 			     (set-gc-finalizer-items! finalizer next))
 			 (procedure (weak-cdr (car items))))
 		       (loop (cdr items) items)))))))))
-
+
 (define (remove-all-from-gc-finalizer! finalizer)
   (guarantee-gc-finalizer finalizer 'REMOVE-ALL-FROM-GC-FINALIZER!)
   (let ((procedure (gc-finalizer-procedure finalizer)))
@@ -93,7 +93,7 @@ USA.
 		 (if (weak-pair/car? item)
 		     (procedure (weak-cdr item)))
 		 (loop)))))))))
-
+
 (define (search-gc-finalizer finalizer predicate)
   (guarantee-gc-finalizer finalizer 'SEARCH-GC-FINALIZER)
   (without-interrupts
@@ -118,6 +118,32 @@ USA.
 		       objects)))
 	   (reverse! objects))))))
 
+(define (make-gc-finalized-object finalizer get-context context->object)
+  ;; A bunch of hair to permit microcode descriptors be opened with
+  ;; interrupts turned on, yet not leave a dangling descriptor around
+  ;; if the open is interrupted before the runtime system's data
+  ;; structures are updated.
+  (guarantee-gc-finalizer finalizer 'MAKE-GC-FINALIZED-OBJECT)
+  (let ((p (weak-cons #f #f)))
+    (dynamic-wind
+     (lambda () unspecific)
+     (lambda ()
+       (and (get-context p)
+	    (let ((context (weak-cdr p)))
+	      (let ((object (context->object context)))
+		(without-interrupts
+		 (lambda ()
+		   (weak-set-cdr! p object)
+		   (set-gc-finalizer-items!
+		    finalizer
+		    (cons p (gc-finalizer-items finalizer)))))
+		object))))
+     (lambda ()
+       (if (and (not (weak-pair/car? p)) (weak-cdr p))
+	   (begin
+	     ((gc-finalizer-procedure finalizer) (weak-cdr p))
+	     (weak-set-cdr! p #f)))))))
+
 (define gc-finalizers)
 
 (define (reset-gc-finalizers)
