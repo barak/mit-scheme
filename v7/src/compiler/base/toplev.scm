@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.15 1989/04/21 17:06:51 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.16 1989/04/26 05:09:52 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -606,6 +606,7 @@ MIT in each case. |#
     (lambda ()
       (if compiler:cse?
 	  (phase/common-subexpression-elimination))
+      (phase/invertible-expression-elimination)
       (phase/lifetime-analysis)
       (if compiler:code-compression?
 	  (phase/code-compression))
@@ -617,6 +618,11 @@ MIT in each case. |#
   (compiler-subphase "Common Subexpression Elimination"
     (lambda ()
       (common-subexpression-elimination *rtl-graphs*))))
+
+(define (phase/invertible-expression-elimination)
+  (compiler-subphase "Invertible Expression Elimination"
+    (lambda ()
+      (invertible-expression-elimination *rtl-graphs*))))
 (define (phase/lifetime-analysis)
   (compiler-subphase "Lifetime Analysis"
     (lambda ()
