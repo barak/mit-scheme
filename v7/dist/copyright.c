@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: copyright.c,v 1.2 2002/11/20 18:30:13 cph Exp $
+$Id: copyright.c,v 1.3 2002/11/20 18:32:26 cph Exp $
 
-Copyright (c) 2002 Massachusetts Institute of Technology
+Copyright 2002 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 

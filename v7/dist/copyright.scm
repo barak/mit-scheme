@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: copyright.scm,v 1.2 2002/11/20 18:30:00 cph Exp $
+$Id: copyright.scm,v 1.3 2002/11/20 18:32:19 cph Exp $
 
-Copyright (c) 2002 Massachusetts Institute of Technology
+Copyright 2002 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
