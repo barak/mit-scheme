@@ -1,0 +1,77 @@
+#
+# $Id: Makefile.std,v 1.1 2000/03/21 02:44:05 cph Exp $
+#
+# Standard Makefile for Scheme subsystem directories.
+# This makefile supports some utilities for Scheme subsystems.
+# Tools to rebuild these subsystems are written in Scheme and do not
+# use `make'.
+#
+
+SHELL = /bin/sh
+
+all:
+	echo "No ALL action"
+
+tags:
+	etags *.scm
+
+index:
+	rm -f INDEX
+	/zu/cph/bin/schndx *.scm > INDEX
+
+listing:
+	prlist runtim.pkg *.scm
+
+locked:
+	rlog -L -R RCS/*,v
+
+stage1:
+	mkdir STAGE1
+	mv *.com *.bci STAGE1/.
+
+unstage1:
+	mv STAGE1/* .
+	rmdir STAGE1
+
+rmstage1:
+	rm -rf STAGE1
+
+cpstage1:
+	cpx STAGE1/* .
+
+lnstage1:
+	ln STAGE1/* .
+
+stage2:
+	mkdir STAGE2
+	mv *.com *.bci STAGE2/.
+
+unstage2:
+	mv STAGE2/* .
+	rmdir STAGE2
+
+rmstage2:
+	rm -rf STAGE2
+
+cpstage2:
+	cpx STAGE2/* .
+
+lnstage2:
+	ln STAGE2/* .
+
+stage3:
+	mkdir STAGE3
+	mv *.com *.bci STAGE3/.
+
+unstage3:
+	mv STAGE3/* .
+	rmdir STAGE3
+
+rmstage3:
+	rm -rf STAGE3
+
+cpstage3:
+	cpx STAGE3/* .
+
+lnstage3:
+	ln STAGE3/* .
