@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.35 1987/11/17 08:06:17 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.36 1987/11/17 19:47:34 jinx Exp $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -105,12 +105,14 @@ static fixup_count = 0;
   fasdump_normal_end();							\
 }
 
-#define fasdump_remember_to_fix(location, contents)
-{
-  if ((fixup == fixup_buffer) && (!reset_fixes()))
-    return false;
-  *--fixup = contents;
-  *--fixup = ((Pointer) location);
+#define fasdump_remember_to_fix(location, contents)			\
+{									\
+  if ((fixup == fixup_buffer) && (!reset_fixes()))			\
+  {									\
+    return false;							\
+  }									\
+  *--fixup = contents;							\
+  *--fixup = ((Pointer) location);					\
 }
 
 Boolean
