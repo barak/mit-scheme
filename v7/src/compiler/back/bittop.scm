@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bittop.scm,v 1.20 1993/12/18 21:43:01 cph Exp $
+$Id: bittop.scm,v 1.21 1993/12/23 11:14:19 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -54,7 +54,7 @@ MIT in each case. |#
 	      (*start-label* start-label)
 	      (*end-label* (generate-uninterned-symbol 'END-LABEL-)))
     (initialize-symbol-table!)
-    (with-values
+    (call-with-values
 	(lambda ()
 	  (initial-phase
 	   (if (null? instructions)
@@ -95,7 +95,7 @@ MIT in each case. |#
     (finish-symbol-table!)
     (if (null? vars)
 	count
-	(with-values (lambda () (phase-2 widening? vars))
+	(call-with-values (lambda () (phase-2 widening? vars))
 	  (lambda (any-modified? number-of-vars)
 	    (cond (any-modified?
 		   (continue false count))
@@ -115,49 +115,21 @@ MIT in each case. |#
 ;;;; Output block generation
 
 (define (final-phase directives)
-  ;; Label values are now integers.
+  ;; Convert label values to integers:
   (for-each (lambda (pair)
-	      (let ((val (binding-value (cdr pair))))
-		(if (interval? val)
-		    (set-binding-value! (cdr pair) (interval-low val)))))
+	      (set-binding-value!
+	       (cdr pair)
+	       (interval-final-value (binding-value (cdr pair)))))
 	    (symbol-table-bindings *the-symbol-table*))
   (let ((code-block
-	 (bit-string-allocate (- (* addressing-granularity
-				    (symbol-table-value *the-symbol-table*
-							*end-label*))
+	 (bit-string-allocate (- (->bitstring-pc
+				  (symbol-table-value *the-symbol-table*
+						      *end-label*))
 				 starting-pc))))
-    (assemble-directives!
-     code-block
-     directives
-     (instruction-initial-position code-block))
+    (assemble-directives! code-block
+			  directives
+			  (instruction-initial-position code-block))
     code-block))
-
-#|
-
-(define (assemble-objects code-block)
-  (let ((objects (map assemble-an-object (queue->list *objects*))))
-    (if compiler:cross-compiling?
-	(vector 'DEBUGGING-INFO-SLOT code-block objects scheme-object-width)
-	(let* ((bl (quotient (bit-string-length code-block)
-			     scheme-object-width))
-	       (non-pointer-length
-		((ucode-primitive make-non-pointer-object) bl))
-	       (output-block (make-vector (1+ (+ (length objects) bl)))))
-	  (with-absolutely-no-interrupts
-	    (lambda ()
-	      (vector-set! output-block 0
-			   ((ucode-primitive primitive-object-set-type)
-			    (ucode-type manifest-nm-vector)
-			    non-pointer-length))))
-	  (write-bits! output-block
-		       ;; After header just inserted.
-		       (* scheme-object-width 2)
-		       code-block)
-	  (insert-objects! output-block objects (1+ bl))
-	  (object-new-type (ucode-type compiled-code-block)
-			   output-block)))))
-
-|#
 
 (define (assemble-objects code-block)
   (let ((objects (map assemble-an-object (queue->list *objects*))))
@@ -350,9 +322,7 @@ MIT in each case. |#
 	(add-to-queue! directives dir))
 
       (define (process-label! label)
-	(symbol-table-define! *the-symbol-table*
-			      (cadr label)
-			      (make-machine-interval pcmin pcmax))
+	(set-label-value! (cadr label) pcmin pcmax)
 	(new-directive! (list->vector label)))
 
       (define (process-fixed-width directive width)
@@ -366,12 +336,12 @@ MIT in each case. |#
 
       (define (process-variable-width directive)
 	(new-directive! directive)
-	(variable-width-lengths directive
-	 (lambda (minl maxl)
-	   (loop (cdr to-convert)
-		 (+ pcmin minl) (+ pcmax maxl)
-		 pc-stack '()
-		 (cons directive vars)))))
+	(call-with-values (lambda () (variable-width-lengths directive))
+	  (lambda (minl maxl)
+	    (loop (cdr to-convert)
+		  (+ pcmin minl) (+ pcmax maxl)
+		  pc-stack '()
+		  (cons directive vars)))))
 
       (define (process-trivial-directive)
 	(loop (cdr to-convert)
@@ -381,9 +351,7 @@ MIT in each case. |#
       (if (null? to-convert)
 	  (let ((emin (final-pad pcmin))
 		(emax (+ pcmax maximum-padding-length)))
-	    (symbol-table-define! *the-symbol-table*
-				  *end-label*
-				  (make-machine-interval emin emax))
+	    (set-label-value! *end-label* emin emax)
 	    (collect-group!)
 	    (values (queue->list directives) vars))
 
@@ -408,7 +376,7 @@ MIT in each case. |#
 		       (vector 'VARIABLE-WIDTH-EXPRESSION
 			       (cadr this)
 			       (if (null? pc-stack)
-				   (make-machine-interval pcmin pcmax)
+				   (label->machine-interval pcmin pcmax)
 				   (car pc-stack))
 			       (map list->vector (cddr this)))))
 		     ((GROUP)
@@ -416,7 +384,8 @@ MIT in each case. |#
 		      (loop (append (cdr this)
 				    (cons '(TICK-OFF) (cdr to-convert)))
 			    pcmin pcmax
-			    (cons (make-machine-interval pcmin pcmax) pc-stack)
+			    (cons (label->machine-interval pcmin pcmax)
+				  pc-stack)
 			    '() vars))
 		     ((TICK-OFF)
 		      (new-directive! (vector 'TICK false))
@@ -456,16 +425,12 @@ MIT in each case. |#
 	       (emax (if (not widening?)
 			 (+ pcmax maximum-padding-length)
 			 emin)))
-	  (symbol-table-define! *the-symbol-table*
-				*end-label*
-				(make-machine-interval emin emax))
+	  (set-label-value! *end-label* emin emax)
 	  vars)
 	(let ((this (car rem)))
 	  (case (vector-ref this 0)
 	    ((LABEL)
-	     (symbol-table-define! *the-symbol-table*
-				   (vector-ref this 1)
-				   (make-machine-interval pcmin pcmax))
+	     (set-label-value! (vector-ref this 1) pcmin pcmax)
 	     (loop (cdr rem) pcmin pcmax pc-stack vars))
 	    ((FIXED-WIDTH-GROUP)
 	     (let ((l (vector-ref this 1)))
@@ -477,21 +442,20 @@ MIT in each case. |#
 	    ((VARIABLE-WIDTH-EXPRESSION)
 	     (vector-set! this 2
 			  (if (null? pc-stack)
-			      (make-machine-interval pcmin pcmax)
+			      (label->machine-interval pcmin pcmax)
 			      (car pc-stack)))
-	     (variable-width-lengths
-	      this
-	      (lambda (minl maxl)
-		(loop (cdr rem)
-		      (+ pcmin minl)
-		      (+ pcmax (if widening? minl maxl))
-		      pc-stack
-		      (cons this vars)))))
+	     (call-with-values (lambda () (variable-width-lengths this))
+	       (lambda (minl maxl)
+		 (loop (cdr rem)
+		       (+ pcmin minl)
+		       (+ pcmax (if widening? minl maxl))
+		       pc-stack
+		       (cons this vars)))))
 	    ((TICK)
 	     (loop (cdr rem)
 		   pcmin pcmax
 		   (if (vector-ref this 1)
-		       (cons (make-machine-interval pcmin pcmax) pc-stack)
+		       (cons (label->machine-interval pcmin pcmax) pc-stack)
 		       (cdr pc-stack))
 		   vars))
 	    ((PADDING)
@@ -504,43 +468,41 @@ MIT in each case. |#
   (loop directives starting-pc starting-pc '() '()))
 
 (define (phase-2 widening? vars)
-  (define (loop vars modified? count)
+  (let loop ((vars vars) (modified? #f) (count 0))
     (if (null? vars)
 	(values modified? count)
-	(let ((var (car vars)))
-	  (let ((interval (->interval
-			   (evaluate (vector-ref var 1)
-				     (vector-ref var 2)))))
-	    (with-values
-	     (lambda ()
-	       (process-variable var
-				 widening?
-				 (interval-low interval)
-				 (interval-high interval)))
-	     (lambda (determined? filtered?)
-	       (loop (cdr vars)
-		     (or modified? filtered?)
-		     (if determined? count (1+ count)))))))))
-  (loop vars false 0))
+	(call-with-values
+	    (lambda ()
+	      (let ((var (car vars)))
+		(call-with-values
+		    (lambda ()
+		      (interval-values (evaluate (vector-ref var 1)
+						 (vector-ref var 2))))
+		  (lambda (low high)
+		    (process-variable var widening? low high)))))
+	  (lambda (determined? filtered?)
+	    (loop (cdr vars)
+		  (or modified? filtered?)
+		  (if determined? count (+ count 1))))))))
 
 (define (process-variable var widening? minval maxval)
-  (define (loop sels dropped-some?)
-    (cond ((null? sels)
-	   (error "variable-width-expression: minimum value is too large"
-		  var minval))
-	  ((not (selector/fits? minval (car sels)))
-	   (loop (cdr sels) true))
-	  ((selector/fits? maxval (car sels))
-	   (cond ((not widening?)
-		  (variable-width->fixed! var (car sels)))
-		 (dropped-some?
-		  (vector-set! var 3 sels)))
-	   (values true dropped-some?))
-	  (dropped-some?
-	   (vector-set! var 3 sels)
-	   (values false true))
-	  (else (values false false))))
-  (loop (vector-ref var 3) false))
+  (let loop ((dropped-some? #f))
+    (let ((sels (vector-ref var 3)))
+      (if (null? sels)
+	  (error "Variable-width field cannot be resolved:" var))
+      (let ((low (selector/low (car sels)))
+	    (high (selector/high (car sels))))
+	(cond ((and (or (null? low) (<= low minval))
+		    (or (null? high) (<= maxval high)))
+	       (if (not widening?)
+		   (variable-width->fixed! var (car sels)))
+	       (values #t dropped-some?))
+	      ((and (or (null? low) (<= low maxval))
+		    (or (null? high) (<= minval high)))
+	       (values #f dropped-some?))
+	      (else
+	       (vector-set! var 3 (cdr sels))
+	       (loop #t)))))))
 
 (define (variable-width->fixed! var sel)
   (let* ((l (selector/length sel))

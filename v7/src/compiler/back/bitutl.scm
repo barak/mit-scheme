@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bitutl.scm,v 1.7 1993/12/08 17:43:16 gjr Exp $
+$Id: bitutl.scm,v 1.8 1993/12/23 11:14:25 cph Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -37,7 +37,23 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-;;;; Extra symbol table operations
+(define-integrable (make-queue)
+  (cons '() '()))
+
+(define-integrable (queue->list queue)
+  (car queue))
+
+(define (add-to-queue! queue entry)
+  (let ((new (cons entry '())))
+    (if (null? (cdr queue))
+	(set-car! queue new)
+	(set-cdr! (cdr queue) new))
+    (set-cdr! queue new)))
+
+(define-integrable (set-label-value! name low high)
+  (symbol-table-define! *the-symbol-table*
+			name
+			(label->machine-interval low high)))
 
 (define (clear-symbol-table!)
   (set! *the-symbol-table* (make-symbol-table))
@@ -47,31 +63,47 @@ MIT in each case. |#
   (symbol-table-define! *the-symbol-table* *start-label* 0))
 
 (define (finish-symbol-table!)
-  (define (process-objects objs pcmin pcmax)
-    (if (null? objs)
-	'DONE
-	(let ((object (car objs)))
-	  (symbol-table-define! *the-symbol-table*
-				(cadr object) ; label
-				(make-machine-interval pcmin pcmax))
-	  (process-objects (cdr objs)
-			   (+ pcmin scheme-object-width)
-			   (+ pcmax scheme-object-width)))))
-
-  ;; Handle scheme objects
-  (let ((val (symbol-table-value *the-symbol-table* *end-label*)))
-    (process-objects (queue->list *objects*)
-		     (* addressing-granularity (interval-low val))
-		     (* addressing-granularity (interval-high val))))
-
-  ;; Handle equates
+  (call-with-values
+      (lambda ()
+	(interval-values (symbol-table-value *the-symbol-table* *end-label*)))
+    (lambda (low high)
+      (do ((objects (queue->list *objects*) (cdr objects))
+	   (pcmin (->bitstring-pc low) (+ pcmin scheme-object-width))
+	   (pcmax (->bitstring-pc high) (+ pcmax scheme-object-width)))
+	  ((null? objects))
+	(set-label-value! (cadar objects) pcmin pcmax))))
   (for-each (lambda (equate)
 	      (symbol-table-define! *the-symbol-table*
 				    (car equate)
-				    (evaluate (cadr equate) false)))
+				    (evaluate (cadr equate) #f)))
 	    (queue->list *equates*)))
+
+(define (variable-width-lengths v)
+  (let ((sel (vector-ref v 3)))
+    (if (null? sel)
+	(error "Bad variable width directive:" v))
+    (let ((l (selector/length (car sel))))
+      (let loop ((selectors (cdr sel)) (min l) (max l))
+	(if (null? selectors)
+	    (values min max)
+	    (let ((this (selector/length (car selectors))))
+	      (cond ((< this min) (loop (cdr selectors) this max))
+		    ((> this max) (loop (cdr selectors) min this))
+		    (else         (loop (cdr selectors) min max)))))))))
+
+(define-integrable (selector/handler sel)
+  (vector-ref sel 0))
+
+(define-integrable (selector/length sel)
+  (vector-ref sel 1))
+
+(define-integrable (selector/low sel)
+  (vector-ref sel 2))
+
+(define-integrable (selector/high sel)
+  (vector-ref sel 3))
 
-;;;; Expression evaluation and intervals
+;;;; Expression Evaluation
 
 (define (evaluate expression pc-value)
   (define (inner exp)
@@ -90,11 +122,34 @@ MIT in each case. |#
 	   (symbol-table-value *the-symbol-table* exp))))
   (inner expression))
 
+(define (find-operator keyword)
+  (let ((place (assq keyword operators)))
+    (if (null? place)
+	(error "evaluate: unknown operator:" keyword))
+    ((cdr place))))
+
+(define operators
+  `((+ . ,(lambda () interval:+))
+    (- . ,(lambda () interval:-))
+    (* . ,(lambda () interval:*))
+    (/ . ,(lambda () interval:/))
+    (QUOTIENT . ,(lambda () interval:quotient))
+    (REMAINDER . ,(lambda () interval:remainder))))
+
 (define-integrable (->machine-pc pc)
   (paranoid-quotient pc addressing-granularity))
 
 (define-integrable (->bitstring-pc pc)
   (* pc addressing-granularity))
+
+(define (paranoid-quotient dividend divisor)
+  (let ((result (integer-divide dividend divisor)))
+    (if (not (zero? (integer-divide-remainder result)))
+	(error "paranoid-quotient: not a multiple" dividend divisor))
+    (integer-divide-quotient result)))
+
+(define (final-pad pcvalue)
+  (paddify pcvalue 0 scheme-object-width))
 
 (define (paddify pc-val remdr divsr)
   (let ((aremdr (remainder pc-val divsr)))
@@ -102,190 +157,192 @@ MIT in each case. |#
        (if (<= aremdr remdr)
 	   (- remdr aremdr)
 	   (+ remdr (- divsr aremdr))))))
-
-;; Machine intervals are always in addressing units.
-
-(define-integrable (make-machine-interval low high)
-  (make-interval (->machine-pc low)
-		 (->machine-pc high)))
-
-(define (->interval value)
-  (if (interval? value)
-      value
-      (make-interval value value)))
-
-(define-integrable (make-interval low high)
-  (vector 'INTERVAL low high))
-
-(define-integrable (interval? obj)
-  (and (vector? obj)
-       (eq? (vector-ref obj 0) 'INTERVAL)))
-
-(define-integrable (interval-low obj)
-  (vector-ref obj 1))
-
-(define-integrable (interval-high obj)
-  (vector-ref obj 2))
-
-(define (paranoid-quotient dividend divisor)
-  (let ((result (integer-divide dividend divisor)))
-    (if (zero? (integer-divide-remainder result))
-	(integer-divide-quotient result)
-	(error "paranoid-quotient: not a multiple" dividend divisor))))
-
-(define (final-pad pcvalue)
-  (paddify pcvalue 0 scheme-object-width))
 
-;;;; Operators
+;;;; Interval Arithmetic
 
-(define operators '())
+(define-structure (interval (constructor %make-interval))
+  (offset #f read-only #t)
+  (segset #f read-only #t))
 
-(define (define-operator! keyword procedure)
-  (set! operators `((,keyword . ,procedure) ,@operators)))
+(define-integrable (label->machine-interval low high)
+  (make-interval 0
+		 (list (make-segment (make-point (->machine-pc low)
+						 (->machine-pc high))
+				     1))))
 
-(define (find-operator keyword)
-  (let ((place (assq keyword operators)))
-    (if (null? place)
-	(error "evaluate: unknown operator" keyword)
-	(cdr place))))
+(define (make-interval offset segset)
+  (if (null? segset)
+      offset
+      (%make-interval offset segset)))
 
-;; Either argument can be an interval
+(define (interval-values interval)
+  (if (interval? interval)
+      (let loop
+	  ((result-1 (interval-offset interval))
+	   (result-2 (interval-offset interval))
+	   (base-1 0)
+	   (base-2 0)
+	   (segset (interval-segset interval)))
+	(if (null? segset)
+	    (if (<= result-1 result-2)
+		(values result-1 result-2)
+		(values result-2 result-1))
+	    (let ((position-1 (segment-min (car segset)))
+		  (position-2 (segment-max (car segset)))
+		  (k (segment-coeff (car segset))))
+	      (loop (+ result-1 (* (- position-1 base-1) k))
+		    (+ result-2 (* (- position-2 base-2) k))
+		    position-1
+		    position-2
+		    (cdr segset)))))
+      (values interval interval)))
 
-(define-operator! '+
-  (lambda (op1 op2)
-    (cond ((not (interval? op2))
-	   (if (not (interval? op1))
-	       (+ op1 op2)
-	       (make-interval (+ (interval-low op1) op2)
-			      (+ (interval-high op1) op2))))
-	  ((not (interval? op1))
-	   (make-interval (+ op1 (interval-low op2))
-			  (+ op1 (interval-high op2))))
-	  (else
-	   (make-interval (+ (interval-low op1) (interval-low op2))
-			  (+ (interval-high op1) (interval-high op2)))))))
-
-(define-operator! '-
-  (lambda (op1 op2)
-    (cond ((not (interval? op2))
-	   (if (not (interval? op1))
-	       (- op1 op2)
-	       (make-interval (- (interval-low op1) op2)
-			      (- (interval-high op1) op2))))
-	  ((not (interval? op1))
-	   (make-interval (- op1 (interval-high op2))
-			  (- op1 (interval-low op2))))
-	  (else
-	   (make-interval (- (interval-low op1) (interval-high op2))
-			  (- (interval-high op1) (interval-low op2)))))))
+(define (interval-final-value interval)
+  (if (interval? interval)
+      (let loop
+	  ((result (interval-offset interval))
+	   (base 0)
+	   (segset (interval-segset interval)))
+	(if (null? segset)
+	    result
+	    (let ((position (segment-min (car segset)))
+		  (k (segment-coeff (car segset))))
+	      (loop (+ result (* (- position base) k))
+		    position
+		    (cdr segset)))))
+      interval))
 
-;; Only one argument can be an interval, both assumed non-negative.
+(define (interval:+ a b)
+  (if (interval? a)
+      (if (interval? b)
+	  (make-interval (+ (interval-offset a) (interval-offset b))
+			 (segset:+ (interval-segset a) (interval-segset b)))
+	  (make-interval (+ (interval-offset a) b) (interval-segset a)))
+      (if (interval? b)
+	  (make-interval (+ a (interval-offset b)) (interval-segset b))
+	  (+ a b))))
 
-(define-operator! '*
-  (lambda (op1 op2)
-    (cond ((not (interval? op2))
-	   (if (not (interval? op1))
-	       (* op1 op2)
-	       (make-interval (* (interval-low op1) op2)
-			      (* (interval-high op1) op2))))
-	  ((not (interval? op1))
-	   (make-interval (* op1 (interval-low op2))
-			  (* op1 (interval-high op2))))
-	  (else
-	   (error "evaluate: Both arguments are intervals" '* op1 op2)))))
+(define (interval:- a b)
+  (if (interval? a)
+      (if (interval? b)
+	  (make-interval (- (interval-offset a) (interval-offset b))
+			 (segset:- (interval-segset a) (interval-segset b)))
+	  (make-interval (- (interval-offset a) b) (interval-segset a)))
+      (if (interval? b)
+	  (make-interval (- a (interval-offset b))
+			 (segset:negate (interval-segset b)))
+	  (- a b))))
 
-;; Only the first argument can be an interval
+(define (interval:* a b)
+  (if (interval? a)
+      (if (interval? b)
+	  (error "Can't multiply two intervals:" a b)
+	  (make-interval (* (interval-offset a) b)
+			 (segset:scale (interval-segset a) b)))
+      (if (interval? b)
+	  (make-interval (* (interval-offset b) a)
+			 (segset:scale (interval-segset b) a))
+	  (* a b))))
 
-(define ((asymmetric name op) op1 op2)
-  (cond ((interval? op2)
-	 (error "evaluate: Second operand is an interval" name op1 op2))
-	((not (interval? op1))
-	 (op op1 op2))
+;;; Integer division on intervals is hard because the numerator of the
+;;; division is a summation.  For exact division we can just check the
+;;; sum of the result to make sure it's an integer.  QUOTIENT and
+;;; REMAINDER can't be done at all unless we constrain the remainder
+;;; of the high and low values to be the same.
+
+(define (interval:/ a b)
+  (if (interval? b)
+      (error "Can't divide by an interval:" b))
+  (if (interval? a)
+      (let ((result
+	     (make-interval (/ (interval-offset a) b)
+			    (segset:scale (interval-segset a) (/ 1 b)))))
+	(if (not
+	     (call-with-values (lambda () (interval-values result))
+	       (lambda (low high)
+		 (and (integer? low)
+		      (integer? high)))))
+	    (error "Interval division not exact:" a b))
+	result)
+      (paranoid-quotient a b)))
+
+(define (interval:quotient a b)
+  (if (or (interval? a) (interval? b))
+      (error "QUOTIENT doesn't do intervals:" a b))
+  (quotient a b))
+
+(define (interval:remainder a b)
+  (if (or (interval? a) (interval? b))
+      (error "REMAINDER doesn't do intervals:" a b))
+  (remainder a b))
+
+;;; A segment consists of an ending point and a coefficient.
+;;; The ending point has a minimum and maximum non-negative integer value.
+;;; The coefficient is an integer.
+;;; min(s1)=min(s2) iff max(s1)=max(s2)
+;;; min(s1)<min(s2) iff max(s1)<max(s2)
+
+(define-integrable make-segment cons)
+(define-integrable segment-point car)
+(define-integrable segment-coeff cdr)
+
+(define-integrable make-point cons)
+(define-integrable point-min car)
+(define-integrable point-max cdr)
+
+(define-integrable (segment-min segment)
+  (point-min (segment-point segment)))
+
+(define-integrable (segment-max segment)
+  (point-max (segment-point segment)))
+
+(define-integrable (segment:< s1 s2)
+  (< (segment-min s1) (segment-min s2)))
+
+(define-integrable (segment:= s1 s2)
+  (= (segment-min s1) (segment-min s2)))
+
+;;; A segset is a list of segments.
+;;; The segments are sorted in order from least to greatest.
+;;; There is an implicit starting point of zero.
+
+(define (segset:+ a b)
+  (cond ((null? a) b)
+	((null? b) a)
+	((segment:< (car a) (car b))
+	 (cons-segset (segment-point (car a))
+		      (+ (segment-coeff (car a)) (segment-coeff (car b)))
+		      (segset:+ (cdr a) b)))
 	(else
-	 (make-interval (op (interval-low op1) op2)
-			(op (interval-high op1) op2)))))
+	 (cons-segset (segment-point (car b))
+		      (+ (segment-coeff (car a)) (segment-coeff (car b)))
+		      (segset:+ (if (segment:= (car a) (car b)) (cdr a) a)
+				(cdr b))))))
 
-(define-operator! '/ (asymmetric '/ paranoid-quotient))
-(define-operator! 'QUOTIENT (asymmetric 'QUOTIENT quotient))
+(define (segset:- a b)
+  (cond ((null? a) (segset:negate b))
+	((null? b) a)
+	((segment:< (car a) (car b))
+	 (cons-segset (segment-point (car a))
+		      (- (segment-coeff (car a)) (segment-coeff (car b)))
+		      (segset:- (cdr a) b)))
+	(else
+	 (cons-segset (segment-point (car b))
+		      (- (segment-coeff (car a)) (segment-coeff (car b)))
+		      (segset:- (if (segment:= (car a) (car b)) (cdr a) a)
+				(cdr b))))))
 
-(define-operator! 'REMAINDER
-  (lambda (op1 op2)
-    (cond ((interval? op2)
-	   (error "evaluate: Second operand is an interval"
-		  'REMAINDER op1 op2))
-	  ((not (interval? op1))
-	   (remainder op1 op2))
-	  (else
-	   (let ((rlow (remainder (interval-low op1) op2))
-		 (rhigh (remainder (interval-high op1) op2)))
-	     (if (> rlow rhigh)
-		 (make-interval rhigh rlow)
-		 (make-interval rlow rhigh)))))))
-
-;;;; Variable width expression utilities
+(define (segset:negate b)
+  (segset:scale b -1))
 
-(define (variable-width-lengths v receiver)
-  (define (loop selectors min max)
-    (cond ((null? selectors)
-	   (receiver min max))
-	  ((< (selector/length (car selectors)) min)
-	   (loop (cdr selectors)
-		 (selector/length (car selectors))
-		 max))
-	  ((> (selector/length (car selectors)) max)
-	   (loop (cdr selectors)
-		 min
-		 (selector/length (car selectors))))
-	  (else
-	   (loop (cdr selectors) min max))))
-  (let ((sel (vector-ref v 3)))
-    (if (null? sel)
-	(error "variable-width-lengths: Bad variable width directive" v)
-	(loop (cdr sel)
-	      (selector/length (car sel))
-	      (selector/length (car sel))))))
+(define (segset:scale b c)
+  (if (null? b)
+      b
+      (cons (make-segment (segment-point (car b))
+			  (* (segment-coeff (car b)) c))
+	    (segset:scale (cdr b) c))))
 
-(define (selector/fits? val sel)
-  (let ((low (selector/low sel))
-	(high (selector/high sel)))
-    (and (or (false? low) (<= low val))
-	 (or (false? high) (<= val high)))))
-
-(declare (integrate-operator selector/high selector/low
-			     selector/handler selector/length))
-
-(define (selector/high sel)
-  (declare (integrate sel))
-  (vector-ref sel 3))
-
-(define (selector/low sel)
-  (declare (integrate sel))
-  (vector-ref sel 2))
-
-(define (selector/length sel)
-  (declare (integrate sel))
-  (vector-ref sel 1))
-
-(define (selector/handler sel)
-  (declare (integrate sel))
-  (vector-ref sel 0))
-
-;;;; Random utilities
-
-;;; Queues
-
-(declare (integrate-operator make-queue queue->list))
-
-(define (make-queue)
-  (cons '() '()))
-
-(define (queue->list queue)
-  (declare (integrate queue))
-  (car queue))
-
-(define (add-to-queue! queue entry)
-  (let ((new (cons entry '())))
-    (if (null? (cdr queue))
-	(set-car! queue new)
-	(set-cdr! (cdr queue) new))
-    (set-cdr! queue new)))
+(define (cons-segset point coeff segset)
+  (if (= coeff (if (null? segset) 0 (segment-coeff (car segset))))
+      segset
+      (cons (make-segment point coeff) segset)))
