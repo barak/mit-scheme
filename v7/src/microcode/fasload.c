@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.70 1993/08/21 01:55:48 gjr Exp $
+$Id: fasload.c,v 9.71 1993/08/22 20:25:13 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -70,6 +70,14 @@ extern void EXFUN (install_primitive_table, (SCHEME_OBJECT *, long));
 extern void EXFUN (compiler_reset_error, (void));
 extern void EXFUN (compiler_initialize, (long));
 extern void EXFUN (compiler_reset, (SCHEME_OBJECT));
+
+#ifndef FLUSH_I_CACHE_REGION
+#  define FLUSH_I_CACHE_REGION(addr, nwords) NOP()
+#endif
+
+#ifndef PUSH_D_CACHE_REGION
+#  define PUSH_D_CACHE_REGION(addr, nwords) FLUSH_I_CACHE_REGION(addr, nwords)
+#endif
 
 static long failed_heap_length = -1;
 
@@ -88,9 +96,7 @@ DEFUN (read_channel_continue, (header, mode, repeat_p),
   if (value != FASL_FILE_FINE)
   {
     if (mode != MODE_CHANNEL)
-    {
       OS_channel_close_noerror (load_channel);
-    }
     switch (value)
     {
       /* These may want to be separated further. */
@@ -110,16 +116,12 @@ DEFUN (read_channel_continue, (header, mode, repeat_p),
   }
 
   if (Or2 (Reloc_Debug, File_Load_Debug))
-  {
     print_fasl_information();
-  }
 
   if (!(TEST_CONSTANT_TOP (Free_Constant + Const_Count)))
   {
     if (mode != MODE_CHANNEL)
-    {
       OS_channel_close_noerror (load_channel);
-    }
     signal_error_from_primitive (ERR_FASL_FILE_TOO_BIG);
     /*NOTREACHED*/
   }
@@ -133,9 +135,7 @@ DEFUN (read_channel_continue, (header, mode, repeat_p),
 	(mode == MODE_BAND))
     {
       if (mode != MODE_CHANNEL)
-      {
 	OS_channel_close_noerror (load_channel);
-      }
       signal_error_from_primitive (ERR_FASL_FILE_TOO_BIG);
       /*NOTREACHED*/
     }
@@ -181,9 +181,7 @@ DEFUN (read_channel_continue, (header, mode, repeat_p),
   if ((band_p) && (mode != MODE_BAND))
   {
     if (mode != MODE_CHANNEL)
-    {
       OS_channel_close_noerror (load_channel);      
-    }
     signal_error_from_primitive (ERR_FASLOAD_BAND);
   }
   return;
@@ -197,21 +195,17 @@ DEFUN (read_channel_start, (channel, mode), Tchannel channel AND int mode)
   if (GC_Check (FASL_HEADER_LENGTH + 1))
   {
     if (mode != MODE_CHANNEL)
-    {
       OS_channel_close_noerror (load_channel);
-    }
     Request_GC (FASL_HEADER_LENGTH + 1);
     signal_interrupt_from_primitive ();
     /* NOTREACHED */
   }
 
-  if (Load_Data (FASL_HEADER_LENGTH, ((char *) (Free + 1))) !=
-      FASL_HEADER_LENGTH)
+  if ((Load_Data (FASL_HEADER_LENGTH, ((char *) (Free + 1))))
+      != FASL_HEADER_LENGTH)
   {
     if (mode != MODE_CHANNEL)
-    {
       OS_channel_close_noerror (load_channel);
-    }
     signal_error_from_primitive (ERR_FASL_FILE_BAD_DATA);
   }
 
@@ -228,13 +222,9 @@ DEFUN (read_file_start, (file_name, from_band_load),
   channel = (OS_open_load_file (file_name));
   
   if (Per_File)
-  {
     debug_edit_flags ();
-  }
   if (channel == NO_CHANNEL)
-  {
     error_bad_range_arg (1);
-  }
   read_channel_start (channel,
 		      (from_band_load ? MODE_BAND : MODE_FNAME));
   return;
@@ -249,15 +239,15 @@ DEFUN (read_file_end, (mode), int mode)
   if ((Load_Data (Heap_Count, ((char *) Free))) != Heap_Count)
   {
     if (mode != MODE_CHANNEL)
-    {
       OS_channel_close_noerror (load_channel);
-    }
     signal_error_from_primitive (ERR_IO_ERROR);
   }
   computed_checksum =
     (checksum_area (((unsigned long *) Free),
 		    Heap_Count,
 		    computed_checksum));
+  if ((dumped_interface_version != 0) && (Heap_Count != 0))
+    PUSH_D_CACHE_REGION (Free, Heap_Count);
   NORMALIZE_REGION(((char *) Free), Heap_Count);
   Free += Heap_Count;
 
@@ -272,13 +262,15 @@ DEFUN (read_file_end, (mode), int mode)
     (checksum_area (((unsigned long *) Free_Constant),
 		    Const_Count,
 		    computed_checksum));
+  if ((dumped_interface_version != 0) && (Const_Count != 0))
+    PUSH_D_CACHE_REGION (Free_Constant, Const_Count);
   NORMALIZE_REGION (((char *) Free_Constant), Const_Count);
   Free_Constant += Const_Count;
   SET_CONSTANT_TOP ();
 
   table = Free;
-  if ((Load_Data (Primitive_Table_Size, ((char *) Free))) !=
-      Primitive_Table_Size)
+  if ((Load_Data (Primitive_Table_Size, ((char *) Free)))
+      != Primitive_Table_Size)
   {
     if (mode != MODE_CHANNEL)
       OS_channel_close_noerror (load_channel);
@@ -323,17 +315,11 @@ DEFUN (Relocate, (P), long P)
   SCHEME_OBJECT *Result;
 
   if ((P >= Heap_Base) && (P < Dumped_Heap_Top))
-  {
     Result = ((SCHEME_OBJECT *) (P + heap_relocation));
-  }
   else if ((P >= Const_Base) && (P < Dumped_Constant_Top))
-  {
     Result = ((SCHEME_OBJECT *) (P + const_relocation));
-  }
   else if ((P >= Dumped_Constant_Top) && (P < Dumped_Stack_Top))
-  {
     Result = ((SCHEME_OBJECT *) (P + stack_relocation));
-  }
   else
   {
     outf_console ("Pointer out of range: 0x%lx\n", P);
@@ -348,9 +334,7 @@ DEFUN (Relocate, (P), long P)
     Result = ((SCHEME_OBJECT *) 0);
   }
   if (Reloc_Debug)
-  {
     outf_console ("0x%06lx -> 0x%06lx\n", P, ((long) Result));
-  }
   return (Result);
 }
 
@@ -361,17 +345,11 @@ DEFUN (Relocate, (P), long P)
 #define Relocate_Into(Loc, P)						\
 {									\
   if ((P) < Dumped_Heap_Top)						\
-  {									\
     (Loc) = ((SCHEME_OBJECT *) ((P) + heap_relocation));		\
-  }									\
   else if ((P) < Dumped_Constant_Top)					\
-  {									\
     (Loc) = ((SCHEME_OBJECT *) ((P) + const_relocation));		\
-  }									\
   else									\
-  {									\
     (Loc) = ((SCHEME_OBJECT *) ((P) + stack_relocation));		\
-  }									\
 }
 
 #ifndef Conditional_Bug
@@ -865,25 +843,25 @@ void
 DEFUN_VOID (compiler_reset_error)
 {
   outf_fatal ("\ncompiler_reset_error: The band being restored and\n");
-  outf_fatal (
-	   "the compiled code interface in this microcode are inconsistent.\n");
+  outf_fatal
+    ("the compiled code interface in this microcode are inconsistent.\n");
   Microcode_Termination (TERM_COMPILER_DEATH);
 }
 
 #ifndef START_BAND_LOAD
-#define START_BAND_LOAD()						\
+#define START_BAND_LOAD() do						\
 {									\
   ENTER_CRITICAL_SECTION ("band load");					\
-}
+} while (0)
 #endif
 
 #ifndef END_BAND_LOAD
-#define END_BAND_LOAD(success, dying)					\
+#define END_BAND_LOAD(success, dying) do				\
 {									\
   if (success || dying)							\
     execute_reload_cleanups ();						\
   EXIT_CRITICAL_SECTION ({});						\
-}
+} while (0)
 #endif
 
 struct memmag_state
@@ -984,9 +962,7 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
       result = (load_file (MODE_BAND));
       transaction_commit ();
       if (reload_band_name != 0)
-      {
 	free (reload_band_name);
-      }
       reload_band_name = band_name;
     }
   }
@@ -1047,7 +1023,6 @@ void
 DEFUN_VOID (Finish_String_Inversion)
 {
   if (Byte_Invert_Fasl_Files)
-  {
     while (String_Chain != SHARP_F)
     {
       long Count;
@@ -1065,7 +1040,6 @@ DEFUN_VOID (Finish_String_Inversion)
       SET_STRING_LENGTH (String_Chain, Count);
       String_Chain = Next;
     }
-  }
   return;
 }
 
@@ -1080,9 +1054,7 @@ DEFUN (String_Inversion, (Orig_Pointer), SCHEME_OBJECT * Orig_Pointer)
   long Code;
 
   if (!Byte_Invert_Fasl_Files)
-  {
     return;
-  }
 
   Code = OBJECT_TYPE (Orig_Pointer[STRING_LENGTH_INDEX]);
   if (Code == 0)	/* Already reversed? */
@@ -1110,27 +1082,19 @@ DEFUN (String_Inversion, (Orig_Pointer), SCHEME_OBJECT * Orig_Pointer)
 
     Count = ((long) (Orig_Pointer[STRING_LENGTH_INDEX])) % 4;
     if (Count == 0)
-    {
       Count = 4;
-    }
     if (Last_String == SHARP_F)
-    {
       String_Chain = MAKE_POINTER_OBJECT (Count + MAGIC_OFFSET, Orig_Pointer);
-    }
     else
-    {
       FAST_MEMORY_SET
 	(Last_String, STRING_LENGTH_INDEX,
 	 (MAKE_POINTER_OBJECT ((Count + MAGIC_OFFSET), Orig_Pointer)));
-    }
 
     Last_String = (MAKE_POINTER_OBJECT (TC_NULL, Orig_Pointer));
     Orig_Pointer[STRING_LENGTH_INDEX] = SHARP_F;
     Count = (OBJECT_DATUM (Orig_Pointer[STRING_HEADER])) - 1;
     if (Reloc_Debug)
-    {
        outf_console ("\nCell count = %ld\n", ((long) Count));
-     }
     Pointer_Address = &(Orig_Pointer[STRING_CHARS]);
     To_Char = (char *) Pointer_Address;
     for (i = 0; i < Count; i++, Pointer_Address++)
@@ -1155,9 +1119,7 @@ DEFUN (String_Inversion, (Orig_Pointer), SCHEME_OBJECT * Orig_Pointer)
     }
   }
   if (Reloc_Debug)
-  {
     outf_console ("\n");
-  }
   return;
 }
 #endif /* BYTE_INVERSION */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.62 1993/08/21 01:49:41 gjr Exp $
+$Id: cmpint.c,v 1.63 1993/08/22 20:25:25 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -277,8 +277,8 @@ extern C_UTILITY void
   EXFUN (compiler_reset, (SCHEME_OBJECT new_block)),
   EXFUN (store_variable_cache,
 	 (SCHEME_OBJECT extension, SCHEME_OBJECT block, long offset)),
-  EXFUN (compiled_entry_type,
-	 (SCHEME_OBJECT entry, long *buffer));
+  EXFUN (compiled_entry_type, (SCHEME_OBJECT entry, long *buffer)),
+  EXFUN (declare_compiled_code, (SCHEME_OBJECT block));
 
 extern C_TO_SCHEME long
   EXFUN (enter_compiled_expression, (void)),
@@ -562,32 +562,9 @@ DEFUN_VOID (enter_compiled_expression)
     Val = (Fetch_Expression ());
     ENTER_SCHEME (OBJECT_ADDRESS (STACK_POP ()));
   }
-
-#ifdef SPLIT_CACHES
-  /* This is a kludge to handle the first execution. */
-
-  {
-    SCHEME_OBJECT * block_address, environment;
-    unsigned long length;
-
-    Get_Compiled_Block (block_address,
-			((SCHEME_OBJECT *) compiled_entry_address));
-    length = (OBJECT_DATUM (* block_address));
-    environment = (block_address [length]);
-    if (! (ENVIRONMENT_P (environment)))
-    {
-      /* We could actually flush just the non-marked section.
-	 The uuo-section will be flushed when linked.
-       */
-
-      PUSH_D_CACHE_REGION (block_address, (length + 1));
-    }
-  }
-#endif /* SPLIT_CACHES */
-
   ENTER_SCHEME (compiled_entry_address);
 }
-
+
 C_TO_SCHEME long
 DEFUN_VOID (apply_compiled_procedure)
 {
@@ -2305,9 +2282,8 @@ DEFUN (compiled_entry_type,
               (((unsigned long) min_arity) & 0x7f));
   }
   else if (min_arity != (-1))
-  {
     kind = KIND_ILLEGAL;
-  }
+
   else
   {
     switch (((unsigned long) max_arity) & 0xff)
@@ -2347,6 +2323,15 @@ DEFUN (compiled_entry_type,
   buffer[0] = kind;
   buffer[1] = field1;
   buffer[2] = field2;
+  return;
+}
+
+void
+DEFUN (declare_compiled_code, (block), SCHEME_OBJECT block)
+{
+  SCHEME_OBJECT * block_addr = (OBJECT_ADDRESS (block));
+
+  PUSH_D_CACHE_REGION (block_addr, (1+ (OBJECT_DATUM (* block_addr))));
   return;
 }
 
@@ -3251,8 +3236,8 @@ extern void
   EXFUN (compiler_initialize, (long fasl_p)),
   EXFUN (store_variable_cache,
 	 (SCHEME_OBJECT extension, SCHEME_OBJECT block, long offset)),
-  EXFUN (compiled_entry_type,
-	 (SCHEME_OBJECT entry, long *buffer));
+  EXFUN (compiled_entry_type, (SCHEME_OBJECT entry, long *buffer)),
+  EXFUN (declare_compiled_code, (SCHEME_OBJECT block));
 
 SCHEME_OBJECT
 #ifndef WINNT
@@ -3415,12 +3400,16 @@ DEFUN (compiled_entry_closure_p,
 }
 
 SCHEME_OBJECT
-DEFUN (compiled_closure_to_entry,
-       (entry),
-       SCHEME_OBJECT entry)
+DEFUN (compiled_closure_to_entry, (entry), SCHEME_OBJECT entry)
 {
   Microcode_Termination (TERM_COMPILER_DEATH);
   /*NOTREACHED*/
+}
+
+void
+DEFUN (declare_compiled_code, (block), SCHEME_OBJECT block)
+{
+  return;
 }
 
 #define LOSING_RETURN_ADDRESS(name)					\
