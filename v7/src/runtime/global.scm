@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.26 1991/08/27 01:22:21 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.27 1991/08/27 01:31:00 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -174,16 +174,17 @@ MIT in each case. |#
 	  (wait-loop)))))
 
 (define (exit #!optional integer)
-  (if (prompt-for-confirmation "Kill Scheme")
-      (if (default-object? integer)
-	  (%exit integer)
-	  (%exit))))
+  (cond ((not (prompt-for-confirmation "Kill Scheme")))
+	((default-object? integer)
+	 (%exit))
+	(else
+	 (%exit integer))))
 
 (define (%exit #!optional integer)
   (event-distributor/invoke! event:before-exit)
   (if (default-object? integer)
-      ((ucode-primitive exit-with-value 1) integer)
-      ((ucode-primitive exit 0))))
+      ((ucode-primitive exit 0))
+      ((ucode-primitive exit-with-value 1) integer)))
 
 (define (quit)
   (with-absolutely-no-interrupts (ucode-primitive halt))
