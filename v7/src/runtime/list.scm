@@ -18,9 +18,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +28,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -36,6 +36,8 @@
 ;;;
 
 ;;;; List Operations
+
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 1.64 1986/12/16 19:36:45 cph Exp $
 
 (declare (usual-integrations))
 
@@ -55,9 +57,9 @@
   elements)
 
 (define (list? frob)
-  (or (null? frob)
-      (and (pair? frob)
-	   (list? (cdr frob)))))
+  (cond ((null? frob) true)
+	((pair? frob) (list? (cdr frob)))
+	(else false)))
 
 (define (cons* first-element . rest-elements)
   (define (loop this-element rest-elements)
@@ -252,9 +254,10 @@
 
 (define (for-all? predicate)
   (define (loop objects)
-    (or (not (pair? objects))
+    (if (pair? objects)
 	(and (predicate (car objects))
-	     (loop (cdr objects)))))
+	     (loop (cdr objects)))
+	true))
   loop)
 
 ;;;; Generalized List Operations
@@ -328,14 +331,14 @@
   ((positive-list-searcher (lambda (items)
 			     (predicate (car items)))
 			   car
-			   #!FALSE)
+			   false)
    list))
 
 (define (list-search-negative list predicate)
   ((negative-list-searcher (lambda (items)
 			     (predicate (car items)))
 			   car
-			   #!FALSE)
+			   false)
    list))
 
 ;;;; Membership Lists
@@ -344,7 +347,7 @@
   ((positive-list-searcher (lambda (sub-list)
 			     (pred (car sub-list) element))
 			   identity-procedure
-			   #!FALSE)
+			   false)
    list))
 
 ;(define memq (member-procedure eq?))
@@ -363,14 +366,14 @@
 (define delq! (delete-member-procedure list-deletor! eq?))
 (define delv! (delete-member-procedure list-deletor! eqv?))
 (define delete! (delete-member-procedure list-deletor! equal?))
-
+
 ;;;; Association Lists
 
 (define ((association-procedure pred selector) key alist)
   ((positive-list-searcher (lambda (sub-alist)
 			     (pred (selector (car sub-alist)) key))
 			   car
-			   #!FALSE)
+			   false)
    alist))
 
 ;(define assq (association-procedure eq? car))

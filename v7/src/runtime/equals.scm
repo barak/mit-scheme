@@ -37,6 +37,8 @@
 
 ;;;; Equality
 
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/equals.scm,v 1.10 1986/12/16 19:36:12 cph Exp $
+
 (declare (usual-integrations))
 
 (let-syntax ((type?
@@ -50,7 +52,7 @@
   ;; numbers specially, but it turns out that EQ? does the right thing
   ;; for everything but numbers, so we take advantage of that.
   (if (eq? x y)
-      #T
+      true
       (and (primitive-type? (primitive-type x) y)
 	   (or (type? big-fixnum y)
 	       (type? big-flonum y))
@@ -58,7 +60,7 @@
 
 (define (equal? x y)
   (if (eq? x y)
-      #T
+      true
       (and (primitive-type? (primitive-type x) y)
 	   (cond ((or (type? big-fixnum y)
 		      (type? big-flonum y))
@@ -69,7 +71,8 @@
 		 ((type? vector y)
 		  (let ((size (vector-length x)))
 		    (define (loop index)
-		      (or (= index size)
+		      (if (= index size)
+			  true
 			  (and (equal? (vector-ref x index)
 				       (vector-ref y index))
 			       (loop (1+ index)))))
