@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unix.scm,v 1.104 2000/01/10 03:23:37 cph Exp $
+;;; $Id: unix.scm,v 1.105 2000/01/16 13:24:11 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -668,6 +668,3 @@ option, instead taking -P <filename>."
 	"/usr/local/info"
 	"/usr/share/info"
 	"/usr/info"))
-
-(define (os/default-char-image-strings)
-  default-char-image-strings)

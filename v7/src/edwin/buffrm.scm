@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffrm.scm,v 1.56 2000/01/10 03:59:32 cph Exp $
+;;; $Id: buffrm.scm,v 1.57 2000/01/16 13:23:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -313,9 +313,7 @@ Index 0 might contain \"^@\" so ascii NUL appears as ^@.
 The indices for normal printing characters usually contain a
 string containing just that character, e.g. index 65 usually contains \"A\".
 Automatically becomes local when set in any fashion."
-  (if (eq? 'NT microcode-id/operating-system)
-      default-char-image-strings/ansi
-      default-char-image-strings)
+  default-char-image-strings
   (lambda (object)
     (and (vector? object)
 	 (= (vector-length object) 256)

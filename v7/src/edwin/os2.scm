@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: os2.scm,v 1.47 2000/01/10 03:23:33 cph Exp $
+;;; $Id: os2.scm,v 1.48 2000/01/16 13:24:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -55,9 +55,6 @@
 		(if attr
 		    (cons (cons (file-namestring (car pathnames)) attr) result)
 		    result))))))
-
-(define (os/default-char-image-strings)
-  default-char-image-strings)
 
 ;;;; OS/2 Clipboard Interface
 

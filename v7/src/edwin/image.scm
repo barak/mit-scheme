@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: image.scm,v 1.135 2000/01/10 03:24:46 cph Exp $
+;;; $Id: image.scm,v 1.136 2000/01/16 13:24:02 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -72,7 +72,7 @@
 				       (vector-8b-ref string index))))))
 	  ((fix:= index end) column))))
 
-(define default-char-image-strings
+(define default-char-image-strings/original-emacs
   (let ((strings (make-vector 256)))
     (do ((i #x00 (+ i 1)))
 	((= #x20 i))
@@ -87,14 +87,14 @@
     strings))
 
 (define default-char-image-strings/ansi
-  (let ((strings (vector-copy default-char-image-strings)))
+  (let ((strings (vector-copy default-char-image-strings/original-emacs)))
     (do ((i #x80 (+ i 1)))
 	((= #x100 i))
       (vector-set! strings i (string (integer->char i))))
     strings))
 
 (define default-char-image-strings/ascii
-  (let ((strings (vector-copy default-char-image-strings)))
+  (let ((strings (vector-copy default-char-image-strings/original-emacs)))
     (subvector-move-left!
      '#("[NUL]" "[SOH]" "[STX]" "[ETX]" "[EOT]" "[ENQ]" "[ACK]" "[BEL]"
 	"[BS]"  "[HT]"  "[NL]"  "[VT]" "[FF]" "[CR]"  "[SO]"  "[SI]"
@@ -102,6 +102,8 @@
 	"[CAN]" "[EM]"  "[SUB]" "[ESC]" "[FS]"  "[GS]"  "[RS]"  "[US]")
      0 #x20 strings 0)
     strings))
+
+(define default-char-image-strings default-char-image-strings/ansi)
 
 (define (group-line-columns group start end column
 			    tab-width char-image-strings)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dos.scm,v 1.50 2000/01/10 03:23:27 cph Exp $
+;;; $Id: dos.scm,v 1.51 2000/01/16 13:24:07 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-2000 Massachusetts Institute of Technology
 ;;;
@@ -66,9 +66,6 @@
 		 (lambda (entry)
 		   (fix:= (fix:and (file-attributes/modes (cdr entry)) mask)
 			  0))))))))
-
-(define (os/default-char-image-strings)
-  default-char-image-strings/ansi)
 
 ;;;; Win32 Clipboard Interface
 
