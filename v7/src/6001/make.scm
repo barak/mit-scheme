@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/make.scm,v 15.10 1992/08/18 22:43:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/make.scm,v 15.11 1992/08/19 17:24:20 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -63,11 +63,15 @@ MIT in each case. |#
   (set-variable-value! edwin-variable$trim-versions-without-asking true)
   (set-variable-value!
    edwin-variable$mail-default-reply-to
-   (lambda ()
-     (let ((reply-to
-	    (prompt-for-string "Please enter an email address for replies"
-			       false)))
-       (set-variable-value! edwin-variable$mail-default-reply-to reply-to)
-       reply-to))))
+   (let ((default-reply-to false))
+     (lambda ()
+       (let ((reply-to
+	      (prompt-for-string "Please enter an email address for replies"
+				 default-reply-to)))
+	 (if (string-null? reply-to)
+	     false
+	     (begin
+	       (set! default-reply-to reply-to)
+	       reply-to)))))))
 
 (ge '(student))
