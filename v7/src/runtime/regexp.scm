@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: regexp.scm,v 1.2 1999/06/21 20:58:56 cph Exp $
+;;; $Id: regexp.scm,v 1.3 1999/06/22 18:07:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -29,40 +29,41 @@
   (set! registers (make-vector 20 #f))
   unspecific)
 
-(define (re-match-start-index i)
-  (guarantee-re-register i 'RE-MATCH-START-INDEX)
-  (vector-ref registers i))
+(define-structure (re-registers (type-descriptor re-registers-rtd))
+  (vector #f read-only #t))
 
-(define (re-match-end-index i)
+(define (guarantee-re-registers object procedure)
+  (if (not (re-registers? object))
+      (error:wrong-type-argument object "regular-expression registers"
+				 procedure))
+  (re-registers-vector object))
+
+(define (re-match-start-index i #!optional regs)
+  (guarantee-re-register i 'RE-MATCH-START-INDEX)
+  (vector-ref (if (or (default-object? regs) (not regs))
+		  registers
+		  (guarantee-re-registers regs 'RE-MATCH-START-INDEX))
+	      i))
+
+(define (re-match-end-index i #!optional regs)
   (guarantee-re-register i 'RE-MATCH-END-INDEX)
-  (vector-ref registers (fix:+ i 10)))
+  (vector-ref (if (or (default-object? regs) (not regs))
+		  registers
+		  (guarantee-re-registers regs 'RE-MATCH-START-INDEX))
+	      (fix:+ i 10)))
 
 (define (guarantee-re-register i operator)
   (if (not (and (exact-nonnegative-integer? i) (< i 10)))
       (error:wrong-type-argument i "regular-expression register" operator)))
 
 (define (re-registers)
-  (vector-copy registers))
+  (make-re-registers (vector-copy registers)))
 
-(define (set-re-registers! registers*)
-  (guarantee-re-registers registers* 'SET-RE-REGISTERS!)
-  (do ((i 0 (fix:+ i 1)))
-      ((fix:= 20 i))
-    (vector-set! registers i (vector-ref registers* i))))
-
-(define (guarantee-re-registers object procedure)
-  (if (not (re-registers? object))
-      (error:wrong-type-argument object "regular-expression registers"
-				 procedure)))
-
-(define (re-registers? object)
-  (and (vector? object)
-       (fix:= 20 (vector-length object))
-       (let loop ((i 0))
-	 (or (fix:= 20 i)
-	     (and (or (index-fixnum? (vector-ref object i))
-		      (not (vector-ref object i)))
-		  (loop (fix:+ i 1)))))))
+(define (set-re-registers! regs)
+  (let ((regs (guarantee-re-registers regs 'SET-RE-REGISTERS!)))
+    (do ((i 0 (fix:+ i 1)))
+	((fix:= 20 i))
+      (vector-set! registers i (vector-ref regs i)))))
 
 (define (preserving-re-registers thunk)
   (let ((registers* unspecific))
