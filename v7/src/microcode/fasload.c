@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.63 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.64 1992/02/18 17:31:11 jinx Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -483,6 +483,7 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 	    fast char *word_ptr;
 	    SCHEME_OBJECT *end_scan;
 
+	    START_OPERATOR_RELOCATION (Scan);
 	    count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
 	    word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
 	    end_scan = (END_OPERATOR_LINKAGE_AREA (Scan, count));
@@ -497,6 +498,7 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 	      STORE_OPERATOR_LINKAGE_ADDRESS (address, Scan);
 	    }
 	    Scan = &end_scan[1];
+	    END_OPERATOR_RELOCATION (Scan - 1);
 	    break;
 	  }
 
@@ -519,6 +521,7 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 	fast char *word_ptr;
 	SCHEME_OBJECT *area_end;
 
+	START_CLOSURE_RELOCATION (Scan);
 	Scan += 1;
 	count = (MANIFEST_CLOSURE_COUNT (Scan));
 	word_ptr = (FIRST_MANIFEST_CLOSURE_ENTRY (Scan));
@@ -534,6 +537,7 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 	  STORE_CLOSURE_ENTRY_ADDRESS (address, Scan);
 	}
 	Scan = area_end;
+	END_CLOSURE_RELOCATION (Scan);
 	break;
       }
 

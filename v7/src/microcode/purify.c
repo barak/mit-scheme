@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.46 1991/05/05 00:46:02 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.47 1992/02/18 17:30:22 jinx Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -157,6 +157,7 @@ DEFUN (PurifyLoop,
 	    fast char *word_ptr;
 	    SCHEME_OBJECT *end_scan;
 
+	    START_OPERATOR_RELOCATION (Scan);
 	    count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
 	    word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
 	    end_scan = (END_OPERATOR_LINKAGE_AREA (Scan, count));
@@ -174,6 +175,7 @@ DEFUN (PurifyLoop,
 	      STORE_OPERATOR_LINKAGE_ADDRESS(Temp, Scan);
 	    }
 	    Scan = end_scan;
+	    END_OPERATOR_RELOCATION (Scan);
 	    break;
 	  }
 
@@ -202,6 +204,7 @@ DEFUN (PurifyLoop,
 	  /*NOTREACHED*/
 	}
 
+	START_CLOSURE_RELOCATION (Scan);
 	Scan += 1;
 	count = (MANIFEST_CLOSURE_COUNT (Scan));
 	word_ptr = (FIRST_MANIFEST_CLOSURE_ENTRY (Scan));
@@ -220,6 +223,7 @@ DEFUN (PurifyLoop,
 	  STORE_CLOSURE_ENTRY_ADDRESS(Temp, Scan);
 	}
 	Scan = area_end;
+	END_CLOSURE_RELOCATION (Scan);
 	break;
       }
 

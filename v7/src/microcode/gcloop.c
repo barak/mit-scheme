@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.39 1992/02/18 17:30:10 jinx Exp $
+
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,7 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.38 1992/01/15 02:25:57 jinx Exp $
+/* 
  *
  * This file contains the code for the most primitive part
  * of garbage collection.
@@ -178,6 +180,7 @@ DEFUN (GCLoop,
 	    fast char *word_ptr;
 	    SCHEME_OBJECT *end_scan;
 
+	    START_OPERATOR_RELOCATION (Scan);
 	    count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
 	    word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
 	    end_scan = (END_OPERATOR_LINKAGE_AREA (Scan, count));
@@ -195,6 +198,7 @@ DEFUN (GCLoop,
 	      STORE_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
 	    }
 	    Scan = end_scan;
+	    END_OPERATOR_RELOCATION (Scan);
 	    break;
 	  }
 
@@ -215,6 +219,7 @@ DEFUN (GCLoop,
 	fast char *word_ptr;
 	SCHEME_OBJECT *area_end;
 
+	START_CLOSURE_RELOCATION (Scan);
 	Scan += 1;
 	count = (MANIFEST_CLOSURE_COUNT (Scan));
 	word_ptr = (FIRST_MANIFEST_CLOSURE_ENTRY (Scan));
@@ -233,6 +238,7 @@ DEFUN (GCLoop,
 	}
 
 	Scan = area_end;
+	END_CLOSURE_RELOCATION (Scan);
 	break;
       }
 
