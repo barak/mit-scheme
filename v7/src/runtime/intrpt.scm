@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: intrpt.scm,v 14.12 1992/09/02 05:32:05 jinx Exp $
+$Id: intrpt.scm,v 14.13 1993/04/29 05:24:34 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -139,39 +139,39 @@ MIT in each case. |#
       (handler char))))
 
 (define (^B-interrupt-handler char)
-  (if hook/^B-interrupt
-      (hook/^B-interrupt))
-  (signal-interrupt hook/clean-input/keep-typeahead
+  (signal-interrupt hook/^B-interrupt
+		    hook/clean-input/keep-typeahead
 		    char
 		    cmdl-interrupt/breakpoint))
 
 (define (^G-interrupt-handler char)
-  (if hook/^G-interrupt
-      (hook/^G-interrupt))
-  (signal-interrupt hook/clean-input/flush-typeahead
+  (signal-interrupt hook/^G-interrupt
+		    hook/clean-input/flush-typeahead
 		    char
 		    cmdl-interrupt/abort-top-level))
 
 (define (^U-interrupt-handler char)
-  (if hook/^U-interrupt
-      (hook/^U-interrupt))
-  (signal-interrupt hook/clean-input/flush-typeahead
+  (signal-interrupt hook/^U-interrupt
+		    hook/clean-input/flush-typeahead
 		    char
 		    cmdl-interrupt/abort-previous))
 
 (define (^X-interrupt-handler char)
-  (if hook/^X-interrupt
-      (hook/^X-interrupt))
-  (signal-interrupt hook/clean-input/flush-typeahead
+  (signal-interrupt hook/^X-interrupt
+		    hook/clean-input/flush-typeahead
 		    char
 		    cmdl-interrupt/abort-nearest))
 
-(define (signal-interrupt hook/clean-input char interrupt)
-  (if (or (not hook/clean-input)
-	  (hook/clean-input char))
-      (let ((thread (thread-mutex-owner (port/thread-mutex console-i/o-port))))
-	(if thread
-	    (signal-thread-event thread interrupt)))))
+(define (signal-interrupt hook/interrupt hook/clean-input char interrupt)
+  (let ((thread (thread-mutex-owner (port/thread-mutex console-i/o-port))))
+    (if thread
+	(signal-thread-event thread
+	  (lambda ()
+	    (if hook/interrupt
+		(hook/interrupt))
+	    (if (or (not hook/clean-input)
+		    (hook/clean-input char))
+		(interrupt)))))))
 
 (define (install)
   (without-interrupts
