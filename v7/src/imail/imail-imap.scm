@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.145 2001/01/22 18:38:11 cph Exp $
+;;; $Id: imail-imap.scm,v 1.146 2001/01/23 05:15:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1371,12 +1371,25 @@
 				items))
 
 (define (imap:command:fetch connection index items)
-  (imap:command:single-response imap:response:fetch? connection 'FETCH
-				(+ index 1) items))
+  (imap:command:fetch-response connection 'FETCH (list (+ index 1) items)))
 
 (define (imap:command:uid-fetch connection uid items)
-  (imap:command:single-response imap:response:fetch? connection 'UID 'FETCH
-				uid items))
+  (imap:command:fetch-response connection 'UID (list 'FETCH uid items)))
+
+(define (imap:command:fetch-response connection command arguments)
+  (let ((responses (apply imap:command connection command arguments)))
+    (if (and (pair? (cdr responses))
+	     (for-all? (cdr responses) imap:response:fetch?))
+	(if (null? (cddr responses))
+	    (cadr responses)
+	    ;; Some servers, notably UW IMAP, sometimes return
+	    ;; multiple FETCH responses.  This can happen even if only
+	    ;; one item is fetched.  Since the caller expects a single
+	    ;; response, synthesize one from the available responses.
+	    (cons* (caadr responses)
+		   (cadadr responses)
+		   (append-map cddr (cdr responses))))
+	(error "Malformed response from IMAP server:" responses))))
 
 (define (imap:command:fetch-range connection start end items)
   (imap:command:fetch-set connection
