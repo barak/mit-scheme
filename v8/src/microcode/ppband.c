@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.32 1988/02/12 16:49:27 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.33 1989/02/14 20:41:32 jinx Rel $
  *
  * Dumps Scheme FASL in user-readable form .
  */
@@ -190,6 +190,7 @@ void
 Display(Location, Type, The_Datum)
      long Location, Type, The_Datum;
 {
+  char string_buf[100];
   char *the_string;
   long Points_To;
 
@@ -270,8 +271,8 @@ Display(Location, Type, The_Datum)
       }
       else
       {
-	sprintf(&the_string[0], "0x%02lx ", Type);
-	POINTER(&the_string[0]);
+	sprintf(&string_buf[0], "0x%02lx ", Type);
+	POINTER(&string_buf[0]);
       }
   }
   PRINT_OBJECT(the_string, Points_To);
