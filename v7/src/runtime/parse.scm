@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.44 2004/01/16 06:33:47 cph Exp $
+$Id: parse.scm,v 14.45 2004/01/16 19:04:38 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
@@ -56,43 +56,34 @@ USA.
 	(lambda (port table)
 	  (if read-start (read-start port))
 	  (let ((object
-		 (fluid-let ((*shared-objects* (make-shared-objects)))
-		   (let loop ()
-		     (let ((object (dispatch port table)))
-		       (if (eq? object close-parenthesis)
-			   (begin
-			     (if (not (and (eq? port console-input-port)
-					   ignore-extra-list-closes))
-				 (error:illegal-char (car object)))
-			     (loop))
-			   (begin
-			     (if (eq? object close-bracket)
-				 (error:illegal-char (car object)))
-			     object)))))))
+		 (dispatch port table (make-shared-objects) 'TOP-LEVEL)))
 	    (if read-finish (read-finish port))
 	    object)))))
 
-(define (dispatch port table)
+(define (dispatch port table db ctx)
   (let ((char (read-char port)))
     (if (eof-object? char)
 	char
 	(let ((handler (get-handler char (parser-table/initial table))))
 	  (if (not handler)
 	      (error:illegal-char char))
-	  (handler port table char)))))
+	  (handler port table db ctx char)))))
 
-(define (dispatch-special port table)
+(define (dispatch-special port table db ctx)
   (let ((char (read-char/no-eof port)))
     (let ((handler (get-handler char (parser-table/special table))))
       (if (not handler)
 	  (error:illegal-char char))
-      (handler port table char))))
+      (handler port table db ctx char))))
 
-(define (dispatch/no-eof port table)
-  (let ((object (dispatch port table)))
+(define (dispatch/no-eof port table db ctx)
+  (let ((object (dispatch port table db ctx)))
     (if (eof-object? object)
 	(error:premature-eof port))
     object))
+
+(define-integrable (read-object port table db)
+  (dispatch/no-eof port table db 'OBJECT))
 
 (define (get-handler char handlers)
   (let ((n (char->integer char)))
@@ -165,27 +156,34 @@ USA.
     (set! char-set/number-leaders number-leaders))
   (set-current-parser-table! system-global-parser-table)
   (initialize-condition-types!))
-
-(define (handler:whitespace port table char)
-  char
-  (dispatch port table))
 
-(define (handler:atom port table char)
-  table
+(define-integrable (atom-delimiter? char)
+  (char-set-member? char-set/atom-delimiters char))
+
+(define (guarantee-constituent char)
+  (if (not (char-set-member? char-set/constituents char))
+      (error:illegal-char char)))
+
+(define (handler:whitespace port table db ctx char)
+  char
+  (dispatch port table db ctx))
+
+(define (handler:atom port table db ctx char)
+  table db ctx
   (receive (string quoted?) (parse-atom port (list char))
     (if quoted?
 	(%string->symbol string)
 	(or (string->number string *parser-radix*)
 	    (%string->symbol string)))))
 
-(define (handler:symbol port table char)
-  table
+(define (handler:symbol port table db ctx char)
+  table db ctx
   (receive (string quoted?) (parse-atom port (list char))
     quoted?
     (%string->symbol string)))
 
-(define (handler:number port table char)
-  table
+(define (handler:number port table db ctx char)
+  table db ctx
   (let ((string (parse-atom/no-quoting port (list #\# char))))
     (or (string->number string *parser-radix*)
 	(error:illegal-number string))))
@@ -195,40 +193,49 @@ USA.
 	(canon
 	 (if *parser-canonicalize-symbols?*
 	     char-downcase
-	     identity-procedure)))
-    (for-each (lambda (char) (write-char (canon char) port*)) prefix)
+	     identity-procedure))
+	(%read
+	 (lambda ()
+	   (if (pair? prefix)
+	       (let ((char (car prefix)))
+		 (set! prefix (cdr prefix))
+		 char)
+	       (read-char/no-eof port))))
+	(%peek
+	 (lambda ()
+	   (if (pair? prefix)
+	       (car prefix)
+	       (peek-char port))))
+	(%discard
+	 (lambda ()
+	   (if (pair? prefix)
+	       (begin
+		 (set! prefix (cdr prefix))
+		 unspecific)
+	       (discard-char port)))))
     (let read-unquoted ((quoted? #f))
-      (let ((char (peek-char port)))
+      (let ((char (%peek)))
 	(if (or (eof-object? char)
 		(atom-delimiter? char))
 	    (values (get-output-string port*) quoted?)
 	    (begin
 	      (guarantee-constituent char)
-	      (discard-char port)
+	      (%discard)
 	      (cond ((char=? char #\|)
 		     (let read-quoted ()
-		       (let ((char (read-char/no-eof port)))
+		       (let ((char (%read)))
 			 (if (char=? char #\|)
 			     (read-unquoted #t)
 			     (begin
-			       (write-char (if (char=? char #\\)
-					       (read-char/no-eof port)
-					       char)
+			       (write-char (if (char=? char #\\) (%read) char)
 					   port*)
 			       (read-quoted))))))
 		    ((char=? char #\\)
-		     (write-char (read-char/no-eof port) port*)
+		     (write-char (%read) port*)
 		     (read-unquoted #t))
 		    (else
 		     (write-char (canon char) port*)
 		     (read-unquoted quoted?)))))))))
-
-(define-integrable (atom-delimiter? char)
-  (char-set-member? char-set/atom-delimiters char))
-
-(define (guarantee-constituent char)
-  (if (not (char-set-member? char-set/constituents char))
-      (error:illegal-char char)))
 
 (define (parse-atom/no-quoting port prefix)
   (receive (string quoted?) (parse-atom port prefix)
@@ -236,10 +243,10 @@ USA.
 	(error:no-quoting-allowed string))
     string))
 
-(define (handler:list port table char)
-  char
+(define (handler:list port table db ctx char)
+  ctx char
   (let loop ((objects '()))
-    (let ((object (dispatch/no-eof port table)))
+    (let ((object (dispatch/no-eof port table db 'CLOSE-PAREN-OK)))
       (if (eq? object close-parenthesis)
 	  (let ((objects (reverse! objects)))
 	    (fix-up-list! objects)
@@ -258,18 +265,18 @@ USA.
 	      (set-cdr! prev (cadr objects*)))
 	    (loop (cdr objects*) objects*)))))
 
-(define (handler:vector port table char)
-  char
+(define (handler:vector port table db ctx char)
+  ctx char
   (let loop ((objects '()))
-    (let ((object (dispatch/no-eof port table)))
+    (let ((object (dispatch/no-eof port table db 'CLOSE-PAREN-OK)))
       (if (eq? object close-parenthesis)
 	  (list->vector (reverse! objects))
 	  (loop (cons object objects))))))
 
-(define (handler:hashed-object port table char)
-  char
+(define (handler:hashed-object port table db ctx char)
+  ctx char
   (let loop ((objects '()))
-    (let ((object (dispatch/no-eof port table)))
+    (let ((object (dispatch/no-eof port table db 'CLOSE-BRACKET-OK)))
       (if (eq? object close-bracket)
 	  (let ((objects (reverse! objects)))
 	    (if (and (pair? objects)
@@ -286,27 +293,35 @@ USA.
       (or (object-unhash object)
 	  (error:undefined-hash object))))
 
-(define (handler:close-parenthesis port table char)
-  port table char
-  close-parenthesis)
+(define (handler:close-parenthesis port table db ctx char)
+  (cond ((eq? ctx 'CLOSE-PAREN-OK)
+	 close-parenthesis)
+	((and (eq? ctx 'TOP-LEVEL)
+	      (eq? (base-port port) (base-port console-input-port))
+	      ignore-extra-list-closes)
+	 (dispatch port table db ctx))
+	(else
+	 (error:illegal-char char))))
 
-(define (handler:close-bracket port table char)
-  port table char
+(define (handler:close-bracket port table db ctx char)
+  port table db
+  (if (not (eq? ctx 'CLOSE-BRACKET-OK))
+      (error:illegal-char char))
   close-bracket)
 
-(define close-parenthesis (list #\)))
-(define close-bracket (list #\]))
+(define close-parenthesis (list 'CLOSE-PARENTHESIS))
+(define close-bracket (list 'CLOSE-BRACKET))
 
-(define (handler:comment port table char)
+(define (handler:comment port table db ctx char)
   char
   (let loop ()
     (let ((char (read-char port)))
       (cond ((eof-object? char) char)
 	    ((char=? char #\newline) unspecific)
 	    (else (loop)))))
-  (dispatch port table))
+  (dispatch port table db ctx))
 
-(define (handler:multi-line-comment port table char)
+(define (handler:multi-line-comment port table db ctx char)
   char
   (let loop ()
     (case (read-char/no-eof port)
@@ -323,26 +338,26 @@ USA.
 	   ((#\|) (vbar))
 	   (else (loop)))))
       (else (loop))))
-  (dispatch port table))
+  (dispatch port table db ctx))
 
-(define (handler:quote port table char)
-  char
-  (list 'QUOTE (dispatch/no-eof port table)))
+(define (handler:quote port table db ctx char)
+  ctx char
+  (list 'QUOTE (read-object port table db)))
 
-(define (handler:quasiquote port table char)
-  char
-  (list 'QUASIQUOTE (dispatch/no-eof port table)))
+(define (handler:quasiquote port table db ctx char)
+  ctx char
+  (list 'QUASIQUOTE (read-object port table db)))
 
-(define (handler:unquote port table char)
-  char
-  (if (eqv? (peek-char port) #\@)
+(define (handler:unquote port table db ctx char)
+  ctx char
+  (if (char=? (peek-char/no-eof port) #\@)
       (begin
 	(discard-char port)
-	(list 'UNQUOTE-SPLICING (dispatch/no-eof port table)))
-      (list 'UNQUOTE (dispatch/no-eof port table))))
+	(list 'UNQUOTE-SPLICING (read-object port table db)))
+      (list 'UNQUOTE (read-object port table db))))
 
-(define (handler:string port table char)
-  table char
+(define (handler:string port table db ctx char)
+  table db ctx char
   (call-with-output-string
     (lambda (port*)
       (let loop ()
@@ -355,26 +370,26 @@ USA.
 			    port*)
 		(loop))))))))
 
-(define (handler:special port table char)
+(define (handler:special port table db ctx char)
   char
-  (dispatch-special port table))
+  (dispatch-special port table db ctx))
 
-(define (handler:false port table char)
-  table
+(define (handler:false port table db ctx char)
+  table db ctx
   (let ((string (parse-atom/no-quoting port (list char))))
     (if (not (string-ci=? string "f"))
 	(error:illegal-boolean string)))
   #f)
 
-(define (handler:true port table char)
-  table
+(define (handler:true port table db ctx char)
+  table db ctx
   (let ((string (parse-atom/no-quoting port (list char))))
     (if (not (string-ci=? string "t"))
 	(error:illegal-boolean string)))
   #t)
 
-(define (handler:bit-string port table char)
-  table char
+(define (handler:bit-string port table db ctx char)
+  table db ctx char
   (let ((string (parse-atom/no-quoting port '())))
     (let ((n-bits (string-length string)))
       (unsigned-integer->bit-string
@@ -389,8 +404,8 @@ USA.
 			(else (error:illegal-bit-string string)))))
 	     result))))))
 
-(define (handler:char port table char)
-  table char
+(define (handler:char port table db ctx char)
+  table db ctx char
   (name->char (read-simple-atom port)))
 
 (define (read-simple-atom port)
@@ -412,8 +427,8 @@ USA.
 			      port*)
 		  (loop)))))))))
 
-(define (handler:named-constant port table char)
-  table char
+(define (handler:named-constant port table db ctx char)
+  table db ctx char
   (let ((name (intern (parse-atom/no-quoting port '()))))
     (let ((entry (assq name named-constants)))
       (if (not entry)
@@ -437,9 +452,9 @@ USA.
     (REST . ,lambda-rest-tag)
     (AUX . ',lambda-auxiliary-tag)))
 
-(define (handler:unhash port table char)
-  char
-  (let ((object (parse-unhash (dispatch/no-eof port table))))
+(define (handler:unhash port table db ctx char)
+  ctx char
+  (let ((object (parse-unhash (read-object port table db))))
     ;; This may seem a little random, because #@N doesn't just
     ;; return an object.  However, the motivation for this piece of
     ;; syntax is convenience -- and 99.99% of the time the result of
@@ -451,37 +466,38 @@ USA.
 	object
 	(make-quotation object))))
 
-(define (handler:special-arg port table char)
+(define (handler:special-arg port table db ctx char)
+  ctx
   (let loop ((n (char->digit char 10)))
     (let ((char (read-char/no-eof port)))
       (cond ((char-numeric? char)
 	     (loop (+ (* 10 n) (char->digit char 10))))
 	    ((char=? char #\=)
-	     (let ((object (dispatch/no-eof port table)))
-	       (save-shared-object! n object)
+	     (let ((object (read-object port table db)))
+	       (save-shared-object! db n object)
 	       object))
 	    ((char=? char #\#)
-	     (get-shared-object n))
+	     (get-shared-object db n))
 	    (else
 	     (error:illegal-char char))))))
 
 (define (make-shared-objects)
   (make-eqv-hash-table))
 
-(define (save-shared-object! n object)
-  (if (not (eq? (hash-table/get *shared-objects* n non-shared-object)
+(define (save-shared-object! db n object)
+  (if (not (eq? (hash-table/get db n non-shared-object)
 		non-shared-object))
       (error:re-shared-object n object))
-  (hash-table/put! *shared-objects* n object))
+  (hash-table/put! db n object))
 
-(define (get-shared-object n)
-  (let ((object (hash-table/get *shared-objects* n non-shared-object)))
+(define (get-shared-object db n)
+  (let ((object (hash-table/get db n non-shared-object)))
     (if (eq? object non-shared-object)
 	(error:non-shared-object n))
     object))
 
-(define *shared-objects*)
-(define non-shared-object (list 'NON-SHARED-OBJECT))
+(define non-shared-object
+  (list 'NON-SHARED-OBJECT))
 
 (define (read-char port)
   (let loop ()
