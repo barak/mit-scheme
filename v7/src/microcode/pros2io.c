@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2io.c,v 1.2 1995/01/05 23:47:02 cph Exp $
+$Id: pros2io.c,v 1.3 1995/01/16 20:58:18 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -76,7 +76,10 @@ DEFINE_PRIMITIVE ("OS2-SELECT-DESCRIPTOR", Prim_OS2_select_descriptor, 2, 2, 0)
     case mat_not_available:
       PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (1));
     case mat_interrupt:
-      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (2));
+      if (OS2_process_any_status_change ())
+	PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (3));
+      else
+	PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (2));
     default:
       error_external_return ();
       PRIMITIVE_RETURN (UNSPECIFIC);
