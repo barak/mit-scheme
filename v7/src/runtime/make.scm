@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.36 1992/05/28 23:32:16 mhwu Exp $
+$Id: make.scm,v 14.37 1992/10/17 22:23:18 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -181,12 +181,15 @@ MIT in each case. |#
 (define (package-reference name)
   (package/environment (find-package name)))
 
-(define (package-initialization-sequence packages)
-  (let loop ((packages packages))
-    (if (not (null? packages))
-	(begin
-	  (package-initialize (car packages) 'INITIALIZE-PACKAGE! false)
-	  (loop (cdr packages))))))
+(define (package-initialization-sequence specs)
+  (let loop ((specs specs))
+    (if (not (null? specs))
+	(let ((spec (car specs)))
+	  (if (or (not (pair? spec))
+		  (symbol? (car spec)))
+	      (package-initialize spec 'INITIALIZE-PACKAGE! false)
+	      (package-initialize (car spec) (cadr spec) (caddr spec)))
+	  (loop (cdr specs))))))
 
 (define (string-append x y)
   (let ((x-length (string-length x))
@@ -307,13 +310,12 @@ MIT in each case. |#
    `((SORT-TYPE . MERGE-SORT)
      (OS-TYPE . ,(intern os-name-string))
      (OPTIONS . NO-LOAD))))
-
-(package-initialize '(RUNTIME MICROCODE-TABLES) 'READ-MICROCODE-TABLES! true)
 
 ;;; Funny stuff is done.  Rest of sequence is standardized.
 (package-initialization-sequence
  '(
    ;; Microcode interface
+   ((RUNTIME MICROCODE-TABLES) READ-MICROCODE-TABLES! #t)
    (RUNTIME STATE-SPACE)
    (RUNTIME MICROCODE-TABLES)
    (RUNTIME PRIMITIVE-IO)
@@ -341,6 +343,8 @@ MIT in each case. |#
    (RUNTIME MICROCODE-ERRORS)
    ;; Threads
    (RUNTIME THREAD)
+   ;; System dependent stuff
+   (() INITIALIZE-SYSTEM-PRIMITIVES! #f)
    ;; I/O
    (RUNTIME GENERIC-I/O-PORT)
    (RUNTIME FILE-I/O-PORT)
@@ -381,12 +385,11 @@ MIT in each case. |#
    (RUNTIME)
    (RUNTIME X-GRAPHICS)
    (RUNTIME STARBASE-GRAPHICS)
-   ;; Emacs -- last because it grabs the kitchen sink.
-   (RUNTIME EMACS-INTERFACE)))
+   ;; Emacs -- last because it installs hooks everywhere which must be initted.
+   (RUNTIME EMACS-INTERFACE)
+   ;; More debugging
+   ((RUNTIME CONTINUATION-PARSER) INITIALIZE-SPECIAL-FRAMES! #f)))
 
-(package-initialize '(RUNTIME CONTINUATION-PARSER) 'INITIALIZE-SPECIAL-FRAMES! false)
-(package-initialize '() 'INITIALIZE-SYSTEM-PRIMITIVES! false)
-
 (let ((filename (map-filename "site")))
   (if (file-exists? filename)
       (eval (fasload filename #t) system-global-environment)))
