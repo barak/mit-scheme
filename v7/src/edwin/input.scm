@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.85 1990/10/06 00:16:04 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.86 1990/11/14 15:14:53 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -225,4 +225,7 @@ B 3BAB8C
 	       (set! command-prompt-displayed? true)
 	       (set-current-message! command-prompt-string))
 	     (clear-current-message!))))
-  (remap-alias-char (read-char (editor-input-port current-editor))))
+  (let ((char (read-char (editor-input-port current-editor))))
+    (if (not (char? char))
+	(error "reached EOF in keyboard input port"))
+    (remap-alias-char char)))
