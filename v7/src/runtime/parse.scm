@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.51 2004/10/28 02:10:55 cph Exp $
+$Id: parse.scm,v 14.52 2004/11/04 03:01:18 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
@@ -479,23 +479,19 @@ USA.
 
 (define (handler:named-constant port db ctx char1 char2)
   db ctx char1 char2
-  (let ((name (intern (parse-atom/no-quoting port '()))))
-    (let ((entry (assq name named-constants)))
-      (if (not entry)
-	  (error:illegal-named-constant name))
-      (cdr entry))))
+  (let ((name (parse-atom/no-quoting port '())))
+    (cond ((string-ci=? name "null") '())
+	  ((string-ci=? name "false") #f)
+	  ((string-ci=? name "true") #t)
+	  ((string-ci=? name "optional") lambda-optional-tag)
+	  ((string-ci=? name "rest") lambda-rest-tag)
+	  ((string-ci=? name "aux") lambda-auxiliary-tag)
+	  ((string-ci=? name "eof") (make-eof-object #f))
+	  (else (error:illegal-named-constant name)))))
 
 (define lambda-optional-tag (object-new-type (ucode-type constant) 3))
 (define lambda-rest-tag (object-new-type (ucode-type constant) 4))
 (define lambda-auxiliary-tag '|#!aux|)
-
-(define named-constants
-  `((NULL . ())
-    (FALSE . #f)
-    (TRUE . #t)
-    (OPTIONAL . ,lambda-optional-tag)
-    (REST . ,lambda-rest-tag)
-    (AUX . ',lambda-auxiliary-tag)))
 
 (define (handler:unhash port db ctx char1 char2)
   db ctx char1 char2
