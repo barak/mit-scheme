@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufcom.scm,v 1.96 1992/09/30 17:06:47 cph Exp $
+;;;	$Id: bufcom.scm,v 1.97 1992/09/30 18:29:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -264,7 +264,10 @@ When locked, the buffer's major mode may not be changed."
 		 (let ((buffer (create-buffer name)))
 		   (temporary-message "(New Buffer)")
 		   buffer))
-		((not ((car hooks) name))
+		((let ((result ((car hooks) name)))
+		   (and (buffer? result)
+			result)))
+		(else
 		 (loop (cdr hooks))))))))
 
 (define-variable select-buffer-create
@@ -276,7 +279,7 @@ When locked, the buffer's major mode may not be changed."
   "List of procedures to be called for select-buffer on nonexistent buffer.
 These procedures are called as soon as the error is detected.
 The procedures are called in the order given,
-until one of them returns non-false.
+until one of them returns a buffer.
 This variable has no effect if select-buffer-create is false."
   '()
   list?)
