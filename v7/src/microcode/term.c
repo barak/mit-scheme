@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: term.c,v 1.6 1993/06/24 06:25:34 gjr Exp $
+$Id: term.c,v 1.7 1993/08/11 19:07:12 cph Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -101,15 +101,25 @@ DEFUN (termination_prefix, (code), int code)
 {
   attempt_termination_backout (code);
   OS_restore_external_state ();
-  outf_fatal("\n");
-  if ((code < 0) || (code > MAX_TERMINATION))
-    outf_fatal("Unknown termination code 0x%x", code);
+  /* TERM_HALT is not an error condition and thus its termination
+     message should be considered normal output.  */
+  if (code == TERM_HALT)
+    {
+      outf_console ("\n%s.\n", (Term_Messages [code]));
+      outf_flush_console ();
+    }
   else
-    outf_fatal("%s", (Term_Messages [code]));
-  if ((WITHIN_CRITICAL_SECTION_P ()) && (code != TERM_HALT))
-    outf_fatal (" within critical section \"%s\"",
-                (CRITICAL_SECTION_NAME ()));
-  outf_fatal(".\n");
+    {
+      outf_fatal("\n");
+      if ((code < 0) || (code > MAX_TERMINATION))
+	outf_fatal("Unknown termination code 0x%x", code);
+      else
+	outf_fatal("%s", (Term_Messages [code]));
+      if (WITHIN_CRITICAL_SECTION_P ())
+	outf_fatal (" within critical section \"%s\"",
+		    (CRITICAL_SECTION_NAME ()));
+      outf_fatal(".\n");
+    }
 }
 
 static void
@@ -223,7 +233,7 @@ DEFUN (termination_signal, (signal_name), CONST char * signal_name)
   if (signal_name != 0)
     {
       termination_prefix (TERM_SIGNAL);
-      outf_fatal ("Killed by %s.\n");
+      outf_fatal ("Killed by %s.\n", signal_name);
     }
   else
     attempt_termination_backout (TERM_SIGNAL);
