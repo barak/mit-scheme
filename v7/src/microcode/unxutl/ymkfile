@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.38 1990/12/01 00:21:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.39 1990/12/11 04:22:08 cph Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -162,24 +162,24 @@ GRAPHICS_LIBS =
 #if (PROC_TYPE == PROC_TYPE_68020)
 #define PROC_TYPE_KNOWN
 MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
-MACHINE_SOURCES = cmpint.c cmpaux-mc68k.m4 dmpwrld.c
-MACHINE_OBJECTS = cmpint.o cmpaux-mc68k.o dmpwrld.o
+MACHINE_SOURCES = cmpint.c cmpaux-mc68k.m4
+MACHINE_OBJECTS = cmpint.o cmpaux-mc68k.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint-mc68k.h
 #endif /* PROC_TYPE_68020 */
 
 #if (PROC_TYPE == PROC_TYPE_68000)
 #define PROC_TYPE_KNOWN
 MACHINE_SWITCHES = -DMC68010
-MACHINE_SOURCES = cmpint.c dmpwrld.c
-MACHINE_OBJECTS = cmpint.o dmpwrld.o
+MACHINE_SOURCES = cmpint.c
+MACHINE_OBJECTS = cmpint.o
 GC_HEAD_FILES = gccode.h cmpgc.h
 #endif /* PROC_TYPE_68000 */
 
 #if (PROC_TYPE == PROC_TYPE_VAX)
 #define PROC_TYPE_KNOWN
 MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
-MACHINE_SOURCES = cmpint.c cmpaux-vax.m4 dmpwrld.c
-MACHINE_OBJECTS = cmpint.o cmpaux-vax.o dmpwrld.o
+MACHINE_SOURCES = cmpint.c cmpaux-vax.m4
+MACHINE_OBJECTS = cmpint.o cmpaux-vax.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint-vax.h
 #endif /* PROC_TYPE_VAX */
 
@@ -187,8 +187,8 @@ GC_HEAD_FILES = gccode.h cmpgc.h cmpint-vax.h
 #define PROC_TYPE_KNOWN
 #undef hppa
 MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
-MACHINE_SOURCES = cmpint.c cmpaux-hppa.m4 dmpwrld.c
-MACHINE_OBJECTS = cmpint.o cmpaux-hppa.o dmpwrld.o
+MACHINE_SOURCES = cmpint.c cmpaux-hppa.m4
+MACHINE_OBJECTS = cmpint.o cmpaux-hppa.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint-hppa.h hppacache.h
 XTRA_TARGETS = hppacache
 #endif /* PROC_TYPE_HPPA */
