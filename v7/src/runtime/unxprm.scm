@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.38 1995/04/23 05:24:18 cph Exp $
+$Id: unxprm.scm,v 1.39 1995/10/18 05:02:57 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -284,11 +284,11 @@ MIT in each case. |#
 
 (define (make-directory name)
   ((ucode-primitive directory-make 1)
-   (->namestring (pathname-as-directory (merge-pathnames name)))))
+   (->namestring (directory-pathname-as-file (merge-pathnames name)))))
 
 (define (delete-directory name)
   ((ucode-primitive directory-delete 1)
-   (->namestring (pathname-as-directory (merge-pathnames name)))))
+   (->namestring (directory-pathname-as-file (merge-pathnames name)))))
 
 (define (os/default-end-of-line-translation)
   #f)
