@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.8 1995/01/06 00:13:50 cph Exp $
+$Id: toplev.scm,v 1.9 1995/07/12 14:22:40 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -78,23 +78,27 @@ MIT in each case. |#
   (let ((constructor (construct-constructor pmodel)))
     (with-output-to-file (pathname-new-type pathname "con")
       (lambda ()
-	(write-string ";;; -*-Scheme-*-")
-	(newline)
-	(write-string ";;; program to make package structure")
-	(for-each (lambda (expression)
-		    (pp expression (current-output-port) true))
-		  constructor)))))
+	(fluid-let ((*unparser-list-breadth-limit* #F)
+		    (*unparser-list-depth-limit*   #F))
+	  (write-string ";;; -*-Scheme-*-")
+	  (newline)
+	  (write-string ";;; program to make package structure")
+	  (for-each (lambda (expression)
+		      (pp expression (current-output-port) true))
+	    constructor))))))
 
 (define (write-loader pathname pmodel)
   (let ((loader (construct-loader pmodel)))
     (with-output-to-file (pathname-new-type pathname "ldr")
       (lambda ()
-	(write-string ";;; -*-Scheme-*-")
-	(newline)
-	(write-string ";;; program to load package contents")
-	(for-each (lambda (expression)
-		    (pp expression (current-output-port) true))
-		  loader)))))
+	(fluid-let ((*unparser-list-breadth-limit* #F)
+		    (*unparser-list-depth-limit*   #F))
+	  (write-string ";;; -*-Scheme-*-")
+	  (newline)
+	  (write-string ";;; program to load package contents")
+	  (for-each (lambda (expression)
+		      (pp expression (current-output-port) true))
+	    loader))))))
 
 (define (write-cref pathname pmodel)
   (with-output-to-file (pathname-new-type pathname "crf")
