@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosterm.c,v 1.7 1990/11/14 16:59:18 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosterm.c,v 1.8 1991/03/08 01:41:38 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -182,6 +182,12 @@ DEFINE_PRIMITIVE ("TERMINAL-DRAIN-OUTPUT", Prim_terminal_drain_output, 1, 1,
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
+DEFINE_PRIMITIVE ("HAVE-PTYS?", Prim_have_ptys_p, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (OS_have_ptys_p ()));
+}
+
 DEFINE_PRIMITIVE ("OPEN-PTY-MASTER", Prim_open_pty_master, 0, 0,
   "Open a PTY master, returning the master's channel and the slave's name.\n\
 Returns a vector #(CHANNEL MASTER-NAME SLAVE-NAME).")

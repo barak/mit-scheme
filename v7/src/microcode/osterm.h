@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osterm.h,v 1.5 1990/11/08 11:12:58 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osterm.h,v 1.6 1991/03/08 01:41:34 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -55,6 +55,7 @@ extern void EXFUN (OS_terminal_flush_input, (Tchannel channel));
 extern void EXFUN (OS_terminal_flush_output, (Tchannel channel));
 extern void EXFUN (OS_terminal_drain_output, (Tchannel channel));
 extern int EXFUN (OS_job_control_p, (void));
+extern int EXFUN (OS_have_ptys_p, (void));
 extern CONST char * EXFUN
   (OS_open_pty_master, (Tchannel * master_fd, CONST char ** master_fname));
 extern void EXFUN (OS_pty_master_send_signal, (Tchannel channel, int sig));

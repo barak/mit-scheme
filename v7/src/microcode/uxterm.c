@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.11 1991/01/24 11:26:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.12 1991/03/08 01:41:42 cph Exp $
 
 Copyright (c) 1990-1 Massachusetts Institute of Technology
 
@@ -486,6 +486,12 @@ DEFUN_VOID (OS_job_control_p)
 
 #ifdef HAVE_PTYS
 
+int
+DEFUN_VOID (OS_have_ptys_p)
+{
+  return (1);
+}
+
 /* Open an available pty, putting channel in (*ptyv),
    and return the file name of the pty.
    Signal error if none available.  */
@@ -564,8 +570,14 @@ DEFUN (OS_pty_master_send_signal, (channel, sig), Tchannel channel AND int sig)
 #endif /* HAVE_BSD_JOB_CONTROL */
 #endif /* TIOCSIGSEND */
 }
-
+
 #else /* not HAVE_PTYS */
+
+int
+DEFUN_VOID (OS_have_ptys_p)
+{
+  return (0);
+}
 
 CONST char *
 DEFUN (OS_open_pty_master, (master_fd, master_fname),
@@ -581,7 +593,7 @@ DEFUN (OS_pty_master_send_signal, (channel, sig), Tchannel channel AND int sig)
   error_unimplemented_primitive ();
 }
 
-#endif /* HAVE_PTYS */
+#endif /* not HAVE_PTYS */
 
 void
 DEFUN (OS_pty_master_kill, (channel), Tchannel channel)
