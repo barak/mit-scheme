@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 4.33 1992/11/18 03:47:33 gjr Exp $
+$Id: decls.scm,v 4.34 1992/11/18 03:56:42 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -397,8 +397,8 @@ MIT in each case. |#
 			  "object" "proced" "rvalue"
 			  "scode" "subprb" "utils"))
 	(bobcat-base
-	 (append (filename/append "machines/spectrum" "machin")
-		  (filename/append "back" "asutl")))
+	 (append (filename/append "machines/bobcat" "machin")
+		 (filename/append "back" "asutl")))
 	(rtl-base
 	 (filename/append "rtlbase"
 			  "rgraph" "rtlcfg" "rtlobj" "rtlreg" "rtlty1"
