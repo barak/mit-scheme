@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.20 1999/08/09 19:27:13 cph Exp $
+$Id: random.scm,v 14.21 1999/08/09 19:30:18 cph Exp $
 
 Copyright (c) 1993-1999 Massachusetts Institute of Technology
 
@@ -202,12 +202,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (set! *random-state*
 	(initial-random-state
 	 (congruential-rng (+ (real-time-clock) 123456789))))
+  unspecific)
+
+(define (finalize-random-state-type!)
   (add-event-receiver! event:after-restore
 		       (lambda ()
 			 (set! *random-state* (make-random-state #t))
-			 unspecific)))
-
-(define (finalize-random-state-type!)
+			 unspecific))
   (named-structure/set-tag-description! random-state-tag
     (make-define-structure-type 'VECTOR
 				'RANDOM-STATE
