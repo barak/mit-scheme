@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.57 1994/03/28 22:26:54 gjr Exp $
+$Id: memmag.c,v 9.58 1995/10/08 15:22:15 cph Exp $
 
-Copyright (c) 1987-1994 Massachusetts Institute of Technology
+Copyright (c) 1987-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,8 +45,8 @@ MIT in each case. */
    memory management utilities.
  */
 
-#include "memmag.h"
 #include "scheme.h"
+#include "memmag.h"
 #include "prims.h"
 #include "gccode.h"
 
