@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.16 1996/07/26 20:00:31 adams Exp $
+$Id: random.scm,v 14.17 1998/03/31 08:41:43 cph Exp $
 
-Copyright (c) 1993-96 Massachusetts Institute of Technology
+Copyright (c) 1993-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -199,7 +199,7 @@ MIT in each case. |#
 (define (finalize-random-state-type!)
   (named-structure/set-tag-description! random-state-tag
     (make-define-structure-type 'VECTOR
-				'RECORD-STATE
+				'RANDOM-STATE
 				'(INDEX BORROW VECTOR)
 				'(1 2 3)
-				#f)))
+				(standard-unparser-method 'RANDOM-STATE #f))))
