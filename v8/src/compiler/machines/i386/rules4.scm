@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules4.scm,v 1.1 1995/01/10 20:53:06 adams Exp $
+$Id: rules4.scm,v 1.2 1995/01/20 20:17:41 ssmith Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -39,6 +39,65 @@ MIT in each case. |#
 
 ;;;; Variable cache trap handling.
 
+(define regnum:third-arg eax)
+(define regnum:fourth-arg ebx)
+(define (%load-interface-args! first second third fourth)
+  (let* ((load-reg
+	  (lambda (arg reg)
+	    (if arg
+		(interpreter-call-argument->machine-register! arg reg)
+		(clean-registers! reg))))
+	 (load-one (load-reg first regnum:first-arg))
+	 (load-two (load-reg second regnum:second-arg))
+	 (load-three (load-reg third regnum:third-arg))
+	 (load-four (load-reg fourth regnum:fourth-arg)))
+    (LAP ,@load-one
+	 ,@load-two
+	 ,@load-three
+	 ,@load-four)))
+
+(define *interpreter-call-clobbered-regs* (list eax ebx ecx edx))
+
+(define (interpreter-call code extension extra)
+  (let ((start (%load-interface-args! false extension extra false)))
+    (LAP (COMMENT >> %interface-load-args)
+	 ,@start
+	 (COMMENT << %interface-load-args)
+	 ,@(preserving-regs
+	    *interpreter-call-clobbered-regs*
+	    (lambda (gen-preservation-info)
+	      (if (not gen-preservation-info)
+		  (invoke-hook/call code)
+		  (let ((label1 (generate-label))
+			(label2 (generate-label)))
+		    (LAP ,@(invoke-hook/call code)
+			 (LABEL ,label1)
+			 ,@(gen-preservation-info)
+			 (LABEL ,label2)))))))))
+
+(define-rule statement
+  (INTERPRETER-CALL:CACHE-REFERENCE (? cont) (? extension) (? safe?))
+  (QUALIFIER (interpreter-call-argument? extension))
+  cont					; ignored
+  (interpreter-call (if safe?
+			entry:compiler-safe-reference-trap
+			entry:compiler-reference-trap)
+		    extension false))
+
+(define-rule statement
+  (INTERPRETER-CALL:CACHE-ASSIGNMENT (? cont) (? extension) (? value))
+  (QUALIFIER (and (interpreter-call-argument? extension)
+		  (interpreter-call-argument? value)))
+  cont					; ignored
+  (interpreter-call entry:compiler-assignment-trap extension value))
+
+(define-rule statement
+  (INTERPRETER-CALL:CACHE-UNASSIGNED? (? cont) (? extension))
+  (QUALIFIER (interpreter-call-argument? extension))
+  cont					; ignored
+  (interpreter-call entry:compiler-unassigned?-trap extension false))
+
+#|
 (define-rule statement
   (INTERPRETER-CALL:CACHE-REFERENCE (? cont) (? extension) (? safe?))
   (QUALIFIER (interpreter-call-argument? extension))
@@ -82,6 +141,7 @@ MIT in each case. |#
     (LAP ,@set-extension
 	 ,@(clear-map!)
 	 ,@(invoke-interface/call code:compiler-unassigned?-trap))))
+|#
 
 ;;;; Interpreter Calls
 

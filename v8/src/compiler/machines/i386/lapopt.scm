@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/machines/i386/lapopt.scm,v 1.9 1995/01/12 19:42:02 ssmith Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/machines/i386/lapopt.scm,v 1.10 1995/01/20 20:16:36 ssmith Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -36,7 +36,41 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+
+(define (lap:mark-preferred-branch! pblock cn an)
+  ;; This can leave pblock unchanged
+  (define (single-instruction bblock other)
+    (and (sblock? bblock)
+	 (let ((next (snode-next bblock)))
+	   (or (not next)
+	       (eq? next other)))
+	 (let find-first ((instrs (bblock-instructions bblock)))
+	   (and (not (null? instrs))
+		(let ((instr (car instrs)))
+		  (if (eq? 'COMMENT (car instr))
+		      (find-first (cdr instrs))
+		      (and (let find-next ((instrs (cdr instrs)))
+			     (or (null? instrs)
+				 (and (eq? 'COMMENT (car (car instrs)))
+				      (find-next (cdr instrs)))))
+			   instr)))))))
+  
+  (define (try branch bblock other)
+    (let ((instr (single-instruction bblock other)))
+      (and instr
+	   (not (instr-expands? instr))
+	   (pnode/prefer-branch! pblock branch)
+	   true)))
+
+  (let ((branch-instr
+	 (car (last-pair ((pblock-consequent-lap-generator pblock) 'FOO)))))
+    (and (memq (car branch-instr)
+	       '(COMB COMBT COMBF COMIB COMIBT COMIBF COMBN COMIBTN COMIBFN))
+	 (or (try 'CONSEQUENT cn an)
+	     (try 'ALTERNATIVE an cn)))))
+
 (define (optimize-linear-lap instructions)
+#|
   ;; The following returns a list of information about the instruction:
   ;; 1. timing -- how many cycles
   ;; 2. pipelining -- which pipes 1 - first pipe, 2 - second pipe, 12 - both pipes, #f - unpipable
@@ -74,7 +108,15 @@ MIT in each case. |#
 	(#f #f () () () block-offset ?)
 	(#f #f () () () entry-point ?)
 	(#f #f () () () word ? ?)))
-      
+    (define (find-var v)
+      (let loop ((data ins-vars))
+	(if (null? data)
+	    #f
+	    (if (eq? (car (car data))
+		     v)
+		(cdr (car data))
+		(loop (cdr data))))))
+    
     ;; Given a list of registers/variables from the instruction data,
     ;; this procedure creates a list containing all the registers referenced
     ;; If the list specifies a variable, then that variable is looked up to
@@ -82,14 +124,6 @@ MIT in each case. |#
     ;; about registers).  A register can also be explicitly stated in the
     ;; list passed to make-reg-list
     (define (make-reg-list a)
-      (define (find-var v)
-	(let loop ((data ins-vars))
-	  (if (null? data)
-	      #f
-	      (if (eq? (car (car data))
-		       v)
-		  (cdr (car data))
-		  (loop (cdr data))))))
       (if (pair? a)
 	  (if (number? (car a))
 	      (cons (car a)
@@ -104,6 +138,36 @@ MIT in each case. |#
 		      (pp (car a))
 		      ()))))
 	  a))
+    
+    (define (make-ea-list a inst)
+      (define (get-regs-from-ea ea)
+	(if (pair? ea)
+	    (cond ((eq? '@R (car ea))
+		   (list (second ea)))
+		  ((eq? '@RI (car ea))
+		   (list (second ea) (third ea)))
+		  ((eq? '@ROI (car ea))
+		   (list (third ea) (fifth ea)))
+		  ((eq? '@RO (car ea))
+		   (list (third ea)))
+		  (else ()))
+	    ()))
+      (if (pair? inst)
+	  (append (get-regs-from-ea (car inst))
+		  (make-ea-list a
+				(cdr inst)))
+	  (if (pair? a)
+	      (if (number? (car a))
+		  (cons (car a)
+			(make-ea-list (cdr a) inst))
+		  (let ((data (find-var (car a))))
+		    (if data
+			(append (get-regs-from-ea data)
+				(make-ea-list (cdr a) inst))
+			(begin
+			  (pp (car a))
+			  ()))))
+	      ())))
     
     ;; Checks to see if the the pattern matches given data
     (define (is-all-match? pattern data)
@@ -142,14 +206,15 @@ MIT in each case. |#
 	    '(0 0 () () ()))
 	  (if (is-all-match? (cdr (cdr (cdr (cdr (cdr (car data))))))
 			     inst)
-	      (list (car (car data))
-		    (cadr (car data))
-		    (make-reg-list (caddr (car data)))
-		    (make-reg-list (cadddr (car data)))
-		    ())
+	      (list (timing-of-inst (car data))
+		    (piping-of-inst (car data))
+		    (make-reg-list (regs-mod-of-inst (car data)))
+		    (make-reg-list (regs-use-of-inst (car data)))
+		    (make-ea-list (regs-addr-of-inst (car data))
+				  inst))
 	      (loop (cdr data))))))
-
-
+  
+  
   (define (get-pentium-timing instructions)
     (let loop ((inst instructions)
 	       (time 0)
@@ -206,6 +271,7 @@ MIT in each case. |#
 			    last-mod-regs))))))))
 
   (pp (get-pentium-timing instructions))
+|#
   instructions)
 
 

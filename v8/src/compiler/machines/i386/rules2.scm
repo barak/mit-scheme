@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules2.scm,v 1.1 1995/01/10 20:53:05 adams Exp $
+$Id: rules2.scm,v 1.2 1995/01/20 20:17:17 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -43,6 +43,12 @@ MIT in each case. |#
 			 (lambda (label)
 			   (LAP (JNE (@PCR ,label))))))
 
+(define (set-specific-branches! truejump falsejump)
+  (set-current-branches! (lambda (label)
+			   (LAP (,truejump (@PCR ,label))))
+			 (lambda (label)
+			   (LAP (,falsejump (@PCR ,label))))))
+
 (define-rule predicate
   (TYPE-TEST (REGISTER (? register)) (? type))
   (set-equal-branches!)
@@ -58,6 +64,102 @@ MIT in each case. |#
   (set-equal-branches!)
   (LAP (CMP W ,(source-register-reference register)
 	    ,(offset->reference! expression))))
+
+
+
+(define-rule predicate
+  (PRED-1-ARG GENERIC-ADDITIVE-TEST (REGISTER (? source)))
+  (let ((temp (allocate-temporary-register! 'GENERAL))
+	(src (standard-source! source))
+	(osize (if (> scheme-datum-width 7)
+		   'W
+		   'B)))
+    (set-equal-branches!)
+    (LAP (LEA (R ,temp) (@RO ,osize ,src ,(expt 2 (-1+ scheme-datum-width))))
+	 (SHR W (R ,temp) ,scheme-datum-width))))
+
+(define-rule predicate
+  (PRED-1-ARG FIXNUM? (REGISTER (? source)))
+  (let ((temp (allocate-temporary-register! 'GENERAL))
+	(src (standard-source! source))
+	(osize (if (> scheme-datum-width 6)
+		   'W
+		   'B)))
+    (set-equal-branches!)
+    (LAP (LEA (R ,temp) (@RO ,osize ,src ,(expt 2 scheme-datum-width)))
+	 (SHR W (R ,temp) (& ,(1+ scheme-datum-width))))))
+
+(define-rule predicate
+  (PRED-1-ARG FALSE? (REGISTER (? source)))
+  (if compiler:generate-trap-on-null-valued-conditional?
+      (error "unsupported compiler option: generate-trap-on-null-valued-conditional?")
+      (begin
+	(set-equal-branches!)
+	(LAP (CMP W (R ,(standard-source! source))
+		  (& ,(make-non-pointer-literal (object-type #f)
+						(object-datum #f))))))))
+
+(define-rule predicate
+  (PRED-1-ARG NULL? (REGISTER (? source)))
+  (set-equal-branches!)
+  (LAP (CMP W (R ,(standard-source! source)) (@RO B ,regnum:regs-pointer
+						  ,register-block/empty-list))))
+
+(define-rule predicate
+  (PRED-2-ARGS WORD-LESS-THAN-UNSIGNED?
+	       (REGISTER (? smaller))
+	       (REGISTER (? larger)))
+  (set-special-branches! 'JB 'JAE)
+  (LAP (CMP W (R ,(standard-source! smaller)) (R ,(standard-source! larger)))))
+
+(define-rule predicate
+  (PRED-2-ARGS WORD-LESS-THAN-UNSIGNED?
+	       (CONSTANT (? smaller))
+	       (REGISTER (? larger)))
+  (set-special-branches! 'JB 'JAE)
+  (LAP (CMP W (& ,smaller) (R ,(standard-source! larger)))))
+
+(define-rule predicate
+  (PRED-2-ARGS WORD-LESS-THAN-UNSIGNED?
+	       (REGISTER (? smaller))
+	       (CONSTANT (? larger)))
+  (set-special-branches! 'JB 'JAE)
+  (LAP (CMP W (R ,(standard-source! smaller)) (& ,larger))))
+
+(define-rule predicate
+  (PRED-2-ARGS SMALL-FIXNUM?
+	       (REGISTER (? source))
+	       (MACHINE-CONSTANT (? nbits)))
+  (let* ((src (standard-source! source))
+	 (temp (allocate-temporary-register! 'GENERAL))
+	 (osize (if (> (- scheme-datum-width nbits) 6)
+		    'W
+		    'B)))
+    (set-equal-branches!)
+    ;; There are several ways to do this:
+    ;; assuming you want to check that the number is 16 bits + sign extension:
+ 
+    ;; lea eax,[ebx+32768]
+    ;; shr eax,16
+    ;; jz blat
+    ;; This is good because it is two instructions and will execute quickly,
+    ;; but be careful for stalling because of the addressing mode!
+    ;; Also, it is about 6+3=9 bytes (for the arithmetic)
+   
+    ;; Or:
+    ;; mov eax,ebx
+    ;; sar eax,16
+    ;; adc eax,0
+    ;; jz blat
+    ;; This is good because it doesn't use [ebx] in addressing, plus it is
+    ;; only 2+3+3=8 bytes.  NOTE: We originally thought that you could do
+    ;; an ADC AL,0; but realize there are 16 bits you are testing.  Besides,
+    ;; that would only gain you a byte, assuming you got the EAX register
+    ;; This is also good because it can pull from memory or from a register
+
+    (LAP (LEA (R ,temp) (@RO ,osize ,src ,(expt 2 (- scheme-datum-width nbits))))
+	 (SHR W (R ,temp) (& ,(- (+ scheme-datum-width 1) nbits))))))
+
 
 (define-rule predicate
   (EQ-TEST (? expression rtl:simple-offset?) (REGISTER (? register)))

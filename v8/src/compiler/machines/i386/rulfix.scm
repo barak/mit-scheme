@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.1 1995/01/10 20:53:06 adams Exp $
+$Id: rulfix.scm,v 1.2 1995/01/20 20:17:52 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -125,7 +125,7 @@ MIT in each case. |#
 			 #f))
   (fixnum-1-arg target source
    (lambda (target)
-     (multiply-fixnum-constant target (* n fixnum-1) false))))
+     (multiply-fixnum-constant target n false))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -135,7 +135,7 @@ MIT in each case. |#
 			 #f))
   (fixnum-1-arg target source
    (lambda (target)
-     (multiply-fixnum-constant target (* n fixnum-1) false))))
+     (multiply-fixnum-constant target n false))))
 
 ;;;; Fixnum Predicates
 
@@ -185,7 +185,7 @@ MIT in each case. |#
 		      (OBJECT->FIXNUM (CONSTANT (? constant))))
   (fixnum-branch! predicate)
   (LAP (CMP W ,(source-register-reference register)
-	    (& ,(* constant fixnum-1)))))
+	    (& ,constant))))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
@@ -193,7 +193,7 @@ MIT in each case. |#
 		      (REGISTER (? register)))
   (fixnum-branch! (commute-fixnum-predicate predicate))
   (LAP (CMP W ,(source-register-reference register)
-	    (& ,(* constant fixnum-1)))))
+	    (& ,constant))))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
@@ -201,7 +201,7 @@ MIT in each case. |#
 		      (OBJECT->FIXNUM (CONSTANT (? constant))))
   (fixnum-branch! predicate)
   (LAP (CMP W ,(offset->reference! expression)
-	    (& ,(* constant fixnum-1)))))
+	    (& ,constant))))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
@@ -209,7 +209,7 @@ MIT in each case. |#
 		      (? expression rtl:simple-offset?))
   (fixnum-branch! (commute-fixnum-predicate predicate))
   (LAP (CMP W ,(offset->reference! expression)
-	    (& ,(* constant fixnum-1)))))
+	    (& ,constant))))
 
 ;; This assumes that the immediately preceding instruction sets the
 ;; condition code bits correctly.
@@ -225,7 +225,9 @@ MIT in each case. |#
 
 ;;;; Utilities
 
-(define (object->fixnum target)
+#| The following is now broken/obsolete in 8.x
+
+ (define (object->fixnum target)
   (LAP (SAL W ,target (& ,scheme-type-width))))
 
 ;; Clearly wrong for the split typecodes:
@@ -261,7 +263,7 @@ MIT in each case. |#
 (define (load-fixnum-constant constant target)
   (if (zero? constant)
       (LAP (XOR W ,target ,target))
-      (LAP (MOV W ,target (& ,(* constant fixnum-1))))))
+      (LAP (MOV W ,target (& ,constant)))))
 
 (define (add-fixnum-constant target constant overflow?)
   (let ((value (* constant fixnum-1)))
@@ -293,6 +295,9 @@ MIT in each case. |#
 	(else
 	 ;; target must be a register!
 	 (LAP (IMUL W ,target ,target (& ,constant))))))
+End of stuff broken during conversion to 8.x
+|#
+
 
 ;;;; Operation tables
 
@@ -337,6 +342,9 @@ MIT in each case. |#
 				    target source1 source2)
   (let* ((worst-case
 	  (lambda (target source1 source2)
+	    (if (and (equal? target source2)
+		     (not (equal? target source1)))
+		(error "two-arg-register-operation: about to overwrite source1 with source2"))
 	    (LAP (MOV W ,target ,source1)
 		 ,@(operate target source2))))
 	 (new-target-alias!
@@ -351,9 +359,11 @@ MIT in each case. |#
 	   (if (not (eq? (register-type target) 'GENERAL))
 	       (error "two-arg-register-operation: Wrong type register"
 		      target 'GENERAL)
-	       (worst-case (register-reference target)
-			   (any-reference source1)
-			   (any-reference source2))))
+	       (begin
+		 (require-register! target)
+		 (worst-case (target-register-reference target)
+			     (any-reference source1)
+			     (any-reference source2)))))
 	  ((register-copy-if-available source1 'GENERAL target)
 	   =>
 	   (lambda (get-alias-ref)
@@ -391,8 +401,7 @@ MIT in each case. |#
 
 (define-arithmetic-method 'FIXNUM-NOT fixnum-methods/1-arg
   (lambda (target)
-    (LAP (NOT W ,target)
-	 ,@(word->fixnum target))))
+    (LAP (NOT W ,target))))
 
 (define-arithmetic-method 'FIXNUM-NEGATE fixnum-methods/1-arg
   (lambda (target)
@@ -458,13 +467,18 @@ MIT in each case. |#
    false
    (lambda (target source2)
      (cond ((not (equal? target source2))
-	    (LAP (SAR W ,target (& ,scheme-type-width))
-		 (IMUL W ,target ,source2)))
+	    (LAP (IMUL W ,target ,source2)))
 	   ((even? scheme-type-width)
+	    (display "fixnum test failed")
+	    (display target)
+	    (display source2)
 	    (LAP (SAR W ,target (& ,(quotient scheme-type-width 2)))
 		 (IMUL W ,target ,target)))
 	   (else
 	    (let ((temp (temporary-register-reference)))
+	      (display "fixnum test failed")
+	      (display target)
+	      (display source2)
 	      (LAP (MOV W ,temp ,target)
 		   (SAR W ,target (& ,scheme-type-width))
 		   (IMUL W ,target ,temp))))))))
@@ -481,14 +495,13 @@ MIT in each case. |#
 		     (let ((jlabel (generate-label 'SHIFT-JOIN))
 			   (slabel (generate-label 'SHIFT-NEGATIVE)))
 		       (LAP (MOV W (R ,ecx) ,source2)
-			    (SAR W (R ,ecx) (& ,scheme-type-width))
+			    (OR W (R ,ecx) (R ,ecx))
 			    (JS B (@PCR ,slabel))
 			    (SHL W ,target (R ,ecx))
 			    (JMP B (@PCR ,jlabel))
 			    (LABEL ,slabel)
 			    (NEG W (R ,ecx))
 			    (SHR W ,target (R ,ecx))
-			    ,@(word->fixnum target)
 			    (LABEL ,jlabel))))))
 
 	     (if (not (equal? target (INST-EA (R ,ecx))))
@@ -521,8 +534,7 @@ MIT in each case. |#
     overflow?				; ignored
     (if (= source2 source1)
 	(load-fixnum-constant 1 (target-register-reference target))
-	(LAP ,@(do-division target source1 source2 eax)
-	     (SAL W (R ,eax) (& ,scheme-type-width))))))
+	(do-division target source1 source2 eax))))
 
 (define-arithmetic-method 'FIXNUM-REMAINDER fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
@@ -547,7 +559,7 @@ MIT in each case. |#
 	  ((= n -1)
 	   (load-fixnum-constant -1 target))
 	  (else
-	   (LAP (OR W ,target (& ,(* n fixnum-1))))))))
+	   (LAP (OR W ,target (& ,n)))))))
 
 (define-arithmetic-method 'FIXNUM-XOR fixnum-methods/2-args-constant
   (lambda (target n overflow?)
@@ -555,10 +567,11 @@ MIT in each case. |#
     (cond ((zero? n)
 	   (LAP))
 	  ((= n -1)
-	   (LAP (NOT W ,target)
-		,@(word->fixnum target)))
+	   (LAP (NOT W ,target)))
+	  ((<= 0 n 255)
+	   (LAP (XOR B ,target (& ,n))))
 	  (else
-	   (LAP (XOR W ,target (& ,(* n fixnum-1))))))))
+	   (LAP (XOR W ,target (& ,n)))))))
 
 (define-arithmetic-method 'FIXNUM-AND fixnum-methods/2-args-constant
   (lambda (target n overflow?)
@@ -568,7 +581,7 @@ MIT in each case. |#
 	  ((= n -1)
 	   (LAP))
 	  (else
-	   (LAP (AND W ,target (& ,(* n fixnum-1))))))))
+	   (LAP (AND W ,target (& ,n)))))))
 
 (define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args-constant
   (lambda (target n overflow?)
@@ -578,7 +591,7 @@ MIT in each case. |#
 	  ((= n -1)
 	   (load-fixnum-constant 0 target))
 	  (else
-	   (LAP (AND W ,target (& ,(* (fix:not n) fixnum-1))))))))
+	   (LAP (AND W ,target (& ,(fix:not n))))))))
 
 (define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args-constant
   (lambda (target n overflow?)
@@ -590,8 +603,7 @@ MIT in each case. |#
 	  ((not (negative? n))
 	   (LAP (SHL W ,target (& ,n))))
 	  (else
-	   (LAP (SHR W ,target (& ,(- 0 n)))
-		,@(word->fixnum target))))))
+	   (LAP (SHR W ,target (& ,(- 0 n))))))))
 
 (define-arithmetic-method 'MULTIPLY-FIXNUM fixnum-methods/2-args-constant
   (lambda (target n overflow?)
@@ -611,10 +623,9 @@ MIT in each case. |#
 		   (absn (if (negative? n) (- 0 n) n)))
 	       (LAP (CMP W ,target (& 0))
 		    (JGE B (@PCR ,label))
-		    (ADD W ,target (& ,(* (-1+ absn) fixnum-1)))
+		    (ADD W ,target (& ,(-1+ absn)))
 		    (LABEL ,label)
 		    (SAR W ,target (& ,expt-of-2))
-		    ,@(word->fixnum target)
 		    ,@(if (negative? n)
 			  (LAP (NEG W ,target))
 			  (LAP))))))
@@ -635,10 +646,10 @@ MIT in each case. |#
 	       ;; This may produce a branch to a branch, but a
 	       ;; peephole optimizer should be able to fix this.
 	       (LAP (MOV W ,sign ,target)
-		    (AND W ,target (& ,(* (-1+ n) fixnum-1)))
+		    (AND W ,target (& ,(-1+ n)))
 		    (JZ B (@PCR ,label))
-		    (SAR W ,sign (& ,(-1+ scheme-object-width)))
-		    (AND W ,sign (& ,(* n (- 0 fixnum-1))))
+		    (SAR W ,sign (& ,scheme-object-width))
+		    (AND W ,sign (& ,(- 0 n)))
 		    (OR W ,target ,sign)
 		    (LABEL ,label))))
 	    (else

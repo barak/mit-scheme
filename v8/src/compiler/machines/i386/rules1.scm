@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules1.scm,v 1.1 1995/01/10 20:53:04 adams Exp $
+$Id: rules1.scm,v 1.2 1995/01/20 20:17:04 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -109,7 +109,7 @@ MIT in each case. |#
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (REGISTER (? type)) (REGISTER (? datum))))
   (let ((temp (standard-move-to-temporary! type)))
-    (LAP (ROR W ,temp (&U ,scheme-type-width))
+    (LAP (ROR W ,temp (& ,scheme-type-width))
 	 (OR W ,(standard-move-to-target! datum target) ,temp))))
 
 (define-rule statement

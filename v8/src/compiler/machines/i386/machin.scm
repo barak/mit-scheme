@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.5 1995/01/12 14:45:48 ssmith Exp $
+$Id: machin.scm,v 1.6 1995/01/20 20:16:50 ssmith Exp $
 
 Copyright (c) 1992-1995 Massachusetts Institute of Technology
 
@@ -191,6 +191,8 @@ MIT in each case. |#
 (define-integrable regnum:regs-pointer esi)
 (define-integrable regnum:free-pointer edi)
 (define-integrable regnum:hook eax)
+(define-integrable regnum:first-arg ecx)
+(define-integrable regnum:second-arg edx)
 
 (define-integrable (machine-register-known-value register)
   register				; ignored
@@ -221,6 +223,7 @@ MIT in each case. |#
 (define-integrable register-block/lexpr-primitive-arity-offset 7)
 (define-integrable register-block/utility-arg4-offset 9) ; closure free
 (define-integrable register-block/stack-guard-offset 11)
+(define-integrable register-block/empty-list 14)
 
 (define-integrable (fits-in-signed-byte? value)
   (and (>= value -128) (< value 128)))
@@ -404,3 +407,26 @@ MIT in each case. |#
 		  ;; broken on the 387 (or at least some of them).
 		  FLONUM-EXP
 		  VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS))
+
+;; Copied from Spectrum's so I could see it compile
+
+(define (rtlgen/interpreter-call/argument-home index)
+  (case index
+    ((1) `(REGISTER ,ecx))
+    ((2) `(REGISTER ,edx))
+    (else
+     (internal-error "Unexpected interpreter-call argument index" index))))
+
+(define #|-integrable|# quad-mask-value
+  (cond ((= scheme-type-width 5)  #b01000)
+	((= scheme-type-width 6)  #b010000)
+	((= scheme-type-width 8)  #b01000000)
+	(else (error "machin.scm: weird type width:" scheme-type-width))))
+
+(define (machine/indexed-loads? type)
+  type					; for all types
+  #T)
+
+(define (machine/indexed-stores? type)
+  type					; for all types
+  #T)
