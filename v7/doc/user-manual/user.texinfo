@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.26 1995/05/30 13:30:21 cph Exp $
+@comment $Id: user.texinfo,v 1.27 1995/05/30 13:53:35 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -54,7 +54,7 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.26 beta
+@subtitle Edition 1.27 beta
 @subtitle for Scheme Release 7.4
 @subtitle May 30, 1995
 @author by Stephen Adams
@@ -4433,31 +4433,31 @@ Edwin.
 
 @itemize @bullet
 @item
-abbrev mode (edwin has dynamic abbreviations
+abbrev mode (edwin has dynamic abbreviations)
 
 @item
-emulation modes: edt, vi, vi
+emulation modes: edt, vi, vip
 
 @item
-file lock
+file locks
 
 @item
-language modes: emacs-lisp, fortran, lisp, modula-2, prolo
+language modes: emacs-lisp, fortran, lisp, modula-2, prolog
 
 @item
-overwrite mod
+overwrite mode
 
 @item
-picture mod
+picture mode
 
 @item
-slow terminal incremental searc
+slow terminal incremental search
 
 @item
-spellin
+spelling
 
 @item
-tab stop
+tab stops
 
 @item
 text formatter modes: nroff, scribe, tex, latex
