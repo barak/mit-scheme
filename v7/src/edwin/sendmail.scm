@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.68 2000/07/28 15:15:34 cph Exp $
+;;; $Id: sendmail.scm,v 1.69 2000/11/26 04:28:32 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -417,10 +417,10 @@ Here are commands that move to a header field (and create it if there isn't):
 (define-key 'mail '(#\C-c #\C-s) 'mail-send)
 
 (define ((field-mover field))
-  (set-current-point! (mail-position-on-field (current-buffer) field)))
+  (set-current-point! (mail-position-on-field (selected-buffer) field)))
 
 (define ((cc-field-mover field))
-  (set-current-point! (mail-position-on-cc-field (current-buffer) field)))
+  (set-current-point! (mail-position-on-cc-field (selected-buffer) field)))
 
 (define-command mail-to
   "Move point to end of To field."
@@ -538,7 +538,7 @@ Here are commands that move to a header field (and create it if there isn't):
   "Sign letter with contents of ~/.signature file."
   ()
   (lambda ()
-    (insert-file (buffer-end (current-buffer)) "~/.signature")))
+    (insert-file (buffer-end (selected-buffer)) "~/.signature")))
 
 (define-command mail-yank-original
   "Insert the message being replied to, if any (in rmail).
@@ -608,7 +608,7 @@ and don't delete any header fields."
 Numeric argument means justify as well."
   "P"
   (lambda (justify?)
-    (let ((buffer (current-buffer)))
+    (let ((buffer (selected-buffer)))
       (mail-match-header-separator (buffer-start buffer) (buffer-end buffer))
       (fill-individual-paragraphs (re-match-end 0)
 				  (buffer-end buffer)
@@ -622,28 +622,34 @@ Prefix arg means don't delete this window."
   "P"
   (lambda (argument)
     ((ref-command mail-send))
-    (bury-buffer (current-buffer))
+    (bury-buffer (selected-buffer))
     (if (and (not argument)
-	     (not (window-has-no-neighbors? (current-window)))
+	     (not (window-has-no-neighbors? (selected-window)))
 	     (eq? (ref-mode-object rmail)
 		  (buffer-major-mode (window-buffer (other-window)))))
-	(window-delete! (current-window))
+	(window-delete! (selected-window))
 	(select-buffer (previous-buffer)))))
 
 (define-command mail-send
   "Send the message in the current buffer.
-If  mail-interactive  is true, wait for success indication
+If `mail-interactive' is true, wait for success indication
 or error messages, and inform user.
 Otherwise any failure is reported in a message back to
 the user from the mailer."
   ()
   (lambda ()
-    ((ref-variable send-mail-procedure))
-    (buffer-not-modified! (current-buffer))
-    (delete-auto-save-file! (current-buffer))))
+    (let ((buffer (selected-buffer)))
+      (if (if (buffer-pathname buffer)
+	      (prompt-for-confirmation? "Send buffer contents as mail message")
+	      (or (buffer-modified? buffer)
+		  (prompt-for-confirmation? "Message already send; resend")))
+	  (begin
+	    ((ref-variable send-mail-procedure))
+	    (buffer-not-modified! buffer)
+	    (delete-auto-save-file! buffer))))))
 
 (define (sendmail-send-it)
-  (let ((mail-buffer (current-buffer)))
+  (let ((mail-buffer (selected-buffer)))
     (let ((temp-buffer
 	   (prepare-mail-buffer-for-sending mail-buffer
 	     (lambda (start end)
