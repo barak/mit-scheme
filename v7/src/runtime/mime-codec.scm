@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mime-codec.scm,v 14.3 2000/06/15 15:11:29 cph Exp $
+;;; $Id: mime-codec.scm,v 14.4 2000/06/22 03:45:16 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -538,3 +538,153 @@
   (set! base64-char-table char-table)
   (set! base64-digit-table digit-table)
   unspecific)
+
+;;;; Decode BinHex 4.0
+
+(define-structure (binhex40-decoding-context
+		   (conc-name binhex40-decoding-context/)
+		   (constructor make-binhex40-decoding-context (port)))
+  (port #f read-only #t)
+  (state 'SEEKING-COMMENT)
+  (line-buffer "")
+  (input-buffer (make-string 4) read-only #t)
+  (input-index 0)
+  (output-buffer (make-string 3) read-only #t))
+
+(define (decode-binhex40:initialize port text?)
+  text?					;ignored
+  (make-binhex40-decoding-context port))
+
+(define (decode-binhex40:finalize context)
+  (let ((state (binhex40-decoding-context/state context)))
+    (case (binhex40-decoding-context/state context)
+      ((SEEKING-COMMENT)
+       (error "Missing BinHex 4.0 initial comment line."))
+      ((SEEKING-COLON)
+       (error "Missing BinHex 4.0 starting character."))
+      ((DECODING)
+       (error "Missing BinHex 4.0 terminating character."))
+      ((IGNORING)
+       unspecific)
+      (else
+       (error "Illegal decoder state:" state)))))
+
+(define (decode-binhex40:update context string start end)
+  (let ((state (binhex40-decoding-context/state context)))
+    (case (binhex40-decoding-context/state context)
+      ((SEEKING-COMMENT)
+       (decode-binhex40-seeking-comment context string start end))
+      ((SEEKING-COLON)
+       (decode-binhex40-seeking-colon context string start end))
+      ((DECODING)
+       (decode-binhex40-decoding context string start end))
+      ((IGNORING)
+       unspecific)
+      (else
+       (error "Illegal decoder state:" state)))))
+
+(define (decode-binhex40-seeking-comment context string start end)
+  (let loop
+      ((s
+	(string-append (binhex40-decoding-context/line-buffer context)
+		       (substring string start end))))
+    (let ((index (string-find-next-char s #\newline)))
+      (cond ((not index)
+	     (set-binhex40-decoding-context/line-buffer! context s))
+	    ((re-substring-match binhex40-initial-comment s 0 index)
+	     (set-binhex40-decoding-context/state! context
+						   'SEEKING-COLON)
+	     (set-binhex40-decoding-context/line-buffer! context #f)
+	     (decode-binhex40:update context s
+				     (fix:+ index 1)
+				     (string-length s)))
+	    (else
+	     (loop (string-tail s (fix:+ index 1))))))))
+
+(define (decode-binhex40-seeking-colon context string start end)
+  (let ((index (substring-find-next-char string start end #\:)))
+    (if index
+	(begin
+	  (set-binhex40-decoding-context/state! context 'DECODING)
+	  (decode-binhex40:update context string (fix:+ index 1) end)))))
+
+(define (decode-binhex40-decoding context string start end)   
+  (let ((buffer (binhex40-decoding-context/input-buffer context)))
+    (let loop
+	((start start)
+	 (index (binhex40-decoding-context/input-index context)))
+      (if (fix:< start end)
+	  (let ((char (string-ref string start))
+		(start (fix:+ start 1)))
+	    (cond ((char=? char #\:)
+		   (if (fix:> index 0)
+		       (begin
+			 (string-set! buffer index char)
+			 (decode-binhex40-quantum context)))
+		   (set-binhex40-decoding-context/state! context 'IGNORING))
+		  ((fix:< (vector-8b-ref binhex40-char-table
+					 (char->integer char))
+			  #x40)
+		   (string-set! buffer index char)
+		   (if (fix:< index 3)
+		       (loop start (fix:+ index 1))
+		       (begin
+			 (decode-binhex40-quantum context)
+			 (loop start 0))))
+		  (else
+		   (loop start index))))
+	  (set-binhex40-decoding-context/input-index! context index)))))
+
+(define (decode-binhex40-quantum context)
+  (let ((input (binhex40-decoding-context/input-buffer context))
+	(output (binhex40-decoding-context/output-buffer context))
+	(port (binhex40-decoding-context/port context)))
+    (write-substring output 0
+		     (decode-binhex40-quantum-1 input output)
+		     port)))
+
+(define (decode-binhex40-quantum-1 input output)
+  (let ((d1 (decode-binhex40-char input 0))
+	(d2 (decode-binhex40-char input 1)))
+    (cond ((char=? (string-ref input 2) #\:)
+	   (vector-8b-set! output 0 (fix:+ (fix:lsh d1 2) (fix:lsh d2 -4)))
+	   1)
+	  ((char=? (string-ref input 3) #\:)
+	   (let ((n
+		  (fix:+ (fix:+ (fix:lsh d1 10) (fix:lsh d2 4))
+			 (fix:lsh (decode-binhex40-char input 2) -2))))
+	     (vector-8b-set! output 0 (fix:lsh n -8))
+	     (vector-8b-set! output 1 (fix:and #xFF n)))
+	   2)
+	  (else
+	   (let ((n
+		  (fix:+ (fix:+ (fix:lsh d1 18)
+				(fix:lsh d2 12))
+			 (fix:+ (fix:lsh (decode-binhex40-char input 2) 6)
+				(decode-binhex40-char input 3)))))
+	     (vector-8b-set! output 0 (fix:lsh n -16))
+	     (vector-8b-set! output 1 (fix:and #xFF (fix:lsh n -8)))
+	     (vector-8b-set! output 2 (fix:and #xFF n))
+	     3)))))
+
+(define (decode-binhex40-char input index)
+  (let ((digit
+	 (vector-8b-ref binhex40-char-table (vector-8b-ref input index))))
+    (if (fix:> digit #x40)
+	(error "Misplaced #\: in BinHex 4.0 input."))
+    digit))
+
+(define binhex40-initial-comment
+  "^(This file must be converted with BinHex 4\\.0)[ \t]*$")
+
+(define binhex40-digit-table
+  "!\"#$%&\'()*+,-012345689@ABCDEFGHIJKLMNPQRSTUVXYZ[`abcdefhijklmpqr")
+
+(define binhex40-char-table
+  (make-string 256 (integer->char #xff)))
+
+(do ((code 0 (fix:+ code 1)))
+    ((fix:= code 64))
+  (vector-8b-set! binhex40-char-table
+		  (vector-8b-ref binhex40-digit-table code)
+		  code))
