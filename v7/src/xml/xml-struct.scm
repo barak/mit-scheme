@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.24 2003/09/17 03:20:45 cph Exp $
+$Id: xml-struct.scm,v 1.25 2003/09/24 03:26:23 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -119,6 +119,9 @@ USA.
 	((combo-name? name) (combo-name-simple name))
 	(else (error:not-xml-name name 'XML-NAME-simple))))
 
+(define (xml-name-simple=? name simple)
+  (eq? (xml-name-simple name) simple))
+
 (define (xml-name-string name)
   (symbol-name (xml-name-simple name)))
 
@@ -126,6 +129,9 @@ USA.
   (cond ((xml-nmtoken? name) #f)
 	((combo-name? name) (universal-name-uri (combo-name-universal name)))
 	(else (error:not-xml-name name 'XML-NAME-URI))))
+
+(define (xml-name-uri=? name uri)
+  (eq? (xml-name-uri name) uri))
 
 (define (xml-name-prefix name)
   (let ((simple
@@ -139,6 +145,9 @@ USA.
 	  ((combo-name? name) (simple (combo-name-simple name)))
 	  (else (error:not-xml-name name 'XML-NAME-PREFIX)))))
 
+(define (xml-name-prefix=? name prefix)
+  (eq? (xml-name-prefix name) prefix))
+
 (define (xml-name-local name)
   (cond ((xml-nmtoken? name)
 	 (let ((s (symbol-name name)))
@@ -148,6 +157,9 @@ USA.
 		 name))))
 	((combo-name? name) (universal-name-local (combo-name-universal name)))
 	(else (error:not-xml-name name 'XML-NAME-LOCAL))))
+
+(define (xml-name-local=? name local)
+  (eq? (xml-name-local name) local))
 
 (define (xml-name=? n1 n2)
   (let ((lose (lambda (n) (error:not-xml-name n 'XML-NAME=?))))
@@ -340,6 +352,11 @@ USA.
 (define (xml-attribute-value? object)
   (and (pair? object)
        (list-of-type? object xml-attribute-value-item?)))
+
+(define (simple-xml-attribute-value? object)
+  (and (pair? object)
+       (xml-char-data? (car object))
+       (null? (cdr object))))
 
 (define (xml-attribute-value-item? object)
   (or (xml-char-data? object)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.25 2003/09/17 03:20:41 cph Exp $
+$Id: xml.pkg,v 1.26 2003/09/24 03:26:16 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -103,6 +103,7 @@ USA.
 	  set-xml-unparsed-!entity-id!
 	  set-xml-unparsed-!entity-name!
 	  set-xml-unparsed-!entity-notation!
+	  simple-xml-attribute-value?
 	  xml-!attlist-definitions
 	  xml-!attlist-name
 	  xml-!attlist?
@@ -151,10 +152,14 @@ USA.
 	  xml-intern
 	  xml-name-hash
 	  xml-name-local
+	  xml-name-local=?
 	  xml-name-prefix
+	  xml-name-prefix=?
 	  xml-name-simple
+	  xml-name-simple=?
 	  xml-name-string
 	  xml-name-uri
+	  xml-name-uri=?
 	  xml-name=?
 	  xml-name?
 	  xml-nmtoken?
@@ -184,7 +189,7 @@ USA.
 	  read-xml-file
 	  string->xml
 	  substring->xml)
-  (export (runtime xml structure)
+  (export (runtime xml)
 	  alphabet:name-initial
 	  alphabet:name-subsequent))
 

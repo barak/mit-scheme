@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.40 2003/09/16 04:32:59 cph Exp $
+$Id: xml-parser.scm,v 1.41 2003/09/24 03:26:19 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -72,11 +72,6 @@ USA.
     (*parser
      (alt (sbracket description "\"" "\"" (match (* (alphabet a1))))
 	  (sbracket description "'" "'" (match (* (alphabet a2))))))))
-
-(define (simple-attribute-value? v)
-  (and (pair? v)
-       (string? (car v))
-       (null? (cdr v))))
 
 (define (read-xml-file pathname #!optional pi-handlers)
   (call-with-input-file pathname
@@ -183,7 +178,7 @@ USA.
 (define (transform-declaration attributes text-decl? p)
   (if (not (for-all? attributes
 	     (lambda (attribute)
-	       (simple-attribute-value? (cdr attribute)))))
+	       (simple-xml-attribute-value? (cdr attribute)))))
       (perror p "XML declaration can't contain entity refs" attributes))
   (let ((finish
 	 (lambda (version encoding standalone)
@@ -355,7 +350,7 @@ USA.
 			"Incorrect attribute value"
 			(string->symbol name)))
 	    (if (and (not (eq? type '|CDATA|))
-		     (simple-attribute-value? av))
+		     (simple-xml-attribute-value? av))
 		(set-car! av (trim-attribute-whitespace (car av))))
 	    attributes)
 	  (begin
@@ -479,7 +474,7 @@ USA.
 		      (pn (cdr name)))
 		  (let ((uri
 			 (lambda ()
-			   (if (not (simple-attribute-value? value))
+			   (if (not (simple-xml-attribute-value? value))
 			       (perror pn "Illegal namespace URI" value))
 			   (if (string-null? (car value))
 			       #f	;xmlns=""
@@ -892,7 +887,7 @@ USA.
 	      (let ((entity (find-parameter-entity name)))
 		(and entity
 		     (xml-parameter-!entity-value entity))))))
-    (if (simple-attribute-value? value)
+    (if (simple-xml-attribute-value? value)
 	(car value)
 	(begin
 	  (set! *parameter-entities* 'STOP)
@@ -922,7 +917,7 @@ USA.
 		(let ((value (xml-!entity-value entity)))
 		  (cond ((xml-external-id? value) #f)
 			(in-attribute? value)
-			((simple-attribute-value? value)
+			((simple-xml-attribute-value? value)
 			 (reparse-entity-value-string name (car value) p))
 			(else
 			 (if (or *standalone?* *internal-dtd?*)
@@ -1113,7 +1108,7 @@ USA.
 		    (list name type
 			  (if (and (not (eq? type '|CDATA|))
 				   (pair? default)
-				   (simple-attribute-value? (cdr default)))
+				   (simple-xml-attribute-value? (cdr default)))
 			      (list (car default)
 				    (trim-attribute-whitespace (cadr default)))
 			      default))))
