@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules1.scm,v 4.34 1993/02/28 06:18:12 gjr Exp $
+$Id: rules1.scm,v 4.35 1993/07/01 03:22:47 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -89,34 +89,155 @@ MIT in each case. |#
   (object->address (standard-move-to-target! source target)))
 
 (define-rule statement
-  ;; add a constant offset (in long words) to a register's contents
-  (ASSIGN (REGISTER (? target))
-	  (OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
-  (standard-unary-conversion source target
-    (lambda (source target)
-      (load-offset (* 4 offset) source target))))
-
-(define-rule statement
-  ;; add a constant offset (in bytes) to a register's contents
-  (ASSIGN (REGISTER (? target))
-	  (BYTE-OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
-  (standard-unary-conversion source target
-    (lambda (source target)
-      (load-offset offset source target))))
-
-(define-rule statement
-  ;; read an object from memory
-  (ASSIGN (REGISTER (? target)) (OFFSET (REGISTER (? address)) (? offset)))
-  (standard-unary-conversion address target
-    (lambda (address target)
-      (load-word (* 4 offset) address target))))
-
-(define-rule statement
   ;; pop an object off the stack
   (ASSIGN (REGISTER (? target)) (POST-INCREMENT (REGISTER (? reg)) 1))
   (QUALIFIER (= reg regnum:stack-pointer))
   (LAP
    (LDWM () (OFFSET 4 0 ,regnum:stack-pointer) ,(standard-target! target))))
+
+;;;; Indexed modes
+
+(define-rule statement
+  ;; read an object from memory
+  (ASSIGN (REGISTER (? target))
+	  (OFFSET (REGISTER (? base)) (MACHINE-CONSTANT (? offset))))
+  (standard-unary-conversion base target
+    (lambda (base target)
+      (load-word (* 4 offset) base target))))
+
+(define-rule statement
+  ;; read an object from memory
+  (ASSIGN (REGISTER (? target))
+	  (OFFSET (REGISTER (? base)) (REGISTER (? offset))))
+  (let ((base (standard-source! base))
+	(offset (standard-source! offset)))
+    (let ((target (standard-target! target)))
+      (LAP (LDWX (S) (INDEX ,offset 0 ,base) ,target)))))
+
+;;;; Address manipulation
+
+(define-rule statement
+  ;; add a constant offset (in long words) to a register's contents
+  (ASSIGN (REGISTER (? target))
+	  (OFFSET-ADDRESS (REGISTER (? base))
+			  (MACHINE-CONSTANT (? offset))))
+  (standard-unary-conversion base target
+    (lambda (base target)
+      (load-offset (* 4 offset) base target))))
+
+(define-rule statement
+  ;; add a constant offset (in bytes) to a register's contents
+  (ASSIGN (REGISTER (? target))
+	  (BYTE-OFFSET-ADDRESS (REGISTER (? base))
+			       (MACHINE-CONSTANT (? offset))))
+  (standard-unary-conversion base target
+    (lambda (base target)
+      (load-offset offset base target))))
+
+(define-rule statement
+  ;; add a constant offset (in bytes) to a register's contents
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT-OFFSET-ADDRESS (REGISTER (? base))
+				(MACHINE-CONSTANT (? offset))))
+  (standard-unary-conversion base target
+    (lambda (base target)
+      (load-offset (* 8 offset) base target))))
+
+(define-rule statement
+  ;; add a computed offset (in long words) to a register's contents
+  (ASSIGN (REGISTER (? target))
+	  (OFFSET-ADDRESS (REGISTER (? base))
+			  (REGISTER (? offset))))
+  (indexed-load-address target base offset 4))
+
+(define-rule statement
+  ;; add a computed offset (in long words) to a register's contents
+  (ASSIGN (REGISTER (? target))
+	  (BYTE-OFFSET-ADDRESS (REGISTER (? base))
+			       (REGISTER (? offset))))
+  (indexed-load-address target base offset 1))
+
+(define-rule statement
+  ;; add a computed offset (in long words) to a register's contents
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT-OFFSET-ADDRESS (REGISTER (? base))
+				(REGISTER (? offset))))
+  (indexed-load-address target base offset 8))
+
+;;; Optimized address operations
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (OFFSET-ADDRESS (OBJECT->ADDRESS (REGISTER (? base)))
+			  (OBJECT->DATUM (REGISTER (? index)))))
+  (indexed-object->address target base index 4))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (BYTE-OFFSET-ADDRESS (OBJECT->ADDRESS (REGISTER (? base)))
+			       (OBJECT->DATUM (REGISTER (? index)))))
+  (indexed-object->address target base index 1))
+
+;; These have to be here because the instruction combiner
+;; operates by combining one piece at a time, and the intermediate
+;; pieces can be generated.
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (OFFSET-ADDRESS (OBJECT->ADDRESS (REGISTER (? base)))
+			  (REGISTER (? index))))
+  (indexed-object->address target base index 4))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (BYTE-OFFSET-ADDRESS (OBJECT->ADDRESS (REGISTER (? base)))
+			       (REGISTER (? index))))
+  (indexed-object->address target base index 1))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (OFFSET-ADDRESS (REGISTER (? base))
+			  (OBJECT->DATUM (REGISTER (? index)))))
+  (indexed-object->datum target base index 4))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (BYTE-OFFSET-ADDRESS (REGISTER (? base))
+			       (OBJECT->DATUM (REGISTER (? index)))))
+  (indexed-object->datum target base index 1))
+
+(define (indexed-load-address target base index scale)
+  (let ((base (standard-source! base))
+	(index (standard-source! index)))
+    (%indexed-load-address (standard-target! target) base index scale)))
+
+(define (indexed-object->datum target base index scale)
+  (let ((base (standard-source! base))
+	(index (standard-source! index))
+	(temp (standard-temporary!)))
+    (let ((target (standard-target! target)))
+      (LAP ,@(object->datum index temp)
+	   ,@(%indexed-load-address target base temp scale)))))
+
+(define (indexed-object->address target base index scale)
+  (let ((base (standard-source! base))
+	(index (standard-source! index)))
+    (let ((target (standard-target! target)))
+      (LAP ,@(%indexed-load-address target base index scale)
+	   ,@(object->address target)))))
+
+(define (%indexed-load-address target base index scale)
+  (case scale
+    ((4)
+     (LAP (SH2ADDL () ,index ,base ,target)))
+    ((8)
+     (LAP (SH3ADDL () ,index ,base ,target)))
+    ((1)
+     (LAP (ADDL () ,index ,base ,target)))
+    ((2)
+     (LAP (SH1ADDL () ,index ,base ,target)))
+    (else
+     (error "%indexed-load-address: Unknown scale"))))
 
 ;;;; Loading of Constants
 
@@ -198,15 +319,15 @@ MIT in each case. |#
   (load-entry label target))
 
 ;;;; Transfers to Memory
-		    
+
 (define-rule statement
   ;; store an object in memory
-  (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
+  (ASSIGN (OFFSET (REGISTER (? base)) (MACHINE-CONSTANT (? offset)))
 	  (? source register-expression))
   (QUALIFIER (word-register? source))
   (store-word (standard-source! source)
 	      (* 4 offset)
-	      (standard-source! address)))
+	      (standard-source! base)))
 
 (define-rule statement
   ;; Push an object register on the heap
@@ -233,10 +354,11 @@ MIT in each case. |#
 ;; Cheaper, common patterns.
 
 (define-rule statement
-  (ASSIGN (OFFSET (REGISTER (? address)) (? offset)) (MACHINE-CONSTANT 0))
+  (ASSIGN (OFFSET (REGISTER (? base)) (MACHINE-CONSTANT (? offset)))
+	  (MACHINE-CONSTANT 0))
   (store-word 0
 	      (* 4 offset)
-	      (standard-source! address)))
+	      (standard-source! base)))
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER (? reg)) 1) (MACHINE-CONSTANT 0))
@@ -253,18 +375,30 @@ MIT in each case. |#
 (define-rule statement
   ;; load char object from memory and convert to ASCII byte
   (ASSIGN (REGISTER (? target))
-	  (CHAR->ASCII (OFFSET (REGISTER (? address)) (? offset))))
-  (standard-unary-conversion address target
-    (lambda (address target)
-      (load-byte (+ 3 (* 4 offset)) address target))))
+	  (CHAR->ASCII (OFFSET (REGISTER (? base))
+			       (MACHINE-CONSTANT (? offset)))))
+  (standard-unary-conversion base target
+    (lambda (base target)
+      (load-byte (+ 3 (* 4 offset)) base target))))
 
 (define-rule statement
   ;; load ASCII byte from memory
   (ASSIGN (REGISTER (? target))
-	  (BYTE-OFFSET (REGISTER (? address)) (? offset)))
-  (standard-unary-conversion address target
-    (lambda (address target)
-      (load-byte offset address target))))
+	  (BYTE-OFFSET (REGISTER (? base))
+		       (MACHINE-CONSTANT (? offset))))
+  (standard-unary-conversion base target
+    (lambda (base target)
+      (load-byte offset base target))))
+
+(define-rule statement
+  ;; load ASCII byte from memory
+  (ASSIGN (REGISTER (? target))
+	  (BYTE-OFFSET (REGISTER (? base))
+		       (REGISTER (? offset))))
+  (let ((base (standard-source! base))
+	(offset (standard-source! offset)))
+    (let ((target (standard-target! target)))
+      (LAP (LDBX () (INDEX ,offset 0 ,base) ,target)))))
 
 (define-rule statement
   ;; convert char object to ASCII byte
@@ -281,19 +415,19 @@ MIT in each case. |#
 
 (define-rule statement
   ;; store null byte in memory
-  (ASSIGN (BYTE-OFFSET (REGISTER (? source)) (? offset))
+  (ASSIGN (BYTE-OFFSET (REGISTER (? base)) (MACHINE-CONSTANT (? offset)))
 	  (CHAR->ASCII (CONSTANT #\NUL)))
-  (store-byte 0 offset (standard-source! source)))
+  (store-byte 0 offset (standard-source! base)))
 
 (define-rule statement
   ;; store ASCII byte in memory
-  (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
+  (ASSIGN (BYTE-OFFSET (REGISTER (? base)) (MACHINE-CONSTANT (? offset)))
 	  (REGISTER (? source)))
-  (store-byte (standard-source! source) offset (standard-source! address)))
+  (store-byte (standard-source! source) offset (standard-source! base)))
 
 (define-rule statement
   ;; convert char object to ASCII byte and store it in memory
   ;; register + byte offset <- contents of register (clear top bits)
-  (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
+  (ASSIGN (BYTE-OFFSET (REGISTER (? base)) (MACHINE-CONSTANT (? offset)))
 	  (CHAR->ASCII (REGISTER (? source))))
-  (store-byte (standard-source! source) offset (standard-source! address)))
+  (store-byte (standard-source! source) offset (standard-source! base)))
