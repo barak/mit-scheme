@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.111 2001/08/10 17:11:15 cph Exp $
+$Id: make.scm,v 4.112 2001/08/17 13:00:45 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
      (load-option 'COMPRESS)
      (load-option 'HASH-TABLE)
      (load-option 'RB-TREE)
-     (package/system-loader "compiler" '() 'QUERY)))
+     (load-package-set "compiler")))
   (let ((initialize-package!
 	 (lambda (package-name)
 	   ((environment-lookup (->environment package-name)

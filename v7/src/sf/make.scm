@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.37 2001/07/19 18:25:22 cph Exp $
+$Id: make.scm,v 4.38 2001/08/17 13:01:19 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -32,7 +32,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
      (working-directory-pathname)
      (pathname-as-directory "sf")
      (lambda ()
-       (package/system-loader "sf" '() 'QUERY)))
+       (load-package-set "sf")))
     ((package/reference (find-package '(SCODE-OPTIMIZER))
 			'USUAL-INTEGRATIONS/CACHE!))))
 (add-subsystem-identification! "SF" '(4 37))

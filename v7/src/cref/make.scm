@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.21 2001/08/15 02:59:50 cph Exp $
+$Id: make.scm,v 1.22 2001/08/17 13:00:53 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -33,5 +33,5 @@ USA.
      (pathname-as-directory "cref")
      (lambda ()
        (load-option 'RB-TREE)
-       (package/system-loader "cref" '() #f)))))
+       (load-package-set "cref")))))
 (add-identification! "CREF" 2 0)
