@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/subfre.scm,v 1.5 1990/05/03 15:09:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/subfre.scm,v 1.6 1990/05/04 15:15:18 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -74,11 +74,13 @@ MIT in each case. |#
 
 (define (walk-procedure proc)
   (define (default)
-    ;; This should be OK for open procedures, but perhaps
-    ;; we should look at the closure block for closures.
     (list-transform-negative
 	(block-free-variables (procedure-block proc))
       lvalue-integrated?))
+
+  (define (closure)
+    (block-bound-variables
+     (block-shared-block (procedure-closing-block proc))))
 
   (if (or (not (procedure/closure? proc))
 	  (procedure/trivial-closure? proc))
@@ -86,20 +88,17 @@ MIT in each case. |#
       (let ((how (procedure-closure-cons proc)))
 	(case (car how)
 	  ((NORMAL)
-	   (default))
+	   (closure))
 	  ((DESCENDANT)
-	   ;; This will automatically imply saving the ancestor
+	   ;; This should automatically imply saving the ancestor
 	   ;; for stack overwrites since that is how the free
 	   ;; variables will be obtained.
-	   ;; Is this really true?
-	   ;; What if some of them are in registers?
-	   ;; What if it is a descendant of an indirected procedure?
-	   (default))
+	   (closure))
 	  ((INDIRECTED)
 	   ;; In reality, only the indirection variable or the default
 	   ;; set is needed, depending on where the reference occurs.
 	   ;; This is always safe, however.
-	   (cons (cdr how) (default)))
+	   (cons (cdr how) (closure)))
 	  (else
 	   (error "walk-procedure: Unknown closure method" proc))))))
 
