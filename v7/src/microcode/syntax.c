@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.14 1989/05/03 02:04:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.15 1989/05/16 16:40:15 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -127,6 +127,7 @@ DEFINE_PRIMITIVE ("STRING->SYNTAX-ENTRY", Prim_string_to_syntax_entry, 1, 1, 0)
       case '2': result |= (1 << 17); break;
       case '3': result |= (1 << 18); break;
       case '4': result |= (1 << 19); break;
+      case 'p': result |= (1 << 20); break;
       case ' ': break;
       default: error_bad_range_arg (1);
       }
@@ -309,8 +310,12 @@ DEFINE_PRIMITIVE ("SCAN-BACKWARD-PREFIX-CHARS", Prim_scan_backward_prefix_chars,
     {
       WIN_IF_LEFT_END (start);
       LEFT_QUOTED_P (start, quoted);
-      WIN_IF (quoted ||
-	      ((SYNTAX_ENTRY_CODE (PEEK_LEFT (start))) != syntaxcode_quote));
+      WIN_IF (quoted);
+      {
+	long sentry = (PEEK_LEFT (start));
+	WIN_IF (! (((SYNTAX_ENTRY_CODE (sentry)) == syntaxcode_quote)
+		   || (SYNTAX_ENTRY_PREFIX (sentry))));
+      }
       MOVE_LEFT (start);
     }
 }

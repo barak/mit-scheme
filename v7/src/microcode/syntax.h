@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.h,v 1.4 1989/05/01 19:38:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.h,v 1.5 1989/05/16 16:39:58 cph Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -57,6 +57,7 @@ should have been included along with this file. */
 #define SYNTAX_ENTRY_COMSTART_SECOND(entry) (((entry) >> 17) & 1)
 #define SYNTAX_ENTRY_COMEND_FIRST(entry) (((entry) >> 18) & 1)
 #define SYNTAX_ENTRY_COMEND_SECOND(entry) (((entry) >> 19) & 1)
+#define SYNTAX_ENTRY_PREFIX(entry) (((entry) >> 20) & 1)
 
 enum syntaxcode			/* The possible syntax codes. */
   {
