@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.25 1991/05/15 18:13:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.26 1991/05/15 21:18:07 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -470,21 +470,35 @@ MIT in each case. |#
 			 (length subproblems)
 			 " inclusive).")
 			(top-level-loop))))))))))
-
+
 (define (prompt-for-nonnegative-integer prompt limit)
+  (prompt-for-integer prompt 0 limit))
+
+(define (prompt-for-integer prompt lower upper)
   (let loop ()
     (let ((expression
 	   (prompt-for-expression
-	    (string-append prompt
-			   (if limit
-			       (string-append " (0 through "
-					      (number->string (-1+ limit))
-					      " inclusive)")
-			       "")))))
-      (cond ((not (exact-nonnegative-integer? expression))
-	     (debugger-failure prompt " must be nonnegative integer.")
+	    (string-append
+	     prompt
+	     (if lower
+		 (if upper
+		     (string-append " (" (number->string lower)
+				    " through "
+				    (number->string (- upper 1))
+				    " inclusive)")
+		     (string-append " (minimum " (number->string lower) ")"))
+		 (if upper
+		     (string-append " (maximum "
+				    (number->string (- upper 1))
+				    ")")
+		     ""))))))
+      (cond ((not (exact-integer? expression))
+	     (debugger-failure prompt " must be exact integer.")
 	     (loop))
-	    ((and limit (>= expression limit))
+	    ((and lower (< expression lower))
+	     (debugger-failure prompt " too small.")
+	     (loop))
+	    ((and upper (>= expression upper))
 	     (debugger-failure prompt " too large.")
 	     (loop))
 	    (else
@@ -641,35 +655,30 @@ MIT in each case. |#
     (if (null? restarts)
 	(debugger-failure "No options to choose from.")
 	(let ((n-restarts (length restarts))
-	      (invoke-option
-	       (lambda (n)
-		 (invoke-restart-interactively (list-ref restarts n)))))
-	  (presentation
-	   (lambda ()
-	     (let ((port (current-output-port)))
-	       (if (= n-restarts 1)
-		   (begin
-		     (write-string "There is only one option:" port)
-		     (newline port)
-		     (write-restarts restarts port)
-		     (if (prompt-for-confirmation "Use this option")
-			 (invoke-option 0)))
-		   (begin
-		     (write-string "Choose an option by number:" port)
-		     (newline port)
-		     (write-restarts restarts port)
-		     (invoke-option
-		      (prompt-for-nonnegative-integer "Option number"
-						      n-restarts)))))))))))
-
-(define (write-restarts restarts port)
-  (do ((restarts restarts (cdr restarts))
-       (index 0 (1+ index)))
-      ((null? restarts))
-    (write-string (string-pad-left (number->string index) 3) port)
-    (write-string ": " port)
-    (write-restart-report (car restarts) port)
-    (newline port)))
+	      (write-index
+	       (lambda (index port)
+		 (write-string (string-pad-left (number->string index) 3) port)
+		 (write-string ":" port))))
+	  (let ((invoke-option
+		 (lambda (n)
+		   (invoke-restart-interactively
+		    (list-ref restarts (- n-restarts n))))))
+	    (presentation
+	     (lambda ()
+	       (let ((port (current-output-port)))
+		 (if (= n-restarts 1)
+		     (begin
+		       (write-string "There is only one option:" port)
+		       (write-restarts restarts port write-index)
+		       (if (prompt-for-confirmation "Use this option")
+			   (invoke-option 1)))
+		     (begin
+		       (write-string "Choose an option by number:" port)
+		       (write-restarts restarts port write-index)
+		       (invoke-option
+			(prompt-for-integer "Option number"
+					    1
+					    (+ n-restarts 1)))))))))))))
 
 ;;;; Advanced hacking commands
 

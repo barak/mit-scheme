@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.106 1991/05/15 18:14:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.107 1991/05/15 21:18:22 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1706,6 +1706,7 @@ MIT in each case. |#
 	  repl/prompt
 	  repl/reader-history
 	  repl/syntax-table
+	  repl:allow-restart-notifications?
 	  repl?
 	  restart
 	  set-cmdl/input-port!
@@ -1735,6 +1736,8 @@ MIT in each case. |#
 	  repl-write/show-hash?)
   (export (runtime debugger-command-loop)
 	  hook/repl-environment)
+  (export (runtime debugger)
+	  write-restarts)
   (initialization (initialize-package!)))
 
 (define-package (runtime save/restore)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.19 1991/03/14 04:27:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.20 1991/05/15 21:17:51 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -37,6 +37,9 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define repl:allow-restart-notifications?
+  true)
+
 (define (initialize-package!)
   (set! *nearest-cmdl* false)
   (set! with-cmdl/input-port
@@ -294,13 +297,15 @@ MIT in each case. |#
 		       message))
 		(if condition
 		    (cmdl-message/append
-		     (if hook/error-decision
+		     (if (and hook/error-decision (condition/error? condition))
 			 (cmdl-message/active
 			  (lambda (cmdl)
 			    cmdl
 			    (hook/error-decision)))
 			 (cmdl-message/null))
-		     (condition-restarts-message condition))
+		     (if repl:allow-restart-notifications?
+			 (condition-restarts-message condition)
+			 (cmdl-message/null)))
 		    (cmdl-message/null))
 		(if (eq? 'INHERIT environment)
 		    (cmdl-message/null)
@@ -334,7 +339,7 @@ MIT in each case. |#
 ;To continue, call RESTART with an option number:" port)
        (write-restarts (filter-restarts (condition/restarts condition)) port
 	 (lambda (index port)
-	   (write-string " (RESTART " port)
+	   (write-string "; (RESTART " port)
 	   (write index port)
 	   (write-string ") =>" port)))))))
 
@@ -358,6 +363,7 @@ MIT in each case. |#
 		 (write-string ";Choose an option by number:" port)
 		 (write-restarts restarts port
 		   (lambda (index port)
+		     (write-string ";" port)
 		     (write-string (string-pad-left (number->string index) 3)
 				   port)
 		     (write-string ":" port)))
@@ -387,7 +393,6 @@ MIT in each case. |#
   (do ((restarts restarts (cdr restarts))
        (index (length restarts) (- index 1)))
       ((null? restarts))
-    (write-string ";" port)
     (write-index index port)
     (write-string " " port)
     (write-restart-report (car restarts) port)
