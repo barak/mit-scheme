@@ -1,10 +1,10 @@
 -*- Text -*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.2 1989/11/23 21:32:46 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.3 1989/11/28 15:56:16 jinx Exp $
 
 	Remarks:
 
-This file describes the compiled code data structures and the macros
+This file describes the compiled-code data structures and macros
 defined in cmpint-md.h and required by cmpint.c and cmpgc.h .
 
 cmpint-md.h is the machine dependent header file that defines many of
@@ -18,7 +18,7 @@ In the following, word and longword are the size of an item that fills
 a processor register, typically 32 bits.  Halfword is half this size,
 and byte is typically 8 bits.
 
-	Description of compiled code objects and relevant types:
+	Description of compiled-code objects and relevant types:
 
 The Scheme compiler compiles scode expressions (often procedure
 definitions) into native code.  As its output, it produces Scheme
@@ -166,7 +166,6 @@ otherwise.  Note that FRAME-SIZE must be less than 127!
 
 	Picture of typical compiled-code block and entry:
 						   
-						   
 		  ----------------------------------------	     
   start_address	  | MANIFEST-VECTOR |		      tl |	     
 		  ----------------------------------------<---------\
@@ -264,9 +263,9 @@ There are (tl + 1) total words in the object.
 in instruction addresses which are always 0 (0 if no alignment
 constraints, 1 if halfword, etc.).
 
-=> In cmpint-md.h machine_word should be 'typedefd' to be the size of the
+=> In cmpint-md.h format_word should be 'typedefd' to be the size of the
 descriptor fields.  It is assumed that the offset field and the format
-field are the same size.
+field are the same size.  This definition is unlikely to need modification.
 
 	Compiled closures:
 
@@ -317,14 +316,14 @@ foo:
 	movl	reg1,0(reg0)
 	movl	&[format_field | offset_field],reg1	; entry descriptor
 	movl	reg1,NEXT_WORD(reg0)
-	movl	&[jsr opcode],reg1		; jsr absolute opcode/prefix
+	movl	&[JSR absolute opcode],reg1	; jsr absolute opcode/prefix
 	movl	reg1,2*NEXT_WORD(reg0)
 	mova	lambda-1,reg1			; entry point
 	movl	reg1,3*NEXT_WORD(reg0)
 	movl	arg1,4*NEXT_WORD(reg0)		; x
 	movl	5*NEXT_WORD,reg1
 	addl	reg0,reg1,rfree
-	movl	&[tc_compiled_entry | 2*NEXT_WORD],reg1
+	movl	&[TC_COMPILED_ENTRY | 2*NEXT_WORD],reg1
 	addl	reg0,reg1,retval
 	ret
 
@@ -338,25 +337,25 @@ lambda-1:
 Thus the closure would look like
 
 	----------------------------------------
-	| MANIFEST_CLOSURE |                 4 |
+	| MANIFEST-CLOSURE |                 4 |
 	----------------------------------------
 	|   format_field   |    offset_field   |
 	----------------------------------------
-entry	|   jsr opcode                         |
+entry	|   JSR absolute opcode                |
 	----------------------------------------
 	|   address of lambda-1                |
 	----------------------------------------
 retadd	|   value of x                         |
 	----------------------------------------
 
-and retlnk would get the address of retadd at runtime.  Thus x_offset
+and retlnk would get the address of retadd at run time.  Thus x_offset
 would be 0.
 
 => The macro COMPILED_CLOSURE_ENTRY_SIZE in cmpint-md.h specifies the
 size of a compiled closure entry (there may be many in a single
-compiled closure object) in machine_word's.  In the example above this
-would be 6 machine_word's (2 format and gc, 2 for jsr opcode, and 2
-for the address of the real entry point).
+compiled closure block) in bytes.  In the example above this would be
+12 bytes (4 format and gc, 4 for JSR opcode, and 4 for the
+address of the real entry point).
 
 => The macro EXTRACT_CLOSURE_ENTRY_ADDRESS in cmpint-md.h is used to
 extract the real address of the entry point from a closure object when
@@ -368,7 +367,143 @@ the address of lambda-1.
 => The macro STORE_CLOSURE_ENTRY_ADDRESS in cmpint-md.h is the inverse
 of EXTRACT_CLOSURE_ENTRY_ADDRESS.  That is, given the address of a
 closure entry point, and a real entry point, it stores the real entry
-point in the closure object.  In the example above, 
+point in the closure object.  In the example above, given the closure
+for lambda-1, and a different entry point, say for lambda-2, it would
+make the closure jump to lambda-2 instead.
+
+	Interrupts
+
+MIT Scheme polls for interrupts.  That is, interrupt processing is
+divided into two stages:
+
+- When an asynchronous interrupt arrives, the handler (written in C)
+invoked by the operating system sets a bit in a pending-interrupts
+mask, stores the relevant information (if any) in a queue, and
+proceeds the computation where it was interrupted.
+
+- The interpreter and compiled code periodically check whether an
+interrupt is pending and if so, invoke an interrupt handler written in
+Scheme to process the interrupt.  The interpreter checks for
+interrupts at the apply point.  Compiled code currently checks at
+every procedure entry (including loops) and at every continuation
+invocation.  This may change in the future, although it will always be
+the case that interrupts will be checked at least once in each
+iteration of a loop or recursion.
+
+Compiled code does not actually check the bits in the mask to
+determine whether an interrupt is pending.  It assumes that the
+first-level interrupt handler (the handler written in C) not only sets
+the bits, but also changes the copy of the MemTop (top of consing
+area) pointer used by the compiler so that it will appear that we have
+run out of consing room.  Thus compiled code merely checks whether the
+Free pointer (pointer into the heap) is numerically larger than the
+MemTop pointer, and if so it invokes an assembly-language or C utility
+that decides whether a garbage collection is needed or an interrupt
+must be processed.  Sometimes this utility will decide that the
+interrupt need not be processed (it is disabled, for example), and
+will need to return to the compiled code skipping the interrupt check
+since otherwise we will get into an infinite loop.
+
+The interrupt check code is fixed (so that the handler can determine
+how much code to skip) and comes in two varieties: closure interrupt
+code, and normal-entry (other) interrupt code.  Normal-entry interrupt
+code is always the first code in an entry point (procedure or
+continuation, but not closure code) and merely compares the Free and
+MemTop pointers and branches.  Closure code does this comparison after
+setting up the closure object.  Closure code assumes that the closure
+object is in the first parameter location (the closure itself is
+argument 0) so that free variables can be fetched.  Thus a closure
+label must first set this up correctly, and then check for interrupts.
+
+In pseudo-assembly language, a "normal" entry might look like
+
+gc_or_int	LOADI	#interrupt-handler-index,rindex
+		LOADA	entry,rentry
+		JMP	scheme-to-interface
+		format word and gc word for the entry
+entry		CMP	Free,MemTop
+		BGE	gc_or_int
+after_entry	<actual code for the entry>
+
+a "closure" entry might look like (this is not in the closure object,
+but in the code block to which the closure object points)
+
+gc_or_int	LOADI	#interrupt-handler-index,rindex
+		LOADA	entry,rentry
+		JMP	scheme-to-interface
+		format word and gc word for the entry
+entry		ADDI	offset,retadd,rclosure	; bump ret. add. to entry point
+		ORI	#[TC_CLOSURE | 0],rclosure
+		PUSH	rclosure		; arguments on the stack
+		CMP	Free,MemTop
+		BGE	gc_or_int
+after_entry	<actual code for the entry>
+
+The following macros from cmpint-md.h are used by the C utility and
+handler to determine how much code to skip:
+
+=> ENTRY_SKIPPED_CHECK_OFFSET is the number of bytes between entry and
+after_entry in a normal entry.
+
+=> CLOSURE_SKIPPED_CHECK_OFFSET is the number of bytes between entry
+and after_entry in a closure entry.
+
+	Important considerations:
+
+The Scheme compiled code register set includes the current copy of the
+Free pointer, but does not include the copy of MemTop, although it is
+mostly constant.  The reason is that the C-level interrupt handler
+does not have convenient access to the register set at the point of
+the interrupt, and thus would have a hard time changing the version of
+MemTop used by compiled code at the point of the interrupt.  Thus the
+copy of MemTop used by compiled code is kept in memory.
+
+On machines where register-to-memory comparisons can be done directly
+this is no problem, but on load/store architectures (most RISCs for
+example), this is not feasible.  Furthermore, most RISCs have a few
+cycles of delay for memory loads, and adjacent instructions may not be
+interlocked by the hardware.  Thus a sequence like
+
+	LOAD	MemTop(Regblock),Rtemp
+	CMP	Rfree,Rtemp
+	BGE	gc_or_int
+
+may be very slow.  Furthermore NOPs may have to be inserted explicitly
+between the LOAD and CMP instructions if the hardware does not insert
+them dynamically.
+
+Since MIT Scheme's interrupt response is not immediate, and polling is
+frequent, the following sequence can be used instead:
+
+	CMP	Rfree,Rmemtoop
+	BGE	gc_or_int
+	LOAD	MemTop(Regblock),Rmemtop
+
+Where Rmemtop is a register that holds a recent value of MemTop and is
+reloaded at every interrupt check.  Thus interrupt processing will be
+delayed by one entry point.  In other words, if the sequence of entry
+points executed dynamically is ep1, ep2, ep3, and an asynchronous
+interrupt occurs between ep1 and ep2, the interrupt handler will not
+be invoked until ep3, rather than ep2.
+
+This instruction sequence eliminates the need to wait for the LOAD to
+complete, and the LOAD will have completed (or will be handled by the
+hardware's interlock mechanism) by the next check since at least one
+instruction (a branch instruction), and often many more, will
+intervene.
+
+Note that this delayed checking does not affect garbage collection
+interruptions since MemTop is constant between garbage collections,
+and thus the value being loaded is always the same, in the absence of
+asynchronous interrupts.
+
+Various operating systems allow the signal handler convenient access
+to the interrupted code's register set.  In such a situation, the LOAD
+instruction can be eliminated and the C-level interrupt handler can
+modify Rmemtop directly.  Rmemtop should be chosen from the
+caller-saves convention registers if possible, since these registers
+must be explicitly saved by the signal handler, rather than implicitly
+by the calling convention.
 
 	External calls from compiled code:
 
@@ -376,11 +511,11 @@ Many calls in scheme code (and particularly in large programs) are
 calls to independently compiled procedures or procedures appearing at
 the top level of a file.  All these calls are calls to potentially
 unknown procedures since the names to which they are bound can be
-redefined dynamically at run time.  
+unbound or redefined dynamically at run time.  
 
 The code issued by the compiler for such an external call must take
-into account the possibility of runtime redefinition or assignment.
-This is done as follows:
+into account the possibility of the lack of a valid value, run-time
+definition, and run-time assignment.  This is done as follows:
 
 For each external procedure called with a fixed number of arguments
 (more on this below), a small contiguous space is allocated in the
@@ -393,14 +528,13 @@ technical reasons) being passed to the procedure.
 These locations will be replaced at load time by an absolute jump to
 the correct entry point of the called procedure if the number of
 arguments matches and the callee (target procedure) is compiled, or by
-an an absolute jump to some utility code generated on the fly to
-interface the caller and the callee (usually called a trampoline
-procedure).  Note that both procedures need not be in the same
-compiled-code block.
+an absolute jump to some utility code generated on the fly to
+interface the caller and the callee (called a trampoline procedure).
+Note that both procedures need not be in the same compiled-code block.
 
 The fixed code in the code section of the compiled-code block contains
-a branch instruction to this space allocated in the "constants"
-section.
+a pc-relative branch instruction to this space allocated in the
+"constants" section.
 
 When the compiled-code block is loaded, a linker that resolves these
 references and replaces the name and arguments with machine-specific
@@ -413,30 +547,30 @@ so no instructions are issued to check it at run time.  It is for this
 reason that the number of arguments is part of the information left by
 the compiler in the "constants" section.
 
-These entries in the "constants" section are called execute caches or
-"UUO" links for historical reasons.  They must be large enough to
-contain the instructions required for an absolute jump (and possibly
-some delay slot instructions in a RISC-style machine), and the number
-of arguments passed in the call.  This number of arguments is not used
-in the call sequence, but is used by the linker when initially linking
-and when relinking because of redefinition or assignment.
+These entries in the "constants" section are called execute caches,
+operator links, or "UUO" links for historical reasons.  They must be
+large enough to contain the instructions required for an absolute jump
+(and possibly some delay slot instructions in a RISC-style machine),
+and the number of arguments passed in the call.  This number of
+arguments is not used in the call sequence, but is used by the linker
+when initially linking and when relinking.
 
-All such "UUO" links are contiguous in the "constants" section, and
-the whole lot is preceded by a GC header of type TC_LINKAGE_SECTION
-which contains two fields:
+All execute caches are typically contiguous in the "constants"
+section, and the whole lot is preceded by a GC header of type
+TC_LINKAGE_SECTION which contains two fields:
 
-The least significant halfword of the header contains the size in
-longwords of the "UUO" section (note that each link entry may take up
-more than one longword).  The remaining bits (excepting the type code)
-MUST be 0.  If a file makes enough external calls that this halfword
-field cannot hold the size, the links must be separated into multiple
-blocks each with its own header.
+The least-significant halfword of the header contains the size in
+longwords of the execute-cache section (note that each cache entry may
+take up more than one longword).  The remaining bits (ignoring the
+type code) MUST be 0.  If a file makes enough external calls that this
+halfword field cannot hold the size, the links caches be separated into
+multiple blocks each with its own header.
 
 Occasionally a procedure is called with more than one number of
 arguments within the same file.  For example, the LIST procedure may
 be called with three and seven arguments in the same file.  In this
-case there would be two "UUO" links to LIST.  One would correspond to
-the argument count of three, and the other to seven.
+case there would be two execute caches for LIST.  One would correspond
+to the argument count of three, and the other to seven.
 
 As an example, consider the code generated for
 
@@ -444,7 +578,7 @@ As an example, consider the code generated for
 
 where sort is the "global" procedure sort.
 
-The code in the code section would be
+The code section would contain
 	
 	<compute some predicate>
 	push	<some predicate>
@@ -470,34 +604,33 @@ takes more, the appropriate padding would have to be inserted between
 the symbol SORT and the number 3.  On machines where instructions are
 not necessarily longword aligned (MC68020 and VAX, for example), the
 padding bits for the instruction can be used to contain the argument
+count.  Note that the order of the instructions and the count are
+machine dependent, although typically the instructions precede the
 count.
 
-=> In cmpint-md.h the macro EXECUTE_CACHE_ENTRY_SIZE specifies how
-long (in longwords) each "UUO" link entry is.  This includes the size
-of the instruction(s) and the argument count.  For the example above
-this would be 3, assuming that the jump instruction and the absolute
-address take two words together (the third is for the argument count).
-Note that on RISC machines, this size may have to include the size of
-the branch delay slot instruction.  This branch delay slot instruction
-need not be a NOP.  By choosing the instructions for the procedure
-entry header consistenly with this, this slot can be used in many
-cases.
+=> In cmpint-md.h the macro EXECUTE_CACHE_ENTRY_SIZE specifies the
+length (in longwords) of an execute-cache entry.  This includes the
+size of the instructions and the argument count.  For the example
+above it would be 3, assuming that the jump instruction and the
+absolute address take two words together (the third is for the
+argument count).  Note that on RISC machines, this size may have to
+include the size of the branch delay slot instruction.
 
 => In cmpint-md.h the macro EXTRACT_EXECUTE_CACHE_ARITY specifies how
-to read the argument count from a "UUO" link entry when given the
+to read the argument count from an execute-cache entry when given the
 address of the entry.  In the above example, it would extract 3 from
 the address labelled sort-uuo-link.
 
 => In cmpint-md.h the macro EXTRACT_EXECUTE_CACHE_SYMBOL specifies how
-to read the symbol from a "UUO" link entry (before it is actually
+to read the symbol from an execute-cache entry (before it is actually
 linked) when given the address of an entry.  In the above example, it
 would extract the symbol SORT from sort-uuo-link.
 
 => The macro EXTRACT_EXECUTE_CACHE_ADDRESS in cmpint-md.h fetches the
-real entry point stored in a "UUO" link entry when given the address
-of the entry.  In the above example, it would extract the entry point
-of the sort procedure when given the address of the jump instruction
-(labelled as sort-uuo-link).
+real entry point stored in an execute-cache entry when given the
+address of the entry.  In the above example, it would extract the
+entry point of the sort procedure when given the address of the jump
+instruction (labelled as sort-uuo-link).
 
 => STORE_EXECUTE_CACHE_CODE is the inverse of this, ie. when given a
 target entry point and the address of an execute cache entry, it
@@ -510,13 +643,75 @@ if any, in an execute cache cell.  If the opcodes depend on the actual
 target address, this macro should be a NOP, and all the work should be
 done by STORE_EXECUTE_CACHE_CODE.  These two macros are separated to
 avoid extra work at garbage collection time on architectures where
-some or all of the code need not change.  In the above example, this
+some or all of the code need not change.  In the example above, this
 macro would store the jump opcode.
+
+	Trampolines:
+
+Trampolines are the linker-generated procedures that interface the
+caller and the callee when they are not directly compatible.  They may
+not be directly compatible because the callee may not exist, may not
+be a compiled procedure, or may expect arguments in different
+locations.  Trampolines typically call a C or assembly-language
+procedure to reformat the argument list or invoke the error handler.
+C procedures are invoked using the scheme_to_interface (and
+trampoline_to_interface) code described below.
+
+A trampoline is similar to a compiled closure in that it is a small
+compiled-code block with some additional storage needed by the
+trampoline handler (like the actual procedure being invoked, the
+variable that is unbound, or the number of arguments being passed).
+The code typically invokes an out-of-line handler passing it the
+address of the storage section, and an index into a table of C or
+assembly language procedures that handle the actual transfer.
+
+A typical trampoline looks like
+
+	----------------------------------------
+	| MANIFEST-VECTOR  |                 6 | (4 + words of storage)
+	----------------------------------------
+	| NM-HEADER        |                 3 | (fixed)
+	----------------------------------------
+	|   format_field   |    offset_field   | (fixed)
+	----------------------------------------
+entry	|   LOADI   #index,rindex              | (index varies)
+	----------------------------------------
+	|   JSR     trampoline_to_interface    | (fixed)
+	----------------------------------------
+retadd	|   first word of storage              | (variable)
+	----------------------------------------
+	|   second word of storage             | (variable)
+	----------------------------------------
+
+=> TRAMPOLINE_ENTRY_SIZE, defined in cmpint-md.h, is the size in
+longwords of the compiled-code portion of a trampoline.  This is
+similar to COMPILED_CLOSURE_ENTRY_SIZE but in longwords, and will
+typically represent less storage since an absolute address is not needed
+(or desirable).  It must include the format word and the GC offset for
+the entry.  In the example above it would be 2.
+
+=> TRAMPOLINE_BLOCK_TO_ENTRY is the number of longwords from the start
+of a trampoline's block (the manifest vector header in the picture
+above), and the first instruction, which must be longword aligned.
+This will typically be 3 since there are two scheme header words, and
+the gc and format word typically take one longword together.
+
+=> TRAMPOLINE_STORAGE returns the address of the first storage word in
+a trampoline when given the addres of the first instruction (the entry
+point of the trampoline).  This macro should be correct, but may need
+to change in unusual circumstances.  In the picture above it would
+return the address of the word labelled `retadd' when given the
+address of the word labelled `entry'.
+
+=> STORE_TRAMPOLINE_ENTRY stores the "compiled" code into an "empty"
+trampoline.  It is given the address of the entry point, and the index
+of the C procedure to invoke (they are all in a table), and stores the
+machine code necessary to invoke scheme_to_interface (or
+trampoline_to_interface), passing the index and the address of the
+trampoline storage area as parameters.  In the example above this
+macro would store the LOADI (load immediate) and JSR instructions.
 
 Missing:
 	
-- Description of interrupts (CLOSURE_SKIPPED_CHECK_OFFSET and 
-ENTRY_SKIPPED_CHECK_OFFSET).
-- Description of trampolines + A6_OFFSET.
 - Description of cmpaux-md.m4, register conventions, etc.,
-ASM_RESET_HOOK, ASM_REGISTER_BLOCK.
+ASM_RESET_HOOK, ASM_REGISTER_BLOCK, A6_OFFSET.
