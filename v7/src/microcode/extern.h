@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.30 1988/08/15 20:45:47 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.31 1989/06/16 09:37:49 cph Rel $
  *
  * External declarations.
  *
@@ -186,7 +186,7 @@ extern Pointer *Make_Dummy_History(), Find_State_Space();
 /* Debugging utilities */
 
 extern void Back_Trace(), Handle_Debug_Flags(),
-            Find_Symbol(), Show_Env(), Show_Pure(), 
+            Show_Env(), Show_Pure(), 
 	    Print_Return(), Print_Expression(), Print_Primitive();
 
 /* Conditional utilities */
