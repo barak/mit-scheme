@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mit-syntax.scm,v 14.15 2003/02/14 18:48:13 cph Exp $
+$Id: mit-syntax.scm,v 14.16 2003/03/06 05:04:56 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -368,13 +368,13 @@ USA.
     (if (syntax-match? '(IDENTIFIER
 			 (IDENTIFIER * IDENTIFIER)
 			 IDENTIFIER
-			 (* (IDENTIFIER IDENTIFIER ? IDENTIFIER)))
+			 * (IDENTIFIER IDENTIFIER ? IDENTIFIER))
 		       (cdr form))
 	(let ((type (cadr form))
 	      (constructor (car (caddr form)))
 	      (c-tags (cdr (caddr form)))
 	      (predicate (cadddr form))
-	      (fields (car (cddddr form)))
+	      (fields (cddddr form))
 	      (de (rename 'DEFINE)))
 	  `(,(rename 'BEGIN)
 	    (,de ,type (,(rename 'MAKE-RECORD-TYPE) ',type ',(map car fields)))

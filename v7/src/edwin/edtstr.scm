@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edtstr.scm,v 1.29 2003/02/14 18:28:12 cph Exp $
+$Id: edtstr.scm,v 1.30 2003/03/06 05:05:52 cph Exp $
 
 Copyright 1989,1990,1991,1992,2003 Massachusetts Institute of Technology
 
@@ -116,8 +116,8 @@ USA.
 (define-record-type button-record-type
   (%%make-button number down?)
   button?
-  ((number button/number)
-   (down? button/down?)))
+  (number button/number)
+  (down? button/down?))
 
 (define make-down-button)
 (define make-up-button)
