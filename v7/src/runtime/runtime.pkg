@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.121 1991/09/07 05:31:10 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.122 1991/09/08 02:57:03 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -587,6 +587,7 @@ MIT in each case. |#
 	  condition/type
 	  condition?
 	  continue
+	  default/invoke-condition-handler
 	  error
 	  error-irritant/noise
 	  error:bad-range-argument
@@ -602,6 +603,7 @@ MIT in each case. |#
 	  error:wrong-type-datum
 	  find-restart
 	  format-error-message
+	  hook/invoke-condition-handler
 	  invoke-restart
 	  invoke-restart-interactively
 	  make-condition
@@ -619,12 +621,10 @@ MIT in each case. |#
 	  standard-error-hook
 	  standard-warning-handler
 	  standard-warning-hook
-	  stepping-off!
 	  store-value
 	  use-value
 	  warn
 	  with-simple-restart
-	  without-stepping
 	  write-condition-report
 	  write-restart-report)
   (export (runtime microcode-errors)

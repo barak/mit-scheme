@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.24 1991/09/02 04:23:21 sybok Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.25 1991/09/08 02:56:42 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -441,6 +441,11 @@ MIT in each case. |#
   (set! break-on-signals-types types)
   unspecific)
 
+(define hook/invoke-condition-handler)
+
+(define (default/invoke-condition-handler handler condition)
+  (handler condition))
+
 (define (signal-condition condition)
   (guarantee-condition condition 'SIGNAL-CONDITION)
   (let ((generalizations
@@ -464,9 +469,7 @@ MIT in each case. |#
 	      (or (null? types)
 		  (intersect-generalizations? types)))
 	    (fluid-let ((dynamic-handler-frames (cdr frames)))
-	      (without-stepping
-	       (lambda ()
-		 ((cdar frames) condition))))))
+	      (hook/invoke-condition-handler (cdar frames) condition))))
       (do ((frames static-handler-frames (cdr frames)))
 	  ((null? frames))
 	(if (let ((types (caar frames)))
@@ -474,9 +477,7 @@ MIT in each case. |#
 		  (intersect-generalizations? types)))
 	    (fluid-let ((static-handler-frames (cdr frames))
 			(dynamic-handler-frames '()))
-	      (without-stepping
-	       (lambda ()
-		 ((cdar frames) condition)))))))))
+	      (hook/invoke-condition-handler (cdar frames) condition)))))))
 
 ;;;; Standard Condition Signallers
 
@@ -663,6 +664,7 @@ MIT in each case. |#
   (memq condition-type:error (%condition-type/generalizations type)))
 
 (define (initialize-package!)
+  (set! hook/invoke-condition-handler default/invoke-condition-handler)
   (set! hook/before-restart default/before-restart)
   (set! condition-type:serious-condition
 	(make-condition-type 'SERIOUS-CONDITION false '() false))
@@ -1018,12 +1020,6 @@ MIT in each case. |#
 	(condition-signaller condition-type:file-touch-error
 			     '(FILENAME MESSAGE)
 			     standard-error-handler))
-  (set! stepping-off!
-	(lambda ()
-	  (environment-assign! *old-hook-storage-environment*
-	    'old-stepper-hooks 
-	    (environment-lookup *old-hook-storage-environment*
-				'null-hooks))))
 
   unspecific)
 
@@ -1143,40 +1139,3 @@ MIT in each case. |#
 (define-integrable (guarantee-restarts object operator)
   (if (not (and (list? object) (for-all? object restart?)))
       (error:wrong-type-argument object "list of restarts" operator)))
-
-;; WITHOUT-STEPPING restores the stepper hooks to the state
-;; encountered on each entry to the thunk. It might be better to
-;; restore the hooks to the initial state. I flipped a coin.
-
-(define *old-hook-storage-environment*)
-
-(let-syntax ((ufixed-objects-slot
-	      (macro (name)
-		(fixed-objects-vector-slot name))))
-
-  (define (without-stepping thunk)
-    (define (get-stepper-hooks)
-      (vector-ref (get-fixed-objects-vector)
-		  (ufixed-objects-slot stepper-state)))
-    (let ((old-stepper-hooks)
-	  (null-hooks (hunk3-cons #f #f #f)))
-      (set! *old-hook-storage-environment* (the-environment))
-      (dynamic-wind
-       (lambda ()
-	 (set! old-stepper-hooks (get-stepper-hooks))
-	 (if old-stepper-hooks
-	     ((ucode-primitive primitive-return-step 2)
-	      unspecific null-hooks)))
-       thunk
-       (lambda ()
-	 ((ucode-primitive primitive-return-step 2)
-	  unspecific
-	  (or old-stepper-hooks
-	      null-hooks)))))))
-
-;; Without-stepping doesn't work right with the stepper unless stepping-off!
-;; is included in the thunk passed to it.
-
-(define stepping-off!)
- 
-
