@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.6 1987/12/05 17:02:07 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.7 1987/12/05 17:27:18 cph Exp $
 
 (require 'scheme)
 
@@ -136,10 +136,10 @@ When called, the current buffer will be the Scheme process-buffer.")
 ;(define-key scheme-mode-map "\C-c\C-m" 'xscheme-send-current-line)
 (define-key scheme-mode-map "\C-c\C-y" 'xscheme-yank-previous-send)
 (define-key scheme-mode-map "\C-x\C-e" 'xscheme-send-previous-expression)
-(define-key keymap "\C-cb" 'xscheme-send-breakpoint-interrupt)
-(define-key keymap "\C-cg" 'xscheme-send-control-g-interrupt)
-(define-key keymap "\C-cu" 'xscheme-send-control-u-interrupt)
-(define-key keymap "\C-cx" 'xscheme-send-control-x-interrupt)
+(define-key scheme-mode-map "\C-cb" 'xscheme-send-breakpoint-interrupt)
+(define-key scheme-mode-map "\C-cg" 'xscheme-send-control-g-interrupt)
+(define-key scheme-mode-map "\C-cu" 'xscheme-send-control-u-interrupt)
+(define-key scheme-mode-map "\C-cx" 'xscheme-send-control-x-interrupt)
 
 (defun xscheme-send-string (&rest strings)
   "Send the string arguments to the Scheme process.
