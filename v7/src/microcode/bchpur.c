@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.48 1989/12/06 05:49:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.49 1990/04/01 20:32:02 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,11 +45,6 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "bchgcc.h"
-
-#ifdef FLOATING_ALIGNMENT
-/* This must be fixed. */
-#include "error: bchpur does not handle floating alignment."
-#endif
 
 /* Purify modes */
 
@@ -318,13 +313,16 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
       case_Quadruple:
 	relocate_normal_pointer(copy_quadruple(), 4);
 
+      case TC_BIG_FLONUM:
+	relocate_flonum_setup();
+	goto Move_Vector;
+
       case TC_COMPILED_CODE_BLOCK:
       case TC_ENVIRONMENT:
 	if (purify_mode == PURE_COPY)
 	  break;
 	/* Fall through */
 
-      case TC_BIG_FLONUM:
       case_Purify_Vector:
 	relocate_normal_setup();
       Move_Vector:

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.51 1990/01/23 03:00:23 gjs Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.52 1990/04/01 20:30:17 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,9 +51,8 @@ MIT in each case. */
    Problems with this implementation right now:
    - Purify kills Scheme if there is not enough space in constant space
      for the new object.
-   - Floating alignment is not implemented.
    - It only works on Unix (or systems which support Unix i/o calls).
-   - Dumpworld cannot work because the file is not closed at dump time or
+   - Dumpworld does not work because the file is not closed at dump time or
      reopened at restart time.
    - Command line supplied gc files are not locked, so two processes can try
      to share them and get very confused.
@@ -229,10 +228,9 @@ Setup_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
   /* Allocate.
      The two GC buffers are not included in the valid Scheme memory.
   */
-  Highest_Allocated_Address =
-    ALLOCATE_HEAP_SPACE(Real_Stack_Size + Our_Heap_Size +
-			Our_Constant_Size + (2 * GC_BUFFER_SPACE) +
-			HEAP_BUFFER_SPACE);
+  ALLOCATE_HEAP_SPACE(Real_Stack_Size + Our_Heap_Size +
+		      Our_Constant_Size + (2 * GC_BUFFER_SPACE) +
+		      (HEAP_BUFFER_SPACE + 1));
 
   /* Consistency check 2 */
   if (Heap == NULL)
@@ -241,14 +239,18 @@ Setup_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
     exit(1);
   }
 
-  /* Trim the system buffer space. */
-
-  Highest_Allocated_Address -= (2 * GC_BUFFER_SPACE);
   Heap += HEAP_BUFFER_SPACE;
   INITIAL_ALIGN_FLOAT(Heap);
 
   Constant_Space = Heap + Our_Heap_Size;
-  gc_disk_buffer_1 = Constant_Space + Our_Constant_Size + Real_Stack_Size;
+  ALIGN_FLOAT (Constant_Space);
+
+  /* Trim the system buffer space. */
+
+  Highest_Allocated_Address = (Constant_Space +
+			       (Our_Constant_Size + Real_Stack_Size));
+
+  gc_disk_buffer_1 = Highest_Allocated_Address + 1;
   gc_disk_buffer_2 = (gc_disk_buffer_1 + GC_BUFFER_SPACE);
 
   /* Consistency check 3 */

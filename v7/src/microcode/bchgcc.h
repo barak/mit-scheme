@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.35 1989/10/28 15:37:55 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.36 1990/04/01 20:24:46 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -185,6 +185,34 @@ extern char gc_death_message_buffer[];
   relocate_normal_transport(copy_code, length);				\
   relocate_normal_end();						\
 }
+
+#ifdef FLOATING_ALIGNMENT
+
+#define FLOAT_ALIGN_FREE(free,free_ptr)					\
+do {									\
+  while ((((long) ((free) + 1)) & FLOATING_ALIGNMENT) != 0)		\
+  {									\
+    free += 1;								\
+    *free_ptr++ = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0));		\
+  }									\
+} while (0)
+
+#define relocate_flonum_setup()						\
+{									\
+  relocate_normal_setup();						\
+  FLOAT_ALIGN_FREE(To_Address, To);					\
+  New_Address = (MAKE_BROKEN_HEART (To_Address));			\
+}
+
+#else /* FLOATING_ALIGNMENT */
+
+#define FLOAT_ALIGN_FREE(free,free_ptr)					\
+do {									\
+} while (0)
+
+#define relocate_flonum_setup()	relocate_normal_setup()
+
+#endif /* FLOATING_ALIGNMENT */
 
 /* Typeless objects (implicit types). */
 

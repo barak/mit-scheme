@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.39 1989/12/06 05:48:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.40 1990/04/01 20:26:39 jinx Rel $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,11 +38,6 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "bchgcc.h"
-
-#ifdef FLOATING_ALIGNMENT
-/* This must be fixed. */
-#include "error: bchgcl does not handle floating alignment."
-#endif
 
 SCHEME_OBJECT *
 GCLoop(Scan, To_ptr, To_Address_ptr)
@@ -250,6 +245,9 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
 	relocate_normal_pointer(copy_quadruple(), 4);
 
       case TC_BIG_FLONUM:
+	relocate_flonum_setup();
+	goto Move_Vector;
+
       case_Vector:
 	relocate_normal_setup();
       Move_Vector:

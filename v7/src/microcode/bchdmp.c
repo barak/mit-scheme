@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.48 1989/12/06 05:49:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.49 1990/04/01 20:22:33 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,11 +45,6 @@ MIT in each case. */
 #include "fasl.h"
 #include "dump.c"
 
-#ifdef FLOATING_ALIGNMENT
-/* This must be fixed. */
-#include "error: bchdmp does not handle floating alignment."
-#endif
-
 extern SCHEME_OBJECT
   dump_renumber_primitive(),
   *initialize_primitive_table(),
@@ -88,6 +83,27 @@ static Boolean compiled_code_present_p;
   New_Address = (MAKE_BROKEN_HEART (To_Address));			\
   fasdump_remember_to_fix(Old, *Old);					\
 }
+
+#ifdef FLOATING_ALIGNMENT
+
+#define fasdump_flonum_setup()						\
+{									\
+  Old = OBJECT_ADDRESS (Temp);						\
+  if (OBJECT_TYPE (*Old) == TC_BROKEN_HEART)				\
+  {									\
+    *Scan = (MAKE_OBJECT_FROM_OBJECTS (Temp, *Old));			\
+    continue;								\
+  }									\
+  FLOAT_ALIGN_FREE(To_Address, To);					\
+  New_Address = (MAKE_BROKEN_HEART (To_Address));			\
+  fasdump_remember_to_fix(Old, *Old);					\
+}
+
+#else /* FLOATING_ALIGNMENT */
+
+#define fasdump_flonum_setup()	fasdump_normal_setup()
+
+#endif /* FLOATING_ALIGNMENT */
 
 #define fasdump_transport_end(length)					\
 {									\
@@ -522,6 +538,9 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 	fasdump_normal_pointer(copy_quadruple(), 4);
 
       case TC_BIG_FLONUM:
+	fasdump_flonum_setup();
+	goto Move_Vector;
+
       case TC_COMPILED_CODE_BLOCK:
       case_Purify_Vector:
 	fasdump_normal_setup();
@@ -578,7 +597,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
 {
   Boolean success;
   long value, length, hlength, tlength, tsize;
-  SCHEME_OBJECT *dumped_object, *free_buffer;
+  SCHEME_OBJECT *dumped_object, *free_buffer, *dummy;
   SCHEME_OBJECT *table_start, *table_end, *table_top;
   SCHEME_OBJECT header[FASL_HEADER_LENGTH];
   PRIMITIVE_HEADER (3);
@@ -610,6 +629,10 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
   free_buffer = initialize_free_buffer();
   Free = ((SCHEME_OBJECT *) NULL);
   free_buffer += FASL_HEADER_LENGTH;
+
+  dummy = free_buffer;
+  FLOAT_ALIGN_FREE(Free, dummy);
+
   *free_buffer++ = (ARG_REF (1));
   dumped_object = Free;
   Free += 1;
@@ -685,8 +708,6 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
   Band_Dump_Permitted ();
   CHECK_ARG (1, INTERPRETER_APPLICABLE_P);
   CHECK_ARG (2, STRING_P);
-  if (! (Open_Dump_File ((ARG_REF (2)), WRITE_FLAG)))
-    error_bad_range_arg (2);
   Primitive_GC_If_Needed (5);
   saved_free = Free;
   Combination = MAKE_POINTER_OBJECT (TC_COMBINATION_1, Free);
@@ -706,10 +727,8 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
   }
   else
   {
-#if false
-  /* Aligning here confuses some of the counts computed. */
-    ALIGN_FLOAT (Free);
-#endif
+    if (! (Open_Dump_File ((ARG_REF (2)), WRITE_FLAG)))
+      error_bad_range_arg (2);
     result = Write_File((Free - 1),
 			((long) (Free - Heap_Bottom)), Heap_Bottom,
 			((long) (Free_Constant - Constant_Space)),
@@ -717,19 +736,14 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
 			table_start, table_length,
 			((long) (table_end - table_start)),
 			(compiler_utilities != SHARP_F), true);
+    /* The and is short-circuit, so it must be done in this order. */
+    result = ((Close_Dump_File ()) && result);
+    if (!result)
+    {
+      result = ((OS_file_remove (STRING_ARG (2))) && result);
+    }
   }
-  /* The and is short-circuit, so it must be done in this order. */
-  result = (Close_Dump_File() && result);
-  Band_Dump_Exit_Hook();
+  Band_Dump_Exit_Hook ();
   Free = saved_free;
-  if (result)
-  {
-    PRIMITIVE_RETURN (SHARP_T);
-  }
-  else
-  {
-    extern int unlink();
-    unlink (STRING_LOC ((ARG_REF (2)), 0));
-    PRIMITIVE_RETURN (SHARP_F);
-  }
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (result));
 }
