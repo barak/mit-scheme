@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: site.scm.unix,v 1.13 1993/11/13 03:52:54 gjr Exp $
+$Id: site.scm.unix,v 1.14 1993/11/18 00:47:36 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -72,19 +72,3 @@ MIT in each case. |#
        (set! inside ((ucode-primitive working-directory-pathname 0)))
        ((ucode-primitive set-working-directory-pathname! 1) outside)
        (start-thread-timer)))))
-
-;;; Normalization of various directory structures.
-
-(let ((add-directory-rewriting-rule!
-       (access add-directory-rewriting-rule!
-	       (->environment '(runtime compiler-info)))))
-  (for-each
-   (lambda (path)
-     (add-directory-rewriting-rule! path "/usr/local/lib/mit-scheme/SRC"))
-   '("/scheme/300"
-     "/nfs/martigny/scheme/300"
-     "/scheme/700"
-     "/nfs/martigny/scheme/700"
-     "/usr/local/scheme/nws3250"
-     "/scheme/nws3250"
-     "/nfs/martigny/scheme/nws3250")))

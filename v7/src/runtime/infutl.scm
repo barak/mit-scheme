@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.48 1993/11/09 04:31:38 cph Exp $
+$Id: infutl.scm,v 1.49 1993/11/18 00:47:13 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -94,8 +94,8 @@ MIT in each case. |#
 	(else
 	 false)))
 
-(define (read-binf-file filename)
-  (let ((pathname (merge-pathnames filename)))
+(define (read-binf-file pathname)
+  (let ((pathname (canonicalize-debug-info-pathname pathname)))
     (if (file-exists? pathname)
 	(fasload-loader (->namestring pathname))
 	(find-alternate-file-type pathname
@@ -189,11 +189,11 @@ MIT in each case. |#
 
 (define (compiled-code-block/filename block)
   (let loop ((info (compiled-code-block/debugging-info block)))
-    (cond ((string? info) (values info false))
+    (cond ((string? info) (values (canonicalize-debug-info-filename info) #f))
 	  ((not (pair? info)) (values false false))
 	  ((dbg-info? (car info)) (loop (cdr info)))
 	  ((string? (car info))
-	   (values (car info)
+	   (values (canonicalize-debug-info-filename (car info))
 		   (and (exact-nonnegative-integer? (cdr info))
 			(cdr info))))
 	  (else (values false false)))))
@@ -261,6 +261,13 @@ MIT in each case. |#
 (define directory-rewriting-rules
   '())
 
+(define (with-directory-rewriting-rule match replace thunk)
+  (fluid-let ((directory-rewriting-rules
+	       (cons (cons (pathname-as-directory (merge-pathnames match))
+			   replace)
+		     directory-rewriting-rules)))
+    (thunk)))
+
 (define (add-directory-rewriting-rule! match replace)
   (let ((match (pathname-as-directory (merge-pathnames match))))
     (let ((rule
@@ -283,19 +290,12 @@ MIT in each case. |#
 				(pathname-directory (car rule)))))))
     (->namestring
      (if rule
-	 (let ((replacement (cdr rule))
-	       (remaining-directories
-		(list-tail (pathname-directory pathname)
-			   (length (pathname-directory (car rule))))))
-	   ;; Moby kludge: we are going to fool the pathname abstraction
-	   ;; into giving us a namestring that might contain uncanonicalized
-	   ;; characters in them.  This will break if the pathname abstraction
-	   ;; cares at all.
-	   (pathname-new-device
-	    (pathname-new-directory 
-	     pathname
-	     `(relative ,replacement ,@remaining-directories))
-	    false))
+	 (merge-pathnames
+	  (pathname-new-directory
+	   pathname
+	   (list-tail (pathname-directory pathname)
+		      (length (pathname-directory (car rule)))))
+	  (cdr rule))
 	 pathname))))
 
 (define (directory-prefix? x y)
@@ -307,6 +307,20 @@ MIT in each case. |#
 	     (and (not (null? x))
 		  (equal? (car x) (car y))
 		  (loop (cdr x) (cdr y)))))))
+
+(define (canonicalize-debug-info-filename filename)
+  (->namestring (canonicalize-debug-info-pathname filename)))
+
+(define (canonicalize-debug-info-pathname pathname)
+  (if (pathname-absolute? pathname)
+      pathname
+      (merge-pathnames
+       pathname
+       (let ((value
+	      (get-environment-variable "MITSCHEME_INF_DIRECTORY")))
+	 (if value
+	     (pathname-as-directory value)
+	     (system-library-directory-pathname "SRC"))))))
 
 (define-integrable (dbg-block/layout-first-offset block)
   (let ((layout (dbg-block/layout block)))
@@ -405,7 +419,9 @@ MIT in each case. |#
 
 (define (read-bsm-file name)
   (let ((pathname
-	 (let ((pathname (merge-pathnames (process-bsym-filename name))))
+	 (let ((pathname
+		(canonicalize-debug-info-pathname
+		 (rewrite-directory (merge-pathnames name)))))
 	   (if (file-exists? pathname)
 	       pathname
 	       (let loop ((types '("bsm" "bcs")))
@@ -419,10 +435,6 @@ MIT in each case. |#
 	 (if (equal? "bcs" (pathname-type pathname))
 	     ((compressed-loader "bsm") pathname)
 	     (fasload-loader pathname)))))
-
-(define (process-bsym-filename name)
-  (rewrite-directory (merge-pathnames name)))
-
 
 ;;;; Splitting of info structures
 

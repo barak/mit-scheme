@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.49 1993/09/19 22:38:02 adams Exp $
+$Id: make.scm,v 14.50 1993/11/18 00:47:19 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -481,17 +481,22 @@ MIT in each case. |#
 
 (let ((roots
        (list->vector
-	(let ((fasload/update-debugging-info!
-	       (access fasload/update-debugging-info!
-		       (->environment '(RUNTIME COMPILER-INFO))))
-	      (load/purification-root
-	       (access load/purification-root
-		       (->environment '(RUNTIME LOAD)))))
-	  (map (lambda (entry)
-		 (let ((object (cdr entry)))
-		   (fasload/update-debugging-info! object (car entry))
-		   (load/purification-root object)))
-	       fasload-purification-queue)))))
+	((access with-directory-rewriting-rule
+		 (->environment '(RUNTIME COMPILER-INFO)))
+	 (working-directory-pathname)
+	 (pathname-as-directory "runtime")
+	 (lambda ()
+	   (let ((fasload/update-debugging-info!
+		  (access fasload/update-debugging-info!
+			  (->environment '(RUNTIME COMPILER-INFO))))
+		 (load/purification-root
+		  (access load/purification-root
+			  (->environment '(RUNTIME LOAD)))))
+	     (map (lambda (entry)
+		    (let ((object (cdr entry)))
+		      (fasload/update-debugging-info! object (car entry))
+		      (load/purification-root object)))
+		  fasload-purification-queue)))))))
   (set! (access gc-boot-loading? (->environment '(RUNTIME GARBAGE-COLLECTOR)))
 	false)
   (set! fasload-purification-queue)
