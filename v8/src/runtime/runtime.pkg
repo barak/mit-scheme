@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.154 1992/06/03 18:24:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.155 1992/07/05 14:27:58 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1512,7 +1512,6 @@ MIT in each case. |#
   (parent ())
   (export ()
 	  *pp-avoid-circularity?*
-	  *pp-default-as-code?*
 	  *pp-forced-x-size*
 	  *pp-lists-as-tables?*
 	  *pp-named-lambda->define?*
