@@ -1,5 +1,5 @@
 
-# $Id: make-common.in,v 1.1 2004/10/16 06:02:55 cph Exp $
+# $Id: make-common.in,v 1.2 2004/10/17 02:43:00 cph Exp $
 #
 # Copyright 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 #
@@ -66,7 +66,7 @@ DVI_TARGET = $(TARGET_ROOT).dvi
 PDF_TARGET = $(TARGET_ROOT).pdf
 PS_TARGET = $(TARGET_ROOT).ps
 
-TEX_OPTIONS = --quiet
+TEX_OPTIONS = --quiet $(EXTRA_TEX_OPTIONS)
 
 all: $(INFO_TARGET) $(HTML_TARGET)/index.html $(PDF_TARGET) $(PS_TARGET)
 
