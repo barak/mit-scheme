@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dosfile.scm,v 1.32 1999/09/15 02:23:59 cph Exp $
+;;; $Id: dosfile.scm,v 1.33 1999/10/07 17:08:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-1999 Massachusetts Institute of Technology
 ;;;
@@ -429,8 +429,12 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
      ("c" . c)
      ("cc" . c)
      ("h" . c)
+     ("htm" . html)
+     ("html" . html)
      ("java" . java)
      ("pas" . pascal)
+     ("php" . php)
+     ("php3" . php)
      ("s" . scheme)
      ("scm" . scheme)
      ("text" . text)
