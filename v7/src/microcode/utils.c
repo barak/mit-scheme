@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.48 1991/01/24 11:25:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.49 1991/03/01 00:55:47 cph Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -45,8 +45,7 @@ MIT in each case. */
    interrupt routines. */
 
 void
-Setup_Interrupt (Masked_Interrupts)
-     long Masked_Interrupts;
+DEFUN (Setup_Interrupt, (Masked_Interrupts), long Masked_Interrupts)
 {
   SCHEME_OBJECT Int_Vector, Handler;
   long i, Int_Number, The_Int_Code, New_Int_Enb;
@@ -93,17 +92,10 @@ Setup_Interrupt (Masked_Interrupts)
   Global_Interrupt_Hook ();
   Handler = (VECTOR_REF (Int_Vector, Int_Number));
 
-/* Setup_Interrupt continues on the next page */
-
-/* Setup_Interrupt, continued */
-
 Passed_Checks:	/* This label may be used in Global_Interrupt_Hook */
   Stop_History();
- Will_Push(CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 3);
-  /* Return from interrupt handler will re-enable interrupts */
-  Store_Return(RC_RESTORE_INT_MASK);
-  Store_Expression(LONG_TO_FIXNUM(FETCH_INTERRUPT_MASK()));
-  Save_Cont();
+  preserve_interrupt_mask ();
+ Will_Push (STACK_ENV_EXTRA_SLOTS + 3);
 /*
   There used to be some code here for gc checks, but that is done
   uniformly now by RC_NORMAL_GC_DONE.
@@ -122,7 +114,6 @@ Passed_Checks:	/* This label may be used in Global_Interrupt_Hook */
  Pushed();
   /* Turn off interrupts */
   SET_INTERRUPT_MASK(New_Int_Enb);
-  return;
 }
 
 /* Error processing utilities */
@@ -168,12 +159,22 @@ Stack_Death ()
   /*NOTREACHED*/
 }
 
-/* Back_Out_Of_Primitive sets the registers up so that the backout
+void
+DEFUN_VOID (preserve_interrupt_mask)
+{
+ Will_Push (CONTINUATION_SIZE);
+  Store_Return (RC_RESTORE_INT_MASK);
+  Store_Expression (LONG_TO_FIXNUM (FETCH_INTERRUPT_MASK ()));
+  Save_Cont ();
+ Pushed ();
+}
+
+/* back_out_of_primitive sets the registers up so that the backout
    mechanism in interpret.c will cause the primitive to be
    restarted if the error/interrupt is proceeded. */
 
 void
-Back_Out_Of_Primitive ()
+DEFUN_VOID (back_out_of_primitive_internal)
 {
   long nargs;
   SCHEME_OBJECT primitive;
@@ -185,7 +186,7 @@ Back_Out_Of_Primitive ()
   if (! (PRIMITIVE_P (primitive)))
     {
       fprintf (stderr,
-	       "\nBack_Out_Of_Primitive backing out when not in primitive!\n");
+	       "\nback_out_of_primitive backing out when not in primitive!\n");
       Microcode_Termination (TERM_BAD_BACK_OUT);
     }
   nargs = (PRIMITIVE_N_ARGUMENTS (primitive));
@@ -198,7 +199,13 @@ Back_Out_Of_Primitive ()
   Store_Return (RC_INTERNAL_APPLY);
   Store_Expression (SHARP_F);
   (Regs [REGBLOCK_PRIMITIVE]) = SHARP_F;
-  return;
+}
+
+void
+DEFUN_VOID (back_out_of_primitive)
+{
+  back_out_of_primitive_internal ();
+  Save_Cont ();
 }
 
 /* canonicalize_primitive_context should be used by "unsafe" primitives
@@ -242,15 +249,14 @@ canonicalize_primitive_context ()
    invoked from compiled code. */
 
 void
-signal_error_from_primitive (error_code)
-     long error_code;
+DEFUN (signal_error_from_primitive, (error_code), long error_code)
 {
   PRIMITIVE_ABORT (error_code);
   /*NOTREACHED*/
 }
 
 void
-signal_interrupt_from_primitive ()
+DEFUN_VOID (signal_interrupt_from_primitive)
 {
   PRIMITIVE_ABORT (PRIM_INTERRUPT);
   /*NOTREACHED*/
@@ -523,11 +529,8 @@ Do_Micro_Error (Err, From_Pop_Return)
     Save_Cont();
    Pushed();
   }
- Will_Push(STACK_ENV_EXTRA_SLOTS + 3 +
-	   2 * CONTINUATION_SIZE +
-	   HISTORY_SIZE +
-           (From_Pop_Return ? 0 : 1));
 
+ Will_Push (CONTINUATION_SIZE + (From_Pop_Return ? 0 : 1));
   if (From_Pop_Return)
   {
     Store_Expression(Val);
@@ -536,18 +539,17 @@ Do_Micro_Error (Err, From_Pop_Return)
   {
     STACK_PUSH (Fetch_Env());
   }
-
   Store_Return((From_Pop_Return) ?
 	       RC_POP_RETURN_ERROR :
 	       RC_EVAL_ERROR);
   Save_Cont();
+ Pushed ();
 
   /* Return from error handler will re-enable interrupts & restore history */
-
   Stop_History();
-  Store_Return(RC_RESTORE_INT_MASK);
-  Store_Expression(LONG_TO_FIXNUM(FETCH_INTERRUPT_MASK()));
-  Save_Cont();
+  preserve_interrupt_mask ();
+
+ Will_Push (STACK_ENV_EXTRA_SLOTS + 3);
   /* Arg 2:     Int. mask */
   STACK_PUSH (LONG_TO_FIXNUM(FETCH_INTERRUPT_MASK()));
   /* Arg 1:     Err. No   */
@@ -981,10 +983,8 @@ Translate_To_Point (Target)
   }
 #endif /* ENABLE_DEBUGGING_TOOLS */
 
- Will_Push(2*CONTINUATION_SIZE + 4);
-  Store_Return(RC_RESTORE_INT_MASK);
-  Store_Expression(LONG_TO_FIXNUM(FETCH_INTERRUPT_MASK()));
-  Save_Cont();
+  preserve_interrupt_mask ();
+ Will_Push(CONTINUATION_SIZE + 4);
   STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM((Distance - Merge_Depth)));
   STACK_PUSH (Target);
   STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM((From_Depth - Merge_Depth)));

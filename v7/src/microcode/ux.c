@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.c,v 1.6 1991/01/24 11:25:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.c,v 1.7 1991/03/01 00:55:53 cph Exp $
 
 Copyright (c) 1990-1 Massachusetts Institute of Technology
 
@@ -41,7 +41,6 @@ DEFUN (UX_prim_check_errno, (name), enum syscall_names name)
     error_system_call (errno, name);
   deliver_pending_interrupts ();
 }
-
 
 #ifdef HAVE_TERMIOS
 
@@ -206,8 +205,7 @@ pid_t
 DEFUN (UX_tcgetpgrp, (fd), int fd)
 {
   pid_t pgrp_id;
-  int result = (UX_ioctl (fd, TIOCGPGRP, (&pgrp_id)));
-  return ((result < 0) ? result : pgrp_id);
+  return (((UX_ioctl (fd, TIOCGPGRP, (&pgrp_id))) < 0) ? (-1) : pgrp_id);
 }
 
 int
@@ -415,3 +413,137 @@ DEFUN_VOID (UX_SC_CLK_TCK)
 }
 
 #endif /* _POSIX */
+
+#ifndef _POSIX
+
+int
+DEFUN (UX_sigemptyset, (set), sigset_t * set)
+{
+  (*set) = 0;
+  return (0);
+}
+
+int
+DEFUN (UX_sigfillset, (set), sigset_t * set)
+{
+  (*set) = (-1);
+  return (0);
+}
+
+int
+DEFUN (UX_sigaddset, (set, signo), sigset_t * set AND int signo)
+{
+  if (signo <= 0)
+    return (-1);
+  {
+    int mask = (1 << (signo - 1));
+    if (mask == 0)
+      return (-1);
+    (*set) |= mask;
+    return (0);
+  }
+}
+
+int
+DEFUN (UX_sigdelset, (set, signo), sigset_t * set AND int signo)
+{
+  if (signo <= 0)
+    return (-1);
+  {
+    int mask = (1 << (signo - 1));
+    if (mask == 0)
+      return (-1);
+    (*set) &=~ mask;
+    return (0);
+  }
+}
+
+int
+DEFUN (UX_sigismember, (set, signo), CONST sigset_t * set AND int signo)
+{
+  if (signo <= 0)
+    return (-1);
+  {
+    int mask = (1 << (signo - 1));
+    if (mask == 0)
+      return (-1);
+    return (((*set) & mask) != 0);
+  }
+}
+
+#ifdef HAVE_BSD_SIGNALS
+
+#ifdef _HPUX
+#define UX_sigvec sigvector
+#else
+#define UX_sigvec sigvec
+#endif
+
+int
+DEFUN (UX_sigaction, (signo, act, oact),
+       int signo AND
+       CONST struct sigaction * act AND
+       struct sigaction * oact)
+{
+  struct sigvec svec;
+  struct sigvec sovec;
+  struct sigvec * vec = ((act != 0) ? (&svec) : 0);
+  struct sigvec * ovec = ((oact != 0) ? (&sovec) : 0);
+  if (act != 0)
+    {
+      (vec -> sv_handler) = (act -> sa_handler);
+      (vec -> sv_mask) = (act -> sa_mask);
+      /* Ignore SA_NOCLDSTOP since we won't use it. */
+      (vec -> sv_flags) = 0;
+    }
+  if ((UX_sigvec (signo, vec, ovec)) < 0)
+    return (-1);
+  if (oact != 0)
+    {
+      (oact -> sa_handler) = (ovec -> sv_handler);
+      (oact -> sa_mask) = (ovec -> sv_mask);
+      (oact -> sa_flags) = 0;
+    }
+  return (0);
+}
+
+int
+DEFUN (UX_sigprocmask, (how, set, oset),
+       int how AND
+       CONST sigset_t * set AND
+       sigset_t * oset)
+{
+  long omask;
+  if (set == 0)
+    omask = (sigblock (0));
+  else
+    switch (how)
+      {
+      case SIG_BLOCK:
+	omask = (sigblock (*set));
+	break;
+      case SIG_UNBLOCK:
+	omask = (sigblock (0));
+	if (omask < 0) return (-1);
+	omask = (sigsetmask (omask &~ (*set)));
+	break;
+      case SIG_SETMASK:
+	omask = (sigsetmask (*set));
+	break;
+      default:
+	errno = EINVAL;
+	return (-1);
+      }
+  if (omask < 0) return (-1);
+  if (oset != 0) (*oset) = omask;
+  return (0);
+}
+
+int
+DEFUN (UX_sigsuspend, (set), CONST sigset_t * set)
+{
+  return (sigpause (*set));
+}
+
+#endif /* HAVE_BSD_SIGNALS */
+#endif /* not _POSIX */

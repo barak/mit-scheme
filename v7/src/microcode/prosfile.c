@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfile.c,v 1.1 1990/06/20 19:38:21 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfile.c,v 1.2 1991/03/01 00:55:26 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -95,14 +95,7 @@ Second argument MODE says how to open the file:\n\
   }
 }
 
-DEFINE_PRIMITIVE ("FILE-LENGTH", Prim_file_length, 1, 1,
-  "Return the length of CHANNEL in characters.")
-{
-  PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (OS_file_length (arg_channel_old (1))));
-}
-
-DEFINE_PRIMITIVE ("FILE-LENGTH-NEW", Prim_file_length_new, 1, 1,
+DEFINE_PRIMITIVE ("FILE-LENGTH-NEW", Prim_file_length, 1, 1,
   "Return the length of CHANNEL in characters.")
 {
   PRIMITIVE_HEADER (1);

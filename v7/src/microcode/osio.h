@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osio.h,v 1.5 1990/11/12 04:00:45 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osio.h,v 1.6 1991/03/01 00:54:54 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -71,6 +71,8 @@ extern long EXFUN
   (OS_channel_write, (Tchannel channel, CONST PTR buffer, size_t nbytes));
 extern void EXFUN
   (OS_channel_write_string, (Tchannel channel, CONST char * string));
+extern void EXFUN
+  (OS_make_pipe, (Tchannel * readerp, Tchannel * writerp));
 extern int EXFUN (OS_channel_nonblocking_p, (Tchannel channel));
 extern void EXFUN (OS_channel_nonblocking, (Tchannel channel));
 extern void EXFUN (OS_channel_blocking, (Tchannel channel));

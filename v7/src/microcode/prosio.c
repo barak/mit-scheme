@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosio.c,v 1.3 1991/01/24 05:30:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosio.c,v 1.4 1991/03/01 00:55:30 cph Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -65,21 +65,6 @@ DEFUN (arg_channel, (arg_number), int arg_number)
   if (! (OS_channel_open_p (channel)))
     error_bad_range_arg (arg_number);
   return (channel);
-}
-
-Tchannel
-DEFUN (arg_channel_old, (arg_number), int arg_number)
-{
-  fast SCHEME_OBJECT argument = (ARG_REF (arg_number));
-  if ((OBJECT_TYPE (argument)) != TC_HUNK3)
-    error_wrong_type_arg (arg_number);
-  {
-    fast Tchannel channel =
-      (arg_to_channel ((MEMORY_REF (argument, 0)), arg_number));
-    if (! (OS_channel_open_p (channel)))
-      error_bad_range_arg (arg_number);
-    return (channel);
-  }
 }
 
 DEFINE_PRIMITIVE ("CHANNEL-CLOSE", Prim_channel_close, 1, 1,
@@ -205,4 +190,19 @@ DEFINE_PRIMITIVE ("CHANNEL-BLOCKING", Prim_channel_blocking, 1, 1,
   PRIMITIVE_HEADER (1);
   OS_channel_blocking (arg_channel (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("MAKE-PIPE", Prim_make_pipe, 0, 0,
+  "Return a cons of two channels, the reader and writer of a pipe.")
+{
+  PRIMITIVE_HEADER (0);
+  {
+    SCHEME_OBJECT result = (cons (SHARP_F, SHARP_F));
+    Tchannel reader;
+    Tchannel writer;
+    OS_make_pipe ((&reader), (&writer));
+    SET_PAIR_CAR (result, (long_to_integer (reader)));
+    SET_PAIR_CDR (result, (long_to_integer (writer)));
+    PRIMITIVE_RETURN (result);
+  }
 }

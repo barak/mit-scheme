@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxctty.c,v 1.6 1991/01/07 23:57:07 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxctty.c,v 1.7 1991/03/01 00:56:02 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -242,6 +242,12 @@ cc_t
 DEFUN_VOID (OS_ctty_disabled_char)
 {
   return ((ctty_fildes >= 0) ? (UX_PC_VDISABLE (ctty_fildes)) : '\377');
+}
+
+int
+DEFUN_VOID (OS_ctty_fd)
+{
+  return (ctty_fildes);
 }
 
 #if 0

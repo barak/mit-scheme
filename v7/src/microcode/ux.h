@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.20 1991/01/24 11:25:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.21 1991/03/01 00:55:57 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -70,6 +70,7 @@ enum syscall_names
   syscall_connect,
   syscall_fcntl_GETFL,
   syscall_fcntl_SETFL,
+  syscall_fork,
   syscall_fstat,
   syscall_ftruncate,
   syscall_getcwd,
@@ -85,16 +86,24 @@ enum syscall_names
   syscall_mkdir,
   syscall_open,
   syscall_opendir,
+  syscall_pause,
   syscall_pipe,
   syscall_read,
   syscall_readlink,
   syscall_realloc,
   syscall_rename,
   syscall_setitimer,
+  syscall_setpgid,
+  syscall_sighold,
+  syscall_sigprocmask,
+  syscall_sigsuspend,
+  syscall_sleep,
   syscall_socket,
   syscall_symlink,
   syscall_tcdrain,
   syscall_tcflush,
+  syscall_tcgetpgrp,
+  syscall_tcsetpgrp,
   syscall_terminal_get_state,
   syscall_terminal_set_state,
   syscall_time,
@@ -472,6 +481,58 @@ typedef int wait_status_t;
 
 #endif /* UNION_WAIT_STATUS */
 
+/* Provide null defaults for all the signals we're likely to use so we
+   aren't continually testing to see if they're defined. */
+
+#ifndef SIGLOST
+#define SIGLOST 0
+#endif
+#ifndef SIGWINCH
+#define SIGWINCH 0
+#endif
+#ifndef SIGURG
+#define SIGURG 0
+#endif
+#ifndef SIGIO
+#define SIGIO 0
+#endif
+#ifndef SIGUSR1
+#define SIGUSR1 0
+#endif
+#ifndef SIGUSR2
+#define SIGUSR2 0
+#endif
+#ifndef SIGVTALRM
+#define SIGVTALRM 0
+#endif
+#ifndef SIGABRT
+#define SIGABRT 0
+#endif
+#ifndef SIGPWR
+#define SIGPWR 0
+#endif
+#ifndef SIGPROF
+#define SIGPROF 0
+#endif
+#ifndef SIGSTOP
+#define SIGSTOP 0
+#endif
+#ifndef SIGTSTP
+#define SIGTSTP 0
+#endif
+#ifndef SIGCONT
+#define SIGCONT 0
+#endif
+#ifndef SIGCHLD
+#define SIGCHLD 0
+#endif
+#ifndef SIGTTIN
+#define SIGTTIN 0
+#endif
+#ifndef SIGTTOU
+#define SIGTTOU 0
+#endif
+
 /* constants for access() */
 #ifndef R_OK
 #define R_OK 4
@@ -545,6 +606,7 @@ extern char * EXFUN (getlogin, (void));
 #define UX_chmod chmod
 #define UX_close close
 #define UX_ctime ctime
+#define UX_dup dup
 #define UX_free free
 #define UX_fstat fstat
 #define UX_getenv getenv
@@ -561,10 +623,12 @@ extern char * EXFUN (getlogin, (void));
 #define UX_lseek lseek
 #define UX_malloc malloc
 #define UX_mknod mknod
+#define UX_pause pause
 #define UX_pipe pipe
 #define UX_read read
 #define UX_realloc realloc
 #define UX_signal signal
+#define UX_sleep sleep
 #define UX_stat stat
 #define UX_system system
 #define UX_time time
@@ -821,16 +885,34 @@ extern int EXFUN (UX_kill, (pid_t pid, int sig));
 #define UX_sigprocmask sigprocmask
 
 #else /* not HAVE_POSIX_SIGNALS */
+
+typedef long sigset_t;
+extern int EXFUN (UX_sigemptyset, (sigset_t * set));
+extern int EXFUN (UX_sigfillset, (sigset_t * set));
+extern int EXFUN (UX_sigaddset, (sigset_t * set, int signo));
+extern int EXFUN (UX_sigdelset, (sigset_t * set, int signo));
+extern int EXFUN (UX_sigismember, (CONST sigset_t * set, int signo));
+
 #ifdef HAVE_BSD_SIGNALS
 
-#ifdef _HPUX
-#define UX_sigvec sigvector
-#else
-#define UX_sigvec sigvec
-#endif
-#define UX_sigblock sigblock
-#define UX_sigsetmask sigsetmask
-#define UX_sigpause sigpause
+struct sigaction
+{
+  Tsignal_handler sa_handler;
+  sigset_t sa_mask;
+  int sa_flags;
+};
+
+extern int EXFUN
+  (UX_sigaction,
+   (int signo, CONST struct sigaction * act, struct sigaction * oact));
+extern int EXFUN
+  (UX_sigprocmask, (int how, CONST sigset_t * set, sigset_t * oset));
+extern int EXFUN (UX_sigsuspend, (CONST sigset_t * set));
+#define SIG_BLOCK 0
+#define SIG_UNBLOCK 1
+#define SIG_SETMASK 2
+
+#define HAVE_POSIX_SIGNALS
 
 #else /* not HAVE_BSD_SIGNALS */
 #ifdef HAVE_SYSV3_SIGNALS

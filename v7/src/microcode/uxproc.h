@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.h,v 1.1 1990/06/20 19:37:25 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.h,v 1.2 1991/03/01 00:56:15 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,25 +39,16 @@ MIT in each case. */
 
 struct process
 {
-  pid_t id;			/* process id */
-  Tchannel input;		/* standard input */
-  Tchannel output;		/* standard output and error */
+  pid_t id;
   unsigned short reason;
   enum process_status status;
-  enum process_ctty_type ctty_type;
-  unsigned int changed : 1;
-  unsigned int synchronous : 1;
+  enum process_jc_status jc_status;
 };
 
 #define PROCESS_ID(process) ((process_table [(process)]) . id)
-#define PROCESS_INPUT(process) ((process_table [(process)]) . input)
-#define PROCESS_OUTPUT(process) ((process_table [(process)]) . output)
 #define PROCESS_STATUS(process) ((process_table [(process)]) . status)
-#define PROCESS_CTTY_TYPE(process) ((process_table [(process)]) . ctty_type)
 #define PROCESS_REASON(process) ((process_table [(process)]) . reason)
-#define PROCESS_CHANGED(process) ((process_table [(process)]) . changed)
-#define PROCESS_SYNCHRONOUS(process)					\
-  ((process_table [(process)]) . synchronous)
+#define PROCESS_JC_STATUS(process) ((process_table [(process)]) . jc_status)
 
 extern struct process * process_table;
 

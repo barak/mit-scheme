@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osscheme.h,v 1.2 1990/11/13 08:44:54 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osscheme.h,v 1.3 1991/03/01 00:55:17 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,7 +38,6 @@ MIT in each case. */
 #include "os.h"
 
 extern Tchannel EXFUN (arg_channel, (int arg_number));
-extern Tchannel EXFUN (arg_channel_old, (int arg_number));
 
 extern int option_emacs_subprocess;
 
@@ -64,5 +63,11 @@ extern void EXFUN (request_character_interrupt, (void));
 extern void EXFUN (request_timer_interrupt, (void));
 extern void EXFUN (request_suspend_interrupt, (void));
 extern void EXFUN (deliver_pending_interrupts, (void));
+extern int  EXFUN (pending_interrupts_p, (void));
+extern long EXFUN (get_interrupt_mask, (void));
+extern void EXFUN (set_interrupt_mask, (long mask));
+extern void EXFUN (signal_interrupt_for_primitive, (void));
+extern void EXFUN (preserve_interrupt_mask, (void));
+extern void EXFUN (back_out_of_primitive, (void));
 
 #endif /* SCM_OSSCHEME_H */

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.6 1990/11/20 22:17:34 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.7 1991/03/01 00:56:19 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -65,54 +65,7 @@ DEFUN (INSTALL_HANDLER, (signo, handler),
   UX_sigaction (signo, (&act), 0);
 }
 
-#define BLOCK_SIGNALS_DECLARE() sigset_t BLOCK_SIGNALS_mask
-
-#define BLOCK_SIGNALS(signo)						\
-{									\
-  sigset_t BLOCK_SIGNALS_set;						\
-  UX_sigfillset (&BLOCK_SIGNALS_set);					\
-  UX_sigdelset ((&BLOCK_SIGNALS_set), (signo));				\
-  UX_sigprocmask							\
-    (SIG_SETMASK, (&BLOCK_SIGNALS_set), (&BLOCK_SIGNALS_mask));		\
-}
-
-#define UNBLOCK_SIGNALS()						\
-  UX_sigprocmask (SIG_SETMASK, (&BLOCK_SIGNALS_mask), 0)
-
 #else /* not HAVE_POSIX_SIGNALS */
-#ifdef HAVE_BSD_SIGNALS
-
-static Tsignal_handler
-DEFUN (current_handler, (signo), int signo)
-{
-  struct sigvec act;
-  UX_sigvec (signo, 0, (&act));
-  return (act . sv_handler);
-}
-
-static void
-DEFUN (INSTALL_HANDLER, (signo, handler),
-       int signo AND
-       Tsignal_handler handler)
-{
-  struct sigvec act;
-  (act . sv_handler) = handler;
-  (act . sv_mask) = (1 << (signo - 1));
-  (act . sv_flags) = 0;
-  UX_sigvec (signo, (&act), 0);
-}
-
-#define BLOCK_SIGNALS_DECLARE() int BLOCK_SIGNALS_mask
-
-#define BLOCK_SIGNALS(signo)						\
-{									\
-   BLOCK_SIGNALS_mask = (UX_sigblock (0));				\
-   UX_sigsetmask (~ (1 << ((signo) - 1)));				\
-}
-
-#define UNBLOCK_SIGNALS() UX_sigsetmask (BLOCK_SIGNALS_mask)
-
-#else /* not HAVE_BSD_SIGNALS */
 #ifdef HAVE_SYSV3_SIGNALS
 
 static Tsignal_handler
@@ -125,9 +78,6 @@ DEFUN (current_handler, (signo), int signo)
 }
 
 #define INSTALL_HANDLER UX_sigset
-#define BLOCK_SIGNALS_DECLARE() int BLOCK_SIGNALS_mask
-#define BLOCK_SIGNALS(signo) UX_sigrelse (signo)
-#define UNBLOCK_SIGNALS()
 
 #define NEED_HANDLER_TRANSACTION
 #define ENTER_HANDLER(signo)
@@ -146,9 +96,6 @@ DEFUN (current_handler, (signo), int signo)
 }
 
 #define INSTALL_HANDLER UX_signal
-#define BLOCK_SIGNALS_DECLARE() int BLOCK_SIGNALS_mask
-#define BLOCK_SIGNALS(signo)
-#define UNBLOCK_SIGNALS()
 
 #define NEED_HANDLER_TRANSACTION
 #define ENTER_HANDLER(signo) UX_signal ((signo), SIG_IGN)
@@ -156,7 +103,6 @@ DEFUN (current_handler, (signo), int signo)
 #define EXIT_HANDLER UX_signal
 
 #endif /* HAVE_SYSV3_SIGNALS */
-#endif /* HAVE_BSD_SIGNALS */
 #endif /* HAVE_POSIX_SIGNALS */
 
 /* Signal Descriptors */
@@ -258,62 +204,11 @@ DEFUN (find_signal_name, (signo), int signo)
 #endif /* _BSD */
 #endif /* _HPUX */
 
-/* Provide null defaults for all the signals we're likely to use so we
-   aren't continually testing to see if they're defined. */
-
 #if (SIGABRT == SIGIOT)
 #undef SIGABRT
-#endif
-
-#ifndef SIGLOST
-#define SIGLOST 0
-#endif
-#ifndef SIGWINCH
-#define SIGWINCH 0
-#endif
-#ifndef SIGURG
-#define SIGURG 0
-#endif
-#ifndef SIGIO
-#define SIGIO 0
-#endif
-#ifndef SIGUSR1
-#define SIGUSR1 0
-#endif
-#ifndef SIGUSR2
-#define SIGUSR2 0
-#endif
-#ifndef SIGVTALRM
-#define SIGVTALRM 0
-#endif
-#ifndef SIGABRT
 #define SIGABRT 0
 #endif
-#ifndef SIGPWR
-#define SIGPWR 0
-#endif
-#ifndef SIGPROF
-#define SIGPROF 0
-#endif
-#ifndef SIGSTOP
-#define SIGSTOP 0
-#endif
-#ifndef SIGTSTP
-#define SIGTSTP 0
-#endif
-#ifndef SIGCONT
-#define SIGCONT 0
-#endif
-#ifndef SIGCHLD
-#define SIGCHLD 0
-#endif
-#ifndef SIGTTIN
-#define SIGTTIN 0
-#endif
-#ifndef SIGTTOU
-#define SIGTTOU 0
-#endif
-
+
 static void
 DEFUN_VOID (initialize_signal_descriptors)
 {
@@ -467,34 +362,75 @@ static void EXFUN
 DEFUN_STD_HANDLER (sighnd_interactive,
   (interactive_interrupt_handler (scp)))
 
-static void
-DEFUN (restartable_exit, (signo), int signo)
+void
+DEFUN (stop_signal_default, (signo), int signo)
 {
-  if (UX_SC_JOB_CONTROL ())
-    {
-      BLOCK_SIGNALS_DECLARE ();
-      BLOCK_SIGNALS (signo);
-      OS_save_internal_state ();
-      OS_restore_external_state ();
-      {
-	Tsignal_handler handler = (current_handler (signo));
-	INSTALL_HANDLER (signo, SIG_DFL);
-	UX_kill ((UX_getpid ()), signo);
-	INSTALL_HANDLER (signo, handler);
-      }
-      OS_save_external_state ();
-      OS_restore_internal_state ();
-      UNBLOCK_SIGNALS ();
-    }
+#ifdef HAVE_POSIX_SIGNALS
+  /* No need to handle systems without POSIX signals;
+     all job-control systems have them. */
+  sigset_t signo_mask;
+  sigset_t old_mask;
+  Tsignal_handler handler;
+
+  /* Give the terminal back to the invoking process. */
+  OS_save_internal_state ();
+  OS_restore_external_state ();
+
+  /* Temporarily unbind this handler. */
+  handler = (current_handler (signo));
+  INSTALL_HANDLER (signo, SIG_DFL);
+
+  /* Perform the default action for this signal. */
+  UX_sigemptyset (&signo_mask);
+  UX_sigaddset ((&signo_mask), signo);
+  UX_sigprocmask (SIG_UNBLOCK, (&signo_mask), (&old_mask));
+  UX_kill ((UX_getpid ()), signo);
+  UX_sigprocmask (SIG_SETMASK, (&old_mask), 0);
+
+  /* Rebind this handler. */
+  INSTALL_HANDLER (signo, handler);
+
+  /* Get the terminal back to its original state. */
+  OS_save_external_state ();
+  OS_restore_internal_state ();
+#endif /* HAVE_POSIX_SIGNALS */
 }
 
+void EXFUN ((*stop_signal_hook), (int signo));
+
 DEFUN_STD_HANDLER (sighnd_stop,
-  (restartable_exit (signo)))
+  {
+  #ifdef HAVE_POSIX_SIGNALS
+    sigset_t old_mask;
+    sigset_t jc_mask;
+
+    if (! (UX_SC_JOB_CONTROL ()))
+      return;
+    /* Initialize the signal masks. */
+    UX_sigemptyset (&jc_mask);
+    UX_sigaddset ((&jc_mask), SIGTTOU);
+    UX_sigaddset ((&jc_mask), SIGTTIN);
+    UX_sigaddset ((&jc_mask), SIGTSTP);
+    UX_sigaddset ((&jc_mask), SIGSTOP);
+    UX_sigaddset ((&jc_mask), SIGCHLD);
+
+    /* Block the job-control signals. */
+    UX_sigprocmask (SIG_BLOCK, (&jc_mask), (&old_mask));
+
+    if (stop_signal_hook == 0)
+      stop_signal_default (signo);
+    else
+      (*stop_signal_hook) (signo);
+
+    /* Restore the signal mask to its original state. */
+    UX_sigprocmask (SIG_SETMASK, (&old_mask), 0);
+  #endif /* HAVE_POSIX_SIGNALS */
+  })
 
 void
 DEFUN_VOID (OS_restartable_exit)
 {
-  restartable_exit (SIGTSTP);
+  stop_signal_default (SIGTSTP);
 }
 
 #ifdef HAVE_ITIMER
@@ -610,6 +546,7 @@ DEFUN (bind_handler, (signo, handler),
 void
 DEFUN_VOID (UX_initialize_signals)
 {
+  stop_signal_hook = 0;
   subprocess_death_hook = 0;
   initialize_signal_descriptors ();
   bind_handler (SIGINT,		sighnd_control_g);

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.60 1990/11/27 19:13:48 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.61 1991/03/01 00:54:42 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,6 +48,7 @@ MIT in each case. */
 extern PTR EXFUN (obstack_chunk_alloc, (unsigned int size));
 extern void EXFUN (free, (PTR ptr));
 #define obstack_chunk_free free
+extern void EXFUN (back_out_of_primitive_internal, (void));
 
 /* In order to make the interpreter tail recursive (i.e.
  * to avoid calling procedures and thus saving unnecessary
@@ -158,7 +159,7 @@ if (GC_Check(Amount))							\
 #define BACK_OUT_AFTER_PRIMITIVE()					\
 {									\
   Export_Registers();							\
-  Back_Out_Of_Primitive();						\
+  back_out_of_primitive_internal ();					\
   Import_Registers();							\
 }
 
@@ -399,7 +400,12 @@ void
 DEFUN (abort_to_interpreter, (argument), int argument)
 {
   interpreter_throw_argument = argument;
-  dstack_set_position (interpreter_catch_dstack_position);
+  {
+    long old_mask = IntEnb;
+    IntEnb = 0;
+    dstack_set_position (interpreter_catch_dstack_position);
+    IntEnb = old_mask;
+  }
   obstack_free ((&scratch_obstack), 0);
   obstack_init (&scratch_obstack);
   longjmp (interpreter_catch_env, argument);

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.39 1990/11/13 08:44:37 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.40 1991/03/01 00:54:24 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -234,11 +234,13 @@ extern void EXFUN (termination_gc_out_of_space, (void));
 extern void EXFUN (termination_eof, (void));
 extern void EXFUN (termination_signal, (CONST char * signal_name));
 
+extern void EXFUN (Setup_Interrupt, (long Masked_Interrupts));
+extern void EXFUN (preserve_interrupt_mask, (void));
+extern void EXFUN (back_out_of_primitive, (void));
+
 extern void
   Interpret (),
   Do_Micro_Error (),
-  Setup_Interrupt (),
-  Back_Out_Of_Primitive (),
   Translate_To_Point (),
   Stop_History (),
   Stack_Death ();

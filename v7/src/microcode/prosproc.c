@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.2 1990/11/08 11:04:37 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.3 1991/03/01 00:55:35 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,7 +40,7 @@ MIT in each case. */
 
 static int EXFUN (string_vector_p, (SCHEME_OBJECT vector));
 static char ** EXFUN (convert_string_vector, (SCHEME_OBJECT vector));
-
+
 static Tprocess
 DEFUN (arg_process, (argument_number), int argument_number)
 {
@@ -59,16 +59,47 @@ DEFUN (arg_process, (argument_number), int argument_number)
     }
   return (process);
 }
+
+#define PROCESS_CHANNEL_ARG(arg, type, channel)				\
+{									\
+  if ((ARG_REF (arg)) == SHARP_F)					\
+    (type) = process_channel_type_none;					\
+  else if ((ARG_REF (arg)) == (LONG_TO_FIXNUM (-1)))			\
+    (type) = process_channel_type_inherit;				\
+  else if ((ARG_REF (arg)) == (LONG_TO_FIXNUM (-2)))			\
+    {									\
+      if (ctty_type != process_ctty_type_explicit)			\
+	error_bad_range_arg (arg);					\
+      (type) = process_channel_type_ctty;				\
+    }									\
+  else									\
+    {									\
+      (type) = process_channel_type_explicit;				\
+      (channel) = (arg_channel (arg));					\
+    }									\
+}
 
-DEFINE_PRIMITIVE ("MAKE-SUBPROCESS", Prim_make_subprocess, 4, 4,
+DEFINE_PRIMITIVE ("MAKE-SUBPROCESS", Prim_make_subprocess, 7, 7,
   "Create a subprocess.\n\
 First arg FILENAME is the program to run.\n\
 Second arg ARGV is a vector of strings to pass to the program as arguments.\n\
-Third arg ENV is a vector of strings to pass as the program's environment.\n\
-Fourth arg CTTY-TYPE specifies the program's controlling terminal type:\n\
-  0 => none; 1 => inherited; 2 => pipe; 3 => PTY.")
+Third arg ENV is a vector of strings to pass as the program's environment;\n\
+  #F means inherit Scheme's environment.\n\
+Fourth arg CTTY specifies the program's controlling terminal:\n\
+  #F means none;\n\
+  -1 means use Scheme's controlling terminal in background;\n\
+  -2 means use Scheme's controlling terminal in foreground;\n\
+  string means open that terminal.\n\
+Fifth arg STDIN is the input channel for the subprocess.\n\
+Sixth arg STDOUT is the output channel for the subprocess.\n\
+Seventh arg STDERR is the error channel for the subprocess.\n\
+  Each channel arg can take these values:\n\
+  #F means none;\n\
+  -1 means use the corresponding channel from Scheme;\n\
+  -2 means use the controlling terminal (valid only when CTTY is a string);\n\
+  otherwise the argument must be a channel.")
 {
-  PRIMITIVE_HEADER (4);
+  PRIMITIVE_HEADER (7);
   CHECK_ARG (2, string_vector_p);
   if ((ARG_REF (3)) != SHARP_F)
     CHECK_ARG (3, string_vector_p);
@@ -80,20 +111,50 @@ Fourth arg CTTY-TYPE specifies the program's controlling terminal type:\n\
     char ** env =
       (((ARG_REF (3)) == SHARP_F) ? 0 : (convert_string_vector (ARG_REF (3))));
     enum process_ctty_type ctty_type;
-    Tprocess process;
-    switch (arg_index_integer (4, 4))
+    char * ctty_name = 0;
+    enum process_channel_type channel_in_type;
+    Tchannel channel_in;
+    enum process_channel_type channel_out_type;
+    Tchannel channel_out;
+    enum process_channel_type channel_err_type;
+    Tchannel channel_err;
+
+    if ((ARG_REF (4)) == SHARP_F)
+      ctty_type = process_ctty_type_none;
+    else if ((ARG_REF (4)) == (LONG_TO_FIXNUM (-1)))
       {
-      case 0: ctty_type = ctty_type_none; break;
-      case 1: ctty_type = ctty_type_inherited; break;
-      case 2: ctty_type = ctty_type_pipe; break;
-      case 3: ctty_type = ctty_type_pty; break;
+	if (scheme_jc_status == process_jc_status_no_ctty)
+	  error_bad_range_arg (4);
+	ctty_type = process_ctty_type_inherit_bg;
       }
-    process = (OS_make_subprocess (filename, argv, env, ctty_type));
-    dstack_set_position (position);
-    PRIMITIVE_RETURN (long_to_integer (process));
+    else if ((ARG_REF (4)) == (LONG_TO_FIXNUM (-2)))
+      {
+	if (scheme_jc_status == process_jc_status_no_ctty)
+	  error_bad_range_arg (4);
+	ctty_type = process_ctty_type_inherit_fg;
+      }
+    else
+      {
+	ctty_type = process_ctty_type_explicit;
+	ctty_name = (STRING_ARG (4));
+      }
+    PROCESS_CHANNEL_ARG (5, channel_in_type, channel_in);
+    PROCESS_CHANNEL_ARG (6, channel_out_type, channel_out);
+    PROCESS_CHANNEL_ARG (7, channel_err_type, channel_err);
+    {
+      Tprocess process =
+	(OS_make_subprocess
+	 (filename, argv, env,
+	  ctty_type, ctty_name,
+	  channel_in_type, channel_in,
+	  channel_out_type, channel_out,
+	  channel_err_type, channel_err));
+      dstack_set_position (position);
+      PRIMITIVE_RETURN (long_to_integer (process));
+    }
   }
 }
-
+
 static int
 DEFUN (string_vector_p, (vector), SCHEME_OBJECT vector)
 {
@@ -123,7 +184,7 @@ DEFUN (convert_string_vector, (vector), SCHEME_OBJECT vector)
   (*scan_result) = 0;
   return (result);
 }
-
+
 DEFINE_PRIMITIVE ("SCHEME-ENVIRONMENT", Prim_scheme_environment, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
@@ -145,28 +206,19 @@ DEFINE_PRIMITIVE ("SCHEME-ENVIRONMENT", Prim_scheme_environment, 0, 0, 0)
     }
   }
 }
-
+
 DEFINE_PRIMITIVE ("PROCESS-DELETE", Prim_process_delete, 1, 1,
   "Delete process PROCESS-NUMBER from the process table.\n\
-The process may be deleted only if it is exited or stopped.")
+The process may be deleted only if it is exited or signalled.")
 {
   PRIMITIVE_HEADER (1);
   {
-    Tprocess process = (arg_index_integer (1, OS_process_table_size));
-    switch (OS_process_status (process))
-      {
-      case process_status_free:
-	break;
-      case process_status_allocated:
-      case process_status_exited:
-      case process_status_signalled:
-	OS_process_deallocate (process);
-	break;
-      case process_status_running:
-      case process_status_stopped:
-	error_bad_range_arg (1);
-	break;
-      }
+    Tprocess process = (arg_process (1));
+    enum process_status status = (OS_process_status (process));
+    if (! ((status == process_status_exited)
+	   || (status == process_status_signalled)))
+      error_bad_range_arg (1);
+    OS_process_deallocate (process);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -178,8 +230,14 @@ DEFINE_PRIMITIVE ("PROCESS-TABLE", Prim_process_table, 0, 0,
   {
     Tprocess process;
     for (process = 0; (process < OS_process_table_size); process += 1)
-      if ((OS_process_status (process)) != process_status_free)
-	obstack_grow ((&scratch_obstack), (&process), (sizeof (Tprocess)));
+      {
+	enum process_status status = (OS_process_status (process));
+	if ((status == process_status_running)
+	    || (status == process_status_stopped)
+	    || (status == process_status_exited)
+	    || (status == process_status_signalled))
+	  obstack_grow ((&scratch_obstack), (&process), (sizeof (Tprocess)));
+      }
   }
   {
     unsigned int n_processes =
@@ -208,70 +266,33 @@ DEFINE_PRIMITIVE ("PROCESS-ID", Prim_process_id, 1, 1,
   PRIMITIVE_RETURN (long_to_integer (OS_process_id (arg_process (1))));
 }
 
-DEFINE_PRIMITIVE ("PROCESS-INPUT", Prim_process_input, 1, 1, 
-  "Return the input channel number of process PROCESS-NUMBER.")
+static SCHEME_OBJECT
+DEFUN (status_to_object, (status), enum process_status status)
 {
-  PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (OS_process_input (arg_process (1))));
+  switch (status)
+    {
+    case process_status_running:
+      return (LONG_TO_UNSIGNED_FIXNUM (0));
+    case process_status_stopped:
+      return (LONG_TO_UNSIGNED_FIXNUM (1));
+    case process_status_exited:
+      return (LONG_TO_UNSIGNED_FIXNUM (2));
+    case process_status_signalled:
+      return (LONG_TO_UNSIGNED_FIXNUM (3));
+    default:
+      error_bad_range_arg (1);
+      return (UNSPECIFIC);
+    }
 }
 
-DEFINE_PRIMITIVE ("PROCESS-OUTPUT", Prim_process_output, 1, 1, 
-  "Return the output channel number of process PROCESS-NUMBER.")
-{
-  PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (OS_process_output (arg_process (1))));
-}
-
-DEFINE_PRIMITIVE ("PROCESS-SYNCHRONOUS?", Prim_process_synchronous_p, 1, 1, 
-  "Return #F iff process PROCESS-NUMBER is not synchronous.")
+DEFINE_PRIMITIVE ("PROCESS-STATUS", Prim_process_status, 1, 1,
+  "Return the status of process PROCESS-NUMBER, a nonnegative integer:\n\
+  0 = running; 1 = stopped; 2 = exited; 3 = signalled.")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    (BOOLEAN_TO_OBJECT (OS_process_synchronous (arg_process (1))));
-}
-
-DEFINE_PRIMITIVE ("PROCESS-CTTY-TYPE", Prim_process_ctty_type, 1, 1,
-  "Return the controlling terminal type of process PROCESS-NUMBER.\n\
-This is a nonnegative integer:\n\
-  0 = none; 1 = inherited; 2 = pipe; 3 = PTY.")
-{
-  PRIMITIVE_HEADER (1);
-  switch (OS_process_ctty_type (arg_process (1)))
-    {
-    case ctty_type_none:
-      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (0));
-    case ctty_type_inherited:
-      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (1));
-    case ctty_type_pipe:
-      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (2));
-    case ctty_type_pty:
-      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (3));
-    default:
-      error_bad_range_arg (1);
-    }
-}
-
-DEFINE_PRIMITIVE ("PROCESS-STATUS", Prim_process_status, 1, 1,
-  "Return the status of process PROCESS-NUMBER.\n\
-This is a nonnegative integer:\n\
-  0 = running; 1 = stopped; 2 = exited; 3 = signalled; 4 = unstarted.")
-{
-  PRIMITIVE_HEADER (1);
-  switch (OS_process_status (arg_index_integer (1, OS_process_table_size)))
-    {
-    case process_status_running:
-      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (0));
-    case process_status_stopped:
-      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (1));
-    case process_status_exited:
-      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (2));
-    case process_status_signalled:
-      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (3));
-    case process_status_allocated:
-      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (4));
-    default:
-      error_bad_range_arg (1);
-    }
+    (status_to_object
+     (OS_process_status (arg_index_integer (1, OS_process_table_size))));
 }
 
 DEFINE_PRIMITIVE ("PROCESS-REASON", Prim_process_reason, 1, 1, 
@@ -291,6 +312,30 @@ This is a nonnegative integer, which depends on the process's status:\n\
   }
 }
 
+DEFINE_PRIMITIVE ("PROCESS-JOB-CONTROL-STATUS", Prim_process_jc_status, 1, 1, 
+  "Returns the job-control status of process PROCESS-NUMBER:\n\
+  0 means this system doesn't support job control.\n\
+  1 means the process doesn't have the same controlling terminal as Scheme.\n\
+  2 means it's the same ctty but the OS doesn't have job control.\n\
+  3 means it's the same ctty and the OS has job control.")
+{
+  PRIMITIVE_HEADER (1);
+  switch (OS_process_jc_status (arg_process (1)))
+    {
+    case process_jc_status_no_ctty:
+      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (0));
+    case process_jc_status_unrelated:
+      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (1));
+    case process_jc_status_no_jc:
+      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (2));
+    case process_jc_status_jc:
+      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (3));
+    default:
+      error_bad_range_arg (1);
+      PRIMITIVE_RETURN (UNSPECIFIC);
+    }
+}
+
 DEFINE_PRIMITIVE ("PROCESS-SIGNAL", Prim_process_signal, 2, 2,
   "Send a signal to process PROCESS-NUMBER; second arg SIGNAL says which one.")
 {
@@ -307,21 +352,76 @@ DEFINE_PRIMITIVE ("PROCESS-SIGNAL", Prim_process_signal, 2, 2,
 }
 
 DEFINE_PRIMITIVE ("PROCESS-KILL", Prim_process_kill, 1, 1,
-  "Kill process PROCESS-NUMBER (in unix: signal SIGKILL).")
+  "Kills process PROCESS-NUMBER (unix SIGKILL).")
      PROCESS_SIGNALLING_PRIMITIVE (OS_process_kill)
 
 DEFINE_PRIMITIVE ("PROCESS-INTERRUPT", Prim_process_interrupt, 1, 1,
-  "Interrupt process PROCESS-NUMBER (in unix: signal SIGINT).")
+  "Interrupts process PROCESS-NUMBER (unix SIGINT).")
      PROCESS_SIGNALLING_PRIMITIVE (OS_process_interrupt)
 
 DEFINE_PRIMITIVE ("PROCESS-QUIT", Prim_process_quit, 1, 1,
-  "Quit process PROCESS-NUMBER (in unix: signal SIGQUIT).")
+  "Sends the quit signal to process PROCESS-NUMBER (unix SIGQUIT).")
      PROCESS_SIGNALLING_PRIMITIVE (OS_process_quit)
 
 DEFINE_PRIMITIVE ("PROCESS-STOP", Prim_process_stop, 1, 1,
-  "Stop process PROCESS-NUMBER (in unix: signal SIGTSTP).")
+  "Stops process PROCESS-NUMBER (unix SIGTSTP).")
      PROCESS_SIGNALLING_PRIMITIVE (OS_process_stop)
+
+DEFINE_PRIMITIVE ("PROCESS-CONTINUE-BACKGROUND", Prim_process_continue_background, 1, 1,
+  "Continues process PROCESS-NUMBER in the background.")
+{
+  PRIMITIVE_HEADER (1);
+  {
+    Tprocess process = (arg_process (1));
+    switch (OS_process_status (process))
+      {
+      case process_status_stopped:
+      case process_status_running:
+	break;
+      default:
+	error_bad_range_arg (1);
+	break;
+      }
+    OS_process_continue_background (process);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
 
-DEFINE_PRIMITIVE ("PROCESS-CONTINUE", Prim_process_continue, 1, 1,
-  "Continue process PROCESS-NUMBER (in unix: signal SIGCONT).")
-     PROCESS_SIGNALLING_PRIMITIVE (OS_process_continue)
+DEFINE_PRIMITIVE ("PROCESS-WAIT", Prim_process_wait, 1, 1,
+  "Waits until process PROCESS-NUMBER is not running.\n\
+Returns the process status.")
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (status_to_object (OS_process_wait (arg_process (1))));
+}
+
+DEFINE_PRIMITIVE ("PROCESS-CONTINUE-FOREGROUND", Prim_process_continue_foreground, 1, 1,
+  "Continues process PROCESS-NUMBER in the foreground.\n\
+The process must have the same controlling terminal as Scheme.\n\
+Returns the process status.")
+{
+  PRIMITIVE_HEADER (1);
+  {
+    Tprocess process = (arg_process (1));
+    switch (OS_process_jc_status (process))
+      {
+      case process_jc_status_no_jc:
+      case process_jc_status_jc:
+	break;
+      default:
+	error_bad_range_arg (1);
+	break;
+      }
+    switch (OS_process_status (process))
+      {
+      case process_status_stopped:
+      case process_status_running:
+	break;
+      default:
+	error_bad_range_arg (1);
+	break;
+      }
+    PRIMITIVE_RETURN
+      (status_to_object (OS_process_continue_foreground (process)));
+  }
+}

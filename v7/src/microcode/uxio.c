@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.8 1991/01/24 11:25:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.9 1991/03/01 00:56:07 cph Exp $
 
 Copyright (c) 1990-1 Massachusetts Institute of Technology
 
@@ -220,6 +220,20 @@ DEFUN (OS_channel_write_string, (channel, string),
   unsigned long length = (strlen (string));
   if ((OS_channel_write (channel, string, length)) != length)
     error_external_return ();
+}
+
+void
+DEFUN (OS_make_pipe, (readerp, writerp),
+       Tchannel * readerp AND
+       Tchannel * writerp)
+{
+  int pv [2];
+  transaction_begin ();
+  STD_VOID_SYSTEM_CALL (syscall_pipe, (UX_pipe (pv)));
+  MAKE_CHANNEL ((pv[0]), channel_type_pipe, (*readerp) =);
+  OS_channel_close_on_abort (*readerp);
+  MAKE_CHANNEL ((pv[1]), channel_type_pipe, (*writerp) =);
+  transaction_commit ();
 }
 
 #ifdef FCNTL_NONBLOCK

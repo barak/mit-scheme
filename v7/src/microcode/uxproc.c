@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.4 1991/01/24 11:26:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.5 1991/03/01 00:56:10 cph Exp $
 
-Copyright (c) 1990-1 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,16 +37,102 @@ MIT in each case. */
 #include "uxio.h"
 #include "osterm.h"
 
-extern char ** environ;
+#ifndef HAVE_DUP2
+#include "error: can't hack subprocess I/O without dup2() or equivalent"
+#endif
 
-static void EXFUN (deallocate_uncommitted_processes, (PTR ignore));
+extern char ** environ;
+extern void EXFUN
+  ((*subprocess_death_hook), (pid_t pid, wait_status_t * status));
+extern void EXFUN ((*stop_signal_hook), (int signo));
+extern void EXFUN (stop_signal_default, (int signo));
+extern int EXFUN (OS_ctty_fd, (void));
+
 static void EXFUN (subprocess_death, (pid_t pid, wait_status_t * status));
-static Tprocess EXFUN (find_process, (pid_t pid));
-static int EXFUN (child_setup_tty, (Tchannel channel));
-
+static void EXFUN (stop_signal_handler, (int signo));
+static void EXFUN (give_terminal_to, (Tprocess process));
+static void EXFUN (get_terminal_back, (void));
+static enum process_status EXFUN (process_wait, (Tprocess process));
+static int EXFUN (child_setup_tty, (int fd));
+
 size_t OS_process_table_size;
 struct process * process_table;
+enum process_jc_status scheme_jc_status;
 
+static int scheme_ctty_fd;
+static Tprocess foreground_child_process;
+
+/* This macro should only be used when
+   (scheme_jc_status == process_jc_status_jc). */
+#define SCHEME_IN_FOREGROUND()						\
+  ((UX_tcgetpgrp (scheme_ctty_fd)) == (UX_getpgrp ()))
+
+#ifdef HAVE_POSIX_SIGNALS
+
+static void
+DEFUN (restore_signal_mask, (environment), PTR environment)
+{
+  UX_sigprocmask (SIG_SETMASK, ((sigset_t *) environment), 0);
+}
+
+static void
+DEFUN_VOID (block_sigchld)
+{
+  sigset_t * outside = (dstack_alloc (sizeof (sigset_t)));
+  sigset_t sigchld;
+  UX_sigemptyset (&sigchld);
+  UX_sigaddset ((&sigchld), SIGCHLD);
+  UX_sigprocmask (SIG_BLOCK, (&sigchld), outside);
+  transaction_record_action (tat_always, restore_signal_mask, outside);
+}
+
+static void
+DEFUN_VOID (block_jc_signals)
+{
+  sigset_t * outside = (dstack_alloc (sizeof (sigset_t)));
+  sigset_t jc_signals;
+  UX_sigemptyset (&jc_signals);
+  UX_sigaddset ((&jc_signals), SIGCHLD);
+  UX_sigaddset ((&jc_signals), SIGTTOU);
+  UX_sigaddset ((&jc_signals), SIGTTIN);
+  UX_sigaddset ((&jc_signals), SIGTSTP);
+  UX_sigaddset ((&jc_signals), SIGSTOP);
+  UX_sigprocmask (SIG_BLOCK, (&jc_signals), outside);
+  transaction_record_action (tat_always, restore_signal_mask, outside);
+}
+
+static sigset_t grabbed_signal_mask;
+
+static void
+DEFUN_VOID (grab_signal_mask)
+{
+  UX_sigprocmask (SIG_BLOCK, 0, (&grabbed_signal_mask));
+}
+
+#else /* not HAVE_POSIX_SIGNALS */
+
+#ifdef HAVE_SYSV3_SIGNALS
+
+static void
+DEFUN (release_sigchld, (environment), PTR environment)
+{
+  UX_sigrelse (SIGCHLD);
+}
+
+static void
+DEFUN_VOID (block_sigchld)
+{
+  UX_sighold (SIGCHLD);
+  transaction_record_action (tat_always, release_sigchld, 0);
+}
+
+#endif /* HAVE_SYSV3_SIGNALS */
+
+#define block_jc_signals block_sigchld
+#define grab_signal_mask()
+
+#endif /* not HAVE_POSIX_SIGNALS */
+
 void
 DEFUN_VOID (UX_initialize_processes)
 {
@@ -62,13 +148,18 @@ DEFUN_VOID (UX_initialize_processes)
   {
     Tprocess process;
     for (process = 0; (process < OS_process_table_size); process += 1)
-      (PROCESS_STATUS (process)) = process_status_free;
+      OS_process_deallocate (process);
   }
-  {
-    extern void EXFUN
-      ((*subprocess_death_hook), (pid_t pid, wait_status_t * status));
-    subprocess_death_hook = subprocess_death;
-  }
+  scheme_ctty_fd = (OS_ctty_fd ());
+  scheme_jc_status =
+    ((scheme_ctty_fd < 0)
+     ? process_jc_status_no_ctty
+     : (UX_SC_JOB_CONTROL ())
+     ? process_jc_status_jc
+     : process_jc_status_no_jc);
+  foreground_child_process = NO_PROCESS;
+  subprocess_death_hook = subprocess_death;
+  stop_signal_hook = stop_signal_handler;
 }
 
 void
@@ -79,6 +170,20 @@ DEFUN_VOID (UX_reset_processes)
   OS_process_table_size = 0;
 }
 
+static void
+DEFUN (process_allocate_abort, (environment), PTR environment)
+{
+  Tprocess process = (* ((Tprocess *) environment));
+  switch (PROCESS_STATUS (process))
+    {
+    case process_status_stopped:
+    case process_status_running:
+      UX_kill ((PROCESS_ID (process)), SIGKILL);
+      break;
+    }
+  OS_process_deallocate (process);
+}
+
 static Tprocess
 DEFUN_VOID (process_allocate)
 {
@@ -86,8 +191,9 @@ DEFUN_VOID (process_allocate)
   for (process = 0; (process < OS_process_table_size); process += 1)
     if ((PROCESS_STATUS (process)) == process_status_free)
       {
-	transaction_record_action
-	  (tat_abort, deallocate_uncommitted_processes, 0);
+	Tprocess * pp = (dstack_alloc (sizeof (Tprocess)));
+	(*pp) = process;
+	transaction_record_action (tat_abort, process_allocate_abort, pp);
 	(PROCESS_STATUS (process)) = process_status_allocated;
 	return (process);
       }
@@ -95,221 +201,202 @@ DEFUN_VOID (process_allocate)
   return (NO_PROCESS);
 }
 
-static void
-DEFUN (deallocate_uncommitted_processes, (ignore), PTR ignore)
-{
-  Tprocess process;
-  for (process = 0; (process < OS_process_table_size); process += 1)
-    if ((PROCESS_STATUS (process)) == process_status_allocated)
-      (PROCESS_STATUS (process)) = process_status_free;
-}
-
 void
 DEFUN (OS_process_deallocate, (process), Tprocess process)
 {
   (PROCESS_STATUS (process)) = process_status_free;
+  (PROCESS_ID (process)) = 0;
 }
 
 Tprocess
-DEFUN (OS_make_subprocess, (filename, argv, envp, ctty_type),
+DEFUN (OS_make_subprocess,
+       (filename, argv, envp,
+	ctty_type, ctty_name,
+	channel_in_type, channel_in,
+	channel_out_type, channel_out,
+	channel_err_type, channel_err),
        CONST char * filename AND
        CONST char ** argv AND
        char ** envp AND
-       enum process_ctty_type ctty_type)
+       enum process_ctty_type ctty_type AND
+       char * ctty_name AND
+       enum process_channel_type channel_in_type AND
+       Tchannel channel_in AND
+       enum process_channel_type channel_out_type AND
+       Tchannel channel_out AND
+       enum process_channel_type channel_err_type AND
+       Tchannel channel_err)
 {
-  Tchannel child_read;
-  Tchannel child_write;
-  Tchannel parent_read;
-  Tchannel parent_write;
   pid_t child_pid;
-#ifdef HAVE_PTYS
-  CONST char * pty_name;
-#endif
   Tprocess child;
-
-  if ((ctty_type == ctty_type_none) || (ctty_type == ctty_type_inherited))
-    /* Implement shell-like subprocess control later. */
-    error_unimplemented_primitive ();
+  enum process_jc_status child_jc_status;
 
   if (envp == 0)
     envp = environ;
+  switch (ctty_type)
+    {
+    case process_ctty_type_none:
+      child_jc_status = process_jc_status_no_ctty;
+      break;
+    case process_ctty_type_explicit:
+      child_jc_status = process_jc_status_unrelated;
+      break;
+    case process_ctty_type_inherit_bg:
+    case process_ctty_type_inherit_fg:
+      child_jc_status = scheme_jc_status;
+      break;
+    }
 
   transaction_begin ();
   child = (process_allocate ());
-
-  if (ctty_type == ctty_type_pty)
-    {
-#ifdef HAVE_PTYS
-      {
-	CONST char * master_name;
-	pty_name = (OS_open_pty_master ((&parent_read), (&master_name)));
-      }
-      if (pty_name != 0)
-	{
-	  OS_channel_close_on_abort (parent_read);
-	  parent_write = parent_read;
-	}
-      else
-#endif /* HAVE_PTYS */
-	ctty_type = ctty_type_pipe;
-    }
-  if (ctty_type == ctty_type_pipe)
-    {
-      int pv [2];
-      STD_VOID_SYSTEM_CALL (syscall_pipe, (UX_pipe (pv)));
-      MAKE_CHANNEL ((pv[0]), channel_type_pipe, child_read =);
-      OS_channel_close_on_abort (child_read);
-      MAKE_CHANNEL ((pv[1]), channel_type_pipe, parent_write =);
-      OS_channel_close_on_abort (parent_write);
-      STD_VOID_SYSTEM_CALL (syscall_pipe, (UX_pipe (pv)));
-      MAKE_CHANNEL ((pv[0]), channel_type_pipe, parent_read =);
-      OS_channel_close_on_abort (parent_read);
-      MAKE_CHANNEL ((pv[1]), channel_type_pipe, child_write =);
-      OS_channel_close_on_abort (child_write);
-    }
 
   /* Flush streams so that i/o won't be duplicated after the fork */
   fflush (stdin);
   fflush (stdout);
   fflush (stderr);
 
+  grab_signal_mask ();
+  if (ctty_type == process_ctty_type_inherit_fg)
+    block_jc_signals ();
+  else
+    block_sigchld ();
   STD_UINT_SYSTEM_CALL (syscall_vfork, child_pid, (UX_vfork ()));
   if (child_pid > 0)
     {
       /* In the parent process. */
       (PROCESS_ID (child)) = child_pid;
-      (PROCESS_INPUT (child)) = parent_write;
-      (PROCESS_OUTPUT (child)) = parent_read;
       (PROCESS_STATUS (child)) = process_status_running;
-      (PROCESS_CTTY_TYPE (child)) = ctty_type;
-      (PROCESS_CHANGED (child)) = 0;
-      (PROCESS_SYNCHRONOUS (child)) = 0;
-      if (ctty_type == ctty_type_pipe)
+      (PROCESS_JC_STATUS (child)) = child_jc_status;
+      if (child_jc_status == process_jc_status_jc)
+	STD_VOID_SYSTEM_CALL
+	  (syscall_setpgid, (UX_setpgid (child_pid, child_pid)));
+      if (ctty_type == process_ctty_type_inherit_fg)
 	{
-	  /* If either of these closes signals an error, ignore it. */
-	  UX_close (CHANNEL_DESCRIPTOR (child_read));
-	  MARK_CHANNEL_CLOSED (child_read);
-	  UX_close (CHANNEL_DESCRIPTOR (child_write));
-	  MARK_CHANNEL_CLOSED (child_write);
+	  give_terminal_to (child);
+	  (void) process_wait (child);
 	}
       transaction_commit ();
       return (child);
     }
-  else
-    {
-      /* In the child process -- if any errors occur, just exit. */
+  /* In the child process -- if any errors occur, just exit. */
+  /* Don't do `transaction_commit ()' here.  Because we used `vfork'
+     to spawn the child, the side-effects that are performed by
+     `transaction_commit' will occur in the parent as well. */
+  {
+    int in_fd = (-1);
+    int out_fd = (-1);
+    int err_fd = (-1);
 
-      /* Force child into different session. */
-      if ((UX_setsid ()) < 0)
-	goto kill_child;
+    if (channel_in_type == process_channel_type_explicit)
+      in_fd = (CHANNEL_DESCRIPTOR (channel_in));
+    if (channel_out_type == process_channel_type_explicit)
+      out_fd = (CHANNEL_DESCRIPTOR (channel_out));
+    if (channel_err_type == process_channel_type_explicit)
+      err_fd = (CHANNEL_DESCRIPTOR (channel_err));
 
-#ifdef HAVE_PTYS
-      /* If connection is a PTY, open the slave side (which becomes
-	 the controlling terminal). */
-      if (ctty_type == ctty_type_pty)
-	{
-	  int fd = (UX_open (pty_name, O_RDWR, 0));
-	  if (fd < 0)
-	    goto kill_child;
-	  MAKE_CHANNEL (fd, channel_type_terminal, child_read =);
-	  child_write = child_read;
-	  if ((child_setup_tty (child_read)) < 0)
-	    goto kill_child;
-	}
-#endif /* HAVE_PTYS */
-
-#ifdef HAVE_DUP2
-      /* Setup the standard I/O for the child. */
-      if (((UX_dup2 ((CHANNEL_DESCRIPTOR (child_read)), STDIN_FILENO)) < 0)
-	  || ((UX_dup2 ((CHANNEL_DESCRIPTOR (child_write)), STDOUT_FILENO))
-	      < 0)
-	  || ((UX_dup2 ((CHANNEL_DESCRIPTOR (child_write)), STDERR_FILENO))
-	      < 0))
-	goto kill_child;
-#else
-#include "error: can't hack subprocess I/O without dup2() or equivalent"
-#endif
-
-      /* Close all other file descriptors. */
+    if ((ctty_type == process_ctty_type_inherit_bg)
+	|| (ctty_type == process_ctty_type_inherit_fg))
       {
-	int fd = 0;
-	int open_max = (UX_SC_OPEN_MAX ());
-	while (fd < open_max)
+	/* If the control terminal is inherited and job control is
+	   available, force the child into a different process group. */
+	if (child_jc_status == process_jc_status_jc)
 	  {
-	    if (! ((fd == STDIN_FILENO) ||
-		   (fd == STDOUT_FILENO) ||
-		   (fd == STDERR_FILENO)))
-	      UX_close (fd);
-	    fd += 1;
+	    pid_t child_pid = (UX_getpid ());
+	    if (((UX_setpgid (child_pid, child_pid)) < 0)
+		|| ((ctty_type == process_ctty_type_inherit_fg)
+		    && (SCHEME_IN_FOREGROUND ())
+		    && ((UX_tcsetpgrp (scheme_ctty_fd, child_pid)) < 0)))
+	      goto kill_child;
+	  }
+      }
+    else
+      {
+	/* If the control terminal is not inherited, force the child
+	   into a different session. */
+	if ((UX_setsid ()) < 0)
+	  goto kill_child;
+	/* If the control terminal is explicit, open the given device
+	   now so it becomes the control terminal. */
+	if (ctty_type == process_ctty_type_explicit)
+	  {
+	    int fd = (UX_open (ctty_name, O_RDWR, 0));
+	    if ((fd < 0)
+		|| (! (isatty (fd)))
+		|| ((child_setup_tty (fd)) < 0))
+	      goto kill_child;
+	    /* Use CTTY for standard I/O if requested. */
+	    if (channel_in_type == process_channel_type_ctty)
+	      in_fd = fd;
+	    if (channel_out_type == process_channel_type_ctty)
+	      out_fd = fd;
+	    if (channel_err_type == process_channel_type_ctty)
+	      err_fd = fd;
 	  }
       }
 
-      /* Force the signal mask to be empty.
-         (This should be done for HAVE_SYSV3_SIGNALS too, but
-	  it's more difficult in that case.) */
-#ifdef HAVE_POSIX_SIGNALS
+    /* Install the new standard I/O channels. */
+    if ((in_fd >= 0) && (in_fd != STDIN_FILENO))
       {
-	sigset_t empty_mask;
-	UX_sigemptyset (&empty_mask);
-	UX_sigprocmask (SIG_SETMASK, (&empty_mask), 0);
+	if ((out_fd == STDIN_FILENO) && ((out_fd = (UX_dup (out_fd))) < 0))
+	  goto kill_child;
+	if ((err_fd == STDIN_FILENO) && ((err_fd = (UX_dup (err_fd))) < 0))
+	  goto kill_child;
+	if ((UX_dup2 (in_fd, STDIN_FILENO)) < 0)
+	  goto kill_child;
       }
-#else /* not HAVE_POSIX_SIGNALS */
-#ifdef HAVE_BSD_SIGNALS
-      UX_sigsetmask (0);
-#endif /* HAVE_BSD_SIGNALS */
-#endif /* HAVE_POSIX_SIGNALS */
+    if ((out_fd >= 0) && (out_fd != STDOUT_FILENO))
+      {
+	if ((err_fd == STDOUT_FILENO) && ((err_fd = (UX_dup (err_fd))) < 0))
+	  goto kill_child;
+	if ((UX_dup2 (out_fd, STDOUT_FILENO)) < 0)
+	  goto kill_child;
+      }
+    if ((err_fd >= 0) && (err_fd != STDERR_FILENO))
+      {
+	if ((UX_dup2 (err_fd, STDERR_FILENO)) < 0)
+	  goto kill_child;
+      }
+  }
+  {
+    /* Close all other file descriptors. */
+    int fd = 0;
+    int open_max = (UX_SC_OPEN_MAX ());
+    while (fd < open_max)
+      {
+	if ((fd == STDIN_FILENO)
+	    ? (channel_in_type == process_channel_type_none)
+	    : (fd == STDOUT_FILENO)
+	    ? (channel_out_type == process_channel_type_none)
+	    : (fd == STDERR_FILENO)
+	    ? (channel_err_type == process_channel_type_none)
+	    : 1)
+	  UX_close (fd);
+	fd += 1;
+      }
+  }
 
-      /* Start the process. */
-      execve (filename, argv, envp);
-    kill_child:
-      _exit (1);
-    }
+  /* Force the signal mask to be empty. */
+#ifdef HAVE_POSIX_SIGNALS
+  {
+    sigset_t empty_mask;
+    UX_sigemptyset (&empty_mask);
+    UX_sigprocmask (SIG_SETMASK, (&empty_mask), 0);
+  }
+#else
+#ifdef HAVE_SYSV3_SIGNALS
+  /* We could do something more here, but it is hard to enumerate all
+     the possible signals.  Instead, just release SIGCHLD, which we
+     know was held above before the child was spawned. */
+  UX_sigrelse (SIGCHLD);
+#endif
+#endif
+
+  /* Start the process. */
+  execve (filename, argv, envp);
+ kill_child:
+  _exit (1);
 }
 
-static void
-DEFUN (subprocess_death, (pid, status), pid_t pid AND wait_status_t * status)
-{
-  Tprocess process = (find_process (pid));
-  if (process != NO_PROCESS)
-    {
-      if (WIFEXITED (*status))
-	{
-	  (PROCESS_CHANGED (process)) = 1;
-	  (PROCESS_STATUS (process)) = process_status_exited;
-	  (PROCESS_REASON (process)) = (WEXITSTATUS (*status));
-	}
-      else if (WIFSTOPPED (*status))
-	{
-	  (PROCESS_CHANGED (process)) = 1;
-	  (PROCESS_STATUS (process)) = process_status_stopped;
-	  (PROCESS_REASON (process)) = (WSTOPSIG (*status));
-	  if (PROCESS_SYNCHRONOUS (process))
-	    UX_kill (pid, SIGKILL);
-	}
-      else if (WIFSIGNALED (*status))
-	{
-	  (PROCESS_CHANGED (process)) = 1;
-	  (PROCESS_STATUS (process)) = process_status_signalled;
-	  (PROCESS_REASON (process)) = (WTERMSIG (*status));
-	}
-    }
-}
-
-static Tprocess
-DEFUN (find_process, (pid), pid_t pid)
-{
-  Tprocess process;
-  for (process = 0; (process < OS_process_table_size); process += 1)
-    if ((PROCESS_ID (process)) == pid)
-      {
-	if (((PROCESS_STATUS (process)) == process_status_free)
-	    || ((PROCESS_STATUS (process)) == process_status_allocated))
-	  break;
-	return (process);
-      }
-  return (NO_PROCESS);
-}
-
 #define DEFUN_PROCESS_ACCESSOR(name, result_type, accessor)		\
 result_type								\
 DEFUN (name, (process), Tprocess process)				\
@@ -319,33 +406,19 @@ DEFUN (name, (process), Tprocess process)				\
 
 DEFUN_PROCESS_ACCESSOR (OS_process_id, pid_t, PROCESS_ID)
 DEFUN_PROCESS_ACCESSOR (OS_process_status, enum process_status, PROCESS_STATUS)
-DEFUN_PROCESS_ACCESSOR
-  (OS_process_ctty_type, enum process_ctty_type, PROCESS_CTTY_TYPE)
 DEFUN_PROCESS_ACCESSOR (OS_process_reason, unsigned short, PROCESS_REASON)
-DEFUN_PROCESS_ACCESSOR (OS_process_synchronous, int, PROCESS_SYNCHRONOUS)
+DEFUN_PROCESS_ACCESSOR
+  (OS_process_jc_status, enum process_jc_status, PROCESS_JC_STATUS)
 
-Tchannel
-DEFUN (OS_process_input, (process), Tprocess process)
-{
-  Tchannel channel = (PROCESS_INPUT (process));
-  if (channel == NO_CHANNEL)
-    error_external_return ();
-  return (channel);
-}
-
-Tchannel
-DEFUN (OS_process_output, (process), Tprocess process)
-{
-  Tchannel channel = (PROCESS_OUTPUT (process));
-  if (channel == NO_CHANNEL)
-    error_external_return ();
-  return (channel);
-}
-
 void
 DEFUN (OS_process_send_signal, (process, sig), Tprocess process AND int sig)
 {
-  STD_VOID_SYSTEM_CALL (syscall_kill, (UX_kill ((PROCESS_ID (process)), sig)));
+  STD_VOID_SYSTEM_CALL
+    (syscall_kill, 
+     (UX_kill ((((PROCESS_JC_STATUS (process)) == process_jc_status_jc)
+		? (- (PROCESS_ID (process)))
+		: (PROCESS_ID (process))),
+	       sig)));
 }
 
 void
@@ -361,12 +434,6 @@ DEFUN (OS_process_stop, (process), Tprocess process)
 }
 
 void
-DEFUN (OS_process_continue, (process), Tprocess process)
-{
-  OS_process_send_signal (process, SIGCONT);
-}
-
-void
 DEFUN (OS_process_interrupt, (process), Tprocess process)
 {
   OS_process_send_signal (process, SIGINT);
@@ -377,9 +444,158 @@ DEFUN (OS_process_quit, (process), Tprocess process)
 {
   OS_process_send_signal (process, SIGQUIT);
 }
-
-#ifdef HAVE_PTYS
 
+void
+DEFUN (OS_process_continue_background, (process), Tprocess process)
+{
+  transaction_begin ();
+  block_sigchld ();
+  if ((PROCESS_STATUS (process)) == process_status_stopped)
+    {
+      (PROCESS_STATUS (process)) = process_status_running;
+      OS_process_send_signal (process, SIGCONT);
+    }
+  transaction_commit ();
+}
+
+enum process_status
+DEFUN (OS_process_continue_foreground, (process), Tprocess process)
+{
+  transaction_begin ();
+  grab_signal_mask ();
+  block_jc_signals ();
+  give_terminal_to (process);
+  if ((PROCESS_STATUS (process)) == process_status_stopped)
+    {
+      (PROCESS_STATUS (process)) = process_status_running;
+      OS_process_send_signal (process, SIGCONT); 
+    }
+  {
+    enum process_status result = (process_wait (process));
+    transaction_commit ();
+    return (result);
+  }
+}
+
+enum process_status
+DEFUN (OS_process_wait, (process), Tprocess process)
+{
+  transaction_begin ();
+  grab_signal_mask ();
+  block_jc_signals ();
+  {
+    enum process_status result = (process_wait (process));
+    transaction_commit ();
+    return (result);
+  }
+}
+
+static void
+DEFUN (get_terminal_back_1, (environment), PTR environment)
+{
+  get_terminal_back ();
+}
+
+static void
+DEFUN (give_terminal_to, (process), Tprocess process)
+{
+  if (((PROCESS_JC_STATUS (process)) == process_jc_status_jc)
+      && (SCHEME_IN_FOREGROUND ()))
+    {
+      transaction_record_action (tat_always, get_terminal_back_1, 0);
+      foreground_child_process = process;
+      OS_save_internal_state ();
+      OS_restore_external_state ();
+      UX_tcsetpgrp (scheme_ctty_fd, (PROCESS_ID (process)));
+    }
+}
+
+static void
+DEFUN_VOID (get_terminal_back)
+{
+  if (foreground_child_process != NO_PROCESS)
+    {
+      UX_tcsetpgrp (scheme_ctty_fd, (UX_getpgrp ()));
+      OS_save_external_state ();
+      OS_restore_internal_state ();
+      foreground_child_process = NO_PROCESS;
+    }
+}
+
+static enum process_status
+DEFUN (process_wait, (process), Tprocess process)
+{
+  enum process_status result;
+#ifdef HAVE_POSIX_SIGNALS
+  while (((result = (PROCESS_STATUS (process))) == process_status_running)
+	 && (! (pending_interrupts_p ())))
+    UX_sigsuspend (&grabbed_signal_mask);
+#else /* not HAVE_POSIX_SIGNALS */
+  result = (PROCESS_STATUS (process));
+  while ((result == process_status_running)
+	 && (! (pending_interrupts_p ())))
+    {
+      /* INTERRUPTABLE_EXTENT eliminates the interrupt window between
+	 PROCESS_STATUS and `pause'. */
+      int scr;
+      INTERRUPTABLE_EXTENT
+	(scr,
+	 ((((result = (PROCESS_STATUS (process))) == process_status_running)
+	   && (! (pending_interrupts_p ())))
+	  ? (UX_pause ())
+	  : ((errno = EINTR), (-1))));
+    }
+#endif /* not HAVE_POSIX_SIGNALS */
+  return (result);
+}
+
+static Tprocess EXFUN (find_process, (pid_t pid));
+
+static void
+DEFUN (subprocess_death, (pid, status), pid_t pid AND wait_status_t * status)
+{
+  Tprocess process = (find_process (pid));
+  if (process != NO_PROCESS)
+    {
+      if (WIFEXITED (*status))
+	{
+	  (PROCESS_STATUS (process)) = process_status_exited;
+	  (PROCESS_REASON (process)) = (WEXITSTATUS (*status));
+	}
+      else if (WIFSTOPPED (*status))
+	{
+	  (PROCESS_STATUS (process)) = process_status_stopped;
+	  (PROCESS_REASON (process)) = (WSTOPSIG (*status));
+	}
+      else if (WIFSIGNALED (*status))
+	{
+	  (PROCESS_STATUS (process)) = process_status_signalled;
+	  (PROCESS_REASON (process)) = (WTERMSIG (*status));
+	}
+    }
+}
+
+static Tprocess
+DEFUN (find_process, (pid), pid_t pid)
+{
+  Tprocess process;
+  for (process = 0; (process < OS_process_table_size); process += 1)
+    if ((PROCESS_ID (process)) == pid)
+      return (process);
+  return (NO_PROCESS);
+}
+
+static void
+DEFUN (stop_signal_handler, (signo), int signo)
+{
+  /* If Scheme gets a stop signal while waiting on a foreground
+     subprocess, it must grab the terminal back from the subprocess
+     before stopping.  The caller guarantees that the job-control
+     signals are blocked when this procedure is called. */
+  get_terminal_back ();
+  stop_signal_default (signo);
+}
+
 /* Set up the terminal at the other end of a pseudo-terminal that we
    will be controlling an inferior through. */
 
@@ -400,9 +616,8 @@ DEFUN (OS_process_quit, (process), Tprocess process)
 #endif
 
 static int
-DEFUN (child_setup_tty, (channel), Tchannel channel)
+DEFUN (child_setup_tty, (fd), int fd)
 {
-  int fd = (CHANNEL_DESCRIPTOR (channel));
   cc_t disabled_char = (UX_PC_VDISABLE (fd));
   struct termios s;
   if ((UX_tcgetattr (fd, (&s))) < 0)
@@ -422,13 +637,12 @@ DEFUN (child_setup_tty, (channel), Tchannel channel)
 }
 
 #else /* not HAVE_TERMIOS */
-
+
 #ifdef HAVE_TERMIO
 
 static int
-DEFUN (child_setup_tty, (channel), Tchannel channel)
+DEFUN (child_setup_tty, (fd), int fd)
 {
-  int fd = (CHANNEL_DESCRIPTOR (channel));
   cc_t disabled_char = (UX_PC_VDISABLE (fd));
   struct termio s;
   if ((ioctl (fd, TCGETA, (&s))) < 0)
@@ -464,9 +678,8 @@ DEFUN (child_setup_tty, (channel), Tchannel channel)
 #ifdef HAVE_BSD_TTY_DRIVER
 
 static int
-DEFUN (child_setup_tty, (channel), Tchannel channel)
+DEFUN (child_setup_tty, (fd), int fd)
 {
-  int fd = (CHANNEL_DESCRIPTOR (channel));
   struct sgttyb s;
   if ((ioctl (fd, TIOCGETP, (&s))) < 0)
     return (-1);
@@ -478,4 +691,3 @@ DEFUN (child_setup_tty, (channel), Tchannel channel)
 #endif /* HAVE_BSD_TTY_DRIVER */
 #endif /* HAVE_TERMIO */
 #endif /* HAVE_TERMIOS */
-#endif /* HAVE_PTYS */

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.41 1990/11/14 10:57:22 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.42 1991/03/01 00:54:32 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -138,12 +138,10 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
     }									\
   /* Put down frames to restore history and interrupts so that these	\
      operations will be performed on a throw. */			\
-  Will_Push (CONTINUATION_SIZE + HISTORY_SIZE);				\
-    Save_History (return_code);						\
-    Store_Expression (LONG_TO_FIXNUM (FETCH_INTERRUPT_MASK()));		\
-    Store_Return (RC_RESTORE_INT_MASK);					\
-    Save_Cont ();							\
-  Pushed ();								\
+ Will_Push (HISTORY_SIZE);						\
+  Save_History (return_code);						\
+ Pushed ();								\
+  preserve_interrupt_mask ();						\
   /* There is no history to use since the				\
      last control point was formed. */					\
   Prev_Restore_History_Stacklet = NULL;					\
@@ -282,8 +280,7 @@ DEFINE_PRIMITIVE ("ERROR-PROCEDURE", Prim_error_procedure, 3, 3, 0)
     /* This is done outside the Will_Push because the space for it
        is guaranteed by the interpreter before it gets here.
        If done inside, this could break when using stacklets. */
-    Back_Out_Of_Primitive ();
-    Save_Cont ();
+    back_out_of_primitive ();
   Will_Push (HISTORY_SIZE + STACK_ENV_EXTRA_SLOTS + 4);
     Stop_History ();
     /* Stepping should be cleared here! */
@@ -552,13 +549,10 @@ DEFINE_PRIMITIVE ("WITH-INTERRUPT-MASK", Prim_with_interrupt_mask, 2, 2, 0)
   {
     long new_mask = (INT_Mask & (arg_integer (1)));
     SCHEME_OBJECT thunk = (ARG_REF (2));
-    SCHEME_OBJECT old_mask = (LONG_TO_FIXNUM (FETCH_INTERRUPT_MASK ()));
     POP_PRIMITIVE_FRAME (2);
-  Will_Push (CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 2);
-    Store_Return (RC_RESTORE_INT_MASK);
-    Store_Expression (old_mask);
-    Save_Cont ();
-    STACK_PUSH (old_mask);
+    preserve_interrupt_mask ();
+  Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
+    STACK_PUSH (LONG_TO_FIXNUM (FETCH_INTERRUPT_MASK ()));
     STACK_PUSH (thunk);
     STACK_PUSH (STACK_FRAME_HEADER + 1);
   Pushed ();
@@ -574,13 +568,11 @@ DEFINE_PRIMITIVE ("WITH-INTERRUPTS-REDUCED", Prim_with_interrupts_reduced, 2, 2,
   PRIMITIVE_CANONICALIZE_CONTEXT();
   {
     long new_mask = (INT_Mask & (arg_integer (1)));
-    SCHEME_OBJECT thunk = (ARG_REF (2));
     long old_mask = (FETCH_INTERRUPT_MASK ());
+    SCHEME_OBJECT thunk = (ARG_REF (2));
     POP_PRIMITIVE_FRAME (2);
-  Will_Push (CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 2);
-    Store_Return (RC_RESTORE_INT_MASK);
-    Store_Expression (old_mask);
-    Save_Cont ();
+    preserve_interrupt_mask ();
+  Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
     STACK_PUSH (LONG_TO_FIXNUM (old_mask));
     STACK_PUSH (thunk);
     STACK_PUSH (STACK_FRAME_HEADER + 1);

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.54 1991/01/24 11:25:15 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.55 1991/03/01 00:55:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987-91 Massachusetts Institute of Technology
 ;;;
@@ -575,46 +575,55 @@
 
 (vector-set! (get-fixed-objects-vector)
 	     #x09 ;(fixed-objects-vector-slot 'SYSTEM-CALL-NAMES)
-	     #(ACCEPT			;00
-	       BIND			;01
-	       CHDIR			;02
-	       CHMOD			;03
-	       CLOSE			;04
-	       CONNECT			;05
-	       FCNTL-GETFL		;06
-	       FCNTL-SETFL		;07
-	       FSTAT			;08
-	       FTRUNCATE		;09
-	       GETCWD			;0A
-	       GETTIMEOFDAY		;0B
-	       IOCTL-TIOCGPGRP		;0C
-	       IOCTL-TIOCSIGSEND	;0D
-	       KILL			;0E
-	       LINK			;0F
-	       LISTEN			;10
-	       LOCALTIME		;11
-	       LSEEK			;12
-	       MALLOC			;13
-	       MKDIR			;14
-	       OPEN			;15
-	       OPENDIR			;16
-	       PIPE			;17
-	       READ			;18
-	       READLINK			;19
-	       REALLOC			;1A
-	       RENAME			;1B
-	       SETITIMER		;1C
-	       SOCKET			;1D
-	       SYMLINK			;1E
-	       TCDRAIN			;1F
-	       TCFLUSH			;20
-	       TERMINAL-GET-STATE	;21
-	       TERMINAL-SET-STATE	;22
-	       TIME			;23
-	       TIMES			;24
-	       UNLINK			;25
-	       VFORK			;26
-	       WRITE			;27
+	     #(ACCEPT
+	       BIND
+	       CHDIR
+	       CHMOD
+	       CLOSE
+	       CONNECT
+	       FCNTL-GETFL
+	       FCNTL-SETFL
+	       FORK
+	       FSTAT
+	       FTRUNCATE
+	       GETCWD
+	       GETTIMEOFDAY
+	       IOCTL-TIOCGPGRP
+	       IOCTL-TIOCSIGSEND
+	       KILL
+	       LINK
+	       LISTEN
+	       LOCALTIME
+	       LSEEK
+	       MALLOC
+	       MKDIR
+	       OPEN
+	       OPENDIR
+	       PAUSE
+	       PIPE
+	       READ
+	       READLINK
+	       REALLOC
+	       RENAME
+	       SETITIMER
+	       SETPGID
+	       SIGHOLD
+	       SIGPROCMASK
+	       SIGSUSPEND
+	       SLEEP
+	       SOCKET
+	       SYMLINK
+	       TCDRAIN
+	       TCFLUSH
+	       TCGETPGRP
+	       TCSETPGRP
+	       TERMINAL-GET-STATE
+	       TERMINAL-SET-STATE
+	       TIME
+	       TIMES
+	       UNLINK
+	       VFORK
+	       WRITE
 	       ))
 
 ;;; [] System-call errors
@@ -680,4 +689,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.54 1991/01/24 11:25:15 cph Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.55 1991/03/01 00:55:40 cph Exp $"

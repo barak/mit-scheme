@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osproc.h,v 1.1 1990/06/20 19:36:30 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osproc.h,v 1.2 1991/03/01 00:55:01 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -49,35 +49,68 @@ enum process_status
   process_status_signalled	/* terminated by being signalled */
 };
 
+enum process_jc_status
+{
+  process_jc_status_no_ctty,	/* job has no control terminal */
+  process_jc_status_unrelated,	/* job's ctty different from Scheme's */
+  process_jc_status_no_jc,	/* job has same ctty, jc not available */
+  process_jc_status_jc		/* job has same ctty, jc available */
+};
+
 enum process_ctty_type
 {
-  ctty_type_none,		/* no controlling terminal */
-  ctty_type_inherited,		/* ctty is Scheme's ctty */
-  ctty_type_pipe,		/* ctty is a pipe */
-  ctty_type_pty			/* ctty is a PTY */
+  /* No controlling terminal.
+     Used for batch jobs, similar to `nohup' program. */
+  process_ctty_type_none,
+
+  /* Use Scheme's controlling terminal, run in background. */
+  process_ctty_type_inherit_bg,
+
+  /* Use Scheme's controlling terminal, run in foreground. */
+  process_ctty_type_inherit_fg,
+
+  /* Use given controlling terminal, usually a PTY. */
+  process_ctty_type_explicit
+};
+
+enum process_channel_type
+{
+  process_channel_type_none,
+  process_channel_type_inherit,
+  process_channel_type_ctty,
+  process_channel_type_explicit
 };
 
 extern size_t OS_process_table_size;
 #define NO_PROCESS OS_process_table_size
+extern enum process_jc_status scheme_jc_status;
+
 extern Tprocess EXFUN
   (OS_make_subprocess,
    (CONST char * filename,
     CONST char ** argv,
     char ** env,
-    enum process_ctty_type ctty_type));
+    enum process_ctty_type ctty_type,
+    char * ctty_name,
+    enum process_channel_type channel_in_type,
+    Tchannel channel_in,
+    enum process_channel_type channel_out_type,
+    Tchannel channel_out,
+    enum process_channel_type channel_err_type,
+    Tchannel channel_err));
 extern void EXFUN (OS_process_deallocate, (Tprocess process));
 extern pid_t EXFUN (OS_process_id, (Tprocess process));
-extern Tchannel EXFUN (OS_process_input, (Tprocess process));
-extern Tchannel EXFUN (OS_process_output, (Tprocess process));
-extern enum process_ctty_type EXFUN (OS_process_ctty_type, (Tprocess process));
 extern enum process_status EXFUN (OS_process_status, (Tprocess process));
 extern unsigned short EXFUN (OS_process_reason, (Tprocess process));
-extern int EXFUN (OS_process_synchronous, (Tprocess process));
+extern enum process_jc_status EXFUN (OS_process_jc_status, (Tprocess process));
 extern void EXFUN (OS_process_send_signal, (Tprocess process, int sig));
 extern void EXFUN (OS_process_kill, (Tprocess process));
 extern void EXFUN (OS_process_stop, (Tprocess process));
-extern void EXFUN (OS_process_continue, (Tprocess process));
 extern void EXFUN (OS_process_interrupt, (Tprocess process));
 extern void EXFUN (OS_process_quit, (Tprocess process));
+extern void EXFUN (OS_process_continue_background, (Tprocess process));
+extern enum process_status EXFUN
+  (OS_process_continue_foreground, (Tprocess process));
+extern enum process_status EXFUN (OS_process_wait, (Tprocess process));
 
 #endif /* SCM_OSPROC_H */

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.37 1990/06/20 17:41:45 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.38 1991/03/01 00:55:21 cph Exp $
 
-Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,6 +35,8 @@ MIT in each case. */
 /* This file contains some macros for defining primitives,
    for argument type or value checking, and for accessing
    the arguments. */
+
+#include "ansidecl.h"
 
 /* Definition of primitives. */
 
@@ -83,8 +85,8 @@ extern void canonicalize_primitive_context ();
 #define ARG_REF(argument) (STACK_REF (argument - 1))
 #define LEXPR_N_ARGUMENTS() (Regs [REGBLOCK_LEXPR_ACTUALS])
 
-extern void signal_error_from_primitive ();
-extern void signal_interrupt_from_primitive ();
+extern void EXFUN (signal_error_from_primitive, (long error_code));
+extern void EXFUN (signal_interrupt_from_primitive, (void));
 extern void error_wrong_type_arg ();
 extern void error_bad_range_arg ();
 extern void error_external_return ();

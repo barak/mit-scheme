@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osscheme.c,v 1.1 1990/06/20 19:36:32 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osscheme.c,v 1.2 1991/03/01 00:55:11 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -83,11 +83,29 @@ DEFUN_VOID (request_suspend_interrupt)
   REQUEST_INTERRUPT (INT_Suspend);
 }
 
+int
+DEFUN_VOID (pending_interrupts_p)
+{
+  return (INTERRUPT_PENDING_P (INT_Mask));
+}
+
 void
 DEFUN_VOID (deliver_pending_interrupts)
 {
   if (INTERRUPT_PENDING_P (INT_Mask))
     signal_interrupt_from_primitive ();
+}
+
+long
+DEFUN_VOID (get_interrupt_mask)
+{
+  return (FETCH_INTERRUPT_MASK ());
+}
+
+void
+DEFUN (set_interrupt_mask, (mask), long mask)
+{
+  SET_INTERRUPT_MASK (mask & INT_Mask);
 }
 
 void
