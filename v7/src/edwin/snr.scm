@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.39 1997/08/23 06:30:37 cph Exp $
+;;;	$Id: snr.scm,v 1.40 1997/09/30 02:21:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -1948,7 +1948,8 @@ Subsequent reading of the message bodies can be done offline."
 				(news-server-buffer:groups buffer))))
 		  (else
 		   '())))
-	   (n-articles (length headers)))
+	   (n-articles (length headers))
+	   (n-read 0))
       (do ((headers headers (cdr headers))
 	   (n 1 (fix:+ n 1)))
 	  ((null? headers))
@@ -1960,14 +1961,21 @@ Subsequent reading of the message bodies can be done offline."
 				(number->string n)
 				" of "
 				(number->string n-articles)))
-		(news-header:read-marked-body header buffer)))))
+		(news-header:read-marked-body header buffer)
+		(set! n-read (fix:+ n-read 1)))
+	      (let ((group (cadr header))
+		    (number (caddr header)))
+		(set-news-group:ranges-marked!
+		 group
+		 (remove-from-ranges! (news-group:ranges-marked group) number))
+		(news-group:maybe-defer-update buffer group)))))
       (cond ((news-group-buffer? buffer)
 	     (news-group:close-database (news-group-buffer:group buffer)))
 	    ((news-server-buffer? buffer)
 	     (for-each-vector-element (news-server-buffer:groups buffer)
 				      news-group:close-database)))
-      (message (number->string n-articles) " articles read"))))
-
+      (message (number->string n-read) " articles read"))))
+
 (define-command news-delete-thread
   "Mark as read the conversation thread indicated by point.
 This marks the article indicated by point and any other articles in
@@ -4168,7 +4176,11 @@ With prefix arg, replaces the file with the list information."
   (not (ranges-empty? (news-group:ranges-marked group))))
 
 (define (news-group:marked-headers group)
-  (map (lambda (number) (news-group:header group number))
+  (map (lambda (number)
+	 (let ((header (news-group:header group number)))
+	   (if (news-header? header)
+	       header
+	       (list header group number))))
        (ranges->list (news-group:ranges-marked group))))
 
 (define (news-header:read-marked-body header buffer)
