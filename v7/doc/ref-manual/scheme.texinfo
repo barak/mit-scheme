@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.36 1993/11/03 23:29:31 adams Exp $
+@comment $Id: scheme.texinfo,v 1.37 1993/11/12 20:16:27 nick Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -108,9 +108,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.32 alpha
+@subtitle Edition 1.37 alpha
 @subtitle for Scheme Release 7.2
-@subtitle 25 October 1993
+@subtitle 12 November 1993
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -13062,7 +13062,7 @@ usual meanings.  Here are the other values allowed for these components:
 @itemize @bullet
 @item
 The host component is of an implementation defined type which may be
-tested for by using the @code{host?} predicate.
+tested for using the @code{host?} predicate.
 
 @item
 A directory, if it is not one of the above values, must be a non-empty
@@ -13092,17 +13092,17 @@ described above), or @code{up}, which means the next directory is the
 ``parent'' of the previous one.  @code{up} corresponds to the file
 @file{..} in unix file systems.
 
-In file systems that do not have ``heirarchical'' structure, a specified
+In file systems that do not have ``hierarchical'' structure, a specified
 directory component will always be a list whose first element is
 @code{absolute}.  If the system does not support directories other than a
 single global directory, the list will have no other elements.  If the
 system supports ``flat'' directories, i.e.@: a global set of directories
 with no subdirectories, then the list will contain a second element,
 which is either a string or @code{wild}.  In other words, a
-non-heirarchical file system is treated as if it were heirarchical, but
-the heirarchical features are unused.  This representation is somewhat
+non-hierarchical file system is treated as if it were hierarchical, but
+the hierarchical features are unused.  This representation is somewhat
 inconvenient for such file systems, but it discourages programmers from
-making code depend on the lack of a file heirarchy.  Fortunately few
+making code depend on the lack of a file hierarchy.  Fortunately few
 such file systems are in common use today.
 
 @item
@@ -13550,7 +13550,7 @@ are performed in exactly the same way as fluid binding of a variable
 This section describes procedures that manipulate files and directories.
 Any of these procedures can signal a number of errors for many reasons.
 The specifics of these errors are much too operating-system dependent to
-document them here.  However, if such an error is signalled by one of
+document here.  However, if such an error is signalled by one of
 these procedures, it will be of type
 @code{condition-type:file-operation-error}.
 @findex condition-type:file-operation-error
