@@ -7,4 +7,4 @@
 PATH=/usr/contrib/bin:/usr/local/bin:/usr/bin:/bin
 export PATH
 
-bgx -ioe /scheme/etc/update-rcs-log scheme-8.0-new -large -no-init-file
+bgx -ioe /scheme/etc/update-rcs-log scheme-8.0 -large -no-init-file
