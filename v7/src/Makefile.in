@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.1 2000/12/08 17:47:19 cph Exp $
+# $Id: Makefile.in,v 1.2 2000/12/08 17:53:58 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -73,9 +73,6 @@ all:
 	scheme -compiler -heap 4000 < etc/compile.scm
 	etc/build-bands.sh
 
-setup:
-	./Setup.sh $(SUBDIRS)
-
 mostlyclean clean distclean maintainer-clean:
 	./Clean.sh $@ $(SUBDIRS)
 
@@ -134,5 +131,4 @@ install: all
 	    $(INSTALL_DATA) imail/$${FN} $(DESTDIR)$(AUXDIR)/imail/.;\
 	done
 
-.PHONY: all setup mostlyclean clean distclean maintainer-clean
-.PHONY: tags TAGS install
+.PHONY: all mostlyclean clean distclean maintainer-clean tags TAGS install

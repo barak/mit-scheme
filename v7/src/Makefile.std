@@ -1,4 +1,4 @@
-# $Id: Makefile.std,v 1.10 2000/12/08 06:04:32 cph Exp $
+# $Id: Makefile.std,v 1.11 2000/12/08 17:53:58 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -26,9 +26,6 @@ SHELL = /bin/sh
 all:
 	echo "No ALL action"
 
-setup:
-	./Setup.sh
-
 mostlyclean clean distclean maintainer-clean:
 	./Clean.sh $@
 
@@ -53,5 +50,5 @@ stage3:
 unstage3:
 	./Stage.sh unmake 3
 
-.PHONY: all setup mostlyclean clean distclean maintainer-clean tags TAGS
+.PHONY: all mostlyclean clean distclean maintainer-clean tags TAGS
 .PHONY: stage1 unstage1 stage2 unstage2 stage3 unstage3

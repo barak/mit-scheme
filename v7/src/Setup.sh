@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.2 2000/12/08 06:19:43 cph Exp $
+# $Id: Setup.sh,v 1.3 2000/12/08 17:53:58 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -20,6 +20,11 @@
 
 # Utility to set up the MIT Scheme build directories.
 # The working directory must be the top-level source directory.
+
+if [ ! -x configure ]; then
+    echo "autoconf"
+    autoconf
+fi
 
 maybe_mkdir ()
 {
