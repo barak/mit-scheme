@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.6 2000/04/06 03:14:36 cph Exp $
+;;; $Id: imail-util.scm,v 1.7 2000/04/06 04:23:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -111,12 +111,14 @@
        lines))
 
 (define (string->lines string)
-  (let ((lines (burst-string string #\newline #f)))
-    (if (pair? (cdr lines))
-	(let loop ((prev lines) (this (cdr lines)))
-	  (cond ((pair? (cdr this)) (loop this (cdr this)))
-		((string-null? (car this)) (set-cdr! prev (cdr this))))))
-    lines))
+  (if (string-null? string)
+      '()
+      (let ((lines (burst-string string #\newline #f)))
+	(if (pair? (cdr lines))
+	    (let loop ((prev lines) (this (cdr lines)))
+	      (cond ((pair? (cdr this)) (loop this (cdr this)))
+		    ((string-null? (car this)) (set-cdr! prev (cdr this))))))
+	lines)))
 
 (define (lines->string lines)
   (suffixed-append lines "\n"))
@@ -176,7 +178,7 @@
 			    (fix:+ count
 				   (fix:+ (string-length (car tokens)) ns))))
 		    ((not (pair? tokens)) count))))))
-	(let loop ((tokens (cdr tokens)) (index 0))
+	(let loop ((tokens tokens) (index 0))
 	  (if (pair? tokens)
 	      (loop (cdr tokens)
 		    (string-move! suffix
@@ -195,7 +197,7 @@
 			    (fix:+ count
 				   (fix:+ (string-length (car tokens)) ns))))
 		    ((not (pair? tokens)) count))))))
-	(let loop ((tokens (cdr tokens)) (index 0))
+	(let loop ((tokens tokens) (index 0))
 	  (if (pair? tokens)
 	      (loop (cdr tokens)
 		    (string-move! (car tokens)
@@ -215,7 +217,9 @@
 	      (begin
 		(string-set! to ti (string-ref from fi))
 		(loop (fix:+ fi 1) (fix:+ ti 1)))))
-	(substring-move-left! from 0 end to index))))
+	(begin
+	  (substring-move-left! from 0 end to index)
+	  (fix:+ index end)))))
 
 (define (read-lines port)
   (source->list (lambda () (read-line port))))
