@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.185 1987/07/15 21:33:38 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.186 1987/07/16 10:10:29 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -145,9 +145,9 @@ MIT in each case. |#
 (define (set-standard-branches! cc)
   (set-current-branches!
    (lambda (label)
-     (LAP (B ,cc L (@PCR ,label))))
+     (LAP (B ,cc U (@PCR ,label))))
    (lambda (label)
-     (LAP (B ,(invert-cc cc) L (@PCR ,label))))))
+     (LAP (B ,(invert-cc cc) U (@PCR ,label))))))
 
 (define (invert-cc cc)
   (cdr (or (assq cc
@@ -222,23 +222,20 @@ MIT in each case. |#
 (define (code-object-label-initialize code-object)
   false)
 
-(define (generate-n-times n limit instruction with-counter)
-  (cond ((> n limit)
-	 (let ((loop (generate-label 'LOOP)))
-	   (with-counter
-	    (lambda (counter)
-	      (LAP ,(load-dnw (-1+ n) counter)
-		   (LABEL ,loop)
-		   ,instruction
-		   (DB F (D ,counter) (@PCR ,loop)))))))
-	((zero? n)
-	 (LAP))
-      (else
-       (let loop ((n (-1+ n)))
-	 (if (zero? n)
-	     (LAP ,instruction)
-	     (LAP ,(copy-instruction-sequence instruction)
-		  ,@(loop (-1+ n))))))))
+(define (generate-n-times n limit instruction-gen with-counter)
+  (if (> n limit)
+      (let ((loop (generate-label 'LOOP)))
+	(with-counter
+	 (lambda (counter)
+	   (LAP ,(load-dnw (-1+ n) counter)
+		(LABEL ,loop)
+		,(instruction-gen)
+		(DB F (D ,counter) (@PCR ,loop))))))
+      (let loop ((n n))
+	(if (zero? n)
+	    (LAP)
+	    (LAP ,(instruction-gen)
+		 ,@(loop (-1+ n)))))))
 
 (define-integrable (data-register? register)
   (< register 8))
@@ -254,7 +251,7 @@ MIT in each case. |#
   (INST (LABEL ,label)))
 
 (define-export (lap:make-unconditional-branch label)
-  (INST (BRA L (@PCR ,label))))
+  (INST (BRA U (@PCR ,label))))
 
 (define-export (lap:make-entry-point label block-start-label)
   (set! compiler:external-labels
