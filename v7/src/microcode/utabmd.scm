@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utabmd.scm,v 9.77 1999/01/02 06:06:43 cph Exp $
+;;; $Id: utabmd.scm,v 9.78 2001/03/08 17:15:49 cph Exp $
 ;;;
-;;; Copyright (c) 1987-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1987-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -479,7 +479,7 @@
 	       UNASSIGNED-VARIABLE			;02
 	       UNDEFINED-PROCEDURE			;03
 	       SYSTEM-CALL				;04
-	       #F					;05
+	       ERROR-WITH-ARGUMENT			;05
 	       BAD-FRAME				;06
 	       BROKEN-CVARIABLE				;07
 	       UNDEFINED-USER-TYPE			;08
@@ -707,4 +707,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.77 1999/01/02 06:06:43 cph Exp $"
+"$Id: utabmd.scm,v 9.78 2001/03/08 17:15:49 cph Exp $"
