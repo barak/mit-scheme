@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.19 1991/05/14 02:58:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.20 1991/07/12 17:58:00 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -125,12 +125,16 @@ MIT in each case. |#
 	 (pathname->string
 	  (if (default-object? filename)
 	      (canonicalize-input-pathname
-	       (or ((ucode-primitive reload-band-name))
-		   (error "no default band name available")))
-	      (let ((pathname
-		     (pathname-default-type (->pathname filename) "com")))
+	       (let ((filename ((ucode-primitive reload-band-name))))
+		 (if (not filename)
+		     (error "no default band name available"))
+		 filename))
+	      (let ((pathname (->pathname filename)))
 		(or (pathname->input-truename pathname)
-		    (system-library-pathname pathname)))))))
+		    (let ((pathname
+			   (pathname-default-type pathname "com")))
+		      (or (pathname->input-truename pathname)
+			  (system-library-pathname pathname)))))))))
     (event-distributor/invoke! event:before-exit)
     ((ucode-primitive load-band) filename)))
 
