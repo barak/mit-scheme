@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.29 2000/05/10 20:45:58 cph Exp $
+;;; $Id: imail-imap.scm,v 1.30 2000/05/10 21:24:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -443,58 +443,11 @@
   (uid)
   (length))
 
-;;; These reflectors are needed to guarantee that we read the
-;;; appropriate information from the server.  Normally most message
-;;; slots are filled in by READ-MESSAGE-HEADERS!, but it's possible
-;;; for READ-MESSAGE-HEADERS! to be interrupted, leaving unfilled
-;;; slots.  Also, we don't want to fill the BODY slot until it is
-;;; requested, as the body might be very large.
-
-(define (fetch-message-body message)
-  (fetch-message-parts message "body" '(RFC822.TEXT)))
-
-(define (fetch-message-headers message)
-  (fetch-message-parts message "headers" imap-header-keywords))
-
-(let ((reflector
-       (lambda (generic-procedure slot-name fetch-parts)
-	 (let ((initpred (slot-initpred <imap-message> slot-name)))
-	   (define-method generic-procedure ((message <imap-message>))
-	     (if (not (initpred message))
-		 (fetch-parts message))
-	     (call-next-method message))))))
-  (reflector message-header-fields 'HEADER-FIELDS fetch-message-headers)
-  (reflector message-body 'BODY fetch-message-body)
-  (reflector message-flags 'FLAGS fetch-message-headers))
-
-(define-generic imap-message-uid (message))
-(define-generic imap-message-length (message))
-
-(let ((reflector
-       (lambda (generic-procedure slot-name)
-	 (let ((accessor (slot-accessor <imap-message> slot-name))
-	       (initpred (slot-initpred <imap-message> slot-name)))
-	   (define-method generic-procedure ((message <imap-message>))
-	     (if (not (initpred message))
-		 (fetch-message-headers message))
-	     (accessor message))))))
-  (reflector imap-message-uid 'UID)
-  (reflector imap-message-length 'LENGTH))
-
-(define imap-header-keywords
-  '(UID FLAGS RFC822.SIZE RFC822.HEADER))
-
-(define (fetch-message-parts message noun keywords)
-  (let ((index (message-index message)))
-    ((imail-message-wrapper "Reading " noun " for message "
-			    (number->string (+ index 1)))
-     (lambda ()
-       (imap:command:fetch (imap-folder-connection (message-folder message))
-			   index
-			   keywords)))))
+(define (imap-message-connection message)
+  (imap-folder-connection (message-folder message)))
 
 (define-method set-message-flags! ((message <imap-message>) flags)
-  (imap:command:store-flags (imap-folder-connection (message-folder message))
+  (imap:command:store-flags (imap-message-connection message)
 			    (message-index message)
 			    (map imail-flag->imap-flag
 				 (flags-delete "\\recent" flags))))
@@ -511,6 +464,66 @@
 	((string-ci=? flag "deleted") '\DELETED)
 	((string-ci=? flag "seen") '\SEEN)
 	(else (intern flag))))
+
+;;; These reflectors are needed to guarantee that we read the
+;;; appropriate information from the server.  Normally most message
+;;; slots are filled in by READ-MESSAGE-HEADERS!, but it's possible
+;;; for READ-MESSAGE-HEADERS! to be interrupted, leaving unfilled
+;;; slots.  Also, we don't want to fill the BODY slot until it is
+;;; requested, as the body might be very large.
+
+(define (guarantee-headers-initialized message initpred)
+  (guarantee-slot-initialized message initpred "headers" imap-header-keywords))
+
+(define imap-header-keywords
+  '(UID FLAGS RFC822.SIZE RFC822.HEADER))
+
+(define (guarantee-body-initialized message initpred)
+  (guarantee-slot-initialized message initpred "body" '(RFC822.TEXT)))
+
+(let ((reflector
+       (lambda (generic-procedure slot-name guarantee)
+	 (let ((initpred (slot-initpred <imap-message> slot-name)))
+	   (define-method generic-procedure ((message <imap-message>))
+	     (guarantee message initpred)
+	     (call-next-method message))))))
+  (reflector message-header-fields 'HEADER-FIELDS
+	     guarantee-headers-initialized)
+  (reflector message-body 'BODY guarantee-body-initialized)
+  (reflector message-flags 'FLAGS guarantee-headers-initialized))
+
+(define-generic imap-message-uid (message))
+(define-generic imap-message-length (message))
+
+(let ((reflector
+       (lambda (generic-procedure slot-name)
+	 (let ((accessor (slot-accessor <imap-message> slot-name))
+	       (initpred (slot-initpred <imap-message> slot-name)))
+	   (define-method generic-procedure ((message <imap-message>))
+	     (guarantee-headers-initialized message initpred)
+	     (accessor message))))))
+  (reflector imap-message-uid 'UID)
+  (reflector imap-message-length 'LENGTH))
+
+(define (guarantee-slot-initialized message initpred noun keywords)
+  (if (not (initpred message))
+      (let ((connection (imap-message-connection message))
+	    (index (message-index message)))
+	(let ((suffix
+	       (string-append " " noun " for message "
+			      (number->string (+ index 1)))))
+	  ((imail-message-wrapper "Reading" suffix)
+	   (lambda ()
+	     (imap:command:fetch connection index keywords)
+	     (if (not (initpred message))
+		 (begin
+		   ;; Still don't have the goods.  Send a NOOP, in
+		   ;; case the server is holding it back because it
+		   ;; also needs to send an EXPUNGE.
+		   (imap:command:noop connection)
+		   (if (not (initpred message))
+		       (error
+			(string-append "Unable to obtain" suffix)))))))))))
 
 ;;;; Server operations
 
@@ -690,6 +703,12 @@
 				     (imap:send-command connection
 							command arguments)
 				     command))))
+
+(define system-call-name
+  (condition-accessor condition-type:system-call-error 'SYSTEM-CALL))
+
+(define system-call-error
+  (condition-accessor condition-type:system-call-error 'ERROR-TYPE))
 
 (define imail-trace? #f)
 (define imail-trace-output)
