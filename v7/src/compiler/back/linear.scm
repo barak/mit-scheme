@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.13 1992/05/14 02:56:58 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.14 1992/05/14 03:00:40 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -58,7 +58,7 @@ MIT in each case. |#
 	   (lambda ()
 	     (bblock-instructions bblock))))
       (if (bblock-label bblock)
-	  (LAP ,(lap:make-label-statement (bblock-label bblock)) ,@(kernel))
+	  (LAP ,@(lap:make-label-statement (bblock-label bblock)) ,@(kernel))
 	  (kernel))))
 
   (define (linearize-next bblock)
@@ -127,7 +127,7 @@ MIT in each case. |#
 			      ,@alternative
 			      ,@(lap:make-unconditional-branch jlabel)
 			      ,@consequent
-			      ,(lap:make-label-statement jlabel)
+			      ,@(lap:make-label-statement jlabel)
 			      ,@(linearize-next cn))))))))))
 	(cond ((eq? cn an)
 	       (warn "bblock-linearize-lap: Identical branches" pblock)
