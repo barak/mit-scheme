@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.6 1987/07/15 22:09:17 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.7 1987/07/22 21:54:26 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,11 +37,55 @@ MIT in each case. */
 #include "scheme.h"
 #include "primitive.h"
 #include "gccode.h"
+
+extern Pointer *compiled_entry_to_block_address();
+extern long compiled_entry_to_block_offset();
 
 #define COMPILED_CODE_ADDRESS_P(object)					\
   (((OBJECT_TYPE (object)) == TC_COMPILED_EXPRESSION) ||		\
    ((OBJECT_TYPE (object)) == TC_RETURN_ADDRESS))
 
+Pointer *
+compiled_entry_to_block_address(ce)
+     Pointer ce;
+{
+#ifdef Get_Compiled_Block
+
+  Pointer *block;
+
+  block = Get_Pointer(ce);
+  Get_Compiled_Block(block, block);
+  return block;
+
+#else
+
+  error_external_return();
+  /*NOTREACHED*/
+
+#endif
+}
+
+long
+compiled_entry_to_block_offset(ce)
+     Pointer ce;
+{
+#ifdef Get_Compiled_Offset
+
+  Pointer *address;
+  long offset;
+
+  address = Get_Pointer(ce);
+  Get_Compiled_Offset(offset, address);
+  return offset;
+
+#else
+
+  error_external_return();
+  /*NOTREACHED*/
+
+#endif
+}
+
 Built_In_Primitive (Prim_comp_code_address_block, 1,
 		    "COMPILED-CODE-ADDRESS->BLOCK", 0xB5)
 {
@@ -49,28 +93,17 @@ Built_In_Primitive (Prim_comp_code_address_block, 1,
   Primitive_1_Arg ();
 
   CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
-  address = (Get_Pointer (Arg1));
-
-#ifdef CMPGCFILE
-  return (Make_Pointer (TC_COMPILED_CODE_BLOCK,
-			(Get_Compiled_Block (address))));
-#else /* not CMPGCFILE */
-  error_external_return ();
-#endif /* CMPGCFILE */
+  address = compiled_entry_to_block_address(Arg1);
+  return (Make_Pointer (TC_COMPILED_CODE_BLOCK, address));
 }
 
 Built_In_Primitive (Prim_comp_code_address_offset, 1,
 		    "COMPILED-CODE-ADDRESS->OFFSET", 0xAC)
 {
-  Pointer *address;
+  long offset;
   Primitive_1_Arg ();
 
   CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
-  address = (Get_Pointer (Arg1));
-
-#ifdef CMPGCFILE
-  return (Make_Signed_Fixnum (Get_Compiled_Offset (address)));
-#else /* not CMPGCFILE */
-  error_external_return ();
-#endif /* CMPGCFILE */
+  offset = compiled_entry_to_block_offset(Arg1);
+  return (Make_Signed_Fixnum (offset));
 }

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.29 1987/06/05 17:29:30 cph Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.30 1987/07/22 21:54:46 jinx Exp $ */
 
 /* Pure/Constant space utilities. */
 
@@ -221,11 +221,12 @@ Built_In_Primitive(Prim_Pure_P, 1, "PURE?", 0xBB)
     return TRUTH;
   Touch_In_Primitive(Arg1, Arg1);
   {
+    extern Pointer *compiled_entry_to_block_address();
     Pointer *Obj_Address;
 
     Obj_Address =
       ((GC_Type_Compiled(Arg1))
-       ? (Get_Compiled_Block(Get_Pointer(Arg1)))
+       ? (compiled_entry_to_block_address(Arg1))
        : (Get_Pointer(Arg1)));
     if (Is_Pure(Obj_Address))
       return TRUTH;

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.32 1987/06/23 22:00:37 cph Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.33 1987/07/22 21:54:00 jinx Exp $ */
 
 /* Memory management top level.  Garbage collection to disk.
 
@@ -529,13 +529,7 @@ Fix_Weak_Chain()
 	  *Scan = Temp;
 	  continue;
 	}
-	/* Ditto */
-	Old = Get_Compiled_Block(Old);
-	if (Type_Code(*Old) == TC_BROKEN_HEART)
-	{
-	  *Scan = Relocate_Compiled(Temp, Get_Pointer(*Old), Old);
-	  continue;
-	}
+	Compiled_BH(false, continue);
 	*Scan = NIL;
 	continue;
 
