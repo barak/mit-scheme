@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.7 1991/03/01 00:56:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.8 1991/03/28 05:22:07 jinx Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -398,9 +398,15 @@ DEFUN (stop_signal_default, (signo), int signo)
 
 void EXFUN ((*stop_signal_hook), (int signo));
 
+#ifdef HAVE_POSIX_SIGNALS
+#  define IF_POSIX_SIGNALS(code) do code while (0)
+#else
+#  define IF_POSIX_SIGNALS(code) do {} while (0)
+#endif
+
 DEFUN_STD_HANDLER (sighnd_stop,
+  IF_POSIX_SIGNALS(
   {
-  #ifdef HAVE_POSIX_SIGNALS
     sigset_t old_mask;
     sigset_t jc_mask;
 
@@ -424,8 +430,7 @@ DEFUN_STD_HANDLER (sighnd_stop,
 
     /* Restore the signal mask to its original state. */
     UX_sigprocmask (SIG_SETMASK, (&old_mask), 0);
-  #endif /* HAVE_POSIX_SIGNALS */
-  })
+  }))
 
 void
 DEFUN_VOID (OS_restartable_exit)
