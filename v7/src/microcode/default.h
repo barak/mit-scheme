@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.25 1987/06/23 22:02:41 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.26 1987/07/07 02:39:05 jinx Exp $
  *
  * This file contains default definitions for some hooks which 
  * various machines require.  These machines define these hooks
@@ -104,7 +104,7 @@ do									\
 #define Test_Pure_Space_Top(New_Top) ((New_Top) <= Constant_Top)
 #endif
 
-/* Used in BOOT.C */
+/* Used in boot.c */
 
 #ifndef main_type
 #define main_type void
@@ -154,7 +154,7 @@ do									\
 #define Sys_Clock()	System_Clock()
 #endif
 
-/* Used in DEBUG.C */
+/* Used in debug.c */
 
 #ifndef Back_Trace_Entry_Hook
 #define Back_Trace_Entry_Hook()
@@ -184,13 +184,13 @@ do									\
 #define debug_getdec normal_debug_getdec
 #endif
 
-/* Used in EXTERN.H */
+/* Used in extern.h */
 
 #ifndef More_Debug_Flag_Externs
 #define More_Debug_Flag_Externs()
 #endif
 
-/* Used in FASDUMP.C */
+/* Used in fasdump.c */
 
 #ifndef Band_Dump_Permitted
 #define Band_Dump_Permitted()
@@ -214,7 +214,7 @@ do									\
   NewMemTop = Unused_Heap_Top
 #endif
 
-/* Used in FASLOAD.C */
+/* Used in fasload.c */
 
 #ifndef Open_File_Hook
 #define Open_File_Hook(ignore)
@@ -224,14 +224,14 @@ do									\
 #define Close_File_Hook()
 #endif
 
-/* Used in FLONUM.H and GENERIC.C */
+/* Used in flonum.h and generic.c */
 
 #ifndef double_into_fixnum
 #define double_into_fixnum(what, target)				\
   target = Make_Non_Pointer(TC_FIXNUM, ((long) (what)))
 #endif
 
-/* Used in INTERPRET.C */
+/* Used in interpret.c */
 
 /* Primitive calling code. */
 
@@ -262,13 +262,13 @@ Loc = Apply_Primitive(N)
 #define End_GC_Hook()
 #endif
 
-/* Used in STORAGE.C */
+/* Used in storage.c */
 
 #ifndef More_Debug_Flag_Allocs
 #define More_Debug_Flag_Allocs()
 #endif
 
-/* Used in UTILS.C */
+/* Used in utils.c */
 
 #ifndef Global_Interrupt_Hook
 #define Global_Interrupt_Hook()
@@ -276,18 +276,4 @@ Loc = Apply_Primitive(N)
 
 #ifndef Error_Exit_Hook
 #define Error_Exit_Hook()
-#endif
-
-/* Used in LOOKUP.C */
-
-/* Permit caching of incrementally defined variables */
-#ifndef Allow_Aux_Compilation
-#define Allow_Aux_Compilation	true
-#endif
-
-/* This is how we support future numbering for external metering */
-#ifndef New_Future_Number
-#define New_Future_Number() NIL
-#else
-Pointer Get_New_Future_Number();
 #endif
