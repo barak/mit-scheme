@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.unix,v 1.4 1990/08/09 15:03:22 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.unix,v 1.5 1991/03/02 04:13:56 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -39,16 +39,19 @@ MIT in each case. |#
 ;;; Local hacks
 
 (define (call/cc . args)
-  ((ucode-primitive system)
-   (with-output-to-string
-     (lambda ()
-       (display "cc")
-       (let loop ((args args))
-	 (if (not (null? args))
-	     (begin
-	       (display " ")
-	       (display (car args))
-	       (loop (cdr args)))))))))
+  (let ((command-line
+	 (with-output-to-string
+	   (lambda ()
+	     (display "cc")
+	     (let loop ((args args))
+	       (if (not (null? args))
+		   (begin
+		     (display " ")
+		     (display (car args))
+		     (loop (cdr args)))))))))
+    (warn "call/cc: Invoking the C compiler:" command-line)
+    ((ucode-primitive system)
+     command-line)))
 
 ;;; Normalization of various directory structures.
 
