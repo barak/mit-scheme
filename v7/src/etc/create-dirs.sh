@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: create-dirs.sh,v 1.1 2000/12/07 21:50:08 cph Exp $
+# $Id: create-dirs.sh,v 1.2 2000/12/07 22:12:55 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -19,8 +19,6 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 # Create build directories and links.
-
-LN_S="ln -s"
 
 maybe_mkdir ()
 {
@@ -42,11 +40,12 @@ maybe_link ()
 maybe_mkdir runtime-check
 (
     cd runtime
-    for FN in *.bin runtime.bco runtime.bld; do
-	if test ! -f ../runtime-check/${FN}; then
-	    echo "${LN_S} ../runtime/${FN} runtime-check/."
-	    ${LN_S} ../runtime/${FN} runtime-check/.
-	fi
+    for FN in *.scm; do
+	FN_BIN="`basename ${FN} .scm`.bin"
+	maybe_link ../runtime-check/${FN_BIN} ../runtime/${FN_BIN}
+    done
+    for FN in runtime.bco runtime.bld; do
+	maybe_link ../runtime-check/${FN} ../runtime/${FN}
     done
 )
 
