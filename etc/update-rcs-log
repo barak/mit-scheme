@@ -2,9 +2,9 @@
 #
 #	Update RCS.log file in background.  no arguments
 #
-#	Currently being run daily from adams's crontab
+#	Currently being run daily from cph crontab on aarau
 
 PATH=/usr/contrib/bin:/usr/local/bin:/usr/bin:/bin
 export PATH
 
-bgx -ioe /scheme/etc/update-rcs-log scheme-8.0 -large -no-init-file
+bgx -ioe /scheme/etc/update-rcs-log scheme -large -no-init-file
