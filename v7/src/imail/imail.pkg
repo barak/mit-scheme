@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.18 2000/04/23 00:40:29 cph Exp $
+;;; $Id: imail.pkg,v 1.19 2000/04/25 03:39:44 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -128,7 +128,10 @@
 	  imap:match:tag
 	  imap:parse:section
 	  imap:quoted-char?
-	  imap:quoted-special?))
+	  imap:quoted-special?
+	  imap:string-may-be-quoted?
+	  imap:write-literal-string
+	  imap:write-quoted-string))
 
 (define-package (edwin imail imap-response)
   (files "imap-response")

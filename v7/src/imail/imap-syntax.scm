@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-syntax.scm,v 1.4 2000/04/23 00:40:34 cph Exp $
+;;; $Id: imap-syntax.scm,v 1.5 2000/04/25 03:38:51 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -64,6 +64,12 @@
 (define imap:char-set:text-char
   (char-set-difference imap:char-set:char
 		       (char-set #\return #\linefeed)))
+
+(define imap:char-set:not-text-char
+  (char-set-invert imap:char-set:text-char))
+
+(define (imap:string-may-be-quoted? string)
+  (not (string-find-next-char-in-set string imap:char-set:not-text-char)))
 
 (define imap:char-set:quoted-char
   (char-set-difference imap:char-set:text-char
@@ -561,3 +567,35 @@
   (set! base64-char-table char-table)
   (set! base64-digit-table digit-table)
   unspecific)
+
+;;;; Formatted output
+
+(define (imap:write-quoted-string string port)
+  (imap:write-quoted-substring string 0 (string-length string) port))
+
+(define (imap:write-quoted-substring string start end port)
+  (write-char #\" port)
+  (let loop ((start start))
+    (if (fix:< start end)
+	(let ((char (string-ref string start)))
+	  (if (or (char=? char #\\) (char=? char #\"))
+	      (write-char #\\ port))
+	  (write-char char port)
+	  (loop (fix:+ start 1)))))
+  (write-char #\" port))
+
+(define (imap:write-literal-string-header string port)
+  (imap:write-literal-substring-header string 0 (string-length string) port))
+
+(define (imap:write-literal-substring-header string start end port)
+  (write-char #\{ port)
+  (write (fix:- end start) port)
+  (write-char #\} port)
+  (write-char #\return port)
+  (write-char #\linefeed port))
+
+(define (imap:write-literal-string-body string port)
+  (imap:write-literal-substring-body string 0 (string-length string) port))
+
+(define (imap:write-literal-substring-body string start end port)
+  (write-substring string start end port))
