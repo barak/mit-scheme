@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.39 2001/12/19 05:21:46 cph Exp $
+$Id: packag.scm,v 14.40 2002/03/14 04:44:32 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -201,14 +201,17 @@ USA.
   ;; program runs before it gets purified, some of its run-time state
   ;; can end up being purified also.
   (flush-purification-queue!))
-
-(define (package-set-pathname pathname)
+
+(define (package-set-pathname pathname #!optional os-type)
   (make-pathname (pathname-host pathname)
 		 (pathname-device pathname)
 		 (pathname-directory pathname)
 		 (string-append (pathname-name pathname)
 				"-"
-				(case microcode-id/operating-system
+				(case (if (or (default-object? os-type)
+					      (not os-type))
+					  microcode-id/operating-system
+					  os-type)
 				  ((NT) "w32")
 				  ((OS/2) "os2")
 				  ((UNIX) "unx")
