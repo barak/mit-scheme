@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.3 1993/10/27 22:10:14 gjr Exp $
+$Id: rules3.scm,v 1.4 1993/10/28 02:56:17 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -414,12 +414,6 @@ MIT in each case. |#
 	   "CLOSURE_INTERRUPT_CHECK ("
 	   ,(number->string code:compiler-interrupt-closure)
 	   ");\n\t"))))
-
-(define (build-gc-offset-word offset code-word)
-  (let ((encoded-offset (quotient offset 2)))
-    (if (eq? endianness 'LITTLE)
-	(+ (* encoded-offset #x10000) code-word)
-	(+ (* code-word #x10000) encoded-offset))))
 
 (define (write-closure-entry internal-label min max offset)
   (let ((external-label
