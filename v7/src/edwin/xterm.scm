@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xterm.scm,v 1.53 1996/04/24 01:48:40 cph Exp $
+;;;	$Id: xterm.scm,v 1.54 1996/10/24 16:29:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -243,7 +243,10 @@
     (if screen
 	(let ((visibility (screen-visibility screen)))
 	  (if (pair? visibility)
-	      (set-screen-visibility! screen (car visibility)))))))
+	      (begin
+		(set-screen-visibility! screen (car visibility))
+		(for-each (lambda (procedure) (procedure screen))
+			  (reverse (cdr visibility)))))))))
 
 (define-integrable (screen-xterm screen)
   (xterm-screen-state/xterm (screen-state screen)))
@@ -325,12 +328,20 @@
   (set-screen-redisplay-flag! screen true))
 
 (define (xterm-screen/enter! screen)
-  (set-screen-selected?! screen true)
-  (let ((xterm (screen-xterm screen)))
-    (xterm-enable-cursor xterm true)
-    (xterm-draw-cursor xterm))
-  (xterm-screen/grab-focus! screen)
-  (xterm-screen/flush! screen))
+  (if (pair? (screen-visibility screen))
+      (without-interrupts
+       (lambda ()
+	 (if (not (memq xterm-screen/enter! (cdr (screen-visibility screen))))
+	     (set-cdr! (screen-visibility screen)
+		       (cons xterm-screen/enter!
+			     (cdr (screen-visibility screen)))))))
+      (begin
+	(set-screen-selected?! screen true)
+	(let ((xterm (screen-xterm screen)))
+	  (xterm-enable-cursor xterm true)
+	  (xterm-draw-cursor xterm))
+	(xterm-screen/grab-focus! screen)
+	(xterm-screen/flush! screen))))
 
 (define (xterm-screen/grab-focus! screen)
   (and last-focus-time
