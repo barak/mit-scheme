@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pp.scm,v 14.29 1994/08/19 06:08:32 cph Exp $
+$Id: pp.scm,v 14.30 1994/09/16 21:21:09 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -48,6 +48,8 @@ MIT in each case. |#
 	  (OR . ,forced-indentation)
 	  (AND . ,forced-indentation)
 	  (LET . ,print-let-expression)
+	  (LET* . ,print-let-expression)
+	  (LETREC . ,print-let-expression)
 	  (FLUID-LET . ,print-let-expression)
 	  (DEFINE . ,print-procedure)
 	  (LAMBDA . ,print-procedure)
