@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/studen.scm,v 1.8 1991/04/06 06:34:33 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/studen.scm,v 1.9 1991/09/12 21:11:09 arthur Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -287,7 +287,7 @@ MIT in each case. |#
     (CDDDDR)
     (CDDDR)
     (CDDR)
-    (CEILING)
+    (CEILING . CEILING->EXACT)
     (CHAR)
     (CLEAR-GRAPHICS)
     (CLEAR-POINT)
@@ -323,7 +323,7 @@ MIT in each case. |#
     (FIRST)
     (FLATMAP)
     (FLATTEN)
-    (FLOOR)
+    (FLOOR . FLOOR->EXACT)
     (FORCE)
     (FOURTH)
     (GCD)
@@ -393,7 +393,7 @@ MIT in each case. |#
     (REMAINDER)
     (RESTART)
     (REVERSE)
-    (ROUND)
+    (ROUND . ROUND->EXACT)
     (RUNTIME)
     (SCALE-STREAM)
 
@@ -417,7 +417,7 @@ MIT in each case. |#
     (TRACE-ENTRY)
     (TRACE-EXIT)
     (TRUE)
-    (TRUNCATE)
+    (TRUNCATE . TRUNCATE->EXACT)
     (UNADVISE)
     (UNADVISE-ENTRY)
     (UNADVISE-EXIT)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/compat.scm,v 1.4 1991/05/04 21:51:19 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/compat.scm,v 1.5 1991/09/12 21:11:17 arthur Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -171,6 +171,18 @@ MIT in each case. |#
 	(error:illegal-datum newval 'PRINT-BREADTH))
     (set! *unparser-list-breadth-limit* newval)
     unspecific))
+
+(define (ceiling->exact number)
+  (inexact->exact (ceiling number)))
+
+(define (floor->exact number)
+  (inexact->exact (ceiling number)))
+
+(define (round->exact number)
+  (inexact->exact (ceiling number)))
+
+(define (truncate->exact number)
+  (inexact->exact (ceiling number)))
 
 (define (vector-cons size fill)
   (make-vector size fill))
