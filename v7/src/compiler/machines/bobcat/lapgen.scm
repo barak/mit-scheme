@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.157 1987/04/17 10:55:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.158 1987/04/27 14:21:48 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -123,7 +123,9 @@ MIT in each case. |#
 (define make-non-pointer-literal
   (let ((type-scale-factor (expt 2 24)))
     (lambda (type datum)
-      (+ (* type type-scale-factor) datum))))
+      (+ (* (if (negative? datum) (1+ type) type)
+	    type-scale-factor)
+	 datum))))
 
 (define (set-standard-branches! cc)
   (set-current-branches! (lambda (label)
