@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.61 1993/08/03 08:30:00 gjr Exp $
+$Id: primutl.c,v 9.62 1993/08/03 17:39:38 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -537,7 +537,8 @@ DEFUN (find_primitive, (sname, intern_p, allow_p, arity),
        SCHEME_OBJECT sname AND Boolean intern_p
        AND Boolean allow_p AND int arity)
 {
-  node prim = (tree_lookup (prim_procedure_tree, (STRING_LOC (sname, 0))));
+  node prim = (tree_lookup (prim_procedure_tree,
+			    ((char *) (STRING_LOC (sname, 0)))));
 
   if (prim != ((node) NULL))
   {
@@ -568,7 +569,7 @@ DEFUN (find_primitive, (sname, intern_p, allow_p, arity),
 
     if (cname == ((char *) NULL))
       error_in_system_call (syserr_not_enough_space, syscall_malloc);
-    strcpy (cname, (STRING_LOC (sname, 0)));
+    strcpy (cname, ((char *) (STRING_LOC (sname, 0))));
     primitive =
       (declare_primitive (cname,
 			  Prim_unimplemented,
