@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.15 1992/03/06 00:56:43 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.16 1992/03/06 04:59:27 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -142,7 +142,7 @@ define(define_c_label,
 external_code_reference($1):')
 
 ifdef(`DOS',
-      `define(define_debugging_label,`	public $1:near
+      `define(define_debugging_label,`	public $1
 $1:')',
       `define(define_debugging_label,`	.globl $1
 $1:')')
@@ -164,7 +164,7 @@ ifdef(`DOS',
       `define(allocate_longword,`	.comm _$1,4')')
 
 ifdef(`DOS',
-      `define(allocate_space,`$1 db $2 dup 0')',
+      `define(allocate_space,`$1 db $2 dup (0)')',
       `define(allocate_space,`_$1:
 	.space $2')')
 
@@ -173,12 +173,16 @@ ifdef(`DOS',
       `define(HEX, `0x$1')')
 
 ifdef(`DOS',
-      `define(OP,`$1')',
+      `define(OP,`$1$3')',
       `define(OP,`$1$2')')
 
 ifdef(`DOS',
       `define(TW,`$2,$1')',
       `define(TW,`$1,$2')')
+
+ifdef(`DOS',
+      `define(ABS, `dword ptr $1')',
+      `define(ABS, `$1')')
 
 ifdef(`DOS',
       `define(IMM, `$1')',
@@ -271,7 +275,6 @@ DECLARE_DATA_SEGMENT()
 declare_alignment(2)
 
 use_external_data(Free)
-use_external_data(Registers)
 use_external_data(Ext_Stack_Pointer)
 use_external_data(utility_table)
 
@@ -315,7 +318,8 @@ define_c_label(C_to_interface)
 							# Preserve stack ptr
 	OP(mov,l)	TW(REG(esp),EDR(C_Stack_Pointer))
 							# Register block = %esi
-	OP(mov,l)	TW(IMM(EDR(Registers)),regs)
+#	OP(mov,l)	TW(IMM(EDR(Registers)),regs)
+	OP(lea,l)	TW(ABS(EDR(Registers)),regs)
 	jmp	external_code_reference(interface_to_scheme)
 
 define_c_label(asm_trampoline_to_interface)
@@ -446,7 +450,7 @@ define_c_label(asm_shortcircuit_apply)
 	OP(and,l)	TW(rmask,REG(ebx))		# Select datum
 	OP(cmp,b)	TW(IMM(TC_COMPILED_ENTRY),REG(al))
 	jne	asm_shortcircuit_apply_generic
-	OP(movsb,l)	TW(BOF(-4,REG(ebx)),REG(eax))	# Extract frame size
+	OP(movs,bl,x)	TW(BOF(-4,REG(ebx)),REG(eax))	# Extract frame size
 	OP(cmp,l)	TW(REG(eax),REG(edx))		# Compare to nargs+1
 	jne	asm_shortcircuit_apply_generic
 	jmp	IJMP(REG(ebx))				# Invoke
@@ -801,3 +805,5 @@ define_jump_indirection(generic_zero,2d)')
 define_jump_indirection(generic_quotient,37)
 define_jump_indirection(generic_remainder,38)
 define_jump_indirection(generic_modulo,39)
+
+ifdef(`DOS',`end')
