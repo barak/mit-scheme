@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: purify.c,v 9.54 1993/12/07 20:36:03 gjr Exp $
+$Id: purify.c,v 9.55 1995/07/27 00:20:04 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -423,7 +423,7 @@ DEFUN (purify, (object, purify_mode),
 
   run_pre_gc_hooks ();
   STACK_SANITY_CHECK ("PURIFY");
-  Weak_Chain = EMPTY_LIST;
+  Weak_Chain = EMPTY_WEAK_CHAIN;
   Constant_Top = Free_Constant; 
   new_object = Free_Constant;
   *Free_Constant++ = SHARP_F;	/* Will hold pure space header */
