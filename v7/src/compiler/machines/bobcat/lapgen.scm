@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.6 1988/05/09 19:49:36 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.7 1988/05/19 15:29:00 markf Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -356,6 +356,10 @@ MIT in each case. |#
 ;;; output: true, if the expression is of some fixnum type. false, otherwise
   (eq? (rtl:expression-type expression) 'FIXNUM))
 
+(define (commutative-op? op)
+;;; input: An operator
+;;; output: True, if the op is commutative.
+  (memq op '(PLUS-FIXNUM MULTIPLY-FIXNUM)))
 
 (define (fixnum-do-2-args! operator operand-1 operand-2 register)
 ;;; inputs: 
@@ -368,8 +372,14 @@ MIT in each case. |#
 ;;;
 ;;; Note that the final placement of the type-code in the result is
 ;;; not done here. It must be done in the caller.
-  (LAP ,(expression->fixnum-register! operand-1 register)
-       ,((fixnum-code-gen operator) operand-2 register)))
+  (let ((finish
+	  (lambda (operand-1 operand-2)
+	    (LAP ,(expression->fixnum-register! operand-1 register)
+		 ,((fixnum-code-gen operator) operand-2 register)))))
+    (if (and (commutative-op? operator)
+	     (rtl:constant? operand-1))
+	(finish operand-2 operand-1)
+	(finish operand-1 operand-2))))
 
 
 (define (fixnum-do-1-arg! operator operand register)
@@ -402,7 +412,10 @@ MIT in each case. |#
 		     (rtl:offset-number addend))
 		   ,target)))
 	((CONSTANT)
-	 (INST (ADD L (& ,(fixnum-constant (rtl:constant-number addend))) ,target)))
+	 (let ((constant (fixnum-constant (rtl:constant-value addend))))
+	   (if (and (<= constant 8) (>= constant 1))
+	       (INST (ADDQ L (& ,(modulo constant 8)) ,target))
+	       (INST (ADD L (& ,(modulo constant 8)) ,target)))))
 	((UNASSIGNED)			; this needs to be looked at
 	 (LAP ,(load-non-pointer type-code:unassigned 0 target)))
 	(else
@@ -425,7 +438,15 @@ MIT in each case. |#
 		     (rtl:offset-number multiplicand))
 		   ,target)))
 	((CONSTANT)
-	 (INST (MUL S L (& ,(fixnum-constant (rtl:constant-number multiplicand))) ,target)))
+	 (let* ((constant (fixnum-constant (rtl:constant-value multiplicand)))
+	       (power-of-2?
+		(let loop ((power 1) (exponent 0))
+		  (cond ((< constant power) false)
+			((= constant power) exponent)
+			(else (loop (* 2 power) (1+ exponent)))))))
+	   (if power-of-2?
+	       (INST (AS L L (& ,power-of-2?) ,target))
+	       (INST (MUL S L (& ,(fixnum-constant constant)) ,target)))))
 	((UNASSIGNED)			; this needs to be looked at
 	 (LAP ,(load-non-pointer type-code:unassigned 0 target)))
 	(else
@@ -448,7 +469,10 @@ MIT in each case. |#
 		     (rtl:offset-number subtrahend))
 		   ,target)))
 	((CONSTANT)
-	 (INST (SUB L (& ,(fixnum-constant (rtl:constant-number subtrahend))) ,target)))
+	 (let ((constant (fixnum-constant (rtl:constant-value subtrahend))))
+	   (if (and (<= constant 8) (>= constant 1))
+	       (INST (SUBQ L (& ,(modulo constant 8)) ,target))
+	       (INST (SUB L (& ,(modulo constant 8)) ,target)))))
 	((UNASSIGNED)			; this needs to be looked at
 	 (LAP ,(load-non-pointer type-code:unassigned 0 target)))
 	(else
