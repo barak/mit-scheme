@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.5 1988/11/07 14:08:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.6 1988/11/07 23:50:50 cph Rel $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -83,7 +83,14 @@ MIT in each case. |#
 		   ;; register map at this point.
 		   (loop next (empty-register-map)))
 		  ((null? (cdr previous))
-		   (loop next (bblock-register-map (edge-left-node edge))))
+		   (loop
+		    next
+		    (let ((previous (edge-left-node edge)))
+		      (delete-pseudo-registers
+		       (bblock-register-map previous)
+		       (regset->list
+			(regset-difference (bblock-live-at-exit previous)
+					   (bblock-live-at-entry next)))))))
 		  (else
 		   (let ((entry
 			  (or (assq next *pending-bblocks*)
