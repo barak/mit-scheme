@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.112 1991/07/09 00:50:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.113 1991/07/25 01:07:09 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -2006,6 +2006,7 @@ MIT in each case. |#
 	  graphics-close
 	  graphics-coordinate-limits
 	  graphics-device-coordinate-limits
+	  graphics-device/properties
 	  graphics-disable-buffering
 	  graphics-drag-cursor
 	  graphics-draw-line
@@ -2031,8 +2032,23 @@ MIT in each case. |#
   (export ()
 	  x-close-all-displays
 	  x-close-display
+	  x-colormap/allocate-color
+	  x-colormap/free
+	  x-colormap/query-color
+	  x-colormap/store-color
+	  x-colormap/store-colors
+	  x-colormap?
 	  x-geometry-string
 	  x-graphics-device-type
+	  x-image/destroy
+	  x-image/draw
+	  x-image/draw-subimage
+	  x-image/fill-from-byte-vector
+	  x-image/get-pixel
+	  x-image/height
+	  x-image/set-pixel
+	  x-image/width
+	  x-image?
 	  x-open-display)
   (initialization (initialize-package!)))
 
