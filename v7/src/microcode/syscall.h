@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: syscall.h,v 1.15 2003/02/14 18:28:23 cph Exp $
+$Id: syscall.h,v 1.16 2003/07/09 04:13:44 cph Exp $
 
-Copyright (c) 1993-2000 Massachusetts Institute of Technology
+Copyright 1993,1994,1995,1996,1997,1999 Massachusetts Institute of Technology
+Copyright 2000,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -114,6 +115,7 @@ enum syscall_names
 enum syserr_names
 {
   syserr_unknown,
+  syserr_address_in_use,
   syserr_arg_list_too_long,
   syserr_bad_address,
   syserr_bad_file_descriptor,

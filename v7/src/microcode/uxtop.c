@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.28 2003/02/14 18:28:24 cph Exp $
+$Id: uxtop.c,v 1.29 2003/07/09 04:13:33 cph Exp $
 
-Copyright (c) 1990-2000, 2002 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
+Copyright 1996,1997,1999,2000,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -194,6 +195,9 @@ DEFUN (OS_error_code_to_syserr, (code), int code)
     case E2BIG:		return (syserr_arg_list_too_long);
     case EACCES:	return (syserr_permission_denied);
     case EAGAIN:	return (syserr_resource_temporarily_unavailable);
+#ifdef EADDRINUSE
+    case EADDRINUSE:	return (syserr_address_in_use);
+#endif
     case EBADF:		return (syserr_bad_file_descriptor);
     case EBUSY:		return (syserr_resource_busy);
     case ECHILD:	return (syserr_no_child_processes);
@@ -243,6 +247,9 @@ DEFUN (syserr_to_error_code, (syserr), enum syserr_names syserr)
 {
   switch (syserr)
     {
+#ifdef EADDRINUSE
+    case syserr_address_in_use:				return (EADDRINUSE);
+#endif
     case syserr_arg_list_too_long:			return (E2BIG);
     case syserr_bad_address:				return (EFAULT);
     case syserr_bad_file_descriptor:			return (EBADF);
@@ -392,6 +399,7 @@ OS_syscall_names (unsigned int * length, unsigned char *** names)
 static char * syserr_names_table [] =
 {
   "unknown",
+  "address-in-use",
   "arg-list-too-long",
   "bad-address",
   "bad-file-descriptor",
