@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.49 1991/10/29 22:39:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.50 1991/11/04 16:56:13 jinx Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -633,7 +633,7 @@ BCHGCC_H = bchgcc.h oscond.h $(GC_HEAD_FILES)
 bchdmp.o : scheme.touch prims.h uxio.h osio.h osfile.h trap.h lookup.h \
 	$(BCHGCC_H) fasl.h dump.c
 bchdrn.o : ansidecl.h bchdrn.h
-bchmmg.o : scheme.touch prims.h $(BCHGCC_H) option.h bchdrn.h
+bchmmg.o : scheme.touch prims.h ux.h $(BCHGCC_H) option.h bchdrn.h
 bchgcl.o : scheme.touch $(BCHGCC_H)
 bchpur.o : scheme.touch prims.h $(BCHGCC_H) zones.h
 bchutl.o : ansidecl.h
