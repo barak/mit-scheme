@@ -1,8 +1,8 @@
 #!/bin/csh -f
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/dos.m4,v 1.4 1992/08/24 15:19:02 jinx Exp $
+###	$Id: dos.m4,v 1.5 1993/06/24 07:25:11 gjr Exp $
 ###
-###	Copyright (c) 1992 Massachusetts Institute of Technology
+###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
 ####	Postprocessing to get valid dos assembly language from cmpaux-i386.m4
 
