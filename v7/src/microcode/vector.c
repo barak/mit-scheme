@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.24 1987/05/14 13:51:07 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.25 1987/07/07 21:03:26 cph Rel $
  *
  * This file contains procedures for handling vectors and conversion
  * back and forth to lists.
@@ -126,22 +126,31 @@ Built_In_Primitive(Prim_Subvector_To_List, 3, "SUBVECTOR->LIST", 0x7D)
   return Subvector_To_List();
 }
 
+Pointer
+make_vector (length, contents)
+     fast long length;
+     fast Pointer contents;
+{
+  fast Pointer result;
+
+  Primitive_GC_If_Needed (length + 1);
+  result = (Make_Pointer (TC_VECTOR, Free));
+  *Free++ = (Make_Non_Pointer (TC_MANIFEST_VECTOR, length));
+  while (length-- > 0)
+    *Free++ = contents;
+  return (result);
+}
+
 /* (VECTOR_CONS LENGTH CONTENTS)
    Create a new vector to hold LENGTH entries, all of which are
-   initialized to CONTENTS.
-*/
-Built_In_Primitive(Prim_Vector_Cons, 2, "VECTOR-CONS", 0x2C)
-{
-  long Length, i;
-  Primitive_2_Args();
+   initialized to CONTENTS. */
 
-  Arg_1_Type(TC_FIXNUM);
-  Length = Get_Integer(Arg1);
-  Primitive_GC_If_Needed(Length+1);
-  *Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, Length);
-  for (i = 0; i < Length; i++)
-    *Free++ = Arg2;
-  return Make_Pointer(TC_VECTOR, (Free - (Length + 1)));
+Built_In_Primitive (Prim_Vector_Cons, 2, "VECTOR-CONS", 0x2C)
+{
+  Primitive_2_Args ();
+
+  CHECK_ARG (1, FIXNUM_P);
+  return (make_vector ((Get_Integer (Arg1)), Arg2));
 }
 
 /* (VECTOR-REF VECTOR OFFSET)
