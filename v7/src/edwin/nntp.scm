@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: nntp.scm,v 1.3 1996/04/24 02:54:51 cph Exp $
+;;;	$Id: nntp.scm,v 1.4 1996/04/24 22:22:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -175,7 +175,7 @@
 		  (hash-table/put! table (string-first-token line) line))))
 	  (for-each-vector-element lines add-line)
 	  (for-each-vector-element new-lines add-line)
-	  (write-file-atomically
+	  (write-init-file-atomically
 	   (nntp-connection:active-groups-pathname connection)
 	   (lambda (port)
 	     (write (get-universal-time) port)
@@ -189,7 +189,7 @@
 (define (nntp-connection:active-groups-vector connection re-read?)
   (let ((pathname (nntp-connection:active-groups-pathname connection)))
     (if (or re-read? (not (file-readable? pathname)))
-	(write-file-atomically pathname
+	(write-init-file-atomically pathname
 	  (lambda (port)
 	    (write (get-universal-time) port)
 	    (newline port)
@@ -1438,8 +1438,7 @@
   (for-each
    (lambda (header)
      (if (news-header:real? header)
-	 (let ((parent (news-header:followup-to header))
-	       (subject ))
+	 (let ((parent (news-header:followup-to header)))
 	   (if (and parent
 		    (not
 		     (let ((subject
@@ -1627,6 +1626,10 @@
 
 (define (input-port/eof? port)
   ((port/operation port 'EOF?) port))
+
+(define (write-init-file-atomically pathname procedure)
+  (guarantee-init-file-directory pathname)
+  (write-file-atomically pathname procedure))
 
 (define (write-file-atomically pathname procedure)
   (let ((finished? #f))
