@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.56 1999/02/16 05:21:39 cph Exp $
+$Id: io.scm,v 14.57 1999/02/16 05:25:17 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -576,7 +576,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   position
   line-translation			; string that newline maps to
   logical-size
-  (closed? #f))
+  closed?)
 
 (define (output-buffer-sizes translation buffer-size)
   (let ((logical-size
@@ -608,7 +608,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				  (make-string string-size))
 			     0
 			     translation
-			     logical-size)))))
+			     logical-size
+			     #f)))))
 
 (define (output-buffer/close buffer associated-buffer)
   (output-buffer/drain-block buffer)
