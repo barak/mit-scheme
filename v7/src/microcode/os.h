@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/os.h,v 1.2 1990/11/28 20:51:00 cph Rel $
+$Id: os.h,v 1.3 1993/02/11 02:27:13 adams Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -37,7 +37,12 @@ MIT in each case. */
 
 #include "ansidecl.h"
 #include "oscond.h"
+
+#ifdef WINNT
+#include "posixtyp.h"  /* SRA : renamed for 8 char name length*/
+#else
 #include "posixtype.h"
+#endif
 
 typedef unsigned int Tchannel;
 
