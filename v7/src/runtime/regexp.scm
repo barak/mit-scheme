@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: regexp.scm,v 1.1 1999/05/13 03:04:46 cph Exp $
+;;; $Id: regexp.scm,v 1.2 1999/06/21 20:58:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -83,7 +83,7 @@
 				 (list "\\)")
 				 (cons "\\|" (loop (cdr alternatives)))))))))))
 
-(define (make-substring-operation primitive)
+(define (make-substring-operation return-end? primitive)
   (lambda (regexp string start end #!optional case-fold? syntax-table)
     (let ((regexp
 	   (if (compiled-regexp? regexp)
@@ -92,22 +92,24 @@
 				   (if (default-object? case-fold?)
 				       #f
 				       case-fold?)))))
-      (primitive (compiled-regexp/byte-stream regexp)
-		 (compiled-regexp/translation-table regexp)
-		 (char-syntax-table/entries
-		  (if (or (default-object? syntax-table) (not syntax-table))
-		      standard-char-syntax-table
-		      syntax-table))
-		 registers string start end))))
+      (and (primitive (compiled-regexp/byte-stream regexp)
+		      (compiled-regexp/translation-table regexp)
+		      (char-syntax-table/entries
+		       (if (or (default-object? syntax-table)
+			       (not syntax-table))
+			   standard-char-syntax-table
+			   syntax-table))
+		      registers string start end)
+	   (vector-ref registers (if return-end? 10 0))))))
 
 (define re-substring-match
-  (make-substring-operation (ucode-primitive re-match-substring)))
+  (make-substring-operation #t (ucode-primitive re-match-substring)))
 
 (define re-substring-search-forward
-  (make-substring-operation (ucode-primitive re-search-substring-forward)))
+  (make-substring-operation #f (ucode-primitive re-search-substring-forward)))
 
 (define re-substring-search-backward
-  (make-substring-operation (ucode-primitive re-search-substring-backward)))
+  (make-substring-operation #t (ucode-primitive re-search-substring-backward)))
 
 (define (make-string-operation substring-operation)
   (lambda (regexp string #!optional case-fold? syntax-table)
