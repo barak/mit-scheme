@@ -1,8 +1,10 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.88 2000/06/19 20:27:45 cph Exp $
+$Id: todo.txt,v 1.89 2000/06/19 22:15:25 cph Exp $
 
 Bug fixes
 ---------
+
+* Change file URL completion to complete to any file name.
 
 * Must be able to handle malformed headers in incoming mail.
   Generating a low-level error in this situation is unacceptable.
@@ -26,6 +28,12 @@ MIME conformance
 
 New features
 ------------
+
+* Implement generic operation to say whether a folder rename can work.
+  Use this to extend M-x imail-rename-folder to work in all cases by
+  using copy/delete when rename inapplicable.
+
+* Generate more specific X-Mailer header.
 
 * Add variable to control how multipart/alternative shows the
   secondary alternatives.
