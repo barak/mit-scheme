@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: site.scm.dos,v 1.11 1992/10/17 22:24:21 jinx Exp $
+$Id: site.scm.dos,v 1.12 1993/09/07 21:59:02 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -53,3 +53,10 @@ MIT in each case. |#
    '("/scheme")))
 
 (set-environment-variable-default! "MITSCHEME_INF_DIRECTORY" "\\scheme")
+(set-environment-variable-default!
+ "TERM"
+ (lambda ()
+   (if (string-ci=? microcode-id/operating-system-name "NT")
+       "ansi.sys"
+       "ibm_pc_bios")))
+				   
