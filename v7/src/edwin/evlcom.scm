@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.31 1991/11/26 08:03:13 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.32 1991/12/05 16:20:16 markf Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -65,6 +65,18 @@ This does not affect editor errors."
   true
   boolean?)
 
+(define-variable evaluation-input-recorder
+  "A procedure that receives each input region before evaluation.
+If #F, disables input recording."
+  false)
+
+(define-variable evaluation-output-receiver
+  "A procedure that is called with the value and the output (as a string)
+resulting from evaluation.
+If #F, the output will be thrown in the bit bucket, unless 
+ENABLE-TRANSCRIPT-BUFFER is true."
+  false)
+
 (define-variable enable-transcript-buffer
   "If true, output from evaluation commands is recorded in transcript buffer."
   false
@@ -80,11 +92,6 @@ This can also be a buffer object."
 This can be either a mode object or the name of one."
   'scheme)
 
-(define-variable transcript-input-recorder
-  "A procedure that receives each input region before evaluation.
-If #F, disables input recording."
-  false)
-
 (define-variable transcript-output-wrapper
   "A procedure that is called to setup transcript output.
 It is passed a thunk as its only argument.
@@ -92,12 +99,14 @@ If #F, normal transcript output is done."
   false)
 
 (define-variable transcript-list-depth-limit
-  "List depth to which evaluation results are printed.  #F means no limit."
+  "List depth to which evaluation results are printed in the transcript
+buffer.  #F means no limit."
   false
   (lambda (object) (or (not object) (exact-nonnegative-integer? object))))
 
 (define-variable transcript-list-breadth-limit
-  "List breadth to which evaluation results are printed.  #F means no limit."
+  "List breadth to which evaluation results are printed in the transcript
+buffer.  #F means no limit."
   false
   (lambda (object) (or (not object) (exact-nonnegative-integer? object))))
 
@@ -255,9 +264,9 @@ may be available.  The following commands are special to this mode:
 		   argument))
 
 (define (evaluate-region region argument)
-  (let ((transcript-input-recorder (ref-variable transcript-input-recorder)))
-    (if transcript-input-recorder
-	(transcript-input-recorder region)))
+  (let ((evaluation-input-recorder (ref-variable evaluation-input-recorder)))
+    (if evaluation-input-recorder
+	(evaluation-input-recorder region)))
   (let ((enable-transcript-buffer (ref-variable enable-transcript-buffer)))
     (if enable-transcript-buffer
 	(insert-region (region-start region)
@@ -330,14 +339,26 @@ kludge the mode line."
 	 (lambda ()
 	   (with-input-from-string ""
 	     (lambda ()
-	       (with-output-to-transcript-buffer
-		(lambda ()
-		  (let ((value (eval-with-history sexp environment)))
-		    (transcript-write
-		     value
-		     (and (ref-variable enable-transcript-buffer)
-			  (transcript-buffer)))
-		    value))))))))
+	       (let ((value))
+		 (let ((output-string
+			(with-output-to-string
+			  (lambda ()
+			    (set! value
+				  (eval-with-history sexp environment))))))
+		   (let ((evaluation-output-receiver
+			  (ref-variable evaluation-output-receiver)))
+		     (if evaluation-output-receiver
+			 (evaluation-output-receiver
+			  value
+			  output-string)))
+		   (with-output-to-transcript-buffer
+		    (lambda ()
+		      (write-string output-string)
+		      (transcript-write
+		       value
+		       (and (ref-variable enable-transcript-buffer)
+			    (transcript-buffer)))
+		      value)))))))))
     (if (ref-variable enable-run-light?)
 	(dynamic-wind
 	 (lambda ()
@@ -431,30 +452,43 @@ FIT           Error messages appear in typein window if they fit;
 		 (lambda ()
 		   (set! value (thunk))
 		   unspecific))))
-	  (if (not (string-null? output))
+	  (if (and (not (string-null? output))
+		   (not (ref-variable evaluation-output-receiver)))
 	      (string->temporary-buffer output "*Unsolicited-Output*")))
 	value)))
 
 (define (transcript-write value buffer)
   (let ((value-string
-	 (if (undefined-value? value)
-	     "No value"
-	     (string-append
-	      "Value: "
-	      (fluid-let ((*unparser-list-depth-limit*
-			   (ref-variable transcript-list-depth-limit))
-			  (*unparser-list-breadth-limit*
-			   (ref-variable transcript-list-breadth-limit)))
-		(write-to-string value))))))
+	 (string-append
+	  (transcript-value-string value false)
+	  (fluid-let ((*unparser-list-depth-limit*
+		       (ref-variable transcript-list-depth-limit))
+		      (*unparser-list-breadth-limit*
+		       (ref-variable transcript-list-breadth-limit)))
+	    (write-to-string value)))))
     (if buffer
 	(let ((point (mark-left-inserting-copy (buffer-end buffer))))
 	  (guarantee-newlines 1 point)
-	  (insert-char #\; point)
 	  (insert-string value-string point)
 	  (insert-newlines 2 point)
 	  (mark-temporary! point)))
     (if (or (not buffer) (null? (buffer-windows buffer)))
 	(message value-string))))
+
+(define (transcript-value-string value hash-number?)
+  (if (undefined-value? value)
+      ";No value"
+      (string-append
+       ";Value"
+       (if (and hash-number?
+		(object-pointer? value)
+		(not (interned-symbol? value))
+		(not (number? value)))
+	   (string-append
+	    " "
+	    (write-to-string (object-hash value)))
+	   "")
+       ": ")))
 
 (define (transcript-buffer)
   (let ((name (ref-variable transcript-buffer-name)))
