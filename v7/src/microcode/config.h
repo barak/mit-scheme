@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.26 1987/06/05 04:13:17 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.27 1987/06/18 19:54:55 jinx Exp $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -246,10 +246,18 @@ typedef unsigned long Pointer;
 
 #ifdef vms
 
-/* Pre version 4 VMS C has not void type, thus make it go away */
-/* #define void */
+#define VMS_VERSION 4.5
+
 /* Name conflict in VMS with system variable */
 #define Free			Free_Register
+
+#if (VMS_VERSION < 4)
+/* Pre version 4 VMS has no void type. */
+#define void
+#endif
+
+/* This eliminates a spurious warning from the C compiler. */
+#define main_type
 
 /* exit(0) produces horrible message on VMS */
 
@@ -269,7 +277,7 @@ if (value != 0)								\
   exit(value);								\
 longjmp(Exit_Point, NORMAL_EXIT)
 
-#else /* not a vms */
+#else /* not a vms, therefore unix */
 
 /* Vax Unix C compiler bug */
 
