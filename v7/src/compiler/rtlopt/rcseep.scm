@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseep.scm,v 1.1 1987/03/19 00:49:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseep.scm,v 1.2 1987/03/20 05:12:44 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -101,4 +101,8 @@ MIT in each case. |#
        (interpreter-free-pointer? (rtl:address-register expression))))
 
 (define-integrable (pre/post-increment? expression)
+  (memq (rtl:expression-type expression) '(PRE-INCREMENT POST-INCREMENT)))
+
+(define-integrable (expression-not-object? expression)
+  (memq (rtl:expression-type expression)
   (loop x))
