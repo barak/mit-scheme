@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.46 2001/05/23 05:05:29 cph Exp $
+;;; $Id: imail-umail.scm,v 1.47 2001/05/23 23:23:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -35,9 +35,9 @@
 
 ;;;; Server operations
 
-(define-method %open-folder ((url <umail-url>))
+(define-method %open-resource ((url <umail-url>))
   (if (not (file-readable? (pathname-url-pathname url)))
-      (error:bad-range-argument url 'OPEN-FOLDER))
+      (error:bad-range-argument url 'OPEN-RESOURCE))
   (make-umail-folder url))
 
 (define-method %create-folder ((url <umail-url>))
@@ -49,7 +49,7 @@
     (set-file-folder-file-modification-count!
      folder
      (object-modification-count folder))
-    (save-folder folder)))
+    (save-resource folder)))
 
 ;;;; Folder
 

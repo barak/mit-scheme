@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.65 2001/05/23 05:05:11 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.66 2001/05/23 23:23:34 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -38,9 +38,9 @@
 
 ;;;; Server operations
 
-(define-method %open-folder ((url <rmail-url>))
+(define-method %open-resource ((url <rmail-url>))
   (if (not (file-readable? (pathname-url-pathname url)))
-      (error:bad-range-argument url 'OPEN-FOLDER))
+      (error:bad-range-argument url 'OPEN-RESOURCE))
   (make-rmail-folder url))
 
 (define-method %create-folder ((url <rmail-url>))
@@ -55,7 +55,7 @@
     (set-file-folder-file-modification-count!
      folder
      (object-modification-count folder))
-    (save-folder folder)))
+    (save-resource folder)))
 
 ;;;; Folder
 

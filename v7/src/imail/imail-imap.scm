@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.157 2001/05/23 21:30:02 cph Exp $
+;;; $Id: imail-imap.scm,v 1.158 2001/05/23 23:23:31 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -581,11 +581,6 @@
 
 ;;;; Folder and container datatypes
 
-(define-class (<imap-container> (constructor (locator))) (<container>))
-
-(define-method container-contents ((container <imap-container>))
-  (imap-container-url-contents (resource-locator container)))
-
 (define-class (<imap-folder> (constructor (locator connection))) (<folder>)
   (connection define accessor)
   (read-only? define standard)
@@ -598,6 +593,8 @@
   (messages-synchronized? define standard)
   (n-messages define standard initial-value 0)
   (messages define standard initial-value '#()))
+
+(define-class (<imap-container> (constructor (locator))) (<container>))
 
 (define (reset-imap-folder! folder)
   (without-interrupts
@@ -1297,7 +1294,7 @@
 
 ;;;; Folder operations
 
-(define-method %open-folder ((url <imap-folder-url>))
+(define-method %open-resource ((url <imap-folder-url>))
   (let ((folder
 	 (make-imap-folder url
 			   (or (search-imap-connections
@@ -1308,7 +1305,7 @@
     (guarantee-imap-folder-open folder)
     folder))
 
-(define-method %close-folder ((folder <imap-folder>))
+(define-method %close-resource ((folder <imap-folder>))
   (let ((connection (imap-folder-connection folder)))
     (maybe-close-imap-connection connection)
     (set-imap-connection-folder! connection #f))
@@ -1344,13 +1341,13 @@
   folder
   'SYNCHRONIZED)
 
-(define-method save-folder ((folder <imap-folder>))
+(define-method save-resource ((folder <imap-folder>))
   ;; Changes are always written through.
   folder
   #f)
 
 (define-method discard-folder-cache ((folder <imap-folder>))
-  (close-folder folder)
+  (close-resource folder)
   (reset-imap-folder! folder))
 
 (define-method probe-folder ((folder <imap-folder>))
@@ -1363,11 +1360,27 @@
       'OFFLINE))
 
 (define-method disconnect-folder ((folder <imap-folder>))
-  (close-folder folder))
+  (close-resource folder))
 
 (define-method folder-supports-mime? ((folder <imap-folder>))
   folder
   #t)
+
+;;;; Container operations
+
+(define-method %open-resource ((url <imap-container-url>))
+  (make-imap-container url))
+
+(define-method %close-resource ((container <imap-container>))
+  container
+  unspecific)
+
+(define-method save-resource ((container <imap-container>))
+  container
+  #f)
+
+(define-method container-contents ((container <imap-container>))
+  (imap-container-url-contents (resource-locator container)))
 
 ;;;; IMAP command invocation
 

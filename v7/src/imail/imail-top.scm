@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.244 2001/05/23 21:20:28 cph Exp $
+;;; $Id: imail-top.scm,v 1.245 2001/05/23 23:23:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -231,7 +231,7 @@ regardless of the folder type."
 					     'REQUIRE-MATCH? #t))))
   (lambda (url-string)
     (let ((folder
-	   (open-folder
+	   (open-resource
 	    (if url-string
 		(imail-parse-partial-url url-string)
 		(imail-primary-url #f)))))
@@ -826,7 +826,7 @@ With prefix argument N, removes FLAG from next N messages,
 					'REQUIRE-MATCH? #t)))
   (lambda (url-string)
     (let ((url (imail-parse-partial-url url-string)))
-      (copy-folder (open-folder url)
+      (copy-folder (open-resource url)
 		   (resource-locator (selected-folder))
 		   (lambda () ((ref-command imail-get-new-mail) #f))
 		   (string-append "from " (url->string url))))))
@@ -1390,7 +1390,7 @@ If it doesn't exist, it is created first."
 	      (url-base-name (imail-parse-partial-url from)))
 	     'HISTORY 'IMAIL-COPY-FOLDER-TARGET))))
   (lambda (from to)
-    (let ((folder (open-folder (imail-parse-partial-url from)))
+    (let ((folder (open-resource (imail-parse-partial-url from)))
 	  (to (imail-parse-partial-url to)))
       (if (eq? (resource-locator folder) to)
 	  (editor-error "Can't copy folder to itself:" to))
@@ -1426,7 +1426,7 @@ With prefix argument, closes and buries only selected IMAIL folder."
   (lambda (selected-only?)
     (let ((quit
 	   (lambda (folder)
-	     (close-folder folder)
+	     (close-resource folder)
 	     (imail-bury folder))))
       (if selected-only?
 	  (quit (selected-folder))
@@ -1482,7 +1482,7 @@ With prefix argument, closes and buries only selected IMAIL folder."
   ()
   (lambda ()
     (message
-     (if (save-folder (selected-folder))
+     (if (save-resource (selected-folder))
 	 "Folder saved"
 	 "No changes need to be saved."))))
 

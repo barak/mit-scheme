@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.69 2001/05/23 21:29:54 cph Exp $
+;;; $Id: imail-file.scm,v 1.70 2001/05/23 23:23:23 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -273,7 +273,7 @@
 (define (file-folder-pathname folder)
   (pathname-url-pathname (resource-locator folder)))
 
-(define-method %close-folder ((folder <file-folder>))
+(define-method %close-resource ((folder <file-folder>))
   (discard-file-folder-messages folder)
   (discard-file-folder-xstring folder))
 
@@ -390,7 +390,7 @@
 	    'PERSISTENT-DELETED)
 	'UNSYNCHRONIZED)))
 
-(define-method save-folder ((folder <file-folder>))
+(define-method save-resource ((folder <file-folder>))
   (and (let ((status (folder-sync-status folder)))
 	 (or (memq status '(FOLDER-MODIFIED PERSISTENT-DELETED))
 	     (and (eq? status 'BOTH-MODIFIED)
@@ -442,7 +442,7 @@
       (call-with-input-xstring (file-folder-xstring folder) 0 reader)))))
 
 (define-method discard-folder-cache ((folder <file-folder>))
-  (close-folder folder))
+  (close-resource folder))
 
 (define-method probe-folder ((folder <file-folder>))
   folder
@@ -471,6 +471,17 @@
 ;;;; Container
 
 (define-class (<file-container> (constructor (locator))) (<container>))
+
+(define-method %open-resource ((url <directory-url>))
+  (make-file-container url))
+
+(define-method %close-resource ((container <file-container>))
+  container
+  unspecific)
+
+(define-method save-resource ((container <file-container>))
+  container
+  #f)
 
 (define-method container-contents ((container <file-container>))
   (simple-directory-read (pathname-url-pathname (resource-locator container))

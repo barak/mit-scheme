@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.128 2001/05/23 21:29:50 cph Exp $
+;;; $Id: imail-core.scm,v 1.129 2001/05/23 23:23:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -380,24 +380,24 @@
 ;;;; Folder operations
 
 ;; -------------------------------------------------------------------
-;; Open the folder named URL.
+;; Open the resource named URL.
 
-(define (open-folder url)
+(define (open-resource url)
   (or (get-memoized-resource url)
-      (memoize-resource (%open-folder url) close-folder)))
+      (memoize-resource (%open-resource url) close-resource)))
 
-(define-generic %open-folder (url))
+(define-generic %open-resource (url))
 
 ;; -------------------------------------------------------------------
-;; Close FOLDER, freeing up connections, memory, etc.  Subsequent use
-;; of the folder must work, but may incur a significant time or space
+;; Close RESOURCE, freeing up connections, memory, etc.  Subsequent use
+;; of the resource must work, but may incur a significant time or space
 ;; penalty.
 
-(define (close-folder folder)
-  (save-folder folder)
-  (%close-folder folder))
+(define (close-resource resource)
+  (save-resource resource)
+  (%close-resource resource))
 
-(define-generic %close-folder (folder))
+(define-generic %close-resource (resource))
 
 ;; -------------------------------------------------------------------
 ;; Return the number of messages in FOLDER.
@@ -437,10 +437,10 @@
 (define-generic folder-sync-status (folder))
 
 ;; -------------------------------------------------------------------
-;; Save any cached changes made to FOLDER.  Returns a boolean
+;; Save any cached changes made to RESOURCE.  Returns a boolean
 ;; indicating whether anything was saved.
 
-(define-generic save-folder (folder))
+(define-generic save-resource (resource))
 
 ;; -------------------------------------------------------------------
 ;; Discard cached contents of FOLDER.  Subsequent use of FOLDER will
