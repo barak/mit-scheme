@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.11 2000/01/18 22:21:01 cph Exp $
+;;; $Id: imail-core.scm,v 1.12 2000/01/19 05:39:13 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -244,7 +244,7 @@
 ;; error for invalid INDEX.
 (define (get-message folder index)
   (guarantee-index index 'GET-MESSAGE)
-  (if (not (fix:< index (count-messages folder)))
+  (if (not (< index (count-messages folder)))
       (error:bad-range-argument index 'GET-MESSAGE))
   (%get-message folder index))
 
@@ -255,7 +255,7 @@
 ;; Unspecified result.
 (define (insert-message folder index message)
   (guarantee-index index 'INSERT-MESSAGE)
-  (if (not (fix:<= index (length (count-messages folder))))
+  (if (not (<= index (count-messages folder)))
       (error:bad-range-argument index 'INSERT-MESSAGE))
   (guarantee-message message 'INSERT-MESSAGE)
   (%insert-message folder index message))
@@ -323,52 +323,60 @@
 
 ;;;; Message type
 
-(define-structure (message (type-descriptor message-rtd)
-			   (safe-accessors #t))
-  header-fields
-  body
-  flags
-  properties)
+(define-class <message> ()
+  (header-fields define standard
+		 accessor header-fields
+		 modifier set-header-fields!)
+  (body define standard)
+  (flags define standard)
+  (properties define standard)
+  (folder define accessor)
+  (index define standard))
 
 (define (guarantee-message message procedure)
   (if (not (message? message))
       (error:wrong-type-argument message "IMAIL message" procedure)))
 
-(define-generic header-fields (object))
+(define make-detached-message
+  (let ((constructor
+	 (instance-constructor <message>
+			       '(HEADER-FIELDS BODY FLAGS PROPERTIES))))
+    (lambda (headers body)
+      (let loop ((headers headers) (headers* '()) (flags '()) (properties '()))
+	(cond ((not (pair? headers))
+	       (constructor (reverse! headers*)
+			    body
+			    (reverse! flags)
+			    (reverse! properties)))
+	      ((header-field->message-flags (car headers))
+	       => (lambda (flags*)
+		    (loop (cdr headers)
+			  headers*
+			  (append! (reverse! (cdr flags*)) flags)
+			  properties)))
+	      ((header-field->message-property (car headers))
+	       => (lambda (property)
+		    (loop (cdr headers)
+			  headers*
+			  flags
+			  (cons property properties))))
+	      (else
+	       (loop (cdr headers)
+		     (cons (car headers) headers*)
+		     flags
+		     properties)))))))
 
-(define-method header-fields ((message message-rtd))
-  (message-header-fields message))
-
-(define (copy-message message)
-  (make-message (map copy-header-field (message-header-fields message))
-		(message-body message)
-		(list-copy (message-flags message))
-		(alist-copy (message-properties message))))
-
-(define (make-standard-message headers body)
-  (let loop ((headers headers) (headers* '()) (flags '()) (properties '()))
-    (cond ((not (pair? headers))
-	   (make-message (reverse! headers*)
-			 body
-			 (reverse! flags)
-			 (reverse! properties)))
-	  ((header-field->message-flags (car headers))
-	   => (lambda (flags*)
-		(loop (cdr headers)
-		      headers*
-		      (append! (reverse! (cdr flags*)) flags)
-		      properties)))
-	  ((header-field->message-property (car headers))
-	   => (lambda (property)
-		(loop (cdr headers)
-		      headers*
-		      flags
-		      (cons property properties))))
-	  (else
-	   (loop (cdr headers)
-		 (cons (car headers) headers*)
-		 flags
-		 properties)))))
+(define %copy-message
+  (let ((constructor
+	 (instance-constructor <message>
+			       '(HEADER-FIELDS BODY FLAGS PROPERTIES FOLDER))))
+    (lambda (message folder)
+      (guarantee-folder folder '%COPY-MESSAGE)
+      (constructor (map copy-header-field (header-fields message))
+		   (message-body message)
+		   (list-copy (message-flags message))
+		   (alist-copy (message-properties message))
+		   folder))))
 
 (define (maybe-strip-imail-headers strip? headers)
   (if strip?
@@ -377,6 +385,61 @@
 	  (or (header-field->message-flags header)
 	      (header-field->message-property header))))
       headers))
+
+;;;; Message Navigation
+
+(define (first-unseen-message folder)
+  (let ((message (first-message folder)))
+    (and message
+	 (let loop ((message message))
+	   (let ((next (next-message message)))
+	     (cond ((not next) message)
+		   ((message-seen? next) (loop next))
+		   (else next)))))))
+
+(define (first-message folder)
+  (and (> (count-messages folder) 0)
+       (get-message folder 0)))
+
+(define (last-message folder)
+  (let ((n (count-messages folder)))
+    (and (> n 0)
+	 (get-message folder (- n 1)))))
+
+(define (previous-message message #!optional predicate)
+  (let ((predicate
+	 (if (or (default-object? predicate) (not predicate))
+	     (lambda (message) message #t)
+	     predicate))
+	(folder (message-folder message)))
+    (let loop ((index (message-index message)))
+      (and (> index 0)
+	   (let ((index (- index 1)))
+	     (let ((message (get-message folder index)))
+	       (if (predicate message)
+		   message
+		   (loop index))))))))
+
+(define (next-message message #!optional predicate)
+  (let ((predicate
+	 (if (or (default-object? predicate) (not predicate))
+	     (lambda (message) message #t)
+	     predicate))
+	(folder (message-folder message)))
+    (let ((n (count-messages folder)))
+      (let loop ((index (message-index message)))
+	(let ((index (+ index 1)))
+	  (and (< index n)
+	       (let ((message (get-message folder index)))
+		 (if (predicate message)
+		     message
+		     (loop index)))))))))
+
+(define (previous-deleted-message message)
+  (previous-message message message-deleted?))
+
+(define (next-deleted-message message)
+  (next-message message message-deleted?))
 
 ;;;; Message flags
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.6 2000/01/18 20:47:17 cph Exp $
+;;; $Id: imail-umail.scm,v 1.7 2000/01/19 05:38:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -112,7 +112,7 @@
 
 (define (make-umail-message from-line header-lines body-lines import?)
   (let ((message
-	 (make-standard-message
+	 (make-detached-message
 	  (maybe-strip-imail-headers import?
 				     (lines->header-fields header-lines))
 	  (lines->string (map (lambda (line)
@@ -166,7 +166,7 @@
 			 (message-property->header-field (car n.v) (cdr n.v))
 			 port)))
 		  (message-properties message))))
-  (write-header-fields (message-header-fields message) port)
+  (write-header-fields (header-fields message) port)
   (newline port)
   (for-each (lambda (line)
 	      (if (string-prefix-ci? "From " line)

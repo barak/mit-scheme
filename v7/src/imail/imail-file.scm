@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.2 2000/01/14 18:09:04 cph Exp $
+;;; $Id: imail-file.scm,v 1.3 2000/01/19 05:38:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -75,25 +75,62 @@
   (list-ref (file-folder-messages folder) index))
 
 (define-method %insert-message ((folder <file-folder>) index message)
-  (let ((message (copy-message message))
-	(messages (file-folder-messages folder)))
-    (if (fix:= 0 index)
-	(set-file-folder-messages! folder (cons message messages))
-	(let loop ((index* 1) (prev messages) (this (cdr messages)))
-	  (if (fix:= index index*)
-	      (set-cdr! prev (cons message this))
-	      (loop (fix:+ index* 1) this (cdr this)))))))
+  (let ((message (%copy-message message folder)))
+    (set-message-index! message index)
+    (without-interrupts
+     (lambda ()
+       (let ((messages (file-folder-messages folder)))
+	 (if (fix:= 0 index)
+	     (begin
+	       (do ((messages messages (cdr messages))
+		    (index 1 (fix:+ index 1)))
+		   ((not (pair? messages)))
+		 (set-message-index! (car messages) index))
+	       (set-file-folder-messages! folder (cons message messages)))
+	     (let loop ((index* 1) (prev messages) (this (cdr messages)))
+	       (if (not (pair? this))
+		   (error:bad-range-argument index 'INSERT-MESSAGE))
+	       (if (fix:= index index*)
+		   (begin
+		     (do ((messages this (cdr messages))
+			  (index (fix:+ index 1) (fix:+ index 1)))
+			 ((not (pair? messages)))
+		       (set-message-index! (car messages) index))
+		     (set-cdr! prev (cons message this)))
+		   (loop (fix:+ index* 1) this (cdr this))))))))))
 
 (define-method %append-message ((folder <file-folder>) message)
-  (set-file-folder-messages! folder
-			     (append! (file-folder-messages folder)
-				      (list (copy-message message)))))
+  (let ((message (%copy-message message folder)))
+    (without-interrupts
+     (lambda ()
+       (set-file-folder-messages!
+	folder
+	(let ((messages (file-folder-messages folder)))
+	  (if (pair? messages)
+	      (begin
+		(let loop ((prev messages) (this (cdr messages)) (index 1))
+		  (if (pair? this)
+		      (loop this (cdr this) (fix:+ index 1))
+		      (begin
+			(set-message-index! message index)
+			(set-cdr! prev (list message)))))
+		messages)
+	      (begin
+		(set-message-index! message 0)
+		(list message)))))))))
 
 (define-method expunge-deleted-messages ((folder <file-folder>))
-  (set-file-folder-messages!
-   folder
-   (list-transform-negative (file-folder-messages folder) message-deleted?)))
-
+  (let ((messages
+	 (list-transform-negative (file-folder-messages folder)
+	   message-deleted?)))
+    (without-interrupts
+     (lambda ()
+       (do ((messages messages (cdr messages))
+	    (index 0 (+ index 1)))
+	   ((null? messages))
+	 (set-message-index! (car messages) index))
+       (set-file-folder-messages! folder messages)))))
+
 (define-method search-folder ((folder <file-folder>) criteria)
   folder criteria
   (error "Unimplemented operation:" 'SEARCH-FOLDER))

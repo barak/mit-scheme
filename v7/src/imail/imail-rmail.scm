@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.6 2000/01/18 20:54:01 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.7 2000/01/19 05:37:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -86,8 +86,8 @@
   (flags->rmail-labels
    (let ((n (count-messages folder)))
      (let loop ((index 0) (flags '()))
-       (if (fix:< index n)
-	   (loop (fix:+ index 1)
+       (if (< index n)
+	   (loop (+ index 1)
 		 (union-of-lists (message-flags (get-message folder index))
 				 flags))
 	   flags)))))
@@ -100,25 +100,26 @@
       (read-rmail-folder (make-rmail-url pathname) port import?))))
 
 (define (read-rmail-folder url port import?)
-  (let ((folder-headers (read-rmail-prolog port)))
-    (make-rmail-folder url
-		       folder-headers
-		       (read-rmail-messages port import?))))
+  (let ((folder (make-rmail-folder url (read-rmail-prolog port) '())))
+    (let loop ()
+      (let ((message (read-rmail-message port import?)))
+	(if message
+	    (begin
+	      (append-message folder message)
+	      (loop)))))
+    folder))
 
 (define (read-rmail-prolog port)
   (if (not (string-prefix? "BABYL OPTIONS:" (read-required-line port)))
       (error "Not an RMAIL file:" port))
   (lines->header-fields (read-lines-to-eom port)))
 
-(define (read-rmail-messages port import?)
-  (source->list (lambda () (read-rmail-message port import?))))
-
 (define (read-rmail-message port import?)
   ;; **** This must be generalized to recognize an RMAIL file that has
   ;; unix-mail format messages appended to it.
   (let ((line (read-line port)))
     (cond ((eof-object? line)
-	   line)
+	   #f)
 	  ((and (fix:= 1 (string-length line))
 		(char=? rmail-message:start-char (string-ref line 0)))
 	   (read-rmail-message-1 port import?))
@@ -139,11 +140,11 @@
 	     (body (read-to-eom port))
 	     (finish
 	      (lambda (headers)
-		(let ((message (make-standard-message headers body)))
+		(let ((message (make-detached-message headers body)))
 		  (for-each (lambda (flag)
 			      (set-message-flag message flag))
 			    flags)
-		  (let ((headers (message-header-fields message)))
+		  (let ((headers (header-fields message)))
 		    (if (and (pair? headers)
 			     (string-ci=? "summary-line"
 					  (header-field-name (car headers))))
@@ -152,7 +153,7 @@
 			   message
 			   (header-field-name (car headers))
 			   (header-field-value (car headers)))
-			  (set-message-header-fields! message (cdr headers)))))
+			  (set-header-fields! message (cdr headers)))))
 		  message))))
 	(if formatted?
 	    (let ((message (finish headers)))
@@ -212,7 +213,7 @@
 (define (write-rmail-message message port export?)
   (write-char rmail-message:start-char port)
   (newline port)
-  (let ((headers (message-header-fields message))
+  (let ((headers (header-fields message))
 	(displayed-headers
 	 (get-message-property message "displayed-header-fields" 'NONE)))
     (write-rmail-attributes-line message displayed-headers port)
@@ -279,8 +280,8 @@
 		 (map (lambda (pathname)
 			(let ((inbox (read-rmail-inbox folder pathname #t)))
 			  (let ((n (count-messages inbox)))
-			    (do ((index 0 (fix:+ index 1)))
-				((fix:= index n))
+			    (do ((index 0 (+ index 1)))
+				((= index n))
 			      (append-message folder
 					      (get-message inbox index))))
 			  inbox))
@@ -290,7 +291,7 @@
 			(if folder
 			    (delete-folder folder)))
 		      inbox-folders))
-	  (fix:- (count-messages folder) initial-count)))))
+	  (- (count-messages folder) initial-count)))))
 
 (define (rmail-folder-inbox-list folder)
   (let ((url (folder-url folder))
