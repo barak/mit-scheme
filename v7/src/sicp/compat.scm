@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/compat.scm,v 1.5 1991/09/12 21:11:17 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/compat.scm,v 1.6 1991/09/12 21:34:35 arthur Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -176,13 +176,13 @@ MIT in each case. |#
   (inexact->exact (ceiling number)))
 
 (define (floor->exact number)
-  (inexact->exact (ceiling number)))
+  (inexact->exact (floor number)))
 
 (define (round->exact number)
-  (inexact->exact (ceiling number)))
+  (inexact->exact (round number)))
 
 (define (truncate->exact number)
-  (inexact->exact (ceiling number)))
+  (inexact->exact (truncate number)))
 
 (define (vector-cons size fill)
   (make-vector size fill))
