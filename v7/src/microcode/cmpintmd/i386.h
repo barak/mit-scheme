@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: i386.h,v 1.23 1993/08/23 02:19:52 gjr Exp $
+$Id: i386.h,v 1.24 1993/08/26 05:38:15 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -542,6 +542,10 @@ DEFUN_VOID (i386_reset_hook)
   SETUP_REGISTER (asm_primitive_error);			/* 14 */
   SETUP_REGISTER (asm_short_primitive_apply);		/* 15 */
 
+  /* No more room for positive offsets without going to 32-bit
+     offsets!
+   */
+
   /* This is a hack to make all the hooks be addressable
      with byte offsets (instead of longword offsets).
      The register block extends to negative offsets as well,
@@ -597,6 +601,7 @@ DEFUN_VOID (i386_reset_hook)
   SETUP_REGISTER (asm_sc_apply_size_6);			/* -11 */
   SETUP_REGISTER (asm_sc_apply_size_7);			/* -10 */
   SETUP_REGISTER (asm_sc_apply_size_8);			/* -9 */
+  SETUP_REGISTER (asm_interrupt_continuation_2);	/* -8 */
 
 #ifdef _MACH_UNIX
   {

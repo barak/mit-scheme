@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.31 1993/08/23 04:46:44 gjr Exp $
+###	$Id: i386.m4,v 1.32 1993/08/26 05:38:06 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -590,6 +590,7 @@ define(define_call_indirection,
 define_call_indirection(interrupt_procedure,1a)
 define_call_indirection(interrupt_continuation,1b)
 define_jump_indirection(interrupt_closure,18)
+define_jump_indirection(interrupt_continuation_2,3b)
 
 define_c_label(asm_interrupt_dlink)
 	OP(mov,l)	TW(LOF(REGBLOCK_DLINK(),regs),REG(edx))

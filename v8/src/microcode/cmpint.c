@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.63 1993/08/22 20:25:25 gjr Exp $
+$Id: cmpint.c,v 1.64 1993/08/26 05:38:29 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -1586,6 +1586,16 @@ DEFUN (comutil_interrupt_ic_procedure,
   return (compiler_interrupt_common (entry_point_raw, (Fetch_Env ())));
 }
 
+SCHEME_UTILITY utility_result
+DEFUN (comutil_interrupt_continuation_2, (ignore_1, ignore_2, ignore_3, ignore_4),
+       long ignore_1 AND
+       long ignore_2 AND
+       long ignore_3 AND
+       long ignore_4)
+{
+  return (compiler_interrupt_common (0, Val));
+}
+
 C_TO_SCHEME long
 DEFUN_VOID (comp_interrupt_restart)
 {
@@ -2775,7 +2785,8 @@ utility_table_entry utility_table[] =
   UTE(comutil_quotient),			/* 0x37 */
   UTE(comutil_remainder),			/* 0x38 */
   UTE(comutil_modulo),				/* 0x39 */
-  UTE(comutil_apply_in_interpreter)		/* 0x3a */
+  UTE(comutil_apply_in_interpreter),		/* 0x3a */
+  UTE(comutil_interrupt_continuation_2)		/* 0x3b */
   };
 
 /* Support for trap handling. */
@@ -2845,6 +2856,7 @@ struct util_descriptor_s utility_descriptor_table[] =
   UTLD(comutil_interrupt_procedure),
   UTLD(comutil_interrupt_continuation),
   UTLD(comutil_interrupt_ic_procedure),
+  UTLD(comutil_interrupt_continuation_2),
   UTLD(comp_interrupt_restart),
 
   UTLD(comutil_assignment_trap),
@@ -2900,6 +2912,7 @@ struct util_descriptor_s utility_descriptor_table[] =
   UTLD(compiled_entry_closure_p),
   UTLD(compiled_closure_to_entry),
   UTLD(compiled_entry_type),
+  UTLD(declare_compiled_code),
   UTLD(store_variable_cache),
   UTLD(extract_variable_cache),
   UTLD(extract_uuo_link),
