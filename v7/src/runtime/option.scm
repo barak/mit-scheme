@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.16 1992/05/26 18:02:40 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.17 1992/05/30 18:22:46 mhwu Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -38,12 +38,11 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (load-option name)
-  (let ((entry (assq name options))
-	(directory (library-directory-pathname "options")))
+  (let ((entry (assq name options)))
     (if (not entry)
 	(error "Unknown option name" name))
     (if (not (memq name loaded-options))
-	(begin
+	(let ((directory (library-directory-pathname "options")))
 	  (for-each
 	   (lambda (descriptor)
 	     (let ((environment
