@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: switch.scm,v 4.20 1992/09/30 21:03:19 cph Exp $
+$Id: switch.scm,v 4.21 1992/12/29 20:57:10 gjr Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -65,6 +65,7 @@ MIT in each case. |#
 (define compiler:use-multiclosures? true)
 (define compiler:coalescing-constant-warnings? true)
 (define compiler:cross-compiling? false)
+(define compiler:compress-top-level? false)
 ;; The switch COMPILER:OPEN-CODE-FLOATING-POINT-ARITHMETIC? is in machin.scm.
 
 ;;; Nary switches
