@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.33 1987/06/05 16:25:42 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.34 1987/06/05 17:28:37 cph Exp $
 
 (declare (usual-integrations))
 
@@ -159,7 +159,7 @@
 	       COMPILER-LINK				;3A
 	       STACK-ENVIRONMENT			;3B
 	       COMPLEX       				;3C
-	       #F					;3D
+	       COMPILED-CODE-BLOCK			;3D
 	       #F					;3E
 	       #F					;3F
 	       #F        				;40
@@ -863,4 +863,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.33 1987/06/05 16:25:42 cph Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.34 1987/06/05 17:28:37 cph Exp $"

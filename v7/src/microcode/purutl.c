@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.28 1987/04/16 02:28:06 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.29 1987/06/05 17:29:30 cph Rel $ */
 
 /* Pure/Constant space utilities. */
 
@@ -219,13 +219,14 @@ Built_In_Primitive(Prim_Pure_P, 1, "PURE?", 0xBB)
   if ((GC_Type_Non_Pointer(Arg1)) ||
       (GC_Type_Special(Arg1)))
     return TRUTH;
-  if (GC_Type_Compiled(Arg1))
-    return NIL;
   Touch_In_Primitive(Arg1, Arg1);
   {
     Pointer *Obj_Address;
 
-    Obj_Address = Get_Pointer(Arg1);
+    Obj_Address =
+      ((GC_Type_Compiled(Arg1))
+       ? (Get_Compiled_Block(Get_Pointer(Arg1)))
+       : (Get_Pointer(Arg1)));
     if (Is_Pure(Obj_Address))
       return TRUTH;
   }
@@ -243,8 +244,7 @@ Built_In_Primitive(Prim_Constant_P, 1, "CONSTANT?", 0xBA)
   Touch_In_Primitive(Arg1, Arg1);
   return ((GC_Type_Non_Pointer(Arg1)) ||
 	  (GC_Type_Special(Arg1)) ||
-          ((Get_Pointer(Arg1) >= Constant_Space) &&
-           (Get_Pointer(Arg1) < Free_Constant))) ?
+	  (Is_Constant(Get_Pointer(Arg1)))) ?
          TRUTH : NIL;
 }
 

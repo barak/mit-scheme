@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.27 1987/06/02 00:17:36 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.28 1987/06/05 17:29:07 cph Rel $
  *
  * This file contains the code that copies objects into pure
  * and constant space.
@@ -162,6 +162,7 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
 	   GC dameons spliced them, but this should not occur.
 	 */
 
+      case TC_COMPILED_CODE_BLOCK:
       case TC_FUTURE:
       case TC_ENVIRONMENT:
 	if (GC_Mode == PURE_COPY)
