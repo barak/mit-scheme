@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: screen.scm,v 1.121 2003/02/14 18:28:13 cph Exp $
+$Id: screen.scm,v 1.122 2003/03/13 03:19:53 cph Exp $
 
-Copyright 1989-2000 Massachusetts Institute of Technology
+Copyright 1987,1989,1990,1991,1992,1996 Massachusetts Institute of Technology
+Copyright 1997,1999,2000,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -518,10 +519,10 @@ USA.
     (substring-move-left! string start end
 			  (vector-ref (matrix-contents current-matrix) y) x)
     (cond ((line-highlights-enabled? current-matrix y)
-	   (set-subline-highlights! matrix y x cursor-x face))
+	   (set-subline-highlights! current-matrix y x cursor-x face))
 	  ((not (default-face? face))
 	   (enable-line-highlights! current-matrix y)
-	   (set-subline-highlights! matrix y x cursor-x face)))
+	   (set-subline-highlights! current-matrix y x cursor-x face)))
     (set-matrix-cursor-x! current-matrix cursor-x)
     (set-matrix-cursor-x! (screen-new-matrix screen) cursor-x)))
 
