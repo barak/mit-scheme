@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.pkg,v 1.9 2001/07/14 11:42:29 cph Exp $
+;;; $Id: parser.pkg,v 1.10 2001/10/04 15:53:16 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -93,7 +93,7 @@
 	  code-point-in-alphabet?
 	  code-points->alphabet
 	  match-utf8-char-in-alphabet
-	  read-utf8-code-point
+	  read-utf8-code-point-from-source
 	  string->alphabet
 	  unicode-code-point?
 	  utf8-string->code-point

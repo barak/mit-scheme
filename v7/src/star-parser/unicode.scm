@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unicode.scm,v 1.3 2001/07/12 03:53:02 cph Exp $
+;;; $Id: unicode.scm,v 1.4 2001/10/04 15:52:39 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -463,28 +463,15 @@
       (error:wrong-type-argument string "UTF-8 character"
 				 'UTF8-STRING->CODE-POINT)))
 
-(define (match-utf8-char-in-alphabet buffer alphabet)
-  (let ((p (get-parser-buffer-pointer buffer)))
-    (let ((n (read-utf8-code-point buffer p)))
-      (and n
-	   (if (code-point-in-alphabet? n alphabet)
-	       #t
-	       (begin
-		 (set-parser-buffer-pointer! buffer p)
-		 #f))))))
-
-(define (read-utf8-code-point buffer p)
-  (let ((c0 (read-parser-buffer-char buffer))
+(define (read-utf8-code-point-from-source source)
+  (let ((c0 (source))
 	(get-next
 	 (lambda ()
-	   (let ((c (read-parser-buffer-char buffer)))
-	     (if (and c
-		      (fix:<= #x80 (char->integer c))
-		      (fix:< (char->integer c) #xC0))
-		 (fix:and (char->integer c) #x3F)
-		 (begin
-		   (set-parser-buffer-pointer! buffer p)
-		   #f))))))
+	   (let ((c (source)))
+	     (and c
+		  (fix:<= #x80 (char->integer c))
+		  (fix:< (char->integer c) #xC0)
+		  (fix:and (char->integer c) #x3F))))))
     (and c0
 	 (cond ((fix:< (char->integer c0) #x80)
 		(char->integer c0))
@@ -534,5 +521,4 @@
 			  (fix:or (fix:lsh n4 6)
 				  n5)))))
 	       (else
-		(set-parser-buffer-pointer! buffer p)
 		#f)))))
