@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosexcp.c,v 1.3 1992/09/18 05:54:21 jinx Exp $
+$Id: dosexcp.c,v 1.4 1992/09/19 19:05:17 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -226,8 +226,6 @@ DPMI_alloc_scheme_stack (unsigned short * ds,
   struct SREGS sregs;
   union REGS regs;
 
-  limit = ((limit + I386_PAGE_MASK) & (~ I386_PAGE_MASK));
-
   segread (&sregs);
   css_sel = sregs.ss;
   ds_sel = sregs.ds;
@@ -255,10 +253,10 @@ fail:
   /* Set the granularity bit and the limit */
   descriptor[1] = (descriptor[1] | (1UL << 23));
   descriptor[1] &= (~ (0xfUL << 16));
-  descriptor[1] |= ((limit >> (I386_PAGE_BITS + 16)) << 16);
+  descriptor[1] |= ((limit >> I386_PAGE_BITS) & (0xfUL << 16));
 
   descriptor[0] &= 0xffff0000UL;
-  descriptor[0] |= ((limit >> I386_PAGE_BITS) & I386_PAGE_MASK);
+  descriptor[0] |= ((limit >> I386_PAGE_BITS) & 0xffff);
 
   regs.x.ax = 0xc;		/* Set Descriptor */
   regs.x.bx = ss_sel;
