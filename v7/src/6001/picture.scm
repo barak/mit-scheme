@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.13 1992/09/01 20:07:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.14 1992/09/01 20:42:43 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -315,16 +315,13 @@ MIT in each case. |#
 	 (data ( picture-data pic))
 	 (pmin (picture-min pic))
 	 (pmax (picture-max pic))
-	 (scale-it? (or (< pmin 0) (> pmax 255)))
 	 (char-function
 	  (cond ((= pmin pmax) 
 		 (lambda (x) x (ascii->char 0)))
-		(scale-it?
+		(else
 		 (let ((scale (/ 255. (- pmax pmin))))
 		   (lambda (x) 
-		     (ascii->char (round->exact (* (- x pmin) scale))))))
-		(else
-		 (lambda (x) (ascii->char (round->exact x)))))))
+		     (ascii->char (round->exact (* (- x pmin) scale)))))))))
     (call-with-output-file file
       (lambda (port)
 	(let ((write-chars
