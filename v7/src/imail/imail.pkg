@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.88 2001/09/28 00:41:16 cph Exp $
+;;; $Id: imail.pkg,v 1.89 2001/10/05 19:20:05 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -24,34 +24,6 @@
 (global-definitions "../runtime/runtime")
 (global-definitions "../sos/sos")
 (global-definitions "../edwin/edwinunx")
-
-(define-package (edwin imail rexp)
-  (files "rexp")
-  (parent (edwin imail))
-  (export (edwin imail)
-	  rexp*
-	  rexp+
-	  rexp->regexp
-	  rexp-alternatives
-	  rexp-any-char
-	  rexp-case-fold
-	  rexp-compile
-	  rexp-group
-	  rexp-line-end
-	  rexp-line-start
-	  rexp-not-syntax-char
-	  rexp-not-word-char
-	  rexp-not-word-edge
-	  rexp-optional
-	  rexp-sequence
-	  rexp-string-end
-	  rexp-string-start
-	  rexp-syntax-char
-	  rexp-word-char
-	  rexp-word-edge
-	  rexp-word-end
-	  rexp-word-start
-	  rexp?))
 
 (define-package (edwin imail parser)
   (files "parser")
@@ -81,32 +53,6 @@
 	  sequence-parser
 	  simple-parser
 	  string-matcher))
-
-(define-package (edwin imail url)
-  (files "url")
-  (parent (edwin imail))
-  (export (edwin imail)
-	  url:char-set:escaped
-	  url:char-set:extra
-	  url:char-set:national
-	  url:char-set:punctuation
-	  url:char-set:reserved
-	  url:char-set:safe
-	  url:char-set:unescaped
-	  url:char-set:unreserved
-	  url:decode-string
-	  url:decode-substring
-	  url:encode-string
-	  url:encode-substring
-	  url:rexp:escape
-	  url:rexp:host
-	  url:rexp:hostname
-	  url:rexp:hostnumber
-	  url:rexp:hostport
-	  url:rexp:uchar
-	  url:rexp:xchar
-	  url:string-encoded?
-	  url:substring-encoded?))
 
 (define-package (edwin imail)
   (files "imail-util"
