@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.28 2000/05/19 17:29:50 cph Exp $
+$Id: todo.txt,v 1.29 2000/05/19 21:03:53 cph Exp $
 
 Bug fixes
 ---------
@@ -24,6 +24,15 @@ Bug fixes
 
 Design changes
 --------------
+
+* Rename the procedures that form the UI callback interface to make it
+  clear what their role is.
+
+* Repackage the code so that each file now in the core is in a
+  separate package.
+
+* Do URL defaulting by merging a partially specified URL with the URL
+  of the selected folder.
 
 * Reimplement UID synchronization.  Take advantage of monotonic UID
   numbers to discover largest prefix range that hasn't changed.
