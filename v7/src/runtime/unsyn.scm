@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unsyn.scm,v 14.18 1995/08/29 14:06:45 adams Exp $
+$Id: unsyn.scm,v 14.19 1996/03/09 15:39:42 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -418,7 +418,8 @@ MIT in each case. |#
 		(lambda-components** operator
 		  (lambda (name required optional rest body)
 		    (if (and (null? optional)
-			     (false? rest))
+			     (false? rest)
+			     (= (length required) (length operands)))
 			(cond ((or (eq? name lambda-tag:unnamed)
 				   (eq? name lambda-tag:let))
 			       `(LET ,(unsyntax-let-bindings required operands)
