@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.15 1993/08/25 15:14:19 jbank Exp $
+;;;	$Id: debug.scm,v 1.16 1993/09/02 22:33:29 jbank Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -927,7 +927,9 @@ Set this variable to #F to disable this abbreviation."
   "#T means start a new-screen whenever the debugger is invoked.  
 #F means continue in same screen.  
 'ASK means ask user whether to start new-screen."
-  #T
+  (if (equal? microcode-id/operating-system-name "unix")
+      #T
+      #F)
   boolean-or-ask?)
 
 (define-variable debugger-prompt-geometry?
@@ -1308,12 +1310,11 @@ it has been renamed, it will not be deleted automatically."
 
 
 (define-key 'continuation-browser #\p 'quit-with-restart-value)
+(if (equal? microcode-id/operating-system-name "unix")
+    (begin (define-key 'continuation-browser down 'browser-next-line)
+	   (define-key 'continuation-browser up 'browser-previous-line)
+	   (define-key 'continuation-browser x-button1-down 'debugger-mouse-select-bline)))
 
-(define-key 'continuation-browser down 'browser-next-line)
-
-(define-key 'continuation-browser up 'browser-previous-line)
-
-(define-key 'continuation-browser x-button1-down 'debugger-mouse-select-bline)
 (define-key 'continuation-browser #\c-n 'browser-next-line)
 (define-key 'continuation-browser #\c-p 'browser-previous-line)
 (define-key 'continuation-browser #\? 'describe-mode)
@@ -1700,12 +1701,11 @@ to keep one of these buffers, simply rename it using `M-x rename-buffer':
 once it has been renamed, it will not be deleted automatically.")
 
 
+(if (equal? microcode-id/operating-system-name "unix")
+    (begin (define-key 'environment-browser down 'browser-next-line)
+	   (define-key 'environment-browser up 'browser-previous-line)
+	   (define-key 'environment-browser x-button1-down 'debugger-mouse-select-bline)))
 
-(define-key 'environment-browser down 'browser-next-line)
-
-(define-key 'environment-browser up 'browser-previous-line)
-
-(define-key 'environment-browser x-button1-down 'debugger-mouse-select-bline)
 (define-key 'environment-browser #\c-n 'browser-next-line)
 (define-key 'environment-browser #\c-p 'browser-previous-line)
 (define-key 'environment-browser #\? 'describe-mode)
