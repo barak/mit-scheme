@@ -1,6 +1,6 @@
 /* #define DEBUG_INTERFACE */ /* -*-Midas-*- */
  ###
- ###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mips.m4,v 1.8 1992/08/24 13:24:25 jinx Exp $
+ ###	$Id: mips.m4,v 1.9 1992/12/28 21:54:20 cph Exp $
  ###
  ###	Copyright (c) 1989-1992 Massachusetts Institute of Technology
  ###
@@ -156,6 +156,9 @@ define(closure_reg, 23)
 	
 define(tramp_index, 25)
 
+define(TC_ENTITY, 0x10)
+define(TC_CCENTRY, 0x28)
+
  # Argument (in $C_arg1) is a compiled Scheme entry point
  # but save C registers first
 	.globl	C_to_interface
@@ -248,8 +251,9 @@ trampoline_to_interface:		# ...scheme_to_interface-96
 	j	cons_multi		# -64
 	lw	$7,40($registers)	# closure limit -60
 
-	nop				# ...-56
-	nop				# ...-52
+	j	shortcircuit_apply	# ...-56
+	lw	$C_arg2,0($stack)	# procedure -52
+
 	nop				# ...-48
 	nop				# ...-44
 	nop				# ...-40
@@ -470,6 +474,50 @@ invoke_allocate_closure:
 
 	j	$7
 	addi	$sp,$sp,76
+
+	.globl	shortcircuit_apply
+shortcircuit_apply:
+	# $C_arg2 contains the procedure one cycle after this point.
+	# $C_arg3 contains the frame size
+	addi	$at,$0,TC_CCENTRY	# test for compiled entry
+	srl	$C_arg4,$C_arg2,26
+	bne	$C_arg4,$at,shortcircuit_apply_1
+	and	$C_arg2,$addr_mask,$C_arg2 # procedure -> address
+	or	$C_arg2,$heap_bits,$C_arg2
+	lhu	$C_arg4,-4($C_arg2)	# lose if wrong arity
+	addi	$at,$0,0xff
+	and	$C_arg4,$at,$C_arg4
+	bne	$C_arg4,$C_arg3,shortcircuit_apply_lose
+	nop
+	j	$C_arg2			# invoke procedure
+	addi	$stack,$stack,4		# pop it too
+
+	.globl	shortcircuit_apply_1
+shortcircuit_apply_1:
+	addi	$at,$0,TC_ENTITY	# Test for entity
+	bne	$C_arg4,$at,shortcircuit_apply_lose
+	or	$C_arg2,$heap_bits,$C_arg2 # get entity's procedure
+	lw	$C_arg2,0($C_arg2)
+	addi	$at,$0,TC_CCENTRY	# test for compiled entry
+	srl	$C_arg4,$C_arg2,26
+	bne	$C_arg4,$at,shortcircuit_apply_lose
+	and	$C_arg2,$addr_mask,$C_arg2 # procedure -> address
+	or	$C_arg2,$heap_bits,$C_arg2
+	lhu	$C_arg4,-4($C_arg2)	# lose if wrong arity
+	addi	$at,$0,0xff
+	and	$C_arg4,$at,$C_arg4
+	addi	$at,$C_arg3,1		# adjust for entity arg
+	bne	$C_arg4,$C_arg3,shortcircuit_apply_lose
+	nop
+	j	$C_arg2			# invoke procedure
+	nop				# don't pop entity arg
+
+	.globl	shortcircuit_apply_lose
+shortcircuit_apply_lose:
+	lw	$C_arg2,0($stack)	# pop procedure into arg register
+	addi	$stack,$stack,4
+	j	scheme_to_interface	# invoke the standard apply
+	addi	$tramp_index,$0,80
 
  # Argument 1 (in $C_arg1) is the returned value
 	.globl interface_to_C
