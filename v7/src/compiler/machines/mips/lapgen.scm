@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/lapgen.scm,v 1.5 1991/07/25 02:46:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/lapgen.scm,v 1.6 1991/08/12 22:13:44 cph Exp $
 $MC68020-Header: lapgen.scm,v 4.26 90/01/18 22:43:36 GMT cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
@@ -195,8 +195,11 @@ MIT in each case. |#
 	(quotient n #x10000)
 	(+ (quotient n #x10000) 1))))
 
-(define-integrable (adjusted:low n)
-  (remainder (->unsigned n) #x10000))
+(define (adjusted:low n)
+  (let ((remainder (remainder (->unsigned n) #x10000)))
+    (if (< remainder #x8000)
+	remainder
+	(- remainder #x10000))))
 
 (define-integrable (top-16-bits n)
   (quotient (->unsigned n) #x10000))
@@ -205,7 +208,7 @@ MIT in each case. |#
   (remainder (->unsigned n) #x10000))
 
 (define (->unsigned n)
-  (if (negative? n) (- #x100000000 n) n))
+  (if (negative? n) (+ #x100000000 n) n))
 
 (define-integrable (fits-in-16-bits-signed? value)
   (<= #x-8000 value #x7fff))
@@ -223,20 +226,20 @@ MIT in each case. |#
 
 (define (add-immediate value source dest)
   (if (fits-in-16-bits-signed? value)
-      (LAP (ADDI ,dest ,source ,value))
+      (LAP (ADDIU ,dest ,source ,value))
       (LAP ,@(load-immediate value regnum:assembler-temp)
-	   (ADD ,dest ,regnum:assembler-temp ,source))))
+	   (ADDU ,dest ,regnum:assembler-temp ,source))))
 
 (define (load-immediate value dest)
   (cond ((fits-in-16-bits-signed? value)
-	 (LAP (ADDI ,dest 0 ,value)))
+	 (LAP (ADDIU ,dest 0 ,value)))
 	((fits-in-16-bits-unsigned? value)
 	 (LAP (ORI ,dest 0 ,value)))
 	((top-16-bits-only? value)
 	 (LAP (LUI ,dest ,(top-16-bits value))))
 	(else
-	 (LAP (LUI ,regnum:assembler-temp ,(adjusted:high value))
-	      (ADDIU ,dest ,regnum:assembler-temp ,(adjusted:low value))))))
+	 (LAP (LUI ,dest ,(top-16-bits value))
+	      (ORI ,dest ,dest ,(bottom-16-bits value))))))
 
 (define (fp-copy from to)
   (if (= to from)
