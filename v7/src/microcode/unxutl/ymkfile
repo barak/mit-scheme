@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.64 1993/03/17 01:53:18 gjr Exp $
+$Id: ymkfile,v 1.65 1993/06/08 04:09:38 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -551,11 +551,11 @@ Findprim : Findprim.o
 
 Bintopsb : Bintopsb.o missing.o
 	@ECHO "#** Re-linking" $@ because of $?
-	$(CC) $(LDFLAGS) -o $@ Bintopsb.o missing.o
+	$(CC) $(LDFLAGS) -o $@ Bintopsb.o missing.o LIB_MATH
 
 Psbtobin : Psbtobin.o missing.o
 	@ECHO "#** Re-linking" $@ because of $?
-	$(CC) $(LDFLAGS) -o $@ Psbtobin.o missing.o
+	$(CC) $(LDFLAGS) -o $@ Psbtobin.o missing.o LIB_MATH
 
 Breakup : Breakup.o
 	@ECHO "#** Re-linking" $@ because of $?

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.44 1993/02/21 01:09:48 gjr Exp $
+$Id: ux.h,v 1.45 1993/06/08 04:08:26 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -379,6 +379,18 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 #define HAVE_TRUNCATE
 #define HAVE_UNIX_SOCKETS
 #define HAVE_VFORK
+
+#ifdef __linux
+#include <sys/time.h>
+#define SYSTEM_VARIANT "Linux"
+#undef HAVE_SIGCONTEXT
+/* Hacks to put handlers for non-existent signals on SIGSEGV.
+   (Scheme handles SIGSEGV, SIGBUS, SIGEMT, and SIGSYS the same way anyway:
+    defsignal (SIGSEGV, "SIGSEGV",	dfl_terminate,	CORE_DUMP); */
+#define SIGBUS SIGSEGV
+#define SIGEMT SIGSEGV
+#define SIGSYS SIGSEGV
+#endif
 
 #ifdef _ULTRIX
 #define SYSTEM_VARIANT "Ultrix"
@@ -791,12 +803,16 @@ extern PTR EXFUN (malloc, (unsigned int size));
 extern PTR EXFUN (realloc, (PTR ptr, unsigned int size));
 extern char * EXFUN (getenv, (CONST char * name));
 
-#ifndef _HPUX
+#ifndef __linux
+/* <unistd.h> in linux libc 2.3.3 has
+   extern int gethostname (char *__name, size_t __len); */
+# ifndef _HPUX
 /* <unistd.h> in HP-UX has mis-matching prototype 
    The following is as specified by OSF/1 Programmer's reference.
  */
 extern int EXFUN (gethostname, (char * name, int size));
-#endif /* _HPUX */
+# endif /* _HPUX */
+#endif /* linux */
 
 #ifdef HAVE_FCNTL
 #define UX_fcntl fcntl
