@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.6 1990/11/08 11:08:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.7 1990/11/09 09:07:33 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -109,8 +109,11 @@ DEFUN (OS_channel_close, (channel), Tchannel channel)
 void
 DEFUN (OS_channel_close_noerror, (channel), Tchannel channel)
 {
-  UX_close (CHANNEL_DESCRIPTOR (channel));
-  MARK_CHANNEL_CLOSED (channel);
+  if (! (CHANNEL_INTERNAL (channel)))
+    {
+      UX_close (CHANNEL_DESCRIPTOR (channel));
+      MARK_CHANNEL_CLOSED (channel);
+    }
 }
 
 static void
