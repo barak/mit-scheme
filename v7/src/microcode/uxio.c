@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.43 1999/01/02 06:11:34 cph Exp $
+$Id: uxio.c,v 1.44 2000/08/18 15:51:41 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -557,7 +557,7 @@ DEFUN (UX_select_registry_set, (fds, fd), PTR fds AND unsigned int fd)
     if ((((pfds [i]) . fd) == (-1)) || (((pfds [i]) . fd) == fd))
       {
 	((pfds [i]) . fd) = fd;
-	((pfds [i]) . events) = POLLNORM;
+	((pfds [i]) . events) = POLLIN;
 	break;
       }
 }
@@ -607,7 +607,7 @@ DEFUN (UX_select_registry_test, (input_fds, blockp, output_fds, output_nfds),
 	      unsigned int i;
 	      for (i = 0; (i < OS_channel_table_size); i += 1)
 		if ((((pfds [i]) . fd) != (-1))
-		    && ((((pfds [i]) . revents) & POLLNORM) != 0))
+		    && ((((pfds [i]) . revents) & POLLIN) != 0))
 		  {
 		    (*output_fds++) = ((pfds [i]) . fd);
 		    if ((--nfds) == 0)
@@ -639,7 +639,7 @@ DEFUN (UX_select_descriptor, (fd, blockp),
   int nfds;
 
   ((pfds [0]) . fd) = fd;
-  ((pfds [0]) . events) = POLLNORM;
+  ((pfds [0]) . events) = POLLIN;
   while (1)
     {
       nfds = (poll (pfds, 1, (blockp ? INFTIM : 0)));
