@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: input.scm,v 1.101 2000/04/30 22:17:05 cph Exp $
+;;; $Id: input.scm,v 1.102 2000/10/26 02:28:13 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -82,13 +82,14 @@ B 3BAB8C
 (define message-should-be-erased?)
 (define auto-save-keystroke-count)
 
-(define (initialize-typeout!)
-  (set! command-prompt-string #f)
-  (set! command-prompt-displayed? #f)
-  (set! message-string #f)
-  (set! message-should-be-erased? #f)
-  (set! auto-save-keystroke-count 0)
-  unspecific)
+(add-event-receiver! editor-initializations
+  (lambda ()
+    (set! command-prompt-string #f)
+    (set! command-prompt-displayed? #f)
+    (set! message-string #f)
+    (set! message-should-be-erased? #f)
+    (set! auto-save-keystroke-count 0)
+    unspecific))
 
 (define (reset-command-prompt!)
   ;; Should only be called by the command reader.  This prevents

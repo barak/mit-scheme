@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: process.scm,v 1.57 1999/09/14 20:18:52 cph Exp $
+;;; $Id: process.scm,v 1.58 2000/10/26 02:28:19 cph Exp $
 ;;;
-;;; Copyright (c) 1991-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -25,11 +25,12 @@
 
 (define subprocesses-available? #t)
 
-(define (initialize-processes!)
-  (set! edwin-processes '())
-  (set! process-input-queue (cons '() '()))
-  (set-variable! exec-path (os/exec-path))
-  (set-variable! shell-file-name (os/shell-file-name)))
+(add-event-receiver! editor-initializations
+  (lambda ()
+    (set! edwin-processes '())
+    (set! process-input-queue (cons '() '()))
+    (set-variable! exec-path (os/exec-path))
+    (set-variable! shell-file-name (os/shell-file-name))))
 
 (define edwin-processes)
 

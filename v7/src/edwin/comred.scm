@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: comred.scm,v 1.120 2000/05/08 20:07:27 cph Exp $
+;;; $Id: comred.scm,v 1.121 2000/10/26 02:28:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -36,12 +36,13 @@
 (define command-reader-override-queue)
 (define *command-suffixes*)
 
-(define (initialize-command-reader!)
-  (set! keyboard-keys-read 0)
-  (set! command-history (make-circular-list command-history-limit false))
-  (set! command-reader-override-queue (make-queue))
-  (set! *command-suffixes* #f)
-  unspecific)
+(add-event-receiver! editor-initializations
+  (lambda ()
+    (set! keyboard-keys-read 0)
+    (set! command-history (make-circular-list command-history-limit false))
+    (set! command-reader-override-queue (make-queue))
+    (set! *command-suffixes* #f)
+    unspecific))
 
 (define (top-level-command-reader init)
   (with-keyboard-macro-disabled

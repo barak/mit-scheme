@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.263 2000/07/05 22:38:02 cph Exp $
+$Id: edwin.pkg,v 1.264 2000/10/26 02:28:10 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -412,7 +412,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  execute-key
 	  execute-command
 	  execute-command-history-entry
-	  initialize-command-reader!
 	  keyboard-keys-read
 	  last-command
 	  last-command-key
@@ -437,7 +436,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  char-metafy
 	  clear-message
 	  command-prompt
-	  initialize-typeout!
 	  keyboard-read
 	  keyboard-peek
 	  keyboard-peek-no-hang
@@ -470,7 +468,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  edwin-mode$minibuffer-local-yes-or-no
 	  edwin-variable$enable-recursive-minibuffers
 	  edwin-variable$completion-auto-help
-	  initialize-typein!
 	  pop-up-completions-list
 	  pop-up-generated-completions
 	  prompt-for-alist-value
@@ -646,7 +643,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  global-repl-buffer
 	  inferior-repl-eval-expression
 	  inferior-repl-eval-region
-	  initialize-inferior-repls!
 	  local-repl-buffer
 	  repl-buffer-list
 	  repl-buffer?
@@ -909,7 +905,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  get-process-by-name
 	  handle-process-status-changes
 	  hangup-process
-	  initialize-processes!			; always present
 	  interrupt-process
 	  kill-process
 	  process-arguments

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.188 2000/06/18 20:36:15 cph Exp $
+;;; $Id: prompt.scm,v 1.189 2000/10/26 02:28:22 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -31,15 +31,16 @@
 (define map-name/internal->external)
 (define map-name/external->internal)
 
-(define (initialize-typein!)
-  (set! typein-edit-continuation #f)
-  (set! typein-edit-depth -1)
-  (set! typein-saved-buffers '())
-  (set! typein-saved-windows '())
-  (set! map-name/internal->external identity-procedure)
-  (set! map-name/external->internal identity-procedure)
-  (set! prompt-histories (make-eq-hash-table))
-  unspecific)
+(add-event-receiver! editor-initializations
+  (lambda ()
+    (set! typein-edit-continuation #f)
+    (set! typein-edit-depth -1)
+    (set! typein-saved-buffers '())
+    (set! typein-saved-windows '())
+    (set! map-name/internal->external identity-procedure)
+    (set! map-name/external->internal identity-procedure)
+    (set! prompt-histories (make-eq-hash-table))
+    unspecific))
 
 (define (make-typein-buffer-name depth)
   (string-append " *Typein-" (number->string depth) "*"))

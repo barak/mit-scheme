@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: intmod.scm,v 1.109 1999/12/28 20:28:58 cph Exp $
+;;; $Id: intmod.scm,v 1.110 2000/10/26 02:28:16 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -207,9 +207,10 @@ evaluated in the specified inferior REPL buffer."
 
 (define repl-buffers)
 
-(define (initialize-inferior-repls!)
-  (set! repl-buffers '())
-  unspecific)
+(add-event-receiver! editor-initializations
+  (lambda ()
+    (set! repl-buffers '())
+    unspecific))
 
 (define (wait-for-input port mode ready? level)
   (signal-thread-event editor-thread

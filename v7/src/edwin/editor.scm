@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: editor.scm,v 1.248 2000/05/25 03:33:47 cph Exp $
+;;; $Id: editor.scm,v 1.249 2000/10/26 02:28:07 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -33,20 +33,20 @@
 	    (error "edwin: Arguments ignored when re-entering editor" args))
 	   (edwin-continuation
 	    => (lambda (restart)
-		 (set! edwin-continuation false)
+		 (set! edwin-continuation #f)
 		 (within-continuation restart
 		   (lambda ()
 		     (set! editor-abort continuation)
 		     unspecific)))))
      (fluid-let ((editor-abort continuation)
 		 (current-editor edwin-editor)
-		 (within-editor? true)
+		 (within-editor? #t)
 		 (editor-thread (current-thread))
 		 (editor-thread-root-continuation)
 		 (editor-initial-threads '())
-		 (inferior-thread-changes? false)
+		 (inferior-thread-changes? #f)
 		 (inferior-threads '())
-		 (recursive-edit-continuation false)
+		 (recursive-edit-continuation #f)
 		 (recursive-edit-level 0))
        (editor-grab-display edwin-editor
 	 (lambda (with-editor-ungrabbed operations)
@@ -75,7 +75,7 @@
 			    (top-level-command-reader
 			     edwin-initialization)))))))
 		 message)
-	       false
+	       #f
 	       `((START-CHILD ,(editor-start-child-cmdl with-editor-ungrabbed))
 		 (CHILD-PORT ,(editor-child-cmdl-port (nearest-cmdl/port)))
 		 ,@operations))
@@ -84,10 +84,10 @@
 (define (edwin . args) (apply edit args))
 (simple-command-line-parser "-edit" edit)
 
-(define edwin-editor false)
+(define edwin-editor #f)
 (define editor-abort)
 (define current-editor)
-(define within-editor? false)
+(define within-editor? #f)
 (define editor-thread)
 (define editor-thread-root-continuation)
 (define editor-initial-threads)
@@ -96,7 +96,7 @@
 ;; Set this before entering the editor to get something done after the
 ;; editor's dynamic environment is initialized, but before the command
 ;; loop is started.
-(define edwin-initialization false)
+(define edwin-initialization #f)
 
 (define (queue-initial-thread thunk)
   (set! editor-initial-threads (cons thunk editor-initial-threads))
@@ -113,11 +113,7 @@
 	       (set! create-editor-args args)
 	       args))))
     (reset-editor)
-    (initialize-typein!)
-    (initialize-typeout!)
-    (initialize-command-reader!)
-    (initialize-processes!)
-    (initialize-inferior-repls!)
+    (event-distributor/invoke! editor-initializations)
     (set! edwin-editor
 	  (make-editor "Edwin"
 		       (let ((name (and (not (null? args)) (car args))))
@@ -133,10 +129,13 @@
 		       (if (null? args) '() (cdr args))))
     (set! edwin-initialization
 	  (lambda ()
-	    (set! edwin-initialization false)
+	    (set! edwin-initialization #f)
 	    (standard-editor-initialization)))
-    (set! edwin-continuation false)
+    (set! edwin-continuation #f)
     unspecific))
+
+(define editor-initializations
+  (make-event-distributor))
 
 (define (default-display-type preferences)
   (define (fail)
@@ -206,9 +205,9 @@ with the contents of the startup message."
 	   (for-each (lambda (screen)
 		       (screen-discard! screen))
 		     (editor-screens edwin-editor))
-	   (set! edwin-editor false)
+	   (set! edwin-editor #f)
 	   (set! edwin-continuation)
-	   (set! init-file-loaded? false)
+	   (set! init-file-loaded? #f)
 	   (weak-set-car! *previous-popped-up-window* #f)
 	   (weak-set-car! *previous-popped-up-buffer* #f)
 	   (weak-set-car! *minibuffer-scroll-window* #f)
@@ -409,9 +408,9 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 (define-structure (input-event
 		   (constructor make-input-event (type operator . operands))
 		   (conc-name input-event/))
-  (type false read-only true)
-  (operator false read-only true)
-  (operands false read-only true))
+  (type #f read-only #t)
+  (operator #f read-only #t)
+  (operands #f read-only #t))
 
 (define (apply-input-event input-event)
   (if (not (input-event? input-event))
@@ -472,7 +471,7 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 		 (lambda ()
 		   (let ((screen (selected-screen)))
 		     (screen-enter! screen)
-		     (update-screen! screen true))))
+		     (update-screen! screen #t))))
 		(exit
 		 (lambda ()
 		   (screen-exit! (selected-screen)))))

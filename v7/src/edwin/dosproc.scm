@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dosproc.scm,v 1.4 1999/01/02 06:11:34 cph Exp $
+;;; $Id: dosproc.scm,v 1.5 2000/10/26 02:28:04 cph Exp $
 ;;;
-;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1992-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -24,9 +24,6 @@
 (declare (usual-integrations))
 
 (define subprocesses-available? false)
-
-(define (initialize-processes!)
-  unspecific)
 
 (define (process-list)
   '())
