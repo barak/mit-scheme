@@ -17,7 +17,7 @@ dnl along with this program; if not, write to the Free Software
 dnl Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 dnl 02111-1307, USA.
 
-AC_REVISION([$Id: configure.in,v 11.14 2002/01/29 04:59:03 cph Exp $])
+AC_REVISION([$Id: configure.in,v 11.15 2002/01/29 06:12:55 cph Exp $])
 AC_INIT(boot.c)
 AC_CONFIG_HEADER(config.h)
 
@@ -166,8 +166,9 @@ fi
 
 if test "${ac_cv_header_sys_socket_h}" = "yes"; then
     AC_MSG_CHECKING([for socklen_t])
-    AC_TRY_COMPILE(
-	[#include <sys/socket.h>],
+    AC_TRY_COMPILE([
+#include <sys/types.h>
+#include <sys/socket.h>],
 	[socklen_t x;],
 	[scheme_cv_type_socklen_t=yes],
 	[scheme_cv_type_socklen_t=no])
