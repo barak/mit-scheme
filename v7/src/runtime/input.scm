@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.14 1991/11/26 07:06:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.15 1992/05/26 23:08:41 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -86,17 +86,29 @@ MIT in each case. |#
   (guarantee-input-port port)
   (fluid-let ((*current-input-port* port)) (thunk)))
 
-(define (call-with-input-file input-specifier receiver)
-  (let ((port (open-input-file input-specifier)))
+(define ((make-call-with-input-file open) input-specifier receiver)
+  (let ((port (open input-specifier)))
     (let ((value (receiver port)))
       (close-port port)
       value)))
 
-(define (with-input-from-file input-specifier thunk)
-  (call-with-input-file input-specifier
+(define call-with-input-file 
+  (make-call-with-input-file open-input-file))
+
+(define call-with-binary-input-file
+  (make-call-with-input-file open-binary-input-file))
+
+(define ((make-with-input-from-file call) input-specifier thunk)
+  (call input-specifier
     (lambda (port)
       (fluid-let ((*current-input-port* port))
 	(thunk)))))
+
+(define with-input-from-file
+  (make-with-input-from-file call-with-input-file))
+
+(define with-input-from-binary-file
+  (make-with-input-from-file call-with-binary-input-file))
 
 ;;;; Input Procedures
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.12 1991/11/26 07:06:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.13 1992/05/26 23:08:56 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -87,17 +87,29 @@ MIT in each case. |#
   (guarantee-output-port port)
   (fluid-let ((*current-output-port* port)) (thunk)))
 
-(define (call-with-output-file output-specifier receiver)
+(define ((make-call-with-output-file open) output-specifier receiver)
   (let ((port (open-output-file output-specifier)))
     (let ((value (receiver port)))
       (close-port port)
       value)))
 
-(define (with-output-to-file output-specifier thunk)
-  (call-with-output-file output-specifier
+(define call-with-output-file
+  (make-call-with-output-file open-output-file))
+
+(define call-with-binary-output-file
+  (make-call-with-output-file open-binary-output-file))
+
+(define ((make-with-output-to-file call) output-specifier thunk)
+  (call output-specifier
     (lambda (port)
       (fluid-let ((*current-output-port* port))
 	(thunk)))))
+
+(define with-output-to-file
+  (make-with-output-to-file call-with-output-file))
+
+(define with-output-to-binary-file
+  (make-with-output-to-file call-with-binary-output-file))
 
 ;;;; Output Procedures
 
