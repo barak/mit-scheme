@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/stream.scm,v 14.6 1989/10/26 06:47:07 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/stream.scm,v 14.7 1992/07/24 22:19:28 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -49,6 +49,9 @@ MIT in each case. |#
 
 (define-integrable (stream-cdr stream)
   (force (cdr stream)))
+
+(define-integrable stream-first stream-car)
+(define-integrable stream-rest stream-cdr)
 
 (define (stream . list)
   (list->stream list))
