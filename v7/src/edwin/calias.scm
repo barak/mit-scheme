@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: calias.scm,v 1.18 1999/01/02 06:11:34 cph Exp $
+;;; $Id: calias.scm,v 1.19 2000/02/24 01:23:22 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -119,7 +119,9 @@
 	   (define (process-code bits)
 	     (cond ((or (< #x20 code #x7F) ; 7-bit ASCII visible characters
 			(> code #x7F))	; 8-bit ISO characters
-		    (prefix bits (string (ascii->char code))))
+		    (prefix bits
+			    (vector-ref (ref-variable char-image-strings #f)
+					code)))
 		   ((= code #x09) (prefix bits "TAB"))
 		   ((= code #x0A) (prefix bits "LFD"))
 		   ((= code #x0D) (prefix bits "RET"))
