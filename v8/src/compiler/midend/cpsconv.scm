@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cpsconv.scm,v 1.8 1995/02/28 00:41:04 adams Exp $
+$Id: cpsconv.scm,v 1.9 1995/04/28 00:01:21 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -165,15 +165,15 @@ MIT in each case. |#
   (define (walk-simple simple)
     (if (null? simple)
 	(call-gen
-	 (lmap (lambda (classified)
-		 (vector-fourth classified))
-	       classified-operands)
-	 (lmap (lambda (classified)
-		 (let ((name (vector-second classified)))
-		   (if name
-		       `(LOOKUP ,name)
-		       (cpsconv/simple/copy (vector-first classified)))))
-	       classified-operands))
+	 (map (lambda (classified)
+		(vector-fourth classified))
+	      classified-operands)
+	 (map (lambda (classified)
+		(let ((name (vector-second classified)))
+		  (if name
+		      `(LOOKUP ,name)
+		      (cpsconv/simple/copy (vector-first classified)))))
+	      classified-operands))
 	`(LET ((,(vector-second (car simple))
 		,(cpsconv/simple/copy (vector-first (car simple)))))
 	   ,(walk-simple (cdr simple)))))
@@ -205,18 +205,22 @@ MIT in each case. |#
 (define (cpsconv/classify-operand operand name)
   ;; operand -> #(operand early-name easy? late-name)
   ;; easy? if does not need a return address
-  (let ((early-name
+  (let* ((early-name
 	 (and (not (cpsconv/trivial? operand))
 	      (or name
-		  (cpsconv/new-name 'RAND)))))
-    (vector operand early-name
+		  (cpsconv/new-name 'RAND))))
+	 (late-name
+	  (and name
+	       (if early-name
+		   (cpsconv/new-name 'DUMMY)
+		   name))))
+    (cpsconv/dbg-info-for-subproblem-value early-name late-name operand)
+    (vector operand
+	    early-name
 	    (if (eq? *order-of-argument-evaluation* 'ANY)
 		(form/simple&side-effect-free? operand)
 		(form/simple&side-effect-insensitive? operand))
-	    (and name
-		 (if early-name
-		     (cpsconv/new-name 'DUMMY)
-		     name)))))
+	    late-name)))
 
 (define (cpsconv/trivial? operand)
   (or (LOOKUP/? operand)
@@ -227,13 +231,24 @@ MIT in each case. |#
 (define (cpsconv/classify-let-binding binding)
   (let ((name    (car binding))
 	(operand (cadr binding)))
-    (let ((early-name
+    (let* ((early-name
 	   (and (not (cpsconv/trivial? operand))
+		name))
+	   (late-name
+	    (if early-name
+		(cpsconv/new-name 'DUMMY)
 		name)))
-      (vector operand early-name true
-	      (if early-name
-		  (cpsconv/new-name 'DUMMY)
-		  name)))))
+      (cpsconv/dbg-info-for-subproblem-value early-name late-name operand)
+      (vector operand early-name true late-name))))
+
+(define (cpsconv/dbg-info-for-subproblem-value early-name late-name form)
+  late-name				; ignored
+  (if early-name
+      (let ((dbg-info (code-rewrite/original-form/previous form)))
+	(if (and dbg-info
+		 (new-dbg-expression? dbg-info))
+	    (dbg-info/remember (new-dbg-expression/expr dbg-info)
+			       `(LOOKUP ,early-name))))))
 
 (define (cpsconv/sort/hard operands)
   (case *order-of-argument-evaluation*
