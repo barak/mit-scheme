@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syncproc.scm,v 1.6 1999/02/01 03:28:31 cph Exp $
+$Id: syncproc.scm,v 1.7 1999/02/01 05:00:44 cph Exp $
 
 Copyright (c) 1999 Massachusetts Institute of Technology
 
@@ -69,8 +69,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				(apply make-subprocess-context options)))
 
 (define (run-synchronous-subprocess-1 program arguments context)
-  (let* ((directory (subprocess-context/working-directory context))
-	 (process #f))
+  (let ((directory
+	 (let ((directory (subprocess-context/working-directory context)))
+	   (and directory
+		(merge-pathnames directory))))
+	(process #f))
     (bind-condition-handler '()
 	(lambda (condition)
 	  (if (and process (not (eq? process 'DELETED)))
