@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.29 1989/03/14 08:03:17 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.30 1989/03/15 19:14:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -63,41 +63,6 @@ the string used in the previous Find Tag."
   "Like \\[Find Tag], but selects buffer in another window."
   (&find-tag-command argument find-file-other-window))
 
-(define previous-find-tag-string
-  false)
-
-(define-command ("Generate Tags Table")
-  "Generate a tags table from a files list of Scheme files.
- A files list is a file containing only strings which are file names.
- The generated tags table has the same name as the files list, except that
-the file type is TAG."
-  (let ((pathname
-	 (prompt-for-pathname "Files List"
-			      (pathname-new-type (current-default-pathname)
-						 "FLS"))))
-    (let ((truename (pathname->input-truename pathname)))
-      (if (not truename) (editor-error "No such file"))
-      (make-tags-table (read-file truename)
-		       (let ((pathname (pathname-new-type pathname "TAG")))
-			 (if (integer? (pathname-version pathname))
-			     (pathname-new-version pathname 'NEWEST)
-			     pathname))
-		       scheme-tag-regexp))))
-
-(define (&find-tag-command previous-tag? find-file)
-  (let ((buffer (tags-table-buffer)))
-    (if previous-tag?
-	(find-tag previous-find-tag-string
-		  buffer
-		  (buffer-point buffer)
-		  find-file)
-	(let ((string (prompt-for-string "Find tag" previous-find-tag-string)))
-	  (set! previous-find-tag-string string)
-	  (find-tag string
-		    buffer
-		    (buffer-start buffer)
-		    find-file)))))
-
 (define (tags-table-buffer)
   (if (not (ref-variable "Tags Table Pathname"))
       (visit-tags-table-command false))
@@ -114,7 +79,8 @@ the file type is TAG."
       (if (not (eqv? (extract-right-char (buffer-start buffer)) #\Page))
 	  (editor-error "File "
 			(pathname->string pathname)
-			" not a valid tag table")))))
+			" not a valid tag table"))
+      buffer)))
 
 (define (tag->pathname tag)
   (define (loop mark)
@@ -145,6 +111,35 @@ the file type is TAG."
 
 ;;;; Find Tag
 
+(define previous-find-tag-string
+  false)
+
+(define (&find-tag-command previous-tag? find-file)
+  (let ((buffer (tags-table-buffer)))
+    (if previous-tag?
+	(find-tag previous-find-tag-string
+		  buffer
+		  (buffer-point buffer)
+		  find-file)
+	(let ((string (prompt-for-string "Find tag" (find-tag-default))))
+	  (set! previous-find-tag-string string)
+	  (find-tag string
+		    buffer
+		    (buffer-start buffer)
+		    find-file)))))
+
+(define (find-tag-default)
+  (let ((point (current-point)))
+    (let ((end (group-end point)))
+      (let ((mark (re-search-forward "\\(\\sw\\|\\s_\\)*" point end 'LIMIT)))
+	(and (re-search-backward "\\sw\\|\\s_" mark)
+	     (let ((mark*
+		    (re-search-forward "\\(\\s'\\)*"
+				       (backward-sexp mark 1 'LIMIT)
+				       mark)))
+	       (and mark*
+		    (extract-string mark* mark))))))))
+
 (define (find-tag string buffer start find-file)
   (let ((tag
 	 (let loop ((mark start))
@@ -167,7 +162,11 @@ the file type is TAG."
 		(re-quote-string (extract-string (mark-1+ tag)
 						 (line-start tag 0)))))
 	      (start
-	       (-1+ (string->number (extract-string tag (line-end tag 0))))))
+	       (-1+
+		(string->number
+		 (let ((mark (search-forward "," tag)))
+		   (extract-string mark (line-end mark 0)))))))
+	  (set-buffer-point! buffer (line-end tag 0))
 	  (find-file pathname)
 	  (let* ((buffer (current-buffer))
 		 (group (buffer-group buffer))
@@ -192,44 +191,6 @@ the file type is TAG."
 
 (define find-tag-match-regexp
   "[^\n\177]*\177")
-
-;;;; Tags Table Generation
-
-(define scheme-tag-regexp
-  "^(def\\(ine-variable\\(\\s \\|\\s>\\)*\"[^\"]+\"\\|ine-command\\(\\s \\|\\s>\\)*(\\(\\s \\|\\s>\\)*\"[^\"]+\"\\|ine-\\(method\\|procedure\\)\\(\\s \\|\\s>\\)+\\(\\sw\\|\\s_\\)+\\(\\(\\s \\|\\s>\\)*(+\\(\\s \\|\\s>\\)*\\|\\(\\s \\|\\s>\\)+\\)\\(\\sw\\|\\s_\\)+\\|\\(\\sw\\|\\s_\\)*\\(\\(\\s \\|\\s>\\)*(+\\(\\s \\|\\s>\\)*\\|\\(\\s \\|\\s>\\)+\\)\\(\\sw\\|\\s_\\)+\\)")
-
-(define (make-tags-table input-filenames output-filename definition-regexp)
-  (let ((input-buffer (temporary-buffer " *tags-input*"))
-	(output-buffer (temporary-buffer " *tags-output*")))
-    (let ((output (buffer-point output-buffer)))
-      (define (do-file filename)
-	(insert-string "\f\n" output)
-	(insert-string filename output)
-	(insert-char #\, output)
-	(let ((recording-mark (mark-right-inserting output)))
-	  (insert-newline output)
-	  (let ((file-start (mark-index output)))
-	    (read-buffer input-buffer (->pathname filename))
-	    (let ((end (buffer-end input-buffer)))
-	      (define (definition-loop mark)
-		(if (and mark (re-search-forward definition-regexp mark end))
-		    (let ((end (re-match-end 0)))
-		      (let ((start (line-start end 0)))
-			(insert-string (extract-string start end) output)
-			(insert-char #\Rubout output)
-			(insert-string (write-to-string (mark-index start))
-				       output)
-			(insert-newline output)
-			(definition-loop (line-start start 1))))))
-	      (definition-loop (buffer-start input-buffer)))
-	    (insert-string (write-to-string (- (mark-index output) file-start))
-			   recording-mark))))
-      (for-each do-file input-filenames))
-    (set-buffer-point! output-buffer (buffer-start output-buffer))
-    (kill-buffer input-buffer)
-    (set-visited-pathname output-buffer (->pathname output-filename))
-    (write-buffer output-buffer)
-    (kill-buffer output-buffer)))
 
 ;;;; Tags Search
 
