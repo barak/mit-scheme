@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comwin.scm,v 1.141 1991/05/09 15:54:11 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comwin.scm,v 1.142 1991/07/09 22:51:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -404,7 +404,11 @@
        (let ((adjust-size!
 	      (lambda (window)
 		(if (current-window? leaf)
-		    (select-window window))
+		    (select-window
+		     (let loop ((window window))
+		       (if (combination? window)
+			   (loop (combination-child window))
+			   window))))
 		(unlink-leaf! leaf)
 		(if (combination-vertical? superior)
 		    (=> window :set-y-size!
