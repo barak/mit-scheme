@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.122 1992/01/13 20:15:34 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.123 1992/04/18 16:38:49 bal Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -373,6 +373,43 @@ CANNOT contain the 'F' option."
   "Change owner of this file."
   "sChange to Owner"
   (lambda (owner) (dired-change-line "chown" owner)))
+
+(define-command dired-compress
+  "Compress a file."
+  '()
+  (lambda ()
+    (let ((pathname (dired-current-pathname)))
+      (let ((directory (directory-pathname pathname)))
+	(run-synchronous-process false false directory false
+				 (find-program "compress" directory)
+				 ""
+				 (->namestring pathname)))
+      (dired-redisplay
+       (pathname-new-type 
+	pathname
+	(let ((old-type (pathname-type pathname)))
+	  (cond ((not old-type)
+		 "Z")
+		((string=? old-type "Z")
+		 old-type)
+		(else
+		 (string-append old-type ".Z")))))))))
+
+(define-command dired-uncompress
+  "Uncompress a file."
+  '()
+  (lambda ()
+    (let ((pathname (dired-current-pathname)))
+      (let ((directory (directory-pathname pathname)))
+	(run-synchronous-process false false directory false
+				 (find-program "uncompress" directory)
+				 ""
+				 (->namestring pathname)))
+      (dired-redisplay
+       (if (and (pathname-type pathname)
+		(string=? (pathname-type pathname) "Z"))
+	   (pathname-new-type pathname false)
+	   pathname)))))
 
 (define (dired-change-line program argument)
   (let ((pathname (dired-current-pathname)))
