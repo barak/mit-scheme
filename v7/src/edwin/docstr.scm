@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: docstr.scm,v 1.3 1999/01/02 06:11:34 cph Exp $
+$Id: docstr.scm,v 1.4 2000/06/15 00:43:26 cph Exp $
 
-Copyright (c) 1993-1999 Massachusetts Institute of Technology
+Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,16 +23,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (declare (usual-integrations))
 
-(define *external-doc-strings?* true)
-(define *external-doc-strings-file* false)
-(define *doc-strings* false)
+(define *external-doc-strings?* #t)
+(define *external-doc-strings-file* #f)
+(define *doc-strings* #f)
 (define *doc-string-posn* 0)
-(define *doc-string-channel* false)
-(define *doc-string-buffer* false)
+(define *doc-string-channel* #f)
+(define *doc-string-buffer* #f)
 
 (define (doc-string->posn name str)
-  (if (not *external-doc-strings?*)
-      str
+  (if (and *external-doc-strings?* (string? str))
       (let ((nlen (string-length name))
 	    (dslen (string-length str))
 	    (slen (if (not *doc-strings*)
@@ -62,7 +61,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (string-set! doc-strings (fix:- end 2) #\Newline)
 	    (string-set! doc-strings (fix:- end 1) #\Newline)
 	    (set! *doc-string-posn* end)
-	    posn)))))
+	    posn)))
+      str))
 
 (define-integrable doc-string-buffer-length 512)
 
@@ -142,9 +142,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    output
    (lambda (port)
      (output-port/write-string port *doc-strings*)))
-  (set! *external-doc-strings?* false)
+  (set! *external-doc-strings?* #f)
   (set! *doc-string-posn* 0)
-  (set! *doc-strings* false)
+  (set! *doc-strings* #f)
   unspecific)
 
 (define (guarantee-doc-string-state)
@@ -171,5 +171,4 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		 unspecific))))))
 
 (add-event-receiver! event:after-restart
-		     (lambda ()
-		       (set! *doc-string-channel* false)))
+		     (lambda () (set! *doc-string-channel* #f)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: modes.scm,v 1.32 2000/02/25 20:24:19 cph Exp $
+;;; $Id: modes.scm,v 1.33 2000/06/15 00:43:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -105,7 +105,7 @@
 
 (define (mode-description mode)
   (let ((desc (mode-%description mode)))
-    (if (string? desc)
+    (if (description? desc)
 	desc
 	(let ((new (->doc-string (symbol->string (mode-name mode)) desc)))
 	  (if new

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: hlpcom.scm,v 1.118 2000/06/15 00:34:27 cph Exp $
+;;; $Id: hlpcom.scm,v 1.119 2000/06/15 00:44:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -345,6 +345,11 @@ If you want VALUE to be a string, you must surround it with doublequotes."
       (if index
 	  (substring string 0 index)
 	  string))))
+
+(define (description? description)
+  (or (string? description)
+      (and (procedure? description)
+	   (procedure-arity-valid? description 0))))
 
 (define (description->string description)
   (cond ((string? description) description)

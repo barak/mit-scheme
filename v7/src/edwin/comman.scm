@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comman.scm,v 1.83 2000/02/25 20:24:15 cph Exp $
+$Id: comman.scm,v 1.84 2000/06/15 00:43:40 cph Exp $
 
 Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 
@@ -36,10 +36,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (command-description command)
   (let ((desc (command-%description command)))
-    (if (string? desc)
+    (if (description? desc)
 	desc
-	(let ((new (->doc-string (symbol->string (command-name command))
-				 desc)))
+	(let ((new
+	       (->doc-string (symbol->string (command-name command)) desc)))
 	  (if new
 	      (set-command-%description! command new))
 	  new))))
@@ -115,10 +115,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (variable-description variable)
   (let ((desc (variable-%description variable)))
-    (if (string? desc)
+    (if (description? desc)
 	desc
-	(let ((new (->doc-string (symbol->string (variable-name variable))
-				 desc)))
+	(let ((new
+	       (->doc-string (symbol->string (variable-name variable)) desc)))
 	  (if new
 	      (set-variable-%description! variable new))
 	  new))))
