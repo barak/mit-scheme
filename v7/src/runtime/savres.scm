@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.12 1990/07/16 17:11:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.13 1990/07/30 03:47:46 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -72,6 +72,7 @@ MIT in each case. |#
 	     false))
        (lambda ()
 	 (set! time-world-saved time)
+	 (reset-gc-after-restore!)
 	 (event-distributor/invoke! event:after-restore)
 	 (cond ((string? identify)
 		(set! world-identification identify)
@@ -110,7 +111,6 @@ MIT in each case. |#
 	     ;; This instruction is a noop, so I flushed it -- cph.
 	     ;; (enable-interrupts! interrupt-mask/none)
 	     (read-microcode-tables!)
-	     (reset-gc-after-restore!)
 	     after-restore))))))))
 
 (define (dump-world/kernel filename after-suspend after-restore)
