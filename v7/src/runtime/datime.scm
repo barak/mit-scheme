@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/datime.scm,v 14.2 1989/02/28 17:05:50 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/datime.scm,v 14.3 1990/06/21 23:19:39 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,7 +42,13 @@ MIT in each case. |#
 ;;; Based on Common Lisp definition.  Needs time zone stuff, and
 ;;; handling of abbreviated year specifications.
 
-(define-structure (decoded-time (conc-name decoded-time/))
+(define decoded-time-structure-tag "decoded-time")
+
+(define-structure (decoded-time
+		   (type vector)
+		   (named decoded-time-structure-tag)
+		   (conc-name decoded-time/)
+		   (constructor false))
   (second false read-only true)
   (minute false read-only true)
   (hour false read-only true)
@@ -52,37 +58,8 @@ MIT in each case. |#
   (day-of-week false read-only true))
 
 (define (get-decoded-time)
-  ;; Can return false, indicating that we don't know the time.
-  (let ((day ((ucode-primitive current-day)))
-	(month ((ucode-primitive current-month)))
-	(year ((ucode-primitive current-year))))
-    (and year
-	 (let ((year (+ year 1900)))
-	   (make-decoded-time
-	    ((ucode-primitive current-second))
-	    ((ucode-primitive current-minute))
-	    ((ucode-primitive current-hour))
-	    day
-	    month
-	    year
-	    (zellers-congruence day month year))))))
+  ((ucode-primitive get-decoded-time 1) decoded-time-structure-tag))
 
-(define (zellers-congruence day month year)
-  (let ((qr (integer-divide year 100)))
-    (let ((month (1+ (modulo (- month 3) 12)))
-	  (year (integer-divide-remainder qr))
-	  (century (integer-divide-quotient qr)))
-      (modulo (-1+ (- (+ day
-			 (quotient (-1+ (* 13 month)) 5)
-			 year
-			 (quotient year 4)
-			 (quotient century 4))
-		      (+ (* 2 century)
-			 (if (zero? (remainder year 4))
-			     (* 2 (quotient month 11))
-			     (quotient month 11)))))
-	      7))))
-
 (define (decoded-time/date-string time)
   (string-append
    (vector-ref '#("Monday" "Tuesday" "Wednesday" "Thursday" "Friday"
