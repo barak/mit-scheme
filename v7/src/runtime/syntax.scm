@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.31 1999/01/02 06:19:10 cph Exp $
+$Id: syntax.scm,v 14.32 1999/10/23 02:46:46 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -27,14 +27,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (initialize-package!)
   (set-fluid-let-type! 'SHALLOW)
   (enable-scan-defines!)
-  (set! system-global-syntax-table (make-system-global-syntax-table))
-  (set! user-initial-syntax-table
-	(make-syntax-table system-global-syntax-table))
   (set! *disallow-illegal-definitions?* #t)
   (set! hook/syntax-expression default/syntax-expression)
+  (set! system-global-syntax-table (make-system-global-syntax-table))
   (set-environment-syntax-table! system-global-environment
 				 system-global-syntax-table)
-  unspecific)
+  (set! user-initial-syntax-table
+	(make-syntax-table system-global-syntax-table))
+  (set-environment-syntax-table! user-initial-environment
+				 user-initial-syntax-table))
 
 (define system-global-syntax-table)
 (define user-initial-syntax-table)
@@ -265,7 +266,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (expand-disjunction forms)
   (if (null? forms)
-      false
+      #f
       (let process ((forms forms))
 	(if (null? (cdr forms))
 	    (syntax-subexpression (car forms))
@@ -645,7 +646,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;;; SCODE Constructors
 
 (define (make-conjunction first second)
-  (make-conditional first second false))
+  (make-conditional first second #f))
 
 (define (make-combination* operator . operands)
   (make-combination operator operands))
@@ -654,7 +655,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (make-scode-sequence operands))
 
 (define (make-absolute-reference name . rest)
-  (let loop ((reference (make-access false name)) (rest rest))
+  (let loop ((reference (make-access #f name)) (rest rest))
     (if (null? rest)
 	reference
 	(loop (make-access reference (car rest)) (cdr rest)))))
@@ -673,7 +674,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (internal-make-lambda name required optional rest body))))
 
 (define (make-closed-block tag names values body)
-  (make-combination (internal-make-lambda tag names '() false body) values))
+  (make-combination (internal-make-lambda tag names '() #f body) values))
 
 (define (make-letrec names values body)
   (make-closed-block lambda-tag:let '() '()
@@ -700,7 +701,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(optional (list '())))
     (define (parse-parameters cell pattern)
       (let loop ((pattern pattern))
-	(cond ((null? pattern) (finish false))
+	(cond ((null? pattern) (finish #f))
 	      ((symbol? pattern) (finish pattern))
 	      ((not (pair? pattern)) (bad-lambda-list pattern))
 	      ((eq? (car pattern) lambda-rest-tag)
