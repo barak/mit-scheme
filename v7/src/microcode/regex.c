@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.11 1992/04/02 11:23:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.12 1992/08/20 23:47:58 jinx Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -49,6 +49,12 @@ extern char * malloc ();
 extern char * realloc ();
 extern void free ();
 
+#ifdef _IRIX4
+#define SIGN_EXTEND_CHAR(x) ((((int) (x)) >= 0x80)			\
+			     ? (((int) (x)) - 0x100)			\
+			     : ((int) (x)))
+#endif
+
 #ifndef SIGN_EXTEND_CHAR
 #define SIGN_EXTEND_CHAR(x) (x)
 #endif /* not SIGN_EXTEND_CHAR */
@@ -102,11 +108,12 @@ extern void free ();
 
 #define READ_PATTERN_OFFSET(target) do					\
 {									\
+  char _fetched;							\
   if ((pattern_pc + 1) >= pattern_end)					\
     BAD_PATTERN ();							\
   (target) = (*pattern_pc++);						\
-  (target) +=								\
-    ((SIGN_EXTEND_CHAR (* ((char *) (pattern_pc++)))) << ASCII_LENGTH);	\
+  _fetched = (* ((char *) (pattern_pc++)));				\
+  (target) += ((SIGN_EXTEND_CHAR (_fetched)) << ASCII_LENGTH);		\
   if (((pattern_pc + (target)) < pattern_start) ||			\
       ((pattern_pc + (target)) > pattern_end))				\
     BAD_PATTERN ();							\
@@ -114,9 +121,14 @@ extern void free ();
 
 #define READ_PATTERN_LENGTH(target) do					\
 {									\
-  if ((pattern_pc >= pattern_end) ||					\
-      ((pattern_pc + ((target) = (*pattern_pc++))) > pattern_end))	\
+  int _len;								\
+									\
+  if (pattern_pc >= pattern_end)					\
     BAD_PATTERN ();							\
+  _len = ((int) (*pattern_pc++));					\
+  if ((pattern_pc + _len) > pattern_end)				\
+    BAD_PATTERN ();							\
+  (target) = _len;							\
 } while (0)
 
 #define READ_PATTERN_REGISTER(target) do				\
