@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.36 1988/03/21 21:16:23 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.37 1988/04/15 16:22:00 cph Exp $
  *
  * This file contains the macros for use in code which does GC-like
  * loops over memory.  It is only included in a few files, unlike
@@ -423,49 +423,52 @@ typedef unsigned long machine_word;
 #define GC_NO_COMPILER_STMT()						\
   gc_death(TERM_COMPILER_DEATH,						\
 	   "relocate_compiled: No compiler support!",			\
-	   Scan, To)
+	   Scan, 0)
 
-#define GC_NO_COMPILER_EXPR()			(GC_NO_COMPILER_STMT(), NIL)
-
-
-#define Relocate_Compiled(obj, nb, ob)		GC_NO_COMPILER_EXPR()
-
-#define Transport_Compiled()			GC_NO_COMPILER_STMT()
-
-#define Compiled_BH(flag, then_what)		GC_NO_COMPILER_STMT()
-
-#define Get_Compiled_Block(var, address)	GC_NO_COMPILER_STMT()
+#define GC_NO_COMPILER_EXPR(value_type) (GC_NO_COMPILER_STMT(), (value_type 0))
 
 
-#define FIRST_MANIFEST_CLOSURE_ENTRY(scan)	GC_NO_COMPILER_EXPR()
+#define Relocate_Compiled(obj, nb, ob) GC_NO_COMPILER_EXPR((Pointer))
 
-#define VALID_MANIFEST_CLOSURE_ENTRY(word_ptr)	GC_NO_COMPILER_EXPR()
+#define Transport_Compiled() GC_NO_COMPILER_STMT()
 
-#define NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr)	GC_NO_COMPILER_EXPR()
+#define Compiled_BH(flag, then_what) GC_NO_COMPILER_STMT()
 
-#define MANIFEST_CLOSURE_ENTRY_ADDRESS(ptr)	GC_NO_COMPILER_EXPR()
-
-#define MANIFEST_CLOSURE_END(end, start)	GC_NO_COMPILER_EXPR()
-
-#define MANIFEST_CLOSURE_VALID_FITS_P(end, st)	GC_NO_COMPILER_EXPR()
+#define Get_Compiled_Block(var, address) GC_NO_COMPILER_STMT()
 
 
-#define READ_LINKAGE_KIND(header)		GC_NO_COMPILER_EXPR()
+#define FIRST_MANIFEST_CLOSURE_ENTRY(scan)				\
+  GC_NO_COMPILER_EXPR((machine_word *))
 
-#define OPERATOR_LINKAGE_KIND			0
+#define VALID_MANIFEST_CLOSURE_ENTRY(word_ptr) GC_NO_COMPILER_EXPR((int))
+
+#define NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr)				\
+  GC_NO_COMPILER_EXPR((machine_word *))
+
+#define MANIFEST_CLOSURE_ENTRY_ADDRESS(ptr) GC_NO_COMPILER_EXPR((Pointer *))
+
+#define MANIFEST_CLOSURE_END(end, start) GC_NO_COMPILER_EXPR((Pointer *))
+
+#define MANIFEST_CLOSURE_VALID_FITS_P(end, st) GC_NO_COMPILER_EXPR((int))
 
 
-#define READ_CACHE_LINKAGE_COUNT(header)	GC_NO_COMPILER_EXPR()
+#define READ_LINKAGE_KIND(header) GC_NO_COMPILER_EXPR((int))
 
-#define READ_OPERATOR_LINKAGE_COUNT(header)	GC_NO_COMPILER_EXPR()
+#define OPERATOR_LINKAGE_KIND 0
+
+
+#define READ_CACHE_LINKAGE_COUNT(header) GC_NO_COMPILER_EXPR((int))
+
+#define READ_OPERATOR_LINKAGE_COUNT(header) GC_NO_COMPILER_EXPR((int))
   
-#define END_OPERATOR_LINKAGE_AREA(scan, count)	GC_NO_COMPILER_EXPR()
+#define END_OPERATOR_LINKAGE_AREA(scan, count) GC_NO_COMPILER_EXPR((Pointer *))
 
 
-#define FIRST_OPERATOR_LINKAGE_ENTRY(scan)	GC_NO_COMPILER_EXPR()
+#define FIRST_OPERATOR_LINKAGE_ENTRY(scan)				\
+  GC_NO_COMPILER_EXPR((machine_word *))
 
-#define NEXT_LINKAGE_OPERATOR_ENTRY(ptr)	GC_NO_COMPILER_EXPR()
+#define NEXT_LINKAGE_OPERATOR_ENTRY(ptr) GC_NO_COMPILER_EXPR((machine_word *))
 
-#define OPERATOR_LINKAGE_ENTRY_ADDRESS(ptr)	GC_NO_COMPILER_EXPR()
+#define OPERATOR_LINKAGE_ENTRY_ADDRESS(ptr) GC_NO_COMPILER_EXPR((Pointer *))
 
 #endif
