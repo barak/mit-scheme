@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.10 1995/10/28 02:10:32 cph Exp $
+$Id: ntfs.c,v 1.11 1996/10/07 17:55:38 cph Exp $
 
-Copyright (c) 1992-95 Massachusetts Institute of Technology
+Copyright (c) 1992-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -104,7 +104,9 @@ DEFUN (guarantee_writable, (name, errorp),
   if (attributes == 0xFFFFFFFF)
     {
       DWORD error_code = (GetLastError ());
-      if ((error_code != ERROR_FILE_NOT_FOUND) && errorp)
+      if ((! ((error_code == ERROR_FILE_NOT_FOUND)
+	      || (error_code == ERROR_PATH_NOT_FOUND)))
+	  && errorp)
 	error_system_call (error_code, syscall_stat);
     }
   else if ((attributes & FILE_ATTRIBUTE_READONLY) != 0)
