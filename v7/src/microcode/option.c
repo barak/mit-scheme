@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.27 1992/07/16 20:45:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.28 1992/07/30 18:06:22 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -319,7 +319,7 @@ The following options are only meaningful to bchscheme:
 #endif
 
 #ifndef DEFAULT_LARGE_CONSTANT
-#define DEFAULT_LARGE_CONSTANT 1300
+#define DEFAULT_LARGE_CONSTANT 1400
 #endif
 
 #endif /* hp9000s800 */
