@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.173 1987/06/01 16:09:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.174 1987/06/01 21:06:08 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -639,7 +639,20 @@ MIT in each case. |#
      (BRA L (@PCR ,label)))))
 
 (define-rule statement
-  (INVOCATION:LOOKUP (? number-pushed) (? prefix) (? continuation)
+  (INVOCATION:CACHE-REFERENCE (? number-pushed) (? prefix) (? continuation)
+			      (? extension))
+  (disable-frame-pointer-offset!
+   (let ((set-extension (expression->machine-register! extension a0)))
+     (delete-dead-registers!)
+     `(,@(set-extension)
+       ,@(generate-invocation-prefix prefix)
+       (MOVE W (& ,(1+ number-pushed)) (D 0))
+       (MOVE L (@PCR ,(free-reference-label name)) (A 0))
+       (LEA (@PCR ,*block-start-label*) (A 1))
+       (JMP ,entry:compiler-cache-reference-apply)))))
+
+(define-rule statement
+  (INVOCATION:LOOKUP (? frame-size) (? prefix) (? continuation)
 		     (? environment) (? name))
   (disable-frame-pointer-offset!
    (let ((set-environment (expression->machine-register! environment d4)))
@@ -647,7 +660,7 @@ MIT in each case. |#
      `(,@set-environment
        ,@(generate-invocation-prefix prefix)
        ,(load-constant name '(D 5))
-       (MOVE W (& ,(1+ number-pushed)) (D 0))
+       (MOVE W (& ,frame-size) (D 0))
        (JMP ,entry:compiler-lookup-apply)))))
 
 (define-rule statement
