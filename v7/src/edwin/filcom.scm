@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.219 2001/06/07 17:45:01 cph Exp $
+;;; $Id: filcom.scm,v 1.220 2001/10/30 19:26:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -775,43 +775,43 @@ Prefix arg means treat the plaintext file as binary data."
   (prompt-for-pathname* prompt default file-exists? options))
 
 (define (prompt-for-pathname* prompt default verify-final-value options)
-  (let* ((directory
-	  (if default
-	      (directory-pathname
-	       (if (pair? default)
-		   (car default)
-		   default))
-	      (buffer-default-directory (selected-buffer))))
-	 (insertion
-	  (os/pathname->display-string
-	   (if (pair? default)
-	       (car default)
-	       directory))))
-    (prompt-string->pathname
-     (apply prompt-for-completed-string
-	    prompt
-	    insertion
-	    (lambda (string if-unique if-not-unique if-not-found)
-	      (filename-complete-string
-	       (prompt-string->pathname string insertion directory)
-	       (lambda (filename)
-		 (if-unique (os/pathname->display-string filename)))
-	       (lambda (prefix get-completions)
-		 (if-not-unique (os/pathname->display-string prefix)
-				get-completions))
-	       if-not-found))
-	    (lambda (string)
-	      (filename-completions-list
-	       (prompt-string->pathname string insertion directory)))
-	    (lambda (string)
-	      (file-test-no-errors
-	       verify-final-value
-	       (prompt-string->pathname string insertion directory)))
-	    'DEFAULT-TYPE 'INSERTED-DEFAULT
-	    'HISTORY 'PROMPT-FOR-PATHNAME
-	    options)
-     insertion
-     directory)))
+  (let ((directory
+	 (if default
+	     (directory-pathname (if (pair? default) (car default) default))
+	     (buffer-default-directory (selected-buffer))))
+	(options
+	 (cons* 'DEFAULT-TYPE 'INSERTED-DEFAULT
+		'HISTORY 'PROMPT-FOR-PATHNAME
+		options)))
+    (let ((insertion
+	   (or (prompt-options-default-string options)
+	       (os/pathname->display-string
+		(if (pair? default)
+		    (car default)
+		    directory)))))
+      (prompt-string->pathname
+       (apply prompt-for-completed-string
+	      prompt
+	      insertion
+	      (lambda (string if-unique if-not-unique if-not-found)
+		(filename-complete-string
+		 (prompt-string->pathname string insertion directory)
+		 (lambda (filename)
+		   (if-unique (os/pathname->display-string filename)))
+		 (lambda (prefix get-completions)
+		   (if-not-unique (os/pathname->display-string prefix)
+				  get-completions))
+		 if-not-found))
+	      (lambda (string)
+		(filename-completions-list
+		 (prompt-string->pathname string insertion directory)))
+	      (lambda (string)
+		(file-test-no-errors
+		 verify-final-value
+		 (prompt-string->pathname string insertion directory)))
+	      options)
+       insertion
+       directory))))
 
 ;;;; Filename Completion
 
