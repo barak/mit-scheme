@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dosfile.scm,v 1.26 1999/02/01 03:30:56 cph Exp $
+;;; $Id: dosfile.scm,v 1.27 1999/05/21 04:31:57 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-1999 Massachusetts Institute of Technology
 ;;;
@@ -290,7 +290,8 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
 		 (re-string-match ".[0-9][0-9]" type))))))
 
 (define (os/numeric-backup-filename? filename)
-  (and (let ((try (lambda (pattern) (re-string-search pattern filename))))
+  (and (let ((try
+	      (lambda (pattern) (re-string-search-forward pattern filename))))
 	 (or (try "^\\([^.]+\\)\\.\\([0-9][0-9][0-9]\\)$")
 	     (try "^\\([^.]+\\.[^.]\\)\\([0-9][0-9]\\)$")
 	     (there-exists? dos/backup-suffixes
