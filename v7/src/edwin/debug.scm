@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debug.scm,v 1.45 1999/02/03 06:10:02 cph Exp $
+;;; $Id: debug.scm,v 1.46 1999/02/03 06:12:57 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
 ;;;
@@ -1635,7 +1635,6 @@ once it has been renamed, it will not be deleted automatically.")
 	   (for-each (lambda (name)
 		       (myprint-binding name
 					(environment-lookup environment name)
-					environment
 					port))
 	     names))))
     (cond ((null? names)
@@ -1671,7 +1670,7 @@ once it has been renamed, it will not be deleted automatically.")
    port))
 
 ;;;This does some stuff who's end product is to pp the bindings
-(define (myprint-binding name value environment port)
+(define (myprint-binding name value port)
   (let ((x-size (output-port/x-size port)))
     (debugger-newline port)
     (let ((name1
