@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.55 2000/01/10 03:35:36 cph Exp $
+$Id: load.scm,v 14.56 2001/03/08 19:26:56 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -43,6 +43,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (set! condition-type:not-loading
 	(make-condition-type 'NOT-LOADING condition-type:error '()
 	  "No file being loaded."))
+  (reset-loaded-object-files!)
+  (add-event-receiver! event:after-restart reset-loaded-object-files!)
   (initialize-command-line-parsers)
   (set! hook/process-command-line default/process-command-line)
   (add-event-receiver! event:after-restart process-command-line))
@@ -56,6 +58,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define condition-type:not-loading)
 (define load/default-find-pathname-with-type)
 (define fasload/default-types)
+(define loaded-object-files)
 
 ;;; This is careful to do the minimum number of file existence probes
 ;;; before opening the input file.
@@ -272,6 +275,39 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		       (if (eq? environment default-object)
 			   (nearest-repl/environment)
 			   environment)))
+
+(define (load-library-object-file name errors?)
+  (let ((pathname
+	 (merge-pathnames name
+			  (system-library-directory-pathname "lib"))))
+    (if (there-exists? loaded-object-files
+	  (lambda (pathname*)
+	    (pathname=? pathname pathname*)))
+	#t
+	(let ((pathname*
+	       (let ((find
+		      (lambda (type)
+			(let ((pathname (pathname-new-type pathname type)))
+			  (and (file-exists? pathname)
+			       pathname)))))
+		 (or (find "so")
+		     (find "sl")))))
+	  (cond ((not pathname*)
+		 (and errors?
+		      (error "No library object file of this name:" pathname)))
+		((ignore-errors (lambda () (load pathname*)))
+		 => (lambda (condition)
+		      (if errors?
+			  (signal-condition condition)
+			  condition)))
+		(else
+		 (set! loaded-object-files
+		       (cons pathname loaded-object-files))
+		 #t))))))
+
+(define (reset-loaded-object-files!)
+  (set! loaded-object-files '())
+  unspecific)
 
 (define (loading-message suppress-loading-message? pathname do-it)
   (if suppress-loading-message?
