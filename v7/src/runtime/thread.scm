@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.6 1992/09/17 00:57:07 jinx Exp $
+$Id: thread.scm,v 1.7 1992/09/17 01:31:42 jinx Exp $
 
 Copyright (c) 1991-1992 Massachusetts Institute of Technology
 
@@ -402,16 +402,24 @@ MIT in each case. |#
 
 (define (deliver-timer-events)
   (let ((time (real-time-clock)))
-    ;; The following is bogus, but better than dropping the
-    ;; interrupts at all when the real-time timer wraps around.
-    (if (and last-real-time (< time last-real-time))
-	(let update ((record timer-records))
-	  (if record
-	      (begin
-		(set-timer-record/time!
-		 record
-		 (- (timer-record/time record) last-real-time))
-		(update (timer-record/next record))))))
+    (if (and last-real-time
+	     (< time last-real-time))
+	;; The following adjustment is correct, assuming that the
+	;; real-time timer wraps around to 0, and assuming that there
+	;; has been no GC or OS time slice between the time when the
+	;; timer interrupt was delivered and the time when REAL-TIME-CLOCK
+	;; was called above.
+	(let ((wrap-value (+ last-real-time
+			     (if (not timer-interval)
+				 0
+				 (- timer-interval time)))))
+	  (let update ((record timer-records))
+	    (if record
+		(begin
+		  (set-timer-record/time!
+		   record
+		   (- (timer-record/time record) wrap-value))
+		  (update (timer-record/next record)))))))
     (set! last-real-time time)
     (let loop ((record timer-records))
       (if (or (not record) (< time (timer-record/time record)))
