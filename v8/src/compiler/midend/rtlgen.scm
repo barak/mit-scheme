@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.10 1995/01/28 17:10:56 adams Exp $
+$Id: rtlgen.scm,v 1.11 1995/01/30 03:07:56 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -233,18 +233,23 @@ MIT in each case. |#
 
 (define (rtlgen/wrap-procedure label form body lambda-list saved-size)
   saved-size				; only continuations have this
-  (let ((frame-size (lambda-list/count-names lambda-list)))
-    (cons `(PROCEDURE ,label
+  (let* ((frame-size (lambda-list/count-names lambda-list))
+	 (procedure-header
+	  `(PROCEDURE ,label
 		      ,(new-dbg-procedure->old-dbg-procedure
 			label
 			'PROCEDURE
 			(rtlgen/debugging-info form))
-		      (MACHINE-CONSTANT ,frame-size))
-	  (rtlgen/wrap-with-interrupt-check/procedure
-	   false
-	   body
-	   `(INTERRUPT-CHECK:PROCEDURE ,label
-				       (MACHINE-CONSTANT ,frame-size))))))
+		      (MACHINE-CONSTANT ,frame-size))))
+    (if (rtlgen/omit-interrupt-check? label)
+	(cons procedure-header
+	      body)
+	(cons procedure-header
+	      (rtlgen/wrap-with-interrupt-check/procedure
+	       false
+	       body
+	       `(INTERRUPT-CHECK:PROCEDURE ,label
+					   (MACHINE-CONSTANT ,frame-size)))))))
 
 (define (rtlgen/continuation label lam-expr)
   (set! *rtlgen/continuations*
@@ -4228,6 +4233,24 @@ MIT in each case. |#
 	       ,rtlgen/?return-address
 	       ,@rtlgen/?closure-elts*)))
 	 
+
+(define *rtlgen/omit-internal-interrupt-checks?* #F)
+
+(define (rtlgen/omit-interrupt-check? procedure-name)
+  (and *rtlgen/omit-internal-interrupt-checks?*
+       (rtlgen/procedure-as-label? procedure-name)))
+
+(define (rtlgen/procedure-as-label? procedure-name)
+  (define (like? pattern)
+    (let ((s-pat  (symbol-name pattern))
+	  (s-lab  (symbol-name procedure-name)))
+      (and (> (string-length s-lab) (string-length s-pat))
+	   (substring=? s-pat 0 (string-length s-pat)
+			s-lab 0 (string-length s-pat)))))
+  (or (like? 'alt-)
+      (like? 'cons-)
+      (like? 'next-)
+      (like? 'receiver-)))
 
 #|
 ;; New RTL:
