@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unxpth.scm,v 14.20 1995/10/18 05:00:46 cph Exp $
+$Id: unxpth.scm,v 14.21 1996/02/27 21:53:14 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -60,9 +60,8 @@ MIT in each case. |#
 (define (unix/parse-namestring string host)
   (let ((end (string-length string)))
     (let ((components
-	   (let ((components (substring-components string 0 end #\/)))
-	     (append (expand-directory-prefixes (car components))
-		     (cdr components)))))
+	   (expand-directory-prefixes
+	    (substring-components string 0 end #\/))))
       (parse-name (car (last-pair components))
 	(lambda (name type)
 	  (%make-pathname host
@@ -81,35 +80,47 @@ MIT in each case. |#
 			  type
 			  'UNSPECIFIC))))))
 
+(define (expand-directory-prefixes components)
+  (let ((string (car components))
+	(replace-head
+	 (lambda (string)
+	   ;; If STRING has a trailing slash, and it's followed by a
+	   ;; slash, drop the trailing slash to avoid doubling.
+	   (let ((head (string-components string #\/)))
+	     (append (if (and (pair? (cdr components))
+			      (pair? (cdr head))
+			      (string-null? (car (last-pair head))))
+			 (except-last-pair head)
+			 head)
+		     (cdr components))))))
+    (if (or (string-null? string)
+	    (not *expand-directory-prefixes?*))
+	components
+	(case (string-ref string 0)
+	  ((#\$)
+	   (let ((name (string-tail string 1)))
+	     (let ((value (get-environment-variable name)))
+	       (if value
+		   (replace-head value)
+		   components))))
+	  ((#\~)
+	   (replace-head
+	    (->namestring
+	     (let ((user-name (substring string 1 (string-length string))))
+	       (if (string-null? user-name)
+		   (current-home-directory)
+		   (user-home-directory user-name))))))
+	  (else components)))))
+
 (define (simplify-directory directory)
   (if (and (eq? (car directory) 'RELATIVE) (null? (cdr directory)))
       false
       directory))
-
+
 (define (parse-directory-component component)
   (if (string=? ".." component)
       'UP
       component))
-
-(define (expand-directory-prefixes string)
-  (if (or (string-null? string)
-	  (not *expand-directory-prefixes?*))
-      (list string)
-      (case (string-ref string 0)
-	((#\$)
-	 (let ((name (string-tail string 1)))
-	   (let ((value (get-environment-variable name)))
-	     (if (not value)
-		 (error "Unbound environment variable:" name))
-	     (string-components value #\/))))
-	((#\~)
-	 (let ((user-name (substring string 1 (string-length string))))
-	   (string-components
-	    (if (string-null? user-name)
-		(current-home-directory)
-		(user-home-directory user-name))
-	    #\/)))
-	(else (list string)))))
 
 (define (string-components string delimiter)
   (substring-components string 0 (string-length string) delimiter))
@@ -309,5 +320,4 @@ MIT in each case. |#
       pathname))
 
 (define (unix/end-of-line-string pathname)
-  pathname				; ignored
-  "\n")
+  (or (os/file-end-of-line-translation pathname) "\n"))

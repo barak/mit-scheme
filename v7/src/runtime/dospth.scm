@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.32 1995/10/23 07:10:07 cph Exp $
+$Id: dospth.scm,v 1.33 1996/02/27 21:53:06 cph Exp $
 
-Copyright (c) 1992-95 Massachusetts Institute of Technology
+Copyright (c) 1992-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -100,7 +100,18 @@ MIT in each case. |#
 			     'UNSPECIFIC))))))
 
 (define (expand-directory-prefixes components)
-  (let ((string (car components)))
+  (let ((string (car components))
+	(replace-head
+	 (lambda (string)
+	   ;; If STRING has a trailing slash, and it's followed by a
+	   ;; slash, drop the trailing slash to avoid doubling.
+	   (let ((head (string-components string sub-directory-delimiters)))
+	     (append (if (and (pair? (cdr components))
+			      (pair? (cdr head))
+			      (string-null? (car (last-pair head))))
+			 (except-last-pair head)
+			 head)
+		     (cdr components))))))
     (if (or (string-null? string)
 	    (not *expand-directory-prefixes?*))
 	components
@@ -109,18 +120,14 @@ MIT in each case. |#
 	   (let ((value (get-environment-variable (string-tail string 1))))
 	     (if (not value)
 		 components
-		 (append (string-components value sub-directory-delimiters)
-			 (cdr components)))))
+		 (replace-head value))))
 	  ((#\~)
-	   (append
-	    (string-components (->namestring
-				(directory-pathname-as-file
-				 (let ((user-name (string-tail string 1)))
-				   (if (string-null? user-name)
-				       (current-home-directory)
-				       (user-home-directory user-name)))))
-			       sub-directory-delimiters)
-	    (cdr components)))
+	   (replace-head
+	    (->namestring
+	     (let ((user-name (string-tail string 1)))
+	       (if (string-null? user-name)
+		   (current-home-directory)
+		   (user-home-directory user-name))))))
 	  (else components)))))
 
 (define (parse-device-and-path components)
