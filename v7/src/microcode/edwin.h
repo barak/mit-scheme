@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/edwin.h,v 1.4 1989/09/20 23:07:42 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/edwin.h,v 1.5 1991/04/02 19:45:17 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,7 +34,7 @@ MIT in each case. */
 
 /* Definitions for Edwin data structures.
    This MUST match the definitions in the Edwin source code. */
-
+
 #define GROUP_P VECTOR_P
 #define GROUP_TEXT(group) (VECTOR_REF ((group), 1))
 
@@ -51,5 +51,5 @@ MIT in each case. */
 #define GROUP_END_MARK(group) (VECTOR_REF ((group), 7))
 
 #define MARK_GROUP(mark) (VECTOR_REF ((mark), 1))
-#define MARK_POSITION(mark) (UNSIGNED_FIXNUM_TO_LONG (VECTOR_REF ((mark), 2)))
+#define MARK_INDEX(mark) (UNSIGNED_FIXNUM_TO_LONG (VECTOR_REF ((mark), 2)))
 #define MARK_LEFT_INSERTING(mark) ((VECTOR_REF ((mark), 3)) != SHARP_F)

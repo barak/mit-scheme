@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/rgxprim.c,v 1.8 1989/09/20 23:11:16 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/rgxprim.c,v 1.9 1991/04/02 19:45:24 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -198,9 +198,11 @@ DEFINE_PRIMITIVE ("RE-SEARCH-SUBSTRING-BACKWARD", Prim_re_search_substr_backward
   match_start = (arg_nonnegative_integer (6));				\
   match_end = (arg_nonnegative_integer (7));				\
   text = (STRING_LOC ((GROUP_TEXT (group)), 0));			\
-  text_start = (MARK_POSITION (GROUP_START_MARK (group)));		\
-  text_end = (MARK_POSITION (GROUP_END_MARK (group)));			\
+  text_start = (MARK_INDEX (GROUP_START_MARK (group)));			\
+  text_end = (MARK_INDEX (GROUP_END_MARK (group)));			\
   gap_start = (GROUP_GAP_START (group));				\
+  if (text_end > gap_start)						\
+    text_end += (GROUP_GAP_LENGTH (group));				\
   if (match_end > gap_start)						\
     {									\
       match_end += (GROUP_GAP_LENGTH (group));				\
