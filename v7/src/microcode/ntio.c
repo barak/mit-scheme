@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.27 2003/02/14 18:48:12 cph Exp $
+$Id: ntio.c,v 1.28 2003/03/29 05:35:49 cph Exp $
 
-Copyright 1992-2001 Massachusetts Institute of Technology
+Copyright 1993,1997,1998,2000,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -27,6 +27,7 @@ USA.
 #include "prims.h"
 #include "nt.h"
 #include "ntio.h"
+#include "ntgui.h"
 #include "osterm.h"
 #include "osfile.h"
 #include "outf.h"
@@ -49,6 +50,12 @@ channel_class_t * NT_channel_class_named_pipe;
 
 static Tchannel channel_allocate (void);
 static long cooked_channel_write (Tchannel, const void *, unsigned long) ;
+static int wait_on_multiple_objects (struct select_registry_s *);
+static int test_multiple_objects (struct select_registry_s *);
+static int wait_on_single_object (Tchannel, unsigned int);
+static int test_single_object (Tchannel, unsigned int);
+static unsigned int test_single_object_1 (Tchannel, unsigned int);
+static int test_for_pending_event (void);
 
 #ifndef NT_DEFAULT_CHANNEL_TABLE_SIZE
 #define NT_DEFAULT_CHANNEL_TABLE_SIZE 1024
@@ -248,8 +255,7 @@ generic_channel_write (Tchannel channel, const void * buffer,
 static long
 generic_channel_n_read (Tchannel channel)
 {
-  /* This means "unknown".  */
-  return (-2);
+  return (CHANNEL_N_READ_UNKNOWN);
 }
 
 static void
@@ -320,7 +326,7 @@ screen_channel_n_read (Tchannel channel)
   /* This is incorrect.  However, it's a pain to do the right thing.
      Furthermore, NT_channel_n_read is only used by "select", and for
      that particular case, this is the correct value.  */
-  return (-1);
+  return (CHANNEL_N_READ_WOULD_BLOCK);
 }
 
 static void
@@ -395,8 +401,7 @@ pipe_channel_n_read (Tchannel channel)
   fprintf (trace_file, "pipe_channel_n_read: n=%d\n", n);
   fflush (trace_file);
 #endif
-  /* Zero bytes available means "read would block", so return -1.  */
-  return ((n == 0) ? (-1) : n);
+  return ((n == 0) ? CHANNEL_N_READ_WOULD_BLOCK : n);
 }
 
 static void
@@ -682,4 +687,262 @@ NT_initialize_channels (void)
   initialize_channel_class_screen ();
   initialize_channel_class_anonymous_pipe ();
   initialize_channel_class_named_pipe ();
+}
+
+struct select_registry_s
+{
+  unsigned int n_channels;
+  unsigned int length;
+  Tchannel * channels;
+  unsigned int * qmodes;
+  unsigned int * rmodes;
+};
+
+select_registry_t
+OS_allocate_select_registry (void)
+{
+  struct select_registry_s * r
+    = (OS_malloc (sizeof (struct select_registry_s)));
+  (r -> n_channels) = 0;
+  (r -> length) = 16;
+  (r -> channels) = (OS_malloc ((sizeof (Tchannel)) * (r -> length)));
+  (r -> qmodes) = (OS_malloc ((sizeof (unsigned int)) * (r -> length)));
+  (r -> rmodes) = (OS_malloc ((sizeof (unsigned int)) * (r -> length)));
+  return (r);
+}
+
+void
+OS_deallocate_select_registry (select_registry_t registry)
+{
+  struct select_registry_s * r = registry;
+  OS_free (r -> rmodes);
+  OS_free (r -> qmodes);
+  OS_free (r -> channels);
+  OS_free (r);
+}
+
+void
+OS_add_to_select_registry (select_registry_t registry, int fd,
+			   unsigned int mode)
+{
+  struct select_registry_s * r = registry;
+  Tchannel channel = fd;
+  unsigned int i = 0;
+
+  while (i < (r -> n_channels))
+    {
+      if (((r -> channels) [i]) == channel)
+	{
+	  ((r -> qmodes) [i]) |= mode;
+	  return;
+	}
+      i += 1;
+    }
+  if (i == (r -> length))
+    {
+      (r -> length) *= 2;
+      (r -> channels) = (OS_realloc ((r -> channels), (r -> length)));
+      (r -> qmodes) = (OS_realloc ((r -> qmodes), (r -> length)));
+      (r -> rmodes) = (OS_realloc ((r -> rmodes), (r -> length)));
+    }
+  ((r -> channels) [i]) = channel;
+  ((r -> qmodes) [i]) = mode;
+  (r -> n_channels) += 1;
+}
+
+void
+OS_remove_from_select_registry (select_registry_t registry, int fd,
+				unsigned int mode)
+{
+  struct select_registry_s * r = registry;
+  Tchannel channel = fd;
+  unsigned int i = 0;
+
+  while (1)
+    {
+      if (i == (r -> n_channels))
+	return;
+      if (((r -> channels) [i]) == channel)
+	{
+	  ((r -> qmodes) [i]) &=~ mode;
+	  if (((r -> qmodes) [i]) == 0)
+	    break;
+	  else
+	    return;
+	}
+      i += 1;
+    }
+  while (i < (r -> n_channels))
+    {
+      ((r -> channels) [i]) = ((r -> channels) [(i + 1)]);
+      ((r -> qmodes) [i]) = ((r -> qmodes) [(i + 1)]);
+      i += 1;
+    }
+  (r -> n_channels) -= 1;
+
+  if (((r -> length) > 16) && ((r -> n_channels) < ((r -> length) / 2)))
+    {
+      (r -> length) /= 2;
+      (r -> channels) = (OS_realloc ((r -> channels), (r -> length)));
+      (r -> qmodes) = (OS_realloc ((r -> qmodes), (r -> length)));
+      (r -> rmodes) = (OS_realloc ((r -> rmodes), (r -> length)));
+    }
+}
+
+unsigned int
+OS_select_registry_length (select_registry_t registry)
+{
+  struct select_registry_s * r = registry;
+  return (r -> n_channels);
+}
+
+void
+OS_select_registry_result (select_registry_t registry, unsigned int index,
+			   int * fd_r, unsigned int * mode_r)
+{
+  struct select_registry_s * r = registry;
+  (*fd_r) = ((r -> channels) [index]);
+  (*mode_r) = ((r -> rmodes) [index]);
+}
+
+int
+OS_test_select_registry (select_registry_t registry, int blockp)
+{
+  struct select_registry_s * r = registry;
+  if (win32_trace_level > 1)
+    {
+      fprintf (win32_trace_file, "OS_test_select_registry: ");
+      fprintf (win32_trace_file, "n_channels=%d blockp=%d\n",
+	       (r -> n_channels), blockp);
+      fflush (win32_trace_file);
+    }
+  {
+    int result
+      = (blockp
+	 ? (wait_on_multiple_objects (r))
+	 : (test_multiple_objects (r)));
+    if (win32_trace_level > 1)
+      {
+	fprintf (win32_trace_file, "OS_test_select_registry: ");
+	fprintf (win32_trace_file, "result=%d\n", result);
+	fflush (win32_trace_file);
+      }
+    return (result);
+  }
+}
+
+static int
+wait_on_multiple_objects (struct select_registry_s * r)
+{
+  while (1)
+    {
+      {
+	int result = (test_multiple_objects (r));
+	if (result != 0)
+	  return (result);
+      }
+      /* Block waiting for a message to arrive.  The asynchronous
+	 interrupt thread guarantees that a message will arrive in a
+	 reasonable amount of time.  */
+      if ((MsgWaitForMultipleObjects (0, 0, FALSE, INFINITE, QS_ALLINPUT))
+	  == WAIT_FAILED)
+	NT_error_api_call
+	  ((GetLastError ()), apicall_MsgWaitForMultipleObjects);
+    }
+}
+
+static int
+test_multiple_objects (struct select_registry_s * r)
+{
+  unsigned int i;
+  unsigned int j;
+
+  j = 0;
+  for (i = 0; (i < (r -> n_channels)); i += 1)
+    {
+      ((r -> rmodes) [i])
+	= (test_single_object_1 (((r -> channels) [i]),
+				 ((r -> qmodes) [i])));
+      if (((r -> rmodes) [i]) != 0)
+	j += 1;
+    }
+  return
+    ((j > 0)
+     ? j
+     : (pending_interrupts_p ())
+     ? SELECT_INTERRUPT
+     : (OS_process_any_status_change ())
+     ? SELECT_PROCESS_STATUS_CHANGE
+     : 0);
+}
+
+int
+OS_test_select_descriptor (int fd, int blockp, unsigned int qmode)
+{
+  Tchannel channel = fd;
+  return
+    (blockp
+     ? (wait_on_single_object (channel, qmode))
+     : (test_single_object (channel, qmode)));
+}
+
+static int
+wait_on_single_object (Tchannel channel, unsigned int qmode)
+{
+  while (1)
+    {
+      int result = (test_single_object (channel, qmode));
+      if (result != 0)
+	return (result);
+
+      /* Block waiting for a message to arrive.  The asynchronous
+	 interrupt thread guarantees that a message will arrive in a
+	 reasonable amount of time.  */
+      if ((MsgWaitForMultipleObjects (0, 0, FALSE, INFINITE, QS_ALLINPUT))
+	  == WAIT_FAILED)
+	NT_error_api_call
+	  ((GetLastError ()), apicall_MsgWaitForMultipleObjects);
+    }
+}
+
+static int
+test_single_object (Tchannel channel, unsigned int qmode)
+{
+  unsigned int rmode = (test_single_object_1 (channel, qmode));
+  return
+    ((rmode > 0)
+     ? rmode
+     : (pending_interrupts_p ())
+     ? SELECT_INTERRUPT
+     : (OS_process_any_status_change ())
+     ? SELECT_PROCESS_STATUS_CHANGE
+     : 0);
+}
+  
+
+static unsigned int
+test_single_object_1 (Tchannel channel, unsigned int qmode)
+{
+  unsigned int rmode = (qmode & SELECT_MODE_WRITE);
+  if (((qmode & SELECT_MODE_READ) != 0)
+      && ((channel == (OS_tty_input_channel ()))
+	  ? ((Screen_pending_events_p ()) || (test_for_pending_event ()))
+	  : ((NT_channel_n_read (channel)) > 0)))
+    rmode |= SELECT_MODE_READ;
+  return (rmode);
+}
+
+static int
+test_for_pending_event (void)
+{
+  while (1)
+    {
+      MSG m;
+      int mp = (PeekMessage ((&m), 0, 0, 0, PM_NOREMOVE));
+      if (!mp)
+	return (0);
+      if ((m . message) != WM_SCHEME_INTERRUPT)
+	return (1);
+      PeekMessage ((&m), 0, 0, 0, PM_REMOVE);
+    }
 }

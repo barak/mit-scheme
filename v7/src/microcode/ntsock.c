@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntsock.c,v 1.15 2003/02/14 18:28:21 cph Exp $
+$Id: ntsock.c,v 1.16 2003/03/29 05:35:55 cph Exp $
 
-Copyright (c) 1997-2002 Massachusetts Institute of Technology
+Copyright 1997,1998,1999,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -295,8 +295,7 @@ socket_channel_n_read (Tchannel channel)
 {
   unsigned long n;
   VOID_SOCKET_CALL (ioctlsocket, ((CHANNEL_SOCKET (channel)), FIONREAD, (&n)));
-  /* Zero bytes available means "read would block", so return -1.  */
-  return ((n == 0) ? (-1) : n);
+  return ((n == 0) ? CHANNEL_N_READ_WOULD_BLOCK : n);
 }
 
 static long

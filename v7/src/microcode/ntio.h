@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntio.h,v 1.13 2003/02/14 18:28:20 cph Exp $
+$Id: ntio.h,v 1.14 2003/03/29 05:35:52 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright 1993,1994,1997,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -47,6 +47,9 @@ typedef struct _channel_class_t
 #define CHANNEL_CLASS_OP_WRITE(class) ((class) -> op_write)
 #define CHANNEL_CLASS_OP_CLOSE(class) ((class) -> op_close)
 #define CHANNEL_CLASS_OP_N_READ(class) ((class) -> op_n_read)
+
+#define CHANNEL_N_READ_UNKNOWN (-2)
+#define CHANNEL_N_READ_WOULD_BLOCK (-1)
 
 struct channel
 {
