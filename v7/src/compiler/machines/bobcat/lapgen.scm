@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.164 1987/05/17 19:19:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.165 1987/05/18 16:23:57 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -186,6 +186,11 @@ MIT in each case. |#
 	(if alias
 	    (register-reference alias)
 	    (pseudo-register-home register)))))
+
+(define (coerce->machine-register register)
+  (if (machine-register? register)
+      (register-reference register)
+      (reference-alias-register! register false)))
 
 (define (code-object-label-initialize code-object)
   false)
@@ -429,7 +434,6 @@ MIT in each case. |#
 
 (define-rule predicate
   (TRUE-TEST (REGISTER (? register)))
-  (QUALIFIER (pseudo-register? register))
   (set-standard-branches! 'NE)
   `(,(test-non-pointer (ucode-type false) 0 (coerce->any register))))
 
@@ -456,7 +460,6 @@ MIT in each case. |#
 
 (define-rule predicate
   (UNASSIGNED-TEST (REGISTER (? register)))
-  (QUALIFIER (pseudo-register? register))
   (set-standard-branches! 'EQ)
   `(,(test-non-pointer (ucode-type unassigned) 0 (coerce->any register))))
 
@@ -474,7 +477,7 @@ MIT in each case. |#
 			   (coerce->any register)))
       `((CMP L
 	     (@PCR ,(constant->label constant))
-	     ,(reference-alias-register! register false)))))
+	     ,(coerce->machine-register register)))))
 
 (define (eq-test/constant*memory constant register offset)
   (set-standard-branches! 'EQ)
@@ -493,7 +496,7 @@ MIT in each case. |#
 	 (lambda (register-1 register-2)
 	   `((CMP L
 		  ,(coerce->any register-2)
-		  ,(reference-alias-register! register-1 false))))))
+		  ,(coerce->machine-register register-1))))))
     (if (or (and (not (register-has-alias? register-1 'DATA))
 		 (register-has-alias? register-2 'DATA))
 	    (and (not (register-has-alias? register-1 'ADDRESS))
@@ -505,7 +508,7 @@ MIT in each case. |#
   (set-standard-branches! 'EQ)
   `((CMP L
 	 ,(indirect-reference! register-2 offset-2)
-	 ,(reference-alias-register! register-1 false))))
+	 ,(coerce->machine-register register-1))))
 
 (define (eq-test/memory*memory register-1 offset-1 register-2 offset-2)
   (set-standard-branches! 'EQ)
@@ -523,12 +526,10 @@ MIT in each case. |#
 
 (define-rule predicate
   (EQ-TEST (REGISTER (? register)) (CONSTANT (? constant)))
-  (QUALIFIER (pseudo-register? register))
   (eq-test/constant*register constant register))
 
 (define-rule predicate
   (EQ-TEST (CONSTANT (? constant)) (REGISTER (? register)))
-  (QUALIFIER (pseudo-register? register))
   (eq-test/constant*register constant register))
 
 (define-rule predicate
@@ -541,19 +542,16 @@ MIT in each case. |#
 
 (define-rule predicate
   (EQ-TEST (REGISTER (? register-1)) (REGISTER (? register-2)))
-  (QUALIFIER (pseudo-register? register-1) (pseudo-register? register-2))
   (eq-test/register*register register-1 register-2))
 
 (define-rule predicate
   (EQ-TEST (OFFSET (REGISTER (? register-1)) (? offset-1))
 	   (REGISTER (? register-2)))
-  (QUALIFIER (pseudo-register? register-2))
   (eq-test/register*memory register-2 register-1 offset-1))
 
 (define-rule predicate
   (EQ-TEST (REGISTER (? register-1))
 	   (OFFSET (REGISTER (? register-2)) (? offset-2)))
-  (QUALIFIER (pseudo-register? register-1))
   (eq-test/register*memory register-1 register-2 offset-2))
 
 (define-rule predicate
