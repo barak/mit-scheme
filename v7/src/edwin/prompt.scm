@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.196 2001/05/10 02:11:44 cph Exp $
+;;; $Id: prompt.scm,v 1.197 2001/09/25 12:57:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -939,9 +939,7 @@ A complex command is one which used the minibuffer.
 The command is placed in the minibuffer as a Scheme form for editing.
 The result is executed, repeating the command as changed.
 If the command has been changed or is not the most recent previous command
-it is added to the front of the command history.
-Whilst editing the command, the following commands are available:
-\\{repeat-complex-command}"
+it is added to the front of the command history."
   "p"
   (lambda (argument)
     ;; Kludge.
