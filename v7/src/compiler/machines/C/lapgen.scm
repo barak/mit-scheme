@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.10 1993/11/13 06:44:26 gjr Exp $
+$Id: lapgen.scm,v 1.11 1998/02/19 21:28:55 adams Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -614,3 +614,8 @@ MIT in each case. |#
     quotient remainder modulo
     reflect-to-interface interrupt-continuation-2
     compiled-code-bkpt compiled-closure-bkpt))
+
+
+(define (pre-lapgen-analysis rgraphs)
+  rgraphs
+  unspecific)

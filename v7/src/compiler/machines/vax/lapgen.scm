@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.14 1992/08/17 16:36:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.15 1998/02/19 21:29:24 adams Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -604,3 +604,8 @@ MIT in each case. |#
 (define-integrable (invoke-interface-jsb code)
   (LAP ,@(load-rn code 0)
        (JSB ,entry:compiler-scheme-to-interface-jsb)))
+
+
+(define (pre-lapgen-analysis rgraphs)
+  rgraphs
+  unspecific)

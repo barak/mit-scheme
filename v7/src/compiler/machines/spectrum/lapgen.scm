@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 4.46 1993/12/08 17:48:53 gjr Exp $
+$Id: lapgen.scm,v 4.47 1998/02/19 21:28:43 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -740,3 +740,8 @@ MIT in each case. |#
       (LAP ,@clear-regs
 	   ,@load-regs
 	   ,@(clear-map!)))))
+
+
+(define (pre-lapgen-analysis rgraphs)
+  rgraphs
+  unspecific)

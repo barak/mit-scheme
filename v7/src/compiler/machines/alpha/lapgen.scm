@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.4 1993/02/18 01:28:29 gjr Exp $
+$Id: lapgen.scm,v 1.5 1998/02/19 21:29:32 adams Exp $
 
 Copyright (c) 1992-1993 Digital Equipment Corporation (D.E.C.)
 
@@ -930,3 +930,8 @@ case.
       (LAP ,@clear-regs
 	   ,@load-regs
 	   ,@(clear-map!)))))
+
+
+(define (pre-lapgen-analysis rgraphs)
+  rgraphs
+  unspecific)

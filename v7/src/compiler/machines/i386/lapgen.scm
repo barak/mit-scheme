@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.25 1998/02/18 07:55:07 adams Exp $
+$Id: lapgen.scm,v 1.26 1998/02/19 21:28:34 adams Exp $
 
 Copyright (c) 1992-1998 Massachusetts Institute of Technology
 
@@ -689,3 +689,10 @@ MIT in each case. |#
 (define (lookup-arithmetic-method operator methods)
   (cdr (or (assq operator (cdr methods))
 	   (error "Unknown operator" operator))))
+
+(define (pre-lapgen-analysis rgraphs)
+  (for-each (lambda (rgraph)
+	      (for-each (lambda (edge)
+			  (determine-interrupt-checks (edge-right-node edge)))
+		(rgraph-entry-edges rgraph)))
+    rgraphs))

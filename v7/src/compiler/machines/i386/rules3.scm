@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.32 1998/02/16 03:55:28 cph Exp $
+$Id: rules3.scm,v 1.33 1998/02/19 21:28:10 adams Exp $
 
 Copyright (c) 1992-1998 Massachusetts Institute of Technology
 
@@ -149,6 +149,7 @@ MIT in each case. |#
   (INVOCATION:CACHE-REFERENCE (? frame-size) (? continuation) (? extension))
   (QUALIFIER (interpreter-call-argument? extension))
   continuation
+  (expect-no-exit-interrupt-checks)
   (let* ((set-extension
 	  (interpreter-call-argument->machine-register! extension ecx))
 	 (set-address
@@ -166,6 +167,7 @@ MIT in each case. |#
   (INVOCATION:LOOKUP (? frame-size) (? continuation) (? environment) (? name))
   (QUALIFIER (interpreter-call-argument? environment))
   continuation
+  (expect-no-entry-interrupt-checks)
   (let* ((set-environment
 	  (interpreter-call-argument->machine-register! environment ecx))
 	 (set-name (object->machine-register! name edx)))
@@ -180,7 +182,6 @@ MIT in each case. |#
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
   continuation				; ignored
   ;;
-  ;;(expect-no-exit-interrupt-checks)
   (let-syntax ((invoke
 		#|
 		(macro (code entry)
@@ -239,7 +240,7 @@ MIT in each case. |#
 	     (? continuation)
 	     ,(make-primitive-procedure name true))
 	    frame-size continuation
-	    '(expect-no-exit-interrupt-checks)
+	    (expect-no-exit-interrupt-checks)
 	    (special-primitive-invocation
 	     ,(symbol-append 'CODE:COMPILER- name)))))
 
@@ -251,7 +252,7 @@ MIT in each case. |#
 	     (? continuation)
 	     ,(make-primitive-procedure name true))
 	    frame-size continuation
-	    '(expect-no-exit-interrupt-checks)
+	    (expect-no-exit-interrupt-checks)
 	    (optimized-primitive-invocation
 	     ,(symbol-append 'ENTRY:COMPILER- name))))))
 
@@ -458,6 +459,7 @@ MIT in each case. |#
 
 (define-rule statement
   (IC-PROCEDURE-HEADER (? internal-label))
+  (get-entry-interrupt-checks)		; force search
   (let ((procedure (label->object internal-label)))
     (let ((external-label (rtl-procedure/external-label procedure))
 	  (gc-label (generate-label)))
@@ -498,11 +500,8 @@ MIT in each case. |#
 ;;    HEAP       heap check required here
 ;;    INTERRUPT  check required here to avoid loops without checks.
 ;;
-;; The traversal and decision making is done on the first call and
-;; cached.  It would have been better to have a back-end specific
-;; pre-lapgen pass to do the decision making.  Then the cfg marking
-;; abstraction could have been used, but we can't use it here because
-;; the lapgen control is already using it.
+;; The traversal and decision making is done immediately prior to LAP
+;; generation (from PRE-LAPGEN-ANALYSIS.)
 
 (define (get-entry-interrupt-checks)
   (get-interupt-checks 'ENTRY-INTERRUPT-CHECKS))
@@ -519,14 +518,9 @@ MIT in each case. |#
       (error "No exit interrupt checks expected here" *current-bblock*)))
 
 (define (get-interupt-checks kind)
-  (let retry ((failed? #F))
-    (cond ((cfg-node-get *current-bblock* kind)
-	   => cdr)
-	  (failed?  (error "DETERMINE-INTERRUPT-CHECKS failed" kind) #F)
-	  (else
-	   (determine-interrupt-checks)
-	   (retry #T)))))
-
+  (cond ((cfg-node-get *current-bblock* kind)
+	 => cdr)
+	(else  (error "DETERMINE-INTERRUPT-CHECKS failed" kind))))
 
 ;; This algorithm finds leaf-procedure-like paths in the rtl control
 ;; flow graph.  If a procedure entry point can only reach a return, it
@@ -549,13 +543,13 @@ MIT in each case. |#
 ;; The algorithm has three phases: (1) explore the CFG to find all
 ;; entry and exit points, (2) propagate entry (exit) information so
 ;; that each potential interrupt check point knows what kinds of exits
-;; (entrys) it reaches (is reached from), and (3) decide on the kninds
+;; (entrys) it reaches (is reached from), and (3) decide on the kinds
 ;; of interrupt check that are required at each entry and exit.
 ;;
 ;; [TOFU is just a header node for the list of interrupt checks, to
 ;; distingish () and #F]
 
-(define (determine-interrupt-checks)
+(define (determine-interrupt-checks bblock)
   (let ((entries '())
 	(exits '()))
 
@@ -574,7 +568,10 @@ MIT in each case. |#
 	    (for-each-previous-node bblock explore)
 	    (for-each-subsequent-node bblock explore)
 	    (if (and (snode? bblock)
-		     (not (snode-next bblock)))
+		     (or (not (snode-next bblock))
+			 (let ((last (last-insn bblock)))
+			   (or (rtl:invocation:special-primitive? last)
+			       (rtl:invocation:primitive? last)))))
 		(set! exits (cons bblock exits))))))
 
     (define (for-each-subsequent-node node procedure)
@@ -661,7 +658,7 @@ MIT in each case. |#
 	      (checks! '()))
 	  (checks! '())))
 
-    (explore *current-bblock*)
+    (explore bblock)
 
     (for-each propagate-entry-info entries)
     (for-each propagate-exit-info exits)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 4.49 1993/07/08 01:06:53 gjr Exp $
+$Id: lapgen.scm,v 4.50 1998/02/19 21:29:38 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -1285,3 +1285,8 @@ MIT in each case. |#
 (define-integrable (invoke-interface-jsr code)
   (LAP (MOVEQ (& ,code) (D 0))
        (JSR ,entry:compiler-scheme-to-interface-jsr)))
+
+
+(define (pre-lapgen-analysis rgraphs)
+  rgraphs
+  unspecific)

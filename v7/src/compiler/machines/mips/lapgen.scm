@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.14 1997/03/30 23:33:17 cph Exp $
+$Id: lapgen.scm,v 1.15 1998/02/19 21:29:01 adams Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -697,3 +697,8 @@ MIT in each case. |#
 	(delete-register! rtl-reg)
 	(flush-register! machine-reg)
 	(add-pseudo-register-alias! rtl-reg machine-reg))))
+
+
+(define (pre-lapgen-analysis rgraphs)
+  rgraphs
+  unspecific)

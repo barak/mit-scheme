@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapgn1.scm,v 4.16 1993/12/08 17:43:55 gjr Exp $
+$Id: lapgn1.scm,v 4.17 1998/02/19 21:28:24 adams Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-1998 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,6 +42,7 @@ MIT in each case. |#
 (define *insert-rtl?*)
 
 (define (generate-lap rgraphs remote-links process-constants-block)
+  (pre-lapgen-analysis rgraphs)
   (fluid-let ((*insert-rtl?*
 	       (and compiler:generate-lap-files?
 		    compiler:intersperse-rtl-in-lap?)))

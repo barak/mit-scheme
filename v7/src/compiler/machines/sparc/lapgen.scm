@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/sparc/lapgen.scm,v 1.1 1993/06/08 06:11:02 gjr Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/sparc/lapgen.scm,v 1.2 1998/02/19 21:29:18 adams Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -686,3 +686,8 @@ MIT in each case. |#
 	(delete-register! rtl-reg)
 	(flush-register! machine-reg)
 	(add-pseudo-register-alias! rtl-reg machine-reg))))
+
+
+(define (pre-lapgen-analysis rgraphs)
+  rgraphs
+  unspecific)
