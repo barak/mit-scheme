@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.186 1996/04/23 23:08:15 cph Exp $
+$Id: edwin.pkg,v 1.187 1996/04/23 23:23:56 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -1029,7 +1029,6 @@ MIT in each case. |#
 	    edwin-command$set-frame-size
 	    edwin-command$set-internal-border-width
 	    edwin-command$set-mouse-color
-	    edwin-command$set-mouse-shape
 	    edwin-command$set-mouse-shape
 	    edwin-command$x-auto-raise-mode
 	    edwin-command$x-lower-screen

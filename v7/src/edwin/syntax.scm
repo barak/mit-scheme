@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: syntax.scm,v 1.77 1996/04/23 22:36:02 cph Exp $
+;;;	$Id: syntax.scm,v 1.78 1996/04/23 23:25:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -212,8 +212,7 @@ which is selected so you can see it."
 		(begin
 		  (write-string ", matches ")
 		  (write-string (emacs-key-name (ascii->char match) false)))))
-	  (let ((cbits (fix:and #xFF (fix:lsh entry -12)))
-		(decode-comment-bit
+	  (let ((decode-comment-bit
 		 (lambda (code pos se style)
 		   (if (not (fix:= 0 (fix:and code entry)))
 		       (begin
