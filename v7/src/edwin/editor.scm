@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.203 1991/05/17 18:36:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.204 1991/05/17 20:04:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -54,20 +54,20 @@
 		 (current-editor edwin-editor)
 		 (recursive-edit-continuation false)
 		 (recursive-edit-level 0))
-       (bind-condition-handler (list condition-type:error)
-	   internal-error-handler
-	 (lambda ()
-	   (editor-grab-display edwin-editor
-	     (lambda (with-editor-ungrabbed)
-	       (let ((message (cmdl-message/null)))
-		 (push-cmdl
-		  (lambda (cmdl)
-		    cmdl		;ignore
-		    (top-level-command-reader edwin-initialization)
-		    message)
-		  false
-		  message
-		  (editor-spawn-child-cmdl with-editor-ungrabbed))))))))))
+       (editor-grab-display edwin-editor
+	 (lambda (with-editor-ungrabbed)
+	   (let ((message (cmdl-message/null)))
+	     (push-cmdl
+	      (lambda (cmdl)
+		cmdl		;ignore
+		(bind-condition-handler (list condition-type:error)
+		    internal-error-handler
+		  (lambda ()
+		    (top-level-command-reader edwin-initialization)))
+		message)
+	      false
+	      message
+	      (editor-spawn-child-cmdl with-editor-ungrabbed))))))))
   (if edwin-finalization (edwin-finalization))
   unspecific)
 
