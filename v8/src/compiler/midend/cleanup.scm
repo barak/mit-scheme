@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.26 1995/09/05 19:45:32 adams Exp $
+$Id: cleanup.scm,v 1.27 1995/11/28 17:43:59 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -404,13 +404,19 @@ MIT in each case. |#
   (define-commutative-cleanup-rewrite fix:xor)
   (define-commutative-cleanup-rewrite fix:+ +)
   (define-commutative-cleanup-rewrite fix:* *))
-
+
 (define-cleanup-rewrite 'STRING->SYMBOL 1
   (lambda (expr)
     (let  ((value (form/number? expr)))
       (and (QUOTE/? expr)
 	   (string? (quote/text expr))
 	   `(QUOTE ,(string->symbol (quote/text expr)))))))
+
+(define-cleanup-rewrite (make-primitive-procedure 'EQ?) 2
+  (lambda (e1 e2)
+    (and (QUOTE/? e1)
+	 (QUOTE/? e2)
+	 `(QUOTE ,(eq? (quote/text e1) (quote/text e2))))))
 
 ;;
 (let ((NOT-primitive  (make-primitive-procedure 'NOT)))
