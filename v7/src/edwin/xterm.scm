@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xterm.scm,v 1.62 2000/10/26 17:55:04 cph Exp $
+;;; $Id: xterm.scm,v 1.63 2000/10/26 18:03:15 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -736,15 +736,9 @@
 (define-event-handler event-type:unmap
   (lambda (screen event)
     event
-    (and (not (screen-deleted? screen))
-	 (begin
-	   (%set-screen-visibility! screen 'UNMAPPED)
-	   (and (selected-screen? screen)
-		(let ((screen (other-screen screen 1 #f)))
-		  (and screen
-		       (make-input-event 'SELECT-SCREEN
-					 select-screen
-					 screen))))))))
+    (if (not (screen-deleted? screen))
+	(%set-screen-visibility! screen 'UNMAPPED))
+    #f))
 
 (define-event-handler event-type:visibility
   (lambda (screen event)
