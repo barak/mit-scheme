@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.52 2000/10/20 02:14:59 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.53 2001/03/18 06:26:13 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -93,6 +93,17 @@
   (displayed-header-fields define accessor)
   (internal-time accessor message-internal-time))
 
+(define-method file-message-body ((message <rmail-message>))
+  (let ((body (call-next-method message)))
+    (if (string? body)
+	body
+	(let ((xstring (vector-ref body 0))
+	      (start (vector-ref body 1))
+	      (end (vector-ref body 2)))
+	  (let ((body (make-string (- end start))))
+	     (xsubstring-move! xstring start end body 0)
+	     body)))))
+
 (define-method rmail-message-displayed-header-fields ((message <message>))
   message
   'UNDEFINED)
@@ -116,16 +127,22 @@
 	   (if (not (eq? 'UNKNOWN messages))
 	       (for-each detach-message! messages)))
 	 (set-file-folder-messages! folder '())))
-      (call-with-binary-input-file pathname
-	(lambda (port)
-	  (set-rmail-folder-header-fields! folder (read-rmail-prolog port))
-	  (let loop ((line #f))
-	    (call-with-values (lambda () (read-rmail-message port line))
-	      (lambda (message line)
-		(if message
-		    (begin
-		      (append-message message (folder-url folder))
-		      (loop line)))))))))))
+      (call-with-input-xstring
+       (call-with-binary-input-file pathname
+	 (lambda (port)
+	   (let ((n-bytes ((port/operation port 'LENGTH) port)))
+	     (let ((xstring (allocate-external-string n-bytes)))
+	       (read-substring! xstring 0 n-bytes port)
+	       xstring))))
+       (lambda (port)
+	 (set-rmail-folder-header-fields! folder (read-rmail-prolog port))
+	 (let loop ((line #f))
+	   (call-with-values (lambda () (read-rmail-message port line))
+	     (lambda (message line)
+	       (if message
+		   (begin
+		     (append-message message (folder-url folder))
+		     (loop line)))))))))))
 
 (define (read-rmail-prolog port)
   (if (not (rmail-prolog-start-line? (read-required-line port)))
@@ -157,7 +174,12 @@
       (let* ((headers (read-rmail-header-fields port))
 	     (displayed-headers
 	      (lines->header-fields (read-header-lines port)))
-	     (body (read-to-eom port))
+	     (body
+	      (let ((start (xstring-port/position port)))
+		(discard-to-eom port)
+		(vector (xstring-port/xstring port)
+			start
+			(xstring-port/position port))))
 	     (finish
 	      (lambda (headers displayed-headers)
 		(call-with-values
