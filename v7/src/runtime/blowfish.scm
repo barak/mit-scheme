@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: blowfish.scm,v 1.11 1999/08/09 18:25:45 cph Exp $
+$Id: blowfish.scm,v 1.12 1999/08/09 18:27:38 cph Exp $
 
 Copyright (c) 1997, 1999 Massachusetts Institute of Technology
 
@@ -75,10 +75,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  ((ucode-primitive blowfish-set-key 1) string)))
 
   (set! blowfish-cbc
-	(lambda (input key init-vector encrypt?)
+	(lambda (input output key init-vector encrypt?)
 	  (check-key)
-	  ((ucode-primitive blowfish-cbc-v2 5) input key init-vector
-					       encrypt?)))
+	  ((ucode-primitive blowfish-cbc-v2 5)
+	   input output key init-vector encrypt?)))
 
   (set! blowfish-cfb64
 	(lambda (input input-start input-end output output-start

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cpress.scm,v 1.11 1999/08/09 18:23:40 cph Exp $
+$Id: cpress.scm,v 1.12 1999/08/09 18:26:47 cph Exp $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 
@@ -710,7 +710,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (flush-output-buffer)
   (let ((ob output-buffer))
     (if (fix:< 0 (car ob))
-	(output-port/write-bytes output-port (cdr ob) 0 (car ob))))
+	(output-port/write-substring output-port (cdr ob) 0 (car ob))))
   (output-port/flush-output output-port))
 
 (define (uncompress ifile ofile)
