@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/termcap.scm,v 1.1 1990/11/02 04:16:24 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/termcap.scm,v 1.2 1992/04/22 21:11:30 mhwu Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -131,141 +131,146 @@ MIT in each case. |#
   (ts-visible-bell false read-only true))
 
 (define (make-termcap-description terminal-type-name)
-  (and (termcap-initialize terminal-type-name)
-       (let ((supdup? (string=? terminal-type-name "supdup"))
-	     (tn-standout-marker-width (termcap-get-number "sg"))
-	     (ts-cursor-down
-	      (or (termcap-get-string "do") (termcap-get-string "nl")))
-	     (ts-delete-char (termcap-get-string "dc"))
-	     (ts-delete-line (termcap-get-string "dl"))
-	     (ts-delete-multi-char (termcap-get-string "DC"))
-	     (ts-delete-multi-line (termcap-get-string "DL"))
-	     (ts-enter-delete-mode (termcap-get-string "dm"))
-	     (ts-enter-insert-mode (termcap-get-string "im"))
-	     (ts-enter-standout-mode (termcap-get-string "so"))
-	     (ts-exit-standout-mode (termcap-get-string "se"))
-	     (ts-forward-scroll (termcap-get-string "sf"))
-	     (ts-forward-scroll-multi (termcap-get-string "SF"))
-	     (ts-insert-char (termcap-get-string "ic"))
-	     (ts-insert-line (termcap-get-string "al"))
-	     (ts-insert-multi-char (termcap-get-string "IC"))
-	     (ts-insert-multi-line (termcap-get-string "AL"))
-	     (ts-pad-inserted-char (termcap-get-string "ip"))
-	     (ts-reverse-scroll (termcap-get-string "sr"))
-	     (ts-reverse-scroll-multi (termcap-get-string "SR"))
-	     (ts-set-scroll-region (termcap-get-string "cs"))
-	     (ts-set-scroll-region-1 (termcap-get-string "cS"))
-	     (ts-set-window (termcap-get-string "wi")))
-	 (if (not ts-forward-scroll)
-	     (set! ts-forward-scroll ts-cursor-down))
-	 (if (not ts-enter-standout-mode)
-	     (begin
-	       (set! tn-standout-marker-width (termcap-get-number "ug"))
-	       (set! ts-enter-standout-mode (termcap-get-string "us"))
-	       (set! ts-exit-standout-mode (termcap-get-string "ue"))))
-	 (%make-termcap-description
-	  terminal-type-name
+  (if (or (string-ci=? terminal-type-name "ansi.sys")
+	  (string-ci=? terminal-type-name "pc-console"))
+      (let ((x-size (output-port/x-size console-output-port))
+	    (y-size (output-port/y-size console-output-port)))
+	(make-ansi-terminal-description x-size y-size))
+      (and (termcap-initialize terminal-type-name)
+	   (let ((supdup? (string=? terminal-type-name "supdup"))
+		 (tn-standout-marker-width (termcap-get-number "sg"))
+		 (ts-cursor-down
+		  (or (termcap-get-string "do") (termcap-get-string "nl")))
+		 (ts-delete-char (termcap-get-string "dc"))
+		 (ts-delete-line (termcap-get-string "dl"))
+		 (ts-delete-multi-char (termcap-get-string "DC"))
+		 (ts-delete-multi-line (termcap-get-string "DL"))
+		 (ts-enter-delete-mode (termcap-get-string "dm"))
+		 (ts-enter-insert-mode (termcap-get-string "im"))
+		 (ts-enter-standout-mode (termcap-get-string "so"))
+		 (ts-exit-standout-mode (termcap-get-string "se"))
+		 (ts-forward-scroll (termcap-get-string "sf"))
+		 (ts-forward-scroll-multi (termcap-get-string "SF"))
+		 (ts-insert-char (termcap-get-string "ic"))
+		 (ts-insert-line (termcap-get-string "al"))
+		 (ts-insert-multi-char (termcap-get-string "IC"))
+		 (ts-insert-multi-line (termcap-get-string "AL"))
+		 (ts-pad-inserted-char (termcap-get-string "ip"))
+		 (ts-reverse-scroll (termcap-get-string "sr"))
+		 (ts-reverse-scroll-multi (termcap-get-string "SR"))
+		 (ts-set-scroll-region (termcap-get-string "cs"))
+		 (ts-set-scroll-region-1 (termcap-get-string "cS"))
+		 (ts-set-window (termcap-get-string "wi")))
+	     (if (not ts-forward-scroll)
+		 (set! ts-forward-scroll ts-cursor-down))
+	     (if (not ts-enter-standout-mode)
+		 (begin
+		   (set! tn-standout-marker-width (termcap-get-number "ug"))
+		   (set! ts-enter-standout-mode (termcap-get-string "us"))
+		   (set! ts-exit-standout-mode (termcap-get-string "ue"))))
+	     (%make-termcap-description
+	      terminal-type-name
 
-	  ;; delete-is-insert-mode?
-	  (and ts-enter-delete-mode
-	       ts-enter-insert-mode
-	       (string=? ts-enter-delete-mode ts-enter-insert-mode))
-	  ;; enter/exit-standout-mode-same?
-	  (and ts-enter-standout-mode
-	       ts-exit-standout-mode
-	       (string=? ts-enter-standout-mode ts-exit-standout-mode))
-	  ;; insert/delete-char-ok?
-	  (and (or ts-insert-char ts-insert-multi-char
-		   ts-enter-insert-mode ts-pad-inserted-char)
-	       (or ts-delete-char ts-delete-multi-char))
-	  ;; insert/delete-line-ok?
-	  (or (and (or ts-insert-line ts-insert-multi-line)
-		   (or ts-delete-line ts-delete-multi-line))
-	      (and (or ts-set-scroll-region
-		       ts-set-scroll-region-1
-		       ts-set-window)
-		   (or ts-forward-scroll ts-forward-scroll-multi)
-		   (or ts-reverse-scroll ts-reverse-scroll-multi)))
-	  ;; scroll-region-ok?
-	  (or ts-set-scroll-region ts-set-scroll-region-1 ts-set-window)
+	      ;; delete-is-insert-mode?
+	      (and ts-enter-delete-mode
+		   ts-enter-insert-mode
+		   (string=? ts-enter-delete-mode ts-enter-insert-mode))
+	      ;; enter/exit-standout-mode-same?
+	      (and ts-enter-standout-mode
+		   ts-exit-standout-mode
+		   (string=? ts-enter-standout-mode ts-exit-standout-mode))
+	      ;; insert/delete-char-ok?
+	      (and (or ts-insert-char ts-insert-multi-char
+		       ts-enter-insert-mode ts-pad-inserted-char)
+		   (or ts-delete-char ts-delete-multi-char))
+	      ;; insert/delete-line-ok?
+	      (or (and (or ts-insert-line ts-insert-multi-line)
+		       (or ts-delete-line ts-delete-multi-line))
+		  (and (or ts-set-scroll-region
+			   ts-set-scroll-region-1
+			   ts-set-window)
+		       (or ts-forward-scroll ts-forward-scroll-multi)
+		       (or ts-reverse-scroll ts-reverse-scroll-multi)))
+	      ;; scroll-region-ok?
+	      (or ts-set-scroll-region ts-set-scroll-region-1 ts-set-window)
 
-	  (termcap-get-flag "am")	;tf-automatic-wrap
-	  (termcap-get-flag "bw")	;tf-cursor-backwards-wrap
-	  (termcap-get-flag "gn")	;tf-generic
-	  (termcap-get-flag "hc")	;tf-hardcopy
-	  (termcap-get-flag "hz")	;tf-hazeltine
-	  (termcap-get-flag "mi")	;tf-insert-mode-motion
-	  supdup?			;tf-lose-wrap
-	  (termcap-get-flag "xn")	;tf-magic-wrap
-	  (termcap-get-flag "da")	;tf-memory-above-screen
-	  (or (termcap-get-flag "db")	;tf-memory-below-screen
-	      supdup?)
-	  (or (termcap-get-flag "km")	;tf-meta-key
-	      (termcap-get-flag "MT"))
-	  (termcap-get-flag "in")	;tf-must-write-spaces
-	  (termcap-get-flag "ns")	;tf-newline-doesnt-scroll
-	  (termcap-get-flag "os")	;tf-overstrike
-	  (termcap-get-flag "eo")	;tf-overstrike-space-erase
-	  (termcap-get-flag "xs")	;tf-overwrite-preserves-standout
-	  (termcap-get-flag "ms")	;tf-standout-mode-motion
-	  (termcap-get-flag "xt")	;tf-teleray
-	  (termcap-get-flag "ul")	;tf-underscore
+	      (termcap-get-flag "am")	;tf-automatic-wrap
+	      (termcap-get-flag "bw")	;tf-cursor-backwards-wrap
+	      (termcap-get-flag "gn")	;tf-generic
+	      (termcap-get-flag "hc")	;tf-hardcopy
+	      (termcap-get-flag "hz")	;tf-hazeltine
+	      (termcap-get-flag "mi")	;tf-insert-mode-motion
+	      supdup?			;tf-lose-wrap
+	      (termcap-get-flag "xn")	;tf-magic-wrap
+	      (termcap-get-flag "da")	;tf-memory-above-screen
+	      (or (termcap-get-flag "db")	;tf-memory-below-screen
+		  supdup?)
+	      (or (termcap-get-flag "km")	;tf-meta-key
+		  (termcap-get-flag "MT"))
+	      (termcap-get-flag "in")	;tf-must-write-spaces
+	      (termcap-get-flag "ns")	;tf-newline-doesnt-scroll
+	      (termcap-get-flag "os")	;tf-overstrike
+	      (termcap-get-flag "eo")	;tf-overstrike-space-erase
+	      (termcap-get-flag "xs")	;tf-overwrite-preserves-standout
+	      (termcap-get-flag "ms")	;tf-standout-mode-motion
+	      (termcap-get-flag "xt")	;tf-teleray
+	      (termcap-get-flag "ul")	;tf-underscore
 
-	  (termcap-get-number "lm")	;tn-memory-lines
-	  (termcap-get-number "pb")	;tn-minimum-padding-speed
-	  tn-standout-marker-width
-	  (termcap-get-number "co")	;tn-x-size
-	  (termcap-get-number "li")	;tn-y-size
+	      (termcap-get-number "lm")	;tn-memory-lines
+	      (termcap-get-number "pb")	;tn-minimum-padding-speed
+	      tn-standout-marker-width
+	      (termcap-get-number "co")	;tn-x-size
+	      (termcap-get-number "li")	;tn-y-size
 
-	  (or (termcap-get-string "bl")	;ts-audible-bell
-	      "\007")
-	  (termcap-get-string "ce")	;ts-clear-line
-	  (termcap-get-string "ec")	;ts-clear-multi-char
-	  (termcap-get-string "cl")	;ts-clear-screen
-	  (termcap-get-string "cd")	;ts-clear-to-bottom
-	  ts-cursor-down
-	  (termcap-get-string "DO")	;ts-cursor-down-multi
-	  (if (termcap-get-flag "bs")	;ts-cursor-left
-	      "\010"
-	      (or (termcap-get-string "le")
-		  (termcap-get-string "bc")))
-	  (termcap-get-string "LE")	;ts-cursor-left-multi
-	  (termcap-get-string "cr")	;ts-cursor-line-start
-	  (termcap-get-string "ll")	;ts-cursor-lower-left
-	  (termcap-get-string "cm")	;ts-cursor-move
-	  (termcap-get-string "ch")	;ts-cursor-move-x
-	  (termcap-get-string "nd")	;ts-cursor-right
-	  (termcap-get-string "RI")	;ts-cursor-right-multi
-	  (termcap-get-string "up")	;ts-cursor-up
-	  (termcap-get-string "UP")	;ts-cursor-up-multi
-	  (termcap-get-string "ho")	;ts-cursor-upper-left
-	  ts-delete-char
-	  ts-delete-line
-	  ts-delete-multi-char
-	  ts-delete-multi-line
-	  (termcap-get-string "vs")	;ts-enhance-cursor
-	  ts-enter-delete-mode
-	  ts-enter-insert-mode
-	  ts-enter-standout-mode
-	  (termcap-get-string "ti")	;ts-enter-termcap-mode
-	  (termcap-get-string "ed")	;ts-exit-delete-mode
-	  (termcap-get-string "ei")	;ts-exit-insert-mode
-	  ts-exit-standout-mode
-	  (termcap-get-string "te")	;ts-exit-termcap-mode
-	  ts-forward-scroll
-	  ts-forward-scroll-multi
-	  ts-insert-char
-	  ts-insert-line
-	  ts-insert-multi-char
-	  ts-insert-multi-line
-	  (termcap-get-string "vi")	;ts-invisible-cursor
-	  (termcap-get-string "ve")	;ts-normal-cursor
-	  (termcap-get-string "pc")	;ts-pad-char
-	  ts-pad-inserted-char
-	  ts-reverse-scroll
-	  ts-reverse-scroll-multi
-	  ts-set-scroll-region
-	  ts-set-scroll-region-1
-	  ts-set-window
-	  (termcap-get-string "vb")	;ts-visible-bell
-	  ))))
+	      (or (termcap-get-string "bl")	;ts-audible-bell
+		  "\007")
+	      (termcap-get-string "ce")	;ts-clear-line
+	      (termcap-get-string "ec")	;ts-clear-multi-char
+	      (termcap-get-string "cl")	;ts-clear-screen
+	      (termcap-get-string "cd")	;ts-clear-to-bottom
+	      ts-cursor-down
+	      (termcap-get-string "DO")	;ts-cursor-down-multi
+	      (if (termcap-get-flag "bs")	;ts-cursor-left
+		  "\010"
+		  (or (termcap-get-string "le")
+		      (termcap-get-string "bc")))
+	      (termcap-get-string "LE")	;ts-cursor-left-multi
+	      (termcap-get-string "cr")	;ts-cursor-line-start
+	      (termcap-get-string "ll")	;ts-cursor-lower-left
+	      (termcap-get-string "cm")	;ts-cursor-move
+	      (termcap-get-string "ch")	;ts-cursor-move-x
+	      (termcap-get-string "nd")	;ts-cursor-right
+	      (termcap-get-string "RI")	;ts-cursor-right-multi
+	      (termcap-get-string "up")	;ts-cursor-up
+	      (termcap-get-string "UP")	;ts-cursor-up-multi
+	      (termcap-get-string "ho")	;ts-cursor-upper-left
+	      ts-delete-char
+	      ts-delete-line
+	      ts-delete-multi-char
+	      ts-delete-multi-line
+	      (termcap-get-string "vs")	;ts-enhance-cursor
+	      ts-enter-delete-mode
+	      ts-enter-insert-mode
+	      ts-enter-standout-mode
+	      (termcap-get-string "ti")	;ts-enter-termcap-mode
+	      (termcap-get-string "ed")	;ts-exit-delete-mode
+	      (termcap-get-string "ei")	;ts-exit-insert-mode
+	      ts-exit-standout-mode
+	      (termcap-get-string "te")	;ts-exit-termcap-mode
+	      ts-forward-scroll
+	      ts-forward-scroll-multi
+	      ts-insert-char
+	      ts-insert-line
+	      ts-insert-multi-char
+	      ts-insert-multi-line
+	      (termcap-get-string "vi")	;ts-invisible-cursor
+	      (termcap-get-string "ve")	;ts-normal-cursor
+	      (termcap-get-string "pc")	;ts-pad-char
+	      ts-pad-inserted-char
+	      ts-reverse-scroll
+	      ts-reverse-scroll-multi
+	      ts-set-scroll-region
+	      ts-set-scroll-region-1
+	      ts-set-window
+	      (termcap-get-string "vb")	;ts-visible-bell
+	      )))))
