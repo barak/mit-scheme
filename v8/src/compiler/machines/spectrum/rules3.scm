@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.4 1994/12/01 20:40:11 adams Exp $
+$Id: rules3.scm,v 1.5 1994/12/02 02:17:19 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -1590,6 +1590,7 @@ MIT in each case. |#
   label dbg-info			; ignored
   (LAP))
 
+#|
 (define (interrupt-check:procedure/avoid-for-this-label? label)
   ;; A hack to test Bill's hypothesis that a lot of time is going into the
   ;; interrupt check at receiver-x, alt-x, and cons-x procedures.
@@ -1603,6 +1604,10 @@ MIT in each case. |#
       (like? 'cons-)
       (like? 'next-)
       (like? 'receiver-)))
+|#
+(define (interrupt-check:procedure/avoid-for-this-label? label)
+  label
+  false)
 
 (define-rule statement
   (INTERRUPT-CHECK:PROCEDURE (? intrpt) (? heap) (? stack) (? label)
