@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.28 1995/08/21 13:14:14 adams Exp $
+@comment $Id: user.texinfo,v 1.29 1995/08/27 18:52:39 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -196,6 +196,7 @@ Compiling Files
 
 * Compilation Procedures::      
 * Declarations::                
+* Efficiency Tips::             
 
 Declarations
 
@@ -203,6 +204,12 @@ Declarations
 * In-line Coding::              
 * Replacement of Operators::    
 * Reduction of Operators::      
+
+Efficiency Tips
+
+* Global variables::            
+* Flonum arithmetic::           
+* Miscellaneous::               
 
 Edwin
 
@@ -3342,6 +3349,7 @@ available on machines that support native-code compilation.
 @menu
 * Compilation Procedures::      
 * Declarations::                
+* Efficiency Tips::             
 @end menu
 
 @node Compilation Procedures, Declarations, Compiling Files, Compiling Files
@@ -3488,7 +3496,7 @@ the output file.  If this argument is a directory, then the output file
 has its normal name but is put in that directory instead.
 @end deffn
 
-@node Declarations,  , Compilation Procedures, Compiling Files
+@node Declarations, Efficiency Tips, Compilation Procedures, Compiling Files
 @section Declarations
 @cindex declarations
 
@@ -3651,9 +3659,11 @@ Finally, remove the @code{((lambda () @dots{}))} to produce
 @end lisp
 
 
-Useful tip: to see the effect of integration declarations (and of
-macros) on a source file, pretty-print the @file{.bin} file like this
-(be prepared for a lot of output).
+@subsubheading Useful tip
+@cindex integrations, seeing effects of
+To see the effect of integration declarations (and of macros) on a
+source file, pretty-print the @file{.bin} file like this (be prepared
+for a lot of output).
 
 @lisp
 (sf "foo.scm")
@@ -3975,6 +3985,149 @@ The maximum option specifies that calls with more than @var{m} arguments
 should not be reduced.
 @end itemize
 @end deffn
+
+@node Efficiency Tips,  , Declarations, Compiling Files
+@section Efficiency Tips
+
+How you write your programs can have a large impact on how efficiently the
+compiled program runs.  The most important thing to do, after choosing
+suitable data structures, is to put the following declaration near the
+beginning of the file.
+
+@lisp
+(declare (usual-integrations))
+@end lisp
+
+Without this declaration the compiler cannot recognize any of the common
+operators and compile them efficiently.
+
+The @code{usual-integrations} declaration is usually sufficient to get
+good quality compiled code.
+
+If you really need to squeeze more performance out of you code then we
+hope that you find the following grab-bag of tips, hints and
+explanations useful.
+
+
+@menu
+* Global variables::            
+* Flonum arithmetic::           
+* Miscellaneous::               
+@end menu
+
+@node Global variables, Flonum arithmetic, Efficiency Tips, Efficiency Tips
+@subsection Global variables
+
+@cindex variable caches
+@cindex reference traps
+Compiled code usually accesses variables in top level first-class
+environments via @emph{variable caches}.  Each compiled procedure has a
+set of variable caches for the global variables that it uses.  There are
+three kinds of variable cache - read caches for getting the value of a
+variable (referencing the variable), write caches for changing the
+value, and execute caches for calling the procedure assigned to that
+variable.
+
+Sometimes the variable caches contain special objects, reference traps,
+which mean that the operation cannot proceed normally and must either be
+completed by the system in order to keep the caches coherent, or must
+signal an error.  For example, the assignment
+
+@lisp
+(set! newline my-better-newline)
+@end lisp
+
+will cause the system to go to each compiled procedure that calls
+@code{newline} and update its execute cache.  Obviously you want to
+avoid doing this in a loop.  Using @code{fluid-let} to temporarily
+redefine a procedure has the same inefficiency (but twice!).
+
+To behave correctly in all situations, each variable reference or
+assignment must check for the reference traps.
+
+Sometimes you can prove that the variable (a) will always be bound, (b)
+will always be assigned and (c) there will never be any compiled calls
+to that variable.
+In these cases the following declarations can speed up and reduce the
+size of a program that uses global variables.
+
+
+@deffn {declaration+} ignore-reference-traps variables
+This declaration is relatively safe.  If the variable is unbound or
+unassigned then a variable reference will yield a reference trap object,
+instead of signaling an error.  The reference trap object may later find
+its way into interpreted code and cause some `unrelated' variable to
+mysteriously become unbound or unassigned.
+@end deffn
+
+@deffn {declaration+} ignore-assignment-traps variables
+This declaration can cause a great deal of trouble.  An assignment to a
+variable that ignores assignment traps can cause a great deal of
+trouble.  If there is a compiled procedure call anywhere in the system
+to this variable, the execute caches will not be updated, causing an
+inconsistency between the value used for the procedure call and the
+value seen by reading the variable.  This mischief is compounded by the
+fact that the assignment can cause other assignments that were compiled
+with checks to behave this way too.
+@end deffn
+
+The @var{variables} are specified with expressions from the following
+set language.
+
+@deffn {variable-specification} set name ...
+All of the explicitly listed names.
+@end deffn
+
+@deffn {variable-specification} all
+@deffnx {variable-specification} none
+@deffnx {variable-specification} free
+@deffnx {variable-specification} bound
+@deffnx {variable-specification} assigned
+These expressions name sets of variables. @code{all} is the set of all
+variables, @code{none} is the empty set, @code{free} is all of the
+variables bound outside the current block, @code{bound} is all of the
+variables bound in the current block and @code{assigned} is all of the
+variables for which there exists an assignment (@code{set!}).
+@end deffn
+
+@deffn {variable-specification} union set1 set2
+@deffnx {variable-specification} intersection set1 set2
+@deffnx {variable-specification} difference set1 set2
+
+For example, to ignore reference traps on all the variables except
+@var{x}, @var{y} and any variable that is assigned to
+
+@example
+(declare (ignore-reference-traps
+          (difference all (union assigned (set x y)))))
+@end example
+
+@end deffn
+
+@node Flonum arithmetic, Miscellaneous, Global variables, Efficiency Tips
+@subsection Flonum arithmetic
+
+
+@node Miscellaneous,  , Flonum arithmetic, Efficiency Tips
+@subsection Miscellaneous
+
+@subsubheading @code{in-package} and declarations
+
+Declarations from outside of an @code{in-package} form do not apply to
+the body of the form.  This is because the assumptions behind
+declarations in the enclosing text might not apply to the body.  As the
+@code{usual-integrations} declaration is included in this rule, it is a
+good idea to repeat the declaration e.g@:.
+
+@lisp
+  ...
+  (in-package some-environment
+    (declare (usual-integrations))
+    ...)
+  ...
+@end lisp
+
+
 
 @node GNU Emacs Interface, Edwin, Compiling Files, Top
 @chapter GNU Emacs Interface
