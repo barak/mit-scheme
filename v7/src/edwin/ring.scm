@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: ring.scm,v 1.11 1999/01/02 06:11:34 cph Exp $
+;;;$Id: ring.scm,v 1.12 1999/01/28 04:48:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1984, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -23,7 +23,7 @@
 (declare (usual-integrations))
 
 (define (ring-list ring)
-  (vector-ref ring 2))
+  (list-copy (vector-ref ring 2)))
 
 (define make-ring)
 (define ring-size)
