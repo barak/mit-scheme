@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.11 1994/11/14 00:54:04 cph Exp $
+$Id: prosio.c,v 1.12 1994/11/14 02:50:58 cph Exp $
 
 Copyright (c) 1987-94 Massachusetts Institute of Technology
 
@@ -121,7 +121,7 @@ DEFINE_PRIMITIVE ("CHANNEL-TYPE", Prim_channel_type, 1, 1,
 }
 
 /* Must match definition of `enum channel_type' in "osio.h".  */
-static unsigned char * channel_type_names [] =
+static char * channel_type_names [] =
 {
   "unknown",
   "file",
@@ -150,9 +150,10 @@ DEFINE_PRIMITIVE ("CHANNEL-TYPE-NAME", Prim_channel_type_name, 1, 1,
   if (type == channel_type_unknown)
     PRIMITIVE_RETURN (SHARP_F);
   index = ((unsigned int) type);
-  if (index >= ((sizeof (channel_type_names)) / (sizeof (unsigned char *))))
+  if (index >= ((sizeof (channel_type_names)) / (sizeof (char *))))
     PRIMITIVE_RETURN (SHARP_F);
-  PRIMITIVE_RETURN (char_pointer_to_string (channel_type_names [index]));
+  PRIMITIVE_RETURN
+    (char_pointer_to_string ((unsigned char *) (channel_type_names [index])));
 }
 
 DEFINE_PRIMITIVE ("CHANNEL-READ", Prim_channel_read, 4, 4,
