@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/starbase.scm,v 1.10 1993/09/15 04:12:20 adams Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/starbase.scm,v 1.11 1994/11/06 18:06:22 adams Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -140,16 +140,16 @@ MIT in each case. |#
 (define (operation/available?)
   (implemented-primitive-procedure? starbase-open-device))
 
-(define (operation/open device-name driver-name)
+(define (operation/open descriptor->device device-name driver-name)
   (let ((identifier (starbase-open-device device-name driver-name)))
     (and identifier
-	 (let ((device (make-starbase-descriptor identifier)))
-	   (operation/set-coordinate-limits device -1 -1 1 1)
-	   (operation/set-text-height device 0.1)
-	   (operation/set-text-aspect device 1)
-	   (operation/set-text-slant device 0)
-	   (operation/set-text-rotation device 0)
-	   device))))
+	 (let ((descriptor (make-starbase-descriptor identifier)))
+	   (operation/set-coordinate-limits descriptor -1 -1 1 1)
+	   (operation/set-text-height descriptor 0.1)
+	   (operation/set-text-aspect descriptor 1)
+	   (operation/set-text-slant descriptor 0)
+	   (operation/set-text-rotation descriptor 0)
+	   (descriptor->device descriptor)))))
 
 (define (operation/close device)
   (starbase-close-device (starbase-device/identifier device)))
