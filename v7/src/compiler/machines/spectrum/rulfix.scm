@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.42 1992/08/19 13:36:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.43 1992/08/19 13:59:03 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -665,7 +665,7 @@ MIT in each case. |#
 	   (LAP (COPY (TR) ,src ,tgt))
 	   (copy src tgt)))
       ((-1)
-       (let ((skip (if ovflw? 'NSV 'TR)))
+       (let ((skip (if ovflw? 'NSV 'NV)))
 	 (LAP (SUB (,skip) 0 ,src ,tgt))))
       (else
        (let* ((factor (abs constant))
@@ -686,7 +686,7 @@ MIT in each case. |#
 		;; case of negative constants because if this weren't the
 		;; case, we could substitute the first ADD instruction for
 		;; a SUB for negative constants, and eliminate the SUB later.
-		(let* ((posn (- 32 (+ xpt scheme-type-width)))
+ 		(let* ((posn (- 32 xpt))
 		       (delta (* (-1+ factor) fixnum-1))
 		       (fits? (fits-in-11-bits-signed? delta))
 		       (temp (and (not fits?) (standard-temporary!))))
@@ -695,18 +695,17 @@ MIT in each case. |#
 			     (LAP)
 			     (load-immediate delta temp))
 		       (ADD (>=) 0 ,src ,tgt)
-		       ,@(if (fits-in-11-bits-signed? delta)
+		       ,@(if fits?
 			     (LAP (ADDI () ,delta ,tgt ,tgt))
 			     (LAP (ADD () ,temp ,tgt ,tgt)))
 		       (EXTRS () ,tgt ,(-1+ posn) ,posn ,tgt)
-		       ,@(if (negative? constant)
-			     (LAP (SUB () 0 ,tgt ,tgt))
-			     (LAP))
-		       ,@(if ovflw?
-			     (LAP
-			      (DEP (TR) 0 31 ,scheme-type-width ,tgt))
-			     (LAP
-			      (DEP () 0 31 ,scheme-type-width ,tgt))))))))))))
+		       ,@(let ((skip (if ovflw? 'TR 'NV)))
+			   (if (negative? constant)
+			       (LAP (DEP () 0 31 ,scheme-type-width ,tgt)
+				    (SUB (,skip) 0 ,tgt ,tgt))
+			       (LAP
+				(DEP (,skip) 0 31 ,scheme-type-width
+				     ,tgt)))))))))))))
 
 (define-arithconst-method 'FIXNUM-REMAINDER
   fixnum-methods/2-args/register*constant
