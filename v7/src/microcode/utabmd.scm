@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.34 1987/06/05 17:28:37 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.35 1987/07/14 02:59:08 cph Exp $
 
 (declare (usual-integrations))
 
@@ -608,20 +608,20 @@
 	       MAKE-DIRECTORY				;$115
 	       VOLUME-NAME				;$116
 	       SET-WORKING-DIRECTORY-PATHNAME!		;$117
-	       OPEN-CATALOG				;$118
-	       CLOSE-CATALOG				;$119
-	       NEXT-FILE				;$11A
-	       CAT-NAME					;$11B
-	       CAT-KIND					;$11C
-	       CAT-PSIZE				;$11D
-	       CAT-LSIZE				;$11E
-	       CAT-INFO					;$11F
-	       CAT-BLOCK				;$120
-	       CAT-CREATE-DATE				;$121
-	       CAT-CREATE-TIME				;$122
-	       CAT-LAST-DATE				;$123
-	       CAT-LAST-TIME				;$124
-	       ERROR-MESSAGE				;$125
+	       RE-MATCH-SUBSTRING			;$118
+	       RE-SEARCH-SUBSTRING-FORWARD		;$119
+	       RE-SEARCH-SUBSTRING-BACKWARD		;$11A
+	       #F					;$11B
+	       #F					;$11C
+	       #F					;$11D
+	       #F					;$11E
+	       #F					;$11F
+	       #F					;$120
+	       #F					;$121
+	       #F					;$122
+	       #F					;$123
+	       #F					;$124
+	       #F					;$125
 	       CURRENT-YEAR				;$126
 	       CURRENT-MONTH				;$127
 	       CURRENT-DAY				;$128
@@ -730,9 +730,9 @@
 	       VOLUME-EXISTS?		                ;$18F
 	       RE-CHAR-SET-ADJOIN!			;$190
 	       RE-COMPILE-FASTMAP			;$191
-	       RE-MATCH					;$192
-	       RE-SEARCH-FORWARD			;$193
-	       RE-SEARCH-BACKWARD			;$194
+	       RE-MATCH-BUFFER				;$192
+	       RE-SEARCH-BUFFER-FORWARD			;$193
+	       RE-SEARCH-BUFFER-BACKWARD		;$194
 	       (SYSTEM-MEMORY-REF &OBJECT-REF)		;$195
 	       (SYSTEM-MEMORY-SET! &OBJECT-SET!)	;$196
 	       BIT-STRING-FILL!				;$197
@@ -863,4 +863,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.34 1987/06/05 17:28:37 cph Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.35 1987/07/14 02:59:08 cph Exp $"
