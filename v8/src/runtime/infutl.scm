@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.52 1993/11/21 01:05:57 gjr Exp $
+$Id: infutl.scm,v 1.53 1993/11/21 06:56:26 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -232,7 +232,7 @@ MIT in each case. |#
 	(process-subblocks
 	 (lambda (blocks start binf-filename)
 	   (let ((end (vector-length blocks)))
-	     (let loop ((index 1))
+	     (let loop ((index start))
 	       (if (< index end)
 		   (begin
 		     (set-car! (compiled-code-block/debugging-info
