@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 1.7 1987/06/13 02:57:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 1.8 1987/06/23 02:15:57 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -55,7 +55,7 @@ MIT in each case. |#
       (if (and (integrated-vnode? lvalue)
 	       (not (value-register? lvalue)))
 	  (make-null-cfg)
-	  (transmit-values (generate/rvalue (definition-rvalue node))
+	  (transmit-values (generate/rvalue (assignment-rvalue node))
 	    (lambda (prefix expression)
 	      (scfg*scfg->scfg!
 	       prefix
