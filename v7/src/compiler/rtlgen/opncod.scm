@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.53 1992/12/16 12:12:18 gjr Exp $
+$Id: opncod.scm,v 4.54 1992/12/23 13:36:44 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -598,7 +598,9 @@ MIT in each case. |#
 	      combination
 	      (list
 	       (open-code:type-check type (ucode-type fixnum))
-	       (open-code:range-check type (expt 2 scheme-type-width)))
+	       (open-code:range-check type
+				      (rtl:make-machine-constant
+				       (expt 2 scheme-type-width))))
 	      (finish
 	       (rtl:make-eq-test (rtl:make-object->datum type)
 				 (rtl:make-object->type object)))
