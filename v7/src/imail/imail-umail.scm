@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.5 2000/01/14 18:08:08 cph Exp $
+;;; $Id: imail-umail.scm,v 1.6 2000/01/18 20:47:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -82,33 +82,35 @@
 		       (reverse! messages)))))))))))
 
 (define (read-umail-message from-line port import?)
-  (let ((finish))
-    (let read-headers ((header-lines '()))
-      (let ((line (read-line port)))
-	(cond ((eof-object? line)
-	       (values (make-umail-message from-line
-					   (reverse! header-lines)
-					   '())
-		       #f))
-	      ((string-null? line)
-	       (let read-body ((body-lines '()))
-		 (let ((line (read-line port)))
-		   (cond ((eof-object? line)
-			  (values (make-umail-message from-line
-						      (reverse! header-lines)
-						      (reverse! body-lines))
-				  #f))
-			 ((umail-delimiter? line)
-			  (values (make-umail-message from-line
-						      (reverse! header-lines)
-						      (reverse! body-lines))
-				  line))
-			 (else
-			  (read-body (cons line body-lines)))))))
-	      (else
-	       (read-headers (cons line header-lines))))))))
+  (let read-headers ((header-lines '()))
+    (let ((line (read-line port)))
+      (cond ((eof-object? line)
+	     (values (make-umail-message from-line
+					 (reverse! header-lines)
+					 '()
+					 import?)
+		     #f))
+	    ((string-null? line)
+	     (let read-body ((body-lines '()))
+	       (let ((line (read-line port)))
+		 (cond ((eof-object? line)
+			(values (make-umail-message from-line
+						    (reverse! header-lines)
+						    (reverse! body-lines)
+						    import?)
+				#f))
+		       ((umail-delimiter? line)
+			(values (make-umail-message from-line
+						    (reverse! header-lines)
+						    (reverse! body-lines)
+						    import?)
+				line))
+		       (else
+			(read-body (cons line body-lines)))))))
+	    (else
+	     (read-headers (cons line header-lines)))))))
 
-(define (make-umail-message from-line header-lines body-lines)
+(define (make-umail-message from-line header-lines body-lines import?)
   (let ((message
 	 (make-standard-message
 	  (maybe-strip-imail-headers import?
@@ -153,7 +155,7 @@
 	  (write-string (universal-time->unix-ctime (get-universal-time))
 			port))))
   (newline port)
-  (if (not export)
+  (if (not export?)
       (begin
 	(write-header-field
 	 (message-flags->header-field (message-flags message))
