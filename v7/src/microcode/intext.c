@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intext.c,v 1.1 1990/06/20 19:35:50 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intext.c,v 1.2 1991/06/22 19:29:02 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,6 +36,8 @@ MIT in each case. */
 #include "dstack.h"
 #include "intext.h"
 
+extern void EXFUN (preserve_signal_mask, (void));
+
 struct interruptable_extent * current_interruptable_extent;
 
 void
@@ -61,6 +63,7 @@ DEFUN_VOID (enter_interruptable_extent)
   /* Create a dynamic binding frame but don't assign the new frame to
      it until the CATCH has been done. */
   dstack_bind ((&current_interruptable_extent), current_interruptable_extent);
+  preserve_signal_mask ();
   return (frame);
 }
 

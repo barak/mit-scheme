@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.61 1991/03/01 00:54:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.62 1991/06/22 19:28:54 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -49,6 +49,7 @@ extern PTR EXFUN (obstack_chunk_alloc, (unsigned int size));
 extern void EXFUN (free, (PTR ptr));
 #define obstack_chunk_free free
 extern void EXFUN (back_out_of_primitive_internal, (void));
+extern void EXFUN (preserve_signal_mask, (void));
 
 /* In order to make the interpreter tail recursive (i.e.
  * to avoid calling procedures and thus saving unnecessary
@@ -440,6 +441,7 @@ Interpret(dumped_p)
    */
 
   interpreter_catch_dstack_position = dstack_position;
+  preserve_signal_mask ();
   Which_Way = (setjmp (interpreter_catch_env));
   Set_Time_Zone (Zone_Working);
   Import_Registers ();

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.9 1991/06/15 00:40:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.10 1991/06/22 19:29:05 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -108,6 +108,31 @@ DEFUN (current_handler, (signo), int signo)
 
 #endif /* HAVE_SYSV3_SIGNALS */
 #endif /* HAVE_POSIX_SIGNALS */
+
+#ifdef HAVE_POSIX_SIGNALS
+
+static void
+DEFUN (restore_signal_mask, (environment), PTR environment)
+{
+  UX_sigprocmask (SIG_SETMASK, ((sigset_t *) environment), 0);
+}
+
+void
+DEFUN_VOID (preserve_signal_mask)
+{
+  sigset_t * outside = (dstack_alloc (sizeof (sigset_t)));
+  UX_sigprocmask (SIG_SETMASK, 0, outside);
+  dstack_protect (restore_signal_mask, outside);
+}
+
+#else /* not HAVE_POSIX_SIGNALS */
+
+void
+DEFUN_VOID (preserve_signal_mask)
+{
+}
+
+#endif /* not HAVE_POSIX_SIGNALS */
 
 /* Signal Descriptors */
 
