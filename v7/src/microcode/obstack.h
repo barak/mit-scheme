@@ -147,7 +147,7 @@ extern void
 #ifdef __STDC__
   extern void _obstack_newchunk (struct obstack *, int);
   extern void _obstack_free (struct obstack *, void *);
-  extern void _obstack_begin (struct obstack *, int, int,
+  extern void _obstack_begin (struct obstack *, int, long,
 			      void *(*) (), void (*) ());
 #else
   extern void _obstack_newchunk ();
