@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.143 2000/06/08 20:47:55 cph Exp $
+;;; $Id: imail-top.scm,v 1.144 2000/06/08 20:48:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1753,8 +1753,7 @@ see the documentation of `imail-resend'."
 	(imail-forward))))
 
 (define (imail-forward)
-  (let ((buffer (selected-buffer))
-	(message (selected-message)))
+  (let ((message (selected-message)))
     (make-mail-buffer
      `(("To" "")
        ("Subject"
