@@ -72,14 +72,14 @@ case $# in
 		system_file=bsd4-2
 		machine_file=sun3
 		mfour_file=bsd
-		cmp_file=cmp68020.s-sun+fp
+		cmp_file=sun/cmp68020.s
 		cmp_link=cmp68020.s
 		;;
 	sun3-nfp)
 		system_file=bsd4-2
 		machine_file=sun3
 		mfour_file=bsd
-		cmp_file=cmp68020.s-sun-fp
+		cmp_file=sun-nfp/cmp68020.s
 		cmp_link=cmp68020.s
 		;;
 	*)
