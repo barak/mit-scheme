@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.140 1997/01/03 04:06:32 cph Exp $
+;;;	$Id: fileio.scm,v 1.141 1997/01/03 04:40:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -576,7 +576,7 @@ Otherwise, a message is written both before and after long file writes."
 	  (get-pathname-or-alternate (region-group region) pathname #t))
 	 (translate?
 	  (if (eq? 'DEFAULT translate?)
-	      (ref-variable translate-file-data-on-output buffer)
+	      (ref-variable translate-file-data-on-output group)
 	      translate?))
 	 (translation (and translate? (pathname-newline-translation pathname)))
 	 (filename (->namestring pathname))
