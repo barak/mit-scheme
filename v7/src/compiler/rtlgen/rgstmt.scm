@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.10 1988/12/30 07:11:11 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.11 1990/01/18 22:47:15 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -133,12 +133,15 @@ MIT in each case. |#
 	;; a mistake to make blocks be rvalues in the first place.
 	(let ((static-link-reference
 	       (lambda ()
-		 (rtl:make-environment
-		  (block-ancestor-or-self->locative
-		   (virtual-continuation/context operator)
-		   operand
-		   0
-		   0)))))
+		 (let ((locative
+			(block-ancestor-or-self->locative
+			 (virtual-continuation/context operator)
+			 operand
+			 0
+			 0)))
+		   (if (stack-block? operand)
+		       (rtl:make-environment locative)
+		       locative)))))
 	  (enumeration-case continuation-type
 	      (virtual-continuation/type operator)
 	    ((EFFECT)

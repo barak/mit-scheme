@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bitutl.scm,v 1.3 1987/07/30 07:05:24 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bitutl.scm,v 1.4 1990/01/18 22:41:51 cph Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -251,13 +251,3 @@ MIT in each case. |#
 	(set-car! queue new)
 	(set-cdr! (cdr queue) new))
     (set-cdr! queue new)))
-
-;;; Multiple values
-
-(declare (integrate-operator values with-values))
-
-(define values list)
-
-(define (with-values thunk receiver)
-  (declare (integrate thunk receiver))
-  (apply receiver (thunk)))

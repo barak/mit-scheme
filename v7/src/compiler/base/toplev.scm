@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.24 1989/12/02 05:03:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.25 1990/01/18 22:42:58 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -59,12 +59,23 @@ MIT in each case. |#
 		      (and (not (default-object? output-string)) output-string)
 		      (make-pathname false false false false "bin" 'NEWEST)
     (lambda (input-pathname output-pathname)
-      (compile-scode (compiler-fasload input-pathname)
-		     (and compiler:generate-rtl-files?
-			  (pathname-new-type output-pathname "brtl"))
-		     (pathname-new-type output-pathname "binf"))))
+      (maybe-open-file compiler:generate-rtl-files?
+		       (pathname-new-type output-pathname "rtl")
+	(lambda (rtl-output-port)
+	  (maybe-open-file compiler:generate-lap-files?
+			   (pathname-new-type output-pathname "lap")
+	    (lambda (lap-output-port)
+	      (compile-scode (compiler-fasload input-pathname)
+			     (pathname-new-type output-pathname "binf")
+			     rtl-output-port
+			     lap-output-port)))))))
   unspecific)
 
+(define (maybe-open-file open? pathname receiver)
+  (if open?
+      (call-with-output-file pathname receiver)
+      (receiver false)))
+
 (define (compiler-pathnames input-string output-string default transform)
   (let* ((core
 	  (lambda (input-string)
@@ -116,7 +127,7 @@ MIT in each case. |#
 ;;;; Alternate Entry Points
 
 (define (compile-procedure procedure)
-  (scode-eval (compile-scode (procedure-lambda procedure) false false)
+  (scode-eval (compile-scode (procedure-lambda procedure))
 	      (procedure-environment procedure)))
 
 (define (compiler:batch-compile input #!optional output)
@@ -153,6 +164,49 @@ MIT in each case. |#
 (define compiler:abort-handled? false)
 (define compiler:abort-continuation)
 
+;;; Example of `lap->code' usage:
+
+#|
+(define bar
+  ;; defines bar to be a procedure that adds 1 to its argument
+  ;; with no type or range checks.
+  (scode-eval
+   (lap->code
+    'start
+    `((pea (@pcr proc))
+      (or b (& ,(* (microcode-type 'compiled-entry) 4)) (@a 7))
+      (mov l (@a+ 7) (@ao 6 8))
+      (and b (& #x3) (@a 7))
+      (rts)
+      (dc uw #x0202)
+      (block-offset proc)
+      (label proc)
+      (mov l (@a+ 7) (d 0))
+      (addq l (& 1) (d 0))
+      (mov l (d 0) (@ao 6 8))
+      (and b (& #x3) (@a 7))
+      (rts)))
+   '()))
+|#
+
+(define (lap->code label lap)
+  (in-compiler
+   (lambda ()
+     (set! *lap* lap)
+     (set! *entry-label* label)
+     (set! *current-label-number* 0)
+     (set! *next-constant* 0)
+     (set! *interned-constants* '())
+     (set! *interned-variables* '())
+     (set! *interned-assignments* '())
+     (set! *interned-uuo-links* '())
+     (set! *block-label* (generate-label))
+     (set! *external-labels* '())
+     (set! *ic-procedure-headers* '())
+     (phase/assemble)
+     (phase/link)
+     *result*)))
+
 (define (compile-recursively scode procedure-result?)
   ;; Used by the compiler when it wants to compile subexpressions as
   ;; separate code-blocks.
@@ -177,8 +231,9 @@ MIT in each case. |#
 				 (compiler:package-optimization-level 'NONE)
 				 (*procedure-result?* procedure-result?))
 		       (compile-scode scode
-				      (and *rtl-output-pathname* true)
 				      (and *info-output-filename* true)
+				      *rtl-output-port*
+				      *lap-output-port*
 				      bind-compiler-variables)))))
 	      (if procedure-result?
 		  (let ((do-it
@@ -213,14 +268,14 @@ MIT in each case. |#
 (define *recursive-compilation-count*)
 (define *recursive-compilation-number*)
 (define *recursive-compilation-results*)
-(define *recursive-compilation-rtl-blocks*)
 (define *procedure-result?*)
 (define *remote-links*)
 (define *process-time*)
 (define *real-time*)
 
 (define *info-output-filename* false)
-(define *rtl-output-pathname* false)
+(define *rtl-output-port* false)
+(define *lap-output-port* false)
 
 ;; First set: input to compilation
 ;; Last used: phase/canonicalize-scode
@@ -240,7 +295,7 @@ MIT in each case. |#
 (define *root-procedure*)
 
 ;; First set: phase/rtl-generation
-;; Last used: phase/bit-linearization
+;; Last used: phase/lap-linearization
 (define *rtl-expression*)
 (define *rtl-procedures*)
 (define *rtl-continuations*)
@@ -254,19 +309,19 @@ MIT in each case. |#
 (define *entry-label*)
 (define *block-label*)
 
-;; First set: phase/bit-generation
+;; First set: phase/lap-generation
 ;; Last used: phase/info-generation-2
 (define *external-labels*)
 
-;; First set: phase/bit-generation
+;; First set: phase/lap-generation
 ;; Last used: phase/link
 (define *subprocedure-linking-info*)
 
-;; First set: phase/bit-linearization
+;; First set: phase/lap-linearization
 ;; Last used: phase/assemble
-(define *bits*)
+(define *lap*)
 
-;; First set: phase/bit-linearization
+;; First set: phase/lap-linearization
 ;; Last used: phase/info-generation-2
 (define *dbg-expression*)
 (define *dbg-procedures*)
@@ -287,25 +342,30 @@ MIT in each case. |#
 	 (lambda ()
 	   (let ((value
 		  (let ((expression (thunk)))
-		    (let ((others (recursive-compilation-results)))
-		      (if (null? others)
-			  expression
-			  (scode/make-comment
-			   (make-dbg-info-vector
-			    (let* ((others
-				    (map (lambda (other) (vector-ref other 2))
-					 others))
-				   (all-blocks
-				    (list->vector
-				     (cons
-				      (compiled-code-address->block expression)
-				      others))))
-			      (if compiler:compile-by-procedures?
-				  (list 'COMPILED-BY-PROCEDURES
-					all-blocks
-					(list->vector others))
-				  all-blocks)))
-			   expression))))))
+		    (let ((others
+			   (map (lambda (other) (vector-ref other 2))
+				(recursive-compilation-results))))
+		      (cond ((not (compiled-code-address? expression))
+			     (vector compiler:compile-by-procedures?
+				     expression
+				     others))
+			    ((null? others)
+			     expression)
+			    (else
+			     (scode/make-comment
+			      (make-dbg-info-vector
+			       (let ((all-blocks
+				      (list->vector
+				       (cons
+					(compiled-code-address->block
+					 expression)
+					others))))
+				 (if compiler:compile-by-procedures?
+				     (list 'COMPILED-BY-PROCEDURES
+					   all-blocks
+					   (list->vector others))
+				     all-blocks)))
+			      expression)))))))
 	     (compiler-time-report "Total compilation time"
 				   *process-time*
 				   *real-time*)
@@ -317,7 +377,6 @@ MIT in each case. |#
 	(fluid-let ((*recursive-compilation-number* 0)
 		    (*recursive-compilation-count* 1)
 		    (*recursive-compilation-results* '())
-		    (*recursive-compilation-rtl-blocks* '())
 		    (*procedure-result?* false)
 		    (*remote-links* '())
 		    (*process-time* 0)
@@ -333,7 +392,7 @@ MIT in each case. |#
 	      (*dbg-expression*)
 	      (*dbg-procedures*)
 	      (*dbg-continuations*)
-	      (*bits*)
+	      (*lap*)
 	      (*next-constant*)
 	      (*interned-constants*)
 	      (*interned-variables*)
@@ -374,7 +433,6 @@ MIT in each case. |#
   (set! *recursive-compilation-number* 0)
   (set! *recursive-compilation-count* 1)
   (set! *recursive-compilation-results* '())
-  (set! *recursive-compilation-rtl-blocks* '())
   (set! *procedure-result?* false)
   (set! *remote-links* '())
   (set! *process-time* 0)
@@ -387,7 +445,7 @@ MIT in each case. |#
   (set! *dbg-expression*)
   (set! *dbg-procedures*)
   (set! *dbg-continuations*)
-  (set! *bits*)
+  (set! *lap*)
   (set! *next-constant*)
   (set! *interned-constants*)
   (set! *interned-variables*)
@@ -424,27 +482,26 @@ MIT in each case. |#
 
 (define (compile-scode scode
 		       #!optional
-		       rtl-output-pathname
 		       info-output-pathname
+		       rtl-output-port
+		       lap-output-port
 		       wrapper)
-  (let ((rtl-output-pathname
-	 (if (default-object? rtl-output-pathname)
-	     false
-	     rtl-output-pathname))
-	(info-output-pathname
+  (let ((info-output-pathname
 	 (if (default-object? info-output-pathname)
 	     false
 	     info-output-pathname))
+	(rtl-output-port
+	 (if (default-object? rtl-output-port) false rtl-output-port))
+	(lap-output-port
+	 (if (default-object? lap-output-port) false lap-output-port))
 	(wrapper
 	 (if (default-object? wrapper) in-compiler wrapper)))
     (fluid-let ((*info-output-filename*
 		 (if (pathname? info-output-pathname)
 		     (pathname->string info-output-pathname)
 		     *info-output-filename*))
-		(*rtl-output-pathname*
-		 (if (pathname? rtl-output-pathname)
-		     rtl-output-pathname
-		     *rtl-output-pathname*)))
+		(*rtl-output-port* rtl-output-port)
+		(*lap-output-port* lap-output-port))
       (wrapper
        (lambda ()
 	 (set! *input-scode* scode)
@@ -457,10 +514,12 @@ MIT in each case. |#
 	     (phase/info-generation-1 info-output-pathname))
 	 |#
 	 (phase/rtl-optimization)
-	 (if rtl-output-pathname
-	     (phase/rtl-file-output rtl-output-pathname))
-	 (phase/bit-generation)
-	 (phase/bit-linearization)
+	 (if rtl-output-port
+	     (phase/rtl-file-output rtl-output-port))
+	 (phase/lap-generation)
+	 (phase/lap-linearization)
+	 (if lap-output-port
+	     (phase/lap-file-output lap-output-port))
 	 (phase/assemble)
 	 (if info-output-pathname
 	     (phase/info-generation-2 info-output-pathname))
@@ -774,15 +833,19 @@ MIT in each case. |#
 	    (write-string " max, ")
 	    (write (apply min n-registers))
 	    (write-string " min, ")
-	    (write (/ (apply + n-registers) (length n-registers)))
+	    (write
+	     (exact->inexact (/ (apply + n-registers) (length n-registers))))
 	    (write-string " mean"))))))
 
 (define (phase/rtl-optimization)
   (compiler-superphase "RTL Optimization"
     (lambda ()
+      (phase/rtl-dataflow-analysis)
+      (phase/rtl-rewriting rtl-rewriting:pre-cse)
       (if compiler:cse?
 	  (phase/common-subexpression-elimination))
       (phase/invertible-expression-elimination)
+      (phase/rtl-rewriting rtl-rewriting:post-cse)
       (phase/common-suffix-merging)
       (phase/lifetime-analysis)
       (if compiler:code-compression?
@@ -790,6 +853,16 @@ MIT in each case. |#
       (phase/linearization-analysis)
       (phase/register-allocation)
       (phase/rtl-optimization-cleanup))))
+
+(define (phase/rtl-dataflow-analysis)
+  (compiler-subphase "RTL Dataflow Analysis"
+    (lambda ()
+      (rtl-dataflow-analysis *rtl-graphs*))))
+
+(define (phase/rtl-rewriting rtl-rewriting)
+  (compiler-subphase "RTL Rewriting"
+    (lambda ()
+      (rtl-rewriting *rtl-graphs*))))
 
 (define (phase/common-subexpression-elimination)
   (compiler-subphase "Common Subexpression Elimination"
@@ -800,7 +873,7 @@ MIT in each case. |#
   (compiler-subphase "Invertible Expression Elimination"
     (lambda ()
       (invertible-expression-elimination *rtl-graphs*))))
-
+
 (define (phase/common-suffix-merging)
   (compiler-subphase "Common Suffix Merging"
     (lambda ()
@@ -835,31 +908,26 @@ MIT in each case. |#
 		  (set-rgraph-register-crosses-call?! rgraph false)
 		  (set-rgraph-register-n-deaths! rgraph false)
 		  (set-rgraph-register-live-length! rgraph false)
-		  (set-rgraph-register-n-refs! rgraph false))
+		  (set-rgraph-register-n-refs! rgraph false)
+		  (set-rgraph-register-known-values! rgraph false))
 		*rtl-graphs*)))
 
-(define (phase/rtl-file-output pathname)
+(define (phase/rtl-file-output port)
   (compiler-phase "RTL File Output"
     (lambda ()
-      (let ((rtl
-	     (linearize-rtl *rtl-root*
-			    *rtl-procedures*
-			    *rtl-continuations*)))
-	(if (eq? pathname true)
-	    ;; recursive compilation
-	    (begin
-	      (set! *recursive-compilation-rtl-blocks*
-		    (cons (cons *recursive-compilation-number* rtl)
-			  *recursive-compilation-rtl-blocks*))
-	      unspecific)
-	    (fasdump (if (null? *recursive-compilation-rtl-blocks*)
-			 rtl
-			 (list->vector
-			  (cons (cons 0 rtl)
-				*recursive-compilation-rtl-blocks*)))
-		     pathname))))))
+      (write-string "RTL for object " port)
+      (write *recursive-compilation-number* port)
+      (newline port)
+      (write-rtl-instructions (linearize-rtl *rtl-root*
+					     *rtl-procedures*
+					     *rtl-continuations*)
+			      port)
+      (if (not (zero? *recursive-compilation-number*))
+	  (begin
+	    (write-char #\page port)
+	    (newline port))))))
 
-(define (phase/bit-generation)
+(define (phase/lap-generation)
   (compiler-phase "LAP Generation"
     (lambda ()
       (set! *next-constant* 0)
@@ -870,7 +938,7 @@ MIT in each case. |#
       (set! *block-label* (generate-label))
       (set! *external-labels* '())
       (if *procedure-result?*
-	  (generate-bits *rtl-graphs* '()
+	  (generate-lap *rtl-graphs* '()
 	    (lambda (prefix environment-label free-ref-label n-sections)
 	      (node-insert-snode! (rtl-procedure/entry-node *rtl-root*)
 				  (make-sblock prefix))
@@ -880,23 +948,22 @@ MIT in each case. |#
 		    (vector environment-label free-ref-label n-sections))
 	      unspecific))
 	  (begin
-	    (let ((prefix (generate-bits *rtl-graphs* *remote-links* false)))
+	    (let ((prefix (generate-lap *rtl-graphs* *remote-links* false)))
 	      (node-insert-snode! (rtl-expr/entry-node *rtl-root*)
 				  (make-sblock prefix)))
 	    (set! *entry-label* (rtl-expr/label *rtl-root*))
 	    unspecific)))))
 
-(define (phase/bit-linearization)
+(define (phase/lap-linearization)
   (compiler-phase "LAP Linearization"
     (lambda ()
-      (set! *bits*
-	    (append-instruction-sequences!
-	     (if *procedure-result?*
-		 (LAP (ENTRY-POINT ,*entry-label*))
-		 (lap:make-entry-point *entry-label* *block-label*))
-	     (linearize-bits *rtl-root*
-			     *rtl-procedures*
-			     *rtl-continuations*)))
+      (set! *lap*
+	    (LAP ,@(if *procedure-result?*
+		       (LAP (ENTRY-POINT ,*entry-label*))
+		       (lap:make-entry-point *entry-label* *block-label*))
+		 ,@(linearize-lap *rtl-root*
+				  *rtl-procedures*
+				  *rtl-continuations*)))
       (with-values
 	  (lambda ()
 	    (info-generation-phase-2 *rtl-expression*
@@ -917,10 +984,37 @@ MIT in each case. |#
 	    (set! *rtl-root*)
 	    unspecific)))))
 
+(define (phase/lap-file-output port)
+  (compiler-phase "LAP File Output"
+    (lambda ()
+      (fluid-let ((*unparser-radix* 16)
+		  (*unparse-uninterned-symbols-by-name?* true))
+	(with-output-to-port port
+	  (lambda ()
+	    (write-string "LAP for object ")
+	    (write *recursive-compilation-number*)
+	    (newline)
+	    (newline)
+	    (for-each (lambda (instruction)
+			(if (and (pair? instruction)
+				 (eq? (car instruction) 'LABEL))
+			    (begin
+			      (write (cadr instruction))
+			      (write-char #\:))
+			    (begin
+			      (write-char #\tab)
+			      (write instruction)))
+			(newline))
+		      *lap*)
+	    (if (not (zero? *recursive-compilation-number*))
+		(begin
+		  (write-char #\page)
+		  (newline)))))))))
+
 (define (phase/assemble)
   (compiler-phase "Assembly"
     (lambda ()
-      (assemble *block-label* (last-reference *bits*)
+      (with-values (lambda () (assemble *block-label* (last-reference *lap*)))
 	(lambda (count code-vector labels bindings linkage-info)
 	  linkage-info			;ignored
 	  (set! *code-vector* code-vector)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.9 1989/10/26 07:39:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.10 1990/01/18 22:47:57 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -96,8 +96,7 @@ MIT in each case. |#
 		   (loop (element-next-value x))))))
 	  (else
 	   (set-element-first-value! element class)
-	   (let loop ((previous class)
-		      (next (element-next-value class)))
+	   (let loop ((previous class) (next (element-next-value class)))
 	     (cond ((not next)
 		    (set-element-next-value! element false)
 		    (set-element-next-value! previous element)
@@ -131,8 +130,7 @@ MIT in each case. |#
 	 (if next (set-element-previous-hash! next previous))
 	 (if previous
 	     (set-element-next-hash! previous next)
-	     (hash-table-set! hash next)))))
-  unspecific)
+	     (hash-table-set! hash next))))))
 
 (define (hash-table-delete-class! predicate)
   (let table-loop ((i 0))
@@ -140,35 +138,9 @@ MIT in each case. |#
 	(let bucket-loop ((element (hash-table-ref i)))
 	  (if element
 	      (begin
-		(if (predicate element)
-		    (hash-table-delete! i element))
+		(if (predicate element) (hash-table-delete! i element))
 		(bucket-loop (element-next-hash element)))
-	      (table-loop (1+ i))))))
-  unspecific)
-
-(define (rtl:expression-cost expression)
-  (let ((complex
-	 (lambda ()
-	   (let loop ((parts (cdr expression)) (cost 3))
-	     (if (null? parts)
-		 cost
-		 (loop (cdr parts)
-		       (if (pair? (car parts))
-			   (+ cost (rtl:expression-cost (car parts)))
-			   cost)))))))
-    (case (rtl:expression-type expression)
-      ((CONSTANT) (rtl:constant-cost (rtl:constant-value expression)))
-      ((REGISTER) 2)
-      ((OBJECT->FIXNUM)
-       (if (let ((subexpression (rtl:object->fixnum-expression expression)))
-	     (and (rtl:constant? subexpression)
-		  (let ((n (rtl:constant-value subexpression)))
-		    (and (exact-integer? n)
-			 (<= -128 n 127)))))
-	   1
-	   (complex)))
-      (else
-       (complex)))))
+	      (table-loop (1+ i)))))))
 
 (define (hash-table-copy table)
   ;; During this procedure, the `element-cost' slots of `table' are

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.33 1989/12/05 20:51:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.34 1990/01/18 22:46:50 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,8 +41,7 @@ MIT in each case. |#
 ;; These allows each port to open code a subset of everything below.
 
 (define-integrable (available-primitive? prim)
-  (lambda (prim)
-    (not (memq prim compiler:primitives-with-no-open-coding))))
+  (not (memq prim compiler:primitives-with-no-open-coding)))
 
 (define (open-coding-analysis applications)
   (for-each (if compiler:open-code-primitives?
@@ -455,15 +454,15 @@ MIT in each case. |#
 			     address-units-per-packed-char)))
 
 (define (rtl:length-fetch locative)
-  (rtl:make-cons-pointer (rtl:make-constant (ucode-type fixnum))
+  (rtl:make-cons-pointer (rtl:make-machine-constant (ucode-type fixnum))
 			 (rtl:make-fetch locative)))
 
 (define (rtl:vector-length-fetch locative)
-  (rtl:make-cons-pointer (rtl:make-constant (ucode-type fixnum))
+  (rtl:make-cons-pointer (rtl:make-machine-constant (ucode-type fixnum))
 			 (rtl:make-object->datum (rtl:make-fetch locative))))
 
 (define (rtl:string-fetch locative)
-  (rtl:make-cons-pointer (rtl:make-constant (ucode-type character))
+  (rtl:make-cons-pointer (rtl:make-machine-constant (ucode-type character))
 			 (rtl:make-fetch locative)))
 
 (define (rtl:string-assignment locative value)
@@ -494,7 +493,7 @@ MIT in each case. |#
   (simple-open-coder
    (lambda (combination expressions finish)
      combination
-     (finish (pcfg-invert (rtl:make-true-test (car expressions)))))
+     (finish (rtl:make-false-test (car expressions))))
    '(0)
    false))
 
@@ -530,7 +529,7 @@ MIT in each case. |#
 	 (lambda (combination expressions finish)
 	   combination
 	   (finish
-	    (rtl:make-typed-cons:pair (rtl:make-constant type)
+	    (rtl:make-typed-cons:pair (rtl:make-machine-constant type)
 				      (car expressions)
 				      (cadr expressions)))))))
 
@@ -547,7 +546,7 @@ MIT in each case. |#
 		  combination
 		  (finish
 		   (rtl:make-typed-cons:vector
-		    (rtl:make-constant (ucode-type vector))
+		    (rtl:make-machine-constant (ucode-type vector))
 		    expressions)))
 		(all-operand-indices operands)
 		false)
@@ -576,7 +575,7 @@ MIT in each case. |#
 	(list (open-code:nonnegative-check length))
 	(finish
 	 (rtl:make-typed-cons:string
-	  (rtl:make-constant (ucode-type string))
+	  (rtl:make-machine-constant (ucode-type string))
 	  length))
 	finish
 	'STRING-ALLOCATE
@@ -726,7 +725,7 @@ MIT in each case. |#
 	(list (open-code:type-check char (ucode-type character)))
 	(finish
 	 (rtl:make-cons-pointer
-	  (rtl:make-constant (ucode-type fixnum))
+	  (rtl:make-machine-constant (ucode-type fixnum))
 	  (rtl:make-object->datum char)))
 	finish
 	'CHAR->INTEGER

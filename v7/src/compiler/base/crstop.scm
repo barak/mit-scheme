@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crstop.scm,v 1.5 1989/10/26 07:35:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crstop.scm,v 1.6 1990/01/18 22:42:42 cph Rel $
 $MC68020-Header: toplev.scm,v 4.16 89/04/26 05:09:52 GMT cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,10 +62,17 @@ MIT in each case. |#
 					    input-default))))
      input-default
      (lambda (input-pathname output-pathname)
-       (cross-compile-scode (compiler-fasload input-pathname)
-			    (and compiler:generate-rtl-files?
-				 (pathname-new-type output-pathname "brtl.x"))
-			    (pathname-new-type output-pathname "binf.x"))))))
+       (maybe-open-file compiler:generate-rtl-files?
+			(pathname-new-type output-pathname "rtl")
+	 (lambda (rtl-output-port)
+	   (maybe-open-file compiler:generate-lap-files?
+			    (pathname-new-type output-pathname "lap")
+	     (lambda (lap-output-port)
+	       (cross-compile-scode (compiler-fasload input-pathname)
+				    (pathname-new-type output-pathname
+						       "binf.x")
+				    rtl-output-port
+				    lap-output-port)))))))))
 
 (define (cross-compile-bin-file-end input-string #!optional output-string)
   (compiler-pathnames
@@ -82,46 +89,52 @@ MIT in each case. |#
      (cross-link-end cross-compilation)
      *result*)))
 
-;; This should be merged with compile-scode
+;;; This should be merged with compile-scode
 
 (define (cross-compile-scode scode
 			     #!optional
-			     rtl-output-pathname
 			     info-output-pathname
+			     rtl-output-port
+			     lap-output-port
 			     wrapper)
-  
-  (if (default-object? rtl-output-pathname)
-      (set! rtl-output-pathname false))
-  (if (default-object? info-output-pathname)
-      (set! info-output-pathname false))
-
-  (fluid-let ((*info-output-filename*
-	       (if (pathname? info-output-pathname)
-		   (pathname->string info-output-pathname)
-		   *info-output-filename*))
-	      (*rtl-output-pathname*
-	       (if (pathname? rtl-output-pathname)
-		   rtl-output-pathname
-		   *rtl-output-pathname*)))
-    ((if (default-object? wrapper)
-	 in-compiler
-	 wrapper)
-     (lambda ()
-       (set! *input-scode* scode)
-       (phase/fg-generation)
-       (phase/fg-optimization)
-       (phase/rtl-generation)
-       (phase/rtl-optimization)
-       (if rtl-output-pathname
-	   (phase/rtl-file-output rtl-output-pathname))
-       (phase/bit-generation)
-       (phase/bit-linearization)
-       (phase/assemble)
-       (if info-output-pathname
-	   (phase/info-generation-2 info-output-pathname))
-       ;; Here is were this procedure differs from compile-scode
-       (phase/cross-link)
-       *result*))))
+  (let ((info-output-pathname
+	 (if (default-object? info-output-pathname)
+	     false
+	     info-output-pathname))
+	(rtl-output-port
+	 (if (default-object? rtl-output-port) false rtl-output-port))
+	(lap-output-port
+	 (if (default-object? lap-output-port) false lap-output-port))
+	(wrapper
+	 (if (default-object? wrapper) in-compiler wrapper)))
+    (fluid-let ((compiler:compile-by-procedures? false)
+		(*info-output-filename*
+		 (if (pathname? info-output-pathname)
+		     (pathname->string info-output-pathname)
+		     *info-output-filename*))
+		(*rtl-output-port* rtl-output-port)
+		(*lap-output-port* lap-output-port))
+      ((if (default-object? wrapper)
+	   in-compiler
+	   wrapper)
+       (lambda ()
+	 (set! *input-scode* scode)
+	 (phase/fg-generation)
+	 (phase/fg-optimization)
+	 (phase/rtl-generation)
+	 (phase/rtl-optimization)
+	 (if rtl-output-port
+	     (phase/rtl-file-output rtl-output-port))
+	 (phase/lap-generation)
+	 (phase/lap-linearization)
+	 (if lap-output-port
+	     (phase/lap-file-output lap-output-port))
+	 (phase/assemble)
+	 (if info-output-pathname
+	     (phase/info-generation-2 info-output-pathname))
+	 ;; Here is were this procedure differs from compile-scode
+	 (phase/cross-link)
+	 *result*)))))
 
 (define-structure (cc-vector (constructor cc-vector/make)
 			     (conc-name cc-vector/))

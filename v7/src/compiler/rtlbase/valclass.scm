@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/valclass.scm,v 1.1 1989/07/25 12:05:17 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/valclass.scm,v 1.2 1990/01/18 22:45:58 cph Rel $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,148 +32,89 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Register Transfer Language Value Classes
+;;;; RTL Value Classes
 
 (declare (usual-integrations))
 
-;;;; Association between RTL expression types and their value classifiers.
+(define-structure (value-class
+		   (conc-name value-class/)
+		   (constructor %make-value-class (name parent))
+		   (print-procedure
+		    (unparser/standard-method 'VALUE-CLASS
+		      (lambda (state class)
+			(unparse-object state (value-class/name class))))))
+  (name false read-only true)
+  (parent false read-only true)
+  (children '())
+  (properties (make-1d-table) read-only true))
 
-(package (define-value-classifier rtl->value-class)
+(define (make-value-class name parent)
+  (let ((class (%make-value-class name parent)))
+    (if parent
+	(set-value-class/children!
+	 parent
+	 (cons class (value-class/children parent))))
+    class))
 
-  (define mapping '())
+(define (value-class/ancestor-or-self? class ancestor)
+  (or (eq? class ancestor)
+      (let loop ((class (value-class/parent class)))
+	(and class
+	     (or (eq? class ancestor)
+		 (loop (value-class/parent class)))))))
 
-  (define-export (define-value-classifier rtl-type value-classifier)
-    (let ((find (assq rtl-type mapping)))
-      (if find
-	  (set-cdr! find value-classifier)
-	  (set! mapping (cons (cons rtl-type value-classifier) mapping)))))
+(define (value-class/ancestry class)
+  (value-class/partial-ancestry class value-class=value))
 
-  (define (rtl-type->value-classifier rtl-type)
-    (let ((entry (assq rtl-type mapping)))
-      (and entry (cdr entry))))
+(define (value-class/partial-ancestry class ancestor)
+  (let loop ((class* class) (ancestry '()))
+    (if (not class*)
+	(error "value-class not an ancestor" class ancestor))
+    (let ((ancestry (cons class* ancestry)))
+      (if (eq? class* ancestor)
+	  ancestry
+	  (loop (value-class/parent class*) ancestry)))))
 
-  ;;; If no classifier is found for the RTL-type, classify as VALUE (least
-  ;;; specific value class).
-  (define-export (rtl->value-class rtl)
-    (let ((classify (rtl-type->value-classifier (rtl:expression-type rtl))))
-      (if classify
-	  (if (symbol? classify)
-	      classify
-	      (classify rtl))
-	  'VALUE)))
+(define (value-class/nearest-common-ancestor x y)
+  (let loop
+      ((join false)
+       (x (value-class/ancestry x))
+       (y (value-class/ancestry y)))
+    (if (and (not (null? x))
+	     (not (null? y))
+	     (eq? (car x) (car y)))
+	(loop (car x) (cdr x) (cdr y))
+	join)))
+
+(let-syntax
+    ((define-value-class
+       (lambda (name parent-name)
+	 (let* ((name->variable
+		 (lambda (name) (symbol-append 'VALUE-CLASS= name)))
+		(variable (name->variable name)))
+	   `(BEGIN
+	      (DEFINE ,variable
+		(MAKE-VALUE-CLASS ',name
+				  ,(if parent-name
+				       (name->variable parent-name)
+				       `#F)))
+	      (DEFINE (,(symbol-append variable '?) CLASS)
+		(VALUE-CLASS/ANCESTOR-OR-SELF? CLASS ,variable))
+	      (DEFINE
+		(,(symbol-append 'REGISTER- variable '?) REGISTER)
+		(VALUE-CLASS/ANCESTOR-OR-SELF? (REGISTER-VALUE-CLASS REGISTER)
+					       ,variable)))))))
+
+(define-value-class value #f)
+(define-value-class float value)
+(define-value-class word value)
+(define-value-class object word)
+(define-value-class unboxed word)
+(define-value-class address unboxed)
+(define-value-class immediate unboxed)
+(define-value-class ascii immediate)
+(define-value-class datum immediate)
+(define-value-class fixnum immediate)
+(define-value-class type immediate)
+
 )
-
-;;;; Procedures for determining the compatibility of value classes of registers.
-
-(package (register-holds-value-in-class?
-	  register-holds-compatible-value?)
-
-  ;;; Hierarchy of value classes:
-  ;;;
-  ;;; VALUE -+-> WORD --+-> OBJECT
-  ;;;	     |		|
-  ;;;	     +-> FLOAT  +-> UNBOXED
-  ;;;
-  ;;; VALUE is the all-encompassing value class.
-  ;;;
-  ;;; A "breakdown" may appear anywhere in the tree where a class might, and
-  ;;; represents the class named in the first argument and all its subclasses
-  ;;; (the second through nth arguments, which may also be breakdowns).
-  ;;; Subclasses are classes which are considered to be compatible with, but
-  ;;; more specific than, their parent.  A breakdown is a node, and simple
-  ;;; classes are leaves.
-
-  (define (make-breakdown class . subclasses)
-    (cons class (list->vector subclasses)))
-
-  (define (breakdown? object)
-    (pair? object))
-
-  (define (breakdown/class breakdown)
-    (car breakdown))
-
-  (define (breakdown/subclasses breakdown)
-    (cdr breakdown))
-
-  (define value-class-structure
-    (make-breakdown
-     'VALUE
-     (make-breakdown 'WORD
-		     'OBJECT
-		     'UNBOXED)
-     'FLOAT))
-
-  ;;; Find a path (list) from the top of the value class structure to CLASS.
-  (define (find-path class)
-    (let outer ((structure value-class-structure)
-		(path '()))
-      (if (breakdown? structure)
-	  (let ((name (breakdown/class structure)))
-	    (if (eq? class name)
-		(cons class path)
-		(let ((subclasses (breakdown/subclasses structure)))
-		  (let inner ((index (-1+ (vector-length subclasses))))
-		    (if (>= index 0)
-			(or (outer (vector-ref subclasses index)
-				   (cons name path))
-			    (inner (-1+ index)))
-			'())))))
-	  (and (eq? class structure) (cons class path)))))
-
-  ;;; Return #f iff SUPER is neither a superclass of CLASS nor the same as
-  ;;; CLASS.
-  (define (value-class/compatible? super class)
-    (let ((path (find-path class)))
-      (if path
-	  (memq super path)
-	  (error "No such class" class))))
-
-  (define-export (register-holds-value-in-class? register value-class)
-    (eq? value-class (rgraph-register-value-class *current-rgraph* register)))
-
-  (define-export (register-holds-compatible-value? register value-class)
-    (value-class/compatible?
-     value-class
-     (rgraph-register-value-class *current-rgraph* register)))
-)
-
-;;;; Pseudo-register classifiers
-
-(let-syntax ((make-pseudo-check
-	      (macro (value-class)
-		`(define (,(symbol-append 'pseudo- value-class '?) register)
-		   (and (pseudo-register? register)
-			(register-holds-compatible-value? register ',value-class))))))
-  (make-pseudo-check FLOAT)
-  (make-pseudo-check OBJECT)
-  (make-pseudo-check UNBOXED))
-
-;; Assume word register if not float register.
-
-(define (pseudo-word? register)
-  (and (pseudo-register? register)
-       (not (register-holds-compatible-value? register 'FLOAT))))
-
-;;;; RTL expression value classifiers
-
-(define-value-classifier '@ADDRESS->FLOAT 'FLOAT)
-(define-value-classifier 'FLONUM-1-ARG 'FLOAT)
-(define-value-classifier 'FLONUM-2-ARGS 'FLOAT)
-
-(define-value-classifier 'OFFSET
-  (lambda (rtl)
-    (if (rtl:offset? rtl)
-	(let ((register (rtl:register-number (rtl:offset-register rtl))))
-	  (if (pseudo-register? register)
-	      (rgraph-register-value-class *current-rgraph* register)
-	      'VALUE))
-	(error "Not an offset expression"))))
-
-(define-value-classifier 'REGISTER
-  (lambda (rtl)
-    (if (rtl:register? rtl)
-	(let ((register (rtl:register-number rtl)))
-	  (if (pseudo-register? register)
-	      (rgraph-register-value-class *current-rgraph* register)
-	      'VALUE))
-	(error "Not a register expression"))))

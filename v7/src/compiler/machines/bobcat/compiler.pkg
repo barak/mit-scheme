@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.25 1989/10/26 07:37:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.26 1990/01/18 22:43:21 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -84,6 +84,7 @@ MIT in each case. |#
 	  compiler:default-top-level-declarations
 	  compiler:enable-expansion-declarations?
 	  compiler:enable-integration-declarations?
+	  compiler:generate-lap-files?
 	  compiler:generate-range-checks?
 	  compiler:generate-rtl-files?
 	  compiler:generate-type-checks?
@@ -173,13 +174,14 @@ MIT in each case. |#
 	  *rtl-procedures*
 	  *rtl-graphs*)
   (import (runtime compiler-info)
-	  make-dbg-info-vector))
+	  make-dbg-info-vector)
+  (import (runtime unparser)
+	  *unparse-uninterned-symbols-by-name?*))
 
 (define-package (compiler debug)
   (files "base/debug")
   (parent (compiler))
   (export ()
-	  compiler:write-rtl-file
 	  debug/find-continuation
 	  debug/find-entry-node
 	  debug/find-procedure
@@ -189,7 +191,8 @@ MIT in each case. |#
 	  show-bblock-rtl
 	  show-fg
 	  show-fg-node
-	  show-rtl)
+	  show-rtl
+	  write-rtl-instructions)
   (import (runtime pretty-printer)
 	  *pp-primitives-by-name*))
 
@@ -466,10 +469,6 @@ MIT in each case. |#
   (files "rtlgen/opncod")
   (parent (compiler rtl-generator))
   (export (compiler rtl-generator) combination/inline)
-  (export (compiler fg-optimizer simplicity-analysis)
-	  combination/inline/simple?)
-  (export (compiler fg-optimizer subproblem-ordering parameter-analysis)
-	  combination/inline/simple?)
   (export (compiler top-level) open-coding-analysis))
 
 (define-package (compiler rtl-generator find-block)
@@ -529,6 +528,19 @@ MIT in each case. |#
   (parent (compiler rtl-optimizer))
   (export (compiler top-level) merge-common-suffixes!))
 
+(define-package (compiler rtl-optimizer rtl-dataflow-analysis)
+  (files "rtlopt/rdflow")
+  (parent (compiler rtl-optimizer))
+  (export (compiler top-level) rtl-dataflow-analysis))
+
+(define-package (compiler rtl-optimizer rtl-rewriting)
+  (files "rtlopt/rerite")
+  (parent (compiler rtl-optimizer))
+  (export (compiler top-level)
+	  rtl-rewriting:post-cse
+	  rtl-rewriting:pre-cse)
+  (export (compiler lap-syntaxer) add-rewriting-rule!))
+
 (define-package (compiler rtl-optimizer lifetime-analysis)
   (files "rtlopt/rlife")
   (parent (compiler rtl-optimizer))
@@ -536,7 +548,7 @@ MIT in each case. |#
   (export (compiler rtl-optimizer code-compression) mark-set-registers!))
 
 (define-package (compiler rtl-optimizer code-compression)
-  (files "rtlopt/rdeath")
+  (files "rtlopt/rcompr")
   (parent (compiler rtl-optimizer))
   (export (compiler top-level) code-compression))
 
@@ -555,6 +567,7 @@ MIT in each case. |#
 	 "machines/bobcat/rules2"	;  "      "        "
 	 "machines/bobcat/rules3"	;  "      "        "
 	 "machines/bobcat/rules4"	;  "      "        "
+	 "machines/bobcat/rulrew"	;code rewriting rules
 	 "back/syntax"			;Generic syntax phase
 	 "back/syerly"			;Early binding version
 	 "machines/bobcat/coerce"	;Coercions: integer -> bit string
@@ -582,7 +595,7 @@ MIT in each case. |#
 	  *interned-uuo-links*
 	  *interned-variables*
 	  *next-constant*
-	  generate-bits)
+	  generate-lap)
   (import (scode-optimizer expansion)
 	  scode->scode-expander))
 
@@ -596,10 +609,10 @@ MIT in each case. |#
   (files "back/linear")
   (parent (compiler lap-syntaxer))
   (export (compiler lap-syntaxer)
-	  linearize-bits
-	  bblock-linearize-bits)
+	  linearize-lap
+	  bblock-linearize-lap)
   (export (compiler top-level)
-	  linearize-bits))
+	  linearize-lap))
 
 (define-package (compiler assembler)
   (files "machines/bobcat/assmd"	;Machine dependent

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.24 1989/10/26 07:37:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.25 1990/01/18 22:43:31 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -341,7 +341,7 @@ MIT in each case. |#
 			      "lapgn2" "lapgn3" "linear" "regmap" "symtab"
 			      "syntax")
 	     (filename/append "machines/bobcat"
-			      "dassm1" "insmac" "machin" "rgspcm")
+			      "dassm1" "insmac" "machin" "rgspcm" "rulrew")
 	     (filename/append "fggen"
 			      "declar" "fggen" "canon")
 	     (filename/append "fgopt"
@@ -357,9 +357,9 @@ MIT in each case. |#
 			      "fndblk" "fndvar" "opncod" "rgcomb" "rgproc"
 			      "rgretn" "rgrval" "rgstmt" "rtlgen")
 	     (filename/append "rtlopt"
-			      "ralloc" "rcse1" "rcse2" "rcseep" "rcseht"
-			      "rcserq" "rcsesr" "rdeath" "rdebug" "rinvex"
-			      "rlife" "rtlcsm"))
+			      "ralloc" "rcompr" "rcse1" "rcse2" "rcseep"
+			      "rcseht" "rcserq" "rcsesr" "rdebug" "rdflow"
+			      "rerite" "rinvex" "rlife" "rtlcsm"))
      compiler-syntax-table)
     (file-dependency/syntax/join
      (filename/append "machines/bobcat"
@@ -394,23 +394,22 @@ MIT in each case. |#
 	 (filename/append "machines/bobcat" "machin"))
 	(rtl-base
 	 (filename/append "rtlbase"
-			  "regset" "rgraph" "rtlcfg" "rtlexp" "rtlobj"
-			  "rtlreg" "rtlty1" "rtlty2" "valclass"))
+			  "regset" "rgraph" "rtlcfg" "rtlobj"
+			  "rtlreg" "rtlty1" "rtlty2"))
 	(cse-base
 	 (filename/append "rtlopt"
 			  "rcse1" "rcse2" "rcseep" "rcseht" "rcserq" "rcsesr"))
 	(instruction-base
-	 (append (filename/append "back" "insseq")
-		 (filename/append "machines/bobcat" "assmd" "machin")))
+	 (filename/append "machines/bobcat" "assmd" "machin"))
 	(lapgen-base
-	 (append (filename/append "back" "lapgn2" "lapgn3" "regmap")
+	 (append (filename/append "back" "lapgn3" "regmap")
 		 (filename/append "machines/bobcat" "lapgen")))
 	(assembler-base
-	 (append (filename/append "back" "bitutl" "symtab")
+	 (append (filename/append "back" "symtab")
 		 (filename/append "machines/bobcat" "insutl")))
 	(lapgen-body
 	 (append
-	  (filename/append "back" "lapgn1" "syntax")
+	  (filename/append "back" "lapgn1" "lapgn2" "syntax")
 	  (filename/append "machines/bobcat"
 			   "rules1" "rules2" "rules3" "rules4")))
 	(assembler-body
@@ -473,8 +472,8 @@ MIT in each case. |#
     (define-integration-dependencies "rtlbase" "rtlcon" "base" "cfg3" "utils")
     (define-integration-dependencies "rtlbase" "rtlcon" "machines/bobcat"
       "machin")
-    (define-integration-dependencies "rtlbase" "rtlexp" "base" "utils")
-    (define-integration-dependencies "rtlbase" "rtlexp" "rtlbase" "rtlreg")
+    (define-integration-dependencies "rtlbase" "rtlexp" "rtlbase"
+      "rtlreg" "rtlty1")
     (define-integration-dependencies "rtlbase" "rtline" "base" "cfg1" "cfg2")
     (define-integration-dependencies "rtlbase" "rtline" "rtlbase"
       "rtlcfg" "rtlty2")
@@ -489,8 +488,6 @@ MIT in each case. |#
     (define-integration-dependencies "rtlbase" "rtlty2" "machines/bobcat"
       "machin")
     (define-integration-dependencies "rtlbase" "rtlty2" "rtlbase" "rtlty1")
-    (define-integration-dependencies "rtlbase" "valclass" "rtlbase"
-      "rtlty1" "rtlty2" "rtlreg")
 
     (file-dependency/integration/join
      (append
@@ -514,8 +511,9 @@ MIT in each case. |#
 
     (file-dependency/integration/join
      (append cse-base
-	     (filename/append "rtlopt" "ralloc" "rdeath" "rdebug" "rinvex"
-			      "rlife" "rtlcsm"))
+	     (filename/append "rtlopt" "ralloc" "rcompr" "rdebug" "rdflow"
+			      "rerite" "rinvex" "rlife" "rtlcsm")
+	     (filename/append "machines/bobcat" "rulrew"))
      (append bobcat-base rtl-base))
 
     (file-dependency/integration/join cse-base cse-base)

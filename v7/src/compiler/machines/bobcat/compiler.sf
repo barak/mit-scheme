@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.sf,v 1.11 1989/08/28 18:33:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.sf,v 1.12 1990/01/18 22:43:26 cph Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -105,6 +105,6 @@ MIT in each case. |#
 ((access syntax-files! (->environment '(COMPILER))))
 
 ;; Rebuild the package constructors and cref.
-(cref/generate-constructors "comp")
+(cref/generate-all "comp")
 (sf "comp.con" "comp.bcon")
 (sf "comp.ldr" "comp.bldr")

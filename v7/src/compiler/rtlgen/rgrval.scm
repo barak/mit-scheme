@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.14 1989/10/26 07:39:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.15 1990/01/18 22:47:04 cph Exp $
 #| -*-Scheme-*-
-Copyright (c) 1988 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.14 1989/10/26 07:39:12 cph Exp $
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.15 1990/01/18 22:47:04 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -173,7 +173,7 @@ promotional, or sales literature without prior written consent from
 (define (make-trivial-closure-cons procedure)
   (enqueue-procedure! procedure)
   (rtl:make-cons-pointer
-   (rtl:make-constant type-code:compiled-entry)
+   (rtl:make-machine-constant type-code:compiled-entry)
    (rtl:make-entry:procedure (procedure-label procedure))))
 
       (else
@@ -193,7 +193,8 @@ promotional, or sales literature without prior written consent from
 			     '()
 			     false)))
     (let ((kernel
-		      (rtl:make-constant (scode/procedure-type-code header))
+	   (lambda (scfg expression)
+	     (values scfg
 		     (rtl:make-typed-cons:pair
 		      (rtl:make-machine-constant
 		       (scode/procedure-type-code header))
@@ -210,7 +211,7 @@ promotional, or sales literature without prior written consent from
 	    ;; inside another IC procedure?
 (define (make-non-trivial-closure-cons procedure)
   (rtl:make-cons-pointer
-   (rtl:make-constant type-code:compiled-entry)
+   (rtl:make-machine-constant type-code:compiled-entry)
    (with-values (lambda () (procedure-arity-encoding procedure))
      (lambda (min max)
        (rtl:make-cons-closure

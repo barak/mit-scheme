@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.9 1989/12/11 06:17:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.10 1990/01/18 22:44:15 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,25 +38,61 @@ MIT in each case. |#
 
 ;;;; Interpreter Calls
 
+(define (interpreter-call-argument? expression)
+  (or (rtl:register? expression)
+      (rtl:constant? expression)
+      (and (rtl:cons-pointer? expression)
+	   (rtl:machine-constant? (rtl:cons-pointer-type expression))
+	   (rtl:machine-constant? (rtl:cons-pointer-datum expression)))
+      (and (rtl:offset? expression)
+	   (rtl:register? (rtl:offset-base expression)))))
+
+(define (interpreter-call-argument->machine-register! expression register)
+  (let ((target (register-reference register)))
+    (let ((result
+	   (case (car expression)
+	     ((REGISTER)
+	      (load-machine-register! (rtl:register-number expression)
+				      register))
+	     ((CONSTANT)
+	      (LAP ,(load-constant (rtl:constant-value expression) target)))
+	     ((CONS-POINTER)
+	      (LAP ,(load-non-pointer (rtl:machine-constant-value
+				       (rtl:cons-pointer-type expression))
+				      (rtl:machine-constant-value
+				       (rtl:cons-pointer-datum expression))
+				      target)))
+	     ((OFFSET)
+	      (LAP (MOV L ,(offset->indirect-reference! expression) ,target)))
+	     (else
+	      (error "Unknown expression type" (car expression))))))
+      (delete-register! register)
+      result)))
+
 (define-rule statement
   (INTERPRETER-CALL:ACCESS (? environment) (? name))
+  (QUALIFIER (interpreter-call-argument? environment))
   (lookup-call code:compiler-access environment name))
 
 (define-rule statement
   (INTERPRETER-CALL:LOOKUP (? environment) (? name) (? safe?))
+  (QUALIFIER (interpreter-call-argument? environment))
   (lookup-call (if safe? code:compiler-safe-lookup code:compiler-lookup)
 	       environment name))
 
 (define-rule statement
   (INTERPRETER-CALL:UNASSIGNED? (? environment) (? name))
+  (QUALIFIER (interpreter-call-argument? environment))
   (lookup-call code:compiler-unassigned? environment name))
 
 (define-rule statement
   (INTERPRETER-CALL:UNBOUND? (? environment) (? name))
+  (QUALIFIER (interpreter-call-argument? environment))
   (lookup-call code:compiler-unbound? environment name))
 
 (define (lookup-call code environment name)
-  (let ((set-environment (expression->machine-register! environment d2)))
+  (let ((set-environment
+	 (interpreter-call-argument->machine-register! environment d2)))
     (let ((clear-map (clear-map!)))
       (LAP ,@set-environment
 	   ,@clear-map
@@ -65,17 +101,20 @@ MIT in each case. |#
 
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? environment) (? name) (? value))
-  (QUALIFIER (not (eq? 'CONS-POINTER (car value))))
-  (assignment-call:default code:compiler-define environment name value))
+  (QUALIFIER (and (interpreter-call-argument? environment)
+		  (interpreter-call-argument? value)))
+  (assignment-call code:compiler-define environment name value))
 
 (define-rule statement
   (INTERPRETER-CALL:SET! (? environment) (? name) (? value))
-  (QUALIFIER (not (eq? 'CONS-POINTER (car value))))
-  (assignment-call:default code:compiler-set! environment name value))
+  (QUALIFIER (and (interpreter-call-argument? environment)
+		  (interpreter-call-argument? value)))
+  (assignment-call code:compiler-set! environment name value))
 
-(define (assignment-call:default code environment name value)
-  (let ((set-environment (expression->machine-register! environment d2)))
-    (let ((set-value (expression->machine-register! value d4)))
+(define (assignment-call code environment name value)
+  (let ((set-environment
+	 (interpreter-call-argument->machine-register! environment d2)))
+    (let ((set-value (interpreter-call-argument->machine-register! value d4)))
       (let ((clear-map (clear-map!)))
 	(LAP ,@set-environment
 	     ,@set-value
@@ -84,58 +123,10 @@ MIT in each case. |#
 	     ,@(invoke-interface-jsr code))))))
 
 (define-rule statement
-  (INTERPRETER-CALL:DEFINE (? environment) (? name)
-			   (CONS-POINTER (CONSTANT (? type))
-					 (REGISTER (? datum))))
-  (assignment-call:cons-pointer code:compiler-define environment name type
-				datum))
-
-(define-rule statement
-  (INTERPRETER-CALL:SET! (? environment) (? name)
-			 (CONS-POINTER (CONSTANT (? type))
-				       (REGISTER (? datum))))
-  (assignment-call:cons-pointer code:compiler-set! environment name type
-				datum))
-
-(define (assignment-call:cons-pointer code environment name type datum)
-  (let ((set-environment (expression->machine-register! environment d2)))
-    (let ((datum (standard-register-reference datum false true)))
-      (let ((clear-map (clear-map!)))
-	(LAP ,@set-environment
-	     (MOV L ,datum ,reg:temp)
-	     ,(memory-set-type type reg:temp)
-	     ,@clear-map
-	     (MOV L ,reg:temp (D 4))
-	     ,(load-constant name (INST-EA (D 3)))
-	     ,@(invoke-interface-jsr code))))))
-
-(define-rule statement
-  (INTERPRETER-CALL:DEFINE (? environment) (? name)
-			   (CONS-POINTER (CONSTANT (? type))
-					 (ENTRY:PROCEDURE (? label))))
-  (assignment-call:cons-procedure code:compiler-define environment name type
-				  label))
-
-(define-rule statement
-  (INTERPRETER-CALL:SET! (? environment) (? name)
-			 (CONS-POINTER (CONSTANT (? type))
-				       (ENTRY:PROCEDURE (? label))))
-  (assignment-call:cons-procedure code:compiler-set! environment name type
-				  label))
-
-(define (assignment-call:cons-procedure code environment name type label)
-  (let ((set-environment (expression->machine-register! environment d2)))
-    (LAP ,@set-environment
-	 ,@(clear-map!)
-	 (PEA (@PCR ,(rtl-procedure/external-label (label->object label))))
-	 ,(memory-set-type type (INST-EA (@A 7)))
-	 (MOV L (@A+ 7) (D 4))
-	 ,(load-constant name (INST-EA (D 3)))
-	 ,@(invoke-interface-jsr code))))
-
-(define-rule statement
   (INTERPRETER-CALL:CACHE-REFERENCE (? extension) (? safe?))
-  (let ((set-extension (expression->machine-register! extension d2)))
+  (QUALIFIER (interpreter-call-argument? extension))
+  (let ((set-extension
+	 (interpreter-call-argument->machine-register! extension d2)))
     (let ((clear-map (clear-map!)))
       (LAP ,@set-extension
 	   ,@clear-map
@@ -145,9 +136,11 @@ MIT in each case. |#
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension) (? value))
-  (QUALIFIER (not (eq? 'CONS-POINTER (car value))))
-  (let ((set-extension (expression->machine-register! extension d2)))
-    (let ((set-value (expression->machine-register! value d3)))
+  (QUALIFIER (and (interpreter-call-argument? extension)
+		  (interpreter-call-argument? value)))
+  (let ((set-extension
+	 (interpreter-call-argument->machine-register! extension d2)))
+    (let ((set-value (interpreter-call-argument->machine-register! value d3)))
       (let ((clear-map (clear-map!)))
 	(LAP ,@set-extension
 	     ,@set-value
@@ -155,35 +148,10 @@ MIT in each case. |#
 	     (JSR ,entry:compiler-assignment-trap))))))
 
 (define-rule statement
-  (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension)
-				     (CONS-POINTER (CONSTANT (? type))
-						   (REGISTER (? datum))))
-  (let ((set-extension (expression->machine-register! extension d2)))
-    (let ((datum (standard-register-reference datum false true)))
-      (let ((clear-map (clear-map!)))
-	(LAP ,@set-extension
-	     (MOV L ,datum ,reg:temp)
-	     ,(memory-set-type type reg:temp)
-	     ,@clear-map
-	     (MOV L ,reg:temp (D 3))
-	     (JSR ,entry:compiler-assignment-trap))))))
-
-(define-rule statement
-  (INTERPRETER-CALL:CACHE-ASSIGNMENT
-   (? extension)
-   (CONS-POINTER (CONSTANT (? type))
-		 (ENTRY:PROCEDURE (? label))))
-  (let ((set-extension (expression->machine-register! extension d2)))
-    (LAP ,@set-extension
-	 ,@(clear-map!)
-	 (PEA (@PCR ,(rtl-procedure/external-label (label->object label))))
-	 ,(memory-set-type type (INST-EA (@A 7)))
-	 (MOV L (@A+ 7) (D 3))
-	 (JSR ,entry:compiler-assignment-trap))))
-
-(define-rule statement
   (INTERPRETER-CALL:CACHE-UNASSIGNED? (? extension))
-  (let ((set-extension (expression->machine-register! extension d2)))
+  (QUALIFIER (interpreter-call-argument? extension))
+  (let ((set-extension
+	 (interpreter-call-argument->machine-register! extension d2)))
     (let ((clear-map (clear-map!)))
       (LAP ,@set-extension
 	   ,@clear-map

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/subfre.scm,v 1.3 1989/10/26 07:37:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/subfre.scm,v 1.4 1990/01/18 22:44:38 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,38 +37,102 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (compute-subproblem-free-variables parallels)
-  (for-each (lambda (parallel)
-	      (for-each (lambda (subproblem)
-			  (set-subproblem-free-variables! subproblem 'UNKNOWN))
-			(parallel-subproblems parallel)))
-	    parallels)
-  (for-each (lambda (parallel)
-	      (for-each walk-subproblem (parallel-subproblems parallel)))
-	    parallels))
+  (with-analysis-state
+   (lambda ()
+     (for-each (lambda (parallel)
+		 (for-each (lambda (subproblem)
+			     (set-subproblem-free-variables! subproblem 'UNKNOWN))
+			   (parallel-subproblems parallel)))
+	       parallels)
+     (for-each (lambda (parallel)
+		 (for-each walk-subproblem (parallel-subproblems parallel)))
+	       parallels))))
 
 (define (new-subproblem/compute-free-variables! subproblem)
-  (walk-subproblem subproblem))
+  (with-analysis-state (lambda () (walk-subproblem subproblem))))
 
 (define (walk-subproblem subproblem)
   (let ((free (subproblem-free-variables subproblem)))
-    (if (eq? free 'UNKNOWN)
-	(let ((free
-	       (let ((free (walk-rvalue (subproblem-rvalue subproblem))))
-		 (if (subproblem-canonical? subproblem)
-		     (eq-set-union
-		      free
-		      (walk-node (subproblem-entry-node subproblem)))
-		     free))))
-	  (set-subproblem-free-variables! subproblem free)
-	  free)
-	free)))
+    (case free
+      ((UNKNOWN)
+       (set-subproblem-free-variables! subproblem 'BEING-COMPUTED)
+       (let ((free
+	      (let ((free (walk-rvalue (subproblem-rvalue subproblem))))
+		(if (subproblem-canonical? subproblem)
+		    (eq-set-union
+		     free
+		     (walk-node (subproblem-entry-node subproblem)))
+		    free))))
+	 (set-subproblem-free-variables! subproblem free)
+	 free))
+      ((BEING-COMPUTED)
+       (error "loop in subproblem free-variable analysis" subproblem))
+      (else
+       free))))
 
-(define (walk-next next free)
-  (if next
-      (eq-set-union (walk-node next) free)
-      free))
+(define (walk-operator rvalue)
+  (enumeration-case rvalue-type (tagged-vector/index rvalue)
+    ((REFERENCE) (walk-lvalue (reference-lvalue rvalue) walk-operator))
+    ((PROCEDURE)
+     (if (procedure-continuation? rvalue)
+	 (walk-next (continuation/entry-node rvalue) '())
+	 (map-union (lambda (procedure)
+		      (list-transform-negative
+			  (block-free-variables (procedure-block procedure))
+			lvalue-integrated?))
+		    (eq-set-union (list rvalue)
+				  (procedure-callees rvalue)))))
+    (else '())))
+
+(define (walk-rvalue rvalue)
+  (enumeration-case rvalue-type (tagged-vector/index rvalue)
+    ((REFERENCE) (walk-lvalue (reference-lvalue rvalue) walk-rvalue))
+    ((PROCEDURE)
+     (if (procedure-continuation? rvalue)
+	 (walk-next (continuation/entry-node rvalue) '())
+	 (list-transform-negative
+	     (block-free-variables (procedure-block rvalue))
+	   lvalue-integrated?)))
+    (else '())))
+
+(define (walk-lvalue lvalue walk-rvalue)
+  (let ((value (lvalue-known-value lvalue)))
+    (if value
+	(if (lvalue-integrated? lvalue)
+	    (walk-rvalue value)
+	    (eq-set-adjoin lvalue (walk-rvalue value)))
+	(if (and (variable? lvalue)
+		 (variable-indirection lvalue))
+	    (walk-lvalue (variable-indirection lvalue) walk-rvalue)
+	    (list lvalue)))))
+
+(define *nodes*)
+
+(define free-variables-tag
+  "free-variables-tag")
+
+(define (with-analysis-state thunk)
+  (fluid-let ((*nodes* '()))
+    (let ((value (with-new-node-marks thunk)))
+      (for-each (lambda (node) (cfg-node-remove! node free-variables-tag))
+		*nodes*)
+      value)))
 
 (define (walk-node node)
+  (if (node-marked? node)
+      (let ((free (cfg-node-get node free-variables-tag)))
+	(if (eq? free 'BEING-COMPUTED)
+	    (error "loop in node free-variable analysis" node))
+	free)
+      (begin
+	(node-mark! node)
+	(set! *nodes* (cons node *nodes*))
+	(cfg-node-put! node free-variables-tag 'BEING-COMPUTED)
+	(let ((free (walk-node-no-memoize node)))
+	  (cfg-node-put! node free-variables-tag free)
+	  free))))
+
+(define (walk-node-no-memoize node)
   (cfg-node-case (tagged-vector/tag node)
     ((PARALLEL)
      (walk-next (snode-next node)
@@ -106,46 +170,17 @@ MIT in each case. |#
 			   (walk-rvalue (true-test-rvalue node)))))
     ((FG-NOOP)
      (walk-next (snode-next node) '()))))
-
+
+(define (walk-next next free)
+  (if next
+      (eq-set-union (walk-node next) free)
+      free))
+
 (define (map-union procedure items)
-  (let loop ((items items) (set '()))
-    (if (null? items)
-	set
-	(loop (cdr items)
-	      (eq-set-union (procedure (car items)) set)))))
-
-(define (walk-operator rvalue)
-  (enumeration-case rvalue-type (tagged-vector/index rvalue)
-    ((REFERENCE) (walk-lvalue (reference-lvalue rvalue) walk-operator))
-    ((PROCEDURE)
-     (if (procedure-continuation? rvalue)
-	 (walk-next (continuation/entry-node rvalue) '())
-	 (map-union (lambda (procedure)
-		      (list-transform-negative
-			  (block-free-variables (procedure-block procedure))
-			lvalue-integrated?))
-		    (eq-set-union (list rvalue)
-				  (procedure-callees rvalue)))))
-    (else '())))
-
-(define (walk-rvalue rvalue)
-  (enumeration-case rvalue-type (tagged-vector/index rvalue)
-    ((REFERENCE) (walk-lvalue (reference-lvalue rvalue) walk-rvalue))
-    ((PROCEDURE)
-     (if (procedure-continuation? rvalue)
-	 (walk-next (continuation/entry-node rvalue) '())
-	 (list-transform-negative
-	     (block-free-variables (procedure-block rvalue))
-	   lvalue-integrated?)))
-    (else '())))
-
-(define (walk-lvalue lvalue walk-rvalue)
-  (let ((value (lvalue-known-value lvalue)))
-    (if value
-	(if (lvalue-integrated? lvalue)
-	    (walk-rvalue value)
-	    (eq-set-adjoin lvalue (walk-rvalue value)))
-	(if (and (variable? lvalue)
-		 (variable-indirection lvalue))
-	    (walk-lvalue (variable-indirection lvalue) walk-rvalue)
-	    (list lvalue)))))
+  (if (null? items)
+      '()
+      (let loop ((items (cdr items)) (set (procedure (car items))))
+	(if (null? items)
+	    set
+	    (loop (cdr items)
+		  (eq-set-union (procedure (car items)) set))))))

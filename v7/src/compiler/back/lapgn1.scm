@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.8 1989/10/26 07:34:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.9 1990/01/18 22:41:58 cph Rel $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,7 +39,7 @@ MIT in each case. |#
 (define *current-bblock*)
 (define *pending-bblocks*)
 
-(define (generate-bits rgraphs remote-links process-constants-block)
+(define (generate-lap rgraphs remote-links process-constants-block)
   (with-new-node-marks
    (lambda ()
      (for-each cgen-rgraph rgraphs)
@@ -157,12 +157,17 @@ MIT in each case. |#
     (let loop ()
       (let ((match-result (lap-generator/match-rtl-instruction rtl)))
 	(if match-result
-	    (fluid-let ((*dead-registers* (rinst-dead-registers rinst))
-			(*prefix-instructions* (LAP))
-			(*needed-registers* '()))
-	      (let ((instructions (match-result)))
-		(delete-dead-registers!)
-		(LAP ,@*prefix-instructions* ,@instructions)))
+	    (let ((dead-registers (rinst-dead-registers rinst)))
+	      (fluid-let ((*dead-registers* dead-registers)
+			  (*registers-to-delete* dead-registers)
+			  (*prefix-instructions* (LAP))
+			  (*suffix-instructions* (LAP))
+			  (*needed-registers* '()))
+		(let ((instructions (match-result)))
+		  (delete-dead-registers!)
+		  (LAP ,@*prefix-instructions*
+		       ,@instructions
+		       ,@*suffix-instructions*))))
 	    (begin (error "CGEN-RINST: No matching rules" rtl)
 		   (loop)))))))
 

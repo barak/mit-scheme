@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.19 1989/10/28 09:41:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.20 1990/01/18 22:47:43 cph Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -90,7 +90,9 @@ MIT in each case. |#
   (make-state (register-tables/copy *register-tables*)
 	      (hash-table-copy *hash-table*)
 	      *stack-offset*
-	      (list-copy *stack-reference-quantities*)))
+	      (map (lambda (entry)
+		     (cons (car entry) (quantity-copy (cdr entry))))
+		   *stack-reference-quantities*)))
 
 (define (walk-bblock bblock)
   (let loop ((rinst (bblock-instructions bblock)))
@@ -171,8 +173,7 @@ MIT in each case. |#
 (define (cse/assign/register address expression volatile? insert-source!)
   (if (interpreter-stack-pointer? address)
       (if (and (rtl:offset? expression)
-	       (interpreter-stack-pointer?
-		(rtl:offset-register expression)))
+	       (interpreter-stack-pointer? (rtl:offset-base expression)))
 	  (stack-pointer-adjust! (rtl:offset-number expression))
 	  (begin
 	    (stack-invalidate!)
@@ -305,14 +306,8 @@ MIT in each case. |#
   rtl:flonum-pred-2-args-operand-1 rtl:set-flonum-pred-2-args-operand-1!
   rtl:flonum-pred-2-args-operand-2 rtl:set-flonum-pred-2-args-operand-2!)
 
-(define-trivial-one-arg-method 'TRUE-TEST
-  rtl:true-test-expression rtl:set-true-test-expression!)
-
 (define-trivial-one-arg-method 'TYPE-TEST
   rtl:type-test-expression rtl:set-type-test-expression!)
-
-(define-trivial-one-arg-method 'UNASSIGNED-TEST
-  rtl:type-test-expression rtl:set-unassigned-test-expression!)
 
 (define (method/noop statement)
   statement

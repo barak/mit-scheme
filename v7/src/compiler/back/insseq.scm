@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/insseq.scm,v 4.2 1988/08/31 06:38:51 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/insseq.scm,v 4.3 1990/01/18 22:41:55 cph Rel $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,10 +41,10 @@ MIT in each case. |#
       '()
       (car instruction-sequence)))
 
-(define-integrable empty-instruction-sequence
+(define empty-instruction-sequence
   '())
 
-(define-integrable (directive->instruction-sequence directive)
+(define (directive->instruction-sequence directive)
   (let ((pair (cons directive '())))
     (cons pair pair)))
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlreg.scm,v 4.4 1988/08/29 23:03:03 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlreg.scm,v 4.5 1990/01/18 22:45:43 cph Rel $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -114,11 +114,24 @@ MIT in each case. |#
 (define (decrement-register-live-length! register)
   (set-register-live-length! register (-1+ (register-live-length register))))
 
-(define-integrable (register-crosses-call? register)
+(define (register-crosses-call? register)
   (bit-string-ref (rgraph-register-crosses-call? *current-rgraph*) register))
 
-(define-integrable (register-crosses-call! register)
+(define (register-crosses-call! register)
   (bit-string-set! (rgraph-register-crosses-call? *current-rgraph*) register))
 
-(define-integrable (register-contains-non-object? register)
-  (memq register (rgraph-non-object-registers *current-rgraph*)))
+(define (pseudo-register-value-class register)
+  (vector-ref (rgraph-register-value-classes *current-rgraph*) register))
+
+(define (pseudo-register-known-value register)
+  (vector-ref (rgraph-register-known-values *current-rgraph*) register))
+
+(define (register-value-class register)
+  (if (machine-register? register)
+      (machine-register-value-class register)
+      (pseudo-register-value-class register)))
+
+(define (register-known-value register)
+  (if (machine-register? register)
+      (machine-register-known-value register)
+      (pseudo-register-known-value register)))

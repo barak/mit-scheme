@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.25 1989/12/11 06:16:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.26 1990/01/18 22:43:36 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,7 +36,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-;;;; Basic machine instructions
+;;;; Register-Allocator Interface
 
 (define (reference->register-transfer source target)
   (if (or (and (effective-address/data-register? source)
@@ -44,7 +44,7 @@ MIT in each case. |#
 	  (and (effective-address/address-register? source)
 	       (= (+ 8 (lap:ea-operand-1 source)) target)))
       (LAP)
-      (memory->machine-register source target)))
+      (LAP ,(memory->machine-register source target))))
 
 (define (register->register-transfer source target)
   (LAP ,(machine->machine-register source target)))
@@ -54,6 +54,54 @@ MIT in each case. |#
 
 (define (register->home-transfer source target)
   (LAP ,(machine->pseudo-register source target)))
+
+(define (pseudo-register-home register)
+  (offset-reference regnum:regs-pointer (pseudo-register-offset register)))
+
+(define (sort-machine-registers registers)
+  registers)
+
+(define available-machine-registers
+  (list d0 d1 d2 d3 d4 d5 d6
+	a0 a1 a2 a3
+	fp0 fp1 fp2 fp3 fp4 fp5 fp6 fp7))
+
+(define (register-types-compatible? type1 type2)
+  (boolean=? (eq? type1 'FLOAT) (eq? type2 'FLOAT)))
+
+(define (register-type register)
+  (cond ((machine-register? register)
+	 (vector-ref
+	  '#(DATA DATA DATA DATA DATA DATA DATA DATA
+	     ADDRESS ADDRESS ADDRESS ADDRESS ADDRESS ADDRESS ADDRESS ADDRESS
+	     FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT)
+	  register))
+	((register-value-class=word? register)
+	 (if (register-value-class=address? register)
+	     'ADDRESS
+	     'DATA))
+	((register-value-class=float? register)
+	 'FLOAT)
+	(else
+	 (error "unable to determine register type" register))))
+
+(define register-reference
+  (let ((references (make-vector number-of-machine-registers)))
+    (let loop ((i 0) (j 8))
+      (if (< i 8)
+	  (begin
+	    (vector-set! references i (INST-EA (D ,i)))
+	    (vector-set! references j (INST-EA (A ,i)))
+	    (loop (1+ i) (1+ j)))))
+    (subvector-move-right! '#(FP0 FP1 FP2 FP3 FP4 FP5 FP6 FP7) 0 8
+			   references 16)
+    (lambda (register)
+      (vector-ref references register))))
+
+(define mask-reference
+  (register-reference 7))
+
+;;;; Basic Machine Instructions
 
 (define-integrable (pseudo->machine-register source target)
   (memory->machine-register (pseudo-register-home source) target))
@@ -66,9 +114,13 @@ MIT in each case. |#
   (+ (+ (* 16 4) (* 40 8))
      (* 3 (register-renumber register))))
 
-(define-integrable (pseudo-register-home register)
-  (offset-reference regnum:regs-pointer
-		    (pseudo-register-offset register)))
+(define (pseudo-float? register)
+  (and (pseudo-register? register)
+       (value-class=float? (pseudo-register-value-class register))))
+
+(define (pseudo-word? register)
+  (and (pseudo-register? register)
+       (value-class=word? (pseudo-register-value-class register))))
 
 (define (machine->machine-register source target)
   (if (not (register-types-compatible? source target))
@@ -90,26 +142,17 @@ MIT in each case. |#
       (INST (FMOVE D ,source ,(register-reference target)))
       (INST (MOV L ,source ,(register-reference target)))))
 
-(package (offset-reference byte-offset-reference)
+(define (offset-reference register offset)
+  (byte-offset-reference register (* 4 offset)))
 
-(define ((make-offset-reference grain-size) register offset)
+(define (byte-offset-reference register offset)
     (if (zero? offset)
 	(if (< register 8)
 	    (INST-EA (@D ,register))
 	    (INST-EA (@A ,(- register 8))))
 	(if (< register 8)
-	    (INST-EA (@DO ,register ,(* grain-size offset)))
-	    (INST-EA (@AO ,(- register 8) ,(* grain-size offset))))))
-
-(define-export offset-reference
-  (make-offset-reference
-   (quotient scheme-object-width addressing-granularity)))
-
-(define-export byte-offset-reference
-  (make-offset-reference
-   (quotient 8 addressing-granularity)))
-
-)
+	    (INST-EA (@DO ,register ,offset))
+	    (INST-EA (@AO ,(- register 8) ,offset)))))
 
 (define (load-dnl n d)
   (cond ((zero? n)
@@ -156,18 +199,22 @@ MIT in each case. |#
 		    target))
 
 (define (load-non-pointer type datum target)
-  (cond ((not (zero? type))
-	 (INST (MOV UL
-		    (& ,(make-non-pointer-literal type datum))
-		    ,target)))
-	((and (zero? datum)
+  (load-machine-constant (make-non-pointer-literal type datum) target))
+
+(define (load-machine-constant n target)
+  (cond ((and (zero? n)
 	      (effective-address/data&alterable? target))
 	 (INST (CLR L ,target)))
-	((and (<= -128 datum 127)
+	((and (<= -128 n 127)
 	      (effective-address/data-register? target))
-	 (INST (MOVEQ (& ,datum) ,target)))
+	 (INST (MOVEQ (& ,n) ,target)))
 	(else
-	 (INST (MOV UL (& ,datum) ,target)))))
+	 (INST (MOV UL (& ,n) ,target)))))
+
+(define (memory-set-type type target)
+  (if (= 8 scheme-type-width)
+      (INST (MOV B (& ,type) ,target))
+      (INST (OR B (& ,(* type-scale-factor type)) ,target))))
 
 (define (test-byte n effective-address)
   ;; This is used to test actual bytes.
@@ -189,13 +236,6 @@ MIT in each case. |#
       (INST (CMPI L
 		  (& ,(make-non-pointer-literal type datum))
 		  ,effective-address))))
- 
-(define make-non-pointer-literal
-  (let ((type-scale-factor (expt 2 scheme-datum-width)))
-    (lambda (type datum)
-      (if (negative? datum)
-	  (error "Non-pointer datum must be nonnegative" datum))
-      (+ (* type type-scale-factor) datum))))
 
 (define (set-standard-branches! cc)
   (set-current-branches!
@@ -203,7 +243,7 @@ MIT in each case. |#
      (LAP (B ,cc (@PCR ,label))))
    (lambda (label)
      (LAP (B ,(invert-cc cc) (@PCR ,label))))))
-
+
 (define (invert-cc cc)
   (cdr (or (assq cc
 		 '((T . F) (F . T)
@@ -264,6 +304,12 @@ MIT in each case. |#
        (register-alias target 'ADDRESS)
        (allocate-alias-register! target 'DATA))))
 
+(define (standard-move-to-target! source type target)
+  (register-reference (move-to-alias-register! source type target)))
+
+(define (standard-move-to-temporary! source type)
+  (register-reference (move-to-temporary-register! source type)))
+
 (define-integrable (preferred-data-register-reference register)
   (register-reference (preferred-data-register register)))
 
@@ -281,7 +327,7 @@ MIT in each case. |#
       (load-alias-register! register 'ADDRESS)))
 
 (define (offset->indirect-reference! offset)
-  (indirect-reference! (rtl:register-number (rtl:offset-register offset))
+  (indirect-reference! (rtl:register-number (rtl:offset-base offset))
 		       (rtl:offset-number offset)))
 
 (define (indirect-reference! register offset)
@@ -291,7 +337,7 @@ MIT in each case. |#
   (byte-offset-reference (allocate-indirection-register! register) offset))
 
 (define-integrable (allocate-indirection-register! register)
-  (guarantee-alias-register! register 'ADDRESS))
+  (load-alias-register! register 'ADDRESS))
 
 (define (code-object-label-initialize code-object)
   code-object
@@ -311,36 +357,18 @@ MIT in each case. |#
 	    (LAP)
 	    (LAP ,(instruction-gen)
 		 ,@(loop (-1+ n)))))))
-
-;;;; Expression-Generic Operations
-
-(define (expression->machine-register! expression register)
-  (let ((target (register-reference register)))
-    (let ((result
-	   (case (car expression)
-	     ((REGISTER)
-	      (load-machine-register! (rtl:register-number expression)
-				      register))
-	     ((OFFSET)
-	      (LAP (MOV L ,(offset->indirect-reference! expression) ,target)))
-	     ((CONSTANT)
-	      (LAP ,(load-constant (rtl:constant-value expression) target)))
-	     ((UNASSIGNED)
-	      (LAP ,(load-non-pointer type-code:unassigned 0 target)))
-	     (else
-	      (error "Unknown expression type" (car expression))))))
-      (delete-machine-register! register)
-      result)))
-
-(define (memory-set-type type target)
-  (if (= 8 scheme-type-width)
-      (INST (MOV B (& ,type) ,target))
-      (INST (OR B (& ,(* type-scale-factor type)) ,target))))
 
 (define (standard-target-expression? target)
-  (or (rtl:offset? target)
+  (or (and (rtl:offset? target)
+	   (rtl:register? (rtl:offset-base target)))
       (rtl:free-push? target)
       (rtl:stack-push? target)))
+
+(define (standard-target-expression->ea target)
+  (cond ((rtl:offset? target) (offset->indirect-reference! target))
+	((rtl:free-push? target) (INST-EA (@A+ 5)))
+	((rtl:stack-push? target) (INST-EA (@-A 7)))
+	(else (error "STANDARD-TARGET->EA: Not a standard target" target))))
 
 (define (rtl:free-push? expression)
   (and (rtl:post-increment? expression)
@@ -351,19 +379,14 @@ MIT in each case. |#
   (and (rtl:pre-increment? expression)
        (interpreter-stack-pointer? (rtl:pre-increment-register expression))
        (= -1 (rtl:pre-increment-number expression))))
-
-(define (standard-target-expression->ea target)
-  (cond ((rtl:offset? target) (offset->indirect-reference! target))
-	((rtl:free-push? target) (INST-EA (@A+ 5)))
-	((rtl:stack-push? target) (INST-EA (@-A 7)))
-	(else (error "STANDARD-TARGET->EA: Not a standard target" target))))
 
 ;;;; Machine Targets (actually, arithmetic targets)
 
 (define (reuse-and-load-machine-target! type target source operate-on-target)
   (reuse-machine-target! type target
     (lambda (target)
-      (operate-on-target (move-to-alias-register! source type target)))
+      (operate-on-target
+       (register-reference (move-to-alias-register! source type target))))
     (lambda (target)
       (LAP
        ,(if (eq? type 'FLOAT)
@@ -371,7 +394,8 @@ MIT in each case. |#
 	      (if (effective-address/float-register? source)
 		  (INST (FMOVE ,source ,target))
 		  (INST (FMOVE D ,source ,target))))
-	    (INST (MOV L ,(standard-register-reference source type true)
+	    (INST (MOV L
+		       ,(standard-register-reference source type true)
 		       ,target)))
        ,@(operate-on-target target)))))
 
@@ -408,7 +432,8 @@ MIT in each case. |#
 
 (define (machine-operation-target? target)
   (or (rtl:register? target)
-      (rtl:offset? target)))
+      (and (rtl:offset? target)
+	   (rtl:register? (rtl:offset-base target)))))
 
 (define (two-arg-register-operation
 	 operate commutative?
@@ -443,7 +468,7 @@ MIT in each case. |#
 		  (reuse-pseudo-register-alias source2 target-type
 		    (lambda (alias2)
 		      (let ((source1 (source-reference source1)))
-			(delete-machine-register! alias2)
+			(delete-register! alias2)
 			(delete-dead-registers!)
 			(add-pseudo-register-alias! target alias2)
 			(operate (register-reference alias2) source1)))
@@ -757,22 +782,21 @@ MIT in each case. |#
   ;; `Source' must be a data register or non-volatile memory reference.
   ;; `Target' must be a data register reference.
   ;; Guarantees that the condition codes are set for a zero-compare.
-  (if (= scheme-type-width 8)
-      (cond ((equal? source target)
-	     (LAP (RO L L (& ,scheme-type-width) ,target)))
-	    (use-68020-instructions?
-	     (LAP (BFEXTU ,source (& 0) (& ,scheme-type-width) ,target)))
-	    (else
-	     (LAP (MOVE L ,source ,target)
-		  (RO L L (& ,scheme-type-width) ,target))))
-      (if use-68020-instructions?
-	  (LAP (BFEXTU ,source (& 0) (& ,scheme-type-width) ,target))
-	  (LAP ,@(if (equal? source target)
-		     (LAP)
-		     (LAP (MOVE L ,source ,target)))
-	       (RO L L (& ,scheme-type-width) ,target)
-	       (AND B (& ,scheme-type-mask) ,target)))))
-
+  (cond (use-68020-instructions?
+	 (LAP (BFEXTU ,source (& 0) (& ,scheme-type-width) ,target)))
+	((memq (lap:ea-keyword source) '(@D @A @AO @DO @AOX W L))
+	 (LAP (CLR L ,target)
+	      (MOVE B ,source ,target)
+	      ,@(if (= scheme-type-width 8)
+		    (LAP)
+		    (LAP (LS R B (& ,(- 8 scheme-type-width)) ,target)))))
+	(else
+	 (LAP ,@(if (equal? source target)
+		    (LAP)
+		    (LAP (MOVE L ,source ,target)))
+	      (RO L L (& ,scheme-type-width) ,target)
+	      (AND L (& ,scheme-type-mask) ,target)))))
+
 ;;;; CHAR->ASCII rules
 
 (define (coerce->any/byte-reference register)

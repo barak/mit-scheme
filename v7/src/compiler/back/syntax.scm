@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.24 1989/10/26 07:35:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.25 1990/01/18 22:42:14 cph Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -67,16 +67,11 @@ MIT in each case. |#
 (define (lap:syntax-instruction instruction)
   (if (memq (car instruction)
 	    '(EQUATE SCHEME-OBJECT ENTRY-POINT LABEL BLOCK-OFFSET))
-      (directive->instruction-sequence instruction)
+      (list instruction)
       (let ((match-result (instruction-lookup instruction)))
 	(if (not match-result)
-	    (error "LAP:SYNTAX-INSTRUCTION: illegal instruction syntax"
-		   instruction))
-	(let ((directives (match-result)))
-	  (if (null? directives)
-	      (error "LAP:SYNTAX-INSTRUCTION: instruction generation error"
-		     instruction))
-	  (instruction->instruction-sequence directives)))))
+	    (error "illegal instruction syntax" instruction))
+	(match-result))))
 
 (define (instruction-lookup instruction)
   (pattern-lookup

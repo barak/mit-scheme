@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rgraph.scm,v 4.6 1989/10/26 07:38:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rgraph.scm,v 4.7 1990/01/18 22:45:00 cph Rel $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,7 +40,6 @@ MIT in each case. |#
 			  (copier false)
 			  (constructor make-rgraph (n-registers)))
   n-registers
-  (non-object-registers (reverse initial-non-object-registers))
   entry-edges
   bblocks
   register-bblock
@@ -48,7 +47,8 @@ MIT in each case. |#
   register-n-deaths
   register-live-length
   register-crosses-call?
-  register-value-classes)
+  register-value-classes
+  register-known-values)
 
 (define (add-rgraph-bblock! rgraph bblock)
   (set-rgraph-bblocks! rgraph (cons bblock (rgraph-bblocks rgraph))))
@@ -56,52 +56,11 @@ MIT in each case. |#
 (define (delete-rgraph-bblock! rgraph bblock)
   (set-rgraph-bblocks! rgraph (delq! bblock (rgraph-bblocks rgraph))))
 
-(define (add-rgraph-non-object-register! rgraph register)
-  (set-rgraph-non-object-registers!
-   rgraph
-   (cons register (rgraph-non-object-registers rgraph))))
-
 (define (add-rgraph-entry-edge! rgraph edge)
   (set-rgraph-entry-edges! rgraph (cons edge (rgraph-entry-edges rgraph))))
 
 (define-integrable rgraph-register-renumber rgraph-register-bblock)
 (define-integrable set-rgraph-register-renumber! set-rgraph-register-bblock!)
-
-;;; Pseudo-register value classes are kept on an association list between value
-;;; classes and lists of pseudo-registers in the class.  A register not found
-;;; in any value class list is assumed to have class VALUE, the broadest and
-;;; most common class.  This minimizes the space used to store register value
-;;; classifiations at the expense of reduced speed.  It is illegal to change
-;;; the value class of a pseudo-register unless its current class is VALUE
-;;; (completely unspecified); this restriction is checked.
-
-(define (rgraph-register-value-class rgraph register)
-  (let loop ((classes (rgraph-register-value-classes rgraph)))
-    (if (null? classes)
-	'VALUE
-	(let ((class-list (car classes)))
-	  (if (memq register (cdr class-list))
-	      (car class-list)
-	      (loop (cdr classes)))))))
-
-(define (set-rgraph-register-value-class! rgraph register value-class)
-  (let ((old-value-class (rgraph-register-value-class rgraph register)))
-    (if (eq? old-value-class 'VALUE)
-	(if (not (eq? value-class 'VALUE))
-	    (let loop ((classes (rgraph-register-value-classes rgraph)))
-	      (if (null? classes)
-		  (set-rgraph-register-value-classes!
-		   rgraph
-		   (cons (list value-class register)
-			 (rgraph-register-value-classes rgraph)))
-		  (let ((class-list (car classes)))
-		    (if (eq? value-class (car class-list))
-			(let ((register-list (cdr class-list)))
-			  (if (not (memq register register-list))
-			      (set-cdr! class-list (cons register register-list))))
-			(loop (cdr classes)))))))
-	(if (not (eq? old-value-class value-class))
-	    (error "Illegal register value class change" register value-class)))))
 
 (define *rgraphs*)
 (define *current-rgraph*)

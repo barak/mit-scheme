@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.11 1989/05/17 20:42:19 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.12 1990/01/18 22:41:47 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -53,30 +53,41 @@ MIT in each case. |#
 
 ;;;; Assembler top level procedure
 
-(define (assemble start-label input linker)
-  (with-values
-   (lambda ()
-     (fluid-let ((*equates* (make-queue))
-		 (*objects* (make-queue))
-		 (*entry-points* (make-queue))
-		 (*linkage-info* (make-queue))
-		 (*the-symbol-table* (make-symbol-table))
-		 (*start-label* start-label)
-		 (*end-label* (generate-uninterned-symbol 'END-LABEL-)))
-       (initialize-symbol-table!)
-       (with-values
+(define (assemble start-label instructions)
+  (fluid-let ((*equates* (make-queue))
+	      (*objects* (make-queue))
+	      (*entry-points* (make-queue))
+	      (*linkage-info* (make-queue))
+	      (*the-symbol-table* (make-symbol-table))
+	      (*start-label* start-label)
+	      (*end-label* (generate-uninterned-symbol 'END-LABEL-)))
+    (initialize-symbol-table!)
+    (with-values
 	(lambda ()
-	  (initial-phase (instruction-sequence->directives input)))
-	(lambda (directives vars)
-	  (let* ((count (relax! directives vars))
-		 (block (assemble-objects (final-phase directives))))
-	    (values count
-		    (object-new-type (ucode-type compiled-code-block)
-				     block)
-		    (queue->list *entry-points*)
-		    (symbol-table->assq-list *the-symbol-table*)
-		    (queue->list *linkage-info*)))))))
-   linker))
+	  (initial-phase
+	   (if (null? instructions)
+	       '()
+	       (let ((holder (list 'HOLDER)))
+		 (let loop
+		     ((tail holder)
+		      (instructions
+		       (let ((i instructions))
+			 (set! instructions)
+			 i)))
+		   (if (not (null? instructions))
+		       (begin
+			 (set-cdr! tail
+				   (lap:syntax-instruction (car instructions)))
+			 (loop (last-pair tail) (cdr instructions)))))
+		 (cdr holder)))))
+      (lambda (directives vars)
+	(let* ((count (relax! directives vars))
+	       (block (assemble-objects (final-phase directives))))
+	  (values count
+		  (object-new-type (ucode-type compiled-code-block) block)
+		  (queue->list *entry-points*)
+		  (symbol-table->assq-list *the-symbol-table*)
+		  (queue->list *linkage-info*)))))))
 
 (define (relax! directives vars)
   (define (loop vars count)
@@ -84,14 +95,14 @@ MIT in each case. |#
     (if (null? vars)
 	count
 	(with-values (lambda () (phase-2 vars))
-	 (lambda (any-modified? number-of-vars)
-	   number-of-vars
-	   (if any-modified?
-	       (begin
-		 (clear-symbol-table!)
-		 (initialize-symbol-table!)
-		 (loop (phase-1 directives) (1+ count)))
-	       count)))))
+	  (lambda (any-modified? number-of-vars)
+	    number-of-vars
+	    (if any-modified?
+		(begin
+		  (clear-symbol-table!)
+		  (initialize-symbol-table!)
+		  (loop (phase-1 directives) (1+ count)))
+		count)))))
   (loop vars 0))
 
 ;;;; Output block generation

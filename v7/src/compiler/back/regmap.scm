@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.8 1989/07/25 12:41:41 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.9 1990/01/18 22:42:10 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,16 +40,16 @@ MIT in each case. |#
 
 The register allocator provides a mechanism for allocating and
 deallocating machine registers.  It manages the available machine
-registers as a cache, by maintaining a "map" which records two kinds
-of information: (1) a list of the machine registers which are not in
-use; and (2) a mapping which is the association between the allocated
-machine registers and the "pseudo registers" which they represent.
+registers as a cache, by maintaining a "map" that records two kinds of
+information: (1) a list of the machine registers that are not in use;
+and (2) a mapping that is the association between the allocated
+machine registers and the "pseudo registers" that they represent.
 
-An "alias" is a machine register which also holds the contents of a
+An "alias" is a machine register that also holds the contents of a
 pseudo register.  Usually an alias is used for a short period of time,
 as a store-in cache, and then eventually the contents of the alias is
 written back out to the home it is associated with.  Because of the
-lifetime analysis, it is possible to identify those registers which
+lifetime analysis, it is possible to identify those registers that
 will no longer be referenced; these are deleted from the map when they
 die, and thus do not need to be saved.
 
@@ -72,7 +72,7 @@ and stop at `number-of-machine-registers' (exclusive).  All others are
 pseudo registers.  Because they are integers, we can use `eqv?' to
 compare register numbers.
 
-`available-machine-registers' should be a list of the registers which
+`available-machine-registers' should be a list of the registers that
 the allocator is allowed to allocate, in the preferred order of
 allocation.
 
@@ -82,11 +82,9 @@ registers into some interesting sorting order.
 |#
 
 (define (register-type? register type)
-  ;; This predicate is true iff `register' has the given `type'.
-  ;; `register' must be a machine register.  If `type' is #f, this predicate
-  ;; returns #f iff `register' is not a word register.
-  (or (and (not type) (word-register? register))
-      (eq? (register-type register) type)))
+  (if type
+      (eq? type (register-type register))
+      (register-value-class=word? register)))
 
 (define ((register-type-predicate type) register)
   (register-type? register type))
@@ -379,13 +377,13 @@ registers into some interesting sorting order.
 	(lambda (entry)
 	  (and (not (map-entry-home entry))
 	       (reallocate-alias entry))))
-      ;; Then look for a register which contains the same thing as
+      ;; Then look for a register that contains the same thing as
       ;; another register.
       (map-entries:search map
 	(lambda (entry)
 	  (and (not (null? (cdr (map-entry-aliases entry))))
 	       (reallocate-alias entry))))
-      ;; Look for a non-temporary which has been saved into its home.
+      ;; Look for a non-temporary that has been saved into its home.
       (map-entries:search map
 	(lambda (entry)
 	  (and (map-entry-home entry)
@@ -577,7 +575,7 @@ for REGISTER.  If no such register exists, returns #F."
 
 ;;; These operations generate the instructions to coerce one map into
 ;;; another.  They are used when joining two branches of a control
-;;; flow graph which have different maps (e.g. in a loop.)
+;;; flow graph that have different maps (e.g. in a loop.)
 
 (package (coerce-map-instructions clear-map-instructions)
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.12 1989/10/26 07:39:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.13 1990/01/18 22:47:49 cph Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -116,7 +116,7 @@ MIT in each case. |#
 	      ;; memory for purposes of invalidation.  This is because
 	      ;; (supposedly) no one ever accesses the stack directly
 	      ;; except the compiler's output, which is explicit.
-	      (if (interpreter-stack-pointer? (rtl:offset-register expression))
+	      (if (interpreter-stack-pointer? (rtl:offset-base expression))
 		  (quantity-number (stack-reference-quantity expression))
 		  (begin
 		    (set! hash-arg-in-memory? true)
@@ -271,7 +271,7 @@ MIT in each case. |#
 (define (non-object-invalidate!)
   (hash-table-delete-class!
    (lambda (element)
-     (rtl:non-object-valued-expression? (element-expression element)))))
+     (not (rtl:object-valued-expression? (element-expression element))))))
 
 (define (varying-address-invalidate!)
   (hash-table-delete-class!

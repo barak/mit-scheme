@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.11 1989/10/26 07:35:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.12 1990/01/18 22:42:45 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -82,32 +82,12 @@ MIT in each case. |#
 	(else
 	 (error "debug/where -- what?" object))))
 
-(define (compiler:write-rtl-file input-path #!optional output-path)
-  (let ((input-path
-	 (let ((input-path (->pathname input-path)))
-	   (if (pathname-type input-path)
-	       input-path
-	       (pathname-new-type input-path "brtl")))))
-    (let ((output-path
-	   (let ((default (pathname-new-type input-path "rtl")))
-	     (if (default-object? output-path)
-		 default
-		 (merge-pathnames (->pathname output-path) default)))))
-      (write-instructions
+(define (write-rtl-instructions rtl port)
+  (write-instructions
+   (lambda ()
+     (with-output-to-port port
        (lambda ()
-	 (with-output-to-file output-path
-	   (lambda ()
-	     (let ((rtl (fasload input-path)))
-	       (if (vector? rtl)
-		   (for-each (lambda (block)
-			       (write-char #\page)
-			       (newline)
-			       (write-string "Disassembly for object ")
-			       (write (car block))
-			       (for-each show-rtl-instruction (cdr block))
-			       (newline))
-			     (vector->list rtl))
-		   (for-each show-rtl-instruction rtl))))))))))
+	 (for-each show-rtl-instruction rtl))))))
 
 (define (dump-rtl filename)
   (write-instructions
@@ -117,11 +97,13 @@ MIT in each case. |#
 	 (for-each show-rtl-instruction (linearize-rtl *rtl-graphs*)))))))
 
 (define (show-rtl rtl)
+  (newline)
   (pp-instructions
    (lambda ()
      (for-each show-rtl-instruction rtl))))
 
 (define (show-bblock-rtl bblock)
+  (newline)
   (pp-instructions
    (lambda ()
      (bblock-walk-forward (->tagged-vector bblock)
@@ -129,12 +111,12 @@ MIT in each case. |#
 	 (show-rtl-instruction (rinst-rtl rinst)))))))
 
 (define (write-instructions thunk)
-  (fluid-let ((*show-instruction* write-line)
+  (fluid-let ((*show-instruction* write)
 	      (*unparser-radix* 16))
     (thunk)))
 
 (define (pp-instructions thunk)
-  (fluid-let ((*show-instruction* pp)
+  (fluid-let ((*show-instruction* pretty-print)
 	      (*pp-primitives-by-name* false)
 	      (*unparser-radix* 16))
     (thunk)))
@@ -146,7 +128,8 @@ MIT in each case. |#
 	    '(LABEL CONTINUATION-ENTRY CONTINUATION-HEADER IC-PROCEDURE-HEADER
 		    OPEN-PROCEDURE-HEADER PROCEDURE-HEADER CLOSURE-HEADER))
       (newline))
-  (*show-instruction* rtl))
+  (*show-instruction* rtl)
+  (newline))
 
 (define procedure-queue)
 (define procedures-located)

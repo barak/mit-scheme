@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.13 1989/12/05 20:38:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.14 1990/01/18 22:42:02 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,17 +32,17 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; LAP Generator: high level register assignment operations
+;;;; LAP Generator: High-Level Register Assignment
 
 (declare (usual-integrations))
 
 ;; `*register-map*' holds the current register map.  The operations
-;; which follow use and update this map appropriately, so that the
+;; that follow use and update this map appropriately, so that the
 ;; writer of LAP generator rules need not pass it around.
 
 (define *register-map*)
 
-;; `*needed-registers*' contains a set of machine registers which is
+;; `*needed-registers*' contains a set of machine registers that is
 ;; in use during the LAP generation of a single RTL instruction.  The
 ;; value of this variable is automatically supplied to many low level
 ;; register map operations.  The set is initialized to the empty set
@@ -56,59 +56,70 @@ MIT in each case. |#
 
 (define *needed-registers*)
 
-(define-integrable (need-register! register)
+(define (need-register! register)
   (set! *needed-registers* (cons register *needed-registers*)))
 
-(define-integrable (need-registers! registers)
+(define (need-registers! registers)
   (set! *needed-registers* (eqv-set-union registers *needed-registers*)))
 
-(define-integrable (dont-need-register! register)
+(define (dont-need-register! register)
   (set! *needed-registers* (delv! register *needed-registers*)))
 
-(define-integrable (dont-need-registers! registers)
+(define (dont-need-registers! registers)
   (set! *needed-registers* (eqv-set-difference *needed-registers* registers)))
 
 ;; `*dead-registers*' is initialized at the beginning of each RTL
-;; instruction to the set of pseudo registers which become dead during
-;; that instruction.  This information is used to make informed
-;; decisions about whether it is desirable to keep the contents of
-;; a particular pseudo register in a machine register, or not.
-
-;; All dead registers are deleted from the register map after the LAP
-;; generation for that instruction, by calling
-;; `delete-dead-registers!'.  Thus, RTL instructions which alter the
-;; contents of any pseudo register must follow this pattern: (1)
-;; generate the source operands for the instruction, (2) delete the
-;; dead registers from the register map, and (3) generate the code for
-;; the assignment.
+;; instruction to the set of pseudo registers that become dead during
+;; that instruction.  This information is used to decide whether or
+;; not to keep the contents of a particular pseudo register in a
+;; machine register.
 
 (define *dead-registers*)
 
-(define-integrable (dead-register? register)
+(define (dead-register? register)
   (memv register *dead-registers*))
+
+;; `*registers-to-delete*' is also initialized to the set of pseudo
+;; registers that are dead after the current RTL instruction; these
+;; registers are deleted from the register map after the LAP
+;; generation for that instruction.  The LAP generation rules can
+;; cause these deletions to happen at any time by calling
+;; `delete-dead-registers!'.
+
+;; RTL instructions that alter the contents of any pseudo register
+;; must follow this pattern: (1) generate the source operands for the
+;; instruction, (2) delete the dead registers from the register map,
+;; and (3) generate the code for the assignment.
+
+(define *registers-to-delete*)
 
 (define (delete-dead-registers!)
   (set! *register-map*
-	(delete-pseudo-registers *register-map* *dead-registers*))
-  (set! *dead-registers* '()))
+	(delete-pseudo-registers *register-map* *registers-to-delete*))
+  (set! *registers-to-delete* '())
+  unspecific)
 
 ;; `*prefix-instructions*' is used to accumulate LAP instructions to
-;; be inserted before the instructions which are the result of the
+;; be inserted before the instructions that are the result of the
 ;; rule for this RTL instruction.  The register map operations
 ;; generate these automatically whenever alias registers need to be
 ;; loaded or stored, or when the aliases need to be shuffled in some
 ;; way.
 
 (define *prefix-instructions*)
+(define *suffix-instructions*)
 
-(define-integrable (prefix-instructions! instructions)
+(define (prefix-instructions! instructions)
   (set! *prefix-instructions* (LAP ,@*prefix-instructions* ,@instructions)))
+
+(define (suffix-instructions! instructions)
+  (set! *suffix-instructions* (LAP ,@instructions ,@*suffix-instructions*)))
 
 ;; Register map operations that return `allocator-values' eventually
 ;; pass those values to `store-allocator-values!', perhaps after some
 ;; tweaking.
 
-(define-integrable (store-allocator-values! allocator-values)
+(define (store-allocator-values! allocator-values)
   (bind-allocator-values allocator-values
     (lambda (alias map instructions)
       (need-register! alias)
@@ -131,56 +142,71 @@ MIT in each case. |#
       (register-type? register type)
       (pseudo-register-alias *register-map* type register)))
 
-(define-integrable (alias-is-unique? alias)
+(define (alias-is-unique? alias)
   ;; `alias' must be a valid alias for some pseudo register.  This
   ;; predicate is true iff the pseudo register has no other aliases.
   (machine-register-is-unique? *register-map* alias))
 
-(define-integrable (alias-holds-unique-value? alias)
+(define (alias-holds-unique-value? alias)
   ;; `alias' must be a valid alias for some pseudo register.  This
   ;; predicate is true iff the contents of the pseudo register are not
   ;; stored anywhere else that the register map knows of.
   (machine-register-holds-unique-value? *register-map* alias))
 
-(define-integrable (is-alias-for-register? potential-alias register)
+(define (is-alias-for-register? potential-alias register)
   ;; True iff `potential-alias' is a valid alias for `register'.
   ;; `register' must be a pseudo register, and `potential-alias' must
   ;; be a machine register.
   (is-pseudo-register-alias? *register-map* potential-alias register))
 
-(define-integrable (register-saved-into-home? register)
+(define (register-saved-into-home? register)
   ;; True iff `register' is known to be saved in its spill temporary.
-  ;; `register' must be a pseudo register.
-  (pseudo-register-saved-into-home? *register-map* register))
+  (and (not (machine-register? register))
+       (pseudo-register-saved-into-home? *register-map* register)))
 
-(define-integrable (register-alias register type)
+(define (register-alias register type)
   ;; Returns an alias for `register', of the given `type', if one
-  ;; exists.  Otherwise returns #F.  `register' must be a pseudo
-  ;; register.
-  (maybe-need-register! (pseudo-register-alias *register-map* type register)))
+  ;; exists.  Otherwise returns #F.
+  (if (machine-register? register)
+      (and (register-type? register type) register)
+      (maybe-need-register!
+       (pseudo-register-alias *register-map* type register))))
 
 (define (load-alias-register! register type)
   ;; Returns an alias for `register', of the given `type'.  If no such
   ;; alias exists, a new alias is assigned and loaded with the correct
-  ;; value, and that alias is returned.  `register' must be a pseudo
-  ;; register.
-  (store-allocator-values!
-   (load-alias-register *register-map* type *needed-registers* register)))
+  ;; value, and that alias is returned.
+  (if (machine-register? register)
+      (if (register-type? register type)
+	  register
+	  (let ((temp (allocate-temporary-register! type)))
+	    (prefix-instructions! (register->register-transfer register temp))
+	    temp))
+      (store-allocator-values!
+       (load-alias-register *register-map* type *needed-registers* register))))
 
-(define-integrable (reference-alias-register! register type)
+(define (reference-alias-register! register type)
   (register-reference (load-alias-register! register type)))
 
 (define (allocate-alias-register! register type)
   ;; This operation is used to allocate an alias for `register',
   ;; assuming that it is about to be assigned.  It first deletes any
   ;; other aliases for register, then allocates and returns an alias
-  ;; for `register', of the given `type'.  `register' must be a pseudo
-  ;; register.
-  (delete-pseudo-register! register)
-  (store-allocator-values!
-   (allocate-alias-register *register-map* type *needed-registers* register)))
+  ;; for `register', of the given `type'.
+  (delete-register! register)
+  (if (machine-register? register)
+      (if (register-type? register type)
+	  register
+	  (let ((temp (allocate-temporary-register! type)))
+	    (suffix-instructions! (register->register-transfer temp register))
+	    temp))
+      (store-allocator-values!
+       (allocate-alias-register *register-map*
+				type
+				*needed-registers*
+				register))))
 
-(define-integrable (reference-target-alias! register type)
+(define (reference-target-alias! register type)
   (register-reference (allocate-alias-register! register type)))
 
 (define (allocate-temporary-register! type)
@@ -191,7 +217,7 @@ MIT in each case. |#
   (store-allocator-values!
    (allocate-temporary-register *register-map* type *needed-registers*)))
 
-(define-integrable (reference-temporary-register! type)
+(define (reference-temporary-register! type)
   (register-reference (allocate-temporary-register! type)))
 
 (define (add-pseudo-register-alias! register alias)
@@ -213,19 +239,33 @@ MIT in each case. |#
 	(add-pseudo-register-alias *register-map* register alias false))
   (need-register! alias))
 
-(define (delete-machine-register! register)
+(define (delete-register! register)
   ;; Deletes `register' from the register map.  No instructions are
-  ;; generated.  `register' must be either an alias or a temporary.
-  (set! *register-map* (delete-machine-register *register-map* register))
-  (dont-need-register! register))
+  ;; generated.
+  (if (machine-register? register)
+      (begin
+	(set! *register-map* (delete-machine-register *register-map* register))
+	(dont-need-register! register))
+      (delete-pseudo-register *register-map* register
+	(lambda (map aliases)
+	  (set! *register-map* map)
+	  (dont-need-registers! aliases)))))
 
-(define (delete-pseudo-register! register)
-  ;; Deletes `register' from the register map.  No instructions are
-  ;; generated.  `register' must be a pseudo register.
-  (delete-pseudo-register *register-map* register
-    (lambda (map aliases)
-      (set! *register-map* map)
-      (dont-need-registers! aliases))))
+(define (save-register! register)
+  ;; Deletes `register' from the register map, saving it to its home
+  ;; if it is a live pseudo register.
+  (let ((save-pseudo
+	 (lambda (register)
+	   (if (not (dead-register? register))
+	       (save-pseudo-register *register-map* register
+		 (lambda (map instructions)
+		   (set! *register-map* map)
+		   (prefix-instructions! instructions)))))))
+    (if (machine-register? register)
+	(let ((contents (machine-register-contents *register-map* register)))
+	  (if contents
+	      (save-pseudo contents)))
+	(save-pseudo register))))
 
 (define (clear-map!)
   ;; Deletes all registers from the register map.  Generates and
@@ -239,7 +279,7 @@ MIT in each case. |#
     (set! *needed-registers* '())
     instructions))
 
-(define-integrable (clear-map)
+(define (clear-map)
   (clear-map-instructions *register-map*))
 
 (define (clear-registers! . registers)
@@ -250,21 +290,10 @@ MIT in each case. |#
 	  (lambda (map instructions)
 	    (let ((map (delete-machine-register map (car registers))))
 	      (if (null? (cdr registers))
-		  (begin (set! *register-map* map)
-			 instructions)
+		  (begin
+		    (set! *register-map* map)
+		    instructions)
 		  (append! instructions (loop map (cdr registers))))))))))
-
-(define (save-machine-register! register)
-  (let ((contents (machine-register-contents *register-map* register)))
-    (if contents
-	(save-pseudo-register! contents))))
-
-(define (save-pseudo-register! register)
-  (if (not (dead-register? register))
-      (save-pseudo-register *register-map* register
-	(lambda (map instructions)
-	  (set! *register-map* map)
-	  (prefix-instructions! instructions)))))
 
 (define (standard-register-reference register preferred-type alternate-types?)
   ;; Generate a standard reference for `register'.  This procedure
@@ -275,7 +304,7 @@ MIT in each case. |#
   (if (machine-register? register)
       (if alternate-types?
 	  (register-reference register)
-	  (machine-register-reference register preferred-type))
+	  (reference-alias-register! register preferred-type))
       (let ((no-reuse-possible
 	     (lambda ()
 	       ;; If there are no aliases, and the register is not dead,
@@ -302,21 +331,8 @@ MIT in each case. |#
 		      (else (no-reuse-possible))))
 	      (no-preference))))))
 
-(define-integrable (machine-register-reference register type)
-  (register-reference (guarantee-alias-register! register type)))
-
-(define (guarantee-alias-register! register type)
-  ;; Returns a a machine register which contains the same contents as
-  ;; `register', and which has the given `type'.
-  (if (machine-register? register)
-      (if (register-type? register type)
-	  register
-	  (let ((temp (allocate-temporary-register! type)))
-	    (prefix-instructions! (register->register-transfer register temp))
-	    temp))
-      (load-alias-register! register type)))
-
 (define (load-machine-register! source-register machine-register)
+  ;; Copy the contents of `source-register' to `machine-register'.
   (if (machine-register? source-register)
       (if (eqv? source-register machine-register)
 	  (LAP)
@@ -328,60 +344,56 @@ MIT in each case. |#
 	   machine-register))))
 
 (define (move-to-alias-register! source type target)
-  ;; Performs an assignment from the pseudo register `source' to the
-  ;; pseudo register `target', allocating an alias for `target' of the
-  ;; given `type'.  Returns a reference to that alias.  If `source'
-  ;; has a reusable alias of the appropriate type, that is used, in
-  ;; which case no instructions are generated.
-  (reuse-and-load-pseudo-register-alias! source type
-    (lambda (alias)
-      (add-pseudo-register-alias! target alias))
-    (lambda ()
-      (allocate-alias-register! target type))))
+  ;; Performs an assignment from register `source' to register
+  ;; `target', allocating an alias for `target' of the given `type';
+  ;; returns that alias.  If `source' has a reusable alias of the
+  ;; appropriate type, that is used, in which case no instructions are
+  ;; generated.
+  (if (and (machine-register? target)
+	   (register-type? target type))
+      (begin
+	(prefix-instructions!
+	 (reference->register-transfer
+	  (standard-register-reference source type true)
+	  target))
+	target)
+      (reuse-pseudo-register-alias! source type
+	(lambda (alias)
+	  (delete-dead-registers!)
+	  (if (machine-register? target)
+	      (suffix-instructions! (register->register-transfer alias target))
+	      (add-pseudo-register-alias! target alias))
+	  alias)
+	(lambda ()
+	  (let ((source (standard-register-reference source type true)))
+	    (delete-dead-registers!)
+	    (let ((target (allocate-alias-register! target type)))
+	      (prefix-instructions!
+	       (reference->register-transfer source target))
+	      target))))))
 
 (define (move-to-temporary-register! source type)
   ;; Allocates a temporary register, of the given `type', and loads
-  ;; the contents of the pseudo register `source' into it.  Returns a
+  ;; the contents of the register `source' into it.  Returns a
   ;; reference to that temporary.  If `source' has a reusable alias of
   ;; the appropriate type, that is used, in which case no instructions
   ;; are generated.
-  (reuse-and-load-pseudo-register-alias! source type
-    need-register!
-    (lambda ()
-      (allocate-temporary-register! type))))
-
-(define (reuse-and-load-pseudo-register-alias! source type if-reusable if-not)
-  ;; Attempts to find a reusable alias for `source', of the given
-  ;; `type'.  If one is found, `if-reusable' is invoked on it (for
-  ;; effect only).  Otherwise, `if-not' is invoked with no arguments
-  ;; to produce a machine register, and the contents of `source' are
-  ;; transferred into that register.  The result of this procedure is
-  ;; a register reference, to the alias if it is found, otherwise to
-  ;; the result of `if-not'.  Note: dead registers are always deleted
-  ;; by this procedure.
-  (reuse-alias-deleting-dead-registers! source type
-    (lambda (alias)
-      (if-reusable alias)
-      (register-reference alias))
-    (lambda (source)
-      (let ((target (if-not)))
-	(prefix-instructions! (reference->register-transfer source target))
-	(register-reference target)))))
-
-(define (reuse-alias-deleting-dead-registers! source type if-reusable if-not)
   (reuse-pseudo-register-alias! source type
     (lambda (alias)
-      (delete-dead-registers!)
-      (if-reusable alias))
+      (need-register! alias)
+      alias)
     (lambda ()
-      (let ((source (standard-register-reference source false true)))
-	(delete-dead-registers!)
-	(if-not source)))))
+      (let ((target (allocate-temporary-register! type)))
+	(prefix-instructions!
+	 (reference->register-transfer
+	  (standard-register-reference source type true)
+	  target))
+	target))))
 
 (define (reuse-pseudo-register-alias! source type if-reusable if-not)
   (reuse-pseudo-register-alias source type
     (lambda (alias)
-      (delete-machine-register! alias)
+      (delete-register! alias)
       (if-reusable alias))
     if-not))
 
@@ -393,92 +405,69 @@ MIT in each case. |#
   ;; reusable are as follows: (1) if `source' is dead, any of its
   ;; aliases may be reused, and (2) if `source' is live with multiple
   ;; aliases, then one of its aliases may be reused.
-  (let ((alias (register-alias source type)))
-    (cond ((not alias)
-	   (if-not))
-	  ((dead-register? source)
-	   (if-reusable alias))
-	  ((not (alias-is-unique? alias))
-	   (if-reusable alias))
-	  (else
-	   (if-not)))))
+  (if (machine-register? source)
+      (if-not)
+      (let ((alias (register-alias source type)))
+	(cond ((not alias)
+	       (if-not))
+	      ((dead-register? source)
+	       (if-reusable alias))
+	      ((not (alias-is-unique? alias))
+	       (if-reusable alias))
+	      (else
+	       (if-not))))))
 
-;; The following procedures are used when the copy is going to be
-;; transformed, and the machine has 3 operand instructions, which
-;; allow an implicit motion in the transformation operation.
+;;; The following procedures are used when the copy is going to be
+;;; transformed, and the machine has 3 operand instructions, which
+;;; allow an implicit motion in the transformation operation.
 
-;; For example, on the DEC VAX it is cheaper to do
-;;	bicl3	op1,source,target
-;; than
-;; 	movl	source,target
-;; 	bicl2	op1,target
+;;; For example, on the DEC VAX it is cheaper to do
+;;;	bicl3	op1,source,target
+;;; than
+;;; 	movl	source,target
+;;; 	bicl2	op1,target
 
-;; The extra arguments are
-;; REC1, invoked if we are reusing an alias of source.
-;;      It already contains the data to operate on.
-;; REC2, invoked if a `brand-new' alias for target has been allocated.
-;;      We must take care of moving the data ourselves.
+;;; The extra arguments are
+;;; REC1, invoked if we are reusing an alias of source.
+;;;      It already contains the data to operate on.
+;;; REC2, invoked if a `brand-new' alias for target has been allocated.
+;;;      We must take care of moving the data ourselves.
 
 (define (with-register-copy-alias! source type target rec1 rec2)
-  (provide-copy-reusing-alias! source type rec1 rec2
-    (lambda (reusable-alias)
-      (add-pseudo-register-alias! target reusable-alias))
-    (lambda ()
-      (allocate-alias-register! target type))))
-
-(define (with-temporary-register-copy! register type rec1 rec2)
-  (provide-copy-reusing-alias! register type rec1 rec2
-    need-register!
-    (lambda ()
-      (allocate-temporary-register! type))))
-
-(define (provide-copy-reusing-alias! source type rec1 rec2 if-reusable if-not)
-  (reuse-alias-deleting-dead-registers! source type
+  (reuse-pseudo-register-alias! source type
     (lambda (alias)
-      (if-reusable alias)
+      (delete-dead-registers!)
+      (add-pseudo-register-alias! target alias)
       (rec1 (register-reference alias)))
-    (lambda (source)
-      (rec2 source (register-reference (if-not))))))
+    (lambda ()
+      (let ((source (standard-register-reference source type true)))
+	(delete-dead-registers!)
+	(rec2 source (reference-target-alias! target type))))))
 
-;;; Move a copy to a specific special register
+(define (with-temporary-register-copy! source type rec1 rec2)
+  (reuse-pseudo-register-alias! source type
+    (lambda (alias)
+      (need-register! alias)
+      (rec1 (register-reference alias)))
+    (lambda ()
+      (rec2 (standard-register-reference source type true)
+	    (reference-temporary-register! type)))))
 
-(define (copy-to-special-register source-register type special-register)
-  (let ((alias (register-alias source-register type)))
-    (cond (alias
-	   (machine->machine-register alias special-register))
-	  ((not (dead-register? source-register))
-	   (delete-dead-registers!)
-	   (machine->machine-register
-	    (load-alias-register! source-register type)
-	    special-register))
-	  ((not (register-saved-into-home? source-register))
-	   (error "copy-to-special-register: no valid copy"
-		  source-register))
-	  (else
-	   (reference->register-transfer
-	    (pseudo-register-home source-register)
-	    special-register)))))
-
-;;;; 2/3 Operand register allocation
-
-(define (with-copy-if-available source type if-win if-lose use-register!)
-  (reuse-pseudo-register-alias
-   source type
-   (lambda (reusable-alias)
-     (if-win (lambda ()
-	       (delete-machine-register! reusable-alias)
-	       (delete-dead-registers!)
-	       (use-register! reusable-alias)
-	       (register-reference reusable-alias))))
-   if-lose))
-
-(define-integrable (with-register-copy-if-available
-		     source type target if-win if-lose)
-  (with-copy-if-available source type if-win if-lose
+(define (register-copy-if-available source type target if-win if-lose)
+  (reuse-pseudo-register-alias source type
     (lambda (reusable-alias)
-      (add-pseudo-register-alias! target reusable-alias))))
+      (lambda ()
+	(delete-register! reusable-alias)
+	(delete-dead-registers!)
+	(add-pseudo-register-alias! target reusable-alias)
+	(register-reference reusable-alias)))
+    (lambda () false)))
 
-(define-integrable (with-temporary-copy-if-available
-		     source type if-win if-lose)
-  (with-copy-if-available source type if-win if-lose need-register!))
-
+(define (temporary-copy-if-available source type if-win if-lose)
+  (reuse-pseudo-register-alias source type
+    (lambda (reusable-alias)
+      (lambda ()
+	(delete-register! reusable-alias)
+	(need-register! reusable-alias)
+	(register-reference reusable-alias)))
+    (lambda () false)))

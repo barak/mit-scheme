@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty2.scm,v 4.7 1989/10/26 07:38:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty2.scm,v 4.8 1990/01/18 22:45:53 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,6 +36,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define-integrable rtl:expression? pair?)
 (define-integrable rtl:expression-type car)
 (define-integrable rtl:address-register cadr)
 (define-integrable rtl:address-number caddr)
@@ -45,11 +46,6 @@ MIT in each case. |#
 
 (define-integrable (rtl:set-invocation-continuation! rtl continuation)
   (set-car! (cddr rtl) continuation))
-
-(define (rtl:make-constant value)
-  (if (unassigned-reference-trap? value)
-      (rtl:make-unassigned)
-      (%make-constant value)))
 
 ;;;; Locatives
 

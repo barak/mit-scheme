@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.9 1988/12/15 17:23:48 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.10 1990/01/18 22:42:49 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -65,7 +65,7 @@ MIT in each case. |#
 	      (PACKAGE ,transform/package)))
   (syntax-table-define lap-generator-syntax-table 'DEFINE-RULE
     transform/define-rule))
-
+
 (define compiler-syntax-table
   (make-syntax-table syntax-table/system-internal))
 
@@ -122,8 +122,7 @@ MIT in each case. |#
 			  (VECTOR-REF ,class ,n))
 			(DEFINE-INTEGRABLE (,(symbol-append 'SET- ref-name '!)
 					    ,class ,slot)
-			  (VECTOR-SET! ,class ,n ,slot)
-			  ',unspecific)))))
+			  (VECTOR-SET! ,class ,n ,slot))))))
 		(rest (loop (cdr slots) (1+ n))))
 	    (if (pair? (car slots))
 		(map* rest make-defs (car slots))
@@ -210,8 +209,9 @@ MIT in each case. |#
 (define transform/define-rtl-statement)
 (define transform/define-rtl-predicate)
 (let ((rtl-common
-       (lambda (type prefix components wrap-constructor)
+       (lambda (type prefix components wrap-constructor types)
 	 `(BEGIN
+	    (SET! ,types (CONS ',type ,types))
 	    (DEFINE-INTEGRABLE
 	      (,(symbol-append prefix 'MAKE- type) ,@components)
 	      ,(wrap-constructor `(LIST ',type ,@components)))
@@ -234,17 +234,21 @@ MIT in each case. |#
 				(* set-index 2))))))))))
   (set! transform/define-rtl-expression
 	(macro (type prefix . components)
-	  (rtl-common type prefix components identity-procedure)))
+	  (rtl-common type prefix components
+		      identity-procedure
+		      'RTL:EXPRESSION-TYPES)))
 
   (set! transform/define-rtl-statement
 	(macro (type prefix . components)
 	  (rtl-common type prefix components
-		      (lambda (expression) `(STATEMENT->SRTL ,expression)))))
+		      (lambda (expression) `(STATEMENT->SRTL ,expression))
+		      'RTL:STATEMENT-TYPES)))
 
   (set! transform/define-rtl-predicate
 	(macro (type prefix . components)
 	  (rtl-common type prefix components
-		      (lambda (expression) `(PREDICATE->PRTL ,expression))))))
+		      (lambda (expression) `(PREDICATE->PRTL ,expression))
+		      'RTL:PREDICATE-TYPES))))
 
 (define transform/define-rule
   (macro (type pattern . body)
@@ -253,46 +257,26 @@ MIT in each case. |#
 	`(,(case type
 	     ((STATEMENT) 'ADD-STATEMENT-RULE!)
 	     ((PREDICATE) 'ADD-STATEMENT-RULE!)
-	     (else (error "Unknown rule type" type)))
+	     ((REWRITING) 'ADD-REWRITING-RULE!)
+	     (else type))
 	  ',pattern
 	  ,(rule-result-expression variables qualifier
 				   `(BEGIN ,@actions)))))))
 
 ;;;; Lap instruction sequences.
 
-;; The effect of unquote and unquote-splicing is the same since
-;; syntax-instruction actually returns a bit-level instruction sequence.
-;; Kept separate for clarity and because it does not have to be like that.
-
 (define transform/lap
   (macro some-instructions
-    (define (handle current remaining)
-      (let ((processed
-	     (cond ((eq? (car current) 'UNQUOTE)
-		    (cadr current))
-		   ((eq? (car current) 'UNQUOTE-SPLICING)
-		    (cadr current))
-		   (else `(INST ,current)))))
-	(if (null? remaining)
-	    processed
-	    `(APPEND-INSTRUCTION-SEQUENCES!
-	      ,processed
-	      ,(handle (car remaining) (cdr remaining))))))
-    (if (null? some-instructions)
-	`EMPTY-INSTRUCTION-SEQUENCE
-	(handle (car some-instructions) (cdr some-instructions)))))
+    (list 'QUASIQUOTE some-instructions)))
 
 (define transform/inst
   (macro (the-instruction)
-    `(LAP:SYNTAX-INSTRUCTION
-      ,(list 'QUASIQUOTE the-instruction))))
-
-;; This is a NOP for now.
+    (list 'QUASIQUOTE the-instruction)))
 
 (define transform/inst-ea
   (macro (ea)
     (list 'QUASIQUOTE ea)))
-
+
 (define transform/define-enumeration
   (macro (name elements)
     (let ((enumeration (symbol-append name 'S)))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.15 1989/12/05 20:51:48 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.16 1990/01/18 22:45:49 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,54 +36,92 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define-rtl-expression char->ascii rtl: expression)
-(define-rtl-expression byte-offset rtl: register number)
+;;; These three lists will be filled in by the type definitions that
+;;; follow.  See those macros for details.
+(define rtl:expression-types '())
+(define rtl:statement-types '())
+(define rtl:predicate-types '())
+
 (define-rtl-expression register % number)
-(define-rtl-expression object->address rtl: expression)
-(define-rtl-expression object->datum rtl: expression)
-(define-rtl-expression object->type rtl: expression)
-(define-rtl-expression object->fixnum rtl: expression)
-(define-rtl-expression object->unsigned-fixnum rtl: expression)
-(define-rtl-expression fixnum->object rtl: expression)
-(define-rtl-expression fixnum->address rtl: expression)
-(define-rtl-expression address->fixnum rtl: expression)
-(define-rtl-expression float->object rtl: expression)
-(define-rtl-expression @address->float rtl: expression)
-(define-rtl-expression offset rtl: register number)
+
+;;; Scheme object
+(define-rtl-expression constant % value)
+
+;;; Memory references that return Scheme objects
+(define-rtl-expression offset rtl: base number)
 (define-rtl-expression pre-increment rtl: register number)
 (define-rtl-expression post-increment rtl: register number)
 
-(define-rtl-expression cons-closure rtl: procedure min max size)
-(define-rtl-expression cons-pointer rtl: type datum)
-(define-rtl-expression constant % value)
-(define-rtl-expression assignment-cache rtl: name)
-(define-rtl-expression variable-cache rtl: name)
+;;; Memory reference that returns ASCII integer
+(define-rtl-expression byte-offset rtl: base number)
+
+;;; Generic arithmetic operations on Scheme number objects
+;;; (define-rtl-expression generic-unary rtl: operator operand)
+;;; (define-rtl-expression generic-binary rtl: operator operand-1 operand-2)
+
+;;; Code addresses
 (define-rtl-expression entry:continuation rtl: continuation)
 (define-rtl-expression entry:procedure rtl: procedure)
-(define-rtl-expression offset-address rtl: register number)
-(define-rtl-expression unassigned rtl:)
 
+;;; Allocating a closure object (returns its address)
+(define-rtl-expression cons-closure rtl: procedure min max size)
+
+;;; Cache addresses
+(define-rtl-expression assignment-cache rtl: name)
+(define-rtl-expression variable-cache rtl: name)
+
+;;; Get the address of a Scheme object
+(define-rtl-expression object->address rtl: expression)
+
+;;; Convert between a datum and an address
+;;; (define-rtl-expression datum->address rtl: expression)
+;;; (define-rtl-expression address->datum rtl: expression)
+
+;;; Add a constant offset to an address
+(define-rtl-expression offset-address rtl: base number)
+
+;;; A machine constant (an integer, usually unsigned)
+(define-rtl-expression machine-constant rtl: value)
+
+;;; Destructuring Scheme objects
+(define-rtl-expression object->datum rtl: expression)
+(define-rtl-expression object->type rtl: expression)
+(define-rtl-expression cons-pointer rtl: type datum)
+
+;;; Convert a character object to an ASCII machine integer
+(define-rtl-expression char->ascii rtl: expression)
+
+;;; Conversion between fixnum objects and machine integers
+(define-rtl-expression object->fixnum rtl: expression)
+(define-rtl-expression object->unsigned-fixnum rtl: expression)
+(define-rtl-expression fixnum->object rtl: expression)
+
+;;; Conversion between machine integers and addresses
+(define-rtl-expression fixnum->address rtl: expression)
+(define-rtl-expression address->fixnum rtl: expression)
+
+;;; Machine integer arithmetic operations
 (define-rtl-expression fixnum-1-arg rtl: operator operand overflow?)
 (define-rtl-expression fixnum-2-args rtl: operator operand-1 operand-2
   overflow?)
 
-(define-rtl-predicate fixnum-pred-1-arg % predicate operand)
-(define-rtl-predicate fixnum-pred-2-args % predicate operand-1 operand-2)
+;;; Conversion between flonums and machine floats
+(define-rtl-expression float->object rtl: expression)
+(define-rtl-expression @address->float rtl: expression)
 
+;;; Floating-point arithmetic operations
 (define-rtl-expression flonum-1-arg rtl: operator operand overflow?)
 (define-rtl-expression flonum-2-args rtl: operator operand-1 operand-2
   overflow?)
+
+(define-rtl-predicate fixnum-pred-1-arg % predicate operand)
+(define-rtl-predicate fixnum-pred-2-args % predicate operand-1 operand-2)
 
 (define-rtl-predicate flonum-pred-1-arg % predicate operand)
 (define-rtl-predicate flonum-pred-2-args % predicate operand-1 operand-2)
 
-(define-rtl-expression generic-unary rtl: operator operand)
-(define-rtl-expression generic-binary rtl: operator operand-1 operand-2)
-
 (define-rtl-predicate eq-test % expression-1 expression-2)
-(define-rtl-predicate true-test % expression)
 (define-rtl-predicate type-test % expression type)
-(define-rtl-predicate unassigned-test % expression)
 
 (define-rtl-predicate overflow-test rtl:)
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.22 1989/12/11 06:17:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.23 1990/01/18 22:44:09 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -112,8 +112,10 @@ MIT in each case. |#
 
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size) (? continuation) (? extension))
+  (QUALIFIER (interpreter-call-argument? extension))
   continuation
-  (let ((set-extension (expression->machine-register! extension d1)))
+  (let ((set-extension
+	 (interpreter-call-argument->machine-register! extension d1)))
     (delete-dead-registers!)
     (LAP ,@set-extension
 	 ,@(clear-map!)
@@ -124,8 +126,10 @@ MIT in each case. |#
 
 (define-rule statement
   (INVOCATION:LOOKUP (? frame-size) (? continuation) (? environment) (? name))
+  (QUALIFIER (interpreter-call-argument? environment))
   continuation
-  (let ((set-environment (expression->machine-register! environment d1)))
+  (let ((set-environment
+	 (interpreter-call-argument->machine-register! environment d1)))
     (delete-dead-registers!)
     (LAP ,@set-environment
 	 ,@(clear-map!)
@@ -222,7 +226,6 @@ MIT in each case. |#
   (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size)
 				   (OFFSET-ADDRESS (REGISTER (? base))
 						   (? offset)))
-  (QUALIFIER (pseudo-register? base))
   (generate/move-frame-up frame-size (indirect-reference! base offset)))
 
 (define-rule statement
@@ -248,8 +251,7 @@ MIT in each case. |#
   (INVOCATION-PREFIX:DYNAMIC-LINK (? frame-size)
 				  (OBJECT->ADDRESS (REGISTER (? source)))
 				  (REGISTER 12))
-  (QUALIFIER (pseudo-register? source))
-  (let ((dreg (move-to-temporary-register! source 'DATA))
+  (let ((dreg (standard-move-to-temporary! source 'DATA))
 	(label (generate-label))
 	(temp (allocate-temporary-register! 'ADDRESS)))
     (let ((areg (register-reference temp)))
@@ -265,8 +267,7 @@ MIT in each case. |#
   (INVOCATION-PREFIX:DYNAMIC-LINK (? frame-size)
 				  (REGISTER (? source))
 				  (REGISTER 12))
-  (QUALIFIER (pseudo-register? source))
-  (let ((areg (move-to-temporary-register! source 'ADDRESS))
+  (let ((areg (standard-move-to-temporary! source 'ADDRESS))
 	(label (generate-label)))
     (LAP (CMP L ,areg (A 4))
 	 (B HS B (@PCR ,label))
@@ -433,16 +434,22 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
-	  (CONS-POINTER (CONSTANT (? type))
+	  (CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
+			(? min) (? max) (? size)))
+  (generate/cons-closure (reference-target-alias! target 'DATA)
+			 false procedure-label min max size))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
 				      (? min) (? max) (? size))))
-  (QUALIFIER (pseudo-register? target))
   (generate/cons-closure (reference-target-alias! target 'DATA)
 			 type procedure-label min max size))
 
 (define-rule statement
   (ASSIGN (? target)
-	  (CONS-POINTER (CONSTANT (? type))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
 				      (? min) (? max) (? size))))
   (QUALIFIER (standard-target-expression? target))
@@ -462,7 +469,9 @@ MIT in each case. |#
 	      (& ,(+ (* (make-procedure-code-word min max) #x10000) 8))
 	      (@A+ 5))
 	 (MOV L (A 5) ,target)
-	 (OR UL (& ,(make-non-pointer-literal type 0)) ,target)
+	 ,@(if type
+	       (LAP (OR UL (& ,(make-non-pointer-literal type 0)) ,target))
+	       (LAP))
 	 (MOV UW (& #x4eb9) (@A+ 5))	; (JSR (L <entry>))
 	 (MOV L ,temporary (@A+ 5))
 	 (CLR W (@A+ 5))

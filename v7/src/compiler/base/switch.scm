@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.12 1989/09/05 22:33:50 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.13 1990/01/18 22:42:54 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,7 +39,7 @@ MIT in each case. |#
 ;;; Binary switches
 
 (define compiler:enable-integration-declarations? true)
-(define compiler:enable-expansion-declarations? true)
+(define compiler:enable-expansion-declarations? false)
 (define compiler:compile-by-procedures? true)
 (define compiler:show-time-reports? false)
 (define compiler:show-procedures? true)
@@ -48,12 +48,13 @@ MIT in each case. |#
 (define compiler:preserve-data-structures? false)
 (define compiler:code-compression? true)
 (define compiler:cache-free-variables? true)
-(define compiler:implicit-self-static? false)
+(define compiler:implicit-self-static? true)
 (define compiler:optimize-environments? true)
 (define compiler:analyze-side-effects? true)
 (define compiler:cse? true)
 (define compiler:open-code-primitives? true)
 (define compiler:generate-rtl-files? false)
+(define compiler:generate-lap-files? false)
 (define compiler:generate-range-checks? false)
 (define compiler:generate-type-checks? false)
 (define compiler:open-code-flonum-checks? false)

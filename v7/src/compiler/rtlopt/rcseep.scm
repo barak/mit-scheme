@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseep.scm,v 4.5 1988/08/29 23:18:23 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseep.scm,v 4.6 1990/01/18 22:47:53 cph Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,19 +43,15 @@ MIT in each case. |#
   (define (loop x y)
     (let ((type (rtl:expression-type x)))
       (and (eq? type (rtl:expression-type y))
-	   (case type
-	     ((REGISTER)
-	      (register-equivalent? x y))
-	     ((OFFSET BYTE-OFFSET)
-	      (let ((rx (rtl:offset-register x)))
-		(and (register-equivalent? rx (rtl:offset-register y))
-		     (if (interpreter-stack-pointer? rx)
-			 (eq? (stack-reference-quantity x)
-			      (stack-reference-quantity y))
-			 (= (rtl:offset-number x)
-			    (rtl:offset-number y))))))
-	     (else
-	      (rtl:match-subexpressions x y loop))))))
+	   (cond ((eq? type 'REGISTER)
+		  (register-equivalent? x y))
+		 ((and (memq type '(OFFSET BYTE-OFFSET))
+		       (interpreter-stack-pointer? (rtl:offset-base x)))
+		  (and (interpreter-stack-pointer? (rtl:offset-base y))
+		       (eq? (stack-reference-quantity x)
+			    (stack-reference-quantity y))))
+		 (else
+		  (rtl:match-subexpressions x y loop))))))
 
   (define (register-equivalent? x y)
     (let ((x (rtl:register-number x))
@@ -75,9 +71,9 @@ MIT in each case. |#
 	    (rtl:any-subexpression? x loop))))
   (loop x))
 
-(define-integrable (interpreter-register-reference? expression)
+(define (interpreter-register-reference? expression)
   (and (rtl:offset? expression)
-       (interpreter-regs-pointer? (rtl:offset-register expression))))
+       (interpreter-regs-pointer? (rtl:offset-base expression))))
 
 (define (expression-address-varies? expression)
   (and (not (interpreter-register-reference? expression))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rinvex.scm,v 1.2 1989/07/25 12:31:04 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rinvex.scm,v 1.3 1990/01/18 22:48:02 cph Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -220,17 +220,9 @@ MIT in each case. |#
   rtl:flonum-pred-1-arg-operand
   rtl:set-flonum-pred-1-arg-operand!)
 
-(define-one-arg-method 'TRUE-TEST
-  rtl:true-test-expression
-  rtl:set-true-test-expression!)
-
 (define-one-arg-method 'TYPE-TEST
   rtl:type-test-expression
   rtl:set-type-test-expression!)
-
-(define-one-arg-method 'UNASSIGNED-TEST
-  rtl:type-test-expression
-  rtl:set-unassigned-test-expression!)
 
 (define-one-arg-method 'INVOCATION:CACHE-REFERENCE
   rtl:invocation:cache-reference-name
