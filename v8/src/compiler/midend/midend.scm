@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.8 1995/01/19 23:43:16 adams Exp $
+$Id: midend.scm,v 1.9 1995/02/20 20:48:53 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -406,7 +406,14 @@ Example:
   (apply warn complaint *current-phase* reasons))
 
 (define (illegal form)
-  (internal-error "Illegal KMP form" form))
+  (if (and (pair? form)
+	   (memq (car form)
+		 '(QUOTE   LOOKUP  LAMBDA  LET     DECLARE
+		   CALL    BEGIN   IF      LETREC  SET!
+		   UNASSIGNED? OR  DELAY   ACCESS  DEFINE
+		   IN-PACKAGE THE-ENVIRONMENT)))
+      (no-longer-legal form)
+      (internal-error "Illegal KMP form" form)))
 
 (define (no-longer-legal form)
   (internal-error "Unexpected KMP form -- should have been expanded"
