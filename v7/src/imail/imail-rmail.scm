@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.30 2000/05/17 17:54:08 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.31 2000/05/17 17:54:34 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -93,6 +93,7 @@
   'UNDEFINED)
 
 (define-method make-message-copy ((message <message>) (folder <rmail-folder>))
+  folder
   (make-rmail-message (message-header-fields message)
 		      (message-body message)
 		      (list-copy (message-flags message))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.25 2000/05/17 15:03:01 cph Exp $
+;;; $Id: imail-umail.scm,v 1.26 2000/05/17 17:54:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -81,6 +81,7 @@
 		  (message-internal-time message))))
 
 (define-method make-message-copy ((message <message>) (folder <umail-folder>))
+  folder
   (make-umail-message (message-header-fields message)
 		      (message-body message)
 		      (list-copy (message-flags message))
