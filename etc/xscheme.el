@@ -1,5 +1,5 @@
 ;; Run Scheme under Emacs
-;; Copyright (C) 1986, 1987, 1989, 1990 Free Software Foundation, Inc.
+;; Copyright (C) 1986, 1987, 1989, 1990, 1991 Free Software Foundation, Inc.
 
 ;; This file is part of GNU Emacs.
 
@@ -20,7 +20,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.26 1990/09/11 01:51:20 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.27 1991/01/08 04:49:24 cph Exp $
 
 (require 'scheme)
 
@@ -753,6 +753,7 @@ the remaining input.")
 
 (defun xscheme-enter-input-wait ()
   (xscheme-set-runlight xscheme-runlight:input)
+  (setq xscheme-control-g-disabled-p nil)
   (setq xscheme-running-p nil))
 
 (defun xscheme-exit-input-wait ()
