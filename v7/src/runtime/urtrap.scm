@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: urtrap.scm,v 14.3 1993/10/21 14:52:44 cph Exp $
+$Id: urtrap.scm,v 14.4 1993/12/21 23:42:49 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -38,6 +38,9 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define-structure (reference-trap
+		   (type vector)
+		   (named ((ucode-primitive string->symbol)
+			   "#[(runtime reference-trap)reference-trap]"))
 		   (print-procedure
 		    (standard-unparser-method 'REFERENCE-TRAP
 		      (lambda (trap port)
