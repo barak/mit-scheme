@@ -6,7 +6,10 @@
 (let ((sf-and-load
        (lambda (files package)
 	 (sf-conditionally files)
-	 (load files (package/environment (find-package package)))))
+	 (let ((environment (package/environment (find-package package))))
+	   (for-each (lambda (file)
+		       (load (string-append file ".bin") environment))
+		     files))))
       (compiler-package (find-package '(COMPILER))))
   (write-string "\n\n---- Loading compile-time files ----")
   (sf-and-load '("base/switch" "base/hashtb") '(COMPILER))
