@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.41 1995/02/21 23:11:22 cph Exp $
+$Id: x11graph.scm,v 1.42 1995/02/21 23:20:11 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -895,7 +895,7 @@ MIT in each case. |#
 ;; Abstraction layer for generic images
 
 (define (x-graphics/create-image device width height)
-  (image/create (image-type device) device width height))
+  (image/create device width height))
 
 ;;(define x-graphics-image/create create-x-image)
 

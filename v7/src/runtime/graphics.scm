@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.14 1995/02/21 23:10:35 cph Exp $
+$Id: graphics.scm,v 1.15 1995/02/21 23:20:21 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -429,7 +429,7 @@ MIT in each case. |#
 		   (and error?
 			(error "Graphics type has no associated image type:"
 			       type))))))))
-
+
 (define (make-image-type operations)
   (let ((operations
 	 (map (lambda (entry)
@@ -467,10 +467,11 @@ MIT in each case. |#
 
 (define the-destroyed-image-type #f)
 
-(define (image/create type device width height)
+(define (image/create device width height)
   ;; operation/create returns a descriptor
-  (%make-image type
-	       ((image-type/operation/create type) device width height)))
+  (let ((type (image-type device)))
+    (%make-image type
+		 ((image-type/operation/create type) device width height))))
 
 (define (image/destroy image)
   ((image-type/operation/destroy (image/type image)) image)

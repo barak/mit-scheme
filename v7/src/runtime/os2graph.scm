@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.6 1995/02/21 23:15:58 cph Exp $
+$Id: os2graph.scm,v 1.7 1995/02/21 23:20:02 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -846,7 +846,7 @@ MIT in each case. |#
 	  (y (window/y->device window y-bottom)))
       (let ((width (+ (- (window/x->device window x-right) x) 1))
 	    (height (+ (- (window/y->device window y-top) y) 1)))
-	(let ((image (image/create (image-type device) device width height)))
+	(let ((image (image/create device width height)))
 	  (os2ps-bitblt (image/ps (image/descriptor image))
 			(window/backing-store window)
 			(vector x (+ x width) 0)
