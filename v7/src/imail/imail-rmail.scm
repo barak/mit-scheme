@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.15 2000/04/06 22:05:53 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.16 2000/04/07 19:12:24 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -256,6 +256,7 @@
     (if (null? pathnames)
 	#f
 	(let ((initial-count (folder-length folder)))
+	  (guarantee-rmail-variables-initialized)
 	  (let ((inbox-folders
 		 (map (lambda (pathname)
 			(let ((inbox (read-rmail-inbox folder pathname #t)))
@@ -281,32 +282,16 @@
 		  (lambda (filename)
 		    (merge-pathnames (string-trim filename) directory)))
 		(burst-string inboxes #\, #f)))
-	  ((pathname=? (rmail-primary-folder-name)
+	  ((pathname=? (edwin-variable 'RMAIL-FILE-NAME)
 		       (url-body (folder-url folder)))
-	   (rmail-primary-inbox-list))
+	   (edwin-variable-value 'RMAIL-PRIMARY-INBOX-LIST))
 	  (else '()))))
-
-(define (rmail-primary-folder-name)
-  "RMAIL")
-
-(define (rmail-primary-inbox-list)
-  (let ((l (variable-value (name->variable 'RMAIL-PRIMARY-INBOX-LIST 'ERROR))))
-    (if (null? l)
-	(os/rmail-primary-inbox-list
-	 (let ((d (os/rmail-spool-directory)))
-	   (if d
-	       (list (string-append d (current-user-name)))
-	       '())))
-	l)))
-
-(define (rmail-spool-directory)
-  (os/rmail-spool-directory))
 
 (define (read-rmail-inbox folder pathname rename?)
   (let ((pathname
 	 (cond ((not rename?)
 		pathname)
-	       ((pathname=? (rmail-spool-directory)
+	       ((pathname=? rmail-spool-directory
 			    (directory-pathname pathname))
 		(rename-inbox-using-movemail
 		 pathname
