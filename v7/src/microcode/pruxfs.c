@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.42 1990/06/20 19:39:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.43 1990/11/08 11:06:12 cph Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -49,7 +49,7 @@ static void EXFUN (protect_fd, (int fd));
 #ifndef FILE_TOUCH_OPEN_TRIES
 #define FILE_TOUCH_OPEN_TRIES 5
 #endif
-
+
 DEFINE_PRIMITIVE ("FILE-MODES", Prim_file_modes, 1, 1,
   "Return mode bits of FILE, as an integer.")
 {
@@ -68,6 +68,26 @@ DEFINE_PRIMITIVE ("SET-FILE-MODES!", Prim_set_file_modes, 2, 2,
   if ((UX_chmod ((STRING_ARG (1)), (arg_index_integer (2, 010000)))) < 0)
     error_system_call (errno, "chmod");
   PRIMITIVE_RETURN (SHARP_F);
+}
+
+DEFINE_PRIMITIVE ("FILE-MOD-TIME", Prim_file_mod_time, 1, 1, 0)
+{
+  struct stat s;
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (((UX_lstat ((STRING_ARG (1)), (&s))) < 0)
+     ? SHARP_F
+     : (long_to_integer (s . st_mtime)));
+}
+
+DEFINE_PRIMITIVE ("FILE-MOD-TIME-INDIRECT", Prim_file_mod_time_indirect, 1, 1, 0)
+{
+  struct stat s;
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (((UX_stat ((STRING_ARG (1)), (&s))) < 0)
+     ? SHARP_F
+     : (long_to_integer (s . st_mtime)));
 }
 
 /* Returns a vector of 10 items:
