@@ -100,8 +100,17 @@
      (write-to-string (decoded-time/year the-time)))))
 #|
 (define (get-krypt-time-string)
-  "Mon Mar 30 15:11:50 1992")
+  "Mon Mar 30 17:21:44 1992")
 |#
+
+(define (update-checksum cs block)
+  (let ((block-length (string-length block)))
+    (let loop ((i 0)
+	       (checksum cs))
+      (if (< i block-length)
+	  (loop (fix:1+ i) (fix:+ checksum (char->ascii (string-ref block i))))
+	  (fix:remainder checksum 256)))))
+
 (define (encrypt input-string password)
   (let ((checksum 0)
 	(output-string "")
@@ -118,23 +127,23 @@
 	(if (>= (string-length rest) 256)
 	    (let ((current-block (string-head rest 256))
 		  (new-rest (string-tail rest 256)))
-	      (set! checksum (+ checksum 
-				(apply + (map char->ascii (string->list current-block)))))
+;	      (set! checksum (+ checksum (reduce + 0 (map char->ascii (string->list current-block)))))
+	      (set! checksum (update-checksum checksum current-block))
 	      (rcm key1 (string-length current-block) current-block)
 	      (loop new-rest (cons current-block output-string-list)))
 	    (begin
-	      (set! checksum (+ checksum 
-				(apply + (map char->ascii (string->list rest)))))
+;	      (set! checksum (+ checksum (reduce + 0 (map char->ascii (string->list rest)))))
+	      (set! checksum (update-checksum checksum rest))
 	      (rcm key1 (string-length rest) rest)
 	      (set! output-string 
 		    (apply string-append (cons output-string (reverse (cons rest output-string-list))))))))
-      (let ((check-char (ascii->char (modulo (fix:- 0 checksum) 256))))
+      (let ((check-char (ascii->char (modulo (- checksum) 256))))
 	(let ((cc-string (char->string check-char)))
 	  (rcm key1 1 cc-string)
 	  (set! output-string (string-append output-string cc-string))))
       output-string)))
 
-(define (decrypt input-string password)
+(define (decrypt input-string password #!optional password-error checksum-error)
   (let* ((header-length (+ (string-length kryptid) 25))
 	 (header (string-head input-string header-length))
 	 (text1 (string-tail input-string header-length))
@@ -156,23 +165,24 @@
 		    (let ((current-block (string-head rest 256))
 			  (new-rest (string-tail rest 256)))
 		      (rcm key1 (string-length current-block) current-block)
-		      (set! checksum (+ checksum 
-					(apply + (map char->ascii (string->list current-block)))))
+;		      (set! checksum (+ checksum (reduce + 0 (map char->ascii (string->list current-block)))))
+		      (set! checksum (update-checksum checksum current-block))
 		      (loop new-rest (cons current-block output-string-list)))
 		    (begin
 		      (rcm key1 (string-length rest) rest)
-		      (set! checksum (+ checksum 
-					(apply + (map char->ascii (string->list rest)))))
+;		      (set! checksum (+ checksum (reduce + 0 (map char->ascii (string->list rest)))))
+		      (set! checksum (update-checksum checksum rest))
 		      (let ((foo (apply string-append (reverse (cons rest output-string-list)))))
 			(set! output-string (string-head foo (-1+ (string-length foo))))))))
-	      (if (not (= (fix:remainder checksum 256) 0))
-		  (set! output-string
-			(string-append output-string
-				       "krypt: Checksum error.  File may have been modified.\n")))
-	      output-string)
-	    (list header password passwordmac pwordmac)
-;	    "unmodified (a ciphertext file krypted with different password)."
-)))))
+	      (if (not (= (modulo checksum 256) 0))
+		  (if (default-object? checksum-error)
+		      (error "krypt: Checksum error.")
+		      (checksum-error output-string))
+		  output-string))
+	    (if (default-object? password-error)
+		(error "krypt: Password error.")
+		(password-error)))))))
+
 	    
 	      
 	      
