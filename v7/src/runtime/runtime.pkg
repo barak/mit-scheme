@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.522 2004/12/13 03:22:21 cph Exp $
+$Id: runtime.pkg,v 14.523 2004/12/20 04:38:49 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -2590,6 +2590,7 @@ USA.
 	  channel-file-length
 	  channel-file-position
 	  channel-file-set-position
+	  channel-file-truncate
 	  channel-has-input?
 	  channel-nonblocking
 	  channel-open?

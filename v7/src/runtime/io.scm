@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.79 2004/02/16 05:36:50 cph Exp $
+$Id: io.scm,v 14.80 2004/12/20 04:38:37 cph Exp $
 
 Copyright 1986,1987,1988,1990,1991,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -308,6 +308,9 @@ USA.
 (define (channel-file-set-position channel position)
   ((ucode-primitive file-set-position 2) (channel-descriptor channel)
 					 position))
+
+(define (channel-file-truncate channel length)
+  ((ucode-primitive file-truncate 2) (channel-descriptor channel) length))
 
 (define (make-pipe)
   (without-interrupts
