@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: urtrap.scm,v 14.6 2001/08/03 20:29:59 cph Exp $
+$Id: urtrap.scm,v 14.7 2001/12/18 20:46:59 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -79,6 +79,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (and (reference-trap? object)
        (fix:= 0 (reference-trap-kind object))))
 
+(define (make-unmapped-unassigned-reference-trap)
+  (primitive-object-set-type (ucode-type reference-trap) 0))
+
 (define (unmapped-unassigned-reference-trap? getter)
   (and (primitive-object-type? (ucode-type reference-trap) (getter))
        (fix:= 0 (object-datum (getter)))))
@@ -89,6 +92,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (unbound-reference-trap? object)
   (and (reference-trap? object)
        (fix:= 2 (reference-trap-kind object))))
+
+(define (make-unmapped-unbound-reference-trap)
+  (primitive-object-set-type (ucode-type reference-trap) 2))
 
 (define (unmapped-unbound-reference-trap? getter)
   (and (primitive-object-type? (ucode-type reference-trap) (getter))
