@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: hlpcom.scm,v 1.114 2000/02/24 01:30:24 cph Exp $
+;;; $Id: hlpcom.scm,v 1.115 2000/03/22 16:16:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -382,11 +382,14 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 				 comtabs))))))
 	 (subst-key
 	  (lambda (argument next comtabs)
-	    (cons (let ((command (name->command argument 'ERROR)))
-		    (let ((bindings (comtab-key-bindings comtabs command)))
-		      (if (null? bindings)
-			  (string-append "M-x " (command-name-string command))
-			  (xkey->name (car bindings)))))
+	    (cons (let ((command (name->command argument #f)))
+		    (if command
+			(let ((bindings (comtab-key-bindings comtabs command)))
+			  (if (null? bindings)
+			      (string-append "M-x "
+					     (command-name-string command))
+			      (xkey->name (car bindings))))
+			(string-append "M-x " argument)))
 		  (find-escape next comtabs))))
 	 (show-bindings
 	  (lambda (argument next comtabs)
