@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/dbgutl.scm,v 14.6 1988/12/31 06:38:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/dbgutl.scm,v 14.7 1989/01/06 20:59:45 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -49,14 +49,6 @@ MIT in each case. |#
 		     (write-dbg-name name))))
 	(write-string "an unknown procedure"))))
 
-(define (show-frames environment depth)
-  (let loop ((environment environment) (depth depth))
-    (show-frame environment depth true)
-    (if (environment-has-parent? environment)
-	(begin
-	  (newline)
-	  (loop (environment-parent environment) (1+ depth))))))
-
 (define (write-dbg-name name)
   (if (string? name) (write-string name) (write name)))
 
@@ -70,29 +62,39 @@ MIT in each case. |#
     (if (and (car x) (> length 4))
 	(substring-move-right! " ..." 0 4 (cdr x) (- length 4)))
     (cdr x)))
-
-(define (show-frame environment depth brief?)
-  (newline)
-  (write-string "Environment ")
-  (let ((show-bindings?
-	 (let ((package (environment->package environment)))
-	   (if package
-	       (begin
-		 (write-string "named ")
-		 (write (package/name package))
-		 (not brief?))
-	       (begin
-		 (write-string "created by ")
-		 (print-user-friendly-name environment)
-		 true)))))
-    (if (not (negative? depth))
-	(begin (newline)
-	       (write-string "Depth (relative to starting frame): ")
-	       (write depth)))
-    (if show-bindings?
+
+(define (show-frames environment depth)
+  (let loop ((environment environment) (depth depth))
+    (newline)
+    (write-string "----------------------------------------")
+    (show-frame environment depth true)
+    (if (environment-has-parent? environment)
 	(begin
 	  (newline)
-	  (show-environment-bindings environment brief?)))))
+	  (loop (environment-parent environment) (1+ depth))))))
+
+(define (show-frame environment depth brief?)
+  (show-environment-name environment)
+  (if (not (negative? depth))
+      (begin (newline)
+	     (write-string "Depth (relative to initial environment): ")
+	     (write depth)))
+  (if (not (and (environment->package environment) brief?))
+      (begin
+	(newline)
+	(show-environment-bindings environment brief?))))
+
+(define (show-environment-name environment)
+  (newline)
+  (write-string "Environment ")
+  (let ((package (environment->package environment)))
+    (if package
+	(begin
+	  (write-string "named ")
+	  (write (package/name package)))
+	(begin
+	  (write-string "created by ")
+	  (print-user-friendly-name environment)))))
 
 (define (show-environment-bindings environment brief?)
   (let ((names (environment-bound-names environment)))

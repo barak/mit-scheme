@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.4 1988/12/30 06:43:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.5 1989/01/06 21:00:34 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -75,6 +75,15 @@ MIT in each case. |#
 	((closure-ccenv? environment)
 	 (closure-ccenv/bound-names environment))
 	(else (error "Illegal environment" environment))))
+
+(define (environment-bindings environment)
+  (map (lambda (name)
+	 (cons name
+	       (let ((value (environment-lookup environment name)))
+		 (if (unassigned-reference-trap? value)
+		     '()
+		     (list value)))))
+       (environment-bound-names environment)))
 
 (define (environment-arguments environment)
   (cond ((ic-environment? environment)
@@ -87,14 +96,19 @@ MIT in each case. |#
 	(else (error "Illegal environment" environment))))
 
 (define (environment-procedure-name environment)
+  (let ((scode-lambda (environment-lambda environment)))
+    (and scode-lambda
+	 (lambda-name scode-lambda))))
+
+(define (environment-lambda environment)
   (cond ((system-global-environment? environment)
 	 false)
 	((ic-environment? environment)
-	 (ic-environment/procedure-name environment))
+	 (ic-environment/lambda environment))
 	((stack-ccenv? environment)
-	 (stack-ccenv/procedure-name environment))
+	 (stack-ccenv/lambda environment))
 	((closure-ccenv? environment)
-	 (closure-ccenv/procedure-name environment))
+	 (closure-ccenv/lambda environment))
 	(else (error "Illegal environment" environment))))
 
 (define (environment-bound? environment name)
@@ -160,9 +174,6 @@ MIT in each case. |#
       (error "Bad IC environment" object))
   object)
 
-(define (ic-environment/procedure-name environment)
-  (lambda-name (procedure-lambda (ic-environment/procedure environment))))
-
 (define (ic-environment/has-parent? environment)
   (not (eq? (ic-environment/parent environment) null-environment)))
 
@@ -201,6 +212,9 @@ MIT in each case. |#
 		    optional)
 	      lookup
 	      required)))))
+
+(define (ic-environment/lambda environment)
+  (procedure-lambda (ic-environment/procedure environment)))
 
 (define (ic-environment/procedure environment)
   (select-procedure (ic-environment->external environment)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.6 1988/12/31 05:52:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.7 1989/01/06 21:00:16 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -170,25 +170,24 @@ MIT in each case. |#
 		     ((< key* key) (loop (1+ midpoint) end))
 		     (else item))))))))
 (define (fasload/update-debugging-info! value com-pathname)
-  (let ((process-entry
-	 (lambda (entry)
-	   (let ((block (compiled-code-address->block entry)))
-	     (let ((info (compiled-code-block/debugging-info block)))
-	       (cond ((string? info)
-		      (set-compiled-code-block/debugging-info!
-		       block
-		       (process-binf-filename info com-pathname)))
-		     ((and (pair? info) (string? (car info)))
-		      (set-car! info
-				(process-binf-filename (car info)
-						       com-pathname)))))))))
+  (let ((process-block
+	 (lambda (block)
+	   (let ((info (compiled-code-block/debugging-info block)))
+	     (cond ((string? info)
+		    (set-compiled-code-block/debugging-info!
+		     block
+		     (process-binf-filename info com-pathname)))
+		   ((and (pair? info) (string? (car info)))
+		    (set-car! info
+			      (process-binf-filename (car info)
+						     com-pathname))))))))
     (cond ((compiled-code-address? value)
-	   (process-entry value))
+	   (process-block (compiled-code-address->block value)))
 	  ((comment? value)
 	   (let ((text (comment-text value)))
 	     (if (dbg-info-vector? text)
 		 (for-each
-		  process-entry
+		  process-block
 		  (vector->list (dbg-info-vector/items text)))))))))
 (define (process-binf-filename binf-filename com-pathname)
   (pathname->string
@@ -268,61 +267,11 @@ MIT in each case. |#
     (let ((end (vector-length layout)))
       (let loop ((index 0))
 	(and (< index end)
-	     (if (dbg-name=? name (vector-ref layout index))
+	     (if (let ((item (vector-ref layout index)))
+		   (and (dbg-variable? item)
+			(eq? name (dbg-variable/name item))))
 		 index
 		 (loop (1+ index))))))))
-
-(define-integrable (symbol->dbg-name symbol)
-  (cond ((object-type? (ucode-type interned-symbol) symbol)
-	 (system-pair-car symbol))
-	((object-type? (ucode-type uninterned-symbol) symbol)
-	 symbol)
-	(else
-	 (error "SYMBOL->DBG-NAME: not a symbol" symbol))))
-
-(define (dbg-name? object)
-  (or (string? object)
-      (object-type? (ucode-type interned-symbol) object)
-      (object-type? (ucode-type uninterned-symbol) object)))
-
-(define (dbg-name/normal? object)
-  (or (string? object)
-      (object-type? (ucode-type uninterned-symbol) object)))
-
-(define (dbg-name=? x y)
-  (or (eq? x y)
-      (let ((name->string
-	     (lambda (name)
-	       (cond ((string? name)
-		      name)
-		     ((object-type? (ucode-type interned-symbol) name)
-		      (system-pair-car name))
-		     (else
-		      false)))))
-	(let ((x (name->string x)) (y (name->string y)))
-	  (and x y (string-ci=? x y))))))
-
-(define (dbg-name<? x y)
-  (let ((name->string
-	 (lambda (name)
-	   (cond ((string? name)
-		  name)
-		 ((or (object-type? (ucode-type interned-symbol) name)
-		      (object-type? (ucode-type uninterned-symbol) name))
-		  (system-pair-car name))
-		 (else
-		  (error "Illegal dbg-name" name))))))
-    (string-ci<? (name->string x) (name->string y))))
-
-(define (dbg-name/string name)
-  (cond ((string? name)
-	 name)
-	((object-type? (ucode-type interned-symbol) name)
-	 (system-pair-car name))
-	((object-type? (ucode-type uninterned-symbol) name)
-	 (write-to-string name))
-	(else
-	 (error "Illegal dbg-name" name))))
 
   (let ((procedure
 	 (compiled-entry/dbg-object entry *compiler-info/load-on-demand?*)))
@@ -330,16 +279,12 @@ MIT in each case. |#
     (and procedure
 	 (let ((name (dbg-procedure/name procedure)))
 	   (or (special-form-procedure-name? name)
-	       name)))))
-(define *compiler-info/load-on-demand?*
+	       (symbol->string name))))))(define *compiler-info/load-on-demand?*
   false)
 
 
 (define (special-form-procedure-name? name)
-  (let ((association
-	 (list-search-positive special-form-procedure-names
-	   (lambda (association)
-	     (dbg-name=? (car association) name)))))
+  (let ((association (assq name special-form-procedure-names)))
     (and association
 	 (symbol->string (cdr association)))))
 (define special-form-procedure-names)	entry)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.10 1988/12/30 06:43:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.11 1989/01/06 21:00:42 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -44,12 +44,16 @@ MIT in each case. |#
   (set! *unparser-radix* 10)
   (set! *unparser-list-breadth-limit* false)
   (set! *unparser-list-depth-limit* false)
+  (set! *unparse-primitives-by-name?* false)
+  (set! *unparse-uninterned-symbols-by-name?* false)
   (set! system-global-unparser-table (make-system-global-unparser-table))
   (set-current-unparser-table! system-global-unparser-table))
 
 (define *unparser-radix*)
 (define *unparser-list-breadth-limit*)
 (define *unparser-list-depth-limit*)
+(define *unparse-primitives-by-name?*)
+(define *unparse-uninterned-symbols-by-name?*)
 (define system-global-unparser-table)
 (define *current-unparser-table*)
 
@@ -216,7 +220,7 @@ MIT in each case. |#
       ((1 2 3 4 -3 -4)			; cell pair triple quad vector compiled
        (*unparse-with-brackets type object false))
       (else				; non pointer, gc special, undefined
-       (*unparse-with-brackets type false
+       (*unparse-with-brackets type object
 			       (lambda ()
 				 (*unparse-datum object)))))))
 
@@ -270,9 +274,10 @@ MIT in each case. |#
 (define hook/interned-symbol)
 
 (define (unparse/uninterned-symbol symbol)
-  (*unparse-with-brackets 'UNINTERNED-SYMBOL
-			  symbol
-			  (lambda () (unparse-symbol symbol))))
+  (let ((unparse-symbol (lambda () (unparse-symbol symbol))))
+    (if *unparse-uninterned-symbols-by-name?*
+	(unparse-symbol)
+	(*unparse-with-brackets 'UNINTERNED-SYMBOL symbol unparse-symbol))))
 
 (define (unparse-symbol symbol)
   (*unparse-string (symbol->string symbol)))
@@ -439,10 +444,12 @@ MIT in each case. |#
 	     (lambda () (*unparse-object name)))))))
 
 (define (unparse/primitive-procedure procedure)
-  (*unparse-with-brackets 'PRIMITIVE-PROCEDURE false
-    (lambda ()
-      (*unparse-object (primitive-procedure-name procedure)))))
-
+  (let ((unparse-name
+	 (lambda ()
+	   (*unparse-object (primitive-procedure-name procedure)))))
+    (if *unparse-primitives-by-name?*
+	(unparse-name)
+	(*unparse-with-brackets 'PRIMITIVE-PROCEDURE false unparse-name))))
 (define (unparse/compiled-entry entry)
   (let* ((type (compiled-entry-type entry))
 	 (closure?

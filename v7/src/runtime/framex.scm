@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/framex.scm,v 14.3 1988/12/30 06:42:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/framex.scm,v 14.4 1989/01/06 21:00:05 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -87,7 +87,28 @@ MIT in each case. |#
   (values undefined-expression (stack-frame/ref frame 2)))
 
 (define (method/compiled-code frame)
-  (values compiled-code (stack-frame/environment frame undefined-environment)))
+  (values
+   (let ((continuation
+	  (compiled-entry/dbg-object (stack-frame/return-address frame)))
+	 (lose (lambda () compiled-code)))
+     (if continuation
+	 (let ((source-code (dbg-continuation/source-code continuation)))
+	   (if (and (vector? source-code)
+		    (not (zero? (vector-length source-code))))
+	       (case (vector-ref source-code 0)
+		 ((SEQUENCE-2-SECOND
+		   SEQUENCE-3-SECOND
+		   SEQUENCE-3-THIRD
+		   CONDITIONAL-DECIDE
+		   ASSIGNMENT-CONTINUE
+		   DEFINITION-CONTINUE
+		   COMBINATION-OPERAND)
+		  (vector-ref source-code 1))
+		 (else
+		  (lose)))
+	       (lose)))
+	 (lose)))
+   (stack-frame/environment frame undefined-environment)))
 
 (define (method/primitive-combination-3-first-operand frame)
   (values (stack-frame/ref frame 1) (stack-frame/ref frame 3)))

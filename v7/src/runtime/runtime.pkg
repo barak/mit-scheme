@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.25 1988/12/30 23:42:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.26 1989/01/06 21:00:24 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -225,6 +225,7 @@ MIT in each case. |#
 	  dbg-block/ic-parent-index
 	  dbg-block/layout
 	  dbg-block/normal-closure-index
+	  dbg-block/original-parent
 	  dbg-block/parent
 	  dbg-block/procedure
 	  dbg-block/stack-link
@@ -232,12 +233,18 @@ MIT in each case. |#
 	  dbg-block/type
 	  dbg-continuation/block
 	  dbg-continuation/offset
-	  dbg-name/normal?
 	  dbg-procedure/block
 	  dbg-procedure/name
 	  dbg-procedure/required
 	  dbg-procedure/optional
-	  dbg-procedure/rest)
+	  dbg-procedure/rest
+	  dbg-procedure/source-code
+	  dbg-variable/name
+	  dbg-variable/type
+	  dbg-variable/value
+	  dbg-variable?)
+  (export (runtime debugging-info)
+	  dbg-continuation/source-code)
   (initialization (initialize-package!)))
 
 (define-package (runtime console-input)
@@ -356,6 +363,7 @@ MIT in each case. |#
 	  output-to-string
 	  print-user-friendly-name
 	  show-environment-bindings
+	  show-environment-name
 	  show-frame
 	  show-frames
 	  write-dbg-name)
@@ -401,9 +409,11 @@ MIT in each case. |#
   (parent ())
   (export ()
 	  environment-arguments
+	  environment-bindings
 	  environment-bound-names
 	  environment-bound?
 	  environment-has-parent?
+	  environment-lambda
 	  environment-lookup
 	  environment-parent
 	  environment-procedure-name
@@ -413,8 +423,6 @@ MIT in each case. |#
 	  system-global-environment?)
   (export (runtime advice)
 	  ic-environment/arguments
-	  ic-environment/procedure)
-  (export (runtime debugger)
 	  ic-environment/procedure)
   (export (runtime debugging-info)
 	  stack-frame/environment))
@@ -1647,6 +1655,8 @@ MIT in each case. |#
   (export (runtime pretty-printer)
 	  unparse-list/unparser
 	  unparse-vector/unparser)
+  (export (runtime debugger)
+	  *unparse-primitives-by-name?*)
   (initialization (initialize-package!)))
 
 (define-package (runtime unsyntaxer)

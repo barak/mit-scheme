@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infstr.scm,v 1.1 1988/12/30 06:54:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infstr.scm,v 1.2 1989/01/06 21:00:12 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -76,7 +76,8 @@ MIT in each case. |#
 		    (string->symbol "#[(runtime compiler-info)dbg-procedure]"))
 		   (constructor
 		    make-dbg-procedure
-		    (block label type name required optional rest auxiliary))
+		    (block label type name required optional rest auxiliary
+			   source-code))
 		   (conc-name dbg-procedure/))
   (block false read-only true)		;dbg-block
   (label false)				;dbg-label
@@ -87,6 +88,7 @@ MIT in each case. |#
   (rest false read-only true)		;name of rest argument, or #F
   (auxiliary false read-only true)	;names of internal definitions
   (external-label false)		;for closure, external entry
+  (source-code false read-only true)	;SCode
   )
 
 (define (dbg-procedure/label-offset procedure)
@@ -96,7 +98,7 @@ MIT in each case. |#
 
 (define-integrable (dbg-procedure<? x y)
   (< (dbg-procedure/label-offset x) (dbg-procedure/label-offset y)))
-
+
 (define-structure (dbg-continuation
 		   (named
 		    (string->symbol
@@ -106,6 +108,7 @@ MIT in each case. |#
   (label false)				;dbg-label
   (type false read-only true)
   (offset false read-only true)		;difference between sp and block
+  (source-code false read-only true)
   )
 
 (define-integrable (dbg-continuation/label-offset continuation)
@@ -113,17 +116,29 @@ MIT in each case. |#
 
 (define-integrable (dbg-continuation<? x y)
   (< (dbg-continuation/label-offset x) (dbg-continuation/label-offset y)))
-
+
 (define-structure (dbg-block
 		   (named
 		    (string->symbol "#[(runtime compiler-info)dbg-block]"))
-		   (constructor make-dbg-block (type parent layout stack-link))
+		   (constructor
+		    make-dbg-block
+		    (type parent original-parent layout stack-link))
 		   (conc-name dbg-block/))
   (type false read-only true)		;continuation, stack, closure, ic
   (parent false read-only true)		;parent block, or #F
+  (original-parent false read-only true) ;for closures, closing block
   (layout false read-only true)		;vector of names, except #F for ic
   (stack-link false read-only true)	;next block on stack, or #F
   (procedure false)			;procedure which this is block of
+  )
+
+(define-structure (dbg-variable
+		   (named
+		    (string->symbol "#[(runtime compiler-info)dbg-variable]"))
+		   (conc-name dbg-variable/))
+  (name false read-only true)		;symbol
+  (type false read-only true)		;normal, cell, integrated
+  value					;for integrated, the value
   )
 
 (let-syntax
