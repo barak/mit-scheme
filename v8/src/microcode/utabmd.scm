@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.49 1989/09/24 14:47:35 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.50 1989/10/26 07:49:55 cph Exp $
 
 (declare (usual-integrations))
 
@@ -90,6 +90,18 @@
 	       LOST-OBJECT-BASE				;21
 	       STATE-SPACE-ROOT				;22
 	       PRIMITIVE-PROFILING-TABLE		;23
+	       GENERIC-TRAMPOLINE-ZERO?			;24
+	       GENERIC-TRAMPOLINE-POSITIVE?		;25
+	       GENERIC-TRAMPOLINE-NEGATIVE?		;26
+	       GENERIC-TRAMPOLINE-ADD-1			;27
+	       GENERIC-TRAMPOLINE-SUBTRACT-1		;28
+	       GENERIC-TRAMPOLINE-EQUAL?		;29
+	       GENERIC-TRAMPOLINE-LESS?			;2A
+	       GENERIC-TRAMPOLINE-GREATER?		;2B
+	       GENERIC-TRAMPOLINE-ADD			;2C
+	       GENERIC-TRAMPOLINE-SUBTRACT		;2D
+	       GENERIC-TRAMPOLINE-MULTIPLY		;2E
+	       GENERIC-TRAMPOLINE-DIVIDE		;2F
 	       ))
 
 ;;; [] Types
@@ -574,4 +586,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.49 1989/09/24 14:47:35 cph Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.50 1989/10/26 07:49:55 cph Exp $"

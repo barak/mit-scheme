@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.58 1989/09/24 15:12:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.59 1989/10/26 07:49:17 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -339,37 +339,90 @@ SCHEME_OBJECT
 make_fixed_objects_vector ()
 {
   extern SCHEME_OBJECT initialize_history ();
+  extern SCHEME_OBJECT make_primitive ();
   /* Create the fixed objects vector,
      with 4 extra slots for expansion and debugging. */
   fast SCHEME_OBJECT fixed_objects_vector =
     (make_vector ((NFixed_Objects + 4), SHARP_F, false));
-  VECTOR_SET (fixed_objects_vector, Me_Myself, fixed_objects_vector);
-  VECTOR_SET (fixed_objects_vector, Non_Object, (MAKE_OBJECT (TC_TRUE, 2)));
-  VECTOR_SET
+  FAST_VECTOR_SET (fixed_objects_vector, Me_Myself, fixed_objects_vector);
+  FAST_VECTOR_SET
+    (fixed_objects_vector, Non_Object, (MAKE_OBJECT (TC_TRUE, 2)));
+  FAST_VECTOR_SET
     (fixed_objects_vector,
      System_Interrupt_Vector,
      (make_vector ((MAX_INTERRUPT_NUMBER + 2), SHARP_F, false)));
   /* Error vector is not needed at boot time */
-  VECTOR_SET (fixed_objects_vector, System_Error_Vector, SHARP_F);
-  VECTOR_SET
+  FAST_VECTOR_SET (fixed_objects_vector, System_Error_Vector, SHARP_F);
+  FAST_VECTOR_SET
     (fixed_objects_vector,
      OBArray,
      (make_vector (OBARRAY_SIZE, EMPTY_LIST, false)));
-  VECTOR_SET (fixed_objects_vector, Dummy_History, (initialize_history ()));
-  VECTOR_SET (fixed_objects_vector, State_Space_Tag, SHARP_T);
-  VECTOR_SET (fixed_objects_vector, Bignum_One, (long_to_bignum (1)));
+  FAST_VECTOR_SET
+    (fixed_objects_vector, Dummy_History, (initialize_history ()));
+  FAST_VECTOR_SET (fixed_objects_vector, State_Space_Tag, SHARP_T);
+  FAST_VECTOR_SET (fixed_objects_vector, Bignum_One, (long_to_bignum (1)));
 
   (*Free++) = EMPTY_LIST;
   (*Free++) = EMPTY_LIST;
-  VECTOR_SET
+  FAST_VECTOR_SET
     (fixed_objects_vector,
      The_Work_Queue,
      (MAKE_POINTER_OBJECT (TC_LIST, (Free - 2))));
 
-  VECTOR_SET
+  FAST_VECTOR_SET
     (fixed_objects_vector,
      Utilities_Vector,
      (make_vector (0, SHARP_F, false)));
+
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     GENERIC_TRAMPOLINE_ZERO_P,
+     (make_primitive ("INTEGER-ZERO?")));
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     GENERIC_TRAMPOLINE_POSITIVE_P,
+     (make_primitive ("INTEGER-POSITIVE?")));
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     GENERIC_TRAMPOLINE_NEGATIVE_P,
+     (make_primitive ("INTEGER-NEGATIVE?")));
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     GENERIC_TRAMPOLINE_SUCCESSOR,
+     (make_primitive ("INTEGER-ADD-1")));
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     GENERIC_TRAMPOLINE_PREDECESSOR,
+     (make_primitive ("INTEGER-SUBTRACT-1")));
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     GENERIC_TRAMPOLINE_EQUAL_P,
+     (make_primitive ("INTEGER-EQUAL?")));
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     GENERIC_TRAMPOLINE_LESS_P,
+     (make_primitive ("INTEGER-LESS?")));
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     GENERIC_TRAMPOLINE_GREATER_P,
+     (make_primitive ("INTEGER-GREATER?")));
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     GENERIC_TRAMPOLINE_ADD,
+     (make_primitive ("INTEGER-ADD")));
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     GENERIC_TRAMPOLINE_SUBTRACT,
+     (make_primitive ("INTEGER-SUBTRACT")));
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     GENERIC_TRAMPOLINE_MULTIPLY,
+     (make_primitive ("INTEGER-MULTIPLY")));
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     GENERIC_TRAMPOLINE_DIVIDE,
+     SHARP_F);
+
   return (fixed_objects_vector);
 }
 

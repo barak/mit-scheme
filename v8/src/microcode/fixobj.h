@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/fixobj.h,v 9.28 1989/10/26 07:49:43 cph Rel $
+
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,11 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/fixobj.h,v 9.27 1989/03/27 23:15:06 jinx Rel $
- *
- * Declarations of user offsets into the Fixed Objects Vector.
- * This should correspond to the file UTABMD.SCM
- */
+/* Declarations of user offsets into the Fixed Objects Vector.
+   This should correspond to the file "utabmd.scm". */
 
 #define Non_Object		0x00	/* Used for unassigned variables. */
 #define System_Interrupt_Vector	0x01	/* Handlers for interrups. */
@@ -81,5 +80,20 @@ MIT in each case. */
 #define Primitive_Profiling_Table 0x23	/* Table of profile counts for
 					   primitives. */
 
-#define NFixed_Objects		0x24
+/* Trampolines for various generic arithmetic operations.
+   These facilitate upwards compatibility and simplify compilation. */
+#define GENERIC_TRAMPOLINE_ZERO_P	0x24
+#define GENERIC_TRAMPOLINE_POSITIVE_P	0x25
+#define GENERIC_TRAMPOLINE_NEGATIVE_P	0x26
+#define GENERIC_TRAMPOLINE_SUCCESSOR	0x27
+#define GENERIC_TRAMPOLINE_PREDECESSOR	0x28
+#define GENERIC_TRAMPOLINE_EQUAL_P	0x29
+#define GENERIC_TRAMPOLINE_LESS_P	0x2A
+#define GENERIC_TRAMPOLINE_GREATER_P	0x2B
+#define GENERIC_TRAMPOLINE_ADD		0x2C
+#define GENERIC_TRAMPOLINE_SUBTRACT	0x2D
+#define GENERIC_TRAMPOLINE_MULTIPLY	0x2E
+#define GENERIC_TRAMPOLINE_DIVIDE	0x2F
+
+#define NFixed_Objects		0x30
 

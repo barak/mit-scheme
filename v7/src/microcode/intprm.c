@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intprm.c,v 1.2 1989/09/24 15:13:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intprm.c,v 1.3 1989/10/26 07:49:52 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -67,6 +67,16 @@ DEFINE_PRIMITIVE ("INTEGER-EQUAL?", Prim_integer_equal_p, 2, 2, 0)
      INTEGER_COMPARISON (integer_equal_p)
 DEFINE_PRIMITIVE ("INTEGER-LESS?", Prim_integer_less_p, 2, 2, 0)
      INTEGER_COMPARISON (integer_less_p)
+
+DEFINE_PRIMITIVE ("INTEGER-GREATER?", Prim_integer_greater_p, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  Set_Time_Zone (Zone_Math);
+  CHECK_ARG (1, INTEGER_P);
+  CHECK_ARG (2, INTEGER_P);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (integer_less_p ((ARG_REF (2)), (ARG_REF (1)))));
+}
 
 #define INTEGER_BINARY_OPERATION(operator)				\
 {									\
