@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.5 1989/07/14 02:53:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.6 1989/07/26 04:14:06 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -362,7 +362,7 @@ x_make_window (display, window, x_size, y_size, attributes, extra, deallocator)
   (XW_VISIBLE_P (xw)) = 0;
 
   if (extra > 0)
-    (xw -> extra) = ((void *) (x_malloc (extra)));
+    (xw -> extra) = ((char *) (x_malloc (extra)));
   (xw -> deallocator) = deallocator;
   return (xw);
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.2 1989/06/27 10:09:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.3 1989/07/26 04:14:21 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -98,7 +98,7 @@ struct xwindow
   int event_flags;
 
   /* Additional window-specific data. */
-  void * extra;
+  char * extra;
 
   /* Deallocation procedure to do window-specific deallocation. */
   void (* deallocator) ();
