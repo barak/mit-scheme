@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.22 1992/05/27 17:33:21 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.23 1992/06/01 19:47:36 jinx Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -342,7 +342,7 @@ The following options are only meaningful to bchscheme:
 /* 386 code is large too! */
 
 #ifndef DEFAULT_SMALL_CONSTANT
-#define DEFAULT_SMALL_CONSTANT 425
+#define DEFAULT_SMALL_CONSTANT 430
 #endif
 
 #ifndef DEFAULT_LARGE_CONSTANT
