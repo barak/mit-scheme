@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.6 1993/08/21 03:32:14 gjr Exp $
+$Id: ntgui.c,v 1.7 1993/09/01 18:34:46 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -56,7 +56,8 @@ WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
 {
     int argc;
     char **argv;
-    
+    extern int main (int, char **);
+
     ghInstance = hInst;
     
     {
@@ -96,8 +97,7 @@ WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
     if (!InitInstance(ghInstance, nCmdShow))
       return  FALSE;
       
-    
-    main(argc, argv);
+    return (main (argc, argv));
 }
 #endif
 
@@ -105,7 +105,7 @@ WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
 BOOL
 DEFUN (InitApplication, (hInstance), HANDLE hInstance)
 {
-    WNDCLASS wc;
+    // WNDCLASS wc;
     static BOOL done = FALSE;
     
     if (done) return  TRUE;
@@ -169,6 +169,8 @@ DEFUN (InitInstance, (hInstance, nCmdShow), HANDLE hInstance AND int nCmdShow)
 //}
 
 
+extern BOOL MIT_TranslateMessage (CONST MSG *);
+
 void
 DEFUN_VOID (nt_gui_default_poll)
 {
@@ -185,16 +187,41 @@ DEFUN_VOID (nt_gui_default_poll)
    }
 #endif
 }
+
+extern HANDLE master_tty_window;
 
+static void
+nt_gui_high_priority_poll (void)
+{
+  MSG close_msg;
+
+  if (PeekMessage (&close_msg,
+		   master_tty_window,
+		   WM_HOTKEY,
+		   (WM_HOTKEY + 1),
+		   PM_NOREMOVE))
+  {
+    MIT_TranslateMessage (&close_msg);
+    DispatchMessage (&close_msg);
+  }
+  return;
+}
 
 DEFINE_PRIMITIVE ("MICROCODE-POLL-INTERRUPT-HANDLER",
                   Prim_microcode_poll_interrupt_handler, 2, 2,
 		  "NT High-priority timer interrupt handler for Windows I/O.")
 {
   PRIMITIVE_HEADER (2);
-  nt_gui_default_poll ();
-//  CLEAR_INTERRUPT (INT_Global_GC);
-  CLEAR_INTERRUPT (INT_Global_1);
+  if (((ARG_REF (1)) & (ARG_REF (2)) & INT_Global_GC) != 0)
+  {
+    nt_gui_high_priority_poll ();
+    CLEAR_INTERRUPT (INT_Global_GC);
+  }
+  else
+  {
+    nt_gui_default_poll ();
+    CLEAR_INTERRUPT (INT_Global_1);
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -243,6 +270,8 @@ scheme_object_to_windows_object (SCHEME_OBJECT thing)
 /****************************************************************************/
 /* first scheme window procedure requires every procedure to be purified    */
 /****************************************************************************/
+
+extern SCHEME_OBJECT C_call_scheme (SCHEME_OBJECT, long, SCHEME_OBJECT *);
 
 static SCHEME_OBJECT
 apply4 (SCHEME_OBJECT procedure, SCHEME_OBJECT arg1, SCHEME_OBJECT arg2,
@@ -362,7 +391,6 @@ DEFINE_PRIMITIVE ("GET-HANDLE", Prim_get_handle, 1, 1,
 "4	failed-foreign-function address\n"
 )
 {
-  extern  HANDLE  master_tty_window;
   PRIMITIVE_HEADER(1);
   {
     long  arg = arg_integer (1);
@@ -441,12 +469,12 @@ DEFINE_PRIMITIVE ("WIN:DEF-WINDOW-PROC", Prim_def_window_proc, 4, 4, "")
 {
     //outf_console ("\001");
     return
-      long_to_integer (
-	DefWindowProc (
-	  scheme_object_to_windows_object (ARG_REF (1)),
-	  scheme_object_to_windows_object (ARG_REF (2)),
-	  scheme_object_to_windows_object (ARG_REF (3)),
-	  scheme_object_to_windows_object (ARG_REF (4))));
+      long_to_integer
+	(DefWindowProc
+	 (((HWND) (scheme_object_to_windows_object (ARG_REF (1)))),
+          ((UINT) (scheme_object_to_windows_object (ARG_REF (2)))),
+	  ((WPARAM) (scheme_object_to_windows_object (ARG_REF (3)))),
+	  ((LPARAM) (scheme_object_to_windows_object (ARG_REF (4))))));
 }
 
 
@@ -466,7 +494,7 @@ DEFINE_PRIMITIVE ("REGISTER-CLASS",
     CHECK_ARG (10, STRING_P);
 
     wc.style         = arg_integer (1);
-    wc.lpfnWndProc   = arg_integer (2);
+    wc.lpfnWndProc   = ((WNDPROC) (arg_integer (2)));
     wc.cbClsExtra    = scheme_object_to_windows_object (ARG_REF(3));
     wc.cbWndExtra    = scheme_object_to_windows_object (ARG_REF(4));
     wc.hInstance     = (HANDLE)scheme_object_to_windows_object (ARG_REF(5));
@@ -530,7 +558,7 @@ DEFINE_PRIMITIVE ("NT:FREE-LIBRARY", Prim_nt_free_library, 1, 1,
     
     PRIMITIVE_HEADER (1);
     
-    handle = arg_integer(1);
+    handle = ((HANDLE) (arg_integer (1)));
     result = FreeLibrary (handle);
     PRIMITIVE_RETURN (result ? SHARP_T : SHARP_F);
 }
@@ -809,7 +837,6 @@ xfree (void *p)
 #ifdef W32_TRAP_DEBUG
 
 extern HANDLE ghInstance;
-extern HANDLE master_tty_window;
 extern int TellUser (char *, ...);
 extern int TellUserEx (int, char *, ...);
 extern char * AskUser (char *, int);
