@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: snr.scm,v 1.64 2003/02/14 18:28:13 cph Exp $
+$Id: snr.scm,v 1.65 2004/06/07 19:49:55 cph Exp $
 
-Copyright 1995-2001 Massachusetts Institute of Technology
+Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
+Copyright 2001,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -3268,7 +3269,7 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 	 (and (pair? (news-group:ignored-subjects group))
 	      (news-group:get-ignored-subjects group #f))))
     (and table
-	 (let ((entries (hash-table/entries-list table))
+	 (let ((entries (hash-table->alist table))
 	       (t
 		(- (get-universal-time)
 		   (* (ref-variable news-group-ignored-subject-retention #f)

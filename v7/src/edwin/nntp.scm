@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: nntp.scm,v 1.28 2004/02/17 05:52:20 cph Exp $
+$Id: nntp.scm,v 1.29 2004/06/07 19:49:38 cph Exp $
 
 Copyright 1995,1996,1997,1998,1999,2003 Massachusetts Institute of Technology
 Copyright 2004 Massachusetts Institute of Technology
@@ -51,7 +51,7 @@ USA.
   (change-hook #f read-only #t)
   (port #f)
   (banner #f)
-  (group-table (make-group-hash-table) read-only #t)
+  (group-table (make-string-hash-table) read-only #t)
   (reader-hook #f)
   (current-group #f))
 
@@ -182,18 +182,6 @@ USA.
    (list "snr" (nntp-connection:server connection) "all-groups")))
 
 ;;;; Group Cache
-
-(define make-group-hash-table
-  (hash-table/constructor string-hash-mod
-			  string=?
-			  (lambda (name group) name group)
-			  (lambda (group) group #t)
-			  (lambda (group) (news-group:name group))
-			  (lambda (group) group)
-			  (lambda (group group*)
-			    group group*
-			    (error "Can't redefine a named group:" group*))
-			  #f))
 
 (define (find-news-group connection name)
   (hash-table/get (nntp-connection:group-table connection) name #f))
@@ -549,17 +537,7 @@ USA.
 	table)))
 
 (define make-header-hash-table
-  (hash-table/constructor remainder
-			  =
-			  (lambda (number header) number header)
-			  (lambda (header) header #t)
-			  (lambda (header) (news-header:number header))
-			  (lambda (header) header)
-			  (lambda (header header*)
-			    header header*
-			    (error "Can't redefine a numbered header:"
-				   header*))
-			  #f))
+  (strong-hash-table/constructor remainder = #f))
 
 (define (news-group:header group number)
   (let ((table (news-group:header-table group)))

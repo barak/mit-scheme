@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pcscobl.scm,v 1.4 2003/02/14 18:28:31 cph Exp $
+$Id: pcscobl.scm,v 1.5 2004/06/07 19:54:30 cph Exp $
 
-Copyright (c) 1993, 1999 Massachusetts Institute of Technology
+Copyright 1993,1999,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -715,31 +715,31 @@ USA.
 
 (define (purified-proc-cobl-profile-table)
   (purified-code-block-profile-buffer/flush)
-  (hash-table/entries-vector *purified-proc-cobl-profile-table*))
+  (hash-table->alist *purified-proc-cobl-profile-table*))
 (define ( heathen-proc-cobl-profile-table)
   ( heathen-code-block-profile-buffer/flush)
-  (hash-table/entries-vector  *heathen-proc-cobl-profile-table*))
+  (hash-table->alist  *heathen-proc-cobl-profile-table*))
 
 (define (purified-dbg-cobl-profile-table)
   (purified-code-block-profile-buffer/flush)
-  (hash-table/entries-vector *purified-dbg-cobl-profile-table*))
+  (hash-table->alist *purified-dbg-cobl-profile-table*))
 (define ( heathen-dbg-cobl-profile-table)
   ( heathen-code-block-profile-buffer/flush)
-  (hash-table/entries-vector  *heathen-dbg-cobl-profile-table*))
+  (hash-table->alist  *heathen-dbg-cobl-profile-table*))
 
 (define (purified-raw-cobl-profile-table)
   (purified-code-block-profile-buffer/flush)
-  (hash-table/entries-vector *purified-raw-cobl-profile-table*))
+  (hash-table->alist *purified-raw-cobl-profile-table*))
 (define ( heathen-raw-cobl-profile-table)
   ( heathen-code-block-profile-buffer/flush)
-  (hash-table/entries-vector  *heathen-raw-cobl-profile-table*))
+  (hash-table->alist  *heathen-raw-cobl-profile-table*))
 
 (define (purified-trampoline-profile-table)
   (purified-code-block-profile-buffer/flush)
-  (hash-table/entries-vector *purified-trampoline-profile-table*))
+  (hash-table->alist *purified-trampoline-profile-table*))
 (define ( heathen-trampoline-profile-table)
   ( heathen-code-block-profile-buffer/flush)
-  (hash-table/entries-vector  *heathen-trampoline-profile-table*))
+  (hash-table->alist  *heathen-trampoline-profile-table*))
 
 
 (define (code-block-profile-table/old)

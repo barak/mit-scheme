@@ -1,9 +1,9 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: associations.texi,v 1.1 2003/04/15 03:29:22 cph Exp $
+@c $Id: associations.texi,v 1.2 2004/06/07 19:48:33 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
-@c Copyright 2002,2003 Massachusetts Institute of Technology
+@c Copyright 2002,2003,2004 Massachusetts Institute of Technology
 @c See file scheme.texinfo for copying conditions.
 
 @node Associations, Procedures, Miscellaneous Datatypes, Top
@@ -397,7 +397,6 @@ necessary to call @code{load-option} prior to using hash tables.)
 * Basic Hash Table Operations::  
 * Resizing of Hash Tables::     
 * Address Hashing::             
-* Low-Level Hash Table Operations::  
 @end menu
 
 @node Construction of Hash Tables, Basic Hash Table Operations, Hash Tables, Hash Tables
@@ -783,7 +782,7 @@ the table, but it usually changes the physical size of the table, which
 causes the table to be rehashed.
 @end deffn
 
-@node Address Hashing, Low-Level Hash Table Operations, Resizing of Hash Tables, Hash Tables
+@node Address Hashing, , Resizing of Hash Tables, Hash Tables
 @subsection Address Hashing
 @cindex address hashing
 
@@ -831,125 +830,6 @@ This procedure is the key-hashing procedure used by
 @deffn procedure equal-hash-mod object modulus
 This procedure is the key-hashing procedure used by
 @code{make-equal-hash-table}.
-@end deffn
-
-@node Low-Level Hash Table Operations,  , Address Hashing, Hash Tables
-@subsection Low-Level Hash Table Operations
-
-The procedures in this section allow the programmer to control some of
-the internal structure of a hash table.  Normally, hash tables maintain
-associations between keys and datums using pairs or weak pairs.  These
-procedures allow the programmer to specify the use of some other data
-structure to maintain the association.  In this section, the data
-structure that represents an association in a hash table is called an
-@dfn{entry}.
-
-@deffn procedure hash-table/constructor key-hash key=? make-entry entry-valid? entry-key entry-datum set-entry-datum! [rehash-after-gc?]
-Creates and returns a hash-table constructor procedure
-(@pxref{Construction of Hash Tables}).  The arguments define the
-characteristics of the hash table as follows:
-
-@table @var
-@item key-hash
-The hashing procedure.  A procedure that accepts two arguments, a key and
-an exact positive integer (the @dfn{modulus}), and returns an exact
-non-negative integer that is less than the modulus.
-
-@item key=?
-A equivalence predicate that accepts two keys and is true iff they are
-the same key.  If this predicate is true of two keys, then
-@var{key-hash} must return the same value for each of these keys (given
-the same modulus in both cases).
-
-@item make-entry
-A procedure that accepts a key and a datum as arguments and returns a
-newly allocated entry.
-
-@item entry-valid?
-A procedure that accepts an entry and returns @code{#f} iff the entry's
-key has been reclaimed by the garbage collector.  Instead of a
-procedure, this may be @code{#t}, which is equivalent to @code{(lambda
-(entry) #t)}.
-@findex weak-pair/car?
-
-@item entry-key
-A procedure that accepts an entry as an argument and returns the entry's
-key.
-
-@item entry-datum
-A procedure that accepts an entry as an argument and returns the entry's
-datum.
-
-@item set-entry-datum!
-A procedure that accepts an entry and an object as arguments, modifies
-the entry's datum to be the object, and returns an unspecified
-result.
-
-@item rehash-after-gc?
-An optional argument that, if true, says the values returned by
-@var{key-hash} might change after a garbage collection.  If so, the
-hash-table implementation arranges for the table to be rehashed when
-necessary.  (@xref{Address Hashing}, for information about hash
-procedures that have this property.)  Otherwise, it is assumed that
-@var{key-hash} always returns the same value for the same arguments.
-The default value of this argument is @code{#f}.
-@end table
-@end deffn
-
-@noindent
-For example, here is how the constructors for ordinary hash tables could
-be defined:
-
-@example
-@group
-(define (strong-hash-table/constructor key-hash key=?
-                                       #!optional rehash-after-gc?)
-  (hash-table/constructor key-hash key=?
-                          cons #t car cdr set-cdr!
-                          (if (default-object? rehash-after-gc?)
-                              #f
-                              rehash-after-gc?)))
-@end group
-
-@group
-(define (weak-hash-table/constructor key-hash key=?
-                                     #!optional rehash-after-gc?)
-  (hash-table/constructor key-hash key=? weak-cons weak-pair/car?
-                          weak-car weak-cdr weak-set-cdr!
-                          (if (default-object? rehash-after-gc?)
-                              #f
-                              rehash-after-gc?)))
-@end group
-@end example
-
-@deffn procedure hash-table/key-hash hash-table
-@deffnx procedure hash-table/key=? hash-table
-@deffnx procedure hash-table/make-entry hash-table
-@deffnx procedure hash-table/entry-valid? hash-table
-@deffnx procedure hash-table/entry-key hash-table
-@deffnx procedure hash-table/entry-datum hash-table
-@deffnx procedure hash-table/set-entry-datum! hash-table
-Each procedure returns the value of the corresponding argument that was
-used to construct @var{hash-table}.
-@end deffn
-
-The following procedures return the contents of a hash table as a
-collection of entries.  While the data structure holding the entries is
-newly allocated, the entries themselves are not copied.  Since hash
-table operations can modify these entries, the entries should be copied
-if it is desired to keep them while continuing to modify the table.
-
-@deffn procedure hash-table/entries-list hash-table
-Returns a newly allocated list of the entries in @var{hash-table}.
-@end deffn
-
-@deffn procedure hash-table/entries-vector hash-table
-Returns a newly allocated vector of the entries in @var{hash-table}.
-Equivalent to
-
-@example
-(list->vector (hash-table/entries-list @var{hash-table}))
-@end example
 @end deffn
 
 @node Object Hashing, Red-Black Trees, Hash Tables, Associations
