@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 4.34 1992/09/25 01:18:33 cph Exp $
+$Id: rules3.scm,v 4.35 1992/09/28 16:38:50 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -403,18 +403,25 @@ MIT in each case. |#
 	 ,@(interrupt-check gc-label -12))))
 
 (define (interrupt-check gc-label gc-label-offset)
-  (if (not compiler:generate-stack-checks?)
-      (LAP (CMP L ,reg:compiled-memtop (A 5))
-	   (B GE B (@PCR ,gc-label)))
-      (LAP (JSR
-	    ,(case gc-label-offset
-	       ((-12) entry:compiler-stack-and-interrupt-check-12)
-	       ((-14) entry:compiler-stack-and-interrupt-check-14)
-	       ((-18) entry:compiler-stack-and-interrupt-check-18)
-	       ((-22) entry:compiler-stack-and-interrupt-check-22)
-	       ((-24) entry:compiler-stack-and-interrupt-check-24)
-	       (else (error "Illegal GC label offset:"
-			    gc-label-offset)))))))
+  (case compiler:generate-stack-checks?
+    ((#F)
+     (LAP (CMP L ,reg:compiled-memtop (A 5))
+	  (B GE B (@PCR ,gc-label))))
+    ((OUT-OF-LINE)
+     (LAP (JSR
+	   ,(case gc-label-offset
+	      ((-12) entry:compiler-stack-and-interrupt-check-12)
+	      ((-14) entry:compiler-stack-and-interrupt-check-14)
+	      ((-18) entry:compiler-stack-and-interrupt-check-18)
+	      ((-22) entry:compiler-stack-and-interrupt-check-22)
+	      ((-24) entry:compiler-stack-and-interrupt-check-24)
+	      (else (error "Illegal GC label offset:"
+			   gc-label-offset))))))
+    (else
+     (LAP (CMP L ,reg:compiled-memtop (A 5))
+	  (B GE B (@PCR ,gc-label))
+	  (CMP L ,reg:stack-guard (A 7))
+	  (B LE B (@PCR ,gc-label))))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
