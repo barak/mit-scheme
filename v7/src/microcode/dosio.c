@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosio.c,v 1.2 1992/10/07 06:23:29 jinx Exp $
+$Id: dosio.c,v 1.3 1992/11/23 04:17:43 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -176,16 +176,17 @@ DEFUN (OS_terminal_drain_output, (channel), Tchannel channel)
   return;
 }
 
-extern int EXFUN (dos_read, (int, PTR, size_t, int, int));
+extern int EXFUN (dos_read, (int, PTR, size_t, int, int, int));
 
 int
-DEFUN (dos_read, (fd, buffer, nbytes, buffered_p, blocking_p),
-       int fd AND PTR buffer AND size_t nbytes AND int buffered_p AND int blocking_p)
+DEFUN (dos_read, (fd, buffer, nbytes, buffered_p, blocking_p, intrpt_p),
+       int fd AND PTR buffer AND size_t nbytes
+       AND int buffered_p AND int blocking_p AND int intrpt_p)
 {
   if (nbytes == 0)
     return (0);
   else if (fd == (fileno (stdin)))
-    return (console_read (buffer, nbytes, buffered_p, blocking_p));
+    return (console_read (buffer, nbytes, buffered_p, blocking_p, intrpt_p));
   else
     return (DOS_read (fd, buffer, nbytes));
 }
@@ -199,7 +200,8 @@ DEFUN (dos_channel_read, (channel, buffer, nbytes),
   else if ((CHANNEL_DESCRIPTOR (channel)) == (fileno (stdin)))
     return (console_read (buffer, nbytes, 
 			  (CHANNEL_BUFFERED (channel)),
-			  (CHANNEL_BLOCKING_P (channel))));
+			  (CHANNEL_BLOCKING_P (channel)),
+			  1));
   else
     return (DOS_read ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes));
 }
