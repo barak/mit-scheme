@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.75 1997/03/04 06:43:49 cph Exp $
+;;;	$Id: unix.scm,v 1.76 1997/05/21 18:01:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-97 Massachusetts Institute of Technology
 ;;;
@@ -502,7 +502,7 @@ filename suffix \".KY\"."
   (let ((password (prompt-for-password "Password: ")))
     (temporary-message "Decrypting file " (->namestring pathname) "...")
     (insert-string (let ((the-encrypted-file
-			  (call-with-input-file pathname
+			  (call-with-binary-input-file pathname
 			    (lambda (port)
 			      (read-string (char-set) port)))))
 		     (decrypt the-encrypted-file password
@@ -528,7 +528,7 @@ filename suffix \".KY\"."
     (let ((the-encrypted-file
 	   (encrypt (extract-string (region-start region) (region-end region))
 		    password)))
-      (call-with-output-file pathname
+      (call-with-binary-output-file pathname
 	(lambda (port)
 	  (write-string the-encrypted-file port))))
     (append-message "done")))

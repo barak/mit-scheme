@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.37 1997/02/12 08:08:16 cph Exp $
+;;;	$Id: os2.scm,v 1.38 1997/05/21 18:00:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-97 Massachusetts Institute of Technology
 ;;;
@@ -352,7 +352,7 @@ filename suffix \".KY\"."
   (let ((password (prompt-for-password "Password: ")))
     (temporary-message "Decrypting file " (->namestring pathname) "...")
     (insert-string (let ((the-encrypted-file
-			  (call-with-input-file pathname
+			  (call-with-binary-input-file pathname
 			    (lambda (port)
 			      (read-string (char-set) port)))))
 		     (decrypt the-encrypted-file password
@@ -378,7 +378,7 @@ filename suffix \".KY\"."
     (let ((the-encrypted-file
 	   (encrypt (extract-string (region-start region) (region-end region))
 		    password)))
-      (call-with-output-file pathname
+      (call-with-binary-output-file pathname
 	(lambda (port)
 	  (write-string the-encrypted-file port))))
     (append-message "done")))
