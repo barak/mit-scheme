@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.7 1988/12/06 18:51:59 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.8 1988/12/13 13:02:21 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -40,7 +40,7 @@ MIT in each case. |#
 
 (define-snode application
   type
-  block
+  context
   operator
   operands
   (parallel-node owner)
@@ -50,6 +50,8 @@ MIT in each case. |#
   continuation-push
   model			;set by identify-closure-limits, used in generation
   destination-block	;used by identify-closure-limits to quench propagation
+  frame-adjustment	;set by setup-frame-adjustments, used in generation
+  reuse-existing-frame?	;set by setup-frame-adjustments, used in generation
   )
 
 (define *applications*)
@@ -58,7 +60,7 @@ MIT in each case. |#
   (let ((application
 	 (make-snode application-tag
 		     type block operator operands false '() '()
-		     continuation-push false true)))
+		     continuation-push false true false false)))
     (set! *applications* (cons application *applications*))
     (add-block-application! block application)
     (if (rvalue/reference? operator)
@@ -78,6 +80,9 @@ MIT in each case. |#
 	(standard-unparser "APPLICATION"	  (lambda (state application)
 	    (unparse-object state (application-type application))))))
      state application)))
+
+(define-integrable (application-block application)
+  (reference-context/block (application-context application)))
 
 (define-snode parallel
   application-node
@@ -108,7 +113,7 @@ MIT in each case. |#
 (define-integrable (application/combination? application)
   (eq? (application-type application) 'COMBINATION))
 
-(define-integrable combination/block application-block)
+(define-integrable combination/context application-context)
 (define-integrable combination/operator application-operator)
 (define-integrable combination/inliner application-operators)
 (define-integrable set-combination/inliner! set-application-operators!)
@@ -118,6 +123,16 @@ MIT in each case. |#
 (define-integrable combination/continuation-push application-continuation-push)
 (define-integrable combination/model application-model)
 (define-integrable set-combination/model! set-application-model!)
+(define-integrable combination/frame-adjustment application-frame-adjustment)
+(define-integrable set-combination/frame-adjustment!
+  set-application-frame-adjustment!)
+(define-integrable combination/reuse-existing-frame?
+  application-reuse-existing-frame?)
+(define-integrable set-combination/reuse-existing-frame?!
+  set-application-reuse-existing-frame?!)
+
+(define-integrable (combination/block combination)
+  (reference-context/block (combination/context combination)))
 
 (define-integrable (combination/continuation combination)
   (car (application-operands combination)))
@@ -147,11 +162,8 @@ MIT in each case. |#
 (define-integrable (application/return? application)
   (eq? (application-type application) 'RETURN))
 
-(define-integrable return/block
-  application-block)
-
-(define-integrable return/operator
-  application-operator)
+(define-integrable return/context application-context)
+(define-integrable return/operator application-operator)
 
 (define-integrable (return/operand return)
   (car (application-operands return)))
@@ -159,7 +171,7 @@ MIT in each case. |#
 ;;;; Miscellaneous Node Types
 
 (define-snode assignment
-  block
+  context
   lvalue
   rvalue)
 
@@ -176,7 +188,7 @@ MIT in each case. |#
   (eq? (tagged-vector/tag node) assignment-tag))
 
 (define-snode definition
-  block
+  context
   lvalue
   rvalue)
 
@@ -188,10 +200,11 @@ MIT in each case. |#
   (eq? (tagged-vector/tag node) definition-tag))
 
 (define-pnode true-test
+  context
   rvalue)
 
-(define (make-true-test rvalue)
-  (pnode->pcfg (make-pnode true-test-tag rvalue)))
+(define (make-true-test block rvalue)
+  (pnode->pcfg (make-pnode true-test-tag block rvalue)))
 
 (define-integrable (node/true-test? node)
   (eq? (tagged-vector/tag node) true-test-tag))
@@ -207,7 +220,7 @@ MIT in each case. |#
 (cfg-node-tag/noop! fg-noop-tag)
 
 (define-snode virtual-return
-  block
+  context
   operator
   operand)
 
@@ -231,6 +244,19 @@ MIT in each case. |#
 (define-integrable (node/pop? node)
   (eq? (tagged-vector/tag node) pop-tag))
 
+(define-snode stack-overwrite
+  context
+  target
+  continuation)
+
+(define (make-stack-overwrite block target continuation)
+  (snode->scfg (make-snode stack-overwrite-tag block target continuation)))
+
+(define-integrable (node/stack-overwrite? node)
+  (eq? (tagged-vector/tag node) stack-overwrite-tag))
+
+;;; Node Properties
+
 (define-integrable (node/subgraph-color node)
   (cfg-node-get node node/subgraph-color-tag))
 
@@ -239,15 +265,6 @@ MIT in each case. |#
 
 (define node/subgraph-color-tag
   "subgraph-color-tag")
-
-(define-integrable (node/offset node)
-  (cfg-node-get node node/offset-tag))
-
-(define-integrable (set-node/offset! node offset)
-  (cfg-node-put! node node/offset-tag offset))
-
-(define node/offset-tag
-  "node/offset-tag")
 
 (define-structure (subgraph-color
 		   (conc-name subgraph-color/)
