@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/machin.scm,v 1.1 1988/01/07 21:07:15 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/machin.scm,v 4.1 1988/01/07 21:14:55 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -35,10 +35,7 @@ MIT in each case. |#
 ;;;; Machine Model for DEC Vax
 
 (declare (usual-integrations))
-(define (rtl:message-receiver-size:closure) 1)
-(define (rtl:message-receiver-size:stack) 1)
-(define (rtl:message-receiver-size:subproblem) 2)
-
+
 (define-integrable (stack->memory-offset offset)
   offset)
 
@@ -88,50 +85,13 @@ MIT in each case. |#
 
 ;;; Machine registers
 
-(define-integrable r0 0)
-(define-integrable r1 1)
-(define-integrable r2 2)
-(define-integrable r3 3)
-(define-integrable r4 4)
-(define-integrable r5 5)
-(define-integrable r6 6)
-(define-integrable r7 7)
-(define-integrable r8 8)
-(define-integrable r9 9)
-(define-integrable r10 10)
-(define-integrable r11 11)
-(define-integrable r12 12)
-(define-integrable r13 13)
-(define-integrable r14 14)
-(define-integrable r15 15)
-(define number-of-machine-registers 16)
-
-(define-integrable (register-contains-address? register)
-  (memv register '(10 12 13 14 15)))
-
-(define-integrable regnum:frame-pointer r10)
-(define-integrable regnum:free-pointer r12)
-(define-integrable regnum:regs-pointer r13)
-(define-integrable regnum:stack-pointer r14)
-
-(define-integrable (sort-machine-registers registers)
-  registers)
-
-(define available-machine-registers
-  (list r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10))
-
-(define (pseudo-register=? x y)
-  (= (register-renumber x) (register-renumber y)))
-
-;;; Interpreter registers
-
 (define-integrable interregnum:memory-top	0)
 (define-integrable interregnum:stack-guard	1)
 (define-integrable interregnum:value		2)
 (define-integrable interregnum:environment	3)
 (define-integrable interregnum:temporary	4)
 (define-integrable interregnum:enclose		5)
-
+
 (define (rtl:machine-register? rtl-register)
   (case rtl-register
     ((FRAME-POINTER) (interpreter-frame-pointer))
@@ -159,6 +119,48 @@ MIT in each case. |#
 (define (rtl:interpreter-register->offset locative)
   (or (rtl:interpreter-register? locative)
       (error "Unknown register type" locative)))
+
+(define-integrable r0 0)
+(define-integrable r1 1)
+(define-integrable r2 2)
+(define-integrable r3 3)
+(define-integrable r4 4)
+(define-integrable r5 5)
+(define-integrable r6 6)
+(define-integrable r7 7)
+(define-integrable r8 8)
+(define-integrable r9 9)
+(define-integrable r10 10)
+(define-integrable r11 11)
+(define-integrable r12 12)
+(define-integrable r13 13)
+(define-integrable r14 14)
+(define-integrable r15 15)
+(define number-of-machine-registers 16)
+
+(define-integrable (register-contains-address? register)
+  (memv register '(10 12 13 14 15)))
+
+(define initial-address-registers
+  (list r10 r12 r13 r14 r15))
+
+(define-integrable regnum:frame-pointer r10)
+(define-integrable regnum:free-pointer r12)
+(define-integrable regnum:regs-pointer r13)
+(define-integrable regnum:stack-pointer r14)
+
+(define-integrable (sort-machine-registers registers)
+  registers)
+
+(define available-machine-registers
+  (list r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10))
+
+(define-integrable (pseudo-register=? x y)
+  (= (register-renumber x) (register-renumber y)))
+
+;;; Interpreter registers
+
+
 
 (define (register-type register)
   'GENERAL)
