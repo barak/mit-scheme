@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.62 1992/03/26 04:11:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.63 1992/03/26 11:01:14 cph Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -245,6 +245,10 @@ do {									\
   STORE_CLOSURE_ENTRY_ADDRESS (Temp, Scan);				\
 }
 
+#if (defined(_HPUX) && (_HPUX_VERSION >= 80)) || defined(_SYSV4)
+#define FTRUNCATE_DECLARED
+#endif
+
 Boolean
 DEFUN (fasdump_exit, (length), long length)
 {
@@ -256,7 +260,7 @@ DEFUN (fasdump_exit, (length), long length)
 
 #if TRUE
   {
-#if !(defined(_HPUX) && (_HPUX_VERSION >= 80))
+#ifndef FTRUNCATE_DECLARED
     extern int EXFUN (ftruncate, (int, unsigned long));
 #endif
     ftruncate (dump_file, length);
