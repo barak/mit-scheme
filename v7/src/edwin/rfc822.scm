@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rfc822.scm,v 3.1 2000/06/08 17:58:24 cph Exp $
+;;; $Id: rfc822.scm,v 3.2 2000/06/08 18:02:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -469,3 +469,7 @@
 		   (dispatch)))))
 
 	(dispatch)))))
+
+(define (char-lwsp? char)
+  (or (char=? #\space char)
+      (char=? #\tab char)))

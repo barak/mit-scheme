@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.46 2000/03/15 03:37:01 cph Exp $
+;;; $Id: sendmail.scm,v 1.47 2000/06/08 17:58:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -339,27 +339,12 @@ is inserted."
     (if (string-null? full-name)
 	address
 	(case (ref-variable mail-from-style buffer)
-	  ((PARENS) (string-append address " (" full-name ")"))
-	  ((ANGLES) (string-append (rfc822-quote full-name) " <" address ">"))
+	  ((PARENS)
+	   (string-append address " (" full-name ")"))
+	  ((ANGLES)
+	   (string-append (rfc822:quote-string full-name)
+			  " <" address ">"))
 	  (else address)))))
-
-(define (rfc822-quote string)
-  (if (string-find-next-char-in-set string char-set:rfc822-quoted)
-      (let loop ((chars (string->list string)) (result (list #\")))
-	(if (null? chars)
-	    (list->string (reverse! (cons #\" result)))
-	    (loop (cdr chars)
-		  (cons (car chars)
-			(if (or (char=? #\\ (car chars))
-				(char=? #\" (car chars)))
-			    (cons #\\ result)
-			    result)))))
-      string))
-
-(define char-set:rfc822-quoted
-  (char-set-invert
-   (char-set-union char-set:alphanumeric
-		   (apply char-set (string->list " !#$%&'*+-/=?^_`{|}~")))))
 
 (define (mail-organization-string buffer)
   (let ((organization (ref-variable mail-organization buffer)))
@@ -767,8 +752,8 @@ the user from the mailer."
   (let ((msg "Sending..."))
     (message msg)
     (let ((from
-	   (rfc822-addresses->string
-	    (rfc822-strip-quoted-names (mail-from-string lookup-buffer))))
+	   (rfc822:canonicalize-address-string
+	    (mail-from-string lookup-buffer)))
 	  (rcpts (mail-deduce-address-list mail-buffer))
 	  (trace-buffer
 	   (and (ref-variable smtp-trace lookup-buffer)
@@ -837,7 +822,7 @@ the user from the mailer."
 	(if field-start
 	    (let ((field-end (%mail-field-end field-start header-end)))
 	      (loop field-end
-		    (cons (rfc822-strip-quoted-names
+		    (cons (rfc822:string->addresses
 			   (extract-string field-start field-end))
 			  addresses)))
 	    (apply append (reverse! addresses)))))))

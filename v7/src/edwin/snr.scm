@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: snr.scm,v 1.56 2000/03/27 20:43:25 cph Exp $
+;;; $Id: snr.scm,v 1.57 2000/06/08 17:58:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-2000 Massachusetts Institute of Technology
 ;;;
@@ -1386,7 +1386,7 @@ This shows News groups that have been created since the last time that
 	(string-trim (substring from
 				(re-match-start-index 1 r)
 				(re-match-end-index 1 r)))
-	(or (rfc822-first-address from) from))))
+	(or (rfc822:first-address from) from))))
 
 (define (news-group-buffer:header-mark buffer header)
   (let ((index (news-header:index header)))
@@ -2749,8 +2749,8 @@ While composing the reply, use \\[mail-yank-original] to yank the
 	    ,(string-append
 	      "["
 	      (let ((from
-		     (rfc822-addresses->string
-		      (rfc822-strip-quoted-names (news-header:from header))))
+		     (rfc822:canonicalize-address-string
+		      (news-header:from header)))
 		    (subject (news-header:subject header)))
 		(if (string-null? from)
 		    subject

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.69 2000/02/28 22:51:21 cph Exp $
+$Id: edwin.ldr,v 1.70 2000/06/08 18:00:44 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -72,6 +72,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (load-option 'RB-TREE)
       (load-option 'HASH-TABLE)
       (load-option 'REGULAR-EXPRESSION)
+      (load-option 'MIME-CODEC)
 
       (let ((environment (->environment '(EDWIN))))
 	(load "utils" environment)
@@ -233,6 +234,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(load "reccom" (->environment '(EDWIN RECTANGLE)))
 	(load "regcom" (->environment '(EDWIN REGISTER-COMMAND)))
 	(load "replaz" environment)
+	(load "rfc822" (->environment '(EDWIN RFC822)))
 	(load "rmail" (->environment '(EDWIN RMAIL)))
 	(load "rmailsum" (->environment '(EDWIN RMAIL)))
 	(load "rmailsrt" (->environment '(EDWIN RMAIL)))

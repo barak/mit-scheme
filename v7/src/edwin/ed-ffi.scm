@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.49 2000/02/28 22:51:24 cph Exp $
+$Id: ed-ffi.scm,v 1.50 2000/06/08 18:00:43 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -228,8 +228,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		edwin-syntax-table)
     ("pwparse"	(edwin password-edit)
 		edwin-syntax-table)
-    #|("rcs"	(edwin rcs)
-	       edwin-syntax-table)|#
     ("rcsparse"	(edwin rcs-parse)
 		syntax-table/system-internal)
     ("reccom"	(edwin rectangle)
@@ -244,6 +242,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		syntax-table/system-internal)
     ("replaz"	(edwin)
 		edwin-syntax-table)
+    ("rfc822"	(edwin rfc822)
+		syntax-table/system-internal)
     ("ring"	(edwin)
 		syntax-table/system-internal)
     ("rmail"	(edwin rmail)
