@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: tterm.c,v 1.9 2001/03/01 04:25:29 cph Exp $
+$Id: tterm.c,v 1.10 2001/03/02 18:03:17 cph Exp $
 
 Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
@@ -40,7 +40,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    extern short ospeed;
 #endif
 
-extern char * EXFUN (tparam, (char *, char*, int, int, ...));
+#ifndef LIBNCURSES_DEFINES_TPARAM
+   extern char * EXFUN (tparam, (char *, char*, int, int, ...));
+#endif
 
 #ifndef TERMCAP_BUFFER_SIZE
 #define TERMCAP_BUFFER_SIZE 2048

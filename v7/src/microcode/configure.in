@@ -16,7 +16,7 @@ dnl You should have received a copy of the GNU General Public License
 dnl along with this program; if not, write to the Free Software
 dnl Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-AC_REVISION([$Id: configure.in,v 11.5 2001/03/01 04:25:51 cph Exp $])
+AC_REVISION([$Id: configure.in,v 11.6 2001/03/02 18:02:58 cph Exp $])
 AC_INIT(boot.c)
 AC_CONFIG_HEADER(config.h)
 
@@ -80,8 +80,8 @@ AC_CHECK_LIB(ncurses, tparm,
     [scheme_cv_lib_ncurses=no])
 if test "${scheme_cv_lib_ncurses}" = "yes"; then
     AC_CHECK_LIB(ncurses, tparam,
-	[scheme_cv_lib_ncurses_has_tparam=yes],
-	[scheme_cv_lib_ncurses_has_tparam=no])
+	[scheme_cv_lib_ncurses_defines_tparam=yes],
+	[scheme_cv_lib_ncurses_defines_tparam=no])
 fi
 AC_CHECK_LIB(curses, tparm,
     [scheme_cv_lib_curses=yes],
@@ -164,7 +164,9 @@ fi
 if test "${scheme_cv_lib_ncurses}" = "yes"; then
     AC_DEFINE(HAVE_LIBNCURSES)
     QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lncurses"
-    if test "${scheme_cv_lib_ncurses_has_tparam}" = "no"; then
+    if test "${scheme_cv_lib_ncurses_defines_tparam}" = "yes"; then
+	AC_DEFINE(LIBNCURSES_DEFINES_TPARAM)
+    else
 	OPTIONAL_BASES="${OPTIONAL_BASES} terminfo"
     fi
 elif test "${scheme_cv_lib_curses}" = "yes"; then

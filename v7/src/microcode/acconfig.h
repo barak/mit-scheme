@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: acconfig.h,v 11.2 2001/03/01 04:25:48 cph Exp $
+$Id: acconfig.h,v 11.3 2001/03/02 18:03:06 cph Exp $
 
 Copyright (c) 2000-2001 Massachusetts Institute of Technology
 
@@ -91,6 +91,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 /* Define if ncurses library is present.  */
 #undef HAVE_LIBNCURSES
+
+/* Define if ncurses library defines `tparam'.  */
+#undef LIBNCURSES_DEFINES_TPARAM
 
 /* Define if termcap library is present.  */
 #undef HAVE_LIBTERMCAP
