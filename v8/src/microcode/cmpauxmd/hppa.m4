@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.42 1996/11/18 21:19:35 adams Exp $
+;;;	$Id: hppa.m4,v 1.43 1996/11/26 14:46:17 adams Exp $
 ;;;
 ;;;	Copyright (c) 1989-1996 Massachusetts Institute of Technology
 ;;;
@@ -2036,8 +2036,14 @@ copy_closure_pattern
 	FDC	0(0,rs_free)
 	SYNC
 	FIC	0(spr5,gr25)
-	BE	4(spr5,gr31)
 	SYNC
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	BE	4(spr5,gr31)
+	NOP
 
 ;; On arrival, 31 has a return address and 1 contains the number of
 ;; entries in the closure.  The word at the return address has the
