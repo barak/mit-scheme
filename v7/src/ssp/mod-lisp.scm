@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.15 2004/11/22 19:17:45 cph Exp $
+$Id: mod-lisp.scm,v 1.16 2004/11/23 16:34:24 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -42,6 +42,8 @@ USA.
        (do () ((channel-closed? socket))
 	 (let ((port (tcp-server-connection-accept socket #t #f)))
 	   (port/set-line-ending port 'NEWLINE)
+	   (if trace-i/o-filename
+	       (transcript-on trace-i/o-filename port))
 	   (dynamic-wind
 	    (lambda () unspecific)
 	    (lambda ()
@@ -63,9 +65,12 @@ USA.
 			   response))))
 	       port)
 	      (flush-output port))
-	    (lambda () (close-port port))))))
+	    (lambda ()
+	      (transcript-off port)
+	      (close-port port))))))
      (lambda () (channel-close socket)))))
 
+(define trace-i/o-filename #f)
 (define debug-internal-errors? #f)
 
 (define (write-response message port)
@@ -170,10 +175,12 @@ USA.
 		   (add-content-type-header response default-type)
 		   (set-entity response
 			       (if handler
-				   (mod-lisp-expander request
-						      response
-						      pathname
-						      handler)
+				   (mod-lisp-expander
+				    request
+				    response
+				    pathname
+				    handler
+				    (get-subtree-authenticator relative))
 				   (->pathname pathname))))))
 	    (receive (default-type handler) (get-subtree-handler relative)
 	      (let ((pathname (merge-pathnames relative root-dir)))
@@ -244,18 +251,12 @@ USA.
        (page-not-found)))))
 
 (define (get-subtree-handler relative)
-  (let ((entry
-	 (find-matching-item subtree-handlers
-	   (lambda (entry)
-	     (let loop
-		 ((d1 (pathname-directory (vector-ref entry 0)))
-		  (d2 (pathname-directory relative)))
-	       (or (not (pair? d1))
-		   (and (pair? d2)
-			(equal? (car d1) (car d2))
-			(loop (cdr d1) (cdr d2)))))))))
-    (if entry
-	(values (vector-ref entry 1) (vector-ref entry 2))
+  (let ((v
+	 (search-for-nearest-directory relative
+				       (lambda (v) (vector-ref v 0))
+				       subtree-handlers)))
+    (if v
+	(values (vector-ref v 1) (vector-ref v 2))
 	(values #f #f))))
 
 (define (define-subtree-handler pathname default-type handler)
@@ -288,7 +289,7 @@ USA.
 (define default-index-pages
   '("index.html" "index.xhtml" "index.ssp" "index.xml"))
 
-(define (mod-lisp-expander request response pathname expander)
+(define (mod-lisp-expander request response pathname expander authenticator)
   (run-hooks-in-list mod-lisp-before-expander-hooks request)
   (call-with-output-string
     (lambda (port)
@@ -296,6 +297,7 @@ USA.
 		  (*current-request* request)
 		  (*current-response* response)
 		  (*current-pathname* pathname)
+		  (*current-authenticator* authenticator)
 		  (expander-eval
 		   (lambda (expression environment)
 		     (with-repl-eval-boundary (nearest-repl)
@@ -313,6 +315,7 @@ USA.
 (define *current-request*)
 (define *current-response*)
 (define *current-pathname*)
+(define *current-authenticator*)
 
 ;;;; MIME stuff
 
@@ -740,29 +743,6 @@ USA.
 (define (server-root-dir)
   *root-dir*)
 
-(define (http-request-user-name)
-  (http-message-user-name *current-request*))
-
-(define (http-message-user-name message)
-  (let ((auth (http-message-header message 'authorization)))
-    (and auth
-	 (cond ((string-prefix? "Basic " auth)
-		(decode-basic-auth-header auth 6 (string-length auth)))
-	       (else
-		(error "Unknown authorization header format:" auth))))))
-
-(define (decode-basic-auth-header string start end)
-  (let ((auth
-	 (call-with-output-string
-	   (lambda (port)
-	     (let ((ctx (decode-base64:initialize port #t)))
-	       (decode-base64:update ctx string start end)
-	       (decode-base64:finalize ctx))))))
-    (let ((colon (string-find-next-char auth #\:)))
-      (if (not colon)
-	  (error "Malformed authorization string."))
-      (string-head auth colon))))
-
 (define (html-content-type)
   (if (let ((type (http-browser-type)))
 	(and (pair? type)
@@ -793,6 +773,70 @@ USA.
     ("WDG_Validator/[0-9.]+" validator)
     ("Page Valet/[0-9.]+" validator)
     ("CSE HTML Validator" validator)))
+
+;;;; Authentication
+
+(define (get-subtree-authenticator relative)
+  (let ((p (search-for-nearest-directory relative car subtree-authenticators)))
+    (and p
+	 (cdr p))))
+
+(define (search-for-nearest-directory relative selector items)
+  (let loop ((items items) (win #f))
+    (if (pair? items)
+	(loop (cdr items)
+	      (let ((d1 (pathname-directory (selector (car items))))
+		    (d2 (pathname-directory relative)))
+		(if (and (let loop ((d1 d1) (d2 d2))
+			   (or (not (pair? d1))
+			       (and (pair? d2)
+				    (equal? (car d1) (car d2))
+				    (loop (cdr d1) (cdr d2)))))
+			 (or (not win)
+			     (> (length d1)
+				(length (pathname-directory (selector win))))))
+		    (car items)
+		    win)))
+	win)))
+
+(define (define-subtree-authenticator pathname authenticator)
+  (let ((pathname (pathname-as-directory pathname)))
+    (let ((entry
+	   (find-matching-item subtree-authenticators
+	     (lambda (entry)
+	       (pathname=? (car entry) pathname)))))
+      (if entry
+	  (set-cdr! entry authenticator)
+	  (begin
+	    (set! subtree-authenticators
+		  (cons (cons pathname authenticator)
+			subtree-authenticators))
+	    unspecific)))))
+
+(define subtree-authenticators '())
+
+(define (http-request-user-name)
+  (http-message-user-name *current-request*))
+
+(define (http-message-user-name message)
+  (let ((auth (http-message-header message 'authorization)))
+    (and auth
+	 (cond ((string-prefix? "Basic " auth)
+		(decode-basic-auth-header auth 6 (string-length auth)))
+	       (else
+		(error "Unknown authorization header format:" auth))))))
+
+(define (decode-basic-auth-header string start end)
+  (let ((auth
+	 (call-with-output-string
+	   (lambda (port)
+	     (let ((ctx (decode-base64:initialize port #t)))
+	       (decode-base64:update ctx string start end)
+	       (decode-base64:finalize ctx))))))
+    (let ((colon (string-find-next-char auth #\:)))
+      (if (not colon)
+	  (error "Malformed authorization string."))
+      (string-head auth colon))))
 
 ;;;; Utilities
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ssp.pkg,v 1.13 2004/11/18 20:03:18 cph Exp $
+$Id: ssp.pkg,v 1.14 2004/11/23 16:34:28 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -49,6 +49,7 @@ USA.
 	  start-mod-lisp-server)
   (export (runtime ssp)
 	  define-mime-handler
+	  define-subtree-authenticator
 	  define-subtree-handler
 	  http-browser-type
 	  html-content-type
@@ -73,6 +74,7 @@ USA.
 	  server-root-dir
 	  start-logging-requests
 	  stop-logging-requests
+	  trace-i/o-filename
 	  trace-requests?)
   (export (runtime ssp-expander-environment)
 	  http-browser-type
