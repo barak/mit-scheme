@@ -20,7 +20,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.31 1993/10/16 05:57:46 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.32 1993/11/16 15:58:23 gjr Exp $
 
 (require 'scheme)
 
@@ -437,8 +437,6 @@ The strings are concatenated and terminated by a newline."
 	     (progn
 	       (reset-scheme)
 	       (xscheme-wait-for-process)
-	       (goto-char (point-max))
-	       (apply 'insert-before-markers strings)
 	       (xscheme-send-string-1 strings))))
 	((xscheme-debugger-mode-p) (error "No sends allowed in debugger mode"))
 	((and (not xscheme-allow-pipelined-evaluation)
