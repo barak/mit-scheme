@@ -133,6 +133,15 @@ int bufsize = 128;
 #endif
 
 #ifndef emacs
+
+#ifndef PTR
+# ifdef __STDC__
+#  define PTR void *
+# else
+#  define PTR char *
+# endif /* __STDC__ */
+#endif /* PTR */
+
 static
 memory_out ()
 {
@@ -144,19 +153,19 @@ static int
 xmalloc (size)
      int size;
 {
-  register tem = malloc (size);
-  if (!tem)
+  register PTR tem = malloc (size);
+  if (tem == ((PTR) NULL))
     memory_out ();
   return tem;
 }
 
 static int
 xrealloc (ptr, size)
-     int ptr;
+     PTR ptr;
      int size;
 {
-  register tem = realloc (ptr, size);
-  if (!tem)
+  register PTR tem = realloc (ptr, size);
+  if (tem == ((PTR) NULL))
     memory_out ();
   return tem;
 }
