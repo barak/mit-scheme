@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.27 1995/11/06 10:06:24 cph Exp $
+$Id: os2pm.c,v 1.28 1996/03/20 23:50:18 cph Exp $
 
-Copyright (c) 1994-95 Massachusetts Institute of Technology
+Copyright (c) 1994-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -361,7 +361,7 @@ OS2_initialize_pm_thread (void)
     qid_t qid;
     OS2_make_qid_pair ((&pm_init_qid), (&qid));
     OS2_open_qid (qid, OS2_scheme_tqueue);
-    OS2_pm_tid = (OS2_beginthread (pm_thread_procedure, 0, 0x4000));
+    OS2_pm_tid = (OS2_beginthread (pm_thread_procedure, 0, 0x8000));
     /* Wait for init message from PM thread.  This message tells us
        that the other end of the connection is established and that it
        is safe to send messages on the connection.  */
@@ -2078,6 +2078,7 @@ window_font_dialog (window_t * window, const char * title)
   HWND result;
 
   memset ((&info), 0, (sizeof (info)));
+  (name_buffer[0]) = '\0';
   (info . cbSize) = (sizeof (info));
   (info . hpsScreen) = hps;
   (info . pszTitle) = ((PSZ) title);
@@ -2099,7 +2100,12 @@ window_font_dialog (window_t * window, const char * title)
 	(info . fxPointSize)
 	  = (MAKEFIXED (((fm . sNominalPointSize) / 10), 0));
 	(info . flStyle) = (fm . fsSelection);
-	/* copy_fontmetrics_to_fattrs ((&fm), (& (info . fAttrs))); */
+	copy_fontmetrics_to_fattrs ((&fm), (& (info . fAttrs)));
+#if 0
+	/* The following, for some unknown reason, causes the
+	   selection of incorrect fonts: */
+	(info . fl) |= FNTS_INITFROMFATTRS;
+#endif
       }
   }
   result = (WinFontDlg (HWND_DESKTOP, (WINDOW_CLIENT (window)), (&info)));
@@ -2111,14 +2117,21 @@ window_font_dialog (window_t * window, const char * title)
     {
       FACENAMEDESC desc;
       ULONG face_name_length;
+      char face_name_dummy [1];
+      memset ((&desc), 0, (sizeof (desc)));
       (desc . usSize) = (sizeof (desc));
       (desc . usWeightClass) = (info . usWeight);
       (desc . usWidthClass) = (info . usWidth);
       (desc . flOptions) = (info . flType);
+      face_name = face_name_dummy;
       face_name_length
-	= (GpiQueryFaceString (hps, (info . pszFamilyname), (&desc), 0, 0));
+	= (GpiQueryFaceString (hps, (info . pszFamilyname), (&desc),
+			       0, face_name));
       if (face_name_length == GPI_ERROR)
-	return (0);
+	{
+	  window_warning (GpiQueryFaceString);
+	  return (0);
+	}
       face_name = (OS_malloc (face_name_length));
       face_name_length
 	= (GpiQueryFaceString (hps, (info . pszFamilyname), (&desc),
@@ -2126,6 +2139,7 @@ window_font_dialog (window_t * window, const char * title)
       if (face_name_length == GPI_ERROR)
 	{
 	  OS_free (face_name);
+	  window_warning (GpiQueryFaceString);
 	  return (0);
 	}
     }
@@ -2242,13 +2256,20 @@ copy_fontmetrics_to_fattrs (FONTMETRICS * pfm, FATTRS * pfa)
   strcpy ((pfa -> szFacename), (pfm -> szFacename));
   (pfa -> idRegistry) = (pfm -> idRegistry);
   (pfa -> usCodePage) = (pfm -> usCodePage);
-  (pfa -> lMaxBaselineExt) = 0;
-  (pfa -> lAveCharWidth) = 0;
   (pfa -> fsType) = 0;
-  (pfa -> fsFontUse)
-    = ((((pfm -> fsDefn) & FM_DEFN_OUTLINE) != 0)
-       ? (FATTR_FONTUSE_OUTLINE | FATTR_FONTUSE_TRANSFORMABLE)
-       : 0);
+  if (((pfm -> fsDefn) & FM_DEFN_OUTLINE) != 0)
+    {
+      (pfa -> lMaxBaselineExt) = 0;
+      (pfa -> lAveCharWidth) = 0;
+      (pfa -> fsFontUse)
+	= (FATTR_FONTUSE_OUTLINE | FATTR_FONTUSE_TRANSFORMABLE);
+    }
+  else
+    {
+      (pfa -> lMaxBaselineExt) = (pfm -> lMaxBaselineExt);
+      (pfa -> lAveCharWidth) = (pfm -> lAveCharWidth);
+      (pfa -> fsFontUse) = 0;
+    }
 }
 
 static void
