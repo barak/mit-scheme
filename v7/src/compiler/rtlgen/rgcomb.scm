@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.15 1987/05/07 00:20:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.16 1987/05/07 04:36:15 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -348,13 +348,12 @@ MIT in each case. |#
   ;; The message sender will shift the new stack frame down to the
   ;; correct position when it is done, then reset the stack pointer.
   `(APPLY-CLOSURE ,number-pushed
-		  ,(+ number-pushed
-		      (block-frame-size (combination-block combination)))))
+		  ,(block-frame-size (combination-block combination))))
 
 (define (invocation-prefix/internal->ancestor combination number-pushed)
   (let ((block (combination-block combination)))
     `(APPLY-STACK ,number-pushed
-		  ,(+ number-pushed (block-frame-size block))
+		  ,(block-frame-size block)
 		  ,(-1+
 		    (block-ancestor-distance
 		     block
