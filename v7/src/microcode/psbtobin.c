@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbtobin.c,v 9.47 1992/02/11 21:14:23 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbtobin.c,v 9.48 1992/08/16 23:16:30 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -42,6 +42,9 @@ MIT in each case. */
 #include "limits.h"
 #define portable_file input_file
 #define internal_file output_file
+
+#undef HEAP_MALLOC
+#define HEAP_MALLOC malloc
 
 static Boolean
   band_p = false,
@@ -241,6 +244,7 @@ DEFUN (read_an_integer, (The_Type, To, Slot),
   if ((length_in_bits <= fixnum_to_bits) &&
       (The_Type == TC_FIXNUM))
   {
+    /* The most negative fixnum is handled in the bignum case */
     fast long Value = 0;
     fast int Normalization;
     fast long ndigits;
@@ -285,7 +289,9 @@ DEFUN (read_an_integer, (The_Type, To, Slot),
 	 ? length_in_bits
 	 : BIGNUM_DIGIT_LENGTH);
       fast int position = 0;
-      int hex_digit;
+      long original_length_in_bits = length_in_bits;
+      long hex_digit, low_digit;
+     
       while (length_in_bits > 0)
 	{
 	  read_hex_digit (hex_digit);
@@ -328,8 +334,23 @@ DEFUN (read_an_integer, (The_Type, To, Slot),
 	}
       (*To) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, gc_length));
       BIGNUM_SET_HEADER (bignum, length, negative);
-      (*Slot) = bignum;
-      return (To + gc_length + 1);
+
+      /* The following test depends on BIGNUM_DIGITs being long */
+
+      low_digit = (- (BIGNUM_REF (bignum, 0)));
+      if (negative
+	  && (The_Type == TC_FIXNUM)
+	  && (original_length_in_bits == (fixnum_to_bits + 1))
+	  && (LONG_TO_FIXNUM_P (low_digit)))
+      {
+	*Slot = (LONG_TO_FIXNUM (low_digit));
+	return (To);
+      }
+      else
+      {
+	*Slot = bignum;
+	return (To + gc_length + 1);
+      }
     }
 }
 
