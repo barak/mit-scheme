@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/studen.scm,v 1.4 1991/03/06 21:11:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/studen.scm,v 1.5 1991/03/12 23:18:51 arthur Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -362,6 +362,7 @@ MIT in each case. |#
     (READ)
     (READ-FROM-KEYBOARD)
     (REMAINDER)
+    (RESTART)
     (REVERSE)
     (ROUND)
     (RUNTIME)
