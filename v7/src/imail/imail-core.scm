@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.14 2000/01/19 20:14:39 cph Exp $
+;;; $Id: imail-core.scm,v 1.15 2000/01/19 20:56:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -445,69 +445,49 @@
 
 ;;; Flags are markers that can be attached to messages.  They indicate
 ;;; state about the message, such as whether it has been deleted,
-;;; seen, etc.  A flag is represented by a symbol or a string; symbols
-;;; represent standard flags with predefined meanings, while strings
-;;; represent user-defined flags.
+;;; seen, etc.  A flag is represented by a string.
 
 (define (message-flagged? message flag)
   (guarantee-message-flag flag 'MESSAGE-FLAGGED?)
-  (if (member flag (message-flags message)) #t #f))
+  (flags-member? flag (message-flags message)))
 
 (define (set-message-flag message flag)
   (guarantee-message-flag flag 'SET-MESSAGE-FLAG)
   (let ((flags (message-flags message)))
-    (if (not (member flag flags))
+    (if (not (flags-member? flag flags))
 	(set-message-flags! message (cons flag flags)))))
 
 (define (clear-message-flag message flag)
-  (set-message-flags! message (delete flag (message-flags message))))
+  (guarantee-message-flag flag 'SET-MESSAGE-FLAG)
+  (flags-delete! flag (message-flags message)))
 
 (define (folder-flags folder)
   (let ((n (count-messages folder)))
-    (let loop ((index 0) (flags '()))
-      (if (< index n)
-	  (loop (+ index 1)
-		(union-of-lists (message-flags (get-message folder index))
-				flags))
-	  flags))))
+    (do ((index 0 (+ index 1))
+	 (flags '() (append (message-flags (get-message folder index)) flags)))
+	((= index n)
+	 (remove-duplicates flags string-ci=?)))))
+
+(define flags-member? (member-procedure string-ci=?))
+(define flags-delete! (delete-member-procedure list-deletor! string-ci=?))
 
 (define (message-flag? object)
-  (or (memq object standard-message-flags)
-      (header-field-name? object)))
+  (header-field-name? object))
 
 (define (guarantee-message-flag object procedure)
   (if (not (message-flag? object))
       (error:wrong-type-argument object "message flag" procedure)))
 
-(define (string->message-flag string)
-  (let loop ((flags standard-message-flags))
-    (if (pair? flags)
-	(if (string-ci=? string (symbol-name (car flags)))
-	    (car flags)
-	    (loop (cdr flags)))
-	string)))
-
-(define (message-flag->string flag)
-  (if (symbol? flag)
-      (symbol->string flag)
-      flag))
-
 (define standard-message-flags
-  '(ANSWERED DELETED EDITED FILED FORWARDED RESENT SEEN))
+  '("answered" "deleted" "edited" "filed" "forwarded" "resent" "seen"))
 
 (define (message-flags->header-field flags)
-  (make-header-field message-flags:name
-		     (separated-append (map message-flag->string flags)
-				       " ")))
+  (make-header-field message-flags:name (separated-append flags " ")))
 
 (define (header-field->message-flags header)
   (and (string-ci=? message-flags:name (header-field-name header))
        ;; Extra pair needed to distinguish #F from ().
-       (cons 'YUK
-	     (map string->message-flag
-		  (burst-string (header-field-value header)
-				char-set:lwsp
-				#t)))))
+       (cons #f (burst-string (header-field-value header) char-set:lwsp #t))))
 
 (define message-flags:name "X-IMAIL-FLAGS")
 
