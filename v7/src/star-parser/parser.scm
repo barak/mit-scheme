@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.27 2001/11/14 20:19:13 cph Exp $
+;;; $Id: parser.scm,v 1.28 2001/11/20 04:07:08 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -180,10 +180,12 @@
 (define (generate-parser-code expression)
   (generate-external-procedure expression preprocess-parser-expression
     (lambda (expression)
-      (bind-delayed-lambdas
-       (lambda (ks kf) (compile-parser-expression expression #f ks kf))
-       (make-parser-ks-lambda (lambda (v kf) kf v))
-       (make-kf-lambda (lambda () #f))))))
+      (call-with-pointer #f
+	(lambda (p)
+	  (bind-delayed-lambdas
+	   (lambda (ks kf) (compile-parser-expression expression #f ks kf))
+	   (make-parser-ks-lambda (lambda (v kf) kf v))
+	   (backtracking-kf p (lambda () #f))))))))
 
 (define (compile-parser-expression expression pointer ks kf)
   (cond ((and (pair? expression)

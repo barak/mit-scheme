@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.24 2001/11/14 20:18:35 cph Exp $
+;;; $Id: matcher.scm,v 1.25 2001/11/20 04:07:05 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -191,10 +191,12 @@
 (define (generate-matcher-code expression)
   (generate-external-procedure expression preprocess-matcher-expression
     (lambda (expression)
-      (bind-delayed-lambdas
-       (lambda (ks kf) (compile-matcher-expression expression #f ks kf))
-       (make-matcher-ks-lambda (lambda (kf) kf `#T))
-       (make-kf-lambda (lambda () `#F))))))
+      (call-with-pointer #f
+	(lambda (p)
+	  (bind-delayed-lambdas
+	   (lambda (ks kf) (compile-matcher-expression expression #f ks kf))
+	   (make-matcher-ks-lambda (lambda (kf) kf `#T))
+	   (backtracking-kf p (lambda () `#F))))))))
 
 (define (compile-matcher-expression expression pointer ks kf)
   (cond ((and (pair? expression)
