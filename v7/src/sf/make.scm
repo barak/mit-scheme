@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/make.scm,v 3.10 1987/06/30 21:48:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/make.scm,v 3.11 1987/07/08 04:42:25 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -58,9 +58,9 @@ MIT in each case. |#
 
   (define scode-optimizer/system
     (make-environment
-      (define :name "SF")
+      (define :name "xSF")
       (define :version 3)
-      (define :modification 10)
+      (define :modification 10.1)
       (define :files)
 
       (define :files-lists

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 3.5 1987/05/08 02:33:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 3.6 1987/07/08 04:43:11 jinx Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,28 +36,34 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define *top-level-block*)
+
+(define (integrate/get-top-level-block)
+  *top-level-block*)
+
 (define (integrate/top-level block expression)
-  (let ((operations (operations/bind-block (operations/make) block))
-	(environment (environment/make)))
-    (if (open-block? expression)
-	(transmit-values
-	    (environment/recursive-bind operations environment
-					(open-block/variables expression)
-					(open-block/values expression))
-	  (lambda (environment values)
-	    (return-3 operations
-		      environment
-		      (quotation/make block
-				      (integrate/open-block operations
-							    environment
-							    expression
-							    values)))))
-	(return-3 operations
-		  environment
-		  (quotation/make block
-				  (integrate/expression operations
-							environment
-							expression))))))
+  (fluid-let ((*top-level-block* block))
+    (let ((operations (operations/bind-block (operations/make) block))
+	  (environment (environment/make)))
+      (if (open-block? expression)
+	  (transmit-values
+	   (environment/recursive-bind operations environment
+				       (open-block/variables expression)
+				       (open-block/values expression))
+	   (lambda (environment values)
+	     (return-3 operations
+		       environment
+		       (quotation/make block
+				       (integrate/open-block operations
+							     environment
+							     expression
+							     values)))))
+	  (return-3 operations
+		    environment
+		    (quotation/make block
+				    (integrate/expression operations
+							  environment
+							  expression)))))))
 
 (define (operations/bind-block operations block)
   (let ((declarations (block/declarations block)))
@@ -115,8 +121,10 @@ MIT in each case. |#
 	     dont-integrate))
 	  ((EXPAND)
 	   (info operands
-		 identity-procedure ;expanded value can't be optimized further.
-		 dont-integrate))
+		 (lambda (new-expression)
+		   (integrate/expression operations environment new-expression))
+		 dont-integrate
+		 (reference/block operator)))
 	  (else (error "Unknown operation" operation))))
       dont-integrate)))
 
@@ -295,7 +303,8 @@ MIT in each case. |#
 	  (integrate/combination operations environment (cdr entry) operands)
 	  (let ((entry (assq name usual-integrations/expansion-alist)))
 	    (if entry
-		((cdr entry) operands identity-procedure dont-integrate)
+		((cdr entry) operands identity-procedure
+			     dont-integrate false)
 		(dont-integrate)))))))
 
 (define (system-global-environment? expression)
