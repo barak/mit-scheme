@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.3 1988/06/16 06:32:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.4 1988/07/07 16:13:22 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -291,7 +291,8 @@ MIT in each case. |#
 		(string=? filename "gc")))
        (eval (purify (fasload (map-filename filename))) environment)))
  `((SORT-TYPE . MERGE-SORT)
-   (OS-TYPE . ,(string->symbol (string-upcase os-name-string)))))
+   (OS-TYPE . ,(string->symbol (string-upcase os-name-string)))
+   (OPTIONS . NO-LOAD)))
 
 ;; Funny stuff is done.  Rest of sequence is standardized.
 (package-initialization-sequence

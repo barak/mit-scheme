@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/version.scm,v 14.9 1988/07/07 16:13:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.1 1988/07/07 16:13:08 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -32,23 +32,32 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Runtime System Version Information
-;;; package: (runtime)
+;;;; Option Loader
+;;; package: (runtime option-loader)
 
 (declare (usual-integrations))
+
+(define (load-option name)
+  (let ((entry (assq name options))
+	(pathname
+	 (merge-pathnames (make-pathname false false '("options")
+					 false false false)
+			  (pathname-directory-path
+			   (string->pathname
+			    ((ucode-primitive microcode-tables-filename)))))))    (if (not entry)
+	(error "Unknown option name" name))
+    (for-each
+     (lambda (descriptor)
+       (let ((environment
+	      (package/environment (find-package (car descriptor)))))
+	 (for-each (lambda (filename)
+		     (load (merge-pathnames (string->pathname filename)
+					    pathname)
+			   environment))
+		   (cddr descriptor))
+	 (eval (cadr descriptor) environment)))
+     (cdr entry))
+    name))
 
-(define (initialize-package!)
-  (set! microcode-system
-	(make-system "Microcode"
-		     microcode-id/version
-		     microcode-id/modification
-		     '()))
-  (add-system! microcode-system)
-  (add-event-receiver! event:after-restore snarf-microcode-version!)
-  (add-identification! "Runtime" 14 9))
-
-(define microcode-system)
-
-(define (snarf-microcode-version!)
-  (set-system/version! microcode-system microcode-id/version)
-  (set-system/modification! microcode-system microcode-id/modification))
+(define options
+  '((FORMAT ((RUNTIME FORMAT) (INITIALIZE-PACKAGE!) "format"))))
