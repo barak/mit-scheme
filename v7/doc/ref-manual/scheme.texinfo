@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.41 1993/12/06 20:37:56 cph Exp $
+@comment $Id: scheme.texinfo,v 1.42 1994/08/11 05:09:55 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -69,7 +69,7 @@
 @ifinfo
 This file documents the MIT Scheme system.
 
-Copyright @copyright{} 1988-93 Massachusetts Institute of Technology
+Copyright @copyright{} 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and Computer
@@ -108,9 +108,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.41 beta
+@subtitle Edition 1.42 beta
 @subtitle for Scheme Release 7.3
-@subtitle 6 December 1993
+@subtitle 11 August 1994
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -118,7 +118,7 @@ literature without prior written consent from MIT in each case.
 @page
 
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1988-93 Massachusetts Institute of Technology
+Copyright @copyright{} 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and Computer
@@ -7161,7 +7161,7 @@ is iterative in nature, combining the elements as the list is traversed.
 (fold-left list '() '(1 2 3 4))         @result{}  ((((() 1) 2) 3) 4)
 
 (define (length list)
-  (fold-left 1+ 0 list))
+  (fold-left (lambda (sum element) (+ sum 1)) 0 list))
 
 (define (reverse items)
   (fold-left (lambda (x y) (cons y x)) () items))
