@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: nntp.scm,v 1.6 1996/10/15 18:58:27 cph Exp $
+;;;	$Id: nntp.scm,v 1.7 1996/10/15 19:34:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -689,19 +689,19 @@
 
 ;;;; Header Database
 
-(define (news-group:header-gdbf group open?)
+(define (news-group:header-gdbf group create?)
   (let ((gdbf (news-group:%header-gdbf group)))
     (if (eq? 'UNKNOWN gdbf)
-	(and open?
-	     (let ((gdbf
-		    (and (gdbm-available?)
-			 (let ((pathname
-				(news-group:header-gdbf-pathname group)))
-			   (guarantee-init-file-directory pathname)
-			   (gdbm-open pathname 0 GDBM_WRCREAT #o666)))))
-	       (if gdbf (gdbm-setopt gdbf gdbm_fastmode 1))
-	       (set-news-group:%header-gdbf! group gdbf)
-	       gdbf))
+	(let ((gdbf
+	       (and (gdbm-available?)
+		    (let ((pathname
+			   (news-group:header-gdbf-pathname group)))
+		      (guarantee-init-file-directory pathname)
+		      (and (or create? (file-exists? pathname))
+			   (gdbm-open pathname 0 GDBM_WRCREAT #o666))))))
+	  (if gdbf (gdbm-setopt gdbf gdbm_fastmode 1))
+	  (set-news-group:%header-gdbf! group gdbf)
+	  gdbf)
 	gdbf)))
 
 (define (news-group:header-gdbf-pathname group)
@@ -765,19 +765,19 @@
 
 ;;;; Body Database
 
-(define (news-group:body-gdbf group open?)
+(define (news-group:body-gdbf group create?)
   (let ((gdbf (news-group:%body-gdbf group)))
     (if (eq? 'UNKNOWN gdbf)
-	(and open?
-	     (let ((gdbf
-		    (and (gdbm-available?)
-			 (let ((pathname
-				(news-group:body-gdbf-pathname group)))
-			   (guarantee-init-file-directory pathname)
-			   (gdbm-open pathname 0 GDBM_WRCREAT #o666)))))
-	       (if gdbf (gdbm-setopt gdbf gdbm_fastmode 1))
-	       (set-news-group:%body-gdbf! group gdbf)
-	       gdbf))
+	(let ((gdbf
+	       (and (gdbm-available?)
+		    (let ((pathname
+			   (news-group:body-gdbf-pathname group)))
+		      (guarantee-init-file-directory pathname)
+		      (and (or create? (file-exists? pathname))
+			   (gdbm-open pathname 0 GDBM_WRCREAT #o666))))))
+	  (if gdbf (gdbm-setopt gdbf gdbm_fastmode 1))
+	  (set-news-group:%body-gdbf! group gdbf)
+	  gdbf)
 	gdbf)))
 
 (define (news-group:body-gdbf-pathname group)
