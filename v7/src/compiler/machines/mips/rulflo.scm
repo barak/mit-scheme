@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulflo.scm,v 1.2 1990/07/22 20:28:36 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulflo.scm,v 1.3 1991/07/12 23:14:05 cph Exp $
 $MC68020-Header: rules1.scm,v 4.33 90/05/03 15:17:28 GMT jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
@@ -111,7 +111,6 @@ MIT in each case. |#
 
 ; Well, I thought this would work, but the fine print in the manual
 ; says that CVT.D only works with a source type of single precision.
-; *Sigh*
 
 ; (define-arithmetic-method 'FLONUM-ROUND flonum-methods/1-arg
 ;   (lambda (target source)
@@ -161,9 +160,7 @@ MIT in each case. |#
   (define-flonum-operation flonum-add FADD)
   (define-flonum-operation flonum-subtract FSUB)
   (define-flonum-operation flonum-multiply FMUL)
-  (define-flonum-operation flonum-divide FDIV)
-;  (define-flonum-operation flonum-remainder frem)
-  )
+  (define-flonum-operation flonum-divide FDIV))
 
 ;;;; Flonum Predicates
 
@@ -172,7 +169,9 @@ MIT in each case. |#
   ;; No immediate zeros, easy to generate by subtracting from itself
   (let ((temp (flonum-temporary!))
 	(source (flonum-source! source)))
-    (LAP (FSUB DOUBLE ,temp ,source ,source)
+    (LAP (MTC1 0 ,temp)
+	 (MTC1 0 ,(+ temp 1))
+	 (NOP)
 	 ,@(flonum-compare
 	    (case predicate
 	      ((FLONUM-ZERO?) 'C.EQ)
