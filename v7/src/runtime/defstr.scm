@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.43 2003/03/07 05:47:31 cph Exp $
+$Id: defstr.scm,v 14.44 2003/03/07 18:45:58 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,1997,2000 Massachusetts Institute of Technology
@@ -778,28 +778,29 @@ differences:
 	  ,@slot-names)))))
 
 (define (constructor-definition/keyword structure name)
-  (make-constructor structure name 'KEYWORD-LIST
-    (lambda (tag-expression)
+  (if (eq? (structure/type structure) 'RECORD)
       (let ((context (structure/context structure)))
-	(let ((list-cons
-	       `(,@(constructor-prefix-slots structure tag-expression)
-		 (,(absolute 'DEFINE-STRUCTURE/KEYWORD-PARSER context)
-		  KEYWORD-LIST
-		  (,(absolute 'LIST context)
-		   ,@(map (lambda (slot)
-			    `(,(absolute 'CONS context)
-			      ',(slot/name slot)
-			      ,(get-slot-default slot structure)))
-			  (structure/slots structure)))))))
-	  (case (structure/type structure)
-	    ((RECORD)
-	     `(,(absolute 'APPLY context) ,(absolute '%RECORD context)
-					  ,@list-cons))
-	    ((VECTOR)
-	     `(,(absolute 'APPLY context) ,(absolute 'VECTOR context)
-					  ,@list-cons))
-	    ((LIST)
-	     `(,(absolute 'CONS* context) ,@list-cons))))))))
+	`(,(absolute 'RECORD-KEYWORD-CONSTRUCTOR context)
+	  ,(close (structure/tag-expression structure) context)))
+      (make-constructor structure name 'KEYWORD-LIST
+	(lambda (tag-expression)
+	  (let ((context (structure/context structure)))
+	    (let ((list-cons
+		   `(,@(constructor-prefix-slots structure tag-expression)
+		     (,(absolute 'DEFINE-STRUCTURE/KEYWORD-PARSER context)
+		      KEYWORD-LIST
+		      (,(absolute 'LIST context)
+		       ,@(map (lambda (slot)
+				`(,(absolute 'CONS context)
+				  ',(slot/name slot)
+				  ,(get-slot-default slot structure)))
+			      (structure/slots structure)))))))
+	      (case (structure/type structure)
+		((VECTOR)
+		 `(,(absolute 'APPLY context) ,(absolute 'VECTOR context)
+					      ,@list-cons))
+		((LIST)
+		 `(,(absolute 'CONS* context) ,@list-cons)))))))))
 
 (define (constructor-definition/boa structure name lambda-list)
   (make-constructor structure name lambda-list
