@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.91 2000/05/23 02:26:01 cph Exp $
+;;; $Id: imail-top.scm,v 1.92 2000/05/23 02:57:28 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -292,6 +292,8 @@ DEL	Scroll to previous screen of this message.
 \\[imail-expunge]	Expunge deleted messages.
 \\[imail-save-folder]	Save the current folder.
 
+\\[imail-get-new-mail]	Poll the server for changes.
+\\[imail-disconnect]	Disconnect from the server.
 \\[imail-quit]       Quit IMAIL: save, then switch to another buffer.
 
 \\[imail-mail]	Mail a message (same as \\[mail-other-window]).
@@ -352,6 +354,7 @@ DEL	Scroll to previous screen of this message.
 (define-key 'imail #\x		'imail-expunge)
 
 (define-key 'imail #\g		'imail-get-new-mail)
+(define-key 'imail #\m-d	'imail-disconnect)
 (define-key 'imail #\s		'imail-save-folder)
 
 (define-key 'imail #\c-m-h	'imail-summary)
@@ -706,8 +709,13 @@ With prefix argument N moves backward N messages with these flags."
 	       (index (message-index message)))
 	   (and folder
 		(if index
-		    (let ((n (folder-length folder)))
+		    (let ((n (folder-length folder))
+			  (status (folder-connection-status folder)))
 		      (string-append
+		       (case status
+			 ((ONLINE) " online")
+			 ((OFFLINE) " offline")
+			 (else ""))
 		       " "
 		       (number->string (+ 1 index))
 		       "/"
@@ -1216,6 +1224,13 @@ Currently useful only for IMAP folders."
 		      message
 		      #t
 		      (not (get-property message 'FULL-HEADERS? #f))))))
+
+(define-command imail-disconnect
+  "Disconnect the selected IMAIL folder from its server.
+Has no effect on non-server-based folders."
+  ()
+  (lambda ()
+    (disconnect-folder (selected-folder))))
 
 (define-command imail-search
   "Show message containing next match for given string.

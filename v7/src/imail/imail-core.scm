@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.87 2000/05/22 20:51:00 cph Exp $
+;;; $Id: imail-core.scm,v 1.88 2000/05/23 02:57:13 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -375,6 +375,21 @@
 ;; Probe FOLDER's server for changes.  Useful as a check for new mail.
 
 (define-generic probe-folder (folder))
+
+;; -------------------------------------------------------------------
+;; Return a symbol representing FOLDER's connection status.  The
+;; returned value is one of the following symbols:
+;; ONLINE	Open connection to the server.
+;; OFFLINE	No connection to the server.
+;; NO-SERVER	Folder is not server-based.
+
+(define-generic folder-connection-status (folder))
+
+;; -------------------------------------------------------------------
+;; Disconnect FOLDER from its associated server.  The folder will
+;; automatically reconnect as needed.
+
+(define-generic disconnect-folder (folder))
 
 ;;;; Message type
 

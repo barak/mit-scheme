@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.37 2000/05/22 20:32:37 cph Exp $
+;;; $Id: imail-file.scm,v 1.38 2000/05/23 02:57:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -239,5 +239,13 @@
   (close-folder folder))
 
 (define-method probe-folder ((folder <file-folder>))
+  folder
+  unspecific)
+
+(define-method folder-connection-status ((folder <file-folder>))
+  folder
+  'NO-SERVER)
+
+(define-method disconnect-folder ((folder <file-folder>))
   folder
   unspecific)

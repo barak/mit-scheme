@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.79 2000/05/23 00:37:57 cph Exp $
+;;; $Id: imail-imap.scm,v 1.80 2000/05/23 02:57:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -823,18 +823,16 @@
 (define-method %close-folder ((folder <imap-folder>))
   (let ((connection (imap-folder-connection folder)))
     (maybe-close-imap-connection connection)
-    (set-imap-connection-folder! connection #f)))
+    (set-imap-connection-folder! connection #f))
+  (folder-modified! folder 'STATUS))
 
 (define-method folder-length ((folder <imap-folder>))
-  (guarantee-imap-folder-open folder)
   (imap-folder-n-messages folder))
 
 (define-method %get-message ((folder <imap-folder>) index)
-  (guarantee-imap-folder-open folder)
   (vector-ref (imap-folder-messages folder) index))
 
 (define-method first-unseen-message-index ((folder <imap-folder>))
-  (guarantee-imap-folder-open folder)
   (or (imap-folder-unseen folder) 0))
 
 (define-method expunge-deleted-messages ((folder <imap-folder>))
@@ -870,6 +868,14 @@
 (define-method probe-folder ((folder <imap-folder>))
   (guarantee-imap-folder-open folder)
   (imap:command:noop (imap-folder-connection folder)))
+
+(define-method folder-connection-status ((folder <imap-folder>))
+  (if (test-imap-connection-open (imap-folder-connection folder))
+      'ONLINE
+      'OFFLINE))
+
+(define-method disconnect-folder ((folder <imap-folder>))
+  (close-folder folder))
 
 ;;;; IMAP command invocation
 

@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.39 2000/05/23 02:12:10 cph Exp $
+$Id: todo.txt,v 1.40 2000/05/23 02:57:49 cph Exp $
 
 Bug fixes
 ---------
@@ -53,8 +53,6 @@ New features
   the messages.
 
 * Write M-x imail-resend.
-
-* Add an indication showing the connection status in the mode line.
 
 * Add mail notification in mode line, active across the editor as long
   as there is an IMAP connection open in some buffer.
