@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxenv.c,v 1.6 1992/03/26 03:56:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxenv.c,v 1.7 1992/06/05 19:39:05 jinx Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -162,9 +162,12 @@ DEFINE_PRIMITIVE ("FULL-HOSTNAME", Prim_full_hostname, 0, 0,
 #ifdef HAVE_SOCKETS
     struct hostent * EXFUN (gethostbyname, (const char *));
     struct hostent *this_host_entry;
-#endif
+
     STD_VOID_SYSTEM_CALL (syscall_gethostname,
 			  UX_gethostname (this_host_name, HOSTNAMESIZE));
+#else
+    strcpy (this_host_name, "unknown-host.unknown.unknown");
+#endif
 
 #ifdef HAVE_SOCKETS
     this_host_entry = gethostbyname (this_host_name);
@@ -184,9 +187,13 @@ DEFINE_PRIMITIVE ("HOSTNAME", Prim_hostname, 0, 0,
   {
     char this_host_name[HOSTNAMESIZE];
 
+#ifdef HAVE_SOCKETS
     STD_VOID_SYSTEM_CALL (syscall_gethostname,
 			  UX_gethostname (this_host_name, HOSTNAMESIZE));
     PRIMITIVE_RETURN
       (char_pointer_to_string ((unsigned char *) this_host_name));
+#else
+    strcpy (this_host_name, "unknown-host");
+#endif
   }
 }
