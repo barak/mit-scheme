@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: logmer.scm,v 1.17 2000/02/01 01:55:12 cph Exp $
+$Id: logmer.scm,v 1.18 2000/02/01 01:58:14 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -55,7 +55,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(call-with-output-file output-file
 		  (lambda (port)
 		    (format/entries entries port))))))
-	  (write-string " log is up to date" port)))))
+	  (begin
+	    (write-string " log is up to date" port)
+	    (newline port))))))
 
 (define (format/entries entries port)
   (let ((groups (compress-entries entries)))
