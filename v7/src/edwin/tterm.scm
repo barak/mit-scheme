@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.17 1992/05/07 19:43:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.18 1992/08/27 06:30:57 jinx Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -483,6 +483,7 @@ MIT in each case. |#
   (clear-screen screen))
 
 (define (console-clear-rectangle! screen xl xu yl yu highlight)
+  highlight
   (let ((x-size (screen-x-size screen))
 	(y-size (screen-y-size screen)))
     (cond ((not (fix:= xu x-size))
