@@ -1,6 +1,6 @@
 @echo off
 rem Copyright (c) 1993 Massachusetts Institute of Technology
-rem $Id: mkauto.bat,v 1.1 1993/08/22 17:53:14 gjr Exp $
+rem $Id: mkauto.bat,v 1.2 1993/09/04 00:51:10 gjr Exp $
 copy \scheme\edwin\midas.com \scheme\lib\edwin\autoload\midas.com
 copy \scheme\edwin\midas.bci \scheme\lib\edwin\autoload\midas.bci
 copy \scheme\edwin\pasmod.com \scheme\lib\edwin\autoload\pasmod.com
@@ -19,3 +19,5 @@ copy \scheme\edwin\dabbrev.com \scheme\lib\edwin\autoload\dabbrev.com
 copy \scheme\edwin\dabbrev.bci \scheme\lib\edwin\autoload\dabbrev.bci
 copy \scheme\edwin\info.com \scheme\lib\edwin\autoload\info.com
 copy \scheme\edwin\info.bci \scheme\lib\edwin\autoload\info.bci
+copy \scheme\edwin\artdebug.com \scheme\lib\edwin\autoload\artdebug.com
+copy \scheme\edwin\artdebug.bci \scheme\lib\edwin\autoload\artdebug.bci
