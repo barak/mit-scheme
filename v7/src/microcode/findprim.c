@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: findprim.c,v 9.48 1993/08/03 08:29:50 gjr Exp $
+$Id: findprim.c,v 9.49 1993/08/21 01:56:51 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -630,10 +630,11 @@ DEFUN (print_primitives, (output, limit),
   for (count = 0; (count < limit); count += 1)
     {
       fprintf (output,
-	       "  (%s * sizeof(SCHEME_OBJECT)),\n",
+	       "  (%s * ((int) (sizeof (SCHEME_OBJECT)))),\n",
 	       ((result_buffer [count]) -> arity));
     }
-  fprintf (output, "  (%s * sizeof(SCHEME_OBJECT))\n};\n", inexistent_entry.arity);
+  fprintf (output, "  (%s * ((int) (sizeof (SCHEME_OBJECT))))\n};\n",
+	   inexistent_entry.arity);
 
   return;
 }
