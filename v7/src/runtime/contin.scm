@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/contin.scm,v 14.6 1992/02/08 15:08:20 cph Exp $
+$Id: contin.scm,v 14.7 1992/11/25 06:38:46 gjr Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,33 +38,49 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (call-with-current-continuation receiver)
-  (call/cc (ucode-primitive call-with-current-continuation)
+  (call/cc (ucode-primitive call-with-current-continuation 1)
 	   'REENTRANT
 	   receiver))
 
+;; The following is not properly tail recursive because it builds the
+;; extra frame that invokes cont on the result.
+;; This is done to guarantee that the continuation is still valid,
+;; since the continuation invocation code is the code that maintains
+;; this state.  Note that any other way of verifying this information
+;; would also add a continuation frame to the stack!
+
 (define (non-reentrant-call-with-current-continuation receiver)
-  (call/cc (ucode-primitive non-reentrant-call-with-current-continuation)
+  (call/cc (ucode-primitive non-reentrant-call-with-current-continuation 1)
 	   'UNUSED
-	   receiver))
+	   (lambda (cont)
+	     (cont (receiver cont)))))
 
 (define (call/cc primitive type receiver)
   (primitive
    (lambda (control-point)
      (let ((continuation
 	    (make-continuation type control-point (get-dynamic-state))))
-       (continuation (receiver continuation))))))
+       (%%within-continuation
+	continuation
+	(lambda ()
+	  (receiver continuation)))))))
 
-(define (%within-continuation continuation thread-switch? thunk)
+(define-integrable (%%within-continuation continuation thunk)
   ((ucode-primitive within-control-point 2)
    (continuation/control-point continuation)
+   thunk))
+
+(define (%within-continuation continuation thread-switch? thunk)
+  (%%within-continuation
+   continuation
    (let ((dynamic-state (continuation/dynamic-state continuation)))
      (lambda ()
        (set-dynamic-state! dynamic-state thread-switch?)
        (thunk)))))
 
 (define (invocation-method/reentrant continuation value)
-  ((ucode-primitive within-control-point 2)
-   (continuation/control-point continuation)
+  (%%within-continuation
+   continuation
    (let ((dynamic-state (continuation/dynamic-state continuation)))
      (lambda ()
        (set-dynamic-state! dynamic-state false)
