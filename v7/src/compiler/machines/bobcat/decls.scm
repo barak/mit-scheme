@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.4 1987/04/22 09:45:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.5 1987/04/27 20:25:33 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -88,6 +88,10 @@ MIT in each case. |#
 
 (file-dependency/integration/join filenames/dependency-group/base
 				  filenames/dependency-chain/base)
+
+(file-dependency/integration/join
+ (filename/append "machines/bobcat" "instr2" "instr3")
+ (filename/append "machines/bobcat" "instr1"))
 
 (file-dependency/syntax/join
  (append (filename/append "base"
