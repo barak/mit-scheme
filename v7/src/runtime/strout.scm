@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: strout.scm,v 14.5 1993/01/18 05:38:49 cph Exp $
+$Id: strout.scm,v 14.6 1993/01/18 16:50:09 gjr Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -66,22 +66,27 @@ MIT in each case. |#
   accumulator
   counter)
 
-(define (grow-accumulator! state)
-  (let ((old (output-string-state/accumulator state)))
-    (let ((n (string-length old)))
-      (let ((new (make-string (+ n n))))
-	(substring-move-left! old 0 n new 0)
-	(set-output-string-state/accumulator! state new)))))
+(define (grow-accumulator! state min-n*)
+  (let* ((old (output-string-state/accumulator state))
+	 (n (string-length old))
+	 (n* (+ n n))
+	 (new (make-string
+	       (if (< n* min-n*)
+		   min-n*
+		   n*))))
+    (substring-move-left! old 0 n new 0)
+    (set-output-string-state/accumulator! state new)))
 
 (define (operation/write-char port char)
   (without-interrupts
    (lambda ()
      (let* ((state (output-port/state port))
-	    (n (output-string-state/counter state)))
+	    (n (output-string-state/counter state))
+	    (n* (fix:+ n 1)))
        (if (fix:= (string-length (output-string-state/accumulator state)) n)
-	   (grow-accumulator! state))
+	   (grow-accumulator! state n*))
        (string-set! (output-string-state/accumulator state) n char)
-       (set-output-string-state/counter! state (fix:+ n 1))))))
+       (set-output-string-state/counter! state n*)))))
 
 (define (operation/write-substring port string start end)
   (without-interrupts
@@ -90,7 +95,7 @@ MIT in each case. |#
 	    (n (output-string-state/counter state))
 	    (n* (fix:+ n (fix:- end start))))
        (if (fix:> n* (string-length (output-string-state/accumulator state)))
-	   (grow-accumulator! state))
+	   (grow-accumulator! state n*))
        (substring-move-left! string start end
 			     (output-string-state/accumulator state) n)
        (set-output-string-state/counter! state n*)))))
