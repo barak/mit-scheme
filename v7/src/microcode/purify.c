@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: purify.c,v 9.53 1993/11/09 08:32:15 gjr Exp $
+$Id: purify.c,v 9.54 1993/12/07 20:36:03 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -58,8 +58,8 @@ extern SCHEME_OBJECT * EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
 #define Purify_Pointer(Code)						\
 {									\
   Old = (OBJECT_ADDRESS (Temp));					\
-  if ((GC_Mode == CONSTANT_COPY) &&					\
-      (Old < low_heap))							\
+  if ((GC_Mode == CONSTANT_COPY)					\
+      && (Old < low_heap))						\
     continue;								\
   Code;									\
 }
@@ -67,15 +67,15 @@ extern SCHEME_OBJECT * EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
 #define PURIFY_RAW_POINTER(Code)					\
 {									\
   Old = (SCHEME_ADDR_TO_ADDR (Temp));					\
-  if ((GC_Mode == CONSTANT_COPY) &&					\
-      (Old < low_heap))							\
+  if ((GC_Mode == CONSTANT_COPY)					\
+      && (Old < low_heap))						\
     continue;								\
   Code;									\
 }
 
 #define Setup_Pointer_for_Purify(Extra_Code)				\
 {									\
-  Purify_Pointer(Setup_Pointer(false, Extra_Code));			\
+  Purify_Pointer (Setup_Pointer (false, Extra_Code));			\
 }
 
 #define Indirect_BH(In_GC)						\
@@ -136,9 +136,9 @@ DEFUN (purifyloop, (Scan, To_Pointer, GC_Mode),
       {
 	if (GC_Mode == PURE_COPY)
 	{
-	  gc_death(TERM_COMPILER_DEATH,
-		   "purifyloop: linkage section in pure area",
-		   Scan, To);
+	  gc_death (TERM_COMPILER_DEATH,
+		    "purifyloop: linkage section in pure area",
+		    Scan, To);
 	  /*NOTREACHED*/
 	}
 
@@ -166,13 +166,13 @@ DEFUN (purifyloop, (Scan, To_Pointer, GC_Mode),
 	    Scan -= 1;
 	    break;
 	  }
-
+
 	  case OPERATOR_LINKAGE_KIND:
 	  case GLOBAL_OPERATOR_LINKAGE_KIND:
 	  {
 	    fast long count;
-	    fast char *word_ptr;
-	    SCHEME_OBJECT *end_scan;
+	    fast char * word_ptr;
+	    SCHEME_OBJECT * end_scan;
 
 	    START_OPERATOR_RELOCATION (Scan);
 	    count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
@@ -184,7 +184,7 @@ DEFUN (purifyloop, (Scan, To_Pointer, GC_Mode),
 	      Scan = ((SCHEME_OBJECT *) word_ptr);
 	      word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
 	      EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
-	      PURIFY_RAW_POINTER (Setup_Internal
+	      PURIFY_RAW_POINTER (Setup_Aligned
 				  (false,
 				   TRANSPORT_RAW_COMPILED (),
 				   RAW_COMPILED_BH (false,
@@ -196,6 +196,10 @@ DEFUN (purifyloop, (Scan, To_Pointer, GC_Mode),
 	    END_OPERATOR_RELOCATION (Scan);
 	    break;
 	  }
+
+	  case CLOSURE_PATTERN_LINKAGE_KIND:
+	    Scan += (READ_CACHE_LINKAGE_COUNT (Temp));
+	    break;
 
 	  default:
 	  {
@@ -211,14 +215,14 @@ DEFUN (purifyloop, (Scan, To_Pointer, GC_Mode),
       case TC_MANIFEST_CLOSURE:
       {
 	fast long count;
-	fast char *word_ptr;
-	SCHEME_OBJECT *area_end;
+	fast char * word_ptr;
+	SCHEME_OBJECT * area_end;
 
 	if (GC_Mode == PURE_COPY)
 	{
-	  gc_death(TERM_COMPILER_DEATH,
-		   "purifyloop: manifest closure in pure area",
-		   Scan, To);
+	  gc_death (TERM_COMPILER_DEATH,
+		    "purifyloop: manifest closure in pure area",
+		    Scan, To);
 	  /*NOTREACHED*/
 	}
 
@@ -233,13 +237,13 @@ DEFUN (purifyloop, (Scan, To_Pointer, GC_Mode),
 	  Scan = ((SCHEME_OBJECT *) (word_ptr));
 	  word_ptr = (NEXT_MANIFEST_CLOSURE_ENTRY (word_ptr));
 	  EXTRACT_CLOSURE_ENTRY_ADDRESS (Temp, Scan);
-	  PURIFY_RAW_POINTER (Setup_Internal
+	  PURIFY_RAW_POINTER (Setup_Aligned
 			      (false,
 			       TRANSPORT_RAW_COMPILED (),
 			       RAW_COMPILED_BH (false,
 						goto next_closure)));
 	next_closure:
-	  STORE_CLOSURE_ENTRY_ADDRESS(Temp, Scan);
+	  STORE_CLOSURE_ENTRY_ADDRESS (Temp, Scan);
 	}
 	Scan = area_end;
 	END_CLOSURE_RELOCATION (Scan);
@@ -249,20 +253,21 @@ DEFUN (purifyloop, (Scan, To_Pointer, GC_Mode),
       case_compiled_entry_point:
 	if (GC_Mode != PURE_COPY)
 	{
-	  Purify_Pointer(Setup_Internal(false,
-					Transport_Compiled(),
-					Compiled_BH(false, goto after_entry)));
+	  Purify_Pointer (Setup_Aligned (false,
+					 Transport_Compiled (),
+					 Compiled_BH (false,
+						      goto after_entry)));
         after_entry:
 	  *Scan = Temp;
 	}
 	break;
 
       case_Cell:
-	Setup_Pointer_for_Purify(Transport_Cell());
+	Setup_Pointer_for_Purify (Transport_Cell ());
 	break;
 
       case TC_WEAK_CONS:
-	Setup_Pointer_for_Purify(Transport_Weak_Cons());
+	Setup_Pointer_for_Purify (Transport_Weak_Cons ());
 	break;
 
       /*
@@ -272,8 +277,8 @@ DEFUN (purifyloop, (Scan, To_Pointer, GC_Mode),
        */
 
       case TC_REFERENCE_TRAP:
-	if ((OBJECT_DATUM (Temp) <= TRAP_MAX_IMMEDIATE) ||
-	    (GC_Mode == PURE_COPY))
+	if (((OBJECT_DATUM (Temp)) <= TRAP_MAX_IMMEDIATE)
+	    || (GC_Mode == PURE_COPY))
 	{
 	  /* It is a non pointer. */
 	  break;
@@ -285,9 +290,9 @@ DEFUN (purifyloop, (Scan, To_Pointer, GC_Mode),
 	if (GC_Mode == PURE_COPY)
         {
 	  Temp = MEMORY_REF (Temp, SYMBOL_NAME);
-	  Purify_Pointer(Setup_Internal(false,
-					Transport_Vector_Indirect(),
-					Indirect_BH(false)));
+	  Purify_Pointer (Setup_Internal (false,
+					  Transport_Vector_Indirect (),
+					  Indirect_BH (false)));
 	  break;
 	}
 
@@ -295,23 +300,28 @@ DEFUN (purifyloop, (Scan, To_Pointer, GC_Mode),
 
       case_Fasdump_Pair:
       purify_pair:
-	Setup_Pointer_for_Purify(Transport_Pair());
+	Setup_Pointer_for_Purify (Transport_Pair ());
 	break;
 
       case TC_VARIABLE:
       case_Triple:
-	Setup_Pointer_for_Purify(Transport_Triple());
+	Setup_Pointer_for_Purify (Transport_Triple ());
 	break;
 
       case_Quadruple:
-	Setup_Pointer_for_Purify(Transport_Quadruple());
+	Setup_Pointer_for_Purify (Transport_Quadruple ());
 	break;
 
-      case TC_BIG_FLONUM:
-        Setup_Pointer_for_Purify({
-	  Transport_Flonum();
+      case TC_COMPILED_CODE_BLOCK:
+	if (GC_Mode == PURE_COPY)
 	  break;
-	});
+	/* fall through */
+	
+      case TC_BIG_FLONUM:
+	Purify_Pointer (Setup_Aligned (false,
+				       goto Move_Vector,
+				       Normal_BH (false, continue)));
+	break;
 
 	/* No need to handle futures specially here, since purifyloop
 	   is always invoked after running GCLoop, which will have
@@ -321,7 +331,6 @@ DEFUN (purifyloop, (Scan, To_Pointer, GC_Mode),
 
       case TC_FUTURE:
       case TC_ENVIRONMENT:
-      case TC_COMPILED_CODE_BLOCK:
 	if (GC_Mode == PURE_COPY)
 	{
 	  /* For environments, this should actually do an indirect pair
@@ -332,11 +341,11 @@ DEFUN (purifyloop, (Scan, To_Pointer, GC_Mode),
 	/* Fall through */
 
       case_Purify_Vector:
-	Setup_Pointer_for_Purify(Transport_Vector());
+	Setup_Pointer_for_Purify (Transport_Vector ());
 	break;
 
       default:
-	GC_BAD_TYPE("purifyloop");
+	GC_BAD_TYPE ("purifyloop");
 	/* Fall Through */
 
       case_Non_Pointer:

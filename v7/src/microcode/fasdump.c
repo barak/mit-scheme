@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasdump.c,v 9.59 1993/11/09 08:32:41 gjr Exp $
+$Id: fasdump.c,v 9.60 1993/12/07 20:35:58 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -97,7 +97,8 @@ static CONST char * dump_file_name = ((char *) 0);
 */
 
 #define Setup_Pointer_for_Dump(Extra_Code)				\
-  Dump_Pointer (Fasdump_Setup_Pointer (Extra_Code, Normal_BH (false, continue)))
+  Dump_Pointer (Fasdump_Setup_Pointer (Extra_Code,			\
+				       Normal_BH (false, continue)))
 
 #define Dump_Pointer(Code)						\
   Old = (OBJECT_ADDRESS (Temp));					\
@@ -114,7 +115,7 @@ static CONST char * dump_file_name = ((char *) 0);
 
 #define Fasdump_Transport_Compiled()					\
 {									\
-  Transport_Compiled();							\
+  Transport_Compiled ();						\
   if ((mode == 2) && ((OBJECT_TYPE (*(To - 1))) == TC_ENVIRONMENT))	\
     *(To - 1) = SHARP_F;						\
 }
@@ -129,14 +130,14 @@ static CONST char * dump_file_name = ((char *) 0);
 #define Dump_Compiled_Entry(label)					\
 {									\
   Dump_Pointer								\
-    (Fasdump_Setup_Pointer (Fasdump_Transport_Compiled (),		\
+    (Fasdump_Setup_Aligned (Fasdump_Transport_Compiled (),		\
 			    Compiled_BH (false, goto label)));		\
 }
 
 #define DUMP_RAW_COMPILED_ENTRY(label)					\
 {									\
   DUMP_RAW_POINTER							\
-    (Fasdump_Setup_Pointer (FASDUMP_TRANSPORT_RAW_COMPILED (),		\
+    (Fasdump_Setup_Aligned (FASDUMP_TRANSPORT_RAW_COMPILED (),		\
 			    RAW_COMPILED_BH (false,			\
 					     goto label)));		\
 }
@@ -174,7 +175,7 @@ DEFUN (DumpLoop, (Scan, mode), fast SCHEME_OBJECT * Scan AND int mode)
 	break;
 
       case TC_BROKEN_HEART:
-        if (OBJECT_DATUM (Temp) != 0)
+        if ((OBJECT_DATUM (Temp)) != 0)
 	{
 	  sprintf (gc_death_message_buffer,
 		   "dumploop: broken heart (0x%lx) in scan",
@@ -265,7 +266,7 @@ DEFUN (DumpLoop, (Scan, mode), fast SCHEME_OBJECT * Scan AND int mode)
 	    word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
 	    end_scan = (END_OPERATOR_LINKAGE_AREA (Scan, count));
 
-	    while(--count >= 0)
+	    while (--count >= 0)
 	    {
 	      Scan = ((SCHEME_OBJECT *) (word_ptr));
 	      word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
@@ -278,6 +279,10 @@ DEFUN (DumpLoop, (Scan, mode), fast SCHEME_OBJECT * Scan AND int mode)
 	    END_OPERATOR_RELOCATION (Scan);
 	    break;
 	  }
+
+	  case CLOSURE_PATTERN_LINKAGE_KIND:
+	    Scan += (READ_CACHE_LINKAGE_COUNT (Temp));
+	    break;
 
 	  default:
 	  {
@@ -327,13 +332,11 @@ DEFUN (DumpLoop, (Scan, mode), fast SCHEME_OBJECT * Scan AND int mode)
 	Setup_Pointer_for_Dump (Transport_Quadruple ());
 	break;
 
-      case TC_BIG_FLONUM:
-	Setup_Pointer_for_Dump({
-	  Transport_Flonum ();
-	  break;
-	});
+      case_Aligned_Vector:
+	Dump_Pointer (Fasdump_Setup_Aligned (goto Move_Vector,
+					     Normal_BH (false, continue)));
+	break;
 
-      case TC_COMPILED_CODE_BLOCK:
       case_Purify_Vector:
       process_vector:
 	Setup_Pointer_for_Dump (Transport_Vector ());

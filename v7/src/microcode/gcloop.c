@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: gcloop.c,v 9.44 1993/11/09 08:31:48 gjr Exp $
+$Id: gcloop.c,v 9.45 1993/12/07 20:36:01 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -145,9 +145,9 @@ DEFUN (GCLoop,
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
     object_referencing = Temp;
 #endif
-    HANDLE_GC_TRAP();
+    HANDLE_GC_TRAP ();
 
-    Switch_by_GC_Type(Temp)
+    Switch_by_GC_Type (Temp)
     {
       case TC_BROKEN_HEART:
         if (Scan == (OBJECT_ADDRESS (Temp)))
@@ -155,10 +155,10 @@ DEFUN (GCLoop,
 	  *To_Pointer = To;
 	  return (Scan);
 	}
-	sprintf(gc_death_message_buffer,
-		"gcloop: broken heart (0x%lx) in scan",
-		Temp);
-	gc_death(TERM_BROKEN_HEART, gc_death_message_buffer, Scan, To);
+	sprintf (gc_death_message_buffer,
+		 "gcloop: broken heart (0x%lx) in scan",
+		 Temp);
+	gc_death (TERM_BROKEN_HEART, gc_death_message_buffer, Scan, To);
 	/*NOTREACHED*/
 
       case TC_MANIFEST_NM_VECTOR:
@@ -199,20 +199,20 @@ DEFUN (GCLoop,
 	  case GLOBAL_OPERATOR_LINKAGE_KIND:
 	  {
 	    fast long count;
-	    fast char *word_ptr;
-	    SCHEME_OBJECT *end_scan;
+	    fast char * word_ptr;
+	    SCHEME_OBJECT * end_scan;
 
 	    START_OPERATOR_RELOCATION (Scan);
 	    count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
 	    word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
 	    end_scan = (END_OPERATOR_LINKAGE_AREA (Scan, count));
 
-	    while(--count >= 0)
+	    while (--count >= 0)
 	    {
 	      Scan = ((SCHEME_OBJECT *) word_ptr);
 	      word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
 	      EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
-	      GC_RAW_POINTER (Setup_Internal
+	      GC_RAW_POINTER (Setup_Aligned
 			      (true,
 			       TRANSPORT_RAW_COMPILED (),
 			       RAW_COMPILED_BH (true,
@@ -224,6 +224,10 @@ DEFUN (GCLoop,
 	    END_OPERATOR_RELOCATION (Scan);
 	    break;
 	  }
+
+	  case CLOSURE_PATTERN_LINKAGE_KIND:
+	    Scan += (READ_CACHE_LINKAGE_COUNT (Temp));
+	    break;
 
 	  default:
 	  {
@@ -239,8 +243,8 @@ DEFUN (GCLoop,
       case TC_MANIFEST_CLOSURE:
       {
 	fast long count;
-	fast char *word_ptr;
-	SCHEME_OBJECT *area_end;
+	fast char * word_ptr;
+	SCHEME_OBJECT * area_end;
 
 	START_CLOSURE_RELOCATION (Scan);
 	Scan += 1;
@@ -253,7 +257,7 @@ DEFUN (GCLoop,
 	  Scan = ((SCHEME_OBJECT *) (word_ptr));
 	  word_ptr = (NEXT_MANIFEST_CLOSURE_ENTRY (word_ptr));
 	  EXTRACT_CLOSURE_ENTRY_ADDRESS (Temp, Scan);
-	  GC_RAW_POINTER (Setup_Internal
+	  GC_RAW_POINTER (Setup_Aligned
 			  (true,
 			   TRANSPORT_RAW_COMPILED (),
 			   RAW_COMPILED_BH (true,
@@ -268,9 +272,9 @@ DEFUN (GCLoop,
       }
 
       case_compiled_entry_point:
-	GC_Pointer(Setup_Internal(true,
-				  Transport_Compiled(),
-				  Compiled_BH(true, goto after_entry)));
+	GC_Pointer (Setup_Aligned (true,
+				   Transport_Compiled (),
+				   Compiled_BH (true, goto after_entry)));
       after_entry:
 	*Scan = Temp;
 	break;
@@ -280,7 +284,7 @@ DEFUN (GCLoop,
 	break;
 
       case TC_REFERENCE_TRAP:
-	if (OBJECT_DATUM (Temp) <= TRAP_MAX_IMMEDIATE)
+	if ((OBJECT_DATUM (Temp)) <= TRAP_MAX_IMMEDIATE)
 	{
 	  /* It is a non pointer. */
 	  break;
@@ -288,38 +292,38 @@ DEFUN (GCLoop,
 	/* Fall Through. */
 
       case_Pair:
-	Setup_Pointer_for_GC(Transport_Pair());
+	Setup_Pointer_for_GC (Transport_Pair ());
 	break;
 
       case TC_VARIABLE:
       case_Triple:
-	Setup_Pointer_for_GC(Transport_Triple());
+	Setup_Pointer_for_GC (Transport_Triple ());
 	break;
 
       case_Quadruple:
-	Setup_Pointer_for_GC(Transport_Quadruple());
+	Setup_Pointer_for_GC (Transport_Quadruple ());
 	break;
 
-      case TC_BIG_FLONUM:
-	Setup_Pointer_for_GC({
-	  Transport_Flonum();
-	  break;
-	});
+      case_Aligned_Vector:
+	GC_Pointer (Setup_Aligned (true, 
+				   goto Move_Vector,
+				   Normal_BH (true, continue)));
+	break;
 
       case_Vector:
-	Setup_Pointer_for_GC(Transport_Vector());
+	Setup_Pointer_for_GC (Transport_Vector ());
 	break;
 
       case TC_FUTURE:
-	Setup_Pointer_for_GC(Transport_Future());
+	Setup_Pointer_for_GC (Transport_Future ());
 	break;
 
       case TC_WEAK_CONS:
-	Setup_Pointer_for_GC(Transport_Weak_Cons());
+	Setup_Pointer_for_GC (Transport_Weak_Cons ());
 	break;
 
       default:
-	GC_BAD_TYPE("gcloop");
+	GC_BAD_TYPE ("gcloop");
 	/* Fall Through */
 
       case_Non_Pointer:

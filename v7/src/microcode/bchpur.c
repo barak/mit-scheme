@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchpur.c,v 9.63 1993/10/14 21:41:29 gjr Exp $
+$Id: bchpur.c,v 9.64 1993/12/07 20:35:53 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -105,6 +105,7 @@ DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
 	/* Check whether this bumps over current buffer,
 	   and if so we need a new bufferfull. */
 	Scan += (OBJECT_DATUM (Temp));
+area_skipped:
 	if (Scan < scan_buffer_top)
 	  break;
 	else
@@ -211,6 +212,10 @@ DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
 	    BCH_END_OPERATOR_RELOCATION (Scan);
 	    break;
 	  }
+
+	  case CLOSURE_PATTERN_LINKAGE_KIND:
+	    Scan += (READ_CACHE_LINKAGE_COUNT (Temp));
+	    goto area_skipped;
 
 	  default:
 	    gc_death (TERM_EXIT,
@@ -331,13 +336,18 @@ DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
 	  break;
 	relocate_normal_pointer (copy_quadruple(), 4);
 
+      case TC_COMPILED_CODE_BLOCK:
+	if (purify_mode == PURE_COPY)
+	  break;
+	goto aligned_vector_relocation;
+	
       case TC_BIG_FLONUM:
 	if (purify_mode == CONSTANT_COPY)
 	  break;
+      aligned_vector_relocation:
 	relocate_flonum_setup ();
 	goto Move_Vector;
 
-      case TC_COMPILED_CODE_BLOCK:
       case TC_ENVIRONMENT:
 	if (purify_mode == PURE_COPY)
 	  break;

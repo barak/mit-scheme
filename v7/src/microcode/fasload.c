@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.78 1993/11/09 08:34:16 gjr Exp $
+$Id: fasload.c,v 9.79 1993/12/07 20:35:59 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -439,14 +439,14 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 
   if (Reloc_Debug)
   {
-    outf_error (
-	     "\nRelocate_Block: block = 0x%lx, length = 0x%lx, end = 0x%lx.\n",
-	     ((long) Scan), ((long) ((Stop_At - Scan) - 1)), ((long) Stop_At));
+    outf_error
+      ("\nRelocate_Block: block = 0x%lx, length = 0x%lx, end = 0x%lx.\n",
+       ((long) Scan), ((long) ((Stop_At - Scan) - 1)), ((long) Stop_At));
   }
 
   while (Scan < Stop_At)
   {
-    Temp = *Scan;
+    Temp = * Scan;
     Switch_by_GC_Type (Temp)
     {
       case TC_BROKEN_HEART:
@@ -472,7 +472,7 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 
       case TC_LINKAGE_SECTION:
       {
-	switch (READ_LINKAGE_KIND(Temp))
+	switch (READ_LINKAGE_KIND (Temp))
 	{
 	  case REFERENCE_LINKAGE_KIND:
 	  case ASSIGNMENT_LINKAGE_KIND:
@@ -498,8 +498,8 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 	  case GLOBAL_OPERATOR_LINKAGE_KIND:
 	  {
 	    fast long count;
-	    fast char *word_ptr;
-	    SCHEME_OBJECT *end_scan;
+	    fast char * word_ptr;
+	    SCHEME_OBJECT * end_scan;
 
 	    START_OPERATOR_RELOCATION (Scan);
 	    count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
@@ -521,6 +521,10 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 	    break;
 	  }
 
+	  case CLOSURE_PATTERN_LINKAGE_KIND:
+	    Scan += (1 + (READ_CACHE_LINKAGE_COUNT (Temp)));
+	    break;
+
 	  default:
 	  {
 	    gc_death (TERM_EXIT,
@@ -537,8 +541,8 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 	/* See comment about relocation in TC_LINKAGE_SECTION above. */
 
 	fast long count;
-	fast char *word_ptr;
-	SCHEME_OBJECT *area_end;
+	fast char * word_ptr;
+	SCHEME_OBJECT * area_end;
 
 	START_CLOSURE_RELOCATION (Scan);
 	Scan += 1;

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchgcl.c,v 9.48 1993/10/14 21:42:54 gjr Exp $
+$Id: bchgcl.c,v 9.49 1993/12/07 20:35:52 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -78,6 +78,7 @@ DEFUN (GCLoop, (Scan, To_ptr, To_Address_ptr),
 	/* Check whether this bumps over current buffer,
 	   and if so we need a new bufferfull. */
 	Scan += (OBJECT_DATUM (Temp));
+area_skipped:
 	if (Scan < scan_buffer_top)
 	  break;
 	else
@@ -178,6 +179,10 @@ DEFUN (GCLoop, (Scan, To_ptr, To_Address_ptr),
 	    break;
 	  }
 
+	  case CLOSURE_PATTERN_LINKAGE_KIND:
+	    Scan += (READ_CACHE_LINKAGE_COUNT (Temp));
+	    goto area_skipped;
+
 	  default:
 	    gc_death (TERM_EXIT,
 		      "GC: Unknown compiler linkage kind.",
@@ -262,7 +267,7 @@ DEFUN (GCLoop, (Scan, To_ptr, To_Address_ptr),
       case_Quadruple:
 	relocate_normal_pointer (copy_quadruple (), 4);
 
-      case TC_BIG_FLONUM:
+      case_Aligned_Vector:
 	relocate_flonum_setup ();
 	goto Move_Vector;
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: purutl.c,v 9.46 1993/10/14 19:16:10 gjr Exp $
+$Id: purutl.c,v 9.47 1993/12/07 20:36:04 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -56,7 +56,7 @@ DEFUN (update, (From, To, Was, Will_Be),
       {
 	case TC_MANIFEST_NM_VECTOR:
 	  From += (OBJECT_DATUM (* From));
-	  continue;
+	  break;
 
 	  /* The following two type codes assume that none of the protected
 	     objects can be updated.
@@ -65,19 +65,20 @@ DEFUN (update, (From, To, Was, Will_Be),
 	case TC_LINKAGE_SECTION:
 	  switch (READ_LINKAGE_KIND (* From))
 	  {
-	    case REFERENCE_LINKAGE_KIND:
 	    case ASSIGNMENT_LINKAGE_KIND:
+	    case CLOSURE_PATTERN_LINKAGE_KIND:
+	    case REFERENCE_LINKAGE_KIND:
 	    {
 	      From += (READ_CACHE_LINKAGE_COUNT (* From));
-	      continue;
+	      break;
 	    }
 
-	    case OPERATOR_LINKAGE_KIND:
 	    case GLOBAL_OPERATOR_LINKAGE_KIND:
+	    case OPERATOR_LINKAGE_KIND:
 	    {
 	      count = (READ_OPERATOR_LINKAGE_COUNT (* From));
 	      From = (END_OPERATOR_LINKAGE_AREA (From, count));
-	      continue;
+	      break;
 	    }
 
 	    default:
@@ -89,10 +90,11 @@ DEFUN (update, (From, To, Was, Will_Be),
 	      /*NOTREACHED*/
 	    }
 #else /* not BAD_TYPES_LETHAL */
-	    outf_error ("\nupdate (impurify): Bad type code = 0x %02x.\n",
-			(OBJECT_TYPE (* From)));
+	    outf_error ("\nImpurify: Bad linkage section (0x%lx).\n",
+			(* From));
 #endif /* BAD_TYPES_LETHAL */
 	  }
+	  break;
 
 	case TC_MANIFEST_CLOSURE:
 	{
@@ -101,16 +103,15 @@ DEFUN (update, (From, To, Was, Will_Be),
 	  From += 1;
 	  count = (MANIFEST_CLOSURE_COUNT (From));
 	  From = (MANIFEST_CLOSURE_END (From, count));
-	  continue;
+	  break;
 	}
 
 	default:
-	  continue;
+	  break;
       }
     }
-    if (GC_Type_Non_Pointer(* From))
-      continue;
-    if ((OBJECT_ADDRESS (* From)) == Was)
+    else if ((! (GC_Type_Non_Pointer (* From)))
+	     && ((OBJECT_ADDRESS (* From)) == Was))
       * From = (MAKE_POINTER_OBJECT (OBJECT_TYPE (* From), Will_Be));
   }
   return;

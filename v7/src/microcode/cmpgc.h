@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpgc.h,v 1.26 1993/11/22 00:33:04 gjr Exp $
+$Id: cmpgc.h,v 1.27 1993/12/07 20:35:54 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -43,7 +43,7 @@ See cmpint.txt, cmpint.c, cmpint-md.h, and cmpaux-md.m4 for more details.
 
 #ifndef CMPGC_H_INCLUDED
 #define CMPGC_H_INCLUDED
-
+
 #define NOP() do {} while (0) /* A useful macro */
 
 /* These are needed whether or not there is a compiler,
@@ -54,6 +54,7 @@ See cmpint.txt, cmpint.c, cmpint-md.h, and cmpaux-md.m4 for more details.
 #define REFERENCE_LINKAGE_KIND			0x010000
 #define ASSIGNMENT_LINKAGE_KIND			0x020000
 #define GLOBAL_OPERATOR_LINKAGE_KIND		0x030000
+#define CLOSURE_PATTERN_LINKAGE_KIND		0x040000
 
 #ifdef HAS_COMPILER_SUPPORT
 

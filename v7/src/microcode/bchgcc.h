@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchgcc.h,v 9.56 1993/11/09 08:30:39 gjr Exp $
+$Id: bchgcc.h,v 9.57 1993/12/07 20:35:51 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -416,8 +416,9 @@ do {									\
     continue;								\
   Compiled_BH (in_gc_p, continue);					\
   {									\
-    SCHEME_OBJECT *Saved_Old = Old;					\
+    SCHEME_OBJECT * Saved_Old = Old;					\
 									\
+    FLOAT_ALIGN_FREE (To_Address, To);					\
     New_Address = (MAKE_BROKEN_HEART (To_Address));			\
     copy_vector (NULL);							\
     * Saved_Old = New_Address;						\
@@ -435,8 +436,9 @@ do {									\
     continue;								\
   Compiled_BH (in_gc_p, continue);					\
   {									\
-    SCHEME_OBJECT *Saved_Old = Old;					\
+    SCHEME_OBJECT * Saved_Old = Old;					\
 									\
+    FLOAT_ALIGN_FREE (To_Address, To);					\
     New_Address = (MAKE_BROKEN_HEART (To_Address));			\
     copy_vector (NULL);							\
     * Saved_Old = New_Address;						\

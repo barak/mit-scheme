@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: gccode.h,v 9.52 1993/10/14 19:21:29 gjr Exp $
+$Id: gccode.h,v 9.53 1993/12/07 20:36:00 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -47,24 +47,24 @@ MIT in each case. */
    first Switch_by_GC_Type, then each of the case_ macros (in any
    order).  The default: case MUST be included in the switch. */
 
-#define Switch_by_GC_Type(P) 				\
+#define Switch_by_GC_Type(P)						\
   switch (OBJECT_TYPE (P))
 
-#define case_simple_Non_Pointer				\
-  case TC_NULL:						\
-  case TC_TRUE:						\
-  case TC_RETURN_CODE:					\
+#define case_simple_Non_Pointer						\
+  case TC_NULL:								\
+  case TC_TRUE:								\
+  case TC_RETURN_CODE:							\
   case TC_THE_ENVIRONMENT
 
-#define case_Fasload_Non_Pointer			\
-  case TC_FIXNUM:					\
-  case TC_CHARACTER:					\
+#define case_Fasload_Non_Pointer					\
+  case TC_FIXNUM:							\
+  case TC_CHARACTER:							\
   case_simple_Non_Pointer
 
-#define case_Non_Pointer				\
-  case TC_PRIMITIVE:					\
-  case TC_PCOMB0:					\
-  case TC_STACK_ENVIRONMENT:				\
+#define case_Non_Pointer						\
+  case TC_PRIMITIVE:							\
+  case TC_PCOMB0:							\
+  case TC_STACK_ENVIRONMENT:						\
   case_Fasload_Non_Pointer
 
 /* Missing Non Pointer types (must always be treated specially):
@@ -73,86 +73,91 @@ MIT in each case. */
    TC_MANIFEST_SPECIAL_NM_VECTOR
    TC_REFERENCE_TRAP
    TC_MANIFEST_CLOSURE
-   TC_LINKAGE_SECTION */
+   TC_LINKAGE_SECTION 
+ */
 
-#define case_compiled_entry_point			\
+#define case_compiled_entry_point					\
  case TC_COMPILED_ENTRY
 
-#define case_Cell					\
+#define case_Cell							\
  case TC_CELL
 
 /* No missing Cell types */
 
-#define case_Fasdump_Pair				\
- case TC_LIST:						\
- case TC_SCODE_QUOTE:					\
- case TC_COMBINATION_1:					\
- case TC_EXTENDED_PROCEDURE:				\
- case TC_PROCEDURE:					\
- case TC_DELAY:						\
- case TC_DELAYED:					\
- case TC_COMMENT:					\
- case TC_LAMBDA:					\
- case TC_SEQUENCE_2:					\
- case TC_PCOMB1:					\
- case TC_ACCESS:					\
- case TC_DEFINITION:					\
- case TC_ASSIGNMENT:					\
- case TC_IN_PACKAGE:					\
- case TC_LEXPR:						\
- case TC_DISJUNCTION:					\
- case TC_COMPLEX:					\
- case TC_ENTITY:					\
+#define case_Fasdump_Pair						\
+ case TC_LIST:								\
+ case TC_SCODE_QUOTE:							\
+ case TC_COMBINATION_1:							\
+ case TC_EXTENDED_PROCEDURE:						\
+ case TC_PROCEDURE:							\
+ case TC_DELAY:								\
+ case TC_DELAYED:							\
+ case TC_COMMENT:							\
+ case TC_LAMBDA:							\
+ case TC_SEQUENCE_2:							\
+ case TC_PCOMB1:							\
+ case TC_ACCESS:							\
+ case TC_DEFINITION:							\
+ case TC_ASSIGNMENT:							\
+ case TC_IN_PACKAGE:							\
+ case TC_LEXPR:								\
+ case TC_DISJUNCTION:							\
+ case TC_COMPLEX:							\
+ case TC_ENTITY:							\
  case TC_RATNUM
 
-#define case_Pair					\
- case TC_INTERNED_SYMBOL:				\
- case TC_UNINTERNED_SYMBOL:				\
+#define case_Pair							\
+ case TC_INTERNED_SYMBOL:						\
+ case TC_UNINTERNED_SYMBOL:						\
  case_Fasdump_Pair
 
 /* Missing pair types (must be treated specially):
-   TC_WEAK_CONS */
+   TC_WEAK_CONS 
+ */
 
-#define case_Triple					\
- case TC_COMBINATION_2:					\
- case TC_EXTENDED_LAMBDA:				\
- case TC_HUNK3_A:					\
- case TC_HUNK3_B:					\
- case TC_CONDITIONAL:					\
- case TC_SEQUENCE_3:					\
+#define case_Triple							\
+ case TC_COMBINATION_2:							\
+ case TC_EXTENDED_LAMBDA:						\
+ case TC_HUNK3_A:							\
+ case TC_HUNK3_B:							\
+ case TC_CONDITIONAL:							\
+ case TC_SEQUENCE_3:							\
  case TC_PCOMB2
 
 /* Missing triple types (must be treated specially):
    TC_VARIABLE */
 
-#define case_Quadruple					\
+#define case_Quadruple							\
   case TC_QUAD
 
 /* No missing quad types. */
 
-#define case_simple_Vector				\
- case TC_NON_MARKED_VECTOR:				\
- case TC_VECTOR:					\
- case TC_RECORD:					\
- case TC_CONTROL_POINT:					\
- case TC_COMBINATION:					\
- case TC_PCOMB3:					\
- case TC_VECTOR_1B:					\
+#define case_simple_Vector						\
+ case TC_NON_MARKED_VECTOR:						\
+ case TC_VECTOR:							\
+ case TC_RECORD:							\
+ case TC_CONTROL_POINT:							\
+ case TC_COMBINATION:							\
+ case TC_PCOMB3:							\
+ case TC_VECTOR_1B:							\
  case TC_VECTOR_16B
 
-#define case_Purify_Vector				\
- case TC_BIG_FIXNUM:					\
- case TC_CHARACTER_STRING:				\
+#define case_Purify_Vector						\
+ case TC_BIG_FIXNUM:							\
+ case TC_CHARACTER_STRING:						\
  case_simple_Vector
 
-#define case_Vector					\
- case TC_ENVIRONMENT:					\
- case TC_COMPILED_CODE_BLOCK:				\
+#define case_Vector							\
+ case TC_ENVIRONMENT:							\
  case_Purify_Vector
 
+#define case_Aligned_Vector						\
+ case TC_COMPILED_CODE_BLOCK:						\
+ case TC_BIG_FLONUM
+
 /* Missing vector types (must be treated specially):
-   TC_FUTURE
-   TC_BIG_FLONUM */
+   TC_FUTURE 
+ */
 
 extern char gc_death_message_buffer [];
 
@@ -241,6 +246,17 @@ do									\
   if (Old < low_heap)							\
     continue;								\
   Already_Relocated_Code;						\
+  New_Address = (MAKE_BROKEN_HEART (To));				\
+  Transport_Code;							\
+}
+
+#define Setup_Aligned(In_GC, Transport_Code, Already_Relocated_Code)	\
+{									\
+  GC_Consistency_Check (In_GC);						\
+  if (Old < low_heap)							\
+    continue;								\
+  Already_Relocated_Code;						\
+  ALIGN_FLOAT (To);							\
   New_Address = (MAKE_BROKEN_HEART (To));				\
   Transport_Code;							\
 }
@@ -426,7 +442,7 @@ extern void EXFUN (check_transport_vector_lossage,
     TRANSPORT_ONE_THING ((*To++) = (*Old++));				\
   Scan = Saved_Scan;							\
 }
-
+
 #else /* In_Fasdump */
 
 #define Real_Transport_Vector()						\
@@ -448,31 +464,13 @@ extern void EXFUN (check_transport_vector_lossage,
 }
 
 #endif
-
+
 #define Transport_Vector()						\
 {									\
- Move_Vector:								\
+Move_Vector:								\
   Real_Transport_Vector ();						\
   Pointer_End ();							\
 }
-#ifdef FLOATING_ALIGNMENT
-
-#define Transport_Flonum()						\
-{									\
-  ALIGN_FLOAT (To);							\
-  New_Address = (MAKE_BROKEN_HEART (To));				\
-  Real_Transport_Vector ();						\
-  Pointer_End ();							\
-}
-
-#else
-
-#define Transport_Flonum()						\
-{									\
-  goto Move_Vector;							\
-}
-
-#endif
 
 #define Transport_Future()						\
 {									\
@@ -537,18 +535,37 @@ extern SCHEME_OBJECT Weak_Chain;
   Extra_Code;								\
 }
 
+#define Fasdump_Setup_Aligned(Extra_Code, BH_Code)			\
+{									\
+  BH_Code;								\
+									\
+  /* It must be transported to New Space */				\
+									\
+  ALIGN_FLOAT (To);							\
+  New_Address = (MAKE_BROKEN_HEART (To));				\
+  if ((Fixes - To) < FASDUMP_FIX_BUFFER)				\
+    {									\
+      NewFree = To;							\
+      Fixup = Fixes;							\
+      return (PRIM_INTERRUPT);						\
+    }									\
+  (*--Fixes) = (* Old);							\
+  (*--Fixes) = (ADDRESS_TO_DATUM (Old));				\
+  Extra_Code;								\
+}
+
 /* Undefine Symbols */
 
 #define Fasdump_Symbol(global_value)					\
 {									\
-  (*To++) = (*Old);							\
+  (*To++) = (* Old);							\
   (*To++) = global_value;						\
   Pointer_End ();							\
 }
 
 #define Fasdump_Variable()						\
 {									\
-  (*To++) = (*Old);							\
+  (*To++) = (* Old);							\
   (*To++) = UNCOMPILED_VARIABLE;					\
   (*To++) = SHARP_F;							\
   Pointer_End ();							\

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.9 1993/10/14 19:11:56 gjr Exp $
+$Id: nttrap.c,v 1.10 1993/12/07 20:36:02 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -966,8 +966,8 @@ DEFUN (find_block_address_in_area, (pc_value, area_start),
 	  {
 	    switch (READ_LINKAGE_KIND (object))
 	    {
-	      case OPERATOR_LINKAGE_KIND:
 	      case GLOBAL_OPERATOR_LINKAGE_KIND:
+	      case OPERATOR_LINKAGE_KIND:
 	      {
 		long count = (READ_OPERATOR_LINKAGE_COUNT (object));
 		area = ((END_OPERATOR_LINKAGE_AREA (area, count)) + 1);
@@ -985,8 +985,9 @@ DEFUN (find_block_address_in_area, (pc_value, area_start),
 #else
 	      /* Fall through, no reason to crash here. */
 #endif
-	      case REFERENCE_LINKAGE_KIND:
 	      case ASSIGNMENT_LINKAGE_KIND:
+	      case CLOSURE_PATTERN_LINKAGE_KIND:
+	      case REFERENCE_LINKAGE_KIND:
 	        area += ((READ_CACHE_LINKAGE_COUNT (object)) + 1);
 		break;
 

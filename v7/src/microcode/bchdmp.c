@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchdmp.c,v 9.75 1993/11/09 08:33:14 gjr Exp $
+$Id: bchdmp.c,v 9.76 1993/12/07 20:35:50 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -407,6 +407,7 @@ DEFUN (dumploop, (Scan, To_ptr, To_Address_ptr),
 	/* Check whether this bumps over current buffer,
 	   and if so we need a new bufferfull. */
 	Scan += (OBJECT_DATUM (Temp));
+area_skipped:
 	if (Scan < scan_buffer_top)
 	  break;
 	else
@@ -513,6 +514,10 @@ DEFUN (dumploop, (Scan, To_ptr, To_Address_ptr),
 	    BCH_END_OPERATOR_RELOCATION (Scan);
 	    break;
 	  }
+
+	  case CLOSURE_PATTERN_LINKAGE_KIND:
+	    Scan += (READ_CACHE_LINKAGE_COUNT (Temp));
+	    goto area_skipped;
 
 	  default:
 	    gc_death (TERM_EXIT,
@@ -627,11 +632,10 @@ DEFUN (dumploop, (Scan, To_ptr, To_Address_ptr),
       case_Quadruple:
 	fasdump_normal_pointer (copy_quadruple (), 4);
 
-      case TC_BIG_FLONUM:
+      case_Aligned_Vector:
 	fasdump_flonum_setup ();
 	goto Move_Vector;
 
-      case TC_COMPILED_CODE_BLOCK:
       case_Purify_Vector:
 	fasdump_normal_setup ();
       Move_Vector:

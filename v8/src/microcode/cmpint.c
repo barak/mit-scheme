@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.80 1993/11/16 03:56:41 gjr Exp $
+$Id: cmpint.c,v 1.81 1993/12/07 20:35:55 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -239,10 +239,10 @@ typedef utility_result EXFUN
 /* Imports from the rest of the "microcode" */
 
 extern long
-  EXFUN (compiler_cache_operator, (void)),
-  EXFUN (compiler_cache_global_operator, (void)),
-  EXFUN (compiler_cache_lookup, (void)),
-  EXFUN (compiler_cache_assignment, (void));
+  EXFUN (compiler_cache_assignment, (SCHEME_OBJECT, SCHEME_OBJECT, long)),
+  EXFUN (compiler_cache_lookup, (SCHEME_OBJECT, SCHEME_OBJECT, long)),
+  EXFUN (compiler_cache_global_operator, (SCHEME_OBJECT, SCHEME_OBJECT, long)),
+  EXFUN (compiler_cache_operator, (SCHEME_OBJECT, SCHEME_OBJECT, long));
 
 /* Exports to the rest of the "microcode" */
 
@@ -351,10 +351,46 @@ extern C_UTILITY void EXFUN (bkpt_remove, (PTR, SCHEME_OBJECT));
 
 #define TRAMPOLINE_K_OTHER			TRAMPOLINE_K_INTERPRETED
 
+/* Ways to bypass the interpreter */
+
 #define REFLECT_CODE_INTERNAL_APPLY		0
 #define REFLECT_CODE_RESTORE_INTERRUPT_MASK	1
 #define REFLECT_CODE_STACK_MARKER		2
 #define REFLECT_CODE_CC_BKPT			3
+
+/* Markers for special entry points */
+
+#ifndef FORMAT_BYTE_EXPR
+#define FORMAT_BYTE_EXPR                	0xFF
+#endif
+#ifndef FORMAT_BYTE_COMPLR
+#define FORMAT_BYTE_COMPLR              	0xFE
+#endif
+#ifndef FORMAT_BYTE_CMPINT
+#define FORMAT_BYTE_CMPINT              	0xFD
+#endif
+#ifndef FORMAT_BYTE_DLINK
+#define FORMAT_BYTE_DLINK               	0xFC
+#endif
+#ifndef FORMAT_BYTE_RETURN
+#define FORMAT_BYTE_RETURN              	0xFB
+#endif
+#ifndef FORMAT_BYTE_CLOSURE
+#define FORMAT_BYTE_CLOSURE			0xFA
+#endif
+#ifndef FORMAT_BYTE_FRAMEMAX
+#define FORMAT_BYTE_FRAMEMAX            	0x7F
+#endif
+
+#ifndef FORMAT_WORD_EXPR
+#define FORMAT_WORD_EXPR        (MAKE_FORMAT_WORD (0xFF, FORMAT_BYTE_EXPR))
+#endif
+#ifndef FORMAT_WORD_CMPINT
+#define FORMAT_WORD_CMPINT      (MAKE_FORMAT_WORD (0xFF, FORMAT_BYTE_CMPINT))
+#endif
+#ifndef FORMAT_WORD_RETURN
+#define FORMAT_WORD_RETURN      (MAKE_FORMAT_WORD (0xFF, FORMAT_BYTE_RETURN))
+#endif
 
 /* Utilities for application of compiled procedures. */
 
@@ -579,7 +615,7 @@ DEFUN_VOID (enter_compiled_expression)
   compiled_entry_address =
     ((instruction *) (OBJECT_ADDRESS (Fetch_Expression ())));
   if ((COMPILED_ENTRY_FORMAT_WORD (compiled_entry_address)) !=
-      (FORMAT_WORD_EXPR))
+      FORMAT_WORD_EXPR)
   {
     /* It self evaluates. */
     Val = (Fetch_Expression ());
@@ -970,7 +1006,43 @@ DEFUN (comutil_lexpr_apply,
      entry_address);
 }
 
-/* Core of comutil_link and comp_link_caches_restart. */
+static long
+DEFUN (compiler_link_closure_pattern, (distance, block, offset),
+       SCHEME_OBJECT distance AND SCHEME_OBJECT block AND long offset)
+{
+  long objdist = (FIXNUM_TO_LONG (distance));
+  long nmv_length = (OBJECT_DATUM (MEMORY_REF (block, 1)));
+  SCHEME_OBJECT * location = (MEMORY_LOC (block, offset));
+  SCHEME_OBJECT * closptr = (location - objdist);
+  SCHEME_OBJECT * end_closptr = (MEMORY_LOC (block, (2 + nmv_length)));
+  SCHEME_OBJECT entry_offset, * area_end;
+  char * word_ptr;
+  long count;
+
+  nmv_length -= (end_closptr - closptr);
+  while (closptr < end_closptr)
+  {
+    while ((* closptr) == ((SCHEME_OBJECT) 0))
+      closptr ++;
+    closptr ++;
+    count = (MANIFEST_CLOSURE_COUNT (closptr));
+    word_ptr = (FIRST_MANIFEST_CLOSURE_ENTRY (closptr));
+    area_end = (MANIFEST_CLOSURE_END (closptr, count));
+    while ((--count) >= 0)
+    {
+      closptr = ((SCHEME_OBJECT *) word_ptr);
+      word_ptr = (NEXT_MANIFEST_CLOSURE_ENTRY (word_ptr));
+      EXTRACT_CLOSURE_ENTRY_ADDRESS (entry_offset, closptr);
+      entry_offset = ((SCHEME_OBJECT)
+		      (((long) closptr) - ((long) entry_offset)));
+      STORE_CLOSURE_ENTRY_ADDRESS (entry_offset, closptr);
+    }
+    closptr = &area_end[1];
+  }
+
+  MEMORY_SET (block, 1, (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, nmv_length)));
+  return (PRIM_DONE);
+}
 
 static Boolean linking_cc_block_p = false;
 
@@ -980,6 +1052,8 @@ DEFUN (abort_link_cc_block, (ap), PTR ap)
   linking_cc_block_p = (* ((Boolean *) (ap)));
   return;
 }
+
+/* Core of comutil_link and comp_link_caches_restart. */
 
 static long
 DEFUN (link_cc_block,
@@ -997,7 +1071,7 @@ DEFUN (link_cc_block,
   SCHEME_OBJECT block;
   SCHEME_OBJECT header;
   long result, kind, total_count;
-  long (*cache_handler)();
+  long EXFUN ((* cache_handler), (SCHEME_OBJECT, SCHEME_OBJECT, long));
 
   transaction_begin ();
   {
@@ -1006,7 +1080,7 @@ DEFUN (link_cc_block,
     transaction_record_action (tat_abort, abort_link_cc_block, ap);
   }
   linking_cc_block_p = true;
-
+
   result = PRIM_DONE;
   block = (MAKE_CC_BLOCK (block_address));
 
@@ -1032,6 +1106,10 @@ DEFUN (link_cc_block,
 	cache_handler = compiler_cache_global_operator;
 	goto handle_operator;
 
+      case ASSIGNMENT_LINKAGE_KIND:
+	cache_handler = compiler_cache_assignment;
+	goto handle_reference;
+
       case REFERENCE_LINKAGE_KIND:
 	cache_handler = compiler_cache_lookup;
       handle_reference:
@@ -1040,8 +1118,9 @@ DEFUN (link_cc_block,
 	count = (READ_CACHE_LINKAGE_COUNT (header));
 	break;
 
-      case ASSIGNMENT_LINKAGE_KIND:
-	cache_handler = compiler_cache_assignment;
+      case CLOSURE_PATTERN_LINKAGE_KIND:
+	cache_handler = compiler_link_closure_pattern;
+	/* Not really a reference, but the same format. */
 	goto handle_reference;
 
       default:
@@ -1072,14 +1151,14 @@ DEFUN (link_cc_block,
       (MAKE_LINKAGE_SECTION_HEADER (kind, total_count));
     for (offset += 1; ((--count) >= 0); offset += entry_size)
     {
-      SCHEME_OBJECT name;
+      SCHEME_OBJECT info;	/* A symbol or a fixnum */
 
-      if (!execute_p)
-	name = (block_address[offset]);
+      if (! execute_p)
+	info = (block_address[offset]);
       else
-	EXTRACT_EXECUTE_CACHE_SYMBOL(name, &(block_address[offset]));
+	EXTRACT_EXECUTE_CACHE_SYMBOL (info, &(block_address[offset]));
 
-      result = ((*cache_handler)(name, block, offset));
+      result = ((* cache_handler) (info, block, offset));
       if (result != PRIM_DONE)
       {
         /* Save enough state to continue.
@@ -2344,6 +2423,11 @@ DEFUN (compiled_closure_to_entry,
 #define CONTINUATION_DYNAMIC_LINK               1
 #define CONTINUATION_RETURN_TO_INTERPRETER      2
 
+/* Other subtypes */
+
+#define OTHER_CLOSURE				0
+#define OTHER_RANDOM				1
+
 C_UTILITY void
 DEFUN (compiled_entry_type,
        (entry, buffer),
@@ -2367,10 +2451,10 @@ DEFUN (compiled_entry_type,
 
     kind = KIND_CONTINUATION;
     field1 = CONTINUATION_NORMAL;
-    field2 = (((((unsigned long) max_arity) & 0x3f) << 7) |
-              (((unsigned long) min_arity) & 0x7f));
+    field2 = (((((unsigned long) max_arity) & 0x3f) << 7)
+	      | (((unsigned long) min_arity) & 0x7f));
   }
-  else if (min_arity != (-1))
+  else if (min_arity != -1)
     kind = KIND_ILLEGAL;
 
   else
@@ -2382,10 +2466,17 @@ DEFUN (compiled_entry_type,
         kind = KIND_EXPRESSION;
         break;
       }
+      case FORMAT_BYTE_CLOSURE:
+      {
+        kind = KIND_OTHER;
+	field1 = OTHER_CLOSURE;
+        break;
+      }
       case FORMAT_BYTE_COMPLR:
       case FORMAT_BYTE_CMPINT:
       {
         kind = KIND_OTHER;
+	field1 = OTHER_RANDOM;
         break;
       }
       case FORMAT_BYTE_DLINK:
@@ -2853,8 +2944,8 @@ DEFUN (bkpt_proceed, (ep, handle, state),
 
 SCHEME_UTILITY utility_result
 DEFUN (comutil_compiled_code_bkpt,
-       (entry_point_raw, dlink_raw, ignore_3, ignore_4),
-       SCHEME_ADDR entry_point_raw AND SCHEME_ADDR dlink_raw
+       (entry_point_raw, state_raw, ignore_3, ignore_4),
+       SCHEME_ADDR entry_point_raw AND SCHEME_ADDR state_raw
        AND long ignore_3 AND long ignore_4)
 {
   long type_info[3];
@@ -2876,11 +2967,16 @@ DEFUN (comutil_compiled_code_bkpt,
    */
 
   compiled_entry_type (entry_point, &type_info[0]);
-  if (type_info[0] != KIND_CONTINUATION)
+  if ((type_info[0] == KIND_OTHER) && (type_info[1] == OTHER_CLOSURE))
+  {
+    entry_point_a = ((instruction *) (SCHEME_ADDR_TO_ADDR (state_raw)));
+    state = (ENTRY_TO_OBJECT (entry_point_a));
+  }
+  else if (type_info[0] != KIND_CONTINUATION)
     state = SHARP_F;
   else if (type_info[1] == CONTINUATION_DYNAMIC_LINK)
     state = (MAKE_POINTER_OBJECT
-	     (TC_STACK_ENVIRONMENT, (SCHEME_ADDR_TO_ADDR (dlink_raw))));
+	     (TC_STACK_ENVIRONMENT, (SCHEME_ADDR_TO_ADDR (state_raw))));
   else
     state = Val;
 
