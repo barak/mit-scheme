@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.26 1992/03/25 21:58:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.27 1992/07/21 04:26:40 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -81,21 +81,22 @@ MIT in each case. |#
 		(CHARACTER ,unparse/character)
 		(COMPILED-ENTRY ,unparse/compiled-entry)
 		(COMPLEX ,unparse/number)
+		(CONSTANT ,unparse/constant)
 		(ENTITY ,unparse/entity)
 		(ENVIRONMENT ,unparse/environment)
 		(EXTENDED-PROCEDURE ,unparse/compound-procedure)
-		(FIXNUM ,unparse/number)
 		(FLONUM ,unparse/flonum)
 		(FUTURE ,unparse/future)
 		(INTERNED-SYMBOL ,unparse/interned-symbol)
 		(LIST ,unparse/pair)
+		(NEGATIVE-FIXNUM ,unparse/number)
 		(NULL ,unparse/null)
+		(POSITIVE-FIXNUM ,unparse/number)
 		(PRIMITIVE ,unparse/primitive-procedure)
 		(PROCEDURE ,unparse/compound-procedure)
 		(RATNUM ,unparse/number)
 		(RETURN-ADDRESS ,unparse/return-address)
 		(STRING ,unparse/string)
-		(TRUE ,unparse/true)
 		(UNINTERNED-SYMBOL ,unparse/uninterned-symbol)
 		(VARIABLE ,unparse/variable)
 		(VECTOR ,unparse/vector)
@@ -257,7 +258,8 @@ MIT in each case. |#
 	type-name)))
 
 (define renamed-user-object-types
-  '((FIXNUM . NUMBER)
+  '((NEGATIVE-FIXNUM . NUMBER)
+    (POSITIVE-FIXNUM . NUMBER)
     (BIGNUM . NUMBER)
     (FLONUM . NUMBER)
     (COMPLEX . NUMBER)
@@ -286,8 +288,10 @@ MIT in each case. |#
 	  (*unparse-string "#f")
 	  (unparse/default object))))
 
-(define (unparse/true object)
-  (cond ((eq? object #t) (*unparse-string "#t"))
+(define (unparse/constant object)
+  (cond ((not object) (*unparse-string "#f"))
+	((null? object) (*unparse-string "()"))
+	((eq? object #t) (*unparse-string "#t"))
 	((undefined-value? object) (*unparse-string "#[undefined-value]"))
 	((eq? object lambda-optional-tag) (*unparse-string "#!optional"))
 	((eq? object lambda-rest-tag) (*unparse-string "#!rest"))

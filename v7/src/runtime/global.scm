@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.37 1992/05/26 19:34:04 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.38 1992/07/21 04:24:07 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -264,18 +264,18 @@ MIT in each case. |#
 (define (undefined-value? object)
   ;; Note: the unparser takes advantage of the fact that objects
   ;; satisfying this predicate also satisfy:
-  ;; (object-type? (microcode-type 'TRUE) object)
+  ;; (object-type? (microcode-type 'CONSTANT) object)
   (or (eq? object undefined-conditional-branch)
       ;; same as `undefined-conditional-branch'.
       ;; (eq? object *the-non-printing-object*)
       ;; (eq? object unspecific)
       (eq? object (microcode-object/unassigned))))
 
-(define *the-non-printing-object*
-  (object-new-type (ucode-type true) 1))
-
 (define unspecific
-  (object-new-type (ucode-type true) 1))
+  (object-new-type (microcode-type 'CONSTANT) 1))
+
+(define *the-non-printing-object*
+  unspecific)
 
 (define (obarray->list #!optional obarray)
   (let ((table (if (default-object? obarray)

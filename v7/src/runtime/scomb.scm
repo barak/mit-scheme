@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.10 1991/02/15 18:07:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.11 1992/07/21 04:25:13 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -197,7 +197,7 @@ MIT in each case. |#
   (object-type? (ucode-type conditional) object))
 
 (define undefined-conditional-branch
-  (object-new-type (ucode-type true) 1))
+  (object-new-type (microcode-type 'CONSTANT) 1))
 
 (define-integrable (conditional-predicate conditional)
   (&triple-first conditional))

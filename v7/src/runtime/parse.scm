@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.17 1991/11/26 07:06:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.18 1992/07/21 04:24:43 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -57,8 +57,8 @@ MIT in each case. |#
 			     (char-set #\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9
 				       #\+ #\- #\. #\#)))
 
-  (set! lambda-optional-tag (object-new-type (ucode-type true) 3))
-  (set! lambda-rest-tag (object-new-type (ucode-type true) 4))
+  (set! lambda-optional-tag (object-new-type (microcode-type 'CONSTANT) 3))
+  (set! lambda-rest-tag (object-new-type (microcode-type 'CONSTANT) 4))
   (set! dot-symbol (intern "."))
   (set! named-objects
 	`((NULL . ,(list))
@@ -319,7 +319,7 @@ MIT in each case. |#
 
 (define (collect-list/list-close)
   (discard-char)
-  '())
+  (list))
 
 (define ignore-extra-list-closes
   true)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.25 1991/10/29 13:31:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.26 1992/07/21 04:25:47 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -237,7 +237,7 @@ MIT in each case. |#
   (ic-environment/set-parent! environment null-environment))
 
 (define null-environment
-  (object-new-type (ucode-type null) 1))
+  (object-new-type (microcode-type 'NULL) 1))
 
 (define (make-null-interpreter-environment)
   (let ((environment (let () (the-environment))))
