@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insmac.scm,v 1.2 1992/02/09 00:36:45 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insmac.scm,v 1.3 1992/02/13 02:54:37 jinx Exp $
 $Vax-Header: insmac.scm,v 1.12 89/05/17 20:29:15 GMT jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -49,39 +49,32 @@ MIT in each case. |#
 			  (lambda (pattern actions)
 			    (let ((keyword (car pattern))
 				  (categories (car actions))
-				  (value (cdr actions)))
+				  (mode (cadr actions))
+				  (register (caddr actions))
+				  (extension (cdddr actions)))
 			      (declare (integrate keyword value))
 			      `(MAKE-EFFECTIVE-ADDRESS
 				',keyword
 				',categories
+ 				,(integer-syntaxer mode 'UNSIGNED 2)
+				,(integer-syntaxer register 'UNSIGNED 3)
 				,(process-fields value false))))))))
-
-(syntax-table-define assembler-syntax-table 'DEFINE-SYMBOL-TRANSFORMER
-  (macro (name . alist)
-    `(begin
-       (declare (integrate-operator ,name))
-       (define (,name symbol)
-	 (declare (integrate symbol))
-	 (let ((place (assq symbol ',alist)))
-	   (if (null? place)
-	       #F
-	       (cdr place)))))))
 
 ;; This one is necessary to distinguish between r/mW mW, etc.
 
 (syntax-table-define assembler-syntax-table 'DEFINE-EA-TRANSFORMER
-  (macro (name category type)
-    `(define (,name expression)
-       (let ((ea (process-ea expression ',type)))
-	 (and ea
-	      (memq ',category (ea-categories ea))
-	      ea)))))
-
-;; **** Are these useful/necessary? ****
-
-(syntax-table-define assembler-syntax-table 'DEFINE-TRANSFORMER
-  (macro (name value)
-    `(define ,name ,value)))
+  (macro (name #!optional restriction)
+    (if (default-object? restriction)
+	`(define (,name expression)
+	   (let ((match-result (pattern-lookup ,ea-database-name expression)))
+	     (and match-result
+		  (match-result))))
+	`(define (,name expression)
+	   (let ((match-result (pattern-lookup ,ea-database-name expression)))
+	     (and match-result
+		  (let ((ea (match-result)))
+		    (and (memq ',restriction (ea/categories ea))
+			 ea))))))))
 
 (define (parse-instruction opcode tail early?)
   (process-fields (cons opcode tail) early?))
@@ -149,19 +142,18 @@ MIT in each case. |#
 	   ((ModR/M)
 	    ;; (ModR/M 2 source)	= /2 r/m(source)
 	    ;; (ModR/M r target)	= /r r/m(target)
-	    (receiver
-	     `(APPEND-SYNTAX!
-	       ,(let ((field (car fields)))
+	    (if early?
+		(error "No early support for ModR/M -- Fix i386/insmac.scm")
+		(let ((field (car fields)))
 		  (let ((digit-or-reg (cadr field))
-			(r/m (caddr field))
-			(size (if (null? (cdddr field))
-				      `*ADDRESS-SIZE*
-				      (cadddr field))))
-		    (if early?
-		      `(EA-VALUE-EARLY ,digit-or-reg ,r/m ,size)
-		      `(EA-VALUE ,digit-or-reg ,r/m ,size))))
-	       ,tail)
-	     tail-size))
+			(r/m (caddr field)))
+		    (collect-byte `((2 (EA/MODE ,r/m))
+				    (3 ,digit-or-reg)
+				    (3 (EA/REGISTER ,r/m)))
+				  `(APPEND-SYNTAX! (EA/EXTRA ,r/m) ,tail)
+				  (lambda (code byte-size)
+				    (receiver code
+					      (+ byte-size tail-size))))))))
 	   ;; For immediate operands whose size depends on the operand
 	   ;; size for the instruction (halfword vs. longword)
 	   ((IMMEDIATE)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insutl.scm,v 1.4 1992/02/11 17:31:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insutl.scm,v 1.5 1992/02/13 02:54:53 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -167,9 +167,9 @@ MIT in each case. |#
    (IMMEDIATE value ADDRESS)))
 
 (define-ea-transformer r/mW)
-(define-ea-transformer mW (MEMORY))
+(define-ea-transformer mW MEMORY)
 (define-ea-transformer r/mB)
-(define-ea-transformer mB (MEMORY))
+(define-ea-transformer mB MEMORY)
 
 (define-structure (effective-address
 		   (conc-name ea/)
