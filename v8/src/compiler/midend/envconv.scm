@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: envconv.scm,v 1.13 1995/07/06 19:54:08 adams Exp $
+$Id: envconv.scm,v 1.14 1995/07/11 21:42:10 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -366,9 +366,12 @@ MIT in each case. |#
   (envconv/expr env expr))
 
 (define (envconv/expr* env exprs)
-  (map (lambda (expr)
-	 (envconv/expr env expr))
-       exprs))
+  ;; Go left to right to ensure recursive compilations occur in `source'
+  ;; order.  Dont use MAP which may go in either order.
+  (let loop ((exprs exprs) (fin '()))
+    (if (null? exprs)
+	(reverse! fin)
+	(loop (cdr exprs) (cons (envconv/expr env (car exprs)) fin)))))
 
 (define (envconv/remember new old block)
   (call-with-values
