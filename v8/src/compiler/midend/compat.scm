@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compat.scm,v 1.3 1994/11/22 19:48:54 gjr Exp $
+$Id: compat.scm,v 1.4 1994/11/26 00:24:08 jmiller Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -676,7 +676,7 @@ MIT in each case. |#
     (define-rewrite/compat rator
       (lambda (env rator cont rands)
 	rator				; ignored
-	(let ((desc (list name arity)))
+	(let ((desc (list name (or arity (length rands)))))
 	  ;; This way ensures it works with very small numbers of
 	  ;; argument registers:
 	  (compat/rewrite-call env
