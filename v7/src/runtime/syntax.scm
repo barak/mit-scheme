@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.27 1995/07/06 22:07:23 cph Exp $
+$Id: syntax.scm,v 14.28 1997/12/02 05:53:21 adams Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -728,7 +728,9 @@ MIT in each case. |#
 	      (cdr parameters)))
 	    ((null? parameters))
 	  (if (memq (car parameters) (cdr parameters))
-	      (syntax-error "lambda list has duplicate parameters"
+	      (syntax-error "lambda list has duplicate parameter:"
+			    (car parameters)
+			    (error-irritant/noise " in")
 			    lambda-list)))
 	(receiver required optional rest)))
 

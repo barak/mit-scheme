@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lambda.scm,v 14.12 1994/02/18 22:33:05 gjr Exp $
+$Id: lambda.scm,v 14.13 1997/12/02 05:52:52 adams Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988-1997 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -375,12 +375,30 @@ MIT in each case. |#
       (xlambda? object)))
 
 (define (make-lambda name required optional rest auxiliary declarations body)
-  (if (list-has-duplicates? (append required
-				    optional
-				    (if rest (list rest) '())
-				    auxiliary))
-      (error "one or more duplicate parameters"
-	     required optional rest auxiliary))
+
+  (let ((interface (append required optional (if rest (list rest) '()))))
+    (let ((dup-interface (find-list-duplicates interface))
+	  (dup-auxiliary (find-list-duplicates auxiliary)))
+      (cond ((not (null? dup-interface))
+	     ;; Syntax.scm gets this case in usual usage
+	     (error "duplicate parameters" dup-interface
+		    (error-irritant/noise " in") interface))
+	    ((not (null? dup-auxiliary))
+	     (error "duplicate internal definitions for" dup-auxiliary
+		    (error-irritant/noise " in")
+		    name))
+	    (else
+	     (let ((dup (find-list-duplicates (append interface auxiliary))))
+	       (if (not (null? dup))
+		   (error "duplicate parameters" dup
+			  (error-irritant/noise " in")
+			  (append required
+				  (if (pair? optional) '(#!optional) '()) 
+				  optional
+				  (if rest `(#!rest ,rest) '())
+				  (if (pair? auxiliary) `(#!aux) '())
+				  auxiliary))))))))
+
   (let ((body* (if (null? declarations)
 		   body
 		   (make-sequence (list (make-block-declaration declarations)
@@ -410,11 +428,15 @@ MIT in each case. |#
 		      (make-sequence (cdr actions)))
 	    (receiver name required optional rest auxiliary '() body))))))
 
-(define (list-has-duplicates? items)
-  (and (not (null? items))
-       (if (memq (car items) (cdr items))
-	   true
-	   (list-has-duplicates? (cdr items)))))
+(define (find-list-duplicates items)
+  (let loop ((items items) (duplicates '()))
+    (cond ((null? items) (reverse! duplicates))
+	  ((memq (car items) (cdr items))
+	   (if (memq (car items) duplicates)
+	       (loop (cdr items) duplicates)
+	       (loop (cdr items) (cons (car items) duplicates))))
+	  (else
+	   (loop (cdr items) duplicates)))))
 
 (define ((dispatch-0 op-name clambda-op clexpr-op xlambda-op) *lambda)
   ((cond ((slambda? *lambda) clambda-op)
