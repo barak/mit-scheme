@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.28 1991/07/16 00:03:00 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.29 1991/08/06 22:10:41 arthur Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -597,6 +597,13 @@ MIT in each case. |#
 		 (wrap false))
 		((positive? reduction-number)
 		 (move-to-reduction! dstate (-1+ reduction-number)))
+		((special-history-subproblem? dstate)
+		 ;; Reset state
+		 (set-current-subproblem! dstate
+					  (dstate/subproblem dstate)
+					  (dstate/previous-subproblems dstate))
+		 (set-dstate/reduction-number! dstate false)
+		 (command/print-subproblem dstate))
 		(debugger:student-walk?
 		 (down))
 		(else
@@ -768,15 +775,17 @@ MIT in each case. |#
   (if (eq? 'ENABLED (dstate/history-state dstate))
       (begin
 	(set-dstate/history-state! dstate 'NOW)
-	(debugger-message
-	 "Now using information from the execution history."))))
+	(if (not (zero? (dstate/number-of-reductions dstate)))
+	    (debugger-message
+	     "Now using information from the execution history.")))))
 
 (define (maybe-stop-using-history! dstate)
   (if (eq? 'NOW (dstate/history-state dstate))
       (begin
 	(set-dstate/history-state! dstate 'ENABLED)
-	(debugger-message
-	 "Now ignoring information from the execution history."))))
+	(if (not (zero? (dstate/number-of-reductions dstate)))
+	    (debugger-message
+	     "Now ignoring information from the execution history.")))))
 
 (define (dstate/using-history? dstate)
   (or (eq? 'ALWAYS (dstate/history-state dstate))
@@ -804,7 +813,8 @@ MIT in each case. |#
 
 (define (finish-move-to-subproblem! dstate)
   (if (and (dstate/using-history? dstate)
-	   (positive? (dstate/number-of-reductions dstate)))
+	   (positive? (dstate/number-of-reductions dstate))
+	   (not (special-history-subproblem? dstate)))
       (move-to-reduction! dstate 0)
       (begin
 	(set-dstate/reduction-number! dstate false)
@@ -816,6 +826,10 @@ MIT in each case. |#
    dstate
    (list (reduction-environment (dstate/reduction dstate))))
   (command/print-reduction dstate))
+
+(define (special-history-subproblem? dstate)
+  (eq? (stack-frame/type (dstate/subproblem dstate))
+       stack-frame-type/compiled-return-address))
 
 ;;;; Utilities
 
