@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxyp.c,v 1.1 1993/08/24 18:16:50 bal Exp $
+$Id: uxyp.c,v 1.2 1993/08/24 18:23:30 bal Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -40,7 +40,7 @@ MIT in each case. */
 #include <malloc.h>
 #include <ntl.h>
 #include <rpc/rpc.h>
-#include "yp.h"
+#include "uxyp.h"
 
 #define YP_HOST "polar.lcs.mit.edu"
 
