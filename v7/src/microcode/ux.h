@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.69 1998/07/20 04:17:58 cph Exp $
+$Id: ux.h,v 1.70 1998/07/20 04:51:25 cph Exp $
 
 Copyright (c) 1988-98 Massachusetts Institute of Technology
 
@@ -107,6 +107,10 @@ extern int EXFUN (kill, (pid_t, int));
 #  define EMULATE_SYSCONF
 #  define NO_BAUD_CONVERSION
 #  define SYSTEM_VARIANT "BSDI BSD/OS"
+#endif
+
+#ifdef _IRIX6
+#define NO_BAUD_CONVERSION
 #endif
 
 /* no longer needed */
