@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: method.scm,v 1.6 1997/06/19 21:35:04 cph Exp $
+;;; $Id: method.scm,v 1.7 1997/06/19 21:45:12 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -308,7 +308,7 @@
 	(else
 	 (error:wrong-type-argument s "specializer" 'SPECIALIZER-CLASSES))))
 
-(define-structure union-specializer
+(define-structure (union-specializer (type-descriptor union-specializer-rtd))
   (classes #f read-only #t))
 
 (define (union-specializer . specializers)
