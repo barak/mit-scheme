@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.30 1987/11/23 05:11:58 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.31 1988/01/04 18:55:54 cph Rel $
  *
  * This File contains the code to translate portable format binary
  * files to internal format.
@@ -43,6 +43,10 @@ MIT in each case. */
 #define Internal_File Output_File
 
 #include "psbmap.h"
+
+static Boolean
+  allow_compiled_p = false,
+  allow_nmv_p = false;
 
 static long
   Dumped_Object_Addr,
@@ -846,7 +850,9 @@ Read_Header_and_Allocate()
   READ_HEADER("Flags", "%ld", Flags);
   READ_FLAGS(Flags);
 
-  if ((compiled_p || nmv_p) && (Machine != FASL_INTERNAL_FORMAT))
+  if (((compiled_p && (! allow_compiled_p)) ||
+       (nmv_p && (! allow_nmv_p))) &&
+      (Machine != FASL_INTERNAL_FORMAT))
   {
     if (compiled_p)
     {
@@ -925,6 +931,7 @@ do_it()
   Boolean result;
   long Size;
 
+  allow_nmv_p = (allow_nmv_p || allow_compiled_p);
   Size = Read_Header_and_Allocate();
 
   Stack_Top = &Heap[Size];
@@ -1074,12 +1081,11 @@ do_it()
 
 /* Top level */
 
-/* C does not usually like empty initialized arrays, so ... */
-
 static struct Option_Struct Options[] =
-  {{"dummy", true, NULL}};
+    {{"Allow_Compiled", true, &allow_compiled_p},
+     {"Allow_NMVs", true, &allow_nmv_p}};
 
-static int Noptions = 0;
+static int Noptions = 2;
 
 main(argc, argv)
      int argc;
