@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 14.2 1988/06/16 06:39:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 14.3 1988/06/30 22:22:23 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -46,8 +46,8 @@ MIT in each case. |#
 		    (name version modification files-lists))
 		   (conc-name system/))
   (name false read-only true)
-  (version false read-only true)
-  (modification false read-only true)
+  (version false)
+  (modification false)
   (files-lists false read-only true)
   (files false))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.8 1988/06/22 21:34:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.9 1988/06/30 22:22:42 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -1512,6 +1512,8 @@ MIT in each case. |#
 	  for-each-system!
 	  load-system!
 	  make-system
+	  set-system/modification!
+	  set-system/version!
 	  system/identification-string
 	  system/modification
 	  system/name
