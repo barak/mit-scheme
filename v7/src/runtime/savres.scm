@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.13 1990/07/30 03:47:46 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.14 1990/08/16 08:41:51 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -124,12 +124,14 @@ MIT in each case. |#
   ;; Force order of events -- no need to run event:before-exit if
   ;; there's an error here.
   (let ((filename
-	 (if (default-object? filename)
-	     (or ((ucode-primitive reload-band-name))
-		 (error "DISK-RESTORE: No default band name available"))
-	     filename)))
+	 (canonicalize-input-filename
+	  (if (default-object? filename)
+	      (or ((ucode-primitive reload-band-name))
+		  (error "DISK-RESTORE: No default band name available"))
+	      filename))))
     (event-distributor/invoke! event:before-exit)
-    ((ucode-primitive load-band) (canonicalize-input-filename filename))))
+    ((ucode-primitive load-band) filename)))
+
 (define world-identification "Scheme")
 (define time-world-saved)
 
