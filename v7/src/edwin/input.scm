@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: input.scm,v 1.95 1993/08/01 05:06:16 cph Exp $
+;;;	$Id: input.scm,v 1.96 1993/08/01 06:44:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -194,8 +194,15 @@ B 3BAB8C
 	       ((ref-command end-kbd-macro) 1)))
 	key)))
 
-(define (keyboard-read-1 reader)
-  (handle-simple-events (lambda () (keyboard-read-2 reader))))
+(define (keyboard-read-char)
+  (let loop ()
+    (let ((key (keyboard-read)))
+      (if (char? key)
+	  key
+	  (begin
+	    (if (input-event? key)
+		(apply-input-event key))
+	    (loop))))))
 
 (define (keyboard-peek-no-hang)
   (handle-simple-events (editor-peek-no-hang current-editor)))
@@ -215,21 +222,11 @@ B 3BAB8C
 	    (apply-input-event input)
 	    (loop))
 	  input))))
-
-(define (keyboard-read-char)
-  (let loop ()
-    (let ((key (keyboard-read)))
-      (if (char? key)
-	  key
-	  (begin
-	    (if (input-event? key)
-		(apply-input-event key))
-	    (loop))))))
 
 (define read-key-timeout/fast 500)
 (define read-key-timeout/slow 2000)
 
-(define (keyboard-read-2 reader)
+(define (keyboard-read-1 reader)
   (remap-alias-key
    (let ((peek-no-hang (editor-peek-no-hang current-editor)))
      (if (not (peek-no-hang))
@@ -269,4 +266,4 @@ B 3BAB8C
 		    (set! command-prompt-displayed? true)
 		    (set-current-message! command-prompt-string))
 		  (clear-current-message!)))))
-     (reader))))
+     (handle-simple-events reader))))
