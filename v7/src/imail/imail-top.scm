@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.144 2000/06/08 20:48:40 cph Exp $
+;;; $Id: imail-top.scm,v 1.145 2000/06/08 21:07:28 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1809,9 +1809,7 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 	 (with-buffer-point-preserved mail-buffer
 	   (lambda ()
 	     (insert-string (message-body message) (buffer-end mail-buffer))))
-	 (if (window-has-no-neighbors? (current-window))
-	     (select-buffer mail-buffer)
-	     (select-buffer-other-window mail-buffer))
+	 (with-selected-buffer mail-buffer (ref-command mail-send))
 	 (message-resent message))))))
 
 (define-command imail-reply
