@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.183 1999/08/09 18:22:24 cph Exp $
+;;; $Id: prompt.scm,v 1.184 1999/08/10 16:53:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -941,41 +941,59 @@ Whilst editing the command, the following commands are available:
 			 'HISTORY 'REPEAT-COMPLEX-COMMAND
 			 'HISTORY-INDEX (- argument 1))))))
 
-;;; Password Prompts
+;;;; Pass-phrase Prompts
 
-;;; These procedures are used by the encrypt/decrypt-file routines 
-;;; in unix.scm which deal with .KY files.
+;;; Hair to make sure pass phrases aren't left around in memory.
 
-(define (prompt-for-password prompt)
-  (prompt-for-typein (if (string-suffix? " " prompt)
-			 prompt
-			 (string-append prompt ": "))
-		     #f
-    (lambda ()
-      (let loop ((ts ""))
-	(let ((input (keyboard-read #t)))
-	  (cond ((input-event? input)
-		 (abort-typein-edit input))
-		((not (and (char? input) (char-ascii? input)))
-		 (loop ts))
-		((char=? input #\Return)
-		 ts)
-		((char=? input #\Rubout)
-		 (let ((ts-len (string-length ts)))
-		   (if (> ts-len 0)
-		       (let ((new-string (string-head ts (-1+ ts-len))))
-			 (set-typein-string!
-			  (make-string (string-length new-string) #\.) #t)
-			 (loop new-string))
-		       (loop ts))))
-		(else
-		 (set-typein-string! (make-string (1+ (string-length ts)) #\.)
-				     #t)
-		 (loop (string-append ts (char->string input))))))))))
+(define (call-with-pass-phrase prompt receiver)
+  (let ((phrase)
+	(phrase*))
+    (dynamic-wind
+     (lambda ()
+       (set! phrase "")
+       (set! phrase* #f)
+       unspecific)
+     (lambda ()
+       (prompt-for-typein (if (string-suffix? " " prompt)
+			      prompt
+			      (string-append prompt ": "))
+			  #f
+	 (lambda ()
+	   (let loop ()
+	     (set-typein-string! (make-string (string-length phrase) #\.) #t)
+	     (let ((input (keyboard-read #t)))
+	       (cond ((input-event? input)
+		      (abort-typein-edit input))
+		     ((eqv? input #\return)
+		      (receiver phrase))
+		     (else
+		      (cond ((eqv? input #\rubout)
+			     (let ((length (string-length phrase)))
+			       (if (fix:> length 0)
+				   (let ((length (fix:- length 1)))
+				     (set! phrase* phrase)
+				     (set! phrase (string-head phrase length))
+				     (string-fill! phrase* #\NUL)
+				     (set! phrase* #f)))))
+			    ((and (char? input) (char-ascii? input))
+			     (set! phrase* phrase)
+			     (set! phrase
+				   (string-append phrase (string input)))
+			     (string-fill! phrase* #\NUL)
+			     (set! phrase* #f)))
+		      (loop))))))))
+     (lambda ()
+       (string-fill! phrase #\NUL)
+       (set! phrase)
+       (if phrase* (string-fill! phrase* #\NUL))
+       (set! phrase*)
+       unspecific))))
 
-(define (prompt-for-confirmed-password)
-  (let ((password1 (prompt-for-password "Pass phrase")))
-    (let ((password2 (prompt-for-password "Verify")))
-      (if (not (string=? password1 password2))
-	  (editor-error "Passwords do not match!"))
-      password1)))
+(define (call-with-confirmed-pass-phrase receiver)
+  (call-with-pass-phrase "Pass phrase"
+    (lambda (p1)
+      (call-with-pass-phrase "Verify pass phrase"
+	(lambda (p2)
+	  (if (not (string=? p1 p2))
+	      (editor-error "Pass phrases do not match."))))
+      (receiver p1))))
