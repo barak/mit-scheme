@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.h,v 1.8 1997/10/22 05:23:25 cph Exp $
+$Id: ntio.h,v 1.9 1997/10/24 07:25:01 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -34,37 +34,67 @@ MIT in each case. */
 
 #ifndef SCM_NTIO_H
 #define SCM_NTIO_H
-
+
 #include "osio.h"
+
+typedef long channel_op_read (Tchannel, void *, unsigned long);
+typedef long channel_op_write (Tchannel, const void *, unsigned long);
+typedef void channel_op_close (Tchannel, int);
+typedef long channel_op_n_read (Tchannel);
+
+typedef struct _channel_class_t
+{
+  enum channel_type type;
+  channel_op_read * op_read;
+  channel_op_write * op_write;
+  channel_op_close * op_close;
+  channel_op_n_read * op_n_read;
+} channel_class_t;
+
+#define CHANNEL_CLASS_TYPE(class) ((class) -> type)
+#define CHANNEL_CLASS_OP_READ(class) ((class) -> op_read)
+#define CHANNEL_CLASS_OP_WRITE(class) ((class) -> op_write)
+#define CHANNEL_CLASS_OP_CLOSE(class) ((class) -> op_close)
+#define CHANNEL_CLASS_OP_N_READ(class) ((class) -> op_n_read)
 
 struct channel
 {
-  HANDLE   handle;
-  enum channel_type type;
+  channel_class_t * class;
+  HANDLE handle;
   unsigned int internal : 1;
   unsigned int nonblocking : 1;
   unsigned int buffered : 1;
   unsigned int cooked : 1;
 };
 
-#define MARK_CHANNEL_CLOSED(chan) ((CHANNEL_HANDLE (chan)) =  (HANDLE)(-1))
-#define CHANNEL_CLOSED_P(chan)    ((CHANNEL_HANDLE (chan)) == (HANDLE)(-1))
-#define CHANNEL_OPEN_P(chan)      ((CHANNEL_HANDLE (chan)) != (HANDLE)(-1))
-#define CHANNEL_HANDLE(channel) ((channel_table [channel]) . handle)
-#define CHANNEL_TYPE(channel) ((channel_table [(channel)]) . type)
-#define CHANNEL_INTERNAL(channel) ((channel_table [(channel)]) . internal)
-#define CHANNEL_NONBLOCKING(channel)					\
-  ((channel_table [(channel)]) . nonblocking)
-#define CHANNEL_BLOCKING_P(channel)					\
-  (!CHANNEL_NONBLOCKING(channel))
-#define CHANNEL_BUFFERED(channel) ((channel_table [(channel)]) . buffered)
-#define CHANNEL_COOKED(channel) ((channel_table [(channel)]) . cooked)
+#define CHANNEL_CLASS(c) ((NT_channel_table[c]) . class)
+#define CHANNEL_HANDLE(c) ((NT_channel_table[c]) . handle)
+#define CHANNEL_INTERNAL(c) ((NT_channel_table[c]) . internal)
+#define CHANNEL_NONBLOCKING(c) ((NT_channel_table[c]) . nonblocking)
+#define CHANNEL_BUFFERED(c) ((NT_channel_table[c]) . buffered)
+#define CHANNEL_COOKED(c) ((NT_channel_table[c]) . cooked)
 
-extern struct channel * channel_table;
-extern Tchannel NT_make_channel (HANDLE, enum channel_type);
-extern void NT_initialize_channel (Tchannel, HANDLE, enum channel_type);
+#define CHANNEL_TYPE(channel) (CHANNEL_CLASS_TYPE (CHANNEL_CLASS (channel)))
+#define MARK_CHANNEL_CLOSED(channel)					\
+  ((CHANNEL_HANDLE (channel)) = INVALID_HANDLE_VALUE)
+#define CHANNEL_CLOSED_P(channel)					\
+  ((CHANNEL_HANDLE (channel)) == INVALID_HANDLE_VALUE)
+#define CHANNEL_OPEN_P(channel)						\
+  ((CHANNEL_HANDLE (channel)) != INVALID_HANDLE_VALUE)
+#define CHANNEL_BLOCKING_P(channel) (!CHANNEL_NONBLOCKING (channel))
+
+extern channel_class_t * NT_channel_class_generic;
+extern channel_class_t * NT_channel_class_file;
+extern channel_class_t * NT_channel_class_screen;
+extern channel_class_t * NT_channel_class_console;
+extern channel_class_t * NT_channel_class_pipe;
+extern struct channel * NT_channel_table;
+
+extern Tchannel NT_make_channel (HANDLE, channel_class_t *);
+extern channel_class_t * NT_handle_channel_class (HANDLE);
+extern Tchannel NT_open_handle (HANDLE);
 extern void NT_handle_close_on_abort (HANDLE);
-extern long NT_pipe_channel_available (Tchannel);
+extern long NT_channel_n_read (Tchannel);
 
 #define BACKSPACE		'\b'
 #define SPACE			' '

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: nttty.c,v 1.6 1996/10/02 18:58:24 cph Exp $
+$Id: nttty.c,v 1.7 1997/10/24 07:25:05 cph Exp $
 
-Copyright (c) 1992-96 Massachusetts Institute of Technology
+Copyright (c) 1992-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -53,65 +53,50 @@ static char * tty_command_beep;
 static char * tty_command_clear;
 
 Tchannel
-DEFUN_VOID (OS_tty_input_channel)
+OS_tty_input_channel (void)
 {
   return (input_channel);
 }
 
 Tchannel
-DEFUN_VOID (OS_tty_output_channel)
+OS_tty_output_channel (void)
 {
   return (output_channel);
 }
 
 unsigned int
-DEFUN_VOID (OS_tty_x_size)
+OS_tty_x_size (void)
 {
-  Screen_GetSize (master_tty_window, &tty_y_size, &tty_x_size);
+  Screen_GetSize (master_tty_window, (&tty_y_size), (&tty_x_size));
   return (tty_x_size);
 }
 
 unsigned int
-DEFUN_VOID (OS_tty_y_size)
+OS_tty_y_size (void)
 {
-  Screen_GetSize (master_tty_window, &tty_y_size, &tty_x_size);
+  Screen_GetSize (master_tty_window, (&tty_y_size), (&tty_x_size));
   return (tty_y_size);
 }
 
 CONST char *
-DEFUN_VOID (OS_tty_command_beep)
+OS_tty_command_beep (void)
 {
   return (tty_command_beep);
 }
 
 CONST char *
-DEFUN_VOID (OS_tty_command_clear)
+OS_tty_command_clear (void)
 {
   return (tty_command_clear);
 }
-
-#ifndef TERMCAP_BUFFER_SIZE
-#define TERMCAP_BUFFER_SIZE 0
-#endif
-
-#ifndef DEFAULT_TTY_X_SIZE
-#define DEFAULT_TTY_X_SIZE 80
-#endif
-
-#ifndef DEFAULT_TTY_Y_SIZE
-#define DEFAULT_TTY_Y_SIZE 25
-#endif
 
 void
-DEFUN_VOID (NT_initialize_tty)
+NT_initialize_tty (void)
 {
-  extern Tchannel EXFUN (OS_open_handle, (int fd));
-  input_channel  = (OS_open_handle ((int) master_tty_window));
+  input_channel = (NT_open_handle (master_tty_window));
   (CHANNEL_INTERNAL (input_channel)) = 1;
   output_channel = input_channel;
-  (CHANNEL_INTERNAL (output_channel)) = 1;
-  Screen_GetSize (master_tty_window, &tty_y_size, &tty_x_size);
-
+  Screen_GetSize (master_tty_window, (&tty_y_size), (&tty_x_size));
   tty_command_beep = ALERT_STRING;
   tty_command_clear = "\014";
 }

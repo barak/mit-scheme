@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntio.c,v 1.7 1997/10/22 05:27:26 cph Exp $
+$Id: prntio.c,v 1.8 1997/10/24 07:24:34 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -172,16 +172,18 @@ wait_for_multiple_objects_1 (unsigned long n_channels, Tchannel * channels,
 	unsigned int index;
 	for (index = 0; (index < n_channels); index += 1)
 	  if ((index != console_index)
-	      && (((CHANNEL_TYPE (channels[index])) != channel_type_win32_pipe)
-		  || ((NT_pipe_channel_available (channels[index])) != 0)))
+	      && ((NT_channel_n_read (channels[index])) != (-1)))
 	    return (index);
       }
       if (OS_process_any_status_change ())
 	return (-3);
       if (!blockp)
 	return (-1);
+      /* Block waiting for a message to arrive.  The asynchronous
+	 interrupt thread guarantees that a message will arrive in a
+	 reasonable amount of time.  */
       if ((MsgWaitForMultipleObjects (0, 0, FALSE, INFINITE, QS_ALLINPUT))
-	  != WAIT_OBJECT_0)
+	  == WAIT_FAILED)
 	NT_error_api_call
 	  ((GetLastError ()), apicall_MsgWaitForMultipleObjects);
     }

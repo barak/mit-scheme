@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.17 1997/10/22 05:23:18 cph Exp $
+$Id: ntio.c,v 1.18 1997/10/24 07:24:56 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -43,69 +43,126 @@ MIT in each case. */
 
 #include "ntscreen.h"
 
-#ifndef fileno
-#define fileno(fp)	((fp)->_file)
-#endif
+channel_class_t * NT_channel_class_generic;
+channel_class_t * NT_channel_class_file;
+channel_class_t * NT_channel_class_screen;
+channel_class_t * NT_channel_class_pipe;
 
 static Tchannel channel_allocate (void);
+static long cooked_channel_write (Tchannel, const void *, unsigned long) ;
 
 #ifndef NT_DEFAULT_CHANNEL_TABLE_SIZE
 #define NT_DEFAULT_CHANNEL_TABLE_SIZE 1024
 #endif
 
 size_t OS_channel_table_size;
-struct channel * channel_table;
-
-#ifndef GUI
-  HANDLE STDIN_HANDLE,  STDOUT_HANDLE,  STDERR_HANDLE;
-#endif
+struct channel * NT_channel_table;
 
 Tchannel
-NT_make_channel (HANDLE handle, enum channel_type type)
+NT_make_channel (HANDLE handle, channel_class_t * class)
 {
   Tchannel channel;
   transaction_begin ();
   NT_handle_close_on_abort (handle);
   channel = (channel_allocate ());
-  NT_initialize_channel (channel, handle, type);
-  transaction_commit ();
-  return (channel);
-}
-
-void
-NT_initialize_channel (Tchannel channel, HANDLE handle, enum channel_type type)
-{
+  (CHANNEL_CLASS (channel)) = class;
   (CHANNEL_HANDLE (channel)) = handle;
-  (CHANNEL_TYPE (channel)) = type;
   (CHANNEL_INTERNAL (channel)) = 0;
   (CHANNEL_NONBLOCKING (channel)) = 0;
   (CHANNEL_BUFFERED (channel)) = 1;
   (CHANNEL_COOKED (channel)) = 0;
+  transaction_commit ();
+  return (channel);
 }
 
+channel_class_t *
+NT_handle_channel_class (HANDLE handle)
+{
+  if (Screen_IsScreenHandle (handle))
+    return (NT_channel_class_screen);
+  switch (GetFileType (handle))
+    {
+    case FILE_TYPE_DISK: return (NT_channel_class_file);
+    case FILE_TYPE_PIPE: return (NT_channel_class_pipe);
+    case FILE_TYPE_CHAR: return (NT_channel_class_generic);
+    default: return (NT_channel_class_generic);
+    }
+}
+
+Tchannel
+NT_open_handle (HANDLE handle)
+{
+  Tchannel channel
+    = (NT_make_channel (handle, (NT_handle_channel_class (handle))));
+  /* Like Unix, all terminals initialize to cooked mode.  */
+  if ((CHANNEL_TYPE (channel)) == channel_type_terminal)
+    (CHANNEL_COOKED (channel)) = 1;
+  return (channel);
+}
+
+long
+OS_channel_read (Tchannel channel, void * buffer, size_t n_bytes)
+{
+  return
+    ((n_bytes == 0)
+     ? 0
+     : ((* (CHANNEL_CLASS_OP_READ (CHANNEL_CLASS (channel))))
+	(channel, buffer, n_bytes)));
+}
+
+long
+OS_channel_write (Tchannel channel, const void * buffer, size_t n_bytes)
+{
+  return
+    ((n_bytes == 0)
+     ? 0
+     : (CHANNEL_COOKED (channel))
+     ? (cooked_channel_write (channel, buffer, n_bytes))
+     : ((* (CHANNEL_CLASS_OP_WRITE (CHANNEL_CLASS (channel))))
+	(channel, buffer, n_bytes)));
+}
+
+void
+OS_channel_close (Tchannel channel)
+{
+  if (! ((CHANNEL_CLOSED_P (channel)) || (CHANNEL_INTERNAL (channel))))
+    {
+      (* (CHANNEL_CLASS_OP_CLOSE (CHANNEL_CLASS (channel)))) (channel, 1);
+      MARK_CHANNEL_CLOSED (channel);
+    }
+}
+
+void
+OS_channel_close_noerror (Tchannel channel)
+{
+  if (! ((CHANNEL_CLOSED_P (channel)) || (CHANNEL_INTERNAL (channel))))
+    {
+      (* (CHANNEL_CLASS_OP_CLOSE (CHANNEL_CLASS (channel)))) (channel, 0);
+      MARK_CHANNEL_CLOSED (channel);
+    }
+}
+
+long
+NT_channel_n_read (Tchannel channel)
+{
+  if (CHANNEL_CLOSED_P (channel))
+    return (0);
+  {
+    DWORD flags;
+    if (!GetHandleInformation ((CHANNEL_HANDLE (channel)), (&flags)))
+      return (0);
+  }
+  return ((* (CHANNEL_CLASS_OP_N_READ (CHANNEL_CLASS (channel)))) (channel));
+}
+
 static void
-DEFUN_VOID (NT_channel_close_all)
+NT_channel_close_all (void)
 {
   Tchannel channel;
   for (channel = 0; (channel < OS_channel_table_size); channel += 1)
     if (CHANNEL_OPEN_P (channel))
       OS_channel_close_noerror (channel);
-  return;
 }
-
-#ifndef GUI
-static BOOL _stdcall
-NT_ctrl_handler (DWORD dwCtrlType)
-{
-    switch (dwCtrlType) {
-      case CTRL_C_EVENT:
-	REQUEST_INTERRUPT (INT_Character);
-	return  TRUE;
-      default:
-	return  FALSE;
-    }
-}
-#endif /* GUI */
 
 static Tchannel
 channel_allocate (void)
@@ -120,44 +177,21 @@ channel_allocate (void)
     channel += 1;
   }
 }
-
+
 int
-DEFUN (OS_channel_open_p, (channel), Tchannel channel)
+OS_channel_open_p (Tchannel channel)
 {
   return (CHANNEL_OPEN_P (channel));
 }
 
-void
-DEFUN (OS_channel_close, (channel), Tchannel channel)
-{
-  if (! (CHANNEL_INTERNAL (channel)))
-  {
-    STD_BOOL_API_CALL (CloseHandle, (CHANNEL_HANDLE (channel)));
-    MARK_CHANNEL_CLOSED (channel);
-  }
-  return;
-}
-
-void
-DEFUN (OS_channel_close_noerror, (channel), Tchannel channel)
-{
-  if (! (CHANNEL_INTERNAL (channel)))
-  {
-    if (! Screen_IsScreenHandle (CHANNEL_HANDLE (channel)))
-      CloseHandle (CHANNEL_HANDLE (channel));
-    MARK_CHANNEL_CLOSED (channel);
-  }
-  return;
-}
-
 static void
-DEFUN (channel_close_on_abort_1, (cp), PTR cp)
+channel_close_on_abort_1 (void * cp)
 {
   OS_channel_close (* ((Tchannel *) cp));
 }
 
 void
-DEFUN (OS_channel_close_on_abort, (channel), Tchannel channel)
+OS_channel_close_on_abort (Tchannel channel)
 {
   Tchannel * cp = ((Tchannel *) (dstack_alloc (sizeof (Tchannel))));
   (*cp) = (channel);
@@ -179,204 +213,125 @@ NT_handle_close_on_abort (HANDLE h)
 }
 
 enum channel_type
-DEFUN (OS_channel_type, (channel), Tchannel channel)
+OS_channel_type (Tchannel channel)
 {
   return (CHANNEL_TYPE (channel));
 }
 
-void
-DEFUN (OS_terminal_flush_input, (channel), Tchannel channel)
-{ extern void EXFUN (flush_conio_buffers, (void));
-
-//  if (IsWindow (CHANNEL_HANDLE (channel)))  /*SRA:dubious*/
-//    flush_conio_buffers();
-  return;
-}
-
-void
-DEFUN (OS_terminal_flush_output, (channel), Tchannel channel)
-{
-  return;
-}
-
-void
-DEFUN (OS_terminal_drain_output, (channel), Tchannel channel)
-{
-  return;
-}
-
 static void
-Relinquish_Timeslice (void)
+generic_channel_close (Tchannel channel, int errorp)
 {
-  Sleep (0);
-  REQUEST_INTERRUPT (INT_Global_1);	/* windows polling */
-  return;
+  if ((!CloseHandle (CHANNEL_HANDLE (channel))) && errorp)
+    NT_error_api_call ((GetLastError ()), apicall_CloseHandle);
 }
 
-long
-DEFUN (OS_channel_read, (channel, buffer, nbytes),
-       Tchannel channel AND
-       PTR buffer AND
-       size_t nbytes)
+static long
+generic_channel_read (Tchannel channel, void * buffer, unsigned long n_bytes)
 {
-  if (nbytes == 0)
-    return (0);
-
-  if (Screen_IsScreenHandle (CHANNEL_HANDLE (channel)))
-    {
-      DWORD bytes_read
-	= (Screen_Read ((CHANNEL_HANDLE (channel)),
-			((BOOL) (CHANNEL_BUFFERED (channel))),
-			buffer,
-			nbytes));
-      if (bytes_read == 0xFFFFFFFF)
-	{
-	  /* For pleasantness give up rest of this timeslice.  */
-	  Relinquish_Timeslice ();
-	  return (-1);
-	}
-      if (bytes_read > nbytes)
-	error_external_return ();
-      return (bytes_read);
-    }
-
-  while (1)
-    {
-      if (IsConsoleHandle (CHANNEL_HANDLE (channel)))
-	{
-	  /* Fake the console being a nonblocking channel that has
-	     nothing after each alternate read.  */
-	  static int nonblock = 1;
-	  nonblock = (!nonblock);
-	  if (nonblock)
-	    return (-1);
-	}
-      if ((CHANNEL_NONBLOCKING (channel))
-	  && ((CHANNEL_TYPE (channel)) == channel_type_win32_pipe))
-	{
-	  long n = (NT_pipe_channel_available (channel));
-	  if (n <= 0)
-	    return ((n == 0) ? (-1) : 0);
-	}
-      {
-	DWORD bytes_read;
-	if ((!ReadFile ((CHANNEL_HANDLE (channel)),
-			buffer,
-			nbytes,
-			(&bytes_read),
-			0))
-	    && (bytes_read > 0))
-	  NT_error_api_call ((GetLastError ()), apicall_ReadFile);
-	if (bytes_read > nbytes)
-	  error_external_return ();
-	return (bytes_read);
-      }
-    }
+  DWORD bytes_read;
+  if ((!ReadFile ((CHANNEL_HANDLE (channel)),
+		  buffer, n_bytes, (&bytes_read), 0))
+      && (bytes_read > 0))
+    NT_error_api_call ((GetLastError ()), apicall_ReadFile);
+  return (bytes_read);
 }
 
-long
-NT_pipe_channel_available (Tchannel channel)
-{
-  DWORD n;
-  if (!PeekNamedPipe ((CHANNEL_HANDLE (channel)), 0, 0, 0, (&n), 0))
-    {
-      DWORD code = (GetLastError ());
-      if (code == ERROR_BROKEN_PIPE)
-	return (-1);
-      NT_error_api_call (code, apicall_PeekNamedPipe);
-    }
-  return (n);
-}
-
-static DWORD
-raw_write (HANDLE fd, const unsigned char * buffer, size_t n_bytes)
+static long
+generic_channel_write (Tchannel channel, const void * buffer,
+		       unsigned long n_bytes)
 {
   DWORD n_written;
-  if (Screen_IsScreenHandle (fd))
-    {
-      SendMessage (fd, SCREEN_WRITE, ((WPARAM) n_bytes), ((LPARAM) buffer));
-      return (n_bytes);
-    }
-  if (IsConsoleHandle (fd))
-    return (nt_console_write (((void *) buffer), n_bytes));
-  STD_BOOL_API_CALL (WriteFile, (fd, buffer, n_bytes, (&n_written), 0));
+  STD_BOOL_API_CALL
+    (WriteFile,
+     ((CHANNEL_HANDLE (channel)), buffer, n_bytes, (&n_written), 0));
   return (n_written);
 }
 
-static DWORD
-text_write (HANDLE hFile, const unsigned char * buffer, size_t n_bytes) 
+static long
+generic_channel_n_read (Tchannel channel)
 {
-  /* Map LF to CR/LF */
-  static const unsigned char crlf [] = {CARRIAGE_RETURN, LINEFEED};
-  const unsigned char * start = buffer;
-  const unsigned char * end = (start + n_bytes);
+  /* This means "unknown".  */
+  return (-2);
+}
 
-  while (start < end)
+static void
+initialize_channel_class_generic (void)
+{
+  channel_class_t * class = (OS_malloc (sizeof (channel_class_t)));
+  (CHANNEL_CLASS_TYPE (class)) = channel_type_unknown;
+  (CHANNEL_CLASS_OP_READ (class)) = generic_channel_read;
+  (CHANNEL_CLASS_OP_WRITE (class)) = generic_channel_write;
+  (CHANNEL_CLASS_OP_CLOSE (class)) = generic_channel_close;
+  (CHANNEL_CLASS_OP_N_READ (class)) = generic_channel_n_read;
+  NT_channel_class_generic = class;
+}
+
+static long
+file_channel_n_read (Tchannel channel)
+{
+  off_t position = (OS_file_position (channel));
+  off_t length = (OS_file_length (channel));
+  return ((position < length) ? (length - position) : 0);
+}
+
+static void
+initialize_channel_class_file (void)
+{
+  channel_class_t * class = (OS_malloc (sizeof (channel_class_t)));
+  (*class) = (*NT_channel_class_generic);
+  (CHANNEL_CLASS_TYPE (class)) = channel_type_file;
+  (CHANNEL_CLASS_OP_N_READ (class)) = file_channel_n_read;
+  NT_channel_class_file = class;
+}
+
+static long
+screen_channel_read (Tchannel channel, void * buffer, unsigned long n_bytes)
+{
+  DWORD bytes_read
+    = (Screen_Read ((CHANNEL_HANDLE (channel)),
+		    ((BOOL) (CHANNEL_BUFFERED (channel))),
+		    buffer,
+		    n_bytes));
+  if (bytes_read == 0xFFFFFFFF)
     {
-      const unsigned char * scan = start;
-      while ((scan < end) && ((*scan) != LINEFEED))
-	scan += 1;
-      if (scan > start)
-	{
-	  unsigned int n_bytes = (scan - start);
-	  DWORD n_written = (raw_write (hFile, start, n_bytes));
-	  if (n_written < n_bytes)
-	    return ((start - buffer) + n_written);
-	}
-      if (scan < end)
-	{
-	  unsigned int n_bytes = (sizeof (crlf));
-	  DWORD n_written = (raw_write (hFile, crlf, n_bytes));
-	  if (n_written < n_bytes)
-	    /* This backs out incorrectly if only CR is written out.  */
-	    return (scan - buffer);
-	}
-      start = (scan + 1);
+      /* For pleasantness give up rest of this timeslice.  */
+      Sleep (0);
+      REQUEST_INTERRUPT (INT_Global_1);	/* windows polling */
+      return (-1);
     }
+  return (bytes_read);
+}
+
+static long
+screen_channel_write (Tchannel channel, const void * buffer,
+		      unsigned long n_bytes)
+{
+  SendMessage ((CHANNEL_HANDLE (channel)), SCREEN_WRITE,
+	       ((WPARAM) n_bytes), ((LPARAM) buffer));
   return (n_bytes);
 }
 
-long
-OS_channel_write (Tchannel channel, const void * buffer, size_t n_bytes)
+static long
+screen_channel_n_read (Tchannel channel)
 {
-  return
-    ((n_bytes == 0)
-     ? 0
-     : (CHANNEL_COOKED (channel))
-     ? (text_write ((CHANNEL_HANDLE (channel)), buffer, n_bytes))
-     : (raw_write ((CHANNEL_HANDLE (channel)), buffer, n_bytes)));
+  /* This is incorrect.  However, it's a pain to do the right thing.
+     Furthermore, NT_channel_n_read is only used by "select", and for
+     that particular case, this is the correct value.  */
+  return (-1);
+}
+
+static void
+initialize_channel_class_screen (void)
+{
+  channel_class_t * class = (OS_malloc (sizeof (channel_class_t)));
+  (CHANNEL_CLASS_TYPE (class)) = channel_type_terminal;
+  (CHANNEL_CLASS_OP_READ (class)) = screen_channel_read;
+  (CHANNEL_CLASS_OP_WRITE (class)) = screen_channel_write;
+  (CHANNEL_CLASS_OP_CLOSE (class)) = 0;
+  (CHANNEL_CLASS_OP_N_READ (class)) = screen_channel_n_read;
+  NT_channel_class_screen = class;
 }
 
-size_t
-DEFUN (OS_channel_read_load_file, (channel, buffer, nbytes),
-       Tchannel channel AND PTR buffer AND size_t nbytes)
-{
-  DWORD scr;
-
-  return ((ReadFile (CHANNEL_HANDLE (channel), buffer, nbytes, &scr, 0))
-	  ? scr : 0);
-}
-
-size_t
-DEFUN (OS_channel_write_dump_file, (channel, buffer, nbytes),
-       Tchannel channel AND CONST PTR buffer AND size_t nbytes)
-{
-  DWORD  scr;
-
-  return ((WriteFile (CHANNEL_HANDLE (channel), buffer, nbytes, &scr, 0))
-	  ? scr : 0);
-}
-
-void
-DEFUN (OS_channel_write_string, (channel, string),
-       Tchannel channel AND
-       CONST char * string)
-{
-  long length = (strlen (string));
-  if ((OS_channel_write (channel, string, length)) != length)
-    error_external_return ();
-}
-
 void
 OS_make_pipe (Tchannel * readerp, Tchannel * writerp)
 {
@@ -385,161 +340,262 @@ OS_make_pipe (Tchannel * readerp, Tchannel * writerp)
   STD_BOOL_API_CALL (CreatePipe, ((&hread), (&hwrite), 0, 0));
   transaction_begin ();
   NT_handle_close_on_abort (hwrite);
-  (*readerp) = (NT_make_channel (hread, channel_type_win32_pipe));
+  (*readerp) = (NT_make_channel (hread, NT_channel_class_pipe));
   transaction_commit ();
   transaction_begin ();
   OS_channel_close_on_abort (*readerp);
-  (*writerp) = (NT_make_channel (hwrite, channel_type_win32_pipe));
+  (*writerp) = (NT_make_channel (hwrite, NT_channel_class_pipe));
   transaction_commit ();
+}
+
+static long
+pipe_channel_read (Tchannel channel, void * buffer, unsigned long n_bytes)
+{
+  if (CHANNEL_NONBLOCKING (channel))
+    {
+      long n = (NT_channel_n_read (channel));
+      if (n <= 0)
+	return (n);
+    }
+  return (generic_channel_read (channel, buffer, n_bytes));
+}
+
+static long
+pipe_channel_n_read (Tchannel channel)
+{
+  DWORD n;
+  if (!PeekNamedPipe ((CHANNEL_HANDLE (channel)), 0, 0, 0, (&n), 0))
+    {
+      DWORD code = (GetLastError ());
+      if (code == ERROR_BROKEN_PIPE)
+	/* ERROR_BROKEN_PIPE means the other end of the pipe has been
+	   closed, so return zero which means "end of file".  */
+	return (0);
+      NT_error_api_call (code, apicall_PeekNamedPipe);
+    }
+  /* Zero bytes available means "read would block", so return -1.  */
+  return ((n == 0) ? (-1) : n);
+}
+
+static void
+initialize_channel_class_pipe (void)
+{
+  channel_class_t * class = (OS_malloc (sizeof (channel_class_t)));
+  (CHANNEL_CLASS_TYPE (class)) = channel_type_win32_pipe;
+  (CHANNEL_CLASS_OP_READ (class)) = pipe_channel_read;
+  (CHANNEL_CLASS_OP_WRITE (class)) = generic_channel_write;
+  (CHANNEL_CLASS_OP_CLOSE (class)) = generic_channel_close;
+  (CHANNEL_CLASS_OP_N_READ (class)) = pipe_channel_n_read;
+  NT_channel_class_pipe = class;
+}
+
+static long
+cooked_channel_write (Tchannel channel, const void * buffer,
+		      unsigned long n_bytes) 
+{
+  /* Map LF to CR/LF */
+  static const unsigned char crlf [] = {CARRIAGE_RETURN, LINEFEED};
+  const unsigned char * start = buffer;
+  const unsigned char * end = (start + n_bytes);
+  while (start < end)
+    {
+      const unsigned char * scan = start;
+      while ((scan < end) && ((*scan) != LINEFEED))
+	scan += 1;
+      if (scan > start)
+	{
+	  unsigned int n_bytes = (scan - start);
+	  long n_written
+	    = ((* (CHANNEL_CLASS_OP_WRITE (CHANNEL_CLASS (channel))))
+	       (channel, start, n_bytes));
+	  if (n_written < 0)
+	    return (start - buffer);
+	  if (n_written < n_bytes)
+	    return ((start - buffer) + n_written);
+	}
+      if (scan < end)
+	{
+	  unsigned int n_bytes = (sizeof (crlf));
+	  long n_written
+	    = ((* (CHANNEL_CLASS_OP_WRITE (CHANNEL_CLASS (channel))))
+	       (channel, crlf, n_bytes));
+	  if (n_written < n_bytes)
+	    /* This backs out incorrectly if only CR is written out.  */
+	    return (scan - buffer);
+	}
+      start = (scan + 1);
+    }
+  return (n_bytes);
+}
+
+size_t
+OS_channel_read_load_file (Tchannel channel, void * buffer, size_t nbytes)
+{
+  DWORD scr;
+  return ((ReadFile (CHANNEL_HANDLE (channel), buffer, nbytes, &scr, 0))
+	  ? scr : 0);
+}
+
+size_t
+OS_channel_write_dump_file (Tchannel channel, const void * buffer,
+			    size_t nbytes)
+{
+  DWORD  scr;
+  return ((WriteFile (CHANNEL_HANDLE (channel), buffer, nbytes, &scr, 0))
+	  ? scr : 0);
+}
+
+void
+OS_channel_write_string (Tchannel channel, const char * string)
+{
+  long length = (strlen (string));
+  if ((OS_channel_write (channel, string, length)) != length)
+    error_external_return ();
 }
 
 int
-DEFUN (OS_channel_nonblocking_p, (channel), Tchannel channel)
+OS_channel_nonblocking_p (Tchannel channel)
 {
   return (CHANNEL_NONBLOCKING (channel));
 }
 
 void
-DEFUN (OS_channel_nonblocking, (channel), Tchannel channel)
+OS_channel_nonblocking (Tchannel channel)
 {
   (CHANNEL_NONBLOCKING (channel)) = 1;
-  return;
 }
 
 void
-DEFUN (OS_channel_blocking, (channel), Tchannel channel)
+OS_channel_blocking (Tchannel channel)
 {
   (CHANNEL_NONBLOCKING (channel)) = 0;
 }
 
 int
-DEFUN (OS_terminal_buffered_p, (channel), Tchannel channel)
+OS_terminal_buffered_p (Tchannel channel)
 {
   return (CHANNEL_BUFFERED (channel));
 }
 
 void
-DEFUN (OS_terminal_buffered, (channel), Tchannel channel)
+OS_terminal_buffered (Tchannel channel)
 {
-  CHANNEL_BUFFERED (channel) = 1;
+  (CHANNEL_BUFFERED (channel)) = 1;
 }
 
 void
-DEFUN (OS_terminal_nonbuffered, (channel), Tchannel channel)
+OS_terminal_nonbuffered (Tchannel channel)
 {
-  CHANNEL_BUFFERED (channel) = 0;
+  (CHANNEL_BUFFERED (channel)) = 0;
 }
 
 int
-DEFUN (OS_terminal_cooked_output_p, (channel), Tchannel channel)
+OS_terminal_cooked_output_p (Tchannel channel)
 {
   return (CHANNEL_COOKED (channel));
 }
 
 void
-DEFUN (OS_terminal_cooked_output, (channel), Tchannel channel)
+OS_terminal_cooked_output (Tchannel channel)
 {
   CHANNEL_COOKED (channel) = 1;
 }
 
 void
-DEFUN (OS_terminal_raw_output, (channel), Tchannel channel)
+OS_terminal_raw_output (Tchannel channel)
 {
-  CHANNEL_COOKED(channel) = 0;
+  CHANNEL_COOKED (channel) = 0;
+}
+
+void
+OS_terminal_flush_input (Tchannel channel)
+{
+}
+
+void
+OS_terminal_flush_output (Tchannel channel)
+{
+}
+
+void
+OS_terminal_drain_output (Tchannel channel)
+{
 }
 
 unsigned int
-DEFUN (arg_baud_index, (argument), unsigned int argument)
+arg_baud_index (unsigned int argument)
 {
   return (arg_index_integer (argument, 1));
 }
 
 unsigned int
-DEFUN (OS_terminal_get_ispeed, (channel), Tchannel channel)
+OS_terminal_get_ispeed (Tchannel channel)
 {
   return (0);
 }
 
 unsigned int
-DEFUN (OS_terminal_get_ospeed, (channel), Tchannel channel)
+OS_terminal_get_ospeed (Tchannel channel)
 {
   return (0);
 }
 
 void
-DEFUN (OS_terminal_set_ispeed, (channel, baud),
-       Tchannel channel AND
-       unsigned int baud)
+OS_terminal_set_ispeed (Tchannel channel, unsigned int baud)
 {
-  return;
 }
 
 void
-DEFUN (OS_terminal_set_ospeed, (channel, baud),
-       Tchannel channel AND
-       unsigned int baud)
+OS_terminal_set_ospeed (Tchannel channel, unsigned int baud)
 {
-  return;
 }
 
 unsigned int
-DEFUN (OS_baud_index_to_rate, (index), unsigned int index)
+OS_baud_index_to_rate (unsigned int index)
 {
   return (9600);
 }
 
 int
-DEFUN (OS_baud_rate_to_index, (rate), unsigned int rate)
+OS_baud_rate_to_index (unsigned int rate)
 {
   return ((rate == 9600) ? 0 : -1);
 }
 
 unsigned int
-DEFUN_VOID (OS_terminal_state_size)
+OS_terminal_state_size (void)
 {
   return (3);
 }
 
 void
-DEFUN (OS_terminal_get_state, (channel, state_ptr),
-       Tchannel channel AND PTR state_ptr)
+OS_terminal_get_state (Tchannel channel, void * state_ptr)
 {
   unsigned char * statep = ((unsigned char *) state_ptr);
-
-  *statep++ = CHANNEL_NONBLOCKING (channel);
-  *statep++ = CHANNEL_BUFFERED (channel);
-  *statep   = CHANNEL_COOKED (channel);
-
-  return;
+  (*statep++) = (CHANNEL_NONBLOCKING (channel));
+  (*statep++) = (CHANNEL_BUFFERED (channel));
+  (*statep)   = (CHANNEL_COOKED (channel));
 }
 
 void
-DEFUN (OS_terminal_set_state, (channel, state_ptr),
-       Tchannel channel AND PTR state_ptr)
+OS_terminal_set_state (Tchannel channel, void * state_ptr)
 {
   unsigned char * statep = ((unsigned char *) state_ptr);
-
-  CHANNEL_NONBLOCKING (channel) = *statep++;
-  CHANNEL_BUFFERED (channel)    = *statep++;
-  CHANNEL_COOKED (channel)      = *statep;
-
-  return;
-}
-
-#ifndef FALSE
-#  define FALSE 0
-#endif
-
-int
-DEFUN_VOID (OS_job_control_p)
-{
-  return (FALSE);
+  (CHANNEL_NONBLOCKING (channel)) = (*statep++);
+  (CHANNEL_BUFFERED (channel))    = (*statep++);
+  (CHANNEL_COOKED (channel))      = (*statep);
 }
 
 int
-DEFUN_VOID (OS_have_ptys_p)
+OS_job_control_p (void)
 {
-  return (FALSE);
+  return (0);
+}
+
+int
+OS_have_ptys_p (void)
+{
+  return (0);
 }
 
 /* Initialization/Termination code. */
@@ -552,49 +608,25 @@ extern void EXFUN (NT_reset_channels, (void));
 extern void EXFUN (NT_restore_channels, (void));
 
 void
-DEFUN_VOID (NT_reset_channels)
+NT_reset_channels (void)
 {
-  free (channel_table);
-  channel_table = 0;
+  OS_free (NT_channel_table);
+  NT_channel_table = 0;
   OS_channel_table_size = 0;
-  return;
 }
 
 void
-DEFUN_VOID (NT_restore_channels)
+NT_restore_channels (void)
 {
   if (master_tty_window != ((HANDLE) NULL))
     Screen_Destroy (TRUE, master_tty_window);
   master_tty_window = ((HANDLE) NULL);
-  return;
 }
 
 void
-DEFUN_VOID (NT_initialize_channels)
+NT_initialize_channels (void)
 {
-#ifndef GUI
-  STDIN_HANDLE  = (GetStdHandle (STD_INPUT_HANDLE));
-  STDOUT_HANDLE = (GetStdHandle (STD_OUTPUT_HANDLE));
-  STDERR_HANDLE = (GetStdHandle (STD_ERROR_HANDLE));
-
-  if (STDIN_HANDLE == INVALID_HANDLE_VALUE  ||
-      STDOUT_HANDLE == INVALID_HANDLE_VALUE  ||
-      STDERR_HANDLE == INVALID_HANDLE_VALUE)
-  {
-    outf_fatal ("\nUnable to get standard handles %s(%d).\n",
-                __FILE__, __LINE__);
-    termination_init_error ();
-  }
-
-  SetConsoleMode (STDIN_HANDLE,
-		  (  ENABLE_LINE_INPUT
-		   | ENABLE_ECHO_INPUT
-		   | ENABLE_PROCESSED_INPUT));
-  SetConsoleCtrlHandler (NT_ctrl_handler, TRUE);
-#endif /* GUI */
-
-  master_tty_window = Screen_Create (NULL, "MIT Scheme", SW_SHOWNORMAL);
-
+  master_tty_window = (Screen_Create (NULL, "MIT Scheme", SW_SHOWNORMAL));
   if (win32_under_win32s_p ())
     OS_have_select_p = 0;
   else
@@ -604,16 +636,16 @@ DEFUN_VOID (NT_initialize_channels)
      place a limit on the number of handles.  */
   (void) SetHandleCount (255);
   OS_channel_table_size = NT_DEFAULT_CHANNEL_TABLE_SIZE;
-  channel_table = (malloc (OS_channel_table_size * (sizeof (struct channel))));
-  if (channel_table == 0)
-  {
-    outf_fatal ("\nUnable to allocate channel table.\n");
-    termination_init_error ();
-  }
+  NT_channel_table
+    = (OS_malloc (OS_channel_table_size * (sizeof (struct channel))));
   {
     Tchannel channel;
     for (channel = 0; (channel < OS_channel_table_size); channel += 1)
       MARK_CHANNEL_CLOSED (channel);
   }
   add_reload_cleanup (NT_channel_close_all);
+  initialize_channel_class_generic ();
+  initialize_channel_class_file ();
+  initialize_channel_class_screen ();
+  initialize_channel_class_pipe ();
 }
