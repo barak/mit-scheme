@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/edextra.scm,v 1.6 1992/09/04 20:41:15 nick Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/edextra.scm,v 1.7 1992/09/04 21:45:20 nick Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -80,9 +80,9 @@ MIT in each case. |#
 ;;; Wired-in pathnames
 
 ;;; We look in the "psn" subdir for problem set n
-(define pset-dir (->pathname "~u6001/psets/")) 
+(define pset-dir "~u6001/psets/")
 (define pset-list-file (merge-pathnames "probsets.scm" pset-dir))
-(define student-dir (->pathname "~u6001/work/"))
+(define student-dir "~u6001/work/")
 
 ;;; The structure "problem-sets" must be loaded from pset-list-file whenever
 ;;; the set of available problem sets changes, or when the default
@@ -195,8 +195,7 @@ MIT in each case. |#
   ()
   (lambda ()
   (begin
-   (and (file-exists? pset-list-file)
-    (load pset-list-file (->environment '(edwin))))
+    (load pset-list-file (->environment '(edwin)))
    (let* ((default-ps (problem-sets/default-ps problem-sets))
 	  (ps (prompt-for-string "Load Problem Set" (->string default-ps)))
 	  )
@@ -208,7 +207,7 @@ MIT in each case. |#
 	    (pset-path (merge-pathnames (string-append "ps" (->string ps) "/") 
 					pset-dir)))
        (or (files-all-exist? (groups/all-files groups) pset-path)
-	   (error) (error-handler))
+	   (error-handler))
        (map (lambda (file)
 	      (find-file (merge-pathnames pset-path
 					  (->pathname file))))
