@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: cinden.scm,v 1.11 1995/02/02 21:25:17 cph Exp $
+;;;	$Id: cinden.scm,v 1.12 1995/02/07 23:50:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -286,37 +286,40 @@ This is in addition to c-continued-statement-offset."
   (let ((end
 	 (mark-left-inserting-copy
 	  (line-start (forward-sexp expression-start 1 'ERROR) 0))))
-    (let loop
-	((start expression-start)
-	 (state false)
-	 (indent-stack (list false))
-	 (contain-stack (list expression-start))
-	 (last-depth 0))
-      (with-values (lambda () (c-indent-expression:parse-line start end state))
-	(lambda (start state)
-	  (let* ((depth (parse-state-depth state))
-		 (depth-delta (- depth last-depth))
-		 (indent-stack (adjust-stack depth-delta indent-stack))
-		 (contain-stack (adjust-stack depth-delta contain-stack))
-		 (indent-line
-		  (lambda ()
-		    (if (not (line-blank? start))
-			(c-indent-expression:per-line
-			 (skip-chars-forward " \t" start)
-			 expression-start
-			 indent-stack
-			 contain-stack)))))
-	    (if (not (car contain-stack))
-		(set-car! contain-stack
-			  (or (parse-state-containing-sexp state)
-			      (backward-sexp start 1 'LIMIT))))
-	    (if (mark= start end)
-		(begin
-		  (mark-temporary! end)
-		  (indent-line))
-		(begin
-		  (indent-line)
-		  (loop start state indent-stack contain-stack depth)))))))))
+    (if (mark< expression-start end)
+	(let loop
+	    ((start expression-start)
+	     (state false)
+	     (indent-stack (list false))
+	     (contain-stack (list expression-start))
+	     (last-depth 0))
+	  (call-with-values
+	      (lambda () (c-indent-expression:parse-line start end state))
+	    (lambda (start state)
+	      (let* ((depth (parse-state-depth state))
+		     (depth-delta (- depth last-depth))
+		     (indent-stack (adjust-stack depth-delta indent-stack))
+		     (contain-stack (adjust-stack depth-delta contain-stack))
+		     (indent-line
+		      (lambda ()
+			(if (not (line-blank? start))
+			    (c-indent-expression:per-line
+			     (skip-chars-forward " \t" start)
+			     expression-start
+			     indent-stack
+			     contain-stack)))))
+		(if (not (car contain-stack))
+		    (set-car! contain-stack
+			      (or (parse-state-containing-sexp state)
+				  (backward-sexp start 1 'LIMIT))))
+		(if (mark= start end)
+		    (begin
+		      (mark-temporary! end)
+		      (indent-line))
+		    (begin
+		      (indent-line)
+		      (loop start state indent-stack contain-stack
+			    depth))))))))))
 
 (define (c-indent-expression:parse-line start end state)
   (let loop ((start start) (state state))
