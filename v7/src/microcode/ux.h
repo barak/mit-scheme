@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.47 1993/06/24 06:34:39 gjr Exp $
+$Id: ux.h,v 1.48 1993/06/28 02:26:53 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -59,10 +59,8 @@ extern int errno;
 
 /* These seem to be missing from versions of unistd.h */
 
-#ifndef _HPUX
-/* <unistd.h> in HP-UX has mis-matching prototype 
-   The following is as specified by OSF/1 Programmer's reference.
- */
+#if !(defined(_HPUX) || defined(sonyrisc))
+/* As specified by OSF/1 Programmer's reference: */
 extern int EXFUN (ioctl, (int, unsigned long, ...));
 #endif
 #ifndef _SUNOS4
