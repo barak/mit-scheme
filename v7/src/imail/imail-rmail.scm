@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.61 2001/03/20 04:03:56 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.62 2001/05/13 03:46:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -26,31 +26,40 @@
 ;;;; URL
 
 (define-class <rmail-url> (<file-url>))
-(define-url-protocol "rmail" <rmail-url>)
+(define make-rmail-url (pathname-url-constructor <rmail-url>))
 
-(define make-rmail-url
-  (let ((constructor (instance-constructor <rmail-url> '(PATHNAME))))
-    (lambda (pathname)
-      (intern-url (constructor (merge-pathnames pathname))))))
-
-(define-method parse-url-body ((string <string>) (default-url <rmail-url>))
-  (make-rmail-url
-   (parse-file-url-body string (file-url-pathname default-url))))
+(define-pathname-url-predicate <rmail-url>
+  (lambda (pathname)
+    (case (file-type-indirect pathname)
+      ((REGULAR)
+       (let* ((magic "BABYL OPTIONS:")
+	      (n-to-read (string-length magic))
+	      (buffer (make-string n-to-read))
+	      (n-read
+	       (call-with-input-file pathname
+		 (lambda (port)
+		   (read-string! buffer port)))))
+	 (and (fix:= n-to-read n-read)
+	      (string=? buffer magic))))
+      ((#F)
+       (or (string=? (pathname-type pathname) "rmail")
+	   (string=? (file-namestring pathname) "RMAIL")))
+      (else #f))))
 
 (define-method make-peer-url ((url <rmail-url>) name)
   (make-rmail-url
    (merge-pathnames (pathname-default-type name "rmail")
-		    (directory-pathname (file-url-pathname url)))))
+		    (directory-pathname (pathname-url-pathname url)))))
 
 ;;;; Server operations
 
 (define-method %open-folder ((url <rmail-url>))
-  (if (not (file-readable? (file-url-pathname url)))
+  (if (not (file-readable? (pathname-url-pathname url)))
       (error:bad-range-argument url 'OPEN-FOLDER))
   (make-rmail-folder url))
 
 (define-method %create-folder ((url <rmail-url>))
-  (if (file-exists? (file-url-pathname url))
+  (if (file-exists? (pathname-url-pathname url))
       (error:bad-range-argument url 'CREATE-FOLDER))
   (let ((folder (make-rmail-folder url)))
     (set-file-folder-messages! folder '#())
@@ -268,7 +277,7 @@
 	  (write-rmail-message message port))))))
 
 (define-method append-message-to-file ((message <message>) (url <rmail-url>))
-  (let ((pathname (file-url-pathname url)))
+  (let ((pathname (pathname-url-pathname url)))
     (if (file-exists? pathname)
 	(let ((port (open-binary-output-file pathname #t)))
 	  (write-rmail-message message port)

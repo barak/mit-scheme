@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.237 2001/05/07 18:01:40 cph Exp $
+;;; $Id: imail-top.scm,v 1.238 2001/05/13 03:46:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -216,11 +216,8 @@ imap://[<user-name>@]<host-name>[:<port>]/<folder-name>
     Specifies a folder on an IMAP server.  The portions in brackets
     are optional and are filled in automatically if omitted.
 
-rmail:<pathname>
-    Specifies an RMAIL file.
-
-umail:<pathname>
-    Specifies a unix mail file.
+file:<pathname>
+    Specifies a file-based folder, e.g. RMAIL.
 
 You may simultaneously open multiple mail folders.  If you revisit a
 folder that is already in a buffer, that buffer is selected.  Messages
@@ -229,9 +226,9 @@ the type of folder.  Likewise, the available commands are the same
 regardless of the folder type."
   (lambda ()
     (list (and (command-argument)
-	       (prompt-for-imail-url-string "Run IMAIL on folder" #f
-					    'HISTORY 'IMAIL
-					    'REQUIRE-MATCH? #t))))
+	       (prompt-for-selectable-folder "Run IMAIL on folder" #f
+					     'HISTORY 'IMAIL
+					     'REQUIRE-MATCH? #t))))
   (lambda (url-string)
     (let ((folder
 	   (open-folder
@@ -819,10 +816,10 @@ With prefix argument N, removes FLAG from next N messages,
 (define-command imail-input-from-folder
   "Append messages to this folder from a specified folder."
   (lambda ()
-    (list (prompt-for-imail-url-string "Get messages from folder" #f
-				       'HISTORY 'IMAIL-INPUT-FROM-FOLDER
-				       'HISTORY-INDEX 0
-				       'REQUIRE-MATCH? #t)))
+    (list (prompt-for-selectable-folder "Get messages from folder" #f
+					'HISTORY 'IMAIL-INPUT-FROM-FOLDER
+					'HISTORY-INDEX 0
+					'REQUIRE-MATCH? #t)))
   (lambda (url-string)
     (let ((url (imail-parse-partial-url url-string)))
       (copy-folder (open-folder url)
@@ -833,10 +830,10 @@ With prefix argument N, removes FLAG from next N messages,
 (define-command imail-output
   "Append this message to a specified folder."
   (lambda ()
-    (list (prompt-for-imail-url-string "Output to folder"
-				       (ref-variable imail-output-default #f)
-				       'HISTORY 'IMAIL-OUTPUT
-				       'HISTORY-INDEX 0)
+    (list (prompt-for-folder "Output to folder"
+			     (ref-variable imail-output-default #f)
+			     'HISTORY 'IMAIL-OUTPUT
+			     'HISTORY-INDEX 0)
 	  (command-argument)))
   (lambda (url-string argument)
     (let ((url (imail-parse-partial-url url-string))
@@ -1312,8 +1309,8 @@ ADDRESSES is a string consisting of several addresses separated by commas."
   "Create a new folder with the specified name.
 An error if signalled if the folder already exists."
   (lambda ()
-    (list (prompt-for-imail-url-string "Create folder" #f
-				       'HISTORY 'IMAIL-CREATE-FOLDER)))
+    (list (prompt-for-folder "Create folder" #f
+			     'HISTORY 'IMAIL-CREATE-FOLDER)))
   (lambda (url-string)
     (let ((url (imail-parse-partial-url url-string)))
       (create-folder url)
@@ -1322,9 +1319,9 @@ An error if signalled if the folder already exists."
 (define-command imail-delete-folder
   "Delete a specified folder and all its messages."
   (lambda ()
-    (list (prompt-for-imail-url-string "Delete folder" #f
-				       'HISTORY 'IMAIL-DELETE-FOLDER
-				       'REQUIRE-MATCH? #t)))
+    (list (prompt-for-folder "Delete folder" #f
+			     'HISTORY 'IMAIL-DELETE-FOLDER
+			     'REQUIRE-MATCH? #t)))
   (lambda (url-string)
     (let ((url (imail-parse-partial-url url-string)))
       (if (prompt-for-yes-or-no?
@@ -1340,14 +1337,14 @@ May only rename a folder to a new name on the same server or file system.
 The folder's type may not be changed."
   (lambda ()
     (let ((from
-	   (prompt-for-imail-url-string "Rename folder" #f
-					'HISTORY 'IMAIL-RENAME-FOLDER-SOURCE
-					'HISTORY-INDEX 0
-					'REQUIRE-MATCH? #t)))
+	   (prompt-for-folder "Rename folder" #f
+			      'HISTORY 'IMAIL-RENAME-FOLDER-SOURCE
+			      'HISTORY-INDEX 0
+			      'REQUIRE-MATCH? #t)))
       (list from
-	    (prompt-for-imail-url-string
+	    (prompt-for-folder
 	     "Rename folder to"
-	     (url-container-string (imail-parse-partial-url from))
+	     (url->string (url-container (imail-parse-partial-url from)))
 	     'HISTORY 'IMAIL-RENAME-FOLDER-TARGET))))
   (lambda (from to)
     (let ((from (imail-parse-partial-url from))
@@ -1361,12 +1358,12 @@ If the target folder exists, the messages are appended to it.
 If it doesn't exist, it is created first."
   (lambda ()
     (let ((from
-	   (prompt-for-imail-url-string "Copy folder" #f
-					'HISTORY 'IMAIL-COPY-FOLDER-SOURCE
-					'HISTORY-INDEX 0
-					'REQUIRE-MATCH? #t)))
+	   (prompt-for-selectable-folder "Copy folder" #f
+					 'HISTORY 'IMAIL-COPY-FOLDER-SOURCE
+					 'HISTORY-INDEX 0
+					 'REQUIRE-MATCH? #t)))
       (list from
-	    (prompt-for-imail-url-string
+	    (prompt-for-folder
 	     "Copy messages to folder"
 	     (make-peer-url
 	      (or (let ((history
@@ -1461,9 +1458,9 @@ With prefix argument, closes and buries only selected IMAIL folder."
 (define-command imail-input
   "Run IMAIL on a specified folder."
   (lambda ()
-    (list (prompt-for-imail-url-string "Run IMAIL on folder" #f
-				       'HISTORY 'IMAIL
-				       'REQUIRE-MATCH? #t)))
+    (list (prompt-for-selectable-folder "Run IMAIL on folder" #f
+					'HISTORY 'IMAIL
+					'REQUIRE-MATCH? #t)))
   (lambda (url-string)
     ((ref-command imail) url-string)))
 
@@ -1510,10 +1507,10 @@ A prefix argument says to prompt for a URL and append all messages
  from that folder to the current one."
   (lambda ()
     (list (and (command-argument)
-	       (prompt-for-imail-url-string "Get messages from folder" #f
-					    'HISTORY 'IMAIL-INPUT
-					    'HISTORY-INDEX 0
-					    'REQUIRE-MATCH? #t))))
+	       (prompt-for-selectable-folder "Get messages from folder" #f
+					     'HISTORY 'IMAIL-INPUT
+					     'HISTORY-INDEX 0
+					     'REQUIRE-MATCH? #t))))
   (lambda (url-string)
     (if url-string
 	((ref-command imail-input-from-folder) url-string)
@@ -1614,11 +1611,28 @@ Negative argument means search in reverse."
 			    port
 			    (ref-variable imail-default-imap-mailbox
 					  #f)))))
-	((string-ci=? protocol "rmail") (make-rmail-url "~/RMAIL"))
-	((string-ci=? protocol "umail") (make-umail-url "~/inbox.mail"))
+	((string-ci=? protocol "file") (make-rmail-url "~/RMAIL"))
 	(else (error:bad-range-argument protocol))))
+
+(define (prompt-for-folder prompt default . options)
+  (%prompt-for-url prompt default options
+		   (lambda (url)
+		     (and (folder-url? url)
+			  (url-exists? url)))))
 
-(define (prompt-for-imail-url-string prompt default . options)
+(define (prompt-for-selectable-folder prompt default . options)
+  (%prompt-for-url prompt default options
+		   (lambda (url)
+		     (and (folder-url? url)
+			  (url-is-selectable? url)))))
+
+(define (prompt-for-container prompt default . options)
+  (%prompt-for-url prompt default options
+		   (lambda (url)
+		     (and (container-url? url)
+			  (url-exists? url)))))
+
+(define (%prompt-for-url prompt default options predicate)
   (let ((get-option
 	 (lambda (key)
 	   (let loop ((options options))
@@ -1628,10 +1642,11 @@ Negative argument means search in reverse."
 		      (cadr options)
 		      (loop (cddr options)))))))
 	(default
-	  (cond ((string? default) default)
-		((url? default) (url->string default))
-		((not default) (url-container-string (imail-default-url #f)))
-		(else (error "Illegal default:" default)))))
+	 (cond ((string? default) default)
+	       ((url? default) (url->string default))
+	       ((not default)
+		(url->string (url-container (imail-default-url #f))))
+	       (else (error "Illegal default:" default)))))
     (let ((history (get-option 'HISTORY)))
       (if (null? (prompt-history-strings history))
 	  (set-prompt-history-strings! history (list default))))
@@ -1644,7 +1659,7 @@ Negative argument means search in reverse."
 	   (lambda (string)
 	     (url-string-completions string imail-get-default-url))
 	   (lambda (string)
-	     (url-exists? (imail-parse-partial-url string)))
+	     (predicate (imail-parse-partial-url string)))
 	   'DEFAULT-TYPE 'INSERTED-DEFAULT
 	   options)))
 

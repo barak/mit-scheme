@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.120 2001/05/09 17:38:17 cph Exp $
+;;; $Id: imail-core.scm,v 1.121 2001/05/13 03:45:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -41,6 +41,8 @@
 ;;;; URL type
 
 (define-class <url> (<imail-object>))
+(define-class <folder-url> (<url>))
+(define-class <container-url> (<url>))
 
 (define (guarantee-url url procedure)
   (if (not (url? url))
@@ -64,35 +66,31 @@
       (write-char #\space port)
       (write (url->string url) port))))
 
+;; Return #T iff URL represents an existing folder.
+(define-generic url-exists? (url))
+
+;; Return #T iff URL both exists and can be opened.
+(define-generic url-is-selectable? (folder-url))
+
+;; Return a reference to the container of URL.
+;; E.g. the container of "imap://localhost/inbox/foo" is
+;; "imap://localhost/inbox/" (except that for IMAP folders, the result
+;; may be affected by the NAMESPACE prefix information).
+(define-generic url-container (url))
+
+;; Return the base name of FOLDER-URL.  This is the PATHNAME-NAME of a
+;; file-based folder, and for IMAP it's the part of the mailbox name
+;; following the rightmost delimiter.
+(define-generic url-base-name (folder-url))
+
+;; Return a URL that has the same container as FOLDER-URL, but with
+;; base name NAME.  This is roughly equivalent to appending NAME to
+;; the container string of FOLDER-URL.
+(define-generic make-peer-url (folder-url name))
+
 ;; Return a string that concisely identifies URL, for use in the
 ;; presentation layer.
 (define-generic url-presentation-name (url))
-
-;; Return a string that represents the object containing URL's folder.
-;; E.g. the container of "imap://localhost/inbox" is
-;; "imap://localhost/" (except that for IMAP folders, the result may
-;; be affected by the NAMESPACE prefix information).
-(define (url-container-string url)
-  (make-url-string (url-protocol url)
-		   (url-body-container-string url)))
-
-(define-generic url-body-container-string (url))
-
-;; Return the base name of URL.  This is the PATHNAME-NAME of a
-;; file-based folder, and for IMAP it's the part of the mailbox name
-;; following the rightmost delimiter.
-(define-generic url-base-name (url))
-
-;; Return a URL that has the same container as URL, but with base name
-;; NAME.  This is roughly equivalent to appending NAME to the
-;; container string of URL.
-(define-generic make-peer-url (url name))
-
-;; Return #T if URL represents an existing folder.
-(define-generic url-exists? (url))
-
-;; Return #T if URL both exists and can be opened.
-(define-generic url-selectable? (url))
 
 ;; Return a string that uniquely identifies the server and account for
 ;; URL.  E.g. for IMAP this could be the URL string without the
@@ -110,8 +108,9 @@
 (define (parse-url-string string get-default-url)
   (let ((colon (string-find-next-char string #\:)))
     (if colon
-	(parse-url-body (string-tail string (fix:+ colon 1))
-			(get-default-url (string-head string colon)))
+	(parse-url-body
+	 (string-tail string (fix:+ colon 1))
+	 (get-default-url (map-legacy-protocols (string-head string colon))))
 	(parse-url-body string (get-default-url #f)))))
 
 ;; Protocol-specific parsing.  Dispatch on the class of DEFAULT-URL.
@@ -189,13 +188,19 @@
 	   (lambda (body)
 	     (make-url-string protocol body)))))
     (if colon
-	(let ((protocol (string-head string colon)))
+	(let ((protocol (map-legacy-protocols (string-head string colon))))
 	  (values (string-tail string (fix:+ colon 1))
 		  (and (url-protocol-name? protocol)
 		       (get-default-url protocol))
 		  (make-prepend protocol)))
 	(let ((url (get-default-url #f)))
 	  (values string url (make-prepend (url-protocol url)))))))
+
+(define (map-legacy-protocols protocol)
+  (if (or (string=? protocol "rmail")
+	  (string=? protocol "umail"))
+      "file"
+      protocol))
 
 ;;;; Server operations
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.42 2001/03/19 22:51:53 cph Exp $
+;;; $Id: imail-umail.scm,v 1.43 2001/05/13 03:46:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -26,31 +26,38 @@
 ;;;; URL
 
 (define-class <umail-url> (<file-url>))
-(define-url-protocol "umail" <umail-url>)
+(define make-umail-url (pathname-url-constructor <umail-url>))
 
-(define make-umail-url
-  (let ((constructor (instance-constructor <umail-url> '(PATHNAME))))
-    (lambda (pathname)
-      (intern-url (constructor (merge-pathnames pathname))))))
-
-(define-method parse-url-body ((string <string>) (default-url <umail-url>))
-  (make-umail-url
-   (parse-file-url-body string (file-url-pathname default-url))))
+(define-pathname-url-predicate <umail-url>
+  (lambda (pathname)
+    (case (file-type-indirect pathname)
+      ((REGULAR)
+       (let* ((magic "From ")
+	      (n-to-read (string-length magic))
+	      (buffer (make-string n-to-read))
+	      (n-read
+	       (call-with-input-file pathname
+		 (lambda (port)
+		   (read-string! buffer port)))))
+	 (and (fix:= n-to-read n-read)
+	      (string=? buffer magic))))
+      ((#F) (string=? (pathname-type pathname) "mail"))
+      (else #f))))
 
 (define-method make-peer-url ((url <umail-url>) name)
   (make-umail-url
    (merge-pathnames (pathname-default-type name "mail")
-		    (directory-pathname (file-url-pathname url)))))
+		    (directory-pathname (pathname-url-pathname url)))))
 
 ;;;; Server operations
 
 (define-method %open-folder ((url <umail-url>))
-  (if (not (file-readable? (file-url-pathname url)))
+  (if (not (file-readable? (pathname-url-pathname url)))
       (error:bad-range-argument url 'OPEN-FOLDER))
   (make-umail-folder url))
 
 (define-method %create-folder ((url <umail-url>))
-  (if (file-exists? (file-url-pathname url))
+  (if (file-exists? (pathname-url-pathname url))
       (error:bad-range-argument url 'CREATE-FOLDER))
   (let ((folder (make-umail-folder url)))
     (set-file-folder-messages! folder '#())
@@ -59,9 +66,6 @@
      folder
      (folder-modification-count folder))
     (save-folder folder)))
-
-(define (read-umail-file pathname)
-  (make-umail-folder (make-umail-url pathname)))
 
 ;;;; Folder
 
@@ -171,7 +175,7 @@
 	  (write-umail-message message #t port))))))
 
 (define-method append-message-to-file ((message <message>) (url <umail-url>))
-  (let ((port (open-binary-output-file (file-url-pathname url) #t)))
+  (let ((port (open-binary-output-file (pathname-url-pathname url) #t)))
     (write-umail-message message #t port)
     (close-port port)))
 

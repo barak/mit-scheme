@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.63 2001/05/10 18:19:17 cph Exp $
+;;; $Id: imail-file.scm,v 1.64 2001/05/13 03:45:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -25,26 +25,31 @@
 
 ;;;; URL
 
-(define-class <file-url> (<url>)
+(define-class <pathname-url> (<url>)
   (pathname define accessor))
 
-(define-method url-body ((url <file-url>))
-  (pathname->url-body (file-url-pathname url)))
+(define-url-protocol "file" <pathname-url>)
 
-(define-method url-presentation-name ((url <file-url>))
-  (file-namestring (file-url-pathname url)))
+(define (pathname-url-constructor class)
+  (let ((procedure
+	 (let ((constructor (instance-constructor class '(PATHNAME))))
+	   (lambda (pathname)
+	     (intern-url (constructor (merge-pathnames pathname)))))))
+    (register-pathname-url-constructor class procedure)
+    procedure))
 
-(define-method url-body-container-string ((url <file-url>))
-  (pathname->url-body (directory-namestring (file-url-pathname url))))
+(define (register-pathname-url-constructor class constructor)
+  (hash-table/put! pathname-url-constructors class constructor))
 
-(define-method url-base-name ((url <file-url>))
-  (pathname-name (file-url-pathname url)))
+(define (get-pathname-url-constructor class)
+  (or (hash-table/get pathname-url-constructors class #f)
+      (error "Unknown pathname-url class:" class)))
 
-(define-method url-exists? ((url <file-url>))
-  (file-exists? (file-url-pathname url)))
+(define pathname-url-constructors
+  (make-eq-hash-table))
 
-(define-method url-selectable? ((url <file-url>))
-  (file-regular? (file-url-pathname url)))
+(define-method url-body ((url <pathname-url>))
+  (pathname->url-body (pathname-url-pathname url)))
 
 (define (pathname->url-body pathname)
   (string-append (let ((device (pathname-device pathname)))
@@ -64,7 +69,43 @@
 		       ""))
 		 (url:encode-string (file-namestring pathname))))
 
-(define (parse-file-url-body string default-pathname)
+(define-method url-container ((url <pathname-url>))
+  (make-directory-url
+   (directory-pathname
+    (directory-pathname-as-file (pathname-url-pathname url)))))
+
+(define (define-pathname-url-predicate class predicate)
+  (let ((constructor (get-pathname-url-constructor class)))
+    (let loop ((entries pathname-url-predicates))
+      (if (pair? entries)
+	  (if (eq? class (vector-ref (car entries) 0))
+	      (begin
+		(vector-set! (car entries) 1 predicate)
+		(vector-set! (car entries) 2 constructor))
+	      (loop (cdr entries)))
+	  (begin
+	    (set! pathname-url-predicates
+		  (cons (vector class predicate constructor)
+			pathname-url-predicates))
+	    unspecific)))))
+
+(define pathname-url-predicates '())
+
+(define-method parse-url-body ((string <string>) (default-url <pathname-url>))
+  (let ((pathname
+	 (parse-pathname-url-body string (pathname-url-pathname default-url))))
+    ((let loop ((entries pathname-url-predicates))
+       (if (pair? entries)
+	   (if ((vector-ref (car entries) 1) pathname)
+	       (vector-ref (car entries) 2)
+	       (loop (cdr entries)))
+	   (if (or (directory-pathname? pathname)
+		   (file-directory? pathname))
+	       make-directory-url
+	       make-file-url)))
+     pathname)))
+
+(define (parse-pathname-url-body string default-pathname)
   (let ((finish
 	 (lambda (string)
 	   (merge-pathnames
@@ -83,18 +124,58 @@
 	  ((string-prefix? "///" string)
 	   (finish (string-tail string (string-length "//"))))
 	  ((string-prefix? "//" string)
-	   (error:bad-range-argument string 'PARSE-URL-BODY))
+	   (error:bad-range-argument string 'PARSE-PATHNAME-URL-BODY))
 	  (else
 	   (finish string)))))
+
+;;;; File folders
+
+(define-class <file-url> (<folder-url> <pathname-url>))
+(define make-file-url (pathname-url-constructor <file-url>))
+
+(define-method url-exists? ((url <file-url>))
+  (file-exists? (pathname-url-pathname url)))
+
+(define-method url-is-selectable? ((url <file-url>))
+  (file-regular? (pathname-url-pathname url)))
+
+(define-method url-presentation-name ((url <file-url>))
+  (file-namestring (pathname-url-pathname url)))
+
+(define-method url-base-name ((url <file-url>))
+  (pathname-name (pathname-url-pathname url)))
+
+;;;; File containers
+
+(define-class <directory-url> (<container-url> <pathname-url>))
+
+(define make-directory-url
+  (let ((constructor (instance-constructor <directory-url> '(PATHNAME))))
+    (lambda (pathname)
+      (intern-url
+       (constructor (pathname-as-directory (merge-pathnames pathname)))))))
+
+(register-pathname-url-constructor <directory-url> make-directory-url)
+
+(define-method url-exists? ((url <directory-url>))
+  (file-directory? (pathname-url-pathname url)))
+
+(define-method url-presentation-name ((url <directory-url>))
+  (let ((pathname (pathname-url-pathname url)))
+    (let ((directory (pathname-directory pathname)))
+      (if (pair? (cdr directory))
+	  (car (last-pair directory))
+	  (->namestring pathname)))))
 
 ;;;; Server operations
 
 (define-method %url-complete-string
-    ((string <string>) (default-url <file-url>)
+    ((string <string>) (default-url <pathname-url>)
 		       if-unique if-not-unique if-not-found)
   (pathname-complete-string
-   (parse-file-url-body string
-			(directory-pathname (file-url-pathname default-url)))
+   (parse-pathname-url-body
+    string
+    (directory-pathname (pathname-url-pathname default-url)))
    (lambda (pathname) pathname #t)
    (lambda (string)
      (if-unique (pathname->url-body string)))
@@ -104,16 +185,16 @@
    if-not-found))
 
 (define-method %url-string-completions
-    ((string <string>) (default-url <file-url>))
+    ((string <string>) (default-url <pathname-url>))
   (map pathname->url-body
        (pathname-completions-list
-	(parse-file-url-body
+	(parse-pathname-url-body
 	 string
-	 (directory-pathname (file-url-pathname default-url)))
+	 (directory-pathname (pathname-url-pathname default-url)))
 	(lambda (pathname) pathname #t))))
 
 (define-method %delete-folder ((url <file-url>))
-  (delete-file (file-url-pathname url)))
+  (delete-file (pathname-url-pathname url)))
 
 ;;; The next method only works when operating on two URLs of the same
 ;;; class, and is restricted to cases where RENAME-FILE works.
@@ -121,7 +202,8 @@
 (define-computed-method %rename-folder ((uc1 <file-url>) (uc2 <file-url>))
   (and (eq? uc1 uc2)
        (lambda (url new-url)
-	 (rename-file (file-url-pathname url) (file-url-pathname new-url)))))
+	 (rename-file (pathname-url-pathname url)
+		      (pathname-url-pathname new-url)))))
 
 (define-method with-open-connection ((url <file-url>) thunk)
   url
@@ -147,7 +229,7 @@
 (define-generic revert-file-folder (folder))
 
 (define (file-folder-pathname folder)
-  (file-url-pathname (folder-url folder)))
+  (pathname-url-pathname (folder-url folder)))
 
 (define-method %close-folder ((folder <file-folder>))
   (discard-file-folder-messages folder)
