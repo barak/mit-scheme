@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.7 1988/05/09 19:57:17 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.8 1988/05/10 00:10:33 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -293,15 +293,19 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (CHAR->ASCII (REGISTER (? source))))
   (QUALIFIER (pseudo-register? target))
-  (if (machine-register? source)
-      (LAP (BFEXTU ,(register-reference source)
-		   (& 0) (& 8)
-		   ,(register-reference (allocate-alias-register! target 'DATA))))
-      (byte-offset->register
-       (indirect-char/ascii-reference! regnum:regs-pointer
-				       (pseudo-register-offset source))
-       (indirect-register regnum:regs-pointer)
-       target)))
+  (let ((machine-register
+	 (if (machine-register? source)
+	     source
+	     (register-alias source false))))
+    (if machine-register
+	(LAP (BFEXTU ,(register-reference source)
+		     (& 0) (& 8)
+		     ,(register-reference (allocate-alias-register! target 'DATA))))
+	(byte-offset->register
+	 (indirect-char/ascii-reference! regnum:regs-pointer
+					 (pseudo-register-offset source))
+	 (indirect-register regnum:regs-pointer)
+	 target))))
 
 (define-rule statement
   (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
