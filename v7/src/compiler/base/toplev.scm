@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.49 1993/11/29 18:38:35 gjr Exp $
+$Id: toplev.scm,v 4.50 1993/11/29 19:04:31 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -161,7 +161,7 @@ MIT in each case. |#
     (compile-scode/internal/hook
      (lambda ()
        (compile-scode/internal scode
-			       keep-debugging-info?)))))
+			       *info-output-filename*)))))
 
 (define (compiler:batch-compile input #!optional output)
   (fluid-let ((compiler:batch-mode? true))
