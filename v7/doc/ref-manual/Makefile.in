@@ -1,7 +1,7 @@
 
-# $Id: Makefile.in,v 1.7 2003/04/15 03:29:18 cph Exp $
+# $Id: Makefile.in,v 1.8 2004/10/14 04:05:39 cph Exp $
 #
-# Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+# Copyright 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -65,9 +65,12 @@ psdir = @psdir@
 
 SOURCES = \
     scheme.texinfo \
+    acknowledgements.texi \
     associations.texi \
+    binding-index.texi \
     bit-strings.texi \
     characters.texi \
+    concept-index.texi \
     environments.texi \
     equivalence.texi \
     error.texi \
