@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.26 1991/05/06 18:09:55 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.27 1991/05/28 19:02:04 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -191,7 +191,18 @@ extern void
 do									\
 {									\
   char *base = ((char *) (addr));					\
-  (operate_on_cache_region (CC_FLUSH, ((char *) (addr)), (nwords)))
+  unsigned long len = (nwords);						\
+									\
+  operate_on_cache_region (CC_FLUSH, base, len);			\
+  operate_on_cache_region (CC_IPURGE, base, 1);				\
+  operate_on_cache_region (CC_IPURGE,					\
+			   ((char *)					\
+			    (((unsigned long *) base) + (len - 1))),	\
+			    1);						\
+} while (0)  
+
+#    ifdef IN_CMPINT_C
+
 void 
 DEFUN (operate_on_cache_region,
        (cachecmd, bptr, nwords),
@@ -461,7 +472,7 @@ extdo {									\
 #define COMPILER_HOOK_SIZE		2	/* absolute jsr instruction */
 
 #define COMPILER_REGBLOCK_EXTRA_SIZE					\
-#define COMPILER_REGBLOCK_N_HOOKS	40
+  (COMPILER_REGBLOCK_N_HOOKS * COMPILER_HOOK_SIZE)
 
 #define A6_TRAMPOLINE_TO_INTERFACE_OFFSET				\
   ((COMPILER_REGBLOCK_N_FIXED + (2 * COMPILER_HOOK_SIZE)) *		\

@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.19 1991/05/06 18:11:35 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.20 1991/05/28 19:04:34 jinx Exp $
 ###
 ###	Copyright (c) 1989-1991 Massachusetts Institute of Technology
 ###
@@ -94,6 +94,7 @@
 ####	- a5 contains the Scheme free pointer.
 ####	- a4 contains the dynamic link when needed.
 ####	- d7 contains the Scheme datum mask.
+####	- d6 is where Scheme compiled code returns values.
 ####
 ####	All other registers are available to the compiler.  A
 ####	caller-saves convention is used, so the registers need not be
@@ -172,6 +173,7 @@ define(dlink, %a4)			# Dynamic link register (contains a
 define(rfree, %a5)			# Free pointer
 define(regs, %a6)			# Pointer to Registers[0]
 define(rmask, %d7)			# Mask to clear type code
+define(rval,%d6)
 
 reference_external(Ext_Stack_Pointer)
 reference_external(Free)
@@ -260,6 +262,7 @@ define_debugging_label(scheme_to_interface)
 	bgt.b	scheme_to_interface_proceed
 	nop
 define_debugging_label(scheme_to_interface_proceed)')
+	mov.l	rval,regblock_val(regs)
 	switch_to_C_registers()
 	allocate_utility_result()
 	mov.l	%d4,-(%sp)		# Push arguments to scheme utility
@@ -285,7 +288,8 @@ define_c_label(interface_to_scheme)
 ###
 define_debugging_label(interface_to_scheme_internal)
 	switch_to_scheme_registers()
-	mov.l	regblock_val(regs),%d0
+	mov.l	regblock_val(regs),rval
+	mov.l	rval,%d0
 	mov.l	%d0,%d1
 	and.l	rmask,%d1
 	mov.l	%d1,dlink	
@@ -479,20 +483,20 @@ define_c_label(asm_allocate_closure)
 ###	Arguments on top of the stack followed by the return address.
 
 define_debugging_label(asm_generic_flonum_result)
-	mov.l	rfree,regblock_val(regs)
+	mov.l	rfree,rval
 	mov.l	&TYPE_CODE_TO_OBJECT(tc_manifest_nmv)+2,(rfree)+
 	fmove.d	%fp0,(rfree)+
-	or.b	&TYPE_CODE_TO_BYTE(tc_flonum),regblock_val(regs)
+	or.l	&TYPE_CODE_TO_OBJECT(tc_flonum),rval
 	and.b	&TYPE_CODE_TO_BYTE(1)-1,(%sp)
 	rts
 
 define_debugging_label(asm_true_result)
-	mov.l	&TYPE_CODE_TO_OBJECT(tc_true),regblock_val(regs)
+	mov.l	&TYPE_CODE_TO_OBJECT(tc_true),rval
 	and.b	&TYPE_CODE_TO_BYTE(1)-1,(%sp)
 	rts
 
 define_debugging_label(asm_false_result)
-	mov.l	&TYPE_CODE_TO_OBJECT(tc_false),regblock_val(regs)
+	mov.l	&TYPE_CODE_TO_OBJECT(tc_false),rval
 	and.b	&TYPE_CODE_TO_BYTE(1)-1,(%sp)
 	rts
 
