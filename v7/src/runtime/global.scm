@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.40 1992/07/21 21:57:58 cph Exp $
+$Id: global.scm,v 14.41 1992/09/14 23:08:42 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -193,11 +193,13 @@ MIT in each case. |#
 	  (wait-loop)))))
 
 (define (exit #!optional integer)
-  (cond ((not (prompt-for-confirmation "Kill Scheme")))
-	((default-object? integer)
-	 (%exit))
-	(else
-	 (%exit integer))))
+  (hook/exit (if (default-object? integer) false integer)))
+
+(define (default/exit integer)
+  (if (prompt-for-confirmation "Kill Scheme")
+      (if integer (%exit integer) (%exit))))
+
+(define hook/exit default/exit)
 
 (define (%exit #!optional integer)
   (event-distributor/invoke! event:before-exit)
@@ -206,8 +208,13 @@ MIT in each case. |#
       ((ucode-primitive exit-with-value 1) integer)))
 
 (define (quit)
+  (hook/quit))
+
+(define (default/quit)
   (with-absolutely-no-interrupts (ucode-primitive halt))
   unspecific)
+
+(define hook/quit default/quit)
 
 (define syntaxer/default-environment
   (let () (the-environment)))
