@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.23 2000/05/08 20:48:59 cph Exp $
+;;; $Id: imail-imap.scm,v 1.24 2000/05/10 17:01:34 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -629,10 +629,37 @@
 				 (imap:send-command connection
 						    command arguments)
 				 command))
+
+(define imail-trace? #f)
+(define imail-trace-output)
+
+(define (start-imail-trace)
+  (without-interrupts
+   (lambda ()
+     (set! imail-trace? #t)
+     (set! imail-trace-output '())
+     unspecific)))
+
+(define (stop-imail-trace)
+  (reverse!
+   (without-interrupts
+    (lambda ()
+      (set! imail-trace? #f)
+      (let ((output imail-trace-output))
+	(set! imail-trace-output)
+	output)))))
+
+(define (imail-trace-record-output object)
+  (without-interrupts
+   (lambda ()
+     (set! imail-trace-output (cons object imail-trace-output))
+     unspecific)))
 
 (define (imap:send-command connection command arguments)
   (let ((tag (next-imap-command-tag connection))
 	(port (imap-connection-port connection)))
+    (if imail-trace?
+	(imail-trace-record-output (cons* 'SEND tag command arguments)))
     (write-string tag port)
     (write-char #\space port)
     (write command port)
@@ -685,11 +712,13 @@
 	      (else
 	       (enqueue-imap-response connection response)
 	       (loop)))))))
-
+
 (define (imap:wait-for-tagged-response connection tag command)
   (let ((port (imap-connection-port connection)))
     (let loop ()
       (let ((response (imap:read-server-response port)))
+	(if imail-trace?
+	    (imail-trace-record-output (list 'RECEIVE response)))
 	(let ((tag* (imap:response:tag response)))
 	  (if tag*
 	      (let ((responses
@@ -709,7 +738,7 @@
 	      (begin
 		(enqueue-imap-response connection response)
 		(loop))))))))
-
+
 (define (process-responses connection command responses)
   (if (pair? responses)
       (if (process-response connection command (car responses))
@@ -717,7 +746,7 @@
 		(process-responses connection command (cdr responses)))
 	  (process-responses connection command (cdr responses)))
       '()))
-
+
 (define (process-response connection command response)
   (cond ((imap:response:status-response? response)
 	 (let ((code (imap:response:response-text-code response))
