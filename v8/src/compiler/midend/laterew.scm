@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.8 1995/07/06 21:48:58 adams Exp $
+$Id: laterew.scm,v 1.9 1995/08/10 13:41:21 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -242,9 +242,7 @@ MIT in each case. |#
 
 (define (define-rewrite/late operator-name-or-object handler)
   (hash-table/put! *late-rewritten-operators*
-		   (if (hash-table/get *operator-properties*
-				       operator-name-or-object
-				       false)
+		   (if (known-operator? operator-name-or-object)
 		       operator-name-or-object
 		       (make-primitive-procedure operator-name-or-object))
 		   handler))

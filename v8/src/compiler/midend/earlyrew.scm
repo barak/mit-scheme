@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: earlyrew.scm,v 1.9 1995/05/16 02:43:14 adams Exp $
+$Id: earlyrew.scm,v 1.10 1995/08/10 13:41:57 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -140,9 +140,7 @@ MIT in each case. |#
 
 (define (define-rewrite/early operator-name-or-object handler)
   (hash-table/put! *early-rewritten-operators*
-		   (if (hash-table/get *operator-properties*
-				       operator-name-or-object
-				       false)
+		   (if (known-operator? operator-name-or-object)
 		       operator-name-or-object
 		       (make-primitive-procedure operator-name-or-object))
 		   handler))

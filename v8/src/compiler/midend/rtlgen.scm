@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.34 1995/08/07 16:12:35 adams Exp $
+$Id: rtlgen.scm,v 1.35 1995/08/10 13:40:43 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -2832,7 +2832,7 @@ MIT in each case. |#
 
 (define (define-open-coder name-or-object nargs
 	  vhandler shandler phandler ohandler sphandler)
-  (let ((rator (if (hash-table/get *operator-properties* name-or-object false)
+  (let ((rator (if (known-operator? name-or-object)
 		   name-or-object
 		   (make-primitive-procedure name-or-object nargs))))
     (hash-table/put!
