@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.6 1989/11/28 05:00:45 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.7 1989/11/28 13:08:51 jinx Exp $
  *
  * Compiled code interface macros.
  *
@@ -78,68 +78,140 @@ typedef unsigned short format_word;
 /* Utilities for manipulating absolute subroutine calls.
    On the PA the absolute address is "smeared out" over two
    instructions, an LDIL and a BLE instruction.
-
-   Note: The following does not do a full decoding of the BLE instruction.
-   It assumes that the overlap bits with the LDIL instruction are all
-   zeroed.  Thus only 9 bits of w2 are needed (the rest, including
-   w, w1, and the top and bottom bits of w2) are zero.
  */
+
+extern unsigned long hppa_extract_absolute_address();
+extern void hppa_store_absolute_address();
 
 #define EXTRACT_ABSOLUTE_ADDRESS(target, address)			\
 {									\
-  unsigned long *addr, ldil_inst, ble_inst, ldil_offset, ble_offset;	\
-									\
-  addr = ((unsigned long *) (address));					\
-  ldil_inst = *addr++;							\
-  ble_inst = *addr;							\
-									\
-  ldil_offset = (((ldil_inst & 1) << 20) |				\
-		 ((ldil_inst & ((1 << 12) - (1 << 1))) << (9 - 1)) |	\
-		 ((ldil_inst & ((1 << 16) - (1 << 14))) >> (14 - 7)) |	\
-		 ((ldil_inst & ((1 << 21) - (1 << 16))) >> (16 - 2)) |	\
-		 ((ldil_inst & ((1 << 14) - (1 << 12))) >> (12 - 0)));	\
-  ble_offset = ((ble_inst >> 3) & ((1 << 10) - 1));			\
-									\
   (target) =								\
-    ((SCHEME_OBJECT) ((ldil_offset << 11) + (ble_offset << 2)));	\
+    ((SCHEME_OBJECT)							\
+     (hppa_extract_absolute_address((unsigned long *) (address))));	\
 }
 
 #define STORE_ABSOLUTE_ADDRESS(entry_point, address, nullify_p)		\
 {									\
-  unsigned long *addr, ep, ldil_offset, ble_offset;			\
-									\
-  ep = ((unsigned long) (entry_point));					\
-  addr = ((unsigned long *) (address));					\
-									\
-  ldil_offset = (ep >> 11);						\
-									\
-  /* LDIL	L'ep,26 */						\
-									\
-  *addr++ =								\
-    ((0x8 << 26) | (26 << 21) |						\
-     ((ldil_offset & ((1 << 7) - (1 << 2))) << (16 - 2)) |		\
-     ((ldil_offset & ((1 << 9) - (1 << 7))) << (14 - 7)) |		\
-     ((ldil_offset & ((1 << 2) - 1)) << (12 - 0))	 |		\
-     ((ldil_offset & ((1 << 20) - (1 << 9))) >> (9 - 1)) |		\
-     ((ldil_offset & (1 << 20)) >> 20));				\
-									\
-  ble_offset = ((ep & ((1 << 12) - 1)) >> 2);				\
-									\
-  /* BLE	R'ep(5,26)						\
-     The following instruction is nullified if nullify_p is true.	\
-     The w and w1 fields are 0, and so are the top and bottom bits	\
-     of w2.								\
-									\
-     Note: the space register field is also bit-munged:			\
-     it is LSB,MSB,MiddleB, rather than MSB,MiddleB,LSB.		\
-     Thus space register 5 (#b101) is represented as #b110 = 6.		\
-   */									\
-									\
-  *addr =								\
-    ((0x39 << 26) | (26 << 21) | (6 << 13) |				\
-     ((ble_offset << 1) << 2) |						\
-     ((nullify_p) ? 2 : 0));						\
+  hppa_store_absolute_address(((unsigned long *) (address)),		\
+			      ((unsigned long) (entry_point)),		\
+			      ((unsigned long) (nullify_p)));		\
 }
+
+#ifdef IN_CMPINT_C
+
+/* Definitions of the utility procedures.
+   Procedure calls of leaf procedures on the HPPA are pretty fast,
+   so there is no reason not to do this out of line.
+   In this way compiled code can use them too.
+ */
+
+union ldil_inst
+{
+  unsigned long inst;
+  struct
+  {
+    unsigned opcode	: 6;
+    unsigned base	: 5;
+    unsigned D		: 5;
+    unsigned C		: 2;
+    unsigned E		: 2;
+    unsigned B		: 11;
+    unsigned A		: 1;
+  } fields;
+};
+
+union ble_inst
+{
+  unsigned long inst;
+  struct
+  {
+    unsigned opcode	: 6;
+    unsigned base	: 5;
+    unsigned w1		: 5;
+    unsigned s		: 3;
+    unsigned w2b	: 10;
+    unsigned w2a	: 1;
+    unsigned n		: 1;
+    unsigned w0		: 1;
+  } fields;
+};
+
+union short_pointer
+{
+  unsigned long address;
+  struct
+  {
+    unsigned A		: 1;
+    unsigned B		: 11;
+    unsigned C		: 2;
+    unsigned D		: 5;
+    unsigned w2a	: 1;
+    unsigned w2b	: 10;
+    unsigned pad	: 2;
+  } fields;
+};
+
+/*
+   Note: The following does not do a full decoding of the BLE instruction.
+   It assumes that the bits have been set by STORE_ABSOLUTE_ADDRESS below,
+   which decomposes an absolute address according to the `short_pointer'
+   structure above, and thus certain fields are 0.
+
+   The sequence inserted by STORE_ABSOLUTE_ADDRESS is approximately
+   (the actual address decomposition is given above).
+   LDIL		L'ep,26
+   BLE		R'ep(5,26)
+ */
+
+unsigned long
+hppa_extract_absolute_address (addr)
+     unsigned long *addr;
+{
+  union short_pointer result;
+  union ble_inst ble;
+  union ldil_inst ldil;
+
+  ldil.inst = *addr++;
+  ble.inst = *addr;
+
+  /* Fill the padding */
+  result.address = 0;
+
+  result.fields.A = ldil.fields.A;
+  result.fields.B = ldil.fields.B;
+  result.fields.C = ldil.fields.C;
+  result.fields.D = ldil.fields.D;
+  result.fields.w2a = ble.fields.w2a;
+  result.fields.w2b = ble.fields.w2b;
+
+  return (result.address);
+}
+
+void
+hppa_store_absolute_address (addr, sourcev, nullify_p)
+     unsigned long *addr, sourcev, nullify_p;
+{
+  union short_pointer source;
+  union ldil_inst ldil;
+  union ble_inst ble;
+
+  source.address = sourcev;
+  ldil.inst = ((0x08 << 26) | (26 << 21));
+  ble.inst = ((0x39 << 26) | (26 << 21) | (6 << 13));
+  ldil.fields.A = source.fields.A;
+  ldil.fields.B = source.fields.B;
+  ldil.fields.C = source.fields.C;
+  ldil.fields.D = source.fields.D;
+  ble.fields.w2a = source.fields.w2a;
+  ble.fields.w2b = source.fields.w2b;
+  ble.fields.n = (nullify_p & 1);
+
+  *addr++ = ldil.inst;
+  *addr = ble.inst;
+  return;
+}
+
+#endif	/* IN_CMPINT_C */
 
 /* Interrupt/GC polling. */
 
