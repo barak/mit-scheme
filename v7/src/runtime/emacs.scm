@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.4 1990/06/20 20:28:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.5 1990/06/22 01:04:32 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -177,6 +177,13 @@ MIT in each case. |#
 
 (define (emacs/set-working-directory-pathname! pathname)
   (transmit-signal-with-argument #\w (pathname->string pathname)))
+
+(define (emacs/clean-input/flush-typeahead character)
+  character
+  (let loop ()
+    (if (not (char=? #\NUL (input-port/read-char console-input-port)))
+	(loop)))
+  true)
 
 (define normal/gc-start)
 (define normal/gc-finish)
@@ -193,6 +200,7 @@ MIT in each case. |#
 (define normal/^G-interrupt)
 (define normal/set-working-directory-pathname!)
 (define normal/presentation)
+(define normal/clean-input/flush-typeahead)
 
 (define (initialize-package!)
   (set! normal/gc-start hook/gc-start)
@@ -211,6 +219,7 @@ MIT in each case. |#
   (set! normal/set-working-directory-pathname!
 	hook/set-working-directory-pathname!)
   ;;(set! normal/presentation hook/presentation)
+  (set! normal/clean-input/flush-typeahead hook/clean-input/flush-typeahead)
   (add-event-receiver! event:after-restore install!)
   (install!))
 
@@ -236,6 +245,7 @@ MIT in each case. |#
   (set! hook/set-working-directory-pathname!
 	emacs/set-working-directory-pathname!)
   ;;(set! hook/presentation (lambda (thunk) (thunk)))
+  (set! hook/clean-input/flush-typeahead emacs/clean-input/flush-typeahead)
   unspecific)
 
 (define (install-normal-hooks!)
@@ -255,4 +265,5 @@ MIT in each case. |#
   (set! hook/set-working-directory-pathname!
 	normal/set-working-directory-pathname!)
   ;;(set! hook/presentation normal/presentation)
+  (set! hook/clean-input/flush-typeahead normal/clean-input/flush-typeahead)
   unspecific)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.3 1988/10/21 00:18:13 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.4 1990/06/22 01:04:36 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -59,6 +59,8 @@ MIT in each case. |#
 		      #| (#\P ,(flush-typeahead ^P-interrupt-handler)) |#
 		      #| (#\Z ,(flush-typeahead ^Z-interrupt-handler)) |#))
 	  table))
+  (set! hook/clean-input/flush-typeahead default/clean-input)
+  (set! hook/clean-input/keep-typeahead default/clean-input)
   (set! hook/^B-interrupt default/^B-interrupt)
   (set! hook/^G-interrupt default/^G-interrupt)
   (set! hook/^U-interrupt default/^U-interrupt)
@@ -71,8 +73,7 @@ MIT in each case. |#
 
 (define-primitives
   (clear-interrupts! 1)
-  check-and-clean-up-input-channel
-  get-next-interrupt-character
+  (tty-next-interrupt-char 0)
   set-fixed-objects-vector!
   (setup-timer-interrupt 2))
 
@@ -123,7 +124,7 @@ MIT in each case. |#
 (define (external-interrupt-handler interrupt-code interrupt-enables)
   interrupt-code
   (clear-interrupts! interrupt-bit/kbd)
-  (external-interrupt (get-next-interrupt-character) interrupt-enables))
+  (external-interrupt (tty-next-interrupt-char) interrupt-enables))
 
 (define (with-external-interrupts-handler handler thunk)
   (fluid-let ((external-interrupt (flush-typeahead handler)))
@@ -139,18 +140,17 @@ MIT in each case. |#
 
 (define keyboard-interrupts)
 
-;;; The following definitions must match the microcode.
-(define until-most-recent-interrupt-character 0)
-(define multiple-copies-only 1)
-
 (define ((flush-typeahead kernel) character interrupt-enables)
-  (if (check-and-clean-up-input-channel until-most-recent-interrupt-character
-					character)
+  (if (hook/clean-input/flush-typeahead character)
       (kernel character interrupt-enables)))
 
 (define ((keep-typeahead kernel) character interrupt-enables)
-  (if (check-and-clean-up-input-channel multiple-copies-only character)
+  (if (hook/clean-input/keep-typeahead character)
       (kernel character interrupt-enables)))
+
+(define hook/clean-input/flush-typeahead)
+(define hook/clean-input/keep-typeahead)
+(define (default/clean-input character) character true)
 
 (define (^B-interrupt-handler character interrupt-enables)
   character
