@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.22 1991/07/11 03:59:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.23 1991/08/13 06:45:50 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -76,6 +76,12 @@ typedef unsigned short format_word;
 */
 
 #define PC_ZERO_BITS                    2
+
+/* C function pointers are pairs of instruction addreses and data segment
+   pointers.  We don't want that for the assembly language entry points.
+ */
+
+#define C_FUNC_PTR_IS_CLOSURE
 
 /* Utilities for manipulating absolute subroutine calls.
    On the PA the absolute address is "smeared out" over two
@@ -147,6 +153,20 @@ union short_pointer
     unsigned B		: 11;
     unsigned C		: 2;
     unsigned D		: 5;
+    unsigned w2a	: 1;
+    unsigned w2b	: 10;
+    unsigned pad	: 2;
+  } fields;
+};
+
+union bl_offset
+{
+  long value;
+  struct
+  {
+    int sign_pad	: 13;
+    unsigned w0		: 1;
+    unsigned w1		: 5;
     unsigned w2a	: 1;
     unsigned w2b	: 10;
     unsigned pad	: 2;
@@ -678,17 +698,80 @@ do {									\
 
 #ifdef IN_CMPINT_C
 
-/* This loads the cache information structure for use by flush_i_cache.
+#define ASM_RESET_HOOK()						\
+do {									\
+  hppa_reset_hook (((sizeof (utility_table)) / (sizeof (void *))),	\
+		   &utility_table[0]);					\
+} while (0)
+
+long
+DEFUN (assemble_17,
+       (inst),
+       union ble_inst inst)
+{
+  union bl_offset off;
+
+  off.fields.pad = 0;
+  off.fields.w2b = inst.fields.w2b;
+  off.fields.w2a = inst.fields.w2a;
+  off.fields.w1  = inst.fields.w1;
+  off.fields.w0  = inst.fields.w0;
+  off.fields.sign_pad = ((inst.fields.w0 == 0) ? 0 : -1);
+  return off.value;
+}
+
+#include <magic.h>
+
+/* This loads the cache information structure for use by flush_i_cache,
+   sets the floating point flags correctly, and accommodates the c
+   function pointer closure format problems for utilities for HP-UX >= 8.0 .
  */
 
-#define ASM_RESET_HOOK hppa_reset_hook
+#define HPPA_TABLE_LENGTH	100
+
+extern void *hppa_utility_table[];
+void *hppa_utility_table[HPPA_TABLE_LENGTH];
 
 void
-DEFUN_VOID (hppa_reset_hook)
+DEFUN (hppa_reset_hook,
+       (table_length, utility_table),
+       long table_length AND
+       void **utility_table)
 {
+  long counter;
   extern void interface_initialize ();
+  void **hppa_table;
+
   flush_i_cache_initialize ();
   interface_initialize ();
+
+  if (table_length > HPPA_TABLE_LENGTH)
+  {
+    fprintf (stderr,
+	     "hppa_reset_hook: HPPA_TABLE_LENGTH (%d) < %d\n",
+	     HPPA_TABLE_LENGTH, table_length);
+    exit (1);
+  }
+
+  hppa_table = &hppa_utility_table[0];
+  for (counter = 0; counter < table_length; counter++)
+  {
+    /* Test for HP-UX >= 8.0 */
+
+#if defined(SHL_MAGIC) && !defined(__GNUC__)
+    char *C_closure, *blp;
+    long offset;
+
+    C_closure = ((char *) utility_table[counter]);
+    blp = (* ((char **) (C_closure - 2)));
+    blp = ((char *) (((unsigned long) blp) & ~3));
+    offset = (assemble_17 (* ((union ble_inst *) blp)));
+    hppa_table[counter] = ((void *) ((blp + 8) + offset));
+    
+#else
+    hppa_table[counter] = ((void *) utility_table[counter]);
+#endif
+  }
 }
 
 #endif /* IN_CMPINT_C */

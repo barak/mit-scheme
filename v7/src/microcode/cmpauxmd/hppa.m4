@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.16 1991/07/11 03:58:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.17 1991/08/13 06:46:08 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -160,7 +160,7 @@ C_to_interface
 	LDO	R'Registers-$global$(1),4 ; Setup Regs
 	LDI	QUAD_MASK,5
 
-interface_to_scheme
+ep_interface_to_scheme
 	LDW	8(0,4),2		; Move interpreter reg to val
 	LDW	0(0,4),20		; Setup memtop
 	ADDIL	L'Ext_Stack_Pointer-$global$,27
@@ -180,8 +180,8 @@ trampoline_to_interface
 	DEP	0,31,2,26
 scheme_to_interface
 	STW	2,8(0,4)		; Move val to interpreter reg
-	ADDIL	L'utility_table-$global$,27
-	LDO	R'utility_table-$global$(1),29
+	ADDIL	L'hppa_utility_table-$global$,27
+	LDO	R'hppa_utility_table-$global$(1),29
 	LDWX,S	28(0,29),29		; Find handler
 	ADDIL	L'Ext_Stack_Pointer-$global$,27
 	STW	22,R'Ext_Stack_Pointer-$global$(1) ; Update stack pointer
@@ -704,7 +704,7 @@ define_generic_unary_predicate(zero,2d,=)
 ;;;  to return to the interpreter.
 ;;;  It returns from C_to_interface.
 
-interface_to_C
+ep_interface_to_C
 	COPY	29,28			; Setup C value
         LDW     -132(0,30),2		; Restore return address
         LDW     -52(0,30),18		; Restore saved registers
@@ -737,16 +737,28 @@ interface_initialize
 	.PROC
 	.CALLINFO CALLER,FRAME=0
 	.ENTRY
-	LDO	4(30),30
+	LDO	4(30),30		; Allocate stack slot
 	FSTWS	0,0(30)
 	LDW	0(30),22
 	LDI	30,21			; enable V, Z, O, U traps
 	OR	21,22,22
 	STW	22,0(30)
 	FLDWS	0(30),0
+					; Prepare entry points
+	BL	known_pc,28		; get pc
+	ADDIL	L'ep_interface_to_scheme-known_pc,28
+known_pc
+	LDO	R'ep_interface_to_scheme-known_pc(1),29
+	ADDIL	L'interface_to_scheme-$global$,27
+	STW	29,R'interface_to_scheme-$global$(0,1)
+	ADDIL	L'ep_interface_to_C-known_pc,28
+	LDO	R'ep_interface_to_C-known_pc(1),29
+	ADDIL	L'interface_to_C-$global$,27
+	STW	29,R'interface_to_C-$global$(0,1)
+					; Return
 	BV	0(2)
 	.EXIT
-	LDO	-4(30),30
+	LDO	-4(30),30		; De-allocate stack slot
 	.PROCEND
 
 ;;;; Routine to flush some locations from the processor cache.
@@ -957,6 +969,9 @@ L$exit1
 	.SUBSPA $UNWIND$,QUAD=0,ALIGN=8,ACCESS=44
 	.SUBSPA $CODE$
 	.SPACE	$PRIVATE$
+	.SUBSPA $SHORTBSS$
+interface_to_scheme .COMM 4
+interface_to_C .COMM 4
 	.SUBSPA $DATA$,QUAD=1,ALIGN=8,ACCESS=31
 $THISMODULE$
 ifelse(ASM_DEBUG,1,"interface_counter
@@ -969,13 +984,11 @@ interface_limit
 	.IMPORT	Registers,DATA
 	.IMPORT	Ext_Stack_Pointer,DATA
 	.IMPORT	Free,DATA
-	.IMPORT	utility_table,DATA
+	.IMPORT	hppa_utility_table,DATA
 	.SPACE	$TEXT$
 	.SUBSPA $CODE$
 	.EXPORT C_to_interface,PRIV_LEV=3,ARGW0=GR,RTNVAL=GR
 	.EXPORT interface_initialize,PRIV_LEV=3
-	.EXPORT interface_to_scheme,PRIV_LEV=3
-	.EXPORT interface_to_C,PRIV_LEV=3
 	.EXPORT scheme_to_interface_ble,PRIV_LEV=3
 	.EXPORT trampoline_to_interface,PRIV_LEV=3
 	.EXPORT scheme_to_interface,PRIV_LEV=3

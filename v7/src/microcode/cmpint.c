@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.37 1991/07/12 23:15:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.38 1991/08/13 06:45:36 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -117,11 +117,21 @@ MIT in each case. */
 
 typedef char instruction;
 
+#ifdef C_FUNC_PTR_IS_CLOSURE
+#  define REFENTRY(name) (name)
+#  define VARENTRY(name) instruction *name
+#  define EXTENTRY(name) extern instruction *name
+#else
+#  define REFENTRY(name) ((void (*)()) name)
+#  define VARENTRY(name) void (*name)()
+#  define EXTENTRY(name) extern void EXFUN (name, (void))
+#endif
+
 /* Structure returned by SCHEME_UTILITYs */
 
 struct utility_result
 {
-  void (*interface_dispatch)();
+  VARENTRY (interface_dispatch);
   union additional_info
   {
     long                code_to_interpreter;
@@ -135,7 +145,7 @@ struct utility_result
 do {                                                                    \
   struct utility_result temp;                                           \
                                                                         \
-  temp.interface_dispatch = ((void (*)()) interface_to_C);              \
+  temp.interface_dispatch = (REFENTRY (interface_to_C));		\
   temp.extra.code_to_interpreter = (code);                              \
                                                                         \
   return (temp);                                                        \
@@ -145,7 +155,7 @@ do {                                                                    \
 do {                                                                    \
   struct utility_result temp;                                           \
                                                                         \
-  temp.interface_dispatch = ((void (*)()) interface_to_scheme);         \
+  temp.interface_dispatch = (REFENTRY (interface_to_scheme));		\
   temp.extra.entry_point = ((instruction *) (ep));			\
                                                                         \
   return (temp);                                                        \
@@ -185,9 +195,8 @@ extern long
 extern long
   EXFUN (C_to_interface, (void *));
 
-extern void
-  EXFUN (interface_to_C, (void)),
-  EXFUN (interface_to_scheme, (void));
+EXTENTRY (interface_to_C);
+EXTENTRY (interface_to_scheme);
 
 /* Exports to the rest of the "microcode" */
 
