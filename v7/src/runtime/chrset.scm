@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/chrset.scm,v 14.3 1988/07/15 22:30:00 cph Rel $
+$Id: chrset.scm,v 14.4 1995/11/07 04:39:57 adams Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,6 +52,14 @@ MIT in each case. |#
     (vector-8b-fill! char-set 0 256 0)
     (for-each (lambda (char) (vector-8b-set! char-set (char->ascii char) 1))
 	      chars)
+    char-set))
+
+(define (string->char-set string)
+  (let ((char-set (string-allocate 256)))
+    (vector-8b-fill! char-set 0 256 0)
+    (do ((i  (- (string-length string) 1)  (- i 1)))
+	((< i 0))
+      (vector-8b-set! char-set (vector-8b-ref string i) 1))
     char-set))
 
 (define (ascii-range->char-set lower upper)
