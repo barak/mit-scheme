@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.14 1991/05/16 21:20:53 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.15 1992/01/24 23:02:29 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -82,6 +82,25 @@
 				  string
 				  (fix:- gap-start start))))
     string))
+
+(define (group-copy-substring! group start end string start*)
+  (let ((text (group-text group))
+	(gap-start (group-gap-start group)))
+    (cond ((fix:<= end gap-start)
+	   (substring-move-right! text start end string start*))
+	  ((fix:>= start gap-start)
+	   (substring-move-right! text
+				  (fix:+ start (group-gap-length group))
+				  (fix:+ end (group-gap-length group))
+				  string
+				  start*))
+	  (else
+	   (substring-move-right! text start gap-start string start*)
+	   (substring-move-right! text
+				  (group-gap-end group)
+				  (fix:+ end (group-gap-length group))
+				  string
+				  (fix:+ start* (fix:- gap-start start)))))))
 
 (define (group-left-char group index)
   (string-ref (group-text group)

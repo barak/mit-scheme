@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.72 1992/01/10 18:54:57 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.73 1992/01/24 23:02:58 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -158,6 +158,7 @@ MIT in each case. |#
 	  %group-insert-char!
 	  %group-insert-substring!
 	  gap-allocation-extra
+	  group-copy-substring!
 	  group-delete!
 	  group-delete-left-char!
 	  group-delete-right-char!
