@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.119 1992/02/06 22:48:26 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.120 1992/02/06 22:51:59 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -135,10 +135,12 @@ A page boundary is any line whose beginning matches the regexp page-delimiter."
 
 (define (page-interior-region point)
   (if (and (group-end? point)
-	   (mark= (re-match-forward (ref-variable page-delimiter)
-				    (line-start point 0)
-				    point)
-		  point))
+	   (let ((break (re-match-forward
+			 (ref-variable page-delimiter)
+			 (line-start point 0)
+			 point)))
+	     (and break
+		  (mark= break point))))
       (make-region point point)
       (let ((end (forward-page point 1 'LIMIT)))
 	(make-region (let ((start (backward-page end 1 'LIMIT)))
