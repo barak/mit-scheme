@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.19 1993/09/01 22:25:34 gjr Exp $
+$Id: dosprm.scm,v 1.20 1993/09/07 21:56:27 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -180,7 +180,10 @@ MIT in each case. |#
 	     (not ((ucode-primitive get-environment-variable 1)
 		   var)))
 	(set! environment-variables
-	      (cons (cons var val)
+	      (cons (cons var
+			  (if (procedure? val)
+			      (val)
+			      val))
 		    environment-variables)))
     unspecific)
 
