@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxpth.scm,v 14.14 1993/01/12 23:09:10 gjr Exp $
+$Id: unxpth.scm,v 14.15 1993/01/13 09:53:15 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -249,12 +249,12 @@ MIT in each case. |#
 		      (pair? (cdr directory)))))
 	(error:bad-range-argument pathname 'DIRECTORY-PATHNAME-AS-FILE))
     (if (null? (cdr directory))
-	(%make-pathname (%pathname-host pathname)
-			'UNSPECIFIC
-			directory
-			""
-			false
-			'UNSPECIFIC)
+	;; Root directory can't be represented as a file, because the
+	;; name field of a pathname must be a non-null string.  We
+	;; could signal an error here, but instead we'll just return
+	;; the original pathname and leave it to the caller to deal
+	;; with any problems this might cause.
+	pathname
 	(parse-name (unparse-directory-component (car (last-pair directory)))
 	  (lambda (name type)
 	    (%make-pathname (%pathname-host pathname)
