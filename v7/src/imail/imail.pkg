@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.37 2000/05/19 21:37:48 cph Exp $
+;;; $Id: imail.pkg,v 1.38 2000/05/21 00:03:03 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -183,6 +183,9 @@
 	  imap:response:fetch?
 	  imap:response:flags
 	  imap:response:flags?
+	  imap:response:list-delimiter
+	  imap:response:list-flags
+	  imap:response:list-mailbox
 	  imap:response:list?
 	  imap:response:lsub?
 	  imap:response:no?

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.22 2000/05/19 05:02:01 cph Exp $
+;;; $Id: imap-response.scm,v 1.23 2000/05/21 00:03:05 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -547,6 +547,9 @@
 (define imap:response:expunge-index cadr)
 (define imap:response:fetch-index cadr)
 (define imap:response:flags cdr)
+(define imap:response:list-delimiter cadr)
+(define imap:response:list-mailbox caddr)
+(define imap:response:list-flags cdddr)
 (define imap:response:recent-count cadr)
 (define imap:response:search-indices cdr)
 
