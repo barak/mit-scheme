@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.18 1989/11/30 16:07:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.19 1989/12/05 20:52:40 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -113,6 +113,9 @@ MIT in each case. |#
 	   (zero? (object-datum constant)))
       0
       3))
+
+(define compiler:primitives-with-no-open-coding
+  '(DIVIDE-FIXNUM GC-FIXNUM &/))
 
 (define-integrable d0 0)
 (define-integrable d1 1)

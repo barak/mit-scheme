@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.32 1989/10/26 07:38:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.33 1989/12/05 20:51:13 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -37,6 +37,12 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 ;;;; Analysis
+
+;; These allows each port to open code a subset of everything below.
+
+(define-integrable (available-primitive? prim)
+  (lambda (prim)
+    (not (memq prim compiler:primitives-with-no-open-coding))))
 
 (define (open-coding-analysis applications)
   (for-each (if compiler:open-code-primitives?
@@ -200,12 +206,13 @@ MIT in each case. |#
 (define (open-coder-definer ->effect ->predicate ->value)
   (let ((per-name
 	 (lambda (name handler)
-	   (let ((entry (assq name name->open-coders))
-		 (item (vector handler ->effect ->predicate ->value)))
-	     (if entry
-		 (set-cdr! entry item)
-		 (set! name->open-coders
-		       (cons (cons name item) name->open-coders)))))))
+	   (if (available-primitive? name)
+	       (let ((entry (assq name name->open-coders))
+		     (item (vector handler ->effect ->predicate ->value)))
+		 (if entry
+		     (set-cdr! entry item)
+		     (set! name->open-coders
+			   (cons (cons name item) name->open-coders))))))))
     (lambda (name handler)
       (if (list? name)
 	  (for-each (lambda (name)
@@ -339,6 +346,9 @@ MIT in each case. |#
        (pcfg/prefer-consequent!
 	(rtl:make-type-test (rtl:make-object->type expression) type)))))
 
+;; A bunch of these directly use the open coding for fixnum arithmetic.
+;; This is not reasonable since the port may not include such open codings.
+
 (define (open-code:range-check index-expression limit-locative)
   (if compiler:generate-range-checks?
       (pcfg*pcfg->pcfg!
@@ -413,7 +423,9 @@ MIT in each case. |#
 			 'MULTIPLY-FIXNUM
 			 (rtl:make-object->fixnum
 			  (rtl:make-constant address-units-per-index))
-			 index)))))
+			 index
+			 false)))
+		  false))
 		(lambda (expression)
 		  (finish
 		   (make-locative expression header-length-in-indexes)))))))
@@ -753,14 +765,15 @@ MIT in each case. |#
 		   (rtl:make-fixnum-2-args
 		    fixnum-operator
 		    (rtl:make-object->fixnum (car expressions))
-		    (rtl:make-object->fixnum (cadr expressions))))))
+		    (rtl:make-object->fixnum (cadr expressions))
+		    false))))
 	       '(0 1)
 	       false)))
 	  '(PLUS-FIXNUM
 	    MINUS-FIXNUM
 	    MULTIPLY-FIXNUM
-	    #| DIVIDE-FIXNUM |#
-	    #| GCD-FIXNUM |#))
+	    DIVIDE-FIXNUM
+	    GCD-FIXNUM))
 
 (for-each (lambda (fixnum-operator)
 	    (define-open-coder/value fixnum-operator
@@ -771,7 +784,8 @@ MIT in each case. |#
 		  (rtl:make-fixnum->object
 		   (rtl:make-fixnum-1-arg
 		    fixnum-operator
-		    (rtl:make-object->fixnum (car expressions))))))
+		    (rtl:make-object->fixnum (car expressions))
+		    false))))
 	       '(0)
 	       false)))
 	  '(ONE-PLUS-FIXNUM MINUS-ONE-PLUS-FIXNUM))
@@ -807,7 +821,6 @@ MIT in each case. |#
 
 (if compiler:open-code-floating-point-arithmetic?
     (begin
-
       (for-each
        (lambda (flonum-operator)
 	 (define-open-coder/value flonum-operator
@@ -821,7 +834,8 @@ MIT in each case. |#
 			  (rtl:make-flonum-1-arg
 			   flonum-operator
 			   (rtl:make-@address->float
-				     (rtl:make-object->address argument)))))
+				     (rtl:make-object->address argument))
+			   false)))
 		 finish
 		 flonum-operator
 		 expressions)))
@@ -849,7 +863,8 @@ MIT in each case. |#
 		    (rtl:make-@address->float
 			      (rtl:make-object->address arg1))
 		    (rtl:make-@address->float
-			      (rtl:make-object->address arg2)))))
+			      (rtl:make-object->address arg2))
+		    false)))
 		 finish
 		 flonum-operator
 		 expressions)))
@@ -928,7 +943,8 @@ MIT in each case. |#
 					  (rtl:make-fixnum-2-args
 					   fix-op
 					   (rtl:make-object->fixnum op1)
-					   (rtl:make-object->fixnum op2))
+					   (rtl:make-object->fixnum op2)
+					   true)
 		   (lambda (fix-temp)
 		     (pcfg*scfg->scfg!
 		      (pcfg/prefer-alternative! (rtl:make-overflow-test))
@@ -995,7 +1011,8 @@ MIT in each case. |#
 		 (load-temporary-register scfg*scfg->scfg!
 					  (rtl:make-fixnum-1-arg
 					   fix-op
-					   (rtl:make-object->fixnum op))
+					   (rtl:make-object->fixnum op)
+					   true)
 		   (lambda (fix-temp)
 		     (pcfg*scfg->scfg!
 		      (pcfg/prefer-alternative! (rtl:make-overflow-test))
@@ -1066,7 +1083,7 @@ MIT in each case. |#
 
 (for-each (lambda (generic-op)
 	    (generic-binary-operator generic-op))
-	  '(&+ &- &* integer-add integer-subtract integer-multiply))
+	  '(&+ &- &* #| &/ |# integer-add integer-subtract integer-multiply))
 
 (for-each (lambda (generic-op)
 	    (generic-binary-predicate generic-op))
@@ -1079,4 +1096,4 @@ MIT in each case. |#
 (for-each (lambda (generic-op)
 	    (generic-unary-predicate generic-op))
 	  '(zero? positive? negative?
-		  integer-zero? integer-positive? integer-negative?))
+	    integer-zero? integer-positive? integer-negative?))
