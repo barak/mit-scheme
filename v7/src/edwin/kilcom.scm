@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kilcom.scm,v 1.62 1991/05/02 01:13:23 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kilcom.scm,v 1.63 1991/05/10 04:57:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -46,65 +46,23 @@
 
 (declare (usual-integrations))
 
+;;;; Deletion
+
 (define (delete-region mark)
   (if (not mark)
-      (editor-error "Delete exceeds buffer bounds")
-      (delete-string mark (current-point))))
+      (editor-error "Delete exceeds buffer bounds"))
+  (delete-string mark (current-point)))
 
 (define (kill-region mark)
   (if (not mark)
-      (editor-error "Kill exceeds buffer bounds")
-      (kill-string mark (current-point))))
+      (editor-error "Kill exceeds buffer bounds"))
+  (kill-string mark (current-point)))
 
-(define (copy-region mark)
-  (if (not mark)
-      (editor-error "Copy exceeds buffer bounds")
-      (copy-string mark (current-point))))
-
-(define (kill-string mark #!optional point)
-  (let ((point (if (default-object? point) (current-point) point)))
-    (kill-ring-save (extract-string mark point) (mark<= point mark))
-    (delete-string mark point)))
-
-(define (copy-string mark #!optional point)
-  (let ((point (if (default-object? point) (current-point) point)))
-    (kill-ring-save (extract-string mark point) (mark<= point mark))))
-
-(define (unkill string)
-  (let ((end (current-point)))
-    (let ((start (mark-right-inserting end)))
-      (insert-string string end)
-      (set-current-point! start))
-    (push-current-mark! end)))
-
-(define (unkill-reversed string)
-  (let ((end (current-point)))
-    (push-current-mark! (mark-right-inserting end))
-    (insert-string string end)))
-
-(define append-next-kill-tag
-  "Append Next Kill")
-
-(define (kill-ring-save string forward?)
-  (let ((ring (current-kill-ring)))
-    (command-message-receive append-next-kill-tag
-      (lambda ()
-	(if (ring-empty? ring) (editor-error "No previous kill"))
-	(ring-set! ring 0
-		   (if forward?
-		       (string-append (ring-ref ring 0) string)
-		       (string-append string (ring-ref ring 0)))))
-      (lambda ()
-	(ring-push! ring string))))
-  (set-command-message! append-next-kill-tag))
-
-(define-command append-next-kill
-  "Cause following command, if kill, to append to previous kill."
-  ()
-  (lambda ()
-    (set-command-message! append-next-kill-tag)))
-
-;;;; Deletion
+(define-command delete-region
+  "Delete the text between point and mark."
+  "*r"
+  (lambda (region)
+    (region-delete! region)))
 
 (define-command delete-backward-char
   "Delete character before point.
@@ -207,78 +165,157 @@ appropriate number of spaces and then one space is deleted."
 	  (set-current-point! start))
 	(perform-replacement))))
 
-;;;; Un/Killing
+;;;; Killing
+
+(define-variable kill-ring-max
+  "Maximum length of kill ring before oldest elements are thrown away."
+  30
+  exact-nonnegative-integer?)
+
+(define-variable kill-ring
+  "List of killed text sequences."
+  '())
+
+(define-variable kill-ring-yank-pointer
+  "The tail of the kill ring whose car is the last thing yanked."
+  '())
 
 (define-command kill-region
-  "Kill from point to mark.
-Use \\[yank] and \\[yank-pop] to get it back."
-  "m"
-  kill-region)
+  "Kill between point and mark.
+The text is deleted but saved in the kill ring.
+The command \\[yank] can retrieve it from there.
+\(If you want to kill and then yank immediately, use \\[copy-region-as-kill].)"
+  "*m\nd"
+  (lambda (mark point)
+    (kill-string mark point)))
 
 (define-command copy-region-as-kill
-  "Stick region into kill-ring without killing it.
-Like killing and getting back, but doesn't mark buffer modified."
+  "Save the region as if killed, but don't kill it."
+  "m\nd"
+  (lambda (mark point)
+    (copy-string mark point)
+    (temporary-message "Region saved")))
+
+(define-command append-next-kill
+  "Cause following command, if kill, to append to previous kill."
   ()
   (lambda ()
-    (copy-region (current-mark))
-    (temporary-message "Region saved")))
+    (set-command-message! append-next-kill-tag)))
+
+(define (kill-string mark #!optional point)
+  (let ((point (if (default-object? point) (current-point) point)))
+    (kill-ring-save (extract-string mark point) (mark<= point mark))
+    (delete-string mark point)))
+
+(define (copy-string mark #!optional point)
+  (let ((point (if (default-object? point) (current-point) point)))
+    (kill-ring-save (extract-string mark point) (mark<= point mark))))
+
+(define (kill-ring-save string forward?)
+  (let ((strings (ref-variable kill-ring)))
+    (command-message-receive append-next-kill-tag
+      (lambda ()
+	(if (null? strings)
+	    (editor-error "No previous kill"))
+	(set-car! strings
+		  (if forward?
+		      (string-append (car strings) string)
+		      (string-append string (car strings))))
+	(set-variable! kill-ring-yank-pointer strings))
+      (lambda ()
+	(let ((strings
+	       (let ((kill-ring-max (ref-variable kill-ring-max)))
+		 (if (zero? kill-ring-max)
+		     '()
+		     (let ((strings (cons string strings)))
+		       (if (> (length strings) kill-ring-max)
+			   (set-cdr! (list-tail strings (- kill-ring-max 1))
+				     '()))
+		       strings)))))
+	  (set-variable! kill-ring strings)
+	  (set-variable! kill-ring-yank-pointer strings)))))
+  (set-command-message! append-next-kill-tag))
+
+(define append-next-kill-tag
+  "Append Next Kill")
+
+;;;; Yanking
+
+(define-command yank
+  "Reinsert the last stretch of killed text.
+More precisely, reinsert the stretch of killed text most recently
+killed OR yanked.
+With just \\[universal-argument] as argument, same but put point in front (and mark at end).
+With argument n, reinsert the nth most recently killed stretch of killed
+text.
+See also the command \\[yank-pop]."
+  "*P"
+  (lambda (argument)
+    (yank (if (command-argument-multiplier-only? argument)
+	      0
+	      (- (command-argument-numeric-value argument) 1))
+	  (command-argument-multiplier-only? argument)
+	  push-current-mark!)))
+
+(define-command yank-pop
+  "Replace just-yanked stretch of killed-text with a different stretch.
+This command is allowed only immediately after a \\[yank] or a \\[yank-pop].
+At such a time, the region contains a stretch of reinserted
+previously-killed text.  \\[yank-pop] deletes that text and inserts in its
+place a different stretch of killed text.
+
+With no argument, the previous kill is inserted.
+With argument n, the n'th previous kill is inserted.
+If n is negative, this is a more recent kill.
+
+The sequence of kills wraps around, so that after the oldest one
+comes the newest one."
+  "*p"
+  (lambda (argument)
+    (command-message-receive un-kill-tag
+      (lambda () unspecific)
+      (lambda () (editor-error "Previous command was not a yank")))
+    (yank argument
+	  (let ((point (current-point))
+		(mark (current-mark)))
+	    (let ((before? (mark< point mark)))
+	      (delete-string point mark)
+	      before?))
+	  set-current-mark!)))
+
+(define (yank offset before? set-current-mark!)
+  ((ref-command rotate-yank-pointer) offset)
+  (let* ((start (mark-right-inserting-copy (current-point)))
+	 (end (mark-left-inserting-copy start)))
+    (insert-string (car (ref-variable kill-ring-yank-pointer)) start)
+    (mark-temporary! end)
+    (mark-temporary! start)
+    (if before?
+	(begin (set-current-mark! end) (set-current-point! start))
+	(begin (set-current-mark! start) (set-current-point! end))))
+  (set-command-message! un-kill-tag))
 
 (define un-kill-tag
   "Un-kill")
 
-(define-command yank
-  "Re-insert the last stuff killed.
-Puts point after it and the mark before it.
-A positive argument N says un-kill the N'th most recent
-string of killed stuff (1 = most recent).  A null
-argument (just C-U) means leave point before, mark after."
-  "P"
-  (lambda (argument)
-    (let ((ring (current-kill-ring)))
-      (define (pop-loop n)
-	(if (> n 1)
-	    (begin (ring-pop! ring)
-		   (pop-loop (-1+ n)))))
-      (if (ring-empty? ring) (editor-error "Nothing to un-kill"))
-      (if (command-argument-multiplier-only? argument)
-	  (unkill (ring-ref ring 0))
-	  (let ((argument (command-argument-numeric-value argument)))
-	    (if (positive? argument)
-		(begin
-		  (pop-loop argument)
-		  (unkill-reversed (ring-ref ring 0)))))))
-    (set-command-message! un-kill-tag)))
-
-(define-command yank-pop
-  "Correct after \\[yank] to use an earlier kill.
-Requires that the region contain the most recent killed stuff,
-as it does immediately after using \\[yank].
-It is deleted and replaced with the previous killed stuff,
-which is rotated to the front of the kill ring.
-With 0 as argument, just deletes the region with no replacement,
-but the region must still match the last killed stuff."
+(define-command rotate-yank-pointer
+  "Rotate the yanking point in the kill ring."
   "p"
   (lambda (argument)
-    (command-message-receive un-kill-tag
-      (lambda ()
-	(let ((ring (current-kill-ring))
-	      (point (current-point)))
-	  (if (or (ring-empty? ring)
-		  (not
-		   (let ((string (ring-ref ring 0))
-			 (mark (current-mark)))
-		     (if (mark< mark point)
-			 (match-forward string mark point false)
-			 (match-forward string point mark false)))))
-	      (editor-error "Region does not match last kill"))
-	  (delete-string (pop-current-mark!) point)
-	  (if (not (zero? argument))
-	      (begin
-		(ring-pop! ring)
-		(unkill-reversed (ring-ref ring 0))))))
-      (lambda ()
-	(editor-error "No previous un-kill to replace")))
-    (set-command-message! un-kill-tag)))
+    (let ((kill-ring (ref-variable kill-ring)))
+      (if (null? kill-ring)
+	  (editor-error "Kill ring is empty"))
+      (set-variable!
+       kill-ring-yank-pointer
+       (list-tail kill-ring
+		  (modulo (+ argument
+			     (let ((kill-ring-yank-pointer
+				    (ref-variable kill-ring-yank-pointer)))
+			       (let loop ((l kill-ring) (n 0))
+				 (cond ((null? l) 0)
+				       ((eq? l kill-ring-yank-pointer) n)
+				       (else (loop (cdr l) (+ n 1)))))))
+			  (length kill-ring)))))))
 
 ;;;; Marks
 

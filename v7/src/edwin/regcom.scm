@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regcom.scm,v 1.18 1989/04/28 22:52:21 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regcom.scm,v 1.19 1991/05/10 04:58:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 ;;;
@@ -105,11 +105,20 @@ Normally puts point before and mark after the inserted text.
 With prefix arg, puts mark before and point after."
   "cInsert Register\nP"
   (lambda (register argument)
-    ((if argument unkill-reversed unkill)
-     (let ((value (get-register register)))
-       (cond ((string? value) value)
-	     ((integer? value) (write-to-string value))
-	     (else (register-error register "does not contain text")))))))
+    (let* ((start (mark-right-inserting-copy (current-point)))
+	   (end (mark-left-inserting-copy start)))
+      (insert-string (let ((value (get-register register)))
+		       (cond ((string? value) value)
+			     ((integer? value) (number->string value))
+			     (else
+			      (register-error register
+					      "does not contain text"))))
+		     start)
+      (mark-temporary! end)
+      (mark-temporary! start)
+      (if argument
+	  (begin (push-current-mark! start) (set-current-point! end))
+	  (begin (push-current-mark! end) (set-current-point! start))))))
 
 (define-command append-to-register
   "Append region to text in given register.

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.14 1991/03/16 00:01:51 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.15 1991/05/10 04:56:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -52,7 +52,6 @@
   (screens '())
   (selected-screen false)
   (bufferset false read-only true)
-  (kill-ring false read-only true)
   (char-history false read-only true)
   (halt-update? false read-only true)
   (char-ready? false read-only true)
@@ -97,9 +96,6 @@
 
 (define-integrable (current-bufferset)
   (editor-bufferset current-editor))
-
-(define-integrable (current-kill-ring)
-  (editor-kill-ring current-editor))
 
 (define-integrable (current-char-history)
   (editor-char-history current-editor))
