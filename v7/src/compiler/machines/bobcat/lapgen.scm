@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.34 1990/07/15 23:37:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.35 1990/07/20 15:53:40 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -808,30 +808,36 @@ MIT in each case. |#
       (LAP (DIVL S L ,source ,temp ,target)
 	   (MOV L ,temp ,target)))))
 
-;;; Remainder is very weird when the second arg is negative.
-;;; Especially when the remainder is zero.
-
 (define-fixnum-method 'FIXNUM-REMAINDER fixnum-methods/2-args-constant
   (lambda (target n)
-    (if (or (= n 1) (= n -1))
-	(LAP (CLR L ,target))
-	(let ((xpt (integer-log-base-2? n)))
-	  (if (or (not xpt)
-		  (not use-68020-instructions?) )
-	      ;; This includes negative n
-	      (let ((temp (reference-temporary-register! 'DATA)))
-		(LAP (DIVL S L (& ,(* n fixnum-1)) ,temp ,target)
-		     (MOV L ,temp ,target)))
-	      (let ((sign (reference-temporary-register! 'DATA))
-		    (label (generate-label 'REM-MERGE))
-		    (shift (- scheme-datum-width xpt)))
-		(LAP (CLR L ,sign)
-		     (BFTST ,target (& ,shift) (& ,xpt))
-		     (B EQ (@PCR ,label))
-		     (BFEXTS ,target (& 0) (& 1) ,sign)
-		     (LABEL ,label)
-		     (BFINS ,target (& 0) (& ,shift) ,sign))))))))
-
+    ;; (remainder x y) is 0 or has the sign of x.
+    ;; Thus we can always "divide" by (abs y) to make things simpler.
+    (let ((n (abs n)))
+      (if (= n 1)
+	  (LAP (CLR L ,target))
+	  (let ((xpt (integer-log-base-2? n)))
+	    (if (or (not xpt) (not use-68020-instructions?))
+		(let ((temp (reference-temporary-register! 'DATA)))
+		  (LAP (DIVL S L (& ,(* n fixnum-1)) ,temp ,target)
+		       (MOV L ,temp ,target)))
+		(let ((sign (reference-temporary-register! 'DATA))
+		      (label (generate-label 'REM-MERGE))
+		      (shift (- scheme-datum-width xpt))
+		      (nbits (+ scheme-type-width xpt)))
+		  #|
+		  (LAP (CLR L ,sign)
+		       (BFTST ,target (& ,shift) (& ,xpt))
+		       (B EQ (@PCR ,label))
+		       (BFEXTS ,target (& 0) (& 1) ,sign)
+		       (LABEL ,label)
+		       (BFINS ,target (& 0) (& ,shift) ,sign))
+		  |#
+		  ;; This may produce a branch to a branch, but a
+		  ;; peephole optimizer should be able to fix this.
+		  (LAP (BFEXTS ,target (& 0) (& 1) ,sign)
+		       (BFEXTU ,target (& ,(- 32 nbits)) (& ,nbits) ,target)
+		       (B EQ (@PCR ,label))
+		       (BFINS ,target (& 0) (& ,shift) ,sign)))))))))
 ;;;; Flonum Operators
 
 (define (define-flonum-method operator methods method)
