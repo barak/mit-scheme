@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosfile.scm,v 1.16 1998/03/09 05:17:52 cph Exp $
+;;;	$Id: dosfile.scm,v 1.17 1998/06/29 04:14:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-98 Massachusetts Institute of Technology
 ;;;
@@ -446,17 +446,21 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
 
 (define (os/file-type-to-major-mode)
   (alist-copy
-   `(("asm" . midas)
+   `(("article" . text)
+     ("asm" . midas)
      ("bat" . text)
      ("bib" . text)
      ("c" . c)
+     ("cc" . c)
      ("h" . c)
-     ("m4" . midas)
+     ("java" . java)
      ("pas" . pascal)
      ("s" . scheme)
      ("scm" . scheme)
+     ("text" . text)
      ("txi" . texinfo)
-     ("txt" . text))))
+     ("txt" . text)
+     ("y" . c))))
 
 (define (os/init-file-name)
   (let ((name "edwin.ini"))

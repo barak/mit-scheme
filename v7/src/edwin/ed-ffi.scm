@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.42 1997/03/07 23:34:42 cph Exp $
+$Id: ed-ffi.scm,v 1.43 1998/06/29 04:10:39 cph Exp $
 
-Copyright (c) 1990-97 Massachusetts Institute of Technology
+Copyright (c) 1990-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -166,6 +166,8 @@ of that license should have been included along with this file.
     ("intmod"	(edwin inferior-repl)
 		edwin-syntax-table)
     ("iserch"	(edwin incremental-search)
+		edwin-syntax-table)
+    ("javamode"	(edwin)
 		edwin-syntax-table)
     ("key-w32"	(edwin win32-keys)
 		edwin-syntax-table)

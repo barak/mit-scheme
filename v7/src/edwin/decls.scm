@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.59 1997/03/07 23:34:40 cph Exp $
+$Id: decls.scm,v 1.60 1998/06/29 04:10:34 cph Exp $
 
-Copyright (c) 1989-97 Massachusetts Institute of Technology
+Copyright (c) 1989-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -164,6 +164,7 @@ MIT in each case. |#
 		"input"
 		"intmod"
 		"iserch"
+		"javamode"
 		"keymap"
 		"keyparse"
 		"kilcom"

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.82 1998/02/01 06:42:49 cph Exp $
+;;;	$Id: unix.scm,v 1.83 1998/06/29 04:14:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -334,10 +334,12 @@ Includes the new backup.  Must be > 0."
   (alist-copy
    `(("article" . text)
      ("asm" . midas)
+     ("bat" . text)
      ("bib" . text)
      ("c" . c)
      ("cc" . c)
      ("h" . c)
+     ("java" . java)
      ("pas" . pascal)
      ("s" . scheme)
      ("scm" . scheme)

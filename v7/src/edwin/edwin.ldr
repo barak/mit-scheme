@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.61 1998/04/30 21:32:41 cph Exp $
+$Id: edwin.ldr,v 1.62 1998/06/29 04:10:50 cph Exp $
 
 Copyright (c) 1989-98 Massachusetts Institute of Technology
 
@@ -221,6 +221,7 @@ MIT in each case. |#
 	(load "bufcom" environment)
 	(load "bufmnu" (->environment '(EDWIN BUFFER-MENU)))
 	(load "c-mode" environment)
+	(load "javamode" environment)
 	(load "cinden" (->environment '(EDWIN C-INDENTATION)))
 	(load "comhst" environment)
 	(load "comint" environment)
