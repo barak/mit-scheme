@@ -27,6 +27,7 @@ do
   done
 done
 
+cpx /scheme/documentation/ref-manual/COPYING ${tldir}
 cpx /scheme/v7/linux/lib/edwin/info/dir ${tldir}
 cpx /scheme/v7/dist/index.html ${tldir}
 
@@ -38,10 +39,10 @@ do
   rm -f ${tarfile}
   case ${type} in
   info)
-    tar cvzf ${tarfile} ${tldir}/dir ${tldir}/*.info*
+    tar cvzf ${tarfile} ${tldir}/COPYING ${tldir}/dir ${tldir}/*.info*
     ;;
   *)
-    tar cvzf ${tarfile} ${tldir}/*.${type}
+    tar cvzf ${tarfile} ${tldir}/COPYING ${tldir}/*.${type}
     ;;
   esac
   chmod 444 ${tarfile}
@@ -49,7 +50,7 @@ done
 
 zipfile=${prefix}-doc-html.zip
 rm -f ${zipfile}
-zip -l ${zipfile} ${tldir}/*.html
+zip -l ${zipfile} ${tldir}/COPYING ${tldir}/*.html
 chmod 444 ${zipfile}
 
 rm -rf doc-html
