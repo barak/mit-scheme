@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.7 1993/08/21 02:31:23 gjr Exp $
+###	$Id: makefile,v 1.8 1993/08/21 03:20:09 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -463,18 +463,20 @@ clean:
   del *.res
 
 unconfig:
-  del cmpintmd.h
   del cmpauxmd.asm
-  del float.h
+  del cmpintmd.h
   del limits.h
+  del float.h
+  del ntdialog.h
+  del ntw16lib.c
+  del ntw32lib.c
   del makefile
   del *.lst
-  del setenv.bat
-  del win31.bat
-  del winnt.bat
+  del *.bat
   del *.mak
   del *.def
   del *.dlg
   del *.ico
+  del *.rc
 
 
