@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.113 2002/02/12 21:50:12 cph Exp $
+@comment $Id: scheme.texinfo,v 1.114 2002/02/13 01:00:56 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -864,8 +864,8 @@ Procedure calls extend an environment, as do @code{let}, @code{let*},
 (@pxref{Internal Definitions}) also extend an environment.  (Actually,
 all the constructs that extend environments can be expressed in terms of
 procedure calls, so there is really just one fundamental mechanism for
-environment extension.)
-A top-level definition (@pxref{Top-Level Definitions}) may add a binding to an existing environment.
+environment extension.)  A top-level definition (@pxref{Top-Level
+Definitions}) may add a binding to an existing environment.
 
 @node Initial and Current Environments, Static Scoping, Environment Concepts, Scheme Concepts
 @subsection Initial and Current Environments
@@ -887,14 +887,14 @@ interfere with system programs.
 @findex user-initial-environment
 @findex ge
 The environment in effect at some point in a program is called the
-@dfn{current environment} at that point.  In particular, every @sc{rep}
-loop has a current environment.  (@sc{rep} stands for
-``read-eval-print''; the @sc{rep} loop is the Scheme program that reads
-your input, evaluates it, and prints the result.)  The environment of
-the top-level @sc{rep} loop (the one you are in when Scheme starts up)
-starts as @code{user-initial-environment}, although it can be changed by
-the @code{ge} procedure.  When a new @sc{rep} loop is created, its
-environment is determined by the program that creates it.
+@dfn{current environment} at that point.  In particular, every
+@acronym{REP} loop has a current environment.  (@acronym{REP} stands for
+``read-eval-print''; the @acronym{REP} loop is the Scheme program that
+reads your input, evaluates it, and prints the result.)  The environment
+of the top-level @acronym{REP} loop (the one you are in when Scheme
+starts up) starts as @code{user-initial-environment}, although it can be
+changed by the @code{ge} procedure.  When a new @acronym{REP} loop is
+created, its environment is determined by the program that creates it.
 
 @node Static Scoping, True and False, Initial and Current Environments, Scheme Concepts
 @subsection Static Scoping
@@ -917,8 +917,8 @@ procedure is called.  Because all the other Scheme @dfn{binding
 expressions} can be expressed in terms of procedures, this determines
 how all bindings behave.
 
-Consider the following definitions, made at the top-level @sc{rep} loop
-(in the initial environment):
+Consider the following definitions, made at the top-level @acronym{REP}
+loop (in the initial environment):
 
 @example
 @group
@@ -13099,6 +13099,7 @@ parent.
 @cindex binding, variable
 @cindex unassigned binding
 @cindex binding, unassigned
+@findex condition-type:unassigned-variable
 There are several types of bindings that can occur in an environment.
 The most common is the simple variable binding, which associates a value
 (any Scheme object) with an identifier (a symbol).  A variable binding
@@ -13112,6 +13113,7 @@ An unassigned variable can be @dfn{assigned} (using @code{set!} or
 @cindex keyword binding
 @cindex syntactic keyword binding
 @cindex binding, syntactic keyword
+@findex condition-type:macro-binding
 In addition to variable bindings, an environment can also have
 @dfn{keyword bindings}.  A keyword binding associates a syntactic
 keyword (usually a macro transformer) with an identifier.  Keyword
@@ -13266,19 +13268,19 @@ must convert @var{expression} to an internal form before it is executed.
 
 @findex define
 The @code{user-initial-environment} is where the top-level
-read-eval-print (@sc{rep}) loop evaluates expressions and stores
-definitions.  It is a child of the @code{system-global-environment},
-which is where all of the Scheme system definitions are stored.  All of
-the bindings in @code{system-global-environment} are available when the
+read-eval-print (@acronym{REP}) loop evaluates expressions and binds
+definitions.  It is a child of @code{system-global-environment}, which
+is where all of the Scheme system definitions are bound.  All of the
+bindings in @code{system-global-environment} are available when the
 current environment is @code{user-initial-environment}.  However, any
-new bindings that you create in the @sc{rep} loop (with @code{define}
-forms or by loading files containing @code{define} forms) occur in
-@code{user-initial-environment}.
+new bindings that you create in the @acronym{REP} loop (with
+@code{define} forms or by loading files containing @code{define} forms)
+occur in @code{user-initial-environment}.
 
 @defvr variable system-global-environment
 The variable @code{system-global-environment} is bound to the
 distinguished environment that's the ancestor of most other environments
-(except for those created by @code{make-null-top-level-environment}).
+(except for those created by @code{make-root-top-level-environment}).
 It is the parent environment of @code{user-initial-environment}.
 Primitives, system procedures, and most syntactic keywords are bound
 (and sometimes closed) in this environment.
@@ -13287,17 +13289,17 @@ Primitives, system procedures, and most syntactic keywords are bound
 @defvr variable user-initial-environment
 The variable @code{user-initial-environment} is bound to the default
 environment in which typed expressions are evaluated by the top-level
-@sc{rep} loop.
+@acronym{REP} loop.
 
 Although all bindings in @code{system-global-environment} are visible to
-the @sc{rep} loop, definitions that are typed at, or loaded by, the
-@sc{rep} loop occur in the @code{user-initial-environment}.  This is
-partly a safety measure: if you enter a definition that happens to have
-the same name as a critical system procedure, your definition will be
-visible only to the procedures you define in the
+the @acronym{REP} loop, definitions that are typed at, or loaded by, the
+@acronym{REP} loop occur in the @code{user-initial-environment}.  This
+is partly a safety measure: if you enter a definition that happens to
+have the same name as a critical system procedure, your definition will
+be visible only to the procedures you define in the
 @code{user-initial-environment}; the MIT Scheme system procedures, which
-are defined in the @code{system-global-environment}, will continue to
-see the original definition.
+are defined in @code{system-global-environment}, will continue to see
+the original definition.
 @end defvr
 
 @node REPL Environment, Top-level Environments, Environment Variables, Environments
@@ -13305,13 +13307,13 @@ see the original definition.
 
 @deffn procedure nearest-repl/environment
 @findex user-initial-environment
-Returns the current @sc{rep} loop environment (i.e.@: the current
-environment of the closest enclosing @sc{rep} loop).  When Scheme first
-starts up, this is the same as @code{user-initial-environment}.
+Returns the current @acronym{REP} loop environment (i.e.@: the current
+environment of the closest enclosing @acronym{REP} loop).  When Scheme
+first starts up, this is the same as @code{user-initial-environment}.
 @end deffn
 
 @deffn procedure ge environment
-Changes the current @sc{rep} loop environment to @var{environment}.
+Changes the current @acronym{REP} loop environment to @var{environment}.
 @var{Environment} can be either an environment or a procedure object.
 If it's a procedure, the environment in which that procedure was closed
 is the new environment.
@@ -13324,17 +13326,16 @@ is the new environment.
 @cindex interpreter environment
 @cindex environment, top-level
 @cindex environment, interpreter
-The operations in this section manipulate top-level environments, as
-opposed to environments created by the application of procedures.  For
-historical reasons, top-level environments are referred to as
+The operations in this section manipulate @dfn{top-level environments},
+as opposed to environments created by the application of procedures.
+For historical reasons, top-level environments are referred to as
 @dfn{interpreter environments}.
 
 @deffn {special form} the-environment
 @cindex current environment
 @cindex environment, current
-Returns the current environment.  This form may only appear at the top
-level of a file.  An error is signalled if it appears within a
-procedure.
+Returns the current environment.  This form may only be evaluated in a
+top-level environment.  An error is signalled if it appears elsewhere.
 @end deffn
 
 @deffn procedure top-level-environment? object
@@ -13348,10 +13349,10 @@ returns @code{#f}.
 @end deffn
 
 @deffn procedure extend-top-level-environment environment [names [values]]
-@deffnx procedure make-null-top-level-environment [names [values]]
+@deffnx procedure make-root-top-level-environment [names [values]]
 Returns a newly allocated top-level environment.
 @code{extend-top-level-environment} creates an environment that has
-parent @var{environment}, while @code{make-null-top-level-environment}
+parent @var{environment}, while @code{make-root-top-level-environment}
 creates an environment that has no parent.
 
 The optional arguments @var{names} and @var{values} are used to specify
@@ -13471,10 +13472,10 @@ Otherwise they return @var{object}.
 @cindex standard ports
 The next five procedures return the runtime system's @dfn{standard
 ports}.  All of the standard ports are dynamically bound by the
-@sc{rep} loop; this means that when a new @sc{rep} loop is started,
-for example by an error, each of these ports is dynamically bound to
-the @acronym{I/O} port of the @sc{rep} loop.  When the @sc{rep} loop
-exits, the ports revert to their original values.
+@acronym{REP} loop; this means that when a new @acronym{REP} loop is
+started, for example by an error, each of these ports is dynamically
+bound to the @acronym{I/O} port of the @acronym{REP} loop.  When the
+@acronym{REP} loop exits, the ports revert to their original values.
 
 @deffn procedure current-input-port
 @findex console-input-port
@@ -14591,13 +14592,13 @@ given, this port defaults to the value of
 
 @deffn procedure prompt-for-command-expression prompt [port]
 Prompts the user for an expression that is to be executed as a command.
-This is the procedure called by the @sc{rep} loop to read the user's
-expressions.
+This is the procedure called by the @acronym{REP} loop to read the
+user's expressions.
 
 If @var{prompt} is a string, it is used verbatim as the prompt string.
 Otherwise, it must be a pair whose car is @code{standard} and whose cdr
 is a string; in this case the prompt string is formed by prepending to
-the string the current @sc{rep} loop ``level number'' and a space.
+the string the current @acronym{REP} loop ``level number'' and a space.
 Also, a space is appended to the string, unless it already ends in a
 space or is an empty string.
 
@@ -14628,7 +14629,7 @@ the user's commands.
 If @var{prompt} is a string, it is used verbatim as the prompt string.
 Otherwise, it must be a pair whose car is @code{standard} and whose cdr
 is a string; in this case the prompt string is formed by prepending to
-the string the current @sc{rep} loop ``level number'' and a space.
+the string the current @acronym{REP} loop ``level number'' and a space.
 Also, a space is appended to the string, unless it already ends in a
 space or is an empty string.
 
@@ -14660,7 +14661,7 @@ Under Edwin and Emacs, the expression is read in the minibuffer.
 Prompts the user for an evaluated expression.  Calls
 @code{prompt-for-expression} to read an expression, then evaluates the
 expression using @var{environment}; if @var{environment} is not given,
-the @sc{rep} loop environment is used.
+the @acronym{REP} loop environment is used.
 @end deffn
 
 @deffn procedure prompt-for-confirmation prompt [port]
@@ -17326,13 +17327,13 @@ error of type @code{condition-type:file-operation-error} is signalled if
 @cindex directory, current working (defn)
 @cindex current working directory (defn)
 @cindex working directory (see current working directory)
-When MIT Scheme is started, the @dfn{current working
-directory} (or simply, @dfn{working directory}) is initialized in an
-operating-system dependent manner; usually, it is the directory in which
-Scheme was invoked.  The working directory can be determined from within
-Scheme by calling the @code{pwd} procedure, and changed by calling the
-@code{cd} procedure.  Each @sc{rep} loop has its own working directory,
-and inferior @sc{rep} loops initialize their working directory from the
+When MIT Scheme is started, the @dfn{current working directory} (or
+simply, @dfn{working directory}) is initialized in an operating-system
+dependent manner; usually, it is the directory in which Scheme was
+invoked.  The working directory can be determined from within Scheme by
+calling the @code{pwd} procedure, and changed by calling the @code{cd}
+procedure.  Each @acronym{REP} loop has its own working directory, and
+inferior @acronym{REP} loops initialize their working directory from the
 value in effect in their superior at the time they are created.
 
 @deffn procedure working-directory-pathname
@@ -17358,7 +17359,7 @@ Additionally, @code{set-working-directory-pathname!} modifies the value
 of@* @code{*default-pathname-defaults*} by merging the new working
 directory into it.
 
-When this procedure is executed in the top-level @sc{rep} loop, it
+When this procedure is executed in the top-level @acronym{REP} loop, it
 changes the working directory of the running Scheme executable.
 
 @example
