@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.5 1988/05/14 16:19:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.6 1988/05/19 01:47:37 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -229,14 +229,15 @@ MIT in each case. |#
       (else false))))
 
 (define (interpreter-register register offset)
-  (with-aligned-offset offset
-    (lambda (word-offset residue)
-      (and (= register interpreter-register-pointer)
-	   (let ((entry (assq word-offset interpreter-register-assignments)))
-	     (and entry
-		  (if (= residue 0)
-		      (cdr entry)
-		      `(,@(cdr entry) (,residue)))))))))
+  (and (= register interpreter-register-pointer)
+       (let ((entry (assq offset interpreter-register-assignments)))
+	 (if entry
+	     (cdr entry)
+	     (let ((entry (assq word-offset interpreter-register-assignments)))
+	       (and entry
+		    (if (= residue 0)
+			(cdr entry)
+			`(,@(cdr entry) (,residue)))))))))
 
 (define (with-aligned-offset offset receiver)
   (let ((q/r (integer-divide offset 4)))
