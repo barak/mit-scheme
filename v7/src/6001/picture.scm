@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.12 1992/06/11 17:31:22 u6001 Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.13 1992/09/01 20:07:09 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -250,6 +250,7 @@ MIT in each case. |#
       (lambda ()
 	(graphics-device-coordinate-limits window))
     (lambda (x1 y1 x2 y2)
+      (set! *last-picture-displayed* pic)
       (graphics-set-coordinate-limits window 0 (- y1 y2) (- x2 x1) 0)
       (let* ((win-wid (fix:+ 1 (fix:- x2 x1)))
 	     (win-hgt (fix:+ 1 (fix:- y1 y2)))
@@ -281,6 +282,17 @@ MIT in each case. |#
 			    (quotient v-margin 2))
 	      (if (and true-min-max? (not image-cached?))
 		  (picture-set-image! pic image))))))))
+
+(define (call-with-last-picture-file procedure)
+  (if *last-picture-displayed*
+      (call-with-temporary-filename
+       (lambda (filename)
+	 (picture->pgm-file *last-picture-displayed*)
+	 (procedure filename)))
+      (procedure false)))
+
+(define *last-picture-displayed*
+  false)
 
 (define (picture-write picture filename)
   (let ((path-name  (->pathname filename)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/print.scm,v 1.9 1992/08/28 21:03:19 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/print.scm,v 1.10 1992/09/01 20:12:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -76,63 +76,38 @@ Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
 
 (define (print-region/internal region print-command?)
   (let ((switches (print-region-switches region print-command?))
-	(source-buffer (mark-buffer (region-start region)))
-	(temp-buffer (temporary-buffer " *spool temp*")))
+	(source-buffer (mark-buffer (region-start region))))
     (message "Spooling...")
-    (insert-region (region-start region)
-		   (region-end region)
-		   (buffer-point temp-buffer))
-    (let ((width (ref-variable tab-width source-buffer)))
-      (if (not (= width 8))
-	  (begin
-	    (define-variable-local-value! temp-buffer
-	      (ref-variable-object tab-width)
-	      width)
-	    (untabify-region (buffer-start temp-buffer)
-			     (buffer-end temp-buffer)))))
-    (shell-command region (buffer-end temp-buffer) false false
-		   (apply string-append
-			  (ref-variable lpr-command source-buffer)
-			  (let loop ((switches switches))
-			    (if (null? switches)
-				(list "")
-				(cons* " "
-				       (car switches)
-				       (loop (cdr switches)))))))
+    (call-with-temporary-buffer " *spool temp*"
+      (lambda (temp-buffer)
+	(insert-region (region-start region)
+		       (region-end region)
+		       (buffer-point temp-buffer))
+	(let ((width (ref-variable tab-width source-buffer)))
+	  (if (not (= width 8))
+	      (begin
+		(define-variable-local-value! temp-buffer
+		  (ref-variable-object tab-width)
+		  width)
+		(untabify-region (buffer-start temp-buffer)
+				 (buffer-end temp-buffer)))))
+	(shell-command region (buffer-end temp-buffer) false false
+		       (apply string-append
+			      (ref-variable lpr-command source-buffer)
+			      (let loop ((switches switches))
+				(if (null? switches)
+				    (list "")
+				    (cons* " "
+					   (car switches)
+					   (loop (cdr switches)))))))))
     (append-message "done")))
 
 (define (print-region-switches region print-command?)
-  (let ((switches (ref-variable lpr-switches))
-	(title (print-region-title-string region)))
-    (append (if (and print-command? (not lpr-print-not-special?))
-		'("-p")
-		'())
-	    (let ((job-name
-		   (or (and lpr-prompt-for-name?
-			    (not (there-exists? switches
-				   (lambda (switch)
-				     (string-prefix? "-J" switch))))
-			    (let ((job-name
-				   (prompt-for-string
-				    "Name to print on title page"
-				    lpr-most-recent-name
-				    'INSERTED-DEFAULT)))
-			      (if (string-null? job-name)
-				  false
-				  (begin
-				    (set! lpr-most-recent-name job-name)
-				    job-name))))
-		       title)))
-	      (if job-name
-		  (list (string-append "-J \"" job-name "\""))
-		  '()))
-	    (if (and title
-		     (not (there-exists? switches
-			    (lambda (switch)
-			      (string-prefix? "-T" switch)))))
-		(list (string-append "-T \"" title "\""))
-		'())
-	    switches)))
+  (print/assemble-switches
+   (print-region-title-string region)
+   (if (and print-command? (not lpr-print-not-special?))
+       '("-p")
+       '())))
 
 (define (print-region-title-string region)
   (let ((buffer-title
@@ -149,3 +124,30 @@ Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
 		 (group-end? (region-end region))))
 	buffer-title
 	(string-append "region from " buffer-title))))
+
+(define (print/assemble-switches title additional-switches)
+  (let ((switches (ref-variable lpr-switches)))
+    (append additional-switches
+	    (let ((job-name (or (print/job-name) title)))
+	      (if job-name
+		  (list (string-append "-J \"" job-name "\""))
+		  '()))
+	    (if (and title
+		     (not (there-exists? switches
+			    (lambda (switch)
+			      (string-prefix? "-T" switch)))))
+		(list (string-append "-T \"" title "\""))
+		'())
+	    switches)))
+
+(define (print/job-name)
+  (and lpr-prompt-for-name?
+       (let ((job-name
+	      (prompt-for-string "Name to print on title page"
+				 lpr-most-recent-name
+				 'INSERTED-DEFAULT)))
+	 (if (string-null? job-name)
+	     false
+	     (begin
+	       (set! lpr-most-recent-name job-name)
+	       job-name)))))

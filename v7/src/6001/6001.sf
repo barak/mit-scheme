@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/6001.sf,v 1.4 1992/03/25 21:44:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/6001.sf,v 1.5 1992/09/01 20:12:08 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -36,6 +36,9 @@ MIT in each case. |#
   (for-each sf-conditionally
 	    '("arith" "make" "nodefs" "picture" "pic-record" "pic-image"
 		      "pic-read" "pic-ops")))
+
+(fluid-let ((sf/default-syntax-table edwin-syntax-table))
+  (sf-conditionally "edextra"))
 
 ;; Guarantee that the package modeller is loaded.
 (if (not (name->package '(CROSS-REFERENCE)))
