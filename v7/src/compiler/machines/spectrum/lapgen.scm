@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 4.40 1992/09/11 22:34:34 cph Exp $
+$Id: lapgen.scm,v 4.41 1993/02/13 05:37:15 gjr Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -279,11 +279,10 @@ MIT in each case. |#
        (DEP () 0 31 2 ,regnum:addil-result)
        (LDO () (OFFSET (- ,label *PC*) 0 ,regnum:addil-result) ,target)))
 
-;; NOPs are inserted since conditional nullification only nullifies
-;; depending on the sign of the branch offset, which is unknown at
-;; this point.  Linearizer can be changed, fairly easily, to tell us
-;; which direction the branch goes so we can decide whether the NOP is
-;; needed.
+;; COMIBTN, COMIBFN, and COMBN are pseudo-instructions that nullify
+;; the following instruction when the branch is taken.  Since COMIBT,
+;; etc. nullify according to the sign of the displacement, the branch
+;; tensioner inserts NOPs as necessary (backward branches).
 
 (define (compare-immediate cc i r2)
   (cond ((zero? i)
@@ -300,11 +299,9 @@ MIT in each case. |#
 	
 	   (set-branches!
 	    (lambda (label)
-	      (LAP (COMIBT (,cc) ,i ,r2 (@PCR ,label))
-		   (NOP ())))
+	      (LAP (COMIBTN (,cc) ,i ,r2 (@PCR ,label))))
 	    (lambda (label)
-	      (LAP (COMIBF (,cc) ,i ,r2 (@PCR ,label))
-		   (NOP ()))))
+	      (LAP (COMIBFN (,cc) ,i ,r2 (@PCR ,label)))))
 	   (LAP)))
 	((fits-in-11-bits-signed? i)
 	 (set-current-branches!
@@ -323,11 +320,9 @@ MIT in each case. |#
 (define (compare condition r1 r2)
   (set-current-branches!
    (lambda (label)
-     (LAP (COMB (,condition) ,r1 ,r2 (@PCR ,label))
-	  (NOP ())))
+     (LAP (COMBN (,condition) ,r1 ,r2 (@PCR ,label))))
    (lambda (label)
-     (LAP (COMB (,(invert-condition condition)) ,r1 ,r2 (@PCR ,label))
-	  (NOP ()))))
+     (LAP (COMBN (,(invert-condition condition)) ,r1 ,r2 (@PCR ,label)))))
   (LAP))
 
 ;;;; Conditions
@@ -589,6 +584,9 @@ MIT in each case. |#
     shortcircuit-apply-7
     shortcircuit-apply-8
     stack-and-interrupt-check))
+
+;; Why is this NOP here?  We could use BLE,N, and adjust
+;; the return address within the hook.
 
 (define (invoke-hook hook)
   (LAP (BLE () (OFFSET ,hook 4 ,regnum:scheme-to-interface-ble))

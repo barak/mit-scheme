@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/instr1.scm,v 1.2 1990/07/19 04:03:55 jinx Rel $
+$Id: instr1.scm,v 1.3 1993/02/13 05:37:22 gjr Exp $
 
-Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,6 +34,7 @@ MIT in each case. |#
 
 ;;;; HP Spectrum instruction utilities
 ;;; Originally from Walt Hill, who did the hard part.
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -74,6 +75,13 @@ MIT in each case. |#
 (define-transformer complal
   (lambda (completer)
     (arith-log-condition completer)))
+
+(define-transformer complaltf
+  (lambda (completer)
+    (let ((val (arith-log-condition completer)))
+      (if (not (zero? (cadr val)))
+	  (error "complaltf: Bad completer" completer)
+	  val))))
 
 (define-transformer fpformat
   (lambda (completer)
