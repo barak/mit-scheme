@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.33 1991/04/15 21:00:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.34 1991/05/06 22:45:45 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -225,6 +225,8 @@ MIT in each case. |#
      (set! *interned-variables* '())
      (set! *interned-assignments* '())
      (set! *interned-uuo-links* '())
+     (set! *interned-global-links* '())
+     (set! *interned-static-variables* '())
      (set! *block-label* (generate-label))
      (set! *external-labels* '())
      (set! *ic-procedure-headers* '())
@@ -428,14 +430,16 @@ MIT in each case. |#
 	      (*interned-variables*)
 	      (*interned-assignments*)
 	      (*interned-uuo-links*)
+	      (*interned-global-links*)
+	      (*interned-static-variables*)
 	      (*constants*)
 	      (*blocks*)
 	      (*expressions*)
 	      (*procedures*)
-	      (*lvalues*)
-	      (*applications*)
-	      (*parallels*))
-    (fluid-let ((*input-scode*)
+	      (*lvalues*))
+    (fluid-let ((*applications*)
+		(*parallels*)
+		(*input-scode*)
 		(*scode*)
 		(*root-expression*)
 		(*root-procedure*)
@@ -481,6 +485,8 @@ MIT in each case. |#
   (set! *interned-variables*)
   (set! *interned-assignments*)
   (set! *interned-uuo-links*)
+  (set! *interned-global-links*)
+  (set! *interned-static-variables*)
   (set! *constants*)
   (set! *blocks*)
   (set! *expressions*)
@@ -977,6 +983,8 @@ MIT in each case. |#
       (set! *interned-variables* '())
       (set! *interned-assignments* '())
       (set! *interned-uuo-links* '())
+      (set! *interned-global-links* '())
+      (set! *interned-static-variables* '())
       (set! *block-label* (generate-label))
       (set! *external-labels* '())
       (if *procedure-result?*
