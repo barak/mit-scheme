@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.72 2000/08/21 04:55:34 cph Exp $
+;;; $Id: vc.scm,v 1.73 2000/10/01 01:29:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -1718,25 +1718,24 @@ the value of vc-log-mode-hook."
 
 (define-vc-type-operation 'CHECKOUT vc-type:cvs
   (lambda (master revision lock? workfile)
-    (with-vc-command-message master "Checking out"
-      (lambda ()
-	(cond (workfile
-	       ;; CVS makes it difficult to check a file out into
-	       ;; anything but the working file.
-	       (delete-file-no-errors workfile)
-	       (vc-run-shell-command master '() "cvs" "update" "-p"
-				     (cvs-rev-switch revision)
-				     (vc-master-workfile master)
-				     ">"
-				     workfile))
-	      (revision
-	       (vc-run-command master '() "cvs" (and lock? "-w") "update"
-			       (cvs-rev-switch revision)
-			       (file-pathname (vc-master-workfile master))))
-	      (else
-	       (vc-run-command
-		master '() "cvs" "edit"
-		(file-pathname (vc-master-workfile master)))))))))
+    (let ((workfile* (file-pathname (vc-master-workfile master))))
+      (with-vc-command-message master "Checking out"
+	(lambda ()
+	  (cond (workfile
+		 ;; CVS makes it difficult to check a file out into
+		 ;; anything but the working file.
+		 (delete-file-no-errors workfile)
+		 (vc-run-shell-command master '() "cvs" "update" "-p"
+				       (cvs-rev-switch revision)
+				       workfile*
+				       ">"
+				       workfile))
+		(revision
+		 (vc-run-command master '() "cvs" (and lock? "-w") "update"
+				 (cvs-rev-switch revision)
+				 workfile*))
+		(else
+		 (vc-run-command master '() "cvs" "edit" workfile*))))))))
 
 (define-vc-type-operation 'CHECKIN vc-type:cvs
   (lambda (master revision comment keep?)
