@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.29 1992/01/20 16:35:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.30 1992/01/20 18:06:15 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -56,7 +56,11 @@ MIT in each case. */
 #include "posixtype.h"
 
 extern int errno;
-extern int EXFUN (ioctl, (int, int, PTR));
+
+/* These seem to be missing from versions of unistd.h */
+extern int EXFUN (ioctl, (int, int, ...));
+extern int EXFUN (open, (const char *, int, ...));
+extern int EXFUN (kill, (pid_t, int));
 
 #include "intext.h"
 #include "dstack.h"
@@ -205,6 +209,7 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 #else /* not _POSIX */
 #ifdef _BSD
 
+#include <fcntl.h>
 #include <sys/dir.h>
 #include <sgtty.h>
 #include <sys/time.h>
