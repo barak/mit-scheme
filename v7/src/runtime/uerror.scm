@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.43 1996/07/26 00:34:57 adams Exp $
+$Id: uerror.scm,v 14.44 1996/09/06 16:51:54 cph Exp $
 
-Copyright (c) 1988-94 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -233,7 +233,6 @@ MIT in each case. |#
 	   (and next-subproblem
 		(stack-frame->continuation next-subproblem))))))
 
-
 ;; With the 8.0 compiler, we do not want to restart a primitive that
 ;; signalled a bad argument type or range.  This allows the compiler
 ;; to generate better code. We return #F if the continuation is an
@@ -296,7 +295,7 @@ MIT in each case. |#
 
 (define-integrable (reference-trap-frame/environment frame)
   (stack-frame/ref frame 3))
-
+
 (define-integrable (compiled-code-error-frame? frame)
   (let ((code (stack-frame/return-code frame)))
     (and code
@@ -343,7 +342,7 @@ MIT in each case. |#
 	     (string-ci=? "divide by zero" name))
 	 'DIVIDE-BY-ZERO)
 	(else false)))
-
+
 (define (file-primitive-description primitive)
   (cond ((eq? primitive (ucode-primitive file-exists? 1))
 	 (values "determine existence of" "file"))
@@ -353,7 +352,11 @@ MIT in each case. |#
 	((or (eq? primitive (ucode-primitive file-open-append-channel 1))
 	     (eq? primitive (ucode-primitive file-open-input-channel 1))
 	     (eq? primitive (ucode-primitive file-open-io-channel 1))
-	     (eq? primitive (ucode-primitive file-open-output-channel 1)))
+	     (eq? primitive (ucode-primitive file-open-output-channel 1))
+	     (eq? primitive (ucode-primitive new-file-open-append-channel 2))
+	     (eq? primitive (ucode-primitive new-file-open-input-channel 2))
+	     (eq? primitive (ucode-primitive new-file-open-io-channel 2))
+	     (eq? primitive (ucode-primitive new-file-open-output-channel 2)))
 	 (values "open" "file"))
 	((eq? primitive (ucode-primitive new-directory-open 1))
 	 (values "open" "directory"))
@@ -716,7 +719,14 @@ MIT in each case. |#
 	      (if (or (eq? (ucode-primitive file-open-input-channel) operator)
 		      (eq? (ucode-primitive file-open-output-channel) operator)
 		      (eq? (ucode-primitive file-open-io-channel) operator)
-		      (eq? (ucode-primitive file-open-append-channel)
+		      (eq? (ucode-primitive file-open-append-channel) operator)
+		      (eq? (ucode-primitive new-file-open-input-channel)
+			   operator)
+		      (eq? (ucode-primitive new-file-open-output-channel)
+			   operator)
+		      (eq? (ucode-primitive new-file-open-io-channel)
+			   operator)
+		      (eq? (ucode-primitive new-file-open-append-channel)
 			   operator))
 		  (signal-file-operation continuation operator operands 0
 					 "open" "file" "channel table full")
