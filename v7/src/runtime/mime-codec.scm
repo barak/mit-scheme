@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mime-codec.scm,v 14.1 2000/06/08 16:29:41 cph Exp $
+;;; $Id: mime-codec.scm,v 14.2 2000/06/08 20:52:23 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -342,8 +342,8 @@
     (vector-8b-set! char-table code value)
     (vector-8b-set! digit-table value code))
   (do-range (char->integer #\0) (char->integer #\9) 0)
-  (do-range (char->integer #\A) (char->integer #\F) 10)
   (do-range (char->integer #\a) (char->integer #\f) 10)
+  (do-range (char->integer #\A) (char->integer #\F) 10)
   (set! hex-char-table char-table)
   (set! hex-digit-table digit-table)
   unspecific)
