@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.8 1993/10/14 10:13:58 cph Exp $
+$Id: random.scm,v 14.9 1993/11/29 23:24:36 cph Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -36,9 +36,6 @@ MIT in each case. |#
 ;;; package: (runtime random-number)
 
 (declare (usual-integrations))
-
-(define-integrable (int:->flonum n)
-  ((ucode-primitive integer->flonum 2) n #b10))
 
 ;;; A "subtract-with-carry" RNG, based on the algorithm from "A New
 ;;; Class of Random Number Generators", George Marsaglia and Arif
