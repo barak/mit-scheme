@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.9 1990/02/09 19:10:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.10 1990/09/11 22:57:46 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -104,7 +104,7 @@ MIT in each case. |#
 
 (define (string->uninterned-symbol string)
   (if (not (string? string))
-      (error error-type:wrong-type-argument string))
+      (error:illegal-datum string 'STRING->UNINTERNED-SYMBOL))
   (&typed-pair-cons (ucode-type uninterned-symbol)
 		    string
 		    (make-unbound-reference-trap)))
@@ -117,7 +117,7 @@ MIT in each case. |#
 
 (define (symbol-name symbol)
   (if (not (symbol? symbol))
-      (error error-type:wrong-type-argument symbol))
+      (error:illegal-datum symbol 'SYMBOL-NAME))
   (system-pair-car symbol))
 
 (define-integrable (symbol->string symbol)
@@ -279,9 +279,9 @@ MIT in each case. |#
 (define-integrable (access-name expression)
   (system-pair-cdr expression))
 
-(define (access-components access receiver)
-  (receiver (access-environment access)
-	    (access-name access)))
+(define (access-components expression receiver)
+  (receiver (access-environment expression)
+	    (access-name expression)))
 
 ;;;; Absolute Reference
 
@@ -317,9 +317,9 @@ MIT in each case. |#
 (define-integrable (in-package-expression expression)
   (&pair-cdr expression))
 
-(define (in-package-components in-package receiver)
-  (receiver (in-package-environment in-package)
-	    (in-package-expression in-package)))
+(define (in-package-components expression receiver)
+  (receiver (in-package-environment expression)
+	    (in-package-expression expression)))
 
 ;;;; Delay
 
@@ -332,5 +332,5 @@ MIT in each case. |#
 (define-integrable (delay-expression expression)
   (&singleton-element expression))
 
-(define-integrable (delay-components delay receiver)
-  (receiver (delay-expression delay)))
+(define-integrable (delay-components expression receiver)
+  (receiver (delay-expression expression)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.9 1990/09/11 20:45:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.10 1990/09/11 22:58:02 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -72,7 +72,7 @@ MIT in each case. |#
 
 (define (unsyntax-with-substitutions scode alist)
   (if (not (alist? alist))
-      (error "substitutions not an alist" alist))
+      (error:illegal-datum alist 'UNSYNTAX-WITH-SUBSTITUTIONS))
   (fluid-let ((substitutions alist))
     (unsyntax scode)))
 
@@ -165,8 +165,8 @@ MIT in each case. |#
       '()
       `(,(unsyntax-object value))))
 
-(define (unsyntax-UNASSIGNED?-object unassigned?)
-  `(UNASSIGNED? ,(unassigned?-name unassigned?)))
+(define (unsyntax-UNASSIGNED?-object object)
+  `(UNASSIGNED? ,(unassigned?-name object)))
 
 (define (unsyntax-COMMENT-object comment)
   (let ((expression (unsyntax-object (comment-expression comment))))
@@ -218,8 +218,8 @@ MIT in each case. |#
 (define (unsyntax-DELAY-object object)
   `(DELAY ,(unsyntax-object (delay-expression object))))
 
-(define (unsyntax-IN-PACKAGE-object in-package)
-  (in-package-components in-package
+(define (unsyntax-IN-PACKAGE-object object)
+  (in-package-components object
     (lambda (environment expression)
       `(IN-PACKAGE ,(unsyntax-object environment)
 	 ,@(unsyntax-sequence expression)))))
@@ -331,7 +331,7 @@ MIT in each case. |#
 
 (define (unsyntax-lambda-list expression)
   (if (not (lambda? expression))
-      (error "Must be a lambda expression" expression))
+      (error:illegal-datum expression 'UNSYNTAX-LAMBDA-LIST))
   (lambda-components** expression
     (lambda (name required optional rest body)
       name body

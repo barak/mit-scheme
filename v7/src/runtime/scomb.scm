@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.8 1990/07/19 21:44:33 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.9 1990/09/11 22:57:55 cph Rel $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -150,30 +150,30 @@ MIT in each case. |#
   (or (object-type? (ucode-type sequence-2) object)
       (object-type? (ucode-type sequence-3) object)))
 
-(define (sequence-actions sequence)
-  (cond ((object-type? (ucode-type sequence-2) sequence)
-	 (append! (sequence-actions (&pair-car sequence))
-		  (sequence-actions (&pair-cdr sequence))))
-	((object-type? (ucode-type sequence-3) sequence)
-	 (append! (sequence-actions (&triple-first sequence))
-		  (sequence-actions (&triple-second sequence))
-		  (sequence-actions (&triple-third sequence))))
+(define (sequence-actions expression)
+  (cond ((object-type? (ucode-type sequence-2) expression)
+	 (append! (sequence-actions (&pair-car expression))
+		  (sequence-actions (&pair-cdr expression))))
+	((object-type? (ucode-type sequence-3) expression)
+	 (append! (sequence-actions (&triple-first expression))
+		  (sequence-actions (&triple-second expression))
+		  (sequence-actions (&triple-third expression))))
 	(else
-	 (list sequence))))
+	 (list expression))))
 
-(define (sequence-immediate-actions sequence)
-  (cond ((object-type? (ucode-type sequence-2) sequence)
-	 (list (&pair-car sequence)
-	       (&pair-cdr sequence)))
-	((object-type? (ucode-type sequence-3) sequence)
-	 (list (&triple-first sequence)
-	       (&triple-second sequence)
-	       (&triple-third sequence)))
+(define (sequence-immediate-actions expression)
+  (cond ((object-type? (ucode-type sequence-2) expression)
+	 (list (&pair-car expression)
+	       (&pair-cdr expression)))
+	((object-type? (ucode-type sequence-3) expression)
+	 (list (&triple-first expression)
+	       (&triple-second expression)
+	       (&triple-third expression)))
 	(else
-	 (error "sequence-immediate-actions: not a sequence" sequence))))
+	 (error:illegal-datum expression 'SEQUENCE-IMMEDIATE-ACTIONS))))
 
-(define-integrable (sequence-components sequence receiver)
-  (receiver (sequence-actions sequence)))
+(define-integrable (sequence-components expression receiver)
+  (receiver (sequence-actions expression)))
 
 ;;;; Conditional
 
@@ -309,9 +309,7 @@ MIT in each case. |#
 				  ,combination))
 		,case-n)
 	       (ELSE
-		(ERROR ,(string-append (symbol->string name)
-				       ": Illegal combination")
-		       ,combination))))))
+		(ERROR:ILLEGAL-DATUM ,combination ',name))))))
 
 (define (combination-size combination)
   (combination-dispatch combination-size combination
@@ -358,8 +356,8 @@ MIT in each case. |#
 	 (and (the-environment? (car operands))
 	      (symbol? (cadr operands))))))
 
-(define-integrable (unassigned?-name unassigned?)
-  (cadr (combination-operands unassigned?)))
+(define-integrable (unassigned?-name expression)
+  (cadr (combination-operands expression)))
 
-(define-integrable (unassigned?-components unassigned? receiver)
-  (receiver (unassigned?-name unassigned?)))
+(define-integrable (unassigned?-components expression receiver)
+  (receiver (unassigned?-name expression)))

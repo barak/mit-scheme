@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambda.scm,v 14.6 1990/09/11 20:44:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambda.scm,v 14.7 1990/09/11 22:57:30 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -119,8 +119,8 @@ MIT in each case. |#
 
 (define (lambda-body-procedures physical-body set-physical-body! receiver)
   (receiver
-   (named-lambda (wrap-body! lambda transform)
-     (let ((physical-body (physical-body lambda)))
+   (named-lambda (wrap-body! *lambda transform)
+     (let ((physical-body (physical-body *lambda)))
        (if (wrapper? physical-body)
 	   (transform (wrapper-body physical-body)
 		      (wrapper-state physical-body)
@@ -130,30 +130,30 @@ MIT in each case. |#
 	   (transform physical-body
 		      '()
 		      (lambda (new-body new-state)
-			(set-physical-body! lambda
+			(set-physical-body! *lambda
 					    (make-wrapper physical-body
 							  new-body
 							  new-state)))))))
-   (named-lambda (wrapper-components lambda receiver)
-     (let ((physical-body (physical-body lambda)))
+   (named-lambda (wrapper-components *lambda receiver)
+     (let ((physical-body (physical-body *lambda)))
        (if (wrapper? physical-body)
 	   (receiver (wrapper-original-body physical-body)
 		     (wrapper-state physical-body))
 	   (receiver physical-body '()))))
-   (named-lambda (unwrap-body! lambda)
-     (let ((physical-body (physical-body lambda)))
+   (named-lambda (unwrap-body! *lambda)
+     (let ((physical-body (physical-body *lambda)))
        (if (wrapper? physical-body)
-	   (set-physical-body! lambda
+	   (set-physical-body! *lambda
 			       (wrapper-original-body physical-body)))))
-   (named-lambda (unwrapped-body lambda)
-     (let ((physical-body (physical-body lambda)))
+   (named-lambda (unwrapped-body *lambda)
+     (let ((physical-body (physical-body *lambda)))
        (if (wrapper? physical-body)
 	   (wrapper-original-body physical-body)
 	   physical-body)))
-   (named-lambda (set-unwrapped-body! lambda new-body)
-     (if (wrapper? (physical-body lambda))
-	 (set-wrapper-original-body! (physical-body lambda) new-body)
-	 (set-physical-body! lambda new-body)))))
+   (named-lambda (set-unwrapped-body! *lambda new-body)
+     (if (wrapper? (physical-body *lambda))
+	 (set-wrapper-original-body! (physical-body *lambda) new-body)
+	 (set-physical-body! *lambda new-body)))))
 
 (define-integrable (make-wrapper original-body new-body state)
   (make-comment (vector wrapper-tag original-body state) new-body))
@@ -399,8 +399,8 @@ MIT in each case. |#
 	  (else
 	   (make-clexpr name required rest auxiliary body*)))))
 
-(define (lambda-components lambda receiver)
-  (&lambda-components lambda
+(define (lambda-components *lambda receiver)
+  (&lambda-components *lambda
     (lambda (name required optional rest auxiliary body)
       (let ((actions (and (sequence? body)
 			  (sequence-actions body))))
@@ -417,19 +417,19 @@ MIT in each case. |#
 	   true
 	   (list-has-duplicates? (cdr items)))))
 
-(define ((dispatch-0 op-name clambda-op clexpr-op xlambda-op) lambda)
-  ((cond ((slambda? lambda) clambda-op)
-	 ((slexpr? lambda) clexpr-op)
-	 ((xlambda? lambda) xlambda-op)
-	 (else (error "Not a lambda" op-name lambda)))
-   lambda))
+(define ((dispatch-0 op-name clambda-op clexpr-op xlambda-op) *lambda)
+  ((cond ((slambda? *lambda) clambda-op)
+	 ((slexpr? *lambda) clexpr-op)
+	 ((xlambda? *lambda) xlambda-op)
+	 (else (error:illegal-datum *lambda op-name)))
+   *lambda))
 
-(define ((dispatch-1 op-name clambda-op clexpr-op xlambda-op) lambda arg)
-  ((cond ((slambda? lambda) clambda-op)
-	 ((slexpr? lambda) clexpr-op)
-	 ((xlambda? lambda) xlambda-op)
-	 (else (error "Not a lambda" op-name lambda)))
-   lambda arg))
+(define ((dispatch-1 op-name clambda-op clexpr-op xlambda-op) *lambda arg)
+  ((cond ((slambda? *lambda) clambda-op)
+	 ((slexpr? *lambda) clexpr-op)
+	 ((xlambda? *lambda) xlambda-op)
+	 (else (error:illegal-datum *lambda op-name)))
+   *lambda arg))
 
 (define &lambda-components)
 (define has-internal-lambda?)
@@ -510,10 +510,10 @@ MIT in each case. |#
 (define-integrable (make-internal-lexpr names body)
   (make-slambda lambda-tag:internal-lexpr names body))
 
-(define (internal-lambda? lambda)
-  (and (slambda? lambda)
-       (or (eq? (slambda-name lambda) lambda-tag:internal-lambda)
-	   (eq? (slambda-name lambda) lambda-tag:internal-lexpr))))
+(define (internal-lambda? *lambda)
+  (and (slambda? *lambda)
+       (or (eq? (slambda-name *lambda) lambda-tag:internal-lambda)
+	   (eq? (slambda-name *lambda) lambda-tag:internal-lexpr))))
 
 (define (make-unassigned auxiliary)
   (map (lambda (auxiliary)

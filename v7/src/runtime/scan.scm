@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scan.scm,v 14.3 1989/04/18 16:29:59 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scan.scm,v 14.4 1990/09/11 22:57:41 cph Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -65,16 +65,16 @@ MIT in each case. |#
 (define null-sequence
   '(NULL-SEQUENCE))
 
-(define (cons-sequence action sequence)
-  (cond ((object-type? sequence-2-type sequence)
+(define (cons-sequence action seq)
+  (cond ((object-type? sequence-2-type seq)
 	 (&typed-triple-cons sequence-3-type
 			     action
-			     (&pair-car sequence)
-			     (&pair-cdr sequence)))
-	((eq? sequence null-sequence)
+			     (&pair-car seq)
+			     (&pair-cdr seq)))
+	((eq? seq null-sequence)
 	 action)
 	(else
-	 (&typed-pair-cons sequence-2-type action sequence))))
+	 (&typed-pair-cons sequence-2-type action seq))))
 
 ;;;; Scanning
 

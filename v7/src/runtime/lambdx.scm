@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambdx.scm,v 14.2 1988/06/13 11:47:06 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambdx.scm,v 14.3 1990/09/11 22:57:36 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,14 +42,14 @@ MIT in each case. |#
     (lambda (auxiliary declarations body*)
       (make-lambda name required optional rest auxiliary declarations body*))))
 
-(define (lambda-components* lambda receiver)
-  (lambda-components lambda
+(define (lambda-components* *lambda receiver)
+  (lambda-components *lambda
     (lambda (name required optional rest auxiliary declarations body)
       (receiver name required optional rest
 		(make-open-block auxiliary declarations body)))))
 
-(define (lambda-components** lambda receiver)
-  (lambda-components* lambda
+(define (lambda-components** *lambda receiver)
+  (lambda-components* *lambda
     (lambda (name required optional rest body)
       (receiver (make-lambda-pattern name required optional rest)
 		(append required optional (if (null? rest) '() (list rest)))
