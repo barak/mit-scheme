@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.25 1987/11/09 21:26:16 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.26 1987/11/09 21:35:13 cph Rel $
  *
  * Random system primitives.  Most are implemented in terms of
  * utilities in os.c
@@ -97,7 +97,7 @@ Built_In_Primitive(Prim_Setup_Timer_Interrupt, 2,
     Set_Int_Timer(Days, Centi_Seconds);
   }
   IntCode &= ~INT_Timer;
-  New_Compiler_Memtop ();
+  New_Compiler_MemTop ();
   PRIMITIVE_RETURN(NIL);
 }
 
