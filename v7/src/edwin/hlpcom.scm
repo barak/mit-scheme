@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: hlpcom.scm,v 1.121 2000/10/26 19:25:18 cph Exp $
+;;; $Id: hlpcom.scm,v 1.122 2002/02/14 05:05:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -378,7 +378,7 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 			   (substring-find-next-char string start end char)))
 		      (if (not terminator)
 			  (error "Missing terminator character:" char))
-		      (procedure (substring string start terminator)
+		      (procedure (intern (substring string start terminator))
 				 (fix:+ terminator 1)
 				 comtabs))))))
 	 (subst-key
