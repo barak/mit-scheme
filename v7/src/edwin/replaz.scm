@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.74 1991/09/17 22:43:50 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.75 1991/09/25 18:33:34 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -247,7 +247,7 @@ C-R to enter recursive edit, C-W to delete match and recursive edit,
   "sHow many matches for (regexp)"
   (lambda (regexp)
     (let loop ((start (current-point)) (n 0))
-      (let ((mark (re-search-forward regexp start)))
+      (let ((mark (re-search-forward regexp start (group-end start))))
 	(if (not mark)
 	    (message (write-to-string n) " occurrences")
 	    (loop mark (1+ n)))))))
