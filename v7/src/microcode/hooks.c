@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.37 1989/09/20 23:09:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.38 1990/02/13 16:00:20 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -430,8 +430,8 @@ DEFINE_PRIMITIVE ("TRANSLATE-TO-STATE-POINT", Prim_translate_to_point, 1, 1, 0)
 }
 
 DEFINE_PRIMITIVE ("MAKE-STATE-SPACE", Prim_make_state_space, 1, 1,
-  "Return a newly-allocated state-space.
-Argument MUTABLE?, if not #F, means return a mutable state-space.
+  "Return a newly-allocated state-space.\n\
+Argument MUTABLE?, if not #F, means return a mutable state-space.\n\
 Otherwise, -the- immutable state-space is saved internally.")
 {
   PRIMITIVE_HEADER (1);
