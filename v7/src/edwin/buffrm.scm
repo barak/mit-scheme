@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.39 1991/03/22 00:30:50 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.40 1991/05/10 22:18:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -145,15 +145,15 @@
 
 (define-method buffer-frame (:minimum-x-size window)
   (if (window-has-right-neighbor? window)
-      (+ (ref-variable window-minimum-width)
+      (+ (ref-variable window-min-width)
 	 (inferior-x-size border-inferior))
-      (ref-variable window-minimum-width)))
+      (ref-variable window-min-width)))
 
 (define-method buffer-frame (:minimum-y-size window)
   (if modeline-inferior
-      (+ (ref-variable window-minimum-height)
+      (+ (ref-variable window-min-height)
 	 (inferior-y-size modeline-inferior))
-      (ref-variable window-minimum-height)))
+      (ref-variable window-min-height)))
 
 ;;;; External Entries
 
