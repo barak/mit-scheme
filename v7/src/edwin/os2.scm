@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.18 1995/05/19 18:52:49 cph Exp $
+;;;	$Id: os2.scm,v 1.19 1995/07/11 23:10:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -90,14 +90,14 @@ Includes the new backup.  Must be > 0."
 
 ;;;; Filename I/O
 
-(define (os/trim-pathname-string string)
-  (let ((end (string-length string))
-	(pattern (re-compile-pattern "[\\/]\\([\\/$~]\\|[a-zA-Z]:\\)" #t)))
-    (let loop ((start 0))
-      (cond ((re-search-substring-forward pattern #t #f string start end)
-	     (loop (re-match-start-index 1)))
-	    ((fix:= start 0) string)
-	    (else (string-tail string start))))))
+(define (os/trim-pathname-string string prefix)
+  (let ((index (string-match-forward prefix string)))
+    (if (and index
+	     (re-match-substring-forward
+	      (re-compile-pattern "[\\/$~]\\|[a-zA-Z]:" #t)
+	      #t #f string index (string-length string)))
+	(string-tail string index)
+	string)))
 
 (define (os/pathname->display-string pathname)
   (or (let ((relative (enough-pathname pathname (user-homedir-pathname))))

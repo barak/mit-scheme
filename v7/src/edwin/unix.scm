@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.51 1995/06/28 19:56:43 cph Exp $
+;;;	$Id: unix.scm,v 1.52 1995/07/11 23:10:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -88,21 +88,14 @@ Includes the new backup.  Must be > 0."
   2
   (lambda (n) (and (exact-integer? n) (> n 0))))
 
-(define (os/trim-pathname-string string)
-  (let ((end (string-length string)))
-    (let loop ((index end))
-      (let ((slash (substring-find-previous-char string 0 index #\/)))
-	(cond ((not slash)
-	       string)
-	      ((and (< (1+ slash) end)
-		    (memv (string-ref string (1+ slash)) '(#\~ #\$)))
-	       (string-tail string (1+ slash)))
-	      ((zero? slash)
-	       string)
-	      ((char=? #\/ (string-ref string (-1+ slash)))
-	       (string-tail string slash))
-	      (else
-	       (loop (-1+ slash))))))))
+(define (os/trim-pathname-string string prefix)
+  (let ((index (string-match-forward prefix string)))
+    (if (and index
+	     (re-match-substring-forward (re-compile-pattern "[/$~]" #t)
+					 #t #f string index
+					 (string-length string)))
+	(string-tail string index)
+	string)))
 
 (define (os/pathname->display-string pathname)
   (let ((pathname (enough-pathname pathname (user-homedir-pathname))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.25 1995/05/05 22:32:23 cph Exp $
+;;;	$Id: dos.scm,v 1.26 1995/07/11 23:10:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ;;;
@@ -86,57 +86,18 @@ Includes the new backup.  Must be > 0."
 (define os/directory-char-set (char-set #\\ #\/))
 (define os/expand-char-set (char-set #\$ #\~))
 
-(define (os/trim-pathname-string string)
-  ;; Trim a filename with false starts to a unique name
-  (define (trim-for-duplicate-top-level-directory string)
-    (let ((end (string-length string)))
-      (let loop ((index end))
-	(let ((slash
-	       (substring-find-previous-char-in-set string 0 index
-						    os/directory-char-set)))
-	  (cond ((not slash) string)
-		((and (fix:< (fix:1+ slash) end)
-		      (char-set-member? os/expand-char-set
-					(string-ref string (fix:1+ slash))))
-		 (string-tail string (fix:1+ slash)))
-		((zero? slash)
-		 string)
-		((char-set-member? os/directory-char-set
-				   (string-ref string (fix:-1+ slash)))
-		 (string-tail string slash))
-		(else
-		 (loop (fix:-1+ slash))))))))
-
-  (define (trim-for-duplicate-device string)
-    (let ((end (string-length string))
-	  (sep (char-set-union (char-set #\:)
-			       (char-set-union
-				os/expand-char-set
-				os/directory-char-set))))
-      (let ((colon
-	     (substring-find-previous-char string 0 end #\:)))
-	(cond ((or (not colon) (zero? colon))
-	       string)
-	      ((and (fix:< (fix:1+ colon) end)
-		    (char-set-member? os/expand-char-set
-				      (string-ref string (fix:1+ colon))))
-	       (string-tail string (fix:1+ colon)))
-	      ((substring-find-previous-char-in-set string 0 colon sep)
-	       =>
-	       (lambda (before)
-		 (string-tail string 
-			      (if (char-set-member? os/expand-char-set
-						    (string-ref string before))
-				  before
-				  (fix:1+ before)))))
-	      (else
-	       string)))))
-
-  (trim-for-duplicate-device (trim-for-duplicate-top-level-directory string)))
+(define (os/trim-pathname-string string prefix)
+  (let ((index (string-match-forward prefix string)))
+    (if (and index
+	     (re-match-substring-forward
+	      (re-compile-pattern "[\\/$~]\\|[a-zA-Z]:" #t)
+	      #t #f string index (string-length string)))
+	(string-tail string index)
+	string)))
 
 (define os/pathname->display-string
   ->namestring)
-
+
 (define (file-type->version type version)
   (let ((version-string
 	 (and (fix:fixnum? version)
