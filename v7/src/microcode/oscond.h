@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: oscond.h,v 1.18 1994/10/07 20:42:10 cph Exp $
+$Id: oscond.h,v 1.19 1995/06/29 23:49:23 cph Exp $
 
-Copyright (c) 1990-1994 Massachusetts Institute of Technology
+Copyright (c) 1990-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,12 +41,7 @@ MIT in each case. */
 /* _POSIX is assumed to be independent of all operating-system and
    machine specification macros.  */
 
-#if defined (__osf__)
-#  define _POSIX
-#  define _BSD4_3
-#endif
-
-#if defined(_AIX)
+#if defined(__osf__) || defined(_AIX) || defined(__linux)
 #  define _POSIX
 #  define _BSD4_3
 #endif
