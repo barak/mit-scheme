@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.20 2003/07/13 03:41:25 cph Exp $
+$Id: xml.pkg,v 1.21 2003/07/13 03:45:01 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -114,6 +114,7 @@ USA.
 	  xml-!notation-name
 	  xml-!notation?
 	  xml-attribute-list?
+	  xml-attribute-value-item?
 	  xml-attribute-value?
 	  xml-attribute?
 	  xml-char-data?

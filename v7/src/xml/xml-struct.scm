@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.14 2003/07/13 03:41:29 cph Exp $
+$Id: xml-struct.scm,v 1.15 2003/07/13 03:45:04 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -172,10 +172,11 @@ USA.
 
 (define (xml-attribute-value? object)
   (and (pair? object)
-       (list-of-type? object
-	 (lambda (object)
-	   (or (xml-char-data? object)
-	       (xml-entity-ref? object))))))
+       (list-of-type? object xml-attribute-value-item?)))
+
+(define (xml-attribute-value-item? object)
+  (or (xml-char-data? object)
+      (xml-entity-ref? object)))
 
 (define (xml-content? object)
   (list-of-type? object xml-content-item?))
