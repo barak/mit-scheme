@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.3 1987/08/18 08:23:38 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.4 1987/08/18 21:24:54 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -124,11 +124,20 @@ MIT in each case. |#
 		    (size (car desc)))
 		(receiver
 		 `(CONS-SYNTAX
-		   ,(integer-syntaxer expression 'DISPLACEMENT size)
+		   ,(displacement-syntaxer expression size)
 		   ,tail)
 		 (+ size tail-size)))))
 	   (else
 	    (error "expand-fields: Unknown field kind" (caar fields))))))))
+
+;; Patterned after integer-syntaxer in back-end/syntax.scm
+
+(define (displacement-syntaxer expression size)
+  (let ((coercion (make-coercion-name 'DISPLACEMENT size)))
+    (if (and (pair? expression)
+	     (memq (car expression) '(@PCO @PCR)))
+	`',((lexical-reference coercion-environment coercion) expression)
+	`(SYNTAX-EVALUATION ,expression ,coercion))))
 
 (define (collect-byte components tail receiver)
   (define (inner components receiver)
