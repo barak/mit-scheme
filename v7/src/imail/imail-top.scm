@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.131 2000/06/05 20:56:50 cph Exp $
+;;; $Id: imail-top.scm,v 1.132 2000/06/05 21:09:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -139,7 +139,7 @@ Otherwise, all messages are presented as plain text."
 
 (define-variable imail-auto-wrap-mime-encoded
   "If true, all encoded MIME messages will have their lines wrapped.
-If set to 'FILL, the paragraphs are filled as well as wrapped.
+If set to 'FILL, the paragraphs are filled rather than wrapped.
 Otherwise, no wrapping occurs.
 Note that this only applies to MIME parts that are encoded as
  quoted-printable or BASE64.
@@ -149,11 +149,11 @@ See also imail-auto-wrap."
 
 (define-variable imail-auto-wrap
   "If true, all unencoded messages will have their lines wrapped.
-If set to 'FILL, the paragraphs are filled as well as wrapped.
+If set to 'FILL, the paragraphs are filled rather than wrapped.
 Otherwise, no wrapping occurs.
 Note that this only applies to unencoded message parts.
 See also imail-auto-wrap-mime-encoded."
-  #f
+  #t
   (lambda (x) (or (boolean? x) (eq? x 'FILL))))
 
 (define-command imail
@@ -472,7 +472,6 @@ variable's documentation (using \\[describe-variable]) for details:
     (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-revert-buffer)
     (add-kill-buffer-hook buffer imail-kill-buffer)
     (local-set-variable! mode-line-modified "--- " buffer)
-    (local-set-variable! truncate-lines #t buffer)
     (add-adaptive-fill-regexp! "[ \t]*[-a-zA-Z0-9]*>+[ \t]*" buffer)
     (standard-alternate-paragraph-style! buffer)
     (set-buffer-read-only! buffer)
@@ -1205,15 +1204,18 @@ With prefix argument N moves backward N messages with these flags."
   (let ((start (mark-right-inserting-copy mark))
 	(end (mark-left-inserting-copy mark)))
     (call-with-output-mark mark generator)
-    (let ((m (mark-left-inserting-copy (line-end start 0))))
-      (let loop ()
-	(delete-horizontal-space m)
-	(do () ((not (auto-fill-break m))))
-	(if (mark< m end)
-	    (begin
-	      (move-mark-to! m (line-end m 1 'ERROR))
-	      (loop))))
-      (mark-temporary! m))
+    (with-variable-value! (ref-variable-object fill-column)
+      (- (mark-x-size mark) 1)
+      (lambda ()
+	(let ((m (mark-left-inserting-copy (line-end start 0))))
+	  (let loop ()
+	    (delete-horizontal-space m)
+	    (do () ((not (auto-fill-break m))))
+	    (if (mark< m end)
+		(begin
+		  (move-mark-to! m (line-end m 1 'ERROR))
+		  (loop))))
+	  (mark-temporary! m))))
     (mark-temporary! start)
     (mark-temporary! end)))
 
