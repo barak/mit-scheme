@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/print.scm,v 1.8 1992/08/28 21:02:43 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/print.scm,v 1.9 1992/08/28 21:03:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -73,7 +73,7 @@ Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
   "r"
   (lambda  (region)
     (print-region/internal region true)))
-
+
 (define (print-region/internal region print-command?)
   (let ((switches (print-region-switches region print-command?))
 	(source-buffer (mark-buffer (region-start region)))
@@ -100,7 +100,7 @@ Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
 				       (car switches)
 				       (loop (cdr switches)))))))
     (append-message "done")))
-
+
 (define (print-region-switches region print-command?)
   (let ((switches (ref-variable lpr-switches))
 	(title (print-region-title-string region)))
