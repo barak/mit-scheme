@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/edextra.scm,v 1.9 1992/09/08 21:40:29 cph Exp $
+$Id: edextra.scm,v 1.10 1992/09/10 05:20:01 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -223,3 +223,91 @@ MIT in each case. |#
 		 (append-message " -- done")
 		 (find-file dest-file)))
 	     (groups/files-to-copy groups))))))
+
+;;;; DOS Filenames
+
+(define valid-dos-filename?
+  (let ((invalid-chars
+	 (char-set-invert
+	  (char-set-union
+	   (char-set-union char-set:lower-case char-set:numeric)
+	   (char-set #\_ #\^ #\$ #\! #\# #\% #\& #\-
+		     #\{ #\} #\( #\) #\@ #\' #\`)))))
+    (lambda (filename)
+      (let ((end (string-length filename))
+	    (valid-name?
+	     (lambda (end)
+	       (and (<= 1 end 8)
+		    (not (substring-find-next-char-in-set filename 0 end
+							  invalid-chars))
+		    (not
+		     (there-exists? '("clock$" "con" "aux" "com1" "com2"
+					       "com3" "com4" "lpt1" "lpt2"
+					       "lpt3" "nul" "prn")
+		       (lambda (name)
+			 (substring=? filename 0 end
+				      name 0 (string-length name)))))))))
+	(let ((dot (string-find-next-char filename #\.)))
+	  (if (not dot)
+	      (valid-name? end)
+	      (and (valid-name? dot)
+		   (<= 2 (- end dot) 4)
+		   (not (substring-find-next-char-in-set filename (+ dot 1) end
+							 invalid-chars)))))))))
+
+
+(define dos-filename-description
+  "DOS filenames are between 1 and 8 characters long, inclusive.  They
+may optionally be followed by a period and a suffix of 1 to 3
+characters.
+
+In other words, a valid filename consists of:
+
+* 1 to 8 characters, OR
+
+* 1 to 8 characters, followed by a period, followed by 1 to 3
+  characters.
+
+The characters that may be used in a filename (or a suffix) are:
+
+* The lower case letters: a b c ... z
+
+* The digits: 0 1 2 ... 9
+
+* These special characters: ' ` ! @ # $ % ^ & ( ) - _ { }
+
+The period (.) may appear exactly once as a separator between the
+filename and the suffix.
+
+The following filenames are reserved and may not be used:
+
+	aux	clock$	com1	com2	com3	com4
+	con	lpt1	lpt2	lpt3	nul	prn")
+
+(define (os/auto-save-pathname pathname buffer)
+  (if (not pathname)
+      (merge-pathnames
+       (let ((name
+	      (string-append
+	       (let ((name (buffer-name buffer)))
+		 (let ((index (string-find-next-char name #\.)))
+		   (if (not index)
+		       (if (> (string-length name) 8)
+			   (substring name 0 8)
+			   name)
+		       (substring name 0 (min 8 index)))))
+	       ".asv")))
+	 (if (valid-dos-filename? name)
+	     name
+	     "default.asv"))
+       (buffer-default-directory buffer))
+      (pathname-new-type pathname "asv")))
+
+(define (os/precious-backup-pathname pathname)
+  (pathname-new-type pathname "bak"))
+
+(define (os/default-backup-filename)
+  "~/work/default.bak")
+
+(define (os/buffer-backup-pathname truename)
+  (values (pathname-new-type truename "bak") '()))

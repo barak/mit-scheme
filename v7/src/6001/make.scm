@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 15.15 1992/09/10 05:19:51 cph Exp $
+$Id: make.scm,v 15.16 1992/09/10 05:21:53 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -39,7 +39,7 @@ MIT in each case. |#
 (package/system-loader "6001" '() 'QUERY)
 (load '("edextra" "floppy") (->environment '(edwin)))
 ((access initialize-package! (->environment '(student scode-rewriting))))
-(add-system! (make-system "6.001" 15 6 '()))
+(add-system! (make-system "6.001" 15 16 '()))
 
 (set! repl:allow-restart-notifications? false)
 (set! repl:write-result-hash-numbers? false)
