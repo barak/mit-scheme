@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.36 1998/05/05 00:24:29 cph Exp $
+$Id: uenvir.scm,v 14.37 1998/05/05 02:15:08 cph Exp $
 
 Copyright (c) 1988-98 Massachusetts Institute of Technology
 
@@ -278,12 +278,11 @@ MIT in each case. |#
 
 ;;;; Compiled Code Environments
 
-(define-structure (stack-ccenv
-		   (type vector)
-		   (named
-		    ((ucode-primitive string->symbol)
-		     "#[(runtime environment)stack-ccenv]"))
-		   (conc-name stack-ccenv/))
+(define-structure (stack-ccenv (type vector)
+			       (named
+				((ucode-primitive string->symbol)
+				 "#[(runtime environment)stack-ccenv]"))
+			       (conc-name stack-ccenv/))
   (block false read-only true)
   (frame false read-only true)
   (start-index false read-only true))
@@ -314,12 +313,9 @@ MIT in each case. |#
 	   (let ((block (dbg-procedure/block object)))
 	     (case (dbg-block/type block)
 	       ((STACK)
-		(make-stack-ccenv
-		 block
-		 frame
-		 (if (compiled-closure? ret-add)
-		     0
-		     1)))
+		(make-stack-ccenv block
+				  frame
+				  (if (compiled-closure? ret-add) 0 1)))
 	       (else
 		(error "Illegal procedure block" block)))))
 	  #|
@@ -332,8 +328,7 @@ MIT in each case. |#
 
 (define (compiled-procedure/environment entry)
   (if (not (compiled-procedure? entry))
-      (error "Not a compiled procedure" entry
-	     'COMPILED-PROCEDURE/ENVIRONMENT))
+      (error "Not a compiled procedure" entry 'COMPILED-PROCEDURE/ENVIRONMENT))
   (let ((procedure (compiled-entry/dbg-object entry)))
     (if (not procedure)
 	(error "Unable to obtain closing environment" entry))
@@ -471,13 +466,17 @@ MIT in each case. |#
 					     name))))
 
 (define (stack-ccenv/assignable? environment name)
-  (assignable-dbg-variable? (stack-ccenv/block environment) name))
+  (assignable-dbg-variable? (stack-ccenv/block environment) name
+    (lambda (name)
+      (environment-assignable? (stack-ccenv/parent environment) name))))
 
 (define (stack-ccenv/assign! environment name value)
   (assign-dbg-variable! (stack-ccenv/block environment)
 			name
 			(stack-ccenv/get-value environment)
-			value))
+			value
+    (lambda (name)
+      (environment-assign! (stack-ccenv/parent environment) name value))))
 
 (define (stack-ccenv/get-value environment)
   (lambda (index)
@@ -580,13 +579,17 @@ MIT in each case. |#
 					     name))))
 
 (define (closure-ccenv/assignable? environment name)
-  (assignable-dbg-variable? (closure-ccenv/closure-block environment) name))
+  (assignable-dbg-variable? (closure-ccenv/closure-block environment) name
+    (lambda (name)
+      (environment-assignable? (closure-ccenv/parent environment) name))))
 
 (define (closure-ccenv/assign! environment name value)
   (assign-dbg-variable! (closure-ccenv/closure-block environment)
 			name
 			(closure-ccenv/get-value environment)
-			value))
+			value
+    (lambda (name)
+      (environment-assign! (closure-ccenv/parent environment) name value))))
 
 (define-integrable (closure/get-value closure closure-block index)
   (compiled-closure/ref closure
@@ -668,26 +671,31 @@ MIT in each case. |#
 	       (error "Unknown variable type" variable))))
 	  (not-found name)))))
 
-(define (assignable-dbg-variable? block name)
-  (eq? 'CELL
-       (dbg-variable/type
-	(vector-ref (dbg-block/layout-vector block)
-		    (dbg-block/find-name block name)))))
+(define (assignable-dbg-variable? block name not-found)
+  (let ((index (dbg-block/find-name block name)))
+    (if index
+	(eq? 'CELL
+	     (dbg-variable/type
+	      (vector-ref (dbg-block/layout-vector block)
+			  index)))
+	(not-found name))))
 
-(define (assign-dbg-variable! block name get-value value)
-  (let* ((index (dbg-block/find-name block name))
-	 (variable (vector-ref (dbg-block/layout-vector block) index)))
-    (case (dbg-variable/type variable)
-      ((CELL)
-       (let ((cell (get-value index)))
-	 (if (not (cell? cell))
-	     (error "Value of variable should be in cell" name cell))
-	 (set-cell-contents! cell value)
-	 unspecific))
-      ((NORMAL INTEGRATED INDIRECTED)
-       (error "Variable cannot be side-effected" variable))
-      (else
-       (error "Unknown variable type" variable)))))
+(define (assign-dbg-variable! block name get-value value not-found)
+  (let ((index (dbg-block/find-name block name)))
+    (if index
+	(let ((variable (vector-ref (dbg-block/layout-vector block) index)))
+	  (case (dbg-variable/type variable)
+	    ((CELL)
+	     (let ((cell (get-value index)))
+	       (if (not (cell? cell))
+		   (error "Value of variable should be in cell" name cell))
+	       (set-cell-contents! cell value)
+	       unspecific))
+	    ((NORMAL INTEGRATED INDIRECTED)
+	     (error "Variable cannot be side-effected" variable))
+	    (else
+	     (error "Unknown variable type" variable))))
+	(not-found name))))
 
 (define (dbg-block/name block)
   (let ((procedure (dbg-block/procedure block)))
