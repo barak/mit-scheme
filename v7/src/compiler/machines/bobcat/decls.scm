@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.8 1987/05/26 18:57:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.9 1987/06/09 19:59:13 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -71,11 +71,12 @@ MIT in each case. |#
 		   "rtlreg" "rtlcfg" "emodel" "rtypes"))
 
 (define filenames/dependency-chain/rcse
-  (filename/append "front-end" "rcseht" "rcserq" "rcse"))
+  (filename/append "front-end" "rcseht" "rcserq" "rcse1" "rcse2"))
 
 (define filenames/dependency-group/base
   (append (filename/append "base" "linear" "rtlcon" "rtlexp")
-	  (filename/append "alpha" "dflow" "fggen1" "fggen2")
+	  (filename/append "alpha" "dflow1" "dflow2" "dflow3" "dflow4" "dflow5"
+			   "dflow6" "fggen1" "fggen2")
 	  (filename/append "front-end"
 			   "ralloc" "rcseep" "rcsesa" "rdeath" "rdebug"
 			   "rgcomb" "rgpcom" "rgpred" "rgproc" "rgrval"
@@ -99,11 +100,12 @@ MIT in each case. |#
 			  "bblock" "cfg" "ctypes" "dfg" "dtypes" "emodel"
 			  "linear" "object" "queue" "rtlcfg" "rtlcon" "rtlexp"
 			  "rtlreg" "rtltyp" "rtypes" "sets" "toplev" "utils")
-	 (filename/append "alpha" "dflow" "fggen1" "fggen2")
+	 (filename/append "alpha" "dflow1" "dflow2" "dflow3" "dflow4" "dflow5"
+			  "dflow6" "fggen1" "fggen2")
 	 (filename/append "front-end"
-			  "ralloc" "rcse" "rcseep" "rcseht" "rcserq" "rcsesa"
-			  "rdeath" "rdebug" "rgcomb" "rgpcom" "rgpred" "rgproc"
-			  "rgrval" "rgstmt" "rlife" "rtlgen")
+			  "ralloc" "rcse1" "rcse2" "rcseep" "rcseht" "rcserq"
+			  "rcsesa" "rdeath" "rdebug" "rgcomb" "rgpcom" "rgpred"
+			  "rgproc" "rgrval" "rgstmt" "rlife" "rtlgen")
 	 (filename/append "back-end"
 			  "asmmac" "block" "lapgen" "laptop" "regmap" "symtab")
 	 (filename/append "machines/bobcat" "insmac" "machin"))
