@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: tterm.c,v 1.7 2001/02/28 14:41:46 cph Exp $
+$Id: tterm.c,v 1.8 2001/02/28 14:41:56 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
