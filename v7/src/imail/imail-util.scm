@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.14 2000/05/16 15:14:14 cph Exp $
+;;; $Id: imail-util.scm,v 1.15 2000/05/16 15:15:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -139,19 +139,37 @@
 	     (error "Unquoted line:" line)))
        lines))
 
-(define (string->lines string)
-  (if (string-null? string)
-      '()
-      (let ((lines (burst-string string #\newline #f)))
-	(if (pair? (cdr lines))
-	    (let loop ((prev lines) (this (cdr lines)))
-	      (cond ((pair? (cdr this)) (loop this (cdr this)))
-		    ((string-null? (car this)) (set-cdr! prev (cdr this))))))
-	lines)))
+(define (string->lines string #!optional line-ending)
+  (substring->lines string 0 (string-length string)
+		    (if (default-object? line-ending) "\n" line-ending)))
 
-(define (lines->string lines)
-  (decorated-string-append "" "" "\n" lines))
+(define (substring->lines string start end #!optional line-ending)
+  (let ((line-ending (if (default-object? line-ending) "\n" line-ending))
+	(n (string-length line-ending)))
+    (let ((indexes (substring-search-all line-ending string start end)))
+      (if (pair? indexes)
+	  (begin
+	    (let loop ((start start) (indexes indexes))
+	      (let ((start* (fix:+ (car indexes) n)))
+		(set-car! indexes (substring string start (car indexes)))
+		(cond ((pair? (cdr indexes))
+		       (loop start* (cdr indexes)))
+		      ((fix:< start* end)
+		       (set-cdr! indexes
+				 (list (substring string start* end)))))))
+	    indexes)
+	  (if (fix:< start end)
+	      (list (if (and (fix:= start 0)
+			     (fix:= end (string-length string)))
+			string
+			(substring string start end)))
+	      '())))))
 
+(define (lines->string lines #!optional line-ending)
+  (decorated-string-append "" ""
+			   (if (default-object? line-ending) "\n" line-ending)
+			   lines))
+
 (define (short-name->pathname name)
   (merge-pathnames name (current-home-directory)))
 
@@ -173,7 +191,7 @@
   (write-char #\: port)
   (write-string value port)
   (newline port))
-
+
 (define (read-lines port)
   (source->list (lambda () (read-line port))))
 
