@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.h,v 1.12 1996/03/21 16:36:29 adams Exp $
+$Id: ntscreen.h,v 1.13 1996/10/07 17:51:47 cph Exp $
 
 Copyright (c) 1993-96 Massachusetts Institute of Technology
 
@@ -161,8 +161,8 @@ extern BOOL Screen_SetPosition (SCREEN, int, int);
 extern VOID _fastcall clear_screen_rectangle (SCREEN, int, int, int, int);
 extern VOID Screen_CR_to_RECT (RECT *, SCREEN, int, int, int, int);
 extern VOID _fastcall scroll_screen_vertically (SCREEN, int, int, int, int, int);
-extern VOID _fastcall
-  Screen_WriteCharUninterpreted (SCREEN, int, struct screen_write_char_s *);
+extern VOID _fastcall Screen_WriteCharUninterpreted
+  (SCREEN, int, struct screen_write_char_s *);
 extern VOID _fastcall Screen_SetAttributeDirect (SCREEN, SCREEN_ATTRIBUTE);
 extern VOID WriteScreenBlock_NoInvalidRect (SCREEN, int, int, LPSTR, int);
 extern void Enable_Cursor (SCREEN, BOOL);
@@ -173,22 +173,22 @@ extern BOOL ScreenSetBackgroundColour (SCREEN, DWORD);
 extern BOOL ScreenSetFont (SCREEN, char *);
 extern BOOL ScreenSetDefaultFont (char *);
 
-BOOL Screen_InitApplication (HANDLE hInstance);
-BOOL Screen_InitInstance (HANDLE hInstance, int nCmdShow);
-
+extern BOOL Screen_InitApplication (HANDLE hInstance);
+extern BOOL Screen_InitInstance (HANDLE hInstance, int nCmdShow);
 
 extern HANDLE Screen_Create (HANDLE, LPCSTR, int);
 extern VOID   Screen_Destroy (BOOL, HANDLE);
 
-void  Screen_SetAttribute (HANDLE, SCREEN_ATTRIBUTE);
-void  Screen_WriteChar (HANDLE, char);
-void  Screen_WriteText (HANDLE, char*);
-int   Screen_Read (HANDLE, BOOL, char *, int);
-void  Screen_SetCursorPosition (HANDLE, int line, int column);
-void  Screen_SetMenu (HANDLE, HMENU);
-void  Screen_SetMode (HANDLE, int);
-int   Screen_GetMode (HANDLE);
-VOID  Screen_GetSize (HANDLE, int *rows, int *columns);
+extern void Screen_SetAttribute (HANDLE, SCREEN_ATTRIBUTE);
+extern void Screen_WriteChar (HANDLE, char);
+extern void Screen_WriteText (HANDLE, char*);
+extern int  Screen_Read (HANDLE, BOOL, char *, int);
+extern void Screen_SetCursorPosition (HANDLE, int line, int column);
+extern void Screen_SetMenu (HANDLE, HMENU);
+extern void Screen_SetMode (HANDLE, int);
+extern int  Screen_GetMode (HANDLE);
+extern VOID Screen_GetSize (HANDLE, int *rows, int *columns);
+extern void screen_char_dimensions (HWND, int *, int *);
 
 // The following return false on no events
 extern BOOL  Screen_GetEvent (HANDLE, SCREEN_EVENT *);
