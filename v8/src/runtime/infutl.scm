@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.60 1995/07/28 17:44:48 adams Exp $
+$Id: infutl.scm,v 1.61 1995/08/02 20:47:38 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -149,23 +149,25 @@ MIT in each case. |#
 	    (set-dbg-locator/status! locator 'BAD)))
       #F)
 
-    (if (dbg-wrapper? dbg-file-contents)
-	(let ((compile-time (dbg-locator/timestamp locator))
-	      (dbg-time     (dbg-wrapper/timestamp dbg-file-contents))
-	      (objects      (dbg-wrapper/objects dbg-file-contents))
-	      (version      (dbg-wrapper/format-version dbg-file-contents)))
-	  (cond ((not (equal? compile-time dbg-time))
-		 (complain "mismatched timestamps" compile-time dbg-time))
-		((< version dbg-format:oldest-acceptable-version)
-		 (complain "obsolete format version" version))
-		((> version dbg-format:current-version)
-		 (complain "future format version!" version))
-		((or (not (vector? objects))
-		     (>= index (vector-length objects)))
-		 (complain "vector problem" index))
-		(else
-		 (vector-ref objects index))))
-	(complain "not `wrapped'"))))
+    (cond ((dbg-wrapper? dbg-file-contents)
+	   (let ((compile-time (dbg-locator/timestamp locator))
+		 (dbg-time     (dbg-wrapper/timestamp dbg-file-contents))
+		 (objects      (dbg-wrapper/objects dbg-file-contents))
+		 (version      (dbg-wrapper/format-version dbg-file-contents)))
+	     (cond ((not (equal? compile-time dbg-time))
+		    (complain "mismatched timestamps" compile-time dbg-time))
+		   ((< version dbg-format:oldest-acceptable-version)
+		    (complain "obsolete format version" version))
+		   ((> version dbg-format:current-version)
+		    (complain "future format version!" version))
+		   ((or (not (vector? objects))
+			(>= index (vector-length objects)))
+		    (complain "vector problem" index))
+		   (else
+		    (vector-ref objects index)))))
+	  ((false? dbg-file-contents)
+	   #F)
+	  (complain "not `wrapped'"))))
 
 (define (read-dbg-file locator load-types)
   (let ((pathname
