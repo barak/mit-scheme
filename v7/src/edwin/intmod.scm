@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.71 1993/10/16 11:07:21 cph Exp $
+;;;	$Id: intmod.scm,v 1.72 1993/10/18 22:51:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -913,16 +913,21 @@ If this is an error, the debugger examines the error condition."
 
 (define (parse-command-prompt port prompt)
   (standard-prompt-spacing port)
-  (let ((prompt (string-trim prompt)))
-    (if (not (and suppress-standard-prompts?
-		  (or (string=? prompt user-initial-prompt)
-		      (member prompt standard-prompts))))
-	(begin
-	  (write-string prompt port)
-	  (write-char #\space port)))))
+  (if (not (and suppress-standard-prompts?
+		(or (string=? prompt user-initial-prompt)
+		    (member prompt standard-prompts))))
+      (begin
+	(write-string prompt port)
+	(write-char #\space port))))
 
 (define suppress-standard-prompts? #t)
-(define standard-prompts '("]=>" "error>" "break>" "bkpt>" "debug>" "where>"))
+(define standard-prompts
+  '("]=> "
+    "error> "
+    "break> "
+    "bkpt> "
+    "debug> "
+    "where> "))
 
 ;;; Miscellaneous
 
