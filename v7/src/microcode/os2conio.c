@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2conio.c,v 1.1 1994/11/28 03:42:54 cph Exp $
+$Id: os2conio.c,v 1.2 1994/11/28 08:11:48 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -394,10 +394,7 @@ console_input_buffered (Tchannel channel, int new, int * pold)
       int old = input_buffered_p;
       input_buffered_p = new;
       if (old && (!new))
-	{
-	  grab_console_lock ();
-	  finish_line ();
-	}
+	flush_input ();
     }
 }
 

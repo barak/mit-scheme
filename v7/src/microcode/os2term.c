@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2term.c,v 1.1 1994/11/28 03:43:00 cph Exp $
+$Id: os2term.c,v 1.2 1994/11/28 08:11:17 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -123,13 +123,13 @@ OS_terminal_buffered_p (Tchannel channel)
 void
 OS_terminal_buffered (Tchannel channel)
 {
-  OS2_channel_operation (channel, chop_input_buffered, ((choparg_t) 0), 0, 0);
+  OS2_channel_operation (channel, chop_input_buffered, ((choparg_t) 1), 0, 0);
 }
 
 void
 OS_terminal_nonbuffered (Tchannel channel)
 {
-  OS2_channel_operation (channel, chop_input_buffered, ((choparg_t) 1), 0, 0);
+  OS2_channel_operation (channel, chop_input_buffered, ((choparg_t) 0), 0, 0);
 }
 
 void
