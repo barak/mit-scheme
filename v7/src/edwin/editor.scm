@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: editor.scm,v 1.230 1993/10/21 04:58:12 cph Exp $
+;;;	$Id: editor.scm,v 1.231 1993/10/25 19:57:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -88,13 +88,16 @@
 		      (lambda (root-continuation)
 			(set! editor-thread-root-continuation
 			      root-continuation)
-			(do ((thunks (let ((thunks editor-initial-threads))
-				       (set! editor-initial-threads '())
-				       thunks)
-				     (cdr thunks)))
-			    ((null? thunks))
-			  (create-thread root-continuation (car thunks)))
-			(top-level-command-reader edwin-initialization)))))
+			(with-notification-output-port null-output-port
+			  (lambda ()
+			    (do ((thunks (let ((thunks editor-initial-threads))
+					   (set! editor-initial-threads '())
+					   thunks)
+					 (cdr thunks)))
+				((null? thunks))
+			      (create-thread root-continuation (car thunks)))
+			    (top-level-command-reader
+			     edwin-initialization)))))))
 		 message)
 	       false
 	       `((START-CHILD ,(editor-start-child-cmdl with-editor-ungrabbed))
@@ -460,15 +463,15 @@ This does not affect editor errors or evaluation errors."
 	'(CHAR-READY? READ-CHAR PEEK-CHAR WRITE-CHAR))
    #f))
 
+(define null-output-port
+  (make-output-port `((WRITE-CHAR ,(lambda (port char) port char unspecific)))
+		    #f))
+
 (define (editor-start-child-cmdl with-editor-ungrabbed)
-  (lambda (cmdl thunk)
-    cmdl
-    (with-editor-ungrabbed thunk)))
+  (lambda (cmdl thunk) cmdl (with-editor-ungrabbed thunk)))
 
 (define (editor-child-cmdl-port port)
-  (lambda (cmdl)
-    cmdl
-    port))
+  (lambda (cmdl) cmdl port))
 
 (define inferior-thread-changes?)
 (define inferior-threads)
