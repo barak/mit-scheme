@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.264 2001/06/04 17:39:08 cph Exp $
+;;; $Id: imail-top.scm,v 1.265 2001/06/04 17:42:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1404,7 +1404,7 @@ If it doesn't exist, it is created first."
 
 (define (copy-folder url new-url #!optional reference-string refresh)
   (if (eq? url new-url)
-      (editor-error "Can't copy folder to itself:" to))
+      (editor-error "Can't copy folder to itself:" url))
   (with-open-resource url
     (lambda (folder)
       (with-open-connection new-url
