@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.77 2004/01/07 05:30:44 cph Exp $
+$Id: primutl.c,v 9.78 2004/01/08 17:52:34 cph Exp $
 
 Copyright 1993,2000,2001,2004 Massachusetts Institute of Technology
 
@@ -149,11 +149,13 @@ static unsigned long prim_table_size = 0;
 {									\
   if (table == 0)							\
     {									\
-      table = (OS_malloc (new_size * (sizeof (elt_t))));		\
       static_elt_t * from = (& (static_table [0]));			\
       static_elt_t * from_end						\
 	= (& (static_table [MAX_STATIC_PRIMITIVE + 1]));		\
-      elt_t * to = ((elt_t *) table);					\
+      elt_t * to;							\
+									\
+      table = (OS_malloc (new_size * (sizeof (elt_t))));		\
+      to = ((elt_t *) table);						\
       while (from < from_end)						\
 	(*to++) = ((elt_t) (*from++));					\
     }									\
