@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.45 1996/04/08 21:03:50 cph Exp $
+@comment $Id: user.texinfo,v 1.46 1996/04/08 21:11:15 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -54,7 +54,7 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.45
+@subtitle Edition 1.46
 @subtitle for Scheme Release 7.4
 @subtitle 8 April 1996
 @author by Stephen Adams
@@ -258,6 +258,19 @@ OS/2 or Windows.  Thus we consider a @dfn{PC} to be a system with a
 @sc{dos}-like file system, using backslashes for directory separators,
 drive letters, @sc{cr-lf} line termination, and (potentially) the
 hideous 8.3 short filenames.
+
+@cindex FTP site
+The primary distribution site for this software is the @sc{ftp} server
+@samp{swiss-ftp.ai.mit.edu}.  Although our software is distributed from
+other sites and in other media, the complete distribution and the most
+recent release is always available at our site.
+
+@cindex bugs, reporting
+@cindex reporting bugs
+To report bugs, send email to @samp{bug-cscheme@zurich.ai.mit.edu}.
+Please include the output of the @code{identify-world} procedure
+(@pxref{Basics of Starting Scheme}), so we know what version of the
+system you are using.
 
 @node Installation, Running Scheme, Introduction, Top
 @chapter Installation
