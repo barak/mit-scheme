@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: shell.scm,v 1.11 1992/11/17 17:50:44 cph Exp $
+$Id: shell.scm,v 1.12 1995/01/06 01:14:58 cph Exp $
 
-Copyright (c) 1991-92 Massachusetts Institute of Technology
+Copyright (c) 1991-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -44,20 +44,13 @@ license should have been included along with this file. |#
 
 (define-variable shell-prompt-pattern
   "Regexp to match prompts in the inferior shell."
-  "^[^#$>]*[#$>] *")
+  (os/default-shell-prompt-pattern)
+  string?)
 
 (define-variable explicit-shell-file-name
   "If not #F, file name to use for explicitly requested inferior shell."
-  false)
-
-(define-variable explicit-csh-args
-  "Args passed to inferior shell by M-x shell, if the shell is csh.
-Value is a list of strings."
-  (if (string=? microcode-id/operating-system-variant "HP-UX")
-      ;; -T persuades HP's csh not to think it is smarter
-      ;; than us about what terminal modes to use.
-      '("-i" "-T")
-      '("-i")))
+  #f
+  string-or-false?)
 
 (define-major-mode shell comint "Shell"
   "Major mode for interacting with an inferior shell.
@@ -107,8 +100,8 @@ If buffer exists but shell process is not running, make new shell.
 If buffer exists and shell process is running, just switch to buffer *shell*.
 
 The shell to use comes from the first non-#f variable found from these:
-explicit-shell-file-name in Edwin, ESHELL in the environment or SHELL in the
-environment.  If none is found, /bin/sh is used.
+explicit-shell-file-name in Edwin, ESHELL in the environment or
+shell-file-name in Edwin.
 
 The buffer is put in Shell mode, giving commands for sending input
 and controlling the subjobs of the shell.
@@ -123,8 +116,7 @@ Otherwise, one argument `-i' is passed to the shell."
      (let ((program
 	    (or (ref-variable explicit-shell-file-name)
 		(get-environment-variable "ESHELL")
-		(get-environment-variable "SHELL")
-		"/bin/sh")))
+		(ref-variable shell-file-name))))
        (apply make-comint
 	      (ref-mode-object shell)
 	      (if (not new-buffer?) "*shell*" (new-buffer "*shell*"))
@@ -132,11 +124,11 @@ Otherwise, one argument `-i' is passed to the shell."
 	      (let ((variable
 		     (string-table-get editor-variables
 				       (string-append "explicit-"
-						      (file-namestring program)
+						      (os/shell-name program)
 						      "-args"))))
 		(if variable
 		    (variable-value variable)
-		    '("-i"))))))))
+		    (os/default-shell-args))))))))
 
 (define-variable shell-popd-regexp
   "Regexp to match subshell commands equivalent to popd."
