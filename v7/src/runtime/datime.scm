@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.18 1999/04/07 04:09:01 cph Exp $
+$Id: datime.scm,v 14.19 1999/04/07 04:47:01 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -55,11 +55,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (if (and zone (not (time-zone? zone)))
 	(error:bad-range-argument zone "time zone" 'MAKE-DECODED-TIME))
     (if zone
-	(%make-decoded-time second minute hour day month
+	(%make-decoded-time second minute hour day month year
 			    (compute-day-of-week day month year)
 			    0
 			    zone)
-	(let ((dt (%make-decoded-time second minute hour day month 0 -1 #f)))
+	(let ((dt
+	       (%make-decoded-time second minute hour day month year 0 -1 #f)))
 	  ;; These calls fill in the other fields of the structure.
 	  ;; ENCODE-TIME can easily signal an error, for example on
 	  ;; unix machines when the time is prior to 1970.
@@ -232,12 +233,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((tokens (burst-string string #\space)))
     (if (not (fix:= 6 (length tokens)))
 	(error "Ill-formed RFC-822 time string:" string))
-    (let ((tokens (burst-string (list-ref tokens 4) #\:)))
-      (if (not (fix:= 3 (length tokens)))
-	  (error "Malformed time:" string))
-      (make-decoded-time (string->number (caddr tokens))
-			 (string->number (cadr tokens))
-			 (string->number (car tokens))
+    (let ((time (burst-string (list-ref tokens 4) #\:)))
+      (if (not (fix:= 3 (length time)))
+	  (error "Ill-formed RFC-822 time string:" string))
+      (make-decoded-time (string->number (caddr time))
+			 (string->number (cadr time))
+			 (string->number (car time))
 			 (string->number (list-ref tokens 1))
 			 (short-string->month (list-ref tokens 2))
 			 (string->number (list-ref tokens 3))
@@ -255,7 +256,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (string->time-zone string)
   (let ((n (string->number string)))
-    (if (not (and (exact-nonnegative-integer? n)
+    (if (not (and (exact-integer? n)
 		  (<= -2400 n 2400)))
 	(error "Malformed time zone:" string))
     (let ((qr (integer-divide (abs n) 100)))
