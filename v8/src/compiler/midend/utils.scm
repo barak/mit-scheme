@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.21 1995/04/01 16:56:23 adams Exp $
+$Id: utils.scm,v 1.22 1995/04/29 01:11:40 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -193,7 +193,7 @@ MIT in each case. |#
 			   (primitive-procedure? (quote/text rator))))
 		  `(,(quote/text rator) ,@rands))
 		 (else `(,rator ,@rands)))))
-	((SET!/? form) `(set! ,(second from) ,(kmp->standard (third form))))
+	((SET!/? form) `(set! ,(second form) ,(kmp->standard (third form))))
 	((DECLARE/? form) form)
 	(else
 	 (cons (car form) (map kmp->standard (cdr form))))))
@@ -279,7 +279,7 @@ MIT in each case. |#
 				,body)))
 		 `(CALL ,(remember rator* rator)
 			,cont-expr
-			,@(lmap cadr bindings*))))))
+			,@(map cadr bindings*))))))
 	(if (not cont-binding)
 	    (finish (new-continuation-variable)
 		    `(QUOTE #F)
