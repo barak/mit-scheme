@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.74 1993/02/23 20:18:50 gjr Exp $
+$Id: interp.c,v 9.75 1993/06/24 05:44:06 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -416,7 +416,7 @@ DEFUN (abort_to_interpreter, (argument), int argument)
 {
   if (interpreter_state == NULL_INTERPRETER_STATE)
   {
-    fprintf (stderr, "abort_to_interpreter: Interpreter not set up.\n");
+    outf_fatal ("abort_to_interpreter: Interpreter not set up.\n");
     termination_init_error ();
   }
   

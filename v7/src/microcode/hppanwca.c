@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hppanwca.c,v 1.1 1992/01/07 16:53:10 jinx Exp $
+$Id: hppanwca.c,v 1.2 1993/06/24 05:43:10 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,7 +43,7 @@ MIT in each case. */
  */
 
 #include <stdio.h>
-#include "hppacache.h"
+#include "hppacach.h"
 
 struct pdc_cache_written
 {

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: interp.h,v 9.36 1992/09/26 02:55:01 cph Exp $
+$Id: interp.h,v 9.37 1993/06/24 05:45:06 gjr Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -272,9 +272,8 @@ extern long EXFUN (primitive_to_arguments, (SCHEME_OBJECT primitive));
     /* If the primitive failed to unwind the dynamic stack, lose. */	\
     if (PRIMITIVE_APPLY_INTERNAL_position != dstack_position)		\
       {									\
-	fprintf (stderr, "\nPrimitive slipped the dynamic stack: %s\n",	\
-		 (primitive_to_name (primitive)));			\
-	fflush (stderr);						\
+	outf_fatal ("\nPrimitive slipped the dynamic stack: %s\n",	\
+		    (primitive_to_name (primitive)));			\
 	Microcode_Termination (TERM_EXIT);				\
       }									\
   }									\

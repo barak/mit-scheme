@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppacach.c,v 1.8 1993/06/08 04:17:43 gjr Exp $
+$Id: hppacach.c,v 1.9 1993/06/24 05:41:02 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -40,7 +40,7 @@ MIT in each case. */
 #include <unistd.h>
 #include <errno.h>
 
-#include "hppacache.h"
+#include "hppacach.h"
 
 #define true			1
 #define false			0

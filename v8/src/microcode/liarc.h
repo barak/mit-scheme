@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.1 1993/06/08 06:13:32 gjr Exp $
+$Id: liarc.h,v 1.2 1993/06/24 05:46:01 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -47,7 +47,7 @@ MIT in each case. */
 #include "interp.h"
 #include "prim.h"
 #include "cmpgc.h"
-#include "cmpint2.h"
+#include "cmpintmd.h"
 
 #ifdef __STDC__
 #  define USE_STDARG

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.c,v 9.51 1992/02/27 22:25:45 jinx Exp $
+$Id: lookup.c,v 9.52 1993/06/24 05:50:22 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -832,9 +832,7 @@ DEFUN (lookup_fluid, (trap), fast SCHEME_OBJECT trap)
     if (this_pair[CONS_CAR] == trap)
     {
       if (Fluids_Debug)
-      {
-	fprintf(stderr, "Fluid found.\n");
-      }
+	outf_error ("Fluid found.\n");
 
       return (&this_pair[CONS_CDR]);
     }
@@ -845,9 +843,7 @@ DEFUN (lookup_fluid, (trap), fast SCHEME_OBJECT trap)
   /* Not found in fluid binding alist, so use default. */
 
   if (Fluids_Debug)
-  {
-    fprintf(stderr, "Fluid not found, using default.\n");
-  }
+    outf_error ("Fluid not found, using default.\n");
 
   return (MEMORY_LOC (trap, TRAP_EXTRA));
 }
@@ -1315,11 +1311,8 @@ DEFUN (Local_Set, (env, sym, value),
   long result;
 
   if (Define_Debug)
-  {
-    fprintf(stderr,
-	    "\n;; Local_Set: defining %s.",
-	    (STRING_LOC ((MEMORY_REF (sym, SYMBOL_NAME)), 0)));
-  }
+    outf_error ("\n;; Local_Set: defining %s.",
+	        (STRING_LOC ((MEMORY_REF (sym, SYMBOL_NAME)), 0)));
   result = (extend_frame (env, sym, value, env, true));
   Val = sym;
   return (result);
@@ -2541,16 +2534,13 @@ DEFUN (compiler_recache,
       /* We've lost BIG. */
 
       if (temp == PRIM_INTERRUPT)
-	fprintf (stderr,
-		 "\ncompiler_recache: Ran out of guaranteed space!\n");
+	outf_fatal ("\ncompiler_recache: Ran out of guaranteed space!\n");
       else if (temp > 0)
-	fprintf (stderr,
-		 "\ncompiler_recache: Unexpected error value %d (%s)\n",
-		 temp, Abort_Names[temp]);
+	outf_fatal ("\ncompiler_recache: Unexpected error value %d (%s)\n",
+		    temp, Abort_Names[temp]);
       else
-	fprintf (stderr,
-		 "\ncompiler_recache: Unexpected abort value %d (%s)\n",
-		 -temp, Abort_Names[(-temp) - 1]);
+	outf_fatal ("\ncompiler_recache: Unexpected abort value %d (%s)\n",
+		    -temp, Abort_Names[(-temp) - 1]);
       Microcode_Termination (TERM_EXIT);
     }
   }
