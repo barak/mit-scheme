@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.25 1995/05/05 06:53:05 cph Exp $
+;;;	$Id: sendmail.scm,v 1.26 1995/05/05 07:20:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -143,7 +143,6 @@ The headers are delimited by a string found in mail-header-separator."
 
 (define-command mail
   "Edit a message to be sent.  Argument means resume editing (don't erase).
-Returns with message buffer selected.
 While editing message, type C-c C-c to send the message and exit.
 
 Separate names of recipients with commas.
@@ -151,13 +150,13 @@ Separate names of recipients with commas.
 Various special commands starting with C-c are available in sendmail mode
 to move to message header fields.
 
-If mail-self-blind is non-false, a BCC to yourself is inserted
-when the message is initialized.
+If mail-self-blind is true, a BCC: to yourself is inserted when the
+message is initialized.
 
-If mail-default-reply-to is non-false, it should be an address (a string);
-a Reply-to: field with that address is inserted.
+If mail-default-reply-to is a string, a Reply-to: field containing
+that string is inserted.
 
-If mail-archive-file-name is non-false, an FCC field with that file name
+If mail-archive-file-name is true, an FCC: field with that file name
 is inserted."
   "P"
   (lambda (no-erase?)
@@ -202,8 +201,12 @@ is inserted."
 	       (mail-setup buffer headers reply-buffer mode)
 	       (if (and select? selector) (selector buffer))
 	       buffer))))
-      (cond ((or (not buffer)
-		 (not (buffer-modified? buffer))
+      (cond ((not buffer)
+	     (continue #t))
+	    ((eq? handle-previous 'KEEP-PREVIOUS-MAIL)
+	     (if selector (selector buffer))
+	     #f)
+	    ((or (not (buffer-modified? buffer))
 		 (eq? handle-previous 'DISCARD-PREVIOUS-MAIL))
 	     (continue #t))
 	    ((eq? handle-previous 'QUERY-DISCARD-PREVIOUS-MAIL)
@@ -215,9 +218,6 @@ is inserted."
 		     "Unsent message being composed; erase it")))
 		 (continue #f)
 		 #f))
-	    ((eq? handle-previous 'KEEP-PREVIOUS-MAIL)
-	     (if selector (selector buffer))
-	     #f)
 	    (else
 	     (error:bad-range-argument handle-previous 'MAKE-MAIL-BUFFER))))))
 
