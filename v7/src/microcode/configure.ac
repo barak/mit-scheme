@@ -1,13 +1,13 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme], [14.11], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.1 2003/07/21 03:52:08 cph Exp $])
+AC_INIT([MIT/GNU Scheme], [14.14], [bug-mit-scheme@gnu.org], [mit-scheme])
+AC_REVISION([$Id: configure.ac,v 1.2 2004/01/16 20:36:29 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
 
 AC_COPYRIGHT(
-[Copyright 2000,2002,2003 Massachusetts Institute of Technology
+[Copyright 2000,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 

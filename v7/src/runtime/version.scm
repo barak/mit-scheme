@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: version.scm,v 14.215 2003/09/18 16:50:53 cph Exp $
+$Id: version.scm,v 14.216 2004/01/16 20:37:43 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,10 +31,10 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (add-subsystem-identification! "Release" '(7 7 90))
+  (add-subsystem-identification! "Release" '(7 7 91 "pre"))
   (snarf-microcode-version!)
   (add-event-receiver! event:after-restore snarf-microcode-version!)
-  (add-subsystem-identification! "Runtime" '(15 3)))
+  (add-subsystem-identification! "Runtime" '(15 4)))
 
 (define (snarf-microcode-version!)
   (add-subsystem-identification! "Microcode"

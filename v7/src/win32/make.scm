@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.14 2003/04/25 03:55:30 cph Exp $
+$Id: make.scm,v 1.15 2004/01/16 20:43:16 cph Exp $
 
-Copyright 1993,1998,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 1993,1998,2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -35,4 +35,4 @@ USA.
      (pathname-as-directory "win32")
      (lambda ()
        (load-package-set "win32")))))
-(add-identification! "Win32" 1 7)
+(add-identification! "Win32" 1 8)
