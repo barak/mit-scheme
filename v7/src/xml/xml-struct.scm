@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.37 2003/09/26 19:39:06 cph Exp $
+$Id: xml-struct.scm,v 1.38 2003/09/30 02:13:56 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -438,7 +438,7 @@ USA.
 	     (lambda (attr)
 	       (xml-name=? (xml-attribute-name attr) qname))))))
     (and attr
-	 (make-xml-namespace-iri (cadr attr)))))
+	 (make-xml-namespace-iri (xml-attribute-value attr)))))
 
 (define (xml-element-namespace-prefix elt iri)
   (let ((iri (xml-namespace-iri-string iri)))
