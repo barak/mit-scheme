@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dostop.c,v 1.3 1992/08/21 19:49:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dostop.c,v 1.4 1992/08/22 19:33:10 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -145,9 +145,9 @@ DEFUN (error_code_to_syserr, (code), int code)
     case EINTR:		return (syserr_interrupted_function_call);
     case EINVAL:	return (syserr_invalid_argument);
     case EMFILE:	return (syserr_too_many_open_files);
+    case ENOENT:	return (syserr_no_such_file_or_directory);
     case ENOEXEC:	return (syserr_exec_format_error);
     case ENOMEM:	return (syserr_not_enough_space);
-    case ENONENT:	return (syserr_no_such_file_or_directory);
     case ENOTDIR:	return (syserr_not_a_directory);
     case ERANGE:	return (syserr_result_too_large);
     default:		return (syserr_unknown);
@@ -166,7 +166,7 @@ DEFUN (syserr_to_error_code, (syserr), enum syserr_names syserr)
     case syserr_file_exists:				return (EEXIST);
     case syserr_interrupted_function_call:		return (EINTR);
     case syserr_invalid_argument:			return (EINVAL);
-    case syserr_no_such_file_or_directory:		return (ENONENT);
+    case syserr_no_such_file_or_directory:		return (ENOENT);
     case syserr_not_a_directory:			return (ENOTDIR);
     case syserr_not_enough_space:			return (ENOMEM);
     case syserr_permission_denied:			return (EACCES);
