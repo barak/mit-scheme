@@ -1,8 +1,8 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.21 1999/05/13 03:04:06 cph Exp $
+$Id: ed-ffi.scm,v 1.22 2000/04/10 19:09:18 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -96,6 +96,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     ("gc"	(runtime garbage-collector)
 		syntax-table/system-internal)
     ("gcdemn"	(runtime gc-daemons)
+		syntax-table/system-internal)
+    ("gcfinal"	(runtime gc-finalizer)
 		syntax-table/system-internal)
     ("gcnote"	(runtime gc-notification)
 		syntax-table/system-internal)
