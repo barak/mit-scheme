@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.62 1992/04/02 08:14:57 cph Exp $
+;;;	$Id: regexp.scm,v 1.63 1992/12/01 14:47:07 gjr Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -130,10 +130,10 @@
 		 ;; words, and then changes each word in the
 		 ;; replacement to match the pattern.
 		 (let ((replaced (extract-string start end)))
-		   (cond ((string-upper-case? replaced)
-			  (string-upcase replacement))
-			 ((string-capitalized? replaced)
+		   (cond ((string-capitalized? replaced)
 			  (string-capitalize replacement))
+			 ((string-upper-case? replaced)
+			  (string-upcase replacement))
 			 (else replacement)))
 		 replacement))))
       (delete-string start end)
