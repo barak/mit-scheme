@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppacach.c,v 1.5 1993/06/08 02:27:09 gjr Exp $
+$Id: hppacach.c,v 1.6 1993/06/08 03:27:28 gjr Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -37,6 +37,8 @@ MIT in each case. */
 #include <sys/stat.h>
 #include <memory.h>
 #include <nlist.h>
+#include <unistd.h>
+#include <errno.h>
 
 #include "hppacache.h"
 
@@ -135,7 +137,7 @@ read_parameters (pdc_cache)
   if (kmem < 0)
     io_lose ("read_parameters", "open (%s) failed", KERNEL_MEMORY_FILE);
   read_nlist (&kloc);
-  if ((lseek (kmem, kloc.utsname_location, 0)) < 0)
+  if ((lseek (kmem, kloc.utsname_location, SEEK_SET)) < 0)
     io_lose ("read_parameters", "lseek (%s) failed", KERNEL_MEMORY_FILE);
   if ((read (kmem, (&kerninfo), (sizeof (kerninfo)))) !=
       (sizeof (kerninfo)))
@@ -145,7 +147,7 @@ read_parameters (pdc_cache)
 	     kloc.utsname_location, KERNEL_MEMORY_FILE);
   strncpy (pdc_cache->hardware, (kerninfo.machine),
 	   (sizeof (kerninfo.machine)));
-  if ((lseek (kmem, (kloc.pdc_cache_location), 0)) < 0)
+  if ((lseek (kmem, (kloc.pdc_cache_location), SEEK_SET)) < 0)
     io_lose ("read_parameters", "lseek (%s) failed", KERNEL_MEMORY_FILE);
   if ((read (kmem, &pdc_cache->cache_format,
 	     (sizeof (pdc_cache->cache_format)))) !=
@@ -312,7 +314,7 @@ print_tlb (info, name)
 
   return;  
 }
-
+
 void
 print_parameters (pdc_cache, node_p)
      struct pdc_cache_dump *pdc_cache;
@@ -349,7 +351,7 @@ print_parameters (pdc_cache, node_p)
   printf ("  }};\n");
   return;
 }
-
+
 int
 search_pdc_database (fd, pdc_cache, filename)
      int fd;
@@ -375,18 +377,38 @@ search_pdc_database (fd, pdc_cache, filename)
 	return (1);
     }
 }
+
+#define MODE_ADD	0
+#define MODE_REPLACE	1
+#define MODE_PRINT	2
 
 void
-update_pdc_database (pdc_cache, filename)
+update_pdc_database (mode, pdc_cache, filename)
+     int mode;
      struct pdc_cache_dump * pdc_cache;
      char * filename;
 {
+  int write_p = 1;
   int fd = (open (filename, (O_RDWR | O_CREAT), 0666));
   if (fd < 0)
-    io_lose ("update_pdc_database", "open (%s) failed", filename);
+  {
+    if (errno != EACCES)
+      io_lose ("update_pdc_database", "open (%s) failed", filename);
+    fd = (open (filename, O_RDONLY));
+    if (fd < 0)
+      io_lose ("update_pdc_database", "open (%s) failed", filename);
+    else
+    {
+      write_p = 0;
+      fprintf (stderr, "Data base \"%s\" is write-protected.\n", filename);
+    }
+  }
   if (! (search_pdc_database (fd, pdc_cache, filename)))
     {
       read_parameters (pdc_cache);
+      if (!write_p)
+	printf ("Could not write information to data base.\n");
+      else
       {
 	int scr =
 	  (write (fd, ((char *) pdc_cache), (sizeof (struct pdc_cache_dump))));
@@ -401,10 +423,58 @@ update_pdc_database (pdc_cache, filename)
 	  }
       }
     }
+  else
+  {
+    struct pdc_cache_dump new_cache_s, * new_cache;
+
+    new_cache = & new_cache_s;
+    read_parameters (new_cache);
+    if ((memcmp (new_cache, pdc_cache, (sizeof (struct pdc_cache_dump))))
+	== 0)
+      printf ("Correct information for model %s already present in data base.\n",
+	      &new_cache->hardware[0]);
+    else
+    {
+      printf ("Data base contains different information for model %s.\n",
+	      &new_cache->hardware[0]);
+      switch (mode)
+      {
+	case MODE_REPLACE:
+        {
+	  if (write_p)
+	  {
+	    printf ("Keeping the new information.\n");
+	    if ((lseek (fd, (- (sizeof (struct pdc_cache_dump))), SEEK_CUR)) == -1)
+	      io_lose ("update_pdc_database", "lseek (%s) failed", filename);
+	    if ((write (fd, new_cache, (sizeof (struct pdc_cache_dump))))
+		!= (sizeof (struct pdc_cache_dump)))
+	      io_lose ("update_pdc_database", "write (%s) failed", filename);
+	    break;
+	  }
+	}
+
+	case MODE_ADD:
+        {
+	  printf ("Keeping the old information.\n");
+	  break;
+	}
+
+	case MODE_PRINT:
+        {
+	  printf ("New information:\n");
+	  print_parameters (new_cache, 1);
+	  printf ("\n\nOld information:\n");
+	}
+	default:
+	  fprintf (stderr, "%s error.  Unknown mode %d.\n", the_argv[0], mode);
+      }
+    }
+  }
   if ((close (fd)) < 0)
     io_lose ("update_pdc_database", "close (%s) failed", filename);
+  return;
 }
-
+
 void
 print_pdc_database (filename)
      char * filename;
@@ -500,7 +570,8 @@ void
 usage ()
 {
   fprintf (stderr, "usage: one of:\n");
-  fprintf (stderr, " %s -update FILENAME\n", (the_argv[0]));
+  fprintf (stderr, " %s -add FILENAME\n", (the_argv[0]));
+  fprintf (stderr, " %s -replace FILENAME\n", (the_argv[0]));
   fprintf (stderr, " %s -verify FILENAME\n", (the_argv[0]));
   fprintf (stderr, " %s -print FILENAME\n", (the_argv[0]));
   fprintf (stderr, " %s -printall FILENAME\n", (the_argv[0]));
@@ -521,15 +592,20 @@ main (argc, argv)
   {
     char * keyword = (argv[1]);
     char * filename = (argv[2]);
-    if ((strcmp (keyword, "-update")) == 0)
+    if ((strcmp (keyword, "-add")) == 0)
       {
 	struct pdc_cache_dump pdc_cache;
-	update_pdc_database ((&pdc_cache), filename);
+	update_pdc_database (MODE_ADD, (&pdc_cache), filename);
+      }
+    else if ((strcmp (keyword, "-replace")) == 0)
+      {
+	struct pdc_cache_dump pdc_cache;
+	update_pdc_database (MODE_REPLACE, (&pdc_cache), filename);
       }
     else if ((strcmp (keyword, "-print")) == 0)
       {
 	struct pdc_cache_dump pdc_cache;
-	update_pdc_database ((&pdc_cache), filename);
+	update_pdc_database (MODE_PRINT, (&pdc_cache), filename);
 	print_parameters (&pdc_cache, 1);
       }
     else if ((strcmp (keyword, "-printall")) == 0)
