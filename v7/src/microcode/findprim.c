@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.40 1989/05/31 01:45:29 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.41 1989/09/20 23:04:37 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -45,7 +45,7 @@ MIT in each case. */
  * The output is a C source file to be compiled and linked with the
  * Scheme microcode.
  *
- * This program understands the following options (must be given in 
+ * This program understands the following options (must be given in
  * this order):
  *
  * -o fname
@@ -104,7 +104,7 @@ xmalloc (length)
   extern char * malloc ();
 
   result = (malloc (length));
-  if (result == NULL)
+  if (result == ((char *) 0))
     {
       fprintf (stderr, "malloc: unable to allocate %d bytes\n", length);
       exit (1);
@@ -121,7 +121,7 @@ xrealloc (ptr, length)
   extern char * realloc ();
 
   result = (realloc (ptr, length));
-  if (result == NULL)
+  if (result == ((char *) 0))
     {
       fprintf (stderr, "realloc: unable to allocate %d bytes\n", length);
       exit (1);
@@ -360,7 +360,7 @@ process_argument (fn)
       dump (TRUE);
       exit (1);
     }
-  else 
+  else
     {
       dprintf ("About to process %s\n", file_name);
       process ();
@@ -505,7 +505,7 @@ dump (check)
   else
     {
       /* Print declarations. */
-      fprintf (output, "extern Pointer\n");
+      fprintf (output, "extern SCHEME_OBJECT\n");
       for (count = 0; (count < max_index); count += 1)
 	fprintf (output, "       %s (),\n",
 		 (((* data_buffer) [count]) . c_name));
@@ -525,7 +525,7 @@ print_procedure (output, primitive_descriptor, error_string)
      struct descriptor * primitive_descriptor;
      char * error_string;
 {
-  fprintf (output, "Pointer\n");
+  fprintf (output, "SCHEME_OBJECT\n");
   fprintf (output, "%s ()\n", (primitive_descriptor -> c_name));
   fprintf (output, "{\n");
   fprintf (output, "  PRIMITIVE_HEADER (%s);\n",
@@ -549,7 +549,7 @@ print_primitives (output, limit)
   last = (limit - 1);
 
   /* Print the procedure table. */
-  fprintf (output, "\f\nPointer (* (%s_Procedure_Table [])) () = {\n",
+  fprintf (output, "\f\nSCHEME_OBJECT (* (%s_Procedure_Table [])) () = {\n",
 	   the_kind);
   for (count = 0; (count < limit); count += 1)
     {
@@ -593,10 +593,10 @@ print_primitives (output, limit)
   for (count = 0; (count < limit); count += 1)
     {
       fprintf (output,
-	       "  (%s * sizeof(Pointer)),\n",
+	       "  (%s * sizeof(SCHEME_OBJECT)),\n",
 	       ((result_buffer [count]) -> arity));
     }
-  fprintf (output, "  (%s * sizeof(Pointer))\n};\n", inexistent_entry.arity);
+  fprintf (output, "  (%s * sizeof(SCHEME_OBJECT))\n};\n", inexistent_entry.arity);
 
   return;
 }
@@ -785,7 +785,7 @@ whitespace (c)
     {
     case ' ':
     case '\t':
-    case '\n':  
+    case '\n':
     case '(':
     case ')':
     case ',': return TRUE;

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.30 1989/06/08 00:22:49 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.31 1989/09/20 23:08:50 cph Exp $
  *
  * This file contains the code for the most primitive part
  * of garbage collection.
@@ -42,11 +42,11 @@ MIT in each case. */
 
 /* Exports */
 
-extern Pointer *GCLoop();
+extern SCHEME_OBJECT *GCLoop();
 
 #define GC_Pointer(Code)						\
 {									\
-  Old = Get_Pointer(Temp);						\
+  Old = OBJECT_ADDRESS (Temp);						\
   Code;									\
 }
 
@@ -57,10 +57,10 @@ extern Pointer *GCLoop();
 
 #ifdef ENABLE_DEBUGGING_TOOLS
 
-Pointer
+SCHEME_OBJECT
   *gc_scan_trap = NULL,
   *gc_free_trap = NULL,
-  gc_trap = Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_MAX_IMMEDIATE);
+  gc_trap = MAKE_OBJECT (TC_REFERENCE_TRAP, TRAP_MAX_IMMEDIATE);
 
 #define HANDLE_GC_TRAP()						\
 {									\
@@ -78,12 +78,12 @@ Pointer
 
 #endif
 
-Pointer *
+SCHEME_OBJECT *
 GCLoop(Scan, To_Pointer)
-     fast Pointer *Scan;
-     Pointer **To_Pointer;
+     fast SCHEME_OBJECT *Scan;
+     SCHEME_OBJECT **To_Pointer;
 {
-  fast Pointer *To, *Old, Temp, *Low_Constant, New_Address;
+  fast SCHEME_OBJECT *To, *Old, Temp, *Low_Constant, New_Address;
 
   To = *To_Pointer;
   Low_Constant = Constant_Space;
@@ -95,7 +95,7 @@ GCLoop(Scan, To_Pointer)
     Switch_by_GC_Type(Temp)
     {
       case TC_BROKEN_HEART:
-        if (Scan == (Get_Pointer(Temp)))
+        if (Scan == (OBJECT_ADDRESS (Temp)))
 	{
 	  *To_Pointer = To;
 	  return (Scan);
@@ -108,7 +108,7 @@ GCLoop(Scan, To_Pointer)
 
       case TC_MANIFEST_NM_VECTOR:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
-	Scan += OBJECT_DATUM(Temp);
+	Scan += OBJECT_DATUM (Temp);
 	break;
 
       /* Compiled code relocation. */
@@ -138,7 +138,7 @@ GCLoop(Scan, To_Pointer)
 	{
 	  fast long count;
 	  fast machine_word *word_ptr;
-	  Pointer *end_scan;
+	  SCHEME_OBJECT *end_scan;
 
 	  count = READ_OPERATOR_LINKAGE_COUNT(Temp);
 	  word_ptr = FIRST_OPERATOR_LINKAGE_ENTRY(Scan);
@@ -191,7 +191,7 @@ GCLoop(Scan, To_Pointer)
 	break;
 
       case TC_REFERENCE_TRAP:
-	if (OBJECT_DATUM(Temp) <= TRAP_MAX_IMMEDIATE)
+	if (OBJECT_DATUM (Temp) <= TRAP_MAX_IMMEDIATE)
 	{
 	  /* It is a non pointer. */
 	  break;

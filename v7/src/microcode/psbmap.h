@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbmap.h,v 9.29 1989/09/20 23:10:51 cph Exp $
+
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,12 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbmap.h,v 9.28 1989/08/28 18:29:21 cph Exp $
- *
- * This file contains macros and declarations for Bintopsb.c
- * and Psbtobin.c
- *
- */
+/* This file contains macros and declarations for "Bintopsb.c"
+   and "Psbtobin.c". */
 
 /* These definitions insure that the appropriate code is extracted
    from the included files.
@@ -48,11 +46,11 @@ MIT in each case. */
 #include "types.h"
 #include "object.h"
 #include "bignum.h"
+#include "bignumint.h"
 #include "bitstr.h"
 #include "sdata.h"
 #include "const.h"
 #include "gccode.h"
-#include "char.h"
 
 #ifdef HAS_FREXP
 extern double frexp(), ldexp();
@@ -68,7 +66,7 @@ extern double frexp(), ldexp();
 
 #define NROOTS			1
 
-/* Types to recognize external object references.  Any occurrence of these 
+/* Types to recognize external object references.  Any occurrence of these
    (which are external types and thus handled separately) means a reference
    to an external object.
  */
@@ -77,35 +75,21 @@ extern double frexp(), ldexp();
 #define HEAP_CODE			TC_CHARACTER
 
 #define fixnum_to_bits			FIXNUM_LENGTH
-#define bignum_to_bits(len)		((len) * SHIFT)
-#define bits_to_bigdigit(nbits)		(((nbits) + (SHIFT-1)) / SHIFT)
-
 #define hex_digits(nbits)		(((nbits) + 3) / 4)
 
-/*
-  This assumes that a bignum header is 2 Pointers.
-  The bignum code is not very portable, unfortunately
- */
-
-#define bignum_header_to_pointer	Align(0)
-
-#define to_pointer(size)						\
-  (((size) + (sizeof(Pointer) - 1)) / sizeof(Pointer))
-
-#define bigdigit_to_pointer(ndig)					\
-  to_pointer((ndig) * sizeof(bigdigit))
+#define to_pointer BYTES_TO_WORDS
 
 #define float_to_pointer						\
-  to_pointer(sizeof(double))
+  BYTES_TO_WORDS(sizeof(double))
 
 #define flonum_to_pointer(nchars)					\
   ((nchars) * (1 + float_to_pointer))
 
 #define char_to_pointer(nchars)						\
-  to_pointer(nchars)
+  BYTES_TO_WORDS(nchars)
 
 #define pointer_to_char(npoints)					\
-  ((npoints) * sizeof(Pointer))
+  ((npoints) * sizeof(SCHEME_OBJECT))
 
 /* Status flags */
 
@@ -153,15 +137,15 @@ static Boolean nmv_p = false;
 /* Global data */
 
 #ifndef Heap_In_Low_Memory
-static Pointer *Memory_Base;
+static SCHEME_OBJECT * memory_base;
 #endif
 
 static long
   compiler_processor_type = 0,
   compiler_interface_version = 0;
 
-static Pointer
-  compiler_utilities = NIL;
+static SCHEME_OBJECT
+  compiler_utilities = SHARP_F;
 
 /* Utilities */
 

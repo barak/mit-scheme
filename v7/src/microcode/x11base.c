@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.6 1989/07/26 04:14:06 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.7 1989/09/20 23:13:16 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -111,7 +111,7 @@ name (arg, table)							\
      int arg;								\
      struct allocation_table * table;					\
 {									\
-  fast Pointer object = (ARG_REF (arg));				\
+  fast SCHEME_OBJECT object = (ARG_REF (arg));				\
 									\
   if (! (FIXNUM_P (object)))						\
     error_wrong_type_arg (arg);						\
@@ -119,7 +119,7 @@ name (arg, table)							\
     {									\
       fast int length = (table -> length);				\
       fast char ** items = (table -> items);				\
-      fast int index = (UNSIGNED_FIXNUM_VALUE (object));		\
+      fast int index = (UNSIGNED_FIXNUM_TO_LONG (object));		\
       if ((index < length) && ((items [index]) != ((char *) 0)))	\
 	return (result);						\
     }									\
@@ -367,12 +367,12 @@ x_make_window (display, window, x_size, y_size, attributes, extra, deallocator)
   return (xw);
 }
 
-Pointer
+SCHEME_OBJECT
 x_window_to_object (xw)
      struct xwindow * xw;
 {
   return
-    (MAKE_UNSIGNED_FIXNUM
+    (LONG_TO_UNSIGNED_FIXNUM
      (x_allocate_table_index ((& x_window_table), ((char *) xw))));
 }
 
@@ -528,7 +528,6 @@ xw_wait_for_window_event (xw, event)
      XEvent * event;
 {
   Display * display = (XW_DISPLAY (xw));
-  Window window = (XW_WINDOW (xw));
   struct xwindow * exw;
 
   while (1)
@@ -556,13 +555,12 @@ DEFINE_PRIMITIVE ("X-WINDOW-READ-EVENT-FLAGS!", Prim_x_window_read_event_flags, 
   xw = (WINDOW_ARG (1));
   old = (XW_EVENT_FLAGS (xw));
   (XW_EVENT_FLAGS (xw)) = 0;
-  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (old));
+  PRIMITIVE_RETURN (long_to_integer (old));
 }
 
 DEFINE_PRIMITIVE ("X-OPEN-DISPLAY", Prim_x_open_display, 1, 1, 0)
 {
   Display * display;
-  int index;
   PRIMITIVE_HEADER (1);
 
   display =
@@ -576,7 +574,7 @@ DEFINE_PRIMITIVE ("X-OPEN-DISPLAY", Prim_x_open_display, 1, 1, 0)
   XSetIOErrorHandler (x_io_error_handler);
 
   PRIMITIVE_RETURN
-    (MAKE_UNSIGNED_FIXNUM
+    (LONG_TO_UNSIGNED_FIXNUM
      (x_allocate_table_index ((& x_display_table), ((char *) display))));
 }
 
@@ -591,7 +589,7 @@ DEFINE_PRIMITIVE ("X-CLOSE-DISPLAY", Prim_x_close_display, 1, 1, 0)
 DEFINE_PRIMITIVE ("X-CLOSE-ALL-DISPLAYS", Prim_x_close_all_displays, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
-  
+
   {
     Display ** items = ((Display **) (x_display_table . items));
     int length = (x_display_table . length);
@@ -607,7 +605,6 @@ DEFINE_PRIMITIVE ("X-CLOSE-ALL-DISPLAYS", Prim_x_close_all_displays, 0, 0, 0)
 DEFINE_PRIMITIVE ("X-CLOSE-WINDOW", Prim_x_close_window, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
   XFlush (x_close_window (x_allocation_index_arg (1, (& x_window_table))));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -615,15 +612,13 @@ DEFINE_PRIMITIVE ("X-CLOSE-WINDOW", Prim_x_close_window, 1, 1, 0)
 DEFINE_PRIMITIVE ("X-WINDOW-X-SIZE", Prim_x_window_x_size, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
-  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (XW_X_SIZE (WINDOW_ARG (1))));
+  PRIMITIVE_RETURN (long_to_integer (XW_X_SIZE (WINDOW_ARG (1))));
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-Y-SIZE", Prim_x_window_y_size, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
-  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (XW_Y_SIZE (WINDOW_ARG (1))));
+  PRIMITIVE_RETURN (long_to_integer (XW_Y_SIZE (WINDOW_ARG (1))));
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-MAP", Prim_x_window_map, 1, 1, 0)
@@ -689,7 +684,7 @@ DEFINE_PRIMITIVE ("X-WINDOW-GET-DEFAULT", Prim_x_window_get_default, 3, 3, 0)
   PRIMITIVE_RETURN
     ((result == ((char *) 0))
      ? SHARP_F
-     : (C_String_To_Scheme_String (result)));
+     : (char_pointer_to_string (result)));
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-SET-FOREGROUND-COLOR", Prim_x_window_set_foreground_color, 2, 2, 0)
@@ -911,6 +906,9 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-POSITION", Prim_x_window_set_position, 3, 3, 0)
   display = (XW_DISPLAY (xw));
   screen_number = (DefaultScreen (display));
   XMoveWindow
-    ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), (arg_fixnum (2)), (arg_fixnum (3)));
+    ((XW_DISPLAY (xw)),
+     (XW_WINDOW (xw)),
+     (arg_integer (2)),
+     (arg_integer (3)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }

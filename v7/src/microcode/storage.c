@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.44 1989/09/20 23:11:51 cph Exp $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,10 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.43 1988/08/15 20:55:32 cph Rel $
-
-This file defines the storage for global variables for
-the Scheme Interpreter. */
+/* This file defines the storage for the interpreter's global variables. */
 
 #include "scheme.h"
 #include "gctype.c"
@@ -42,37 +41,35 @@ the Scheme Interpreter. */
                          /* REGISTERS */
                          /*************/
 
-Pointer
- *Ext_History,		/* History register */
- *Free,			/* Next free word in storage */
- *MemTop,		/* Top of free space available */
- *Ext_Stack_Pointer,	/* Next available slot in control stack */
- *Stack_Top,		/* Top of control stack */
- *Stack_Guard,		/* Guard area at end of stack */
- *Free_Stacklets,	/* Free list of stacklets */
- *Constant_Space,	/* Bottom of constant+pure space */
- *Free_Constant,	/* Next free cell in constant+pure area */
- *Constant_Top,		/* Top of constant+pure space */
- *Heap_Top,		/* Top of current heap */
- *Heap_Bottom,		/* Bottom of current heap */
- *Unused_Heap_Top,	/* Top of other heap */
- *Unused_Heap,		/* Bottom of other heap */
- *Local_Heap_Base,	/* Per-processor CONSing area */
- *Heap,			/* Bottom of entire heap */
-  Current_State_Point = NIL, /* Used by dynamic winder */
-  Fluid_Bindings = NIL,	/* Fluid bindings AList */
- *last_return_code,	/* Address of the most recent return code in the stack.
+SCHEME_OBJECT
+ * Ext_History,		/* History register */
+ * Free,		/* Next free word in storage */
+ * MemTop,		/* Top of free space available */
+ * Ext_Stack_Pointer,	/* Next available slot in control stack */
+ * Stack_Top,		/* Top of control stack */
+ * Stack_Guard,		/* Guard area at end of stack */
+ * Free_Stacklets,	/* Free list of stacklets */
+ * Constant_Space,	/* Bottom of constant+pure space */
+ * Free_Constant,	/* Next free cell in constant+pure area */
+ * Constant_Top,	/* Top of constant+pure space */
+ * Heap_Top,		/* Top of current heap */
+ * Heap_Bottom,		/* Bottom of current heap */
+ * Unused_Heap_Top,	/* Top of other heap */
+ * Unused_Heap,		/* Bottom of other heap */
+ * Local_Heap_Base,	/* Per-processor CONSing area */
+ * Heap,		/* Bottom of entire heap */
+   Current_State_Point,	/* Used by dynamic winder */
+   Fluid_Bindings,	/* Fluid bindings AList */
+ * last_return_code;	/* Address of the most recent return code in the stack.
 			   This is only meaningful while in compiled code.
-			   *** This must be changed when stacklets are used. ***
-			 */
- Swap_Temp;		/* Used by Swap_Pointers in default.h */
-
+			   *** This must be changed when stacklets are used. */
+
 long
   IntCode,		/* Interrupts requesting */
   IntEnb,		/* Interrupts enabled */
   temp_long,		/* temporary for sign extension */
-  GC_Reserve = 4500,	/* Scheme pointer overflow space in heap */
-  GC_Space_Needed = 0, /* Amount of space needed when GC triggered */
+  GC_Reserve,		/* Scheme pointer overflow space in heap */
+  GC_Space_Needed,	/* Amount of space needed when GC triggered */
   /* Used to signal microcode errors from compiled code. */
   compiled_code_error_code;
 
@@ -84,23 +81,23 @@ int Saved_argc;
 char **Saved_argv;
 char *OS_Name, *OS_Variant;
 
-Boolean Photo_Open = false; /* Photo file open */
+Boolean Photo_Open;	/* Photo file open */
 
 Boolean Trapping;
 
-Pointer Old_Return_Code, *Return_Hook_Address;
+SCHEME_OBJECT Old_Return_Code, *Return_Hook_Address;
 
-Pointer *Prev_Restore_History_Stacklet;
+SCHEME_OBJECT *Prev_Restore_History_Stacklet;
 long Prev_Restore_History_Offset;
 
 jmp_buf *Back_To_Eval; /* Buffer for set/longjmp */
 
 long Heap_Size, Constant_Size, Stack_Size;
-Pointer *Highest_Allocated_Address;
+SCHEME_OBJECT *Highest_Allocated_Address;
 
 #ifndef Heap_In_Low_Memory
 
-Pointer *Memory_Base;
+SCHEME_OBJECT * memory_base;
 
 #endif
 
@@ -113,7 +110,7 @@ Pointer *Memory_Base;
 Boolean Eval_Debug	= false;
 Boolean Hex_Input_Debug	= false;
 Boolean File_Load_Debug	= false;
-Boolean Reloc_Debug	= false;	
+Boolean Reloc_Debug	= false;
 Boolean Intern_Debug	= false;
 Boolean Cont_Debug	= false;
 Boolean Primitive_Debug	= false;

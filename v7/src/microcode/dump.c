@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.29 1989/09/20 23:07:39 cph Exp $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,12 +32,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.28 1988/08/15 20:45:11 cph Rel $
- *
- * This file contains common code for dumping internal format binary files.
- */
+/* This file contains common code for dumping internal format binary files. */
 
-extern Pointer compiler_utilities;
+extern SCHEME_OBJECT compiler_utilities;
 extern long compiler_interface_version, compiler_processor_type;
 
 void
@@ -44,7 +43,7 @@ prepare_dump_header(Buffer, Dumped_Object,
 		    Constant_Count, Constant_Relocation,
 		    table_length, table_size,
 		    cc_code_p, band_p)
-     Pointer
+     SCHEME_OBJECT
        *Buffer, *Dumped_Object,
        *Heap_Relocation, *Constant_Relocation;
      long
@@ -57,40 +56,42 @@ prepare_dump_header(Buffer, Dumped_Object,
 #ifdef DEBUG
 
 #ifndef Heap_In_Low_Memory
-  fprintf(stderr, "\nMemory_Base = 0x%x\n", Memory_Base);
+  fprintf(stderr, "\nmemory_base = 0x%x\n", memory_base);
 #endif /* Heap_In_Low_Memory */
 
   fprintf(stderr, "\nHeap_Relocation=0x%x, dumped as 0x%x\n",
-	  Heap_Relocation, Make_Pointer(TC_BROKEN_HEART, Heap_Relocation));
+	  Heap_Relocation,
+	  (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Heap_Relocation)));
   fprintf(stderr, "\nDumped object=0x%x, dumped as 0x%x\n",
-	  Dumped_Object, Make_Pointer(TC_BROKEN_HEART, Dumped_Object));
+	  Dumped_Object,
+	  (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Dumped_Object)));
 #endif /* DEBUG */
 
   Buffer[FASL_Offset_Marker] = FASL_FILE_MARKER;
   Buffer[FASL_Offset_Heap_Count] =
-    Make_Non_Pointer(TC_BROKEN_HEART, Heap_Count);
+    MAKE_OBJECT (TC_BROKEN_HEART, Heap_Count);
   Buffer[FASL_Offset_Heap_Base] =
-    Make_Pointer(TC_BROKEN_HEART, Heap_Relocation);
+    MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Heap_Relocation);
   Buffer[FASL_Offset_Dumped_Obj] =
-    Make_Pointer(TC_BROKEN_HEART, Dumped_Object);
+    MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Dumped_Object);
   Buffer[FASL_Offset_Const_Count] =
-    Make_Non_Pointer(TC_BROKEN_HEART, Constant_Count);
+    MAKE_OBJECT (TC_BROKEN_HEART, Constant_Count);
   Buffer[FASL_Offset_Const_Base] =
-    Make_Pointer(TC_BROKEN_HEART, Constant_Relocation);
+    MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Constant_Relocation);
   Buffer[FASL_Offset_Version] =
     Make_Version(FASL_FORMAT_VERSION,
 		 FASL_SUBVERSION, FASL_INTERNAL_FORMAT);
   Buffer[FASL_Offset_Stack_Top] =
 #ifdef USE_STACKLETS
-    Make_Non_Pointer(TC_BROKEN_HEART, 0);	/* Nothing in stack area */
+    MAKE_OBJECT (TC_BROKEN_HEART, 0);	/* Nothing in stack area */
 #else
-    Make_Pointer(TC_BROKEN_HEART, Stack_Top);
+    MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Stack_Top);
 #endif /* USE_STACKLETS */
 
-  Buffer[FASL_Offset_Prim_Length] = 
-    Make_Non_Pointer(TC_BROKEN_HEART, table_length);
-  Buffer[FASL_Offset_Prim_Size] = 
-    Make_Non_Pointer(TC_BROKEN_HEART, table_size);
+  Buffer[FASL_Offset_Prim_Length] =
+    MAKE_OBJECT (TC_BROKEN_HEART, table_length);
+  Buffer[FASL_Offset_Prim_Size] =
+    MAKE_OBJECT (TC_BROKEN_HEART, table_size);
 
   if (cc_code_p)
   {
@@ -107,12 +108,12 @@ prepare_dump_header(Buffer, Dumped_Object,
        it can be loaded anywhere.
      */
     Buffer[FASL_Offset_Ci_Version] = MAKE_CI_VERSION(band_p, 0, 0);
-    Buffer[FASL_Offset_Ut_Base] = NIL;
+    Buffer[FASL_Offset_Ut_Base] = SHARP_F;
   }
 
   for (i = FASL_Offset_First_Free; i < FASL_HEADER_LENGTH; i++)
   {
-    Buffer[i] = NIL;
+    Buffer[i] = SHARP_F;
   }
   return;
 }
@@ -122,7 +123,7 @@ Write_File(Dumped_Object, Heap_Count, Heap_Relocation,
            Constant_Count, Constant_Relocation,
 	   table_start, table_length, table_size,
 	   cc_code_p, band_p)
-     Pointer
+     SCHEME_OBJECT
        *Dumped_Object,
        *Heap_Relocation, *Constant_Relocation,
        *table_start;
@@ -131,7 +132,7 @@ Write_File(Dumped_Object, Heap_Count, Heap_Relocation,
        table_length, table_size;
      Boolean cc_code_p, band_p;
 {
-  Pointer Buffer[FASL_HEADER_LENGTH];
+  SCHEME_OBJECT Buffer[FASL_HEADER_LENGTH];
 
   prepare_dump_header(Buffer, Dumped_Object,
 		      Heap_Count, Heap_Relocation,

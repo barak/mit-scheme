@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/winder.h,v 9.24 1989/09/20 23:13:09 cph Rel $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,18 +32,38 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/winder.h,v 9.23 1988/08/15 20:58:36 cph Rel $
-
-   Header file for dynamic winder. 
-
-*/
+/* Header file for dynamic winder. */
 
+#define STATE_SPACE_P(object)						\
+  ((VECTOR_P (object)) &&						\
+   ((VECTOR_LENGTH (object)) == STATE_SPACE_LENGTH) &&			\
+   ((MEMORY_REF ((object), STATE_SPACE_TAG)) ==				\
+    (Get_Fixed_Obj_Slot (State_Space_Tag))))
+
+#define STATE_SPACE_TAG			1
+#define STATE_SPACE_NEAREST_POINT	2
+#define STATE_SPACE_LENGTH		2
+
+#define STATE_POINT_P(object)						\
+  ((VECTOR_P (object)) &&						\
+   ((VECTOR_LENGTH (object)) == STATE_POINT_LENGTH) &&			\
+   ((MEMORY_REF ((object), STATE_POINT_TAG)) ==				\
+    (Get_Fixed_Obj_Slot (State_Point_Tag))))
+
+#define STATE_POINT_TAG			1
+#define STATE_POINT_BEFORE_THUNK	2
+#define STATE_POINT_AFTER_THUNK		3
+#define STATE_POINT_NEARER_POINT	4
+#define STATE_POINT_DISTANCE_TO_ROOT	5
+#define STATE_POINT_LENGTH		5
+
+
 #ifdef butterfly
 
-#define guarantee_state_point()					\
-{								\
-  if (Current_State_Point == NIL)				\
-    Current_State_Point = Get_Fixed_Obj_Slot( State_Space_Root); \
+#define guarantee_state_point()						\
+{									\
+  if (Current_State_Point == SHARP_F)					\
+    Current_State_Point = (Get_Fixed_Obj_Slot (State_Space_Root));	\
 }
 
 #else

@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.30 1989/09/20 23:11:23 cph Exp $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,15 +32,11 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.29 1988/08/15 20:54:47 cph Rel $
- *
- * General declarations for the SCode interpreter.  This
- * file is INCLUDED by others and contains declarations only.
- */
+/* General declarations for the SCode interpreter.  This
+   file is INCLUDED by others and contains declarations only. */
 
 /* Certain debuggers cannot really deal with variables in registers.
-   When debugging, NO_REGISTERS can be defined.
-*/
+   When debugging, NO_REGISTERS can be defined. */
 
 #ifdef NO_REGISTERS
 #define fast
@@ -65,7 +63,7 @@ MIT in each case. */
 #endif
 
 #define forward		extern	/* For forward references */
-
+
 #include <setjmp.h>
 #include <stdio.h>
 
@@ -96,4 +94,5 @@ MIT in each case. */
 #include "bkpt.h"	/* Shadows some defaults */
 #include "default.h"	/* Defaults for various hooks. */
 #include "extern.h"	/* External declarations */
+#include "bignum.h"	/* Bignum declarations */
 #include "prim.h"	/* Declarations for primitives. */

@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/xdebug.c,v 9.26 1989/09/20 23:13:32 cph Exp $
+
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,12 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/xdebug.c,v 9.25 1989/06/16 09:40:14 cph Rel $
- *
- * This file contains primitives to debug the memory management in the
- * Scheme system.
- *
- */
+/* This file contains primitives to debug memory management. */
 
 #include "scheme.h"
 #include "prims.h"
@@ -46,13 +43,13 @@ MIT in each case. */
 #define ADDRESS_EQ	2
 #define DATUM_EQ	3
 
-static Pointer *
+static SCHEME_OBJECT *
 Find_Occurrence(From, To, What, Mode)
-     fast Pointer *From, *To;
-     Pointer What;
+     fast SCHEME_OBJECT *From, *To;
+     SCHEME_OBJECT What;
      int Mode;
 {
-  fast Pointer Obj;
+  fast SCHEME_OBJECT Obj;
 
   switch (Mode)
   { default:
@@ -61,9 +58,9 @@ Find_Occurrence(From, To, What, Mode)
       Obj = What;
       for (; From < To; From++)
       {
-	if (OBJECT_TYPE(*From) == TC_MANIFEST_NM_VECTOR)
+	if (OBJECT_TYPE (*From) == TC_MANIFEST_NM_VECTOR)
 	{
-	  From += OBJECT_DATUM(*From); 
+	  From += OBJECT_DATUM (*From);
 	}
 	else if (*From == Obj)
 	{
@@ -75,14 +72,14 @@ Find_Occurrence(From, To, What, Mode)
 
     case ADDRESS_EQ:
     {
-      Obj = OBJECT_DATUM(What);
+      Obj = OBJECT_DATUM (What);
       for (; From < To; From++)
       {
-	if (OBJECT_TYPE(*From) == TC_MANIFEST_NM_VECTOR)
+	if (OBJECT_TYPE (*From) == TC_MANIFEST_NM_VECTOR)
 	{
-	  From += OBJECT_DATUM(*From); 
+	  From += OBJECT_DATUM (*From);
 	}
-	else if ((OBJECT_DATUM(*From) == Obj) &&
+	else if ((OBJECT_DATUM (*From) == Obj) &&
 		 (!(GC_Type_Non_Pointer(*From))))
 	{
 	  return From;
@@ -92,14 +89,14 @@ Find_Occurrence(From, To, What, Mode)
     }
     case DATUM_EQ:
     {
-      Obj = OBJECT_DATUM(What);
+      Obj = OBJECT_DATUM (What);
       for (; From < To; From++)
       {
-	if (OBJECT_TYPE(*From) == TC_MANIFEST_NM_VECTOR)
+	if (OBJECT_TYPE (*From) == TC_MANIFEST_NM_VECTOR)
 	{
-	  From += OBJECT_DATUM(*From); 
+	  From += OBJECT_DATUM (*From);
 	}
-	else if (OBJECT_DATUM(*From) == Obj)
+	else if (OBJECT_DATUM (*From) == Obj)
 	{
 	  return From;
 	}
@@ -112,14 +109,14 @@ Find_Occurrence(From, To, What, Mode)
 #define PRINT_P		1
 #define STORE_P		2
 
-static long 
+static long
 Find_In_Area(Name, From, To, Obj, Mode, print_p, store_p)
      char *Name;
-     Pointer *From, *To, Obj;
+     SCHEME_OBJECT *From, *To, Obj;
      int Mode;
      Boolean print_p, store_p;
 {
-  fast Pointer *Where;
+  fast SCHEME_OBJECT *Where;
   fast long occurrences = 0;
 
   if (print_p)
@@ -140,21 +137,18 @@ Find_In_Area(Name, From, To, Obj, Mode, print_p, store_p)
 	     ((long) Where), ((long) (*Where)));
 #endif
     if (store_p)
-    {
-      /* Note that Make_Pointer (vs. Make_Non_Pointer) is correct here!! */
-      *Free++ = Make_Pointer(TC_ADDRESS, Where);
-    }
+      *Free++ = (LONG_TO_UNSIGNED_FIXNUM (Where));
   }
   return occurrences;
 }
 
-Pointer
+SCHEME_OBJECT
 Find_Who_Points(Obj, Find_Mode, Collect_Mode)
-     Pointer Obj;
+     SCHEME_OBJECT Obj;
      int Find_Mode, Collect_Mode;
 {
   long n = 0;
-  Pointer *Saved_Free = Free;
+  SCHEME_OBJECT *Saved_Free = Free;
   Boolean print_p = (Collect_Mode & PRINT_P);
   Boolean store_p = (Collect_Mode & STORE_P);
 
@@ -192,20 +186,20 @@ Find_Who_Points(Obj, Find_Mode, Collect_Mode)
   }
   if (store_p)
   {
-    *Saved_Free = Make_Non_Pointer(TC_MANIFEST_VECTOR, n);
-    return Make_Pointer(TC_VECTOR, Saved_Free);
+    *Saved_Free = MAKE_OBJECT (TC_MANIFEST_VECTOR, n);
+    return MAKE_POINTER_OBJECT (TC_VECTOR, Saved_Free);
   }
   else
   {
-    return Make_Non_Pointer(TC_FIXNUM, n);
+    return (LONG_TO_FIXNUM (n));
   }
 }
 
 Print_Memory(Where, How_Many)
-     Pointer *Where;
+     SCHEME_OBJECT *Where;
      long How_Many;
 {
-  fast Pointer *End   = &Where[How_Many];
+  fast SCHEME_OBJECT *End   = &Where[How_Many];
 
 #ifndef b32
   printf("\n*** Memory from 0x%x to 0x%x (excluded) ***\n", Where, End);
@@ -237,7 +231,7 @@ DEFINE_PRIMITIVE ("DEBUG-SHOW-PURE", Prim_debug_show_pure, 0, 0, 0)
 
 DEFINE_PRIMITIVE ("DEBUG-SHOW-ENV", Prim_debug_show_env, 1, 1, 0)
 {
-  Pointer environment;
+  SCHEME_OBJECT environment;
   PRIMITIVE_HEADER (1);
 
   environment = (ARG_REF (1));
@@ -261,13 +255,13 @@ DEFINE_PRIMITIVE ("DEBUG-FIND-SYMBOL", Prim_debug_find_symbol, 1, 1, 0)
 
   CHECK_ARG (1, STRING_P);
   {
-    fast Pointer symbol = (find_symbol (ARG_REF (1)));
+    fast SCHEME_OBJECT symbol = (find_symbol (ARG_REF (1)));
     if (symbol == SHARP_F)
       printf ("\nNot interned.\n");
     else
       {
 	printf ("\nInterned Symbol: 0x%x", symbol);
-	Print_Expression (Vector_Ref (symbol, SYMBOL_GLOBAL_VALUE), "Value");
+	Print_Expression (MEMORY_REF (symbol, SYMBOL_GLOBAL_VALUE), "Value");
 	printf ("\n");
       }
   }
@@ -297,14 +291,14 @@ DEFINE_PRIMITIVE ("DEBUG-FIND-WHO-POINTS", Prim_debug_find_who_points, 3, 3, 0)
 
 DEFINE_PRIMITIVE ("DEBUG-PRINT-MEMORY", Prim_debug_print_memory, 2, 2, 0)
 {
-  Pointer object;
+  SCHEME_OBJECT object;
   PRIMITIVE_HEADER (2);
 
   object = (ARG_REF (1));
   Print_Memory
     (((GC_Type_Non_Pointer (object))
-      ? ((Pointer *) (OBJECT_DATUM (object)))
-      : (Get_Pointer (object))),
+      ? ((SCHEME_OBJECT *) (OBJECT_DATUM (object)))
+      : (OBJECT_ADDRESS (object))),
      (OBJECT_DATUM (ARG_REF (2))));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }

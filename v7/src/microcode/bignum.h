@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.h,v 9.25 1989/09/20 23:06:04 cph Rel $
+
+Copyright (c) 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,149 +32,90 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.h,v 9.24 1988/08/15 20:36:57 cph Rel $
+/* External Interface to Bignum Code */
 
-   Head file for bignums.  This is shared by bignum.c and generic.c. 
-*/
+/* The `unsigned long' type is used for the conversion procedures
+   `bignum_to_long' and `long_to_bignum'.  Older implementations of C
+   don't support this type; if you have such an implementation you can
+   disable these procedures using the following flag (alternatively
+   you could write alternate versions that don't require this type). */
+/* #define BIGNUM_NO_ULONG */
 
-#ifdef ENABLE_DEBUGGING_TOOLS
-#define Debug_Test(Res)						\
-{ Pointer R = Make_Pointer(TC_BIG_FIXNUM, Res);			\
-  if (Nth_Vector_Loc(R, Vector_Length(R)) != (Free-1))		\
-  { printf("\nResult=%x -> %x %x %x, Length=%d, Free=%x\n",	\
-           R, Fast_Vector_Ref(R, 0),				\
-           Fast_Vector_Ref(R, 1), Fast_Vector_Ref(R, 2),	\
-           Vector_Length(R), Free);				\
-    Microcode_Termination(TERM_EXIT);				\
-  }                                                		\
-}
-#else
-#define Debug_Test(Res) { }
-#endif
-
-#define POSITIVE	1
-#define NEGATIVE	0
+#ifdef MIT_SCHEME
 
-/* The representation of a BIGNUM is machine dependent. For a VAX-11
- * it is as follows: 
- */
+typedef SCHEME_OBJECT bignum_type;
+#define BIGNUM_OUT_OF_BAND SHARP_F
 
-#ifdef pdp10
-typedef unsigned int bigdigit;
-typedef long bigdouble;
-#define SHIFT 			16
-#define factor			1
 #else
-#if ((USHORT_SIZE * 2) <= ULONG_SIZE)
-#define bigdigit		unsigned short
-#define bigdouble 		long	/* Should be unsigned */
-#define SHIFT			USHORT_SIZE
-#define factor			(sizeof(Pointer)/sizeof(bigdigit))
-#else
-#if ((CHAR_SIZE * 2) <= ULONG_SIZE)
-#define bigdigit		unsigned char
-#define bigdouble		long	/* Should be unsigned */
-#define SHIFT			CHAR_SIZE
-#define factor			(sizeof(Pointer)/sizeof(bigdigit))
-#else
-#include "Cannot compile bignums.  All types too large.  See bignum.h"
-#endif
-#endif
+
+typedef long * bignum_type;
+#define BIGNUM_OUT_OF_BAND ((bignum_type) 0)
+
 #endif
 
-#define DELTA			\
- ((sizeof(bigdouble)-sizeof(bigdigit))*CHAR_SIZE)
-#define SIGN(Bignum)		(Bignum[factor])
-#define LEN(Bignum)		(Bignum[factor+1])
-#define Bignum_Bottom(Bignum)	(&(Bignum)[factor+2])
-#define Bignum_Top(Bignum)	(&(Bignum)[factor+1+LEN(Bignum)])
-#define Align(ndigits)		((((ndigits) + factor + 1) / factor) + 1)
+enum bignum_comparison
+{
+  bignum_comparison_equal, bignum_comparison_less, bignum_comparison_greater
+};
 
-/* For temporary bignums */
+#ifdef __STDC__
 
-#define TEMP_SIZE Align(4)
+typedef void * bignum_procedure_context;
+extern bignum_type bignum_make_zero (void);
+extern bignum_type bignum_make_one (int negative_p);
+extern int bignum_equal_p (bignum_type, bignum_type);
+extern enum bignum_comparison bignum_test (bignum_type);
+extern enum bignum_comparison bignum_compare (bignum_type, bignum_type);
+extern bignum_type bignum_add (bignum_type, bignum_type);
+extern bignum_type bignum_subtract (bignum_type, bignum_type);
+extern bignum_type bignum_negate (bignum_type);
+extern bignum_type bignum_multiply (bignum_type, bignum_type);
+extern int bignum_divide
+  (bignum_type numerator, bignum_type denominator,
+   bignum_type * quotient, bignum_type * remainder);
+#ifndef BIGNUM_NO_ULONG
+extern bignum_type long_to_bignum (long);
+extern long bignum_to_long (bignum_type);
+#endif /* not BIGNUM_NO_ULONG */
+extern bignum_type double_to_bignum (double);
+extern double bignum_to_double (bignum_type);
+extern int bignum_fits_in_word_p
+  (bignum_type, long word_length, int twos_complement_p);
+extern bignum_type bignum_length_in_bits (bignum_type);
+extern bignum_type bignum_length_upper_limit (void);
+extern bignum_type digit_stream_to_bignum
+  (unsigned int n_digits,
+   unsigned int (*producer) (), bignum_procedure_context context,
+   unsigned int radix, int negative_p);
+extern void bignum_to_digit_stream
+  (bignum_type, unsigned int radix,
+   void (*consumer) (), bignum_procedure_context context);
+extern long bignum_max_digit_stream_radix (void);
 
-/* Macros for making BIGNUM headers */
+#else /* not __STDC__ */
 
-#define Make_Header(l) Make_Non_Pointer(TC_MANIFEST_NM_VECTOR,(l-1))
-#define Prepare_Header(Bignum,Length,Sign) 				\
-        { *((Pointer *) Bignum) = Make_Header(Align(Length));		\
-          SIGN(Bignum) = Sign;						\
-          LEN(Bignum)  = Length;					\
-        }
-
-/* Predicates coded as macros for determining the sign of BIGNUM's */
+typedef char * bignum_procedure_context;
+extern bignum_type bignum_make_zero ();
+extern bignum_type bignum_make_one ();
+extern int bignum_equal_p ();
+extern enum bignum_comparison bignum_test ();
+extern enum bignum_comparison bignum_compare ();
+extern bignum_type bignum_add ();
+extern bignum_type bignum_subtract ();
+extern bignum_type bignum_negate ();
+extern bignum_type bignum_multiply ();
+extern int bignum_divide ();
+#ifndef BIGNUM_NO_ULONG
+extern bignum_type long_to_bignum ();
+extern long bignum_to_long ();
+#endif /* not BIGNUM_NO_ULONG */
+extern bignum_type double_to_bignum ();
+extern double bignum_to_double ();
+extern int bignum_fits_in_word_p ();
+extern bignum_type bignum_length_in_bits ();
+extern bignum_type bignum_length_upper_limit ();
+extern bignum_type digit_stream_to_bignum ();
+extern void bignum_to_digit_stream ();
+extern long bignum_max_digit_stream_radix ();
 
-#define POS_BIGNUM(Bignum) (SIGN(Bignum) == POSITIVE)
-#define NEG_BIGNUM(Bignum) (SIGN(Bignum) == NEGATIVE)
-#define ZERO_BIGNUM(Bignum) (LEN(Bignum) == 0)
-#define NON_ZERO_BIGNUM(Bignum) (LEN(Bignum) != 0)
-
-
-/* Coerces a C pointer to point to BIGNUM digits */
-
-#define BIGNUM(ptr) ((bigdigit *) ptr)
-
-/* Macros for manipulating long BIGNUM digits */
-
-#define RADIX (1<<SHIFT)
-#define MAX_DIGIT_SIZE (RADIX-1)
-#define CARRY_MASK (MAX_DIGIT_SIZE<<SHIFT)
-#define DIGIT_MASK MAX_DIGIT_SIZE
-#define DIV_MASK ((1<<DELTA)-1)
-#define Get_Carry(lw) (((lw & CARRY_MASK) >> SHIFT) & DIGIT_MASK)
-#define Get_Digit(lw) (lw & DIGIT_MASK)
-#define Mul_Radix(sw) (sw << SHIFT)
-#define Div_Radix(lw) ((lw >> SHIFT) & DIV_MASK)
-#define Rem_Radix(lw) (lw & DIGIT_MASK)
-
-/* Length of the BIGNUM that contains the largest FIXNUM */
-
-#define FIXNUM_LENGTH_AS_BIGNUM       ((FIXNUM_LENGTH + (SHIFT - 1)) / SHIFT)
-#define C_INTEGER_LENGTH_AS_BIGNUM    ((POINTER_LENGTH + (SHIFT - 1)) / SHIFT)
-
-/* Cases returned by the comparison function big_compare() */
-
-#define EQUAL      0
-#define ONE_BIGGER 1
-#define TWO_BIGGER 2
-
-/* Categorize_Sign() takes two bignum's and classify them according
- * to four possible cases, depending on each's sign.  Depends on
- * definition of POSITIVE and NEGATIVE, earlier!!!
- */
-
-#define Categorize_Sign(ARG1, ARG2) ((SIGN(ARG1) << 1) | SIGN(ARG2))
-#define BOTH_NEGATIVE 0
-#define ARG1_NEGATIVE 1
-#define ARG2_NEGATIVE 2
-#define BOTH_POSITIVE 3
-#define Sign_Error(proc) 						\
-        { printf(proc);							\
-          printf(" -- Sign Determination Error\n");			\
-	  printf("Possibly Uncanonicalized Bignum\n");			\
-          return ERR_UNDEFINED_PRIMITIVE; 				\
-        }
-
-#define Fetch_Bignum(big) BIGNUM(Get_Pointer(big))
-
-#define Bignum_Operation(Object, Result)	 			\
-  Result = (Object);							\
-  Free = Nth_Vector_Loc(Result, Vector_Length(Result)+1);		\
-  Result = Big_To_Fix(Result);
-
-#define Divide_Bignum_Operation(Object, Result) 			\
-{ Pointer *End_Of_First, *First, *Second;				\
-  Result = (Object);							\
-  First = Get_Pointer(Vector_Ref(Result, CONS_CAR));			\
-  Second = Get_Pointer(Vector_Ref(Result, CONS_CDR));			\
-  End_Of_First = First+1+Get_Integer(First[0]);				\
-  if (End_Of_First != Second)						\
-  { *End_Of_First =							\
-      Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, (Second-End_Of_First)-1);	\
-    if (Bignum_Debug) printf("\nGap=0x%x\n", (Second-End_Of_First)-1);	\
-  }									\
-  Free = Second+1+Get_Integer(Second[0]);				\
-  Vector_Set(Result,CONS_CAR,Big_To_Fix(Vector_Ref(Result,CONS_CAR)));  \
-  Vector_Set(Result,CONS_CDR,Big_To_Fix(Vector_Ref(Result,CONS_CDR)));  \
-}
+#endif /* __STDC__ */

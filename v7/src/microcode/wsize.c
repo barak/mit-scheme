@@ -30,14 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/wsize.c,v 9.27 1989/08/28 18:28:11 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/wsize.c,v 9.28 1989/09/20 23:05:21 cph Exp $ */
 
 #include <stdio.h>
 #include <math.h>
 #include <errno.h>
 
 #ifndef TYPE_CODE_LENGTH
-/* This MUST match object.h */ 
+/* This MUST match object.h */
 #define TYPE_CODE_LENGTH	8
 #endif
 
@@ -139,7 +139,7 @@ main()
   if (temp == NULL)
   {
     confused = true;
-    printf("/%c CONFUSION: Could not allocate %d Pointers. %c/\n",
+    printf("/%c CONFUSION: Could not allocate %d Objects. %c/\n",
            '*', MEM_SIZE, '*');
     printf("/%c Will not assume that the Heap is in Low Memory. %c/\n",
 	   '*', '*');
@@ -153,7 +153,7 @@ main()
     else
       printf("/%c Heap is not in Low Memory. %c/\n", '*', '*');
   }
-  	
+
   to_be_shifted = -1;
   if ((to_be_shifted >> 1) != to_be_shifted)
   {
@@ -189,7 +189,7 @@ main()
 
   double_size = (char_size*sizeof(double));
 
-  printf("#define CHAR_SIZE              %d\n",
+  printf("#define CHAR_BIT              %d\n",
 	 char_size);
 
   printf("#define USHORT_SIZE            %d\n",
@@ -200,7 +200,7 @@ main()
 
   printf("#define DBFLT_SIZE             %d\n\n",
 	 double_size);
-  
+
   if (sizeof(struct double_probe) == (sizeof(double) + sizeof(long)))
   {
     printf("/%c Flonums have no special alignment constraints. %c/\n",

@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/returns.h,v 9.36 1989/09/20 23:11:10 cph Exp $
+
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,18 +32,12 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/returns.h,v 9.35 1989/03/27 23:16:00 jinx Rel $
- *
- * Return codes.  These are placed in Return when an
- * interpreter operation needs to operate in several
- * phases.  This must correspond with UTABMD.SCM
- *
- */
+/* Return codes.  These are placed in Return when an
+   interpreter operation needs to operate in several phases. */
 
 /* These names are also in storage.c.
- * Please maintain consistency.
- * Names should not exceed 31 characters.
- */
+   Please maintain consistency.
+   Names should not exceed 31 characters. */
 
 #define RC_END_OF_COMPUTATION		0x00
 /* formerly RC_RESTORE_CONTROL_POINT	0x01 */
@@ -72,7 +68,6 @@ MIT in each case. */
 #define RC_PCOMB3_DO_2			0x19
 #define RC_PCOMB3_DO_1			0x1A
 #define RC_PCOMB3_APPLY			0x1B
-
 #define RC_SNAP_NEED_THUNK		0x1C
 #define RC_REENTER_COMPILED_CODE 	0x1D
 /* formerly RC_GET_CHAR_REPEAT		0x1E */
@@ -95,11 +90,10 @@ MIT in each case. */
 #define RC_RESTORE_DONT_COPY_HISTORY    0x2F
 
 /* The following are not used in the 68000 implementation */
-
 #define RC_POP_RETURN_ERROR		0x40
 #define RC_EVAL_ERROR			0x41
 /* formerly #define RC_REPEAT_PRIMITIVE	0x42 */
-#define RC_COMP_INTERRUPT_RESTART	0x43 
+#define RC_COMP_INTERRUPT_RESTART	0x43
 /* formerly RC_COMP_RECURSION_GC	0x44 */
 #define RC_RESTORE_INT_MASK		0x45
 #define RC_HALT				0x46
@@ -172,7 +166,6 @@ MIT in each case. */
 /* 0x25 */		"RESTARTABLE_EXIT",				\
 /* 0x26 */		"",						\
 /* 0x27 */		"",						\
-									\
 /* 0x28 */		"COMP_ASSIGNMENT_RESTART",			\
 /* 0x29 */		"POP_FROM_COMPILED_CODE",			\
 /* 0x2A */		"RETURN_TRAP_POINT",				\

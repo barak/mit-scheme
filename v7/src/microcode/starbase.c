@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/starbase.c,v 1.2 1989/06/21 11:46:20 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/starbase.c,v 1.3 1989/09/20 23:11:39 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -36,7 +36,6 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
-#include "flonum.h"
 #include <starbase.c.h>
 
 static void
@@ -71,59 +70,35 @@ inquire_cmap_size (fildes)
   float p1 [3];
   float p2 [3];
   int cmap_size;
-
   inquire_sizes (fildes, physical_limits, resolution, p1, p2, (& cmap_size));
   return (cmap_size);
 }
 
 #define SB_DEVICE_ARG(arg) (arg_nonnegative_integer (arg))
-
-#define FLONUM_ARG(argno, target)					\
-{									\
-  fast Pointer argument;						\
-  fast long fixnum_value;						\
-									\
-  argument = (ARG_REF (argno));						\
-  switch (OBJECT_TYPE (argument))					\
-    {									\
-    case TC_FIXNUM:							\
-      FIXNUM_VALUE (argument, fixnum_value);				\
-      target = ((float) fixnum_value);					\
-      break;								\
-									\
-    case TC_BIG_FLONUM:							\
-      target = ((float) (Get_Float (argument)));			\
-      break;								\
-									\
-    default:								\
-      error_wrong_type_arg (argno);					\
-    }									\
-}
 
 DEFINE_PRIMITIVE ("STARBASE-OPEN-DEVICE", Prim_starbase_open_device, 2, 2,
   "(STARBASE-OPEN-DEVICE DEVICE-NAME DRIVER-NAME)")
 {
-  int descriptor;
   PRIMITIVE_HEADER (2);
-
-  descriptor = (gopen ((STRING_ARG (1)), OUTDEV, (STRING_ARG (2)), 0));
-  if (descriptor == (-1))
-    PRIMITIVE_RETURN (SHARP_F);
-  set_vdc_extent (descriptor, (-1.0), (-1.0), (1.0), (1.0));
-  mapping_mode (descriptor, DISTORT);
-  set_line_color_index (descriptor, 1);
-  line_type (descriptor, 0);
-  drawing_mode (descriptor, 3);
-  text_alignment
-    (descriptor, TA_NORMAL_HORIZONTAL, TA_NORMAL_VERTICAL, (0.0), (0.0));
-  interior_style (descriptor, INT_HOLLOW, 1);
-  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (descriptor));
+  {
+    int descriptor = (gopen ((STRING_ARG (1)), OUTDEV, (STRING_ARG (2)), 0));
+    if (descriptor == (-1))
+      PRIMITIVE_RETURN (SHARP_F);
+    set_vdc_extent (descriptor, (-1.0), (-1.0), (1.0), (1.0));
+    mapping_mode (descriptor, DISTORT);
+    set_line_color_index (descriptor, 1);
+    line_type (descriptor, 0);
+    drawing_mode (descriptor, 3);
+    text_alignment
+      (descriptor, TA_NORMAL_HORIZONTAL, TA_NORMAL_VERTICAL, (0.0), (0.0));
+    interior_style (descriptor, INT_HOLLOW, 1);
+    PRIMITIVE_RETURN (long_to_integer (descriptor));
+  }
 }
 
 DEFINE_PRIMITIVE ("STARBASE-CLOSE-DEVICE", Prim_starbase_close_device, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
   gclose (SB_DEVICE_ARG (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -131,7 +106,6 @@ DEFINE_PRIMITIVE ("STARBASE-CLOSE-DEVICE", Prim_starbase_close_device, 1, 1, 0)
 DEFINE_PRIMITIVE ("STARBASE-FLUSH", Prim_starbase_flush, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
   make_picture_current (SB_DEVICE_ARG (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -142,7 +116,6 @@ Clear the graphics section of the screen.\n\
 Uses the Starbase CLEAR_VIEW_SURFACE procedure.")
 {
   PRIMITIVE_HEADER (1);
-
   clear_view_surface (SB_DEVICE_ARG (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -153,15 +126,14 @@ Draw one point at the given coordinates.\n\
 Subsequently move the graphics cursor to those coordinates.\n\
 Uses the starbase procedures `move2d' and `draw2d'.")
 {
-  int descriptor;
-  fast float x, y;
   PRIMITIVE_HEADER (3);
-
-  descriptor = (SB_DEVICE_ARG (1));
-  FLONUM_ARG (2, x);
-  FLONUM_ARG (3, y);
-  move2d (descriptor, x, y);
-  draw2d (descriptor, x, y);
+  {
+    int descriptor = (SB_DEVICE_ARG (1));
+    fast float x = (arg_real_number (2));
+    fast float y = (arg_real_number (3));
+    move2d (descriptor, x, y);
+    draw2d (descriptor, x, y);
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -170,14 +142,8 @@ DEFINE_PRIMITIVE ("STARBASE-MOVE-CURSOR", Prim_starbase_move_cursor, 3, 3,
 Move the graphics cursor to the given coordinates.\n\
 Uses the starbase procedure `move2d'.")
 {
-  int descriptor;
-  fast float x, y;
   PRIMITIVE_HEADER (3);
-
-  descriptor = (SB_DEVICE_ARG (1));
-  FLONUM_ARG (2, x);
-  FLONUM_ARG (3, y);
-  move2d (descriptor, x, y);
+  move2d ((SB_DEVICE_ARG (1)), (arg_real_number (2)), (arg_real_number (3)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -187,14 +153,8 @@ Draw a line from the graphics cursor to the given coordinates.\n\
 Subsequently move the graphics cursor to those coordinates.\n\
 Uses the starbase procedure `draw2d'.")
 {
-  int descriptor;
-  fast float x, y;
   PRIMITIVE_HEADER (3);
-
-  descriptor = (SB_DEVICE_ARG (1));
-  FLONUM_ARG (2, x);
-  FLONUM_ARG (3, y);
-  draw2d (descriptor, x, y);
+  draw2d ((SB_DEVICE_ARG (1)), (arg_real_number (2)), (arg_real_number (3)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -204,17 +164,16 @@ Draw a line from the start coordinates to the end coordinates.\n\
 Subsequently move the graphics cursor to the end coordinates.\n\
 Uses the starbase procedures `move2d' and `draw2d'.")
 {
-  int descriptor;
-  fast float x_start, y_start, x_end, y_end;
   PRIMITIVE_HEADER (5);
-
-  descriptor = (SB_DEVICE_ARG (1));
-  FLONUM_ARG (2, x_start);
-  FLONUM_ARG (3, y_start);
-  FLONUM_ARG (4, x_end);
-  FLONUM_ARG (5, y_end);
-  move2d (descriptor, x_start, y_start);
-  draw2d (descriptor, x_end, y_end);
+  {
+    int descriptor = (SB_DEVICE_ARG (1));
+    fast float x_start = (arg_real_number (2));
+    fast float y_start = (arg_real_number (3));
+    fast float x_end = (arg_real_number (4));
+    fast float y_end = (arg_real_number (5));
+    move2d (descriptor, x_start, y_start);
+    draw2d (descriptor, x_end, y_end);
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -225,7 +184,6 @@ The STYLE argument is an integer in the range 0-7 inclusive.\n\
 See the description of the starbase procedure `line_type'.")
 {
   PRIMITIVE_HEADER (2);
-
   line_type ((SB_DEVICE_ARG (1)), (arg_index_integer (2, 8)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -237,7 +195,6 @@ The MODE argument is an integer in the range 0-15 inclusive.\n\
 See the description of the starbase procedure `drawing_mode'.")
 {
   PRIMITIVE_HEADER (2);
-
   drawing_mode ((SB_DEVICE_ARG (1)), (arg_index_integer (2, 16)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -249,33 +206,28 @@ DEFINE_PRIMITIVE ("STARBASE-DEVICE-COORDINATES", Prim_starbase_device_coordinate
   float p1 [3];
   float p2 [3];
   int cmap_size;
-  Pointer result;
   PRIMITIVE_HEADER (1);
-
   inquire_sizes
     ((SB_DEVICE_ARG (1)), physical_limits, resolution, p1, p2, (& cmap_size));
-  result = (allocate_marked_vector (TC_VECTOR, 4, true));
-  User_Vector_Set
-    (result, 0, (Allocate_Float ((double) (physical_limits [0][0]))));
-  User_Vector_Set
-    (result, 1, (Allocate_Float ((double) (physical_limits [0][1]))));
-  User_Vector_Set
-    (result, 2, (Allocate_Float ((double) (physical_limits [1][0]))));
-  User_Vector_Set
-    (result, 3, (Allocate_Float ((double) (physical_limits [1][1]))));
-  PRIMITIVE_RETURN (result);
+  {
+    SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 4, true));
+    VECTOR_SET (result, 0, (FLOAT_TO_FLONUM (physical_limits[0][0])));
+    VECTOR_SET (result, 1, (FLOAT_TO_FLONUM (physical_limits[0][1])));
+    VECTOR_SET (result, 2, (FLOAT_TO_FLONUM (physical_limits[1][0])));
+    VECTOR_SET (result, 3, (FLOAT_TO_FLONUM (physical_limits[1][1])));
+    PRIMITIVE_RETURN (result);
+  }
 }
 
 DEFINE_PRIMITIVE ("STARBASE-SET-VDC-EXTENT", Prim_starbase_set_vdc_extent, 5, 5, 0)
 {
-  fast float xmin, ymin, xmax, ymax;
   PRIMITIVE_HEADER (5);
-
-  FLONUM_ARG (2, xmin);
-  FLONUM_ARG (3, ymin);
-  FLONUM_ARG (4, xmax);
-  FLONUM_ARG (5, ymax);
-  set_vdc_extent ((SB_DEVICE_ARG (1)), xmin, ymin, xmax, ymax);
+  set_vdc_extent
+    ((SB_DEVICE_ARG (1)),
+     (arg_real_number (2)),
+     (arg_real_number (3)),
+     (arg_real_number (4)),
+     (arg_real_number (5)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -283,12 +235,12 @@ DEFINE_PRIMITIVE ("STARBASE-RESET-CLIP-RECTANGLE", Prim_starbase_reset_clip_rect
   "(STARBASE-RESET-CLIP-RECTANGLE DEVICE)\n\
 Undo the clip rectangle.  Subsequently, clipping is not affected by it.")
 {
-  int descriptor;
   PRIMITIVE_HEADER (1);
-
-  descriptor = (SB_DEVICE_ARG (1));
-  clip_indicator (descriptor, CLIP_TO_VDC);
-  clear_control (descriptor, CLEAR_VDC_EXTENT);
+  {
+    int descriptor = (SB_DEVICE_ARG (1));
+    clip_indicator (descriptor, CLIP_TO_VDC);
+    clear_control (descriptor, CLEAR_VDC_EXTENT);
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -296,92 +248,82 @@ DEFINE_PRIMITIVE ("STARBASE-SET-CLIP-RECTANGLE", Prim_starbase_set_clip_rectangl
   "(STARBASE-SET-CLIP-RECTANGLE X-LEFT Y-BOTTOM X-RIGHT Y-TOP)\n\
 Restrict the graphics drawing primitives to the area in the given rectangle.")
 {
-  int descriptor;
-  fast float x_left, x_right, y_bottom, y_top;
   PRIMITIVE_HEADER (5);
-
-  descriptor = (SB_DEVICE_ARG (1));
-  FLONUM_ARG (2, x_left);
-  FLONUM_ARG (3, y_bottom);
-  FLONUM_ARG (4, x_right);
-  FLONUM_ARG (5, y_top);
-  clip_rectangle (descriptor, x_left, x_right, y_bottom, y_top);
-  clip_indicator (descriptor, CLIP_TO_RECT);
-  clear_control (descriptor, CLEAR_CLIP_RECTANGLE);
+  {
+    int descriptor = (SB_DEVICE_ARG (1));
+    fast float x_left = (arg_real_number (2));
+    fast float y_bottom = (arg_real_number (3));
+    fast float x_right = (arg_real_number (4));
+    fast float y_top = (arg_real_number (5));
+    clip_rectangle (descriptor, x_left, x_right, y_bottom, y_top);
+    clip_indicator (descriptor, CLIP_TO_RECT);
+    clear_control (descriptor, CLEAR_CLIP_RECTANGLE);
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("STARBASE-DRAW-TEXT", Prim_starbase_draw_text, 4, 4,
   "(STARBASE-DRAW-TEXT DEVICE X Y STRING)")
 {
-  fast float x, y;
   PRIMITIVE_HEADER (4);
-
-  FLONUM_ARG (2, x);
-  FLONUM_ARG (3, y);
-  text2d ((SB_DEVICE_ARG (1)), x, y, (STRING_ARG (4)), VDC_TEXT, FALSE);
+  text2d
+    ((SB_DEVICE_ARG (1)),
+     (arg_real_number (2)),
+     (arg_real_number (3)),
+     (STRING_ARG (4)),
+     VDC_TEXT,
+     FALSE);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("STARBASE-SET-TEXT-HEIGHT", Prim_starbase_set_text_height, 2, 2,
   "(STARBASE-SET-TEXT-HEIGHT DEVICE HEIGHT)")
 {
-  fast float height;
   PRIMITIVE_HEADER (2);
-
-  FLONUM_ARG (2, height);
-  character_height ((SB_DEVICE_ARG (1)), height);
+  character_height ((SB_DEVICE_ARG (1)), (arg_real_number (2)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("STARBASE-SET-TEXT-ASPECT", Prim_starbase_set_text_aspect, 2, 2,
   "(STARBASE-SET-TEXT-ASPECT DEVICE ASPECT)")
 {
-  fast float aspect;
   PRIMITIVE_HEADER (2);
-
-  FLONUM_ARG (2, aspect);
-  character_expansion_factor ((SB_DEVICE_ARG (1)), aspect);
+  character_expansion_factor ((SB_DEVICE_ARG (1)), (arg_real_number (2)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("STARBASE-SET-TEXT-SLANT", Prim_starbase_set_text_slant, 2, 2,
   "(STARBASE-SET-TEXT-SLANT DEVICE SLANT)")
 {
-  fast float slant;
   PRIMITIVE_HEADER (2);
-
-  FLONUM_ARG (2, slant);
-  character_slant ((SB_DEVICE_ARG (1)), slant);
+  character_slant ((SB_DEVICE_ARG (1)), (arg_real_number (2)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("STARBASE-SET-TEXT-ROTATION", Prim_starbase_set_text_rotation, 2, 2,
   "(STARBASE-SET-TEXT-ROTATION DEVICE ANGLE)")
 {
-  fast float angle;
-  fast int path_style;
   PRIMITIVE_HEADER (2);
-
-  FLONUM_ARG (2, angle);
-  if ((angle > 315.0) || (angle <=  45.0))
-    path_style = PATH_RIGHT;
-  else if ((angle > 45.0) && (angle <= 135.0))
-    path_style = PATH_DOWN;
-  else if ((angle > 135.0) && (angle <= 225.0))
-    path_style = PATH_LEFT;
-  else if ((angle > 225.0) && (angle <= 315.0))
-    path_style = PATH_UP;
-  text_path ((SB_DEVICE_ARG (1)), path_style);
+  {
+    fast float angle = (arg_real_number (2));
+    fast int path_style;
+    if ((angle > 315.0) || (angle <=  45.0))
+      path_style = PATH_RIGHT;
+    else if ((angle > 45.0) && (angle <= 135.0))
+      path_style = PATH_DOWN;
+    else if ((angle > 135.0) && (angle <= 225.0))
+      path_style = PATH_LEFT;
+    else if ((angle > 225.0) && (angle <= 315.0))
+      path_style = PATH_UP;
+    text_path ((SB_DEVICE_ARG (1)), path_style);
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("STARBASE-COLOR-MAP-SIZE", Prim_starbase_color_map_size, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
-  PRIMITIVE_RETURN
-    (C_Integer_To_Scheme_Integer (inquire_cmap_size (SB_DEVICE_ARG (1))));
+  PRIMITIVE_RETURN (long_to_integer (inquire_cmap_size (SB_DEVICE_ARG (1))));
 }
 
 DEFINE_PRIMITIVE ("STARBASE-DEFINE-COLOR", Prim_starbase_define_color, 5, 5,
@@ -393,11 +335,10 @@ Changes the color map, defining COLOR-INDEX to be the given RGB color.")
   int descriptor;
   float colors [1][3];
   PRIMITIVE_HEADER (5);
-
   descriptor = (SB_DEVICE_ARG (1));
-  FLONUM_ARG (3, colors[0][0]);
-  FLONUM_ARG (4, colors[0][1]);
-  FLONUM_ARG (5, colors[0][2]);
+  (colors [0] [0]) = (arg_real_number (3));
+  (colors [0] [1]) = (arg_real_number (4));
+  (colors [0] [2]) = (arg_real_number (5));
   define_color_table
     (descriptor,
      (arg_index_integer (2, (inquire_cmap_size (descriptor)))),
@@ -414,7 +355,6 @@ Does not take effect until the next starbase output operation.")
 {
   int descriptor;
   PRIMITIVE_HEADER (2);
-
   descriptor = (SB_DEVICE_ARG (1));
   set_line_color_index
     (descriptor, (arg_index_integer (2, (inquire_cmap_size (descriptor)))));
@@ -432,9 +372,7 @@ suitable for printing on an HP laserjet printer.\n\
 If INVERT? is not #F, invert black and white in the output.")
 {
   PRIMITIVE_HEADER (3);
-
-  print_graphics
-    ((SB_DEVICE_ARG (2)), (STRING_ARG (2)), ((ARG_REF (3)) != SHARP_F));
+  print_graphics ((SB_DEVICE_ARG (2)), (STRING_ARG (2)), (BOOLEAN_ARG (3)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -449,30 +387,29 @@ static int
 inquire_cmap_mask (fildes)
      int fildes;
 {
-  int cmap_size;
-
-  cmap_size = (inquire_cmap_size (fildes));
-  return (((cmap_size >= 0) && (cmap_size < 8)) ?
-	  ((1 << cmap_size) - 1) :
-	  (-1));
+  int cmap_size = (inquire_cmap_size (fildes));
+  return
+    (((cmap_size >= 0) && (cmap_size < 8))
+     ? ((1 << cmap_size) - 1)
+     : (-1));
 }
 
 static int
 open_dumpfile (dumpname)
   char * dumpname;
 {
-  int dumpfile;
-
-  dumpfile = (creat (dumpname, 0666));
+  int dumpfile = (creat (dumpname, 0666));
   if (dumpfile == (-1))
     {
       fprintf (stderr, "\nunable to create graphics dump file.");
+      fflush (stderr);
       error_external_return ();
     }
   dumpfile = (open (dumpname, OUTINDEV));
   if (dumpfile == (-1))
     {
       fprintf (stderr, "\nunable to open graphics dump file.");
+      fflush (stderr);
       error_external_return ();
     }
   return (dumpfile);
@@ -484,52 +421,36 @@ print_graphics (descriptor, dumpname, inverse_p)
      char * dumpname;
      int inverse_p;
 {
-  int dumpfile;
-
-  dumpfile = (open_dumpfile (dumpname));
-
+  int dumpfile = (open_dumpfile (dumpname));
   write (dumpfile, rasres, (strlen (rasres)));
   write (dumpfile, rastop, (strlen (rastop)));
   write (dumpfile, raslft, (strlen (raslft)));
   write (dumpfile, rasbeg, (strlen (rasbeg)));
-
   {
-    fast unsigned char mask;
+    fast unsigned char mask = (inquire_cmap_mask (descriptor));
     int col;
-
-    mask = (inquire_cmap_mask (descriptor));
     for (col = (1024 - 16); (col >= 0); col = (col - 16))
       {
 	unsigned char pixdata [(16 * 768)];
-
 	{
-	  fast unsigned char * p;
-	  fast unsigned char * pe;
-
-	  p = (& (pixdata [0]));
-	  pe = (& (pixdata [sizeof (pixdata)]));
+	  fast unsigned char * p = (& (pixdata [0]));
+	  fast unsigned char * pe = (& (pixdata [sizeof (pixdata)]));
 	  while (p < pe)
 	    (*p++) = '\0';
 	}
 	dcblock_read (descriptor, col, 0, 16, 768, pixdata, 0);
 	{
 	  int x;
-
 	  for (x = (16 - 1); (x >= 0); x -= 1)
 	    {
 	      unsigned char rasdata [96];
-	      fast unsigned char * p;
-	      fast unsigned char * r;
+	      fast unsigned char * p = (& (pixdata [x]));
+	      fast unsigned char * r = rasdata;
 	      int n;
-
-	      p = (& (pixdata [x]));
-	      r = rasdata;
 	      for (n = 0; (n < 96); n += 1)
 		{
-		  fast unsigned char c;
+		  fast unsigned char c = 0;
 		  int nn;
-
-		  c = 0;
 		  for (nn = 0; (nn < 8); nn += 1)
 		    {
 		      c <<= 1;

@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.43 1989/09/20 23:07:54 cph Exp $
+
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,10 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.42 1989/06/08 00:25:01 jinx Rel $
-
-   This file contains code for fasdump and dump-band.
-*/
+/* This file contains code for fasdump and dump-band. */
 
 #include "scheme.h"
 #include "prims.h"
@@ -44,7 +43,7 @@ MIT in each case. */
 #include "fasl.h"
 #include "dump.c"
 
-extern Pointer
+extern SCHEME_OBJECT
   dump_renumber_primitive(),
   *initialize_primitive_table(),
   *cons_primitive_table(),
@@ -52,7 +51,7 @@ extern Pointer
 
 /* Some statics used freely in this file */
 
-static Pointer *NewFree, *NewMemTop, *Fixup, *Orig_New_Free;
+static SCHEME_OBJECT *NewFree, *NewMemTop, *Fixup, *Orig_New_Free;
 static Boolean compiled_code_present_p;
 
 /* FASDUMP:
@@ -74,10 +73,10 @@ static Boolean compiled_code_present_p;
                where the flag is #!true for a dump into constant
                space at reload time, () for a dump into heap.
 
-   Currently flag is ignored.	       
+   Currently flag is ignored.
 */
 
-/* 
+/*
    Copy of GCLoop, except (a) copies out of constant space into the
    object to be dumped; (b) changes symbols and variables as
    described; (c) keeps track of broken hearts and their original
@@ -88,7 +87,7 @@ static Boolean compiled_code_present_p;
 Dump_Pointer(Fasdump_Setup_Pointer(Extra_Code, Normal_BH(false, continue)))
 
 #define Dump_Pointer(Code)						\
-Old = Get_Pointer(Temp);						\
+Old = OBJECT_ADDRESS (Temp);						\
 Code
 
 #define Dump_Compiled_Entry()						\
@@ -99,7 +98,7 @@ Code
 
 /* Dump_Mode is currently a fossil.  It should be resurrected. */
 
-/* Should be big enough for the largest fixed size object (a Quad) 
+/* Should be big enough for the largest fixed size object (a Quad)
    and 2 for the Fixup.
  */
 
@@ -111,10 +110,10 @@ Code
 
 long
 DumpLoop(Scan, Dump_Mode)
-     fast Pointer *Scan;
+     fast SCHEME_OBJECT *Scan;
      int Dump_Mode;
 {
-  fast Pointer *To, *Old, Temp, New_Address, *Fixes;
+  fast SCHEME_OBJECT *To, *Old, Temp, New_Address, *Fixes;
   long result;
 
   To = NewFree;
@@ -132,7 +131,7 @@ DumpLoop(Scan, Dump_Mode)
 	break;
 
       case TC_BROKEN_HEART:
-        if (OBJECT_DATUM(Temp) != 0)
+        if (OBJECT_DATUM (Temp) != 0)
 	{
 	  sprintf(gc_death_message_buffer,
 		  "dumploop: broken heart (0x%lx) in scan",
@@ -144,7 +143,7 @@ DumpLoop(Scan, Dump_Mode)
 
       case TC_MANIFEST_NM_VECTOR:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
-	Scan += Get_Integer(Temp);
+	Scan += OBJECT_DATUM (Temp);
 	break;
 
       /* Compiled code relocation. */
@@ -201,7 +200,7 @@ DumpLoop(Scan, Dump_Mode)
 	{
 	  fast long count;
 	  fast machine_word *word_ptr;
-	  Pointer *end_scan;
+	  SCHEME_OBJECT *end_scan;
 
 	  count = READ_OPERATOR_LINKAGE_COUNT(Temp);
 	  word_ptr = FIRST_OPERATOR_LINKAGE_ENTRY(Scan);
@@ -224,7 +223,7 @@ DumpLoop(Scan, Dump_Mode)
 	break;
 
       case TC_REFERENCE_TRAP:
-	if (OBJECT_DATUM(Temp) <= TRAP_MAX_IMMEDIATE)
+	if (OBJECT_DATUM (Temp) <= TRAP_MAX_IMMEDIATE)
 	{
 	  /* It is a non pointer. */
 	  break;
@@ -237,11 +236,11 @@ DumpLoop(Scan, Dump_Mode)
 	break;
 
       case TC_INTERNED_SYMBOL:
-	Setup_Pointer_for_Dump(Fasdump_Symbol(Make_Broken_Heart(0)));
+	Setup_Pointer_for_Dump (Fasdump_Symbol (BROKEN_HEART_ZERO));
 	break;
 
       case TC_UNINTERNED_SYMBOL:
-	Setup_Pointer_for_Dump(Fasdump_Symbol(UNBOUND_OBJECT));
+	Setup_Pointer_for_Dump (Fasdump_Symbol (UNBOUND_OBJECT));
 	break;
 
       case_Triple:
@@ -309,27 +308,27 @@ exit_dumploop:
   PRIMITIVE_RETURN(Fasdump_Exit(PRIM_INTERRUPT));			\
 }
 
-Pointer
+SCHEME_OBJECT
 Fasdump_Exit(code)
      long code;
 {
   Boolean result;
-  fast Pointer *Fixes;
+  fast SCHEME_OBJECT *Fixes;
 
   Fixes = Fixup;
   result = Close_Dump_File();
   while (Fixes != NewMemTop)
   {
-    fast Pointer *Fix_Address;
+    fast SCHEME_OBJECT *Fix_Address;
 
-    Fix_Address = Get_Pointer(*Fixes++); /* Where it goes. */
+    Fix_Address = OBJECT_ADDRESS (*Fixes++); /* Where it goes. */
     *Fix_Address = *Fixes++;             /* Put it there. */
   }
   Fixup = Fixes;
   Fasdump_Exit_Hook();
   if (!result)
   {
-    Primitive_Error(ERR_IO_ERROR);
+    signal_error_from_primitive (ERR_IO_ERROR);
     /*NOTREACHED*/
   }
   if (code == PRIM_DONE)
@@ -338,11 +337,11 @@ Fasdump_Exit(code)
   }
   else if (code == PRIM_INTERRUPT)
   {
-    return (NIL);
+    return (SHARP_F);
   }
   else
   {
-    Primitive_Error(code);
+    signal_error_from_primitive (code);
     /*NOTREACHED*/
   }
 }
@@ -351,11 +350,11 @@ Fasdump_Exit(code)
    Dump an object into a file so that it can be loaded using
    BINARY-FASLOAD.  A spare heap is required for this operation.
    The first argument is the object to be dumped.  The second is
-   the filename and the third a flag.  The flag, if #!TRUE, means
+   the filename and the third a flag.  The flag, if #T, means
    that the object is to be dumped for reloading into constant
-   space.  This is currently disabled. If the flag is NIL, it means
+   space.  This is currently disabled. If the flag is #F, it means
    that it will be reloaded into the heap.  The primitive returns
-   #!TRUE or NIL indicating whether it successfully dumped the
+   #T or #F indicating whether it successfully dumped the
    object (it can fail on an object that is too large).
 
    The code for dumping pure is severely broken and conditionalized out.
@@ -363,39 +362,30 @@ Fasdump_Exit(code)
 
 DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
 {
-  Pointer Object, File_Name, Flag, *New_Object;
-  Pointer *table_start, *table_end;
-  long Pure_Length, Length, table_length, value;
+  SCHEME_OBJECT Object, File_Name, Flag, *New_Object;
+  SCHEME_OBJECT *table_start, *table_end;
+  long Length, table_length;
   Boolean result;
-  Primitive_3_Args();
-
+  PRIMITIVE_HEADER (3);
   CHECK_ARG (2, STRING_P);
-
   compiled_code_present_p = false;
-  Object = Arg1;
-  File_Name = Arg2;
-  Flag = Arg3;
-
-  if (!Open_Dump_File(File_Name, WRITE_FLAG))
-  {
-    Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  }
+  Object = (ARG_REF (1));
+  File_Name = (ARG_REF (2));
+  Flag = (ARG_REF (3));
+  if (! (Open_Dump_File (File_Name, WRITE_FLAG)))
+    error_bad_range_arg (2);
 #if false
-  if ((Flag != NIL) && (Flag != SHARP_T))
+  CHECK_ARG (3, BOOLEAN_P);
 #else
-  if (Flag != NIL)
-#endif /* false */
-  {
-    Primitive_Error(ERR_ARG_3_WRONG_TYPE);
-  }
-
+  if (Flag != SHARP_F)
+    error_wrong_type_arg (3);
+#endif
   table_end = &Free[Space_Before_GC()];
   table_start = initialize_primitive_table(Free, table_end);
   if (table_start >= table_end)
-  {
-    Primitive_GC(table_start - Free);
-  }
-
+    {
+      Primitive_GC (table_start - Free);
+    }
   Fasdump_Free_Calc(NewFree, NewMemTop, Orig_New_Free);
   Fixup = NewMemTop;
   New_Object = NewFree;
@@ -419,25 +409,24 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
 
   if (Flag == SHARP_T)
   {
-    Pointer *Addr_Of_New_Object;
+    SCHEME_OBJECT *Addr_Of_New_Object;
 
-    *New_Free++ = NIL;
+    *New_Free++ = SHARP_F;
     DUMPLOOP(New_Object, PURE_COPY);
 #if false
     /* Can't align. */
-    Align_Float(NewFree);
+    ALIGN_FLOAT (NewFree);
 #endif
     Pure_Length = ((NewFree - New_Object) + 1);
-    *NewFree++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-    *NewFree++ = Make_Non_Pointer(CONSTANT_PART, Pure_Length);
+    *NewFree++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
+    *NewFree++ = MAKE_OBJECT (CONSTANT_PART, Pure_Length);
     DUMPLOOP(New_Object, CONSTANT_COPY);
     Length =  ((NewFree - New_Object) + 2);
-    *NewFree++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-    *NewFree++ = Make_Non_Pointer(END_OF_BLOCK, (Length - 1));
-    Addr_Of_New_Object = Get_Pointer(New_Object[0]);
-    New_Object[0] = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR,
-                                     Pure_Length);
-    New_Object[1] = Make_Non_Pointer(PURE_PART, (Length - 1));
+    *NewFree++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
+    *NewFree++ = MAKE_OBJECT (END_OF_BLOCK, (Length - 1));
+    Addr_Of_New_Object = OBJECT_ADDRESS (New_Object[0]);
+    New_Object[0] = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, Pure_Length);
+    New_Object[1] = MAKE_OBJECT (PURE_PART, (Length - 1));
     table_start = NewFree;
     table_end = cons_primitive_table(NewFree, Fixup, &table_length);
     if (table_end >= Fixup)
@@ -457,7 +446,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
     DUMPLOOP(New_Object, NORMAL_GC);
 #if false
     /* Aligning might screw up some of the counters. */
-    Align_Float(NewFree);
+    ALIGN_FLOAT (NewFree);
 #endif
     Length = (NewFree - New_Object);
     table_start = NewFree;
@@ -480,57 +469,35 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
 /* (DUMP-BAND PROCEDURE FILE-NAME)
    Saves all of the heap and pure space on FILE-NAME.  When the
    file is loaded back using BAND_LOAD, PROCEDURE is called with an
-   argument of NIL.
+   argument of #F.
 */
 
 DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
 {
-  Pointer Combination, *table_start, *table_end, *saved_free;
+  SCHEME_OBJECT Combination, *table_start, *table_end, *saved_free;
   long table_length;
   Boolean result;
-  Primitive_2_Args();
-
-  Band_Dump_Permitted();
-  /* This type check isn't strictly needed, but it is better to find
-     out about problems now than to wait until band-load time.
-     However, the type code list must be kept in agreement with
-     internal-apply in the interpreter.  */
-  {
-    long type_code;
-
-    type_code = (OBJECT_TYPE (Arg1));
-    if (! ((type_code == TC_COMPILED_ENTRY) ||
-	   (type_code == TC_CONTROL_POINT) ||
-	   (type_code == TC_ENTITY) ||
-	   (type_code == TC_EXTENDED_PROCEDURE) ||
-	   (type_code == TC_PRIMITIVE) ||
-	   (type_code == TC_PROCEDURE)))
-      error_wrong_type_arg (1);
-  }
-  Arg_2_Type(TC_CHARACTER_STRING);
-
+  PRIMITIVE_HEADER (2);
+  Band_Dump_Permitted ();
+  CHECK_ARG (1, INTERPRETER_APPLICABLE_P);
+  CHECK_ARG (2, STRING_P);
   if (Unused_Heap < Heap_Bottom)
-  {
-    /* Cause the image to be in the low heap, to increase
-       the probability that no relocation is needed on reload.
-     */
-
-    Primitive_GC(0);
-  }
-
-  if (!Open_Dump_File(Arg2, WRITE_FLAG))
-  {
-    Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  }
-  Primitive_GC_If_Needed(5);
+    {
+      /* Cause the image to be in the low heap, to increase
+	 the probability that no relocation is needed on reload. */
+      Primitive_GC (0);
+    }
+  if (! (Open_Dump_File ((ARG_REF (2)), WRITE_FLAG)))
+    error_bad_range_arg (2);
+  Primitive_GC_If_Needed (5);
   saved_free = Free;
-  Combination = Make_Pointer(TC_COMBINATION_1, Free);
-  Free[COMB_1_FN] = Arg1;
-  Free[COMB_1_ARG_1] = NIL;
+  Combination = MAKE_POINTER_OBJECT (TC_COMBINATION_1, Free);
+  Free[COMB_1_FN] = (ARG_REF (1));
+  Free[COMB_1_ARG_1] = SHARP_F;
   Free += 2;
   *Free++ = Combination;
   *Free++ = compiler_utilities;
-  *Free = Make_Pointer(TC_LIST, (Free - 2));
+  *Free = MAKE_POINTER_OBJECT (TC_LIST, (Free - 2));
   Free++;  /* Some compilers are TOO clever about this and increment Free
 	      before calculating Free-2! */
   table_start = Free;
@@ -543,7 +510,7 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
   {
 #if false
   /* Aligning here confuses some of the counts computed. */
-    Align_Float(Free);
+    ALIGN_FLOAT (Free);
 #endif
     result = Write_File((Free - 1),
 			((long) (Free - Heap_Bottom)), Heap_Bottom,
@@ -551,11 +518,11 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
 			Constant_Space,
 			table_start, table_length,
 			((long) (table_end - table_start)),
-			(compiler_utilities != NIL), true);
+			(compiler_utilities != SHARP_F), true);
   }
   /* The and is short-circuit, so it must be done in this order. */
-  result = (Close_Dump_File() && result);
-  Band_Dump_Exit_Hook();
+  result = ((Close_Dump_File ()) && result);
+  Band_Dump_Exit_Hook ();
   Free = saved_free;
-  PRIMITIVE_RETURN(result ? SHARP_T : NIL);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (result));
 }

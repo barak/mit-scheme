@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.h,v 9.44 1989/09/20 23:10:10 cph Rel $
+
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,11 +32,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.h,v 9.43 1989/08/28 18:29:03 cph Exp $ */
-
 /* Macros and declarations for the variable lookup code. */
 
-extern Pointer
+extern SCHEME_OBJECT
   *deep_lookup(),
   *lookup_fluid(),
   *force_definition();
@@ -43,7 +43,7 @@ extern long
   deep_lookup_end(),
   deep_assignment_end();
 
-extern Pointer
+extern SCHEME_OBJECT
   unbound_trap_object[],
   uncompiled_trap_object[],
   illegal_trap_object[],
@@ -85,7 +85,7 @@ extern Pointer
 #endif /* b32 */
 
 #ifndef UNCOMPILED_VARIABLE		/* Safe version */
-#define UNCOMPILED_VARIABLE		Make_Non_Pointer(UNCOMPILED_REF, 0)
+#define UNCOMPILED_VARIABLE		MAKE_OBJECT (UNCOMPILED_REF, 0)
 #endif
 
 /* Macros for speedy variable reference. */
@@ -93,12 +93,12 @@ extern Pointer
 #if (LOCAL_REF == 0)
 
 #define Lexical_Offset(Ind)		((long) (Ind))
-#define Make_Local_Offset(Ind)		((Pointer) (Ind))
+#define Make_Local_Offset(Ind)		((SCHEME_OBJECT) (Ind))
 
 #else
 
-#define Lexical_Offset(Ind)		OBJECT_DATUM(Ind)
-#define Make_Local_Offset(Ind)		Make_Non_Pointer(LOCAL_REF, Ind)
+#define Lexical_Offset(Ind)		OBJECT_DATUM (Ind)
+#define Make_Local_Offset(Ind)		MAKE_OBJECT (LOCAL_REF, Ind)
 
 #endif
 
@@ -114,21 +114,21 @@ extern Pointer
 #include "error: lookup.h inconsistency detected."
 #endif
 
-#define get_offset(hunk) Lexical_Offset(Fetch(hunk[VARIABLE_OFFSET]))
+#define get_offset(hunk) Lexical_Offset(MEMORY_FETCH (hunk[VARIABLE_OFFSET]))
 
 #ifdef PARALLEL_PROCESSOR
 
 #define verify(type_code, variable, code, label)			\
 {									\
   variable = code;							\
-  if (OBJECT_TYPE(Fetch(hunk[VARIABLE_COMPILED_TYPE])) !=		\
+  if (OBJECT_TYPE (MEMORY_FETCH (hunk[VARIABLE_COMPILED_TYPE])) !=	\
       type_code)							\
     goto label;								\
 }
 
 #define verified_offset(variable, code)		variable
 
-/* Unlike Lock_Cell, cell must be (Pointer *).  This currently does
+/* Unlike Lock_Cell, cell must be (SCHEME_OBJECT *).  This currently does
    not matter, but might on a machine with address mapping.
  */
 
@@ -184,26 +184,25 @@ extern Pointer
 #define Future_Variable_Splice(Vbl, Ofs, Val)
 #endif
 
-/* Pointer *cell, env, *hunk; */
+/* SCHEME_OBJECT *cell, env, *hunk; */
 
 #define lookup(cell, env, hunk, label)					\
 {									\
-  fast Pointer frame;							\
-  long offset;								\
+  fast SCHEME_OBJECT frame;						\
 									\
 label:									\
 									\
-  frame = Fetch(hunk[VARIABLE_COMPILED_TYPE]);				\
+  frame = (MEMORY_FETCH (hunk [VARIABLE_COMPILED_TYPE]));		\
 									\
-  switch (OBJECT_TYPE(frame))						\
+  switch (OBJECT_TYPE (frame))						\
   {									\
     case GLOBAL_REF:							\
       /* frame is a pointer to the same symbol. */			\
-      cell = Nth_Vector_Loc(frame, SYMBOL_GLOBAL_VALUE);		\
+      cell = MEMORY_LOC (frame, SYMBOL_GLOBAL_VALUE);			\
       break;								\
 									\
     case LOCAL_REF:							\
-      cell = Nth_Vector_Loc(env, Lexical_Offset(frame));		\
+      cell = MEMORY_LOC (env, Lexical_Offset(frame));			\
       break;								\
 									\
     case FORMAL_REF:							\
@@ -216,7 +215,7 @@ label:									\
       /* Done here rather than in a separate case because of		\
 	 peculiarities of the bobcat compiler.				\
        */								\
-      cell = ((OBJECT_TYPE(frame) == UNCOMPILED_REF) ?			\
+      cell = ((OBJECT_TYPE (frame) == UNCOMPILED_REF) ?			\
 	      uncompiled_trap_object :					\
 	      illegal_trap_object);					\
       break;								\
@@ -232,11 +231,11 @@ label:									\
   frame = env;								\
   while(--depth >= 0)							\
   {									\
-    frame = Fast_Vector_Ref(Vector_Ref(frame, ENVIRONMENT_FUNCTION),	\
+    frame = FAST_MEMORY_REF (MEMORY_REF (frame, ENVIRONMENT_FUNCTION),	\
 			    PROCEDURE_ENVIRONMENT);			\
   }									\
 									\
-  cell = Nth_Vector_Loc(frame,						\
+  cell = MEMORY_LOC (frame,						\
 			verified_offset(offset, get_offset(hunk)));	\
 									\
   break;								\
@@ -251,30 +250,30 @@ label:									\
   frame = env;								\
   while(--depth >= 0)							\
   {									\
-    frame = Fast_Vector_Ref(Vector_Ref(frame, ENVIRONMENT_FUNCTION),	\
+    frame = FAST_MEMORY_REF (MEMORY_REF (frame, ENVIRONMENT_FUNCTION),	\
 			    PROCEDURE_ENVIRONMENT);			\
   }									\
 									\
-  frame = Vector_Ref(frame, ENVIRONMENT_FUNCTION);			\
-  if (OBJECT_TYPE(frame) != AUX_LIST_TYPE)				\
+  frame = MEMORY_REF (frame, ENVIRONMENT_FUNCTION);			\
+  if (OBJECT_TYPE (frame) != AUX_LIST_TYPE)				\
   {									\
     cell = uncompiled_trap_object;					\
     break;								\
   }									\
   depth = verified_offset(offset, get_offset(hunk));			\
-  if (depth > Vector_Length(frame))					\
+  if (depth > VECTOR_LENGTH (frame))					\
   {									\
     cell = uncompiled_trap_object;					\
     break;								\
   }									\
-  frame = Vector_Ref(frame, depth);					\
-  if ((frame == NIL) ||							\
-      (Fast_Vector_Ref(frame, CONS_CAR) != hunk[VARIABLE_SYMBOL]))	\
+  frame = MEMORY_REF (frame, depth);					\
+  if ((frame == SHARP_F) ||						\
+      (FAST_PAIR_CAR (frame) != hunk[VARIABLE_SYMBOL]))			\
   {									\
     cell = uncompiled_trap_object;					\
     break;								\
   }									\
-  cell = Nth_Vector_Loc(frame, CONS_CDR);				\
+  cell = PAIR_CDR_LOC (frame);						\
   break;								\
 }
 
@@ -306,7 +305,7 @@ extern long compiler_uncache();
 
 extern long compiler_recache();
 
-extern Pointer *shadowed_value_cell;
+extern SCHEME_OBJECT *shadowed_value_cell;
 
 #define compiler_uncache(cell, sym)					\
   (shadowed_value_cell = cell, PRIM_DONE)

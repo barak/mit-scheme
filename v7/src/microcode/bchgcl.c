@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.36 1989/09/20 23:05:45 cph Exp $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,12 +32,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.35 1989/06/08 00:19:13 jinx Rel $ */
-
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
-   and related utilities to disk.
-*/
+   and related utilities to disk. */
 
 #include "scheme.h"
 #include "bchgcc.h"
@@ -45,12 +44,12 @@ MIT in each case. */
 #include "error: bchgcl does not handle floating alignment."
 #endif
 
-Pointer *
+SCHEME_OBJECT *
 GCLoop(Scan, To_ptr, To_Address_ptr)
-     fast Pointer *Scan;
-     Pointer **To_ptr, **To_Address_ptr;
+     fast SCHEME_OBJECT *Scan;
+     SCHEME_OBJECT **To_ptr, **To_Address_ptr;
 {
-  fast Pointer *To, *Old, Temp, *Low_Constant, *To_Address, New_Address;
+  fast SCHEME_OBJECT *To, *Old, Temp, *Low_Constant, *To_Address, New_Address;
 
   To = *To_ptr;
   To_Address = *To_Address_ptr;
@@ -62,7 +61,7 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
     Switch_by_GC_Type(Temp)
     {
       case TC_BROKEN_HEART:
-        if (Scan != (Get_Pointer(Temp)))
+        if (Scan != (OBJECT_ADDRESS (Temp)))
 	{
 	  sprintf(gc_death_message_buffer,
 		  "gcloop: broken heart (0x%lx) in scan",
@@ -80,7 +79,7 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
 	/* Check whether this bumps over current buffer,
 	   and if so we need a new bufferfull. */
-	Scan += Get_Integer(Temp);
+	Scan += OBJECT_DATUM (Temp);
 	if (Scan < scan_buffer_top)
 	{
 	  break;
@@ -175,7 +174,7 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
 
 	Scan += 1;
 	start_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(Scan);
-	
+
 	for (word_ptr = start_ptr,
 	     next_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
 	     true;
@@ -222,7 +221,7 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
 	relocate_normal_pointer(copy_cell(), 1);
 
       case TC_REFERENCE_TRAP:
-	if (OBJECT_DATUM(Temp) <= TRAP_MAX_IMMEDIATE)
+	if (OBJECT_DATUM (Temp) <= TRAP_MAX_IMMEDIATE)
 	{
 	  /* It is a non pointer. */
 	  break;

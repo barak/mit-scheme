@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.36 1989/09/20 23:10:42 cph Exp $
+
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,165 +32,48 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.35 1989/08/28 18:29:17 cph Exp $ */
-
 /* This file contains some macros for defining primitives,
    for argument type or value checking, and for accessing
    the arguments. */
 
 /* Definition of primitives. */
 
-#define DEFINE_PRIMITIVE(scheme_name, fn_name, min_args, max_args, doc_string) \
-extern Pointer fn_name ();						\
-Pointer fn_name ()
+#define DEFINE_PRIMITIVE(scheme_name, fn_name, min_args, max_args, doc) \
+extern SCHEME_OBJECT fn_name ();					\
+SCHEME_OBJECT fn_name ()
 
 /* Can be used for `max_args' in `DEFINE_PRIMITIVE' to indicate that
    the primitive has no upper limit on its arity.  */
 #define LEXPR (-1)
 
-/* This form is obsolete.  Use DEFINE_PRIMITIVE instead.  */
-#define Define_Primitive(fn_name, arity, scheme_name)			\
-  DEFINE_PRIMITIVE (scheme_name, fn_name, arity, arity, 0)
-
+/* Primitives should have this as their first statement. */
 #ifdef ENABLE_PRIMITIVE_PROFILING
-#define primitive_entry_hook() record_primitive_entry (Fetch_Expression ())
+#define PRIMITIVE_HEADER(n_args) record_primitive_entry (Fetch_Expression ())
 #else
-#define primitive_entry_hook() {}
+#define PRIMITIVE_HEADER(n_args) {}
 #endif
 
-/* This is new header for primitives, which gives better control over
-   variable allocation than older `Primitive_N_Args' macros. */
-
-#define PRIMITIVE_HEADER(n_args) primitive_entry_hook ()
-
 /* Primitives return by performing one of the following operations. */
-
 #define PRIMITIVE_RETURN(value)	return (value)
+#define PRIMITIVE_ABORT(action)	longjmp ((*Back_To_Eval), (action))
 
-#define PRIMITIVE_ABORT(action)	longjmp(*Back_To_Eval, (action))
+extern void canonicalize_primitive_context ();
+#define PRIMITIVE_CANONICALIZE_CONTEXT canonicalize_primitive_context
 
-extern void canonicalize_primitive_context();
-
-#define PRIMITIVE_CANONICALIZE_CONTEXT()				\
-{									\
-  canonicalize_primitive_context();					\
-}
-
-/* Preambles for primitive procedures.  These store the arguments into
- * local variables for fast access.
- */
-
-#define Primitive_0_Args()	primitive_entry_hook ()
-
-#define Primitive_1_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
-				primitive_entry_hook ()
-
-#define Primitive_1_Arg()	Primitive_1_Args()
-
-#define Primitive_2_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
-				fast Pointer Arg2 = Stack_Ref(1);	\
-				primitive_entry_hook ()
-
-#define Primitive_3_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
-				fast Pointer Arg2 = Stack_Ref(1);	\
-				fast Pointer Arg3 = Stack_Ref(2);	\
-				primitive_entry_hook ()
-
-#define Primitive_4_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
-				fast Pointer Arg2 = Stack_Ref(1);	\
-				fast Pointer Arg3 = Stack_Ref(2);	\
-				fast Pointer Arg4 = Stack_Ref(3);	\
-				primitive_entry_hook ()
-
-#define Primitive_5_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
-				fast Pointer Arg2 = Stack_Ref(1);	\
-				fast Pointer Arg3 = Stack_Ref(2);	\
-				fast Pointer Arg4 = Stack_Ref(3);	\
-				fast Pointer Arg5 = Stack_Ref(4);	\
-				primitive_entry_hook ()
-
-#define Primitive_6_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
-				fast Pointer Arg2 = Stack_Ref(1);	\
-				fast Pointer Arg3 = Stack_Ref(2);	\
-				fast Pointer Arg4 = Stack_Ref(3);	\
-				fast Pointer Arg5 = Stack_Ref(4);	\
-				fast Pointer Arg6 = Stack_Ref(5);	\
-				primitive_entry_hook ()
-
-#define Primitive_7_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
-				fast Pointer Arg2 = Stack_Ref(1);	\
-				fast Pointer Arg3 = Stack_Ref(2);	\
-				fast Pointer Arg4 = Stack_Ref(3);	\
-				fast Pointer Arg5 = Stack_Ref(4);	\
-				fast Pointer Arg6 = Stack_Ref(5);	\
-				fast Pointer Arg7 = Stack_Ref(6);	\
-				primitive_entry_hook ()
-
-#define Primitive_8_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
-				fast Pointer Arg2 = Stack_Ref(1);	\
-				fast Pointer Arg3 = Stack_Ref(2);	\
-				fast Pointer Arg4 = Stack_Ref(3);	\
-				fast Pointer Arg5 = Stack_Ref(4);	\
-				fast Pointer Arg6 = Stack_Ref(5);	\
-				fast Pointer Arg7 = Stack_Ref(6);	\
-				fast Pointer Arg8 = Stack_Ref(7);	\
-				primitive_entry_hook ()
-
-#define Primitive_9_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
-				fast Pointer Arg2 = Stack_Ref(1);	\
-				fast Pointer Arg3 = Stack_Ref(2);	\
-				fast Pointer Arg4 = Stack_Ref(3);	\
-				fast Pointer Arg5 = Stack_Ref(4);	\
-				fast Pointer Arg6 = Stack_Ref(5);	\
-				fast Pointer Arg7 = Stack_Ref(6);	\
-				fast Pointer Arg8 = Stack_Ref(7);	\
-				fast Pointer Arg9 = Stack_Ref(8);	\
-				primitive_entry_hook ()
-
-#define Primitive_10_Args()	fast Pointer Arg1 = Stack_Ref(0);	\
-				fast Pointer Arg2 = Stack_Ref(1);	\
-				fast Pointer Arg3 = Stack_Ref(2);	\
-				fast Pointer Arg4 = Stack_Ref(3);	\
-				fast Pointer Arg5 = Stack_Ref(4);	\
-				fast Pointer Arg6 = Stack_Ref(5);	\
-				fast Pointer Arg7 = Stack_Ref(6);	\
-				fast Pointer Arg8 = Stack_Ref(7);	\
-				fast Pointer Arg9 = Stack_Ref(8);	\
-				fast Pointer Arg10 = Stack_Ref(9);	\
-				primitive_entry_hook ()
-
 /* Various utilities */
-
-#define Primitive_Error signal_error_from_primitive
-#define Primitive_Interrupt signal_interrupt_from_primitive
 
 #define Primitive_GC(Amount)						\
 {									\
   Request_GC (Amount);							\
-  Primitive_Interrupt ();						\
+  signal_interrupt_from_primitive ();					\
 }
 
 #define Primitive_GC_If_Needed(Amount)					\
 {									\
-  if (GC_Check (Amount)) Primitive_GC(Amount);				\
+  if (GC_Check (Amount)) Primitive_GC (Amount);				\
 }
 
-#define Range_Check(To_Where, P, Low, High, Error)			\
-{									\
-  To_Where = UNSIGNED_FIXNUM_VALUE (P);					\
-  if ((To_Where < (Low)) || (To_Where > (High)))			\
-    Primitive_Error (Error);						\
-}
-
-#define Sign_Extend_Range_Check(To_Where, P, Low, High, Error)		\
-{									\
-  Sign_Extend ((P), To_Where);						\
-  if ((To_Where < (Low)) || (To_Where > (High)))			\
-    Primitive_Error (Error);						\
-}
-
-#define CHECK_ARG(argument, type_p)					\
-do									\
+#define CHECK_ARG(argument, type_p) do					\
 {									\
   if (! (type_p (ARG_REF (argument))))					\
     error_wrong_type_arg (argument);					\
@@ -196,87 +81,50 @@ do									\
 
 #define ARG_LOC(argument) (STACK_LOC (argument - 1))
 #define ARG_REF(argument) (STACK_REF (argument - 1))
-
 #define LEXPR_N_ARGUMENTS() (Regs [REGBLOCK_LEXPR_ACTUALS])
-
+
+extern void signal_error_from_primitive ();
+extern void signal_interrupt_from_primitive ();
+extern void error_wrong_type_arg ();
+extern void error_bad_range_arg ();
+extern void error_external_return ();
+extern long arg_integer ();
 extern long arg_nonnegative_integer ();
 extern long arg_index_integer ();
-extern long object_to_long ();
-extern Pointer allocate_non_marked_vector ();
-extern Pointer allocate_marked_vector ();
-
-/* Instances of the following should be flushed. */
-
-#define Arg_1_Type(TC)  					\
-do { if ((OBJECT_TYPE (Arg1)) != (TC)) error_wrong_type_arg (1); } while (0)
-
-#define Arg_2_Type(TC)  					\
-do { if ((OBJECT_TYPE (Arg2)) != (TC)) error_wrong_type_arg (2); } while (0)
-
-#define Arg_3_Type(TC)						\
-do { if ((OBJECT_TYPE (Arg3)) != (TC)) error_wrong_type_arg (3); } while (0)
-
-#define Arg_4_Type(TC)  					\
-do { if ((OBJECT_TYPE (Arg4)) != (TC)) error_wrong_type_arg (4); } while (0)
-
-#define Arg_5_Type(TC)  					\
-do { if ((OBJECT_TYPE (Arg5)) != (TC)) error_wrong_type_arg (5); } while (0)
-
-#define Arg_6_Type(TC)						\
-do { if ((OBJECT_TYPE (Arg6)) != (TC)) error_wrong_type_arg (6); } while (0)
-
-#define Arg_7_Type(TC)						\
-do { if ((OBJECT_TYPE (Arg7)) != (TC)) error_wrong_type_arg (7); } while (0)
-
-#define Arg_8_Type(TC)						\
-do { if ((OBJECT_TYPE (Arg8)) != (TC)) error_wrong_type_arg (8); } while (0)
-
-#define Arg_9_Type(TC)						\
-do { if ((OBJECT_TYPE (Arg9)) != (TC)) error_wrong_type_arg (9); } while (0)
-
-#define Arg_10_Type(TC)						\
-do { if ((OBJECT_TYPE (Arg10)) != (TC)) error_wrong_type_arg (10); } while (0)
-
-
-#define Arg_1_GC_Type(GCTC)                                     \
-do { if ((GC_Type (Arg1)) != GCTC) error_wrong_type_arg (1); } while (0)
-
-#define Arg_2_GC_Type(GCTC)                                     \
-do { if ((GC_Type (Arg2)) != GCTC) error_wrong_type_arg (2); } while (0)
-
-#define Arg_3_GC_Type(GCTC)                                     \
-do { if ((GC_Type (Arg3)) != GCTC) error_wrong_type_arg (3); } while (0)
-
-#define FIXNUM_ARG arg_fixnum
+extern long arg_integer_in_range ();
+extern double arg_real_number ();
+extern double arg_real_in_range ();
+extern long arg_ascii_char ();
+extern long arg_ascii_integer ();
 
 #define UNSIGNED_FIXNUM_ARG(arg)					\
   ((FIXNUM_P (ARG_REF (arg)))						\
-   ? (UNSIGNED_FIXNUM_VALUE (ARG_REF (arg)))				\
-   : ((long) (error_wrong_type_arg (arg))))
+   ? (UNSIGNED_FIXNUM_TO_LONG (ARG_REF (arg)))				\
+   : ((error_wrong_type_arg (arg)), 0))
 
 #define STRING_ARG(arg)							\
   ((STRING_P (ARG_REF (arg)))						\
-   ? (Scheme_String_To_C_String (ARG_REF (arg)))			\
-   : ((char *) (error_wrong_type_arg (arg))))
+   ? ((char *) (STRING_LOC ((ARG_REF (arg)), 0)))			\
+   : ((error_wrong_type_arg (arg)), ((char *) 0)))
 
-#define BOOLEAN_ARG(arg) ((ARG_REF (arg)) != NIL)
+#define BOOLEAN_ARG(arg) ((ARG_REF (arg)) != SHARP_F)
 
 #define CELL_ARG(arg)							\
   ((CELL_P (ARG_REF (arg)))						\
    ? (ARG_REF (arg))							\
-   : ((Pointer) (error_wrong_type_arg (arg))))
+   : ((error_wrong_type_arg (arg)), ((SCHEME_OBJECT) 0)))
 
 #define PAIR_ARG(arg)							\
   ((PAIR_P (ARG_REF (arg)))						\
    ? (ARG_REF (arg))							\
-   : ((Pointer) (error_wrong_type_arg (arg))))
+   : ((error_wrong_type_arg (arg)), ((SCHEME_OBJECT) 0)))
 
 #define WEAK_PAIR_ARG(arg)						\
   ((WEAK_PAIR_P (ARG_REF (arg)))					\
    ? (ARG_REF (arg))							\
-   : ((Pointer) (error_wrong_type_arg (arg))))
+   : ((error_wrong_type_arg (arg)), ((SCHEME_OBJECT) 0)))
 
 #define VECTOR_ARG(arg)							\
   ((VECTOR_P (ARG_REF (arg)))						\
    ? (ARG_REF (arg))							\
-   : ((Pointer) (error_wrong_type_arg (arg))))
+   : ((error_wrong_type_arg (arg)), ((SCHEME_OBJECT) 0)))

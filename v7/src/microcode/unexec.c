@@ -123,7 +123,7 @@ before writing it (above and beyond the number of bytes of actual
 program text).  HDR's standard fields are already correct, except that
 this adjustment to the `a_text' field has not yet been made;
 thus, the amount of offset can depend on the data in the file.
-  
+
 * A_TEXT_SEEK(HDR)
 
 If defined, this macro specifies the number of bytes to seek into the
@@ -318,7 +318,7 @@ unexec (new_name, a_name, data_start, bss_start, entry_address)
     {
       close (new);
       /* unlink (new_name);	    	/* Failed, unlink new a.out */
-      return -1;	
+      return -1;
     }
 
   close (new);

@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.27 1989/09/20 23:08:30 cph Exp $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,272 +32,224 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.26 1989/05/10 21:57:37 arthur Rel $
- *
- * This file contains support for floating point arithmetic.  Most
- * of these primitives have been superceded by generic arithmetic.
- */
+/* Floating Point Arithmetic */
 
 #include "scheme.h"
 #include "prims.h"
-#include "flonum.h"
 #include "zones.h"
-
-#define BOOLEAN_RESULT(x)						\
-  return ((x) ? SHARP_T : NIL)
 
-                /************************************/
-                /* BINARY FLOATING POINT OPERATIONS */
-                /************************************/
-
-/* The binary floating point operations return NIL if either argument
-   is not a floating point number.  Otherwise they return the
-   appropriate result.
-*/
-
-DEFINE_PRIMITIVE ("PLUS-FLONUM", Prim_plus_flonum, 2, 2, 0)
+double
+arg_flonum (arg_number)
+     int arg_number;
 {
-  Primitive_2_Args();
-
-  Arg_1_Type(TC_BIG_FLONUM);
-  Arg_2_Type(TC_BIG_FLONUM);
-  Set_Time_Zone(Zone_Math);
-  Flonum_Result(Get_Float(Arg1) + Get_Float(Arg2));
+  SCHEME_OBJECT argument = (ARG_REF (arg_number));
+  if (! (FLONUM_P (argument)))
+    error_wrong_type_arg (arg_number);
+  return (FLONUM_TO_DOUBLE (argument));
 }
 
-DEFINE_PRIMITIVE ("MINUS-FLONUM", Prim_minus_flonum, 2, 2, 0)
+#define FLONUM_RESULT(x) PRIMITIVE_RETURN (double_to_flonum (x))
+#define BOOLEAN_RESULT(x) PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (x))
+
+#define FLONUM_SIZE ((BYTES_TO_WORDS (sizeof (double))) + 1)
+
+SCHEME_OBJECT
+double_to_flonum (value)
+     double value;
 {
-  Primitive_2_Args();
-
-  Arg_1_Type(TC_BIG_FLONUM);
-  Arg_2_Type(TC_BIG_FLONUM);
-  Set_Time_Zone(Zone_Math);
-  Flonum_Result(Get_Float(Arg1) - Get_Float(Arg2));
-}
-
-DEFINE_PRIMITIVE ("MULTIPLY-FLONUM", Prim_multiply_flonum, 2, 2, 0)
-{
-  Primitive_2_Args();
-
-  Arg_1_Type(TC_BIG_FLONUM);
-  Arg_2_Type(TC_BIG_FLONUM);
-  Set_Time_Zone(Zone_Math);
-  Flonum_Result(Get_Float(Arg1) * Get_Float(Arg2));
-}
-
-DEFINE_PRIMITIVE ("DIVIDE-FLONUM", Prim_divide_flonum, 2, 2, 0)
-{
-  Primitive_2_Args();
-
-  Arg_1_Type(TC_BIG_FLONUM);
-  Arg_2_Type(TC_BIG_FLONUM);
-  Set_Time_Zone(Zone_Math);
-  if (Get_Float(Arg2) == 0)
-    Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  Flonum_Result(Get_Float(Arg1) / Get_Float(Arg2));
+  ALIGN_FLOAT (Free);
+  Primitive_GC_If_Needed (FLONUM_SIZE);
+  (*Free++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (FLONUM_SIZE - 1)));
+  (*((double *) Free)++) = value;
+  return (MAKE_POINTER_OBJECT (TC_BIG_FLONUM, (Free - FLONUM_SIZE)));
 }
 
-	        /************************************/
-                /* BINARY FLOATING POINT PREDICATES */
-	        /************************************/
-
-/* The binary flonum predicates return NIL if either of the arguments
-   is not a flonum. Otherwise, return a fixnum 1 if the predicate is
-   true, or a fixnum 0 if it is false.
-*/
-
-DEFINE_PRIMITIVE ("EQUAL-FLONUM?", Prim_equal_flonum, 2, 2, 0)
-{
-  Primitive_2_Args();
-
-  Arg_1_Type(TC_BIG_FLONUM);
-  Arg_2_Type(TC_BIG_FLONUM);
-  Set_Time_Zone(Zone_Math);
-  BOOLEAN_RESULT ((Get_Float(Arg1)) == (Get_Float(Arg2)));
+#define FLONUM_BINARY_OPERATION(operator)				\
+{									\
+  PRIMITIVE_HEADER (2);							\
+  Set_Time_Zone (Zone_Math);						\
+  FLONUM_RESULT ((arg_flonum (1)) operator (arg_flonum (2)));		\
 }
 
-DEFINE_PRIMITIVE ("GREATER-THAN-FLONUM?", Prim_greater_flonum, 2, 2, 0)
+DEFINE_PRIMITIVE ("FLONUM-ADD", Prim_flonum_add, 2, 2, 0)
+     FLONUM_BINARY_OPERATION (+)
+DEFINE_PRIMITIVE ("FLONUM-SUBTRACT", Prim_flonum_subtract, 2, 2, 0)
+     FLONUM_BINARY_OPERATION (-)
+DEFINE_PRIMITIVE ("FLONUM-MULTIPLY", Prim_flonum_multiply, 2, 2, 0)
+     FLONUM_BINARY_OPERATION (*)
+
+DEFINE_PRIMITIVE ("FLONUM-DIVIDE", Prim_flonum_divide, 2, 2, 0)
 {
-  Primitive_2_Args();
-
-  Arg_1_Type(TC_BIG_FLONUM);
-  Arg_2_Type(TC_BIG_FLONUM);
-  Set_Time_Zone(Zone_Math);
-  BOOLEAN_RESULT ((Get_Float(Arg1)) > (Get_Float(Arg2)));
-}
-
-DEFINE_PRIMITIVE ("LESS-THAN-FLONUM?", Prim_less_flonum, 2, 2, 0)
-{
-  Primitive_2_Args();
-
-  Arg_1_Type(TC_BIG_FLONUM);
-  Arg_2_Type(TC_BIG_FLONUM);
-  Set_Time_Zone(Zone_Math);
-  BOOLEAN_RESULT ((Get_Float(Arg1)) < (Get_Float(Arg2)));
-}
-
-	        /***********************************/
-                /* UNARY FLOATING POINT OPERATIONS */
-                /***********************************/
-
-/* The unary flonum operations return NIL if their argument is
-   not a flonum. Otherwise, they return the appropriate result.
-*/
-
-DEFINE_PRIMITIVE ("SINE-FLONUM", Prim_sine_flonum, 1, 1, 0)
-{
-  extern double sin();
-  Primitive_1_Arg();
-
-  Arg_1_Type(TC_BIG_FLONUM);
-  Set_Time_Zone(Zone_Math);
-  Flonum_Result(sin(Get_Float(Arg1)));
-}
-
-DEFINE_PRIMITIVE ("COSINE-FLONUM", Prim_cosine_flonum, 1, 1, 0)
-{
-  extern double cos();
-  Primitive_1_Arg();
-
-  Arg_1_Type(TC_BIG_FLONUM);
-  Set_Time_Zone(Zone_Math);
-  Flonum_Result(cos(Get_Float(Arg1)));
-}
-
-DEFINE_PRIMITIVE ("ARCTAN-FLONUM", Prim_arctan_flonum, 1, 1, 0)
-{
-  extern double atan();
-  Primitive_1_Arg();
-
-  Arg_1_Type(TC_BIG_FLONUM);
-  Set_Time_Zone(Zone_Math);
-  Flonum_Result(atan(Get_Float(Arg1)));
-}
-
-DEFINE_PRIMITIVE ("EXP-FLONUM", Prim_exp_flonum, 1, 1, 0)
-{
-  extern double exp();
-  Primitive_1_Arg();
-
-  Arg_1_Type(TC_BIG_FLONUM);
-  Set_Time_Zone(Zone_Math);
-  Flonum_Result(exp(Get_Float(Arg1)));
-}
-
-DEFINE_PRIMITIVE ("LN-FLONUM", Prim_ln_flonum, 1, 1, 0)
-{
-  extern double log();
-  Primitive_1_Arg();
-
-  Arg_1_Type(TC_BIG_FLONUM);
-  Set_Time_Zone(Zone_Math);
-  if (Get_Float(Arg1) <= 0.0)
-    Primitive_Error(ERR_ARG_1_BAD_RANGE);
-  Flonum_Result(log(Get_Float(Arg1)));
-}
-
-DEFINE_PRIMITIVE ("SQRT-FLONUM", Prim_sqrt_flonum, 1, 1, 0)
-{
-  extern double sqrt();
-  double Arg;
-  Primitive_1_Arg();
-
-  Arg_1_Type(TC_BIG_FLONUM);
-  Set_Time_Zone(Zone_Math);
-  Arg = Get_Float(Arg1);
-  if (Arg < 0)
-    return NIL;
-  Flonum_Result(sqrt(Arg));
-}
-
-DEFINE_PRIMITIVE ("ZERO-FLONUM?", Prim_zero_flonum, 1, 1, 0)
-{
-  Primitive_1_Arg();
-
-  Arg_1_Type(TC_BIG_FLONUM);
-  Set_Time_Zone(Zone_Math);
-  BOOLEAN_RESULT (Get_Float(Arg1) == 0.0);
-}
-
-DEFINE_PRIMITIVE ("POSITIVE-FLONUM?", Prim_positive_flonum, 1, 1, 0)
-{
-  Primitive_1_Arg();
-
-  Arg_1_Type(TC_BIG_FLONUM);
-  Set_Time_Zone(Zone_Math);
-  BOOLEAN_RESULT (Get_Float(Arg1) > 0.0);
-}
-
-DEFINE_PRIMITIVE ("NEGATIVE-FLONUM?", Prim_negative_flonum, 1, 1, 0)
-{
-  Primitive_1_Arg();
-
-  Arg_1_Type(TC_BIG_FLONUM);
-  Set_Time_Zone(Zone_Math);
-  BOOLEAN_RESULT (Get_Float(Arg1) < 0.0);
-}
-
-/* (COERCE-INTEGER-TO-FLONUM FIXNUM-OR-BIGNUM)
-      Returns the floating point number (flonum) corresponding to
-      either a bignum or a fixnum.  If the bignum is too large or small
-      to be converted to floating point, or if the argument isn't of
-      the correct type, FIXNUM-OR-BIGNUM is returned unchanged.
-*/
-DEFINE_PRIMITIVE ("COERCE-INTEGER-TO-FLONUM", Prim_int_to_float, 1, 1, 0)
-{
-  Primitive_1_Arg();
-
-  Set_Time_Zone(Zone_Math);
-  if (Type_Code(Arg1)==TC_FIXNUM)
+  PRIMITIVE_HEADER (2);
+  Set_Time_Zone (Zone_Math);
   {
-    long Int;
-
-    Sign_Extend(Arg1, Int);
-    return Allocate_Float((double) Int);
+    fast double denominator = (arg_flonum (2));
+    if (denominator == 0)
+      error_bad_range_arg (2);
+    FLONUM_RESULT ((arg_flonum (1)) / denominator);
   }
-  if (Type_Code(Arg1) == TC_BIG_FIXNUM)
-    return Big_To_Float(Arg1);
-  return Arg1;
+}
+
+DEFINE_PRIMITIVE ("FLONUM-NEGATE", Prim_flonum_negate, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  Set_Time_Zone (Zone_Math);
+  FLONUM_RESULT (- (arg_flonum (1)));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-ABS", Prim_flonum_abs, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  Set_Time_Zone (Zone_Math);
+  {
+    fast double x = (arg_flonum (1));
+    FLONUM_RESULT ((x < 0) ? (-x) : x);
+  }
+}
+
+#define FLONUM_BINARY_PREDICATE(operator)				\
+{									\
+  PRIMITIVE_HEADER (2);							\
+  Set_Time_Zone (Zone_Math);						\
+  BOOLEAN_RESULT ((arg_flonum (1)) operator (arg_flonum (2)));		\
+}
+
+DEFINE_PRIMITIVE ("FLONUM-EQUAL?", Prim_flonum_equal_p, 2, 2, 0)
+     FLONUM_BINARY_PREDICATE (==)
+DEFINE_PRIMITIVE ("FLONUM-LESS?", Prim_flonum_less_p, 2, 2, 0)
+     FLONUM_BINARY_PREDICATE (<)
+DEFINE_PRIMITIVE ("FLONUM-GREATER?", Prim_flonum_greater_p, 2, 2, 0)
+     FLONUM_BINARY_PREDICATE (>)
+
+#define FLONUM_UNARY_PREDICATE(operator)				\
+{									\
+  PRIMITIVE_HEADER (1);							\
+  Set_Time_Zone (Zone_Math);						\
+  BOOLEAN_RESULT ((arg_flonum (1)) operator 0);				\
+}
+
+DEFINE_PRIMITIVE ("FLONUM-ZERO?", Prim_flonum_zero_p, 1, 1, 0)
+     FLONUM_UNARY_PREDICATE (==)
+DEFINE_PRIMITIVE ("FLONUM-POSITIVE?", Prim_flonum_positive_p, 1, 1, 0)
+     FLONUM_UNARY_PREDICATE (>)
+DEFINE_PRIMITIVE ("FLONUM-NEGATIVE?", Prim_flonum_negative_p, 1, 1, 0)
+     FLONUM_UNARY_PREDICATE (<)
+
+#define SIMPLE_TRANSCENDENTAL_FUNCTION(function)			\
+{									\
+  extern double function ();						\
+  PRIMITIVE_HEADER (1);							\
+  Set_Time_Zone (Zone_Math);						\
+  FLONUM_RESULT (function (arg_flonum (1)));				\
+}
+
+#define RESTRICTED_TRANSCENDENTAL_FUNCTION(function, restriction)	\
+{									\
+  extern double function ();						\
+  PRIMITIVE_HEADER (1);							\
+  Set_Time_Zone (Zone_Math);						\
+  {									\
+    fast double x = (arg_flonum (1));					\
+    if (! (restriction))						\
+      error_bad_range_arg (1);						\
+    FLONUM_RESULT (function (x));					\
+  }									\
+}
+
+DEFINE_PRIMITIVE ("FLONUM-EXP", Prim_flonum_exp, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (exp)
+DEFINE_PRIMITIVE ("FLONUM-LOG", Prim_flonum_log, 1, 1, 0)
+     RESTRICTED_TRANSCENDENTAL_FUNCTION (log, (x > 0))
+DEFINE_PRIMITIVE ("FLONUM-SIN", Prim_flonum_sin, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (sin)
+DEFINE_PRIMITIVE ("FLONUM-COS", Prim_flonum_cos, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (cos)
+DEFINE_PRIMITIVE ("FLONUM-TAN", Prim_flonum_tan, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (tan)
+DEFINE_PRIMITIVE ("FLONUM-ASIN", Prim_flonum_asin, 1, 1, 0)
+     RESTRICTED_TRANSCENDENTAL_FUNCTION (asin, ((x >= -1) && (x <= 1)))
+DEFINE_PRIMITIVE ("FLONUM-ACOS", Prim_flonum_acos, 1, 1, 0)
+     RESTRICTED_TRANSCENDENTAL_FUNCTION (acos, ((x >= -1) && (x <= 1)))
+DEFINE_PRIMITIVE ("FLONUM-ATAN", Prim_flonum_atan, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (atan)
+
+DEFINE_PRIMITIVE ("FLONUM-ATAN2", Prim_flonum_atan2, 2, 2, 0)
+{
+  extern double atan2 ();
+  PRIMITIVE_HEADER (2);
+  {
+    fast double y = (arg_flonum (1));
+    fast double x = (arg_flonum (2));
+    if ((x == 0) && (y == 0))
+      error_bad_range_arg (2);
+    FLONUM_RESULT (atan2 (y, x));
+  }
+}
+
+DEFINE_PRIMITIVE ("FLONUM-SQRT", Prim_flonum_sqrt, 1, 1, 0)
+     RESTRICTED_TRANSCENDENTAL_FUNCTION (sqrt, (x >= 0))
+
+DEFINE_PRIMITIVE ("FLONUM-EXPT", Prim_flonum_expt, 2, 2, 0)
+{
+  extern double pow ();
+  PRIMITIVE_HEADER (2);
+  {
+    fast double x = (arg_flonum (1));
+    fast double y = (arg_flonum (2));
+    if (x <= 0)
+      error_bad_range_arg (1);
+    FLONUM_RESULT (pow (x, y));
+  }
 }
 
-/* (TRUNCATE-FLONUM FLONUM)
-      Returns the integer corresponding to FLONUM when truncated.
-      Returns NIL if FLONUM isn't a floating point number
-*/
-DEFINE_PRIMITIVE ("TRUNCATE-FLONUM", Prim_truncate_flonum, 1, 1, 0)
+DEFINE_PRIMITIVE ("FLONUM?", Prim_flonum_p, 1, 1, 0)
 {
-  fast double A;
-  long Answer;	/* Faulty VAX/UNIX C optimizer */
-  Primitive_1_Arg();
-
-  Arg_1_Type(TC_BIG_FLONUM);
-  Set_Time_Zone(Zone_Math);
-  A = Get_Float(Arg1);
-  if (flonum_exceeds_fixnum(A))
-    return Float_To_Big(A);
-  Answer = (long) A;
-  return Make_Non_Pointer(TC_FIXNUM, Answer);
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (FLONUM_P (ARG_REF (1))));
 }
 
-/* (ROUND-FLONUM FLONUM)
-      Returns the integer found by rounding off FLONUM (upward), if
-      FLONUM is a floating point number.  Otherwise returns FLONUM.
-*/
-DEFINE_PRIMITIVE ("ROUND-FLONUM", Prim_round_flonum, 1, 1, 0)
+DEFINE_PRIMITIVE ("FLONUM-INTEGER?", Prim_flonum_integer_p, 1, 1, 0)
 {
-  fast double A;
-  long Answer;	/* Faulty VAX/UNIX C optimizer */
-  Primitive_1_Arg();
-
-  Set_Time_Zone(Zone_Math);
-  if (Type_Code(Arg1) != TC_BIG_FLONUM) return Arg1;
-  A = Get_Float(Arg1);
-  if (A >= 0)
-    A += 0.5;
-  else
-    A -= 0.5;
-  if (flonum_exceeds_fixnum(A))
-    return Float_To_Big(A);
-  Answer = (long) A;
-  return Make_Non_Pointer(TC_FIXNUM, Answer);
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, FLONUM_P);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (flonum_integer_p (ARG_REF (1))));
 }
+
+#define FLONUM_CONVERSION(converter)					\
+{									\
+  PRIMITIVE_HEADER (1);							\
+  Set_Time_Zone (Zone_Math);						\
+  CHECK_ARG (1, FLONUM_P);						\
+  PRIMITIVE_RETURN (converter (ARG_REF (1)));				\
+}
+
+DEFINE_PRIMITIVE ("FLONUM-FLOOR", Prim_flonum_floor, 1, 1, 0)
+     FLONUM_CONVERSION (flonum_floor)
+DEFINE_PRIMITIVE ("FLONUM-CEILING", Prim_flonum_ceiling, 1, 1, 0)
+     FLONUM_CONVERSION (flonum_ceiling)
+DEFINE_PRIMITIVE ("FLONUM-TRUNCATE", Prim_flonum_truncate, 1, 1, 0)
+     FLONUM_CONVERSION (FLONUM_TRUNCATE)
+DEFINE_PRIMITIVE ("FLONUM-ROUND", Prim_flonum_round, 1, 1, 0)
+     FLONUM_CONVERSION (flonum_round)
+
+DEFINE_PRIMITIVE ("FLONUM-TRUNCATE->EXACT", Prim_flonum_truncate_to_exact, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  Set_Time_Zone (Zone_Math);
+  CHECK_ARG (1, FLONUM_P);
+  PRIMITIVE_RETURN (FLONUM_TO_INTEGER (ARG_REF (1))); 
+}
+
+#define FLONUM_EXACT_CONVERSION(converter)				\
+{									\
+  PRIMITIVE_HEADER (1);							\
+  Set_Time_Zone (Zone_Math);						\
+  CHECK_ARG (1, FLONUM_P);						\
+  PRIMITIVE_RETURN (FLONUM_TO_INTEGER (converter (ARG_REF (1))));	\
+}
+DEFINE_PRIMITIVE ("FLONUM-FLOOR->EXACT", Prim_flonum_floor_to_exact, 1, 1, 0)
+     FLONUM_EXACT_CONVERSION (flonum_floor)
+DEFINE_PRIMITIVE ("FLONUM-CEILING->EXACT", Prim_flonum_ceiling_to_exact, 1, 1, 0)
+     FLONUM_EXACT_CONVERSION (flonum_ceiling)
+DEFINE_PRIMITIVE ("FLONUM-ROUND->EXACT", Prim_flonum_round_to_exact, 1, 1, 0)
+     FLONUM_EXACT_CONVERSION (flonum_round)

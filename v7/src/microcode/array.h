@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.31 1989/09/20 23:05:33 cph Rel $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -29,167 +31,106 @@ there shall be no use of the name of the Massachusetts Institute of
 Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
-
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.30 1989/06/22 21:51:57 pas Rel $ */
 
-
-#define REAL float
 #define REAL_IS_DEFINED_DOUBLE 0
-/* 
-  When REAL is float,  set = 0
-  When REAL is double, set = 1
-  This is used by #ifdef in some places like "fscanf" 
-  */
 
-#define REAL_SIZE ((sizeof(Pointer)+sizeof(REAL)-1)/ sizeof(Pointer))
+#if (REAL_IS_DEFINED_DOUBLE == 0)
+#define REAL float
+#else
+#define REAL double
+#endif
 
-/* Scheme_Arrays are implemented as NON_MARKED_VECTOR
-   Do not forget to include object.h */
+#define arg_real(arg_number) ((REAL) (arg_real_number (arg_number)))
+#define REAL_SIZE (BYTES_TO_WORDS (sizeof (REAL)))
 
-#define ARRAY_P   NON_MARKED_VECTOR_P
-/* This is used in places like "CHECK_ARG(1, ARRAY_P)" */
+#define FLOAT_SIZE (BYTES_TO_WORDS (sizeof (float)))
+#define DOUBLE_SIZE (BYTES_TO_WORDS (sizeof (double)))
 
-#define TC_ARRAY TC_NON_MARKED_VECTOR
-#define TC_MANIFEST_ARRAY TC_MANIFEST_NM_VECTOR
-#define ARRAY_HEADER 0                               /* NM_VECTOR_HEADER  */
-/* Contains the number of actual cells (words) allocated, used in gc */
-#define ARRAY_LENGTH 1                               /* NM_ENTRY_COUNT */
-#define ARRAY_DATA 2                                 /* NM_DATA */
-#define ARRAY_HEADER_SIZE 2
+/* Scheme_Arrays are implemented as NON_MARKED_VECTOR. */
 
-#define SCHEME_ARRAY Pointer
-/* C type for a scheme array
- */
+#define ARRAY_P NON_MARKED_VECTOR_P
+#define ARRAY_LENGTH(array) ((long) (FAST_MEMORY_REF ((array), 1)))
+#define ARRAY_CONTENTS(array) ((REAL *) (MEMORY_LOC (array, 2)))
 
-#define Array_Ref(P,N)      ((Get_Pointer(P))[N+2])
+extern SCHEME_OBJECT allocate_array ();
 
-#define Nth_Array_Loc(P,N)  (Scheme_Array_To_C_Array(P) + N)
+extern void C_Array_Find_Min_Max ();
+extern void C_Array_Complex_Multiply_Into_First_One ();
 
-#define Scheme_Array_To_C_Array(Scheme_Array) 		\
-   ((REAL *) Nth_Vector_Loc(Scheme_Array, ARRAY_DATA))
+extern void C_Array_Make_Histogram ();
+/* REAL * Array;
+   REAL * Histogram;
+   long Length;
+   long npoints; */
 
-#define Array_Length(Scheme_Array)                  \
-  ((long) Vector_Ref(Scheme_Array, ARRAY_LENGTH))
-
-#define Allocate_Array(result, Length, allocated_cells)		                \
-{ allocated_cells = (Length*REAL_SIZE) + ARRAY_HEADER_SIZE;	                \
-  Primitive_GC_If_Needed(allocated_cells);			                \
-  result = Make_Pointer(TC_ARRAY, Free);                                        \
-  Free[ARRAY_HEADER] = Make_Non_Pointer(TC_MANIFEST_ARRAY, allocated_cells-1);  \
-  Free[ARRAY_LENGTH] = Length;                                                  \
-  Free = Free+allocated_cells; }
-
-#define ARRAY_MAX_LENGTH 1000000
-/* This is 4 Mbytes for what it's worth... */
-
+extern void Find_Offset_Scale_For_Linear_Map();
+/* REAL Min;
+   REAL Max;
+   REAL New_Min;
+   REAL New_Max;
+   REAL * Offset;
+   REAL * Scale; */
+
 /* The following macros implement commonly used array procs. */
 
-/* In the following macros we assign the arguments to local variables 
+/* In the following macros we assign the arguments to local variables
    so as to do any computation (referencing, etc.) only once outside the loop.
-   Otherwise it would be done again and again inside the loop -- look at "cc -v -S -O" to see the difference
-   */
-/* The names, like "MCRINDX", have been chosen to avoid shadowing the variables that are substituted in. 
-   WARNING: Do not use any names starting with the prefix "mcr", when calling these macros
-   */
+   Otherwise it would be done again and again inside the loop.
+   The names, like "MCRINDX", have been chosen to avoid shadowing the
+   variables that are substituted in.  WARNING: Do not use any names
+   starting with the prefix "mcr", when calling these macros */
 
-#define C_Array_Scale(a,scale, N)               \
-{ register long mcrindx;                        \
-  register REAL mcrd0, *mcrfrom;                \
-  mcrd0 = scale;                                \
-  mcrfrom = a;                                  \
-  for (mcrindx=0; mcrindx<N; mcrindx++) mcrfrom[mcrindx] = mcrfrom[mcrindx] * mcrd0; }
-#define Array_Scale(ar,scale) \
-  C_Array_Scale(Scheme_Array_To_C_Array(ar), scale, Array_Length(ar))
-
-#define C_Array_Copy(from,to,N)                 \
-{ register long mcrindx;                        \
-  register REAL *mcrfrom, *mcrto;               \
-  mcrfrom = from;                               \
-  mcrto   = to;                                 \
-  for (mcrindx=0; mcrindx<N; mcrindx++) mcrto[mcrindx] = mcrfrom[mcrindx]; }
-#define Array_Copy(ar1,ar2) \
-  C_Array_Copy(Scheme_Array_To_C_Array(ar1), Scheme_Array_To_C_Array(ar2), Array_Length(ar1))
-
-#define C_Array_Add_Into_Second_One(from,to,N)  \
-{ register long mcrindx;                        \
-  register REAL *mcrfrom, *mcrto;               \
-  mcrfrom = from;                               \
-  mcrto   = to;                                 \
-  for (mcrindx=0; mcrindx<N; mcrindx++) mcrto[mcrindx] = mcrto[mcrindx] + mcrfrom[mcrindx]; }
-#define Array_Add_Into_Second_One(ar1,ar2) \
-  C_Array_Add_Into_Second_One(Scheme_Array_To_C_Array(ar1), Scheme_Array_To_C_Array(ar2), Array_Length(ar1))
-
-/* More Macros about random things
- */
-
-#define Make_List_From_3_Pointers(pointer1, pointer2, pointer3, Result)  \
-{ Primitive_GC_If_Needed(6);                \
-  Result = Make_Pointer(TC_LIST, Free);     \
-  *Free++ = pointer1;                       \
-  *Free++ = Make_Pointer(TC_LIST, Free+1);  \
-  *Free++ = pointer2;                       \
-  *Free++ = Make_Pointer(TC_LIST, Free+1);  \
-  *Free++ = pointer3;                       \
-  *Free++ = EMPTY_LIST; }
-
-#define Float_Range_Check(variable, Scheme_Pointer, Low, High, Error_Message)       \
-{ REAL value;                                                                       \
-  int err;                                                                          \
-  err = Scheme_Number_To_REAL(Scheme_Pointer, &value);                              \
-  if ((err == 1) || (err == 2)) Primitive_Error(Error_Message);                     \
-  if ((value<Low) || (value>High)) Primitive_Error(Error_Message);                  \
-  variable = ((float) value); }
-
-#define REAL_Range_Check(variable, Scheme_Pointer, Low, High, Error_Message)       \
-{ REAL value;                                                                      \
-  int err;                                                                         \
-  err = Scheme_Number_To_REAL(Scheme_Pointer, &value);                             \
-  if ((err == 1) || (err == 2)) Primitive_Error(Error_Message);                    \
-  if ((value<Low) || (value>High)) Primitive_Error(Error_Message);                 \
-  else variable = value; }
-
-#define C_Make_Polar(Real, Imag, Mag_Cell, Phase_Cell)                         \
-{ double double_Real=((double) Real), double_Imag=((double) Imag);             \
-  Mag_Cell = (REAL) sqrt((double_Real*double_Real)+(double_Imag*double_Imag)); \
-  if (Mag_Cell==0.0)       \
-    Phase_Cell = 0.0;      \
-  else                     \
-    Phase_Cell = (REAL) atan2(double_Imag, double_Real);  \
+#define C_Array_Scale(array, scale, n)					\
+{									\
+  fast REAL * mcr_scan = (array);					\
+  fast REAL * mcr_end = (mcr_scan + (n));				\
+  fast REAL mcrd0 = (scale);						\
+  while (mcr_scan < mcr_end)						\
+    (*mcr_scan++) *= mcrd0;						\
 }
-/* Undefined angle at (0,0) ---- Choose value 0.0 */
 
+#define Array_Scale(array, scale)					\
+{									\
+  C_Array_Scale								\
+    ((ARRAY_CONTENTS (array)),						\
+     (scale),								\
+     (ARRAY_LENGTH (array)));						\
+}
 
-#define Linear_Map(slope,offset,From,To) { (To) = (((slope)*(From))+offset); }
+#define C_Array_Copy(from, to, n)					\
+{									\
+  fast REAL * mcr_scan_source = (from);					\
+  fast REAL * mcr_end_source = (mcr_scan_source + (n));			\
+  fast REAL * mcr_scan_target = (to);					\
+  while (mcr_scan_source < mcr_end_source)				\
+    (*mcr_scan_target++) = (*mcr_scan_source++);			\
+}
 
-#define mabs(x)		(((x)<0) ? -(x) : (x))
-#define max(x,y)	(((x)<(y)) ? (y) : (x))
-#define min(x,y)	(((x)<(y)) ? (x) : (y))
+#define Array_Copy(from, to)						\
+{									\
+  C_Array_Copy								\
+    ((ARRAY_CONTENTS (from)),						\
+     (ARRAY_CONTENTS (to)),						\
+     (ARRAY_LENGTH (from)));						\
+}
 
-/* From array.c 
- */
-extern int    Scheme_Number_To_REAL();
-extern int    Scheme_Number_To_Double();
+#define C_Array_Add_Into_Second_One(from, to, n)			\
+{									\
+  fast REAL * mcr_scan_source = (from);					\
+  fast REAL * mcr_end_source = (mcr_scan_source + (n));			\
+  fast REAL * mcr_scan_target = (to);					\
+  while (mcr_scan_source < mcr_end_source)				\
+    (*mcr_scan_target++) += (*mcr_scan_source++);			\
+}
 
-extern void   C_Array_Find_Min_Max(); 
-extern void   C_Array_Make_Histogram();  /* REAL *Array,*Histogram; long Length,npoints */
-extern void   C_Array_Complex_Multiply_Into_First_One(); 
+#define Array_Add_Into_Second_One(from,to)				\
+{									\
+  C_Array_Add_Into_Second_One						\
+    ((ARRAY_CONTENTS (from)),						\
+     (ARRAY_CONTENTS (to)),						\
+     (ARRAY_LENGTH (from)));						\
+}
 
-/* Datatype Conversions
- */
-/* macro: REAL *Scheme_Array_To_C_Array(); */
-extern Pointer C_Array_To_Scheme_Array();
-/* there is also a macro: Allocate_Array(Result,Length,allocated_cells); 
- */
-
-extern Pointer Scheme_Vector_To_Scheme_Array();
-extern Pointer Scheme_Array_To_Scheme_Vector();
-
-extern Pointer C_Array_To_Scheme_Vector();
-extern void    Scheme_Vector_To_C_Array(); 
-/* Pointer Scheme_Vector; REAL *Array; 
- */
-
-/* From bob-xt.c */
-extern void Find_Offset_Scale_For_Linear_Map();
-/* REAL Min,Max, New_Min,New_Max, *Offset,*Scale;
- */
+#define mabs(x) (((x) < 0) ? (- (x)) : (x))
+#define max(x,y) (((x) < (y)) ? (y) : (x))
+#define min(x,y) (((x) < (y)) ? (x) : (y))

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scode.h,v 9.23 1988/08/15 20:54:55 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scode.h,v 9.24 1989/09/20 23:11:26 cph Rel $
  *
  * Format of the SCode representation of programs.  Each of these
  * is described in terms of the slots in the data structure.
@@ -119,9 +119,9 @@ MIT in each case. */
 
 /* Selectors */
 
-#define Get_Body_Elambda(Addr)  (Fast_Vector_Ref(Addr, ELAMBDA_SCODE))
-#define Get_Names_Elambda(Addr) (Fast_Vector_Ref(Addr, ELAMBDA_NAMES))
-#define Get_Count_Elambda(Addr) (Fast_Vector_Ref(Addr, ELAMBDA_ARG_COUNT))
+#define Get_Body_Elambda(Addr)  (FAST_MEMORY_REF (Addr, ELAMBDA_SCODE))
+#define Get_Names_Elambda(Addr) (FAST_MEMORY_REF (Addr, ELAMBDA_NAMES))
+#define Get_Count_Elambda(Addr) (FAST_MEMORY_REF (Addr, ELAMBDA_ARG_COUNT))
 #define Elambda_Formals_Count(Addr) \
      ((((long) Addr) & EL_FORMALS_MASK) >> EL_FORMALS_SHIFT)
 #define Elambda_Opts_Count(Addr) \

@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.32 1989/09/20 23:12:56 cph Exp $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,250 +32,227 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.31 1988/08/15 20:57:57 cph Rel $ */
-
-/* This file contains procedures for handling vectors and conversion
-   back and forth to lists. */
+/* This file contains procedures for handling vectors. */
 
 #include "scheme.h"
 #include "prims.h"
 
 #define ARG_VECTOR(argument_number)					\
-((VECTOR_P (ARG_REF (argument_number)))					\
- ? (ARG_REF (argument_number))						\
- : ((Pointer) (error_wrong_type_arg (argument_number))))
-
-/* Flush old definition -- we won't use it. */
-#ifdef VECTOR_LENGTH
-#undef VECTOR_LENGTH
-#endif
-
-#define VECTOR_LENGTH(vector)						\
-(UNSIGNED_FIXNUM_VALUE (Fast_Vector_Ref ((vector), 0)))
+  ((VECTOR_P (ARG_REF (argument_number)))				\
+   ? (ARG_REF (argument_number))					\
+   : ((error_wrong_type_arg (argument_number)), ((SCHEME_OBJECT) 0)))
 
 #define ARG_VECTOR_INDEX(argument_number, vector)			\
-(arg_index_integer (argument_number, (Vector_Length (vector))))
-
-#define GC_VECTOR_P(object) ((GC_Type (object)) == GC_Vector)
+  (arg_index_integer (argument_number, (VECTOR_LENGTH (vector))))
 
 #define ARG_GC_VECTOR(argument_number)					\
-((GC_VECTOR_P (ARG_REF (argument_number)))				\
- ? (ARG_REF (argument_number))						\
- : ((Pointer) (error_wrong_type_arg (argument_number))))
+  ((GC_VECTOR_P (ARG_REF (argument_number)))				\
+   ? (ARG_REF (argument_number))					\
+   : ((error_wrong_type_arg (argument_number)), ((SCHEME_OBJECT) 0)))
 
-/* VECTOR_TOUCH does nothing, this is copied from a previous version
-   of this code.  Perhaps it should do a touch? -- CPH */
-#define VECTOR_TOUCH(vector)
-#define GC_VECTOR_TOUCH(vector) Touch_In_Primitive (vector, vector)
-
-#define VECTOR_REF(vector, index) (Vector_Ref ((vector), ((index) + 1)))
-#define VECTOR_LOC(vector, index) (Nth_Vector_Loc ((vector), ((index) + 1)))
-
-Pointer
+SCHEME_OBJECT
 allocate_non_marked_vector (type_code, length, gc_check_p)
      int type_code;
      fast long length;
      Boolean gc_check_p;
 {
-  fast Pointer result;
+  fast SCHEME_OBJECT result;
 
   if (gc_check_p)
     Primitive_GC_If_Needed (length + 1);
-  result = (Make_Pointer (type_code, Free));
-  (*Free++) = (Make_Non_Pointer (TC_MANIFEST_NM_VECTOR, length));
+  result = (MAKE_POINTER_OBJECT (type_code, Free));
+  (*Free++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, length));
   Free += length;
   return (result);
 }
 
-Pointer
+SCHEME_OBJECT
 allocate_marked_vector (type_code, length, gc_check_p)
      int type_code;
      fast long length;
      Boolean gc_check_p;
 {
-  fast Pointer result;
-
   if (gc_check_p)
     Primitive_GC_If_Needed (length + 1);
-  result = (Make_Pointer (type_code, Free));
-  (*Free++) = (Make_Non_Pointer (TC_MANIFEST_VECTOR, length));
-  Free += length;
-  return (result);
+  {
+    fast SCHEME_OBJECT result = (MAKE_POINTER_OBJECT (type_code, Free));
+    (*Free++) = (MAKE_OBJECT (TC_MANIFEST_VECTOR, length));
+    Free += length;
+    return (result);
+  }
 }
 
-Pointer
-make_vector (length, contents)
+SCHEME_OBJECT
+make_vector (length, contents, gc_check_p)
      fast long length;
-     fast Pointer contents;
+     fast SCHEME_OBJECT contents;
+     Boolean gc_check_p;
 {
-  fast Pointer result;
-
-  Primitive_GC_If_Needed (length + 1);
-  result = (Make_Pointer (TC_VECTOR, Free));
-  (*Free++) = (Make_Non_Pointer (TC_MANIFEST_VECTOR, length));
-  while ((length--) > 0)
-    (*Free++) = contents;
-  return (result);
+  if (gc_check_p)
+    Primitive_GC_If_Needed (length + 1);
+  {
+    fast SCHEME_OBJECT result = (MAKE_POINTER_OBJECT (TC_VECTOR, Free));
+    (*Free++) = (MAKE_OBJECT (TC_MANIFEST_VECTOR, length));
+    while ((length--) > 0)
+      (*Free++) = contents;
+    return (result);
+  }
 }
 
 DEFINE_PRIMITIVE ("VECTOR-CONS", Prim_vector_cons, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-
   PRIMITIVE_RETURN
     (make_vector ((arg_nonnegative_integer (1)), (ARG_REF (2))));
 }
 
 DEFINE_PRIMITIVE ("VECTOR", Prim_vector, 0, LEXPR, 0)
 {
-  Pointer result;
-  fast Pointer *argument_scan;
-  fast Pointer *argument_limit;
-  fast Pointer *result_scan;
   PRIMITIVE_HEADER (LEXPR);
-
-  result = (allocate_marked_vector (TC_VECTOR, (LEXPR_N_ARGUMENTS ()), true));
-  argument_scan = (ARG_LOC (1));
-  argument_limit = (ARG_LOC ((LEXPR_N_ARGUMENTS ()) + 1));
-  result_scan = (VECTOR_LOC (result, 0));
-  while (argument_scan != argument_limit)
-    (*result_scan++) = (STACK_LOCATIVE_POP (argument_scan));
-  PRIMITIVE_RETURN (result);
+  {
+    SCHEME_OBJECT result =
+      (allocate_marked_vector (TC_VECTOR, (LEXPR_N_ARGUMENTS ()), true));
+    fast SCHEME_OBJECT * argument_scan = (ARG_LOC (1));
+    fast SCHEME_OBJECT * argument_limit =
+      (ARG_LOC ((LEXPR_N_ARGUMENTS ()) + 1));
+    fast SCHEME_OBJECT * result_scan = (VECTOR_LOC (result, 0));
+    while (argument_scan != argument_limit)
+      (*result_scan++) = (STACK_LOCATIVE_POP (argument_scan));
+    PRIMITIVE_RETURN (result);
+  }
 }
 
 DEFINE_PRIMITIVE ("SYSTEM-VECTOR?", Prim_sys_vector, 1, 1, 0)
 {
-  fast Pointer object;
+  fast SCHEME_OBJECT object;
   PRIMITIVE_HEADER (1);
-
-  object = (ARG_REF (1));
-  Touch_In_Primitive (object, object);
-  PRIMITIVE_RETURN ((GC_VECTOR_P (object)) ? SHARP_T : NIL);
+  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (GC_VECTOR_P (object)));
 }
-
-#define VECTOR_LENGTH_PRIMITIVE(arg_type, arg_touch)			\
-  fast Pointer vector;							\
+
+#define VECTOR_LENGTH_PRIMITIVE(arg_type)				\
+{									\
+  fast SCHEME_OBJECT vector;						\
   PRIMITIVE_HEADER (1);							\
-									\
-  vector = (arg_type (1));						\
-  arg_touch (vector);							\
-  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (VECTOR_LENGTH (vector)))
+  TOUCH_IN_PRIMITIVE ((arg_type (1)), vector);				\
+  PRIMITIVE_RETURN (long_to_integer (VECTOR_LENGTH (vector)));		\
+}
 
 DEFINE_PRIMITIVE ("VECTOR-LENGTH", Prim_vector_size, 1, 1, 0)
-{ VECTOR_LENGTH_PRIMITIVE (ARG_VECTOR, VECTOR_TOUCH); }
+     VECTOR_LENGTH_PRIMITIVE (ARG_VECTOR)
 
 DEFINE_PRIMITIVE ("SYSTEM-VECTOR-SIZE", Prim_sys_vec_size, 1, 1, 0)
-{ VECTOR_LENGTH_PRIMITIVE (ARG_GC_VECTOR, GC_VECTOR_TOUCH); }
+     VECTOR_LENGTH_PRIMITIVE (ARG_GC_VECTOR)
 
-#define VECTOR_REF_PRIMITIVE(arg_type, arg_touch)			\
-  fast Pointer vector;							\
+#define VECTOR_REF_PRIMITIVE(arg_type)					\
+{									\
+  fast SCHEME_OBJECT vector;						\
   PRIMITIVE_HEADER (2);							\
-									\
-  vector = (arg_type (1));						\
-  arg_touch (vector);							\
-  PRIMITIVE_RETURN (VECTOR_REF (vector, (ARG_VECTOR_INDEX (2, vector))))
+  TOUCH_IN_PRIMITIVE ((arg_type (1)), vector);				\
+  PRIMITIVE_RETURN							\
+    (VECTOR_REF (vector, (ARG_VECTOR_INDEX (2, vector))));		\
+}
 
 DEFINE_PRIMITIVE ("VECTOR-REF", Prim_vector_ref, 2, 2, 0)
-{ VECTOR_REF_PRIMITIVE (ARG_VECTOR, VECTOR_TOUCH); }
+     VECTOR_REF_PRIMITIVE (ARG_VECTOR)
 
 DEFINE_PRIMITIVE ("SYSTEM-VECTOR-REF", Prim_sys_vector_ref, 2, 2, 0)
-{ VECTOR_REF_PRIMITIVE (ARG_GC_VECTOR, GC_VECTOR_TOUCH); }
+     VECTOR_REF_PRIMITIVE (ARG_GC_VECTOR)
 
-#define VECTOR_SET_PRIMITIVE(arg_type, arg_touch)			\
-  fast Pointer vector;							\
-  fast Pointer new_value;						\
-  fast Pointer *locative;						\
+#define VECTOR_SET_PRIMITIVE(arg_type)					\
+{									\
+  fast SCHEME_OBJECT vector;						\
   PRIMITIVE_HEADER (3);							\
-									\
-  vector = (arg_type (1));						\
-  arg_touch (vector);							\
-  new_value = (ARG_REF (3));						\
-  locative = (VECTOR_LOC (vector, (ARG_VECTOR_INDEX (2, vector))));	\
-  Side_Effect_Impurify (vector, new_value);				\
-  PRIMITIVE_RETURN (Swap_Pointers (locative, new_value))
+  TOUCH_IN_PRIMITIVE ((arg_type (1)), vector);				\
+  {									\
+    fast SCHEME_OBJECT new_value = (ARG_REF (3));			\
+    SIDE_EFFECT_IMPURIFY (vector, new_value);				\
+    VECTOR_SET (vector, (ARG_VECTOR_INDEX (2, vector)), new_value);	\
+  }									\
+  PRIMITIVE_RETURN (UNSPECIFIC);					\
+}
 
 DEFINE_PRIMITIVE ("VECTOR-SET!", Prim_vector_set, 3, 3, 0)
-{ VECTOR_SET_PRIMITIVE (ARG_VECTOR, VECTOR_TOUCH); }
+     VECTOR_SET_PRIMITIVE (ARG_VECTOR)
 
 DEFINE_PRIMITIVE ("SYSTEM-VECTOR-SET!", Prim_sys_vec_set, 3, 3, 0)
-{ VECTOR_SET_PRIMITIVE (ARG_GC_VECTOR, GC_VECTOR_TOUCH); }
+     VECTOR_SET_PRIMITIVE (ARG_GC_VECTOR)
 
-#define SUBVECTOR_TO_LIST_PRIMITIVE(arg_type, arg_touch)		\
-  fast Pointer vector;							\
+#define SUBVECTOR_TO_LIST_PRIMITIVE(arg_type)				\
+{									\
+  fast SCHEME_OBJECT vector;						\
   fast long start;							\
   fast long end;							\
   PRIMITIVE_HEADER (3);							\
-									\
-  vector = (arg_type (1));						\
-  arg_touch (vector);							\
+  TOUCH_IN_PRIMITIVE ((arg_type (1)), vector);				\
   start = (arg_nonnegative_integer (2));				\
   end = (arg_nonnegative_integer (3));					\
   if (end > (VECTOR_LENGTH (vector)))					\
     error_bad_range_arg (3);						\
   if (start > end)							\
     error_bad_range_arg (2);						\
-  PRIMITIVE_RETURN (subvector_to_list (vector, start, end))
+  PRIMITIVE_RETURN (subvector_to_list (vector, start, end));		\
+}
 
-static Pointer
+static SCHEME_OBJECT
 subvector_to_list (vector, start, end)
-     Pointer vector;
+     SCHEME_OBJECT vector;
      long start;
      long end;
 {
-  Pointer result;
-  fast Pointer *scan;
-  fast Pointer *end_scan;
-  fast Pointer *pair_scan;
-
+  SCHEME_OBJECT result;
+  fast SCHEME_OBJECT *scan;
+  fast SCHEME_OBJECT *end_scan;
+  fast SCHEME_OBJECT *pair_scan;
   if (start == end)
-    return (NIL);
+    return (EMPTY_LIST);
   Primitive_GC_If_Needed (2 * (end - start));
-  result = (Make_Pointer (TC_LIST, Free));
+  result = (MAKE_POINTER_OBJECT (TC_LIST, Free));
   scan = (VECTOR_LOC (vector, start));
   end_scan = (VECTOR_LOC (vector, (end - 1)));
   pair_scan = Free;
   while (scan < end_scan)
     {
       Free += 2;
-      (*pair_scan++) = (Fetch (*scan++));
-      (*pair_scan++) = (Make_Pointer (TC_LIST, Free));
+      (*pair_scan++) = (MEMORY_FETCH (*scan++));
+      (*pair_scan++) = (MAKE_POINTER_OBJECT (TC_LIST, Free));
     }
   Free += 2;
-  (*pair_scan++) = (Fetch (*scan));
-  (*pair_scan) = NIL;
+  (*pair_scan++) = (MEMORY_FETCH (*scan));
+  (*pair_scan) = EMPTY_LIST;
   return (result);
 }
 
 DEFINE_PRIMITIVE ("SUBVECTOR->LIST", Prim_subvector_to_list, 3, 3, 0)
-{ SUBVECTOR_TO_LIST_PRIMITIVE (ARG_VECTOR, VECTOR_TOUCH); }
+     SUBVECTOR_TO_LIST_PRIMITIVE (ARG_VECTOR)
 
 DEFINE_PRIMITIVE ("SYSTEM-SUBVECTOR-TO-LIST", Prim_sys_subvector_to_list, 3, 3, 0)
-{ SUBVECTOR_TO_LIST_PRIMITIVE (ARG_GC_VECTOR, GC_VECTOR_TOUCH); }
+     SUBVECTOR_TO_LIST_PRIMITIVE (ARG_GC_VECTOR)
 
-static Pointer
+static SCHEME_OBJECT
 list_to_vector (result_type, argument_number)
      long argument_number;
      long result_type;
 {
-  fast Pointer list;
+  fast SCHEME_OBJECT list;
   fast long count;
-  Pointer *result;
+  SCHEME_OBJECT *result;
 
   list = (ARG_REF (argument_number));
-  Touch_In_Primitive (list, list);
+  TOUCH_IN_PRIMITIVE (list, list);
   count = 0;
   result = (Free++);
   while (PAIR_P (list))
     {
       Primitive_GC_If_Needed (0);
       count += 1;
-      (*Free++) = (Vector_Ref (list, CONS_CAR));
-      Touch_In_Primitive ((Vector_Ref (list, CONS_CDR)), list);
+      (*Free++) = (PAIR_CAR (list));
+      TOUCH_IN_PRIMITIVE ((PAIR_CDR (list)), list);
     }
-  if (list != NIL)
+  if (list != EMPTY_LIST)
     error_wrong_type_arg (argument_number);
-  (*result) = (Make_Non_Pointer (TC_MANIFEST_VECTOR, count));
-  return (Make_Pointer (result_type, result));
+  (*result) = (MAKE_OBJECT (TC_MANIFEST_VECTOR, count));
+  return (MAKE_POINTER_OBJECT (result_type, result));
 }
 
 DEFINE_PRIMITIVE ("LIST->VECTOR", Prim_list_to_vector, 1, 1, 0)
@@ -296,80 +275,68 @@ DEFINE_PRIMITIVE ("SYSTEM-LIST-TO-VECTOR", Prim_sys_list_to_vector, 2, 2, 0)
 
 /* Primitive vector copy and fill */
 
-#define subvector_move_prefix()						\
-  Pointer vector1, vector2;						\
+#define SUBVECTOR_MOVE_PREFIX()						\
+  SCHEME_OBJECT vector1, vector2;					\
   long start1, end1, start2, end2;					\
   fast long length;							\
-  fast Pointer *scan1, *scan2;						\
+  fast SCHEME_OBJECT *scan1, *scan2;					\
   PRIMITIVE_HEADER (5);							\
-									\
-  vector1 = (ARG_VECTOR (1));						\
-  VECTOR_TOUCH (vector1);						\
+  TOUCH_IN_PRIMITIVE ((ARG_VECTOR (1)), vector1);			\
   start1 = (arg_nonnegative_integer (2));				\
   end1 = (arg_nonnegative_integer (3));					\
-  vector2 = (ARG_VECTOR (4));						\
-  VECTOR_TOUCH (vector2);						\
+  TOUCH_IN_PRIMITIVE ((ARG_VECTOR (4)), vector2);			\
   start2 = (arg_nonnegative_integer (5));				\
-									\
   if (end1 > (VECTOR_LENGTH (vector1)))					\
     error_bad_range_arg (3);						\
   if (start1 > end1)							\
     error_bad_range_arg (2);						\
   length = (end1 - start1);						\
-									\
   end2 = (start2 + length);						\
   if (end2 > (VECTOR_LENGTH (vector2)))					\
     error_bad_range_arg (5);						\
-									\
-  if (Is_Pure (Get_Pointer (vector2)))					\
-    Primitive_Error (ERR_WRITE_INTO_PURE_SPACE)
+  if (ADDRESS_PURE_P (OBJECT_ADDRESS (vector2)))			\
+    signal_error_from_primitive (ERR_WRITE_INTO_PURE_SPACE)
 
 DEFINE_PRIMITIVE ("SUBVECTOR-MOVE-RIGHT!", Prim_subvector_move_right, 5, 5, 0)
 {
-  subvector_move_prefix ();
-
+  SUBVECTOR_MOVE_PREFIX ();
   scan1 = (VECTOR_LOC (vector1, end1));
   scan2 = (VECTOR_LOC (vector2, end2));
   while ((length--) > 0)
     (*--scan2) = (*--scan1);
-  PRIMITIVE_RETURN (NIL);
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("SUBVECTOR-MOVE-LEFT!", Prim_subvector_move_left, 5, 5, 0)
 {
-  subvector_move_prefix ();
-
+  SUBVECTOR_MOVE_PREFIX ();
   scan1 = (VECTOR_LOC (vector1, start1));
   scan2 = (VECTOR_LOC (vector2, start2));
   while ((length--) > 0)
     (*scan2++) = (*scan1++);
-  PRIMITIVE_RETURN (NIL);
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
+
 DEFINE_PRIMITIVE ("SUBVECTOR-FILL!", Prim_vector_fill, 4, 4, 0)
 {
-  Pointer vector;
+  SCHEME_OBJECT vector;
   long start, end;
-  fast Pointer fill_value;
-  fast Pointer *scan;
+  fast SCHEME_OBJECT fill_value;
+  fast SCHEME_OBJECT *scan;
   fast long length;
   PRIMITIVE_HEADER (4);
-
-  vector = (ARG_VECTOR (1));
-  VECTOR_TOUCH (1);
+  TOUCH_IN_PRIMITIVE ((ARG_VECTOR (1)), vector);
   start = (arg_nonnegative_integer (2));
   end = (arg_nonnegative_integer (3));
   fill_value = (ARG_REF (4));
-
   if (end > (VECTOR_LENGTH (vector)))
     error_bad_range_arg (3);
   if (start > end)
     error_bad_range_arg (2);
   length = (end - start);
-
-  Side_Effect_Impurify (vector, fill_value);
+  SIDE_EFFECT_IMPURIFY (vector, fill_value);
   scan = (VECTOR_LOC (vector, start));
   while ((length--) > 0)
     (*scan++) = fill_value;
-  PRIMITIVE_RETURN (NIL);
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }

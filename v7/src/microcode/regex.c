@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.8 1989/05/01 19:38:27 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.9 1989/09/20 23:11:02 cph Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -42,9 +42,12 @@ GENERAL PUBLIC LICENSE may apply to this code.  A copy of that license
 should have been included along with this file. */
 
 #include "scheme.h"
-#include "char.h"
 #include "syntax.h"
 #include "regex.h"
+
+extern char * malloc ();
+extern char * realloc ();
+extern void free ();
 
 #ifndef SIGN_EXTEND_CHAR
 #define SIGN_EXTEND_CHAR(x) (x)

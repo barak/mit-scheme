@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.h,v 9.23 1989/09/20 23:09:19 cph Rel $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -29,20 +31,46 @@ there shall be no use of the name of the Massachusetts Institute of
 Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
+
+extern Image_Fast_Transpose ();
+/* REAL * Array;
+   long nrows;
+   OPTIMIZATION for square images */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.h,v 9.22 1988/08/15 20:49:39 cph Rel $ */
+extern Image_Transpose ();
+/* REAL * Array;
+   REAL * New_Array;
+   long nrows;
+   long ncols; */
 
-extern Image_Fast_Transpose();     /* REAL *Array; long nrows; OPTIMIZATION for square images */
-extern Image_Transpose();     /* REAL *Array, *New_Array; long nrows, ncols; */
-extern Image_Rotate_90clw();     /* REAL *Array, *Rotated_Array; long nrows, ncols; */
-extern Image_Rotate_90cclw();     /* REAL *Array, *Rotated_Array; long nrows, ncols; */
-extern Image_Mirror();            /* REAL *Array; long nrows, ncols; */
+extern Image_Rotate_90clw ();
+/* REAL * Array;
+   REAL * Rotated_Array;
+   long nrows;
+   long ncols; */
 
-extern Image_Mirror_Upside_Down();     /* Array,nrows,ncols,Temp_Array;
-					  REAL *Array,*Temp_Row; long nrows, ncols; */
-extern Image_Read_From_CTSCAN_File();  /* FILE *fp; REAL *Array; long nrows, ncols */
+extern Image_Rotate_90cclw ();
+/* REAL * Array;
+   REAL * Rotated_Array;
+   long nrows;
+   long ncols; */
 
-extern Image_Rotate_90clw_Mirror();     /* REAL *Array, *Rotated_Array; long nrows, ncols; */
+extern Image_Mirror ();
+/* REAL * Array;
+   long nrows;
+   long ncols; */
 
-extern Image_Draw_Magnify_N_Times_With_Offset_Scale();
-extern Image_Draw_Magnify_N_Times_With_Offset_Scale_Only();
+extern Image_Mirror_Upside_Down ();
+/* REAL * Array;
+   long nrows;
+   long ncols;
+   REAL * Temp_Row; */
+
+extern Image_Rotate_90clw_Mirror ();
+/* REAL * Array;
+   REAL * Rotated_Array;
+   long nrows;
+   long ncols; */
+
+extern Image_Draw_Magnify_N_Times_With_Offset_Scale ();
+extern Image_Draw_Magnify_N_Times_With_Offset_Scale_Only ();

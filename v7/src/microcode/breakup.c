@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/breakup.c,v 9.21 1987/01/22 14:11:34 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/breakup.c,v 9.22 1989/09/20 23:04:34 cph Rel $ */
 
 #include <stdio.h>
 
@@ -50,7 +50,7 @@ int get_a_char()
   for (c = getchar();
        isoctal(c) && count >= 0;
        c = getchar(), count -=1)
-    putchar(c);	
+    putchar(c);
   if (count != 2) return c;
   putchar(c);
   return getchar();
@@ -58,7 +58,7 @@ int get_a_char()
 
 main()
 { register int c;
-  register boolean after_new_line = true;	
+  register boolean after_new_line = true;
   while ((c = getchar()) != EOF)
 re_dispatch:
     switch(c)
@@ -103,7 +103,7 @@ re_dispatch:
 	if (c == '\n')
 	{ fprintf(stderr, "Confused character: \\n\n");
 	  after_new_line = true;
-	  break; 
+	  break;
 	}
 	if (c == '\'')
 	{ fprintf(stderr, "Confused character: \\\'\n");
@@ -120,7 +120,7 @@ re_dispatch:
 	if (c != '\'')
 	  fprintf(stderr, "Confused character: %c = 0x%x\n",
 		  c);
-	break;  
+	break;
       case '"':
 	after_new_line == false;
 	putchar(c);
@@ -147,7 +147,7 @@ re_dispatch:
 	  if (c == '\\')
 	    c = get_a_char();
 	}
-	break;	
+	break;
       case '#':
 	if (after_new_line)
 	{ while (((c = getchar()) != EOF) && (c != '\n')) ;

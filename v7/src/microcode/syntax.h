@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.h,v 1.6 1989/08/28 18:29:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.h,v 1.7 1989/09/20 23:12:04 cph Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -88,9 +88,9 @@ enum syntaxcode			/* The possible syntax codes. */
 extern char syntax_spec_code[0200];
 
 #define SYNTAX_TABLE_P(argument)					\
-  ((VECTOR_P (argument)) && ((Vector_Length (argument)) == 0x100))
+  ((VECTOR_P (argument)) && ((VECTOR_LENGTH (argument)) == 0x100))
 
-#define SYNTAX_TABLE_TYPE Pointer
+#define SYNTAX_TABLE_TYPE SCHEME_OBJECT
 
 #define SYNTAX_TABLE_REF(table, index)					\
-  (User_Vector_Ref ((table), ((index) & 0xFF)))
+  (VECTOR_REF ((table), ((index) & 0xFF)))

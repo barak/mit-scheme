@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.34 1989/09/20 23:07:26 cph Exp $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,10 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.33 1989/05/24 05:33:24 jinx Rel $
- *
- * Utilities to help with debugging
- */
+/* Utilities to help with debugging */
 
 #include "scheme.h"
 #include "prims.h"
@@ -45,56 +44,56 @@ static Boolean print_primitive_name ();
 
 /* Compiled Code Debugging */
 
-static Pointer
+static SCHEME_OBJECT
 compiled_block_debug_filename (block)
-     Pointer block;
+     SCHEME_OBJECT block;
 {
-  extern Pointer compiled_block_debugging_info ();
-  Pointer info;
+  extern SCHEME_OBJECT compiled_block_debugging_info ();
+  SCHEME_OBJECT info;
 
   info = (compiled_block_debugging_info (block));
   return
     (((STRING_P (info)) ||
       ((PAIR_P (info)) &&
-       (STRING_P (Vector_Ref (info, CONS_CAR))) &&
-       (FIXNUM_P (Vector_Ref (info, CONS_CDR)))))
+       (STRING_P (PAIR_CAR (info))) &&
+       (FIXNUM_P (PAIR_CDR (info)))))
      ? info
      : SHARP_F);
 }
 
-extern Pointer *compiled_entry_to_block_address();
+extern SCHEME_OBJECT *compiled_entry_to_block_address();
 
 #define COMPILED_ENTRY_TO_BLOCK(entry)					\
-(Make_Pointer (TC_COMPILED_CODE_BLOCK,					\
-	       (compiled_entry_to_block_address (entry))))
+(MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK,				\
+		      (compiled_entry_to_block_address (entry))))
 
-static Pointer
+static SCHEME_OBJECT
 compiled_entry_debug_filename (entry)
-     Pointer entry;
+     SCHEME_OBJECT entry;
 {
-  Pointer results [3];
+  SCHEME_OBJECT results [3];
   extern void compiled_entry_type ();
-  extern long compiled_entry_manifest_closure_p ();
+  extern long compiled_entry_closure_p ();
   extern long compiled_entry_to_block_offset ();
-  extern Pointer compiled_closure_to_entry ();
+  extern SCHEME_OBJECT compiled_closure_to_entry ();
 
   compiled_entry_type (entry, (& (results [0])));
-  if (((results [0]) == 0) && (compiled_entry_manifest_closure_p (entry)))
+  if (((results [0]) == 0) && (compiled_entry_closure_p (entry)))
     entry = (compiled_closure_to_entry (entry));
   return (compiled_block_debug_filename (COMPILED_ENTRY_TO_BLOCK (entry)));
 }
 
 char *
 compiled_entry_filename (entry)
-     Pointer entry;
+     SCHEME_OBJECT entry;
 {
-  Pointer result;
+  SCHEME_OBJECT result;
 
   result = (compiled_entry_debug_filename (entry));
   if (STRING_P (result))
-    return (Scheme_String_To_C_String (result));
+    return ((char *) (STRING_LOC ((result), 0)));
   else if (PAIR_P (result))
-    return (Scheme_String_To_C_String (Vector_Ref (result, CONS_CAR)));
+    return ((char *) (STRING_LOC ((PAIR_CAR (result)), 0)));
   else
     return ("**** filename not known ****");
 }
@@ -102,7 +101,7 @@ compiled_entry_filename (entry)
 void
 Show_Pure ()
 {
-  Pointer *Obj_Address;
+  SCHEME_OBJECT *Obj_Address;
   long Pure_Size, Total_Size;
 
   Obj_Address = Constant_Space;
@@ -118,54 +117,54 @@ Show_Pure ()
       printf ("Done.\n");
       return;
     }
-    Pure_Size = Get_Integer(*Obj_Address);
-    Total_Size = Get_Integer(Obj_Address[1]);
+    Pure_Size = OBJECT_DATUM (*Obj_Address);
+    Total_Size = OBJECT_DATUM (Obj_Address[1]);
     printf ("0x%x: pure=0x%x, total=0x%x\n",
            Obj_Address, Pure_Size, Total_Size);
-    if (OBJECT_TYPE(*Obj_Address) != TC_MANIFEST_SPECIAL_NM_VECTOR)
+    if (OBJECT_TYPE (*Obj_Address) != TC_MANIFEST_SPECIAL_NM_VECTOR)
     {
       printf ("Missing initial SNMV.\n");
       return;
     }
-    if (OBJECT_TYPE(Obj_Address[1]) != PURE_PART)
+    if (OBJECT_TYPE (Obj_Address[1]) != PURE_PART)
     {
       printf ("Missing subsequent pure header.\n");
     }
-    if (OBJECT_TYPE(Obj_Address[Pure_Size-1]) !=
+    if (OBJECT_TYPE (Obj_Address[Pure_Size-1]) !=
         TC_MANIFEST_SPECIAL_NM_VECTOR)
     {
       printf ("Missing internal SNMV.\n");
       return;
     }
-    if (OBJECT_TYPE(Obj_Address[Pure_Size]) != CONSTANT_PART)
+    if (OBJECT_TYPE (Obj_Address[Pure_Size]) != CONSTANT_PART)
     {
       printf ("Missing constant header.\n");
       return;
     }
-    if (Get_Integer(Obj_Address[Pure_Size]) != Pure_Size)
+    if (OBJECT_DATUM (Obj_Address[Pure_Size]) != Pure_Size)
     {
       printf ("Pure size mismatch 0x%x.\n",
-	     Get_Integer(Obj_Address[Pure_Size]));
+	     OBJECT_DATUM (Obj_Address[Pure_Size]));
     }
-    if (OBJECT_TYPE(Obj_Address[Total_Size-1]) !=
+    if (OBJECT_TYPE (Obj_Address[Total_Size-1]) !=
         TC_MANIFEST_SPECIAL_NM_VECTOR)
     {
       printf ("Missing ending SNMV.\n");
       return;
     }
-    if (OBJECT_TYPE(Obj_Address[Total_Size]) != END_OF_BLOCK)
+    if (OBJECT_TYPE (Obj_Address[Total_Size]) != END_OF_BLOCK)
     {
       printf ("Missing ending header.\n");
       return;
     }
-    if (Get_Integer(Obj_Address[Total_Size]) != Total_Size)
+    if (OBJECT_DATUM (Obj_Address[Total_Size]) != Total_Size)
     {
       printf ("Total size mismatch 0x%x.\n",
-             Get_Integer(Obj_Address[Total_Size]));
+             OBJECT_DATUM (Obj_Address[Total_Size]));
     }
     Obj_Address += Total_Size+1;
 #ifdef FLOATING_ALIGNMENT
-    while (*Obj_Address == Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, 0))
+    while (*Obj_Address == MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0))
     {
       Obj_Address += 1;
     }
@@ -175,63 +174,57 @@ Show_Pure ()
 
 void
 Show_Env (The_Env)
-     Pointer The_Env;
+     SCHEME_OBJECT The_Env;
 {
-  Pointer *name_ptr, procedure, *value_ptr, extension;
+  SCHEME_OBJECT *name_ptr, procedure, *value_ptr, extension;
   long count, i;
 
-  procedure = Vector_Ref (The_Env, ENVIRONMENT_FUNCTION);
-  value_ptr = Nth_Vector_Loc(The_Env, ENVIRONMENT_FIRST_ARG);
+  procedure = MEMORY_REF (The_Env, ENVIRONMENT_FUNCTION);
+  value_ptr = MEMORY_LOC (The_Env, ENVIRONMENT_FIRST_ARG);
 
-  if (OBJECT_TYPE(procedure) == AUX_LIST_TYPE)
+  if (OBJECT_TYPE (procedure) == AUX_LIST_TYPE)
   {
     extension = procedure;
-    procedure = Fast_Vector_Ref (extension, ENV_EXTENSION_PROCEDURE);
+    procedure = FAST_MEMORY_REF (extension, ENV_EXTENSION_PROCEDURE);
   }
   else
-    extension = NIL;
+    extension = SHARP_F;
 
-  if ((OBJECT_TYPE(procedure) != TC_PROCEDURE) &&
-      (OBJECT_TYPE(procedure) != TC_EXTENDED_PROCEDURE))
+  if ((OBJECT_TYPE (procedure) != TC_PROCEDURE) &&
+      (OBJECT_TYPE (procedure) != TC_EXTENDED_PROCEDURE))
   {
     printf ("Not created by a procedure");
     return;
   }
-  name_ptr = Nth_Vector_Loc(procedure, PROCEDURE_LAMBDA_EXPR);
-  name_ptr = Nth_Vector_Loc(*name_ptr, LAMBDA_FORMALS);
-  count = Vector_Length(*name_ptr) - 1;
+  name_ptr = MEMORY_LOC (procedure, PROCEDURE_LAMBDA_EXPR);
+  name_ptr = MEMORY_LOC (*name_ptr, LAMBDA_FORMALS);
+  count = VECTOR_LENGTH (*name_ptr) - 1;
 
-  name_ptr = Nth_Vector_Loc(*name_ptr, 2);
+  name_ptr = MEMORY_LOC (*name_ptr, 2);
   for (i = 0; i < count; i++)
   {
     Print_Expression(*name_ptr++, "Name ");
     Print_Expression(*value_ptr++, " Value ");
     printf ("\n");
   }
-  if (extension != NIL)
+  if (extension != SHARP_F)
   {
     printf ("Auxilliary Variables\n");
-    count = Get_Integer(Vector_Ref (extension, AUX_LIST_COUNT));
-    for (i = 0, name_ptr = Nth_Vector_Loc(extension, AUX_LIST_FIRST);
+    count = OBJECT_DATUM (MEMORY_REF (extension, AUX_LIST_COUNT));
+    for (i = 0, name_ptr = MEMORY_LOC (extension, AUX_LIST_FIRST);
 	 i < count;
 	 i++, name_ptr++)
     {
-      Print_Expression(Vector_Ref (*name_ptr, CONS_CAR),
-		       "Name ");
-      Print_Expression(Vector_Ref (*name_ptr, CONS_CAR),
-		       " Value ");
+      Print_Expression (PAIR_CAR (*name_ptr), "Name ");
+      Print_Expression (PAIR_CDR (*name_ptr), " Value ");
       printf ("\n");
     }
   }
 }
 
-#define NULL_P(object) ((OBJECT_TYPE (object)) == TC_NULL)
-#define PAIR_CAR(pair) (Vector_Ref ((pair), CONS_CAR))
-#define PAIR_CDR(pair) (Vector_Ref ((pair), CONS_CDR))
-
 static void
 print_list (pair)
-     Pointer pair;
+     SCHEME_OBJECT pair;
 {
   int count;
 
@@ -246,7 +239,7 @@ print_list (pair)
       pair = (PAIR_CDR (pair));
       count += 1;
     }
-  if (! (NULL_P (pair)))
+  if (pair != EMPTY_LIST)
     {
       if (count == MAX_LIST_PRINT)
 	printf (" ...");
@@ -262,7 +255,7 @@ print_list (pair)
 
 static void
 print_return_name (Ptr)
-     Pointer Ptr;
+     SCHEME_OBJECT Ptr;
 {
   long index;
   char * name;
@@ -288,12 +281,12 @@ Print_Return (String)
 {
   printf ("%s: ", String);
   print_return_name (Fetch_Return ());
-  CRLF ();
+  printf ("\n");
 }
 
 static void
 print_string (string)
-     Pointer string;
+     SCHEME_OBJECT string;
 {
   long length;
   long i;
@@ -301,8 +294,8 @@ print_string (string)
   char this;
 
   printf ("\"");
-  length = ((long) (Vector_Ref (string, STRING_LENGTH)));
-  next = ((char *) (Nth_Vector_Loc (string, STRING_CHARS)));
+  length = (STRING_LENGTH (string));
+  next = ((char *) (STRING_LOC (string, 0)));
   for (i = 0; (i < length); i += 1)
     {
       this = (*next++);
@@ -337,16 +330,16 @@ print_string (string)
 
 static void
 print_symbol (symbol)
-     Pointer symbol;
+     SCHEME_OBJECT symbol;
 {
-  Pointer string;
+  SCHEME_OBJECT string;
   long length;
   long i;
   char * next;
 
-  string = (Vector_Ref (symbol, SYMBOL_NAME));
-  length = ((long) (Vector_Ref (string, STRING_LENGTH)));
-  next = ((char *) (Nth_Vector_Loc (string, STRING_CHARS)));
+  string = (MEMORY_REF (symbol, SYMBOL_NAME));
+  length = (STRING_LENGTH (string));
+  next = ((char *) (STRING_LOC (string, 0)));
   for (i = 0; (i < length); i += 1)
     putchar (*next++);
   return;
@@ -354,15 +347,15 @@ print_symbol (symbol)
 
 static void
 print_filename (filename)
-     Pointer filename;
+     SCHEME_OBJECT filename;
 {
   long length;
   char * scan;
   char * end;
   char * slash;
 
-  length = ((long) (Vector_Ref (filename, STRING_LENGTH)));
-  scan = ((char *) (Nth_Vector_Loc (filename, STRING_CHARS)));
+  length = (STRING_LENGTH (filename));
+  scan = ((char *) (STRING_LOC (filename, 0)));
   end = (scan + length);
   slash = scan;
   while (scan < end)
@@ -374,7 +367,7 @@ print_filename (filename)
 
 void
 print_object (object)
-     Pointer object;
+     SCHEME_OBJECT object;
 {
   do_printing (object, true);
   printf ("\n");
@@ -393,12 +386,12 @@ DEFINE_PRIMITIVE ("DEBUGGING-PRINTER", Prim_debugging_printer, 1, 1,
 
 void
 print_objects (objects, n)
-     Pointer * objects;
+     SCHEME_OBJECT * objects;
      int n;
 {
-  Pointer * scan;
-  Pointer * end;
-  
+  SCHEME_OBJECT * scan;
+  SCHEME_OBJECT * end;
+
   scan = objects;
   end = (objects + n);
   while (scan < end)
@@ -418,16 +411,16 @@ print_objects (objects, n)
 
 void
 print_vector (vector)
-     Pointer vector;
+     SCHEME_OBJECT vector;
 {
-  print_objects ((Nth_Vector_Loc (vector, 1)),
-		 (UNSIGNED_FIXNUM_VALUE (Fast_Vector_Ref ((vector), 0))));
+  print_objects
+    ((MEMORY_LOC (vector, 1)), (OBJECT_DATUM (VECTOR_LENGTH (vector))));
   return;
 }
 
 void
 Print_Expression (expression, string)
-     Pointer expression;
+     SCHEME_OBJECT expression;
      char * string;
 {
   if ((string [0]) != 0)
@@ -439,7 +432,7 @@ extern char * Type_Names [];
 
 static void
 do_printing (Expr, Detailed)
-     Pointer Expr;
+     SCHEME_OBJECT Expr;
      Boolean Detailed;
 {
   long Temp_Address;
@@ -453,7 +446,7 @@ do_printing (Expr, Detailed)
     case TC_ACCESS:
       {
 	printf ("[ACCESS (");
-	Expr = (Vector_Ref (Expr, ACCESS_NAME));
+	Expr = (MEMORY_REF (Expr, ACCESS_NAME));
       SPrint:
 	print_symbol (Expr);
 	handled_p = true;
@@ -463,7 +456,7 @@ do_printing (Expr, Detailed)
 
     case TC_ASSIGNMENT:
       printf ("[SET! (");
-      Expr = (Vector_Ref ((Vector_Ref (Expr, ASSIGN_NAME)), VARIABLE_SYMBOL));
+      Expr = (MEMORY_REF ((MEMORY_REF (Expr, ASSIGN_NAME)), VARIABLE_SYMBOL));
       goto SPrint;
 
     case TC_CHARACTER_STRING:
@@ -472,20 +465,15 @@ do_printing (Expr, Detailed)
 
     case TC_DEFINITION:
       printf ("[DEFINE (");
-      Expr = (Vector_Ref (Expr, DEFINE_NAME));
+      Expr = (MEMORY_REF (Expr, DEFINE_NAME));
       goto SPrint;
 
     case TC_FIXNUM:
-      {
-	long a;
-
-	Sign_Extend (Expr, a);
-	printf ("%d", a);
-	return;
-      }
+      printf ("%d", (FIXNUM_TO_LONG (Expr)));
+      return;
 
     case TC_BIG_FLONUM:
-      printf ("%f", (Get_Float (Expr)));
+      printf ("%f", (FLONUM_TO_DOUBLE (Expr)));
       return;
 
     case TC_WEAK_CONS:
@@ -510,7 +498,7 @@ do_printing (Expr, Detailed)
       return;
 
     case TC_VARIABLE:
-      Expr = (Vector_Ref (Expr, VARIABLE_SYMBOL));
+      Expr = (MEMORY_REF (Expr, VARIABLE_SYMBOL));
       if (Detailed)
 	{
 	  printf ("[VARIABLE (");
@@ -521,12 +509,12 @@ do_printing (Expr, Detailed)
 
     case TC_COMBINATION:
       printf ("[COMBINATION (%d args) 0x%x]",
-	      ((Vector_Length (Expr)) - 1),
+	      ((VECTOR_LENGTH (Expr)) - 1),
 	      Temp_Address);
       if (Detailed)
 	{
 	  printf (" (");
-	  do_printing ((Vector_Ref (Expr, COMB_FN_SLOT)), false);
+	  do_printing ((MEMORY_REF (Expr, COMB_FN_SLOT)), false);
 	  printf (" ...)");
 	}
       return;
@@ -536,9 +524,9 @@ do_printing (Expr, Detailed)
       if (Detailed)
 	{
 	  printf (" (");
-	  do_printing ((Vector_Ref (Expr, COMB_1_FN)), false);
+	  do_printing ((MEMORY_REF (Expr, COMB_1_FN)), false);
 	  printf (", ");
-	  do_printing ((Vector_Ref (Expr, COMB_1_ARG_1)), false);
+	  do_printing ((MEMORY_REF (Expr, COMB_1_ARG_1)), false);
 	  printf (")");
 	}
       return;
@@ -548,24 +536,24 @@ do_printing (Expr, Detailed)
       if (Detailed)
 	{
 	  printf (" (");
-	  do_printing ((Vector_Ref (Expr, COMB_2_FN)), false);
+	  do_printing ((MEMORY_REF (Expr, COMB_2_FN)), false);
 	  printf (", ");
-	  do_printing ((Vector_Ref (Expr, COMB_2_ARG_1)), false);
+	  do_printing ((MEMORY_REF (Expr, COMB_2_ARG_1)), false);
 	  printf (", ");
-	  do_printing ((Vector_Ref (Expr, COMB_2_ARG_2)), false);
+	  do_printing ((MEMORY_REF (Expr, COMB_2_ARG_2)), false);
 	  printf (")");
 	}
       return;
 
     case TC_ENVIRONMENT:
       {
-	Pointer procedure;
+	SCHEME_OBJECT procedure;
 
 	printf ("[ENVIRONMENT 0x%x]", Temp_Address);
 	printf (" (from ");
-	procedure = (Vector_Ref (Expr, ENVIRONMENT_FUNCTION));
+	procedure = (MEMORY_REF (Expr, ENVIRONMENT_FUNCTION));
 	if ((OBJECT_TYPE (procedure)) == TC_QUAD)
-	  procedure = (Vector_Ref (procedure, ENV_EXTENSION_PROCEDURE));
+	  procedure = (MEMORY_REF (procedure, ENV_EXTENSION_PROCEDURE));
 	do_printing (procedure, false);
 	printf (")");
 	return;
@@ -574,7 +562,7 @@ do_printing (Expr, Detailed)
     case TC_EXTENDED_LAMBDA:
       if (Detailed)
 	printf ("[EXTENDED_LAMBDA (");
-      do_printing ((Vector_Ref ((Vector_Ref (Expr, ELAMBDA_NAMES)), 1)),
+      do_printing ((MEMORY_REF ((MEMORY_REF (Expr, ELAMBDA_NAMES)), 1)),
 		   false);
       if (Detailed)
 	printf (") 0x%x", Temp_Address);
@@ -583,7 +571,7 @@ do_printing (Expr, Detailed)
     case TC_EXTENDED_PROCEDURE:
       if (Detailed)
 	printf ("[EXTENDED_PROCEDURE (");
-      do_printing ((Vector_Ref (Expr, PROCEDURE_LAMBDA_EXPR)), false);
+      do_printing ((MEMORY_REF (Expr, PROCEDURE_LAMBDA_EXPR)), false);
       if (Detailed)
 	printf (") 0x%x]", Temp_Address);
       break;
@@ -591,7 +579,7 @@ do_printing (Expr, Detailed)
     case TC_LAMBDA:
       if (Detailed)
 	printf ("[LAMBDA (");
-      do_printing ((Vector_Ref ((Vector_Ref (Expr, LAMBDA_FORMALS)), 1)),
+      do_printing ((MEMORY_REF ((MEMORY_REF (Expr, LAMBDA_FORMALS)), 1)),
 		  false);
       if (Detailed)
 	printf (") 0x%x]", Temp_Address);
@@ -606,7 +594,7 @@ do_printing (Expr, Detailed)
     case TC_PROCEDURE:
       if (Detailed)
 	printf ("[PROCEDURE (");
-      do_printing ((Vector_Ref (Expr, PROCEDURE_LAMBDA_EXPR)), false);
+      do_printing ((MEMORY_REF (Expr, PROCEDURE_LAMBDA_EXPR)), false);
       if (Detailed)
 	printf (") 0x%x]", Temp_Address);
       return;
@@ -616,8 +604,8 @@ do_printing (Expr, Detailed)
 	if ((OBJECT_DATUM (Expr)) <= TRAP_MAX_IMMEDIATE)
 	  break;
 	printf ("[REFERENCE-TRAP");
-	Print_Expression ((Vector_Ref (Expr, TRAP_TAG)), " tag");
-	Print_Expression ((Vector_Ref (Expr, TRAP_EXTRA)), " extra");
+	Print_Expression ((MEMORY_REF (Expr, TRAP_TAG)), " tag");
+	Print_Expression ((MEMORY_REF (Expr, TRAP_EXTRA)), " extra");
 	printf ("]");
 	return;
       }
@@ -639,14 +627,14 @@ do_printing (Expr, Detailed)
     case TC_COMPILED_ENTRY:
       {
 	extern void compiled_entry_type ();
-	extern long compiled_entry_manifest_closure_p ();
+	extern long compiled_entry_closure_p ();
 	extern long compiled_entry_to_block_offset ();
-	extern Pointer compiled_closure_to_entry ();
+	extern SCHEME_OBJECT compiled_closure_to_entry ();
 
-	Pointer results [3];
+	SCHEME_OBJECT results [3];
 	char * type_string;
-	Pointer filename;
-	Pointer entry;
+	SCHEME_OBJECT filename;
+	SCHEME_OBJECT entry;
 	Boolean closure_p;
 
 	entry = Expr;
@@ -655,7 +643,7 @@ do_printing (Expr, Detailed)
 	switch (results [0])
 	  {
 	  case 0:
-	    if (compiled_entry_manifest_closure_p (entry))
+	    if (compiled_entry_closure_p (entry))
 	      {
 		type_string = "COMPILED_CLOSURE";
 		entry = (compiled_closure_to_entry (entry));
@@ -690,12 +678,9 @@ do_printing (Expr, Detailed)
 	  }
 	else if (PAIR_P (filename))
 	  {
-	    int block_number;
-
 	    printf (" file: ");
-	    print_filename (Vector_Ref (filename, CONS_CAR));
-	    FIXNUM_VALUE ((Vector_Ref (filename, CONS_CDR)), block_number);
-	    printf (" block: %d", block_number);
+	    print_filename (PAIR_CAR (filename));
+	    printf (" block: %d", (FIXNUM_TO_LONG (PAIR_CDR (filename))));
 	  }
 	printf ("]");
 	return;
@@ -717,12 +702,12 @@ do_printing (Expr, Detailed)
 
 Boolean
 Print_One_Continuation_Frame (Temp)
-     Pointer Temp;
+     SCHEME_OBJECT Temp;
 {
-  Pointer Expr;
+  SCHEME_OBJECT Expr;
 
   Print_Expression (Temp, "Return code");
-  CRLF ();
+  printf ("\n");
   Expr = (Pop ());
   Print_Expression (Expr, "Expression");
   printf ("\n");
@@ -745,7 +730,7 @@ void
 Back_Trace (where)
      FILE *where;
 {
-  Pointer Temp, *Old_Stack;
+  SCHEME_OBJECT Temp, *Old_Stack;
 
   Back_Trace_Entry_Hook();
   Old_Stack = Stack_Pointer;
@@ -754,7 +739,7 @@ Back_Trace (where)
     if (Return_Hook_Address == &Top_Of_Stack())
     {
       Temp = Pop();
-      if (Temp != Make_Non_Pointer(TC_RETURN_CODE, RC_RETURN_TRAP_POINT))
+      if (Temp != MAKE_OBJECT (TC_RETURN_CODE, RC_RETURN_TRAP_POINT))
       {
         printf ("\n--> Return trap is missing here <--\n");
       }
@@ -780,7 +765,7 @@ Back_Trace (where)
       Print_Expression(Temp, "  ...");
       if ((OBJECT_TYPE (Temp)) == TC_MANIFEST_NM_VECTOR)
       {
-	Stack_Pointer = Simulate_Popping(Get_Integer(Temp));
+	Stack_Pointer = Simulate_Popping(OBJECT_DATUM (Temp));
         printf (" (skipping)");
       }
       printf ("\n");
@@ -794,9 +779,9 @@ Back_Trace (where)
 
 void
 print_stack (sp)
-     Pointer * sp;
+     SCHEME_OBJECT * sp;
 {
-  Pointer * saved_sp;
+  SCHEME_OBJECT * saved_sp;
 
   saved_sp = Stack_Pointer;
   Stack_Pointer = sp;
@@ -807,7 +792,7 @@ print_stack (sp)
 
 static Boolean
 print_primitive_name (primitive)
-     Pointer primitive;
+     SCHEME_OBJECT primitive;
 {
   extern char *primitive_to_name();
   char *name;
@@ -827,7 +812,7 @@ print_primitive_name (primitive)
 
 void
 Print_Primitive (primitive)
-     Pointer primitive;
+     SCHEME_OBJECT primitive;
 {
   extern long primitive_to_arity();
   char buffer1[40], buffer2[40];
@@ -962,7 +947,7 @@ Handle_Debug_Flags ()
   while (true)
   { interrupted = false;
     printf ("Clear<number>, Set<number>, Done, ?, or Halt: ");
-    OS_Flush_Output_Buffer();
+    OS_tty_flush_output();
 
     /* Considerably haired up to go through standard (safe) interface */
 

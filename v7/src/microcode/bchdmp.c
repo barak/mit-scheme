@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.45 1989/09/20 23:05:37 cph Exp $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,12 +32,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.44 1989/06/08 00:19:08 jinx Rel $ */
-
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
-   and related utilities to disk.
-*/
+   and related utilities to disk. */
 
 #include "scheme.h"
 #include "prims.h"
@@ -51,7 +50,7 @@ MIT in each case. */
 #include "error: bchdmp does not handle floating alignment."
 #endif
 
-extern Pointer
+extern SCHEME_OBJECT
   dump_renumber_primitive(),
   *initialize_primitive_table(),
   *cons_primitive_table(),
@@ -59,10 +58,10 @@ extern Pointer
 
 static char *dump_file_name;
 static int real_gc_file, dump_file;
-static Pointer *saved_free;
-static Pointer fixup_buffer[GC_DISK_BUFFER_SIZE];
-static Pointer *fixup_buffer_end = &fixup_buffer[GC_DISK_BUFFER_SIZE];
-static Pointer *fixup;
+static SCHEME_OBJECT *saved_free;
+static SCHEME_OBJECT fixup_buffer[GC_DISK_BUFFER_SIZE];
+static SCHEME_OBJECT *fixup_buffer_end = &fixup_buffer[GC_DISK_BUFFER_SIZE];
+static SCHEME_OBJECT *fixup;
 static fixup_count = 0;
 static Boolean compiled_code_present_p;
 
@@ -75,18 +74,18 @@ static Boolean compiled_code_present_p;
     return (PRIM_INTERRUPT);						\
   }									\
   *--fixup = contents;							\
-  *--fixup = ((Pointer) location);					\
+  *--fixup = ((SCHEME_OBJECT) location);				\
 }
 
 #define fasdump_normal_setup()						\
 {									\
-  Old = Get_Pointer(Temp);						\
-  if (OBJECT_TYPE(*Old) == TC_BROKEN_HEART)				\
+  Old = OBJECT_ADDRESS (Temp);						\
+  if (OBJECT_TYPE (*Old) == TC_BROKEN_HEART)				\
   {									\
-    *Scan = Make_New_Pointer(OBJECT_TYPE(Temp), *Old);			\
+    *Scan = (MAKE_OBJECT_FROM_OBJECTS (Temp, *Old));			\
     continue;								\
   }									\
-  New_Address = Make_Broken_Heart(C_To_Scheme(To_Address));		\
+  New_Address = (MAKE_BROKEN_HEART (To_Address));			\
   fasdump_remember_to_fix(Old, *Old);					\
 }
 
@@ -111,8 +110,8 @@ static Boolean compiled_code_present_p;
 
 #define fasdump_normal_end()						\
 {									\
-  *Get_Pointer(Temp) = New_Address;					\
-  *Scan = Make_New_Pointer(OBJECT_TYPE(Temp), New_Address);		\
+  *OBJECT_ADDRESS (Temp) = New_Address;					\
+  *Scan = (MAKE_OBJECT_FROM_OBJECTS (Temp, New_Address));		\
   continue;								\
 }
 
@@ -125,20 +124,20 @@ static Boolean compiled_code_present_p;
 
 #define fasdump_typeless_setup()					\
 {									\
-  Old = ((Pointer *) Temp);						\
-  if (OBJECT_TYPE(*Old) == TC_BROKEN_HEART)				\
+  Old = ((SCHEME_OBJECT *) Temp);					\
+  if (OBJECT_TYPE (*Old) == TC_BROKEN_HEART)				\
   {									\
-    *Scan = ((Pointer) Get_Pointer(*Old));				\
+    *Scan = ((SCHEME_OBJECT) OBJECT_ADDRESS (*Old));			\
     continue;								\
   }									\
-  New_Address = ((Pointer) To_Address);					\
+  New_Address = ((SCHEME_OBJECT) To_Address);				\
   fasdump_remember_to_fix(Old, *Old);					\
 }
 
 #define fasdump_typeless_end()						\
 {									\
-  *Get_Pointer(Temp) = Make_Broken_Heart(C_To_Scheme(New_Address));	\
-  *Scan = ((Pointer) New_Address);					\
+  (* (OBJECT_ADDRESS (Temp))) = (MAKE_BROKEN_HEART (New_Address));	\
+  *Scan = ((SCHEME_OBJECT) New_Address);				\
   continue;								\
 }
 
@@ -152,20 +151,20 @@ static Boolean compiled_code_present_p;
 #define fasdump_compiled_entry()					\
 {									\
   compiled_code_present_p = true;					\
-  Old = Get_Pointer(Temp);						\
+  Old = OBJECT_ADDRESS (Temp);						\
   Compiled_BH(false, continue);						\
   {									\
-    Pointer *Saved_Old = Old;						\
+    SCHEME_OBJECT *Saved_Old = Old;					\
 									\
     fasdump_remember_to_fix(Old, *Old);					\
-    New_Address = Make_Broken_Heart(C_To_Scheme(To_Address));		\
+    New_Address = (MAKE_BROKEN_HEART (To_Address));			\
     copy_vector(&success);						\
     if (!success)							\
     {									\
       return (PRIM_INTERRUPT);						\
     }									\
     *Saved_Old = New_Address;						\
-    *Scan = Relocate_Compiled(Temp, Get_Pointer(New_Address),		\
+    *Scan = Relocate_Compiled(Temp, OBJECT_ADDRESS (New_Address),	\
 			      Saved_Old);				\
     continue;								\
   }									\
@@ -189,7 +188,7 @@ Boolean
 fasdump_exit(length)
      long length;
 {
-  fast Pointer *fixes, *fix_address;
+  fast SCHEME_OBJECT *fixes, *fix_address;
   Boolean result;
 
   Free = saved_free;
@@ -216,17 +215,17 @@ fasdump_exit(length)
     unlink(dump_file_name);
   }
   dump_file_name = ((char *) NULL);
-  
+
   fixes = fixup;
 
 next_buffer:
 
   while (fixes != fixup_buffer_end)
   {
-    fix_address = ((Pointer *) (*fixes++)); /* Where it goes. */
+    fix_address = ((SCHEME_OBJECT *) (*fixes++)); /* Where it goes. */
     *fix_address = *fixes++;		    /* Put it there. */
   }
-  
+
   if (fixup_count >= 0)
   {
     if ((lseek(real_gc_file, (fixup_count * GC_BUFFER_BYTES), 0) == -1) ||
@@ -242,7 +241,7 @@ next_buffer:
     fixes = fixup_buffer;
     goto next_buffer;
   }
-  
+
   fixup = fixes;
   Fasdump_Exit_Hook();
   return (result);
@@ -265,10 +264,10 @@ reset_fixes()
 
 long
 dumploop(Scan, To_ptr, To_Address_ptr)
-     fast Pointer *Scan;
-     Pointer **To_ptr, **To_Address_ptr;
+     fast SCHEME_OBJECT *Scan;
+     SCHEME_OBJECT **To_ptr, **To_Address_ptr;
 {
-  fast Pointer *To, *Old, Temp, *To_Address, New_Address;
+  fast SCHEME_OBJECT *To, *Old, Temp, *To_Address, New_Address;
   Boolean success;
 
   success = true;
@@ -281,11 +280,11 @@ dumploop(Scan, To_ptr, To_Address_ptr)
     Switch_by_GC_Type(Temp)
     {
       case TC_BROKEN_HEART:
-        if (OBJECT_DATUM(Temp) == 0)
+        if (OBJECT_DATUM (Temp) == 0)
 	{
 	  break;
 	}
-        if (Scan != (Get_Pointer(Temp)))
+        if (Scan != (OBJECT_ADDRESS (Temp)))
 	{
 	  sprintf(gc_death_message_buffer,
 		  "purifyloop: broken heart (0x%lx) in scan",
@@ -311,7 +310,7 @@ dumploop(Scan, To_ptr, To_Address_ptr)
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
 	/* Check whether this bumps over current buffer,
 	   and if so we need a new bufferfull. */
-	Scan += Get_Integer(Temp);
+	Scan += OBJECT_DATUM (Temp);
 	if (Scan < scan_buffer_top)
 	{
 	  break;
@@ -417,7 +416,7 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 
 	Scan += 1;
 	start_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(Scan);
-	
+
 	for (word_ptr = start_ptr,
 	     next_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
 	     true;
@@ -464,7 +463,7 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 	fasdump_normal_pointer(copy_cell(), 1);
 
       case TC_REFERENCE_TRAP:
-	if (OBJECT_DATUM(Temp) <= TRAP_MAX_IMMEDIATE)
+	if (OBJECT_DATUM (Temp) <= TRAP_MAX_IMMEDIATE)
 	{
 	  /* It is a non pointer. */
 	  break;
@@ -479,7 +478,7 @@ dumploop(Scan, To_ptr, To_Address_ptr)
       {
 	fasdump_normal_setup();
 	*To++ = *Old;
-	*To++ = Make_Broken_Heart(0);
+	*To++ = BROKEN_HEART_ZERO;
 	fasdump_transport_end(2);
 	fasdump_normal_end();
       }
@@ -566,19 +565,14 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
 {
   Boolean success;
   long value, length, hlength, tlength, tsize;
-  Pointer *dumped_object, *free_buffer;
-  Pointer *table_start, *table_end, *table_top;
-  Pointer header[FASL_HEADER_LENGTH];
-  Primitive_3_Args();
-
-  CHECK_ARG (2, STRING_P);
-  dump_file_name = Scheme_String_To_C_String(Arg2);
-
-  dump_file = open(dump_file_name, GC_FILE_FLAGS, 0666);
+  SCHEME_OBJECT *dumped_object, *free_buffer;
+  SCHEME_OBJECT *table_start, *table_end, *table_top;
+  SCHEME_OBJECT header[FASL_HEADER_LENGTH];
+  PRIMITIVE_HEADER (3);
+  dump_file_name = (STRING_ARG (2));
+  dump_file = (open (dump_file_name, GC_FILE_FLAGS, 0666));
   if (dump_file < 0)
-  {
-    Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  }
+    error_bad_range_arg (2);
 
   compiled_code_present_p = false;
   success = true;
@@ -601,9 +595,9 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
 #endif
 
   free_buffer = initialize_free_buffer();
-  Free = ((Pointer *) NULL);
+  Free = ((SCHEME_OBJECT *) NULL);
   free_buffer += FASL_HEADER_LENGTH;
-  *free_buffer++ = Arg1;
+  *free_buffer++ = (ARG_REF (1));
   dumped_object = Free;
   Free += 1;
 
@@ -618,7 +612,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
     }
     else
     {
-      Primitive_Error(value);
+      signal_error_from_primitive (value);
     }
   }
   end_transport(&success);
@@ -638,9 +632,9 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
   }
 
   tsize = (table_end - table_start);
-  hlength = (sizeof(Pointer) * tsize);
+  hlength = (sizeof(SCHEME_OBJECT) * tsize);
   if ((lseek(gc_file,
-	     (sizeof(Pointer) * (length + FASL_HEADER_LENGTH)),
+	     (sizeof(SCHEME_OBJECT) * (length + FASL_HEADER_LENGTH)),
 	     0) == -1) ||
       (write(gc_file, ((char *) &table_start[0]), hlength) != hlength))
   {
@@ -648,7 +642,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
     PRIMITIVE_RETURN (SHARP_F);
   }
 
-  hlength = (sizeof(Pointer) * FASL_HEADER_LENGTH);
+  hlength = (sizeof(SCHEME_OBJECT) * FASL_HEADER_LENGTH);
   prepare_dump_header(header, dumped_object, length, dumped_object,
 		      0, Constant_Space, tlength, tsize,
 		      compiled_code_present_p, false);
@@ -658,7 +652,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
     fasdump_exit(0);
     PRIMITIVE_RETURN (SHARP_F);
   }
-  PRIMITIVE_RETURN(fasdump_exit((sizeof(Pointer) *
+  PRIMITIVE_RETURN(fasdump_exit((sizeof(SCHEME_OBJECT) *
 				 (length + tsize)) + hlength) ?
 		   SHARP_T : SHARP_F);
 }
@@ -670,35 +664,25 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
 
 DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
 {
-  extern Pointer compiler_utilities;
-  Pointer Combination, *table_start, *table_end, *saved_free;
-  long Arg1Type, table_length;
+  extern SCHEME_OBJECT compiler_utilities;
+  SCHEME_OBJECT Combination, *table_start, *table_end, *saved_free;
+  long table_length;
   Boolean result;
-  Primitive_2_Args();
-
-  Band_Dump_Permitted();
-  Arg1Type = OBJECT_TYPE(Arg1);
-  if ((Arg1Type != TC_CONTROL_POINT) &&
-      (Arg1Type != TC_EXTENDED_PROCEDURE) &&
-      (Arg1Type != TC_PRIMITIVE))
-  {
-    Arg_1_Type(TC_PROCEDURE);
-  }
-  Arg_2_Type(TC_CHARACTER_STRING);
-
-  if (!Open_Dump_File(Arg2, WRITE_FLAG))
-  {
-    Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  }
-  Primitive_GC_If_Needed(5);
+  PRIMITIVE_HEADER (2);
+  Band_Dump_Permitted ();
+  CHECK_ARG (1, INTERPRETER_APPLICABLE_P);
+  CHECK_ARG (2, STRING_P);
+  if (! (Open_Dump_File ((ARG_REF (2)), WRITE_FLAG)))
+    error_bad_range_arg (2);
+  Primitive_GC_If_Needed (5);
   saved_free = Free;
-  Combination = Make_Pointer(TC_COMBINATION_1, Free);
-  Free[COMB_1_FN] = Arg1;
+  Combination = MAKE_POINTER_OBJECT (TC_COMBINATION_1, Free);
+  Free[COMB_1_FN] = (ARG_REF (1));
   Free[COMB_1_ARG_1] = SHARP_F;
   Free += 2;
   *Free++ = Combination;
   *Free++ = compiler_utilities;
-  *Free = Make_Pointer(TC_LIST, (Free - 2));
+  *Free = MAKE_POINTER_OBJECT (TC_LIST, (Free - 2));
   Free++;  /* Some compilers are TOO clever about this and increment Free
 	      before calculating Free-2! */
   table_start = Free;
@@ -711,7 +695,7 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
   {
 #if false
   /* Aligning here confuses some of the counts computed. */
-    Align_Float(Free);
+    ALIGN_FLOAT (Free);
 #endif
     result = Write_File((Free - 1),
 			((long) (Free - Heap_Bottom)), Heap_Bottom,
@@ -727,13 +711,12 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
   Free = saved_free;
   if (result)
   {
-    PRIMITIVE_RETURN(SHARP_T);
+    PRIMITIVE_RETURN (SHARP_T);
   }
   else
   {
     extern int unlink();
-
-    unlink(Scheme_String_To_C_String(Arg2));
-    PRIMITIVE_RETURN(SHARP_F);
+    unlink (STRING_LOC ((ARG_REF (2)), 0));
+    PRIMITIVE_RETURN (SHARP_F);
   }
 }

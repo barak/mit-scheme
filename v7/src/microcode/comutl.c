@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.18 1989/01/30 13:04:03 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.19 1989/09/20 23:07:04 cph Rel $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,7 +37,7 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 
-extern Pointer
+extern SCHEME_OBJECT
   *compiled_entry_to_block_address();
 
 extern long
@@ -47,9 +47,6 @@ extern long
 extern void
   compiled_entry_type();
 
-#define COMPILED_CODE_ADDRESS_P(object)			\
-   ((OBJECT_TYPE (object)) == TC_COMPILED_ENTRY)
-
 DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->BLOCK", Prim_comp_code_address_block, 1, 1,
   "Given a compiled code address, return its compiled code block.")
 {
@@ -57,18 +54,18 @@ DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->BLOCK", Prim_comp_code_address_block, 
 
   CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
   PRIMITIVE_RETURN
-    (Make_Pointer (TC_COMPILED_CODE_BLOCK,
-		   (compiled_entry_to_block_address (ARG_REF (1)))));
+    (MAKE_POINTER_OBJECT
+     (TC_COMPILED_CODE_BLOCK,
+      (compiled_entry_to_block_address (ARG_REF (1)))));
 }
 
 DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->OFFSET", Prim_comp_code_address_offset, 1, 1,
   "Given a compiled code address, return its offset into its block.")
 {
   PRIMITIVE_HEADER (1);
-
   CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
   PRIMITIVE_RETURN
-    (MAKE_SIGNED_FIXNUM (compiled_entry_to_block_offset (ARG_REF (1))));
+    (LONG_TO_FIXNUM (compiled_entry_to_block_offset (ARG_REF (1))));
 }
 
 #ifndef USE_STACKLETS
@@ -76,12 +73,8 @@ DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->OFFSET", Prim_comp_code_address_offset
 DEFINE_PRIMITIVE ("STACK-TOP-ADDRESS", Prim_stack_top_address, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
-
-  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer ((long) (Stack_Top)));
+  PRIMITIVE_RETURN (long_to_integer ((long) (Stack_Top)));
 }
-
-#define STACK_ADDRESS_P(object)						\
-   ((OBJECT_TYPE (object)) == TC_STACK_ENVIRONMENT)
 
 DEFINE_PRIMITIVE ("STACK-ADDRESS-OFFSET", Prim_stack_address_offset, 1, 1, 0)
 {
@@ -89,42 +82,34 @@ DEFINE_PRIMITIVE ("STACK-ADDRESS-OFFSET", Prim_stack_address_offset, 1, 1, 0)
 
   CHECK_ARG (1, STACK_ADDRESS_P);
   PRIMITIVE_RETURN
-    (C_Integer_To_Scheme_Integer
+    (long_to_integer
      ((STACK_LOCATIVE_DIFFERENCE
        (((long) (Stack_Top)), (OBJECT_DATUM (ARG_REF (1)))))
-      / (sizeof (Pointer))));
+      / (sizeof (SCHEME_OBJECT))));
 }
 
 #endif /* USE_STACKLETS */
 
 DEFINE_PRIMITIVE ("COMPILED-ENTRY-KIND", Prim_compiled_entry_type, 1, 1, 0)
 {
-  fast Pointer *temp;
-  Pointer result;
-  PRIMITIVE_HEADER(1);
-
+  PRIMITIVE_HEADER (1);
   CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
-
-  Primitive_GC_If_Needed(3);
-  temp = Free;
-  Free = &temp[3];
-  compiled_entry_type(ARG_REF(1), temp);
-  temp[0] = MAKE_UNSIGNED_FIXNUM(((long) temp[0]));
-  temp[1] = MAKE_SIGNED_FIXNUM(((long) temp[1]));
-  temp[2] = MAKE_SIGNED_FIXNUM(((long) temp[2]));
-  PRIMITIVE_RETURN (Make_Pointer(TC_HUNK3, temp));
+  {
+    long results [3];
+    compiled_entry_type ((ARG_REF (1)), results);
+    PRIMITIVE_RETURN
+      (hunk3_cons ((LONG_TO_FIXNUM (results [0])),
+		   (LONG_TO_FIXNUM (results [1])),
+		   (LONG_TO_FIXNUM (results [2]))));
+  }
 }
 
 DEFINE_PRIMITIVE ("COERCE-TO-COMPILED-PROCEDURE", Prim_coerce_to_closure, 2, 2, 0)
 {
-  Pointer temp;
-  long value, result;
+  SCHEME_OBJECT temp;
+  long result;
   PRIMITIVE_HEADER(2);
-
-  CHECK_ARG (2, FIXNUM_P);
-
-  FIXNUM_VALUE(ARG_REF(2), value);
-  result = coerce_to_compiled(ARG_REF(1), value, &temp);
+  result = (coerce_to_compiled ((ARG_REF (1)), (arg_integer (2)), &temp));
   switch(result)
   {
     case PRIM_DONE:
@@ -133,9 +118,9 @@ DEFINE_PRIMITIVE ("COERCE-TO-COMPILED-PROCEDURE", Prim_coerce_to_closure, 2, 2, 
     case PRIM_INTERRUPT:
       Primitive_GC(10);
       /*NOTREACHED*/
-      
+
     default:
-      Primitive_Error(ERR_ARG_2_BAD_RANGE);
+      error_bad_range_arg (2);
       /*NOTREACHED*/
   }
 }
@@ -143,18 +128,17 @@ DEFINE_PRIMITIVE ("COERCE-TO-COMPILED-PROCEDURE", Prim_coerce_to_closure, 2, 2, 
 DEFINE_PRIMITIVE ("COMPILED-CLOSURE->ENTRY", Prim_compiled_closure_to_entry, 1, 1,
   "Given a compiled closure, return the entry point which it invokes.")
 {
-  Pointer entry_type [3];
-  Pointer closure;
+  SCHEME_OBJECT entry_type [3];
+  SCHEME_OBJECT closure;
   extern void compiled_entry_type ();
-  extern long compiled_entry_manifest_closure_p ();
-  extern Pointer compiled_closure_to_entry ();
+  extern long compiled_entry_closure_p ();
+  extern SCHEME_OBJECT compiled_closure_to_entry ();
   PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
   closure = (ARG_REF (1));
   compiled_entry_type (closure, (& (entry_type [0])));
-  if (! (((entry_type [0]) == 0) &&
-	 (compiled_entry_manifest_closure_p (closure))))
+  if (! (((entry_type [0]) == 0) && (compiled_entry_closure_p (closure))))
     error_bad_range_arg (1);
   PRIMITIVE_RETURN (compiled_closure_to_entry (closure));
 }

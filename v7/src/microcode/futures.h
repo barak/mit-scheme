@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/futures.h,v 9.26 1989/09/20 23:08:39 cph Exp $
+
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,93 +32,11 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/futures.h,v 9.25 1989/05/31 01:50:14 jinx Rel $
- *
- * This file contains macros useful for dealing with futures
- */
+/* This file contains macros useful for dealing with futures */
 
-/* Data structure definition */
+/* NOTES ON FUTURES, derived from the rest of the interpreter code
 
-/* The IS_DETERMINED slot has one of the following type of values:
- *    #!FALSE if the value is not yet known
- *    #!TRUE  if the value is known and the garbage collector is free
- *            to remove the future object in favor of its value everywhere
- *    else    the value is known, but the GC must leave the future object
-*/
-
-#define FUTURE_VECTOR_HEADER	0
-#define FUTURE_IS_DETERMINED	1
-#define FUTURE_LOCK             2
-#define FUTURE_VALUE		3	/* if known, else */
-#define FUTURE_QUEUE		3	/* tasks waiting for value */
-#define FUTURE_PROCESS		4
-#define FUTURE_STATUS		5
-#define FUTURE_ORIG_CODE	6
-#define FUTURE_PRIVATE		7
-#define FUTURE_WAITING_ON	8
-#define FUTURE_METERING		9
-#define FUTURE_USER		10
-
-#define Future_Is_Locked(P)     				\
-	(Vector_Ref((P), FUTURE_LOCK) != NIL)
-
-#define Future_Has_Value(P)					\
-	(Vector_Ref((P), FUTURE_IS_DETERMINED) != NIL)
-
-#define Future_Value(P)						\
-	Vector_Ref((P), FUTURE_VALUE)
-
-#define Future_Spliceable(P)					\
-	((Vector_Ref((P), FUTURE_IS_DETERMINED) == SHARP_T) &&	\
-	 (Vector_Ref((P), FUTURE_LOCK) == NIL))
-
-#define Future_Is_Keep_Slot(P)  				\
-((Vector_Ref((P), FUTURE_IS_DETERMINED) != NIL)	&&		\
- (Vector_Ref((P), FUTURE_IS_DETERMINED) != SHARP_T))
-
-#ifdef COMPILE_FUTURES
-
-/* Touch_In_Primitive is used by primitives which are not
- * strict in an argument but which touch it none the less.
- */
-
-#define Touch_In_Primitive(P, To_Where)					\
-{									\
-  Pointer Value;							\
-									\
-  Value = (P);								\
-  while (OBJECT_TYPE(Value) == TC_FUTURE)				\
-  {									\
-    if (Future_Has_Value(Value))					\
-    {									\
-      if (Future_Is_Keep_Slot(Value))					\
-      {									\
-	Log_Touch_Of_Future(Value);					\
-      }									\
-      Value = Future_Value(Value);					\
-    }									\
-    else								\
-    {									\
-      Val = Value;							\
-      PRIMITIVE_ABORT(PRIM_TOUCH);					\
-    }									\
-  }									\
-  To_Where = Value;							\
-}
-
-#define TOUCH_SETUP(object)						\
-{									\
-   Save_Cont();								\
-  Will_Push(STACK_ENV_EXTRA_SLOTS + 2);					\
-   Push(object);							\
-   Push(Get_Fixed_Obj_Slot(System_Scheduler));				\
-   Push(STACK_FRAME_HEADER + 1);					\
-  Pushed();								\
-}
-
-/* NOTES ON FUTURES, derived from the rest of the interpreter code */
-
-/* ASSUMPTION: The syntaxer is hereby assumed NEVER to generate primitive
+   ASSUMPTION: The syntaxer is hereby assumed NEVER to generate primitive
    combinations unless the primitive itself is output in the code stream.
    Therefore, we don't have to explicitly check here that the expression
    register has a primitive in it.
@@ -133,9 +53,7 @@ MIT in each case. */
    never contain FUTUREs except possibly as the thunks (which are handled
    by the apply code).
 
-*/
-
-/* OPTIMIZATIONS (?):
+   OPTIMIZATIONS (?):
    After a lot of discussion, we decided that variable reference will check
    whether a value stored in the environment is a determined future which
    is marked spliceable.  If so, it will splice out the future from the
@@ -151,9 +69,8 @@ MIT in each case. */
    (3) Splicing all arguments when a primitive errors on any of them
    (4) Splicing within the Arg_n_Type macro rather than after longjmping
        to the error handler.
-*/
 
-/* KNOWN PROBLEMS:
+   KNOWN PROBLEMS:
    (1) Garbage collector should be modified to splice out futures.  DONE.
 
    (2) Purify should be looked at and we should decide what to do about
@@ -161,77 +78,149 @@ MIT in each case. */
        become constant but not pure).
 
    (3) Look at Impurify and Side-Effect-Impurify to see if futures
-       affect them in any way.
-*/
+       affect them in any way. */
+
+/* Data structure definition */
+
+/* The IS_DETERMINED slot has one of the following type of values:
+    #F	if the value is not yet known;
+    #T	if the value is known and the garbage collector is free
+  	to remove the future object in favor of its value everywhere;
+   else	the value is known, but the GC must leave the future object. */
+
+#define FUTURE_VECTOR_HEADER	0
+#define FUTURE_IS_DETERMINED	1
+#define FUTURE_LOCK             2
+#define FUTURE_VALUE		3	/* if known, else */
+#define FUTURE_QUEUE		3	/* tasks waiting for value */
+#define FUTURE_PROCESS		4
+#define FUTURE_STATUS		5
+#define FUTURE_ORIG_CODE	6
+#define FUTURE_PRIVATE		7
+#define FUTURE_WAITING_ON	8
+#define FUTURE_METERING		9
+#define FUTURE_USER		10
+
+#define Future_Is_Locked(P)						\
+  ((MEMORY_REF ((P), FUTURE_LOCK)) != SHARP_F)
+
+#define Future_Has_Value(P)						\
+  ((MEMORY_REF ((P), FUTURE_IS_DETERMINED)) != SHARP_F)
+
+#define Future_Value(P)							\
+  (MEMORY_REF ((P), FUTURE_VALUE))
+
+#define Future_Spliceable(P)						\
+  (((MEMORY_REF ((P), FUTURE_IS_DETERMINED)) == SHARP_T) &&		\
+   ((MEMORY_REF ((P), FUTURE_LOCK)) == SHARP_F))
+
+#define Future_Is_Keep_Slot(P)						\
+  (! (BOOLEAN_P (MEMORY_REF ((P), FUTURE_IS_DETERMINED))))
+
+#ifndef COMPILE_FUTURES
+
+#define TOUCH_IN_PRIMITIVE(P, To_Where) To_Where = (P)
+#define TOUCH_SETUP(object) Microcode_Termination (TERM_TOUCH)
+#define Log_Touch_Of_Future(F) {}
+#define Call_Future_Logging()
+#define Must_Report_References() (false)
+#define FUTURE_VARIABLE_SPLICE(P, Offset, Value)
+
+#else /* COMPILE_FUTURES */
+
+/* TOUCH_IN_PRIMITIVE is used by primitives which are not
+   strict in an argument but which touch it none the less. */
+
+#define TOUCH_IN_PRIMITIVE(P, To_Where)					\
+{									\
+  SCHEME_OBJECT Value = (P);						\
+  while (FUTURE_P (Value))						\
+    {									\
+      if (Future_Has_Value (Value))					\
+	{								\
+	  if (Future_Is_Keep_Slot (Value))				\
+	    {								\
+	      Log_Touch_Of_Future (Value);				\
+	    }								\
+	  Value = (Future_Value (Value));				\
+	}								\
+      else								\
+	{								\
+	  Val = Value;							\
+	  PRIMITIVE_ABORT (PRIM_TOUCH);					\
+	}								\
+    }									\
+  (To_Where) = Value;							\
+}
+
+#define TOUCH_SETUP(object)						\
+{									\
+  Save_Cont ();								\
+ Will_Push (STACK_ENV_EXTRA_SLOTS + 2);					\
+  Push (object);							\
+  Push (Get_Fixed_Obj_Slot (System_Scheduler));				\
+  Push (STACK_FRAME_HEADER + 1);					\
+ Pushed ();								\
+}
+
+#define FUTURE_VARIABLE_SPLICE(P, Offset, Value)			\
+{									\
+  while ((FUTURE_P (Value)) && (Future_Spliceable (Value)))		\
+    {									\
+      Value = (Future_Value (Value));					\
+      MEMORY_SET (P, Offset, Value);					\
+    }									\
+}
 
 #ifdef FUTURE_LOGGING
 
-#define Touched_Futures_Vector()  Get_Fixed_Obj_Slot(Touched_Futures)
+#define Touched_Futures_Vector() (Get_Fixed_Obj_Slot (Touched_Futures))
 
 #define Logging_On()							\
-(Valid_Fixed_Obj_Vector() && Touched_Futures_Vector())
+  ((Valid_Fixed_Obj_Vector ()) && (Touched_Futures_Vector ()))
 
 /* Log_Touch_Of_Future adds the future which was touched to the vector
    of touched futures about which the scheme portion of the system has
-   not yet been informed
-*/
+   not yet been informed. */
+
 #define Log_Touch_Of_Future(F)						\
-if (Logging_On())							\
 {									\
-  Pointer TFV;								\
-  long Count;								\
-									\
-  TFV = Touched_Futures_Vector();					\
-  Count = Get_Integer(User_Vector_Ref(TFV, 0)) + 1;			\
-  User_Vector_Ref(TFV, 0) = MAKE_UNSIGNED_FIXNUM(Count);		\
-  if (Count < Vector_Length(TFV))					\
-  {									\
-    User_Vector_Ref(TFV, Count) = Make_New_Pointer(TC_VECTOR, F);	\
-  }									\
+  if (Logging_On ())							\
+    {									\
+      SCHEME_OBJECT TFV = (Touched_Futures_Vector ());			\
+      long Count =							\
+	((UNSIGNED_FIXNUM_TO_LONG (VECTOR_REF (TFV, 0))) + 1);		\
+      (VECTOR_REF (TFV, 0)) = (LONG_TO_UNSIGNED_FIXNUM (Count));	\
+      if (Count < (VECTOR_LENGTH (TFV)))				\
+	(VECTOR_REF (TFV, Count)) = (OBJECT_NEW_TYPE (TC_VECTOR, F));	\
+    }									\
 }
 
 /* Call_Future_Logging calls a user defined scheme routine if the vector
-   of touched futures has a nonzero length.  
-*/
-#define Must_Report_References()					\
-( (Logging_On()) &&							\
-   (Get_Integer(User_Vector_Ref(Touched_Futures_Vector(), 0)) > 0))
+   of touched futures has a nonzero length. */
 
-#define Call_Future_Logging()                                   	\
+#define Must_Report_References()					\
+  ((Logging_On ()) &&							\
+   ((UNSIGNED_FIXNUM_TO_LONG						\
+     (VECTOR_REF ((Touched_Futures_Vector ()), 0)))			\
+    > 0))
+
+#define Call_Future_Logging()						\
 {									\
- Will_Push(STACK_ENV_EXTRA_SLOTS + 2);			        	\
-  Push(Touched_Futures_Vector());                      	        	\
-  Push(Get_Fixed_Obj_Slot(Future_Logger));      			\
-  Push(STACK_FRAME_HEADER + 1);			 	        	\
- Pushed();								\
-  Touched_Futures_Vector() = NIL;                                 	\
+ Will_Push (STACK_ENV_EXTRA_SLOTS + 2);					\
+  Push (Touched_Futures_Vector ());					\
+  Push (Get_Fixed_Obj_Slot (Future_Logger));				\
+  Push (STACK_FRAME_HEADER + 1);					\
+ Pushed ();								\
+  (Touched_Futures_Vector ()) = SHARP_F;				\
   goto Apply_Non_Trapping;						\
 }
 
 #else /* not FUTURE_LOGGING */
 
-#define Log_Touch_Of_Future(F) { }
+#define Log_Touch_Of_Future(F) {}
 #define Call_Future_Logging()
 #define Must_Report_References() (false)
 
 #endif /* FUTURE_LOGGING */
-
-#define FUTURE_VARIABLE_SPLICE(P, Offset, Value)			\
-{									\
-  while ((OBJECT_TYPE(Value) == TC_FUTURE) && Future_Spliceable(Value))	\
-  {									\
-    Value = Future_Value(Value);					\
-    Vector_Set(P, Offset, Value);					\
-  }									\
-}
-
-#else /* not COMPILE_FUTURES */
-
-#define Touch_In_Primitive(P, To_Where)		To_Where = (P)
-#define TOUCH_SETUP(object)			Microcode_Termination(TERM_TOUCH)
-#define Log_Touch_Of_Future(F) { }
-#define Call_Future_Logging()
-#define Must_Report_References() (false)
-#define FUTURE_VARIABLE_SPLICE(P, Offset, Value)
-
 #endif /* COMPILE_FUTURES */

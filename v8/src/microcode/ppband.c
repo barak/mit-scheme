@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.34 1989/08/28 18:28:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.35 1989/09/20 23:04:42 cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -46,7 +46,7 @@ MIT in each case. */
 
 /* These are needed by load.c */
 
-static Pointer *Memory_Base;
+static SCHEME_OBJECT * memory_base;
 
 long
 Load_Data(Count, To_Where)
@@ -55,7 +55,7 @@ Load_Data(Count, To_Where)
 {
   extern int fread();
 
-  return (fread(To_Where, sizeof(Pointer), Count, stdin));
+  return (fread(To_Where, sizeof(SCHEME_OBJECT), Count, stdin));
 }
 
 long
@@ -84,12 +84,13 @@ Close_Dump_File()
 
 #ifdef Heap_In_Low_Memory
 #ifdef spectrum
-#define File_To_Pointer(P)	((((long) (P)) & ADDRESS_MASK) / sizeof(Pointer))
+#define File_To_Pointer(P)						\
+  ((((long) (P)) & DATUM_MASK) / sizeof(SCHEME_OBJECT))
 #else
-#define File_To_Pointer(P)	((P) / sizeof(Pointer))
+#define File_To_Pointer(P) ((P) / sizeof(SCHEME_OBJECT))
 #endif /* spectrum */
 #else
-#define File_To_Pointer(P)	(P)
+#define File_To_Pointer(P) (P)
 #endif
 
 #ifndef Conditional_Bug
@@ -108,7 +109,7 @@ static long Relocate_Temp;
 #define Relocate(P)	(Relocate_Into(Relocate_Temp, P), Relocate_Temp)
 #endif
 
-static Pointer *Data, *end_of_memory;
+static SCHEME_OBJECT *Data, *end_of_memory;
 
 Boolean
 scheme_string(From, Quoted)
@@ -121,7 +122,7 @@ scheme_string(From, Quoted)
   Chars = ((char *) &Data[From +  STRING_CHARS]);
   if (Chars < ((char *) end_of_memory))
   {
-    Count = ((long) (Data[From + STRING_LENGTH]));
+    Count = ((long) (Data[From + STRING_LENGTH_INDEX]));
     if (&Chars[Count] < ((char *) end_of_memory))
     {
       if (Quoted)
@@ -147,13 +148,13 @@ scheme_string(From, Quoted)
   return (false);
 }
 
-#define via(File_Address)	Relocate(OBJECT_DATUM(Data[File_Address]))
+#define via(File_Address) Relocate(OBJECT_DATUM (Data[File_Address]))
 
 void
 scheme_symbol(From)
      long From;
 {
-  Pointer *symbol;
+  SCHEME_OBJECT *symbol;
 
   symbol = &Data[From+SYMBOL_NAME];
   if ((symbol >= end_of_memory) ||
@@ -195,14 +196,14 @@ Display(Location, Type, The_Datum)
   long Points_To;
 
   printf("%5lx: %2lx|%6lx     ", Location, Type, The_Datum);
-  Points_To = Relocate((Pointer *) The_Datum);
+  Points_To = Relocate((SCHEME_OBJECT *) The_Datum);
 
   switch (Type)
   { /* "Strange" cases */
     case TC_NULL:
       if (The_Datum == 0)
       {
-	printf("NIL\n");
+	printf("#F\n");
 	return;
       }
       NON_POINTER("NULL");
@@ -210,7 +211,7 @@ Display(Location, Type, The_Datum)
     case TC_TRUE:
       if (The_Datum == 0)
       {
-	printf("TRUE\n");
+	printf("#T\n");
 	return;
       }
       /* fall through */
@@ -231,7 +232,7 @@ Display(Location, Type, The_Datum)
       scheme_symbol(Points_To);
       return;
 
-    case TC_UNINTERNED_SYMBOL: 
+    case TC_UNINTERNED_SYMBOL:
       PRINT_OBJECT("UNINTERNED-SYMBOL", Points_To);
       printf(" = ");
       scheme_symbol(Points_To);
@@ -245,7 +246,7 @@ Display(Location, Type, The_Datum)
 
     case TC_FIXNUM:
       PRINT_OBJECT("FIXNUM", The_Datum);
-      Sign_Extend(The_Datum, Points_To);
+      Points_To = (FIXNUM_TO_LONG (The_Datum));
       printf(" = %ld\n", Points_To);
       return;
 
@@ -280,9 +281,9 @@ Display(Location, Type, The_Datum)
   return;
 }
 
-Pointer *
+SCHEME_OBJECT *
 show_area(area, start, end, name)
-     fast Pointer *area;
+     fast SCHEME_OBJECT *area;
      long start;
      fast long end;
      char *name;
@@ -292,29 +293,29 @@ show_area(area, start, end, name)
   printf("\n%s contents:\n\n", name);
   for (i = start; i < end;  area++, i++)
   {
-    if ((OBJECT_TYPE(*area) == TC_MANIFEST_NM_VECTOR) ||
-	(OBJECT_TYPE(*area) == TC_MANIFEST_CLOSURE) ||
-	(OBJECT_TYPE(*area) == TC_LINKAGE_SECTION))
+    if ((OBJECT_TYPE (*area) == TC_MANIFEST_NM_VECTOR) ||
+	(OBJECT_TYPE (*area) == TC_MANIFEST_CLOSURE) ||
+	(OBJECT_TYPE (*area) == TC_LINKAGE_SECTION))
     {
       fast long j, count;
 
       count =
-	((OBJECT_TYPE(*area) == TC_LINKAGE_SECTION)
+	((OBJECT_TYPE (*area) == TC_LINKAGE_SECTION)
 	 ? (READ_CACHE_LINKAGE_COUNT (*area))
 	 : (OBJECT_DATUM (*area)));
-      Display(i, OBJECT_TYPE(*area), OBJECT_DATUM(*area));
+      Display(i, OBJECT_TYPE (*area), OBJECT_DATUM (*area));
       area += 1;
       for (j = 0; j < count ; j++, area++)
       {
         printf("          %02lx%06lx\n",
-               OBJECT_TYPE(*area), OBJECT_DATUM(*area));
+               OBJECT_TYPE (*area), OBJECT_DATUM (*area));
       }
       i += count;
       area -= 1;
     }
     else
     {
-      Display(i, OBJECT_TYPE(*area),  OBJECT_DATUM(*area));
+      Display(i, OBJECT_TYPE (*area),  OBJECT_DATUM (*area));
     }
   }
   return (area);
@@ -324,7 +325,7 @@ main(argc, argv)
      int argc;
      char **argv;
 {
-  fast Pointer *Next;
+  fast SCHEME_OBJECT *Next;
   long total_length, load_length;
 
   if (argc == 1)
@@ -348,10 +349,10 @@ main(argc, argv)
     sscanf(argv[3], "%d", &Heap_Count);
     printf("Heap Base = 0x%lx; Constant Base = 0x%lx; Heap Count = %ld\n",
 	   Heap_Base, Const_Base, Heap_Count);
-  }    
+  }
 
   load_length = (Heap_Count + Const_Count + Primitive_Table_Size);
-  Data = ((Pointer *) malloc(sizeof(Pointer) * (load_length + 4)));
+  Data = ((SCHEME_OBJECT *) malloc(sizeof(SCHEME_OBJECT) * (load_length + 4)));
   if (Data == NULL)
   {
     fprintf(stderr, "Allocation of %ld words failed.\n", (load_length + 4));
@@ -394,10 +395,10 @@ main(argc, argv)
     fast long entries, count;
 
     /* This is done in case the file is short. */
-    end_of_memory[0] = ((Pointer) 0);
-    end_of_memory[1] = ((Pointer) 0);
-    end_of_memory[2] = ((Pointer) 0);
-    end_of_memory[3] = ((Pointer) 0);
+    end_of_memory[0] = ((SCHEME_OBJECT) 0);
+    end_of_memory[1] = ((SCHEME_OBJECT) 0);
+    end_of_memory[2] = ((SCHEME_OBJECT) 0);
+    end_of_memory[3] = ((SCHEME_OBJECT) 0);
 
     entries = Primitive_Table_Length;
     printf("\nPrimitive table: number of entries = %ld\n\n", entries);
@@ -406,7 +407,8 @@ main(argc, argv)
 	 ((count < entries) && (Next < end_of_memory));
 	 count += 1)
     {
-      Sign_Extend(*Next++, arity);
+      arity = (FIXNUM_TO_LONG (*Next));
+      Next += 1;
       size = (OBJECT_DATUM (*Next));
       printf("Number = %3lx; Arity = %2ld; Name = ", count, arity);
       scheme_string((Next - Data), true);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.3 1989/06/27 10:10:01 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.4 1989/09/20 23:13:22 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -36,7 +36,6 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
-#include "string.h"
 #include "x11.h"
 
 #define RESOURCE_NAME "scheme-graphics"
@@ -65,28 +64,6 @@ struct gw_extra
 #define XW_X_CURSOR(xw) ((XW_EXTRA (xw)) -> x_cursor)
 #define XW_Y_CURSOR(xw) ((XW_EXTRA (xw)) -> y_cursor)
 
-#define FLONUM_ARG(argno, target)					\
-{									\
-  fast Pointer argument;						\
-  fast long fixnum_value;						\
-									\
-  argument = (ARG_REF (argno));						\
-  switch (OBJECT_TYPE (argument))					\
-    {									\
-    case TC_FIXNUM:							\
-      FIXNUM_VALUE (argument, fixnum_value);				\
-      target = ((float) fixnum_value);					\
-      break;								\
-									\
-    case TC_BIG_FLONUM:							\
-      target = ((float) (Get_Float (argument)));			\
-      break;								\
-									\
-    default:								\
-      error_wrong_type_arg (argno);					\
-    }									\
-}
-
 #define ROUND_FLOAT(flonum)						\
   ((int) (((flonum) >= 0.0) ? ((flonum) + 0.5) : ((flonum) - 0.5)))
 
@@ -95,11 +72,8 @@ arg_x_coordinate (arg, xw)
      int arg;
      struct xwindow * xw;
 {
-  float virtual_device_x;
-  float device_x;
-
-  FLONUM_ARG (arg, virtual_device_x);
-  device_x = ((XW_X_SLOPE (xw)) * (virtual_device_x - (XW_X_LEFT (xw))));
+  float virtual_device_x = (arg_real_number (arg));
+  float device_x = ((XW_X_SLOPE (xw)) * (virtual_device_x - (XW_X_LEFT (xw))));
   return (ROUND_FLOAT (device_x));
 }
 
@@ -108,11 +82,9 @@ arg_y_coordinate (arg, xw)
      int arg;
      struct xwindow * xw;
 {
-  float virtual_device_y;
-  float device_y;
-
-  FLONUM_ARG (arg, virtual_device_y);
-  device_y = ((XW_Y_SLOPE (xw)) * (virtual_device_y - (XW_Y_BOTTOM (xw))));
+  float virtual_device_y = (arg_real_number (arg));
+  float device_y =
+    ((XW_Y_SLOPE (xw)) * (virtual_device_y - (XW_Y_BOTTOM (xw))));
   return (((XW_Y_SIZE (xw)) - 1) + (ROUND_FLOAT (device_y)));
 }
 
@@ -127,7 +99,6 @@ set_clip_rectangle (xw, x_left, y_bottom, x_right, y_top)
   XRectangle rectangles [1];
   Display * display = (XW_DISPLAY (xw));
   int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
-
   if (x_left > x_right)
     {
       int x = x_left;
@@ -174,7 +145,6 @@ reset_virtual_device_coordinates (xw)
 {
   /* Note that the expression ((XW_c_SIZE (xw)) - 1) guarantees that
      both limits of the device coordinates will be inside the window. */
-
   (XW_X_SLOPE (xw)) =
     (((float) ((XW_X_SIZE (xw)) - 1)) /
      ((XW_X_RIGHT (xw)) - (XW_X_LEFT (xw))));
@@ -260,40 +230,35 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-SET-VDC-EXTENT", Prim_x_graphics_set_vdc_extent, 5
   "(X-GRAPHICS-SET-VDC-EXTENT WINDOW X-MIN Y-MIN X-MAX Y-MAX)\n\
 Set the virtual device coordinates to the given values.")
 {
-  struct xwindow * xw;
-  float x_left;
-  float y_bottom;
-  float x_right;
-  float y_top;
   PRIMITIVE_HEADER (5);
-
-  xw = (WINDOW_ARG (1));
-  FLONUM_ARG (2, x_left);
-  FLONUM_ARG (3, y_bottom);
-  FLONUM_ARG (4, x_right);
-  FLONUM_ARG (5, y_top);
-  process_events (xw);
-  (XW_X_LEFT (xw)) = x_left;
-  (XW_Y_BOTTOM (xw)) = y_bottom;
-  (XW_X_RIGHT (xw)) = x_right;
-  (XW_Y_TOP (xw)) = y_top;
-  reset_virtual_device_coordinates (xw);
+  {
+    struct xwindow * xw = (WINDOW_ARG (1));
+    float x_left = (arg_real_number (2));
+    float y_bottom = (arg_real_number (3));
+    float x_right = (arg_real_number (4));
+    float y_top = (arg_real_number (5));
+    process_events (xw);
+    (XW_X_LEFT (xw)) = x_left;
+    (XW_Y_BOTTOM (xw)) = y_bottom;
+    (XW_X_RIGHT (xw)) = x_right;
+    (XW_Y_TOP (xw)) = y_top;
+    reset_virtual_device_coordinates (xw);
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-VDC-EXTENT", Prim_x_graphics_vdc_extent, 1, 1, 0)
 {
   struct xwindow * xw;
-  Pointer result;
+  SCHEME_OBJECT result;
   PRIMITIVE_HEADER (5);
-
   xw = (WINDOW_ARG (1));
   process_events (xw);
   result = (allocate_marked_vector (TC_VECTOR, 4, true));
-  User_Vector_Set (result, 0, (Allocate_Float ((double) (XW_X_LEFT (xw)))));
-  User_Vector_Set (result, 1, (Allocate_Float ((double) (XW_Y_BOTTOM (xw)))));
-  User_Vector_Set (result, 2, (Allocate_Float ((double) (XW_X_RIGHT (xw)))));
-  User_Vector_Set (result, 3, (Allocate_Float ((double) (XW_Y_TOP (xw)))));
+  VECTOR_SET (result, 0, (double_to_flonum ((double) (XW_X_LEFT (xw)))));
+  VECTOR_SET (result, 1, (double_to_flonum ((double) (XW_Y_BOTTOM (xw)))));
+  VECTOR_SET (result, 2, (double_to_flonum ((double) (XW_X_RIGHT (xw)))));
+  VECTOR_SET (result, 3, (double_to_flonum ((double) (XW_Y_TOP (xw)))));
   PRIMITIVE_RETURN (result);
 }
 
@@ -301,7 +266,6 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-RESET-CLIP-RECTANGLE", Prim_x_graphics_reset_clip_
 {
   struct xwindow * xw;
   PRIMITIVE_HEADER (1);
-
   xw = (WINDOW_ARG (1));
   process_events (xw);
   reset_clip_rectangle (xw);
@@ -318,7 +282,6 @@ Set the clip rectangle to the given coordinates.")
   int x_right;
   int y_top;
   PRIMITIVE_HEADER (5);
-
   xw = (WINDOW_ARG (1));
   process_events (xw);
   x_left = (arg_x_coordinate (2, xw));
@@ -337,7 +300,6 @@ wm_set_size_hint (xw, flags, x, y)
 {
   int extra = (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
   XSizeHints size_hints;
-
   (size_hints . flags) = (PResizeInc | PMinSize | flags);
   (size_hints . x) = x;
   (size_hints . y) = y;
@@ -354,7 +316,6 @@ wm_set_size_hint (xw, flags, x, y)
 #define MAKE_GC(gc, fore, back)						\
 {									\
   XGCValues gcv;							\
-									\
   (gcv . font) = fid;							\
   (gcv . foreground) = (fore);						\
   (gcv . background) = (back);						\
@@ -386,7 +347,6 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
   long flags;
   struct xwindow * xw;
   PRIMITIVE_HEADER (3);
-
   display = (DISPLAY_ARG (1));
   screen_number = (DefaultScreen (display));
   name = "scheme-graphics";
@@ -399,15 +359,12 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
   x_size = 512;
   y_size = 384;
   {
-    char * geometry;
-    int result;
-
-    geometry =
+    char * geometry =
       (((ARG_REF (2)) == SHARP_F)
        ? (x_get_default
 	  (display, RESOURCE_NAME, "geometry", "Geometry", ((char *) 0)))
        : (STRING_ARG (2)));
-    result =
+    int result =
       (XGeometry (display, screen_number, geometry,
 		  DEFAULT_GEOMETRY, border_width,
 		  1, 1, extra, extra,
@@ -418,11 +375,9 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
     flags |=
       (((result & WidthValue) && (result & HeightValue)) ? USSize : PSize);
   }
-
   /* Open the window with the given arguments. */
   {
     XSetWindowAttributes wattributes;
-
     (wattributes . background_pixel) = (attributes . background_pixel);
     (wattributes . border_pixel) = (attributes . border_pixel);
     (wattributes . backing_store) = Always;
@@ -437,7 +392,6 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
   }
   if (window == ((Window) 0))
     error_external_return ();
-
   xw =
     (x_make_window
      (display,
@@ -454,19 +408,16 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
   reset_virtual_device_coordinates (xw);
   (XW_X_CURSOR (xw)) = 0;
   (XW_Y_CURSOR (xw)) = 0;
-
   XSelectInput (display, window, StructureNotifyMask);
   wm_set_size_hint (xw, flags, x_pos, y_pos);
   XStoreName (display, window, name);
   XSetIconName (display, window, name);
-
   if ((ARG_REF (3)) == SHARP_F)
     {
       (XW_VISIBLE_P (xw)) = 1;
       XMapWindow (display, window);
       XFlush (display);
     }
-
   PRIMITIVE_RETURN (x_window_to_object (xw));
 }
 
@@ -475,26 +426,23 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-DRAW-LINE", Prim_x_graphics_draw_line, 5, 5,
 Draw a line from the start coordinates to the end coordinates.\n\
 Subsequently move the graphics cursor to the end coordinates.")
 {
-  struct xwindow * xw;
-  int new_x_cursor;
-  int new_y_cursor;
-  int internal_border_width;
   PRIMITIVE_HEADER (5);
-
-  xw = (WINDOW_ARG (1));
-  new_x_cursor = (arg_x_coordinate (4, xw));
-  new_y_cursor = (arg_y_coordinate (5, xw));
-  internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
-  XDrawLine
-    ((XW_DISPLAY (xw)),
-     (XW_WINDOW (xw)),
-     (XW_NORMAL_GC (xw)),
-     (internal_border_width + (arg_x_coordinate (2, xw))),
-     (internal_border_width + (arg_y_coordinate (3, xw))),
-     (internal_border_width + new_x_cursor),
-     (internal_border_width + new_y_cursor));
-  (XW_X_CURSOR (xw)) = new_x_cursor;
-  (XW_Y_CURSOR (xw)) = new_y_cursor;
+  {
+    struct xwindow * xw = (WINDOW_ARG (1));
+    int new_x_cursor = (arg_x_coordinate (4, xw));
+    int new_y_cursor = (arg_y_coordinate (5, xw));
+    int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
+    XDrawLine
+      ((XW_DISPLAY (xw)),
+       (XW_WINDOW (xw)),
+       (XW_NORMAL_GC (xw)),
+       (internal_border_width + (arg_x_coordinate (2, xw))),
+       (internal_border_width + (arg_y_coordinate (3, xw))),
+       (internal_border_width + new_x_cursor),
+       (internal_border_width + new_y_cursor));
+    (XW_X_CURSOR (xw)) = new_x_cursor;
+    (XW_Y_CURSOR (xw)) = new_y_cursor;
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -504,7 +452,6 @@ Move the graphics cursor to the given coordinates.")
 {
   struct xwindow * xw;
   PRIMITIVE_HEADER (3);
-
   xw = (WINDOW_ARG (1));
   (XW_X_CURSOR (xw)) = (arg_x_coordinate (2, xw));
   (XW_Y_CURSOR (xw)) = (arg_y_coordinate (3, xw));
@@ -516,26 +463,23 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-DRAG-CURSOR", Prim_x_graphics_drag_cursor, 3, 3,
 Draw a line from the graphics cursor to the given coordinates.\n\
 Subsequently move the graphics cursor to those coordinates.")
 {
-  struct xwindow * xw;
-  int new_x_cursor;
-  int new_y_cursor;
-  int internal_border_width;
   PRIMITIVE_HEADER (3);
-
-  xw = (WINDOW_ARG (1));
-  new_x_cursor = (arg_x_coordinate (2, xw));
-  new_y_cursor = (arg_y_coordinate (3, xw));
-  internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
-  XDrawLine
-    ((XW_DISPLAY (xw)),
-     (XW_WINDOW (xw)),
-     (XW_NORMAL_GC (xw)),
-     (internal_border_width + (XW_X_CURSOR (xw))),
-     (internal_border_width + (XW_Y_CURSOR (xw))),
-     (internal_border_width + new_x_cursor),
-     (internal_border_width + new_y_cursor));
-  (XW_X_CURSOR (xw)) = new_x_cursor;
-  (XW_Y_CURSOR (xw)) = new_y_cursor;
+  {
+    struct xwindow * xw = (WINDOW_ARG (1));
+    int new_x_cursor = (arg_x_coordinate (2, xw));
+    int new_y_cursor = (arg_y_coordinate (3, xw));
+    int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
+    XDrawLine
+      ((XW_DISPLAY (xw)),
+       (XW_WINDOW (xw)),
+       (XW_NORMAL_GC (xw)),
+       (internal_border_width + (XW_X_CURSOR (xw))),
+       (internal_border_width + (XW_Y_CURSOR (xw))),
+       (internal_border_width + new_x_cursor),
+       (internal_border_width + new_y_cursor));
+    (XW_X_CURSOR (xw)) = new_x_cursor;
+    (XW_Y_CURSOR (xw)) = new_y_cursor;
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -544,18 +488,17 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-DRAW-POINT", Prim_x_graphics_draw_point, 3, 3,
 Draw one point at the given coordinates.\n\
 Subsequently move the graphics cursor to those coordinates.")
 {
-  struct xwindow * xw;
-  int internal_border_width;
   PRIMITIVE_HEADER (3);
-
-  xw = (WINDOW_ARG (1));
-  internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
-  XDrawPoint
-    ((XW_DISPLAY (xw)),
-     (XW_WINDOW (xw)),
-     (XW_NORMAL_GC (xw)),
-     (internal_border_width + (arg_x_coordinate (2, xw))),
-     (internal_border_width + (arg_y_coordinate (3, xw))));
+  {
+    struct xwindow * xw = (WINDOW_ARG (1));
+    int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
+    XDrawPoint
+      ((XW_DISPLAY (xw)),
+       (XW_WINDOW (xw)),
+       (XW_NORMAL_GC (xw)),
+       (internal_border_width + (arg_x_coordinate (2, xw))),
+       (internal_border_width + (arg_y_coordinate (3, xw))));
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -563,97 +506,85 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-DRAW-STRING", Prim_x_graphics_draw_string, 4, 4,
   "(X-GRAPHICS-DRAW-STRING WINDOW X Y STRING)\n\
 Draw characters in the current font at the given coordinates.")
 {
-  struct xwindow * xw;
-  int internal_border_width;
-  char * s;
   PRIMITIVE_HEADER (4);
-
-  xw = (WINDOW_ARG (1));
-  internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
-  s = (STRING_ARG (4));
-  XDrawString
-    ((XW_DISPLAY (xw)),
-     (XW_WINDOW (xw)),
-     (XW_NORMAL_GC (xw)),
-     (internal_border_width + (arg_x_coordinate (2, xw))),
-     (internal_border_width + (arg_y_coordinate (3, xw))),
-     s,
-     (string_length (ARG_REF (4))));
+  {
+    struct xwindow * xw = (WINDOW_ARG (1));
+    int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
+    char * s = (STRING_ARG (4));
+    XDrawString
+      ((XW_DISPLAY (xw)),
+       (XW_WINDOW (xw)),
+       (XW_NORMAL_GC (xw)),
+       (internal_border_width + (arg_x_coordinate (2, xw))),
+       (internal_border_width + (arg_y_coordinate (3, xw))),
+       s,
+       (STRING_LENGTH (ARG_REF (4))));
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-SET-FUNCTION", Prim_x_graphics_set_function, 2, 2, 0)
 {
-  struct xwindow * xw;
-  Display * display;
-  int function;
   PRIMITIVE_HEADER (2);
-
-  xw = (WINDOW_ARG (1));
-  display = (XW_DISPLAY (xw));
-  function = (arg_index_integer (2, 16));
-  XSetFunction (display, (XW_NORMAL_GC (xw)), function);
-  XSetFunction (display, (XW_REVERSE_GC (xw)), function);
+  {
+    struct xwindow * xw = (WINDOW_ARG (1));
+    Display * display = (XW_DISPLAY (xw));
+    int function = (arg_index_integer (2, 16));
+    XSetFunction (display, (XW_NORMAL_GC (xw)), function);
+    XSetFunction (display, (XW_REVERSE_GC (xw)), function);
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-SET-FILL-STYLE", Prim_x_graphics_set_fill_style, 2, 2, 0)
 {
-  struct xwindow * xw;
-  Display * display;
-  int fill_style;
   PRIMITIVE_HEADER (2);
-
-  xw = (WINDOW_ARG (1));
-  display = (XW_DISPLAY (xw));
-  fill_style = (arg_index_integer (2, 4));
-  XSetFillStyle (display, (XW_NORMAL_GC (xw)), fill_style);
-  XSetFillStyle (display, (XW_REVERSE_GC (xw)), fill_style);
+  {
+    struct xwindow * xw = (WINDOW_ARG (1));
+    Display * display = (XW_DISPLAY (xw));
+    int fill_style = (arg_index_integer (2, 4));
+    XSetFillStyle (display, (XW_NORMAL_GC (xw)), fill_style);
+    XSetFillStyle (display, (XW_REVERSE_GC (xw)), fill_style);
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-SET-LINE-STYLE", Prim_x_graphics_set_line_style, 2, 2, 0)
 {
-  struct xwindow * xw;
-  Display * display;
-  int style;
   PRIMITIVE_HEADER (2);
-
-  xw = (WINDOW_ARG (1));
-  display = (XW_DISPLAY (xw));
-  style = (arg_index_integer (2, 3));
-  XSetLineAttributes
-    (display, (XW_NORMAL_GC (xw)), 0, style, CapButt, JoinMiter);
-  XSetLineAttributes
-    (display, (XW_REVERSE_GC (xw)), 0, style, CapButt, JoinMiter);
+  {
+    struct xwindow * xw = (WINDOW_ARG (1));
+    Display * display = (XW_DISPLAY (xw));
+    int style = (arg_index_integer (2, 3));
+    XSetLineAttributes
+      (display, (XW_NORMAL_GC (xw)), 0, style, CapButt, JoinMiter);
+    XSetLineAttributes
+      (display, (XW_REVERSE_GC (xw)), 0, style, CapButt, JoinMiter);
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-SET-DASHES", Prim_x_graphics_set_dashes, 3, 3, 0)
 {
-  struct xwindow * xw;
-  Display * display;
-  int dash_offset;
-  char * dash_list;
-  int dash_list_length;
   PRIMITIVE_HEADER (3);
-
-  xw = (WINDOW_ARG (1));
-  display = (XW_DISPLAY (xw));
-  dash_list = (STRING_ARG (3));
-  dash_list_length = (string_length (ARG_REF (3)));
-  dash_offset = (arg_index_integer (2, dash_list_length));
-  XSetDashes
-    (display, (XW_NORMAL_GC (xw)), dash_offset, dash_list, dash_list_length);
-  XSetDashes
-    (display, (XW_REVERSE_GC (xw)), dash_offset, dash_list, dash_list_length);
+  {
+    struct xwindow * xw = (WINDOW_ARG (1));
+    Display * display = (XW_DISPLAY (xw));
+    char * dash_list = (STRING_ARG (3));
+    int dash_list_length = (STRING_LENGTH (ARG_REF (3)));
+    int dash_offset = (arg_index_integer (2, dash_list_length));
+    XSetDashes
+      (display, (XW_NORMAL_GC (xw)), dash_offset, dash_list, dash_list_length);
+    XSetDashes
+      (display, (XW_REVERSE_GC (xw)), dash_offset, dash_list,
+       dash_list_length);
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-PROCESS-EVENTS", Prim_x_graphics_process_events, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
   process_events (WINDOW_ARG (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }

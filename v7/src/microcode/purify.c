@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.39 1989/06/08 00:25:19 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.40 1989/09/20 23:10:54 cph Exp $
  *
  * This file contains the code that copies objects into pure
  * and constant space.
@@ -45,7 +45,7 @@ MIT in each case. */
 /* Imports */
 
 extern void GCFlip(), GC();
-extern Pointer *GCLoop();
+extern SCHEME_OBJECT *GCLoop();
 
 /* This is a copy of GCLoop, with mode handling added, and
    debugging printout removed.
@@ -59,7 +59,7 @@ extern Pointer *GCLoop();
 
 #define Purify_Pointer(Code)						\
 {									\
-  Old = Get_Pointer(Temp);						\
+  Old = OBJECT_ADDRESS (Temp);						\
   if ((GC_Mode == CONSTANT_COPY) &&					\
       (Old > Low_Constant))						\
     continue;								\
@@ -73,23 +73,23 @@ extern Pointer *GCLoop();
 
 #define Indirect_BH(In_GC)						\
 {									\
-  if (OBJECT_TYPE(*Old) == TC_BROKEN_HEART)				\
+  if (OBJECT_TYPE (*Old) == TC_BROKEN_HEART)				\
     continue;								\
 }
 
 #define Transport_Vector_Indirect()					\
 {									\
   Real_Transport_Vector();						\
-  *Get_Pointer(Temp) = New_Address;					\
+  *OBJECT_ADDRESS (Temp) = New_Address;					\
 }
 
-Pointer *
+SCHEME_OBJECT *
 PurifyLoop(Scan, To_Pointer, GC_Mode)
-     fast Pointer *Scan;
-     Pointer **To_Pointer;
+     fast SCHEME_OBJECT *Scan;
+     SCHEME_OBJECT **To_Pointer;
      int GC_Mode;
 {
-  fast Pointer *To, *Old, Temp, *Low_Constant, New_Address;
+  fast SCHEME_OBJECT *To, *Old, Temp, *Low_Constant, New_Address;
 
   To = *To_Pointer;
   Low_Constant = Constant_Space;
@@ -99,7 +99,7 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
     Switch_by_GC_Type(Temp)
     {
       case TC_BROKEN_HEART:
-        if (Scan == (Get_Pointer(Temp)))
+        if (Scan == (OBJECT_ADDRESS (Temp)))
 	{
 	  *To_Pointer = To;
 	  return Scan;
@@ -112,7 +112,7 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
 
       case TC_MANIFEST_NM_VECTOR:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
-	Scan += Get_Integer(Temp);
+	Scan += OBJECT_DATUM (Temp);
 	break;
 
       /* Compiled code relocation. */
@@ -149,7 +149,7 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
 	{
 	  fast long count;
 	  fast machine_word *word_ptr;
-	  Pointer *end_scan;
+	  SCHEME_OBJECT *end_scan;
 
 	  count = READ_OPERATOR_LINKAGE_COUNT(Temp);
 	  word_ptr = FIRST_OPERATOR_LINKAGE_ENTRY(Scan);
@@ -223,7 +223,7 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
        */
 
       case TC_REFERENCE_TRAP:
-	if ((OBJECT_DATUM(Temp) <= TRAP_MAX_IMMEDIATE) ||
+	if ((OBJECT_DATUM (Temp) <= TRAP_MAX_IMMEDIATE) ||
 	    (GC_Mode == PURE_COPY))
 	{
 	  /* It is a non pointer. */
@@ -235,7 +235,7 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
       case TC_UNINTERNED_SYMBOL:
 	if (GC_Mode == PURE_COPY)
         {
-	  Temp = Vector_Ref(Temp, SYMBOL_NAME);
+	  Temp = MEMORY_REF (Temp, SYMBOL_NAME);
 	  Purify_Pointer(Setup_Internal(false,
 					Transport_Vector_Indirect(),
 					Indirect_BH(false)));
@@ -283,7 +283,6 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
 	/* Fall through */
 
       case_Purify_Vector:
-      purify_vector:
 	Setup_Pointer_for_Purify(Transport_Vector());
 	break;
 
@@ -368,10 +367,11 @@ N <     |                      |    |
 #define Purify_Really_Pure	2
 #define Purify_N_Slots		2
 
-Pointer Purify(Object, Purify_Object)
-Pointer Object, Purify_Object;
+SCHEME_OBJECT
+Purify (Object, Purify_Object)
+     SCHEME_OBJECT Object, Purify_Object;
 { long Length;
-  Pointer *Heap_Start, *Result, Answer;
+  SCHEME_OBJECT *Heap_Start, *Result, Answer;
 
 /* Pass 1 -- Copy object to new heap, then GC into that heap */
 
@@ -386,33 +386,34 @@ Pointer Object, Purify_Object;
   Length = (Free-Heap_Start)-1;		/* Length of object */
   GC();
   Free[Purify_Vector_Header] =
-    Make_Non_Pointer(TC_MANIFEST_VECTOR, Purify_N_Slots);
-  Free[Purify_Length] = Make_Unsigned_Fixnum(Length);
+    MAKE_OBJECT (TC_MANIFEST_VECTOR, Purify_N_Slots);
+  Free[Purify_Length] = LONG_TO_UNSIGNED_FIXNUM(Length);
   Free[Purify_Really_Pure] = Purify_Object;
-  Answer =  Make_Pointer(TC_VECTOR, Free);
+  Answer =  MAKE_POINTER_OBJECT (TC_VECTOR, Free);
   Free += Purify_N_Slots+1;
   return Answer;
 }
 
-Pointer Purify_Pass_2(Info)
-Pointer Info;
+SCHEME_OBJECT
+Purify_Pass_2 (Info)
+     SCHEME_OBJECT Info;
 {
   long Length;
   Boolean Purify_Object;
-  Pointer *New_Object, Relocated_Object, *Result, Answer;
+  SCHEME_OBJECT *New_Object, Relocated_Object, *Result;
   long Pure_Length, Recomputed_Length;
 
-  Length = Get_Integer(Fast_Vector_Ref(Info, Purify_Length));
-  if (Fast_Vector_Ref(Info, Purify_Really_Pure) == NIL)
+  Length = OBJECT_DATUM (FAST_MEMORY_REF (Info, Purify_Length));
+  if (FAST_MEMORY_REF (Info, Purify_Really_Pure) == SHARP_F)
     Purify_Object =  false;
   else
     Purify_Object = true;
   Relocated_Object = *Heap_Bottom;
   if (!Test_Pure_Space_Top(Free_Constant+Length+6))
-    return NIL;
+    return SHARP_F;
   New_Object = Free_Constant;
   GCFlip();
-  *Free_Constant++ = NIL;	/* Will hold pure space header */
+  *Free_Constant++ = SHARP_F;	/* Will hold pure space header */
   *Free_Constant++ = Relocated_Object;
   if (Purify_Object)
   {
@@ -427,8 +428,8 @@ Pointer Info;
   }
   else
     Pure_Length = 3;
-  *Free_Constant++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-  *Free_Constant++ = Make_Non_Pointer(CONSTANT_PART, Pure_Length);
+  *Free_Constant++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
+  *Free_Constant++ = MAKE_OBJECT (CONSTANT_PART, Pure_Length);
   if (Purify_Object)
   {
     Result = PurifyLoop(New_Object + 1, &Free_Constant, CONSTANT_COPY);
@@ -453,8 +454,8 @@ Pointer Info;
     }
   }
   Recomputed_Length = ((Free_Constant - New_Object) - 4);
-  *Free_Constant++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-  *Free_Constant++ = Make_Non_Pointer(END_OF_BLOCK, (Recomputed_Length + 5));
+  *Free_Constant++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
+  *Free_Constant++ = MAKE_OBJECT (END_OF_BLOCK, (Recomputed_Length + 5));
 #ifndef FLOATING_ALIGNMENT
   if (Length > Recomputed_Length)
   {
@@ -464,8 +465,8 @@ Pointer Info;
   }
 #endif
   *New_Object++ =
-    Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, Pure_Length);
-  *New_Object = Make_Non_Pointer(PURE_PART, (Recomputed_Length + 5));
+    MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, Pure_Length);
+  *New_Object = MAKE_OBJECT (PURE_PART, (Recomputed_Length + 5));
   GC();
   Set_Pure_Top();
   return (SHARP_T);
@@ -481,7 +482,7 @@ Pointer Info;
    copying is done by PurifyLoop above.
 
    Once the copy is complete we run a full GC which handles the
-   broken hearts which now point into pure space.  On a 
+   broken hearts which now point into pure space.  On a
    multiprocessor, this primitive uses the master-gc-loop and it
    should only be used as one would use master-gc-loop i.e. with
    everyone else halted.
@@ -493,34 +494,33 @@ Pointer Info;
 
 DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
 {
-  long Saved_Zone;
-  Pointer Object, Lost_Objects, Purify_Result, Daemon;
-  Primitive_3_Args();
+  long new_gc_reserve;
+  SCHEME_OBJECT Object, Purify_Result, Daemon;
+  PRIMITIVE_HEADER (3);
 
   PRIMITIVE_CANONICALIZE_CONTEXT();
   Save_Time_Zone(Zone_Purify);
-  if ((Arg2 != SHARP_T) && (Arg2 != NIL))
-    Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-  Arg_3_Type(TC_FIXNUM);
+  CHECK_ARG (2, BOOLEAN_P);
+  new_gc_reserve = (arg_nonnegative_integer (3));
 
   /* Pass 1 (Purify, above) does a first copy.  Then any GC daemons
      run, and then Purify_Pass_2 is called to copy back.
   */
 
-  Touch_In_Primitive(Arg1, Object);
-  GC_Reserve = (Get_Integer (Arg3));
+  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), Object);
+  GC_Reserve = new_gc_reserve;
   ENTER_CRITICAL_SECTION ("purify pass 1");
-  Purify_Result = Purify(Object, Arg2);
-  Pop_Primitive_Frame(3);
+  Purify_Result = (Purify (Object, (ARG_REF (2))));
+  Pop_Primitive_Frame (3);
   Daemon = Get_Fixed_Obj_Slot(GC_Daemon);
-  if (Daemon == NIL)
+  if (Daemon == SHARP_F)
   {
-    Pointer words_free;
+    SCHEME_OBJECT words_free;
 
     RENAME_CRITICAL_SECTION ("purify pass 2");
     Purify_Result = Purify_Pass_2(Purify_Result);
-    words_free = (Make_Unsigned_Fixnum (MemTop - Free));
-    Val = (Make_Pointer (TC_LIST, Free));
+    words_free = (LONG_TO_UNSIGNED_FIXNUM (MemTop - Free));
+    Val = (MAKE_POINTER_OBJECT (TC_LIST, Free));
     (*Free++) = Purify_Result;
     (*Free++) = words_free;
     PRIMITIVE_ABORT(PRIM_POP_RETURN);

@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.51 1989/09/20 23:09:28 cph Rel $
+
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,14 +32,11 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.50 1989/08/28 18:28:55 cph Exp $ */
-
 /* String hash functions and interning of symbols. */
 
 #include "scheme.h"
 #include "prims.h"
 #include "trap.h"
-#include "string.h"
 
 /* Hashing strings */
 
@@ -45,15 +44,11 @@ MIT in each case. */
 
 static unsigned int
 string_hash (string)
-     Pointer string;
+     SCHEME_OBJECT string;
 {
-  fast unsigned char * scan;
-  fast unsigned char * end;
-  fast unsigned int result;
-
-  scan = ((unsigned char *) (string_pointer (string, 0)));
-  end = (scan + (string_length (string)));
-  result = 0;
+  fast unsigned char * scan = (STRING_LOC (string, 0));
+  fast unsigned char * end = (scan + (STRING_LENGTH (string)));
+  fast unsigned int result = 0;
   while (scan < end)
     {
       result <<= 1;
@@ -66,46 +61,40 @@ string_hash (string)
 
 static Boolean
 string_equal (string1, string2)
-     Pointer string1, string2;
+     SCHEME_OBJECT string1, string2;
 {
-  fast char * scan1;
-  fast char * scan2;
-  fast long length;
-  fast char * end1;
-
-  scan1 = (string_pointer (string1, 0));
-  scan2 = (string_pointer (string2, 0));
+  fast unsigned char * scan1 = (STRING_LOC (string1, 0));
+  fast unsigned char * scan2 = (STRING_LOC (string2, 0));
+  fast long length = (STRING_LENGTH (string1));
+  fast unsigned char * end1 = (scan1 + length);
   if (scan1 == scan2)
     return (true);
-  length = (string_length (string1));
-  if (length != (string_length (string2)))
+  if (length != (STRING_LENGTH (string2)))
     return (false);
-  end1 = (scan1 + length);
-
   while (scan1 < end1)
     if ((*scan1++) != (*scan2++))
       return (false);
   return (true);
 }
 
-static Pointer *
+static SCHEME_OBJECT *
 find_symbol_internal (string)
-     Pointer string;
+     SCHEME_OBJECT string;
 {
-  fast Pointer * bucket;
+  fast SCHEME_OBJECT * bucket;
   {
-    fast Pointer obarray = (Get_Fixed_Obj_Slot (OBArray));
+    fast SCHEME_OBJECT obarray = (Get_Fixed_Obj_Slot (OBArray));
     bucket =
-      (Nth_Vector_Loc (obarray,
-		       (((string_hash (string)) % (Vector_Length (obarray)))
-			+ 1)));
+      (MEMORY_LOC (obarray,
+		   (((string_hash (string)) % (VECTOR_LENGTH (obarray)))
+		    + 1)));
   }
   while ((*bucket) != EMPTY_LIST)
     {
-      fast Pointer symbol = (Vector_Ref ((*bucket), CONS_CAR));
-      if (string_equal (string, (Fast_Vector_Ref (symbol, SYMBOL_NAME))))
-	return (Nth_Vector_Loc ((*bucket), CONS_CAR));
-      bucket = (Nth_Vector_Loc ((*bucket), CONS_CDR));
+      fast SCHEME_OBJECT symbol = (PAIR_CAR (*bucket));
+      if (string_equal (string, (FAST_MEMORY_REF (symbol, SYMBOL_NAME))))
+	return (PAIR_CAR_LOC (*bucket));
+      bucket = (PAIR_CDR_LOC (*bucket));
     }
   return (bucket);
 }
@@ -113,46 +102,42 @@ find_symbol_internal (string)
 /* Set this to be informed of symbols as they are interned. */
 void (*intern_symbol_hook) () = ((void (*) ()) 0);
 
-static Pointer
+static SCHEME_OBJECT
 link_new_symbol (symbol, cell)
-     Pointer symbol;
-     Pointer * cell;
+     SCHEME_OBJECT symbol;
+     SCHEME_OBJECT * cell;
 {
   /* `symbol' does not exist yet in obarray.  `cell' points to the
      cell containing the final '() in the list.  Replace this
      with a cons of the new symbol and '() (i.e. extend the
      list in the bucket by 1 new element). */
 
-  fast Pointer result =
-    (MAKE_OBJECT (TC_INTERNED_SYMBOL, (OBJECT_DATUM (symbol))));
-  Primitive_GC_If_Needed (2);
-  (*cell) = (Make_Pointer (TC_LIST, Free));
-  (Free [CONS_CAR]) = result;
-  (Free [CONS_CDR]) = EMPTY_LIST;
-  Free += 2;
+  fast SCHEME_OBJECT result = (OBJECT_NEW_TYPE (TC_INTERNED_SYMBOL, symbol));
+  (*cell) = (cons (result, EMPTY_LIST));
   if (intern_symbol_hook != ((void (*) ()) 0))
     (*intern_symbol_hook) (result);
   return (result);
 }
 
-Pointer
+SCHEME_OBJECT
 find_symbol (string)
-     Pointer string;
+     SCHEME_OBJECT string;
 {
-  fast Pointer result = (* (find_symbol_internal (string)));
+  fast SCHEME_OBJECT result = (* (find_symbol_internal (string)));
   return ((result == EMPTY_LIST) ? SHARP_F : result);
 }
 
-Pointer 
+SCHEME_OBJECT
 string_to_symbol (string)
-     Pointer string;
+     SCHEME_OBJECT string;
 {
-  fast Pointer * cell = (find_symbol_internal (string));
+  fast SCHEME_OBJECT * cell = (find_symbol_internal (string));
   if ((*cell) != EMPTY_LIST)
     return (*cell);
   Primitive_GC_If_Needed (2);
   {
-    fast Pointer symbol = (Make_Pointer (TC_UNINTERNED_SYMBOL, Free));
+    fast SCHEME_OBJECT symbol =
+      (MAKE_POINTER_OBJECT (TC_UNINTERNED_SYMBOL, Free));
     (Free [SYMBOL_NAME]) = string;
     (Free [SYMBOL_GLOBAL_VALUE]) = UNBOUND_OBJECT;
     Free += 2;
@@ -160,12 +145,12 @@ string_to_symbol (string)
   }
 }
 
-Pointer
+SCHEME_OBJECT
 intern_symbol (symbol)
-     Pointer symbol;
+     SCHEME_OBJECT symbol;
 {
-  fast Pointer * cell =
-    (find_symbol_internal (Fast_Vector_Ref (symbol, SYMBOL_NAME)));
+  fast SCHEME_OBJECT * cell =
+    (find_symbol_internal (FAST_MEMORY_REF (symbol, SYMBOL_NAME)));
   return
     (((*cell) != EMPTY_LIST)
      ? (*cell)
@@ -201,7 +186,7 @@ the reader in creating interned symbols.")
   PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, STRING_P);
-  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (string_hash (ARG_REF (1))));
+  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (string_hash (ARG_REF (1))));
 }
 
 DEFINE_PRIMITIVE ("STRING-HASH-MOD", Prim_string_hash_mod, 2, 2,
@@ -213,6 +198,6 @@ Equivalent to (MOD (STRING-HASH STRING) DENOMINATOR).")
 
   CHECK_ARG (1, STRING_P);
   PRIMITIVE_RETURN
-    (MAKE_UNSIGNED_FIXNUM
+    (LONG_TO_UNSIGNED_FIXNUM
      ((string_hash (ARG_REF (1))) % (arg_nonnegative_integer (2))));
 }

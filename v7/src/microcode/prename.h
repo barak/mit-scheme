@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prename.h,v 1.2 1988/05/13 03:01:07 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prename.h,v 1.3 1989/09/20 23:10:32 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -47,7 +47,24 @@ static struct primitive_alias aliases [] =
     { "SYSTEM-MEMORY-REF", "PRIMITIVE-OBJECT-REF" },
     { "SYSTEM-MEMORY-SET!", "PRIMITIVE-OBJECT-SET!" },
     { "OBJECT-NEW-TYPE", "OBJECT-SET-TYPE" },
-    { "PRIMITIVE-OBJECT-NEW-TYPE", "PRIMITIVE-OBJECT-SET-TYPE" }
+    { "PRIMITIVE-OBJECT-NEW-TYPE", "PRIMITIVE-OBJECT-SET-TYPE" },
+    { "SINE-FLONUM", "FLONUM-SIN" },
+    { "COSINE-FLONUM", "FLONUM-COS" },
+    { "ATAN-FLONUM", "FLONUM-ATAN" },
+    { "EXP-FLONUM", "FLONUM-EXP" },
+    { "LN-FLONUM", "FLONUM-LOG" },
+    { "SQRT-FLONUM", "FLONUM-SQRT" },
+    { "PLUS-FLONUM", "FLONUM-ADD" },
+    { "MINUS-FLONUM", "FLONUM-SUBTRACT" },
+    { "MULTIPLY-FLONUM", "FLONUM-MULTIPLY" },
+    { "DIVIDE-FLONUM", "FLONUM-DIVIDE" },
+    { "ZERO-FLONUM?", "FLONUM-ZERO?" },
+    { "POSITIVE-FLONUM?", "FLONUM-POSITIVE?" },
+    { "NEGATIVE-FLONUM?", "FLONUM-NEGATIVE?" },
+    { "EQUAL-FLONUM?", "FLONUM-EQUAL?" },
+    { "LESS-THAN-FLONUM?", "FLONUM-LESS?" },
+    { "GREATER-THAN-FLONUM?", "FLONUM-GREATER?" },
+    { "TRUNCATE-FLONUM", "FLONUM-TRUNCATE->EXACT" }
   };
 
-#define N_ALIASES 12
+#define N_ALIASES 29

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/starbasx.c,v 1.2 1989/06/21 11:46:12 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/starbasx.c,v 1.3 1989/09/20 23:11:43 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -53,5 +53,5 @@ as a Starbase graphics device.")
   PRIMITIVE_RETURN
     ((starbase_filename == ((char *) 0))
      ? SHARP_F
-     : (C_String_To_Scheme_String (starbase_filename)));
+     : (char_pointer_to_string (starbase_filename)));
 }

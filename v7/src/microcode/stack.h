@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.27 1989/09/20 23:11:35 cph Exp $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,8 +32,6 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.26 1988/08/15 20:55:15 cph Rel $ */
-
 /* This file contains macros for manipulating stacks and stacklets. */
 
 #ifdef USE_STACKLETS
@@ -47,8 +47,8 @@ MIT in each case. */
     Microcode_Termination(TERM_STACK_ALLOCATION_FAILED);		\
   }									\
   Stack_Guard = (Free + STACKLET_HEADER_SIZE);				\
-  *Free = Make_Non_Pointer(TC_MANIFEST_VECTOR,				\
-			   (Default_Stacklet_Size - 1));		\
+  *Free =								\
+    (MAKE_OBJECT (TC_MANIFEST_VECTOR, (Default_Stacklet_Size - 1)));	\
   Free += Default_Stacklet_Size;					\
   Stack_Pointer = Free;							\
   Free_Stacklets = NULL;						\
@@ -80,8 +80,7 @@ MIT in each case. */
 {									\
   Current_Stacklet[STACKLET_REUSE_FLAG] = SHARP_T;			\
   Current_Stacklet[STACKLET_UNUSED_LENGTH] =				\
-    Make_Non_Pointer(TC_MANIFEST_NM_VECTOR,				\
-		     (Stack_Pointer - Stack_Guard));			\
+    MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (Stack_Pointer - Stack_Guard));	\
 }
 
 #ifdef ENABLE_DEBUGGING_TOOLS
@@ -106,24 +105,24 @@ MIT in each case. */
 /* Used by garbage collector to detect the end of constant space */
 
 #define Terminate_Constant_Space(Where)					\
-  *Free_Constant = Make_Pointer(TC_BROKEN_HEART, Free_Constant);	\
+  *Free_Constant = MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Free_Constant);\
   Where = Free_Constant
 
 #define Get_Current_Stacklet()						\
-  Make_Pointer(TC_CONTROL_POINT, Current_Stacklet)	
+  (MAKE_POINTER_OBJECT (TC_CONTROL_POINT, Current_Stacklet))
 
 #define Previous_Stack_Pointer(Where)					\
-  (Nth_Vector_Loc(Where,						\
-		 (STACKLET_HEADER_SIZE +				\
-                  Get_Integer(Vector_Ref(Where,				\
-                                         STACKLET_UNUSED_LENGTH)))))
+  (MEMORY_LOC								\
+   (Where,								\
+    (STACKLET_HEADER_SIZE +						\
+     (OBJECT_DATUM (MEMORY_REF (Where, STACKLET_UNUSED_LENGTH))))))
 
 #define Set_Current_Stacklet(Where)					\
 {									\
-  Pointer Our_Where;							\
+  SCHEME_OBJECT Our_Where;						\
 									\
   Our_Where = (Where);							\
-  Stack_Guard = Nth_Vector_Loc(Our_Where, STACKLET_HEADER_SIZE);	\
+  Stack_Guard = MEMORY_LOC (Our_Where, STACKLET_HEADER_SIZE);		\
   Stack_Pointer = Previous_Stack_Pointer(Our_Where);			\
 }
 
@@ -135,11 +134,11 @@ MIT in each case. */
  (STACKLET_SLACK + Stack_Size * (((N) + Stack_Size - 1) / Stack_Size))
 
 #define Get_End_Of_Stacklet()						\
-  (&(Current_Stacklet[1 + Get_Integer(Current_Stacklet[STACKLET_LENGTH])]))
+  (&(Current_Stacklet[1 + OBJECT_DATUM (Current_Stacklet[STACKLET_LENGTH])]))
 
 #define Apply_Stacklet_Backout()					\
 Will_Push((2 * CONTINUATION_SIZE) + (STACK_ENV_EXTRA_SLOTS + 2));	\
-  Store_Expression(NIL);						\
+  Store_Expression(SHARP_F);						\
   Store_Return(RC_END_OF_COMPUTATION);					\
   Save_Cont();								\
   Push(Val);								\
@@ -160,7 +159,7 @@ Pushed()
 
 #define Within_Stacklet_Backout()					\
 {									\
-  Pointer Old_Expression;						\
+  SCHEME_OBJECT Old_Expression;						\
 									\
   Old_Expression = Fetch_Expression();					\
   Store_Expression(Previous_Stacklet);					\
@@ -183,31 +182,31 @@ Pushed()
 
 #define Our_Throw(From_Pop_Return, Stacklet)				\
 {									\
-  Pointer Previous_Stacklet;						\
-  Pointer *Stacklet_Top;						\
+  SCHEME_OBJECT Previous_Stacklet;					\
+  SCHEME_OBJECT *Stacklet_Top;						\
 									\
   Previous_Stacklet = (Stacklet);					\
   Stacklet_Top = Current_Stacklet;					\
   Stacklet_Top[STACKLET_FREE_LIST_LINK] =				\
-    ((Pointer) Free_Stacklets);						\
+    ((SCHEME_OBJECT) Free_Stacklets);					\
   Free_Stacklets = Stacklet_Top;					\
   if (!(From_Pop_Return))						\
   {									\
     Prev_Restore_History_Stacklet = NULL;				\
     Prev_Restore_History_Offset = 0;					\
   }									\
-  if ((Vector_Ref(Previous_Stacklet, STACKLET_REUSE_FLAG)) == NIL)	\
+  if ((MEMORY_REF (Previous_Stacklet, STACKLET_REUSE_FLAG)) == SHARP_F)	\
   {									\
     /* We need to copy the stacklet into which we are			\
        returning.							\
      */									\
 									\
-    if (GC_Check(Vector_Length(Previous_Stacklet) + 1))			\
+    if (GC_Check(VECTOR_LENGTH (Previous_Stacklet) + 1))		\
     {									\
       /* We don't have enough space to copy the stacklet. */		\
 									\
       Free_Stacklets =							\
-	((Pointer *) Free_Stacklets[STACKLET_FREE_LIST_LINK]);		\
+	((SCHEME_OBJECT *) Free_Stacklets[STACKLET_FREE_LIST_LINK]);	\
       Stack_Pointer = Get_End_Of_Stacklet();				\
       Prev_Restore_History_Stacklet = NULL;				\
       Prev_Restore_History_Offset = 0
@@ -215,7 +214,7 @@ Pushed()
       /* Backout code inserted here by macro user */
 
 #define Our_Throw_Part_2()						\
-      Request_GC(Vector_Length(Previous_Stacklet) + 1);			\
+      Request_GC(VECTOR_LENGTH (Previous_Stacklet) + 1);		\
     }									\
     else								\
     {									\
@@ -223,37 +222,36 @@ Pushed()
 									\
       long Unused_Length;						\
       fast Used_Length;							\
-      fast Pointer *Old_Stacklet_Top, *temp;				\
-      Pointer *First_Continuation;					\
+      fast SCHEME_OBJECT *Old_Stacklet_Top, *temp;			\
+      SCHEME_OBJECT *First_Continuation;				\
 									\
-      Old_Stacklet_Top = Get_Pointer(Previous_Stacklet);		\
+      Old_Stacklet_Top = OBJECT_ADDRESS (Previous_Stacklet);		\
       First_Continuation =						\
-        Nth_Vector_Loc(Previous_Stacklet,				\
-		       ((1 + Vector_Length(Previous_Stacklet)) -	\
-                        CONTINUATION_SIZE));				\
+        MEMORY_LOC (Previous_Stacklet,					\
+		    ((1 + VECTOR_LENGTH (Previous_Stacklet)) -		\
+		     CONTINUATION_SIZE));				\
       if (Old_Stacklet_Top == Prev_Restore_History_Stacklet)		\
       {									\
         Prev_Restore_History_Stacklet = NULL;				\
       }									\
       if (First_Continuation[CONTINUATION_RETURN_CODE] ==		\
-	  Make_Non_Pointer(TC_RETURN_CODE, RC_JOIN_STACKLETS))		\
+	  MAKE_OBJECT (TC_RETURN_CODE, RC_JOIN_STACKLETS))		\
       {									\
-	Pointer Older_Stacklet;						\
+	SCHEME_OBJECT Older_Stacklet;					\
 									\
 	Older_Stacklet = First_Continuation[CONTINUATION_EXPRESSION];	\
-	Vector_Set(Older_Stacklet, STACKLET_REUSE_FLAG, NIL);		\
+	MEMORY_SET (Older_Stacklet, STACKLET_REUSE_FLAG, SHARP_F);	\
       }									\
-									\
       temp = Free;							\
       Stack_Guard = &(temp[STACKLET_HEADER_SIZE]);			\
       temp[STACKLET_LENGTH] = Old_Stacklet_Top[STACKLET_LENGTH];	\
       Unused_Length =							\
-	Get_Integer(Old_Stacklet_Top[STACKLET_UNUSED_LENGTH]) +		\
+	OBJECT_DATUM (Old_Stacklet_Top[STACKLET_UNUSED_LENGTH]) +	\
         STACKLET_HEADER_SIZE;						\
       temp += Unused_Length;						\
       Stack_Pointer = temp;						\
       Used_Length =							\
-        (Get_Integer(Old_Stacklet_Top[STACKLET_LENGTH]) -		\
+        (OBJECT_DATUM (Old_Stacklet_Top[STACKLET_LENGTH]) -		\
          Unused_Length) + 1;						\
       Old_Stacklet_Top += Unused_Length;				\
       while (--Used_Length >= 0)					\
@@ -267,7 +265,7 @@ Pushed()
   {									\
     /* No need to copy the stacklet we are going into */		\
 									\
-    if (Get_Pointer(Previous_Stacklet)==				\
+    if (OBJECT_ADDRESS (Previous_Stacklet)==				\
         Prev_Restore_History_Stacklet)					\
     {									\
       Prev_Restore_History_Stacklet = NULL;				\
@@ -275,7 +273,7 @@ Pushed()
     Set_Current_Stacklet(Previous_Stacklet);				\
   }									\
 }
-			  
+
 #else /* not USE_STACKLETS */
 
 /*
@@ -307,21 +305,21 @@ do									\
 #define Terminate_Constant_Space(Where)					\
 {									\
   *Free_Constant =							\
-    Make_Non_Pointer (TC_MANIFEST_NM_VECTOR,				\
-		      ((Stack_Pointer - Free_Constant) - 1));		\
-  *Stack_Top = Make_Pointer (TC_BROKEN_HEART, Stack_Top);		\
+    (MAKE_OBJECT							\
+     (TC_MANIFEST_NM_VECTOR, ((Stack_Pointer - Free_Constant) - 1)));	\
+  *Stack_Top = MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Stack_Top);	\
   Where = Stack_Top;							\
 }
 
-#define Get_Current_Stacklet()	NIL
+#define Get_Current_Stacklet() SHARP_F
 
 #define Set_Current_Stacklet(Where) {}
 
 #define Previous_Stack_Pointer(Where)					\
-(Nth_Vector_Loc (Where,							\
-		 (STACKLET_HEADER_SIZE +				\
-		  Get_Integer (Vector_Ref (Where,			\
-					   STACKLET_UNUSED_LENGTH)))))
+  (MEMORY_LOC								\
+   (Where,								\
+    (STACKLET_HEADER_SIZE +						\
+     (OBJECT_DATUM (MEMORY_REF (Where, STACKLET_UNUSED_LENGTH))))))
 
 /* Never allocate more space */
 #define New_Stacklet_Size(N)	0
@@ -344,38 +342,37 @@ do									\
 
 #define Our_Throw(From_Pop_Return, P)					\
 {									\
-  Pointer Control_Point;						\
-  fast Pointer *To_Where, *From_Where;					\
+  SCHEME_OBJECT Control_Point;						\
+  fast SCHEME_OBJECT *To_Where, *From_Where;				\
   fast long len, valid, invalid;					\
 									\
   Control_Point = (P);							\
   if (Consistency_Check)						\
   {									\
-    if (OBJECT_TYPE(Control_Point) != TC_CONTROL_POINT)			\
+    if (OBJECT_TYPE (Control_Point) != TC_CONTROL_POINT)		\
     {									\
       Microcode_Termination (TERM_BAD_STACK);				\
     }									\
   }									\
-  len = Vector_Length (Control_Point);					\
-  invalid = ((Get_Integer (Vector_Ref (Control_Point,			\
-				     STACKLET_UNUSED_LENGTH))) +	\
+  len = VECTOR_LENGTH (Control_Point);					\
+  invalid = ((OBJECT_DATUM (MEMORY_REF (Control_Point,			\
+					STACKLET_UNUSED_LENGTH))) +	\
 	     STACKLET_HEADER_SIZE);					\
   valid = ((len + 1) - invalid);					\
   CLEAR_INTERRUPT(INT_Stack_Overflow);					\
   To_Where = (Stack_Top - valid);					\
-  From_Where = Nth_Vector_Loc (Control_Point, invalid);			\
+  From_Where = MEMORY_LOC (Control_Point, invalid);			\
   Stack_Check (To_Where);						\
   Stack_Pointer = To_Where;						\
   while (--valid >= 0)							\
   {									\
     *To_Where++ = *From_Where++;					\
   }									\
-									\
   if (Consistency_Check)						\
   {									\
     if ((To_Where != Stack_Top) ||					\
 	(From_Where !=							\
-	 Nth_Vector_Loc (Control_Point, (1 + len))))			\
+	 MEMORY_LOC (Control_Point, (1 + len))))			\
     {									\
       Microcode_Termination (TERM_BAD_STACK);				\
     }									\
@@ -385,17 +382,17 @@ do									\
     Prev_Restore_History_Stacklet = NULL;				\
     Prev_Restore_History_Offset = 0;					\
     if ((!Valid_Fixed_Obj_Vector ()) ||					\
-	(Get_Fixed_Obj_Slot (Dummy_History) == NIL))			\
+	(Get_Fixed_Obj_Slot (Dummy_History) == SHARP_F))		\
     {									\
       History = Make_Dummy_History ();					\
     }									\
     else								\
     {									\
-      History = Get_Pointer (Get_Fixed_Obj_Slot (Dummy_History));	\
+      History = OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History));	\
     }									\
   }									\
   else if (Prev_Restore_History_Stacklet ==				\
-	   Get_Pointer (Control_Point))					\
+	   OBJECT_ADDRESS (Control_Point))				\
   {									\
     Prev_Restore_History_Stacklet = NULL;				\
   }									\

@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookprm.c,v 1.4 1989/09/20 23:09:59 cph Rel $
+
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,11 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookprm.c,v 1.3 1988/09/29 04:59:28 jinx Rel $
- *
- * This file contains environment manipulation primitives.
- * It makes heavy use of procedures in lookup.c
- */
+/* This file contains environment manipulation primitives.
+   It makes heavy use of procedures in lookup.c */
 
 #include "scheme.h"
 #include "locks.h"
@@ -50,14 +49,10 @@ MIT in each case. */
 
 /* Utility macros */
 
-#define ENVIRONMENT_P(env)						\
-  ((OBJECT_TYPE(env) == TC_ENVIRONMENT) ||				\
-   (OBJECT_TYPE(env) == GLOBAL_ENV))
-
 #define VALID_ENVIRONMENT_P(env)					\
-  ((OBJECT_TYPE(env) == TC_ENVIRONMENT) ||				\
-   ((OBJECT_TYPE(env) == GLOBAL_ENV) &&					\
-    (OBJECT_DATUM(env) == GO_TO_GLOBAL)))
+  ((OBJECT_TYPE (env) == TC_ENVIRONMENT) ||				\
+   ((OBJECT_TYPE (env) == GLOBAL_ENV) &&				\
+    (OBJECT_DATUM (env) == GO_TO_GLOBAL)))
 
 /* This used to be more paranoid, and check for interned symbols,
    rather than normal symbols.  Does it matter?
@@ -140,7 +135,7 @@ DEFINE_PRIMITIVE ("LOCAL-REFERENCE", Prim_local_reference, 2, 2, 0)
 }
 
 /* (LOCAL-ASSIGNMENT ENVIRONMENT SYMBOL VALUE)
-   Should be called *DEFINE.
+   Should be called LEXICAL-DEFINE.
 
    If the variable specified by SYMBOL already exists in the
    lexical ENVIRONMENT, then its value there is changed to VALUE.
@@ -148,45 +143,42 @@ DEFINE_PRIMITIVE ("LOCAL-REFERENCE", Prim_local_reference, 2, 2, 0)
    the specified variable to the value.  Returns SYMBOL.
 
    Indistinguishable from evaluating
-   (define <symbol> <value>) in <environment>.
-*/
+   (define <symbol> <value>) in <environment>. */
 
 DEFINE_PRIMITIVE ("LOCAL-ASSIGNMENT", Prim_local_assignment, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
-
-  standard_lookup_primitive(Local_Set(ARG_REF (1), ARG_REF (2), ARG_REF (3)));
+  standard_lookup_primitive
+    (Local_Set ((ARG_REF (1)), (ARG_REF (2)), (ARG_REF (3))));
 }
 
 /* (LEXICAL-UNASSIGNED? ENVIRONMENT SYMBOL)
-   Returns #!TRUE if the variable corresponding to SYMBOL is bound
+   Returns #T if the variable corresponding to SYMBOL is bound
    but has the special UNASSIGNED value in ENVIRONMENT.  Returns
-   NIL otherwise.  Does a complete lexical search for SYMBOL
+   #F otherwise.  Does a complete lexical search for SYMBOL
    starting in ENVIRONMENT.
-   The special form (unassigned? <symbol>) is built on top of this.
-*/
+   The special form (unassigned? <symbol>) is built on top of this. */
 
 DEFINE_PRIMITIVE ("LEXICAL-UNASSIGNED?", Prim_unassigned_test, 2, 2, 0)
 {
-  extern long Symbol_Lex_unassigned_p();
+  extern long Symbol_Lex_unassigned_p ();
   PRIMITIVE_HEADER (2);
-
-  standard_lookup_primitive(Symbol_Lex_unassigned_p(ARG_REF (1), ARG_REF (2)));
+  standard_lookup_primitive
+    (Symbol_Lex_unassigned_p ((ARG_REF (1)), (ARG_REF (2))));
 }
 
 /* (LEXICAL-UNBOUND? ENVIRONMENT SYMBOL)
-   Returns #!TRUE if the variable corresponding to SYMBOL has no
-   binding in ENVIRONMENT.  Returns NIL otherwise.  Does a complete
+   Returns #T if the variable corresponding to SYMBOL has no
+   binding in ENVIRONMENT.  Returns #F otherwise.  Does a complete
    lexical search for SYMBOL starting in ENVIRONMENT.
-   The special form (unbound? <symbol>) is built on top of this.
-*/
+   The special form (unbound? <symbol>) is built on top of this. */
 
 DEFINE_PRIMITIVE ("LEXICAL-UNBOUND?", Prim_unbound_test, 2, 2, 0)
 {
-  extern long Symbol_Lex_unbound_p();
+  extern long Symbol_Lex_unbound_p ();
   PRIMITIVE_HEADER (2);
-
-  standard_lookup_primitive(Symbol_Lex_unbound_p(ARG_REF (1), ARG_REF (2)));
+  standard_lookup_primitive
+    (Symbol_Lex_unbound_p ((ARG_REF (1)), (ARG_REF (2))));
 }
 
 /* (LEXICAL-UNREFERENCEABLE? ENVIRONMENT SYMBOL)
@@ -204,7 +196,7 @@ DEFINE_PRIMITIVE ("LEXICAL-UNREFERENCEABLE?", Prim_unreferenceable_test, 2, 2, 0
   switch (Result)
   {
     case PRIM_DONE:
-      PRIMITIVE_RETURN(NIL);
+      PRIMITIVE_RETURN (SHARP_F);
 
     case PRIM_INTERRUPT:
       signal_interrupt_from_primitive();
@@ -220,17 +212,17 @@ DEFINE_PRIMITIVE ("LEXICAL-UNREFERENCEABLE?", Prim_unreferenceable_test, 2, 2, 0
   /*NOTREACHED*/
 }
 
-Pointer
+SCHEME_OBJECT
 extract_or_create_cache(frame, sym)
-     Pointer frame, sym;
+     SCHEME_OBJECT frame, sym;
 {
-  extern Pointer compiler_cache_variable[];
+  extern SCHEME_OBJECT compiler_cache_variable[];
   extern long compiler_cache();
-  Pointer *cell, value;
+  SCHEME_OBJECT *cell, value;
   long trap_kind, result;
 
   cell = deep_lookup(frame, sym, compiler_cache_variable);
-  value = Fetch(cell[0]);
+  value = MEMORY_FETCH (cell[0]);
   if (REFERENCE_TRAP_P(value))
   {
     get_trap_kind(trap_kind, value);
@@ -242,14 +234,14 @@ extract_or_create_cache(frame, sym)
 
       case TRAP_COMPILER_CACHED:
       case TRAP_COMPILER_CACHED_DANGEROUS:
-	return (Fast_Vector_Ref(value, TRAP_EXTRA));
+	return (FAST_MEMORY_REF (value, TRAP_EXTRA));
 
       /* This should list the traps explicitely */
       default:
         break;
     }
   }
-  result = compiler_cache(cell, frame, sym, NIL, 0,
+  result = compiler_cache(cell, frame, sym, SHARP_F, 0,
 			  TRAP_REFERENCES_LOOKUP, true);
   if (result != PRIM_DONE)
   {
@@ -258,15 +250,15 @@ extract_or_create_cache(frame, sym)
     else
       signal_error_from_primitive(result);
   }
-  value = Fetch(cell[0]);
-  return (Fast_Vector_Ref(value, TRAP_EXTRA));
+  value = MEMORY_FETCH (cell[0]);
+  return (FAST_MEMORY_REF (value, TRAP_EXTRA));
 }
 
 void
 error_bad_environment(arg)
      long arg;
 {
-  if (OBJECT_TYPE(ARG_REF(arg)) == GLOBAL_ENV)
+  if (OBJECT_TYPE (ARG_REF(arg)) == GLOBAL_ENV)
     error_bad_range_arg(arg);
   else
     error_wrong_type_arg(arg);
@@ -302,10 +294,10 @@ error_bad_environment(arg)
 
 DEFINE_PRIMITIVE ("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3, 3, 0)
 {
-  extern Pointer *scan_frame();
+  extern SCHEME_OBJECT *scan_frame();
 
-  Pointer target, source, sym;
-  Pointer cache, *cell, *value_cell;
+  SCHEME_OBJECT target, source, sym;
+  SCHEME_OBJECT cache, *cell, *value_cell;
   PRIMITIVE_HEADER (3);
 
   target = ARG_REF (1);
@@ -317,19 +309,19 @@ DEFINE_PRIMITIVE ("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3, 3, 0)
 
   if (!VALID_ENVIRONMENT_P(source))
     error_bad_environment(2);
-  
+
   if (!VALID_ENVIRONMENT_P(target))
     error_bad_environment(1);
 
   cache = extract_or_create_cache(source, sym);
 
-  if (OBJECT_TYPE(target) == GLOBAL_ENV)
+  if (OBJECT_TYPE (target) == GLOBAL_ENV)
   {
     long trap_kind;
-    Pointer value;
+    SCHEME_OBJECT value;
 
-    cell = Nth_Vector_Loc(sym, SYMBOL_GLOBAL_VALUE);
-    value = Fetch(cell[0]);
+    cell = MEMORY_LOC (sym, SYMBOL_GLOBAL_VALUE);
+    value = MEMORY_FETCH (cell[0]);
 
     if (!REFERENCE_TRAP_P(value))
       /* The variable is bound! */
@@ -342,23 +334,23 @@ DEFINE_PRIMITIVE ("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3, 3, 0)
       case TRAP_UNBOUND_DANGEROUS:
       {
 	/* Allocate new trap object. */
-	fast Pointer *trap;
+	fast SCHEME_OBJECT *trap;
 
 	Primitive_GC_If_Needed(2);
 	trap = Free;
 	Free += 2;
-	trap[0] = MAKE_UNSIGNED_FIXNUM((trap_kind == TRAP_UNBOUND) ?
+	trap[0] = LONG_TO_UNSIGNED_FIXNUM((trap_kind == TRAP_UNBOUND) ?
 				       TRAP_COMPILER_CACHED :
 				       TRAP_COMPILER_CACHED_DANGEROUS);
 	trap[1] = cache;
-	Store(cell[0], Make_Pointer(TC_REFERENCE_TRAP, trap));
+	MEMORY_STORE (cell[0], MAKE_POINTER_OBJECT (TC_REFERENCE_TRAP, trap));
 	PRIMITIVE_RETURN(SHARP_T);
       }
-      
+
       case TRAP_COMPILER_CACHED:
       case TRAP_COMPILER_CACHED_DANGEROUS:
       {
-	if (Vector_Ref(Vector_Ref(value, TRAP_EXTRA), TRAP_EXTENSION_CELL) !=
+	if (MEMORY_REF (MEMORY_REF (value, TRAP_EXTRA), TRAP_EXTENSION_CELL) !=
 	    UNBOUND_OBJECT)
 	{
 	  /* It is bound */
@@ -366,11 +358,11 @@ DEFINE_PRIMITIVE ("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3, 3, 0)
 	  signal_error_from_primitive(ERR_BAD_SET);
 	}
 	lookup_primitive_action(compiler_uncache(cell, sym));
-	value_cell = Nth_Vector_Loc(cache, TRAP_EXTENSION_CELL);
+	value_cell = MEMORY_LOC (cache, TRAP_EXTENSION_CELL);
 	lookup_primitive_action
 	  (compiler_recache(shadowed_value_cell, value_cell, target,
-			    sym, Fetch(value_cell[0]), false, true));
-	Vector_Set(value, TRAP_EXTRA, cache);
+			    sym, MEMORY_FETCH (value_cell[0]), false, true));
+	MEMORY_SET (value, TRAP_EXTRA, cache);
 	PRIMITIVE_RETURN(SHARP_T);
       }
 
@@ -389,14 +381,14 @@ DEFINE_PRIMITIVE ("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3, 3, 0)
 
   else
   {
-    Pointer *trap;
+    SCHEME_OBJECT *trap;
 
     cell = scan_frame(target, sym, fake_variable_object, 0, true);
 
     /* Is it bound? */
 
-    if ((cell != ((Pointer *) NULL)) &&
-	(Fetch(cell[0]) != DANGEROUS_UNBOUND_OBJECT))
+    if ((cell != ((SCHEME_OBJECT *) NULL)) &&
+	(MEMORY_FETCH (cell[0]) != DANGEROUS_UNBOUND_OBJECT))
     {
       signal_error_from_primitive(ERR_BAD_SET);
     }
@@ -408,28 +400,28 @@ DEFINE_PRIMITIVE ("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3, 3, 0)
     Free += 2;
     trap[1] = cache;
 
-    lookup_primitive_action(extend_frame(target, sym, NIL, target, false));
+    lookup_primitive_action(extend_frame(target, sym, SHARP_F, target, false));
 
-    if (cell == ((Pointer *) NULL))
+    if (cell == ((SCHEME_OBJECT *) NULL))
     {
-      trap[0] = MAKE_UNSIGNED_FIXNUM(TRAP_COMPILER_CACHED);
+      trap[0] = LONG_TO_UNSIGNED_FIXNUM(TRAP_COMPILER_CACHED);
       cell = scan_frame(target, sym, fake_variable_object, 0, true);
-      if (cell == ((Pointer *) NULL))
+      if (cell == ((SCHEME_OBJECT *) NULL))
 	signal_error_from_primitive(ERR_BAD_FRAME);
     }
     else
     {
-      trap[0] = MAKE_UNSIGNED_FIXNUM(TRAP_COMPILER_CACHED_DANGEROUS);
+      trap[0] = LONG_TO_UNSIGNED_FIXNUM(TRAP_COMPILER_CACHED_DANGEROUS);
     }
 
-    if (Fetch(cell[0]) != DANGEROUS_UNBOUND_OBJECT)
+    if (MEMORY_FETCH (cell[0]) != DANGEROUS_UNBOUND_OBJECT)
       signal_error_from_primitive(ERR_BAD_FRAME);
 
-    value_cell = Nth_Vector_Loc(cache, TRAP_EXTENSION_CELL);
+    value_cell = MEMORY_LOC (cache, TRAP_EXTENSION_CELL);
     lookup_primitive_action
       (compiler_recache(shadowed_value_cell, value_cell, target,
-			sym, Fetch(value_cell[0]), false, true));
-    Store(cell[0], Make_Pointer(TC_REFERENCE_TRAP, trap));
+			sym, MEMORY_FETCH (value_cell[0]), false, true));
+    MEMORY_STORE (cell[0], MAKE_POINTER_OBJECT (TC_REFERENCE_TRAP, trap));
     PRIMITIVE_RETURN(SHARP_T);
   }
 }

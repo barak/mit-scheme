@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.h,v 9.41 1989/09/20 23:10:39 cph Rel $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,36 +32,30 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.h,v 9.40 1988/08/15 20:52:55 cph Rel $ */
-
-/*
-   Primitive declarations.
-
+/* Primitive declarations.
    Note that the following cannot be changed without changing
-   Findprim.c.  
-*/
+   Findprim.c. */
 
-extern Pointer (*(Primitive_Procedure_Table[]))();
+extern SCHEME_OBJECT (*(Primitive_Procedure_Table[]))();
 extern int Primitive_Arity_Table[];
 extern int Primitive_Count_Table[];
 extern char *Primitive_Name_Table[];
 extern char *Primitive_Documentation_Table[];
 extern long MAX_PRIMITIVE;
 
-#define CHUNK_SIZE	20	/* Grow undefined vector by this much */
+#define CHUNK_SIZE 20		/* Grow undefined vector by this much */
 
-extern Pointer Undefined_Primitives;
-extern Pointer Undefined_Primitives_Arity;
+extern SCHEME_OBJECT Undefined_Primitives;
+extern SCHEME_OBJECT Undefined_Primitives_Arity;
 
 /* Utility macros */
 
 #define NUMBER_OF_DEFINED_PRIMITIVES() (MAX_PRIMITIVE + 1)
 
-#define NUMBER_OF_UNDEFINED_PRIMITIVES()		\
-((Undefined_Primitives == NIL) ?			\
- 0 :							\
- Get_Integer(User_Vector_Ref(Undefined_Primitives, 0)))
+#define NUMBER_OF_UNDEFINED_PRIMITIVES()				\
+  ((Undefined_Primitives == SHARP_F)					\
+   ? 0									\
+   : (UNSIGNED_FIXNUM_TO_LONG (VECTOR_REF (Undefined_Primitives, 0))))
 
-#define NUMBER_OF_PRIMITIVES()				\
-(NUMBER_OF_UNDEFINED_PRIMITIVES() +			\
- NUMBER_OF_DEFINED_PRIMITIVES())
+#define NUMBER_OF_PRIMITIVES()						\
+  ((NUMBER_OF_UNDEFINED_PRIMITIVES ()) + (NUMBER_OF_DEFINED_PRIMITIVES ()))

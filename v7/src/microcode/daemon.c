@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/daemon.c,v 9.27 1989/09/20 23:07:22 cph Exp $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,9 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/daemon.c,v 9.26 1988/08/15 20:44:42 cph Rel $
-
-   This file contains code for the Garbage Collection daemons.
+/* This file contains code for the Garbage Collection daemons.
    There are currently two daemons, one for closing files which
    have disappeared due to GC, the other for supporting object
    hash tables where entries disappear when the corresponding
@@ -41,46 +41,44 @@ MIT in each case. */
    Both of these daemons should be written in Scheme, but since the
    interpreter conses while executing Scheme programs, they are
    unsafe.  The Scheme versions actually exist, but are commented out
-   of the appropriate runtime system sources.
-*/
+   of the appropriate runtime system sources. */
 
 #include "scheme.h"
 #include "prims.h"
 
-/* (CLOSE-LOST-OPEN-FILES file-list) 
+/* (CLOSE-LOST-OPEN-FILES file-list)
    file-list is an assq-like list where the associations are weak
    pairs rather than normal pairs.  This primitive destructively
    removes those weak pairs whose cars are #F, and closes the
    corresponding file descriptor contained in the cdrs. See io.scm in
-   the runtime system for a longer description.
-*/
+   the runtime system for a longer description. */
 
 DEFINE_PRIMITIVE ("CLOSE-LOST-OPEN-FILES", Prim_close_lost_open_files, 1, 1, 0)
 {
   extern Boolean OS_file_close();
-  fast Pointer *Smash, Cell, Weak_Cell, Value;
+  fast SCHEME_OBJECT *Smash, Cell, Weak_Cell, Value;
+  fast SCHEME_OBJECT file_list;
   long channel_number;
-  Primitive_1_Arg();
-
+  PRIMITIVE_HEADER (1);
+  file_list = (ARG_REF (1));
   Value = SHARP_T;
-
-  for (Smash = Nth_Vector_Loc(Arg1, CONS_CDR), Cell = *Smash;
-       Cell != NIL;
+  for (Smash = PAIR_CDR_LOC (file_list), Cell = *Smash;
+       Cell != EMPTY_LIST;
        Cell = *Smash)
   {
-    Weak_Cell = Fast_Vector_Ref(Cell, CONS_CAR);
-    if (Fast_Vector_Ref(Weak_Cell, CONS_CAR) == NIL)
-    {
-      channel_number = Get_Integer(Fast_Vector_Ref(Weak_Cell, CONS_CDR));
-      if (!OS_file_close (Channels[channel_number]))
-	Value = NIL;
-      Channels[channel_number] = NULL;
-      *Smash = Fast_Vector_Ref(Cell, CONS_CDR);
-    }
+    Weak_Cell = (FAST_PAIR_CAR (Cell));
+    if ((FAST_PAIR_CAR (Weak_Cell)) == SHARP_F)
+      {
+	channel_number = (UNSIGNED_FIXNUM_TO_LONG (FAST_PAIR_CDR (Weak_Cell)));
+	if (!OS_file_close (Channels[channel_number]))
+	  Value = SHARP_F;
+	(Channels [channel_number]) = NULL;
+	(*Smash) = (FAST_PAIR_CDR (Cell));
+      }
     else
-      Smash = Nth_Vector_Loc(Cell, CONS_CDR);
+      Smash = PAIR_CDR_LOC (Cell);
   }
-  return Value;
+  PRIMITIVE_RETURN (Value);
 }
 
 /* Utilities for the rehash daemon below */
@@ -89,55 +87,54 @@ DEFINE_PRIMITIVE ("CLOSE-LOST-OPEN-FILES", Prim_close_lost_open_files, 1, 1, 0)
    It is also the case that the storage needed by this daemon is
    available, since it was all reclaimed by the immediately preceeding
    garbage collection, and at most that much is allocated now.
-   Therefore, there is no gc check here.
-*/
+   Therefore, there is no gc check here. */
 
 void
-rehash_pair(pair, hash_table, table_size)
-Pointer pair, hash_table;
-long table_size;
+rehash_pair (pair, hash_table, table_size)
+     SCHEME_OBJECT pair, hash_table;
+     long table_size;
 { long object_datum, hash_address;
-  Pointer *new_pair;
+  SCHEME_OBJECT *new_pair;
 
-  object_datum = Datum(Fast_Vector_Ref(pair, CONS_CAR));
+  object_datum = OBJECT_DATUM (FAST_PAIR_CAR (pair));
   hash_address = 2+(object_datum % table_size);
   new_pair = Free;
-  *Free++ = Make_New_Pointer(TC_LIST, pair);
-  *Free++ = Fast_Vector_Ref(hash_table, hash_address);
-  Fast_Vector_Set(hash_table,
-		  hash_address,
-		  Make_Pointer(TC_LIST, new_pair));
+  *Free++ = (OBJECT_NEW_TYPE (TC_LIST, pair));
+  *Free++ = FAST_MEMORY_REF (hash_table, hash_address);
+  FAST_MEMORY_SET (hash_table,
+		   hash_address,
+		   MAKE_POINTER_OBJECT (TC_LIST, new_pair));
   return;
 }
 
 void
-rehash_bucket(bucket, hash_table, table_size)
-Pointer *bucket, hash_table;
-long table_size;
-{ fast Pointer weak_pair;
-  while (*bucket != NIL)
-  { weak_pair = Fast_Vector_Ref(*bucket, CONS_CAR);
-    if (Fast_Vector_Ref(weak_pair, CONS_CAR) != NIL)
+rehash_bucket (bucket, hash_table, table_size)
+     SCHEME_OBJECT *bucket, hash_table;
+     long table_size;
+{ fast SCHEME_OBJECT weak_pair;
+  while (*bucket != EMPTY_LIST)
+  { weak_pair = FAST_PAIR_CAR (*bucket);
+    if (FAST_PAIR_CAR (weak_pair) != SHARP_F)
     { rehash_pair(weak_pair, hash_table, table_size);
     }
-    bucket = Nth_Vector_Loc(*bucket, CONS_CDR);
+    bucket = PAIR_CDR_LOC (*bucket);
   }
   return;
 }
 
 void
 splice_and_rehash_bucket(bucket, hash_table, table_size)
-Pointer *bucket, hash_table;
-long table_size;
-{ fast Pointer weak_pair;
-  while (*bucket != NIL)
-  { weak_pair = Fast_Vector_Ref(*bucket, CONS_CAR);
-    if (Fast_Vector_Ref(weak_pair, CONS_CAR) != NIL)
+     SCHEME_OBJECT *bucket, hash_table;
+     long table_size;
+{ fast SCHEME_OBJECT weak_pair;
+  while (*bucket != EMPTY_LIST)
+  { weak_pair = FAST_PAIR_CAR (*bucket);
+    if (FAST_PAIR_CAR (weak_pair) != SHARP_F)
     { rehash_pair(weak_pair, hash_table, table_size);
-      bucket = Nth_Vector_Loc(*bucket, CONS_CDR);
+      bucket = PAIR_CDR_LOC (*bucket);
     }
     else
-    { *bucket = Fast_Vector_Ref(*bucket, CONS_CDR);
+    { *bucket = FAST_PAIR_CDR (*bucket);
     }
   }
   return;
@@ -146,33 +143,33 @@ long table_size;
 /* (REHASH unhash-table hash-table)
    Cleans up and recomputes hash-table from the valid information in
    unhash-table after a garbage collection.
-   See hash.scm in the runtime system for a description.
-*/
+   See hash.scm in the runtime system for a description. */
 
 DEFINE_PRIMITIVE ("REHASH", Prim_rehash, 2, 2, 0)
 {
   long table_size, counter;
-  Pointer *bucket;
-  Primitive_2_Args();
-
-  table_size = Vector_Length(Arg1);
+  SCHEME_OBJECT *bucket;
+  PRIMITIVE_HEADER (2);
+  table_size = VECTOR_LENGTH (ARG_REF (1));
 
   /* First cleanup the hash table */
-  for (counter = table_size, bucket = Nth_Vector_Loc(Arg2, 2);
-       --counter >= 0;)
-    *bucket++ = NIL;
+  counter = table_size;
+  bucket = (MEMORY_LOC ((ARG_REF (2)), 2));
+  while ((counter--) > 0)
+    (*bucket++) = EMPTY_LIST;
 
   /* Now rehash all the entries from the unhash table and maybe splice
      the buckets. */
-
-  for (counter = table_size, bucket = Nth_Vector_Loc(Arg1, 1);
-       --counter >= 0;
-       bucket += 1)
-  { if (Fast_Vector_Ref(*bucket, CONS_CAR) == SHARP_T)
-      splice_and_rehash_bucket(Nth_Vector_Loc(*bucket, CONS_CDR), Arg2, table_size);
-    else
-      rehash_bucket(Nth_Vector_Loc(*bucket, CONS_CDR), Arg2, table_size);
-  }
-
-  return SHARP_T;
+  counter = table_size;
+  bucket = (MEMORY_LOC ((ARG_REF (1)), 1));
+  while ((counter--) > 0)
+    {
+      if ((FAST_PAIR_CAR (*bucket)) == SHARP_T)
+	splice_and_rehash_bucket
+	  ((PAIR_CDR_LOC (*bucket)), (ARG_REF (2)), table_size);
+      else
+	rehash_bucket ((PAIR_CDR_LOC (*bucket)), (ARG_REF (2)), table_size);
+      bucket += 1;
+    }
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }

@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/types.h,v 9.31 1989/09/20 23:12:21 cph Rel $
+
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,11 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/types.h,v 9.30 1989/08/28 18:29:35 cph Exp $
- *
- * Type code definitions, numerical order
- *
- */
+/* Type code definitions, numerical order */
 
 /*	Name				Value	Previous Name */
 
@@ -64,7 +62,6 @@ MIT in each case. */
 #define TC_LAMBDA			0x17
 #define TC_PRIMITIVE			0x18
 #define TC_SEQUENCE_2			0x19
-
 #define TC_FIXNUM			0x1A
 #define TC_PCOMB1			0x1B
 #define TC_CONTROL_POINT		0x1C
@@ -103,11 +100,9 @@ MIT in each case. */
 #define TC_COMPILED_CODE_BLOCK		0x3D
 
 /* If you add a new type, don't forget to update gccode.h, gctype.c,
-   and the type name table below.
- */
+   and the type name table below. */
 
 #define LAST_TYPE_CODE			0X3D
-
 #define MIN_TYPE_CODE_LENGTH		6
 
 #ifdef TYPE_CODE_LENGTH
@@ -195,7 +190,6 @@ MIT in each case. */
 #define GLOBAL_ENV			TC_NULL
 #define TC_BIT_STRING			TC_VECTOR_1B
 #define TC_VECTOR_8B			TC_CHARACTER_STRING
-#define TC_ADDRESS			TC_FIXNUM
 #define TC_HUNK3			TC_HUNK3_B
 
 #define UNMARKED_HISTORY_TYPE		TC_HUNK3_A

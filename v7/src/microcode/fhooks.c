@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.31 1989/09/20 23:08:15 cph Exp $
+
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,11 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.30 1989/05/31 01:50:09 jinx Rel $
- *
- * This file contains hooks and handles for the new fluid bindings
- * scheme for multiprocessors.
- */
+/* This file contains hooks and handles for the new fluid bindings
+   scheme for multiprocessors. */
 
 #include "scheme.h"
 #include "prims.h"
@@ -42,226 +41,189 @@ MIT in each case. */
 #include "lookup.h"
 #include "locks.h"
 
-/* (SET-FLUID-BINDINGS! NEW-BINDINGS)
-   Sets the microcode fluid-bindings variable.  Returns the previous value.
-*/
-
-DEFINE_PRIMITIVE("SET-FLUID-BINDINGS!", Prim_set_fluid_bindings, 1)
-{ 
-  Pointer Result;
-  Primitive_1_Arg();
-
-  if (Arg1 != NIL)
-    Arg_1_Type(TC_LIST);
-
-  Result = Fluid_Bindings;
-  Fluid_Bindings = Arg1;
-  PRIMITIVE_RETURN(Result);
-}
-
-/* (GET-FLUID-BINDINGS NEW-BINDINGS)
-   Gets the microcode fluid-bindings variable.
-*/
-
-DEFINE_PRIMITIVE("GET-FLUID-BINDINGS", Prim_get_fluid_bindings, 0)
+DEFINE_PRIMITIVE ("SET-FLUID-BINDINGS!", Prim_set_fluid_bindings, 1)
 {
-  Primitive_0_Args();
-
-  PRIMITIVE_RETURN(Fluid_Bindings);
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, APPARENT_LIST_P);
+  {
+    SCHEME_OBJECT result = Fluid_Bindings;
+    Fluid_Bindings = (ARG_REF (1));
+    PRIMITIVE_RETURN (result);
+  }
 }
 
-/* (WITH-SAVED-FLUID-BINDINGS THUNK)
-   Executes THUNK, then restores the previous fluid bindings.
-*/
+DEFINE_PRIMITIVE ("GET-FLUID-BINDINGS", Prim_get_fluid_bindings, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (Fluid_Bindings);
+}
 
 DEFINE_PRIMITIVE ("WITH-SAVED-FLUID-BINDINGS", Prim_with_saved_fluid_bindings, 1, 1, 0)
 {
-  Primitive_1_Arg();
-
-  PRIMITIVE_CANONICALIZE_CONTEXT();
-  Pop_Primitive_Frame(1);
-
-  /* Save previous fluid bindings for later restore */
-
- Will_Push(CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);
-  Store_Expression(Fluid_Bindings);
-  Store_Return(RC_RESTORE_FLUIDS);
-  Save_Cont();
-  Push(Arg1);
-  Push(STACK_FRAME_HEADER);
- Pushed();
-  PRIMITIVE_ABORT(PRIM_APPLY);
-  /*NOTREACHED*/
+  PRIMITIVE_HEADER (1);
+  {
+    SCHEME_OBJECT thunk = (ARG_REF (1));
+    PRIMITIVE_CANONICALIZE_CONTEXT ();
+    Pop_Primitive_Frame (1);
+  Will_Push (CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);
+    /* Save previous fluid bindings for later restore */
+    Store_Expression (Fluid_Bindings);
+    Store_Return (RC_RESTORE_FLUIDS);
+    Save_Cont ();
+    /* Invoke the thunk. */
+    Push (thunk);
+    Push (STACK_FRAME_HEADER);
+  Pushed ();
+    PRIMITIVE_ABORT (PRIM_APPLY);
+    /*NOTREACHED*/
+  }
 }
 
-/* Utilities for the primitives below. */
+#define lookup_slot(environment, variable)				\
+  (lookup_cell ((OBJECT_ADDRESS (variable)), (environment)))
 
-extern Pointer *lookup_cell();
-
-#define lookup_slot(env, var)	lookup_cell(Get_Pointer(var), env)
-
-Pointer
-new_fluid_binding(cell, value, force)
-     Pointer *cell;
-     Pointer value;
-     Boolean force;
+DEFINE_PRIMITIVE ("ADD-FLUID-BINDING!", Prim_add_fluid_binding, 3, 3,
+  "(ADD-FLUID-BINDING! ENVIRONMENT SYMBOL/VARIABLE VALUE)\n\
+Dynamically bind SYMBOL/VARIABLE to VALUE in ENVIRONMENT.\n\
+If SYMBOL/VARIABLE has not been \"fluidized\", do so first.")
 {
-  fast Pointer trap;
-  Lock_Handle set_serializer;
-  Pointer new_trap_value;
-  long new_trap_kind, trap_kind;
-  Pointer saved_extension, saved_value;
-
-  saved_extension = NIL;
-  new_trap_kind = TRAP_FLUID;
-  setup_lock(set_serializer, cell);
-
-new_fluid_binding_restart:
-
-  trap = *cell;
-  new_trap_value = trap;
-
-  if (OBJECT_TYPE(trap) == TC_REFERENCE_TRAP)
+  extern SCHEME_OBJECT * lookup_cell ();
+  static SCHEME_OBJECT new_fluid_binding ();
+  PRIMITIVE_HEADER (3);
+  CHECK_ARG (1, ENVIRONMENT_P);
   {
-    get_trap_kind(trap_kind, trap);
-    switch(trap_kind)
-    {
-      case TRAP_DANGEROUS:
-        Vector_Set(trap,
-		   TRAP_TAG,
-		   Make_Unsigned_Fixnum(TRAP_FLUID | (trap_kind & 1)));
-	/* Fall through */
+    fast SCHEME_OBJECT environment = (ARG_REF (1));
+    fast SCHEME_OBJECT name = (ARG_REF (2));
+    fast SCHEME_OBJECT * cell;
+    switch (OBJECT_TYPE (name))
+      {
+	/* The next two cases are a temporary fix since compiler doesn't
+	   do scode-quote the same way that the interpreter does.
 
-      case TRAP_FLUID:
-      case TRAP_FLUID_DANGEROUS:
-	new_trap_kind = -1;
-	break;
-
-      case TRAP_UNBOUND:
-      case TRAP_UNBOUND_DANGEROUS:
-	if (!force)
-	{
-	  remove_lock(set_serializer);
-	  Primitive_Error(ERR_UNBOUND_VARIABLE);
-	}
-	/* Fall through */
+	   Ultimately we need to redesign deep fluid-let support anyway,
+	   so this will go away.
+	   */
 
-      case TRAP_UNASSIGNED:
-      case TRAP_UNASSIGNED_DANGEROUS:
-	new_trap_kind = (TRAP_FLUID | (trap_kind & 1));
-	new_trap_value = UNASSIGNED_OBJECT;
+      case TC_LIST:
+	cell = (lookup_slot (environment, (PAIR_CAR (name))));
 	break;
 
-      case TRAP_COMPILER_CACHED:
-      case TRAP_COMPILER_CACHED_DANGEROUS:
-	saved_extension = Fast_Vector_Ref(*cell, TRAP_EXTRA);
-	cell = Nth_Vector_Loc(saved_extension, TRAP_EXTENSION_CELL);
-	update_lock(set_serializer, cell);
-	saved_value = *cell;
-	if (OBJECT_TYPE(saved_value) == TC_REFERENCE_TRAP)
-	{
-	  /* No need to recache uuo links, they must already be recached. */
-	  saved_extension = NIL;
-	}
-	goto new_fluid_binding_restart;
+      case TC_SCODE_QUOTE:
+	cell =
+	  (lookup_slot
+	   (environment, (FAST_MEMORY_REF (name, SCODE_QUOTE_OBJECT))));
+	break;
+
+      case TC_VARIABLE:
+	cell = (lookup_slot (environment, name));
+	break;
+
+      case TC_INTERNED_SYMBOL:
+      case TC_UNINTERNED_SYMBOL:
+	cell = (deep_lookup (environment, name, fake_variable_object));
+	break;
 
       default:
-	remove_lock(set_serializer);
-	Primitive_Error(ERR_ILLEGAL_REFERENCE_TRAP);
-    }
-  }
-
-  if (new_trap_kind != -1)
-  {
-    if (GC_allocate_test(2))
-    {
-      remove_lock(set_serializer);
-      Primitive_GC(2);
-    }
-    trap = Make_Pointer(TC_REFERENCE_TRAP, Free);
-    *Free++ = Make_Unsigned_Fixnum(new_trap_kind);
-    *Free++ = new_trap_value;
-    *cell = trap;
-  }
-
-  if (saved_extension != NIL)
-  {
-    extern long recache_uuo_links();
-    long value;
-
-    value = recache_uuo_links(saved_extension, saved_value);
-    if (value != PRIM_DONE)
-    {
-      remove_lock(set_serializer);
-      if (value == PRIM_INTERRUPT)
-      {
-	Primitive_Interrupt();
+	error_wrong_type_arg (2);
       }
-      else
-      {
-	Primitive_Error(value);
-      }
-    }
+    PRIMITIVE_RETURN (new_fluid_binding (cell, (ARG_REF (3)), false));
   }
-  remove_lock(set_serializer);
-
-  /* Fluid_Bindings is per processor private. */
-
-  Primitive_GC_If_Needed(4);
-  Free[CONS_CAR] = Make_Pointer(TC_LIST, (Free + 2));
-  Free[CONS_CDR] = Fluid_Bindings;
-  Fluid_Bindings = Make_Pointer(TC_LIST, Free);
-  Free += 2;
-  Free[CONS_CAR] = trap;
-  Free[CONS_CDR] = value;
-  Free += 2;
-
-  return (NIL);
 }
 
-/* (ADD-FLUID-BINDING!  ENVIRONMENT SYMBOL-OR-VARIABLE VALUE)
-      Looks up symbol-or-variable in environment.  If it has not been
-      fluidized, fluidizes it.  A fluid binding with the specified 
-      value is created in this interpreter's fluid bindings.      
-*/
-
-DEFINE_PRIMITIVE ("ADD-FLUID-BINDING!", Prim_add_fluid_binding, 3, 3, 0)
+static SCHEME_OBJECT
+new_fluid_binding (cell, value, force)
+     SCHEME_OBJECT * cell;
+     SCHEME_OBJECT value;
+     Boolean force;
 {
-  Pointer *cell;
-  Primitive_3_Args();
+  fast SCHEME_OBJECT trap;
+  Lock_Handle set_serializer;
+  SCHEME_OBJECT new_trap_value;
+  long new_trap_kind = TRAP_FLUID;
+  long trap_kind;
+  SCHEME_OBJECT saved_extension = SHARP_F;
+  SCHEME_OBJECT saved_value;
 
-  if (Arg1 != GLOBAL_ENV)
-    Arg_1_Type(TC_ENVIRONMENT);
+  setup_lock (set_serializer, cell);
 
-  switch (OBJECT_TYPE(Arg2))
-  {
-    /* The next two cases are a temporary fix since compiler doesn't
-       do scode-quote the same way that the interpreter does.
+ new_fluid_binding_restart:
+  trap = (*cell);
+  new_trap_value = trap;
+  if (REFERENCE_TRAP_P (trap))
+    {
+      get_trap_kind (trap_kind, trap);
+      switch (trap_kind)
+	{
+	case TRAP_DANGEROUS:
+	  MEMORY_SET
+	    (trap,
+	     TRAP_TAG,
+	     (LONG_TO_UNSIGNED_FIXNUM (TRAP_FLUID | (trap_kind & 1))));
+	  /* Fall through */
+	case TRAP_FLUID:
+	case TRAP_FLUID_DANGEROUS:
+	  new_trap_kind = -1;
+	  break;
 
-       Ultimately we need to redesign deep fluid-let support anyway,
-       so this will go away.
-     */
+	case TRAP_UNBOUND:
+	case TRAP_UNBOUND_DANGEROUS:
+	  if (! force)
+	    {
+	      remove_lock (set_serializer);
+	      signal_error_from_primitive (ERR_UNBOUND_VARIABLE);
+	    }
+	  /* Fall through */
+	case TRAP_UNASSIGNED:
+	case TRAP_UNASSIGNED_DANGEROUS:
+	  new_trap_kind = (TRAP_FLUID | (trap_kind & 1));
+	  new_trap_value = UNASSIGNED_OBJECT;
+	  break;
 
-    case TC_LIST:
-      cell = lookup_slot(Arg1, Fast_Vector_Ref(Arg2, CONS_CAR));
-      break;
+	case TRAP_COMPILER_CACHED:
+	case TRAP_COMPILER_CACHED_DANGEROUS:
+	  saved_extension = (FAST_MEMORY_REF ((*cell), TRAP_EXTRA));
+	  cell = (MEMORY_LOC (saved_extension, TRAP_EXTENSION_CELL));
+	  update_lock (set_serializer, cell);
+	  saved_value = (*cell);
+	  if (REFERENCE_TRAP_P (saved_value))
+	    /* No need to recache uuo links, they must already be recached. */
+	    saved_extension = SHARP_F;
+	  goto new_fluid_binding_restart;
 
-    case TC_SCODE_QUOTE:
-      cell = lookup_slot(Arg1, Fast_Vector_Ref(Arg2, SCODE_QUOTE_OBJECT));
-      break;
+	default:
+	  remove_lock (set_serializer);
+	  signal_error_from_primitive (ERR_ILLEGAL_REFERENCE_TRAP);
+	}
+    }
 
-    case TC_VARIABLE:
-      cell = lookup_slot(Arg1, Arg2);
-      break;
+  if (new_trap_kind != -1)
+    {
+      if (GC_allocate_test (2))
+	{
+	  remove_lock (set_serializer);
+	  Primitive_GC (2);
+	}
+      trap = (MAKE_POINTER_OBJECT (TC_REFERENCE_TRAP, Free));
+      (*Free++) = (LONG_TO_UNSIGNED_FIXNUM (new_trap_kind));
+      (*Free++) = new_trap_value;
+      (*cell) = trap;
+    }
+  if (saved_extension != SHARP_F)
+    {
+      extern long recache_uuo_links ();
+      long value = (recache_uuo_links (saved_extension, saved_value));
+      if (value != PRIM_DONE)
+	{
+	  remove_lock (set_serializer);
+	  if (value == PRIM_INTERRUPT)
+	    signal_interrupt_from_primitive ();
+	  else
+	    signal_error_from_primitive (value);
+	}
+    }
+  remove_lock (set_serializer);
 
-    case TC_INTERNED_SYMBOL:
-    case TC_UNINTERNED_SYMBOL:
-      cell = deep_lookup(Arg1, Arg2, fake_variable_object);
-      break;
-
-    default:
-      Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-  }
-
-  PRIMITIVE_RETURN(new_fluid_binding(cell, Arg3, false));
+  /* Fluid_Bindings is per processor private. */
+  Fluid_Bindings = (cons ((cons (trap, value)), Fluid_Bindings));
+  return (SHARP_F);
 }

@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/mul.c,v 9.27 1989/09/20 23:10:22 cph Exp $
+
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,15 +32,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/mul.c,v 9.26 1989/02/19 17:51:47 jinx Rel $
- *
- * This file contains the fixnum multiplication procedure.
- * Returns NIL if the result does not fit in a fixnum.
- * Note: The portable version has only been tried on machines with
- * long = 32 bits.  This file is included in the appropriate os file.
- */
+/* This file contains the fixnum multiplication procedure.  Returns
+   SHARP_F if the result does not fit in a fixnum.  Note: The portable
+   version has only been tried on machines with long = 32 bits.  This
+   file is included in the appropriate os file. */
 
-extern Pointer Mul();
+extern SCHEME_OBJECT Mul ();
+
+#if (TYPE_CODE_LENGTH == 8)
 
 #if defined(vax) && defined(bsd)
 
@@ -52,14 +53,14 @@ extern Pointer Mul();
    coded in assembly language.  -- JINX
 */
 
-Pointer
+SCHEME_OBJECT
 Mul(Arg1, Arg2)
-     Pointer Arg1, Arg2;
+     SCHEME_OBJECT Arg1, Arg2;
 {
   register long A, B, C;
 
-  Sign_Extend(Arg1, A);
-  Sign_Extend(Arg2, B);
+  A = (FIXNUM_TO_LONG (Arg1));
+  B = (FIXNUM_TO_LONG (Arg2));
   asm("	emul	r11,r10,$0,r10");  /* A is in 11, B in 10 */
   C = A;
   A = B;	/* What is all this shuffling? -- JINX */
@@ -68,15 +69,15 @@ Mul(Arg1, Arg2)
   if (((B == 0)  && (A & (-1 << 23)) == 0) ||
       ((B == -1) && (A & (-1 << 23)) == (-1 << 23)))
   {
-    return (MAKE_SIGNED_FIXNUM(A));
+    return (LONG_TO_FIXNUM(A));
   }
   else
   {
-    return (NIL);
+    return (SHARP_F);
   }
 }
 
-#endif
+#endif /* vax+bsd */
 
 /* 68k family code.  Uses hp9000s200 conventions for the new compiler. */
 
@@ -88,7 +89,7 @@ Mul(Arg1, Arg2)
  * for the compiler.
  */
 
-#if (NIL != 0) || (TC_FIXNUM != 0x1A)
+#if (SHARP_F != 0) || (TC_FIXNUM != 0x1A)
 #include "Error: types changed.  Change assembly language appropriately"
 #endif
 
@@ -176,48 +177,50 @@ static long Fixnum_Range[2] = {SMALLEST_FIXNUM , BIGGEST_FIXNUM};
 #endif	/* not MC68020 */
 #endif  /* hp9000s200 */
 
+#endif /* (TYPE_CODE_LENGTH == 8) */
+
 #ifndef MUL_HANDLED
 
-#define HALF_WORD_SIZE	((sizeof(long)*CHAR_SIZE)/2)
+#define HALF_WORD_SIZE	((sizeof(long)*CHAR_BIT)/2)
 #define HALF_WORD_MASK	(1<<HALF_WORD_SIZE)-1
-#define MAX_MIDDLE	(1<<((ADDRESS_LENGTH-1)-HALF_WORD_SIZE))
-#define MAX_FIXNUM	(1<<ADDRESS_LENGTH)
+#define MAX_MIDDLE	(1<<((DATUM_LENGTH-1)-HALF_WORD_SIZE))
+#define MAX_FIXNUM	(1<<DATUM_LENGTH)
 #define	ABS(x)		(((x) < 0) ? -(x) : (x))
 
-Pointer
+SCHEME_OBJECT
 Mul(Arg1, Arg2)
-     Pointer Arg1, Arg2;
+     SCHEME_OBJECT Arg1, Arg2;
 {
   long A, B, C;
   fast unsigned long Hi_A, Hi_B, Lo_A, Lo_B, Lo_C, Middle_C;
   Boolean Sign;
 
-  Sign_Extend(Arg1, A);
-  Sign_Extend(Arg2, B);
+  A = (FIXNUM_TO_LONG (Arg1));
+  B = (FIXNUM_TO_LONG (Arg2));
   Sign = ((A < 0) == (B < 0));
   A = ABS(A);
   B = ABS(B);
   Hi_A = ((A >> HALF_WORD_SIZE) & HALF_WORD_MASK);
   Hi_B = ((B >> HALF_WORD_SIZE) & HALF_WORD_MASK);
   if ((Hi_A > 0) && (Hi_B > 0))
-    return (NIL);
+    return (SHARP_F);
   Lo_A = (A & HALF_WORD_MASK);
   Lo_B = (B & HALF_WORD_MASK);
   Lo_C = (Lo_A * Lo_B);
   if (Lo_C >= FIXNUM_SIGN_BIT)
-    return (NIL);
+    return (SHARP_F);
   Middle_C = (Lo_A * Hi_B) + (Hi_A * Lo_B);
   if (Middle_C >= MAX_MIDDLE)
-    return (NIL);
+    return (SHARP_F);
   C = Lo_C + (Middle_C << HALF_WORD_SIZE);
-  if (Fixnum_Fits(C))
+  if (LONG_TO_FIXNUM_P(C))
   {
     if (Sign || (C == 0))
-      return (MAKE_UNSIGNED_FIXNUM(C));
+      return (LONG_TO_UNSIGNED_FIXNUM(C));
     else
-      return (MAKE_UNSIGNED_FIXNUM(MAX_FIXNUM - C));
+      return (LONG_TO_UNSIGNED_FIXNUM(MAX_FIXNUM - C));
   }
-  return (NIL);
+  return (SHARP_F);
 }
 
 #endif /* not MUL_HANDLED */

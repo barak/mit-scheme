@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sample.c,v 9.23 1989/08/22 18:08:48 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sample.c,v 9.24 1989/09/20 23:11:19 cph Rel $ */
 
 /* This file is intended to help you find out how to write primitives.
    Many concepts needed to write primitives can be found by looking
@@ -65,7 +65,7 @@ MIT in each case. */
 
    The value returned by the body of code following the
    DEFINE_PRIMITIVE is the value of the scheme primitive.  Note that
-   this must be a scheme Pointer object (with type tag and datum
+   this must be a SCHEME_OBJECT (with type tag and datum
    field), and not an arbitrary C object.
 
    As an example, here is a primitive that takes no arguments and
@@ -114,104 +114,42 @@ DEFINE_PRIMITIVE ("IDENTITY", Prim_identity, 1, 1, 0)
    otherwise they would be done twice.
 
    A pair is object which has a type TC_LIST and points to the first
-   element of the pair.  The macro Make_Pointer takes a type code and
-   an address or data and returns a scheme object with that type code
-   and that address or data.  See scheme.h and the files included
-   there for the possible type codes.  The following is the equivalent
-   of CONS and takes two arguments and returns the pair which contains
-   both arguments. For further examples on heap allocation, see the
-   primitives in "list.c", "hunk.c" and "vector.c".  */
+   element of the pair.  The macro MAKE_POINTER_OBJECT takes a type
+   code and an address or data and returns a scheme object with that
+   type code and that address or data.  See scheme.h and the files
+   included there for the possible type codes.  The following is the
+   equivalent of CONS and takes two arguments and returns the pair
+   which contains both arguments. For further examples on heap
+   allocation, see the primitives in "list.c", "hunk.c" and
+   "vector.c".  */
 
 DEFINE_PRIMITIVE ("NEW-CONS", Prim_new_cons, 2, 2, 0)
 {
-  Pointer * Temp;
   PRIMITIVE_HEADER (2);
-
-  /* Check to see if there is room in the heap for the pair */
-  Primitive_GC_If_Needed (2);
-
-  /* Store the values in the heap, updating Free as we go along */
-  Temp = Free;
-  Free += 2;
-  Temp[CONS_CAR] = (ARG_REF (1));
-  Temp[CONS_CDR] = (ARG_REF (2));
-
-  /* Return the pair, which points to the location of the car */
-  PRIMITIVE_RETURN (Make_Pointer (TC_LIST, Temp));
+  PRIMITIVE_RETURN (cons ((ARG_REF (1)), (ARG_REF (2))));
 }
 
 /* The following primitive takes three arguments and returns a list
    of them.  Note how the CDR of the first two pairs points
-   to the next pair.  Also, scheme objects are of type Pointer
+   to the next pair.  Also, scheme objects are of type SCHEME_OBJECT
    (defined in object.h).  Note that the result returned can be
    held in a temporary variable even before the contents of the
    object are stored in heap.  */
 
 DEFINE_PRIMITIVE ("WHY-SHOULDNT-THE-NAME-BE-RANDOM?", Prim_utterly_random, 3, 3, 0)
 {
-  /* Hold the end result in a temporary variable while we
-     fill in the list.  */
-  Pointer * Result;
   PRIMITIVE_HEADER (3);
-
-  /* Check to see if there is enough space on the heap. */
-  Primitive_GC_If_Needed (6);
-  Result = Free;
-  Free[CONS_CAR] = (ARG_REF (1));
-
-  /* Make the CDR of the first pair point to the second pair. */
-  Free[CONS_CDR] = (Make_Pointer (TC_LIST, (Free + 2)));
-
-  /* Bump it over to the second pair */
-  Free += 2;
-  Free[CONS_CAR] = (ARG_REF (2));
-
-  /* Make the CDR of the second pair point to the third pair. */
-  Free[CONS_CDR] = (Make_Pointer (TC_LIST, (Free + 2)));
-
-  /* Bump it over to the third pair */
-  Free += 2;
-  Free[CONS_CAR] = (ARG_REF (3));
-
-  /* Make the last CDR a () to make a "proper" list */
-  Free[CONS_CDR] = EMPTY_LIST;
-
-  /* Bump Free over to the first available location */
-  Free += 2;
-  PRIMITIVE_RETURN (Make_Pointer (TC_LIST, Result));
+  PRIMITIVE_RETURN
+    (cons ((ARG_REF (1)),
+	   (cons ((ARG_REF (2)),
+		  (cons ((ARG_REF (3)),
+			 EMPTY_LIST))))));
 }
 
-/* Several Macros are supplied to do arithmetic with scheme numbers.
-   Scheme_Integer_To_C_Integer takes a scheme object and the address
-   of a long.  If the scheme object is not of type TC_FIXNUM or
-   TC_BIG_FIXNUM, then the macro returns ERR_ARG_1_WRONG_TYPE. If the
-   scheme number doesn't fit into a long, the macro returns
-   ERR_ARG_1_BAD_RANGE.  Otherwise the macro stores the integer
-   represented by the scheme object into the long.
-   C_Integer_To_Scheme_Integer takes a long and returns a scheme
-   object of type either TC_FIXNUM or TC_BIG_FIXNUM that represents
-   that long.  Here is a primitive that tries to add 3 to it's
-   argument. Note how scheme errors are performed via
-   Primitive_Error({error-code}).  See scheme.h and included files for
-   the possible error codes.  */
+/* Here is a primitive that tries to add 3 to its argument.  */
 
 DEFINE_PRIMITIVE ("3+", Prim_add_3, 1, 1, 0)
 {
-  long value;
-  int flag;
   PRIMITIVE_HEADER (1);
-
-  flag = (Scheme_Integer_To_C_Integer ((ARG_REF (1)), (&value)));
-  if (flag != PRIM_DONE)
-    /* If flag is not equal to PRIM_DONE, then it is one of two
-       errors.  We can signal either error by calling
-       `signal_error_from_primitive' with that error code.  */
-    signal_error_from_primitive (flag);
-  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (value + 3));
+  PRIMITIVE_RETURN (long_to_integer ((arg_integer (1)) + 3));
 }
-
-/* See "fixnum.c" for more fixnum primitive examples.  "float.c" gives
-   floating point examples and "bignum.c" gives bignum examples
-   (Warning: the bignum code is not trivial).  "generic.c" gives
-   examples on arithmetic operations that work for all scheme number
-   types.  */

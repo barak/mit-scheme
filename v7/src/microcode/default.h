@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.32 1989/09/20 23:07:30 cph Exp $
+
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,14 +32,10 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.31 1989/03/27 23:14:47 jinx Rel $
- *
- * This file contains default definitions for some hooks which 
- * various machines require.  These machines define these hooks
- * in CONFIG.H and this file defines them only if they remain 
- * undefined.
- *
- */
+/* This file contains default definitions for some hooks which
+   various machines require.  These machines define these hooks
+   in CONFIG.H and this file defines them only if they remain
+   undefined. */
 
 /* Compiler bug fixes. */
 
@@ -48,25 +46,23 @@ MIT in each case. */
 #define Or3(x, y, z)  ((x) || (y) || (z))
 #endif
 
-#ifndef Fetch
+#ifndef MEMORY_FETCH
 /* These definitions allow a true multi-processor with shared memory
    but no atomic longword operations (Butterfly and Concert,
-   for example) to supply their own atomic operators in config.h.
-*/
-#define Fetch(P)                (P) 
-#define Store(P, S)             (P) = (S)
+   for example) to supply their own atomic operators in config.h. */
+#define MEMORY_FETCH(locative) (locative)
+#define MEMORY_STORE(locative, object) (locative) = (object)
 #endif
 
 #ifndef Get_Fixed_Obj_Slot
-#define Get_Fixed_Obj_Slot(N)	Fast_User_Vector_Ref(Fixed_Objects, N)
-#define Set_Fixed_Obj_Slot(N,S)	Fast_User_Vector_Set(Fixed_Objects, N, S)
+#define Get_Fixed_Obj_Slot(N)	FAST_VECTOR_REF (Fixed_Objects, N)
+#define Set_Fixed_Obj_Slot(N,S)	FAST_VECTOR_SET (Fixed_Objects, N, S)
 #define Update_FObj_Slot(N, S)  Set_Fixed_Obj_Slot(N, S)
-#define Declare_Fixed_Objects()	Pointer Fixed_Objects;
-#define Valid_Fixed_Obj_Vector()				\
-  (Type_Code(Fixed_Objects) == TC_VECTOR)
+#define Declare_Fixed_Objects()	SCHEME_OBJECT Fixed_Objects;
+#define Valid_Fixed_Obj_Vector() (VECTOR_P (Fixed_Objects))
 #define Save_Fixed_Obj(Save_FO)					\
   Save_FO = Fixed_Objects;					\
-  Fixed_Objects = NIL;
+  Fixed_Objects = SHARP_F;
 #define Restore_Fixed_Obj(Save_FO)				\
   Fixed_Objects = Save_FO
 #endif
@@ -74,10 +70,12 @@ MIT in each case. */
 
 /* Atomic swapping hook.  Used extensively. */
 
-#ifndef Swap_Pointers
-extern Pointer Swap_Temp;
-#define Swap_Pointers(P, S)			\
-(Swap_Temp = *(P), *(P) = (S), Swap_Temp) 
+#ifndef SWAP_POINTERS
+#define SWAP_POINTERS(locative, object, target)				\
+{									\
+  (target) = (* (locative));						\
+  (* (locative)) = (object);						\
+}
 #endif
 
 #ifndef USE_STACKLETS
@@ -97,7 +95,7 @@ do									\
 #endif
 
 #ifndef Set_Pure_Top
-#define Set_Pure_Top()	Align_Float (Free_Constant)
+#define Set_Pure_Top()	ALIGN_FLOAT (Free_Constant)
 #endif
 
 #ifndef Test_Pure_Space_Top
@@ -223,13 +221,6 @@ do									\
 #ifndef Close_File_Hook
 #define Close_File_Hook()
 #endif
-
-/* Used in flonum.h and generic.c */
-
-#ifndef double_into_fixnum
-#define double_into_fixnum(what, target)				\
-  target = Make_Non_Pointer(TC_FIXNUM, ((long) (what)))
-#endif
 
 /* Used in interpret.c */
 
@@ -238,7 +229,7 @@ do									\
 #ifndef ENABLE_DEBUGGING_TOOLS
 #define APPLY_PRIMITIVE		INTERNAL_APPLY_PRIMITIVE
 #else
-extern Pointer Apply_Primitive();
+extern SCHEME_OBJECT Apply_Primitive();
 #define APPLY_PRIMITIVE(Loc, N)						\
 {									\
   Loc = Apply_Primitive(N);						\

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.44 1989/06/08 00:24:47 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.45 1989/09/20 23:05:53 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -61,31 +61,31 @@ MIT in each case. */
 
 #define relocate_indirect_setup()					\
 {									\
-  Old = Get_Pointer(Temp);						\
+  Old = OBJECT_ADDRESS (Temp);						\
   if (Old >= Low_Constant)						\
     continue;								\
-  if (Type_Code(*Old) == TC_BROKEN_HEART)				\
+  if (OBJECT_TYPE (*Old) == TC_BROKEN_HEART)				\
   {									\
     continue;								\
   }									\
-  New_Address = Make_Broken_Heart(C_To_Scheme(To_Address));		\
+  New_Address = (MAKE_BROKEN_HEART (To_Address));			\
 }
 
 #define relocate_indirect_end()						\
 {									\
-  *Get_Pointer(Temp) = New_Address;					\
+  *OBJECT_ADDRESS (Temp) = New_Address;					\
   continue;								\
 }
 
 /* A modified copy of GCLoop. */
 
-Pointer *
+SCHEME_OBJECT *
 purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
-     fast Pointer *Scan;
-     Pointer **To_ptr, **To_Address_ptr;
+     fast SCHEME_OBJECT *Scan;
+     SCHEME_OBJECT **To_ptr, **To_Address_ptr;
      int purify_mode;
 {
-  fast Pointer *To, *Old, Temp, *Low_Constant, *To_Address, New_Address;
+  fast SCHEME_OBJECT *To, *Old, Temp, *Low_Constant, *To_Address, New_Address;
 
   To = *To_ptr;
   To_Address = *To_Address_ptr;
@@ -97,7 +97,7 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
     Switch_by_GC_Type(Temp)
     {
       case TC_BROKEN_HEART:
-        if (Scan != (Get_Pointer(Temp)))
+        if (Scan != (OBJECT_ADDRESS (Temp)))
 	{
 	  sprintf(gc_death_message_buffer,
 		  "purifyloop: broken heart (0x%lx) in scan",
@@ -115,7 +115,7 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
 	/* Check whether this bumps over current buffer,
 	   and if so we need a new bufferfull. */
-	Scan += Get_Integer(Temp);
+	Scan += OBJECT_DATUM (Temp);
 	if (Scan < scan_buffer_top)
 	{
 	  break;
@@ -209,7 +209,7 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 	  }
 	  Scan = scan_buffer_top + overflow;
 	  break;
-	}	
+	}
       }
 
       case TC_MANIFEST_CLOSURE:
@@ -228,7 +228,7 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 
 	Scan += 1;
 	start_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(Scan);
-	
+
 	for (word_ptr = start_ptr,
 	     next_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
 	     true;
@@ -275,7 +275,7 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 	relocate_normal_pointer(copy_cell(), 1);
 
       case TC_REFERENCE_TRAP:
-	if (Datum(Temp) <= TRAP_MAX_IMMEDIATE)
+	if (OBJECT_DATUM (Temp) <= TRAP_MAX_IMMEDIATE)
 	  break; /* It is a non pointer. */
 	goto purify_pair;
 
@@ -283,7 +283,7 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
       case TC_UNINTERNED_SYMBOL:
 	if (purify_mode == PURE_COPY)
 	{
-	  Temp = Vector_Ref(Temp, SYMBOL_NAME);
+	  Temp = MEMORY_REF (Temp, SYMBOL_NAME);
 	  relocate_indirect_setup();
 	  copy_vector(NULL);
 	  relocate_indirect_end();
@@ -299,7 +299,7 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 	  break;
 	else
 	  relocate_normal_pointer(copy_weak_pair(), 2);
-	
+
       case TC_VARIABLE:
       case_Triple:
 	relocate_normal_pointer(copy_triple(), 3);
@@ -344,14 +344,14 @@ end_purifyloop:
 }
 
 /* This is not paranoia!
-   The two words in the header may overflow the free buffer. 
+   The two words in the header may overflow the free buffer.
  */
 
-Pointer *
+SCHEME_OBJECT *
 purify_header_overflow(free_buffer)
-     Pointer *free_buffer;
+     SCHEME_OBJECT *free_buffer;
 {
-  Pointer *scan_buffer;
+  SCHEME_OBJECT *scan_buffer;
   long delta;
 
   delta = (free_buffer - free_buffer_top);
@@ -366,19 +366,19 @@ purify_header_overflow(free_buffer)
   return (free_buffer);
 }
 
-Pointer
+SCHEME_OBJECT
 purify(object, flag)
-     Pointer object, flag;
+     SCHEME_OBJECT object, flag;
 {
   long length, pure_length;
-  Pointer value, *Result, *free_buffer, *block_start;
+  SCHEME_OBJECT value, *Result, *free_buffer, *block_start;
 
   Weak_Chain = EMPTY_LIST;
   free_buffer = initialize_free_buffer();
   block_start = Free_Constant;
 
   Free_Constant += 2;
-  *free_buffer++ = NIL;		/* Pure block header. */
+  *free_buffer++ = SHARP_F;	/* Pure block header. */
   *free_buffer++ = object;
   if (free_buffer >= free_buffer_top)
   {
@@ -405,8 +405,8 @@ purify(object, flag)
   }
 
   Free_Constant += 2;
-  *free_buffer++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-  *free_buffer++ = Make_Non_Pointer(CONSTANT_PART, pure_length);
+  *free_buffer++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
+  *free_buffer++ = MAKE_OBJECT (CONSTANT_PART, pure_length);
   if (free_buffer >= free_buffer_top)
   {
     free_buffer = purify_header_overflow(free_buffer);
@@ -431,8 +431,8 @@ purify(object, flag)
 
   Free_Constant += 2;
   length = (Free_Constant - block_start);
-  *free_buffer++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-  *free_buffer++ = Make_Non_Pointer(END_OF_BLOCK, (length - 1));
+  *free_buffer++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
+  *free_buffer++ = MAKE_OBJECT (END_OF_BLOCK, (length - 1));
   if (free_buffer >= free_buffer_top)
   {
     free_buffer = purify_header_overflow(free_buffer);
@@ -447,11 +447,10 @@ purify(object, flag)
   }
 
   load_buffer(0, block_start,
-	      (length * sizeof(Pointer)),
+	      (length * sizeof(SCHEME_OBJECT)),
 	      "into constant space");
-  *block_start++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR,
-				    pure_length);
-  *block_start = Make_Non_Pointer(PURE_PART, (length - 1));
+  *block_start++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, pure_length);
+  *block_start = MAKE_OBJECT (PURE_PART, (length - 1));
   GC(Weak_Chain);
   Set_Pure_Top();
   return (SHARP_T);
@@ -459,9 +458,9 @@ purify(object, flag)
 
 /* Stub.  Not needed by this version.  Terminates Scheme if invoked. */
 
-Pointer 
+SCHEME_OBJECT
 Purify_Pass_2(info)
-     Pointer info;
+     SCHEME_OBJECT info;
 {
   gc_death(TERM_EXIT, "Purify_Pass_2 invoked", NULL, NULL);
   /*NOTREACHED*/
@@ -485,24 +484,21 @@ Purify_Pass_2(info)
 
 DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
 {
-  Pointer object, daemon;
-  Pointer result;
-  Primitive_3_Args();
-
+  SCHEME_OBJECT object, daemon;
+  SCHEME_OBJECT result;
+  PRIMITIVE_HEADER (3);
   PRIMITIVE_CANONICALIZE_CONTEXT();
-  if ((Arg2 != SHARP_T) && (Arg2 != SHARP_F))
-    Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-  Arg_3_Type(TC_FIXNUM);
-  Touch_In_Primitive(Arg1, object);
-  GC_Reserve = (Get_Integer (Arg3));
+  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object);
+  CHECK_ARG (2, BOOLEAN_P);
+  GC_Reserve = (arg_nonnegative_integer (3));
   ENTER_CRITICAL_SECTION ("purify");
   {
-    Pointer purify_result;
-    Pointer words_free;
+    SCHEME_OBJECT purify_result;
+    SCHEME_OBJECT words_free;
 
-    purify_result = purify(object, Arg2);
-    words_free = (Make_Unsigned_Fixnum (MemTop - Free));
-    result = (Make_Pointer (TC_LIST, Free));
+    purify_result = (purify (object, (ARG_REF (2))));
+    words_free = (LONG_TO_UNSIGNED_FIXNUM (MemTop - Free));
+    result = (MAKE_POINTER_OBJECT (TC_LIST, Free));
     (*Free++) = purify_result;
     (*Free++) = words_free;
   }

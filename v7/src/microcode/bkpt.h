@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.h,v 9.27 1989/09/20 23:06:22 cph Exp $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,18 +32,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.h,v 9.26 1989/03/27 23:14:08 jinx Rel $
- *
- * This file contains breakpoint utilities.
- * Disabled when not debugging the interpreter.
- * It "shadows" definitions in default.h
- *
- */
+/* This file contains breakpoint utilities.
+   Disabled when not debugging the interpreter.
+   It "shadows" definitions in default.h */
 
 #ifdef ENABLE_DEBUGGING_TOOLS
 
 struct sp_record
-{ Pointer *sp;
+{ SCHEME_OBJECT *sp;
   struct sp_record *next;
 };
 typedef struct sp_record *sp_record_list;

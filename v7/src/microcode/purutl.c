@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.36 1989/06/08 00:25:32 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.37 1989/09/20 23:10:58 cph Exp $ */
 
 /* Pure/Constant space utilities. */
 
@@ -41,7 +41,7 @@ MIT in each case. */
 
 static void
 Update(From, To, Was, Will_Be)
-     fast Pointer *From, *To, *Was, *Will_Be;
+     fast SCHEME_OBJECT *From, *To, *Was, *Will_Be;
 {
   fast long count;
 
@@ -49,10 +49,10 @@ Update(From, To, Was, Will_Be)
   {
     if (GC_Type_Special(*From))
     {
-      switch(OBJECT_TYPE(*From))
+      switch(OBJECT_TYPE (*From))
       {
 	case TC_MANIFEST_NM_VECTOR:
-	  From += OBJECT_DATUM(*From);
+	  From += OBJECT_DATUM (*From);
 	  continue;
 
 	  /* The following two type codes assume that none of the protected
@@ -69,7 +69,7 @@ Update(From, To, Was, Will_Be)
 	  {
 	    count = READ_OPERATOR_LINKAGE_COUNT(*From);
 	    From = END_OPERATOR_LINKAGE_AREA(From, count);
-	    continue;	    
+	    continue;
 	  }
 
 	case TC_MANIFEST_CLOSURE:
@@ -96,18 +96,18 @@ Update(From, To, Was, Will_Be)
     }
     if (GC_Type_Non_Pointer(*From))
       continue;
-    if (Get_Pointer(*From) == Was)
-      *From = Make_Pointer(OBJECT_TYPE(*From), Will_Be);
+    if (OBJECT_ADDRESS (*From) == Was)
+      *From = MAKE_POINTER_OBJECT (OBJECT_TYPE (*From), Will_Be);
   }
   return;
 }
 
 long
 Make_Impure(Object, New_Object)
-     Pointer Object, *New_Object;
+     SCHEME_OBJECT Object, *New_Object;
 {
-  Pointer *New_Address, *End_Of_Area;
-  fast Pointer *Obj_Address, *Constant_Address;
+  SCHEME_OBJECT *New_Address, *End_Of_Area;
+  fast SCHEME_OBJECT *Obj_Address, *Constant_Address;
   long Length, Block_Length;
   fast long i;
 
@@ -127,11 +127,11 @@ Make_Impure(Object, New_Object)
       Microcode_Termination(TERM_NON_POINTER_RELOCATION);
 #endif
       return (ERR_ARG_1_WRONG_TYPE);
-  
+
     case TC_BIG_FLONUM:
     case TC_FUTURE:
     case_Vector:
-      Length = Vector_Length(Object) + 1;
+      Length = VECTOR_LENGTH (Object) + 1;
       break;
 
     case_Quadruple:
@@ -157,7 +157,7 @@ Make_Impure(Object, New_Object)
     case_compiled_entry_point:
     default:
       fprintf(stderr, "\nImpurify: Bad type code = 0x%02x.\n",
-	      OBJECT_TYPE(Object));
+	      OBJECT_TYPE (Object));
 #ifdef BAD_TYPES_LETHAL
       Microcode_Termination(TERM_INVALID_TYPE_CODE);
       /*NOTREACHED*/
@@ -171,12 +171,12 @@ Make_Impure(Object, New_Object)
 
   Constant_Address = Free_Constant;
 
-  Obj_Address = Get_Pointer(Object);
+  Obj_Address = OBJECT_ADDRESS (Object);
   if (!Test_Pure_Space_Top(Constant_Address + Length))
   {
     return (ERR_IMPURIFY_OUT_OF_SPACE);
   }
-  Block_Length = Get_Integer(*(Constant_Address-1));
+  Block_Length = OBJECT_DATUM (*(Constant_Address-1));
   Constant_Address -= 2;
   New_Address = Constant_Address;
 
@@ -186,12 +186,12 @@ Make_Impure(Object, New_Object)
      block, or something like it. -- JINX
    */
 
-  if (OBJECT_TYPE(Object) == TC_BIG_FLONUM)
+  if (OBJECT_TYPE (Object) == TC_BIG_FLONUM)
   {
-    Pointer *Start;
+    SCHEME_OBJECT *Start;
 
     Start = Constant_Address;
-    Align_Float(Constant_Address);
+    ALIGN_FLOAT (Constant_Address);
     for (i = 0; i < Length; i++)
       *Constant_Address++ = *Obj_Address++;
     Length = Constant_Address - Start;
@@ -204,13 +204,13 @@ Make_Impure(Object, New_Object)
     for (i = Length; --i >= 0; )
     {
       *Constant_Address++ = *Obj_Address;
-      *Obj_Address++ = Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, i);
+      *Obj_Address++ = MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, i);
     }
   }
-  *Constant_Address++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-  *Constant_Address++ = Make_Non_Pointer(END_OF_BLOCK, Block_Length + Length);
+  *Constant_Address++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
+  *Constant_Address++ = MAKE_OBJECT (END_OF_BLOCK, Block_Length + Length);
   *(New_Address + 2 - Block_Length) =
-    Make_Non_Pointer(PURE_PART, Block_Length + Length);
+    MAKE_OBJECT (PURE_PART, Block_Length + Length);
   Obj_Address -= Length;
   Free_Constant = Constant_Address;
 
@@ -229,43 +229,40 @@ Make_Impure(Object, New_Object)
 
   EXIT_CRITICAL_SECTION ({});
 
-  *New_Object = (Make_Pointer(OBJECT_TYPE(Object), New_Address));
+  *New_Object = (MAKE_POINTER_OBJECT (OBJECT_TYPE (Object), New_Address));
   return (PRIM_DONE);
 }
 
-/* (PRIMITIVE-IMPURIFY OBJECT)
-   Remove an object from pure space so it can be side effected.
-   The object is placed in constant space instead.
-*/
-DEFINE_PRIMITIVE ("PRIMITIVE-IMPURIFY", Prim_impurify, 1, 1, 0)
+DEFINE_PRIMITIVE ("PRIMITIVE-IMPURIFY", Prim_impurify, 1, 1,
+  "Remove OBJECT from pure space so it can be side effected.\n\
+The object is placed in constant space instead.")
 {
-  long result;
-  Pointer New_Object;
-  Primitive_1_Arg();
-
-  Touch_In_Primitive(Arg1, Arg1);
-  result = Make_Impure(Arg1, &New_Object);
-  if (result == PRIM_DONE)
+  PRIMITIVE_HEADER (1);
   {
-    PRIMITIVE_RETURN(New_Object);
+    fast SCHEME_OBJECT old_object;
+    SCHEME_OBJECT new_object;
+    TOUCH_IN_PRIMITIVE ((ARG_REF (1)), old_object);
+    {
+      fast long result = (Make_Impure (old_object, (&new_object)));
+      if (result != PRIM_DONE)
+	signal_error_from_primitive (result);
+    }
+    PRIMITIVE_RETURN (new_object);
   }
-  else
-  Primitive_Error(result);
-  /*NOTREACHED*/
 }
 
-extern Pointer * find_constant_space_block();
+extern SCHEME_OBJECT * find_constant_space_block();
 
-Pointer *
+SCHEME_OBJECT *
 find_constant_space_block(obj_address)
-     fast Pointer *obj_address;
+     fast SCHEME_OBJECT *obj_address;
 {
-  fast Pointer *where, *low_constant;
+  fast SCHEME_OBJECT *where, *low_constant;
 
 #ifdef FLOATING_ALIGNMENT
-  fast Pointer float_align_value;
+  fast SCHEME_OBJECT float_align_value;
 
-  float_align_value = Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, 0);
+  float_align_value = MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0);
 #endif
 
   low_constant = Constant_Space;
@@ -279,79 +276,71 @@ find_constant_space_block(obj_address)
       where -= 1;
 #endif
 
-    where -= (1 + Get_Integer(*where));
+    where -= (1 + OBJECT_DATUM (*where));
     if (where <= obj_address)
       return (where);
   }
-  return ((Pointer *) NULL);
+  return ((SCHEME_OBJECT *) NULL);
 }
 
 Boolean
 Pure_Test(obj_address)
-     Pointer *obj_address;
+     SCHEME_OBJECT *obj_address;
 {
-  Pointer *block;
+  SCHEME_OBJECT *block;
 
   block = find_constant_space_block (obj_address);
-  if (block == ((Pointer *) NULL))
+  if (block == ((SCHEME_OBJECT *) NULL))
   {
     return (false);
   }
   return
-    ((Boolean) (obj_address <= (block + 1 + (Get_Integer(*(block + 1))))));
+    ((Boolean) (obj_address <= (block + 1 + (OBJECT_DATUM (*(block + 1))))));
 }
 
-/* (PURE? OBJECT)
-   Returns #!TRUE if the object is pure (ie it doesn't point to any
-   other object, or it is in a pure section of the constant space).
-*/
-DEFINE_PRIMITIVE ("PURE?", Prim_pure_p, 1, 1, 0)
+DEFINE_PRIMITIVE ("PURE?", Prim_pure_p, 1, 1,
+  "Return #T if OBJECT is pure (i.e. it doesn't point to any other object,\n\
+or it is in a pure section of the constant space).")
 {
-  Primitive_1_Arg();
-
-  if ((GC_Type_Non_Pointer(Arg1)) ||
-      (GC_Type_Special(Arg1)))
-    return SHARP_T;
-  Touch_In_Primitive(Arg1, Arg1);
+  PRIMITIVE_HEADER (1);
   {
-    extern Pointer *compiled_entry_to_block_address();
-    Pointer *Obj_Address;
-
-    Obj_Address =
-      ((GC_Type_Compiled(Arg1))
-       ? (compiled_entry_to_block_address(Arg1))
-       : (Get_Pointer(Arg1)));
-    if (Is_Pure(Obj_Address))
-      return SHARP_T;
+    fast SCHEME_OBJECT object = (ARG_REF (1));
+    if ((GC_Type_Non_Pointer (object)) ||
+	(GC_Type_Special (object)))
+      PRIMITIVE_RETURN (SHARP_T);
+    TOUCH_IN_PRIMITIVE (object, object);
+    {
+      extern SCHEME_OBJECT * compiled_entry_to_block_address ();
+      SCHEME_OBJECT * address =
+	((GC_Type_Compiled (object))
+	 ? (compiled_entry_to_block_address (object))
+	 : (OBJECT_ADDRESS (object)));
+      PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (ADDRESS_PURE_P (address)));
+    }
   }
-  return NIL;
 }
 
-/* (CONSTANT? OBJECT)
-   Returns #!TRUE if the object is in constant space or isn't a
-   pointer.
-*/
-DEFINE_PRIMITIVE ("CONSTANT?", Prim_constant_p, 1, 1, 0)
+DEFINE_PRIMITIVE ("CONSTANT?", Prim_constant_p, 1, 1,
+  "Return #T if OBJECT is in constant space or isn't a pointer.")
 {
-  Primitive_1_Arg();
-
-  Touch_In_Primitive(Arg1, Arg1);
-  return ((GC_Type_Non_Pointer(Arg1)) ||
-	  (GC_Type_Special(Arg1)) ||
-	  (Is_Constant(Get_Pointer(Arg1)))) ?
-         SHARP_T : NIL;
+  PRIMITIVE_HEADER (1);
+  {
+    fast SCHEME_OBJECT object = (ARG_REF (1));
+    if ((GC_Type_Non_Pointer (object)) ||
+	(GC_Type_Special (object)))
+      PRIMITIVE_RETURN (SHARP_T);
+    TOUCH_IN_PRIMITIVE (object, object);
+    PRIMITIVE_RETURN
+      (BOOLEAN_TO_OBJECT (ADDRESS_CONSTANT_P (OBJECT_ADDRESS (object))));
+  }
 }
 
-/* (GET-NEXT-CONSTANT)
-   Returns the next free address in constant space.
-*/
-DEFINE_PRIMITIVE ("GET-NEXT-CONSTANT", Prim_get_next_constant, 0, 0, 0)
+DEFINE_PRIMITIVE ("GET-NEXT-CONSTANT", Prim_get_next_constant, 0, 0,
+  "Return the next free address in constant space.")
 {
-  Pointer *Next_Address;
-
-  Next_Address = (Free_Constant + 1);
-  Primitive_0_Args();
-  return Make_Pointer(TC_ADDRESS, Next_Address);
+  SCHEME_OBJECT * next_address = (Free_Constant + 1);
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (ADDRESS_TO_DATUM (next_address)));
 }
 
 /* copy_to_constant_space is a microcode utility procedure.
@@ -360,16 +349,16 @@ DEFINE_PRIMITIVE ("GET-NEXT-CONSTANT", Prim_get_next_constant, 0, 0, 0)
    space left.
  */
 
-extern Pointer *copy_to_constant_space();
+extern SCHEME_OBJECT *copy_to_constant_space();
 
-Pointer *
+SCHEME_OBJECT *
 copy_to_constant_space(source, nobjects)
-     fast Pointer *source;
+     fast SCHEME_OBJECT *source;
      long nobjects;
 {
-  fast Pointer *dest;
+  fast SCHEME_OBJECT *dest;
   fast long i;
-  Pointer *result;
+  SCHEME_OBJECT *result;
 
   dest = Free_Constant;
   if (!Test_Pure_Space_Top(dest + nobjects + 6))
@@ -378,17 +367,17 @@ copy_to_constant_space(source, nobjects)
 	    "copy_to_constant_space: Not enough constant space!\n");
     Microcode_Termination(TERM_NO_SPACE);
   }
-  *dest++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 3);
-  *dest++ = Make_Non_Pointer(PURE_PART, nobjects + 5);
-  *dest++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-  *dest++ = Make_Non_Pointer(CONSTANT_PART, 3);
+  *dest++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 3);
+  *dest++ = MAKE_OBJECT (PURE_PART, nobjects + 5);
+  *dest++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
+  *dest++ = MAKE_OBJECT (CONSTANT_PART, 3);
   result = dest;
   for (i = nobjects; --i >= 0; )
   {
     *dest++ = *source++;
   }
-  *dest++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-  *dest++ = Make_Non_Pointer(END_OF_BLOCK, nobjects + 5);
+  *dest++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
+  *dest++ = MAKE_OBJECT (END_OF_BLOCK, nobjects + 5);
   Free_Constant = dest;
 
   return result;

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.h,v 1.3 1989/05/01 19:38:37 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.h,v 1.4 1989/09/20 23:11:06 cph Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -129,7 +129,7 @@ enum regexpcode
 
     /* Followed by two bytes giving relative address of place to
        resume at in case of failure. */
-    regexpcode_on_failure_jump,	
+    regexpcode_on_failure_jump,
 
     /* Throw away latest failure point and then jump to address. */
     regexpcode_finalize_jump,

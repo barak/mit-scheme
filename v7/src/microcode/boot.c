@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.56 1989/06/12 17:36:22 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.57 1989/09/20 23:06:26 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,8 +34,8 @@ MIT in each case. */
 
 /* This file contains the code to support startup of
    the SCHEME interpreter.
-  
- The command line (when not running a dumped executable version) may 
+
+ The command line (when not running a dumped executable version) may
  take the following forms:
 
    scheme
@@ -82,8 +82,6 @@ for details.  They are created by defining a macro Command_Line_Args.
 #include "scheme.h"
 #include "prims.h"
 #include "version.h"
-#include "char.h"
-#include "string.h"
 #include "paths.h"
 #ifndef islower
 #include <ctype.h>
@@ -113,7 +111,7 @@ uppercase(to_where, from_where)
   return;
 }
 
-int 
+int
 Parse_Option(opt_key, nargs, args, casep)
      char *opt_key, **args;
      Boolean casep;
@@ -155,7 +153,7 @@ Def_Number(key, nargs, args, def)
      int nargs;
 {
   int position;
-  
+
   position = Parse_Option(key, nargs, args, true);
   if ((position == NOT_THERE) || (position == (nargs-1)))
   {
@@ -165,7 +163,7 @@ Def_Number(key, nargs, args, def)
   {
     return atoi(args[position+1]);
   }
-}  
+}
 
 /* Used to test whether it is a dumped executable version */
 
@@ -278,21 +276,23 @@ find_image_parameters(file_name, cold_load_p, supplied_p)
 
 Exit_Scheme_Declarations;
 
-forward void Start_Scheme();
+forward void Start_Scheme ();
+forward void Enter_Interpreter ();
 extern void Clear_Memory(), Setup_Memory(), Reset_Memory();
+extern void OS_initialize ();
 
 /*
   THE MAIN PROGRAM
  */
 
 main_type
-main(argc, argv)
+main (argc, argv)
      int argc;
-     char **argv;
+     char ** argv;
 {
   Boolean cold_load_p, supplied_p;
   char *file_name;
-  extern void compiler_initialize();
+  extern void compiler_initialize ();
 
   Init_Exit_Scheme();
 
@@ -308,7 +308,7 @@ main(argc, argv)
     if (!supplied_p)
     {
       printf("Scheme Microcode Version %d.%d\n", VERSION, SUBVERSION);
-      OS_Init(true);
+      OS_initialize(true);
       Enter_Interpreter();
     }
     else
@@ -332,86 +332,45 @@ main(argc, argv)
 
 #define Default_Init_Fixed_Objects(Fixed_Objects)			\
 {									\
-  Fixed_Objects = make_fixed_objects_vector();				\
+  Fixed_Objects = (make_fixed_objects_vector ());			\
 }
 
-Pointer
-make_fixed_objects_vector()
+SCHEME_OBJECT
+make_fixed_objects_vector ()
 {
-  fast Pointer fixed_objects_vector;
-  Pointer Int_Vec, OB_Array, Error, Bad_Object,
-          The_Queue, *Dummy_Hist, The_Utilities;
-  fast long i;
-
-  /* Interrupt vector */
-
-  Int_Vec = (Make_Pointer (TC_VECTOR, Free));
-  *Free++ = (Make_Non_Pointer (TC_MANIFEST_VECTOR,
-			       (MAX_INTERRUPT_NUMBER + 2)));
-  for (i = 0; (i <= (MAX_INTERRUPT_NUMBER + 1)); i += 1)
-  {
-    *Free++ = NIL;
-  }
-  
+  extern SCHEME_OBJECT initialize_history ();
+  /* Create the fixed objects vector,
+     with 4 extra slots for expansion and debugging. */
+  fast SCHEME_OBJECT fixed_objects_vector =
+    (make_vector ((NFixed_Objects + 4), SHARP_F, false));
+  VECTOR_SET (fixed_objects_vector, Me_Myself, fixed_objects_vector);
+  VECTOR_SET (fixed_objects_vector, Non_Object, (MAKE_OBJECT (TC_TRUE, 2)));
+  VECTOR_SET
+    (fixed_objects_vector,
+     System_Interrupt_Vector,
+     (make_vector ((MAX_INTERRUPT_NUMBER + 2), SHARP_F, false)));
   /* Error vector is not needed at boot time */
+  VECTOR_SET (fixed_objects_vector, System_Error_Vector, SHARP_F);
+  VECTOR_SET
+    (fixed_objects_vector,
+     OBArray,
+     (make_vector (OBARRAY_SIZE, EMPTY_LIST, false)));
+  VECTOR_SET (fixed_objects_vector, Dummy_History, (initialize_history ()));
+  VECTOR_SET (fixed_objects_vector, State_Space_Tag, SHARP_T);
+  VECTOR_SET (fixed_objects_vector, Bignum_One, (long_to_bignum (1)));
 
-  Error = NIL;
+  (*Free++) = EMPTY_LIST;
+  (*Free++) = EMPTY_LIST;
+  VECTOR_SET
+    (fixed_objects_vector,
+     The_Work_Queue,
+     (MAKE_POINTER_OBJECT (TC_LIST, (Free - 2))));
 
-  /* Dummy History Structure */
-
-  History = Make_Dummy_History();
-  Dummy_Hist = Make_Dummy_History();
-
-  /* OBArray */
-
-  OB_Array = Make_Pointer(TC_VECTOR, Free);
-  *Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, OBARRAY_SIZE);
-  for (i = 0; i < OBARRAY_SIZE; i++)
-  {
-    *Free++ = NIL;
-  }
-
-  /* Initial empty work queue */
-
-  The_Queue = Make_Pointer(TC_LIST, Free);
-  *Free++ = NIL;
-  *Free++ = NIL;
-
-  /* Empty utilities vector */
-
-  The_Utilities = Make_Pointer(TC_VECTOR, Free);
-  *Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, 0);
-
-  /* Cons the FIXED OBJECTS VECTOR */
-
-  fixed_objects_vector = Make_Pointer(TC_VECTOR, Free);
-
-  /* Create the vector with 4 extra slots for expansion and
-     debugging.
-   */
-
-  *Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, (NFixed_Objects + 4));
-  for (i=1; i <= (NFixed_Objects + 4); i++)
-  {
-    *Free++ = NIL;
-  }
-
-  /* Initialize components */
-
-  User_Vector_Set(fixed_objects_vector, Non_Object,
-		  (Make_Non_Pointer (TC_TRUE, 2)));
-  User_Vector_Set(fixed_objects_vector, System_Interrupt_Vector, Int_Vec);
-  User_Vector_Set(fixed_objects_vector, System_Error_Vector, Error);
-  User_Vector_Set(fixed_objects_vector, OBArray, OB_Array);
-  User_Vector_Set(fixed_objects_vector, Dummy_History,
-                  Make_Pointer(UNMARKED_HISTORY_TYPE, Dummy_Hist));
-  User_Vector_Set(fixed_objects_vector, State_Space_Tag, SHARP_T);
-  User_Vector_Set(fixed_objects_vector, Bignum_One,
-		  Fix_To_Big(Make_Unsigned_Fixnum(1)));
-  User_Vector_Set(fixed_objects_vector, Me_Myself, fixed_objects_vector);
-  User_Vector_Set(fixed_objects_vector, The_Work_Queue, The_Queue);
-  User_Vector_Set(fixed_objects_vector, Utilities_Vector, The_Utilities);
-  return fixed_objects_vector;
+  VECTOR_SET
+    (fixed_objects_vector,
+     Utilities_Vector,
+     (make_vector (0, SHARP_F, false)));
+  return (fixed_objects_vector);
 }
 
 /* Boot Scheme */
@@ -421,8 +380,8 @@ Start_Scheme(Start_Prim, File_Name)
      int Start_Prim;
      char *File_Name;
 {
-  extern Pointer make_primitive();
-  Pointer FName, Init_Prog, *Fasload_Call, prim;
+  extern SCHEME_OBJECT make_primitive();
+  SCHEME_OBJECT FName, Init_Prog, *Fasload_Call, prim;
   fast long i;
   Boolean I_Am_Master;			/* Parallel processor test */
 
@@ -431,14 +390,19 @@ Start_Scheme(Start_Prim, File_Name)
   {
     printf("Scheme Microcode Version %d.%d\n", VERSION, SUBVERSION);
   }
-  OS_Init(I_Am_Master);
+  OS_initialize(I_Am_Master);
   if (I_Am_Master)
   {
     for (i = 0; i < FILE_CHANNELS; i++)
     {
       Channels[i] = NULL;
     }
-    Init_Fixed_Objects();
+    Current_State_Point = SHARP_F;
+    Fluid_Bindings = EMPTY_LIST;
+    GC_Reserve = 4500;
+    GC_Space_Needed = 0;
+    Photo_Open = false;
+    Init_Fixed_Objects ();
   }
 
 /* The initial program to execute is one of
@@ -451,40 +415,40 @@ Start_Scheme(Start_Prim, File_Name)
   switch (Start_Prim)
   {
     case BOOT_FASLOAD:	/* (SCODE-EVAL (BINARY-FASLOAD <file>) GLOBAL-ENV) */
-      FName = C_String_To_Scheme_String(File_Name);
+      FName = char_pointer_to_string(File_Name);
       prim = make_primitive("BINARY-FASLOAD");
       Fasload_Call = Free;
       *Free++ = prim;
       *Free++ = FName;
       prim = make_primitive("SCODE-EVAL");
-      Init_Prog = Make_Pointer(TC_PCOMB2, Free);
+      Init_Prog = MAKE_POINTER_OBJECT (TC_PCOMB2, Free);
       *Free++ = prim;
-      *Free++ = Make_Pointer(TC_PCOMB1, Fasload_Call);
-      *Free++ = Make_Non_Pointer(GLOBAL_ENV, GO_TO_GLOBAL);
+      *Free++ = MAKE_POINTER_OBJECT (TC_PCOMB1, Fasload_Call);
+      *Free++ = MAKE_OBJECT (GLOBAL_ENV, GO_TO_GLOBAL);
       break;
 
     case BOOT_LOAD_BAND:	/* (LOAD-BAND <file>) */
-      FName = C_String_To_Scheme_String(File_Name);
+      FName = char_pointer_to_string(File_Name);
       prim = make_primitive("LOAD-BAND");
       Fasload_Call = Free;
       *Free++ = prim;
       *Free++ = FName;
-      Init_Prog = Make_Pointer(TC_PCOMB1, Fasload_Call);
+      Init_Prog = MAKE_POINTER_OBJECT (TC_PCOMB1, Fasload_Call);
       break;
 
     case BOOT_GET_WORK:		/* ((GET-WORK)) */
       prim = make_primitive("GET-WORK");
       Fasload_Call = Free;
       *Free++ = prim;
-      *Free++ = NIL;
-      Init_Prog = Make_Pointer(TC_COMBINATION, Free);
-      *Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, 1);
-      *Free++ = Make_Non_Pointer(TC_PCOMB1, Fasload_Call);
+      *Free++ = SHARP_F;
+      Init_Prog = MAKE_POINTER_OBJECT (TC_COMBINATION, Free);
+      *Free++ = MAKE_OBJECT (TC_MANIFEST_VECTOR, 1);
+      *Free++ = MAKE_POINTER_OBJECT (TC_PCOMB1, Fasload_Call);
       break;
 
     default:
-      fprintf(stderr, "Unknown boot time option: %d\n", Start_Prim);
-      Microcode_Termination(TERM_BAD_PRIMITIVE);
+      fprintf (stderr, "Unknown boot time option: %d\n", Start_Prim);
+      Microcode_Termination (TERM_BAD_PRIMITIVE);
       /*NOTREACHED*/
   }
 
@@ -495,88 +459,83 @@ Start_Scheme(Start_Prim, File_Name)
 	/* Setup registers */
 
   INITIALIZE_INTERRUPTS();
-  Env = Make_Non_Pointer(GLOBAL_ENV, 0);
+  Env = MAKE_OBJECT (GLOBAL_ENV, 0);
   Trapping = false;
   Return_Hook_Address = NULL;
 
 	/* Give the interpreter something to chew on, and ... */
 
- Will_Push(CONTINUATION_SIZE);
-  Store_Return(RC_END_OF_COMPUTATION);
-  Store_Expression(NIL);
-  Save_Cont();
- Pushed();
+ Will_Push (CONTINUATION_SIZE);
+  Store_Return (RC_END_OF_COMPUTATION);
+  Store_Expression (SHARP_F);
+  Save_Cont ();
+ Pushed ();
 
-  Store_Expression(Init_Prog);
+  Store_Expression (Init_Prog);
 
 	/* Go to it! */
 
   if ((Stack_Pointer <= Stack_Guard) || (Free > MemTop))
   {
-    fprintf(stderr, "Configuration won't hold initial data.\n");
-    Microcode_Termination(TERM_EXIT);
+    fprintf (stderr, "Configuration won't hold initial data.\n");
+    Microcode_Termination (TERM_EXIT);
   }
   Entry_Hook();
   Enter_Interpreter();
   /*NOTREACHED*/
 }
 
+void
 Enter_Interpreter()
 {
   jmp_buf Orig_Eval_Point;
   Back_To_Eval = ((jmp_buf *) Orig_Eval_Point);
-
-  Interpret(Was_Scheme_Dumped);
-  fprintf(stderr, "\nThe interpreter returned to top level!\n");
-  Microcode_Termination(TERM_EXIT);
+  Interpret (Was_Scheme_Dumped);
+  fprintf (stderr, "\nThe interpreter returned to top level!\n");
+  fflush (stderr);
+  Microcode_Termination (TERM_EXIT);
   /*NOTREACHED*/
 }
 
 void
-attempt_termination_backout(code)
+attempt_termination_backout (code)
      long code;
 {
   extern long death_blow;
-  Pointer Term_Vector, Handler;
+  SCHEME_OBJECT Term_Vector;
+  SCHEME_OBJECT Handler;
 
-  if ((WITHIN_CRITICAL_SECTION_P())	||
-      (code == TERM_HALT)		||
-      (!(Valid_Fixed_Obj_Vector())))
-  {
+  if ((WITHIN_CRITICAL_SECTION_P ()) ||
+      (code == TERM_HALT) ||
+      (! (Valid_Fixed_Obj_Vector ())))
     return;
-  }
 
-  Term_Vector = Get_Fixed_Obj_Slot(Termination_Proc_Vector);
-
-  if ((OBJECT_TYPE(Term_Vector) != TC_VECTOR) ||
-      (Vector_Length(Term_Vector) <= code))
-  {
+  Term_Vector = (Get_Fixed_Obj_Slot (Termination_Proc_Vector));
+  if ((! (VECTOR_P (Term_Vector))) ||
+      ((VECTOR_LENGTH (Term_Vector)) <= code))
     return;
-  }
 
-  Handler = User_Vector_Ref(Term_Vector, code);
-
-  if (Handler == NIL)
-  {
+  Handler = (VECTOR_REF (Term_Vector, code));
+  if (Handler == SHARP_F)
     return;
-  }
 
- Will_Push(CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS +
-	   ((code == TERM_NO_ERROR_HANDLER) ? 5 : 4));
-  Store_Return(RC_HALT);
-  Store_Expression(Make_Unsigned_Fixnum(code));
-  Save_Cont();
+ Will_Push (CONTINUATION_SIZE +
+	    STACK_ENV_EXTRA_SLOTS +
+	    ((code == TERM_NO_ERROR_HANDLER) ? 5 : 4));
+  Store_Return (RC_HALT);
+  Store_Expression (LONG_TO_UNSIGNED_FIXNUM (code));
+  Save_Cont ();
   if (code == TERM_NO_ERROR_HANDLER)
   {
-    Push(MAKE_UNSIGNED_FIXNUM(death_blow));
+    Push (LONG_TO_UNSIGNED_FIXNUM (death_blow));
   }
-  Push(Val);			/* Arg 3 */
-  Push(Fetch_Env());		/* Arg 2 */
-  Push(Fetch_Expression());		/* Arg 1 */
-  Push(Handler);			/* The handler function */
-  Push(STACK_FRAME_HEADER + ((code == TERM_NO_ERROR_HANDLER) ? 4 : 3));
- Pushed();
-  longjmp(*Back_To_Eval, PRIM_NO_TRAP_APPLY);
+  Push (Val);			/* Arg 3 */
+  Push (Fetch_Env ());		/* Arg 2 */
+  Push (Fetch_Expression ());	/* Arg 1 */
+  Push (Handler);		/* The handler function */
+  Push (STACK_FRAME_HEADER + ((code == TERM_NO_ERROR_HANDLER) ? 4 : 3));
+ Pushed ();
+  longjmp ((*Back_To_Eval), PRIM_NO_TRAP_APPLY);
   /*NOTREACHED*/
 }
 
@@ -588,6 +547,7 @@ Microcode_Termination(code)
   extern char *Term_Messages[];
   Boolean abnormal_p;
   long value;
+  extern void OS_quit ();
 
   attempt_termination_backout(code);
 
@@ -642,7 +602,7 @@ Microcode_Termination(code)
       value = 1;
       abnormal_p = false;
       break;
-      
+
     case TERM_NO_ERROR_HANDLER:
       /* This does not print a back trace because it was printed before
 	 getting here irrelevant of the state of Trace_On_Error.
@@ -686,8 +646,8 @@ Microcode_Termination(code)
       }
       break;
   }
-  OS_Flush_Output_Buffer ();
-  OS_Quit (code, abnormal_p);
+  OS_tty_flush_output ();
+  OS_quit (code, abnormal_p);
   Reset_Memory ();
   Exit_Hook ();
   Exit_Scheme (value);
@@ -696,7 +656,7 @@ Microcode_Termination(code)
 
 /* Garbage collection debugging utilities. */
 
-extern Pointer
+extern SCHEME_OBJECT
   *deadly_free,
   *deadly_scan;
 
@@ -709,7 +669,7 @@ extern void
 extern char
   gc_death_message_buffer[];
 
-Pointer
+SCHEME_OBJECT
   *deadly_free,
   *deadly_scan;
 
@@ -723,7 +683,7 @@ void
 gc_death(code, message, scan, free)
      long code;
      char *message;
-     Pointer *scan, *free;
+     SCHEME_OBJECT *scan, *free;
 {
   fprintf(stderr, "\n%s.\n", message);
   fprintf(stderr, "scan = 0x%lx; free = 0x%lx\n", scan, free);
@@ -756,34 +716,32 @@ gc_death(code, message, scan, free)
 
 DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_microcode_identify, 0, 0, 0)
 {
-  extern Pointer make_vector ();
-  fast Pointer Result;
+  fast SCHEME_OBJECT Result;
   PRIMITIVE_HEADER (0);
-
-  Result = (make_vector (IDENTITY_LENGTH, NIL));
-  User_Vector_Set
-    (Result, ID_RELEASE, (C_String_To_Scheme_String (RELEASE)));
-  User_Vector_Set
-    (Result, ID_MICRO_VERSION, (MAKE_UNSIGNED_FIXNUM (VERSION)));
-  User_Vector_Set
-    (Result, ID_MICRO_MOD, (MAKE_UNSIGNED_FIXNUM (SUBVERSION)));
-  User_Vector_Set
-    (Result, ID_PRINTER_WIDTH, (MAKE_UNSIGNED_FIXNUM (NColumns ())));
-  User_Vector_Set
-    (Result, ID_PRINTER_LENGTH, (MAKE_UNSIGNED_FIXNUM (NLines ())));
-  User_Vector_Set
-    (Result, ID_NEW_LINE_CHARACTER, (c_char_to_scheme_char ('\n')));
-  User_Vector_Set
+  Result = (make_vector (IDENTITY_LENGTH, SHARP_F, true));
+  FAST_VECTOR_SET
+    (Result, ID_RELEASE, (char_pointer_to_string (RELEASE)));
+  FAST_VECTOR_SET
+    (Result, ID_MICRO_VERSION, (LONG_TO_UNSIGNED_FIXNUM (VERSION)));
+  FAST_VECTOR_SET
+    (Result, ID_MICRO_MOD, (LONG_TO_UNSIGNED_FIXNUM (SUBVERSION)));
+  FAST_VECTOR_SET
+    (Result, ID_PRINTER_WIDTH, (LONG_TO_UNSIGNED_FIXNUM (OS_tty_x_size ())));
+  FAST_VECTOR_SET
+    (Result, ID_PRINTER_LENGTH, (LONG_TO_UNSIGNED_FIXNUM (OS_tty_y_size ())));
+  FAST_VECTOR_SET
+    (Result, ID_NEW_LINE_CHARACTER, (ASCII_TO_CHAR ('\n')));
+  FAST_VECTOR_SET
     (Result, ID_FLONUM_PRECISION,
-     (MAKE_UNSIGNED_FIXNUM (FLONUM_MANTISSA_BITS)));
-  User_Vector_Set
-    (Result, ID_FLONUM_EXPONENT, (MAKE_UNSIGNED_FIXNUM (FLONUM_EXPT_SIZE)));
-  User_Vector_Set
-    (Result, ID_OS_NAME, (C_String_To_Scheme_String (OS_Name)));
-  User_Vector_Set
-    (Result, ID_OS_VARIANT, (C_String_To_Scheme_String (OS_Variant)));
-  User_Vector_Set
-    (Result, ID_STACK_TYPE, (C_String_To_Scheme_String (STACK_TYPE_STRING)));
+     (LONG_TO_UNSIGNED_FIXNUM (FLONUM_MANTISSA_BITS)));
+  FAST_VECTOR_SET
+    (Result, ID_FLONUM_EXPONENT, (LONG_TO_UNSIGNED_FIXNUM (FLONUM_EXPT_SIZE)));
+  FAST_VECTOR_SET
+    (Result, ID_OS_NAME, (char_pointer_to_string (OS_Name)));
+  FAST_VECTOR_SET
+    (Result, ID_OS_VARIANT, (char_pointer_to_string (OS_Variant)));
+  FAST_VECTOR_SET
+    (Result, ID_STACK_TYPE, (char_pointer_to_string (STACK_TYPE_STRING)));
   PRIMITIVE_RETURN (Result);
 }
 
@@ -793,10 +751,9 @@ DEFINE_PRIMITIVE ("MICROCODE-TABLES-FILENAME", Prim_microcode_tables_filename, 0
   char *Prefix, *Suffix;
   fast long Count;
   long position;
-  extern Pointer allocate_string ();
-  Pointer Result;
+  extern SCHEME_OBJECT allocate_string ();
+  SCHEME_OBJECT Result;
   PRIMITIVE_HEADER (0);
-
   if ((((position = (Parse_Option ("-utabmd", Saved_argc, Saved_argv, true)))
 	!= NOT_THERE) &&
        (position != (Saved_argc - 1))) ||
@@ -812,35 +769,30 @@ DEFINE_PRIMITIVE ("MICROCODE-TABLES-FILENAME", Prim_microcode_tables_filename, 0
       Prefix = SCHEME_SOURCES_PATH;
       Suffix = UCODE_TABLES_FILENAME;
     }
-
   /* Find the length of the combined string, and allocate. */
-
   Count = 0;
   for (From = Prefix; ((*From++) != '\0'); )
     Count += 1;
   for (From = Suffix; ((*From++) != '\0'); )
     Count += 1;
-
   /* Append both substrings. */
-
   Result = (allocate_string (Count));
-  To = (string_pointer (Result, 0));
+  To = ((char *) (STRING_LOC (Result, 0)));
   for (From = (& (Prefix [0])); ((*From) != '\0'); )
     (*To++) = (*From++);
   for (From = (& (Suffix [0])); ((*From) != '\0'); )
     (*To++) = (*From++);
   PRIMITIVE_RETURN (Result);
 }
-
+
 DEFINE_PRIMITIVE ("GET-COMMAND-LINE", Prim_get_command_line, 0, 0, 0)
 {
   fast int i;
-  fast Pointer result;
-  extern Pointer allocate_marked_vector ();
+  fast SCHEME_OBJECT result;
+  extern SCHEME_OBJECT allocate_marked_vector ();
   PRIMITIVE_HEADER (0);
-
   result = (allocate_marked_vector (TC_VECTOR, Saved_argc, true));
   for (i = 0; (i < Saved_argc); i += 1)
-    User_Vector_Set (result, i, (C_String_To_Scheme_String (Saved_argv [i])));
+    FAST_VECTOR_SET (result, i, (char_pointer_to_string (Saved_argv [i])));
   PRIMITIVE_RETURN (result);
 }

@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/missing.c,v 9.23 1989/09/20 23:10:19 cph Exp $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,121 +32,211 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/missing.c,v 9.22 1988/08/15 20:52:00 cph Rel $
- * This file contains utilities potentially missing from the math library
- */
-
-#ifdef DEBUG_MISSING
-#include "config.h"
-#endif
+/* This file contains utilities potentially missing from the math library. */
 
-static Boolean floating_table_initialized = false;
-static double floating_table[(2*FLONUM_EXPT_SIZE)-1];
-static int exponent_table[(2*FLONUM_EXPT_SIZE)-1];
-
-void initialize_floating_table()
-{ register int index, exponent;
-  register int *int_table = &exponent_table[FLONUM_EXPT_SIZE-1];
-  register double *the_table = &floating_table[FLONUM_EXPT_SIZE-1];
-  register double x;
-  the_table[0] = 1.0;
-  int_table[0] = 0;
-  for (x = 2.0, index = 1, exponent = 1;
-       index < FLONUM_EXPT_SIZE;
-       x *= x, index += 1, exponent += exponent)
-  { the_table[index] = x;
-    int_table[index] = exponent;
-  }
-  for (x = 0.5, index = -1, exponent = -1;
-       index > -FLONUM_EXPT_SIZE;
-       x *= x, index -= 1, exponent += exponent)
-  { the_table[index] = x;
-    int_table[index] = exponent;
-  }
-  floating_table_initialized = true;
-  return;
-}
-
-double frexp(value, eptr)
-double value;
-int *eptr;
-{ register double mant;
-  register int exponent, index;
-  register double *the_table = &floating_table[FLONUM_EXPT_SIZE-1];
-  register int *int_table = &exponent_table[FLONUM_EXPT_SIZE-1];
-
-  if (value == 0.0)
-  { *eptr = 0;
-    return 0.0;
-  }
-  if (!floating_table_initialized) initialize_floating_table();
-  mant = ((value < 0.0) ? -value : value);
-  exponent = 0;
-  while (mant < 0.5)
-  { for (index = -FLONUM_EXPT_SIZE+1;
-	 the_table[index] < mant;
-	 index += 1) ;
-    exponent += int_table[index];
-    mant /= the_table[index];
-  }
-  if (mant >= 1.0)
-  { while (mant >= 2.0)
-    { for (index = FLONUM_EXPT_SIZE-1;
-	   the_table[index] > mant;
-	   index -= 1) ;
-      exponent += int_table[index];
-      mant /= the_table[index];
+double
+frexp (value, eptr)
+     double value;
+     int * eptr;
+{
+  register double x = ((value < 0) ? (-value) : value);
+  int e = 0;
+  if (x > 1)
+    {
+      while (1)
+	{
+	  x /= 2;
+	  if (x > 1)
+	    {
+	      register double xr = (x / 2);
+	      register double r = 4;
+	      register int n = 1;
+	      while (xr > 1)
+		{
+		  x = xr;
+		  xr /= r;
+		  r *= r;
+		  n += n;
+		}
+	      if (xr < 1)
+		e += n;
+	      else
+		{
+		  x = (xr / 2);
+		  e += (n + n + 1);
+		  break;
+		}
+	    }
+	  else if (x < 1)
+	    {
+	      e += 1;
+	      break;
+	    }
+	  else
+	    {
+	      x /= 2;
+	      e += 2;
+	      break;
+	    }
+	}
     }
-    mant /= 2.0;
-    exponent += 1;
+  else if (x < 1)
+    {
+      while (1)
+	{
+	  if (x < 0.5)
+	    {
+	      register double xr = (x * 4);
+	      register double r = 4;
+	      register int n = 1;
+	      while (xr < 1)
+		{
+		  x = xr;
+		  xr *= r;
+		  r *= r;
+		  n += n;
+		}
+	      e -= n;
+	    }
+	  else
+	    break;
+	}
+    }
+  (*eptr) = e;
+  return ((value < 0) ? (-x) : x);
+}
+
+double
+ldexp (value, exponent)
+     double value;
+     int exponent;
+{
+  fast double x = value;
+  fast double e = exponent;
+  fast double r = 2;
+  if (e > 0)
+    {
+      if (e == 1)
+	return (x * 2);
+      while (1)
+	{
+	  if ((e % 2) != 0)
+	    x *= r;
+	  e /= 2;
+	  if (e == 1)
+	    return (x * r * r);
+	  r *= r;
+	}
+    }
+  else if (e < 0)
+    {
+      e = (-e);
+      if (e == 1)
+	return (x / 2);
+      while (1)
+	{
+	  if ((e % 2) != 0)
+	    x /= r;
+	  e /= 2;
+	  if (e == 1)
+	    return ((x / r) / r);
+	  r *= r;
+	}
+    }
+  else
+    return (x);
+}
+
+double
+modf (value, iptr)
+     double value;
+     double * iptr;
+{
+  int exponent;
+  double significand = (frexp (value, (&exponent)));
+  if ((significand == 0) || (exponent <= 0))
+    {
+      (*iptr) = 0;
+      return (value);
+    }
+  {
+    register double s =
+      ((((significand < 0) ? (-significand) : significand) * 2) - 1);
+    register double e = (exponent - 1);
+    register double n = 1;
+    while (1)
+      {
+	if (e == 0)
+	  break;
+	s *= 2;
+	e -= 1;
+	n *= 2;
+	if (s >= 1)
+	  {
+	    s -= 1;
+	    n += 1;
+	    if (s <= 0)
+	      {
+		/* Multiply n by 2^e */
+		register double b = 2;
+		if (e == 0)
+		  break;
+		while (1)
+		  {
+		    if ((e % 2) == 1)
+		      {
+			n *= b;
+			if (e == 1)
+			  break;
+			e -= 1;
+		      }
+		    b *= b;
+		    e /= 2;
+		  }
+		break;
+	      }
+	  }
+      }
+    (*iptr) = n;
+    return (s);
   }
-  *eptr = exponent;
-  return ((value < 0.0) ? -mant : mant);
 }
 
-double ldexp(value, exponent)
-register double value;
-register int exponent;
-{ register int index;
-  register double *the_table = &floating_table[FLONUM_EXPT_SIZE-1];
-  register int *int_table = &exponent_table[FLONUM_EXPT_SIZE-1];
-
-  if (value == 0.0) return 0.0;
-  if (!floating_table_initialized) initialize_floating_table();
-  while (exponent > 0)
-  { for(index = FLONUM_EXPT_SIZE-1;
-	int_table[index] > exponent;
-	index -= 1) ;
-    exponent -= int_table[index];
-    value *= the_table[index];
-  }
-  while (exponent < 0)
-  { for(index = -FLONUM_EXPT_SIZE+1;
-	int_table[index] < exponent;
-	index += 1) ;
-    exponent -= int_table[index];
-    value *= the_table[index];
-  }
-  return value;
+double
+floor (x)
+     double x;
+{
+  double iptr;
+  double fraction = (modf (x, (&iptr)));
+  return ((fraction < 0) ? (iptr - 1) : iptr);
 }
 
+double
+ceil (x)
+     double x;
+{
+  double iptr;
+  double fraction = (modf (x, (&iptr)));
+  return ((fraction > 0) ? (iptr + 1) : iptr);
+}
 
 #ifdef DEBUG_MISSING
 
 #include <stdio.h>
 
-main()
-{ double input, output;
+main ()
+{
+  double input;
+  double output;
   int exponent;
-
-  while (true)
-  { printf("Number -> ");
-    scanf("%F", &input);
-    output = frexp(input, &exponent);
-    printf("Input = %G; Output = %G; Exponent = %d\n",
-	   input, output, exponent);
-    printf("Result = %G\n", ldexp(output, exponent));
-  }
+  while (1)
+    {
+      printf ("Number -> ");
+      scanf ("%F", (&input));
+      output = (frexp (input, (&exponent)));
+      printf ("Input = %G; Output = %G; Exponent = %d\n",
+	      input, output, exponent);
+      printf ("Result = %G\n", (ldexp (output, exponent)));
+    }
 }
 #endif
-

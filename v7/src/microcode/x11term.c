@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.5 1989/07/01 11:34:16 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.6 1989/09/20 23:13:26 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -36,7 +36,6 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
-#include "string.h"
 #include "x11.h"
 
 #define RESOURCE_NAME "edwin"
@@ -217,8 +216,7 @@ xterm_dump_rectangle (xw, x, y, width, height)
   int y_start = ((y - border) / fheight);
   int x_end = ((((x + width) - border) + (fwidth - 1)) / fwidth);
   int y_end = ((((y + height) - border) + (fheight - 1)) / fheight);
-  int x_width = (x_end - x_start);
-  int xi, yi;
+  int yi;
 
   if (x_end > (XW_X_CSIZE (xw))) x_end = (XW_X_CSIZE (xw));
   if (y_end > (XW_Y_CSIZE (xw))) y_end = (XW_Y_CSIZE (xw));
@@ -313,7 +311,7 @@ DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3,
        ? (x_get_default
 	  (display, RESOURCE_NAME, "geometry", "Geometry", ((char *) 0)))
        : (STRING_ARG (2)));
-    result = 
+    result =
       (XGeometry (display, screen_number, geometry,
 		  DEFAULT_GEOMETRY, border_width,
 		  fwidth, fheight, extra, extra,
@@ -377,15 +375,13 @@ DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3,
 DEFINE_PRIMITIVE ("XTERM-X-SIZE", Prim_xterm_x_size, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
-  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (XW_X_CSIZE (WINDOW_ARG (1))));
+  PRIMITIVE_RETURN (long_to_integer (XW_X_CSIZE (WINDOW_ARG (1))));
 }
 
 DEFINE_PRIMITIVE ("XTERM-Y-SIZE", Prim_xterm_y_size, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
-  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (XW_Y_CSIZE (WINDOW_ARG (1))));
+  PRIMITIVE_RETURN (long_to_integer (XW_Y_CSIZE (WINDOW_ARG (1))));
 }
 
 DEFINE_PRIMITIVE ("XTERM-SET-SIZE", Prim_xterm_set_size, 3, 3, 0)
@@ -394,7 +390,6 @@ DEFINE_PRIMITIVE ("XTERM-SET-SIZE", Prim_xterm_set_size, 3, 3, 0)
   int extra;
   XFontStruct * font;
   PRIMITIVE_HEADER (3);
-
   xw = (WINDOW_ARG (1));
   extra = (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
   font = (XW_FONT (xw));
@@ -409,24 +404,19 @@ DEFINE_PRIMITIVE ("XTERM-SET-SIZE", Prim_xterm_set_size, 3, 3, 0)
 DEFINE_PRIMITIVE ("XTERM-BUTTON", Prim_xterm_button, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
-  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (XW_BUTTON (WINDOW_ARG (1))));
+  PRIMITIVE_RETURN (long_to_integer (XW_BUTTON (WINDOW_ARG (1))));
 }
 
 DEFINE_PRIMITIVE ("XTERM-POINTER-X", Prim_xterm_pointer_x, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
-  PRIMITIVE_RETURN
-    (C_Integer_To_Scheme_Integer (XW_POINTER_X (WINDOW_ARG (1))));
+  PRIMITIVE_RETURN (long_to_integer (XW_POINTER_X (WINDOW_ARG (1))));
 }
 
 DEFINE_PRIMITIVE ("XTERM-POINTER-Y", Prim_xterm_pointer_y, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
-  PRIMITIVE_RETURN
-    (C_Integer_To_Scheme_Integer (XW_POINTER_Y (WINDOW_ARG (1))));
+  PRIMITIVE_RETURN (long_to_integer (XW_POINTER_Y (WINDOW_ARG (1))));
 }
 
 DEFINE_PRIMITIVE ("XTERM-WRITE-CURSOR!", Prim_xterm_write_cursor, 3, 3, 0)
@@ -477,31 +467,30 @@ DEFINE_PRIMITIVE ("XTERM-WRITE-SUBSTRING!", Prim_xterm_write_substring, 7, 7, 0)
 {
   struct xwindow * xw;
   int x, y;
-  Pointer string;
+  SCHEME_OBJECT string;
   int start, end;
   int hl;
   int length;
-  char * string_scan;
-  char * string_end;
+  unsigned char * string_scan;
+  unsigned char * string_end;
   int index;
   char * char_start;
   char * char_scan;
   char * hl_scan;
   PRIMITIVE_HEADER (7);
-
   xw = (WINDOW_ARG (1));
   x = (arg_index_integer (2, (XW_X_CSIZE (xw))));
   y = (arg_index_integer (3, (XW_Y_CSIZE (xw))));
   CHECK_ARG (4, STRING_P);
   string = (ARG_REF (4));
-  end = (arg_index_integer (6, ((string_length (string)) + 1)));
+  end = (arg_index_integer (6, ((STRING_LENGTH (string)) + 1)));
   start = (arg_index_integer (5, (end + 1)));
   hl = (HL_ARG (7));
   length = (end - start);
   if ((x + length) > (XW_X_CSIZE (xw)))
     error_bad_range_arg (2);
-  string_scan = (string_pointer (string, start));
-  string_end = (string_pointer (string, end));
+  string_scan = (STRING_LOC (string, start));
+  string_end = (STRING_LOC (string, end));
   index = (XTERM_CHAR_INDEX (xw, x, y));
   char_start = (XTERM_CHAR_LOC (xw, index));
   char_scan = char_start;
@@ -679,7 +668,7 @@ DEFINE_PRIMITIVE ("XTERM-READ-CHARS", Prim_xterm_read_chars, 2, 2, 0)
     interval = (time_limit - (OS_real_time_clock ()));
   if (interval <= 0)
     PRIMITIVE_RETURN (SHARP_F);
-  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (interval));
+  PRIMITIVE_RETURN (long_to_integer (interval));
 }
 
 static int

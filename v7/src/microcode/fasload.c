@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.43 1989/09/20 23:08:02 cph Exp $
+
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,13 +32,10 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.42 1989/07/25 08:45:49 cph Rel $
-
-   The "fast loader" which reads in and relocates binary files and then
+/* The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
    string) name of a file to load.  It is called as a primitive, and
-   returns a single object read in.
- */
+   returns a single object read in. */
 
 #include "scheme.h"
 #include "prims.h"
@@ -46,12 +45,12 @@ MIT in each case. */
 
 long
 read_file_start(name)
-     Pointer name;
+     SCHEME_OBJECT name;
 {
   long value, heap_length;
   Boolean file_opened;
 
-  if (OBJECT_TYPE(name) != TC_CHARACTER_STRING)
+  if (OBJECT_TYPE (name) != TC_CHARACTER_STRING)
   {
     return (ERR_ARG_1_WRONG_TYPE);
   }
@@ -86,7 +85,7 @@ read_file_start(name)
       case FASL_FILE_BAD_INTERFACE:
 	return (ERR_FASLOAD_COMPILED_MISMATCH);
     }
-  }  
+  }
 
   if (Or2(Reloc_Debug, File_Load_Debug))
   {
@@ -110,15 +109,15 @@ read_file_start(name)
   return (PRIM_DONE);
 }
 
-Pointer *
+SCHEME_OBJECT *
 read_file_end()
 {
-  Pointer *table;
+  SCHEME_OBJECT *table;
 
   if ((Load_Data(Heap_Count, ((char *) Free))) != Heap_Count)
   {
     Close_Dump_File();
-    Primitive_Error(ERR_IO_ERROR);
+    signal_error_from_primitive (ERR_IO_ERROR);
   }
   NORMALIZE_REGION(((char *) Free), Heap_Count);
   Free += Heap_Count;
@@ -126,7 +125,7 @@ read_file_end()
   if ((Load_Data(Const_Count, ((char *) Free_Constant))) != Const_Count)
   {
     Close_Dump_File();
-    Primitive_Error(ERR_IO_ERROR);
+    signal_error_from_primitive (ERR_IO_ERROR);
   }
   NORMALIZE_REGION(((char *) Free_Constant), Const_Count);
   Free_Constant += Const_Count;
@@ -136,7 +135,7 @@ read_file_end()
       Primitive_Table_Size)
   {
     Close_Dump_File();
-    Primitive_Error(ERR_IO_ERROR);
+    signal_error_from_primitive (ERR_IO_ERROR);
   }
   NORMALIZE_REGION(((char *) table), Primitive_Table_Size);
   Free += Primitive_Table_Size;
@@ -147,7 +146,7 @@ read_file_end()
   }
   else
   {
-    Primitive_Error(ERR_IO_ERROR);
+    signal_error_from_primitive (ERR_IO_ERROR);
   }
 }
 
@@ -168,23 +167,23 @@ relocation_type
 
 static Boolean Warned = false;
 
-Pointer *
+SCHEME_OBJECT *
 Relocate(P)
      long P;
 {
-  Pointer *Result;
+  SCHEME_OBJECT *Result;
 
   if ((P >= Heap_Base) && (P < Dumped_Heap_Top))
   {
-    Result = ((Pointer *) (P + heap_relocation));
+    Result = ((SCHEME_OBJECT *) (P + heap_relocation));
   }
   else if ((P >= Const_Base) && (P < Dumped_Constant_Top))
   {
-    Result = ((Pointer *) (P + const_relocation));
+    Result = ((SCHEME_OBJECT *) (P + const_relocation));
   }
   else if ((P >= Dumped_Constant_Top) && (P < Dumped_Stack_Top))
   {
-    Result = ((Pointer *) (P + stack_relocation));
+    Result = ((SCHEME_OBJECT *) (P + stack_relocation));
   }
   else
   {
@@ -196,7 +195,7 @@ Relocate(P)
              Const_Base, Dumped_Constant_Top, Dumped_Stack_Top);
       Warned = true;
     }
-    Result = ((Pointer *) 0);
+    Result = ((SCHEME_OBJECT *) 0);
   }
   if (Reloc_Debug)
   {
@@ -213,15 +212,15 @@ Relocate(P)
 {									\
   if ((P) < Dumped_Heap_Top)						\
   {									\
-    (Loc) = ((Pointer *) ((P) + heap_relocation));			\
+    (Loc) = ((SCHEME_OBJECT *) ((P) + heap_relocation));		\
   }									\
   else if ((P) < Dumped_Constant_Top)					\
   {									\
-    (Loc) = ((Pointer *) ((P) + const_relocation));			\
+    (Loc) = ((SCHEME_OBJECT *) ((P) + const_relocation));		\
   }									\
   else									\
   {									\
-    (Loc) = ((Pointer *) ((P) + stack_relocation));			\
+    (Loc) = ((SCHEME_OBJECT *) ((P) + stack_relocation));		\
   }									\
 }
 
@@ -229,14 +228,14 @@ Relocate(P)
 
 #define Relocate(P)							\
 ((P < Const_Base) ?							\
- ((Pointer *) (P + heap_relocation)) :					\
+ ((SCHEME_OBJECT *) (P + heap_relocation)) :				\
  ((P < Dumped_Constant_Top) ?						\
-  ((Pointer *) (P + const_relocation)) :				\
-  ((Pointer *) (P + stack_relocation))))
+  ((SCHEME_OBJECT *) (P + const_relocation)) :				\
+  ((SCHEME_OBJECT *) (P + stack_relocation))))
 
 #else /* Conditional_Bug */
 
-static Pointer *Relocate_Temp;
+static SCHEME_OBJECT *Relocate_Temp;
 
 #define Relocate(P)							\
   (Relocate_Into(Relocate_Temp, P), Relocate_Temp)
@@ -251,10 +250,10 @@ static Pointer *Relocate_Temp;
 
 void
 Relocate_Block(Scan, Stop_At)
-     fast Pointer *Scan, *Stop_At;
+     fast SCHEME_OBJECT *Scan, *Stop_At;
 {
-  extern Pointer *load_renumber_table;
-  fast Pointer Temp;
+  extern SCHEME_OBJECT *load_renumber_table;
+  fast SCHEME_OBJECT Temp;
   fast long address;
 
   if (Reloc_Debug)
@@ -274,19 +273,19 @@ Relocate_Block(Scan, Stop_At)
       case_Fasload_Non_Pointer:
         Scan += 1;
 	break;
-	
+
       case TC_PRIMITIVE:
-	*Scan++ = load_renumber_table[PRIMITIVE_NUMBER(Temp)];
+	*Scan++ = (load_renumber_table [PRIMITIVE_NUMBER (Temp)]);
 	break;
-	
+
       case TC_PCOMB0:
 	*Scan++ =
-	  Make_Non_Pointer(TC_PCOMB0,
-			   load_renumber_table[PRIMITIVE_NUMBER(Temp)]);
+	  OBJECT_NEW_TYPE
+	    (TC_PCOMB0, (load_renumber_table [PRIMITIVE_NUMBER (Temp)]));
         break;
 
       case TC_MANIFEST_NM_VECTOR:
-        Scan += (Get_Integer(Temp) + 1);
+        Scan += (OBJECT_DATUM (Temp) + 1);
         break;
 
       case TC_LINKAGE_SECTION:
@@ -305,7 +304,7 @@ Relocate_Block(Scan, Stop_At)
 	       )
 	  {
 	    address = ((long) *Scan);
-	    *Scan++ = ((Pointer) Relocate(address));
+	    *Scan++ = ((SCHEME_OBJECT) Relocate(address));
 	  }
 	  break;
 	}
@@ -313,7 +312,7 @@ Relocate_Block(Scan, Stop_At)
 	{
 	  fast long count;
 	  fast machine_word *word_ptr;
-	  Pointer *end_scan;
+	  SCHEME_OBJECT *end_scan;
 
 	  count = READ_OPERATOR_LINKAGE_COUNT(Temp);
 	  word_ptr = FIRST_OPERATOR_LINKAGE_ENTRY(Scan);
@@ -324,7 +323,7 @@ Relocate_Block(Scan, Stop_At)
 	    Scan = OPERATOR_LINKAGE_ENTRY_ADDRESS(word_ptr);
 	    word_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr);
 	    address = ((long) *Scan);
-	    *Scan = ((Pointer) Relocate(address));
+	    *Scan = ((SCHEME_OBJECT) Relocate(address));
 	  }
 	  Scan = &end_scan[1];
 	  break;
@@ -345,7 +344,7 @@ Relocate_Block(Scan, Stop_At)
 	  Scan = MANIFEST_CLOSURE_ENTRY_ADDRESS(word_ptr);
 	  word_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
 	  address = ((long) *Scan);
-	  *Scan = ((Pointer) Relocate(address));
+	  *Scan = ((SCHEME_OBJECT) Relocate(address));
 	}
 	Scan = &((MANIFEST_CLOSURE_END(word_ptr, start_ptr))[1]);
 	break;
@@ -353,12 +352,12 @@ Relocate_Block(Scan, Stop_At)
 
 #ifdef BYTE_INVERSION
       case TC_CHARACTER_STRING:
-	String_Inversion(Relocate(OBJECT_DATUM(Temp)));
+	String_Inversion(Relocate(OBJECT_DATUM (Temp)));
 	goto normal_pointer;
 #endif
 
       case TC_REFERENCE_TRAP:
-	if (OBJECT_DATUM(Temp) <= TRAP_MAX_IMMEDIATE)
+	if (OBJECT_DATUM (Temp) <= TRAP_MAX_IMMEDIATE)
 	{
 	  Scan += 1;
 	  break;
@@ -369,9 +368,11 @@ Relocate_Block(Scan, Stop_At)
 	/* This should be more strict. */
 
       default:
+#ifdef BYTE_INVERSION
       normal_pointer:
-	address = OBJECT_DATUM(Temp);
-	*Scan++ = Make_Pointer(OBJECT_TYPE(Temp), Relocate(address));
+#endif
+	address = OBJECT_DATUM (Temp);
+	*Scan++ = MAKE_POINTER_OBJECT (OBJECT_TYPE (Temp), Relocate(address));
 	break;
       }
   }
@@ -380,7 +381,7 @@ Relocate_Block(Scan, Stop_At)
 
 Boolean
 check_primitive_numbers(table, length)
-     fast Pointer *table;
+     fast SCHEME_OBJECT *table;
      fast long length;
 {
   fast long count, top;
@@ -424,7 +425,7 @@ get_band_parameters(heap_size, const_size)
 
 void
 Intern_Block(Next_Pointer, Stop_At)
-     fast Pointer *Next_Pointer, *Stop_At;
+     fast SCHEME_OBJECT *Next_Pointer, *Stop_At;
 {
   if (Reloc_Debug)
   {
@@ -433,38 +434,38 @@ Intern_Block(Next_Pointer, Stop_At)
 
   while (Next_Pointer < Stop_At)
   {
-    switch (OBJECT_TYPE(*Next_Pointer))
+    switch (OBJECT_TYPE (*Next_Pointer))
     {
       case TC_MANIFEST_NM_VECTOR:
-        Next_Pointer += (1 + Get_Integer(*Next_Pointer));
+        Next_Pointer += (1 + OBJECT_DATUM (*Next_Pointer));
         break;
 
       case TC_INTERNED_SYMBOL:
-	if (OBJECT_TYPE(Vector_Ref(*Next_Pointer, SYMBOL_GLOBAL_VALUE)) ==
+	if (OBJECT_TYPE (MEMORY_REF (*Next_Pointer, SYMBOL_GLOBAL_VALUE)) ==
 	    TC_BROKEN_HEART)
 	{
-	  Pointer old_symbol = (*Next_Pointer);
-	  Vector_Set (old_symbol, SYMBOL_GLOBAL_VALUE, UNBOUND_OBJECT);
+	  SCHEME_OBJECT old_symbol = (*Next_Pointer);
+	  MEMORY_SET (old_symbol, SYMBOL_GLOBAL_VALUE, UNBOUND_OBJECT);
 	  {
-	    extern Pointer intern_symbol ();
-	    Pointer new_symbol = (intern_symbol (old_symbol));
+	    extern SCHEME_OBJECT intern_symbol ();
+	    SCHEME_OBJECT new_symbol = (intern_symbol (old_symbol));
 	    if (new_symbol != old_symbol)
 	      {
 		(*Next_Pointer) = new_symbol;
-		Vector_Set
+		MEMORY_SET
 		  (old_symbol,
 		   SYMBOL_NAME,
-		   (Make_New_Pointer (TC_BROKEN_HEART, new_symbol)));
+		   (OBJECT_NEW_TYPE (TC_BROKEN_HEART, new_symbol)));
 	      }
 	  }
 	}
-	else if (OBJECT_TYPE(Vector_Ref(*Next_Pointer, SYMBOL_NAME)) ==
+	else if (OBJECT_TYPE (MEMORY_REF (*Next_Pointer, SYMBOL_NAME)) ==
 		TC_BROKEN_HEART)
 	{
 	  *Next_Pointer =
-	    Make_New_Pointer(OBJECT_TYPE(*Next_Pointer),
-			     Fast_Vector_Ref(*Next_Pointer,
-					     SYMBOL_NAME));
+	    (MAKE_OBJECT_FROM_OBJECTS
+	     ((*Next_Pointer),
+	      (FAST_MEMORY_REF ((*Next_Pointer), SYMBOL_NAME))));
 	}
 	Next_Pointer += 1;
 	break;
@@ -481,17 +482,17 @@ Intern_Block(Next_Pointer, Stop_At)
   return;
 }
 
-Pointer
+SCHEME_OBJECT
 load_file(from_band_load)
      Boolean from_band_load;
 {
-  Pointer
-    *Heap_End, *Orig_Heap,
+  SCHEME_OBJECT
+    *Orig_Heap,
     *Constant_End, *Orig_Constant,
     *temp, *primitive_table;
 
   extern void install_primitive_table();
-  extern Pointer *load_renumber_table;
+  extern SCHEME_OBJECT *load_renumber_table;
 
   /* Read File */
 
@@ -501,7 +502,7 @@ load_file(from_band_load)
 
   load_renumber_table = Free;
   Free += Primitive_Table_Length;
-  Align_Float(Free);
+  ALIGN_FLOAT (Free);
   Orig_Heap = Free;
   Orig_Constant = Free_Constant;
   primitive_table = read_file_end();
@@ -524,20 +525,22 @@ load_file(from_band_load)
     automagically: the utilities vector is part of the band.
    */
 
-  if ((!band_p) && (dumped_utilities != NIL))
+  if ((!band_p) && (dumped_utilities != SHARP_F))
   {
-    extern Pointer compiler_utilities;
+    extern SCHEME_OBJECT compiler_utilities;
 
-    if (compiler_utilities == NIL)
+    if (compiler_utilities == SHARP_F)
     {
-      Primitive_Error(ERR_FASLOAD_COMPILED_MISMATCH);
+      signal_error_from_primitive (ERR_FASLOAD_COMPILED_MISMATCH);
     }
 
-    const_relocation = (((relocation_type) Get_Pointer(compiler_utilities)) -
-			Datum(dumped_utilities));
+    const_relocation =
+      (((relocation_type) (OBJECT_ADDRESS (compiler_utilities))) -
+       (OBJECT_DATUM (dumped_utilities)));
     Dumped_Constant_Top =
-      C_To_Scheme(Nth_Vector_Loc(dumped_utilities,
-				 (1 + Vector_Length(compiler_utilities))));
+      (ADDRESS_TO_DATUM
+       (MEMORY_LOC (dumped_utilities,
+		    (1 + (VECTOR_LENGTH (compiler_utilities))))));
   }
   else
   {
@@ -550,7 +553,7 @@ load_file(from_band_load)
 #endif
 
   /* Setup the primitive table */
-  
+
   install_primitive_table(primitive_table,
 			  Primitive_Table_Length,
 			  from_band_load);
@@ -566,7 +569,7 @@ load_file(from_band_load)
     if (Reloc_Debug)
     {
       printf("heap_relocation = %d = %x; const_relocation = %d = %x\n",
-	     heap_relocation, heap_relocation, 
+	     heap_relocation, heap_relocation,
 	     const_relocation,  const_relocation);
     }
 
@@ -611,25 +614,18 @@ load_file(from_band_load)
 DEFINE_PRIMITIVE ("BINARY-FASLOAD", Prim_binary_fasload, 1, 1, 0)
 {
   long result;
-  Primitive_1_Arg();
-
-  result = read_file_start(Arg1);
+  PRIMITIVE_HEADER (1);
+  result = (read_file_start (ARG_REF (1)));
   if (band_p)
-  {
-    Primitive_Error(ERR_FASLOAD_BAND);
-  }
+    signal_error_from_primitive (ERR_FASLOAD_BAND);
   if (result != PRIM_DONE)
-  {
-    if (result == PRIM_INTERRUPT)
     {
-      Primitive_Interrupt();
+      if (result == PRIM_INTERRUPT)
+	signal_interrupt_from_primitive ();
+      else
+	signal_error_from_primitive (result);
     }
-    else
-    {
-      Primitive_Error(result);
-    }
-  }
-  PRIMITIVE_RETURN(load_file(false));
+  PRIMITIVE_RETURN (load_file (false));
 }
 
 /* Band loading. */
@@ -639,26 +635,23 @@ static char *reload_band_name = ((char *) NULL);
 
 /* (RELOAD-BAND-NAME)
    Returns the filename (as a Scheme string) from which the runtime system
-   was band loaded (load-band'ed ?), or NIL if the system was fasl'ed.
+   was band loaded (load-band'ed ?), or #F if the system was fasl'ed.
 */
 
 DEFINE_PRIMITIVE ("RELOAD-BAND-NAME", Prim_reload_band_name, 0, 0, 0)
 {
-  Primitive_0_Args();
-
-  if (reload_band_name == NULL)
-  {
-    PRIMITIVE_RETURN(NIL);
-  }
-
-  PRIMITIVE_RETURN(C_String_To_Scheme_String(reload_band_name));
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN
+    ((reload_band_name == NULL)
+     ? SHARP_F
+     : (char_pointer_to_string (reload_band_name)));
 }
 
 /* Utility for load band below. */
 
 extern void compiler_reset_error();
 
-void 
+void
 compiler_reset_error()
 {
   fprintf(stderr,
@@ -704,27 +697,26 @@ compiler_reset_error()
 
 DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
 {
-  extern char *malloc();
-  extern strcpy(), free();
-  extern void compiler_reset();
-  extern Pointer compiler_utilities;
-  static void terminate_band_load();
-
-  jmp_buf
-    swapped_buf,
-    *saved_buf;
-  Pointer
+  extern char * malloc ();
+  extern strcpy ();
+  extern free ();
+  extern void compiler_initialize ();
+  extern void compiler_reset ();
+  extern SCHEME_OBJECT compiler_utilities;
+  static void terminate_band_load ();
+  SCHEME_OBJECT
+    argument,
     *saved_free,
     *saved_memtop,
     *saved_free_constant,
     *saved_stack_pointer;
   long temp, length;
-  Pointer result, cutl;
+  SCHEME_OBJECT result, cutl;
   char *band_name;
   Boolean load_file_failed;
-  Primitive_1_Arg();
-
-  PRIMITIVE_CANONICALIZE_CONTEXT();
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_CANONICALIZE_CONTEXT ();
+  argument = (ARG_REF (1));
   saved_free = Free;
   Free = Heap_Bottom;
   saved_memtop = MemTop;
@@ -737,7 +729,7 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   saved_stack_pointer = Stack_Pointer;
   Stack_Pointer = Highest_Allocated_Address;
 
-  temp = read_file_start(Arg1);
+  temp = (read_file_start (argument));
   if (temp != PRIM_DONE)
   {
     Free = saved_free;
@@ -748,22 +740,20 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
 
     if (temp == PRIM_INTERRUPT)
     {
-      Primitive_Error(ERR_FASL_FILE_TOO_BIG);
+      signal_error_from_primitive (ERR_FASL_FILE_TOO_BIG);
     }
     else
     {
-      Primitive_Error(temp);
+      signal_error_from_primitive (temp);
     }
   }
 
   /* Point of no return. */
 
-  length = ((long) (Fast_Vector_Ref(Arg1, STRING_LENGTH)));
+  length = (STRING_LENGTH (argument));
   band_name = malloc(length);
   if (band_name != ((char *) NULL))
-  {
-    strcpy(band_name, Scheme_String_To_C_String(Arg1));
-  }
+    strcpy (band_name, ((char *) (STRING_LOC (argument, 0))));
 
   load_file_failed = true;
 
@@ -791,8 +781,8 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   INITIALIZE_INTERRUPTS();
   Initialize_Stack();
   Set_Pure_Top();
-  cutl = Vector_Ref(result, 1);
-  if (cutl != NIL)
+  cutl = MEMORY_REF (result, 1);
+  if (cutl != SHARP_F)
   {
     compiler_utilities = cutl;
     compiler_reset(cutl);
@@ -801,25 +791,25 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   {
     compiler_initialize(true);
   }
-  Restore_Fixed_Obj(NIL);
-  Fluid_Bindings = NIL;
-  Current_State_Point = NIL;
+  Restore_Fixed_Obj (SHARP_F);
+  Fluid_Bindings = EMPTY_LIST;
+  Current_State_Point = SHARP_F;
 
   /* Setup initial program */
 
-  Store_Return(RC_END_OF_COMPUTATION);
-  Store_Expression(NIL);
-  Save_Cont();
+  Store_Return (RC_END_OF_COMPUTATION);
+  Store_Expression (SHARP_F);
+  Save_Cont ();
 
-  Store_Expression(Vector_Ref(result, 0));
-  Store_Env(Make_Non_Pointer(GLOBAL_ENV, GO_TO_GLOBAL));
+  Store_Expression(MEMORY_REF (result, 0));
+  Store_Env(MAKE_OBJECT (GLOBAL_ENV, GO_TO_GLOBAL));
 
   /* Clear various interpreter state parameters. */
 
   Trapping = false;
   Return_Hook_Address = NULL;
   History = Make_Dummy_History();
-  Prev_Restore_History_Stacklet = NIL;
+  Prev_Restore_History_Stacklet = SHARP_F;
   Prev_Restore_History_Offset = 0;
 
   end_band_load(true, false);
@@ -867,12 +857,12 @@ terminate_band_load(abort_value, band_name)
 
 #define MAGIC_OFFSET (TC_FIXNUM + 1)
 
-Pointer String_Chain, Last_String;
+SCHEME_OBJECT String_Chain, Last_String;
 
 Setup_For_String_Inversion()
 {
-  String_Chain = NIL;
-  Last_String = NIL;
+  String_Chain = SHARP_F;
+  Last_String = SHARP_F;
   return;
 }
 
@@ -880,20 +870,20 @@ Finish_String_Inversion()
 {
   if (Byte_Invert_Fasl_Files)
   {
-    while (String_Chain != NIL)
+    while (String_Chain != SHARP_F)
     {
       long Count;
-      Pointer Next;
+      SCHEME_OBJECT Next;
 
-      Count = Get_Integer(Fast_Vector_Ref(String_Chain, STRING_HEADER));
-      Count = 4*(Count-2)+OBJECT_TYPE(String_Chain)-MAGIC_OFFSET;
+      Count = OBJECT_DATUM (FAST_MEMORY_REF (String_Chain, STRING_HEADER));
+      Count = 4*(Count-2)+OBJECT_TYPE (String_Chain)-MAGIC_OFFSET;
       if (Reloc_Debug)
       {
 	printf("String at 0x%x: restoring length of %d.\n",
-	       Address(String_Chain), Count);
+	       OBJECT_ADDRESS (String_Chain), Count);
       }
-      Next = Fast_Vector_Ref(String_Chain, STRING_LENGTH);
-      Fast_Vector_Set(String_Chain, STRING_LENGTH, ((Pointer) (Count)));
+      Next = (STRING_LENGTH (String_Chain));
+      SET_STRING_LENGTH (String_Chain, Count);
       String_Chain = Next;
     }
   }
@@ -904,9 +894,9 @@ Finish_String_Inversion()
 			     "\\%03o" : "%c", (C && MAX_CHAR));
 
 String_Inversion(Orig_Pointer)
-     Pointer *Orig_Pointer;
+     SCHEME_OBJECT *Orig_Pointer;
 {
-  Pointer *Pointer_Address;
+  SCHEME_OBJECT *Pointer_Address;
   char *To_Char;
   long Code;
 
@@ -915,20 +905,20 @@ String_Inversion(Orig_Pointer)
     return;
   }
 
-  Code = OBJECT_TYPE(Orig_Pointer[STRING_LENGTH]);
+  Code = OBJECT_TYPE (Orig_Pointer[STRING_LENGTH_INDEX]);
   if (Code == 0)	/* Already reversed? */
   {
     long Count, old_size, new_size, i;
 
-    old_size = Get_Integer(Orig_Pointer[STRING_HEADER]);
-    new_size = 
-      2 + (((long) (Orig_Pointer[STRING_LENGTH]))) / 4;
+    old_size = OBJECT_DATUM (Orig_Pointer[STRING_HEADER]);
+    new_size =
+      2 + (((long) (Orig_Pointer[STRING_LENGTH_INDEX]))) / 4;
 
     if (Reloc_Debug)
     {
       printf("\nString at 0x%x with %d characters",
              Orig_Pointer,
-             ((long) (Orig_Pointer[STRING_LENGTH])));
+             ((long) (Orig_Pointer[STRING_LENGTH_INDEX])));
     }
 
     if (old_size != new_size)
@@ -939,25 +929,26 @@ String_Inversion(Orig_Pointer)
       Microcode_Termination(TERM_EXIT);
     }
 
-    Count = ((long) (Orig_Pointer[STRING_LENGTH])) % 4;
+    Count = ((long) (Orig_Pointer[STRING_LENGTH_INDEX])) % 4;
     if (Count == 0)
     {
       Count = 4;
     }
-    if (Last_String == NIL)
+    if (Last_String == SHARP_F)
     {
-      String_Chain = Make_Pointer(Count + MAGIC_OFFSET, Orig_Pointer);
+      String_Chain = MAKE_POINTER_OBJECT (Count + MAGIC_OFFSET, Orig_Pointer);
     }
     else
     {
-      Fast_Vector_Set(Last_String, STRING_LENGTH,
-		      Make_Pointer(Count + MAGIC_OFFSET, Orig_Pointer));
+      FAST_MEMORY_SET
+	(Last_String, STRING_LENGTH_INDEX,
+	 MAKE_POINTER_OBJECT (Count + MAGIC_OFFSET, Orig_Pointer));
     }
 
-    Last_String = Make_Pointer(TC_NULL, Orig_Pointer);
-    Orig_Pointer[STRING_LENGTH] = NIL;
-    Count = Get_Integer(Orig_Pointer[STRING_HEADER]) - 1;
-    if (Reloc_Debug) 
+    Last_String = MAKE_POINTER_OBJECT (TC_NULL, Orig_Pointer);
+    Orig_Pointer[STRING_LENGTH_INDEX] = SHARP_F;
+    Count = OBJECT_DATUM (Orig_Pointer[STRING_HEADER]) - 1;
+    if (Reloc_Debug)
     {
        printf("\nCell count=%d\n", Count);
      }
@@ -967,7 +958,7 @@ String_Inversion(Orig_Pointer)
     {
       int C1, C2, C3, C4;
 
-      C4 = OBJECT_TYPE(*Pointer_Address) & 0xFF;
+      C4 = OBJECT_TYPE (*Pointer_Address) & 0xFF;
       C3 = (((long) *Pointer_Address)>>16) & 0xFF;
       C2 = (((long) *Pointer_Address)>>8) & 0xFF;
       C1 = ((long) *Pointer_Address) & 0xFF;

@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/load.c,v 9.28 1989/09/20 23:09:52 cph Exp $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,12 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/load.c,v 9.27 1988/08/15 20:50:59 cph Rel $
- *
- * This file contains common code for reading internal
- * format binary files.
- *
- */
+/* This file contains common code for reading internal
+   format binary files. */
 
 #include "fasl.h"
 
@@ -44,7 +42,7 @@ MIT in each case. */
 #define FASL_FILE_NOT_FASL		2
 #define FASL_FILE_BAD_MACHINE		3
 #define FASL_FILE_BAD_VERSION		4
-#define FASL_FILE_BAD_SUBVERSION	5	
+#define FASL_FILE_BAD_SUBVERSION	5
 #define FASL_FILE_BAD_PROCESSOR		6
 #define FASL_FILE_BAD_INTERFACE		7
 
@@ -76,7 +74,7 @@ static long
   Primitive_Table_Size, Primitive_Table_Length,
   dumped_processor_type, dumped_interface_version;
 
-static Pointer
+static SCHEME_OBJECT
   Ext_Prim_Vector,
   dumped_utilities;
 
@@ -104,9 +102,9 @@ print_fasl_information()
   printf("Stack Top = 0x%lx\n", Dumped_Stack_Top);
 
   printf("\nDumped Objects:\n\n");
-  printf("Dumped object at 0x%lx (as read from file)\n", Dumped_Object); 
+  printf("Dumped object at 0x%lx (as read from file)\n", Dumped_Object);
   printf("Compiled code utilities vector = 0x%lx\n", dumped_utilities);
-  if (Ext_Prim_Vector != NIL)
+  if (Ext_Prim_Vector != SHARP_F)
   {
     printf("External primitives vector = 0x%lx\n", Ext_Prim_Vector);
   }
@@ -120,8 +118,8 @@ print_fasl_information()
 long
 Read_Header()
 {
-  Pointer Buffer[FASL_HEADER_LENGTH];
-  Pointer Pointer_Heap_Base, Pointer_Const_Base;
+  SCHEME_OBJECT Buffer[FASL_HEADER_LENGTH];
+  SCHEME_OBJECT Pointer_Heap_Base, Pointer_Const_Base;
 
   if (Load_Data(FASL_HEADER_LENGTH, ((char *) Buffer)) !=
       FASL_HEADER_LENGTH)
@@ -133,37 +131,37 @@ Read_Header()
     return (FASL_FILE_NOT_FASL);
   }
   NORMALIZE_HEADER(Buffer,
-		   (sizeof(Buffer) / sizeof(Pointer)),
+		   (sizeof(Buffer) / sizeof(SCHEME_OBJECT)),
 		   Buffer[FASL_Offset_Heap_Base],
 		   Buffer[FASL_Offset_Heap_Count]);
-  Heap_Count = Get_Integer(Buffer[FASL_Offset_Heap_Count]);
+  Heap_Count = OBJECT_DATUM (Buffer[FASL_Offset_Heap_Count]);
   Pointer_Heap_Base = Buffer[FASL_Offset_Heap_Base];
-  Heap_Base = Datum(Pointer_Heap_Base);
-  Dumped_Object = Datum(Buffer[FASL_Offset_Dumped_Obj]);
-  Const_Count = Get_Integer(Buffer[FASL_Offset_Const_Count]);
+  Heap_Base = OBJECT_DATUM (Pointer_Heap_Base);
+  Dumped_Object = OBJECT_DATUM (Buffer[FASL_Offset_Dumped_Obj]);
+  Const_Count = OBJECT_DATUM (Buffer[FASL_Offset_Const_Count]);
   Pointer_Const_Base = Buffer[FASL_Offset_Const_Base];
-  Const_Base = Datum(Pointer_Const_Base);
+  Const_Base = OBJECT_DATUM (Pointer_Const_Base);
   Version = The_Version(Buffer[FASL_Offset_Version]);
   Sub_Version = The_Sub_Version(Buffer[FASL_Offset_Version]);
   Machine_Type = The_Machine_Type(Buffer[FASL_Offset_Version]);
-  Dumped_Stack_Top = Get_Integer(Buffer[FASL_Offset_Stack_Top]);
+  Dumped_Stack_Top = OBJECT_DATUM (Buffer[FASL_Offset_Stack_Top]);
   Dumped_Heap_Top =
-    C_To_Scheme(Nth_Vector_Loc(Pointer_Heap_Base, Heap_Count));
+    ADDRESS_TO_DATUM (MEMORY_LOC (Pointer_Heap_Base, Heap_Count));
   Dumped_Constant_Top =
-    C_To_Scheme(Nth_Vector_Loc(Pointer_Const_Base, Const_Count));
+    ADDRESS_TO_DATUM (MEMORY_LOC (Pointer_Const_Base, Const_Count));
 
   if (Sub_Version < FASL_MERGED_PRIMITIVES)
   {
     Primitive_Table_Length = 0;
     Primitive_Table_Size = 0;
     Ext_Prim_Vector =
-      Make_Non_Pointer(TC_CELL, Datum(Buffer[FASL_Offset_Ext_Loc]));
+      (OBJECT_NEW_TYPE (TC_CELL, (Buffer [FASL_Offset_Ext_Loc])));
   }
   else
   {
-    Primitive_Table_Length = Get_Integer(Buffer[FASL_Offset_Prim_Length]);
-    Primitive_Table_Size = Get_Integer(Buffer[FASL_Offset_Prim_Size]);
-    Ext_Prim_Vector = NIL;
+    Primitive_Table_Length = OBJECT_DATUM (Buffer[FASL_Offset_Prim_Length]);
+    Primitive_Table_Size = OBJECT_DATUM (Buffer[FASL_Offset_Prim_Size]);
+    Ext_Prim_Vector = SHARP_F;
   }
 
   if (Sub_Version < FASL_INTERFACE_VERSION)
@@ -172,11 +170,11 @@ Read_Header()
     band_p = false;
     dumped_processor_type = 0;
     dumped_interface_version = 0;
-    dumped_utilities = NIL;
+    dumped_utilities = SHARP_F;
   }
   else
   {
-    Pointer temp;
+    SCHEME_OBJECT temp;
 
     temp = Buffer[FASL_Offset_Ci_Version];
 
@@ -257,8 +255,8 @@ Byte_Invert_Header(Header, Headsize, Test1, Test2)
 
   if ((Test1 & 0xff) == TC_BROKEN_HEART &&
       (Test2 & 0xff) == TC_BROKEN_HEART &&
-      (Type_Code(Test1) != TC_BROKEN_HEART ||
-       Type_Code(Test2) != TC_BROKEN_HEART))
+      (OBJECT_TYPE (Test1) != TC_BROKEN_HEART ||
+       OBJECT_TYPE (Test2) != TC_BROKEN_HEART))
   {
     Byte_Invert_Fasl_Files = true;
     Byte_Invert_Region(Header, Headsize);

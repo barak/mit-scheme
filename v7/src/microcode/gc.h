@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gc.h,v 9.28 1989/07/05 18:34:26 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gc.h,v 9.29 1989/09/20 23:08:43 cph Exp $
  *
  * Garbage collection related macros of sufficient utility to be
  * included in all compilations.
@@ -89,7 +89,7 @@ MIT in each case. */
   GC_Type_Map[TC]			:				\
   (INVALID_TYPE_CODE(TC)))
 
-#define GC_Type(Object)			GC_Type_Code(OBJECT_TYPE(Object))
+#define GC_Type(Object)			GC_Type_Code(OBJECT_TYPE (Object))
 
 #define GC_Type_Non_Pointer(Object)	(GC_Type(Object) == GC_Non_Pointer)
 #define GC_Type_Cell(Object)		(GC_Type(Object) == GC_Cell)

@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/char.c,v 9.28 1989/09/20 23:06:31 cph Rel $
+
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,228 +32,122 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/char.c,v 9.27 1989/08/28 18:28:24 cph Exp $ */
-
 /* Character primitives. */
 
 #include "scheme.h"
 #include "prims.h"
-#include "char.h"
 #include <ctype.h>
 
 long
 arg_ascii_char (n)
      int n;
 {
-  fast long ascii;
-
   CHECK_ARG (n, CHARACTER_P);
-  ascii = ARG_REF(n);
-  if (OBJECT_DATUM(ascii) >= MAX_ASCII)
-    error_bad_range_arg (n);
-  return (scheme_char_to_c_char(ascii));
+  {
+    fast SCHEME_OBJECT object = (ARG_REF (n));
+    if (! (CHAR_TO_ASCII_P (object)))
+      error_bad_range_arg (n);
+    return (CHAR_TO_ASCII (object));
+  }
 }
 
 long
 arg_ascii_integer (n)
      int n;
 {
-  fast Pointer arg;
-  fast long ascii;
-
-  CHECK_ARG (n, FIXNUM_P);
-  arg = (ARG_REF (n));
-  if (FIXNUM_NEGATIVE_P (arg))
-    error_bad_range_arg (n);
-  FIXNUM_VALUE (arg, ascii);
-  if (ascii >= MAX_ASCII)
-    error_bad_range_arg (n);
-  return (ascii);
+  return (arg_index_integer (n, MAX_ASCII));
 }
-
+
 DEFINE_PRIMITIVE ("MAKE-CHAR", Prim_make_char, 2, 2, 0)
 {
-  long bucky_bits, code;
   PRIMITIVE_HEADER (2);
-
-  code = (arg_index_integer (1, MAX_CODE));
-  bucky_bits = (arg_index_integer (2, MAX_BITS));
-  PRIMITIVE_RETURN (make_char (bucky_bits, code));
+  PRIMITIVE_RETURN
+    (MAKE_CHAR ((arg_index_integer (2, MAX_BITS)),
+		(arg_index_integer (1, MAX_CODE))));
 }
 
 DEFINE_PRIMITIVE ("CHAR-BITS", Prim_char_bits, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
   CHECK_ARG (1, CHARACTER_P);
-  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (char_bits (ARG_REF (1))));
+  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (CHAR_BITS (ARG_REF (1))));
 }
 
 DEFINE_PRIMITIVE ("CHAR-CODE", Prim_char_code, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
   CHECK_ARG (1, CHARACTER_P);
-  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (char_code (ARG_REF (1))));
+  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (CHAR_CODE (ARG_REF (1))));
 }
 
 DEFINE_PRIMITIVE ("CHAR->INTEGER", Prim_char_to_integer, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
   CHECK_ARG (1, CHARACTER_P);
-  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM ((ARG_REF (1)) & MASK_EXTNDD_CHAR));
+  PRIMITIVE_RETURN
+    (LONG_TO_UNSIGNED_FIXNUM ((ARG_REF (1)) & MASK_MIT_ASCII));
 }
 
 DEFINE_PRIMITIVE ("INTEGER->CHAR", Prim_integer_to_char, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
   PRIMITIVE_RETURN
-    (Make_Non_Pointer (TC_CHARACTER,
-		       (arg_index_integer (1, MAX_EXTNDD_CHAR))));
+    (MAKE_OBJECT (TC_CHARACTER, (arg_index_integer (1, MAX_MIT_ASCII))));
 }
 
 long
 char_downcase (c)
-     long c;
+     fast long c;
 {
-  c = (char_to_long (c));
   return ((isupper (c)) ? ((c - 'A') + 'a') : c);
 }
 
 long
 char_upcase (c)
-     long c;
+     fast long c;
 {
-  c = (char_to_long (c));
   return ((islower (c)) ? ((c - 'a') + 'A') : c);
 }
 
 DEFINE_PRIMITIVE ("CHAR-DOWNCASE", Prim_char_downcase, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
   CHECK_ARG (1, CHARACTER_P);
   PRIMITIVE_RETURN
-    (make_char ((char_bits (ARG_REF (1))),
-		(char_downcase (char_code (ARG_REF (1))))));
+    (MAKE_CHAR ((CHAR_BITS (ARG_REF (1))),
+		(char_downcase (CHAR_CODE (ARG_REF (1))))));
 }
 
 DEFINE_PRIMITIVE ("CHAR-UPCASE", Prim_char_upcase, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
   CHECK_ARG (1, CHARACTER_P);
   PRIMITIVE_RETURN
-    (make_char ((char_bits (ARG_REF (1))),
-		(char_upcase (char_code (ARG_REF (1))))));
+    (MAKE_CHAR ((CHAR_BITS (ARG_REF (1))),
+		(char_upcase (CHAR_CODE (ARG_REF (1))))));
 }
-
+
 DEFINE_PRIMITIVE ("ASCII->CHAR", Prim_ascii_to_char, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
-  PRIMITIVE_RETURN (c_char_to_scheme_char (arg_ascii_integer (1)));
+  PRIMITIVE_RETURN (ASCII_TO_CHAR (arg_index_integer (1, MAX_ASCII)));
 }
 
 DEFINE_PRIMITIVE ("CHAR->ASCII", Prim_char_to_ascii, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
-  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (arg_ascii_char (1)));
+  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (arg_ascii_char (1)));
 }
 
 DEFINE_PRIMITIVE ("CHAR-ASCII?", Prim_char_ascii_p, 1, 1, 0)
 {
-  fast Pointer character;
   PRIMITIVE_HEADER (1);
-
   CHECK_ARG (1, CHARACTER_P);
-  character = ARG_REF (1);
-  PRIMITIVE_RETURN
-    ((OBJECT_DATUM(character) >= MAX_ASCII) ?
-     NIL :
-     (MAKE_UNSIGNED_FIXNUM (scheme_char_to_c_char(character))));
-}
-
-forward Boolean ascii_control_p();
-
-long
-ascii_to_mit_ascii (ascii)
-     long ascii;
-{
-  long bucky_bits, code;
-
-  bucky_bits = (((ascii & 0200) != 0) ? CHAR_BITS_META : 0);
-  code = (ascii & 0177);
-  if (ascii_control_p (code))
-    {
-      code |= 0100;		/* Convert to non-control code. */
-      bucky_bits |= CHAR_BITS_CONTROL;
-    }
-  return ((bucky_bits << CODE_LENGTH) | code);
-}
-
-long
-mit_ascii_to_ascii (mit_ascii)
-     long mit_ascii;
-{
-  long bucky_bits, code;
-
-  bucky_bits = ((mit_ascii >> CODE_LENGTH) & CHAR_MASK_BITS);
-  code = (mit_ascii & CHAR_MASK_CODE);
-  if ((bucky_bits & (~ CHAR_BITS_CONTROL_META)) != 0)
-    return (NOT_ASCII);
-  else
-    {
-      if ((bucky_bits & CHAR_BITS_CONTROL) != 0)
-	{
-	  code = (char_upcase (code) & (~ 0100));
-	  if (!ascii_control_p (code))
-	    return (NOT_ASCII);
-	}
-      else
-	{
-	  if (ascii_control_p (code))
-	    return (NOT_ASCII);
-	}
-      return (((bucky_bits & CHAR_BITS_META) != 0) ? (code | 0200) : code);
-    }
-}
-
-Boolean
-ascii_control_p (code)
-     int code;
-{
-  switch (code)
-    {
-    case 000:
-    case 001:
-    case 002:
-    case 003:
-    case 004:
-    case 005:
-    case 006:
-    case 007:
-    case 016:
-    case 017:
-    case 020:
-    case 021:
-    case 022:
-    case 023:
-    case 024:
-    case 025:
-    case 026:
-    case 027:
-    case 030:
-    case 031:
-    case 034:
-    case 035:
-    case 036:
-      return (true);
-
-    default:
-      return (false);
-    }
+  {
+    fast SCHEME_OBJECT character = ARG_REF (1);
+    PRIMITIVE_RETURN
+      (((OBJECT_DATUM (character)) >= MAX_ASCII) ?
+       SHARP_F :
+       (LONG_TO_UNSIGNED_FIXNUM (CHAR_TO_ASCII (character))));
+  }
 }

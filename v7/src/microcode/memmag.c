@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.40 1989/09/20 23:10:15 cph Exp $
+
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,8 +32,6 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.39 1989/08/28 18:29:06 cph Exp $ */
-
 /* Memory management top level.
 
    The memory management code is spread over 3 files:
@@ -50,7 +50,7 @@ MIT in each case. */
 
 /* Imports */
 
-extern Pointer *GCLoop();
+extern SCHEME_OBJECT *GCLoop();
 
 /* Exports */
 
@@ -69,7 +69,7 @@ extern void Clear_Memory(), Setup_Memory(), Reset_Memory();
    |                                        |
    |           Heap Space                   |
    ------------------------------------------
-  
+
    Each area has a pointer to its starting address and a pointer to the
    next free cell.  In addition, there is a pointer to the top of the
    useable area of the heap (the heap is subdivided into two areas for
@@ -103,7 +103,7 @@ void
 Setup_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
      int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
 {
-  Pointer test_value;
+  SCHEME_OBJECT test_value;
 
   /* Consistency check 1 */
   if (Our_Heap_Size == 0)
@@ -113,8 +113,8 @@ Setup_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
   }
 
   /* Allocate */
-  Highest_Allocated_Address = 
-    Allocate_Heap_Space(Stack_Allocation_Size(Our_Stack_Size) + 
+  Highest_Allocated_Address =
+    ALLOCATE_HEAP_SPACE(Stack_Allocation_Size(Our_Stack_Size) +
 	                (2 * Our_Heap_Size) +
 			Our_Constant_Size +
 			HEAP_BUFFER_SPACE);
@@ -128,21 +128,21 @@ Setup_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
 
   /* Initialize the various global parameters */
   Heap += HEAP_BUFFER_SPACE;
-  Initial_Align_Float(Heap);
+  INITIAL_ALIGN_FLOAT(Heap);
   Unused_Heap = Heap + Our_Heap_Size;
-  Align_Float(Unused_Heap);
+  ALIGN_FLOAT (Unused_Heap);
   Constant_Space = Heap + 2*Our_Heap_Size;
-  Align_Float(Constant_Space);
+  ALIGN_FLOAT (Constant_Space);
 
   /* Consistency check 3 */
 
-  test_value = (Make_Pointer(LAST_TYPE_CODE, Highest_Allocated_Address));
+  test_value = (MAKE_POINTER_OBJECT (LAST_TYPE_CODE, Highest_Allocated_Address));
 
-  if (((OBJECT_TYPE(test_value)) != LAST_TYPE_CODE) ||
-      ((Get_Pointer(test_value)) != Highest_Allocated_Address))
+  if (((OBJECT_TYPE (test_value)) != LAST_TYPE_CODE) ||
+      ((OBJECT_ADDRESS (test_value)) != Highest_Allocated_Address))
   {
     fprintf(stderr,
-	    "Largest address does not fit in datum field of Pointer.\n");
+	    "Largest address does not fit in datum field of object.\n");
     fprintf(stderr,
 	    "Allocate less space or re-compile without Heap_In_Low_Memory.\n");
     exit(1);
@@ -170,7 +170,7 @@ Reset_Memory()
 void
 GCFlip()
 {
-  Pointer *Temp;
+  SCHEME_OBJECT *Temp;
 
   Temp = Unused_Heap;
   Unused_Heap = Heap_Bottom;
@@ -194,22 +194,22 @@ GCFlip()
    collector, which looks at both old and new space.
 */
 
-Pointer Weak_Chain;
+SCHEME_OBJECT Weak_Chain;
 
 void
 Fix_Weak_Chain()
 {
-  fast Pointer *Old_Weak_Cell, *Scan, Old_Car, Temp, *Old, *Low_Constant;
+  fast SCHEME_OBJECT *Old_Weak_Cell, *Scan, Old_Car, Temp, *Old, *Low_Constant;
 
   Low_Constant = Constant_Space;
   while (Weak_Chain != EMPTY_LIST)
   {
-    Old_Weak_Cell = Get_Pointer(Weak_Chain);
-    Scan = Get_Pointer(*Old_Weak_Cell++);
+    Old_Weak_Cell = OBJECT_ADDRESS (Weak_Chain);
+    Scan = OBJECT_ADDRESS (*Old_Weak_Cell++);
     Weak_Chain = *Old_Weak_Cell;
     Old_Car = *Scan;
-    Temp = Make_New_Pointer(OBJECT_TYPE(Weak_Chain), Old_Car);
-    Weak_Chain = Make_New_Pointer(TC_NULL, Weak_Chain);
+    Temp = (MAKE_OBJECT_FROM_OBJECTS (Weak_Chain, Old_Car));
+    Weak_Chain = (OBJECT_NEW_TYPE (TC_NULL, Weak_Chain));
 
     switch(GC_Type(Temp))
     { case GC_Non_Pointer:
@@ -217,12 +217,12 @@ Fix_Weak_Chain()
 	continue;
 
       case GC_Special:
-	if (OBJECT_TYPE(Temp) != TC_REFERENCE_TRAP)
+	if (OBJECT_TYPE (Temp) != TC_REFERENCE_TRAP)
 	{
 	  /* No other special type makes sense here. */
 	  goto fail;
 	}
-	if (OBJECT_DATUM(Temp) <= TRAP_MAX_IMMEDIATE)
+	if (OBJECT_DATUM (Temp) <= TRAP_MAX_IMMEDIATE)
 	{
 	  *Scan = Temp;
 	  continue;
@@ -240,7 +240,7 @@ Fix_Weak_Chain()
       case GC_Triple:
       case GC_Quadruple:
       case GC_Vector:
-	Old = Get_Pointer(Old_Car);
+	Old = OBJECT_ADDRESS (Old_Car);
 	if (Old >= Low_Constant)
 	{
 	  *Scan = Temp;
@@ -251,7 +251,7 @@ Fix_Weak_Chain()
 	continue;
 
       case GC_Compiled:
-	Old = Get_Pointer(Old_Car);
+	Old = OBJECT_ADDRESS (Old_Car);
 	if (Old >= Low_Constant)
 	{
 	  *Scan = Temp;
@@ -267,7 +267,7 @@ Fix_Weak_Chain()
 		Temp);
 	*Scan = SHARP_F;
 	continue;
-	
+
       default:			/* Non Marked Headers and Broken Hearts */
       fail:
         fprintf(stderr,
@@ -284,7 +284,7 @@ Fix_Weak_Chain()
 
    - First it makes the constant space and stack into one large area
    by "hiding" the gap between them with a non-marked header.
-   
+
    - Then it saves away all the relevant microcode registers into new
    space, making this the root for garbage collection.
 
@@ -300,7 +300,7 @@ Fix_Weak_Chain()
 
 void GC()
 {
-  Pointer
+  SCHEME_OBJECT
     *Root, *Result, *Check_Value,
     The_Precious_Objects, *Root2;
 
@@ -315,13 +315,14 @@ void GC()
   Set_Fixed_Obj_Slot(Lost_Objects_Base, SHARP_F);
 
   *Free++ = Fixed_Objects;
-  *Free++ = Make_Pointer(UNMARKED_HISTORY_TYPE, History);
+  *Free++ = MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, History);
   *Free++ = Undefined_Primitives;
   *Free++ = Undefined_Primitives_Arity;
   *Free++ = Get_Current_Stacklet();
-  *Free++ = ((Prev_Restore_History_Stacklet == NULL) ?
-	     SHARP_F :
-	     Make_Pointer(TC_CONTROL_POINT, Prev_Restore_History_Stacklet));
+  *Free++ =
+    ((Prev_Restore_History_Stacklet == NULL)
+     ? SHARP_F
+     : MAKE_POINTER_OBJECT (TC_CONTROL_POINT, Prev_Restore_History_Stacklet));
   *Free++ = Current_State_Point;
   *Free++ = Fluid_Bindings;
 
@@ -356,9 +357,10 @@ void GC()
 
   Fixed_Objects = *Root++;
   Set_Fixed_Obj_Slot(Precious_Objects, *Root2);
-  Set_Fixed_Obj_Slot(Lost_Objects_Base, Make_Pointer(TC_ADDRESS, Root2));
+  Set_Fixed_Obj_Slot
+    (Lost_Objects_Base, (LONG_TO_UNSIGNED_FIXNUM (ADDRESS_TO_DATUM (Root2))));
 
-  History = Get_Pointer(*Root++);
+  History = OBJECT_ADDRESS (*Root++);
   Undefined_Primitives = *Root++;
   Undefined_Primitives_Arity = *Root++;
 
@@ -372,7 +374,7 @@ void GC()
   }
   else
   {
-    Prev_Restore_History_Stacklet = Get_Pointer(*Root++);
+    Prev_Restore_History_Stacklet = OBJECT_ADDRESS (*Root++);
   }
   Current_State_Point = *Root++;
   Fluid_Bindings = *Root++;
@@ -392,12 +394,13 @@ void GC()
 
 DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
 {
+  long new_gc_reserve;
   extern unsigned long gc_counter;
-  Pointer GC_Daemon_Proc;
-  Primitive_1_Arg();
+  SCHEME_OBJECT GC_Daemon_Proc;
+  PRIMITIVE_HEADER (1);
 
   PRIMITIVE_CANONICALIZE_CONTEXT();
-  Arg_1_Type(TC_FIXNUM);
+  new_gc_reserve = (arg_nonnegative_integer (1));
   if (Free > Heap_Top)
   {
     fprintf(stderr,
@@ -409,7 +412,7 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   }
   ENTER_CRITICAL_SECTION ("garbage collector");
   gc_counter += 1;
-  GC_Reserve = (UNSIGNED_FIXNUM_VALUE (Arg1));
+  GC_Reserve = new_gc_reserve;
   GCFlip();
   GC();
   CLEAR_INTERRUPT(INT_GC);
@@ -420,7 +423,7 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   {
    Will_Push(CONTINUATION_SIZE);
     Store_Return(RC_NORMAL_GC_DONE);
-    Store_Expression(Make_Unsigned_Fixnum(MemTop - Free));
+    Store_Expression(LONG_TO_UNSIGNED_FIXNUM(MemTop - Free));
     Save_Cont();
    Pushed();
     PRIMITIVE_ABORT(PRIM_POP_RETURN);
@@ -428,7 +431,7 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   }
  Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS + 1));
   Store_Return(RC_NORMAL_GC_DONE);
-  Store_Expression(Make_Unsigned_Fixnum(MemTop - Free));
+  Store_Expression(LONG_TO_UNSIGNED_FIXNUM(MemTop - Free));
   Save_Cont();
   Push(GC_Daemon_Proc);
   Push(STACK_FRAME_HEADER);

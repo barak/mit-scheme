@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgx11.c,v 1.1 1989/02/24 09:24:50 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgx11.c,v 1.2 1989/09/20 23:04:57 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -66,17 +66,15 @@ x_error_handler (display, error_event)
 DEFINE_PRIMITIVE ("X-GRAPHICS-DISPLAY-NAME", Prim_x_graphics_display_name, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
   PRIMITIVE_RETURN
-    (C_String_To_Scheme_String
+    (char_pointer_to_string
      (XDisplayName (((ARG_REF (1)) == SHARP_F) ? NULL : (STRING_ARG (1)))));
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-GRAB-ERROR-HANDLERS", Prim_x_graphics_grab_error_handlers, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
-
   XSetErrorHandler (x_error_handler);
   XSetIOErrorHandler (x_io_error_handler);
-  PRIMITIVE_RETURN (SHARP_F);
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }

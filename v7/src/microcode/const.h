@@ -30,14 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/const.h,v 9.34 1989/08/28 18:28:42 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/const.h,v 9.35 1989/09/20 23:07:12 cph Exp $
  *
  * Named constants used throughout the interpreter
  *
  */
 
-#if (CHAR_SIZE != 8)
-#define MAX_CHAR		((1<<CHAR_SIZE)-1)
+#if (CHAR_BIT != 8)
+#define MAX_CHAR		((1<<CHAR_BIT)-1)
 #else
 #define MAX_CHAR		0xFF
 #endif
@@ -67,16 +67,14 @@ MIT in each case. */
 #endif /* b32 */
 
 #ifndef SHARP_F			/* Safe version */
-#define SHARP_F			Make_Non_Pointer(TC_NULL, 0)
-#define SHARP_T			Make_Non_Pointer(TC_TRUE, 0)
-#define UNSPECIFIC		Make_Non_Pointer(TC_TRUE, 1)
-#define FIXNUM_ZERO		Make_Non_Pointer(TC_FIXNUM, 0)
-#define BROKEN_HEART_ZERO	Make_Non_Pointer(TC_BROKEN_HEART, 0)
+#define SHARP_F			MAKE_OBJECT (TC_NULL, 0)
+#define SHARP_T			MAKE_OBJECT (TC_TRUE, 0)
+#define UNSPECIFIC		MAKE_OBJECT (TC_TRUE, 1)
+#define FIXNUM_ZERO		MAKE_OBJECT (TC_FIXNUM, 0)
+#define BROKEN_HEART_ZERO	MAKE_OBJECT (TC_BROKEN_HEART, 0)
 #endif /* SHARP_F */
 
 #define EMPTY_LIST SHARP_F
-#define NIL SHARP_F
-#define TRUTH SHARP_T
 #define NOT_THERE 		-1	/* Command line parser */
 
 /* Assorted sizes used in various places */
@@ -107,7 +105,7 @@ MIT in each case. */
 #define ILLEGAL_PRIMITIVE	-1
 
 /* Last immediate reference trap. */
-				    
+
 #define TRAP_MAX_IMMEDIATE	9
 
 /* For headers in pure / constant area */
@@ -163,7 +161,7 @@ MIT in each case. */
 
 #if Are_The_Constants_Incompatible
 #include "Error: const.h and types.h disagree"
-#endif 
+#endif
 
 /* These are the only entries in Registers[] needed by the microcode.
    All other entries are used only by the compiled code interface. */

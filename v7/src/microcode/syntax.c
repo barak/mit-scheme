@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.19 1989/08/28 18:29:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.20 1989/09/20 23:12:00 cph Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -43,8 +43,6 @@ should have been included along with this file. */
 
 #include "scheme.h"
 #include "prims.h"
-#include "char.h"
-#include "string.h"
 #include "edwin.h"
 #include "syntax.h"
 
@@ -88,7 +86,7 @@ char syntax_spec_code[0200] =
 
 /* Indexed by syntax code, give the letter that describes it. */
 
-char syntax_code_spec[13] =
+unsigned char syntax_code_spec[13] =
   {
     ' ', '.', 'w', '_', '(', ')', '\'', '\"', '$', '\\', '/', '<', '>'
   };
@@ -103,18 +101,18 @@ char syntax_code_spec[13] =
 DEFINE_PRIMITIVE ("STRING->SYNTAX-ENTRY", Prim_string_to_syntax_entry, 1, 1, 0)
 {
   long length, c, result;
-  char *scan;
+  unsigned char * scan;
   PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, STRING_P);
-  length = (string_length (ARG_REF (1)));
-  scan = (string_pointer ((ARG_REF (1)), 0));
+  length = (STRING_LENGTH (ARG_REF (1)));
+  scan = (STRING_LOC ((ARG_REF (1)), 0));
 
   if ((length--) > 0)
     {
-      c = (char_to_long (*scan++));
+      c = (*scan++);
       if (c >= 0200) error_bad_range_arg (1);
-      result = (char_to_long (syntax_spec_code[c]));
+      result = (syntax_spec_code [c]);
       if (result == ILLEGAL) error_bad_range_arg (1);
     }
   else
@@ -122,7 +120,7 @@ DEFINE_PRIMITIVE ("STRING->SYNTAX-ENTRY", Prim_string_to_syntax_entry, 1, 1, 0)
 
   if ((length--) > 0)
     {
-      c = (char_to_long (*scan++));
+      c = (*scan++);
       if (c != ' ') result |= (c << 8);
     }
 
@@ -138,16 +136,15 @@ DEFINE_PRIMITIVE ("STRING->SYNTAX-ENTRY", Prim_string_to_syntax_entry, 1, 1, 0)
       default: error_bad_range_arg (1);
       }
 
-  PRIMITIVE_RETURN (Make_Unsigned_Fixnum (result));
+  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (result));
 }
 
 DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
 {
-  Primitive_2_Args ();
-
+  PRIMITIVE_HEADER (2);
   CHECK_ARG (1, SYNTAX_TABLE_P);
   PRIMITIVE_RETURN
-    (c_char_to_scheme_char
+    (ASCII_TO_CHAR
      (syntax_code_spec
       [((int)
 	(SYNTAX_ENTRY_CODE
@@ -157,19 +154,18 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
 /* Parser Initialization */
 
 #define NORMAL_INITIALIZATION_COMMON(arity)				\
-  fast Pointer syntax_table;						\
-  fast Pointer group;							\
-  fast char *start;							\
-  char *first_char, *end;						\
+  fast SCHEME_OBJECT syntax_table;					\
+  fast SCHEME_OBJECT group;						\
+  fast unsigned char * start;						\
+  unsigned char * first_char, * end;					\
   long sentry;								\
   long gap_length;							\
   PRIMITIVE_HEADER (arity);						\
-									\
   CHECK_ARG (1, SYNTAX_TABLE_P);					\
   syntax_table = (ARG_REF (1));						\
   CHECK_ARG (2, GROUP_P);						\
   group = (ARG_REF (2));						\
-  first_char = (string_pointer ((GROUP_TEXT (group)), 0));		\
+  first_char = (STRING_LOC ((GROUP_TEXT (group)), 0));			\
   start = (first_char + (arg_nonnegative_integer (3)));			\
   end = (first_char + (arg_nonnegative_integer (4)));			\
   gap_start = (first_char + (GROUP_GAP_START (group)));			\
@@ -177,8 +173,8 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
   gap_end = (first_char + (GROUP_GAP_END (group)))
 
 #define NORMAL_INITIALIZATION_FORWARD(arity)				\
-  char *gap_start;							\
-  fast char *gap_end;							\
+  unsigned char * gap_start;						\
+  fast unsigned char * gap_end;						\
   NORMAL_INITIALIZATION_COMMON (arity);					\
   if (start >= gap_start)						\
     start += gap_length;						\
@@ -186,8 +182,8 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
     end += gap_length
 
 #define NORMAL_INITIALIZATION_BACKWARD(arity)				\
-  fast char *gap_start;							\
-  char *gap_end;							\
+  fast unsigned char * gap_start;					\
+  unsigned char * gap_end;						\
   Boolean quoted;							\
   NORMAL_INITIALIZATION_COMMON (arity);					\
   if (start > gap_start)						\
@@ -198,13 +194,12 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
 #define SCAN_LIST_INITIALIZATION(initialization)			\
   long depth, min_depth;						\
   Boolean sexp_flag, ignore_comments, math_exit;			\
-  char c;								\
+  int c;								\
   initialization (7);							\
-  CHECK_ARG (5, FIXNUM_P);						\
-  FIXNUM_VALUE ((ARG_REF (5)), depth);					\
+  depth = (arg_integer (5));						\
   min_depth = ((depth >= 0) ? 0 : depth);				\
-  sexp_flag = ((ARG_REF (6)) != NIL);					\
-  ignore_comments = ((ARG_REF (7)) != NIL);				\
+  sexp_flag = (BOOLEAN_ARG (6));					\
+  ignore_comments = (BOOLEAN_ARG (7));					\
   math_exit = false
 
 /* Parse Scanning */
@@ -244,7 +239,7 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
 #define LOSE_IF(expression) do						\
 {									\
   if (expression)							\
-    PRIMITIVE_RETURN (NIL);						\
+    PRIMITIVE_RETURN (SHARP_F);						\
 } while (0)
 
 #define LOSE_IF_RIGHT_END(scan) LOSE_IF (RIGHT_END_P (scan))
@@ -256,7 +251,7 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
 #define WIN_IF(expression) do						\
 {									\
   if (expression)							\
-    PRIMITIVE_RETURN (Make_Unsigned_Fixnum (SCAN_TO_INDEX (start)));	\
+    PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (SCAN_TO_INDEX (start)));	\
 } while (0)
 
 #define WIN_IF_RIGHT_END(scan) WIN_IF (RIGHT_END_P (scan))
@@ -280,17 +275,13 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
 
 #define RIGHT_QUOTED_P(scan_init, quoted) do				\
 {									\
-  char *scan;								\
-									\
-  scan = (scan_init);							\
+  unsigned char * scan = (scan_init);					\
   RIGHT_QUOTED_P_INTERNAL (scan, quoted);				\
 } while (0)
 
 #define LEFT_QUOTED_P(scan_init, quoted) do				\
 {									\
-  char *scan;								\
-									\
-  scan = (scan_init);							\
+  unsigned char * scan = (scan_init);					\
   MOVE_LEFT (scan);							\
   RIGHT_QUOTED_P_INTERNAL (scan, quoted);				\
 } while (0)
@@ -302,7 +293,7 @@ DEFINE_PRIMITIVE ("QUOTED-CHAR?", Prim_quoted_char_p, 4, 4, 0)
   NORMAL_INITIALIZATION_BACKWARD (4);
 
   RIGHT_QUOTED_P (start, quoted);
-  PRIMITIVE_RETURN (quoted ? SHARP_T : NIL);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (quoted));
 }
 
 /* This is used in conjunction with `scan-list-backward' to find the
@@ -631,7 +622,7 @@ DEFINE_PRIMITIVE ("SCAN-LIST-BACKWARD", Prim_scan_list_backward, 7, 7, 0)
 /* Partial S-Expression Parser */
 
 #define LEVEL_ARRAY_LENGTH 100
-struct levelstruct { char *last, *previous; };
+struct levelstruct { unsigned char * last, * previous; };
 
 #define DONE_IF(expression) do						\
 {									\
@@ -651,7 +642,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 {
   long target_depth;
   Boolean stop_before;
-  Pointer state_argument;
+  SCHEME_OBJECT state_argument;
   long depth;
   long in_string;		/* -1 or delimiter character */
   long in_comment;		/* 0, 1, or 2 */
@@ -659,13 +650,12 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
   struct levelstruct level_start[LEVEL_ARRAY_LENGTH];
   struct levelstruct *level;
   struct levelstruct *level_end;
-  char c;
-  Pointer result;
+  int c;
+  SCHEME_OBJECT result;
   NORMAL_INITIALIZATION_FORWARD (7);
 
-  CHECK_ARG (5, FIXNUM_P);
-  FIXNUM_VALUE ((ARG_REF (5)), target_depth);
-  stop_before = ((ARG_REF (6)) != NIL);
+  target_depth = (arg_integer (5));
+  stop_before = (BOOLEAN_ARG (6));
   state_argument = (ARG_REF (7));
 
   level = level_start;
@@ -674,45 +664,44 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 
   /* Initialize the state variables from the state argument. */
 
-  if (state_argument == NIL)
+  if (state_argument == SHARP_F)
     {
       depth = 0;
       in_string = -1;
       in_comment = 0;
       quoted = false;
     }
-  else if (((OBJECT_TYPE (state_argument)) == TC_VECTOR) &&
-	   (Vector_Length (state_argument)) == 7)
+  else if ((VECTOR_P (state_argument)) &&
+	   (VECTOR_LENGTH (state_argument)) == 7)
     {
-      Pointer temp;
+      SCHEME_OBJECT temp;
 
-      temp = (User_Vector_Ref (state_argument, 0));
+      temp = (VECTOR_REF (state_argument, 0));
       if (FIXNUM_P (temp))
-	{
-	  Sign_Extend (temp, depth);
-	}
+	depth = (FIXNUM_TO_LONG (temp));
       else
 	error_bad_range_arg (7);
 
-      temp = (User_Vector_Ref (state_argument, 1));
-      if (temp == NIL)
+      temp = (VECTOR_REF (state_argument, 1));
+      if (temp == SHARP_F)
 	in_string = -1;
-      else if ((FIXNUM_P (temp)) && ((OBJECT_DATUM (temp)) < MAX_ASCII))
-	in_string = (OBJECT_DATUM (temp));
+      else if ((UNSIGNED_FIXNUM_P (temp)) &&
+	       ((UNSIGNED_FIXNUM_TO_LONG (temp)) < MAX_ASCII))
+	in_string = (UNSIGNED_FIXNUM_TO_LONG (temp));
       else
 	error_bad_range_arg (7);
 
-      temp = (User_Vector_Ref (state_argument, 2));
-      if (temp == NIL)
+      temp = (VECTOR_REF (state_argument, 2));
+      if (temp == SHARP_F)
 	in_comment = 0;
-      else if (temp == (Make_Unsigned_Fixnum (1)))
+      else if (temp == (LONG_TO_UNSIGNED_FIXNUM (1)))
 	in_comment = 1;
-      else if (temp == (Make_Unsigned_Fixnum (2)))
+      else if (temp == (LONG_TO_UNSIGNED_FIXNUM (2)))
 	in_comment = 2;
       else
 	error_bad_range_arg (7);
 
-      quoted = ((User_Vector_Ref (state_argument, 3)) != NIL);
+      quoted = ((VECTOR_REF (state_argument, 3)) != SHARP_F);
 
       if ((in_comment != 0) && ((in_string != -1) || (quoted != false)))
 	error_bad_range_arg (7);
@@ -818,7 +807,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 	      }
 	  end_atom:
 	    (level -> previous) = (level -> last);
-	    break;      
+	    break;
 
 	  case syntaxcode_comment:
 	    in_comment = 1;
@@ -854,7 +843,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 
 	  case syntaxcode_string:
 	    SEXP_START ();
-	    in_string = (char_to_long (c));
+	    in_string = (c);
 	  start_in_string:
 	    while (true)
 	      {
@@ -889,25 +878,30 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 
  done:
   result = (allocate_marked_vector (TC_VECTOR, 7, true));
-  (User_Vector_Set(result, 0, (Make_Signed_Fixnum (depth))));
-  (User_Vector_Set(result, 1, ((in_string == -1)
-			       ? NIL
-			       : (Make_Unsigned_Fixnum (in_string)))));
-  (User_Vector_Set(result, 2, ((in_comment == 0)
-			       ? NIL
-			       : (Make_Unsigned_Fixnum (in_comment)))));
-  (User_Vector_Set(result, 3, ((quoted == false) ? NIL : SHARP_T)));
-  (User_Vector_Set(result, 4, (((level -> previous) == NULL)
-			       ? NIL
-			       : (Make_Unsigned_Fixnum 
-				  ((SCAN_TO_INDEX (level -> previous))
-				   - 1)))));
-  (User_Vector_Set(result, 5, (((level == level_start)
-				|| (((level - 1) -> last) == NULL))
-			       ? NIL
-			       : (Make_Unsigned_Fixnum 
-				  ((SCAN_TO_INDEX ((level - 1) -> last))
-				   - 1)))));
-  (User_Vector_Set(result, 6, (Make_Unsigned_Fixnum (SCAN_TO_INDEX (start)))));
+  FAST_VECTOR_SET (result, 0, (LONG_TO_FIXNUM (depth)));
+  FAST_VECTOR_SET
+    (result, 1,
+     ((in_string == -1)
+      ? SHARP_F
+      : (LONG_TO_UNSIGNED_FIXNUM (in_string))));
+  FAST_VECTOR_SET
+    (result, 2,
+     ((in_comment == 0)
+      ? SHARP_F
+      : (LONG_TO_UNSIGNED_FIXNUM (in_comment))));
+  FAST_VECTOR_SET (result, 3, (BOOLEAN_TO_OBJECT (quoted)));
+  FAST_VECTOR_SET
+    (result, 4,
+     (((level -> previous) == NULL)
+      ? SHARP_F
+      : (LONG_TO_UNSIGNED_FIXNUM ((SCAN_TO_INDEX (level -> previous)) - 1))));
+  FAST_VECTOR_SET
+    (result, 5,
+     (((level == level_start) || (((level - 1) -> last) == NULL))
+      ? SHARP_F
+      : (LONG_TO_UNSIGNED_FIXNUM
+	 ((SCAN_TO_INDEX ((level - 1) -> last)) - 1))));
+  FAST_VECTOR_SET
+    (result, 6, (LONG_TO_UNSIGNED_FIXNUM (SCAN_TO_INDEX (start))));
   PRIMITIVE_RETURN (result);
 }

@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.33 1989/09/20 23:07:50 cph Exp $
+
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,11 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.32 1989/08/28 18:28:48 cph Exp $
- *
- * External declarations.
- *
- */
+/* External Declarations */
 
 #ifdef ENABLE_DEBUGGING_TOOLS
 
@@ -48,7 +46,9 @@ extern sp_record_list SP_List;
 extern void Pop_Return_Break_Point();
 extern int debug_slotno, debug_nslots, local_slotno, local_nslots,
 	   debug_circle[], local_circle[];
-#else
+
+#else /* not ENABLE_DEBUGGING_TOOLS */
+
 #define Eval_Debug		false
 #define Hex_Input_Debug		false
 #define File_Load_Debug		false
@@ -65,42 +65,44 @@ extern int debug_slotno, debug_nslots, local_slotno, local_nslots,
 #define Per_File		false
 #define Bignum_Debug		false
 #define Fluids_Debug		false
-#endif
-
+
+#endif /* ENABLE_DEBUGGING_TOOLS */
+
 /* The register block */
 
-extern Pointer Registers[];
+extern SCHEME_OBJECT Registers [];
 
-extern Pointer
- *Ext_History,		/* History register */
- *Free,			/* Next free word in heap */
- *MemTop,		/* Top of heap space available */
- *Ext_Stack_Pointer,	/* Next available slot in control stack */
- *Stack_Top,		/* Top of control stack */
- *Stack_Guard,		/* Guard area at end of stack */
- *Free_Stacklets,	/* Free list of stacklets */
- *Constant_Space,	/* Bottom of constant+pure space */
- *Free_Constant,	/* Next free cell in constant+pure area */
- *Constant_Top,		/* Top of constant+pure space */
- *Heap_Top,		/* Top of current heap space */
- *Heap_Bottom,		/* Bottom of current heap space */
- *Unused_Heap_Top,	/* Top of unused heap for GC */
- *Unused_Heap,		/* Bottom of unused heap for GC */
- *Local_Heap_Base,	/* Per-processor CONSing area */
- *Heap,			/* Bottom of all heap space */
-  Current_State_Point,	/* Dynamic state point */
-  Fluid_Bindings,	/* Fluid bindings AList */
- *last_return_code,	/* Address of the most recent return code in the stack.
-			   This is only meaningful while in compiled code.
-			   *** This must be changed when stacklets are used. ***
-			 */
-  return_to_interpreter;/* Return code/address used by the compiled code
-			   interface to make compiled code return to the
-			   interpreter.
-			 */
+extern SCHEME_OBJECT
+ * Ext_History,		/* History register */
+ * Free,		/* Next free word in heap */
+ * MemTop,		/* Top of heap space available */
+ * Ext_Stack_Pointer,	/* Next available slot in control stack */
+ * Stack_Top,		/* Top of control stack */
+ * Stack_Guard,		/* Guard area at end of stack */
+ * Free_Stacklets,	/* Free list of stacklets */
+ * Constant_Space,	/* Bottom of constant+pure space */
+ * Free_Constant,	/* Next free cell in constant+pure area */
+ * Constant_Top,	/* Top of constant+pure space */
+ * Heap_Top,		/* Top of current heap space */
+ * Heap_Bottom,		/* Bottom of current heap space */
+ * Unused_Heap_Top,	/* Top of unused heap for GC */
+ * Unused_Heap,		/* Bottom of unused heap for GC */
+ * Local_Heap_Base,	/* Per-processor CONSing area */
+ * Heap,		/* Bottom of all heap space */
+   Current_State_Point,	/* Dynamic state point */
+   Fluid_Bindings,	/* Fluid bindings AList */
 
-extern Declare_Fixed_Objects();
-		
+  /* Address of the most recent return code in the stack.  This is
+     only meaningful while in compiled code.  *** This must be changed
+     when stacklets are used. *** */
+ * last_return_code,
+
+  /* Return code/address used by the compiled code interface to make
+     compiled code return to the interpreter.  */
+   return_to_interpreter;
+
+extern Declare_Fixed_Objects ();
+
 extern long
   IntCode,		/* Interrupts requesting */
   IntEnb,		/* Interrupts enabled */
@@ -110,91 +112,143 @@ extern long
   /* Used to signal microcode errors from compiled code. */
   compiled_code_error_code;
 
-extern char *Return_Names[];
+extern char * Return_Names [];
 extern long MAX_RETURN;
 
-extern char *CONT_PRINT_RETURN_MESSAGE,
-            *CONT_PRINT_EXPR_MESSAGE,
-            *RESTORE_CONT_RETURN_MESSAGE,
-            *RESTORE_CONT_EXPR_MESSAGE;
+extern char
+  * CONT_PRINT_RETURN_MESSAGE,
+  * CONT_PRINT_EXPR_MESSAGE,
+  * RESTORE_CONT_RETURN_MESSAGE,
+  * RESTORE_CONT_EXPR_MESSAGE;
 
-extern int GC_Type_Map[];
+extern int GC_Type_Map [];
 
-extern Boolean Photo_Open; /* Photo file open */
-extern jmp_buf *Back_To_Eval;
+extern FILE * (Channels [FILE_CHANNELS]);
+extern Boolean Photo_Open;
+extern FILE * Photo_File_Handle;
+
+extern jmp_buf * Back_To_Eval;
 extern Boolean Trapping;
-extern Pointer Old_Return_Code, *Return_Hook_Address;
+extern SCHEME_OBJECT Old_Return_Code;
+extern SCHEME_OBJECT * Return_Hook_Address;
 
-extern Pointer *Prev_Restore_History_Stacklet;
+extern SCHEME_OBJECT * Prev_Restore_History_Stacklet;
 extern long Prev_Restore_History_Offset;
-
-/* And file "channels" */
-
-extern FILE *(Channels[FILE_CHANNELS]);
-extern FILE *Photo_File_Handle;	/* Used by Photo */
 
 extern int Saved_argc;
-extern char **Saved_argv;
-extern char *OS_Name, *OS_Variant;
-extern long Heap_Size, Constant_Size, Stack_Size;
-extern Pointer *Highest_Allocated_Address;
+extern char ** Saved_argv;
+
+extern char * OS_Name;
+extern char * OS_Variant;
+
+extern long Heap_Size;
+extern long Constant_Size;
+extern long Stack_Size;
+extern SCHEME_OBJECT * Highest_Allocated_Address;
 
 /* Environment lookup utilities. */
+extern long Lex_Ref ();
+extern long Local_Set ();
+extern long Lex_Set ();
+extern long Symbol_Lex_Ref ();
+extern long Symbol_Lex_Set ();
 
-extern long Lex_Ref(), Local_Set(), Lex_Set(),
-            Symbol_Lex_Ref(), Symbol_Lex_Set();
+/* Arithmetic utilities */
+extern long fixnum_to_long ();
+extern SCHEME_OBJECT double_to_fixnum ();
+extern SCHEME_OBJECT double_to_flonum ();
+extern Boolean integer_to_long_p ();
+extern long integer_to_long ();
+extern SCHEME_OBJECT long_to_integer ();
+extern Boolean integer_to_double_p ();
+extern double integer_to_double ();
+extern SCHEME_OBJECT double_to_integer ();
+extern double double_truncate ();
+extern Boolean real_number_to_double_p ();
+extern double real_number_to_double ();
+extern SCHEME_OBJECT bignum_to_fixnum ();
+extern SCHEME_OBJECT bignum_to_integer ();
+extern SCHEME_OBJECT bignum_to_flonum ();
+extern SCHEME_OBJECT flonum_floor ();
+extern SCHEME_OBJECT flonum_ceiling ();
+extern SCHEME_OBJECT flonum_round ();
+extern Boolean integer_zero_p ();
+extern Boolean integer_negative_p ();
+extern Boolean integer_positive_p ();
+extern Boolean integer_equal_p ();
+extern Boolean integer_less_p ();
+extern SCHEME_OBJECT integer_negate ();
+extern SCHEME_OBJECT integer_add ();
+extern SCHEME_OBJECT integer_add_1 ();
+extern SCHEME_OBJECT integer_subtract ();
+extern SCHEME_OBJECT integer_subtract_1 ();
+extern SCHEME_OBJECT integer_multiply ();
+extern Boolean integer_divide ();
+extern SCHEME_OBJECT integer_quotient ();
+extern SCHEME_OBJECT integer_remainder ();
 
-/* String utilities */
+/* Character utilities */
+extern long char_downcase ();
+extern long char_upcase ();
 
-extern Pointer C_String_To_Scheme_String();
-
-#define Scheme_String_To_C_String(Scheme_String) 		\
-   ((char *) Nth_Vector_Loc(Scheme_String, STRING_CHARS))
-
-/* Numeric utilities */
-
-extern int Scheme_Integer_To_C_Integer();
-extern Pointer C_Integer_To_Scheme_Integer(), Allocate_Float(), 
-               Float_To_Big(), Big_To_Float(), Big_To_Fix(),
-	       Fix_To_Big();
+/* Allocation utilities */
+extern SCHEME_OBJECT cons ();
+extern SCHEME_OBJECT system_pair_cons ();
+extern SCHEME_OBJECT hunk3_cons ();
+extern SCHEME_OBJECT allocate_non_marked_vector ();
+extern SCHEME_OBJECT allocate_marked_vector ();
+extern SCHEME_OBJECT make_vector ();
+extern SCHEME_OBJECT allocate_string ();
+extern SCHEME_OBJECT memory_to_string ();
+extern SCHEME_OBJECT char_pointer_to_string ();
 
 /* Random and OS utilities */
-
-extern int Parse_Option();
-extern Boolean Restore_History();
-extern long NColumns(), NLines(), OS_process_clock ();
-extern void OS_Flush_Output_Buffer(), OS_Re_Init();
-extern Pointer cons ();
-extern Pointer allocate_non_marked_vector ();
-extern Pointer allocate_marked_vector ();
-extern Pointer make_vector ();
+extern int Parse_Option ();
+extern Boolean Restore_History ();
+extern long OS_tty_x_size ();
+extern long OS_tty_y_size ();
+extern long OS_process_clock ();
+extern void OS_tty_flush_output ();
+extern void OS_reinitialize ();
+extern Boolean interpreter_applicable_p ();
 
 /* Memory management utilities */
-
-extern Pointer Purify_Pass_2(), Fasload();
-extern Boolean Pure_Test();
-
+extern SCHEME_OBJECT Purify_Pass_2 ();
+extern SCHEME_OBJECT Fasload ();
+extern Boolean Pure_Test ();
+
 /* Interpreter utilities */
 
-extern term_type Microcode_Termination();
-extern void Interpret(), Do_Micro_Error(), Setup_Interrupt(), 
-	    Back_Out_Of_Primitive(), Translate_To_Point(),
-	    Stop_History(), Stack_Death();
+extern term_type Microcode_Termination ();
+extern void
+  Interpret (),
+  Do_Micro_Error (),
+  Setup_Interrupt (),
+  Back_Out_Of_Primitive (),
+  Translate_To_Point (),
+  Stop_History (),
+  Stack_Death ();
 
 #ifdef USE_STACKLETS
-extern void Allocate_New_Stacklet();
+extern void Allocate_New_Stacklet ();
 #endif
 
-extern Pointer *Make_Dummy_History(), Find_State_Space();
+extern SCHEME_OBJECT * Make_Dummy_History ();
+extern SCHEME_OBJECT Find_State_Space ();
 
 /* Debugging utilities */
 
-extern void Back_Trace(), Handle_Debug_Flags(),
-            Show_Env(), Show_Pure(), 
-	    Print_Return(), Print_Expression(), Print_Primitive();
-
+extern void
+  Back_Trace (),
+  Handle_Debug_Flags (),
+  Show_Env (),
+  Show_Pure (),
+  Print_Return (),
+  Print_Expression (),
+  Print_Primitive ();
+
 /* Conditional utilities */
 
 #if false
-extern void Clear_Perfinfo_Data();
+extern void Clear_Perfinfo_Data ();
 #endif

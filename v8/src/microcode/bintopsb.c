@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.40 1989/09/20 23:04:28 cph Exp $
+
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,17 +32,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.39 1989/07/25 08:46:06 cph Rel $
- *
- * This File contains the code to translate internal format binary
- * files to portable format.
- *
- */
+/* This File contains the code to translate internal format binary
+   files to portable format. */
 
 /* IO definitions */
 
 #include "psbmap.h"
 #include "trap.h"
+#include "limits.h"
 #define internal_file input_file
 #define portable_file output_file
 
@@ -51,7 +50,7 @@ Load_Data(Count, To_Where)
 {
   extern int fread();
 
-  return (fread(To_Where, sizeof(Pointer), Count, internal_file));
+  return (fread(To_Where, sizeof(SCHEME_OBJECT), Count, internal_file));
 }
 
 #define INHIBIT_FASL_VERSION_CHECK
@@ -104,7 +103,7 @@ ispunct(c)
 #define TC_PRIMITIVE_EXTERNAL	0x10
 
 #define STRING_LENGTH_TO_LONG(value)					\
-((long) (upgrade_lengths_p ? Get_Integer(value) : (value)))
+  ((long) (upgrade_lengths_p ? (OBJECT_DATUM (value)) : (value)))
 
 static Boolean
   allow_compiled_p = false,
@@ -121,7 +120,7 @@ static long
   Free, Scan, Free_Constant, Scan_Constant,
   Objects, Constant_Objects;
 
-static Pointer
+static SCHEME_OBJECT
   *Mem_Base,
   *Free_Objects, *Free_Cobjects,
   *compiled_entry_table, *compiled_entry_pointer,
@@ -164,7 +163,7 @@ print_a_char(c, name)
     }
     else
     {
-      unsigned int x = (((int) c) & ((1 << CHAR_SIZE) - 1));
+      unsigned int x = (((int) c) & ((1 << CHAR_BIT) - 1));
       fprintf(stderr,
 	      "%s: %s: File may not be portable: c = 0x%x\n",
 	      program_name, name, x);
@@ -175,15 +174,15 @@ print_a_char(c, name)
   return;
 }
 
+#undef MAKE_BROKEN_HEART
+#define MAKE_BROKEN_HEART(offset) (BROKEN_HEART_ZERO + (offset))
+
 #define Do_Compound(Code, Rel, Fre, Scn, Obj, FObj, kernel_code)	\
 {									\
   Old_Address += (Rel);							\
-  Old_Contents = *Old_Address;						\
-									\
-  if (OBJECT_TYPE(Old_Contents) == TC_BROKEN_HEART)			\
-  {									\
-    Mem_Base[(Scn)] = Make_New_Pointer((Code), Old_Contents);		\
-  }									\
+  Old_Contents = (*Old_Address);					\
+  if (BROKEN_HEART_P (Old_Contents))					\
+    (Mem_Base [(Scn)]) = (OBJECT_NEW_TYPE ((Code), Old_Contents));	\
   else									\
   {									\
     kernel_code;							\
@@ -192,69 +191,71 @@ print_a_char(c, name)
 
 #define standard_kernel(kernel_code, type, Code, Scn, Obj, FObj)	\
 {									\
-  fast long length;							\
-									\
-  Mem_Base[(Scn)] = Make_Non_Pointer((Code), (Obj));			\
-  length = Get_Integer(Old_Contents);					\
-  kernel_code;								\
-  *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Obj));		\
-  (Obj) += 1;								\
-  *(FObj)++ = Make_Non_Pointer((type), 0);				\
-  *(FObj)++ = Old_Contents;						\
-  while(--length >= 0)							\
+  (Mem_Base [(Scn)]) = (MAKE_OBJECT ((Code), (Obj)));			\
   {									\
-    *(FObj)++ = *Old_Address++;						\
+    fast long length = (OBJECT_DATUM (Old_Contents));			\
+    kernel_code;							\
+    (*Old_Address++) = (MAKE_BROKEN_HEART (Obj));			\
+    (Obj) += 1;								\
+    (*(FObj)++) = (MAKE_OBJECT ((type), 0));				\
+    (*(FObj)++) = Old_Contents;						\
+    while ((length--) > 0)						\
+      (*(FObj)++) = (*Old_Address++);					\
   }									\
 }
 
 #define do_string_kernel()						\
 {									\
   NStrings += 1;							\
-  NChars += pointer_to_char(length - 1);				\
+  NChars += (pointer_to_char (length - 1));				\
 }
 
 #define do_bignum_kernel()						\
 {									\
   NIntegers += 1;							\
-  NBits += bignum_to_bits(LEN(BIGNUM(Old_Address)));			\
+  NBits +=								\
+    (((* ((bignum_digit_type *) (Old_Address + 1)))			\
+      & BIGNUM_DIGIT_MASK)						\
+     * BIGNUM_DIGIT_LENGTH);						\
 }
 
 #define do_bit_string_kernel()						\
 {									\
   NBitstrs += 1;							\
-  NBBits += Old_Address[BIT_STRING_LENGTH_OFFSET];			\
+  NBBits += (Old_Address [BIT_STRING_LENGTH_OFFSET]);			\
 }
 
 #define do_flonum_kernel(Code, Scn, Obj, FObj)				\
 {									\
-  Mem_Base[(Scn)] = Make_Non_Pointer((Code), (Obj));			\
+  (Mem_Base [(Scn)]) = (MAKE_OBJECT ((Code), (Obj)));			\
   NFlonums += 1;							\
-  *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Obj));		\
+  (*Old_Address++) = (MAKE_BROKEN_HEART (Obj));				\
   (Obj) += 1;								\
-  Align_Float(FObj);							\
-  *(FObj)++ = Make_Non_Pointer(TC_BIG_FLONUM, 0);			\
-  *((double *) (FObj)) = *((double *) Old_Address);			\
+  ALIGN_FLOAT (FObj);							\
+  (*(FObj)++) = (MAKE_OBJECT (TC_BIG_FLONUM, 0));			\
+  (* ((double *) (FObj))) = (* ((double *) Old_Address));		\
   (FObj) += float_to_pointer;						\
 }
 
 #define Do_String(Code, Rel, Fre, Scn, Obj, FObj)			\
-  Do_Compound(Code, Rel, Fre, Scn, Obj, FObj,				\
-	      standard_kernel(do_string_kernel(), TC_CHARACTER_STRING,	\
-			      Code, Scn, Obj, FObj))
+  Do_Compound (Code, Rel, Fre, Scn, Obj, FObj,				\
+	       standard_kernel (do_string_kernel (),			\
+				TC_CHARACTER_STRING,			\
+				Code, Scn, Obj, FObj))
 
 #define Do_Bignum(Code, Rel, Fre, Scn, Obj, FObj)			\
-  Do_Compound(Code, Rel, Fre, Scn, Obj, FObj,				\
-	      standard_kernel(do_bignum_kernel(), TC_BIG_FIXNUM,	\
-			      Code, Scn, Obj, FObj))
+  Do_Compound (Code, Rel, Fre, Scn, Obj, FObj,				\
+	       standard_kernel (do_bignum_kernel (), TC_BIG_FIXNUM,	\
+				Code, Scn, Obj, FObj))
 
 #define Do_Bit_String(Code, Rel, Fre, Scn, Obj, FObj)			\
-  Do_Compound(Code, Rel, Fre, Scn, Obj, FObj,				\
-	      standard_kernel(do_bit_string_kernel(), TC_BIT_STRING,	\
-			      Code, Scn, Obj, FObj))
+  Do_Compound (Code, Rel, Fre, Scn, Obj, FObj,				\
+	       standard_kernel (do_bit_string_kernel (), TC_BIT_STRING,	\
+				Code, Scn, Obj, FObj))
 
 #define Do_Flonum(Code, Rel, Fre, Scn, Obj, FObj)			\
-  Do_Compound(Code, Rel, Fre, Scn, Obj, FObj,				\
-	      do_flonum_kernel(Code, Scn, Obj, FObj))
+  Do_Compound (Code, Rel, Fre, Scn, Obj, FObj,				\
+	       do_flonum_kernel (Code, Scn, Obj, FObj))
 
 void
 print_a_fixnum(val)
@@ -329,12 +330,12 @@ print_a_string_internal(len, str)
 
 void
 print_a_string(from)
-     Pointer *from;
+     SCHEME_OBJECT *from;
 {
   long len;
   long maxlen;
 
-  maxlen = pointer_to_char((Get_Integer(*from++)) - 1);
+  maxlen = pointer_to_char((OBJECT_DATUM (*from++)) - 1);
   len = STRING_LENGTH_TO_LONG(*from++);
 
   fprintf(portable_file,
@@ -356,112 +357,158 @@ print_a_primitive(arity, length, name)
   return;
 }
 
-void
-print_a_bignum(from)
-     Pointer *from;
+static long
+bignum_length (bignum)
+     SCHEME_OBJECT bignum;
 {
-  fast bigdigit *the_number, *the_top;
-  fast long size_in_bits;
-  fast unsigned long temp;	/* Potential signed problems */
-
-  the_number = BIGNUM(from);
-  temp = LEN(the_number);
-  if (temp == 0) 
+  if (BIGNUM_ZERO_P (bignum))
+    return (0);
   {
-    fprintf(portable_file, "%02x + 0\n",
-	    (compact_p ? TC_FIXNUM : TC_BIG_FIXNUM));
-  }
-  else
-  {
-    fast long tail;
-
-    for (size_in_bits = ((temp - 1) * SHIFT),
-	 temp = ((long) (*Bignum_Top(the_number)));
-	 temp != 0;
-	 size_in_bits += 1)
-    {
-      temp = temp >> 1;
-    }
-
-    fprintf(portable_file, "%02x %c %ld ",
-	    (compact_p ? TC_FIXNUM : TC_BIG_FIXNUM),
-	    (NEG_BIGNUM(the_number) ? '-' : '+'),
-	    size_in_bits);
-    tail = size_in_bits % SHIFT;
-    if (tail == 0)
-    {
-      tail = SHIFT;
-    }
-    temp = 0;
-    size_in_bits = 0;
-    the_top = Bignum_Top(the_number);
-    for(the_number = Bignum_Bottom(the_number);
-	the_number <= the_top;
-	the_number += 1)
-    {
-      temp |= (((unsigned long) (*the_number)) << size_in_bits);
-      for (size_in_bits += ((the_number != the_top) ? SHIFT : tail);
-	   size_in_bits > 3;
-	   size_in_bits -= 4)
+    bignum_length_type index = ((BIGNUM_LENGTH (bignum)) - 1);
+    fast bignum_digit_type digit = (BIGNUM_REF (bignum, index));
+    fast long result;
+    if (index >= (LONG_MAX / BIGNUM_DIGIT_LENGTH))
+      goto loser;
+    result = (index * BIGNUM_DIGIT_LENGTH);
+    while (digit > 0)
       {
-	fprintf(portable_file, "%01lx", (temp & 0xf));
-	temp = temp >> 4;
+	result += 1;
+	if (result >= LONG_MAX)
+	  goto loser;
+	digit >>= 1;
       }
-    }
-    if (size_in_bits > 0)
-    {
-      fprintf(portable_file, "%01lx\n", (temp & 0xf));
-    }
-    else
-    {
-      fprintf(portable_file, "\n");
-    }
+    return (result);
   }
-  return;
+ loser:
+  fprintf (stderr, "%s: Bignum exceeds representable length.\n",
+	   program_name);
+  quit (1);
+  /* NOTREACHED */
+}
+
+void
+print_a_bignum (bignum)
+     SCHEME_OBJECT bignum;
+{
+  if (BIGNUM_ZERO_P (bignum))
+    {
+      fprintf (portable_file, "%02x + 0\n",
+	       (compact_p ? TC_FIXNUM : TC_BIG_FIXNUM));
+      return;
+    }
+  {
+    bignum_digit_type * scan = (BIGNUM_START_PTR (bignum));
+    fast long length_in_bits = (bignum_length (bignum));
+    fast int bits_in_digit = 0;
+    fast bignum_digit_type accumulator;
+    fprintf (portable_file, "%02x %c %ld ",
+	     (compact_p ? TC_FIXNUM : TC_BIG_FIXNUM),
+	     ((BIGNUM_NEGATIVE_P (bignum)) ? '-' : '+'),
+	     length_in_bits);
+    accumulator = (*scan++);
+    bits_in_digit =
+      ((length_in_bits < BIGNUM_DIGIT_LENGTH)
+       ? length_in_bits
+       : BIGNUM_DIGIT_LENGTH);
+    while (length_in_bits > 0)
+      {
+	if (bits_in_digit > 4)
+	  {
+	    fprintf (portable_file, "%01lx", (accumulator & 0xf));
+	    length_in_bits -= 4;
+	    accumulator >>= 4;
+	    bits_in_digit -= 4;
+	  }
+	else if (bits_in_digit == 4)
+	  {
+	    fprintf (portable_file, "%01lx", accumulator);
+	    length_in_bits -= 4;
+	    if (length_in_bits >= BIGNUM_DIGIT_LENGTH)
+	      {
+		accumulator = (*scan++);
+		bits_in_digit = BIGNUM_DIGIT_LENGTH;
+	      }
+	    else if (length_in_bits > 0)
+	      {
+		accumulator = (*scan++);
+		bits_in_digit = length_in_bits;
+	      }
+	    else
+	      break;
+	  }
+	else if (bits_in_digit < length_in_bits)
+	  {
+	    int carry = accumulator;
+	    int diff_bits = (4 - bits_in_digit);
+	    accumulator = (*scan++);
+	    fprintf (portable_file, "%01lx",
+		     (carry |
+		      ((accumulator && ((1 << diff_bits) - 1)) <<
+		       bits_in_digit)));
+	    length_in_bits -= 4;
+	    bits_in_digit = (BIGNUM_DIGIT_LENGTH - diff_bits);
+	    if (length_in_bits >= bits_in_digit)
+	      accumulator >>= diff_bits;
+	    else if (length_in_bits > 0)
+	      {
+		accumulator >>= diff_bits;
+		bits_in_digit = length_in_bits;
+	      }
+	    else
+	      break;
+	  }
+	else
+	  {
+	    fprintf (portable_file, "%01lx", accumulator);
+	    break;
+	  }
+      }
+  }
+  fprintf (portable_file, "\n");
 }
 
 /* The following procedure assumes that a C long is at least 4 bits. */
 
 void
 print_a_bit_string(from)
-     Pointer *from;
+     SCHEME_OBJECT *from;
 {
-  Pointer the_bit_string;
+  SCHEME_OBJECT the_bit_string;
   fast long bits_remaining, leftover_bits;
-  fast Pointer accumulator, next_word, *scan;
+  fast SCHEME_OBJECT accumulator, next_word, *scan;
 
-  the_bit_string = Make_Pointer(TC_BIT_STRING, from);
-  bits_remaining = bit_string_length(the_bit_string);
+  the_bit_string = (MAKE_POINTER_OBJECT (TC_BIT_STRING, from));
+  bits_remaining = (BIT_STRING_LENGTH (the_bit_string));
   fprintf(portable_file, "%02x %ld", TC_BIT_STRING, bits_remaining);
 
   if (bits_remaining != 0)
   {
     fprintf(portable_file, " ");
-    scan = bit_string_low_ptr(the_bit_string);
+    scan = BIT_STRING_LOW_PTR(the_bit_string);
     for (leftover_bits = 0;
 	 bits_remaining > 0;
-	 bits_remaining -= POINTER_LENGTH)
+	 bits_remaining -= OBJECT_LENGTH)
     {
-      next_word = *(inc_bit_string_ptr(scan));
+      next_word = *(INC_BIT_STRING_PTR(scan));
 
-      if (bits_remaining < POINTER_LENGTH)
-	next_word &= low_mask(bits_remaining);
+      if (bits_remaining < OBJECT_LENGTH)
+	next_word &= LOW_MASK(bits_remaining);
 
       if (leftover_bits != 0)
       {
-	accumulator &= low_mask(leftover_bits);
+	accumulator &= LOW_MASK(leftover_bits);
 	accumulator |=
-	  ((next_word & low_mask(4 - leftover_bits)) << leftover_bits);
+	  ((next_word & LOW_MASK(4 - leftover_bits)) << leftover_bits);
 	next_word = (next_word >> (4 - leftover_bits));
-	leftover_bits += ((bits_remaining > POINTER_LENGTH) ?
-			  (POINTER_LENGTH - 4) :
+	leftover_bits += ((bits_remaining > OBJECT_LENGTH) ?
+			  (OBJECT_LENGTH - 4) :
 			  (bits_remaining - 4));
 	fprintf(portable_file, "%01lx", (accumulator & 0xf));
       }
       else
       {
-	leftover_bits = ((bits_remaining > POINTER_LENGTH) ?
-			 POINTER_LENGTH :
+	leftover_bits = ((bits_remaining > OBJECT_LENGTH) ?
+			 OBJECT_LENGTH :
 			 bits_remaining);
       }
 
@@ -538,157 +585,127 @@ print_a_flonum(val)
 #define Do_Cell(Code, Rel, Fre, Scn, Obj, FObj)				\
 {									\
   Old_Address += (Rel);							\
-  Old_Contents = *Old_Address;						\
-									\
-  if (OBJECT_TYPE(Old_Contents)  == TC_BROKEN_HEART)			\
-  {									\
-    Mem_Base[(Scn)] = Make_New_Pointer(OBJECT_TYPE(This),		\
-				       Old_Contents);			\
-  }									\
+  Old_Contents = (*Old_Address);					\
+  if (BROKEN_HEART_P (Old_Contents))					\
+    (Mem_Base [(Scn)]) =						\
+      (MAKE_OBJECT_FROM_OBJECTS (This, Old_Contents));			\
   else									\
-  {									\
-    *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Fre));		\
-    Mem_Base[(Scn)] = Make_Non_Pointer(OBJECT_TYPE(This), (Fre));	\
-    Mem_Base[(Fre)++] = Old_Contents;					\
-  }									\
+    {									\
+      (*Old_Address++) = (MAKE_BROKEN_HEART (Fre));			\
+      (Mem_Base [(Scn)]) = (OBJECT_NEW_DATUM (This, (Fre)));		\
+      (Mem_Base [(Fre)++]) = Old_Contents;				\
+    }									\
 }
 
 #define Do_Pair(Code, Rel, Fre, Scn, Obj, FObj)				\
 {									\
   Old_Address += (Rel);							\
-  Old_Contents = *Old_Address;						\
-									\
-  if (OBJECT_TYPE(Old_Contents)  == TC_BROKEN_HEART)			\
-  {									\
-    Mem_Base[(Scn)] = Make_New_Pointer(OBJECT_TYPE(This),		\
-				       Old_Contents);			\
-  }									\
+  Old_Contents = (*Old_Address);					\
+  if (BROKEN_HEART_P (Old_Contents))					\
+    (Mem_Base [(Scn)]) =						\
+      (MAKE_OBJECT_FROM_OBJECTS (This, Old_Contents));			\
   else									\
-  {									\
-    *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Fre));		\
-    Mem_Base[(Scn)] = Make_Non_Pointer(OBJECT_TYPE(This), (Fre));	\
-    Mem_Base[(Fre)++] = Old_Contents;					\
-    Mem_Base[(Fre)++] = *Old_Address++;					\
-  }									\
+    {									\
+      (*Old_Address++) = (MAKE_BROKEN_HEART (Fre));			\
+      (Mem_Base [(Scn)]) = (OBJECT_NEW_DATUM (This, (Fre)));		\
+      (Mem_Base [(Fre)++]) = Old_Contents;				\
+      (Mem_Base [(Fre)++]) = (*Old_Address++);				\
+    }									\
 }
-
+
 #define Do_Triple(Code, Rel, Fre, Scn, Obj, FObj)			\
 {									\
   Old_Address += (Rel);							\
-  Old_Contents = *Old_Address;						\
-									\
-  if (OBJECT_TYPE(Old_Contents)  == TC_BROKEN_HEART)			\
-  {									\
-    Mem_Base[(Scn)] = Make_New_Pointer(OBJECT_TYPE(This),		\
-				       Old_Contents);			\
-  }									\
+  Old_Contents = (*Old_Address);					\
+  if (BROKEN_HEART_P (Old_Contents))					\
+    (Mem_Base [(Scn)]) =						\
+      (MAKE_OBJECT_FROM_OBJECTS (This, Old_Contents));			\
   else									\
-  {									\
-    *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Fre));		\
-    Mem_Base[(Scn)] = Make_Non_Pointer(OBJECT_TYPE(This), (Fre));	\
-    Mem_Base[(Fre)++] = Old_Contents;					\
-    Mem_Base[(Fre)++] = *Old_Address++;					\
-    Mem_Base[(Fre)++] = *Old_Address++;					\
-  }									\
+    {									\
+      (*Old_Address++) = (MAKE_BROKEN_HEART (Fre));			\
+      (Mem_Base [(Scn)]) = (OBJECT_NEW_DATUM (This, (Fre)));		\
+      (Mem_Base [(Fre)++]) = Old_Contents;				\
+      (Mem_Base [(Fre)++]) = (*Old_Address++);				\
+      (Mem_Base [(Fre)++]) = (*Old_Address++);				\
+    }									\
 }
 
 #define Do_Quad(Code, Rel, Fre, Scn, Obj, FObj)				\
 {									\
   Old_Address += (Rel);							\
-  Old_Contents = *Old_Address;						\
-									\
-  if (OBJECT_TYPE(Old_Contents)  == TC_BROKEN_HEART)			\
-  {									\
-    Mem_Base[(Scn)] = Make_New_Pointer(OBJECT_TYPE(This),		\
-				       Old_Contents);			\
-  }									\
+  Old_Contents = (*Old_Address);					\
+  if (BROKEN_HEART_P (Old_Contents))					\
+    (Mem_Base [(Scn)]) =						\
+      (MAKE_OBJECT_FROM_OBJECTS (This, Old_Contents));			\
   else									\
-  {									\
-    *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Fre));		\
-    Mem_Base[(Scn)] = Make_Non_Pointer(OBJECT_TYPE(This), (Fre));	\
-    Mem_Base[(Fre)++] = Old_Contents;					\
-    Mem_Base[(Fre)++] = *Old_Address++;					\
-    Mem_Base[(Fre)++] = *Old_Address++;					\
-    Mem_Base[(Fre)++] = *Old_Address++;					\
-  }									\
+    {									\
+      (*Old_Address++) = (MAKE_BROKEN_HEART (Fre));			\
+      (Mem_Base [(Scn)]) = (OBJECT_NEW_DATUM (This, (Fre)));		\
+      (Mem_Base [(Fre)++]) = Old_Contents;				\
+      (Mem_Base [(Fre)++]) = (*Old_Address++);				\
+      (Mem_Base [(Fre)++]) = (*Old_Address++);				\
+      (Mem_Base [(Fre)++]) = (*Old_Address++);				\
+    }									\
 }
 
 #define Copy_Vector(Scn, Fre)						\
 {									\
-  fast long len;							\
-									\
-  len = OBJECT_DATUM(Old_Contents);					\
-  *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Fre));		\
-  Mem_Base[(Fre)++] = Old_Contents;					\
-  while (--len >= 0)							\
-  {									\
-    Mem_Base[(Fre)++] = *Old_Address++;					\
-  }									\
+  fast long len = (OBJECT_DATUM (Old_Contents));			\
+  (*Old_Address++) = (MAKE_BROKEN_HEART (Fre));				\
+  (Mem_Base [(Fre)++]) = Old_Contents;					\
+  while ((len--) > 0)							\
+    (Mem_Base [(Fre)++]) = (*Old_Address++);				\
 }
 
 #define Do_Vector(Code, Rel, Fre, Scn, Obj, FObj)			\
 {									\
   Old_Address += (Rel);							\
-  Old_Contents = *Old_Address;						\
-									\
-  if (OBJECT_TYPE(Old_Contents)  == TC_BROKEN_HEART)			\
-  {									\
-    Mem_Base[(Scn)] = Make_New_Pointer(OBJECT_TYPE(This),		\
-				       Old_Contents);			\
-  }									\
+  Old_Contents = (*Old_Address);					\
+  if (BROKEN_HEART_P (Old_Contents))					\
+    (Mem_Base [(Scn)]) =						\
+      (MAKE_OBJECT_FROM_OBJECTS (This, Old_Contents));			\
   else									\
-  {									\
-    Mem_Base[(Scn)] = Make_Non_Pointer(OBJECT_TYPE(This), (Fre));	\
-    Copy_Vector(Scn, Fre);						\
-  }									\
+    {									\
+      (Mem_Base [(Scn)]) = (OBJECT_NEW_DATUM (This, (Fre)));		\
+      Copy_Vector (Scn, Fre);						\
+    }									\
 }
-
+
 /* This is a hack to get the cross compiler to work from vaxen to other
-   machines and viceversa.
- */
+   machines and viceversa. */
 
 #define Do_Inverted_Block(Code, Rel, Fre, Scn, Obj, FObj)		\
 {									\
   Old_Address += (Rel);							\
-  Old_Contents = *Old_Address;						\
-									\
-  if (OBJECT_TYPE(Old_Contents)  == TC_BROKEN_HEART)			\
-  {									\
-    Mem_Base[(Scn)] = Make_New_Pointer(OBJECT_TYPE(This),		\
-				       Old_Contents);			\
-  }									\
+  Old_Contents = (*Old_Address);					\
+  if (BROKEN_HEART_P (Old_Contents))					\
+    (Mem_Base [(Scn)]) =						\
+      (MAKE_OBJECT_FROM_OBJECTS (This, Old_Contents));			\
   else									\
-  {									\
-    fast long len1, len2;						\
-    Pointer *Saved;							\
-									\
-    Mem_Base[(Scn)] = Make_Non_Pointer(OBJECT_TYPE(This), (Fre));	\
-									\
-    len1 = OBJECT_DATUM(Old_Contents);					\
-    *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Fre));		\
-    Mem_Base[(Fre)++] = Old_Contents;					\
-    if ((OBJECT_TYPE(*Old_Address)) != TC_MANIFEST_NM_VECTOR)		\
     {									\
-      fprintf(stderr, "%s: Bad compiled code block found.\n",		\
-	      program_name);						\
-      quit(1);								\
+      fast long len1, len2;						\
+      SCHEME_OBJECT * Saved;						\
+      (Mem_Base [(Scn)]) = (OBJECT_NEW_DATUM (This, (Fre)));		\
+      len1 = (OBJECT_DATUM (Old_Contents));				\
+      (*Old_Address++) = (MAKE_BROKEN_HEART (Fre));			\
+      (Mem_Base [(Fre)++]) = Old_Contents;				\
+      if ((OBJECT_TYPE (*Old_Address)) != TC_MANIFEST_NM_VECTOR)	\
+	{								\
+	  fprintf (stderr, "%s: Bad compiled code block found.\n",	\
+		  program_name);					\
+	  quit (1);							\
+	}								\
+      len2 = (OBJECT_DATUM (*Old_Address));				\
+      (Mem_Base [(Fre)++]) = (*Old_Address++);				\
+      Old_Address += len2;						\
+      Saved = Old_Address;						\
+      len1 -= (len2 + 1);						\
+      while ((len2--) > 0)						\
+	(Mem_Base [(Fre)++]) = (*--Old_Address);			\
+      Old_Address = Saved;						\
+      while ((len1--) > 0)						\
+	(Mem_Base [(Fre)++]) = (*Old_Address++);			\
     }									\
-    len2 = OBJECT_DATUM(*Old_Address);					\
-    Mem_Base[(Fre)++] = *Old_Address++;					\
-    Old_Address += len2;						\
-    Saved = Old_Address;						\
-    len1 -= (len2 + 1);							\
-    while (--len2 >= 0)							\
-    {									\
-      Old_Address -= 1;							\
-      Mem_Base[(Fre)++] = *Old_Address;					\
-    }									\
-    Old_Address = Saved;						\
-    while (--len1 >= 0)							\
-    {									\
-      Mem_Base[(Fre)++] = *Old_Address++;				\
-    }									\
-  }									\
 }
 
 #ifdef CMPGCFILE
@@ -696,44 +713,38 @@ print_a_flonum(val)
 #define Do_Compiled_Entry(Code, Rel, Fre, Scn, Obj, FObj)		\
 {									\
   long offset;								\
-  Pointer *saved;							\
-									\
+  SCHEME_OBJECT * saved;						\
   Old_Address += (Rel);							\
   saved = Old_Address;							\
-  Get_Compiled_Block(Old_Address, saved);				\
-  Old_Contents = *Old_Address;						\
-									\
-  Mem_Base[(Scn)] =							\
-   Make_Non_Pointer(TC_COMPILED_ENTRY,					\
-		    (compiled_entry_pointer - compiled_entry_table));	\
-									\
+  Get_Compiled_Block (Old_Address, saved);				\
+  Old_Contents = (*Old_Address);					\
+  (Mem_Base [(Scn)]) =							\
+   (OBJECT_NEW_DATUM							\
+    (TC_COMPILED_ENTRY,							\
+     (compiled_entry_pointer - compiled_entry_table)));			\
   offset = (((char *) saved) - ((char *) Old_Address));			\
-  *compiled_entry_pointer++ = MAKE_SIGNED_FIXNUM(offset);		\
-									\
+  (*compiled_entry_pointer++) = (LONG_TO_FIXNUM (offset));		\
   /* Base pointer */							\
-									\
-  if (OBJECT_TYPE(Old_Contents) == TC_BROKEN_HEART)			\
-  {									\
-    *compiled_entry_pointer++ =						\
-      Make_New_Pointer(OBJECT_TYPE(This), Old_Contents);		\
-  }									\
+  if (BROKEN_HEART_P (Old_Contents))					\
+    (*compiled_entry_pointer++) =					\
+      (MAKE_OBJECT_FROM_OBJECTS (This, Old_Contents));			\
   else									\
-  {									\
-    *compiled_entry_pointer++ =						\
-      Make_New_Pointer(OBJECT_TYPE(This), (Fre));			\
-									\
-    Copy_Vector(Scn, Fre);						\
-  }									\
+    {									\
+      (*compiled_entry_pointer++) =					\
+	(MAKE_OBJECT_FROM_OBJECTS (This, (Fre)));			\
+      Copy_Vector (Scn, Fre);						\
+    }									\
 }
 
 #else /* no CMPGCFILE */
 
 #define Do_Compiled_Entry(Code, Rel, Fre, Scn, Obj, FObj)		\
 {									\
-  fprintf(stderr,							\
-	  "%s: Invoking Do_Compiled_Entry with no compiler support!\n",	\
-	  program_name);						\
-  quit(1);								\
+  fprintf								\
+    (stderr,								\
+     "%s: Invoking Do_Compiled_Entry with no compiler support!\n",	\
+     program_name);							\
+  quit (1);								\
 }
 
 #endif /* CMPGCFILE */
@@ -744,39 +755,35 @@ print_a_flonum(val)
 {									\
   long the_datum;							\
 									\
-  Old_Address = Get_Pointer(This);					\
-  the_datum = OBJECT_DATUM(This);					\
+  Old_Address = (OBJECT_ADDRESS (This));				\
+  the_datum = (OBJECT_DATUM (This));					\
   if ((the_datum >= Heap_Base) &&					\
       (the_datum < Dumped_Heap_Top))					\
-  {									\
-    Action(HEAP_CODE, Heap_Relocation, Free,				\
-	   Scn, Objects, Free_Objects);					\
-  }									\
-									\
-  /*									\
-									\
-    Currently constant space is not supported				\
-									\
+    {									\
+      Action								\
+	(HEAP_CODE, Heap_Relocation, Free,				\
+	 Scn, Objects, Free_Objects);					\
+    }									\
+  /* Currently constant space is not supported				\
   else if ((the_datum >= Const_Base) &&					\
 	   (the_datum < Dumped_Constant_Top))				\
-  {									\
-    Action(CONSTANT_CODE, Constant_Relocation, Free_Constant,		\
-	   Scn, Constant_Objects, Free_Cobjects);			\
-  }									\
-									\
-  */									\
-									\
+    {									\
+      Action								\
+	(CONSTANT_CODE, Constant_Relocation, Free_Constant,		\
+	 Scn, Constant_Objects, Free_Cobjects);				\
+    }									\
+    */									\
   else									\
-  {									\
-    out_of_range_pointer(This);						\
-  }									\
+    {									\
+      out_of_range_pointer (This);					\
+    }									\
   (Scn) += 1;								\
   break;								\
 }
 
 void
 out_of_range_pointer(ptr)
-     Pointer ptr;
+     SCHEME_OBJECT ptr;
 {
   fprintf(stderr,
 	  "%s: The input file is not portable: Out of range pointer.\n",
@@ -786,19 +793,19 @@ out_of_range_pointer(ptr)
   fprintf(stderr, "Const_Base = 0x%lx;\tConst_Top = 0x%lx\n",
 	  Const_Base, Dumped_Constant_Top);
   fprintf(stderr, "ptr = 0x%02x|0x%lx\n",
-	  OBJECT_TYPE(ptr), OBJECT_DATUM(ptr));
+	  OBJECT_TYPE (ptr), OBJECT_DATUM (ptr));
   quit(1);
 }
 
-Pointer *
+SCHEME_OBJECT *
 relocate(object)
-     Pointer object;
+     SCHEME_OBJECT object;
 {
   long the_datum;
-  Pointer *result;
+  SCHEME_OBJECT *result;
 
-  result = Get_Pointer(object);
-  the_datum = OBJECT_DATUM(object);
+  result = OBJECT_ADDRESS (object);
+  the_datum = OBJECT_DATUM (object);
 
   if ((the_datum >= Heap_Base) &&
       (the_datum < Dumped_Heap_Top))
@@ -829,7 +836,7 @@ relocate(object)
 
 #define PRIMITIVE_UPGRADE_SPACE 2048
 
-static Pointer
+static SCHEME_OBJECT
   *internal_renumber_table,
   *external_renumber_table,
   *external_prim_name_table;
@@ -837,15 +844,15 @@ static Pointer
 static Boolean
   found_ext_prims = false;
 
-Pointer
+SCHEME_OBJECT
 upgrade_primitive(prim)
-     Pointer prim;
+     SCHEME_OBJECT prim;
 {
   long the_datum, the_type, new_type, code;
-  Pointer new;
+  SCHEME_OBJECT new;
 
-  the_datum = OBJECT_DATUM(prim);
-  the_type = OBJECT_TYPE(prim);
+  the_datum = OBJECT_DATUM (prim);
+  the_type = OBJECT_TYPE (prim);
   if (the_type != TC_PRIMITIVE_EXTERNAL)
   {
     code = the_datum;
@@ -859,23 +866,23 @@ upgrade_primitive(prim)
   }
 
   new = internal_renumber_table[code];
-  if (new == NIL)
+  if (new == SHARP_F)
   {
     /*
       This does not need to check for overflow because the worst case
       was checked in setup_primitive_upgrade;
      */
 
-    new = Make_Non_Pointer(new_type, Primitive_Table_Length);
+    new = (MAKE_OBJECT (new_type, Primitive_Table_Length));
     internal_renumber_table[code] = new;
     external_renumber_table[Primitive_Table_Length] = prim;
     Primitive_Table_Length += 1;
     if (the_type == TC_PRIMITIVE_EXTERNAL)
     {
       NPChars +=
-	STRING_LENGTH_TO_LONG((((Pointer *)
+	STRING_LENGTH_TO_LONG((((SCHEME_OBJECT *)
 				(external_prim_name_table[the_datum]))
-			       [STRING_LENGTH]));
+			       [STRING_LENGTH_INDEX]));
     }
     else
     {
@@ -885,17 +892,17 @@ upgrade_primitive(prim)
   }
   else
   {
-    return (Make_New_Pointer(new_type, new));
+    return (OBJECT_NEW_TYPE (new_type, new));
   }
 }
 
-Pointer *
+SCHEME_OBJECT *
 setup_primitive_upgrade(Heap)
-     Pointer *Heap;
+     SCHEME_OBJECT *Heap;
 {
   fast long count, length;
-  Pointer *old_prims_vector;
-  
+  SCHEME_OBJECT *old_prims_vector;
+
   internal_renumber_table = &Heap[0];
   external_renumber_table =
     &internal_renumber_table[PRIMITIVE_UPGRADE_SPACE];
@@ -903,24 +910,24 @@ setup_primitive_upgrade(Heap)
     &external_renumber_table[PRIMITIVE_UPGRADE_SPACE];
 
   old_prims_vector = relocate(Ext_Prim_Vector);
-  if (*old_prims_vector == NIL)
+  if (*old_prims_vector == SHARP_F)
   {
     length = 0;
   }
   else
   {
     old_prims_vector = relocate(*old_prims_vector);
-    length = Get_Integer(*old_prims_vector);
+    length = OBJECT_DATUM (*old_prims_vector);
     old_prims_vector += VECTOR_DATA;
     for (count = 0; count < length; count += 1)
     {
-      Pointer *temp;
+      SCHEME_OBJECT *temp;
 
       /* symbol */
       temp = relocate(old_prims_vector[count]);
       /* string */
       temp = relocate(temp[SYMBOL_NAME]);
-      external_prim_name_table[count] = ((Pointer) temp);
+      external_prim_name_table[count] = ((SCHEME_OBJECT) temp);
     }
   }
   length += (MAX_BUILTIN_PRIMITIVE + 1);
@@ -934,7 +941,7 @@ setup_primitive_upgrade(Heap)
   }
   for (count = 0; count < length; count += 1)
   {
-    internal_renumber_table[count] = NIL;
+    internal_renumber_table[count] = SHARP_F;
   }
   NPChars = 0;
   return (&external_prim_name_table[PRIMITIVE_UPGRADE_SPACE]);
@@ -949,9 +956,9 @@ Process_Area(Code, Area, Bound, Obj, FObj)
      int Code;
      fast long *Area, *Bound;
      fast long *Obj;
-     fast Pointer **FObj;
+     fast SCHEME_OBJECT **FObj;
 {
-  fast Pointer This, *Old_Address, Old_Contents;
+  fast SCHEME_OBJECT This, *Old_Address, Old_Contents;
 
   while(*Area != *Bound)
   {
@@ -959,7 +966,7 @@ Process_Area(Code, Area, Bound, Obj, FObj)
 
 #ifdef PRIMITIVE_EXTERNAL_REUSED
     if (upgrade_primitives_p &&
-	(OBJECT_TYPE(This) == TC_PRIMITIVE_EXTERNAL))
+	(OBJECT_TYPE (This) == TC_PRIMITIVE_EXTERNAL))
     {
       Mem_Base[*Area] = upgrade_primitive(This);
       *Area += 1;
@@ -991,11 +998,11 @@ Process_Area(Code, Area, Bound, Obj, FObj)
 	{
 	  fast int i;
 
-	  i = Get_Integer(This);
+	  i = OBJECT_DATUM (This);
 	  *Area += 1;
 	  for ( ; --i >= 0; *Area += 1)
 	  {
-	    Mem_Base[*Area] = NIL;
+	    Mem_Base[*Area] = SHARP_F;
 	  }
 	  break;
 	}
@@ -1004,12 +1011,12 @@ Process_Area(Code, Area, Bound, Obj, FObj)
 	  fprintf(stderr, "%s: File is not portable: NMH found\n",
 		  program_name);
 	}
-	*Area += (1 + OBJECT_DATUM(This));
+	*Area += (1 + OBJECT_DATUM (This));
 	break;
 
       case TC_BROKEN_HEART:
 	/* [Broken Heart 0] is the cdr of fasdumped symbols. */
-	if (OBJECT_DATUM(This) != 0)
+	if (OBJECT_DATUM (This) != 0)
 	{
 	  fprintf(stderr, "%s: Broken Heart found in scan.\n",
 		  program_name);
@@ -1070,7 +1077,7 @@ Process_Area(Code, Area, Bound, Obj, FObj)
 
       case TC_CHARACTER:
       Process_Character:
-        Mem_Base[*Area] = Make_Non_Pointer(Code, *Obj);
+        Mem_Base[*Area] = (MAKE_OBJECT (Code, *Obj));
         *Obj += 1;
         **FObj = This;
         *FObj += 1;
@@ -1085,7 +1092,7 @@ Process_Area(Code, Area, Bound, Obj, FObj)
       {
 	long kind;
 
-	kind = OBJECT_DATUM(This);
+	kind = OBJECT_DATUM (This);
 
 	if (upgrade_traps_p)
 	{
@@ -1149,7 +1156,7 @@ Process_Area(Code, Area, Bound, Obj, FObj)
 
       case TC_FUTURE:
       case_simple_Vector:
-	if (OBJECT_TYPE(This) == TC_BIT_STRING)
+	if (BIT_STRING_P (This))
 	{
 	  Do_Pointer(*Area, Do_Bit_String);
 	}
@@ -1161,7 +1168,7 @@ Process_Area(Code, Area, Bound, Obj, FObj)
       default:
       Bad_Type:
 	fprintf(stderr, "%s: Unknown Type Code 0x%x found.\n",
-		program_name, OBJECT_TYPE(This));
+		program_name, OBJECT_TYPE (This));
 	quit(1);
       }
   }
@@ -1171,35 +1178,31 @@ Process_Area(Code, Area, Bound, Obj, FObj)
 
 void
 print_external_objects(from, count)
-     fast Pointer *from;
+     fast SCHEME_OBJECT *from;
      fast long count;
 {
   while (--count >= 0)
   {
-    switch(OBJECT_TYPE(*from))
+    switch(OBJECT_TYPE (*from))
     {
       case TC_FIXNUM:
-      {
-	long Value;
-
-	Sign_Extend(*from++, Value);
-	print_a_fixnum(Value);
+	print_a_fixnum (FIXNUM_TO_LONG (*from));
+	from += 1;
 	break;
-      }
 
       case TC_BIT_STRING:
 	print_a_bit_string(++from);
-	from += (1 + OBJECT_DATUM(*from));
+	from += (1 + OBJECT_DATUM (*from));
 	break;
 
       case TC_BIG_FIXNUM:
-	print_a_bignum(++from);
-	from += (1 + OBJECT_DATUM(*from));
+	print_a_bignum (*from++);
+	from += (1 + OBJECT_DATUM (*from));
 	break;
-      
+
       case TC_CHARACTER_STRING:
 	print_a_string(++from);
-	from += (1 + OBJECT_DATUM(*from));
+	from += (1 + OBJECT_DATUM (*from));
 	break;
 
       case TC_BIG_FLONUM:
@@ -1209,14 +1212,14 @@ print_external_objects(from, count)
 
       case TC_CHARACTER:
 	fprintf(portable_file, "%02x %03x\n",
-		TC_CHARACTER, (*from & MASK_EXTNDD_CHAR));
+		TC_CHARACTER, (*from & MASK_MIT_ASCII));
 	from += 1;
 	break;
 
 #ifdef FLOATING_ALIGNMENT
 
       case TC_MANIFEST_NM_VECTOR:
-        if ((OBJECT_DATUM(*from)) == 0)
+        if ((OBJECT_DATUM (*from)) == 0)
 	{
 	  from += 1;
 	  count += 1;
@@ -1238,15 +1241,15 @@ print_external_objects(from, count)
 
 void
 print_objects(from, to)
-     fast Pointer *from, *to;
+     fast SCHEME_OBJECT *from, *to;
 {
   fast long the_datum, the_type;
 
   while(from < to)
   {
 
-    the_type = OBJECT_TYPE(*from);
-    the_datum = OBJECT_DATUM(*from);
+    the_type = OBJECT_TYPE (*from);
+    the_datum = OBJECT_DATUM (*from);
     from += 1;
 
     if (the_type == TC_MANIFEST_NM_VECTOR)
@@ -1259,15 +1262,15 @@ print_objects(from, to)
     }
     else if (the_type == TC_COMPILED_ENTRY)
     {
-      Pointer base;
+      SCHEME_OBJECT base;
       long offset;
 
-      Sign_Extend(compiled_entry_table[the_datum], offset);
+      offset = (FIXNUM_TO_LONG (compiled_entry_table [the_datum]));
       base = compiled_entry_table[the_datum + 1];
 
       fprintf(portable_file, "%02x %lx %02x %lx\n",
 	      TC_COMPILED_ENTRY, offset,
-	      OBJECT_TYPE(base), OBJECT_DATUM(base));
+	      OBJECT_TYPE (base), OBJECT_DATUM (base));
     }
     else
     {
@@ -1327,7 +1330,7 @@ when(what, message)
 void
 do_it()
 {
-  Pointer *Heap;
+  SCHEME_OBJECT *Heap;
   long Initial_Free;
 
   /* Load the Data */
@@ -1452,23 +1455,23 @@ do_it()
 	     (2 * (Heap_Count + Const_Count)) :
 	     0));
 
-    Allocate_Heap_Space(Size + HEAP_BUFFER_SPACE);
+    ALLOCATE_HEAP_SPACE (Size + HEAP_BUFFER_SPACE);
 
-    if (Heap == NULL)
+    if (Heap == ((SCHEME_OBJECT *) 0))
     {
       fprintf(stderr,
-	      "%s: Memory Allocation Failed.  Size = %ld Scheme Pointers\n",
+	      "%s: Memory Allocation Failed.  Size = %ld Scheme Objects\n",
 	      program_name, Size);
       quit(1);
     }
   }
 
   Heap += HEAP_BUFFER_SPACE;
-  Initial_Align_Float(Heap);
+  INITIAL_ALIGN_FLOAT(Heap);
   Load_Data(Heap_Count, &Heap[0]);
   Load_Data(Const_Count, &Heap[Heap_Count]);
-  Heap_Relocation = ((&Heap[0]) - (Get_Pointer(Heap_Base)));
-  Constant_Relocation = ((&Heap[Heap_Count]) - (Get_Pointer(Const_Base)));
+  Heap_Relocation = ((&Heap[0]) - (OBJECT_ADDRESS (Heap_Base)));
+  Constant_Relocation = ((&Heap[Heap_Count]) - (OBJECT_ADDRESS (Const_Base)));
 
   /* Setup compiled code and primitive tables. */
 
@@ -1488,7 +1491,7 @@ do_it()
   }
   else
   {
-    fast Pointer *table;
+    fast SCHEME_OBJECT *table;
     fast long count, char_count;
 
     Load_Data(Primitive_Table_Size, primitive_table);
@@ -1497,8 +1500,8 @@ do_it()
 	 table = primitive_table;
 	 --count >= 0;)
     {
-      char_count += STRING_LENGTH_TO_LONG(table[1 + STRING_LENGTH]);
-      table += (2 + Get_Integer(table[1 + STRING_HEADER]));
+      char_count += STRING_LENGTH_TO_LONG(table[1 + STRING_LENGTH_INDEX]);
+      table += (2 + OBJECT_DATUM (table[1 + STRING_HEADER]));
     }
     NPChars = char_count;
     primitive_table_end = &primitive_table[Primitive_Table_Size];
@@ -1510,7 +1513,7 @@ do_it()
   NFlonums = NIntegers = NStrings = 0;
   NBits = NBBits = NChars = 0;
 
-  Mem_Base[0] = Make_New_Pointer(TC_CELL, Dumped_Object);
+  Mem_Base[0] = (OBJECT_NEW_TYPE (TC_CELL, Dumped_Object));
   Initial_Free = NROOTS;
   Scan = 0;
 
@@ -1599,7 +1602,7 @@ do_it()
   WRITE_HEADER("Constant Base", "%ld", Free_Constant);
   WRITE_HEADER("Constant Objects", "%ld", 0);
 
-  WRITE_HEADER("& Dumped Object", "%ld", (OBJECT_DATUM(Mem_Base[0])));
+  WRITE_HEADER("& Dumped Object", "%ld", (OBJECT_DATUM (Mem_Base[0])));
 
   WRITE_HEADER("Number of flonums", "%ld", NFlonums);
   WRITE_HEADER("Number of integers", "%ld", NIntegers);
@@ -1623,14 +1626,14 @@ do_it()
 	       dumped_interface_version);
 #if false
   WRITE_HEADER("Compiler utilities vector", "%ld",
-	       OBJECT_DATUM(dumped_utilities));
+	       OBJECT_DATUM (dumped_utilities));
 #endif
 
   /* External Objects */
-  
+
   print_external_objects(&Mem_Base[Initial_Free + Heap_Count],
 			 Objects);
-  
+
 #if false
 
   print_external_objects(&Mem_Base[Pure_Objects_Start],
@@ -1646,15 +1649,15 @@ do_it()
 
 #if false
   print_objects(&Mem_Base[Pure_Start], &Mem_Base[Free_Pure]);
-  print_objects(&Mem_Base[Constant_Start], &Mem_Base[Free_Constant]); 
+  print_objects(&Mem_Base[Constant_Start], &Mem_Base[Free_Constant]);
 #endif
 
   /* Primitives */
 
   if (upgrade_primitives_p)
   {
-    Pointer obj;
-    fast Pointer *table;
+    SCHEME_OBJECT obj;
+    fast SCHEME_OBJECT *table;
     fast long count, the_datum;
 
     for (count = Primitive_Table_Length,
@@ -1662,14 +1665,14 @@ do_it()
 	 --count >= 0;)
     {
       obj = *table++;
-      the_datum = OBJECT_DATUM(obj);
-      if (OBJECT_TYPE(obj) == TC_PRIMITIVE_EXTERNAL)
+      the_datum = OBJECT_DATUM (obj);
+      if (OBJECT_TYPE (obj) == TC_PRIMITIVE_EXTERNAL)
       {
-	Pointer *strobj;
+	SCHEME_OBJECT *strobj;
 
-	strobj = ((Pointer *) (external_prim_name_table[the_datum]));
+	strobj = ((SCHEME_OBJECT *) (external_prim_name_table[the_datum]));
 	print_a_primitive(((long) UNKNOWN_PRIMITIVE_ARITY),
-			  (STRING_LENGTH_TO_LONG(strobj[STRING_LENGTH])),
+			  (STRING_LENGTH_TO_LONG(strobj[STRING_LENGTH_INDEX])),
 			  ((char *) &strobj[STRING_CHARS]));
       }
       else
@@ -1685,19 +1688,19 @@ do_it()
   }
   else
   {
-    fast Pointer *table;
+    fast SCHEME_OBJECT *table;
     fast long count;
     long arity;
 
     for (count = Primitive_Table_Length, table = primitive_table;
 	 --count >= 0;)
     {
-      Sign_Extend(*table, arity);
+      arity = (FIXNUM_TO_LONG (*table));
       table += 1;
       print_a_primitive(arity,
-			(STRING_LENGTH_TO_LONG(table[STRING_LENGTH])),
+			(STRING_LENGTH_TO_LONG(table[STRING_LENGTH_INDEX])),
 			((char *) &table[STRING_CHARS]));
-      table += (1 + Get_Integer(table[STRING_HEADER]));
+      table += (1 + OBJECT_DATUM (table[STRING_HEADER]));
     }
   }
   return;

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.27 1989/02/19 17:51:38 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.28 1989/09/20 23:08:26 cph Exp $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,146 +39,161 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
-
-#define FIXNUM_PRIMITIVE_1(parameter_1)					\
-  fast long parameter_1;						\
-  Primitive_1_Arg ();							\
-  CHECK_ARG (1, FIXNUM_P);						\
-  Sign_Extend (Arg1, parameter_1)
 
-#define FIXNUM_PRIMITIVE_2(parameter_1, parameter_2)			\
-  fast long parameter_1, parameter_2;					\
-  Primitive_2_Args ();							\
-  CHECK_ARG (1, FIXNUM_P);						\
-  CHECK_ARG (2, FIXNUM_P);						\
-  Sign_Extend (Arg1, parameter_1);					\
-  Sign_Extend (Arg2, parameter_2)
-
-#define FIXNUM_RESULT(fixnum)						\
-  if (! (Fixnum_Fits (fixnum)))						\
-    error_bad_range_arg (1);						\
-  return (Make_Signed_Fixnum (fixnum));
-
-#define BOOLEAN_RESULT(x)						\
-  return ((x) ? SHARP_T : NIL)
+static long
+arg_fixnum (n)
+     int n;
+{
+  fast SCHEME_OBJECT argument = (ARG_REF (n));
+  if (! (FIXNUM_P (argument)))
+    error_wrong_type_arg (n);
+  return (FIXNUM_TO_LONG (argument));
+}
 
 /* Predicates */
 
 DEFINE_PRIMITIVE ("ZERO-FIXNUM?", Prim_zero_fixnum, 1, 1, 0)
 {
-  FIXNUM_PRIMITIVE_1 (x);
-  BOOLEAN_RESULT ((Get_Integer (Arg1)) == 0);
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((arg_fixnum (1)) == 0));
 }
 
 DEFINE_PRIMITIVE ("NEGATIVE-FIXNUM?", Prim_negative_fixnum, 1, 1, 0)
 {
-  FIXNUM_PRIMITIVE_1 (x);
-  BOOLEAN_RESULT (x < 0);
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((arg_fixnum (1)) < 0));
 }
 
 DEFINE_PRIMITIVE ("POSITIVE-FIXNUM?", Prim_positive_fixnum, 1, 1, 0)
 {
-  FIXNUM_PRIMITIVE_1 (x);
-  BOOLEAN_RESULT (x > 0);
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((arg_fixnum (1)) > 0));
 }
 
 DEFINE_PRIMITIVE ("EQUAL-FIXNUM?", Prim_equal_fixnum, 2, 2, 0)
 {
-  FIXNUM_PRIMITIVE_2 (x, y);
-  BOOLEAN_RESULT (x == y);
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((arg_fixnum (1)) == (arg_fixnum (2))));
 }
 
 DEFINE_PRIMITIVE ("LESS-THAN-FIXNUM?", Prim_less_fixnum, 2, 2, 0)
 {
-  FIXNUM_PRIMITIVE_2 (x, y);
-  BOOLEAN_RESULT (x < y);
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((arg_fixnum (1)) < (arg_fixnum (2))));
 }
 
 DEFINE_PRIMITIVE ("GREATER-THAN-FIXNUM?", Prim_greater_fixnum, 2, 2, 0)
 {
-  FIXNUM_PRIMITIVE_2 (x, y);
-  BOOLEAN_RESULT (x > y);
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((arg_fixnum (1)) > (arg_fixnum (2))));
 }
 
 /* Operators */
 
+#define FIXNUM_RESULT(fixnum)						\
+{									\
+  fast long result = (fixnum);						\
+  if (! (LONG_TO_FIXNUM_P (result)))					\
+    error_bad_range_arg (1);						\
+  PRIMITIVE_RETURN (LONG_TO_FIXNUM (result));				\
+}
+
 DEFINE_PRIMITIVE ("ONE-PLUS-FIXNUM", Prim_one_plus_fixnum, 1, 1, 0)
 {
-  fast long result;
-  FIXNUM_PRIMITIVE_1 (x);
-  result = (x + 1);
-  FIXNUM_RESULT (result);
+  PRIMITIVE_HEADER (1);
+  FIXNUM_RESULT ((arg_fixnum (1)) + 1);
 }
 
 DEFINE_PRIMITIVE ("MINUS-ONE-PLUS-FIXNUM", Prim_m_1_plus_fixnum, 1, 1, 0)
 {
-  fast long result;
-  FIXNUM_PRIMITIVE_1 (x);
-  result = (x - 1);
-  FIXNUM_RESULT (result);
+  PRIMITIVE_HEADER (1);
+  FIXNUM_RESULT ((arg_fixnum (1)) - 1);
 }
 
 DEFINE_PRIMITIVE ("PLUS-FIXNUM", Prim_plus_fixnum, 2, 2, 0)
 {
-  fast long result;
-  FIXNUM_PRIMITIVE_2 (x, y);
-  result = (x + y);
-  FIXNUM_RESULT (result);
+  PRIMITIVE_HEADER (2);
+  FIXNUM_RESULT ((arg_fixnum (1)) + (arg_fixnum (2)));
 }
 
 DEFINE_PRIMITIVE ("MINUS-FIXNUM", Prim_minus_fixnum, 2, 2, 0)
 {
-  fast long result;
-  FIXNUM_PRIMITIVE_2 (x, y);
-  result = (x - y);
-  FIXNUM_RESULT (result);
+  PRIMITIVE_HEADER (2);
+  FIXNUM_RESULT ((arg_fixnum (1)) - (arg_fixnum (2)));
 }
-
-/* Fixnum multiplication routine with overflow detection. */
 
+/* Fixnum multiplication routine with overflow detection. */
 #include "mul.c"
 
 DEFINE_PRIMITIVE ("MULTIPLY-FIXNUM", Prim_multiply_fixnum, 2, 2, 0)
 {
-  fast long result;
-  Primitive_2_Args ();
-
+  PRIMITIVE_HEADER (2);
   CHECK_ARG (1, FIXNUM_P);
   CHECK_ARG (2, FIXNUM_P);
-  result = (Mul (Arg1, Arg2));
-  if (result == NIL)
-    error_bad_range_arg (1);
-  return (result);
+  {
+    fast long result = (Mul ((ARG_REF (1)), (ARG_REF (2))));
+    if (result == SHARP_F)
+      error_bad_range_arg (1);
+    PRIMITIVE_RETURN (result);
+  }
 }
-
+
 DEFINE_PRIMITIVE ("DIVIDE-FIXNUM", Prim_divide_fixnum, 2, 2, 0)
 {
-  /* Returns the CONS of quotient and remainder */
+  fast long numerator;
+  fast long denominator;
   fast long quotient;
-  FIXNUM_PRIMITIVE_2 (numerator, denominator);
-
+  fast long remainder;
+  PRIMITIVE_HEADER (2);
+  numerator = (arg_fixnum (1));
+  denominator = (arg_fixnum (2));
   if (denominator == 0)
     error_bad_range_arg (2);
-  Primitive_GC_If_Needed (2);
-  quotient = (numerator / denominator);
-  if (! (Fixnum_Fits (quotient)))
+  /* Now, unbelievable hair because C doesn't fully specify / and %
+     when their arguments are negative.  We must get consistent
+     answers for all valid arguments. */
+  if (numerator < 0)
+    {
+      numerator = (- numerator);
+      if (denominator < 0)
+	{
+	  denominator = (- denominator);
+	  quotient = (numerator / denominator);
+	}
+      else
+	quotient = (- (numerator / denominator));
+      remainder = (- (numerator % denominator));
+    }
+  else
+    {
+      if (denominator < 0)
+	{
+	  denominator = (- denominator);
+	  quotient = (- (numerator / denominator));
+	}
+      else
+	quotient = (numerator / denominator);
+      remainder = (numerator % denominator);
+    }
+  if (! (LONG_TO_FIXNUM_P (quotient)))
     error_bad_range_arg (1);
-  Free[CONS_CAR] = (Make_Signed_Fixnum (quotient));
-  Free[CONS_CDR] = (Make_Signed_Fixnum (numerator % denominator));
-  Free += 2;
-  return (Make_Pointer (TC_LIST, (Free - 2)));
+  PRIMITIVE_RETURN
+    (cons ((LONG_TO_FIXNUM (quotient)), (LONG_TO_FIXNUM (remainder))));
 }
 
 DEFINE_PRIMITIVE ("GCD-FIXNUM", Prim_gcd_fixnum, 2, 2, 0)
 {
+  fast long x;
+  fast long y;
   fast long z;
-  FIXNUM_PRIMITIVE_2 (x, y);
-
+  PRIMITIVE_HEADER (2);
+  x = (arg_fixnum (1));
+  y = (arg_fixnum (2));
   while (y != 0)
     {
       z = x;
       x = y;
       y = (z % y);
     }
-  return (Make_Signed_Fixnum (x));
+  PRIMITIVE_RETURN (LONG_TO_FIXNUM (x));
 }

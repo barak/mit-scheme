@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.h,v 10.3 1989/09/20 23:06:45 cph Exp $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,11 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.h,v 10.2 1988/08/15 20:43:41 cph Rel $
- *
- * Macros for the interface between compiled code and interpreted code.
- *
- */
+/* Macros for the interface between compiled code and interpreted code. */
 
 /* Stack Gap Operations: */
 
@@ -45,8 +43,8 @@ MIT in each case. */
 
 #define With_Stack_Gap(Gap_Size, Gap_Position, Code)			\
 {									\
-  Pointer *Saved_Destination;						\
-  fast Pointer *Destination;						\
+  SCHEME_OBJECT *Saved_Destination;					\
+  fast SCHEME_OBJECT *Destination;					\
   fast long size_to_move;						\
 									\
   size_to_move = (Gap_Position);					\
@@ -60,14 +58,14 @@ MIT in each case. */
   Stack_Pointer = Saved_Destination;					\
 }
 
-/* Close_Stack_Gap closes a gap Gap_Size wide Gap_Position cells above the 
+/* Close_Stack_Gap closes a gap Gap_Size wide Gap_Position cells above the
  * top of the stack.  The contents of the gap are lost.
  */
 
 #define Close_Stack_Gap(Gap_Size, Gap_Position, extra_code)		\
 {									\
   fast long size_to_move;						\
-  fast Pointer *Source;							\
+  fast SCHEME_OBJECT *Source;						\
 									\
   size_to_move = (Gap_Position);					\
   Source = Simulate_Popping(size_to_move);				\
@@ -97,7 +95,7 @@ MIT in each case. */
 									\
   frame_size = (nslots);						\
   if (Stack_Ref(frame_size + CONTINUATION_RETURN_CODE) ==		\
-      (Make_Non_Pointer(TC_RETURN_CODE, RC_REENTER_COMPILED_CODE)))	\
+      (MAKE_OBJECT (TC_RETURN_CODE, RC_REENTER_COMPILED_CODE)))		\
   {									\
     /* Merge compiled code segments on the stack. */			\
     Close_Stack_Gap (CONTINUATION_SIZE,					\
@@ -106,8 +104,10 @@ MIT in each case. */
 		     long segment_size;					\
 									\
 		     segment_size =					\
-		       OBJECT_DATUM(Stack_Ref(CONTINUATION_EXPRESSION -	\
-					      CONTINUATION_SIZE));	\
+		       (OBJECT_DATUM					\
+			(Stack_Ref					\
+			 (CONTINUATION_EXPRESSION -			\
+			  CONTINUATION_SIZE)));				\
 		     last_return_code = Simulate_Popping(segment_size);	\
 		   });							\
     /* Undo the subproblem rotation. */					\
@@ -133,13 +133,13 @@ MIT in each case. */
 #define execute_compiled_setup()					\
 {									\
   if (Stack_Ref(CONTINUATION_RETURN_CODE) ==				\
-      (Make_Non_Pointer(TC_RETURN_CODE, RC_REENTER_COMPILED_CODE)))	\
+      (MAKE_OBJECT (TC_RETURN_CODE, RC_REENTER_COMPILED_CODE)))		\
   {									\
     /* Merge compiled code segments on the stack. */			\
     long segment_size;							\
 									\
     Restore_Cont();							\
-    segment_size = OBJECT_DATUM(Fetch_Expression());			\
+    segment_size = OBJECT_DATUM (Fetch_Expression());			\
     last_return_code = Simulate_Popping(segment_size);			\
     /* Undo the subproblem rotation. */					\
     Compiler_End_Subproblem();						\
@@ -156,12 +156,12 @@ MIT in each case. */
 /* Pop return interface:
    Returning to compiled code from the interpreter.
  */
-   
+
 #define compiled_code_restart()						\
 {									\
   long segment_size;							\
 									\
-  segment_size = Datum(Fetch_Expression());				\
+  segment_size = OBJECT_DATUM (Fetch_Expression());			\
   last_return_code = Simulate_Popping(segment_size);			\
   /* Undo the subproblem rotation. */					\
   Compiler_End_Subproblem();						\
@@ -193,16 +193,17 @@ MIT in each case. */
   }									\
   else									\
     { /* Make a new interpreter segment which includes this frame. */	\
-      With_Stack_Gap(CONTINUATION_SIZE,					\
-		     frame_size,					\
-		   {							\
-		     long segment_size;					\
+      With_Stack_Gap							\
+	(CONTINUATION_SIZE,						\
+	 frame_size,							\
+	 {								\
+	   long segment_size;						\
 									\
-		     segment_size = Stack_Distance(last_return_code);	\
-		     Store_Expression(Make_Unsigned_Fixnum(segment_size)); \
-		     Store_Return(RC_REENTER_COMPILED_CODE);		\
-		     Save_Cont();					\
-		   });							\
+	   segment_size = Stack_Distance(last_return_code);		\
+	   Store_Expression(LONG_TO_UNSIGNED_FIXNUM(segment_size));	\
+	   Store_Return(RC_REENTER_COMPILED_CODE);			\
+	   Save_Cont();							\
+	 });								\
       /* Rotate history to a new subproblem. */				\
       Compiler_New_Subproblem();					\
     }									\
@@ -222,7 +223,7 @@ MIT in each case. */
 #define apply_compiled_backout()					\
 {									\
   compiler_apply_procedure(STACK_ENV_EXTRA_SLOTS +			\
-			   Get_Integer( Stack_Ref( STACK_ENV_HEADER)));	\
+			   OBJECT_DATUM (Stack_Ref (STACK_ENV_HEADER)));\
 }
 
 /* Backing out of eval. */
@@ -240,7 +241,7 @@ MIT in each case. */
     long segment_size;							\
 									\
     segment_size = Stack_Distance(last_return_code);			\
-    Store_Expression(Make_Unsigned_Fixnum(segment_size));		\
+    Store_Expression(LONG_TO_UNSIGNED_FIXNUM(segment_size));		\
     Store_Return(RC_REENTER_COMPILED_CODE);				\
     Save_Cont();							\
     /* Rotate history to a new subproblem. */				\
@@ -249,7 +250,7 @@ MIT in each case. */
 }
 
 /* Backing out because of special errors or interrupts.
-   The microcode has already setup a return code with a NIL.
+   The microcode has already setup a return code with a #F.
    No tail recursion in this case.
    ***
        Is the history manipulation correct?
@@ -263,11 +264,11 @@ MIT in each case. */
 									\
   Restore_Cont();							\
   segment_size = Stack_Distance(last_return_code);			\
-  Store_Expression(Make_Unsigned_Fixnum(segment_size));			\
+  Store_Expression(LONG_TO_UNSIGNED_FIXNUM(segment_size));		\
   /* The Store_Return is a NOP, the Save_Cont is done by the code	\
      that follows.							\
    */									\
-  /* Store_Return(Datum(Fetch_Return())); */				\
+  /* Store_Return (OBJECT_DATUM (Fetch_Return ())); */			\
   /* Save_Cont(); */							\
   Compiler_New_Subproblem();						\
 }

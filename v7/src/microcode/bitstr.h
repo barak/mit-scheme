@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.h,v 1.5 1988/08/15 20:37:27 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.h,v 1.6 1989/09/20 23:06:15 cph Exp $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,31 +35,24 @@ MIT in each case. */
 /* Bit string macros.  "Little indian" version. */
 
 #define BIT_STRING_LENGTH_OFFSET	1
-#define BIT_STRING_FIRST_WORD		2			     
+#define BIT_STRING_FIRST_WORD		2
 
-#define bits_to_pointers(bits)						\
-(((bits) + (POINTER_LENGTH - 1)) / POINTER_LENGTH)
+#define BIT_STRING_LENGTH_TO_GC_LENGTH(bits)				\
+  (((bits) + (OBJECT_LENGTH - 1)) / OBJECT_LENGTH)
 
-#define low_mask(nbits) ((1 << (nbits)) - 1)
-#define any_mask(nbits, offset) ((low_mask (nbits)) << (offset))
+#define LOW_MASK(nbits) ((1 << (nbits)) - 1)
+#define ANY_MASK(nbits, offset) ((LOW_MASK (nbits)) << (offset))
 
-#define bit_string_length(bit_string)					\
-(Fast_Vector_Ref (bit_string, BIT_STRING_LENGTH_OFFSET))
+#define BIT_STRING_LENGTH(bit_string)					\
+  ((long) (FAST_MEMORY_REF ((bit_string), BIT_STRING_LENGTH_OFFSET)))
 
-#define bit_string_start_ptr(bit_string)				\
-(Nth_Vector_Loc (bit_string, BIT_STRING_FIRST_WORD))
+#define BIT_STRING_MSW(bit_string)					\
+  (BIT_STRING_WORD (BIT_STRING_HIGH_PTR (bit_string)))
 
-#define bit_string_end_ptr(bit_string)					\
-(Nth_Vector_Loc (bit_string, ((Vector_Length (bit_string)) + 1)))
-
-#define bit_string_msw(bit_string)					\
-(bit_string_word(bit_string_high_ptr(bit_string)))
-
-#define bit_string_lsw(bit_string)					\
-(bit_string_word(Nth_Vector_Loc(bit_string, index_to_word(bit_string, 0))))
-
-#define index_pair_to_bit_fixnum(string, word, bit)			\
-(Make_Unsigned_Fixnum (index_pair_to_bit_number (string, word, bit)))
+#define BIT_STRING_LSW(bit_string)					\
+  (BIT_STRING_WORD							\
+   (MEMORY_LOC								\
+    ((bit_string), (BIT_STRING_INDEX_TO_WORD ((bit_string), 0)))))
 
 /* Byte order dependencies. */
 
@@ -92,35 +85,34 @@ The "size in bits" is a C "long" integer.
 
 */
 
-#define bit_string_high_ptr		bit_string_end_ptr
+#define BIT_STRING_HIGH_PTR(bit_string)					\
+  (MEMORY_LOC ((bit_string), ((VECTOR_LENGTH (bit_string)) + 1)))
 
-#define bit_string_low_ptr		bit_string_start_ptr
+#define BIT_STRING_LOW_PTR(bit_string)					\
+  (MEMORY_LOC ((bit_string), BIT_STRING_FIRST_WORD))
 
-#define bit_string_word(ptr)		(*((ptr) - 1))
+#define BIT_STRING_WORD(ptr)		(*((ptr) - 1))
+#define DEC_BIT_STRING_PTR(ptr)		(--(ptr))
+#define INC_BIT_STRING_PTR(ptr)		((ptr)++)
+ 
+/* This is off by one so BIT_STRING_WORD will get the correct word. */
 
-#define dec_bit_string_ptr(ptr)		(--(ptr))
+#define BIT_STRING_INDEX_TO_WORD(bit_string, index)			\
+  ((BIT_STRING_FIRST_WORD + 1) + ((index) / OBJECT_LENGTH))
 
-#define inc_bit_string_ptr(ptr)		((ptr)++)
+#define BIT_STRING_INDEX_PAIR_TO_INDEX(string, word, bit)		\
+  (((word) * OBJECT_LENGTH) + (bit))
 
-/* This is off by one so bit_string_word will get the correct word. */
+#define READ_BITS_PTR(object, offset, end)				\
+  (MEMORY_LOC								\
+   ((object), (BIT_STRING_LENGTH_TO_GC_LENGTH (((offset) + (end)) - 1))))
 
-#define index_to_word(bit_string, index)				\
-((BIT_STRING_FIRST_WORD + 1) + (index / POINTER_LENGTH))
-
-#define index_pair_to_bit_number(string, word, bit)			\
-(((word) * POINTER_LENGTH) + (bit))
-
-#define read_bits_ptr(object, offset, end)				\
-(Nth_Vector_Loc(object, bits_to_pointers((offset + end) - 1)))
-
-#define compute_read_bits_offset(offset, end)				\
+#define COMPUTE_READ_BITS_OFFSET(offset, end)				\
 {									\
-  offset = ((offset + end) % POINTER_LENGTH);				\
+  offset = ((offset + end) % OBJECT_LENGTH);				\
   if (offset != 0)							\
-    offset = (POINTER_LENGTH - offset);					\
+    offset = (OBJECT_LENGTH - offset);					\
 }
-
-
 
 #else /* not VAX_BYTE_ORDER */
 
@@ -150,34 +142,30 @@ bits are kept.
 The "size in bits" is a C "long" integer.
 */
 
-#define bit_string_high_ptr		bit_string_start_ptr
+#define BIT_STRING_HIGH_PTR(bit_string)					\
+  (MEMORY_LOC ((bit_string), BIT_STRING_FIRST_WORD))
 
-#define bit_string_low_ptr		bit_string_end_ptr
+#define BIT_STRING_LOW_PTR(bit_string)					\
+  (MEMORY_LOC ((bit_string), ((VECTOR_LENGTH (bit_string)) + 1)))
 
-#define bit_string_word(ptr)		(*(ptr))
-
-#define dec_bit_string_ptr(ptr)		((ptr)++)
-
-#define inc_bit_string_ptr(ptr)		(--(ptr))
+#define BIT_STRING_WORD(ptr)		(*(ptr))
+#define DEC_BIT_STRING_PTR(ptr)		((ptr)++)
+#define INC_BIT_STRING_PTR(ptr)		(--(ptr))
 
 /* This is especially clever.  To understand it, note that the index
    of the last pointer of a vector is also the GC length of the
    vector, so that all we need do is subtract the zero-based word
    index from the GC length. */
+#define BIT_STRING_INDEX_TO_WORD(bit_string, index)			\
+  ((VECTOR_LENGTH (bit_string)) - ((index) / OBJECT_LENGTH))
 
-#define index_to_word(bit_string, index)				\
-((Vector_Length (bit_string)) - (index / POINTER_LENGTH))
+#define BIT_STRING_INDEX_PAIR_TO_INDEX(string, word, bit)		\
+  ((((VECTOR_LENGTH (string)) - (word)) * OBJECT_LENGTH) + (bit))
 
-#define index_pair_to_bit_number(string, word, bit)			\
-((((Vector_Length (string)) - (word)) * POINTER_LENGTH) + (bit))
+#define READ_BITS_PTR(object, offset, end)				\
+  (MEMORY_LOC ((object), ((offset) / OBJECT_LENGTH)))
 
-#define read_bits_ptr(object, offset, end)				\
-(Nth_Vector_Loc((object), ((offset) / POINTER_LENGTH)))
-
-#define compute_read_bits_offset(offset, end)				\
-{									\
-  offset = (offset % POINTER_LENGTH);					\
-}
-
+#define COMPUTE_READ_BITS_OFFSET(offset, end)				\
+  (offset) = ((offset) % OBJECT_LENGTH);
 
 #endif /* VAX_BYTE_ORDER */

@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/list.c,v 9.28 1989/09/20 23:09:49 cph Rel $
+
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,24 +32,28 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/list.c,v 9.27 1989/08/28 18:28:59 cph Exp $
- *
- * List creation and manipulation primitives.
- */
+/* List creation and manipulation primitives. */
 
 #include "scheme.h"
 #include "prims.h"
 
-Pointer
-cons (car, cdr)
-     Pointer car;
-     Pointer cdr;
+DEFINE_PRIMITIVE ("PAIR?", Prim_pair, 1, 1, 0)
 {
-  Pointer result = (Make_Pointer (TC_LIST, Free));
+  fast SCHEME_OBJECT object;
+  PRIMITIVE_HEADER (1);
+  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (PAIR_P (object)));
+}
+
+SCHEME_OBJECT
+cons (car, cdr)
+     SCHEME_OBJECT car;
+     SCHEME_OBJECT cdr;
+{
   Primitive_GC_If_Needed (2);
   (*Free++) = car;
   (*Free++) = cdr;
-  return (result);
+  return (MAKE_POINTER_OBJECT (TC_LIST, (Free - 2)));
 }
 
 DEFINE_PRIMITIVE ("CONS", Prim_cons, 2, 2, 0)
@@ -55,19 +61,45 @@ DEFINE_PRIMITIVE ("CONS", Prim_cons, 2, 2, 0)
   PRIMITIVE_HEADER (2);
   PRIMITIVE_RETURN (cons ((ARG_REF (1)), (ARG_REF (2))));
 }
-      
+
 DEFINE_PRIMITIVE ("CAR", Prim_car, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, PAIR_P);
-  PRIMITIVE_RETURN (Vector_Ref ((ARG_REF (1)), CONS_CAR));
+  PRIMITIVE_RETURN (PAIR_CAR (ARG_REF (1)));
 }
 
 DEFINE_PRIMITIVE ("CDR", Prim_cdr, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, PAIR_P);
-  PRIMITIVE_RETURN (Vector_Ref ((ARG_REF (1)), CONS_CDR));
+  PRIMITIVE_RETURN (PAIR_CDR (ARG_REF (1)));
+}
+
+DEFINE_PRIMITIVE ("SET-CAR!", Prim_set_car, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (1, PAIR_P);
+  {
+    fast SCHEME_OBJECT pair = (ARG_REF (1));
+    fast SCHEME_OBJECT car = (ARG_REF (2));
+    SIDE_EFFECT_IMPURIFY (pair, car);
+    SET_PAIR_CAR (pair, car);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("SET-CDR!", Prim_set_cdr, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (1, PAIR_P);
+  {
+    fast SCHEME_OBJECT pair = (ARG_REF (1));
+    fast SCHEME_OBJECT cdr = (ARG_REF (2));
+    SIDE_EFFECT_IMPURIFY (pair, cdr);
+    SET_PAIR_CDR (pair, cdr);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 /* (GENERAL-CAR-CDR LIST DIRECTIONS)
@@ -76,221 +108,158 @@ DEFINE_PRIMITIVE ("CDR", Prim_cdr, 1, 1, 0)
      1   = NOP	101 = CDAR
      10  = CDR	110 = CADR
      11  = CAR	111 = CAAR
-     100 = CDDR	...
-*/
+     100 = CDDR	... */
+
 DEFINE_PRIMITIVE ("GENERAL-CAR-CDR", Prim_general_car_cdr, 2, 2, 0)
 {
-  fast long CAR_CDR_Pattern;
-  Primitive_2_Args();
-
-  Arg_2_Type(TC_FIXNUM);
-  CAR_CDR_Pattern = Get_Integer(Arg2);
-  while (CAR_CDR_Pattern > 1)
+  PRIMITIVE_HEADER (2);
   {
-    Touch_In_Primitive(Arg1, Arg1);
-    if (Type_Code(Arg1) != TC_LIST)
-      Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-    Arg1 = 
-      Vector_Ref(Arg1,
-                 ((CAR_CDR_Pattern & 1) == 0) ? CONS_CDR : CONS_CAR);
-    CAR_CDR_Pattern >>= 1;
+    fast SCHEME_OBJECT object = (ARG_REF (1));
+    fast long CAR_CDR_Pattern = (arg_nonnegative_integer (2));
+    while (CAR_CDR_Pattern > 1)
+      {
+	TOUCH_IN_PRIMITIVE (object, object);
+	if (! (PAIR_P (object)))
+	  error_wrong_type_arg (1);
+	object =
+	  (((CAR_CDR_Pattern & 1) == 0)
+	   ? (PAIR_CDR (object))
+	   : (PAIR_CAR (object)));
+	CAR_CDR_Pattern >>= 1;
+      }
+    PRIMITIVE_RETURN (object);
   }
-  return Arg1;
-}
-
-/* (ASSQ ITEM A-LIST)
-   Searches the association list A-LIST for ITEM, using EQ? for
-   testing equality.  Returns NIL if ITEM is not found, or the tail
-   of the list whose CAAR is ITEM.
-*/
-DEFINE_PRIMITIVE ("ASSQ", Prim_assq, 2, 2, 0)
-{
-  Pointer This_Assoc_Pair, Key;
-  Primitive_2_Args();
-
-  Touch_In_Primitive(Arg1, Arg1);
-  Touch_In_Primitive(Arg2, Arg2);
-  while (Type_Code(Arg2) == TC_LIST)
-  {
-    Touch_In_Primitive(Vector_Ref(Arg2, CONS_CAR), This_Assoc_Pair);
-    if (Type_Code(This_Assoc_Pair) != TC_LIST)
-      Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-    Touch_In_Primitive(Vector_Ref(This_Assoc_Pair, CONS_CAR), Key);
-    if (Key == Arg1)
-      return This_Assoc_Pair;
-    Touch_In_Primitive(Vector_Ref(Arg2, CONS_CDR), Arg2);
-  }
-  if (Arg2 != NIL)
-    Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-  return NIL;
 }
 
-/* (LENGTH LIST)
-   Returns the number of items in the list.
-   LENGTH will loop forever if given a circular structure.
-*/
 DEFINE_PRIMITIVE ("LENGTH", Prim_length, 1, 1, 0)
 {
-  fast long i;
-  Primitive_1_Arg();
+  fast SCHEME_OBJECT list;
+  fast long i = 0;
+  PRIMITIVE_HEADER (1);
 
-  i = 0;
-  Touch_In_Primitive(Arg1, Arg1);
-  while (Type_Code(Arg1) == TC_LIST)
-  {
-    i += 1;
-    Touch_In_Primitive(Vector_Ref(Arg1, CONS_CDR), Arg1);
-  }
-  if (Arg1 != NIL)
-    Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  return Make_Unsigned_Fixnum(i);
+  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), list);
+  while (PAIR_P (list))
+    {
+      i += 1;
+      TOUCH_IN_PRIMITIVE ((PAIR_CDR (list)), list);
+    }
+  if (list != EMPTY_LIST)
+    error_wrong_type_arg (1);
+  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (i));
 }
 
-/* (MEMQ ITEM LIST)
-   Searches LIST for ITEM, using EQ? as a test.  Returns NIL if it
-   is not found, or the sublist of LIST whose CAR is ITEM.
-*/
 DEFINE_PRIMITIVE ("MEMQ", Prim_memq, 2, 2, 0)
 {
-  fast Pointer Key;
-  Primitive_2_Args();
-
-  Touch_In_Primitive(Arg1, Arg1);
-  Touch_In_Primitive(Arg2, Arg2);
-  while (Type_Code(Arg2) == TC_LIST)
-  {
-    Touch_In_Primitive(Vector_Ref(Arg2, CONS_CAR), Key);
-    if (Arg1 == Key)
-      return Arg2;
-    else
-      Touch_In_Primitive(Vector_Ref(Arg2, CONS_CDR), Arg2);
-  }
-  if (Arg2 != NIL)
-    Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-  return NIL;
-}   
-
-/* (SET-CAR! PAIR VALUE)
-   Stores VALUE in the CAR of PAIR.  Returns the previous CAR of PAIR.
-*/
-DEFINE_PRIMITIVE ("SET-CAR!", Prim_set_car, 2, 2, 0)
-{
-  Primitive_2_Args();
-
-  Arg_1_Type(TC_LIST);
-  Side_Effect_Impurify(Arg1, Arg2);
-  return Swap_Pointers(Nth_Vector_Loc(Arg1, CONS_CAR), Arg2);
+  fast SCHEME_OBJECT key;
+  fast SCHEME_OBJECT list;
+  fast SCHEME_OBJECT list_key;
+  PRIMITIVE_HEADER (2);
+  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), key);
+  TOUCH_IN_PRIMITIVE ((ARG_REF (2)), list);
+  while (PAIR_P (list))
+    {
+      TOUCH_IN_PRIMITIVE ((PAIR_CAR (list)), list_key);
+      if (list_key == key)
+	PRIMITIVE_RETURN (list);
+      TOUCH_IN_PRIMITIVE ((PAIR_CDR (list)), list);
+    }
+  if (list != EMPTY_LIST)
+    error_wrong_type_arg (2);
+  PRIMITIVE_RETURN (SHARP_F);
 }
 
-/* (SET-CDR! PAIR VALUE)
-   Stores VALUE in the CDR of PAIR.  Returns the previous CDR of PAIR.
-*/
-DEFINE_PRIMITIVE ("SET-CDR!", Prim_set_cdr, 2, 2, 0)
+DEFINE_PRIMITIVE ("ASSQ", Prim_assq, 2, 2, 0)
 {
-  Primitive_2_Args();
+  fast SCHEME_OBJECT key;
+  fast SCHEME_OBJECT alist;
+  fast SCHEME_OBJECT association;
+  fast SCHEME_OBJECT association_key;
+  PRIMITIVE_HEADER (2);
 
-  Arg_1_Type(TC_LIST);
-  Side_Effect_Impurify(Arg1, Arg2);
-  return Swap_Pointers(Nth_Vector_Loc(Arg1, CONS_CDR), Arg2);
+  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), key);
+  TOUCH_IN_PRIMITIVE ((ARG_REF (2)), alist);
+  while (PAIR_P (alist))
+    {
+      TOUCH_IN_PRIMITIVE ((PAIR_CAR (alist)), association);
+      if (! (PAIR_P (association)))
+	error_wrong_type_arg (2);
+      TOUCH_IN_PRIMITIVE ((PAIR_CAR (association)), association_key);
+      if (association_key == key)
+	PRIMITIVE_RETURN (association);
+      TOUCH_IN_PRIMITIVE ((PAIR_CDR (alist)), alist);
+    }
+  if (alist != EMPTY_LIST)
+    error_wrong_type_arg (2);
+  PRIMITIVE_RETURN (SHARP_F);
 }
 
-/* (PAIR? OBJECT)
-   Returns #!TRUE if OBJECT has the type-code LIST (ie if it was
-   created by CONS).  Returns NIL otherwise.
-*/
-DEFINE_PRIMITIVE ("PAIR?", Prim_pair, 1, 1, 0)
-{
-  Primitive_1_Arg();
-
-  Touch_In_Primitive(Arg1, Arg1);
-  if (Type_Code(Arg1) == TC_LIST)
-    return SHARP_T;
-  else
-    return NIL;
-}
-
-/* (SYSTEM-PAIR? OBJECT)
-   Returns #!TRUE if the garbage collector type of OBJECT is PAIR.
-*/
 DEFINE_PRIMITIVE ("SYSTEM-PAIR?", Prim_sys_pair, 1, 1, 0)
 {
-  Primitive_1_Arg();
-
-  Touch_In_Primitive(Arg1, Arg1);
-  if (GC_Type_List(Arg1))
-    return SHARP_T;
-  else
-    return NIL;
+  fast SCHEME_OBJECT object;
+  PRIMITIVE_HEADER (1);
+  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (GC_PAIR_P (object)));
 }
-
-/* (SYSTEM-PAIR-CAR GC-PAIR)
-   Same as CAR, but for anything of GC type PAIR.
-*/
-DEFINE_PRIMITIVE ("SYSTEM-PAIR-CAR", Prim_sys_pair_car, 1, 1, 0)
+
+SCHEME_OBJECT
+system_pair_cons (type, car, cdr)
+     long type;
+     SCHEME_OBJECT car;
+     SCHEME_OBJECT cdr;
 {
-  Primitive_1_Arg();
-
-  Arg_1_GC_Type(GC_Pair);
-  return Vector_Ref(Arg1, CONS_CAR);
+  Primitive_GC_If_Needed (2);
+  (*Free++) = car;
+  (*Free++) = cdr;
+  return (MAKE_POINTER_OBJECT (type, (Free - 2)));
 }
 
-/* (SYSTEM-PAIR-CDR GC-PAIR)
-   Same as CDR, but for anything of GC type PAIR.
-*/
-DEFINE_PRIMITIVE ("SYSTEM-PAIR-CDR", Prim_sys_pair_cdr, 1, 1, 0)
-{
-  Primitive_1_Arg();
-
-  Arg_1_GC_Type(GC_Pair);
-  return Vector_Ref(Arg1, CONS_CDR);
-}
-
-/* (SYSTEM-PAIR-CONS TYPE-CODE OBJECT-1 OBJECT-2)
-   Like CONS, but returns an object with the specified type code
-   (not limited to type code LIST).
-*/
 DEFINE_PRIMITIVE ("SYSTEM-PAIR-CONS", Prim_sys_pair_cons, 3, 3, 0)
 {
-  long Type;
-  Primitive_3_Args();
-
-  Arg_1_Type(TC_FIXNUM);
-  Range_Check(Type, Arg1, 0, MAX_TYPE_CODE,
-              ERR_ARG_1_BAD_RANGE);
-  if (GC_Type_Code(Type) == GC_Pair)
+  PRIMITIVE_HEADER (3);
   {
-    Primitive_GC_If_Needed(2);
-    *Free++ = Arg2;
-    *Free++ = Arg3;
-    return Make_Pointer(Type, Free-2);
+    long type = (arg_index_integer (1, (MAX_TYPE_CODE + 1)));
+    if ((GC_Type_Code (type)) != GC_Pair)
+      error_bad_range_arg (1);
+    PRIMITIVE_RETURN (system_pair_cons (type, (ARG_REF (2)), (ARG_REF (3))));
   }
-  else
-    Primitive_Error(ERR_ARG_1_BAD_RANGE);
-  /*NOTREACHED*/
 }
 
-
-/* (SYSTEM-PAIR-SET-CAR! GC-PAIR NEW_CAR)
-   Same as SET-CAR!, but for anything of GC type PAIR.
-*/
+DEFINE_PRIMITIVE ("SYSTEM-PAIR-CAR", Prim_sys_pair_car, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, GC_PAIR_P);
+  PRIMITIVE_RETURN (PAIR_CAR (ARG_REF (1)));
+}
+
+DEFINE_PRIMITIVE ("SYSTEM-PAIR-CDR", Prim_sys_pair_cdr, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, GC_PAIR_P);
+  PRIMITIVE_RETURN (PAIR_CDR (ARG_REF (1)));
+}
+
 DEFINE_PRIMITIVE ("SYSTEM-PAIR-SET-CAR!", Prim_sys_set_car, 2, 2, 0)
 {
-  Primitive_2_Args();
-
-  Arg_1_GC_Type(GC_Pair);
-  Side_Effect_Impurify(Arg1, Arg2);
-  return Swap_Pointers(Nth_Vector_Loc(Arg1, CONS_CAR), Arg2);
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (1, GC_PAIR_P);
+  {
+    fast SCHEME_OBJECT pair = (ARG_REF (1));
+    fast SCHEME_OBJECT car = (ARG_REF (2));
+    SIDE_EFFECT_IMPURIFY (pair, car);
+    SET_PAIR_CAR (pair, car);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-/* (SYSTEM-PAIR-SET-CDR! GC-PAIR NEW_CDR)
-   Same as SET-CDR!, but for anything of GC type PAIR.
-*/
 DEFINE_PRIMITIVE ("SYSTEM-PAIR-SET-CDR!", Prim_sys_set_cdr, 2, 2, 0)
 {
-  Primitive_2_Args();
-
-  Arg_1_GC_Type(GC_Pair);
-  Side_Effect_Impurify(Arg1, Arg2);
-  return Swap_Pointers(Nth_Vector_Loc(Arg1, CONS_CDR), Arg2);
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (1, GC_PAIR_P);
+  {
+    fast SCHEME_OBJECT pair = (ARG_REF (1));
+    fast SCHEME_OBJECT cdr = (ARG_REF (2));
+    SIDE_EFFECT_IMPURIFY (pair, cdr);
+    SET_PAIR_CDR (pair, cdr);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
-

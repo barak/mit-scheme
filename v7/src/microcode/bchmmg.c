@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.48 1989/09/20 23:05:48 cph Exp $
+
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -29,8 +31,6 @@ there shall be no use of the name of the Massachusetts Institute of
 Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
-
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.47 1989/08/28 18:28:15 cph Exp $ */
 
 /* Memory management top level.  Garbage collection to disk.
 
@@ -97,9 +97,9 @@ extern void Clear_Memory(), Setup_Memory(), Reset_Memory();
 /* Local declarations */
 
 static long scan_position, free_position;
-static Pointer *gc_disk_buffer_1, *gc_disk_buffer_2;
-Pointer *scan_buffer_top, *scan_buffer_bottom;
-Pointer *free_buffer_top, *free_buffer_bottom;
+static SCHEME_OBJECT *gc_disk_buffer_1, *gc_disk_buffer_2;
+SCHEME_OBJECT *scan_buffer_top, *scan_buffer_bottom;
+SCHEME_OBJECT *free_buffer_top, *free_buffer_bottom;
 
 static Boolean extension_overlap_p;
 static long extension_overlap_length;
@@ -194,7 +194,7 @@ close_gc_file()
   return;
 }
 
-void 
+void
 Clear_Memory (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
      int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
 {
@@ -212,7 +212,7 @@ void
 Setup_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
      int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
 {
-  Pointer test_value;
+  SCHEME_OBJECT test_value;
   int Real_Stack_Size;
 
   Real_Stack_Size = Stack_Allocation_Size(Our_Stack_Size);
@@ -227,8 +227,8 @@ Setup_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
   /* Allocate.
      The two GC buffers are not included in the valid Scheme memory.
   */
-  Highest_Allocated_Address = 
-    Allocate_Heap_Space(Real_Stack_Size + Our_Heap_Size +
+  Highest_Allocated_Address =
+    ALLOCATE_HEAP_SPACE(Real_Stack_Size + Our_Heap_Size +
 			Our_Constant_Size + (2 * GC_BUFFER_SPACE) +
 			HEAP_BUFFER_SPACE);
 
@@ -243,20 +243,21 @@ Setup_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
 
   Highest_Allocated_Address -= (2 * GC_BUFFER_SPACE);
   Heap += HEAP_BUFFER_SPACE;
-  Initial_Align_Float(Heap);
+  INITIAL_ALIGN_FLOAT(Heap);
 
   Constant_Space = Heap + Our_Heap_Size;
   gc_disk_buffer_1 = Constant_Space + Our_Constant_Size + Real_Stack_Size;
   gc_disk_buffer_2 = (gc_disk_buffer_1 + GC_BUFFER_SPACE);
 
   /* Consistency check 3 */
-  test_value = (Make_Pointer(LAST_TYPE_CODE, Highest_Allocated_Address));
+  test_value =
+    (MAKE_POINTER_OBJECT (LAST_TYPE_CODE, Highest_Allocated_Address));
 
-  if (((OBJECT_TYPE(test_value)) != LAST_TYPE_CODE) ||
-      ((Get_Pointer(test_value)) != Highest_Allocated_Address))
+  if (((OBJECT_TYPE (test_value)) != LAST_TYPE_CODE) ||
+      ((OBJECT_ADDRESS (test_value)) != Highest_Allocated_Address))
   {
     fprintf(stderr,
-	    "Largest address does not fit in datum field of Pointer.\n");
+	    "Largest address does not fit in datum field of object.\n");
     fprintf(stderr,
 	    "Allocate less space or re-compile without Heap_In_Low_Memory.\n");
     exit(1);
@@ -265,7 +266,7 @@ Setup_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
   Heap_Bottom = Heap;
   Clear_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size);
 
-  open_gc_file(Our_Heap_Size * sizeof(Pointer));
+  open_gc_file(Our_Heap_Size * sizeof(SCHEME_OBJECT));
   return;
 }
 
@@ -278,7 +279,7 @@ Reset_Memory()
 
 void
 dump_buffer(from, position, nbuffers, name, success)
-     Pointer *from;
+     SCHEME_OBJECT *from;
      long *position, nbuffers;
      char *name;
      Boolean *success;
@@ -320,7 +321,7 @@ dump_buffer(from, position, nbuffers, name, success)
 void
 load_buffer(position, to, nbytes, name)
      long position;
-     Pointer *to;
+     SCHEME_OBJECT *to;
      long nbytes;
      char *name;
 {
@@ -357,11 +358,11 @@ reload_scan_buffer()
   }
   load_buffer(scan_position, scan_buffer_bottom,
 	      GC_BUFFER_BYTES, "the scan buffer");
-  *scan_buffer_top = Make_Pointer(TC_BROKEN_HEART, scan_buffer_top);
+  *scan_buffer_top = MAKE_POINTER_OBJECT (TC_BROKEN_HEART, scan_buffer_top);
   return;
 }
 
-Pointer *
+SCHEME_OBJECT *
 initialize_scan_buffer()
 {
   scan_position = 0;
@@ -378,7 +379,7 @@ initialize_scan_buffer()
    Various parts of the garbage collector depend on scan_buffer_top
    always pointing to a valid buffer.
 */
-Pointer *
+SCHEME_OBJECT *
 initialize_free_buffer()
 {
   free_position = 0;
@@ -411,7 +412,7 @@ end_transport(success)
 void
 extend_scan_buffer(to_where, current_free)
      fast char *to_where;
-     Pointer *current_free;
+     SCHEME_OBJECT *current_free;
 {
   long new_scan_position;
 
@@ -462,7 +463,7 @@ end_scan_buffer_extension(to_relocate)
   {
     /* There was no overlap */
 
-    fast Pointer *source, *dest, *limit;
+    fast SCHEME_OBJECT *source, *dest, *limit;
 
     source = scan_buffer_top;
     dest = scan_buffer_bottom;
@@ -478,7 +479,7 @@ end_scan_buffer_extension(to_relocate)
 		dest,
 		GC_BUFFER_REMAINDER_BYTES,
 		"the scan buffer");
-    *scan_buffer_top = Make_Pointer(TC_BROKEN_HEART, scan_buffer_top);
+    *scan_buffer_top = MAKE_POINTER_OBJECT (TC_BROKEN_HEART, scan_buffer_top);
   }
   else
   {
@@ -510,14 +511,14 @@ end_scan_buffer_extension(to_relocate)
 		  dest,
 		  (GC_BUFFER_BYTES - extension_overlap_length),
 		  "the scan buffer");
-      *scan_buffer_top = Make_Pointer(TC_BROKEN_HEART, scan_buffer_top);
+      *scan_buffer_top = MAKE_POINTER_OBJECT (TC_BROKEN_HEART, scan_buffer_top);
     }
   }
   extension_overlap_p = false;
   return (result);
 }
 
-Pointer *
+SCHEME_OBJECT *
 dump_and_reload_scan_buffer(number_to_skip, success)
      long number_to_skip;
      Boolean *success;
@@ -531,12 +532,12 @@ dump_and_reload_scan_buffer(number_to_skip, success)
   return (scan_buffer_bottom);
 }
 
-Pointer *
+SCHEME_OBJECT *
 dump_and_reset_free_buffer(overflow, success)
      fast long overflow;
      Boolean *success;
 {
-  fast Pointer *into, *from;
+  fast SCHEME_OBJECT *into, *from;
 
   from = free_buffer_top;
   if (free_buffer_bottom == scan_buffer_bottom)
@@ -568,14 +569,14 @@ dump_and_reset_free_buffer(overflow, success)
    */
   if (!extension_overlap_p)
   {
-    *scan_buffer_top = Make_Pointer(TC_BROKEN_HEART, scan_buffer_top);
+    *scan_buffer_top = MAKE_POINTER_OBJECT (TC_BROKEN_HEART, scan_buffer_top);
   }
   return (into);
 }
 
 void
 dump_free_directly(from, nbuffers, success)
-     Pointer *from;
+     SCHEME_OBJECT *from;
      long nbuffers;
      Boolean *success;
 {
@@ -605,9 +606,9 @@ flush_new_space_buffer()
   return;
 }
 
-Pointer *
+SCHEME_OBJECT *
 guarantee_in_memory(addr)
-     Pointer *addr;
+     SCHEME_OBJECT *addr;
 {
   long position, offset;
 
@@ -635,23 +636,23 @@ guarantee_in_memory(addr)
    is on disk.  Old space is in memory.
 */
 
-Pointer Weak_Chain;
+SCHEME_OBJECT Weak_Chain;
 
 void
 Fix_Weak_Chain()
 {
-  fast Pointer *Old_Weak_Cell, *Scan, Old_Car, Temp, *Old, *Low_Constant;
+  fast SCHEME_OBJECT *Old_Weak_Cell, *Scan, Old_Car, Temp, *Old, *Low_Constant;
 
   initialize_new_space_buffer();
   Low_Constant = Constant_Space;
   while (Weak_Chain != EMPTY_LIST)
   {
-    Old_Weak_Cell = Get_Pointer(Weak_Chain);
-    Scan = guarantee_in_memory(Get_Pointer(*Old_Weak_Cell++));
+    Old_Weak_Cell = OBJECT_ADDRESS (Weak_Chain);
+    Scan = guarantee_in_memory(OBJECT_ADDRESS (*Old_Weak_Cell++));
     Weak_Chain = *Old_Weak_Cell;
     Old_Car = *Scan;
-    Temp = Make_New_Pointer(OBJECT_TYPE(Weak_Chain), Old_Car);
-    Weak_Chain = Make_New_Pointer(TC_NULL, Weak_Chain);
+    Temp = (MAKE_OBJECT_FROM_OBJECTS (Weak_Chain, Old_Car));
+    Weak_Chain = (OBJECT_NEW_TYPE (TC_NULL, Weak_Chain));
 
     switch(GC_Type(Temp))
     {
@@ -660,12 +661,12 @@ Fix_Weak_Chain()
 	continue;
 
       case GC_Special:
-	if (OBJECT_TYPE(Temp) != TC_REFERENCE_TRAP)
+	if (OBJECT_TYPE (Temp) != TC_REFERENCE_TRAP)
 	{
 	  /* No other special type makes sense here. */
 	  goto fail;
 	}
-	if (OBJECT_DATUM(Temp) <= TRAP_MAX_IMMEDIATE)
+	if (OBJECT_DATUM (Temp) <= TRAP_MAX_IMMEDIATE)
 	{
 	  *Scan = Temp;
 	  continue;
@@ -684,15 +685,15 @@ Fix_Weak_Chain()
       case GC_Quadruple:
       case GC_Vector:
 	/* Old is still a pointer to old space */
-	Old = Get_Pointer(Old_Car);
+	Old = OBJECT_ADDRESS (Old_Car);
 	if (Old >= Low_Constant)
 	{
 	  *Scan = Temp;
 	  continue;
 	}
-	if (OBJECT_TYPE(*Old) == TC_BROKEN_HEART)
+	if (OBJECT_TYPE (*Old) == TC_BROKEN_HEART)
 	{
-	  *Scan = Make_New_Pointer(OBJECT_TYPE(Temp), *Old);
+	  *Scan = (MAKE_OBJECT_FROM_OBJECTS (Temp, *Old));
 	  continue;
 	}
 	*Scan = SHARP_F;
@@ -700,7 +701,7 @@ Fix_Weak_Chain()
 
       case GC_Compiled:
 	/* Old is still a pointer to old space */
-	Old = Get_Pointer(Old_Car);
+	Old = OBJECT_ADDRESS (Old_Car);
 	if (Old >= Low_Constant)
 	{
 	  *Scan = Temp;
@@ -716,7 +717,7 @@ Fix_Weak_Chain()
 		Temp);
 	*Scan = SHARP_F;
 	continue;
-	
+
       default:			/* Non Marked Headers and Broken Hearts */
       fail:
         fprintf(stderr,
@@ -734,7 +735,7 @@ Fix_Weak_Chain()
 
    - First it makes the constant space and stack into one large area
    by "hiding" the gap between them with a non-marked header.
-   
+
    - Then it saves away all the relevant microcode registers into new
    space, making this the root for garbage collection.
 
@@ -752,9 +753,9 @@ Fix_Weak_Chain()
 
 void
 GC(initial_weak_chain)
-     Pointer initial_weak_chain;
+     SCHEME_OBJECT initial_weak_chain;
 {
-  Pointer
+  SCHEME_OBJECT
     *Root, *Result, *end_of_constant_area,
     The_Precious_Objects, *Root2, *free_buffer;
 
@@ -773,13 +774,13 @@ GC(initial_weak_chain)
   Set_Fixed_Obj_Slot(Lost_Objects_Base, SHARP_F);
 
   *free_buffer++ = Fixed_Objects;
-  *free_buffer++ = Make_Pointer(UNMARKED_HISTORY_TYPE, History);
+  *free_buffer++ = MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, History);
   *free_buffer++ = Undefined_Primitives;
   *free_buffer++ = Undefined_Primitives_Arity;
   *free_buffer++ = Get_Current_Stacklet();
   *free_buffer++ = ((Prev_Restore_History_Stacklet == NULL) ?
 		    SHARP_F :
-		    Make_Pointer(TC_CONTROL_POINT,
+		    MAKE_POINTER_OBJECT (TC_CONTROL_POINT,
 				 Prev_Restore_History_Stacklet));
   *free_buffer++ = Current_State_Point;
   *free_buffer++ = Fluid_Bindings;
@@ -829,16 +830,17 @@ GC(initial_weak_chain)
   /* Load new space into memory. */
 
   load_buffer(0, Heap_Bottom,
-	      ((Free - Heap_Bottom) * sizeof(Pointer)),
+	      ((Free - Heap_Bottom) * sizeof(SCHEME_OBJECT)),
 	      "new space");
 
   /* Make the microcode registers point to the copies in new-space. */
 
   Fixed_Objects = *Root++;
-  Set_Fixed_Obj_Slot(Precious_Objects, *Root2);
-  Set_Fixed_Obj_Slot(Lost_Objects_Base, Make_Pointer(TC_ADDRESS, Root2));
+  Set_Fixed_Obj_Slot (Precious_Objects, *Root2);
+  Set_Fixed_Obj_Slot
+    (Lost_Objects_Base, (LONG_TO_UNSIGNED_FIXNUM (ADDRESS_TO_DATUM (Root2))));
 
-  History = Get_Pointer(*Root++);
+  History = OBJECT_ADDRESS (*Root++);
   Undefined_Primitives = *Root++;
   Undefined_Primitives_Arity = *Root++;
 
@@ -853,7 +855,7 @@ GC(initial_weak_chain)
   }
   else
   {
-    Prev_Restore_History_Stacklet = Get_Pointer(*Root++);
+    Prev_Restore_History_Stacklet = OBJECT_ADDRESS (*Root++);
   }
   Current_State_Point = *Root++;
   Fluid_Bindings = *Root++;
@@ -869,12 +871,12 @@ GC(initial_weak_chain)
 
 DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
 {
+  long new_gc_reserve;
   extern unsigned long gc_counter;
-  Pointer GC_Daemon_Proc;
-  Primitive_1_Arg();
-
-  PRIMITIVE_CANONICALIZE_CONTEXT();
-  Arg_1_Type(TC_FIXNUM);
+  SCHEME_OBJECT GC_Daemon_Proc;
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_CANONICALIZE_CONTEXT ();
+  new_gc_reserve = (arg_nonnegative_integer (1));
   if (Free > Heap_Top)
   {
     Microcode_Termination(TERM_GC_OUT_OF_SPACE);
@@ -882,7 +884,7 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   }
   ENTER_CRITICAL_SECTION ("garbage collector");
   gc_counter += 1;
-  GC_Reserve = (UNSIGNED_FIXNUM_VALUE (Arg1));
+  GC_Reserve = new_gc_reserve;
   GC(EMPTY_LIST);
   CLEAR_INTERRUPT(INT_GC);
   Pop_Primitive_Frame(1);
@@ -892,7 +894,7 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   {
    Will_Push(CONTINUATION_SIZE);
     Store_Return(RC_NORMAL_GC_DONE);
-    Store_Expression(Make_Unsigned_Fixnum(MemTop - Free));
+    Store_Expression(LONG_TO_UNSIGNED_FIXNUM(MemTop - Free));
     Save_Cont();
    Pushed();
     PRIMITIVE_ABORT(PRIM_POP_RETURN);
@@ -900,7 +902,7 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   }
  Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS + 1));
   Store_Return(RC_NORMAL_GC_DONE);
-  Store_Expression(Make_Unsigned_Fixnum(MemTop - Free));
+  Store_Expression(LONG_TO_UNSIGNED_FIXNUM(MemTop - Free));
   Save_Cont();
   Push(GC_Daemon_Proc);
   Push(STACK_FRAME_HEADER);

@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph.h,v 1.5 1989/09/20 23:05:07 cph Rel $
+
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,8 +32,6 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph.h,v 1.4 1988/07/16 07:19:59 cph Rel $ */
-
 #include <starbase.c.h>
 
 /* Bobcat graphics primitives. Interface to the Starbase package*/
@@ -59,44 +59,3 @@ extern float sb_zmin;
 extern float sb_zmax;
 
 extern void sb_close_device ();
-
-/* Generic dispatch of coordinates. No BIGNUM support yet. */
-
-#define Make_Flonum(pointer, flonum, integer, error)			\
-{									\
-  switch (Type_Code (pointer))						\
-    {									\
-    case TC_FIXNUM:							\
-      Sign_Extend (pointer, integer);					\
-      flonum = ((float) integer);					\
-      break;								\
-    case TC_BIG_FLONUM:							\
-      flonum = ((float) (Get_Float (pointer)));				\
-      break;								\
-    default:								\
-      Primitive_Error (error);						\
-    }									\
-}
-
-/* Easier to use flonum arg conversion. */
-#define FLONUM_ARG(argno, target)					\
-{									\
-  fast Pointer argument;						\
-  fast long fixnum_value;						\
-									\
-  argument = (ARG_REF (argno));						\
-  switch (Type_Code (argument))						\
-    {									\
-    case TC_FIXNUM:							\
-      Sign_Extend (argument, fixnum_value);				\
-      target = ((float) fixnum_value);					\
-      break;								\
-									\
-    case TC_BIG_FLONUM:							\
-      target = ((float) (Get_Float (argument)));			\
-      break;								\
-									\
-    default:								\
-      error_wrong_type_arg (argno);					\
-    }									\
-}

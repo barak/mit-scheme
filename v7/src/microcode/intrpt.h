@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intrpt.h,v 1.7 1989/09/20 23:09:45 cph Exp $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,10 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intrpt.h,v 1.6 1989/07/05 21:36:36 cph Rel $
- *
- * Interrupt manipulation utilities.
- */
+/* Interrupt manipulation utilities. */
 
 /* Interrupt bits -- scanned from LSB (1) to MSB (16) */
 
@@ -69,9 +68,10 @@ MIT in each case. */
 
 #define COMPILER_SETUP_INTERRUPT()					\
 {									\
-  Regs[REGBLOCK_MEMTOP] = ((INTERRUPT_PENDING_P(INT_Mask)) 	?	\
-			   ((Pointer) -1)			:	\
-			   ((Pointer) MemTop));				\
+  (Regs [REGBLOCK_MEMTOP]) =						\
+    ((INTERRUPT_PENDING_P (INT_Mask))					\
+     ? ((SCHEME_OBJECT) -1)						\
+     : ((SCHEME_OBJECT) MemTop));					\
 }
 
 #define FETCH_INTERRUPT_MASK()		(IntEnb)
@@ -167,6 +167,6 @@ extern void (*critical_section_hook)();
 
 #define WITHIN_CRITICAL_SECTION_P()					\
   (critical_section_name != ((char *) NULL))
-  
+
 #define CRITICAL_SECTION_NAME()						\
   (critical_section_name)

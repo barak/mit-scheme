@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.32 1989/09/20 23:09:41 cph Exp $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,11 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.31 1989/03/27 23:15:28 jinx Rel $
- *
- * Macros used by the interpreter and some utilities.
- *
- */
+/* Macros used by the interpreter and some utilities. */
 
                      /********************/
                      /* OPEN CODED RACKS */
@@ -96,7 +94,7 @@ MIT in each case. */
 
 #define Will_Push(N)							\
 {									\
-  Pointer *Will_Push_Limit;						\
+  SCHEME_OBJECT *Will_Push_Limit;					\
 									\
   Internal_Will_Push((N));						\
   Will_Push_Limit = Simulate_Pushing(N)
@@ -172,7 +170,7 @@ MIT in each case. */
 #define Store_Expression(P)	Expression = (P)
 #define Store_Env(P)		Env = (P)
 #define Store_Return(P)							\
-  Return = Make_Non_Pointer(TC_RETURN_CODE, (P))
+  Return = MAKE_OBJECT (TC_RETURN_CODE, (P))
 
 #define Save_Env()		Push(Env)
 #define Restore_Env()		Env = Pop()
@@ -196,7 +194,7 @@ MIT in each case. */
     Print_Return(RESTORE_CONT_RETURN_MESSAGE);				\
     Print_Expression(Fetch_Expression(),				\
 		     RESTORE_CONT_EXPR_MESSAGE);			\
-    CRLF();								\
+    printf ("\n");							\
   }									\
 }
 
@@ -207,7 +205,7 @@ MIT in each case. */
     Print_Return(CONT_PRINT_RETURN_MESSAGE);				\
     Print_Expression(Fetch_Expression(),				\
 		     CONT_PRINT_EXPR_MESSAGE);				\
-    CRLF();								\
+    printf ("\n");							\
   }									\
 }
 
@@ -236,13 +234,13 @@ MIT in each case. */
  */
 
 #define PRIMITIVE_TABLE_INDEX(primitive)				\
-((primitive) & HALF_ADDRESS_MASK)
+((primitive) & HALF_DATUM_MASK)
 
 #define PRIMITIVE_VIRTUAL_INDEX(primitive)				\
-(((primitive) >> HALF_ADDRESS_LENGTH) & HALF_ADDRESS_MASK)
+(((primitive) >> HALF_DATUM_LENGTH) & HALF_DATUM_MASK)
 
 #define MAKE_PRIMITIVE_OBJECT(virtual, real)				\
-(Make_Non_Pointer(TC_PRIMITIVE, (((virtual) << HALF_ADDRESS_LENGTH) | (real))))
+(MAKE_OBJECT (TC_PRIMITIVE, (((virtual) << HALF_DATUM_LENGTH) | (real))))
 
 /* Does this fail for the first unimplemented primitive if there are no
    implemented primitives?
@@ -263,8 +261,12 @@ MIT in each case. */
 #define INTERNAL_APPLY_PRIMITIVE(loc, primitive)			\
 {									\
   Regs[REGBLOCK_PRIMITIVE] = primitive;					\
-  loc = ((*(Primitive_Procedure_Table[PRIMITIVE_TABLE_INDEX(primitive)]))()); \
-  Regs[REGBLOCK_PRIMITIVE] = NIL;					\
+  loc =									\
+    ((*									\
+      (Primitive_Procedure_Table					\
+       [PRIMITIVE_TABLE_INDEX (primitive)]))				\
+     ());								\
+  Regs[REGBLOCK_PRIMITIVE] = SHARP_F;					\
 }
 
 /* This is only valid for implemented primitives. */

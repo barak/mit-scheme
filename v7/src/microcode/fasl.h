@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasl.h,v 9.30 1989/09/20 23:07:58 cph Exp $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,13 +32,10 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasl.h,v 9.29 1988/08/15 20:46:07 cph Rel $
-
-   Contains information relating to the format of FASL files.
+/* Contains information relating to the format of FASL files.
    The machine/opsys information is contained in config.h
    The processor and compiled code version information is
-   contained in the appropriate cmp* file, or compiler.c
-*/
+   contained in the appropriate cmp* file, or compiler.c */
 
 extern long Load_Data(), Write_Data();
 extern Boolean Open_Dump_File(), Close_Dump_File();
@@ -55,10 +54,10 @@ extern Boolean Open_Dump_File(), Close_Dump_File();
 #define FASL_Offset_Dumped_Obj	3	/* Where dumped object was */
 #define FASL_Offset_Const_Count	4	/* Count of objects in const. area */
 #define FASL_Offset_Const_Base	5	/* Address of const. area at dump */
-#define FASL_Offset_Version	6	/* FASL format version info. */ 
+#define FASL_Offset_Version	6	/* FASL format version info. */
 #define FASL_Offset_Stack_Top	7	/* Top of stack when dumped */
 #define FASL_Offset_Prim_Length 8	/* Number of entries in primitive table */
-#define FASL_Offset_Prim_Size	9	/* Size of primitive table in Pointers */
+#define FASL_Offset_Prim_Size	9	/* Size of primitive table in SCHEME_OBJECTs */
 #define FASL_Offset_Ci_Version	10	/* Version number for compiled code interface */
 #define FASL_Offset_Ut_Base	11	/* Address of the utilities vector */
 
@@ -71,23 +70,23 @@ extern Boolean Open_Dump_File(), Close_Dump_File();
 
 /* Version information encoding */
 
-#define MACHINE_TYPE_LENGTH	(POINTER_LENGTH / 2)
+#define MACHINE_TYPE_LENGTH	(OBJECT_LENGTH / 2)
 #define MACHINE_TYPE_MASK	((1 << MACHINE_TYPE_LENGTH) - 1)
 #define The_Machine_Type(P)	((P) & MACHINE_TYPE_MASK)
 #define SUBVERSION_LENGTH	(MACHINE_TYPE_LENGTH - TYPE_CODE_LENGTH)
 #define SUBVERSION_MASK		((1 << SUBVERSION_LENGTH) - 1)
 #define The_Sub_Version(P)	(((P) >> MACHINE_TYPE_LENGTH) & SUBVERSION_MASK)
-#define The_Version(P)		OBJECT_TYPE(P)
+#define The_Version(P)		OBJECT_TYPE (P)
 #define Make_Version(V, S, M)					\
-  Make_Non_Pointer((V), (((S) << MACHINE_TYPE_LENGTH) | (M)))
+  MAKE_OBJECT ((V), (((S) << MACHINE_TYPE_LENGTH) | (M)))
 
-#define CI_MASK			((1 << (ADDRESS_LENGTH / 2)) - 1)
-#define CI_VERSION(P)		(((P) >> (ADDRESS_LENGTH / 2)) & CI_MASK)
+#define CI_MASK			((1 << (DATUM_LENGTH / 2)) - 1)
+#define CI_VERSION(P)		(((P) >> (DATUM_LENGTH / 2)) & CI_MASK)
 #define CI_PROCESSOR(P)		((P) & CI_MASK)
-#define CI_BAND_P(P)		(OBJECT_TYPE(P) == TC_TRUE)
+#define CI_BAND_P(P)		(OBJECT_TYPE (P) == TC_TRUE)
 #define MAKE_CI_VERSION(Band_p, Version, Processor_Type)	\
-  Make_Non_Pointer(((Band_p) ? TC_TRUE : TC_NULL),		\
-		   (((Version) << (ADDRESS_LENGTH / 2)) |	\
+  MAKE_OBJECT (((Band_p) ? TC_TRUE : TC_NULL),			\
+		   (((Version) << (DATUM_LENGTH / 2)) |		\
 		    (Processor_Type)))
 
 #define WRITE_FLAG		1
@@ -109,11 +108,12 @@ extern Boolean Open_Dump_File(), Close_Dump_File();
 #define FASL_REFERENCE_TRAP	6
 #define FASL_MERGED_PRIMITIVES	7
 #define FASL_INTERFACE_VERSION	8
+#define FASL_NEW_BIGNUMS	9
 
 /* Current parameters.  Always used on output. */
 
 #define FASL_FORMAT_VERSION	FASL_FORMAT_ADDED_STACK
-#define FASL_SUBVERSION		FASL_INTERFACE_VERSION
+#define FASL_SUBVERSION		FASL_NEW_BIGNUMS
 
 /*
   The definitions below correspond to the ones above.  They usually

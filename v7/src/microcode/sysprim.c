@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.33 1989/09/20 23:12:08 cph Exp $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,12 +32,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.32 1989/03/27 23:16:05 jinx Rel $
- *
- * Random system primitives.  Most are implemented in terms of
- * utilities in os.c
- *
- */
+/* Random system primitives.  Most are implemented in terms of
+   utilities in os.c */
+
 #include "scheme.h"
 #include "prims.h"
 
@@ -43,28 +42,28 @@ MIT in each case. */
 
 DEFINE_PRIMITIVE ("CHECK-AND-CLEAN-UP-INPUT-CHANNEL", Prim_chk_and_cln_input_channel, 2, 2, 0)
 {
-  extern Boolean OS_Clean_Interrupt_Channel();
+  extern Boolean OS_tty_clean_interrupts();
   PRIMITIVE_HEADER (2);
 
   PRIMITIVE_RETURN
-    ((OS_Clean_Interrupt_Channel ((arg_nonnegative_integer (1)),
-				  (arg_nonnegative_integer (2))))
-     ? SHARP_T : NIL);
+    (BOOLEAN_TO_OBJECT
+     (OS_tty_clean_interrupts ((arg_nonnegative_integer (1)),
+				  (arg_nonnegative_integer (2)))));
 }
 
 DEFINE_PRIMITIVE ("GET-NEXT-INTERRUPT-CHARACTER", Prim_get_next_interrupt_char, 0, 0, 0)
 {
   int result;
-  extern int OS_Get_Next_Interrupt_Character();
+  extern int OS_tty_next_interrupt_char();
   PRIMITIVE_HEADER (0);
 
-  result = (OS_Get_Next_Interrupt_Character ());
+  result = (OS_tty_next_interrupt_char ());
   if (result == -1)
     {
-      Primitive_Error (ERR_EXTERNAL_RETURN);
+      error_external_return ();
       /*NOTREACHED*/
     }
-  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (result));
+  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (result));
 }
 
 /* Time primitives */
@@ -72,64 +71,58 @@ DEFINE_PRIMITIVE ("GET-NEXT-INTERRUPT-CHARACTER", Prim_get_next_interrupt_char, 
 DEFINE_PRIMITIVE ("SYSTEM-CLOCK", Prim_system_clock, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
-
-  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (OS_process_clock ()));
+  PRIMITIVE_RETURN (long_to_integer (OS_process_clock ()));
 }
 
 DEFINE_PRIMITIVE ("REAL-TIME-CLOCK", Prim_real_time_clock, 0, 0, 0)
 {
+  extern long OS_real_time_clock ();
   PRIMITIVE_HEADER (0);
-
-  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (OS_real_time_clock ()));
+  PRIMITIVE_RETURN (long_to_integer (OS_real_time_clock ()));
 }
 
 DEFINE_PRIMITIVE ("SETUP-TIMER-INTERRUPT", Prim_setup_timer_interrupt, 2, 2, 0)
 {
-  extern void Clear_Int_Timer(), Set_Int_Timer();
-  Primitive_2_Args();
-
-  if ((Arg1 == NIL) && (Arg2==NIL))
-    Clear_Int_Timer();
+  extern void Clear_Int_Timer ();
+  extern void Set_Int_Timer ();
+  PRIMITIVE_HEADER (2);
+  if (((ARG_REF (1)) == SHARP_F) && ((ARG_REF (2)) == SHARP_F))
+    Clear_Int_Timer ();
   else
-  {
-    long Days, Centi_Seconds;
-
-    Arg_1_Type(TC_FIXNUM);
-    Arg_2_Type(TC_FIXNUM);
-    Sign_Extend(Arg1, Days);
-    Sign_Extend(Arg2, Centi_Seconds);
-    Set_Int_Timer(Days, Centi_Seconds);
-  }
-  PRIMITIVE_RETURN(NIL);
+    Set_Int_Timer
+      ((arg_nonnegative_integer (1)), (arg_nonnegative_integer (2)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
+
 /* Date and current time primitives */
 
-#define Date_Primitive(OS_Name)						\
+#define DATE_PRIMITIVE(OS_name)						\
+{									\
   int result;								\
-  extern int OS_Name();							\
+  extern int OS_name ();						\
   PRIMITIVE_HEADER (0);							\
-									\
-  result = (OS_Name ());						\
-  PRIMITIVE_RETURN ((result == -1) ? NIL : (MAKE_UNSIGNED_FIXNUM (result)))
+  result = (OS_name ());						\
+  PRIMITIVE_RETURN							\
+    ((result == -1) ? SHARP_F : (LONG_TO_UNSIGNED_FIXNUM (result)));	\
+}
 
 DEFINE_PRIMITIVE ("CURRENT-YEAR", Prim_current_year, 0, 0, 0)
-{ Date_Primitive (OS_Current_Year); }
+     DATE_PRIMITIVE (OS_Current_Year)
 
 DEFINE_PRIMITIVE ("CURRENT-MONTH", Prim_current_month, 0, 0, 0)
-{ Date_Primitive (OS_Current_Month); }
+     DATE_PRIMITIVE (OS_Current_Month)
 
 DEFINE_PRIMITIVE ("CURRENT-DAY", Prim_current_day, 0, 0, 0)
-{ Date_Primitive (OS_Current_Day); }
+     DATE_PRIMITIVE (OS_Current_Day)
 
 DEFINE_PRIMITIVE ("CURRENT-HOUR", Prim_current_hour, 0, 0, 0)
-{ Date_Primitive (OS_Current_Hour); }
+     DATE_PRIMITIVE (OS_Current_Hour)
 
 DEFINE_PRIMITIVE ("CURRENT-MINUTE", Prim_current_minute, 0, 0, 0)
-{ Date_Primitive (OS_Current_Minute); }
+     DATE_PRIMITIVE (OS_Current_Minute)
 
 DEFINE_PRIMITIVE ("CURRENT-SECOND", Prim_current_second, 0, 0, 0)
-{ Date_Primitive (OS_Current_Second); }
+     DATE_PRIMITIVE (OS_Current_Second)
 
 /* Pretty random primitives */
 
@@ -151,8 +144,7 @@ DEFINE_PRIMITIVE ("HALT", Prim_restartable_exit, 0, 0, 0)
 {
   extern Boolean Restartable_Exit();
   PRIMITIVE_HEADER (0);
-
-  PRIMITIVE_RETURN (((Restartable_Exit ()) ? SHARP_T : NIL));
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (Restartable_Exit ()));
 }
 
 /* (SET-RUN-LIGHT! OBJECT)
@@ -164,47 +156,45 @@ DEFINE_PRIMITIVE ("HALT", Prim_restartable_exit, 0, 0, 0)
 DEFINE_PRIMITIVE ("SET-RUN-LIGHT!", Prim_set_run_light, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-
 #ifdef RUN_LIGHT_IS_BEEP
   {
     extern void OS_tty_beep();
 
     OS_tty_beep();
-    OS_Flush_Output_Buffer();
+    OS_tty_flush_output();
     PRIMITIVE_RETURN (SHARP_T);
   }
 #else
-  PRIMITIVE_RETURN (NIL);
+  PRIMITIVE_RETURN (SHARP_F);
 #endif
 }
 
 DEFINE_PRIMITIVE ("UNDER-EMACS?", Prim_under_emacs_p, 0, 0, 0)
 {
-  extern Boolean OS_Under_Emacs();
+  extern Boolean OS_under_emacs_p ();
   PRIMITIVE_HEADER (0);
-
-  PRIMITIVE_RETURN (((OS_Under_Emacs ()) ? SHARP_T : NIL));
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (OS_under_emacs_p ()));
 }
 
 #define CONVERT_ADDRESS(address)					\
-  (C_Integer_To_Scheme_Integer ((long) (C_To_Scheme (address))))
+  (long_to_integer (ADDRESS_TO_DATUM (address)))
 
 DEFINE_PRIMITIVE ("GC-SPACE-STATUS", Prim_gc_space_status, 0, 0, 0)
 {
-  Pointer * constant_low;
-  Pointer * constant_free;
-  Pointer * constant_high;
-  Pointer * heap_low;
-  Pointer * heap_free;
-  Pointer * heap_limit;
-  Pointer * heap_high;
+  SCHEME_OBJECT * constant_low;
+  SCHEME_OBJECT * constant_free;
+  SCHEME_OBJECT * constant_high;
+  SCHEME_OBJECT * heap_low;
+  SCHEME_OBJECT * heap_free;
+  SCHEME_OBJECT * heap_limit;
+  SCHEME_OBJECT * heap_high;
 #ifndef USE_STACKLETS
-  Pointer * stack_low;
-  Pointer * stack_free;
-  Pointer * stack_limit;
-  Pointer * stack_high;
+  SCHEME_OBJECT * stack_low;
+  SCHEME_OBJECT * stack_free;
+  SCHEME_OBJECT * stack_limit;
+  SCHEME_OBJECT * stack_high;
 #endif /* USE_STACKLETS */
-  Pointer result;
+  SCHEME_OBJECT result;
   PRIMITIVE_HEADER (0);
 
   constant_low = Constant_Space;
@@ -221,20 +211,20 @@ DEFINE_PRIMITIVE ("GC-SPACE-STATUS", Prim_gc_space_status, 0, 0, 0)
   stack_high = Stack_Top;
 #endif /* USE_STACKLETS */
 
-  result = (make_vector (12, NIL));
-  User_Vector_Set (result, 0, (MAKE_UNSIGNED_FIXNUM (sizeof (Pointer))));
-  User_Vector_Set (result, 1, (CONVERT_ADDRESS (constant_low)));
-  User_Vector_Set (result, 2, (CONVERT_ADDRESS (constant_free)));
-  User_Vector_Set (result, 3, (CONVERT_ADDRESS (constant_high)));
-  User_Vector_Set (result, 4, (CONVERT_ADDRESS (heap_low)));
-  User_Vector_Set (result, 5, (CONVERT_ADDRESS (heap_free)));
-  User_Vector_Set (result, 6, (CONVERT_ADDRESS (heap_limit)));
-  User_Vector_Set (result, 7, (CONVERT_ADDRESS (heap_high)));
+  result = (make_vector (12, SHARP_F, true));
+  VECTOR_SET (result, 0, (LONG_TO_UNSIGNED_FIXNUM (sizeof (SCHEME_OBJECT))));
+  VECTOR_SET (result, 1, (CONVERT_ADDRESS (constant_low)));
+  VECTOR_SET (result, 2, (CONVERT_ADDRESS (constant_free)));
+  VECTOR_SET (result, 3, (CONVERT_ADDRESS (constant_high)));
+  VECTOR_SET (result, 4, (CONVERT_ADDRESS (heap_low)));
+  VECTOR_SET (result, 5, (CONVERT_ADDRESS (heap_free)));
+  VECTOR_SET (result, 6, (CONVERT_ADDRESS (heap_limit)));
+  VECTOR_SET (result, 7, (CONVERT_ADDRESS (heap_high)));
 #ifndef USE_STACKLETS
-  User_Vector_Set (result, 8, (CONVERT_ADDRESS (stack_low)));
-  User_Vector_Set (result, 9, (CONVERT_ADDRESS (stack_free)));
-  User_Vector_Set (result, 10, (CONVERT_ADDRESS (stack_limit)));
-  User_Vector_Set (result, 11, (CONVERT_ADDRESS (stack_high)));
+  VECTOR_SET (result, 8, (CONVERT_ADDRESS (stack_low)));
+  VECTOR_SET (result, 9, (CONVERT_ADDRESS (stack_free)));
+  VECTOR_SET (result, 10, (CONVERT_ADDRESS (stack_limit)));
+  VECTOR_SET (result, 11, (CONVERT_ADDRESS (stack_high)));
 #endif /* USE_STACKLETS */
   PRIMITIVE_RETURN (result);
 }
@@ -251,5 +241,5 @@ DEFINE_PRIMITIVE ("SET-TRAP-STATE!", Prim_set_trap_state, 1, 1, 0)
     error_bad_range_arg (1);
     /*NOTREACHED*/
   }
-  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (result));
+  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (result));
 }

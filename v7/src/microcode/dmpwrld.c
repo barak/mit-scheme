@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.30 1989/09/20 23:07:35 cph Exp $
+
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,12 +32,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.29 1989/05/31 01:49:57 jinx Rel $
- *
- * This file contains a primitive to dump an executable version of Scheme.
- * It uses unexec.c from GNU Emacs.
- * Look at unexec.c for more information.
- */
+/* This file contains a primitive to dump an executable version of Scheme.
+   It uses unexec.c from GNU Emacs.
+   Look at unexec.c for more information. */
 
 #include "scheme.h"
 #include "prims.h"
@@ -121,15 +120,15 @@ void bzero();
 
 #include "unexec.c"
 
-char 
+char
 *start_of_text()
-{ 
+{
   return ((char *) TEXT_START);
 }
 
-char 
+char
 *start_of_data()
-{ 
+{
   return ((char *) DATA_START);
 }
 
@@ -155,12 +154,12 @@ there_are_open_files()
   return false;
 }
 
-/* These two procedures depend on the internal structure of a 
+/* These two procedures depend on the internal structure of a
    FILE object.  See /usr/include/stdio.h for details. */
 
-long 
+long
 Save_Input_Buffer()
-{ 
+{
   long result;
 
   result = (stdin)->_cnt;
@@ -168,7 +167,7 @@ Save_Input_Buffer()
   return result;
 }
 
-void 
+void
 Restore_Input_Buffer(Buflen)
      fast long Buflen;
 {
@@ -187,17 +186,12 @@ DEFINE_PRIMITIVE ("DUMP-WORLD", Prim_dump_world, 1, 1, 0)
   Boolean Saved_Dumped_Value, Saved_Photo_Open;
   int Result;
   long Buflen;
-  Primitive_1_Arg();
+  PRIMITIVE_HEADER (1);
 
   PRIMITIVE_CANONICALIZE_CONTEXT();
-  Arg_1_Type(TC_CHARACTER_STRING);
-
   if (there_are_open_files())
-  {
-    Primitive_Error(ERR_OUT_OF_FILE_HANDLES);
-  }
-
-  fname = Scheme_String_To_C_String(Arg1);
+    signal_error_from_primitive (ERR_OUT_OF_FILE_HANDLES);
+  fname = (STRING_ARG (1));
 
   /* Set up for restore */
 
@@ -219,11 +213,11 @@ DEFINE_PRIMITIVE ("DUMP-WORLD", Prim_dump_world, 1, 1, 0)
 
   Was_Scheme_Dumped = true;
   Val = SHARP_T;
-  OS_Quit (TERM_HALT, false);
+  OS_quit (TERM_HALT, false);
   Pop_Primitive_Frame(1);
 
   /* Dump! */
-  
+
   unix_find_pathname(Saved_argv[0], path_buffer);
   Result = unexec(fname,
 		  path_buffer,
@@ -234,8 +228,8 @@ DEFINE_PRIMITIVE ("DUMP-WORLD", Prim_dump_world, 1, 1, 0)
 
   /* Restore State */
 
-  OS_Re_Init();
-  Val = NIL;
+  OS_reinitialize();
+  Val = SHARP_F;
   Was_Scheme_Dumped = Saved_Dumped_Value;
 
   /* IO: Restoring cached input for this job. */
@@ -244,12 +238,11 @@ DEFINE_PRIMITIVE ("DUMP-WORLD", Prim_dump_world, 1, 1, 0)
   Photo_Open = Saved_Photo_Open;
 
   if (Result != 0)
-  {
-    Push(Arg1);		/* Since popped above */
-    Primitive_Error(ERR_EXTERNAL_RETURN);
-  }
+    {
+      Push (ARG_REF (1));	/* Since popped above */
+      error_external_return ();
+    }
 
-  PRIMITIVE_ABORT(PRIM_POP_RETURN);
+  PRIMITIVE_ABORT (PRIM_POP_RETURN);
   /*NOTREACHED*/
 }
-

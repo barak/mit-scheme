@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/step.c,v 9.26 1989/05/31 01:51:02 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/step.c,v 9.27 1989/09/20 23:11:47 cph Exp $
  *
  * Support for the stepper
  */
@@ -49,18 +49,18 @@ MIT in each case. */
 
 void
 Install_Traps(Hunk3, Return_Hook_Too)
-     Pointer Hunk3;
+     SCHEME_OBJECT Hunk3;
      Boolean Return_Hook_Too;
 {
-  Pointer Eval_Hook, Apply_Hook, Return_Hook;
+  SCHEME_OBJECT Eval_Hook, Apply_Hook, Return_Hook;
 
   Stop_Trapping();
-  Eval_Hook = Vector_Ref(Hunk3, HUNK_CXR0);
-  Apply_Hook = Vector_Ref(Hunk3, HUNK_CXR1);
-  Return_Hook = Vector_Ref(Hunk3, HUNK_CXR2);
+  Eval_Hook = MEMORY_REF (Hunk3, HUNK_CXR0);
+  Apply_Hook = MEMORY_REF (Hunk3, HUNK_CXR1);
+  Return_Hook = MEMORY_REF (Hunk3, HUNK_CXR2);
   Set_Fixed_Obj_Slot(Stepper_State, Hunk3);
-  Trapping = ((Eval_Hook != NIL) | (Apply_Hook != NIL));
-  if (Microcode_Does_Stepping && Return_Hook_Too && (Return_Hook != NIL))
+  Trapping = ((Eval_Hook != SHARP_F) | (Apply_Hook != SHARP_F));
+  if (Microcode_Does_Stepping && Return_Hook_Too && (Return_Hook != SHARP_F))
   {
     /* Here it is ... gross and ugly.  We know that the top of stack
        has the existing return code to be clobbered, since it was put
@@ -68,8 +68,8 @@ Install_Traps(Hunk3, Return_Hook_Too)
     */
     Return_Hook_Address = &Top_Of_Stack();
     Old_Return_Code = Top_Of_Stack();
-    *Return_Hook_Address = Make_Non_Pointer(TC_RETURN_CODE,
-                                            RC_RETURN_TRAP_POINT);
+    *Return_Hook_Address =
+      (MAKE_OBJECT (TC_RETURN_CODE, RC_RETURN_TRAP_POINT));
   }
   return;
 }
@@ -83,14 +83,17 @@ Install_Traps(Hunk3, Return_Hook_Too)
 
 DEFINE_PRIMITIVE ("PRIMITIVE-EVAL-STEP", Prim_eval_step, 3, 3, 0)
 {
-  Primitive_3_Args();
-
-  PRIMITIVE_CANONICALIZE_CONTEXT();
-  Install_Traps(Arg3, false);
-  Pop_Primitive_Frame(3);
-  Store_Expression(Arg1);
-  Store_Env(Arg2);
-  PRIMITIVE_ABORT(PRIM_NO_TRAP_EVAL);
+  PRIMITIVE_HEADER (3);
+  {
+    SCHEME_OBJECT expression = (ARG_REF (1));
+    SCHEME_OBJECT environment = (ARG_REF (2));
+    PRIMITIVE_CANONICALIZE_CONTEXT ();
+    Install_Traps ((ARG_REF (3)), false);
+    Pop_Primitive_Frame (3);
+    Store_Expression (expression);
+    Store_Env (environment);
+  }
+  PRIMITIVE_ABORT (PRIM_NO_TRAP_EVAL);
   /*NOTREACHED*/
 }
 
@@ -101,44 +104,48 @@ DEFINE_PRIMITIVE ("PRIMITIVE-EVAL-STEP", Prim_eval_step, 3, 3, 0)
    APPLY or return.
 
    Mostly a copy of Prim_Apply, since this, too, must count the space
-   required before actually building a frame
-*/
+   required before actually building a frame */
 
 DEFINE_PRIMITIVE ("PRIMITIVE-APPLY-STEP", Prim_apply_step, 3, 3, 0)
 {
-  Pointer Next_From_Slot, *Next_To_Slot;
-  long Number_Of_Args, i;
-  Primitive_3_Args();
-
-  PRIMITIVE_CANONICALIZE_CONTEXT();
-  Arg_3_Type(TC_HUNK3);
-  Number_Of_Args = 0;
-  Next_From_Slot = Arg2;
-  while (Type_Code(Next_From_Slot) == TC_LIST)
+  PRIMITIVE_HEADER (3);
+  PRIMITIVE_CANONICALIZE_CONTEXT ();
+  CHECK_ARG (3, HUNK3_P);
   {
-    Number_Of_Args += 1;
-    Next_From_Slot = Vector_Ref(Next_From_Slot, CONS_CDR);
+    SCHEME_OBJECT procedure = (ARG_REF (2));
+    SCHEME_OBJECT argument_list = (ARG_REF (3));
+    fast long number_of_args = 0;
+    {
+      fast SCHEME_OBJECT scan_list;
+      TOUCH_IN_PRIMITIVE (argument_list, scan_list);
+      while (PAIR_P (scan_list))
+	{
+	  number_of_args += 1;
+	  TOUCH_IN_PRIMITIVE ((PAIR_CDR (scan_list)), scan_list);
+	}
+      if (scan_list != EMPTY_LIST)
+	error_wrong_type_arg (2);
+    }
+    Install_Traps ((ARG_REF (3)), true);
+    Pop_Primitive_Frame (3);
+    {
+      fast SCHEME_OBJECT * scan_stack = (STACK_LOC (- number_of_args));
+      fast SCHEME_OBJECT scan_list;
+      fast long i;
+    Will_Push (number_of_args + STACK_ENV_EXTRA_SLOTS + 1);
+      Stack_Pointer = scan_stack;
+      TOUCH_IN_PRIMITIVE (argument_list, scan_list);
+      for (i = number_of_args; (i > 0); i -= 1)
+	{
+	  (*scan_stack++) = (PAIR_CAR (scan_list));
+	  TOUCH_IN_PRIMITIVE ((PAIR_CDR (scan_list)), scan_list);
+	}
+      Push (procedure);
+      Push (STACK_FRAME_HEADER + number_of_args);
+    Pushed ();
+    }
   }
-  if (Next_From_Slot != NIL)
-  {
-    Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-  }
-  Install_Traps(Arg3, true);
-  Pop_Primitive_Frame(3);
-  Next_From_Slot = Arg2;
-  Next_To_Slot = Stack_Pointer - Number_Of_Args;
- Will_Push(Number_Of_Args + STACK_ENV_EXTRA_SLOTS + 1);
-  Stack_Pointer = Next_To_Slot;
-
-  for (i = 0; i < Number_Of_Args; i++)
-  {
-    *Next_To_Slot++ = Vector_Ref(Next_From_Slot, CONS_CAR);
-    Next_From_Slot = Vector_Ref(Next_From_Slot, CONS_CDR);
-  }
-  Push(Arg1);		/* The function */
-  Push(STACK_FRAME_HEADER + Number_Of_Args);
- Pushed();
-  PRIMITIVE_ABORT(PRIM_NO_TRAP_APPLY);
+  PRIMITIVE_ABORT (PRIM_NO_TRAP_APPLY);
   /*NOTREACHED*/
 }
 
@@ -149,19 +156,13 @@ DEFINE_PRIMITIVE ("PRIMITIVE-APPLY-STEP", Prim_apply_step, 3, 3, 0)
 
    UGLY ... currently assumes that it is illegal to set a return trap
    this way, so that we don't run into stack parsing problems.  If
-   this is ever changed, be sure to check for COMPILE_STEPPER flag!
-*/
+   this is ever changed, be sure to check for COMPILE_STEPPER flag! */
 
 DEFINE_PRIMITIVE ("PRIMITIVE-RETURN-STEP", Prim_return_step, 2, 2, 0)
 {
-  Pointer Return_Hook;
-  Primitive_2_Args();
-
-  Return_Hook = Vector_Ref(Arg2, HUNK_CXR2);
-  if (Return_Hook != NIL)
-  {
-    Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  }
-  Install_Traps(Arg2, false);
-  PRIMITIVE_RETURN(Arg1);
+  PRIMITIVE_HEADER (2);
+  if ((MEMORY_REF ((ARG_REF (2)), HUNK_CXR2)) != SHARP_F)
+    error_bad_range_arg (2);
+  Install_Traps ((ARG_REF (2)), false);
+  PRIMITIVE_RETURN (ARG_REF (1));
 }

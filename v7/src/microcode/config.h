@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.47 1989/09/20 23:07:08 cph Exp $
+
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,12 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.46 1989/08/28 18:28:38 cph Exp $
- *
- * This file contains the configuration information and the information
- * given on the command line on Unix.
- *
- */
+/* This file contains the configuration information and the information
+   given on the command line on Unix. */
 
 /* Default pathnames. */
 
@@ -62,8 +60,8 @@ MIT in each case. */
 /* To enable stacklets (mostly useful with FUTURES).  These allow the
    stack to be allocated in small chunks from the heap, rather than
    in a single contiguous area at start up time. The use of the this
-   option is incompatible with the stepper and compiler.
-*/
+   option is incompatible with the stepper and compiler. */
+
 /* #define USE_STACKLETS */
 #endif
 #endif
@@ -82,17 +80,19 @@ MIT in each case. */
 #endif
 #endif
 
-/* These C type definitions are needed by everybody.  
+/* These C type definitions are needed by everybody.
    They should not be here, but it is unavoidable. */
-
 typedef char Boolean;
 #define true			1
 #define false			0
 
-/* This defines it so that C will be happy.
-   The various fields are defined in object.h */
+/* This is the Scheme object type; it should be called `SCHEME_OBJECT'.
+   The various fields are defined in "object.h". */
+typedef unsigned long SCHEME_OBJECT;
 
-typedef unsigned long Pointer;
+/* This definition makes the value of `OBJECT_LENGTH' available to
+   the preprocessor. */
+#define OBJECT_LENGTH ULONG_SIZE
 
 /* Operating System / Machine dependencies:
 
@@ -104,7 +104,7 @@ typedef unsigned long Pointer;
    If you do not know the values of the parameters specified below,
    try compiling and running the Wsize program ("make Wsize" if on a
    unix variant).  It may not run, but if it does, it will probably
-   compute the correct information.  
+   compute the correct information.
 
    Note that the C type void is used in the sources.  If your version
    of C does not have this type, you should bypass it.  This can be
@@ -113,10 +113,10 @@ typedef unsigned long Pointer;
 
    These parameters MUST be specified (and are computed by Wsize):
 
-   CHAR_SIZE is the size of a character in bits.
+   CHAR_BIT is the size of a character in bits.
 
    USHORT_SIZE is the size of an unsigned short in bits.  It should
-   be equivalent to (sizeof(unsigned short) * CHAR_SIZE), but is 
+   be equivalent to (sizeof(unsigned short) * CHAR_BIT), but is
    available to the preprocessor.
 
    ULONG_SIZE is the size of an unsigned long in bits.
@@ -126,7 +126,7 @@ typedef unsigned long Pointer;
    Note that if excess exponents are used in the representation,
    this number is one less than the size in bits of the exponent field.
 
-   FLONUM_MANTISSA_BITS is the number of bits in the (positive) mantissa 
+   FLONUM_MANTISSA_BITS is the number of bits in the (positive) mantissa
    of a (double) floating point number.  It includes the hidden bit if
    the representation uses them.
 
@@ -137,8 +137,8 @@ typedef unsigned long Pointer;
 
    FLOATING_ALIGNMENT should be defined ONLY if the system requires
    floating point numbers (double) to be aligned more strictly than
-   Pointers (long).  The value must be a mask of the low order bits
-   which are required to be zero for the storage address.  For
+   SCHEME_OBJECTs (long).  The value must be a mask of the low order
+   bits which are required to be zero for the storage address.  For
    example, a value of 0x7 requires octabyte alignment on a machine
    where addresses are specified in bytes.  The alignment must be an
    integral multiple of the length of a long.
@@ -146,27 +146,26 @@ typedef unsigned long Pointer;
    VAX_BYTE_ORDER should be defined ONLY if the least significant byte
    of a longword in memory lies at the lowest address, not defined
    otherwise (ie. Motorola MC68020, with opposite convention, or
-   PDP-10 with word addressin).
-*/
+   PDP-10 with word addressing). */
 
-/* 
+/*
    Other flags (the safe option is NOT to define them, which will
    sacrifice speed for safety):
 
    b32 should be defined for machines whose word size
-   (CHAR_SIZE*sizeof(long)) is 32 bits.  The information is redundant,
+   (CHAR_BIT*sizeof(long)) is 32 bits.  The information is redundant,
    but some C compilers do not do constant folding when shifts are
    involved, so it sometimes makes a big difference to define the
    constants directly rather than in terms of other constants.
    Similar things can be done for other word sizes.
 
-   Heap_In_Low_Memory should be defined if malloc returns the lowest 
+   Heap_In_Low_Memory should be defined if malloc returns the lowest
    available memory and thus all addresses will fit in the datum portion
-   of a Scheme Pointer.  The datum portion of a Scheme Pointer is 8 bits 
+   of a Scheme object.  The datum portion of a Scheme object is 8 bits
    less than the length of a C long.
 
    UNSIGNED_SHIFT is defined if right shifting an unsigned long
-   (i.e. Pointer) results in a logical (vs. arithmetic) shift.
+   (i.e. SCHEME_OBJECT) results in a logical (vs. arithmetic) shift.
    Setting the flag allows faster type code extraction.
 
    BELL is the character which rings the terminal bell.
@@ -214,13 +213,13 @@ typedef unsigned long Pointer;
 #define FASL_MIPS		15
 
 /* These (pdp10 and nu) haven't worked in a while.
- * Should be upgraded or flushed some day. 
+ * Should be upgraded or flushed some day.
  */
 
 #ifdef pdp10
 #define MACHINE_TYPE		"pdp10"
 #define Heap_In_Low_Memory
-#define CHAR_SIZE 36		/ * Ugh! Supposedly fixed in newer Cs * /
+#define CHAR_BIT 36		/ * Ugh! Supposedly fixed in newer Cs * /
 #define BELL 			'\007'
 #define FASL_INTERNAL_FORMAT    FASL_PDP10
 #endif
@@ -228,7 +227,7 @@ typedef unsigned long Pointer;
 #ifdef nu
 #define MACHINE_TYPE		"nu"
 #define Heap_In_Low_Memory
-#define CHAR_SIZE		8
+#define CHAR_BIT		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
 #define BELL 			'\007'
@@ -239,7 +238,7 @@ typedef unsigned long Pointer;
 #define HAS_FREXP
 #ifdef quick
 /* Bignum code fails for certain variables in registers because of a
-   compiler bug! 
+   compiler bug!
 */
 #undef quick
 #define quick
@@ -254,7 +253,7 @@ typedef unsigned long Pointer;
 #define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
 #define VAX_BYTE_ORDER
-#define CHAR_SIZE 		8
+#define CHAR_BIT 		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
 #define BELL			'\007'
@@ -308,13 +307,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #else /* not VMS ie. unix */
 
 /* Vax Unix C compiler bug */
-
-#define double_into_fixnum(what, target)				\
-{									\
-  long For_Vaxes_Sake = ((long) what);					\
-									\
-  target = Make_Non_Pointer(TC_FIXNUM, For_Vaxes_Sake);			\
-}
+#define HAVE_DOUBLE_TO_LONG_BUG
 
 #endif /* VMS */
 #endif /* vax */
@@ -323,7 +316,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define MACHINE_TYPE		"hp9000s200"
 #define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
-#define CHAR_SIZE		8
+#define CHAR_BIT		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
 #define BELL 			'\007'
@@ -344,11 +337,11 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #ifdef hp9000s500
 #define MACHINE_TYPE		"hp9000s500"
 /* An unfortunate fact of life on this machine:
-   the C heap is in high memory thus Heap_In_Low_Memory is not 
+   the C heap is in high memory thus Heap_In_Low_Memory is not
    defined and the whole thing runs slowly.  *Sigh*
 */
 #define UNSIGNED_SHIFT
-#define CHAR_SIZE		8
+#define CHAR_BIT		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
 #define BELL 			'\007'
@@ -369,7 +362,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #ifdef sun
 #define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
-#define CHAR_SIZE		8
+#define CHAR_BIT		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
 #define BELL 			'\007'
@@ -396,19 +389,14 @@ longjmp(Exit_Point, NORMAL_EXIT)
 
 #define HAS_FLOOR
 #define HAS_FREXP
-/* Sun C compiler bug. */
-#define double_into_fixnum(what, target)				\
-{									\
-  long for_suns_sake = ((long) what);					\
-									\
-  target = Make_Non_Pointer(TC_FIXNUM, for_suns_sake);			\
-}
-#endif
+#define HAVE_DOUBLE_TO_LONG_BUG
+
+#endif /* sun */
 
 #ifdef butterfly
 #define MACHINE_TYPE		"butterfly"
 #define Heap_In_Low_Memory
-#define CHAR_SIZE		8
+#define CHAR_BIT		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
 #define BELL 			'\007'
@@ -425,7 +413,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define MACHINE_TYPE		"cyber180"
 /* Word size is 64 bits. */
 #define Heap_In_Low_Memory
-#define CHAR_SIZE		8
+#define CHAR_BIT		8
 #define USHORT_SIZE		???
 #define ULONG_SIZE		???
 #define BELL			'\007'
@@ -443,7 +431,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define MACHINE_TYPE		"celerity"
 #define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
-#define CHAR_SIZE		8
+#define CHAR_BIT		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
 #define BELL 			'\007'
@@ -456,7 +444,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #ifdef hp9000s800
 #define MACHINE_TYPE		"hp9000s800"
 #define UNSIGNED_SHIFT
-#define CHAR_SIZE		8
+#define CHAR_BIT		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
 #define BELL 			'\007'
@@ -472,35 +460,20 @@ longjmp(Exit_Point, NORMAL_EXIT)
 
 /* Heap resides in "Quad 1", and hence memory addresses have a 1
    in the second MSBit. This is kludged by the definitions below, and is
-   still considered Heap_In_Low_Memory.
-*/
-
+   still considered Heap_In_Low_Memory. */
 #define Heap_In_Low_Memory
 
 /* It must be at least one more than the minimum necessary,
-   and it may not work if it is not even.
- */
+   and it may not work if it is not even. */
+#define TYPE_CODE_LENGTH 8
 
-#define TYPE_CODE_LENGTH	8
+/* Datum includes the quad tag, type doesn't. */
+#define TYPE_CODE_MASK	0x3F000000
+#define DATUM_MASK	0x40FFFFFF
+#define OBJECT_MASKS_DEFINED
 
 /* Clear the quad tag if there */
-
-#define TC_BITS_TO_TC(BITS)	((BITS) & 0x3F)
-
-/* This assumes that the max type code is 6, so that it does not
-   overflow into the quad tag.
- */
-
-#define TC_TO_TC_BITS(TC)	(TC)
-
-#define OBJECT_TYPE(O)		(TC_BITS_TO_TC((O) >> ADDRESS_LENGTH))
-
-/* Keep quad bit. */
-
-#define OBJECT_DATUM(O)		((O) & 0x40FFFFFF)
-
-#define MAKE_OBJECT(TC, D)						\
-  ((((unsigned) (TC_TO_TC_BITS(TC))) << ADDRESS_LENGTH) | (OBJECT_DATUM (D)))
+#define OBJECT_TYPE(object) (((object) >> DATUM_LENGTH) & 0x3F)
 
 #endif /* AVOID_SPECTRUM_TC_KLUDGE */
 #endif /* spectrum */
@@ -510,7 +483,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
 #define VAX_BYTE_ORDER
-#define CHAR_SIZE		8
+#define CHAR_BIT		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
 #define DBFLT_SIZE		64
@@ -527,7 +500,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define MACHINE_TYPE		"pyramid"
 #define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
-#define CHAR_SIZE		8
+#define CHAR_BIT		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
 #define BELL			'\007'
@@ -541,7 +514,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define MACHINE_TYPE		"alliant"
 #define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
-#define CHAR_SIZE		8
+#define CHAR_BIT		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
 #define BELL 			'\007'
@@ -558,7 +531,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define MACHINE_TYPE		"MIPS (DECStation 3100)"
 #define UNSIGNED_SHIFT
 #define VAX_BYTE_ORDER
-#define CHAR_SIZE            	8
+#define CHAR_BIT            	8
 #define USHORT_SIZE          	16
 #define ULONG_SIZE           	32
 /* Flonum (double) size is 64 bits. */
@@ -571,12 +544,12 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define BELL 			'\007'
 #endif
 
-/* Make sure that some definition applies. 
+/* Make sure that some definition applies.
    If this error occurs, and the parameters of the
    configuration are unknown, try the Wsize program.
 */
 
-#ifndef CHAR_SIZE
+#ifndef CHAR_BIT
 #include "Error: config.h: Unknown configuration."
 #endif
 
@@ -599,7 +572,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #endif
 
 #ifndef CONSTANT_SIZE
-#define CONSTANT_SIZE		350	/* Default Kcells for constant */
+#define CONSTANT_SIZE		360	/* Default Kcells for constant */
 #endif
 
 #ifndef HEAP_SIZE

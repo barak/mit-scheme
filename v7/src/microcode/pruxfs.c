@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.35 1989/08/07 03:14:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.36 1989/09/20 23:12:43 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -36,7 +36,6 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
-#include "string.h"
 #include <pwd.h>
 #include <grp.h>
 #include <sys/types.h>
@@ -57,7 +56,7 @@ extern int errno;
 /* This returns the string that `perror' would have printed, except
    that it is not terminated by a newline.  */
 
-Pointer
+SCHEME_OBJECT
 system_error_message (s)
      char * s;
 {
@@ -66,7 +65,7 @@ system_error_message (s)
   char * error_message;
   char unknown_error [64];
   extern char * malloc ();
-  Pointer result;
+  SCHEME_OBJECT result;
 
   if ((errno >= 0) && (errno <= sys_nerr))
     error_message = (sys_errlist [errno]);
@@ -78,12 +77,12 @@ system_error_message (s)
   if (s == NULL)
     {
       result = (allocate_string (strlen (error_message)));
-      strcpy ((string_pointer (result, 0)), error_message);
+      strcpy ((STRING_LOC (result, 0)), error_message);
     }
   else
     {
       result = (allocate_string ((strlen (s)) + (strlen (error_message)) + 2));
-      sprintf ((string_pointer (result, 0)), "%s: %s", s, error_message);
+      sprintf ((STRING_LOC (result, 0)), "%s: %s", s, error_message);
     }
   return (result);
 }
@@ -97,16 +96,14 @@ or #F indicating that the variable does not exist.")
   char * variable_value;
   extern char * getenv ();
   PRIMITIVE_HEADER (1);
-
-  CHECK_ARG (1, STRING_P);
-  variable_value = (getenv (Scheme_String_To_C_String (ARG_REF (1))));
+  variable_value = (getenv (STRING_ARG (1)));
   PRIMITIVE_RETURN
-    ((variable_value == NULL)
+    ((variable_value == ((char *) 0))
      ? SHARP_F
-     : (C_String_To_Scheme_String (variable_value)));
+     : (char_pointer_to_string (variable_value)));
 }
 
-DEFINE_PRIMITIVE ("CURRENT-USER-NAME", Prim_get_user_name, 0, 0, 
+DEFINE_PRIMITIVE ("CURRENT-USER-NAME", Prim_get_user_name, 0, 0,
   "Returns (as a string) the user name of the user running Scheme.")
 {
   char * user_name;
@@ -119,13 +116,13 @@ DEFINE_PRIMITIVE ("CURRENT-USER-NAME", Prim_get_user_name, 0, 0,
       unsigned short getuid ();
       struct passwd *entry;
       struct passwd *getpwuid ();
-      
+
       entry = (getpwuid (getuid ()));
       if (entry == NULL)
 	error_external_return ();
       user_name = (entry -> pw_name);
     }
-  PRIMITIVE_RETURN (C_String_To_Scheme_String (user_name));
+  PRIMITIVE_RETURN (char_pointer_to_string (user_name));
 }
 
 DEFINE_PRIMITIVE ("GET-USER-HOME-DIRECTORY", Prim_get_user_home_directory, 1, 1,
@@ -137,13 +134,11 @@ or #F indicating that no such user is known.")
   struct passwd * entry;
   struct passwd * getpwnam ();
   PRIMITIVE_HEADER (1);
-
-  CHECK_ARG (1, STRING_P);
-  entry = (getpwnam (Scheme_String_To_C_String (ARG_REF (1))));
+  entry = (getpwnam (STRING_ARG (1)));
   PRIMITIVE_RETURN
-    ((entry == NULL)
+    ((entry == ((struct passwd *) 0))
      ? SHARP_F
-     : (C_String_To_Scheme_String (entry -> pw_dir)));
+     : (char_pointer_to_string (entry -> pw_dir)));
 }
 
 DEFINE_PRIMITIVE ("CURRENT-FILE-TIME", Prim_current_file_time, 0, 0,
@@ -153,25 +148,26 @@ This is an integer whose units are in seconds.")
   extern long time ();
   PRIMITIVE_HEADER (0);
 
-  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (time ((long *) 0)));
+  PRIMITIVE_RETURN (long_to_integer (time ((long *) 0)));
 }
 
 DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1,
   "Converts a file system time stamp into a date/time string.")
 {
-  extern long object_to_long ();
   long clock;
   char * time_string;
   PRIMITIVE_HEADER (1);
-
-  clock =
-    (object_to_long ((ARG_REF (1)),
-		     ERR_ARG_1_WRONG_TYPE,
-		     ERR_ARG_1_BAD_RANGE));
+  CHECK_ARG (1, INTEGER_P);
+  {
+    fast SCHEME_OBJECT number = (ARG_REF (1));
+    if (! (integer_to_long_p (number)))
+      error_bad_range_arg (1);
+    clock = (integer_to_long (number));
+  }
   time_string = (ctime (& clock));
   if ((time_string [24]) == '\n')
     (time_string [24]) = '\0';
-  PRIMITIVE_RETURN (C_String_To_Scheme_String (time_string));
+  PRIMITIVE_RETURN (char_pointer_to_string (time_string));
 }
 
 DEFINE_PRIMITIVE ("UID->STRING", Prim_uid_to_string, 1, 1,
@@ -189,7 +185,7 @@ If the argument is not a known user ID, returns #F.")
   PRIMITIVE_RETURN
     ((entry == NULL)
      ? SHARP_F
-     : (C_String_To_Scheme_String (entry -> pw_name)));
+     : (char_pointer_to_string (entry -> pw_name)));
 }
 
 DEFINE_PRIMITIVE ("GID->STRING", Prim_gid_to_string, 1, 1,
@@ -207,7 +203,7 @@ If the argument is not a known group ID, returns #F.")
   PRIMITIVE_RETURN
     ((entry == NULL)
      ? SHARP_F
-     : (C_String_To_Scheme_String (entry -> gr_name)));
+     : (char_pointer_to_string (entry -> gr_name)));
 }
 
 DEFINE_PRIMITIVE ("FILE-DIRECTORY?", Prim_file_directory_p, 1, 1,
@@ -231,14 +227,13 @@ DEFINE_PRIMITIVE ("FILE-MODES", Prim_file_modes, 1, 1,
 
   if ((stat ((STRING_ARG (1)), (& stat_result))) < 0)
     PRIMITIVE_RETURN (SHARP_F);
-  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM ((stat_result . st_mode) & 07777));
+  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM ((stat_result . st_mode) & 07777));
 }
 
 DEFINE_PRIMITIVE ("SET-FILE-MODES!", Prim_set_file_modes, 2, 2,
   "Return mode bits of FILE, as an integer.")
 {
   PRIMITIVE_HEADER (2);
-
   if ((chmod ((STRING_ARG (1)), (arg_index_integer (2, 010000)))) < 0)
     error_external_return ();
   PRIMITIVE_RETURN (SHARP_F);
@@ -246,9 +241,7 @@ DEFINE_PRIMITIVE ("SET-FILE-MODES!", Prim_set_file_modes, 2, 2,
 
 DEFINE_PRIMITIVE ("FILE-ACCESS", Prim_file_access, 2, 2, 0)
 {
-  char * filename;
   PRIMITIVE_HEADER (1);
-
   PRIMITIVE_RETURN
     (((access ((STRING_ARG (1)), (arg_index_integer (2, 8)))) >= 0)
      ? SHARP_T
@@ -260,8 +253,7 @@ DEFINE_PRIMITIVE ("CURRENT-UID", Prim_current_uid, 0, 0,
 {
   unsigned short geteuid ();
   PRIMITIVE_HEADER (0);
-
-  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (geteuid ()));
+  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (geteuid ()));
 }
 
 DEFINE_PRIMITIVE ("CURRENT-GID", Prim_current_gid, 0, 0,
@@ -270,21 +262,21 @@ DEFINE_PRIMITIVE ("CURRENT-GID", Prim_current_gid, 0, 0,
   unsigned short getegid ();
   PRIMITIVE_HEADER (0);
 
-  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (getegid ()));
+  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (getegid ()));
 }
 
 /* The following is originally from GNU Emacs. */
 
 #ifdef S_IFLNK
 
-static Pointer
+static SCHEME_OBJECT
 file_symlink_p (filename)
-     Pointer filename;
+     SCHEME_OBJECT filename;
 {
   char *buf;
   int bufsize;
   int valsize;
-  Pointer val;
+  SCHEME_OBJECT val;
   extern char *malloc ();
   extern void free ();
 
@@ -295,7 +287,7 @@ file_symlink_p (filename)
       if (buf == NULL)
 	error_external_return ();
       valsize =
-	(readlink ((Scheme_String_To_C_String (filename)), buf, bufsize));
+	(readlink ((STRING_LOC (filename, 0)), buf, bufsize));
       if (valsize < bufsize)
 	break;
       /* Buffer was not long enough */
@@ -308,7 +300,7 @@ file_symlink_p (filename)
       return (SHARP_F);
     }
   (buf [valsize]) = '\0';
-  val = (C_String_To_Scheme_String (buf));
+  val = (char_pointer_to_string (buf));
   free (buf);
   return (val);
 }
@@ -356,56 +348,51 @@ static void setst ();
 #define lstat stat
 #endif
 
-DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1, 1, 
+DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1, 1,
   "Given a file name, returns attribute information about the file.\n\
 If the file exists and its status information is accessible, the result\n\
 is a vector of 10 items (see the reference manual for details).  Otherwise\n\
 the result is #F.")
 {
   struct stat stat_result;
-  extern Pointer allocate_marked_vector ();
-  Pointer result;
-  extern Pointer allocate_string ();
-  Pointer modes;
+  extern SCHEME_OBJECT allocate_marked_vector ();
+  SCHEME_OBJECT result;
+  extern SCHEME_OBJECT allocate_string ();
+  SCHEME_OBJECT modes;
   PRIMITIVE_HEADER (1);
 
-  CHECK_ARG (1, STRING_P);
-  if ((lstat ((Scheme_String_To_C_String (ARG_REF (1))), (& stat_result))) < 0)
+  if ((lstat ((STRING_ARG (1)), (& stat_result))) < 0)
     PRIMITIVE_RETURN (SHARP_F);
   result = (allocate_marked_vector (TC_VECTOR, 10, true));
   modes = (allocate_string (10));
   switch ((stat_result . st_mode) & S_IFMT)
     {
     case S_IFDIR:
-      User_Vector_Set (result, 0, SHARP_T);
+      VECTOR_SET (result, 0, SHARP_T);
       break;
 #ifdef S_IFLNK
     case S_IFLNK:
-      User_Vector_Set (result, 0, (file_symlink_p (ARG_REF (1))));
+      VECTOR_SET (result, 0, (file_symlink_p (ARG_REF (1))));
       break;
 #endif
     default:
-      User_Vector_Set (result, 0, SHARP_F);
+      VECTOR_SET (result, 0, SHARP_F);
       break;
     }
-  User_Vector_Set (result, 1, (MAKE_UNSIGNED_FIXNUM (stat_result . st_nlink)));
-  User_Vector_Set (result, 2, (MAKE_UNSIGNED_FIXNUM (stat_result . st_uid)));
-  User_Vector_Set (result, 3, (MAKE_UNSIGNED_FIXNUM (stat_result . st_gid)));
-  User_Vector_Set
-    (result, 4, (C_Integer_To_Scheme_Integer (stat_result . st_atime)));
-  User_Vector_Set
-    (result, 5, (C_Integer_To_Scheme_Integer (stat_result . st_mtime)));
-  User_Vector_Set
-    (result, 6, (C_Integer_To_Scheme_Integer (stat_result . st_ctime)));
-  User_Vector_Set
-    (result, 7, (C_Integer_To_Scheme_Integer (stat_result . st_size)));
-  filemodestring ((& stat_result), (string_pointer (modes, 0)));
-  User_Vector_Set (result, 8, modes);
-  User_Vector_Set (result, 9, (MAKE_UNSIGNED_FIXNUM (stat_result . st_ino)));
+  VECTOR_SET (result, 1, (LONG_TO_UNSIGNED_FIXNUM (stat_result . st_nlink)));
+  VECTOR_SET (result, 2, (LONG_TO_UNSIGNED_FIXNUM (stat_result . st_uid)));
+  VECTOR_SET (result, 3, (LONG_TO_UNSIGNED_FIXNUM (stat_result . st_gid)));
+  VECTOR_SET (result, 4, (long_to_integer (stat_result . st_atime)));
+  VECTOR_SET (result, 5, (long_to_integer (stat_result . st_mtime)));
+  VECTOR_SET (result, 6, (long_to_integer (stat_result . st_ctime)));
+  VECTOR_SET (result, 7, (long_to_integer (stat_result . st_size)));
+  filemodestring ((& stat_result), (STRING_LOC (modes, 0)));
+  VECTOR_SET (result, 8, modes);
+  VECTOR_SET (result, 9, (LONG_TO_UNSIGNED_FIXNUM (stat_result . st_ino)));
   PRIMITIVE_RETURN (result);
 }
 
-/* filemodestring - set file attribute data 
+/* filemodestring - set file attribute data
 
    Filemodestring converts the data in the st_mode field of file
    status block `s' to a 10 character attribute string, which it
@@ -501,11 +488,10 @@ Waits until the shell terminates, then returns its exit status as an integer.")
 {
   extern int system ();
   PRIMITIVE_HEADER (1);
-
-  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (system (STRING_ARG (1))));
+  PRIMITIVE_RETURN (long_to_integer (system (STRING_ARG (1))));
 }
 
-static Pointer file_touch ();
+static SCHEME_OBJECT file_touch ();
 
 DEFINE_PRIMITIVE ("FILE-TOUCH", Prim_file_touch, 1, 1,
   "Given a file name, changes the times of the file to the current time.\n\
@@ -518,7 +504,7 @@ Returns #F if successful, otherwise a unix error string.")
   PRIMITIVE_RETURN (file_touch (STRING_ARG (1)));
 }
 
-static Pointer
+static SCHEME_OBJECT
 file_touch (filename)
      char * filename;
 {
@@ -591,7 +577,7 @@ file_touch (filename)
      file, read one byte, and write it back in place.  */
 
   if (((file_status . st_mode) & S_IFMT) != S_IFREG)
-    return (C_String_To_Scheme_String ("can only touch regular files"));
+    return (char_pointer_to_string ("can only touch regular files"));
 
   fd = (open (filename, O_RDWR, 0666));
   if (fd < 0)
@@ -626,7 +612,7 @@ file_touch (filename)
 	    {
 	      (void) ftruncate (fd, 0);
 	      (void) close (fd);
-	      return (C_String_To_Scheme_String ("read: eof encountered"));
+	      return (char_pointer_to_string ("read: eof encountered"));
 	    }
 	  if ((result < 0) && (errno != EINTR))
 	    {
@@ -650,7 +636,7 @@ file_touch (filename)
       if (result == 0)
 	{
 	  (void) close (fd);
-	  return (C_String_To_Scheme_String ("read: eof encountered"));
+	  return (char_pointer_to_string ("read: eof encountered"));
 	}
       if ((result < 0) && (errno != EINTR))
 	{

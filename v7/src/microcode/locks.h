@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/locks.h,v 9.24 1989/09/20 23:09:56 cph Rel $
+
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,12 +32,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/locks.h,v 9.23 1988/09/29 04:59:13 jinx Rel $
-
-	Contains everything needed to lock and unlock parts of
-		the heap, pure/constant space and the like.
-	It also contains intercommunication stuff as well. 
-*/
+/* Contains everything needed to lock and unlock parts of
+   the heap, pure/constant space and the like.
+   It also contains intercommunication stuff as well. */
 
 typedef long *Lock_Handle;		/* Address of lock word */
 #define CONTENTION_DELAY	10	/* For "slow" locks, back off */

@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.36 1989/09/20 23:04:46 cph Exp $
+
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,12 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.35 1989/08/28 18:28:07 cph Exp $
- *
- * This File contains the code to translate portable format binary
- * files to internal format.
- *
- */
+/* This file contains the code to translate portable format binary
+   files to internal format. */
 
 /* Cheap renames */
 
@@ -55,7 +53,7 @@ static long
   Dumped_Pure_Base, Pure_Objects, Pure_Count,
   Primitive_Table_Length;
 
-static Pointer
+static SCHEME_OBJECT
   *Heap,
   *Heap_Base, *Heap_Table, *Heap_Object_Base, *Free,
   *Constant_Base, *Constant_Table,
@@ -67,11 +65,11 @@ static Pointer
 long
 Write_Data(Count, From_Where)
      long Count;
-     Pointer *From_Where;
+     SCHEME_OBJECT *From_Where;
 {
   extern int fwrite();
 
-  return (fwrite(((char *) From_Where), sizeof(Pointer),
+  return (fwrite(((char *) From_Where), sizeof(SCHEME_OBJECT),
 		 Count, internal_file));
 }
 
@@ -129,9 +127,9 @@ read_a_char()
   }
 }
 
-Pointer *
+SCHEME_OBJECT *
 read_a_string_internal(To, maxlen)
-     Pointer *To;
+     SCHEME_OBJECT *To;
      long maxlen;
 {
   long ilen, Pointer_Count;
@@ -153,8 +151,8 @@ read_a_string_internal(To, maxlen)
 
   Pointer_Count = STRING_CHARS + char_to_pointer(maxlen);
   To[STRING_HEADER] =
-    Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, (Pointer_Count - 1));
-  To[STRING_LENGTH] = ((Pointer) len);
+    MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (Pointer_Count - 1));
+  To[STRING_LENGTH_INDEX] = ((SCHEME_OBJECT) len);
 
   /* Space */
 
@@ -167,13 +165,13 @@ read_a_string_internal(To, maxlen)
   return (To + Pointer_Count);
 }
 
-Pointer *
+SCHEME_OBJECT *
 read_a_string(To, Slot)
-     Pointer *To, *Slot;
+     SCHEME_OBJECT *To, *Slot;
 {
   long maxlen;
 
-  *Slot = Make_Pointer(TC_CHARACTER_STRING, To);
+  *Slot = MAKE_POINTER_OBJECT(TC_CHARACTER_STRING, To);
   fscanf(portable_file, "%ld", &maxlen);
   return (read_a_string_internal(To, maxlen));
 }
@@ -220,19 +218,23 @@ read_hex_digit_procedure()
 
 #endif
 
-Pointer *
+SCHEME_OBJECT *
 read_an_integer(The_Type, To, Slot)
      int The_Type;
-     Pointer *To;
-     Pointer *Slot;
+     SCHEME_OBJECT *To;
+     SCHEME_OBJECT *Slot;
 {
   Boolean negative;
-  long size_in_bits;
+  fast long length_in_bits;
 
   getc(portable_file);				/* Space */
   negative = ((getc(portable_file)) == '-');
-  fscanf(portable_file, "%ld", &size_in_bits);
-  if ((size_in_bits <= fixnum_to_bits) &&
+  {
+    long l;
+    fscanf (portable_file, "%ld", (&l));
+    length_in_bits = l;
+  }
+  if ((length_in_bits <= fixnum_to_bits) &&
       (The_Type == TC_FIXNUM))
   {
     fast long Value = 0;
@@ -240,10 +242,10 @@ read_an_integer(The_Type, To, Slot)
     fast long ndigits;
     long digit;
 
-    if (size_in_bits != 0)
+    if (length_in_bits != 0)
     {
       for(Normalization = 0,
-	  ndigits = hex_digits(size_in_bits);
+	  ndigits = hex_digits(length_in_bits);
 	  --ndigits >= 0;
 	  Normalization += 4)
       {
@@ -255,96 +257,117 @@ read_an_integer(The_Type, To, Slot)
     {
       Value = -Value;
     }
-    *Slot = MAKE_SIGNED_FIXNUM(Value);
+    *Slot = LONG_TO_FIXNUM(Value);
     return (To);
   }
-  else if (size_in_bits == 0)
-  {
-    bigdigit *REG = BIGNUM(To);
-
-    Prepare_Header(REG, 0, POSITIVE);
-    *Slot = Make_Pointer(TC_BIG_FIXNUM, To);
-    return (To + Align(0));
-  }
+  else if (length_in_bits == 0)
+    {
+      SCHEME_OBJECT bignum = (MAKE_POINTER_OBJECT (TC_BIG_FIXNUM, To));
+      long gc_length = (BIGNUM_LENGTH_TO_GC_LENGTH (0));
+      (*To) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, gc_length));
+      BIGNUM_SET_HEADER (bignum, 0, 0);
+      (*Slot) = bignum;
+      return (To + gc_length + 1);
+    }
   else
-  {
-    fast bigdigit *The_Bignum;
-    fast long size, nbits, ndigits;
-    fast unsigned long Temp;
-    long Length;
-
-    if ((The_Type == TC_FIXNUM) && (!compact_p))
     {
-      fprintf(stderr,
-	      "%s: Fixnum too large, coercing to bignum.\n",
-	      program_name);
+      SCHEME_OBJECT bignum = (MAKE_POINTER_OBJECT (TC_BIG_FIXNUM, To));
+      bignum_length_type length = (BIGNUM_BITS_TO_DIGITS (length_in_bits));
+      long gc_length = (BIGNUM_LENGTH_TO_GC_LENGTH (length));
+      bignum_digit_type * scan = (BIGNUM_START_PTR (bignum));
+      fast bignum_digit_type accumulator = 0;
+      fast int bits_in_digit =
+	((length_in_bits < BIGNUM_DIGIT_LENGTH)
+	 ? length_in_bits
+	 : BIGNUM_DIGIT_LENGTH);
+      fast int position = 0;
+      int hex_digit;
+      while (length_in_bits > 0)
+	{
+	  read_hex_digit (hex_digit);
+	  if (bits_in_digit > 4)
+	    {
+	      accumulator |= (hex_digit << position);
+	      length_in_bits -= 4;
+	      position += 4;
+	      bits_in_digit -= 4;
+	    }
+	  else if (bits_in_digit == 4)
+	    {
+	      (*scan++) = (accumulator | (hex_digit << position));
+	      accumulator = 0;
+	      position = 0;
+	      length_in_bits -= 4;
+	      bits_in_digit =
+		((length_in_bits < BIGNUM_DIGIT_LENGTH)
+		 ? length_in_bits
+		 : BIGNUM_DIGIT_LENGTH);
+	    }
+	  else
+	    {
+	      (*scan++) =
+		(accumulator |
+		 ((hex_digit & ((1 << bits_in_digit) - 1)) << position));
+	      accumulator = (hex_digit >> bits_in_digit);
+	      position = (4 - bits_in_digit);
+	      length_in_bits -= 4;
+	      if (length_in_bits >= BIGNUM_DIGIT_LENGTH)
+		bits_in_digit = BIGNUM_DIGIT_LENGTH;
+	      else if (length_in_bits > 0)
+		bits_in_digit = length_in_bits;
+	      else
+		{
+		  (*scan) = accumulator;
+		  break;
+		}
+	    }
+	}
+      (*To) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, gc_length));
+      BIGNUM_SET_HEADER (bignum, length, negative);
+      (*Slot) = bignum;
+      return (To + gc_length + 1);
     }
-    size = bits_to_bigdigit(size_in_bits);
-    ndigits = hex_digits(size_in_bits);
-    Length = Align(size);
-    The_Bignum = BIGNUM(To);
-    Prepare_Header(The_Bignum, size, (negative ? NEGATIVE : POSITIVE));
-    for (The_Bignum = Bignum_Bottom(The_Bignum), nbits = 0, Temp = 0;
-	 --size >= 0;
-	 )
-    {
-      for ( ;
-	   (nbits < SHIFT) && (ndigits > 0);
-	   ndigits -= 1, nbits += 4)
-      {
-	long digit;
-
-	read_hex_digit(digit);
-	Temp |= (((unsigned long) digit) << nbits);
-      }
-      *The_Bignum++ = Rem_Radix(Temp);
-      Temp = Div_Radix(Temp);
-      nbits -= SHIFT;
-    }
-    *Slot = Make_Pointer(TC_BIG_FIXNUM, To);
-    return (To + Length);
-  }
 }
 
-Pointer *
+SCHEME_OBJECT *
 read_a_bit_string(To, Slot)
-     Pointer *To, *Slot;
+     SCHEME_OBJECT *To, *Slot;
 {
   long size_in_bits, size_in_words;
-  Pointer the_bit_string;
+  SCHEME_OBJECT the_bit_string;
 
   fscanf(portable_file, "%ld", &size_in_bits);
-  size_in_words = (1 + bits_to_pointers (size_in_bits));
+  size_in_words = (1 + (BIT_STRING_LENGTH_TO_GC_LENGTH (size_in_bits)));
 
-  the_bit_string = Make_Pointer(TC_BIT_STRING, To);
-  *To++ = Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, size_in_words);
+  the_bit_string = MAKE_POINTER_OBJECT (TC_BIT_STRING, To);
+  *To++ = MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, size_in_words);
   *To = size_in_bits;
   To += size_in_words;
 
   if (size_in_bits != 0)
   {
     unsigned long temp;
-    fast Pointer *scan;
+    fast SCHEME_OBJECT *scan;
     fast long bits_remaining, bits_accumulated;
-    fast Pointer accumulator, next_word;
+    fast SCHEME_OBJECT accumulator, next_word;
 
     accumulator = 0;
     bits_accumulated = 0;
-    scan = bit_string_low_ptr(the_bit_string);
+    scan = BIT_STRING_LOW_PTR(the_bit_string);
     for(bits_remaining = size_in_bits;
 	bits_remaining > 0;
 	bits_remaining -= 4)
     {
       read_hex_digit(temp);
-      if ((bits_accumulated + 4) > POINTER_LENGTH)
+      if ((bits_accumulated + 4) > OBJECT_LENGTH)
       {
 	accumulator |=
-	  ((temp & low_mask(POINTER_LENGTH - bits_accumulated)) <<
+	  ((temp & LOW_MASK(OBJECT_LENGTH - bits_accumulated)) <<
 	   bits_accumulated);
-	*(inc_bit_string_ptr(scan)) = accumulator;
-	accumulator = (temp >> (POINTER_LENGTH - bits_accumulated));
-	bits_accumulated -= (POINTER_LENGTH - 4);
-	temp &= low_mask(bits_accumulated);
+	*(INC_BIT_STRING_PTR(scan)) = accumulator;
+	accumulator = (temp >> (OBJECT_LENGTH - bits_accumulated));
+	bits_accumulated -= (OBJECT_LENGTH - 4);
+	temp &= LOW_MASK(bits_accumulated);
       }
       else
       {
@@ -354,7 +377,7 @@ read_a_bit_string(To, Slot)
     }
     if (bits_accumulated != 0)
     {
-      *(inc_bit_string_ptr(scan)) = accumulator;
+      *(INC_BIT_STRING_PTR(scan)) = accumulator;
     }
   }
   *Slot = the_bit_string;
@@ -370,7 +393,7 @@ static double the_max = 0.0;
 #define dflmin()	0.0	/* Cop out */
 #define dflmax()	((the_max == 0.0) ? compute_max() : the_max)
 
-double 
+double
 compute_max()
 {
   fast double Result;
@@ -387,7 +410,7 @@ compute_max()
   return (Result);
 }
 
-double 
+double
 read_a_flonum()
 {
   Boolean negative;
@@ -447,12 +470,12 @@ read_a_flonum()
   return (Result);
 }
 
-Pointer *
+SCHEME_OBJECT *
 Read_External(N, Table, To)
      long N;
-     fast Pointer *Table, *To;
+     fast SCHEME_OBJECT *Table, *To;
 {
-  fast Pointer *Until = &Table[N];
+  fast SCHEME_OBJECT *Until = &Table[N];
   int The_Type;
 
   while (Table < Until)
@@ -480,7 +503,7 @@ Read_External(N, Table, To)
 	getc(portable_file);	/* Space */
 	VMS_BUG(the_char_code = 0);
 	fscanf( portable_file, "%3lx", &the_char_code);
-	*Table++ = Make_Non_Pointer( TC_CHARACTER, the_char_code);
+	*Table++ = MAKE_OBJECT (TC_CHARACTER, the_char_code);
 	continue;
       }
 
@@ -488,9 +511,9 @@ Read_External(N, Table, To)
       {
 	double The_Flonum = read_a_flonum();
 
-	Align_Float(To);
-	*Table++ = Make_Pointer(TC_BIG_FLONUM, To);
-	*To++ = Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, (float_to_pointer));
+	ALIGN_FLOAT (To);
+	*Table++ = MAKE_POINTER_OBJECT (TC_BIG_FLONUM, To);
+	*To++ = MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (float_to_pointer));
 	*((double *) To) = The_Flonum;
 	To += float_to_pointer;
 	continue;
@@ -511,10 +534,10 @@ Read_External(N, Table, To)
 
 void
 Move_Memory(From, N, To)
-     fast Pointer *From, *To;
+     fast SCHEME_OBJECT *From, *To;
      long N;
 {
-  fast Pointer *Until;
+  fast SCHEME_OBJECT *Until;
 
   Until = &From[N];
   while (From < Until)
@@ -528,16 +551,16 @@ Move_Memory(From, N, To)
 
 void
 Relocate_Objects(from, how_many, disp)
-     fast Pointer *from;
+     fast SCHEME_OBJECT *from;
      fast long disp;
      long how_many;
 {
-  fast Pointer *Until;
+  fast SCHEME_OBJECT *Until;
 
   Until = &from[how_many];
   while (from < Until)
   {
-    switch(OBJECT_TYPE(*from))
+    switch(OBJECT_TYPE (*from))
     {
       case TC_FIXNUM:
       case TC_CHARACTER:
@@ -547,14 +570,15 @@ Relocate_Objects(from, how_many, disp)
       case TC_BIG_FIXNUM:
       case TC_BIG_FLONUM:
       case TC_CHARACTER_STRING:
-	*from++ == MAKE_OBJECT(OBJECT_TYPE(*from), (disp + OBJECT_DATUM(*from)));
+	*from++ ==
+	  (OBJECT_NEW_DATUM ((*from), (disp + OBJECT_DATUM (*from))));
 	break;
 
       default:
 	fprintf(stderr,
 		"%s: Unknown External Object Reference with Type 0x%02x",
 		program_name,
-		OBJECT_TYPE(*from));
+		OBJECT_TYPE (*from));
 	inconsistency();
     }
   }
@@ -588,23 +612,23 @@ Relocate_Objects(from, how_many, disp)
 
 #else
 
-static Pointer *Relocate_Temp;
+static SCHEME_OBJECT *Relocate_Temp;
 
 #define Relocate(Addr)							\
   (Relocate_Into(Relocate_Temp, Addr), Relocate_Temp)
 
 #endif
 
-Pointer *
+SCHEME_OBJECT *
 Read_Pointers_and_Relocate(how_many, to)
      fast long how_many;
-     fast Pointer *to;
+     fast SCHEME_OBJECT *to;
 {
   int The_Type;
   long The_Datum;
 
 #if false
-  Align_Float(to);
+  ALIGN_FLOAT (to);
 #endif
 
   while (--how_many >= 0)
@@ -617,16 +641,16 @@ Read_Pointers_and_Relocate(how_many, to)
       case CONSTANT_CODE:
 	*to++ = Constant_Table[The_Datum];
 	continue;
-	
+
       case HEAP_CODE:
 	*to++ = Heap_Table[The_Datum];
 	continue;
-	
+
       case TC_MANIFEST_NM_VECTOR:
-	*to++ = Make_Non_Pointer(The_Type, The_Datum);
+	*to++ = MAKE_OBJECT (The_Type, The_Datum);
         {
 	  fast long count;
-	  
+
 	  count = The_Datum;
 	  how_many -= count;
 	  while (--count >= 0)
@@ -639,13 +663,14 @@ Read_Pointers_and_Relocate(how_many, to)
 
       case TC_COMPILED_ENTRY:
       {
-	Pointer *temp;
+	SCHEME_OBJECT *temp;
 	long base_type, base_datum;
 
 	fscanf(portable_file, "%02x %lx", &base_type, &base_datum);
 	temp = Relocate(base_datum);
-	*to++ = Make_Pointer(base_type,
-			     ((Pointer *) (&(((char *) temp)[The_Datum]))));
+	*to++ =
+	  (MAKE_POINTER_OBJECT
+	   (base_type, ((SCHEME_OBJECT *) (&(((char *) temp)[The_Datum])))));
 	break;
       }
 
@@ -661,7 +686,7 @@ Read_Pointers_and_Relocate(how_many, to)
       case TC_PRIMITIVE:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
       case_simple_Non_Pointer:
-	*to++ = Make_Non_Pointer(The_Type, The_Datum);
+	*to++ = MAKE_OBJECT (The_Type, The_Datum);
 	continue;
 
       case TC_MANIFEST_CLOSURE:
@@ -675,29 +700,29 @@ Read_Pointers_and_Relocate(how_many, to)
       case TC_REFERENCE_TRAP:
 	if (The_Datum <= TRAP_MAX_IMMEDIATE)
 	{
-	  *to++ = Make_Non_Pointer(The_Type, The_Datum);
+	  *to++ = MAKE_OBJECT (The_Type, The_Datum);
 	  continue;
 	}
 	/* It is a pointer, fall through. */
 
       default:
 	/* Should be stricter */
-	*to++ = Make_Pointer(The_Type, Relocate(The_Datum));
+	*to++ = MAKE_POINTER_OBJECT (The_Type, Relocate(The_Datum));
 	continue;
     }
   }
 #if false
-  Align_Float(to);
+  ALIGN_FLOAT (to);
 #endif
   return (to);
 }
 
 static Boolean primitive_warn = false;
 
-Pointer *
+SCHEME_OBJECT *
 read_primitives(how_many, where)
      fast long how_many;
-     fast Pointer *where;
+     fast SCHEME_OBJECT *where;
 {
   long arity;
 
@@ -708,7 +733,7 @@ read_primitives(how_many, where)
     {
       primitive_warn = true;
     }
-    *where++ = MAKE_SIGNED_FIXNUM(arity);
+    *where++ = LONG_TO_FIXNUM(arity);
     where = read_a_string_internal(where, ((long) -1));
   }
   return (where);
@@ -719,27 +744,24 @@ read_primitives(how_many, where)
 void
 print_external_objects(area_name, Table, N)
      char *area_name;
-     fast Pointer *Table;
+     fast SCHEME_OBJECT *Table;
      fast long N;
 {
-  fast Pointer *Table_End = &Table[N];
+  fast SCHEME_OBJECT *Table_End = &Table[N];
 
   fprintf(stderr, "%s External Objects:\n", area_name);
   fprintf(stderr, "Table = 0x%x; N = %d\n", Table, N);
 
   for( ; Table < Table_End; Table++)
   {
-    switch (Type_Code(*Table))
+    switch (OBJECT_TYPE (*Table))
     {
       case TC_FIXNUM:
       {
-	long The_Number;
-
-	Sign_Extend(*Table, The_Number);
         fprintf(stderr,
 		"Table[%6d] = Fixnum %d\n",
 		(N - (Table_End - Table)),
-		The_Number);
+		(FIXNUM_TO_LONG (*Table)));
 	break;
       }
       case TC_CHARACTER:
@@ -754,7 +776,7 @@ print_external_objects(area_name, Table, N)
         fprintf(stderr,
 		"Table[%6d] = string \"%s\"\n",
 		(N - (Table_End - Table)),
-		((char *) Nth_Vector_Loc(*Table, STRING_CHARS)));
+		((char *) MEMORY_LOC (*Table, STRING_CHARS)));
 	break;
 
       case TC_BIG_FIXNUM:
@@ -767,7 +789,7 @@ print_external_objects(area_name, Table, N)
 	fprintf(stderr,
 		"Table[%6d] = Flonum %lf\n",
 		(N - (Table_End - Table)),
-		(* ((double *) Nth_Vector_Loc(*Table, 1))));
+		(* ((double *) MEMORY_LOC (*Table, 1))));
 	break;
 
       default:
@@ -895,17 +917,17 @@ Read_Header_and_Allocate()
   READ_HEADER("Heap Count", "%ld", Heap_Count);
   READ_HEADER("Dumped Heap Base", "%ld", Dumped_Heap_Base);
   READ_HEADER("Heap Objects", "%ld", Heap_Objects);
-  
+
   READ_HEADER("Constant Count", "%ld", Constant_Count);
   READ_HEADER("Dumped Constant Base", "%ld", Dumped_Constant_Base);
   READ_HEADER("Constant Objects", "%ld", Constant_Objects);
-  
+
   READ_HEADER("Pure Count", "%ld", Pure_Count);
   READ_HEADER("Dumped Pure Base", "%ld", Dumped_Pure_Base);
   READ_HEADER("Pure Objects", "%ld", Pure_Objects);
-  
+
   READ_HEADER("& Dumped Object", "%ld", Dumped_Object_Addr);
-  
+
   READ_HEADER("Number of flonums", "%ld", NFlonums);
   READ_HEADER("Number of integers", "%ld", NIntegers);
   READ_HEADER("Number of bits in integers", "%ld", NBits);
@@ -913,10 +935,10 @@ Read_Header_and_Allocate()
   READ_HEADER("Number of bits in bit strings", "%ld", NBBits);
   READ_HEADER("Number of character strings", "%ld", NStrings);
   READ_HEADER("Number of characters in strings", "%ld", NChars);
-  
+
   READ_HEADER("Primitive Table Length", "%ld", Primitive_Table_Length);
   READ_HEADER("Number of characters in primitives", "%ld", NPChars);
-  
+
   READ_HEADER("CPU type", "%ld", compiler_processor_type);
   READ_HEADER("Compiled code interface version", "%ld",
 	      compiler_interface_version);
@@ -930,32 +952,32 @@ Read_Header_and_Allocate()
 	  Constant_Count + Constant_Objects +
 	  Pure_Count + Pure_Objects +
 	  flonum_to_pointer(NFlonums) +
-	  ((NIntegers * (1 + bignum_header_to_pointer)) +
-	   (bigdigit_to_pointer(bits_to_bigdigit(NBits)))) +
+	  ((NIntegers * (2 + (BYTES_TO_WORDS (sizeof (bignum_digit_type))))) +
+	   (BYTES_TO_WORDS (BIGNUM_BITS_TO_DIGITS (NBits)))) +
 	  ((NStrings * (1 + STRING_CHARS)) +
 	   (char_to_pointer(NChars))) +
 	  ((NBitstrs * (1 + BIT_STRING_FIRST_WORD)) +
-	   (bits_to_pointers(NBBits))) +
+	   (BIT_STRING_LENGTH_TO_GC_LENGTH(NBBits))) +
 	  ((Primitive_Table_Length * (2 + STRING_CHARS)) +
 	   (char_to_pointer(NPChars))));
-	  
-  Allocate_Heap_Space(Size);
+
+  ALLOCATE_HEAP_SPACE (Size);
   if (Heap == NULL)
   {
     fprintf(stderr,
-	    "%s: Memory Allocation Failed.  Size = %ld Scheme Pointers\n",
+	    "%s: Memory Allocation Failed.  Size = %ld Scheme Objects\n",
 	    program_name, Size);
     quit(1);
   }
   Heap += HEAP_BUFFER_SPACE;
-  Initial_Align_Float(Heap);
+  INITIAL_ALIGN_FLOAT(Heap);
   return (Size - HEAP_BUFFER_SPACE);
 }
 
 void
 do_it()
 {
-  Pointer *primitive_table_end;
+  SCHEME_OBJECT *primitive_table_end;
   Boolean result;
   long Size;
 
@@ -968,7 +990,7 @@ do_it()
   Heap_Base = &Heap_Table[Heap_Objects];
   Heap_Object_Base =
     Read_External(Heap_Objects, Heap_Table, Heap_Base);
-  
+
   /* The various 2s below are for SNMV headers. */
 
   Pure_Table = &Heap_Object_Base[Heap_Count];
@@ -980,7 +1002,7 @@ do_it()
   Constant_Base = &Pure_Object_Base[Pure_Count + 2];
   Constant_Object_Base =
     Read_External(Constant_Objects, Constant_Table, Constant_Base);
-  
+
   primitive_table = &Constant_Object_Base[Constant_Count + 2];
 
   WHEN((primitive_table > Constant_Table),
@@ -1025,7 +1047,7 @@ do_it()
     primitive_table_end can be well below Constant_Table, since
     the memory allocation is conservative (it rounds up), and all
     the slack ends up between them.
-   */     
+   */
 
   WHEN((primitive_table_end > Constant_Table),
        "primitive_table_end overran Constant_Table");
@@ -1040,7 +1062,7 @@ do_it()
   /* Dump the objects */
 
   {
-    Pointer *Dumped_Object;
+    SCHEME_OBJECT *Dumped_Object;
 
     Relocate_Into(Dumped_Object, Dumped_Object_Addr);
 
@@ -1081,17 +1103,17 @@ do_it()
       Pure_Length = (Constant_Base - Pure_Base) + 1;
       Total_Length = (Free_Constant - Pure_Base) + 4;
       Pure_Base[-2] =
-	Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, (Pure_Length - 1));
+	MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, (Pure_Length - 1));
       Pure_Base[-1] =
-	Make_Non_Pointer(PURE_PART, Total_Length);
+	MAKE_OBJECT (PURE_PART, Total_Length);
       Constant_Base[-2] =
-	Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
+	MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
       Constant_Base[-1] =
-	Make_Non_Pointer(CONSTANT_PART, (Pure_Length - 1));
+	MAKE_OBJECT (CONSTANT_PART, (Pure_Length - 1));
       Free_Constant[0] =
-	Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
+	MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
       Free_Constant[1] =
-	Make_Non_Pointer(END_OF_BLOCK, Total_Length);
+	MAKE_OBJECT (END_OF_BLOCK, Total_Length);
 
       result = Write_File(Dumped_Object,
 			  (Free - Heap_Base), Heap_Base,

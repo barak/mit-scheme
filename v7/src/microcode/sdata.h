@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sdata.h,v 9.30 1988/08/15 20:55:03 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sdata.h,v 9.31 1989/09/20 23:11:29 cph Rel $
  *
  * Description of the user data objects.  This should parallel the
  * file SDATA.SCM in the runtime system.
@@ -42,7 +42,7 @@ MIT in each case. */
 
 /* ADDRESS
  * is a FIXNUM.  It represents a 24-bit address.  Not a pointer type.
- */ 
+ */
 
 /* BIG_FIXNUM (bignum).
  * See the file BIGNUM.C
@@ -77,7 +77,7 @@ MIT in each case. */
  * followed by the characters themselves.
  */
 #define STRING_HEADER		0
-#define STRING_LENGTH		1
+#define STRING_LENGTH_INDEX	1
 #define STRING_CHARS		2
 
 /* COMPILED_PROCEDURE */
@@ -138,7 +138,7 @@ MIT in each case. */
 */
 
 #define STACKLET_HEADER_SIZE		3
-#define STACKLET_LENGTH			0	/* = VECTOR_LENGTH */
+#define STACKLET_LENGTH			0
 #define STACKLET_REUSE_FLAG		1
 #define STACKLET_UNUSED_LENGTH		2
 
@@ -253,7 +253,7 @@ MIT in each case. */
  */
 
 /* FIXNUM
- * Small integer.  Fits in the datum portion of a Scheme Pointer.
+ * Small integer.  Fits in the datum portion of a SCHEME_OBJECT.
  */
 
 /* HUNK3
@@ -325,7 +325,7 @@ MIT in each case. */
 /* PRIMITIVE
  * The data portion contains a number specifying a particular primitive
  * operation to be performed.  An object of type PRIMITIVE can be
- * APPLYed in the same way an object of type PROCEDURE can be. 
+ * APPLYed in the same way an object of type PROCEDURE can be.
  */
 
 /* PROCEDURE (formerly CLOSURE)
@@ -382,30 +382,6 @@ MIT in each case. */
  * continues after the evaluation.
  */
 
-/* STATE_POINT and STATE_SPACE
- * Data structures used to keep track of dynamic wind state.  Both of
- * these are actually ordinary vectors with a special tag in the first
- * user accessible slot.  A STATE_SPACE consists of just a pointer to
- * the current point in that space.  A STATE_POINT contains a
- * procedure to be used when moving through the point (the forward
- * thunk), an alternate procedure to undo the effects of the first
- * (the backward thunk), and the point to which you can move directly
- * from this point.
- */
-
-#define STATE_POINT_HEADER		0
-#define STATE_POINT_TAG			1
-#define STATE_POINT_BEFORE_THUNK	2
-#define STATE_POINT_AFTER_THUNK		3
-#define STATE_POINT_NEARER_POINT	4
-#define STATE_POINT_DISTANCE_TO_ROOT	5
-#define STATE_POINT_SIZE		6
-
-#define STATE_SPACE_HEADER		0
-#define STATE_SPACE_TAG			1
-#define STATE_SPACE_NEAREST_POINT	2
-#define STATE_SPACE_SIZE		3
-
 /* When in RC_MOVE_TO_ADJACENT_POINT in the interpreter, the following
    information is available on the stack (placed there by
    Translate_To_Point
@@ -430,16 +406,13 @@ MIT in each case. */
  * A group of contiguous cells with a header (of type MANIFEST_VECTOR)
  * indicating the length of the group.
  */
-#define VECTOR_TYPE		0
-#define VECTOR_LENGTH		0
 #define VECTOR_DATA		1
 
 /* VECTOR_16B
  * Points to a MANIFEST_NM_VECTOR or MANIFEST_SPECIAL_NM_VECTOR header.
  * The format is described under NON_MARKED_VECTOR.  The contents are to
  * be treated as an array of 16-bit signed or unsigned quantities.  Not
- * currently used, although this may be a useful way to allow users to
- * inspect the internal representation of bignums.
+ * currently used.
  */
 
 /* VECTOR_1B
