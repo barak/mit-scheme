@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: memmag.h,v 1.5 1996/10/02 18:58:05 cph Exp $
+$Id: memmag.h,v 1.6 1998/04/18 05:39:44 cph Exp $
 
-Copyright (c) 1993-96 Massachusetts Institute of Technology
+Copyright (c) 1993-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,11 +47,13 @@ extern void winnt_deallocate_registers (void);
 #include "ntscmlib.h"
 
 extern BOOL win32_under_win32s_p (void);
+extern char * NT_allocate_heap (unsigned long, unsigned long *);
+extern void NT_release_heap (char *, unsigned long);
 
 #ifdef WINNT_RAW_ADDRESSES
 
-#define WIN32_ALLOCATE_HEAP win32_system_utilities.allocate_heap
-#define WIN32_RELEASE_HEAP win32_system_utilities.release_heap
+#define WIN32_ALLOCATE_HEAP NT_allocate_heap
+#define WIN32_RELEASE_HEAP NT_release_heap
 
 #else /* not WINNT_RAW_ADDRESSES */
 
@@ -86,7 +88,7 @@ WIN32_ALLOCATE_HEAP (unsigned long size, unsigned long * handle)
   total_fudge = (actual_fudge_1 + actual_fudge_2);
   actual_size = (size + total_fudge);
 
-  base = (win32_system_utilities.allocate_heap (actual_size, handle));
+  base = (NT_allocate_heap (actual_size, handle));
   if (base == ((char *) NULL))
     return (base);
 
@@ -112,8 +114,7 @@ WIN32_RELEASE_HEAP (char * area, unsigned long handle)
       (Scheme_Code_Segment_Selector,
        Scheme_Data_Segment_Selector,
        Scheme_Stack_Segment_Selector);  
-  win32_system_utilities.release_heap ((area - total_fudge), handle);
-  return;
+  NT_release_heap ((area - total_fudge), handle);
 }
 
 #endif /* WINNT_RAW_ADDRESSES */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.22 1998/04/16 06:05:39 cph Exp $
+$Id: ntgui.c,v 1.23 1998/04/18 05:39:22 cph Exp $
 
 Copyright (c) 1993-98 Massachusetts Institute of Technology
 
@@ -44,6 +44,7 @@ MIT in each case. */
 
 extern /*static*/ HANDLE  ghInstance = 0;
 extern void scheme_main (int argc, const char ** argv);
+extern void NT_preallocate_heap (void);
 BOOL InitApplication(HANDLE);
 BOOL InitInstance(HANDLE, int);
 
@@ -58,8 +59,8 @@ WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
     char **argv;
     extern int main (int, char **);
 
+    NT_preallocate_heap ();
     ghInstance = hInst;
-
     {
       int cmdlen = strlen(lpCmdLine);
       int maxargs = cmdlen/2+2;

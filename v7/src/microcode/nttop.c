@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.24 1997/10/26 08:04:18 cph Exp $
+$Id: nttop.c,v 1.25 1998/04/18 05:39:09 cph Exp $
 
-Copyright (c) 1993-97 Massachusetts Institute of Technology
+Copyright (c) 1993-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -205,6 +205,95 @@ OS_quit (int code, int abnormal_p)
   outf_console ("\nScheme has terminated abnormally!\n");
   OS_restore_external_state ();
   return;
+}
+
+/* Memory Allocation */
+
+static LPVOID NT_heap_base;
+static DWORD NT_heap_size;
+static DWORD NT_heap_error;
+#define SCHEME_ADDR_LIMIT 0x04000000
+
+void
+NT_preallocate_heap (void)
+{
+  MEMORY_BASIC_INFORMATION largest;
+  DWORD scan = 0;
+  (largest.RegionSize) = 0;
+  while (scan < SCHEME_ADDR_LIMIT)
+    {
+      MEMORY_BASIC_INFORMATION info;
+      (void) VirtualQuery (((LPCVOID) scan), (&info), (sizeof (info)));
+      if ((info.State) == MEM_FREE)
+	{
+	  DWORD end = (scan + (info.RegionSize));
+	  if (end > SCHEME_ADDR_LIMIT)
+	    (info.RegionSize) -= (end - SCHEME_ADDR_LIMIT);
+	  if ((info.RegionSize) > (largest.RegionSize))
+	    largest = info;
+	}
+      scan += (info.RegionSize);
+    }
+  NT_heap_size = (largest.RegionSize);
+  NT_heap_base
+    = (VirtualAlloc ((largest.BaseAddress),
+		     NT_heap_size,
+		     MEM_RESERVE,
+		     PAGE_READWRITE));
+  if (NT_heap_base == 0)
+    NT_heap_error = (GetLastError ());
+}
+
+char *
+NT_allocate_heap (unsigned long size, unsigned long * handle)
+{
+  if (NT_heap_base == 0)
+    {
+      SYSTEM_INFO info;
+      LPVOID start = 0;
+      LPVOID base;
+      GetSystemInfo (&info);
+      while (1)
+	{
+	  start = (((char *) start) + (info . dwPageSize));
+	  base
+	    = (VirtualAlloc (start,
+			     size,
+			     (MEM_RESERVE | MEM_COMMIT),
+			     PAGE_READWRITE));
+	  if (base != 0)
+	    break;
+	}
+      (* handle) = size;
+      return ((char *) base);
+    }
+  else
+    {
+      DWORD size2 = ((size <= NT_heap_size) ? size : NT_heap_size);
+      LPVOID base
+	= (VirtualAlloc (NT_heap_base,
+			 size2,
+			 MEM_COMMIT,
+			 PAGE_READWRITE));
+      (* handle) = size2;
+      return ((char *) base);
+    }
+}
+
+void
+NT_release_heap (char * area, unsigned long handle)
+{
+  VirtualFree (((LPVOID) area),
+	       ((DWORD) handle),
+	       ((DWORD) MEM_DECOMMIT));
+  if (NT_heap_base == 0)
+    VirtualFree (((LPVOID) area),
+		 ((DWORD) 0),
+		 ((DWORD) MEM_RELEASE));
+  else
+    VirtualFree (NT_heap_base,
+		 ((DWORD) 0),
+		 ((DWORD) MEM_RELEASE));
 }
 
 #ifndef EAGAIN
