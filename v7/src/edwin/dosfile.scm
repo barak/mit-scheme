@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dosfile.scm,v 1.41 2003/02/14 18:28:11 cph Exp $
+$Id: dosfile.scm,v 1.42 2003/07/12 04:20:34 cph Exp $
 
-Copyright 1994-2000, 2002 Massachusetts Institute of Technology
+Copyright 1995,1996,1999,2000,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -446,6 +446,8 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
      ("text" . text)
      ("txi" . texinfo)
      ("txt" . text)
+     ("xht" . html)
+     ("xhtml" . html)
      ("xml" . html)
      ("y" . c))))
 
