@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2cthrd.c,v 1.6 1995/04/28 07:04:56 cph Exp $
+$Id: os2cthrd.c,v 1.7 1995/10/15 00:34:47 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -252,8 +252,8 @@ OS2_readahead_buffer_rubout (readahead_buffer_t * buffer)
 	    (buffer -> tail) = prev;
 	  }
 	OS_free (tail);
+	OS2_destroy_message (message);
       }
-    OS2_destroy_message (message);
     return (c);
   }
 }
