@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 13.48 1987/11/17 20:09:38 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 13.49 1987/11/22 22:17:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -130,17 +130,6 @@
       (transmit-signal-without-gc #\c))
   (loop))
 
-(define (emacs-check-and-clean-up-input-channel delete-mode interrupt-char)
-  (if (= delete-mode
-	 (access until-most-recent-interrupt-character interrupt-system))
-      (begin
-	(let loop ()
-	  (if (not (char=? (primitive-read-char-immediate) #\C-@))
-	      (loop)))
-	(if (= (char->ascii #\G) interrupt-char)
-	    (transmit-signal #\g))))
-  true)
-
 (define primitive-read-char-ready?
   (make-primitive-procedure 'TTY-READ-CHAR-READY?))
 
@@ -157,8 +146,6 @@
 (define normal-read-char-immediate
   (access tty-read-char-immediate console-input-port))
 (define normal-error-hook (access *error-decision-hook* error-system))
-(define normal-check-and-clean-up-input-channel
-  (access check-and-clean-up-input-channel interrupt-system))
 
 (define (install-emacs-hooks!)
   (set! (access gc-start-hook gc-statistics-package) emacs-start-gc)
@@ -170,9 +157,7 @@
   (set! (access read-finish-hook console-input-port) emacs-read-finish)
   (set! (access tty-read-char-immediate console-input-port)
 	emacs-read-char-immediate)
-  (set! (access *error-decision-hook* error-system) emacs-error-hook)
-  (set! (access check-and-clean-up-input-channel interrupt-system)
-	emacs-check-and-clean-up-input-channel))
+  (set! (access *error-decision-hook* error-system) emacs-error-hook))
 
 (define (install-normal-hooks!)
   (set! (access gc-start-hook gc-statistics-package) normal-start-gc)
@@ -184,9 +169,7 @@
   (set! (access read-finish-hook console-input-port) normal-read-finish)
   (set! (access tty-read-char-immediate console-input-port)
 	normal-read-char-immediate)
-  (set! (access *error-decision-hook* error-system) normal-error-hook)
-  (set! (access check-and-clean-up-input-channel interrupt-system)
-	normal-check-and-clean-up-input-channel))
+  (set! (access *error-decision-hook* error-system) normal-error-hook))
 
 (define under-emacs?
   (make-primitive-procedure 'UNDER-EMACS? 0))
