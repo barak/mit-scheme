@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.5 1992/01/31 04:35:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.6 1992/02/05 14:56:45 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -41,7 +41,7 @@ MIT in each case. |#
 ;;;; Invocations
 
 (define-integrable (clear-continuation-type-code)
-  (LAP (AND W (@RO ,regnum:stack-pointer) (R ,regnum:pointer-mask))))
+  (LAP (AND W (@RO ,regnum:stack-pointer) (R ,regnum:datum-mask))))
 
 (define-rule statement
   (POP-RETURN)
@@ -287,16 +287,7 @@ MIT in each case. |#
 
 ;;;; External Labels
 
-(define (make-external-label code label)
-  (set! *external-labels* (cons label *external-labels*))
-  (LAP (DC UW ,code)
-       (BLOCK-OFFSET ,label)
-       (LABEL ,label)))
-
 ;;; Entry point types
-
-(define-integrable (make-code-word min max)
-  (+ (* #x100 min) max))
 
 (define (make-procedure-code-word min max)
   ;; The "min" byte must be less than #x80; the "max" byte may not
@@ -306,9 +297,6 @@ MIT in each case. |#
   (if (>= (abs max) #x80)
       (error "MAKE-PROCEDURE-CODE-WORD: maximum out of range" max))
   (make-code-word min (if (negative? max) (+ #x100 max) max)))
-
-(define expression-code-word
-  (make-code-word #xff #xff))
 
 (define internal-entry-code-word
   (make-code-word #xff #xfe))
@@ -565,7 +553,7 @@ MIT in each case. |#
 	   (lambda (pc-label prefix)
 	     (LAP ,@prefix
 		  (MOV W (R ,edx) (@RO ,eax (- ,code-block-label ,pc-label)))
-		  (AND W (R ,edx) (R ,regnum:pointer-mask))
+		  (AND W (R ,edx) (R ,regnum:datum-mask))
 		  (LEA (R ,ebx) (@RO ,edx ,free-ref-offset))
 		  (MOV W (R ,ecx) ,reg:environment)
 		  (MOV W (@RO ,edx ,environment-offset) (R ,ecx))

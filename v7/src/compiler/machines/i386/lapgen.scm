@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.2 1992/01/30 14:07:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.3 1992/02/05 14:57:12 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.42 1991/05/28 19:14:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -38,6 +38,149 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+;;;; Register-Allocator Interface
+
+(define available-machine-registers
+  ;; esp holds the the stack pointer
+  ;; ebp holds the pointer mask
+  ;; esi holds the register array pointer
+  ;; edi holds the free pointer
+  ;; fr7 is not used so that we can always push on the stack once.
+  (list eax ecx edx ebx fr0 fr1 fr2 fr3 fr4 fr5 fr6))
+
+(define-integrable (sort-machine-registers registers)
+  registers)
+
+(define (register-type register)
+  (cond ((machine-register? register)
+	 (vector-ref
+	  '#(GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL
+	     FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT)
+	  register))
+	((register-value-class=word? register)
+	 'GENERAL)
+	((register-value-class=float? register)
+	 'FLOAT)
+	(else
+	 (error "unable to determine register type" register))))
+
+(define (register-types-compatible? type1 type2)
+  (boolean=? (eq? type1 'FLOAT) (eq? type2 'FLOAT)))
+
+(define register-reference
+  (let ((references (make-vector number-of-machine-registers)))
+    (let loop ((i 0))
+      (cond ((>= i number-of-machine-registers)
+	     (lambda (register)
+	       (vector-ref references register)))
+	    ((< i 8)
+	     (vector-set! references i (INST-EA (R ,i)))
+	     (loop (1+ i)))
+	    (else
+	     (vector-set! references i (INST-EA (ST ,(floreg->sti i))))
+	     (loop (1+ i)))))))
+
+(define (register->register-transfer source target)
+  (machine->machine-register source target))
+
+(define (reference->register-transfer source target)
+  (if (equal? (INST-EA ,target) source)
+      (LAP)
+      (memory->machine-register source target)))
+
+(define-integrable (pseudo-register-home register)
+  (offset-reference regnum:regs-pointer
+		    (pseudo-register-offset register)))
+
+(define (home->register-transfer source target)
+  (pseudo->machine-register source target))
+
+(define (register->home-transfer source target)
+  (machine->pseudo-register source target))
+
+;;;; Linearizer interface
+
+(define (lap:make-label-statement label)
+  (INST (LABEL ,label)))
+
+(define (lap:make-unconditional-branch label)
+  (LAP (JMP (@PCR ,label))))
+
+(define (lap:make-entry-point label block-start-label)
+  block-start-label
+  (LAP (ENTRY-POINT ,label)
+       ,@(make-external-label expression-code-word label)))
+
+(define (make-external-label code label)
+  (set! *external-labels* (cons label *external-labels*))
+  (LAP (DC UW ,code)
+       (BLOCK-OFFSET ,label)
+       (LABEL ,label)))
+
+(define-integrable (make-code-word min max)
+  (+ (* #x100 min) max))
+
+(define expression-code-word
+  (make-code-word #xff #xff))
+
+;;;; Utilities for the register allocator interface
+
+(define-integrable (machine->machine-register source target)
+  (if (not (register-types-compatible? source target))
+      (error "Moving between incompatible register types" source target))
+  (if (not (float-register? source))
+      (LAP (MOV W ,(register-reference target) ,(register-reference source)))
+      (let ((ssti (floreg->sti source))
+	    (tsti (floreg->sti target)))
+	(if (zero? ssti)
+	    (LAP (FST D (ST ,tsti)))
+	    (LAP (FLD D (ST ,ssti))
+		 (FSTP D (ST ,(1+ tsti))))))))
+
+(define (machine-register->memory source target)
+  (if (not (float-register? source))
+      (LAP (MOV W ,target ,(register-reference source)))
+      (let ((ssti (floreg->sti source)))
+	(if (zero? ssti)
+	    (LAP (FST D ,target))
+	    (LAP (FLD D (ST ,ssti))
+		 (FSTP D ,target))))))
+
+(define (memory->machine-register source target)
+  (if (not (float-register? target))
+      (LAP (MOV W ,(register-reference target) ,source))
+      (LAP (FLD D ,source)
+	   (FSTP D (ST ,(1+ (floreg->sti target)))))))
+
+(define-integrable (offset-reference register offset)
+  (byte-offset-reference register (* 4 offset)))
+
+(define (byte-offset-reference register offset)
+    (if (zero? offset)
+	(INST-EA (@R ,register))
+	(INST-EA (@RO ,register ,offset))))
+
+(define-integrable (pseudo-register-offset register)
+  (+ (+ (* 16 4) (* 80 4))
+     (* 3 (register-renumber register))))
+
+(define-integrable (pseudo->machine-register source target)
+  (memory->machine-register (pseudo-register-home source) target))
+
+(define-integrable (machine->pseudo-register source target)
+  (machine-register->memory source (pseudo-register-home target)))
+
+(define-integrable (floreg->sti reg)
+  (- reg fr0))
+
+(define-integrable (general-register? register)
+  (< register fr0))
+
+(define-integrable (float-register? register)
+  (<= fr0 register fr7))
+
+;;;; Utilities for the rules
+
 (define (require-register! machine-reg)
   (flush-register! machine-reg)
   (need-register! machine-reg))
@@ -80,14 +223,14 @@ MIT in each case. |#
 
 (define (load-immediate target value)
   (if (zero? value)
-      (XOR W ,target ,target)
-      (MOV W ,target (& ,value))))
+      (LAP (XOR W ,target ,target))
+      (LAP (MOV W ,target (& ,value)))))
 
 (define (load-non-pointer target type datum)
   (let ((immediate-value (make-non-pointer-literal type datum)))
     (if (zero? immediate-value)
-	(XOR W ,target ,target)
-	(MOV W ,target (&U ,immediate-value)))))
+	(LAP (XOR W ,target ,target))
+	(LAP (MOV W ,target (&U ,immediate-value))))))
 
 (define (load-constant target obj)
   (if (non-pointer-object? obj)
@@ -102,8 +245,8 @@ MIT in each case. |#
 (define (load-pc-relative-address target label-expr)
   (with-pc
     (lambda (pc-label pc-register)
-      (LAP (LEA ,target (@RO ,pc-register (- ,label-expr ,pc-label)))))))
-
+      (LAP (LEA ,target (@RO ,pc-register (- ,label-expr ,pc-label)))))))  
+
 (define (with-pc recvr)
   (let ((pc-info (pc-registered?)))
     (if pc-info
@@ -117,11 +260,11 @@ MIT in each case. |#
 			  (recvr label reg))))))))
 
 (define (pc->reg reg recvr)
-  (let ((label (generate-label 'get-pc)))
+  (let ((label (GENERATE-LABEL 'GET-PC)))
     (recvr label
 	   (LAP (CALL (@PCR ,label))
 		(LABEL ,label)
-		(POP (R ,reg))))))  
+		(POP (R ,reg))))))
 
 (define (compare/register*register reg1 reg2)
   (cond ((register-alias reg1 'GENERAL)
@@ -135,55 +278,83 @@ MIT in each case. |#
 	(else
 	 (LAP (CMP W ,(source-register-reference reg1)
 		   ,(any-reference reg2))))))
+
+(define (target-register-reference target)
+  (delete-dead-registers!)
+  (register-reference
+   (or (register-alias target 'GENERAL)
+       (allocate-alias-register! target 'GENERAL))))
 
-(define (two-arg-register-operation
-	 operate commutative?
-	 target-type source-reference alternate-source-reference
-	 target source1 source2)
-  (let* ((worst-case
-	  (lambda (target source1 source2)
-	    (LAP ,@(if (eq? target-type 'FLOAT)
-		       (load-float-register source1 target)
-		       (LAP (MOV W ,target ,source1)))
-		 ,@(operate target source2))))
-	 (new-target-alias!
-	  (lambda ()
-	    (let ((source1 (alternate-source-reference source1))
-		  (source2 (source-reference source2)))
-	      (delete-dead-registers!)
-	      (worst-case (reference-target-alias! target target-type)
-			  source1
-			  source2)))))
-    (cond ((pseudo-register? target)
-	   (reuse-pseudo-register-alias
-	    source1 target-type
-	    (lambda (alias)
-	      (let ((source2 (if (= source1 source2)
-				 (register-reference alias)
-				 (source-reference source2))))
-		(delete-register! alias)
-		(delete-dead-registers!)
-		(add-pseudo-register-alias! target alias)
-		(operate (register-reference alias) source2)))
-	    (lambda ()
-	      (if commutative?
-		  (reuse-pseudo-register-alias
-		   source2 target-type
-		   (lambda (alias2)
-		     (let ((source1 (source-reference source1)))
-		       (delete-register! alias2)
-		       (delete-dead-registers!)
-		       (add-pseudo-register-alias! target alias2)
-		       (operate (register-reference alias2) source1)))
-		   new-target-alias!)
-		  (new-target-alias!)))))
-	  ((not (eq? target-type (register-type target)))
-	   (error "two-arg-register-operation: Wrong type register"
-		  target target-type))
-	  (else
-	   (worst-case (register-reference target)
-		       (alternate-source-reference source1)
-		       (source-reference source2))))))
+(define-integrable (temporary-register-reference)
+  (reference-temporary-register! 'GENERAL))
+
+(define (source-register-reference source)
+  (register-reference
+   (or (register-alias source 'GENERAL)
+       (load-alias-register! source 'GENERAL))))
+
+(define-integrable (any-reference rtl-reg)
+  (standard-register-reference rtl-reg 'GENERAL true))
+
+(define (standard-move-to-temporary! source)
+  (register-reference (move-to-temporary-register! source 'GENERAL)))
+
+(define (standard-move-to-target! source target)
+  (register-reference (move-to-alias-register! source 'GENERAL target)))
+
+(define-integrable (source-indirect-reference! rtl-reg offset)
+  (indirect-reference! rtl-reg offset))
+
+(define-integrable (target-indirect-reference! rtl-reg offset)
+  (indirect-reference! rtl-reg offset))
+
+(define (indirect-reference! rtl-reg offset)
+  (offset-reference (allocate-indirection-register! rtl-reg)
+		    offset))
+
+(define-integrable (allocate-indirection-register! register)
+  (load-alias-register! register 'GENERAL))
+
+(define (offset->indirect-reference! rtl-expr)
+  (indirect-reference! (rtl:register-number (rtl:offset-base offset))
+		       (rtl:offset-number offset)))
+
+(define (object->type target)
+  (LAP (SHR W ,target (& ,scheme-datum-width))))
+
+(define (object->datum target)
+  (LAP (AND W ,target (R ,regnum:datum-mask))))
+
+(define (object->address target)
+  (declare (integrate-operator object->datum))
+  (object->datum target))
+
+(define (interpreter-call-argument? expression)
+  (or (rtl:register? expression)
+      (and (rtl:cons-pointer? expression)
+	   (rtl:machine-constant? (rtl:cons-pointer-type expression))
+	   (rtl:machine-constant? (rtl:cons-pointer-datum expression)))
+      (and (rtl:offset? expression)
+	   (rtl:register? (rtl:offset-base expression)))))
+
+(define (interpreter-call-argument->machine-register! expression register)
+  (let ((target (register-reference register)))
+    (case (car expression)
+      ((REGISTER)
+       (load-machine-register! (rtl:register-number expression) register))
+      ((CONS-POINTER)
+       (LAP ,@(clear-registers! register)
+	    ,@(load-non-pointer (rtl:machine-constant-value
+				 (rtl:cons-pointer-type expression))
+				(rtl:machine-constant-value
+				 (rtl:cons-pointer-datum expression))
+				target)))
+      ((OFFSET)
+       (let ((source-reference (offset->indirect-reference! expression)))
+	 (LAP ,@(clear-registers! register)
+	      (MOV W ,target ,source-reference))))
+      (else
+       (error "Unknown expression type" (car expression))))))
 
 ;;; *** Here ***
 
@@ -207,15 +378,6 @@ MIT in each case. |#
 (define-integrable (pseudo-register-home register)
   (offset-reference regnum:regs-pointer
 		    (pseudo-register-offset register)))
-
-(define-integrable (sort-machine-registers registers)
-  registers)
-
-(define available-machine-registers
-  ;; r9 is value register.
-  ;; r10 - r13 are taken up by Scheme.
-  ;; r14 is sp and r15 is pc.
-  (list r0 r1 r2 r3 r4 r5 r6 r7 r8))
 
 (define (register-types-compatible? type1 type2)
   (boolean=? (eq? type1 'FLOAT) (eq? type2 'FLOAT)))

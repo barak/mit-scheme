@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.7 1992/02/05 05:03:48 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.8 1992/02/05 14:57:52 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -44,15 +44,12 @@ MIT in each case. |#
 ;; Also missing with (OBJECT->FLOAT (REGISTER ...)) operands.
 ;; ****
 
-(define-integrable (->sti reg)
-  (- reg fr0))
-
 (define (flonum-source! register)
-  (->sti (load-alias-register! register 'FLOAT)))
+  (floreg->sti (load-alias-register! register 'FLOAT)))
 
 (define (flonum-target! pseudo-register)
   (delete-dead-registers!)
-  (->sti (allocate-alias-register! pseudo-register 'FLOAT)))
+  (floreg->sti (allocate-alias-register! pseudo-register 'FLOAT)))
 
 (define (flonum-temporary!)
   (allocate-temporary-register! 'FLOAT))
@@ -75,10 +72,10 @@ MIT in each case. |#
 		      (MOV W ,temp (@RO ,regnum:regs-pointer ,(+ 4 off)))
 		      (MOV W (@RO ,regnum:free-pointer 4) ,target)
 		      (MOV W (@RO ,regnum:free-pointer 8) ,temp)))
-	       (let ((sti (->sti source)))
+	       (let ((sti (floreg->sti source)))
 		 (if (zero? sti)
 		     (LAP (FST D (@RO ,regnum:free-pointer 4)))
-		     (LAP (FLD D (ST ,(->sti source)))
+		     (LAP (FLD D (ST ,(floreg->sti source)))
 			  (FSTP D (@RO ,regnum:free-pointer 4))))))
 	 (LEA ,target
 	      (@RO ,regnum:free-pointer
@@ -272,7 +269,7 @@ MIT in each case. |#
 	   (reuse-pseudo-register-alias
 	    source1 target-type
 	    (lambda (alias)
-	      (let* ((sti1 (->sti alias))
+	      (let* ((sti1 (floreg->sti alias))
 		     (sti2 (if (= source1 source2)
 			       sti1
 			       (flonum-source! source2))))
@@ -285,7 +282,7 @@ MIT in each case. |#
 	       source2 target-type
 	       (lambda (alias2)
 		 (let ((sti1 (flonum-source! source1))
-		       (sti2 (->sti alias2)))
+		       (sti2 (floreg->sti alias2)))
 		   (delete-register! alias2)
 		   (delete-dead-registers!)
 		   (add-pseudo-register-alias! target alias2)

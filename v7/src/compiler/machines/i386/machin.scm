@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/machin.scm,v 1.4 1992/02/04 04:04:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/machin.scm,v 1.5 1992/02/05 14:57:32 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/machin.scm,v 4.26 1991/10/25 06:49:34 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -142,13 +142,13 @@ MIT in each case. |#
 (define fr4 12)
 (define fr5 13)
 (define fr6 14)
-;; (define fr7 15)
+(define fr7 15)
 
-(define number-of-machine-registers 15)
+(define number-of-machine-registers 16)
 (define number-of-temporary-registers 256)
 
 (define-integrable regnum:stack-pointer esp)
-(define-integrable regnum:pointer-mask ebp)
+(define-integrable regnum:datum-mask ebp)
 (define-integrable regnum:regs-pointer esi)
 (define-integrable regnum:free-pointer edi)
 
@@ -159,7 +159,7 @@ MIT in each case. |#
 (define (machine-register-value-class register)
   (cond ((<= eax register ebx)
 	 value-class=object)
-	((= register regnum:pointer-mask)
+	((= register regnum:datum-mask)
 	 value-class=immediate)
 	((or (= register regnum:stack-pointer)
 	     (= register regnum:free-pointer)
