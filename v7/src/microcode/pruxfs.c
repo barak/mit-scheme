@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.32 1988/11/03 08:35:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.33 1988/11/12 06:47:10 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -390,16 +390,16 @@ the result is #F.")
 
 static void
 filemodestring (s, a)
-   struct stat *s;
-   char *a;
+   struct stat * s;
+   char * a;
 {
   extern char file_type_letter ();
 
   (a [0]) = (file_type_letter (s));
   /* Aren't there symbolic names for these byte-fields? */
-  rwx (((s -> st_mode) & 0700) << 0, (& (a [1])));
-  rwx (((s -> st_mode) & 0070) << 3, (& (a [4])));
-  rwx (((s -> st_mode) & 0007) << 6, (& (a [7])));
+  rwx ((((s -> st_mode) & 0700) << 0), (& (a [1])));
+  rwx ((((s -> st_mode) & 0070) << 3), (& (a [4])));
+  rwx ((((s -> st_mode) & 0007) << 6), (& (a [7])));
   setst ((s -> st_mode), a);
   return;
 }
@@ -412,9 +412,10 @@ rwx (bits, chars)
    unsigned short bits;
    char chars[];
 {
-  chars[0] = (bits & S_IREAD)  ? 'r' : '-';
-  chars[1] = (bits & S_IWRITE) ? 'w' : '-';
-  chars[2] = (bits & S_IEXEC)  ? 'x' : '-';
+  (chars [0]) = ((bits & S_IREAD)  ? 'r' : '-');
+  (chars [1]) = ((bits & S_IWRITE) ? 'w' : '-');
+  (chars [2]) = ((bits & S_IEXEC)  ? 'x' : '-');
+  return;
 }
 
 /* setst - set s & t flags in a file attributes string */
@@ -426,28 +427,17 @@ setst (bits, chars)
 {
 #ifdef S_ISUID
    if (bits & S_ISUID)
-     {
-       if (chars[3] != 'x')
-	 /* Screw case: set-uid, but not executable. */
-	 chars[3] = 'S';
-       else
-	 chars[3] = 's';
-     }
+     (chars [3]) = (((chars [3]) == 'x') ? 's' : 'S');
 #endif
 #ifdef S_ISGID
    if (bits & S_ISGID)
-     {
-       if (chars[6] != 'x')
-	 /* Screw case: set-gid, but not executable. */
-	 chars[6] = 'S';
-       else
-	 chars[6] = 's';
-     }
+     (chars [6]) = (((chars [6]) == 'x') ? 's' : 'S');
 #endif
 #ifdef S_ISVTX
    if (bits & S_ISVTX)
-      chars[9] = 't';
+     (chars [9]) = (((chars [9]) == 'x') ? 't' : 'T');
 #endif
+   return;
 }
 
 DEFINE_PRIMITIVE ("SYSTEM", Prim_system, 1, 1,
