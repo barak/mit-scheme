@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2.c,v 1.4 1995/04/28 07:04:53 cph Exp $
+$Id: os2.c,v 1.5 1995/05/10 21:19:49 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -201,7 +201,17 @@ OS2_close_mutex_semaphore (HMTX s)
 void
 OS2_request_mutex_semaphore (HMTX s)
 {
-  STD_API_CALL (dos_request_mutex_sem, (s, SEM_INDEFINITE_WAIT));
+  XTD_API_CALL (dos_request_mutex_sem, (s, SEM_INDEFINITE_WAIT),
+		{
+		  /* This return code has been sporadically occurring
+		     on my machine.  On a recent occurrence, I
+		     proceeded past the error in the debugger, and the
+		     program continued working without errors.  IBM
+		     tech support is mystified because this code
+		     appears nowhere in their sources.  */
+		  if (rc == 3000)
+		    return;
+		});
 }
 
 void
