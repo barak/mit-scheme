@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.33 1993/02/25 02:43:08 gjr Exp $
+;;;	$Id: unix.scm,v 1.34 1993/02/25 08:52:14 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -556,4 +556,6 @@ CANNOT contain the 'F' option."
 (define (os/scheme-can-quit?)
   (subprocess-job-control-available?))
 
-(define os/quit %quit)
+(define (os/quit dir)
+  dir					; ignored
+  (%quit))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: editor.scm,v 1.225 1993/02/25 02:43:42 gjr Exp $
+;;;	$Id: editor.scm,v 1.226 1993/02/25 08:52:48 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -342,7 +342,8 @@ This does not affect editor errors or evaluation errors."
   (quit-editor-and (lambda () *the-non-printing-object*)))
 
 (define (quit-scheme)
-  (quit-editor-and (lambda () (os/quit) (edit))))
+  (let ((dir (buffer-default-directory (current-buffer))))
+    (quit-editor-and (lambda () (os/quit dir) (edit)))))
 
 (define (quit-editor-and thunk)
   (call-with-current-continuation
