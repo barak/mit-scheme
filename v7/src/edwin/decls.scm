@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.58 1996/12/07 22:24:13 cph Exp $
+$Id: decls.scm,v 1.59 1997/03/07 23:34:40 cph Exp $
 
-Copyright (c) 1989-96 Massachusetts Institute of Technology
+Copyright (c) 1989-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -85,6 +85,7 @@ MIT in each case. |#
 	      "class"
 	      "clscon"
 	      "clsmac"
+	      "comatch"
 	      "display"
 	      "key-w32"
 	      "key-x11"
@@ -164,6 +165,7 @@ MIT in each case. |#
 		"intmod"
 		"iserch"
 		"keymap"
+		"keyparse"
 		"kilcom"
 		"kmacro"
 		"lincom"
@@ -219,6 +221,7 @@ MIT in each case. |#
 		"unix"
 		"vc"
 		"verilog"
+		"vhdl"
 		"wincom"
 		"winout"
 		"xcom"

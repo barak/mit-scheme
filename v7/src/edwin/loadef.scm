@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: loadef.scm,v 1.29 1996/04/23 22:39:30 cph Exp $
+;;;	$Id: loadef.scm,v 1.30 1997/03/07 23:34:51 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -236,7 +236,7 @@ Normally uses the server specified by the variable news-server,
 but with a prefix arg prompts for the server name.
 Only one News reader may be open per server; if a previous News reader
 is open the that server, its buffer is selected.")
-
+
 (define-library 'VERILOG-MODE
   '("verilog" (EDWIN VERILOG)))
 
@@ -251,6 +251,34 @@ is open the that server, its buffer is selected.")
   (make-event-distributor))
 
 (define-variable verilog-continued-statement-offset
+  "Extra indent for lines not starting new statements."
+  2
+  exact-nonnegative-integer?)
+
+(define-variable verilog-continued-header-offset
+  "Extra indent for continuation lines of structure headers."
+  4
+  exact-nonnegative-integer?)
+
+(define-library 'VHDL-MODE
+  '("vhdl" (EDWIN VHDL)))
+
+(define-autoload-major-mode 'vhdl 'fundamental "VHDL" 'VHDL-MODE
+  "Major mode specialized for editing VHDL code.")
+
+(define-autoload-command 'vhdl-mode 'VHDL-MODE
+  "Enter VHDL mode.")
+
+(define-variable vhdl-mode-hook
+  "An event distributor that is invoked when entering VHDL mode."
+  (make-event-distributor))
+
+(define-variable vhdl-continued-header-offset
+  "Extra indent for continuation lines of structure headers."
+  4
+  exact-nonnegative-integer?)
+
+(define-variable vhdl-continued-statement-offset
   "Extra indent for lines not starting new statements."
   2
   exact-nonnegative-integer?)

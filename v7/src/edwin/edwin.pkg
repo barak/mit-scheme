@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.207 1997/03/04 06:49:05 cph Exp $
+$Id: edwin.pkg,v 1.208 1997/03/07 23:34:48 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -45,17 +45,18 @@ MIT in each case. |#
 	 "class"
 
 	 "paths"
-	 "struct"
-	 "regops"
-	 "motion"
-	 "search"
-	 "image"
-	 "comman"
-	 "docstr"
-	 "modes"
-	 "buffer"
-	 "bufset"
-	 "winren"			; window system rename targets
+	 "struct"			; low-level data structures
+	 "regops"			; low-level editing operations
+	 "motion"			; low-level mark movement
+	 "search"			; search/match chars and strings
+	 "comatch"			; combinatoric matcher
+	 "image"			; character-display imaging
+	 "comman"			; editor command/variable abstractions
+	 "docstr"			; out-of-core documentation support
+	 "modes"			; editor mode abstraction
+	 "buffer"			; buffer abstraction
+	 "bufset"			; buffer-set abstraction
+	 "winren"			; window-system rename targets
 
 	 "edtstr"			; editor abstraction
 	 "editor"			; editor top level
@@ -76,13 +77,14 @@ MIT in each case. |#
 	 "dabbrev"			; M-x dabbrev-expand
 	 "evlcom"			; evaluation commands
 	 "filcom"			; file commands
-	 "fill"				; text fill commands
+	 "fill"				; text-fill commands
 	 "hlpcom"			; help commands
 	 "kilcom"			; kill commands
 	 "kmacro"			; keyboard macros
 	 "lincom"			; line commands
 	 "lspcom"			; lisp commands
 	 "motcom"			; motion commands
+	 "mousecom"                     ; mouse commands
 	 "replaz"			; replace commands
 	 "schmod"			; scheme mode
 	 "scrcom"			; frame commands
@@ -92,27 +94,14 @@ MIT in each case. |#
 
 	 "modefs"			; fundamental mode
 
-	 "loadef"
-	 "c-mode"
-	 "midas"
-	 "pasmod"
-	 "tximod"
-	 "notify"			; mode line notifications
+	 "loadef"			; auto-load definitions
+	 "c-mode"			; C mode
+	 "midas"			; MIDAS mode
+	 "pasmod"			; Pascal mode
+	 "tximod"			; Texinfo mode
+	 "notify"			; mode-line notifications
 	 "outline"			; outline minor mode
-	 "sort"
-
-	 "mousecom"                     ; mouse commands
-
-	 ;; These are only available under Unix/X
-
-	 "comint"			; command interpreter process stuff
-	 "compile"			; compilation subprocess
-	 "shell"			; shell subprocess commands
-	 "techinfo"			; techinfo commands
-	 "telnet"			; telnet subprocess commands
-	 "xmodef"			; x bindings for fundamental mode
-	 "manual"			; man page display
-	 "print"			; printer output
+	 "sort"				; sorting commands
 	 )
 
   (parent ())
@@ -992,7 +981,16 @@ MIT in each case. |#
 (os-type-case
  ((unix)
   (extend-package (edwin)
-    (files "unix"))
+    (files "unix"
+	   "comint"			; command interpreter process stuff
+	   "compile"			; compilation subprocess
+	   "shell"			; shell subprocess commands
+	   "techinfo"			; techinfo commands
+	   "telnet"			; telnet subprocess commands
+	   "xmodef"			; x bindings for fundamental mode
+	   "manual"			; man page display
+	   "print"			; printer output
+	   ))
 
   (extend-package (edwin dired)
     (files "dirunx")
@@ -1246,7 +1244,13 @@ MIT in each case. |#
 
  ((os/2)
   (extend-package (edwin)
-    (files "os2" "dosfile")
+    (files "os2"
+	   "dosfile"
+	   "comint"			; command interpreter process stuff
+	   "compile"			; compilation subprocess
+	   "shell"			; shell subprocess commands
+	   "telnet"			; telnet subprocess commands
+	   )
     (import (runtime os2-window-primitives)
 	    os2-clipboard-read-text
 	    os2-clipboard-write-text))
@@ -1816,13 +1820,33 @@ MIT in each case. |#
 	  set-nntp-connection:reader-hook!
 	  token->number))
 
+(define-package (edwin keyparser)
+  (files "keyparse")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$complete-keyword
+	  edwin-command$keyparser-indent-line
+	  edwin-command$keyparser-indent-region
+	  edwin-variable$keyparser-description
+	  edwin-variable$keyword-table
+	  keyparse-forward
+	  keyparse-initial
+	  keyparse-partial
+	  keyparser-compute-indentation
+	  keyparser-compute-indentation-1
+	  make-keyparser-description
+	  make-keyparser-fragment))
+
 (define-package (edwin verilog)
   (files "verilog")
   (parent (edwin))
   (export (edwin)
-	  edwin-command$verilog-indent-line
-	  edwin-command$verilog-indent-region
 	  edwin-command$verilog-mode
-	  edwin-mode$verilog
-	  edwin-variable$verilog-continued-statement-offset
-	  edwin-variable$verilog-mode-hook))
+	  edwin-mode$verilog))
+
+(define-package (edwin vhdl)
+  (files "vhdl")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$vhdl-mode
+	  edwin-mode$vhdl))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.41 1996/12/07 22:24:20 cph Exp $
+$Id: ed-ffi.scm,v 1.42 1997/03/07 23:34:42 cph Exp $
 
-Copyright (c) 1990-96 Massachusetts Institute of Technology
+Copyright (c) 1990-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -95,6 +95,8 @@ of that license should have been included along with this file.
 		edwin-syntax-table)
     ("comint"	(edwin)
 		edwin-syntax-table)
+    ("comatch"	(edwin)
+		syntax-table/system-internal)
     ("comman"	(edwin)
 		edwin-syntax-table)
     ("compile"	(edwin)
@@ -170,6 +172,8 @@ of that license should have been included along with this file.
     ("key-x11"	(edwin x-keys)
 		edwin-syntax-table)
     ("keymap"	(edwin command-summary)
+		edwin-syntax-table)
+    ("keyparse"	(edwin keyparser)
 		edwin-syntax-table)
     ("kilcom"	(edwin)
 		edwin-syntax-table)
@@ -318,6 +322,8 @@ of that license should have been included along with this file.
     ("vc"	(edwin vc)
 		edwin-syntax-table)
     ("verilog"	(edwin verilog)
+		edwin-syntax-table)
+    ("vhdl"	(edwin vhdl)
 		edwin-syntax-table)
     ("win32"	(edwin screen win32)
 		edwin-syntax-table)

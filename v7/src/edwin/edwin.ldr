@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.58 1996/12/07 22:24:04 cph Exp $
+$Id: edwin.ldr,v 1.59 1997/03/07 23:34:45 cph Exp $
 
-Copyright (c) 1989-96 Massachusetts Institute of Technology
+Copyright (c) 1989-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -150,6 +150,8 @@ MIT in each case. |#
 	(load "syntax" environment)
 	(load "regexp" (->environment '(EDWIN REGULAR-EXPRESSION)))
 	(load "rgxcmp" (->environment '(EDWIN REGULAR-EXPRESSION-COMPILER)))
+	(load "comatch" environment)
+	(load "keyparse" (->environment '(EDWIN KEYPARSER)))
 	(load "linden" (->environment '(EDWIN LISP-INDENTATION)))
 
 	(case (lookup 'OS-TYPE)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: verilog.scm,v 1.2 1997/03/04 06:43:51 cph Exp $
+;;;	$Id: verilog.scm,v 1.3 1997/03/07 23:34:54 cph Exp $
 ;;;
 ;;;	Copyright (c) 1996-97 Massachusetts Institute of Technology
 ;;;
@@ -67,9 +67,14 @@
       (local-set-variable! paragraph-start paragraph-start buffer)
       (local-set-variable! paragraph-separate paragraph-start buffer))
     (local-set-variable! indent-line-procedure
-			 (ref-command verilog-indent-line)
+			 (ref-command keyparser-indent-line)
 			 buffer)
+    (local-set-variable! definition-start verilog-defun-start-regexp buffer)
     (local-set-variable! require-final-newline #t buffer)
+    (local-set-variable! keyparser-description
+			 verilog-keyparser-description
+			 buffer)
+    (local-set-variable! keyword-table verilog-keyword-table buffer)
     (event-distributor/invoke! (ref-variable verilog-mode-hook buffer)
 			       buffer)))
 
@@ -86,15 +91,25 @@
     (modify-syntax-entry! syntax-table #\newline ">")
     syntax-table))
 
+(define-key 'verilog #\linefeed 'reindent-then-newline-and-indent)
+(define-key 'verilog #\rubout 'backward-delete-char-untabify)
+(define-key 'verilog #\tab 'keyparser-indent-line)
+(define-key 'verilog #\c-m-\\ 'keyparser-indent-region)
+(define-key 'verilog #\) 'lisp-insert-paren)
+(define-key 'verilog #\] 'lisp-insert-paren)
+(define-key 'verilog #\} 'lisp-insert-paren)
+(define-key 'verilog #\m-tab 'complete-keyword)
+
+;;;; Syntax Description
+
 (define (verilog-comment-locate mark)
   (let ((state (parse-partial-sexp mark (line-end mark 0))))
     (and (parse-state-in-comment? state)
-	 (and (verilog-comment-match-start state)
-	      (cons (re-match-start 0) (re-match-end 0))))))
+	 (verilog-comment-match-start (parse-state-comment-start state))
+	 (cons (re-match-start 0) (re-match-end 0)))))
 
-(define (verilog-comment-match-start state)
-  (re-match-forward "/\\(/+\\|\\*+\\)[ \t]*"
-		    (parse-state-comment-start state)))
+(define (verilog-comment-match-start mark)
+  (re-match-forward "/\\(/+\\|\\*+\\)[ \t]*" mark))
 
 (define (verilog-comment-indentation mark)
   (let ((column
@@ -103,7 +118,7 @@
 		    (match-forward "////" mark))
 		0)
 	       ((match-forward "///" mark)
-		(verilog-compute-indentation mark))
+		(keyparser-compute-indentation mark))
 	       (else
 		(ref-variable comment-column mark)))))
     (if (within-indentation? mark)
@@ -111,306 +126,11 @@
 	(max (+ (mark-column (horizontal-space-start mark)) 1)
 	     column))))
 
-(define-key 'verilog #\linefeed 'reindent-then-newline-and-indent)
-(define-key 'verilog #\rubout 'backward-delete-char-untabify)
-(define-key 'verilog #\tab 'verilog-indent-line)
-(define-key 'verilog #\) 'lisp-insert-paren)
-(define-key 'verilog #\] 'lisp-insert-paren)
-(define-key 'verilog #\} 'lisp-insert-paren)
-(define-key 'verilog #\m-tab 'verilog-complete-keyword)
-
-;;;; Indentation
-
-(define-command verilog-indent-line
-  "Indent current line as Verilog code."
-  "d"
-  (lambda (#!optional mark)
-    (let* ((mark (if (default-object? mark) (current-point) mark))
-	   (point? (mark= (line-start mark 0) (line-start (current-point) 0))))
-      (verilog-indent-line mark (verilog-compute-indentation mark))
-      (if point?
-	  (let ((point (current-point)))
-	    (if (within-indentation? point)
-		(set-current-point! (indentation-end point))))))))
-
-(define-command verilog-indent-region
-  "Indent current region as Verilog code."
-  "r"
-  (lambda (region)
-    (let ((start
-	   (mark-left-inserting-copy (line-start (region-start region) 0)))
-	  (end (mark-left-inserting-copy (line-start (region-end region) 0))))
-      (let ((dstart (or (find-verilog-defun-start start) (group-start start))))
-	(let loop ((state (verilog-parse-initial dstart start)))
-	  ;; The temporary marks in STATE are to the left of START, and
-	  ;; thus are unaffected by insertion at START.
-	  (if (not (line-blank? start))
-	      (verilog-indent-line start
-				   (verilog-compute-indentation-1 dstart
-								  start
-								  state)))
-	  (let ((start* (line-start start 1 'LIMIT)))
-	    (if (mark<= start* end)
-		(let ((state (verilog-parse-partial start start* state)))
-		  (move-mark-to! start start*)
-		  (loop state))))))
-      (mark-temporary! start)
-      (mark-temporary! end))))
-
-(define (verilog-indent-line mark indentation)
-  (let ((indent-point (indentation-end mark)))
-    (if (not (= indentation (mark-column indent-point)))
-	(change-indentation indentation indent-point))))
-
-(define (verilog-parse-initial dstart mark)
-  (let ((mark (line-start mark 0))
-	(state (initial-verilog-parse-state)))
-    (if (mark= dstart mark)
-	state
-	(verilog-parse-partial dstart mark state))))
-
-(define (find-verilog-defun-start mark)
-  (let ((start (line-start mark 0))
-	(regexp verilog-defun-start-regexp))
-    (if (re-match-forward regexp start (group-end mark) #f)
-	start
-	(re-search-backward regexp start (group-start mark) #f))))
-
-(define (verilog-compute-indentation mark)
-  (let ((dstart (or (find-verilog-defun-start mark) (group-start mark)))
-	(end (line-start mark 0)))
-    (verilog-compute-indentation-1 dstart
-				   end
-				   (verilog-parse-initial dstart end))))
-
-(define (verilog-compute-indentation-1 dstart lstart state)
-  (let ((indent-point (indentation-end lstart))
-	(sexp-state (verilog-parse-state/sexp-state state))
-	(statement-state (verilog-parse-state/statement-state state)))
-    (cond ((and sexp-state (in-char-syntax-structure? sexp-state))
-	   (cond ((parse-state-in-comment? sexp-state)
-		  (mark-column (if (verilog-comment-match-start sexp-state)
-				   (re-match-end 0)
-				   (parse-state-comment-start sexp-state))))
-		 ((> (parse-state-depth sexp-state) 0)
-		  (+ (mark-column
-		      (or (parse-state-containing-sexp sexp-state)
-			  (parse-state-containing-sexp
-			   (parse-partial-sexp dstart lstart))))
-		     1))
-		 (else 0)))
-	  ((verilog-parse-state/restart-point state)
-	   => continued-statement-indent)
-	  ((match-statement-ending indent-point statement-state)
-	   (mark-indentation (caar statement-state)))
-	  ((pair? statement-state)
-	   (continued-statement-indent (caar statement-state)))
-	  (else 0))))
-
-(define (continued-statement-indent mark)
-  (+ (mark-indentation mark)
-     (ref-variable verilog-continued-statement-offset mark)))
-
-(define-structure (verilog-parse-state (conc-name verilog-parse-state/))
-  (sexp-state #f read-only #t)
-  (statement-state #f read-only #t)
-  (restart-point #f read-only #t))
-
-(define (initial-verilog-parse-state)
-  (make-verilog-parse-state #f '() #f))
-
-(define (verilog-parse-partial start end state)
-  (let ((ss
-	 (parse-partial-sexp start end #f #f
-			     (verilog-parse-state/sexp-state state))))
-    (if (in-char-syntax-structure? ss)
-	(make-verilog-parse-state
-	 ss
-	 (verilog-parse-state/statement-state state)
-	 (or (verilog-parse-state/restart-point state) start))
-	(call-with-values
-	    (lambda ()
-	      (parse-forward (or (verilog-parse-state/restart-point state)
-				 start)
-			     end
-			     (verilog-parse-state/statement-state state)))
-	  (lambda (statement-state restart-point)
-	    (make-verilog-parse-state ss statement-state restart-point))))))
-
-(define (parse-forward start end nesting)
-  (let ((start (parse-forward-to-statement start end)))
-    (cond ((not start)
-	   (values nesting #f))
-	  ((match-statement-ending start nesting)
-	   (parse-keyword-statement-end start end nesting))
-	  ((match-statement-keyword start)
-	   => (lambda (record)
-		(parse-keyword-statement start end record nesting)))
-	  (else
-	   (let ((semi (parse-forward-past-semicolon start end)))
-	     (if semi
-		 (finish-parsing-statement semi end nesting)
-		 (values nesting start)))))))
-
-(define (parse-keyword-statement start end record nesting)
-  (let ((keyword (keyword-record/name record)))
-    (let ((mark (skip-keyword start keyword)))
-      (if (mark<= mark end)
-	  (let ((mark (skip-keyword-noise mark end keyword))
-		(nesting (cons (cons start record) nesting)))
-	    (if mark
-		(parse-forward mark end nesting)
-		(values nesting #f)))
-	  ;; This can't happen if END is at a line start.
-	  (values nesting start)))))
-
-(define (parse-keyword-statement-end start end nesting)
-  (let ((mark (skip-keyword start (keyword-record/ending (cdar nesting)))))
-    (if (mark<= mark end)
-	(finish-parsing-statement mark end (cdr nesting))
-	;; This can't happen if END is at a line start.
-	(values nesting start))))
-
-(define (finish-parsing-statement start end nesting)
-  (parse-forward start
-		 end
-		 (let loop ((nesting nesting))
-		   (if (and (pair? nesting)
-			    (not (keyword-record/ending (cdar nesting))))
-		       (loop (cdr nesting))
-		       nesting))))
-
-(define (parse-forward-to-statement start end)
-  (let ((mark (forward-to-sexp-start start end)))
-    (cond ((mark= mark end) #f)
-	  ((and (mark< start mark)
-		(memv (mark-left-char mark) '(#\# #\@)))
-	   (let ((m (forward-one-sexp mark end)))
-	     (and m
-		  (parse-forward-to-statement m end))))
-	  (else mark))))
-
-(define (match-statement-keyword start)
-  (let loop ((records verilog-statement-keywords))
-    (and (not (null? records))
-	 (if (re-match-forward (keyword-record/pattern (car records)) start)
-	     (car records)
-	     (loop (cdr records))))))
-
-(define (match-statement-ending mark nesting)
-  (let ((record (and (pair? nesting) (cdar nesting))))
-    (and record
-	 (keyword-record/ending-pattern record)
-	 (re-match-forward (keyword-record/ending-pattern record) mark))))
-
-(define (parse-forward-past-semicolon start end)
-  (let loop ((start start) (state #f))
-    (let ((semi (char-search-forward #\; start end #f)))
-      (and semi
-	   (let ((state (parse-partial-sexp start semi #f #f state)))
-	     (if (in-char-syntax-structure? state)
-		 (loop semi state)
-		 semi))))))
-
-(define (skip-keyword start keyword)
-  (mark+ start (string-length keyword)))
-
-(define (skip-keyword-noise start end keyword)
-  (cond ((member keyword verilog-keywords:semicolon-delimited-header)
-	 (parse-forward-past-semicolon start end))
-	((or (member keyword verilog-keywords:paren-delimited-header)
-	     (and (member keyword verilog-keywords:optional-block-tag)
-		  (re-match-forward "[ \t]*:[ \t]*" start end #f)))
-	 (forward-one-sexp start end))
-	(else start)))
-
-(define (in-char-syntax-structure? state)
-  (or (parse-state-in-comment? state)
-      (parse-state-in-string? state)
-      (parse-state-quoted? state)
-      (not (= (parse-state-depth state) 0))))
-
 (define verilog-defun-start-regexp
-  "^\\(module\\|macromodule\\|primitive\\|parameter\\)\\(\\s \\|$\\)")
-
-(define verilog-keywords:semicolon-delimited-header
-  '("function" "macromodule" "module" "primitive" "task"))
-
-(define verilog-keywords:paren-delimited-header
-  '("case" "casex" "casez" "for" "if" "repeat" "while"))
-
-(define verilog-keywords:optional-block-tag
-  '("begin" "fork"))
-
-(define-structure (keyword-record (constructor make-keyword-record
-					       (name ending))
-				  (conc-name keyword-record/)
-				  (print-procedure
-				   (standard-unparser-method 'KEYWORD-RECORD
-				     (lambda (record port)
-				       (write-char #\space port)
-				       (write-string
-					(keyword-record/name record)
-					port)))))
-  (name #f read-only #t)
-  (pattern (keyword->pattern name) read-only #t)
-  (ending #f read-only #t)
-  (ending-pattern (and ending (keyword->pattern ending)) read-only #t))
-
-(define (keyword->pattern keyword)
-  (re-compile-pattern
-   (string-append keyword
-		  (if (member keyword verilog-keywords:optional-block-tag)
-		      "\\(\\s \\|$\\|:\\)"
-		      "\\(\\s \\|$\\)"))
-   #f))
-
-(define verilog-statement-keywords
-  (map (lambda (entry) (make-keyword-record (car entry) (cadr entry)))
-       '(("always"	#f)
-	 ("begin"	"end")
-	 ("case"	"endcase")
-	 ("casex"	"endcase")
-	 ("casez"	"endcase")
-	 ("else"	#f)
-	 ("for"		#f)
-	 ("forever"	#f)
-	 ("fork"	"join")
-	 ("function"	"endfunction")
-	 ("if"		#f)
-	 ("initial"	#f)
-	 ("macromodule"	"endmodule")
-	 ("module"	"endmodule")
-	 ("primitive"	"endprimitive")
-	 ("repeat"	#f)
-	 ("table"	"endtable")
-	 ("task"	"endtask")
-	 ("while"	#f))))
-
-;;;; Keyword Completion
-
-(define-command verilog-complete-keyword
-  "Perform completion on Verilog keyword preceding point."
-  ()
-  (lambda ()
-    (let ((end 
-	   (let ((point (current-point)))
-	     (let ((end (group-end point)))
-	       (or (re-match-forward "\\sw+" point end #f)
-		   (and (mark< (group-start point) point)
-			(re-match-forward "\\sw+" (mark-1+ point) end #f))
-		   (editor-error "No keyword preceding point"))))))
-      (let ((start (backward-word end 1 'LIMIT)))
-	(standard-completion (extract-string start end)
-	  (lambda (prefix if-unique if-not-unique if-not-found)
-	    (string-table-complete verilog-keyword-table
-				   prefix
-				   if-unique
-				   if-not-unique
-				   if-not-found))
-	  (lambda (completion)
-	    (delete-string start end)
-	    (insert-string completion start)))))))
+  (string-append
+   "^"
+   (regexp-group "module" "macromodule" "primitive" "parameter")
+   (regexp-group "\\s " "$")))
 
 (define verilog-keyword-table
   (alist->string-table
@@ -432,3 +152,90 @@
 		   "trireg" "udp" "vectored" "wait" "wand" "while"
 		   "wire" "wor" "xnor" "xor"))
    #f))
+
+(define (parse-forward-past-semicolon start end)
+  (let loop ((start start) (state #f))
+    (let ((semi (char-search-forward #\; start end #f)))
+      (and semi
+	   (let ((state (parse-partial-sexp start semi #f #f state)))
+	     (if (in-char-syntax-structure? state)
+		 (loop semi state)
+		 semi))))))
+
+(define (parse-forward-past-block-tag start end)
+  (if (re-match-forward "[ \t]*:[ \t]*" start end)
+      (forward-one-sexp start end)
+      start))
+
+(define (parse-forward-noop start end)
+  end
+  start)
+
+(define (continued-header-indent mark)
+  (+ (mark-indentation mark)
+     (ref-variable verilog-continued-header-offset mark)))
+
+(define (continued-statement-indent mark)
+  (+ (mark-indentation mark)
+     (ref-variable verilog-continued-statement-offset mark)))
+
+(define verilog-keyparser-description
+  (make-keyparser-description
+   'PATTERNS
+   (map (lambda (entry)
+	  (list
+	   (make-keyparser-fragment 'KEYWORD
+				    (car entry)
+				    'PARSE-HEADER
+				    (caddr entry)
+				    'INDENT-HEADER
+				    continued-header-indent
+				    'PARSE-BODY
+				    keyparse-forward
+				    'INDENT-BODY
+				    continued-statement-indent)
+	   (and (cadr entry)
+		(make-keyparser-fragment 'KEYWORD
+					 (cadr entry)
+					 'PARSE-HEADER
+					 parse-forward-noop
+					 'INDENT-HEADER
+					 continued-header-indent
+					 'PARSE-BODY
+					 #f
+					 'INDENT-BODY
+					 #f))))
+	`(("always"	#f		,parse-forward-noop)
+	  ("begin"	"end"		,parse-forward-past-block-tag)
+	  ("case"	"endcase"	,forward-one-sexp)
+	  ("casex"	"endcase"	,forward-one-sexp)
+	  ("casez"	"endcase"	,forward-one-sexp)
+	  ("else"	#f		,parse-forward-noop)
+	  ("for"	#f		,forward-one-sexp)
+	  ("forever"	#f		,parse-forward-noop)
+	  ("fork"	"join"		,parse-forward-past-block-tag)
+	  ("function"	"endfunction"	,parse-forward-past-semicolon)
+	  ("if"		#f		,forward-one-sexp)
+	  ("initial"	#f		,parse-forward-noop)
+	  ("macromodule" "endmodule"	,parse-forward-past-semicolon)
+	  ("module"	"endmodule"	,parse-forward-past-semicolon)
+	  ("primitive"	"endprimitive"	,parse-forward-past-semicolon)
+	  ("repeat"	#f		,forward-one-sexp)
+	  ("table"	"endtable"	,parse-forward-noop)
+	  ("task"	"endtask"	,parse-forward-past-semicolon)
+	  ("while"	#f		,forward-one-sexp)))
+
+   'STATEMENT-LEADERS
+   `((,(re-compile-char #\# #f) . ,forward-one-sexp)
+     (,(re-compile-char #\@ #f) . ,forward-one-sexp))
+   
+   'FIND-STATEMENT-END
+   parse-forward-past-semicolon
+
+   'INDENT-CONTINUED-STATEMENT
+   continued-statement-indent
+   
+   'INDENT-CONTINUED-COMMENT
+   (lambda (mark)
+     (mark-column (or (verilog-comment-match-start mark) mark)))
+   ))
