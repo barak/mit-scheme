@@ -37,7 +37,7 @@
 
 ;;;; RTL Rules for 68020
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.148 1987/01/09 20:16:35 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.149 1987/01/09 21:57:22 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access lap-generator-syntax-table compiler-package)
@@ -730,18 +730,18 @@
 
 (define-rule statement
   (MESSAGE-RECEIVER:STACK (? frame-size))
-  `((MOVE L (& ,(+ #x0020000 frame-size)) (@-A 7))))
+  `((MOVE L (& ,(+ #x00200000 frame-size)) (@-A 7))))
 
 (define-rule statement
   (MESSAGE-RECEIVER:SUBPROBLEM (? continuation))
-  (list `(MOVE L (& #x0040000) (@-A 7))))
+  (list `(MOVE L (& #x00400000) (@-A 7))))
 
 (define (apply-closure-sequence frame-size receiver-offset label)
   `((MOVEQ (& -1) (D 0))
     ,(load-dnw frame-size 1)
     (LEA (@AO 7 ,(* receiver-offset 4)) (A 0))
     (LEA (@PCR ,label) (A 1))
-    (JMP ,popper:apply_closure)))
+    (JMP ,popper:apply-closure)))
 
 (define (apply-stack-sequence frame-size receiver-offset n-levels label)
   `((MOVEQ (& ,n-levels) (D 0))
