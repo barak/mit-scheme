@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: method.scm,v 1.9 1997/06/25 06:18:30 cph Exp $
+;;; $Id: method.scm,v 1.10 1997/06/27 20:56:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -473,10 +473,10 @@
   (let ((get-specializers (%record-accessor-generator 'SPECIALIZERS))
 	(get-procedure (%record-accessor-generator 'PROCEDURE)))
     (list (list method-specializers
-		(list <method> <chained-method> <computed-method>)
+		(list <concrete-method> <chained-method> <computed-method>)
 		get-specializers)
 	  (list method-procedure
-		(list <method> <chained-method> <computed-method>)
+		(list <concrete-method> <chained-method> <computed-method>)
 		get-procedure)
 	  (list computed-emp-key
 		(list <computed-emp>)
