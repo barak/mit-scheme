@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.58 1993/08/01 05:30:29 cph Exp $
+;;;	$Id: intmod.scm,v 1.59 1993/08/02 03:06:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -94,27 +94,52 @@ REPL uses current evaluation environment."
   (set-buffer-major-mode! buffer (ref-mode-object inferior-repl))
   (if (ref-variable repl-mode-locked)
       (buffer-put! buffer 'MAJOR-MODE-LOCKED true))
-  (set-buffer-default-directory! buffer (working-directory-pathname))
   (create-thread editor-thread-root-continuation
-		 (lambda ()
-		   (let ((thread (current-thread)))
-		     (detach-thread thread)
-		     (let ((port (make-interface-port buffer thread)))
-		       (attach-buffer-interface-port! buffer port)
-		       (with-input-from-port port
-			 (lambda ()
-			   (with-output-to-port port
-			     (lambda ()
-			       (repl/start (make-repl false
-						      port
-						      environment
-						      syntax-table
-						      false
-						      `((ERROR-DECISION
-							 ,error-decision))
-						      user-initial-prompt)
-					   message))))))))))
+    (lambda ()
+      (let ((port
+	     (make-interface-port buffer
+				  (let ((thread (current-thread)))
+				    (detach-thread thread)
+				    thread))))
+	(attach-buffer-interface-port! buffer port)
+	(with-input-from-port port
+	  (lambda ()
+	    (with-output-to-port port
+	      (lambda ()
+		(fluid-let ((%exit inferior-repl/%exit)
+			    (quit inferior-repl/quit))
+		  (dynamic-wind
+		   (lambda () unspecific)
+		   (lambda ()
+		     (repl/start (make-repl false
+					    port
+					    environment
+					    syntax-table
+					    false
+					    `((ERROR-DECISION ,error-decision))
+					    user-initial-prompt)
+				 (make-init-message message)))
+		   (lambda ()
+		     (unwind-inferior-repl-buffer buffer))))))))))))
 
+(define (make-init-message message)
+  (if message
+      (cmdl-message/append cmdl-message/init-inferior message)
+      cmdl-message/init-inferior))
+
+(define cmdl-message/init-inferior
+  (cmdl-message/active
+   (lambda (port)
+     port
+     (set-working-directory-pathname!
+      (buffer-default-directory (port/buffer port))))))
+
+(define (inferior-repl/%exit #!optional integer)
+  (exit-current-thread (if (default-object? integer) 0 integer)))
+
+(define (inferior-repl/quit)
+  unspecific)
+
 (define (current-repl-buffer)
   (let ((buffer (current-repl-buffer*)))
     (if (not buffer)
@@ -134,7 +159,7 @@ REPL uses current evaluation environment."
 (define (initialize-inferior-repls!)
   (set! repl-buffers '())
   unspecific)
-
+
 (define (wait-for-input port level mode)
   (signal-thread-event editor-thread
     (lambda ()
@@ -163,7 +188,8 @@ REPL uses current evaluation environment."
       transcript?
       (if (not (group-start? mark))
 	  (guarantee-newlines 2 mark))
-      (undo-boundary! mark))))
+      (undo-boundary! mark)
+      #t)))
 
 (define (maybe-switch-modes! port mode)
   (let ((buffer (port/buffer port)))
@@ -212,30 +238,31 @@ REPL uses current evaluation environment."
 (define (kill-buffer-inferior-repl buffer)
   (let ((port (buffer-interface-port buffer)))
     (if port
+	(let ((thread (port/thread port)))
+	  (if (not (thread-dead? thread))
+	      (signal-thread-event thread
+		(lambda ()
+		  (exit-current-thread unspecific))))))))
+
+(define (unwind-inferior-repl-buffer buffer)
+  (buffer-remove! buffer 'INTERFACE-PORT)
+  (let ((run-light (ref-variable-object run-light))
+	(evaluate-in-inferior-repl
+	 (ref-variable evaluate-in-inferior-repl buffer)))
+    (if (and evaluate-in-inferior-repl
+	     (eq? buffer (current-repl-buffer*)))
 	(begin
-	  (let ((thread (port/thread port)))
-	    (if (not (thread-dead? thread))
-		(signal-thread-event thread
-		  (lambda ()
-		    (exit-current-thread unspecific)))))
-	  (buffer-remove! buffer 'INTERFACE-PORT)
-	  (let ((run-light (ref-variable-object run-light))
-		(evaluate-in-inferior-repl
-		 (ref-variable evaluate-in-inferior-repl buffer)))
-	    (if (and evaluate-in-inferior-repl
-		     (eq? buffer (current-repl-buffer*)))
-		(begin
-		  (set-variable-default-value! run-light false)
-		  (global-window-modeline-event!)))
-	    (set! repl-buffers (delq! buffer repl-buffers))
-	    (let ((buffer
-		   (and evaluate-in-inferior-repl
-			(current-repl-buffer*))))
-	      (if buffer
-		  (let ((value (variable-local-value buffer run-light)))
-		    (undefine-variable-local-value! buffer run-light)
-		    (set-variable-default-value! run-light value)
-		    (global-window-modeline-event!)))))))))
+	  (set-variable-default-value! run-light false)
+	  (global-window-modeline-event!)))
+    (set! repl-buffers (delq! buffer repl-buffers))
+    (let ((buffer
+	   (and evaluate-in-inferior-repl
+		(current-repl-buffer*))))
+      (if buffer
+	  (let ((value (variable-local-value buffer run-light)))
+	    (undefine-variable-local-value! buffer run-light)
+	    (set-variable-default-value! run-light value)
+	    (global-window-modeline-event!))))))
 
 (define (error-decision repl condition)
   (if (ref-variable repl-error-decision)
@@ -250,7 +277,8 @@ REPL uses current evaluation environment."
 			(message "Evaluation error in "
 				 (buffer-name (mark-buffer mark))
 				 " buffer")
-			(editor-beep)))))
+			(editor-beep)))
+		  #t))
 	      (let ((level (number->string (cmdl/level repl))))
 		(let loop ()
 		  (fresh-line port)
@@ -267,7 +295,8 @@ REPL uses current evaluation environment."
 			       mark
 			       (if (not transcript?)
 				   (start-continuation-browser port
-							       condition)))))
+							       condition))
+			       #t)))
 			  ((not (char-ci=? char #\q))
 			   (beep port)
 			   (loop))))))
@@ -405,8 +434,8 @@ Additionally, these commands abort the command loop:
   "r"
   (lambda (region)
     (let ((buffer (mark-buffer (region-start region))))
-      (ring-push! (port/input-ring (buffer-interface-port buffer))
-		  (region->string region))
+      (comint-record-input (port/input-ring (buffer-interface-port buffer))
+			   (region->string region))
       (inferior-repl-eval-region buffer region))))
 
 (define-command inferior-repl-debug
@@ -634,12 +663,12 @@ If this is an error, the debugger examines the error condition."
 (define (operation/fresh-line port)
   (enqueue-output-operation!
    port
-   (lambda (mark transcript?) transcript? (guarantee-newline mark))))
+   (lambda (mark transcript?) transcript? (guarantee-newline mark) #t)))
 
 (define (operation/beep port)
   (enqueue-output-operation!
    port
-   (lambda (mark transcript?) mark (if (not transcript?) (editor-beep)))))
+   (lambda (mark transcript?) mark (if (not transcript?) (editor-beep)) #t)))
 
 (define (operation/x-size port)
   (let ((buffer (port/buffer port)))
@@ -647,7 +676,7 @@ If this is an error, the debugger examines the error condition."
 	 (let ((windows (buffer-windows buffer)))
 	   (and (not (null? windows))
 		(apply min (map window-x-size windows)))))))
-
+
 (define (enqueue-output-string! port string)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (set-port/output-strings! port (cons string (port/output-strings port)))
@@ -666,7 +695,8 @@ If this is an error, the debugger examines the error condition."
 	     (let ((string (apply string-append (reverse! strings))))
 	       (lambda (mark transcript?)
 		 transcript?
-		 (region-insert-string! mark string)))))))
+		 (region-insert-string! mark string)
+		 #t))))))
     (enqueue!/unsafe (port/output-queue port) operator)
     (inferior-thread-output!/unsafe (port/output-registration port))
     (set-interrupt-enables! interrupt-mask)
@@ -674,16 +704,24 @@ If this is an error, the debugger examines the error condition."
 
 (define (process-output-queue port)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok))
-	(mark (port/mark port)))
+	(mark (port/mark port))
+	(result #t))
     (call-with-transcript-output-mark (port/buffer port)
       (lambda (transcript-mark)
-	(let loop ()
-	  (let ((operation (dequeue!/unsafe (port/output-queue port) false)))
-	    (if operation
-		(begin
-		  (operation mark false)
-		  (if transcript-mark (operation transcript-mark true))
-		  (loop)))))
+	(let ((run-operation
+	       (lambda (operation mark transcript?)
+		 (let ((flag (operation mark transcript?)))
+		   (if (eq? flag 'FORCE-RETURN)
+		       (set! result flag)))
+		 unspecific)))
+	  (let loop ()
+	    (let ((operation (dequeue!/unsafe (port/output-queue port) false)))
+	      (if operation
+		  (begin
+		    (run-operation operation mark false)
+		    (if transcript-mark
+			(run-operation operation transcript-mark true))
+		    (loop))))))
 	(let ((strings (port/output-strings port)))
 	  (if (not (null? strings))
 	      (begin
@@ -694,8 +732,8 @@ If this is an error, the debugger examines the error condition."
 		  (if transcript-mark
 		      (region-insert-string! transcript-mark
 					     (car strings)))))))))
-    (set-interrupt-enables! interrupt-mask))
-  true)
+    (set-interrupt-enables! interrupt-mask)
+    result))
 
 ;;; Input operations
 
@@ -720,7 +758,7 @@ If this is an error, the debugger examines the error condition."
 		(wait-for-input port level (ref-mode-object inferior-repl))
 		(loop))
 	      expression))))))
-
+
 ;;; Debugger
 
 (define (operation/debugger-failure port string)
@@ -730,17 +768,21 @@ If this is an error, the debugger examines the error condition."
       (if (not transcript?)
 	  (begin
 	    (message string)
-	    (editor-beep))))))
+	    (editor-beep)))
+      #t)))
 
 (define (operation/debugger-message port string)
   (enqueue-output-operation!
    port
-   (lambda (mark transcript?) mark (if (not transcript?) (message string)))))
+   (lambda (mark transcript?)
+     mark
+     (if (not transcript?) (message string))
+     #t)))
 
 (define (operation/debugger-presentation port thunk)
   (fresh-line port)
   (thunk))
-
+
 ;;; Prompting
 
 (define (operation/prompt-for-expression port prompt)
@@ -750,22 +792,43 @@ If this is an error, the debugger examines the error condition."
   (unsolicited-prompt port prompt-for-confirmation? prompt))
 
 (define unsolicited-prompt
-  (let ((unique (list false)))
+  (let ((wait-value (list false))
+	(abort-value (list false)))
     (lambda (port procedure prompt)
-      (let ((value unique))
+      (let ((value wait-value))
 	(signal-thread-event editor-thread
 	  (lambda ()
-	    ;; This would be even better if it could notify the use
+	    ;; This would be even better if it could notify the user
 	    ;; that the inferior REPL wanted some attention.
 	    (when-buffer-selected (port/buffer port)
 	      (lambda ()
-		(override-next-command!
-		 (lambda ()
-		   (set! value (procedure prompt))
-		   (signal-thread-event (port/thread port) false)))))))
-	(do () ((not (eq? value unique)))
-	  (suspend-current-thread))
-	value))))
+		;; We're using ENQUEUE-OUTPUT-OPERATION! here solely
+		;; to force KEYBOARD-READ to exit so that the command
+		;; reader loop will get control and notice the command
+		;; override.
+		(enqueue-output-operation! port
+		  (lambda (mark transcript?)
+		    mark transcript?
+		    (if (not transcript?)
+			(override-next-command!
+			 (lambda ()
+			   (let ((continue
+				  (lambda (v)
+				    (set! value v)
+				    (signal-thread-event (port/thread port)
+				      #f))))
+			     (bind-condition-handler
+				 (list condition-type:abort-current-command)
+				 (lambda (condition)
+				   (continue abort-value)
+				   (signal-condition condition))
+			       (lambda ()
+				 (continue (procedure prompt))))))))
+		    'FORCE-RETURN))))))
+	(let loop ()
+	  (cond ((eq? value wait-value) (suspend-current-thread) (loop))
+		((eq? value abort-value) (abort->nearest))
+		(else value)))))))
 
 (define (when-buffer-selected buffer thunk)
   (if (current-buffer? buffer)
@@ -807,7 +870,8 @@ If this is an error, the debugger examines the error condition."
       (if (not transcript?)
 	  (begin
 	    (set-buffer-default-directory! (mark-buffer mark) directory)
-	    (message (->namestring directory)))))))
+	    (message (->namestring directory))))
+      #t)))
 
 (define (operation/set-default-environment port environment)
   (enqueue-output-operation! port
@@ -815,7 +879,8 @@ If this is an error, the debugger examines the error condition."
       (if (not transcript?)
 	  (define-variable-local-value! (mark-buffer mark)
 	    (ref-variable-object scheme-environment)
-	    environment)))))
+	    environment))
+      #t)))
 
 (define (operation/set-default-syntax-table port syntax-table)
   (enqueue-output-operation! port
@@ -823,7 +888,8 @@ If this is an error, the debugger examines the error condition."
       (if (not transcript?)
 	  (define-variable-local-value! (mark-buffer mark)
 	    (ref-variable-object scheme-syntax-table)
-	    syntax-table)))))
+	    syntax-table))
+      #t)))
 
 (define interface-port-template
   (make-i/o-port

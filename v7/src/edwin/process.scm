@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.29 1993/04/27 09:22:31 cph Exp $
+;;;	$Id: process.scm,v 1.30 1993/08/02 03:06:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-93 Massachusetts Institute of Technology
 ;;;
@@ -514,13 +514,13 @@ after the listing is made.)"
 (define (run-synchronous-process input-region output-mark directory pty?
 				 program . arguments)
   (let ((process false))
-    (intercept-^g-interrupts
-	(lambda ()
+    (bind-condition-handler (list condition-type:abort-current-command)
+	(lambda (condition)
 	  (if (and process (not (eq? process 'DELETED)))
 	      (begin
 		(subprocess-delete process)
 		(set! process 'DELETED)))
-	  (^G-signal))
+	  (signal-condition condition))
       (lambda ()
 	(set! process
 	      (start-subprocess

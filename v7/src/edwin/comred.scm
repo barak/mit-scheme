@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comred.scm,v 1.98 1993/08/01 00:15:49 cph Exp $
+;;;	$Id: comred.scm,v 1.99 1993/08/02 03:06:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -45,8 +45,7 @@
 ;;;; Command Reader
 
 (declare (usual-integrations))
-
-(define *command-continuation*)	;Continuation of current command
+
 (define *command-key*)		;Key read to find current command
 (define *command*)		;The current command
 (define *last-command*)		;The previous command, excluding arg commands
@@ -65,50 +64,15 @@
   (set! command-history (make-circular-list command-history-limit false))
   (set! command-reader-override-queue (make-queue))
   unspecific)
-
-(define (top-level-command-reader initialization)
-  (let loop ((initialization initialization))
+
+(define (top-level-command-reader init)
+  (do ((init init #f)) (#f)
     (with-keyboard-macro-disabled
      (lambda ()
-       (intercept-^G-interrupts (lambda () unspecific)
+       (bind-abort-current-command #t
 	 (lambda ()
-	   (command-reader initialization)))))
-    (loop false)))
+	   (command-reader init)))))))
 
-(define (override-next-command! override)
-  (enqueue! command-reader-override-queue override))
-
-(define (abort-current-command #!optional input)
-  (keyboard-macro-disable)
-  (if (or (default-object? input) (not input))
-      (*command-continuation* 'ABORT)
-      (within-continuation *command-continuation*
-	(lambda ()
-	  (cond ((input-event? input)
-		 (reset-command-state!)
-		 (apply-input-event input))
-		((command? input)
-		 (execute-command input))
-		(else
-		 (execute-key (current-comtabs) input)))
-	  'ABORT))))
-
-(define-structure (input-event
-		   (constructor %make-input-event)
-		   (conc-name input-event/))
-  (type false read-only true)
-  (operator false read-only true)
-  (operands false read-only true))
-
-(define (make-input-event type operator . operands)
-  (%make-input-event type operator operands))
-
-(define (apply-input-event input-event)
-  (if (not (input-event? input-event))
-      (error:wrong-type-argument input-event "input event" apply-input-event))
-  (apply (input-event/operator input-event)
-	 (input-event/operands input-event)))
-
 (define (command-reader #!optional initialization)
   (fluid-let ((*last-command* false)
 	      (*command* false)
@@ -117,46 +81,59 @@
 	      (*command-message*)
 	      (*next-message* false)
 	      (*non-undo-count* 0)
-	      (*command-key* false)
-	      (*command-continuation*))
+	      (*command-key* false))
     (bind-condition-handler (list condition-type:editor-error)
 	editor-error-handler
       (lambda ()
 	(if (and (not (default-object? initialization)) initialization)
-	    (call-with-current-continuation
-	     (lambda (continuation)
-	       (set! *command-continuation* continuation)
-	       (reset-command-state!)
-	       (initialization))))
+	    (bind-abort-current-command #f
+	      (lambda ()
+		(reset-command-state!)
+		(initialization))))
 	(do () (false)
-	  (call-with-current-continuation
-	   (lambda (continuation)
-	     (set! *command-continuation* continuation)
-	     (do () (false)
-	       (reset-command-state!)
-	       (if (queue-empty? command-reader-override-queue)
-		   (let ((input
-			  (with-editor-interrupts-disabled keyboard-read)))
-		     (if (input-event? input)
-			 (apply-input-event input)
-			 (begin
-			   (set! *command-key* input)
-			   (clear-message)
-			   (set-command-prompt!
-			    (if (not (command-argument))
-				(key-name input)
-				(string-append-separated
-				 (command-argument-prompt)
-				 (key-name input))))
-			   (let ((window (current-window)))
-			     (%dispatch-on-command
-			      window
-			      (comtab-entry (buffer-comtabs
-					     (window-buffer window))
-					    input)
-			      false)))))
-		   ((dequeue! command-reader-override-queue)))))))))))
+	  (bind-abort-current-command #f
+	    (lambda ()
+	      (do () (false)
+		(reset-command-state!)
+		(if (queue-empty? command-reader-override-queue)
+		    (let ((input
+			   (with-editor-interrupts-disabled keyboard-read)))
+		      (if (input-event? input)
+			  (apply-input-event input)
+			  (begin
+			    (set! *command-key* input)
+			    (clear-message)
+			    (set-command-prompt!
+			     (if (not (command-argument))
+				 (key-name input)
+				 (string-append-separated
+				  (command-argument-prompt)
+				  (key-name input))))
+			    (let ((window (current-window)))
+			      (%dispatch-on-command
+			       window
+			       (comtab-entry (buffer-comtabs
+					      (window-buffer window))
+					     input)
+			       false)))))
+		    ((dequeue! command-reader-override-queue)))))))))))
 
+(define (bind-abort-current-command handle-^G? thunk)
+  (call-with-current-continuation
+   (lambda (continuation)
+     (bind-condition-handler (list condition-type:abort-current-command)
+	 (lambda (condition)
+	   (if (or handle-^G? (not (condition/^G? condition)))
+	       (let ((input (abort-current-command/input condition)))
+		 (within-continuation continuation
+		   (lambda ()
+		     (if (input-event? input)
+			 (begin
+			   (reset-command-state!)
+			   (apply-input-event input)))
+		     'ABORT)))))
+       thunk))))
+
 (define (reset-command-state!)
   (set! *last-command* *command*)
   (set! *command* false)
@@ -169,7 +146,10 @@
       (reset-command-prompt!))
   (if *defining-keyboard-macro?*
       (keyboard-macro-finalize-keys)))
-
+
+(define (override-next-command! override)
+  (enqueue! command-reader-override-queue override))
+
 (define-integrable (current-command-key)
   *command-key*)
 

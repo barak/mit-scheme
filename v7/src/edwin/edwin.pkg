@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.121 1993/08/01 05:06:25 cph Exp $
+$Id: edwin.pkg,v 1.122 1993/08/02 03:06:33 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -404,7 +404,6 @@ MIT in each case. |#
   (parent (edwin))
   (export (edwin)
 	  abort-current-command
-	  apply-input-event
 	  auto-argument-mode?
 	  command-argument
 	  command-history-list
@@ -419,14 +418,9 @@ MIT in each case. |#
 	  execute-command
 	  execute-command-history-entry
 	  initialize-command-reader!
-	  input-event/operands
-	  input-event/operator
-	  input-event/type
-	  input-event?
 	  keyboard-keys-read
 	  last-command
 	  last-command-key
-	  make-input-event
 	  override-next-command!
 	  read-and-dispatch-on-key
 	  set-command-argument!

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: editor.scm,v 1.227 1993/04/27 09:22:26 cph Exp $
+;;;	$Id: editor.scm,v 1.228 1993/08/02 03:06:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -335,6 +335,66 @@ This does not affect editor errors or evaluation errors."
   (editor-beep)
   (abort-current-command))
 
+(define condition-type:abort-current-command
+  (make-condition-type 'ABORT-CURRENT-COMMAND #f '(INPUT)
+    (lambda (condition port)
+      (write-string "Abort current command" port)
+      (let ((input (abort-current-command/input condition)))
+	(if input
+	    (begin
+	      (write-string " with input: " port)
+	      (write input port))))
+      (write-string "." port))))
+
+(define condition/abort-current-command?
+  (condition-predicate condition-type:abort-current-command))
+
+(define abort-current-command/input
+  (condition-accessor condition-type:abort-current-command 'INPUT))
+
+(define abort-current-command
+  (let ((signaller
+	 (condition-signaller condition-type:abort-current-command
+			      '(INPUT)
+			      standard-error-handler)))
+    (lambda (#!optional input)
+      (let ((input (if (default-object? input) #f input)))
+	(if (not (or (not input) (input-event? input)))
+	    (error:wrong-type-argument input "input event"
+				       'ABORT-CURRENT-COMMAND))
+	(keyboard-macro-disable)
+	(signaller input)))))
+
+(define-structure (input-event
+		   (constructor make-input-event (type operator . operands))
+		   (conc-name input-event/))
+  (type false read-only true)
+  (operator false read-only true)
+  (operands false read-only true))
+
+(define (apply-input-event input-event)
+  (if (not (input-event? input-event))
+      (error:wrong-type-argument input-event "input event" apply-input-event))
+  (apply (input-event/operator input-event)
+	 (input-event/operands input-event)))
+
+(define condition-type:^G
+  (make-condition-type '^G condition-type:abort-current-command '()
+    (lambda (condition port)
+      condition
+      (write-string "Signal editor ^G." port))))
+
+(define condition/^G?
+  (condition-predicate condition-type:^G))
+
+(define ^G-signal
+  (let ((signaller
+	 (condition-signaller condition-type:^G
+			      '(INPUT)
+			      standard-error-handler)))
+    (lambda ()
+      (signaller #f))))
+
 (define (quit-editor-and-signal-error condition)
   (quit-editor-and (lambda () (error condition))))
 
@@ -359,31 +419,12 @@ This does not affect editor errors or evaluation errors."
 (define (exit-scheme)
   (within-continuation editor-abort %exit))
 
-(define (^G-signal)
-  (let ((handler *^G-interrupt-handler*))
-    (if handler
-	(handler))))
-
-(define (intercept-^G-interrupts interceptor thunk)
-  (let ((signal-tag "signal-tag"))
-    (let ((value
-	   (call-with-current-continuation
-	     (lambda (continuation)
-	       (fluid-let ((*^G-interrupt-handler*
-			    (lambda () (continuation signal-tag))))
-		 (thunk))))))
-      (if (eq? value signal-tag)
-	  (interceptor)
-	  value))))
-
 (define call-with-protected-continuation
   call-with-current-continuation)
 
 (define (unwind-protect setup body cleanup)
   (dynamic-wind (or setup (lambda () unspecific)) body cleanup))
 
-(define *^G-interrupt-handler* false)
-
 (define (editor-grab-display editor receiver)
   (display-type/with-display-grabbed (editor-display-type editor)
     (lambda (with-display-ungrabbed operations)
@@ -412,7 +453,7 @@ This does not affect editor errors or evaluation errors."
   (lambda (cmdl thunk)
     cmdl
     (with-editor-ungrabbed thunk)))
-
+
 (define inferior-thread-changes?)
 (define inferior-threads)
 
@@ -424,13 +465,9 @@ This does not affect editor errors or evaluation errors."
     flags))
 
 (define (inferior-thread-output! flags)
-  (without-interrupts
-   (lambda ()
-     (set-car! flags true)
-     (set! inferior-thread-changes? true)
-     (signal-thread-event editor-thread #f))))
+  (without-interrupts (lambda () (inferior-thread-output!/unsafe flags))))
 
-(define (inferior-thread-output!/unsafe flags)
+(define-integrable (inferior-thread-output!/unsafe flags)
   (set-car! flags true)
   (set! inferior-thread-changes? true)
   (signal-thread-event editor-thread #f))
@@ -454,7 +491,10 @@ This does not affect editor errors or evaluation errors."
 				(if (car flags)
 				    (begin
 				      (set-car! flags false)
-				      (or ((cdr flags)) output?))
+				      (let ((result ((cdr flags))))
+					(if (eq? output? 'FORCE-RETURN)
+					    output?
+					    (or result output?))))
 				    output?))
 			  (begin
 			    (if prev

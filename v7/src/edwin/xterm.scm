@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xterm.scm,v 1.40 1993/08/01 00:16:08 cph Exp $
+;;;	$Id: xterm.scm,v 1.41 1993/08/02 03:06:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -88,7 +88,7 @@
 ;; These constants must match "microcode/x11base.c"
 (define-integrable event:process-output -2)
 (define-integrable event:process-status -3)
-(define-integrable event:interrupt -4)
+(define-integrable event:inferior-thread-output -4)
 (define-integrable event-type:button-down 0)
 (define-integrable event-type:button-up 1)
 (define-integrable event-type:configure 2)
@@ -380,9 +380,15 @@
 		     (cond ((not event)
 			    (error "#F returned from blocking read"))
 			   ((not (vector? event))
-			    (if (process-change-event event)
-				(make-input-event 'UPDATE update-screens! #f)
-				(loop)))
+			    (let ((flag (process-change-event event)))
+			      (if flag
+				  (make-input-event
+				   (if (eq? flag 'FORCE-RETURN)
+				       'RETURN
+				       'UPDATE)
+				   update-screens!
+				   #f)
+				  (loop))))
 			   (else
 			    (or (process-event event) (loop)))))))))
 	  (values
@@ -437,7 +443,7 @@
 (define (read-event-1 display block?)
   (or (x-display-process-events display 2)
       (let loop ()
-	(cond (inferior-thread-changes? event:interrupt)
+	(cond (inferior-thread-changes? event:inferior-thread-output)
 	      ((process-output-available?) event:process-output)
 	      (else
 	       (case (test-for-input-on-descriptor
@@ -489,7 +495,7 @@
 (define (process-change-event event)
   (cond ((fix:= event event:process-output) (accept-process-output))
 	((fix:= event event:process-status) (handle-process-status-changes))
-	((fix:= event event:interrupt) (accept-thread-output))
+	((fix:= event event:inferior-thread-output) (accept-thread-output))
 	(else (error "Illegal change event:" event))))
 
 (define (process-special-event event)

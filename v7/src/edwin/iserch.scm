@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.17 1992/02/17 22:09:23 cph Exp $
+;;;	$Id: iserch.scm,v 1.18 1993/08/02 03:06:35 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -367,7 +367,8 @@
 	 (lambda (condition)
 	   (continuation (access-condition condition 'MESSAGE)))
        (lambda ()
-	 (intercept-^G-interrupts (lambda () 'ABORT)
+	 (bind-condition-handler (list condition-type:^G)
+	     (lambda (condition) condition (continuation 'ABORT))
 	   (lambda ()
 	     (with-editor-interrupts-enabled
 	      (lambda ()
