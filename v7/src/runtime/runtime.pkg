@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.298 1998/04/30 21:28:17 cph Exp $
+$Id: runtime.pkg,v 14.299 1998/05/04 18:43:39 cph Exp $
 
 Copyright (c) 1988-98 Massachusetts Institute of Technology
 
@@ -3262,19 +3262,31 @@ MIT in each case. |#
   (parent ())
   (export ()
 	  alist->rb-tree
+	  make-rb-tree
 	  rb-tree->alist
 	  rb-tree/copy
 	  rb-tree/datum-list
 	  rb-tree/delete!
+	  rb-tree/delete-max!
+	  rb-tree/delete-max-datum!
+	  rb-tree/delete-max-pair!
+	  rb-tree/delete-min!
+	  rb-tree/delete-min-datum!
+	  rb-tree/delete-min-pair!
 	  rb-tree/empty?
 	  rb-tree/equal?
 	  rb-tree/height
 	  rb-tree/insert!
 	  rb-tree/key-list
 	  rb-tree/lookup
+	  rb-tree/max
+	  rb-tree/max-datum
+	  rb-tree/max-pair
+	  rb-tree/min
+	  rb-tree/min-datum
+	  rb-tree/min-pair
 	  rb-tree/size
-	  rb-tree?
-	  make-rb-tree))
+	  rb-tree?))
 
 (define-package (runtime wt-tree)
   (file-case options

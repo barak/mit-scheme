@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rbtree.scm,v 1.4 1993/10/08 09:03:43 cph Exp $
+$Id: rbtree.scm,v 1.5 1998/05/04 18:43:25 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -309,7 +309,7 @@ MIT in each case. |#
   (guarantee-rb-tree y 'RB-TREE/EQUAL?)
   (let ((key=? (tree-key=? x)))
     (and (eq? key=? (tree-key=? y))
-	 (let loop ((nx (first-node x)) (ny (first-node y)))
+	 (let loop ((nx (min-node x)) (ny (min-node y)))
 	   (if (not nx)
 	       (not ny)
 	       (and ny
@@ -319,7 +319,7 @@ MIT in each case. |#
 
 (define (rb-tree->alist tree)
   (guarantee-rb-tree tree 'RB-TREE->ALIST)
-  (let ((node (first-node tree)))
+  (let ((node (min-node tree)))
     (if node
 	(let ((result (list (cons (node-key node) (node-datum node)))))
 	  (let loop ((node (next-node node)) (prev result))
@@ -332,7 +332,7 @@ MIT in each case. |#
 
 (define (rb-tree/key-list tree)
   (guarantee-rb-tree tree 'RB-TREE/KEY-LIST)
-  (let ((node (first-node tree)))
+  (let ((node (min-node tree)))
     (if node
 	(let ((result (list (node-key node))))
 	  (let loop ((node (next-node node)) (prev result))
@@ -345,7 +345,7 @@ MIT in each case. |#
 
 (define (rb-tree/datum-list tree)
   (guarantee-rb-tree tree 'RB-TREE/DATUM-LIST)
-  (let ((node (first-node tree)))
+  (let ((node (min-node tree)))
     (if node
 	(let ((result (list (node-datum node))))
 	  (let loop ((node (next-node node)) (prev result))
@@ -355,12 +355,111 @@ MIT in each case. |#
 		  (loop (next-node node) pair))))
 	  result)
 	'())))
+
+(define (rb-tree/min tree default)
+  (guarantee-rb-tree tree 'RB-TREE/MIN)
+  (let ((node (min-node tree)))
+    (if node
+	(node-key node)
+	default)))
 
-(define (first-node tree)
+(define (rb-tree/min-datum tree default)
+  (guarantee-rb-tree tree 'RB-TREE/MIN-DATUM)
+  (let ((node (min-node tree)))
+    (if node
+	(node-datum node)
+	default)))
+
+(define (rb-tree/min-pair tree)
+  (guarantee-rb-tree tree 'RB-TREE/MIN-PAIR)
+  (let ((node (min-node tree)))
+    (and node
+	 (node-pair node))))
+
+(define (rb-tree/delete-min! tree default)
+  (guarantee-rb-tree tree 'RB-TREE/DELETE-MIN!)
+  (let ((node (min-node tree)))
+    (if node
+	(let ((key (node-key node)))
+	  (delete-node! tree node)
+	  key)
+	default)))
+
+(define (rb-tree/delete-min-datum! tree default)
+  (guarantee-rb-tree tree 'RB-TREE/DELETE-MIN-DATUM!)
+  (let ((node (min-node tree)))
+    (if node
+	(let ((datum (node-datum node)))
+	  (delete-node! tree node)
+	  datum)
+	default)))
+
+(define (rb-tree/delete-min-pair! tree)
+  (guarantee-rb-tree tree 'RB-TREE/DELETE-MIN-PAIR!)
+  (let ((node (min-node tree)))
+    (and node
+	 (let ((pair (node-pair node)))
+	   (delete-node! tree node)
+	   pair))))
+
+(define (rb-tree/max tree default)
+  (guarantee-rb-tree tree 'RB-TREE/MAX)
+  (let ((node (max-node tree)))
+    (if node
+	(node-key node)
+	default)))
+
+(define (rb-tree/max-datum tree default)
+  (guarantee-rb-tree tree 'RB-TREE/MAX-DATUM)
+  (let ((node (max-node tree)))
+    (if node
+	(node-datum node)
+	default)))
+
+(define (rb-tree/max-pair tree)
+  (guarantee-rb-tree tree 'RB-TREE/MAX-PAIR)
+  (let ((node (max-node tree)))
+    (and node
+	 (node-pair node))))
+
+(define (rb-tree/delete-max! tree default)
+  (guarantee-rb-tree tree 'RB-TREE/DELETE-MAX!)
+  (let ((node (max-node tree)))
+    (if node
+	(let ((key (node-key node)))
+	  (delete-node! tree node)
+	  key)
+	default)))
+
+(define (rb-tree/delete-max-datum! tree default)
+  (guarantee-rb-tree tree 'RB-TREE/DELETE-MAX-DATUM!)
+  (let ((node (max-node tree)))
+    (if node
+	(let ((datum (node-datum node)))
+	  (delete-node! tree node)
+	  datum)
+	default)))
+
+(define (rb-tree/delete-max-pair! tree)
+  (guarantee-rb-tree tree 'RB-TREE/DELETE-MAX-PAIR!)
+  (let ((node (max-node tree)))
+    (and node
+	 (let ((pair (node-pair node)))
+	   (delete-node! tree node)
+	   pair))))
+
+(define (min-node tree)
   (and (tree-root tree)
        (let loop ((x (tree-root tree)))
 	 (if (node-left x)
 	     (loop (node-left x))
+	     x))))
+
+(define (max-node tree)
+  (and (tree-root tree)
+       (let loop ((x (tree-root tree)))
+	 (if (node-right x)
+	     (loop (node-right x))
 	     x))))
 
 (define (next-node x)
@@ -374,3 +473,6 @@ MIT in each case. |#
 	  (if (and y (eq? x (node-right y)))
 	      (loop y)
 	      y)))))
+
+(define-integrable (node-pair node)
+  (cons (node-key node) (node-datum node)))
