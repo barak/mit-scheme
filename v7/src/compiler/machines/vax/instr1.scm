@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr1.scm,v 1.1 1987/08/14 05:04:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr1.scm,v 1.2 1987/08/18 07:56:27 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -96,32 +96,32 @@ opcodes are
 (define-instruction CHM
   ((K (? code ea-r-w))		; kernel
    (BYTE (8 #xBC))
-   (OPERAND code))
+   (OPERAND W code))
 
   ((E (? code ea-r-w))		; executive
    (BYTE (8 #xBD))
-   (OPERAND code))
+   (OPERAND W code))
 
   ((S (? code ea-r-w))		; supervisor
    (BYTE (8 #xBE))
-   (OPERAND code))
+   (OPERAND W code))
 
   ((U (? code ea-r-w))		; user
    (BYTE (8 #xBF))
-   (OPERAND code)))
+   (OPERAND W code)))
 
 (define-instruction PROBE
   ((R (? mode ea-r-b) (? len ea-r-w) (? base ea-a-b))
    (BYTE (8 #xOC))
-   (OPERAND mode)
-   (OPERAND len)
-   (OPERAND base))
+   (OPERAND B mode)
+   (OPERAND W len)
+   (OPERAND B base))
 
   ((W (? mode ea-r-b) (? len ea-r-w) (? base ea-a-b))
    (BYTE (8 #xOD))
-   (OPERAND mode)
-   (OPERAND len)
-   (OPERAND base)))
+   (OPERAND B mode)
+   (OPERAND W len)
+   (OPERAND B base)))
 
 (define-trivial-instruction REI #x02)
 (define-trivial-instruction LDPCTX #x06)
@@ -130,14 +130,14 @@ opcodes are
 (define-instruction MTPR
   (((? src ea-r-l) (? procreg ea-r-l))
    (BYTE (8 #xDA))
-   (OPERAND src)
-   (OPERAND procreg)))
+   (OPERAND L src)
+   (OPERAND L procreg)))
 
 (define-instruction MFPR
   (((? procreg ea-r-l) (? dst ea-w-l))
    (BYTE (8 #xDB))
-   (OPERAND procreg)
-   (OPERAND dst)))
+   (OPERAND L procreg)
+   (OPERAND L dst)))
 
 (define-trivial-instruction XFC #xFC)
 
@@ -159,139 +159,139 @@ opcodes are
 (define-instruction MOV
   ((B (? src ea-r-b) (? dst ea-w-b))
    (BYTE (8 #x90))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND B src)
+   (OPERAND B dst))
 
   ((W (? src ea-r-w) (? dst ea-w-w))
    (BYTE (8 #xB0))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND W src)
+   (OPERAND W dst))
 
   ((L (? src ea-r-l) (? dst ea-w-l))
    (BYTE (8 #xD0))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND L src)
+   (OPERAND L dst))
 
   ((Q (? src ea-r-q) (? dst ea-w-q))
    (BYTE (8 #x7D))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND Q src)
+   (OPERAND Q dst))
 
   ((O (? src ea-r-o) (? dst ea-w-o))
    (BYTE (16 #x7DFD))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND O src)
+   (OPERAND O dst))
 
   ((F (? src ea-r-f) (? dst ea-w-f))
    (BYTE (8 #x50))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND F src)
+   (OPERAND F dst))
 
   ((D (? src ea-r-d) (? dst ea-w-d))
    (BYTE (8 #x70))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND D src)
+   (OPERAND D dst))
 
   ((G (? src ea-r-g) (? dst ea-w-g))
    (BYTE (16 #x50FD))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND G src)
+   (OPERAND G dst))
 
   ((H (? src ea-r-h) (? dst ea-w-h))
    (BYTE (16 #x70FD))
-   (OPERAND src)
-   (OPERAND dst)))
+   (OPERAND H src)
+   (OPERAND H dst)))
 
 (define-instruction PUSHL
   (((? src ea-r-l))
    (BYTE (8 #XDD))
-   (OPERAND src)))
+   (OPERAND L src)))
 
 (define-instruction CLR
   ((B (? dst ea-w-b))
    (BYTE (8 #x94))
-   (OPERAND dst))
+   (OPERAND B dst))
 
   ((W (? dst ea-w-w))
    (BYTE (8 #xB4))
-   (OPERAND dst))
+   (OPERAND W dst))
 
   ((L (? dst ea-w-l))
    (BYTE (8 #xD4))
-   (OPERAND dst))
+   (OPERAND L dst))
 
   ((F (? dst ea-w-f))
    (BYTE (8 #xD4))
-   (OPERAND dst))
+   (OPERAND F dst))
 
   ((Q (? dst ea-w-q))
    (BYTE (8 #x7C))
-   (OPERAND dst))
+   (OPERAND Q dst))
 
   ((D (? dst ea-w-d))
    (BYTE (8 #x7C))
-   (OPERAND dst))
+   (OPERAND D dst))
   
   ((G (? dst ea-w-g))
    (BYTE (8 #x7C))
-   (OPERAND dst))
+   (OPERAND G dst))
 
   ((O (? dst ea-w-o))
    (BYTE (16 #x7CFD))
-   (OPERAND dst))
+   (OPERAND O dst))
 
   ((H (? dst ea-w-h))
    (BYTE (16 #x7CFD))
-   (OPERAND dst)))
+   (OPERAND H dst)))
 
 (define-instruction MNEG
   ((B (? src ea-r-b) (? dst ea-w-b))
    (BYTE (8 #x8E))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND B src)
+   (OPERAND B dst))
 
   ((W (? src ea-r-w) (? dst ea-w-w))
    (BYTE (8 #xAE))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND W src)
+   (OPERAND W dst))
 
   ((L (? src ea-r-l) (? dst ea-w-l))
    (BYTE (8 #xCE))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND L src)
+   (OPERAND L dst))
 
   ((F (? src ea-r-f) (? dst ea-w-f))
    (BYTE (8 #x52))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND F src)
+   (OPERAND F dst))
 
   ((D (? src ea-r-d) (? dst ea-w-d))
    (BYTE (8 #x72))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND F src)
+   (OPERAND F dst))
 
   ((G (? src ea-r-g) (? dst ea-w-g))
    (BYTE (16 #x52FD))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND G src)
+   (OPERAND G dst))
 
   ((H (? src ea-r-h) (? dst ea-w-h))
    (BYTE (16 #x72FD))
-   (OPERAND src)
-   (OPERAND dst)))
+   (OPERAND H src)
+   (OPERAND H dst)))
 
 (define-instruction MCOM
   ((B (? src ea-r-b) (? dst ea-w-b))
    (BYTE (8 #x92))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND B src)
+   (OPERAND B dst))
 
   ((W (? src ea-r-w) (? dst ea-w-w))
    (BYTE (8 #xB2))
-   (OPERAND src)
-   (OPERAND dst))
+   (OPERAND W src)
+   (OPERAND W dst))
 
   ((L (? src ea-r-l) (? dst ea-w-l))
    (BYTE (8 #xD2))
-   (OPERAND src)
-   (OPERAND dst)))
+   (OPERAND L src)
+   (OPERAND L dst)))
