@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.16 2001/07/09 04:08:19 cph Exp $
+;;; $Id: parser.scm,v 1.17 2001/07/14 11:42:31 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -66,12 +66,6 @@
       (hash-table/put! parser-preprocessors name procedure))
   name)
 
-(define (parser-preprocessor name)
-  (hash-table/get parser-preprocessors name #f))
-
-(define parser-preprocessors
-  (make-eq-hash-table))
-
 (syntax-table/define system-global-syntax-table 'DEFINE-*PARSER-MACRO
   (lambda (bvl expression)
     (cond ((symbol? bvl)
@@ -86,13 +80,20 @@
 	   (error "Malformed bound-variable list:" bvl)))))
 
 (define (define-*parser-expander name procedure)
-  (define-parser-preprocessor name
+  (define-parser-macro name
     (lambda (expression external-bindings internal-bindings)
       (preprocess-parser-expression (if (pair? expression)
 					(apply procedure (cdr expression))
 					(procedure))
 				    external-bindings
 				    internal-bindings))))
+
+(define (parser-preprocessor name)
+  (or (lookup-parser-macro name)
+      (hash-table/get parser-preprocessors name #f)))
+
+(define parser-preprocessors
+  (make-eq-hash-table))
 
 (define-*parser-expander '+
   (lambda (expression)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.13 2001/07/11 21:23:00 cph Exp $
+;;; $Id: matcher.scm,v 1.14 2001/07/14 11:42:26 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -66,12 +66,6 @@
       (hash-table/put! matcher-preprocessors name procedure))
   name)
 
-(define (matcher-preprocessor name)
-  (hash-table/get matcher-preprocessors name #f))
-
-(define matcher-preprocessors
-  (make-eq-hash-table))
-
 (syntax-table/define system-global-syntax-table 'DEFINE-*MATCHER-MACRO
   (lambda (bvl expression)
     (cond ((symbol? bvl)
@@ -86,13 +80,20 @@
 	   (error "Malformed bound-variable list:" bvl)))))
 
 (define (define-*matcher-expander name procedure)
-  (define-matcher-preprocessor name
+  (define-matcher-macro name
     (lambda (expression external-bindings internal-bindings)
       (preprocess-matcher-expression (if (pair? expression)
 					 (apply procedure (cdr expression))
 					 (procedure))
 				     external-bindings
 				     internal-bindings))))
+
+(define (matcher-preprocessor name)
+  (or (lookup-matcher-macro name)
+      (hash-table/get matcher-preprocessors name #f)))
+
+(define matcher-preprocessors
+  (make-eq-hash-table))
 
 (define-*matcher-expander '+
   (lambda (expression)

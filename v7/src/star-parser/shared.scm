@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.8 2001/07/02 18:18:38 cph Exp $
+;;; $Id: shared.scm,v 1.9 2001/07/14 11:42:35 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -87,6 +87,76 @@
 	     (and (pair? object)
 		  (symbol? (car object))
 		  (loop (cdr object)))))))
+
+(define parser-macros-rtd
+  (make-record-type "parser-macros" '(PARENT MATCHER-TABLE PARSER-TABLE)))
+
+(define make-parser-macros
+  (let ((constructor (record-constructor parser-macros-rtd)))
+    (lambda (parent)
+      (if parent (guarantee-parser-macros parent 'MAKE-PARSER-MACROS))
+      (constructor (or parent *global-parser-macros*)
+		   (make-eq-hash-table)
+		   (make-eq-hash-table)))))
+
+(define *global-parser-macros*
+  ((record-constructor parser-macros-rtd)
+   #f
+   (make-eq-hash-table)
+   (make-eq-hash-table)))
+
+(define (guarantee-parser-macros object procedure)
+  (if (not (parser-macros? object))
+      (error:wrong-type-argument object "parser macros" procedure)))
+
+(define parser-macros?
+  (record-predicate parser-macros-rtd))
+
+(define parent-macros
+  (record-accessor parser-macros-rtd 'PARENT))
+
+(define matcher-macros-table
+  (record-accessor parser-macros-rtd 'MATCHER-TABLE))
+
+(define parser-macros-table
+  (record-accessor parser-macros-rtd 'PARSER-TABLE))
+
+(define (define-matcher-macro name expander)
+  (hash-table/put! (matcher-macros-table *parser-macros*) name expander))
+
+(define (lookup-matcher-macro name)
+  (let loop ((environment *parser-macros*))
+    (and environment
+	 (or (hash-table/get (matcher-macros-table environment) name #f)
+	     (loop (parent-macros environment))))))
+
+(define (define-parser-macro name expander)
+  (hash-table/put! (parser-macros-table *parser-macros*) name expander))
+
+(define (lookup-parser-macro name)
+  (let loop ((environment *parser-macros*))
+    (and environment
+	 (or (hash-table/get (parser-macros-table environment) name #f)
+	     (loop (parent-macros environment))))))
+
+(define (with-current-parser-macros macros thunk)
+  (guarantee-parser-macros macros 'WITH-CURRENT-PARSER-MACROS)
+  (fluid-let ((*parser-macros* macros))
+    (thunk)))
+
+(define (current-parser-macros)
+  *parser-macros*)
+
+(define (set-current-parser-macros! macros)
+  (guarantee-parser-macros macros 'SET-CURRENT-PARSER-MACROS!)
+  (set! *parser-macros* macros)
+  unspecific)
+
+(define (global-parser-macros)
+  *global-parser-macros*)
+
+(define *parser-macros*
+  *global-parser-macros*)
 
 ;;;; Buffer pointers
 
