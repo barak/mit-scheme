@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.7 1996/05/11 08:51:31 cph Exp $
+;;;	$Id: snr.scm,v 1.8 1996/05/12 02:19:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -3002,26 +3002,75 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 
 ;;;; .newsrc File
 
-(define (get-newsrc-file-groups connection)
-  (parse-newsrc-buffer connection (newsrc-file-buffer connection)))
+(define-command read-newsrc-file
+  "Read the .newsrc file and apply it to the current subscribed-groups list.
+Normally, merges the .newsrc entries into the groups list.
+With prefix arg, replaces the groups list with the .newsrc entries."
+  "P"
+  (lambda (replace?)
+    (let ((buffer (current-news-server-buffer #t)))
+      (let ((connection (news-server-buffer:connection buffer)))
+	(let ((entries
+	       (call-with-newsrc-file-buffer connection parse-newsrc-buffer)))
+	  (if replace?
+	      (for-each-vector-element (news-server-buffer:groups buffer)
+		(lambda (group)
+		  (if (not (assoc (news-group:name group) entries))
+		      (unsubscribe-news-group buffer group)))))
+	  (for-each
+	   (lambda (entry)
+	     (let ((name (car entry))
+		   (subscribed? (cadr entry))
+		   (ranges (cddr entry)))
+	       (let ((group
+		      (let ((group (find-news-group connection name)))
+			(if group
+			    (begin
+			      (set-news-group:ranges-seen!
+			       group
+			       (if replace?
+				   ranges
+				   (merge-ranges (news-group:ranges-seen group)
+						 ranges)))
+			      (news-group:guarantee-ranges-seen group)
+			      group)
+			    (make-news-group-1 connection
+					       name #f #f ranges)))))
+		 (if subscribed?
+		     (subscribe-news-group buffer group)
+		     (unsubscribe-news-group buffer group)))))
+	   entries))))))
 
-(define (parse-newsrc-buffer connection buffer)
-  (let loop ((start (buffer-start buffer)) (groups '()))
+(define-command write-newsrc-file
+  "Write the .newsrc file corresponding to the current subscribed-groups list.
+Normally, merges the list information into the file.
+With prefix arg, replaces the file with the list information."
+  "P"
+  (lambda (replace?)
+    (let ((buffer (current-news-server-buffer #t)))
+      (let ((connection (news-server-buffer:connection buffer)))
+	(call-with-newsrc-file-buffer connection
+	  (lambda (newsrc)
+	    (if replace? (delete-region (buffer-unclipped-region newsrc)))
+	    (for-each-vector-element (news-server-buffer:groups buffer)
+	      (lambda (group)
+		(update-newsrc-group newsrc group)))
+	    (save-buffer newsrc #f)))))))
+
+(define (parse-newsrc-buffer buffer)
+  (let loop ((start (buffer-start buffer)) (entries '()))
     (let ((end (line-end start 0)))
-      (let ((groups
+      (let ((entries
 	     (let ((mark (re-match-forward "^[^:! \t\n]+[:!]" start end)))
 	       (if mark
-		   (cons (make-news-group-1
-			  connection
-			  (extract-string start (mark-1+ mark))
-			  (char=? #\: (extract-left-char mark))
-			  #f
-			  (parse-newsrc-group-ranges mark end))
-			 groups)
-		   groups))))
+		   (cons (cons* (extract-string start (mark-1+ mark))
+				(char=? #\: (extract-left-char mark))
+				(parse-newsrc-group-ranges mark end))
+			 entries)
+		   entries))))
 	(if (group-end? end)
-	    (reverse! groups)
-	    (loop (mark1+ end) groups))))))
+	    (reverse! entries)
+	    (loop (mark1+ end) entries))))))
 
 (define (parse-newsrc-group-ranges mark end)
   (let loop ((mark mark) (ranges '()))
@@ -3029,23 +3078,30 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 	(let ((s (re-match-start 1))
 	      (e (re-match-end 1)))
 	  (loop e
-		(cond ((re-match-forward "[0-9]+" s e)
-		       (cons (let ((n (extract-nonnegative-integer s e)))
-			       (make-range n n))
-			     ranges))
-		      ((re-match-forward "\\([0-9]+\\)-\\([0-9]+\\)" s e)
-		       (let ((n
-			      (extract-nonnegative-integer (re-match-start 1)
-							   (re-match-end 1)))
-			     (m
-			      (extract-nonnegative-integer (re-match-start 2)
-							   (re-match-end 2))))
-			 (if (< n m)
-			     (cons (make-range n m) ranges)
-			     ranges)))
-		      (else
-		       ranges))))
-	(reverse! ranges))))
+		(let ((test
+		       (lambda (pattern)
+			 (let ((m (re-match-forward pattern s e)))
+			   (and m
+				(mark= m e))))))
+		  (cond ((test "[0-9]+")
+			 (cons (let ((n (extract-nonnegative-integer s e)))
+				 (make-range n n))
+			       ranges))
+			((test "\\([0-9]+\\)-\\([0-9]+\\)")
+			 (let ((n
+				(extract-nonnegative-integer
+				 (re-match-start 1)
+				 (re-match-end 1)))
+			       (m
+				(extract-nonnegative-integer
+				 (re-match-start 2)
+				 (re-match-end 2))))
+			   (if (< n m)
+			       (cons (make-range n m) ranges)
+			       ranges)))
+			(else
+			 ranges)))))
+	(canonicalize-ranges (reverse! ranges)))))
 
 (define (extract-nonnegative-integer start end)
   (let loop ((mark start) (n 0))
@@ -3056,42 +3112,65 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 		 (fix:- (char->integer (extract-right-char mark))
 			(char->integer #\0)))))))
 
-(define (update-newsrc-group group)
-  (let ((buffer (newsrc-file-buffer (news-group:connection group))))
-    (let ((mark
-	   (re-search-forward
-	    (string-append "^"
-			   (re-quote-string (news-group:name group))
-			   "[:!]")
-	    (buffer-start buffer)))
-	  (finish
-	   (lambda (mark)
-	     (insert-char (if (news-group:subscribed? group) #\: #\!) mark)
-	     (insert-char #\space mark)
-	     (for-each
-	      (lambda (range)
-		(let ((f (range-first range))
-		      (l (range-last range)))
-		  (if (= f l)
-		      (insert-string (number->string f) mark)
-		      (begin
-			(insert-string (number->string f) mark)
-			(insert-char #\- mark)
-			(insert-string (number->string l) mark)))))
-	      (news-group:ranges-seen group))
-	     (mark-temporary! mark))))
-      (if mark
-	  (let ((mark (mark-left-inserting-copy (mark-1+ mark))))
-	    (delete-string mark (line-end mark 0))
-	    (finish mark))
-	  (let ((mark (mark-left-inserting-copy (buffer-end buffer))))
-	    (guarantee-newline mark)
-	    (insert-string (news-group:name group) mark)
-	    (finish mark))))))
+(define (update-newsrc-group buffer group)
+  (let ((mark
+	 (re-search-forward
+	  (string-append "^"
+			 (re-quote-string (news-group:name group))
+			 "[:!]")
+	  (buffer-start buffer)))
+	(finish
+	 (lambda (mark)
+	   (insert-char (if (news-group:subscribed? group) #\: #\!) mark)
+	   (let ((ranges
+		  (let ((ranges (news-group:guarantee-ranges-seen group))
+			(first (news-group:first-article group)))
+		    (if (> first 1)
+			(canonicalize-ranges
+			 (cons (make-range 1 (- first 1)) ranges))
+			ranges)))
+		 (write-range
+		  (lambda (range)
+		    (let ((f (range-first range))
+			  (l (range-last range)))
+		      (if (= f l)
+			  (insert-string (number->string f) mark)
+			  (begin
+			    (insert-string (number->string f) mark)
+			    (insert-char #\- mark)
+			    (insert-string (number->string l) mark)))))))
+	     (if (not (null? ranges))
+		 (begin
+		   (insert-char #\space mark)
+		   (write-range (car ranges))
+		   (for-each (lambda (range)
+			       (insert-char #\, mark)
+			       (write-range range))
+			     (cdr ranges))))))))
+    (if mark
+	(let ((mark (mark-left-inserting-copy (mark-1+ mark))))
+	  (delete-string mark (line-end mark 0))
+	  (finish mark)
+	  (mark-temporary! mark))
+	(let ((mark (mark-left-inserting-copy (buffer-end buffer))))
+	  (guarantee-newline mark)
+	  (insert-string (news-group:name group) mark)
+	  (finish mark)
+	  (insert-newline mark)
+	  (mark-temporary! mark)))))
 
-(define (newsrc-file-buffer connection)
-  (find-file-noselect (os/newsrc-file-name (nntp-connection:server connection))
-		      #f))
+(define (call-with-newsrc-file-buffer connection receiver)
+  (let ((pathname (os/newsrc-file-name (nntp-connection:server connection))))
+    (let ((buffer (pathname->buffer pathname)))
+      (if buffer
+	  (begin
+	    (find-file-revert buffer)
+	    (receiver buffer))
+	  (let ((buffer (find-file-noselect pathname #f)))
+	    (set-variable! version-control #f buffer)
+	    (let ((value (receiver buffer)))
+	      (kill-buffer buffer)
+	      value))))))
 
 ;;;; Line Property Items
 
@@ -3769,6 +3848,22 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 		  (cdr ranges)
 		  (cons (make-range (+ e 1) (- (range-first (car ranges)) 1))
 			result))))))
+
+(define (merge-ranges ranges ranges*)
+  (cond ((null? ranges)
+	 ranges*)
+	((null? ranges*)
+	 ranges)
+	((< (range-last (car ranges)) (range-first (car ranges*)))
+	 (cons (car ranges) (merge-ranges (cdr ranges) ranges*)))
+	((< (range-last (car ranges*)) (range-first (car ranges)))
+	 (cons (car ranges*) (merge-ranges ranges (cdr ranges*))))
+	(else
+	 (cons (make-range (min (range-first (car ranges))
+				(range-first (car ranges*)))
+			   (max (range-last (car ranges))
+				(range-last (car ranges*))))
+	       (merge-ranges (cdr ranges) (cdr ranges*))))))
 
 (define (add-to-ranges! ranges number)
   (let ((holder (cons 'HOLDER ranges)))

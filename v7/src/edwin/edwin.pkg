@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.194 1996/05/06 00:09:41 cph Exp $
+$Id: edwin.pkg,v 1.195 1996/05/12 02:19:09 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -1659,7 +1659,9 @@ MIT in each case. |#
 	  edwin-command$news-unmark-thread
 	  edwin-command$news-unsubscribe-group
 	  edwin-command$news-unsubscribe-group-backwards
+	  edwin-command$read-newsrc-file
 	  edwin-command$rnews
+	  edwin-command$write-newsrc-file
 	  edwin-mode$compose-news
 	  edwin-mode$news-article
 	  edwin-mode$news-common
