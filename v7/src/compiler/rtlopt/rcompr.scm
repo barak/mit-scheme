@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcompr.scm,v 1.10 1990/01/18 22:47:38 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcompr.scm,v 1.11 1991/03/21 09:42:38 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -155,7 +155,8 @@ MIT in each case. |#
 	       (if (rinst-dead-register? next register)
 		   (values next expression)
 		   (loop (rinst-next next)))))
-	    ((rtl:offset? expression)
+	    ((or (rtl:offset? expression)
+		 (rtl:byte-offset? expression))
 	     (search-stopping-at expression
 	       (lambda (rtl)
 		 (or (and (rtl:assign? rtl)
@@ -163,6 +164,12 @@ MIT in each case. |#
 				 (rtl:assign-address rtl))
 				'(OFFSET POST-INCREMENT PRE-INCREMENT)))
 		     (expression-clobbers-stack-pointer? rtl)))))
+	    ((and (rtl:cons-pointer? expression)
+		  (rtl:machine-constant? (rtl:cons-pointer-type expression)))
+	     (recursion rtl:cons-pointer-datum
+			(lambda (datum)
+			  (rtl:make-cons-pointer (rtl:cons-pointer-type expression)
+						 datum))))
 	    ((rtl:object->address? expression)
 	     (recursion rtl:object->address-expression
 			rtl:make-object->address))
