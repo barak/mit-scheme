@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.h,v 1.1 1987/05/11 17:47:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.h,v 1.2 1987/07/14 03:05:41 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -51,9 +51,7 @@ MIT in each case. */
 #define SYNTAX_ENTRY_COMEND_FIRST(entry) (((entry) >> 18) & 1)
 #define SYNTAX_ENTRY_COMEND_SECOND(entry) (((entry) >> 19) & 1)
 
-/* The possible syntax codes. */
-
-enum syntaxcode
+enum syntaxcode			/* The possible syntax codes. */
   {
     syntaxcode_whitespace,	/* whitespace char */
     syntaxcode_punct,		/* random punctuation char */
@@ -76,14 +74,16 @@ enum syntaxcode
    ((SYNTAX_ENTRY_CODE (entry)) == syntaxcode_charquote))
 
 /* This array, indexed by a character, contains the syntax code which that
- character signifies (as a char).  For example,
- (enum syntaxcode) syntax_spec_code['w'] is syntaxcode_word. */
+   character signifies (as a char).  For example,
+   ((enum syntaxcode) syntax_spec_code['w']) is syntaxcode_word. */
 
 extern char syntax_spec_code[0200];
 
 #define SYNTAX_TABLE_P(argument)					\
   (((pointer_type (argument)) == TC_VECTOR) &&				\
    ((Vector_Length (argument)) == 0x100))
+
+#define SYNTAX_TABLE_TYPE Pointer
 
 #define SYNTAX_TABLE_REF(table, index)					\
   (User_Vector_Ref ((table), ((index) & 0xFF)))
