@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.20 1995/03/01 14:09:28 adams Exp $
+$Id: utils.scm,v 1.21 1995/04/01 16:56:23 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -165,6 +165,38 @@ MIT in each case. |#
 	  ((pair? expr)
 	   (map walk expr))
 	  (else expr))))
+
+(define (kmp->standard form)
+  ;; Convert non-cps kmp code to `ordinary' scheme
+  (cond ((QUOTE/? form)
+	 (let ((datum (quote/text form)))
+	   (if (or (number? datum) (boolean? datum)
+		   (string? datum) (char? datum))
+	       datum
+	       form)))
+	((LOOKUP/? form)
+	 (lookup/name form))
+	((or (LET/? form) (LETREC/? form))
+	 `(,(car form) ,(map (lambda (b)
+			       (list (car b) (kmp->standard (cadr b))))
+			     (second form))
+		       ,(kmp->standard (third form))))
+	((LAMBDA/? form)
+	 `(LAMBDA ,(cdr (lambda/formals form)) ,(kmp->standard (third form))))
+	((CALL/? form)
+	 (if (not (equal? (call/continuation form) '(QUOTE #F)))
+	     (internal-error "KMP->Standard: not pre-CPS:" form))
+	 (let ((rator  (kmp->standard (call/operator form)))
+	       (rands  (map kmp->standard (call/operands form))))
+	   (cond ((and (QUOTE/? rator)
+		       (or (known-operator? (quote/text rator))
+			   (primitive-procedure? (quote/text rator))))
+		  `(,(quote/text rator) ,@rands))
+		 (else `(,rator ,@rands)))))
+	((SET!/? form) `(set! ,(second from) ,(kmp->standard (third form))))
+	((DECLARE/? form) form)
+	(else
+	 (cons (car form) (map kmp->standard (cdr form))))))
 
 ;;; Simple form utilities
 
