@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.12 1988/10/20 16:19:58 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.13 1988/10/28 17:47:53 markf Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -430,9 +430,19 @@ MIT in each case. |#
 
 (define-fixnum-method 'MULTIPLY-FIXNUM fixnum-methods/2-args
   (lambda (target source)
-    (LAP
-     (AS R L (& 8) ,target)
-     (MUL S L ,source ,target))))
+    (if (equal? target source)
+	(let ((new-source (reference-temporary-register! 'DATA)))
+	  ;;; I should add new-source as an alias for source, but I
+	  ;;; don't have a handle on the actual register here (I just
+	  ;;; have the register-reference).  Maybe this should be
+	  ;;; moved into the rules.
+	  (LAP
+	   (MOV L ,source ,new-source)
+	   (AS R L (& 8) ,target)
+	   (MUL S L ,new-source ,target)))
+	(LAP
+	 (AS R L (& 8) ,target)
+	 (MUL S L ,source ,target)))))
 
 (define-fixnum-method 'MULTIPLY-FIXNUM fixnum-methods/2-args-constant
   (lambda (target n)
