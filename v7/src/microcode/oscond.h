@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/oscond.h,v 1.11 1992/07/30 15:04:07 jinx Exp $
+$Id: oscond.h,v 1.12 1992/09/24 01:30:06 cph Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -163,6 +163,9 @@ MIT in each case. */
 
 #if defined(_BSD) || defined(_SYSV) || defined(_PIXEL)
 #  define _UNIX
+#  ifndef unix
+#    define unix
+#  endif
 #else
 #  ifdef _DOS386
 #    define _DOS
