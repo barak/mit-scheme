@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.34 2000/04/14 01:31:04 cph Exp $
+$Id: string.scm,v 14.35 2000/05/16 14:43:39 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -39,7 +39,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-primitives
   string-allocate string? string-ref string-set!
-  string-length string-maximum-length set-string-length!
+  string-length set-string-length!
+  string-maximum-length set-string-maximum-length!
   substring=? substring-ci=? substring<?
   substring-move-right! substring-move-left!
   substring-find-next-char-in-set

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.348 2000/05/02 20:39:57 cph Exp $
+$Id: runtime.pkg,v 14.349 2000/05/16 14:44:39 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -88,6 +88,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  reverse-substring
 	  reverse-substring!
 	  set-string-length!
+	  set-string-maximum-length!
 	  string
 	  string->list
 	  string-allocate
