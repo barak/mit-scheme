@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.41 1995/01/06 00:44:47 cph Exp $
+$Id: io.scm,v 14.42 1995/01/31 19:34:41 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -559,8 +559,7 @@ MIT in each case. |#
   string
   position
   line-translation			; string that newline maps to
-  logical-size
-  end-marker)
+  logical-size)
 
 (define (output-buffer-sizes translation buffer-size)
   (let ((logical-size
@@ -573,8 +572,7 @@ MIT in each case. |#
 		(fix:+ logical-size
 		       (fix:- (string-length translation) 1))))))
 
-(define (make-output-buffer channel buffer-size
-			    #!optional line-translation end-marker)
+(define (make-output-buffer channel buffer-size #!optional line-translation)
   (let ((translation
 	 (if (default-object? line-translation)
 	     (os/default-end-of-line-translation)
@@ -586,15 +584,9 @@ MIT in each case. |#
 				  (make-string string-size))
 			     0
 			     translation
-			     logical-size
-			     (if (default-object? end-marker)
-				 (os/default-end-of-file-marker/output)
-				 end-marker))))))
+			     logical-size)))))
 
 (define (output-buffer/close buffer)
-  (cond ((output-buffer/end-marker buffer)
-	 => (lambda (marker)
-	      (output-buffer/write-char-block buffer marker))))
   (output-buffer/drain-block buffer)
   (channel-close (output-buffer/channel buffer)))
 
@@ -762,8 +754,7 @@ MIT in each case. |#
   ;; END-INDEX is zero iff CHANNEL is closed.
   end-index
   line-translation			; string that maps to newline
-  real-end
-  end-marker)
+  real-end)
 
 (define (input-buffer-size translation buffer-size)
   (cond ((not translation)
@@ -775,8 +766,7 @@ MIT in each case. |#
 	(else
 	 buffer-size)))
 
-(define (make-input-buffer channel buffer-size
-			   #!optional line-translation end-marker)
+(define (make-input-buffer channel buffer-size #!optional line-translation)
   (let* ((translation
 	  (if (default-object? line-translation)
 	      (os/default-end-of-line-translation)
@@ -787,10 +777,7 @@ MIT in each case. |#
 			string-size
 			string-size
 			translation
-			string-size
-			(if (default-object? end-marker)
-			    (os/default-end-of-file-marker/input)
-			    end-marker))))
+			string-size)))
 
 (define (input-buffer/close buffer)
   (without-interrupts
@@ -865,32 +852,16 @@ MIT in each case. |#
 	(let ((n-read
 	       (channel-read channel string delta (string-length string))))
 	  (and n-read
-	       (let ((n-read
-		      (let ((marker (input-buffer/end-marker buffer)))
-			(let ((index
-			       (and marker
-				    (channel-type=file? channel)
-				    (substring-find-next-char
-				     string
-				     delta
-				     (fix:+ delta n-read)
-				     marker))))
-			  (if index
-			      (begin
-				(channel-close channel)
-				(fix:- index delta))
-			      (begin
-				(if (fix:= n-read 0)
-				    (channel-close channel))
-				n-read))))))
-		 (let ((end-index (fix:+ delta n-read)))
-		   (set-input-buffer/start-index! buffer 0)
-		   (set-input-buffer/end-index! buffer end-index)
-		   (set-input-buffer/real-end! buffer end-index)
-		   (if (and (input-buffer/line-translation buffer)
-			    (not (fix:= end-index 0)))
-		       (input-buffer/translate! buffer)
-		       end-index))))))))
+	       (let ((end-index (fix:+ delta n-read)))
+		 (if (fix:= n-read 0)
+		     (channel-close channel))
+		 (set-input-buffer/start-index! buffer 0)
+		 (set-input-buffer/end-index! buffer end-index)
+		 (set-input-buffer/real-end! buffer end-index)
+		 (if (and (input-buffer/line-translation buffer)
+			  (not (fix:= end-index 0)))
+		     (input-buffer/translate! buffer)
+		     end-index)))))))
 
 (define-integrable (input-buffer/fill* buffer)
   (let ((n (input-buffer/fill buffer)))
@@ -904,7 +875,6 @@ MIT in each case. |#
        (and (channel-open? channel)
 	    (channel-type=file? channel)
 	    (not (input-buffer/line-translation buffer))
-	    (not (input-buffer/end-marker buffer))
 	    (let ((n
 		   (fix:- (channel-file-length channel)
 			  (channel-file-position channel))))

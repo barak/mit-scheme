@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.24 1995/01/06 00:39:44 cph Exp $
+$Id: dosprm.scm,v 1.25 1995/01/31 19:34:24 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -285,12 +285,6 @@ MIT in each case. |#
 
 (define (os/default-end-of-line-translation)
   "\r\n")
-
-(define (os/default-end-of-file-marker/input)
-  #f)
-
-(define (os/default-end-of-file-marker/output)
-  #f)
 
 (define (initialize-system-primitives!)
   (let ((reset!

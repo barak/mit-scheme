@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.29 1994/12/19 21:03:26 cph Exp $
+$Id: pathnm.scm,v 14.30 1995/01/31 19:34:47 cph Exp $
 
-Copyright (c) 1988-94 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -157,16 +157,6 @@ these rules:
 (define (pathname-end-of-line-string pathname)
   (let ((pathname (->pathname pathname)))
     ((host-operation/end-of-line-string (%pathname-host pathname))
-     pathname)))
-
-(define (pathname-end-of-file-marker/input pathname)
-  (let ((pathname (->pathname pathname)))
-    ((host-operation/end-of-file-marker/input (%pathname-host pathname))
-     pathname)))
-
-(define (pathname-end-of-file-marker/output pathname)
-  (let ((pathname (->pathname pathname)))
-    ((host-operation/end-of-file-marker/output (%pathname-host pathname))
      pathname)))
 
 (define (pathname=? x y)
@@ -456,9 +446,7 @@ these rules:
   (operation/user-homedir-pathname false read-only true)
   (operation/init-file-pathname false read-only true)
   (operation/pathname-simplify false read-only true)
-  (operation/end-of-line-string false read-only true)
-  (operation/end-of-file-marker/input false read-only true)
-  (operation/end-of-file-marker/output false read-only true))
+  (operation/end-of-line-string false read-only true))
 
 (define-structure (host (type vector)
 			(named ((ucode-primitive string->symbol)
@@ -514,12 +502,6 @@ these rules:
 
 (define (host-operation/end-of-line-string host)
   (host-type/operation/end-of-line-string (host/type host)))
-
-(define (host-operation/end-of-file-marker/input host)
-  (host-type/operation/end-of-file-marker/input (host/type host)))
-
-(define (host-operation/end-of-file-marker/output host)
-  (host-type/operation/end-of-file-marker/output (host/type host)))
 
 ;;;; File System Stuff
 
@@ -628,10 +610,8 @@ these rules:
     (let ((fail
 	   (lambda arguments
 	     (error "Unimplemented host type:" name arguments))))
-      (make-host-type index name
-		      fail fail fail fail fail
-		      fail fail fail fail fail
-		      fail fail fail))))
+      (make-host-type index name fail fail fail fail fail fail fail fail fail
+		      fail fail))))
 
 (define (reset-package!)
   (let ((host-type (host-name->type microcode-id/operating-system))

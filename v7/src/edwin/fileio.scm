@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.123 1995/01/06 01:07:23 cph Exp $
+;;;	$Id: fileio.scm,v 1.124 1995/01/31 19:35:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -140,11 +140,7 @@ Each procedure is called with three arguments:
 	     (and *translate-file-data-on-input?*
 		  (let ((translation (pathname-newline-translation truename)))
 		    (and translation
-			 (make-input-buffer channel
-					    4096
-					    translation
-					    (pathname-end-of-file-marker/input
-					     truename)))))))
+			 (make-input-buffer channel 4096 translation))))))
 	(bind-condition-handler (list condition-type:allocation-failure)
 	    (lambda (condition)
 	      condition

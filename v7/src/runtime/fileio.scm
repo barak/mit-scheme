@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.8 1994/11/20 05:04:35 cph Exp $
+$Id: fileio.scm,v 1.9 1995/01/31 19:34:39 cph Exp $
 
-Copyright (c) 1991-94 Massachusetts Institute of Technology
+Copyright (c) 1991-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -108,8 +108,7 @@ MIT in each case. |#
 	   (make-file-state
 	    (make-input-buffer channel
 			       input-buffer-size
-			       (pathname-newline-translation pathname)
-			       (pathname-end-of-file-marker/input pathname))
+			       (pathname-newline-translation pathname))
 	    false
 	    pathname))))
     (set-channel-port! channel port)
@@ -129,8 +128,7 @@ MIT in each case. |#
 	    false
 	    (make-output-buffer channel
 				output-buffer-size
-				(pathname-newline-translation pathname)
-				(pathname-end-of-file-marker/output pathname))
+				(pathname-newline-translation pathname))
 	    pathname))))
     (set-channel-port! channel port)
     port))
@@ -143,14 +141,8 @@ MIT in each case. |#
 	  (port/copy
 	   i/o-file-template
 	   (make-file-state
-	    (make-input-buffer channel
-			       input-buffer-size
-			       translation
-			       (pathname-end-of-file-marker/input pathname))
-	    (make-output-buffer channel
-				output-buffer-size
-				translation
-				(pathname-end-of-file-marker/output pathname))
+	    (make-input-buffer channel input-buffer-size translation)
+	    (make-output-buffer channel output-buffer-size translation)
 	    pathname))))
     (set-channel-port! channel port)
     port))
@@ -167,7 +159,6 @@ MIT in each case. |#
 	  (port/copy input-file-template
 		     (make-file-state (make-input-buffer channel
 							 input-buffer-size
-							 false
 							 false)
 				      false
 				      pathname))))
@@ -186,7 +177,6 @@ MIT in each case. |#
 		     (make-file-state false
 				      (make-output-buffer channel
 							  output-buffer-size
-							  false
 							  false)
 				      pathname))))
     (set-channel-port! channel port)
@@ -199,11 +189,9 @@ MIT in each case. |#
 	  (port/copy i/o-file-template
 		     (make-file-state (make-input-buffer channel
 							 input-buffer-size
-							 false
 							 false)
 				      (make-output-buffer channel
 							  output-buffer-size
-							  false
 							  false)
 				      pathname))))
     (set-channel-port! channel port)

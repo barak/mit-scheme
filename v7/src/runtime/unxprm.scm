@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.32 1995/01/06 00:39:31 cph Exp $
+$Id: unxprm.scm,v 1.33 1995/01/31 19:34:50 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -281,12 +281,6 @@ MIT in each case. |#
    (->namestring (pathname-as-directory (merge-pathnames name)))))
 
 (define (os/default-end-of-line-translation)
-  #f)
-
-(define (os/default-end-of-file-marker/input)
-  #f)
-
-(define (os/default-end-of-file-marker/output)
   #f)
 
 ;;; Queues after-restart daemon to clean up environment space

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unxpth.scm,v 14.16 1994/11/28 05:45:12 cph Exp $
+$Id: unxpth.scm,v 14.17 1995/01/31 19:34:54 cph Exp $
 
-Copyright (c) 1988-94 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,9 +50,7 @@ MIT in each case. |#
 		  unix/user-homedir-pathname
 		  unix/init-file-pathname
 		  unix/pathname-simplify
-		  unix/end-of-line-string
-		  unix/end-of-file-marker/input
-		  unix/end-of-file-marker/output))
+		  unix/end-of-line-string))
 
 (define (initialize-package!)
   (add-pathname-host-type! 'UNIX make-unix-host-type))
@@ -311,11 +309,3 @@ MIT in each case. |#
 (define (unix/end-of-line-string pathname)
   pathname				; ignored
   "\n")
-
-(define (unix/end-of-file-marker/input pathname)
-  pathname				; ignored
-  false)
-
-(define (unix/end-of-file-marker/output pathname)
-  pathname				; ignored
-  false)

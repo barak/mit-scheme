@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.3 1995/01/06 00:39:38 cph Exp $
+$Id: os2prm.scm,v 1.4 1995/01/31 19:34:44 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -216,12 +216,6 @@ MIT in each case. |#
 
 (define (os/default-end-of-line-translation)
   "\r\n")
-
-(define (os/default-end-of-file-marker/input)
-  #f)
-
-(define (os/default-end-of-file-marker/output)
-  #f)
 
 (define (initialize-system-primitives!)
   (discard-select-registry-result-vectors!)

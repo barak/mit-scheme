@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.21 1995/01/06 00:39:50 cph Exp $
+$Id: dospth.scm,v 1.22 1995/01/31 19:34:38 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -38,8 +38,6 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define hook/dos/end-of-line-string)
-(define hook/dos/end-of-file-marker/input)
-(define hook/dos/end-of-file-marker/output)
 
 (define sub-directory-delimiters
   ;; Allow forward slashes as well as backward slashes so that
@@ -66,15 +64,10 @@ MIT in each case. |#
 		  dos/user-homedir-pathname
 		  dos/init-file-pathname
 		  dos/pathname-simplify
-		  dos/end-of-line-string
-		  dos/end-of-file-marker/input
-		  dos/end-of-file-marker/output))
+		  dos/end-of-line-string))
 
 (define (initialize-package!)
   (set! hook/dos/end-of-line-string default/dos/end-of-line-string)
-  (set! hook/dos/end-of-file-marker/input default/dos/end-of-file-marker/input)
-  (set! hook/dos/end-of-file-marker/output
-	default/dos/end-of-file-marker/output)
   (add-pathname-host-type! 'DOS make-dos-host-type))
 
 ;;;; Pathname Parser
@@ -360,17 +353,3 @@ MIT in each case. |#
 (define (default/dos/end-of-line-string pathname)
   pathname				; ignored
   (os/default-end-of-line-translation))
-
-(define (dos/end-of-file-marker/input pathname)
-  (hook/dos/end-of-file-marker/input pathname))
-
-(define (default/dos/end-of-file-marker/input pathname)
-  pathname				; ignored
-  (os/default-end-of-file-marker/input))
-
-(define (dos/end-of-file-marker/output pathname)
-  (hook/dos/end-of-file-marker/output pathname))
-
-(define (default/dos/end-of-file-marker/output pathname)
-  pathname				; ignored
-  (os/default-end-of-file-marker/output))
