@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: macros.scm,v 1.3 1997/06/11 07:45:04 cph Exp $
+;;; $Id: macros.scm,v 1.4 1997/06/12 07:33:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1993-97 Massachusetts Institute of Technology
 ;;;
@@ -298,15 +298,11 @@
 	 (lambda ()
 	   (call-with-values (lambda () (call-next-method-used? body))
 	     (lambda (body used?)
-	       `(,(if used? 'MAKE-CHAINED-METHOD 'MAKE-METHOD)
-		 (LIST ,@specializers)
-		 ,(make-named-lambda name
-				     (if used?
-					 (cons 'CALL-NEXT-METHOD required)
-					 required)
-				     optional
-				     rest
-				     body)))))))
+	       (let ((s `(LIST ,@specializers))
+		     (l (make-named-lambda name required optional rest body)))
+		 (if used?
+		     `(MAKE-CHAINED-METHOD ,s (LAMBDA (CALL-NEXT-METHOD) ,l))
+		     `(MAKE-METHOD ,s ,l))))))))
     (if (and (null? optional)
 	     (not rest)
 	     (not (eq? '<OBJECT> (car specializers))))
