@@ -37,7 +37,7 @@
 
 ;;;; RTL Rules for 68020
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.141 1986/12/18 13:24:11 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.142 1986/12/20 23:49:41 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access lap-generator-syntax-table compiler-package)
@@ -701,8 +701,6 @@
 		   (JSR ,entry:compiler-interrupt-procedure))
 		 '())
 	     `(,@(make-external-label internal-label)))))
-
-(define *block-start-label*)
 
 (define (make-external-label label)
   `((DC W (- ,label ,*block-start-label*))

@@ -37,7 +37,7 @@
 
 ;;;; Control Flow Graph Abstraction
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.143 1986/12/20 22:51:15 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.144 1986/12/20 23:48:20 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -172,7 +172,7 @@
 ;;;; Previous Connections
 
 (define-integrable (node-previous=0? node)
-  (edges=0? (node-previous node)))
+  (edges=0? (node-previous-edges node)))
 
 (define (edges=0? edges)
   (cond ((null? edges) true)
@@ -180,7 +180,7 @@
 	(else (edges=0? (cdr edges)))))
 
 (define-integrable (node-previous>0? node)
-  (edges>0? (node-previous node)))
+  (edges>0? (node-previous-edges node)))
 
 (define (edges>0? edges)
   (cond ((null? edges) false)
@@ -188,20 +188,20 @@
 	(else (edges>0? (cdr edges)))))
 
 (define-integrable (node-previous=1? node)
-  (edges=1? (node-previous node)))
+  (edges=1? (node-previous-edges node)))
 
 (define (edges=1? edges)
   (if (null? edges)
       false
-      ((if (entry-holder-hook? (car edges)) edges=1? edges=0?) (cdr edges))))
+      ((if (edge-left-node (car edges)) edges=0? edges=1?) (cdr edges))))
 
 (define-integrable (node-previous>1? node)
-  (edges>1? (node-previous node)))
+  (edges>1? (node-previous-edges node)))
 
 (define (edges>1? edges)
   (if (null? edges)
       false
-      ((if (entry-holder-hook? (car edges)) edges>1? edges>0?) (cdr edges))))
+      ((if (edge-left-node (car edges)) edges>0? edges>1?) (cdr edges))))
 
 (define-integrable (node-previous-first node)
   (edges-first-node (node-previous-edges node)))
@@ -221,40 +221,32 @@
 
 ;;;; Noops
 
-(define noop-node-tag (make-vector-tag cfg-node-tag 'NOOP))
-(define-vector-slots noop-node 1 previous next)
+(define noop-node-tag (make-vector-tag snode-tag 'NOOP))
 (define *noop-nodes*)
 
 (define-integrable (make-noop-node)
-  (let ((node (vector noop-node-tag '() false)))
+  (let ((node (make-snode noop-node-tag)))
     (set! *noop-nodes* (cons node *noop-nodes*))
     node))
 
 (define (delete-noop-nodes!)
-  (for-each noop-node-delete! *noop-nodes*)
+  (for-each snode-delete! *noop-nodes*)
   (set! *noop-nodes* '()))
 
-(define (noop-node-delete! noop-node)
-  (node-next-replace! noop-node
-		      noop-node-next
-		      (let ((previous (noop-node-previous noop-node)))
-			(hooks-disconnect! previous noop-node)
-			previous)))
+(define (constant->pcfg value)
+  ((if value make-true-pcfg make-false-pcfg)))
 
 (define (make-false-pcfg)
   (let ((node (make-noop-node)))
     (make-pcfg node
 	       '()
-	       (list (make-hook node set-noop-node-next!)))))
+	       (list (make-hook node set-snode-next!)))))
 
 (define (make-true-pcfg)
   (let ((node (make-noop-node)))
     (make-pcfg node
-	       (list (make-hook node set-noop-node-next!))
+	       (list (make-hook node set-snode-next!))
 	       '())))
-
-(define (constant->pcfg value)
-  ((if value make-true-pcfg make-false-pcfg)))
 
 ;;;; Miscellaneous
 
@@ -343,7 +335,7 @@
 (define-integrable cfg-null? false?)
 
 (define-integrable (snode->scfg snode)
-  (node->scfg snode set-snode-next!))
+  (node->scfg snode set-snode-next-edge!))
 
 (define (node->scfg node set-node-next!)
   (make-scfg node
@@ -351,8 +343,8 @@
 
 (define-integrable (pnode->pcfg pnode)
   (node->pcfg pnode
-	      set-pnode-consequent!
-	      set-pnode-alternative!))
+	      set-pnode-consequent-edge!
+	      set-pnode-alternative-edge!))
 
 (define (node->pcfg node set-node-consequent! set-node-alternative!)
   (make-pcfg node

@@ -38,7 +38,7 @@
 ;;;; RTL Register Lifetime Analysis
 ;;;  Based on the GNU C Compiler
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rlife.scm,v 1.53 1986/12/20 22:53:21 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rlife.scm,v 1.54 1986/12/20 23:48:53 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -88,7 +88,7 @@
       (if (rtl:invocation? rtl)
 	  (for-each-regset-member old register-crosses-call!))
       (if (instruction-dead? rtl old)
-	  (rtl-snode-delete! rnode)
+	  (snode-delete! rnode)
 	  (begin (update-live-registers! old dead live rtl rnode)
 		 (for-each-regset-member old
 		   increment-register-live-length!))))))
@@ -116,18 +116,6 @@
 	      (let ((register (rtl:register-number address)))
 		(and (pseudo-register? register)
 		     (not (regset-member? needed register))))))))
-
-(define (rtl-snode-delete! rnode)
-  (let ((previous (node-previous rnode))
-	(next (snode-next rnode))
-	(bblock (node-bblock rnode)))
-    (snode-delete! rnode)
-    (if (eq? rnode (bblock-entry bblock))
-	(if (eq? rnode (bblock-exit bblock))
-	    (set! *bblocks* (delq! bblock *bblocks*))
-	    (set-bblock-entry! bblock next))
-	(if (eq? rnode (bblock-exit bblock))
-	    (set-bblock-exit! bblock (hook-node (car previous)))))))
 
 (define (mark-set-registers! needed dead rtl rnode)
   ;; **** This code safely ignores PRE-INCREMENT and POST-INCREMENT
@@ -234,7 +222,7 @@
 				   (= (rtl:register-number expression)
 				      register))
 			      (set-expression! (rtl:assign-expression rtl)))))
-		      (rtl-snode-delete! rnode)
+		      (snode-delete! rnode)
 		      (reset-register-n-refs! register)
 		      (reset-register-n-deaths! register)
 		      (reset-register-live-length! register)

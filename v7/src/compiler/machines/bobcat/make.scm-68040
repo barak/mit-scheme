@@ -59,6 +59,7 @@
 		"cfg.bin"		;control flow graph
 		"ctypes.bin"		;CFG datatypes
 		"dtypes.bin"		;DFG datatypes
+		"bblock.bin"		;Basic block datatype
 		"dfg.bin"		;data flow graph
 		"rtl.bin"		;register transfer language
 		"emodel.bin"		;environment model
@@ -74,12 +75,9 @@
 		"dflow.bin"		;Dataflow analyzer
 		)
 
-	       (CALL-CONSTRUCTOR-PACKAGE
-		"calls.bin"		;Call-sequence constructor
-		)
-
 	       (RTL-GENERATOR-PACKAGE
-		"cgen.bin"		;RTL generator
+		"rtlgen.bin"		;RTL generator
+		"rgcomb.bin"		;RTL generator: combinations
 		"linear.bin"		;linearization
 		)
 
@@ -125,7 +123,7 @@
       (define :version)
       (define :modification)
 
-      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.9 1986/12/15 05:48:57 cph Exp $"
+      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.10 1986/12/20 23:49:57 cph Exp $"
 	(lambda (filename version date time author state)
 	  (set! :version (car version))
 	  (set! :modification (cadr version))))))

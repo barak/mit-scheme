@@ -37,7 +37,7 @@
 
 ;;;; RTL Generation: Combinations
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.1 1986/12/20 22:53:13 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.2 1986/12/20 23:48:42 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -235,43 +235,42 @@
 ;;;; Reductions
 
 (define (combination:reduction combination offset)
-  (fluid-let ((*continuation* false))
-    (let ((operator (combination-known-operator combination))
-	  (block (combination-block combination)))
-      (define (choose-generator ic closure stack)
-	((cond ((ic-block? block) ic)
-	       ((closure-procedure-block? block) closure)
-	       ((stack-procedure-block? block) stack)
-	       (else (error "Unknown caller type" block)))
-	 combination offset))
-      (cond ((normal-primitive-constant? operator)
-	     (choose-generator reduction:ic->primitive
-			       reduction:closure->primitive
-			       reduction:stack->primitive))
-	    ((or (not operator)
-		 (not (procedure? operator)))
-	     (choose-generator reduction:ic->unknown
-			       reduction:closure->unknown
-			       reduction:stack->unknown))
-	    ((ic-procedure? operator)
-	     (choose-generator reduction:ic->ic
-			       reduction:closure->ic
-			       reduction:stack->ic))
-	    ((closure-procedure? operator)
-	     (choose-generator reduction:ic->closure
-			       reduction:closure->closure
-			       reduction:stack->closure))
-	    ((stack-procedure? operator)
-	     (choose-generator reduction:ic->stack
-			       reduction:closure->stack
-			       (let ((block* (procedure-block operator)))
-				 (cond ((block-child? block block*)
-					reduction:stack->child)
-				       ((block-sibling? block block*)
-					reduction:stack->sibling)
-				       (else
-					reduction:stack->ancestor)))))
-	    (else (error "Unknown callee type" operator))))))
+  (let ((operator (combination-known-operator combination))
+	(block (combination-block combination)))
+    (define (choose-generator ic closure stack)
+      ((cond ((ic-block? block) ic)
+	     ((closure-procedure-block? block) closure)
+	     ((stack-procedure-block? block) stack)
+	     (else (error "Unknown caller type" block)))
+       combination offset))
+    (cond ((normal-primitive-constant? operator)
+	   (choose-generator reduction:ic->primitive
+			     reduction:closure->primitive
+			     reduction:stack->primitive))
+	  ((or (not operator)
+	       (not (procedure? operator)))
+	   (choose-generator reduction:ic->unknown
+			     reduction:closure->unknown
+			     reduction:stack->unknown))
+	  ((ic-procedure? operator)
+	   (choose-generator reduction:ic->ic
+			     reduction:closure->ic
+			     reduction:stack->ic))
+	  ((closure-procedure? operator)
+	   (choose-generator reduction:ic->closure
+			     reduction:closure->closure
+			     reduction:stack->closure))
+	  ((stack-procedure? operator)
+	   (choose-generator reduction:ic->stack
+			     reduction:closure->stack
+			     (let ((block* (procedure-block operator)))
+			       (cond ((block-child? block block*)
+				      reduction:stack->child)
+				     ((block-sibling? block block*)
+				      reduction:stack->sibling)
+				     (else
+				      reduction:stack->ancestor)))))
+	  (else (error "Unknown callee type" operator)))))
 
 (define (reduction:ic->unknown combination offset)
   (make-call:unknown combination offset invocation-prefix:null false))

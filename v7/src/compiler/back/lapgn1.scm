@@ -37,11 +37,12 @@
 
 ;;;; LAP Code Generation
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.20 1986/12/20 22:52:16 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.21 1986/12/20 23:48:34 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
 
+(define *block-start-label*)
 (define *code-object-label*)
 (define *code-object-entry*)
 (define *current-rnode*)
@@ -72,17 +73,27 @@
     (set! *code-object-entry* rnode)
     (cgen-rnode rnode)))
 
+(define *cgen-rules*
+  '())
+
+(define (add-statement-rule! pattern result-procedure)
+  (set! *cgen-rules*
+	(cons (cons pattern result-procedure)
+	      *cgen-rules*))
+  pattern)
+
 (define (cgen-rnode rnode)
-  (define (cgen-right-node next)
-    (if (and next (not (node-marked? next)))
-	(begin (if (node-previous>1? next)
-		   (let ((snode (statement->snode '(NOOP))))
-		     (set-rnode-lap! snode
-				     (clear-map-instructions
-				      (rnode-register-map rnode)))
-		     (node-mark! snode)
-		     (insert-snode-in-edge! rnode next snode)))
-	       (cgen-rnode next))))
+  (define (cgen-right-node edge)
+    (let ((next (edge-right-node edge)))
+      (if (and next (not (node-marked? next)))
+	  (begin (if (node-previous>1? next)
+		     (let ((snode (statement->snode '(NOOP))))
+		       (set-rnode-lap! snode
+				       (clear-map-instructions
+					(rnode-register-map rnode)))
+		       (node-mark! snode)
+		       (edge-insert-snode! edge snode)))
+		 (cgen-rnode next)))))
   (node-mark! rnode)
   ;; LOOP is for easy restart while debugging.
   (let loop ()
@@ -100,18 +111,10 @@
 	    (set-rnode-register-map! rnode *register-map*))
 	  (begin (error "CGEN-RNODE: No matching rules" (rnode-rtl rnode))
 		 (loop)))))
-  ;; **** Works because of kludge in definition of RTL-SNODE.
-  (cgen-right-node (pnode-consequent rnode))
-  (cgen-right-node (pnode-alternative rnode)))
-
-(define *cgen-rules*
-  '())
-
-(define (add-statement-rule! pattern result-procedure)
-  (set! *cgen-rules*
-	(cons (cons pattern result-procedure)
-	      *cgen-rules*))
-  pattern)
+  (if (rtl-snode? rnode)
+      (cgen-right-node (snode-next-edge rnode))
+      (begin (cgen-right-node (pnode-consequent-edge rnode))
+	     (cgen-right-node (pnode-alternative-edge rnode)))))
 
 (define (rnode-input-register-map rnode)
   (if (or (eq? rnode *code-object-entry*)
