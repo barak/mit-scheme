@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.25 2001/11/26 19:14:50 cph Exp $
+@comment $Id: imail.texinfo,v 1.26 2001/11/26 19:15:10 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -1922,6 +1922,7 @@ Sort messages of current @acronym{IMAIL} folder by recipient's names.
 @findex imail-sort-by-correspondent
 Sort messages of current @acronym{IMAIL} folder by the name of the
 other correspondent.
+@end table
 
 The @acronym{IMAIL} sort commands perform a @emph{stable sort}: if
 there is no reason to prefer either one of two messages, their order
