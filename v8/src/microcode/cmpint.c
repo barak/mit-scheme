@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.6 1989/10/23 16:46:59 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.7 1989/10/23 21:40:57 jinx Exp $
  *
  * This file corresponds to
  * $COMPILER-Header: compiler.c,v 9.35 88/10/26 20:02:13 GMT cph Exp $
@@ -516,9 +516,9 @@ comutil_return_to_interpreter (ignore_1, ignore_2, ignore_3, ignore_4)
  */
 
 SCHEME_UTILITY struct utility_result
-comutil_primitive_apply (primitive, ignore1, ignore2, ignore3)
+comutil_primitive_apply (primitive, ignore_2, ignore_3, ignore_4)
      SCHEME_OBJECT primitive;
-     long ignore1, ignore2, ignore3;
+     long ignore_2, ignore_3, ignore_4;
 {
   Metering_Apply_Primitive (Val, primitive);
   Pop_Primitive_Frame (PRIMITIVE_ARITY (primitive));
@@ -534,9 +534,9 @@ comutil_primitive_apply (primitive, ignore1, ignore2, ignore3)
  */
 
 SCHEME_UTILITY struct utility_result
-comutil_primitive_lexpr_apply (primitive, ignore1, ignore2, ignore3)
+comutil_primitive_lexpr_apply (primitive, ignore_2, ignore_3, ignore_4)
      SCHEME_OBJECT primitive;
-     long ignore1, ignore2, ignore3;
+     long ignore_2, ignore_3, ignore_4;
 {
   Metering_Apply_Primitive (Val, primitive);
   Pop_Primitive_Frame (((long) Regs[REGBLOCK_LEXPR_ACTUALS]));
@@ -550,9 +550,9 @@ comutil_primitive_lexpr_apply (primitive, ignore1, ignore2, ignore3)
  */
 
 SCHEME_UTILITY struct utility_result
-comutil_apply (procedure, nactuals, ignore1, ignore2)
+comutil_apply (procedure, nactuals, ignore_3, ignore_4)
      SCHEME_OBJECT procedure;
-     long nactuals, ignore1, ignore2;
+     long nactuals, ignore_3, ignore_4;
 {
   switch (OBJECT_TYPE (procedure))
   {
@@ -632,8 +632,8 @@ comutil_apply (procedure, nactuals, ignore1, ignore2)
 */
 
 SCHEME_UTILITY struct utility_result
-comutil_error (nactuals, ignore1, ignore2, ignore3)
-     long nactuals, ignore1, ignore2, ignore3;
+comutil_error (nactuals, ignore_2, ignore_3, ignore_4)
+     long nactuals, ignore_2, ignore_3, ignore_4;
 {
   SCHEME_OBJECT error_procedure;
 
@@ -652,9 +652,10 @@ comutil_error (nactuals, ignore1, ignore2, ignore3)
  */
 
 SCHEME_UTILITY struct utility_result
-comutil_lexpr_apply (nactuals, compiled_entry_address, ignore1, ignore2)
+comutil_lexpr_apply (nactuals, compiled_entry_address, ignore_3, ignore_4)
      register long nactuals;
      register machine_word *compiled_entry_address;
+     long ignore_3, ignore_4;
 {
   RETURN_UNLESS_EXCEPTION
     ((setup_lexpr_invocation
@@ -855,7 +856,7 @@ comutil_operator_apply_trap (operator, nactuals, ignore_3, ignore_4)
      SCHEME_OBJECT operator;
      long nactuals, ignore_3, ignore_4;
 {
-  /* Value seen at link time isn't applicable by code in this file. */
+  /* Used by coerce_to_compiled.  TRAMPOLINE_APPLY */
 
   return (comutil_apply (operator, nactuals, 0, 0));
 }
@@ -865,7 +866,7 @@ comutil_operator_arity_trap (operator, nactuals, ignore_3, ignore_4)
      SCHEME_OBJECT operator;
      long nactuals, ignore_3, ignore_4;
 {
-  /* Linker saw an argument count mismatch. */
+  /* Linker saw an argument count mismatch. TRAMPOLINE_ARITY */
 
   return (comutil_apply (operator, nactuals, 0, 0));
 }
@@ -875,7 +876,7 @@ comutil_operator_entity_trap (operator, nactuals, ignore_3, ignore_4)
      SCHEME_OBJECT operator;
      long nactuals, ignore_3, ignore_4;
 {
-  /* Linker saw an entity to be applied */
+  /* Linker saw an entity to be applied. TRAMPOLINE_ENTITY */
 
   return (comutil_apply (operator, nactuals, 0, 0));
 }
@@ -885,7 +886,9 @@ comutil_operator_interpreted_trap (operator, nactuals, ignore_3, ignore_4)
      SCHEME_OBJECT operator;
      long nactuals, ignore_3, ignore_4;
 {
-  /* Linker saw an interpreted procedure */
+  /* Linker saw an interpreted procedure or a procedure that it cannot
+     link directly.  TRAMPOLINE_INTERPRETED
+   */
 
   return (comutil_apply (operator, nactuals, 0, 0));
 }
@@ -895,11 +898,12 @@ comutil_operator_lexpr_trap (operator, nactuals, ignore_3, ignore_4)
      SCHEME_OBJECT operator;
      long nactuals, ignore_3, ignore_4;
 {
-  /* Linker saw either an unimplemented primitive or a primitive of
-     arbitrary number of arguments.
+  /* Linker saw a primitive of arbitrary number of arguments.
+     TRAMPOLINE_LEXPR_PRIMITIVE
    */
 
-  return (comutil_apply (operator, nactuals, 0, 0));
+  Regs[REGBLOCK_LEXPR_ACTUALS] = ((SCHEME_OBJECT) nactuals);
+  return (comutil_primitive_lexpr_apply (operator, 0, 0, 0));
 }
 
 SCHEME_UTILITY struct utility_result
@@ -907,7 +911,7 @@ comutil_operator_primitive_trap (operator, ignore_2, ignore_3, ignore_4)
      SCHEME_OBJECT operator;
      long ignore_2, ignore_3, ignore_4;
 {
-  /* Linker saw a primitive of fixed and matching arity */
+  /* Linker saw a primitive of fixed and matching arity. TRAMPOLINE_PRIMITIVE */
 
   return (comutil_primitive_apply (operator, 0, 0, 0));
 }
@@ -915,6 +919,8 @@ comutil_operator_primitive_trap (operator, ignore_2, ignore_3, ignore_4)
 /* ARITY Mismatch handling
    These receive the entry point as an argument and must fill the
    Scheme stack with the missing unassigned values.
+   They are invoked by TRAMPOLINE_n_m where n and m are the same
+   as in the name of the procedure.
  */
 
 SCHEME_UTILITY struct utility_result
@@ -1059,6 +1065,7 @@ comutil_operator_4_0_trap (operator, ignore_2, ignore_3, ignore_4)
    "extension" is the linker object corresponding to the operator
    variable (it contains the actual value cell, the name, and linker
    tables). code_block and offset point to the cache cell in question.
+   TRAMPOLINE_LOOKUP
 */
 
 SCHEME_UTILITY struct utility_result
@@ -1070,9 +1077,9 @@ comutil_operator_lookup_trap (extension, code_block, offset, ignore_4)
   SCHEME_OBJECT true_operator, *cache_cell;
   long code, nargs;
 
-  code = complr_operator_reference_trap(&true_operator, extension);
-  cache_cell = MEMORY_LOC(code_block, offset);
-  EXTRACT_OPERATOR_LINK_ARITY(nargs, cache_cell);
+  code = (complr_operator_reference_trap (&true_operator, extension));
+  cache_cell = (MEMORY_LOC (code_block, offset));
+  EXTRACT_OPERATOR_LINK_ARITY (nargs, cache_cell);
   if (code == PRIM_DONE)
   {
     return (comutil_apply (true_operator, nargs, 0, 0));
@@ -1980,15 +1987,17 @@ make_trampoline (slot, format_word, kind, size, value1, value2, value3)
   local_free = Free;
   Free += (TRAMPOLINE_SIZE + size);
   block = local_free;
-  *local_free++ = (Make_Non_Pointer (TC_MAIFEST_VECTOR,
-                                    ((TRAMPOLINE_SIZE - 1) + size)));
-  *local_free++ = (Make_Non_Pointer (TC_MANIFEST_NM_VECTOR,
-                                    (TRAMPOLINE_ENTRY_SIZE + 1)));
+  *local_free++ = (MAKE_OBJECT (TC_MANIFEST_VECTOR,
+				((TRAMPOLINE_SIZE - 1) + size)));
+  *local_free++ = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,
+				(TRAMPOLINE_ENTRY_SIZE + 1)));
   local_free += 1;
   (COMPILED_ENTRY_FORMAT_WORD (local_free)) = format_word;
   (COMPILED_ENTRY_OFFSET_WORD (local_free)) =
     (MAKE_OFFSET_WORD (local_free, block, false));
   STORE_TRAMPOLINE_ENTRY (local_free, kind);
+  block = local_free;
+
   if ((--size) >= 0)
   {
     *local_free++ = value1;
@@ -2001,21 +2010,40 @@ make_trampoline (slot, format_word, kind, size, value1, value2, value3)
   {
     *local_free++ = value3;
   }
-  *slot = ENTRY_TO_OBJECT(block);
+  *slot = (ENTRY_TO_OBJECT (block));
   return (PRIM_DONE);
 }
 
 /* Standard trampolines. */
 
 static long
-make_simple_trampoline (slot, kind, procedure)
+make_redirection_trampoline (slot, kind, procedure)
      SCHEME_OBJECT *slot;
      long kind;
      SCHEME_OBJECT procedure;
 {
   return (make_trampoline (slot,
-			   ((machine_word) FORMAT_WORD_CMPINT), kind,
-			   1, procedure, NIL, NIL));
+			   ((machine_word) FORMAT_WORD_CMPINT),
+			   kind,
+			   1,
+			   procedure,
+			   NIL,
+			   NIL));
+}
+
+static long
+make_apply_trampoline (slot, kind, procedure, nactuals)
+     SCHEME_OBJECT *slot;
+     long kind, nactuals;
+     SCHEME_OBJECT procedure;
+{
+  return (make_trampoline (slot,
+			   ((machine_word) FORMAT_WORD_CMPINT),
+			   kind,
+			   2,
+			   procedure,
+			   (MAKE_UNSIGNED_FIXNUM (nactuals)),
+			   NIL));
 }
 
 #define TRAMPOLINE_TABLE_SIZE   4
@@ -2049,19 +2077,19 @@ trampoline_arity_table[TRAMPOLINE_TABLE_SIZE * TRAMPOLINE_TABLE_SIZE] =
 
   - If it is not a compiled procedure, an entity, or a primitive
   procedure with a matching number of arguments, it stores a fake
-  compiled procedure which will invoke comentry_operator_interpreted_trap
+  compiled procedure which will invoke comutil_operator_interpreted_trap
   when invoked.
 
   - If its argument is an entity, it stores a fake compiled procedure
-  which will invoke comentry_operator_entity_trap when invoked.
+  which will invoke comutil_operator_entity_trap when invoked.
 
   - If its argument is a primitive, it stores a fake compiled procedure
-  which will invoke comentry_operator_primitive_trap, or
-  comentry_operator_lexpr_trap when invoked.
+  which will invoke comutil_operator_primitive_trap, or
+  comutil_operator_lexpr_trap when invoked.
 
   - If its argument is a compiled procedure that expects more or
   less arguments than those provided, it stores a fake compiled
-  procedure which will invoke comentry_operator_arity_trap, or one of
+  procedure which will invoke comutil_operator_arity_trap, or one of
   its specialized versions when invoked.
 
   - Otherwise, the actual (compatible) operator is stored.
@@ -2077,6 +2105,7 @@ make_uuo_link (procedure, extension, block, offset)
 
   cache_address = (MEMORY_LOC (block, offset));
   EXTRACT_OPERATOR_LINK_ARITY (nactuals, cache_address);
+  /* nactuals >= 0 */
 
   switch (OBJECT_TYPE (procedure))
   {
@@ -2100,11 +2129,14 @@ make_uuo_link (procedure, extension, block, offset)
       {
         kind = trampoline_arity_table[((nmax - 1) * TRAMPOLINE_TABLE_SIZE) +
                                       nactuals];
+	/* Paranoia */
+	if (kind != TRAMPOLINE_ARITY)
+	{
+	  nactuals = 0;
+	  break;
+	}
       }
-      else
-      {
-        kind = TRAMPOLINE_ARITY;
-      }
+      kind = TRAMPOLINE_ARITY;
       break;
     }
 
@@ -2122,6 +2154,7 @@ make_uuo_link (procedure, extension, block, offset)
       arity = primitive_to_arity (procedure);
       if (arity == (nactuals - 1))
       {
+	nactuals = 0;
         kind = TRAMPOLINE_PRIMITIVE;
       }
       else if (arity == LEXPR_PRIMITIVE_ARITY)
@@ -2142,7 +2175,14 @@ make_uuo_link (procedure, extension, block, offset)
       break;
     }
   }
-  result = make_simple_trampoline (&trampoline, kind, procedure);
+  if (nactuals == 0)
+  {
+    result = (make_redirection_trampoline (&trampoline, kind, procedure));
+  }
+  else
+  {
+    result = (make_apply_trampoline (&trampoline, kind, procedure, nactuals));
+  }
   if (result != PRIM_DONE)
   {
     return (result);
@@ -2158,11 +2198,13 @@ make_fake_uuo_link (extension, block, offset)
 {
   SCHEME_OBJECT trampoline, *cache_address;
 
-  result = make_trampoline (&trampoline,
-                           ((machine_word) FORMAT_WORD_CMPINT),
-                           TRAMPOLINE_LOOKUP, 3,
-                           extension, block,
-                           MAKE_UNSIGNED_FIXNUM (offset));
+  result = (make_trampoline (&trampoline,
+			     ((machine_word) FORMAT_WORD_CMPINT),
+			     TRAMPOLINE_LOOKUP,
+			     3,
+			     extension,
+			     block,
+			     (MAKE_UNSIGNED_FIXNUM (offset))));
   if (result != PRIM_DONE)
   {
     return (result);
@@ -2191,10 +2233,13 @@ coerce_to_compiled (procedure, arity, location)
       return (ERR_WRONG_NUMBER_OF_ARGUMENTS);
     }
     return (make_trampoline (location,
-                            ((machine_word)
-                             (MAKE_FORMAT_WORD (frame_size, frame_size))),
-                            TRAMPOLINE_INVOKE, 1,
-                            procedure, NIL, NIL));
+			     ((machine_word)
+			      (MAKE_FORMAT_WORD (frame_size, frame_size))),
+			     TRAMPOLINE_APPLY,
+			     2,
+			     procedure,
+			     (MAKE_UNSIGNED_FIXNUM (frame_size)),
+			     NIL));
   }
   (*location) = procedure;
   return (PRIM_DONE);
@@ -2203,8 +2248,10 @@ coerce_to_compiled (procedure, arity, location)
 /* *** HERE *** */
 
 /* Priorities:
-
-   - check and redesign if necessary make_uuo_link, etc.
+   - Change comutils as follows:
+      operator_traps get address of trampoline storage;
+      entries with ret_add get it first
+      entries with entry_point (interrupt) get it first
    - initialization and register block
  */
 
@@ -2240,7 +2287,7 @@ compiler_initialize ()
   compiler_interface_version = 0;
   compiler_utilities = NIL;
   return_to_interpreter =
-    (Make_Non_Pointer (TC_RETURN_CODE, RC_POP_FROM_COMPILED_CODE));
+    (MAKE_OBJECT (TC_RETURN_CODE, RC_POP_FROM_COMPILED_CODE));
   initialize_compiler_arithmetic()
   return;
 
