@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.47 1989/08/11 02:59:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.48 1989/08/12 08:18:31 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -865,6 +865,7 @@ MIT in each case. |#
 	  load-noisily
 	  load-noisily?
 	  load/default-types
+	  load/suppress-loading-message?
 	  read-file)
   (initialization (initialize-package!)))
 
@@ -1129,7 +1130,9 @@ MIT in each case. |#
 	  pathname-new-host
 	  pathname-new-name
 	  pathname-new-type
-	  pathname-new-version	  pathname-type
+	  pathname-new-version
+	  pathname-relative?
+	  pathname-type
 	  pathname-version
 	  pathname?
 	  string->pathname

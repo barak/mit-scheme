@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.7 1989/01/06 21:00:16 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.8 1989/08/12 08:18:14 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -159,16 +159,7 @@ MIT in each case. |#
 
 (define (dbg-labels/find-offset labels offset)
   (vector-binary-search labels < dbg-label/offset offset))
-
-(define (vector-binary-search vector < unwrap-key key)
-  (let loop ((start 0) (end (vector-length vector)))
-    (and (< start end)
-	 (let ((midpoint (quotient (+ start end) 2)))
-	   (let ((item (vector-ref vector midpoint)))
-	     (let ((key* (unwrap-key item)))
-	       (cond ((< key key*) (loop start midpoint))
-		     ((< key* key) (loop (1+ midpoint) end))
-		     (else item))))))))
+
 (define (fasload/update-debugging-info! value com-pathname)
   (let ((process-block
 	 (lambda (block)

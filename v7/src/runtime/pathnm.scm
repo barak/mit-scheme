@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.5 1989/08/03 23:06:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.6 1989/08/12 08:18:23 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -120,6 +120,26 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
   (let ((directory (pathname-directory pathname)))
     (and (pair? directory)
 	 (eq? (car directory) 'ROOT))))
+
+(define (pathname-relative? pathname pathname*)
+  (and (equal? (pathname-host pathname)
+	       (pathname-host pathname*))
+       (equal? (pathname-device pathname)
+	       (pathname-device pathname*))
+       (let loop
+	   ((directory (pathname-directory pathname))
+	    (directory* (pathname-directory pathname*)))
+	 (if (null? directory*)
+	     (make-pathname false
+			    false
+			    directory
+			    (pathname-name pathname)
+			    (pathname-type pathname)
+			    (pathname-version pathname))
+	     (and (not (null? directory))
+		  (equal? (car directory) (car directory*))
+		  (loop (cdr directory) (cdr directory*)))))))
+
 (define (pathname-directory-path pathname)
   (make-pathname (pathname-host pathname)
 		 (pathname-device pathname)

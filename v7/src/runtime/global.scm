@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.11 1989/08/07 07:36:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.12 1989/08/12 08:18:06 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -49,7 +49,6 @@ MIT in each case. |#
   ;; Environment
   lexical-reference lexical-assignment local-assignment
   lexical-unassigned? lexical-unbound? lexical-unreferenceable?
-  environment-link-name
 
   ;; Pointers
   (object-type 1)
@@ -189,7 +188,14 @@ MIT in each case. |#
   (let () (the-environment)))
 
 (define user-initial-prompt
-  "]=>")
+  "]=>")
+
+(define (environment-link-name to from name)
+  ((ucode-primitive environment-link-name)
+   (->environment to)
+   (->environment from)
+   name))
+
 (define (copy-program exp)
   (if (not (object-type? (ucode-type compiled-entry) exp))
       (error "COPY-PROGRAM: Can only copy compiled programs" exp))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.5 1988/12/30 06:43:04 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.6 1989/08/12 08:18:19 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -39,11 +39,13 @@ MIT in each case. |#
 
 (define (initialize-package!)
   (set! load-noisily? false)
+  (set! load/suppress-loading-message? false)
   (set! load/default-types '("com" "bin" "scm"))
   (set! fasload/default-types '("com" "bin"))
   (add-event-receiver! event:after-restart load-init-file))
 
 (define load-noisily?)
+(define load/suppress-loading-message?)
 (define load/default-types)
 (define fasload/default-types)
 
@@ -53,18 +55,20 @@ MIT in each case. |#
     (lambda (port)
       (stream->list (read-stream port)))))
 
-(define (fasload filename #!optional quiet?)
+(define (fasload filename #!optional suppress-loading-message?)
   (fasload/internal
    (find-true-pathname (->pathname filename) fasload/default-types)
-   (if (default-object? quiet?) false quiet?)))
+   (if (default-object? suppress-loading-message?)
+       load/suppress-loading-message?
+       suppress-loading-message?)))
 
-(define (fasload/internal true-pathname quiet?)
+(define (fasload/internal true-pathname suppress-loading-message?)
   (let ((value
 	 (let ((true-filename (pathname->string true-pathname)))
 	   (let ((do-it
 		  (lambda ()
 		    ((ucode-primitive binary-fasload) true-filename))))
-	     (if quiet?
+	     (if suppress-loading-message?
 		 (do-it)
 		 (let ((port (cmdl/output-port (nearest-cmdl))))
 		   (newline port)
@@ -130,8 +134,9 @@ MIT in each case. |#
 	  (let loop ((filenames filename/s))
 	    (if (null? (cdr filenames))
 		(kernel (car filenames) true)
-		(begin (kernel (car filenames) false)
-		       (loop (cdr filenames)))))
+		(begin
+		  (kernel (car filenames) false)
+		  (loop (cdr filenames)))))
 	  (kernel filename/s true)))))
 
 (define default-object
@@ -142,14 +147,17 @@ MIT in each case. |#
   (let ((port
 	 (open-input-file/internal pathname (pathname->string true-pathname))))
     (if (= 250 (char->ascii (peek-char port)))
-	(begin (close-input-port port)
-	       (scode-eval
-		(let ((scode (fasload/internal true-pathname false)))
-		  (if purify? (purify scode))
-		  scode)
-		(if (eq? environment default-object)
-		    (nearest-repl/environment)
-		    environment)))
+	(begin
+	  (close-input-port port)
+	  (scode-eval
+	   (let ((scode
+		  (fasload/internal true-pathname
+				    load/suppress-loading-message?)))
+	     (if purify? (purify scode))
+	     scode)
+	   (if (eq? environment default-object)
+	       (nearest-repl/environment)
+	       environment)))
 	(write-stream (eval-stream (read-stream port) environment syntax-table)
 		      (if load-noisily?
 			  (lambda (value)
@@ -173,8 +181,9 @@ MIT in each case. |#
 		 (current-parser-table)
 		 (lambda (object)
 		   (and (eof-object? object)
-			(begin (close-input-port port)
-			       true)))))
+			(begin
+			  (close-input-port port)
+			  true)))))
 
 (define (eval-stream stream environment syntax-table)
   (stream-map stream
@@ -193,6 +202,8 @@ MIT in each case. |#
   (if (stream-pair? stream)
       (let loop ((value (stream-car stream)) (stream (stream-cdr stream)))
 	(if (stream-pair? stream)
-	    (begin (write value)
-		   (loop (stream-car stream) (stream-cdr stream)))	    value))
+	    (begin
+	      (write value)
+	      (loop (stream-car stream) (stream-cdr stream)))
+	    value))
       unspecific))
