@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty2.scm,v 4.1 1987/12/04 20:18:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty2.scm,v 4.2 1987/12/31 08:50:53 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -111,6 +111,9 @@ MIT in each case. |#
 
 (define-integrable (rtl:make-typed-cons:pair type car cdr)
   `(TYPED-CONS:PAIR ,type ,car ,cdr))
+
+(define-integrable (rtl:make-typed-cons:vector type elements)
+  `(TYPED-CONS:VECTOR ,type ,@elements))
 
 ;;; Linearizer Support
 

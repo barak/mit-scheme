@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.2 1987/12/30 06:44:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.3 1987/12/31 08:51:44 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -105,7 +105,7 @@ MIT in each case. |#
   (let ((inliner (combination/inliner combination)))
     (let ((operands
 	   (list-filter-indices (cdr subproblems) (inliner/operands inliner))))
-      (set-inliner/operands! inliner (map subproblem-continuation operands))
+      (set-inliner/operands! inliner operands)
       (order-subproblems/inline (car subproblems) operands))))
 
 (define (order-subproblems/inline operator operands)
@@ -114,18 +114,32 @@ MIT in each case. |#
     (lambda (simple complex)
       (if (null? complex)
 	  (begin
-	    (set-subproblem-types! simple continuation-type/value)
+	    (inline-subproblem-types! simple continuation-type/register)
 	    (return-2 (cons operator operands) (make-null-cfg)))
 	  (let ((push-set (cdr complex))
 		(value-set (cons (car complex) simple)))
-	    (set-subproblem-types! push-set continuation-type/push)
-	    (set-subproblem-types! value-set continuation-type/register)
+	    (inline-subproblem-types! push-set continuation-type/push)
+	    (inline-subproblem-types! value-set continuation-type/register)
 	    (return-2 (cons operator (append! push-set value-set))
 		      (scfg*->scfg!
 		       (reverse!
 			(map (lambda (subproblem)
 			       (make-pop (subproblem-continuation subproblem)))
 			     push-set)))))))))
+
+(define (inline-subproblem-types! subproblems continuation-type)
+  (for-each (lambda (subproblem)
+	      (set-subproblem-type!
+	       subproblem
+	       (if (let ((rvalue (subproblem-rvalue subproblem)))
+		     (or (rvalue-known-constant? rvalue)
+			 (and (rvalue/reference? rvalue)
+			      (not (variable/value-variable?
+				    (reference-lvalue rvalue)))
+			      (reference-to-known-location? rvalue))))
+		   continuation-type/effect
+		   continuation-type)))
+	    subproblems))
 
 (define (order-subproblems/combination/out-of-line combination subproblems)
   (let ((subproblems

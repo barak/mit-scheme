@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.2 1987/12/30 07:09:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.3 1987/12/31 08:50:13 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -76,30 +76,47 @@ MIT in each case. |#
 ;;;; Code Generator
 
 (define-export (combination/inline combination)
-  (generate/return* (combination/block combination)
-		    (combination/continuation combination)
-		    (let ((inliner (combination/inliner combination)))
-		      (let ((handler (inliner/handler inliner))
-			    (generator (inliner/generator inliner))
-			    (expressions
-			     (map (lambda (continuation)
-				    (rtl:make-fetch
-				     (continuation*/register continuation)))
-				  (inliner/operands inliner))))
-			(make-return-operand
-			 (lambda (offset)
-			   ((vector-ref handler 1) generator expressions))
-			 (lambda (offset finish)
-			   ((vector-ref handler 2) generator
-						   expressions
-						   finish))
-			 (lambda (offset finish)
-			   ((vector-ref handler 3) generator
-						   expressions
-						   finish))
-			 false)))
-		    (node/offset combination)))
+  (let ((offset (node/offset combination)))
+    (generate/return* (combination/block combination)
+		      (combination/continuation combination)
+		      (let ((inliner (combination/inliner combination)))
+			(let ((handler (inliner/handler inliner))
+			      (generator (inliner/generator inliner))
+			      (expressions
+			       (map (subproblem->expression offset)
+				    (inliner/operands inliner))))
+			  (make-return-operand
+			   (lambda (offset)
+			     ((vector-ref handler 1) generator expressions))
+			   (lambda (offset finish)
+			     ((vector-ref handler 2) generator
+						     expressions
+						     finish))
+			   (lambda (offset finish)
+			     ((vector-ref handler 3) generator
+						     expressions
+						     finish))
+			   false)))
+		      offset)))
 
+(define (subproblem->expression offset)
+  (lambda (subproblem)
+    (let ((rvalue (subproblem-rvalue subproblem)))
+      (let ((value (rvalue-known-value rvalue)))
+	(cond ((and value (rvalue/constant? value))
+	       (rtl:make-constant (constant-value value)))
+	      ((and (rvalue/reference? rvalue)
+		    (not (variable/value-variable? (reference-lvalue rvalue)))
+		    (reference-to-known-location? rvalue))
+	       (rtl:make-fetch
+		(find-known-variable (reference-block rvalue)
+				     (reference-lvalue rvalue)
+				     offset)))
+	      (else
+	       (rtl:make-fetch
+		(continuation*/register
+		 (subproblem-continuation subproblem)))))))))
+
 (define (invoke/effect->effect generator expressions)
   (generator expressions false))
 
@@ -240,6 +257,22 @@ MIT in each case. |#
       (filter/nonnegative-integer (car operands)
 	(lambda (type)
 	  (return-2 (open-code/pair-cons type) '(1 2)))))))
+
+(define-open-coder/value 'VECTOR
+  (lambda (operands)
+    (and (< (length operands) 32)
+	 (return-2 (lambda (expressions finish)
+		     (finish
+		      (rtl:make-typed-cons:vector
+		       (rtl:make-constant (ucode-type vector))
+		       expressions)))
+		   (all-operand-indices operands)))))
+
+(define (all-operand-indices operands)
+  (let loop ((operands operands) (index 0))
+    (if (null? operands)
+	'()
+	(cons index (loop (cdr operands) (1+ index))))))
 
 (let ((open-code/memory-length
        (lambda (index)

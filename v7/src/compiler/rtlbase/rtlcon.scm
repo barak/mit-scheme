@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.2 1987/12/30 07:07:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.3 1987/12/31 08:50:36 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -364,6 +364,33 @@ MIT in each case. |#
 			  (scfg-append! (%make-assign target cdr)
 					(receiver temporary)))))))))))))))
 
+(define-expression-method 'TYPED-CONS:VECTOR
+  (lambda (receiver scfg-append! type . elements)
+    (let ((free (interpreter-free-pointer))
+	  (header
+	   (rtl:make-cons-pointer
+	    (rtl:make-constant (ucode-type manifest-vector))
+	    (rtl:make-constant (length elements)))))
+      (let ((target (rtl:make-post-increment free 1)))
+	(expression-simplify* type scfg-append!
+	  (lambda (type)
+	    (let loop ((elements elements) (simplified-elements '()))
+	      (if (null? elements)
+		  (assign-to-temporary (rtl:make-cons-pointer type free)
+				       scfg-append!
+		    (lambda (temporary)
+		      (scfg-append!
+		       (%make-assign target header)
+		       (let loop ((elements (reverse! simplified-elements)))
+			 (if (null? elements)
+			     (receiver temporary)
+			     (scfg-append! (%make-assign target (car elements))
+					   (loop (cdr elements))))))))
+		  (expression-simplify* (car elements) scfg-append!
+		    (lambda (element)
+		      (loop (cdr elements)
+			    (cons element simplified-elements))))))))))))
+
 (define (object-selector make-object-selector)
   (lambda (receiver scfg-append! expression)
     (expression-simplify* expression scfg-append!

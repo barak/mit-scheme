@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndblk.scm,v 4.2 1987/12/30 07:09:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndblk.scm,v 4.3 1987/12/31 08:50:06 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -58,6 +58,13 @@ MIT in each case. |#
 		 (if-ic locative (variable-name variable)))
 		(else
 		 (if-cached (variable-name variable))))))))
+
+(define (find-known-variable block variable offset)
+  (find-variable block variable offset identity-procedure
+    (lambda (environment name)
+      (error "Known variable found in IC frame" name))
+    (lambda (name)
+      (error "Known variable found in IC frame" name))))
 
 (define (find-closure-variable block variable offset)
   (find-variable-internal block variable offset

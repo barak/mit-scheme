@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.1 1987/12/30 07:05:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.2 1987/12/31 08:51:22 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -217,6 +217,11 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (CONSTANT (? object)))
   (LAP ,(load-constant object (INST-EA (@A+ 5)))))
+
+(define-rule statement
+  (ASSIGN (POST-INCREMENT (REGISTER 13) 1)
+	  (CONS-POINTER (CONSTANT (? type)) (CONSTANT (? datum))))
+  (LAP ,(load-non-pointer type datum (INST-EA (@A+ 5)))))
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (UNASSIGNED))
