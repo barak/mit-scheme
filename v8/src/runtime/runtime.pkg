@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.18 1988/08/11 03:14:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.19 1988/10/07 08:53:03 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -782,6 +782,7 @@ MIT in each case. |#
 	  null?
 	  pair?
 	  reduce
+	  reduce-right
 	  reverse
 	  reverse!
 	  second
