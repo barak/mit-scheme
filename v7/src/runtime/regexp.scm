@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: regexp.scm,v 1.6 1999/12/20 02:09:43 cph Exp $
+;;; $Id: regexp.scm,v 1.7 2000/03/21 21:23:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -122,7 +122,7 @@
 			    (ucode-primitive re-search-substring-backward)))
 
 (define (make-string-operation substring-operation)
-  (lambda (regexp string #!optional case-fold? regs syntax-table)
+  (lambda (regexp string #!optional case-fold? syntax-table)
     (substring-operation regexp string 0 (string-length string)
 			 (if (default-object? case-fold?) #f case-fold?)
 			 (if (default-object? syntax-table) #f syntax-table))))
