@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.7 1989/04/18 16:29:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.8 1989/05/12 10:03:17 mhwu Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -252,24 +252,26 @@ must be defined when the defstruct is evaluated.
 	 (lambda (name default options)
 	   (if (not (list? options))
 	       (error "Structure slot options must be a list" options))
-	   (let ((type #T)
-		 (read-only? false))
+	   (let ((type #T) (read-only? false))
+	     (define (with-option-type-and-argument options receiver)
+	       (if (null? (cdr options))
+		   (error "DEFINE-STRUCTURE -- Argument to option not given"
+			  (car options))
+		   (receiver (car options) (cadr options))))
 	     (define (loop options)
 	       (if (not (null? options))
 		   (begin
 		     (case (car options)
 		       ((TYPE)
 			(set! type
-			      (parse/option-value symbol?
-						  (car options)
-						  (cadr options)
-						  true)))
+			      (with-option-type-and-argument options
+                                (lambda (type arg)
+				  (parse/option-value symbol? type arg true)))))
 		       ((READ-ONLY)
 			(set! read-only?
-			      (parse/option-value boolean?
-						  (car options)
-						  (cadr options)
-						  true)))
+			      (with-option-type-and-argument options
+                                (lambda (type arg)
+				  (parse/option-value boolean? type arg true)))))
 		       (else
 			(error "Unrecognized structure slot option"
 			       (car options))))
