@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 4.3 1990/06/13 22:19:38 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 4.4 1991/10/01 21:38:26 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -220,24 +220,6 @@ MIT in each case. |#
 	      'EXPAND
 	      usual-integrations/expansion-names
 	      usual-integrations/expansion-values))))
-
-(define-declaration 'INTEGRATE-PRIMITIVE-PROCEDURES false
-  (lambda (block table/cons table specifications)
-    (with-values
-	(lambda ()
-	  (let loop ((specifications specifications))
-	    (if (null? specifications)
-		(values '() '())
-		(with-values (lambda () (loop (cdr specifications)))
-		  (lambda (names vals)
-		    (with-values
-			(lambda ()
-			  (parse-primitive-specification block
-							 (car specifications)))
-		      (lambda (name value)
-			(values (cons name names) (cons value vals)))))))))
-      (lambda (names vals)
-	(bind/values table/cons table 'INTEGRATE true names vals)))))
 
 #|
 The following are allowed:
