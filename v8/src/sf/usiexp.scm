@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 1.11 1995/10/25 18:42:05 adams Exp $
+$Id: usiexp.scm,v 1.12 1995/11/04 11:52:19 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -157,24 +157,6 @@ MIT in each case. |#
 
   ;;;; Fixnum Operations
 
-  (define (fix:zero?-expansion expr operands if-expanded if-not-expanded block)
-    (if (and (pair? operands) (null? (cdr operands)))
-	(if-expanded
-	 (make-combination expr block (ucode-primitive eq?)
-			   (list (car operands) (constant/make false 0))))
-	(if-not-expanded)))
-
-  (define (fix:=-expansion expr operands if-expanded if-not-expanded block)
-    (if (and (pair? operands)
-	     (pair? (cdr operands))
-	     (null? (cddr operands)))
-	(if-expanded
-	 (make-combination expr block (ucode-primitive eq?) operands))
-	(if-not-expanded)))
-
-  (define char=?-expansion
-    fix:=-expansion)
-
   (define (fix:<=-expansion expr operands if-expanded if-not-expanded block)
     (if (and (pair? operands)
 	     (pair? (cdr operands))
@@ -204,6 +186,9 @@ MIT in each case. |#
 				  (ucode-primitive less-than-fixnum?)
 				  operands))))
 	(if-not-expanded)))
+
+  (define char=?-expansion
+    (binary-arithmetic (ucode-primitive eq?)))
 
   ;;;; N-ary Arithmetic Field Operations
 
@@ -247,60 +232,6 @@ MIT in each case. |#
      1
      (lambda (expr block x y)
        (make-combination expr block (ucode-primitive &*) (list x y)))))
-
-  #|
-  (define (expt-expansion expr operands if-expanded if-not-expanded block)
-    (let ((make-binder
-	   (lambda (make-body)
-	     (make-operand-binding expr
-				   block
-				   (car operands)
-				   make-body))))
-      (cond ((not (and (pair? operands)
-		       (pair? (cdr operands))
-		       (null? (cddr operands))))
-	     (if-not-expanded))
-	    ;;((constant-eq? (cadr operands) 0)
-	    ;; (if-expanded (constant/make (and expr (object/scode expr)) 1)))
-	    ((constant-eq? (cadr operands) 1)
-	     (if-expanded (car operands)))
-	    ((constant-eq? (cadr operands) 2)
-	     (make-binder
-	      (lambda (block operand)
-		(make-combination #f
-				  block
-				  (ucode-primitive &*)
-				  (list operand operand)))))
-	    ((constant-eq? (cadr operands) 3)
-	     (make-binder
-	      (lambda (block operand)
-		(make-combination
-		 #f
-		 block
-		 (ucode-primitive &*)
-		 (list operand
-		       (make-combination #f
-					 block
-					 (ucode-primitive &*)
-					 (list operand operand)))))))
-	    ((constant-eq? (cadr operands) 4)
-	     (make-binder
-	      (lambda (block operand)
-		(make-combination
-		 #f
-		 block
-		 (ucode-primitive &*)
-		 (list (make-combination #f
-					 block
-					 (ucode-primitive &*)
-					 (list operand operand))
-		       (make-combination #f
-					 block
-					 (ucode-primitive &*)
-					 (list operand operand)))))))
-	    (else
-	     (if-not-expanded)))))
-  |#
 
   (define (right-accumulation-inverse identity inverse-expansion make-binary)
     (lambda (expr operands if-expanded if-not-expanded block)
@@ -505,8 +436,6 @@ MIT in each case. |#
 
   (define char?-expansion
     (type-test-expansion (cross-sf/ucode-type 'character)))
-  (define cell?-expansion
-    (type-test-expansion (cross-sf/ucode-type 'cell)))
   (define vector?-expansion
     (type-test-expansion (cross-sf/ucode-type 'vector)))
   (define %record?-expansion
@@ -514,7 +443,7 @@ MIT in each case. |#
   (define weak-pair?-expansion
     (type-test-expansion (cross-sf/ucode-type 'weak-cons)))
   (define flo:flonum?-expansion
-    (type-test-expansion (cross-sf/ucode-type 'big-flonum)))
+    (unary-arithmetic (ucode-primitive flonum?)))
 
   (define fixnum-ucode-types
     (let ((-ve  (cross-sf/ucode-type 'negative-fixnum))
@@ -522,9 +451,6 @@ MIT in each case. |#
       (if (= -ve +0ve)
 	  (list +0ve)
 	  (list +0ve -ve))))
-
-  (define fix:fixnum?-expansion 
-    (disjunction-type-test-expansion fixnum-ucode-types))
 
   (define exact-integer?-expansion
     (disjunction-type-test-expansion
@@ -651,7 +577,6 @@ MIT in each case. |#
       (cddddr             . ,cddddr-expansion)
       (cdddr              . ,cdddr-expansion)
       (cddr               . ,cddr-expansion)
-      (cell?              . ,cell?-expansion)
       (char=?             . ,char=?-expansion)
       (char?              . ,char?-expansion)
       (complex?           . ,complex?-expansion)
@@ -662,11 +587,7 @@ MIT in each case. |#
       (fifth              . ,fifth-expansion)
       (first              . ,first-expansion)
       (fix:<=             . ,fix:<=-expansion)
-      (fix:=              . ,fix:=-expansion)
       (fix:>=             . ,fix:>=-expansion)
-      ;;(fix:fixnum?        . ,fix:fixnum?-expansion)
-      (fix:zero?          . ,fix:zero?-expansion)
-      (flo:flonum?        . ,flo:flonum?-expansion)
       (fourth             . ,fourth-expansion)
       (int:->flonum       . ,int:->flonum-expansion)
       (int:integer?       . ,exact-integer?-expansion)
@@ -709,8 +630,10 @@ MIT in each case. |#
     ACOS
     ASIN
     ATAN
+    CEILING
     CEILING->EXACT
     COS
+    EQUAL?
     EQV?
     ERROR
     ERROR:BAD-RANGE-ARGUMENT
@@ -718,17 +641,21 @@ MIT in each case. |#
     ERROR:WRONG-TYPE-DATUM
     EXP
     EXPT
+    FLOOR
     FLOOR->EXACT
     FOR-EACH
     LIST-REF
     LOG
+    MAP
     MEMQ
+    ROUND
     ROUND->EXACT
     SIN
     SQRT
     STRING->SYMBOL
     (SYMBOL-NAME 1)
     TAN
+    TRUNCATE
     TRUNCATE->EXACT
     ))
 

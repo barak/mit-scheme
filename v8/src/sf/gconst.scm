@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 1.1 1995/03/07 22:13:52 adams Exp $
+$Id: gconst.scm,v 1.2 1995/11/04 11:52:28 adams Exp $
 
 Copyright (c) 1987-93 Massachusetts Institute of Technology
 
@@ -69,6 +69,7 @@ MIT in each case. |#
     BIT-SUBSTRING-MOVE-RIGHT!
     CAR
     CDR
+    CELL?
     CELL-CONTENTS
     CHAR->ASCII
     CHAR->INTEGER
@@ -95,7 +96,7 @@ MIT in each case. |#
     FIX:-1+
     FIX:1+
     FIX:<
-    ;; FIX:= handled by expanding it to EQ?
+    FIX:=		;; no longer handled by expanding it to EQ?
     FIX:>
     FIX:AND
     FIX:ANDC
@@ -111,7 +112,7 @@ MIT in each case. |#
     FIX:REMAINDER
     FIX:XOR
     FIXNUM?
-    ;; FIX:ZERO? handled by expanding it to (EQ? x 0)
+    FIX:ZERO?		;; no longer handled by expanding it to (EQ? x 0)
     FLO:*
     FLO:+
     FLO:-
@@ -129,6 +130,7 @@ MIT in each case. |#
     FLO:COS
     FLO:EXP
     FLO:EXPT
+    FLO:FLONUM
     FLO:FLOOR
     FLO:FLOOR->EXACT
     FLO:LOG
