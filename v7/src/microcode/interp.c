@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.80 1993/11/03 19:19:53 jmiller Exp $
+$Id: interp.c,v 9.81 1993/11/08 20:40:03 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -383,23 +383,33 @@ if (GC_Check(Amount))							\
   The EVAL/APPLY ying/yang
  */
 
-typedef struct interpreter_state_s * interpreter_state_t;
 
-struct interpreter_state_s
+interpreter_state_t interpreter_state = NULL_INTERPRETER_STATE;
+
+void
+DEFUN (bind_interpreter_state, (s), interpreter_state_t s)
 {
-  unsigned int nesting_level;
-  PTR dstack_position;
-  jmp_buf catch_env;
-  int throw_argument;
-  interpreter_state_t previous_state;
-};
+  (s -> previous_state) = interpreter_state;
+  (s -> nesting_level) =
+    ((interpreter_state == NULL_INTERPRETER_STATE)
+     ? 0
+     : (1 + (interpreter_state -> nesting_level)));
+  (s -> dstack_position) = dstack_position;
+  interpreter_state = s;
+}
 
-#define interpreter_catch_dstack_position interpreter_state->dstack_position
-#define interpreter_catch_env interpreter_state->catch_env
-#define interpreter_throw_argument interpreter_state->throw_argument
-#define NULL_INTERPRETER_STATE ((interpreter_state_t) NULL)
-
-static interpreter_state_t interpreter_state = NULL_INTERPRETER_STATE;
+void
+DEFUN (unbind_interpreter_state, (s), interpreter_state_t s)
+{
+  interpreter_state = s;
+  {
+    long old_mask = (FETCH_INTERRUPT_MASK ());
+    SET_INTERRUPT_MASK (0);
+    dstack_set_position (s -> dstack_position);
+    SET_INTERRUPT_MASK (old_mask);
+  }
+  interpreter_state = (s -> previous_state);
+}
 
 void
 DEFUN (abort_to_interpreter, (argument), int argument)
@@ -435,19 +445,10 @@ DEFUN (Interpret, (pop_return_p), Boolean pop_return_p)
 {
   long Which_Way;
   fast SCHEME_OBJECT * Reg_Block, * Reg_Stack_Pointer, * Reg_History;
-  struct interpreter_state_s new_state_s;
-  interpreter_state_t new_state = & new_state_s;
+  struct interpreter_state_s new_state;
   extern long enter_compiled_expression();
   extern long apply_compiled_procedure();
   extern long return_to_compiled_code();
-
-  new_state->previous_state = interpreter_state;
-  new_state->nesting_level =
-    ((interpreter_state == NULL_INTERPRETER_STATE)
-     ? 0
-     : (1 + (interpreter_state->nesting_level)));
-
-  interpreter_state = new_state;
 
   Reg_Block = &Registers[0];
 
@@ -460,7 +461,7 @@ DEFUN (Interpret, (pop_return_p), Boolean pop_return_p)
    * for operation.
    */
 
-  interpreter_catch_dstack_position = dstack_position;
+  bind_interpreter_state (&new_state);
   preserve_signal_mask ();
   Which_Way = (setjmp (interpreter_catch_env));
   Set_Time_Zone (Zone_Working);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.h,v 9.38 1993/08/03 08:29:51 gjr Exp $
+$Id: interp.h,v 9.39 1993/11/08 20:40:10 cph Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -239,3 +239,23 @@ extern SCHEME_OBJECT EXFUN
 }
 
 #define POP_PRIMITIVE_FRAME(arity) Stack_Pointer = (STACK_LOC (arity))
+
+typedef struct interpreter_state_s * interpreter_state_t;
+
+struct interpreter_state_s
+{
+  interpreter_state_t previous_state;
+  unsigned int nesting_level;
+  PTR dstack_position;
+  jmp_buf catch_env;
+  int throw_argument;
+};
+
+#define interpreter_catch_dstack_position interpreter_state->dstack_position
+#define interpreter_catch_env interpreter_state->catch_env
+#define interpreter_throw_argument interpreter_state->throw_argument
+#define NULL_INTERPRETER_STATE ((interpreter_state_t) NULL)
+
+extern interpreter_state_t interpreter_state;
+extern void EXFUN (bind_interpreter_state, (interpreter_state_t));
+extern void EXFUN (unbind_interpreter_state, (interpreter_state_t));
