@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosfile.scm,v 1.17 1998/06/29 04:14:27 cph Exp $
+;;;	$Id: dosfile.scm,v 1.18 1998/08/30 02:06:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-98 Massachusetts Institute of Technology
 ;;;
@@ -563,16 +563,22 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
 (define dos/executable-pathname-types
   '("exe" "com" "bat"))
 
-(define (os/default-shell-prompt-pattern)
-  "^\\[[^]]*] *")
-
 (define (os/default-shell-args)
   '())
+
+(define (os/default-shell-prompt-pattern)
+  "^\\[[^]]*] *")
 
 (define (os/comint-filename-region start point end)
   (let ((chars "]\\\\A-Za-z0-9!#$%&'()+,.:;=@[^_`{}~---"))
     (let ((start (skip-chars-backward chars point start)))
       (make-region start (skip-chars-forward chars start end)))))
+
+(define (os/shell-command-separators)
+  "&|")
+
+(define (os/shell-command-regexp)
+  (string-append "[^" (os/shell-command-separators) "\n]+"))
 
 ;;;; File-Encoding Methods
 

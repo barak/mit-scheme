@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: shell.scm,v 1.14 1997/03/04 06:43:37 cph Exp $
+$Id: shell.scm,v 1.15 1998/08/30 02:06:37 cph Exp $
 
-Copyright (c) 1991-97 Massachusetts Institute of Technology
+Copyright (c) 1991-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -74,16 +74,16 @@ shell-mode-hook (in that order).
 Variables shell-cd-regexp, shell-pushd-regexp and shell-popd-regexp are used
 to match their respective commands."
   (lambda (buffer)
-    (define-variable-local-value! buffer
-	(ref-variable-object comint-prompt-regexp)
-      (ref-variable shell-prompt-pattern buffer))
-    (define-variable-local-value! buffer
-	(ref-variable-object comint-input-sentinel)
-      shell-directory-tracker)
-    (define-variable-local-value! buffer (ref-variable-object shell-dirstack)
-      '())
-    (define-variable-local-value! buffer (ref-variable-object shell-dirtrack?)
-      true)
+    (local-set-variable! comint-prompt-regexp
+			 (ref-variable shell-prompt-pattern buffer)
+			 buffer)
+    (local-set-variable! comint-dynamic-complete-functions
+			 (list shell-dynamic-complete-command
+			       comint-dynamic-complete-filename)
+			 buffer)
+    (local-set-variable! comint-input-sentinel shell-directory-tracker buffer)
+    (local-set-variable! shell-dirstack '() buffer)
+    (local-set-variable! shell-dirtrack? #t buffer)
     (event-distributor/invoke! (ref-variable shell-mode-hook buffer) buffer)))
 
 (define-variable shell-mode-hook
@@ -130,6 +130,8 @@ Otherwise, one argument `-i' is passed to the shell."
 		    (variable-value variable)
 		    (os/default-shell-args))))))))
 
+;;;; Directory Tracking
+
 (define-variable shell-popd-regexp
   "Regexp to match subshell commands equivalent to popd."
   "popd")
@@ -332,3 +334,119 @@ command again."
 			    (skip-spaces (+ index 1))))
 		     (else
 		      (skip-nonspaces (+ index 1))))))))))
+
+;;;; Command Completion
+
+(define-variable shell-command-regexp
+  "Regexp to match a single command within a pipeline.
+This is used for command completion and does not do a perfect job."
+  (os/shell-command-regexp)
+  string?)
+
+(define-variable shell-completion-execonly
+  "If true, use executable files only for completion candidates.
+This mirrors the optional behavior of tcsh.
+
+Detecting executability of files may slow command completion considerably."
+  #t
+  boolean?)
+
+(define (shell-backward-command mark n)
+  (and (> n 0)
+       (let ((limit
+	      (let ((limit (comint-line-start mark)))
+		(if (mark> limit mark)
+		    (line-start mark 0)
+		    limit)))
+	     (regexp
+	      (string-append "["
+			     (os/shell-command-separators)
+			     "]+[\t ]*\\("
+			     (ref-variable shell-command-regexp mark)
+			     "\\)")))
+	 (let loop
+	     ((mark
+	       (let ((m (re-search-backward "\\S " mark limit #f)))
+		 (if m
+		     (mark1+ m)
+		     limit)))
+	      (n n))
+	   (let ((mark* (re-search-backward regexp mark limit #f))
+		 (n (- n 1)))
+	     (if mark*
+		 (if (> n 0)
+		     (loop mark* (- n 1))
+		     (skip-chars-forward (os/shell-command-separators)
+					 (re-match-start 1)))
+		 limit))))))
+
+(define (shell-dynamic-complete-command)
+  "Dynamically complete the command at point.
+This function is similar to `comint-dynamic-complete-filename', except that it
+searches the PATH environment variable for completion candidates.
+Note that this may not be the same as the shell's idea of the path.
+
+Completion is dependent on the value of `shell-completion-execonly', plus
+those that effect file completion."
+  (let ((r (comint-current-filename-region)))
+    (and (not (mark= (region-start r) (region-end r)))
+	 (string=? "" (directory-namestring (region->string r)))
+	 (let ((m (shell-backward-command (current-point) 1)))
+	   (and m
+		(mark= (region-start r) m)))
+	 (begin
+	   (message "Completing command name...")
+	   (let ((completed? #f))
+	     (standard-completion (region->string r)
+	       (lambda (filename if-unique if-not-unique if-not-found)
+		 (shell-complete-command
+		  (parse-namestring filename)
+		  (ref-variable shell-completion-execonly (region-start r))
+		  if-unique if-not-unique if-not-found))
+	       (lambda (filename)
+		 (region-delete! r)
+		 (insert-string filename (region-start r))
+		 (set! completed? #t)
+		 unspecific))
+	     completed?)))))
+
+(define (shell-complete-command command exec-only?
+				if-unique if-not-unique if-not-found)
+  (let* ((results '())
+	 (maybe-add-filename!
+	  (let ((add-filename!
+		 (lambda (filename)
+		   (let ((s (file-namestring filename)))
+		     (if (not (member s results))
+			 (set! results (cons s results))))
+		   unspecific)))
+	    (if exec-only?
+		(lambda (filename)
+		  (if (file-executable? filename)
+		      (add-filename! filename)))
+		add-filename!))))
+    (for-each
+     (lambda (directory)
+       (filename-complete-string (merge-pathnames command directory)
+	 maybe-add-filename!
+	 (lambda (directory get-completions)
+	   (for-each
+	    (lambda (filename)
+	      (maybe-add-filename! (merge-pathnames directory filename)))
+	    (get-completions)))
+	 (lambda () unspecific)))
+     (os/parse-path-string (get-environment-variable "PATH")))
+    (cond ((null? results) (if-not-found))
+	  ((null? (cdr results)) (if-unique (car results)))
+	  (else
+	   (if-not-unique (compute-max-prefix results) (lambda () results))))))
+
+(define (compute-max-prefix strings)
+  (let loop ((prefix (car strings)) (strings (cdr strings)))
+    (if (null? strings)
+	prefix
+	(loop (let ((n (string-match-forward prefix (car strings))))
+		(if (fix:< n (string-length prefix))
+		    (string-head prefix n)
+		    prefix))
+	      (cdr strings)))))

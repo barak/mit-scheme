@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.83 1998/06/29 04:14:31 cph Exp $
+;;;	$Id: unix.scm,v 1.84 1998/08/30 02:07:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -677,9 +677,6 @@ CANNOT contain the 'F' option."
 (define (os/shell-name pathname)
   (file-namestring pathname))
 
-(define (os/default-shell-prompt-pattern)
-  "^[^#$>]*[#$>] *")
-
 (define (os/default-shell-args)
   '("-i"))
 
@@ -691,11 +688,20 @@ Value is a list of strings."
       ;; than us about what terminal modes to use.
       '("-i" "-T")
       '("-i")))
+
+(define (os/default-shell-prompt-pattern)
+  "^[^#$>]*[#$>] *")
 
 (define (os/comint-filename-region start point end)
   (let ((chars "~/A-Za-z0-9---_.$#,"))
     (let ((start (skip-chars-backward chars point start)))
       (make-region start (skip-chars-forward chars start end)))))
+
+(define (os/shell-command-separators)
+  ";&|")
+
+(define (os/shell-command-regexp)
+  (string-append "[^" (os/shell-command-separators) "\n]+"))
 
 ;;;; POP Mail
 
