@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.174 2000/06/19 22:15:01 cph Exp $
+;;; $Id: imail-top.scm,v 1.175 2000/06/20 19:13:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1862,10 +1862,7 @@ Negative argument means search in reverse."
 		  ""
 		  (string-append " " (symbol->string status))))
 	    " "
-	    (let ((index
-		   (and message
-			(message-attached? message folder)
-			(message-index message))))
+	    (let ((index (and message (message-index message))))
 	      (cond (index (number->string (+ 1 index)))
 		    ((> n 0) "??")
 		    (else "0")))
@@ -1880,7 +1877,10 @@ Negative argument means search in reverse."
 		    ((> unseen 0)
 		     (string-append " (" (number->string unseen) " unseen)"))
 		    (else "")))
-	    (let ((flags (flags-delete "seen" (message-flags message))))
+	    (let ((flags
+		   (if message
+		       (flags-delete "seen" (message-flags message))
+		       '())))
 	      (if (pair? flags)
 		  (string-append " " (decorated-string-append "" "," "" flags))
 		  "")))))))
