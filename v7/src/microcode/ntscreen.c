@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.33 1998/04/14 05:13:31 cph Exp $
+$Id: ntscreen.c,v 1.34 1998/04/16 06:06:26 cph Exp $
 
 Copyright (c) 1993-98 Massachusetts Institute of Technology
 
@@ -231,10 +231,8 @@ screen_x_extra (SCREEN screen)
 static long
 screen_y_extra (SCREEN screen)
 {
-  /* -1 here is magic: When the combination of cyframe*2 and cycaption
-     is 28, AdjustWindowRect indicates that it should be 27.  */
   return (((GetSystemMetrics (SM_CYFRAME)) * 2)
-	  + ((GetSystemMetrics (SM_CYCAPTION)) - 1)
+	  + (GetSystemMetrics (SM_CYCAPTION))
 	  + ((GetMenu (screen -> hWnd)) ? (GetSystemMetrics (SM_CYMENU)) : 0));
 }
 
@@ -367,7 +365,7 @@ init_MIT_Keyboard (VOID)
 BOOL 
 Screen_InitApplication (HANDLE hInstance)
 {
-   WNDCLASS  wndclass ;
+   WNDCLASSEX wndclass ;
    char * font_name = getenv ("MITSCHEME_FONT");
 
    init_LOGFONT (&lfDefaultLogFont);
@@ -382,18 +380,20 @@ Screen_InitApplication (HANDLE hInstance)
    init_MIT_Keyboard ();
 #endif /* WINDOWSLOSES */
 
+   wndclass.cbSize =        (sizeof (wndclass));
    wndclass.style =         0;
-   wndclass.lpfnWndProc =   ScreenWndProc ;
+   wndclass.lpfnWndProc =   ScreenWndProc;
    wndclass.cbClsExtra =    0;
-   wndclass.cbWndExtra =    SCREENEXTRABYTES ;
-   wndclass.hInstance =     hInstance ;
-   wndclass.hIcon =         NULL;
-   wndclass.hCursor =       LoadCursor (NULL, IDC_ARROW);
-   wndclass.hbrBackground = NULL;
+   wndclass.cbWndExtra =    SCREENEXTRABYTES;
+   wndclass.hInstance =     hInstance;
+   wndclass.hIcon =         (LoadIcon (hInstance, "SHIELD3_ICON"));
+   wndclass.hCursor =       (LoadCursor (NULL, IDC_ARROW));
+   wndclass.hbrBackground = 0;
    wndclass.lpszMenuName =  0;
    wndclass.lpszClassName = "MIT-SCREEN";
+   wndclass.hIconSm =       (wndclass . hIcon);
 
-   return  RegisterClass (&wndclass);
+   return (RegisterClassEx (&wndclass));
 }
 
 //---------------------------------------------------------------------------
