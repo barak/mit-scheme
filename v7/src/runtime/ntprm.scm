@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.9 1996/10/07 18:52:13 cph Exp $
+$Id: ntprm.scm,v 1.10 1997/01/02 04:37:46 cph Exp $
 
-Copyright (c) 1992-96 Massachusetts Institute of Technology
+Copyright (c) 1992-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -295,8 +295,12 @@ MIT in each case. |#
    (->namestring (directory-pathname-as-file (merge-pathnames name)))))
 
 (define (os/file-end-of-line-translation pathname)
-  pathname
-  "\r\n")
+  (if (let ((type (dos/fs-drive-type pathname)))
+	(or (string=? "NFS" (car type))
+	    (string=? "NtNfs" (car type))
+	    (string=? "Samba" (car type))))
+      #f
+      "\r\n"))
 
 (define (os/default-end-of-line-translation)
   "\r\n")
@@ -349,6 +353,13 @@ MIT in each case. |#
   (max-component-length #f read-only #t)
   (file-system-flags #f read-only #t)
   (file-system-name #f read-only #t))
+
+(define nt-fs-flag/case-sensitive-search	#x00000001)
+(define nt-fs-flag/case-preserved-names		#x00000002)
+(define nt-fs-flag/unicode-on-disk		#x00000004)
+(define nt-fs-flag/persistent-acls		#x00000008)
+(define nt-fs-flag/file-compression		#x00000010)
+(define nt-fs-flag/volume-is-compressed		#x00008000)
 
 (define (copy-file from to)
   ((ucode-primitive nt-copy-file 2) (->namestring (merge-pathnames from))
@@ -419,44 +430,6 @@ MIT in each case. |#
 		       (set! port #f)
 		       unspecific))))))))))
 
-(define (select-internal console? handles block?)
-  (let* ((nt/qs-allinput #xff)
-	 (select
-	  (if console?
-	      (lambda (period)
-		((ucode-primitive nt:msgwaitformultipleobjects 4)
-		 handles #f period nt/qs-allinput))
-	      (lambda (period)
-		((ucode-primitive nt:waitformultipleobjects 3)
-		 handles #f period)))))
-    (if (not block?)
-	(select 0)
-	(let loop ()
-	  (let ((res (select 20)))
-	    (if (zero? res)
-		(loop)
-		res))))))
-	       
-(define console-channel-descriptor)
-
-(define (cache-console-channel-descriptor!)
-  (set! console-channel-descriptor ((ucode-primitive get-handle 1) 1))
-  unspecific)
-
-(define (select-descriptor descriptor block?)
-  (define (select-result result)
-    (cond ((fix:> result 0)
-	   'INPUT-AVAILABLE)
-	  ((fix:< result 0)
-	   (error "Illegal result from select-internal" result))
-	  (else
-	   #f)))
-
-  (select-result
-   (if (= descriptor console-channel-descriptor)
-       (select-internal true '#() block?)
-       (select-internal false (vector descriptor) block?))))
-
 (define-structure (nt-select-registry
 		   (conc-name nt-select-registry/)
 		   (constructor nt-select-registry/make))
@@ -495,15 +468,44 @@ MIT in each case. |#
 	       (delq! dr (nt-select-registry/descriptors registry)))))))
 
 (define (select-registry-test registry block?)
-  (let* ((handles (list->vector (nt-select-registry/descriptors registry)))
-	 (result (select-internal (nt-select-registry/console registry)
-				  handles
-				  block?)))
-    (cond ((fix:< result 0)
-	   (error "Illegal result from select-internal" result))
-	  ((fix:= result 0)
-	   #f)
-	  ((fix:> result (vector-length handles))
-	   (list (nt-select-registry/console registry)))
-	  (else
-	   (list (vector-ref handles (fix:- result 1)))))))
+  (let ((handles (list->vector (nt-select-registry/descriptors registry))))
+    (let ((nhand (vector-length handles))
+	  (result
+	   (select-internal (nt-select-registry/console registry)
+			    handles
+			    block?)))
+      (cond ((fix:< result 0)
+	     (error "Illegal result from select-internal:" result))
+	    ((fix:= result 0) #f)
+	    ((fix:<= result nhand)
+	     (list (vector-ref handles (fix:- result 1))))
+	    ((fix:= result (fix:+ nhand 1))
+	     (list (nt-select-registry/console registry)))
+	    (else 'INTERRUPT)))))
+
+(define (select-descriptor descriptor block?)
+  (let ((result
+	 (if (= descriptor console-channel-descriptor)
+	     (select-internal #t '#() block?)
+	     (select-internal #f (vector descriptor) block?))))
+    (case result
+      ((0) #f)
+      ((1) 'INPUT-AVAILABLE)
+      ((2 3) 'INTERRUPT)
+      (else (error "Illegal result from select-internal:" result)))))
+
+(define (select-internal console? handles block?)
+  (let ((nt/QS_ALLINPUT #xFF)
+	(nt/INFINITE #xFFFFFFFF))
+    (let ((timeout (if block? nt/INFINITE 0)))
+      (if console?
+	  ((ucode-primitive nt:msgwaitformultipleobjects 4)
+	   handles #f timeout nt/QS_ALLINPUT)
+	  ((ucode-primitive nt:waitformultipleobjects 3)
+	   handles #f timeout)))))
+
+(define console-channel-descriptor)
+
+(define (cache-console-channel-descriptor!)
+  (set! console-channel-descriptor ((ucode-primitive get-handle 1) 1))
+  unspecific)
