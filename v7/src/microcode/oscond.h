@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/oscond.h,v 1.6 1992/03/26 03:16:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/oscond.h,v 1.7 1992/03/26 03:48:05 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -40,6 +40,26 @@ MIT in each case. */
 
 /* _POSIX is assumed to be independent of all operating-system and
    machine specification macros.  */
+
+#if defined(__hpux) && !defined(hpux)
+#define hpux
+#endif
+
+#if defined(__hp9000s300) && !defined(hp9000s300)
+#define hp9000s300
+#endif
+
+#if defined(__hp9000s400) && !defined(hp9000s400)
+#define hp9000s400
+#endif
+
+#if defined(__hp9000s700) && !defined(hp9000s700)
+#define hp9000s700
+#endif
+
+#if defined(__hp9000s800) && !defined(hp9000s800)
+#define hp9000s800
+#endif
 
 #if defined(hpux) && !defined(_HPUX)
 #define _HPUX
