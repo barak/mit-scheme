@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 1.2 1987/07/08 22:08:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 1.3 1987/07/27 23:19:26 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -82,8 +82,7 @@ MIT in each case. |#
       (LAP ,(test-non-pointer (primitive-type constant)
 			      (primitive-datum constant)
 			      (coerce->any register)))
-      (LAP (CMP L
-		(@PCR ,(constant->label constant))
+      (LAP (CMP L (@PCR ,(constant->label constant))
 		,(coerce->machine-register register)))))
 
 (define (eq-test/constant*memory constant memory-reference)
@@ -94,16 +93,14 @@ MIT in each case. |#
 			      memory-reference))
       (let ((temp (reference-temporary-register! false)))
 	(LAP (MOV L ,memory-reference ,temp)
-	     (CMP L
-		  (@PCR ,(constant->label constant))
+	     (CMP L (@PCR ,(constant->label constant))
 		  ,temp)))))
 
 (define (eq-test/register*register register-1 register-2)
   (set-standard-branches! 'EQ)
   (let ((finish
 	 (lambda (register-1 register-2)
-	   (LAP (CMP L
-		     ,(coerce->any register-2)
+	   (LAP (CMP L ,(coerce->any register-2)
 		     ,(coerce->machine-register register-1))))))
     (if (or (and (not (register-has-alias? register-1 'DATA))
 		 (register-has-alias? register-2 'DATA))
@@ -114,8 +111,7 @@ MIT in each case. |#
 
 (define (eq-test/register*memory register memory-reference)
   (set-standard-branches! 'EQ)
-  (LAP (CMP L
-	    ,memory-reference
+  (LAP (CMP L ,memory-reference
 	    ,(coerce->machine-register register))))
 
 (define (eq-test/memory*memory register-1 offset-1 register-2 offset-2)
@@ -123,11 +119,9 @@ MIT in each case. |#
   (let ((temp (reference-temporary-register! false)))
     (let ((finish
 	   (lambda (register-1 offset-1 register-2 offset-2)
-	     (LAP (MOV L
-		       ,(indirect-reference! register-1 offset-1)
+	     (LAP (MOV L ,(indirect-reference! register-1 offset-1)
 		       ,temp)
-		  (CMP L
-		       ,(indirect-reference! register-2 offset-2)
+		  (CMP L ,(indirect-reference! register-2 offset-2)
 		       ,temp)))))
       (if (or (and (not (register-has-alias? register-1 'ADDRESS))
 		   (register-has-alias? register-2 'ADDRESS))
@@ -189,4 +183,4 @@ MIT in each case. |#
 (define-rule predicate
   (EQ-TEST (OFFSET (REGISTER (? register-1)) (? offset-1))
 	   (OFFSET (REGISTER (? register-2)) (? offset-2)))
-  (eq-test/memory*memory register-1 offset-1register-2 offset-2))
+  (eq-test/memory*memory register-1 offset-1 register-2 offset-2))
