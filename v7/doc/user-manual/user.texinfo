@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.72 2000/07/09 03:46:14 cph Exp $
+@comment $Id: user.texinfo,v 1.73 2000/07/10 21:56:21 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -27,9 +27,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.72
+@subtitle Edition 1.73
 @subtitle for Scheme Release 7.5
-@subtitle 8 July 2000
+@subtitle 10 July 2000
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -102,8 +102,8 @@ line termination, and (potentially) the hideous 8.3 short filenames.
 The primary distribution site for this software is
 
 @example
-http://www.swiss.ai.mit.edu/scheme-home.html
-ftp://ftp.swiss.ai.mit.edu/pub
+@uref{http://www.swiss.ai.mit.edu/ftpdir/scheme-7.5/}
+@uref{ftp://ftp.swiss.ai.mit.edu/pub/scheme-7.5/}
 @end example
 
 @noindent
@@ -517,10 +517,10 @@ itself, clear the screen, and print something like this:
 
 @example
 @group
-Scheme saved on Sunday April 30, 2000 at 11:10:40 PM
-  Release 7.5.8
-  Microcode 11.167
-  Runtime 14.182
+Scheme saved on Wednesday July 5, 2000 at 6:57:51 PM
+  Release 7.5.9
+  Microcode 11.169
+  Runtime 14.183
 @end group
 @end example
 
