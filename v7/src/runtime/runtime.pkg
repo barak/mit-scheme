@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.173 1993/01/29 00:09:09 adams Exp $
+$Id: runtime.pkg,v 14.174 1993/01/29 16:42:08 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -54,8 +54,7 @@ MIT in each case. |#
     (else))
   (file-case os-type
     ((unix) "unxprm")
-    ((dos) "dosprm")
-    ((nt) "dosprm")
+    ((dos nt) "dosprm")
     (else)))
 
 (define-package (package)
@@ -451,8 +450,7 @@ MIT in each case. |#
 (define-package (runtime directory)
   (file-case os-type
     ((unix) "unxdir")
-    ((dos) "dosdir")
-    ((nt) "dosdir")
+    ((dos nt) "dosdir")
     ;;(else "unkdir")
     (else))
   (parent ())
