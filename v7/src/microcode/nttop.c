@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.33 2003/02/14 18:48:12 cph Exp $
+$Id: nttop.c,v 1.34 2003/03/29 05:45:02 cph Exp $
 
-Copyright 1993-2000 Massachusetts Institute of Technology
+Copyright 1993,1997,1998,2000,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -197,7 +197,7 @@ OS_initialize (void)
 		 (info.dwMinorVersion));
 	NT_windows_type = wintype_31;
       }
-    strcat (p, " IA-32\n");
+    strcat (p, " IA-32");
     OS_Variant = p;
   }
 }
