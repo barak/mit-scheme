@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.7 1995/11/01 16:27:21 adams Exp $
+$Id: typerew.scm,v 1.8 1995/11/04 04:38:39 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -1062,296 +1062,566 @@ MIT in each case. |#
 	  (good-op `(LOOKUP ,obj) `(LOOKUP ,idx) `(LOOKUP ,elt))
 	  (bad-op  `(LOOKUP ,obj) `(LOOKUP ,idx) `(LOOKUP ,elt))))))))
 
-(define (typerew-binary-variants-type-method rator effect . spec)
-  ;; spec: repeated (input-type1 input-type2 output-type rewrite)
-  ;;  Final spec is the asserted-type1 asserted-type2 default-output-type
-  ;; 
+(define (typerew-binary-variants-type-method
+	 rator
+	 domain1 domain2 range effect . spec)
+  ;; spec: repeated (input-type1 input-type2 output-type)
+  ;;  Compute result type for an operator that verifies its arguments are in
+  ;;  DOMAIN1 and DOMAIN2.  Test triples in order.
+
   (define (result receiver result-type q1 q2 env)
     (typerew/send receiver
 		  (quantity:combination/2 rator q1 q2)
 		  result-type
 		  env))
+
+  (define universal-domain?
+    (and (type:subset? type:any domain1)
+	 (type:subset? type:any domain2)))
+
   (define (compile-spec spec)
     ;; COMPILE-SPEC converts SPEC into a procedure to eliminate the
     ;; interpretive overhead of analysing SPEC every time.
-    (let* ((a1 (first spec))
-	   (a2 (second spec)) 
-	   (result-type (third spec))
-	   (rewrite-spec (fourth spec))
-	   (rewrite
-	    (and rewrite-spec
-		 (typerew-simple-operator-replacement rewrite-spec))))
-
-      (if (null? (cddddr spec))		; final row of table
-	  (lambda (t1 t2 q1 q2 env form receiver)
-	    (if rewrite (typerew/suggest-rewrite form rewrite))
-	    (result receiver result-type q1 q2
-		    (q-env:restrict
-		     (q-env:glb/1 (q-env:glb/1 env q1 (type:and t1 a1))
-				  q2 (type:and t2 a2))
-		     effect)))
-	  (let ((after-tests (compile-spec (cddddr spec))))
+    (if (null? spec)
+	;; Select a DEFAULT-METHOD optimized to reduce useless work
+	(cond ((and (effect:none? effect) universal-domain?)
+	       (lambda (t1 t2 q1 q2 env form receiver)
+		 t1 t2 form		; ignored
+		 (result receiver range q1 q2 env)))
+	      ((effect:none? effect)
+	       (lambda (t1 t2 q1 q2 env form receiver)
+		 form			; ignored
+		 (result receiver range q1 q2
+			 (q-env:glb/1 (q-env:glb/1 env q1 t1) q2 t2))))
+	      (else
+	       (lambda (t1 t2 q1 q2 env form receiver)
+		 form			; ignored
+		 (result receiver range q1 q2
+			 (q-env:restrict (q-env:glb/1 (q-env:glb/1 env q1 t1)
+						      q2 t2)
+					 effect)))))
+	(let* ((a1  (first spec))
+	       (a2  (second spec)) 
+	       (result-type (third spec)))
+	  (let ((more-tests (compile-spec (cdddr spec))))
 	    (lambda (t1 t2 q1 q2 env form receiver)
 	      (if (and (type:subset? t1 a1) (type:subset? t2 a2))
-		  (begin
-		    (if rewrite 
-			(typerew/suggest-rewrite form rewrite))
-		    (result receiver result-type q1 q2 env))
-		  (after-tests t1 t2 q1 q2 env form receiver)))))))
+		  (result receiver result-type q1 q2 env)
+		  (more-tests t1 t2 q1 q2 env form receiver)))))))
+
   (let ((compiled-spec  (compile-spec spec)))
     (lambda (quantities types env form receiver)
-      ;;(pp `(types ,@types))
-      (compiled-spec (first types)      (second types)
+      (compiled-spec (type:and (first types)  domain1)
+		     (type:and (second types) domain2)
 		     (first quantities) (second quantities)
 		     env form receiver))))
-
-(define (typerew-unary-variants-type-method rator effect . spec)
-  ;; spec: repeated (input-type output-type rewriter)
-  ;;       followed by asserted-type default-output-type
-  (lambda (quantities types env form receiver)
-    (let ((quantity  (car quantities))
-	  (type      (car types)))
-      
-      (define (result env result-type)
-	(typerew/send receiver
-		      (quantity:combination/1 rator quantity)
-		      result-type
-		      env))
 
-      (let loop ((spec spec))
-	(cond ((null? (cddr spec))
-	       (result
-		(q-env:restrict
-		 (q-env:glb/1 env quantity (type:and type (first spec)))
-		 effect)
-		(second spec)))
-	      ((type:subset? type (car spec))
-	       (if (caddr spec)
-		   (typerew/suggest-rewrite
-		    form (typerew-simple-operator-replacement (caddr spec))))
-	       (result env (cadr spec)))
-	      (else (loop (cdddr spec))))))))
+(define (typerew-binary-variants-replacement-method . spec)
+  ;; spec: repeated (input-type1 input-type2 output-type replacement)
+  ;;  Select a replacement according to signature
+  (define (make-search spec)
+    ;; MAKE-SEARCH converts SPEC into a procedure to eliminate the
+    ;; interpretive overhead of analysing SPEC every time.
+    (if (null? spec)
+	(lambda (t1 t2 t-result)
+	  t1 t2 t-result		; ignore
+	  typerew-no-replacement)
+	(let* ((a1 (first spec))
+	       (a2 (second spec)) 
+	       (result-type (third spec))
+	       (replacement (fourth spec)))
+	  (let ((try-others (make-search (cddddr spec)))
+		(replacement*
+		 (if replacement
+		     (typerew-simple-operator-replacement replacement)
+		     typerew-no-replacement)))
+	    (lambda (t1 t2 t-result)
+	      (if (and (type:subset? t1 a1) (type:subset? t2 a2)
+		       (type:subset? t-result result-type))
+		  (begin
+		    replacement*)
+		  (try-others t1 t2 t-result)))))))
+
+  (let ((search  (make-search spec)))
+    (lambda (form arg1 arg2)
+      (search (typerew/type arg1) (typerew/type arg2)
+	      (typerew/type form)))))
+
+(define (typerew-unary-variants-type-method
+	 rator
+	 domain range effect . spec)
+  ;; spec: repeated (input-type output-type)
+  ;;  Compute result type for an operator that verifies its arguments are in
+  ;;  DOMAIN.  Test in order.
+
+  (define (result receiver result-type quantity env)
+    (typerew/send receiver
+		  (quantity:combination/1 rator quantity)
+		  result-type
+		  env))
+
+  (define universal-domain?
+    (type:subset? type:any domain))
+
+  (define (compile-spec spec)
+    ;; COMPILE-SPEC converts SPEC into a procedure to eliminate the
+    ;; interpretive overhead of analysing SPEC every time.
+    (if (null? spec)
+	;; Select a DEFAULT-METHOD optimized to reduce useless work
+	(cond ((and (effect:none? effect) universal-domain?)
+	       (lambda (t q env form receiver)
+		 t form			; ignored
+		 (result receiver range q env)))
+	      ((effect:none? effect)
+	       (lambda (t q env form receiver)
+		 form			; ignored
+		 (result receiver range q
+			 (q-env:glb/1 env q t))))
+	      (else
+	       (lambda (t q env form receiver)
+		 form			; ignored
+		 (result receiver range q
+			 (q-env:restrict (q-env:glb/1 env q1 t1)
+					 effect)))))
+	(let* ((arg-type     (first spec))
+	       (result-type  (second spec)))
+	  (let ((more-tests   (compile-spec (cddr spec))))
+	    (lambda (t q env form receiver)
+	      (if (type:subset? t arg-type)
+		  (result receiver result-type q env)
+		  (more-tests t q env form receiver)))))))
+
+  (let ((compiled-spec  (compile-spec spec)))
+    (lambda (quantities types env form receiver)
+      (compiled-spec (type:and (first types)  domain)
+		     (first quantities)
+		     env form receiver))))
+
+(define (typerew-unary-variants-replacement-method . spec)
+  ;; spec: repeated (input-type output-type replacement)
+  ;;  Select a replacement according to signature
+  (define (make-search spec)
+    ;; MAKE-SEARCH converts SPEC into a procedure to eliminate the
+    ;; interpretive overhead of analysing SPEC every time.
+    (if (null? spec)
+	(lambda (t-input t-result)
+	  t-input t-result		; ignore
+	  typerew-no-replacement)
+	(let* ((arg-type   (first spec))
+	       (result-type (second spec))
+	       (replacement (third spec)))
+	  (let ((try-others (make-search (cdddr spec)))
+		(replacement*
+		 (if replacement
+		     (typerew-simple-operator-replacement replacement)
+		     typerew-no-replacement)))
+	    (lambda (t-input t-result)
+	      (if (and (type:subset? t-input arg-type)
+		       (type:subset? t-result result-type))
+		  replacement*
+		  (try-others t-input t-result)))))))
+
+  (let ((search  (make-search spec)))
+    (lambda (form arg1)
+      (search (typerew/type arg1) (typerew/type form)))))
 
 (define (define-typerew-unary-variants-type-method name . spec)
   (define-typerew-type-method name 1
     (apply typerew-unary-variants-type-method name spec)))
 
+(define (define-typerew-unary-variants-replacement-method name . spec)
+  (define-typerew-replacement-method name 1
+    (apply typerew-unary-variants-replacement-method spec)))
+
 (define (define-typerew-binary-variants-type-method name . spec)
   (define-typerew-type-method name 2
     (apply typerew-binary-variants-type-method name spec)))
 
-(define-typerew-unary-variants-type-method 'EXACT->INEXACT  effect:none
-  type:real    type:inexact-real    #F
-  type:recnum  type:inexact-recnum  #F
-  type:number  type:inexact-number)
+(define (define-typerew-binary-variants-replacement-method name . spec)
+  (define-typerew-replacement-method name 2
+    (apply typerew-binary-variants-replacement-method spec)))
+
+(define-typerew-unary-variants-type-method 'EXACT->INEXACT
+  type:number  type:inexact-number  effect:none
+  type:real    type:inexact-real
+  type:recnum  type:inexact-recnum)
 
-(define-typerew-unary-variants-type-method 'INEXACT->EXACT  effect:none
-  type:real      type:exact-real    #F
-  type:recnum    type:exact-recnum  #F
-  type:number    type:exact-number)
-
-(define-typerew-unary-variants-type-method 'CEILING->EXACT   effect:none
-  type:flonum    type:exact-integer  FLO:CEILING->EXACT
-  type:number    type:exact-integer)
-
-(define-typerew-unary-variants-type-method 'FLOOR->EXACT     effect:none
-  type:flonum    type:exact-integer  FLO:FLOOR->EXACT
-  type:number    type:exact-integer)
-
-(define-typerew-unary-variants-type-method 'ROUND->EXACT     effect:none
-  type:flonum    type:exact-integer  FLO:ROUND->EXACT
-  type:number    type:exact-integer)
-
-(define-typerew-unary-variants-type-method 'TRUNCATE->EXACT  effect:none
-  type:flonum    type:exact-integer  FLO:TRUNCATE->EXACT
-  type:number    type:exact-integer)
+(define-typerew-unary-variants-type-method 'INEXACT->EXACT
+  type:number    type:exact-number  effect:none
+  type:real      type:exact-real
+  type:recnum    type:exact-recnum)
 
 
-(define-typerew-unary-variants-type-method 'COS    effect:none
-  type:exact-zero type:exact-one     #F
-  type:real       type:flonum        #F
-  type:number     type:number)
+(let ()
+  (define (def op flo:op)
+    (define-typerew-unary-variants-type-method op
+      type:number    type:exact-integer effect:none)
+    (define-typerew-unary-variants-replacement-method op
+      type:flonum    type:exact-integer  FLO:op))
+
+  (def  'CEILING->EXACT   FLO:CEILING->EXACT)
+  (def  'FLOOR->EXACT     FLO:FLOOR->EXACT)
+  (def  'ROUND->EXACT     FLO:ROUND->EXACT)
+  (def  'TRUNCATE->EXACT  FLO:TRUNCATE->EXACT))
+
+(define-typerew-unary-variants-type-method 'COS
+  type:number     type:number       effect:none
+  type:exact-zero type:exact-one
+  type:real       type:flonum)
 				 
-(define-typerew-unary-variants-type-method 'SIN    effect:none
-  type:exact-zero type:exact-zero    #F
-  type:real       type:flonum        #F
-  type:number     type:number)
+(define-typerew-unary-variants-type-method 'SIN
+  type:number     type:number       effect:none
+  type:exact-zero type:exact-zero
+  type:real       type:flonum)
 				 
-(define-typerew-unary-variants-type-method 'TAN    effect:none
-  type:exact-zero type:exact-zero    #F
-  type:real       type:flonum        #F
-  type:number     type:number)
+(define-typerew-unary-variants-type-method 'TAN
+  type:number     type:number
+  effect:none
+  type:exact-zero type:exact-zero
+  type:real       type:flonum)
 				 
-(define-typerew-unary-variants-type-method 'ACOS   effect:none
-  type:exact-one  type:exact-zero    #F
-  type:number     type:inexact-number)
-				 
-(define-typerew-unary-variants-type-method 'ASIN   effect:none
-  type:exact-zero type:exact-zero    #F
-  type:number     type:inexact-number)
-				 
-(define-typerew-unary-variants-type-method 'EXP    effect:none
-  type:recnum     type:inexact-recnum #F
-  type:exact-zero type:exact-one      #F
-  type:real       type:inexact-real   #F
-  type:number     type:inexact-number)
-				 
-(define-typerew-unary-variants-type-method 'LOG    effect:none
-  type:exact-one  type:exact-zero     #F
+(define-typerew-unary-variants-type-method 'ACOS
+  type:number     type:number        effect:none
+  type:exact-one  type:exact-zero
   type:number     type:inexact-number)
 
+				 
+(define-typerew-unary-variants-type-method 'ASIN
+  type:number     type:number        effect:none
+  type:exact-zero type:exact-zero
+  type:number     type:inexact-number)
+				 
+(define-typerew-unary-variants-type-method 'EXP
+  type:number     type:number              effect:none
+  type:recnum     type:inexact-recnum
+  type:exact-zero type:exact-one
+  type:real       type:inexact-real
+  type:number     type:inexact-number)
+				 
+(define-typerew-unary-variants-type-method 'LOG
+  type:number     type:number          effect:none
+  type:exact-one  type:exact-zero
+  type:number     type:inexact-number)
 
-(define-typerew-unary-variants-type-method 'SYMBOL-NAME  effect:none
-  type:symbol    type:string          system-pair-car
-  type:symbol    type:string)
+(let ()
+  (define (def name flo:op)
+    (define-typerew-unary-variants-replacement-method name
+      type:flonum  type:flonum  flo:op))
+  (def  'COS   flo:cos)
+  (def  'SIN   flo:sin)
+  (def  'TAN   flo:tan)
+  (def  'EXP   flo:exp))
+
+(define-typerew-unary-variants-type-method 'ABS
+  type:number          type:real            effect:none
+  type:exact-one       type:exact-zero
+  (type:or type:small-fixnum type:big-fixnum+ve)    type:fixnum
+  type:fixnum          (type:or type:fixnum type:bignum>0)
+  type:exact-integer   type:exact-integer
+  type:flonum          type:flonum)
+
+(define-typerew-unary-variants-replacement-method 'ABS
+  type:flonum     type:flonum    flo:abs)
+
+(define-typerew-unary-variants-replacement-method 'SQRT
+  type:number          type:number          effect:none
+  type:fixnum+ve       (type:or type:small-fixnum+ve type:flonum)
+  type:fixnum+ve       (type:or type:small-fixnum+ve type:flonum)
+  type:flonum          (type:or type:flonum type:inexact-recnum))
+
+
+(define-typerew-unary-variants-type-method 'SYMBOL-NAME
+  type:symbol    type:string    effect:none)
+
+(define-typerew-unary-variants-replacement-method 'SYMBOL-NAME
+  type:symbol    type:string    system-pair-car)
 
 (for-each
     (lambda (name)
       (define-typerew-unary-variants-type-method (make-primitive-procedure name)
-	effect:none
-	type:any type:boolean))
+	type:any type:boolean
+	effect:none))
   '(BIT-STRING? CELL? FIXNUM? FLONUM? INDEX-FIXNUM? NOT NULL?
 		PAIR? STRING? INTEGER?))
 
-(define-typerew-unary-variants-type-method %compiled-entry? effect:none
-  type:any type:boolean)
+(define-typerew-unary-variants-type-method %compiled-entry?
+  type:any type:boolean   effect:none)
 				 
 
-(define-typerew-binary-variants-type-method (make-primitive-procedure '&+)
-  effect:none
-  type:unsigned-byte    type:unsigned-byte    type:small-fixnum>=0  fix:+
-  type:small-fixnum>=0  type:small-fixnum>=0  type:fixnum>=0        fix:+
-  type:small-fixnum     type:small-fixnum     type:fixnum           fix:+
-  type:flonum           type:flonum           type:flonum           flo:+
-  type:exact-integer    type:exact-integer    type:exact-integer    #F
-  type:exact-number     type:exact-number     type:exact-number     #F
-  type:inexact-number   type:number           type:inexact-number   %+
-  type:number           type:inexact-number   type:inexact-number   %+
-  type:number           type:number           type:number           #F)
+(let ((&+ (make-primitive-procedure '&+)))
+
+  (define (generic-addition-inference op)
+    (define-typerew-binary-variants-type-method op
+      type:number           type:number           type:number
+      effect:none
+      type:unsigned-byte    type:unsigned-byte     type:small-fixnum>=0
+      type:small-fixnum>=0  type:small-fixnum>=0   type:fixnum>=0
+      type:small-fixnum-ve  type:small-fixnum-ve   type:fixnum-ve
+      type:small-fixnum>=0  type:small-fixnum-ve   type:small-fixnum
+      type:small-fixnum-ve  type:small-fixnum>=0   type:small-fixnum
+      type:small-fixnum     type:small-fixnum      type:fixnum
+      type:fixnum>=0        type:fixnum-ve         type:fixnum
+      type:fixnum-ve        type:fixnum>=0         type:fixnum
+      type:flonum           type:flonum            type:flonum
+      type:exact-integer    type:exact-integer     type:exact-integer
+      type:exact-number     type:exact-number      type:exact-number
+      type:inexact-number   type:number            type:inexact-number
+      type:number           type:inexact-number    type:inexact-number))
+
+  (generic-addition-inference &+)
+  (generic-addition-inference %+)
+
+  (define-typerew-binary-variants-replacement-method &+
+    type:fixnum            type:fixnum            type:fixnum        fix:+
+    type:flonum            type:flonum            type:flonum        flo:+
+    (type:not type:fixnum) type:any               type:any           %+
+    type:any               (type:not type:fixnum) type:any           %+)
+
+  (define-typerew-binary-variants-replacement-method %+
+    type:fixnum            type:fixnum            type:fixnum        fix:+
+    type:flonum            type:flonum            type:flonum        flo:+))
+
 
 (define-typerew-binary-variants-type-method (make-primitive-procedure '&-)
+  type:number           type:number           type:number
   effect:none
-  type:small-fixnum     type:small-fixnum     type:fixnum           fix:-
-  type:fixnum>=0        type:fixnum>=0        type:fixnum           fix:-
-  type:flonum           type:flonum           type:flonum           flo:-
-  type:exact-integer    type:exact-integer    type:exact-integer    #F
-  type:exact-number     type:exact-number     type:exact-number     #F
-  type:inexact-number   type:number           type:inexact-number   %-
-  type:number           type:inexact-number   type:inexact-number   %-
-  type:number           type:number           type:number           #F)
+  type:small-fixnum     type:small-fixnum     type:fixnum
+  type:fixnum>=0        type:fixnum>=0        type:fixnum
+  type:flonum           type:flonum           type:flonum
+  type:exact-integer    type:exact-integer    type:exact-integer
+  type:exact-number     type:exact-number     type:exact-number
+  type:inexact-number   type:number           type:inexact-number
+  type:number           type:inexact-number   type:inexact-number)
+
+(define-typerew-binary-variants-replacement-method
+  (make-primitive-procedure '&-)
+  type:fixnum             type:fixnum             type:fixnum       fix:-
+  type:flonum             type:flonum             type:flonum       flo:-
+  (type:not type:fixnum)  type:any                type:any          %-
+  type:any                (type:not type:fixnum)  type:any          %-)
 
 (let ((type:inexact+0    (type:or type:inexact-number type:exact-zero)))
-  (define (generic-multiply op outl)
+  (define (generic-multiply op)
     (define-typerew-binary-variants-type-method op
+      type:number           type:number           type:number
       effect:none
-      type:unsigned-byte    type:unsigned-byte    type:small-fixnum>=0  fix:*
-      type:flonum           type:flonum           type:flonum           flo:*
-      type:exact-integer    type:exact-integer    type:exact-integer    #F
-      type:exact-number     type:exact-number     type:exact-number     #F
+      type:unsigned-byte    type:unsigned-byte    type:small-fixnum>=0
+      type:flonum           type:flonum           type:flonum
+      type:exact-integer    type:exact-integer    type:exact-integer
+      type:exact-number     type:exact-number     type:exact-number
       ;; Note that (* <inexact> 0) = 0
-      type:inexact-number   type:inexact-number   type:inexact-number   outl
-      type:inexact-number   type:number           type:inexact+0        outl
-      type:number           type:inexact-number   type:inexact+0        outl
-      type:number           type:number           type:number           #F))
+      type:inexact-number   type:inexact-number   type:inexact-number
+      type:inexact-number   type:number           type:inexact+0
+      type:number           type:inexact-number   type:inexact+0))
 
-  (method (make-primitive-procedure '&*) %*)
-  (method %* #F))
+  (generic-multiply (make-primitive-procedure '&*))
+  (generic-multiply %*))
 
-(define-typerew-binary-variants-type-method (make-primitive-procedure '&/)
-  effect:none
-  type:flonum           type:flonum           type:flonum           flo:/
-  type:inexact-number   type:number           type:inexact-number   #F
-  type:number           type:inexact-number   type:inexact-number   #F
-  type:number           type:number           type:number           #F)
+(define-typerew-binary-variants-replacement-method
+  (make-primitive-procedure '&*)
+  type:fixnum             type:fixnum             type:fixnum     fix:*
+  type:flonum             type:flonum             type:flonum     flo:*
+  (type:not type:fixnum)  type:any                type:any        %*
+  type:any                (type:not type:fixnum)  type:any        %*)
+
+(define-typerew-binary-variants-replacement-method %*
+  type:fixnum             type:fixnum             type:fixnum     fix:*
+  type:flonum             type:flonum             type:flonum     flo:*)
+
+
+(let ((&/ (make-primitive-procedure '&/)))
+  (define-typerew-binary-variants-type-method &/
+    type:number           type:number           type:number
+    effect:none
+    type:flonum           type:flonum           type:flonum
+    type:inexact-number   type:number           type:inexact-number
+    type:number           type:inexact-number   type:inexact-number)
+
+  (define-typerew-binary-variants-replacement-method &/
+    type:flonum           type:flonum           type:flonum   flo:/))
 
 (let* ((type:fixnum-not-0 (type:except type:fixnum type:exact-zero))
        (type:fixnum-not-0/-1
-	(type:except type:fixnum-not-0 type:exact-minus-one)))
-  (define-typerew-binary-variants-type-method
-    (make-primitive-procedure 'QUOTIENT)    effect:none
-    ;; quotient on fixnums can overflow only when dividing by 0 or -1.  When
-    ;; dividing by -1 it can only overflow when the value is the most
-    ;; negative fixnum (-2^(word-size-1)). The quotient has the same
-    ;; sign as the product.
-    type:unsigned-byte   type:fixnum+ve       type:unsigned-byte   fix:quotient
-    type:small-fixnum    type:fixnum-not-0/-1 type:small-fixnum    fix:quotient
-    type:small-fixnum    type:fixnum-not-0    type:fixnum          fix:quotient
-    type:fixnum          type:fixnum-not-0/-1 type:fixnum          fix:quotient
-    type:flonum          type:flonum          type:flonum          %quotient
-    type:exact-integer   type:exact-integer   type:exact-integer   %quotient
-    ;; The only inexact integer representation is flonum
-    type:inexact-number  type:number          type:flonum          %quotient
-    type:number          type:inexact-number  type:flonum          %quotient
-    type:number          type:number          type:number          #F)
+	(type:except type:fixnum-not-0 type:exact-minus-one))
+       (type:integer-result (type:or type:exact-integer type:flonum))
+       (QUOTIENT   (make-primitive-procedure 'QUOTIENT))
+       (REMAINDER  (make-primitive-procedure 'REMAINDER)))
 
-  (define-typerew-binary-variants-type-method
-    (make-primitive-procedure 'REMAINDER)    effect:none
-    ;; quotient on fixnums can overflow only when dividing by 0 or -1.  When
-    ;; dividing by -1 it can only overflow when the value is the most
-    ;; negative fixnum (-2^(word-size-1)). The remainder has the same
-    ;; sign as the dividend.
-    type:unsigned-byte   type:fixnum-not-0    type:unsigned-byte  fix:remainder
-    type:small-fixnum>=0 type:fixnum-not-0   type:small-fixnum>=0 fix:remainder
-    type:fixnum>=0       type:fixnum-not-0    type:fixnum>=0      fix:remainder
-    type:small-fixnum    type:fixnum-not-0    type:small-fixnum   fix:remainder
+  ;; QUOTIENT and REMAINDER on fixnums can overflow only when dividing by 0
+  ;; or -1.  When dividing by -1 it can only overflow when the value
+  ;; is the most negative fixnum (-2^(word-size-1)). The quotient has
+  ;; the same sign as the product.  The remainder has the same sign as
+  ;; the dividend.  Both return integers (exact or inexact).  Note
+  ;; that inexact inputs might be recnums and might yield exact
+  ;; results:
+  ;;   (quotient 10+0.i 3)  =>  3
+  ;; The flonum cases correspond to a subset of the inexact cases with a
+  ;; known (i.e. flonum) representation.
+
+  (define-typerew-binary-variants-type-method  QUOTIENT
+    type:number          type:number          type:integer-result
+    effect:none
+    type:unsigned-byte   type:fixnum+ve       type:unsigned-byte
+    type:small-fixnum    type:fixnum-not-0/-1 type:small-fixnum
+    type:small-fixnum    type:fixnum-not-0    type:fixnum
+    type:fixnum          type:fixnum-not-0/-1 type:fixnum
+    type:exact-integer   type:exact-integer   type:exact-integer
+    type:flonum          type:flonum          type:flonum
+    type:inexact-number  type:number          type:integer-result
+    type:number          type:inexact-number  type:integer-result)
+
+  (define-typerew-binary-variants-type-method  REMAINDER 
+    type:number          type:number          type:integer-result
+    effect:none
+    type:unsigned-byte   type:fixnum-not-0    type:unsigned-byte
+    type:small-fixnum>=0 type:fixnum-not-0    type:small-fixnum>=0
+    type:fixnum>=0       type:fixnum-not-0    type:fixnum>=0
+    type:small-fixnum    type:fixnum-not-0    type:small-fixnum
+    type:fixnum          type:fixnum-not-0    type:fixnum
+    type:exact-integer   type:exact-integer   type:exact-integer
+    type:flonum          type:flonum          type:flonum
+    type:inexact-number  type:number          type:integer-result
+    type:number          type:inexact-number  type:integer-result)
+
+
+  (define-typerew-binary-variants-replacement-method  QUOTIENT
+    type:small-fixnum    type:fixnum-not-0    type:fixnum         fix:quotient
+    type:fixnum          type:fixnum-not-0/-1 type:fixnum         fix:quotient
+    type:any             type:any             type:any            %quotient)
+
+  (define-typerew-binary-variants-replacement-method  REMAINDER
     type:fixnum          type:fixnum-not-0    type:fixnum         fix:remainder
-    type:flonum          type:flonum          type:flonum         %remainder
-    type:exact-integer   type:exact-integer   type:exact-integer  %remainder
-    ;; The only inexact integer representation is flonum
-    type:inexact-number  type:number          type:flonum         %remainder
-    type:number          type:inexact-number  type:flonum         %remainder
-    type:number          type:number          type:number         #F)
+    type:any             type:any             type:any            %remainder)
 
   ;; MODULO is not integrated.
   )
 
+#|
+(let ()
+  ;; Binary MIN and MAX.  We can replace
+  ;;   (MIN e1 e2)
+  ;; by
+  ;;   (if (< e1 e2) e1 e2)
+  ;; only if e1 and e2 always have the same exactness
+  (define (def min/max)
+    (define-typerew-binary-variants-type-method min/max
+      type:number         type:number         type:real
+      effect:none
+      type:fixnum         type:fixnum         type:fixnum
+      type:exact-integer  type:exact-integer  type:exact-integer
+      type:flonum         type:flonum         type:flonum)
+
+    (define-typerew-binary-variants-replacement-method min/max
+      type:fixnum         type:fixnum        type:any (pick fix:op)
+      type:exact-integer  type:exact-integer type:any (pick gen:op)
+      type:flonum         type:flonum        type:any (pick flo:op)))
+
+  (define (pick compare)
+    (lambda (form)
+      (let ((arg1   (sixth  form))
+	    (arg2   (seventh form))
+	    (name1  (typerew/new-name 'ARG1))
+	    (name2  (typerew/new-name 'ARG2)))
+	(bind* (list name1 name2)
+	       (list arg1 arg2)
+	       `(IF (CALL ',compare '#F (LOOKUP ,name1) (LOOKUP ,name2))
+		    (LOOKUP ,name1)
+		    (LOOKUP ,name2))))))
+
+  (def 'MIN  fix:<   (make-primitive-procedure '&<)   flo:<)
+  (def 'MAX  fix:>   (make-primitive-procedure '&>)   flo:>))
+|#
+
+
 
 (let ((type:fix:+1/-1 (type:or type:exact-one type:exact-minus-one)))
-  (define-typerew-binary-variants-type-method 'EXPT
-    effect:none
-    type:fix:+1/-1     type:fixnum          type:fix:+1/-1      #F
-    ;; luckily (EXPT <flonum> 0) => <flonum>
-    type:flonum        type:exact-integer   type:flonum         #F
-    type:number        type:number          type:number         #F))
 
-(define-typerew-replacement-method 'EXPT 2
-  (lambda (form base exponent)
-    (let* ((t-exponent (typerew/type exponent)))
-      (cond ((and (type:subset? t-exponent type:fixnum)
-		  (or (equal? base '(QUOTE -1))
-		      (equal? base '(QUOTE -1.0))))
-	     (let ((negative-one (quote/text base)))
-	       (lambda (form)
-		 form
-		 `(IF (CALL ',eq? '#F
-			    (CALL ',fix:and '#F ,exponent '1)
-			    '0)
-		      ',(- negative-one)
-		      ',negative-one))))
-	    (else typerew-no-replacement)))))
+  (define-typerew-binary-variants-type-method 'EXPT
+    type:number           type:number          type:number
+    effect:none
+    type:exact-minus-one  type:exact-integer   type:fix:+1/-1
+    type:exact-one        type:exact-integer   type:exact-one
+    ;; luckily (EXPT <flonum> 0) => <flonum>
+    type:flonum           type:exact-integer   type:flonum)
+
+  (define-typerew-replacement-method 'EXPT 2
+    (lambda (form base exponent)
+      (let* ((t-exponent (typerew/type exponent)))
+	(cond ((and (type:subset? t-exponent type:fixnum)
+		    (or (equal? base '(QUOTE -1))
+			(equal? base '(QUOTE -1.0))))
+	       (let ((negative-one (quote/text base)))
+		 (lambda (form)
+		   form			; ignored
+		   `(IF (CALL ',eq? '#F
+			      (CALL ',fix:and '#F ,exponent '1)
+			      '0)
+			',(- negative-one)
+			',negative-one))))
+	      (else typerew-no-replacement))))))
 
 (let ()
-  (define (define-relational-method name fix:op flo:op out:op)
-    (define-typerew-binary-variants-type-method (make-primitive-procedure name)
-      effect:none
-      type:fixnum          type:fixnum            type:boolean   fix:op
-      type:flonum          type:flonum            type:boolean   flo:op
-      type:exact-number    type:exact-number      type:boolean   #F
-      type:inexact-number  type:number            type:boolean   out:op
-      type:number          type:inexact-number    type:boolean   out:op
-      type:number          type:number            type:boolean   #F))
+  (define (define-relational-method name fix:op flo:op %op)
+    (let ((primitive  (make-primitive-procedure name)))
+      (define-typerew-binary-variants-type-method  primitive
+	type:number             type:number             type:boolean
+	effect:none)
+
+      (define-typerew-binary-variants-replacement-method primitive
+	type:fixnum             type:fixnum             type:any       fix:op
+	type:flonum             type:flonum             type:any       flo:op
+	(type:not type:fixnum)  type:any                type:any       %op
+	type:any                (type:not type:fixnum)  type:any       %op)))
 
   (define-relational-method  '&<  fix:<  flo:<  %<)
-  (define-relational-method  '&=  fix:=  flo:=  %=)
   (define-relational-method  '&>  fix:>  flo:>  %>))
 
-(let ((type:eqv?-is-eq? (type:or (type:not type:number) type:fixnum))
+(let ((&=  (make-primitive-procedure '&=))
+      (EQ? (make-primitive-procedure 'EQ?))
+      (INT= (make-primitive-procedure 'INTEGER-EQUAL?)))
+  (define-typerew-binary-variants-type-method  &=
+    type:number                 type:number             type:boolean
+    effect:none)
+  (define-typerew-binary-variants-type-method  INT=
+    type:exact-integer          type:exact-integer      type:boolean
+    effect:none)
+  (define-typerew-binary-variants-replacement-method  &=
+    ;; Representation note: EQ? works for comparing any exact number to a
+    ;; fixnum because the generic arithetic canonocalizes values to
+    ;; fixnums if possible.
+    type:fixnum             type:exact-number       type:any    EQ?
+    type:exact-number       type:fixnum             type:any    EQ?
+    type:flonum             type:flonum             type:any    flo:=
+    (type:not type:fixnum)  type:any                type:any    %=
+    type:any                (type:not type:fixnum)  type:any    %=)  
+  (define-typerew-binary-variants-replacement-method  INT=
+    type:fixnum             type:exact-integer      type:any    EQ?
+    type:exact-integer      type:fixnum             type:any    EQ?))    
+
+(define-typerew-unary-variants-type-method
+  (make-primitive-procedure 'INTEGER-ZERO?)
+  type:exact-integer  type:any   (make-primitive-procedure 'EQ?))
+
+
+(let ((type:eqv?-is-eq?
+       (type:or (type:not type:number) type:fixnum))
+      (type:equal?-is-eq?
+       (type:or* type:fixnum type:character type:tc-constant type:symbol))
       (EQ?              (make-primitive-procedure 'EQ?)))
+
   (define-typerew-binary-variants-type-method 'EQV?
-    effect:none
-    type:eqv?-is-eq?   type:any            type:boolean      EQ?
-    type:any           type:eqv?-is-eq?    type:boolean      EQ?
-    type:any           type:any            type:boolean      #F))
+    type:any           type:any           type:boolean      effect:none)
+
+  (define-typerew-binary-variants-type-method 'EQUAL?
+    type:any           type:any           type:boolean      effect:none)
+
+  (define-typerew-binary-variants-replacement-method 'EQV?
+    type:eqv?-is-eq?   type:any           type:any      EQ?
+    type:any           type:eqv?-is-eq?   type:any      EQ?)
+
+  (define-typerew-binary-variants-replacement-method 'EQUAL?
+    type:equal?-is-eq?   type:any             type:any      EQ?
+    type:any             type:equal?-is-eq?   type:any      EQ?))
 
 (let ()
   (define (def-unary-selector name asserted-type  type-check-class
