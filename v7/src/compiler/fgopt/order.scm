@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.10 1988/12/12 21:51:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.11 1989/04/21 16:32:10 markf Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -39,19 +39,36 @@ MIT in each case. |#
 (define (subproblem-ordering parallels)
   (for-each
    (lambda (parallel)
-     (let ((previous-edges (node-previous-edges parallel))
-	   (next-edge (snode-next-edge parallel)))
-       (let ((rest
-	      (or (edge-next-node next-edge)
-		  (error "PARALLEL node missing next" parallel))))
-	 (edges-disconnect-right! previous-edges)
-	 (edge-disconnect! next-edge)
-	 (edges-connect-right!
-	  previous-edges
-	  (order-subproblems/application (parallel-application-node parallel)
-					 (parallel-subproblems parallel)
-					 rest)))))
+     (order-parallel! parallel false))
    parallels))
+
+(define (order-parallel! parallel constraints)
+  (fluid-let ((*current-constraints* constraints))
+    (let ((previous-edges (node-previous-edges parallel))
+	  (next-edge (snode-next-edge parallel)))
+      (let ((rest
+	     (edge-next-node next-edge)))
+	(if rest
+	    (begin
+	      (edges-disconnect-right! previous-edges)
+	      (edge-disconnect! next-edge)
+	      (with-values
+		  (lambda ()
+		    (order-subproblems/application
+		     (parallel-application-node parallel)
+		     (parallel-subproblems parallel)
+		     rest))
+		(lambda (cfg subproblem-order)
+		  subproblem-order
+		  (edges-connect-right! previous-edges cfg)
+		  cfg))))))))
+
+(define *current-constraints*)
+
+(define (order-subproblems-per-current-constraints subproblems)
+  (if *current-constraints*
+      (order-per-constraints subproblems *current-constraints*)
+      subproblems))
 
 (define (order-subproblems/application application subproblems rest)
   (case (application-type application)
@@ -61,7 +78,9 @@ MIT in each case. |#
 	  order-subproblems/out-of-line)
       application subproblems rest))
     ((RETURN)
-     (linearize-subproblems! continuation-type/effect subproblems rest))
+     (values
+      (linearize-subproblems! continuation-type/effect subproblems rest)
+      subproblems))
     (else
      (error "Unknown application type" application))))
 
@@ -113,43 +132,53 @@ MIT in each case. |#
 	  (operands
 	   (list-filter-indices (cdr subproblems) (inliner/operands inliner))))
       (set-inliner/operands! inliner operands)
-      (linearize-subproblem!
-       continuation-type/effect
-       operator
-       (with-values
-	   (lambda ()
-	     (discriminate-items operands subproblem-simple?))
-	 (lambda (simple complex)
-	   (if (null? complex)
-	       (begin
-		 (inline-subproblem-types! context
-					   simple
-					   continuation-type/register)
-		 (linearize-subproblems simple rest))
-	       (let ((push-set (cdr complex))
-		     (value-set (cons (car complex) simple)))
-		 (inline-subproblem-types! context
-					   push-set
-					   continuation-type/push)
-		 (inline-subproblem-types! context
-					   value-set
-					   continuation-type/register)
-		 (linearize-subproblems
-		  push-set
+      (with-values
+	  (lambda ()
+	    (discriminate-items operands subproblem-simple?))
+	(lambda (simple complex)
+	  (if (null? complex)
+	      (begin
+		(inline-subproblem-types! context
+					  simple
+					  continuation-type/register)
+		(values
+		 (linearize-subproblem!
+		  continuation-type/effect
+		  operator
+		  (linearize-subproblems simple rest))
+		 (cons operator simple)))
+	      (let ((push-set (cdr complex))
+		    (value-set
+		     (cons (car complex)
+			   (order-subproblems-per-current-constraints
+			    simple))))
+		(inline-subproblem-types! context
+					  push-set
+					  continuation-type/push)
+		(inline-subproblem-types! context
+					  value-set
+					  continuation-type/register)
+		(values
+		 (linearize-subproblem!
+		  continuation-type/effect
+		  operator
 		  (linearize-subproblems
-		   value-set
-		   (scfg*node->node!
-		    (scfg*->scfg!
-		     (reverse!
-		      (map (lambda (subproblem)
-			     (let ((continuation
-				    (subproblem-continuation subproblem)))
-			       (if (eq? (continuation*/type continuation)
-					continuation-type/effect)
-				   (make-null-cfg)
-				   (make-pop continuation))))
-			   push-set)))
-		    rest)))))))))))
+		   push-set
+		   (linearize-subproblems
+		    value-set
+		    (scfg*node->node!
+		     (scfg*->scfg!
+		      (reverse!
+		       (map (lambda (subproblem)
+			      (let ((continuation
+				     (subproblem-continuation subproblem)))
+				(if (eq? (continuation*/type continuation)
+					 continuation-type/effect)
+				    (make-null-cfg)
+				    (make-pop continuation))))
+			    push-set)))
+		     rest))))
+		 (cons operator (append push-set value-set))))))))))
 
 (define (inline-subproblem-types! context subproblems continuation-type)
   (for-each
@@ -174,17 +203,29 @@ MIT in each case. |#
        (car subproblems)
        (cdr subproblems)
        (combination/model combination))
-    (lambda (effect-subproblems non-effect-subproblems)
-      (set-combination/frame-size! combination (length non-effect-subproblems))
-      (linearize-subproblems!
-       continuation-type/effect
-       effect-subproblems
-       (order-subproblems/maybe-overwrite-block
-	combination non-effect-subproblems rest
-	(lambda ()
-	  (linearize-subproblems! continuation-type/push
-				  non-effect-subproblems
-				  rest)))))))
+    (lambda (effect-subproblems push-subproblems register-subproblems)
+      (set-combination/frame-size! combination (length push-subproblems))
+      (with-values
+	  (lambda ()
+	    (let ((rest
+		   (linearize-subproblems! continuation-type/register
+					   register-subproblems
+					   rest)))
+	      (order-subproblems/maybe-overwrite-block
+	       combination push-subproblems rest
+	       (lambda ()
+		 (values (linearize-subproblems! continuation-type/push
+						 push-subproblems
+						 rest)
+			 push-subproblems)))))
+	(lambda (cfg push-subproblem-order)
+	  (values (linearize-subproblems!
+		   continuation-type/effect
+		   effect-subproblems
+		   cfg)
+		  (append effect-subproblems
+			  push-subproblem-order
+			  register-subproblems)))))))
 
 (define (combination-ordering context operator operands model)
   (let ((standard
@@ -193,7 +234,8 @@ MIT in each case. |#
 			    operator
 			    (operator-needed? (subproblem-rvalue operator))
 			    '()
-			    (reverse operands))))
+			    (reverse operands)
+			    '())))
 	(optimized
 	 (lambda ()
 	   (optimized-combination-ordering context operator operands model)))
@@ -221,12 +263,15 @@ MIT in each case. |#
 			 (stack-block/static-link? model-block))
 		    (lambda ()
 		      (with-values thunk
-			(lambda (effect-subproblems non-effect-subproblems)
+			(lambda (effect-subproblems
+				 push-subproblems
+				 register-subproblems)
 			  (values
 			   effect-subproblems
 			   (cons (new-subproblem context
 						 (block-parent model-block))
-				 non-effect-subproblems)))))
+				 push-subproblems)
+			   register-subproblems))))
 		    thunk))))
 	standard)))
 
@@ -235,12 +280,20 @@ MIT in each case. |#
       (lambda ()
 	(sort-subproblems/out-of-line operands callee))
     (lambda (n-unassigned integrated non-integrated)
-      (handle-operator
-       context
-       operator
-       (operator-needed? (subproblem-rvalue operator))
-       integrated
-       (make-unassigned-subproblems context n-unassigned non-integrated)))))
+      (with-values
+	  (lambda ()
+	    (sort-subproblems/pass-in-registers
+	     non-integrated
+	     operator
+	     operands))
+	(lambda (registerizable non-registerizable)
+	  (handle-operator
+	   context
+	   operator
+	   (operator-needed? (subproblem-rvalue operator))
+	   integrated
+	   (make-unassigned-subproblems context n-unassigned non-registerizable)
+	   registerizable))))))
 
 (define (known-combination-ordering context operator operands procedure)
   (if (and (not (procedure/closure? procedure))
@@ -265,14 +318,22 @@ MIT in each case. |#
 	     "known-combination-ordering: wrong number of arguments"
 	     procedure n-supplied n-expected))
 	(- n-expected n-supplied)))
-    (reverse operands))))
+    (reverse operands))
+   '()))
 
-(define (handle-operator context operator operator-needed? effect non-effect)
+(define (handle-operator context operator operator-needed?
+			 effect push register)
   (if operator-needed?
-      (values effect (append! non-effect (list operator)))
+      (values
+       (order-subproblems-per-current-constraints effect)
+       (append! push (list operator))
+       (order-subproblems-per-current-constraints register))
       (begin
 	(update-subproblem-contexts! context operator)
-	(values (cons operator effect) non-effect))))
+	(values
+	 (order-subproblems-per-current-constraints (cons operator effect))
+	 push
+	 (order-subproblems-per-current-constraints register)))))
 
 (define (make-unassigned-subproblems context n rest)
   (let ((unassigned (make-constant (make-unassigned-reference-trap))))
@@ -371,6 +432,24 @@ MIT in each case. |#
 			  integrated
 			  (cons (car subproblems) non-integrated)))))
 
+(define (sort-subproblems/pass-in-registers subproblems operator
+					    operands)
+  (let ((operator-value
+	 (rvalue-known-value
+	  (subproblem-rvalue operator))))
+    (if (and (rvalue/procedure? operator-value)
+	     (procedure-maybe-registerizable? operator-value))
+	(with-values
+	    (lambda ()
+	      (discriminate-items subproblems subproblem-simple?))
+	  (lambda (simple complex)
+	    (connect-subproblems-to-parameters! operator-value
+						operands
+						simple
+						complex)))
+	(values '() subproblems))))
+
+
 (define (operator-needed? operator)
   (let ((callee (rvalue-known-value operator)))
     (cond ((not callee)
@@ -410,3 +489,53 @@ MIT in each case. |#
 	     (and (reference-context? context*)
 		  (check-old context*)))
 	   (set-procedure-closure-context! rvalue context))))))
+
+(define (connect-subproblems-to-parameters! operator operands simple
+					    complex)
+  (let ((subproblems->requireds
+	 (map cons
+	      operands
+	      (cdr (procedure-original-required operator))))
+	(registerable-variables (parameter-analysis operator)))
+
+    (define (reorder-subproblems subproblems)
+      (reverse
+       (list-transform-positive
+	   operands
+	 (lambda (operand)
+	   (memq operand subproblems)))))
+
+    (define (good-subproblem?! subproblem)
+      (let ((parameter-variable
+	     (cdr (assq subproblem subproblems->requireds))))
+	(and (not (variable-stack-overwrite-target? parameter-variable))
+	     (eq-set-subset? (list->eq-set (list parameter-variable))
+			     registerable-variables)
+	     (begin
+	       (set-variable-register!
+		parameter-variable
+		(delay (subproblem-register subproblem)))
+	       (set-subproblem-type! subproblem
+				     continuation-type/register)
+	       true))))
+
+    (let loop ((subproblems simple)
+	       (in-register '())
+	       (not-in-register complex))
+      (if (null? subproblems)
+	  (let ((squeeze-it-in
+		 (list-search-positive complex good-subproblem?!))
+		(ordered-pushes (reorder-subproblems not-in-register)))
+	    (if squeeze-it-in
+		(values (cons squeeze-it-in in-register)
+			(delq squeeze-it-in ordered-pushes))
+		(values in-register ordered-pushes)))
+	  (let ((subproblem (car subproblems)))
+	    (if (good-subproblem?! subproblem)
+		(loop (cdr subproblems)
+		      (cons subproblem in-register)
+		      not-in-register)
+		(loop (cdr subproblems)
+		      in-register
+		      (cons subproblem not-in-register))))))))
+				
