@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: txtprp.scm,v 1.13 1993/10/06 00:59:04 cph Exp $
+;;;	$Id: txtprp.scm,v 1.14 1993/10/12 00:18:15 cph Exp $
 ;;;
 ;;;	Copyright (c) 1993 Massachusetts Institute of Technology
 ;;;
@@ -447,25 +447,9 @@
 (define-integrable (properties=? x y)
   (rb-tree/equal? x y datum=?))
 
-(define-integrable key=?
-  eq?)
-
-(define (key<? x y)
-  (let ((sx (system-pair-car x))
-	(sy (system-pair-car y)))
-    (let ((lx (string-length sx))
-	  (ly (string-length sy)))
-      (let ((l (if (fix:< lx ly) lx ly)))
-	(let loop ((i 0))
-	  (cond ((fix:= i l)
-		 (fix:< lx ly))
-		((fix:= (vector-8b-ref sx i) (vector-8b-ref sy i))
-		 (loop (fix:+ i 1)))
-		(else
-		 (fix:< (vector-8b-ref sx i) (vector-8b-ref sy i)))))))))
-
-(define-integrable datum=?
-  eqv?)
+(define-integrable key=? eq?)
+(define-integrable key<? symbol<?)
+(define-integrable datum=? eqv?)
 
 ;;;; Intervals
 
