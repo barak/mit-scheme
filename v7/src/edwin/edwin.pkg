@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.211 1997/05/18 08:00:10 cph Exp $
+$Id: edwin.pkg,v 1.212 1997/10/22 05:10:46 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -954,7 +954,7 @@ MIT in each case. |#
 	  run-synchronous-process))
 
 (os-type-case
- ((dos nt)
+ ((dos)
   (define-package (edwin dosjob)
     (files "doscom" "dosshell")
     (parent (edwin)))))
@@ -1148,7 +1148,7 @@ MIT in each case. |#
 	    rcs-number-head
 	    rcs-number-length)))
 
- ((dos nt)
+ ((nt)
   (global-definitions "../win32/win32")
 
   (extend-package (edwin)
@@ -1164,7 +1164,7 @@ MIT in each case. |#
     (files "ansi" "bios"))
 
   (extend-package (edwin process)
-    (files "dosproc"))
+    (files "process"))
 
   (define-package (edwin screen win32)
     (files "win32")

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: loadef.scm,v 1.31 1997/04/11 04:44:07 cph Exp $
+;;;	$Id: loadef.scm,v 1.32 1997/10/22 05:10:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
@@ -289,7 +289,7 @@ is open the that server, its buffer is selected.")
 
 ;;;; DOS-specific commands
 
-(if (memq microcode-id/operating-system '(DOS NT))
+(if (memq microcode-id/operating-system '(DOS))
     (begin
       (define-library 'DOSCOM
 	'("doscom" (EDWIN DOSJOB)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.59 1997/03/07 23:34:45 cph Exp $
+$Id: edwin.ldr,v 1.60 1997/10/22 05:10:53 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -78,7 +78,7 @@ MIT in each case. |#
       (define string-member? (member-procedure string=?))
       (define (boolean-and a b) (and a b))
 
-      (if (memq (lookup 'OS-TYPE) '(UNIX OS/2))
+      (if (memq (lookup 'OS-TYPE) '(UNIX OS/2 NT))
 	  (begin
 	    ;; #T means no error if not present.
 	    (load-option 'KRYPT #t)
@@ -194,7 +194,7 @@ MIT in each case. |#
 		   '((UNIX . "process")
 		     (OS/2 . "process")
 		     (DOS . "dosproc")
-		     (NT . "dosproc"))
+		     (NT . "process"))
 		   (->environment '(EDWIN PROCESS)))
 
 	(load "mousecom" environment)
