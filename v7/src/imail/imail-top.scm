@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.273 2001/09/28 15:35:11 cph Exp $
+;;; $Id: imail-top.scm,v 1.274 2001/09/29 03:00:13 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -2241,17 +2241,19 @@ Negative argument means search in reverse."
 ;;;; Probe-folder thread
 
 (define (start-probe-folder-thread folder)
-  (stop-probe-folder-thread folder)
-  (without-interrupts
-   (lambda ()
-     (let ((interval (ref-variable imail-update-interval #f)))
-       (if interval
-	   (store-property! folder
-			    'PROBE-REGISTRATION
-			    (start-standard-polling-thread
-			     (* 1000 interval)
-			     (probe-folder-output-processor
-			      (weak-cons folder unspecific)))))))))
+  (if (not (get-property folder 'PROBE-REGISTRATION #f))
+      (begin
+	(stop-probe-folder-thread folder)
+	(without-interrupts
+	 (lambda ()
+	   (let ((interval (ref-variable imail-update-interval #f)))
+	     (if interval
+		 (store-property! folder
+				  'PROBE-REGISTRATION
+				  (start-standard-polling-thread
+				   (* 1000 interval)
+				   (probe-folder-output-processor
+				    (weak-cons folder unspecific)))))))))))
 
 (define ((probe-folder-output-processor folder))
   (let ((folder (weak-car folder)))
