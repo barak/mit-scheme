@@ -1,8 +1,0 @@
-#!/bin/sh
-
-tex sos.texinfo
-texindex sos.cp sos.fn sos.ky sos.pg sos.tp sos.vr
-tex sos.texinfo
-texindex sos.cp sos.fn sos.ky sos.pg sos.tp sos.vr
-tex sos.texinfo
-# hopefully by now all the references have reached their correct pages
