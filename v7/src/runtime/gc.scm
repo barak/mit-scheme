@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gc.scm,v 14.12 1993/09/20 19:12:59 gjr Exp $
+$Id: gc.scm,v 14.13 1993/09/20 19:21:47 gjr Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -123,6 +123,7 @@ MIT in each case. |#
 				       default-safety-margin)))
 		 (cond ((not (pair? result))
 			;; Wrong phase -- try again.
+			(gc-flip)
 			(loop))
 		       ((not (car result))
 			(error "PURIFY: not enough room in constant space"
