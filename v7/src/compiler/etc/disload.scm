@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: disload.scm,v 1.9 2001/08/09 03:06:55 cph Exp $
+$Id: disload.scm,v 1.10 2001/12/19 01:49:45 cph Exp $
 
 Copyright (c) 1993, 1999, 2001 Massachusetts Institute of Technology
 
@@ -50,7 +50,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    (link-variables disenv name compinfo name))
 
 	  (if (not (environment-bound? parenv 'addressing-granularity))
-	      (local-assignment
+	      (environment-define
 	       parenv
 	       'addressing-granularity
 	       (if (default-object? addressing-granularity)

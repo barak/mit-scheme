@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.7 2001/11/09 21:37:10 cph Exp $
+;;; $Id: compile.scm,v 1.8 2001/12/19 01:48:38 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -24,9 +24,9 @@
 (load-option 'SOS)
 
 (if (not (environment-bound? system-global-environment 'XML-PARSER-MACROS))
-    (local-assignment system-global-environment
-		      'XML-PARSER-MACROS
-		      (make-parser-macros #f)))
+    (environment-define system-global-environment
+			'XML-PARSER-MACROS
+			(make-parser-macros #f)))
 
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debug.scm,v 1.56 2001/03/21 19:25:22 cph Exp $
+;;; $Id: debug.scm,v 1.57 2001/12/19 01:45:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-2001 Massachusetts Institute of Technology
 ;;;
@@ -1630,15 +1630,13 @@ once it has been renamed, it will not be deleted automatically.")
 	   (debugger-newline port)
 	   (for-each (lambda (name)
 		       (myprint-binding name
-					(environment-lookup environment name)
+					(safe-lookup environment name)
 					port))
 	     names))))
     (cond ((null? names)
 	   (write-string " has no bindings" port))
 	  ((and package
-		(let ((limit
-		       (ref-variable
-			environment-package-limit)))
+		(let ((limit (ref-variable environment-package-limit)))
 		  (and limit
 		       (let ((n (length names)))
 			 (and (>= n limit)
@@ -1658,6 +1656,11 @@ once it has been renamed, it will not be deleted automatically.")
   (write-string
    "---------------------------------------------------------------------"
    port))
+
+(define (safe-lookup environment name)
+  (if (environment-assigned? environment name)
+      (environment-lookup environment name)
+      (make-unassigned-reference-trap)))
 
 ;;;This does some stuff who's end product is to pp the bindings
 (define (myprint-binding name value port)
@@ -1765,7 +1768,7 @@ once it has been renamed, it will not be deleted automatically.")
 			   (if (environment-bound? env name)
 			       (print-binding-with-ind
 				name
-				(environment-lookup env name)
+				(safe-lookup env name)
 				"  "
 				port)
 			       (loop (environment-parent env)))))
@@ -1825,7 +1828,7 @@ once it has been renamed, it will not be deleted automatically.")
 	     (for-each (lambda (name)
 			 (print-binding-with-ind
 			  name
-			  (environment-lookup environment name)
+			  (safe-lookup environment name)
 			  ind
 			  port))
 		       names))))

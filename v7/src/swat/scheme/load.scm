@@ -27,7 +27,7 @@
   (package/add-child!  (find-package '())  'SWAT  swat-env)
 
   (for-each (lambda (export)
-	      (local-assignment swat-env export 'UNASSIGNED)
+	      (environment-define swat-env export 'UNASSIGNED)
 	      (link-variables (package/environment (find-package '())) export
 			      swat-env export))
     ;; All of SWAT's exported names.  This list need pruning

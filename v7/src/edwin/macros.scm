@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: macros.scm,v 1.66 2001/12/18 21:35:11 cph Exp $
+;;; $Id: macros.scm,v 1.67 2001/12/19 01:46:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -65,10 +65,9 @@
 (syntax-table/define edwin-environment 'COMMAND-DEFINED?
   (lambda (name)
     (let ((variable-name (command-name->scheme-name (canonicalize-name name))))
-      `(let ((env (->environment '(EDWIN))))
-	 (and (environment-bound? env ',variable-name)
-	      (not (lexical-unassigned? env
-					',variable-name)))))))
+      `(LET ((_ENV (->ENVIRONMENT '(EDWIN))))
+	 (AND (ENVIRONMENT-BOUND? _ENV ',variable-name)
+	      (ENVIRONMENT-ASSIGNED? _ENV ',variable-name))))))
 
 (define (command-name->scheme-name name)
   (symbol-append 'EDWIN-COMMAND$ name))

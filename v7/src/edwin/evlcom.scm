@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: evlcom.scm,v 1.63 2000/03/23 03:19:09 cph Exp $
+;;; $Id: evlcom.scm,v 1.64 2001/12/19 01:46:03 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Evaluation Commands
 ;;; Package: (edwin)
@@ -393,14 +394,15 @@ Has no effect if evaluate-in-inferior-repl is false."
 	  ((syntax-table? syntax-table)
 	   syntax-table)
 	  ((symbol? syntax-table)
-	   (or (and (not (lexical-unreferenceable? environment syntax-table))
+	   (or (and (environment-bound? environment syntax-table)
+		    (environment-assigned? environment syntax-table)
 		    (let ((syntax-table
-			   (lexical-reference environment syntax-table)))
+			   (environment-lookup environment syntax-table)))
 		      (and (syntax-table? syntax-table)
 			   syntax-table)))
-	       (editor-error "Undefined syntax table: " syntax-table)))
+	       (editor-error "Undefined syntax table" syntax-table)))
 	  (else
-	   (editor-error "Illegal syntax table: " syntax-table)))))
+	   (editor-error "Illegal syntax table" syntax-table)))))
 
 (define-variable run-light
   "Scheme run light.  Not intended to be modified by users.

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: autold.scm,v 1.60 2001/12/18 22:17:19 cph Exp $
+;;;$Id: autold.scm,v 1.61 2001/12/19 01:45:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -47,11 +47,11 @@
 
 (define (define-autoload-procedure name package library-name)
   (let ((environment (->environment package)))
-    (local-assignment environment
-		      name
-		      (make-autoloading-procedure
-		       library-name
-		       (lambda () (lexical-reference environment name))))))
+    (environment-define environment
+			name
+			(make-autoloading-procedure
+			 library-name
+			 (lambda () (environment-lookup environment name))))))
 
 (define (define-autoload-major-mode name super-mode-name display-name
 	  library-name description)
@@ -62,9 +62,9 @@
 	       (make-autoloading-procedure library-name
 					   (lambda ()
 					     (mode-initialization mode)))))
-  (local-assignment (->environment '(EDWIN))
-		    (mode-name->scheme-name name)
-		    mode)
+  (environment-define (->environment '(EDWIN))
+		      (mode-name->scheme-name name)
+		      mode)
   name)
 
 (define (define-autoload-minor-mode name display-name library-name description)
@@ -73,9 +73,9 @@
 	       (make-autoloading-procedure library-name
 					   (lambda ()
 					     (mode-initialization mode)))))
-  (local-assignment (->environment '(EDWIN))
-		    (mode-name->scheme-name name)
-		    mode)
+  (environment-define (->environment '(EDWIN))
+		      (mode-name->scheme-name name)
+		      mode)
   name)
 
 (define (autoloading-mode? mode)
@@ -87,9 +87,9 @@
 		  (make-autoloading-procedure library-name
 					      (lambda ()
 						(command-procedure command)))))
-  (local-assignment (->environment '(EDWIN))
-		    (command-name->scheme-name name)
-		    command)
+  (environment-define (->environment '(EDWIN))
+		      (command-name->scheme-name name)
+		      command)
   name)
 
 (define (autoloading-command? command)
