@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.51 2001/12/24 04:21:50 cph Exp $
+$Id: syntax.scm,v 14.52 2001/12/29 04:16:32 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -452,7 +452,35 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	     (make-thunk (make-scode-sequence transfers-in))
 	     (make-thunk (syntax-subsequence body))
 	     (make-thunk (make-scode-sequence transfers-out))))))))
-
+
+(define (syntax-fluid-bindings/shallow bindings receiver)
+  (if (pair? bindings)
+      (syntax-fluid-bindings/shallow (cdr bindings)
+	(lambda (names values transfers-in transfers-out)
+	  (let ((binding (car bindings)))
+	    (if (pair? binding)
+		(let ((transfer
+		       (let ((reference (syntax-subexpression (car binding))))
+			 (let ((assignment (invert-expression reference)))
+			   (lambda (target source)
+			     (make-assignment
+			      target
+			      (assignment (make-assignment source)))))))
+		      (value (expand-binding-value (cdr binding)))
+		      (inside-name
+		       (string->uninterned-symbol "INSIDE-PLACEHOLDER"))
+		      (outside-name
+		       (string->uninterned-symbol "OUTSIDE-PLACEHOLDER")))
+		  (receiver (cons* inside-name outside-name names)
+			    (cons* value (make-unassigned-reference-trap)
+				   values)
+			    (cons (transfer outside-name inside-name)
+				  transfers-in)
+			    (cons (transfer inside-name outside-name)
+				  transfers-out)))
+		(syntax-error "binding not a pair" binding)))))
+      (receiver '() '() '() '())))
+
 ;;;; Extended Assignment Syntax
 
 (define (invert-expression target)
