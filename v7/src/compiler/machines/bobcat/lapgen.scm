@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.182 1987/06/13 20:56:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.183 1987/06/15 22:03:23 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -186,7 +186,7 @@ MIT in each case. |#
 	       (begin (warn "Needed to load indirect register!" register)
 		      ;; Should specify preference for ADDRESS but will
 		      ;; accept DATA if no ADDRESS registers available.
-		      (allocate-alias-register! register 'ADDRESS))))
+		      (load-alias-register! register 'ADDRESS))))
        offset)))
 
 (define (coerce->any register)
