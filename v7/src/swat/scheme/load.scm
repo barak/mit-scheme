@@ -28,10 +28,8 @@
 
   (for-each (lambda (export)
 	      (local-assignment swat-env export 'UNASSIGNED)
-	      (environment-link-name
-	       (package/environment (find-package '()))
-	       swat-env
-	       export))
+	      (link-variables (package/environment (find-package '())) export
+			      swat-env export))
     ;; All of SWAT's exported names.  This list need pruning
     '(*-alert-structure-size-*
       *-alert.function-*

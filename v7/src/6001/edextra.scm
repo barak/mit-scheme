@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.32 2000/12/01 06:41:21 cph Exp $
+$Id: edextra.scm,v 1.33 2001/08/09 03:07:29 cph Exp $
 
-Copyright (c) 1992-2000 Massachusetts Institute of Technology
+Copyright (c) 1992-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; 6.001: Edwin Extensions
@@ -78,7 +79,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		     (kill-buffer buffer)
 		     (k unspecific))
 		 (lambda ()
-		   (%insert-file (buffer-start buffer) pathname false)))
+		   (%insert-file (buffer-start buffer) pathname #f)))
 	       (set-buffer-point! buffer (buffer-start buffer))
 	       (select-buffer buffer))))))
     (if hairy-floppy-stuff?
@@ -88,7 +89,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   "Logout from the 6.001 Scheme system."
   ()
   (lambda ()
-    (fluid-let ((paranoid-exit? false))
+    (fluid-let ((paranoid-exit? #f))
       ((ref-command save-buffers-kill-scheme) #f))))
 
 (define (restore-focus-to-editor)
@@ -106,9 +107,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (else
        (error "Unsupported graphics type:" name)))))
 
-(environment-link-name '(student pictures)
-		       '(edwin)
-		       'restore-focus-to-editor)
+(link-variables '(student pictures) 'restore-focus-to-editor
+		'(edwin) 'restore-focus-to-editor)
 
 (if (eq? 'UNIX microcode-id/operating-system)
     (load-edwin-library 'PRINT))
@@ -128,7 +128,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ((message-wrapper #f "Spooling")
    (lambda ()
      (shell-command
-      false false false false
+      #f #f #f #f
       (string-append (->namestring
 		      (merge-pathnames "bin/print-given-x-window"
 				       student-root-directory))
@@ -141,7 +141,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ((message-wrapper #f "Click desired window")
    (lambda ()
      (shell-command
-      false false false false
+      #f #f #f #f
       (string-append (->namestring
 		      (merge-pathnames "bin/print-pointed-x-window"
 				       student-root-directory))
@@ -381,22 +381,22 @@ option the file from the problem set will not be installed.
 
 (set! default-homedir-pathname (lambda () student-work-directory))
 
-(set! editor-can-exit? false)
-(set! scheme-can-quit? false)
-(set! paranoid-exit? true)
+(set! editor-can-exit? #f)
+(set! scheme-can-quit? #f)
+(set! paranoid-exit? #t)
 
-(set-variable! enable-transcript-buffer true)
-(set-variable! evaluate-in-inferior-repl true)
-(set-variable! repl-error-decision true)
-(set-variable! version-control true)
-(set-variable! trim-versions-without-asking true)
+(set-variable! enable-transcript-buffer #t)
+(set-variable! evaluate-in-inferior-repl #t)
+(set-variable! repl-error-decision #t)
+(set-variable! version-control #t)
+(set-variable! trim-versions-without-asking #t)
 
 #|
 ;; No longer needed.
 (if (eq? 'UNIX microcode-id/operating-system)
     (set-variable!
      mail-header-function
-     (let ((default-reply-to false))
+     (let ((default-reply-to #f))
        (lambda (point)
 	 (let ((reply-to
 		(prompt-for-string "Please enter an email address for replies"
@@ -417,5 +417,5 @@ option the file from the problem set will not be installed.
 	       (cons (lambda (name)
 		       (find-file-noselect
 			(merge-pathnames name student-work-directory)
-			true))
+			#t))
 		     (ref-variable select-buffer-not-found-hooks)))
