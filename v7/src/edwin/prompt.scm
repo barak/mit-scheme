@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.141 1991/05/16 23:06:17 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.142 1991/05/17 00:29:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -242,12 +242,21 @@ recursive minibuffers."
 
 (define (%prompt-for-string prompt mode)
   (prompt-for-typein
-   (string-append
-    prompt
-    (if (and *default-string* (eq? *default-type* 'VISIBLE-DEFAULT))
-	(string-append " (default is: \"" *default-string* "\")")
-	"")
-    ": ")
+   (cond ((and (pair? prompt)
+	       (string? (car prompt))
+	       (null? (cdr prompt)))
+	  (car prompt))
+	 ((string? prompt)
+	  (string-append
+	   prompt
+	   (if (and *default-string* (eq? *default-type* 'VISIBLE-DEFAULT))
+	       (string-append " (default is: \"" *default-string* "\")")
+	       "")
+	   ": "))
+	 (else
+	  (error:wrong-type-argument prompt
+				     "prompt string"
+				     'PROMPT-FOR-STRING)))
    true
    (let ((thunk (typein-editor-thunk mode)))
      (if (eq? *default-type* 'INSERTED-DEFAULT)
