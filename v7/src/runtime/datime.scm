@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.37 2003/10/01 18:07:38 cph Exp $
+$Id: datime.scm,v 14.38 2003/11/25 23:55:33 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1993 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1999,2000,2003 Massachusetts Institute of Technology
@@ -208,31 +208,30 @@ USA.
   ;; "Standard for the Format of ARPA Internet Text Messages",
   ;; provided that time-zone information is available from the C
   ;; library.
-  (let ((d2 (lambda (n) (string-pad-left (number->string n) 2 #\0))))
-    (string-append (let ((day (decoded-time/day-of-week dt)))
-		     (if day
-			 (string-append (day-of-week/short-string day) ", ")
-			 ""))
-		   (number->string (decoded-time/day dt))
-		   " "
-		   (month/short-string (decoded-time/month dt))
-		   " "
-		   (number->string (decoded-time/year dt))
-		   " "
-		   (d2 (decoded-time/hour dt))
-		   ":"
-		   (d2 (decoded-time/minute dt))
-		   ":"
-		   (d2 (decoded-time/second dt))
-		   (let ((zone (decoded-time/zone dt)))
-		     (if zone
-			 (string-append
-			  " "
-			  (time-zone->string
-			   (if (decoded-time/daylight-savings-time? dt)
-			       (- zone 1)
-			       zone)))
-			 "")))))
+  (string-append (let ((day (decoded-time/day-of-week dt)))
+		   (if day
+		       (string-append (day-of-week/short-string day) ", ")
+		       ""))
+		 (number->string (decoded-time/day dt))
+		 " "
+		 (month/short-string (decoded-time/month dt))
+		 " "
+		 (number->string (decoded-time/year dt))
+		 " "
+		 (d2 (decoded-time/hour dt))
+		 ":"
+		 (d2 (decoded-time/minute dt))
+		 ":"
+		 (d2 (decoded-time/second dt))
+		 (let ((zone (decoded-time/zone dt)))
+		   (if zone
+		       (string-append
+			" "
+			(time-zone->string
+			 (if (decoded-time/daylight-savings-time? dt)
+			     (- zone 1)
+			     zone)))
+		       ""))))
 
 (define (string->decoded-time string)
   ;; STRING must be in RFC-822 format.
@@ -285,8 +284,7 @@ USA.
   (if (not (time-zone? tz))
       (error:wrong-type-argument tz "time zone" 'TIME-ZONE->STRING))
   (let ((minutes (round (* 60 (- tz)))))
-    (let ((qr (integer-divide (abs minutes) 60))
-	  (d2 (lambda (n) (string-pad-left (number->string n) 2 #\0))))
+    (let ((qr (integer-divide (abs minutes) 60)))
       (string-append (if (< minutes 0) "-" "+")
 		     (d2 (integer-divide-quotient qr))
 		     (d2 (integer-divide-remainder qr))))))
@@ -405,25 +403,24 @@ USA.
     (vector-ref v 0)))
 
 (define (decoded-time->iso8601-string dt)
-  (let ((d2 (lambda (n) (string-pad-left (number->string n) 2 #\0))))
-    (string-append (number->string (decoded-time/year dt))
-		   "-"
-		   (d2 (decoded-time/month dt))
-		   "-"
-		   (d2 (decoded-time/day dt))
-		   "T"
-		   (d2 (decoded-time/hour dt))
-		   ":"
-		   (d2 (decoded-time/minute dt))
-		   ":"
-		   (d2 (decoded-time/second dt))
-		   (let ((zone (decoded-time/zone dt)))
-		     (if zone
-			 (time-zone->string
-			  (if (decoded-time/daylight-savings-time? dt)
-			      (- zone 1)
-			      zone))
-			 "")))))
+  (string-append (number->string (decoded-time/year dt))
+		 "-"
+		 (d2 (decoded-time/month dt))
+		 "-"
+		 (d2 (decoded-time/day dt))
+		 " "
+		 (d2 (decoded-time/hour dt))
+		 ":"
+		 (d2 (decoded-time/minute dt))
+		 ":"
+		 (d2 (decoded-time/second dt))
+		 (let ((zone (decoded-time/zone dt)))
+		   (if zone
+		       (time-zone->string
+			(if (decoded-time/daylight-savings-time? dt)
+			    (- zone 1)
+			    zone))
+		       ""))))
 
 (define (universal-time->local-iso8601-string time)
   (decoded-time->iso8601-string (universal-time->local-decoded-time time)))
@@ -464,7 +461,8 @@ USA.
 				      (/ (vector-ref zone 2) 60))))))
      (complete
       (seq parse-8601-date
-	   "T" parse-8601-time
+	   (alt "T" " ")
+	   parse-8601-time
 	   (alt parse-8601-zone (values #f)))))))
 
 (define parse-8601-date
@@ -521,8 +519,12 @@ USA.
 			 (vector (vector 0 0 0)))
 		    (vector v)))
      (seq parse-8601-hour
-	  (alt (seq ":" parse-8601-minute ":" parse-8601-second)
-	       (seq parse-8601-minute parse-8601-second))))))
+	  (alt (seq ":" parse-8601-minute
+		    (alt (seq ":" parse-8601-second)
+			 (values 0)))
+	       (seq parse-8601-minute
+		    (alt parse-8601-second
+			 (values 0))))))))
 
 (define parse-8601-zone
   (*parser
@@ -655,6 +657,9 @@ USA.
     (cond ((< n 70) (+ 2000 n))
 	  ((< n 100) (+ 1900 n))
 	  (else n))))
+
+(define (d2 n)
+  (string-pad-left (number->string n) 2 #\0))
 
 ;; Upwards compatibility
 (define decode-universal-time universal-time->local-decoded-time)
