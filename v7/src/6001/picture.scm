@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: picture.scm,v 1.24 1997/12/30 01:53:33 cph Exp $
+$Id: picture.scm,v 1.25 1997/12/30 01:57:13 cph Exp $
 
 Copyright (c) 1991-95 Massachusetts Institute of Technology
 
@@ -248,6 +248,11 @@ MIT in each case. |#
 	    (else
 	     (error "ALLOCATE-GRAYS: not known display type" window))))))
 
+(define use-color? #f)
+(define 2pi (* 8 (atan 1 1)))
+(define color-saturation 1)
+(define minimum-color-intensity .5)
+
 (define (make-spectrum-palette n-levels encode-color)
   (make-initialized-vector n-levels
     (let ((step (/ (* 2/3 2pi) (- n-levels 2))))
@@ -263,10 +268,27 @@ MIT in each case. |#
 				  (/ index (- n-levels 1))))))
 	      encode-color))))))
 
-(define use-color? #f)
-(define 2pi (* 8 (atan 1 1)))
-(define color-saturation 1)
-(define minimum-color-intensity .5)
+(define (hsv->rgb h s v)
+  ;; H is in radians, S and V are in [0, 1].
+  ;; Returns three values, RGB, all in [0, 1].
+  (if (= 0 s)
+      (values v v v)
+      (let ((h
+	     (let ((2pi (* 8 (atan 1 1))))
+	       (let ((h/2pi (/ h 2pi)))
+		 (* (- h/2pi (floor h/2pi)) 6)))))
+	(let ((i (floor->exact h)))
+	  (let ((f (- h i)))
+	    (let ((p (* v (- 1 s)))
+		  (q (* v (- 1 (* s f))))
+		  (t (* v (- 1 (* s (- 1 f))))))
+	      (case i
+		((0) (values v t p))
+		((1) (values q v p))
+		((2) (values p v t))
+		((3) (values p q v))
+		((4) (values t p v))
+		((5) (values v p q)))))))))
 
 (define (linear-binner min-value max-value n-bins)
   (let ((min-value (exact->inexact min-value))
