@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.21 2003/07/25 17:24:22 cph Exp $
+$Id: xml-output.scm,v 1.22 2003/07/30 19:43:59 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -129,7 +129,7 @@ USA.
 	  (for-each (lambda (content) (%write-xml content ctx))
 		    contents)
 	  (emit-string "</" ctx)
-	  (write-xml-name (xml-element-name element) ctx)
+	  (write-xml-name name ctx)
 	  (emit-string ">" ctx))
 	(emit-string " />" ctx))))
 
@@ -204,7 +204,7 @@ USA.
 		 (lambda (type)
 		   (handle-iterator type
 		     (lambda (type)
-		       (if (symbol? type)
+		       (if (xml-name? type)
 			   (write-xml-name type ctx)
 			   (write-children type))))))
 		(handle-iterator
@@ -412,10 +412,10 @@ USA.
     n))
 
 (define (write-xml-name name ctx)
-  (emit-string (symbol-name name) ctx))
+  (emit-string (xml-name-string name) ctx))
 
 (define (xml-name-columns name)
-  (utf8-string-length (symbol-name name)))
+  (utf8-string-length (xml-name-string name)))
 
 (define (write-entity-value value col ctx)
   (if (xml-external-id? value)

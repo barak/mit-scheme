@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-chars.scm,v 1.5 2003/02/14 18:28:38 cph Exp $
+$Id: xml-chars.scm,v 1.6 2003/07/30 19:43:55 cph Exp $
 
-Copyright 2001 Massachusetts Institute of Technology
+Copyright 2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -384,7 +384,7 @@ USA.
 (define alphabet:name-initial
   (alphabet+ alphabet:xml-base-char
 	     alphabet:xml-ideographic
-	     (string->alphabet "_:")))
+	     (string->alphabet "_")))
 
 (define alphabet:name-subsequent		;[4]
   (alphabet+ alphabet:xml-base-char
