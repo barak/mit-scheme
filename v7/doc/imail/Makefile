@@ -1,5 +1,5 @@
 
-# $Id: Makefile,v 1.9 2000/07/26 03:01:55 cph Exp $
+# $Id: Makefile,v 1.10 2000/12/08 20:14:24 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -17,7 +17,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-all:	imail.ps imail.pdf imail.info html/imail.html
+all: imail.info imail.html imail.pdf imail.ps
+
+imail.info: imail.texinfo gfdl.texinfo
+	rm -f imail.info*
+	makeinfo imail.texinfo
+
+imail.html: imail.texinfo gfdl.texinfo
+	rm -f imail*.html
+	texi2html -split_chapter imail.texinfo
+
+imail.pdf: imail.texinfo gfdl.texinfo
+	texi2pdf imail.texinfo
 
 imail.ps: imail.dvi
 	dvips -o $@ $^
@@ -25,24 +36,43 @@ imail.ps: imail.dvi
 imail.dvi: imail.texinfo gfdl.texinfo
 	texi2dvi imail.texinfo
 
-imail.pdf: imail.texinfo gfdl.texinfo
-	texi2pdf imail.texinfo
-
-imail.info: imail.texinfo gfdl.texinfo
-	makeinfo imail.texinfo
-	rm -f /usr/local/lib/mit-scheme/edwin/info/imail.info*
-	cpx imail.info* /usr/local/lib/mit-scheme/edwin/info/.
-	gzip -v /usr/local/lib/mit-scheme/edwin/info/imail.info*
-
-html/imail.html: imail.texinfo gfdl.texinfo
-	(cd html;make)
-
 AUX_SUFFIXES = aux log toc
 INDEX_SUFFIXES = cp fn ky pg tp vr
 
-clean:
-	rm -f imail.ps imail.dvi imail.pdf imail.info*
-	rm -f $(addprefix imail.,$(AUX_SUFFIXES))
-	rm -f $(addprefix imail.,$(INDEX_SUFFIXES))
-	rm -f $(addsuffix s,$(addprefix imail.,$(INDEX_SUFFIXES)))
-	$(MAKE) -C html $@
+mostlyclean:
+	@for S in $(AUX_SUFFIXES); do \
+	    echo "rm -f imail.$${S}";\
+	    rm -f imail.$${S};\
+	done
+	@for S in $(INDEX_SUFFIXES); do \
+	    echo "rm -f imail.$${S}";\
+	    rm -f imail.$${S};\
+	    echo "rm -f imail.$${S}s";\
+	    rm -f imail.$${S}s;\
+	done
+	rm -f imail.dvi
+
+clean: mostlyclean
+	rm -f imail.info* imail*.html imail.pdf imail.ps
+
+distclean: clean
+
+maintainer-clean: distclean
+
+# The install rules depend on macro variables passwd down from the
+# makefile in the top-level documentation directory.
+
+install-info: imail.info
+	$(INSTALL_DATA) imail.info* $(DESTDIR)$(infodir)/.
+
+install-html: imail.html
+	$(INSTALL_DATA) imail*.html $(DESTDIR)$(htmldir)/.
+
+install-pdf: imail.pdf
+	$(INSTALL_DATA) imail.pdf $(DESTDIR)$(pdfdir)/.
+
+install-ps: imail.ps
+	$(INSTALL_DATA) imail.ps $(DESTDIR)$(psdir)/.
+
+.PHONY: all mostlyclean clean distclean maintainer-clean
+.PHONY: install-info install-html install-pdf install-ps
