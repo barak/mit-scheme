@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.86 1993/11/13 03:20:15 gjr Exp $
+$Id: ymkfile,v 1.87 1993/11/19 21:27:41 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -38,7 +38,11 @@ MIT in each case. */
 #undef vax
 
 #ifndef RUN
+#ifdef __STDC__
+#define RUN(program) ./##program
+#else
 #define RUN(program) ./program
+#endif
 #endif
 
 #ifndef SOURCES_SYSTEM
