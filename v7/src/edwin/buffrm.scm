@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.37 1990/11/02 03:22:35 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.38 1991/01/15 00:13:44 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990, 1991 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -142,7 +142,8 @@
 	(set-inferior-start! border-inferior false false))
     (set-inferior-start! text-inferior 0 0)
     (set-inferior-size! text-inferior x y))
-  (window-setup-truncate-lines! window))
+  (if (window-buffer window)
+      (window-setup-truncate-lines! window)))
 
 (define-method buffer-frame (:minimum-x-size window)
   (if (window-has-right-neighbor? window)
