@@ -1,6 +1,8 @@
 /* Copyright (C) 1990 Free Software Foundation, Inc.
 This file is part of the GNU C Library.
 
+$Id: ansidecl.h,v 1.4 1995/10/08 15:29:45 cph Exp $
+
 The GNU C Library is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 1, or (at your option)
@@ -52,8 +54,16 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
    so they will all get the switch for lint.  */
 /* LINTLIBRARY */
 
+/* We must test for __IBMC__ everywhere that we test for __STDC__
+   because the IBM C compiler for OS/2 does not define __STDC__ even
+   though it is an ANSI C compiler.  The compiler defines __STDC__
+   only when the compiler is put into "strict ANSI" mode, in which
+   numerous useful features are disabled.  It used to be the case that
+   this could be fixed by forcibly defining __STDC__, but as of
+   version 3.0 that is no longer allowed.  What these fascists hope to
+   gain by this, besides angering programmers, is unclear.  */
 
-#ifdef	__STDC__
+#if defined(__STDC__) || defined(__IBMC__)
 
 #define	PTR		void *
 #define	PTRCONST	void *CONST

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.86 1995/10/05 03:27:42 cph Exp $
+$Id: cmpint.c,v 1.87 1995/10/08 15:31:46 cph Exp $
 
 Copyright (c) 1989-1995 Massachusetts Institute of Technology
 
@@ -151,7 +151,7 @@ MIT in each case. */
 #define ASM_ENTRY_POINT(name) name
 #endif
 
-#ifdef __STDC__
+#if defined(__STDC__) || defined(__IBMC__)
 #define EXFNX(name, proto) ASM_ENTRY_POINT (name) proto
 #define DEFNX(name, arglist, args) ASM_ENTRY_POINT (name) (args)
 #define DEFNX_VOID(name) ASM_ENTRY_POINT (name) (void)

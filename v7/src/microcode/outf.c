@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: outf.c,v 1.7 1995/04/28 07:05:10 cph Exp $
+$Id: outf.c,v 1.8 1995/10/08 15:30:29 cph Exp $
 
-Copyright (c) 1993-94 Massachusetts Institute of Technology
+Copyright (c) 1993-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -54,7 +54,7 @@ MIT in each case. */
   information to stay visible `after' the termination of Scheme.
 */
 
-#if defined(__STDC__) || defined(WINNT)
+#if defined(__STDC__) || defined(WINNT) || defined(__IBMC__)
 #include <stdarg.h>
 #define VA_START(args, lastarg) va_start(args, lastarg)
 #define VA_DCL
