@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.11 1989/10/26 07:35:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.12 1989/12/04 15:34:40 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -438,3 +438,46 @@ MIT in each case. |#
       (rec1 (register-reference alias)))
     (lambda (source)
       (rec2 source (register-reference (if-not))))))
+
+;;; Move a copy to a specific special register
+
+(define (copy-to-special-register source-register type special-register)
+  (let ((alias (register-alias source-register type)))
+    (cond (alias
+	   (machine->machine-register alias special-register))
+	  ((not (dead-register? source-register))
+	   (delete-dead-registers!)
+	   (machine->machine-register
+	    (load-alias-register! source-register type)
+	    special-register))
+	  ((not (register-saved-into-home? source-register))
+	   (error "copy-to-special-register: no valid copy"
+		  source-register))
+	  (else
+	   (reference->register-transfer
+	    (pseudo-register-home source-register)
+	    special-register)))))
+
+;;;; 2/3 Operand register allocation
+
+(define (with-copy-if-available source type if-win if-lose use-register!)
+  (reuse-pseudo-register-alias
+   source type
+   (lambda (reusable-alias)
+     (if-win (lambda ()
+	       (delete-machine-register! reusable-alias)
+	       (delete-dead-registers!)
+	       (use-register! reusable-alias)
+	       (register-reference reusable-alias))))
+   if-lose))
+
+(define-integrable (with-register-copy-if-available
+		     source type target if-win if-lose)
+  (with-copy-if-available source type if-win if-lose
+    (lambda (reusable-alias)
+      (add-pseudo-register-alias! target reusable-alias))))
+
+(define-integrable (with-temporary-copy-if-available
+		     source type if-win if-lose)
+  (with-copy-if-available source type if-win if-lose need-register!))
+
