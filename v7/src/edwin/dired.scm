@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.125 1992/04/22 20:59:19 mhwu Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.126 1992/08/18 00:07:57 jawilson Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -119,6 +119,9 @@ Also:
                         (define-key ,mode ,key ,command))))))
   (define-function-key 'dired down 'dired-next-line)
   (define-function-key 'dired up 'dired-previous-line))
+
+(define dired-flag-delete-char #\D)
+(define dired-flag-copy-char #\C)
 
 
 (define-command dired
@@ -308,7 +311,7 @@ CANNOT contain the 'F' option."
   "Mark the current file to be killed."
   "p"
   (lambda (argument)
-    (dired-mark #\D argument)))
+    (dired-mark dired-flag-delete-char argument)))
 
 (define-command dired-unflag
   "Cancel the kill or copy requested for the current file."
@@ -550,7 +553,7 @@ CANNOT contain the 'F' option."
 	  (lambda (lstart)
 	    (if (os/auto-save-filename?
 		 (region->string (dired-filename-region lstart)))
-		(dired-mark-1 lstart #\D))))))))
+		(dired-mark-1 lstart dired-flag-delete-char))))))))
 
 (define-command dired-flag-backup-files
   "Flag all backup files (names ending with ~) for deletion."
@@ -562,10 +565,10 @@ CANNOT contain the 'F' option."
 	  (lambda (lstart)
 	    (if (os/backup-filename?
 		 (region->string (dired-filename-region lstart)))
-		(dired-mark-1 lstart #\D))))))))
+		(dired-mark-1 lstart dired-flag-delete-char))))))))
 
 (define (dired-kill-files)
-  (let ((filenames (dired-marked-files #\D)))
+  (let ((filenames (dired-marked-files dired-flag-delete-char)))
     (if (not (null? filenames))
 	(let ((buffer (temporary-buffer " *Deletions*")))
 	  (write-strings-densely
@@ -620,7 +623,7 @@ CANNOT contain the 'F' option."
   "Mark the current file to be copied."
   "p"
   (lambda (argument)
-    (dired-mark #\C argument)))
+    (dired-mark dired-flag-copy-char argument)))
 
 (define-command dired-do-copies
   "Copy marked files."
@@ -629,7 +632,7 @@ CANNOT contain the 'F' option."
     (dired-copy-files)))
 
 (define (dired-copy-files)
-  (let ((filenames (dired-marked-files #\C)))
+  (let ((filenames (dired-marked-files dired-flag-copy-char)))
     (if (not (null? filenames))
 	(let ((buffer (temporary-buffer " *Copies*")))
 	  (write-strings-densely
