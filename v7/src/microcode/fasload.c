@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.54 1990/08/16 08:43:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.55 1990/08/16 20:06:11 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -669,20 +669,40 @@ DEFINE_PRIMITIVE ("BINARY-FASLOAD", Prim_binary_fasload, 1, 1, 0)
 /* Band loading. */
 
 static char *reload_band_name = 0;
-
+static Tptrvec reload_cleanups = 0;
 
-/* (RELOAD-BAND-NAME)
-   Returns the filename (as a Scheme string) from which the runtime system
-   was band loaded (load-band'ed ?), or #F if the system was fasl'ed.
-*/
-
-DEFINE_PRIMITIVE ("RELOAD-BAND-NAME", Prim_reload_band_name, 0, 0, 0)
+DEFINE_PRIMITIVE ("RELOAD-BAND-NAME", Prim_reload_band_name, 0, 0,
+  "Return the filename from which the runtime system was last restored.\n\
+The result is a string, or #F if the system was not restored.")
 {
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN
-    ((reload_band_name == NULL)
+    ((reload_band_name == 0)
      ? SHARP_F
      : (char_pointer_to_string (reload_band_name)));
+}
+
+typedef void EXFUN ((*Tcleanup), (void));
+
+void
+DEFUN (add_reload_cleanup, (cleanup_procedure), Tcleanup cleanup_procedure)
+{
+  if (reload_cleanups == 0)
+    {
+      reload_cleanups = (ptrvec_allocate (1));
+      (* ((Tcleanup *) (PTRVEC_LOC (reload_cleanups, 0)))) = cleanup_procedure;
+    }
+  else
+    ptrvec_adjoin (reload_cleanups, cleanup_procedure);
+}
+
+static void
+DEFUN_VOID (execute_reload_cleanups)
+{
+  PTR * scan = (PTRVEC_START (reload_cleanups));
+  PTR * end = (PTRVEC_END (reload_cleanups));
+  while (scan < end)
+    (* ((Tcleanup *) (scan++))) ();
 }
 
 /* Utility for load band below. */
@@ -708,7 +728,7 @@ compiler_reset_error()
 #define END_BAND_LOAD(success, dying)					\
 {									\
   if (success || dying)							\
-    OS_channel_close_all ();						\
+    execute_reload_cleanups ();						\
   EXIT_CRITICAL_SECTION ({});						\
 }
 #endif
