@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.18 1997/12/23 02:27:11 cph Exp $
+$Id: ntprm.scm,v 1.19 1997/12/23 05:09:01 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -269,6 +269,7 @@ MIT in each case. |#
       (lambda ()
 	(let ((sysroot
 	       (or (trydir (get-environment-variable "SystemRoot"))
+		   (trydir (get-environment-variable "windir"))
 		   (trydir (get-environment-variable "winbootdir")))))
 	  (if (not sysroot)
 	      (error "Unable to find Windows system root."))
