@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.4 2000/04/27 02:35:57 cph Exp $
+;;; $Id: imail-imap.scm,v 1.5 2000/04/28 05:47:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -40,10 +40,10 @@
       (if (not (string-prefix? "//" string))
 	  (lose))
       (let ((end (string-length string)))
-	(let ((slash (substring-find-next-char string 2 end)))
+	(let ((slash (substring-find-next-char string 2 end #\/)))
 	  (if (not slash)
 	      (lose))
-	  (let ((pv1 (parse-substring imap:parse:server string 0 slash)))
+	  (let ((pv1 (parse-substring imap:parse:server string 2 slash)))
 	    (if (not pv1)
 		(lose))
 	    (let ((pv2
@@ -57,6 +57,35 @@
 			     (parser-token pv1 'PORT)
 			     (parser-token pv2 'MAILBOX)
 			     (parser-token pv2 'UID)))))))))
+
+(define-method url-body ((url <imap-url>))
+  (string-append
+   "//"
+   (let ((user-id (url-user-id url))
+	 (auth-type (imap-url-auth-type url)))
+     (if (or user-id auth-type)
+	 (string-append (if user-id
+			    (url:encode-string user-id)
+			    "")
+			(if auth-type
+			    (string-append ";auth="
+					   (if (string=? auth-type "*")
+					       auth-type
+					       (url:encode-string auth-type)))
+			    "")
+			"@")
+	 ""))
+   (imap-url-host url)
+   (let ((port (imap-url-port url)))
+     (if port
+	 (string-append ":" port)
+	 ""))
+   "/"
+   (url:encode-string (imap-url-mailbox url))
+   (let ((uid (imap-url-uid url)))
+     (if uid
+	 (string-append "/;uid=" uid)
+	 ""))))
 
 ;;;; Server operations
 
@@ -64,7 +93,8 @@
   (host define accessor)
   (user-id define accessor)
   (port define standard)
-  (sequence-number define standard)
+  (sequence-number define standard
+		   initial-value 0)
   (response-queue define accessor
 		  initializer (lambda () (cons '() '())))
   (folder define standard
@@ -175,15 +205,9 @@
 (define-method %open-folder ((url <imap-url>))
   (let ((connection (open-imap-connection url)))
     (let ((folder (make-imap-folder url)))
-      (for-each (lambda (response)
-		  (case (car response)
-		    ((FLAGS)
-		     )
-		    ((EXISTS)
-		     )
-		    ((OK)
-		     )))
-		(imap:command connection 'SELECT (imap-url-mailbox url)))
+      (select-imap-folder connection folder)
+      (if (not (imap:command:select connection (imap-url-mailbox url)))
+	  (select-imap-folder connection #f))
       folder)))
 
 (define-method %new-folder ((url <imap-url>))
@@ -207,19 +231,58 @@
 ;;;; Folder
 
 (define (imap:command:capability connection)
-  (call-with-values (lambda () (imap:command connection 'CAPABILITY))
-    (lambda (response responses)
-      (if (imap:response:no? response)
-	  (error "Server signalled error on CAPABILITY command:" response))
-      (imap:response:capabilities
-       (imap:find-response responses 'CAPABILITY #t)))))
+  (imap:response:capabilities
+   (imap:command:single-response imap:response:capability?
+				 connection 'CAPABILITY)))
 
 (define (imap:command:login connection user-id passphrase)
+  (imap:command:no-response connection 'LOGIN user-id passphrase))
+
+(define (imap:command:select connection mailbox)
+  (imap:response:ok? (imap:command:no-response connection 'SELECT mailbox)))
+
+(define (imap:command:fetch-1 connection index items)
+  (imap:command:single-response imap:response:fetch?
+				connection 'FETCH index items))
+
+(define (imap:command:fetch-range connection start end items)
+  (imap:command:multiple-response imap:response:fetch?
+				  connection 'FETCH
+				  (string-append (number->string start)
+						 ":"
+						 (number->string (- end 1)))
+				  items))
+
+(define (imap:command:no-response connection command . arguments)
   (call-with-values
-      (lambda () (imap:command connection 'LOGIN user-id passphrase))
+      (lambda () (apply imap:command connection command arguments))
     (lambda (response responses)
-      responses
+      (if (not (null? responses))
+	  (error "Malformed response from IMAP server:" responses))
       response)))
+
+(define (imap:command:single-response predicate connection command . arguments)
+  (call-with-values
+      (lambda () (apply imap:command connection command arguments))
+    (lambda (response responses)
+      (if (imap:response:ok? response)
+	  (if (and (pair? responses)
+		   (predicate (car responses))
+		   (null? (cdr responses)))
+	      (car responses)
+	      (error "Malformed response from IMAP server:" responses))
+	  (error "Server signalled a command error:" response)))))
+
+(define (imap:command:multiple-response predicate
+					connection command . arguments)
+  (call-with-values
+      (lambda () (apply imap:command connection command arguments))
+    (lambda (response responses)
+      (if (imap:response:ok? response)
+	  (if (for-all? responses predicate)
+	      responses
+	      (error "Malformed response from IMAP server:" responses))
+	  (error "Server signalled a command error:" response)))))
 
 (define (imap:command connection command . arguments)
   (imap:wait-for-tagged-response connection
@@ -324,13 +387,16 @@
 	 (let ((folder (selected-imap-folder connection)))
 	   (if (not (= (imap:response:exists-count response)
 		       (folder-length folder)))
-	       (forget-imap-folder-contents! folder))))
+	       (forget-imap-folder-contents! folder)))
+	 #f)
 	((imap:response:expunge? response)
 	 (expunge-imap-folder-message (selected-imap-folder connection)
-				      (imap:response:expunge-index response)))
+				      (imap:response:expunge-index response))
+	 #f)
 	((imap:response:flags? response)
 	 (set-imap-folder-allowed-flags! (selected-imap-folder connection)
-					 (imap:response:flags response)))
+					 (imap:response:flags response))
+	 #f)
 	((imap:response:recent? response)
 	 #f)
 	((or (imap:response:capability? response)
