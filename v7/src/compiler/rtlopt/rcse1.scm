@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.21 1991/05/06 22:44:07 jinx Exp $
+$Id: rcse1.scm,v 4.22 1993/07/01 03:29:00 gjr Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -174,8 +174,10 @@ MIT in each case. |#
 (define (cse/assign/register address expression volatile? insert-source!)
   (if (interpreter-stack-pointer? address)
       (if (and (rtl:offset? expression)
-	       (interpreter-stack-pointer? (rtl:offset-base expression)))
-	  (stack-pointer-adjust! (rtl:offset-number expression))
+	       (interpreter-stack-pointer? (rtl:offset-base expression))
+	       (rtl:machine-constant? (rtl:offset-offset expression)))
+	  (stack-pointer-adjust!
+	   (rtl:machine-constant-value (rtl:offset-offset expression)))
 	  (begin
 	    (stack-invalidate!)
 	    (stack-pointer-invalidate!)))
@@ -200,7 +202,8 @@ MIT in each case. |#
 	(let ((element (insert-source!)))
 	  (adjust!)
 	  (insert-stack-destination!
-	   (rtl:make-offset (interpreter-stack-pointer) 0)
+	   (rtl:make-offset (interpreter-stack-pointer)
+			    (rtl:make-machine-constant 0))
 	   element))
 	(adjust!))))
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcsesr.scm,v 4.2 1989/01/21 09:06:39 cph Rel $
+$Id: rcsesr.scm,v 4.3 1993/07/01 03:29:15 gjr Exp $
 
-Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -58,7 +58,8 @@ MIT in each case. |#
        (interpreter-stack-pointer? (rtl:address-register expression))))
 
 (define (stack-reference-quantity expression)
-  (let ((n (+ *stack-offset* (rtl:offset-number expression))))
+  (let ((n (+ *stack-offset*
+	      (rtl:machine-constant-value (rtl:offset-offset expression)))))
     (let ((entry (ass= n *stack-reference-quantities*)))
       (if entry
 	  (cdr entry)
@@ -69,7 +70,8 @@ MIT in each case. |#
 	    quantity)))))
 
 (define (set-stack-reference-quantity! expression quantity)
-  (let ((n (+ *stack-offset* (rtl:offset-number expression))))
+  (let ((n (+ *stack-offset*
+	      (rtl:machine-constant-value (rtl:offset-offset expression)))))
     (let ((entry (ass= n *stack-reference-quantities*)))
       (if entry
 	  (set-cdr! entry quantity)
@@ -102,7 +104,9 @@ MIT in each case. |#
 (define (stack-reference-invalidate! expression)
   (expression-invalidate! expression)
   (set! *stack-reference-quantities*
-	(del-ass=! (+ *stack-offset* (rtl:offset-number expression))
+	(del-ass=! (+ *stack-offset*
+		      (rtl:machine-constant-value
+		       (rtl:offset-offset expression)))
 		   *stack-reference-quantities*)))
 
 (define ass= (association-procedure = car))
