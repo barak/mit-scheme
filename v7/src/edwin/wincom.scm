@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: wincom.scm,v 1.120 1996/05/11 08:44:28 cph Exp $
+;;;	$Id: wincom.scm,v 1.121 1996/10/08 20:17:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -403,15 +403,12 @@ or if the window is the only window of its frame."
 
 (define (select-buffer-other-screen buffer)
   (if (multiple-screens?)
-      (select-screen
-       (let ((screen (other-screen (selected-screen) 1 #t)))
-	 (if screen
-	     (begin
-	       (select-buffer-in-window buffer
-					(screen-selected-window screen)
-					true)
-	       screen)
-	     (make-screen buffer))))
+      (let ((screen (other-screen (selected-screen) 1 #t)))
+	(if screen
+	    (select-buffer-in-window buffer
+				     (screen-selected-window screen)
+				     true)
+	    (make-screen buffer)))
       (editor-error "Display doesn't support multiple screens")))
 
 (define (shrink-window-if-larger-than-buffer window)
