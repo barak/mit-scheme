@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules1.scm,v 1.6 1993/11/17 05:22:39 gjr Exp $
+$Id: rules1.scm,v 1.7 1993/11/17 05:31:12 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -169,7 +169,7 @@ MIT in each case. |#
   (standard-unary-conversion
    source 'LONG target 'ULONG
    (lambda (source target)
-     (LAP ,target " = ((unsigned long) (" ,base " + " ,offset "));\n\t"))))
+     (LAP ,target " = ((unsigned long) (" ,source " + " ,offset "));\n\t"))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
