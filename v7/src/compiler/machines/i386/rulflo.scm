@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.10 1992/02/11 14:48:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.11 1992/02/13 06:09:45 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -169,7 +169,7 @@ MIT in each case. |#
   (let ((source->top (load-machine-register! source fr0)))
     (rtl-target:=machine-register! target fr0)
     (LAP ,@source->top
-	 (operate 0 0))))
+	 ,@(operate 0 0))))
 
 (define-arithmetic-method 'flonum-log flonum-methods/1-arg
   (flonum-unary-operation/stack-top
@@ -278,7 +278,7 @@ MIT in each case. |#
 		(delete-register! alias)
 		(delete-dead-registers!)
 		(add-pseudo-register-alias! target alias)
-		(operate sti1 sti1 sti2)))
+		(operate< sti1 sti1 sti2)))
 	    (lambda ()
 	      (reuse-pseudo-register-alias
 	       source2 target-type
@@ -372,8 +372,8 @@ MIT in each case. |#
 
 (define-arithmetic-method 'flonum-atan2 flonum-methods/2-args
   (lambda (target source1 source2)
-    (let* ((source1->top (load-machine-register! source fr0))
-	   (source2 (flonum-source!)))
+    (let* ((source1->top (load-machine-register! source1 fr0))
+	   (source2 (flonum-source! source2)))
       (rtl-target:=machine-register! target fr0)
       (LAP ,@source1->top
 	   (FLD (ST ,source2))
