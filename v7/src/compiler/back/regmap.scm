@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.10 1990/02/02 18:37:27 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.11 1991/07/25 02:31:53 cph Exp $
 
-Copyright (c) 1988, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -159,11 +159,11 @@ registers into some interesting sorting order.
 
 ;;;; Map Entry
 
-(define-integrable (make-map-entry home saved-into-home? aliases)
+(define-integrable (make-map-entry home saved-into-home? aliases label)
   ;; HOME may be false, indicating that this is a temporary register.
   ;; SAVED-INTO-HOME? must be true when HOME is false.  ALIASES must
   ;; be a non-null list of registers.
-  (vector home saved-into-home? aliases))
+  (vector home saved-into-home? aliases label))
 
 (define-integrable (map-entry-home entry)
   (vector-ref entry 0))
@@ -174,6 +174,9 @@ registers into some interesting sorting order.
 (define-integrable (map-entry-aliases entry)
   (vector-ref entry 2))
 
+(define-integrable (map-entry-label entry)
+  (vector-ref entry 3))
+
 (define-integrable (map-entry:any-alias entry)
   (car (map-entry-aliases entry)))
 
@@ -183,20 +186,29 @@ registers into some interesting sorting order.
       (and (register-type? alias type)
 	   (not (memv alias needed-registers))))))
 
+(define (map-entry:aliases entry type needed-registers)
+  (list-transform-positive (map-entry-aliases entry)
+    (lambda (alias)
+      (and (register-type? alias type)
+	   (not (memv alias needed-registers))))))
+
 (define (map-entry:add-alias entry alias)
   (make-map-entry (map-entry-home entry)
 		  (map-entry-saved-into-home? entry)
-		  (cons alias (map-entry-aliases entry))))
+		  (cons alias (map-entry-aliases entry))
+		  (map-entry-label entry)))
 
 (define (map-entry:delete-alias entry alias)
   (make-map-entry (map-entry-home entry)
 		  (map-entry-saved-into-home? entry)
-		  (eq-set-delete (map-entry-aliases entry) alias)))
+		  (eq-set-delete (map-entry-aliases entry) alias)
+		  (map-entry-label entry)))
 
 (define (map-entry:replace-alias entry old new)
   (make-map-entry (map-entry-home entry)
 		  (map-entry-saved-into-home? entry)
-		  (eq-set-substitute (map-entry-aliases entry) old new)))
+		  (eq-set-substitute (map-entry-aliases entry) old new)
+		  (map-entry-label entry)))
 
 (define-integrable (map-entry=? entry entry*)
   (eqv? (map-entry-home entry) (map-entry-home entry*)))
@@ -210,7 +222,8 @@ registers into some interesting sorting order.
   (make-register-map (map-entries:add map
 				      (make-map-entry home
 						      saved-into-home?
-						      (list alias)))
+						      (list alias)
+						      false))
 		     (map-registers:delete map alias)))
 
 (define (register-map:add-alias map entry alias)
@@ -233,7 +246,8 @@ registers into some interesting sorting order.
 			      entry
 			      (make-map-entry (map-entry-home entry)
 					      true
-					      (map-entry-aliases entry)))
+					      (map-entry-aliases entry)
+					      (map-entry-label entry)))
    (map-registers map)))
 
 (define (register-map:delete-entry map entry)
@@ -257,17 +271,19 @@ registers into some interesting sorting order.
 		     (map-registers:add map alias)))
 
 (define (register-map:delete-other-aliases map entry alias)
-  (make-register-map (map-entries:replace map
-					  entry
-					  (let ((home (map-entry-home entry)))
-					    (make-map-entry home
-							    (not home)
-							    (list alias))))
-		     (map-registers:add* map
-					 ;; **** Kludge -- again, EQ? is
-					 ;; assumed to work on machine regs.
-					 (delq alias
-					       (map-entry-aliases entry)))))
+  (make-register-map
+   (map-entries:replace map
+			entry
+			(let ((home (map-entry-home entry)))
+			  (make-map-entry home
+					  (not home)
+					  (list alias)
+					  (map-entry-label entry))))
+   (map-registers:add* map
+		       ;; **** Kludge -- again, EQ? is
+		       ;; assumed to work on machine regs.
+		       (delq alias
+			     (map-entry-aliases entry)))))
 
 (define (register-map:keep-live-entries map live-registers)
   (let loop
@@ -355,6 +371,21 @@ registers into some interesting sorting order.
 		(allocator-values alias
 				  (register-map:delete-alias map entry alias)
 				  (save-into-home-instruction entry))))))))
+   ;; Finally, see if there is a temporary label register that can be
+   ;; recycled.  Label registers are considered after ordinary
+   ;; registers, because on the RISC machines that use them, it is
+   ;; more expensive to generate a new label register than it is to
+   ;; save an ordinary register.
+   (map-entries:search map
+     (lambda (entry)
+       (and (map-entry-label entry)
+	    (not (map-entry-home entry))
+	    (let ((alias (map-entry:find-alias entry type needed-registers)))
+	      (and alias
+		   (allocator-values
+		    alias
+		    (register-map:delete-alias map entry alias)
+		    (LAP)))))))
    (error "MAKE-FREE-REGISTER: Unable to allocate register")))
 
 (define (find-free-register map type needed-registers)
@@ -377,6 +408,7 @@ registers into some interesting sorting order.
       (map-entries:search map
 	(lambda (entry)
 	  (and (not (map-entry-home entry))
+	       (not (map-entry-label entry))
 	       (reallocate-alias entry))))
       ;; Then look for a register that contains the same thing as
       ;; another register.
@@ -542,6 +574,48 @@ for REGISTER.  If no such register exists, returns #F."
 	(receiver (register-map:save-entry map entry)
 		  (save-into-home-instruction entry))
 	(receiver map '()))))
+
+(define (register-map-label map type)
+  (let loop ((entries (map-entries map)))
+    (if (null? entries)
+	(values false false)
+	(let ((alias
+	       (and (map-entry-label (car entries))
+		    (map-entry:find-alias (car entries) type '()))))
+	  (if alias
+	      (values (map-entry-label (car entries)) alias)
+	      (loop (cdr entries)))))))
+
+(define (register-map-labels map type)
+  (let loop ((entries (map-entries map)))
+    (if (null? entries)
+	'()
+	(let ((label (map-entry-label (car entries))))
+	  (if label
+	      (let ((aliases (map-entry:aliases (car entries) type '())))
+		(if (not (null? aliases))
+		    (cons (cons label aliases)
+			  (loop (cdr entries)))
+		    (loop (cdr entries))))
+	      (loop (cdr entries)))))))
+
+(define (set-machine-register-label map register label)
+  (let ((entry (map-entries:find-alias map register)))
+    (if entry
+	(make-register-map (map-entries:replace
+			    map
+			    entry
+			    (make-map-entry (map-entry-home entry)
+					    (map-entry-saved-into-home? entry)
+					    (map-entry-aliases entry)
+					    label))
+			   (map-registers map))
+	(make-register-map (map-entries:add map
+					    (make-map-entry false
+							    true
+							    (list register)
+							    label))
+			   (map-registers:delete map register)))))
 
 (define (pseudo-register-saved-into-home? map register)
   (let ((entry (map-entries:find-home map register)))

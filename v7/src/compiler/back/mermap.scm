@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/mermap.scm,v 1.3 1988/12/15 17:04:47 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/mermap.scm,v 1.4 1991/07/25 02:32:06 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -111,7 +111,8 @@ MIT in each case. |#
 	 (vector (map-entry-home entry)
 		 (if (map-entry-saved-into-home? entry) weight 0)
 		 (map (lambda (alias) (cons alias weight))
-		      (map-entry-aliases entry))))
+		      (map-entry-aliases entry))
+		 (map-entry-label entry)))
        (map-entries register-map)))
 
 (define (add-weighted-entries x-entries y-entries)
@@ -128,7 +129,11 @@ MIT in each case. |#
 		(lambda (entry entries)
 		  (assq (car entry) entries))
 		(lambda (x-entry y-entry)
-		  (cons (car x-entry) (+ (cdr x-entry) (cdr y-entry)))))))))
+		  (cons (car x-entry) (+ (cdr x-entry) (cdr y-entry)))))
+	      ;; If the labels don't match, or only one entry has a
+	      ;; label, then the result shouldn't have a label.
+	      (and (eqv? (vector-ref x-entry 3) (vector-ref y-entry 3))
+		   (vector-ref x-entry 3))))))
 
 (define (merge-entries x-entries y-entries find-entry merge-entry)
   (let loop
@@ -167,6 +172,7 @@ MIT in each case. |#
 		    (cons (make-map-entry
 			   (vector-ref (car entries) 0)
 			   (positive? (vector-ref (car entries) 1))
-			   aliases)
+			   aliases
+			   (vector-ref (car entries) 3))
 			  map-entries)
 		    (eqv-set-difference map-registers aliases)))))))
