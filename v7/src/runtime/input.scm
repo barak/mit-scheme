@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.45 1987/06/16 22:43:55 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.46 1987/06/24 02:49:10 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -517,13 +517,19 @@
 (define fasload)
 (let ()
 
+(define default-pathname
+  (make-pathname false false false "bin" 'NEWEST))
+
 (define binary-fasload
   (make-primitive-procedure 'BINARY-FASLOAD))
 
 (set! fasload
 (named-lambda (fasload filename)
-  (set! filename (canonicalize-input-filename filename))
-  (let ((port (rep-output-port)))
+  (let ((port (rep-output-port))
+	(filename (pathname->string
+		   (pathname->input-truename
+		    (merge-pathnames (->pathname filename)
+				     default-pathname)))))
     (newline port)
     (write-string "FASLoading " port)
     (write filename port)
