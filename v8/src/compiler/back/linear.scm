@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: linear.scm,v 1.1 1994/11/19 01:54:17 adams Exp $
+$Id: linear.scm,v 1.2 1995/08/06 22:25:48 adams Exp $
 
-Copyright (c) 1987-1994 Massachusetts Institute of Technology
+Copyright (c) 1987-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,10 +39,16 @@ MIT in each case. |#
 
 (define *strongly-heed-branch-preferences?* false)
 
+;; `Lazy-LAP' operator.  We collect a tree of the liste that we would
+;; have appended and rewrite them later, avoiding much consing.
+
+(define-integrable (LLAP x y)
+  (vector x y))
+
 (define (bblock-linearize-lap bblock queue-continuations!)
   (define (linearize-bblock bblock)
-    (LAP ,@(linearize-bblock-1 bblock)
-	 ,@(linearize-next bblock)))
+    (LLAP (linearize-bblock-1 bblock)
+	  (linearize-next bblock)))
 
   (define (linearize-bblock-1 bblock)
     (node-mark! bblock)
@@ -60,7 +66,7 @@ MIT in each case. |#
 	   (lambda ()
 	     (bblock-instructions bblock))))
       (if (bblock-label bblock)
-	  (LAP ,@(lap:make-label-statement (bblock-label bblock)) ,@(kernel))
+	  (LLAP (lap:make-label-statement (bblock-label bblock)) (kernel))
 	  (kernel))))
 
   (define (linearize-next bblock)
@@ -87,15 +93,15 @@ MIT in each case. |#
 	(if (node-marked? an)
 	    (heed-preference pblock cn an
 	      (lambda (generator cn an)
-		(LAP ,@(generator (bblock-label cn))
-		     ,@(lap:make-unconditional-branch (bblock-label an)))))
-	    (LAP ,@((pblock-consequent-lap-generator pblock)
+		(LLAP (generator (bblock-label cn))
+		     (lap:make-unconditional-branch (bblock-label an)))))
+	    (LLAP ((pblock-consequent-lap-generator pblock)
 		    (bblock-label cn))
-		 ,@(linearize-bblock an)))
+		 (linearize-bblock an)))
 	(if (node-marked? an)
-	    (LAP ,@((pblock-alternative-lap-generator pblock)
+	    (LLAP ((pblock-alternative-lap-generator pblock)
 		    (bblock-label an))
-		 ,@(linearize-bblock cn))
+		 (linearize-bblock cn))
 	    (linearize-pblock-1 pblock cn an))))
 
   (define (linearize-pblock-1 pblock cn an)
@@ -103,11 +109,11 @@ MIT in each case. |#
 	   (lambda (generator cn an)
 	     (let ((clabel (bblock-label! cn))
 		   (alternative (linearize-bblock an)))
-	       (LAP ,@(generator clabel)
-		    ,@alternative
-		    ,@(if (node-marked? cn)
-			  (LAP)
-			  (linearize-bblock cn)))))))
+	       (LLAP (LLAP (generator clabel)
+			   alternative)
+		     (if (node-marked? cn)
+			 (LAP)
+			 (linearize-bblock cn)))))))
       (let ((consequent-first
 	     (lambda ()
 	       (finish (pblock-alternative-lap-generator pblock) an cn)))
@@ -125,12 +131,14 @@ MIT in each case. |#
 		     (let ((clabel (bblock-label! cn)))
 		       (let ((consequent (linearize-bblock-1 cn))
 			     (alternative (linearize-bblock-1 an)))
-			 (LAP ,@(generator clabel)
-			      ,@alternative
-			      ,@(lap:make-unconditional-branch jlabel)
-			      ,@consequent
-			      ,@(lap:make-label-statement jlabel)
-			      ,@(linearize-next cn))))))))))
+			 (LLAP
+			  (LLAP
+			   (LLAP (LLAP (LLAP (generator clabel)
+					     alternative)
+				       (lap:make-unconditional-branch jlabel))
+				 consequent)
+			   (lap:make-label-statement jlabel))
+			  (linearize-next cn))))))))))
 
 	(lap:mark-preferred-branch! pblock cn an)
 	(cond ((eq? cn an)
@@ -210,16 +218,27 @@ MIT in each case. |#
 (define linearize-lap
   (make-linearizer bblock-linearize-lap
     (lambda () (LAP))
-    (lambda (x y) (LAP ,@x ,@y))
+    (lambda (x y) (LLAP x y))
     (lambda (linearized-lap)
       (let ((end-code *end-of-block-code*))
 	(set! *end-of-block-code* '())
-	(LAP ,@linearized-lap
-	     ,@(let process ((end-code end-code))
-		 (if (null? end-code)
-		     (LAP)
-		     (LAP ,@(extra-code-block/code (car end-code))
-			  ,@(process (cdr end-code))))))))))
+	(let ((final-linearized-lap
+	       (LLAP linearized-lap
+		     (let process ((end-code end-code))
+		       (if (null? end-code)
+			   (LAP)
+			   (LLAP (extra-code-block/code (car end-code))
+				 (process (cdr end-code))))))))
+	  (let process ((x '()) (y final-linearized-lap) (tail '()))
+	    (cond ((vector? y)
+		   (let ((prefix (vector-ref y 0))
+			 (suffix (vector-ref y 1)))
+		     (process (vector x prefix) suffix tail)))
+		  ((vector? x)
+		   (let ((prefix (vector-ref x 0))
+			 (suffix (vector-ref x 1)))
+		     (process prefix suffix (append y tail))))
+		  (else (append x (append y tail))))))))))
 
 (define (find-extra-code-block name)
   (let loop ((end-code *end-of-block-code*))
@@ -269,8 +288,8 @@ MIT in each case. |#
 (define (add-extra-code! block new-code)
   (set-extra-code-block/code!
    block
-   (LAP ,@(extra-code-block/code block)
-	,@new-code)))
+   (LLAP (extra-code-block/code block)
+	 new-code)))
 
 (define (add-end-of-block-code! code-thunk)
   (add-extra-code!
