@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: widen.scm,v 1.5 1995/01/28 15:35:20 adams Exp $
+$Id: widen.scm,v 1.6 1995/02/27 21:33:26 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -282,7 +282,8 @@ MIT in each case. |#
 			 (and (cyclic? component)
 			      (is-dirty-because-of-kids? component)))))))
 	(if (not (null? finally-widenable-closures))
-	    (pp (list 'finally (length finally-widenable-closures) 'widened)))
+	    (if compiler:guru?
+		(pp `(finally ,(length finally-widenable-closures) widened))))
 	(generate-reps-and-name-maps! finally-widenable-closures)
 	finally-widenable-closures))))
 
