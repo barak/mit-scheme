@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.50 1989/08/17 14:51:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.51 1989/09/15 18:10:43 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -88,7 +88,9 @@ MIT in each case. |#
 (define-package (runtime 1d-property)
   (files "prop1d")
   (parent ())
-  (export ()	  1d-table/alist
+  (export ()
+	  1d-table/for-each
+	  1d-table/alist
 	  1d-table/get
 	  1d-table/lookup
 	  1d-table/put!
