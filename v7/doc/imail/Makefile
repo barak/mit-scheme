@@ -1,5 +1,5 @@
 
-# $Id: Makefile,v 1.6 2000/07/11 16:59:56 cph Exp $
+# $Id: Makefile,v 1.7 2000/07/11 20:17:56 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-all:	imail.ps imail.pdf imail.info html/imail_toc.html
+all:	imail.ps imail.pdf imail.info html/imail.html
 
 imail.ps: imail.dvi
 	dvips -o $@ $^
