@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sercom.scm,v 1.64 1999/01/02 06:11:34 cph Exp $
+;;; $Id: sercom.scm,v 1.65 2000/03/03 14:55:16 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -28,9 +28,9 @@
 (define-variable-per-buffer case-fold-search
   "True if searches should ignore case.
 Automatically becomes local when set in any fashion.
-If given a numeric arguemnt, most of the search commands will toggle
+If given a numeric argument, most of the search commands will toggle
 this variable temporarily."
-  true
+  #t
   boolean?)
 
 (define-variable search-last-string
@@ -59,7 +59,7 @@ and does not include searches that are aborted."
 
 (define-variable search-exit-char
   "Character to exit incremental search."
-  #\altmode
+  #\return
   char?)
 
 (define-variable search-delete-char
@@ -84,7 +84,7 @@ and does not include searches that are aborted."
 
 (define-variable search-exit-option
   "True means random control characters terminate incremental search."
-  true
+  #t
   boolean?)
 
 (define-variable search-slow-speed
@@ -233,7 +233,7 @@ As you type characters, they add to the search string and are found.
 A numeric argument allows you to toggle case-fold-search but this
  information is lost whenever you exit search, even if you do a C-s C-s.
 Type Delete to cancel characters from end of search string.
-Type ESC to exit, leaving point at location found.
+Type RET to exit, leaving point at location found.
 Type C-s to search again forward, C-r to search again backward.
 Type C-w to yank word from buffer onto end of search string and search for it.
 Type C-y to yank rest of line onto end of search string, etc.
@@ -249,7 +249,7 @@ C-g when search is successful aborts and moves point to starting point."
   (lambda (toggle-case-fold?)
     (opposite-case-fold toggle-case-fold?
       (lambda ()
-	(isearch true false)))))
+	(isearch #t #f)))))
 
 (define-command isearch-forward-regexp
   "Do incremental search forward for regular expression.
@@ -259,7 +259,7 @@ is treated as a regexp.  See \\[isearch-forward] for more info."
   (lambda (toggle-case-fold?)
     (opposite-case-fold toggle-case-fold?
       (lambda ()
-	(isearch true true)))))
+	(isearch #t #t)))))
 
 (define-command isearch-backward
   "Do incremental search backward.
@@ -268,7 +268,7 @@ See \\[isearch-forward] for more information."
   (lambda (toggle-case-fold?)
     (opposite-case-fold toggle-case-fold?
       (lambda ()
-	(isearch false false)))))
+	(isearch #f #f)))))
 
 (define-command isearch-backward-regexp
   "Do incremental search backward for regular expression.
@@ -278,7 +278,7 @@ is treated as a regexp.  See \\[isearch-forward] for more info."
   (lambda (toggle-case-fold?)
     (opposite-case-fold toggle-case-fold?
       (lambda ()
-	(isearch false true)))))
+	(isearch #f #t)))))
 
 ;;;; Character Search
 ;;;  (Courtesy of Jonathan Rees)
@@ -295,7 +295,7 @@ Special characters:
   (lambda (toggle-case-fold?)
     (opposite-case-fold toggle-case-fold?
       (lambda ()
-	(character-search true)))))
+	(character-search #t)))))
 
 (define-command char-search-backward
   "Like \\[char-search-forward], but searches backwards."
@@ -303,7 +303,7 @@ Special characters:
   (lambda (toggle-case-fold?)
     (opposite-case-fold toggle-case-fold?
       (lambda ()
-	(character-search false)))))
+	(character-search #f)))))
 
 (define (character-search forward?)
   (let ((char (prompt-for-char "Character search")))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: iserch.scm,v 1.22 2000/01/10 03:25:19 cph Exp $
+;;; $Id: iserch.scm,v 1.23 2000/03/03 14:55:05 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -34,7 +34,7 @@
 		(with-editor-interrupts-disabled
 		 (lambda ()
 		   (isearch-loop
-		    (initial-search-state false forward? regexp? point)))))
+		    (initial-search-state #f forward? regexp? point)))))
 	      clear-message)))
 	(cond ((eq? result 'ABORT)
 	       (set-window-point! window point)
@@ -61,7 +61,7 @@
 	     (let ((char
 		    (prompt-for-typein
 		     (string-append (search-state-message state) "^Q")
-		     false
+		     #f
 		     keyboard-read)))
 	       (if (char? char)
 		   (isearch-append-char state char)
@@ -74,14 +74,14 @@
 					(search-state-regexp? state))
 		 (begin
 		   (isearch-exit state)
-		   false)))
+		   #f)))
 	    ((test-for #\C-g)
 	     (editor-beep)
 	     (isearch-pop state))
 	    ((test-for (ref-variable search-repeat-char))
-	     (isearch-continue (search-state-next state true)))
+	     (isearch-continue (search-state-next state #t)))
 	    ((test-for (ref-variable search-reverse-char))
-	     (isearch-continue (search-state-next state false)))
+	     (isearch-continue (search-state-next state #f)))
 	    ((test-for (ref-variable search-delete-char))
 	     (isearch-loop (or (search-state-parent state) (editor-error))))
 	    ((test-for (ref-variable search-yank-word-char))
@@ -92,7 +92,7 @@
 	     (isearch-append-string
 	      state
 	      (extract-rest-of-line (search-state-end-point state))))
-	    ((char=? char #\return)
+	    ((char=? char #\linefeed)
 	     (isearch-append-char state #\newline))
 	    ((or (not (zero? (char-bits char)))
 		 (and (ref-variable search-exit-option)
@@ -123,7 +123,7 @@
 		    (prompt-for-string/prompt
 		     (if forward? "Search" "Search backward")
 		     (write-to-string (ref-variable search-last-string))))
-		false
+		#f
 		keyboard-peek)))
 	  (cond ((not (char? char))
 		 char)
@@ -254,17 +254,17 @@
 			       (search-state-initial-point state)))))
 
 (define-structure (search-state)
-  (text false read-only true)
-  (parent false read-only true)
-  (forward? false read-only true)
-  (regexp? false read-only true)
-  (successful? false read-only true)
-  (wrapped? false read-only true)
-  (invalid-regexp false read-only true)
-  (start-point false read-only true)
-  (end-point false read-only true)
-  (point false read-only true)
-  (initial-point false read-only true))
+  (text #f read-only #t)
+  (parent #f read-only #t)
+  (forward? #f read-only #t)
+  (regexp? #f read-only #t)
+  (successful? #f read-only #t)
+  (wrapped? #f read-only #t)
+  (invalid-regexp #f read-only #t)
+  (start-point #f read-only #t)
+  (end-point #f read-only #t)
+  (point #f read-only #t)
+  (initial-point #f read-only #t))
 
 (define (most-recent-successful-search-state state)
   (if (search-state-successful? state)
@@ -278,9 +278,9 @@
 		     parent
 		     forward?
 		     regexp?
-		     true
-		     false
-		     false
+		     #t
+		     #f
+		     #f
 		     point
 		     point
 		     point
@@ -292,9 +292,9 @@
 		       parent
 		       forward?
 		       (search-state-regexp? parent)
-		       false
+		       #f
 		       (search-state-wrapped? parent)
-		       false
+		       #f
 		       start-point
 		       (mark+ start-point (string-length text))
 		       (search-state-point parent)
@@ -328,11 +328,11 @@
 	      parent
 	      forward?
 	      regexp?
-	      true
+	      #t
 	      (and (boolean=? forward? (search-state-forward? parent))
 		   (or (search-state-wrapped? parent)
 		       (not (search-state-successful? parent))))
-	      false
+	      #f
 	      (re-match-start 0)
 	      (re-match-end 0)
 	      result
