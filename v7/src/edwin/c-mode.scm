@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/c-mode.scm,v 1.45 1991/03/15 23:37:29 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/c-mode.scm,v 1.46 1991/04/12 23:17:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -99,12 +99,13 @@ Variables controlling indentation style:
   (make-event-distributor))
 
 (define-key 'c #\linefeed 'reindent-then-newline-and-indent)
+(define-key 'c #\) 'lisp-insert-paren)
 (define-key 'c #\{ 'electric-c-brace)
 (define-key 'c #\} 'electric-c-brace)
 (define-key 'c #\; 'electric-c-semi)
 (define-key 'c #\: 'electric-c-terminator)
-(define-key 'c #\c-m-h 'mark-c-function)
-(define-key 'c #\c-m-q 'indent-c-function)
+(define-key 'c #\c-m-h 'mark-c-procedure)
+(define-key 'c #\c-m-q 'c-indent-expression)
 (define-key 'c #\rubout 'backward-delete-char-untabify)
 (define-key 'c #\tab 'c-indent-line)
 
@@ -155,7 +156,9 @@ and after colons and semicolons, inserted in C code."
 		(begin
 		  (insert-newline)
 		  ((ref-command c-indent-line) false))))
-	  ((ref-command self-insert-command) false)))))
+	  ((ref-command self-insert-command) false))
+      (if (eqv? #\} (current-command-char))
+	  (mark-flash (backward-one-sexp (current-point)) 'RIGHT)))))
 
 (define-command electric-c-semi
   "Insert character and correct line's indentation."
