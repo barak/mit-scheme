@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.100 1989/08/04 03:30:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.101 1989/08/07 08:44:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -109,16 +109,32 @@ procedure when it fails to find a command."
   (editor-error "Trying to modify read only text."))
 
 (define-variable debug-on-editor-error
-  "If not false, signal Scheme error when an editor error occurs."
+  "True means signal Scheme error when an editor error occurs."
   false)
+
+(define condition-type:editor-error
+  (make-error-type '()
+    (lambda (condition port)
+      (write-string "Editor error: " port)
+      (write-string (message-args->string (condition/irritants condition))
+		    port))))
 
 (define (editor-error . strings)
   (if (ref-variable debug-on-editor-error)
-      (error "editor error" (message-args->string strings))
+      (call-with-current-continuation
+       (lambda (continuation)
+	 (debug-scheme-error
+	  (make-condition condition-type:editor-error
+			  strings
+			  continuation))
+	 (%editor-error)))
       (begin
 	(if (not (null? strings)) (apply temporary-message strings))
-	(editor-beep)
-	(abort-current-command))))
+	(%editor-error))))
+
+(define (%editor-error)
+  (editor-beep)
+  (abort-current-command))
 
 (define (editor-failure . strings)
   (cond ((not (null? strings)) (apply temporary-message strings))
@@ -223,6 +239,18 @@ With argument, saves visited file first."
   ()
   (lambda ()
     (editor-abort *the-non-printing-object*)))
+
+(define-command save-buffers-kill-scheme
+  "Offer to save each buffer, then kill Scheme.
+With prefix arg, silently save all file-visiting buffers, then kill."
+  "P"
+  (lambda (no-confirmation?)
+    (save-some-buffers no-confirmation?)
+    (set! edwin-finalization
+	  (lambda ()
+	    (set! edwin-finalization false)
+	    (%exit)))    ((ref-command suspend-edwin))))
+
 (define-command exit-recursive-edit
   "Exit normally from a subsystem of a level of editing."
   ()

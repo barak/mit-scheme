@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.75 1989/08/03 01:31:16 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.76 1989/08/07 08:44:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -98,6 +98,7 @@
     (reset-command-state!)
     (let ((char (with-editor-interrupts-disabled keyboard-read-char)))
       (set! *command-char* char)
+      (clear-message)
       (set-command-prompt! (char-name char))
       (let ((window (current-window)))
 	(%dispatch-on-command window
@@ -132,7 +133,8 @@
   (reset-command-state!)
   (%dispatch-on-command (current-window) command false))
 
-(define-integrable (read-and-dispatch-on-char)  (dispatch-on-char (current-comtabs)
+(define (read-and-dispatch-on-char)
+  (dispatch-on-char (current-comtabs)
 		    (with-editor-interrupts-disabled keyboard-read-char)))
 
 (define (dispatch-on-char comtab char)

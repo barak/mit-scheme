@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.7 1989/08/04 03:17:28 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.8 1989/08/07 08:45:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -209,11 +209,20 @@ Includes the new backup.  Must be > 0"
 		     4
 		     16)
 	  " "
-	  (pathname-name-string pathname)))))
+	  (pathname-name-string pathname)
+	  (let ((type (file-attributes/type attributes)))
+	    (if (string? type)
+		(string-append " -> " type)
+		""))))))
 
 (define (os/dired-filename-region lstart)
   (let ((lend (line-end lstart 0)))
-    (char-search-backward #\Space lend lstart 'LIMIT)    (make-region (re-match-end 0) lend)))
+    (if (not (re-search-forward
+	      "\\(Jan\\|Feb\\|Mar\\|Apr\\|May\\|Jun\\|Jul\\|Aug\\|Sep\\|Oct\\|Nov\\|Dec\\) +[0-9]+ +[0-9:]+ "
+	      lstart
+	      lend))
+	(editor-error "No filename on this line"))
+    (make-region (re-match-end 0) lend)))
 
 (define (os/dired-sort-pathnames pathnames)
   (sort pathnames

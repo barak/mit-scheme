@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.103 1989/08/04 03:17:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.104 1989/08/07 08:44:35 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -331,4 +331,4 @@ C-] -- abort Dired; this is like \\[kill-buffer] on this buffer."
 		  (map pathname-name-string pathnames)))))))))
 
 (define (read&sort-directory pathname)
-  (or/dired-sort-pathnames (directory-read pathname false)))
+  (os/dired-sort-pathnames (directory-read pathname false)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.6 1989/08/03 01:34:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.7 1989/08/07 08:44:45 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -534,11 +534,41 @@ MIT in each case. |#
 (define-package (edwin command-summary)
   (files "keymap")
   (parent (edwin)))
-#|
+
 (define-package (edwin debugger)
   (files "debug")
-  (parent (edwin)))
-|#(define-package (edwin dired)
+  (parent (edwin))
+  (export (edwin)
+	  debug-scheme-error)
+  (import (runtime debugger)
+	  command/earlier-reduction
+	  command/earlier-subproblem
+	  command/frame
+	  command/goto
+	  command/later-reduction
+	  command/later-subproblem
+	  command/move-to-child-environment
+	  command/move-to-parent-environment
+	  command/print-environment-procedure
+	  command/print-expression
+	  command/print-reduction
+	  command/print-reductions
+	  command/return
+	  command/show-all-frames
+	  command/show-current-frame
+	  command/summarize-history
+	  dstate/environment-list
+	  make-initial-dstate
+	  show-error-info)
+  (import (runtime debugger-utilities)
+	  hook/debugger-failure
+	  hook/debugger-message
+	  hook/presentation)
+  (import (runtime rep)
+	  hook/prompt-for-confirmation
+	  hook/prompt-for-expression))
+
+(define-package (edwin dired)
   (files "dired")
   (parent (edwin))
   (export (edwin)

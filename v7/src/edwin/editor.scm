@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.187 1989/04/28 22:49:21 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.188 1989/08/07 08:44:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -46,63 +46,42 @@
 
 (declare (usual-integrations))
 
-(define edwin-reset-args
-  '())
-
 (define (edwin)
   (if (not edwin-editor)
       (apply edwin-reset edwin-reset-args))
   (call-with-current-continuation
    (lambda (continuation)
-     (bind-condition-handler
-	 '()
-	 (lambda (condition)
-	   (and (not (condition/internal? condition))
-		(error? condition)
-		(if (ref-variable debug-on-error)
-		    (begin
-		     (with-output-to-temporary-buffer "*Error*"
-		       (lambda ()
-			 (format-error-message (condition/message condition)
-					       (condition/irritants condition)
-					       (current-output-port))))
-		     (editor-error "Scheme error"))
-		    (within-continuation continuation
-		      (lambda ()
-			(signal-error condition))))))
-       (lambda ()
-	 (using-screen edwin-screen
-	  (lambda ()
-	    (with-editor-input-port edwin-input-port
+     (fluid-let ((editor-abort continuation)
+		 (*auto-save-keystroke-count* 0))
+       (within-editor edwin-editor
+	 (lambda ()
+	   (using-screen edwin-screen
 	     (lambda ()
-	       (with-editor-interrupts
-		(lambda ()
-		  (within-editor edwin-editor
-		   (lambda ()
-		     (perform-buffer-initializations! (current-buffer))
-		     (dynamic-wind
-		      (lambda ()
-			(update-screens! true))
-		      (lambda ()
-			;; Should this be in a dynamic wind? -- Jinx
-			(if edwin-initialization (edwin-initialization))
-			(let ((message (cmdl-message/null)))
-			  (push-cmdl (lambda (cmdl)
-				       cmdl	;ignore
-				       (top-level-command-reader)
-				       message)
-				     false
-				     message)))
-		      (lambda ()
-			unspecific))))))))))
-	 ;; Should this be here or in a dynamic wind? -- Jinx
-	 (if edwin-finalization (edwin-finalization))))))
+	       (with-editor-input-port edwin-input-port
+		 (lambda ()
+		   (with-editor-interrupts
+		     (lambda ()
+		       (bind-condition-handler '() internal-error-handler
+			 (lambda ()
+			   (perform-buffer-initializations! (current-buffer))
+			   (dynamic-wind
+			    (lambda () (update-screens! true))
+			    (lambda ()
+			      ;; Should this be in a dynamic wind? -- Jinx
+			      (if edwin-initialization (edwin-initialization))
+			      (let ((message (cmdl-message/null)))
+				(push-cmdl (lambda (cmdl)
+					     cmdl ;ignore
+					     (top-level-command-reader)
+					     message)
+					   false
+					   message)))
+			    (lambda () unspecific)))))))))))))))  ;; Should this be here or in a dynamic wind? -- Jinx
+  (if edwin-finalization (edwin-finalization))
   unspecific)
 
-(define-variable debug-on-error
-  "*True means enter debugger if an error is signalled.
-Does not apply to editor errors."
-  false)
+(define edwin-reset-args '())
+(define editor-abort)
 
 ;; Set this before entering the editor to get something done after the
 ;; editor's dynamic environment is initialized, but before the command
@@ -113,21 +92,13 @@ Does not apply to editor errors."
 ;; reset and then reenter the editor.
 (define edwin-finalization false)
 
+;;;; Recursive Edit Levels
+
 (define (within-editor editor thunk)
-  (call-with-current-continuation
-   (lambda (continuation)
-     (fluid-let ((editor-continuation continuation)
-		 (recursive-edit-continuation false)
-		 (recursive-edit-level 0)
-		 (current-editor editor)
-		 (*auto-save-keystroke-count* 0))
-       (thunk)))))
-
-(define editor-continuation)
-(define recursive-edit-continuation)
-(define recursive-edit-level)
-(define current-editor)
-
+  (fluid-let ((current-editor editor)
+	      (recursive-edit-continuation false)
+	      (recursive-edit-level 0))
+    (thunk)))
 (define (enter-recursive-edit)
   (let ((value
 	 (call-with-current-continuation
@@ -154,11 +125,33 @@ Does not apply to editor errors."
       (recursive-edit-continuation value)
       (editor-error "No recursive edit is in progress")))
 
-(define (editor-abort value)
-  (editor-continuation value))
+(define recursive-edit-continuation)
+(define recursive-edit-level)
+(define current-editor)
+
+;;;; Internal Errors
 
-(define *^G-interrupt-continuations*
-  '())
+(define (internal-error-handler condition)
+  (and (not (condition/internal? condition))
+       (error? condition)
+       (if (ref-variable debug-on-internal-error)
+	   (begin
+	     (debug-scheme-error condition)
+	     (message "Scheme error")
+	     (%editor-error))
+	   (exit-editor-and-signal-error condition))))
+
+(define-variable debug-on-internal-error
+  "True means enter debugger if error is signalled while the editor is running.
+This does not affect editor errors or evaluation errors."
+  false)
+
+(define (exit-editor-and-signal-error condition)
+  (within-continuation editor-abort
+    (lambda ()
+      (signal-error condition))))
+
+;;;; C-g Interrupts
 
 (define (^G-signal)
   (let ((continuations *^G-interrupt-continuations*))
@@ -178,3 +171,6 @@ Does not apply to editor errors."
       (if (eq? value signal-tag)
 	  (interceptor)
 	  value))))
+
+(define *^G-interrupt-continuations*
+  '())

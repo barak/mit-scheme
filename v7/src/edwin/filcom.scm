@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.136 1989/04/28 22:49:44 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.137 1989/08/07 08:44:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -333,9 +333,11 @@ Argument means don't offer to use auto-save file."
 				     (pathname->string pathname))))
 		 (let ((where (mark-index (buffer-point buffer))))
 		   (read-buffer buffer pathname)
-		   (set-current-point!
-		    (mark+ (buffer-start buffer) where 'LIMIT))
-		   (after-find-file buffer false))))))))
+		   (set-buffer-point!
+		    buffer
+		    (mark+ (buffer-start buffer) where 'LIMIT)))
+		 (after-find-file buffer false)))))))
+
 (define-command copy-file
   "Copy a file; the old and new names are read in the typein window.
 If a file with the new name already exists, confirmation is requested first."

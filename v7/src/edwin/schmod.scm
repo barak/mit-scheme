@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.11 1989/05/16 18:52:49 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.12 1989/08/07 08:45:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -178,7 +178,8 @@ the buffer *Transcript*:
 	    (WITH-INPUT-FROM-PORT . 1)
 	    (WITH-INPUT-FROM-STRING . 1)
 	    (WITH-OUTPUT-TO-PORT . 1)
-	    (WITH-OUTPUT-TO-STRING . 1)	    (WITH-VALUES . 1)
+	    (WITH-OUTPUT-TO-STRING . 0)
+	    (WITH-VALUES . 1)
 
 	    (BIND-CONDITION-HANDLER . 2)
 	    (LIST-TRANSFORM-POSITIVE . 1)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.5 1989/04/28 22:48:15 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.6 1989/08/07 08:44:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -74,7 +74,7 @@
 	  (else char))))
 
 (define (unmap-alias-char char)
-  (if (ascii-controlified? char)
+  (if (and (ascii-controlified? char)	   (even? (quotient (char-bits char) 2)))
       (unmap-alias-char
        (make-char (let ((code (char-code char)))
 		    (+ code (if (<= #x01 code #x1A) #x60 #x40)))
@@ -87,14 +87,8 @@
 	    (unmap-alias-char (car entry))
 	    char))))
 
-(define (ascii-controlified? char)
-  (and (even? (quotient (char-bits char) 2))
-       (let ((code (char-code char)))
-	 (or (< code #x09)
-	     (= code #x0B)
-	     (if (< code #x1B)
-		 (< #x0D code)
-		 (and (< code #x20)
-		      (< #x1B code)))))))
+(define-integrable (ascii-controlified? char)
+  (< (char-code char) #x20))
+
 (define-integrable (char-name char)
   (char->name (unmap-alias-char char)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.79 1989/04/28 22:50:22 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.80 1989/08/07 08:44:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -56,7 +56,7 @@ State variables:
 a : there is a command prompt
 b : the command prompt is displayed
 c : there is a message
-d : the message should be erased
+d : the message should be erased (also implies it is displayed)
 
 Constraints:
 
@@ -91,8 +91,8 @@ given starting state and transition operation.
 
   012345
 0 082300
-8 08230C
-C *C230C	* is special -- see the code.
+8 08238C
+C *C23CC	* is special -- see the code.
 2 2A2302
 3 3B2300
 A 2AAB8C
@@ -165,11 +165,12 @@ B 3BAB8C
     (set-message! string)))
 
 (define (clear-message)
-  (set! command-prompt-string false)
-  (set! command-prompt-displayed? false)
-  (set! message-string false)
-  (set! message-should-be-erased? false)
-  (clear-message!))
+  (if message-string
+      (begin
+	(set! message-string false)
+	(set! message-should-be-erased? false)
+	(if (not command-prompt-displayed?)
+	    (clear-message!)))))
 
 (define editor-input-port)
 
@@ -185,26 +186,23 @@ B 3BAB8C
 (define (keyboard-peek-char)
   (if *executing-keyboard-macro?*
       (keyboard-macro-peek-char)
-      (begin
-	(read-char-preface)
-	(remap-alias-char (peek-char editor-input-port)))))
+      (keyboard-read-char-1 peek-char)))
 
 (define (keyboard-read-char)
   (set! keyboard-chars-read (1+ keyboard-chars-read))
   (if *executing-keyboard-macro?*
       (keyboard-macro-read-char)
-      (begin
-	(read-char-preface)
-	(let ((char (remap-alias-char (read-char editor-input-port))))
-	  (set! *auto-save-keystroke-count* (1+ *auto-save-keystroke-count*))
-	  (ring-push! (current-char-history) char)
-	  (if *defining-keyboard-macro?* (keyboard-macro-write-char char))
-	  char))))
+      (let ((char (keyboard-read-char-1 read-char)))
+	(set! *auto-save-keystroke-count* (1+ *auto-save-keystroke-count*))
+	(ring-push! (current-char-history) char)
+	(if *defining-keyboard-macro?* (keyboard-macro-write-char char))
+	char)))
 
 (define read-char-timeout/fast 500)
 (define read-char-timeout/slow 2000)
 
-(define-integrable (read-char-preface)
+(define (keyboard-read-char-1 read-char)
+  ;; Perform redisplay if needed.
   (if (not (keyboard-active? 0))
       (begin
 	(update-screens! false)
@@ -216,6 +214,7 @@ B 3BAB8C
 	    (begin
 	      (do-auto-save)
 	      (set! *auto-save-keystroke-count* 0)))))
+  ;; Perform the appropriate juggling of the minibuffer message.
   (cond ((within-typein-edit?)
 	 (if message-string
 	     (begin
@@ -233,4 +232,5 @@ B 3BAB8C
 	     (begin
 	       (set! command-prompt-displayed? true)
 	       (set-message! command-prompt-string))
-	     (clear-message!)))))
+	     (clear-message!))))
+  (remap-alias-char (read-char editor-input-port)))

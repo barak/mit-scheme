@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.14 1989/04/28 22:49:39 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.15 1989/08/07 08:44:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -59,6 +59,11 @@ If false, use the default (REP loop) syntax-table."
 (define-variable previous-evaluation-expression
   "The last expression evaluated in the typein window."
   false)
+
+(define-variable debug-on-evaluation-error
+  "True means enter debugger if error is signalled while evaluating.
+This does not affect editor errors."
+  true)
 
 (define-command eval-definition
   "Evaluate the definition at point.
@@ -184,15 +189,25 @@ With an argument, prompts for the evaluation environment."
 	(lambda (condition)
 	  (and (not (condition/internal? condition))
 	       (error? condition)
-	       (begin
-		(with-output-to-temporary-buffer "*Error*"
-		  (lambda ()
-		    (format-error-message (condition/message condition)
-					  (condition/irritants condition)
-					  (current-output-port))))
-		(editor-error "Error while evaluating expression"))))
+	       (if (ref-variable debug-on-evaluation-error)
+		   (debug-scheme-error condition)
+		   (let ((string
+			  (with-output-to-string
+			    (lambda ()
+			      ((condition/reporter condition)
+			       condition
+			       (current-output-port))))))
+		     (if (and (not (string-find-next-char string #\newline))
+			      (< (string-column-length string 18) 80))
+			 (message "Evaluation error: " string)
+			 (begin
+			   (with-output-to-temporary-buffer "*error*" string)
+			   (message "Evaluation error")))))
+	       (%editor-error)))
       (lambda ()
-	(with-new-history (lambda () (scode-eval scode environment)))))))
+	(with-new-history
+	 (lambda () (extended-scode-eval scode environment)))))))
+
 (define (prompt-for-expression-value prompt default)
   (eval-with-history (prompt-for-expression prompt default)
 		     (evaluation-environment false)))
