@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.9 1988/06/14 08:37:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.10 1988/08/22 20:33:53 markf Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -520,6 +520,25 @@ MIT in each case. |#
     (expression-simplify* operand scfg-append!
       (lambda (s-operand)
 	(receiver (rtl:make-fixnum-1-arg
+		   operator
+		   s-operand))))))
+
+(define-expression-method 'GENERIC-BINARY
+  (lambda (receiver scfg-append! operator operand1 operand2)
+    (expression-simplify* operand1 scfg-append!
+      (lambda (s-operand1)
+	(expression-simplify* operand2 scfg-append!
+	  (lambda (s-operand2)
+	    (receiver (rtl:make-generic-binary
+		       operator
+		       s-operand1
+		       s-operand2))))))))
+
+(define-expression-method 'GENERIC-UNARY
+  (lambda (receiver scfg-append! operator operand)
+    (expression-simplify* operand scfg-append!
+      (lambda (s-operand)
+	(receiver (rtl:make-generic-unary
 		   operator
 		   s-operand))))))
 
