@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comtab.scm,v 1.66 1994/03/18 21:51:28 cph Exp $
+;;;	$Id: comtab.scm,v 1.67 1996/10/01 05:55:55 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -325,28 +325,32 @@
   key)
 
 (define (comtab-alist* comtab)
-  (list-transform-negative
-      (let ((vector (comtab-vector comtab))
-	    (alist (comtab-alist comtab)))
-	(if (vector? vector)
-	    (let ((end (vector-length vector)))
-	      (let loop ((index 0))
-		(if (< index end)
-		    (let ((datum (vector-ref vector index)))
-		      (if datum
-			  (cons (cons (integer->char index) datum)
-				(loop (+ index 1)))
-			  (loop (+ index 1))))
-		    alist)))
-	    alist))
-    (lambda (entry)
-      (let ((key (car entry)))
-	(and (char? key)
-	     (char-upper-case? key)
-	     (let ((datum (cdr entry)))
-	       (and (pair? datum)
-		    (eq? comtab (car datum))
-		    (eqv? (char-downcase key) (cdr datum)))))))))
+  (let ((alist
+	 (let ((vector (comtab-vector comtab))
+	       (alist (comtab-alist comtab)))
+	   (if (vector? vector)
+	       (let ((end (vector-length vector)))
+		 (let loop ((index 0))
+		   (if (< index end)
+		       (let ((datum (vector-ref vector index)))
+			 (if datum
+			     (cons (cons (integer->char index) datum)
+				   (loop (+ index 1)))
+			     (loop (+ index 1))))
+		       alist)))
+	       alist))))
+    (list-transform-negative alist
+      (lambda (entry)
+	(let ((key (car entry)))
+	  (and (char? key)
+	       (char-upper-case? (char-base key))
+	       (let ((datum (cdr entry)))
+		 (or (and (comtab-alias? datum)
+			  (eq? comtab (car datum))
+			  (eqv? (char-downcase key) (cdr datum)))
+		     (let ((entry* (assv (char-downcase key) alist)))
+		       (and entry*
+			    (equal? datum (cdr entry*))))))))))))
 
 (define (comtab->alist comtab)
   (let loop ((prefix '()) (comtab comtab))
