@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.265 2000/12/01 06:07:21 cph Exp $
+$Id: edwin.pkg,v 1.266 2001/02/05 17:45:42 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -1496,6 +1496,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  mail-field-region
 	  mail-field-start
 	  mail-from-string
+	  mail-full-name
 	  mail-header-end
 	  mail-insert-field
 	  mail-insert-field-value
@@ -1511,7 +1512,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  prepare-mail-buffer-for-sending
 	  random-mime-boundary-string
 	  send-mail-buffer
-	  set-buffer-mime-attachments!))
+	  set-buffer-mime-attachments!
+	  user-mail-address))
 
 (define-package (edwin mail-alias)
   (files "malias")

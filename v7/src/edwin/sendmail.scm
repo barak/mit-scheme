@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.71 2000/11/30 17:22:55 cph Exp $
+;;; $Id: sendmail.scm,v 1.72 2001/02/05 17:45:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -38,8 +38,8 @@ after your init file is read, in case it sets `mail-host-address'."
   "Your full name.
 Appears in the From: field of mail and news messages, following the address.
 If set to the null string, From: field contains only the email address."
-  ""
-  string?)
+  #f
+  string-or-false?)
 
 (define-variable mail-from-style
   "Specifies how \"From:\" fields look.
@@ -344,22 +344,27 @@ is inserted."
 	    (add "FCC" (ref-variable mail-archive-file-name buffer)))))
 
 (define (mail-from-string buffer)
-  (let ((address
-	 (or (ref-variable user-mail-address buffer)
-	     (string-append (current-user-name)
-			    "@"
-			    (or (ref-variable mail-host-address buffer)
-				(os/hostname)))))
-	(full-name (ref-variable mail-full-name buffer)))
+  (let ((address (user-mail-address buffer))
+	(full-name (mail-full-name buffer)))
     (if (string-null? full-name)
 	address
 	(case (ref-variable mail-from-style buffer)
 	  ((PARENS)
 	   (string-append address " (" full-name ")"))
 	  ((ANGLES)
-	   (string-append (rfc822:quote-string full-name)
-			  " <" address ">"))
+	   (string-append (rfc822:quote-string full-name) " <" address ">"))
 	  (else address)))))
+
+(define (user-mail-address buffer)
+  (or (ref-variable user-mail-address buffer)
+      (string-append (current-user-name)
+		     "@"
+		     (or (ref-variable mail-host-address buffer)
+			 (os/hostname)))))
+
+(define (mail-full-name buffer)
+  (or (ref-variable mail-full-name buffer)
+      ""))
 
 (define-variable mail-setup-hook
   "An event distributor invoked immediately after a mail buffer is initialized.
