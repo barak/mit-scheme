@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxctty.c,v 1.5 1990/11/11 00:25:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxctty.c,v 1.6 1991/01/07 23:57:07 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -256,39 +256,47 @@ DEFUN (ctty_get_interrupt_chars, (ic), Tinterrupt_chars * ic)
       (ic -> quit) = ((s . tio . c_cc) [VQUIT]);
       (ic -> intrpt) = ((s . tio . c_cc) [VINTR]);
       (ic -> tstp) = ((s . tio . c_cc) [VSUSP]);
-#ifdef HAVE_BSD_JOB_CONTROL
+
+#ifdef _HPUX
       (ic -> dtstp) = (s . ltc . t_dsuspc);
-#else
-      (ic -> dtstp) = (UX_PC_VDISABLE (ctty_fildes));
-#endif
+#else /* not _HPUX */
+#ifdef _ULTRIX
+      (ic -> dtstp) = ((s . tio . c_cc) [VDSUSP]);
+#endif /* _ULTRIX */
+#endif /* not _HPUX */
+
 #else /* not HAVE_TERMIOS */
 #ifdef HAVE_TERMIO
+
       (ic -> quit) = ((s . tio . c_cc) [VQUIT]);
       (ic -> intrpt) = ((s . tio . c_cc) [VINTR]);
 #ifdef HAVE_BSD_JOB_CONTROL
       (ic -> tstp) = (s . ltc . t_suspc);
       (ic -> dtstp) = (s . ltc . t_dsuspc);
-#else
+#else /* not HAVE_BSD_JOB_CONTROL */
       {
 	cc_t disabled_char = (UX_PC_VDISABLE (ctty_fildes));
 	(ic -> tstp) = disabled_char;
 	(ic -> dtstp) = disabled_char;
       }
-#endif
+#endif /* not HAVE_BSD_JOB_CONTROL */
+
 #else /* not HAVE_TERMIO */
 #ifdef HAVE_BSD_TTY_DRIVER
+
       (ic -> quit) = (s . tc . t_quitc);
       (ic -> intrpt) = (s . tc . t_intrc);
 #ifdef HAVE_BSD_JOB_CONTROL
       (ic -> tstp) = (s . ltc . t_suspc);
       (ic -> dtstp) = (s . ltc . t_dsuspc);
-#else
+#else /* not HAVE_BSD_JOB_CONTROL */
       {
 	cc_t disabled_char = (UX_PC_VDISABLE (ctty_fildes));
 	(ic -> tstp) = disabled_char;
 	(ic -> dtstp) = disabled_char;
       }
-#endif
+#endif /* not HAVE_BSD_JOB_CONTROL */
+
 #endif /* HAVE_BSD_TTY_DRIVER */
 #endif /* HAVE_TERMIO */
 #endif /* HAVE_TERMIOS */
@@ -314,21 +322,38 @@ DEFUN (ctty_set_interrupt_chars, (ic), Tinterrupt_chars * ic)
       ((s . tio . c_cc) [VQUIT]) = (ic -> quit);
       ((s . tio . c_cc) [VINTR]) = (ic -> intrpt);
       ((s . tio . c_cc) [VSUSP]) = (ic -> tstp);
+#ifdef _HPUX
+      (s . ltc . t_suspc) = (ic -> tstp);
+      (s . ltc . t_dsuspc) = (ic -> dtstp);
+#else /* not _HPUX */
+#ifdef _ULTRIX
+      ((s . tio . c_cc) [VDSUSP]) = (ic -> dtstp);
+#endif /* _ULTRIX */
+#endif /* not _HPUX */
+
 #else /* not HAVE_TERMIOS */
 #ifdef HAVE_TERMIO
+
       ((s . tio . c_cc) [VQUIT]) = (ic -> quit);
       ((s . tio . c_cc) [VINTR]) = (ic -> intrpt);
-#else /* not HAVE_TERMIO */
-#ifdef HAVE_BSD_TTY_DRIVER
-      (s . tc . t_quitc) = (ic -> quit);
-      (s . tc . t_intrc) = (ic -> intrpt);
-#endif /* HAVE_BSD_TTY_DRIVER */
-#endif /* HAVE_TERMIO */
-#endif /* HAVE_TERMIOS */
 #ifdef HAVE_BSD_JOB_CONTROL
       (s . ltc . t_suspc) = (ic -> tstp);
       (s . ltc . t_dsuspc) = (ic -> dtstp);
 #endif
+
+#else /* not HAVE_TERMIO */
+#ifdef HAVE_BSD_TTY_DRIVER
+
+      (s . tc . t_quitc) = (ic -> quit);
+      (s . tc . t_intrc) = (ic -> intrpt);
+#ifdef HAVE_BSD_JOB_CONTROL
+      (s . ltc . t_suspc) = (ic -> tstp);
+      (s . ltc . t_dsuspc) = (ic -> dtstp);
+#endif
+
+#endif /* HAVE_BSD_TTY_DRIVER */
+#endif /* HAVE_TERMIO */
+#endif /* HAVE_TERMIOS */
       UX_terminal_set_state (ctty_fildes, (&s));
     }
 }

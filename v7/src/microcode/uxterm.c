@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.9 1991/01/05 23:09:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.10 1991/01/07 23:57:14 cph Rel $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -205,11 +205,17 @@ DEFUN (terminal_state_buffered_p, (s), Ttty_state * s)
 }
 
 void
-DEFUN (terminal_state_nonbuffered, (s, polling),
-       Ttty_state * s AND int polling)
+DEFUN (terminal_state_nonbuffered, (s, fd, polling),
+       Ttty_state * s AND
+       int fd AND
+       int polling)
 {
 #if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
+
   ((TIO (s)) -> c_lflag) &=~ (ICANON | ECHO);
+#ifdef IEXTEN
+  ((TIO (s)) -> c_lflag) &=~ IEXTEN;
+#endif
   ((TIO (s)) -> c_lflag) |= ISIG;
   ((TIO (s)) -> c_iflag) |= IGNBRK;
   ((TIO (s)) -> c_iflag) &=~ (ICRNL | IXON | ISTRIP);
@@ -217,8 +223,17 @@ DEFUN (terminal_state_nonbuffered, (s, polling),
   ((TIO (s)) -> c_cflag) &=~ PARENB;
   (((TIO (s)) -> c_cc) [VMIN]) = (polling ? 0 : 1);
   (((TIO (s)) -> c_cc) [VTIME]) = 0;
+#ifdef HAVE_TERMIOS
+  {
+    cc_t disable = (UX_PC_VDISABLE (fd));
+    (((TIO (s)) -> c_cc) [VSTOP]) = disable;
+    (((TIO (s)) -> c_cc) [VSTART]) = disable;
+  }
+#endif
+
 #else /* not HAVE_TERMIOS nor HAVE_TERMIO */
 #ifdef HAVE_BSD_TTY_DRIVER
+
   (s -> sg . sg_flags) &=~ (ECHO | CRMOD);
   (s -> sg . sg_flags) |= (ANYP | CBREAK);
   (s -> lmode) |= (LPASS8 | LNOFLSH);
@@ -232,40 +247,32 @@ DEFUN (terminal_state_nonbuffered, (s, polling),
   (s -> ltc . t_werasc) = (-1);
   (s -> ltc . t_lnextc) = (-1);
 #endif /* HAVE_BSD_JOB_CONTROL */
+
 #endif /* HAVE_BSD_TTY_DRIVER */
 #endif /* HAVE_TERMIOS or HAVE_TERMIO */
 }
 
 void
-DEFUN (terminal_state_raw, (s), Ttty_state * s)
+DEFUN (terminal_state_raw, (s, fd), Ttty_state * s AND int fd)
 {
+  terminal_state_nonbuffered (s, fd, 0);
+
 #if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
-  ((TIO (s)) -> c_lflag) &=~ (ICANON | ECHO | ISIG);
-  ((TIO (s)) -> c_iflag) |= IGNBRK;
-  ((TIO (s)) -> c_iflag) &=~ (ICRNL | IXON | ISTRIP);
-  ((TIO (s)) -> c_cflag) |= CS8;
-  ((TIO (s)) -> c_cflag) &=~ PARENB;
-  (((TIO (s)) -> c_cc) [VMIN]) = 1;
-  (((TIO (s)) -> c_cc) [VTIME]) = 0;
+
+  ((TIO (s)) -> c_lflag) &=~ ISIG;
+
 #else /* not HAVE_TERMIOS nor HAVE_TERMIO */
 #ifdef HAVE_BSD_TTY_DRIVER
-  (s -> sg . sg_flags) &=~ (ECHO | CRMOD);
-  (s -> sg . sg_flags) |= (ANYP | RAW);
-  (s -> lmode) |= (LPASS8 | LNOFLSH);
+
+  (s -> sg . sg_flags) &=~ CBREAK;
+  (s -> sg . sg_flags) |= RAW;
   (s -> tc . t_intrc) = (-1);
   (s -> tc . t_quitc) = (-1);
-  (s -> tc . t_startc) = (-1);
-  (s -> tc . t_stopc) = (-1);
-  (s -> tc . t_eofc) = (-1);
-  (s -> tc . t_brkc) = (-1);
 #ifdef HAVE_BSD_JOB_CONTROL
   (s -> ltc . t_suspc) = (-1);
   (s -> ltc . t_dsuspc) = (-1);
-  (s -> ltc . t_rprntc) = (-1);
-  (s -> ltc . t_flushc) = (-1);
-  (s -> ltc . t_werasc) = (-1);
-  (s -> ltc . t_lnextc) = (-1);
 #endif /* HAVE_BSD_JOB_CONTROL */
+
 #endif /* HAVE_BSD_TTY_DRIVER */
 #endif /* HAVE_TERMIOS or HAVE_TERMIO */
 }
@@ -276,16 +283,27 @@ DEFUN (terminal_state_buffered, (s, channel),
        Tchannel channel)
 {
   Ttty_state * os = (& (TERMINAL_ORIGINAL_STATE (channel)));
+
 #if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
+
   ((TIO (s)) -> c_lflag) |= (ICANON | ISIG);
   ((TIO (s)) -> c_lflag) |= (((TIO (os)) -> c_lflag) & ECHO);
+#ifdef IEXTEN
+  ((TIO (s)) -> c_lflag) |= (((TIO (os)) -> c_lflag) & IEXTEN);
+#endif
   ((TIO (s)) -> c_iflag) = ((TIO (os)) -> c_iflag);
   ((TIO (s)) -> c_cflag) |= CS8;
   ((TIO (s)) -> c_cflag) &=~ PARENB;
   (((TIO (s)) -> c_cc) [VMIN]) = (((TIO (os)) -> c_cc) [VMIN]);
   (((TIO (s)) -> c_cc) [VTIME]) = (((TIO (os)) -> c_cc) [VTIME]);
+#ifdef HAVE_TERMIOS
+  (((TIO (s)) -> c_cc) [VSTOP]) = (((TIO (os)) -> c_cc) [VSTOP]);
+  (((TIO (s)) -> c_cc) [VSTART]) = (((TIO (os)) -> c_cc) [VSTART]);
+#endif
+
 #else /* not HAVE_TERMIOS nor HAVE_TERMIO */
 #ifdef HAVE_BSD_TTY_DRIVER
+
   (s -> sg . sg_flags) &=~ (CBREAK | RAW);
   (s -> sg . sg_flags) |= ANYP;
   (s -> sg . sg_flags) |= ((os -> sg . sg_flags) & (ECHO | CRMOD));
@@ -305,6 +323,7 @@ DEFUN (terminal_state_buffered, (s, channel),
   (s -> ltc . t_werasc) = (os -> ltc . t_werasc);
   (s -> ltc . t_lnextc) = (os -> ltc . t_lnextc);
 #endif /* HAVE_BSD_JOB_CONTROL */
+
 #endif /* HAVE_BSD_TTY_DRIVER */
 #endif /* HAVE_TERMIOS or HAVE_TERMIO */
 }
@@ -434,7 +453,7 @@ DEFUN (OS_terminal_nonbuffered, (channel), Tchannel channel)
 {
   Ttty_state s;
   get_terminal_state (channel, (&s));
-  terminal_state_nonbuffered ((&s), 0);
+  terminal_state_nonbuffered ((&s), (CHANNEL_DESCRIPTOR (channel)), 0);
   set_terminal_state (channel, (&s));
 }
 

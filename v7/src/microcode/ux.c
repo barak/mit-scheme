@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.c,v 1.4 1990/11/01 04:33:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.c,v 1.5 1991/01/07 23:56:50 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -50,7 +50,7 @@ DEFUN (UX_terminal_get_state, (fd, s), int fd AND Ttty_state * s)
 {
   return
     ((((tcgetattr (fd, (& (s -> tio)))) < 0)
-#ifdef HAVE_BSD_JOB_CONTROL
+#ifdef _HPUX
       || ((UX_ioctl (fd, TIOCGLTC, (& (s -> ltc)))) < 0)
 #endif
       ) ? (-1) : 0);
@@ -61,7 +61,7 @@ DEFUN (UX_terminal_set_state, (fd, s), int fd AND Ttty_state * s)
 {
   return
     ((((tcsetattr (fd, TCSANOW, (& (s -> tio)))) < 0)
-#ifdef HAVE_BSD_JOB_CONTROL
+#ifdef _HPUX
       || ((UX_ioctl (fd, TIOCSLTC, (& (s -> ltc)))) < 0)
 #endif
       ) ? (-1) : 0);

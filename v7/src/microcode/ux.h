@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.15 1990/12/29 20:42:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.16 1991/01/07 23:56:58 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -541,7 +541,7 @@ extern void EXFUN (UX_prim_check_errno, (CONST char * name));
 typedef struct
 {
   struct termios tio;
-#ifdef HAVE_BSD_JOB_CONTROL
+#ifdef _HPUX
   struct ltchars ltc;
 #endif
 } Ttty_state;

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.h,v 1.2 1990/11/05 11:55:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.h,v 1.3 1991/01/07 23:57:22 cph Rel $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,8 +40,9 @@ MIT in each case. */
 extern int EXFUN (terminal_state_buffered_p, (Ttty_state * s));
 extern void EXFUN
   (terminal_state_buffered, (Ttty_state * s, Tchannel channel));
-extern void EXFUN (terminal_state_nonbuffered, (Ttty_state * s, int polling));
-extern void EXFUN (terminal_state_raw, (Ttty_state * s));
+extern void EXFUN
+  (terminal_state_nonbuffered, (Ttty_state * s, int fd, int polling));
+extern void EXFUN (terminal_state_raw, (Ttty_state * s, int fd));
 extern void EXFUN (get_terminal_state, (Tchannel channel, Ttty_state * s));
 extern void EXFUN (set_terminal_state, (Tchannel channel, Ttty_state * s));
 

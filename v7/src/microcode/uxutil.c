@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxutil.c,v 1.1 1990/06/20 19:38:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxutil.c,v 1.2 1991/01/07 23:57:29 cph Rel $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -153,7 +153,7 @@ DEFUN_VOID (userio_read_char_raw)
        do not permit aggregate initializers. */
     Ttty_state state;
     state = (* (save_input_state ()));
-    terminal_state_raw (&state);
+    terminal_state_raw ((&state), STDIN_FILENO);
     UX_terminal_set_state (STDIN_FILENO, (&state));
   }
   {
