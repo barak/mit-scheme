@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2fs.c,v 1.13 1995/10/31 08:04:27 cph Exp $
+$Id: pros2fs.c,v 1.14 1995/11/06 21:50:55 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -410,16 +410,6 @@ DEFINE_PRIMITIVE ("OS2-DAYLIGHT-SAVINGS-TIME?", Prim_OS2_dst_p, 0, 0, 0)
 DEFINE_PRIMITIVE ("OS2-COPY-FILE", Prim_OS2_copy_file, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  {
-    const char * from = (STRING_ARG (1));
-    const char * to = (STRING_ARG (2));
-    FILESTATUS3 * info = (OS2_read_file_status (to));
-    if ((info != 0) && (((info -> attrFile) & FILE_READONLY) != 0))
-      {
-	(info -> attrFile) &=~ FILE_READONLY;
-	OS2_write_file_status (to, info);
-      }
-    STD_API_CALL (dos_copy, (((PSZ) from), ((PSZ) to), DCPY_EXISTING));
-  }
+  OS_file_copy ((STRING_ARG (1)), (STRING_ARG (2)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
