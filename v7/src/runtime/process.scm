@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.12 1991/03/14 10:14:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.13 1991/10/29 13:27:41 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -95,8 +95,7 @@ MIT in each case. |#
 		(let ((input-port (make-generic-input-port channel 512))
 		      (output-port (subprocess-%output-port process)))
 		  (set-subprocess-%input-port! process input-port)
-		  (if output-port
-		      (set-input-port/associated-port! input-port output-port))
+		  (if output-port (associate-ports! input-port output-port))
 		  input-port)))))))
 
 (define (subprocess-output-port process)
@@ -108,10 +107,12 @@ MIT in each case. |#
 		(let ((output-port (make-generic-output-port channel 512))
 		      (input-port (subprocess-%input-port process)))
 		  (set-subprocess-%output-port! process output-port)
-		  (if input-port
-		      (set-output-port/associated-port! output-port
-							input-port))
+		  (if input-port (associate-ports! input-port output-port))
 		  output-port)))))))
+
+(define (associate-ports! input-port output-port)
+  (set-input-port/associated-port! input-port output-port)
+  (set-output-port/associated-port! output-port input-port))
 
 (define (make-subprocess filename arguments environment
 			 ctty stdin stdout stderr
