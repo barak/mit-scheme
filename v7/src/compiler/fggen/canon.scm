@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: canon.scm,v 1.14 1993/03/10 02:36:21 gjr Exp $
+$Id: canon.scm,v 1.15 1993/03/24 02:44:26 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -322,9 +322,10 @@ ARBITRARY:	The expression may be executed more than once.  It
 	 (canonicalize/lambda* expr bound (if (eq? context 'FIRST-CLASS)
 					      'FIRST-CLASS
 					      'ARBITRARY))))
-    (if (not (and (eq? context 'TOP-LEVEL)
-		  (canout-safe? canout)
-		  compiler:compile-by-procedures?))
+    (if (or (not (eq? context 'TOP-LEVEL))
+	    (not (canout-safe? canout))
+	    (canout-needs? canout)
+	    (not compiler:compile-by-procedures?))
 	canout
 	(make-canout
 	 (scode/make-directive
