@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.9 1995/09/25 20:54:10 adams Exp $
+$Id: graphics.scm,v 1.10 1996/03/21 16:44:27 adams Exp $
 
-Copyright (c) 1993-95 Massachusetts Institute of Technology
+Copyright (c) 1993-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -671,41 +671,57 @@ MIT in each case. |#
 ;;
 ;;  Colors
 ;;
-
-(define-integrable (rgb r g b)
-  (+ #x02000000 r (* g 256) (* b 65536)))
-
-(define (->color spec)
-  (cond ((integer? spec)
-	 (if (< spec #x02000000)
-	     (+ spec #x02000000)
-	     spec))
-        ((and (vector? spec) (= (vector-length spec) 3))
-	  (rgb (vector-ref spec 0) (vector-ref spec 1) (vector-ref spec 2)))
-        ((and (list? spec) (= (length spec) 3))
-	  (rgb (list-ref spec 0) (list-ref spec 1) (list-ref spec 2)))
-	((and (string? spec) (> (string-length spec) 1)
-	      (char=? (string-ref spec 0) #\#))
-	  (graphics-error "Cant do #rrggbb colors yet:" spec))
-	((string? spec)
-	  (let  ((pair (list-search-positive
-			  color-table
-	                  (lambda (pair) (string-ci=? (car pair) spec)))))
-	    (if pair
-	        (cdr pair)
-		(graphics-error	 "Unknown color name:" spec))))
-	(else
-	  (graphics-error "Illegal color" spec))))
+;; WIN32/FIND-COLOR returns a BGR encoded integer.
+;; ->COLOR returns a PALETTERGB encoded color.  All color uses internal to this
+;;  file should use ->COLOR.
 
 (define color-table)
 
+(define (win32/define-color name spec)
+  (set! color-table (cons (cons name (win32/find-color spec)) color-table)))
+
+(define (win32/find-color spec)
+  (define (rgb r g b)
+    (+ r (* g 256) (* b 65536)))
+  (define (rgb-hex spec width)
+    (let* ((pos1 (fix:+ 1 width))
+	   (pos2 (fix:+ pos1 width))
+	   (pos3 (fix:+ pos2 width)))
+      (rgb (string->number (substring spec    1 pos1) 16)
+	   (string->number (substring spec pos1 pos2) 16)
+	   (string->number (substring spec pos2 pos3) 16))))
+  (cond ((integer? spec)
+	 spec)
+        ((and (vector? spec) (= (vector-length spec) 3))
+	 (rgb (vector-ref spec 0) (vector-ref spec 1) (vector-ref spec 2)))
+        ((and (list? spec) (= (length spec) 3))
+	 (rgb (list-ref spec 0) (list-ref spec 1) (list-ref spec 2)))
+	((and (string? spec) (= (string-length spec) 7)
+	      (char=? (string-ref spec 0) #\#))
+	 (rgb-hex spec 2))
+	((string? spec)
+	 (let  ((pair
+		 (list-search-positive color-table
+		   (lambda (pair) (string-ci=? (car pair) spec)))))
+	   (if pair
+	       (cdr pair)
+	       (graphics-error "Unknown color name:" spec))))
+	(else
+	 (graphics-error "Illegal color" spec))))
+
 (define (win32-graphics/define-color device name spec)
   device
-  (set! color-table (cons (cons name (->color spec)) color-table)))
+  (win32/define-color name spec))
 
 (define (win32-graphics/find-color device spec)
   device
   (->color spec))
+
+(define (->color spec)
+  (let ((rgb (win32/find-color spec)))
+    (if (< rgb #x02000000)
+	(+ rgb #x02000000)		; force palette RGB
+	spec)))
 
 (define initial-color-definitions
   `(("red"          255   0   0)
@@ -733,7 +749,7 @@ MIT in each case. |#
   (let* ((window (graphics-device/descriptor device))
          (hdc    (win32-device/hdc window))
 	 (rgb    (->color color)))
-    (set-win32-device/fg-color!  window (->color color))
+    (set-win32-device/fg-color!  window rgb)
     (set-win32-device/pen-valid?! window #f)
     (set-text-color hdc rgb))
   unspecific)
@@ -930,7 +946,7 @@ MIT in each case. |#
 		 dib-image-type)
   (set! color-table '())
   (for-each
-    (lambda (pair) (win32-graphics/define-color #f (car pair) (cdr pair)))
+    (lambda (pair) (win32/define-color (car pair) (cdr pair)))
     initial-color-definitions)
   (register-graphics-window-class)
   (add-event-receiver! event:after-restore

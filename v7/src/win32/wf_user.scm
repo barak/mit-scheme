@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: wf_user.scm,v 1.5 1996/02/28 16:32:12 adams Exp $
+$Id: wf_user.scm,v 1.6 1996/03/21 16:44:57 adams Exp $
 
-Copyright (c) 1993-1996 Massachusetts Institute of Technology
+Copyright (c) 1993-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -81,6 +81,7 @@ MIT in each case. |#
 (define  get-sub-menu)
 (define  get-system-menu)
 (define  get-system-metrics)
+(define  get-window-rect)
 (define  get-window-text-length)
 (define  global-alloc)
 (define  global-lock)
@@ -295,6 +296,10 @@ MIT in each case. |#
   (set!  get-system-metrics
     (windows-procedure (get-system-metrics (index int))
       int user32.dll "GetSystemMetrics"))
+
+  (set!  get-window-rect
+    (windows-procedure (get-window-rect (window hwnd) (rect rect))
+      bool user32.dll "GetWindowRect"))
 
   (set!  get-window-text-length
     (windows-procedure (get-window-text-length (hdc hdc))

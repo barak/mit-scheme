@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: win32.pkg,v 1.7 1996/02/28 16:33:38 adams Exp $
+$Id: win32.pkg,v 1.8 1996/03/21 16:44:43 adams Exp $
 
-Copyright (c) 1993-95 Massachusetts Institute of Technology
+Copyright (c) 1993-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -71,6 +71,9 @@ MIT in each case. |#
   (parent (win32))
 ;  (export ()
 ;          win32-graphics-device-type)
+  (export ()
+	  win32/define-color
+	  win32/find-color)
   (import (win32 dib)
 	  create-dib
 	  open-dib
