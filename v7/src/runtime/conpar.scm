@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.45 2005/02/08 03:28:02 cph Exp $
+$Id: conpar.scm,v 14.46 2005/02/08 04:19:40 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2001,2003,2004,2005 Massachusetts Institute of Technology
@@ -65,7 +65,7 @@ USA.
 	(history-reductions history))))
 
 (define undefined-history
-  (list 'undefined-history))
+  (list 'UNDEFINED-HISTORY))
 
 (define (stack-frame/next stack-frame)
   (let ((next (stack-frame/%next stack-frame)))
@@ -91,9 +91,10 @@ USA.
 (define (stack-frame/ref stack-frame index)
   (let ((elements (stack-frame/elements stack-frame)))
     (let ((length (vector-length elements)))
-      (if (< index length)
+      (if (fix:< index length)
 	  (vector-ref elements index)
-	  (stack-frame/ref (stack-frame/next stack-frame) (- index length))))))
+	  (stack-frame/ref (stack-frame/next stack-frame)
+			   (fix:- index length))))))
 
 (define-integrable (stack-frame/return-address stack-frame)
   (stack-frame/ref stack-frame 0))
@@ -116,9 +117,9 @@ USA.
       ((frame frame)
        (offset (stack-address->index address (stack-frame/offset frame))))
     (let ((length (stack-frame/length frame)))
-      (if (< offset length)
+      (if (fix:< offset length)
 	  (values frame offset)
-	  (loop (stack-frame/next frame) (- offset length))))))
+	  (loop (stack-frame/next frame) (fix:- offset length))))))
 
 (define (stack-frame/skip-non-subproblems stack-frame)
   (let ((type (stack-frame/type stack-frame)))
@@ -198,31 +199,33 @@ USA.
       type))))
 
 (define (parse-one-frame state)
-  (define (handle-ordinary stream)
-    (let ((type
-	   (return-address->stack-frame-type
-	    (stream-car stream)
-	    (let ((type (parser-state/previous-type state)))
-	      (and type
-		   (1d-table/get (stack-frame-type/properties type)
-				 allow-extended?-tag
-				 #f))))))
-      (let ((length
-	     (let ((length (stack-frame-type/length type)))
-	       (if (exact-nonnegative-integer? length)
-		   length
-		   (length stream (parser-state/n-elements state))))))
-	((stack-frame-type/parser type)
-	 type
-	 (list->vector (stream-head stream length))
-	 (make-intermediate-state state length (stream-tail stream length))))))
-
-  (let ((the-stream (parser-state/element-stream state)))
+  (let ((handle-ordinary
+	 (lambda (stream)
+	   (let ((type
+		  (return-address->stack-frame-type
+		   (stream-car stream)
+		   (let ((type (parser-state/previous-type state)))
+		     (and type
+			  (1d-table/get (stack-frame-type/properties type)
+					allow-extended?-tag
+					#f))))))
+	     (let ((length
+		    (let ((length (stack-frame-type/length type)))
+		      (if (exact-nonnegative-integer? length)
+			  length
+			  (length stream (parser-state/n-elements state))))))
+	       ((stack-frame-type/parser type)
+		type
+		(list->vector (stream-head stream length))
+		(make-intermediate-state state
+					 length
+					 (stream-tail stream length)))))))
+	(the-stream (parser-state/element-stream state)))
     (if (stream-pair? the-stream)
 	(handle-ordinary the-stream)
 	(let ((control-point (parser-state/next-control-point state)))
 	  (and control-point
-	       (if (> (parser-state/n-elements state) 0)
+	       (if (fix:> (parser-state/n-elements state) 0)
 		   ;; Construct invisible join-stacklets frame.
 		   (handle-ordinary
 		    (stream return-address/join-stacklets control-point))
@@ -232,16 +235,16 @@ USA.
 		    (parser-state/block-thread-events? state)
 		    (parser-state/previous-type state))))))))
 
-;;; `make-intermediate-state' is used to construct an intermediate
+;;; MAKE-INTERMEDIATE-STATE is used to construct an intermediate
 ;;; parser state that is passed to the frame parser.  This
-;;; intermediate state is identical to `state' except that it shows
-;;; `length' items having been removed from the stream.
+;;; intermediate state is identical to STATE except that it shows
+;;; LENGTH items having been removed from the stream.
 
 (define (make-intermediate-state state length stream)
   (let ((previous-history-control-point
 	 (parser-state/previous-history-control-point state))
 	(new-length
-	 (- (parser-state/n-elements state) length)))
+	 (fix:- (parser-state/n-elements state) length)))
     (make-parser-state
      (parser-state/dynamic-state state)
      (parser-state/block-thread-events? state)
@@ -249,7 +252,7 @@ USA.
      (parser-state/history state)
      (let ((previous (parser-state/previous-history-offset state)))
        (if (or previous-history-control-point
-	       (>= new-length previous))
+	       (fix:>= new-length previous))
 	   previous
 	   0))
      previous-history-control-point
@@ -259,13 +262,13 @@ USA.
      (parser-state/previous-type state))))
 
 ;;; After each frame parser is done, it either tail recurses into the
-;;; parsing loop, or it calls `parser/standard' to produces a new
-;;; output frame.  The argument `state' is usually what was passed to
+;;; parsing loop, or it calls PARSE/STANDARD-NEXT to produces a new
+;;; output frame.  The argument STATE is usually what was passed to
 ;;; the frame parser (i.e. the state that was returned by the previous
-;;; call to `make-intermediate-state').  However, several of the
-;;; parsers change the values of some of the components of `state'
-;;; before calling `parser/standard' -- for example,
-;;; RESTORE-INTERRUPT-MASK changes the `interrupt-mask' component.
+;;; call to MAKE-INTERMEDIATE-STATE).  However, several of the parsers
+;;; change the values of some of the components of STATE before
+;;; calling PARSE/STANDARD-NEXT -- for example, RESTORE-INTERRUPT-MASK
+;;; changes the INTERRUPT-MASK component.
 
 (define (parse/standard-next type elements state history? force-pop?)
   (let ((n-elements (parser-state/n-elements state))
@@ -286,7 +289,7 @@ USA.
 	 undefined-history)
      previous-history-offset
      previous-history-control-point
-     (+ (vector-length elements) n-elements)
+     (fix:+ (vector-length elements) n-elements)
      (parser-state/previous-type state)
      (make-parser-state (parser-state/dynamic-state state)
 			(parser-state/block-thread-events? state)
@@ -381,7 +384,7 @@ USA.
 	       (fix:= code code/continue-linking))
 	   (parse/standard-next type elements state #f #f))
 	  (else
-	   (error "Unknown special compiled frame" code)))))
+	   (error "Unknown special compiled frame code:" code)))))
 
 (define (parser/stack-marker type elements state)
   (call-with-values
@@ -505,9 +508,9 @@ USA.
 	   (let ((elements (stack-frame/elements stack-frame)))
 	     (let ((length (vector-length elements)))
 	       (let loop ((index 0))
-		 (if (< index length)
+		 (if (fix:< index length)
 		     (cons-stream (vector-ref elements index)
-				  (loop (+ index 1)))
+				  (loop (fix:+ index 1)))
 		     element-stream))))
 	   next-control-point)))))
 
@@ -518,17 +521,18 @@ USA.
 
 (define (length/combination-save-value stream offset)
   offset
-  (+ 3 (system-vector-length (stream-ref stream 1))))
+  (fix:+ 3 (system-vector-length (stream-ref stream 1))))
 
 (define ((length/application-frame index missing) stream offset)
   offset
-  (+ index 1 (- (object-datum (stream-ref stream index)) missing)))
+  (fix:+ (fix:+ index 1)
+	 (fix:- (object-datum (stream-ref stream index)) missing)))
 
 (define (length/compiled-return-address stream offset)
   (let ((entry (stream-car stream)))
     (let ((frame-size (compiled-continuation/next-continuation-offset entry)))
       (if frame-size
-	  (+ frame-size 1)
+	  (fix:+ frame-size 1)
 	  (stack-address->index
 	   ;; Search for the dynamic link.  This heuristic compensates
 	   ;; for the compiler omitting its location in the object
@@ -545,12 +549,11 @@ USA.
 (define (length/special-compiled stream offset)
   ;; return address is reflect-to-interface
   offset
-  (let ((code (stream-ref stream 1)))
-    (define (default)
-      (error "length/special-compiled: Unknown code" code))
-
+  (let* ((code (stream-ref stream 1))
+	 (lose
+	  (lambda () (error "Unknown special compiled frame code:" code))))
     (cond ((not (fix:fixnum? code))
-	   (default))
+	   (lose))
 	  ((fix:= code code/special-compiled/internal-apply)
 	   ;; Very infrequent!
 	   (fix:+ 3 (object-datum (stream-ref stream 2))))
@@ -580,37 +583,36 @@ USA.
 	   (fix:+ 3 (object-datum (stream-ref stream 2))))
 	  ((fix:= code code/apply-compiled)
 	   ;; Stream[2] is code entry point, [3] is frame size
-	   (+ 3 (object-datum (stream-ref stream 3))))
+	   (fix:+ 3 (object-datum (stream-ref stream 3))))
 	  ((fix:= code code/continue-linking)
 	   ;; return code, reflect code, entry size, original count,
 	   ;; block, environment, offset, last header offset,sections,
 	   ;; return address
 	   (fix:- 10 1))
 	  (else
-	   (default)))))
+	   (lose)))))
 
 (define (length/interrupt-compiled-procedure stream offset)
   offset				; ignored
-  (+ (compiled-procedure-frame-size (stream-car stream)) 1))
+  (fix:+ (compiled-procedure-frame-size (stream-car stream)) 1))
 
 (define (compiled-code-address/frame-size cc-address)
-  (cond ((not (compiled-code-address? cc-address))
-	 (error "compiled-code-address/frame-size: Unexpected object"
-		cc-address))
-	((compiled-return-address? cc-address)
-	 (let ((offset
-		(compiled-continuation/next-continuation-offset cc-address)))
-	   (and offset
-		(fix:+ offset 1))))
-	((compiled-procedure? cc-address)
-	 (fix:+ (compiled-procedure-frame-size cc-address) 1))
-	(else
-	 (error "compiled-code-address/frame-size: Unexpected object"
-		cc-address))))
+  (let ((lose (lambda () (error "Unexpected object:" cc-address))))
+    (cond ((not (compiled-code-address? cc-address))
+	   (lose))
+	  ((compiled-return-address? cc-address)
+	   (let ((offset
+		  (compiled-continuation/next-continuation-offset cc-address)))
+	     (and offset
+		  (fix:+ offset 1))))
+	  ((compiled-procedure? cc-address)
+	   (fix:+ (compiled-procedure-frame-size cc-address) 1))
+	  (else
+	   (lose)))))
 
 (define (verify paranoia-index stream offset)
-  (or (= paranoia-index 0)
-      (stream-null? stream)
+  (if (or (= paranoia-index 0) (stream-null? stream))
+      #t
       (let* ((type (return-address->stack-frame-type (stream-car stream) #f))
 	     (length
 	      (let ((length (stack-frame-type/length type)))
@@ -622,35 +624,36 @@ USA.
 	     (return-address? (stream-car ltail))
 	     (verify (- paranoia-index 1)
 		     ltail
-		     (+ offset length))))))
+		     (fix:+ offset length))))))
 
 (define (stream-tail* stream n)
-  (cond ((or (= n 0) (stream-null? stream))
-	 stream)
-	((stream-pair? stream)
-	 (stream-tail* (stream-cdr stream) (- n 1)))
-	(else
-	 (error "stream-tail*: not a proper stream" stream))))
+  (if (or (fix:= n 0) (stream-null? stream))
+      stream
+      (begin
+	(if (not (stream-pair? stream))
+	    (error:wrong-type-argument stream "stream" 'STREAM-TAIL*))
+	(stream-tail* (stream-cdr stream) (fix:- n 1)))))
 
 ;;;; Stack Frame Types
 
 (define-structure (stack-frame-type
 		   (constructor make-stack-frame-type
-				(code subproblem? history-subproblem?
-				      length parser))
+				(code subproblem? history-subproblem? length
+				      parser))
 		   (conc-name stack-frame-type/))
   (code #f read-only #t)
   (subproblem? #f read-only #t)
   (history-subproblem? #f read-only #t)
-  (properties (make-1d-table) read-only #t)
   (length #f read-only #t)
-  (parser #f read-only #t))
+  (parser #f read-only #t)
+  (properties (make-1d-table) read-only #t))
 
-(define allow-extended?-tag "stack-frame-type/allow-extended?")
+(define allow-extended?-tag
+  (list 'ALLOW-EXTENDED?))
 
 (define (microcode-return/code->type code)
-  (if (not (< code (vector-length stack-frame-types)))
-      (error "return-code too large" code))
+  (if (not (fix:< code (vector-length stack-frame-types)))
+      (error:bad-range-argument code 'MICROCODE-RETURN/CODE->TYPE))
   (vector-ref stack-frame-types code))
 
 (define (microcode-return/name->type name)
@@ -658,24 +661,25 @@ USA.
 
 (define (return-address->stack-frame-type return-address allow-extended?)
   allow-extended?			; ignored
-  (let ((allow-extended? #t))
-    (cond ((interpreter-return-address? return-address)
-	   (let ((code (return-address/code return-address)))
-	     (let ((type (microcode-return/code->type code)))
-	       (if (not type)
-		   (error "return-code has no type" code))
-	       type)))
-	  ((compiled-return-address? return-address)
-	   (cond ((compiled-continuation/return-to-interpreter? return-address)
-		  stack-frame-type/return-to-interpreter)
-		 ((compiled-continuation/reflect-to-interface? return-address)
-		  stack-frame-type/special-compiled)
-		 (else stack-frame-type/compiled-return-address)))
-	  ((and allow-extended? (compiled-procedure? return-address))
-	   stack-frame-type/interrupt-compiled-procedure)
-	  ((and allow-extended? (compiled-expression? return-address))
-	   stack-frame-type/interrupt-compiled-expression)
-	  (else (error "illegal return address" return-address)))))
+  (cond ((interpreter-return-address? return-address)
+	 (let ((code (return-address/code return-address)))
+	   (let ((type (microcode-return/code->type code)))
+	     (if (not type)
+		 (error "Return code has no type:" code))
+	     type)))
+	((compiled-return-address? return-address)
+	 (cond ((compiled-continuation/return-to-interpreter? return-address)
+		stack-frame-type/return-to-interpreter)
+	       ((compiled-continuation/reflect-to-interface? return-address)
+		stack-frame-type/special-compiled)
+	       (else stack-frame-type/compiled-return-address)))
+	((compiled-procedure? return-address)
+	 stack-frame-type/interrupt-compiled-procedure)
+	((compiled-expression? return-address)
+	 stack-frame-type/interrupt-compiled-expression)
+	(else
+	 (error:bad-range-argument return-address
+				   'RETURN-ADDRESS->STACK-FRAME-TYPE))))
 
 (define (initialize-package!)
   (set! return-address/join-stacklets
@@ -688,27 +692,24 @@ USA.
   (set! stack-frame-type/stack-marker
 	(microcode-return/name->type 'STACK-MARKER))
   (set! stack-frame-type/compiled-return-address
-	(make-stack-frame-type #f #t #f
-			       length/compiled-return-address
+	(make-stack-frame-type #f #t #f length/compiled-return-address
 			       parser/standard-compiled))
   (set! stack-frame-type/return-to-interpreter
 	(make-stack-frame-type #f #f #t 1 parser/standard))
   (set! stack-frame-type/special-compiled
-	(make-stack-frame-type #f #t #f
-			       length/special-compiled
+	(make-stack-frame-type #f #t #f length/special-compiled
 			       parser/special-compiled))
   (set! stack-frame-type/interrupt-compiled-procedure
-	(make-stack-frame-type #f #t #f
-			       length/interrupt-compiled-procedure
+	(make-stack-frame-type #f #t #f length/interrupt-compiled-procedure
 			       parser/standard))
   (set! stack-frame-type/interrupt-compiled-expression
 	(make-stack-frame-type #f #t #f 1 parser/standard))
   (set! word-size
-	(let ((initial (system-vector-length (make-bit-string 1 #f))))
+	(let ((b1 (system-vector-length (make-bit-string 1 #f))))
 	  (let loop ((size 2))
-	    (if (= (system-vector-length (make-bit-string size #f)) initial)
-		(loop (+ size 1))
-		(- size 1)))))
+	    (if (fix:= (system-vector-length (make-bit-string size #f)) b1)
+		(loop (fix:+ size 1))
+		(fix:- size 1)))))
   (set! continuation-return-address #f)
   unspecific)
 
@@ -724,40 +725,25 @@ USA.
 (define (make-stack-frame-types)
   (let ((types (make-vector (microcode-return/code-limit) #f)))
 
-    (define (stack-frame-type name subproblem?
-			      history-subproblem?
-			      length parser)
+    (define (stack-frame-type name subproblem? history-subproblem? length
+			      parser)
       (let ((code (microcode-return name)))
-	(let ((type (make-stack-frame-type code subproblem?
-					   history-subproblem?
-					   length parser)))
+	(let ((type
+	       (make-stack-frame-type code subproblem? history-subproblem?
+				      length parser)))
 	  (vector-set! types code type)
 	  type)))
 
     (define (standard-frame name length #!optional parser)
-      (stack-frame-type name
-			#f
-			#f
-			length
-			(if (default-object? parser)
-			    parser/standard
-			    parser)))
+      (stack-frame-type name #f #f length
+			(if (default-object? parser) parser/standard parser)))
 
     (define (standard-subproblem name length)
-      (stack-frame-type name
-			#t
-			#t
-			length
-			parser/standard))
+      (stack-frame-type name #t #t length parser/standard))
 
     (define (non-history-subproblem name length #!optional parser)
-      (stack-frame-type name
-			#t
-			#f
-			length
-			(if (default-object? parser)
-			    parser/standard
-			    parser)))
+      (stack-frame-type name #t #f length
+			(if (default-object? parser) parser/standard parser)))
 
     (standard-frame 'RESTORE-INTERRUPT-MASK 2 parser/restore-interrupt-mask)
     (standard-frame 'RESTORE-HISTORY 4 parser/restore-history)
@@ -877,7 +863,7 @@ USA.
 	     (- (heuristic after-header (+ hardware-trap/frame-size offset))
 		offset))
 	    (else
-	     (error "length/hardware-trap: Unknown state" state)))))))
+	     (error "Unknown state:" state)))))))
 
 (define (heuristic stream offset)
   (if (or (stream-null? stream)
@@ -891,16 +877,14 @@ USA.
        (eq? (stack-frame/type frame)
 	    stack-frame-type/hardware-trap)))
 
+(define-guarantee hardware-trap-frame "hardware-trap frame")
+
 (define (hardware-trap-frame/code frame)
   (guarantee-hardware-trap-frame frame)
   (let ((code (stack-frame/ref frame hardware-trap/code-index)))
     (cond ((pair? code) (cdr code))
 	  ((string? code) code)
 	  (else #f))))
-
-(define (guarantee-hardware-trap-frame frame)
-  (if (not (hardware-trap-frame? frame))
-      (error "guarantee-hardware-trap-frame: invalid" frame)))
 
 (define (hardware-trap-frame/print-registers frame)
   (guarantee-hardware-trap-frame frame)
@@ -1024,4 +1008,4 @@ USA.
 		   (write-string " in unknown compiled-code utility ")
 		   (write-hex index)))))
 	  (else
-	   (error "hardware-trap/describe: Unknown state" state))))))
+	   (error "Unknown state:" state))))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cpoint.scm,v 14.8 2005/02/08 03:28:13 cph Exp $
+$Id: cpoint.scm,v 14.9 2005/02/08 04:17:06 cph Exp $
 
 Copyright 1988,1991,2005 Massachusetts Institute of Technology
 
@@ -53,57 +53,59 @@ USA.
   (system-vector-ref control-point (control-point-index control-point index)))
 
 (define-integrable (control-point-index control-point index)
-  (+ (control-point/unused-length control-point) (+ 2 index)))
+  (+ (control-point/unused-length control-point) (fix:+ 2 index)))
 
 (define-integrable (control-point/first-element-index control-point)
   (control-point-index control-point 6))
 
 #|
 
-;; Disabled because some procedures in conpar.scm and uenvir.scm
-;; depend on the actual length for finding compiled code variables,
-;; etc.
+;;; Disabled because some procedures in conpar.scm and uenvir.scm
+;;; depend on the actual length for finding compiled code variables,
+;;; etc.
 
 (define (control-point/n-elements control-point)
-  (let ((real-length (- (system-vector-length control-point)
-			(control-point/first-element-index control-point))))
+  (let ((real-length
+	 (fix:- (system-vector-length control-point)
+		(control-point/first-element-index control-point))))
     (if (control-point/next-control-point? control-point)
-	(- real-length 2)
+	(fix:- real-length 2)
 	real-length)))
 |#
 
 (define (control-point/n-elements control-point)
-  (- (system-vector-length control-point)
-     (control-point/first-element-index control-point)))
+  (fix:- (system-vector-length control-point)
+	 (control-point/first-element-index control-point)))
 
 (define (control-point/element-stream control-point)
-  (let ((end (let ((end (system-vector-length control-point)))
-	       (if (control-point/next-control-point? control-point)
-		   (- end 2)
-		   end))))
+  (let ((end
+	 (let ((end (system-vector-length control-point)))
+	   (if (control-point/next-control-point? control-point)
+	       (fix:- end 2)
+	       end))))
     (let loop ((index (control-point/first-element-index control-point)))
-      (cond ((= index end) '())
-	    (((ucode-primitive primitive-object-type? 2)
-	      (ucode-type manifest-nm-vector)
-	      (system-vector-ref control-point index))
-	     (let ((n-skips
-		    (object-datum (system-vector-ref control-point index))))
-	       (cons-stream
-		(make-non-pointer-object n-skips)
-		(let skip-loop ((n n-skips) (index (1+ index)))
-		  (if (zero? n)
-		      (loop index)
-		      (cons-stream false (skip-loop (-1+ n) (1+ index))))))))
-	    (else
-	     (cons-stream (map-reference-trap
-			   (lambda ()
-			     (system-vector-ref control-point index)))
-			  (loop (1+ index))))))))
+      (if (fix:< index end)
+	  (if ((ucode-primitive primitive-object-type? 2)
+	       (ucode-type manifest-nm-vector)
+	       (system-vector-ref control-point index))
+	      (let ((n-skips
+		     (object-datum (system-vector-ref control-point index))))
+		(cons-stream
+		 (make-non-pointer-object n-skips)
+		 (let skip-loop ((n n-skips) (index (fix:+ index 1)))
+		   (if (fix:> n 0)
+		       (cons-stream #f (skip-loop (fix:- n 1) (fix:+ index 1)))
+		       (loop index)))))
+	      (cons-stream (map-reference-trap
+			    (lambda ()
+			      (system-vector-ref control-point index)))
+			   (loop (fix:+ index 1))))
+	  '()))))
 
 (define (control-point/next-control-point control-point)
   (and (control-point/next-control-point? control-point)
        (system-vector-ref control-point
-			  (-1+ (system-vector-length control-point)))))
+			  (fix:- (system-vector-length control-point) 1))))
 
 (define (make-control-point reusable?
 			    unused-length
@@ -115,33 +117,39 @@ USA.
 			    next-control-point)
   (let ((unused-length
 	 (if (eq? microcode-id/stack-type 'STACKLETS)
-	     (max unused-length 7)
+	     (fix:max unused-length 7)
 	     unused-length)))
-    (let ((result (make-vector (+ 8
-				  unused-length
-				  (stream-length element-stream)
-				  (if next-control-point 2 0)))))
-      (vector-set! result 0 reusable?)
-      (vector-set! result 1 (make-non-pointer-object unused-length))
-      (vector-set! result (+ 2 unused-length)
-		   (ucode-return-address restore-interrupt-mask))
-      (vector-set! result (+ 3 unused-length) interrupt-mask)
-      (vector-set! result (+ 4 unused-length)
-		   (ucode-return-address restore-history))
-      (vector-set! result (+ 5 unused-length) history)
-      (vector-set! result (+ 6 unused-length) previous-history-offset)
-      (vector-set! result (+ 7 unused-length) previous-history-control-point)
-      (let loop ((stream element-stream) (index (+ 8 unused-length)))
-	(cond ((stream-pair? stream)
-	       (vector-set! result index
-			    (unmap-reference-trap (stream-car stream)))
-	       (loop (stream-cdr stream) (1+ index)))
-	      (next-control-point
-	       (vector-set! result index (ucode-return-address join-stacklets))
-	       (vector-set! result (1+ index) next-control-point))))
+    (let ((result
+	   (make-vector (+ 8
+			   unused-length
+			   (stream-length element-stream)
+			   (if next-control-point 2 0))))
+	  (index 0))
+      (let ((assign
+	     (lambda (value)
+	       (vector-set! result index value)
+	       (set! index (fix:+ index 1))
+	       unspecific)))
+	(assign reusable?)
+	(assign (make-non-pointer-object unused-length))
+	(set! index (fix:+ index unused-length))
+	(assign (ucode-return-address restore-interrupt-mask))
+	(assign interrupt-mask)
+	(assign (ucode-return-address restore-history))
+	(assign history)
+	(assign previous-history-offset)
+	(assign previous-history-control-point)
+	(stream-for-each (lambda (element)
+			   (assign (unmap-reference-trap element)))
+			 element-stream)
+	(if next-control-point
+	    (begin
+	      (assign (ucode-return-address join-stacklets))
+	      (assign next-control-point))))
       (object-new-type (ucode-type control-point) result))))
 
 (define (control-point/next-control-point? control-point)
   ((ucode-primitive primitive-object-eq? 2)
-   (system-vector-ref control-point (- (system-vector-length control-point) 2))
+   (system-vector-ref control-point
+		      (fix:- (system-vector-length control-point) 2))
    (ucode-return-address join-stacklets)))
