@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.15 1995/08/07 16:17:35 adams Exp $
+$Id: midend.scm,v 1.16 1995/08/08 16:20:41 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -38,7 +38,6 @@ MIT in each case. |#
 
 (define *phases-to-show* '())
 (define *phases-to-omit* '())
-(define *announce-phases?* false)
 (define *debugging?* true)
 (define *current-phase-input* false)
 (define *entry-label*)
@@ -61,9 +60,9 @@ MIT in each case. |#
 	(set! pending-message #F)
 	(show-message message)
 	(write-string " #@") (display (hash program))
-	(if *kmp-output-abbreviated?*
+	(if compiler:kmp-output-abbreviated?
 	    (begin
-	      (write-string " (*kmp-output-abbreviated?* is #T)")
+	      (write-string " (compiler:kmp-output-abbreviated? is #T)")
 	      (newline)
 	      (kmp/ppp program))
 	    (begin
@@ -99,13 +98,14 @@ MIT in each case. |#
 	(set! *current-phase* this-phase)
 	(set! *current-phase-input* (and *debugging?* program))
 	(phase/pre-hook program)
-	(if *announce-phases?*
+	(if (and (or compiler:show-subphases? compiler:guru?)
+		 (memq this-phase *phases-to-omit*))
 	    (begin
 	      (newline)
-	      (write-string "    Phase ")
+	      (write-string *output-prefix*)
+	      (write-string "  Omitting ")
 	      (write this-phase)
-	      (if (memq this-phase *phases-to-omit*)
-		  (write-string " omitted (see *phases-to-omit*)"))))
+	      (write-string " (see *phases-to-omit*)")))
 	(let ((result 
 	       (if (not (show? this-phase))
 		   (run-phase program)
@@ -127,12 +127,14 @@ MIT in each case. |#
 	  ;;(gather-phase-statistics program result)
 	  result)))))
 
-(define (phase-wrapper rewrite)
+(define (phase-wrapper name rewrite)
   (lambda (program)
     (let ((table *code-rewrite-table*))
       (set! *previous-code-rewrite-table* table)
       (set! *code-rewrite-table* (and table (code/rewrite-table/make)))
-      (rewrite program))))
+      (compiler-subphase
+       (with-output-to-string (lambda () (write name)))
+       (lambda () (rewrite program))))))
 
 (define (dummy-phase rewrite)
   (lambda (program)
@@ -183,7 +185,7 @@ Example:
 			`(lambda (,name)
 			   ,result)
 			(loop `((debugging-phase-wrapper
-				 (phase-wrapper ,(car all))
+				 (phase-wrapper ',(car all) ,(car all))
 				 ',(car all)
 				 ',(if (null? (cdr all))
 				       false
@@ -208,7 +210,7 @@ Example:
 	     assconv/top-level		; eliminate SET! and introduce LETREC
 					;  rewriting LOOKUP and SET!
 	     cleanup/top-level/1	; as below
-	     ;;coerce/top-level
+	     coerce/top-level
 
 	     earlyrew/top-level		; rewrite -1+ into -, etc.
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.10 1995/08/08 15:59:50 adams Exp $
+$Id: toplev.scm,v 1.11 1995/08/08 16:20:33 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -354,9 +354,9 @@ MIT in each case. |#
 	(newline)
 	(write-string "Final KMP program ")
 	(write *recursive-compilation-number*)
-	(if *kmp-output-abbreviated?*
+	(if compiler:kmp-output-abbreviated?
 	    (begin
-	      (write-string " (*kmp-output-abbreviated?* is #T)")
+	      (write-string " (compiler:kmp-output-abbreviated? is #T)")
 	      (newline)
 	      (kmp/ppp *optimized-kmp-program*))
 	    (fluid-let (;; (*pp-uninterned-symbols-by-name* false)
@@ -521,7 +521,6 @@ MIT in each case. |#
 (define *remote-links*)
 
 (define *kmp-output-port* false)
-(define *kmp-output-abbreviated?* true)
 
 (define *info-output-filename* false)
 (define *rtl-output-port* false)
@@ -706,15 +705,11 @@ MIT in each case. |#
 	(thunk))))
 
 (define *output-prefix* "")
-(define *phase-level* 0)
 
 (define (compiler-phase/invisible thunk)
-  (fluid-let ((*phase-level* (1+ *phase-level*)))
-    (let ((do-it
-	   (if compiler:phase-wrapper
-	       (lambda () (compiler:phase-wrapper thunk))
-	       thunk)))
-      (do-it))))
+  (if compiler:phase-wrapper
+      (lambda () (compiler:phase-wrapper thunk))
+      (thunk)))
 
 
 (define ((compiler-time-reporter prefix) process-non-gc process-gc real)
