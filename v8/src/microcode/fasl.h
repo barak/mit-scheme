@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/fasl.h,v 9.32 1990/10/05 18:58:53 jinx Rel $
+$Id: fasl.h,v 9.33 1993/02/15 02:51:22 gjr Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -68,24 +68,27 @@ MIT in each case. */
 
 /* Version information encoding */
 
+#define ONE			((SCHEME_OBJECT) 1)
+
 #define MACHINE_TYPE_LENGTH	(OBJECT_LENGTH / 2)
-#define MACHINE_TYPE_MASK	((1 << MACHINE_TYPE_LENGTH) - 1)
+#define MACHINE_TYPE_MASK	((ONE << MACHINE_TYPE_LENGTH) - 1)
 #define The_Machine_Type(P)	((P) & MACHINE_TYPE_MASK)
 #define SUBVERSION_LENGTH	(MACHINE_TYPE_LENGTH - TYPE_CODE_LENGTH)
-#define SUBVERSION_MASK		((1 << SUBVERSION_LENGTH) - 1)
+#define SUBVERSION_MASK		((ONE << SUBVERSION_LENGTH) - 1)
 #define The_Sub_Version(P)	(((P) >> MACHINE_TYPE_LENGTH) & SUBVERSION_MASK)
-#define The_Version(P)		OBJECT_TYPE (P)
-#define Make_Version(V, S, M)					\
-  MAKE_OBJECT ((V), (((S) << MACHINE_TYPE_LENGTH) | (M)))
+#define The_Version(P)		(OBJECT_TYPE (P))
+#define Make_Version(V, S, M)						\
+  MAKE_OBJECT ((V), ((((unsigned long) (S)) << MACHINE_TYPE_LENGTH)	\
+		     | (M)))						\
 
-#define CI_MASK			((1 << (DATUM_LENGTH / 2)) - 1)
+#define CI_MASK			((ONE << (DATUM_LENGTH / 2)) - 1)
 #define CI_VERSION(P)		(((P) >> (DATUM_LENGTH / 2)) & CI_MASK)
 #define CI_PROCESSOR(P)		((P) & CI_MASK)
-#define CI_BAND_P(P)		(OBJECT_TYPE (P) == TC_TRUE)
-#define MAKE_CI_VERSION(Band_p, Version, Processor_Type)	\
-  MAKE_OBJECT (((Band_p) ? TC_TRUE : TC_NULL),			\
-		   (((Version) << (DATUM_LENGTH / 2)) |		\
-		    (Processor_Type)))
+#define CI_BAND_P(P)		((OBJECT_TYPE (P)) == TC_TRUE)
+#define MAKE_CI_VERSION(Band_p, Version, Processor_Type)		\
+  MAKE_OBJECT (((Band_p) ? TC_TRUE : TC_NULL),				\
+		   ((((unsigned long) (Version)) << (DATUM_LENGTH / 2))	\
+		    | (Processor_Type)))				\
 
 /* "Memorable" FASL versions -- ones where we modified something
    and want to remain backwards compatible.
