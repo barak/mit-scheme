@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 13.49 1987/11/22 22:17:39 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 13.50 1987/12/05 16:38:53 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -82,7 +82,7 @@
   (with-output-to-string
     (lambda ()
       (write object))))
-
+
 (define paranoid-error-hook?
   false)
 
@@ -95,7 +95,7 @@
 "Error! Type ctl-E to enter error loop, anything else to return to top level.")
 	(if (not (char-ci=? (emacs-read-char-immediate) #\C-E))
 	    (abort-to-previous-driver "Quit!")))))
-
+
 (define (emacs-rep-prompt level string)
   (transmit-signal-with-argument
    #\p
@@ -136,6 +136,34 @@
 (define primitive-read-char-immediate
   (make-primitive-procedure 'TTY-READ-CHAR-IMMEDIATE))
 
+(define (emacs/prompt-for-command-char prompt)
+  (emacs-rep-prompt (rep-level) prompt)
+  (transmit-signal-with-argument
+   #\D
+   (cond ((string=? "Debug-->" prompt) "Scheme-debug")
+	 ((string=? "Where-->" prompt) "Scheme-where")
+	 (else "Scheme")))
+  (transmit-signal-without-gc #\o)
+  (emacs/read-char-internal))
+
+(define (emacs/prompt-for-confirmation prompt)
+  (transmit-signal-with-argument #\n prompt)
+  (emacs/read-char-internal))
+
+(define (emacs/read-char-internal)
+  (emacs-read-start)
+  (let ((char (primitive-read-char-immediate)))
+    (emacs-read-finish)
+    char))
+
+(define (emacs/prompt-for-expression prompt)
+  (transmit-signal-with-argument #\i prompt)
+  (read))
+
+(define (emacs/rep-read-hook)
+  (transmit-signal-without-gc #\R)
+  (read))
+
 (define normal-start-gc (access gc-start-hook gc-statistics-package))
 (define normal-finish-gc (access gc-finish-hook gc-statistics-package))
 (define normal-rep-message rep-message-hook)
@@ -146,6 +174,13 @@
 (define normal-read-char-immediate
   (access tty-read-char-immediate console-input-port))
 (define normal-error-hook (access *error-decision-hook* error-system))
+(define normal/rep-read-hook rep-read-hook)
+(define normal/prompt-for-command-char
+  (access prompt-for-command-char debugger-package))
+(define normal/prompt-for-confirmation
+  (access prompt-for-confirmation debugger-package))
+(define normal/prompt-for-expression
+  (access prompt-for-expression debugger-package))
 
 (define (install-emacs-hooks!)
   (set! (access gc-start-hook gc-statistics-package) emacs-start-gc)
@@ -157,7 +192,14 @@
   (set! (access read-finish-hook console-input-port) emacs-read-finish)
   (set! (access tty-read-char-immediate console-input-port)
 	emacs-read-char-immediate)
-  (set! (access *error-decision-hook* error-system) emacs-error-hook))
+  (set! (access *error-decision-hook* error-system) emacs-error-hook)
+  (set! rep-read-hook emacs/rep-read-hook)
+  (set! (access prompt-for-command-char debugger-package)
+	emacs/prompt-for-command-char)
+  (set! (access prompt-for-confirmation debugger-package)
+	emacs/prompt-for-confirmation)
+  (set! (access prompt-for-expression debugger-package)
+	emacs/prompt-for-expression))
 
 (define (install-normal-hooks!)
   (set! (access gc-start-hook gc-statistics-package) normal-start-gc)
@@ -169,7 +211,14 @@
   (set! (access read-finish-hook console-input-port) normal-read-finish)
   (set! (access tty-read-char-immediate console-input-port)
 	normal-read-char-immediate)
-  (set! (access *error-decision-hook* error-system) normal-error-hook))
+  (set! (access *error-decision-hook* error-system) normal-error-hook)
+  (set! rep-read-hook normal/rep-read-hook)
+  (set! (access prompt-for-command-char debugger-package)
+	normal/prompt-for-command-char)
+  (set! (access prompt-for-confirmation debugger-package)
+	normal/prompt-for-confirmation)
+  (set! (access prompt-for-expression debugger-package)
+	normal/prompt-for-expression))
 
 (define under-emacs?
   (make-primitive-procedure 'UNDER-EMACS? 0))

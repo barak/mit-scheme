@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 13.42 1987/04/13 18:44:00 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 13.43 1987/12/05 16:39:25 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -221,6 +221,9 @@
 (define environment-warning-hook
   identity-procedure)
 
+(define rep-read-hook
+  read)
+
 (define rep-value-hook
   write-line)
 
@@ -267,7 +270,7 @@
   (*rep-current-prompt*)
   (let ((object
 	 (let ((scode
-		(let ((s-expression (read)))
+		(let ((s-expression (rep-read-hook)))
 		  (record-in-history! (rep-state-reader-history state)
 				      s-expression)
 		  (syntax s-expression *rep-current-syntax-table*))))

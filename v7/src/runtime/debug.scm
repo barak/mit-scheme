@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 13.43 1987/04/18 00:15:53 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 13.44 1987/12/05 16:40:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -70,6 +70,9 @@
 (define print-return-values?
   false)
 
+(define environment-arguments-truncation
+  68)
+
 (define (define-debug-command letter function help-text)
   (define-letter-command command-set letter function help-text))
 
@@ -100,7 +103,7 @@
 		   (lambda ()
 		     (print-current-expression)
 		     ((standard-rep-message "Debugger")))
-		   (standard-rep-prompt "Debug-->")))
+		   "Debug-->"))
 
 (define (undefined-environment? environment)
   (or (continuation-undefined-environment? environment)
@@ -158,30 +161,37 @@
     (print-expression (reduction-expression current-reduction)))
 
   (define (print-application-information env)
-    (define (do-it return?)
-      (if return? (format "~%within ") (format "within "))
-      (print-user-friendly-name env)
-      (if return?
-	  (format "~%applied to ~@68o" (environment-arguments env))
-	  (format " applied to ~@68o" (environment-arguments env))))
+    (let ((do-it
+	   (lambda (return?)
+	     (if return? (newline))
+	     (write-string "within ")
+	     (print-user-friendly-name env)
+	     (if return? (newline))
+	     (write-string " applied to ")
+	     (write-string
+	      (cdr (write-to-string (environment-arguments env)
+				    environment-arguments-truncation))))))
+      (let ((output (with-output-to-string (lambda () (do-it false)))))
+	(if (< (string-length output)
+	       (access printer-width implementation-dependencies))
+	    (begin (newline) (write-string output))
+	    (do-it true)))))
 
-    (let ((output (with-output-to-string (lambda () (do-it false)))))
-      (if (< (string-length output)
-	     (access printer-width implementation-dependencies))
-	  (format "~%~s" output)
-	  (do-it true))))
-
+  (newline)
   (if (null-continuation? current-continuation)
-      (format "~%Null continuation")
+      (write-string "Null continuation")
       (begin
-       (format "~%Subproblem Level: ~o" (length previous-continuations))
-       (if current-reduction
-	   (print-current-reduction)
-	   (begin
-	    (format "~%Possibly Incomplete Expression:")
-	    (print-expression (continuation-expression current-continuation))))
-       (if-valid-environment current-environment
-			     print-application-information))))
+	(write-string "Subproblem Level: ")
+	(write (length previous-continuations))
+	(if current-reduction
+	    (print-current-reduction)
+	    (begin
+	      (newline)
+	      (write-string "Possibly Incomplete Expression:")
+	      (print-expression
+	       (continuation-expression current-continuation))))
+	(if-valid-environment current-environment
+			      print-application-information))))
 
 (define-debug-command #\S print-current-expression
   "Print the current subproblem/reduction")
@@ -334,9 +344,11 @@
 
 (define (goto-command)
   (define (get-reduction-number)
-    (format "~%Reduction Number (0 through ~o inclusive): "
-	    (-1+ current-number-of-reductions))
-    (let ((red (read)))
+    (let ((red
+	   (prompt-for-expression
+	    (format false
+		    "Reduction Number (0 through ~o inclusive): "
+		    (-1+ current-number-of-reductions)))))
       (cond ((not (number? red))
 	     (beep)
 	     (format "~%Reduction number must be numeric!")
@@ -355,8 +367,8 @@
 	  (else (format "~%There are no reductions for this subproblem."))))
   
   (define (get-subproblem-number)
-    (format "~%Subproblem number: ")
-    (let ((len (length previous-continuations)) (sub (read)))
+    (let ((len (length previous-continuations))
+	  (sub (prompt-for-expression "Subproblem number: ")))
       (cond ((not (number? sub))
 	     (beep)
 	     (format "~%Subproblem level must be numeric!")
@@ -383,22 +395,20 @@
 ;;;; Evaluation and frame display commands
 
 (define (enter-read-eval-print-loop)
-  (with-rep-alternative
-   current-environment
-   (lambda (env)
-     (read-eval-print env
-		      "You are now in the desired environment"
-		      "Eval-in-env-->"))))
+  (with-rep-alternative current-environment
+    (lambda (env)
+      (debug/read-eval-print env
+			     "You are now in the desired environment"
+			     "Eval-in-env-->"))))
 
 (define-debug-command #\E enter-read-eval-print-loop
   "Enter a read-eval-print loop in the current environment")
 
 (define (eval-in-current-environment)
   (with-rep-alternative current-environment
-			(lambda (env)
-			  (environment-warning-hook env)
-			  (format "~%Eval--> ")
-			  (eval (read) env))))
+    (lambda (env)
+      (environment-warning-hook env)
+      (debug/eval (prompt-for-expression "Eval--> ") env))))
 
 (define-debug-command #\V eval-in-current-environment
   "Evaluate expression in current environment")
@@ -413,7 +423,7 @@
   "Show Bindings of identifiers in the current environment")
 
 (define (enter-where-command)
-  (with-rep-alternative current-environment where))
+  (with-rep-alternative current-environment debug/where))
 
 (define-debug-command #\W enter-where-command
   "Enter WHERE on the current environment")
@@ -426,27 +436,23 @@
 ;;;; Advanced hacking commands
 
 (define (return-command)		;command Z
-  (define (confirm)
-    (format "~%Confirm: [Y or N] ")
-    (let ((ans (read)))
-      (cond ((eq? ans 'Y) true)
-	    ((eq? ans 'N) false)
-	    (else (confirm)))))
-
-  (define (return-read)
-    (let ((exp (read)))
-      (if (eq? exp '$)
-	  (unsyntax (current-expression))
-	  exp)))
-
   (define (do-it environment next)
     (environment-warning-hook environment)
-    (format "~%Expression to EVALUATE and CONTINUE with ($ to retry): ")
-    (if print-return-values?
-	(let ((eval-exp (eval (return-read) environment)))
-	  (format "~%That evaluates to:~%~o" eval-exp)
-	  (if (confirm) (next eval-exp)))
-	(next (eval (return-read) environment))))
+    (let ((value
+	   (debug/eval
+	    (let ((expression
+		   (prompt-for-expression
+		    "Expression to EVALUATE and CONTINUE with ($ to retry): "
+		    )))
+	      (if (eq? expression '$)
+		  (unsyntax (current-expression))
+		  expression))
+	    environment)))
+      (if print-return-values?
+	  (begin
+	    (format "~%That evaluates to:~%~o" value)
+	    (if (prompt-for-confirmation "Confirm: ") (next value)))
+	  (next value))))
 
   (let ((next (continuation-next-continuation current-continuation)))
     (if (null-continuation? next)
@@ -460,9 +466,9 @@
 (define user-debug-environment (make-environment))
 
 (define (internal-command)
-  (read-eval-print user-debug-environment
-		   "You are now in the debugger environment"
-		   "Debugger-->"))
+  (debug/read-eval-print user-debug-environment
+			 "You are now in the debugger environment"
+			 "Debugger-->"))
 
 (define-debug-command #\X internal-command
   "Create a read eval print loop in the debugger environment")

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 13.42 1987/03/17 18:55:18 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 13.43 1987/12/05 16:40:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -84,7 +84,7 @@
 		(current-frame-depth 0))
       (letter-commands env-commands
 		       (standard-rep-message "Environment Inspector")
-		       (standard-rep-prompt "Where-->")))))
+		       "Where-->"))))
 
 ;;;; Display Commands
 
@@ -185,7 +185,8 @@
 (define (son)
   (cond ((eq? current-frame env)
 	 (newline)
-	 (write-string "This is the original frame.  Its children cannot be found."))
+	 (write-string
+	  "This is the original frame.  Its children cannot be found."))
 	(else
 	 (let son-1 ((prev env)
 		     (prev-depth 0)
@@ -199,10 +200,9 @@
 	 (show))))
 
 (define (recursive-where)
-  (write-string "; Object to eval and examine-> ")
-  (let ((inp (read)))
+  (let ((inp (prompt-for-expression "Object to eval and examine-> ")))
     (write-string "New where!")
-    (where (eval inp current-frame))))
+    (debug/where (debug/eval inp current-frame))))
 
 (define-where-command #\P parent
   "Find the parent frame of the current one")
@@ -216,16 +216,15 @@
 ;;;; Relative Evaluation Commands
 
 (define (show-object)
-  (write-string "; Object to eval and print-> ")
-  (let ((inp (read)))
+  (let ((inp (prompt-for-expression "Object to eval and print-> ")))
     (newline)
-    (write (eval inp current-frame))
+    (write (debug/eval inp current-frame))
     (newline)))
 
 (define (enter)
-  (read-eval-print current-frame
-		   "You are now in the desired environment"
-		   "Eval-in-env-->"))
+  (debug/read-eval-print current-frame
+			 "You are now in the desired environment"
+			 "Eval-in-env-->"))
 
 (define-where-command #\V show-object
   "Eval an expression in the current frame and print the result")
