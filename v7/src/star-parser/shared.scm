@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.1 2001/06/26 18:03:22 cph Exp $
+;;; $Id: shared.scm,v 1.2 2001/06/26 18:52:35 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -115,8 +115,14 @@
 	  ((and (pair? expression)
 		(symbol? (car expression)))
 	   (let ((expression*
-		  (cons (car expression)
-			(map optimize-expression (cdr expression)))))
+		  (let ((optimizer
+			 (hash-table/get default-optimizers
+					 (car expression)
+					 #f)))
+		    (if optimizer
+			(optimizer expression)
+			(cons (car expression)
+			      (map optimize-expression (cdr expression)))))))
 	     (if (equal? expression* expression)
 		 expression
 		 (optimize-expression expression*))))
@@ -134,6 +140,13 @@
 
 (define optimizer-patterns
   '())
+
+(define (define-default-optimizer keyword optimizer)
+  (hash-table/put! default-optimizers keyword optimizer)
+  keyword)
+
+(define default-optimizers
+  (make-eq-hash-table))
 
 (define (predicate-not-or expression)
   (not (and (pair? (cadr expression))
@@ -247,23 +260,38 @@
     `(OR ,(cadar (cadr expression))
 	 ,(cadddr (caddr expression)))))
 
+(define-optimizer '('LET ((IDENTIFIER EXPRESSION))
+		     ('AND IDENTIFIER
+			   IDENTIFIER))
+    (lambda (expression)
+      (and (eq? (caar (cadr expression))
+		(cadr (caddr expression)))
+	   (eq? (caddr (caddr expression))
+		(cadr (caddr expression)))))
+  (lambda (expression)
+    (cadar (cadr expression))))
+
+(define-default-optimizer 'LET
+  (lambda (expression)
+    (if (symbol? (cadr expression))
+	`(LET ,(cadr expression)
+	   ,(map (lambda (binding)
+		   `(,(car binding) ,(optimize-expression (cadr binding))))
+		 (caddr expression))
+	   ,@(map optimize-expression (cdddr expression)))
+	`(LET ,(map (lambda (binding)
+		      `(,(car binding) ,(optimize-expression (cadr binding))))
+		    (cadr expression))
+	   ,@(map optimize-expression (cddr expression))))))
+
 (define-optimizer '('LAMBDA (* IDENTIFIER) EXPRESSION) #f
   (lambda (expression)
     `(LAMBDA ,(cadr expression) ,(optimize-expression (caddr expression)))))
 
-(define-optimizer '('LET IDENTIFIER (* (IDENTIFIER EXPRESSION)) EXPRESSION)
-    #f
+(define-default-optimizer 'LAMBDA
   (lambda (expression)
-    `(LET ,(cadr expression)
-       ,(map (lambda (b) (list (car b) (optimize-expression (cadr b))))
-	     (caddr expression))
-       ,(optimize-expression (cadddr expression)))))
-
-(define-optimizer '('LET (* (IDENTIFIER EXPRESSION)) EXPRESSION) #f
-  (lambda (expression)
-    `(LET ,(map (lambda (b) (list (car b) (optimize-expression (cadr b))))
-		(cadr expression))
-       ,(optimize-expression (caddr expression)))))
+    `(LAMBDA ,(cadr expression)
+       ,@(map optimize-expression (cddr expression)))))
 
 (define-optimizer '('VECTOR-MAP EXPRESSION ('VECTOR EXPRESSION)) #f
   (lambda (expression)
@@ -282,15 +310,7 @@
 
 (define-optimizer '('VECTOR-APPEND . (* EXPRESSION)) #f
   (lambda (expression)
-    (let ((expressions
-	   (delete '(VECTOR)
-		   (map optimize-expression
-			(flatten-subexpressions expression)))))
-      (if (pair? expressions)
-	  (if (pair? (cdr expressions))
-	      `(,(car expression) ,@expressions)
-	      (car expressions))
-	  `(VECTOR)))))
+    (optimize-group-expression expression '(VECTOR))))
 
 (define-optimizer '('AND . (* EXPRESSION)) #f
   (lambda (expression)
@@ -307,15 +327,14 @@
 (define (optimize-group-expression expression identity)
   (let loop
       ((expressions
-	(map optimize-expression (flatten-subexpressions expression))))
-    (cond ((not (pair? expressions))
-	   identity)
-	  ((equal? (car (last-pair expressions)) identity)
-	   (loop (except-last-pair! expressions)))
-	  ((pair? (cdr expressions))
-	   `(,(car expression) ,@expressions))
-	  (else
-	   (car expressions)))))
+	(delete identity
+		(map optimize-expression
+		     (flatten-subexpressions expression)))))
+    (if (pair? expressions)
+	(if (pair? (cdr expressions))
+	    `(,(car expression) ,@expressions)
+	    (car expressions))
+	identity)))
 
 (define (flatten-subexpressions expression)
   (flatten-expressions (cdr expression) (car expression)))
