@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.178 1993/10/15 05:35:22 cph Exp $
+;;;	$Id: filcom.scm,v 1.179 1994/03/16 23:26:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -327,11 +327,8 @@ Argument means don't offer to use auto-save file."
 			    " not current"))
 	  (if (not (call-with-temporary-buffer "*Directory*"
 		     (lambda (buffer)
-		       (insert-dired-entry! pathname
-					    (directory-pathname pathname)
-					    (buffer-end buffer))
+		       (insert-dired-entry! pathname (buffer-end buffer))
 		       (insert-dired-entry! auto-save-pathname
-					    (directory-pathname pathname)
 					    (buffer-end buffer))
 		       (set-buffer-point! buffer (buffer-start buffer))
 		       (buffer-not-modified! buffer)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.143 1994/03/11 05:23:29 cph Exp $
+;;;	$Id: dired.scm,v 1.144 1994/03/16 23:26:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -138,27 +138,32 @@ Type `h' after entering dired for more info."
   (lambda (directory)
     (select-buffer-other-window (make-dired-buffer directory))))
 
-(define (make-dired-buffer directory)
-  (let ((directory (pathname-simplify directory)))
-    (let ((buffer (get-dired-buffer directory)))
-      (set-buffer-major-mode! buffer (ref-mode-object dired))
-      (set-buffer-default-directory! buffer (directory-pathname directory))
-      (buffer-put! buffer 'REVERT-BUFFER-METHOD revert-dired-buffer)
-      (buffer-put! buffer 'DIRED-DIRECTORY directory)
-      (fill-dired-buffer! buffer directory)
-      buffer)))
+(define (make-dired-buffer directory #!optional file-list)
+  (let ((directory (pathname-simplify directory))
+	(file-list (if (default-object? file-list) 'ALL file-list)))
+    (let ((directory-spec (cons directory file-list)))
+      (let ((buffer (get-dired-buffer directory-spec)))
+	(set-buffer-major-mode! buffer (ref-mode-object dired))
+	(set-buffer-default-directory! buffer (directory-pathname directory))
+	(buffer-put! buffer 'DIRED-DIRECTORY-SPEC directory-spec)
+	(buffer-put! buffer 'REVERT-BUFFER-METHOD revert-dired-buffer)
+	(fill-dired-buffer! buffer directory-spec)
+	buffer))))
 
-(define (get-dired-buffer directory)
+(define (get-dired-buffer directory-spec)
   (or (list-search-positive (buffer-list)
 	(lambda (buffer)
-	  (equal? directory (buffer-get buffer 'DIRED-DIRECTORY))))
-      (new-buffer (pathname->buffer-name directory))))
+	  (equal? directory-spec (buffer-get buffer 'DIRED-DIRECTORY-SPEC))))
+      (new-buffer (pathname->buffer-name (car directory-spec)))))
+
+(define (dired-buffer-directory-spec buffer)
+  (or (buffer-get buffer 'DIRED-DIRECTORY-SPEC)
+      (let ((directory-spec (cons (buffer-default-directory buffer) 'ALL)))
+	(buffer-put! buffer 'DIRED-DIRECTORY-SPEC directory-spec)
+	directory-spec)))
 
 (define (dired-buffer-directory buffer)
-  (or (buffer-get buffer 'DIRED-DIRECTORY)
-      (let ((directory (buffer-default-directory buffer)))
-	(buffer-put! buffer 'DIRED-DIRECTORY directory)
-	directory)))
+  (car (dired-buffer-directory-spec buffer)))
 
 (define (revert-dired-buffer buffer dont-use-auto-save? dont-confirm?)
   dont-use-auto-save? dont-confirm?	;ignore
@@ -166,7 +171,7 @@ Type `h' after entering dired for more info."
     (let ((filename
 	   (and (dired-filename-start lstart)
 		(region->string (dired-filename-region lstart)))))
-      (fill-dired-buffer! buffer (dired-buffer-directory buffer))
+      (fill-dired-buffer! buffer (dired-buffer-directory-spec buffer))
       (set-current-point!
        (line-start
 	(or (and filename
@@ -186,35 +191,61 @@ Type `h' after entering dired for more info."
   2
   exact-nonnegative-integer?)
 
-(define (fill-dired-buffer! buffer pathname)
-  (set-buffer-writable! buffer)
-  (region-delete! (buffer-region buffer))
-  (temporary-message
-   (string-append "Reading directory " (->namestring pathname) "..."))
-  (read-directory pathname
-		  (ref-variable dired-listing-switches buffer)
-		  (buffer-point buffer))
-  (append-message "done")
-  (let ((point (mark-left-inserting-copy (buffer-point buffer)))
-	(group (buffer-group buffer)))
-    (let ((index (mark-index (buffer-start buffer))))
-      (if (not (group-end-index? group index))
-	  (let loop ((index index))
-	    (set-mark-index! point index)
-	    (group-insert-string! group index "  ")
-	    (let ((index (1+ (line-end-index group (mark-index point)))))
-	      (if (not (group-end-index? group index))
-		  (loop index)))))))
-  (set-buffer-point! buffer (buffer-start buffer))
-  (buffer-not-modified! buffer)
-  (set-buffer-read-only! buffer))
+(define (fill-dired-buffer! buffer directory-spec)
+  (let ((pathname (car directory-spec))
+	(file-list (cdr directory-spec)))
+    (set-buffer-writable! buffer)
+    (region-delete! (buffer-region buffer))
+    (temporary-message
+     (string-append "Reading directory " (->namestring pathname) "..."))
+    (read-directory pathname
+		    file-list
+		    (ref-variable dired-listing-switches buffer)
+		    (buffer-point buffer))
+    (append-message "done")
+    (let ((point (mark-left-inserting-copy (buffer-point buffer)))
+	  (group (buffer-group buffer)))
+      (let ((index (mark-index (buffer-start buffer))))
+	(if (not (group-end-index? group index))
+	    (let loop ((index index))
+	      (set-mark-index! point index)
+	      (group-insert-string! group index "  ")
+	      (let ((index (1+ (line-end-index group (mark-index point)))))
+		(if (not (group-end-index? group index))
+		    (loop index)))))))
+    (set-buffer-point! buffer (buffer-start buffer))
+    (buffer-not-modified! buffer)
+    (set-buffer-read-only! buffer)))
+
+(define (read-directory pathname file-list switches mark)
+  (if (eq? 'ALL file-list)
+      (insert-directory! pathname switches mark
+			 (if (file-directory? pathname)
+			     'DIRECTORY
+			     'WILDCARD))
+      (let ((mark (mark-left-inserting-copy mark)))
+	(for-each (lambda (file)
+		    (insert-directory! (merge-pathnames file pathname)
+				       switches
+				       mark
+				       'FILE))
+		  file-list)
+	(mark-temporary! mark))))
 
 (define (add-dired-entry pathname)
-  (let ((lstart (line-start (current-point) 0))
-	(directory (directory-pathname pathname)))
+  (let ((lstart (line-start (current-point) 0)))
     (if (pathname=? (buffer-default-directory (mark-buffer lstart))
-		    directory)
-	(insert-dired-entry! pathname directory lstart))))
+		    (directory-pathname pathname))
+	(insert-dired-entry! pathname lstart))))
+
+(define (insert-dired-entry! pathname mark)
+  (let ((mark (mark-left-inserting-copy mark)))
+    (insert-string "  " mark)
+    (insert-directory! pathname
+		       (ref-variable dired-listing-switches mark)
+		       mark
+		       'FILE)
+    (mark-temporary! mark)))
 
 (define-command dired-find-file
   "Read the current file into a buffer."
@@ -597,6 +628,7 @@ Actions controlled by variables list-directory-brief-switches
 	(insert-string (->namestring directory) point)
 	(insert-newline point)
 	(read-directory directory
+			'ALL
 			(if argument
 			    (ref-variable list-directory-verbose-switches)
 			    (ref-variable list-directory-brief-switches))
@@ -640,7 +672,7 @@ Actions controlled by variables list-directory-brief-switches
 
 (define (dired-pathname lstart)
   (merge-pathnames
-   (directory-pathname (dired-buffer-directory (current-buffer)))
+   (directory-pathname (dired-buffer-directory (mark-buffer lstart)))
    (region->string (dired-filename-region lstart))))
 
 (define (dired-mark char n)
@@ -742,9 +774,12 @@ Actions controlled by variables list-directory-brief-switches
 
 (define (dired-marked-files #!optional mark marker-char)
   (let ((mark
-	 (if (or (default-object? mark) (not mark))
-	     (buffer-start (current-buffer))
-	     mark))
+	 (cond ((or (default-object? mark) (not mark))
+		(buffer-start (current-buffer)))
+	       ((buffer? mark)
+		(buffer-start mark))
+	       (else
+		mark)))
 	(marker-char
 	 (if (or (default-object? marker-char) (not marker-char))
 	     dired-marker-char
@@ -789,3 +824,9 @@ Actions controlled by variables list-directory-brief-switches
     (let ((start (line-start mark 0)))
       (and (dired-filename-start start)
 	   (cons (dired-pathname start) start)))))
+
+(define (for-each-dired-mark buffer procedure)
+  (for-each (lambda (file)
+	      (procedure (car file))
+	      (dired-mark-1 (cdr file) #\space))
+	    (dired-marked-files buffer)))

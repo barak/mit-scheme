@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.13 1994/01/29 22:40:46 gjr Exp $
+;;;	$Id: dos.scm,v 1.14 1994/03/16 23:26:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-1994 Massachusetts Institute of Technology
 ;;;
@@ -418,22 +418,26 @@ Includes the new backup.  Must be > 0."
   #f
   false?)
 
-(define (read-directory pathname switches mark)
+(define (insert-directory! file switches mark type)
   switches				; ignored
-  (if (file-directory? pathname)
-      (generate-dired-listing!
-       (string-append (->namestring (pathname-as-directory pathname))
-		      "*.*")
-       mark)
-      (generate-dired-listing! pathname mark)))
+  ;; Insert directory listing for FILE at MARK.
+  ;; TYPE can have one of three values:
+  ;;   'WILDCARD means treat FILE as shell wildcard.
+  ;;   'DIRECTORY means FILE is a directory and a full listing is expected.
+  ;;   'FILE means FILE itself should be listed, and not its contents.
+  ;; SWITCHES are ignored.
+  (case type
+    ((WILDCARD)
+     (generate-dired-listing! file mark))
+    ((DIRECTORY)
+     (generate-dired-listing!
+      (string-append (->namestring (pathname-as-directory file))
+		     "*.*")
+      mark))
+    (else
+     (generate-dired-entry! file mark))))
 
-(define (insert-dired-entry! pathname directory lstart)
-  directory				; ignored
-  (let ((start (mark-left-inserting lstart)))
-    (insert-string "  " start)
-    (generate-dired-entry! pathname start)))
-
-;;;; Scheme version of ls
+;;; Scheme version of ls
 
 (define (generate-dired-listing! pathname point)
   (let ((files (directory-read (->namestring (merge-pathnames pathname)))))
@@ -464,8 +468,10 @@ Includes the new backup.  Must be > 0."
 		  (string-pad-right   ; Mod time
 		   (file-attributes/ls-time-string attr) 26 #\Space)
 		  name)))
-      (insert-string entry point)
-      (insert-newline point))))
+      (let ((point (mark-left-inserting-copy point)))
+	(insert-string entry point)
+	(insert-newline point)
+	(mark-temporary! point)))))
 
 (define-integrable (dummy-file-attributes)
   '#(#f 0 0 0 0 0 0 0 "----------" 0))

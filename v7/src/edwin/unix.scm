@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.41 1994/03/08 20:18:58 cph Exp $
+;;;	$Id: unix.scm,v 1.42 1994/03/16 23:26:54 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -575,33 +575,58 @@ CANNOT contain the 'F' option."
   "-l"
   string?)
 
-(define (read-directory pathname switches mark)
-  (let ((directory (directory-pathname pathname)))
-    (if (file-directory? pathname)
-	(run-synchronous-process false mark directory false
-				 (find-program "ls" false)
-				 switches
-				 (->namestring pathname))
-	(shell-command false mark directory false
-		       (string-append "ls "
+(define-variable insert-directory-program
+  "Absolute or relative name of the `ls' program used by `insert-directory'."
+  "ls"
+  string?)
+
+(define (insert-directory! file switches mark type)
+  ;; Insert directory listing for FILE, formatted according to SWITCHES.
+  ;; The listing is inserted at MARK.
+  ;; TYPE can have one of three values:
+  ;;   'WILDCARD means treat FILE as shell wildcard.
+  ;;   'DIRECTORY means FILE is a directory and a full listing is expected.
+  ;;   'FILE means FILE itself should be listed, and not its contents.
+  ;; SWITCHES must not contain "-d".
+  (let ((directory (directory-pathname (merge-pathnames file)))
+	(program (ref-variable insert-directory-program mark))
+	(switches
+	 (if (eq? 'DIRECTORY type)
+	     switches
+	     (string-append-separated "-d" switches))))
+    (if (eq? 'WILDCARD type)
+	(shell-command #f mark directory #f
+		       (string-append program
+				      " "
 				      switches
 				      " "
-				      (file-namestring pathname))))))
+				      (file-namestring file)))
+	(apply run-synchronous-process
+	       #f mark directory #f
+	       (find-program program #f)
+	       (append
+		(split-unix-switch-string switches)
+		(list
+		 (if (eq? 'DIRECTORY type)
+		     ;; If FILE is a symbolic link, this reads the
+		     ;; directory that it points to.
+		     (->namestring
+		      (pathname-new-directory file
+					      (append (pathname-directory file)
+						      (list "."))))
+		     (file-namestring file))))))))
 
-(define (insert-dired-entry! pathname directory lstart)
-  (let ((start (mark-right-inserting lstart)))
-    (run-synchronous-process false lstart directory false
-			     (find-program "ls" directory)
-			     "-d"
-			     (ref-variable dired-listing-switches lstart)
-			     (->namestring pathname))
-    (insert-string "  " start)
-    (let ((start (mark-right-inserting (dired-filename-start start))))
-      (insert-string
-       (file-namestring
-	(extract-and-delete-string start (line-end start 0)))
-       start))))
-
+(define (split-unix-switch-string switches)
+  (let ((end (string-length switches)))
+    (let loop ((start 0))
+      (if (fix:< start end)
+	  (let ((space (substring-find-next-char switches start end #\space)))
+	    (if space
+		(cons (substring switches start space)
+		      (loop (fix:+ space 1)))
+		(list (substring switches start end))))
+	  '()))))
+
 (define (os/scheme-can-quit?)
   (subprocess-job-control-available?))
 
