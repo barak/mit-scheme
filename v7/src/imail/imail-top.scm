@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.75 2000/05/19 21:12:14 cph Exp $
+;;; $Id: imail-top.scm,v 1.76 2000/05/19 21:24:12 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -787,19 +787,27 @@ With prefix argument N, undeletes backward N messages,
 
 (define-command imail-add-flag
   "Add FLAG to flags associated with current IMAIL message.
-Completion is performed over known flags when reading."
+Completion is performed over known flags when reading.
+With prefix argument N, removes FLAG to next N messages,
+ or previous -N if N is negative."
   (lambda ()
-    (list (imail-read-flag "Add flag" #f)))
-  (lambda (flag)
-    (set-message-flag (selected-message) flag)))
+    (list (command-argument-numeric-value (command-argument))
+	  (imail-read-flag "Add flag" #f)))
+  (lambda (delta flag)
+    (move-relative delta #f "message"
+		   (lambda (message) (set-message-flag message flag)))))
 
 (define-command imail-kill-flag
   "Remove FLAG from flags associated with current IMAIL message.
-Completion is performed over known flags when reading."
+Completion is performed over known flags when reading.
+With prefix argument N, removes FLAG from next N messages,
+ or previous -N if N is negative."
   (lambda ()
-    (list (imail-read-flag "Remove flag" #t)))
-  (lambda (flag)
-    (clear-message-flag (selected-message) flag)))
+    (list (command-argument-numeric-value (command-argument))
+	  (imail-read-flag "Remove flag" #t)))
+  (lambda (delta flag)
+    (move-relative delta #f "message"
+		   (lambda (message) (clear-message-flag message flag)))))
 
 (define (imail-read-flag prompt require-match?)
   (prompt-for-string-table-name
