@@ -1,7 +1,7 @@
 #
 # Makefile for MIT CScheme microcode.
 #
-# $Id: makefile,v 1.19 1993/01/08 04:54:36 cph Exp $
+# $Id: makefile,v 1.20 1993/02/22 20:31:31 nick Exp $
 #
 CPP = cc -E
 MAKE = make  # BSD doesn't have it as a default.
@@ -25,10 +25,6 @@ bchscheme: xmakefile
 bchdrn: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} bchdrn
 .PHONY: bchdrn
-
-scmsig: xmakefile
-	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} scmsig
-.PHONY: scmsig
 
 Psbtobin: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} Psbtobin
@@ -67,11 +63,14 @@ xmakefile: ymakefile ymake.script ymake.local cf.h s.h m.h
 	rm -f junk.c
 
 clean remove:
+# the - at the beginning of the following line is what causes make to continue 
+# even if the clean.world target doesn't exist
+	- $(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} clean.world
 	rm -f *.o *.s *.touch xmakefile
-	rm -f scheme xscheme bchscheme bchdrn scm6003 kitscheme scmLYN
+	rm -f scheme xscheme bchscheme bchdrn
 	rm -f Findprim Bintopsb Psbtobin Breakup Wsize Ppband
 	rm -f hard-params limits.h float.h
-	rm -f usrdef.c bchdef.c usr6003.c usrkit.c usrLYN.c
+	rm -f usrdef.c bchdef.c
 	rm -f lint.out
 
 unconfig:
