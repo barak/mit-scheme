@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.16 1995/05/05 22:32:33 cph Exp $
+;;;	$Id: os2.scm,v 1.17 1995/05/12 09:30:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -121,6 +121,26 @@ Includes the new backup.  Must be > 0."
 	  (string-set! result 0 #\$)
 	  result)
 	filename)))
+
+(define (os/directory-list directory)
+  (let ((channel (directory-channel-open directory)))
+    (let loop ((result '()))
+      (let ((name (directory-channel-read channel)))
+	(if name
+	    (loop (cons (begin (string-downcase! name) name) result))
+	    (begin
+	      (directory-channel-close channel)
+	      result))))))
+
+(define (os/directory-list-completions directory prefix)
+  (let ((channel (directory-channel-open directory)))
+    (let loop ((result '()))
+      (let ((name (directory-channel-read-matching channel prefix)))
+	(if name
+	    (loop (cons (begin (string-downcase! name) name) result))
+	    (begin
+	      (directory-channel-close channel)
+	      result))))))
 
 ;;;; Backup and Auto-Save Filenames
 
@@ -726,27 +746,3 @@ Otherwise, messages remain on the server and will be re-fetched later."
   (lambda ()
     (set! os2/cached-hostname #f)
     unspecific))
-
-;;;; Generic Stuff
-;;; These definitions are OS-independent and references to them should
-;;; be replaced in order to reduce the number of OS-dependent defs.
-
-(define (os/directory-list directory)
-  (let ((channel (directory-channel-open directory)))
-    (let loop ((result '()))
-      (let ((name (directory-channel-read channel)))
-	(if name
-	    (loop (cons name result))
-	    (begin
-	      (directory-channel-close channel)
-	      result))))))
-
-(define (os/directory-list-completions directory prefix)
-  (let ((channel (directory-channel-open directory)))
-    (let loop ((result '()))
-      (let ((name (directory-channel-read-matching channel prefix)))
-	(if name
-	    (loop (cons name result))
-	    (begin
-	      (directory-channel-close channel)
-	      result))))))
