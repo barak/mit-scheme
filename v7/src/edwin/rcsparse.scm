@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rcsparse.scm,v 1.1 1994/03/08 20:30:55 cph Exp $
+$Id: rcsparse.scm,v 1.2 1997/04/02 08:17:13 cph Exp $
 
-Copyright (c) 1991-94 Massachusetts Institute of Technology
+Copyright (c) 1991-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -65,7 +65,7 @@ MIT in each case. |#
 	(make-rcs-admin (and head (num->delta head))
 			(and branch
 			     (not (null? (cdr branch)))
-			     (num->delta (rcs-num-string (cadr branch))))
+			     (rcs-num-string (cadr branch)))
 			(map rcs-id-string (cdr access-list))
 			(rcs-id-alist (cdr symbols))
 			(rcs-id-alist (cdr locks))
@@ -222,7 +222,8 @@ MIT in each case. |#
 		      (if (fix:= n-fields i)
 			  (last-revision branch)
 			  (loop branch i))))))))
-      (or (rcs-admin/branch admin)
+      (if (rcs-admin/branch admin)
+	  (rcs-find-delta admin (rcs-admin/branch admin))
 	  (rcs-admin/head admin))))
 
 (define (last-revision delta)
