@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 14.34 1993/07/01 22:19:19 cph Exp $
+$Id: debug.scm,v 14.35 1993/08/13 00:03:21 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -125,7 +125,7 @@ MIT in each case. |#
 (define (count-subproblems dstate)
   (do ((i 0 (1+ i))
        (subproblem (dstate/subproblem dstate)
-		   (stack-frame/next-subproblem subproblem)))
+		   (next-subproblem subproblem)))
       ((or (not subproblem) (> i debugger:count-subproblems-limit)) i)))
 
 (define-structure (dstate
@@ -294,7 +294,7 @@ MIT in each case. |#
 	     (write-string adjective port)
 	     (write-string " subproblem level)" port))))
       (write level port)
-      (cond ((not (stack-frame/next-subproblem subproblem))
+      (cond ((not (next-subproblem subproblem))
 	     (qualify-level (if (zero? level) "only" "highest")))
 	    ((zero? level)
 	     (qualify-level "lowest"))))))
@@ -422,7 +422,7 @@ MIT in each case. |#
 					    expression
 					    environment
 					    port)))
-		(loop (stack-frame/next-subproblem frame) (1+ level)))))))))
+		(loop (next-subproblem frame) (1+ level)))))))))
 
 (define (terse-print-expression level expression environment port)
   (newline port)
@@ -468,7 +468,7 @@ MIT in each case. |#
 
 (define (earlier-subproblem dstate port reason if-successful)
   (let ((subproblem (dstate/subproblem dstate)))
-    (let ((next (stack-frame/next-subproblem subproblem)))
+    (let ((next (next-subproblem subproblem)))
       (if next
 	  (begin
 	    (set-current-subproblem!
@@ -480,6 +480,12 @@ MIT in each case. |#
 	   port
 	   (reason+message (or reason "no more subproblems")
 			   "already at highest subproblem level."))))))
+
+(define (next-subproblem stack-frame)
+  (let ((next (stack-frame/next-subproblem stack-frame)))
+    (if (and next (stack-frame/repl-eval-boundary? next))
+	(next-subproblem next)
+	next)))
 
 (define-command (command/later-subproblem dstate port)
   (maybe-stop-using-history! dstate port)
@@ -514,7 +520,7 @@ MIT in each case. |#
 	       (delta delta))
 	    (if (zero? delta)
 		(cons subproblem subproblems)
-		(let ((next (stack-frame/next-subproblem subproblem)))
+		(let ((next (next-subproblem subproblem)))
 		  (if next
 		      (loop next (cons subproblem subproblems) (-1+ delta))
 		      (begin
@@ -718,7 +724,7 @@ MIT in each case. |#
 ;;;; Advanced hacking commands
 
 (define-command (command/return-from dstate port)
-  (let ((next (stack-frame/next-subproblem (dstate/subproblem dstate))))
+  (let ((next (next-subproblem (dstate/subproblem dstate))))
     (if next
 	(enter-subproblem dstate port next)
 	(debugger-failure port "Can't continue!!!"))))

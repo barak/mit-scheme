@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.188 1993/07/31 03:11:55 cph Exp $
+$Id: runtime.pkg,v 14.189 1993/08/13 00:03:24 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -339,6 +339,7 @@ MIT in each case. |#
 	  stack-frame/properties
 	  stack-frame/reductions
 	  stack-frame/ref
+	  stack-frame/repl-eval-boundary?
 	  stack-frame/resolve-stack-address
 	  stack-frame/return-address
 	  stack-frame/return-code
@@ -1836,7 +1837,8 @@ MIT in each case. |#
 	  set-repl/prompt!
 	  set-repl/reader-history!
 	  set-repl/syntax-table!
-	  ve)
+	  ve
+	  with-repl-eval-boundary)
   (export (runtime load)
 	  hook/repl-eval
 	  hook/repl-write)

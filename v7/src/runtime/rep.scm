@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.33 1993/08/12 08:23:44 cph Exp $
+$Id: rep.scm,v 14.34 1993/08/13 00:03:23 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -402,9 +402,16 @@ MIT in each case. |#
 
 (define hook/repl-eval)
 (define (default/repl-eval repl s-expression environment syntax-table)
-  repl
   (let ((scode (syntax s-expression syntax-table)))
-    (with-new-history (lambda () (extended-scode-eval scode environment)))))
+    (with-repl-eval-boundary repl
+      (lambda ()
+	(extended-scode-eval scode environment)))))
+
+(define (with-repl-eval-boundary repl thunk)
+  ((ucode-primitive with-stack-marker 3)
+   (lambda () (with-new-history thunk))
+   with-repl-eval-boundary
+   repl))
 
 (define hook/repl-write)
 (define (default/repl-write repl object)

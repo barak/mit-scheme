@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.25 1992/02/08 15:08:18 cph Exp $
+$Id: conpar.scm,v 14.26 1993/08/13 00:03:19 cph Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -110,7 +110,8 @@ MIT in each case. |#
 	 (return-address/code return-address))))
 
 (define (stack-frame/subproblem? stack-frame)
-  (stack-frame-type/subproblem? (stack-frame/type stack-frame)))
+  (or (stack-frame-type/subproblem? (stack-frame/type stack-frame))
+      (stack-frame/repl-eval-boundary? stack-frame)))
 
 (define-integrable (stack-frame/compiled-code? stack-frame)
   (compiled-return-address? (stack-frame/return-address stack-frame)))
@@ -126,18 +127,18 @@ MIT in each case. |#
 
 (define (stack-frame/skip-non-subproblems stack-frame)
   (let ((type (stack-frame/type stack-frame)))
-    (cond ((eq? type stack-frame-type/stack-marker)
+    (cond ((and (stack-frame/subproblem? stack-frame)
+		(not (and (eq? type stack-frame-type/compiled-return-address)
+			  (eq? (stack-frame/return-address stack-frame)
+			       continuation-return-address))))
+	   stack-frame)
+	  ((eq? type stack-frame-type/stack-marker)
 	   (let loop ((stack-frame stack-frame))
 	     (let ((stack-frame (stack-frame/next stack-frame)))
 	       (and stack-frame
 		    (if (stack-frame/subproblem? stack-frame)
 			(stack-frame/next-subproblem stack-frame)
 			(loop stack-frame))))))
-	  ((and (stack-frame/subproblem? stack-frame)
-		(not (and (eq? type stack-frame-type/compiled-return-address)
-			  (eq? (stack-frame/return-address stack-frame)
-			       continuation-return-address))))
-	   stack-frame)
 	  (else
 	   (let ((stack-frame (stack-frame/next stack-frame)))
 	     (and stack-frame
@@ -353,6 +354,12 @@ MIT in each case. |#
 	  (else
 	   (continue (parser-state/dynamic-state state)
 		     (parser-state/interrupt-mask state))))))
+
+(define (stack-frame/repl-eval-boundary? stack-frame)
+  (let ((type (stack-frame/type stack-frame)))
+    (and (eq? type stack-frame-type/stack-marker)
+	 (eq? with-repl-eval-boundary
+	      (vector-ref (stack-frame/elements stack-frame) 1)))))
 
 (define (parser/restore-interrupt-mask type elements state)
   (parser/standard
