@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.111 2000/06/29 22:01:48 cph Exp $
+;;; $Id: imail-core.scm,v 1.112 2000/06/30 17:21:24 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -241,12 +241,6 @@
   (%append-message message url))
 
 (define-generic %append-message (message url))
-
-;; -------------------------------------------------------------------
-;; Return a list of URLs for folders that match URL-PATTERN.
-;; URL-PATTERN can contain wildcards.
-
-(define-generic available-folder-names (url-pattern))
 
 ;; -------------------------------------------------------------------
 ;; Keep a connection open to the server referenced by URL for the

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.132 2000/06/30 17:19:53 cph Exp $
+;;; $Id: imail-imap.scm,v 1.133 2000/06/30 17:21:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -507,12 +507,6 @@
     (if port
 	(close-port port)))
   (reset-imap-connection connection))
-
-(define (imap-connection-server-type connection)
-  (let ((greeting (imap-connection-greeting connection)))
-    (cond ((not (string? greeting)) #f)
-	  ((string-search-forward " Cyrus " greeting) 'CYRUS)
-	  (else #f))))
 
 (define (with-open-imap-connection url receiver)
   (let ((connection (get-imap-connection url #f)))
@@ -1191,10 +1185,6 @@
 					   (message-flags message)))
 				     (message-internal-time message)
 				     (message->string message)))))))))
-
-(define-method available-folder-names ((url <imap-url>))
-  url
-  (error "Unimplemented operation:" 'AVAILABLE-FOLDER-NAMES))
 
 (define-method with-open-connection ((url <imap-url>) thunk)
   (with-open-imap-connection url

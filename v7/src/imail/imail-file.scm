@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.51 2000/06/30 03:08:20 cph Exp $
+;;; $Id: imail-file.scm,v 1.52 2000/06/30 17:21:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -76,10 +76,6 @@
   (and (eq? uc1 uc2)
        (lambda (url new-url)
 	 (rename-file (file-url-pathname url) (file-url-pathname new-url)))))
-
-(define-method available-folder-names ((url <file-url>))
-  url
-  (error "Unimplemented operation:" 'AVAILABLE-FOLDER-NAMES))
 
 (define-method with-open-connection ((url <file-url>) thunk)
   url
