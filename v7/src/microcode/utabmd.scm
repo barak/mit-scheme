@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.56 1991/03/10 01:19:33 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.57 1991/05/05 00:30:52 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987-91 Massachusetts Institute of Technology
 ;;;
@@ -102,6 +102,10 @@
 	       GENERIC-TRAMPOLINE-SUBTRACT		;2D
 	       GENERIC-TRAMPOLINE-MULTIPLY		;2E
 	       GENERIC-TRAMPOLINE-DIVIDE		;2F
+	       GENERIC-TRAMPOLINE-QUOTIENT 		;30
+	       GENERIC-TRAMPOLINE-REMAINDER 		;31
+	       GENERIC-TRAMPOLINE-MODULO 		;32
+	       ARITY-DISPATCHER-TAG			;33
 	       ))
 
 ;;; [] Types
@@ -690,4 +694,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.56 1991/03/10 01:19:33 cph Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.57 1991/05/05 00:30:52 jinx Exp $"
