@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: canon.scm,v 1.13 1993/03/02 01:30:36 gjr Exp $
+$Id: canon.scm,v 1.14 1993/03/10 02:36:21 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -590,7 +590,8 @@ ARBITRARY:	The expression may be executed more than once.  It
 	 (scode/combination-components
 	  body
 	  (lambda (operator operands)
-	    (if (scode/the-environment? (cadr operands))
+	    (if (and (eq? operator (ucode-primitive SCODE-EVAL))
+		     (scode/the-environment? (cadr operands)))
 		(make-canout
 		 (scode/make-directive
 		  (scode/make-combination
