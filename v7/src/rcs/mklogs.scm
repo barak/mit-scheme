@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mklogs.scm,v 1.12 1999/06/03 02:48:07 cph Exp $
+$Id: mklogs.scm,v 1.13 1999/12/15 01:29:17 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -22,25 +22,26 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;;; Update the RCS log files in the standard Scheme directories.
 
 (for-each rcs-directory-log
-	  '("/scheme/v7/src/compiler"
+	  '("/scheme/v7/src/6001"
+	    "/scheme/v7/src/compiler"
+	    "/scheme/v7/src/cref"
+	    "/scheme/v7/src/edwin"
 	    "/scheme/v7/src/microcode"
+	    "/scheme/v7/src/pcsample"
+	    "/scheme/v7/src/rcs"
 	    "/scheme/v7/src/runtime"
 	    "/scheme/v7/src/sf"
+	    "/scheme/v7/src/sos"
+	    "/scheme/v7/src/win32"
 
-	    "/scheme/v8/src/6001"
 	    "/scheme/v8/src/bench"
 	    "/scheme/v8/src/compiler"
-	    "/scheme/v8/src/cref"
-	    "/scheme/v8/src/edwin"
 	    "/scheme/v8/src/microcode"
-	    "/scheme/v8/src/pcsample"
-	    "/scheme/v8/src/rcs"
 	    "/scheme/v8/src/runtime"
 	    "/scheme/v8/src/sf"
-	    "/scheme/v8/src/sos"
 	    "/scheme/v8/src/swat"
-	    "/scheme/v8/src/win32"
 
 	    "/scheme/etc"
 	    "/scheme/documentation/ref-manual"
-	    "/scheme/documentation/user-manual"))
+	    "/scheme/documentation/user-manual"
+	    "/scheme/documentation/sos"))
