@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.46 2000/05/16 18:59:42 cph Exp $
+;;; $Id: imail-imap.scm,v 1.47 2000/05/16 22:07:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -298,7 +298,7 @@
      (set-imap-folder-unseen! folder #f)
      (set-imap-folder-messages-synchronized?! folder #f)
      (set-imap-folder-n-messages! folder 0)
-     (set-imap-folder-messages! folder '#()))))
+     (set-imap-folder-messages! folder (initial-messages)))))
 
 (define (new-imap-folder-uidvalidity! folder uidvalidity)
   (without-interrupts
@@ -324,13 +324,14 @@
       (vector-set! v index (make-imap-message folder index)))))
 
 (define (read-message-headers! folder start)
-  ((imail-message-wrapper "Reading message headers")
-   (lambda ()
-     (imap:command:fetch-range (imap-folder-connection folder)
-			       start
-			       (folder-length folder)
-			       imap-header-keywords))))
-
+  (if (imap-folder-uidvalidity folder)
+      ((imail-message-wrapper "Reading message headers")
+       (lambda ()
+	 (imap:command:fetch-range (imap-folder-connection folder)
+				   start
+				   (folder-length folder)
+				   imap-header-keywords)))))
+
 (define (remove-imap-folder-message folder index)
   (without-interrupts
    (lambda ()
@@ -341,15 +342,33 @@
        (let ((n (fix:- n 1)))
 	 (vector-set! v n #f)
 	 (set-imap-folder-n-messages! folder n)
-	 (if (fix:> (vector-length v) 16)
-	     (let ((l (fix:quotient (vector-length v) 2)))
-	       (if (fix:<= n l)
-		   (set-imap-folder-messages!
-		    folder
-		    (vector-head v (fix:max l 16))))))))))
+	 (let ((new-length (compute-messages-length v n)))
+	   (if new-length
+	       (set-imap-folder-messages! folder
+					  (vector-head v new-length))))))))
   (folder-modified! folder))
-
-;;; This needs explanation.  There are two basic cases.
+
+(define (initial-messages)
+  (make-vector 64 #f))
+
+(define (compute-messages-length v count)
+  (let ((old-length (vector-length v))
+	(min-length 64))
+    (if (> count old-length)
+	(let loop ((n (* old-length 2)))
+	  (if (<= count n)
+	      n
+	      (loop (* n 2))))
+	(and (> old-length min-length)
+	     (<= count (quotient old-length 2))
+	     (let loop ((n (quotient old-length 2)))
+	       (let ((n/2 (quotient n 2)))
+		 (if (or (> count n/2) (= n min-length))
+		     n
+		     (loop n/2))))))))
+
+;;; SET-IMAP-FOLDER-LENGTH! needs explanation.  There are two basic
+;;; cases.
 
 ;;; In the first case, our folder is synchronized with the server,
 ;;; meaning that our folder has the same length and UIDs as the
@@ -373,24 +392,31 @@
 ;;; we must have everything in a consistent (if nonoptimal) state
 ;;; while reading.  If the read finishes, we can do the match/replace
 ;;; operation atomically.
-
+
 (define (set-imap-folder-length! folder count)
   (if (or (imap-folder-messages-synchronized? folder)
 	  (= 0 (imap-folder-n-messages folder)))
-      (read-message-headers!
-       folder
-       (without-interrupts
-	(lambda ()
-	  (let ((v (imap-folder-messages folder))
-		(n (imap-folder-n-messages folder)))
-	    (if (not (> count n))
-		(error "EXISTS response decreased folder length:" folder))
-	    (if (> count (vector-length v))
-		(set-imap-folder-messages! folder (vector-grow v count #f)))
-	    (set-imap-folder-n-messages! folder count)
-	    (fill-messages-vector! folder n)
-	    (folder-modified! folder)
-	    n))))
+      (let ((n
+	     (without-interrupts
+	      (lambda ()
+		(let ((v (imap-folder-messages folder))
+		      (n (imap-folder-n-messages folder)))
+		  (cond ((> count n)
+			 (let ((new-length (compute-messages-length v count)))
+			   (if new-length
+			       (set-imap-folder-messages!
+				folder
+				(vector-grow v new-length #f))))
+			 (set-imap-folder-n-messages! folder count)
+			 (fill-messages-vector! folder n)
+			 (folder-modified! folder)
+			 n)
+			((< count n)
+			 (error "EXISTS response decreased folder length:"
+				folder))
+			(else #f)))))))
+	(if n
+	    (read-message-headers! folder n)))
       (let ((v.n
 	     (without-interrupts
 	      (lambda ()
@@ -398,7 +424,11 @@
 		(let ((v (imap-folder-messages folder))
 		      (n (imap-folder-n-messages folder)))
 		  (set-imap-folder-n-messages! folder count)
-		  (set-imap-folder-messages! folder (make-vector count #f))
+		  (set-imap-folder-messages!
+		   folder
+		   (make-vector (or (compute-messages-length v count)
+				    (vector-length v))
+				#f))
 		  (fill-messages-vector! folder 0)
 		  (set-imap-folder-messages-synchronized?! folder #t)
 		  (folder-modified! folder)
@@ -408,25 +438,25 @@
 	   (imap:command:fetch-all (imap-folder-connection folder) '(UID))))
 	(without-interrupts
 	 (lambda ()
-	   (let ((v* (imap-folder-messages folder))
+	   (let ((v (car v.n))
+		 (n (cdr v.n))
+		 (v* (imap-folder-messages folder))
 		 (n* (imap-folder-n-messages folder)))
 	     (let loop ((i 0) (i* 0))
-	       (if (and (fix:< i (cdr v.n)) (fix:< i* n*))
-		   (let ((m (vector-ref (car v.n) i))
+	       (if (and (fix:< i n) (fix:< i* n*))
+		   (let ((m (vector-ref v i))
 			 (m* (vector-ref v* i*)))
-		     (cond ((= (imap-message-uid m) (imap-message-uid m*))
-			    ;; Flags might have been updated while
-			    ;; reading the UIDs.
-			    (if (%message-flags-initialized? m*)
-				(%set-message-flags! m (message-flags m*)))
-			    (detach-message! m*)
-			    (attach-message! m folder i*)
-			    (vector-set! v* i* m)
-			    (loop (fix:+ i 1) (fix:+ i* 1)))
-			   ((< (imap-message-uid m) (imap-message-uid m*))
-			    (loop (fix:+ i 1) i*))
-			   (else
-			    (loop i (fix:+ i* 1))))))))
+		     (if (= (imap-message-uid m) (imap-message-uid m*))
+			 (begin
+			   ;; Flags might have been updated while
+			   ;; reading the UIDs.
+			   (if (%message-flags-initialized? m*)
+			       (%set-message-flags! m (message-flags m*)))
+			   (detach-message! m*)
+			   (attach-message! m folder i*)
+			   (vector-set! v* i* m)
+			   (loop (fix:+ i 1) (fix:+ i* 1)))
+			 (loop (fix:+ i 1) i*))))))
 	   (folder-modified! folder))))))
 
 ;;;; Message datatype
@@ -906,11 +936,8 @@
 		  (newline port)))))
 	 (imap:response:preauth? response))
 	((imap:response:exists? response)
-	 (let ((count (imap:response:exists-count response))
-	       (folder (imap-connection-folder connection)))
-	   (if (not (and (imap-folder-messages-synchronized? folder)
-			 (= count (folder-length folder))))
-	       (set-imap-folder-length! folder count)))
+	 (set-imap-folder-length! (imap-connection-folder connection)
+				  (imap:response:exists-count response))
 	 #f)
 	((imap:response:expunge? response)
 	 (let ((folder (imap-connection-folder connection)))
