@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.12 1994/03/18 21:40:16 cph Exp $
+;;;	$Id: vc.scm,v 1.13 1994/03/18 22:01:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -1056,6 +1056,7 @@ the value of vc-log-mode-hook."
 
 (define-vc-type-operation 'CHECK-HEADERS vc-type:rcs
   (lambda (master buffer)
+    master
     (re-search-forward (string-append "\\$[A-Za-z\300-\326\330-\366\370-\377]+"
 				      "\\(: [\t -#%-\176\240-\377]*\\)?\\$")
 		       (buffer-start buffer)
