@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: image.scm,v 1.132 1994/09/08 20:34:04 adams Exp $
+;;;	$Id: image.scm,v 1.133 1995/02/16 21:59:01 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -52,7 +52,8 @@
 	(gap-end    (group-gap-end group))
 	(gap-length (group-gap-length group)))
     (cond ((fix:<= end gap-start)
-	   (substring-columns text start end column tab-width char-image-strings))
+	   (substring-columns text start end column
+			      tab-width char-image-strings))
 	  ((fix:<= gap-start start)
 	   (substring-columns text
 			      (fix:+ start gap-length)
@@ -94,7 +95,7 @@
 			   (vector-ref char-image-strings
 				       (vector-8b-ref string index))))))
 	  ((fix:= index end) column))))
-
+
 ;;(define-integrable char-image-lengths
 ;;  '#(2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
 ;;     1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
@@ -162,14 +163,16 @@
      "\\370" "\\371" "\\372" "\\373" "\\374" "\\375" "\\376" "\\377"))
 
 
-(define (group-line-columns group start end column tab-width char-image-strings)
+(define (group-line-columns group start end column
+			    tab-width char-image-strings)
   ;; Like GROUP-COLUMNS, but stops at line end.
   (let ((text       (group-text group))
 	(gap-start  (group-gap-start group))
 	(gap-end    (group-gap-end group))
 	(gap-length (group-gap-length group)))
     (cond ((fix:<= end gap-start)
-	   (substring-line-columns text start end column tab-width char-image-strings))
+	   (substring-line-columns text start end column
+				   tab-width char-image-strings))
 	  ((fix:<= gap-start start)
 	   (let ((i&c
 		  (substring-line-columns text
@@ -214,7 +217,8 @@
 				   (fix:- tab-width
 					  (fix:remainder column tab-width))
 				   (string-length
-				    (vector-ref char-image-strings ascii)))))))))
+				    (vector-ref char-image-strings
+						ascii)))))))))
       (let loop ((index start) (column column))
 	(if (fix:= index end)
 	    (cons index column)
