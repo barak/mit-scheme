@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typedb.scm,v 1.5 1995/11/04 16:36:29 adams Exp $
+$Id: typedb.scm,v 1.6 1995/11/05 14:25:35 adams Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -202,27 +202,31 @@ MIT in each case. |#
     type:bit-string type:string-length type:boolean effect:bit-string-set!))
 
 
-(for-each
-    (lambda (op)
-      (define-operator-type op
-	(primitive-procedure-type 
-	 (make-list (primitive-procedure-arity op) type:flonum) type:flonum
-	 'function)))
-  (list flo:+ flo:- flo:* flo:/
-	flo:negate flo:abs flo:sqrt
-	flo:floor flo:ceiling flo:truncate flo:round
-	flo:exp flo:log flo:sin flo:cos flo:tan flo:asin
-	flo:acos flo:atan flo:atan2 flo:expt))
+(let ()
+  (define ((unchecked-function domain* range) . ops)
+    (for-each
+	(lambda (op)
+	  (define-operator-type op
+	    (primitive-procedure-type 
+	     (make-list (primitive-procedure-arity op) domain*) range
+	     'function 'unchecked)))
+      ops))
 
-(for-each
-    (lambda (op)
-      (define-operator-type op
-	(primitive-procedure-type 
-	 (make-list (primitive-procedure-arity op) type:fixnum) type:fixnum
-	 'function 'unchecked)))
-  (list fix:-1+ fix:1+ fix:+ fix:- fix:*
-	fix:quotient fix:remainder ; fix:gcd
-	fix:andc fix:and fix:or fix:xor fix:not fix:lsh))
+  ((unchecked-function type:flonum type:flonum)
+   flo:+ flo:- flo:* flo:/ flo:negate flo:abs flo:sqrt
+   flo:floor flo:ceiling flo:truncate flo:round
+   flo:exp flo:log flo:sin flo:cos flo:tan flo:asin
+   flo:acos flo:atan flo:atan2 flo:expt)
+
+  ((unchecked-function type:flonum type:boolean)
+   flo:= flo:< flo:> flo:zero? flo:negative? flo:positive?)
+
+  ((unchecked-function type:fixnum type:fixnum)
+   fix:-1+ fix:1+ fix:+ fix:- fix:*  fix:quotient fix:remainder	; fix:gcd
+   fix:andc fix:and fix:or fix:xor fix:not fix:lsh)
+
+  ((unchecked-function type:fixnum type:boolean)
+   fix:= fix:< fix:> fix:zero? fix:negative? fix:positive?))
 
 (for-each
     (lambda (name)
