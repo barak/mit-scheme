@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.50 2001/12/24 04:18:01 cph Exp $
+$Id: syntax.scm,v 14.51 2001/12/24 04:21:50 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -26,7 +26,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set-fluid-let-type! 'SHALLOW)
   (enable-scan-defines!)
   (set! *disallow-illegal-definitions?* #t)
   (set! hook/syntax-expression default/syntax-expression)
@@ -443,20 +442,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;;; FLUID-LET
 
 (define (syntax/fluid-let top-level? bindings . body)
-  (syntax/fluid-let/current top-level? bindings body))
-
-(define syntax/fluid-let/current)
-
-(define (set-fluid-let-type! type)
-  (set! syntax/fluid-let/current
-	(case type
-	  ((SHALLOW) syntax/fluid-let/shallow)
-	  ((DEEP) syntax/fluid-let/deep)
-	  ((COMMON-LISP) syntax/fluid-let/common-lisp)
-	  (else (error "SET-FLUID-LET-TYPE!: unknown type" type))))
-  unspecific)
-
-(define (syntax/fluid-let/shallow top-level? bindings body)
   (if (null? bindings)
       (syntax-sequence top-level? body)
       (syntax-fluid-bindings/shallow bindings
@@ -467,78 +452,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	     (make-thunk (make-scode-sequence transfers-in))
 	     (make-thunk (syntax-subsequence body))
 	     (make-thunk (make-scode-sequence transfers-out))))))))
-
-(define (syntax/fluid-let/deep top-level? bindings body)
-  top-level?
-  (syntax/fluid-let/deep* (ucode-primitive add-fluid-binding! 3)
-			  bindings
-			  body))
-
-(define (syntax/fluid-let/common-lisp top-level? bindings body)
-  top-level?
-  (syntax/fluid-let/deep* (ucode-primitive make-fluid-binding! 3)
-			  bindings
-			  body))
-
-(define (syntax/fluid-let/deep* add-fluid-binding! bindings body)
-  (make-closed-block lambda-tag:fluid-let '() '()
-    (make-combination*
-     (ucode-primitive with-saved-fluid-bindings 1)
-     (make-thunk
-      (make-scode-sequence*
-       (make-scode-sequence
-	(syntax-fluid-bindings/deep add-fluid-binding! bindings))
-       (syntax-subsequence body))))))
-
-(define (syntax-fluid-bindings/shallow bindings receiver)
-  (if (null? bindings)
-      (receiver '() '() '() '())
-      (syntax-fluid-bindings/shallow (cdr bindings)
-	(lambda (names values transfers-in transfers-out)
-	  (let ((binding (car bindings)))
-	    (if (pair? binding)
-		(let ((transfer
-		       (let ((reference (syntax-subexpression (car binding))))
-			 (let ((assignment (invert-expression reference)))
-			   (lambda (target source)
-			     (make-assignment
-			      target
-			      (assignment (make-assignment source)))))))
-		      (value (expand-binding-value (cdr binding)))
-		      (inside-name
-		       (string->uninterned-symbol "INSIDE-PLACEHOLDER"))
-		      (outside-name
-		       (string->uninterned-symbol "OUTSIDE-PLACEHOLDER")))
-		  (receiver (cons* inside-name outside-name names)
-			    (cons* value (make-unassigned-reference-trap)
-				   values)
-			    (cons (transfer outside-name inside-name)
-				  transfers-in)
-			    (cons (transfer inside-name outside-name)
-				  transfers-out)))
-		(syntax-error "binding not a pair" binding)))))))
-
-(define (syntax-fluid-bindings/deep add-fluid-binding! bindings)
-  (map (lambda (binding)
-	 (syntax-fluid-binding/deep add-fluid-binding! binding))
-       bindings))
-
-(define (syntax-fluid-binding/deep add-fluid-binding! binding)
-  (if (pair? binding)
-      (let ((name (syntax-subexpression (car binding)))
-	    (finish
-	     (lambda (environment name)
-	       (make-combination* add-fluid-binding!
-				  environment
-				  name
-				  (expand-binding-value (cdr binding))))))
-	(cond ((variable? name)
-	       (finish (make-the-environment) (make-quotation name)))
-	      ((access? name)
-	       (access-components name finish))
-	      (else
-	       (syntax-error "binding name illegal" (car binding)))))
-      (syntax-error "binding not a pair" binding)))
 
 ;;;; Extended Assignment Syntax
 
