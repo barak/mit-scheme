@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 4.34 1992/09/26 04:13:26 cph Exp $
+$Id: rules3.scm,v 4.35 1992/09/26 15:56:19 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -429,26 +429,32 @@ MIT in each case. |#
 	 ,@(interrupt-check gc-label))))
 
 (define (interrupt-check gc-label)
-  (if (not (eq? 'OUT-OF-LINE compiler:generate-stack-checks?))
-      (LAP (COMB (>=) ,regnum:free-pointer ,regnum:memtop-pointer
-		 (@PCR ,gc-label))
-	   (LDW () ,reg:memtop ,regnum:memtop-pointer)
-	   ,@(if compiler:generate-stack-checks?
-		 (LAP (LDW () ,reg:stack-guard ,regnum:addil-result)
-		      (COMB (<=) ,regnum:stack-pointer ,regnum:addil-result
-			    (@PCR ,gc-label))
-		      (NOP ()))
-		 (LAP)))
-      (let ((label (generate-label)))
-	(LAP (BLE ()
-		  (OFFSET ,hook:compiler-stack-and-interrupt-check
-			  4
-			  ,regnum:scheme-to-interface-ble))
-	     ;; Assumes that (<= #x-2000 (- ,gc-label ,label) #x1fff)
-	     ;; otherwise this assembles to two instructions, and it
-	     ;; won't fit in the branch-delay slot.
-	     (LDI () (- ,gc-label ,label) ,regnum:first-arg)
-	     (LABEL ,label)))))
+  (case compiler:generate-stack-checks?
+    ((#F)
+     (LAP (COMB (>=) ,regnum:free-pointer ,regnum:memtop-pointer
+		(@PCR ,gc-label))
+	  (LDW () ,reg:memtop ,regnum:memtop-pointer)))
+    ((OUT-OF-LINE)
+     (let ((label (generate-label)))
+       (LAP (BLE ()
+		 (OFFSET ,hook:compiler-stack-and-interrupt-check
+			 4
+			 ,regnum:scheme-to-interface-ble))
+	    ;; Assumes that (<= #x-2000 (- ,gc-label ,label) #x1fff)
+	    ;; otherwise this assembles to two instructions, and it
+	    ;; won't fit in the branch-delay slot.
+	    (LDI () (- ,gc-label ,label) ,regnum:first-arg)
+	    (LABEL ,label))))
+    (else
+     (LAP (LDW () ,reg:stack-guard ,regnum:first-arg)
+	  (COMB (>=) ,regnum:free-pointer ,regnum:memtop-pointer
+		(@PCR ,gc-label))
+	  ;; I think the next two instructions could be interchanged,
+	  ;; allowing the NOP to be eliminated, but since I don't have
+	  ;; the PA-RISC programming manual here I can't be sure. -- CPH
+	  (LDW () ,reg:memtop ,regnum:memtop-pointer)
+	  (COMB (<=) ,regnum:stack-pointer ,regnum:first-arg (@PCR ,gc-label))
+	  (NOP ())))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
