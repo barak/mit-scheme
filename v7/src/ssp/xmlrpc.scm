@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xmlrpc.scm,v 1.5 2004/11/26 15:14:33 cph Exp $
+$Id: xmlrpc.scm,v 1.6 2005/01/11 03:43:46 cph Exp $
 
-Copyright 2003,2004 Massachusetts Institute of Technology
+Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -205,7 +205,7 @@ USA.
 				  lose)))
     ((struct)
      (map (lambda (elt)
-	    (cons (string->symbol (xml-rpc:named-child 'name elt lose))
+	    (cons (utf8-string->symbol (xml-rpc:named-child 'name elt lose))
 		  (xml-rpc:decode-value (xml-rpc:named-child 'value elt lose)
 					lose)))
 	  (xml-rpc:named-children 'member elt lose)))
@@ -262,8 +262,9 @@ USA.
 		       (symbol? (car item))))))
 	 (rpc-elt:struct
 	  (map (lambda (item)
-		 (rpc-elt:member (rpc-elt:name (symbol->string (car item)))
-				 (xml-rpc:encode-value (cdr item))))
+		 (rpc-elt:member
+		  (rpc-elt:name (symbol->utf8-string (car item)))
+		  (xml-rpc:encode-value (cdr item))))
 	       (cdr object))))
 	((list? object)
 	 (rpc-elt:array (rpc-elt:data (map xml-rpc:encode-value object))))
