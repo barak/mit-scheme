@@ -1,9 +1,9 @@
 /* -*-C-*-
    System file for BSD4.3
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/bsd4-3.h,v 1.2 1990/10/16 20:56:53 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/bsd4-3.h,v 1.3 1991/08/24 01:47:51 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,7 +33,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-#define C_SWITCH_SYSTEM -D_BSD4_3
+#define C_SWITCH_SYSTEM -D_BSD4_3 -DCAST_FUNCTION_TO_INT_BUG
 
 #define LIBS_TERMCAP -ltermcap
 
