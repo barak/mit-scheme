@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.42 2000/03/27 17:54:08 cph Exp $
+;;; $Id: vc.scm,v 1.43 2000/03/27 18:01:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -1802,12 +1802,11 @@ the value of vc-log-mode-hook."
 		       (vc-master-workfile master)
     (lambda (tm tw)
       tm
-      (or (and tw
-	       (let ((tokens (find-cvs-entry master)))
-		 (and tokens
-		      (string=? (file-time->global-ctime-string tw)
-				(caddr tokens)))))
-	  (vc-backend-diff master #f #f #t)))))
+      (let ((tokens (find-cvs-entry master)))
+	(if (and tw tokens
+		 (string=? (file-time->global-ctime-string tw) (caddr tokens)))
+	    #f
+	    (vc-backend-diff master #f #f #t))))))
 
 (define (vc-save-workfile-buffer workfile)
   (let ((buffer (pathname->buffer workfile)))
