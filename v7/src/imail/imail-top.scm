@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.134 2000/06/05 21:27:25 cph Exp $
+;;; $Id: imail-top.scm,v 1.135 2000/06/08 02:03:07 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -137,22 +137,10 @@ Otherwise, all messages are presented as plain text."
   #t
   boolean?)
 
-(define-variable imail-auto-wrap-mime-encoded
-  "If true, all encoded MIME messages will have their lines wrapped.
-If set to 'FILL, the paragraphs are filled rather than wrapped.
-Otherwise, no wrapping occurs.
-Note that this only applies to MIME parts that are encoded as
- quoted-printable or BASE64.
-See also imail-auto-wrap."
-  #t
-  (lambda (x) (or (boolean? x) (eq? x 'FILL))))
-
 (define-variable imail-auto-wrap
-  "If true, all unencoded messages will have their lines wrapped.
+  "If true, messages will have their lines wrapped at the right margin.
 If set to 'FILL, the paragraphs are filled rather than wrapped.
-Otherwise, no wrapping occurs.
-Note that this only applies to unencoded message parts.
-See also imail-auto-wrap-mime-encoded."
+Otherwise, the text is left as is."
   #t
   (lambda (x) (or (boolean? x) (eq? x 'FILL))))
 
@@ -448,7 +436,6 @@ The following variables customize the behavior of IMAIL.  See each
 variable's documentation (using \\[describe-variable]) for details:
 
     imail-auto-wrap
-    imail-auto-wrap-mime-encoded
     imail-body-cache-limit
     imail-default-dont-reply-to-names
     imail-default-imap-mailbox
@@ -764,9 +751,10 @@ With prefix argument N moves backward N messages with these flags."
 			    (if (and (ref-variable imail-receive-mime buffer)
 				     (folder-supports-mime? folder))
 				(insert-mime-message-body message mark)
-				(insert-auto-wrapped-string
-				 (message-body message)
-				 #f mark))
+				(call-with-auto-wrapped-output-mark mark
+				  (lambda (port)
+				    (write-string (message-body message)
+						  port))))
 			    (guarantee-newline mark))))
 		    (insert-string "[This folder has no messages in it.]"
 				   mark))))
@@ -1083,27 +1071,25 @@ With prefix argument N moves backward N messages with these flags."
 		  `(,@selector TEXT)
 		  selector)
 	      #t)))
-	(case (let ((encoding
-		     (and enclosure
-			  (eq? (mime-body-type enclosure) 'MESSAGE)
-			  (eq? (mime-body-subtype enclosure) 'RFC822)
-			  (mime-body-one-part-encoding enclosure))))
-		(if (and encoding (not (memq encoding '(7BIT 8BIT BINARY))))
-		    ;; This is completely illegal, but Netscape does
-		    ;; this so we'd better handle it.
-		    encoding
-		    (mime-body-one-part-encoding body)))
-	  ((QUOTED-PRINTABLE)
-	   (call-with-auto-wrapped-output-mark mark #t
-	     (lambda (port)
-	       (decode-quoted-printable-string text port))))
-	  ((BASE64)
-	   (call-with-auto-wrapped-output-mark mark #t
-	     (lambda (port)
-	       (if (decode-base64-text-string text #f port)
-		   (write-char #\return port)))))
-	  (else
-	   (insert-auto-wrapped-string text #f mark)))
+	(call-with-auto-wrapped-output-mark mark
+	  (lambda (port)
+	    (case (let ((encoding
+			 (and enclosure
+			      (eq? (mime-body-type enclosure) 'MESSAGE)
+			      (eq? (mime-body-subtype enclosure) 'RFC822)
+			      (mime-body-one-part-encoding enclosure))))
+		    (if (and encoding
+			     (not (memq encoding '(7BIT 8BIT BINARY))))
+			;; This is completely illegal, but Netscape does
+			;; this so we'd better handle it.
+			encoding
+			(mime-body-one-part-encoding body)))
+	      ((QUOTED-PRINTABLE)
+	       (decode-quoted-printable-string text port #t))
+	      ((BASE64)
+	       (decode-base64-string text port #t))
+	      (else
+	       (write-string text port)))))
 	(guarantee-newline mark))
       (insert-mime-message-binary message body enclosure selector mark)))
 
@@ -1150,8 +1136,9 @@ With prefix argument N moves backward N messages with these flags."
       (insert-string "length=" mark)
       (insert (mime-body-one-part-n-octets body) mark))
     (insert-string ">" mark)
-    (insert-newline mark)
-    (region-put! start mark 'IMAIL-MIME-ATTACHMENT (cons body selector))))
+    (region-put! start mark 'IMAIL-MIME-ATTACHMENT (cons body selector))
+    (mark-temporary! start))
+  (insert-newline mark))
 
 (define (mime-attachment-name body selector)
   (or (mime-body-parameter body 'NAME #f)
@@ -1183,22 +1170,13 @@ With prefix argument N moves backward N messages with these flags."
 	    (loop (make-mark (mark-group start) index) attachments)
 	    (reverse! attachments))))))
 
-(define (insert-auto-wrapped-string string encoded? mark)
-  (call-with-auto-wrapped-output-mark mark encoded?
-    (lambda (port)
-      (write-string string port))))
+;;;; Automatic wrap/fill
 
-(define (call-with-auto-wrapped-output-mark mark encoded? generator)
-  (let ((mode
-	 (if encoded?
-	     (ref-variable imail-auto-wrap-mime-encoded mark)
-	     (ref-variable imail-auto-wrap mark))))
-    (cond ((not mode)
-	   (call-with-output-mark mark generator))
-	  ((eq? mode 'FILL)
-	   (call-with-filled-output-mark mark generator))
-	  (else
-	   (call-with-wrapped-output-mark mark generator)))))
+(define (call-with-auto-wrapped-output-mark mark generator)
+  (case (ref-variable imail-auto-wrap mark)
+    ((#F) (call-with-output-mark mark generator))
+    ((FILL) (call-with-filled-output-mark mark generator))
+    (else (call-with-wrapped-output-mark mark generator))))
 
 (define (call-with-wrapped-output-mark mark generator)
   (let ((start (mark-right-inserting-copy mark))
@@ -1635,16 +1613,30 @@ With prefix argument, prompt even when point is on an attachment."
 	(begin
 	  (call-with-binary-output-file filename
 	    (lambda (port)
-	      (let ((string (message-mime-body-part message selector #f)))
+	      (let ((string (message-mime-body-part message selector #f))
+		    (text?
+		     (let ((type (mime-body-type body)))
+		       (or (eq? type 'TEXT)
+			   (eq? type 'MESSAGE)))))
 		(case (mime-body-one-part-encoding body)
 		  ((QUOTED-PRINTABLE)
-		   (decode-quoted-printable-string string port))
+		   (decode-quoted-printable-string string port text?))
 		  ((BASE64)
-		   (decode-base64-binary-string string port))
+		   (decode-base64-string string port text?))
 		  (else
 		   (write-string string port))))))
 	  (buffer-put! buffer 'IMAIL-MIME-ATTACHMENT-DIRECTORY
 		       (directory-pathname filename))))))
+
+(define (decode-quoted-printable-string string port text?)
+  (let ((context (decode-quoted-printable:initialize port text?)))
+    (decode-quoted-printable:update context string 0 (string-length string))
+    (decode-quoted-printable:finalize context)))
+
+(define (decode-base64-string string port text?)
+  (let ((context (decode-base64:initialize port text?)))
+    (decode-base64:update context string 0 (string-length string))
+    (decode-base64:finalize context)))
 
 (define (mime-body-disposition-filename body)
   (let ((disposition (mime-body-disposition body)))

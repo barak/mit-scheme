@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.66 2000/06/07 13:06:43 cph Exp $
+$Id: todo.txt,v 1.67 2000/06/08 02:03:30 cph Exp $
 
 Bug fixes
 ---------
@@ -13,8 +13,6 @@ Bug fixes
   Windows-<n> for some value of <n>.  Messages in other sets should be
   treated as unknowns; character set should appear in attachment
   descriptor.
-
-* Attachment text property should not include terminating newline.
 
 * Treat messages in unrecognized encodings as type
   application/octet-stream.
