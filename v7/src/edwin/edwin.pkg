@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.154 1994/10/25 01:46:12 adams Exp $
+$Id: edwin.pkg,v 1.155 1994/11/02 19:40:18 adams Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -35,10 +35,7 @@ MIT in each case. |#
 ;;;; Edwin Packaging
 
 (global-definitions "../runtime/runtime")
-
-#| Only for Win32:
 (global-definitions "../win32/win32")
-|#
 
 (define-package (edwin)
   (file-case os-type
@@ -924,7 +921,7 @@ MIT in each case. |#
 
 ;;;; This is the variant used under DOS and NT (for now)
 
-#|
+#||#
 (define-package (edwin process)
   (file-case os-type
     ((dos nt)  "dosproc"))
@@ -943,10 +940,10 @@ MIT in each case. |#
   (file-case os-type
     ((dos) "doscom" "dosshell"))
   (parent (edwin)))
-|#
+#||#
 
 ;;;; This is the variant used under Unix/X
-
+#|
 (define-package (edwin process)
   (file-case os-type
     ((unix) "process")
@@ -1003,6 +1000,7 @@ MIT in each case. |#
 	  stop-process
 	  subprocesses-available?		; always present
 	  run-synchronous-process))
+|#
 
 (define-package (edwin screen x-screen)
   (files "xterm")
@@ -1017,18 +1015,27 @@ MIT in each case. |#
 	  xterm-screen/set-name)
   (initialization (initialize-package!)))
 
-#| PC only:
+#| PC only: |#
 (define-package (edwin screen win32)
   (files "win32")
   (parent (edwin screen))
   (import (win32)
 	  destroy-window
 	  get-handle
+	  load-icon
 	  message-beep
 	  send-message
+	  set-active-window
+	  set-focus
 	  set-window-text
 	  sleep
+	  show-window
+	  SW_SHOWMINNOACTIVE
+	  update-window
 	  )
+  (export (edwin win-commands)
+	  screen->handle
+	  win32-screen/set-name!)
   (initialization (initialize-package!)))
 
 (define-package (edwin win32-keys)
@@ -1040,7 +1047,7 @@ MIT in each case. |#
 	  end ; the END key
 	  )
   (initialization (initialize-package!)))
-|#
+#| End PC only|#
 
 (define-package (edwin x-commands)
   (files "xcom")
@@ -1083,8 +1090,13 @@ MIT in each case. |#
 (define-package (edwin win-commands)
   (files "win32com")
   (parent (edwin))
+  (import (win32)
+	  load-icon
+	  get-handle)
   (export (edwin)
-	  ))
+	  edwin-command$set-icon)
+  (export (edwin screen win32)
+	  update-win32-screen-name!))
 
 
 (define-package (edwin x-keys)
