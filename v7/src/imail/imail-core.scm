@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.99 2000/06/08 18:49:27 cph Exp $
+;;; $Id: imail-core.scm,v 1.100 2000/06/14 02:15:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -71,12 +71,23 @@
 
 ;; Return a string that represents the object containing URL's folder.
 ;; E.g. the container of "imap://localhost/inbox" is
-;; "imap://localhost/".
+;; "imap://localhost/" (except that for IMAP folders, the result may
+;; be affected by the NAMESPACE prefix information).
 (define (url-container-string url)
   (make-url-string (url-protocol url)
 		   (url-body-container-string url)))
 
 (define-generic url-body-container-string (url))
+
+;; Return the base name of URL.  This is the PATHNAME-NAME of a
+;; file-based folder, and for IMAP it's the part of the mailbox name
+;; following the rightmost delimiter.
+(define-generic url-base-name (url))
+
+;; Return a URL that has the same container as URL, but with base name
+;; NAME.  This is roughly equivalent to appending NAME to the
+;; container string of URL.
+(define-generic make-peer-url (url name))
 
 ;; Return #T if URL represents an existing folder.
 (define-generic url-exists? (url))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.150 2000/06/13 21:18:24 cph Exp $
+;;; $Id: imail-top.scm,v 1.151 2000/06/14 02:15:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -167,7 +167,7 @@ the type of folder.  Likewise, the available commands are the same
 regardless of the folder type."
   (lambda ()
     (list (and (command-argument)
-	       (prompt-for-imail-url-string "Run IMAIL on folder"
+	       (prompt-for-imail-url-string "Run IMAIL on folder" #f
 					    'HISTORY 'IMAIL
 					    'REQUIRE-MATCH? #t))))
   (lambda (url-string)
@@ -191,8 +191,8 @@ regardless of the folder type."
 			      (or (first-unseen-message folder)
 				  (selected-message #f))
 			      #t)))))))
-
-(define (prompt-for-imail-url-string prompt . options)
+
+(define (prompt-for-imail-url-string prompt default . options)
   (let ((get-option
 	 (lambda (key)
 	   (let loop ((options options))
@@ -201,7 +201,11 @@ regardless of the folder type."
 		  (if (eq? (car options) key)
 		      (cadr options)
 		      (loop (cddr options)))))))
-	(default (url-container-string (imail-default-url))))
+	(default
+	  (cond ((string? default) default)
+		((url? default) (url->string default))
+		((not default) (url-container-string (imail-default-url)))
+		(else (error "Illegal default:" default)))))
     (let ((history (get-option 'HISTORY)))
       (if (null? (prompt-history-strings history))
 	  (set-prompt-history-strings! history (list default))))
@@ -1440,7 +1444,7 @@ With prefix argument N, removes FLAG from next N messages,
   "Create a new folder with the specified name.
 An error if signalled if the folder already exists."
   (lambda ()
-    (list (prompt-for-imail-url-string "Create folder"
+    (list (prompt-for-imail-url-string "Create folder" #f
 				       'HISTORY 'IMAIL-CREATE-FOLDER)))
   (lambda (url-string)
     (let ((url (imail-parse-partial-url url-string)))
@@ -1450,7 +1454,7 @@ An error if signalled if the folder already exists."
 (define-command imail-delete-folder
   "Delete a specified folder and all its messages."
   (lambda ()
-    (list (prompt-for-imail-url-string "Delete folder"
+    (list (prompt-for-imail-url-string "Delete folder" #f
 				       'HISTORY 'IMAIL-DELETE-FOLDER
 				       'REQUIRE-MATCH? #t)))
   (lambda (url-string)
@@ -1468,14 +1472,15 @@ May only rename a folder to a new name on the same server or file system.
 The folder's type may not be changed."
   (lambda ()
     (let ((from
-	   (prompt-for-imail-url-string "Rename folder"
+	   (prompt-for-imail-url-string "Rename folder" #f
 					'HISTORY 'IMAIL-RENAME-FOLDER-SOURCE
 					'HISTORY-INDEX 0
 					'REQUIRE-MATCH? #t)))
       (list from
-	    (prompt-for-imail-url-string "Rename folder to"
-					 'HISTORY 'IMAIL-RENAME-FOLDER-TARGET
-					 'HISTORY-INDEX 0))))
+	    (prompt-for-imail-url-string
+	     "Rename folder to"
+	     (url-container-string (imail-parse-partial-url from))
+	     'HISTORY 'IMAIL-RENAME-FOLDER-TARGET))))
   (lambda (from to)
     (let ((from (imail-parse-partial-url from))
 	  (to (imail-parse-partial-url to)))
@@ -1485,7 +1490,7 @@ The folder's type may not be changed."
 (define-command imail-input
   "Run IMAIL on a specified folder."
   (lambda ()
-    (list (prompt-for-imail-url-string "Run IMAIL on folder"
+    (list (prompt-for-imail-url-string "Run IMAIL on folder" #f
 				       'HISTORY 'IMAIL
 				       'REQUIRE-MATCH? #t)))
   (lambda (url-string)
@@ -1494,7 +1499,7 @@ The folder's type may not be changed."
 (define-command imail-input-from-folder
   "Append messages to this folder from a specified folder."
   (lambda ()
-    (list (prompt-for-imail-url-string "Get messages from folder"
+    (list (prompt-for-imail-url-string "Get messages from folder" #f
 				       'HISTORY 'IMAIL-INPUT
 				       'HISTORY-INDEX 0
 				       'REQUIRE-MATCH? #t)))
@@ -1522,7 +1527,7 @@ The folder's type may not be changed."
 (define-command imail-output
   "Append this message to a specified folder."
   (lambda ()
-    (list (prompt-for-imail-url-string "Output to folder"
+    (list (prompt-for-imail-url-string "Output to folder" #f
 				       'HISTORY 'IMAIL-OUTPUT
 				       'HISTORY-INDEX 0)
 	  (command-argument)))
@@ -1548,7 +1553,7 @@ The messages are NOT deleted even if imail-delete-after-output is true.
 This command is meant to be used to move the contents of a folder
  either to or from an IMAP server."
   (lambda ()
-    (list (prompt-for-imail-url-string "Copy all messages to folder"
+    (list (prompt-for-imail-url-string "Copy all messages to folder" #f
 				       'HISTORY 'IMAIL-OUTPUT
 				       'HISTORY-INDEX 0)))
   (lambda (url-string)
@@ -1560,14 +1565,21 @@ If the target folder exists, the messages are appended to it.
 If it doesn't exist, it is created first."
   (lambda ()
     (let ((from
-	   (prompt-for-imail-url-string "Copy folder"
+	   (prompt-for-imail-url-string "Copy folder" #f
 					'HISTORY 'IMAIL-COPY-FOLDER-SOURCE
 					'HISTORY-INDEX 0
 					'REQUIRE-MATCH? #t)))
       (list from
-	    (prompt-for-imail-url-string "Copy messages to folder"
-					 'HISTORY 'IMAIL-COPY-FOLDER-TARGET
-					 'HISTORY-INDEX 0))))
+	    (prompt-for-imail-url-string
+	     "Copy messages to folder"
+	     (make-peer-url
+	      (let ((history
+		     (prompt-history-strings 'IMAIL-COPY-FOLDER-TARGET)))
+		(and (pair? history)
+		     (imail-parse-partial-url (car history))
+		     (imail-default-url)))
+	      (url-base-name (imail-parse-partial-url from)))
+	     'HISTORY 'IMAIL-COPY-FOLDER-TARGET))))
   (lambda (from to)
     (copy-folder (open-folder (imail-parse-partial-url from))
 		 (imail-parse-partial-url to))))
@@ -1947,7 +1959,7 @@ A prefix argument says to prompt for a URL and append all messages
  from that folder to the current one."
   (lambda ()
     (list (and (command-argument)
-	       (prompt-for-imail-url-string "Get messages from folder"
+	       (prompt-for-imail-url-string "Get messages from folder" #f
 					    'HISTORY 'IMAIL-INPUT
 					    'HISTORY-INDEX 0
 					    'REQUIRE-MATCH? #t))))

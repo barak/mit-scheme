@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.41 2000/06/01 05:10:14 cph Exp $
+;;; $Id: imail-file.scm,v 1.42 2000/06/14 02:15:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -35,6 +35,9 @@
 
 (define-method url-body-container-string ((url <file-url>))
   (directory-namestring (file-url-pathname url)))
+
+(define-method url-base-name ((url <file-url>))
+  (pathname-name (file-url-pathname url)))
 
 (define-method url-exists? ((url <file-url>))
   (file-exists? (file-url-pathname url)))

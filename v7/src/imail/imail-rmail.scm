@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.38 2000/06/05 20:56:49 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.39 2000/06/14 02:15:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -35,6 +35,11 @@
 (define-method parse-url-body ((string <string>) (default-url <rmail-url>))
   (make-rmail-url (merge-pathnames string (file-url-pathname default-url))))
 
+(define-method make-peer-url ((url <rmail-url>) name)
+  (make-rmail-url
+   (merge-pathnames (pathname-default-type name "rmail")
+		    (directory-pathname (file-url-pathname url)))))
+
 (define-file-url-completers <rmail-url>
   (let ((type-filter (file-type-filter "rmail")))
     (lambda (pathname)
@@ -57,7 +62,7 @@
      folder
      (compute-rmail-folder-header-fields folder))
     (save-folder folder)))
-
+
 ;;;; Folder
 
 (define-class (<rmail-folder> (constructor (url))) (<file-folder>)
