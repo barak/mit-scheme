@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: cinden.scm,v 1.14 1996/04/23 22:37:42 cph Exp $
+;;;	$Id: cinden.scm,v 1.15 1996/05/08 05:24:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -164,7 +164,7 @@ This is in addition to c-continued-statement-offset."
       ;; body, so indent in the left-hand column.
       0
       (let ((m (backward-to-noncomment indent-point parse-start)))
-	(if (or (not m) (memv (extract-left-char m) '(#F #\, #\; #\})))
+	(if (or (not m) (not (extract-left-char m)))
 	    ;; This appears to be the beginning of a top-level data
 	    ;; definition, so indent in the left-hand column.
 	    0
@@ -174,21 +174,13 @@ This is in addition to c-continued-statement-offset."
 	      (if (not m)
 		  0
 		  (let ((m (function-start? m parse-start)))
-		    (cond ((not m)
-			   ;; Previous line isn't a function start,
-			   ;; meaning this is the continuation of a
-			   ;; data definition, so indent accordingly.
-			   (ref-variable c-continued-statement-offset
-					 indent-point))
-			  ((mark< m indent-point)
-			   ;; Previous line is a function start and
-			   ;; we're indenting a line that follows the
-			   ;; parameter list and precedes the body, so
-			   ;; indent it as a parameter declaration.
-			   (ref-variable c-argdecl-indent indent-point))
-			  (else
-			   ;; Dunno -- give up.
-			   0)))))))))
+		    (if (and m (mark< m indent-point))
+			;; Previous line is a function start and we're
+			;; indenting a line that follows the parameter
+			;; list and precedes the body, so indent it as
+			;; a parameter declaration.
+			(ref-variable c-argdecl-indent indent-point)
+			0))))))))
 
 (define (function-start? lstart parse-start)
   ;; True iff LSTART points at the beginning of a function definition.
