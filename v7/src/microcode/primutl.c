@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.57 1992/07/23 12:48:42 jinx Exp $
+$Id: primutl.c,v 9.58 1992/09/24 01:35:18 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -210,10 +210,12 @@ EXFUN (search_for_primitive,
 	Boolean intern_p, Boolean allow_p, int arity));
 
 SCHEME_OBJECT
-DEFUN (make_primitive, (name), unsigned char * name)
+DEFUN (make_primitive, (name), char * name)
 {
 
-  return (search_for_primitive (SHARP_F, name, true, true,
+  return (search_for_primitive (SHARP_F,
+				((unsigned char *) name),
+				true, true,
 				UNKNOWN_PRIMITIVE_ARITY));
 }
 
