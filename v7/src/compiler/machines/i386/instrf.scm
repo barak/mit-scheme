@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instrf.scm,v 1.7 1992/02/13 07:48:08 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instrf.scm,v 1.8 1992/02/18 01:52:53 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Intel i387/i486 Instruction Set
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 

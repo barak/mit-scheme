@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instr1.scm,v 1.7 1992/02/13 07:47:52 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instr1.scm,v 1.8 1992/02/18 01:52:39 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Intel i386 Instruction Set, part I
+;;; package: (compiler lap-syntaxer)
 
 ;; Some of the instructions have their operands ill-specified in the
 ;; i486 book.  Check against the appendices or the i386 book.
