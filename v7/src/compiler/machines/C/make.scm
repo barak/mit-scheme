@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.1 1993/06/08 06:13:32 gjr Exp $
+$Id: make.scm,v 1.2 1993/11/13 02:22:34 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -36,7 +36,9 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(let ((value ((load "base/make") "C")))
-  (set! (access compiler:compress-top-level? (->environment '(compiler)))
-	true)
-  value)
+(begin
+  (declare-shared-library "sf+compiler" (lambda () true))
+  (let ((value ((load "base/make") "C")))
+    (set! (access compiler:compress-top-level? (->environment '(compiler)))
+	  true)
+    value))
