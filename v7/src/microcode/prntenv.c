@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntenv.c,v 1.1 1993/06/24 06:57:57 gjr Exp $
+$Id: prntenv.c,v 1.2 1993/08/19 22:19:29 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -46,9 +46,10 @@ DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1,
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, INTEGER_P);
   {
-    time_t clock = (arg_integer (1));
-    char * time_string = (DOS_ctime (&clock));
-    (time_string[24]) = '\0';
+    time_t clock = arg_integer (1);
+    char * time_string = ctime (&clock);
+    if (time_string)
+      time_string[24] = '\0';
     PRIMITIVE_RETURN (char_pointer_to_string ((unsigned char *) time_string));
   }
 }
