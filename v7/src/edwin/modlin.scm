@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.9 1991/05/10 22:21:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.10 1991/05/17 19:07:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -273,27 +273,29 @@ If #F, the normal method is used."
 	     (symbol->string (process-status process))
 	     "no process")))
       ((#\p)
-       (if (let ((end (buffer-end buffer)))
-	     (or (window-mark-visible? window end)
-		 (and (line-start? end)
-		      (not (group-start? end))
-		      (window-mark-visible? window (mark-1+ end)))))
-	   (if (window-mark-visible? window (buffer-start buffer))
-	       "All"
-	       "Bottom")
-	   (if (window-mark-visible? window (buffer-start buffer))
-	       "Top"
-	       (string-append
-		(string-pad-left
-		 (number->string
-		  (min
-		   (let ((start (mark-index (buffer-start buffer))))
-		     (integer-round
-		      (* 100 (- (mark-index (window-start-mark window)) start))
-		      (- (mark-index (buffer-end buffer)) start)))
-		   99))
-		 2)
-		"%"))))
+       (let ((group (buffer-group buffer)))
+	 (let ((start (group-display-start group)))
+	   (if (let ((end (group-display-end group)))
+		 (or (window-mark-visible? window end)
+		     (and (mark< start end)
+			  (line-start? end)
+			  (window-mark-visible? window (mark-1+ end)))))
+	       (if (window-mark-visible? window start)
+		   "All"
+		   "Bottom")
+	       (if (window-mark-visible? window start)
+		   "Top"
+		   (string-append
+		    (string-pad-left
+		     (number->string
+		      (min
+		       (let ((start (group-display-start-index group)))
+			 (integer-round
+			  (* 100 (- (mark-index (window-start-mark window)) start))
+			  (- (group-display-end-index group) start)))
+		       99))
+		     2)
+		    "%"))))))
       ((#\[ #\])
        (cond ((<= recursive-edit-level 10)
 	      (make-string recursive-edit-level char))
