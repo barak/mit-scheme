@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.13 1990/10/03 00:11:45 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.14 1991/08/27 08:23:53 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -486,7 +486,7 @@ DEFINE_PRIMITIVE ("IMAGE-HT-BN-ATXY-WMM", Prim_image_ht_bn_atxy_wmm, 8,8, 0)
      (arg_real (5)),
      (arg_real (6)),
      (arg_integer_in_range (7, 1, 257)),
-     (arg_nonnegative_integer (8, 3)),
+     (arg_nonnegative_integer (8)),
      er_rows);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
