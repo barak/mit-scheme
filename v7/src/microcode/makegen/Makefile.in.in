@@ -1,4 +1,4 @@
-# $Id: Makefile.in.in,v 1.16 2001/03/09 15:49:20 cph Exp $
+# $Id: Makefile.in.in,v 1.17 2001/11/27 04:20:31 cph Exp $
 #
 # Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
@@ -14,7 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
 
 # **** BEGIN BOILERPLATE ****
 
@@ -190,6 +191,8 @@ MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps config.h.in configure
 
 # **** Main rules ****
 
+default-target: scheme bchscheme
+
 all: $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA)
 
 scheme: $(scheme_OBJECTS) $(scheme_DEPENDENCIES)
@@ -301,6 +304,7 @@ install-auxDATA: $(aux_DATA)
 	    fi; \
 	done
 
+.PHONY: default-target
 .PHONY: all tags TAGS mostlyclean clean distclean maintainer-clean
 .PHONY: install install_binPROGRAMS install_auxPROGRAMS install_auxDATA
 
