@@ -128,7 +128,7 @@ Algorithm:
 4. Processing each component before any component that references it,
    find the DRIFT FRAME, the highest frame that a component may be
    lifted to without adding extra arguments.  This frame is the
-   highest to which the stubs my be lifted.  When processing other
+   highest to which the stubs may be lifted.  When processing other
    components assume this component has been lifted to this frame
    (which is why order is important).
 
