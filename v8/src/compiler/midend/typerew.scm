@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.4 1995/09/05 18:46:09 adams Exp $
+$Id: typerew.scm,v 1.5 1995/09/08 03:07:41 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -466,8 +466,11 @@ MIT in each case. |#
 (define (typerew/remember new old)
   (code-rewrite/remember new old))
 
-(define (typerew/remember* new old)
-  (code-rewrite/remember new old))
+(define (typerew/remember* equivalent-subform new-form)
+  (let ((info (code-rewrite/original-form new-form)))
+    (if info
+	(code-rewrite/remember* equivalent-subform info))))
+			  
 
 (define (typerew/new-name prefix)
   (new-variable prefix))
