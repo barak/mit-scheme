@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.21 1989/04/21 17:22:51 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.22 1989/04/26 05:11:52 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -497,11 +497,10 @@ MIT in each case. |#
   (files "rtlopt/rdebug")
   (parent (compiler)))
 
-(define-package (compiler rtl-optimizer register-allocation)
-  (files "rtlopt/ralloc")
+(define-package (compiler rtl-optimizer invertible-expression-elimination)
+  (files "rtlopt/rinvex")
   (parent (compiler rtl-optimizer))
-  (export (compiler top-level) register-allocation))
-
+  (export (compiler top-level) invertible-expression-elimination))
 (define-package (compiler rtl-optimizer lifetime-analysis)
   (files "rtlopt/rlife")
   (parent (compiler rtl-optimizer))
@@ -512,6 +511,11 @@ MIT in each case. |#
   (files "rtlopt/rdeath")
   (parent (compiler rtl-optimizer))
   (export (compiler top-level) code-compression))
+
+(define-package (compiler rtl-optimizer register-allocation)
+  (files "rtlopt/ralloc")
+  (parent (compiler rtl-optimizer))
+  (export (compiler top-level) register-allocation))
 
 (define-package (compiler lap-syntaxer)
   (files "back/lapgn1"			;LAP generator
