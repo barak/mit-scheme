@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.53 1997/07/09 14:40:07 adams Exp $
+$Id: global.scm,v 14.54 1998/04/30 21:28:12 cph Exp $
 
 Copyright (c) 1988-1996 Massachusetts Institute of Technology
 
@@ -91,7 +91,8 @@ MIT in each case. |#
 (define apply (ucode-primitive apply 2))
 
 (define (eval expression environment)
-  (extended-scode-eval (syntax expression system-global-syntax-table)
+  (extended-scode-eval (syntax expression
+			       (environment-syntax-table environment))
 		       environment))
 
 (define (scode-eval scode environment)

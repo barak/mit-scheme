@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.303 1998/04/30 18:05:39 cph Exp $
+$Id: runtime.pkg,v 14.304 1998/04/30 21:28:23 cph Exp $
 
 Copyright (c) 1988-98 Massachusetts Institute of Technology
 
@@ -3047,12 +3047,14 @@ MIT in each case. |#
   (files "syntax")
   (parent ())
   (export ()
+	  environment-syntax-table
 	  hook/syntax-expression
 	  lambda-tag:fluid-let
 	  lambda-tag:let
 	  lambda-tag:make-environment
 	  lambda-tag:unnamed
 	  make-syntax-closure
+	  set-environment-syntax-table!
 	  syntax
 	  syntax*
 	  syntax-closure/expression

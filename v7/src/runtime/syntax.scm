@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.28 1997/12/02 05:53:21 adams Exp $
+$Id: syntax.scm,v 14.29 1998/04/30 21:28:01 cph Exp $
 
-Copyright (c) 1988-97 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,6 +45,8 @@ MIT in each case. |#
 	(make-syntax-table system-global-syntax-table))
   (set! *disallow-illegal-definitions?* #t)
   (set! hook/syntax-expression default/syntax-expression)
+  (set-environment-syntax-table! system-global-environment
+				 system-global-syntax-table)
   unspecific)
 
 (define system-global-syntax-table)
@@ -126,6 +128,16 @@ MIT in each case. |#
 
 (define (syntax/top-level?)
   *syntax-top-level?*)
+
+(define (environment-syntax-table environment)
+  (lexical-reference environment syntax-table-tag))
+
+(define (set-environment-syntax-table! environment table)
+  (local-assignment environment syntax-table-tag table))
+
+(define-integrable syntax-table-tag
+  ((ucode-primitive string->symbol)
+   "#[(runtime syntax-table)syntax-table-tag]"))
 
 (define-integrable (syntax-subsequence expressions)
   (syntax-sequence #f expressions))
