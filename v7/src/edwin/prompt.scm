@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.192 2001/05/07 18:37:15 cph Exp $
+;;; $Id: prompt.scm,v 1.193 2001/05/07 18:44:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -327,7 +327,7 @@
   (list-completions #f read-only #t)
   (verify-final-value #f read-only #t)
   (default-type 'VISIBLE-DEFAULT)
-  (confirm-completion? #f)
+  (require-match? #f)
   (case-insensitive-completion? #f)
   (history #f)
   (history-index -1))
@@ -398,7 +398,10 @@
     (if require-match?
 	(set-options/mode! options
 			   (ref-mode-object minibuffer-local-must-match)))
-    (set-options/confirm-completion?! options (eq? 'CONFIRM require-match?))))
+    (set-options/require-match?! options require-match?)))
+
+(define (options/confirm-completion? options)
+  (eq? 'CONFIRM (options/require-match? options)))
 
 ;;;; Prompt History Mechanism
 
@@ -623,8 +626,7 @@ a repetition of this command will exit."
 	      (complete-string original
 		(lambda (string)
 		  (let ((verified?
-			 (if (eq? (ref-mode-object minibuffer-local-must-match)
-				  (options/mode *options*))
+			 (if (options/require-match? *options*)
 			     ((options/verify-final-value *options*) string)
 			     #t)))
 		    (set! effected? #t)
