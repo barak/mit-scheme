@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.31 1990/09/12 02:44:12 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.32 1990/11/02 03:09:52 cph Rel $
 ;;;
 ;;;	Copyright (c) 1985, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -278,7 +278,7 @@ Without argument, reads a character.  Your options are:
 			(with-keyboard-macro-disabled enter-recursive-edit)
 			(loop))
 		       ((test-for #\C-l)
-			(window-redraw! (current-window) false)
+			((ref-command recenter) false)
 			(loop))
 		       (else
 			(editor-beep)
