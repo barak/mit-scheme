@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.37 1991/05/18 03:23:25 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.38 1991/07/02 18:56:18 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -56,14 +56,13 @@
 					 xl xu yl yu display-style)
   display-style				;ignore
   (if (and (fix:= yl 0) (fix:< yl yu))
-      (let ((superior (window-superior window)))
+      (let ((superior (window-superior window))
+	    (xl (fix:+ x-start xl))
+	    (xu (fix:+ x-start xu)))
 	(modeline-string!
 	 superior
 	 (screen-get-output-line
-	  screen
-	  y-start
-	  (fix:+ x-start xl)
-	  (fix:+ x-start xu)
+	  screen y-start xl xu
 	  (variable-local-value (window-buffer superior)
 				(ref-variable-object mode-line-inverse-video)))
 	 xl xu)))
