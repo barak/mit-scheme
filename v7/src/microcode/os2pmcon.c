@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.19 1995/11/04 01:01:08 cph Exp $
+$Id: os2pmcon.c,v 1.20 1995/11/06 11:54:57 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -222,6 +222,9 @@ OS2_console_font_change_hook (font_metrics_t * metrics)
   OS2_window_shape_cursor
     (console_wid, CHAR_WIDTH, CHAR_HEIGHT, (CURSOR_SOLID | CURSOR_FLASH));
   console_resize (console_pel_width, console_pel_height);
+  OS2_window_invalidate (console_wid,
+			 0, console_pel_width,
+			 0, console_pel_height);
   release_console_lock ();
 }
 
