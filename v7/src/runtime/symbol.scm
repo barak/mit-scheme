@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: symbol.scm,v 1.15 2004/07/15 04:05:39 cph Exp $
+$Id: symbol.scm,v 1.16 2004/07/15 04:07:40 cph Exp $
 
 Copyright 1992,1993,2001,2003,2004 Massachusetts Institute of Technology
 
@@ -80,8 +80,9 @@ USA.
   ((ucode-primitive string->symbol)
    (apply string-append
 	  (map (lambda (object)
-		 (cond ((string? object) object)
-		       ((symbol? object) (symbol-name object))
+		 (cond ((symbol? object) (symbol-name object))
+		       ((string? object) object)
+		       ((char? object) (string object))
 		       ((number? object) (number->string object))
 		       ((not object) "")
 		       (else
