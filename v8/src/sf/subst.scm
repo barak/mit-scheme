@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: subst.scm,v 1.3 1995/07/12 11:52:43 adams Exp $
+$Id: subst.scm,v 1.4 1996/03/09 15:23:41 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -972,7 +972,9 @@ forms are simply removed.
   (cond (
 	 ;; fold constants
 	 (and (foldable-operator? operator)
-	      (foldable-constants? operands))
+	      (foldable-constants? operands)
+	      (procedure-arity-valid? (constant/value operator)
+				      (length operands)))
 	 (let ((value  (apply (constant/value operator)
 			       (map foldable-constant-value operands))))
 	   (constant/make (and expression (object/scode expression))
