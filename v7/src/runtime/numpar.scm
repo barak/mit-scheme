@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 14.7 1991/02/15 18:06:30 cph Exp $
+$Id: numpar.scm,v 14.8 1993/10/26 22:48:28 cph Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,51 +36,56 @@ MIT in each case. |#
 ;;; package: (runtime number-parser)
 
 (define (string->number string #!optional radix-default)
-  (let ((radix-default
-	 (if (default-object? radix-default)
-	     10
-	     (begin
-	       (if (not (memv radix-default '(2 8 10 16)))
-		   (error:bad-range-argument radix-default 'STRING->NUMBER))
-	       radix-default))))
-    (with-values (lambda () (parse-prefix (string->list string)))
-      (lambda (chars radix-prefix exactness)
-	((if (eq? exactness 'INEXACT)
-	     (lambda (number)
-	       (and number
-		    (exact->inexact number)))
-	     identity-procedure)
-	 (let ((radix (or radix-prefix radix-default)))
-	   (with-values (lambda () (parse-sign chars))
-	     (lambda (chars real-sign)
-	       (if (and real-sign (imaginary-suffix? chars))
-		   (make-rectangular 0 real-sign)
-		   (with-values (lambda () (parse-unsigned-real chars radix))
-		     (lambda (chars real inexact?)
-		       (let ((real
-			      (combine-sign real-sign
-					    real
-					    exactness
-					    inexact?)))
-			 (cond ((or (null? chars) (not real))
-				real)
-			       ((and real-sign (imaginary-suffix? chars))
-				(make-rectangular 0 real))
-			       ((char=? #\@ (car chars))
-				(with-values
-				    (lambda ()
-				      (parse-signed-real (cdr chars)
-							 radix
-							 exactness))
-				  (lambda (chars angle)
-				    (and angle
-					 (null? chars)
-					 (make-polar real angle)))))
-			       (else
-				(parse-imaginary-tail chars
-						      radix
-						      exactness
-						      real)))))))))))))))
+  (parse-chars (string->list string)
+	       (if (default-object? radix-default) 10 radix-default)
+	       'STRING->NUMBER))
+
+(define (substring->number string start end #!optional radix-default)
+  (parse-chars (substring->list string start end)
+	       (if (default-object? radix-default) 10 radix-default)
+	       'SUBSTRING->NUMBER))
+
+(define (parse-chars chars radix-default name)
+  (if (not (memv radix-default '(2 8 10 16)))
+      (error:bad-range-argument radix-default name))
+  (with-values (lambda () (parse-prefix chars))
+    (lambda (chars radix-prefix exactness)
+      ((if (eq? exactness 'INEXACT)
+	   (lambda (number)
+	     (and number
+		  (exact->inexact number)))
+	   identity-procedure)
+       (let ((radix (or radix-prefix radix-default)))
+	 (with-values (lambda () (parse-sign chars))
+	   (lambda (chars real-sign)
+	     (if (and real-sign (imaginary-suffix? chars))
+		 (make-rectangular 0 real-sign)
+		 (with-values (lambda () (parse-unsigned-real chars radix))
+		   (lambda (chars real inexact?)
+		     (let ((real
+			    (combine-sign real-sign
+					  real
+					  exactness
+					  inexact?)))
+		       (cond ((or (null? chars) (not real))
+			      real)
+			     ((and real-sign (imaginary-suffix? chars))
+			      (make-rectangular 0 real))
+			     ((char=? #\@ (car chars))
+			      (with-values
+				  (lambda ()
+				    (parse-signed-real (cdr chars)
+						       radix
+						       exactness))
+				(lambda (chars angle)
+				  (and angle
+				       (null? chars)
+				       (make-polar real angle)))))
+			     (else
+			      (parse-imaginary-tail chars
+						    radix
+						    exactness
+						    real))))))))))))))
 
 (define (parse-imaginary-tail chars radix exactness real)
   (with-values (lambda () (parse-sign chars))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.209 1993/10/21 13:57:31 cph Exp $
+$Id: runtime.pkg,v 14.210 1993/10/26 22:48:47 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -1430,7 +1430,8 @@ MIT in each case. |#
   (files "numpar")
   (parent ())
   (export ()
-	  string->number))
+	  string->number
+	  substring->number))
 
 (define-package (runtime options)
   (files "option")
