@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: loadef.scm,v 1.43 2001/02/05 18:55:56 cph Exp $
+;;; $Id: loadef.scm,v 1.44 2001/02/05 21:48:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -371,6 +371,9 @@ See \\[view-password-file]."
 (define-autoload-major-mode 'debian-changelog 'text "Debian changelog"
   'DEBIAN-CHANGELOG
   "Major mode for editing Debian-style change logs.")
+
+(define-autoload-command 'debian-changelog-mode 'DEBIAN-CHANGELOG
+  "Enter Debian changelog mode.")
 
 (define-variable add-log-full-name
   "Full name of user, for inclusion in ChangeLog headers.

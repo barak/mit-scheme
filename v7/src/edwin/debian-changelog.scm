@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debian-changelog.scm,v 1.1 2001/02/05 18:55:45 cph Exp $
+;;; $Id: debian-changelog.scm,v 1.2 2001/02/05 21:48:34 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -23,6 +23,11 @@
 
 (declare (usual-integrations))
 
+(define-command debian-changelog-mode
+  "Enter Debian changelog mode."
+  ()
+  (lambda () (set-current-major-mode! (ref-mode-object debian-changelog))))
+
 (define-major-mode debian-changelog text "Debian changelog"
   "Major mode for editing Debian-style change logs.
 Runs `debian-changelog-mode-hook' if it exists.
@@ -79,10 +84,13 @@ Key bindings:
 		  (insert-string ") unstable; urgency=low" m)
 		  (insert-newlines 2 m)
 		  (insert-string "  * " m)
-		  (insert-newlines 2 m)
-		  (insert-string " --" m)
-		  (insert-newlines 2 m)
-		  (mark-temporary! m))))
+		  (let ((p (mark-right-inserting-copy m)))
+		    (insert-newlines 2 m)
+		    (insert-string " --" m)
+		    (insert-newlines 2 m)
+		    (mark-temporary! m)
+		    (mark-temporary! p)
+		    (set-buffer-point! buffer p)))))
 	     (prompt
 	      (lambda ()
 		(let ((package (prompt-for-string "Package name" #f)))
@@ -121,7 +129,7 @@ Key bindings:
 	     "\\[debian-changelog-unfinalize-last-version] or "
 	     "\\[debian-changelog-add-version]")
 	    buffer)))
-      (let ((m (mark-left-inserting-copy (trailer-line buffer))))
+      (let ((m (mark-left-inserting-copy (mark- (trailer-line buffer) 4))))
 	(guarantee-newline m)
 	(insert-string "  * " m)
 	(insert-newline m)
@@ -218,7 +226,7 @@ address and release date) so that new entries can be made."
     (if (not (re-search-forward "\n\\S " start end))
 	(error "Unable to find version-end line."))
     (let ((m (mark1+ (re-match-start 0))))
-      (if (re-search-backward "\n --"  start)
+      (if (re-search-backward "\n --"  m)
 	  (re-match-end 0)
 	  (let ((m (mark-left-inserting-copy m)))
 	    (insert-string " --" m)
@@ -256,7 +264,7 @@ address and release date) so that new entries can be made."
 		   package-name
 		   "\\( +"
 		   package-name
-		   "\\)+ *\\);.*"
+		   "\\)* *\\);.*"
 		   " urgency=\\([a-zA-Z0-9]+\\)")))
 (define title-regexp-index:package-name 1)
 (define title-regexp-index:version 2)
