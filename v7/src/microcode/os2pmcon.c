@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.2 1994/12/19 22:31:42 cph Exp $
+$Id: os2pmcon.c,v 1.3 1995/01/06 00:01:28 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -109,17 +109,24 @@ OS2_initialize_pm_console (void)
     OS2_make_qid_pair ((&console_event_qid), (&remote));
     OS2_open_qid (console_event_qid, console_tqueue);
     console_pm_qid = (OS2_create_pm_qid (console_tqueue));
-    console_wid = (OS2_window_open (console_pm_qid, remote, "Scheme"));
+    console_wid = (OS2_window_open (console_pm_qid, remote, 0, "Scheme"));
   }
   OS2_window_permanent (console_wid);
   metrics = OS2_window_set_font (console_wid, 1, "4.System VIO");
   if (metrics == 0)
     OS2_logic_error ("Unable to find 4 point System VIO font.");
   OS2_window_set_grid (console_wid, CHAR_WIDTH, CHAR_HEIGHT);
-  OS2_window_show (console_wid, 1);
   OS2_window_shape_cursor
     (console_wid, CHAR_WIDTH, CHAR_HEIGHT, (CURSOR_SOLID | CURSOR_FLASH));
   OS2_window_show_cursor (console_wid, 1);
+  OS2_window_show (console_wid, 1);
+  OS2_window_activate (console_wid);
+  {
+    unsigned short width;
+    unsigned short height;
+    OS2_window_size (console_wid, (& width), (& height));
+    console_resize (width, height);
+  }
 }
 
 wid_t
@@ -297,6 +304,7 @@ console_paint (unsigned short xl, unsigned short xh,
   unsigned short cxh = (x2cx (xh, 0));
   unsigned short cyl = (y2cy (yh, 0));
   unsigned short cyh = (y2cy (yl, 1));
+  OS2_window_clear (console_wid, xl, xh, yl, yh);
   if ((cxl < cxh) && (cyl < cyh))
     {
       unsigned short size = (cxh - cxl);
@@ -312,7 +320,7 @@ console_paint (unsigned short xl, unsigned short xh,
 
 static void
 console_clear (unsigned short xl, unsigned short xh,
-		    unsigned short yl, unsigned short yh)
+	       unsigned short yl, unsigned short yh)
 {
   OS2_window_clear (console_wid,
 		    (cx2x (xl)), (cx2x (xh)),
