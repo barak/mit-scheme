@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.13 1994/11/04 20:06:03 cph Exp $
+$Id: usrint.scm,v 1.14 1995/05/25 18:53:06 ziggy Exp $
 
 Copyright (c) 1991-94 Massachusetts Institute of Technology
 
@@ -233,7 +233,7 @@ MIT in each case. |#
       (write-string ";" port)
       (if (and write-result:undefined-value-is-special?
 	       (undefined-value? object))
-	  (write-string "No useful value" port)
+	  (write-string "Unspecified return value" port)
 	  (begin
 	    (write-string "Value" port)
 	    (if hash-number
