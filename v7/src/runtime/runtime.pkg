@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.244 1995/02/08 01:20:38 cph Exp $
+$Id: runtime.pkg,v 14.245 1995/02/14 00:37:35 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -2210,6 +2210,7 @@ MIT in each case. |#
   (export (runtime starbase-graphics)
 	  register-graphics-device-type)
   (export (runtime os2-graphics)
+	  graphics-device/buffer?
 	  register-graphics-device-type))
 
 (define-package (runtime x-graphics)
@@ -2510,18 +2511,28 @@ MIT in each case. |#
 	  number-of-event-types
 	  os2ps-bitblt
 	  os2ps-clear
-	  os2ps-close-bitmap
+	  os2ps-create-bitmap
+	  os2ps-create-memory-ps
+	  os2ps-destroy-bitmap
+	  os2ps-destroy-memory-ps
+	  os2ps-draw-point
+	  os2ps-get-bitmap-bits
+	  os2ps-get-bitmap-parameters
 	  os2ps-line
 	  os2ps-move-graphics-cursor
-	  os2ps-open-bitmap
 	  os2ps-poly-line
 	  os2ps-poly-line-disjoint
 	  os2ps-query-capabilities
 	  os2ps-query-capability
+	  os2ps-reset-clip-rectangle
+	  os2ps-set-bitmap
+	  os2ps-set-bitmap-bits
+	  os2ps-set-clip-rectangle
 	  os2ps-set-colors
 	  os2ps-set-font
 	  os2ps-set-line-type
 	  os2ps-set-mix
+	  os2ps-text-width
 	  os2ps-write
 	  os2win-activate
 	  os2win-beep
