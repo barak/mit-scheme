@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.61 1998/02/11 05:16:46 cph Exp $
+$Id: make.scm,v 14.62 1998/04/01 08:16:28 cph Exp $
 
 Copyright (c) 1988-98 Massachusetts Institute of Technology
 
@@ -441,6 +441,7 @@ MIT in each case. |#
    ((RUNTIME GENERIC-PROCEDURE) INITIALIZE-CONDITIONS! #t)
    ((RUNTIME GENERIC-PROCEDURE MULTIPLEXER) INITIALIZE-CONDITIONS! #t)
    ((RUNTIME RECORD-SLOT-ACCESS) INITIALIZE-CONDITIONS! #t)
+   ((RUNTIME STREAM) INITIALIZE-CONDITIONS! #t)
    ;; System dependent stuff
    (() INITIALIZE-SYSTEM-PRIMITIVES! #f)
    ;; Threads

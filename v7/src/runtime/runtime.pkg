@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.295 1998/03/09 03:44:11 cph Exp $
+$Id: runtime.pkg,v 14.296 1998/04/01 08:16:15 cph Exp $
 
 Copyright (c) 1988-98 Massachusetts Institute of Technology
 
@@ -784,6 +784,9 @@ MIT in each case. |#
 	  dynamic-handler-frames)
   (export (runtime debugger)
 	  continue-from-derived-thread-error)
+  (export (runtime stream)
+	  ordinal-number-string
+	  write-operator)
   (initialization (initialize-package!)))
 
 (define-package (runtime event-distributor)
@@ -2978,9 +2981,11 @@ MIT in each case. |#
   (files "stream")
   (parent ())
   (export ()
+	  condition-type:illegal-stream-element
 	  empty-stream?
 	  head
 	  list->stream
+	  make-prime-numbers-stream
 	  prime-numbers-stream
 	  stream
 	  stream->list

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.301 1998/03/09 03:44:18 cph Exp $
+$Id: runtime.pkg,v 14.302 1998/04/01 08:16:07 cph Exp $
 
 Copyright (c) 1988-98 Massachusetts Institute of Technology
 
@@ -94,8 +94,8 @@ MIT in each case. |#
   (export ()
 	  char->string
 	  list->string
-	  make-string
 	  guarantee-string
+	  make-string
 	  set-string-length!
 	  string
 	  string->list
@@ -788,6 +788,9 @@ MIT in each case. |#
 	  dynamic-handler-frames)
   (export (runtime debugger)
 	  continue-from-derived-thread-error)
+  (export (runtime stream)
+	  ordinal-number-string
+	  write-operator)
   (initialization (initialize-package!)))
 
 (define-package (runtime event-distributor)
@@ -2982,9 +2985,11 @@ MIT in each case. |#
   (files "stream")
   (parent ())
   (export ()
+	  condition-type:illegal-stream-element
 	  empty-stream?
 	  head
 	  list->stream
+	  make-prime-numbers-stream
 	  prime-numbers-stream
 	  stream
 	  stream->list
@@ -3470,7 +3475,6 @@ MIT in each case. |#
 	  eqht/get
 	  eqht/put!
 	  make-eqht))
-
 
 (define-package (runtime coerce-to-compiled-procedure)
   (files "coerce")
