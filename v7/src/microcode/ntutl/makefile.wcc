@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile.wcc,v 1.9 1997/10/22 05:28:08 cph Exp $
+###     $Id: makefile.wcc,v 1.10 1997/10/25 22:43:43 cph Exp $
 ###
 ###     Copyright (c) 1992-97 Massachusetts Institute of Technology
 ###
@@ -86,7 +86,7 @@ WRCFLAGS_SYSTEM = /i=$(%NT_INCLUDE)
 # /DGUI		configure a console window
 # omitted: /DNO_CONST /Di386
 UTIL_CFLAGS = /6r /d2 /ei /fpi /fp3 /op /s /w1 /zc /zp4 /zq
-CFLAGS = $(UTIL_CFLAGS) /bm /DMIT_SCHEME /DGUI
+CFLAGS = $(UTIL_CFLAGS) /bm /DMIT_SCHEME /DGUI /i=.
 
 # Linker options.
 #
@@ -182,6 +182,8 @@ vector.c &
 wind.c
 
 OS_PRIM_SOURCES = &
+prbfish.c &
+prmd5.c &
 prosfile.c &
 prosfs.c &
 prosio.c &
@@ -282,6 +284,8 @@ vector.obj &
 wind.obj
 
 OS_PRIM_OBJECTS = &
+prbfish.obj &
+prmd5.obj &
 prosfile.obj &
 prosfs.obj &
 prosio.obj &
@@ -334,7 +338,7 @@ BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) $(NT_OBJECTS) &
 
 SCHEME_SOURCES = $(USER_PRIM_SOURCES) missing.c
 SCHEME_OBJECTS = $(USER_PRIM_OBJECTS) missing.obj
-SCHEME_LIB = $(USER_LIBS)
+SCHEME_LIB = $(USER_LIBS) library md5.lib,blowfish.lib
 
 scheme : scheme.exe .SYMBOLIC
 
@@ -495,6 +499,8 @@ wind.obj : wind.c ansidecl.h dstack.h obstack.h
 obstack.obj : obstack.c obstack.h
 
 OS_PRIM_DEPENDENCIES = scheme.tch prims.h posixtyp.h os.h
+prbfish.obj : prbfish.c $(OS_PRIM_DEPENDENCIES)
+prmd5.obj : prmd5.c $(OS_PRIM_DEPENDENCIES)
 prosenv.obj : prosenv.c osenv.h ostop.h $(OS_PRIM_DEPENDENCIES)
 prosfile.obj : prosfile.c osfile.h $(OS_PRIM_DEPENDENCIES)
 prosfs.obj : prosfs.c osfs.h $(OS_PRIM_DEPENDENCIES)
