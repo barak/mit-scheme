@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.15 1990/06/28 18:09:25 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.16 1990/08/08 00:57:07 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -209,7 +209,10 @@ MIT in each case. |#
 		      (parser-state/dynamic-state state)
 		      (parser-state/fluid-bindings state)
 		      (parser-state/interrupt-mask state)
-		      (if history-subproblem? history undefined-history)
+		      (if (and history-subproblem?
+			       (stack-frame-type/subproblem? type))
+			  history
+			  undefined-history)
 		      previous-history-offset
 		      previous-history-control-point
 		      (+ (vector-length elements) n-elements)
@@ -461,7 +464,7 @@ MIT in each case. |#
   (set! stack-frame-type/return-to-interpreter
 	(make-stack-frame-type false
 			       false
-			       false
+			       true
 			       1
 			       parser/standard-next))
   (set! word-size
@@ -517,11 +520,8 @@ MIT in each case. |#
     (standard-frame 'HALT 2)
     (standard-frame 'JOIN-STACKLETS 2)
     (standard-frame 'POP-RETURN-ERROR 2)
-    (standard-frame 'REENTER-COMPILED-CODE 2)
     (standard-frame 'RESTORE-VALUE 2)
-    (standard-frame 'COMPILER-INTERRUPT-RESTART 3)
-    (standard-frame 'COMPILER-LINK-CACHES-RESTART 8)
-
+
     (standard-subproblem 'IN-PACKAGE-CONTINUE 2)
     (standard-subproblem 'ACCESS-CONTINUE 2)
     (standard-subproblem 'PRIMITIVE-COMBINATION-1-APPLY 2)
@@ -544,17 +544,6 @@ MIT in each case. |#
     (standard-subproblem 'REPEAT-DISPATCH 4)
     (standard-subproblem 'PRIMITIVE-COMBINATION-3-FIRST-OPERAND 4)
     (standard-subproblem 'PRIMITIVE-COMBINATION-3-APPLY 4)
-    (standard-subproblem 'COMPILER-REFERENCE-RESTART 4)
-    (standard-subproblem 'COMPILER-SAFE-REFERENCE-RESTART 4)
-    (standard-subproblem 'COMPILER-ACCESS-RESTART 4)
-    (standard-subproblem 'COMPILER-UNASSIGNED?-RESTART 4)
-    (standard-subproblem 'COMPILER-UNBOUND?-RESTART 4)
-    (standard-subproblem 'COMPILER-REFERENCE-TRAP-RESTART 4)
-    (standard-subproblem 'COMPILER-SAFE-REFERENCE-TRAP-RESTART 4)
-    (standard-subproblem 'COMPILER-UNASSIGNED?-TRAP-RESTART 4)
-    (standard-subproblem 'COMPILER-ASSIGNMENT-RESTART 5)
-    (standard-subproblem 'COMPILER-DEFINITION-RESTART 5)
-    (standard-subproblem 'COMPILER-ASSIGNMENT-TRAP-RESTART 5)
     (standard-subproblem 'MOVE-TO-ADJACENT-POINT 6)
     (standard-subproblem 'COMBINATION-SAVE-VALUE length/combination-save-value)
     (standard-subproblem 'REPEAT-PRIMITIVE length/repeat-primitive)
@@ -563,13 +552,35 @@ MIT in each case. |#
       (standard-subproblem 'COMBINATION-APPLY length)
       (standard-subproblem 'INTERNAL-APPLY length)
       (standard-subproblem 'INTERNAL-APPLY-VAL length))
+
+    (let ((compiler-frame
+	   (lambda (name length)
+	     (stack-frame-type name false true length parser/standard-next)))
+	  (compiler-subproblem
+	   (lambda (name length)
+	     (stack-frame-type name true true length parser/standard-next))))
 
-    (standard-subproblem 'COMPILER-LOOKUP-APPLY-RESTART
-			 (length/application-frame 4 1))
+      (let ((length (length/application-frame 4 0)))
+	(compiler-subproblem 'COMPILER-LOOKUP-APPLY-TRAP-RESTART length)
+	(compiler-subproblem 'COMPILER-OPERATOR-LOOKUP-TRAP-RESTART length))
 
-    (let ((length (length/application-frame 4 0)))
-      (standard-subproblem 'COMPILER-LOOKUP-APPLY-TRAP-RESTART length)
-      (standard-subproblem 'COMPILER-OPERATOR-LOOKUP-TRAP-RESTART length))
+      (compiler-frame 'COMPILER-INTERRUPT-RESTART 3)      (compiler-frame 'COMPILER-LINK-CACHES-RESTART 8)
+      (compiler-frame 'REENTER-COMPILED-CODE 2)
+
+      (compiler-subproblem 'COMPILER-ACCESS-RESTART 4)
+      (compiler-subproblem 'COMPILER-ASSIGNMENT-RESTART 5)
+      (compiler-subproblem 'COMPILER-ASSIGNMENT-TRAP-RESTART 5)
+      (compiler-subproblem 'COMPILER-DEFINITION-RESTART 5)
+      (compiler-subproblem 'COMPILER-LOOKUP-APPLY-RESTART
+			   (length/application-frame 4 1))
+      (compiler-subproblem 'COMPILER-REFERENCE-RESTART 4)
+      (compiler-subproblem 'COMPILER-REFERENCE-TRAP-RESTART 4)
+      (compiler-subproblem 'COMPILER-SAFE-REFERENCE-RESTART 4)
+      (compiler-subproblem 'COMPILER-SAFE-REFERENCE-TRAP-RESTART 4)
+      (compiler-subproblem 'COMPILER-UNASSIGNED?-RESTART 4)
+      (compiler-subproblem 'COMPILER-UNASSIGNED?-TRAP-RESTART 4)
+      (compiler-subproblem 'COMPILER-UNBOUND?-RESTART 4))
+
     (stack-frame-type 'HARDWARE-TRAP
 		      true
 		      false

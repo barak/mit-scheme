@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 14.2 1989/10/26 06:46:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 14.3 1990/08/08 00:58:12 cph Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -212,7 +212,7 @@ MIT in each case. |#
 	  (loop (next-reduction current) step)))))
 
 (define (dummy-compiler-reduction? reduction)
-  (and (null? (reduction-expression reduction))
+  (and (false? (reduction-expression reduction))
        (eq? (ucode-return-address pop-from-compiled-code)
 	    (reduction-environment reduction))))
 
@@ -233,4 +233,5 @@ MIT in each case. |#
   (set! the-empty-history
 	(cons (vector-ref (get-fixed-objects-vector)
 			  (fixed-objects-vector-slot 'DUMMY-HISTORY))
-	      '())))
+	      '()))
+  unspecific)
