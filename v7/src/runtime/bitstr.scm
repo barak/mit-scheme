@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/bitstr.scm,v 14.1 1988/06/13 11:40:45 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/bitstr.scm,v 14.2 1990/01/17 19:06:35 jinx Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -109,7 +109,10 @@ MIT in each case. |#
 (define (signed-integer->bit-string nbits number)
   (unsigned-integer->bit-string
    nbits
-   (cond ((negative? number) (+ number (expt 2 nbits)))
+   (cond ((negative? number)
+	  (if (>= number (- (expt 2 (-1+ nbits))))
+	      (+ number (expt 2 nbits))
+	      (error "Integer too small to be encoded" number)))
 	 ((< number (expt 2 (-1+ nbits))) number)
 	 (else (error "Integer too large to be encoded" number)))))
 
