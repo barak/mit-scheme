@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cf-dist.h,v 1.23 1999/01/02 06:11:34 cph Exp $
+$Id: cf-dist.h,v 1.24 2000/10/16 18:31:13 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -70,11 +70,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    An exception is the GNU C compiler. */
 
 /* If defined, this prevents the C compiler from running its optimizer. */
-#define SUPPRESS_C_OPTIMIZER
+/* #define SUPPRESS_C_OPTIMIZER */
 
 /* If defined, this prevents the C compiler from
    generating debugging information. */
-/* #define SUPPRESS_C_DEBUGGING */
+#define SUPPRESS_C_DEBUGGING
 
 /* Some compilation options:
    -DDISABLE_HISTORY		turns off history recording mechanism
