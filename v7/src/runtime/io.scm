@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.50 1997/05/19 17:37:43 cph Exp $
+$Id: io.scm,v 14.51 1997/11/01 19:12:16 cph Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -601,7 +601,9 @@ MIT in each case. |#
 	 (if (or (default-object? line-translation)
 		 ;; Kludge because of DEFAULT-OBJECT?:
 		 (eq? 'DEFAULT line-translation))
-	     (os/default-end-of-line-translation)
+	     (if (eq? 'TCP-STREAM-SOCKET (channel-type channel))
+		 "\r\n"
+		 (os/default-end-of-line-translation))
 	     line-translation)))
     (with-values (lambda () (output-buffer-sizes translation buffer-size))
       (lambda (logical-size string-size)
@@ -777,7 +779,9 @@ MIT in each case. |#
 	  (if (or (default-object? line-translation)
 		  ;; Kludge because of DEFAULT-OBJECT?:
 		  (eq? 'DEFAULT line-translation))
-	      (os/default-end-of-line-translation)
+	      (if (eq? 'TCP-STREAM-SOCKET (channel-type channel))
+		  "\r\n"
+		  (os/default-end-of-line-translation))
 	      line-translation))
 	 (string-size (input-buffer-size translation buffer-size)))
     (%make-input-buffer channel
