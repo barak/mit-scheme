@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.43 1987/03/17 18:53:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.44 1987/04/03 00:53:06 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -128,6 +128,13 @@
 				    (home-directory-pathname))))))
 	 (if (not (null? file))
 	     (load file user-initial-environment))))))
+
+;; This is not the right place for this, but I don't know what is.
+
+(add-event-receiver!
+ event:after-restore
+ (lambda ()
+   ((access reset! continuation-package))))
 
 (set! full-quit
 (named-lambda (full-quit)
@@ -270,4 +277,5 @@
 	   false)
 	  (else (beep) (query prompt)))))
 
+)
 )

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sdata.scm,v 13.41 1987/01/23 00:19:30 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sdata.scm,v 13.42 1987/04/03 00:52:12 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -73,19 +73,23 @@
 (define &subvector-to-list)
 
 (let ((&unbound-object '(&UNBOUND-OBJECT))
+      (&unbound-datum 2)
       (&unassigned-object '(&UNASSIGNED-OBJECT))
+      (&unassigned-datum 0)
       (&unassigned-type (microcode-type 'UNASSIGNED))
+      (&make-object (make-primitive-procedure '&MAKE-OBJECT))
       (hunk3-cons (make-primitive-procedure 'HUNK3-CONS)))
 
   (define (map-unassigned object)
-    (if (eq? object &unbound-object)
-	(primitive-set-type &unassigned-type 1)
-	(if (eq? object &unassigned-object)
-	    (primitive-set-type &unassigned-type 0)
-	    object)))
+    (cond ((eq? object &unbound-object)
+	   (&make-object &unassigned-type &unbound-datum))
+	  ((eq? object &unassigned-object)
+	   (&make-object &unassigned-type &unassigned-datum))
+	  (else object)))
 
+  ;; This is no longer really right, given the other traps.
   (define (map-from-unassigned datum)
-    (if (eq? datum 0)					;**** cheat for speed.
+    (if (eq? datum &unassigned-datum)				;**** cheat for speed.
 	&unassigned-object
 	&unbound-object))
 

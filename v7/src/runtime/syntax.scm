@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 13.43 1987/03/17 18:53:27 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 13.44 1987/04/03 00:52:43 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -614,7 +614,7 @@
   ;;        ...
   ;;        <body>))
   (let ((with-saved-fluid-bindings
-	 (make-primitive-procedure 'WITH-SAVED-FLUID-BINDINGS)))
+	 (make-primitive-procedure 'WITH-SAVED-FLUID-BINDINGS #t)))
     (spread-arguments
      (lambda (bindings . body)
        (syntax-fluid-bindings bindings
@@ -666,12 +666,12 @@
 	       (syntax-error "Binding not a pair" binding)))))))
 
 (set! syntax-FLUID-LET-form-deep
-      (make-fluid-let (make-primitive-procedure 'ADD-FLUID-BINDING!)
+      (make-fluid-let (make-primitive-procedure 'ADD-FLUID-BINDING! #t)
 		      lambda-tag:deep-fluid-let))
 
 (set! syntax-FLUID-LET-form-common-lisp
       ;; This -- groan -- is for Common Lisp support
-      (make-fluid-let (make-primitive-procedure 'MAKE-FLUID-BINDING!)
+      (make-fluid-let (make-primitive-procedure 'MAKE-FLUID-BINDING! #t)
 		      lambda-tag:common-lisp-fluid-let))
 
 ;;; end special FLUID-LETs.
@@ -1011,4 +1011,5 @@
 	       ))))
 
 ;;; end SYNTAXER-PACKAGE
+)
 )

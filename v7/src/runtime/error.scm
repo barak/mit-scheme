@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 13.44 1987/03/17 18:49:27 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 13.45 1987/04/03 00:51:34 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -196,8 +196,17 @@ using the current read-eval-print environment."))
 
 ;;; Initialize the error vector to the default state:
 
+(define (error-code-or-name code)
+  (let ((v (vector-ref (get-fixed-objects-vector)
+		       (fixed-objects-vector-slot 'MICROCODE-ERRORS-VECTOR))))
+    (if (or (>= code (vector-length v))
+	    (null? (vector-ref v code)))
+	code
+	(vector-ref v code))))	
+
 (define (default-error-handler expression)
-  (start-error-rep "Anomalous error -- get a wizard" *error-code*))
+  (start-error-rep "Anomalous error -- get a wizard"
+		   (error-code-or-name *error-code*)))
 
 (define system-error-vector
   (make-initialized-vector number-of-microcode-errors
@@ -352,6 +361,7 @@ using the current read-eval-print environment."))
 (define-bad-frame-error access? access-environment)
 (define-bad-frame-error in-package? in-package-environment)
 
+#|
 (define define-assignment-to-procedure-error
   (define-specific-error 'ASSIGN-LAMBDA-NAME
     "Attempt to assign procedure's name"))
@@ -364,6 +374,7 @@ using the current read-eval-print environment."))
 	(make-primitive-procedure 'ADD-FLUID-BINDING! true)
 	(make-primitive-procedure 'MAKE-FLUID-BINDING! true))
   combination-second-operand)
+|#
 
 ;;;; Application Errors
 
@@ -372,6 +383,9 @@ using the current read-eval-print environment."))
 
 (define-operator-error 'UNDEFINED-PRIMITIVE-OPERATION
   "Undefined Primitive Procedure")
+
+(define-operator-error 'UNIMPLEMENTED-PRIMITIVE
+  "Unimplemented Primitive Procedure")
 
 (define-operand-error 'WRONG-NUMBER-OF-ARGUMENTS
   "Wrong Number of Arguments"
@@ -401,18 +415,24 @@ using the current read-eval-print environment."))
 	"ninth" (lambda (list) (general-car-cdr list #x1400)))
   (make 'WRONG-TYPE-ARGUMENT-9 'BAD-RANGE-ARGUMENT-9
 	"tenth" (lambda (list) (general-car-cdr list #x3000))))
+
+(define-operand-error 'FAILED-ARG-1-COERCION
+  "Argument 1 cannot be coerced to floating point"
+  combination-first-operand)
+
+(define-operand-error 'FAILED-ARG-2-COERCION
+  "Argument 2 cannot be coerced to floating point"
+  combination-second-operand)
 
 ;;;; Primitive Operator Errors
 
 (define-operation-specific-error 'FASL-FILE-TOO-BIG
-  (list (make-primitive-procedure 'PRIMITIVE-FASLOAD)
-	(make-primitive-procedure 'BINARY-FASLOAD))
+  (list (make-primitive-procedure 'BINARY-FASLOAD))
   "Not enough room to Fasload"
   combination-first-operand)
 
 (define-operation-specific-error 'FASL-FILE-BAD-DATA
-  (list (make-primitive-procedure 'PRIMITIVE-FASLOAD)
-	(make-primitive-procedure 'BINARY-FASLOAD))
+  (list (make-primitive-procedure 'BINARY-FASLOAD))
   "Fasload file would not relocate correctly"
   combination-first-operand)
 
@@ -433,6 +453,11 @@ using the current read-eval-print environment."))
   (list (make-primitive-procedure 'FILE-OPEN-CHANNEL))
   "Unable to open file"
   combination-first-operand)
+
+(define-operation-specific-error 'OUT-OF-FILE-HANDLES
+  (list (make-primitive-procedure 'FILE-OPEN-CHANNEL))
+  "Too many open files"
+  combination-first-operand)
 
 ;;;; SCODE Syntax Errors
 
@@ -450,7 +475,8 @@ using the current read-eval-print environment."))
 
 (define-total-error-handler 'BAD-ERROR-CODE
   (lambda (error-code)
-    (start-error-rep "Bad Error Code -- get a wizard" error-code)))
+    (start-error-rep "Bad Error Code -- get a wizard"
+		     (error-code-or-name error-code))))
 
 (define-default-error 'BAD-INTERRUPT-CODE
   "Illegal Interrupt Code -- get a wizard"
@@ -471,5 +497,18 @@ using the current read-eval-print environment."))
   "Undefined Type Code -- get a wizard"
   identity-procedure)
 
+(define-default-error 'INAPPLICABLE-CONTINUATION
+  "Inapplicable continuation -- get a wizard"
+  identity-procedure)
+
+(define-default-error 'COMPILED-CODE-ERROR
+  "Compiled code error -- get a wizard"
+  identity-procedure)
+
+(define-default-error 'FLOATING-OVERFLOW
+  "Floating point overflow"
+  identity-procedure)
+
 ;;; end ERROR-SYSTEM package.
+))
 ))

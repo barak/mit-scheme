@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 13.43 1987/03/17 18:50:22 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 13.44 1987/04/03 00:51:49 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -167,7 +167,7 @@
 					   (scode-quote #F)
 					   system-global-environment)
 	    (push-history! history)))))
-	(thunk)))
+    (thunk)))
 
 ;;;; Primitive History Operations
 ;;;  These operations mimic the actions of the microcode.
@@ -247,4 +247,5 @@
   (car history))
 
 ;;; end HISTORY-PACKAGE.
+(the-environment)))
 (the-environment)))

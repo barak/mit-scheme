@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 13.42 1987/03/09 15:00:25 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 13.43 1987/04/03 00:53:27 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -234,7 +234,7 @@
   (let ((code (name->code primitives-slot 'PRIMITIVE name)))
     (if code
 	(map-code-to-machine-address primitive-type-code code)
-	(or (get-external-number name force?)
+	(or (get-external-number name (if (unassigned? force?) #f force?))
 	    (error "Unknown name" make-primitive-procedure name))))))
 
 (set! implemented-primitive-procedure?
