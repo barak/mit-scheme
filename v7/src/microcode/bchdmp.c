@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.65 1992/06/03 21:54:18 jinx Exp $
+$Id: bchdmp.c,v 9.66 1992/08/29 13:42:55 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -66,11 +66,7 @@ extern int EXFUN (unlink, (CONST char *));
 
 #  define FASDUMP_FILENAME "/tmp/fasdumpXXXXXX"
 
-#if defined(_HPUX) || defined(_SUNOS4) || defined(_ULTRIX) || defined(_SYSV4)
-#  define HAVE_FTRUNCATE
-#endif
-
-#if (defined(_HPUX) && (_HPUX_VERSION >= 80)) || defined(_SYSV4)
+#if (defined(_HPUX) && (_HPUX_VERSION >= 80)) || defined(_SYSV4) || defined(__osf__)
 #  define FTRUNCATE_DECLARED
 #endif
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.37 1992/08/29 13:39:07 jinx Exp $
+$Id: ux.h,v 1.38 1992/08/29 13:41:39 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -179,7 +179,6 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 #ifdef _osf
 #  include <sys/time.h>
 #  include <sys/ioctl.h>
-#  define HAVE_FTRUNCATE
 #endif
 
 #ifdef sonyrisc
@@ -252,6 +251,10 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 /* #define HAVE_WAIT4 */
 #define UNION_WAIT_STATUS
 
+#if defined(_SUNOS4) || defined(_ULTRIX) || defined(__osf__)
+#define HAVE_FTRUNCATE
+#endif
+
 #if defined(_ULTRIX) || defined(_SUNOS4) || defined(sun4) || defined(_NEXTOS)
 #define VOID_SIGNAL_HANDLERS
 #endif
@@ -298,6 +301,7 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 
 #define HAVE_BSD_SIGNALS
 #define HAVE_DUP2
+#define HAVE_FTRUNCATE
 #define HAVE_MKDIR
 #define HAVE_RENAME
 #define HAVE_RMDIR
@@ -437,6 +441,7 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 #define SYSTEM_VARIANT "ATT (Vr4)"
 
 #define HAVE_FIONREAD
+#define HAVE_FTRUNCATE
 #define HAVE_GETTIMEOFDAY
 #define HAVE_ITIMER
 #define HAVE_NICE
