@@ -37,7 +37,7 @@
 
 ;;;; LAP Code Generation
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.24 1987/01/01 19:41:05 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.25 1987/02/05 21:49:47 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -183,6 +183,11 @@
 			       (delete-other-locations map alias)
 			       instructions))))
 
+(define (allocate-assignment-alias! target type)
+  (let ((target (allocate-alias-register! target type)))
+    (delete-dead-registers!)
+    target))
+
 (define (allocate-temporary-register! type)
   (bind-allocator-values (allocate-temporary-register *register-map* type
 						      *needed-registers*)
@@ -193,7 +198,7 @@
   (set! *register-map* map)
   (prefix-instructions! instructions)
   alias)
-
+
 (define (move-to-alias-register! source type target)
   (reuse-pseudo-register-alias! source type
     (lambda (reusable-alias)
@@ -208,6 +213,7 @@
       (allocate-temporary-register! type))))
 
 (define (reuse-pseudo-register-alias! source type if-reusable if-not)
+  ;; IF-NOT is assumed to return a machine register.
   (let ((reusable-alias
 	 (and (dead-register? source)
 	      (register-alias source type))))
@@ -215,11 +221,16 @@
 	(begin (delete-dead-registers!)
 	       (if-reusable reusable-alias)
 	       (register-reference reusable-alias))
-	(let ((source (coerce->any source)))
+	(let ((alias (if (machine-register? source)
+			 source
+			 (register-alias source false))))
 	  (delete-dead-registers!)
-	  (let ((target (register-reference (if-not))))
-	    (prefix-instructions! `((MOVE L ,source ,target)))
-	    target)))))
+	  (let ((target (if-not)))
+	    (prefix-instructions!
+	     (if alias
+		 (register->register-transfer alias target)
+		 (home->register-transfer source target)))
+	    (register-reference target))))))
 
 (define (add-pseudo-register-alias! register alias)
   (set! *register-map*
