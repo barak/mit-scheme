@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: x11term.c,v 1.21 1993/06/24 07:10:33 gjr Exp $
+$Id: x11term.c,v 1.22 1993/07/19 21:06:48 cph Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -137,10 +137,15 @@ DEFUN (xterm_draw_cursor, (xw), struct xwindow * xw)
     {
       unsigned int x = (XW_CURSOR_X (xw));
       unsigned int y = (XW_CURSOR_Y (xw));
-      XTERM_DRAW_CHARS (xw, x, y,
-			(XTERM_CHAR_LOC (xw, (XTERM_CHAR_INDEX (xw, x, y)))),
-			1,
-			(XW_CURSOR_GC (xw)));
+      unsigned int index = (XTERM_CHAR_INDEX (xw, x, y));
+      int hl = (XTERM_HL (xw, index));
+      XTERM_DRAW_CHARS
+	(xw, x, y,
+	 (XTERM_CHAR_LOC (xw, index)),
+	 1,
+	 ((hl && ((XW_FOREGROUND_PIXEL (xw)) == (XW_CURSOR_PIXEL (xw))))
+	  ? (XW_NORMAL_GC (xw))
+	  : (XW_CURSOR_GC (xw))));
       (XW_CURSOR_VISIBLE_P (xw)) = 1;
     }
 }
