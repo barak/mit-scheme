@@ -1,8 +1,8 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.45 1996/10/02 18:53:21 cph Exp $
+###	$Id: i386.m4,v 1.46 1997/05/01 01:26:16 cph Exp $
 ###
-###	Copyright (c) 1992-96 Massachusetts Institute of Technology
+###	Copyright (c) 1992-97 Massachusetts Institute of Technology
 ###
 ###	This material was developed by the Scheme project at the
 ###	Massachusetts Institute of Technology, Department of
@@ -339,8 +339,8 @@ ifdef(`DASM',
 
 define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 6))
 define(DATUM_LENGTH, eval(32 - TC_LENGTH))
-define(DATUM_SHIFT, eval((2 ** DATUM_LENGTH)))
-define(ADDRESS_MASK, eval((DATUM_SHIFT - 1)))
+define(DATUM_SHIFT, eval(1 << DATUM_LENGTH))
+define(ADDRESS_MASK, eval(DATUM_SHIFT - 1))
 define(TAG, ($2 + ($1 * DATUM_SHIFT)))
 
 define(TC_FALSE,0)
@@ -895,7 +895,7 @@ define_hook_label(generic_$1)
 asm_generic_$1_fix:
 	OP(mov,l)	TW(REG(edx),REG(eax))
 	OP(shl,l)	TW(IMM(TC_LENGTH),REG(eax))
-	OP($3,l)	TW(IMM(eval(2 ** TC_LENGTH)),REG(eax))
+	OP($3,l)	TW(IMM(eval(1 << TC_LENGTH)),REG(eax))
 	jno	asm_generic_fixnum_result
 
 asm_generic_$1_fail:
