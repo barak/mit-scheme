@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.3 1994/11/22 03:50:00 adams Exp $
+$Id: utils.scm,v 1.4 1994/11/22 19:49:17 gjr Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -1016,6 +1016,10 @@ MIT in each case. |#
 	(if (and crt (eq? not-found (hash-table/get crt new not-found)))
 	    (hash-table/put! crt new old)))
       new)))
+
+(define code-rewrite/remember*!
+  (lambda (new old)
+    (hash-table/put! *code-rewrite-table* new old)))
 
 (define (code-rewrite/original-form new)
   (and *code-rewrite-table*
