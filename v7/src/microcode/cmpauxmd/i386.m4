@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.19 1992/03/11 20:08:37 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.20 1992/03/13 19:29:08 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -70,9 +70,13 @@
 ####    the stack by the CALL instruction.
 ####
 ####	5) C procedures return long values in a super temporary
-####    register.  Two word structures are returned in super temporary
-####    registers as well.  On i386, gcc uses %eax for long returns,
-####	and returns two word structures in {%eax, %edx}.
+####    register.  Two word structures are returned differently,
+####    depending on the C compiler used.  When using GCC, two-word
+####    structures are returned in {%eax, %edx}.  When using a
+####    compiler compatible with MicroSoft's C compiler, two word
+####    structures are returned by returning in %eax the address of a
+####    structure allocated statically.  If the Scheme system ever
+####    becomes reentrant, this will have to change.
 ####
 ####	6) Floating point registers are not preserved by this
 ####	interface.  The interface is only called from the Scheme
@@ -278,6 +282,10 @@ use_external_data(Free)
 use_external_data(Ext_Stack_Pointer)
 use_external_data(utility_table)
 
+ifdef(`DOS',
+`define_data(C_Stack_Segment)
+allocate_longword(C_Stack_Segment)')
+
 define_data(C_Stack_Pointer)
 allocate_longword(C_Stack_Pointer)
 
@@ -318,6 +326,11 @@ define_c_label(C_to_interface)
 							# Preserve stack ptr
 	OP(mov,l)	TW(REG(esp),EDR(C_Stack_Pointer))
 							# Register block = %esi
+ifdef(`DOS',
+`	OP(mov,w)	TW(REG(ss),REG(ax))		# Obtain stack segment
+	OP(mov,l)	TW(REG(eax),EDR(C_Stack_Segment))
+							# and preserve it
+')
 #	OP(mov,l)	TW(IMM(EDR(Registers)),regs)
 	OP(lea,l)	TW(ABS(EDR(Registers)),regs)
 	jmp	external_code_reference(interface_to_scheme)
@@ -337,6 +350,10 @@ define_c_label(asm_scheme_to_interface)
 define_debugging_label(scheme_to_interface)
 	OP(mov,l)	TW(REG(esp),EDR(Ext_Stack_Pointer))
 	OP(mov,l)	TW(rfree,EDR(Free))
+ifdef(`DOS',
+`	OP(mov,l)	TW(EDR(C_Stack_Segment),REG(edi)) # Swap stack segments
+	OP(mov,w)	TW(REG(di),REG(ss))
+')
 	OP(mov,l)	TW(EDR(C_Stack_Pointer),REG(esp))
 	OP(mov,l)	TW(EDR(C_Frame_Pointer),REG(ebp))
 	OP(push,l)	LOF(REGBLOCK_UTILITY_ARG4(),regs) # Utility args
@@ -350,6 +367,10 @@ define_debugging_label(scheme_to_interface)
 
 define_debugging_label(scheme_to_interface_return)
 	OP(add,l)	TW(IMM(16),REG(esp))		# Pop utility args
+ifdef(`DOS',
+`	OP(mov,l)	TW(LOF(4,REG(eax)),REG(edx)),
+	OP(mov,l)	TW(IND(REG(eax)),REG(eax))
+')
 	jmp	IJMP(REG(eax))				# Invoke handler
 
 define_c_label(interface_to_scheme)
@@ -358,6 +379,10 @@ define_c_label(interface_to_scheme)
 	OP(mov,l)	TW(LOF(REGBLOCK_VAL(),regs),REG(eax))
 	OP(mov,l)	TW(IMM(ADDRESS_MASK),rmask)	# = %ebp
 	OP(mov,l)	TW(EDR(Ext_Stack_Pointer),REG(esp))
+ifdef(`DOS',
+`	OP(mov,w)	TW(REG(ds),REG(bx))		# Swap stack segments
+	OP(mov,w)	TW(REG(bx),REG(ss))
+')
 	OP(mov,l)	TW(REG(eax),REG(ecx))		# Preserve if used
 	OP(and,l)	TW(rmask,REG(ecx))		# Restore potential
 							#  dynamic link
