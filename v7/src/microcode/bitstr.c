@@ -30,39 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.30 1987/07/15 22:10:15 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.31 1987/08/06 05:01:39 jinx Exp $
 
-   Bit string primitives. */
-
-/*
+   Bit string primitives. 
 
-Memory layout of bit strings:
-
-+-------+-------+-------+-------+
-|  NMV	|  GC size (longwords)	| 0
-+-------+-------+-------+-------+
-|	   Size in bits		| 1
-+-------+-------+-------+-------+
-|MSB				| 2
-+-------+-------+-------+-------+
-|				| 3
-+-------+-------+-------+-------+
-.				. .
-.				. .
-.				. .
-+-------+-------+-------+-------+
-|			     LSB| N
-+-------+-------+-------+-------+
-
-The first data word (marked as word "2" above) is where any excess
-bits are kept.
-
-The "size in bits" is a C "long" integer.
-
-Conversions between nonnegative integers and bit strings are
-implemented here; they use the standard binary encoding, in which
-each index selects the bit corresponding to that power of 2.  Thus
-bit 0 is the LSB.
+    Conversions between nonnegative integers and bit strings are
+    implemented here; they use the standard binary encoding, in which
+    each index selects the bit corresponding to that power of 2.  Thus
+    bit 0 is the LSB.
 
 */
 
@@ -78,13 +53,9 @@ allocate_bit_string (length)
   long total_pointers;
   Pointer result;
 
-  total_pointers = (NM_HEADER_LENGTH + (bits_to_pointers (length)));
-  Primitive_GC_If_Needed (total_pointers);
-  Free[NM_VECTOR_HEADER] = 
-    (Make_Non_Pointer (TC_MANIFEST_NM_VECTOR, (total_pointers - 1)));
-  Free[NM_ENTRY_COUNT] = length;
-  result = (Make_Pointer (TC_BIT_STRING, Free));
-  Free += total_pointers;
+  total_pointers = (1 + (bits_to_pointers (length)));
+  result = allocate_non_marked_vector (TC_BIT_STRING, total_pointers, true);
+  Fast_Vector_Set(result, BIT_STRING_LENGTH_OFFSET, length);
   return (result);
 }
 
@@ -95,7 +66,7 @@ Built_In_Primitive (Prim_bit_string_allocate, 1, "BIT-STRING-ALLOCATE", 0xD1)
 {
   Primitive_1_Arg ();
 
-  return (allocate_bit_string (arg_nonnegative_integer (1)));
+  PRIMITIVE_RETURN( allocate_bit_string (arg_nonnegative_integer (1)));
 }
 
 /* (BIT-STRING? object)
@@ -106,7 +77,7 @@ Built_In_Primitive (Prim_bit_string_p, 1, "BIT-STRING?", 0xD3)
   Primitive_1_Arg ();
 
   Touch_In_Primitive (Arg1, Arg1);
-  return ((BIT_STRING_P (Arg1)) ? TRUTH : NIL);
+  PRIMITIVE_RETURN( (BIT_STRING_P (Arg1)) ? TRUTH : NIL);
 }
 
 void
@@ -119,10 +90,10 @@ fill_bit_string( bit_string, sense)
   long i;
 
   filler = ((Pointer) (sense ? -1 : 0));
-  scanner = bit_string_start_ptr( bit_string);
+  scanner = bit_string_high_ptr( bit_string);
   for (i = bits_to_pointers( bit_string_length( bit_string));
        (i > 0); i -= 1)
-    *scanner++ = filler;
+    *(dec_bit_string_ptr(scanner)) = filler;
 }
 
 void
@@ -132,10 +103,10 @@ clear_bit_string( bit_string)
   Pointer *scanner;
   long i;
 
-  scanner = bit_string_start_ptr( bit_string);
+  scanner = bit_string_high_ptr( bit_string);
   for (i = bits_to_pointers( bit_string_length( bit_string));
        (i > 0); i -= 1)
-    *scanner++ = 0;
+    *(dec_bit_string_ptr(scanner)) = 0;
 }
 
 /* (MAKE-BIT-STRING size initialization)
@@ -149,7 +120,7 @@ Built_In_Primitive (Prim_make_bit_string, 2, "MAKE-BIT-STRING", 0xD2)
 
   result = allocate_bit_string (arg_nonnegative_integer (1));
   fill_bit_string (result, (Arg2 != NIL));
-  return (result);
+  PRIMITIVE_RETURN( result);
 }
 
 /* (BIT-STRING-FILL! bit-string initialization)
@@ -162,7 +133,7 @@ Built_In_Primitive (Prim_bit_string_fill_x, 2, "BIT-STRING-FILL!", 0x197)
 
   CHECK_ARG (1, BIT_STRING_P);
   fill_bit_string (Arg1, (Arg2 != NIL));
-  return (NIL);
+  PRIMITIVE_RETURN( NIL);
 }
 
 /* (BIT-STRING-LENGTH bit-string)
@@ -173,18 +144,20 @@ Built_In_Primitive (Prim_bit_string_length, 1, "BIT-STRING-LENGTH", 0xD4)
   Primitive_1_Arg ();
 
   CHECK_ARG (1, BIT_STRING_P);
-  return (Make_Unsigned_Fixnum (bit_string_length (Arg1)));
+  PRIMITIVE_RETURN( Make_Unsigned_Fixnum (bit_string_length (Arg1)));
 }
 
 #define ref_initialization()						\
-  long index, word, mask;						\
+  long index, mask;							\
+  Pointer *ptr;								\
   Primitive_2_Args ();							\
 									\
   CHECK_ARG (1, BIT_STRING_P);						\
   index = (arg_nonnegative_integer (2));				\
-  if (index > (bit_string_length (Arg1))) error_bad_range_arg (1);	\
+  if (index >= (bit_string_length (Arg1)))				\
+    error_bad_range_arg (1);						\
 									\
-  word = (index_to_word (Arg1, index));					\
+  ptr = Nth_Vector_Loc(Arg1, index_to_word(Arg1, index));		\
   mask = (1 << (index % POINTER_LENGTH))
 
 /* (BIT-STRING-REF bit-string index)
@@ -194,7 +167,7 @@ Built_In_Primitive (Prim_bit_string_ref, 2, "BIT-STRING-REF", 0xD5)
 {
   ref_initialization ();
 
-  return ((((Fast_Vector_Ref (Arg1, word)) & mask) == 0) ? NIL : TRUTH);
+  PRIMITIVE_RETURN( (((bit_string_word( ptr)) & mask) == 0) ? NIL : TRUTH);
 }
 
 /* (BIT-STRING-CLEAR! bit-string index)
@@ -205,13 +178,13 @@ Built_In_Primitive (Prim_bit_string_clear_x, 2, "BIT-STRING-CLEAR!", 0xD8)
 {
   ref_initialization ();
 
-  if (((Fast_Vector_Ref (Arg1, word)) & mask) == 0)
-    return (NIL);
+  if (((bit_string_word( ptr)) & mask) == 0)
+    PRIMITIVE_RETURN( NIL);
   else
-    {
-      (Fast_Vector_Ref (Arg1, word)) &= ~mask;
-      return (TRUTH);
-    }
+  {
+    (bit_string_word( ptr)) &= ~mask;
+    PRIMITIVE_RETURN( TRUTH);
+  }
 }
 
 /* (BIT-STRING-SET! bit-string index)
@@ -222,25 +195,21 @@ Built_In_Primitive (Prim_bit_string_set_x, 2, "BIT-STRING-SET!", 0xD7)
 {
   ref_initialization ();
 
-  if (((Fast_Vector_Ref (Arg1, word)) & mask) == 0)
-    {
-      (Fast_Vector_Ref (Arg1, word)) |= mask;
-      return (NIL);
-    }
+  if (((bit_string_word( ptr)) & mask) == 0)
+  {
+    ((bit_string_word( ptr))) |= mask;
+    PRIMITIVE_RETURN( NIL);
+  }
   else
-    return (TRUTH);
+    PRIMITIVE_RETURN( TRUTH);
 }
 
-#define zero_section_p(start)					\
-{								\
-  long i;							\
-  Pointer *scan;						\
-								\
-  scan = (Nth_Vector_Loc (Arg1, (start)));			\
-  for (i = (length / POINTER_LENGTH); (i > 0); i -= 1)		\
-    if (*scan++ != 0)						\
-      return (NIL);						\
-  return (TRUTH);						\
+#define zero_section_p()						\
+{									\
+  for (i = (length / POINTER_LENGTH); (i > 0); i -= 1)			\
+    if (*(dec_bit_string_ptr(scan)) != 0)				\
+      PRIMITIVE_RETURN( NIL);						\
+  PRIMITIVE_RETURN( TRUTH);						\
 }
 
 /* (BIT-STRING-ZERO? bit-string)
@@ -248,6 +217,8 @@ Built_In_Primitive (Prim_bit_string_set_x, 2, "BIT-STRING-SET!", 0xD7)
 
 Built_In_Primitive (Prim_bit_string_zero_p, 1, "BIT-STRING-ZERO?", 0xD9)
 {
+  fast Pointer *scan;
+  fast long i;
   long length, odd_bits;
   Primitive_1_Args ();
 
@@ -255,25 +226,26 @@ Built_In_Primitive (Prim_bit_string_zero_p, 1, "BIT-STRING-ZERO?", 0xD9)
 
   length = (bit_string_length (Arg1));
   odd_bits = (length % POINTER_LENGTH);
+  scan = bit_string_high_ptr(Arg1);
   if (odd_bits == 0)
-    zero_section_p (NM_DATA)
-  else if (((Fast_Vector_Ref (Arg1, NM_DATA)) & (low_mask (odd_bits))) != 0)
-    return (NIL);
+  {
+    zero_section_p();
+  }
+  else if ((bit_string_word(scan) & (low_mask (odd_bits))) != 0)
+    PRIMITIVE_RETURN( NIL);
   else
-    zero_section_p (NM_DATA + 1)
+  {
+    dec_bit_string_ptr(scan);
+    zero_section_p();
+  }
 }
 
-#define equal_sections_p( start)				\
-{								\
-  long i;							\
-  Pointer *scan1, *scan2;					\
-								\
-  scan1 = Nth_Vector_Loc( Arg1, (start));			\
-  scan2 = Nth_Vector_Loc( Arg2, (start));			\
-  for (i = (length / POINTER_LENGTH); (i > 0); i -= 1)		\
-    if (*scan1++ != *scan2++)					\
-      return NIL;						\
-  return TRUTH;							\
+#define equal_sections_p()						\
+{									\
+  for (i = (length / POINTER_LENGTH); (i > 0); i -= 1)			\
+    if (*(dec_bit_string_ptr(scan1)) != *(dec_bit_string_ptr(scan2)))	\
+      PRIMITIVE_RETURN( NIL);						\
+  PRIMITIVE_RETURN( TRUTH);						\
 }
 
 /* (BIT-STRING=? bit-string-1 bit-string-2)
@@ -289,49 +261,58 @@ Built_In_Primitive (Prim_bit_string_equal_p, 2, "BIT-STRING=?", 0x19D)
 
   length = bit_string_length( Arg1);
   if (length != bit_string_length( Arg2))
-    return NIL;
+    PRIMITIVE_RETURN( NIL);
   else
+  {
+    fast Pointer *scan1, *scan2;
+    fast long i;
+    long odd_bits;
+
+    scan1 = bit_string_high_ptr(Arg1);
+    scan2 = bit_string_high_ptr(Arg2);
+    odd_bits = (length % POINTER_LENGTH);
+    if (odd_bits == 0)
     {
-      long odd_bits;
-
-      odd_bits = (length % POINTER_LENGTH);
-      if (odd_bits == 0)
-	equal_sections_p( NM_DATA)
-      else
-	{
-	  long mask;
-
-	  mask = low_mask( odd_bits);
-	  if ((Fast_Vector_Ref( Arg1, NM_DATA) & mask)
-	      != (Fast_Vector_Ref( Arg2, NM_DATA) & mask))
-	    return NIL;
-	  else
-	    equal_sections_p( NM_DATA + 1)
-	}
+      equal_sections_p();
     }
+    else
+    {
+      long mask;
+
+      mask = low_mask( odd_bits);
+      if (((bit_string_msw(Arg1)) & mask) != ((bit_string_msw(Arg2)) & mask))
+	PRIMITIVE_RETURN( NIL);
+      else
+      {
+	dec_bit_string_ptr(scan1);
+	dec_bit_string_ptr(scan2);
+	equal_sections_p();
+      }
+    }
+  }
 }
 
 #define bitwise_op( action)						\
 {									\
-  long i;								\
-  Pointer *scan1, *scan2;						\
+  fast long i;								\
+  fast Pointer *scan1, *scan2;						\
   Primitive_2_Args ();							\
 									\
   if ((bit_string_length (Arg1)) != (bit_string_length (Arg2)))		\
     error_bad_range_arg (1);						\
 									\
-  scan1 = (bit_string_start_ptr (Arg1));				\
-  scan2 = (bit_string_start_ptr (Arg2));				\
+  scan1 = (bit_string_high_ptr (Arg1));					\
+  scan2 = (bit_string_high_ptr (Arg2));					\
   for (i = ((Vector_Length (Arg1)) - 1); (i > 0); i -= 1)		\
-    (*scan1++) action() (*scan2++);					\
-  return (NIL);								\
+    (*(dec_bit_string_ptr(scan1))) action() (*(dec_bit_string_ptr(scan2))); \
+  PRIMITIVE_RETURN( NIL);						\
 }
 
-#define bit_string_move_x_action() =
-#define bit_string_movec_x_action() = ~
-#define bit_string_or_x_action() |=
-#define bit_string_and_x_action() &=
-#define bit_string_andc_x_action() &= ~
+#define bit_string_move_x_action()	=
+#define bit_string_movec_x_action()	= ~
+#define bit_string_or_x_action()	|=
+#define bit_string_and_x_action()	&=
+#define bit_string_andc_x_action()	&= ~
 
 Built_In_Primitive( Prim_bit_string_move_x, 2, "BIT-STRING-MOVE!", 0x198)
      bitwise_op( bit_string_move_x_action)
@@ -392,7 +373,7 @@ Built_In_Primitive( Prim_bit_substring_move_right_x, 5,
 	    Nth_Vector_Loc( Arg4, index_to_word( Arg4, (end2 - 1))),
 	    ((end2_mod == 0) ? 0 : (POINTER_LENGTH - end2_mod)),
 	    nbits);
-  return (NIL);
+  PRIMITIVE_RETURN( NIL);
 }
 
 #define masked_transfer( source, destination, nbits, offset)		\
@@ -400,7 +381,9 @@ Built_In_Primitive( Prim_bit_substring_move_right_x, 5,
   long mask;								\
 									\
   mask = any_mask( nbits, offset);					\
-  *destination = ((*source & mask) | (*destination & ~mask));		\
+  (bit_string_word(destination)) =					\
+    (((bit_string_word(source)) & mask) |				\
+     ((bit_string_word(destination)) & ~mask));				\
 }
 
 /* This procedure copies bits from one place to another.
@@ -421,172 +404,188 @@ copy_bits( source, source_offset, destination, destination_offset, nbits)
      treated specially. */
 
   if (source_offset == destination_offset)
+  {
+    if (source_offset != 0)
     {
-      if (source_offset != 0)
-	{
-	  long head;
+      long head;
 
-	  head = (POINTER_LENGTH - source_offset);
-	  if (nbits <= head)
-	    {
-	      masked_transfer( source, destination, nbits, (head - nbits));
-	      nbits = 0;
-	    }
-	  else
-	    { Pointer temp;
-	      long mask;
+      head = (POINTER_LENGTH - source_offset);
+      if (nbits <= head)
+      {
+	masked_transfer( source, destination, nbits, (head - nbits));
+	nbits = 0;
+      }
+      else
+      {
+	Pointer temp;
+	long mask;
 
-	      mask = low_mask( head);
-	      temp = *destination;
-	      *destination++ = ((*source++ & mask) | (temp & ~mask));
-	      nbits -= head;
-	    }
-	}
-      if (nbits > 0)
-	{
-	  long nwords, tail;
-
-	  for (nwords = (nbits / POINTER_LENGTH); (nwords > 0); nwords -= 1)
-	    *destination++ = *source++;
-
-	  tail = (nbits % POINTER_LENGTH);
-	  if (tail > 0)
-	    masked_transfer( source, destination, tail,
-			    (POINTER_LENGTH - tail));
-	}
+	mask = low_mask( head);
+	temp = (bit_string_word(destination));
+	*(dec_bit_string_ptr(destination)) =
+	  ((*(dec_bit_string_ptr(source)) & mask) | (temp & ~mask));
+	nbits -= head;
+      }
     }
+    if (nbits > 0)
+    {
+      long nwords, tail;
+
+      for (nwords = (nbits / POINTER_LENGTH); (nwords > 0); nwords -= 1)
+	*(dec_bit_string_ptr(destination)) = *(dec_bit_string_ptr(source));
+
+      tail = (nbits % POINTER_LENGTH);
+      if (tail > 0)
+	masked_transfer( source, destination, tail,
+			(POINTER_LENGTH - tail));
+    }
+  }
 
   else if (source_offset < destination_offset)
+  {
+    long offset1, offset2, head;
+
+    offset1 = (destination_offset - source_offset);
+    offset2 = (POINTER_LENGTH - offset1);
+    head = (POINTER_LENGTH - destination_offset);
+
+    if (nbits <= head)
     {
-      long offset1, offset2, head;
+      long mask;
 
-      offset1 = (destination_offset - source_offset);
-      offset2 = (POINTER_LENGTH - offset1);
-      head = (POINTER_LENGTH - destination_offset);
-
-      if (nbits <= head)
-	{
-	  long mask;
-
-	  mask = any_mask( nbits, (head - nbits));
-	  *destination =
-	    (((*source >> offset1) & mask) | (*destination & ~mask));
-	}
-      else
-	{
-	  long mask1, mask2;
-
-	  { Pointer temp;
-	    long mask;
-
-	    mask = low_mask( head);
-	    temp = *destination;
-	    *destination++ =
-	      (((*source >> offset1) & mask) | (temp & ~mask));
-	  }
-	  nbits -= head;
-	  mask1 = low_mask( offset1);
-	  mask2 = low_mask( offset2);
-	  {
-	    long nwords, i;
-
-	    for (nwords = (nbits / POINTER_LENGTH); (nwords > 0); nwords -= 1)
-	      {
-		i = ((*source++ & mask1) << offset2);
-		*destination++ = (((*source >> offset1) & mask2) | i);
-	      }
-	  }
-
-	  {
-	    long tail, dest_tail;
-
-	    tail = (nbits % POINTER_LENGTH);
-	    dest_tail = (*destination & low_mask( POINTER_LENGTH - tail));
-	    if (tail <= offset1)
-	      *destination =
-		(((*source & any_mask( tail, (offset1 - tail))) << offset2)
-		 | dest_tail);
-	    else
-	      {
-		long i, j;
-
-		i = ((*source++ & mask1) << offset2);
-		j = (tail - offset1);
-		*destination =
-		  (((*source & any_mask( j, (POINTER_LENGTH - j))) >> offset1)
-		    | i | dest_tail);
-	      }
-	  }
-	}
+      mask = any_mask( nbits, (head - nbits));
+      (bit_string_word(destination)) =
+	((((bit_string_word(source)) >> offset1) & mask) |
+	 ((bit_string_word(destination)) & ~mask));
     }
+    else
+    {
+      long mask1, mask2;
+
+      { Pointer temp;
+	long mask;
+
+	mask = low_mask( head);
+	temp = (bit_string_word(destination));
+	*(dec_bit_string_ptr(destination)) =
+	  ((((bit_string_word(source)) >> offset1) & mask) | (temp & ~mask));
+      }
+
+      nbits -= head;
+      mask1 = low_mask( offset1);
+      mask2 = low_mask( offset2);
+
+      {
+	long nwords, i;
+
+	for (nwords = (nbits / POINTER_LENGTH); (nwords > 0); nwords -= 1)
+	{
+	  i = ((*(dec_bit_string_ptr(source)) & mask1) << offset2);
+	  *(dec_bit_string_ptr(destination)) =
+	    ((((bit_string_word(source)) >> offset1) & mask2) | i);
+	}
+      }
+
+    {
+      long tail, dest_tail;
+
+      tail = (nbits % POINTER_LENGTH);
+      dest_tail = ((bit_string_word(destination)) &
+		   low_mask( POINTER_LENGTH - tail));
+      if (tail <= offset1)
+      {
+	(bit_string_word(destination)) =
+	  ((((bit_string_word(source)) &
+	     any_mask( tail, (offset1 - tail))) << offset2)
+	   | dest_tail);
+      }
+      else
+      {
+	long i, j;
+
+	i = ((*(dec_bit_string_ptr(source)) & mask1) << offset2);
+	j = (tail - offset1);
+	(bit_string_word(destination)) =
+	  ((((bit_string_word(source)) &
+	     any_mask( j, (POINTER_LENGTH - j))) >> offset1)
+	   | i | dest_tail);
+      }
+    }
+    }
+  }
 
   else /* if (source_offset > destination_offset) */
+  {
+    long offset1, offset2, head;
+
+    offset1 = (source_offset - destination_offset);
+    offset2 = (POINTER_LENGTH - offset1);
+    head = (POINTER_LENGTH - source_offset);
+
+    if (nbits <= head)
     {
-      long offset1, offset2, head;
+      long mask;
 
-      offset1 = (source_offset - destination_offset);
-      offset2 = (POINTER_LENGTH - offset1);
-      head = (POINTER_LENGTH - source_offset);
+      mask = any_mask( nbits, (offset1 + (head - nbits)));
+      (bit_string_word(destination)) =
+	((((bit_string_word(source)) << offset1) & mask) |
+	 ((bit_string_word(destination)) & ~mask));
+    }
+    else
+    {
+      long dest_buffer, mask1, mask2;
 
-      if (nbits <= head)
+      {
+	long mask;
+
+	mask = any_mask( head, offset1);
+	dest_buffer =
+	  (((bit_string_word(destination)) & ~mask)
+	   | ((*(dec_bit_string_ptr(source)) << offset1) & mask));
+      }
+      nbits -= head;
+      mask1 = low_mask( offset1);
+      mask2 = any_mask( offset2, offset1);
+      {
+	long nwords;
+
+	nwords = (nbits / POINTER_LENGTH);
+	if (nwords > 0)
+	  dest_buffer &= mask2;
+	for (; (nwords > 0); nwords -= 1)
+	{
+	  *(dec_bit_string_ptr(destination)) =
+	    (dest_buffer | (((bit_string_word(source)) >> offset2) & mask1));
+	  dest_buffer = (*(dec_bit_string_ptr(source)) << offset1);
+	}
+      }
+
+      {
+	long tail;
+
+	tail = (nbits % POINTER_LENGTH);
+	if (tail <= offset1)
+	{
+	  (bit_string_word(destination)) =
+	    (dest_buffer
+	     | ((bit_string_word(destination)) & low_mask( offset1 - tail))
+	     | (((bit_string_word(source)) >> offset2) &
+		any_mask( tail, (offset1 - tail))));
+	}
+	else
 	{
 	  long mask;
 
-	  mask = any_mask( nbits, (offset1 + (head - nbits)));
-	  *destination =
-	    (((*source << offset1) & mask) | (*destination & ~mask));
+	  *(dec_bit_string_ptr(destination)) =
+	    (dest_buffer | (((bit_string_word(source)) >> offset2) & mask1));
+	  mask = low_mask( POINTER_LENGTH - tail);
+	  (bit_string_word(destination)) =
+	    (((bit_string_word(destination)) & ~mask) |
+	     (((bit_string_word(source)) << offset1) & mask));
 	}
-      else
-	{
-	  long dest_buffer, mask1, mask2;
-
-	  {
-	    long mask;
-
-	    mask = any_mask( head, offset1);
-	    dest_buffer =
-	      ((*destination & ~mask)
-	       | ((*source++ << offset1) & mask));
-	  }
-	  nbits -= head;
-	  mask1 = low_mask( offset1);
-	  mask2 = any_mask( offset2, offset1);
-	  {
-	    long nwords;
-
-	    nwords = (nbits / POINTER_LENGTH);
-	    if (nwords > 0)
-	      dest_buffer &= mask2;
-	    for (; (nwords > 0); nwords -= 1)
-	      {
-		*destination++ =
-		  (dest_buffer | ((*source >> offset2) & mask1));
-		dest_buffer = (*source++ << offset1);
-	      }
-	  }
-
-	  {
-	    long tail;
-
-	    tail = (nbits % POINTER_LENGTH);
-	    if (tail <= offset1)
-	      *destination =
-		(dest_buffer
-		 | (*destination & low_mask( offset1 - tail))
-		 | ((*source >> offset2) & any_mask( tail, (offset1 - tail))));
-	    else
-	      {
-		long mask;
-
-		*destination++ =
-		  (dest_buffer | ((*source >> offset2) & mask1));
-		mask = low_mask( POINTER_LENGTH - tail);
-		*destination =
-		  ((*destination & ~mask) | ((*source << offset1) & mask));
-	      }
-	  }
-	}
+      }
     }
+  }
 }
 
 /* Integer <-> Bit-string Conversions */
@@ -599,11 +598,11 @@ count_significant_bits( number, start)
 
   significant_bits = start;
   for (i = (1 << (start - 1)); (i >= 0); i >>= 1)
-    {
-      if (number >= i)
-	break;
-      significant_bits -= 1;
-    }
+  {
+    if (number >= i)
+      break;
+    significant_bits -= 1;
+  }
   return significant_bits;
 }
 
@@ -638,17 +637,21 @@ long_to_bit_string (length, number)
   if (number == 0)
     zero_to_bit_string (length);
   else
-    {
-      Pointer result;
+  {
+    Pointer result;
 
-      if (length < (long_significant_bits (number)))
-	error_bad_range_arg (2);
-      result = (zero_to_bit_string (length));
-      Fast_Vector_Set (result, (Vector_Length (result)), number);
-      return (result);
-    }
+    if (length < (long_significant_bits (number)))
+      error_bad_range_arg (2);
+    result = (zero_to_bit_string (length));
+    bit_string_lsw(result) = number;
+    return (result);
+  }
 }
 
+/* The bignum <-> bit-string coercion procedures use the following pun:
+   inc_bit_string_ptr is being used on a *bigdigit, rather than *Pointer.
+*/
+
 Pointer
 bignum_to_bit_string (length, bignum)
      long length;
@@ -664,21 +667,51 @@ bignum_to_bit_string (length, bignum)
   if (ndigits == 0)
     zero_to_bit_string (length);
   else
-    {
-      Pointer result;
-      bigdigit *scan1, *scan2;
+  {
+    Pointer result;
+    bigdigit *scan1, *scan2;
 
-      if (length <
-	  (count_significant_bits ((*(Bignum_Top (bigptr))), SHIFT)
-	   + (SHIFT * (ndigits - 1))))
-	error_bad_range_arg (2);
-      result = (zero_to_bit_string (length));
-      scan1 = (Bignum_Bottom (bigptr));
-      scan2 = ((bigdigit *) (bit_string_end_ptr (result)));
-      for (; (ndigits > 0); ndigits -= 1)
-	*--scan2 = *scan1++;
-      return (result);
-    }
+    if (length <
+	(count_significant_bits ((*(Bignum_Top (bigptr))), SHIFT)
+	 + (SHIFT * (ndigits - 1))))
+      error_bad_range_arg (2);
+    result = (zero_to_bit_string (length));
+    scan1 = (Bignum_Bottom (bigptr));
+    scan2 = ((bigdigit *) (bit_string_low_ptr (result)));
+    for (; (ndigits > 0); ndigits -= 1)
+      *(inc_bit_string_ptr(scan2)) = *scan1++;
+    return (result);
+  }
+}
+
+Pointer
+bit_string_to_bignum (nbits, bitstr)
+     long nbits;
+     Pointer bitstr;
+{
+  fast long ndigits;
+  long align_ndigits;
+  fast bigdigit *scan1, *scan2;
+  bigdigit *bignum;
+
+  ndigits = ((nbits + (SHIFT - 1)) / SHIFT);
+  align_ndigits = Align( ndigits);
+  Primitive_GC_If_Needed( align_ndigits);
+  bignum = BIGNUM( Free);
+  Free += align_ndigits;
+  Prepare_Header( bignum, ndigits, POSITIVE);
+
+  scan1 = ((bigdigit *) bit_string_low_ptr( bitstr));
+  scan2 = Bignum_Bottom( bignum);
+  while (--ndigits > 0)
+    *scan2++ = *(inc_bit_string_ptr(scan1));
+  nbits = (nbits % SHIFT);
+  if (nbits == 0)
+    *scan2 = (*(inc_bit_string_ptr(scan1)));    
+  else
+    *scan2 = ((*(inc_bit_string_ptr(scan1))) & low_mask( nbits));
+
+  return (Make_Pointer (TC_BIG_FIXNUM, ((Pointer *) bignum)));
 }
 
 /* (UNSIGNED-INTEGER->BIT-STRING length integer)
@@ -695,71 +728,61 @@ Built_In_Primitive( Prim_unsigned_to_bit_string, 2,
   length = (arg_nonnegative_integer (1));
 
   if (FIXNUM_P (Arg2))
-    {
-      if (FIXNUM_NEGATIVE_P (Arg2))
-	error_bad_range_arg (2);
-      return (long_to_bit_string (length, (UNSIGNED_FIXNUM_VALUE (Arg2))));
-    }
+  {
+    if (FIXNUM_NEGATIVE_P (Arg2))
+      error_bad_range_arg (2);
+    PRIMITIVE_RETURN( long_to_bit_string (length,
+					  (UNSIGNED_FIXNUM_VALUE (Arg2))));
+  }
   if (BIGNUM_P (Arg2))
-    return (bignum_to_bit_string (length, Arg2));
+    PRIMITIVE_RETURN( bignum_to_bit_string (length, Arg2));
   error_wrong_type_arg (2);
 }
 
 /* (BIT-STRING->UNSIGNED-INTEGER bit-string)
    BIT-STRING is converted to the appropriate non-negative integer.
-   This operation is the inverse of `integer->bit-string'. */
+   This operation is the inverse of `unsigned-integer->bit-string'. */
 
 Built_In_Primitive( Prim_bit_string_to_unsigned, 1,
 		   "BIT-STRING->UNSIGNED-INTEGER", 0xDD)
 {
-  Pointer *scan;
-  long nwords, nbits, ndigits, align_ndigits, word;
-  bigdigit *bignum, *scan1, *scan2;
-  
+  fast Pointer *scan;
+  long nwords, nbits, word;
   Primitive_1_Arg();
 
   CHECK_ARG (1, BIT_STRING_P);
 
   /* Count the number of significant bits.*/
-  scan = bit_string_start_ptr( Arg1);
+  scan = bit_string_high_ptr( Arg1);
   nbits = (bit_string_length( Arg1) % POINTER_LENGTH);
-  word = ((nbits > 0) ? (*scan++ & low_mask( nbits)) : *scan++);
+  word = ((nbits > 0) ?
+	  (*(dec_bit_string_ptr(scan)) & low_mask( nbits)) :
+	  *(dec_bit_string_ptr(scan)));
   for (nwords = (Vector_Length( Arg1) - 1); (nwords > 0); nwords -= 1)
-    {
-      if (word != 0)
-	break;
-      else
-	word = *scan++;
-    }
+  {
+    if (word != 0)
+      break;
+    else
+      word = *(dec_bit_string_ptr(scan));
+  }
   if (nwords == 0)
-    return Make_Unsigned_Fixnum(0);
+    PRIMITIVE_RETURN( Make_Unsigned_Fixnum(0));
   nbits = (((nwords - 1) * POINTER_LENGTH) + long_significant_bits( word));
 
-  /* Handle fixnum case. */
   if (nbits < FIXNUM_LENGTH)
-    return (Make_Unsigned_Fixnum( word));
-
-  /* Now the interesting one, we must make a bignum. */
-  ndigits = ((nbits + (SHIFT - 1)) / SHIFT);
-  align_ndigits = Align( ndigits);
-  Primitive_GC_If_Needed( align_ndigits);
-  bignum = BIGNUM( Free);
-  Free += align_ndigits;
-  Prepare_Header( bignum, ndigits, POSITIVE);
-
-  scan1 = ((bigdigit *) bit_string_end_ptr( Arg1));
-  scan2 = Bignum_Bottom( bignum);
-  for (; (ndigits > 0); ndigits -= 1)
-    *scan2++ = *--scan1;
-  nbits = (nbits % SHIFT);
-  if (nbits != 0)
-    *scan2 = (*--scan2 & low_mask( nbits));
-
-  return (Make_Pointer (TC_BIG_FIXNUM, ((Pointer *) bignum)));
+    PRIMITIVE_RETURN( (Make_Unsigned_Fixnum( word)));
+  else
+    PRIMITIVE_RETURN( bit_string_to_bignum(nbits, Arg1));
 }
 
-/* These primitives should test the type of their first argument to
-   verify that it is a pointer. */
+#define read_bits_initialize()						\
+  long end, end_mod, offset;						\
+  Primitive_3_Args ();							\
+									\
+  CHECK_ARG (3, BIT_STRING_P);						\
+  end = (bit_string_length (Arg3));					\
+  end_mod = (end % POINTER_LENGTH);					\
+  offset = (arg_nonnegative_integer (2))
 
 /* (READ-BITS! pointer offset bit-string)
    Read the contents of memory at the address (POINTER,OFFSET)
@@ -767,18 +790,14 @@ Built_In_Primitive( Prim_bit_string_to_unsigned, 1,
 
 Built_In_Primitive (Prim_read_bits_x, 3, "READ-BITS!", 0xDF)
 {
-  long end, end_mod;
-  Primitive_3_Args ();
+  read_bits_initialize();
 
-  CHECK_ARG (3, BIT_STRING_P);
-  end = (bit_string_length (Arg3));
-  end_mod = (end % POINTER_LENGTH);
-  copy_bits ((Nth_Vector_Loc (Arg1, 0)),
-	     (arg_nonnegative_integer (2)),
+  copy_bits ((object_msw_ptr(Arg1, (offset + end))),
+	     offset,
 	     (Nth_Vector_Loc (Arg3, (index_to_word (Arg3, (end - 1))))),
 	     ((end_mod == 0) ? 0 : (POINTER_LENGTH - end_mod)),
 	     end);
-  return (NIL);
+  PRIMITIVE_RETURN( NIL);
 }
 
 /* (WRITE-BITS! pointer offset bit-string)
@@ -787,18 +806,14 @@ Built_In_Primitive (Prim_read_bits_x, 3, "READ-BITS!", 0xDF)
 
 Built_In_Primitive (Prim_write_bits_x, 3, "WRITE-BITS!", 0xE0)
 {
-  long end, end_mod;
-  Primitive_3_Args ();
+  read_bits_initialize();
 
-  CHECK_ARG (3, BIT_STRING_P);
-  end = (bit_string_length (Arg3));
-  end_mod = (end % POINTER_LENGTH);
   copy_bits ((Nth_Vector_Loc (Arg3, (index_to_word (Arg3, (end - 1))))),
 	     ((end_mod == 0) ? 0 : (POINTER_LENGTH - end_mod)),
-	     (Nth_Vector_Loc (Arg1, 0)),
-	     (arg_nonnegative_integer (2)),
+	     (object_msw_ptr(Arg1, (offset + end))),
+	     offset,
 	     end);
-  return (NIL);
+  PRIMITIVE_RETURN( NIL);
 }
 
 /* Search Primitives */
@@ -821,24 +836,24 @@ Built_In_Primitive (Prim_write_bits_x, 3, "WRITE-BITS!", 0xE0)
   if (start == end)							\
     return (NIL);
 
-#define substring_find_next_initialize()			\
-  substring_find_initialize ();					\
-  word = (index_to_word (Arg1, start));				\
-  bit = (start % POINTER_LENGTH);				\
-  end_word = (index_to_word (Arg1, (end - 1)));			\
-  end_bit = (((end - 1) % POINTER_LENGTH) + 1);			\
+#define substring_find_next_initialize()				\
+  substring_find_initialize ();						\
+  word = (index_to_word (Arg1, start));					\
+  bit = (start % POINTER_LENGTH);					\
+  end_word = (index_to_word (Arg1, (end - 1)));				\
+  end_bit = (((end - 1) % POINTER_LENGTH) + 1);				\
   scan = (Nth_Vector_Loc (Arg1, word));
 
-#define find_next_set_loop(init_bit)				\
-{								\
-  bit = (init_bit);						\
-  mask = (1 << (init_bit));					\
-  while (1)							\
-    {								\
-      if (*scan & mask) goto win;				\
-      bit += 1;							\
-      mask <<= 1;						\
-    }								\
+#define find_next_set_loop(init_bit)					\
+{									\
+  bit = (init_bit);							\
+  mask = (1 << (init_bit));						\
+  while (1)								\
+    {									\
+      if ((bit_string_word(scan)) & mask) goto win;			\
+      bit += 1;								\
+      mask <<= 1;							\
+    }									\
 }
 
 Built_In_Primitive (Prim_bitstr_find_next_set_bit, 3,
@@ -848,24 +863,27 @@ Built_In_Primitive (Prim_bitstr_find_next_set_bit, 3,
 
   if (word == end_word)
     {
-      if ((((end_bit - bit) == POINTER_LENGTH) && *scan)
-	  || (*scan & (any_mask ((end_bit - bit), bit))))
+      if ((((end_bit - bit) == POINTER_LENGTH) && (bit_string_word(scan)))
+	  || ((bit_string_word(scan)) & (any_mask ((end_bit - bit), bit))))
 	find_next_set_loop (bit);
-      return (NIL);
+      PRIMITIVE_RETURN( NIL);
     }
-  else if (*scan &
+  else if ((bit_string_word(scan)) &
 	   ((bit == 0) ? (~ 0) : (any_mask ((POINTER_LENGTH - bit), bit))))
     find_next_set_loop (bit);
 
   while (--word > end_word)
-    if (*--scan)
+  {
+    if (*(inc_bit_string_ptr(scan)))
       find_next_set_loop (0);
+  }
 
-  if (*--scan & ((end_bit == POINTER_LENGTH) ? (~ 0) : (low_mask (end_bit))))
+  if ((*(inc_bit_string_ptr(scan))) &
+      ((end_bit == POINTER_LENGTH) ? (~ 0) : (low_mask (end_bit))))
     find_next_set_loop (0);
 
-  return (NIL);
+  PRIMITIVE_RETURN( NIL);
 
  win:
-  return (index_pair_to_bit_fixnum (Arg1, word, bit));
+  PRIMITIVE_RETURN( index_pair_to_bit_fixnum (Arg1, word, bit));
 }
