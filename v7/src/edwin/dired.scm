@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.117 1991/09/20 13:35:25 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.118 1991/10/22 12:27:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -112,7 +112,7 @@ Also:
 (define-key 'dired #\O 'dired-chown)
 (define-key 'dired #\q 'dired-quit)
 (define-key 'dired #\c-\] 'dired-abort)
-
+
 (define-command dired
   "\"Edit\" directory DIRNAME--delete, rename, print, etc. some files in it.
 Dired displays a list of files in DIRNAME.
@@ -129,7 +129,7 @@ Type `h' after entering dired for more info."
   "DDired in other window (directory)"
   (lambda (directory)
     (select-buffer-other-window (make-dired-buffer directory))))
-
+
 (define (make-dired-buffer directory)
   (let ((directory (->pathname directory)))
     (let ((buffer (get-dired-buffer directory)))
@@ -157,7 +157,24 @@ Type `h' after entering dired for more info."
 
 (define (revert-dired-buffer buffer dont-use-auto-save? dont-confirm?)
   dont-use-auto-save? dont-confirm?	;ignore
-  (fill-dired-buffer! buffer (dired-buffer-directory buffer)))
+  (let ((lstart (line-start (current-point) 0)))
+    (let ((filename
+	   (and (dired-filename-start lstart)
+		(region->string (dired-filename-region lstart)))))
+      (fill-dired-buffer! buffer (dired-buffer-directory buffer))
+      (set-current-point!
+       (line-start
+	(or (and filename
+		 (re-search-forward (string-append " "
+						   (re-quote-string filename)
+						   "\\( -> \\|$\\)")
+				    (buffer-start buffer)
+				    (buffer-end buffer)
+				    false))
+	    (if (mark< lstart (buffer-end buffer))
+		lstart
+		(buffer-end buffer)))
+	0)))))
 
 (define-variable dired-listing-switches
   "Switches passed to ls for dired.  MUST contain the 'l' option.
@@ -253,12 +270,6 @@ CANNOT contain the 'F' option."
   (lambda (argument)
     (dired-mark #\D argument)))
 
-(define-command dired-flag-file-for-copy
-  "Mark the current file to be copied."
-  "p"
-  (lambda (argument)
-    (dired-mark #\C argument)))
-
 (define-command dired-unflag
   "Cancel the kill or copy requested for the current file."
   "p"
@@ -290,12 +301,6 @@ CANNOT contain the 'F' option."
   ()
   (lambda ()
     (dired-kill-files)))
-
-(define-command dired-do-copies
-  "Copy marked files."
-  ()
-  (lambda ()
-    (dired-copy-files)))
 
 (define-command dired-quit
   "Exit Dired, offering to kill any files first."
@@ -410,7 +415,7 @@ CANNOT contain the 'F' option."
 (define (dired-filename-region lstart)
   (let ((start (dired-filename-start lstart)))
     (and start
-	 (make-region start (line-end start 0)))))
+	 (make-region start (skip-chars-forward "^ \n" start)))))
 
 (define (set-dired-point! mark)
   (set-current-point!
@@ -484,7 +489,7 @@ CANNOT contain the 'F' option."
 		(dired-mark-1 lstart #\D))))))))
 
 (define (dired-kill-files)
-  (let ((filenames (dired-killable-filenames)))
+  (let ((filenames (dired-marked-files #\D)))
     (if (not (null? filenames))
 	(let ((buffer (temporary-buffer " *Deletions*")))
 	  (write-strings-densely
@@ -500,7 +505,10 @@ CANNOT contain the 'F' option."
 		(lambda ()
 		  (local-set-variable! truncate-partial-width-windows false)
 		  (prompt-for-yes-or-no? "Delete these files")))
-	      (let loop ((filenames filenames) (failures '()))
+	      ;; Must delete the files in reverse order so that the
+	      ;; non-permanent marks remain valid as lines are
+	      ;; deleted.
+	      (let loop ((filenames (reverse! filenames)) (failures '()))
 		(cond ((not (null? filenames))
 		       (loop (cdr filenames)
 			     (if (dired-kill-file! (car filenames))
@@ -508,11 +516,44 @@ CANNOT contain the 'F' option."
 				 (cons (pathname-name-string (caar filenames))
 				       failures))))
 		      ((not (null? failures))
-		       (message "Deletions failed: " (reverse! failures))))))
+		       (message "Deletions failed: " failures)))))
 	  (kill-buffer buffer)))))
 
+(define (dired-marked-files mark-char)
+  (let loop ((start (line-start (buffer-start (current-buffer)) 0)))
+    (let ((next (line-start start 1 false)))
+      (cond ((not next)
+	     '())
+	    ((char=? mark-char (mark-right-char start))
+	     (cons (cons (dired-pathname start) start) (loop next)))
+	    (else
+	     (loop next))))))
+
+(define (dired-kill-file! filename)
+  (let ((deleted?
+	 (catch-file-errors (lambda () false)
+			    (lambda () (delete-file (car filename))))))
+    (if deleted?
+	(with-read-only-defeated (cdr filename)
+	  (lambda ()
+	    (delete-string (cdr filename)
+			   (line-start (cdr filename) 1)))))
+    deleted?))
+
+(define-command dired-flag-file-for-copy
+  "Mark the current file to be copied."
+  "p"
+  (lambda (argument)
+    (dired-mark #\C argument)))
+
+(define-command dired-do-copies
+  "Copy marked files."
+  ()
+  (lambda ()
+    (dired-copy-files)))
+
 (define (dired-copy-files)
-  (let ((filenames (dired-filenames-to-copy)))
+  (let ((filenames (dired-marked-files #\C)))
     (if (not (null? filenames))
 	(let ((buffer (temporary-buffer " *Copies*")))
 	  (write-strings-densely
@@ -526,74 +567,37 @@ CANNOT contain the 'F' option."
 	  (set-buffer-read-only! buffer)
 	  (let ((destination
 		 (pathname-directory
-		  (->pathname
-		   (with-selected-buffer
-		    buffer
-		    (lambda ()
-		      (local-set-variable! truncate-partial-width-windows false)
-		      (prompt-for-directory
-		       "Directory to which to copy these files"
-		       false true)))))))
+		  (with-selected-buffer
+		   buffer
+		   (lambda ()
+		     (local-set-variable! truncate-partial-width-windows false)
+		     (prompt-for-directory "Copy these files to directory"
+					   false
+					   true))))))
 	    (let loop ((filenames filenames) (failures '()))
 	      (cond ((not (null? filenames))
 		     (loop (cdr filenames)
-			   (if (dired-copy-file! (caar filenames) destination)
-			       (let ((where (cdar filenames)))
-				 (with-read-only-defeated where
-				   (lambda ()
-				     (dired-mark-1 where #\Space)))
-				 failures)
+			   (if (dired-copy-file! (car filenames) destination)
+			       failures
 			       (cons (pathname-name-string (caar filenames))
 				     failures))))
 		    ((not (null? failures))
 		     (message "Copies failed: " (reverse! failures))))))
 	  (kill-buffer buffer)))))
 
-(define (dired-filenames-to-copy)
-  (define (loop start)
-    (let ((next (line-start start 1)))
-      (if next
-	  (let ((rest (loop next)))
-	    (if (char=? #\C (mark-right-char start))
-		(cons (cons (dired-pathname start) (mark-permanent! start))
-		      rest)
-		rest))
-	  '())))
-  (loop (line-start (buffer-start (current-buffer)) 0)))
-
-(define (dired-killable-filenames)
-  (define (loop start)
-    (let ((next (line-start start 1)))
-      (if next
-	  (let ((rest (loop next)))
-	    (if (char=? #\D (mark-right-char start))
-		(cons (cons (dired-pathname start) (mark-permanent! start))
-		      rest)
-		rest))
-	  '())))
-  (loop (line-start (buffer-start (current-buffer)) 0)))
-
-(define (dired-kill-file! filename)
-  (let ((deleted?
-	 (catch-file-errors (lambda () false)
-			    (lambda () (delete-file (car filename)) true))))
-    (if deleted?
+(define (dired-copy-file! filename destination)
+  (let ((copied?
+	 (catch-file-errors
+	  (lambda () false)
+	  (lambda ()
+	    (copy-file (car filename)
+		       (pathname-new-directory (car filename) destination))
+	    true))))
+    (if copied?
 	(with-read-only-defeated (cdr filename)
 	  (lambda ()
-	    (delete-string (cdr filename)
-			   (line-start (cdr filename) 1)))))
-    deleted?))
-
-(define (dired-copy-file! from to-directory)
-  (let ((to (pathname-new-directory from to-directory)))
-    (bind-condition-handler (list condition-type:file-error
-				  condition-type:port-error)
-	(lambda (condition)
-	  condition			;ignored
-	  false)
-      (lambda ()
-	(copy-file from to)
-	true))))
+	    (dired-mark-1 (cdr filename) #\space))))
+    copied?))
 
 ;;;; List Directory
 
