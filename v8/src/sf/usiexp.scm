@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 1.10 1995/09/11 14:29:12 adams Exp $
+$Id: usiexp.scm,v 1.11 1995/10/25 18:42:05 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -727,6 +727,7 @@ MIT in each case. |#
     SIN
     SQRT
     STRING->SYMBOL
+    (SYMBOL-NAME 1)
     TAN
     TRUNCATE->EXACT
     ))
