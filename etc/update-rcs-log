@@ -29,6 +29,7 @@ generate_log_gopts ()
 }
 
 generate_log_gopts /scheme/v7/doc "${GOPTS_SCHEME}"
+generate_log_gopts /scheme/v7/html "${GOPTS_SCHEME}"
 generate_log_gopts /scheme/v7/src "${GOPTS_SCHEME}"
 generate_log_gopts /scheme/etc "${GOPTS_SCHEME}"
 
