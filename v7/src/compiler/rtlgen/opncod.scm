@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.35 1990/02/24 04:01:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.36 1990/04/03 06:01:54 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -127,7 +127,8 @@ MIT in each case. |#
 		  ;; This value of context is a special kludge.  See
 		  ;; `generate/return*' for the details.
 		  (length (inliner/operands inliner))
-		  index->stack-reference)))
+		  (lambda (index)
+		    (index->reduction-expression index combination)))))
 	    (if prefix
 		(scfg*scfg->scfg!
 		 (prefix (combination/frame-size combination) 0)
@@ -155,9 +156,13 @@ MIT in each case. |#
 	      (continuation*/register
 	       (subproblem-continuation subproblem))))))))
 
-(define (index->stack-reference index)
-  (rtl:make-fetch
-   (stack-locative-offset (rtl:make-fetch register:stack-pointer) index)))
+(define (index->reduction-expression index combination)
+  (let ((operand (list-ref (combination/operands combination) index)))
+    (if (rvalue-known-constant? operand)
+	(rtl:make-constant (rvalue-constant-value operand))
+	(rtl:make-fetch
+	 (stack-locative-offset (rtl:make-fetch register:stack-pointer)
+				index)))))
 
 (define-integrable (combination/reduction? combination)
   (return-operator/reduction? (combination/continuation combination)))
