@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.14 1995/02/20 20:13:39 adams Exp $
+$Id: utils.scm,v 1.15 1995/02/21 21:19:28 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -181,7 +181,10 @@ MIT in each case. |#
 	 ,@values))
 
 (define (andify left right)
-  `(IF ,left ,right (QUOTE #F)))
+  (cond ((equal? left '(QUOTE #T))   right)
+	((equal? right '(QUOTE #T))   left)
+	(else
+	 `(IF ,left ,right (QUOTE #F)))))
 
 (define (beginnify actions)
   ;; Flattens the ACTIONS, discarding any in non-tail position that
