@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.46 1993/02/27 07:29:50 gjr Exp $
+$Id: infutl.scm,v 1.47 1993/07/28 03:42:02 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -102,7 +102,7 @@ MIT in each case. |#
 	   ("bif" . ,fasload-loader)
 	   ("bci" . ,(lambda (pathname)
 		       (compressed-loader pathname "bif"))))))))
-
+
 (define (memoize-debugging-info! block dbg-info)
   (without-interrupts
    (lambda ()
@@ -172,9 +172,10 @@ MIT in each case. |#
       (compiled-code-address->offset entry)))
 
 (define (compiled-entry/filename entry)
-  (let loop
-      ((info
-	(compiled-code-block/debugging-info (compiled-entry/block entry))))
+  (compiled-code-block/filename (compiled-entry/block entry)))
+
+(define (compiled-code-block/filename block)
+  (let loop ((info (compiled-code-block/debugging-info block)))
     (cond ((string? info) (values info false))
 	  ((not (pair? info)) (values false false))
 	  ((dbg-info? (car info)) (loop (cdr info)))
@@ -243,7 +244,7 @@ MIT in each case. |#
 			   (pathname-version com-pathname)))
 	      (pathname-new-type com-pathname (pathname-type binf-pathname))
 	      binf-pathname)))))
-
+
 (define directory-rewriting-rules
   '())
 
@@ -545,7 +546,7 @@ MIT in each case. |#
 				 (bp bp (fix:+ bp 1)))
 				((not (fix:< bp* end-bp*)))
 			      (vector-8b-set! buffer bp
-					      (vector-8b-ref buffer bp*)))))			       
+					      (vector-8b-ref buffer bp*)))))
 		      (vector-set! cp-table cp bp)
 		      (loop nbp ncp))))))))))
 
