@@ -1,7 +1,7 @@
 ; -*- Scheme -*-
 ;;;;; C external interfaces to Tk procedures not associated with
 ;;;;; a particular widget.
-;;;; $Id: tk-mit.scm,v 1.3 1996/07/31 18:31:20 adams Exp $
+;;;; $Id: tk-mit.scm,v 1.4 1997/10/02 19:19:44 adams Exp $
 
 ;;;; This is the lowest level Scheme interface to general TK/TCL data
 ;;;; structures.  Primitives are defined in tk-mit.c and tk.c
@@ -114,7 +114,7 @@
 	  ((number? arg)      (swat:number->string arg))
 	  ((symbol? arg)      (symbol-name arg))
 	  ((TK-variable? arg) (TK-variable.tk-name arg))
-	  ((pair? arg)        (%string-append (map stringify-for-tk arg)))
+	  ((pair? arg)        (apply string-append (map stringify-for-tk arg)))
 	  ((procedure? arg)   (->string (arg)))
 	  (else (error "tcl-global-eval: Unknown argument type" arg))))
 
@@ -130,8 +130,7 @@
    (lambda ()
      (%tclGlobalEval
       (application->TKMainWindow application)
-      ;; (%string-append x) == (apply string-append x)
-      (%string-append (map stringify-for-tk (cons command-name args)))))))
+      (apply string-append (map stringify-for-tk (cons command-name args)))))))
 
 
 ;;;turn off all floating errors around TK processing
