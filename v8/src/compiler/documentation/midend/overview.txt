@@ -1,0 +1,14 @@
+
+This file will contain an overview of the `middle end' of the
+compiler.
+
+See ~gjr/work/liar94/text/passes.txt
+
+It will also describe how a `generic' rewriting phase works.
+
+There is a file for each rewriting phase describing:
+
+ . The input language
+ . The ouput language
+ . How it works (e.g two pass, substitute mumble for mumble)
+ . Details of how it works, including any trick, use of assumptions etc.

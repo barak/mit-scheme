@@ -1,0 +1,55 @@
+Description of stackopt.scm
+
+Purpose:
+--------
+STACKOPT attempts to reduce stack thrashing by examining temporaly
+contiguous stack frames and attempting to make their layout as similar
+as possible so that as few elements as possible need to be moved from
+one stack slot to another.
+
+There is more indepth documentation in stackopt.scm
+
+[
+In a CALL if the continuation matches a %make-stack-closure with a non
+lambda expression then it returns as the continuation a CALL using 
+%make-stack-lambda. otherwise it goes to the general case 
+ (if the call-fram-vector
+and the cont-fram-vector are the same the the case should be handled 
+specialy becasue like in the case of non-lambda expression the stack 
+has variables that cannot be moved. ) it uses %make-stack-closure
+and %fetch-stack-closure and makes the state false so that it can
+do the next step.
+(when state is false) The common names that are in a frame and its 
+descendents are maped to a fixed stack offset. so that to minnimize moving 
+them from one memory location to the other and having to load them 
+and save them many times. other variables are assigned to free places
+]
+Operators Introduced:
+---------------------
+%make-stack-closure to be used in the cont which matches a pattern 
+	containing it.
+
+%fetch-stack-closure to be used in the cont of a lambda expression
+
+Restrictions on Input:
+----------------------
+Special forms excluded: 
+  ACCESS, DEFINE, DELAY, IN-PACKAGE, OR, SET!, THE-ENVIRONMENT
+  UNASSIGNED?
+
+Special forms introduced:
+-------------------------
+  none
+
+Magic Cookies handled specially:
+-------------------------------
+%make-stack-closure contained in fixed locations that cannot be changed 
+	at a given point in the computation.
+
+%fetch-stack-closure is used to see whether the cont matches a pattern 
+	containing it in order to get the proper layout.
+
+Guarantees on Output:
+---------------------
+ none
+

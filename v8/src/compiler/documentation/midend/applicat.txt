@@ -1,0 +1,40 @@
+Description of applicat.scm
+
+Purpose:
+--------
+APPLICAT examines CALLs and rewrites them into calls to
+pseudo-primitives if the operator is not know. (using %internal-apply)
+In a few cases the CALL is not rewriten: QUOTE of a known-operator
+and not a primitive-procedure, or its primitive-procedure-name is not 
+compiler:primitive-with-no-open-coding, LOOKUP with an a bound variable 
+in a LETREC expression, LAMBDA. 
+In a case where the operator is a QUOTE to an unknown operator and it is a 
+primitive-procedure the CALL is rewriten with a CALL to %primitive-apply.
+In a CALL to a LAMBDA it gets rid of #!OPTIONAL and #!REST.
+
+Operators Introduced:
+---------------------
+%internal-apply used to replace CALLs to unknown operators.
+
+%primitive-apply used to replace CALLs to unknown primitive-procedures
+
+Restrictions on Input:
+----------------------
+Special forms excluded: 
+  ACCESS, DEFINE, DELAY, IN-PACKAGE, OR, SET!, THE-ENVIRONMENT
+  UNASSIGNED?
+
+Special forms introduced:
+-------------------------
+  none
+
+Magic Cookies handled specially:
+-------------------------------
+none
+
+Guarantees on Output:
+---------------------
+ After this pass, CALLs only have the following kinds of operators:
+LAMBDA expressions, LOOKUP expressions where the variable is bound in
+a LETREC expression, or known operators, including %internal-apply and
+%primitive-apply.

@@ -1,0 +1,39 @@
+Description of assconv.scm
+
+Purpose:
+--------
+Eliminates all occurrences of SET!.  In most cases a variable which is
+side-effected is replaced with a cell (%make-cell) and references to
+it are replaced by calls to %cell-ref or %cell-set!, although in
+certain other cases the variable may be bound by the use of a LETREC
+and/or LET instead.  In some cases the value of a SET! is replaced by
+%unspecific.  If the SET! provides an initial value for a variable,
+assconv may introduce the %unassigned cookie.
+
+Operators Introduced:
+---------------------
+%make-cell for local assigned variables
+%cell-ref for read references to local assigned variables
+%cell-set! for write references to local assigned variables
+%unspecific for the value returned by a SET! in some cases
+%unassigned for the initial value of a variable
+
+Restrictions on Input:
+----------------------
+Special forms excluded: 
+  ACCESS, DEFINE, DELAY, IN-PACKAGE, LETREC, OR, THE-ENVIRONMENT
+  UNASSIGNED?
+
+Special forms introduced:
+------------------------
+  LETREC
+
+Magic Cookies handled specially:
+-------------------------------
+  none
+
+Guarantees on Output:
+---------------------
+No occurrences of SET!
+
+

@@ -1,0 +1,48 @@
+Description of cpsconv.scm
+
+Description of applicat.scm
+
+Purpose:
+--------
+CPSCONV is the CPS converter.  It makes most implicit continuations
+explicit, rewriting calls to create new ones, or pass old ones, and
+returns as calls to the continuation.  The RTL generator can handle
+some simple expressions (including out-of-line arithmetic), so parts
+of the program (those sufficiently "simple") are not CPS converted.
+CPSCONV also chooses the order of argument evaluation.  
+  After this pass, the only implicit continuation creation is of the
+continuations of special out-of-line handlers that can preserve the
+relevant registers.
+  Important: LAMLIFT and CLOSCONV are run again after CPSCONV.  This
+has the effect of making all state preserved around non-simple
+subproblem calls (except those introduced by LATEREW) explicit.
+State is preserved in stack closures that are created and manipulated
+by means of pseudo-primitives.
+
+
+
+Operators Introduced:
+---------------------
+%fetch-continuation Grab return address, for use in top-level expressions since they (unlike procedures) do not receive a continuation.
+%unspecific represents an ignorable value.
+%invoke-continuation introduced for named continuations.
+
+Restrictions on Input:
+----------------------
+Special forms excluded: 
+  ACCESS, DEFINE, DELAY, IN-PACKAGE, OR, SET!, THE-ENVIRONMENT
+  UNASSIGNED?
+
+Special forms introduced:
+-------------------------
+  none
+
+Magic Cookies handled specially:
+-------------------------------
+none
+
+Guarantees on Output:
+---------------------
+   After this pass, the only implicit continuation creation is of the
+continuations of special out-of-line handlers that can preserve the
+relevant registers.

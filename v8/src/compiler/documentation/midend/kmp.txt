@@ -1,0 +1,57 @@
+This file describes the overall syntax of kmp-scheme.
+
+see ~gjr/work/liar94/text/forms.txt:
+
+;;; -*- Text -*-
+
+;; Output of input stage (except for LETREC).
+
+<expression> = 
+  (QUOTE <object>)			; constant object reference
+| (LOOKUP <name>)			; variable reference
+| (LAMBDA <lambda-list> <expression>)	; procedural abstraction
+| (LET (<binding>*) <expression>)	; simple variable binding
+| (DECLARE <declaration>*)		; ??
+| (CALL <expression> <expression>+)	; procedure application
+| (BEGIN <expression>*)	                ; sequential execution
+| (IF <expression> <expression> <expression>)
+					; conditional execution
+;; The following is introduced by "assconv.scm", it need not be handled before
+| (LETREC (<binding>*) <expression>)	; mutually recursive bindings:
+					; only lambda-expressions allowed.
+;; The following need not be handled after "assconv.scm"
+| (SET! <name> <expression>)		; variable assignment
+;; The following need not be handled after "expand.scm"
+| (OR <expression> <expression>		; conditional execution
+| (DELAY <expression>)			; promise construction
+| (UNASSIGNED? <name>)			; variable initialization test
+;; The following need not be handled after "envconv.scm"
+| (ACCESS <name> <expression>)		; variable reference in computed env.
+| (DEFINE <name> <expression>)		; variable definition
+| (THE-ENVIRONMENT)			; environment reification
+| (IN-PACKAGE <expression> <expression>)
+					; evaluation in computed environments
+
+<binding> = (<name> <expression>)
+					; LET allows only simple expressions
+					; LETREC allows only LAMBDA expressions
+
+<lambda-list> = (<name>* <optionals> <rest> <aux>)
+
+<optionals>   = <empty>
+		| #!optional <name>+
+
+<rest>        = <empty>
+		| #!rest <name>
+
+<aux>         = <empty>
+		| #!aux <name>+
+
+<aux> is eliminated in expand.scm.  It is not handled afterwards.
+
+CALL expressions have at least two subexpressions:
+- operator
+- continuation ('#f until cps)
+
+<thing>* means 0 or more <thing>
+<thing>+ means 1 or more <thing>

@@ -1,0 +1,32 @@
+Description of inlate.scm
+
+Purpose:
+--------
+INLATE translates scode into KMP Scheme.
+
+Operators Introduced:
+---------------------
+%unassigned for explicit references to the unassigned-reference-trap
+object.
+
+Restrictions on Input:
+----------------------
+none 
+
+Special forms introduced:
+-------------------------
+ACCESS BEGIN CALL DECLARE DEFINE DELAY IF IN-PACKAGE LAMBDA LET LOOKUP
+OR QUOTE SET! THE-ENVIRONMENT UNASSIGNED?
+
+Magic Cookies handled specially:
+-------------------------------
+none
+
+Guarantees on Output:
+---------------------
+1. Code is now in KMP Scheme, with continuation parameters added to
+   LAMBDA expressions but no self-reference or environment parameters.
+2. All continuation slots in CALLs are set to #F.
+3. The output does not include the LETREC special form.
+4. The only magic cookie in the output is %unassigned.
+

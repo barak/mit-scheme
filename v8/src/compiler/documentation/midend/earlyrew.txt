@@ -1,0 +1,64 @@
+Description of earlyrew.scm
+
+Purpose:
+--------
+
+EARLYREW is a primitive rewrite stage that occurs before CPS
+conversion.  Branches introduced here are visible at the CPS
+conversion stage, and may cause new procedures to be created.
+
+Rewrites unary operations in terms of binary operations.  For binary
+operations it checks for the type and choses whether to use generic,
+fixnum, or machine operator (using %machine-fixnum?  %small-fixnum?)
+or it does an optimization.
+
+It also rewrites STRING-ALLOCATE, FLOATING-VECTOR-CONS and
+VECTOR-CONS. (It is done this way because of the current rtl
+generator.)
+
+
+Operators Introduced:
+---------------------
+%*
+%+
+%-
+%/
+%<
+%=
+%>
+%floating-vector-cons
+%machine-fixnum? 
+%quotient
+%remainder
+%small-fixnum
+%string-allocate
+%vector-allocate
+%vector-cons
+
+Restrictions on Input:
+----------------------
+Special forms excluded: 
+  ACCESS, DEFINE, DELAY, IN-PACKAGE, OR, SET!, THE-ENVIRONMENT
+  UNASSIGNED?
+
+Special forms introduced:
+-------------------------
+  none
+
+Magic Cookies handled specially:
+-------------------------------
+
+The procedure DEFINE-REWRITE/EARLY is used to specify rewriting
+procedures.  At the current time, the following operations are
+rewritten:
+   &*, &+, &-, &/, &<, &=, &>, -1+, 1+, FLOATING-VECTOR-CONS, FLONUM-ABS,
+   FLONUM-NEGATE, FLONUM-NEGATIVE?, FLONUM-POSITIVE?, FLONUM-ZERO?,
+   GENERAL-CAR-CDR, MINUS-ONE-PLUS-FIXNUM, NEGATIVE-FIXNUM?, NEGATIVE?,
+   ONE-PLUS-FIXNUM, POSITIVE-FIXNUM?, POSITIVE?, QUOTIENT, REMAINDER,
+   STRING-ALLOCATE, VECTOR-CONS, ZERO-FIXNUM?, ZERO?
+
+
+Guarantees on Output:
+---------------------
+ none
+

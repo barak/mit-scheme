@@ -1,0 +1,42 @@
+Description of expand.scm
+Purpose:
+--------
+Eliminates all occurrences of the special forms DELAY (introducing
+%make-promise), OR (by expansion), and UNASSIGNED? (introducing
+%unassigned?).
+ 
+Eliminates #!AUX bindings from lambda expressions by replacing them
+with a LET binding inside the LAMBDA, giving them an initial value of
+%unassigned.  Inside of this LET it puts SET! initializations, sorted
+to place simple values (QUOTE or LAMBDA) first.  This helps the single
+assignment analysis in assconv (the one that introduces LETREC).
+
+Sequential DEFINEs are turned into a MULTI-DEFINE, introducing
+%*define* and %vector.
+
+Operators Introduced:
+---------------------
+%*define* for DEFINE_MULTIPLE
+%unassigned? for replacing UNASSIGNED?
+%unassigned for the initial value of a variable
+%vector for a vector of the values of the multiple defines
+%make-promise for DELAY
+
+Restrictions on Input:
+----------------------
+Special forms excluded: 
+  ACCESS, DEFINE, IN-PACKAGE, LETREC, THE-ENVIRONMENT
+
+Special forms introduced:
+-------------------------
+  none
+
+Magic Cookies handled specially:
+--------------------------------
+  %*define: multiple %*define in the same body are replaced by a
+            single %*define*
+
+Guarantees on Output:
+---------------------
+No occurrences of DELAY, OR, UNASSIGNED? or #!AUX bindings in lambda
+expressions.

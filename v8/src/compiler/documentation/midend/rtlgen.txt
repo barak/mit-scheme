@@ -1,0 +1,146 @@
+Description of rtlgen.scm
+
+Rtlgen converts a restrcited subset of KMP-Scheme into RTL.  It is the
+largest phase of the compiler because does a job similar to a C
+compiler - it takes a language which few higher level features and
+translates it into a conventional intermediate language.
+
+
+Restrictions on Input Language:
+
+Expressions are either Static, meaning computed by the compiler or the
+system (e.g. the linker), or Dynamic, meaning computed by the program.
+Bindings are classified similarly according to the expression that
+calculates the value to which the name is bound.
+
+*Statements
+
+ . KMP-Scheme is syntactically split into two sublanguage.  Each
+   expression is either a (stack-closure) continuation or an ordinary
+   value.
+
+   Continuation-`valued' identifiers are only bound by the
+   continuation formal of a LAMBDA.  Continuation-`valued' expressions
+   are:
+
+    - (LOOKUP cont-name)
+    - (CALL '%make-stack-closure ...)
+    - '#F (used for binding a useless formal, and in the expression
+      sublanguage)
+
+    - (CALL '%stack-closure-ref .... ) of a slot allocated 
+
+
+ . LAMBDA can appear in two contexts:
+
+    - As a Static expression, in which case it may have no free dynamic
+      bindings.  This is compiled to the appropriate kind of compiled
+      code object.
+
+    - In the following Let-like context for binding a continuation:
+
+	(CALL (LAMBDA (continuation-variable)
+		...)
+	      continuation-expressiion)
+
+
+
+A GRAMMAR
+
+This grammar tries to capture the restrictions on the language.
+
+
+stmt	= (CALL stmt-operator cont expr ...)
+	  (IF expr stmt stmt)
+	  (BEGIN expr|decl ... stmt)
+	  (LET (binding*) stmt)
+          (LETREC (letrec-binding*) stmt)
+	  (CALL (LAMBDA (continuation-variable) stmt)
+	        cont)
+
+	  none of QUOTE LOOKUP LAMBDA are statements
+
+stmt-operator	= (LOOKUP static-name)
+		  (QUOTE stmt-cookie)
+		  (QUOTE primitive-procedure)
+
+stmt-cookie	= %invoke-continuation
+		  %internal-apply
+		  %invoke-operator-cache
+		  %invoke-remote-cache
+		  %primitive-apply/compatible
+
+expr	= (QUOTE object)
+	  (LOOKUP name)			; not a continuation variable
+	  lambda-expr
+	  (CALL expr-operator '#F expr ...)
+	  (CALL '%stack-closure-ref ... 'name) ; not a continuation variable
+	  (BEGIN expr|decl ... expr)
+	  (IF expr expr expr)
+	  (LET (binding*) expr)
+	  (LETREC (letrec-binding*) expr)
+
+expr-operator	= (QUOTE expr-cookie)
+		  (QUOTE primitive-procedure)
+
+expr-cookie	= ...
+		  does NOT include %stack-closure-ref
+
+lambda-expr	= (LAMBDA lambda-list stmt)
+
+binding		= (name expr)
+letrec-binding	= (name lambda-expr)
+
+decl	= (DECLARE declaration*)
+
+cont	= (LOOKUP name)				; name is continuation variable
+	  (CALL '%stack-closure-ref ... 'name)	; name is continuation variable
+	  (CALL '%make-stack-closure
+		'#F
+		rcont
+		'#(names ...)
+		expr|scont
+		expr ...)
+
+rcont	= (LOOKUP name)				; name is continuation variable
+	  (CALL '%stack-closure-ref ... 'name)	; name is continuation variable
+	  '#F                                   ; for calling primitives
+
+scont	= (LOOKUP name)				; name is continuation variable
+	  (CALL '%stack-closure-ref ... 'name)	; name is continuation variable
+
+
+Notes:
+
+  . %make-stack-closure is forbidden as an rcont because the two
+    frames can be merged
+  . %make-stack-closure is forbidden as an scont because it can be
+    rewritten using (CALL (LAMBDA (cont) ...) ...)
+  . 
+
+
+(QUOTE object)
+(LOOKUP name)
+(LAMBDA lambda-list expression)
+(LET (binding*) expression)
+(DECLARE declaration*)
+(CALL expression expression+)
+(BEGIN expression*)
+(IF expression expression expression)
+(LETREC (binding*) expression)
+
+
+
+
+
+Operators ignored:
+------------------
+
+%make-operator-variable-cache
+
+%make-remote-operator-variable-cache
+
+%make-read-variable-cache
+
+%make-write-variable-cache
+

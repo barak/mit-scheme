@@ -1,0 +1,116 @@
+Description of envconv.scm
+
+PURPOSE:
+--------
+
+ENVCONV takes care of first-class environments, incremental
+(top-level) definition and variable references to first-class
+environments.  It rewrites implicit environment operations into
+explicit operations, and references to variables in first-class
+environments as procedure calls to environment or variable cache
+operations.
+
+ENVCONV initiates recursive calls to the compiler when:
+1) compiling by procedure and a top-level LAMBDA expression must be
+   compiled.
+2) compling the body of an IN-PACKAGE where the environment expression
+   isn't '(THE-ENVIRONMENT)
+3) compiling an expression which is not top-level, requires static
+   variable caches, and the evaluation environment is reified (i.e.
+   there are first class references to the environment).
+
+References to variables bound in reified frames are considered
+captured by the closest reified frame to the frame in which the
+reference occurs.  References to such captured variables may be
+implemented using calls to "magic cookie functions" or variable
+caches.  The global variable ENVCONV/OPTIMIZATION-LEVEL determines
+which of these frames use variable cache cells:
+  A. If 'LOW, none (always use the magic cookie fuctions).
+  B. If 'MEDIUM (the default setting), only those whose context is
+     TOP-LEVEL.
+  C. If 'HIGH, all (never use the magic cookie functions).
+
+Eliminates all occurrences of:
+-----------------------------
+
+THE-ENVIRONMENT is, usually, replaced by a LOOKUP to a newly created
+  variable that will hold the value of the reified environment at
+  runtime.  Notice that (THE-ENVIRONMENT) is handled specially if it
+  occurs in an IN-PACKAGE or ACCESS form.
+
+ACCESS is replaced by either LOOKUP (when the environment expression
+  is '(THE-ENVIRONMENT)) or %*lookup.
+
+DEFINE is replaced by %*define for top-level definitions or by SET!.
+
+IN-PACKAGE is replaced by a combination of %execute, %copy-program and
+  %fetch-environment.
+
+Operators Introduced:
+---------------------
+
+%COPY-PROGRAM around code blocks that must be copied before use (for
+  example, the body of an IN-PACKAGE that can be executed more than
+  once)
+%*DEFINE in lieu of DEFINE at the top level
+%EXECUTE to invoke recursively compiled expressions
+%FETCH-ENVIRONMENT around compiled code blocks that require access to
+  the environment in which they were linked
+%INVOKE-OPERATOR-CACHE replaces the operator of a CALL when the
+  operator had been LOOKUP of a variable that has a cache cell
+%INVOKE-REMOTE-CACHE replaces the operator of a CALL when the operator
+  had been ACCESS of a variable in an environment that has a cache
+  cell
+%*LOOKUP in lieu of ACCESS forms, and LOOKUP to certain variables when
+  cache cells aren't in use
+%*MAKE-ENVIRONMENT around bodies that require a reified environment
+%MAKE-OPERATOR-VARIABLE-CACHE,
+%MAKE-READ-VARIABLE-CACHE,
+%MAKE-REMOTE-OPERATOR-VARIABLE-CACHE and
+%MAKE-WRITE-VARIABLE-CACHE to create cache cells around code bodies
+  that require them
+%SAFE-VARIABLE-CACHE-REF as part of the rewrite for SET! and
+  UNASSIGNED? of a variable that has a cache cell
+%*SET! in lieu of SET! and DEFINE when cache cells are not being used
+%*UNASSIGNED? in lieu of UNASSIGNED? when cache cells are not used
+%UNASSIGNED? in lieu of UNASSIGNED? when cache cells are used
+%VARIABLE-CACHE-REF replaces LOOKUP of a variable that has a cache
+  cell
+%VARIABLE-CACHE-SET! as part of the rewrite of SET! of a variable that
+  has a cache cell
+
+Restrictions on Input:
+----------------------
+
+Special forms excluded: 
+ LETREC
+
+Special forms introduced:
+------------------------
+
+ none
+
+Magic Cookies handled specially:
+-------------------------------
+
+ %system-global-environment 
+
+Guarantees on Output:
+---------------------
+
+1. There are no implicit manipulations of environments.
+2. LAMBDAs and LETs create non-reified environments.
+3. There are no occurrences of THE-ENVIRONMENT, ACCESS, IN-PACKAGE or
+   DEFINE.
+
+
+
+
+
+
+
+
+
+
+
+
