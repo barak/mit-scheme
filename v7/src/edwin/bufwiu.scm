@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwiu.scm,v 1.25 1993/09/23 07:06:56 cph Exp $
+;;;	$Id: bufwiu.scm,v 1.26 1993/10/27 01:59:35 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -60,9 +60,7 @@
 	  (if (not (%window-force-redraw? window))
 	      ;; If this change intersects the visible region of the
 	      ;; buffer, request a display update.
-	      (if (and start
-		       (fix:<= (%window-current-start-index window) end)
-		       (fix:<= start (%window-current-end-index window)))
+	      (if start
 		  (window-needs-redisplay! window)
 		  ;; Otherwise mark the window to indicate that it has
 		  ;; been updated to reflect these changes.
@@ -307,7 +305,8 @@
       (cond ((fix:= wlstart start-index)
 	     (cond ((fix:= wlsy start-y)
 		    (if (%window-point-moved? window)
-			(update-cursor! window)))
+			(update-cursor! window)
+			(%window-modeline-event! window 'PRESERVE-ALL!)))
 		   ((fix:< wlsy start-y)
 		    (scroll-up wlsy))
 		   (else
