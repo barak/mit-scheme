@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.15 1992/05/26 17:40:37 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.16 1992/05/26 18:02:40 mhwu Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -75,7 +75,7 @@ MIT in each case. |#
     (HASH-TABLE ((RUNTIME HASH-TABLE) (INITIALIZE-PACKAGE!) "hashtb"))
     (KRYPT ((RUNTIME KRYPT) #F "krypt"))
     (SUBPROCESS ((RUNTIME SUBPROCESS) (INITIALIZE-PACKAGE!) "process"))
-    (COMPRESS ((RUNTIME COMPRESS) (INITIALIZE-PACKAGE!) "cpress"))
+    (COMPRESS ((RUNTIME COMPRESS) #F "cpress"))
     ))
 
 (define loaded-options
