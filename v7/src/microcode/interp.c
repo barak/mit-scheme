@@ -413,6 +413,7 @@ Eval_Non_Trapping:
     case TC_CHARACTER_STRING:
     case TC_CHARACTER:
     case TC_COMPILED_PROCEDURE:
+    case TC_COMPLEX:
     case TC_CONTROL_POINT:
     case TC_DELAYED:
     case TC_ENVIRONMENT:
