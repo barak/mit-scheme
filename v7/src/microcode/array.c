@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.42 1990/01/15 18:09:25 pas Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.43 1991/10/14 23:51:19 thanos Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -131,8 +131,16 @@ DEFINE_PRIMITIVE ("ARRAY->VECTOR", Prim_array_to_vector, 1, 1, 0)
 
 DEFINE_PRIMITIVE ("ARRAY-ALLOCATE", Prim_array_allocate, 1,1, 0)
 {
+  fast REAL * scan;
+  long length;
+  SCHEME_OBJECT result;
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (allocate_array (arg_nonnegative_integer (1)));
+
+  length = (arg_nonnegative_integer (1));
+  result = (allocate_array (length));
+  for (scan = (ARRAY_CONTENTS (result)); --length >= 0; )
+    *scan++ = ((REAL) 0.0);
+  PRIMITIVE_RETURN (result);
 }
 
 DEFINE_PRIMITIVE ("ARRAY-CONS-REALS", Prim_array_cons_reals, 3, 3, 0)
@@ -178,7 +186,7 @@ DEFINE_PRIMITIVE ("ARRAY-SET!", Prim_array_set, 3, 3, 0)
 {
   SCHEME_OBJECT array;
   REAL * array_ptr;
-  double old_value;
+  double old_value, new_value;
   PRIMITIVE_HEADER (3);
   CHECK_ARG (1, ARRAY_P);
   array = (ARG_REF (1));
@@ -186,7 +194,14 @@ DEFINE_PRIMITIVE ("ARRAY-SET!", Prim_array_set, 3, 3, 0)
     (& ((ARRAY_CONTENTS (array))
 	[arg_index_integer (2, (ARRAY_LENGTH (array)))]));
   old_value = (*array_ptr);
-  (*array_ptr) = (arg_real (3));
+  new_value = (arg_real_number (3));
+#if (REAL_IS_DEFINED_DOUBLE == 0)
+  if ((new_value >= 0.0)
+      ? (new_value < ((double) FLT_MIN))
+      : (new_value > (0.0 - ((double) FLT_MIN))))
+    new_value = ((REAL) 0.0);
+#endif
+  (*array_ptr) = ((REAL) new_value);
   PRIMITIVE_RETURN (double_to_flonum (old_value));
 }
 
