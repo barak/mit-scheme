@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.236 1999/02/18 04:03:57 cph Exp $
+$Id: edwin.pkg,v 1.237 1999/05/11 20:31:06 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -102,8 +102,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  make-output-buffer
 	  output-buffer/drain-block
 	  output-buffer/write-substring-block)
-  (import (runtime load)
-	  simple-option-parser)
   (export (edwin class-macros)
 	  class-instance-transforms)
   (export ()

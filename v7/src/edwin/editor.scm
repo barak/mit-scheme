@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: editor.scm,v 1.244 1999/01/02 06:11:34 cph Exp $
+;;; $Id: editor.scm,v 1.245 1999/05/11 20:31:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -82,7 +82,7 @@
 	      message))))))))
 
 (define (edwin . args) (apply edit args))
-(simple-option-parser "-edit" edit)
+(simple-command-line-parser "-edit" edit)
 
 (define edwin-editor false)
 (define editor-abort)
