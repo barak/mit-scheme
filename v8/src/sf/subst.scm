@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: subst.scm,v 1.1 1995/03/07 22:13:23 adams Exp $
+$Id: subst.scm,v 1.2 1995/07/07 03:54:19 adams Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -991,6 +991,8 @@ forms are simply removed.
 
 	((and (procedure? operator)
 	      (block/safe? (procedure/block operator))
+	      (null? (declarations/original
+		      (block/declarations (procedure/block operator))))
 	      (for-all? (procedure/optional operator)
 		variable/integrated)
 	      (or (not (procedure/rest operator))
