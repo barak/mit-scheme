@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.32 1989/09/20 23:12:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.33 1989/10/31 12:42:53 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -103,7 +103,7 @@ DEFINE_PRIMITIVE ("VECTOR-CONS", Prim_vector_cons, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   PRIMITIVE_RETURN
-    (make_vector ((arg_nonnegative_integer (1)), (ARG_REF (2))));
+    (make_vector ((arg_nonnegative_integer (1)), (ARG_REF (2)), true));
 }
 
 DEFINE_PRIMITIVE ("VECTOR", Prim_vector, 0, LEXPR, 0)
