@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.35 1990/07/20 15:53:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.36 1990/09/07 22:25:16 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -800,8 +800,7 @@ MIT in each case. |#
 		    ,@(word->fixnum target)))))
 	  (else
 	   ;; This includes negative n
-	   (LAP (DIV S L (& ,n) ,target))))))
-
+	   (LAP (DIV S L (& ,(* n fixnum-1)) ,target))))))
 (define-fixnum-method 'FIXNUM-REMAINDER fixnum-methods/2-args
   (lambda (target source)
     (let ((temp (reference-temporary-register! 'DATA)))
@@ -837,7 +836,9 @@ MIT in each case. |#
 		  (LAP (BFEXTS ,target (& 0) (& 1) ,sign)
 		       (BFEXTU ,target (& ,(- 32 nbits)) (& ,nbits) ,target)
 		       (B EQ (@PCR ,label))
-		       (BFINS ,target (& 0) (& ,shift) ,sign)))))))))
+		       (BFINS ,target (& 0) (& ,shift) ,sign)
+		       (LABEL ,label)))))))))
+
 ;;;; Flonum Operators
 
 (define (define-flonum-method operator methods method)
