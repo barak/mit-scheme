@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.24 2005/02/06 04:40:58 cph Exp $
+$Id: mod-lisp.scm,v 1.25 2005/02/06 04:44:20 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -786,7 +786,7 @@ USA.
    (lambda (k)
      (bind-condition-handler (list condition-type:error)
 	 (lambda (condition)
-	   (k (xml-rpc:condition->fault condition 1)))
+	   (k (xml-rpc:condition->fault 1 condition)))
        (lambda ()
 	 (receive (name params) (xml-rpc:parse-request document)
 	   (let ((handler (get-xmlrpc-method-handler pathname name)))

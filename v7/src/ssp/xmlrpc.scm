@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xmlrpc.scm,v 1.8 2005/02/06 04:41:13 cph Exp $
+$Id: xmlrpc.scm,v 1.9 2005/02/06 04:44:27 cph Exp $
 
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
@@ -52,7 +52,7 @@ USA.
 		  (lambda (port)
 		    (format-error-message message irritants port)))))
 
-(define (xml-rpc:condition->fault condition code)
+(define (xml-rpc:condition->fault code condition)
   (xml-rpc:fault code (condition/report-string condition)))
 
 (define (xml-rpc:parse-request document)
