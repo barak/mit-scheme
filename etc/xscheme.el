@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.16 1988/04/06 21:31:31 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.17 1988/04/28 18:52:03 cph Exp $
 
 (require 'scheme)
 
@@ -496,11 +496,12 @@ When called, the current buffer will be the Scheme process-buffer.")
 		       (insert-before-markers
 			(substitute-command-keys xscheme-startup-message)))
 		   (setq process
-			 (apply 'start-process
-				(cons "scheme"
-				      (cons buffer
-					    (xscheme-parse-command-line
-					     command-line)))))
+			 (let ((process-connection-type nil))
+			   (apply 'start-process
+				  (cons "scheme"
+					(cons buffer
+					      (xscheme-parse-command-line
+					       command-line))))))
 		   (set-marker (process-mark process) (point-max))
 		   (xscheme-process-filter-initialize t)
 		   (xscheme-modeline-initialize)
