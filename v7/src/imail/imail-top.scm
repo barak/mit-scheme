@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.141 2000/06/08 18:15:25 cph Exp $
+;;; $Id: imail-top.scm,v 1.142 2000/06/08 19:06:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -459,6 +459,7 @@ variable's documentation (using \\[describe-variable]) for details:
   (lambda (buffer)
     (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-revert-buffer)
     (add-kill-buffer-hook buffer imail-kill-buffer)
+    (buffer-put! buffer 'MAIL-YANK-ORIGINAL-METHOD imail-yank-original)
     (local-set-variable! mode-line-modified "--- " buffer)
     (add-adaptive-fill-regexp! "[ \t]*[-a-zA-Z0-9]*>+[ \t]*" buffer)
     (standard-alternate-paragraph-style! buffer)
@@ -734,22 +735,10 @@ With prefix argument N moves backward N messages with these flags."
 		(if message
 		    (begin
 		      (store-property! message 'RAW? raw?)
+		      (insert-header-fields message raw? mark)
 		      (if raw?
+			  (insert-string (message-body message) mark)
 			  (begin
-			    (insert-string
-			     (header-fields->string
-			      (message-header-fields message))
-			     mark)
-			    (insert-newline mark)
-			    (insert-string (message-body message) mark))
-			  (begin
-			    (insert-string
-			     (header-fields->string
-			      (maybe-reformat-headers
-			       (message-header-fields message)
-			       buffer))
-			     mark)
-			    (insert-newline mark)
 			    (if (and (ref-variable imail-receive-mime buffer)
 				     (folder-supports-mime? folder))
 				(insert-mime-message-body message mark)
@@ -766,6 +755,19 @@ With prefix argument N moves backward N messages with these flags."
     (if message
 	(message-seen message))
     (folder-event folder 'SELECT-MESSAGE message)))
+
+(define (insert-header-fields headers raw? mark)
+  (insert-string (header-fields->string
+		  (let ((headers (message-header-fields headers)))
+		    (if raw?
+			headers
+			(maybe-reformat-headers
+			 headers
+			 (or (and (message? headers)
+				  (imail-message->buffer headers #f))
+			     mark)))))
+		 mark)
+  (insert-newline mark))
 
 (define (selected-folder #!optional error? buffer)
   (let ((buffer
@@ -878,6 +880,12 @@ With prefix argument N moves backward N messages with these flags."
 		   (remove-property! folder 'BUFFER)
 		   #f))))
       (and error? (error:bad-range-argument folder 'IMAIL-FOLDER->BUFFER))))
+
+(define (imail-message->buffer message error?)
+  (or (list-search-positive (buffer-list)
+	(lambda (buffer)
+	  (eq? (buffer-get buffer 'IMAIL-MESSAGE #f) message)))
+      (and error? (error:bad-range-argument message 'IMAIL-MESSAGE->BUFFER))))
 
 (define (associate-buffer-with-imail-buffer folder-buffer buffer)
   (without-interrupts
@@ -1066,14 +1074,11 @@ With prefix argument N moves backward N messages with these flags."
 (define-method insert-mime-message-part
     (message (body <mime-body-message>) enclosure selector mark)
   enclosure
-  (insert-string
-   (header-fields->string
-    (maybe-reformat-headers
-     (string->header-fields
-      (message-mime-body-part message `(,@selector HEADER) #t))
-     mark))
-   mark)
-  (insert-newline mark)
+  (insert-header-fields (message-mime-body-part message
+						`(,@selector HEADER)
+						#t)
+			#f
+			mark)
   (insert-mime-message-part message
 			    (mime-body-message-body body)
 			    body
@@ -1724,8 +1729,13 @@ original message into it."
   ()
   (lambda ()
     (make-mail-buffer '(("To" "") ("Subject" ""))
-		      (selected-buffer)
+		      (chase-imail-buffer (selected-buffer))
 		      select-buffer-other-window)))
+
+(define (imail-yank-original buffer mark)
+  (let ((message (selected-message #t buffer)))
+    (insert-header-fields message #f mark)
+    (insert-string (message-body message) mark)))
 
 (define-command imail-continue
   "Continue composing outgoing message previously being composed."
@@ -1740,31 +1750,41 @@ see the documentation of `imail-resend'."
   (lambda (resend?)
     (if resend?
 	(dispatch-on-command (ref-command-object imail-resend))
-	(let ((buffer (selected-buffer))
-	      (message (selected-message)))
-	  (make-mail-buffer
-	   `(("To" "")
-	     ("Subject"
-	      ,(string-append
-		"["
-		(let ((from (get-first-header-field-value message "from" #f)))
-		  (if from
-		      (rfc822:addresses->string
-		       (rfc822:string->addresses from))
-		      ""))
-		": "
-		(message-subject message)
-		"]")))
-	   #f
-	   (lambda (mail-buffer)
-	     (insert-region (buffer-start buffer)
-			    (buffer-end buffer)
-			    (buffer-end mail-buffer))
-	     (if (window-has-no-neighbors? (current-window))
-		 (select-buffer mail-buffer)
-		 (select-buffer-other-window mail-buffer))
-	     (message-forwarded message)))))))
+	(imail-forward))))
 
+(define (imail-forward)
+  (let ((buffer (selected-buffer))
+	(message (selected-message)))
+    (make-mail-buffer
+     `(("To" "")
+       ("Subject"
+	,(string-append
+	  "["
+	  (let ((from (get-first-header-field-value message "from" #f)))
+	    (if from
+		(rfc822:canonicalize-address-string from)
+		""))
+	  ": "
+	  (message-subject message)
+	  "]")))
+     #f
+     (lambda (mail-buffer)
+       (with-buffer-point-preserved mail-buffer
+	 (lambda ()
+	   (insert-header-fields message #f (buffer-end mail-buffer))
+	   (insert-string (message-body message) (buffer-end mail-buffer))))
+       (if (window-has-no-neighbors? (current-window))
+	   (select-buffer mail-buffer)
+	   (select-buffer-other-window mail-buffer))
+       (message-forwarded message)))))
+
+(define (with-buffer-point-preserved buffer thunk)
+  (let ((point (mark-right-inserting-copy (buffer-point buffer))))
+    (let ((value (thunk)))
+      (set-buffer-point! buffer point)
+      (mark-temporary! point)
+      value)))
+
 (define-command imail-resend
   "Resend current message to ADDRESSES.
 ADDRESSES is a string consisting of several addresses separated by commas."
@@ -1787,8 +1807,9 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 		    (string-ci=? (header-field-name header) "sender")))))
        #f
        (lambda (mail-buffer)
-	 (insert-string (message-body message) (buffer-end mail-buffer))
-	 (set-buffer-point! mail-buffer (buffer-start mail-buffer))
+	 (with-buffer-point-preserved mail-buffer
+	   (lambda ()
+	     (insert-string (message-body message) (buffer-end mail-buffer))))
 	 (if (window-has-no-neighbors? (current-window))
 	     (select-buffer mail-buffer)
 	     (select-buffer-other-window mail-buffer))
@@ -1814,11 +1835,10 @@ While composing the reply, use \\[mail-yank-original] to yank the
 	 (get-last-header-field-value message "resent-reply-to" #f))
 	(from (get-first-header-field-value message "from" #f)))
     `(("To"
-       ,(rfc822:addresses->string
-	 (rfc822:string->addresses
-	  (or resent-reply-to
-	      (get-all-header-field-values message "reply-to")
-	      from))))
+       ,(rfc822:canonicalize-address-string
+	 (or resent-reply-to
+	     (get-all-header-field-values message "reply-to")
+	     from)))
       ("CC"
        ,(and cc?
 	     (let ((to
@@ -1837,7 +1857,7 @@ While composing the reply, use \\[mail-yank-original] to yank the
 		      (let ((addresses
 			     (imail-dont-reply-to
 			      (rfc822:string->addresses cc))))
-			(and (not (null? addresses))
+			(and (pair? addresses)
 			     (rfc822:addresses->string addresses))))))))
       ("In-reply-to"
        ,(if resent-reply-to
