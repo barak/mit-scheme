@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.9 1989/08/08 21:06:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.10 1989/08/09 13:41:26 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -218,7 +218,8 @@ must be defined when the defstruct is evaluated.
 	    (map cdr keyword-constructors)
 	    (if (and (null? boa-constructors)
 		     (null? keyword-constructors))
-		(list (symbol-append 'make- name))		(map cdr boa-constructors))	    copier-name
+		(list (list (symbol-append 'make- name)))
+		(map cdr boa-constructors))	    copier-name
 	    predicate-name
 	    (if (eq? print-procedure default-value)
 		`(,(absolute 'UNPARSER/STANDARD-METHOD) ',name)
