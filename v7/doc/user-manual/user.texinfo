@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.53 1996/11/05 17:00:09 adams Exp $
+@comment $Id: user.texinfo,v 1.54 1999/02/26 04:09:41 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -15,48 +15,35 @@
 @ifinfo
 This file documents the use of MIT Scheme.
 
-Copyright @copyright{} 1991-96 Massachusetts Institute of Technology
+Copyright @copyright{} 1991-1999 Massachusetts Institute of Technology
 
-This material was developed by the Scheme project at the Massachusetts
-Institute of Technology, Department of Electrical Engineering and Computer
-Science.  Permission to copy this document, to redistribute it, and to use
-it for any purpose is granted, subject to the following restrictions and
-understandings.
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
 
-@enumerate
-@item
-Any copy made of this document must include this copyright notice in
-full.
+@ignore
+Permission is granted to process this file through TeX and print the
+results, provided the printed document carries copying permission
+notice identical to this one except for the removal of this paragraph
+(this paragraph not being relevant to the printed manual).
 
-@item
-Users of this document agree to make their best efforts (a) to return to
-the MIT Scheme project any improvements or extensions that they make, so
-that these may be included in future releases; and (b) to inform MIT of
-noteworthy uses of this document.
+@end ignore
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the entire
+resulting derived work is distributed under the terms of a permission
+notice identical to this one.
 
-@item
-All materials developed as a consequence of the use of this document shall
-duly acknowledge such use, in accordance with the usual standards of
-acknowledging credit in academic research.
-
-@item
-MIT has made no warrantee or representation that the contents of this
-document will be error-free, and MIT is under no obligation to provide any
-services, by way of maintenance, update, or otherwise.
-
-@item
-In conjunction with products arising from the use of this material, there
-shall be no use of the name of the Massachusetts Institute of Technology
-nor of any adaptation thereof in any advertising, promotional, or sales
-literature without prior written consent from MIT in each case.
-@end enumerate
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation approved
+by the Massachusetts Institute of Technology.
 @end ifinfo
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.52
-@subtitle for Scheme Release 7.4
-@subtitle 16 April 1996
+@subtitle Edition 1.54
+@subtitle for Scheme Release 7.5
+@subtitle 25 February 1999
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -64,41 +51,21 @@ literature without prior written consent from MIT in each case.
 @page
 
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1991-96 Massachusetts Institute of Technology
+Copyright @copyright{} 1991-1999 Massachusetts Institute of Technology
 
-This material was developed by the Scheme project at the Massachusetts
-Institute of Technology, Department of Electrical Engineering and Computer
-Science.  Permission to copy this document, to redistribute it, and to use
-it for any purpose is granted, subject to the following restrictions and
-understandings.
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
 
-@enumerate
-@item
-Any copy made of this document must include this copyright notice in
-full.
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the entire
+resulting derived work is distributed under the terms of a permission
+notice identical to this one.
 
-@item
-Users of this document agree to make their best efforts (a) to return to
-the MIT Scheme project any improvements or extensions that they make, so
-that these may be included in future releases; and (b) to inform MIT of
-noteworthy uses of this document.
-
-@item
-All materials developed as a consequence of the use of this document shall
-duly acknowledge such use, in accordance with the usual standards of
-acknowledging credit in academic research.
-
-@item
-MIT has made no warrantee or representation that the contents of this
-document will be error-free, and MIT is under no obligation to provide any
-services, by way of maintenance, update, or otherwise.
-
-@item
-In conjunction with products arising from the use of this material, there
-shall be no use of the name of the Massachusetts Institute of Technology
-nor of any adaptation thereof in any advertising, promotional, or sales
-literature without prior written consent from MIT in each case.
-@end enumerate
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation approved
+by the Massachusetts Institute of Technology.
 @end titlepage
 
 @node Top, Introduction, (dir), (dir)
@@ -4252,12 +4219,14 @@ An important step in debugging is to locate the piece of code from which
 the error is signalled.  The Scheme debugger contains a history examiner
 and an environment examiner to aid the user in locating a bug.
 
-@deffn {special form+} bkpt message irritant
+@deffn {procedure+} bkpt message irritant
 Sets a breakpoint.  When the breakpoint is encountered, @var{message}
-and @var{irritant} are typed and a read-eval-print loop is entered in
-the current environment.  To exit from the breakpoint and proceed with
-the interrupted process, call the procedure @code{continue}.  Sample
-usage:
+and @var{irritant} are typed and a read-eval-print loop is entered.  The
+environment of the read-eval-print loop is derived by examining the
+continuation of the call to @code{bkpt}; if the call appears in a
+non-tail-recursive position, the environment will be that of the call
+site.  To exit from the breakpoint and proceed with the interrupted
+process, call the procedure @code{continue}.  Sample usage:
 
 @example
 @group
