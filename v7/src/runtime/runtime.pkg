@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.349 2000/05/16 14:44:39 cph Exp $
+$Id: runtime.pkg,v 14.350 2000/06/08 16:31:53 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -3625,3 +3625,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (export (runtime regular-expression)
 	  char-syntax-table/entries)
   (initialization (initialize-package!)))
+
+(define-package (runtime mime-codec)
+  (file-case options
+    ((load) "mime-codec")
+    (else))
+  (parent ())
+  (export ()
+	  decode-base64:finalize
+	  decode-base64:initialize
+	  decode-base64:update
+	  decode-quoted-printable:finalize
+	  decode-quoted-printable:initialize
+	  decode-quoted-printable:update
+	  encode-base64:finalize
+	  encode-base64:initialize
+	  encode-base64:update
+	  encode-quoted-printable:finalize
+	  encode-quoted-printable:initialize
+	  encode-quoted-printable:update))

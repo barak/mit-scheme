@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.8 1999/09/07 00:53:24 cph Exp $
+$Id: optiondb.scm,v 1.9 2000/06/08 16:31:45 cph Exp $
 
-Copyright (c) 1994-1999 Massachusetts Institute of Technology
+Copyright (c) 1994-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -64,6 +64,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    (GDBM	(RUNTIME GDBM)		(INITIALIZE-PACKAGE!)	"gdbm")
    (HASH-TABLE	(RUNTIME HASH-TABLE)	(INITIALIZE-PACKAGE!)	"hashtb")
    (KRYPT	(RUNTIME KRYPT)		#F			"krypt")
+   (MIME-CODEC	(RUNTIME MIME-CODEC)	#F			"mime-codec")
    (ORDERED-VECTOR (RUNTIME ORDERED-VECTOR) #F			"ordvec")
    (RB-TREE	(RUNTIME RB-TREE)	#F			"rbtree")
    (STEPPER	(RUNTIME STEPPER)	#F			"ystep")
