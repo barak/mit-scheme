@@ -24,13 +24,11 @@
 ;; of special forms.  Probably the code should be merged at some point 
 ;; so that there is sharing between both libraries.
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/scheme.el,v 1.3 1987/12/05 19:56:04 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/scheme.el,v 1.4 1987/12/07 09:38:00 cph Exp $
 
 (provide 'scheme)
 
 (defvar scheme-mode-syntax-table nil "")
-(defvar scheme-mode-abbrev-table nil "")
-
 (if (not scheme-mode-syntax-table)
     (let ((i 0))
       (setq scheme-mode-syntax-table (make-syntax-table))
@@ -83,9 +81,10 @@
       (modify-syntax-entry ?@ "'   ")
       (modify-syntax-entry ?# "' 14")
       (modify-syntax-entry ?\\ "\\   ")))
-
-(define-abbrev-table 'scheme-mode-abbrev-table ())
 
+(defvar scheme-mode-abbrev-table nil "")
+(define-abbrev-table 'scheme-mode-abbrev-table ())
+
 (defun scheme-mode-variables ()
   (set-syntax-table scheme-mode-syntax-table)
   (setq local-abbrev-table scheme-mode-abbrev-table)
@@ -112,11 +111,23 @@
   (define-key map "\177" 'backward-delete-char-untabify)
   (define-key map "\e\C-q" 'scheme-indent-sexp))
 
-(defvar scheme-mode-map (make-sparse-keymap))
-(scheme-mode-commands scheme-mode-map)
-
-(defun scheme-mode (&optional keymap)
+(defvar scheme-mode-map nil)
+(if (not scheme-mode-map)
+    (progn
+      (setq scheme-mode-map (make-sparse-keymap))
+      (scheme-mode-commands scheme-mode-map)))
+
+(defun scheme-mode ()
   "Major mode for editing Scheme code.
+Editing commands are similar to those of lisp-mode.
+
+In addition, if an inferior Scheme process is running, some additional
+commands will be defined, for evaluating expressions and controlling
+the interpreter, and the state of the process will be displayed in the
+modeline of all Scheme buffers.  The names of commands that interact
+with the Scheme process start with \"xscheme-\".  For more information
+see the documentation for xscheme-interaction-mode.
+
 Commands:
 Delete converts tabs to spaces as it moves back.
 Blank lines separate paragraphs.  Semicolons start comments.
@@ -125,12 +136,12 @@ Entry to this mode calls the value of scheme-mode-hook
 if that value is non-nil."
   (interactive)
   (kill-all-local-variables)
-  (scheme-mode-initialize-internal (or keymap scheme-mode-map))
+  (scheme-mode-initialize)
   (scheme-mode-variables)
   (run-hooks 'scheme-mode-hook))
 
-(defun scheme-mode-initialize-internal (keymap)
-  (use-local-map keymap)
+(defun scheme-mode-initialize ()
+  (use-local-map scheme-mode-map)
   (setq major-mode 'scheme-mode)
   (setq mode-name "Scheme"))
 
