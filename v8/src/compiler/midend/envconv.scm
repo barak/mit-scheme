@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: envconv.scm,v 1.6 1994/11/30 23:20:59 adams Exp $
+$Id: envconv.scm,v 1.7 1994/12/06 16:30:09 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -61,16 +61,15 @@ MIT in each case. |#
 ;; calls or variable caches.
 ;; The environment optimization level determines which of these frames
 ;; use variable cells:
-;; A. If LOW, none.
-;; B. If MEDIUM, only those whose context is TOP-LEVEL. (maybe ONCE-ONLY too?)
-;; C. If HIGH, all.
+;;  A. If LOW, none.
+;;  B. If MEDIUM, only those whose context is TOP-LEVEL. (maybe ONCE-ONLY too?)
+;;  C. If HIGH, all.
 
 ;; Parameters
 
 (define envconv/optimization-level 'MEDIUM)
 (define envconv/variable-caches-must-be-static? true)
 (define envconv/top-level-name (intern "#[top-level]"))
-
 (define *envconv/compile-by-procedures?* false)
 (define *envconv/procedure-result?* false)
 (define *envconv/copying?*)
@@ -102,6 +101,7 @@ MIT in each case. |#
 	      (envconv/remember ,code
 				form
 				(envconv/env/block env)))))))))
+
 
 ;;;; Environment-sensitive forms
 
@@ -143,8 +143,11 @@ MIT in each case. |#
 				    (code-rewrite/original-form body)))
 			      (cond ((not body-info) false)
 				    ((new-dbg-procedure? body-info)
-				     (new-dbg-block/parent
-				      (new-dbg-procedure/block body-info)))
+				     (let ((block
+					    (new-dbg-procedure/block
+					     body-info)))
+				       (and block
+					    (new-dbg-block/parent block))))
 				    (else
 				     (new-dbg-expression/block body-info))))
 			    (envconv/env/block env))))))
@@ -293,40 +296,22 @@ MIT in each case. |#
   (if (not (pair? expr))
       (illegal expr))
   (case (car expr)
-    ((QUOTE)
-     (envconv/quote env expr))
-    ((LOOKUP)
-     (envconv/lookup env expr))
-    ((LAMBDA)
-     (envconv/lambda env expr name))
-    ((DECLARE)
-     (envconv/declare env expr))
-    ((CALL)
-     (envconv/call env expr))
-    ((BEGIN)
-     (envconv/begin env expr))
-    ((IF)
-     (envconv/if env expr))
-    ((SET!)
-     (envconv/set! env expr))
-    ((UNASSIGNED?)
-     (envconv/unassigned? env expr))
-    ((OR)
-     (envconv/or env expr))
-    ((DELAY)
-     (envconv/delay env expr))
-    ((ACCESS)
-     (envconv/access env expr))
-    ((DEFINE)
-     (envconv/define env expr))
-    ((IN-PACKAGE)
-     (envconv/in-package env expr))
+    ((QUOTE)       (envconv/quote env expr))
+    ((LOOKUP)      (envconv/lookup env expr))
+    ((LAMBDA)      (envconv/lambda env expr name))
+    ((DECLARE)     (envconv/declare env expr))
+    ((CALL)        (envconv/call env expr))
+    ((BEGIN)       (envconv/begin env expr))
+    ((IF)          (envconv/if env expr))
+    ((SET!)        (envconv/set! env expr))
+    ((UNASSIGNED?) (envconv/unassigned? env expr))
+    ((OR)          (envconv/or env expr))
+    ((DELAY)       (envconv/delay env expr))
+    ((ACCESS)      (envconv/access env expr))
+    ((DEFINE)      (envconv/define env expr))
+    ((IN-PACKAGE)  (envconv/in-package env expr))
     ((THE-ENVIRONMENT)
      (envconv/the-environment env expr))
-#|
-    ((LET)
-     (envconv/let env expr))
-|#
     ((LET LETREC)
      (not-yet-legal expr))
     (else
@@ -375,11 +360,12 @@ MIT in each case. |#
      (conc-name envconv/env/)
      (constructor envconv/env/%make (context parent block))
      (print-procedure
-      (lambda (env port)
-	(write-char #\Space port)
-	(write (envconv/env/depth env) port)
-	(write-char #\Space port)
-	(write (envconv/env/reified-name env) port))))
+      (standard-unparser-method 'ENVCONV/ENV
+	(lambda (env port)
+	  (write-char #\Space port)
+	  (write (envconv/env/depth env) port)
+	  (write-char #\Space port)
+	  (write (envconv/env/reified-name env) port)))))
 
   (context false read-only true)
   (reified-name false read-only false)
@@ -388,15 +374,15 @@ MIT in each case. |#
 	     0)
 	 read-only true)
   (nearest-reified false read-only false)
-  (parent false read-only true)
-  (children '() read-only false)
-  (bindings '() read-only false)
-  (number 0 read-only false)
-  (captured '() read-only false)
+  (parent  false read-only true)
+  (children  '() read-only false)
+  (bindings  '() read-only false)
+  (number    0   read-only false)
+  (captured  '() read-only false)
   (wrapper false read-only false)
-  (body false read-only false)
-  (result false read-only false)
-  (block false read-only false))
+  (body    false read-only false)
+  (result  false read-only false)
+  (block   false read-only false))
 
 (define-structure
     (envconv/binding
@@ -423,6 +409,7 @@ MIT in each case. |#
   (procedure? false read-only false)	; Must generate a procedure?
   (env false read-only false))		; Environment when enqueued
 
+
 (define (envconv/env/make context parent)
   (let ((env
 	 (envconv/env/%make
@@ -436,7 +423,7 @@ MIT in each case. |#
 	(set-envconv/env/children! parent
 				   (cons env (envconv/env/children parent))))
     env))
-
+
 (define-integrable (envconv/env/reified? env)
   (envconv/env/reified-name env))
 
@@ -746,7 +733,7 @@ MIT in each case. |#
 				(maker extra name arity))
 			  (cdr refs)))
 	  cell-name))
-      
+
       (let ((place (assq name (cdr by-arity))))
 	(if (not place)
 	    (let ((cell-name (new-cell!)))
@@ -762,9 +749,9 @@ MIT in each case. |#
 		    cell-name)
 		  (cdr place*))))))
 
-    (let ((read-refs (list '-READ-CELL))
-	  (write-refs (list '-WRITE-CELL))
-	  (exe-refs (list '-EXECUTE-CELL))
+    (let ((read-refs    (list '-READ-CELL))
+	  (write-refs   (list '-WRITE-CELL))
+	  (exe-refs     (list '-EXECUTE-CELL))
 	  (exe-by-arity (list 'EXE-BY-ARITY))
 	  (remote-exe-refs (list '-REMOTE-EXECUTE-CELL))
 	  (remote-exe-by-package '()))
@@ -938,7 +925,7 @@ MIT in each case. |#
 		  "ENVCONV/DO-COMPILE!: environment not reified"
 		  key)))
 	   (form/rewrite! form `(QUOTE ,compiled)))))))
-
+
 ;; The linker knows how to make global operator references,
 ;; but could be taught how to make arbitrary package references.
 ;; *** IMPORTANT: These must be captured! ****
