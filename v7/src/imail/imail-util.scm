@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.18 2000/05/20 03:22:52 cph Exp $
+;;; $Id: imail-util.scm,v 1.19 2000/05/20 03:24:31 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -245,7 +245,7 @@
 ;;;; Ordered-string-vector completion
 
 (define (hash-table/ordered-key-vector table <)
-  (let ((v (list->vector (hash-table/key-list url-protocols))))
+  (let ((v (list->vector (hash-table/key-list table))))
     (sort! v <)
     v))
 
