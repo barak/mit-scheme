@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.9 1995/05/02 20:53:53 cph Exp $
+$Id: os2pm.c,v 1.10 1995/05/06 23:01:05 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -47,6 +47,7 @@ typedef struct _ps_t
   COLOR background_color;
   pst_t visual_type;		/* window or bitmap */
   void * visual;		/* the associated window or bitmap */
+  PLONG char_increments;	/* character increments for outline fonts */
 } ps_t;
 #define PS_ID(ps) ((ps) -> id)
 #define PS_QID(ps) ((ps) -> qid)
@@ -55,6 +56,7 @@ typedef struct _ps_t
 #define PS_BACKGROUND_COLOR(ps) ((ps) -> background_color)
 #define PS_VISUAL_TYPE(ps) ((ps) -> visual_type)
 #define PS_VISUAL(ps) ((ps) -> visual)
+#define PS_CHAR_INCREMENTS(ps) ((ps) -> char_increments)
 
 typedef struct _window_t
 {
@@ -2876,12 +2878,15 @@ create_ps (pst_t type, HDC hdc, qid_t qid)
   (PS_BACKGROUND_COLOR (ps)) = (GpiQueryBackColor (hps));
   (PS_VISUAL_TYPE (ps)) = type;
   (PS_VISUAL (ps)) = 0;
+  (PS_CHAR_INCREMENTS (ps)) = 0;
   return (ps);
 }
 
 static void
 destroy_ps (ps_t * ps)
 {
+  if ((PS_CHAR_INCREMENTS (ps)) != 0)
+    OS_free (PS_CHAR_INCREMENTS (ps));
   if (!GpiDestroyPS (PS_HANDLE (ps)))
     window_warning (GpiDestroyPS);
   deallocate_id ((& psid_table), (PS_ID (ps)));
@@ -2904,20 +2909,32 @@ static void
 ps_draw_text (ps_t * ps, short x, short y,
 	      const char * data, unsigned short size)
 {
+  HPS hps = (PS_HANDLE (ps));
+  PLONG increments = (PS_CHAR_INCREMENTS (ps));
   POINTL ptl;
   (ptl . x) = x;
   (ptl . y) = y;
   maybe_deactivate_cursor (ps);
   if (size <= 512)
-    GpiCharStringAt ((PS_HANDLE (ps)), (& ptl), size, ((char *) data));
+    {
+      if (increments == 0)
+	GpiCharStringAt (hps, (& ptl), size, ((char *) data));
+      else
+	GpiCharStringPosAt (hps, (& ptl), 0, CHS_VECTOR, size, ((char *) data),
+			    increments);
+    }
   else
     {
       const char * scan = data;
-      GpiMove ((PS_HANDLE (ps)), (& ptl));
+      GpiMove (hps, (& ptl));
       while (size > 0)
 	{
 	  unsigned short n = ((size > 512) ? 512 : size);
-	  GpiCharString ((PS_HANDLE (ps)), n, ((char *) scan));
+	  if (increments == 0)
+	    GpiCharString (hps, n, ((char *) scan));
+	  else
+	    GpiCharStringPos (hps, 0, CHS_VECTOR, n, ((char *) scan),
+			      increments);
 	  size -= n;
 	  scan += n;
 	}
@@ -2928,11 +2945,16 @@ ps_draw_text (ps_t * ps, short x, short y,
 static unsigned short
 ps_text_width (ps_t * ps, const char * data, unsigned short size)
 {
-  POINTL points [TXTBOX_COUNT];
-  if (!GpiQueryTextBox ((PS_HANDLE (ps)), size, ((char *) data),
-			TXTBOX_COUNT, points))
-    window_error (GpiQueryTextBox);
-  return ((points [TXTBOX_CONCAT]) . x);
+  if ((PS_CHAR_INCREMENTS (ps)) == 0)
+    {
+      POINTL points [TXTBOX_COUNT];
+      if (!GpiQueryTextBox ((PS_HANDLE (ps)), size, ((char *) data),
+			    TXTBOX_COUNT, points))
+	window_error (GpiQueryTextBox);
+      return ((points [TXTBOX_CONCAT]) . x);
+    }
+  else
+    return (size * ((PS_CHAR_INCREMENTS (ps)) [0]));
 }
 
 static void
@@ -3146,7 +3168,8 @@ clipboard_read_text (void)
 }
 
 static int parse_font_spec (const char *, PSZ *, LONG *, USHORT *);
-static int ps_set_font_1 (HPS, PSZ, LONG, USHORT, LONG);
+static int ps_set_font_1 (ps_t * ps, PSZ, LONG, USHORT, LONG);
+static PLONG ps_make_char_increments (LONG);
 
 static font_metrics_t *
 ps_set_font (ps_t * ps, unsigned short id, const char * spec)
@@ -3156,7 +3179,7 @@ ps_set_font (ps_t * ps, unsigned short id, const char * spec)
   USHORT selection;
   if (!parse_font_spec (spec, (& name), (& size), (& selection)))
     return (0);
-  if (!ps_set_font_1 ((PS_HANDLE (ps)), name, size, selection, id))
+  if (!ps_set_font_1 (ps, name, size, selection, id))
     {
       OS_free (name);
       return (0);
@@ -3169,6 +3192,12 @@ ps_set_font (ps_t * ps, unsigned short id, const char * spec)
     (FONT_METRICS_WIDTH (metrics)) = (fm . lMaxCharInc);
     (FONT_METRICS_HEIGHT (metrics)) = (fm . lMaxBaselineExt);
     (FONT_METRICS_DESCENDER (metrics)) = (fm . lMaxDescender);
+    if ((PS_CHAR_INCREMENTS (ps)) != 0)
+      OS_free (PS_CHAR_INCREMENTS (ps));
+    (PS_CHAR_INCREMENTS (ps))
+      = ((((fm . fsDefn) & FM_DEFN_OUTLINE) != 0)
+	 ? (ps_make_char_increments (fm . lMaxCharInc))
+	 : 0);
     return (metrics);
   }
 }
@@ -3209,10 +3238,12 @@ parse_font_spec (const char * spec,
 }
 
 static int create_font (HPS, LONG, PFONTMETRICS, USHORT);
+static void ps_set_font_size (ps_t *, LONG);
 
 static int
-ps_set_font_1 (HPS hps, PSZ name, LONG size, USHORT selection, LONG id)
+ps_set_font_1 (ps_t * ps, PSZ name, LONG size, USHORT selection, LONG id)
 {
+  HPS hps = (PS_HANDLE (ps));
   LONG nfonts;
   ULONG index;
   PFONTMETRICS pfm;
@@ -3237,18 +3268,34 @@ ps_set_font_1 (HPS hps, PSZ name, LONG size, USHORT selection, LONG id)
 		      pfm))
       == GPI_ALTERROR)
     window_error (GpiQueryFonts);
-  for (index = 0; (index < nfonts); index += 1)
-    if (((((pfm [index]) . fsType) & FM_TYPE_FIXED) != 0)
-	&& ((((pfm [index]) . fsDefn) & FM_DEFN_OUTLINE) == 0)
-	&& (((pfm [index]) . sNominalPointSize) == size)
-	&& (create_font (hps, id, (& (pfm [index])), selection)))
-      {
-	GpiSetCharSet (hps, id);
-	OS_free (pfm);
-	return (1);
-      }
-  OS_free (pfm);
-  return (0);
+  {
+    int result = 0;
+    /* Choose an image font if one is available.  */
+    for (index = 0; (index < nfonts); index += 1)
+      if (((((pfm [index]) . fsType) & FM_TYPE_FIXED) != 0)
+	  && ((((pfm [index]) . fsDefn) & FM_DEFN_OUTLINE) == 0)
+	  && (((pfm [index]) . sNominalPointSize) == size)
+	  && (create_font (hps, id, (& (pfm [index])), selection)))
+	{
+	  GpiSetCharSet (hps, id);
+	  result = 1;
+	  goto done;
+	}
+    /* Otherwise, look for an outline font.  */
+    for (index = 0; (index < nfonts); index += 1)
+      if (((((pfm [index]) . fsType) & FM_TYPE_FIXED) != 0)
+	  && ((((pfm [index]) . fsDefn) & FM_DEFN_OUTLINE) != 0)
+	  && (create_font (hps, id, (& (pfm [index])), selection)))
+	{
+	  GpiSetCharSet (hps, id);
+	  ps_set_font_size (ps, size);
+	  result = 1;
+	  goto done;
+	}
+  done:
+    OS_free (pfm);
+    return (result);
+  }
 }
 
 static int
@@ -3260,15 +3307,54 @@ create_font (HPS hps, LONG font_id, PFONTMETRICS pfm, USHORT selection)
   (font_attrs . fsSelection) = selection;
   (font_attrs . lMatch) = (pfm -> lMatch);
   strcpy ((font_attrs . szFacename), (pfm -> szFacename));
-  (font_attrs . idRegistry) = 0;
-  (font_attrs . usCodePage) = (WinQueryCp (pm_hmq));
-  if ((font_attrs . usCodePage) == 0)
-    window_error (WinQueryCp);
+  (font_attrs . idRegistry) = (pfm -> idRegistry);
+  (font_attrs . usCodePage) = (pfm -> usCodePage);
   (font_attrs . lMaxBaselineExt) = 0;
   (font_attrs . lAveCharWidth) = 0;
   (font_attrs . fsType) = 0;
-  (font_attrs . fsFontUse) = 0;
+  (font_attrs . fsFontUse)
+    = ((((pfm -> fsDefn) & FM_DEFN_OUTLINE) != 0)
+       ? (FATTR_FONTUSE_OUTLINE | FATTR_FONTUSE_TRANSFORMABLE)
+       : 0);
   return ((GpiCreateLogFont (hps, 0, font_id, (& font_attrs))) == FONT_MATCH);
+}
+
+static void
+ps_set_font_size (ps_t * ps, LONG size)
+{
+  POINTL ptl [2];
+
+  ((ptl[0]) . x) = 0;
+  ((ptl[0]) . y) = 0;
+  {
+    LONG xres;
+    ps_query_caps (ps, CAPS_HORIZONTAL_FONT_RES, 1, (&xres));
+    ((ptl[1]) . x) = ((((xres * size) << 4) + 360) / 720);
+  }
+  {
+    LONG yres;
+    ps_query_caps (ps, CAPS_VERTICAL_FONT_RES, 1, (&yres));
+    ((ptl[1]) . y) = ((((yres * size) << 4) + 360) / 720);
+  }
+  if (!GpiConvert ((PS_HANDLE (ps)), CVTC_DEVICE, CVTC_WORLD, 2, ptl))
+    window_error (GpiConvert);
+  {
+    SIZEF s;
+    (s . cx) = ((((ptl[1]) . x) - ((ptl[0]) . x)) << 12);
+    (s . cy) = ((((ptl[1]) . y) - ((ptl[0]) . y)) << 12);
+    if (!GpiSetCharBox ((PS_HANDLE (ps)), (&s)))
+      window_error (GpiSetCharBox);
+  }
+}
+
+static PLONG
+ps_make_char_increments (LONG increment)
+{
+  PLONG increments = (OS_malloc ((sizeof (LONG)) * 512));
+  unsigned int index;
+  for (index = 0; (index < 512); index += 1)
+    (increments[index]) = increment;
+  return (increments);
 }
 
 static MRESULT EXPENTRY
