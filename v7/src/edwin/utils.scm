@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: utils.scm,v 1.35 1994/03/08 20:19:32 cph Exp $
+;;;	$Id: utils.scm,v 1.36 1994/05/04 22:57:06 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -278,6 +278,10 @@
 	   condition
 	   (continuation (if-error)))
        thunk))))
+
+(define (delete-directory-no-errors filename)
+  (catch-file-errors (lambda () #f)
+		     (lambda () (delete-directory filename) #t)))
 
 (define (string-or-false? object)
   ;; Useful as a type for option variables.
