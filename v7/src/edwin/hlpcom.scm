@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.85 1989/03/14 08:00:50 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.86 1989/04/05 18:21:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -252,14 +252,16 @@ Just \\[^R Universal Argument] means prompt for the new value."
 (define-command ("Teach Emacs")
   "Visit the Emacs learn-by-doing tutorial."
   (delete-other-windows (current-window))
-  (let ((pathname (string->pathname "*TUTORIAL")))
+  (let ((pathname
+	 (merge-pathnames (string->pathname "TUTORIAL")
+			  (home-directory-pathname))))
     (let ((buffer (pathname->buffer pathname)))
       (if buffer
 	  (select-buffer buffer)
 	  (let ((buffer (new-buffer (pathname->buffer-name pathname))))
-	    (read-buffer buffer (string->pathname "ED:-TUTORIAL"))
+	    (read-buffer buffer edwin-tutorial-pathname)
 	    (set-buffer-pathname! buffer pathname)
-	    (set-buffer-truename! buffer pathname)
+	    (set-buffer-truename! buffer false)
 	    (select-buffer buffer)
 	    (set-current-major-mode! fundamental-mode)
 	    (disable-buffer-auto-save! buffer)
