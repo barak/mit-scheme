@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/symtab.scm,v 1.40 1987/05/28 16:46:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/symtab.scm,v 1.41 1987/05/28 17:39:18 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -39,8 +39,12 @@ MIT in each case. |#
 (define (make-symbol-table)
   (cons "Symbol Table" '()))
 
-(define-integrable (symbol-table-bindings table)
-  (cdr table))
+(define (symbol-table-bindings table)
+  (map (lambda (entry)
+	 (cons (car entry)
+	       (or (vector-ref (cdr entry) 0)
+		   (error "Missing binding value" entry))))
+       (cdr table)))
 
 (define (symbol-table-define! table key value)
   (let ((entry (assq key (cdr table))))
