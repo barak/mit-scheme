@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syncproc.scm,v 1.2 1999/01/29 22:58:29 cph Exp $
+$Id: syncproc.scm,v 1.3 1999/01/31 20:43:21 cph Exp $
 
 Copyright (c) 1999 Massachusetts Institute of Technology
 
@@ -24,6 +24,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (declare (usual-integrations))
 
+(load-option 'SUBPROCESS)
+
 (define-structure (subprocess-context
 		   (keyword-constructor make-subprocess-context)
 		   (conc-name subprocess-context/))
@@ -52,20 +54,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ;; The name of the shell interpreter.
   (shell-file-name (os/shell-file-name) read-only #t))
 
-(define (run-shell-command command #!optional context)
-  (let ((context
-	 (if (or (default-object? context) (not context))
-	     (make-subprocess-context)
-	     context)))
-    (run-synchronous-process (subprocess-context/shell-file-name context)
-			     (os/form-shell-command command)
-			     context)))
+(define (run-shell-command command . options)
+  (apply run-synchronous-subprocess
+	 (subprocess-context/shell-file-name context)
+	 (os/form-shell-command command)
+	 options))
 
-(define (run-synchronous-process program arguments #!optional context)
-  (let* ((context
-	  (if (or (default-object? context) (not context))
-	      (make-subprocess-context)
-	      context))
+(define (run-synchronous-subprocess program arguments . options)
+  (let* ((context (apply make-subprocess-context options))
 	 (directory (subprocess-context/working-directory context))
 	 (process #f))
     (bind-condition-handler '()

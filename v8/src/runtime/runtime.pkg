@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.307 1999/01/29 22:46:26 cph Exp $
+$Id: runtime.pkg,v 14.308 1999/01/31 20:42:27 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -2336,9 +2336,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  condition-type:subprocess-exited
 	  condition-type:subprocess-signalled
 	  condition-type:subprocess-stopped
-	  make-subprocess-context
 	  run-shell-command
-	  run-synchronous-process))
+	  run-synchronous-subprocess))
 
 (define-package (runtime graphics)
   (files "graphics")
