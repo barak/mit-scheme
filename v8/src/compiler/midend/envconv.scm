@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: envconv.scm,v 1.11 1995/06/22 22:47:30 adams Exp $
+$Id: envconv.scm,v 1.12 1995/07/04 18:13:17 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -297,37 +297,25 @@ MIT in each case. |#
   (define (interesting-declaration? text)
     (and (pair? text)
 	 (memq (car text) interesting-declarations)))
-  (define (reject declaration)
-    (user-warning "Illegal declaration (ignored):" declaration))
+  (define (check&compile declaration)
+    (let ((procedure
+	   (and (list? declaration)
+		(= (length declaration) 2)
+		(compile-boolean-property (second declaration) env #F #F #F))))
+      (if procedure
+	  (list (first declaration) procedure)
+	  (begin
+	    (user-warning "Illegal declaration (ignored):" declaration)
+	    #F))))
   (call-with-values
       (lambda ()
 	(list-split anything interesting-declaration?))
     (lambda (interesting other)
-      (call-with-values
-	  (lambda ()
-	    (list-split interesting envconv/declaration-legal?))
-	(lambda (good illegal)
-	  (for-each reject illegal)
-	  (set-cdr! (envconv/env/declarations env)
-		    (append good (cdr (envconv/env/declarations env))))
-	  `(DECLARE ,@other))))))
-
-(define (envconv/declaration-legal? declaration)
-  ;; This should correspond with the EVAL function later
-  (and
-   (list? declaration)
-   (= (length declaration) 2)
-   (let ok? ((expr (second declaration)))
-     (define (binary name)
-       (and (list? expr) (= (length expr) 3) (eq? (car expr) name) 
-	    (for-all? (cdr expr) ok?)))
-     (cond ((memq expr '(NONE ALL #|FREE BOUND ASSIGNED|#)))
-	   ((not (pair? expr))  #F)
-	   ((or (binary 'UNION) (binary 'DIFFERENCE) (binary 'INTERSECTION)))
-	   ((and (eq? (car expr) 'SET)
-		 (list? expr)
-		 (for-all? expr symbol?)))
-	   (else #F)))))      
+      (let ((good (list-transform-positive (map check&compile interesting)
+		    identity-procedure)))
+	(set-cdr! (envconv/env/declarations env)
+		  (append good (cdr (envconv/env/declarations env))))
+	`(DECLARE ,@other)))))
 
 ;;;; Dispatcher
 
@@ -585,12 +573,10 @@ MIT in each case. |#
 		    (if block
 			(set-new-dbg-block/variables!
 			 block
-			 (map (lambda (name)
-				(new-dbg-variable/make name block))
-			      names)))		    
+			 (list->vector (map new-dbg-variable/make names))))
 		    (set-envconv/env/bindings! env* bindings)
 		    (set-envconv/env/number! env* number))
-		  (loop (1+ number)
+		  (loop (+ number 1)
 			(cdr names*)
 			(cons (envconv/binding/make (car names*) env* number)
 			      bindings))))
@@ -696,22 +682,7 @@ MIT in each case. |#
 	 (name       (envconv/binding/name binding))
 	 (last-frame (envconv/binding/env binding)))
     (let frame-loop ((env  (envconv/reference/env reference)))
-
-      (define (eval expr)
-	(define (bad-expression)
-	  (user-error "Illegal declaration(s)" (envconv/env/declarations env)))
-	(cond ((eq? expr 'ALL) #T)
-	      ((eq? expr 'NONE) #F)
-	      ((eq? (car expr) 'SET)
-	       (memq name (cdr expr)))
-	      ((eq? (car expr) 'UNION)
-	       (or (eval (second expr)) (eval (third expr))))
-	      ((eq? (car expr) 'DIFFERENCE)
-	       (and (eval (second expr)) (not (eval (third expr)))))
-	      ((eq? (car expr) 'INTERSECTION)
-	       (and (eval (second expr)) (eval (third expr))))
-	      (else (bad-expression))))
-
+      (define (eval expr) (expr name))
       (and env
 	   (let loop ((declarations (cdr (envconv/env/declarations env))))
 	     (cond ((null? declarations)
@@ -724,6 +695,9 @@ MIT in each case. |#
 
 (define (envconv/use-calls! env)
   (let ((env-name (envconv/env/reified-name env)))
+    (let ((block (envconv/env/block env)))
+      (if block
+	  (set-new-dbg-block/parent-path-prefix! block env-name)))
     (for-each
 	(lambda (capture)
 	  (let ((binding (car capture)))
