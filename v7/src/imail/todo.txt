@@ -1,11 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.125 2001/06/02 22:30:07 cph Exp $
+$Id: todo.txt,v 1.126 2001/06/03 01:23:54 cph Exp $
 
 Bug fixes
 ---------
-
-* Add feature to close connections immediately when M-x imail-quit is
-  executed.
 
 * Add key binding for M-x imail-browse-container to imail-mode.
 
