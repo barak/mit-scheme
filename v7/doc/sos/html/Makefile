@@ -1,5 +1,5 @@
 
-# $Id: Makefile,v 1.2 2000/07/10 22:18:56 cph Exp $
+# $Id: Makefile,v 1.3 2000/07/24 01:11:55 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -19,7 +19,7 @@
 
 all:	sos_toc.html
 
-sos_toc.html:	../sos.texinfo
+sos_toc.html:	../sos.texinfo ../gfdl.texinfo
 	rm -rf *.html
 	texi2html -split_chapter ../sos.texinfo
 
