@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 1.2 1987/06/13 03:01:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 1.3 1987/06/22 18:23:52 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -40,8 +40,10 @@ MIT in each case. |#
 
 (define-export (generate/procedure-header procedure body)
   (if (procedure/ic? procedure)
-      (scfg*scfg->scfg!
+      (scfg-append!
        (rtl:make-procedure-heap-check procedure)
+       (rtl:make-assignment register:frame-pointer
+			    (rtl:make-fetch register:stack-pointer))
        body)
       (scfg-append!
        ((if (or (procedure-rest procedure)
