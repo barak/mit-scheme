@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.39 2003/03/12 20:41:42 cph Exp $
+$Id: record.scm,v 1.40 2003/03/13 03:58:18 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003 Massachusetts Institute of Technology
@@ -465,38 +465,51 @@ USA.
 (define <structure-type>)
 (define make-define-structure-type)
 (define structure-type?)
-(define structure-type/type)
+(define structure-type/physical-type)
 (define structure-type/name)
 (define structure-type/field-names)
 (define structure-type/field-indexes)
 (define structure-type/default-inits)
 (define structure-type/unparser-method)
 (define set-structure-type/unparser-method!)
+(define structure-type/tag)
+(define structure-type/offset)
 
 (define (initialize-structure-type-type!)
   (set! <structure-type>
 	(make-record-type "structure-type"
-			  '(TYPE NAME FIELD-NAMES FIELD-INDEXES
-				 DEFAULT-INITS UNPARSER-METHOD)))
+			  '(PHYSICAL-TYPE NAME FIELD-NAMES FIELD-INDEXES
+					  DEFAULT-INITS UNPARSER-METHOD TAG
+					  OFFSET)))
   (set! make-define-structure-type
 	(let ((constructor (record-constructor <structure-type>)))
-	  (lambda (type name field-names field-indexes v1 #!optional v2)
-	    (receive (default-inits unparser-method)
-		(if (default-object? v2)
-		    (values #f v1)
-		    (values v1 v2))
-	      (constructor type name
+	  (lambda (physical-type name field-names field-indexes . rest)
+	    (receive (default-inits unparser-method tag offset)
+		(case (length rest)
+		  ((1) (values #f (car rest) physical-type 0))
+		  ((2) (values (car rest) (cadr rest) physical-type 0))
+		  ((4) (apply values rest))
+		  (else
+		   (error:wrong-number-of-arguments
+		    'MAKE-DEFINE-STRUCTURE-TYPE
+		    8
+		    (cons* physical-type name field-names field-indexes
+			   rest))))
+	      (constructor physical-type
+			   name
 			   (list->vector field-names)
 			   (list->vector field-indexes)
 			   (if default-inits
 			       (list->vector default-inits)
 			       (make-vector (length field-names)
 					    (lambda () #f)))
-			   unparser-method)))))
+			   unparser-method
+			   tag
+			   offset)))))
   (set! structure-type?
 	(record-predicate <structure-type>))
-  (set! structure-type/type
-	(record-accessor <structure-type> 'TYPE))
+  (set! structure-type/physical-type
+	(record-accessor <structure-type> 'PHYSICAL-TYPE))
   (set! structure-type/name
 	(record-accessor <structure-type> 'NAME))
   (set! structure-type/field-names
@@ -509,6 +522,10 @@ USA.
 	(record-accessor <structure-type> 'UNPARSER-METHOD))
   (set! set-structure-type/unparser-method!
 	(record-modifier <structure-type> 'UNPARSER-METHOD))
+  (set! structure-type/tag
+	(record-accessor <structure-type> 'TAG))
+  (set! structure-type/offset
+	(record-accessor <structure-type> 'OFFSET))
   unspecific)
 
 (define (structure-tag/unparser-method tag type)
@@ -540,11 +557,11 @@ USA.
 
 (define (tag->structure-type tag type)
   (if (structure-type? tag)
-      (and (eq? (structure-type/type tag) type)
+      (and (eq? (structure-type/physical-type tag) type)
 	   tag)
       (let ((structure-type (named-structure/get-tag-description tag)))
 	(and (structure-type? structure-type)
-	     (eq? (structure-type/type structure-type) type)
+	     (eq? (structure-type/physical-type structure-type) type)
 	     structure-type))))
 
 (define (structure-tag/default-value tag type field-name)

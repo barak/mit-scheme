@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.42 2003/02/14 18:28:33 cph Exp $
+$Id: packag.scm,v 14.43 2003/03/13 03:57:50 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -244,6 +244,7 @@ USA.
 (define package/system-loader load-package-set)
 
 (define-structure (package-file (type vector)
+				(type-descriptor #f)
 				(conc-name package-file/))
   (tag #f read-only #t)
   (version #f read-only #t)
@@ -251,6 +252,7 @@ USA.
   (loads #f read-only #t))
 
 (define-structure (package-description (type vector)
+				       (type-descriptor #f)
 				       (conc-name package-description/))
   (name #f read-only #t)
   (ancestors #f read-only #t)
@@ -260,6 +262,7 @@ USA.
   (extension? #f read-only #t))
 
 (define-structure (load-description (type vector)
+				    (type-descriptor #f)
 				    (conc-name load-description/))
   (name #f read-only #t)
   (file-cases #f read-only #t)
