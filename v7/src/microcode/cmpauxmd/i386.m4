@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.41 1995/10/24 06:28:41 cph Exp $
+###	$Id: i386.m4,v 1.42 1995/10/25 04:57:46 cph Exp $
 ###
 ###	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ###
@@ -381,6 +381,8 @@ define(rmask,REG(ebp))
 
 IFDOS(`.386
 .model tiny')
+IF_WIN32(`.386
+.model flat')
 
 DECLARE_DATA_SEGMENT()
 declare_alignment(2)
