@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.29 2004/02/25 20:59:29 cph Exp $
+$Id: genio.scm,v 1.30 2004/02/26 19:03:58 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004 Massachusetts Institute of Technology
@@ -584,7 +584,7 @@ USA.
 			 (input-buffer-bytes ib)
 			 available
 			 (fix:+ available page-size))))
-      (if (and n (fix:> n 0))
+      (if n
 	  (begin
 	    (set-input-buffer-start! ib 0)
 	    (set-input-buffer-end! ib (fix:+ available n))))
