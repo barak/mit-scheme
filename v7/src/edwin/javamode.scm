@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: javamode.scm,v 1.3 1999/01/02 06:11:34 cph Exp $
+;;; $Id: javamode.scm,v 1.4 1999/10/07 15:11:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1998-1999 Massachusetts Institute of Technology
 ;;;
@@ -33,38 +33,9 @@
 
 (define-major-mode java c "Java"
   "Major mode for editing Java code.
-Expression and list commands understand all Java brackets.
-Tab indents for Java code.
-Comments begin with // and end at the end of line.
-Paragraphs are separated by blank lines only.
-Delete converts tabs to spaces as it moves back.
-
-Variables controlling indentation style:
- c-tab-always-indent
-    True means TAB in Java mode should always reindent the current line,
-    regardless of where in the line point is when the TAB command is used.
- c-auto-newline
-    True means automatically newline before and after braces,
-    and after colons and semicolons, inserted in Java code.
- c-indent-level
-    Indentation of Java statements within surrounding block.
-    The surrounding block's indentation is the indentation
-    of the line on which the open-brace appears.
- c-continued-statement-offset
-    Extra indentation given to a substatement, such as the
-    then-clause of an if or body of a while.
- c-continued-brace-offset
-    Extra indent for substatements that start with open-braces.
-    This is in addition to c-continued-statement-offset.
- c-brace-offset
-    Extra indentation for line if it starts with an open brace.
- c-brace-imaginary-offset
-    An open brace following other text is treated as if it were
-    this far to the right of the start of its line.
- c-argdecl-indent
-    Indentation level of declarations of Java function arguments.
- c-label-offset
-    Extra indentation for line that is a label, or case or default."
+This is just like C mode, except that
+  (1) comments begin with // and end at the end of line, and
+  (2) c-continued-brace-offset defaults to -2 instead of 0."
   (lambda (buffer)
     (local-set-variable! syntax-table java-mode:syntax-table buffer)
     (local-set-variable! syntax-ignore-comments-backwards #f buffer)
@@ -85,21 +56,17 @@ Variables controlling indentation style:
   (make-event-distributor))
 
 (define java-mode:syntax-table
-  (let ((syntax-table (make-syntax-table c-mode:syntax-table)))
+  (let ((syntax-table (make-syntax-table c-syntax-table)))
     (modify-syntax-entry! syntax-table #\/ ". 1456")
     (modify-syntax-entry! syntax-table #\newline ">")
     syntax-table))
-
-;;;; Syntax Description
 
 (define (java-comment-locate mark)
   (let ((state (parse-partial-sexp mark (line-end mark 0))))
     (and (parse-state-in-comment? state)
-	 (java-comment-match-start (parse-state-comment-start state))
+	 (re-match-forward "/\\(/+\\|\\*+\\)[ \t]*"
+			   (parse-state-comment-start state))
 	 (cons (re-match-start 0) (re-match-end 0)))))
-
-(define (java-comment-match-start mark)
-  (re-match-forward "/\\(/+\\|\\*+\\)[ \t]*" mark))
 
 (define (java-comment-indentation mark)
   (let ((column
@@ -114,3 +81,27 @@ Variables controlling indentation style:
 	column
 	(max (+ (mark-column (horizontal-space-start mark)) 1)
 	     column))))
+
+(define-major-mode php java "PHP"
+  "Major mode for editing PHP code.
+This is just like C mode, except that
+  (1) comments begin with // and end at the end of line,
+  (2) c-continued-brace-offset defaults to -2 instead of 0, and
+  (3) $ is a prefix character rather than a word constituent."
+  (lambda (buffer)
+    (local-set-variable! syntax-table php-syntax-table buffer)
+    (event-distributor/invoke! (ref-variable php-mode-hook buffer) buffer)))
+
+(define-command PHP-mode
+  "Enter PHP mode."
+  ()
+  (lambda () (set-current-major-mode! (ref-mode-object php))))
+
+(define-variable php-mode-hook
+  "An event distributor that is invoked when entering PHP mode."
+  (make-event-distributor))
+
+(define php-syntax-table
+  (let ((syntax-table (make-syntax-table java-syntax-table)))
+    (modify-syntax-entry! syntax-table #\$ "  p")
+    syntax-table))
