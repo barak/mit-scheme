@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: artdebug.scm,v 1.20 1992/11/22 17:04:18 gjr Exp $
+;;;	$Id: artdebug.scm,v 1.21 1992/11/23 21:15:33 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -389,11 +389,14 @@ Miscellany
 
 Use \\[kill-buffer] to quit the debugger."
   (lambda (buffer)
-    (define-variable-local-value! buffer comint-input-ring
+    (define-variable-local-value! buffer
+      (ref-variable-object comint-input-ring)
       (make-ring (ref-variable comint-input-ring-size)))
-    (define-variable-local-value! buffer evaluation-input-recorder
+    (define-variable-local-value! buffer
+      (ref-variable-object evaluation-input-recorder)
       continuation-browser-input-recorder)
-    (define-variable-local-value! buffer evaluation-output-receiver
+    (define-variable-local-value! buffer
+      (ref-variable-object evaluation-output-receiver)
       continuation-browser-output-receiver)))
 
 (define (continuation-browser-input-recorder region)
