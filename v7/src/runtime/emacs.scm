@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.33 2004/02/16 05:36:06 cph Exp $
+$Id: emacs.scm,v 14.34 2004/09/14 19:51:56 cph Exp $
 
 Copyright 1986,1987,1991,1993,1994,1999 Massachusetts Institute of Technology
 Copyright 2001,2003,2004 Massachusetts Institute of Technology
@@ -108,16 +108,16 @@ USA.
       (thunk)))
 
 (define emacs-presentation-top-justify?
-  false)
+  #f)
 
 ;;;; Interrupt Support
 
 (define (emacs/clean-input/flush-typeahead char)
   char
   (let loop ()
-    (if (not (char=? #\NUL (input-port/read-char the-console-port)))
+    (if (not (char=? #\U+0000 (input-port/read-char the-console-port)))
 	(loop)))
-  true)
+  #t)
 
 (define (emacs/^G-interrupt)
   (transmit-signal the-console-port #\g))
@@ -126,9 +126,7 @@ USA.
 
 (define (emacs/write-result port expression object hash-number)
   expression
-  (cond ((eq? object emacs/write-result/ignore)
-	 unspecific)
-	((undefined-value? object)
+  (cond ((undefined-value? object)
 	 (transmit-signal-with-argument port #\v ""))
 	(hash-number
 	 ;; The #\P command used to do something useful, but now
@@ -143,9 +141,6 @@ USA.
 	(else
 	 (transmit-signal-with-argument port #\v (write-to-string object)))))
 
-(define emacs/write-result/ignore
-  (list 'EMACS/WRITE-RESULT/IGNORE))
-
 (define (emacs/error-decision repl condition)
   repl condition
   (transmit-signal the-console-port #\z)
@@ -154,7 +149,7 @@ USA.
       (cmdl-interrupt/abort-previous)))
 
 (define paranoid-error-decision?
-  false)
+  #f)
 
 (define (emacs/set-default-directory port pathname)
   (transmit-signal-with-argument port #\w (->namestring pathname)))
@@ -220,7 +215,6 @@ USA.
 ;;;; Initialization
 
 (define emacs-console-port)
-(define console-output-channel)
 
 (define (initialize-package!)
   (set! emacs-console-port
@@ -250,32 +244,22 @@ USA.
 (define (reset-console-port!)
   ;; This is a kludge.  Maybe this method shouldn't be used.
   (let* ((new-port (select-console-port))
-	 (old-port?
-	  (lambda (port)
-	    (and (or (eq? port the-console-port)
-		     (eq? port emacs-console-port))
-		 (not (eq? port new-port)))))
-	 (replacement-port
-	  (lambda (port)
-	    (and (old-port? port)
-		 new-port))))
-    (if (let ((port console-i/o-port))
-	  (or (eq? port the-console-port)
-	      (eq? port emacs-console-port)))
-	(set-console-i/o-port! new-port))
+	 (replace-port
+	  (lambda (get set)
+	    (if (let ((port (get)))
+		  (or (eq? port the-console-port)
+		      (eq? port emacs-console-port)))
+		(set new-port)))))
+    (replace-port (lambda () console-i/o-port) set-console-i/o-port!)
     (do ((pairs standard-port-accessors (cdr pairs)))
 	((null? pairs))
-      (let ((port (replacement-port ((caar pairs)))))
-	(if port
-	    ((cdar pairs) port))))
+      (replace-port (caar pairs) (cdar pairs)))
     (do ((cmdl (nearest-cmdl) (cmdl/parent cmdl)))
 	((not cmdl))
-      (let ((port (replacement-port (cmdl/port cmdl))))
-	(if port
-	    (set-cmdl/port! cmdl port))))))
+      (replace-port (lambda () (cmdl/port cmdl))
+		    (lambda (port) (set-cmdl/port! cmdl port))))))
 
 (define (select-console-port)
-  (set! console-output-channel (port/output-channel the-console-port))
   (if ((ucode-primitive under-emacs? 0))
       (begin
 	(set! hook/clean-input/flush-typeahead
@@ -284,7 +268,7 @@ USA.
 	(set! hook/error-decision emacs/error-decision)
 	emacs-console-port)
       (begin
-	(set! hook/clean-input/flush-typeahead false)
-	(set! hook/^G-interrupt false)
-	(set! hook/error-decision false)
+	(set! hook/clean-input/flush-typeahead #f)
+	(set! hook/^G-interrupt #f)
+	(set! hook/error-decision #f)
 	the-console-port)))
