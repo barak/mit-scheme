@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.26 2000/05/27 00:10:12 cph Exp $
+;;; $Id: imail-util.scm,v 1.27 2000/05/30 20:53:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -165,12 +165,10 @@
 		       (set-cdr! indexes
 				 (list (substring string start* end)))))))
 	    indexes)
-	  (if (fix:< start end)
-	      (list (if (and (fix:= start 0)
-			     (fix:= end (string-length string)))
-			string
-			(substring string start end)))
-	      '())))))
+	  (list (if (and (fix:= start 0)
+			 (fix:= end (string-length string)))
+		    string
+		    (substring string start end)))))))
 
 (define (lines->string lines #!optional line-ending)
   (decorated-string-append "" ""
