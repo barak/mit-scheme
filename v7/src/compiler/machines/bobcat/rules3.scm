@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.3 1987/06/22 19:21:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.4 1987/07/03 18:59:47 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -39,10 +39,10 @@ MIT in each case. |#
 ;;;; Invocations
 
 (define-rule statement
-  (INVOCATION:APPLY (? number-pushed) (? prefix) (? continuation))
+  (INVOCATION:APPLY (? frame-size) (? prefix) (? continuation))
   (disable-frame-pointer-offset!
    `(,@(generate-invocation-prefix prefix '())
-     ,(load-dnw number-pushed 0)
+     ,(load-dnw frame-size 0)
      (JMP ,entry:compiler-apply))))
 
 (define-rule statement
@@ -63,7 +63,7 @@ MIT in each case. |#
      ,@(apply-stack-sequence frame-size receiver-offset n-levels label))))
 
 (define-rule statement
-  (INVOCATION:JUMP (? number-pushed) (? prefix) (? continuation) (? label))
+  (INVOCATION:JUMP (? frame-size) (? prefix) (? continuation) (? label))
   (QUALIFIER (not (memq (car prefix) '(APPLY-CLOSURE APPLY-STACK))))
   (disable-frame-pointer-offset!
    `(,@(generate-invocation-prefix prefix '())
@@ -111,6 +111,19 @@ MIT in each case. |#
 	     (JMP ,entry:compiler-error))
 	   `(,(load-dnw (primitive-datum primitive) 6)
 	     (JMP ,entry:compiler-primitive-apply))))))
+
+(define-rule statement
+  (INVOCATION:UUO-LINK (? number-pushed) (? prefix) (? continuation) (? name))
+  (disable-frame-pointer-offset!
+   `(,@(generate-invocation-prefix prefix '())
+     (MOVE L (@PCR ,(free-uuo-link-label name)) (D 1))
+     (MOVE L (D 1) (@-A 7))
+     (AND L (D 7) (D 1))
+     (MOVE L (D 1) (A 1))
+     (MOVE L (@A 1) (D 1))
+     (AND L (D 7) (D 1))
+     (MOVE L (D 1) (A 0))
+     (JMP (@A 0)))))
 
 (define-rule statement
   (RETURN)
@@ -183,12 +196,12 @@ MIT in each case. |#
       `(,@(map declare-constant references)
 	,@(map declare-constant uuo-links)
 	,@(map declare-constant constants)
+	,@(let ((environment-label (allocate-constant-label)))
+	    `((SCHEME-OBJECT ,environment-label ENVIRONMENT)
+	      (LEA (@PCR ,environment-label) (A 0))))
 	,@(if (or (not (null? references))
 		  (not (null? uuo-links)))
-	      `(,@(let ((environment-label (allocate-constant-label)))
-		    `((SCHEME-OBJECT ,environment-label ENVIRONMENT)
-		      (LEA (@PCR ,environment-label) (A 0))))
-		(MOVE L ,reg:environment (@A 0))
+	      `((MOVE L ,reg:environment (@A 0))
 		(LEA (@PCR ,block-label) (A 0))
 		,@(if (null? references)
 		      '()
@@ -206,7 +219,7 @@ MIT in each case. |#
 			      `(,(load-dnw (length uuo-links) 1)
 				(JSR ,entry:compiler-uuo-link-multiple)))
 			,@(make-external-label (generate-label)))))
-	      '())))))
+	      `(,(load-constant 0 '(@A 0))))))))
 
 ;;;; Procedure/Continuation Entries
 
