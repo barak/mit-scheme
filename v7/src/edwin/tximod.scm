@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: tximod.scm,v 1.29 2004/10/14 17:28:46 cph Exp $
+$Id: tximod.scm,v 1.30 2004/10/14 17:37:25 cph Exp $
 
 Copyright 1987,1989,1990,1991,1992,1994 Massachusetts Institute of Technology
 Copyright 1996,2000,2001,2004 Massachusetts Institute of Technology
@@ -227,6 +227,7 @@ The default is not to surround any existing words with the braces."
    (regexp-group "cartouche"
 		 "copying"
 		 "def[a-z]*[a-wyz]\\>"
+		 "direntry"
 		 "display"
 		 "end"
 		 "enumerate"
