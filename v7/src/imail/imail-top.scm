@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.12 2000/02/04 04:52:55 cph Exp $
+;;; $Id: imail-top.scm,v 1.13 2000/02/04 05:00:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -120,12 +120,14 @@ May be called with an IMAIL folder URL as argument;
   (or (folder-get folder 'BUFFER #f)
       (error:bad-range-argument buffer 'IMAIL-FOLDER->BUFFER)))
 
-(define (buffer->imail-folder buffer)
-  (or (buffer-get buffer 'IMAIL-FOLDER #f)
-      (error:bad-range-argument buffer 'BUFFER->IMAIL-FOLDER)))
-
-(define (selected-folder)
-  (buffer->imail-folder (selected-buffer)))
+(define (selected-folder #!optional error? buffer)
+  (let ((buffer
+	 (if (or (default-object? buffer) (not buffer))
+	     (selected-buffer)
+	     buffer)))
+    (or (buffer-get buffer 'IMAIL-FOLDER #f)
+	(and (if (default-object? error?) #t error?)
+	     (error:bad-range-argument buffer 'SELECTED-FOLDER)))))
 
 (define (imail-url->buffer-name url)
   (url-body url))
@@ -135,14 +137,7 @@ May be called with an IMAIL folder URL as argument;
   ()
   (lambda ()
     (let ((folder (selected-folder)))
-      (maybe-revert-folder folder
-	(lambda (folder)
-	  (prompt-for-yes-or-no?
-	   (string-append
-	    "Persistent copy of folder has changed since last read.  "
-	    (if (folder-modified? folder)
-		"Discard your changes"
-		"Re-read folder")))))
+      (tl-maybe-revert-folder folder)
       (let ((n-new (poll-folder folder)))
 	(cond ((not n-new)
 	       (message "(This folder has no associated inbox.)"))
@@ -155,6 +150,16 @@ May be called with an IMAIL folder URL as argument;
 			" new message"
 			(if (= n-new 1) "" "s")
 			" read")))))))
+
+(define (tl-maybe-revert-folder folder)
+  (maybe-revert-folder folder
+    (lambda (folder)
+      (prompt-for-yes-or-no?
+       (string-append
+	"Persistent copy of folder has changed since last read.  "
+	(if (folder-modified? folder)
+	    "Discard your changes"
+	    "Re-read folder"))))))
 
 (define-variable imail-new-mail-hook
   "An event distributor that is invoked when IMAIL incorporates new mail."
@@ -264,15 +269,14 @@ DEL	Scroll to previous screen of this message.
 
 (define (imail-revert-buffer buffer dont-use-auto-save? dont-confirm?)
   dont-use-auto-save?
-  (let ((folder (buffer->imail-folder buffer))
+  (let ((folder (selected-folder #f buffer))
 	(message (selected-message #f buffer)))
     (let ((index (and message (message-index message))))
-      (maybe-revert-folder folder
-	(lambda (folder)
-	  (or dont-confirm?
+      (if (or dont-confirm?
 	      (prompt-for-yes-or-no?
 	       (string-append "Revert buffer from folder "
-			      (url->string (folder-url folder)))))))
+			      (url->string (folder-url folder)))))
+	  (tl-maybe-revert-folder folder))
       (select-message
        folder
        (cond ((eq? folder (message-folder message)) message)
