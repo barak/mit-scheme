@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.50 2000/01/10 03:46:12 cph Exp $
+$Id: error.scm,v 14.51 2000/01/10 03:48:33 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
