@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.18 1992/04/29 23:05:09 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.19 1992/08/03 21:44:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -279,6 +279,9 @@ together with two commands to return to regular RMAIL:
 (define-key 'rmail #\?		'describe-mode)
 (define-key 'rmail #\w		'rmail-edit-current-message)
 (define-key 'rmail #\c-d	'rmail-delete-backward)
+
+(define-key 'rmail-edit '(#\c-c #\c-c)	'rmail-cease-edit)
+(define-key 'rmail-edit '(#\c-c #\c-])	'rmail-abort-edit)
 
 (define-command rmail
   "Read and edit incoming mail.
@@ -661,6 +664,8 @@ and reverse search is specified by a negative numeric arg."
   false)
 
 (define (show-message buffer n)
+  (if (not (eq? (buffer-major-mode buffer) (ref-mode-object rmail)))
+      (error "Can't change buffer message -- not in Rmail mode"))
   (let ((memo (buffer-msg-memo buffer)))
     (if (not (msg-memo? memo))
 	(begin
@@ -1373,46 +1378,58 @@ buffer visiting that file."
 	 (and (not (null? addresses))
 	      (car addresses)))))
 
-;;;; Editing 
+;;;; Editing
+
 (define-command rmail-edit-current-message
   "Edit the current RMAIL message."
   '()
   (lambda ()
-    (let* ((memo (current-msg-memo))
-	   (original-message #f)
-	   (return-value 'ABORT)
-	   (msg-num (msg-memo/number memo)))
-      (dynamic-wind
-       (lambda ()
-	 (with-buffer-open
-	  (current-buffer)
-	  (lambda ()
-	    (set! original-message
-		  (extract-string
-		   (msg-memo/start-body memo)
-		   (msg-memo/end-body memo)))))
-	 (set-buffer-writeable! (current-buffer))
-	 (set-current-major-mode! (ref-mode-object rmail-edit)))
-       (lambda ()
-	 (set! return-value (enter-recursive-edit))
-	 (message return-value)
-	 return-value)
-       (lambda ()
-	 (set-current-major-mode! (ref-mode-object rmail))
-	 (let ((buf (current-buffer)))
-	   (with-buffer-open
-	       buf
-	     (lambda ()
-	       (memoize-buffer buf)
-	       (update-mode-line! buf)
-	       (if (eq? return-value 'ABORT)
-		   (let ((memo (msg-memo/nth (buffer-msg-memo buf) msg-num)))
-		     (kill-string
-		      (msg-memo/start-body memo)
-		      (msg-memo/end-body memo))
-		     (insert-string original-message
-				    (msg-memo/start-body memo))))))
-	   (show-message buf msg-num)))))))
+    (let ((buffer (current-buffer)))
+      (set-buffer-major-mode! buffer (ref-mode-object rmail-edit))
+      (buffer-put! buffer
+		   'RMAIL-OLD-TEXT
+		   (extract-string (buffer-start buffer)
+				   (buffer-end buffer)))
+      (set-buffer-writeable! buffer)
+      (message
+       (substitute-command-keys
+	"Editing: Type \\[rmail-cease-edit] to return to Rmail, \\[rmail-abort-edit] to abort"
+	buffer)))))
+
+(define-command rmail-cease-edit
+  "Finish editing message; switch back to Rmail proper."
+  ()
+  (lambda ()
+    (let ((buffer (current-buffer)))
+      (guarantee-newline (buffer-end buffer))
+      (set-buffer-major-mode! buffer (ref-mode-object rmail))
+      (with-buffer-open buffer
+	(lambda ()
+	  (memoize-buffer buffer)
+	  (let ((memo (buffer-msg-memo buffer)))
+	    (if (msg-memo? memo)
+		(let ((first (msg-memo/first memo))
+		      (point (current-point)))
+		  (if (mark<= (msg-memo/start first) point)
+		      (let loop ((memo first))
+			(if memo
+			    (if (mark< point (msg-memo/end memo))
+				(select-message buffer memo)
+				(loop (msg-memo/next memo))))))))))))))
+
+(define-command rmail-abort-edit
+  "Abort edit of current message; restore original contents."
+  ()
+  (lambda ()
+    (let ((buffer (current-buffer)))
+      (let ((text (buffer-get buffer 'RMAIL-OLD-TEXT)))
+	(if text
+	    (begin
+	      (delete-string (buffer-start buffer)
+			     (buffer-end buffer))
+	      (insert-string text (buffer-start buffer)))
+	    (message "Can't restore buffer contents."))))
+    ((ref-command rmail-cease-edit))))
 
 ;;;; Undigestifier
 
