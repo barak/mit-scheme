@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.48 1993/12/29 18:36:01 cph Exp $
+$Id: rep.scm,v 14.49 1993/12/29 18:46:41 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -381,21 +381,33 @@ MIT in each case. |#
 	     repl-driver
 	     (let ((inherit
 		    (let ((repl (and parent (skip-non-repls parent))))
-		      (lambda (argument default name)
+		      (lambda (argument default name check-arg)
 			(if (eq? 'INHERIT argument)
 			    (begin
 			      (if (not repl)
 				  (error "Can't inherit -- no REPL ancestor:"
 					 name))
 			      (default repl))
-			    argument)))))
+			    (check-arg argument 'MAKE-REPL))))))
 	       (make-repl-state
 		(inherit (if (default-object? prompt) 'INHERIT prompt)
 			 repl/prompt
-			 'PROMPT)
-		(inherit environment repl/environment 'ENVIRONMENT)
-		(inherit syntax-table repl/syntax-table 'SYNTAX-TABLE)
-		(if (default-object? condition) false condition)))
+			 'PROMPT
+			 (lambda (object procedure)
+			   (if (not (string? object))
+			       (error:wrong-type-argument object
+							  "string"
+							  procedure))
+			   object))
+		(inherit environment
+			 repl/environment
+			 'ENVIRONMENT
+			 ->environment)
+		(inherit syntax-table
+			 repl/syntax-table
+			 'SYNTAX-TABLE
+			 guarantee-syntax-table)
+		(if (default-object? condition) #f condition)))
 	     (append (if (default-object? operations) '() operations)
 		     default-repl-operations)))
 
@@ -732,26 +744,30 @@ MIT in each case. |#
 	  environment))))
 
 (define (ge environment)
-  (let ((environment (->environment environment)))
+  (let ((environment (->environment environment 'GE)))
     (set-repl/environment! (nearest-repl) environment)
     environment))
 
-(define (->environment object)
-  (cond ((environment? object) object)
-	((package? object) (package/environment object))
-	((procedure? object) (procedure-environment object))
-	((promise? object) (promise-environment object))
-	(else
-	 (let ((package
-		(let ((package-name
-		       (cond ((symbol? object) (list object))
-			     ((list? object) object)
-			     (else false))))
-		  (and package-name
-		       (name->package package-name)))))
-	   (if (not package)
-	       (error:wrong-type-argument object "environment" '->ENVIRONMENT))
-	   (package/environment package)))))
+(define (->environment object #!optional procedure)
+  (let ((procedure
+	 (if (or (default-object? procedure) (not procedure))
+	     '->ENVIRONMENT
+	     procedure)))
+    (cond ((environment? object) object)
+	  ((package? object) (package/environment object))
+	  ((procedure? object) (procedure-environment object))
+	  ((promise? object) (promise-environment object))
+	  (else
+	   (let ((package
+		  (let ((package-name
+			 (cond ((symbol? object) (list object))
+			       ((list? object) object)
+			       (else false))))
+		    (and package-name
+			 (name->package package-name)))))
+	     (if (not package)
+		 (error:wrong-type-argument object "environment" procedure))
+	     (package/environment package))))))
 
 (define (gst syntax-table)
   (guarantee-syntax-table syntax-table 'GST)
@@ -783,7 +799,7 @@ MIT in each case. |#
   (repl/start (push-repl environment 'INHERIT false '() prompt) message))
 
 (define (ve environment)
-  (read-eval-print (->environment environment) false 'INHERIT))
+  (read-eval-print (->environment environment 'VE) false 'INHERIT))
 
 (define (proceed #!optional value)
   (if (default-object? value)
