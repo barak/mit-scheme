@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.57 1991/02/24 01:10:08 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.58 1991/02/26 21:14:40 cph Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -64,8 +64,9 @@ MIT in each case. */
 #include "option.h"
 
 /* Exports */
-
-extern void Clear_Memory(), Setup_Memory(), Reset_Memory();
+extern void EXFUN (Clear_Memory, (int, int, int));
+extern void EXFUN (Setup_Memory, (int, int, int));
+extern void EXFUN (Reset_Memory, (void));
 
 /* 	Memory Allocation, sequential processor,
 	garbage collection to disk version:
@@ -187,9 +188,10 @@ DEFUN_VOID (close_gc_file)
 }
 
 void
-DEFUN (Clear_Memory,
-       (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size),
-       int Our_Heap_Size, int Our_Stack_Size, int Our_Constant_Size)
+DEFUN (Clear_Memory, (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size),
+       int Our_Heap_Size AND
+       int Our_Stack_Size AND
+       int Our_Constant_Size)
 {
   GC_Reserve = 4500;
   GC_Space_Needed = 0;
@@ -204,9 +206,10 @@ DEFUN (Clear_Memory,
 }
 
 void
-DEFUN (Setup_Memory,
-       (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size),
-       int Our_Heap_Size, int Our_Stack_Size, int Our_Constant_Size)
+DEFUN (Setup_Memory, (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size),
+       int Our_Heap_Size AND
+       int Our_Stack_Size AND
+       int Our_Constant_Size)
 {
   SCHEME_OBJECT test_value;
   int Real_Stack_Size;
@@ -277,8 +280,7 @@ DEFUN_VOID (Reset_Memory)
 }
 
 void
-DEFUN (dump_buffer,
-       (from, position, nbuffers, name, success),
+DEFUN (dump_buffer, (from, position, nbuffers, name, success),
        SCHEME_OBJECT *from AND
        long *position AND
        long nbuffers AND
@@ -321,8 +323,7 @@ DEFUN (dump_buffer,
 }
 
 void
-DEFUN (load_buffer,
-       (position, to, nbytes, name),
+DEFUN (load_buffer, (position, to, nbytes, name),
        long position AND
        SCHEME_OBJECT *to AND
        long nbytes AND
@@ -398,9 +399,7 @@ DEFUN_VOID (initialize_free_buffer)
 }
 
 void
-DEFUN (end_transport,
-       (success),
-       Boolean *success)
+DEFUN (end_transport, (success), Boolean *success)
 {
   dump_buffer (scan_buffer_bottom, &scan_position, 1, "scan", success);
   free_position = scan_position;
@@ -416,8 +415,7 @@ DEFUN (end_transport,
 */
 
 void
-DEFUN (extend_scan_buffer,
-       (to_where, current_free),
+DEFUN (extend_scan_buffer, (to_where, current_free),
        fast char *to_where AND
        SCHEME_OBJECT *current_free)
 {
@@ -459,9 +457,7 @@ DEFUN (extend_scan_buffer,
 }
 
 char *
-DEFUN (end_scan_buffer_extension,
-       (to_relocate),
-       char *to_relocate)
+DEFUN (end_scan_buffer_extension, (to_relocate), char *to_relocate)
 {
   char *result;
 
@@ -529,8 +525,7 @@ DEFUN (end_scan_buffer_extension,
 }
 
 SCHEME_OBJECT *
-DEFUN (dump_and_reload_scan_buffer,
-       (number_to_skip, success),
+DEFUN (dump_and_reload_scan_buffer, (number_to_skip, success),
        long number_to_skip AND
        Boolean *success)
 {
@@ -544,8 +539,7 @@ DEFUN (dump_and_reload_scan_buffer,
 }
 
 SCHEME_OBJECT *
-DEFUN (dump_and_reset_free_buffer,
-       (overflow, success),
+DEFUN (dump_and_reset_free_buffer, (overflow, success),
        fast long overflow AND
        Boolean *success)
 {
@@ -582,8 +576,7 @@ DEFUN (dump_and_reset_free_buffer,
 }
 
 void
-DEFUN (dump_free_directly,
-       (from, nbuffers, success),
+DEFUN (dump_free_directly, (from, nbuffers, success),
        SCHEME_OBJECT *from AND
        long nbuffers AND
        Boolean *success)
@@ -615,9 +608,7 @@ DEFUN_VOID (flush_new_space_buffer)
 }
 
 SCHEME_OBJECT *
-DEFUN (guarantee_in_memory,
-       (addr),
-       SCHEME_OBJECT *addr)
+DEFUN (guarantee_in_memory, (addr), SCHEME_OBJECT *addr)
 {
   long position, offset;
 
@@ -760,9 +751,7 @@ DEFUN_VOID (Fix_Weak_Chain)
 */
 
 void
-DEFUN (GC,
-       (initial_weak_chain),
-       SCHEME_OBJECT initial_weak_chain)
+DEFUN (GC, (initial_weak_chain), SCHEME_OBJECT initial_weak_chain)
 {
   SCHEME_OBJECT
     *Root, *Result, *end_of_constant_area,
