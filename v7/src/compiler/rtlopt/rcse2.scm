@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.6 1988/05/09 19:54:06 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.7 1988/06/03 14:56:55 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -191,7 +191,12 @@ MIT in each case. |#
 (define (insert-memory-destination! expression element hash)
   (let ((class (element->class element)))
     (mention-registers! expression)
-    (set-element-in-memory?! (hash-table-insert! hash expression class) true)))
+    ;; Optimization: if class and hash are both false, hash-table-insert!
+    ;; makes an element which is not connected to the rest of the table.
+    ;; In that case, there is no need to make an element at all.
+    (if (or class hash)
+	(set-element-in-memory?! (hash-table-insert! hash expression class)
+				 true))))
 
 (define (mention-registers! expression)
   (if (rtl:register? expression)
