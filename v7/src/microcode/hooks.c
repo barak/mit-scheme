@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.52 1993/09/11 02:45:54 gjr Exp $
+$Id: hooks.c,v 9.53 1993/09/12 03:21:01 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -769,7 +769,7 @@ and MARKER2 is data identifying the marker instance.")
 
   thunk = (ARG_REF (1));
 
-  if ((COMPILED_CODE_ADDRESS_P (STACK_REF (2)))
+  if ((COMPILED_CODE_ADDRESS_P (STACK_REF (3)))
       && (COMPILED_CODE_ADDRESS_P (thunk)))
   {
     extern SCHEME_OBJECT EXFUN (compiled_with_stack_marker, (SCHEME_OBJECT));
