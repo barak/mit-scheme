@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.52 1992/01/15 02:31:10 jinx Exp $
+$Id: intern.c,v 9.53 1992/11/24 23:14:23 gjr Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,39 +37,45 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "trap.h"
+
+/* These are exported to other parts of the system. */
+
+extern SCHEME_OBJECT EXFUN (string_to_symbol, (SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (find_symbol, (long, unsigned char *));
 
 /* Hashing strings */
 
 #define STRING_HASH_BITS 16
 
 static unsigned int
-DEFUN (string_hash, (string), SCHEME_OBJECT string)
+DEFUN (string_hash, (length, string),
+       long length AND unsigned char * string)
 {
-  fast unsigned char * scan = (STRING_LOC (string, 0));
-  fast unsigned char * end = (scan + (STRING_LENGTH (string)));
+  fast unsigned char * scan = string;
+  fast unsigned char * end = (scan + length);
   fast unsigned int result = 0;
   while (scan < end)
-    {
-      result <<= 1;
-      result |= (result >> STRING_HASH_BITS);
-      result ^= (*scan++);
-      result &= ((1 << STRING_HASH_BITS) - 1);
-    }
+  {
+    result <<= 1;
+    result |= (result >> STRING_HASH_BITS);
+    result ^= (*scan++);
+    result &= ((1 << STRING_HASH_BITS) - 1);
+  }
   return (result);
 }
 
 static Boolean
-DEFUN (string_equal, (string1, string2),
-       SCHEME_OBJECT string1
-       AND SCHEME_OBJECT string2)
+DEFUN (string_equal, (length1, string1, length2, string2),
+       long length1 AND unsigned char * string1
+       AND long length2 AND unsigned char * string2)
 {
-  fast unsigned char * scan1 = (STRING_LOC (string1, 0));
-  fast unsigned char * scan2 = (STRING_LOC (string2, 0));
-  fast long length = (STRING_LENGTH (string1));
+  fast unsigned char * scan1 = string1;
+  fast unsigned char * scan2 = string2;
+  fast long length = length1;
   fast unsigned char * end1 = (scan1 + length);
   if (scan1 == scan2)
     return (true);
-  if (length != (STRING_LENGTH (string2)))
+  if (length != length2)
     return (false);
   while (scan1 < end1)
     if ((*scan1++) != (*scan2++))
@@ -78,20 +84,24 @@ DEFUN (string_equal, (string1, string2),
 }
 
 static SCHEME_OBJECT *
-DEFUN (find_symbol_internal, (string), SCHEME_OBJECT string)
+DEFUN (find_symbol_internal, (length, string),
+       long length AND unsigned char * string)
 {
   fast SCHEME_OBJECT * bucket;
   {
     fast SCHEME_OBJECT obarray = (Get_Fixed_Obj_Slot (OBArray));
     bucket =
       (MEMORY_LOC (obarray,
-		   (((string_hash (string)) % (VECTOR_LENGTH (obarray)))
+		   (((string_hash (length, string))
+		     % (VECTOR_LENGTH (obarray)))
 		    + 1)));
   }
   while ((*bucket) != EMPTY_LIST)
     {
       fast SCHEME_OBJECT symbol = (PAIR_CAR (*bucket));
-      if (string_equal (string, (FAST_MEMORY_REF (symbol, SYMBOL_NAME))))
+      fast SCHEME_OBJECT name = (FAST_MEMORY_REF (symbol, SYMBOL_NAME));
+      if (string_equal (length, string,
+			(STRING_LENGTH (name)), (STRING_LOC (name, 0))))
 	return (PAIR_CAR_LOC (*bucket));
       bucket = (PAIR_CDR_LOC (*bucket));
     }
@@ -119,16 +129,18 @@ DEFUN (link_new_symbol, (symbol, cell),
 }
 
 SCHEME_OBJECT
-DEFUN (find_symbol, (string), SCHEME_OBJECT string)
+DEFUN (find_symbol, (length, string), long length AND unsigned char * string)
 {
-  fast SCHEME_OBJECT result = (* (find_symbol_internal (string)));
+  fast SCHEME_OBJECT result = (* (find_symbol_internal (length, string)));
   return ((result == EMPTY_LIST) ? SHARP_F : result);
 }
 
 SCHEME_OBJECT
 DEFUN (string_to_symbol, (string), SCHEME_OBJECT string)
 {
-  fast SCHEME_OBJECT * cell = (find_symbol_internal (string));
+  fast SCHEME_OBJECT * cell =
+    (find_symbol_internal ((STRING_LENGTH (string)),
+			   (STRING_LOC (string, 0))));
   if ((*cell) != EMPTY_LIST)
     return (*cell);
   Primitive_GC_If_Needed (2);
@@ -145,8 +157,9 @@ DEFUN (string_to_symbol, (string), SCHEME_OBJECT string)
 SCHEME_OBJECT
 DEFUN (intern_symbol, (symbol), SCHEME_OBJECT symbol)
 {
+  fast SCHEME_OBJECT name = (FAST_MEMORY_REF (symbol, SYMBOL_NAME));
   fast SCHEME_OBJECT * cell =
-    (find_symbol_internal (FAST_MEMORY_REF (symbol, SYMBOL_NAME)));
+    (find_symbol_internal ((STRING_LENGTH (name)), (STRING_LOC (name, 0))));
   return
     (((*cell) != EMPTY_LIST)
      ? (*cell)
@@ -157,10 +170,12 @@ DEFINE_PRIMITIVE ("FIND-SYMBOL", Prim_find_symbol, 1, 1,
   "(FIND-SYMBOL STRING)\n\
 Returns the symbol whose name is STRING, or #F if no such symbol exists.")
 {
+  SCHEME_OBJECT string;
   PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, STRING_P);
-  PRIMITIVE_RETURN (find_symbol (ARG_REF (1)));
+  string = (ARG_REF (1));
+  PRIMITIVE_RETURN (find_symbol ((STRING_LENGTH (string)), (STRING_LOC (string, 0))));
 }
 
 DEFINE_PRIMITIVE ("STRING->SYMBOL", Prim_string_to_symbol, 1, 1,
@@ -179,10 +194,14 @@ Return a hash value for a string.  This uses the hashing\n\
 algorithm used for interning symbols.  It is intended for use by\n\
 the reader in creating interned symbols.")
 {
+  SCHEME_OBJECT string;
   PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, STRING_P);
-  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (string_hash (ARG_REF (1))));
+  string = (ARG_REF (1));
+  PRIMITIVE_RETURN
+    (LONG_TO_UNSIGNED_FIXNUM (string_hash ((STRING_LENGTH (string)),
+					   (STRING_LOC (string, 0)))));
 }
 
 DEFINE_PRIMITIVE ("STRING-HASH-MOD", Prim_string_hash_mod, 2, 2,
@@ -190,10 +209,14 @@ DEFINE_PRIMITIVE ("STRING-HASH-MOD", Prim_string_hash_mod, 2, 2,
 DENOMINATOR must be a nonnegative integer.\n\
 Equivalent to (MOD (STRING-HASH STRING) DENOMINATOR).")
 {
+  SCHEME_OBJECT string;
   PRIMITIVE_HEADER (2);
 
   CHECK_ARG (1, STRING_P);
+  string = (ARG_REF (1));
   PRIMITIVE_RETURN
     (LONG_TO_UNSIGNED_FIXNUM
-     ((string_hash (ARG_REF (1))) % (arg_nonnegative_integer (2))));
+     ((string_hash ((STRING_LENGTH (string)),
+		    (STRING_LOC (string, 0))))
+      % (arg_nonnegative_integer (2))));
 }
