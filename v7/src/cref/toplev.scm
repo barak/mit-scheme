@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.10 1996/04/23 21:16:46 cph Exp $
+$Id: toplev.scm,v 1.11 1998/06/07 08:27:38 cph Exp $
 
-Copyright (c) 1988-96 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -84,6 +84,8 @@ MIT in each case. |#
 	      (write-string ";;; -*-Scheme-*-")
 	      (newline)
 	      (write-string ";;; program to make package structure")
+	      (newline)
+	      (write '(DECLARE (USUAL-INTEGRATIONS)))
 	      (for-each (lambda (expression)
 			  (pp expression (current-output-port) true))
 		constructor)))))))
@@ -99,6 +101,8 @@ MIT in each case. |#
 	      (write-string ";;; -*-Scheme-*-")
 	      (newline)
 	      (write-string ";;; program to load package contents")
+	      (newline)
+	      (write '(DECLARE (USUAL-INTEGRATIONS)))
 	      (for-each (lambda (expression)
 			  (pp expression (current-output-port) true))
 		loader)))))))
