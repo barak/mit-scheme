@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.11 1991/02/15 18:04:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.12 1991/05/15 22:03:00 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -68,22 +68,32 @@ MIT in each case. |#
 	     make-cmdl))
 
 (define (letter-commands/driver cmdl)
-  (let ((command-set (vector-ref (cmdl/state cmdl) 0))
-	(prompt (vector-ref (cmdl/state cmdl) 1))
-	(state (vector-ref (cmdl/state cmdl) 2)))
-    (let loop ()
-      (let ((char (char-upcase (prompt-for-command-char prompt cmdl))))
-	(with-output-to-port (cmdl/output-port cmdl)
-	  (lambda ()
-	    (let ((entry (assv char (cdr command-set))))
-	      (if entry
-		  ((cadr entry) state)
-		  (begin
-		    (beep)
-		    (newline)
-		    (write-string "Unknown command char: ")
-		    (write char)
-		    (loop)))))))))
+  (call-with-current-continuation
+   (lambda (continuation)
+     (bind-condition-handler (list condition-type:error)
+	 (lambda (condition)
+	   (let ((port (cmdl/output-port cmdl)))
+	     (beep port)
+	     (write-string ";Ignoring error:\n;" port)
+	     (write-condition-report condition port))
+	   (continuation unspecific))
+       (lambda ()
+	 (let ((command-set (vector-ref (cmdl/state cmdl) 0))
+	       (prompt (vector-ref (cmdl/state cmdl) 1))
+	       (state (vector-ref (cmdl/state cmdl) 2)))
+	   (let loop ()
+	     (let ((char (char-upcase (prompt-for-command-char prompt cmdl))))
+	       (with-output-to-port (cmdl/output-port cmdl)
+		 (lambda ()
+		   (let ((entry (assv char (cdr command-set))))
+		     (if entry
+			 ((cadr entry) state)
+			 (begin
+			   (beep)
+			   (newline)
+			   (write-string "Unknown command char: ")
+			   (write char)
+			   (loop)))))))))))))
   (cmdl-message/null))
 
 (define ((standard-help-command command-set) state)
