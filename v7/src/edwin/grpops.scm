@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: grpops.scm,v 1.26 2000/02/25 17:47:00 cph Exp $
+;;; $Id: grpops.scm,v 1.27 2000/02/27 05:33:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -253,7 +253,9 @@
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok))
 	(end-index (fix:+ index 1)))
     (prepare-gap-for-replace! group index end-index)
-    (string-set! (group-text group) index char)
+    (string-set! (group-text group)
+		 (group-index->position-integrable group index #t)
+		 char)
     (finish-group-replace! group index end-index)
     (set-interrupt-enables! interrupt-mask)
     unspecific))
@@ -266,7 +268,9 @@
       (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok))
 	    (end-index (fix:+ index (fix:- end start))))
 	(prepare-gap-for-replace! group index end-index)
-	(%substring-move! string start end (group-text group) index)
+	(%substring-move! string start end
+			  (group-text group)
+			  (group-index->position-integrable group index #t))
 	(finish-group-replace! group index end-index)
 	(set-interrupt-enables! interrupt-mask)
 	unspecific)))
