@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/decls.scm,v 1.1 1990/05/07 04:12:47 jinx Exp $
-$MC68020-Header: decls.scm,v 4.25 90/01/18 22:43:31 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/decls.scm,v 1.2 1990/07/22 20:18:06 jinx Rel $
+$MC68020-Header: decls.scm,v 4.27 90/05/03 15:17:08 GMT jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -34,6 +34,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Compiler File Dependencies
+;;; package: (compiler declarations)
 
 (declare (usual-integrations))
 
@@ -386,48 +387,52 @@ MIT in each case. |#
 			 (source-node/declarations node)))))
 	      filenames))
 
-  (let ((front-end-base
-	 (filename/append "base"
-			  "blocks" "cfg1" "cfg2" "cfg3"
-			  "contin" "ctypes" "enumer" "lvalue"
-			  "object" "proced" "rvalue"
-			  "scode" "subprb" "utils"))
-	(mips-base
-	 (filename/append "machines/mips" "machin"))
-	(rtl-base
-	 (filename/append "rtlbase"
-			  "regset" "rgraph" "rtlcfg" "rtlobj"
-			  "rtlreg" "rtlty1" "rtlty2"))
-	(cse-base
-	 (filename/append "rtlopt"
-			  "rcse1" "rcse2" "rcseep" "rcseht" "rcserq" "rcsesr"))
-	(instruction-base
-	 (filename/append "machines/mips" "assmd" "machin"))
-	(lapgen-base
-	 (append (filename/append "back" "lapgn3" "regmap")
-		 (filename/append "machines/mips" "lapgen")))
-	(assembler-base
-	 (append (filename/append "back" "symtab")
-		 (filename/append "machines/mips"
-				  "instr1" "instr2a" "instr2b" "instr3")))
-	(lapgen-body
-	 (append
-	  (filename/append "back" "lapgn1" "lapgn2" "syntax")
-	  (filename/append "machines/mips"
-			   "rules1" "rules2" "rules3" "rules4"
-			   "rulfix" "rulflo"
-			   )))
-	(assembler-body
-	 (append
-	  (filename/append "back" "bittop")
-	  (filename/append "machines/mips"
-			   "instr1" "instr2a" "instr2b" "instr3"))))
+  (let* ((front-end-base
+	  (filename/append "base"
+			   "blocks" "cfg1" "cfg2" "cfg3"
+			   "contin" "ctypes" "enumer" "lvalue"
+			   "object" "proced" "rvalue"
+			   "scode" "subprb" "utils"))
+	 (mips-base
+	  (filename/append "machines/mips" "machin"))
+	 (rtl-base
+	  (filename/append "rtlbase"
+			   "regset" "rgraph" "rtlcfg" "rtlobj"
+			   "rtlreg" "rtlty1" "rtlty2"))
+	 (cse-base
+	  (filename/append "rtlopt"
+			   "rcse1" "rcseht" "rcserq" "rcsesr"))
+	 (cse-all
+	  (append (filename/append "rtlopt"
+				   "rcse2" "rcseep")
+		  cse-base))
+	 (instruction-base
+	  (filename/append "machines/mips" "assmd" "machin"))
+	 (lapgen-base
+	  (append (filename/append "back" "lapgn3" "regmap")
+		  (filename/append "machines/mips" "lapgen")))
+	 (assembler-base
+	  (append (filename/append "back" "symtab")
+		  (filename/append "machines/mips"
+				   "instr1" "instr2a" "instr2b" "instr3")))
+	 (lapgen-body
+	  (append
+	   (filename/append "back" "lapgn1" "lapgn2" "syntax")
+	   (filename/append "machines/mips"
+			    "rules1" "rules2" "rules3" "rules4"
+			    "rulfix" "rulflo"
+			    )))
+	 (assembler-body
+	  (append
+	   (filename/append "back" "bittop")
+	   (filename/append "machines/mips"
+			    "instr1" "instr2a" "instr2b" "instr3"))))
     
     (define (file-dependency/integration/join filenames dependencies)
       (for-each (lambda (filename)
 		  (file-dependency/integration/make filename dependencies))
 		filenames))
-    
+
     (define (file-dependency/integration/make filename dependencies)
       (let ((node (filename->source-node filename)))
 	(for-each (lambda (dependency)
@@ -435,12 +440,12 @@ MIT in each case. |#
 		      (if (not (eq? node node*))
 			  (source-node/link! node node*))))
 		  dependencies)))
-    
+
     (define (define-integration-dependencies directory name directory* . names)
       (file-dependency/integration/make
        (string-append directory "/" name)
        (apply filename/append directory* names)))
-    
+
     (define-integration-dependencies "base" "object" "base" "enumer")
     (define-integration-dependencies "base" "enumer" "base" "object")
     (define-integration-dependencies "base" "utils" "base" "scode")
@@ -516,17 +521,22 @@ MIT in each case. |#
      (append mips-base front-end-base rtl-base))
 
     (file-dependency/integration/join
-     (append cse-base
+     (append cse-all
 	     (filename/append "rtlopt" "ralloc" "rcompr" "rdebug" "rdflow"
 			      "rerite" "rinvex" "rlife" "rtlcsm")
-	     (filename/append "machines/mips" "rulrew")
-	     )
+	     (filename/append "machines/mips" "rulrew"))
      (append mips-base rtl-base))
 
-    (file-dependency/integration/join cse-base cse-base)
+    (file-dependency/integration/join cse-all cse-base)
 
-    (define-integration-dependencies "rtlopt" "rcseht" "base" "object")
-    (define-integration-dependencies "rtlopt" "rcserq" "base" "object")
+    (file-dependency/integration/join
+     (filename/append "rtlopt" "ralloc" "rcompr" "rdebug" "rlife")
+     (filename/append "rtlbase" "regset"))
+
+    (file-dependency/integration/join
+     (filename/append "rtlopt" "rcseht" "rcserq")
+     (filename/append "base" "object"))
+
     (define-integration-dependencies "rtlopt" "rlife"  "base" "cfg2")
 
     (let ((dependents
@@ -605,8 +615,8 @@ MIT in each case. |#
 		      )
      (map (lambda (entry)
 	    `(,(car entry)
-	      (PACKAGE/REFERENCE
-	       (FIND-PACKAGE '(COMPILER LAP-SYNTAXER)) ',(cadr entry))))
+	      (PACKAGE/REFERENCE (FIND-PACKAGE '(COMPILER LAP-SYNTAXER))
+				 ',(cadr entry))))
 	  '((LAP:SYNTAX-INSTRUCTION LAP:SYNTAX-INSTRUCTION-EXPANDER)
 	    (INSTRUCTION->INSTRUCTION-SEQUENCE
 	     INSTRUCTION->INSTRUCTION-SEQUENCE-EXPANDER)

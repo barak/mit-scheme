@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulflo.scm,v 1.1 1990/05/07 04:17:41 jinx Exp $
-$MC68020-Header: rules1.scm,v 4.32 90/01/18 22:43:54 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulflo.scm,v 1.2 1990/07/22 20:28:36 jinx Rel $
+$MC68020-Header: rules1.scm,v 4.33 90/05/03 15:17:28 GMT jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -200,6 +200,5 @@ MIT in each case. |#
    (lambda (label)
      (LAP (BC1F (@PCR ,label)) (NOP))))
   (if (eq? cc 'C.GT)
-      (LAP (C.LT DOUBLE ,r2 ,r1))
-      (LAP (,cc DOUBLE ,r1 ,r2))))
-  
+      (LAP (C.LT DOUBLE ,r2 ,r1) (NOP))
+      (LAP (,cc DOUBLE ,r1 ,r2) (NOP))))

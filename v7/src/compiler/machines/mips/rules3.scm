@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules3.scm,v 1.1 1990/05/07 04:16:34 jinx Exp $
-$MC68020-Header: rules3.scm,v 4.23 90/01/18 22:44:09 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules3.scm,v 1.2 1990/07/22 20:26:45 jinx Exp $
+$MC68020-Header: rules3.scm,v 4.24 90/05/03 15:17:33 GMT jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -446,7 +446,11 @@ MIT in each case. |#
   (deposit-type (ucode-type compiled-entry) register))
 
 (define-rule statement
-  (CLOSURE-HEADER (? internal-label))
+  (CLOSURE-HEADER (? internal-label) (? nentries) (? entry))
+  entry			; ignored -- non-RISCs only
+  (if (zero? nentries)
+      (error "Closure header for closure with no entries!"
+	     internal-label))
   (let ((procedure (label->object internal-label)))
     (let ((gc-label (generate-label))
 	  (external-label (rtl-procedure/external-label procedure)))
@@ -460,42 +464,102 @@ MIT in each case. |#
 	   (LABEL ,internal-label)
 	   ,@(interrupt-check gc-label)))))
 
-(define (cons-closure target label min max size ->entry?)
+(define (build-gc-offset-word offset code-word)
+  (let ((encoded-offset (quotient offset 2)))
+    (if (eq? endianness 'LITTLE)
+	(+ (* encoded-offset #x10000) code-word)
+	(+ (* code-word #x10000) encoded-offset))))
+
+(define (cons-closure target label min max size)
   (let ((flush-reg (clear-registers! regnum:interface-index)))
     (need-register! regnum:interface-index)
-    (let ((dest (standard-target! target)))
+    (let ((dest (standard-target! target))
+	  (gc-offset-word
+	   (build-gc-offset-word
+	    8 (make-procedure-code-word min max))))
       ;; Note: dest is used as a temporary before the JALR
       ;; instruction, and is written immediately afterwards.
       ;; The interface (scheme_to_interface-88) expects:
-      ;;    1: size of closure = size+3
+      ;;    1: size of closure = size+closure entry size
       ;;    4: offset to destination label
       ;;   25: GC offset and arity information
+      ;; NOTE: setup of 25 has implict the endian-ness!
       (LAP ,@flush-reg
-	   ,@(load-immediate (+ size 3) 1)
-	   (LUI 25 4)
+	   ,@(load-immediate (+ size closure-entry-size) 1)
+	   (LUI 25 ,(quotient gc-offset-word #x10000))
 	   (PC-RELATIVE-OFFSET 4 16
 	    ,(rtl-procedure/external-label (label->object label)))
 	   (ADDI ,dest ,regnum:scheme-to-interface -88)	; + 4
-	   (JALR ,regnum:linkage ,dest)		        ; + 8
-	   (ORI 25 25 ,(make-procedure-code-word min max)) ; +12
+	   (JALR 31 ,dest)		         ; + 8
+	   (ORI 25 25 ,(remainder gc-offset-word #x10000)) ; +12
 	   ,@(add-immediate (* 4 (- (+ size 2))) ; +16
-			    regnum:free dest)
-	   ,@(if ->entry? (address->entry dest) (LAP))))))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (CONS-POINTER (MACHINE-CONSTANT (? type))
-			(CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
-				      (? min) (? max) (? size))))
-  (QUALIFIER (= type (ucode-type compiled-entry)))
-  (cons-closure target procedure-label min max size true))
+			    regnum:free dest)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
 			(? min) (? max) (? size)))
-  (QUALIFIER (= type (ucode-type compiled-entry)))
-  (cons-closure target procedure-label min max size false))
+  (cons-closure target procedure-label min max size))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (CONS-MULTICLOSURE (? nentries) (? size) (? entries)))
+  ;; entries is a vector of all the entry points
+  (case nentries
+    ((0)
+     (let ((dest (standard-target! target))
+	   (temp (standard-temporary!)))
+       (LAP (ADD ,dest 0 ,regnum:free)
+	    ,@(load-non-pointer
+	       (ucode-type manifest-vector) size temp)
+	    (SW ,temp (OFFSET 0 ,regnum:free))
+	    (ADDI ,regnum:free ,regnum:free ,(* 4 (+ size 1))))))
+    ((1)
+     (let ((entry (vector-ref entries 0)))
+       (cons-closure
+	target (car entry) (cadr entry) (caddr entry) size)))
+    (else
+     (cons-multiclosure target nentries size (vector->list entries)))))
+
+(define (cons-multiclosure target nentries size entries)
+  ;; Assembly support called with:
+  ;; 31 is the return address
+  ;;  1 has the GC offset and format words
+  ;;  4 has the offset from return address to destination
+  ;; Note that none of these are allocatable registers
+  (let ((total-size (+ size 1 (* closure-entry-size nentries)))
+	(dest (standard-target! target))
+	(temp (standard-temporary!)))
+
+    (define (generate-entries entries offset)
+      (if (null? entries)
+	  (LAP)
+	  (let ((entry (car entries)))
+	    (let ((gc-offset-word
+		   (build-gc-offset-word
+		    offset
+		    (make-procedure-code-word
+		     (cadr entry) (caddr entry)))))
+	    (LAP
+	     (LUI 1 ,(quotient gc-offset-word #x10000))
+	     (PC-RELATIVE-OFFSET 4 16 ,(rtl-procedure/external-label
+					(label->object (car entry))))
+	     (ADDI ,temp ,regnum:scheme-to-interface -80)  ; +  4
+	     (JALR 31 ,temp)		                   ; +  8
+	     (ORI 1 1 ,(remainder gc-offset-word #x10000)) ; + 12
+	     ,@(generate-entries (cdr entries)             ; + 16
+				 (+ (* closure-entry-size 4)
+				    offset)))))))
+
+    (LAP
+     ,@(load-non-pointer (ucode-type manifest-closure) total-size temp)
+     (SW ,temp (OFFSET 0 ,regnum:free))
+     ,@(load-immediate (build-gc-offset-word 0 nentries) temp)
+     (SW ,temp (OFFSET 4 ,regnum:free))
+     (ADDI ,regnum:free ,regnum:free 8)
+     (ADDI ,dest ,regnum:free 4)
+     ,@(generate-entries entries 12)
+     (ADDI ,regnum:free ,regnum:free ,(* 4 size)))))
 
 ;;;; Entry Header
 ;;; This is invoked by the top level of the LAP generator.

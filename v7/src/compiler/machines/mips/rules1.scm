@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules1.scm,v 1.1 1990/05/07 04:16:03 jinx Exp $
-$MC68020-Header: rules1.scm,v 4.32 90/01/18 22:43:54 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules1.scm,v 1.2 1990/07/22 20:24:55 jinx Rel $
+$MC68020-Header: rules1.scm,v 4.33 90/05/03 15:17:28 GMT jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -85,12 +85,20 @@ MIT in each case. |#
     (object->address target)))
 
 (define-rule statement
-  ;; add a constant to a register's contents
+  ;; add a distance (in longwords) to a register's contents
   (ASSIGN (REGISTER (? target))
 	  (OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
   (standard-unary-conversion source target
     (lambda (source target)
       (add-immediate (* 4 offset) source target))))
+
+(define-rule statement
+  ;; add a distance (in bytes) to a register's contents
+  (ASSIGN (REGISTER (? target))
+	  (BYTE-OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
+  (standard-unary-conversion source target
+    (lambda (source target)
+      (add-immediate offset source target))))
 
 (define-rule statement
   ;; read an object from memory

@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/compiler.pkg,v 1.1 1990/05/07 04:11:31 jinx Exp $
-$MC68020-Header: comp.pkg,v 1.27 90/01/22 23:45:02 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/compiler.pkg,v 1.2 1990/07/22 20:16:15 jinx Rel $
+$MC68020-Header: comp.pkg,v 1.30 90/05/03 15:16:59 GMT jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -99,7 +99,8 @@ MIT in each case. |#
 	  compiler:show-phases?
 	  compiler:show-procedures?
 	  compiler:show-subphases?
-	  compiler:show-time-reports?))
+	  compiler:show-time-reports?
+	  compiler:use-multiclosures?))
 
 (define-package (compiler reference-contexts)
   (files "base/refctx")
@@ -397,7 +398,9 @@ MIT in each case. |#
   (parent (compiler fg-optimizer))
   (export (compiler top-level)
 	  setup-block-types!
-	  setup-closure-contexts!))
+	  setup-closure-contexts!)
+  (export (compiler)
+	  indirection-block-procedure))
 
 (define-package (compiler fg-optimizer simplicity-analysis)
   (files "fgopt/simple")
@@ -446,7 +449,7 @@ MIT in each case. |#
   (files "rtlgen/rtlgen"		;RTL generator
 	 "rtlgen/rgstmt"		;statements
 	 "rtlgen/fndvar"		;find variables
-	 "machines/mips/rgspcm"	;special close-coded primitives
+	 "machines/mips/rgspcm"		;special close-coded primitives
 	 "rtlbase/rtline"		;linearizer
 	 )
   (parent (compiler))
@@ -483,9 +486,13 @@ MIT in each case. |#
   (export (compiler rtl-generator)
 	  generate/rvalue
 	  load-closure-environment
+	  make-cons-closure-indirection
+	  make-cons-closure-redirection
+	  make-closure-redirection
 	  make-ic-cons
 	  make-non-trivial-closure-cons
-	  make-trivial-closure-cons))
+	  make-trivial-closure-cons
+	  redirect-closure))
 
 (define-package (compiler rtl-generator generate/combination)
   (files "rtlgen/rgcomb")

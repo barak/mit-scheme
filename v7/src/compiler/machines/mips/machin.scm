@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/machin.scm,v 1.1 1990/05/07 04:15:24 jinx Exp $
-$MC68020-Header: machin.scm,v 4.20 90/01/18 22:43:44 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/machin.scm,v 1.2 1990/07/22 20:21:37 jinx Rel $
+$MC68020-Header: machin.scm,v 4.22 90/05/03 15:17:20 GMT jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -71,8 +71,51 @@ MIT in each case. |#
 
 (define-integrable (stack->memory-offset offset) offset)
 (define-integrable ic-block-first-parameter-offset 2)
-(define-integrable closure-block-first-offset 2)
 (define-integrable execute-cache-size 2) ; Long words per UUO link slot
+(define-integrable closure-entry-size
+  ;; Long words in a single closure entry:
+  ;;   GC offset word
+  ;;   JALR
+  ;;   ADDI
+  3)
+
+;; Given: the number of entry points in a closure, and a particular
+;; entry point number. Return: the distance from that entry point to
+;; the first variable slot in the closure (in words).
+
+(define (closure-first-offset nentries entry)
+  (if (zero? nentries)
+      1					; Strange boundary case
+      (- (* closure-entry-size (- nentries entry)) 1)))
+
+;; Like the above, but from the start of the complete closure object,
+;; viewed as a vector, and including the header word.
+
+(define (closure-object-first-offset nentries)
+  (case nentries
+    ((0)
+     ;; Vector header only
+     1)
+    ((1)
+     ;; Manifest closure header followed by single entry point
+     (+ 1 closure-entry-size))
+    (else
+     ;; Manifest closure header, number of entries, then entries.
+     (+ 1 1 (* closure-entry-size nentries)))))
+
+;; Bump from one entry point to another -- distance in BYTES
+
+(define (closure-entry-distance nentries entry entry*)
+  nentries				; ignored
+  (* (* closure-entry-size 4) (- entry* entry)))
+
+;; Bump to the canonical entry point.  On a RISC (which forces
+;; longword alignment for entry points anyway) there is no need to
+;; canonicalize.
+
+(define (closure-environment-adjustment nentries entry)
+  nentries entry			; ignored
+  0)
 
 ;;;; Machine Registers
 
