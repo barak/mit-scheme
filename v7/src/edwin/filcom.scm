@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.142 1990/10/09 16:24:29 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.143 1990/11/21 23:17:35 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -184,7 +184,17 @@ Argument means don't offer to use auto-save file."
   (initialize-buffer! buffer)
   (let ((filename (os/find-file-initialization-filename pathname)))
     (if filename
-	(let ((database (load-edwin-file filename '(EDWIN) false)))
+	(let ((database
+	       (with-output-to-transcript-buffer
+		(lambda ()
+		  (bind-condition-handler '() evaluation-error-handler
+		    (lambda ()
+		      (catch-file-errors (lambda () false)
+			(lambda ()
+			  (fluid-let ((load/suppress-loading-message? true))
+			    (load filename
+				  '(EDWIN)
+				  edwin-syntax-table))))))))))
 	  (if (and (procedure? database)
 		   (procedure-arity-valid? database 0))
 	      (add-buffer-initialization! buffer database)
