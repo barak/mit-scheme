@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.37 1993/08/02 22:24:58 cph Exp $
+;;;	$Id: unix.scm,v 1.38 1993/10/16 10:22:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -377,7 +377,7 @@ Includes the new backup.  Must be > 0."
   ;; code was originally doing.
   (and (string? filename)
        (string-find-next-char filename #\#)))
-
+
 (define (os/read-file-methods)
   (list maybe-read-compressed-file
 	maybe-read-encrypted-file))
@@ -385,7 +385,7 @@ Includes the new backup.  Must be > 0."
 (define (os/write-file-methods)
   (list maybe-write-compressed-file
 	maybe-write-encrypted-file))
-
+
 ;;;; Compressed Files
 
 (define-variable enable-compressed-files
@@ -409,20 +409,31 @@ of the filename suffixes \".gz\" or \".Z\"."
 		#f)))))
 
 (define (read-compressed-file program pathname mark)
-  (if (not (equal? '(EXITED . 0)
-		   (shell-command false
-				  mark
-				  (directory-pathname pathname)
-				  false
-				  (string-append program
-						 " < "
-						 (file-namestring pathname)))))
-      (error:file-operation pathname
-			    program
-			    "file"
-			    "[unknown]"
-			    read-compressed-file
-			    (list pathname mark))))
+  (let ((do-it
+	 (lambda ()
+	   (if (not (equal? '(EXITED . 0)
+			    (shell-command false
+					   mark
+					   (directory-pathname pathname)
+					   false
+					   (string-append
+					    program
+					    " < "
+					    (file-namestring pathname)))))
+	       (error:file-operation pathname
+				     program
+				     "file"
+				     "[unknown]"
+				     read-compressed-file
+				     (list pathname mark))))))
+    (if (ref-variable read-file-message mark)
+	(do-it)
+	(begin
+	  (temporary-message "Uncompressing file "
+			     (->namestring pathname)
+			     "...")
+	  (do-it)
+	  (append-message "done")))))
 
 (define (maybe-write-compressed-file region pathname visit?)
   visit?
