@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xcom.scm,v 1.6 1990/10/06 00:16:28 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xcom.scm,v 1.7 1992/03/13 23:59:41 cph Exp $
 ;;;
-;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -43,15 +43,9 @@
 (declare (usual-integrations))
 
 (define-primitives
-  (x-debug 1)
-  (x-open-display 1)
-  (x-close-display 1)
-  (x-close-all-displays 0)
-  (x-close-window 1)
-  (x-window-beep 1)
   (x-window-clear 1)
-  (x-window-get-default 3)
-  (x-window-map 1)
+  (x-window-lower 1)
+  (x-window-raise 1)
   (x-window-set-background-color 2)
   (x-window-set-border-color 2)
   (x-window-set-border-width 2)
@@ -65,9 +59,6 @@
   (x-window-set-name 2)
   (x-window-set-position 3)
   (x-window-set-size 3)
-  (x-window-unmap 1)
-  (x-window-x-size 1)
-  (x-window-y-size 1)
   (xterm-x-size 1)
   (xterm-y-size 1)
   (xterm-set-size 3))
@@ -119,6 +110,16 @@
 	(if (not (x-window-set-font xterm font))
 	    (editor-error "Unknown font name: " font))
 	(xterm-set-size xterm x-size y-size)))))
+
+(define-command x-raise-screen
+  "Raise the editor screen so that it is not obscured by other X windows."
+  ()
+  (lambda () (x-window-raise (current-xterm))))
+
+(define-command x-lower-screen
+  "Lower the editor screen so that it does not obscure other X windows."
+  ()
+  (lambda () (x-window-lower (current-xterm))))
 
 (define-command x-set-size
   "Set size of editor screen to WIDTH x HEIGHT."
@@ -167,7 +168,7 @@ Has same format as `mode-line-format'."
 (define-variable x-screen-icon-name-format
   "If not false, template for displaying X window icon name.
 Has same format as `mode-line-format'."
-  'mode-line-buffer-identification)
+  "edwin")
 
 (define-variable x-screen-icon-name-length
   "Maximum length of X window icon name.
@@ -176,8 +177,7 @@ Used only if `x-screen-icon-name-format' is non-false."
 
 (define (update-xterm-screen-names! screen)
   (let ((window
-	 (if (and (selected-screen? screen)
-		  (within-typein-edit?))
+	 (if (and (selected-screen? screen) (within-typein-edit?))
 	     (typein-edit-other-window)
 	     (screen-selected-window screen)))
 	(xterm (screen-xterm screen)))
