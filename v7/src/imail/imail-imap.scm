@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.83 2000/05/23 15:11:04 cph Exp $
+;;; $Id: imail-imap.scm,v 1.84 2000/05/23 17:40:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1024,10 +1024,8 @@
 
 (define (start-imap-trace pathname)
   (stop-imap-trace)
-  (call-with-output-file pathname
-    (lambda (port)
-      (set! imap-trace-port port)
-      unspecific)))
+  (set! imap-trace-port (open-output-file pathname))
+  unspecific)
 
 (define (stop-imap-trace)
   (if imap-trace-port
