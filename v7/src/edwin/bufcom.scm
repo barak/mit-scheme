@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.93 1992/04/16 22:30:13 cph Exp $
+;;;	$Id: bufcom.scm,v 1.94 1992/09/29 21:11:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -177,7 +177,7 @@ thus, the least likely buffer for \\[switch-to-buffer] to select by default."
 			(create-buffer initial-buffer-name)
 			(kill-buffer dummy)))))
 	    (buffer-list)))
-
+
 (define-command rename-buffer
   "Change the name of the current buffer.
 Reads the new name in the echo area."
@@ -194,6 +194,20 @@ Uses the visited file name, the -*- line, and the local variables spec."
   ()
   (lambda ()
     (normal-mode (current-buffer) false)))
+
+(define-command toggle-mode-lock
+  "Change whether this buffer has its major mode locked.
+When locked, the buffer's major mode may not be changed."
+  ()
+  (lambda ()
+    (let ((buffer (current-buffer)))
+      (if (buffer-get buffer 'MAJOR-MODE-LOCKED)
+	  (begin
+	    (buffer-remove! buffer 'MAJOR-MODE-LOCKED)
+	    (message "Major mode unlocked"))
+	  (begin
+	    (buffer-put! buffer 'MAJOR-MODE-LOCKED true)
+	    (message "Major mode locked"))))))
 
 (define (save-buffer-changes buffer)
   (if (and (buffer-pathname buffer)

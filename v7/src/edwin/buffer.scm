@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.155 1992/04/07 12:30:21 cph Exp $
+;;;	$Id: buffer.scm,v 1.156 1992/09/29 21:08:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -483,6 +483,8 @@ The buffer is guaranteed to be deselected at that time."
 (define (set-buffer-major-mode! buffer mode)
   (if (not (and (mode? mode) (mode-major? mode)))
       (error:wrong-type-argument mode "major mode" 'SET-BUFFER-MAJOR-MODE!))
+  (if (buffer-get buffer 'MAJOR-MODE-LOCKED)
+      (editor-error "The major mode of this buffer is locked: " buffer))
   (without-interrupts
    (lambda ()
      (let ((modes (buffer-modes buffer)))
