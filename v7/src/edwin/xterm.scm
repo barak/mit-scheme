@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.17 1991/04/26 05:27:14 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.18 1991/04/29 10:42:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -47,6 +47,8 @@
 (declare (usual-integrations))
 
 (define-primitives
+  (real-timer-clear 0)
+  (real-timer-set 2)
   (x-open-display 1)
   (x-close-all-displays 0)
   (x-close-display 1)
@@ -226,20 +228,14 @@
 
 ;;;; Event Handling
 
-(define (get-xterm-input-operations screen)
-  (let ((display (screen-display screen))
+(define (get-xterm-input-operations)
+  (let ((display x-display-data)
+	(queue x-display-events)
 	(string false)
 	(start 0)
 	(end 0)
 	(pending-event false))
-    (let ((get-next-event
-	   (lambda (time-limit)
-	     (if pending-event
-		 (let ((event pending-event))
-		   (set! pending-event false)
-		   event)
-		 (x-display-process-events display time-limit))))
-	  (process-key-press-event
+    (let ((process-key-press-event
 	   (lambda (event)
 	     (set! string (vector-ref event 2))
 	     (set! start 0)
@@ -249,57 +245,124 @@
 		   (if i
 		       (begin
 			 (set! start (fix:+ i 1))
-			 (signal-interrupt!)))))))
-	  (process-special-event
-	   (lambda (event)
-	     (let ((handler (vector-ref event-handlers (vector-ref event 0)))
-		   (screen (xterm->screen (vector-ref event 1))))
-	       (if (and handler screen)
-		   (handler screen event))))))
-      (let ((guarantee-input
-	     (lambda ()
-	       (let loop ()
-		 (let ((event (get-next-event false)))
-		   (cond ((not event)
-			  (error "#F returned from blocking read"))
-			 ((eq? true event)
-			  false)
-			 ((eq? event-type:key-press (vector-ref event 0))
-			  (process-key-press-event event)
-			  (if (fix:< start end) true (loop)))
-			 (else
-			  (process-special-event event)
-			  (loop))))))))
-	(values
-	 (lambda ()			;halt-update?
-	   (if (or (fix:< start end) pending-event)
-	       true
-	       (let ((event (get-next-event 0)))
-		 (and event
-		      (begin
-			(set! pending-event event)
-			true)))))
-	 (lambda ()			;char-ready?
-	   (if (fix:< start end)
-	       true
-	       (let loop ()
+			 (signal-interrupt!))))))))
+      (let ((get-next-event
+	     (lambda (time-limit)
+	       (if pending-event
+		   (let ((event pending-event))
+		     (set! pending-event false)
+		     event)
+		   (read-event queue display time-limit)))))
+	(let ((guarantee-input
+	       (lambda ()
+		 (let loop ()
+		   (let ((event (get-next-event false)))
+		     (cond ((not event)
+			    (error "#F returned from blocking read"))
+			   ((eq? true event)
+			    false)
+			   ((fix:= event-type:key-press (vector-ref event 0))
+			    (process-key-press-event event)
+			    (if (fix:< start end) true (loop)))
+			   (else
+			    (process-special-event event)
+			    (loop))))))))
+	  (values
+	   (lambda ()			;halt-update?
+	     (if (or (fix:< start end) pending-event)
+		 true
 		 (let ((event (get-next-event 0)))
-		   (cond ((or (not event) (eq? true event))
-			  false)
-			 ((eq? event-type:key-press (vector-ref event 0))
-			  (process-key-press-event event)
-			  (if (fix:< start end) true (loop)))
-			 (else
-			  (process-special-event event)
-			  (loop)))))))
-	 (lambda ()			;peek-char
-	   (and (or (fix:< start end) (guarantee-input))
-		(string-ref string start)))
-	 (lambda ()			;read-char
-	   (and (or (fix:< start end) (guarantee-input))
-		(let ((char (string-ref string start)))
-		  (set! start (fix:+ start 1))
-		  char))))))))
+		   (and event
+			(begin
+			  (set! pending-event event)
+			  true)))))
+	   (lambda ()			;char-ready?
+	     (if (fix:< start end)
+		 true
+		 (let loop ()
+		   (let ((event (get-next-event 0)))
+		     (cond ((or (not event) (eq? true event))
+			    false)
+			   ((fix:= event-type:key-press (vector-ref event 0))
+			    (process-key-press-event event)
+			    (if (fix:< start end) true (loop)))
+			   (else
+			    (process-special-event event)
+			    (loop)))))))
+	   (lambda ()			;peek-char
+	     (and (or (fix:< start end) (guarantee-input))
+		  (string-ref string start)))
+	   (lambda ()			;read-char
+	     (and (or (fix:< start end) (guarantee-input))
+		  (let ((char (string-ref string start)))
+		    (set! start (fix:+ start 1))
+		    char)))))))))
+
+(define (read-event queue display time-limit)
+  ;; If no time-limit, we're reading from the keyboard.  In that case,
+  ;; make sure that asynchronous input is reenabled afterwards.
+  (let ((reenable? (if time-limit allow-asynchronous-input? true)))
+    (set! allow-asynchronous-input? false)
+    (let loop ()
+      (let ((event
+	     (if (queue-empty? queue)
+		 (x-display-process-events display time-limit)
+		 (dequeue!/unsafe queue))))
+	(if (and (vector? event)
+		 (fix:= event-type:expose (vector-ref event 0)))
+	    (begin
+	      (process-expose-event event)
+	      (loop))
+	    (begin
+	      (set! allow-asynchronous-input? reenable?)
+	      event))))))
+
+(define (timer-interrupt-handler)
+  (if (and allow-asynchronous-input?
+	   (buffer-events x-display-events x-display-data signal-interrupts?))
+      (begin
+	;; Don't allow further asynchronous input until the command
+	;; loop has restarted (actually, until next attempt to read
+	;; from the keyboard).
+	(set! allow-asynchronous-input? false)
+	(signal-interrupt!))))
+
+(define allow-asynchronous-input?)
+
+(define (buffer-events queue display allow-interrupts?)
+  (let loop ()
+    (let ((event (x-display-process-events display 0)))
+      (cond ((not event)
+	     false)
+	    ((eq? true event)
+	     (accept-process-output)
+	     (notify-process-status-changes)
+	     (loop))
+	    ((and allow-interrupts?
+		  (fix:= event-type:key-press (vector-ref event 0))
+		  (string-find-next-char (vector-ref event 2) #\BEL))
+	     ;; Flush keyboard and mouse events from the input
+	     ;; queue.  Other events are harmless and must be
+	     ;; processed regardless.
+	     (do ((events
+		   (let loop ()
+		     (if (queue-empty? queue)
+			 '()
+			 (let ((event (dequeue!/unsafe queue)))
+			   (if (let ((type (vector-ref event 0)))
+				 (or (fix:= type event-type:button-down)
+				     (fix:= type event-type:button-up)
+				     (fix:= type event-type:key-press)
+				     (fix:= type event-type:motion)))
+			       (loop)
+			       (cons event (loop))))))
+		   (cdr events)))
+		 ((null? events))
+	       (enqueue!/unsafe queue (car events)))
+	     true)
+	    (else
+	     (enqueue!/unsafe queue event)
+	     (loop))))))
 
 ;;; The values of these flags must be equal to the corresponding event
 ;;; types in "microcode/x11base.c"
@@ -326,6 +389,19 @@
 (define-integrable (define-event-handler event-type handler)
   (vector-set! event-handlers event-type handler))
 
+(define (process-special-event event)
+  (let ((handler (vector-ref event-handlers (vector-ref event 0)))
+	(screen (xterm->screen (vector-ref event 1))))
+    (if (and handler screen)
+	(handler screen event))))
+
+(define (process-expose-event event)
+  (xterm-dump-rectangle (vector-ref event 1)
+			(vector-ref event 2)
+			(vector-ref event 3)
+			(vector-ref event 4)
+			(vector-ref event 5)))
+
 (define-event-handler event-type:configure
   (lambda (screen event)
     (let ((xterm (screen-xterm screen))
@@ -339,14 +415,6 @@
 	    (begin
 	      (set-screen-size! screen x-size y-size)
 	      (update-screen! screen true)))))))
-
-(define-event-handler event-type:expose
-  (lambda (screen event)
-    (xterm-dump-rectangle (screen-xterm screen)
-			  (vector-ref event 2)
-			  (vector-ref event 3)
-			  (vector-ref event 4)
-			  (vector-ref event 5))))
 
 (define-event-handler event-type:button-down
   (lambda (screen event)
@@ -376,6 +444,7 @@
 
 (define signal-interrupts?)
 (define pending-interrupt?)
+(define timer-interval 1000)
 
 (define (signal-interrupt!)
   (editor-beep)
@@ -385,8 +454,32 @@
 
 (define (with-editor-interrupts-from-x receiver)
   (fluid-let ((signal-interrupts? true)
-	      (pending-interrupt? false))
-    (receiver (lambda (thunk) (thunk)))))
+	      (pending-interrupt? false)
+	      (timer-interrupt timer-interrupt-handler))
+    (dynamic-wind start-timer-interrupt
+		  (lambda ()
+		    (receiver
+		     (lambda (thunk)
+		       (dynamic-wind real-timer-clear
+				     thunk
+				     start-timer-interrupt))))
+		  real-timer-clear)))
+
+(define (set-x-timer-interval! interval)
+  (if (not (or (false? interval)
+	       (and (exact-integer? interval)
+		    (positive? interval))))
+      (error:wrong-type-argument interval false 'SET-X-TIMER-INTERVAL!))
+  (set! timer-interval interval)
+  (start-timer-interrupt))
+
+(define (x-timer-interval)
+  timer-interval)
+
+(define (start-timer-interrupt)
+  (if timer-interval
+      (real-timer-set timer-interval timer-interval)
+      (real-timer-clear)))
 
 (define (with-x-interrupts-enabled thunk)
   (bind-signal-interrupts? true thunk))
@@ -407,9 +500,10 @@
 		    (set! signal-interrupts? old-mask)
 		    (if (and old-mask pending-interrupt?)
 			(signal-interrupt!))))))
-
+
 (define x-display-type)
 (define x-display-data)
+(define x-display-events)
 
 (define (get-x-display)
   ;; X-OPEN-DISPLAY hangs, uninterruptibly, when the X server is
@@ -417,6 +511,8 @@
   (or x-display-data
       (let ((display (x-open-display false)))
 	(set! x-display-data display)
+	(set! x-display-events (make-queue))
+	(set! allow-asynchronous-input? true)
 	display)))
 
 (define (initialize-package!)
@@ -426,9 +522,12 @@
 			   true
 			   get-x-display
 			   make-xterm-screen
-			   get-xterm-input-operations
+			   (lambda (screen)
+			     screen	;ignore
+			     (get-xterm-input-operations))
 			   with-editor-interrupts-from-x
 			   with-x-interrupts-enabled
 			   with-x-interrupts-disabled))
   (set! x-display-data false)
+  (set! x-display-events)
   unspecific)
