@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.4 1993/11/13 03:51:55 gjr Exp $
+$Id: ctop.scm,v 1.5 1993/11/13 04:17:11 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -82,20 +82,27 @@ MIT in each case. |#
       (newline)
       (display ";Compiling ")
       (display source)
-      (apply call/cc
-	     (append (c-compiler-switches) (list source)))
+      (let ((result
+	     (apply call/cc
+		    (append (c-compiler-switches) (list source)))))
+	(if (not (zero? result))
+	    (error "c-compile: C compiler failed" source)))
       (set! *call/cc-c-compiler* compiler:c-linker-name)
       (newline)
       (display ";Linking ")
       (display object)
-      (apply call/cc
-	     (append (list "-o")
-		     (list
-		      (enough-namestring
-		       (pathname-new-type pathname
-					  (c-output-extension))))
-		     (c-linker-switches)
-		     (list object))))))
+      (let ((result
+	     (apply call/cc
+		    (append (list "-o")
+			    (list
+			     (enough-namestring
+			      (pathname-new-type pathname
+						 (c-output-extension))))
+			    (c-linker-switches)
+			    (list object)))))
+	(if (not (zero? result))
+	    (error "c-compile: C linker failed" object)))
+      (delete-file object))))
 
 (define (c-output-extension)
   (cond ((not (eq? compiler:c-linker-output-extension 'UNKNOWN))
