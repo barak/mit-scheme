@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2sock.c,v 1.17 2001/06/02 01:22:47 cph Exp $
+$Id: os2sock.c,v 1.18 2001/07/19 01:45:36 cph Exp $
 
 Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
@@ -39,6 +39,10 @@ USA.
 #include <netdb.h>
 #include <sys/un.h>
 #include <sys/socket.h>
+
+#ifndef INADDR_LOOPBACK
+#  define INADDR_LOOPBACK 0x7F000001
+#endif
 
 static Tchannel initialize_stream_socket (int, enum channel_type);
 static msg_t * stream_socket_reader (LHANDLE, qid_t, msg_t *, int *);
@@ -219,6 +223,7 @@ OS_create_tcp_server_socket (void)
 void
 OS_bind_tcp_server_socket (Tchannel channel, void * host, unsigned int port)
 {
+  struct sockaddr_in address;
   memset ((&address), 0, (sizeof (address)));
   (address . sin_family) = AF_INET;
   memcpy ((& (address . sin_addr)), host, (sizeof (address . sin_addr)));
