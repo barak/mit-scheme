@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.h,v 1.3 1993/06/24 02:04:17 gjr Exp $
+$Id: ntio.h,v 1.4 1993/06/24 02:15:21 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -32,8 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-#ifndef SCM_UXIO_H
-#define SCM_UXIO_H
+#ifndef SCM_NTIO_H
+#define SCM_NTIO_H
 
 #include "osio.h"
 
@@ -88,4 +88,4 @@ extern Tchannel EXFUN (channel_allocate, (void));
 #define CONSOLE_HANDLE (STDIN_HANDLE)
 #define IsConsoleHandle(h)  ((h)==CONSOLE_HANDLE)
 
-#endif /* SCM_UXIO_H */
+#endif /* SCM_NTIO_H */

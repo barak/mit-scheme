@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.h,v 1.2 1993/06/24 02:02:42 gjr Exp $
+$Id: ntgui.h,v 1.3 1993/06/24 02:14:39 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -32,8 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-#ifndef NTGUI_H
-#define NTGUI_H
+#ifndef SCM_NTGUI_H
+#define SCM_NTGUI_H
 
 void EXFUN (NT_gui_init, (void));
 
@@ -56,4 +56,4 @@ void EXFUN (NT_gui_init, (void));
 #define IDM_ABOUT          303
 #define IDM_EMERGENCYKILL  400
 
-#endif /* NTGUI_H */
+#endif /* SCM_NTGUI_H */

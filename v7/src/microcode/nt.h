@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nt.h,v 1.2 1993/06/24 01:42:39 gjr Exp $
+$Id: nt.h,v 1.3 1993/06/24 02:13:22 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -34,8 +34,8 @@ MIT in each case. */
 
 /* DOS system include file */
 
-#ifndef SCM_MSDOS_H
-#define SCM_MSDOS_H
+#ifndef SCM_NT_H
+#define SCM_NT_H
 
 #define SYSTEM_NAME "NT"
 #define SYSTEM_VARIANT "Windows-NT"
@@ -564,5 +564,5 @@ extern int EXFUN
 #define INTERRUPT_CHAIN_NEXT	0
 #define INTERRUPT_RETURN	1
 
-#endif /* SCM_MSDOS_H */
+#endif /* SCM_NT_H */
 

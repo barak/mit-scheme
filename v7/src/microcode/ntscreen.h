@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.h,v 1.2 1993/06/24 02:07:42 gjr Exp $
+$Id: ntscreen.h,v 1.3 1993/06/24 02:16:40 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -32,8 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-#ifndef NTSCREEN_H
-#define NTSCREEN_H
+#ifndef SCM_NTSCREEN_H
+#define SCM_NTSCREEN_H
 
 //---------------------------------------------------------------------------
 //
@@ -245,4 +245,4 @@ typedef LRESULT (*COMMAND_HANDLER)(HWND,WORD command);
 //  End of File: screen.h
 //---------------------------------------------------------------------------
 
-#endif /* NTSCREEN_H */
+#endif /* SCM_NTSCREEN_H */
