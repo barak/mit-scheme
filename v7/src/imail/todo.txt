@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.83 2000/06/15 15:40:03 cph Exp $
+$Id: todo.txt,v 1.84 2000/06/15 16:20:25 cph Exp $
 
 Bug fixes
 ---------
@@ -37,9 +37,6 @@ New features
   into the reader.
 
 * Command to save an attachment should work on inline entities too.
-
-* Add variable saying what type/subtype combinations should be
-  inlined.  Can this be combined with the known-charsets variable?
 
 * Support the "flagged" message flag by highlighting messages with
   this flag in the summary buffer.

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.159 2000/06/15 15:40:21 cph Exp $
+;;; $Id: imail-top.scm,v 1.160 2000/06/15 16:19:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -143,7 +143,7 @@ Otherwise, the text is left as is."
 Otherwise, only the header fields normally shown by IMAIL are sent."
   #f
   boolean?)
-
+
 (define-variable imail-forward-using-mime
   "If true, forwarded email messages are sent as MIME attachments.
 Otherwise, they are inserted into the message body."
@@ -155,6 +155,16 @@ Otherwise, they are inserted into the message body."
 Text messages using these character sets are displayed inline;
  when other character sets are used, the text is treated as an attachment."
   (list "us-ascii" "iso-8859-[0-9]+" "windows-[0-9]+")
+  list-of-strings?)
+
+(define-variable imail-inline-mime-text-subtypes
+  "List of MIME text subtypes that should be shown inline.
+The value of this variable is a list of symbols.
+A text entity that appears at the top level of a message
+ is always shown inline, regardless of its subtype.
+Likewise, a text/plain entity is always shown inline.
+Note that this variable does not affect subparts of multipart/alternative."
+  '(HTML ENRICHED)
   list-of-strings?)
 
 (define-command imail
@@ -1186,7 +1196,9 @@ With prefix argument N moves backward N messages with these flags."
 		encoding
 		(mime-body-one-part-encoding body)))))
     (if (and (or (not enclosure)
-		 (eq? (mime-body-subtype body) 'PLAIN))
+		 (let ((subtype (mime-body-subtype body)))
+		   (or (eq? subtype 'PLAIN)
+		       (memq subtype imail-inline-mime-text-subtypes))))
 	     (known-mime-encoding? encoding)
 	     (re-string-match
 	      (string-append "\\`"

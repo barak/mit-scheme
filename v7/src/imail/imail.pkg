@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.61 2000/06/15 15:40:37 cph Exp $
+;;; $Id: imail.pkg,v 1.62 2000/06/15 16:20:02 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -262,6 +262,7 @@
 	  edwin-variable$imail-forward-all-headers
 	  edwin-variable$imail-forward-using-mime
 	  edwin-variable$imail-ignored-headers
+	  edwin-variable$imail-inline-mime-text-subtypes
 	  edwin-variable$imail-kept-headers
 	  edwin-variable$imail-known-mime-charsets
 	  edwin-variable$imail-message-filter
