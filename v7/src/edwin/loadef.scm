@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.9 1991/08/06 22:39:52 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.10 1991/08/28 14:15:28 bal Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -47,6 +47,18 @@
 (declare (usual-integrations))
 
 ;;;; Major Mode Libraries
+(define-library 'TELNET-MODE
+  '("telnet" (EDWIN)))
+
+(define-autoload-major-mode 'telnet 'comint "Telnet" 'TELNET-MODE
+  "Major mode for interacting with the Telnet program.")
+
+(define-autoload-command 'telnet 'TELNET-MODE
+  "Telnet to remote host.")
+
+(define-variable telnet-mode-hook
+  "An event distributor that is invoked when entering Telnet mode."
+  (make-event-distributor))
 
 (define-library 'RMAIL-SUMMARY-MODE
   '("rmailsum" (EDWIN RMAIL)))
@@ -56,6 +68,9 @@
 
 (define-autoload-command 'rmail-summary 'RMAIL-SUMMARY-MODE
   "Enter RMAIL Summary mode.")
+
+(define-autoload-command 'rmail-summary-by-recipients 'RMAIL-SUMMARY-MODE
+  "Enter RMAIL Summary mode for specified recipients.")
 
 (define-variable rmail-summary-mode-hook
   "An event distributor that is invoked when entering RMAIL Summary mode."
