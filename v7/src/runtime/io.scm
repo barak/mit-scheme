@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.77 2004/01/11 07:18:01 cph Exp $
+$Id: io.scm,v 14.78 2004/01/19 04:37:14 cph Exp $
 
 Copyright 1986,1987,1988,1990,1991,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -860,31 +860,58 @@ USA.
 (define (input-buffer/char-ready? buffer interval)
   (without-interrupts
    (lambda ()
-     (char-ready? buffer
-       (lambda (buffer)
-	 (with-channel-blocking (input-buffer/channel buffer) #f
-	   (lambda ()
-	     (if (positive? interval)
-		 (let ((timeout (+ (real-time-clock) interval)))
-		   (let loop ()
-		     (let ((n (input-buffer/fill buffer)))
-		       (if n
-			   (fix:> n 0)
-			   (and (< (real-time-clock) timeout)
-				(loop))))))
-		 (input-buffer/fill* buffer)))))))))
+     (%input-buffer/char-ready? buffer interval))))
 
-(define (char-ready? buffer fill)
+(define (%input-buffer/char-ready? buffer interval)
   (and (input-buffer/open? buffer)
        (or (fix:< (input-buffer/start-index buffer)
 		  (input-buffer/end-index buffer))
-	   (fill buffer))))
+	   (let ((test
+		  (let ((d
+			 (channel-descriptor-for-select
+			  (input-buffer/channel buffer))))
+		    (lambda ()
+		      (let ((mode (test-select-descriptor d #f 'READ)))
+			(if (pair? mode)
+			    (or (eq? (car mode) 'READ)
+				(eq? (car mode) 'READ/WRITE))
+			    (begin
+			      (if (eq? mode 'PROCESS-STATUS-CHANGE)
+				  (handle-subprocess-status-change))
+			      #f)))))))
+	     (if (positive? interval)
+		 (let ((timeout (+ (real-time-clock) interval)))
+		   (let loop ()
+		     (cond ((test) #t)
+			   ((< (real-time-clock) timeout) (loop))
+			   (else #f))))
+		 (test))))))
 
 (define (input-buffer/eof? buffer)
   ;; This returns #t iff it knows that it is at EOF.
   ;; If BUFFER is non-blocking with no input available, it returns #f.
   (and (not (input-buffer/char-ready? buffer 0))
        (input-buffer/closed? buffer)))
+
+(define (input-buffer/buffer-contents buffer)
+  (without-interrupts
+   (lambda ()
+     (and (fix:< (input-buffer/start-index buffer)
+		 (input-buffer/end-index buffer))
+	  (substring (input-buffer/string buffer)
+		     (input-buffer/start-index buffer)
+		     (input-buffer/end-index buffer))))))
+
+(define (input-buffer/set-buffer-contents buffer contents)
+  (without-interrupts
+   (lambda ()
+     (let ((contents-size (string-length contents)))
+       (if (fix:> contents-size 0)
+	   (let ((string (input-buffer/string buffer)))
+	     (if (fix:> contents-size (string-length string))
+		 (input-buffer/set-size buffer contents-size))
+	     (substring-move! contents 0 contents-size string 0)
+	     (input-buffer/after-fill! buffer contents-size)))))))
 
 (define (input-buffer/translate! buffer)
   (with-values
@@ -994,7 +1021,7 @@ USA.
 		      ((fix:= n 0) eof-object)
 		      (else
 		       (string-ref (input-buffer/string buffer) 0))))))))))
-
+
 (define (input-buffer/read-substring buffer string start end)
   (define (transfer-input-buffer index)
     (let ((bstart (input-buffer/start-index buffer))
@@ -1037,76 +1064,6 @@ USA.
      (let ((index (transfer-input-buffer start)))
        (and index
 	    (- index start))))))
-
-(define (input-buffer/read-until-delimiter buffer delimiters)
-  (without-interrupts
-   (lambda ()
-     (if (and (input-buffer/open? buffer)
-	      (char-ready? buffer input-buffer/fill-block))
-	 (apply string-append
-		(let ((string (input-buffer/string buffer)))
-		  (let loop ()
-		    (let ((start (input-buffer/start-index buffer))
-			  (end (input-buffer/end-index buffer)))
-		      (let ((delimiter
-			     (substring-find-next-char-in-set
-			      string start end delimiters)))
-			(if delimiter
-			    (let ((head (substring string start delimiter)))
-			      (set-input-buffer/start-index! buffer
-							     delimiter)
-			      (list head))
-			    (let ((head (substring string start end)))
-			      (set-input-buffer/start-index! buffer end)
-			      (cons head
-				    (if (input-buffer/fill-block buffer)
-					(loop)
-					'())))))))))
-	 eof-object))))
-
-(define (input-buffer/discard-until-delimiter buffer delimiters)
-  (without-interrupts
-   (lambda ()
-     (if (and (input-buffer/open? buffer)
-	      (char-ready? buffer input-buffer/fill-block))
-	 (let ((string (input-buffer/string buffer)))
-	   (let loop ()
-	     (let ((end-index (input-buffer/end-index buffer)))
-	       (let ((index
-		      (substring-find-next-char-in-set
-		       string
-		       (input-buffer/start-index buffer)
-		       end-index
-		       delimiters)))
-		 (if index
-		     (set-input-buffer/start-index! buffer index)
-		     (begin
-		       (set-input-buffer/start-index! buffer end-index)
-		       (if (input-buffer/fill-block buffer)
-			   (loop))))))))))))
-
-(define (input-buffer/fill-block buffer)
-  (fix:> (let loop () (or (input-buffer/fill buffer) (loop))) 0))
-
-(define (input-buffer/buffer-contents buffer)
-  (without-interrupts
-   (lambda ()
-     (and (fix:< (input-buffer/start-index buffer)
-		 (input-buffer/end-index buffer))
-	  (substring (input-buffer/string buffer)
-		     (input-buffer/start-index buffer)
-		     (input-buffer/end-index buffer))))))
-
-(define (input-buffer/set-buffer-contents buffer contents)
-  (without-interrupts
-   (lambda ()
-     (let ((contents-size (string-length contents)))
-       (if (fix:> contents-size 0)
-	   (let ((string (input-buffer/string buffer)))
-	     (if (fix:> contents-size (string-length string))
-		 (input-buffer/set-size buffer contents-size))
-	     (substring-move! contents 0 contents-size string 0)
-	     (input-buffer/after-fill! buffer contents-size)))))))
 
 ;;;; Select registry
 
@@ -1157,6 +1114,22 @@ USA.
    descriptor
    (encode-select-registry-mode mode))
   (set-select-registry-length! registry #f))
+
+(define (test-for-io-on-channel channel mode)
+  (test-for-io-on-descriptor (channel-descriptor-for-select channel)
+			     (channel-blocking? channel)
+			     mode))
+
+(define-integrable (channel-descriptor-for-select channel)
+  ((ucode-primitive channel-descriptor 1) (channel-descriptor channel)))
+
+(define (test-for-io-on-descriptor descriptor block? mode)
+  (or (let ((rmode (test-select-descriptor descriptor #f mode)))
+	(if (pair? rmode)
+	    (simplify-select-registry-mode rmode)
+	    rmode))
+      (and block?
+	   (block-on-io-descriptor descriptor mode))))
 
 (define (test-select-descriptor descriptor block? mode)
   (let ((result
@@ -1180,12 +1153,33 @@ USA.
     (else (error:bad-range-argument mode 'ENCODE-SELECT-REGISTRY-MODE))))
 
 (define (decode-select-registry-mode mode)
-  (cond ((fix:= 8 (fix:and 8 mode)) 'HANGUP)
-	((fix:= 4 (fix:and 4 mode)) 'ERROR)
-	(else
-	 (if (fix:= 1 (fix:and 1 mode))
-	     (if (fix:= 2 (fix:and 2 mode)) 'READ/WRITE 'READ)
-	     (if (fix:= 2 (fix:and 2 mode)) 'WRITE #f)))))
+  (cons (if (select-registry-mode-read? mode)
+	    (if (select-registry-mode-write? mode) 'READ/WRITE 'READ)
+	    (if (select-registry-mode-write? mode) 'WRITE #f))
+	(let ((tail
+	       (if (select-registry-mode-hangup? mode)
+		   (list 'HANGUP)
+		   '())))
+	  (if (select-registry-mode-error? mode)
+	      (cons 'ERROR tail)
+	      tail))))
+
+(define (simplify-select-registry-mode mode)
+  (cond ((memq 'HANGUP (cdr mode)) 'HANGUP)
+	((memq 'ERROR (cdr mode)) 'ERROR)
+	(else (car mode))))
+
+(define-integrable (select-registry-mode-read? mode)
+  (fix:= 1 (fix:and 1 mode)))
+
+(define-integrable (select-registry-mode-write? mode)
+  (fix:= 2 (fix:and 2 mode)))
+
+(define-integrable (select-registry-mode-error? mode)
+  (fix:= 4 (fix:and 4 mode)))
+
+(define-integrable (select-registry-mode-hangup? mode)
+  (fix:= 8 (fix:and 8 mode)))
 
 (define (test-select-registry registry block?)
   (receive (vfd vmode) (allocate-select-registry-result-vectors registry)
@@ -1199,8 +1193,10 @@ USA.
 	  (begin
 	    (do ((i 0 (fix:+ i 1)))
 		((fix:= i result))
-	      (vector-set! vmode i
-			   (decode-select-registry-mode (vector-ref vmode i))))
+	      (vector-set!
+	       vmode i
+	       (simplify-select-registry-mode
+		(decode-select-registry-mode (vector-ref vmode i)))))
 	    (vector result vfd vmode))
 	  (begin
 	    (deallocate-select-registry-result-vectors vfd vmode)
@@ -1252,17 +1248,3 @@ USA.
 	  (set! select-registry-result-vectors
 		(cons (cons vfd vmode) select-registry-result-vectors))))
     (set-interrupt-enables! interrupt-mask)))
-
-(define (test-for-io-on-channel channel mode)
-  (test-for-io-on-descriptor (channel-descriptor-for-select channel)
-			     (channel-blocking? channel)
-			     mode))
-
-(define (test-for-io-on-descriptor descriptor block? mode)
-  (if block?
-      (or (test-select-descriptor descriptor #f mode)
-	  (block-on-io-descriptor descriptor mode))
-      (test-select-descriptor descriptor #f mode)))
-
-(define-integrable (channel-descriptor-for-select channel)
-  ((ucode-primitive channel-descriptor 1) (channel-descriptor channel)))
