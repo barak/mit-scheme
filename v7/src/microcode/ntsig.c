@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsig.c,v 1.7 1993/08/21 03:45:54 gjr Exp $
+$Id: ntsig.c,v 1.8 1993/09/01 18:44:09 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -280,12 +280,12 @@ DEFUN_VOID (initialize_keyboard_interrupt_table)
   int_handlers[4] = ((unsigned char) interrupt_handler_interactive);
   int_chars[5] = CONTROL_BREAK;
   int_handlers[5] = ((unsigned char) interrupt_handler_terminate);
-  update_interrupt_characters ();
   keyboard_interrupt_enables =
     (CONTROL_B_ENABLE | CONTROL_G_ENABLE
      | CONTROL_U_ENABLE | CONTROL_X_ENABLE
      | INTERACTIVE_INTERRUPT_ENABLE
      | TERMINATE_INTERRUPT_ENABLE);
+  update_interrupt_characters ();
   return;
 }
 
@@ -349,7 +349,7 @@ DEFUN (signal_keyboard_character_interrupt, (c), int c)
 	console_write_string ("\nTerminating scheme!");
 	termination_normal (0);
       }
-      goto interactive_interrupt;
+      tty_set_next_interrupt_char (CONTROL_G_INTERRUPT_CHAR);
     }
     return (0);
   }
@@ -386,7 +386,7 @@ DEFUN (signal_keyboard_character_interrupt, (c), int c)
 	}
 interactive_interrupt:
 	print_interrupt_help ();
-	interrupt_p = 0;
+	interrupt_p = 1;
 	break;
 
       default:
@@ -407,10 +407,11 @@ DEFUN_VOID (OS_restartable_exit)
 
 /* Why does this raise INT_Timer as well?
    We could request an synchronous Windows timer that would trigger
-   the timer interrupt bit.
+   the timer interrupt bit.  -- This does not seem to work!
 
-   INT_Global_1: Windows polling interrupt
-   INT_Timer:    Scheme timer interrupt
+   INT_Global_GC: High-priority Windows polling interrupt.
+   INT_Global_1:  Windows polling interrupt.
+   INT_Timer:     Thread-switch timer interrupt.
  */
 
 static void * timer_state = ((void *) NULL);
@@ -422,7 +423,9 @@ DEFUN_VOID (install_timer)
 				     REGBLOCK_MEMTOP,
 				     REGBLOCK_INT_CODE,
 				     REGBLOCK_INT_MASK,
-				     (INT_Global_1 | INT_Timer),
+				     (INT_Global_GC
+				      | INT_Global_1
+				      | INT_Timer),
 				     &timer_state))
   {
     case WIN32_ASYNC_TIMER_OK:

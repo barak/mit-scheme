@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.7 1993/08/21 03:48:26 gjr Exp $
+$Id: nttop.c,v 1.8 1993/09/01 18:45:02 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -52,6 +52,7 @@ extern void EXFUN (NT_initialize_tty, (void));
 
 extern void EXFUN (NT_reset_channels, (void));
 
+extern void EXFUN (NT_restore_channels, (void));
 extern void EXFUN (NT_restore_signals, (void));
 extern void EXFUN (NT_restore_traps, (void));
 
@@ -89,16 +90,16 @@ DEFUN_VOID (OS_initialize)
     version_t version_number;
 
     nt_get_version (&version_number);
-    outf_console ("MIT Scheme running under %s %d.%d 386/486\r\n",
+    outf_console ("MIT Scheme running under %s %d.%d 386/486\n",
 		  OS_Variant,
 		  ((int) version_number.major),
 		  ((int) version_number.minor));
     /* To make our compiler vendors happy. */
     outf_console
-      ("Copyright (c) 1993 Massachusetts Institute of Technology\r\n");
+      ("Copyright (c) 1993 Massachusetts Institute of Technology\n");
   }
 
-  outf_console ("\r\n");
+  outf_console ("\n");
   outf_flush_console ();
   return;
 }
@@ -199,6 +200,7 @@ OS_restore_external_state (void)
 {
   NT_restore_traps ();
   NT_restore_signals ();
+  NT_restore_channels ();
   return;
 }
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.7 1993/08/21 03:34:00 gjr Exp $
+$Id: ntio.c,v 1.8 1993/09/01 18:42:20 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -66,8 +66,9 @@ DEFUN_VOID (NT_channel_close_all)
   return;
 }
 
+#ifndef GUI
 static BOOL _stdcall
-NT_ctrl_handler(DWORD dwCtrlType)
+NT_ctrl_handler (DWORD dwCtrlType)
 {
     switch (dwCtrlType) {
       case CTRL_C_EVENT:
@@ -77,63 +78,7 @@ NT_ctrl_handler(DWORD dwCtrlType)
 	return  FALSE;
     }
 }
-
-
-extern  HANDLE master_tty_window;
-  
-
-void
-DEFUN_VOID (NT_initialize_channels)
-{
-#ifndef GUI
-  STDIN_HANDLE  = (GetStdHandle (STD_INPUT_HANDLE));
-  STDOUT_HANDLE = (GetStdHandle (STD_OUTPUT_HANDLE));
-  STDERR_HANDLE = (GetStdHandle (STD_ERROR_HANDLE));
-
-  if (STDIN_HANDLE == INVALID_HANDLE_VALUE  ||
-      STDOUT_HANDLE == INVALID_HANDLE_VALUE  ||
-      STDERR_HANDLE == INVALID_HANDLE_VALUE)
-  {
-    outf_fatal ("\nUnable to get standard handles %s(%d).\n",
-                __FILE__, __LINE__);
-    termination_init_error ();
-  }
-
-  SetConsoleMode (STDIN_HANDLE,
-		  (  ENABLE_LINE_INPUT
-		   | ENABLE_ECHO_INPUT
-		   | ENABLE_PROCESSED_INPUT));
-  SetConsoleCtrlHandler (NT_ctrl_handler, TRUE);
 #endif /* GUI */
-
-  master_tty_window = Screen_Create (NULL, "MIT Scheme", SW_SHOWNORMAL);
-
-  OS_channel_table_size = (NT_SC_OPEN_MAX ());
-  channel_table =
-    (NT_malloc (OS_channel_table_size * (sizeof (struct channel))));
-  if (channel_table == 0)
-  {
-    outf_fatal ("\nUnable to allocate channel table.\n");
-    termination_init_error ();
-  }
-  {
-    Tchannel channel;
-    for (channel = 0; (channel < OS_channel_table_size); channel += 1)
-      MARK_CHANNEL_CLOSED (channel);
-  }
-  add_reload_cleanup (NT_channel_close_all);
-  OS_channels_registered = 0;
-  return;
-}
-
-void
-DEFUN_VOID (NT_reset_channels)
-{
-  NT_free (channel_table);
-  channel_table = 0;
-  OS_channel_table_size = 0;
-  return;
-}
 
 Tchannel
 DEFUN_VOID (channel_allocate)
@@ -595,39 +540,78 @@ DEFUN (OS_channel_unregister, (channel), Tchannel channel)
   return;
 }
 
-/* Hold-over from DOS.
-   This needs to be updated to use the NT equivalent.
- */
+/* Initialization/Termination code. */
 
-CONST int OS_have_select_p = 0;
+int OS_have_select_p = 0;
 
-long
-DEFUN (OS_channel_select_then_read, (channel, buffer, nbytes),
-       Tchannel channel AND
-       PTR buffer AND
-       size_t nbytes)
-{ /* We can't really select amongst channels in DOS, but still need
-     to keep track of whether the read was interrupted.
-   */
-  while (1)
+extern HANDLE master_tty_window;
+extern BOOL win32_under_win32s_p (void);
+extern void EXFUN (NT_initialize_channels, (void));
+extern void EXFUN (NT_reset_channels, (void));
+extern void EXFUN (NT_restore_channels, (void));
+
+void
+DEFUN_VOID (NT_reset_channels)
+{
+  NT_free (channel_table);
+  channel_table = 0;
+  OS_channel_table_size = 0;
+  return;
+}
+
+void
+DEFUN_VOID (NT_restore_channels)
+{
+  if (master_tty_window != ((HANDLE) NULL))
+    Screen_Destroy (TRUE, master_tty_window);
+  master_tty_window = ((HANDLE) NULL);
+  return;
+}
+
+void
+DEFUN_VOID (NT_initialize_channels)
+{
+#ifndef GUI
+  STDIN_HANDLE  = (GetStdHandle (STD_INPUT_HANDLE));
+  STDOUT_HANDLE = (GetStdHandle (STD_OUTPUT_HANDLE));
+  STDERR_HANDLE = (GetStdHandle (STD_ERROR_HANDLE));
+
+  if (STDIN_HANDLE == INVALID_HANDLE_VALUE  ||
+      STDOUT_HANDLE == INVALID_HANDLE_VALUE  ||
+      STDERR_HANDLE == INVALID_HANDLE_VALUE)
   {
-    long scr = (nt_channel_read (channel, buffer, nbytes));
-
-    if (scr < 0)
-    {
-      if (errno == ERRNO_NONBLOCK)
-	return -1;
-      else if (errno == EINTR)
-	return -4;
-      else
-      {
-	NT_prim_check_errno (syscall_read);
-	continue;
-      }
-    }
-    else if (((size_t) scr) > nbytes)
-      error_external_return ();
-    else
-      return (scr);
+    outf_fatal ("\nUnable to get standard handles %s(%d).\n",
+                __FILE__, __LINE__);
+    termination_init_error ();
   }
+
+  SetConsoleMode (STDIN_HANDLE,
+		  (  ENABLE_LINE_INPUT
+		   | ENABLE_ECHO_INPUT
+		   | ENABLE_PROCESSED_INPUT));
+  SetConsoleCtrlHandler (NT_ctrl_handler, TRUE);
+#endif /* GUI */
+
+  master_tty_window = Screen_Create (NULL, "MIT Scheme", SW_SHOWNORMAL);
+
+  if (win32s_under_win32s_p ())
+    OS_have_select = 0;
+  else
+    OS_have_select = 1;
+  OS_channel_table_size = (NT_SC_OPEN_MAX ());
+  channel_table =
+    (NT_malloc (OS_channel_table_size * (sizeof (struct channel))));
+  if (channel_table == 0)
+  {
+    outf_fatal ("\nUnable to allocate channel table.\n");
+    termination_init_error ();
+  }
+  {
+    Tchannel channel;
+    for (channel = 0; (channel < OS_channel_table_size); channel += 1)
+      MARK_CHANNEL_CLOSED (channel);
+  }
+  add_reload_cleanup (NT_channel_close_all);
+  OS_channels_registered = 0;
+  return;
 }
