@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.48 1993/09/03 04:41:21 cph Exp $
+$Id: decls.scm,v 1.49 1993/09/04 00:49:57 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -111,6 +111,7 @@ MIT in each case. |#
     (for-each (lambda (filename)
 		(apply sf-edwin filename includes))
 	      '("argred"
+		"artdebug"
 		"autold"
 		"autosv"
 		"basic"
