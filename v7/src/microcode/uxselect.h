@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxselect.h,v 1.4 1993/04/06 22:18:54 cph Exp $
+$Id: uxselect.h,v 1.5 1993/04/27 08:38:15 cph Exp $
 
 Copyright (c) 1991-93 Massachusetts Institute of Technology
 
@@ -52,6 +52,10 @@ extern void EXFUN (UX_select_registry_set, (PTR fds, unsigned int fd));
 extern void EXFUN (UX_select_registry_clear, (PTR fds, unsigned int fd));
 extern int EXFUN (UX_select_registry_is_set, (PTR fds, unsigned int fd));
 extern enum select_input EXFUN
-  (UX_select_registry_test, (PTR input_fds, PTR output_fds, int blockp));
+  (UX_select_registry_test,
+   (PTR input_fds, int blockp,
+    unsigned int * output_fds, unsigned int * output_nfds));
+extern enum select_input EXFUN
+  (UX_select_descriptor, (unsigned int fd, int blockp));
 
 #endif /* SCM_UXSELECT_H */

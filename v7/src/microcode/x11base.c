@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.48 1993/04/06 22:18:36 cph Exp $
+$Id: x11base.c,v 1.49 1993/04/27 08:38:16 cph Exp $
 
 Copyright (c) 1989-93 Massachusetts Institute of Technology
 
@@ -1135,6 +1135,13 @@ DEFUN (xd_process_events, (xd, non_block_p, use_select_p),
 {
   Display * display = (XD_DISPLAY (xd));
   unsigned int events_queued;
+  SCHEME_OBJECT result;
+  if (x_debug)
+    {
+      fprintf (stderr, "Enter xd_process_events (%s)\n",
+	       (non_block_p ? "non-blocking" : "blocking"));
+      fflush (stderr);
+    }
   if (!OS_have_select_p)
     use_select_p = 0;
   if (XD_CACHED_EVENT_P (xd))
@@ -1163,20 +1170,23 @@ DEFUN (xd_process_events, (xd, non_block_p, use_select_p),
 				     (!non_block_p)))
 	      {
 	      case select_input_none:
-		return (SHARP_F);
+		result = SHARP_F; goto done;
 	      case select_input_other:
-		return (LONG_TO_FIXNUM (-2));
+		result = (LONG_TO_FIXNUM (-2)); goto done;
 	      case select_input_process_status:
-		return (LONG_TO_FIXNUM (-3));
+		result = (LONG_TO_FIXNUM (-3)); goto done;
 	      case select_input_interrupt:
-		return (LONG_TO_FIXNUM (-4));
+		result = (LONG_TO_FIXNUM (-4)); goto done;
 	      case select_input_argument:
 		ping_server (xd);
 		events_queued = (XEventsQueued (display, QueuedAfterReading));
 		continue;
 	      }
 	  else if (non_block_p)
-	    return (SHARP_F);
+	    {
+	      result = SHARP_F;
+	      goto done;
+	    }
 	  ping_server (xd);
 	}
       XNextEvent (display, (&event));
@@ -1191,13 +1201,25 @@ DEFUN (xd_process_events, (xd, non_block_p, use_select_p),
       (XD_CACHED_EVENT (xd)) = event;
       (XD_CACHED_EVENT_P (xd)) = 1;
     restart:
-      {
-	SCHEME_OBJECT result = (x_event_to_object (&event));
-	(XD_CACHED_EVENT_P (xd)) = 0;
-	if (result != SHARP_F)
-	  return (result);
-      }
+      result = (x_event_to_object (&event));
+      (XD_CACHED_EVENT_P (xd)) = 0;
+      if (result != SHARP_F)
+	goto done;
     }
+ done:
+  if (x_debug)
+    {
+      fprintf (stderr, "Return from xd_process_events: ");
+      if (result == SHARP_F)
+	fprintf (stderr, "#f");
+      else if (FIXNUM_P (result))
+	fprintf (stderr, "%d", (FIXNUM_TO_LONG (result)));
+      else
+	fprintf (stderr, "[vector]");
+      fprintf (stderr, "\n");
+      fflush (stderr);
+    }
+  return (result);
 }
 
 /* Open/Close Primitives */

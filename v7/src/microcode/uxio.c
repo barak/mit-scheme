@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.25 1993/04/06 22:18:45 cph Exp $
+$Id: uxio.c,v 1.26 1993/04/27 08:38:14 cph Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
@@ -421,10 +421,11 @@ DEFUN (UX_select_registry_is_set, (fds, fd), PTR fds AND unsigned int fd)
 }
 
 enum select_input
-DEFUN (UX_select_registry_test, (input_fds, output_fds, blockp),
+DEFUN (UX_select_registry_test, (input_fds, blockp, output_fds, output_nfds),
        PTR input_fds AND
-       PTR output_fds AND
-       int blockp)
+       int blockp AND
+       unsigned int * output_fds AND
+       unsigned int * output_nfds)
 {
 #ifdef HAVE_SELECT
   while (1)
@@ -447,7 +448,20 @@ DEFUN (UX_select_registry_test, (input_fds, output_fds, blockp),
 			 : (&zero_timeout))))));
       if (nfds > 0)
 	{
-	  (* ((SELECT_TYPE *) output_fds)) = readable;
+	  unsigned int i = 0;
+	  if (output_nfds != 0)
+	    (*output_nfds) = nfds;
+	  if (output_fds != 0)
+	    while (1)
+	      {
+		if (FD_ISSET (i, (&readable)))
+		  {
+		    (*output_fds++) = i;
+		    if ((--nfds) == 0)
+		      break;
+		  }
+		i += 1;
+	      }
 	  return (select_input_argument);
 	}
       else if (nfds == 0)
@@ -462,6 +476,23 @@ DEFUN (UX_select_registry_test, (input_fds, output_fds, blockp),
       if (pending_interrupts_p ())
 	return (select_input_interrupt);
     }
+#else
+  error_system_call (ENOSYS, syscall_select);
+  return (select_input_argument);
+#endif
+}
+
+enum select_input
+DEFUN (UX_select_descriptor, (fd, blockp),
+       unsigned int fd AND
+       int blockp)
+{
+#ifdef HAVE_SELECT
+  SELECT_TYPE readable;
+
+  FD_ZERO (&readable);
+  FD_SET (fd, (&readable));
+  return (UX_select_registry_test ((&readable), blockp, 0, 0));
 #else
   error_system_call (ENOSYS, syscall_select);
   return (select_input_argument);
