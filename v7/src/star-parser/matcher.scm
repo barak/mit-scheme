@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.19 2001/10/16 17:52:28 cph Exp $
+;;; $Id: matcher.scm,v 1.20 2001/11/09 21:37:53 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -189,14 +189,14 @@
     (optimize-expression (generate-matcher-code expression))))
 
 (define (generate-matcher-code expression)
-  (generate-external-procedure expression
-			       preprocess-matcher-expression
-			       (lambda (expression)
-				 `(,(compile-matcher-expression expression #f)
-				   (LAMBDA (KF) KF #T)
-				   (LAMBDA () #F)))))
+  (generate-external-procedure expression preprocess-matcher-expression
+    (lambda (expression)
+      (bind-delayed-lambdas
+       (lambda (ks kf) (compile-matcher-expression expression #f ks kf))
+       (make-matcher-ks-lambda (lambda (kf) kf `#T))
+       (make-kf-lambda (lambda () `#F))))))
 
-(define (compile-matcher-expression expression pointer)
+(define (compile-matcher-expression expression pointer ks kf)
   (cond ((and (pair? expression)
 	      (symbol? (car expression))
 	      (list? (cdr expression))
@@ -206,21 +206,29 @@
 		    (compiler (cdr entry)))
 		(if (and arity (not (= (length (cdr expression)) arity)))
 		    (error "Incorrect arity for matcher:" expression))
-		(apply compiler pointer (cdr expression)))))
+		(apply compiler pointer ks kf (cdr expression)))))
 	((or (symbol? expression)
 	     (and (pair? expression) (eq? (car expression) 'SEXP)))
-	 (wrap-external-matcher
-	  `(,(if (pair? expression) (cadr expression) expression)
-	    ,*buffer-name*)))
+	 (wrap-external-matcher `((PROTECT ,(if (pair? expression)
+						(cadr expression)
+						expression))
+				  ,*buffer-name*)
+				ks
+				kf))
 	(else
 	 (error "Malformed matcher:" expression))))
+
+(define (wrap-external-matcher matcher ks kf)
+  `(IF ,matcher
+       ,(delay-call ks kf)
+       ,(delay-call kf)))
 
 (define-macro (define-matcher form . compiler-body)
   (let ((name (car form))
 	(parameters (cdr form)))
     `(DEFINE-MATCHER-COMPILER ',name
        ,(if (symbol? parameters) `#F (length parameters))
-       (LAMBDA (POINTER . ,parameters)
+       (LAMBDA (POINTER KS KF . ,parameters)
 	 ,@compiler-body))))
 
 (define (define-matcher-compiler keyword arity compiler)
@@ -233,89 +241,94 @@
 (define-macro (define-atomic-matcher form test-expression)
   `(DEFINE-MATCHER ,form
      POINTER
-     (WRAP-EXTERNAL-MATCHER ,test-expression)))
+     (WRAP-EXTERNAL-MATCHER ,test-expression KS KF)))
 
 (define-atomic-matcher (char char)
-  `(MATCH-PARSER-BUFFER-CHAR ,*buffer-name* ,char))
+  `(MATCH-PARSER-BUFFER-CHAR ,*buffer-name* (PROTECT ,char)))
 
 (define-atomic-matcher (char-ci char)
-  `(MATCH-PARSER-BUFFER-CHAR-CI ,*buffer-name* ,char))
+  `(MATCH-PARSER-BUFFER-CHAR-CI ,*buffer-name* (PROTECT ,char)))
 
 (define-atomic-matcher (not-char char)
-  `(MATCH-PARSER-BUFFER-NOT-CHAR ,*buffer-name* ,char))
+  `(MATCH-PARSER-BUFFER-NOT-CHAR ,*buffer-name* (PROTECT ,char)))
 
 (define-atomic-matcher (not-char-ci char)
-  `(MATCH-PARSER-BUFFER-NOT-CHAR-CI ,*buffer-name* ,char))
+  `(MATCH-PARSER-BUFFER-NOT-CHAR-CI ,*buffer-name* (PROTECT ,char)))
 
 (define-atomic-matcher (char-set char-set)
-  `(MATCH-PARSER-BUFFER-CHAR-IN-SET ,*buffer-name* ,char-set))
+  `(MATCH-PARSER-BUFFER-CHAR-IN-SET ,*buffer-name* (PROTECT ,char-set)))
 
 (define-atomic-matcher (alphabet alphabet)
-  `(MATCH-UTF8-CHAR-IN-ALPHABET ,*buffer-name* ,alphabet))
+  `(MATCH-UTF8-CHAR-IN-ALPHABET ,*buffer-name* (PROTECT ,alphabet)))
 
 (define-atomic-matcher (string string)
-  `(MATCH-PARSER-BUFFER-STRING ,*buffer-name* ,string))
+  `(MATCH-PARSER-BUFFER-STRING ,*buffer-name* (PROTECT ,string)))
 
 (define-atomic-matcher (string-ci string)
-  `(MATCH-PARSER-BUFFER-STRING-CI ,*buffer-name* ,string))
+  `(MATCH-PARSER-BUFFER-STRING-CI ,*buffer-name* (PROTECT ,string)))
 
 (define-atomic-matcher (end-of-input)
-  `(NOT (PEEK-PARSER-BUFFER-CHAR ,*BUFFER-NAME*)))
+  `(NOT (PEEK-PARSER-BUFFER-CHAR ,*buffer-name*)))
 
 (define-matcher (discard-matched)
   pointer
-  (wrap-matcher
-   (lambda (ks kf)
-     `(BEGIN
-	(DISCARD-PARSER-BUFFER-HEAD! ,*buffer-name*)
-	(,ks ,kf)))))
+  `(BEGIN
+     (DISCARD-PARSER-BUFFER-HEAD! ,*buffer-name*)
+     ,(delay-call ks kf)))
 
 (define-matcher (with-pointer identifier expression)
-  `(LET ((,identifier ,(or pointer (fetch-pointer))))
-     ,(compile-matcher-expression expression (or pointer identifier))))
+  `((LAMBDA (,identifier)
+      ,(compile-matcher-expression expression identifier ks kf))
+    ,(fetch-pointer)))
 
 (define-matcher (seq . expressions)
   (if (pair? expressions)
       (if (pair? (cdr expressions))
-	  (wrap-matcher
-	   (lambda (ks kf)
-	     (let loop ((expressions expressions) (pointer pointer) (kf2 kf))
-	       `(,(compile-matcher-expression (car expressions) pointer)
-		 ,(if (pair? (cdr expressions))
-		      (let ((kf3 (make-kf-identifier)))
-			`(LAMBDA (,kf3)
-			   ,(loop (cdr expressions) #f kf3)))
-		      ks)
-		 ,kf2))))
-	  (compile-matcher-expression (car expressions) pointer))
-      (wrap-matcher (lambda (ks kf) `(,ks ,kf)))))
+	  (let loop ((expressions expressions) (pointer pointer) (kf kf))
+	    (if (pair? (cdr expressions))
+		(bind-delayed-lambdas
+		 (lambda (ks)
+		   (compile-matcher-expression (car expressions)
+					       pointer
+					       ks
+					       kf))
+		 (make-matcher-ks-lambda
+		  (lambda (kf)
+		    (loop (cdr expressions) #f kf))))
+		(compile-matcher-expression (car expressions) pointer ks kf)))
+	  (compile-matcher-expression (car expressions) pointer ks kf))
+      (delay-call ks kf)))
 
 (define-matcher (alt . expressions)
   (if (pair? expressions)
       (if (pair? (cdr expressions))
-	  (wrap-matcher
-	   (lambda (ks kf)
-	     (let loop ((expressions expressions) (pointer pointer))
-	       `(,(compile-matcher-expression (car expressions) pointer)
-		 ,ks
-		 ,(if (pair? (cdr expressions))
-		      (backtracking-kf pointer
-			(lambda (pointer)
-			  (loop (cdr expressions) pointer)))
-		      kf)))))
-	  (compile-matcher-expression (car expressions) pointer))
-      (wrap-matcher (lambda (ks kf) `(BEGIN ,ks (,kf))))))
+	  (let loop ((expressions expressions) (pointer pointer))
+	    (if (pair? (cdr expressions))
+		(call-with-pointer pointer
+		  (lambda (pointer)
+		    (bind-delayed-lambdas
+		     (lambda (kf)
+		       (compile-matcher-expression (car expressions)
+						   pointer
+						   ks
+						   kf))
+		     (backtracking-kf pointer
+		       (lambda ()
+			 (loop (cdr expressions) pointer))))))
+		(compile-matcher-expression (car expressions) pointer ks kf)))
+	  (compile-matcher-expression (car expressions) pointer ks kf))
+      (delay-call kf)))
 
 (define-matcher (* expression)
   pointer
-  (wrap-matcher
-   (lambda (ks kf)
-     (let ((ks2 (make-ks-identifier))
-	   (kf2 (make-kf-identifier)))
-       `(LET ,ks2 ((,kf2 ,kf))
-	  (,(compile-matcher-expression expression #f)
-	   ,ks2
-	   ,(backtracking-kf #f
-	      (lambda (pointer)
-		pointer
-		`(,ks ,kf2)))))))))
+  (let ((ks2 (make-ks-identifier))
+	(kf2 (make-kf-identifier)))
+    `(LET ,ks2 ((,kf2 ,(delay-reference kf)))
+       ,(call-with-pointer #f
+	  (lambda (pointer)
+	    (bind-delayed-lambdas
+	     (lambda (kf)
+	       (compile-matcher-expression expression #f ks2 kf))
+	     (backtracking-kf pointer
+	       (lambda ()
+		 (delay-call ks kf2)))))))))
