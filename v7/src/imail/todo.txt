@@ -1,8 +1,10 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.13 2000/05/16 03:37:00 cph Exp $
+$Id: todo.txt,v 1.14 2000/05/16 22:00:54 cph Exp $
 
 Bug fixes
 ---------
+
+* Set imail buffer directory to home directory for IMAP folders.
 
 * Use UID FETCH instead of FETCH for IMAP?  In the case of Cyrus, it
   looks like UID FETCH does new-mail checks, while FETCH doesn't.
