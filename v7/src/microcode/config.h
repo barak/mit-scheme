@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.57 1990/11/13 08:44:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.58 1990/11/14 10:58:32 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -46,8 +46,9 @@ MIT in each case. */
 /* To debug the interpreter code itself, define ENABLE_DEBUGGING_TOOLS */
 /* #define ENABLE_DEBUGGING_TOOLS */
 
-/* If runtime HISTORY recording (a Scheme code debugging tool) is desired. */
-#define COMPILE_HISTORY
+/* If runtime HISTORY recording (a Scheme code debugging tool) is not
+   desired. */
+/* #define DISABLE_HISTORY */
 
 /* To enable the STEPPER.  Incompatible with futures. */
 /* #define COMPILE_STEPPER */
@@ -251,10 +252,10 @@ typedef unsigned long SCHEME_OBJECT;
 
 #ifdef hp9000s300
 #define MACHINE_TYPE		"hp9000s300"
-#ifdef MC68020
-#define FASL_INTERNAL_FORMAT	FASL_68020
-#else
+#ifdef MC68010
 #define FASL_INTERNAL_FORMAT	FASL_68000
+#else
+#define FASL_INTERNAL_FORMAT	FASL_68020
 #endif
 #define b32
 #define HEAP_IN_LOW_MEMORY
