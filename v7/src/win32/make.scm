@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.13 2003/02/14 18:28:35 cph Exp $
+$Id: make.scm,v 1.14 2003/04/25 03:55:30 cph Exp $
 
-Copyright (c) 1993-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1993,1998,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
