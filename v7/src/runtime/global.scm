@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.56 2001/12/19 04:11:15 cph Exp $
+$Id: global.scm,v 14.57 2001/12/21 01:53:29 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -74,8 +74,7 @@ USA.
 (define (false-procedure . args) args #f)
 (define (true-procedure . args) args #t)
 
-;; This definition is replaced when the 
-;; later in the boot sequence.
+;; This definition is replaced later in the boot sequence.
 (define apply (ucode-primitive apply 2))
 
 (define (eval expression environment)
