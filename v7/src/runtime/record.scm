@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.18 1992/12/10 01:25:37 cph Exp $
+$Id: record.scm,v 1.19 1992/12/17 00:05:34 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -139,7 +139,7 @@ MIT in each case. |#
 
 (define (set-record-type-unparser-method! record-type method)
   (guarantee-record-type record-type 'SET-RECORD-TYPE-UNPARSER-METHOD!)
-  (if (not (or (not method) (unparser-method? method)))
+  (if (not (or (not method) (procedure? method)))
       (error:wrong-type-argument method "unparser method"
 				 'SET-RECORD-TYPE-UNPARSER-METHOD!))
   (%record-set! record-type 4 method))
