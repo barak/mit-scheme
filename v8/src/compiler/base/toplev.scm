@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.12 1996/07/20 18:08:46 adams Exp $
+$Id: toplev.scm,v 1.13 1996/07/26 01:01:44 adams Exp $
 
 Copyright (c) 1988-1996 Massachusetts Institute of Technology
 
@@ -719,17 +719,17 @@ MIT in each case. |#
   (write-string *output-prefix*)
   (write-string prefix)
   (write-string ": ")
-  (write-time (+ process-non-gc process-gc))
+  (write-time process-non-gc)
   (if (not (= process-gc 0))
       (begin
-	(write-string " (")
-	(write-time process-non-gc)
-	(write-string " + ")
+	(write-string " (+ ")
 	(write-time process-gc)
-	(write-string " GC)")))
-  (write-string " (process time); ")
+	(write-string " GC = ")
+	(write-time (+ process-gc process-non-gc))
+	(write-string ")")))
+  (write-string " process time, ")
   (write-time real)
-  (write-string " (real time)"))
+  (write-string " real time"))
 
 (define compiler-intermediate-time-report
   (compiler-time-reporter "  Time taken"))
