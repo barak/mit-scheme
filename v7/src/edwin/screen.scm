@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.99 1992/03/13 23:58:38 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.100 1992/03/31 07:43:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -639,12 +639,9 @@
 (define-integrable (screen-update-cursor screen)
   (let ((x (matrix-cursor-x (screen-new-matrix screen)))
 	(y (matrix-cursor-y (screen-new-matrix screen))))
-    (if (not (and (fix:= x (matrix-cursor-x (screen-current-matrix screen)))
-		  (fix:= y (matrix-cursor-y (screen-current-matrix screen)))))
-	(begin
-	  (terminal-move-cursor screen x y)
-	  (set-matrix-cursor-x! (screen-current-matrix screen) x)
-	  (set-matrix-cursor-y! (screen-current-matrix screen) y)))))
+    (terminal-move-cursor screen x y)
+    (set-matrix-cursor-x! (screen-current-matrix screen) x)
+    (set-matrix-cursor-y! (screen-current-matrix screen) y)))
 
 (define (screen-update screen force?)
   ;; Update the actual terminal screen based on the data in `new-matrix'.
