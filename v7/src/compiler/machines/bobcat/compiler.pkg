@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.16 1988/12/30 07:01:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.17 1989/01/06 20:50:03 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -258,6 +258,10 @@ MIT in each case. |#
 	  dbg-block/stack-link
 	  set-dbg-block/procedure!
 
+	  make-dbg-variable
+	  dbg-variable/value
+	  set-dbg-variable/value!
+
 	  dbg-block-name/dynamic-link
 	  dbg-block-name/ic-parent
 	  dbg-block-name/normal-closure
@@ -269,10 +273,7 @@ MIT in each case. |#
 	  set-dbg-label/names!
 	  dbg-label/offset
 	  set-dbg-label/name!
-	  set-dbg-label/external?!
-
-	  symbol->dbg-name
-	  ))
+	  set-dbg-label/external?!))
 
 (define-package (compiler fg-generator)
   (files "fggen/canon"			;SCode canonicalizer
@@ -282,7 +283,13 @@ MIT in each case. |#
   (parent (compiler))
   (export (compiler top-level)
 	  canonicalize/top-level
-	  construct-graph))
+	  construct-graph)
+  (import (runtime scode-data)
+	  &pair-car
+	  &pair-cdr
+	  &triple-first
+	  &triple-second
+	  &triple-third))
 
 (define-package (compiler fg-optimizer)
   (files "fgopt/outer"			;outer analysis

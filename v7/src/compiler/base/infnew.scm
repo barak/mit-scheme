@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/infnew.scm,v 4.3 1988/12/30 07:02:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/infnew.scm,v 4.4 1989/01/06 20:50:21 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -37,44 +37,62 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (info-generation-phase-1 expression procedures)
-  (set-expression-debugging-info!
-   expression
-   (make-dbg-expression (block->dbg-block (expression-block expression))
-			(expression-label expression)))
-  (for-each
-   (lambda (procedure)
-     (if (procedure-continuation? procedure)
-	 (set-continuation/debugging-info!
-	  procedure
-	  (let ((block (block->dbg-block (continuation/block procedure))))
-	    (let ((continuation
-		   (make-dbg-continuation block
-					  (continuation/label procedure)
-					  (enumeration/index->name
-					   continuation-types
-					   (continuation/type procedure))
-					  (continuation/offset procedure))))
-	      (set-dbg-block/procedure! block continuation)
-	      continuation)))
-	 (set-procedure-debugging-info!
-	  procedure
-	  (let ((block (block->dbg-block (procedure-block procedure))))
-	    (let ((procedure
-		   (make-dbg-procedure
-		    block
-		    (procedure-label procedure)
-		    (procedure/type procedure)
-		    (symbol->string (procedure-name procedure))
-		    (map variable->dbg-name
-			 (cdr (procedure-required procedure)))
-		    (map variable->dbg-name (procedure-optional procedure))
-		    (let ((rest (procedure-rest procedure)))
-		      (and rest (variable->dbg-name rest)))
-		    (map variable->dbg-name (procedure-names procedure)))))
-	      (set-dbg-block/procedure! block procedure)
-	      procedure)))))
-   procedures))
+  (fluid-let ((*integrated-variables* '()))
+    (set-expression-debugging-info!
+     expression
+     (make-dbg-expression (block->dbg-block (expression-block expression))
+			  (expression-label expression)))
+    (for-each
+     (lambda (procedure)
+       (if (procedure-continuation? procedure)
+	   (set-continuation/debugging-info!
+	    procedure
+	    (let ((block (block->dbg-block (continuation/block procedure))))
+	      (let ((continuation
+		     (make-dbg-continuation
+		      block
+		      (continuation/label procedure)
+		      (enumeration/index->name continuation-types
+					       (continuation/type procedure))
+		      (continuation/offset procedure)
+		      (continuation/debugging-info procedure))))
+		(set-dbg-block/procedure! block continuation)
+		continuation)))
+	   (set-procedure-debugging-info!
+	    procedure
+	    (let ((block (block->dbg-block (procedure-block procedure))))
+	      (let ((procedure
+		     (make-dbg-procedure
+		      block
+		      (procedure-label procedure)
+		      (procedure/type procedure)
+		      (procedure-name procedure)
+		      (map variable->dbg-variable
+			   (cdr (procedure-original-required procedure)))
+		      (map variable->dbg-variable
+			   (procedure-original-optional procedure))
+		      (let ((rest (procedure-original-rest procedure)))
+			(and rest (variable->dbg-variable rest)))
+		      (map variable->dbg-variable (procedure-names procedure))
+		      (procedure-debugging-info procedure))))
+		(set-dbg-block/procedure! block procedure)
+		procedure)))))
+     procedures)
+    (for-each process-integrated-variable! *integrated-variables*)))
 
+(define (generated-dbg-continuation context label)
+  (let ((block
+	 (make-dbg-block/continuation (reference-context/block context)
+				      false)))
+    (let ((continuation
+	   (make-dbg-continuation block
+				  label
+				  'GENERATED
+				  (reference-context/offset context)
+				  false)))
+      (set-dbg-block/procedure! block continuation)
+      continuation)))
+
 (define (block->dbg-block block)
   (and block
        (or (block-debugging-info block)
@@ -98,7 +116,7 @@ MIT in each case. |#
 		  (if (not (continuation-variable? variable))
 		      (layout-set! layout
 				   (variable-normal-offset variable)
-				   (variable->dbg-name variable))))
+				   (variable->dbg-variable variable))))
 		(block-bound-variables block))
       (if (procedure/closure? procedure)
 	  (if (closure-procedure-needs-operator? procedure)
@@ -111,9 +129,13 @@ MIT in each case. |#
 			   dbg-block-name/static-link)))
       (make-dbg-block 'STACK
 		      (block->dbg-block parent)
+		      (and (procedure/closure? procedure)
+			   (block->dbg-block
+			    (reference-context/block
+			     (procedure-closure-context procedure))))
 		      layout
 		      (block->dbg-block (block-stack-link block))))))
-
+
 (define (continuation-block->dbg-block block)
   (make-dbg-block/continuation
    (block-parent block)
@@ -124,6 +146,7 @@ MIT in each case. |#
     (make-dbg-block
      'CONTINUATION
      dbg-parent
+     false
      (let ((names
 	    (append (if always-known?
 			'()
@@ -141,7 +164,7 @@ MIT in each case. |#
 	   (layout-set! layout index (car names)))
 	 layout))
      dbg-parent)))
-
+
 (define (closure-block->dbg-block block)
   (let ((parent (block-parent block))
 	(offsets
@@ -153,14 +176,15 @@ MIT in each case. |#
       (for-each (lambda (offset)
 		  (layout-set! layout
 			       (cdr offset)
-			       (variable->dbg-name (car offset))))
+			       (variable->dbg-variable (car offset))))
 		offsets)
       (if (and parent (ic-block/use-lookup? parent))
 	  (layout-set! layout 0 dbg-block-name/ic-parent))
-      (make-dbg-block 'CLOSURE (block->dbg-block parent) layout false))))
+      (make-dbg-block 'CLOSURE (block->dbg-block parent) false layout false))))
 
 (define (ic-block->dbg-block block)
-  (make-dbg-block 'IC (block->dbg-block (block-parent block)) false false))
+  (make-dbg-block 'IC (block->dbg-block (block-parent block))
+		  false false false))
 
 (define-integrable (make-layout length)
   (make-vector length false))
@@ -171,20 +195,33 @@ MIT in each case. |#
   (vector-set! layout index name)
   unspecific)
 
-(define-integrable (variable->dbg-name variable)
-  (symbol->dbg-name (variable-name variable)))
+(define *integrated-variables*)
 
-(define (generated-dbg-continuation context label)
-  (let ((block
-	 (make-dbg-block/continuation (reference-context/block context)
-				      false)))
-    (let ((continuation
-	   (make-dbg-continuation block
-				  label
-				  'GENERATED
-				  (reference-context/offset context))))
-      (set-dbg-block/procedure! block continuation)
-      continuation)))
+(define (variable->dbg-variable variable)
+  (or (lvalue-get variable dbg-variable-tag)
+      (let ((integrated? (lvalue-integrated? variable)))
+	(let ((dbg-variable
+	       (make-dbg-variable (variable-name variable)
+				  (cond (integrated? 'INTEGRATED)
+					((variable-in-cell? variable) 'CELL)
+					(else 'NORMAL))
+				  (and integrated?
+				       (lvalue-known-value variable)))))	  (if integrated?
+	      (set! *integrated-variables*
+		    (cons dbg-variable *integrated-variables*)))
+	  (lvalue-put! variable dbg-variable-tag dbg-variable)
+	  dbg-variable))))
+
+(define dbg-variable-tag
+  "dbg-variable-tag")
+
+(define (process-integrated-variable! variable)
+  (set-dbg-variable/value!
+   variable
+   (let ((rvalue (dbg-variable/value variable)))
+     (cond ((rvalue/constant? rvalue) (constant-value rvalue))
+	   ((rvalue/procedure? rvalue) (procedure-debugging-info rvalue))
+	   (else (error "Illegal variable value" rvalue))))))
 
 (define (info-generation-phase-2 expression procedures continuations)
   (let ((debug-info

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/subprb.scm,v 4.5 1988/12/16 13:13:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/subprb.scm,v 4.6 1989/01/06 20:50:41 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -119,8 +119,7 @@ known that the continuation need not be used.
 ;;; have resided in the real continuation.
 
 (define-structure (virtual-continuation
-		   (constructor virtual-continuation/%make
-				(context parent type))
+		   (constructor virtual-continuation/%make)
 		   (conc-name virtual-continuation/)
 		   (print-procedure
 		    (standard-unparser "VIRTUAL-CONTINUATION"		      (lambda (state continuation)
@@ -132,11 +131,12 @@ known that the continuation need not be used.
 							type))))))))
   context
   parent
-  type)
+  type
+  debugging)
 
 (define-integrable (virtual-continuation/make block type)
   ;; Used exclusively after FG generation.
-  (virtual-continuation/%make block false type))
+  (virtual-continuation/%make block false type false))
 
 (define-integrable (virtual-continuation/reified? continuation)
   (not (virtual-continuation/type continuation)))
@@ -153,6 +153,9 @@ known that the continuation need not be used.
 	      (virtual-continuation/context continuation)
 	      (virtual-continuation/parent continuation)
 	      (virtual-continuation/type continuation))))
+	(set-continuation/debugging-info!
+	 reification
+	 (virtual-continuation/debugging continuation))
 	(set-virtual-continuation/context! continuation reification)
 	(set-virtual-continuation/parent! continuation false)
 	(set-virtual-continuation/type! continuation false)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.14 1988/12/19 20:31:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.15 1989/01/06 20:50:55 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -130,7 +130,7 @@ MIT in each case. |#
 	 (eq? (continuation/type continuation) type))
 	(else
 	 (error "Illegal continuation" continuation))))
-
+
 (define-integrable (continuation/effect? continuation)
   (continuation/type? continuation continuation-type/effect))
 
@@ -177,14 +177,15 @@ MIT in each case. |#
 
 (define *virtual-continuations*)
 
-(define (virtual-continuation/make block parent type)
-  (let ((continuation (virtual-continuation/%make block parent type)))
+(define (virtual-continuation/make block parent type debugging)
+  (let ((continuation
+	 (virtual-continuation/%make block parent type debugging)))
     (set! *virtual-continuations* (cons continuation *virtual-continuations*))
     continuation))
 
 (define (wrapper/subproblem type)
-  (lambda (block continuation generator)
-    (generator (virtual-continuation/make block continuation type))))
+  (lambda (block continuation debugging generator)
+    (generator (virtual-continuation/make block continuation type debugging))))
 
 (define wrapper/subproblem/effect
   (wrapper/subproblem continuation-type/effect))
@@ -196,8 +197,8 @@ MIT in each case. |#
   (wrapper/subproblem continuation-type/value))
 
 (define (generator/subproblem wrapper)
-  (lambda (block continuation expression)
-    (wrapper block continuation
+  (lambda (block continuation expression debugging)
+    (wrapper block continuation debugging
       (lambda (continuation)
 	(generate/expression block continuation expression)))))
 
@@ -333,19 +334,6 @@ MIT in each case. |#
 		   (optional (make-variables block optional))
 		   (rest (and rest (make-variable block rest)))
 		   (names (make-variables block names)))
-	       (define (kernel)
-		 (make-procedure
-		  continuation-type/procedure
-		  block name (cons continuation required) optional rest names
-		  (map
-		   (lambda (value)
-		     ;; The other parts of this subproblem are not
-		     ;; interesting since `value' is guaranteed to
-		     ;; be either a constant or a procedure.
-		     (subproblem-rvalue
-		      (generate/subproblem/value block continuation value)))
-		       values)
-		  (generate/body block continuation declarations body)))
 	       (set-continuation-variable/type! continuation continuation-type)
 	       (set-block-bound-variables! block
 					   `(,continuation
@@ -353,11 +341,27 @@ MIT in each case. |#
 					     ,@optional
 					     ,@(if rest (list rest) '())
 					     ,@names))
-	       (if closure-block
-		   (let ((proc (kernel)))
-		     (set-procedure-closure-context! proc closure-block)
-		     proc)
-		   (kernel))))))))))
+	       (let ((procedure
+		      (make-procedure
+		       continuation-type/procedure
+		       block name (cons continuation required) optional rest
+		       names
+		       (map
+			(lambda (value)
+			  ;; The other parts of this subproblem are not
+			  ;; interesting since `value' is guaranteed to
+			  ;; be either a constant or a procedure.
+			  (subproblem-rvalue
+			   (generate/subproblem/value block
+						      continuation
+						      value
+						      false)))
+			    values)
+		       (generate/body block continuation declarations body))))
+		 (if closure-block
+		     (set-procedure-closure-context! procedure closure-block))
+		 (set-procedure-debugging-info! procedure expression)
+		 procedure)))))))))
 
 (define (parse-procedure-body auxiliary body)
   (transmit-values
@@ -424,17 +428,37 @@ MIT in each case. |#
 			    scfg*scfg->scfg!
 			    scfg*pcfg->pcfg!
 			    scfg*subproblem->subproblem!)))
-    (let loop ((actions (scode/sequence-actions expression)))
-      (if (null? (cdr actions))
-	  (generate/expression block continuation (car actions))
-	  (join (generate/subproblem/effect block continuation (car actions))
-		(loop (cdr actions)))))))
+    (let ((do-action
+	   (lambda (action continuation-type)
+	     (generate/subproblem/effect block
+					 continuation
+					 action
+					 (vector continuation-type
+						 expression))))
+	  (do-result
+	   (lambda (expression)
+	     (generate/expression block continuation expression))))
+      (cond ((object-type? (ucode-type sequence-2) expression)
+	     (join (do-action (&pair-car expression) 'SEQUENCE-2-SECOND)
+		   (do-result (&pair-cdr expression))))
+	    ((object-type? (ucode-type sequence-3) expression)
+	     (join
+	      (do-action (&triple-first expression) 'SEQUENCE-3-SECOND)
+	      (join
+	       (do-action (&triple-second expression) 'SEQUENCE-3-THIRD)
+	       (do-result (&triple-third expression)))))
+	    (else
+	     (error "Not a sequence" expression))))))
 
 (define (generate/conditional block continuation expression)
   (scode/conditional-components expression
     (lambda (predicate consequent alternative)
       (let ((predicate
-	     (generate/subproblem/predicate block continuation predicate)))
+	     (generate/subproblem/predicate
+	      block
+	      continuation
+	      predicate
+	      (vector 'CONDITIONAL-DECIDE expression))))
 	(let ((simple
 	       (lambda (hooks branch)
 		 ((continuation/case continuation
@@ -486,12 +510,29 @@ MIT in each case. |#
 	       (make-combination
 		block
 		(continuation-reference block continuation)
-		(generate/operator block continuation operator)
-		(map (lambda (expression)
-		       (generate/subproblem/value block
-						  continuation
-						  expression))
-		     operands)
+		(wrapper/subproblem/value
+		 block
+		 continuation
+		 (vector 'COMBINATION-OPERAND expression 0)
+		 (lambda (continuation*)
+		   (if (scode/lambda? operator)
+		       (generate/lambda* block
+					 continuation*
+					 operator
+					 (continuation/known-type continuation)
+					 false)
+		       (generate/expression block
+					    continuation*
+					    operator))))
+		(let loop ((operands operands) (index 1))
+		  (if (null? operands)
+		      '()
+		      (cons (generate/subproblem/value
+			     block
+			     continuation
+			     (car operands)
+			     (vector 'COMBINATION-OPERAND expression index))
+			    (loop (cdr operands) (1+ index)))))
 		push))))
 	((continuation/case continuation
 	   (lambda () (make-combination false continuation))
@@ -526,24 +567,17 @@ MIT in each case. |#
 		 (make-subproblem/canonical
 		  (make-combination push continuation)
 		  continuation))))))))))
-
-(define (generate/operator block continuation operator)
-  (wrapper/subproblem/value block continuation
-    (lambda (continuation*)
-      (if (scode/lambda? operator)
-	  (generate/lambda* block
-			    continuation*
-			    operator
-			    (continuation/known-type continuation)
-			    false)
-	  (generate/expression block
-			       continuation*
-			       operator)))))
 
 ;;;; Assignments
 
-(define (generate/assignment* maker find-name block continuation name value)
-  (let ((subproblem (generate/subproblem/value block continuation value)))
+(define (generate/assignment* maker find-name continuation-type
+			      block continuation expression name value)
+  (let ((subproblem
+	 (generate/subproblem/value
+	  block
+	  continuation
+	  value
+	  (vector continuation-type expression))))
     (scfg-append!
      (if (subproblem-canonical? subproblem)
 	 (make-scfg
@@ -557,8 +591,8 @@ MIT in each case. |#
   (scode/assignment-components expression
     (lambda (name value)
       (if (continuation/effect? continuation)
-	  (generate/assignment* make-assignment find-name
-				block continuation name value)
+	  (generate/assignment* make-assignment find-name 'ASSIGNMENT-CONTINUE
+				block continuation expression name value)
 	  (generate/combination
 	   block
 	   continuation
@@ -576,13 +610,12 @@ MIT in each case. |#
     (lambda (name value)
       (if (continuation/effect? continuation)
 	  (generate/assignment* make-definition make-definition-variable
-				block continuation name
-				(insert-letrec name value))
-	  (generate/sequence block
-			     continuation
-			     (scode/make-sequence
-			      (list (scode/make-definition name value)
-				    name)))))))
+				'DEFINITION-CONTINUE block continuation
+				expression name (insert-letrec name value))
+	  (generate/expression
+	   block
+	   continuation
+	   (scode/make-sequence (list expression name)))))))
 
 (define (make-definition-variable block name)
   (let ((bound (block-bound-variables block)))
@@ -615,7 +648,7 @@ MIT in each case. |#
       (generate/conditional
        block
        continuation
-       (scode/make-conditional predicate (make-constant true) alternative)))))
+       (scode/make-conditional predicate true alternative)))))
 
 (define (generate/disjunction/value block continuation expression)
   (scode/disjunction-components expression
