@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr2.scm,v 1.15 1988/04/22 16:32:44 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr2.scm,v 1.16 1988/10/20 16:11:07 markf Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -360,7 +360,7 @@ MIT in each case. |#
 (let-syntax ((define-shift-instruction
 	      (macro (keyword bits)
 		`(define-instruction ,keyword
-		   (((? d rl) (? s bwl) (D (? ry)) (D (? rx)))
+		   (((? d rl) (? s bwl) (D (? rx)) (D (? ry)))
 		    (WORD (4 #b1110)
 			  (3 rx)
 			  (1 d)
