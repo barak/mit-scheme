@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: texcom.scm,v 1.37 1992/11/17 05:48:07 cph Exp $
+;;;	$Id: texcom.scm,v 1.38 1992/11/17 17:51:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -51,7 +51,7 @@
   (lambda (buffer)
     (define-variable-local-value! buffer (ref-variable-object syntax-table)
       text-mode:syntax-table)
-    (event-distributor/invoke! (ref-variable text-mode-hook) buffer)))
+    (event-distributor/invoke! (ref-variable text-mode-hook buffer) buffer)))
 
 (define-key 'text #\m-s 'center-line)
 

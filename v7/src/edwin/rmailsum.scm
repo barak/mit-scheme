@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmailsum.scm,v 1.27 1992/11/16 22:41:13 cph Exp $
+;;;	$Id: rmailsum.scm,v 1.28 1992/11/17 17:48:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -48,7 +48,7 @@
 
 (define-variable rmailsum-rcs-header
   "The RCS header of the rmailsum.scm file."
-  "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.27 1992/11/16 22:41:13 cph Exp $"
+  "$Id: rmailsum.scm,v 1.28 1992/11/17 17:48:45 cph Exp $"
   string?)
 
 (define-variable-per-buffer rmail-buffer
@@ -58,7 +58,7 @@ FALSE means buffer is not a summary buffer."
   (lambda (x)
     (or (not x) (buffer? x))))
 
-(define-variable-per-buffer rmail-summary-buffer 
+(define-variable-per-buffer rmail-summary-buffer
   "Corresponding RMAIL-summary buffer for an RMAIL buffer.
 FALSE means buffer has no summary buffer."
   false
@@ -81,33 +81,35 @@ FALSE means buffer has no summary buffer."
   '()
   (lambda ()
     (rmail-new-summary "All" false)))
+#|
+(define rmail-summary-by-labels
+  "Display a summary of all messages with one or more LABELS.
+ LABELS should be a string containing the desired labels, separated by commas."
+  "sLabels to summarize by: "
+  (lambda (labels)
+    (if (string=? labels "")
+ 	(set! labels (or rmail-last-multi-labels
+ 			 (error "No label specified"))))
+    (set! rmail-last-multi-labels labels)
+    (rmail-new-summary (string-append "labels " labels)
+ 		       rmail-message-labels?
+ 		       (string-append ", \\("
+				      (mail-comma-list-regexp labels)
+				      "\\),"))))
 
-;;;(define rmail-summary-by-labels
-;;;   "Display a summary of all messages with one or more LABELS.
-;;; LABELS should be a string containing the desired labels, separated by commas."
-;;;   "sLabels to summarize by: "
-;;;   (lambda (labels)
-;;;     (if (string=? labels "")
-;;; 	(set! labels (or rmail-last-multi-labels
-;;; 			 (error "No label specified"))))
-;;;     (set! rmail-last-multi-labels labels)
-;;;     (rmail-new-summary (string-append "labels " labels)
-;;; 		       rmail-message-labels?
-;;; 		       (string-append ", \\(" (mail-comma-list-regexp labels) "\\),"))))
-;;; 
-;;; (define rmail-summary-by-recipients 
-;;;   "Display a summary of all messages with the given RECIPIENTS.
-;;; Normally checks the To, From and Cc fields of headers;
-;;; but if PRIMARY-ONLY is non-nil (prefix arg given),
-;;;  only look in the To and From fields.
-;;; RECIPIENTS is a string of names separated by commas."
-;;;   (interactive "sRecipients to summarize by: \nP")
-;;;   (lambda (recipients primary-only)
-;;;     (rmail-new-summary
-;;;      (string-append "recipients " recipients)
-;;;      rmail-message-recipients?
-;;;      (mail-comma-list-regexp recipients) primary-only)))
-;;; 
+(define rmail-summary-by-recipients
+  "Display a summary of all messages with the given RECIPIENTS.
+Normally checks the To, From and Cc fields of headers;
+but if PRIMARY-ONLY is non-nil (prefix arg given),
+ only look in the To and From fields.
+RECIPIENTS is a string of names separated by commas."
+  (interactive "sRecipients to summarize by: \nP")
+  (lambda (recipients primary-only)
+    (rmail-new-summary
+     (string-append "recipients " recipients)
+     rmail-message-recipients?
+     (mail-comma-list-regexp recipients) primary-only)))
+|#
 
 (define-command rmail-summary-by-recipients
   "Display a summary of all messages with the given RECIPIENTS.
@@ -133,7 +135,7 @@ RECIPIENTS is a string of names separated by commas."
 		      the-new-list))
 	  (re-compile-pattern
 	   (apply string-append
-		  (reverse 
+		  (reverse
 		   (cons (string-trim the-string)
 			 (map (lambda (x) (string-append x "\\|"))
 			      the-new-list))))
@@ -150,25 +152,24 @@ RECIPIENTS is a string of names separated by commas."
        (let ((the-to-field (fetch-first-field "to" inner-start inner-end))
 	     (the-from-field (fetch-first-field "from" inner-start inner-end))
 	     (the-cc-fields  (fetch-all-fields "cc" inner-start inner-end)))
-	 (or (if the-to-field
-		 (re-search-string-forward recip-regexp true false the-to-field)
-		 false)
-	     (if the-from-field
-		 (re-search-string-forward recip-regexp true false the-from-field)
-		 false)
-	     (if (and (not primary-only) the-cc-fields)
-		 (re-search-string-forward recip-regexp true false the-cc-fields)
-		 false))
-	 )))))
+	 (or (and the-to-field
+		  (re-search-string-forward recip-regexp true false
+					    the-to-field))
+	     (and the-from-field
+		  (re-search-string-forward recip-regexp true false
+					    the-from-field))
+	     (and (and (not primary-only) the-cc-fields)
+		  (re-search-string-forward recip-regexp true false
+					    the-cc-fields))))))))
 
-(define rmail-new-summary 
+(define rmail-new-summary
   (lambda (description function . args)
     (let ((the-rmail-buffer (current-buffer))
 	  (number-of-messages
 	   (msg-memo/number (msg-memo/last (current-msg-memo)))))
       (message "Computing summary lines...")
       (if (not (ref-variable rmail-summary-buffer))
-	  (local-set-variable! 
+	  (local-set-variable!
 	   rmail-summary-buffer
 	   (temporary-buffer
 	    (string-append (buffer-name (current-buffer)) "-summary"))))
@@ -177,7 +178,7 @@ RECIPIENTS is a string of names separated by commas."
       (let ((the-rmail-summary-buffer (ref-variable rmail-summary-buffer)))
 	(select-buffer-other-window (ref-variable rmail-summary-buffer))
 	(select-buffer-other-window the-rmail-buffer)
-	(define-variable-local-value! 
+	(define-variable-local-value!
 	  the-rmail-summary-buffer (ref-variable-object rmail-buffer)
 	  the-rmail-buffer)
 	(define-variable-local-value!
@@ -206,19 +207,20 @@ RECIPIENTS is a string of names separated by commas."
 		(loop (cdr the-summary-list)))))
 	(set-buffer-read-only! (current-buffer))
 	(set-current-point! (buffer-start (current-buffer)))
-;	(set-current-major-mode! (ref-mode-object rmail-summary))
+	;;(set-current-major-mode! (ref-mode-object rmail-summary))
 	(set-variable! mode-line-process (list ": " description))
 	(let ((the-current-msg-line
-	       (re-search-forward 
-		(string-append "^[ ]*" (number->string the-current-message-number))
+	       (re-search-forward
+		(string-append "^[ ]*"
+			       (number->string the-current-message-number))
 		(buffer-start (current-buffer))
 		(buffer-end (current-buffer)))))
 	  (if the-current-msg-line
-	      (set-current-point! 
+	      (set-current-point!
 	       (line-start the-current-msg-line 0))))
 	(rmail-summary-goto-message-current-line)
 	(message "Computing summary lines...done")))))
-
+
 (define (rmail-make-summary-line memo)
   (let ((new-summary-line-count 0))
     (let ((line
@@ -226,16 +228,14 @@ RECIPIENTS is a string of names separated by commas."
 					 (ref-variable rmail-summary-buffer))
 			   (-1+ (msg-memo/number memo)))
 	       (begin
-		 (set! new-summary-line-count
-		       (1+ new-summary-line-count))
+		 (set! new-summary-line-count (1+ new-summary-line-count))
 		 (if (= 0 (modulo new-summary-line-count 10))
 		     (message "Computing summary lines..."
 			      new-summary-line-count))
 		 (rmail-make-summary-line-1 memo)
 		 (vector-ref (ref-variable rmail-summary-vector
 					   (ref-variable rmail-summary-buffer))
-			     (-1+ (msg-memo/number memo)))
-		 ))))
+			     (-1+ (msg-memo/number memo)))))))
       ;; Fix up the part of the summary that says "deleted" or "unseen".
       (string-set!
        line 4
@@ -245,63 +245,61 @@ RECIPIENTS is a string of names separated by commas."
 				       2))
 	       #\- #\space)))
       line)))
-
+
 (define (rmail-make-summary-line-1 memo)
-  (with-buffer-open 
-   (current-buffer)
-   (lambda ()
-     (let ((old-point (current-point))
-	   (start (msg-memo/start memo))
-	   (end (msg-memo/end memo)))
-       (let ((pos)
-	     (labels
-	      (begin
-		(set-current-point! start)
-		(move-thing mark+ 3 'ERROR)
-		(if (and (search-forward ",," start end)
-			 (line-end? (current-point)))
-		    (let ((point (current-point)))
-		      (string-append 
-		       "{"
-		       (extract-string point (line-end point 0))
-		       "} "))
-		    "")))
-	     (line
-	      (begin
-		(let ((point (line-start start 2)))
-		  (if (string-prefix? 
-		       "Summary-line: "
-		       (extract-string point (line-end point 0)))
-		      (begin
-			(string-tail
-			 (extract-string point (line-start point 1))
-			 14))
-		      false)))))
-	 ;; If we didn't get a valid status line from the message,
-	 ;; make a new one and put it in the message.
-	 (or line
-	     (let ((inner-begin
-		    (let ((foo (search-forward "\n*** EOOH ***\n" start end)))
-		      (if foo
-			  foo
-			  (begin
-			    ((ref-command next-line) 1)
-			    (current-point))))))
-	       (set! line (rmail-make-basic-summary-line inner-begin end))
-	       (insert-string (string-append "Summary-line: " line)
-			      (line-start start 2))))
-	 (set! pos (string-find-next-char line #\#))
-	 (let ((num (msg-memo/number memo)))
-	   (vector-set! (ref-variable rmail-summary-vector
-				      (ref-variable rmail-summary-buffer))
-			(-1+ num)
-			(string-append
-			 (string-pad-left (number->string num) 4)
-			 "  "
-			 (string-head line pos)
-			 labels
-			 (string-tail line (1+ pos))))))
-       (set-current-point! old-point)))))
+  (with-buffer-open (current-buffer)
+    (lambda ()
+      (let ((old-point (current-point))
+	    (start (msg-memo/start memo))
+	    (end (msg-memo/end memo)))
+	(let ((pos)
+	      (labels
+	       (begin
+		 (set-current-point! start)
+		 (move-thing mark+ 3 'ERROR)
+		 (if (and (search-forward ",," start end)
+			  (line-end? (current-point)))
+		     (let ((point (current-point)))
+		       (string-append
+			"{"
+			(extract-string point (line-end point 0))
+			"} "))
+		     "")))
+	      (line
+	       (let ((point (line-start start 2)))
+		 (if (string-prefix?
+		      "Summary-line: "
+		      (extract-string point (line-end point 0)))
+		     (begin
+		       (string-tail
+			(extract-string point (line-start point 1))
+			14))
+		     false))))
+	  ;; If we didn't get a valid status line from the message,
+	  ;; make a new one and put it in the message.
+	  (or line
+	      (let ((inner-begin
+		     (let ((foo (search-forward "\n*** EOOH ***\n" start end)))
+		       (if foo
+			   foo
+			   (begin
+			     ((ref-command next-line) 1)
+			     (current-point))))))
+		(set! line (rmail-make-basic-summary-line inner-begin end))
+		(insert-string (string-append "Summary-line: " line)
+			       (line-start start 2))))
+	  (set! pos (string-find-next-char line #\#))
+	  (let ((num (msg-memo/number memo)))
+	    (vector-set! (ref-variable rmail-summary-vector
+				       (ref-variable rmail-summary-buffer))
+			 (-1+ num)
+			 (string-append
+			  (string-pad-left (number->string num) 4)
+			  "  "
+			  (string-head line pos)
+			  labels
+			  (string-tail line (1+ pos))))))
+	(set-current-point! old-point)))))
 
 (define (rmail-make-basic-summary-line the-begin the-end)
   (string-append
@@ -314,7 +312,8 @@ RECIPIENTS is a string of names separated by commas."
 	    ((re-search-forward "\\([^0-9:]\\)\\([0-3]?[0-9]\\)\\([- \t_]+\\)\\([adfjmnos][aceopu][bcglnprtvy]\\)"
 				the-mark the-end-of-line)
 	     (string-append
-	      (let ((date-string (extract-string (re-match-start 2) (re-match-end 2))))
+	      (let ((date-string
+		     (extract-string (re-match-start 2) (re-match-end 2))))
 		(if (char=? #\0 (string-ref date-string 0))
 		    (string-set! date-string 0 #\space))
 		(string-pad-left date-string 2))
@@ -338,7 +337,7 @@ RECIPIENTS is a string of names separated by commas."
 	 #|
 	 The following hair is required because From: lines can extend
 	 over multiple text lines in the message, so long as the
-	 first characters of each continuation line is a #\space or #\tab 
+	 first characters of each continuation line is a #\space or #\tab
 	 character.  Previously, we assumed that the field of the From: line
 	 terminated at the end of the text line, thus we could use:
 
@@ -352,10 +351,12 @@ RECIPIENTS is a string of names separated by commas."
 	 |#
 	 (let* ((from
 		 (let* ((the-new-mark (skip-chars-forward " \t\n" the-mark))
-			(the-new-end-mark (skip-chars-backward " " (line-end the-new-mark 0))))
+			(the-new-end-mark
+			 (skip-chars-backward " " (line-end the-new-mark 0))))
 		   (if (mark= the-new-mark (line-start the-new-mark 0))
 		       "                         "
-		       (mail-extract-real-name the-new-mark the-new-end-mark))))
+		       (mail-extract-real-name the-new-mark
+					       the-new-end-mark))))
 		(len (string-length from))
 		(mch (string-find-next-char-in-set from (char-set #\@ #\%))))
 	   (string-pad-right
@@ -375,7 +376,7 @@ RECIPIENTS is a string of names separated by commas."
 				   (group-end the-begin))))
 	   (extract-string the-start (line-end the-start 0)))))
    "\n"))
-
+
 (define (mail-extract-real-name address-start address-end)
   (cond ((re-search-forward "[ \t\"]*\\<\\(.*\\)\\>[\" \t]*<.*>"
 			    address-start address-end)
@@ -395,7 +396,7 @@ RECIPIENTS is a string of names separated by commas."
 
 (define-major-mode rmail-summary read-only "RMAIL Summary"
   "Major mode in effect in Rmail summary buffer.
-A subset of the Rmail mode commands are supported in this mode. 
+A subset of the Rmail mode commands are supported in this mode.
 As commands are issued in the summary buffer the corresponding
 mail message is displayed in the rmail buffer.
 
@@ -428,7 +429,8 @@ r       Reply to this mail message.
 Entering this mode calls value of hook variable rmail-summary-mode-hook."
   (lambda (buffer)
     (set-buffer-read-only! buffer)
-    (event-distributor/invoke! (ref-variable rmail-summary-mode-hook) buffer)))
+    (event-distributor/invoke! (ref-variable rmail-summary-mode-hook buffer)
+			       buffer)))
 
 (define-key 'rmail-summary #\j		'rmail-summary-show-message)
 (define-key 'rmail-summary #\n		'rmail-summary-next-undeleted-message)
@@ -484,7 +486,7 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
   (lambda (arg)
     (if arg
 	(let ((the-new-mark
-	       (re-search-forward 
+	       (re-search-forward
 		(string-append "^[ ]*" (number->string arg))
 		(buffer-start (current-buffer))
 		(buffer-end (current-buffer)))))
@@ -529,7 +531,7 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
     (set-current-point! (line-start (current-point) (- arg)))
     (rmail-summary-goto-message-current-line)))
 
-(define-command rmail-summary-next-undeleted-message 
+(define-command rmail-summary-next-undeleted-message
   "Goto ARGth next undeleted message."
   "p"
   (lambda (arg)
@@ -548,7 +550,7 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
 	      (set-current-point! (line-start the-mark 0))
 	      (rmail-summary-goto-message-current-line)))))))
 
-(define-command rmail-summary-previous-undeleted-message 
+(define-command rmail-summary-previous-undeleted-message
   "Goto ARGth previous undeleted message."
   "p"
   (lambda (arg)
@@ -569,7 +571,7 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
 
 (define-command rmail-summary-scroll-message-up
   "Scroll RMAIL window up.
-If the line the cursor is on does not correspond to the message 
+If the line the cursor is on does not correspond to the message
 shown in the RMAIL buffer, warp to the appropriate message."
   "P"
   (lambda (arg)
@@ -579,16 +581,19 @@ shown in the RMAIL buffer, warp to the appropriate message."
 	    (let ((the-message-number
 		   (string->number (string-trim (extract-string start end)))))
 	      (if (not (null? the-message-number))
-		  (if (= the-message-number 
-			 (msg-memo/number (buffer-msg-memo (ref-variable rmail-buffer))))
+		  (if (= the-message-number
+			 (msg-memo/number
+			  (buffer-msg-memo (ref-variable rmail-buffer))))
 		      (begin
-			(select-buffer-other-window (ref-variable rmail-buffer))
+			(select-buffer-other-window
+			 (ref-variable rmail-buffer))
 			(let ((window (current-window)))
-			  (scroll-window 
+			  (scroll-window
 			   window
 			   (standard-scroll-window-argument window arg 1)
 			   (lambda () true)))
-			(select-buffer-other-window (ref-variable rmail-summary-buffer)))
+			(select-buffer-other-window
+			 (ref-variable rmail-summary-buffer)))
 		      (begin
 			(if (char=? (mark-right-char end) #\-)
 			    (begin
@@ -596,12 +601,15 @@ shown in the RMAIL buffer, warp to the appropriate message."
 			      (mark-delete-right-char! end)
 			      (insert-char #\space end)
 			      (set-buffer-read-only! (current-buffer))))
-			(select-buffer-other-window (ref-variable rmail-buffer))
+			(select-buffer-other-window
+			 (ref-variable rmail-buffer))
 			((command-procedure
-			  (comtab-entry (mode-comtabs (current-major-mode)) #\j))
+			  (comtab-entry (mode-comtabs (current-major-mode))
+					#\j))
 			 the-message-number)
-			(select-buffer-other-window (ref-variable rmail-summary-buffer)))))))))))
- 
+			(select-buffer-other-window
+			 (ref-variable rmail-summary-buffer)))))))))))
+
 (define-command rmail-summary-scroll-message-down
   "Scroll RMAIL window down."
   "P"
@@ -628,7 +636,7 @@ shown in the RMAIL buffer, warp to the appropriate message."
 	(delete-string the-mark (mark1+ the-mark))
 	(insert-string "D" the-mark)
 	(set-buffer-read-only! (current-buffer))))))
-
+
 (define-command rmail-summary-delete-message-forward
   "Delete ARG undeleted messages and move to next undeleted message."
   "p"
@@ -650,7 +658,7 @@ shown in the RMAIL buffer, warp to the appropriate message."
 	    ((ref-command rmail-summary-delete-message))
 	    ((ref-command rmail-summary-previous-undeleted-message) 1)
 	    (loop (-1+ count)))))))
-  
+
 (define-command rmail-summary-undelete-message
   "Undelete this message and stay here."
   '()
@@ -667,7 +675,7 @@ shown in the RMAIL buffer, warp to the appropriate message."
 	  (delete-string the-mark (mark1+ the-mark))
 	  (insert-string " " the-mark)
 	  (set-buffer-read-only! (current-buffer)))))))
-
+
 (define-command rmail-summary-undelete-message-backward
   "Search backwards from current message for first ARG deleted
 messages, and undelete them."
@@ -687,7 +695,7 @@ messages, and undelete them."
 	    (loop (-1+ count)))))))
 
 (define-command rmail-summary-undelete-message-forward
-  "Search forward from current message for first ARG deleted 
+  "Search forward from current message for first ARG deleted
 messages, and undelete them."
   "p"
   (lambda (arg)
@@ -807,7 +815,7 @@ Calls whatever function is bound to #\i in RMAIL mode."
 	   (comtab-entry (mode-comtabs (current-major-mode)) #\i)))
       (execute-command the-command))
     ((ref-command rmail-summary))))
-  
+
 (define-command rmail-summary-mail
   "Send mail in another window.
 Calls whatever function is bound to #\m in RMAIL mode."

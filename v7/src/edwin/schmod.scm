@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: schmod.scm,v 1.28 1992/11/17 05:48:06 cph Exp $
+;;;	$Id: schmod.scm,v 1.29 1992/11/17 17:49:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -87,7 +87,8 @@ The following commands evaluate Scheme expressions:
       ";")
     (define-variable-local-value! buffer (ref-variable-object comment-end)
       "")
-    (let ((separate (string-append "^$\\|" (ref-variable page-delimiter))))
+    (let ((separate
+	   (string-append "^$\\|" (ref-variable page-delimiter buffer))))
       (define-variable-local-value! buffer
 	  (ref-variable-object paragraph-start)
 	separate)
@@ -103,7 +104,7 @@ The following commands evaluate Scheme expressions:
     (define-variable-local-value! buffer
 	(ref-variable-object mode-line-process)
       '(RUN-LIGHT (": " RUN-LIGHT) ""))
-    (event-distributor/invoke! (ref-variable scheme-mode-hook) buffer)))
+    (event-distributor/invoke! (ref-variable scheme-mode-hook buffer) buffer)))
 
 (define-variable scheme-mode-hook
   "An event distributor that is invoked when entering Scheme mode."

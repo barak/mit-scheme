@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.16 1992/11/16 22:41:16 cph Exp $
+;;;	$Id: sendmail.scm,v 1.17 1992/11/17 17:50:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -247,14 +247,14 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
       (string-append "^"
 		     (re-quote-string (ref-variable mail-header-separator))
 		     "$\\|^[ \t]*[-_][-_][-_]+$\\|"
-		     (ref-variable paragraph-start)))
+		     (ref-variable paragraph-start buffer)))
     (define-variable-local-value! buffer
 	(ref-variable-object paragraph-separate)
       (string-append "^"
 		     (re-quote-string (ref-variable mail-header-separator))
 		     "$\\|^[ \t]*[-_][-_][-_]+$\\|"
-		     (ref-variable paragraph-separate)))
-    (event-distributor/invoke! (ref-variable mail-mode-hook) buffer)))
+		     (ref-variable paragraph-separate buffer)))
+    (event-distributor/invoke! (ref-variable mail-mode-hook buffer) buffer)))
 
 (define-variable mail-mode-hook
   "An event distributor that is invoked when entering Mail mode."

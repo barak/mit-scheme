@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: telnet.scm,v 1.7 1992/11/16 22:41:18 cph Exp $
+$Id: telnet.scm,v 1.8 1992/11/17 17:51:04 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -53,9 +53,9 @@ and telnet-mode-hook, in that order."
   (lambda (buffer)
     (define-variable-local-value! buffer
 	(ref-variable-object comint-prompt-regexp)
-      (or (ref-variable telnet-prompt-pattern)
-	  (ref-variable shell-prompt-pattern)))
-    (event-distributor/invoke! (ref-variable telnet-mode-hook) buffer)))
+      (or (ref-variable telnet-prompt-pattern buffer)
+	  (ref-variable shell-prompt-pattern buffer)))
+    (event-distributor/invoke! (ref-variable telnet-mode-hook buffer) buffer)))
 
 (define-key 'telnet #\C-m 'telnet-send-input)
 (define-key 'telnet '(#\C-c #\C-c) 'telnet-self-send)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: shell.scm,v 1.10 1992/11/16 22:41:17 cph Exp $
+$Id: shell.scm,v 1.11 1992/11/17 17:50:44 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -83,7 +83,7 @@ to match their respective commands."
   (lambda (buffer)
     (define-variable-local-value! buffer
 	(ref-variable-object comint-prompt-regexp)
-      (ref-variable shell-prompt-pattern))
+      (ref-variable shell-prompt-pattern buffer))
     (define-variable-local-value! buffer
 	(ref-variable-object comint-input-sentinel)
       shell-directory-tracker)
@@ -91,7 +91,7 @@ to match their respective commands."
       '())
     (define-variable-local-value! buffer (ref-variable-object shell-dirtrack?)
       true)
-    (event-distributor/invoke! (ref-variable shell-mode-hook))))
+    (event-distributor/invoke! (ref-variable shell-mode-hook buffer) buffer)))
 
 (define-variable shell-mode-hook
   "An event distributor that is invoked when entering Shell mode."
