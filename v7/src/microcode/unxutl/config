@@ -1,6 +1,6 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/config,v 1.3 1989/07/26 04:17:38 cph Rel $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/config,v 1.4 1989/08/02 17:03:38 cph Exp $
 # Modelled on the configuration script for GNU CC
 #   Copyright (C) 1988 Free Software Foundation, Inc.
 
@@ -87,6 +87,11 @@ case $# in
 		mfour_file=bsd
 		cmp_file=sun-nfp/cmp68020.s
 		cmp_link=cmp68020.s
+		;;
+	umax)				# Encore Multimax
+	    	system_file=umax
+		machine_file=umax
+		mfour_file=bsd
 		;;
 	*)
 		echo "$progname: unknown machine name: $machine"
