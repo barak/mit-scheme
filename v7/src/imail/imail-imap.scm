@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.25 2000/05/10 17:03:21 cph Exp $
+;;; $Id: imail-imap.scm,v 1.26 2000/05/10 17:05:24 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -41,8 +41,8 @@
   ;; Unique ID specifying a message.  Ignored.
   (uid define accessor))
 
-(define (make-rmail-url user-id auth-type host port mailbox uid)
-  (save-url (%make-rmail-url user-id auth-type host port mailbox uid)))
+(define (make-imap-url user-id auth-type host port mailbox uid)
+  (save-url (%make-imap-url user-id auth-type host port mailbox uid)))
 
 (define-url-protocol "imap" <imap-url>
   (let ((//server/

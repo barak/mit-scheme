@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.17 2000/05/08 19:07:54 cph Exp $
+;;; $Id: imail-umail.scm,v 1.18 2000/05/10 17:03:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -26,14 +26,17 @@
 
 (define-class <umail-url> (<file-url>))
 
-(define make-umail-url
+(define-url-protocol "umail" <umail-url>
+  (lambda (string)
+    (%make-umail-url (short-name->pathname string))))
+
+(define (make-umail-url pathname)
+  (save-url (%make-umail-url pathname)))
+
+(define %make-umail-url
   (let ((constructor (instance-constructor <umail-url> '(PATHNAME))))
     (lambda (pathname)
       (constructor (merge-pathnames pathname)))))
-
-(define-url-protocol "umail" <umail-url>
-  (lambda (string)
-    (make-umail-url (short-name->pathname string))))
 
 ;;;; Server operations
 
