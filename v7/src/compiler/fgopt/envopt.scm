@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/envopt.scm,v 1.1.1.1 1988/12/02 01:53:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/envopt.scm,v 1.1.1.2 1988/12/12 21:28:21 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -163,46 +163,31 @@ MIT in each case. |#
 	     (enqueue-nodes! (procedure-free-callers procedure)))
 	    (else 'DONE)))))
 
-(define (application-is-call-to? application block)
-  (and (application/combination? application)
-       (let ((op (rvalue-known-value (application-operator application))))
-	 (and op
-	      (rvalue/procedure? op)
-	      (eq? (application-block application) block)))))
-
 (define (choose-target-block! procedure)
   (let ((callers (procedure-free-callers procedure))
-	(closing-block (procedure-closing-block procedure)))
+	(parent (procedure-closing-block procedure))
+	(target-block (procedure-target-block procedure)))
   ;; Clean up
   (set-procedure-free-callees! procedure '())
   (set-procedure-free-callers! procedure '())
-  ;; The following conditional makes some cases of LET-like procedures
-  ;; track their parents in order to avoid closing over the same
-  ;; variables twice.
-  (if (or (not (null? callers))
-	  (not (procedure-always-known-operator? procedure))
-	  (not (for-all?
-		(procedure-applications procedure)
-		(lambda (app)
-		  (application-is-call-to? app closing-block)))))
-      (let ((target-block (procedure-target-block procedure)))
-	(if (and (not (eq? closing-block target-block))
-		 (block-ancestor? closing-block target-block))
-	    (let ((myself (procedure-block procedure)))
-	      (set-procedure-target-block! procedure closing-block)
-	      (set-procedure-closing-block! procedure target-block)
-	      (set-block-children!
-	       closing-block
-	       (delq! myself (block-children closing-block)))
-	      (set-block-disowned-children!
-	       closing-block
-	       (cons myself (block-disowned-children closing-block)))
-	      (set-block-children!
-	       target-block
-	       (cons myself (block-children target-block))))
-	    (set-procedure-target-block! procedure closing-block)))
-      (set-procedure-target-block! procedure closing-block))
-  'DONE))
+  ;; This now becomes `block-original-parent' of the procedure's
+  ;; invocation block.
+  (set-procedure-target-block! procedure parent)
+  (if (and
+       ;; The following clause makes some cases of LET-like procedures
+       ;; track their parents in order to avoid closing over the same
+       ;; variables twice.
+       (not (and (null? callers)
+		 (procedure-always-known-operator? procedure)
+		 (for-all? (procedure-applications procedure)
+		   (lambda (application)
+		     (eq? (application-block application) parent)))))
+       (not (eq? parent target-block))
+       (block-ancestor? parent target-block))
+      (let ((myself (procedure-block procedure)))
+	(disown-block-child! parent myself)
+	(own-block-child! target-block myself)))
+  unspecific))
 
 ;;; Utilities
 
