@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.7 2000/12/06 05:01:26 cph Exp $
+# $Id: Makefile,v 1.8 2000/12/06 05:14:49 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -18,7 +18,7 @@
 
 SHELL = /bin/sh
 
-SCHEME_SUBDIRS = 6001 compiler cref edwin imail runtime sf sos
+SCHEME_SUBDIRS = 6001 compiler cref edwin imail rcs runtime sf sos win32
 SUBDIRS = $(SCHEME_SUBDIRS) microcode
 
 all:
