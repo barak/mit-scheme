@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.180 2001/06/12 00:47:32 cph Exp $
+;;; $Id: imail-imap.scm,v 1.181 2001/06/16 04:12:02 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1008,10 +1008,18 @@
 (define-method set-message-flags! ((message <imap-message>) flags)
   (with-imap-message-open message
     (lambda (connection)
-      (imap:command:uid-store-flags connection
-				    (imap-message-uid message)
-				    (map imail-flag->imap-flag
-					 (flags-delete "recent" flags))))))
+      (imap:command:uid-store-flags
+       connection
+       (imap-message-uid message)
+       (map imail-flag->imap-flag
+	    (let ((flags (flags-delete "recent" flags))
+		  (folder (message-folder message)))
+	      (if (imap-folder-permanent-keywords? folder)
+		  flags
+		  (list-transform-positive flags
+		    (let ((allowed-flags (imap-folder-allowed-flags folder)))
+		      (lambda (flag)
+			(flags-member? flag allowed-flags)))))))))))
 
 (define (imap-flag->imail-flag flag)
   (let ((entry (assq flag standard-imap-flags)))
