@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.6 1995/02/02 05:01:54 adams Exp $
+$Id: cleanup.scm,v 1.7 1995/02/11 01:59:38 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -221,6 +221,7 @@ MIT in each case. |#
 		%vector
 		%vector-cons
 		%floating-vector-cons
+		set-interrupt-enables!
 		string-allocate
 		%string-allocate
 		%vector-index))
