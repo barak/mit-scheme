@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: scomb.scm,v 14.13 1995/07/27 21:15:28 adams Exp $
+$Id: scomb.scm,v 14.14 1995/07/27 22:00:28 adams Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -102,6 +102,7 @@ MIT in each case. |#
 	       FLONUM-ZERO?
 	       GCD-FIXNUM
 	       GREATER-THAN-FIXNUM?
+	       INDEX-FIXNUM?
 	       INTEGER->CHAR
 	       LESS-THAN-FIXNUM?
 	       MAKE-CHAR
@@ -197,7 +198,7 @@ MIT in each case. |#
   (object-type? (ucode-type conditional) object))
 
 (define undefined-conditional-branch
-  (object-new-type (ucode-type constant) 1))
+  (object-new-type (ucode-type constant) #x-800000))
 
 (define-integrable (conditional-predicate conditional)
   (&triple-first conditional))
