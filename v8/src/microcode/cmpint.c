@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.15 1989/11/20 23:13:16 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.16 1989/11/21 23:31:05 jinx Exp $
  *
  * This file corresponds to
  * $COMPILER-Header: compiler.c,v 9.37 89/10/25 14:55:45 GMT jinx Exp $
@@ -1079,7 +1079,7 @@ comutil_operator_lexpr_trap (tramp_data, ignore_2, ignore_3, ignore_4)
    */
 
   Regs[REGBLOCK_LEXPR_ACTUALS] =
-    ((SCHEME_OBJECT) (OBJECT_DATUM (tramp_data[1])));
+    ((SCHEME_OBJECT) ((OBJECT_DATUM (tramp_data[1])) - 1));
   return (comutil_primitive_lexpr_apply ((tramp_data[0]), 0, 0, 0));
 }
 
