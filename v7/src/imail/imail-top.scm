@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.162 2000/06/15 20:16:05 cph Exp $
+;;; $Id: imail-top.scm,v 1.163 2000/06/15 20:54:22 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -833,16 +833,15 @@ With prefix argument N moves backward N messages with these flags."
 		    (begin
 		      (store-property! message 'RAW? raw?)
 		      (insert-header-fields message raw? mark)
-		      (if raw?
-			  (insert-string (message-body message) mark)
-			  (begin
-			    (if (folder-supports-mime? folder)
-				(insert-mime-message-body message mark)
-				(call-with-auto-wrapped-output-mark mark
-				  (lambda (port)
-				    (write-string (message-body message)
-						  port))))
-			    (guarantee-newline mark))))
+		      (cond (raw?
+			     (insert-string (message-body message) mark))
+			    ((folder-supports-mime? folder)
+			     (insert-mime-message-body message mark))
+			    (else
+			     (call-with-auto-wrapped-output-mark mark
+			       (lambda (port)
+				 (write-string (message-body message)
+					       port))))))
 		    (insert-string "[This folder has no messages in it.]"
 				   mark))))
 	    (mark-temporary! mark))
@@ -1228,8 +1227,7 @@ With prefix argument N moves backward N messages with these flags."
 		((BASE64)
 		 (decode-base64-string text port #t))
 		(else
-		 (write-string text port)))))
-	  (guarantee-newline mark))
+		 (write-string text port))))))
 	(insert-mime-message-attachment 'ATTACHMENT body selector mark))))
 
 (define (insert-mime-message-attachment class body selector mark)
