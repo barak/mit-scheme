@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwfs.scm,v 1.15 1991/07/08 22:34:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwfs.scm,v 1.16 1993/08/09 19:42:49 jawilson Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -188,78 +188,100 @@
 		    (set-o3-y! end y))
 		  (loop outline* (fix:+ end-index 1) y)))))))))
 
-(define (draw-region! window
-		      group start-index end-index
-		      start-column
+(define (draw-region! window group start-index end-index start-column
 		      y y-size)
-  (clip-window-region-1 (fix:- (%window-saved-yl window) y)
-			(fix:- (%window-saved-yu window) y)
-			y-size
-    (lambda (yl yu)
-      (let ((screen (%window-saved-screen window))
-	    (xl
-	     (fix:+ (%window-saved-x-start window)
-		    (%window-saved-xl window)))
-	    (xu
-	     (fix:+ (%window-saved-x-start window)
-		    (%window-saved-xu window)))
-	    (y-start (fix:+ (%window-saved-y-start window) y))
-	    (truncate-lines? (%window-truncate-lines? window))
-	    (tab-width (%window-tab-width window))
-	    (results substring-image-results))
-	(let ((xm (fix:- xu 1))
-	      (yl (fix:+ y-start yl))
-	      (yu (fix:+ y-start yu)))
-	  (let ((columns (fix:- xm xl)))
-	    (let loop
-		((index start-index)
-		 (column-offset (fix:- start-column xl))
-		 (partial 0)
-		 (y y-start))
-	      (if (fix:< y yu)
-		  (let ((line
-			 ;; If line is clipped off top of window, draw
-			 ;; it anyway so that index and column
-			 ;; calculations get done.  Might as well use
-			 ;; first visible line for image output so as
-			 ;; to avoid consing a dummy image buffer.
-			 (screen-get-output-line screen
-						 (if (fix:< y yl) yl y)
-						 xl xu false)))
-		    (let ((fill-line
-			   (lambda (index xl)
-			     (group-image! group index end-index
-					   line xl xm
-					   tab-width column-offset results)
-			     (cond ((fix:= (vector-ref results 0) end-index)
-				    (do ((x (vector-ref results 1)
-					    (fix:+ x 1)))
-					((fix:= x xu))
-				      (string-set! line x #\space)))
-				   (truncate-lines?
-				    (string-set! line xm #\$))
-				   (else
-				    (string-set! line xm #\\)
-				    (loop (vector-ref results 0)
-					  (fix:+ column-offset columns)
-					  (vector-ref results 2)
-					  (fix:+ y 1)))))))
-		      (if (fix:= partial 0)
-			  (fill-line index xl)
-			  (begin
-			    (partial-image! (group-right-char group index)
-					    partial
-					    line xl xm
-					    tab-width)
-			    (if (fix:> partial columns)
-				(begin
-				  (string-set! line xm #\\)
-				  (loop index
-					(fix:+ column-offset columns)
-					(fix:- partial columns)
-					(fix:+ y 1)))
-				(fill-line (fix:+ index 1)
-					   (fix:+ xl partial)))))))))))))))
+  (clip-window-region-1
+   (fix:- (%window-saved-yl window) y) (fix:- (%window-saved-yu window) y)
+   y-size
+   (lambda (yl yu)
+     (let ((screen (%window-saved-screen window))
+	   (xl (fix:+ (%window-saved-x-start window)
+		      (%window-saved-xl window)))
+	   (xu (fix:+ (%window-saved-x-start window)
+		      (%window-saved-xu window)))
+	   (y-start (fix:+ (%window-saved-y-start window) y))
+	   (truncate-lines? (%window-truncate-lines? window))
+	   (tab-width (%window-tab-width window))
+	   (results substring-image-results))
+       (let ((xm (fix:- xu 1))
+	     (yl (fix:+ y-start yl)) (yu (fix:+ y-start yu)))
+	 (let ((columns (fix:- xm xl)))
+	   (let line-loop
+	       ((index start-index)
+		(column-offset (fix:- start-column xl))
+		(partial 0)
+		(y y-start))
+	     (if (fix:< y yu)
+		 (let loop
+		     ((interval (and (group-text-properties group)
+				     (find-interval group index)))
+		      (column-offset column-offset)
+		      (xl* xl)
+		      (index index))
+		   (let ((end-index*
+			  (if interval
+			      (let ((iend (interval-end interval)))
+				(if (fix:< end-index iend) end-index iend))
+			      end-index))
+			 ;; If line is clipped off top of window, draw it 
+			 ;; anyway so that index and column calculations
+			 ;; get done. Use first visible line for image
+			 ;; output so as to avoid consing a dummy image
+			 ;; buffer.
+			 (line (screen-get-output-line
+				screen
+				(if (fix:< y yl) yl y)
+				xl* xu
+				(and interval
+				     (interval-property
+				      interval
+				      'highlighted)))))
+		     (let ((fill-line
+			    (lambda (index xl*)
+			      (group-image! group index end-index*
+					    line xl* xm
+					    tab-width column-offset results)
+			      (cond ((fix:= (vector-ref results 0) end-index)
+				     (let ((xl* (vector-ref results 1)))
+				       (let ((line
+					      (screen-get-output-line
+					       screen
+					       (if (fix:< y yl) yl y)
+					       xl* xu false)))
+					 (do ((x xl* (fix:+ x 1)))
+					     ((fix:= x xu))
+					   (string-set! line x #\space)))))
+				    ((fix:= (vector-ref results 0) end-index*)
+				     (loop (next-interval interval)
+					   (fix:+ column-offset
+						  (fix:- (vector-ref results 1)
+							 xl*))
+					   (vector-ref results 1)
+					   (vector-ref results 0)))
+				    (truncate-lines?
+				     (string-set! line xm #\$))
+				    (else
+				     (string-set! line xm #\\)
+				     (line-loop (vector-ref results 0)
+						(fix:+ column-offset columns)
+						(vector-ref results 2)
+						(fix:+ y 1)))))))
+		       (if (fix:= partial 0)
+			   (fill-line index xl*)
+			   (begin
+			     (partial-image! (group-right-char group index)
+					     partial
+					     line xl* xm
+					     tab-width)
+			     (if (fix:> partial columns)
+				 (begin
+				   (string-set! line xm #\\)
+				   (line-loop index
+					      (fix:+ column-offset columns)
+					      (fix:- partial columns)
+					      (fix:+ y 1)))
+				 (fill-line (fix:+ index 1)
+					    (fix:+ xl* partial))))))))))))))))
 
 (define (scroll-lines-up window start end new-start-y)
   (if (fix:>= new-start-y 0)
