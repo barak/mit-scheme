@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.66 1999/12/27 21:03:15 cph Exp $
+@comment $Id: user.texinfo,v 1.67 2000/03/17 17:57:34 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -15,35 +15,21 @@
 @ifinfo
 This file documents the use of MIT Scheme.
 
-Copyright @copyright{} 1991-1999 Massachusetts Institute of Technology
+Copyright @copyright{} 1991-2000 Massachusetts Institute of Technology
 
-Permission is granted to make and distribute verbatim copies of
-this manual provided the copyright notice and this permission notice
-are preserved on all copies.
-
-@ignore
-Permission is granted to process this file through TeX and print the
-results, provided the printed document carries copying permission
-notice identical to this one except for the removal of this paragraph
-(this paragraph not being relevant to the printed manual).
-
-@end ignore
-Permission is granted to copy and distribute modified versions of this
-manual under the conditions for verbatim copying, provided that the entire
-resulting derived work is distributed under the terms of a permission
-notice identical to this one.
-
-Permission is granted to copy and distribute translations of this manual
-into another language, under the above conditions for modified versions,
-except that this permission notice may be stated in a translation approved
-by the Massachusetts Institute of Technology.
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.1 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
+Texts.  A copy of the license is included in the section entitled "GNU
+Free Documentation License".
 @end ifinfo
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.66
+@subtitle Edition 1.67
 @subtitle for Scheme Release 7.5
-@subtitle 27 December 1999
+@subtitle 17 March 2000
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -51,21 +37,14 @@ by the Massachusetts Institute of Technology.
 @page
 
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1991-1999 Massachusetts Institute of Technology
+Copyright @copyright{} 1991-2000 Massachusetts Institute of Technology
 
-Permission is granted to make and distribute verbatim copies of
-this manual provided the copyright notice and this permission notice
-are preserved on all copies.
-
-Permission is granted to copy and distribute modified versions of this
-manual under the conditions for verbatim copying, provided that the entire
-resulting derived work is distributed under the terms of a permission
-notice identical to this one.
-
-Permission is granted to copy and distribute translations of this manual
-into another language, under the above conditions for modified versions,
-except that this permission notice may be stated in a translation approved
-by the Massachusetts Institute of Technology.
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.1 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
+Texts.  A copy of the license is included in the section entitled "GNU
+Free Documentation License".
 @end titlepage
 
 @node Top, Introduction, (dir), (dir)
@@ -538,10 +517,10 @@ itself, clear the screen, and print something like this:
 
 @example
 @group
-Scheme saved on Thursday June 10, 1999 at 12:28:55 PM
-  Release 7.5a
-  Microcode 11.163
-  Runtime 14.180
+Scheme saved on Thursday March 16, 2000 at 12:30:16 PM
+  Release 7.5.4
+  Microcode 11.166
+  Runtime 14.181
 @end group
 @end example
 
