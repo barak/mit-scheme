@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: udata.scm,v 14.16 1993/09/11 21:08:49 gjr Exp $
+$Id: udata.scm,v 14.17 1995/07/27 21:23:12 adams Exp $
 
-Copyright (c) 1988, 1989, 1990, 1993 Massachusetts Institute of Technology
+Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -149,8 +149,13 @@ to the correct value before these operations are used.
 
 Note: This code needs to be changed somewhat.  MANIFEST-CLOSURES are
 compiled-code-blocks, but the format of them is completely different.
-The constants block in a compiled-code-block often has a linkage section
-that you cannot just vector-ref into.
+
+The constants block in a compiled-code-block often has a linkage
+section that you cannot just vector-ref into as it contains raw
+amchine addresses.  COMPILED-CODE-BLOCK/MARKED-START returns the start
+index of this area.  COMPILED-CODE-BLOCK/CONSTANTS-START returns the
+start index of the area following the linkage section, which usually
+contains constants derived from the source program.
 |#
 
 (define compiled-code-block/bytes-per-object)
@@ -187,8 +192,31 @@ that you cannot just vector-ref into.
   (+ (compiled-code-block/code-start block)
      (compiled-code-block/code-length block)))
 
-(define (compiled-code-block/constants-start block)
+(define (compiled-code-block/marked-start block)
+  ;; The first offset that is a marked constant
   (1+ (object-datum (system-vector-ref block 0))))
+
+(define (compiled-code-block/constants-start block)
+  ;; Skip over linkage sections and manifect vector templates to find an
+  ;; index that can be used to extract constants.
+  (let ((marked-start (compiled-code-block/marked-start block))
+	(end          (compiled-code-block/constants-end block)))
+    (let loop ((index  marked-start))
+      (if (>= index end)
+	  end
+	  (let ((type  (object-type (system-vector-ref block index)))
+		(datum (object-datum (system-vector-ref block index))))
+	    (cond ((= type (ucode-type manifest-closure))
+		   (loop (+ index 1 4)))
+		  ((or (= type (ucode-type linkage-section))   ;; linked or..
+		       (= type (ucode-type positive-fixnum)))  ;; before linking
+		   ;; [Before linking the execute caches are headed by fixnums
+		   ;; and contain symbols and fixnums]
+		   (let ((kind  (quotient datum #x10000))
+			 (count (remainder datum #x10000)))
+		     (loop (+ index 1 count))))
+		  (else
+		   index)))))))
 
 (define (compiled-code-block/constants-end block)
   (- (system-vector-length block) 2))
