@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: sysprim.c,v 9.37 1992/10/17 20:43:12 jinx Exp $
+$Id: sysprim.c,v 9.38 1993/01/07 23:53:46 cph Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -71,6 +71,42 @@ DEFINE_PRIMITIVE ("UNDER-EMACS?", Prim_under_emacs_p, 0, 0, 0)
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (OS_under_emacs_p ()));
 }
 
+DEFINE_PRIMITIVE ("SET-TRAP-STATE!", Prim_set_trap_state, 1, 1, 0)
+{
+  long result;
+  extern long OS_set_trap_state();
+  PRIMITIVE_HEADER (1);
+
+  result = (OS_set_trap_state (arg_nonnegative_integer (1)));
+  if (result < 0)
+  {
+    error_bad_range_arg (1);
+    /*NOTREACHED*/
+  }
+  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (result));
+}
+
+DEFINE_PRIMITIVE ("HEAP-AVAILABLE?", Prim_heap_available_p, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT ((Free + (arg_nonnegative_integer (1))) < MemTop));
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-GET-FREE", Prim_get_free, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (MAKE_POINTER_OBJECT ((arg_index_integer (1, (MAX_TYPE_CODE + 1))), Free));
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-INCREMENT-FREE", Prim_increment_free, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  Free += (arg_nonnegative_integer (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
 #define CONVERT_ADDRESS(address)					\
   (long_to_integer (ADDRESS_TO_DATUM (address)))
 
@@ -122,19 +158,4 @@ DEFINE_PRIMITIVE ("GC-SPACE-STATUS", Prim_gc_space_status, 0, 0, 0)
   VECTOR_SET (result, 11, (CONVERT_ADDRESS (stack_high)));
 #endif /* USE_STACKLETS */
   PRIMITIVE_RETURN (result);
-}
-
-DEFINE_PRIMITIVE ("SET-TRAP-STATE!", Prim_set_trap_state, 1, 1, 0)
-{
-  long result;
-  extern long OS_set_trap_state();
-  PRIMITIVE_HEADER (1);
-
-  result = (OS_set_trap_state (arg_nonnegative_integer (1)));
-  if (result < 0)
-  {
-    error_bad_range_arg (1);
-    /*NOTREACHED*/
-  }
-  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (result));
 }
