@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.7 1987/12/05 17:27:18 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.8 1987/12/05 19:55:28 cph Exp $
 
 (require 'scheme)
 
@@ -120,12 +120,11 @@ When called, the current buffer will be the Scheme process-buffer.")
 (defvar xscheme-signal-death-message nil
   "If non-nil, causes a message to be generated when the Scheme process dies.")
 
-(defvar xscheme-mode-string ""
-  "String displayed in the mode line when the Scheme process is running.")
+(defvar xscheme-runlight-string nil)
+(defvar xscheme-mode-string nil)
 
-;;;; Evaluation Commands
+;;;; Keymaps
 
-(define-key scheme-mode-map "\C-j" 'xscheme-eval-print-last-sexp)
 (define-key scheme-mode-map "\eo" 'xscheme-send-buffer)
 (define-key scheme-mode-map "\ez" 'xscheme-send-definition)
 (define-key scheme-mode-map "\e\C-m" 'xscheme-send-previous-expression)
@@ -140,6 +139,31 @@ When called, the current buffer will be the Scheme process-buffer.")
 (define-key scheme-mode-map "\C-cg" 'xscheme-send-control-g-interrupt)
 (define-key scheme-mode-map "\C-cu" 'xscheme-send-control-u-interrupt)
 (define-key scheme-mode-map "\C-cx" 'xscheme-send-control-x-interrupt)
+
+(defun xscheme-make-shared-keymap (keymap)
+  (let ((result (make-keymap)) (char 0))
+    (while (< char 128)
+      (aset result char (cons keymap char))
+      (setq char (1+ char)))
+    result))
+
+(defvar xscheme-mode-map nil)
+(if (not xscheme-mode-map)
+    (progn
+      (setq xscheme-mode-map (xscheme-make-shared-keymap scheme-mode-map))
+      (define-key xscheme-mode-map "\C-j" 'xscheme-send-previous-expression)))
+
+(defvar xscheme-debug-mode-map nil)
+(if (not xscheme-debug-mode-map)
+    (progn
+      (setq xscheme-debug-mode-map
+	    (xscheme-make-shared-keymap xscheme-mode-map))
+      (let ((char ? ))
+	(while (< char 127)
+	  (aset xscheme-debug-mode-map char 'xscheme-debug-self-insert)
+	  (setq char (1+ char))))))
+
+;;;; Evaluation Commands
 
 (defun xscheme-send-string (&rest strings)
   "Send the string arguments to the Scheme process.
@@ -299,9 +323,7 @@ Control returns to the top level rep loop."
 	    (set-marker (process-mark process) (point-max))
 	    (progn (if process (delete-process process))
 		   (goto-char (point-max))
-		   (scheme-mode)
-		   (setq mode-line-process '(": %s"))
-		   (add-to-global-mode-string 'xscheme-mode-string)
+		   (scheme-mode xscheme-mode-map)
 		   (setq process
 			 (apply 'start-process
 				(cons "scheme"
@@ -367,7 +389,7 @@ Control returns to the top level rep loop."
     (xscheme-process-filter-initialize (eq reason 'run))
     (if (eq reason 'run)
 	(xscheme-modeline-initialize)
-	(setq xscheme-mode-string "")))
+	(setq scheme-mode-line-process "")))
   (if (and (not (memq reason '(run stop)))
 	   xscheme-signal-death-message)
       (progn (beep)
@@ -382,7 +404,9 @@ Control returns to the top level rep loop."
   (setq xscheme-allow-output-p t)
   (setq xscheme-prompt "")
   (setq xscheme-string-accumulator "")
-  (setq xscheme-string-receiver nil))
+  (setq xscheme-string-receiver nil)
+  (setq scheme-mode-line-process
+	'(" " xscheme-runlight-string " " xscheme-mode-string)))
 
 (defun xscheme-process-filter (proc string)
   (let ((inhibit-quit t))
@@ -493,10 +517,11 @@ Control returns to the top level rep loop."
     (goto-char (process-mark process))))
 
 (defun xscheme-modeline-initialize ()
-  (setq xscheme-mode-string "  "))
+  (setq xscheme-runlight-string " ")
+  (setq xscheme-mode-string ""))
 
 (defun xscheme-set-runlight (runlight)
-  (aset xscheme-mode-string 0 runlight)
+  (aset xscheme-runlight-string 0 runlight)
   (xscheme-modeline-redisplay))
 
 (defun xscheme-modeline-redisplay ()
@@ -641,10 +666,14 @@ the remaining input.")
 
 (defun xscheme-write-value (string)
   (if (not (zerop (length string)))
-      (progn (xscheme-guarantee-newlines 1)
-	     (xscheme-process-filter-output-1 (concat ";Value: " string))
-	     (if (not (xscheme-process-buffer-window))
-		 (xscheme-message string)))))
+      (progn (let* ((process (get-process "scheme"))
+		    (window (get-buffer-window (process-buffer process))))
+	       (if (or (not window)
+		       (not (pos-visible-in-window-p (process-mark process)
+						     window)))
+		   (xscheme-message string)))
+	     (xscheme-guarantee-newlines 1)
+	     (xscheme-process-filter-output-1 (concat ";Value: " string)))))
 
 (defun xscheme-set-prompt-variable (string)
   (setq xscheme-prompt string))
@@ -652,9 +681,7 @@ the remaining input.")
 (defun xscheme-set-prompt (string)
   (setq xscheme-prompt string)
   (xscheme-guarantee-newlines 2)
-  (setq xscheme-mode-string
-	(concat (substring xscheme-mode-string 0 2)
-		(xscheme-coerce-prompt string)))
+  (setq xscheme-mode-string (xscheme-coerce-prompt string))
   (xscheme-modeline-redisplay))
 
 (defun xscheme-coerce-prompt (string)
@@ -711,27 +738,19 @@ inserting are sent to Scheme instead.
 	   (set-buffer buffer)
 	   (eq major-mode 'xscheme-debug-mode)))))
 
+(defun xscheme-debug-self-insert ()
+  "Transmit this character to the Scheme process."
+  (interactive)
+  (xscheme-send-char last-command-char))
+
 (defun xscheme-get-debug-command ()
   (xscheme-goto-output-point)
   (xscheme-guarantee-newlines 2))
-
-(defvar xscheme-debug-mode-map nil)
-(if (not xscheme-debug-mode-map)
-    (progn
-      (setq xscheme-debug-mode-map (copy-keymap scheme-mode-map))
-      (let ((char ? ))
-	(while (< char 127)
-	  (define-key xscheme-debug-mode-map (char-to-string char)
-	    (function
-	     (lambda ()
-	       (interactive)
-	       (xscheme-send-char last-command-char))))
-	  (setq char (1+ char))))))
 
 (defun xscheme-enter-rep-mode ()
   (save-excursion
     (set-buffer (xscheme-process-buffer))
-    (scheme-mode-initialize-internal)))
+    (scheme-mode-initialize-internal xscheme-mode-map)))
 
 (defun xscheme-prompt-for-confirmation (prompt-string)
   (xscheme-send-char (if (y-or-n-p prompt-string) ?y ?n)))

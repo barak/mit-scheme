@@ -24,7 +24,7 @@
 ;; of special forms.  Probably the code should be merged at some point 
 ;; so that there is sharing between both libraries.
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/scheme.el,v 1.2 1987/12/05 17:01:14 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/scheme.el,v 1.3 1987/12/05 19:56:04 cph Exp $
 
 (provide 'scheme)
 
@@ -102,7 +102,10 @@
   (make-local-variable 'comment-column)
   (setq comment-column 40)
   (make-local-variable 'comment-indent-hook)
-  (setq comment-indent-hook 'scheme-comment-indent))
+  (setq comment-indent-hook 'scheme-comment-indent)
+  (setq mode-line-process '("" scheme-mode-line-process)))
+
+(defvar scheme-mode-line-process "")
 
 (defun scheme-mode-commands (map)
   (define-key map "\t" 'scheme-indent-line)
@@ -112,7 +115,7 @@
 (defvar scheme-mode-map (make-sparse-keymap))
 (scheme-mode-commands scheme-mode-map)
 
-(defun scheme-mode ()
+(defun scheme-mode (&optional keymap)
   "Major mode for editing Scheme code.
 Commands:
 Delete converts tabs to spaces as it moves back.
@@ -122,12 +125,12 @@ Entry to this mode calls the value of scheme-mode-hook
 if that value is non-nil."
   (interactive)
   (kill-all-local-variables)
-  (scheme-mode-initialize-internal)
+  (scheme-mode-initialize-internal (or keymap scheme-mode-map))
   (scheme-mode-variables)
   (run-hooks 'scheme-mode-hook))
 
-(defun scheme-mode-initialize-internal ()
-  (use-local-map scheme-mode-map)
+(defun scheme-mode-initialize-internal (keymap)
+  (use-local-map keymap)
   (setq major-mode 'scheme-mode)
   (setq mode-name "Scheme"))
 
