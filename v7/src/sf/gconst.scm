@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 4.19 1994/01/29 01:47:26 gjr Exp $
+$Id: gconst.scm,v 4.20 1997/07/15 00:49:27 adams Exp $
 
 Copyright (c) 1987-1994 Massachusetts Institute of Technology
 
@@ -150,6 +150,7 @@ MIT in each case. |#
     GET-FIXED-OBJECTS-VECTOR
     GET-NEXT-CONSTANT
     HUNK3-CONS
+    INDEX-FIXNUM?
     INT:*
     INT:+
     INT:-
