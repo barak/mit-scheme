@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxsock.c,v 1.13 1997/11/01 07:19:15 cph Exp $
+$Id: pruxsock.c,v 1.14 1997/11/01 07:27:36 cph Exp $
 
 Copyright (c) 1990-97 Massachusetts Institute of Technology
 
@@ -135,7 +135,7 @@ DEFINE_PRIMITIVE ("GET-HOST-NAME", Prim_get_host_name, 0, 0, 0)
       {
 	SCHEME_OBJECT result
 	  = (char_pointer_to_string ((unsigned char *) host_name));
-	OS_free (host_name);
+	OS_free ((PTR) host_name);
 	PRIMITIVE_RETURN (result);
       }
     });
@@ -152,7 +152,7 @@ DEFINE_PRIMITIVE ("CANONICAL-HOST-NAME", Prim_canonical_host_name, 1, 1, 0)
       {
 	SCHEME_OBJECT result
 	  = (char_pointer_to_string ((unsigned char *) host_name));
-	OS_free (host_name);
+	OS_free ((PTR) host_name);
 	PRIMITIVE_RETURN (result);
       }
     });

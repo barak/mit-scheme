@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.15 1997/11/01 07:19:03 cph Exp $
+$Id: uxsock.c,v 1.16 1997/11/01 07:26:30 cph Exp $
 
 Copyright (c) 1990-97 Massachusetts Institute of Technology
 
@@ -121,6 +121,8 @@ DEFUN (OS_get_host_by_name, (host_name), CONST char * host_name)
 #endif
 }
 
+#define HOSTNAMESIZE 1024
+
 CONST char *
 DEFUN_VOID (OS_get_host_name)
 {
@@ -137,7 +139,7 @@ DEFUN_VOID (OS_get_host_name)
 CONST char *
 DEFUN (OS_canonical_host_name, (host_name), CONST char * host_name)
 {
-  struct hostent * entry = (gethostbyname (this_host_name));
+  struct hostent * entry = (gethostbyname (host_name));
   if (entry == 0)
     return (0);
   {
