@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.16 1990/04/21 16:26:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.17 1990/06/28 16:35:56 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -148,9 +148,12 @@ MIT in each case. |#
 		 false)))))))
 
 (define (compiled-entry/block entry)
-  (if (compiled-closure? entry)
-      (compiled-entry/block (compiled-closure->entry entry))
-      (compiled-code-address->block entry)))
+  (cond ((compiled-code-block? entry)
+	 entry)
+	((compiled-closure? entry)
+	 (compiled-entry/block (compiled-closure->entry entry)))
+	(else
+	 (compiled-code-address->block entry))))
 
 (define (compiled-entry/offset entry)
   (if (compiled-closure? entry)
