@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: reduct.scm,v 4.8 1993/09/01 00:10:25 cph Exp $
+$Id: reduct.scm,v 4.9 1995/01/06 19:16:36 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -379,9 +379,8 @@ Examples:
 	'()
 	(cons
 	 (let ((place (assq (car keys) options)))
-	   (if (not place)
-	       '()
-	       (cdr place)))
+	   (and place
+		(cdr place)))
 	 (collect (cdr keys)))))
 
   (define (check opts)

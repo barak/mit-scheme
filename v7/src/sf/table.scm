@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: table.scm,v 4.3 1993/11/20 07:11:46 cph Exp $
+$Id: table.scm,v 4.4 1995/01/06 19:18:39 cph Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+COPYRIGHT (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -112,13 +112,13 @@ MIT in each case. |#
 
     (define (get key if-found if-not-found)
       (let ((entry (lookup key)))
-	(if (null? entry)
+	(if (not entry)
 	    (if-not-found)
 	    (if-found (entry-value entry)))))
 
     (define (put! key value)
       (let ((entry (lookup key)))
-	(if (null? entry)
+	(if (not entry)
 	    (extend-table! (make-entry key value))
 	    (set-entry-value! entry value))))
 
