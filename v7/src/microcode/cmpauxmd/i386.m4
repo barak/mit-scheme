@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.51 2001/12/16 06:01:33 cph Exp $
+### $Id: i386.m4,v 1.52 2001/12/17 19:29:44 cph Exp $
 ###
 ### Copyright (c) 1992-2001 Massachusetts Institute of Technology
 ###
@@ -351,7 +351,7 @@ define(regs,REG(esi))
 define(rfree,REG(edi))
 define(rmask,REG(ebp))
 
-IFDASM(`.386p
+IFDASM(`.586p
 .model flat')
 
 DECLARE_DATA_SEGMENT()
