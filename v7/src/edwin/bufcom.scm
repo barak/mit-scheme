@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.87 1991/05/02 01:12:22 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.88 1991/05/07 03:10:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -51,6 +51,16 @@
   ()
   (lambda ()
     (buffer-not-modified! (current-buffer))))
+
+(define-command toggle-read-only
+  "Change whether this buffer is visiting its file read-only."
+  ()
+  (lambda ()
+    (let ((buffer (current-buffer)))
+      ((if (buffer-writeable? buffer)
+	   set-buffer-read-only!
+	   set-buffer-writeable!)
+       buffer))))
 
 (define-variable select-buffer-create
   "If true, buffer selection commands may create new buffers."
