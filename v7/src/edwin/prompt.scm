@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: prompt.scm,v 1.165 1995/04/24 01:10:07 cph Exp $
+;;;	$Id: prompt.scm,v 1.166 1995/09/11 21:24:41 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -394,8 +394,14 @@ The following commands are special to this mode:
   "Terminate this minibuffer argument."
   ()
   (lambda ()
-    (cond ((or (not (string-null? (typein-string)))
-	       (memq *default-type* '(NULL-DEFAULT INSERTED-DEFAULT)))
+    (cond ((not (string-null? (typein-string)))
+	   (call-with-current-continuation
+	    (lambda (k)
+	      ;; Run the final value verification, just to catch any
+	      ;; errors that it might generate.
+	      (verify-final-value? (typein-string) k)
+	      (exit-typein-edit))))
+	  ((memq *default-type* '(NULL-DEFAULT INSERTED-DEFAULT))
 	   (exit-typein-edit))
 	  ((or (not *default-string*)
 	       (eq? *default-type* 'NO-DEFAULT))
@@ -459,51 +465,82 @@ a repetition of this command will exit."
 	       (memq *default-type* '(INVISIBLE-DEFAULT VISIBLE-DEFAULT))
 	       *default-string*)
 	  (set-typein-string! *default-string* false)))
-    (if (completion-procedure/verify-final-value? (typein-string))
-	(exit-typein-edit)
-	(case (complete-input-string completion-procedure/complete-string #f)
-	  ((WAS-ALREADY-EXACT-AND-UNIQUE-COMPLETION
-	    WAS-ALREADY-EXACT-COMPLETION)
-	   (exit-typein-edit))
-	  ((COMPLETED-TO-EXACT-AND-UNIQUE-COMPLETION
-	    COMPLETED-TO-EXACT-COMPLETION)
-	   (if *completion-confirm?*
-	       (temporary-typein-message " [Confirm]")
-	       (exit-typein-edit)))
-	  (else
-	   (update-typein!)
-	   (editor-failure))))))
+    (call-with-current-continuation
+     (lambda (k)
+       (if (verify-final-value? (typein-string) k)
+	   (exit-typein-edit)
+	   (case (complete-input-string completion-procedure/complete-string
+					#f)
+	     ((WAS-ALREADY-EXACT-AND-UNIQUE-COMPLETION
+	       WAS-ALREADY-EXACT-COMPLETION)
+	      (exit-typein-edit))
+	     ((COMPLETED-TO-EXACT-AND-UNIQUE-COMPLETION
+	       COMPLETED-TO-EXACT-COMPLETION)
+	      (if *completion-confirm?*
+		  (temporary-typein-message " [Confirm]")
+		  (exit-typein-edit)))
+	     (else
+	      (update-typein!)
+	      (editor-failure))))))))
+
+(define (verify-final-value? string error-continuation)
+  (bind-condition-handler (list condition-type:error)
+      (lambda (condition)
+	condition
+	(editor-beep)
+	(temporary-typein-message " [Error]")
+	(error-continuation unspecific))
+    (lambda ()
+      (completion-procedure/verify-final-value? string))))
 
 ;;;; Completion Primitives
 
 (define (complete-input-string complete-string update?)
-  (let ((original (typein-string)))
-    (complete-string original
-      (lambda (string)
-	(if (not (string=? string original))
-	    (set-typein-string! string update?))
-	(if (string-ci=? string original)
-	    'WAS-ALREADY-EXACT-AND-UNIQUE-COMPLETION
-	    'COMPLETED-TO-EXACT-AND-UNIQUE-COMPLETION))
-      (lambda (string list-completions)
-	(if (not (string=? string original))
-	    (set-typein-string! string update?))
-	(if (completion-procedure/verify-final-value? string)
-	    (if (string-ci=? string original)
-		'WAS-ALREADY-EXACT-COMPLETION
-		'COMPLETED-TO-EXACT-COMPLETION)
-	    (if (string-ci=? string original)
-		(begin
-		  (if (ref-variable completion-auto-help)
-		      (minibuffer-completion-help list-completions)
-		      (temporary-typein-message " [Next char not unique]"))
-		  'NO-COMPLETION-HAPPENED)
-		'SOME-COMPLETION-HAPPENED)))
-      (lambda ()
-	(editor-beep)
-	(temporary-typein-message " [No match]")
-	'NO-MATCH))))
-
+  (call-with-current-continuation
+   (lambda (k)
+     (let ((original (typein-string))
+	   (effected? #f))
+       (bind-condition-handler (list condition-type:error)
+	   (lambda (condition)
+	     condition
+	     (if (not effected?)
+		 (begin
+		   (editor-beep)
+		   (temporary-typein-message " [Error]")
+		   (k 'NO-MATCH))))
+	 (lambda ()
+	   (complete-string original
+	     (lambda (string)
+	       (set! effected? #t)
+	       (if (not (string=? string original))
+		   (set-typein-string! string update?))
+	       (if (string-ci=? string original)
+		   'WAS-ALREADY-EXACT-AND-UNIQUE-COMPLETION
+		   'COMPLETED-TO-EXACT-AND-UNIQUE-COMPLETION))
+	     (lambda (string list-completions)
+	       (let ((verified?
+		      (completion-procedure/verify-final-value? string)))
+		 (set! effected? #t)
+		 (if (not (string=? string original))
+		     (set-typein-string! string update?))
+		 (if verified?
+		     (if (string-ci=? string original)
+			 'WAS-ALREADY-EXACT-COMPLETION
+			 'COMPLETED-TO-EXACT-COMPLETION)
+		     (if (string-ci=? string original)
+			 (begin
+			   (if (ref-variable completion-auto-help)
+			       (minibuffer-completion-help list-completions)
+			       (temporary-typein-message
+				" [Next char not unique]"))
+			   'NO-COMPLETION-HAPPENED)
+			 'SOME-COMPLETION-HAPPENED))))
+	     (lambda ()
+	       (set! effected? #t)
+	       (editor-beep)
+	       (temporary-typein-message " [No match]")
+	       'NO-MATCH))))))))
+
 (define (completion-procedure/complete-word string
 					    if-unique
 					    if-not-unique
@@ -578,25 +615,35 @@ a repetition of this command will exit."
 
 (define (pop-up-generated-completions generate-completions)
   (message "Making completion list...")
-  (let ((completions (generate-completions)))
-    (clear-message)
-    (if (null? completions)
-	(begin
-	  (editor-beep)
-	  (completion-message "No completions"))
-	(begin
-	  (pop-up-completions-list completions)
-	  (if (not (typein-window? (current-window)))
-	      (begin
-		(message "Hit space to flush.")
-		(reset-command-prompt!)
-		(let ((char (keyboard-peek)))
-		  (if (and (char? char)
-			   (char=? #\space char))
-		      (begin
-			(keyboard-read)
-			(kill-pop-up-buffer false))))
-		(clear-message)))))))
+  (call-with-current-continuation
+   (lambda (k)
+     (let ((completions
+	    (bind-condition-handler (list condition-type:error)
+		(lambda (condition)
+		  condition
+		  (clear-message)
+		  (editor-beep)
+		  (completion-message "Error")
+		  (k unspecific))
+	      generate-completions)))
+       (clear-message)
+       (if (null? completions)
+	   (begin
+	     (editor-beep)
+	     (completion-message "No completions"))
+	   (begin
+	     (pop-up-completions-list completions)
+	     (if (not (typein-window? (current-window)))
+		 (begin
+		   (message "Hit space to flush.")
+		   (reset-command-prompt!)
+		   (let ((char (keyboard-peek)))
+		     (if (and (char? char)
+			      (char=? #\space char))
+			 (begin
+			   (keyboard-read)
+			   (kill-pop-up-buffer false))))
+		   (clear-message)))))))))
 
 (define (pop-up-completions-list strings)
   (with-output-to-temporary-buffer " *Completions*"
