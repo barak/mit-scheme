@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.27 1997/07/11 02:34:48 adams Exp $
+$Id: typerew.scm,v 1.28 1997/10/03 13:43:41 adams Exp $
 
 Copyright (c) 1994-1996 Massachusetts Institute of Technology
 
@@ -1985,10 +1985,10 @@ and we dont do much with that.
     type:exact-integer     type:any                 (typerew/%lc EQ? 0))
 
   (define-typerew-unary-variants-replacement-method INTEGER-NEGATIVE?
-    type:exact-integer     type:any                 (typerew/%lc fix:< 0))
+    type:fixnum            type:any                 (typerew/%lc fix:< 0))
 
   (define-typerew-unary-variants-replacement-method INTEGER-POSITIVE?
-    type:exact-integer     type:any                 (typerew/%lc fix:> 0))
+    type:fixnum            type:any                 (typerew/%lc fix:> 0))
 )
 
 
