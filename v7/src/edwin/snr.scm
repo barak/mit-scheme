@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: snr.scm,v 1.52 1999/08/20 20:35:53 cph Exp $
+;;; $Id: snr.scm,v 1.53 1999/11/05 05:38:15 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-1999 Massachusetts Institute of Technology
 ;;;
@@ -3677,15 +3677,6 @@ With prefix arg, replaces the file with the list information."
 		  (lambda () 'EQUAL)
 		  (lambda () 'LESS)
 		  (lambda () 'GREATER)))
-
-(define (split-list headers predicate)
-  (let loop ((headers headers) (satisfied '()) (unsatisfied '()))
-    (cond ((null? headers)
-	   (values satisfied unsatisfied))
-	  ((predicate (car headers))
-	   (loop (cdr headers) (cons (car headers) satisfied) unsatisfied))
-	  (else
-	   (loop (cdr headers) satisfied (cons (car headers) unsatisfied))))))
 
 (define (prefix-matcher prefix)
   (let ((plen (string-length prefix)))
