@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rgxcmp.scm,v 1.102 1989/08/14 09:22:56 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rgxcmp.scm,v 1.103 1990/10/05 23:54:51 cph Rel $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -714,12 +714,14 @@
 
 ;;;; Compiled Pattern Disassembler
 
-(define (hack-fastmap pat)
-  (let ((pattern (re-compile-pattern pat false))
+(define (hack-fastmap pattern)
+  (let ((compiled-pattern (re-compile-pattern pattern false))
 	(cs (char-set)))
-    (re-disassemble-pattern pattern)
     ((ucode-primitive re-compile-fastmap)
-     pattern (re-translation-table false) (make-syntax-table) cs)
+     compiled-pattern
+     (re-translation-table false)
+     (syntax-table/entries (make-syntax-table))
+     cs)
     (char-set-members cs)))
 
 (define (re-disassemble-pattern compiled-pattern)
@@ -783,8 +785,10 @@
 	     (loop (+ i 2)))
 	    ((SYNTAX-SPEC NOT-SYNTAX-SPEC)
 	     (write-string " ")
-	     (write (string-ref " w_()'\"$\\/<>."
+	     (write (string-ref " .w_()'\"$\\/<>"
 				(vector-8b-ref compiled-pattern (1+ i))))
 	     (write-string ")")
 	     (loop (+ i 2))))
-	  (write-string "END)")))))
+	  (begin
+	    (write 'end)
+	    (write-string ")"))))))
