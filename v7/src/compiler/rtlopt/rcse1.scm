@@ -38,7 +38,7 @@
 ;;;; RTL Common Subexpression Elimination
 ;;;  Based on the GNU C Compiler
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.93 1986/12/16 06:24:11 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.94 1986/12/17 08:00:35 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -204,10 +204,11 @@
 (define (define-assignment-method type
 	  get-environment set-environment!
 	  get-value set-value!)
-  (lambda (statement)
-    (expression-replace! get-value set-value! statement trivial-action)
-    (expression-replace! get-environment set-environment! statement
-      (normal-action (lambda ()	(memory-invalidate! true))))))
+  (define-cse-method type
+    (lambda (statement)
+      (expression-replace! get-value set-value! statement trivial-action)
+      (expression-replace! get-environment set-environment! statement
+	(normal-action (lambda () (memory-invalidate! true)))))))
 
 (define-assignment-method 'INTERPRETER-CALL:DEFINE
   rtl:interpreter-call:define-environment
