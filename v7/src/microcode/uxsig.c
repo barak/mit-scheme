@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.13 1991/07/24 19:48:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.14 1991/08/24 02:10:15 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -343,7 +343,7 @@ struct handler_record
 {
   int signo;
   Tsignal_handler handler;
-}
+};
 
 #define DEFUN_STD_HANDLER(name, statement)				\
 static Tsignal_handler_result						\
