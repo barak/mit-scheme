@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.12 1991/11/04 16:49:03 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.13 1991/11/21 09:48:12 cph Exp $
 
-Copyright (c) 1990-1991 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -725,8 +725,8 @@ DEFUN (parse_path_string, (path), CONST char * path)
      This is because getcwd forks off a new process and we want to do
      that before the scheme process gets too big
   */
-  CONST char * wd = get_wd();
-  unsigned int lwd;
+  CONST char * wd = (get_wd ());
+  unsigned int lwd = (strlen (wd));
   while (1)
     {
       CONST char * scan = start;
@@ -743,22 +743,10 @@ DEFUN (parse_path_string, (path), CONST char * path)
       if ((start < end) && ((* (end - 1)) == '/'))
 	end -= 1;
       if (end == start)
-	{
-	  if (wd == 0)
-	    {
-	      wd = (get_wd ());
-	      lwd = (strlen (wd));
-	    }
-	  obstack_ptr_grow ((&scratch_obstack), (string_copy (wd)));
-	}
+	obstack_ptr_grow ((&scratch_obstack), (string_copy (wd)));
       else
 	{
 	  int absolute = (FILE_ABSOLUTE (start));
-	  if ((!absolute) && (wd == 0))
-	    {
-	      wd = (get_wd ());
-	      lwd = (strlen (wd));
-	    }
 	  {
 	    char * element =
 	      (xmalloc ((absolute ? 0 : (lwd + 1)) + (end - start) + 1));
