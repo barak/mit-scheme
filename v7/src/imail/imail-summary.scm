@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.26 2000/08/07 01:32:25 cph Exp $
+;;; $Id: imail-summary.scm,v 1.27 2000/09/30 00:29:44 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -623,18 +623,22 @@ advance to the next message."
     (if (command-argument-negative-only? argument)
 	((ref-command imail-summary-scroll-msg-down) #f)
 	(let ((buffer (imail-folder->buffer (selected-folder) #t)))
-	  (let ((windows (buffer-windows buffer)))
-	    (if (pair? windows)
-		(let ((window (car windows)))
-		  (if (window-mark-visible? window (buffer-end buffer))
-		      ((ref-command imail-next-message)
-		       (if argument
-			   (command-argument-numeric-value argument)
-			   1))
-		      (scroll-window
-		       window
-		       (standard-scroll-window-argument window argument 1))))
-		((ref-command imail-summary-beginning-of-message))))))))
+	  (if (eq? (selected-message #f) (selected-message #f buffer))
+	      (let ((windows (buffer-windows buffer)))
+		(if (pair? windows)
+		    (let ((window (car windows)))
+		      (if (window-mark-visible? window (buffer-end buffer))
+			  ((ref-command imail-next-message)
+			   (if argument
+			       (command-argument-numeric-value argument)
+			       1))
+			  (scroll-window
+			   window
+			   (standard-scroll-window-argument window
+							    argument
+							    1))))
+		    ((ref-command imail-summary-beginning-of-message))))
+	      ((ref-command imail-summary-select-message)))))))
 
 (define-command imail-summary-scroll-msg-down
   "Scroll the IMAIL window backward.
@@ -645,15 +649,19 @@ advance to the previous message."
     (if (command-argument-negative-only? argument)
 	((ref-command imail-summary-scroll-msg-up) #f)
 	(let ((buffer (imail-folder->buffer (selected-folder) #t)))
-	  (let ((windows (buffer-windows buffer)))
-	    (if (pair? windows)
-		(let ((window (car windows)))
-		  (if (window-mark-visible? window (buffer-start buffer))
-		      ((ref-command imail-previous-message)
-		       (if argument
-			   (command-argument-numeric-value argument)
-			   1))
-		      (scroll-window
-		       window
-		       (standard-scroll-window-argument window argument -1))))
-		((ref-command imail-summary-beginning-of-message))))))))
+	  (if (eq? (selected-message #f) (selected-message #f buffer))
+	      (let ((windows (buffer-windows buffer)))
+		(if (pair? windows)
+		    (let ((window (car windows)))
+		      (if (window-mark-visible? window (buffer-start buffer))
+			  ((ref-command imail-previous-message)
+			   (if argument
+			       (command-argument-numeric-value argument)
+			       1))
+			  (scroll-window
+			   window
+			   (standard-scroll-window-argument window
+							    argument
+							    -1))))
+		    ((ref-command imail-summary-beginning-of-message))))
+	      ((ref-command imail-summary-select-message)))))))
