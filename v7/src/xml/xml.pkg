@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.27 2003/09/24 03:50:45 cph Exp $
+$Id: xml.pkg,v 1.28 2003/09/24 04:17:45 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -51,8 +51,42 @@ USA.
 	  <xml-parameter-entity-ref>
 	  <xml-processing-instructions>
 	  <xml-unparsed-!entity>
+	  error:not-simple-xml-attribute-value
+	  error:not-xml-!attlist
+	  error:not-xml-!element
+	  error:not-xml-!entity
+	  error:not-xml-!notation
+	  error:not-xml-comment
+	  error:not-xml-declaration
+	  error:not-xml-document
+	  error:not-xml-dtd
+	  error:not-xml-element
+	  error:not-xml-entity-ref
+	  error:not-xml-external-id
+	  error:not-xml-name
+	  error:not-xml-namespace-uri
+	  error:not-xml-parameter-!entity
+	  error:not-xml-parameter-entity-ref
+	  error:not-xml-processing-instructions
+	  error:not-xml-unparsed-!entity
+	  guarantee-simple-xml-attribute-value
+	  guarantee-xml-!attlist
+	  guarantee-xml-!element
+	  guarantee-xml-!entity
+	  guarantee-xml-!notation
+	  guarantee-xml-comment
+	  guarantee-xml-declaration
+	  guarantee-xml-document
+	  guarantee-xml-dtd
+	  guarantee-xml-element
+	  guarantee-xml-entity-ref
+	  guarantee-xml-external-id
 	  guarantee-xml-name
 	  guarantee-xml-namespace-uri
+	  guarantee-xml-parameter-!entity
+	  guarantee-xml-parameter-entity-ref
+	  guarantee-xml-processing-instructions
+	  guarantee-xml-unparsed-!entity
 	  make-xml-!attlist
 	  make-xml-!element
 	  make-xml-!entity
@@ -146,6 +180,7 @@ USA.
 	  xml-element-attributes
 	  xml-element-contents
 	  xml-element-name
+	  xml-element-namespace-decls
 	  xml-element?
 	  xml-entity-ref-name
 	  xml-entity-ref?

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.26 2003/09/24 03:50:48 cph Exp $
+$Id: xml-struct.scm,v 1.27 2003/09/24 04:17:38 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -51,7 +51,7 @@ USA.
 	   (string-is-xml-name? (symbol-name object)))
       (combo-name? object)))
 
-(define-integrable (guarantee-xml-name object caller)
+(define (guarantee-xml-name object caller)
   (if (not (xml-name? object))
       (error:not-xml-name object caller)))
 
@@ -73,7 +73,7 @@ USA.
   (and (fix:> (string-length object) 0)
        (utf8-string-valid? object)))
 
-(define-integrable (guarantee-xml-namespace-uri object caller)
+(define (guarantee-xml-namespace-uri object caller)
   (if (not (xml-namespace-uri? object))
       (error:not-xml-namespace-uri object caller)))
 
@@ -256,6 +256,8 @@ USA.
 	       (slots (cddr form)))
 	   (let ((rtd (symbol-append '< root '>))
 		 (constructor (symbol-append 'MAKE- root))
+		 (predicate (symbol-append root '?))
+		 (error:not (symbol-append 'ERROR:NOT- root))
 		 (slot-vars
 		  (map (lambda (slot)
 			 (close-syntax (car slot) environment))
@@ -268,8 +270,19 @@ USA.
 	       `(BEGIN
 		  (DEFINE ,rtd
 		    (MAKE-RECORD-TYPE ',root '(,@(map car slots))))
-		  (DEFINE ,(symbol-append root '?)
+		  (DEFINE ,predicate
 		    (RECORD-PREDICATE ,rtd))
+		  (DEFINE (,(symbol-append 'GUARANTEE- root) OBJECT CALLER)
+		    (IF (NOT ,predicate)
+			(,error:not OBJECT CALLER)))
+		  (DEFINE (,error:not OBJECT CALLER)
+		    (ERROR:WRONG-TYPE-ARGUMENT
+		     OBJECT
+		     ,(string-append "an XML "
+				     (string-replace (symbol-name (cadr form))
+						     #\-
+						     #\space))
+		     CALLER))
 		  (DEFINE ,constructor
 		    (LET ((CONSTRUCTOR
 			   (RECORD-CONSTRUCTOR ,rtd '(,@(map car slots)))))
@@ -364,11 +377,6 @@ USA.
 (define (xml-attribute-value? object)
   (and (pair? object)
        (list-of-type? object xml-attribute-value-item?)))
-
-(define (simple-xml-attribute-value? object)
-  (and (pair? object)
-       (xml-char-data? (car object))
-       (null? (cdr object))))
 
 (define (xml-attribute-value-item? object)
   (or (xml-char-data? object)
@@ -626,3 +634,36 @@ USA.
   (lambda (dtd)
     (or (xml-external-id-id dtd)
 	(xml-external-id-uri dtd))))
+
+(define (simple-xml-attribute-value? object)
+  (and (pair? object)
+       (xml-char-data? (car object))
+       (null? (cdr object))
+       (car object)))
+
+(define (guarantee-simple-xml-attribute-value object caller)
+  (let ((v (simple-xml-attribute-value? object)))
+    (if (not v)
+	(error:not-simple-xml-attribute-value object caller))
+    v))
+
+(define (error:not-simple-xml-attribute-value object caller)
+  (error:wrong-type-argument object "simple XML attribute value" caller))
+
+(define (xml-element-namespace-decls elt)
+  (guarantee-xml-element elt 'XML-ELEMENT-NAMESPACE-DECLS)
+  (let loop ((attrs (xml-element-attributes elt)))
+    (if (pair? attrs)
+	(let ((name (caar attrs))
+	      (keep
+	       (lambda (prefix)
+		 (cons (cons prefix
+			     (make-xml-namespace-uri
+			      (guarantee-simple-xml-attribute-value
+			       (cdar attrs)
+			       #f)))
+		       (loop (cdr attrs))))))
+	  (cond ((xml-name=? name 'xmlns) (keep #f))
+		((xml-name-prefix=? name 'xmlns) (keep (xml-name-local name)))
+		(else (loop (cdr attrs)))))
+	'())))
