@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.18 2000/12/06 04:51:51 cph Exp $
+# $Id: Makefile,v 1.19 2000/12/06 05:13:58 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -34,9 +34,6 @@ setup:
 	for N in 1 2 3; do \
 	    test -f dinstr$${N}.scm || ln -s instr$${N}.scm dinstr$${N}.scm; \
 	done)
-	for FN in compiler.cbf compiler.pkg compiler.sf make.com; do \
-	    test -f $${FN} || ln -s machine/$${FN} .; \
-	done
 
 tags TAGS:
 	etags back/*.scm base/*.scm fggen/*.scm fgopt/*.scm \
@@ -57,6 +54,7 @@ mostlyclean:
 clean: mostlyclean
 
 distclean: clean
+	rm -f machine compiler.cbf compiler.pkg compiler.sf make.com
 
 maintainer-clean: distclean
 	rm -f .edwin-ffi
