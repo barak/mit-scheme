@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: schmod.scm,v 1.49 2001/03/21 19:25:37 cph Exp $
+;;; $Id: schmod.scm,v 1.50 2001/06/18 04:18:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -138,56 +138,62 @@ The following commands evaluate Scheme expressions:
    state indent-point normal-indent))
 
 (define scheme-mode:indent-methods
-  (alist->string-table
-   (map (lambda (entry) (cons (symbol->string (car entry)) (cdr entry)))
-	`((BEGIN . 0)
-	  (CASE . 1)
-	  (DELAY . 0)
-	  (DO . 2)
-	  (LAMBDA . 1)
-	  (LET . ,scheme-mode:indent-let-method)
-	  (LET* . 1)
-	  (LETREC . 1)
+  (make-string-table))
 
-	  (CALL-WITH-INPUT-FILE . 1)
-	  (WITH-INPUT-FROM-FILE . 1)
-	  (CALL-WITH-OUTPUT-FILE . 1)
-	  (WITH-OUTPUT-TO-FILE . 1)
+(define (scheme-indent-method symbol method)
+  (string-table-put! scheme-mode:indent-methods
+		     (symbol->string symbol)
+		     method))
 
-	  ;; Remainder are MIT Scheme specific.
+(for-each (lambda (entry) (scheme-indent-method (car entry) (cdr entry)))
+	  `((BEGIN . 0)
+	    (CASE . 1)
+	    (DELAY . 0)
+	    (DO . 2)
+	    (LAMBDA . 1)
+	    (LET . ,scheme-mode:indent-let-method)
+	    (LET* . 1)
+	    (LETREC . 1)
 
-	  (FLUID-LET . 1)
-	  (IN-PACKAGE . 1)
-	  (LET-SYNTAX . 1)
-	  (LOCAL-DECLARE . 1)
-	  (MACRO . 1)
-	  (MAKE-ENVIRONMENT . 0)
-	  (NAMED-LAMBDA . 1)
-	  (USING-SYNTAX . 1)
+	    (CALL-WITH-INPUT-FILE . 1)
+	    (WITH-INPUT-FROM-FILE . 1)
+	    (CALL-WITH-OUTPUT-FILE . 1)
+	    (WITH-OUTPUT-TO-FILE . 1)
 
-	  (CALL-WITH-APPEND-FILE . 1)
-	  (CALL-WITH-BINARY-APPEND-FILE . 1)
-	  (CALL-WITH-BINARY-INPUT-FILE . 1)
-	  (CALL-WITH-BINARY-OUTPUT-FILE . 1)
-	  (WITH-INPUT-FROM-PORT . 1)
-	  (WITH-INPUT-FROM-STRING . 1)
-	  (WITH-OUTPUT-TO-PORT . 1)
-	  (WITH-OUTPUT-TO-STRING . 0)
-	  (CALL-WITH-VALUES . 1)
-	  (WITH-VALUES . 1)
-	  (WITHIN-CONTINUATION . 1)
+	    ;; Remainder are MIT Scheme specific.
 
-	  (MAKE-CONDITION-TYPE . 3)
-	  (WITH-RESTART . 4)
-	  (WITH-SIMPLE-RESTART . 2)
-	  (BIND-CONDITION-HANDLER . 2)
-	  (LIST-TRANSFORM-POSITIVE . 1)
-	  (LIST-TRANSFORM-NEGATIVE . 1)
-	  (LIST-SEARCH-POSITIVE . 1)
-	  (LIST-SEARCH-NEGATIVE . 1)
-	  (SYNTAX-TABLE-DEFINE . 2)
-	  (FOR-ALL? . 1)
-	  (THERE-EXISTS? . 1)))))
+	    (FLUID-LET . 1)
+	    (IN-PACKAGE . 1)
+	    (LET-SYNTAX . 1)
+	    (LOCAL-DECLARE . 1)
+	    (MACRO . 1)
+	    (MAKE-ENVIRONMENT . 0)
+	    (NAMED-LAMBDA . 1)
+	    (USING-SYNTAX . 1)
+
+	    (CALL-WITH-APPEND-FILE . 1)
+	    (CALL-WITH-BINARY-APPEND-FILE . 1)
+	    (CALL-WITH-BINARY-INPUT-FILE . 1)
+	    (CALL-WITH-BINARY-OUTPUT-FILE . 1)
+	    (WITH-INPUT-FROM-PORT . 1)
+	    (WITH-INPUT-FROM-STRING . 1)
+	    (WITH-OUTPUT-TO-PORT . 1)
+	    (WITH-OUTPUT-TO-STRING . 0)
+	    (CALL-WITH-VALUES . 1)
+	    (WITH-VALUES . 1)
+	    (WITHIN-CONTINUATION . 1)
+
+	    (MAKE-CONDITION-TYPE . 3)
+	    (WITH-RESTART . 4)
+	    (WITH-SIMPLE-RESTART . 2)
+	    (BIND-CONDITION-HANDLER . 2)
+	    (LIST-TRANSFORM-POSITIVE . 1)
+	    (LIST-TRANSFORM-NEGATIVE . 1)
+	    (LIST-SEARCH-POSITIVE . 1)
+	    (LIST-SEARCH-NEGATIVE . 1)
+	    (SYNTAX-TABLE-DEFINE . 2)
+	    (FOR-ALL? . 1)
+	    (THERE-EXISTS? . 1)))
 
 (define scheme-mode:indent-regexps
   `(SCHEME-MODE:INDENT-REGEXPS
