@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchgcc.h,v 9.52 1993/06/24 03:48:45 gjr Exp $
+$Id: bchgcc.h,v 9.53 1993/08/22 22:19:10 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -106,7 +106,11 @@ extern int EXFUN (retrying_file_operation,
 extern int EXFUN (io_error_retry_p, (char *, char *));
 extern int EXFUN (io_error_always_abort, (char *, char *));
 
-#define GC_FILE_FLAGS		(O_RDWR | O_CREAT) /* O_SYNCIO removed */
+#ifndef O_BINARY
+# define O_BINARY 0
+#endif
+
+#define GC_FILE_FLAGS		(O_RDWR | O_CREAT | O_BINARY) /* O_SYNCIO removed */
 #define GC_FILE_MASK		0644	/* Everyone reads, owner writes */
 
 /* IO_PAGE_SIZE must be a power of 2! */
