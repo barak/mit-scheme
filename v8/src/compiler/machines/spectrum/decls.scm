@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.7 1995/08/06 19:59:31 adams Exp $
+$Id: decls.scm,v 1.8 1996/03/14 18:51:17 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -332,6 +332,7 @@ MIT in each case. |#
     (file-dependency/syntax/join
      (append (filename/append "base"
 			      "toplev" "asstop" "crstop"
+			      "fasthash"
 			      "cfg1" "cfg2" "cfg3" "constr"
 			      "debug" "enumer"
 			      "infnew"
@@ -349,10 +350,10 @@ MIT in each case. |#
 	     (filename/append "midend"
 			      "alpha" "applicat" "assconv" "cleanup"
 			      "closconv" "compat" "copier" "cpsconv"
-			      "coerce"
+			      "coerce" "types" "typedb" "effects" "typerew"
 			      "dataflow" "dbgstr" "dbgred" "debug" "earlyrew"
 			      "envconv" "expand" "fakeprim" "graph"
-			      "inlate" "lamlift" "laterew"
+			      "inlate" "kmp" "lamlift" "laterew"
 			      "load" "midend" "rtlgen" "simplify"
 			      "split" "stackopt" "staticfy" "synutl"
 			      "triveval" "utils" "widen"
@@ -369,7 +370,7 @@ MIT in each case. |#
 			      "ralloc" "rcompr" "rcse1" "rcse2" "rcseep"
 			      "rcseht" "rcserq" "rcsesr" "rcsemrg"
 			      "rdebug" "rdflow" "rerite" "rinvex"
-			      "rlife" "rtlcsm"))
+			      "rsched" "rlife" "rtlcsm"))
      compiler-syntax-table)
     (file-dependency/syntax/join
      (filename/append "machines/spectrum"
@@ -512,7 +513,7 @@ MIT in each case. |#
     (file-dependency/integration/join
      (append cse-all
 	     (filename/append "rtlopt" "ralloc" "rcompr" "rdebug" "rdflow"
-			      "rerite" "rinvex" "rlife" "rtlcsm")
+			      "rerite" "rinvex" "rlife" "rsched" "rtlcsm")
 	     (filename/append "machines/spectrum" "rulrew"))
      (append spectrum-base rtl-base))
 
