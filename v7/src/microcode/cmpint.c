@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.14 1989/11/07 06:37:27 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.15 1989/11/20 23:13:16 jinx Exp $
  *
  * This file corresponds to
  * $COMPILER-Header: compiler.c,v 9.37 89/10/25 14:55:45 GMT jinx Exp $
@@ -1377,6 +1377,8 @@ compiler_interrupt_common (entry_point, state)
   TEST_GC_NEEDED();
   if ((PENDING_INTERRUPTS()) == 0)
   {
+    Store_Env (state);
+    Val = state;
     RETURN_TO_SCHEME (entry_point + ENTRY_SKIPPED_CHECK_OFFSET);
   }
   else
