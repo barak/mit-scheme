@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.97 1992/03/13 10:47:39 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.98 1992/03/13 12:01:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -651,8 +651,7 @@
   ;; FORCE? true means do not stop for pending input.
   (if (screen-debug-trace screen)
       ((screen-debug-trace screen) 'screen screen 'update force?))
-  (let ((current-matrix (screen-current-matrix screen))
-	(new-matrix (screen-new-matrix screen))
+  (let ((new-matrix (screen-new-matrix screen))
 	(y-size (screen-y-size screen))
 	(preemption-modulus (screen-preemption-modulus screen))
 	(discretionary-flush (screen-operation/discretionary-flush screen))
