@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.10 1991/07/15 23:34:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.11 1991/11/15 05:15:12 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -59,13 +59,7 @@ MIT in each case. |#
 
 (define (make-record-type type-name field-names)
   (let ((record-type
-	 (vector record-type-marker
-		 type-name
-		 (list-copy field-names)
-		 (string-append "record of type "
-				(if (string? type-name)
-				    type-name
-				    (write-to-string type-name))))))
+	 (vector record-type-marker type-name (list-copy field-names))))
     (unparser/set-tagged-vector-method! record-type
 					(unparser/standard-method type-name))
     (named-structure/set-tag-description! record-type
@@ -87,7 +81,7 @@ MIT in each case. |#
 
 (define (record-type? object)
   (and (vector? object)
-       (= (vector-length object) 4)
+       (= (vector-length object) 3)
        (eq? (vector-ref object 0) record-type-marker)))
 
 (define (record-type-name record-type)
@@ -112,8 +106,15 @@ MIT in each case. |#
 	index
 	(loop (cdr field-names) (+ index 1)))))
 
-(define-integrable (record-type-error record record-type procedure)
-  (error:wrong-type-argument record (vector-ref record-type 3) procedure))
+(define (record-type-error record record-type procedure)
+  (error:wrong-type-argument
+   record
+   (string-append "record of type "
+		  (let ((type-name (vector-ref record-type 1)))
+		    (if (string? type-name)
+			type-name
+			(write-to-string type-name))))
+   procedure))
 
 (define (set-record-type-unparser-method! record-type method)
   (if (not (record-type? record-type))
@@ -150,13 +151,16 @@ MIT in each case. |#
 
 (define (record? object)
   (and (vector? object)
-       (positive? (vector-length object))
+       (> (vector-length object) 0)
        (record-type? (vector-ref object 0))))
 
 (define (record-type-descriptor record)
   (if (not (record? record))
       (error:wrong-type-argument record "record" 'RECORD-TYPE-DESCRIPTOR))
   (vector-ref record 0))
+
+(define (record-copy record)
+  (vector-copy record))
 
 (define (record-predicate record-type)
   (if (not (record-type? record-type))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/socket.scm,v 1.2 1990/11/09 20:59:30 arthur Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/socket.scm,v 1.3 1991/11/15 05:15:24 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -53,11 +53,8 @@ MIT in each case. |#
       (make-channel ((ucode-primitive open-unix-stream-socket 1) filename))))))
 
 (define (socket-ports channel)
-  (let ((input-port (make-generic-input-port channel 64))
-	(output-port (make-generic-output-port channel 64)))
-    (set-input-port/associated-port! input-port output-port)
-    (set-output-port/associated-port! output-port input-port)
-    (values input-port output-port)))
+  (let ((port (make-generic-i/o-port channel channel 64 64)))
+    (values port port)))
 
 (define (open-tcp-server-socket service)
   (without-interrupts
@@ -86,9 +83,6 @@ MIT in each case. |#
 		    (and descriptor
 			 (make-channel descriptor)))))))))
       (if channel
-	  (let ((input-port (make-generic-input-port channel 64))
-		(output-port (make-generic-output-port channel 64)))
-	    (set-input-port/associated-port! input-port output-port)
-	    (set-output-port/associated-port! output-port input-port)
-	    (values input-port output-port peer-address))
+	  (let ((port (make-generic-i/o-port channel channel 64 64)))
+	    (values port port peer-address))
 	  (values false false false)))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.126 1991/11/05 20:37:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.127 1991/11/15 05:15:17 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -268,21 +268,16 @@ MIT in each case. |#
 	  )
   (initialization (initialize-package!)))
 
-(define-package (runtime console-input)
-  (files "ttyin")
+(define-package (runtime console-i/o-port)
+  (files "ttyio")
   (parent ())
   (export ()
-	  console-input-port)
+	  console-i/o-port
+	  console-input-port
+	  console-output-port)
   (export (runtime emacs-interface)
 	  hook/read-finish
 	  hook/read-start)
-  (initialization (initialize-package!)))
-
-(define-package (runtime console-output)
-  (files "ttyout")
-  (parent ())
-  (export ()
-	  console-output-port)
   (initialization (initialize-package!)))
 
 (define-package (runtime continuation)
@@ -647,17 +642,12 @@ MIT in each case. |#
 	  hook/extended-scode-eval)
   (initialization (initialize-package!)))
 
-(define-package (runtime file-input)
-  (files "filein")
+(define-package (runtime file-i/o-port)
+  (files "fileio")
   (parent ())
   (export ()
-	  open-input-file)
-  (initialization (initialize-package!)))
-
-(define-package (runtime file-output)
-  (files "filout")
-  (parent ())
-  (export ()
+	  open-i/o-file
+	  open-input-file
 	  open-output-file)
   (initialization (initialize-package!)))
 
@@ -667,9 +657,7 @@ MIT in each case. |#
   (export ()
 	  transcript-off
 	  transcript-on)
-  (export (runtime console-input)
-	  transcript-port)
-  (export (runtime console-output)
+  (export (runtime console-i/o-port)
 	  transcript-port)
   (initialization (initialize-package!)))
 
@@ -745,54 +733,44 @@ MIT in each case. |#
 	  hook/record-statistic!)
   (initialization (initialize-package!)))
 
-(define-package (runtime generic-input)
-  (files "genin")
+(define-package (runtime generic-i/o-port)
+  (files "genio")
   (parent ())
   (export ()
+	  make-generic-i/o-port
 	  make-generic-input-port
-	  set-input-port/associated-port!)
-  (export (runtime console-input)
-	  operation/buffer-size
-	  operation/buffered-chars
-	  operation/channel
+	  make-generic-output-port)
+  (export (runtime console-i/o-port)
+	  operation/buffered-input-chars
+	  operation/buffered-output-chars
 	  operation/char-ready?
-	  operation/set-buffer-size)
-  (export (runtime file-input)
-	  operation/buffer-size
-	  operation/buffered-chars
-	  operation/channel
+	  operation/input-buffer-size
+	  operation/input-channel
+	  operation/output-buffer-size
+	  operation/output-channel
+	  operation/set-input-buffer-size
+	  operation/set-output-buffer-size)
+  (export (runtime file-i/o-port)
+	  operation/buffered-input-chars
+	  operation/buffered-output-chars
 	  operation/char-ready?
 	  operation/chars-remaining
 	  operation/close
 	  operation/discard-char
 	  operation/discard-chars
 	  operation/eof?
+	  operation/flush-output
+	  operation/input-buffer-size
+	  operation/input-channel
+	  operation/output-buffer-size
+	  operation/output-channel
 	  operation/peek-char
 	  operation/read-char
 	  operation/read-chars
 	  operation/read-string
 	  operation/read-substring
-	  operation/set-buffer-size)
-  (initialization (initialize-package!)))
-
-(define-package (runtime generic-output)
-  (files "genout")
-  (parent ())
-  (export ()
-	  make-generic-output-port
-	  set-output-port/associated-port!)
-  (export (runtime console-output)
-	  operation/buffer-size
-	  operation/buffered-chars
-	  operation/channel
-	  operation/set-buffer-size)
-  (export (runtime file-output)
-	  operation/buffer-size
-	  operation/buffered-chars
-	  operation/channel
-	  operation/close
-	  operation/flush-output
-	  operation/set-buffer-size
+	  operation/set-input-buffer-size
+	  operation/set-output-buffer-size
 	  operation/write-char
 	  operation/write-string
 	  operation/write-substring)
@@ -882,22 +860,17 @@ MIT in each case. |#
 	  history-untransform)
   (initialization (initialize-package!)))
 
-(define-package (runtime input-port)
-  (files "input")
+(define-package (runtime port)
+  (files "port")
   (parent ())
   (export ()
-	  call-with-input-file
-	  char-ready?
 	  close-input-port
-	  current-input-port
-	  eof-object?
-	  guarantee-input-port
+	  close-output-port
+	  close-port
+	  i/o-port?
 	  input-port/channel
-	  input-port/char-ready?
 	  input-port/copy
 	  input-port/custom-operation
-	  input-port/discard-char
-	  input-port/discard-chars
 	  input-port/operation
 	  input-port/operation-names
 	  input-port/operation/char-ready?
@@ -906,25 +879,86 @@ MIT in each case. |#
 	  input-port/operation/peek-char
 	  input-port/operation/read-char
 	  input-port/operation/read-string
+	  input-port/state
+	  input-port?
+	  make-i/o-port
+	  make-input-port
+	  make-output-port
+	  output-port/channel
+	  output-port/copy
+	  output-port/custom-operation
+	  output-port/operation
+	  output-port/operation-names
+	  output-port/operation/flush-output
+	  output-port/operation/write-char
+	  output-port/operation/write-string
+	  output-port/operation/write-substring
+	  output-port/state
+	  output-port?
+	  port/copy
+	  port/input-channel
+	  port/output-channel
+	  port/operation
+	  port/operation-names
+	  port/state
+	  port?
+	  set-input-port/state!
+	  set-output-port/state!
+	  set-port/state!))
+
+(define-package (runtime input-port)
+  (files "input")
+  (parent ())
+  (export ()
+	  call-with-input-file
+	  char-ready?
+	  current-input-port
+	  eof-object?
+	  guarantee-input-port
+	  input-port/char-ready?
+	  input-port/discard-char
+	  input-port/discard-chars
 	  input-port/peek-char
 	  input-port/read-char
 	  input-port/read-string
-	  input-port/state
-	  input-port?
 	  make-eof-object
-	  make-input-port
 	  peek-char
 	  read
 	  read-char
 	  read-char-no-hang
 	  read-string
 	  set-current-input-port!
-	  set-input-port/state!
 	  with-input-from-file
 	  with-input-from-port)
   (export (runtime primitive-io)
-	  eof-object)
-  (initialization (initialize-package!)))
+	  eof-object))
+
+(define-package (runtime output-port)
+  (files "output")
+  (parent ())
+  (export ()
+	  beep
+	  call-with-output-file
+	  clear
+	  current-output-port
+	  display
+	  fresh-line
+	  guarantee-output-port
+	  newline
+	  output-port/flush-output
+	  output-port/write-char
+	  output-port/write-object
+	  output-port/write-string
+	  output-port/write-substring
+	  output-port/x-size
+	  output-port/y-size
+	  set-current-output-port!
+	  with-output-to-file
+	  with-output-to-port
+	  write
+	  write-char
+	  write-line
+	  write-string))
 
 (define-package (runtime interrupt-handler)
   (files "intrpt")
@@ -1289,43 +1323,6 @@ MIT in each case. |#
   (export ()
 	  load-option))
 
-(define-package (runtime output-port)
-  (files "output")
-  (parent ())
-  (export ()
-	  beep
-	  call-with-output-file
-	  clear
-	  close-output-port
-	  current-output-port
-	  display
-	  fresh-line
-	  guarantee-output-port
-	  make-output-port
-	  newline
-	  output-port/channel
-	  output-port/copy
-	  output-port/custom-operation
-	  output-port/flush-output
-	  output-port/operation
-	  output-port/operation-names
-	  output-port/state
-	  output-port/write-char
-	  output-port/write-object
-	  output-port/write-string
-	  output-port/write-substring
-	  output-port/x-size
-	  output-port?
-	  set-current-output-port!
-	  set-output-port/state!
-	  with-output-to-file
-	  with-output-to-port
-	  write
-	  write-char
-	  write-line
-	  write-string)
-  (initialization (initialize-package!)))
-
 (define-package (runtime parser)
   (files "parse")
   (parent ())
@@ -1530,7 +1527,7 @@ MIT in each case. |#
 	  make-channel)
   (export (runtime subprocess)
 	  channel-descriptor)
-  (export (runtime generic-input)
+  (export (runtime generic-i/o-port)
 	  input-buffer/buffered-chars
 	  input-buffer/channel
 	  input-buffer/char-ready?
@@ -1546,8 +1543,6 @@ MIT in each case. |#
 	  input-buffer/set-size
 	  input-buffer/size
 	  make-input-buffer
-	  set-channel-port!)
-  (export (runtime generic-output)
 	  make-output-buffer
 	  output-buffer/buffered-chars
 	  output-buffer/channel
@@ -1559,15 +1554,13 @@ MIT in each case. |#
 	  output-buffer/write-string-block
 	  output-buffer/write-substring-block
 	  set-channel-port!)
-  (export (runtime file-input)
+  (export (runtime file-i/o-port)
 	  input-buffer/chars-remaining
 	  input-buffer/read-substring
 	  make-input-buffer
-	  set-channel-port!)
-  (export (runtime file-output)
 	  make-output-buffer
 	  set-channel-port!)
-  (export (runtime console-input)
+  (export (runtime console-i/o-port)
 	  input-buffer/buffer-contents
 	  input-buffer/buffered-chars
 	  input-buffer/channel
@@ -1579,8 +1572,6 @@ MIT in each case. |#
 	  input-buffer/set-size
 	  input-buffer/size
 	  make-input-buffer
-	  set-channel-port!)
-  (export (runtime console-output)
 	  make-output-buffer
 	  output-buffer/buffered-chars
 	  output-buffer/channel
@@ -1616,6 +1607,7 @@ MIT in each case. |#
 	  make-record-type
 	  record-accessor
 	  record-constructor
+	  record-copy
 	  record-predicate
 	  record-type-descriptor
 	  record-type-field-names
@@ -1966,6 +1958,7 @@ MIT in each case. |#
 	  subprocess-get
 	  subprocess-global-status-tick
 	  subprocess-hangup
+	  subprocess-i/o-port
 	  subprocess-id
 	  subprocess-input-channel
 	  subprocess-input-port

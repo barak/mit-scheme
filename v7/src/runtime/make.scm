@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.30 1991/11/04 20:29:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.31 1991/11/15 05:14:57 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -246,7 +246,10 @@ MIT in each case. |#
 	("gdatab" . (RUNTIME GLOBAL-DATABASE))
 	("boot" . ())
 	("queue" . ())
-	("gc" . (RUNTIME GARBAGE-COLLECTOR)))))
+	("gc" . (RUNTIME GARBAGE-COLLECTOR))
+	("equals" . ())
+	("list" . (RUNTIME LIST))
+	("record" . (RUNTIME RECORD)))))
   (if (not (null? files))
       (begin
 	(eval (fasload (map-filename (car (car files))) #t)
@@ -265,6 +268,8 @@ MIT in each case. |#
 (lexical-assignment (package-reference '(RUNTIME GARBAGE-COLLECTOR))
 		    'CONSTANT-SPACE/BASE
 		    constant-space/base)
+(package-initialize '(RUNTIME LIST) 'INITIALIZE-PACKAGE!)
+(package-initialize '(RUNTIME RECORD) 'INITIALIZE-PACKAGE!)
 
 ;; Load everything else.
 ((eval (fasload "runtim.bldr" #f) system-global-environment)
@@ -277,7 +282,10 @@ MIT in each case. |#
 		(string=? filename "gdatab")
 		(string=? filename "boot")
 		(string=? filename "queue")
-		(string=? filename "gc")))
+		(string=? filename "gc")
+		(string=? filename "equals")
+		(string=? filename "list")
+		(string=? filename "record")))
        (eval (fasload (map-filename filename) #t) environment))
    unspecific)
  `((SORT-TYPE . MERGE-SORT)
@@ -297,7 +305,6 @@ MIT in each case. |#
    (RUNTIME SYSTEM-CLOCK)
    ;; Basic data structures
    (RUNTIME NUMBER)
-   (RUNTIME LIST)
    (RUNTIME CHARACTER)
    (RUNTIME CHARACTER-SET)
    (RUNTIME GENSYM)
@@ -305,7 +312,6 @@ MIT in each case. |#
    (RUNTIME 2D-PROPERTY)
    (RUNTIME HASH)
    (RUNTIME RANDOM-NUMBER)
-   (RUNTIME RECORD)
    ;; Microcode data structures
    (RUNTIME HISTORY)
    (RUNTIME LAMBDA-ABSTRACTION)
@@ -318,18 +324,13 @@ MIT in each case. |#
    (RUNTIME ERROR-HANDLER)
    (RUNTIME MICROCODE-ERRORS)
    ;; I/O
-   (RUNTIME CONSOLE-INPUT)
-   (RUNTIME CONSOLE-OUTPUT)
+   (RUNTIME GENERIC-I/O-PORT)
+   (RUNTIME FILE-I/O-PORT)
+   (RUNTIME CONSOLE-I/O-PORT)
    (RUNTIME TRANSCRIPT)
-   (RUNTIME GENERIC-INPUT)
-   (RUNTIME GENERIC-OUTPUT)
-   (RUNTIME FILE-INPUT)
-   (RUNTIME FILE-OUTPUT)
    (RUNTIME STRING-INPUT)
    (RUNTIME STRING-OUTPUT)
    (RUNTIME TRUNCATED-STRING-OUTPUT)
-   (RUNTIME INPUT-PORT)
-   (RUNTIME OUTPUT-PORT)
    (RUNTIME PATHNAME)
    (RUNTIME WORKING-DIRECTORY)
    (RUNTIME LOAD)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.13 1991/10/29 13:27:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.14 1991/11/15 05:15:06 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -70,8 +70,7 @@ MIT in each case. |#
   input-channel
   output-channel
   (id ((ucode-primitive process-id 1) index) read-only true)
-  (%input-port false)
-  (%output-port false)
+  (%i/o-port false)
   (%status false)
   (exit-reason false)
   (%status-tick false)
@@ -86,33 +85,33 @@ MIT in each case. |#
 (define (subprocess-remove! process key)
   (1d-table/remove! (subprocess-properties process) key))
 
-(define (subprocess-input-port process)
+(define (subprocess-i/o-port process)
   (without-interrupts
    (lambda ()
-     (or (subprocess-%input-port process)
-	 (let ((channel (subprocess-input-channel process)))
-	   (and channel
-		(let ((input-port (make-generic-input-port channel 512))
-		      (output-port (subprocess-%output-port process)))
-		  (set-subprocess-%input-port! process input-port)
-		  (if output-port (associate-ports! input-port output-port))
-		  input-port)))))))
+     (or (subprocess-%i/o-port process)
+	 (let ((port
+		(let ((input-channel (subprocess-input-channel process))
+		      (output-channel (subprocess-output-channel process)))
+		  (if input-channel
+		      (if output-channel
+			  (make-generic-i/o-port input-channel output-channel
+						 512 512)
+			  (make-generic-input-port input-channel 512))
+		      (if output-channel
+			  (make-generic-output-port output-channel 512)
+			  false)))))
+	   (set-subprocess-%i/o-port! process port)
+	   port)))))
+
+(define (subprocess-input-port process)
+  (let ((port (subprocess-i/o-port process)))
+    (and (input-port? port)
+	 port)))
 
 (define (subprocess-output-port process)
-  (without-interrupts
-   (lambda ()
-     (or (subprocess-%output-port process)
-	 (let ((channel (subprocess-output-channel process)))
-	   (and channel
-		(let ((output-port (make-generic-output-port channel 512))
-		      (input-port (subprocess-%input-port process)))
-		  (set-subprocess-%output-port! process output-port)
-		  (if input-port (associate-ports! input-port output-port))
-		  output-port)))))))
-
-(define (associate-ports! input-port output-port)
-  (set-input-port/associated-port! input-port output-port)
-  (set-output-port/associated-port! output-port input-port))
+  (let ((port (subprocess-i/o-port process)))
+    (and (output-port? port)
+	 port)))
 
 (define (make-subprocess filename arguments environment
 			 ctty stdin stdout stderr
@@ -169,21 +168,17 @@ MIT in each case. |#
 	   ((ucode-primitive process-delete 1) (subprocess-index process))
 	   (set! subprocesses (delq! process subprocesses))
 	   (set-subprocess-index! process false)
-	   (cond ((subprocess-input-port process)
-		  => (lambda (input-port)
-		       (set-subprocess-%input-port! process false)
+	   (cond ((subprocess-%i/o-port process)
+		  => (lambda (port)
+		       (set-subprocess-%i/o-port! process false)
 		       (set-subprocess-input-channel! process false)
-		       (close-input-port input-port)))
-		 ((subprocess-input-channel process)
+		       (set-subprocess-output-channel! process false)
+		       (close-port port))))
+	   (cond ((subprocess-input-channel process)
 		  => (lambda (input-channel)
 		       (set-subprocess-input-channel! process false)
 		       (channel-close input-channel))))
-	   (cond ((subprocess-output-port process)
-		  => (lambda (output-port)
-		       (set-subprocess-%output-port! process false)
-		       (set-subprocess-output-channel! process false)
-		       (close-output-port output-port)))
-		 ((subprocess-output-channel process)
+	   (cond ((subprocess-output-channel process)
 		  => (lambda (output-channel)
 		       (set-subprocess-output-channel! process false)
 		       (channel-close output-channel))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.10 1991/07/09 00:49:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.11 1991/11/15 05:15:01 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -39,101 +39,11 @@ MIT in each case. |#
 
 ;;;; Output Ports
 
-(define (initialize-package!)
-  (set! *current-output-port* console-output-port)
-  (set! beep (wrap-custom-operation-0 'BEEP))
-  (set! clear (wrap-custom-operation-0 'CLEAR))
-  unspecific)
-
-(define (output-port/unparse state port)
-  ((unparser/standard-method 'OUTPUT-PORT
-			     (output-port/custom-operation port 'PRINT-SELF))
-   state port))
-
-(define-structure (output-port (conc-name output-port/)
-			       (constructor %make-output-port)
-			       (copier %output-port/copy)
-			       (print-procedure output-port/unparse))
-  state
-  (operation/write-char false read-only true)
-  (operation/write-string false read-only true)
-  (operation/write-substring false read-only true)
-  (operation/flush-output false read-only true)
-  (custom-operations false read-only true)
-  (operation-names false read-only true))
-
 (define (guarantee-output-port port)
-  (if (not (output-port? port)) (error "Bad output port" port))
+  (if (not (output-port? port))
+      (error:wrong-type-argument port "output port" false))
   port)
 
-(define (output-port/copy port state)
-  (let ((result (%output-port/copy port)))
-    (set-output-port/state! result state)
-    result))
-
-(define (output-port/custom-operation port name)
-  (let ((entry (assq name (output-port/custom-operations port))))
-    (and entry (cdr entry))))
-
-(define (output-port/operation port name)
-  (or (output-port/custom-operation port name)
-      (case name
-	((WRITE-CHAR) output-port/write-char)
-	((WRITE-STRING) output-port/write-string)
-	((WRITE-SUBSTRING) output-port/write-substring)
-	((FLUSH-OUTPUT) output-port/flush-output)
-	(else false))))
-
-(define (make-output-port operations state)
-  (let ((operations
-	 (map (lambda (entry)
-		(cons (car entry) (cadr entry)))
-	      operations)))
-    (let ((operation
-	   (lambda (name)
-	     (let ((entry (assq name operations)))
-	       (and entry
-		    (begin
-		      (set! operations (delq! entry operations))
-		      (cdr entry)))))))
-      (let ((write-char (operation 'WRITE-CHAR))
-	    (write-string (operation 'WRITE-STRING))
-	    (write-substring (operation 'WRITE-SUBSTRING))
-	    (flush-output (operation 'FLUSH-OUTPUT)))
-	(if (not (or write-char write-substring))
-	    (error "Must specify at least one of the following:"
-		   '(WRITE-CHAR WRITE-SUBSTRING)))
-	(%make-output-port state
-			   (or write-char default-operation/write-char)
-			   (or write-string default-operation/write-string)
-			   (or write-substring
-			       default-operation/write-substring)
-			   (or flush-output default-operation/flush-output)
-			   operations
-			   (append '(WRITE-CHAR WRITE-STRING WRITE-SUBSTRING
-						FLUSH-OUTPUT)
-				   (map car operations)))))))
-
-(define (default-operation/write-char port char)
-  ((output-port/operation/write-substring port) port (char->string char) 0 1))
-
-(define (default-operation/write-string port string)
-  ((output-port/operation/write-substring port)
-   port
-   string 0 (string-length string)))
-
-(define (default-operation/write-substring port string start end)
-  (let ((write-char (output-port/operation/write-char port)))
-    (let loop ((index start))
-      (if (< index end)
-	  (begin
-	    (write-char port (string-ref string index))
-	    (loop (+ index 1)))))))
-
-(define (default-operation/flush-output port)
-  port
-  unspecific)
-
 (define (output-port/write-char port char)
   ((output-port/operation/write-char port) port char))
 
@@ -150,13 +60,13 @@ MIT in each case. |#
   ((output-port/operation/flush-output port) port))
 
 (define (output-port/x-size port)
-  (or (let ((operation (output-port/custom-operation port 'X-SIZE)))
+  (or (let ((operation (port/operation port 'X-SIZE)))
 	(and operation
 	     (operation port)))
       79))
 
-(define (output-port/channel port)
-  (let ((operation (output-port/custom-operation port 'CHANNEL)))
+(define (output-port/y-size port)
+  (let ((operation (port/operation port 'Y-SIZE)))
     (and operation
 	 (operation port))))
 
@@ -174,25 +84,17 @@ MIT in each case. |#
   (guarantee-output-port port)
   (fluid-let ((*current-output-port* port)) (thunk)))
 
-(define (with-output-to-file output-specifier thunk)
-  (let ((new-port (open-output-file output-specifier))
-	(old-port false))
-    (dynamic-wind (lambda ()
-		    (set! old-port *current-output-port*)
-		    (set! *current-output-port* new-port)
-		    (set! new-port false))
-		  thunk
-		  (lambda ()
-		    (if *current-output-port*
-			(close-output-port *current-output-port*))
-		    (set! *current-output-port* old-port)
-		    (set! old-port false)))))
-
 (define (call-with-output-file output-specifier receiver)
   (let ((port (open-output-file output-specifier)))
     (let ((value (receiver port)))
-      (close-output-port port)
+      (close-port port)
       value)))
+
+(define (with-output-to-file output-specifier thunk)
+  (call-with-output-file output-specifier
+    (lambda (port)
+      (fluid-let ((*current-output-port* port))
+	(thunk)))))
 
 ;;;; Output Procedures
 
@@ -209,7 +111,7 @@ MIT in each case. |#
 	 (if (default-object? port)
 	     (current-output-port)
 	     (guarantee-output-port port))))
-    (let ((operation (output-port/custom-operation port 'FRESH-LINE)))
+    (let ((operation (port/operation port 'FRESH-LINE)))
       (if operation
 	  (operation port)
 	  (output-port/write-char port #\newline)))
@@ -231,25 +133,23 @@ MIT in each case. |#
     (output-port/write-string port string)
     (output-port/flush-output port)))
 
-(define (close-output-port port)
-  (let ((operation (output-port/custom-operation port 'CLOSE)))
-    (if operation
-	(operation port))))
-
 (define (wrap-custom-operation-0 operation-name)
   (lambda (#!optional port)
     (let ((port
 	   (if (default-object? port)
 	       (current-output-port)
 	       (guarantee-output-port port))))
-      (let ((operation (output-port/custom-operation port operation-name)))
+      (let ((operation (port/operation port operation-name)))
 	(if operation
 	    (begin
 	      (operation port)
 	      (output-port/flush-output port)))))))
 
-(define beep)
-(define clear)
+(define beep
+  (wrap-custom-operation-0 'BEEP))
+
+(define clear
+  (wrap-custom-operation-0 'CLEAR))
 
 (define (display object #!optional port unparser-table)
   (let ((port
