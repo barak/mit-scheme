@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: logmer.scm,v 1.21 2000/03/27 06:36:17 cph Exp $
+$Id: logmer.scm,v 1.22 2000/03/30 05:04:13 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -134,37 +134,40 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		     (write-string (car changelog-map) port)))
 	       (write-string ">" port)))
 	   (newline port)
-	   (for-each (lambda (entries)
-		       (newline port)
-		       (write-char #\tab port)
-		       (write-string "* " port)
-		       (write-string (cdar entries) port)
-		       (let loop
-			   ((entries (cdr entries))
-			    (column (fix:+ 11 (string-length (cdar entries)))))
-			 (if (pair? entries)
-			     (let ((filename (cdar entries)))
-			       (let ((column*
-				      (+ column 2 (string-length filename))))
-				 (if (fix:>= column* 80)
-				     (begin
-				       (write-string "," port)
-				       (newline port)
-				       (write-char #\tab port)
-				       (write-string "  " port)
-				       (write-string filename port)
-				       (loop (cdr entries)
-					     (fix:+ 11
-						    (string-length filename))))
-				     (begin
-				       (write-string ", " port)
-				       (write-string filename port)
-				       (loop (cdr entries) column*)))))))
-		       (write-string ":" port)
-		       (newline port)
-		       (format-log-for-changelog (delta/log (caar entries))
-						 port))
-		     (group-entries-by-log entries)))))
+	   (for-each
+	    (lambda (entries)
+	      (newline port)
+	      (write-char #\tab port)
+	      (write-string "* " port)
+	      (let ((filenames
+		     (remove-duplicate-strings
+		      (sort (map cdr entries) string<?))))
+		(write-string (car filenames) port)
+		(let loop
+		    ((filenames (cdr filenames))
+		     (column (fix:+ 11 (string-length (car filenames)))))
+		  (if (pair? filenames)
+		      (let ((filename (car filenames)))
+			(let ((column*
+			       (+ column 2 (string-length filename))))
+			  (if (fix:>= column* 80)
+			      (begin
+				(write-string "," port)
+				(newline port)
+				(write-char #\tab port)
+				(write-string "  " port)
+				(write-string filename port)
+				(loop (cdr filenames)
+				      (fix:+ 11
+					     (string-length filename))))
+			      (begin
+				(write-string ", " port)
+				(write-string filename port)
+				(loop (cdr filenames) column*))))))))
+	      (write-string ":" port)
+	      (newline port)
+	      (format-log-for-changelog (delta/log (caar entries)) port))
+	    (sort-changelog-groups-by-date (group-entries-by-log entries))))))
     (if (pair? groups)
 	(begin
 	  (format-group (car groups))
@@ -211,6 +214,35 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (begin
 	      (write-substring log start end port)
 	      (newline port)))))))
+
+(define (remove-duplicate-strings strings)
+  ;; Assumes that STRINGS is sorted.
+  (let loop ((strings strings) (result '()))
+    (if (pair? strings)
+	(loop (cdr strings)
+	      (if (and (pair? (cdr strings))
+		       (string=? (car strings) (cadr strings)))
+		  result
+		  (cons (car strings) result)))
+	(reverse! result))))
+
+(define (sort-changelog-groups-by-date groups)
+  (sort groups
+    (let ((find-oldest
+	   (lambda (entries)
+	     (let loop
+		 ((entries (cdr entries))
+		  (winner (date/universal (delta/date (caar entries)))))
+	       (if (pair? entries)
+		   (loop (cdr entries)
+			 (let ((this
+				(date/universal (delta/date (caar entries)))))
+			   (if (< this winner)
+			       this
+			       winner)))
+		   winner)))))
+      (lambda (g1 g2)
+	(> (find-oldest g1) (find-oldest g2))))))
 
 (define (group-entries-by-author&date entries)
   (group-entries entries
