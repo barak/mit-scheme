@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.26 1992/06/01 22:18:51 cph Exp $
+$Id: pp.scm,v 14.27 1992/09/21 21:23:54 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -206,7 +206,7 @@ MIT in each case. |#
 	     (let ((handler
 		    (let ((as-code? (pph/as-code? highlight))
 			  (currently-as-code? (not (null? dispatch-list))))
-		      (cond ((or (eq? as-code? 'default)
+		      (cond ((or (eq? as-code? 'DEFAULT)
 				 (eq? as-code? currently-as-code?))
 			     print-node)
 			    (as-code?
@@ -312,8 +312,8 @@ MIT in each case. |#
 	     (last-size (node-size (vector-ref nodev (-1+ n-nodes)))))
 
 	(define (fit? n-cols widths)
-	  ;; this must check that all rows fit.
-	  ;; the last one must be treated specially because it is
+	  ;; This must check that all rows fit.
+	  ;; The last one must be treated specially because it is
 	  ;; followed by depth tokens (close parens).
 	  (and (>= available-space (+ (-1+ n-cols) (reduce + 0 widths)))
 	       (let ((last-n-1 (remainder (-1+ n-nodes) n-cols)))
@@ -344,7 +344,7 @@ MIT in each case. |#
 		    (try (- n 1))
 		    (print-guaranteed-table
 		     nodes column
-		     ;; try to make it look pretty
+		     ;; Try to make it look pretty.
 		     (let ((next-n (-1+ n)))
 		       (if (or (= n 2)
 			       (not (= (quotient (+ n-nodes next-n) n)
@@ -359,15 +359,15 @@ MIT in each case. |#
 	(try n-columns)))
 
     (if (< n-nodes 4)
-	;; it's silly to tabulate 3 or less things.
+	;; It's silly to tabulate 3 or less things.
 	(default)
 	(let loop ((n 1)
 		   (nodes (cdr nodes))
 		   (space (- available-space
 			     (node-size (car nodes)))))
 	  (cond ((> n max-cols)
-		 ;; make sure there are at least two relatively full rows.
-		 ;; this also guarantees that nodes is not null?
+		 ;; Make sure there are at least two relatively full rows.
+		 ;; This also guarantees that nodes is not NULL?.
 		 (try-columns max-cols))
 		((>= space 0)
 		 (loop (1+ n)
@@ -378,7 +378,7 @@ MIT in each case. |#
 		(else
 		 (try-columns (-1+ n))))))))
 
-;;;; printers
+;;;; Printers
 
 (define (print-combination nodes column depth)
   (*unparse-open)
@@ -410,14 +410,14 @@ MIT in each case. |#
 		 (+ depth 1)))
   (*unparse-close))
 
-;;; force the indentation to be an optimistic column.
+;;; Force the indentation to be an optimistic column.
 
 (define forced-indentation)
 (define (kernel/forced-indentation nodes optimistic pessimistic depth)
   pessimistic
   (print-column nodes optimistic depth))
 
-;;; pressure the indentation to be an optimistic column; no matter
+;;; Pressure the indentation to be an optimistic column; no matter
 ;;; what happens, insist on a column, but accept a pessimistic one if
 ;;; necessary.
 
@@ -429,27 +429,31 @@ MIT in each case. |#
 	(tab-to pessimistic)
 	(print-column nodes pessimistic depth))))
 
-;;; print a procedure definition.  the bound variable pattern goes on
+;;; Print a procedure definition.  The bound variable pattern goes on
 ;;; the same line as the keyword, while everything else gets indented
-;;; pessimistically.  we may later want to modify this to make higher
+;;; pessimistically.  We may later want to modify this to make higher
 ;;; order procedure patterns be printed more carefully.
 
 (define print-procedure)
 (define (kernel/print-procedure nodes optimistic pessimistic depth)
-  (print-node (car nodes) optimistic 0)
+  (if (and *unparse-disambiguate-null-lambda-list?*
+	   (string? (car nodes))
+	   (string-ci=? (car nodes) "#f"))
+      (*unparse-string "()")
+      (print-node (car nodes) optimistic 0))
   (let ((rest (cdr nodes)))
     (if (not (null? rest))
 	(begin
 	  (tab-to pessimistic)
 	  (print-column (cdr nodes) pessimistic depth)))))
 
-;;; print a binding form.  there is a great deal of complication here,
+;;; Print a binding form.  There is a great deal of complication here,
 ;;; some of which is to gracefully handle the case of a badly-formed
-;;; binder.  but most important is the code that handles the name when
+;;; binder.  But most important is the code that handles the name when
 ;;; we encounter a named let; it must go on the same line as the
-;;; keyword.  in that case, the bindings try to fit on that line or
+;;; keyword.  In that case, the bindings try to fit on that line or
 ;;; start on that line if possible; otherwise they line up under the
-;;; name.  the body, of course, is always indented pessimistically.
+;;; name.  The body, of course, is always indented pessimistically.
 
 (define print-let-expression)
 (define (kernel/print-let-expression nodes optimistic pessimistic depth)
@@ -489,13 +493,13 @@ MIT in each case. |#
 	   (print-node (car nodes) optimistic 0)
 	   (print-body (cdr nodes))))))
 
-;;;; alignment
+;;;; Alignment
 
 (define-integrable (fits-within? node column depth)
   (> (- x-size depth)
      (+ column (node-size node))))
 
-;;; fits if each node fits when stacked vertically at the given column.
+;;; Fits if each node fits when stacked vertically at the given column.
 
 (define (fits-as-column? nodes column depth)
   (let loop ((nodes nodes))
@@ -505,15 +509,15 @@ MIT in each case. |#
 		(+ column (node-size (car nodes))))
 	     (loop (cdr nodes))))))
 
-;;; fits if first two nodes fit on same line, and rest fit under the
-;;; second node.  assumes at least two nodes are given.
+;;; Fits if first two nodes fit on same line, and rest fit under the
+;;; second node.  Assumes at least two nodes are given.
 
 (define (two-on-first-line? nodes column depth)
   (let ((column (+ column (+ 1 (node-size (car nodes))))))
     (and (> x-size column)
 	 (fits-as-column? (cdr nodes) column depth))))
 
-;;; starts a new line with the specified indentation.
+;;; Starts a new line with the specified indentation.
 
 (define (tab-to column)
   (*unparse-newline)
@@ -522,7 +526,7 @@ MIT in each case. |#
 (define-integrable (pad-with-spaces n-spaces)
   (*unparse-string (make-string n-spaces #\space)))
 
-;;;; numerical walk
+;;;; Numerical Walk
 
 (define (numerical-walk object list-depth)
   (cond ((pair? object)
@@ -630,42 +634,42 @@ MIT in each case. |#
 	     numerical-walk)))
     (fluid-let ((*unparser-list-breadth-limit*
 		 (let ((bl (pph/breadth-limit object)))
-		   (if (eq? bl 'default)
+		   (if (eq? bl 'DEFAULT)
 		       *unparser-list-breadth-limit*
 		       bl)))
 		(*unparser-list-depth-limit*
-		 (if (eq? dl 'default)
+		 (if (eq? dl 'DEFAULT)
 		     *unparser-list-depth-limit*
 		     dl)))
       (numerical-walk (pph/object object)
-		      (if (eq? dl 'default)
+		      (if (eq? dl 'DEFAULT)
 			  list-depth
 			  0)))))
 
 
-;;;     the following are circular list/vector handing procedures.  they allow
+;;;     The following are circular list/vector handing procedures.  They allow
 ;;;  arbitary circular constructions made from pairs and vectors to be printed
-;;;  in closed form.  the term "current parenthetical level" means the lowest
-;;;  parethetical level which contains the circularity object.  expressions
+;;;  in closed form.  The term "current parenthetical level" means the lowest
+;;;  parethetical level which contains the circularity object.  Expressions
 ;;;  like "up 1 parenthetical level" refer to the object which is one
 ;;;  parenthetical level above the lowest parenthetical level which contains
 ;;;  the circularity object--i.e., the second lowest parenthetical level
 ;;;  which contains the circularity object.
-;;;     finally, the expression, "up 1 parenthetical level, downstream 1 cdr,"
+;;;     Finally, the expression, "up 1 parenthetical level, downstream 1 cdr,"
 ;;;  means that to find the object being referred to, you should go to the
 ;;;  parenthetical level one level above the lowest parenthetical level which
 ;;;  contains the circularity object, and then take the cdr of that list.
-;;;  this notation must be used because while a new parenthetical level is
+;;;  This notation must be used because while a new parenthetical level is
 ;;;  generated for each car and each vector-ref, a new parenthetical level
 ;;;  obtains from cdring iff the result of said cdring is not a pair.
 
-;; this is the master procedure which all circularity-proof printing
+;; This is the master procedure which all circularity-proof printing
 ;; goes through.
 
 (define (numerical-walk-avoid-circularities exp list-depth)
   (numerical-walk-terminating exp (cons exp (make-queue)) list-depth))
 
-;; this numerical walker has special pair and vector walkers to guarantee
+;; This numerical walker has special pair and vector walkers to guarantee
 ;; proper termination.
 
 (define (numerical-walk-terminating object half-pointer/queue list-depth)
@@ -678,7 +682,7 @@ MIT in each case. |#
 		prefix
 		(numerical-walk-terminating
 		 (cadr object)
-		 (advance half-pointer (update-queue queue '(cdr car)))
+		 (advance half-pointer (update-queue queue '(CDR CAR)))
 		 list-depth))
 	       (let ((unparser (unparse-list/unparser object)))
 		 (if unparser
@@ -737,7 +741,7 @@ MIT in each case. |#
 		  (let ((half-pointer/queue
 			 (advance
 			  (car half-pointer/queue)
-			  (update-queue (cdr half-pointer/queue) '(car)))))
+			  (update-queue (cdr half-pointer/queue) '(CAR)))))
 		    (if (eq? (car half-pointer/queue) (car pair))
 			(circularity-string (cdr half-pointer/queue))
 			(numerical-walk-terminating
@@ -747,7 +751,7 @@ MIT in each case. |#
 		  (let ((half-pointer/queue
 			 (advance
 			  (car half-pointer/queue)
-			  (update-queue (cdr half-pointer/queue) '(car)))))
+			  (update-queue (cdr half-pointer/queue) '(CAR)))))
 		    (if (eq? (car half-pointer/queue) (car pair))
 			(circularity-string (cdr half-pointer/queue))
 			(numerical-walk-terminating
@@ -759,7 +763,7 @@ MIT in each case. |#
 		     (let ((half-pointer/queue
 			    (advance
 			     (car half-pointer/queue)
-			     (update-queue (cdr half-pointer/queue) '(cdr)))))
+			     (update-queue (cdr half-pointer/queue) '(CDR)))))
 		       (if (eq? (car half-pointer/queue) (cdr pair))
 			   (make-singleton-list-node
 			    (string-append
@@ -779,7 +783,7 @@ MIT in each case. |#
 			       (advance
 				(car half-pointer/queue)
 				(update-queue
-				 (cdr half-pointer/queue) '(cdr)))))
+				 (cdr half-pointer/queue) '(CDR)))))
 			  (if (eq? (car half-pointer/queue) (cdr pair))
 			      (circularity-string (cdr half-pointer/queue))
 			      (numerical-walk-terminating
@@ -857,9 +861,9 @@ MIT in each case. |#
 (define (update-queue queue command-list)
   (define (uq-iter queue command-list)
     (cond ((null? command-list) queue)
-	  ((eq? (car command-list) 'car)
+	  ((eq? (car command-list) 'CAR)
 	   (uq-iter (add-car queue) (cdr command-list)))
-	  ((eq? (car command-list) 'cdr)
+	  ((eq? (car command-list) 'CDR)
 	   (uq-iter (add-cdr queue) (cdr command-list)))
 	  (else
 	   (uq-iter (add-vector-ref (car command-list) queue)
