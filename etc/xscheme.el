@@ -1,6 +1,6 @@
 ;;; xscheme.el --- run MIT Scheme under Emacs
 
-;; Copyright (C) 1986, 1987, 1989, 1990, 2001 Free Software Foundation, Inc.
+;; Copyright (C) 1986, 1987, 1989, 1990, 2001, 2002 Free Software Foundation, Inc.
 
 ;; Maintainer: FSF
 ;; Keywords: languages, lisp
@@ -37,7 +37,8 @@
   "Major mode for editing Scheme and interacting with MIT's C-Scheme."
   :group 'lisp)
 
-(if (< emacs-major-version 21)
+(if (or (string-match "XEmacs\\|Lucid" emacs-version)
+	(< emacs-major-version 21))
     (defcustom scheme-program-name "scheme"
       "*Program invoked by the `run-scheme' command."
       :type 'string
