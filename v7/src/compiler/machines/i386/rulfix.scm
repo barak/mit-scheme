@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.17 1992/02/15 16:13:00 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.18 1992/02/16 02:47:12 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -349,16 +349,19 @@ MIT in each case. |#
 			   (any-reference source2))))
 	  ((register-copy-if-available source1 'GENERAL target)
 	   =>
-	   (lambda (alias-ref)
-	     (operate alias-ref (if (= source2 source1)
-				    alias-ref
-				    (any-reference source2)))))
+	   (lambda (get-alias-ref)
+	     (if (= source2 source1)
+		 (let ((ref (get-alias-ref)))
+		   (operate ref ref))
+		 (let ((source2 (any-reference source2)))
+		   (operate (get-alias-ref) source2)))))
 	  ((not commutative?)
 	   (new-target-alias!))
 	  ((register-copy-if-available source2 'GENERAL target)
 	   =>
-	   (lambda (alias-ref)
-	     (operate alias-ref source1)))
+	   (lambda (get-alias-ref)
+	     (let ((source1 (any-reference source1)))
+	       (operate (get-alias-ref) source1))))
 	  (else
 	   (new-target-alias!)))))
 
@@ -420,12 +423,12 @@ MIT in each case. |#
 		 (standard target source1 source2 overflow?))
 		((register-copy-if-available source1 'GENERAL target)
 		 =>
-		 (lambda (tgt)
-		   (operate tgt (register-reference two))))
+		 (lambda (get-tgt)
+		   (operate (get-tgt) (register-reference two))))
 		((register-copy-if-available source2 'GENERAL target)
 		 =>
-		 (lambda (tgt)
-		   (operate tgt (register-reference one))))
+		 (lambda (get-tgt)
+		   (operate (get-tgt) (register-reference one))))
 		(else
 		 (let ((target (target-register-reference target)))
 		   (LAP (LEA ,target (@RI one two 1)))))))))))  
