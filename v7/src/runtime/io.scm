@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.62 2001/01/06 19:08:00 cph Exp $
+$Id: io.scm,v 14.63 2001/03/21 05:40:33 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Input/Output Utilities
@@ -580,6 +581,68 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   output-buffer/position)
 
 (define (output-buffer/write-substring buffer string start end)
+  (let ((name 'OUTPUT-BUFFER/WRITE-SUBSTRING))
+    (if (output-buffer/closed? buffer)
+	(error:bad-range-argument buffer name))
+    (cond ((string? string)
+	   (if (not (index-fixnum? start))
+	       (error:wrong-type-argument start "string index" name))
+	   (if (not (index-fixnum? end))
+	       (error:wrong-type-argument end "string index" name))
+	   (if (not (fix:<= end (string-length string)))
+	       (error:bad-range-argument end name))
+	   (cond ((fix:< start end)
+		  (output-buffer/write-substring-1 buffer string start end))
+		 ((fix:= start end) 0)
+		 (else (error:bad-range-argument start name))))
+	  ((external-string? string)
+	   (if (not (exact-nonnegative-integer? start))
+	       (error:wrong-type-argument start "exact nonnegative integer"
+					  name))
+	   (if (not (exact-nonnegative-integer? end))
+	       (error:wrong-type-argument end "exact nonnegative integer"
+					  name))
+	   (if (not (<= end (external-string-length string)))
+	       (error:bad-range-argument end name))
+	   (cond ((< start end)
+		  (output-buffer/write-xsubstring buffer string start end))
+		 ((= start end) 0)
+		 (else (error:bad-range-argument start name))))
+	  (else
+	   (error:wrong-type-argument string "string" name)))))
+
+(define (output-buffer/write-xsubstring buffer string start end)
+  (cond ((output-buffer/line-translation buffer)
+	 (let* ((n 65536)
+		(b (make-string n)))
+	   (let loop ((index start))
+	     (if (< index end)
+		 (let ((n-to-write (min (- end index) n)))
+		   (xsubstring-move! string index (+ index n-to-write) b 0)
+		   (let ((n-written
+			  (output-buffer/write-substring-1 buffer
+							   b 0 n-to-write)))
+		     (let ((index* (+ n-written index)))
+		       (if (< n-written n-to-write)
+			   (- index* start)
+			   (loop index*)))))
+		 (- index start)))))
+	((and (output-buffer/string buffer)
+	      (<= (- end start)
+		  (fix:- (output-buffer/logical-size buffer)
+			 (output-buffer/position buffer))))
+	 (xsubstring-move! string start end
+			   (output-buffer/string buffer)
+			   (output-buffer/position buffer))
+	 (set-output-buffer/position! buffer
+				      (fix:+ (output-buffer/position buffer)
+					     (- end start))))
+	(else
+	 (output-buffer/drain-block buffer)
+	 (or (channel-write (output-buffer/channel buffer) string start end)
+	     0))))
+
+(define (output-buffer/write-substring-1 buffer string start end)
   (define (write-buffered start end n-previous)
     (if (fix:< start end)
 	(let loop ((start start) (n-previous n-previous))
@@ -623,38 +686,37 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
   (define (add-to-buffer string start end)
     (let ((posn (output-buffer/position buffer)))
-      (substring-move-left! string start end
-			    (output-buffer/string buffer) posn)
+      (substring-move! string start end (output-buffer/string buffer) posn)
       (set-output-buffer/position! buffer (fix:+ posn (fix:- end start)))))
 
-  (if (output-buffer/closed? buffer)
-      (error:bad-range-argument buffer 'OUTPUT-BUFFER/WRITE-SUBSTRING))
-  (if (fix:< start end)
-      (set-output-buffer/line-start?!
-       buffer
-       (char=? #\newline (string-ref string (fix:- end 1)))))
-  (cond ((not (output-buffer/string buffer))
-	 (if (fix:= start end)
-	     0
-	     (or (channel-write (output-buffer/channel buffer)
-				string start end)
-		 0)))
-	((not (output-buffer/line-translation buffer))
-	 (write-buffered start end 0))
-	(else
-	 (let loop ((start start) (n-prev 0))
-	   (let find-newline ((index start))
-	     (cond ((fix:= index end)
-		    (write-buffered start end n-prev))
-		   ((not (char=? (string-ref string index) #\newline))
-		    (find-newline (fix:+ index 1)))
-		   (else
-		    (let ((n-prev* (write-buffered start index n-prev)))
-		      (if (or (fix:< n-prev*
-				     (fix:+ n-prev (fix:- start index)))
-			      (not (write-newline)))
-			  n-prev*
-			  (loop (fix:+ index 1) (fix:+ n-prev* 1)))))))))))
+  (let ((n-written
+	 (cond ((not (output-buffer/string buffer))
+		(or (channel-write (output-buffer/channel buffer)
+				   string start end)
+		    0))
+	       ((not (output-buffer/line-translation buffer))
+		(write-buffered start end 0))
+	       (else
+		(let loop ((start start) (n-prev 0))
+		  (let find-newline ((index start))
+		    (cond ((fix:= index end)
+			   (write-buffered start end n-prev))
+			  ((not (char=? (string-ref string index) #\newline))
+			   (find-newline (fix:+ index 1)))
+			  (else
+			   (let ((n-prev* (write-buffered start index n-prev)))
+			     (if (or (fix:< n-prev*
+					    (fix:+ n-prev (fix:- start index)))
+				     (not (write-newline)))
+				 n-prev*
+				 (loop (fix:+ index 1)
+				       (fix:+ n-prev* 1))))))))))))
+    (if (fix:> n-written 0)
+	(set-output-buffer/line-start?!
+	 buffer
+	 (char=? #\newline
+		 (string-ref string (fix:+ start (fix:- n-written 1))))))
+    n-written))
 
 (define (output-buffer/drain buffer)
   (let ((string (output-buffer/string buffer))
@@ -673,7 +735,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		 position)
 		((fix:< n position)
 		 (let ((position* (fix:- position n)))
-		   (substring-move-left! string n position string 0)
+		   (substring-move! string n position string 0)
 		   (set-output-buffer/position! buffer position*)
 		   position*))
 		(else
@@ -690,9 +752,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (output-buffer/write-substring-block buffer string start end)
   (do ((start start
-	      (fix:+ start
-		     (output-buffer/write-substring buffer string start end))))
-      ((fix:>= start end))))
+	      (+ start
+		 (output-buffer/write-substring buffer string start end))))
+      ((>= start end))))
 
 (define (output-buffer/write-char-block buffer char)
   (output-buffer/write-substring-block buffer (string char) 0 1))
@@ -777,11 +839,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		    (if (fix:zero? delta)
 			string-size
 			(let ((logical-end (fix:- string-size delta)))
-			  (substring-move-left! old-string
-						(input-buffer/end-index buffer)
-						(input-buffer/real-end buffer)
-						(input-buffer/string buffer)
-						logical-end)
+			  (substring-move! old-string
+					   (input-buffer/end-index buffer)
+					   (input-buffer/real-end buffer)
+					   (input-buffer/string buffer)
+					   logical-end)
 			  logical-end))))
 	       (set-input-buffer/start-index! buffer logical-end)
 	       (set-input-buffer/end-index! buffer logical-end)
@@ -809,11 +871,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(input-buffer/end-index buffer)))
 	(string (input-buffer/string buffer)))
     (if (not (fix:= delta 0))
-	(substring-move-left! string
-			      (input-buffer/end-index buffer)
-			      (input-buffer/real-end buffer)
-			      string
-			      0))
+	(substring-move! string
+			 (input-buffer/end-index buffer)
+			 (input-buffer/real-end buffer)
+			 string
+			 0))
     (let ((n-read
 	   (channel-read (input-buffer/channel buffer)
 			 string delta (string-length string))))
@@ -1008,11 +1070,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       (if (fix:>= available needed)
 		   (begin
 		     (let ((bend (fix:+ bstart needed)))
-		       (substring-move-left! bstring bstart bend string index)
+		       (substring-move! bstring bstart bend string index)
 		       (set-input-buffer/start-index! buffer bend))
 		     end)
 		   (begin
-		     (substring-move-left! bstring bstart bend string index)
+		     (substring-move! bstring bstart bend string index)
 		     (set-input-buffer/start-index! buffer bend)
 		     (if (input-buffer/char-ready? buffer 0)
 			 (transfer-input-buffer (fix:+ index available))
@@ -1107,5 +1169,5 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (let ((string (input-buffer/string buffer)))
 	     (if (fix:> contents-size (string-length string))
 		 (input-buffer/set-size buffer contents-size))
-	     (substring-move-left! contents 0 contents-size string 0)
+	     (substring-move! contents 0 contents-size string 0)
 	     (input-buffer/after-fill! buffer contents-size)))))))

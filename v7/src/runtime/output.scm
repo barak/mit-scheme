@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.22 1999/12/20 23:11:37 cph Exp $
+$Id: output.scm,v 14.23 2001/03/21 05:40:40 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Output
@@ -30,7 +31,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ((output-port/operation/write-char port) port char))
 
 (define (output-port/write-string port string)
-  (output-port/write-substring port string 0 (string-length string)))
+  (output-port/write-substring port string 0 (xstring-length string)))
 
 (define (output-port/write-substring port string start end)
   ((output-port/operation/write-substring port) port string start end))
