@@ -6,11 +6,11 @@
 @setchapternewpage odd
 @synindex vr fn
 
-@c $Id: sos.texinfo,v 1.3 1993/02/24 07:45:54 cph Exp $
+@c $Id: sos.texinfo,v 1.4 1993/02/28 23:24:23 cph Exp $
 
 @set TITLE The SOS Reference Manual
-@set EDITION 1.3
-@set UPDATED 21 February 1993
+@set EDITION 1.4
+@set UPDATED 28 February 1993
 @set UPDATE-MONTH February 1993
 
 @ifinfo
@@ -145,11 +145,13 @@ The Meta-Object Protocol
 @node Object System, Variable Index, Top, Top
 @chapter The Object System
 
-@sc{sos} is a Scheme ``object system'' derived from ``Tiny @sc{clos}'',
-written by Gregor Kiczales, which in turn was loosely derived from
-@sc{clos}, the Common Lisp Object System.  Its basic design and
-philosophy is closely related to Tiny @sc{clos}, but there are
-differences in naming, interface, and in the meta-object protocol.
+@sc{sos} is a Scheme @dfn{object system} derived from Tiny @sc{clos}
+@footnote{Tiny @sc{clos} was written by Gregor Kiczales of Xerox
+@sc{parc}; @sc{sos} is derived from version 1.2 of Tiny @sc{clos}.},
+which in turn was loosely derived from @sc{clos}, the Common Lisp Object
+System.  Its basic design and philosophy is closely related to Tiny
+@sc{clos}, but there are differences in naming, interface, and in the
+meta-object protocol.
 
 In the procedure descriptions that follow, certain argument names imply
 restrictions on the corresponding argument:
@@ -235,19 +237,18 @@ class object and returns its name.  The name of an anonymous class is
 @cindex superclass, direct
 @cindex direct subclass
 @cindex subclass, direct
-A class @code{c[1]} is a @dfn{direct superclass} of a class @code{c[2]}
-if @code{c[2]} explicitly designates @code{c[1]} as a superclass in its
-definition.  In this case, @code{c[2]} is a @dfn{direct subclass} of
-@code{c[1]}.  A class @code{c[n]} is a @dfn{superclass} of a class
-@code{c[1]} if there exists a series of classes @code{c[2]}, @dots{},
-@code{c[n-1]} such that @code{c[i+1]} is a direct superclass of
-@code{c[i]} for all @code{i} between @code{1} and @code{n}.  In this
-case, @code{c[1]} is a @dfn{subclass} of @code{c[n]}.  A class is
-considered neither a superclass nor a subclass of itself.  That is, if
-@code{c[1]} is a superclass of @code{c[2]}, then @code{c[1]} is
-different from @code{c[2]}.  The set of classes consisting of some given
-class @code{c} along with all of its superclasses is called ``@code{c}
-and its superclasses.''
+A class @var{C[1]} is a @dfn{direct superclass} of a class @var{C[2]} if
+@var{C[2]} explicitly designates @var{C[1]} as a superclass in its
+definition.  In this case, @var{C[2]} is a @dfn{direct subclass} of
+@var{C[1]}.  A class @var{C[n]} is a @dfn{superclass} of a class
+@var{C[1]} if there exists a series of classes @var{C[2]}, @dots{},
+@var{C[n-1]} such that @var{C[i+1]} is a direct superclass of @var{C[i]}
+for all @var{i} between @var{1} and @var{n}.  In this case, @var{C[1]}
+is a @dfn{subclass} of @var{C[n]}.  A class is considered neither a
+superclass nor a subclass of itself.  That is, if @var{C[1]} is a
+superclass of @var{C[2]}, then @var{C[1]} is different from @var{C[2]}.
+The set of classes consisting of some given class @var{C} along with all
+of its superclasses is called ``@var{C} and its superclasses.''
 
 @cindex class precedence list
 @cindex precedence list, class
@@ -312,6 +313,12 @@ might have been defined by
                    (quote (slot ...)))))))
 @end lisp
 
+Note that slot options are handled specially by @code{define-class}.  If
+a @var{direct-slot} specifies a slot options property list, the keys of
+the property list (i.e.@: the even-numbered elements) are not evaluated,
+while the datums of the property list @emph{are} evaluated.  The
+expansion above does not show the proper treatment of slot options.
+
 @cindex class options
 @code{define-class} permits the specification of @dfn{class options},
 which are options that pertain to the class as a whole.  Class options
@@ -344,8 +351,8 @@ class will have.  It is a list, each element of which must have one of
 the following forms:
 
 @example
-@var{NAME}
-(@var{NAME} . @var{PLIST})
+@var{name}
+(@var{name} . @var{plist})
 @end example
 
 @noindent
@@ -373,15 +380,16 @@ must invoke @code{initializer} and use its value to initialize the slot.
 
 @item accessor
 This property specifies a generic procedure; @code{make-class} will add
-an accessor method for this slot to the procedure.
+an accessor method for this slot to the procedure.  @xref{Slots}.
 
 @item modifier
 This property specifies a generic procedure; @code{make-class} will add
-a modifier method for this slot to the procedure.
+a modifier method for this slot to the procedure.  @xref{Slots}.
 
 @item initpred
 This property specifies a generic procedure; @code{make-class} will add
-an ``initialized?'' predicate method for this slot to the procedure.
+an ``initialized?''@: predicate method for this slot to the procedure.
+@xref{Slots}.
 
 @item allocation
 A symbol describing how the slot should be allocated.  If the
@@ -420,7 +428,7 @@ Returns the class of @var{instance}.
 
 @defvr Class <object>
 This is the class of all Scheme objects.  It has no direct superclasses,
-and all classes are subclasses of this class.
+and all other classes are subclasses of this class.
 @end defvr
 
 @defvr Class <instance>
@@ -430,7 +438,7 @@ the predicate @code{instance?}.
 @end defvr
 
 @defvr Class <class>
-This is the class of class objects.  It is a direct subclass of
+This is the class of classes.  It is a direct subclass of
 @code{<instance>}.  The members of this class are the objects that
 satisfy the predicate @code{class?}.
 @end defvr
@@ -447,7 +455,6 @@ This is the class of method objects.  It is a direct subclass of
 
 @defvr Class <boolean>
 @defvrx Class <char>
-@defvrx Class <number>
 @defvrx Class <pair>
 @defvrx Class <procedure>
 @defvrx Class <string>
@@ -457,7 +464,18 @@ These are the classes of their respective Scheme objects.  They are all
 direct subclasses of @code{<object>}.  The members of each class are the
 objects that satisfy the corresponding predicate; for example, the
 members of @code{<procedure>} are the objects that satisfy
-@code{procedure?}.
+@code{procedure?}.  These classes are instances of the class
+@code{<primitive-class>}, except for @code{<procedure>} which is an
+instance of @code{<procedure-class>}.
+@end defvr
+
+@defvr Class <math-object>
+This is the class of mathematical objects.  It is a direct subclass of
+@code{<object>}.  This class is an abstract class; @code{object-class}
+will not return this class for any object.  This class exists in order
+to contain other kinds of mathematical objects besides numbers, in those
+implementations that provide them.  For example, the objects defined by
+the @sc{scmutils} algebra system are subclasses of this class.
 @end defvr
 
 The following are the classes of Scheme numbers.  Note that
@@ -467,13 +485,16 @@ particular numeric representation.  The implementation-specific class is
 a subclass of one or more of these implementation-independent classes,
 so you should use these classes for specialization.
 
-@defvr Class <complex>
+@defvr Class <number>
+@defvrx Class <complex>
 @defvrx Class <real>
 @defvrx Class <rational>
 @defvrx Class <integer>
-These are the classes of the Scheme numeric tower.  @code{<complex>} is
-a direct subclass of @code{<number>}, @code{<real>} is a direct subclass
-of @code{<complex>}, etc.
+These are the classes of the Scheme numeric tower.  @code{<number>} is a
+direct subclass of @code{<math-object>}, @code{<complex>} is a direct
+subclass of @code{<number>}, @code{<real>} is a direct subclass of
+@code{<complex>}, etc.  These classes are instances of the class
+@code{<primitive-class>}.
 @end defvr
 
 @defvr Class <exact>
@@ -485,7 +506,8 @@ These are the classes of exact numbers.  @code{<exact>} is a direct
 subclass of @code{<number>}, @code{<exact-complex>} is a direct
 subclass of @code{<exact>} and @code{<complex>}, and in general, each is
 a direct subclass of preceding class and of the class without the
-@code{exact-} prefix.
+@code{exact-} prefix.  These classes are instances of the class
+@code{<primitive-class>}.
 @end defvr
 
 @defvr Class <inexact>
@@ -497,17 +519,25 @@ These are the classes of inexact numbers.  @code{<inexact>} is a direct
 subclass of @code{<number>}, @code{<inexact-complex>} is a direct
 subclass of @code{<inexact>} and @code{<complex>}, and in general, each
 is a direct subclass of preceding class and of the class without the
-@code{inexact-} prefix.
+@code{inexact-} prefix.  These classes are instances of the class
+@code{<primitive-class>}.
 @end defvr
 
 @defvr Class <entity>
 This is the class of entity objects.  It is a direct subclass of
-@code{<procedure>}.  This class is defined only in @sc{mit} Scheme.
+@code{<procedure>}.  This class is an instance of the class
+@code{<procedure-class>}.
+
+This class is defined only in implementations that support entities.
 @end defvr
 
 @defvr Class <record>
 This is the class of record objects.  It is a direct subclass of
-@code{<object>}.  This class is defined only in @sc{mit} Scheme.
+@code{<object>}.  This class is an instance of the class
+@code{<primitive-class>}.
+
+This class is defined only in implementations that support an opaque
+record type.
 @end defvr
 
 @node Instances, Slots, Predefined Classes, Language
@@ -517,7 +547,7 @@ This is the class of record objects.  It is a direct subclass of
 Creates and returns a new instance of @var{class}.
 
 The instance is created by a two-step process, which is described here
-to explain the meaning of the @var{initarg} arguments.
+to explain the meaning of the @var{initarg}s.
 
 @enumerate
 @item
@@ -604,15 +634,15 @@ slot is defined by the class of the instance or is inherited from a
 superclass of that class.  At most one slot of a given name can be
 accessible in an instance.
 
-Slots can be accessed in two ways: by use of the primitive procedures
-@code{slot-accessor}, @code{slot-modifier}, @code{slot-value}, and
-@code{set-slot-value!}, and by use of methods generated by
-@code{make-class}.
+Slots can be accessed in two ways: by use of the primitive slot-access
+procedures @code{slot-accessor}, @code{slot-modifier},
+@code{slot-initpred}, @code{slot-value}, @code{set-slot-value!}, and
+@code{slot-initialized?}; and by use of slot-access methods (usually
+generated by @code{make-class}).
 
-The procedures @code{slot-accessor}, @code{slot-modifier},
-@code{slot-value}, and @code{set-slot-value!} can be used with any slot
-name specified in the call to @code{make-class} to access a specific
-slot accessible in an instance of the given class.
+The primitive slot-access procedures can be used with any slot name
+specified in the call to @code{make-class} to access a specific slot
+accessible in an instance of the given class.
 
 @cindex accessor, for slot
 @cindex slot accessor
@@ -629,11 +659,11 @@ accessor takes one argument, the instance.  The procedure specified for
 the modifier takes two arguments, the instance and the new value, in
 that order.
 
-Accessor and modifier methods can also be generated by the procedures
-@code{slot-accessor-method} and @code{slot-modifier-method},
-respectively.  These methods may be added to a generic function by
-passing them as arguments to @code{add-method}.  The methods generated
-by these procedures are completely equivalent to those generated by the
+Slot-access methods can also be generated by the procedures
+@code{slot-accessor-method}, @code{slot-modifier-method}, and
+@code{slot-initpred-method}.  These methods may be added to a generic
+procedure by passing them as arguments to @code{add-method}.  The methods
+generated by these procedures are identical to those generated by the
 options to @code{make-class}.
 
 Note that @code{slot-value}, @code{set-slot-value!}, and
@@ -647,43 +677,45 @@ implementations are semantically correct, but do not accurately depict
 performance.
 
 @lisp
+@group
 (define (slot-accessor-method slot)
-  (make-method
-   (list (slot-class slot))
-   (let ((accessor (slot-accessor (slot-name slot))))
-     (lambda (call-next-method instance)
-       (accessor instance)))))
+  (make-method (list (slot-class slot))
+    (let ((accessor (slot-accessor (slot-name slot))))
+      (lambda (call-next-method instance)
+        (accessor instance)))))
 
 (define (slot-value instance name)
   ((slot-accessor name) instance))
+@end group
 @end lisp
 
 @deffn Procedure slot-accessor name
 Returns a procedure of one argument which is an accessor for the slot
 @var{name}; @var{name} may be either a symbol or a slot descriptor.  The
-argument to this procedure must be an instance.  When the procedure is
-called, it returns the contents of the slot @var{name} in that instance.
-If the given instance does not have such a slot, or if the slot is not
-initialized, an error is signalled.
+argument to the returned procedure must be an instance.  When the
+procedure is called, it returns the contents of the slot @var{name} in
+that instance.  If the given instance does not have a slot of that name,
+or if the slot is not initialized, an error is signalled.
 @end deffn
 
 @deffn Procedure slot-modifier name
 Returns a procedure of two arguments which is a modifier for the slot
-@var{name}; @var{name} may be either a symbol or a slot descriptor.
-This first argument to this procedure must be an instance, and the
+@var{name}; @var{name} may be either a symbol or a slot descriptor.  The
+first argument to the returned procedure must be an instance, and the
 second argument may be any object.  When the procedure is called, it
 modifies the slot @var{name} in the instance to contain the second
-argument.  If the given instance does not have such a slot, an error is
-signalled.
+argument.  If the given instance does not have a slot of that name, an
+error is signalled.
 @end deffn
 
 @deffn Procedure slot-initpred name
-Returns a procedure of one argument which is an ``initialized?''
+Returns a procedure of one argument which is an ``initialized?''@:
 predicate for the slot @var{name}; @var{name} may be either a symbol or
-a slot descriptor.  The argument to this procedure must be an instance.
-When the procedure is called, it return @code{#t} if the slot @var{name}
-in that instance is initialized, otherwise it returns @code{#f}.  If the
-given instance does not have such a slot, an error is signalled.
+a slot descriptor.  The argument to the returned procedure must be an
+instance.  When the procedure is called, it returns @code{#t} if the
+slot @var{name} in that instance is initialized, otherwise it returns
+@code{#f}.  If the given instance does not have a slot of that name, an
+error is signalled.
 @end deffn
 
 @deffn Procedure slot-accessor-method slot
@@ -703,7 +735,7 @@ the slot specified by @var{slot} in the instance.
 @end deffn
 
 @deffn Procedure slot-initpred-method slot
-Returns an ``initialized?'' predicate method for @var{slot}.  This
+Returns an ``initialized?''@: predicate method for @var{slot}.  This
 method has one required argument, an instance, and the specializer for
 that argument is the @code{slot-class} of @var{slot}.  When invoked, the
 method returns @code{#t} if the slot specified by @var{slot} is
@@ -713,22 +745,43 @@ initialized in the instance; otherwise it returns @code{#f}.
 @deffn Procedure slot-value instance name
 Returns the contents of the slot @var{name} in @var{instance};
 @var{name} may be either a symbol or a slot descriptor.  If
-@var{instance} does not have such a slot, or if the slot is not
+@var{instance} does not have a slot of that name, or if the slot is not
 initialized, an error is signalled.
 @end deffn
 
 @deffn Procedure set-slot-value! instance name object
 Modifies the slot @var{name} in @var{instance} to contain @var{object};
 @var{name} may be either a symbol or a slot descriptor.  If
-@var{instance} does not have such a slot, an error is signalled.
+@var{instance} does not have a slot of that name, an error is signalled.
 @end deffn
 
 @deffn Procedure slot-initialized? instance name
 Returns @code{#t} if the slot @var{name} in @var{instance} is
 initialized, otherwise returns @code{#f}; @var{name} may be either a
-symbol or a slot descriptor.  If @var{instance} does not have such a
-slot, an error is signalled.
+symbol or a slot descriptor.  If @var{instance} does not have a slot of
+that name, an error is signalled.
 @end deffn
+
+A note on errors signalled by the slot-access mechanisms: in the MIT
+Scheme implementation, these errors have specific condition types which
+allow them to be caught and processed by condition handlers.  The
+condition signalled when an instance does not have a slot of the given
+name has type @code{condition-type:unbound-slot}.  The condition
+signalled by an access to an uninitialized slot has type
+@code{condition-type:uninitialized-instance-slot}.  These condition
+types are elements of the following condition type tree:
+
+@lisp
+condition-type:slot-error
+    condition-type:uninitialized-slot
+        condition-type:uninitialized-instance-slot
+    condition-type:unbound-slot
+@end lisp
+
+@noindent
+If you define a new kind of slot using the meta-object protocol, you
+should create a sub-type of @code{condition-type:uninitialized-slot} to
+signal access to uninitialized slots of that type.
 
 @node Generic Procedures, Methods, Slots, Language
 @subsection Generic Procedures
@@ -750,10 +803,11 @@ procedure may be used.  In particular, generic procedures satisfy the
 predicate @code{procedure?}.
 
 @deffn Syntax define-generic-procedure name lambda-list
-Defines @var{name} to be a generic procedure.  @var{Lambda-list} is an
-ordinary parameter list, which is exactly like the parameter list in a
-@code{lambda} special form.  @code{define-generic-procedure} expands
-into
+@deffnx Syntax define-generic-procedure name lambda-list body @dots{}
+Defines @var{name} to be a generic procedure.  In the first form,
+@var{lambda-list} is an ordinary parameter list, which is exactly like
+the parameter list in a @code{lambda} special form.  This first form of
+@code{define-generic-procedure} expands into
 
 @lisp
 (define @var{name}
@@ -765,6 +819,11 @@ into
 @noindent
 where @var{min-arity} and @var{max-arity} are determined from
 @var{lambda-list}.
+
+The second form of @code{define-generic-procedure} has exactly the same
+syntax as @code{define-method}, and expands into a sequence of the first
+form of @code{define-generic-procedure} followed by a
+@code{define-method}.
 @end deffn
 
 @deffn Procedure make-generic-procedure name min-arity max-arity
@@ -871,8 +930,8 @@ arguments are sensible.
 @quotation
 @strong{Please note:} In Dylan, calling the ``call-next-method''
 procedure with no arguments causes the next method to be called with the
-arguments passed to the calling method; in this system, this calls the
-next method with no arguments.
+arguments passed to the calling method; in @sc{sos}, this calls the next
+method with no arguments.
 @end quotation
 @end deffn
 
@@ -923,9 +982,8 @@ instances.  This division might seem clumsy, but it serves a purpose: it
 separates the accessing of reflective data in the instance from the
 mapping between the generic procedure and its associated instance.  This
 is desirable because the mapping between a generic procedure and its
-instance is much slower than an instance slot access.  More
-specifically, @code{procedure->generic} is much slower than
-@code{generic-min-arity}.
+instance is much slower than an instance slot access.  Specifically,
+@code{procedure->generic} is a slow operation.
 
 @deffn Procedure procedure->generic procedure
 If @var{procedure} is a generic procedure, this procedure returns the
@@ -971,8 +1029,9 @@ Returns a list of the slot descriptors for the slots of @var{class}.
 This list is in no particular order and must not be modified.
 @end deffn
 
-@deffn Procedure slot-descriptor instance name
-Returns the slot descriptor for the slot @var{name} in @var{instance}.
+@deffn Procedure slot-descriptor class name
+Returns the slot descriptor for the slot @var{name} in @var{class}.  If
+@var{class} has no slot of that name, an error is signalled.
 @end deffn
 
 @deffn Procedure slot? object
@@ -987,11 +1046,9 @@ Returns the name of @var{slot}.
 @deffn Procedure slot-class slot
 Returns the class of @var{slot}.  This is the class with which
 @var{slot} is associated.  This is not necessarily the class that
-defines @var{slot}; it could also be a subclass of that class.  If
-@var{slot} was returned by @code{slot-descriptors}, this class is the
-argument to @code{slot-descriptors}.  If @var{slot} was returned by
-@code{slot-descriptor}, this class is the class of the instance that was
-passed to @code{slot-descriptor}.
+defines @var{slot}; it could also be a subclass of that class.  If the
+slot was returned by @code{slot-descriptors} or @code{slot-descriptor},
+then this class is the argument passed to that procedure.
 @end deffn
 
 @deffn Procedure slot-allocation slot
