@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.2 1989/03/30 16:40:21 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.3 1989/04/25 02:00:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -254,11 +254,15 @@
 	      (string-ref buffer 0)))))))
 
 (define (xterm-screen/read-chars screen interval)
-  (let ((result (xterm-read-chars (screen-xterm screen) interval)))
-    (if (and (not (screen-in-update? screen))
-	     (xterm-screen/process-events! screen))
-	(update-screen! screen false))
-    result))
+  (let ((xterm (screen-xterm screen)))
+    (let loop ((interval interval))
+      (let ((result (xterm-read-chars xterm interval)))
+	(if (and (not (screen-in-update? screen))
+		 (xterm-screen/process-events! screen))
+	    (update-screen! screen false))
+	(if (integer? result)
+	    (loop result)
+	    result)))))
 
 (define (xterm-screen/process-events! screen)
   (let ((xterm (screen-xterm screen)))
