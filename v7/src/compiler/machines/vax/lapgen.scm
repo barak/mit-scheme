@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.6 1989/05/17 20:30:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.7 1989/05/21 03:55:03 jinx Rel $
 $MC68020-Header: lapgen.scm,v 4.19 89/01/18 13:49:56 GMT cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
@@ -140,8 +140,8 @@ MIT in each case. |#
 
 (define (constant->ea constant)
   (if (non-pointer-object? constant)
-      (INST-EA (@PCR ,(constant->label constant)))
-      (non-pointer->ea (object-type constant) (object-datum constant))))
+      (non-pointer->ea (object-type constant) (object-datum constant))
+      (INST-EA (@PCR ,(constant->label constant)))))
 
 (define (non-pointer->ea type datum)
   (cond ((not (zero? type))
