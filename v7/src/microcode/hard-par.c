@@ -5,6 +5,9 @@
 
    Name changed to `hard-params' by Richard Stallman, April 89.
    xmalloc function defined, Richard Stallman, June 89.
+   Some changes to make it compile and generate "safer" output
+   for compilers that predefine some of these constants by
+   Matt Birkholz and the MIT Scheme Team.
 
    Copyright (c) 1988, 1989 Steven Pemberton, CWI, Amsterdam.
    All rights reserved.
@@ -188,7 +191,7 @@
    and to prevent variables being put in registers (when setjmp/longjmp
    wouldn't work as we want)  */
 #ifndef __STDC__
-#define volatile static
+#define volatile
 #endif
 
 #include <stdio.h>
@@ -392,6 +395,7 @@ main(argc, argv) int argc; char *argv[]; {
 	printf("%sProduced by hard-params version %s, CWI, Amsterdam%s\n",
 	       co, VERSION, oc);
 #endif
+	if (F) printf ("\n#ifndef _FLOAT_H_\n");
 
 #ifdef VERIFY
 	printf("%sVerification phase%s\n", co, oc);
@@ -442,6 +446,9 @@ main(argc, argv) int argc; char *argv[]; {
 		Vprintf("%sMemory mallocatable ~= %ld Kbytes%s\n",
 			co, (total+511)/512, oc);
 	}
+
+	if (F) printf ("\n#endif %snot _FLOAT_H_%s\n", co, oc);
+
 	exit(bugs);
 }
 
@@ -450,18 +457,24 @@ Procedure eek_a_bug(problem) char *problem; {
 	bugs++;
 }
 
-Procedure i_define(sort, name, val, req) char *sort, *name; long val, req; {
-	if (val >= 0) {
-		printf("#define %s%s %ld\n", sort, name, val);
-	} else {
-		printf("#define %s%s (%ld)\n", sort, name, val);
-	}
-	if (val != req) {
-		printf("%s*** Verify failed for above #define!\n", co);
-		printf("       Compiler has %ld for value%s\n\n", req, oc);
-		bugs++;
-	}
-	Vprintf("\n");
+Procedure i_define(sort, name, val, req) char *sort, *name; long val, req;
+{
+  printf ("\n#ifndef %s%s\n", sort, name);
+  if (val >= 0)
+  {
+    printf("#define %s%s %ld\n", sort, name, val);
+  } else
+  {
+    printf("#define %s%s (%ld)\n", sort, name, val);
+  }
+  if (val != req)
+  {
+    printf("%s*** Verify failed for above #define!\n", co);
+    printf("       Compiler has %ld for value%s\n\n", req, oc);
+    bugs++;
+  }
+  printf ("#endif %s%s%s%s\n", co, sort, name, oc);
+  Vprintf("\n");
 }
 
 #ifndef NO_UI
@@ -472,14 +485,18 @@ Procedure i_define(sort, name, val, req) char *sort, *name; long val, req; {
 #define U ""
 #endif
 
-Procedure u_define(sort, name, val, req) char *sort, *name; unsigned long val, req; {
-	printf("#define %s%s %lu%s\n", sort, name, val, U);
-	if (val != req) {
-		printf("%s*** Verify failed for above #define!\n", co);
-		printf("       Compiler has %lu for value%s\n\n", req, oc);
-		bugs++;
-	}
-	Vprintf("\n");
+Procedure u_define(sort, name, val, req)
+     char *sort, *name; unsigned long val, req;
+{
+  printf ("\n#ifndef %s%s\n", sort, name);
+  printf("#define %s%s %lu%s\n", sort, name, val, U);
+  if (val != req) {
+    printf("%s*** Verify failed for above #define!\n", co);
+    printf("       Compiler has %lu for value%s\n\n", req, oc);
+    bugs++;
+  }
+  printf ("#endif %s%s%s%s\n", co, sort, name, oc);
+  Vprintf("\n");
 }
 #endif
 
@@ -493,18 +510,24 @@ Procedure u_define(sort, name, val, req) char *sort, *name; unsigned long val, r
 char *f_rep();
 
 Procedure f_define(sort, name, precision, val, mark)
-     char *sort, *name; int precision; Long_double val; char *mark; {
-	if (stdc) {
-		printf("#define %s%s %s%s\n",
-		       sort, name, f_rep(precision, val), mark);
-	} else if (*mark == 'F') {
-		/* non-ANSI C has no float constants, so cast the constant */
-		printf("#define %s%s ((float)%s)\n",
-		       sort, name, f_rep(precision, val));
-	} else {
-		printf("#define %s%s %s\n", sort, name, f_rep(precision, val));
-	}
-	Vprintf("\n");
+     char *sort, *name; int precision; Long_double val; char *mark;
+{
+  printf ("\n#ifndef %s%s\n", sort, name);
+  if (stdc)
+  {
+    printf("#define %s%s %s%s\n",
+	   sort, name, f_rep(precision, val), mark);
+  } else if (*mark == 'F')
+  {
+    /* non-ANSI C has no float constants, so cast the constant */
+    printf("#define %s%s ((float)%s)\n",
+	   sort, name, f_rep(precision, val));
+  } else
+  {
+    printf("#define %s%s %s\n", sort, name, f_rep(precision, val));
+  }
+  printf ("#endif %s%s%s%s\n", co, sort, name, oc);
+  Vprintf("\n");
 }
 
 int floor_log(base, x) int base; Long_double x; { /* return floor(log base(x)) */
@@ -615,13 +638,31 @@ Procedure endian(bits_per_byte) int bits_per_byte; {
 #define UCHAR_MAX char_max
 #endif
 #else
+#ifdef CHAR_BIT
+#undef CHAR_BIT
+#endif
 #define CHAR_BIT char_bit
+#ifdef CHAR_MAX
+#undef CHAR_MAX
+#endif
 #define CHAR_MAX char_max
+#ifdef CHAR_MIN
+#undef CHAR_MIN
+#endif
 #define CHAR_MIN char_min
+#ifdef SCHAR_MAX
+#undef SCHAR_MAX
+#endif
 #define SCHAR_MAX char_max
+#ifdef SCHAR_MIN
+#undef SCHAR_MIN
+#endif
 #define SCHAR_MIN char_min
+#ifdef UCHAR_MAX
+#undef UCHAR_MAX
+#endif
 #define UCHAR_MAX char_max
-#endif /* VERIFY */
+#endif /* not VERIFY */
 
 int cprop() { /* Properties of character */
 	volatile char c, char_max, char_min;
