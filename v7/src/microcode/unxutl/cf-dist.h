@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cf-dist.h,v 1.17 1993/10/26 17:20:23 gjr Exp $
+$Id: cf-dist.h,v 1.18 1993/10/26 23:08:20 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -32,6 +32,12 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+/* Change the value of this macro to 1 to use the C back end instead of
+   a native back end (if one exists). 
+*/
+
+#define C_BACK_END 0
+
 #define PROC_TYPE_UNKNOWN	0
 #define PROC_TYPE_68000		1
 #define PROC_TYPE_68020		2
@@ -47,9 +53,9 @@ MIT in each case. */
 #define PROC_TYPE_POWER		12	/* IBM RS6000 and PowerPC */
 #define PROC_TYPE_LIARC		13	/* Scheme compiled to C */
 
-/* Define this macro to use the C back end instead of a native back
-   end (if one exists). */
-/* #define PROC_TYPE_LIARC */
+#if (C_BACK_END)
+#define PROC_TYPE PROC_TYPE_LIARC
+#endif
 
 /* Define this macro to use a non-standard compiler.
    It must be defined before including the m/ and s/ files because
