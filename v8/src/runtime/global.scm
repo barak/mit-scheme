@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.5 1988/08/05 20:47:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.6 1988/08/05 20:57:12 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -144,7 +144,7 @@ MIT in each case. |#
 ;; Compatibility.
 (define %pwd pwd)
 (define %cd cd)
-
+
 (define (show-time thunk)
   (let ((process-start (process-time-clock))
 	(real-start (real-time-clock)))
@@ -185,7 +185,7 @@ MIT in each case. |#
   (let () (the-environment)))
 
 (define user-initial-prompt
-  "]=>")
+  "]=>")
 (define (copy-program exp)
   (if (not (object-type? (ucode-type compiled-entry) exp))
       (error "COPY-PROGRAM: Can only copy compiled programs" exp))

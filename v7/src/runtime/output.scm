@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.3 1988/08/05 20:48:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.4 1988/08/05 20:57:21 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -47,8 +47,7 @@ MIT in each case. |#
 (define (output-port/unparse state port)
   ((unparser/standard-method 'OUTPUT-PORT
 			     (output-port/custom-operation port 'PRINT-SELF))
-   state
-   port))
+   state port))
 
 (define-structure (output-port (conc-name output-port/)
 			       (constructor %make-output-port)
@@ -71,8 +70,7 @@ MIT in each case. |#
 
 (define (output-port/custom-operation port name)
   (let ((entry (assq name (output-port/custom-operations port))))
-    (and entry
-	 (cdr entry))))
+    (and entry (cdr entry))))
 
 (define (output-port/operation port name)
   (or (output-port/custom-operation port name)
@@ -100,10 +98,7 @@ MIT in each case. |#
 	     (operation 'WRITE-STRING default-operation/write-string))
 	    (flush-output
 	     (operation 'FLUSH-OUTPUT default-operation/flush-output)))
-	(%make-output-port state
-			   write-char
-			   write-string
-			   flush-output
+	(%make-output-port state write-char write-string flush-output
 			   operations)))))
 
 (define (default-operation/write-string port string)
