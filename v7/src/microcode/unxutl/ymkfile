@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.1 1989/07/18 22:32:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.2 1989/07/24 21:07:37 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -69,7 +69,7 @@ MIT in each case. */
 #endif
 
 #ifndef C_SWITCH_FEATURES
-#define C_SWITCH_FEATURES -DCOMPILE_HISTORY
+#define C_SWITCH_FEATURES
 #endif
 
 /* Unless inhibited or changed, use -g to compile for debugging.  */
@@ -205,7 +205,8 @@ AS = as
 
 LDFLAGS = LD_SWITCH_SYSTEM LD_SWITCH_MACHINE
 
-CFLAGS = C_OPTIMIZE_SWITCH C_SWITCH_MACHINE C_SWITCH_SYSTEM $(MACHINE_SWITCHES)
+CFLAGS = C_OPTIMIZE_SWITCH C_SWITCH_MACHINE C_SWITCH_SYSTEM C_SWITCH_FEATURES \
+	$(MACHINE_SWITCHES)
 
 #ifndef ECHO
 #define ECHO echo
