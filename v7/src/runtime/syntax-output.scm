@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax-output.scm,v 14.7 2003/02/09 01:58:09 cph Exp $
+$Id: syntax-output.scm,v 14.8 2003/02/12 19:40:38 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -68,17 +68,9 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (output/named-lambda lambda-tag:unnamed lambda-list body))
 
 (define (output/named-lambda name lambda-list body)
-  (output/lambda-internal name lambda-list '() body))
-
-(define (output/lambda-internal name lambda-list declarations body)
   (call-with-values (lambda () (parse-mit-lambda-list lambda-list))
     (lambda (required optional rest)
-      (make-lambda* name required optional rest
-		    (let ((declarations (apply append declarations)))
-		      (if (pair? declarations)
-			  (make-sequence (make-block-declaration declarations)
-					 body)
-			  body))))))
+      (make-lambda* name required optional rest body))))
 
 (define (output/delay expression)
   (make-delay expression))
@@ -96,19 +88,14 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (output/combination (output/named-lambda lambda-tag:let names body) values))
 
 (define (output/letrec names values body)
-  (output/let names
-	      (map (lambda (name) name (output/unassigned)) names)
+  (output/let '() '()
 	      (make-sequence
-	       (map* (list (scan-defines body
-			     (lambda (names declarations body)
-			       (if (or (pair? names)
-				       (pair? declarations))
-				   (output/let '() '()
-					       (make-open-block names
-								declarations
-								body))
-				   body))))
-		     output/assignment names values))))
+	       (append! (map make-definition names values)
+			(list
+			 (let ((body (scan-defines body make-open-block)))
+			   (if (open-block? body)
+			       (output/let '() '() body)
+			       body)))))))
 
 (define (output/body declarations body)
   (scan-defines (let ((declarations (apply append declarations)))

@@ -1,25 +1,26 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: mit-syntax.scm,v 14.10 2002/12/13 18:55:07 cph Exp $
-;;;
-;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
-;;;
-;;; This file is part of MIT Scheme.
-;;;
-;;; MIT Scheme is free software; you can redistribute it and/or modify
-;;; it under the terms of the GNU General Public License as published
-;;; by the Free Software Foundation; either version 2 of the License,
-;;; or (at your option) any later version.
-;;;
-;;; MIT Scheme is distributed in the hope that it will be useful, but
-;;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with MIT Scheme; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: mit-syntax.scm,v 14.11 2003/02/12 19:39:52 cph Exp $
+
+Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT Scheme.
+
+MIT Scheme is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+MIT Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT Scheme; if not, write to the Free Software Foundation,
+Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+|#
 
 ;;;; MIT Scheme Syntax
 
@@ -396,10 +397,13 @@
 	 (classifier->keyword
 	  (lambda (form environment definition-environment history)
 	    definition-environment
-	    (let ((body-environment
-		   (make-internal-syntactic-environment environment)))
+	    (let* ((binding-environment
+		    (make-internal-syntactic-environment environment))
+		   (body-environment
+		    (make-internal-syntactic-environment binding-environment)))
 	      (classify/let-like form
 				 environment
+				 binding-environment
 				 body-environment
 				 body-environment
 				 history
@@ -434,15 +438,19 @@
   (lambda (form environment definition-environment history)
     definition-environment
     (syntax-check '(KEYWORD (* (IDENTIFIER ? EXPRESSION)) + FORM) form history)
-    (let ((body-environment (make-internal-syntactic-environment environment)))
+    (let* ((binding-environment
+	    (make-internal-syntactic-environment environment))
+	   (body-environment
+	    (make-internal-syntactic-environment binding-environment)))
       (for-each (let ((item (make-reserved-name-item history)))
 		  (lambda (binding)
-		    (syntactic-environment/define body-environment
+		    (syntactic-environment/define binding-environment
 						  (car binding)
 						  item)))
 		(cadr form))
       (classify/let-like form
-			 body-environment
+			 binding-environment
+			 binding-environment
 			 body-environment
 			 body-environment
 			 history
@@ -459,15 +467,19 @@
 
 (define-classifier 'LET-SYNTAX system-global-environment
   (lambda (form environment definition-environment history)
-    definition-environment
     (syntax-check '(KEYWORD (* (IDENTIFIER EXPRESSION)) + FORM) form history)
-    (classify/let-like form
-		       environment
-		       definition-environment
-		       (make-internal-syntactic-environment environment)
-		       history
-		       syntactic-binding-theory
-		       output/let)))
+    (let* ((binding-environment
+	    (make-internal-syntactic-environment environment))
+	   (body-environment
+	    (make-internal-syntactic-environment binding-environment)))
+      (classify/let-like form
+			 environment
+			 binding-environment
+			 body-environment
+			 definition-environment
+			 history
+			 syntactic-binding-theory
+			 output/let))))
 
 (define-er-macro-transformer 'LET*-SYNTAX system-global-environment
   (lambda (form rename compare)
@@ -476,38 +488,47 @@
 
 (define-classifier 'LETREC-SYNTAX system-global-environment
   (lambda (form environment definition-environment history)
-    definition-environment
     (syntax-check '(KEYWORD (* (IDENTIFIER EXPRESSION)) + FORM) form history)
-    (let ((body-environment (make-internal-syntactic-environment environment)))
+    (let* ((binding-environment
+	    (make-internal-syntactic-environment environment))
+	   (body-environment
+	    (make-internal-syntactic-environment binding-environment)))
       (for-each (let ((item (make-reserved-name-item history)))
 		  (lambda (binding)
-		    (syntactic-environment/define body-environment
+		    (syntactic-environment/define binding-environment
 						  (car binding)
 						  item)))
 		(cadr form))
       (classify/let-like form
+			 binding-environment
+			 binding-environment
 			 body-environment
 			 definition-environment
-			 body-environment
 			 history
 			 syntactic-binding-theory
 			 output/letrec))))
 
-(define (classify/let-like form environment definition-environment
-			   body-environment history binding-theory output/let)
+(define (classify/let-like form
+			   value-environment
+			   binding-environment
+			   body-environment
+			   definition-environment
+			   history
+			   binding-theory
+			   output/let)
   ;; Classify right-hand sides first, in order to catch references to
   ;; reserved names.  Then bind names prior to classifying body.
   (let* ((bindings
 	  (delete-matching-items!
 	      (map (lambda (binding item)
-		     (binding-theory body-environment
+		     (binding-theory binding-environment
 				     (car binding)
 				     item
 				     history))
 		   (cadr form)
 		   (select-map (lambda (binding selector)
 				 (classify/subexpression (cadr binding)
-							 environment
+							 value-environment
 							 history
 							 (selector/add-cadr
 							  selector)))
