@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.76 1992/09/26 03:21:24 cph Exp $
+$Id: config.h,v 9.77 1992/09/26 03:27:21 cph Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -35,7 +35,7 @@ MIT in each case. */
 /* This file contains the configuration information and the information
    given on the command line on Unix. */
 
-#ifdef SCM_CONFIG_H
+#ifndef SCM_CONFIG_H
 #define SCM_CONFIG_H
 
 /* Default pathnames. */
