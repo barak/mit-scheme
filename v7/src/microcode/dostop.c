@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dostop.c,v 1.2 1992/08/21 19:13:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dostop.c,v 1.3 1992/08/21 19:49:16 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -117,7 +117,7 @@ DEFUN_VOID (OS_reset)
   DOS_reset_channels ();
   execute_reload_cleanups ();
 }
-
+
 void
 DEFUN (OS_quit, (code, abnormal_p), int code AND int abnormal_p)
 {
@@ -125,28 +125,57 @@ DEFUN (OS_quit, (code, abnormal_p), int code AND int abnormal_p)
   fputs ("\nScheme has terminated abnormally!\n", stdout);
   OS_restore_external_state ();
 }
-
 
+#ifndef EAGAIN
+#define EAGAIN ERRNO_NONBLOCK
+#endif
+
 static enum syserr_names
 DEFUN (error_code_to_syserr, (code), int code)
 {
   switch (code)
-    {
+  {
     case E2BIG:		return (syserr_arg_list_too_long);
     case EACCES:	return (syserr_permission_denied);
+    case EAGAIN:	return (syserr_resource_temporarily_unavailable);
+    case EBADF:		return (syserr_bad_file_descriptor);
+    case EDEADLOCK:	return (syserr_resource_deadlock_avoided);
+    case EDOM:		return (syserr_domain_error);
+    case EEXIST:	return (syserr_file_exists);
+    case EINTR:		return (syserr_interrupted_function_call);
+    case EINVAL:	return (syserr_invalid_argument);
+    case EMFILE:	return (syserr_too_many_open_files);
+    case ENOEXEC:	return (syserr_exec_format_error);
+    case ENOMEM:	return (syserr_not_enough_space);
+    case ENONENT:	return (syserr_no_such_file_or_directory);
+    case ENOTDIR:	return (syserr_not_a_directory);
+    case ERANGE:	return (syserr_result_too_large);
     default:		return (syserr_unknown);
-    }
+  }
 }
 
 static int
 DEFUN (syserr_to_error_code, (syserr), enum syserr_names syserr)
 {
   switch (syserr)
-    {
+  {
     case syserr_arg_list_too_long:			return (E2BIG);
+    case syserr_bad_file_descriptor:			return (EBADF);
+    case syserr_domain_error:				return (EDOM);
+    case syserr_exec_format_error:			return (ENOEXEC);
+    case syserr_file_exists:				return (EEXIST);
+    case syserr_interrupted_function_call:		return (EINTR);
+    case syserr_invalid_argument:			return (EINVAL);
+    case syserr_no_such_file_or_directory:		return (ENONENT);
+    case syserr_not_a_directory:			return (ENOTDIR);
+    case syserr_not_enough_space:			return (ENOMEM);
     case syserr_permission_denied:			return (EACCES);
-    default: return (0);
-    }
+    case syserr_resource_deadlock_avoided:		return (EDEADLOCK);
+    case syserr_resource_temporarily_unavailable:	return (EAGAIN);
+    case syserr_result_too_large:			return (ERANGE);
+    case syserr_too_many_open_files:			return (EMFILE);
+    default: 						return (0);
+  }
 }
 
 void
