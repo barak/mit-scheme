@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for MIPS computers.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/mips.h,v 1.1 1989/07/26 03:48:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/mips.h,v 1.2 1989/07/26 04:16:54 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -37,4 +37,4 @@ MIT in each case. */
 
 /* The following crock seems to be needed, since ULTRIX on the vax has
     libg but ULTRIX on the pmax doesn't! */
-#define LIBS_DEBUG
+#define LIB_DEBUG

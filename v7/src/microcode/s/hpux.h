@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for HP-UX
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/hpux.h,v 1.1 1989/07/18 22:35:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/hpux.h,v 1.2 1989/07/26 04:17:10 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -40,7 +40,7 @@ MIT in each case. */
 /* #define HAVE_STARBASE_GRAPHICS */
 
 /* No special libraries are needed for debugging. */
-#define LIBS_DEBUG
+#define LIB_DEBUG
 
 #define SOURCES_SYSTEM unixprim.c
 #define OBJECTS_SYSTEM unixprim.o
