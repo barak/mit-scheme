@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 4.6 1990/10/19 22:05:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 4.7 1990/10/19 22:25:50 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -120,7 +120,8 @@ MIT in each case. |#
   block
   (if (and (pair? operands) (null? (cdr operands)))
       (if-expanded
-       (make-combination (ucode-primitive eq?) (list (car operands) 0)))
+       (make-combination (ucode-primitive eq?)
+			 (list (car operands) (constant/make 0))))
       (if-not-expanded)))
 
 (define (fix:=-expansion operands if-expanded if-not-expanded block)
