@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.126 1993/08/22 04:48:17 gjr Exp $
+$Id: edwin.pkg,v 1.127 1993/08/22 17:13:49 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -792,12 +792,14 @@ MIT in each case. |#
 	  command/show-all-frames
 	  command/show-current-frame
 	  debugger-pp
+	  dstate/condition
 	  dstate/environment-list
 	  dstate/expression
 	  dstate/number-of-reductions
 	  dstate/previous-subproblems
 	  dstate/reduction
 	  dstate/reduction-number
+	  dstate/subexpression
 	  dstate/subproblem
 	  dstate/subproblem-number
 	  dstate/using-history?
