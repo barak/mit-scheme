@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.45 1992/12/22 20:59:33 cph Exp $
+$Id: global.scm,v 14.46 1993/10/21 11:49:45 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -144,14 +144,9 @@ MIT in each case. |#
 (define with-values call-with-values)
 
 (define (write-to-string object #!optional max)
-  (if (default-object? max) (set! max false))
-  (if (not max)
-      (with-output-to-string
-       (lambda ()
-	 (write object)))
-      (with-output-to-truncated-string max
-	(lambda ()
-	  (write object)))))
+  (if (or (default-object? max) (not max))
+      (with-output-to-string (lambda () (write object)))
+      (with-output-to-truncated-string max (lambda () (write object)))))
 
 (define (pa procedure)
   (if (not (procedure? procedure))
@@ -266,7 +261,7 @@ MIT in each case. |#
 	 (no-print (lambda () unspecific)))
     (if (or (default-object? suppress-messages?)
 	    (not suppress-messages?))
-	(let ((port (nearest-cmdl/port)))
+	(let ((port (notification-output-port)))
 	  (do-it (lambda ()
 		   (fresh-line port)
 		   (write-string ";Dumping " port)

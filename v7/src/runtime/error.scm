@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.35 1993/10/15 10:26:30 cph Exp $
+$Id: error.scm,v 14.36 1993/10/21 11:49:42 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -272,7 +272,10 @@ MIT in each case. |#
 (define (write-condition-report condition port)
   (guarantee-condition condition 'WRITE-CONDITION-REPORT)
   (guarantee-output-port port 'WRITE-CONDITION-REPORT)
-  ((%condition-type/reporter (%condition/type condition)) condition port))
+  (let ((reporter (%condition-type/reporter (%condition/type condition))))
+    (if (%condition/error? condition)
+	(ignore-errors (lambda () (reporter condition port)))
+	(reporter condition port))))
 
 (define (condition/report-string condition)
   (with-string-output-port
@@ -446,6 +449,12 @@ MIT in each case. |#
 	       (cons (cons types handler) dynamic-handler-frames)))
     (thunk)))
 
+(define (ignore-errors thunk)
+  (call-with-current-continuation
+   (lambda (continuation)
+     (bind-condition-handler (list condition-type:error) continuation
+       thunk))))
+
 (define (break-on-signals types)
   (guarantee-condition-types types 'BREAK-ON-SIGNALS)
   (set! break-on-signals-types types)
@@ -535,7 +544,7 @@ MIT in each case. |#
     (if hook
 	(fluid-let ((standard-warning-hook false))
 	  (hook condition))
-	(let ((port (nearest-cmdl/port)))
+	(let ((port (error-output-port)))
 	  (fresh-line port)
 	  (write-string ";Warning: " port)
 	  (write-condition-report condition port)))))
@@ -664,6 +673,9 @@ MIT in each case. |#
 
 (define (condition/error? condition)
   (guarantee-condition condition 'CONDITION/ERROR?)
+  (%condition/error? condition))
+
+(define-integrable (%condition/error? condition)
   (%condition-type/error? (%condition/type condition)))
 
 (define-integrable (%condition-type/error? type)

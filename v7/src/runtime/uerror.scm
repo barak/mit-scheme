@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.34 1992/11/03 22:41:45 jinx Exp $
+$Id: uerror.scm,v 14.35 1993/10/21 11:49:55 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -903,7 +903,7 @@ MIT in each case. |#
     (let ((frame (continuation/first-subproblem continuation)))
       (if (apply-frame? frame)
 	  (let ((object (apply-frame/operand frame 0)))
-	    (let ((port (nearest-cmdl/port)))
+	    (let ((port (notification-output-port)))
 	      (fresh-line port)
 	      (write-string ";Automagically impurifying an object..." port))
 	    (impurify object)

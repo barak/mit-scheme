@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcnote.scm,v 14.9 1991/11/26 06:43:48 cph Exp $
+$Id: gcnote.scm,v 14.10 1993/10/21 11:49:44 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,9 +51,7 @@ MIT in each case. |#
     (thunk)))
 
 (define (gc-notification statistic)
-  (with-output-to-port (nearest-cmdl/port)
-    (lambda ()
-      (print-statistic statistic))))
+  (print-statistic statistic (notification-output-port)))
 
 (define (print-gc-statistics)
   (let ((status ((ucode-primitive gc-space-status))))
@@ -87,11 +85,14 @@ MIT in each case. |#
 		      (vector-ref status 4)
 		      (vector-ref status 5)
 		      (vector-ref status 6))))))
-  (for-each print-statistic (gc-statistics)))
-
-(define (print-statistic statistic)
-  (newline)
-  (write-string (gc-statistic->string statistic)))
+  (for-each (let ((port (current-output-port)))
+	      (lambda (statistic)
+		(print-statistic statistic port)))
+	    (gc-statistics)))
+
+(define (print-statistic statistic port)
+  (newline port)
+  (write-string (gc-statistic->string statistic) port))
 
 (define (gc-statistic->string statistic)
   (let* ((ticks/second 1000)

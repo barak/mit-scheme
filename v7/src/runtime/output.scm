@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.14 1992/05/26 23:12:19 mhwu Exp $
+$Id: output.scm,v 14.15 1993/10/21 11:49:47 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,11 +39,6 @@ MIT in each case. |#
 
 ;;;; Output Ports
 
-(define (guarantee-output-port port)
-  (if (not (output-port? port))
-      (error:wrong-type-argument port "output port" false))
-  port)
-
 (define (output-port/write-char port char)
   ((output-port/operation/write-char port) port char))
 
@@ -72,44 +67,6 @@ MIT in each case. |#
   (let ((operation (port/operation port 'Y-SIZE)))
     (and operation
 	 (operation port))))
-
-(define *current-output-port*)
-
-(define-integrable (current-output-port)
-  *current-output-port*)
-
-(define (set-current-output-port! port)
-  (guarantee-output-port port)
-  (set! *current-output-port* port)
-  unspecific)
-
-(define (with-output-to-port port thunk)
-  (guarantee-output-port port)
-  (fluid-let ((*current-output-port* port)) (thunk)))
-
-(define ((make-call-with-output-file open) output-specifier receiver)
-  (let ((port (open output-specifier)))
-    (let ((value (receiver port)))
-      (close-port port)
-      value)))
-
-(define call-with-output-file
-  (make-call-with-output-file open-output-file))
-
-(define call-with-binary-output-file
-  (make-call-with-output-file open-binary-output-file))
-
-(define ((make-with-output-to-file call) output-specifier thunk)
-  (call output-specifier
-    (lambda (port)
-      (fluid-let ((*current-output-port* port))
-	(thunk)))))
-
-(define with-output-to-file
-  (make-with-output-to-file call-with-output-file))
-
-(define with-output-to-binary-file
-  (make-with-output-to-file call-with-binary-output-file))
 
 ;;;; Output Procedures
 

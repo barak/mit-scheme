@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.206 1993/10/21 04:52:50 cph Exp $
+$Id: runtime.pkg,v 14.207 1993/10/21 11:49:53 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -231,8 +231,7 @@ MIT in each case. |#
 	  compiled-procedure/lambda
 	  discard-debugging-info!
 	  load-debugging-info-on-demand?
-	  uncompress-ports
-	  )
+	  uncompress-ports)
   (export (runtime load)
 	  dbg-info-vector/purification-root
 	  dbg-info-vector?
@@ -274,11 +273,9 @@ MIT in each case. |#
 	  dbg-continuation/source-code
 	  dbg-procedure?
 	  dbg-procedure/source-code
-	  dbg-expression?
-	  )
+	  dbg-expression?)
   (export (runtime compress)
-	  uncompress-internal
-	  )
+	  uncompress-internal)
   (initialization (initialize-package!)))
 
 (define-package (runtime console-i/o-port)
@@ -614,6 +611,7 @@ MIT in each case. |#
 	  find-restart
 	  format-error-message
 	  hook/invoke-condition-handler
+	  ignore-errors
 	  invoke-restart
 	  invoke-restart-interactively
 	  make-condition
@@ -667,12 +665,20 @@ MIT in each case. |#
   (files "fileio")
   (parent ())
   (export ()
+	  call-with-binary-input-file
+	  call-with-binary-output-file
+	  call-with-input-file
+	  call-with-output-file
 	  open-binary-i/o-file
 	  open-binary-input-file
 	  open-binary-output-file
 	  open-i/o-file
 	  open-input-file
-	  open-output-file)
+	  open-output-file
+	  with-input-from-binary-file
+	  with-input-from-file
+	  with-output-to-binary-file
+	  with-output-to-file)
   (initialization (initialize-package!)))
 
 (define-package (runtime transcript)
@@ -941,6 +947,12 @@ MIT in each case. |#
 	  close-input-port
 	  close-output-port
 	  close-port
+	  current-input-port
+	  current-output-port
+	  error-output-port
+	  guarantee-i/o-port
+	  guarantee-input-port
+	  guarantee-output-port
 	  i/o-port?
 	  input-port/channel
 	  input-port/copy
@@ -955,9 +967,11 @@ MIT in each case. |#
 	  input-port/operation/read-string
 	  input-port/state
 	  input-port?
+	  interaction-i/o-port
 	  make-i/o-port
 	  make-input-port
 	  make-output-port
+	  notification-output-port
 	  output-port/channel
 	  output-port/copy
 	  output-port/custom-operation
@@ -990,9 +1004,29 @@ MIT in each case. |#
 	  port/with-output-blocking-mode
 	  port/with-output-terminal-mode
 	  port?
+	  set-current-input-port!
+	  set-current-output-port!
+	  set-error-output-port!
 	  set-input-port/state!
+	  set-interaction-i/o-port!
+	  set-notification-output-port!
 	  set-output-port/state!
-	  set-port/state!)
+	  set-port/state!
+	  set-trace-output-port!
+	  trace-output-port
+	  with-error-output-port
+	  with-input-from-port
+	  with-interaction-i/o-port
+	  with-notification-output-port
+	  with-output-to-port
+	  with-trace-output-port)
+  (export (runtime rep)
+	  *current-input-port*
+	  *current-output-port*
+	  *error-output-port*
+	  *interaction-i/o-port*
+	  *notification-output-port*
+	  *trace-output-port*)
   (export (runtime emacs-interface)
 	  set-port/thread-mutex!))
 
@@ -1000,12 +1034,8 @@ MIT in each case. |#
   (files "input")
   (parent ())
   (export ()
-	  call-with-input-file
-	  call-with-binary-input-file
 	  char-ready?
-	  current-input-port
 	  eof-object?
-	  guarantee-input-port
 	  input-port/char-ready?
 	  input-port/discard-char
 	  input-port/discard-chars
@@ -1017,13 +1047,7 @@ MIT in each case. |#
 	  read
 	  read-char
 	  read-char-no-hang
-	  read-string
-	  set-current-input-port!
-	  with-input-from-file
-	  with-input-from-binary-file
-	  with-input-from-port)
-  (export (runtime rep)
-	  *current-input-port*)
+	  read-string)
   (export (runtime primitive-io)
 	  eof-object))
 
@@ -1032,14 +1056,10 @@ MIT in each case. |#
   (parent ())
   (export ()
 	  beep
-	  call-with-output-file
-	  call-with-binary-output-file
 	  clear
-	  current-output-port
 	  display
 	  flush-output
 	  fresh-line
-	  guarantee-output-port
 	  newline
 	  output-port/discretionary-flush
 	  output-port/flush-output
@@ -1049,16 +1069,10 @@ MIT in each case. |#
 	  output-port/write-substring
 	  output-port/x-size
 	  output-port/y-size
-	  set-current-output-port!
-	  with-output-to-file
-	  with-output-to-binary-file
-	  with-output-to-port
 	  write
 	  write-char
 	  write-line
-	  write-string)
-  (export (runtime rep)
-	  *current-output-port*))
+	  write-string))
 
 (define-package (runtime interrupt-handler)
   (files "intrpt")
@@ -2141,10 +2155,10 @@ MIT in each case. |#
 	  graphics-clear
 	  graphics-close
 	  graphics-coordinate-limits
-	  graphics-device?
 	  graphics-device-coordinate-limits
 	  graphics-device/descriptor
 	  graphics-device/properties
+	  graphics-device?
 	  graphics-disable-buffering
 	  graphics-drag-cursor
 	  graphics-draw-line
@@ -2161,17 +2175,16 @@ MIT in each case. |#
 	  graphics-set-drawing-mode
 	  graphics-set-line-style
 	  graphics-type-available?
-	  make-graphics-device
-	  make-graphics-device-type
-	  image?
 	  image/descriptor
 	  image/destroy
-	  image/width
-	  image/height
 	  image/draw
 	  image/draw-subimage
 	  image/fill-from-byte-vector
-))
+	  image/height
+	  image/width
+	  image?
+	  make-graphics-device
+	  make-graphics-device-type))
 
 (define-package (runtime x-graphics)
   (files "x11graph")
@@ -2271,8 +2284,7 @@ MIT in each case. |#
   (import (runtime graphics)
 	  register-graphics-device-type
 	  make-image-type
-	  image/create
-	  )
+	  image/create)
   (initialization (initialize-package!)))
 
 (define-package (runtime starbase-graphics)

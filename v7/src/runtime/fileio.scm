@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.5 1993/01/12 23:08:51 gjr Exp $
+$Id: fileio.scm,v 1.6 1993/10/21 11:49:43 cph Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -95,21 +95,23 @@ MIT in each case. |#
 (define input-file-template)
 (define output-file-template)
 (define i/o-file-template)
+
+(define input-buffer-size 512)
+(define output-buffer-size 512)
 
 (define (open-input-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-input-channel (->namestring pathname)))
 	 (port
-	  (port/copy input-file-template
-		     (make-file-state
-		      (make-input-buffer channel
-					 input-buffer-size
-					 (pathname-newline-translation
-					  pathname)
-					 (pathname-end-of-file-marker/input
-					  pathname))
-		      false
-		      pathname))))
+	  (port/copy
+	   input-file-template
+	   (make-file-state
+	    (make-input-buffer channel
+			       input-buffer-size
+			       (pathname-newline-translation pathname)
+			       (pathname-end-of-file-marker/input pathname))
+	    false
+	    pathname))))
     (set-channel-port! channel port)
     port))
 
@@ -121,39 +123,35 @@ MIT in each case. |#
 		(file-open-append-channel filename)
 		(file-open-output-channel filename))))
 	 (port
-	  (port/copy output-file-template
-		     (make-file-state
-		      false
-		      (make-output-buffer channel
-					  output-buffer-size
-					  (pathname-newline-translation
-					   pathname)
-					  (pathname-end-of-file-marker/output
-					   pathname))
-		      pathname))))
+	  (port/copy
+	   output-file-template
+	   (make-file-state
+	    false
+	    (make-output-buffer channel
+				output-buffer-size
+				(pathname-newline-translation pathname)
+				(pathname-end-of-file-marker/output pathname))
+	    pathname))))
     (set-channel-port! channel port)
     port))
 
 (define (open-i/o-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-io-channel (->namestring pathname)))
+	 (translation (pathname-newline-translation pathname))
 	 (port
-	  (let ((translation (pathname-newline-translation pathname)))
-	    (port/copy i/o-file-template
-		       (make-file-state
-			(make-input-buffer
-			 channel
-			 input-buffer-size
-			 translation
-			 (pathname-end-of-file-marker/input
-			  pathname))
-			(make-output-buffer
-			 channel
-			 output-buffer-size
-			 translation
-			 (pathname-end-of-file-marker/output
-			  pathname))
-			pathname)))))
+	  (port/copy
+	   i/o-file-template
+	   (make-file-state
+	    (make-input-buffer channel
+			       input-buffer-size
+			       translation
+			       (pathname-end-of-file-marker/input pathname))
+	    (make-output-buffer channel
+				output-buffer-size
+				translation
+				(pathname-end-of-file-marker/output pathname))
+	    pathname))))
     (set-channel-port! channel port)
     port))
 
@@ -162,9 +160,6 @@ MIT in each case. |#
     (and (not (string=? "\n" end-of-line))
 	 end-of-line)))
 
-(define input-buffer-size 512)
-(define output-buffer-size 512)
-
 (define (open-binary-input-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-input-channel (->namestring pathname)))
@@ -213,6 +208,46 @@ MIT in each case. |#
 				      pathname))))
     (set-channel-port! channel port)
     port))
+
+(define ((make-call-with-file open) input-specifier receiver)
+  (let ((port (open input-specifier)))
+    (let ((value (receiver port)))
+      (close-port port)
+      value)))
+
+(define call-with-input-file 
+  (make-call-with-file open-input-file))
+
+(define call-with-binary-input-file
+  (make-call-with-file open-binary-input-file))
+
+(define call-with-output-file
+  (make-call-with-file open-output-file))
+
+(define call-with-binary-output-file
+  (make-call-with-file open-binary-output-file))
+
+(define ((make-with-input-from-file call) input-specifier thunk)
+  (call input-specifier
+    (lambda (port)
+      (with-input-from-port port thunk))))
+
+(define with-input-from-file
+  (make-with-input-from-file call-with-input-file))
+
+(define with-input-from-binary-file
+  (make-with-input-from-file call-with-binary-input-file))
+
+(define ((make-with-output-to-file call) output-specifier thunk)
+  (call output-specifier
+    (lambda (port)
+      (with-output-to-port port thunk))))
+
+(define with-output-to-file
+  (make-with-output-to-file call-with-output-file))
+
+(define with-output-to-binary-file
+  (make-with-output-to-file call-with-binary-output-file))
 
 (define-structure (file-state (type vector)
 			      (conc-name file-state/))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: advice.scm,v 14.12 1993/10/15 10:26:28 cph Exp $
+$Id: advice.scm,v 14.13 1993/10/21 11:49:41 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -360,54 +360,51 @@ MIT in each case. |#
 
 (define (trace-entry-advice procedure arguments environment)
   environment
-  (trace-display procedure arguments))
+  (trace-display (trace-output-port) procedure arguments))
 
 (define (trace-exit-advice procedure arguments result environment)
   environment
-  (trace-display procedure arguments result)
+  (trace-display (trace-output-port) procedure arguments result)
   result)
 
-(define (trace-display procedure arguments #!optional result)
-  (newline)
-  (let ((width (-1+ (max 40 (output-port/x-size (current-output-port)))))
+(define (trace-display port procedure arguments #!optional result)
+  (newline port)
+  (let ((width (- (max 40 (output-port/x-size port)) 1))
 	(write-truncated
 	 (lambda (object width)
-	   (let ((output
-		  (with-output-to-truncated-string width
-		    (lambda ()
-		      (write object)))))
+	   (let ((output (write-to-string object width)))
 	     (if (car output)
 		 (substring-fill! (cdr output) (- width 3) width #\.))
-	     (write-string (cdr output))))))
+	     (write-string (cdr output) port)))))
     (if (default-object? result)
-	(write-string "[Entering ")
+	(write-string "[Entering " port)
 	(begin
-	  (write-string "[")
+	  (write-string "[" port)
 	  (write-truncated result (- width 2))
-	  (newline)
-	  (write-string "      <== ")))
+	  (newline port)
+	  (write-string "      <== " port)))
     (write-truncated procedure (- width 11))
     (if (null? arguments)
-	(write-string "]")
+	(write-string "]" port)
 	(begin
-	  (newline)
+	  (newline port)
 	  (let ((write-args
 		 (lambda (arguments)
 		   (let loop ((prefix "    Args: ") (arguments arguments))
-		     (write-string prefix)
+		     (write-string prefix port)
 		     (write-truncated (car arguments) (- width 11))
 		     (if (not (null? (cdr arguments)))
 			 (begin
-			   (newline)
+			   (newline port)
 			   (loop "          " (cdr arguments))))))))
 	    (if (<= (length arguments) 10)
 		(begin
 		  (write-args arguments)
-		  (write-string "]"))
+		  (write-string "]" port))
 		(begin
 		  (write-args (list-head arguments 10))
-		  (newline)
-		  (write-string "          ...]"))))))))
+		  (newline port)
+		  (write-string "          ...]" port))))))))
 
 (define (break-entry-advice procedure arguments environment)
   (fluid-let ((the-procedure procedure)
@@ -424,9 +421,7 @@ MIT in each case. |#
 (define (break-rep environment message . info)
   (breakpoint (cmdl-message/append (cmdl-message/active
 				    (lambda (port)
-				      (with-output-to-port port
-					(lambda ()
-					  (apply trace-display info)))))
+				      (apply trace-display port info)))
 				   message)
 	      environment
 	      advice-continuation))

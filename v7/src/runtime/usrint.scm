@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.8 1993/10/16 10:10:39 cph Exp $
+$Id: usrint.scm,v 1.9 1993/10/21 11:49:56 cph Exp $
 
 Copyright (c) 1991-93 Massachusetts Institute of Technology
 
@@ -47,8 +47,11 @@ MIT in each case. |#
       (string-append prompt suffix)))
 
 (define (prompt-for-command-expression prompt #!optional port)
-  (let ((prompt (canonicalize-prompt prompt " "))
-	(port (if (default-object? port) (nearest-cmdl/port) port))
+  (let ((prompt
+	 (if (string-null? prompt)
+	     prompt
+	     (canonicalize-prompt prompt " ")))
+	(port (if (default-object? port) (interaction-i/o-port) port))
 	(level (nearest-cmdl/level)))
     (let ((operation (port/operation port 'PROMPT-FOR-COMMAND-EXPRESSION)))
       (if operation
@@ -70,7 +73,7 @@ MIT in each case. |#
 
 (define (prompt-for-expression prompt #!optional port)
   (let ((prompt (canonicalize-prompt prompt ": "))
-	(port (if (default-object? port) (nearest-cmdl/port) port)))
+	(port (if (default-object? port) (interaction-i/o-port) port)))
     (let ((operation (port/operation port 'PROMPT-FOR-EXPRESSION)))
       (if operation
 	  (operation port prompt)
@@ -91,7 +94,7 @@ MIT in each case. |#
   (hook/repl-eval #f
 		  (prompt-for-expression prompt
 					 (if (default-object? port)
-					     (nearest-cmdl/port)
+					     (interaction-i/o-port)
 					     port))
 		  (if (default-object? environment)
 		      (nearest-repl/environment)
@@ -99,8 +102,11 @@ MIT in each case. |#
 		  (nearest-repl/syntax-table)))
 
 (define (prompt-for-command-char prompt #!optional port)
-  (let ((prompt (canonicalize-prompt prompt " "))
-	(port (if (default-object? port) (nearest-cmdl/port) port))
+  (let ((prompt
+	 (if (string-null? prompt)
+	     prompt
+	     (canonicalize-prompt prompt " ")))
+	(port (if (default-object? port) (interaction-i/o-port) port))
 	(level (nearest-cmdl/level)))
     (let ((operation (port/operation port 'PROMPT-FOR-COMMAND-CHAR)))
       (if operation
@@ -129,7 +135,7 @@ MIT in each case. |#
 
 (define (prompt-for-confirmation prompt #!optional port)
   (let ((prompt (canonicalize-prompt prompt " (y or n)? "))
-	(port (if (default-object? port) (nearest-cmdl/port) port)))
+	(port (if (default-object? port) (interaction-i/o-port) port)))
     (let ((operation (port/operation port 'PROMPT-FOR-CONFIRMATION)))
       (if operation
 	  (operation port prompt)

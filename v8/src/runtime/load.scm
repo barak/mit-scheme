@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.44 1993/10/15 10:26:32 cph Exp $
+$Id: load.scm,v 14.45 1993/10/21 11:49:46 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -101,7 +101,7 @@ MIT in each case. |#
 (define (loading-message suppress-loading-message? pathname do-it)
   (if suppress-loading-message?
       (do-it)
-      (let ((port (nearest-cmdl/port)))
+      (let ((port (notification-output-port)))
 	(fresh-line port)
 	(write-string ";Loading " port)
 	(write (enough-namestring pathname) port)
@@ -478,7 +478,7 @@ MIT in each case. |#
 
   (define (loading-message fname suppress? kind)
     (if (not suppress?)
-	(let ((port (nearest-cmdl/port)))
+	(let ((port (notification-output-port)))
 	  (fresh-line port)
 	  (write-string kind port)
 	  (write-string (->namestring (->pathname fname)))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/port.scm,v 1.4 1992/02/27 01:11:19 cph Exp $
+$Id: port.scm,v 1.5 1993/10/21 11:49:49 cph Exp $
 
-Copyright (c) 1991-92 Massachusetts Institute of Technology
+Copyright (c) 1991-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -167,7 +167,7 @@ MIT in each case. |#
 (define output-port/operation-names port/operation-names)
 (define output-port/state port/state)
 (define set-output-port/state! set-port/state!)
-
+
 (define (input-port/operation port name)
   (port/operation port
 		  (case name
@@ -188,24 +188,39 @@ MIT in each case. |#
 
 (define input-port/custom-operation input-port/operation)
 (define output-port/custom-operation output-port/operation)
-
-;;;; Constructors
 
 (define (input-port? object)
   (and (port? object)
        (input-port/operation/read-char object)
-       true))
+       #t))
 
 (define (output-port? object)
   (and (port? object)
        (output-port/operation/write-char object)
-       true))
+       #t))
 
 (define (i/o-port? object)
   (and (port? object)
        (input-port/operation/read-char object)
        (output-port/operation/write-char object)
-       true))
+       #t))
+
+(define (guarantee-input-port port)
+  (if (not (input-port? port))
+      (error:wrong-type-argument port "input port" #f))
+  port)
+
+(define (guarantee-output-port port)
+  (if (not (output-port? port))
+      (error:wrong-type-argument port "output port" #f))
+  port)
+
+(define (guarantee-i/o-port port)
+  (if (not (i/o-port? port))
+      (error:wrong-type-argument port "I/O port" #f))
+  port)
+
+;;;; Constructors
 
 (define (make-input-port operations state)
   (make-port operations state 'MAKE-INPUT-PORT true false))
@@ -468,3 +483,78 @@ MIT in each case. |#
 			  (set! mode (read-mode port))
 			  (write-mode port outside-mode))))
 	(thunk))))
+
+;;;; Standard Ports
+
+(define *current-input-port*)
+(define *current-output-port*)
+(define *error-output-port* #f)
+(define *notification-output-port* #f)
+(define *trace-output-port* #f)
+(define *interaction-i/o-port* #f)
+
+(define (current-input-port)
+  *current-input-port*)
+
+(define (set-current-input-port! port)
+  (set! *current-input-port* (guarantee-input-port port))
+  unspecific)
+
+(define (with-input-from-port port thunk)
+  (fluid-let ((*current-input-port* (guarantee-input-port port)))
+    (thunk)))
+
+(define (current-output-port)
+  *current-output-port*)
+
+(define (set-current-output-port! port)
+  (set! *current-output-port* (guarantee-output-port port))
+  unspecific)
+
+(define (with-output-to-port port thunk)
+  (fluid-let ((*current-output-port* (guarantee-output-port port)))
+    (thunk)))
+
+(define (error-output-port)
+  (or *error-output-port* (nearest-cmdl/port)))
+
+(define (set-error-output-port! port)
+  (set! *error-output-port* (guarantee-output-port port))
+  unspecific)
+
+(define (with-error-output-port port thunk)
+  (fluid-let ((*error-output-port* (guarantee-output-port port)))
+    (thunk)))
+
+(define (notification-output-port)
+  (or *notification-output-port* (nearest-cmdl/port)))
+
+(define (set-notification-output-port! port)
+  (set! *notification-output-port* (guarantee-output-port port))
+  unspecific)
+
+(define (with-notification-output-port port thunk)
+  (fluid-let ((*notification-output-port* (guarantee-output-port port)))
+    (thunk)))
+
+(define (trace-output-port)
+  (or *trace-output-port* (nearest-cmdl/port)))
+
+(define (set-trace-output-port! port)
+  (set! *trace-output-port* (guarantee-output-port port))
+  unspecific)
+
+(define (with-trace-output-port port thunk)
+  (fluid-let ((*trace-output-port* (guarantee-output-port port)))
+    (thunk)))
+
+(define (interaction-i/o-port)
+  (or *interaction-i/o-port* (nearest-cmdl/port)))
+
+(define (set-interaction-i/o-port! port)
+  (set! *interaction-i/o-port* (guarantee-i/o-port port))
+  unspecific)
+
+(define (with-interaction-i/o-port port thunk)
+  (fluid-let ((*interaction-i/o-port* (guarantee-i/o-port port)))
+    (thunk)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.39 1993/10/21 04:52:42 cph Exp $
+$Id: rep.scm,v 14.40 1993/10/21 11:49:51 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -142,7 +142,11 @@ MIT in each case. |#
 			 (*default-pathname-defaults*
 			  *default-pathname-defaults*)
 			 (*current-input-port* port)
-			 (*current-output-port* port))
+			 (*current-output-port* port)
+			 (*error-output-port* port)
+			 (*notification-output-port* port)
+			 (*trace-output-port* port)
+			 (*interaction-output-port* port))
 	       (let loop ((message message))
 		 (loop
 		  (bind-abort-restart cmdl
@@ -151,7 +155,7 @@ MIT in each case. |#
 			(lambda (interrupt-mask)
 			  interrupt-mask
 			  (unblock-thread-events)
-			  (with-errors-ignored
+			  (ignore-errors
 			   (lambda ()
 			     ((->cmdl-message message) cmdl)))
 			  (call-with-current-continuation
@@ -180,12 +184,6 @@ MIT in each case. |#
 	       => (lambda (operation) (operation cmdl thunk)))
 	      (else
 	       (with-thread-mutex-locked mutex thunk)))))))
-
-(define (with-errors-ignored thunk)
-  (call-with-current-continuation
-   (lambda (continuation)
-     (bind-condition-handler (list condition-type:error) continuation
-       thunk))))
 
 (define (bind-abort-restart cmdl thunk)
   (call-with-current-continuation
@@ -477,11 +475,14 @@ MIT in each case. |#
     (cmdl-message/append
      (or message
 	 (and condition
-	      (cmdl-message/strings
-	       (fluid-let ((*unparser-list-depth-limit* 25)
-			   (*unparser-list-breadth-limit* 100)
-			   (*unparser-string-length-limit* 500))
-		 (condition/report-string condition)))))
+	      (cmdl-message/active
+	       (let ((port (error-output-port)))
+		 (lambda (ignore)
+		   ignore
+		   (fluid-let ((*unparser-list-depth-limit* 25)
+			       (*unparser-list-breadth-limit* 100)
+			       (*unparser-string-length-limit* 500))
+		     (write-condition-report condition port)))))))
      (and condition
 	  (cmdl-message/append
 	   (and (condition/error? condition)
@@ -554,7 +555,7 @@ MIT in each case. |#
 	restarts
 	(- n-restarts
 	   (if (default-object? n)
-	       (let ((port (nearest-cmdl/port)))
+	       (let ((port (interaction-i/o-port)))
 		 (fresh-line port)
 		 (write-string ";Choose an option by number:" port)
 		 (write-restarts restarts port
@@ -787,7 +788,7 @@ MIT in each case. |#
   (if (default-object? value)
       (continue)
       (use-value value))
-  (let ((port (nearest-cmdl/port)))
+  (let ((port (error-output-port)))
     (fresh-line port)
     (write-string ";Unable to PROCEED" port)))
 

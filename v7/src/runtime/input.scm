@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.15 1992/05/26 23:08:41 mhwu Exp $
+$Id: input.scm,v 14.16 1993/10/21 11:49:45 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,11 +39,6 @@ MIT in each case. |#
 
 ;;;; Input Ports
 
-(define (guarantee-input-port port)
-  (if (not (input-port? port))
-      (error:wrong-type-argument port "input port" false))
-  port)
-
 (define (input-port/char-ready? port interval)
   ((input-port/operation/char-ready? port) port interval))
 
@@ -71,44 +66,6 @@ MIT in each case. |#
 (define (make-eof-object port)
   port
   eof-object)
-
-(define *current-input-port*)
-
-(define-integrable (current-input-port)
-  *current-input-port*)
-
-(define (set-current-input-port! port)
-  (guarantee-input-port port)
-  (set! *current-input-port* port)
-  unspecific)
-
-(define (with-input-from-port port thunk)
-  (guarantee-input-port port)
-  (fluid-let ((*current-input-port* port)) (thunk)))
-
-(define ((make-call-with-input-file open) input-specifier receiver)
-  (let ((port (open input-specifier)))
-    (let ((value (receiver port)))
-      (close-port port)
-      value)))
-
-(define call-with-input-file 
-  (make-call-with-input-file open-input-file))
-
-(define call-with-binary-input-file
-  (make-call-with-input-file open-binary-input-file))
-
-(define ((make-with-input-from-file call) input-specifier thunk)
-  (call input-specifier
-    (lambda (port)
-      (fluid-let ((*current-input-port* port))
-	(thunk)))))
-
-(define with-input-from-file
-  (make-with-input-from-file call-with-input-file))
-
-(define with-input-from-binary-file
-  (make-with-input-from-file call-with-binary-input-file))
 
 ;;;; Input Procedures
 
