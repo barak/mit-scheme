@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.21 1987/02/02 15:16:36 jinx Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.22 1987/03/09 14:45:18 cph Exp $
 
 (declare (usual-integrations))
 
@@ -50,6 +50,7 @@
 ;;; [] Primitives
 ;;; [] External
 ;;; [] Errors
+;;; [] Identification
 
 ;;; [] Fixed
 
@@ -63,7 +64,7 @@
 	       MICROCODE-RETURNS-VECTOR			;05
 	       MICROCODE-PRIMITIVES-VECTOR		;06
 	       MICROCODE-ERRORS-VECTOR			;07
-	       #F					;08
+	       MICROCODE-IDENTIFICATION-VECTOR		;08
 	       #F					;09
 	       #F					;0A
 	       GC-DAEMON				;0B
@@ -829,7 +830,22 @@
 (vector-set! (get-fixed-objects-vector)
 	     23 ;(fixed-objects-vector-slot 'MICROCODE-TERMINATION-PROCEDURES)
 	     #())
+
+;;; [] Identification
+
+(vector-set! (get-fixed-objects-vector)
+	     8 ;(fixed-objects-vector-slot 'MICROCODE-IDENTIFICATION-VECTOR)
+	     #(SYSTEM-RELEASE-STRING		;00
+	       MICROCODE-VERSION		;01
+	       MICROCODE-MODIFICATION		;02
+	       CONSOLE-WIDTH			;03
+	       CONSOLE-HEIGHT			;04
+	       NEWLINE-CHAR			;05
+	       FLONUM-MANTISSA-LENGTH		;06
+	       FLONUM-EXPONENT-LENGTH		;07
+	       OS-NAME-STRING			;08
+	       OS-VARIANT-STRING		;09
+	       ))
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.21 1987/02/02 15:16:36 jinx Exp $"
