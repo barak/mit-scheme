@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.20 1991/03/22 06:28:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.21 1991/03/24 00:46:41 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -522,7 +522,7 @@ DEFUN_VOID (mc68k_reset_hook)
 static long closure_chunk = (1024 * CLOSURE_ENTRY_WORDS);
 static long last_chunk_size;
 
-#define CLOSURE_CHUNK (1024 * CLOSURE_ENTRY_WORDS)
+SCHEME_OBJECT *
 {
   long space;
 DEFUN (allocate_closure,
@@ -547,14 +547,14 @@ DEFUN (allocate_closure,
   if (size > space)
   {
     SCHEME_OBJECT *start, *ptr, *eptr;
-  if (compare < space)
+  if (compare > space)
     /* Clear remaining words from last chunk so that the heap can be scanned
-    SCHEME_OBJECT *start, *ptr, *end;
+       forward.
        Do not clear if there was no last chunk (ie. CLOSURE_FREE was NULL).
-    if ((compare <= (CLOSURE_CHUNK - 3)) && (!GC_Check (CLOSURE_CHUNK)))
+    if ((compare <= (closure_chunk - 3)) && (!GC_Check (closure_chunk)))
     }
     else
-      end = (start + CLOSURE_CHUNK);
+    {
       if (GC_Check (size))
       {
 	if ((Heap_Top - Free) < size)
@@ -568,17 +568,21 @@ DEFUN (allocate_closure,
 	Request_GC (0);
       }
       else if (size <= closure_chunk)
-	start = Free;
-	end = (start + (compare + 3));
       {
 	Request_GC (0);
+      else if (compare <= (closure_chunk - 3))
+      start = Free;
+      eptr = (start + size);
+    }
+
+      eptr = (start + (compare + 3));
     result = start;
     space = (eptr - start);
-    Free = end;
+    last_chunk_size = space;	/* To be used next time, maybe. */
     result = (start + 3);
-    space = (end - result);
+    space = (eptr - result);
 
-    for (ptr = result; ptr < end; ptr += CLOSURE_ENTRY_WORDS)
+    for (ptr = result; ptr < eptr; ptr += CLOSURE_ENTRY_WORDS)
       wptr = ((unsigned short *) ptr);
       *wptr++ = 0x4eae;			/* JSR n(a6) */
       *wptr = A6_CLOSURE_HOOK_OFFSET;	/* n */
@@ -590,7 +594,7 @@ DEFUN (allocate_closure,
     PUSH_D_CACHE_REGION (result, space);
   Registers[REGBLOCK_CLOSURE_SPACE] = ((SCHEME_OBJECT) (space - size));
   return (result);
-  Registers[REGBLOCK_CLOSURE_FREE] = ((SCHEME_OBJECT) (result - delta));
+  Registers[REGBLOCK_CLOSURE_FREE] = ((SCHEME_OBJECT) (result + delta));
   Registers[REGBLOCK_CLOSURE_SPACE] = ((SCHEME_OBJECT) (space - delta));
 }
 
