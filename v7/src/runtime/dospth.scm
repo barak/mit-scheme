@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.19 1994/11/28 05:43:49 cph Exp $
+$Id: dospth.scm,v 1.20 1994/12/19 21:10:45 cph Exp $
 
 Copyright (c) 1992-94 Massachusetts Institute of Technology
 
@@ -80,65 +80,68 @@ MIT in each case. |#
 ;;;; Pathname Parser
 
 (define (dos/parse-namestring string host)
-  (let ((components
-	 (string-components (string-downcase string)
-			    sub-directory-delimiters)))
-    (call-with-values
-	(lambda ()
-	  (parse-device-and-path (expand-directory-prefixes (car components))))
-      (lambda (device directory-components)
-	(let ((components (append directory-components (cdr components))))
-	  (call-with-values
-	      (lambda ()
-		(parse-name (car (last-pair components))))
-            (lambda (name type)
-	      (%make-pathname host
-			      device
-			      (let ((components (except-last-pair components)))
-				(and (not (null? components))
-				     (simplify-directory
-				      (if (string=? "" (car components))
-					  (cons 'ABSOLUTE
-						(map parse-directory-component
-						     (cdr components)))
-					  (cons 'RELATIVE
-						(map parse-directory-component
-						     components))))))
-			      name
-			      type
-			      'UNSPECIFIC))))))))
+  (call-with-values
+      (lambda ()
+	(parse-device-and-path
+	 (expand-directory-prefixes
+	  (string-components (string-downcase string)
+			     sub-directory-delimiters))))
+    (lambda (device components)
+      (call-with-values (lambda () (parse-name (car (last-pair components))))
+	(lambda (name type)
+	  (%make-pathname host
+			  device
+			  (let ((components (except-last-pair components)))
+			    (and (not (null? components))
+				 (simplify-directory
+				  (if (string=? "" (car components))
+				      (cons 'ABSOLUTE
+					    (map parse-directory-component
+						 (cdr components)))
+				      (cons 'RELATIVE
+					    (map parse-directory-component
+						 components))))))
+			  name
+			  type
+			  'UNSPECIFIC))))))
 
-(define (expand-directory-prefixes string)
-  (if (or (string-null? string)
-	  (not *expand-directory-prefixes?*))
-      (list string)
-      (case (string-ref string 0)
-	((#\$)
-	 (let ((value (get-environment-variable (string-tail string 1))))
-	   (if (not value)
-	       (list string)
-	       (string-components value sub-directory-delimiters))))
-	((#\~)
-	 (string-components (let ((user-name (string-tail string 1)))
-			      (if (string-null? user-name)
-				  (dos/current-home-directory)
-				  (dos/user-home-directory user-name)))
-			    sub-directory-delimiters))
-	(else (list string)))))
+(define (expand-directory-prefixes components)
+  (let ((string (car components)))
+    (if (or (string-null? string)
+	    (not *expand-directory-prefixes?*))
+	components
+	(case (string-ref string 0)
+	  ((#\$)
+	   (let ((value (get-environment-variable (string-tail string 1))))
+	     (if (not value)
+		 components
+		 (append (string-components value sub-directory-delimiters)
+			 (cdr components)))))
+	  ((#\~)
+	   (append
+	    (string-components (->namestring
+				(directory-pathname-as-file
+				 (let ((user-name (string-tail string 1)))
+				   (if (string-null? user-name)
+				       (dos/current-home-directory)
+				       (dos/user-home-directory user-name)))))
+			       sub-directory-delimiters)
+	    (cdr components)))
+	  (else components)))))
 
 (define (parse-device-and-path components)
   (let ((string (car components)))
     (let ((colon (string-find-next-char string #\:)))
       (if (not colon)
 	  (values #f components)
-	  (values (string-head string (+ colon 1))
+	  (values (string-head string colon)
 		  (cons (string-tail string (+ colon 1))
 			(cdr components)))))))
 
 (define (simplify-directory directory)
-  (if (and (eq? (car directory) 'RELATIVE) (null? (cdr directory)))
-      #f
-      directory))
+  (cond ((and (eq? (car directory) 'RELATIVE) (null? (cdr directory))) #f)
+	((equal? '(ABSOLUTE UP) directory) '(ABSOLUTE))
+	(else directory)))
 
 (define (parse-directory-component component)
   (if (string=? ".." component)
@@ -186,7 +189,7 @@ MIT in each case. |#
 (define (unparse-device device)
   (if (or (not device) (eq? device 'UNSPECIFIC))
       ""
-      device))
+      (string-append device ":")))
 
 (define (unparse-directory directory)
   (cond ((or (not directory) (eq? directory 'UNSPECIFIC))
@@ -225,13 +228,6 @@ MIT in each case. |#
 ;;;; Pathname Constructors
 
 (define (dos/make-pathname host device directory name type version)
-  (define (check-directory-components components)
-    (for-all? components
-      (lambda (element)
-	(if (string? element)
-	    (not (string-null? element))
-	    (eq? element 'UP)))))
-    
   (%make-pathname
    host
    (cond ((string? device) device)
@@ -242,16 +238,12 @@ MIT in each case. |#
 	  directory)
 	 ((and (list? directory)
 	       (not (null? directory))
-	       (case (car directory)
-		 ((RELATIVE)
-		  (check-directory-components (cdr directory)))
-		 ((ABSOLUTE)
-		  ;; This should handle share network drives (\\machine\...)
-		  (let ((rest (cdr directory)))
-		    (or (null? rest)
-			(and (string? (car rest))
-			     (check-directory-components (cdr rest))))))
-		 (else #f)))
+	       (memq (car directory) '(RELATIVE ABSOLUTE))
+	       (for-all? (cdr directory)
+		 (lambda (element)
+		   (if (string? element)
+		       (not (string-null? element))
+		       (eq? element 'UP)))))
 	  (simplify-directory directory))
 	 (else
 	  (error:wrong-type-argument directory "pathname directory"
@@ -275,12 +267,13 @@ MIT in each case. |#
 	(%make-pathname
 	 (%pathname-host pathname)
 	 (%pathname-device pathname)
-	 (let ((directory (%pathname-directory pathname))
-	       (component
-		(parse-directory-component (unparse-name name type))))
-	   (cond ((not (pair? directory)) (list 'RELATIVE component))
-		 ((equal? component ".") directory)
-		 (else (append directory (list component)))))
+	 (simplify-directory
+	  (let ((directory (%pathname-directory pathname))
+		(component
+		 (parse-directory-component (unparse-name name type))))
+	    (cond ((not (pair? directory)) (list 'RELATIVE component))
+		  ((equal? component ".") directory)
+		  (else (append directory (list component))))))
 	 #f
 	 #f
 	 'UNSPECIFIC)
@@ -335,31 +328,31 @@ MIT in each case. |#
 	 pathname)))
 
 (define (dos/pathname-simplify pathname)
-  (or (and (implemented-primitive-procedure? (ucode-primitive file-eq? 2))
-	   (let ((directory (pathname-directory pathname)))
-	     (and (pair? directory)
-		  (let ((directory*
-			 (cons (car directory)
-			       (reverse!
-				(let loop
-				    ((elements (reverse (cdr directory))))
-				  (if (null? elements)
-				      '()
-				       (let ((head (car elements))
-					     (tail (loop (cdr elements))))
-					 (if (and (eq? head 'UP)
-						  (not (null? tail))
-						  (not (eq? (car tail) 'UP)))
-					     (cdr tail)
-					     (cons head tail)))))))))
-		    (and (not (equal? directory directory*))
-			 (let ((pathname*
-				(pathname-new-directory pathname directory*)))
-			   (and ((ucode-primitive file-eq? 2)
-				 (->namestring pathname)
-				 (->namestring pathname*))
-				pathname*)))))))
-      pathname))
+  (let ((directory (pathname-directory pathname)))
+    (or (and (pair? directory)
+	     (let ((directory*
+		    (cons (car directory)
+			  (reverse!
+			   (let loop ((elements (reverse (cdr directory))))
+			     (if (null? elements)
+				 '()
+				 (let ((head (car elements))
+				       (tail (loop (cdr elements))))
+				   (if (and (eq? head 'UP)
+					    (not (null? tail))
+					    (not (eq? (car tail) 'UP)))
+				       (cdr tail)
+				       (cons head tail)))))))))
+	       (and (not (equal? directory directory*))
+		    (let ((pathname*
+			   (pathname-new-directory pathname directory*)))
+		      (if (eq? 'OS/2 microcode-id/operating-system)
+			  pathname*
+			  (and ((ucode-primitive file-eq? 2)
+				(->namestring pathname)
+				(->namestring pathname*))
+			       pathname*))))))
+	pathname)))
 
 (define (dos/end-of-line-string pathname)
   (hook/dos/end-of-line-string pathname))
