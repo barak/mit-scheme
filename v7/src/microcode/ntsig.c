@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsig.c,v 1.8 1993/09/01 18:44:09 gjr Exp $
+$Id: ntsig.c,v 1.9 1993/09/03 18:02:29 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -47,7 +47,6 @@ MIT in each case. */
 #include "ntsys.h"
 #include "ntio.h"
 #include "extern.h"
-#include "ntutil.h"
 #include "ntscreen.h"
 #include "ntscmlib.h"
 
@@ -424,8 +423,7 @@ DEFUN_VOID (install_timer)
 				     REGBLOCK_INT_CODE,
 				     REGBLOCK_INT_MASK,
 				     (INT_Global_GC
-				      | INT_Global_1
-				      | INT_Timer),
+				      | INT_Global_1),
 				     &timer_state))
   {
     case WIN32_ASYNC_TIMER_OK:

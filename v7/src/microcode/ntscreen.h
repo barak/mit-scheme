@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.h,v 1.6 1993/09/01 18:47:24 gjr Exp $
+$Id: ntscreen.h,v 1.7 1993/09/03 17:57:40 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -157,8 +157,9 @@ void  Screen_SetMode (HANDLE, int);
 int   Screen_GetMode (HANDLE);
 void  Screen_GetSize (HANDLE, int *rows, int *columns);
 
-BOOL  Screen_GetEvent (HANDLE, SCREEN_EVENT*);	// return false on no events
-
+// The following return false on no events
+BOOL  Screen_GetEvent (HANDLE, SCREEN_EVENT *);
+BOOL  Screen_PeekEvent (HANDLE, SCREEN_EVENT *);
 
 //---------------------------------------------------------------------------
 //  Messages
@@ -250,7 +251,9 @@ typedef LRESULT (*COMMAND_HANDLER)(HWND,WORD command);
 #define SCREEN_COMMAND_CLOSE		0x401
 #define SCREEN_COMMAND_CHOOSEBACKCOLOR	0x402
 
-extern VOID init_MIT_TranslateMessage (VOID);
+// Do user-level timer interrupts by using WM_TIMER
+
+#define USE_WM_TIMER
 
 //---------------------------------------------------------------------------
 //  End of File: screen.h

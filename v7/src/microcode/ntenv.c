@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntenv.c,v 1.8 1993/09/01 18:31:49 gjr Exp $
+$Id: ntenv.c,v 1.9 1993/09/03 17:54:57 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -35,7 +35,7 @@ MIT in each case. */
 #include "scheme.h"
 #include "nt.h"
 #include "osenv.h"
-#include <windows.h>
+#include "ntscreen.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -104,12 +104,14 @@ DEFUN_VOID (OS_real_time_clock)
    This just provides three distinct timers.
  */
 
-#define TIMER_ID_BASE		0x100
 #define TIMER_ID_REAL		(TIMER_ID_BASE + 2)
 #define TIMER_ID_PROFILE	(TIMER_ID_BASE + 1)
 #define TIMER_ID_PROCESS	(TIMER_ID_BASE + 0)
 
-#if 0
+#ifdef USE_WM_TIMER
+
+#define TIMER_ID_BASE		0x100
+
 enum timer_next
 {
   timer_next_none,
@@ -146,11 +148,11 @@ DEFUN (clear_timer, (timer_id), int timer_id)
   return;
 }
 
-extern VOID CALLBACK EXFUN (TimerProc, (HWND, UINT, UINT, DWORD));
+extern VOID /* CALLBACK */ EXFUN (TimerProc, (HWND, UINT, UINT, DWORD));
 
-#define THE_TIMER_PROC ((TIMERPROC) TimerProc)
+#define THE_TIMER_PROC ((TIMERPROC) NULL) /* TimerProc */
 
-VOID CALLBACK
+VOID /* CALLBACK */
 DEFUN (TimerProc, (hwnd, umsg, timer_id, dwtime),
        HWND hwnd AND UINT umsg AND UINT timer_id AND DWORD dwtime)
 {
@@ -214,22 +216,65 @@ DEFUN (set_timer, (timer_id, first, interval),
   return;
 }
 
-#else /* not 0 */
+#else /* not USE_WM_TIMER */
+
+#define TIMER_ID_BASE		0
+
+struct timer_state_s
+{
+  int counter;
+  int reload;
+};
+
+struct timer_state_s scheme_timers[3] = { { 0, 0, }, { 0, 0, }, { 0, 0, } };
+
+extern void EXFUN (low_level_timer_tick, (void));
+
+void
+DEFUN_VOID (low_level_timer_tick)
+{
+  int i;
+  int number_signalled = 0;
+
+  for (i = 0; i < 3; i++)
+    if (scheme_timers[i].counter != 0)
+    {
+      scheme_timers[i].counter -= 1;
+      if (scheme_timers[i].counter == 0)
+      {
+	scheme_timers[i].counter = scheme_timers[i].reload;
+	number_signalled += 1;
+      }
+    }
+
+  if (number_signalled != 0)
+    REQUEST_INTERRUPT (INT_Timer);
+  return;
+}
 
 static void
 DEFUN (set_timer, (timer_id, first, interval),
        int timer_id AND clock_t first AND clock_t interval)
 {
+  struct timer_state_s * timer = &scheme_timers[timer_id];
+
+  /* Round up. */ 
+  timer->counter = ((first + 49) / 50);
+  timer->reload = ((interval + 49) / 50);
   return;
 }
 
 static void
 DEFUN (clear_timer, (timer_id), int timer_id)
 {
+  struct timer_state_s * timer = &scheme_timers[timer_id];
+
+  timer->counter = 0;
+  timer->reload = 0;
   return;
 }
 
-#endif /* 0 */
+#endif /* USE_WM_TIMER */
 
 void
 DEFUN (OS_process_timer_set, (first, interval),

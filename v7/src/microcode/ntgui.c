@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.7 1993/09/01 18:34:46 gjr Exp $
+$Id: ntgui.c,v 1.8 1993/09/03 17:56:44 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -197,9 +197,14 @@ nt_gui_high_priority_poll (void)
 
   if (PeekMessage (&close_msg,
 		   master_tty_window,
+#if 0
 		   WM_HOTKEY,
 		   (WM_HOTKEY + 1),
-		   PM_NOREMOVE))
+#else
+		   WM_CLOSE,
+		   (WM_CLOSE + 1),
+#endif
+		   PM_REMOVE))
   {
     MIT_TranslateMessage (&close_msg);
     DispatchMessage (&close_msg);
@@ -211,6 +216,10 @@ DEFINE_PRIMITIVE ("MICROCODE-POLL-INTERRUPT-HANDLER",
                   Prim_microcode_poll_interrupt_handler, 2, 2,
 		  "NT High-priority timer interrupt handler for Windows I/O.")
 {
+#ifndef USE_WM_TIMER
+  extern void low_level_timer_tick (void);
+#endif
+
   PRIMITIVE_HEADER (2);
   if (((ARG_REF (1)) & (ARG_REF (2)) & INT_Global_GC) != 0)
   {
@@ -220,6 +229,9 @@ DEFINE_PRIMITIVE ("MICROCODE-POLL-INTERRUPT-HANDLER",
   else
   {
     nt_gui_default_poll ();
+#ifndef USE_WM_TIMER
+    low_level_timer_tick ();
+#endif
     CLEAR_INTERRUPT (INT_Global_1);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
