@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.3 1989/03/14 07:59:34 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -38,72 +40,50 @@
 ;;;; Alias Characters
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
 (define alias-characters '())
 
-(define (remap-alias-char char)
+(define (define-alias-char char alias)
   (let ((entry (assq char alias-characters)))
     (if entry
-	(remap-alias-char (cdr entry))
-	char)))
-
-(define (define-alias-char char char*)
-  (let ((entry (assq char alias-characters)))
-    (if entry
-	(set-cdr! entry char*)
-	(set! alias-characters (cons (cons char char*) alias-characters)))))
+	(set-cdr! entry alias)
+	(set! alias-characters (cons (cons char alias) alias-characters))))
+  unspecific)
 
 (define (undefine-alias-char char)
-  (set! alias-characters (del-assq! char alias-characters)))
+  (set! alias-characters (del-assq! char alias-characters))
+  unspecific)
 
-(define-alias-char #\C-h #\Backspace)
-(define-alias-char #\C-H #\Backspace)
-(define-alias-char #\C-i #\Tab)
-(define-alias-char #\C-I #\Tab)
-(define-alias-char #\C-j #\Linefeed)
-(define-alias-char #\C-J #\Linefeed)
-(define-alias-char #\C-k #\VT)
-(define-alias-char #\C-K #\VT)
-(define-alias-char #\C-l #\Page)
-(define-alias-char #\C-L #\Page)
-(define-alias-char #\C-m #\Return)
-(define-alias-char #\C-M #\Return)
-(define-alias-char #\C-z #\Call)
-(define-alias-char #\C-Z #\Call)
-(define-alias-char #\C-[ #\Altmode)
-(define-alias-char #\C-- #\Backnext)
+(define (remap-alias-char char)
+  (let ((entry (assq char alias-characters)))
+    (cond (entry
+	   (remap-alias-char (cdr entry)))
+	  ((odd? (quotient (char-bits char) 2)) ;Control bit is set
+	   (let ((code (char-code char))
+		 (remap
+		  (lambda (code)
+		    (make-char code (- (char-bits char) 2)))))
+	     (cond ((<= #x40 code #x5F) (remap (- code #x40)))
+		   ((<= #x61 code #x7A) (remap (- code #x60)))
+		   (else char))))
+	  (else char))))
 
-(define-alias-char #\C-M-h #\M-Backspace)
-(define-alias-char #\C-M-H #\M-Backspace)
-(define-alias-char #\C-M-i #\M-Tab)
-(define-alias-char #\C-M-I #\M-Tab)
-(define-alias-char #\C-M-j #\M-Linefeed)
-(define-alias-char #\C-M-J #\M-Linefeed)
-(define-alias-char #\C-M-k #\M-VT)
-(define-alias-char #\C-M-K #\M-VT)
-(define-alias-char #\C-M-l #\M-Page)
-(define-alias-char #\C-M-L #\M-Page)
-(define-alias-char #\C-M-m #\M-Return)
-(define-alias-char #\C-M-M #\M-Return)
-(define-alias-char #\C-M-z #\M-Call)
-(define-alias-char #\C-M-Z #\M-Call)
-(define-alias-char #\C-M-[ #\M-Altmode)
-(define-alias-char #\C-M-- #\M-Backnext)
+(define (unmap-alias-char char)
+  (let ((code (char-code char))
+	(bits (char-bits char)))
+    (if (or (>= code #x20)
+	    (memv code '(#x09 #x0A #x0C #x0D #x1B))
+	    (odd? (quotient bits 2)))
+	(let ((entry
+	       (list-search-positive alias-characters
+		 (lambda (entry)
+		   (eqv? (cdr entry) char)))))
+	  (if entry
+	      (unmap-alias-char (car entry))
+	      char))
+	(unmap-alias-char
+	 (make-char (+ code (if (<= #x01 code #x1A) #x60 #x40))
+		    (+ bits 2))))))
 
-;;; These are definitions for the HP 9000 model 237.
-;;; They should probably be isolated somehow, but there is no clear way.
-(define-alias-char #\S-S #\Rubout)	;Home
-(define-alias-char #\S-R #\Linefeed)	;Select
-
-;;; These are definitions for the HP 9000 model 236.
-(define-alias-char #\S-U #\Altmode)	;Run
-(define-alias-char #\S-V #\Linefeed)	;Continue
-(define-alias-char #\S-W #\Altmode)	;Execute
-
-;;; end USING-SYNTAX
-)
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; End:
+(define-integrable (char-name char)
+  (char->name (unmap-alias-char char)))

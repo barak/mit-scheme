@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/pasmod.scm,v 1.40 1989/03/14 08:01:46 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,16 +40,15 @@
 ;;;; Pascal Mode
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
-(define-command ("Pascal Mode" argument)
+(define-command ("Pascal Mode")
   "Enter Pascal mode."
   (set-current-major-mode! pascal-mode))
 
 (define-major-mode "Pascal" "Fundamental"
   "Major mode specialized for editing Pascal code."
   (local-set-variable! "Syntax Table" pascal-mode:syntax-table)
-  (local-set-variable! "Syntax Ignore Comments Backwards" #!TRUE)
+  (local-set-variable! "Syntax Ignore Comments Backwards" true)
   (local-set-variable! "Indent Line Procedure" ^r-pascal-indent-command)
   (local-set-variable! "Comment Column" 32)
   (local-set-variable! "Comment Locator Hook" pascal-comment-locate)
@@ -93,7 +94,7 @@
 (define-key "Pascal" #\C-\) "^R Pascal Shift Right")
 (define-key "Pascal" #\Rubout "^R Backward Delete Hacking Tabs")
 
-(define-command ("^R Pascal Indent" argument)
+(define-command ("^R Pascal Indent")
   "Indents the current line for Pascal code."
   (let ((point (current-point)))
     (let ((indentation (calculate-pascal-indentation point)))
@@ -133,7 +134,7 @@ With an argument, shifts left that many times."
 		      (line-start start 1)))))))
     (define (find-statement-start mark)
       (let ((start (find-previous-non-blank-line mark)))
-	(cond ((not start) #!FALSE)
+	(cond ((not start) false)
 	      ((mark< start def-start) def-start)
 	      (else
 	       (let ((container
@@ -164,11 +165,3 @@ With an argument, shifts left that many times."
 			  (+ indentation
 			     (ref-variable "Pascal Shift Increment"))
 			  indentation))))))))))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; End:

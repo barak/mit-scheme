@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.108 1989/03/14 07:58:57 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,22 +40,18 @@
 ;;;; Buffer Menu
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
 (define-variable "Buffer Menu Kill on Quit"
   "If not false, kill the *Buffer-List* buffer when leaving it."
-  #!FALSE)
+  false)
 
-(define buffer-menu-package
-  (make-environment
-
-(define-command ("List Buffers" argument)
+(define-command ("List Buffers")
   "Display a list of names of existing buffers."
-  (pop-up-buffer (update-buffer-list) #!FALSE))
+  (pop-up-buffer (update-buffer-list) false))
 
-(define-command ("Buffer Menu" argument)
+(define-command ("Buffer Menu")
   "Display a list of names of existing buffers."
-  (pop-up-buffer (update-buffer-list) #!TRUE)
+  (pop-up-buffer (update-buffer-list) true)
   (message "Commands: d, s, x; 1, 2, m, u, q; rubout; ? for help."))
 
 (define (update-buffer-list)
@@ -64,6 +62,7 @@
     buffer))
 
 (define (revert-buffer-menu argument)
+  argument				;ignore
   (let ((buffer (current-buffer)))
     (set-buffer-writeable! buffer)
     (region-delete! (buffer-region buffer))
@@ -110,8 +109,7 @@ X -- kill or save marked buffers.
 U -- remove all kinds of marks from the current line.
 Rubout -- move up a line and remove marks.
 Space -- move down a line.
-C-] -- abort Buffer-Menu edit, killing *Buffer-List*."
-  ((mode-initialization fundamental-mode)))
+C-] -- abort Buffer-Menu edit, killing *Buffer-List*.")
 
 (define-key "Buffer-Menu" #\M "^R Buffer Menu Mark")
 (define-key "Buffer-Menu" #\Q "^R Buffer Menu Quit")
@@ -136,7 +134,7 @@ C-] -- abort Buffer-Menu edit, killing *Buffer-List*."
   "Mark buffer on this line for being displayed by \\[^R Buffer Menu Quit] command."
   (set-multiple-marks! 0 #\> argument))
 
-(define-command ("^R Buffer Menu Quit" argument)
+(define-command ("^R Buffer Menu Quit")
   "Select this line's buffer; also display buffers marked with >.
 You can mark buffers with the \\[^R Buffer Menu Mark] command."
   (let ((lstart (current-lstart))
@@ -146,7 +144,7 @@ You can mark buffers with the \\[^R Buffer Menu Mark] command."
 	  (others (map buffer-menu-buffer (find-buffers-marked 0 #\>))))
       (if (and (ref-variable "Preserve Window Arrangement")
 	       (null? others))
-	  (buffer-menu-select menu buffer #!FALSE)
+	  (buffer-menu-select menu buffer false)
 	  (begin
 	   (delete-other-windows window)
 	   (buffer-menu-select menu buffer (memq menu others))
@@ -156,34 +154,35 @@ You can mark buffers with the \\[^R Buffer Menu Mark] command."
 	     (define (loop window buffers)
 	       (let ((new (window-split-vertically! window height)))
 		 (if new
-		     (begin (set-window-buffer! new (car buffers))
-			    (loop new (cdr buffers))))))
+		     (begin
+		       (set-window-buffer! new (car buffers) true)
+		       (loop new (cdr buffers))))))
 	     (loop window others))))))
   (clear-message))
 
-(define-command ("^R Buffer Menu 1 Window" argument)
+(define-command ("^R Buffer Menu 1 Window")
   "Select this line's buffer, alone, in full screen."
   (let ((window (current-window)))
     (delete-other-windows window)
     (buffer-menu-select (window-buffer window)
 			(buffer-menu-buffer (current-lstart))
-			#!FALSE))
+			false))
   (clear-message))
 
-(define-command ("^R Buffer Menu 2 Window" argument)
+(define-command ("^R Buffer Menu 2 Window")
   "Select this line's buffer, with previous buffer in second window."
   (buffer-menu-select (window-buffer (current-window))
 		      (buffer-menu-buffer (current-lstart))
-		      #!FALSE)
-  (fluid-let (((ref-variable "Pop Up Windows") #!TRUE))
+		      false)
+  (fluid-let (((ref-variable "Pop Up Windows") true))
     (pop-up-buffer (previous-buffer)))
   (clear-message))
 
-(define-command ("^R Buffer Menu Find" argument)
+(define-command ("^R Buffer Menu Find")
   "Select this line's buffer."
   (buffer-menu-find select-buffer))
 
-(define-command ("^R Buffer Menu Find Other Window" argument)
+(define-command ("^R Buffer Menu Find Other Window")
   "Select this line's buffer in another window."
   (buffer-menu-find select-buffer-other-window))
 
@@ -193,7 +192,7 @@ You can mark buffers with the \\[^R Buffer Menu Mark] command."
 	(select-buffer buffer)))
   (clear-message))
 
-(define-command ("^R Buffer Menu Not Modified" argument)
+(define-command ("^R Buffer Menu Not Modified")
   "Mark buffer on this line as unmodified (no changes to save)."
   (buffer-not-modified! (buffer-menu-buffer (current-lstart)))
   (let ((lstart (current-lstart)))
@@ -208,11 +207,11 @@ You can mark buffers with the \\[^R Buffer Menu Mark] command."
   "Mark buffer on this line to be killed by X command."
   (set-multiple-marks! 0 #\K argument))
 
-(define-command ("^R Buffer Menu Execute" argument)
+(define-command ("^R Buffer Menu Execute")
   "Save and/or Kill buffers marked with \\[^R Buffer Menu Save] or \\[^R Buffer Menu Kill]."
   (buffer-menu-save-and-kill!))
 
-(define-command ("^R Buffer Menu Unmark" argument)
+(define-command ("^R Buffer Menu Unmark")
   "Remove all marks from this line."
   (let ((lstart (mark-right-inserting (current-lstart))))
     (let ((buffer (buffer-menu-buffer lstart)))
@@ -221,7 +220,7 @@ You can mark buffers with the \\[^R Buffer Menu Mark] command."
 			     (if (buffer-modified? buffer) #\* #\Space))))
   (set-current-point! (next-lstart)))
 
-(define-command ("^R Buffer Menu Backup Unmark" argument)
+(define-command ("^R Buffer Menu Backup Unmark")
   "Remove all marks from the previous line."
   (set-current-point! (previous-lstart))
   (^r-buffer-menu-unmark-command)
@@ -231,7 +230,7 @@ You can mark buffers with the \\[^R Buffer Menu Mark] command."
   "Move down to the next line."
   (set-current-point! (line-start (current-point) argument 'BEEP)))
 
-(define-command ("^R Buffer Menu Abort" argument)
+(define-command ("^R Buffer Menu Abort")
   "Abort buffer menu edit."
   (kill-buffer-interactive (current-buffer))
   (clear-message))
@@ -283,6 +282,7 @@ You can mark buffers with the \\[^R Buffer Menu Mark] command."
 (define (set-multiple-marks! column char n)
   (dotimes n
     (lambda (i)
+      i					;ignore
       (set-buffer-menu-mark! (current-lstart) column char)
       (set-current-point! (next-lstart)))))
 
@@ -323,10 +323,10 @@ You can mark buffers with the \\[^R Buffer Menu Mark] command."
 
 (define list-buffers-header
   (string-append
-   (list-buffers-format " " "M" "R" "Buffer" "Size" "Mode" "File") "
-"
-   (list-buffers-format " " "-" "-" "------" "----" "----" "----") "
-"))
+   (list-buffers-format " " "M" "R" "Buffer" "Size" "Mode" "File")
+   "\n"
+   (list-buffers-format " " "-" "-" "------" "----" "----" "----")
+   "\n"))
 
 (define (find-buffers-marked column char)
   (define (loop lstart)
@@ -336,12 +336,3 @@ You can mark buffers with the \\[^R Buffer Menu Mark] command."
 	     (cons (mark-permanent! lstart) (loop next)))
 	    (else (loop next)))))
   (loop (line-start (buffer-start (current-buffer)) 2)))
-
-;;; end BUFFER-MENU-PACKAGE
-)))
-
-;;; Edwin Variables:
-;;; Scheme Environment: (access buffer-menu-package edwin-package)
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; Tags Table Pathname: (access edwin-tags-pathname edwin-package)
-;;; End:

@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1984 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/ring.scm,v 1.8 1989/03/14 08:02:39 cph Exp $
+;;;
+;;;	Copyright (c) 1984, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -58,16 +60,17 @@
 	(else (list-ref (cdr l) (-1+ i)))))
 
 (define (list-set! l i o)
-  (define (loop l i)
-    (cond ((null? l) (error "Index too large" 'LIST-SET!))
+  (let loop ((l l) (i i))
+    (cond ((null? l) (error "index too large" i))
 	  ((zero? i) (set-car! l o))
 	  (else (list-ref (cdr l) (-1+ i)))))
-  (loop l i))
+  unspecific)
 
 (define (list-truncate! l i)
-  (cond ((null? l) 'DONE)
+  (cond ((null? l) unspecific)
 	((= i 1) (set-cdr! l '()))
-	(else (list-truncate! (cdr l) (-1+ i)))))
+	(else (list-truncate! (cdr l) (-1+ i))))
+  unspecific)
 
 (set! make-ring
 (named-lambda (make-ring size)
@@ -81,7 +84,8 @@
 
 (set! ring-clear!
 (named-lambda (ring-clear! ring)
-  (vector-set! ring 2 '())))
+  (vector-set! ring 2 '())
+  unspecific))
 
 (set! ring-empty?
 (named-lambda (ring-empty? ring)

@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.11 1989/03/14 08:00:33 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -38,7 +40,6 @@
 ;;;; Evaluation Commands
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
 (define-variable "Scheme Environment"
   "The environment used by the evaluation commands, or 'DEFAULT.
@@ -120,22 +121,19 @@ With an argument, prompts for the evaluation environment."
     (editor-eval (with-input-from-string string read)
 		 (evaluation-environment argument))))
 
-(define-command ("Unsnap Links" argument)
-  "Unsnaps all compiled code links."
-  (unsnap-links!))
+(define-command ("Set Environment")
+  "Sets the environment for the editor and any inferior REP loops."
+  (set-repl/environment! (nearest-repl)
+			 (->environment
+			  (prompt-for-expression-value
+			   "REP environment"
+			   (ref-variable "Previous Evaluation Environment")))))
 
-(define-command ("Set Environment" argument)
-  "Sets the REP environment for the editor and any inferior REP loops."
-  (set-rep-base-environment!
-   (coerce-to-environment
-    (prompt-for-expression-value
-     "REP environment"
-     (ref-variable "Previous Evaluation Environment")))))
-
-(define-command ("Set Syntax Table" argument)
+(define-command ("Set Syntax Table")
   "Sets the current syntax table (for the syntaxer, not the editor)."
-  (set-rep-base-syntax-table!
-   (prompt-for-expression-value "Set Syntax Table" false)))
+  (set-repl/syntax-table! (nearest-repl)
+			  (prompt-for-expression-value "Set Syntax Table"
+						       false)))
 
 (define (evaluate-sexp input-mark environment)
   (editor-eval (with-input-from-mark input-mark read) environment))
@@ -163,14 +161,19 @@ With an argument, prompts for the evaluation environment."
 
 (define (eval-with-history expression environment)
   (let ((scode (syntax expression (evaluation-syntax-table))))
-    (with-new-history
-     (lambda ()
-       (scode-eval scode environment)))))
-
+    (bind-condition-handler '()
+	(lambda (condition)
+	  (and (not (condition/internal? condition))
+	       (error? condition)
+	       (editor-error "Error while evaluating expression")))
+      (lambda ()
+	(with-new-history (lambda () (scode-eval scode environment)))))))
 (define (prompt-for-expression prompt default-string #!optional default-type)
-  (if (unassigned? default-type) (set! default-type 'VISIBLE-DEFAULT))
   (prompt-for-completed-string prompt
-			       default-string default-type
+			       default-string
+			       (if (default-object? default-type)
+				   'VISIBLE-DEFAULT
+				   default-type)
 			       false 'NO-COMPLETION
 			       prompt-for-expression-mode))
 
@@ -180,8 +183,7 @@ Depending on what is being solicited, either defaulting or completion
 may be available.  The following commands are special to this mode:
 
 \\[^R Terminate Input] terminates the input.
-\\[^R Yank Default String] yanks the default string, if there is one."
-  ((mode-initialization scheme-mode)))
+\\[^R Yank Default String] yanks the default string, if there is one.")
 
 (define-key "Prompt for Expression" #\Return "^R Terminate Input")
 (define-key "Prompt for Expression" #\C-M-Y "^R Yank Default String")
@@ -192,7 +194,7 @@ may be available.  The following commands are special to this mode:
 
 (define (evaluation-syntax-table)
   (or (ref-variable "Scheme Syntax Table")
-      (rep-syntax-table)))
+      (nearest-repl/syntax-table)))
 
 (define (evaluation-environment argument)
   (cond (argument
@@ -201,10 +203,12 @@ may be available.  The following commands are special to this mode:
 		 "Evaluate in environment"
 		 (ref-variable "Previous Evaluation Environment"))))
 	   (set-variable! "Previous Evaluation Environment" string)
-	   (coerce-to-environment (eval (with-input-from-string string read)
-					(evaluation-environment false)))))
-	((eq? 'DEFAULT (ref-variable "Scheme Environment")) (rep-environment))
-	(else (ref-variable "Scheme Environment"))))
+	   (->environment (eval (with-input-from-string string read)
+				(evaluation-environment false)))))
+	((eq? 'DEFAULT (ref-variable "Scheme Environment"))
+	 (nearest-repl/environment))
+	(else
+	 (->environment (ref-variable "Scheme Environment")))))
 
 ;;;; Transcript Buffer
 
@@ -234,36 +238,29 @@ message area, not commands that write to a specific buffer."
       (thunk)))
 
 (define (transcript-output-port)
-  (let ((buffer (transcript-buffer)))
-    (let ((end (buffer-end buffer))
-	  (:type output-port-tag))
-      (define (:print-self)
-	(unparse-with-brackets
-	 (lambda ()
-	   (write-string "Output Port to ")
-	   (write buffer))))
+  (output-port/copy transcript-output-port-template (transcript-buffer)))
 
-      (define (:close)
-	'DONE)
+(define (operation/write-char port char)
+  (region-insert-char! (buffer-end (output-port/state port)) char))
 
-      (define (:write-char char)
-	(region-insert-char! end char))
+(define (operation/write-string port string)
+  (region-insert-string! (buffer-end (output-port/state port)) string))
 
-      (define (:write-string s)
-	(region-insert-string! end s))
+(define (operation/flush-output port)
+  (let ((buffer (output-port/state port)))
+    (let ((end (buffer-end buffer)))
+      (for-each (lambda (window)
+		  (set-window-point! window end)
+		  (window-direct-update! window false))
+		(buffer-windows buffer)))))
 
-      (define (:flush-output)
-	(let ((windows (buffer-windows buffer)))
-	  (if (not (null? windows))
-	      (begin (set-window-point! (car windows) end)
-		     (window-direct-update! (car windows) false)))))
+(define (operation/print-self state port)
+  (unparse-string state "to transcript buffer ")
+  (unparse-object state (output-port/state port)))
 
-      (the-environment))))
-
-;;; end USING-SYNTAX
-)
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; Tags Table Pathname: (access edwin-tags-pathname edwin-package)
-;;; End:
+(define transcript-output-port-template
+  (make-output-port `((FLUSH-OUTPUT ,operation/flush-output)
+		      (PRINT-SELF ,operation/print-self)
+		      (WRITE-CHAR ,operation/write-char)
+		      (WRITE-STRING ,operation/write-string))
+		    false))

@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.29 1989/03/14 07:58:54 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -37,14 +39,12 @@
 
 ;;;; Buffer Frames
 
-(declare (usual-integrations)
-	 )
-(using-syntax class-syntax-table
+(declare (usual-integrations))
 
 (define-class buffer-frame combination-leaf-window
   (text-inferior border-inferior modeline-inferior last-select-time))
 
-(define (buffer-frame? object)
+(define-integrable (buffer-frame? object)
   (object-of-class? buffer-frame object))
 
 (define (make-buffer-frame superior new-buffer modeline?)
@@ -63,57 +63,61 @@
   (usual=> frame :initialize! window*)
   (set! text-inferior (make-inferior frame buffer-window))
   (set! border-inferior (make-inferior frame vertical-border-window))
-  (set! last-select-time 0))
+  (set! last-select-time 0)
+  unspecific)
 
 ;;; **** Kludge: The text-inferior will generate modeline events, so
 ;;; if the modeline gets redisplayed first it will be left with its
 ;;; redisplay-flag set but its superior's redisplay-flag cleared.
 
-(define-procedure buffer-frame (initial-modeline! frame modeline?)
-  (if modeline?
-      (begin (set! modeline-inferior (make-inferior frame modeline-window))
-	     (set! inferiors
-		   (append! (delq! modeline-inferior inferiors)
-			    (list modeline-inferior))))
-      (set! modeline-inferior #!FALSE)))
+(define (initial-modeline! frame modeline?)
+  (with-instance-variables buffer-frame frame (modeline?)
+    (if modeline?
+	(begin
+	  (set! modeline-inferior (make-inferior frame modeline-window))
+	  (set! inferiors
+		(append! (delq! modeline-inferior inferiors)
+			 (list modeline-inferior))))
+	(set! modeline-inferior false))
+    unspecific))
+
+(define-integrable (window-cursor frame)
+  (%window-cursor (frame-text-inferior frame)))
+
+(define-integrable (frame-text-inferior frame)
+  (with-instance-variables buffer-frame frame ()
+    (inferior-window text-inferior)))
+
+(define (frame-modeline-inferior frame)
+  (with-instance-variables buffer-frame frame ()
+    (and modeline-inferior
+	 (inferior-window modeline-inferior))))
 
-(define-procedure buffer-frame (window-cursor frame)
-  (%window-cursor (inferior-window text-inferior)))
+(define (window-select-time frame)
+  (with-instance-variables buffer-frame frame ()
+    last-select-time))
 
-(declare (integrate frame-text-inferior))
-(define-procedure buffer-frame (frame-text-inferior frame)
-  (declare (integrate frame))
-  (inferior-window text-inferior))
+(define (set-window-select-time! frame time)
+  (with-instance-variables buffer-frame frame (time)
+    (set! last-select-time time)
+    unspecific))
 
-(define-procedure buffer-frame (frame-modeline-inferior frame)
-  (and modeline-inferior
-       (inferior-window modeline-inferior)))
-
-(define-procedure buffer-frame (window-modeline-event! frame type)
-  (if modeline-inferior
-      (=> (inferior-window modeline-inferior) :event! type)))
-
-(define-procedure buffer-frame (window-select-time frame)
-  last-select-time)
-
-(define-procedure buffer-frame (set-window-select-time! frame time)
-  (set! last-select-time time))
-
-(define-procedure buffer-frame (set-buffer-frame-size! window x y)
-  (usual=> window :set-size! x y)
-  (if (window-has-right-neighbor? window)
-      (let ((x* (- x (inferior-x-size border-inferior))))
-	(set-inferior-start! border-inferior x* 0)
-	(set-inferior-y-size! border-inferior y)
-	(set! x x*))
-      (set-inferior-start! border-inferior #!FALSE #!FALSE))
-  (if modeline-inferior
-      (let ((y* (- y (inferior-y-size modeline-inferior))))
-	(set-inferior-start! modeline-inferior 0 y*)
-	(set-inferior-x-size! modeline-inferior x)
-	(set! y y*)))
-  (set-inferior-start! text-inferior 0 0)
-  (set-inferior-size! text-inferior x y))
+(define (set-buffer-frame-size! window x y)
+  (with-instance-variables buffer-frame window (x y)
+    (usual=> window :set-size! x y)
+    (if (window-has-right-neighbor? window)
+	(let ((x* (- x (inferior-x-size border-inferior))))
+	  (set-inferior-start! border-inferior x* 0)
+	  (set-inferior-y-size! border-inferior y)
+	  (set! x x*))
+	(set-inferior-start! border-inferior false false))
+    (if modeline-inferior
+	(let ((y* (- y (inferior-y-size modeline-inferior))))
+	  (set-inferior-start! modeline-inferior 0 y*)
+	  (set-inferior-x-size! modeline-inferior x)
+	  (set! y y*)))
+    (set-inferior-start! text-inferior 0 0)
+    (set-inferior-size! text-inferior x y)))
 
 (define-method buffer-frame :set-size!
   set-buffer-frame-size!)
@@ -135,10 +139,16 @@
       (+ (ref-variable "Window Minimum Height")
 	 (inferior-y-size modeline-inferior))
       (ref-variable "Window Minimum Height")))
+
+(define (buffer-frame-x-size frame)
+  (window-x-size (frame-text-inferior frame)))
+
+(define (buffer-frame-y-size frame)
+  (window-y-size (frame-text-inferior frame)))
 
 ;;;; External Entries
 
-(define (window-buffer frame)
+(define-integrable (window-buffer frame)
   (%window-buffer (frame-text-inferior frame)))
 
 (define (set-window-buffer! frame buffer)
@@ -147,7 +157,7 @@
       (buffer-reset! buffer))
   (%set-window-buffer! (frame-text-inferior frame) buffer))
 
-(define (window-point frame)
+(define-integrable (window-point frame)
   (%window-point (frame-text-inferior frame)))
 
 (define (set-window-point! frame point)
@@ -155,35 +165,60 @@
     (%set-window-point! window (clip-mark-to-display window point))))
 
 (define (window-redraw! frame #!optional preserve-point?)
-  (if (unassigned? preserve-point?) (set! preserve-point? #!FALSE))
   (let ((window (frame-text-inferior frame)))
     (%window-redraw! window
-		     (if preserve-point?
+		     (if (and (not (default-object? preserve-point?))
+			      preserve-point?)
 			 (%window-point-y window)
 			 (%window-y-center window)))))
 
-(define (window-direct-update! frame display-style)
+(define-integrable (window-redraw-preserving-point! window)
+  (window-redraw! window true))
+
+(define-integrable (window-needs-redisplay? frame)
+  (with-instance-variables buffer-frame frame ()
+    (car (inferior-redisplay-flags text-inferior))))
+
+(define (window-modeline-event! frame type)
+  (with-instance-variables buffer-frame frame (type)
+    (if modeline-inferior
+	(=> (inferior-window modeline-inferior) :event! type))))
+
+(define-integrable (window-set-override-message! window message)
+  (set-override-message! (frame-text-inferior window) message))
+
+(define-integrable (window-clear-override-message! window)
+  (clear-override-message! (frame-text-inferior window)))
+
+(define-integrable (window-home-cursor! window)
+  (home-cursor! (frame-text-inferior window)))
+
+(define-integrable (window-direct-update! frame display-style)
   (%window-direct-update! (frame-text-inferior frame) display-style))
 
-(define-procedure buffer-frame (window-needs-redisplay? frame)
-  (car (inferior-redisplay-flags text-inferior)))
-
-(define (direct-output-insert-char! frame char)
+(define (window-direct-output-insert-char! frame char)
+  (let ((point (window-point frame)))
+    (%group-insert-char! (mark-group point) (mark-index point) char))
   (%direct-output-insert-char! (frame-text-inferior frame) char))
 
-(define (direct-output-insert-newline! frame)
+(define (window-direct-output-insert-newline! frame)
+  (let ((point (window-point frame)))
+    (%group-insert-char! (mark-group point) (mark-index point) #\newline))
   (%direct-output-insert-newline! (frame-text-inferior frame)))
 
-(define (direct-output-insert-substring! frame string start end)
+(define (window-direct-output-insert-substring! frame string start end)
+  (let ((point (window-point frame)))
+    (%group-insert-substring! (mark-group point) (mark-index point)
+			      string start end))
   (%direct-output-insert-substring! (frame-text-inferior frame)
 				    string start end))
 
-(define (direct-output-forward-character! frame)
+(define-integrable (window-direct-output-forward-char! frame)
   (%direct-output-forward-character! (frame-text-inferior frame)))
 
-(define (direct-output-backward-character! frame)
+(define-integrable (window-direct-output-backward-char! frame)
   (%direct-output-backward-character! (frame-text-inferior frame)))
-
+
 (define (window-scroll-y-absolute! frame y-point)
   (let ((window (frame-text-inferior frame)))
     (maybe-recompute-image! window)
@@ -194,7 +229,7 @@
     (maybe-recompute-image! window)
     (%window-scroll-y-relative! window delta)))
 
-(define (window-y-center frame)
+(define-integrable (window-y-center frame)
   (%window-y-center (frame-text-inferior frame)))
 
 (define (window-start-mark frame)
@@ -212,18 +247,12 @@
 (define (window-end-mark frame)
   (let ((window (frame-text-inferior frame)))
     (maybe-recompute-image! window)
-    (%window-end-mark window)))
+    (%window-end-mark window)))
 (define (window-mark-visible? frame mark)
   (let ((window (frame-text-inferior frame)))
     (maybe-recompute-image! window)
     (%window-mark-visible? window mark)))
 
-(define (buffer-frame-x-size frame)
-  (window-x-size (frame-text-inferior frame)))
-
-(define (buffer-frame-y-size frame)
-  (window-y-size (frame-text-inferior frame)))
-
 (define (window-mark->x frame mark)
   (let ((window (frame-text-inferior frame)))
     (maybe-recompute-image! window)
@@ -258,11 +287,3 @@
   (let ((window (frame-text-inferior frame)))
     (maybe-recompute-image! window)
     (%window-coordinates->mark window x y)))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: (access window-package edwin-package)
-;;; Scheme Syntax Table: class-syntax-table
-;;; End:

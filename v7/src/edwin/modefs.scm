@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1985 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.114 1989/03/14 08:01:33 cph Exp $
+;;;
+;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,14 +40,13 @@
 ;;;; Fundamental Mode
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
-(define-command ("Fundamental Mode" argument)
+(define-command ("Fundamental Mode")
   "Make the current mode be Fundamental Mode.
 All normal editing modes are defined relative to this mode."
   (set-current-major-mode! fundamental-mode))
 
-(define-major-mode "Fundamental" #!FALSE
+(define-major-mode "Fundamental" #F
   "Major mode not specialized for anything in particular.
 Most other major modes are defined by comparison to this one."
   (if (ref-variable "Fundamental Mode Hook")
@@ -53,7 +54,7 @@ Most other major modes are defined by comparison to this one."
 
 (define-variable "Fundamental Mode Hook"
   "If not false, a thunk to call when entering Fundamental mode."
-  #!FALSE)
+  false)
 
 (define-variable "Editor Default Mode"
   "The default major mode for new buffers."
@@ -323,11 +324,3 @@ and the cdrs of which are major modes."
 (define-key "Fundamental" '(#\C-X #\}) "^R Enlarge Window Horizontally")
 ;~
 (define-key "Fundamental" '(#\C-X #\Rubout) "^R Backward Kill Sentence")
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; End:

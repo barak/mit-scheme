@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.29 1989/03/14 08:03:17 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -39,9 +41,8 @@
 ;;;  From GNU Emacs (thank you RMS)
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
-(define-command ("Visit Tags Table" argument)
+(define-command ("Visit Tags Table")
   "Tell tags commands to use a given tags table file."
   (set-variable!
    "Tags Table Pathname"
@@ -62,21 +63,10 @@ the string used in the previous Find Tag."
   "Like \\[Find Tag], but selects buffer in another window."
   (&find-tag-command argument find-file-other-window))
 
-(define (&find-tag-command previous-tag? find-file)
-  (if previous-tag?
-      (find-tag previous-find-tag-string
-		;; Kludgerous.  User should not be able to flush
-		;; tags buffer.  Maybe should be done another way.
-		(or (object-unhash previous-find-tag-mark)
-		    (editor-error "No previous Find Tag (or buffer killed)"))
-		find-file)
-      (let ((string (prompt-for-string "Find tag" previous-find-tag-string)))
-	(set! previous-find-tag-string string)
-	(find-tag string
-		  (buffer-start (tags-table-buffer))
-		  find-file))))
+(define previous-find-tag-string
+  false)
 
-(define-command ("Generate Tags Table" argument)
+(define-command ("Generate Tags Table")
   "Generate a tags table from a files list of Scheme files.
  A files list is a file containing only strings which are file names.
  The generated tags table has the same name as the files list, except that
@@ -93,18 +83,38 @@ the file type is TAG."
 			     (pathname-new-version pathname 'NEWEST)
 			     pathname))
 		       scheme-tag-regexp))))
+
+(define (&find-tag-command previous-tag? find-file)
+  (let ((buffer (tags-table-buffer)))
+    (if previous-tag?
+	(find-tag previous-find-tag-string
+		  buffer
+		  (buffer-point buffer)
+		  find-file)
+	(let ((string (prompt-for-string "Find tag" previous-find-tag-string)))
+	  (set! previous-find-tag-string string)
+	  (find-tag string
+		    buffer
+		    (buffer-start buffer)
+		    find-file)))))
 
 (define (tags-table-buffer)
   (if (not (ref-variable "Tags Table Pathname"))
       (visit-tags-table-command false))
   (let ((pathname (ref-variable "Tags Table Pathname")))
-    (or (pathname->buffer pathname)
-	(let ((buffer (new-buffer (pathname->buffer-name pathname))))
-	  (read-buffer buffer pathname)
-	  (if (not (eqv? (extract-right-char (buffer-start buffer)) #\Page))
-	      (editor-error "File " (pathname->string pathname)
-			    " not a valid tag table"))
-	  buffer))))
+    (let ((buffer
+	   (or (pathname->buffer pathname)
+	       (let ((buffer (new-buffer (pathname->buffer-name pathname))))
+		 (read-buffer buffer pathname)
+		 buffer))))
+      (if (and (not (verify-visited-file-modification-time buffer))
+	       (prompt-for-yes-or-no?
+		"Tags file has changed, read new contents"))
+	  (revert-buffer true true))
+      (if (not (eqv? (extract-right-char (buffer-start buffer)) #\Page))
+	  (editor-error "File "
+			(pathname->string pathname)
+			" not a valid tag table")))))
 
 (define (tag->pathname tag)
   (define (loop mark)
@@ -135,55 +145,53 @@ the file type is TAG."
 
 ;;;; Find Tag
 
-(define previous-find-tag-string
-  false)
-
-(define previous-find-tag-mark
-  (object-hash false))
-
-(define (find-tag string start find-file)
-  (define (loop mark)
-    (let ((mark (search-forward string mark)))
-      (and mark
-	   (or (re-match-forward find-tag-match-regexp mark)
-	       (loop mark)))))
-  (let ((tag (loop start)))
-    (set! previous-find-tag-mark (object-hash tag))
+(define (find-tag string buffer start find-file)
+  (let ((tag
+	 (let loop ((mark start))
+	   (let ((mark (search-forward string mark)))
+	     (and mark
+		  (or (re-match-forward find-tag-match-regexp mark)
+		      (loop mark)))))))
     (if (not tag)
-	(editor-failure "Tag not found")
-	(let ((regexp
+	(editor-failure "No "
+			(if (group-start? start) "" "more ")
+			"entries containing "
+			string)
+	(let ((pathname
+	       (merge-pathnames
+		(tag->pathname tag)
+		(pathname-directory-path (buffer-pathname buffer))))
+	      (regexp
 	       (string-append
 		"^"
 		(re-quote-string (extract-string (mark-1+ tag)
 						 (line-start tag 0)))))
-	      (start (with-input-from-mark tag read)))
-	  (find-file
-	   (merge-pathnames (tag->pathname tag)
-			    (pathname-directory-path
-			     (ref-variable "Tags Table Pathname"))))
+	      (start
+	       (-1+ (string->number (extract-string tag (line-end tag 0))))))
+	  (find-file pathname)
 	  (let* ((buffer (current-buffer))
 		 (group (buffer-group buffer))
 		 (end (group-end-index group)))
-	    (define (loop offset)
-	      (let ((index (- start offset)))
-		(if (positive? index)
-		    (or (re-search-forward regexp
-					   (make-mark group index)
-					   (make-mark group
-						      (min (+ start offset)
-							   end)))
-			(loop (* 3 offset)))
-		    (re-search-forward regexp (make-mark group 0)))))
 	    (buffer-widen! buffer)
 	    (push-current-mark! (current-point))
-	    (let ((mark (loop 1000)))
+	    (let ((mark
+		   (let loop ((offset 1000))
+		     (let ((index (- start offset)))
+		       (if (positive? index)
+			   (or (re-search-forward
+				regexp
+				(make-mark group index)
+				(make-mark group (min (+ start offset) end)))
+			       (loop (* 3 offset)))
+			   (re-search-forward regexp (make-mark group 0)))))))
 	      (if (not mark)
-		  (editor-failure "Tag no longer in file")
+		  (editor-failure regexp
+				  " not found in "
+				  (pathname-name-string pathname))
 		  (set-current-point! (line-start mark 0)))))))))
 
 (define find-tag-match-regexp
-  (let ((rubout (char->string #\Rubout)))
-    (string-append "[^" (char->string char:newline) rubout "]*" rubout)))
+  "[^\n\177]*\177")
 
 ;;;; Tags Table Generation
 
@@ -225,7 +233,7 @@ the file type is TAG."
 
 ;;;; Tags Search
 
-(define-command ("Tags Search" argument)
+(define-command ("Tags Search")
   "Search through all files listed in tag table for a given string.
 Stops when a match is found.
 To continue searching for next match, use command \\[Tags Loop Continue]."
@@ -235,7 +243,7 @@ To continue searching for next match, use command \\[Tags Loop Continue]."
     (set-variable! "Previous Search String" string)
     (tags-search (re-quote-string string))))
 
-(define-command ("RE Tags Search" argument)
+(define-command ("RE Tags Search")
   "Search through all files listed in tag table for a given regexp.
 Stops when a match is found.
 To continue searching for next match, use command \\[Tags Loop Continue]."
@@ -245,7 +253,7 @@ To continue searching for next match, use command \\[Tags Loop Continue]."
     (set-variable! "Previous Search Regexp" regexp)
     (tags-search regexp)))
 
-(define-command ("Tags Query Replace" argument)
+(define-command ("Tags Query Replace")
   "Query replace a given string with another one though all files listed
 in tag table.  If you exit (C-G or Altmode), you can resume the query
 replace with the command \\[Tags Loop Continue]."
@@ -260,7 +268,7 @@ replace with the command \\[Tags Loop Continue]."
   (set! tags-loop-done clear-message)
   (tags-loop-start (tags-table-pathnames)))
 
-(define-command ("Tags Loop Continue" argument)
+(define-command ("Tags Loop Continue")
   "Continue last \\[Tags Search] or \\[Tags Query Replace] command."
   (let ((buffer (object-unhash tags-loop-buffer)))
     (if (and (not (null? tags-loop-entry))
@@ -303,12 +311,3 @@ replace with the command \\[Tags Loop Continue]."
 
 (define find-file-noselect
   (file-finder identity-procedure))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: (access tags-package edwin-package)
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; Tags Table Pathname: (access edwin-tags-pathname edwin-package)
-;;; End:

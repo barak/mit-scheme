@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.41 1989/03/14 08:00:45 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,14 +40,13 @@
 ;;;; Text Fill Commands
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
-(define-command ("^R Fill Paragraph" argument)
+(define-command ("^R Fill Paragraph")
   "Fill this (or next) paragraph.
 Point stays the same."
   (fill-region (paragraph-text-region (current-point))))
 
-(define-command ("^R Fill Region" argument)
+(define-command ("^R Fill Region")
   "Fill text from point to mark."
   (fill-region (current-region)))
 
@@ -63,13 +64,13 @@ Otherwise the current position of the cursor is used."
 		     (write-to-string (ref-variable "Fill Column"))))
 
 (define-variable "Fill Prefix"
-  "String for Auto Fill to insert at start of new line, or #!FALSE."
-  #!FALSE)
+  "String for Auto Fill to insert at start of new line, or #F."
+  false)
 
-(define-command ("^R Set Fill Prefix" argument)
+(define-command ("^R Set Fill Prefix")
   "Set fill prefix to text between point and start of line."
   (if (line-start? (current-point))
-      (begin (local-set-variable! "Fill Prefix" #!FALSE)
+      (begin (local-set-variable! "Fill Prefix" false)
 	     (temporary-message "Fill prefix cancelled"))
       (let ((string (extract-string (line-start (current-point) 0))))
 	(local-set-variable! "Fill Prefix" string)
@@ -106,7 +107,7 @@ Otherwise the current position of the cursor is used."
 			   (re-match-end 0))
 			  ((char-search-forward #\Space target)
 			   (re-match-start 0))
-			  (else #!FALSE))))
+			  (else false))))
 	       (if end
 		   (let ((start (mark-left-inserting end)))
 		     (delete-horizontal-space start)
@@ -114,16 +115,16 @@ Otherwise the current position of the cursor is used."
 		     (fill-region-loop start)))))))))
 
 (define (canonicalize-sentence-endings mark)
-  (let ((ending (forward-sentence mark 1 #!FALSE)))
+  (let ((ending (forward-sentence mark 1 false)))
     (if (and ending (not (group-end? ending)))
-	(if (char=? char:newline (mark-right-char ending))
+	(if (char=? #\newline (mark-right-char ending))
 	    (let ((mark (mark-left-inserting ending)))
 	      (insert-char #\Space mark)
 	      (canonicalize-sentence-endings mark))
 	    (canonicalize-sentence-endings ending)))))
 
 (define (canonicalize-spacing mark)
-  (if (char-search-forward char:newline mark)
+  (if (char-search-forward #\newline mark)
       (let ((mark (mark-left-inserting (re-match-start 0))))
 	(replace-next-char mark #\Space)
 	(remove-fill-prefix mark)
@@ -161,8 +162,7 @@ With argument, turn Auto Fill mode on iff argument is positive."
   (^r-newline-command argument))
 
 (define-minor-mode "Fill"
-  ""
-  'DONE)
+  "")
 
 (define-key "Fill" #\Space "^R Auto Fill Space")
 (define-key "Fill" #\Return "^R Auto Fill Newline")
@@ -182,7 +182,7 @@ With argument, turn Auto Fill mode on iff argument is positive."
   (and (> (mark-column point) (ref-variable "Fill Column"))
        (line-end? (horizontal-space-end point))))
 
-(define-command ("^R Center Line" argument)
+(define-command ("^R Center Line")
   "Center this line's text within the line.
 The width is Fill Column."
   (center-line (current-point)))
@@ -201,11 +201,3 @@ The width is Fill Column."
 	(insert-horizontal-space (+ (ref-variable "Left Margin")
 				    (quotient d 2))
 				 (line-start mark 0)))))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; End:

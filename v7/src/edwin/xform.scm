@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1985 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xform.scm,v 1.4 1989/03/14 08:04:03 cph Exp $
+;;;
+;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -39,18 +41,14 @@
 
 (declare (usual-integrations))
 
-(define transform-instance-variables)
-(let ()
-
-(set! transform-instance-variables
-(named-lambda (transform-instance-variables transforms name expression)
+(define (transform-instance-variables transforms name free expression)
   (fluid-let ((name-of-self name))
-    (transform-expression transforms expression))))
+    (transform-expression (remove-transforms transforms free) expression)))
 
 (define name-of-self)
 
 (define (transform-expression transforms expression)
-  ((transform-dispatch expression) transforms expression))
+  ((scode-walk scode-walker expression) transforms expression))
 
 (define (transform-expressions transforms expressions)
   (define (transform-expression-loop expressions)
@@ -69,8 +67,9 @@
 	   (cons (car transforms)
 		 (loop (cdr transforms))))))
   (loop transforms))
-
+
 (define (transform-constant transforms constant)
+  transforms
   constant)
 
 (define (transform-variable transforms variable)
@@ -98,7 +97,7 @@
     (lambda (operator operands)
       (make-combination (transform-expression transforms operator)
 			(transform-expressions transforms operands)))))
-
+
 (define (transform-lambda transforms lambda)
   (lambda-components** lambda
     (lambda (pattern bound body)
@@ -119,7 +118,7 @@
     (lambda (name value)
       (error "Free definition encountered:" name)
       (make-definition name (transform-expression transforms value)))))
-
+
 (define (transform-sequence transforms sequence)
   (make-sequence (transform-expressions transforms
 					(sequence-actions sequence))))
@@ -145,33 +144,16 @@
 (define (transform-delay transforms delay)
   (make-delay (transform-expression transforms (delay-expression delay))))
 
-(define (transform-access transforms access)
-  (access-components access
-    (lambda (environment name)
-      (make-access (transform-expression transforms environment)
-		   name))))
-
-(define (transform-in-package transforms in-package)
-  (in-package-components in-package
-    (lambda (environment expression)
-      (make-in-package (transform-expression transforms environment)
-		       expression))))
-
-(define transform-dispatch
-  (make-type-dispatcher
-   `((,variable-type ,transform-variable)
-     (,assignment-type ,transform-assignment)
-     (,definition-type ,transform-definition)
-     (,sequence-type ,transform-sequence)
-     (,conditional-type ,transform-conditional)
-     (,disjunction-type ,transform-disjunction)
-     (,comment-type ,transform-comment)
-     (,delay-type ,transform-delay)
-     (,access-type ,transform-access)
-     (,in-package-type ,transform-in-package)
-     (,lambda-type ,transform-lambda)
-     (,open-block-type ,transform-open-block)
-     (,combination-type ,transform-combination))
-   transform-constant))
-
-)
+(define scode-walker
+  (make-scode-walker transform-constant
+		     `((ASSIGNMENT ,transform-assignment)
+		       (COMBINATION ,transform-combination)
+		       (COMMENT ,transform-comment)
+		       (CONDITIONAL ,transform-conditional)
+		       (DEFINITION ,transform-definition)
+		       (DELAY ,transform-delay)
+		       (DISJUNCTION ,transform-disjunction)
+		       (LAMBDA ,transform-lambda)
+		       (OPEN-BLOCK ,transform-open-block)
+		       (SEQUENCE ,transform-sequence)
+		       (VARIABLE ,transform-variable))))

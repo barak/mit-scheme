@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.86 1989/03/14 08:00:41 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,19 +40,22 @@
 ;;;; File <-> Buffer I/O
 
 (declare (usual-integrations))
-(using-syntax (access edwin-syntax-table edwin-package)
 
 ;;;; Input
 
 (define (read-buffer buffer pathname)
   (let ((truename (pathname->input-truename pathname)))
     (if truename
-	(begin (let ((region (file->region-interactive truename)))
-		 (region-delete! (buffer-unclipped-region buffer))
-		 (region-insert! (buffer-start buffer) region))
-	       (set-buffer-point! buffer (buffer-start buffer)))
+	(begin
+	 (let ((region (file->region-interactive truename)))
+	   (region-delete! (buffer-unclipped-region buffer))
+	   (region-insert! (buffer-start buffer) region))
+	 (set-buffer-point! buffer (buffer-start buffer)))
 	(temporary-message "(New File)"))
-    (set-buffer-truename! buffer truename))
+    (set-buffer-truename! buffer truename)
+    (set-buffer-modification-time! buffer (file-modification-time truename))
+    (if (not (file-writable? truename))
+	(set-buffer-file-read-only! buffer)))
   (set-buffer-pathname! buffer pathname)
   (setup-buffer-auto-save! buffer)
   (set-buffer-save-length! buffer)
@@ -66,11 +71,11 @@
   (let ((truename (pathname->input-truename pathname)))
     (if truename
 	(region-insert! mark (file->region-interactive truename))
-	(editor-error "File '" (pathname->string pathname) "' not found"))))
+	(editor-error "File \"" (pathname->string pathname) "\" not found"))))
 
 (define (file->region-interactive truename)
   (let ((filename (pathname->string truename)))
-    (temporary-message "Reading file '" filename "'")
+    (temporary-message "Reading file \"" filename "\"")
     (let ((region (file->region truename)))
       (append-message " -- done")
       region)))
@@ -81,9 +86,10 @@
 (define (port->region port)
   (group-region
    (make-group
-    (if (not (lexical-unreferenceable? port ':rest->string))
-	((access :rest->string port))
-	((access :read-string port) char-set:null)))))
+    (let ((rest->string (input-port/operation port 'REST->STRING)))
+      (if rest->string
+	  (rest->string port)
+	  (read-string char-set:null port))))))
 
 ;;;; Buffer Mode Initialization
 
@@ -166,11 +172,6 @@ at the end of a file."
 				       (re-match-start 0)
 				       (re-match-end 0)))))))))
 
-(define ((error-hook continuation var) . args)
-  (beep)
-  (message "Error while processing local variable: " var)
-  (continuation false))
-
 (define (evaluate sexp)
   (scode-eval (syntax sexp system-global-syntax-table)
 	      system-global-environment))
@@ -181,9 +182,7 @@ at the end of a file."
 (define (parse-local-variables buffer start end)
   (let ((prefix (extract-string (line-start start 0) start))
 	(suffix (extract-string end (line-end end 0))))
-    (let ((prefix-length (string-length prefix))
-	  (prefix? (not (string-null? prefix)))
-	  (suffix-length (string-length suffix))
+    (let ((prefix? (not (string-null? prefix)))
 	  (suffix? (not (string-null? suffix))))
       (define (loop mark)
 	(let ((start (line-start mark 1)))
@@ -222,15 +221,23 @@ at the end of a file."
 				 buffer mode)))
 			  (call-with-current-continuation
 			   (lambda (continuation)
-			     (fluid-let (((access *error-hook* error-system)
-					  (error-hook continuation var)))
-			       (if (string-ci=? var "Eval")
-				   (evaluate val)
-				   (add-buffer-initialization!
-				    buffer
-				    (local-binding-thunk
-				     (variable-symbol (name->variable var))
-				     (evaluate val))))))))
+			     (bind-condition-handler '()
+				 (lambda (condition)
+				   (and (not (condition/internal? condition))
+					(error? condition)
+					(begin
+					  (editor-beep)
+					  (message "Error while processing local variable: "
+						   var)
+					  (continuation false))))
+			       (lambda ()
+				 (if (string-ci=? var "Eval")
+				     (evaluate val)
+				     (add-buffer-initialization!
+				      buffer
+				      (local-binding-thunk
+				       (variable-symbol (name->variable var))
+				       (evaluate val)))))))))
 		      (loop m4))))))))
 
       (loop start))))
@@ -239,67 +246,180 @@ at the end of a file."
 
 ;;;; Output
 
-(define (write-buffer-interactive buffer)
-  (if (or (buffer-writeable? buffer)
-	  (prompt-for-confirmation?
-	   (string-append "Buffer '"
-			  (buffer-name buffer)
-			  "' is read only.  Save anyway")))
-      (begin (require-newline buffer)
-	     (write-buffer buffer))))
-
 (define-variable "Require Final Newline"
   "True says silently put a newline at the end whenever a file is saved.
 Neither false nor true says ask user whether to add a newline in each
 such case.  False means don't add newlines."
   false)
 
-(define (require-newline buffer)
-  (if (ref-variable "Require Final Newline")
-      (without-group-clipped! (buffer-group buffer)
-        (lambda ()
-	  (let ((end (buffer-end buffer)))
-	    (if (and (not (eqv? char:newline (extract-left-char end)))
-		     (or (eq? (ref-variable "Require Final Newline") true)
-			 (prompt-for-yes-or-no?
-			  (string-append
-			   "Buffer " (buffer-name buffer)
-			   " does not end in newline.  Add one"))))
-		(insert-newline end)))))))
+(define-variable "Make Backup Files"
+  "*Create a backup of each file when it is saved for the first time.
+This can be done by renaming the file or by copying.
+
+Renaming means that Edwin renames the existing file so that it is a
+backup file, then writes the buffer into a new file.  Any other names
+that the old file had will now refer to the backup file.
+The new file is owned by you and its group is defaulted.
+
+Copying means that Edwin copies the existing file into the backup
+file, then writes the buffer on top of the existing file.  Any other
+names that the old file had will now refer to the new (edited) file.
+The file's owner and group are unchanged.
+
+The choice of renaming or copying is controlled by the variables
+Backup By Copying, Backup By Copying When Linked and
+Backup By Copying When Mismatch."
+  true)
+
+(define-variable "Backup By Copying"
+  "*True means always use copying to create backup files.
+See documentation of variable  Make Backup Files."
+ false)
+
+(define-variable "Trim Versions Without Asking"
+  "*If true, deletes excess backup versions silently.
+Otherwise asks confirmation."
+  false)
+
+(define (write-buffer-interactive buffer)
+  ;; Need to check for correct modification time here.
+  (let ((truename (pathname->output-truename (buffer-pathname buffer))))
+    (let ((writable? (file-writable? truename)))
+      (if (or writable?
+	      (prompt-for-yes-or-no?
+	       (string-append "File \""
+			      (pathname-name-string truename)
+			      "\" is write-protected; try to save anyway"))
+	      (editor-error
+	       "Attempt to save to a file which you aren't allowed to write"))
+	  (begin
+	   (if (not (or (verify-visited-file-modification-time buffer)
+			(not (file-exists? truename))
+			(prompt-for-yes-or-no?
+			 "Disk file has changed since visited or saved.  Save anyway")))
+	       (editor-error "Save not confirmed"))
+	   (let ((modes
+		  (and (not (buffer-backed-up? buffer))
+		       (backup-buffer! buffer truename))))
+	     (require-newline buffer)
+	     (if (not (or writable? modes))
+		 (begin
+		   (set! modes (file-modes truename))
+		   (set-file-modes! truename #o777)))
+	     (write-buffer buffer)
+	     (if modes
+		 (bind-condition-handler '()
+		     (lambda (condition)
+		       (and (not (condition/internal? condition))
+			    (error? condition)
+			    ((condition/continuation condition) unspecific)))
+		   (lambda ()
+		     (set-file-modes! truename modes))))))))))
+
+(define (verify-visited-file-modification-time buffer)
+  (let ((truename (buffer-truename buffer))
+	(modification-time (buffer-modification-time buffer)))
+    (or (not truename)
+	(not modification-time)
+	(let ((new-time (file-modification-time truename)))
+	  (and new-time
+	       (or (= modification-time new-time)
+		   (and (positive? modification-time)
+			(positive? new-time)
+			(= 1 (abs (- modification-time new-time))))))))))
 
 (define (write-buffer buffer)
-  (let ((truename (write-region (buffer-unclipped-region buffer)
-				(buffer-pathname buffer))))
+  (let ((truename
+	 (write-region (buffer-unclipped-region buffer)
+		       (buffer-pathname buffer))))
     (if truename
-	(begin (set-buffer-truename! buffer truename)
-	       (delete-auto-save-file! buffer)
-	       (set-buffer-save-length! buffer)
-	       (buffer-not-modified! buffer)))))
-
+	(begin
+	  (set-buffer-truename! buffer truename)
+	  (delete-auto-save-file! buffer)
+	  (set-buffer-save-length! buffer)
+	  (buffer-not-modified! buffer)
+	  (set-buffer-modification-time! buffer
+					 (file-modification-time truename))))))
+
 (define (write-region region pathname)
   (let ((truename (pathname->output-truename pathname)))
-    (let ((filename (pathname->string truename)))
-      (and (or (not (file-exists? truename))
-	       (prompt-for-yes-or-no?
-		(string-append "File '" filename "' exists.  Write anyway")))
-	   (begin (temporary-message "Writing file '" filename "'")
-		  (region->file region truename)
-		  (append-message " -- done")
-		  truename)))))
+    (temporary-message "Writing file \"" (pathname->string truename) "\"")
+    (region->file region truename)
+    (append-message " -- done")
+    truename))
 
 (define (region->file region pathname)
   (call-with-output-file pathname
     (lambda (port)
-      (region->port port region))))
+      (write-string (region->string region) port))))
+
+(define (require-newline buffer)
+  (let ((require-final-newline? (ref-variable "Require Final Newline")))
+    (if require-final-newline?
+	(without-group-clipped! (buffer-group buffer)
+	  (lambda ()
+	    (let ((end (buffer-end buffer)))
+	      (if (let ((last-char (extract-left-char end)))
+		    (and last-char
+			 (not (eqv? #\newline last-char))
+			 (or (eq? require-final-newline? true)
+			     (prompt-for-yes-or-no?
+			      (string-append
+			       "Buffer " (buffer-name buffer)
+			       " does not end in newline.  Add one")))))
+		  (insert-newline end))))))))
 
-(define (region->port port region)
-  ((access :write-string port) (region->string region)))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: (access edwin-syntax-table edwin-package)
-;;; Tags Table Pathname: (access edwin-tags-pathname edwin-package)
-;;; End:
+(define (backup-buffer! buffer truename)
+  (let (;; This isn't the correct set of types, but it will do for now.
+	(error-types (list (microcode-error-type 'EXTERNAL-RETURN)))
+	(continue-with-false
+	 (lambda (condition) ((condition/continuation condition) false))))
+    (and truename
+	 (ref-variable "Make Backup Files")
+	 (not (buffer-backed-up? buffer))
+	 (file-exists? truename)
+	 (os/backup-buffer? truename)
+	 (bind-condition-handler error-types continue-with-false
+	   (lambda ()
+	     (with-values (lambda () (os/buffer-backup-pathname truename))
+	       (lambda (backup-pathname targets)
+		 (let ((modes
+			(bind-condition-handler error-types
+			    (lambda (condition)
+			      (let ((filename (os/default-backup-filename)))
+				(temporary-message
+				 "Cannot write backup file; backing up in \""
+				 filename
+				 "\"")
+				(copy-file truename
+					   (string->pathname filename))
+				(continue-with-false condition)))
+			  (lambda ()
+			    (if (or (file-symbolic-link? truename)
+				    (ref-variable "Backup By Copying")
+				    (os/backup-by-copying? truename))
+				(begin
+				  (copy-file truename backup-pathname)
+				  false)
+				(begin
+				  (bind-condition-handler error-types
+				      continue-with-false
+				    (lambda ()
+				      (delete-file backup-pathname)))
+				  (rename-file truename backup-pathname)
+				  (file-modes backup-pathname)))))))
+		   (set-buffer-backed-up?! buffer true)
+		   (if (and (not (null? targets))
+			    (or (ref-variable "Trim Versions Without Asking")
+				(prompt-for-confirmation?
+				 (string-append
+				  "Delete excess backup versions of "
+				  (pathname->string
+				   (buffer-pathname buffer))))))
+		       (for-each (lambda (target)
+				   (bind-condition-handler error-types
+				       continue-with-false
+				     (lambda ()
+				       (delete-file target))))
+				 targets))
+		   modes))))))))

@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1985 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.26 1989/03/14 08:02:53 cph Exp $
+;;;
+;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -40,159 +42,158 @@
 (declare (usual-integrations))
 
 (define (insert-char char #!optional point)
-  (if (unassigned? point) (set! point (current-point)))
-  (group-insert-char! (mark-group point) (mark-index point) char))
+  (let ((point (if (default-object? point) (current-point) point)))
+    (group-insert-char! (mark-group point) (mark-index point) char)))
 
 (define (insert-chars char n #!optional point)
-  (if (unassigned? point) (set! point (current-point)))
-  (cond ((= n 1)
-	 (group-insert-char! (mark-group point) (mark-index point) char))
-	((> n 1)
-	 (group-insert-substring! (mark-group point) (mark-index point)
-				  (make-string n char) 0 n))))
+  (let ((point (if (default-object? point) (current-point) point)))
+    (cond ((= n 1)
+	   (group-insert-char! (mark-group point) (mark-index point) char))
+	  ((> n 1)
+	   (group-insert-substring! (mark-group point) (mark-index point)
+				    (make-string n char) 0 n)))))
 
 (define (insert-newline #!optional point)
-  (if (unassigned? point) (set! point (current-point)))
-  (group-insert-char! (mark-group point) (mark-index point) char:newline))
+  (let ((point (if (default-object? point) (current-point) point)))
+    (group-insert-char! (mark-group point) (mark-index point) #\newline)))
 
 (define (insert-newlines n #!optional point)
-  (if (unassigned? point) (set! point (current-point)))
-  (cond ((= n 1)
-	 (group-insert-char! (mark-group point) (mark-index point)
-			     char:newline))
-	((> n 1)
-	 (group-insert-substring! (mark-group point) (mark-index point)
-				  (make-string n char:newline) 0 n))))
+  (let ((point (if (default-object? point) (current-point) point)))
+    (cond ((= n 1)
+	   (group-insert-char! (mark-group point) (mark-index point)
+			       #\newline))
+	  ((> n 1)
+	   (group-insert-substring! (mark-group point) (mark-index point)
+				    (make-string n #\newline) 0 n)))))
 
 (define (extract-left-char #!optional point)
-  (if (unassigned? point) (set! point (current-point)))
-  (let ((group (mark-group point))
-	(index (mark-index point)))
-    (and (not (group-start-index? group index))
-	 (group-left-char group index))))
+  (let ((point (if (default-object? point) (current-point) point)))
+    (let ((group (mark-group point))
+	  (index (mark-index point)))
+      (and (not (group-start-index? group index))
+	   (group-left-char group index)))))
 
 (define (extract-right-char #!optional point)
-  (if (unassigned? point) (set! point (current-point)))
-  (let ((group (mark-group point))
-	(index (mark-index point)))
-    (and (not (group-end-index? group index))
-	 (group-right-char group index))))
+  (let ((point (if (default-object? point) (current-point) point)))
+    (let ((group (mark-group point))
+	  (index (mark-index point)))
+      (and (not (group-end-index? group index))
+	   (group-right-char group index)))))
 
 (define (delete-left-char #!optional point)
-  (if (unassigned? point) (set! point (current-point)))
-  (let ((group (mark-group point))
-	(index (mark-index point)))
-    (if (group-start-index? group index)
-	(editor-error "Attempt to delete past start of buffer")
-	(group-delete-left-char! group index))))
+  (let ((point (if (default-object? point) (current-point) point)))
+    (let ((group (mark-group point))
+	  (index (mark-index point)))
+      (if (group-start-index? group index)
+	  (editor-error "Attempt to delete past start of buffer")
+	  (group-delete-left-char! group index)))))
 
 (define (delete-right-char #!optional point)
-  (if (unassigned? point) (set! point (current-point)))
-  (let ((group (mark-group point))
-	(index (mark-index point)))
-    (if (group-end-index? group index)
-	(editor-error "Attempt to delete past end of buffer")
-	(group-delete-right-char! group index))))
-
+  (let ((point (if (default-object? point) (current-point) point)))
+    (let ((group (mark-group point))
+	  (index (mark-index point)))
+      (if (group-end-index? group index)
+	  (editor-error "Attempt to delete past end of buffer")
+	  (group-delete-right-char! group index)))))
+
 (define (insert-string string #!optional point)
-  (if (unassigned? point) (set! point (current-point)))
-  (group-insert-string! (mark-group point) (mark-index point) string))
+  (let ((point (if (default-object? point) (current-point) point)))
+    (group-insert-string! (mark-group point) (mark-index point) string)))
 
 (define (insert-substring string start end #!optional point)
-  (if (unassigned? point) (set! point (current-point)))
-  (group-insert-substring! (mark-group point) (mark-index point)
-			   string start end))
+  (let ((point (if (default-object? point) (current-point) point)))
+    (group-insert-substring! (mark-group point) (mark-index point)
+			     string start end)))
 
 (define (extract-string mark #!optional point)
-  (if (unassigned? point) (set! point (current-point)))
-  (let ((group (mark-group mark))
-	(index1 (mark-index mark))
-	(index2 (mark-index point)))
-    (if (not (eq? group (mark-group point)))
-	(error "EXTRACT-STRING: Marks not related" mark point))
-    (if (< index1 index2)
-	(group-extract-string group index1 index2)
-	(group-extract-string group index2 index1))))
-
-(define (delete-string mark #!optional point)
-  (if (unassigned? point) (set! point (current-point)))
-  (let ((group (mark-group mark))
-	(index1 (mark-index mark))
-	(index2 (mark-index point)))
-    (if (not (eq? group (mark-group point)))
-	(error "DELETE-STRING: Marks not related" mark point))
-    (if (< index1 index2)
-	(group-delete! group index1 index2)
-	(group-delete! group index2 index1))))
+  (let ((point (if (default-object? point) (current-point) point)))
+    (let ((group (mark-group mark))
+	  (index1 (mark-index mark))
+	  (index2 (mark-index point)))
+      (if (not (eq? group (mark-group point)))
+	  (error "EXTRACT-STRING: Marks not related" mark point))
+      (if (< index1 index2)
+	  (group-extract-string group index1 index2)
+	  (group-extract-string group index2 index1)))))
 
-(define (match-string string mark #!optional point)
-  (if (unassigned? point) (set! point (current-point)))
-  (let ((group (mark-group mark))
-	(index1 (mark-index mark))
-	(index2 (mark-index point))
-	(length (string-length string)))
-    (define (kernel index1 index2)
-      (let ((pos1 (group-index->position group index1 #!TRUE))
-	    (pos2 (group-index->position group index2 #!FALSE))
-	    (gap-start (group-gap-start group))
-	    (gap-end (group-gap-end group))
-	    (text (group-text group)))
-	(if (and (<= pos1 gap-start) (<= gap-end pos2))
-	    (let ((split (- gap-start pos1)))
-	      (and (substring=? text pos1 gap-start string 0 split)
-		   (substring=? text gap-end pos2 string split length)))
-	    (substring=? text pos1 pos2 string 0 length))))
-    (if (not (eq? group (mark-group point)))
-	(error "MATCH-STRING: Marks not related" mark point))
-    (cond ((= index1 index2) (zero? length))
-	  ((< index1 index2) (kernel index1 index2))
-	  (else (kernel index2 index1)))))
+(define (delete-string mark #!optional point)
+  (let ((point (if (default-object? point) (current-point) point)))
+    (let ((group (mark-group mark))
+	  (index1 (mark-index mark))
+	  (index2 (mark-index point)))
+      (if (not (eq? group (mark-group point)))
+	  (error "DELETE-STRING: Marks not related" mark point))
+      (if (< index1 index2)
+	  (group-delete! group index1 index2)
+	  (group-delete! group index2 index1)))))
 
-(define (upcase-area mark #!optional point)
-  (if (unassigned? point) (set! point (current-point)))
-  (region-transform! (make-region mark point) uppercase-string!))
+(define (match-string string mark #!optional point)
+  (let ((point (if (default-object? point) (current-point) point)))
+    (let ((group (mark-group mark))
+	  (index1 (mark-index mark))
+	  (index2 (mark-index point))
+	  (length (string-length string)))
+      (define (kernel index1 index2)
+	(let ((pos1 (group-index->position group index1 true))
+	      (pos2 (group-index->position group index2 false))
+	      (gap-start (group-gap-start group))
+	      (gap-end (group-gap-end group))
+	      (text (group-text group)))
+	  (if (and (<= pos1 gap-start) (<= gap-end pos2))
+	      (let ((split (- gap-start pos1)))
+		(and (substring=? text pos1 gap-start string 0 split)
+		     (substring=? text gap-end pos2 string split length)))
+	      (substring=? text pos1 pos2 string 0 length))))
+      (if (not (eq? group (mark-group point)))
+	  (error "MATCH-STRING: Marks not related" mark point))
+      (cond ((= index1 index2) (zero? length))
+	    ((< index1 index2) (kernel index1 index2))
+	    (else (kernel index2 index1))))))
 
 (define (downcase-area mark #!optional point)
-  (if (unassigned? point) (set! point (current-point)))
-  (region-transform! (make-region mark point) lowercase-string!))
+  (region-transform!
+   (make-region mark (if (default-object? point) (current-point) point))
+   (lambda (string)
+     (string-downcase! string)
+     string)))
+
+(define (upcase-area mark #!optional point)
+  (region-transform!
+   (make-region mark (if (default-object? point) (current-point) point))
+   (lambda (string)
+     (string-upcase! string)
+     string)))
 
 (define (capitalize-area mark #!optional point)
-  (if (unassigned? point) (set! point (current-point)))
-  (region-transform! (make-region mark point) capitalize-string!))
-
-(define (uppercase-string! string)
-  (string-upcase! string)
-  string)
-
-(define (lowercase-string! string)
-  (string-downcase! string)
-  string)
-
-(define (capitalize-string! string)
-  (string-downcase! string)
-  (string-set! string 0 (char-upcase (string-ref string 0)))
-  string)
-
-(define (current-column)
-  (mark-column (current-point)))
+  (region-transform!
+   (make-region mark (if (default-object? point) (current-point) point))
+   (lambda (string)
+     (string-downcase! string)
+     (string-set! string 0 (char-upcase (string-ref string 0)))
+     string)))
 
 (define (mark-flash mark #!optional type)
-  (if (unassigned? type) (set! type #!FALSE))
-  (cond (*executing-keyboard-macro?*)
-	((not mark) (beep))
+  (cond (*executing-keyboard-macro?* unspecific)
+	((not mark) (editor-beep))
 	((window-mark-visible? (current-window) mark)
-	 (update-alpha-window! #!FALSE)
 	 (with-current-point mark
 	   (lambda ()
-	     (keyboard-active? 50))))
+	     (sit-for 500))))
 	(else
 	 (temporary-message
 	  (let ((start (line-start mark 0))
 		(end (line-end mark 0)))
-	    (cond ((eq? type 'RIGHT) (extract-string mark end))
-		  ((eq? type 'LEFT) (extract-string start mark))
-		  (else (extract-string start end))))))))
+	    (case (and (not (default-object? type)) type)
+	      ((RIGHT) (extract-string mark end))
+	      ((LEFT) (extract-string start mark))
+	      (else (extract-string start end))))))))
+
+(define (sit-for interval)
+  (if (not (keyboard-active? 0))
+      (begin
+       (update-screens! false)
+       (keyboard-active? interval))))
 
 (define (reposition-window-top mark)
-  (if (not (and mark (set-window-start-mark! (current-window) mark #!FALSE)))
-      (beep)))
+  (if (not (and mark (set-window-start-mark! (current-window) mark false)))
+      (editor-beep)))

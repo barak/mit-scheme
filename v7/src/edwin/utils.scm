@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.10 1989/03/14 08:03:41 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -71,12 +73,12 @@
 
 (define char-set:not-graphic
   (char-set-invert char-set:graphic))
-
-(define (read-line)
-  (let ((port (current-input-port)))
-    (let ((string ((access :read-string port) char-set:return)))
-      ((access :discard-char port))
-      string)))
+
+(define (read-line #!optional port)
+  (read-string char-set:return
+	       (if (default-object? port)
+		   (current-input-port)
+		   (guarantee-input-port port))))
 
 (define (y-or-n? . strings)
   (define (loop)
@@ -84,18 +86,32 @@
       (cond ((or (char=? char #\Y)
 		 (char=? char #\Space))
 	     (write-string "Yes")
-	     #!TRUE)
+	     true)
 	    ((or (char=? char #\N)
 		 (char=? char #\Rubout))
 	     (write-string "No")
-	     #!FALSE)
+	     false)
 	    (else
-	     (beep)
+	     (editor-beep)
 	     (loop)))))
   (newline)
-  (write-string (apply string-append strings))
+  (for-each write-string strings)
   (loop))
 
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; End:
+(define (char-controlify char)
+  (make-char (char-code char) (controlify (char-bits char))))
+
+(define (char-metafy char)
+  (make-char (char-code char) (metafy (char-bits char))))
+
+(define (char-control-metafy char)
+  (make-char (char-code char) (controlify (metafy (char-bits char)))))
+
+(define (char-base char)
+  (make-char (char-code char) 0))
+
+(define (controlify i)
+  (if (odd? (quotient i 2)) i (+ i 2)))
+
+(define (metafy i)
+  (if (odd? i) i (1+ i)))

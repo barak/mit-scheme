@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/argred.scm,v 1.27 1989/03/14 07:58:32 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,10 +40,7 @@
 ;;;; Command Argument Reader
 
 (declare (usual-integrations))
-(using-syntax (access edwin-syntax-table edwin-package)
-
-;;;; Description
-;;; 
+
 ;;; 1.  The reader keeps track of:
 ;;;
 ;;; [] The MAGNITUDE of the argument.  If there are no digits, the
@@ -52,34 +51,14 @@
 ;;;    mode, ordinary digits are interpreted as part of the argument;
 ;;;    normally they are self-inserting.
 ;;;
-;;; 2.  It has the following (alterable) parameters:
+;;; 2.  From these, it can compute:
 ;;;
-;;; [] RADIX, which is between 2 and 36 inclusive. (default: 10)
-;;; [] MULTIPLIER-BASE, a non-negative integer. (default: 4)
-;;;
-;;; 3.  From these, it can compute:
-;;;
-;;; [] VALUE = (* MAGNITUDE MULTIPLIER-EXPONENT MULTIPLIER-BASE).
+;;; [] VALUE = (* MAGNITUDE (EXPT 4 MULTIPLIER-EXPONENT)).
 ;;;    If the magnitude is false, then the value is too.
-
-(define with-command-argument-reader)
-(define reset-command-argument-reader!)
-(define command-argument-beginning?)
-(define command-argument-multiplier-exponent)
-(define command-argument-multiplier-only?)
-(define command-argument-negative-only?)
-(define command-argument-negative?)
-(define command-argument-prompt)
-(define command-argument-value)
-(define command-argument-standard-value)
-(define command-argument-self-insert?)
-
-(define command-argument-package
-  (make-environment
 
 ;;;; Commands
 
-(define-command ("^R Universal Argument" argument)
+(define-command ("^R Universal Argument")
   "Increments the argument multiplier and enters Autoarg mode.
 In Autoarg mode, - negates the numeric argument, and the
 digits 0, ..., 9 accumulate it."
@@ -88,29 +67,27 @@ digits 0, ..., 9 accumulate it."
   (update-argument-prompt!)
   (read-and-dispatch-on-char))
 
-(define-command ("^R Argument Digit" argument)
+(define-command ("^R Argument Digit")
   "Sets the numeric argument for the next command.
-Several such digits typed consecutively accumulate in the radix
-specified by the variable COMMAND-ARGUMENT-RADIX (normally 10) to form
+Several such digits typed consecutively accumulate to form
 the argument.  This command should *only* be placed on a character
 which is a digit (modulo control/meta bits)."
   (command-argument-accumulate-digit! (char-base (current-command-char)))
   (update-argument-prompt!)
   (read-and-dispatch-on-char))
 
-(define-command ("^R Negative Argument" argument)
+(define-command ("^R Negative Argument")
   "Negates the numeric argument for the next command.
 If no argument has yet been given, the argument defaults to -1."
   (command-argument-negate!)
   (update-argument-prompt!)
   (read-and-dispatch-on-char))
 
-(set! command-argument-self-insert?
-(named-lambda (command-argument-self-insert? procedure)
-  (and (not *autoargument-mode?*)
-       (or (eq? procedure ^r-autoargument-digit-command)
+(define (command-argument-self-insert? procedure)
+  (and (or (eq? procedure ^r-autoargument-digit-command)
 	   (and (eq? procedure ^r-auto-negative-argument-command)
-		(command-argument-beginning?))))))
+		(command-argument-beginning?)))
+       (not *autoargument-mode?*)))
 
 (define-command ("^R Autoargument Digit" argument)
   "In Autoargument mode, sets numeric argument to the next command.
@@ -145,27 +122,26 @@ or meta bits."
 
 ;;;; Primitives
 
-(set! with-command-argument-reader
-(named-lambda (with-command-argument-reader thunk)
+(define (with-command-argument-reader thunk)
   (fluid-let ((*magnitude*)
 	      (*negative?*)
 	      (*multiplier-exponent*)
+	      (*multiplier-value*)
 	      (*autoargument-mode?*)
 	      (*previous-prompt*))
-    (thunk))))
+    (thunk)))
 
-(set! reset-command-argument-reader!
-(named-lambda (reset-command-argument-reader!)
+(define (reset-command-argument-reader!)
   ;; Call this at the beginning of a command cycle.
   (set! *magnitude* false)
   (set! *negative?* false)
   (set! *multiplier-exponent* 0)
+  (set! *multiplier-value* 1)
   (set! *autoargument-mode?* false)
-  (set! *previous-prompt* "")))
+  (set! *previous-prompt* ""))
 
-(set! command-argument-prompt
-(named-lambda (command-argument-prompt)
-  (or *previous-prompt* (%command-argument-prompt))))
+(define (command-argument-prompt)
+  (or *previous-prompt* (%command-argument-prompt)))
 
 (define *previous-prompt*)
 
@@ -186,68 +162,46 @@ or meta bits."
 	(cond (value (string-append-separated prefix (write-to-string value)))
 	      (*negative?* (string-append-separated prefix "-"))
 	      (else "")))))
-
+
 ;;;; Argument Number
 
 (define *magnitude*)
-(define *radix*)
 (define *negative?*)
 
 (define (command-argument-accumulate-digit! digit-char)
   (set! *multiplier-exponent* 0)
-  (let ((digit (or (char->digit digit-char *radix*)
+  (set! *multiplier-value* 1)
+  (let ((digit (or (char->digit digit-char 10)
 		   (error "Not a valid digit" digit-char))))
     (set! *magnitude*
 	  (if (not *magnitude*)
 	      digit
-	      (+ digit (* *radix* *magnitude*))))))
-
-(define (set-command-argument-radix! n)
-  (if (not (and (integer? n) (<= 2 n 36)))
-      (error "Radix must be an integer between 2 and 36, inclusive" n))
-  (set! *radix* n))
+	      (+ digit (* 10 *magnitude*))))))
 
 (define (command-argument-negate!)
   (set! *multiplier-exponent* 0)
+  (set! *multiplier-value* 1)
   (set! *negative?* (not *negative?*)))
 
 (define (command-argument-magnitude)
   *magnitude*)
 
-(define (command-argument-radix)
-  *radix*)
-
-(set! command-argument-negative?
-(named-lambda (command-argument-negative?)
-  *negative?*))
-
-;; **** Kludge ****
-(set-command-argument-radix! 10)
+(define (command-argument-negative?)
+  *negative?*)
 
 ;;;; Argument Multiplier
 
 (define *multiplier-exponent*)
-(define *multiplier-base*)
+(define *multiplier-value*)
 
 (define (command-argument-increment-multiplier-exponent!)
   (set! *magnitude* false)
   (set! *negative?* false)
-  (set! *multiplier-exponent* (1+ *multiplier-exponent*)))
+  (set! *multiplier-exponent* (1+ *multiplier-exponent*))
+  (set! *multiplier-value* (* 4 *multiplier-value*)))
 
-(set! command-argument-multiplier-exponent
-(named-lambda (command-argument-multiplier-exponent)
-  *multiplier-exponent*))
-
-(define (command-argument-multiplier-base)
-  *multiplier-base*)
-
-(define (set-command-argument-multiplier-base! n)
-  (if (not (and (integer? n) (not (negative? n))))
-      (error "Multiplier Base" n "must be a non-negative integer."))
-  (set! *multiplier-base* n))
-
-;; **** Kludge ****
-(set-command-argument-multiplier-base! 4)
+(define (command-argument-multiplier-exponent)
+  *multiplier-exponent*)
 
 ;;;; Autoargument Mode
 
@@ -258,52 +212,33 @@ or meta bits."
 
 (define (autoargument-mode?)
   *autoargument-mode?*)
-
+
 ;;;; Value
 
-(set! command-argument-standard-value
-(named-lambda (command-argument-standard-value)
+(define (command-argument-standard-value)
   (or (command-argument-value)
-      (and *negative?* -1))))
+      (and *negative?* -1)))
 
-(set! command-argument-value
-(named-lambda (command-argument-value)
+(define (command-argument-value)
   ;; This returns the numeric value of the argument, or false if none.
   (cond (*magnitude*
 	 (* (if *negative?* (- *magnitude*) *magnitude*)
-	    (expt *multiplier-base* *multiplier-exponent*)))
+	    *multiplier-value*))
 	((not (zero? *multiplier-exponent*))
-	 (if *negative?*
-	     (- (expt *multiplier-base* *multiplier-exponent*))
-	     (expt *multiplier-base* *multiplier-exponent*)))
-	(else false))))
+	 (if *negative?* (- *multiplier-value*) *multiplier-value*))
+	(else false)))
 
-(set! command-argument-multiplier-only?
-(named-lambda (command-argument-multiplier-only?)
+(define (command-argument-multiplier-only?)
   (and (not *magnitude*)
        (not (zero? *multiplier-exponent*))
-       *multiplier-exponent*)))
+       *multiplier-exponent*))
 
-(set! command-argument-negative-only?
-(named-lambda (command-argument-negative-only?)
+(define (command-argument-negative-only?)
   (and (not *magnitude*)
        (zero? *multiplier-exponent*)
-       *negative?*)))
+       *negative?*))
 
-(set! command-argument-beginning?
-(named-lambda (command-argument-beginning?)
+(define (command-argument-beginning?)
   (and (not *magnitude*)
        (not *negative?*)
-       (< *multiplier-exponent* 2))))
-
-;;; end COMMAND-ARGUMENT-PACKAGE
-))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: (access command-argument-package edwin-package)
-;;; Scheme Syntax Table: (access edwin-syntax-table edwin-package)
-;;; Tags Table Pathname: (access edwin-tags-pathname edwin-package)
-;;; End:
+       (< *multiplier-exponent* 2)))

@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autosv.scm,v 1.18 1989/03/14 07:58:41 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,15 +40,14 @@
 ;;;; Auto Save
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
 (define-variable "Auto Save Visited File"
   "If not false, auto save into the visited file."
-  #!FALSE)
+  false)
 
 (define-variable "Auto Save Default"
   "If not false, auto save all visited files."
-  #!TRUE)
+  true)
 
 (define-variable "Auto Save Interval"
   "The number of keystrokes between auto saves."
@@ -54,7 +55,7 @@
 
 (define-variable "Delete Auto Save Files"
   "If not false, delete auto save files when normal saves happen."
-  #!FALSE)
+  false)
 
 (define-command ("Auto Save Mode" argument)
   "Toggle Auto Save mode.
@@ -74,27 +75,17 @@ With argument, turn Auto Save mode on iff argument is positive."
       (disable-buffer-auto-save! buffer)))
 
 (define (enable-buffer-auto-save! buffer)
-  (define (set-to-string dirpath string)
-    ;; **** Crock ****
-    (if (> (string-length string) 15) (set-string-length! string 15))
-    (set-buffer-auto-save-pathname!
-     buffer
-     (merge-pathnames dirpath
-		      (string->pathname (string-append "&" string)))))
-  (let ((pathname (buffer-pathname buffer)))
-    (cond ((not pathname)
-	   (set-to-string (working-directory-pathname)
-			  (string-append "%" (buffer-name buffer))))
-	  ((ref-variable "Auto Save Visited File")
-	   (set-buffer-auto-save-pathname! buffer pathname))
-	  (else
-	   (set-to-string
-	    (pathname-extract pathname 'DEVICE 'DIRECTORY)
-	    (pathname->string (pathname-extract pathname 'NAME 'TYPE)))))))
+  (set-buffer-auto-save-pathname!
+   buffer
+   (let ((pathname (buffer-pathname buffer)))
+     (if (and pathname
+	      (ref-variable "Auto Save Visited File"))
+	 pathname
+	 (os/auto-save-pathname pathname (buffer-name buffer))))))
 
 (define (disable-buffer-auto-save! buffer)
-  (set-buffer-auto-save-pathname! buffer #!FALSE))
-
+  (set-buffer-auto-save-pathname! buffer false))
+
 (define *auto-save-keystroke-count*)
 
 (define (do-auto-save)
@@ -122,6 +113,3 @@ With argument, turn Auto Save mode on iff argument is positive."
 	   (buffer-auto-save-pathname buffer)
 	   (file-exists? (buffer-auto-save-pathname buffer)))
       (delete-file (buffer-auto-save-pathname buffer))))
-
-;;; end USING-SYNTAX
-)

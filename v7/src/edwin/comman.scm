@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.56 1989/03/14 07:59:42 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,7 +40,6 @@
 ;;;; Commands and Variables
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
 (define-named-structure "Command"
   name
@@ -59,17 +60,14 @@
 (define editor-commands
   (make-string-table 500))
 
-(define-unparser %command-tag
-  (lambda (command)
-    (write-string "Command ")
-    (write (command-name command))))
-
 (define (name->command name)
   (or (string-table-get editor-commands name)
-      (make-command name ""
+      (make-command name
+		    ""
 		    (lambda (#!optional argument)
+		      argument		;ignore
 		      (editor-error "Undefined command: \"" name "\"")))))
-
+
 (define-named-structure "Variable"
   name
   description
@@ -89,21 +87,26 @@
 (define editor-variables
   (make-string-table 50))
 
-(define-unparser %variable-tag
-  (lambda (variable)
-    (write-string "Variable ")
-    (write (variable-name variable))))
-
 (define (name->variable name)
   (or (string-table-get editor-variables name)
       (make-variable name "" 'UNASSIGNED-VARIABLE)))
 
-(define (variable-ref variable)
-  (lexical-reference edwin-package (variable-symbol variable)))
-
+(define-integrable (variable-ref variable)
+  (lexical-reference variable-environment (variable-symbol variable)))
 
 (define (variable-set! variable #!optional value)
-  (lexical-assignment edwin-package (variable-symbol variable) (set! value)))
+  (lexical-assignment variable-environment
+		      (variable-symbol variable)
+		      (if (default-object? value)
+			  (unmap-reference-trap
+			   (make-unassigned-reference-trap))
+			  value)))
 
-;;; end USING-SYNTAX
-)
+(define-integrable (variable-unbound? variable)
+  (lexical-unbound? variable-environment (variable-symbol variable)))
+
+(define-integrable (variable-unassigned? variable)
+  (lexical-unassigned? variable-environment (variable-symbol variable)))
+
+(define variable-environment
+  (->environment '(EDWIN)))

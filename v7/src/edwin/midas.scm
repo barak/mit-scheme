@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/midas.scm,v 1.12 1989/03/14 08:01:31 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -38,10 +40,8 @@
 ;;;; Midas Mode
 
 (declare (usual-integrations))
-
-(using-syntax edwin-syntax-table
 
-(define-command ("Midas Mode" argument)
+(define-command ("Midas Mode")
   "Enter Midas mode."
   (set-current-major-mode! midas-mode))
 
@@ -49,8 +49,7 @@
   "Major mode for editing assembly code."
   (local-set-variable! "Syntax Table" midas-mode:syntax-table)
   (local-set-variable! "Comment Column" 40)
-  (local-set-variable! "Comment Locator Hook"
-		       (access lisp-comment-locate lisp-indentation-package))
+  (local-set-variable! "Comment Locator Hook" lisp-comment-locate)
   (local-set-variable! "Comment Indent Hook" midas-comment-indentation)
   (local-set-variable! "Comment Start" ";")
   (local-set-variable! "Comment End" "")
@@ -61,7 +60,7 @@
 
 (define midas-mode:syntax-table (make-syntax-table))
 (modify-syntax-entry! midas-mode:syntax-table #\; "<   ")
-(modify-syntax-entry! midas-mode:syntax-table char:newline ">   ")
+(modify-syntax-entry! midas-mode:syntax-table #\newline ">   ")
 (modify-syntax-entry! midas-mode:syntax-table #\. "w   ")
 (modify-syntax-entry! midas-mode:syntax-table #\' "'   ")
 (modify-syntax-entry! midas-mode:syntax-table #\$ "'   ")
@@ -73,11 +72,3 @@
       0
       (max (1+ (mark-column (horizontal-space-start mark)))
 	   comment-column)))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; End:

@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufset.scm,v 1.6 1989/03/14 07:59:00 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,7 +40,6 @@
 ;;;; Buffer Set Abstraction
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
 (define-named-structure "Bufferset"
   buffer-list
@@ -54,24 +55,31 @@
 
 (define (bufferset-select-buffer! bufferset buffer)
   (if (memq buffer (bufferset-buffer-list bufferset))
-      (vector-set! bufferset bufferset-index:buffer-list
+      (vector-set! bufferset
+		   bufferset-index:buffer-list
 		   (cons buffer
-			 (delq! buffer (bufferset-buffer-list bufferset))))))
+			 (delq! buffer (bufferset-buffer-list bufferset)))))
+  unspecific)
 
 (define (bufferset-bury-buffer! bufferset buffer)
   (if (memq buffer (bufferset-buffer-list bufferset))
-      (vector-set! bufferset bufferset-index:buffer-list
+      (vector-set! bufferset
+		   bufferset-index:buffer-list
 		   (append! (delq! buffer (bufferset-buffer-list bufferset))
-			    (list buffer)))))
+			    (list buffer))))
+  unspecific)
 
 (define (bufferset-guarantee-buffer! bufferset buffer)
   (if (not (memq buffer (bufferset-buffer-list bufferset)))
-      (begin (string-table-put! (bufferset-names bufferset)
-				(buffer-name buffer)
-				buffer)
-	     (vector-set! bufferset bufferset-index:buffer-list
-			  (append! (bufferset-buffer-list bufferset)
-				   (list buffer))))))
+      (begin
+	(string-table-put! (bufferset-names bufferset)
+			   (buffer-name buffer)
+			   buffer)
+	(vector-set! bufferset
+		     bufferset-index:buffer-list
+		     (append! (bufferset-buffer-list bufferset)
+			      (list buffer)))))
+  unspecific)
 
 (define (bufferset-find-buffer bufferset name)
   (string-table-get (bufferset-names bufferset) name))
@@ -81,9 +89,9 @@
       (error "Attempt to re-create buffer" name))
   (let ((buffer (make-buffer name)))
     (string-table-put! (bufferset-names bufferset) name buffer)
-    (vector-set! bufferset bufferset-index:buffer-list
-		 (append! (bufferset-buffer-list bufferset)
-			  (list buffer)))
+    (vector-set! bufferset
+		 bufferset-index:buffer-list
+		 (append! (bufferset-buffer-list bufferset) (list buffer)))
     buffer))
 
 (define (bufferset-find-or-create-buffer bufferset name)
@@ -93,7 +101,8 @@
 (define (bufferset-kill-buffer! bufferset buffer)
   (if (not (memq buffer (bufferset-buffer-list bufferset)))
       (error "Attempt to kill unknown buffer" buffer))
-  (vector-set! bufferset bufferset-index:buffer-list
+  (vector-set! bufferset
+	       bufferset-index:buffer-list
 	       (delq! buffer (bufferset-buffer-list bufferset)))
   (string-table-remove! (bufferset-names bufferset) (buffer-name buffer)))
 
@@ -106,6 +115,3 @@
     (string-table-remove! names (buffer-name buffer))
     (set-buffer-name! buffer new-name)
     (string-table-put! names new-name buffer)))
-
-;;; end USING-SYNTAX
-)

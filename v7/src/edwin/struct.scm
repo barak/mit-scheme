@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1985 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.65 1989/03/14 08:03:01 cph Exp $
+;;;
+;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,7 +40,6 @@
 ;;;; Text Data Structures
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
 ;;; This file describes the data structures used to represent and
 ;;; manipulate text within the editor.
@@ -88,16 +89,23 @@
 ;;;; Groups
 
 (define-named-structure "Group"
-  text gap-start gap-length gap-end
-  marks start-mark end-mark read-only?
-  display-start display-end
-  insert-daemons delete-daemons clip-daemons
-  undo-data modified? point)
-
-(define-unparser %group-tag
-  (lambda (group)
-    (write-string "Group ")
-    (write (primitive-datum group))))
+  text
+  gap-start
+  gap-length
+  gap-end
+  marks
+  start-mark
+  end-mark
+  read-only?
+  display-start
+  display-end
+  insert-daemons
+  delete-daemons
+  clip-daemons
+  undo-data
+  modified?
+  point
+  )
 
 (define (make-group string)
   (let ((group (%make-group))
@@ -107,48 +115,43 @@
     (vector-set! group group-index:gap-length 0)
     (vector-set! group group-index:gap-end n)
     (vector-set! group group-index:marks '())
-    (let ((start (%make-permanent-mark group 0 #!FALSE)))
+    (let ((start (%make-permanent-mark group 0 false)))
       (vector-set! group group-index:start-mark start)
       (vector-set! group group-index:display-start start))
-    (let ((end (%make-permanent-mark group n #!TRUE)))
+    (let ((end (%make-permanent-mark group n true)))
       (vector-set! group group-index:end-mark end)
       (vector-set! group group-index:display-end end))
-    (vector-set! group group-index:read-only? #!FALSE)
+    (vector-set! group group-index:read-only? false)
     (vector-set! group group-index:insert-daemons '())
     (vector-set! group group-index:delete-daemons '())
     (vector-set! group group-index:clip-daemons '())
-    (vector-set! group group-index:undo-data #!FALSE)
-    (vector-set! group group-index:modified? #!FALSE)
-    (vector-set! group group-index:point (%make-permanent-mark group 0 #!TRUE))
+    (vector-set! group group-index:undo-data false)
+    (vector-set! group group-index:modified? false)
+    (vector-set! group group-index:point (%make-permanent-mark group 0 true))
     group))
 
-(declare (integrate group-start-index group-end-index
-		    group-start-index? group-end-index?))
-
 (define (group-length group)
   (- (string-length (group-text group)) (group-gap-length group)))
 
-(define (group-start-index group)
-  (declare (integrate group))
+(define-integrable (group-start-index group)
   (mark-index (group-start-mark group)))
 
-(define (group-end-index group)
-  (declare (integrate group))
+(define-integrable (group-end-index group)
   (mark-index (group-end-mark group)))
 
-(define (group-start-index? group index)
-  (declare (integrate group index))
+(define-integrable (group-start-index? group index)
   (<= index (group-start-index group)))
 
-(define (group-end-index? group index)
-  (declare (integrate group index))
+(define-integrable (group-end-index? group index)
   (>= index (group-end-index group)))
 
-(define (set-group-read-only! group)
-  (vector-set! group group-index:read-only? #!TRUE))
+(define-integrable (set-group-read-only! group)
+  (vector-set! group group-index:read-only? true)
+  unspecific)
 
-(define (set-group-writeable! group)
-  (vector-set! group group-index:read-only? #!FALSE))
+(define-integrable (set-group-writeable! group)
+  (vector-set! group group-index:read-only? false)
+  unspecific)
 
 (define (group-region group)
   (%make-region (group-start-mark group) (group-end-mark group)))
@@ -158,7 +161,8 @@
 	 (- position (group-gap-length group)))
 	((> position (group-gap-start group))
 	 (group-gap-start group))
-	(else position)))
+	(else
+	 position)))
 
 (define (group-index->position group index left-inserting?)
   (cond ((> index (group-gap-start group))
@@ -167,16 +171,20 @@
 	 (if left-inserting?
 	     (group-gap-end group)
 	     (group-gap-start group)))
-	(else index)))
+	(else
+	 index)))
 
-(define (set-group-undo-data! group undo-data)
-  (vector-set! group group-index:undo-data undo-data))
+(define-integrable (set-group-undo-data! group undo-data)
+  (vector-set! group group-index:undo-data undo-data)
+  unspecific)
 
-(define (set-group-modified! group sense)
-  (vector-set! group group-index:modified? sense))
+(define-integrable (set-group-modified! group sense)
+  (vector-set! group group-index:modified? sense)
+  unspecific)
 
-(define (set-group-point! group point)
-  (vector-set! group group-index:point (mark-left-inserting point)))
+(define-integrable (set-group-point! group point)
+  (vector-set! group group-index:point (mark-left-inserting point))
+  unspecific)
 
 (define (with-narrowed-region! region thunk)
   (with-group-text-clipped! (region-group region)
@@ -185,81 +193,88 @@
 			    thunk))
 
 (define (with-group-text-clipped! group start end thunk)
-  (define old-text-start)
-  (define old-text-end)
-  (define new-text-start (%make-permanent-mark group start #!FALSE))
-  (define new-text-end (%make-permanent-mark group end #!TRUE))
-  (dynamic-wind (lambda ()
-		  (set! old-text-start (group-start-mark group))
-		  (set! old-text-end (group-end-mark group))
-		  (vector-set! group group-index:start-mark new-text-start)
-		  (vector-set! group group-index:end-mark new-text-end))
-		thunk
-		(lambda ()
-		  (set! new-text-start (group-start-mark group))
-		  (set! new-text-end (group-end-mark group))
-		  (vector-set! group group-index:start-mark old-text-start)
-		  (vector-set! group group-index:end-mark old-text-end))))
+  (let ((old-text-start)
+	(old-text-end)
+	(new-text-start (%make-permanent-mark group start false))
+	(new-text-end (%make-permanent-mark group end true)))
+    (dynamic-wind (lambda ()
+		    (set! old-text-start (group-start-mark group))
+		    (set! old-text-end (group-end-mark group))
+		    (vector-set! group group-index:start-mark new-text-start)
+		    (vector-set! group group-index:end-mark new-text-end)
+		    unspecific)
+		  thunk
+		  (lambda ()
+		    (set! new-text-start (group-start-mark group))
+		    (set! new-text-end (group-end-mark group))
+		    (vector-set! group group-index:start-mark old-text-start)
+		    (vector-set! group group-index:end-mark old-text-end)
+		    unspecific))))
 
-(define (record-insertion! group start end)
-  (define (loop daemons)
+(define (invoke-group-daemons! daemons group start end)
+  (let loop ((daemons daemons))
     (if (not (null? daemons))
-	(begin ((car daemons) group start end)
-	       (loop (cdr daemons)))))
-  (loop (group-insert-daemons group)))
+	(begin
+	  ((car daemons) group start end)
+	  (loop (cdr daemons))))))
+
+(define (record-insertion! group start end)
+  (invoke-group-daemons! (group-insert-daemons group) group start end))
 
 (define (add-group-insert-daemon! group daemon)
-  (vector-set! group group-index:insert-daemons
-	       (cons daemon (vector-ref group group-index:insert-daemons))))
+  (vector-set! group
+	       group-index:insert-daemons
+	       (cons daemon (vector-ref group group-index:insert-daemons)))
+  unspecific)
 
 (define (remove-group-insert-daemon! group daemon)
-  (vector-set! group group-index:insert-daemons
-	       (delq! daemon (vector-ref group group-index:insert-daemons))))
+  (vector-set! group
+	       group-index:insert-daemons
+	       (delq! daemon (vector-ref group group-index:insert-daemons)))
+  unspecific)
 
 (define (record-deletion! group start end)
-  (define (loop daemons)
-    (if (not (null? daemons))
-	(begin ((car daemons) group start end)
-	       (loop (cdr daemons)))))
-  (loop (group-delete-daemons group)))
+  (invoke-group-daemons! (group-delete-daemons group) group start end))
 
 (define (add-group-delete-daemon! group daemon)
-  (vector-set! group group-index:delete-daemons
-	       (cons daemon (vector-ref group group-index:delete-daemons))))
+  (vector-set! group
+	       group-index:delete-daemons
+	       (cons daemon (vector-ref group group-index:delete-daemons)))
+  unspecific)
 
 (define (remove-group-delete-daemon! group daemon)
-  (vector-set! group group-index:delete-daemons
-	       (delq! daemon (vector-ref group group-index:delete-daemons))))
+  (vector-set! group
+	       group-index:delete-daemons
+	       (delq! daemon (vector-ref group group-index:delete-daemons)))
+  unspecific)
 
 (define (record-clipping! group start end)
-  (define (loop daemons)
-    (if (not (null? daemons))
-	(begin ((car daemons) group start end)
-	       (loop (cdr daemons)))))
-  (loop (group-clip-daemons group)))
+  (invoke-group-daemons! (group-clip-daemons group) group start end))
 
 (define (add-group-clip-daemon! group daemon)
-  (vector-set! group group-index:clip-daemons
-	       (cons daemon (vector-ref group group-index:clip-daemons))))
+  (vector-set! group
+	       group-index:clip-daemons
+	       (cons daemon (vector-ref group group-index:clip-daemons)))
+  unspecific)
 
 (define (remove-group-clip-daemon! group daemon)
-  (vector-set! group group-index:clip-daemons
-	       (delq! daemon (vector-ref group group-index:clip-daemons))))
+  (vector-set! group
+	       group-index:clip-daemons
+	       (delq! daemon (vector-ref group group-index:clip-daemons)))
+  unspecific)
 
 ;;;; Marks
 
 (define-named-structure "Mark"
   group position left-inserting?)
 
-(declare (integrate make-mark %make-permanent-mark %%make-mark
-		    %set-mark-position! mark~))
+(define (guarantee-mark mark procedure-name)
+  (if (not (mark? mark)) (error "not a mark" mark procedure-name)))
 
-(define (make-mark group index)
-  (declare (integrate group index))
-  (%make-temporary-mark group index #!TRUE))
+(define-integrable (make-mark group index)
+  (%make-temporary-mark group index true))
 
-(define (%make-permanent-mark group index left-inserting?)
-  (declare (integrate group index left-inserting?))
+(define-integrable (%make-permanent-mark group index left-inserting?)
   (mark-permanent! (%make-temporary-mark group index left-inserting?)))
 
 (define (%make-temporary-mark group index left-inserting?)
@@ -267,8 +282,7 @@
 	       (group-index->position group index left-inserting?)
 	       left-inserting?))
 
-(define (%%make-mark group position left-inserting?)
-  (declare (integrate group position left-inserting?))
+(define-integrable (%%make-mark group position left-inserting?)
   (let ((mark (%make-mark)))
     (vector-set! mark mark-index:group group)
     (vector-set! mark mark-index:position position)
@@ -278,78 +292,54 @@
 (define (mark-index mark)
   (group-position->index (mark-group mark) (mark-position mark)))
 
-(define (%set-mark-position! mark position)
-  (declare (integrate mark position))
-  (vector-set! mark mark-index:position position))
+(define-integrable (%set-mark-position! mark position)
+  (vector-set! mark mark-index:position position)
+  unspecific)
 
-(define (mark~ mark1 mark2)
-  (declare (integrate mark1 mark2))
+(define-integrable (mark~ mark1 mark2)
   (eq? (mark-group mark1) (mark-group mark2)))
+
+(define-integrable (mark/~ mark1 mark2)
+  (not (mark~ mark1 mark2)))
 
 (define (mark-right-inserting mark)
   (mark-permanent!
    (if (mark-left-inserting? mark)
-       (%make-temporary-mark (mark-group mark) (mark-index mark) #!FALSE)
+       (%make-temporary-mark (mark-group mark) (mark-index mark) false)
        mark)))
 
 (define (mark-left-inserting mark)
   (mark-permanent!
    (if (mark-left-inserting? mark)
        mark
-       (%make-temporary-mark (mark-group mark) (mark-index mark) #!TRUE))))
-
+       (%make-temporary-mark (mark-group mark) (mark-index mark) true))))
+
 ;;; The marks list is cleaned every time that FOR-EACH-MARK! is
 ;;; called.  It may be necessary to do this a little more often.
 
-;;; Group marks is a weak list of marks.
-
-(define weak-cons
-  (let ((weak-cons-type (microcode-type 'WEAK-CONS)))
-    (named-lambda (weak-cons car cdr)
-      (system-pair-cons weak-cons-type car cdr))))
-
-(define %weak-car system-pair-car)
-(define %weak-cdr system-pair-cdr)
-(define %weak-set-cdr! system-pair-set-cdr!)
-
-(define (weak-member? object weak-list)
-  (declare (integrate %weak-car %weak-cdr))
-  (cond ((null? weak-list) #f)
-	((eq? object (%weak-car weak-list)) #t)
-	(else (weak-member? object (%weak-cdr weak-list)))))
-
 (define (mark-permanent! mark)
-  (let ((marks (group-marks (mark-group mark))))
-    (if (not (weak-member? mark marks))
-	(vector-set! (mark-group mark) group-index:marks 
-		     (weak-cons mark marks))))
+  (let ((group (mark-group mark)))
+    (let ((marks (group-marks group)))
+      (if (not (weak-memq mark marks))
+	  (vector-set! group group-index:marks (weak-cons mark marks)))))
   mark)
 
 (define (for-each-mark group procedure)
-  (declare (integrate %weak-car %weak-cdr %weak-set-cdr))
-  (define (loop-1 marks)
+  (let loop
+      ((marks (group-marks group))
+       (set-holder!
+	(lambda (new-marks) (vector-set! group group-index:marks new-marks))))
     (if (not (null? marks))
-	(let ((mark (%weak-car marks)))
-	  (if mark
-	      (begin (procedure mark)
-		     (loop-2 marks (%weak-cdr marks)))
-	      (begin (vector-set! group group-index:marks (%weak-cdr marks))
-		     (loop-1 (%weak-cdr marks)))))))
-
-  (define (loop-2 previous marks)
-    (if (not (null? marks))
-	(let ((mark (%weak-car marks)))
-	  (if mark
-	      (begin (procedure mark)
-		     (loop-2 marks (%weak-cdr marks)))
-	      (begin (%weak-set-cdr! previous (%weak-cdr (%weak-cdr previous)))
-		     (loop-2 previous (%weak-cdr previous)))))))
-
-  (loop-1 (group-marks group)))
+	(loop (weak-cdr marks)
+	      (let ((mark (weak-car marks)))
+		(if mark
+		    (begin
+		      (procedure mark)
+		      (lambda (new-cdr) (weak-set-cdr! marks new-cdr)))
+		    (begin
+		      (set-holder! (weak-cdr marks))
+		      set-holder!)))))))
 
-(define (mark/~ mark1 mark2)
-  (not (mark~ mark1 mark2)))
-
 (define (mark= mark1 mark2)
   (and (mark~ mark1 mark2)
        (= (mark-index mark1) (mark-index mark2))))
@@ -374,14 +364,10 @@
   (and (mark~ mark1 mark2)
        (>= (mark-index mark1) (mark-index mark2))))
 
-(declare (integrate group-start group-end))
-
-(define (group-start mark)
-  (declare (integrate mark))
+(define-integrable (group-start mark)
   (group-start-mark (mark-group mark)))
 
-(define (group-end mark)
-  (declare (integrate mark))
+(define-integrable (group-end mark)
   (group-end-mark (mark-group mark)))
 
 (define (group-start? mark)
@@ -389,32 +375,22 @@
 
 (define (group-end? mark)
   (group-end-index? (mark-group mark) (mark-index mark)))
-
+
 ;;;; Regions
 
-(declare (integrate %make-region region-start region-end))
-
-(define %make-region cons)
-(define region-start car)
-(define region-end cdr)
+(define-integrable %make-region cons)
+(define-integrable region-start car)
+(define-integrable region-end cdr)
 
 (define (make-region start end)
   (cond ((mark<= start end) (%make-region start end))
 	((mark<= end start) (%make-region end start))
 	(else (error "Marks not related" start end))))
-(declare (integrate region-group region-start-index region-end-index))
-
-(define (region-group region)
-  (declare (integrate region))
+(define-integrable (region-group region)
   (mark-group (region-start region)))
 
-(define (region-start-index region)
-  (declare (integrate region))
+(define-integrable (region-start-index region)
   (mark-index (region-start region)))
 
-(define (region-end-index region)
-  (declare (integrate region))
+(define-integrable (region-end-index region)
   (mark-index (region-end region)))
-
-;;; end USING-SYNTAX
-)

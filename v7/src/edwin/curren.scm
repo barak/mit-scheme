@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.80 1989/03/14 08:00:13 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -37,115 +39,84 @@
 
 ;;;; Current State
 
-(declare (usual-integrations)
-	 )
-(using-syntax edwin-syntax-table
+(declare (usual-integrations))
 
 ;;;; Windows
 
-(define (current-window)
-  ((access editor-frame-selected-window window-package) (current-frame)))
+(define-integrable (current-window)
+  (editor-frame-selected-window (current-editor-frame)))
 
-(define (window0)
-  ((access editor-frame-window0 window-package) (current-frame)))
+(define-integrable (current-window? window)
+  (eq? window (current-window)))
 
-(define (typein-window)
-  ((access editor-frame-typein-window window-package) (current-frame)))
+(define-integrable (window0)
+  (editor-frame-window0 (current-editor-frame)))
 
-(define (typein-window? window)
+(define-integrable (typein-window)
+  (editor-frame-typein-window (current-editor-frame)))
+
+(define-integrable (typein-window? window)
   (eq? window (typein-window)))
 
 (define (select-window window)
   (without-interrupts
    (lambda ()
-     (exit-buffer (current-buffer))
-     ((access editor-frame-select-window! window-package)
-      (current-frame)
-      window)
-     (enter-buffer (window-buffer window)))))
+     (let ((frame (current-editor-frame)))
+       (%wind-local-bindings!
+	(window-buffer (editor-frame-selected-window frame)))
+       (editor-frame-select-window! frame window))
+     (let ((buffer (window-buffer window)))
+       (%wind-local-bindings! buffer)
+       (perform-buffer-initializations! buffer)
+       (bufferset-select-buffer! (current-bufferset) buffer)))))
 
-(define (select-cursor window)
-  ((access editor-frame-select-cursor! window-package) (current-frame) window))
-
-(define ((window-buffer-setter enter-buffer exit-buffer) window buffer)
-  (without-interrupts
-   (lambda ()
-     (let ((current (current-window)))
-       (if (eq? window current)
-	   (begin (exit-buffer (window-buffer current))
-		  ((access set-window-buffer! window-package) window buffer)
-		  (enter-buffer buffer))
-	   ((access set-window-buffer! window-package) window buffer))))))
+(define-integrable (select-cursor window)
+  (editor-frame-select-cursor! (current-editor-frame) window))
 
 (define (window-list)
   (let ((window0 (window0)))
-    (define (loop window)
-      (if (eq? window window0)
-	  (list window)
-	  (cons window (loop (window1+ window)))))
-    (loop (window1+ window0))))
+    (let loop ((window (window1+ window0)))
+      (cons window
+	    (if (eq? window window0)
+		'()
+		(loop (window1+ window)))))))
 
 (define (window-visible? window)
   (or (typein-window? window)
       (let ((window0 (window0)))
-	(define (loop window*)
+	(let loop ((window* (window1+ window0)))
 	  (or (eq? window window*)
 	      (and (not (eq? window* window0))
-		   (loop (window1+ window*)))))
-	(loop (window1+ window0)))))
-
-(define other-window
-  (let ()
-    (define (+loop n window)
-      (if (zero? n)
-	  window
-	  (+loop (-1+ n)
-		 (if (typein-window? window)
-		     (window0)
-		     (let ((window (window1+ window)))
+		   (loop (window1+ window*))))))))
+
+(define (other-window #!optional n)
+  (let ((n (if (or (default-object? n) (not n)) 1 n))
+	(window (current-window)))
+    (cond ((positive? n)
+	   (let loop ((n n) (window window))
+	     (if (zero? n)
+		 window
+		 (loop (-1+ n)
+		       (if (typein-window? window)
+			   (window0)
+			   (let ((window (window1+ window)))
+			     (if (and (within-typein-edit?)
+				      (eq? window (window0)))
+				 (typein-window)
+				 window)))))))
+	  ((negative? n)
+	   (let loop ((n n) (window window))
+	     (if (zero? n)
+		 window
+		 (loop (1+ n)
 		       (if (and (within-typein-edit?)
 				(eq? window (window0)))
 			   (typein-window)
-			   window))))))
-    (define (-loop n window)
-      (if (zero? n)
-	  window
-	  (-loop (1+ n)
-		 (if (and (within-typein-edit?)
-			  (eq? window (window0)))
-		     (typein-window)
-		     (window-1+ (if (typein-window? window)
-				    (window0)
-				    window))))))
-    (named-lambda (other-window #!optional n)
-      (if (or (unassigned? n) (not n)) (set! n 1))
-      (cond ((positive? n) (+loop n (current-window)))
-	    ((negative? n) (-loop n (current-window)))
-	    (else (current-window))))))
-
-(define (window-delete! window)
-  (if (typein-window? window)
-      (editor-error "Attempt to delete the typein window"))
-  (if (window-has-no-neighbors? window)
-      (editor-error "Attempt to delete only window"))
-  (if (eq? window (current-window))
-      (begin (select-window (window1+ window))
-	     (select-window ((access window-delete! window-package) window)))
-      ((access window-delete! window-package) window)))
-
-(define (window-grow-horizontally! window n)
-  (if (typein-window? window)
-      (editor-error "Can't grow the typein window"))
-  (if (not (window-has-horizontal-neighbor? window))
-      (editor-error "Can't grow this window horizontally"))
-  ((access window-grow-horizontally! window-package) window n))
-
-(define (window-grow-vertically! window n)
-  (if (typein-window? window)
-      (editor-error "Can't grow the typein window"))
-  (if (not (window-has-vertical-neighbor? window))
-      (editor-error "Can't grow this window vertically"))
-  ((access window-grow-vertically! window-package) window n))
+			   (window-1+ (if (typein-window? window)
+					  (window0)
+					  window)))))))
+	  (else
+	   window))))
 
 ;;;; Buffers
 
@@ -164,63 +135,8 @@
 (define-integrable (previous-buffer)
   (other-buffer (current-buffer)))
 
-(define-integrable (select-buffer buffer)
-  (set-window-buffer! (current-window) buffer))
-
-(define-integrable (select-buffer-no-record buffer)
-  (set-window-buffer-no-record! (current-window) buffer))
-
-(define-integrable (select-buffer-in-window buffer window)
-  (set-window-buffer! window buffer))
-
-(define (select-buffer-other-window buffer)
-  (define (expose-buffer window)
-    (select-window window)
-    (select-buffer buffer))
-
-  (let ((window (current-window)))
-    (if (window-has-no-neighbors? window)
-	(expose-buffer (window-split-vertically! window #!FALSE))
-	(let ((window* (get-buffer-window buffer)))
-	  (if (and window* (not (eq? window window*)))
-	      (begin (set-window-point! window* (buffer-point buffer))
-		     (select-window window*))
-	      (expose-buffer (window1+ window)))))))
-
-(define (bury-buffer buffer)
-  (bufferset-bury-buffer! (current-bufferset) buffer))
-
-(define (enter-buffer buffer)
-  (bufferset-select-buffer! (current-bufferset) buffer)
-  (%wind-local-bindings! buffer)
-  (perform-buffer-initializations! buffer))
-
-(define (exit-buffer buffer)
-  (bufferset-select-buffer! (current-bufferset) buffer)
-  (%wind-local-bindings! buffer))
-
-(define set-window-buffer!
-  (window-buffer-setter enter-buffer exit-buffer))
-
-(define (enter-buffer-no-record buffer)
-  (%wind-local-bindings! buffer)
-  (perform-buffer-initializations! buffer))
-
-(define (exit-buffer-no-record buffer)
-  (%wind-local-bindings! buffer))
-
-(define set-window-buffer-no-record!
-  (window-buffer-setter enter-buffer-no-record exit-buffer-no-record))
-
-(define (with-selected-buffer buffer thunk)
-  (define (switch)
-    (let ((new-buffer (set! buffer (current-buffer))))
-      (if (buffer-alive? new-buffer)
-	  (select-buffer new-buffer))))
-  (dynamic-wind switch thunk switch))
-
 (define (other-buffer buffer)
-  (define (loop less-preferred buffers)
+  (let loop ((less-preferred false) (buffers (buffer-list)))
     (cond ((null? buffers)
 	   less-preferred)
 	  ((or (eq? buffer (car buffers))
@@ -229,8 +145,10 @@
 	  ((buffer-visible? (car buffers))
 	   (loop (or less-preferred (car buffers)) (cdr buffers)))
 	  (else
-	   (car buffers))))
-  (loop #!FALSE (buffer-list)))
+	   (car buffers)))))
+
+(define-integrable (bury-buffer buffer)
+  (bufferset-bury-buffer! (current-bufferset) buffer))
 
 (define-integrable (find-buffer name)
   (bufferset-find-buffer (current-bufferset) name))
@@ -241,17 +159,66 @@
 (define-integrable (find-or-create-buffer name)
   (bufferset-find-or-create-buffer (current-bufferset) name))
 
+(define-integrable (rename-buffer buffer new-name)
+  (bufferset-rename-buffer (current-bufferset) buffer new-name))
+
 (define (kill-buffer buffer)
   (if (buffer-visible? buffer)
       (let ((new-buffer
 	     (or (other-buffer buffer)
 		 (error "Buffer to be killed has no replacement" buffer))))
 	(for-each (lambda (window)
-		    (set-window-buffer! window new-buffer))
+		    (set-window-buffer! window new-buffer false))
 		  (buffer-windows buffer))))  (bufferset-kill-buffer! (current-bufferset) buffer))
+
+(define-integrable (select-buffer buffer)
+  (set-window-buffer! (current-window) buffer true))
 
-(define-integrable (rename-buffer buffer new-name)
-  (bufferset-rename-buffer (current-bufferset) buffer new-name))
+(define-integrable (select-buffer-no-record buffer)
+  (set-window-buffer! (current-window) buffer false))
+
+(define-integrable (select-buffer-in-window buffer window)
+  (set-window-buffer! window buffer true))
+
+(define (set-window-buffer! window buffer record?)
+  (without-interrupts
+   (lambda ()
+     (if (current-window? window)
+	 (begin
+	   (%wind-local-bindings! (window-buffer window))
+	   (%set-window-buffer! window buffer)
+	   (%wind-local-bindings! buffer)
+	   (perform-buffer-initializations! buffer)	   (if record? (bufferset-select-buffer! (current-bufferset) buffer)))
+	 (%set-window-buffer! window buffer)))))
+(define (with-selected-buffer buffer thunk)
+  (let ((old-buffer))
+    (dynamic-wind (lambda ()
+		    (let ((window (current-window)))
+		      (set! old-buffer (window-buffer window))
+		      (if (buffer-alive? buffer)
+			  (set-window-buffer! window buffer true)))
+		    (set! buffer)
+		    unspecific)
+		  thunk
+		  (lambda ()
+		    (let ((window (current-window)))
+		      (set! buffer (window-buffer window))
+		      (if (buffer-alive? old-buffer)
+			  (set-window-buffer! window old-buffer true)))
+		    (set! old-buffer)
+		    unspecific))))
+
+(define (select-buffer-other-window buffer)
+  (let ((window
+	 (let ((window (current-window)))
+	   (if (window-has-no-neighbors? window)
+	       (window-split-vertically! window false)
+	       (or (list-search-negative (buffer-windows buffer)
+		     (lambda (window*)
+		       (eq? window window*)))
+		   (window1+ window))))))
+    (select-window window)
+    (set-window-buffer! window buffer true)))
 
 ;;;; Point
 
@@ -269,9 +236,23 @@
       (%set-buffer-point! buffer mark)))
 
 (define (with-current-point point thunk)
-  (define (switch)
-    (set-current-point! (set! point (current-point))))
-  (dynamic-wind switch thunk switch))
+  (let ((old-point))
+    (dynamic-wind (lambda ()
+		    (let ((window (current-window)))
+		      (set! old-point (window-point window))
+		      (set-window-point! window point))
+		    (set! point)
+		    unspecific)
+		  thunk
+		  (lambda ()
+		    (let ((window (current-window)))
+		      (set! point (window-point window))
+		      (set-window-point! window old-point))
+		    (set! old-point)
+		    unspecific))))
+
+(define-integrable (current-column)
+  (mark-column (current-point)))
 
 ;;;; Mark and Region
 
@@ -280,38 +261,37 @@
 
 (define (buffer-mark buffer)
   (let ((ring (buffer-mark-ring buffer)))
-    (if (ring-empty? ring) (editor-error))
-    (ring-ref ring 0)))
+    (if (ring-empty? ring)
+	(editor-error)
+	(ring-ref ring 0))))
 
 (define (set-current-mark! mark)
-  (if (not (mark? mark)) (error "New mark not a mark" mark))
+  (guarantee-mark mark 'SET-CURRENT-MARK!)
   (set-buffer-mark! (current-buffer) mark))
 
-(define (set-buffer-mark! buffer mark)
-  (ring-set! (buffer-mark-ring buffer)
-	     0
-	     (mark-right-inserting mark)))
+(define-integrable (set-buffer-mark! buffer mark)
+  (ring-set! (buffer-mark-ring buffer) 0 (mark-right-inserting mark)))
 
 (define-variable "Auto Push Point Notification"
   "Message to display when point is pushed on the mark ring, or false."
   "Mark Set")
 
 (define (push-current-mark! mark)
-  (if (not (mark? mark)) (error "New mark not a mark" mark))
+  (guarantee-mark mark 'PUSH-CURRENT-MARK!)
   (push-buffer-mark! (current-buffer) mark)
-  (if (and (ref-variable "Auto Push Point Notification")
-	   (not *executing-keyboard-macro?*)
-	   (not (typein-window? (current-window))))
-      (temporary-message (ref-variable "Auto Push Point Notification"))))
+  (let ((notification (ref-variable "Auto Push Point Notification")))
+    (if (and notification
+	     (not *executing-keyboard-macro?*)
+	     (not (typein-window? (current-window))))
+	(temporary-message notification))))
 
-(define (push-buffer-mark! buffer mark)
-  (ring-push! (buffer-mark-ring buffer)
-	      (mark-right-inserting mark)))
+(define-integrable (push-buffer-mark! buffer mark)
+  (ring-push! (buffer-mark-ring buffer) (mark-right-inserting mark)))
 
 (define-integrable (pop-current-mark!)
   (pop-buffer-mark! (current-buffer)))
 
-(define (pop-buffer-mark! buffer)
+(define-integrable (pop-buffer-mark! buffer)
   (ring-pop! (buffer-mark-ring buffer)))
 
 (define-integrable (current-region)
@@ -332,25 +312,17 @@
 
 (define-integrable (current-major-mode)
   (buffer-major-mode (current-buffer)))
-(define-integrable (current-comtab)	;**** misnamed, should be plural.
+(define-integrable (current-comtabs)
   (buffer-comtabs (current-buffer)))
 
-(define (set-current-major-mode! mode)
+(define-integrable (set-current-major-mode! mode)
   (set-buffer-major-mode! (current-buffer) mode))
 
-(define (current-minor-mode? mode)
+(define-integrable (current-minor-mode? mode)
   (buffer-minor-mode? (current-buffer) mode))
 
-(define (enable-current-minor-mode! mode)
+(define-integrable (enable-current-minor-mode! mode)
   (enable-buffer-minor-mode! (current-buffer) mode))
 
-(define (disable-current-minor-mode! mode)
+(define-integrable (disable-current-minor-mode! mode)
   (disable-buffer-minor-mode! (current-buffer) mode))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; End:

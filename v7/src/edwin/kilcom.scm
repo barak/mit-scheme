@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1985 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kilcom.scm,v 1.56 1989/03/14 08:01:10 cph Exp $
+;;;
+;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,7 +40,6 @@
 ;;;; Kill Commands
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
 (define (delete-region mark)
   (if (not mark)
@@ -56,15 +57,13 @@
       (copy-string mark (current-point))))
 
 (define (kill-string mark #!optional point)
-  (if (unassigned? point) (set! point (current-point)))
-  (kill-ring-save (extract-string mark point)
-		  (mark<= point mark))
-  (delete-string mark point))
+  (let ((point (if (default-object? point) (current-point) point)))
+    (kill-ring-save (extract-string mark point) (mark<= point mark))
+    (delete-string mark point)))
 
 (define (copy-string mark #!optional point)
-  (if (unassigned? point) (set! point (current-point)))
-  (kill-ring-save (extract-string mark point)
-		  (mark<= point mark)))
+  (let ((point (if (default-object? point) (current-point) point)))
+    (kill-ring-save (extract-string mark point) (mark<= point mark))))
 
 (define (unkill string)
   (let ((end (current-point)))
@@ -94,7 +93,7 @@
 	(ring-push! ring string))))
   (set-command-message! append-next-kill-tag))
 
-(define-command ("^R Append Next Kill" argument)
+(define-command ("^R Append Next Kill")
   "Cause following command, if kill, to append to previous kill."
   (set-command-message! append-next-kill-tag))
 
@@ -127,7 +126,8 @@ Killed text is pushed onto the kill ring for retrieval."
     (kill-region
      (cond ((not argument)
 	    (let ((end (line-end point 0)))
-	      (if (region-blank? (make-region point end))
+	      (if (and (region-blank? (make-region point end))
+		       (not (group-end? point)))
 		  (mark1+ end)
 		  end)))
 	   ((positive? argument)
@@ -183,12 +183,12 @@ appropriate number of spaces and then one space is deleted."
 
 ;;;; Un/Killing
 
-(define-command ("^R Kill Region" argument)
+(define-command ("^R Kill Region")
   "Kill from point to mark.
 Use \\[^R Un-Kill] and \\[^R Un-Kill Pop] to get it back."
   (kill-region (current-mark)))
 
-(define-command ("^R Copy Region" argument)
+(define-command ("^R Copy Region")
   "Stick region into kill-ring without killing it.
 Like killing and getting back, but doesn't mark buffer modified."
   (copy-region (current-mark))
@@ -247,7 +247,7 @@ This variable is only noticed when a buffer is created, so changing
 it later will not affect existing buffers."
   16)
 
-(define-command ("^R Set/Pop Mark" argument)
+(define-command ("^R Set/Pop Mark")
   "Sets or pops the mark.
 With no C-U's, pushes point as the mark.
 With one C-U, pops the mark into point.
@@ -258,11 +258,11 @@ With two C-U's, pops the mark and throws it away."
 	  ((= n 2) (pop-current-mark!))
 	  (else (editor-error)))))
 
-(define-command ("^R Mark Beginning" argument)
+(define-command ("^R Mark Beginning")
   "Set mark at beginning of buffer."
   (push-current-mark! (buffer-start (current-buffer))))
 
-(define-command ("^R Mark End" argument)
+(define-command ("^R Mark End")
   "Set mark at end of buffer."
   (push-current-mark! (buffer-end (current-buffer))))
 
@@ -274,23 +274,23 @@ With argument, puts point at end and mark at beginning."
   ((if (not argument) set-current-region! set-current-region-reversed!)
    (buffer-region (current-buffer))))
 
-(define-command ("^R Exchange Point and Mark" argument)
+(define-command ("^R Exchange Point and Mark")
   "Exchange positions of point and mark."
   (let ((point (current-point))
 	(mark (current-mark)))
     (if (not mark) (editor-error "No mark to exchange"))
     (set-current-point! mark)
     (set-current-mark! point)))
-
+
 ;;;; Q-Registers
 
-(define-command ("^R Get Q-reg" argument)
+(define-command ("^R Get Q-reg")
   "Get contents of Q-reg (reads name from tty).
 Usually leaves the pointer before, and the mark after, the text.
 With argument, puts point after and mark before."
   (not-implemented))
 
-(define-command ("^R Put Q-reg" argument)
+(define-command ("^R Put Q-reg")
   "Put point to mark into Q-reg (reads name from tty).
 With an argument, the text is also deleted."
   (not-implemented))
@@ -339,7 +339,7 @@ are transposed."
     (region-insert! m* (region-extract! (make-region (mark-1+ m1 'ERROR) m1)))
     (set-current-point! m*)))
 
-(define-command ("^R Transpose Regions" argument)
+(define-command ("^R Transpose Regions")
   "Transpose regions defined by point and last 3 marks.
 To transpose two non-overlapping regions, set the mark successively at three
 of the four boundaries, put point at the fourth, and call this function.
@@ -347,6 +347,3 @@ On return, the cursor and saved marks retain their original order, but are
 adjusted to delineate the interchanged regions.  Thus two consecutive
 calls to this function will leave the buffer unchanged."
   (not-implemented))
-
-;;; end USING-SYNTAX
-)

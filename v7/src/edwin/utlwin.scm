@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utlwin.scm,v 1.50 1989/03/14 08:03:43 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -37,9 +39,7 @@
 
 ;;;; Utility Windows
 
-(declare (usual-integrations)
-	 )
-(using-syntax class-syntax-table
+(declare (usual-integrations))
 
 ;;;; String Window
 ;;;  This "mixin" defines a common base from which 2D text string
@@ -51,6 +51,7 @@
 
 (define-method string-base (:update-display! window screen x-start y-start
 					     xl xu yl yu display-style)
+  window display-style			;ignore
   (cond ((pair? representation)
 	 (cond ((not (cdr representation))
 		;; disable clipping.
@@ -101,40 +102,51 @@
 	(else
 	 (screen-write-substrings! screen (+ x-start xl) (+ y-start yl)
 				   representation xl xu yl yu)))
-  #!TRUE)
+  true)
 
-(define-procedure string-base (string-base:set-size-given-x! window x)
-  (set! x-size x)
-  (set! y-size (string-base:desired-y-size window x))
-  (string-base:refresh! window))
+(define (string-base:set-size-given-x! window x)
+  (with-instance-variables string-base window (x)
+    (set! x-size x)
+    (set! y-size (string-base:desired-y-size window x))
+    (string-base:refresh! window)))
 
-(define-procedure string-base (string-base:set-size-given-y! window y)
-  (set! x-size (string-base:desired-x-size window y))
-  (set! y-size y)
-  (string-base:refresh! window))
+(define (string-base:set-size-given-y! window y)
+  (with-instance-variables string-base window (y)
+    (set! x-size (string-base:desired-x-size window y))
+    (set! y-size y)
+    (string-base:refresh! window)))
 
-(define-procedure string-base (string-base:desired-x-size window y-size)
-  (column->x-size (image-column-size image) y-size))
+(define-integrable (string-base:desired-x-size window y-size)
+  (with-instance-variables string-base window (y-size)
+    (column->x-size (image-column-size image) y-size)))
 
-(define-procedure string-base (string-base:desired-y-size window x-size)
-  (column->y-size (image-column-size image) x-size))
+(define-integrable (string-base:desired-y-size window x-size)
+  (with-instance-variables string-base window (x-size)
+    (column->y-size (image-column-size image) x-size)))
 
-(define-procedure string-base (string-base:index->coordinates window index)
-  (column->coordinates (image-column-size image) x-size
-		       (image-index->column image index)))
+(define (string-base:index->coordinates window index)
+  (with-instance-variables string-base window (index)
+    (column->coordinates (image-column-size image)
+			 x-size
+			 (image-index->column image index))))
 
-(define-procedure string-base (string-base:index->x window index)
-  (column->x (image-column-size image) x-size
-	     (image-index->column image index)))
+(define (string-base:index->x window index)
+  (with-instance-variables string-base window (index)
+    (column->x (image-column-size image)
+	       x-size
+	       (image-index->column image index))))
 
-(define-procedure string-base (string-base:index->y window index)
-  (column->y (image-column-size image) x-size
-	     (image-index->column image index)))
+(define (string-base:index->y window index)
+  (with-instance-variables string-base window (index)
+    (column->y (image-column-size image)
+	       x-size
+	       (image-index->column image index))))
 
-(define-procedure string-base (string-base:coordinates->index window x y)
-  (image-column->index image
-		       (min (coordinates->column x y x-size)
-			    (image-column-size image))))
+(define (string-base:coordinates->index window x y)
+  (with-instance-variables string-base window (x y)
+    (image-column->index image
+			 (min (coordinates->column x y x-size)
+			      (image-column-size image)))))
 
 (define (column->x-size column-size y-size)
   ;; Assume Y-SIZE > 0.
@@ -183,70 +195,70 @@
 	      (-1+ (integer-divide-quotient qr))
 	      (integer-divide-quotient qr))))))
 
-(define (coordinates->column x y x-size)
+(define-integrable (coordinates->column x y x-size)
   (+ x (* y (-1+ x-size))))
 
-(define-procedure string-base
-		  (string-base:direct-output-insert-char! window x char)
-  (if (pair? representation)
-      (begin (set-car! representation
-		       (string-append-char (car representation) char))
-	     (if (and (not (cdr representation))
-		      (not (char=? char #\Space)))
-		 (set-cdr! representation x)))
-      (string-set! (vector-ref representation (-1+ y-size)) x char)))
+(define (string-base:direct-output-insert-char! window x char)
+  (with-instance-variables string-base window (x char)
+    (if (pair? representation)
+	(begin
+	  (set-car! representation
+		    (string-append-char (car representation) char))
+	  (if (and (not (cdr representation))
+		   (not (char=? char #\Space)))
+	      (set-cdr! representation x)))
+	(string-set! (vector-ref representation (-1+ y-size)) x char))))
 
-(define-procedure string-base
-		  (string-base:direct-output-insert-newline! window)
-  (set! y-size 1)
-  (set! representation (cons "" #!FALSE)))
+(define (string-base:direct-output-insert-newline! window)
+  (with-instance-variables string-base window ()
+    (set! y-size 1)
+    (set! representation (cons "" false))))
 
-(define-procedure string-base
-		  (string-base:direct-output-insert-substring! window x string
-							       start end)
-  (if (pair? representation)
-      (begin (set-car! representation
-		       (string-append-substring (car representation)
-						string start end))
-	     (if (not (cdr representation))
-		 (let ((index
-			(substring-find-next-char-in-set string start end
-							 char-set:not-space)))
-		   (if index
-		       (set-cdr! representation (+ x index))))))
-      (substring-move-right! string start end
-			     (vector-ref representation (-1+ y-size)) x)))
+(define (string-base:direct-output-insert-substring! window x string start end)
+  (with-instance-variables string-base window (x string start end)
+    (if (pair? representation)
+	(begin
+	  (set-car! representation
+		    (string-append-substring (car representation)
+					     string start end))
+	  (if (not (cdr representation))
+	      (let ((index
+		     (substring-find-next-char-in-set string start end
+						      char-set:not-space)))
+		(if index
+		    (set-cdr! representation (+ x index))))))
+	(substring-move-right! string start end
+			       (vector-ref representation (-1+ y-size)) x))))
 
-(define-procedure string-base (string-base:refresh! window)
-  (let ((string (image-representation image)))
-    (let ((column-size (string-length string)))
-      (if (< column-size x-size)
-	  (let ((start 
-		 (string-find-next-char-in-set string char-set:not-space)))
-	    (if (not (and (pair? representation)
-			  (string=? (car representation) string)
-			  (eqv? (cdr representation) start)))
-		(begin (set! representation (cons string start))
-		       (setup-redisplay-flags! redisplay-flags))))
-	  (let ((rep (vector-cons y-size '()))
-		(x-max (-1+ x-size)))
-	    (define (loop start y)
-	      (let ((s (string-allocate x-size))
-		    (end (+ start x-max)))
-		(vector-set! rep y s)
-		(cond ((<= column-size end)
-		       (substring-move-right! string start column-size
-					      s 0)
-		       (substring-fill! s (- column-size start) x-size
-					#\Space))
-		      (else
-		       (substring-move-right! string start end s 0)
-		       (string-set! s x-max #\!)
-		       (loop end (1+ y))))))
-	    (loop 0 0)
-	    (set! representation rep)
-	    (setup-redisplay-flags! redisplay-flags))))))
-
+(define (string-base:refresh! window)
+  (with-instance-variables string-base window ()
+    (let ((string (image-representation image)))
+      (let ((column-size (string-length string)))
+	(if (< column-size x-size)
+	    (let ((start 
+		   (string-find-next-char-in-set string char-set:not-space)))
+	      (if (not (and (pair? representation)
+			    (string=? (car representation) string)
+			    (eqv? (cdr representation) start)))
+		  (begin (set! representation (cons string start))
+			 (setup-redisplay-flags! redisplay-flags))))
+	    (let ((rep (make-vector y-size '()))
+		  (x-max (-1+ x-size)))
+	      (define (loop start y)
+		(let ((s (string-allocate x-size))
+		      (end (+ start x-max)))
+		  (vector-set! rep y s)
+		  (cond ((<= column-size end)
+			 (substring-move-right! string start column-size s 0)
+			 (substring-fill! s (- column-size start) x-size
+					  #\space))
+			(else
+			 (substring-move-right! string start end s 0)
+			 (string-set! s x-max #\\)
+			 (loop end (1+ y))))))
+	      (loop 0 0)
+	      (set! representation rep)
+	      (setup-redisplay-flags! redisplay-flags)))))))
 ;;;; Blank Window
 
 (define-class blank-window vanilla-window
@@ -254,10 +266,11 @@
 
 (define-method blank-window (:update-display! window screen x-start y-start
 					      xl xu yl yu display-style)
+  window display-style			;ignore
   (subscreen-clear! screen
 		    (+ x-start xl) (+ x-start xu)
 		    (+ y-start yl) (+ y-start yu))
-  #!TRUE)
+  true)
 
 ;;;; Vertical Border Window
 
@@ -266,9 +279,11 @@
 
 (define-method vertical-border-window (:initialize! window window*)
   (usual=> window :initialize! window*)
-  (set! x-size 1))
+  (set! x-size 1)
+  unspecific)
 
 (define-method vertical-border-window (:set-x-size! window x)
+  window				;ignore
   (error "Can't change the x-size of a vertical border window" x))
 
 (define-method vertical-border-window (:set-size! window x y)
@@ -281,17 +296,18 @@
 (define-method vertical-border-window
 	       (:update-display! window screen x-start y-start
 				 xl xu yl yu display-style)
+  display-style				;ignore
   (if (< xl xu)
       (clip-window-region-1 yl yu y-size
 	(lambda (yl yu)
 	  (let ((xl (+ x-start xl))
 		(yu (+ y-start yu)))
-	    (define (loop y)
+	    (let loop ((y (+ y-start yl)))
 	      (if (< y yu)
-		  (begin (screen-write-char! screen xl y #\|)
-			 (loop (1+ y)))))
-	    (loop (+ y-start yl))))))
-  #!TRUE)
+		  (begin
+		    (screen-write-char! screen xl y #\|)
+		    (loop (1+ y)))))))))
+  true)
 
 ;;;; Cursor Window
 
@@ -302,34 +318,32 @@
   (usual=> window :initialize! window*)
   (set! x-size 1)
   (set! y-size 1)
-  (set! enabled? #!FALSE))
+  (set! enabled? false)
+  unspecific)
 
 (define-method cursor-window (:set-x-size! window x)
+  window				;ignore
   (error "Can't change the size of a cursor window" x))
 
 (define-method cursor-window (:set-y-size! window y)
+  window				;ignore
   (error "Can't change the size of a cursor window" y))
 
 (define-method cursor-window (:set-size! window x y)
+  window				;ignore
   (error "Can't change the size of a cursor window" x y))
 
 (define-method cursor-window (:update-display! window screen x-start y-start
 					       xl xu yl yu display-style)
+  display-style				;ignore
   (if (and enabled? (< xl xu) (< yl yu))      (screen-write-cursor! screen x-start y-start))
-  #!TRUE)
+  true)
 
 (define-method cursor-window (:enable! window)
-  (set! enabled? #!TRUE)
+  (set! enabled? true)
   (setup-redisplay-flags! redisplay-flags))
 
 (define-method cursor-window (:disable! window)
-  (set! enabled? #!FALSE)
-  (set-car! redisplay-flags #!FALSE))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: (access window-package edwin-package)
-;;; Scheme Syntax Table: class-syntax-table
-;;; End:
+  (set! enabled? false)
+  (set-car! redisplay-flags false)
+  unspecific)

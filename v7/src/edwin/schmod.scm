@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.7 1989/03/14 08:02:40 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -38,9 +40,8 @@
 ;;;; Scheme Mode
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
-(define-command ("Scheme Mode" argument)
+(define-command ("Scheme Mode")
   "Enter Scheme mode."
   (set-current-major-mode! scheme-mode))
 
@@ -63,17 +64,12 @@ the buffer *Transcript*:
 \\[^R Evaluate Region] evaluates the current region."
 
   (local-set-variable! "Syntax Table" scheme-mode:syntax-table)
-  (local-set-variable! "Syntax Ignore Comments Backwards" #!FALSE)
-  (local-set-variable! "Lisp Indent Hook"
-		       (access standard-lisp-indent-hook
-			       lisp-indentation-package))
+  (local-set-variable! "Syntax Ignore Comments Backwards" false)
+  (local-set-variable! "Lisp Indent Hook" standard-lisp-indent-hook)
   (local-set-variable! "Lisp Indent Methods" scheme-mode:indent-methods)
   (local-set-variable! "Comment Column" 40)
-  (local-set-variable! "Comment Locator Hook"
-		       (access lisp-comment-locate lisp-indentation-package))
-  (local-set-variable! "Comment Indent Hook"
-		       (access lisp-comment-indentation
-			       lisp-indentation-package))
+  (local-set-variable! "Comment Locator Hook" lisp-comment-locate)
+  (local-set-variable! "Comment Indent Hook" lisp-comment-indentation)
   (local-set-variable! "Comment Start" ";")
   (local-set-variable! "Comment End" "")
   (local-set-variable! "Paragraph Start" "^$")
@@ -83,7 +79,7 @@ the buffer *Transcript*:
 
 (define-variable "Scheme Mode Hook"
   "If not false, a thunk to call when entering Scheme mode."
-  #!FALSE)
+  false)
 
 (define-key "Scheme" #\Rubout "^R Backward Delete Hacking Tabs")
 (define-key "Scheme" #\) "^R Lisp Insert Paren")
@@ -98,7 +94,7 @@ the buffer *Transcript*:
 
 (define scheme-mode:syntax-table (make-syntax-table))
 
-(modify-syntax-entries! scheme-mode:syntax-table #\C-\@ #\/ "_   ")
+(modify-syntax-entries! scheme-mode:syntax-table #\NUL #\/ "_   ")
 (modify-syntax-entries! scheme-mode:syntax-table #\: #\@ "_   ")
 (modify-syntax-entries! scheme-mode:syntax-table #\[ #\` "_   ")
 (modify-syntax-entries! scheme-mode:syntax-table #\{ #\Rubout "_   ")
@@ -113,7 +109,7 @@ the buffer *Transcript*:
 (modify-syntax-entry! scheme-mode:syntax-table #\| "  23")
 
 (modify-syntax-entry! scheme-mode:syntax-table #\; "<   ")
-(modify-syntax-entry! scheme-mode:syntax-table char:newline ">   ")
+(modify-syntax-entry! scheme-mode:syntax-table #\newline ">   ")
 
 (modify-syntax-entry! scheme-mode:syntax-table #\' "'   ")
 (modify-syntax-entry! scheme-mode:syntax-table #\` "'   ")
@@ -129,7 +125,7 @@ the buffer *Transcript*:
 ;;;; Indentation
 
 (define (scheme-mode:indent-let-method state indent-point normal-indent)
-  ((access lisp-indent-special-form lisp-indentation-package)
+  (lisp-indent-special-form
    (let ((m (parse-state-containing-sexp state)))
      (let ((start (forward-to-sexp-start (forward-one-sexp (mark1+ m)
 							   indent-point)
@@ -149,7 +145,6 @@ the buffer *Transcript*:
 	  `((CASE . 1)
 	    (DO . 2)
 	    (FLUID-LET . 1)
-	    (IN-PACKAGE . 1)
 	    (LAMBDA . 1)
 	    (LET . ,scheme-mode:indent-let-method)
 	    (LET* . 1)
@@ -157,12 +152,8 @@ the buffer *Transcript*:
 	    (LETREC . 1)
 	    (LOCAL-DECLARE . 1)
 	    (MACRO . 1)
-	    (MAKE-ENVIRONMENT . 0)
-	    (MAKE-PACKAGE . 2)
 	    (NAMED-LAMBDA . 1)
-	    (REC . 1)
-	    (USING-SYNTAX . 1)
-
+
 	    (CALL-WITH-INPUT-FILE . 1)
 	    (WITH-INPUT-FROM-FILE . 1)
 	    (WITH-INPUT-FROM-PORT . 1)
@@ -171,37 +162,8 @@ the buffer *Transcript*:
 	    (WITH-OUTPUT-TO-FILE . 1)
 	    (WITH-OUTPUT-TO-PORT . 1)
 	    (WITH-OUTPUT-TO-STRING . 1)
-	    (SYNTAX-TABLE-DEFINE . 2)
 	    (LIST-TRANSFORM-POSITIVE . 1)
 	    (LIST-TRANSFORM-NEGATIVE . 1)
 	    (LIST-SEARCH-POSITIVE . 1)
 	    (LIST-SEARCH-NEGATIVE . 1)
-
-	    (ACCESS-COMPONENTS . 1)
-	    (ASSIGNMENT-COMPONENTS . 1)
-	    (COMBINATION-COMPONENTS . 1)
-	    (COMMENT-COMPONENTS . 1)
-	    (CONDITIONAL-COMPONENTS . 1)
-	    (DISJUNCTION-COMPONENTS . 1)
-	    (DECLARATION-COMPONENTS . 1)
-	    (DEFINITION-COMPONENTS . 1)
-	    (DELAY-COMPONENTS . 1)
-	    (IN-PACKAGE-COMPONENTS . 1)
-	    (LAMBDA-COMPONENTS . 1)
-	    (LAMBDA-COMPONENTS* . 1)
-	    (LAMBDA-COMPONENTS** . 1)
-	    (OPEN-BLOCK-COMPONENTS . 1)
-	    (PATHNAME-COMPONENTS . 1)
-	    (PROCEDURE-COMPONENTS . 1)
-	    (SEQUENCE-COMPONENTS . 1)
-	    (UNASSIGNED?-COMPONENTS . 1)
-	    (UNBOUND?-COMPONENTS . 1)
-	    (VARIABLE-COMPONENTS . 1)
 	    ))
-
-;;; end USING-SYNTAX
-)
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; End:

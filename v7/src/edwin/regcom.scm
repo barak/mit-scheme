@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1987 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regcom.scm,v 1.15 1989/03/14 08:02:00 cph Exp $
+;;;
+;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -38,19 +40,15 @@
 ;;;; Register Commands
 
 (declare (usual-integrations))
-(using-syntax (access edwin-syntax-table edwin-package)
 
-(define register-command-package
-  (make-environment
-
-(define-command ("Point to Register" argument)
+(define-command ("Point to Register")
   "Store current location of point in a register."
-  (set-register! (prompt-for-register "Point to Register")
+  (set-register! (prompt-for-char "Point to Register")
 		 (make-buffer-position (current-point) (current-buffer))))
 
-(define-command ("Register to Point" argument)
+(define-command ("Register to Point")
   "Move point to location stored in a register."
-  (let ((register (prompt-for-register "Register to Point")))
+  (let ((register (prompt-for-char "Register to Point")))
     (let ((value (get-register register)))
       (if (not (buffer-position? value))
 	  (register-error register "does not contain a buffer position."))
@@ -64,7 +62,7 @@
   "Store a number in a given register.
 With prefix arg, stores that number in the register.
 Otherwise, reads digits from the buffer starting at point."
-  (set-register! (prompt-for-register "Number to Register")
+  (set-register! (prompt-for-char "Number to Register")
 		 (or argument
 		     (let ((start (current-point))
 			   (end (skip-chars-forward "[0-9]")))
@@ -76,17 +74,17 @@ Otherwise, reads digits from the buffer starting at point."
 (define-command ("Increment Register" (argument 1))
   "Add the prefix arg to the contents of a given register.
 The prefix defaults to one."
-  (let ((register (prompt-for-register "Increment Register")))
+  (let ((register (prompt-for-char "Increment Register")))
     (let ((value (get-register register)))
       (if (not (integer? value))
 	  (register-error register "does not contain a number"))
       (set-register! register (+ value argument)))))
-
+
 (define-command ("Copy to Register" argument)
   "Copy region into given register.
 With prefix arg, delete as well."
   (let ((region (current-region)))
-    (set-register! (prompt-for-register "Copy to Register")
+    (set-register! (prompt-for-char "Copy to Register")
 		   (region->string region))
     (if argument (region-delete! region))))
 
@@ -95,16 +93,16 @@ With prefix arg, delete as well."
 Normally puts point before and mark after the inserted text.
 With prefix arg, puts mark before and point after."
   ((if argument unkill-reversed unkill)
-   (let ((value (get-register (prompt-for-register "Insert Register"))))
+   (let ((value (get-register (prompt-for-char "Insert Register"))))
      (cond ((string? value) value)
 	   ((integer? value) (write-to-string value))
 	   (else (register-error "does not contain text"))))))
-
+
 (define-command ("Append to Register" argument)
   "Append region to text in given register.
 With prefix arg, delete as well."
   (let ((region (current-region))
-	(register (prompt-for-register "Append to Register")))
+	(register (prompt-for-char "Append to Register")))
     (let ((value (get-register register)))
       (if (not (string? value))
 	  (register-error register "does not contain text"))
@@ -115,23 +113,23 @@ With prefix arg, delete as well."
   "Prepend region to text in given register.
 With prefix arg, delete as well."
   (let ((region (current-region))
-	(register (prompt-for-register "Prepend to Register")))
+	(register (prompt-for-char "Prepend to Register")))
     (let ((value (get-register register)))
       (if (not (string? value))
 	  (editor-error register "does not contain text"))
       (set-register! register (string-append (region->string region) value)))
     (if argument (region-delete! region))))
-
-(define-command ("View Register" argument)
+
+(define-command ("View Register")
   "Display what is contained in a given register."
-  (let ((register (prompt-for-register "View Register")))
+  (let ((register (prompt-for-char "View Register")))
     (let ((value (get-register register)))
       (if (not value)
-	  (message "Register " (register-name register) " is empty")
+	  (message "Register " (char-name register) " is empty")
 	  (with-output-to-temporary-buffer "*Output*"
 	    (lambda ()
 	      (write-string "Register ")
-	      (write-string (register-name register))
+	      (write-string (char-name register))
 	      (write-string " contains ")
 	      (cond ((integer? value)
 		     (write value))
@@ -152,14 +150,8 @@ With prefix arg, delete as well."
 		     (write-string "a random object:\n")
 		     (write value)))))))))
 
-(define prompt-for-register
-  prompt-for-char)
-
 (define (register-error register . strings)
-  (apply editor-error "Register " (register-name register) " " strings))
-
-(define register-name
-  char->name)
+  (apply editor-error "Register " (char-name register) " " strings))
 
 (define (get-register char)
   (let ((entry (assv char register-alist)))
@@ -187,19 +179,8 @@ With prefix arg, delete as well."
 (define buffer-position-tag
   "Buffer Position")
 
-(define buffer-position-mark
-  cadr)
+(define-integrable (buffer-position-mark position)
+  (cadr position))
 
-(define (buffer-position-buffer position)
+(define-integrable (buffer-position-buffer position)
   (unhash (cddr position)))
-
-;;; end REGISTER-COMMAND-PACKAGE
-))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: (access register-command-package edwin-package)
-;;; Scheme Syntax Table: (access edwin-syntax-table edwin-package)
-;;; End:

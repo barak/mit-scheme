@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1985 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.28 1989/03/14 08:01:12 cph Exp $
+;;;
+;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,7 +40,6 @@
 ;;;; Keyboard Macros
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
 (define *defining-keyboard-macro?* false)
 (define *executing-keyboard-macro?* false)
@@ -114,11 +115,14 @@
 
 (define (keyboard-macro-define name macro)
   (string-table-put! named-keyboard-macros name last-keyboard-macro)
-  (make-command name "Command defined by keyboard macro"
+  (make-command name
+		"Command defined by keyboard macro"
 		(lambda (#!optional argument)
-		  (if (or (unassigned? argument) (not argument))
-		      (set! argument 1))
-		  (keyboard-macro-execute macro argument))))
+		  (keyboard-macro-execute macro
+					  (if (or (default-object? argument)
+						  (not argument))
+					      1
+					      argument)))))
 
 (define-command ("Start Keyboard Macro" argument)
   "Record subsequent keyboard input, defining a keyboard macro.
@@ -171,7 +175,7 @@ To make a macro permanent so you can call it even after
       (editor-error "No keyboard macro has been defined"))
   (keyboard-macro-execute last-keyboard-macro argument))
 
-(define-command ("Name Last Keyboard Macro" argument)
+(define-command ("Name Last Keyboard Macro")
   "Assign a name to the last keyboard macro defined."
   (if *defining-keyboard-macro?*
       (editor-error "Can't name a keyboard macro while defining one."))
@@ -244,15 +248,7 @@ Without argument, reads a character.  Your options are:
 	     (window-redraw! (current-window) false)
 	     (loop))
 	    (else
-	     (beep)
+	     (editor-beep)
 	     (loop)))))
   (cond (argument (with-keyboard-macro-disabled enter-recursive-edit))
 	(*executing-keyboard-macro?* (loop))))
-
-;;; end USING-SYNTAX
-)
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; Tags Table Pathname: (access edwin-tags-pathname edwin-package)
-;;; End:

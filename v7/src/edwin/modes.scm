@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modes.scm,v 1.21 1989/03/14 08:01:35 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,7 +40,6 @@
 ;;;; Modes
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
 (define-named-structure "Mode"
   name
@@ -46,8 +47,8 @@
   comtabs
   description
   initialization
-  alist)
-
+  alist
+  )
 (define (make-mode name major? comtabs description initialization)
   (let ((mode (or (string-table-get editor-modes name)
 		  (let ((mode (%make-mode)))
@@ -62,21 +63,16 @@
     (vector-set! mode mode-index:alist '())
     mode))
 
-(define (mode-comtab mode)
+(define-integrable (mode-comtab mode)
   (car (mode-comtabs mode)))
 
 (define editor-modes
   (make-string-table))
 
-(define-unparser %mode-tag
-  (lambda (mode)
-    (write-string "Mode ")
-    (write-string (mode-name mode))))
-
 (define (name->mode name)
   (or (string-table-get editor-modes name)
-      (make-mode name #!TRUE '() ""
+      (make-mode name
+		 true
+		 '()
+		 ""
 		 (lambda () (error "Undefined mode" name)))))
-
-;;; end USING-SYNTAX
-)

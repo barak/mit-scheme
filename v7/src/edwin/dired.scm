@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.97 1989/03/14 08:00:23 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,13 +40,12 @@
 ;;;; Directory Editor
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
-(define-command ("Dired" argument)
+(define-command ("Dired")
   "Edit a directory.  You type the directory name."
   (select-buffer (make-dired-buffer "Dired")))
 
-(define-command ("Dired Other Window" argument)
+(define-command ("Dired Other Window")
   "Edit a directory in another window.  You type the directory name."
   (select-buffer-other-window (make-dired-buffer "Dired Other Window")))
 
@@ -66,9 +67,10 @@
 	(lambda (buffer)
 	  (and (eq? dired-mode (buffer-major-mode buffer))
 	       (pathname=? pathname (buffer-truename buffer)))))
-      (new-buffer (pathname->string pathname))))
+      (new-buffer (pathname-name-string pathname))))
 
 (define (revert-dired-buffer argument)
+  argument				;ignore
   (fill-dired-buffer! (current-buffer)))
 
 (define (fill-dired-buffer! buffer)
@@ -81,8 +83,10 @@
 	(write-string (pathname->string pathname))
 	(newline)
 	(newline)
-	(for-each (lambda (element) (apply write-dired-line element))
-		  (generate-dired-elements pathname)))))
+	(for-each (lambda (pathname)
+		    (write-string (os/make-dired-line pathname))
+		    (newline))
+		  (directory-read pathname)))))
   (buffer-not-modified! buffer)
   (set-buffer-read-only! buffer)
   (add-buffer-initialization! buffer
@@ -101,8 +105,7 @@ X -- kill marked files.
 Q -- quit, killing marked files.
   This is like \\[^R Dired Execute] followed by \\[Kill Buffer].
 C-] -- abort Dired; this is like \\[Kill Buffer] on this buffer."
-  ((mode-initialization fundamental-mode))
-  (local-set-variable! "Case Fold Search" #!TRUE)
+  (local-set-variable! "Case Fold Search" true)
   (local-set-variable! "Cursor Centering Threshold" 0)
   (local-set-variable! "Cursor Centering Point" 10))
 
@@ -120,11 +123,11 @@ C-] -- abort Dired; this is like \\[Kill Buffer] on this buffer."
 (define-key "Dired" #\C-\] "^R Dired Abort")
 (define-key "Dired" #\? "^R Dired Summary")
 
-(define-command ("^R Dired Find File" argument)
+(define-command ("^R Dired Find File")
   "Read the current file into a buffer."
   (find-file (dired-current-pathname)))
 
-(define-command ("^R Dired Find File Other Window" argument)
+(define-command ("^R Dired Find File Other Window")
   "Read the current file into a buffer in another window."
   (find-file-other-window (dired-current-pathname)))
 
@@ -146,32 +149,23 @@ C-] -- abort Dired; this is like \\[Kill Buffer] on this buffer."
   "Move down to the next line."
   (set-current-point! (line-start (current-point) argument 'BEEP)))
 
-(define-command ("^R Dired Execute" argument)
+(define-command ("^R Dired Execute")
   "Kill all marked files."
   (dired-kill-files))
 
-(define-command ("^R Dired Quit" argument)
+(define-command ("^R Dired Quit")
   "Exit Dired, offering to kill any files first."
   (dired-kill-files)
   (kill-buffer-interactive (current-buffer)))
 
-(define-command ("^R Dired Abort" argument)
+(define-command ("^R Dired Abort")
   "Exit Dired."
   (kill-buffer-interactive (current-buffer)))
 
-(define-command ("^R Dired Summary" argument)
+(define-command ("^R Dired Summary")
   "Summarize the Dired commands in the typein window."
   (message "d-elete, u-ndelete, x-ecute, q-uit, f-ind, o-ther window"))
 
-(define (write-dired-line pathname lsize last-date last-time)
-  (write-string
-   (string-append "  "
-		  (pad-on-right-to (pathname-name-string pathname) 16)
-		  (pad-on-left-to (write-to-string lsize) 9)
-		  (pad-on-left-to last-date 10)
-		  (pad-on-left-to last-time 9)))
-  (newline))
-
 (define (dired-current-pathname)
   (let ((lstart (line-start (current-point) 0)))
     (guarantee-dired-filename-line lstart)
@@ -194,12 +188,13 @@ C-] -- abort Dired; this is like \\[Kill Buffer] on this buffer."
   (let ((start (mark+ lstart 2)))
     (char-search-forward #\Space start (line-end start 0))
     (extract-string start (re-match-start 0))))
-
+
 (define (dired-mark char n)
   (with-read-only-defeated (current-point)
     (lambda ()
       (dotimes n
 	(lambda (i)
+	  i				;ignore
 	  (let ((lstart (line-start (current-point) 0)))
 	    (guarantee-dired-filename-line lstart)
 	    (delete-right-char lstart)
@@ -253,7 +248,7 @@ C-] -- abort Dired; this is like \\[Kill Buffer] on this buffer."
 			      (pathname-directory-path
 			       (or (buffer-pathname (current-buffer))
 				   (working-directory-pathname))))))
-    (let ((elements (generate-dired-elements pathname))
+    (let ((pathnames (directory-read pathname))
 	  (directory (pathname->string pathname)))
       (with-output-to-temporary-buffer "*Directory*"
 	(lambda ()
@@ -262,159 +257,15 @@ C-] -- abort Dired; this is like \\[Kill Buffer] on this buffer."
 	  (newline)
 	  (newline)
 	  (cond (argument
-		 (for-each (lambda (element) (apply write-dired-line element))
-			   elements))
-		((ref-variable "List Directory Unpacked")
-		 (for-each (lambda (element)
-			     (write-string
-			      (pathname-name-string (car element)))
+		 (for-each (lambda (pathname)
+			     (write-string (os/make-dired-line pathname))
 			     (newline))
-			   elements))
+			   pathnames))
+		((ref-variable "List Directory Unpacked")
+		 (for-each (lambda (pathname)
+			     (write-string (pathname-name-string pathname))
+			     (newline))
+			   pathnames))
 		(else
 		 (write-strings-densely
-		  (map (lambda (element)
-			 (pathname-name-string (car element)))
-		       elements)))))))))
-
-(define generate-dired-elements)
-(let ()
-
-(define open-catalog (make-primitive-procedure 'OPEN-CATALOG))
-(define close-catalog (make-primitive-procedure 'CLOSE-CATALOG))
-(define next-file (make-primitive-procedure 'NEXT-FILE))
-(define next-file-matching (make-primitive-procedure 'NEXT-FILE-MATCHING))
-(define cat-name (make-primitive-procedure 'CAT-NAME))
-(define cat-kind (make-primitive-procedure 'CAT-KIND))
-(define cat-psize (make-primitive-procedure 'CAT-PSIZE))
-(define cat-lsize (make-primitive-procedure 'CAT-LSIZE))
-(define cat-info (make-primitive-procedure 'CAT-INFO))
-(define cat-block (make-primitive-procedure 'CAT-BLOCK))
-(define cat-create-date (make-primitive-procedure 'CAT-CREATE-DATE))
-(define cat-create-time (make-primitive-procedure 'CAT-CREATE-TIME))
-(define cat-last-date (make-primitive-procedure 'CAT-LAST-DATE))
-(define cat-last-time (make-primitive-procedure 'CAT-LAST-TIME))
-
-;; **** The number 16 is used here because that is the longest filename
-;; allowed in any of the file systems:  LIF, UCSD, or SRM.
-
-(set! generate-dired-elements
-(named-lambda (generate-dired-elements pathname)
-  (if (eq? (pathname-version pathname) 'NEWEST)
-      (extract-newest
-       (get-dired-elements (pathname-new-version pathname 'WILD)))
-      (extract-elements (get-dired-elements pathname)))))
-
-(define (get-dired-elements pathname)
-  (let ((dir-path (pathname-directory-path pathname))
-	(name-path (pathname-name-path pathname)))
-    (let ((dir-string (pathname->string dir-path))
-	  (name-string (pathname->string name-path)))
-      (define (loop)
-	(if (next-file-matching name-string)
-	    (let ((name (string-allocate 16))
-		  (lsize (cat-lsize))
-		  (last-date (string-allocate 9))
-		  (last-time (string-allocate 8)))
-	      (cat-name name)
-	      (cat-last-date last-date)
-	      (cat-last-time last-time)
-	      (cons (list (merge-pathnames dir-path (string->pathname name))
-			  lsize last-date last-time)
-		    (loop)))
-	    (begin (close-catalog)
-		   '())))
-      (temporary-message "Reading directory '" dir-string "'")
-      (open-catalog dir-string)
-      (let ((elements (loop)))
-	(append-message " -- done")
-	(sort-dired-elements elements)))))
-
-(define (sort-dired-elements elements)
-  (let ((name-alist '()))
-    (for-each (lambda (element)
-		(let ((name (pathname-name (car element)))
-		      (type (pathname-type (car element)))
-		      (version (pathname-version (car element))))
-		  (let ((name-entry (ass-name name name-alist)))
-		    (if (not name-entry)
-			(set! name-alist
-			      (cons (list name
-					  (list type
-						(cons version element)))
-				    name-alist))
-			(let ((type-entry (ass-type type (cdr name-entry))))
-			  (if (not type-entry)
-			      (set-cdr! name-entry
-					(cons (list type
-						    (cons version element))
-					      (cdr name-entry)))
-			      (set-cdr! type-entry
-					(cons (cons version element)
-					      (cdr type-entry)))))))))
-	      elements)
-    (for-each (lambda (name-entry)
-		(for-each (lambda (type-entry)
-			    (set-cdr! type-entry
-				      (sort (cdr type-entry) car-version<?)))
-			  (cdr name-entry))
-		(set-cdr! name-entry
-			  (sort (cdr name-entry) car-type<?)))
-	      name-alist)
-    (sort name-alist car-name<?)))
-
-(define (extract-elements name-alist)
-  (mapcan (lambda (name-entry)
-	    (mapcan (lambda (type-entry)
-		      (map cdr (cdr type-entry)))
-		    (cdr name-entry)))
-	  name-alist))
-
-(define (extract-newest name-alist)
-  (mapcan (lambda (name-entry)
-	    (map (lambda (type-entry)
-		   (cdar (last-pair (cdr type-entry))))
-		 (cdr name-entry)))
-	  name-alist))
-
-(define ((component<? <) x y)
-  (cond ((not x) y)
-	((eq? 'UNSPECIFIC x) (and y (not (eq? 'UNSPECIFIC y))))
-	(else (and y (not (eq? 'UNSPECIFIC y)) (< x y)))))
-
-(define ((component=? =) x y)
-  (cond ((not x) (not y))
-	((not y) #!FALSE)
-	((eq? 'UNSPECIFIC x) (eq? 'UNSPECIFIC y))
-	(else (= x y))))
-
-(define ass-name
-  (association-procedure string=? car))
-
-(define ass-type
-  (association-procedure (component=? string=?) car))
-
-(define (car-name<? x y)
-  (string<? (car x) (car y)))
-
-(define (car-type<? x y)
-  (type<? (car x) (car y)))
-
-(define type<?
-  (component<? string<?))
-
-(define (car-version<? x y)
-  (version<? (car x) (car y)))
-
-(define version<?
-  (component<? <))
-
-)
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: (access dired-package edwin-package)
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; Tags Table Pathname: (access edwin-tags-pathname edwin-package)
-;;; End:
+		  (map pathname-name-string pathnames)))))))))

@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.88 1989/03/14 08:00:57 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -39,11 +41,10 @@
 ;;; Shamelessly copied from GNU Emacs.
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
 (define history '())
-(define current-file #!FALSE)
-(define current-node #!FALSE)
+(define current-file false)
+(define current-node false)
 
 (define-major-mode "Info" "Fundamental"
   "Info mode provides commands for browsing through the Info documentation tree.
@@ -78,9 +79,9 @@ g	Move to node specified by name.
 s	Search through this Info file for specified regexp,
 	and select the node in which the next occurrence is found."
   (local-set-variable! "Syntax Table" text-mode:syntax-table)
-  (local-set-variable! "Case Fold Search" #!TRUE)
-  (local-set-variable! "Info Tag Table Start" #!FALSE)
-  (local-set-variable! "Info Tag Table End" #!FALSE)
+  (local-set-variable! "Case Fold Search" true)
+  (local-set-variable! "Info Tag Table Start" false)
+  (local-set-variable! "Info Tag Table End" false)
   (buffer-put! (current-buffer) 'MODELINE-STRING info-modeline-string))
 
 (define (info-modeline-string window)
@@ -127,13 +128,12 @@ The editing commands are the same as in Text mode,
 except for \\[^R Info Cease Edit] to return to Info."
   (local-set-variable! "Page Delimiter"
 		       (string-append "^\f\\|"
-				      (ref-variable "Page Delimiter")))
-  ((mode-initialization text-mode)))
+				      (ref-variable "Page Delimiter"))))
 
 (define-prefix-key "Info-Edit" #\C-C "^R Prefix Character")
 (define-key "Info-Edit" '(#\C-C #\C-C) "^R Info Cease Edit")
 
-(define-command ("^R Info Edit" argument)
+(define-command ("^R Info Edit")
   "Edit the contents of this Info node.
 Allowed only if the variable Info Enable Edit is not false."
   (if (not (ref-variable "Info Enable Edit"))
@@ -142,43 +142,43 @@ Allowed only if the variable Info Enable Edit is not false."
   (set-current-major-mode! info-edit-mode)
   (message "Editing: Type C-C C-C to return to Info"))
 
-(define-command ("^R Info Cease Edit" argument)
+(define-command ("^R Info Cease Edit")
   "Finish editing Info node; switch back to Info proper."
   (save-buffer-changes (current-buffer))
   (set-current-major-mode! info-mode)
   (set-buffer-read-only! (current-buffer))
   (clear-message))
 
-(define-command ("Info" argument)
+(define-command ("Info")
   "Create a buffer for Info, the documentation browser program."
   (let ((buffer (find-buffer "*Info*")))
     (if buffer
 	(select-buffer buffer)
-	(begin (set! current-file #!FALSE)
-	       (set! current-node #!FALSE)
+	(begin (set! current-file false)
+	       (set! current-node false)
 	       (set! history '())
 	       (^r-info-directory-command)))))
 
-(define-command ("^R Info Directory" argument)
+(define-command ("^R Info Directory")
   "Go to the Info directory node."
   (find-node "dir" "Top"))
 
-(define-command ("^R Info Help" argument)
+(define-command ("^R Info Help")
   "Enter the Info tutorial."
   (find-node "info"
 	     (if (< (window-y-size (current-window)) 23)
 		 "Help-Small-Screen"
 		 "Help")))
 
-(define-command ("^R Info Next" argument)
+(define-command ("^R Info Next")
   "Go to the next node of this node."
   (follow-pointer extract-node-next "Next"))
 
-(define-command ("^R Info Previous" argument)
+(define-command ("^R Info Previous")
   "Go to the previous node of this node."
   (follow-pointer extract-node-previous "Previous"))
 
-(define-command ("^R Info Up" argument)
+(define-command ("^R Info Up")
   "Go to the superior node of this node."
   (follow-pointer extract-node-up "Up"))
 
@@ -186,7 +186,7 @@ Allowed only if the variable Info Enable Edit is not false."
   (goto-node (or (extractor (buffer-start (current-buffer)))
 		 (editor-error "Node has no " name))))
 
-(define-command ("^R Info Last" argument)
+(define-command ("^R Info Last")
   "Go back to the last node visited."
   (if (null? history)
       (editor-error "This is the first Info node you have looked at"))
@@ -198,17 +198,17 @@ Allowed only if the variable Info Enable Edit is not false."
      (mark+ (region-start (buffer-unclipped-region (current-buffer)))
 	    (vector-ref entry 2)))))
 
-(define-command ("^R Info Exit" argument)
+(define-command ("^R Info Exit")
   "Exit Info by selecting some other buffer."
   (let ((buffer (current-buffer)))
     (select-buffer (previous-buffer))
     (bury-buffer buffer)))
 
-(define-command ("^R Info Goto Node" argument)
+(define-command ("^R Info Goto Node")
   "Go to Info node of given name.  Give just NODENAME or (FILENAME)NODENAME."
-  (goto-node (prompt-for-string "Goto node" #!FALSE)))
+  (goto-node (prompt-for-string "Goto node" false)))
 
-(define-command ("^R Info Search" argument)
+(define-command ("^R Info Search")
   "Search for regexp, starting from point, and select node it's found in."
   (let ((regexp (prompt-for-string "Search (regexp)"
 				   (ref-variable "Info Previous Search")))
@@ -225,7 +225,7 @@ Allowed only if the variable Info Enable Edit is not false."
 		 (select-node buffer mark))
 	  (editor-failure)))))
 
-(define-command ("^R Info Summary" argument)
+(define-command ("^R Info Summary")
   "Display a brief summary of all Info commands."
   (let ((buffer (temporary-buffer "*Help*")))
     (with-output-to-mark (buffer-point buffer)
@@ -235,25 +235,26 @@ Allowed only if the variable Info Enable Edit is not false."
     (buffer-not-modified! buffer)
     (with-selected-buffer buffer
       (lambda ()
-	(define (loop)
-	  (update-alpha-window! #!FALSE)
+	(let loop ()
+	  (update-screens! false)
 	  (let ((end-visible? (window-mark-visible? (current-window)
 						    (buffer-end buffer))))
 	    (message (if end-visible?
 			 "Type Space to return to Info"
 			 "Type Space to see more"))
-	    (let ((char (%keyboard-peek-char)))
+	    (let ((char (keyboard-peek-char)))
 	      (if (char=? char #\Space)
-		  (begin (keyboard-read-char)
-			 (if (not end-visible?)
-			     (begin (^r-next-screen-command)
-				    (loop))))))))
-	(loop)
+		  (begin
+		    (keyboard-read-char)
+		    (if (not end-visible?)
+			(begin
+			  (^r-next-screen-command)
+			  (loop))))))))
 	(clear-message)))))
 
 ;;;; Menus
 
-(define-command ("^R Info Menu" argument)
+(define-command ("^R Info Menu")
   "Go to node for menu item of given name."
   (let ((menu (find-menu)))
     (if (not menu)
@@ -261,23 +262,23 @@ Allowed only if the variable Info Enable Edit is not false."
 	(goto-node (prompt-for-alist-value "Menu item"
 					   (collect-menu-items menu))))))
 
-(define-command ("^R Info First Menu Item" argument)
+(define-command ("^R Info First Menu Item")
   "Go to the node of the first menu item."
   (nth-menu-item 0))
 
-(define-command ("^R Info Second Menu Item" argument)
+(define-command ("^R Info Second Menu Item")
   "Go to the node of the second menu item."
   (nth-menu-item 1))
 
-(define-command ("^R Info Third Menu Item" argument)
+(define-command ("^R Info Third Menu Item")
   "Go to the node of the third menu item."
   (nth-menu-item 2))
 
-(define-command ("^R Info Fourth Menu Item" argument)
+(define-command ("^R Info Fourth Menu Item")
   "Go to the node of the fourth menu item."
   (nth-menu-item 3))
 
-(define-command ("^R Info Fifth Menu Item" argument)
+(define-command ("^R Info Fifth Menu Item")
   "Go to the node of the fifth menu item."
   (nth-menu-item 4))
 
@@ -328,7 +329,7 @@ Allowed only if the variable Info Enable Edit is not false."
 
 ;;;; Cross References
 
-(define-command ("^R Info Follow Reference" argument)
+(define-command ("^R Info Follow Reference")
   "Follow cross reference, given name, to the node it refers to.
 The name may be an abbreviation of the reference name."
   (let ((items (collect-cref-items (buffer-start (current-buffer)))))
@@ -355,7 +356,7 @@ The name may be an abbreviation of the reference name."
 
 (define (%cref-item-keyword item colon)
   (let ((string (extract-string item colon)))
-    (string-replace! string char:newline #\Space)
+    (string-replace! string #\newline #\Space)
     (string-trim string)))
 
 (define (cref-item-name item)
@@ -371,7 +372,7 @@ The name may be an abbreviation of the reference name."
 
 ;;;; Validation
 
-(define-command ("Info Validate" argument)
+(define-command ("Info Validate")
   "Check that every node pointer points to an existing node."
   (let ((nodes (current-nodes-list))
 	(losers '()))
@@ -504,7 +505,7 @@ The name may be an abbreviation of the reference name."
 		(receiver filename
 			  (if (string-null? nodename) "Top" nodename)))
 	      (error "PARSE-NODE-NAME: Missing close paren" name)))
-	(receiver #!FALSE (if (string-null? name) "Top" name)))))
+	(receiver false (if (string-null? name) "Top" name)))))
 
 (define (record-current-node)
   (if current-file
@@ -536,7 +537,7 @@ The name may be an abbreviation of the reference name."
     (define (loop start)
       (let ((mark (re-search-forward "[\f]" start)))
 	(cond ((not mark) end)
-	      ((char=? (extract-left-char (re-match-start 0)) char:newline)
+	      ((char=? (extract-left-char (re-match-start 0)) #\newline)
 	       (mark-1+ (re-match-start 0)))
 	      (else (loop mark)))))
     (loop node)))
@@ -568,7 +569,7 @@ The name may be an abbreviation of the reference name."
 
 ;;;; Tag Tables
 
-(define-command ("Info Tagify" argument)
+(define-command ("Info Tagify")
   "Create or update tag table of current info file."
   (let ((buffer (current-buffer)))
     (without-group-clipped! (buffer-group buffer)
@@ -634,8 +635,8 @@ The name may be an abbreviation of the reference name."
 						 tag-table-end)
 				(re-match-end 0)))
 	    (set-variable! "Info Tag Table End" tag-table-end))
-	  (begin (set-variable! "Info Tag Table Start" #!FALSE)
-		 (set-variable! "Info Tag Table End" #!FALSE))))))
+	  (begin (set-variable! "Info Tag Table Start" false)
+		 (set-variable! "Info Tag Table End" false))))))
 
 (define (node-search-start buffer nodename)
   (if (not (ref-variable "Info Tag Table Start"))
@@ -648,11 +649,3 @@ The name may be an abbreviation of the reference name."
 		   (mark+ (buffer-start buffer)
 			  (max 0 (- (with-input-from-mark mark read) 1000))))
 	      (buffer-start buffer))))))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: (access info-package edwin-package)
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; End:

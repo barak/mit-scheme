@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.27 1989/03/14 08:01:37 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -37,9 +39,7 @@
 
 ;;;; Modeline Window
 
-(declare (usual-integrations)
-	 )
-(using-syntax (access class-syntax-table edwin-package)
+(declare (usual-integrations))
 
 (define-class modeline-window vanilla-window
   (old-buffer-modified?))
@@ -47,41 +47,50 @@
 (define-method modeline-window (:initialize! window window*)
   (usual=> window :initialize! window*)
   (set! y-size 1)
-  (set! old-buffer-modified? 'UNKNOWN))
+  (set! old-buffer-modified? 'UNKNOWN)
+  unspecific)
 
 (define-method modeline-window (:update-display! window screen x-start y-start
 						 xl xu yl yu display-style)
+  display-style				;ignore
   (if (< yl yu)
-      (with-inverse-video! (ref-variable "Mode Line Inverse Video")
+      (with-inverse-video! screen (ref-variable "Mode Line Inverse Video")
 	(lambda ()
 	  (screen-write-substring!
 	   screen x-start y-start
-	   (string-pad-right (modeline-string superior)
-			     x-size #\-)
+	   (string-pad-right (modeline-string superior) x-size #\-)
 	   xl xu))))
   true)
 
-(define (with-inverse-video! flag? thunk)
+(define (with-inverse-video! screen flag? thunk)
   (if flag?
-      (let ((inverse? (screen-inverse-video! false)))
+      (let ((old-inverse? (screen-inverse-video! screen false))
+	    (new-inverse? true))
+	(screen-inverse-video! screen old-inverse?)
 	(dynamic-wind (lambda ()
-			(screen-inverse-video! (not inverse?)))
+			(set! old-inverse?
+			      (screen-inverse-video! screen new-inverse?)))
 		      thunk
 		      (lambda ()
-			(screen-inverse-video! inverse?))))
+			(set! new-inverse?
+			      (screen-inverse-video! screen old-inverse?)))))
       (thunk)))
 
 (define-method modeline-window (:event! window type)
-  (cond ((eq? type 'BUFFER-MODIFIED)
-	 (let ((new (buffer-modified? (window-buffer superior))))
-	   (if (not (eq? old-buffer-modified? new))
-	       (begin (setup-redisplay-flags! redisplay-flags)
-		      (set! old-buffer-modified? new)))))
-	((eq? type 'NEW-BUFFER)
-	 (set! old-buffer-modified? 'UNKNOWN))
-	((eq? type 'CURSOR-MOVED))
-	(else 
-	 (setup-redisplay-flags! redisplay-flags))))
+  (case type
+    ((BUFFER-MODIFIED)
+     (let ((new (buffer-modified? (window-buffer superior))))
+       (if (not (eq? old-buffer-modified? new))
+	   (begin
+	     (setup-redisplay-flags! redisplay-flags)
+	     (set! old-buffer-modified? new)))))
+     ((NEW-BUFFER)
+      (set! old-buffer-modified? 'UNKNOWN))
+     ((CURSOR-MOVED)
+      unspecific)
+     (else 
+      (setup-redisplay-flags! redisplay-flags)))
+  unspecific)
 
 (define (modeline-string window)
   ((or (buffer-get (window-buffer window) 'MODELINE-STRING)
@@ -107,44 +116,35 @@
 
 (define (modeline-mode-string window)
   (let ((buffer (window-buffer window)))
-    (define (loop modes)
-      (if (null? (cdr modes))
-	  (string-append (mode-name (car modes))
-			 (if *defining-keyboard-macro?* " Def" "")
-			 (if (group-clipped? (buffer-group buffer))
-			     " Narrow" ""))
-	  (string-append (mode-name (car modes))
-			 " "
-			 (loop (cdr modes)))))
-    (string-append (make-string recursive-edit-level #\[)
-		   "("
-		   (loop (buffer-modes buffer))
-		   ")"
-		   (make-string recursive-edit-level #\]))))
+    (string-append
+     (make-string recursive-edit-level #\[)
+     "("
+     (let loop ((modes (buffer-modes buffer)))
+       (if (null? (cdr modes))
+	   (string-append (mode-name (car modes))
+			  (if *defining-keyboard-macro?* " Def" "")
+			  (if (group-clipped? (buffer-group buffer))
+			      " Narrow" ""))
+	   (string-append (mode-name (car modes))
+			  " "
+			  (loop (cdr modes)))))
+     ")"
+     (make-string recursive-edit-level #\]))))
 
 (define (modeline-percentage-string window)
   (let ((buffer (window-buffer window)))
-    (define (buffer-percentage)
-      (round
-       (* 100
-	  (let ((start-index (mark-index (buffer-start buffer))))
-	    (/ (- (mark-index (window-start-mark window)) start-index)
-	       (- (mark-index (buffer-end buffer)) start-index))))))
     (if (window-mark-visible? window (buffer-start buffer))
 	(if (window-mark-visible? window (buffer-end buffer))
 	    "All" "Top")
 	(if (window-mark-visible? window (buffer-end buffer))
 	    "Bot"
 	    (string-append
-	     (string-pad-left (write-to-string (buffer-percentage))
+	     (string-pad-left
+	      (number->string
+	       (round
+		(* 100
+		   (let ((start-index (mark-index (buffer-start buffer))))
+		     (/ (- (mark-index (window-start-mark window)) start-index)
+			(- (mark-index (buffer-end buffer)) start-index))))))
 	      2)
 	     "%")))))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: (access window-package edwin-package)
-;;; Scheme Syntax Table: (access class-syntax-table edwin-package)
-;;; Tags Table Pathname: (access edwin-tags-pathname edwin-package)
-;;; End:

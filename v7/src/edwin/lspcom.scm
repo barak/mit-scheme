@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lspcom.scm,v 1.148 1989/03/14 08:01:23 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,7 +40,6 @@
 ;;;; Lisp Commands
 
 (declare (usual-integrations))
-(using-syntax (access edwin-syntax-table edwin-package)
 
 ;;;; S-expression Commands
 
@@ -118,7 +119,7 @@ A negative argument means move backward but still to a less deep spot."
 With argument, do this that many times.
 A negative argument means move forward but still to a less deep spot."
   (move-thing backward-up-list argument))
-
+
 ;;;; Definition Commands
 
 (define-command ("^R Beginning of Definition" (argument 1))
@@ -135,7 +136,7 @@ With argument of 2, finds end of following definition.
 With argument of -1, finds end of previous definition, etc."
   (move-thing forward-definition-end (if (zero? argument) 1 argument)))
 
-(define-command ("^R Mark Definition" argument)
+(define-command ("^R Mark Definition")
   "Put mark at end of definition, point at beginning."
   (let ((point (current-point)))
     (let ((end (forward-definition-end point 1 'ERROR)))
@@ -146,7 +147,7 @@ With argument of -1, finds end of previous definition, etc."
 	 (or (re-search-backward "^\n" start (mark-1+ start))
 	     start))))))
 
-(define-command ("^R Reposition Window" argument)
+(define-command ("^R Reposition Window")
   "Reposition window so current definition is at the top.
 If this would place point off screen, nothing happens."
   (reposition-window-top (current-definition-start)))
@@ -172,12 +173,12 @@ If this would place point off screen, nothing happens."
   "Indent current line as lisp code.
 With argument, indent any additional lines of the same expression
 rigidly along with this one."
-  ((access lisp-indent-line lisp-indentation-package) argument))
+  (lisp-indent-line argument))
 
-(define-command ("^R Indent Sexp" argument)
+(define-command ("^R Indent Sexp")
   "Indent each line of the expression starting just after the point."
-  ((access lisp-indent-sexp lisp-indentation-package) (current-point)))
-
+  (lisp-indent-sexp (current-point)))
+
 ;;;; Motion Covers
 
 (define forward-sexp)
@@ -221,12 +222,3 @@ rigidly along with this one."
   (lambda (f b)
     (set! forward-definition-end f)
     (set! backward-definition-end b)))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: (access edwin-syntax-table edwin-package)
-;;; Tags Table Pathname: (access edwin-tags-pathname edwin-package)
-;;; End:

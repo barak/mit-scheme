@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1987 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tximod.scm,v 1.10 1989/03/14 08:03:31 cph Exp $
+;;;
+;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -38,9 +40,8 @@
 ;;;; Texinfo Mode
 
 (declare (usual-integrations))
-(using-syntax (access edwin-syntax-table edwin-package)
 
-(define-command ("Texinfo Mode" argument)
+(define-command ("Texinfo Mode")
   "Make the current mode be Texinfo mode."
   (set-current-major-mode! texinfo-mode))
 
@@ -50,7 +51,6 @@ These are files that are input for TeX and also to be turned
 into Info files by \\[Texinfo Format Buffer].
 These files must be written in a very restricted and
 modified version of TeX input format."
-  ((mode-initialization text-mode))
   (local-set-variable! "Syntax Table" texinfo-mode:syntax-table)
   (local-set-variable! "Fill Column" 75)
   (local-set-variable! "Require Final Newline" true)
@@ -73,11 +73,3 @@ modified version of TeX input format."
 (modify-syntax-entry! texinfo-mode:syntax-table #\@ "\\")
 (modify-syntax-entry! texinfo-mode:syntax-table #\C-Q "\\")
 (modify-syntax-entry! texinfo-mode:syntax-table #\' "w")
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: (access edwin-syntax-table edwin-package)
-;;; End:

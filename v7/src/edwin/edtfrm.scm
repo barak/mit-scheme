@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1985 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtfrm.scm,v 1.73 1989/03/14 08:00:30 cph Exp $
+;;;
+;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -37,73 +39,100 @@
 
 ;;;; Editor Frame
 
-(declare (usual-integrations)
-	 )
-(using-syntax class-syntax-table
+(declare (usual-integrations))
 
 ;;; Editor Frame
 
 (define-class editor-frame vanilla-window
-  (root-inferior typein-inferior selected-window cursor-window select-time))
+  (screen
+   root-inferior
+   typein-inferior
+   selected-window
+   cursor-window
+   select-time))
 
-(define (make-editor-frame superior x-start y-start x-size y-size
-			   editor-name main-buffer typein-buffer)
-  (let ((window (=> superior :make-inferior editor-frame)))
-    (let ((main-window (make-buffer-frame window main-buffer #!TRUE))
-	  (typein-window (make-buffer-frame window typein-buffer #!FALSE)))
-      (with-instance-variables editor-frame window
+(define (make-editor-frame root-screen main-buffer typein-buffer)
+  (let ((window (make-object editor-frame)))
+    (with-instance-variables editor-frame
+			     window
+			     (root-screen main-buffer typein-buffer)
+      (set! superior false)
+      (set! x-size (screen-x-size root-screen))
+      (set! y-size (screen-y-size root-screen))
+      (set! redisplay-flags (list false))
+      (set! inferiors '())
+      (let ((main-window (make-buffer-frame window main-buffer true))
+	    (typein-window (make-buffer-frame window typein-buffer false)))
+	(set! screen root-screen)
 	(set! root-inferior (find-inferior inferiors main-window))
 	(set! typein-inferior (find-inferior inferiors typein-window))
 	(set! selected-window main-window)
 	(set! cursor-window main-window)
-	(set! select-time 2))
-      (set-window-select-time! main-window 1)
-      (=> (window-cursor main-window) :enable!))
-    (=> window :set-size! x-size y-size)
-    (=> superior :set-inferior-start! window x-start y-start)
+	(set! select-time 2)
+	(set-window-select-time! main-window 1)
+	(=> (window-cursor main-window) :enable!))
+      (set-editor-frame-size! window x-size y-size))
     window))
 
-(define-method editor-frame (:set-size! window x y)
-  (usual=> window :set-size! x y)
-  (set-inferior-start! root-inferior 0 0)
-  (let ((y* (- y typein-y-size)))
-    (set-inferior-start! typein-inferior 0 y*)
-    (set-inferior-size! root-inferior x y*))
-  (set-inferior-size! typein-inferior x-size typein-y-size))
+(define-method editor-frame (:update-root-display! window display-style)
+  (with-instance-variables editor-frame window (display-style)
+    (with-screen-in-update! screen
+      (lambda ()
+	(if (and (or display-style (car redisplay-flags))
+		 (update-inferiors! window screen 0 0
+				    0 x-size 0 y-size
+				    display-style))
+	    (set-car! redisplay-flags false))))))
+
+(define (set-editor-frame-size! window x y)
+  (with-instance-variables editor-frame window (x y)
+    (usual=> window :set-size! x y)
+    (set-inferior-start! root-inferior 0 0)
+    (let ((y* (- y typein-y-size)))
+      (set-inferior-start! typein-inferior 0 y*)
+      (set-inferior-size! root-inferior x y*))
+    (set-inferior-size! typein-inferior x-size typein-y-size)))
+
+(define-method editor-frame :set-size!
+  set-editor-frame-size!)
 
 (define typein-y-size 1)
 
 (define-method editor-frame (:new-root-window! window window*)
-  (set! root-inferior (find-inferior inferiors window*)))
+  (set! root-inferior (find-inferior inferiors window*))
+  unspecific)
 
-(define-procedure editor-frame (editor-frame-window0 window)
-  (window0 (inferior-window root-inferior)))
+(define-integrable (editor-frame-window0 window)
+  (with-instance-variables editor-frame window ()
+    (window0 (inferior-window root-inferior))))
 
-(define-procedure editor-frame (editor-frame-typein-window window)
-  (inferior-window typein-inferior))
+(define-integrable (editor-frame-typein-window window)
+  (with-instance-variables editor-frame window ()
+    (inferior-window typein-inferior)))
 
-(define-procedure editor-frame (editor-frame-selected-window window)
-  selected-window)
+(define-integrable (editor-frame-selected-window window)
+  (with-instance-variables editor-frame window ()
+    selected-window))
 
-(define-procedure editor-frame (editor-frame-cursor-window window)
-  cursor-window)
+(define-integrable (editor-frame-cursor-window window)
+  (with-instance-variables editor-frame window ()
+    cursor-window))
 
-(define-procedure editor-frame (editor-frame-select-window! window window*)
-  (if (not (buffer-frame? window*))
-      (error "Attempt to select non-window" window*))
-  (=> (window-cursor cursor-window) :disable!)
-  (set! selected-window window*)
-  (set-window-select-time! window* select-time)
-  (set! select-time (1+ select-time))
-  (set! cursor-window window*)
-  (=> (window-cursor cursor-window) :enable!))
+(define (editor-frame-select-window! window window*)
+  (with-instance-variables editor-frame window (window*)
+    (if (not (buffer-frame? window*))
+	(error "Attempt to select non-window" window*))
+    (=> (window-cursor cursor-window) :disable!)
+    (set! selected-window window*)
+    (set-window-select-time! window* select-time)
+    (set! select-time (1+ select-time))
+    (set! cursor-window window*)
+    (=> (window-cursor cursor-window) :enable!)))
 
-(define-procedure editor-frame (editor-frame-select-cursor! window window*)
-  (if (not (buffer-frame? window*))
-      (error "Attempt to select non-window" window*))
-  (=> (window-cursor cursor-window) :disable!)
-  (set! cursor-window window*)
-  (=> (window-cursor cursor-window) :enable!))
-
-;;; end USING-SYNTAX
-)
+(define (editor-frame-select-cursor! window window*)
+  (with-instance-variables editor-frame window (window*)
+    (if (not (buffer-frame? window*))
+	(error "Attempt to select non-window" window*))
+    (=> (window-cursor cursor-window) :disable!)
+    (set! cursor-window window*)
+    (=> (window-cursor cursor-window) :enable!)))

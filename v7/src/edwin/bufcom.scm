@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.80 1989/03/14 07:58:45 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,19 +40,18 @@
 ;;;; Buffer Commands
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
-(define-command ("^R Buffer Not Modified" argument)
+(define-command ("^R Buffer Not Modified")
   "Pretend that this buffer hasn't been altered."
   (buffer-not-modified! (current-buffer)))
 
-(define-command ("Select Buffer" argument)
+(define-command ("Select Buffer")
   "Select buffer with specified name.
 If the variable Select Buffer Create is true,
 specifying a non-existent buffer will cause it to be created."
   (select-buffer (prompt-for-select-buffer "Select Buffer")))
 
-(define-command ("Select Buffer Other Window" argument)
+(define-command ("Select Buffer Other Window")
   "Select buffer in another window."
   (select-buffer-other-window
    (prompt-for-select-buffer "Select Buffer Other Window")))
@@ -64,13 +65,13 @@ specifying a non-existent buffer will cause it to be created."
        prompt-for-buffer prompt-for-existing-buffer)
    prompt (previous-buffer)))
 
-(define-command ("Create Buffer" argument)
+(define-command ("Create Buffer")
   "Create a new buffer with a given name, and select it."
   (let ((buffer (new-buffer (prompt-for-string "Create Buffer" false))))
     (set-buffer-major-mode! buffer (ref-variable "Editor Default Mode"))
     (select-buffer buffer)))
 
-(define-command ("Insert Buffer" argument)
+(define-command ("Insert Buffer")
   "Insert the contents of a specified buffer at point."
   (let ((point (mark-right-inserting (current-point))))
     (region-insert-string!
@@ -80,14 +81,14 @@ specifying a non-existent buffer will cause it to be created."
     (push-current-mark! (current-point))
     (set-current-point! point)))
 
-(define-command ("^R Twiddle Buffers" argument)
+(define-command ("^R Twiddle Buffers")
   "Select previous buffer."
   (let ((buffer (previous-buffer)))
     (if buffer
 	(select-buffer buffer)
 	(editor-error "No previous buffer to select"))))
 
-(define-command ("Bury Current Buffer" argument)
+(define-command ("Bury Current Buffer")
   "Deselect the current buffer, putting it at the end of the buffer list."
   (let ((buffer (current-buffer))
 	(previous (previous-buffer)))
@@ -95,7 +96,7 @@ specifying a non-existent buffer will cause it to be created."
 	(begin (select-buffer previous)
 	       (bury-buffer buffer)))))
 
-(define-command ("Kill Buffer" argument)
+(define-command ("Kill Buffer")
   "Kill the buffer with specified name.
 Does a completing read of the buffer name in the echo area.
 If the buffer has changes in it, we offer to write it out."
@@ -107,7 +108,7 @@ If the buffer has changes in it, we offer to write it out."
   (save-buffer-changes buffer)
   (kill-buffer buffer))
 
-(define-command ("Kill Some Buffers" argument)
+(define-command ("Kill Some Buffers")
   "For each buffer, ask whether to kill it."
   (kill-some-buffers true))
 
@@ -129,7 +130,7 @@ If the buffer has changes in it, we offer to write it out."
 			(kill-buffer dummy)))))
 	    (buffer-list)))
 
-(define-command ("Rename Buffer" argument)
+(define-command ("Rename Buffer")
   "Change the name of the current buffer.
 Reads the new name in the echo area."
   (let ((buffer (current-buffer)))
@@ -142,7 +143,7 @@ Reads the new name in the echo area."
 	  (editor-error "Buffer named " name " already exists"))
       (rename-buffer buffer name))))
 
-(define-command ("Normal Mode" argument)
+(define-command ("Normal Mode")
   "Reset mode and local variable bindings to their default values.
 Just like what happens when the file is first visited."
   (initialize-buffer! (current-buffer)))
@@ -207,12 +208,3 @@ Just like what happens when the file is first visited."
 				   'NO-DEFAULT)
 				(buffer-names)
 				'STRICT-COMPLETION)))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; Tags Table Pathname: (access edwin-tags-pathname edwin-package)
-;;; End:

@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1985 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motion.scm,v 1.79 1989/03/14 08:01:41 cph Exp $
+;;;
+;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -37,70 +39,68 @@
 
 ;;;; Motion within Groups
 
-(declare (usual-integrations)
-	 )
+(declare (usual-integrations))
 
 ;;;; Motion by Characters
 
 (define (limit-mark-motion limit? limit)
   (cond ((eq? limit? 'LIMIT) limit)
-	((eq? limit? 'BEEP) (beep) limit)
+	((eq? limit? 'BEEP) (editor-beep) limit)
 	((eq? limit? 'FAILURE) (editor-failure) limit)
 	((eq? limit? 'ERROR) (editor-error))
-	((not limit?) #!FALSE)
+	((not limit?) false)
 	(else (error "Unknown limit type" limit?))))
 
 (define (mark1+ mark #!optional limit?)
-  (if (unassigned? limit?) (set! limit? #!FALSE))
   (let ((group (mark-group mark))
 	(index (mark-index mark)))
     (if (group-end-index? group index)
-	(limit-mark-motion limit? (group-end-mark group))
+	(limit-mark-motion (and (not (default-object? limit?)) limit?)
+			   (group-end-mark group))
 	(make-mark group (1+ index)))))
 
 (define (mark-1+ mark #!optional limit?)
-  (if (unassigned? limit?) (set! limit? #!FALSE))
   (let ((group (mark-group mark))
 	(index (mark-index mark)))
     (if (group-start-index? group index)
-	(limit-mark-motion limit? (group-start-mark group))
+	(limit-mark-motion (and (not (default-object? limit?)) limit?)
+			   (group-start-mark group))
 	(make-mark group (-1+ index)))))
 
 (define (region-count-chars region)
-  (- (region-end-index region)
-     (region-start-index region)))
-
+  (- (region-end-index region) (region-start-index region)))
+
 (define mark+)
 (define mark-)
 (let ()
 
 (set! mark+
 (named-lambda (mark+ mark n #!optional limit?)
-  (if (unassigned? limit?) (set! limit? #!FALSE))
-  (cond ((positive? n) (%mark+ mark n limit?))
-	((negative? n) (%mark- mark (- n) limit?))
-	(else mark))))
+  (let ((limit? (and (not (default-object? limit?)) limit?)))
+    (cond ((positive? n) (%mark+ mark n limit?))
+	  ((negative? n) (%mark- mark (- n) limit?))
+	  (else mark)))))
 
 (set! mark-
 (named-lambda (mark- mark n #!optional limit?)
-  (if (unassigned? limit?) (set! limit? #!FALSE))
-  (cond ((positive? n) (%mark- mark n limit?))
-	((negative? n) (%mark+ mark (- n) limit?))
-	(else mark))))
+  (let ((limit? (and (not (default-object? limit?)) limit?)))
+    (cond ((positive? n) (%mark- mark n limit?))
+	  ((negative? n) (%mark+ mark (- n) limit?))
+	  (else mark)))))
 
 (define (%mark+ mark n limit?)
-  (let ((group (mark-group mark)))
-    (let ((new-index (+ (mark-index mark) n)))
-      (if (> new-index (group-end-index group))
-	  (limit-mark-motion limit? (group-end-mark group))
-	  (make-mark group new-index)))))
+  (let ((group (mark-group mark))
+	(new-index (+ (mark-index mark) n)))
+    (if (> new-index (group-end-index group))
+	(limit-mark-motion limit? (group-end-mark group))
+	(make-mark group new-index))))
 
 (define (%mark- mark n limit?)
-  (let ((group (mark-group mark)))
-    (let ((new-index (- (mark-index mark) n)))
-      (if (< new-index (group-start-index group))
-	  (limit-mark-motion limit? (group-start-mark group))
-	  (make-mark group new-index)))))
+  (let ((group (mark-group mark))
+	(new-index (- (mark-index mark) n)))
+    (if (< new-index (group-start-index group))
+	(limit-mark-motion limit? (group-start-mark group))
+	(make-mark group new-index))))
 
 )
 
@@ -115,62 +115,59 @@
 (define (move-vertically group index n if-ok if-not-ok)
   (cond ((positive? n)
 	 (let ((limit (group-end-index group)))
-	   (define (loop+ i n)
+	   (let loop ((i index) (n n))
 	     (let ((j (%find-next-newline group i limit)))
 	       (cond ((not j) (if-not-ok (group-end-mark group)))
 		     ((= n 1) (if-ok (1+ j)))
-		     (else (loop+ (1+ j) (-1+ n))))))
-	   (loop+ index n)))
+		     (else (loop (1+ j) (-1+ n))))))))
 	((negative? n)
 	 (let ((limit (group-start-index group)))
-	   (define (loop- i n)
+	   (let loop ((i index) (n n))
 	     (let ((j (%find-previous-newline group i limit)))
 	       (cond ((zero? n) (if-ok (or j limit)))
 		     ((not j) (if-not-ok (group-start-mark group)))
-		     (else (loop- (-1+ j) (1+ n))))))
-	   (loop- index n)))
+		     (else (loop (-1+ j) (1+ n))))))))
 	(else
-	 (if-ok (let ((limit (group-start-index group)))
-		  (or (%find-previous-newline group index limit)
-		      limit))))))
+	 (if-ok (line-start-index group index)))))
 
 (define (line-start-index group index)
-  (or (%find-previous-newline group index (group-start-index group))
-      (group-start-index group)))
+  (let ((limit (group-start-index group)))
+    (or (%find-previous-newline group index limit)
+	limit)))
 
 (define (line-end-index group index)
-  (or (%find-next-newline group index (group-end-index group))
-      (group-end-index group)))
+  (let ((limit (group-end-index group)))
+    (or (%find-next-newline group index limit)
+	limit)))
 
 (define (line-start-index? group index)
   (or (group-start-index? group index)
-      (char=? (group-left-char group index) char:newline)))
+      (char=? (group-left-char group index) #\newline)))
 
 (define (line-end-index? group index)
   (or (group-end-index? group index)
-      (char=? (group-right-char group index) char:newline)))
+      (char=? (group-right-char group index) #\newline)))
 
 (define (line-start mark n #!optional limit?)
-  (if (unassigned? limit?) (set! limit? #!FALSE))
   (let ((group (mark-group mark)))
     (move-vertically group (mark-index mark) n
       (lambda (index)
 	(make-mark group index))
       (lambda (mark)
-	(limit-mark-motion limit? mark)))))
+	(limit-mark-motion (and (not (default-object? limit?)) limit?)
+			   mark)))))
 
 (define (line-end mark n #!optional limit?)
-  (if (unassigned? limit?) (set! limit? #!FALSE))
   (let ((group (mark-group mark)))
     (move-vertically group (mark-index mark) n
       (lambda (index)
-	(let ((end
-	       (%find-next-newline group index (group-end-index group))))
+	(let ((end (%find-next-newline group index (group-end-index group))))
 	  (if end
 	      (make-mark group end)
 	      (group-end-mark group))))
       (lambda (mark)
-	(limit-mark-motion limit? mark)))))
+	(limit-mark-motion (and (not (default-object? limit?)) limit?)
+			   mark)))))
 
 (define (line-start? mark)
   (line-start-index? (mark-group mark) (mark-index mark)))
@@ -184,16 +181,14 @@
 		     (region-end-index region)))
 
 (define (group-count-lines group start end)
-  (define (phi1 start n)
+  (let loop ((start start) (n 0))
     (if (= start end)
 	n
-	(phi2 (%find-next-newline group start end)
-	      (1+ n))))
-  (define (phi2 i n)
-    (if (not i)
-	n
-	(phi1 (1+ i) n)))
-  (phi1 start 0))
+	(let ((i (%find-next-newline group start end))
+	      (n (1+ n)))
+	  (if (not i)
+	      n
+	      (loop (1+ i) n))))))
 
 ;;;; Motion by Columns
 
@@ -216,8 +211,8 @@
 (define (group-column-length group start-index end-index start-column)
   (if (= start-index end-index)
       0
-      (let ((start (group-index->position group start-index #!TRUE))
-	    (end (group-index->position group end-index #!FALSE))
+      (let ((start (group-index->position group start-index true))
+	    (end (group-index->position group end-index false))
 	    (gap-start (group-gap-start group))
 	    (gap-end (group-gap-end group))
 	    (text (group-text group)))
@@ -230,8 +225,8 @@
 (define (group-column->index group start-index end-index start-column column)
   (if (= start-index end-index)
       start-index
-      (let ((start (group-index->position group start-index #!TRUE))
-	    (end (group-index->position group end-index #!FALSE))
+      (let ((start (group-index->position group start-index true))
+	    (end (group-index->position group end-index false))
 	    (gap-start (group-gap-start group))
 	    (gap-end (group-gap-end group))
 	    (text (group-text group)))
@@ -241,9 +236,9 @@
 	       (- (substring-column->index text start end start-column column)
 		  (group-gap-length group)))
 	      (else
-	       (substring-column->index text start gap-start start-column
-					column
+	       (substring-column->index text start gap-start
+					start-column column
 		 (lambda (gap-column)
-		   (- (substring-column->index text gap-end end gap-column
-					       column)
+		   (- (substring-column->index text gap-end end
+					       gap-column column)
 		      (group-gap-length group)))))))))

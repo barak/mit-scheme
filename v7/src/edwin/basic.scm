@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.95 1989/03/14 07:58:42 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,9 +40,8 @@
 ;;;; Basic Commands
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
-(define-command ("^R Bad Command" argument)
+(define-command ("^R Bad Command")
   "This command is used to capture undefined keys.
 It is usually called directly by the command lookup
 procedure when it fails to find a command."
@@ -55,7 +56,7 @@ With an argument, insert the character that many times."
   "Reads a character and inserts it."
   (define (read-char)
     (let ((char (keyboard-read-char)))
-      (set-command-prompt! (string-append (command-prompt) (char->name char)))
+      (set-command-prompt! (string-append (command-prompt) (char-name char)))
       char))
 
   (define (read-digit)
@@ -85,12 +86,12 @@ With an argument, inserts several newlines."
 (define (xchar->name char)
   (if (pair? char)
       (chars->name char)
-      (char->name char)))
+      (char-name char)))
 
 (define (chars->name chars)
   (if (null? chars)
       ""
-      (string-append-separated (char->name (car chars))
+      (string-append-separated (char-name (car chars))
 			       (chars->name (cdr chars)))))
 
 (define (string-append-separated x y)
@@ -100,24 +101,27 @@ With an argument, inserts several newlines."
 
 (define (editor-error . strings)
   (if (not (null? strings)) (apply temporary-message strings))
-  (screen-beep the-alpha-screen)
+  (editor-beep)
   (abort-current-command))
 
 (define (editor-failure . strings)
   (cond ((not (null? strings)) (apply temporary-message strings))
 	(*defining-keyboard-macro?* (clear-message)))
-  (screen-beep the-alpha-screen)
+  (editor-beep)
   (keyboard-macro-disable))
+
+(define-integrable (editor-beep)
+  (screen-beep (current-screen)))
 
 (define (not-implemented)
   (editor-error "Not yet implemented"))
 
-(define-command ("^R Prefix Control" argument)
+(define-command ("^R Prefix Control")
   "Sets Control-bit of following character.
 This command followed by an = is equivalent to a Control-=."
   (read-extension-char "C-" char-controlify))
 
-(define-command ("^R Prefix Meta" argument)
+(define-command ("^R Prefix Meta")
   "Sets Meta-bit of following character. 
 Turns a following A into a Meta-A.
 If the Metizer character is Altmode, it turns ^A
@@ -130,7 +134,7 @@ into Control-Meta-A.  Otherwise, it turns ^A into plain Meta-A."
 			   (lambda (char)
 			     (char-metafy (char-base char))))))
 
-(define-command ("^R Prefix Control-Meta" argument)
+(define-command ("^R Prefix Control-Meta")
   "Sets Control- and Meta-bits of following character.
 Turns a following A (or C-A) into a Control-Meta-A."
   (read-extension-char "C-M-" char-control-metafy))
@@ -148,7 +152,7 @@ Turns a following A (or C-A) into a Control-Meta-A."
       (set-command-prompt-prefix! prefix-string))
   (let ((char (modifier (keyboard-read-char))))
     (if execute-extended-chars?
-	(dispatch-on-char (current-comtab) char)
+	(dispatch-on-char (current-comtabs) char)
 	char)))
 
 (define (set-command-prompt-prefix! prefix-string)
@@ -156,17 +160,17 @@ Turns a following A (or C-A) into a Control-Meta-A."
    (string-append-separated (command-argument-prompt)
 			    prefix-string)))
 
-(define-command ("^R Prefix Character" argument)
+(define-command ("^R Prefix Character")
   "This is a prefix for more commands.
 It reads another character (a subcommand) and dispatches on it."
   (let ((prefix-char (current-command-char)))
     (set-command-prompt-prefix! (string-append (xchar->name prefix-char) " "))
-    (dispatch-on-char (current-comtab)
+    (dispatch-on-char (current-comtabs)
 		      ((if (pair? prefix-char) append cons)
 		       prefix-char
 		       (list (keyboard-read-char))))))
 
-(define-command ("^R Extended Command" argument)
+(define-command ("^R Extended Command")
   "Read an extended command from the terminal with completion.
 This command reads the name of a function, with completion.  Then the
 function is called.  Completion is done as the function name is typed
@@ -178,34 +182,34 @@ For more information type the HELP key while entering the name."
 With argument, saves visited file first."
   (if argument (^r-save-file-command))
   (quit)
-  (update-alpha-window! true))
+  (update-screens! true))
 
-(define-command ("^R Scheme" argument)
+(define-command ("^R Scheme")
   "Stop Edwin and return to Scheme."
   (editor-abort *the-non-printing-object*))
 
-(define-command ("^R Exit" argument)
+(define-command ("^R Exit")
   "Exit normally from a subsystem of a level of editing.
 At top level, exit from Edwin like \\[^R Return to Superior]."
   (exit-recursive-edit 'EXIT))
 
-(define-command ("Abort Recursive Edit" argument)
+(define-command ("Abort Recursive Edit")
   "Abnormal exit from recursive editing command.
 The recursive edit is exited and the command that invoked it is aborted.
 For a normal exit, you should use \\[^R Exit], NOT this command."
   (exit-recursive-edit 'ABORT))
 
-(define-command ("^R Narrow Bounds to Region" argument)
+(define-command ("^R Narrow Bounds to Region")
   "Restrict editing in current buffer to text between point and mark.
 Use \\[^R Widen Bounds] to undo the effects of this command."
   (region-clip! (current-region)))
 
-(define-command ("^R Widen Bounds" argument)
+(define-command ("^R Widen Bounds")
   "Remove restrictions from current buffer.
 Allows full text to be seen and edited."
   (buffer-widen! (current-buffer)))
 
-(define-command ("Set Key" argument)
+(define-command ("Set Key")
   "Define a key binding from the keyboard.
 Prompts for a command and a key, and sets the key's binding.
 The key is bound in Fundamental Mode."
@@ -256,7 +260,7 @@ Otherwise, set the comment column to the argument."
 	 (set! comment-column (or argument (current-column)))
 	 (message "Comment column set to " (write-to-string comment-column)))))
 
-(define-command ("^R Indent for Comment" argument)
+(define-command ("^R Indent for Comment")
   "Indent this line's comment to comment column, or insert an empty comment."
   (if (not (ref-variable "Comment Locator Hook"))
       (editor-error "No comment syntax defined")
@@ -278,7 +282,7 @@ Otherwise, set the comment column to the argument."
 on new line, with no new terminator or starter."
   false)
 
-(define-command ("^R Indent New Comment Line" argument)
+(define-command ("^R Indent New Comment Line")
   "Break line at point and indent, continuing comment if presently within one."
   (define (if-not-in-comment)
     (if (ref-variable "Fill Prefix")
@@ -309,7 +313,7 @@ on new line, with no new terminator or starter."
     (insert-string (ref-variable "Comment End"))
     (set-current-point! point)))
 
-(define-command ("^R Kill Comment" argument)
+(define-command ("^R Kill Comment")
   "Kill the comment on this line, if any."
   (if (not (ref-variable "Comment Locator Hook"))
       (editor-error "No comment syntax defined")
@@ -318,12 +322,3 @@ on new line, with no new terminator or starter."
 	(let ((com ((ref-variable "Comment Locator Hook") start)))
 	  (if com
 	      (kill-string (horizontal-space-start (car com)) end))))))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; Tags Table Pathname: (access edwin-tags-pathname edwin-package)
-;;; End:

@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.85 1989/03/14 08:00:50 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,15 +40,13 @@
 ;;;; Help Commands
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
-(define-command ("^R Help Prefix" argument)
+(define-command ("^R Help Prefix")
   "This is a prefix for more commands.
 It reads another character (a subcommand) and dispatches on it."
-  (let ((char (prompt-for-char-with-interrupts
-	       "A C D I K L M T V W or C-h for more help")))
+  (let ((char (prompt-for-char "A C D I K L M T V W or C-h for more help")))
     (dispatch-on-char
-     (current-comtab)
+     (current-comtabs)
      (list #\Backspace
 	   (if (or (char=? char #\Backspace)
 		   (char=? char #\?))
@@ -87,14 +87,14 @@ W   Where is.  Type a command name and get its key binding."
 			      (scroll-window window
 					     (standard-scroll-window-argument
 					      window false 1)
-					     beep)
+					     editor-beep)
 			      (loop))
 			     ((or (char=? char #\Rubout)
 				  (char=? char #\M-V))
 			      (scroll-window window
 					     (standard-scroll-window-argument
 					      window false -1)
-					     beep)
+					     editor-beep)
 			      (loop))
 			     (else char))))
 		   (loop)))
@@ -114,9 +114,9 @@ W   Where is.  Type a command name and get its key binding."
 
 ;;;; Commands and Keys
 
-(define-command ("Command Apropos" argument)
+(define-command ("Command Apropos")
   "Prompts for a string, lists all commands containing it."
-  (let ((string (or (prompt-for-string "Command apropos" #!FALSE) "")))
+  (let ((string (or (prompt-for-string "Command apropos" false) "")))
     (with-output-to-help-display
      (lambda ()
        (for-each (lambda (command)
@@ -126,7 +126,7 @@ W   Where is.  Type a command name and get its key binding."
 		   (print-short-description (command-description command)))
 		 (string-table-apropos editor-commands string))))))
 
-(define-command ("Describe Command" argument)
+(define-command ("Describe Command")
   "Prompts for a command, and describes it.
 Prints the full documentation for the given command."
   (let ((command (prompt-for-command "Describe Command")))
@@ -137,20 +137,20 @@ Prints the full documentation for the given command."
        (print-key-bindings command)
        (write-description (command-description command))))))
 
-(define-command ("Where Is" argument)
+(define-command ("Where Is")
   "Prompts for a command, and shows what key it is bound to."
   (let ((command (prompt-for-command "Where is command")))
-    (let ((bindings (comtab-key-bindings (current-comtab) command)))
+    (let ((bindings (comtab-key-bindings (current-comtabs) command)))
       (if (null? bindings)
 	  (message "\"" (command-name command) "\" is not on any keys")
 	  (message "\"" (command-name command) "\" is on "
 		   (xchar->name (car bindings)))))))
 
-(define-command ("Describe Key Briefly" argument)
+(define-command ("Describe Key Briefly")
   "Prompts for a key, and describes the command it is bound to.
 Prints the brief documentation for that command."
-  (let ((char (prompt-for-key "Describe key briefly" (current-comtab))))
-    (let ((command (comtab-entry (current-comtab) char)))
+  (let ((char (prompt-for-key "Describe key briefly" (current-comtabs))))
+    (let ((command (comtab-entry (current-comtabs) char)))
       (if (eq? command (name->command "^R Bad Command"))
 	  (help-describe-unbound-key char)
 	  (message (xchar->name char)
@@ -158,11 +158,11 @@ Prints the brief documentation for that command."
 		   (command-name command)
 		   "\"")))))
 
-(define-command ("Describe Key" argument)
+(define-command ("Describe Key")
   "Prompts for a key, and describes the command it is bound to.
 Prints the full documentation for that command."
-  (let ((char (prompt-for-key "Describe key" (current-comtab))))
-    (let ((command (comtab-entry (current-comtab) char)))
+  (let ((char (prompt-for-key "Describe key" (current-comtabs))))
+    (let ((command (comtab-entry (current-comtabs) char)))
       (if (eq? command (name->command "^R Bad Command"))
 	  (help-describe-unbound-key char)
 	  (with-output-to-help-display
@@ -179,9 +179,9 @@ Prints the full documentation for that command."
 
 ;;;; Variables
 
-(define-command ("Variable Apropos" argument)
+(define-command ("Variable Apropos")
   "Prompts for a string, lists all variables containing it."
-  (let ((string (or (prompt-for-string "Variable apropos" #!FALSE) "")))
+  (let ((string (or (prompt-for-string "Variable apropos" false) "")))
     (with-output-to-help-display
      (lambda ()
        (for-each (lambda (variable)
@@ -191,7 +191,7 @@ Prints the full documentation for that command."
 		   (print-short-description (variable-description variable)))
 		 (string-table-apropos editor-variables string))))))
 
-(define-command ("Describe Variable" argument)
+(define-command ("Describe Variable")
   "Prompts for a variable, and describes it.
 Prints the full documentation for the given variable."
   (let ((variable (prompt-for-variable "Describe Variable")))
@@ -228,28 +228,28 @@ Just \\[^R Universal Argument] means prompt for the new value."
 				 (write-to-string (variable-ref variable))))
 			       (else argument)))))
 
-(define-command ("Kill Local Variable" argument)
+(define-command ("Kill Local Variable")
   "Make a variable use its global value in the current buffer."
   (unmake-local-binding!
    (variable-symbol (prompt-for-variable "Kill Local Variable"))))
 
 ;;;; Other Stuff
 
-(define-command ("View Lossage" argument)
+(define-command ("View Lossage")
   "Print the keyboard history."
   (with-output-to-help-display
    (lambda ()
      (for-each (lambda (char)
-		 (write-string (string-append (char->name char) " ")))
+		 (write-string (string-append (char-name char) " ")))
 	       (reverse (ring-list (current-char-history)))))))
 
-(define-command ("Describe Mode" argument)
+(define-command ("Describe Mode")
   "Print the documentation for the current mode."
   (with-output-to-help-display
    (lambda ()
      (write-description (mode-description (current-major-mode))))))
 
-(define-command ("Teach Emacs" argument)
+(define-command ("Teach Emacs")
   "Visit the Emacs learn-by-doing tutorial."
   (delete-other-windows (current-window))
   (let ((pathname (string->pathname "*TUTORIAL")))
@@ -283,7 +283,7 @@ Just \\[^R Universal Argument] means prompt for the new value."
   (write-string (substitute-command-keys description)))
 
 (define (print-key-bindings command)
-  (let ((bindings (comtab-key-bindings (current-comtab) command)))
+  (let ((bindings (comtab-key-bindings (current-comtabs) command)))
     (if (not (null? bindings))
 	(begin (write-string "    which is bound to:    ")
 	       (write-string (char-list-string bindings))
@@ -297,14 +297,13 @@ Just \\[^R Universal Argument] means prompt for the new value."
 		     (char-list-string (cdr xchars)))))
 (define (print-variable-binding variable)
   (write-string "    which is ")
-  (let ((symbol (variable-symbol variable)))
-    (cond ((lexical-unbound? edwin-package symbol)
-	   (write-string "unbound"))
-	  ((lexical-unassigned? edwin-package symbol)
-	   (write-string "unassigned"))
-	  (else
-	   (write-string "bound to: ")
-	   (write (lexical-reference edwin-package symbol)))))
+  (cond ((variable-unbound? variable)
+	 (write-string "unbound"))
+	((variable-unassigned? variable)
+	 (write-string "unassigned"))
+	(else
+	 (write-string "bound to: ")
+	 (write (variable-ref variable))))
   (newline))
 
 (define (print-short-description description)
@@ -313,69 +312,61 @@ Just \\[^R Universal Argument] means prompt for the new value."
   (newline))
 
 (define (string-first-line string)
-    (let ((index (string-find-next-char string char:newline)))
+    (let ((index (string-find-next-char string #\newline)))
       (if index
 	  (substring string 0 index)
 	  string)))
 
 (define (substitute-command-keys string #!optional start end)
-  (if (unassigned? start) (set! start 0))
-  (if (unassigned? end) (set! end (string-length string)))
+  (let ((start (if (default-object? start) 0 start))
+	(end (if (default-object? end) (string-length string) end)))
+    
+      (define (find-escape start*)
+	(define (loop start)
+	  (let ((index (substring-find-next-char string start end #\\)))
+	    (if (not index)
+		(list (substring string start* end))
+		(let ((next (1+ index)))
+		  (if (= next end)
+		      (list (substring string start* end))
+		      (cond ((char=? #\[ (string-ref string next))
+			     (cons (substring string start* index)
+				   (subst-key (1+ next))))
+			    ((char=? #\= (string-ref string next))
+			     (cons (substring string start* index)
+				   (quote-next (1+ next))))
+			    (else (loop next))))))))
+	(loop start*))
 
-  (define (find-escape start*)
-    (define (loop start)
-      (let ((index (substring-find-next-char string start end #\\)))
-	(if (not index)
-	    (list (substring string start* end))
-	    (let ((next (1+ index)))
-	      (if (= next end)
-		  (list (substring string start* end))
-		  (cond ((char=? #\[ (string-ref string next))
-			 (cons (substring string start* index)
-			       (subst-key (1+ next))))
-			((char=? #\= (string-ref string next))
-			 (cons (substring string start* index)
-			       (quote-next (1+ next))))
-			(else (loop next))))))))
-    (loop start*))
+      (define (subst-key start)
+	(let ((index (substring-find-next-char string start end #\])))
+	  (if (not index)
+	      (error "SUBSTITUTE-COMMAND-KEYS: Missing ]")
+	      (cons (command->key-name
+		     (name->command (substring string start index)))
+		    (find-escape (1+ index))))))
 
-  (define (subst-key start)
-    (let ((index (substring-find-next-char string start end #\])))
-      (if (not index)
-	  (error "SUBSTITUTE-COMMAND-KEYS: Missing ]")
-	  (cons (command->key-name
-		 (name->command (substring string start index)))
-		(find-escape (1+ index))))))
+      (define (quote-next start)
+	(if (= start end)
+	    (finish start)
+	    (let ((next (1+ start)))
+	      (if (char=? #\\ (string-ref string start))
+		  (if (= next end)
+		      (finish start)
+		      (continue start (1+ next)))
+		  (continue start next)))))
 
-  (define (quote-next start)
-    (if (= start end)
-	(finish start)
-	(let ((next (1+ start)))
-	  (if (char=? #\\ (string-ref string start))
-	      (if (= next end)
-		  (finish start)
-		  (continue start (1+ next)))
-	      (continue start next)))))
+      (define (continue start end)
+	(cons (substring string start end)
+	      (find-escape end)))
 
-  (define (continue start end)
-    (cons (substring string start end)
-	  (find-escape end)))
+      (define (finish start)
+	(list (substring string start end)))
 
-  (define (finish start)
-    (list (substring string start end)))
-
-  (apply string-append (find-escape start)))
+      (apply string-append (find-escape start))))
 
 (define (command->key-name command)
-  (let ((bindings (comtab-key-bindings (current-comtab) command)))
+  (let ((bindings (comtab-key-bindings (current-comtabs) command)))
     (if (null? bindings)
 	(string-append "M-X " (command-name command))
 	(xchar->name (car bindings)))))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; End:

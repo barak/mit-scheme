@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.63 1989/03/14 08:02:12 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,7 +40,6 @@
 ;;;; Replacement Commands
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
 (define-variable "Replace String Search"
   "The last string that a replacement command searched for."
@@ -200,7 +201,7 @@ C-R to enter recursive edit, C-W to delete match and recursive edit,
 	       (perform-query start end replaced?))
 	      (else
 	       (if clear-on-exit? (clear-message))
-	       (execute-char (current-comtab) char)
+	       (execute-char (current-comtabs) char)
 	       true))))
 
     (set-message)
@@ -212,7 +213,7 @@ C-R to enter recursive edit, C-W to delete match and recursive edit,
 
 ;;;; Occurrence Commands
 
-(define-command ("Count Occurrences" argument)
+(define-command ("Count Occurrences")
   "Print the number of occurrences of a given regexp following point."
   (let ((regexp (prompt-for-string "Count Occurrences (regexp)" false)))
     (define (loop start n)
@@ -240,12 +241,3 @@ The argument, if given, is the number of context lines to show
 		       (newline)
 		       (loop (line-start mark 1))))))
 	(loop (current-point))))))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; Tags Table Pathname: (access edwin-tags-pathname edwin-package)
-;;; End:

@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debuge.scm,v 1.35 1989/03/14 08:00:20 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -38,12 +40,10 @@
 ;;;; Debugging Stuff
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
 (define (debug-save-files)
   (for-each debug-save-buffer
-	    (bufferset-buffer-list
-	     (vector-ref edwin-editor editor-index:bufferset))))
+	    (bufferset-buffer-list (editor-bufferset edwin-editor))))
 
 (define (debug-save-buffer buffer)
   (if (and (buffer-modified? buffer)
@@ -54,12 +54,14 @@
 		      (and (y-or-n? "Save buffer "
 				    (buffer-name buffer)
 				    " (Y or N)? ")
-			   (begin (newline)
-				  (write-string "Filename: ")
-				  (string->pathname (read-line)))))
+			   (begin
+			     (newline)
+			     (write-string "Filename: ")
+			     (->pathname (read)))))
 		     ((integer? (pathname-version pathname))
 		      (pathname-new-version pathname 'NEWEST))
-		     (else pathname)))))
+		     (else
+		      pathname)))))
 	(if pathname
 	    (let ((truename (pathname->output-truename pathname)))
 	      (let ((filename (pathname->string truename)))
@@ -67,48 +69,52 @@
 			(y-or-n? "File '"
 				 (pathname->string pathname)
 				 "' exists.  Write anyway (Y or N)? "))
-		    (begin (newline)
-			   (write-string "Writing file '")
-			   (write-string filename)
-			   (write-string "'")
-			   (region->file (buffer-region buffer) filename)
-			   (write-string " -- done")
-			   (set-buffer-pathname! buffer pathname)
-			   (set-buffer-truename! buffer truename)
-			   (buffer-not-modified! buffer)))))))))
+		    (begin
+		      (newline)
+		      (write-string "Writing file '")
+		      (write-string filename)
+		      (write-string "'")
+		      (region->file (buffer-region buffer) filename)
+		      (write-string " -- done")
+		      (set-buffer-pathname! buffer pathname)
+		      (set-buffer-truename! buffer truename)
+		      (buffer-not-modified! buffer)))))))))
 
-(define-command ("Redraw Alpha Window" argument)
-  "Redraws the entire alpha window from scratch."
-  (update-alpha-window! #!TRUE))
+(define-command ("Redraw Display")
+  "Redraws the entire display from scratch."
+  (update-screens! true))
 
-(define-command ("Debug Show Rings" argument) ""
+(define-command ("Debug Show Rings")
+  ""
   (message "Mark Ring: "
 	   (write-to-string (ring-size (buffer-mark-ring (current-buffer))))
 	   "; Kill Ring: "
 	   (write-to-string (ring-size (current-kill-ring)))))
-
-(define-command ("Debug Count Marks" argument) ""
+
+(define-command ("Debug Count Marks")
+  ""
   (count-marks-group (buffer-group (current-buffer))
     (lambda (n-existing n-gced)
       (message "Existing: " (write-to-string n-existing)
 	       "; GCed: " (write-to-string n-gced)))))
 
 (define (count-marks-group group receiver)
-  (define (loop marks receiver)
-    (if (null? marks)
-	(receiver 0 0)
-	(loop (cdr marks)
+  (let loop ((marks (group-marks group)) (receiver receiver))
+    (if (weak-pair? marks)
+	(loop (weak-cdr marks)
 	  (lambda (n-existing n-gced)
-	    (if (object-unhash (car marks))
+	    (if (weak-pair/car? marks)
 		(receiver (1+ n-existing) n-gced)
-		(receiver n-existing (1+ n-gced)))))))
-  (loop (group-marks group) receiver))
+		(receiver n-existing (1+ n-gced)))))
+	(receiver 0 0))))
+;;;; Object System Debugging
 
 (define (po object)
   (for-each (lambda (entry)
-	      (format "~%~o: ~40@o"
-		      (car entry)
-		      (vector-ref object (cdr entry))))
+	      (newline)
+	      (write (car entry))
+	      (write-string ": ")
+	      (write (vector-ref object (cdr entry))))
 	    (class-instance-transforms (object-class object))))
 
 (define (instance-ref object name)
@@ -122,11 +128,3 @@
     (if entry
 	(vector-set! object (cdr entry) value)
 	(error "Not a valid instance-variable name" name))))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; End:

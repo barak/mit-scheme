@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.43 1989/03/14 08:01:25 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -38,13 +40,10 @@
 ;;;; Editor Macros
 
 (declare (usual-integrations))
-
-(define edwin-syntax-table
-  (make-syntax-table system-global-syntax-table))
-
-(define edwin-macros
-  (make-environment
 
+(define edwin-syntax-table
+  (make-syntax-table syntax-table/system-internal))
+
 ;;; DEFINE-NAMED-STRUCTURE is a simple alternative to DEFSTRUCT,
 ;;; which defines a vector-based tagged data structure.  The first
 ;;; argument is a string, which will be stored in the structure's 0th
@@ -52,7 +51,7 @@
 ;;; names of the slots.  Do not use the slot names %TAG or %SIZE.
 
 (syntax-table-define edwin-syntax-table 'DEFINE-NAMED-STRUCTURE
-  (macro (name . slots)
+  (lambda (name . slots)
     (define ((make-symbols x) y)
       (make-symbol x y))
 
@@ -87,120 +86,115 @@
 	  `(BEGIN (DEFINE ,tag-name ,name)
 		  (DEFINE (,constructor-name)
 		    (LET ((,structure-name
-			   (VECTOR-CONS ,(1+ (length slots)) '())))
+			   (MAKE-VECTOR ,(1+ (length slots)) '())))
 		      (VECTOR-SET! ,structure-name 0 ,tag-name)
 		      ,structure-name))
 		  (DEFINE (,predicate-name OBJECT)
 		    (AND (VECTOR? OBJECT)
 			 (NOT (ZERO? (VECTOR-LENGTH OBJECT)))
 			 (EQ? ,tag-name (VECTOR-REF OBJECT 0))))
+		  (UNPARSER/SET-TAGGED-VECTOR-METHOD!
+		   ,tag-name
+		   (UNPARSER/STANDARD-METHOD ',structure-name))
 		  ,@(slot-loop slot-names 1)
 		  ,@(selector-loop selector-names 1)))))))
 
-(syntax-table-define edwin-syntax-table 'DEFINE-INTEGRABLE
-  (macro (name . body)
-    `(BEGIN (DECLARE (INTEGRATE ,(if (pair? name) (car name) name)))
-	    (DEFINE ,name
-	      ,@(if (pair? name)
-		    `((DECLARE (INTEGRATE ,@(cdr name))))
-		    '())
-	      ,@body))))
-
 (syntax-table-define edwin-syntax-table 'DEFINE-COMMAND
-  (macro (bvl description . body)
+  (lambda (bvl description . body)
     (let ((name (car bvl))
-	  (arg-names (map (lambda (arg) (if (pair? arg) (car arg) arg))
-			  (cdr bvl)))
-	  (arg-inits (map (lambda (arg) (and (pair? arg) (cadr arg)))
-			  (cdr bvl))))
-      (let ((procedure-name
-	     (string->symbol
-	      (string-append (canonicalize-name-string name)
-			     "-COMMAND"))))
-	`(BEGIN (DEFINE (,procedure-name #!OPTIONAL ,@arg-names)
-		  ,@(map (lambda (arg-name arg-init)
-			   `(IF ,(if (not arg-init)
-				     `(UNASSIGNED? ,arg-name)
-				     `(OR (UNASSIGNED? ,arg-name)
-					  (NOT ,arg-name)))
-				(SET! ,arg-name ,arg-init)))
-			 arg-names arg-inits)
-		  ,@body)
-		(MAKE-COMMAND ,name ,description ,procedure-name))))))
-
-(syntax-table-define edwin-syntax-table 'DEFINE-VARIABLE
-  (macro (name description #!optional value)
-    (let ((variable-name (string->symbol (canonicalize-name-string name))))
-      `(BEGIN (DEFINE ,variable-name
-		,@(if (unassigned? value)
-		      '()
-		      `(,value)))
-	      (MAKE-VARIABLE ',name ',description ',variable-name)))))
+	  (bvl (cdr bvl)))
+      (let ((pname (symbol-append (canonicalize-name name) '-COMMAND)))
+	`(BEGIN
+	   ,(if (null? bvl)
+		(let ((argument (string->uninterned-symbol "ARGUMENT")))
+		  `(DEFINE (,pname #!OPTIONAL ,argument)
+		     ,argument		;ignore
+		     ,@body))
+		(let ((arg-names
+		       (map (lambda (arg) (if (pair? arg) (car arg) arg))
+			    bvl)))
+		  `(DEFINE (,pname #!OPTIONAL ,@arg-names)
+		     (LET* ,(map (lambda (name arg)
+				   (let ((init (and (pair? arg) (cadr arg))))
+				     `(,name
+				       (IF ,(if (not init)
+						`(DEFAULT-OBJECT? ,name)
+						`(OR (DEFAULT-OBJECT? ,name)
+						     (NOT ,name)))
+					   ,init
+					   ,name))))
+				 arg-names
+				 bvl)
+		       ,@body))))
+	   (MAKE-COMMAND ',name ',description ,pname))))))
 
-(define (make-conditional-definition name value)
-  (make-definition name
-    (make-conditional (make-unbound? name)
-		      value
-		      (make-conditional (make-unassigned? name)
-					(make-unassigned-object)
-					(make-variable name)))))
+(syntax-table-define edwin-syntax-table 'DEFINE-VARIABLE
+  (lambda (name description . tail)
+    (let ((variable-name (canonicalize-name name)))
+      `(BEGIN
+	 (DEFINE ,variable-name ,@tail)
+	 (MAKE-VARIABLE ',name ',description ',variable-name)))))
 
 (syntax-table-define edwin-syntax-table 'REF-VARIABLE
-  (macro (name)
-    (string->symbol (canonicalize-name-string name))))
+  (lambda (name)
+    (canonicalize-name name)))
 
 (syntax-table-define edwin-syntax-table 'SET-VARIABLE!
-  (macro (name #!optional value)
-    `(SET! ,(string->symbol (canonicalize-name-string name))
-	   ,@(if (unassigned? value) '() `(,value)))))
+  (lambda (name . tail)
+    `(BEGIN
+       (SET! ,(canonicalize-name name) ,@tail)
+       UNSPECIFIC)))
 
 (syntax-table-define edwin-syntax-table 'GLOBAL-SET-VARIABLE!
-  (macro (name #!optional value)
-    (let ((variable-name (string->symbol (canonicalize-name-string name))))
-      `(BEGIN (UNMAKE-LOCAL-BINDING! ',variable-name)
-	      (SET! ,variable-name
-		    ,@(if (unassigned? value) '() `(,value)))))))
+  (lambda (name . tail)
+    (let ((variable-name (canonicalize-name name)))
+      `(BEGIN
+	 (UNMAKE-LOCAL-BINDING! ',variable-name)
+	 (SET! ,variable-name ,@tail)
+	 UNSPECIFIC))))
 
 (syntax-table-define edwin-syntax-table 'LOCAL-SET-VARIABLE!
-  (macro (name #!optional value)
-    `(MAKE-LOCAL-BINDING! ',(string->symbol (canonicalize-name-string name))
-			  ,@(if (unassigned? value)
-				'()
-				`(,value)))))
+  (lambda (name . tail)
+    `(MAKE-LOCAL-BINDING! ',(canonicalize-name name) ,@tail)))
 
 (syntax-table-define edwin-syntax-table 'DEFINE-MAJOR-MODE
-  (macro (name super-mode-name description . initialization)
-    (let ((vname
-	   (string->symbol
-	    (string-append (canonicalize-name-string name)
-			   "-MODE"))))
+  (lambda (name super-mode-name description . initialization)
+    (let ((vname (mode-name->variable name)))
       `(DEFINE ,vname
-	 (MAKE-MODE ,name TRUE
+	 (MAKE-MODE ',name
+		    TRUE
 		    ,(if super-mode-name
-			 `(MODE-COMTABS (NAME->MODE ,super-mode-name))
+			 `(MODE-COMTABS (NAME->MODE ',super-mode-name))
 			 ''())
-		    ,description
-		    (LAMBDA () ,@initialization))))))
+		    ',description
+		    (LAMBDA ()
+		      ,@(let ((initialization
+			       (if super-mode-name
+				   `(((MODE-INITIALIZATION
+				       ,(mode-name->variable super-mode-name)))
+				     ,@initialization)
+				   initialization)))
+			  (if (null? initialization)
+			      `(',unspecific)
+			      initialization))))))))
 
 (syntax-table-define edwin-syntax-table 'DEFINE-MINOR-MODE
-  (macro (name description . initialization)
-    (let ((vname
-	   (string->symbol
-	    (string-append (canonicalize-name-string name)
-			   "-MODE"))))
+  (lambda (name description . initialization)
+    (let ((vname (mode-name->variable name)))
       `(DEFINE ,vname
-	 (MAKE-MODE ,name false '()
-		    ,description
-		    (LAMBDA () ,@initialization))))))
+	 (MAKE-MODE ',name
+		    FALSE
+		    '()
+		    ',description
+		    (LAMBDA ()
+		      ,@(if (null? initialization)
+			    `(',unspecific)
+			    initialization)))))))
 
-(define (canonicalize-name-string name)
-  (let ((name (string-upcase name)))
-    (string-replace! name #\Space #\-)
-    name))
+(define-integrable (mode-name->variable name)
+  (symbol-append (canonicalize-name name) '-MODE))
 
-;;; end EDWIN-MACROS package.
-))
-
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-macros
-;;; End:
+(define (canonicalize-name name)
+  (cond ((symbol? name) name)
+	((string? name) (intern (string-replace name #\Space #\-)))
+	(else (error "illegal name" name))))

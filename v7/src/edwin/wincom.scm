@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1987 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.89 1989/03/14 08:03:47 cph Exp $
+;;;
+;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -38,7 +40,6 @@
 ;;;; Window Commands
 
 (declare (usual-integrations))
-(using-syntax (access edwin-syntax-table edwin-package)
 
 (define-variable "Cursor Centering Point"
   "The distance from the top of the window at which to center the point.
@@ -68,7 +69,7 @@ Do not set this variable below 1."
 (define-variable "Mode Line Inverse Video"
   "If true, the mode line is highlighted."
   true)
-
+
 (define-command ("^R New Window" argument)
   "Choose new window putting point at center, top or bottom.
 With no argument, chooses a window to put point at the center
@@ -79,7 +80,9 @@ C-U as argument redisplays the line containing point."
   (let ((window (current-window)))
     (let ((size (window-y-size window)))
       (if (not argument)
-	  (window-redraw! window false)
+	  (begin
+	    (window-redraw! window false)
+	    (update-window-screen! window true))
 	  (window-scroll-y-absolute! window
 				     (let ((n (remainder argument size)))
 				       (if (negative? n)
@@ -142,14 +145,13 @@ Just minus as an argument moves down full screen."
   (let ((window (current-window)))
     (scroll-window window
 		   (multi-scroll-window-argument window argument -1))))
-
+
 (define (scroll-window window n #!optional limit)
-  (if (unassigned? limit) (set! limit editor-error))
   (if (if (negative? n)
 	  (mark= (window-start-mark window)
 		 (buffer-start (window-buffer window)))
 	  (mark= (window-end-mark window)
-		 (buffer-end (window-buffer window))))      (limit)
+		 (buffer-end (window-buffer window))))      ((if (default-object? limit) editor-error limit))
       (window-scroll-y-relative! window n)))
 
 (define (standard-scroll-window-argument window argument factor)
@@ -175,13 +177,13 @@ Just minus as an argument moves down full screen."
   "Toggle the screen's use of inverse video.
 With a positive argument, inverse video is forced.
 With a negative argument, normal video is forced."
-  ((access screen-inverse-video! window-package)
+  (screen-inverse-video!
    (or (positive? argument)
        (not (or (negative? argument)
-		((access screen-inverse-video! window-package) false)))))
-  (update-alpha-window! true))
+		(screen-inverse-video! false)))))
+  (update-screens! true))
 
-(define-command ("What Cursor Position" argument)
+(define-command ("What Cursor Position")
   "Print various things about where cursor is.
 Print the X position, the Y position,
 the ASCII code for the following character,
@@ -192,30 +194,30 @@ and the virtual boundaries, if any."
     (let ((position (mark-index point))
 	  (total (group-length (buffer-group buffer))))
       (message (if (group-end? point)
-			 ""
-			 (let ((char (mark-right-char point)))
-			   (string-append "Char: " (char->name char)
-					  " (0"
-					  (fluid-let ((*unparser-radix* 8))
-					    (write-to-string
-					     (char->ascii char)))
-					  ") ")))
-		     "point=" (write-to-string position)
-		     " of " (write-to-string total)
-		     "("
-		     (write-to-string (if (zero? total)
-					  0
-					  (round (* 100 (/ position total)))))
-		     "%) "
-		     (let ((group (mark-group point)))
-		       (let ((start (group-start-index group))
-			     (end (group-end-index group)))
-			 (if (and (zero? start) (= end total))
-			     ""
-			     (string-append "<" (write-to-string start)
-					    " - " (write-to-string end)
-					    "> "))))
-		     "x=" (write-to-string (mark-column point))))))
+		   ""
+		   (let ((char (mark-right-char point)))
+		     (string-append "Char: " (char-name char)
+				    " (0"
+				    (number->string (char->ascii char)
+						    '(HEUR (RADIX O S)
+							   (EXACTNESS S)))
+				    ") ")))
+	       "point=" (write-to-string position)
+	       " of " (write-to-string total)
+	       "("
+	       (write-to-string (if (zero? total)
+				    0
+				    (round (* 100 (/ position total)))))
+	       "%) "
+	       (let ((group (mark-group point)))
+		 (let ((start (group-start-index group))
+		       (end (group-end-index group)))
+		   (if (and (zero? start) (= end total))
+		       ""
+		       (string-append "<" (write-to-string start)
+				      " - " (write-to-string end)
+				      "> "))))
+	       "x=" (write-to-string (mark-column point))))))
 
 ;;;; Multiple Windows
 
@@ -252,12 +254,12 @@ ARG lines.  No arg means split equally."
   "Makes current window ARG columns narrower."
   (disallow-typein)
   (window-grow-horizontally! (current-window) (- argument)))
-
-(define-command ("^R Delete Window" argument)
+
+(define-command ("^R Delete Window")
   "Delete the current window from the screen."
   (window-delete! (current-window)))
 
-(define-command ("^R Delete Other Windows" argument)
+(define-command ("^R Delete Other Windows")
   "Make the current window fill the screen."
   (delete-other-windows (current-window)))
 
@@ -305,7 +307,7 @@ means scroll one screenful down."
 If there is only one window, it is split regardless of this value."
   500)
 
-(define-command ("Kill Pop Up Buffer" argument)
+(define-command ("Kill Pop Up Buffer")
   "Kills the most recently popped up buffer, if one exists.
 Also kills any pop up window it may have created."
   (let ((buffer (object-unhash *previous-popped-up-buffer*))
@@ -316,73 +318,66 @@ Also kills any pop up window it may have created."
 	(kill-buffer-interactive buffer)
 	(editor-error "No previous pop up buffer"))))
 
-(define *previous-popped-up-buffer*
-  (object-hash false))
+(define *previous-popped-up-buffer* (object-hash false))
+(define *previous-popped-up-window* (object-hash false))
 
-(define *previous-popped-up-window*
-  (object-hash false))
-
 (define (pop-up-buffer buffer #!optional select?)
   ;; If some new window is created by this procedure, it is returned
   ;; as the value.  Otherwise the value is false.
-
-  (if (unassigned? select?) (set! select? false))
-
-  (define (pop-up-window window)
-    (let ((window (window-split-vertically! window false)))
-      (pop-into-window window)
-      window))
-
-  (define (pop-into-window window)
-    (set-window-buffer! window buffer)
-    (if select? (select-window window))
-    false)
-
-  (if (< (ref-variable "Window Minimum Height") 2)
-      (set-variable! "Window Minimum Height" 2))
-  (let ((window
-	 (let ((window (get-buffer-window buffer)))
-	   (if window
-	       (begin (set-window-point! window (buffer-point buffer))
-		      (if select? (select-window window))
-		      false)
-	       (let ((limit (* 2 (ref-variable "Window Minimum Height"))))
-		 (if (< (ref-variable "Split Height Threshold") limit)
-		     (set-variable! "Split Height Threshold" limit))
-		 (cond ((ref-variable "Preserve Window Arrangement")
-			(pop-into-window (largest-window)))
-		       ((ref-variable "Pop Up Windows")
-			(or (let ((window (largest-window)))
-			      (and (>= (window-y-size window)
-				       (ref-variable "Split Height Threshold"))
-				   (not
-				    (window-has-horizontal-neighbor? window))
-				   (pop-up-window window)))
-			    (let ((window (lru-window))
-				  (current (current-window)))
-			      (if (and (or (eq? window current)
-					   (and (typein-window? current)
-						(eq? window
-						     (window1+ window))))
-				       (>= (window-y-size window) limit))
-				  (pop-up-window window)
-				  (pop-into-window window)))))
-		       (else
-			(pop-into-window (lru-window)))))))))
-    (set! *previous-popped-up-window* (object-hash window))
-    (set! *previous-popped-up-buffer* (object-hash buffer))
-    window))
+  (let ((select? (and (not (default-object? select?)) select?)))
+    (define (pop-up-window window)
+      (let ((window (window-split-vertically! window false)))
+	(pop-into-window window)
+	window))
+    (define (pop-into-window window)
+      (set-window-buffer! window buffer true)
+      (if select? (select-window window))
+      false)
+    (if (< (ref-variable "Window Minimum Height") 2)
+	(set-variable! "Window Minimum Height" 2))
+    (let ((window
+	   (let ((window (get-buffer-window buffer)))
+	     (if window
+		 (begin (set-window-point! window (buffer-point buffer))
+			(if select? (select-window window))
+			false)
+		 (let ((limit (* 2 (ref-variable "Window Minimum Height"))))
+		   (if (< (ref-variable "Split Height Threshold") limit)
+		       (set-variable! "Split Height Threshold" limit))
+		   (cond ((ref-variable "Preserve Window Arrangement")
+			  (pop-into-window (largest-window)))
+			 ((ref-variable "Pop Up Windows")
+			  (or (let ((window (largest-window)))
+				(and (>= (window-y-size window)
+					 (ref-variable
+					  "Split Height Threshold"))
+				     (not
+				      (window-has-horizontal-neighbor? window))
+				     (pop-up-window window)))
+			      (let ((window (lru-window))
+				    (current (current-window)))
+				(if (and (or (eq? window current)
+					     (and (typein-window? current)
+						  (eq? window
+						       (window1+ window))))
+					 (>= (window-y-size window) limit))
+				    (pop-up-window window)
+				    (pop-into-window window)))))
+			 (else
+			  (pop-into-window (lru-window)))))))))
+      (set! *previous-popped-up-window* (object-hash window))
+      (set! *previous-popped-up-buffer* (object-hash buffer))
+      window)))
 
 (define (get-buffer-window buffer)
   (let ((start (window0)))
-    (define (loop window)
-      (and (not (eq? window start))
-	   (if (eq? buffer (window-buffer window))
-	       window
-	       (loop (window1+ window)))))
     (if (eq? buffer (window-buffer start))
 	start
-	(loop (window1+ start)))))
+	(let loop ((window (window1+ start)))
+	  (and (not (eq? window start))
+	       (if (eq? buffer (window-buffer window))
+		   window
+		   (loop (window1+ window))))))))
 
 (define (largest-window)
   (let ((start (window0)))
@@ -426,19 +421,10 @@ Also kills any pop up window it may have created."
 		(search-all (window1+ window) smallest smallest-time)))))
 
     (search-full-width (window1+ start) false false)))
-
+
 (define (delete-other-windows start)
   (define (loop window)
     (if (not (eq? window start))
 	(begin (window-delete! window)
 	       (loop (window1+ window)))))
   (loop (window1+ start)))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: (access edwin-syntax-table edwin-package)
-;;; Tags Table Pathname: (access edwin-tags-pathname edwin-package)
-;;; End:

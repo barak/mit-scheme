@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.101 1989/03/14 08:01:14 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,11 +40,10 @@
 ;;;; Line/Indentation Commands
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
 ;;;; Lines
 
-(define-command ("^R Count Lines Region" argument)
+(define-command ("^R Count Lines Region")
   "Type number of lines from point to mark."
   (message "Region has "
 	   (write-to-string (region-count-lines (current-region)))
@@ -91,7 +92,7 @@ A page boundary is any string in Page Delimiters, at a line's beginning."
   (let ((end (forward-page (current-point) (1+ argument) 'LIMIT)))
     (set-current-region! (make-region (backward-page end 1 'LIMIT) end))))
 
-(define-command ("^R Narrow Bounds to Page" argument)
+(define-command ("^R Narrow Bounds to Page")
   "Make text outside current page invisible."
   (region-clip! (page-interior-region (current-point))))
 
@@ -109,7 +110,7 @@ A page boundary is any string in Page Delimiters, at a line's beginning."
 			   end
 			   end*))))))
 
-(define-command ("^R Count Lines Page" argument)
+(define-command ("^R Count Lines Page")
   "Report number of lines on current page."
   (let ((point (current-point)))
     (let ((end
@@ -118,12 +119,12 @@ A page boundary is any string in Page Delimiters, at a line's beginning."
       (let ((start (backward-page end 1 'LIMIT)))
 	(message "Page has " (count-lines-string start end)
 		 " lines (" (count-lines-string start point)
-		 "+" (count-lines-string point end) ")")))))
+		 " + " (count-lines-string point end) ")")))))
 
 (define (count-lines-string start end)
   (write-to-string (region-count-lines (make-region start end))))
 
-(define-command ("What Page" argument)
+(define-command ("What Page")
   "Report page and line number of point."
   (without-group-clipped! (buffer-group (current-buffer))
     (lambda ()
@@ -151,6 +152,7 @@ A page boundary is any string in Page Delimiters, at a line's beginning."
 ;;;; Indentation
 
 (define (indent-to-left-margin argument)
+  argument				;ignore
   (maybe-change-indentation (ref-variable "Left Margin")
 			    (line-start (current-point) 0)))
 
@@ -190,13 +192,13 @@ An argument is passed on to Indent Line Procedure."
       (region-insert-string! (current-point) (ref-variable "Fill Prefix"))
       (^r-indent-according-to-mode-command argument)))
 
-(define-command ("Reindent then Newline and Indent" argument)
+(define-command ("Reindent then Newline and Indent")
   "Reindent the current line according to mode (like Tab), then insert
 a newline, and indent the new line indent according to mode."
   (delete-horizontal-space)
-  (^r-indent-according-to-mode-command #!FALSE)
+  (^r-indent-according-to-mode-command false)
   (^r-newline-command)
-  (^r-indent-according-to-mode-command #!FALSE))
+  (^r-indent-according-to-mode-command false))
 
 (define-command ("^R Newline" argument)
   "Insert newline, or move onto blank line.
@@ -230,20 +232,20 @@ With argument, makes extra blank lines in between."
     (insert-horizontal-space (mark-column m*))
     (set-current-point! m*)))
 
-(define-command ("^R Back to Indentation" argument)
+(define-command ("^R Back to Indentation")
   "Move to end of this line's indentation."
   (set-current-point! (horizontal-space-end (line-start (current-point) 0))))
 
-(define-command ("^R Delete Horizontal Space" argument)
+(define-command ("^R Delete Horizontal Space")
   "Delete all spaces and tabs around point."
   (delete-horizontal-space))
 
-(define-command ("^R Just One Space" argument)
+(define-command ("^R Just One Space")
   "Delete all spaces and tabs around point, leaving just one space."
   (delete-horizontal-space)
   (insert-chars #\Space 1))
 
-(define-command ("^R Delete Blank Lines" argument)
+(define-command ("^R Delete Blank Lines")
   "Kill all blank lines around this line's end.
 If done on a non-blank line, kills all spaces and tabs at the end of
 it, and all following blank lines (Lines are blank if they contain
@@ -296,8 +298,8 @@ moves down one line first (killing newline after current line)."
   (char-set #\)))
 
 (define-variable "Indent Tabs Mode"
-  "If #!FALSE, do not use tabs for indentation or horizontal spacing."
-  #!TRUE)
+  "If #F, do not use tabs for indentation or horizontal spacing."
+  true)
 
 (define-command ("Indent Tabs Mode" argument)
   "Enables or disables use of tabs as indentation.
@@ -358,7 +360,7 @@ Exception: lines containing just spaces and tabs become empty."
   "Distance between tab stops (for display of tab characters), in columns."
   8)
 
-(define-command ("Untabify" argument)
+(define-command ("Untabify")
   "Convert all tabs in region to multiple spaces, preserving column.
 The variable Tabs Width controls action."
   (untabify-region (current-region)))
@@ -375,11 +377,11 @@ The variable Tabs Width controls action."
 	    (loop next))))
     (loop (region-start region))))
 
-(define-command ("Tabify" argument)
+(define-command ("Tabify")
   ""
   (not-implemented))
 
-(define-command ("^R Indent Relative" argument)
+(define-command ("^R Indent Relative")
   "Indents the current line directly below the previous non blank line."
   (let ((point (current-point)))
     (let ((indentation (indentation-of-previous-non-blank-line point)))
@@ -392,27 +394,18 @@ The variable Tabs Width controls action."
   (let ((start (find-previous-non-blank-line mark)))
     (if start (current-indentation start) 0)))
 
-(define-command ("^R Tab to Tab Stop" argument)
+(define-command ("^R Tab to Tab Stop")
   ""
   (not-implemented))
 
-(define-command ("Edit Indented Text" argument)
+(define-command ("Edit Indented Text")
   ""
   (not-implemented))
 
-(define-command ("Edit Tab Stops" argument)
+(define-command ("Edit Tab Stops")
   ""
   (not-implemented))
 
-(define-command ("Edit Tabular Text" argument)
+(define-command ("Edit Tabular Text")
   ""
   (not-implemented))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; Tags Table Pathname: (access edwin-tags-pathname edwin-package)
-;;; End:

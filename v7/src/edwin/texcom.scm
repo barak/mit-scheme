@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/texcom.scm,v 1.30 1989/03/14 08:03:20 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,7 +40,6 @@
 ;;;; Text Commands
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
 (define-major-mode "Text" "Fundamental"
   "Major mode for editing english text."
@@ -58,21 +59,20 @@
 
 (define-variable "Text Mode Hook"
   "If not false, a thunk to call when entering Text mode."
-  #!FALSE)
+  false)
 
 (define (turn-on-auto-fill)
   (enable-current-minor-mode! fill-mode))
 
-(define-command ("Text Mode" argument)
+(define-command ("Text Mode")
   "Make the current mode be Text mode."
   (set-current-major-mode! text-mode))
 
 (define-major-mode "Indented-Text" "Text"
   "Like Text mode, but indents each line under previous non-blank line."
-  ((mode-initialization text-mode))
   (local-set-variable! "Indent Line Procedure" ^r-indent-relative-command))
 
-(define-command ("Indented Text Mode" argument)
+(define-command ("Indented Text Mode")
   "Make the current mode be Indented Text mode."
   (set-current-major-mode! indented-text-mode))
 
@@ -111,11 +111,11 @@ With a zero argument, it transposes the words at point and mark."
 
 ;;;; Case Conversion
 
-(define-command ("^R Uppercase Region" argument)
+(define-command ("^R Uppercase Region")
   "Convert region to upper case."
   (upcase-area (current-mark)))
 
-(define-command ("^R Lowercase Region" argument)
+(define-command ("^R Lowercase Region")
   "Convert region to lower case."
   (downcase-area (current-mark)))
 
@@ -142,12 +142,14 @@ With an argument, capitalizes that many words."
   (cond ((positive? argument)
 	 (dotimes argument
 	   (lambda (i)
+	     i				;ignore
 	     (capitalize-one-word))))
 	((negative? argument)
 	 (let ((p (current-point)))
 	   (set-current-point! (forward-word p argument 'ERROR))
 	   (dotimes (- argument)
 	     (lambda (i)
+	       i			;ignore
 	       (capitalize-one-word)))
 	   (set-current-point! p)))))
 
@@ -166,7 +168,7 @@ terminates sentences as well."
 See \\[^R Forward Sentence] for more information."
   (move-thing backward-sentence argument))
 
-(define-command ("^R Mark Sentence" (argument 1))
+(define-command ("^R Mark Sentence")
   "Put point at beginning and mark at end of sentence.
 If you are between sentences, the following sentence is used
 unless you are at the end of a paragraph."
@@ -202,12 +204,9 @@ count as blank lines in that they separate paragraphs and
 are not part of them."
   (move-thing backward-paragraph argument))
 
-(define-command ("^R Mark Paragraph" argument)
+(define-command ("^R Mark Paragraph")
   "Put point and mark around this paragraph.
 In between paragraphs, puts it around the next one.
 See ^R Backward Paragraph for paragraph definition."
   (let ((end (forward-paragraph (current-point) 1 'ERROR)))
     (set-current-region! (make-region (backward-paragraph end 1 'ERROR) end))))
-
-;;; end USING-SYNTAX
-)

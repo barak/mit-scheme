@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1985 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/strpad.scm,v 1.3 1989/03/14 08:02:56 cph Exp $
+;;;
+;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -43,23 +45,27 @@
   (if (zero? n)
       string
       (let ((l (string-length string)))
-	(let ((result (make-string (+ l n) #\Space)))
-	  (substring-move-right! string 0 l result 0)
-	  result))))
+	(let ((lr (+ l n)))
+	  (let ((result (string-allocate lr)))
+	    (substring-move-right! string 0 l result 0)
+	    (substring-fill! result l lr #\space)
+	    result)))))
 
 (define (add-padding-on-left string n)
   (if (zero? n)
       string
       (let ((l (string-length string)))
-	(let ((result (make-string (+ l n) #\Space)))
+	(let ((result (string-allocate (+ l n))))
+	  (substring-fill! result 0 n #\space)
 	  (substring-move-right! string 0 l result n)
 	  result))))
 
 (define (pad-on-right-to string n)
   (let ((l (string-length string)))
     (if (> n l)
-	(let ((result (make-string n #\Space)))
+	(let ((result (string-allocate n)))
 	  (substring-move-right! string 0 l result 0)
+	  (substring-fill! result l n #\space)
 	  result)
 	string)))
 
@@ -67,24 +73,26 @@
   (let ((l (string-length string)))
     (let ((delta (- n l)))
       (if (positive? delta)
-	  (let ((result (make-string n #\Space)))
+	  (let ((result (string-allocate n)))
+	    (substring-fill! result 0 delta #\space)
 	    (substring-move-right! string 0 l result delta)
 	    result)
 	  string))))
-
+
 (define (write-strings-densely strings)
   (pad-strings-on-right strings
     (lambda (n strings)
       (let ((n-per-line (max 1 (quotient 79 (+ 2 n)))))
-	(define (loop strings i)
+	(let loop ((strings strings) (i 1))
 	  (if (not (null? strings))
-	      (begin (write-string "  ")
-		     (write-string (car strings))
-		     (if (= i n-per-line)
-			 (begin (newline)
-				(loop (cdr strings) 1))
-			 (loop (cdr strings) (1+ i))))))
-	(loop strings 1)))))
+	      (begin
+		(write-string "  ")
+		(write-string (car strings))
+		(if (= i n-per-line)
+		    (begin
+		      (newline)
+		      (loop (cdr strings) 1))
+		    (loop (cdr strings) (1+ i))))))))))
 
 (define ((pad-strings-to-max-column pad) strings receiver)
   (define (max-loop strings n acc)

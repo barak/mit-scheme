@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.30 1989/03/14 08:01:05 cph Exp $
+;;;
+;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -38,7 +40,6 @@
 ;;;; Interaction Mode
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
 (define-major-mode "Interaction" "Scheme"
   "Major mode for evaluating Scheme expressions interactively.
@@ -54,8 +55,7 @@ Same as Scheme mode, except for
   (local-set-variable! "Scheme Environment"
 		       (ref-variable "Scheme Environment"))
   (local-set-variable! "Scheme Syntax-table"
-		       (ref-variable "Scheme Syntax-table"))
-  ((mode-initialization scheme-mode)))
+		       (ref-variable "Scheme Syntax-table")))
 
 (define-key "Interaction" #\Return "^R Interaction Execute")
 (define-prefix-key "Interaction" #\C-C "^R Prefix Character")
@@ -63,18 +63,18 @@ Same as Scheme mode, except for
 (define-key "Interaction" '(#\C-C #\C-Y) "^R Interaction Yank")
 (define-key "Interaction" '(#\C-C #\C-R) "^R Interaction Yank Pop")
 
-(define-command ("Interaction Mode" argument)
+(define-command ("Interaction Mode")
   "Make the current mode be Interaction mode."
   (set-current-major-mode! Interaction-mode)
   (let ((buffer (current-buffer)))
     (if (not (mark= (buffer-start buffer) (buffer-end buffer)))
 	(begin (set-current-point! (buffer-end buffer))
 	       (insert-interaction-prompt))
-	(insert-interaction-prompt #!FALSE))))
+	(insert-interaction-prompt false))))
 
 (define (insert-interaction-prompt #!optional newlines?)
-  (if (unassigned? newlines?) (set! newlines? #!TRUE))
-  (if newlines? (insert-newlines 2))
+  (if (or (default-object? newlines?) newlines?)
+      (insert-newlines 2))
   (insert-string "1 ")
   (insert-string (ref-variable "Interaction Prompt"))
   (insert-string " ")
@@ -141,13 +141,11 @@ Output is inserted into the buffer at the end."
 	(dynamic-wind
 	 (lambda () 'DONE)
 	 (lambda ()
-	   (^G-interceptor (lambda (continuation)
-			     (lambda (value)
-			     (newline)
-			     (write-string "Abort!")
-			     (continuation 'EXIT)))
+	   (intercept-^G-interrupts (lambda ()
+				      (newline)
+				      (write-string "Abort!"))
 	     (lambda ()
-	       (let ((environment (evaluation-environment #!FALSE)))
+	       (let ((environment (evaluation-environment false)))
 		 (with-output-to-current-point
 		  (lambda ()
 		    (write-line (eval-with-history (with-input-from-mark mark
@@ -155,7 +153,7 @@ Output is inserted into the buffer at the end."
 						   environment))))))))
 	 insert-interaction-prompt))))
 
-(define-command ("^R Interaction Refresh" argument)
+(define-command ("^R Interaction Refresh")
   "Delete the contents of the buffer, then prompt for input.
 Preserves the current `editing area'."
   (let ((buffer (current-buffer)))
@@ -163,19 +161,19 @@ Preserves the current `editing area'."
 	   (extract-string (buffer-get buffer interaction-mode:buffer-mark-tag)
 			   (buffer-end buffer))))
       (region-delete! (buffer-region buffer))
-      (insert-interaction-prompt #!FALSE)
+      (insert-interaction-prompt false)
       (insert-string edit-area))))
 
 (define interaction-mode:yank-command-message
   "Yank")
 
-(define-command ("^R Interaction Yank" argument)
+(define-command ("^R Interaction Yank")
   "Yank the last input expression."
   (push-current-mark! (mark-right-inserting (current-point)))
   (insert-string (ring-ref (ref-variable "Interaction Kill Ring") 0))
   (set-command-message! interaction-mode:yank-command-message))
 
-(define-command ("^R Interaction Yank Pop" argument)
+(define-command ("^R Interaction Yank Pop")
   "Yank the last input expression."
   (command-message-receive interaction-mode:yank-command-message
     (lambda ()
@@ -186,11 +184,3 @@ Preserves the current `editing area'."
       (set-command-message! interaction-mode:yank-command-message))
     (lambda ()
       (editor-error "No previous yank to replace"))))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; End:

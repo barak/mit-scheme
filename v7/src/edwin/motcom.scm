@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1985 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motcom.scm,v 1.37 1989/03/14 08:01:39 cph Exp $
+;;;
+;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -28,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -38,7 +40,6 @@
 ;;;; Motion Commands
 
 (declare (usual-integrations))
-(using-syntax edwin-syntax-table
 
 (define-command ("^R Beginning of Line" (argument 1))
   "Move point to beginning of line."
@@ -122,7 +123,7 @@ A negative argument goes to the -Nth page from the end of the buffer."
 (define-variable "Goal Column"
   "Semipermanent goal column for vertical motion,
 as set by \\[^R Set Goal Column], or false, indicating no goal column."
-  #!FALSE)
+  false)
 
 (define temporary-goal-column-tag
   "Temporary Goal Column")
@@ -149,7 +150,7 @@ Continuation lines are skipped.  If given after the
 last newline in the buffer, makes a new one at the end."
   (let ((column (current-goal-column)))
     (cond ((not argument)
-	   (let ((mark (line-start (current-point) 1 #!FALSE)))
+	   (let ((mark (line-start (current-point) 1 false)))
 	     (if mark
 		 (set-current-point! (move-to-column mark column))
 		 (begin (set-current-point! (group-end (current-point)))
@@ -169,11 +170,3 @@ Continuation lines are skipped."
 	 (move-to-column (line-start (current-point) (- argument) 'FAILURE)
 			 column)))
     (set-command-message! temporary-goal-column-tag column)))
-
-;;; end USING-SYNTAX
-)
-
-;;; Edwin Variables:
-;;; Scheme Environment: edwin-package
-;;; Scheme Syntax Table: edwin-syntax-table
-;;; End:
