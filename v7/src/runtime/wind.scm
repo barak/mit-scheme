@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/wind.scm,v 14.4 1992/02/08 15:08:46 cph Exp $
+$Id: wind.scm,v 14.5 1993/01/20 06:59:51 cph Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,7 +36,7 @@ MIT in each case. |#
 ;;; package: (runtime state-space)
 
 (declare (usual-integrations))
-
+
 ;;; A STATE-SPACE is a tree of STATE-POINTs, except that the pointers
 ;;; in the tree point towards the root of the tree rather than its
 ;;; leaves.  These pointers are the NEARER-POINT of each point.
@@ -49,7 +49,7 @@ MIT in each case. |#
 
 (define-integrable with-stack-marker
   (ucode-primitive with-stack-marker 3))
-
+
 (define-structure (state-space
 		   (conc-name state-space/)
 		   (constructor %make-state-space))
@@ -58,7 +58,7 @@ MIT in each case. |#
 (define (make-state-space)
   (let ((space (%make-state-space '())))
     ;; Save the state space in the TO-NEARER field of the root point,
-    ;; because it is needed by %TRANSLATE-TO-STATE-POINT.
+    ;; because it is needed by %%TRANSLATE-TO-STATE-POINT.
     (set-state-space/nearest-point! space (make-state-point false space false))
     space))
 
@@ -66,18 +66,22 @@ MIT in each case. |#
   nearer-point
   to-nearer
   from-nearer)
-
+
 (define (%execute-at-new-state-point space before during after)
   (let ((old-root
 	 (without-interrupts
 	  (lambda ()
 	    (let ((old-root (state-space/nearest-point space)))
+	      (before)
+	      ;; Don't trust BEFORE not to change the root; move back
+	      ;; if it did.
+	      (if (not (eq? old-root (state-space/nearest-point space)))
+		  (%%translate-to-state-point old-root))
 	      (let ((new-point (make-state-point false space false)))
 		(set-state-point/nearer-point! old-root new-point)
 		(set-state-point/to-nearer! old-root before)
 		(set-state-point/from-nearer! old-root after)
 		(set-state-space/nearest-point! space new-point))
-	      (before)
 	      old-root)))))
     (let ((value
 	   (with-stack-marker during %translate-to-state-point old-root)))
@@ -87,47 +91,50 @@ MIT in each case. |#
 (define (%translate-to-state-point point)
   (without-interrupts
    (lambda ()
-     (let find-nearest ((point point) (chain '()))
-       (let ((nearer-point (state-point/nearer-point point)))
-	 (if nearer-point
-	     (find-nearest nearer-point (cons point chain))
-	     (let ((space (state-point/to-nearer point)))
-	       (let traverse-chain ((old-root point) (chain chain))
-		 (if (not (null? chain))
-		     (let ((new-root (car chain)))
-		       ;; Move to NEW-ROOT.
-		       (let ((to-nearer (state-point/to-nearer new-root))
-			     (from-nearer (state-point/from-nearer new-root)))
-			 (set-state-point/nearer-point! old-root new-root)
-			 (set-state-point/to-nearer! old-root from-nearer)
-			 (set-state-point/from-nearer! old-root to-nearer)
-			 (set-state-point/nearer-point! new-root false)
-			 (set-state-point/to-nearer! new-root space)
-			 (set-state-point/from-nearer! new-root false)
-			 (set-state-space/nearest-point! space new-root)
-			 (with-stack-marker from-nearer
-			   set-interrupt-enables! interrupt-mask/gc-ok))
-		       ;; Disable interrupts again in case FROM-NEARER
-		       ;; re-enabled them.
-		       (set-interrupt-enables! interrupt-mask/gc-ok)
-		       ;; Make sure that NEW-ROOT is still the root,
-		       ;; because FROM-NEARER might have moved it.  If
-		       ;; it has been moved, find the new root, and
-		       ;; adjust CHAIN as needed.
-		       (let find-root ((chain chain))
-			 (let ((nearer-point
-				(state-point/nearer-point (car chain))))
-			   (cond ((not nearer-point)
-				  ;; (CAR CHAIN) is the root.
-				  (traverse-chain (car chain) (cdr chain)))
-				 ((and (not (null? (cdr chain)))
-				       (eq? nearer-point (cadr chain)))
-				  ;; The root has moved along CHAIN.
-				  (find-root (cdr chain)))
-				 (else
-				  ;; The root has moved elsewhere.
-				  (find-nearest nearer-point
-						chain)))))))))))))))
+     (%%translate-to-state-point point))))
+
+(define (%%translate-to-state-point point)
+  (let find-nearest ((point point) (chain '()))
+    (let ((nearer-point (state-point/nearer-point point)))
+      (if nearer-point
+	  (find-nearest nearer-point (cons point chain))
+	  (let ((space (state-point/to-nearer point)))
+	    (let traverse-chain ((old-root point) (chain chain))
+	      (if (not (null? chain))
+		  (let ((new-root (car chain)))
+		    ;; Move to NEW-ROOT.
+		    (let ((to-nearer (state-point/to-nearer new-root))
+			  (from-nearer (state-point/from-nearer new-root)))
+		      (set-state-point/nearer-point! old-root new-root)
+		      (set-state-point/to-nearer! old-root from-nearer)
+		      (set-state-point/from-nearer! old-root to-nearer)
+		      (set-state-point/nearer-point! new-root false)
+		      (set-state-point/to-nearer! new-root space)
+		      (set-state-point/from-nearer! new-root false)
+		      (set-state-space/nearest-point! space new-root)
+		      (with-stack-marker from-nearer
+			set-interrupt-enables! interrupt-mask/gc-ok))
+		    ;; Disable interrupts again in case FROM-NEARER
+		    ;; re-enabled them.
+		    (set-interrupt-enables! interrupt-mask/gc-ok)
+		    ;; Make sure that NEW-ROOT is still the root,
+		    ;; because FROM-NEARER might have moved it.  If
+		    ;; it has been moved, find the new root, and
+		    ;; adjust CHAIN as needed.
+		    (let find-root ((chain chain))
+		      (let ((nearer-point
+			     (state-point/nearer-point (car chain))))
+			(cond ((not nearer-point)
+			       ;; (CAR CHAIN) is the root.
+			       (traverse-chain (car chain) (cdr chain)))
+			      ((and (not (null? (cdr chain)))
+				    (eq? nearer-point (cadr chain)))
+			       ;; The root has moved along CHAIN.
+			       (find-root (cdr chain)))
+			      (else
+			       ;; The root has moved elsewhere.
+			       (find-nearest nearer-point
+					     chain)))))))))))))
 
 (define-integrable (guarantee-state-space space procedure)
   (if (not (state-space? space))
@@ -171,11 +178,11 @@ MIT in each case. |#
     (%execute-at-new-state-point
      state-space:local
      (lambda ()
-       (%translate-to-state-point fluid-bindings)
+       (%%translate-to-state-point fluid-bindings)
        (before))
      during
      (lambda ()
-       (%translate-to-state-point fluid-bindings)
+       (%%translate-to-state-point fluid-bindings)
        (after)))))
 
 (define (initialize-package!)
