@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.36 1996/12/06 22:34:02 cph Exp $
+;;;	$Id: os2.scm,v 1.37 1997/02/12 08:08:16 cph Exp $
 ;;;
-;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1994-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -46,7 +46,7 @@
 (declare (usual-integrations))
 
 (define dos/encoding-pathname-types
-  '("gz" #|"ky"|#))
+  '("gz" "ky"))
 
 (define dos/executable-pathname-types
   '("exe" "cmd"))
