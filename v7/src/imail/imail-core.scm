@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.25 2000/04/06 04:22:21 cph Exp $
+;;; $Id: imail-core.scm,v 1.26 2000/04/07 19:41:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -213,7 +213,7 @@
   (properties define standard
 	      initializer make-1d-table))
 
-(define-method write-instance ((folder <file-folder>) port)
+(define-method write-instance ((folder <folder>) port)
   (write-instance-helper 'FOLDER folder port 
     (lambda ()
       (write-char #\space port)
@@ -532,40 +532,40 @@
 
 (define message-flags:name "X-IMAIL-FLAGS")
 
-(define (message-deleted? msg) (message-flagged? msg 'DELETED))
-(define (message-undeleted? msg) (not (message-flagged? msg 'DELETED)))
-(define (delete-message msg) (set-message-flag msg 'DELETED))
-(define (undelete-message msg) (clear-message-flag msg 'DELETED))
+(define (message-deleted? msg) (message-flagged? msg "deleted"))
+(define (message-undeleted? msg) (not (message-flagged? msg "deleted")))
+(define (delete-message msg) (set-message-flag msg "deleted"))
+(define (undelete-message msg) (clear-message-flag msg "deleted"))
 
-(define (message-answered? msg) (message-flagged? msg 'ANSWERED))
-(define (message-unanswered? msg) (not (message-flagged? msg 'ANSWERED)))
-(define (message-answered msg) (set-message-flag msg 'ANSWERED))
-(define (message-not-answered msg) (clear-message-flag msg 'ANSWERED))
+(define (message-answered? msg) (message-flagged? msg "answered"))
+(define (message-unanswered? msg) (not (message-flagged? msg "answered")))
+(define (message-answered msg) (set-message-flag msg "answered"))
+(define (message-not-answered msg) (clear-message-flag msg "answered"))
 
-(define (message-seen? msg) (message-flagged? msg 'SEEN))
-(define (message-unseen? msg) (not (message-flagged? msg 'SEEN)))
-(define (message-seen msg) (set-message-flag msg 'SEEN))
-(define (message-not-seen msg) (clear-message-flag msg 'SEEN))
+(define (message-seen? msg) (message-flagged? msg "seen"))
+(define (message-unseen? msg) (not (message-flagged? msg "seen")))
+(define (message-seen msg) (set-message-flag msg "seen"))
+(define (message-not-seen msg) (clear-message-flag msg "seen"))
 
-(define (message-filed? msg) (message-flagged? msg 'FILED))
-(define (message-unfiled? msg) (not (message-flagged? msg 'FILED)))
-(define (message-filed msg) (set-message-flag msg 'FILED))
-(define (message-not-filed msg) (clear-message-flag msg 'FILED))
+(define (message-filed? msg) (message-flagged? msg "filed"))
+(define (message-unfiled? msg) (not (message-flagged? msg "filed")))
+(define (message-filed msg) (set-message-flag msg "filed"))
+(define (message-not-filed msg) (clear-message-flag msg "filed"))
 
-(define (message-forwarded? msg) (message-flagged? msg 'FORWARDED))
-(define (message-not-forwarded? msg) (not (message-flagged? msg 'FORWARDED)))
-(define (message-forwarded msg) (set-message-flag msg 'FORWARDED))
-(define (message-not-forwarded msg) (clear-message-flag msg 'FORWARDED))
+(define (message-forwarded? msg) (message-flagged? msg "forwarded"))
+(define (message-not-forwarded? msg) (not (message-flagged? msg "forwarded")))
+(define (message-forwarded msg) (set-message-flag msg "forwarded"))
+(define (message-not-forwarded msg) (clear-message-flag msg "forwarded"))
 
-(define (message-edited? msg) (message-flagged? msg 'EDITED))
-(define (message-unedited? msg) (not (message-flagged? msg 'EDITED)))
-(define (message-edited msg) (set-message-flag msg 'EDITED))
-(define (message-not-edited msg) (clear-message-flag msg 'EDITED))
+(define (message-edited? msg) (message-flagged? msg "edited"))
+(define (message-unedited? msg) (not (message-flagged? msg "edited")))
+(define (message-edited msg) (set-message-flag msg "edited"))
+(define (message-not-edited msg) (clear-message-flag msg "edited"))
 
-(define (message-resent? msg) (message-flagged? msg 'RESENT))
-(define (message-not-resent? msg) (not (message-flagged? msg 'RESENT)))
-(define (message-resent msg) (set-message-flag msg 'RESENT))
-(define (message-not-resent msg) (clear-message-flag msg 'RESENT))
+(define (message-resent? msg) (message-flagged? msg "resent"))
+(define (message-not-resent? msg) (not (message-flagged? msg "resent")))
+(define (message-resent msg) (set-message-flag msg "resent"))
+(define (message-not-resent msg) (clear-message-flag msg "resent"))
 
 ;;;; Message properties
 
@@ -699,7 +699,10 @@
 	  (else winner))))
 
 (define (get-all-header-fields headers name)
-  (list-transform-positive headers
+  (list-transform-positive
+      (if (or (pair? headers) (null? headers))
+	  headers
+	  (header-fields headers))
     (lambda (header)
       (string-ci=? name (header-field-name header)))))
 
@@ -714,8 +717,12 @@
 	 (string-trim (header-field-value header)))))
 
 (define (get-all-header-field-values headers name)
-  (map (lambda (header) (string-trim (header-field-value header)))
-       (get-all-header-fields headers name)))
+  (let ((headers (get-all-header-fields headers name)))
+    (and (pair? headers)
+	 (separated-append (map (lambda (header)
+				  (string-trim (header-field-value header)))
+				headers)
+			   ", "))))
 
 (define (header-field-name? object)
   (and (string? object)
