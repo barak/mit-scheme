@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.59 1992/09/26 02:48:34 cph Exp $
+$Id: ymkfile,v 1.60 1992/09/26 03:12:03 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -667,8 +667,7 @@ artutl.o : scheme.touch
 bignum.o : scheme.touch bignumint.h limits.h
 bigprm.o flonum.o intprm.o : scheme.touch prims.h zones.h
 generic.o : scheme.touch prims.h
-fixnum.o : scheme.touch prims.h mul.c
-mul.o : config.h
+fixnum.o : scheme.touch prims.h
 
 storage.o : scheme.touch gctype.c
 
