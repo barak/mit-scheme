@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 13.45 1987/11/17 20:10:00 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 13.46 1987/11/22 22:16:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -113,39 +113,11 @@
       (lambda ()
 	(breakpoint "^B interrupt" (rep-environment)))))))
 
-; (define ^S-interrupt-handler
-;   (keep-typeahead
-;    (lambda (interrupt-character interrupt-enables)
-;      (if (null? ^Q-Hook)
-; 	 (begin (set-interrupt-enables! interrupt-enables)
-; 		(beep)
-; 		(call-with-current-continuation
-; 		 (lambda (stop-^S-wait)
-; 		   (fluid-let ((^Q-Hook Stop-^S-Wait))
-; 		     (let busy-wait () (busy-wait))))))))))
-; 
-; (define ^Q-interrupt-handler
-;   (keep-typeahead
-;    (lambda (interrupt-character interrupt-enables)
-;      (if (not (null? ^Q-Hook))
-; 	 (begin (set-interrupt-enables! interrupt-enables)
-; 		(^Q-Hook 'GO-ON))))))
-; 
-; (define ^P-interrupt-handler
-;   (flush-typeahead
-;    (lambda (interrupt-character interrupt-enables)
-;      (set-interrupt-enables! interrupt-enables)
-;      (proceed))))
-; 
-; (define ^Z-interrupt-handler
-;   (flush-typeahead
-;    (lambda (interrupt-character interrupt-enables)
-;      (set-interrupt-enables! interrupt-enables)
-;      (edit))))
-
 (define ^G-interrupt-handler
   (flush-typeahead
    (lambda (interrupt-character interrupt-enables)
+     (if ((access under-emacs? emacs-interface-package))
+	 ((access transmit-signal emacs-interface-package) #\g))
      (abort-to-top-level-driver "Quit!"))))
 
 (define ^U-interrupt-handler
@@ -160,6 +132,40 @@
 
 (define (gc-out-of-space-handler . args)
   (abort-to-nearest-driver "Aborting! Out of memory"))
+
+#|
+(define ^S-interrupt-handler
+  (keep-typeahead
+   (lambda (interrupt-character interrupt-enables)
+     (if (null? ^Q-Hook)
+	 (begin
+	   (set-interrupt-enables! interrupt-enables)
+	   (beep)
+	   (call-with-current-continuation
+	    (lambda (stop-^S-wait)
+	      (fluid-let ((^Q-Hook Stop-^S-Wait))
+		(let busy-wait () (busy-wait))))))))))
+ 
+(define ^Q-interrupt-handler
+  (keep-typeahead
+   (lambda (interrupt-character interrupt-enables)
+     (if (not (null? ^Q-Hook))
+	 (begin
+	   (set-interrupt-enables! interrupt-enables)
+	   (^Q-Hook 'GO-ON))))))
+ 
+(define ^P-interrupt-handler
+  (flush-typeahead
+   (lambda (interrupt-character interrupt-enables)
+     (set-interrupt-enables! interrupt-enables)
+     (proceed))))
+ 
+(define ^Z-interrupt-handler
+  (flush-typeahead
+   (lambda (interrupt-character interrupt-enables)
+     (set-interrupt-enables! interrupt-enables)
+     (edit))))
+|#
 
 (install-keyboard-interrupt! #\G ^G-interrupt-handler)
 (install-keyboard-interrupt! #\B ^B-interrupt-handler)
