@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.30 1987/07/09 23:20:52 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.31 1987/07/22 21:01:37 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -97,18 +97,20 @@ MIT in each case. |#
 	      (required-loop (cdr required) (cdr operands)))))
 
   (define (optional-loop optional operands)
-    (if (null? optional)
-	(if (not rest)
-	    '()
-	    (map (if (integrated-vnode? rest)
-		     generate/operand-no-value
-		     generate/operand)
-		 operands))
-	(cons ((if (integrated-vnode? (car optional))
-		   generate/operand-no-value
-		   generate/operand)
-	       (car operands))
-	      (optional-loop (cdr optional) (cdr operands)))))
+    (cond ((null? operands) '())
+	  ((null? optional)
+	   (if (not rest)
+	       '()
+	       (map (if (integrated-vnode? rest)
+			generate/operand-no-value
+			generate/operand)
+		    operands)))
+	  (else
+	   (cons ((if (integrated-vnode? (car optional))
+		      generate/operand-no-value
+		      generate/operand)
+		  (car operands))
+		 (optional-loop (cdr optional) (cdr operands))))))
 
   (required-loop required operands))
 
