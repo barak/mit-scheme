@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: intmod.scm,v 1.108 1999/12/22 20:33:07 cph Exp $
+;;; $Id: intmod.scm,v 1.109 1999/12/28 20:28:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -681,12 +681,15 @@ If this is an error, the debugger examines the error condition."
 			  (set-buffer-point! buffer end*)
 			  end*)
 			end))))
-	     (if (eqv? #\newline (extract-right-char mark))
-		 (mark1+ mark)
-		 (let ((mark (mark-left-inserting-copy mark)))
-		   (insert-newline mark)
-		   (mark-temporary! mark)
-		   mark)))))
+	     (cond ((eqv? #\newline (extract-right-char mark))
+		    (mark1+ mark))
+		   ((line-start? mark)
+		    mark)
+		   (else
+		    (let ((mark (mark-left-inserting-copy mark)))
+		      (insert-newline mark)
+		      (mark-temporary! mark)
+		      mark))))))
       (move-mark-to! (port/mark port) input-end)
       (move-mark-to! (ref-variable comint-last-input-end buffer) input-end))
     (let ((queue (port/expression-queue port)))
