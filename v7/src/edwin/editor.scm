@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: editor.scm,v 1.247 2000/03/01 23:46:25 cph Exp $
+;;; $Id: editor.scm,v 1.248 2000/05/25 03:33:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -514,55 +514,70 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 (define inferior-threads)
 
 (define (register-inferior-thread! thread output-processor)
-  (let ((flags (cons false output-processor)))
+  (let ((flags (cons #f output-processor)))
     (set! inferior-threads
-	  (cons (system-pair-cons (ucode-type weak-cons) thread flags)
+	  (cons (weak-cons thread flags)
 		inferior-threads))
     flags))
 
 (define (deregister-inferior-thread! flags)
   (let loop ((threads inferior-threads))
     (if (pair? threads)
-	(if (eq? flags (system-pair-cdr (car threads)))
+	(if (eq? flags (weak-cdr (car threads)))
 	    (begin
-	      (system-pair-set-car! (car threads) #f)
-	      (system-pair-set-cdr! (car threads) #f))
+	      (weak-set-car! (car threads) #f)
+	      (weak-set-cdr! (car threads) #f))
 	    (loop (cdr threads))))))
 
 (define (inferior-thread-output! flags)
   (without-interrupts (lambda () (inferior-thread-output!/unsafe flags))))
 
 (define-integrable (inferior-thread-output!/unsafe flags)
-  (set-car! flags true)
-  (set! inferior-thread-changes? true)
+  (set-car! flags #t)
+  (set! inferior-thread-changes? #t)
   (signal-thread-event editor-thread #f))
 
 (define (accept-thread-output)
-  (without-interrupts
-   (lambda ()
-     (and inferior-thread-changes?
-	  (begin
-	    (set! inferior-thread-changes? false)
-	    (let loop ((threads inferior-threads) (prev false) (output? false))
-	      (if (null? threads)
-		  output?
-		  (let ((record (car threads))
-			(next (cdr threads)))
-		    (let ((thread (system-pair-car record))
-			  (flags (system-pair-cdr record)))
-		      (if (and thread (not (thread-dead? thread)))
-			  (loop next
-				threads
-				(if (car flags)
-				    (begin
-				      (set-car! flags false)
-				      (let ((result ((cdr flags))))
-					(if (eq? output? 'FORCE-RETURN)
-					    output?
-					    (or result output?))))
-				    output?))
-			  (begin
-			    (if prev
-				(set-cdr! prev next)
-				(set! inferior-threads next))
-			    (loop next prev output?))))))))))))
+  (with-interrupt-mask interrupt-mask/gc-ok
+    (lambda (interrupt-mask)
+      (and inferior-thread-changes?
+	   (begin
+	     (set! inferior-thread-changes? #f)
+	     (let loop ((threads inferior-threads) (prev #f) (output? #f))
+	       (if (null? threads)
+		   output?
+		   (let ((record (car threads))
+			 (next (cdr threads)))
+		     (let ((thread (weak-car record))
+			   (flags (weak-cdr record)))
+		       (if (and thread (not (thread-dead? thread)))
+			   (loop next
+				 threads
+				 (if (car flags)
+				     (begin
+				       (set-car! flags #f)
+				       (let ((result
+					      (invoke-thread-output-processor
+					       (cdr flags)
+					       interrupt-mask)))
+					 (if (eq? output? 'FORCE-RETURN)
+					     output?
+					     (or result output?))))
+				     output?))
+			   (begin
+			     (if prev
+				 (set-cdr! prev next)
+				 (set! inferior-threads next))
+			     (loop next prev output?))))))))))))
+
+(define (invoke-thread-output-processor processor interrupt-mask)
+  (call-with-current-continuation
+   (lambda (k)
+     (with-restart 'ABORT "Return to ACCEPT-THREAD-OUTPUT."
+	 (lambda () (k #t))
+	 values
+       (lambda ()
+	 (with-interrupt-mask interrupt-mask
+	   (lambda (interrupt-mask)
+	     interrupt-mask
+	     (processor))))))))
