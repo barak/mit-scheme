@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.28 1995/09/11 19:07:10 cph Exp $
+$Id: dospth.scm,v 1.29 1995/09/11 21:25:45 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -83,21 +83,21 @@ MIT in each case. |#
     (lambda (device components)
       (call-with-values (lambda () (parse-name (car (last-pair components))))
 	(lambda (name type)
-	  (%%make-pathname host
-			   device
-			   (let ((components (except-last-pair components)))
-			     (and (not (null? components))
-				  (simplify-directory
-				   (if (string=? "" (car components))
-				       (cons 'ABSOLUTE
-					     (map parse-directory-component
-						  (cdr components)))
-				       (cons 'RELATIVE
-					     (map parse-directory-component
-						  components))))))
-			   name
-			   type
-			   'UNSPECIFIC))))))
+	  (dos/make-pathname host
+			     device
+			     (let ((components (except-last-pair components)))
+			       (and (not (null? components))
+				    (simplify-directory
+				     (if (string=? "" (car components))
+					 (cons 'ABSOLUTE
+					       (map parse-directory-component
+						    (cdr components)))
+					 (cons 'RELATIVE
+					       (map parse-directory-component
+						    components))))))
+			     name
+			     type
+			     'UNSPECIFIC))))))
 
 (define (expand-directory-prefixes components)
   (let ((string (car components)))
