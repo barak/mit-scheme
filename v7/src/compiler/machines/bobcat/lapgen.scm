@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.15 1988/11/03 07:16:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.16 1988/11/04 10:23:30 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -346,7 +346,7 @@ MIT in each case. |#
 
 (define-integrable (fixnum->address reg-ref)
   (LAP
-   (AS R L (& 8) ,reg-ref)))
+   (LS R L (& 8) ,reg-ref)))
 
 (define (test-fixnum effective-address)
   (if (effective-address/data&alterable? effective-address)
