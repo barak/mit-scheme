@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.7 2000/05/17 20:53:24 cph Exp $
+;;; $Id: compile.scm,v 1.8 2000/06/01 18:23:55 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -33,6 +33,7 @@
 		"imail-util"
 		"imap-response"
 		"imap-syntax"
+		"mime-codec"
 		"parser"
 		"rexp"
 		"rfc822"
