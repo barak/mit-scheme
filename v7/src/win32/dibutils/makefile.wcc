@@ -1,5 +1,5 @@
 ###
-### $Id: makefile.wcc,v 1.1 1997/05/13 05:32:30 cph Exp $
+### $Id: makefile.wcc,v 1.2 1997/11/19 08:39:34 cph Exp $
 ###
 ### Copyright (c) 1993-97 Massachusetts Institute of Technology
 ###
@@ -58,7 +58,7 @@ CC = wcc386
 # /ze		enable language extensions (default)
 # /zp4		use 4-byte alignment (required for MS compatibility)
 # /zq		operate quietly
-CFLAGS = /4r /d2 /ei /fpi /fp3 /op /s /w1 /zc /zp4 /zq
+CFLAGS = /6r /bd /d2 /ei /fpi /fp3 /op /s /w1 /zc /zp4 /zq
 
 # Linker options.
 #
