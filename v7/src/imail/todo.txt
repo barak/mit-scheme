@@ -1,11 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.38 2000/05/22 20:22:52 cph Exp $
+$Id: todo.txt,v 1.39 2000/05/23 02:12:10 cph Exp $
 
 Bug fixes
 ---------
-
-* Login messages interfere with modeline when doing completion on IMAP
-  URLs.
 
 * Implement operations for IMAP: URL-EXISTS?.
 
