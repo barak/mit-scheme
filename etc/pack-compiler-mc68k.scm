@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pack-compiler-mc68k.scm,v 1.3 1994/05/03 04:50:32 cph Exp $
+$Id: pack-compiler-mc68k.scm,v 1.4 2000/03/21 17:30:39 cph Exp $
 
 Copyright (c) 1993-94 Massachusetts Institute of Technology
 
@@ -38,7 +38,7 @@ MIT in each case. |#
     (load (merge-pathnames "pack" (directory-pathname (current-load-pathname)))
 	  '(RUNTIME LOAD)))
 
-(define (pack-compiler output)
+(define (pack-compiler #!optional output)
   (pack-binaries (if (default-object? output) "lib/compdel.com" output)
 		 '(("sf"
 		    "make.com"
