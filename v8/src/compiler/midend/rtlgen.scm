@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.5 1994/11/23 23:15:26 gjr Exp $
+$Id: rtlgen.scm,v 1.6 1994/11/26 00:23:03 jmiller Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -1810,20 +1810,15 @@ MIT in each case. |#
       (internal-error "Unexpected execute cache descriptor" name+arity))
   (let ((name+arity* (cadr name+arity)))
     (let ((name   (car name+arity*))
-	  (nargs* (cadr name+arity*)))
-      (let ((nargs
-	     (if nargs*
-		 (if (and #F		; SRA - no longer true!
-			  (not (= nargs* (length rands))))
-		     (internal-error
-		      "RTLGEN/INVOKE-OPERATOR-CACHE: actuals/args mismatch"
-		      nargs* (length rands))
-		     nargs*)
-		 (length rands))))
-	(rtlgen/invoke
-	 state cont rands
-	 (lambda (cont-label)
-	   (rtlgen/emit!/1 `(,kind ,(+ nargs 1) ,cont-label ,name))))))))
+	  (nargs (cadr name+arity*)))
+      (if (not nargs)
+	  (internal-error
+	   "RTLGEN/INVOKE-OPERATOR-CACHE: Unknown number of arguments"
+	   name+arity*))
+      (rtlgen/invoke
+       state cont rands
+       (lambda (cont-label)
+	 (rtlgen/emit!/1 `(,kind ,(+ nargs 1) ,cont-label ,name)))))))
 
 (define (rtlgen/invoke-primitive/compatible state nargs prim cont)
   (rtlgen/invoke/compatible
