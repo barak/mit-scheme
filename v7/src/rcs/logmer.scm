@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/logmer.scm,v 1.3 1991/11/26 08:34:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/logmer.scm,v 1.4 1991/12/16 21:20:38 cph Exp $
 
 Copyright (c) 1988, 1991 Massachusetts Institute of Technology
 
@@ -41,7 +41,7 @@ MIT in each case. |#
 (define (rcs-directory-log output-file . directories)
   (format-to-file
    output-file
-   (fluid-let ((trace-port (cmdl/output-port (nearest-cmdl))))
+   (fluid-let ((trace-port (nearest-cmdl/port)))
      (let ((entries
 	    (sort-entries
 	     (let ((entries
