@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.31 1987/08/06 05:01:39 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.32 1987/08/06 19:58:57 jinx Exp $
 
    Bit string primitives. 
 
@@ -89,7 +89,7 @@ fill_bit_string( bit_string, sense)
   Pointer filler;
   long i;
 
-  filler = ((Pointer) (sense ? -1 : 0));
+  filler = ((Pointer) (sense ? (~ 0) : 0));
   scanner = bit_string_high_ptr( bit_string);
   for (i = bits_to_pointers( bit_string_length( bit_string));
        (i > 0); i -= 1)
@@ -292,6 +292,11 @@ Built_In_Primitive (Prim_bit_string_equal_p, 2, "BIT-STRING=?", 0x19D)
   }
 }
 
+/* (BIT-STRING-OPERATION! destination source)
+   Modifies destination to be the result of using OPERATION bitwise on
+   destination and source.
+*/
+
 #define bitwise_op( action)						\
 {									\
   fast long i;								\
@@ -313,6 +318,7 @@ Built_In_Primitive (Prim_bit_string_equal_p, 2, "BIT-STRING=?", 0x19D)
 #define bit_string_or_x_action()	|=
 #define bit_string_and_x_action()	&=
 #define bit_string_andc_x_action()	&= ~
+#define bit_string_xor_x_action()	^=
 
 Built_In_Primitive( Prim_bit_string_move_x, 2, "BIT-STRING-MOVE!", 0x198)
      bitwise_op( bit_string_move_x_action)
@@ -328,6 +334,9 @@ Built_In_Primitive( Prim_bit_string_and_x, 2, "BIT-STRING-AND!", 0x19B)
 
 Built_In_Primitive( Prim_bit_string_andc_x, 2, "BIT-STRING-ANDC!", 0x19C)
      bitwise_op( bit_string_andc_x_action)
+
+Built_In_Primitive( Prim_bit_string_xor_x, 2, "BIT-STRING-XOR!", 0x18F)
+     bitwise_op( bit_string_xor_x_action)
 
 /* (BIT-SUBSTRING-MOVE-RIGHT! source start1 end1 destination start2)
    Destructively copies the substring of SOURCE between START1 and
