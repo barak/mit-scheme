@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.46 1996/04/08 21:11:15 cph Exp $
+@comment $Id: user.texinfo,v 1.47 1996/04/08 21:12:20 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -54,7 +54,7 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.46
+@subtitle Edition 1.47
 @subtitle for Scheme Release 7.4
 @subtitle 8 April 1996
 @author by Stephen Adams
@@ -267,7 +267,7 @@ recent release is always available at our site.
 
 @cindex bugs, reporting
 @cindex reporting bugs
-To report bugs, send email to @samp{bug-cscheme@zurich.ai.mit.edu}.
+To report bugs, send email to @samp{bug-cscheme@@zurich.ai.mit.edu}.
 Please include the output of the @code{identify-world} procedure
 (@pxref{Basics of Starting Scheme}), so we know what version of the
 system you are using.
