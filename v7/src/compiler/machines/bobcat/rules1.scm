@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.16 1988/10/21 03:33:19 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.17 1988/11/04 12:16:32 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -132,63 +132,81 @@ MIT in each case. |#
   (move-to-alias-register! source 'DATA target)
   (LAP))
 
-(define-rule statement
-  (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (REGISTER (? source))))
-  (QUALIFIER (pseudo-register? target))
-  (let ((target (move-to-alias-register! source 'DATA target)))
-    (LAP (RO L L (& 8) ,target))))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (CONSTANT (? constant))))
-  (QUALIFIER (pseudo-register? target))
+(define (convert-object/constant->register target constant conversion)
   (delete-dead-registers!)
   (let ((target (reference-target-alias! target 'DATA)))
     (if (non-pointer-object? constant)
 	(LAP ,(load-non-pointer 0 (object-datum constant) target))
 	(LAP ,(load-constant constant target)
-	     (AND L ,mask-reference ,target)))))
+	     ,@(conversion target)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (CONSTANT (? constant))))
+  (QUALIFIER (pseudo-register? target))
+  (convert-object/constant->register target constant object->datum))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (CONSTANT (? constant))))
+  (QUALIFIER (pseudo-register? target))
+  (convert-object/constant->register target constant object->address))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (ADDRESS->FIXNUM (OBJECT->ADDRESS (CONSTANT (? constant)))))
+  (QUALIFIER (pseudo-register? target))
+  (convert-object/constant->register target constant address->fixnum))
+
+(define-integrable (convert-object/register->register target source conversion)
+  ;; `conversion' often expands into multiple references to `target'.
+  (let ((target (move-to-alias-register! source 'DATA target)))
+    (conversion target)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (REGISTER (? source))))
+  (QUALIFIER (pseudo-register? target))
+  (convert-object/register->register target source object->type))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (REGISTER (? source))))
   (QUALIFIER (pseudo-register? target))
-  (let ((target (move-to-alias-register! source 'DATA target)))
-    (LAP (AND L ,mask-reference ,target))))
+  (convert-object/register->register target source object->datum))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (REGISTER (? source))))
+  (QUALIFIER (pseudo-register? target))
+  (convert-object/register->register target source object->address))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (ADDRESS->FIXNUM (OBJECT->ADDRESS (REGISTER (? source)))))
+  (QUALIFIER (pseudo-register? target))
+  (convert-object/register->register target source object->address))
+
+(define (convert-object/offset->register target address offset conversion)
+  (let ((source (indirect-reference! address offset)))
+    (delete-dead-registers!)
+    (let ((target (reference-target-alias! target 'DATA)))
+      (LAP (MOV L ,source ,target)
+	   ,@(conversion target)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (OBJECT->DATUM (OFFSET (REGISTER (? address)) (? offset))))
   (QUALIFIER (pseudo-register? target))
-  (let ((source (indirect-reference! address offset)))
-    (delete-dead-registers!)
-    (let ((target (reference-target-alias! target 'DATA)))
-      (LAP (MOV L ,source ,target)
-	   (AND L ,mask-reference ,target)))))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (CONSTANT (? constant))))
-  (QUALIFIER (pseudo-register? target))
-  (delete-dead-registers!)
-  (let ((target (reference-target-alias! target 'DATA)))
-    (if (non-pointer-object? constant)
-	(LAP ,(load-non-pointer 0 (object-datum constant) target))
-	(LAP ,(load-constant constant target)
-	     (AND L ,mask-reference ,target)))))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (REGISTER (? source))))
-  (QUALIFIER (pseudo-register? target))
-  (let ((target (move-to-alias-register! source 'DATA target)))
-    (LAP (AND L ,mask-reference ,target))))
+  (convert-object/offset->register target address offset object->datum))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (OBJECT->ADDRESS (OFFSET (REGISTER (? address)) (? offset))))
   (QUALIFIER (pseudo-register? target))
-  (let ((source (indirect-reference! address offset)))
-    (delete-dead-registers!)
-    (let ((target (reference-target-alias! target 'DATA)))
-      (LAP (MOV L ,source ,target)
-	   (AND L ,mask-reference ,target)))))
+  (convert-object/offset->register target address offset object->address))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (ADDRESS->FIXNUM (OBJECT->ADDRESS (OFFSET (REGISTER (? address))
+						    (? offset)))))
+  (QUALIFIER (pseudo-register? target))
+  (convert-object/offset->register target address offset address->fixnum))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OFFSET (REGISTER (? address)) (? offset)))
@@ -237,44 +255,36 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->FIXNUM (REGISTER (? source))))
   (QUALIFIER (pseudo-register? target))
-  (let ((target (move-to-alias-register! source 'DATA target)))
-    (object->fixnum target)))
+  (convert-object/register->register target source object->fixnum))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (ADDRESS->FIXNUM (REGISTER (? source))))
   (QUALIFIER (pseudo-register? target))
-  (let ((target (move-to-alias-register! source 'DATA target)))
-    (address->fixnum target)))
+  (convert-object/register->register target source address->fixnum))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (OBJECT->FIXNUM (OFFSET (REGISTER (? address)) (? offset))))
   (QUALIFIER (pseudo-register? target))
-  (let ((source (indirect-reference! address offset)))
-    (delete-dead-registers!)
-    (let ((target (reference-target-alias! target 'DATA)))
-      (LAP (MOV L ,source ,target)
-	   ,(object->fixnum target)))))    
+  (convert-object/offset->register target address offset object->fixnum))    
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (FIXNUM->OBJECT (REGISTER (? source))))
   (QUALIFIER (pseudo-register? target))
-  (let ((target (move-to-alias-register! source 'DATA target)))
-    (fixnum->object target)))
+  (convert-object/register->register target source fixnum->object))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (FIXNUM->ADDRESS (REGISTER (? source))))
   (QUALIFIER (pseudo-register? target))
-  (let ((target (move-to-alias-register! source 'DATA target)))
-    (fixnum->address target)))
+  (convert-object/register->register target source fixnum->address))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (FIXNUM->OBJECT (REGISTER (? source))))
   (let ((target (indirect-reference! a n))
-	(source-ref (reference-alias-register! source 'DATA)))
-    (LAP ,@(fixnum->object source-ref)
-	 (MOV L ,source-ref ,target))))
+	(temporary (move-to-temporary-register! source 'DATA)))
+    (LAP ,@(fixnum->object temporary)
+	 (MOV L ,temporary ,target))))
 
 ;;;; Transfers to Memory
 
@@ -435,19 +445,71 @@ MIT in each case. |#
       ((fixnum-2-args/operate-constant operator) target constant))))
 
 (define (fixnum-2-args/constant*register operator target constant source)
-  (let ((operate-on-target
-	 (lambda (target)
-	   (LAP ,@(load-fixnum-constant constant target)
-		,@((fixnum-2-args/operate operator)
-		   target
-		   (if (eq? operator 'MULTIPLY-FIXNUM)
-		       (standard-multiply-source source)
-		       (standard-register-reference source 'DATA)))))))
-    (reuse-fixnum-target! target
-      (lambda (target)
-	(operate-on-target (reference-target-alias! target 'DATA)))
-      operate-on-target)))
+  (reuse-and-operate-on-fixnum-target! target
+    (lambda (target)
+      (LAP ,@(load-fixnum-constant constant target)
+	   ,@((fixnum-2-args/operate operator)
+	      target
+	      (if (eq? operator 'MULTIPLY-FIXNUM)
+		  (standard-multiply-source source)
+		  (standard-register-reference source 'DATA)))))))
+
+(define (reuse-and-operate-on-fixnum-target! target operate-on-target)
+  (reuse-fixnum-target! target
+    (lambda (target)
+      (operate-on-target (reference-target-alias! target 'DATA)))
+    operate-on-target))
 
+#|
+
+;;; This code would have been a nice idea except that 10 is not a
+;;; valid value as a shift constant.
+
+(define (convert-index->fixnum/register target source)
+  (reuse-and-load-fixnum-target! target source
+    (lambda (target)
+      (LAP (LS L L (& 10) ,target)))))
+
+(define-rule statement
+  (ASSIGN (? target)
+	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+			 (OBJECT->FIXNUM (CONSTANT 4))
+			 (OBJECT->FIXNUM (REGISTER (? source)))))
+  (QUALIFIER (and (fixnum-operation-target? target) (pseudo-register? source)))
+  (convert-index->fixnum/register target source))
+
+(define-rule statement
+  (ASSIGN (? target)
+	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 (OBJECT->FIXNUM (CONSTANT 4))))
+  (QUALIFIER (and (fixnum-operation-target? target) (pseudo-register? source)))
+  (convert-index->fixnum/register target source))
+
+(define (convert-index->fixnum/offset target address offset)
+  (let ((source (indirect-reference! address offset)))
+    (reuse-and-operate-on-fixnum-target! target
+      (lambda (target)
+	(LAP (MOV L ,source ,target)
+	     (LS L L (& 10) ,target))))))
+
+(define-rule statement
+  (ASSIGN (? target)
+	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+			 (OBJECT->FIXNUM (CONSTANT 4))
+			 (OBJECT->FIXNUM (OFFSET (REGISTER (? r)) (? n)))))
+  (QUALIFIER (fixnum-operation-target? target))
+  (convert-index->fixnum/offset target r n))
+
+(define-rule statement
+  (ASSIGN (? target)
+	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+			 (OBJECT->FIXNUM (OFFSET (REGISTER (? r)) (? n)))
+			 (OBJECT->FIXNUM (CONSTANT 4))))
+  (QUALIFIER (fixnum-operation-target? target))
+  (convert-index->fixnum/offset target r n))
+
+|#
 (define-rule statement
   (ASSIGN (? target)
 	  (FIXNUM-2-ARGS (? operator)
@@ -515,8 +577,7 @@ MIT in each case. |#
 	  ((register-saved-into-home? register)
 	   (pseudo-register-home register))
 	  (else
-	   (reference-alias-register! register 'DATA)))))	
-
+	   (reference-alias-register! register 'DATA)))))
 ;;;; CHAR->ASCII/BYTE-OFFSET
 
 (define-rule statement
@@ -552,7 +613,8 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
 	  (CHAR->ASCII (CONSTANT (? character))))
-  (LAP (MOV B (& ,(char->signed-8-bit-immediate character))
+  (LAP (MOV B
+	    (& ,(char->signed-8-bit-immediate character))
 	    ,(indirect-byte-reference! address offset))))
 
 (define-rule statement
