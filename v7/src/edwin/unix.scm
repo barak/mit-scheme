@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.66 1996/04/24 02:18:04 cph Exp $
+;;;	$Id: unix.scm,v 1.67 1996/04/24 02:29:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -467,7 +467,8 @@ of the filename suffixes \".gz\" or \".Z\"."
 				      (list pathname mark)))
 	    (group-insert-file! (mark-group mark)
 				(mark-index mark)
-				temporary)))))
+				temporary
+				(pathname-newline-translation pathname))))))
     (append-message "done")
     value))
 

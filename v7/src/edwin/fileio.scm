@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.134 1996/04/24 02:19:48 cph Exp $
+;;;	$Id: fileio.scm,v 1.135 1996/04/24 02:30:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -163,9 +163,11 @@ of the predicates is satisfied, the file is written in the usual way."
 	(method truename mark visit?)
 	(let ((do-it
 	       (lambda ()
-		 (group-insert-file! (mark-group mark)
-				     (mark-index mark)
-				     truename))))
+		 (group-insert-file!
+		  (mark-group mark)
+		  (mark-index mark)
+		  truename
+		  (pathname-newline-translation truename)))))
 	  (if (ref-variable read-file-message mark)
 	      (let ((msg
 		     (string-append "Reading file \""
@@ -177,15 +179,14 @@ of the predicates is satisfied, the file is written in the usual way."
 		  value))
 	      (do-it))))))
 
-(define (group-insert-file! group index truename)
+(define (group-insert-file! group index truename translation)
   (let ((filename (->namestring truename)))
     (let ((channel (file-open-input-channel filename)))
       (let ((length (channel-file-length channel))
 	    (buffer
-	     (and (ref-variable translate-file-data-on-input group)
-		  (let ((translation (pathname-newline-translation truename)))
-		    (and translation
-			 (make-input-buffer channel 4096 translation))))))
+	     (and translation
+		  (ref-variable translate-file-data-on-input group)
+		  (make-input-buffer channel 4096 translation))))
 	(bind-condition-handler (list condition-type:allocation-failure)
 	    (lambda (condition)
 	      condition

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.27 1995/12/19 18:18:51 cph Exp $
+;;;	$Id: os2.scm,v 1.28 1996/04/24 02:30:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -322,7 +322,8 @@ filename suffix \".gz\"."
 				      (list pathname mark)))
 	    (group-insert-file! (mark-group mark)
 				(mark-index mark)
-				temporary)))))
+				temporary
+				(pathname-newline-translation pathname))))))
     (append-message "done")
     value))
 
