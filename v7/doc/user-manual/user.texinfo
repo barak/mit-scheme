@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.87 2001/07/18 04:46:15 cph Exp $
+@comment $Id: user.texinfo,v 1.88 2001/07/18 05:11:09 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -169,7 +169,7 @@ To install the software in @file{/usr/local}, do the following
 cd /usr/local
 rm -f bin/scheme bin/bchscheme
 rm -rf lib/mit-scheme
-gzip -cd scheme-7.5.16-ix86-gnu-linux.tar.gz | tar xvf -
+gzip -cd scheme-7.5.17-ix86-gnu-linux.tar.gz | tar xvf -
 @end group
 @end example
 
@@ -187,7 +187,7 @@ First unpack the distribution:
 @example
 mkdir temp
 cd temp
-gzip -cd scheme-7.5.16-ix86-gnu-linux.tar.gz | tar xvf -
+gzip -cd scheme-7.5.17-ix86-gnu-linux.tar.gz | tar xvf -
 @end example
 
 @item
@@ -527,10 +527,10 @@ itself, clear the screen, and print something like this:
 
 @example
 @group
-Scheme saved on Monday March 19, 2001 at 5:18:49 PM
-  Release 7.5.16
-  Microcode 14.3
-  Runtime 14.188
+Scheme saved on Wednesday July 18, 2001 at 12:50:28 AM
+  Release 7.5.17
+  Microcode 14.4
+  Runtime 14.189
 @end group
 @end example
 
