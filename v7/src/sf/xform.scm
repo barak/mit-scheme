@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xform.scm,v 4.9 1999/01/02 06:19:10 cph Exp $
+$Id: xform.scm,v 4.10 2000/03/01 23:48:45 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -66,12 +66,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (transform/expression block environment expression)))))
 
 (define ui-warning
-  "
-;This program does not have a USUAL-INTEGRATIONS declaration.
+  ";This program does not have a USUAL-INTEGRATIONS declaration.
 ;Without this declaration, the compiler will be unable to perform
 ;many optimizations, and as a result the compiled program will be
 ;slower and perhaps larger than it could be.  Please read the MIT
-;Scheme User's Guide for more information about USUAL-INTEGRATIONS.")
+;Scheme User's Guide for more information about USUAL-INTEGRATIONS.
+")
 
 (define (transform/expressions block environment expressions)
   (map (lambda (expression)
