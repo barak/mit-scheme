@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 1.2 1987/04/12 00:21:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 1.3 1987/05/07 00:11:33 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -83,7 +83,7 @@ MIT in each case. |#
 (define-rtl-statement message-receiver:closure rtl: size)
 (define-rtl-statement message-receiver:stack rtl: size)
 (define-rtl-statement message-receiver:subproblem rtl: continuation)
-
+
 (define-integrable rtl:expression-type first)
 (define-integrable rtl:address-register second)
 (define-integrable rtl:address-number third)
@@ -102,6 +102,9 @@ MIT in each case. |#
 
 (define-integrable register:environment
   'ENVIRONMENT)
+
+(define-integrable register:frame-pointer
+  'FRAME-POINTER)
 
 (define-integrable register:stack-pointer
   'STACK-POINTER)
