@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.114 1991/08/06 15:38:20 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.115 1991/08/28 13:52:20 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -54,33 +54,36 @@ With an argument, insert the character that many times."
     (insert-chars (last-command-key)
 		  (command-argument-numeric-value argument))))
 
+(define (read-quoted-char prompt-string)
+  (let ((read-ascii-char
+	 (lambda ()
+	   (let ((key (with-editor-interrupts-disabled keyboard-read)))
+	     (or (and (char? key)
+		      (char-ascii? key))
+		 (editor-error "Not an ASCII character" (key-name key)))
+	     (set-command-prompt!
+	      (string-append (command-prompt) (key-name key)))
+	     key))))
+    (let ((read-digit
+	   (lambda ()
+	     (or (char->digit (read-ascii-char) 8)
+		 (editor-error "Not an octal digit")))))
+      (set-command-prompt! prompt-string)
+      (let ((char (read-ascii-char)))
+	(let ((digit (char->digit char 4)))
+	  (if digit
+	      (ascii->char
+	       (let ((digit2 (read-digit)))
+		 (let ((digit3 (read-digit)))
+		   (+ (* (+ (* digit 8) digit2) 8) digit3))))
+	      char))))))
+
 (define-command quoted-insert
   "Reads a character and inserts it."
   "p"
   (lambda (argument)
-    (let ((read-ascii-char
-	   (lambda ()
-	     (let ((key (with-editor-interrupts-disabled keyboard-read)))
-	       (or (and (char? key)
-			(char-ascii? key))
-		   (editor-error "Not an ASCII character" (key-name key)))
-	       (set-command-prompt!
-		(string-append (command-prompt) (key-name key)))
-	       key))))
-      (let ((read-digit
-	     (lambda ()
-	       (or (char->digit (read-ascii-char) 8)
-		   (editor-error "Not an octal digit")))))
-	(set-command-prompt! "Quote Character: ")
-	(insert-chars (let ((char (read-ascii-char)))
-			(let ((digit (char->digit char 4)))
-			  (if digit
-			      (ascii->char
-			       (let ((digit2 (read-digit)))
-				 (let ((digit3 (read-digit)))
-				   (+ (* (+ (* digit 8) digit2) 8) digit3))))
-			      char)))
-		      argument)))))
+    (insert-chars (read-quoted-char "Quote Character: ")
+		  argument)))
 
 (define-command open-line
   "Insert a newline after point.
