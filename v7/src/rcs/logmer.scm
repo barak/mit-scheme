@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: logmer.scm,v 1.10 1995/11/12 05:42:17 cph Exp $
+$Id: logmer.scm,v 1.11 1995/11/12 05:52:22 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -43,26 +43,35 @@ MIT in each case. |#
 			      "RCS.log"
 			      output-file)
 			  (pathname-as-directory directory)))
-	(pathnames (rcs-directory-read directory)))
-    (if (let ((time (file-modification-time-indirect output-file)))
-	  (or (not time)
-	      (there-exists? pathnames
-		(lambda (w.r)
-		  (> (file-modification-time-indirect (cdr w.r)) time)))))
-	(let ((port (notification-output-port)))
-	  (newline port)
-	  (write-string "total files: " port)
-	  (write (length pathnames) port)
-	  (let ((entries (read-entries pathnames port)))
+	(port (notification-output-port)))
+    (newline port)
+    (write-string "regenerating log for directory: " port)
+    (write (->namestring directory))
+    (let ((pathnames (rcs-directory-read directory)))
+      (if (let ((time (file-modification-time-indirect output-file)))
+	    (or (not time)
+		(there-exists? pathnames
+		  (lambda (w.r)
+		    (> (file-modification-time-indirect (cdr w.r)) time)))))
+	  (begin
 	    (newline port)
-	    (write-string "total entries: " port)
-	    (write (length entries) port)
-	    (let ((entries (sort-entries entries)))
+	    (write-string "total files: " port)
+	    (write (length pathnames) port)
+	    (let ((entries (read-entries pathnames port)))
 	      (newline port)
-	      (write-string "sorting finished" port)
-	      (call-with-output-file output-file
-		(lambda (port)
-		  (format/entries entries port)))))))))
+	      (write-string "total entries: " port)
+	      (write (length entries) port)
+	      (let ((entries (sort-entries entries)))
+		(newline port)
+		(write-string "sorting finished" port)
+		(call-with-output-file output-file
+		  (lambda (port)
+		    (format/entries entries port))))))
+	  (begin
+	    (newline port)
+	    (write-string "directory " port)
+	    (write (->namestring directory) port)
+	    (write-string " is up to date." port))))))
 
 (define (format/entries entries port)
   (let ((groups (compress-entries entries)))
