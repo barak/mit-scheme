@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: instr2.scm,v 1.10 2002/02/16 03:32:20 cph Exp $
+$Id: instr2.scm,v 1.11 2002/02/16 03:34:42 cph Exp $
 
 Copyright (c) 1987, 1989, 1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -330,84 +330,86 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-arithmetic
-       (lambda (name digit)
-	 `(define-instruction ,name
-	    ((B (? op ea-r-b) (? res ea-m-b))
-	     (BYTE (8 ,(+ #x80 digit)))
-	     (OPERAND B op)
-	     (OPERAND B res))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  `(DEFINE-INSTRUCTION ,(cadr form)
+	     ((B (? op ea-r-b) (? res ea-m-b))
+	      (BYTE (8 ,(+ #x80 (caddr form))))
+	      (OPERAND B op)
+	      (OPERAND B res))
 
-	    ((B (? op1 ea-r-b) (? op2 ea-r-b) (? res ea-w-b))
-	     (BYTE (8 ,(+ #x81 digit)))
-	     (OPERAND B op1)
-	     (OPERAND B op2)
-	     (OPERAND B res))
+	     ((B (? op1 ea-r-b) (? op2 ea-r-b) (? res ea-w-b))
+	      (BYTE (8 ,(+ #x81 (caddr form))))
+	      (OPERAND B op1)
+	      (OPERAND B op2)
+	      (OPERAND B res))
 
-	    ((W (? op ea-r-w) (? res ea-m-w))
-	     (BYTE (8 ,(+ #xA0 digit)))
-	     (OPERAND W op)
-	     (OPERAND W res))
+	     ((W (? op ea-r-w) (? res ea-m-w))
+	      (BYTE (8 ,(+ #xA0 (caddr form))))
+	      (OPERAND W op)
+	      (OPERAND W res))
 
-	    ((W (? op1 ea-r-w) (? op2 ea-r-w) (? res ea-w-w))
-	     (BYTE (8 ,(+ #xA1 digit)))
-	     (OPERAND W op1)
-	     (OPERAND W op2)
-	     (OPERAND W res))
+	     ((W (? op1 ea-r-w) (? op2 ea-r-w) (? res ea-w-w))
+	      (BYTE (8 ,(+ #xA1 (caddr form))))
+	      (OPERAND W op1)
+	      (OPERAND W op2)
+	      (OPERAND W res))
 
-	    ((L (? op ea-r-l) (? res ea-m-l))
-	     (BYTE (8 ,(+ #xC0 digit)))
-	     (OPERAND L op)
-	     (OPERAND L res))
+	     ((L (? op ea-r-l) (? res ea-m-l))
+	      (BYTE (8 ,(+ #xC0 (caddr form))))
+	      (OPERAND L op)
+	      (OPERAND L res))
 
-	    ((L (? op1 ea-r-l) (? op2 ea-r-l) (? res ea-w-l))
-	     (BYTE (8 ,(+ #xC1 digit)))
-	     (OPERAND L op1)
-	     (OPERAND L op2)
-	     (OPERAND L res))
+	     ((L (? op1 ea-r-l) (? op2 ea-r-l) (? res ea-w-l))
+	      (BYTE (8 ,(+ #xC1 (caddr form))))
+	      (OPERAND L op1)
+	      (OPERAND L op2)
+	      (OPERAND L res))
 
-	    ((F (? op ea-r-f) (? res ea-m-f))
-	     (BYTE (8 ,(+ #x40 digit)))
-	     (OPERAND F op)
-	     (OPERAND F res))
+	     ((F (? op ea-r-f) (? res ea-m-f))
+	      (BYTE (8 ,(+ #x40 (caddr form))))
+	      (OPERAND F op)
+	      (OPERAND F res))
 
-	    ((F (? op1 ea-r-f) (? op2 ea-r-f) (? res ea-w-f))
-	     (BYTE (8 ,(+ #x41 digit)))
-	     (OPERAND F op1)
-	     (OPERAND F op2)
-	     (OPERAND F res))
-
-	    ((D (? op ea-r-d) (? res ea-m-d))
-	     (BYTE (8 ,(+ #x60 digit)))
-	     (OPERAND D op)
-	     (OPERAND D res))
+	     ((F (? op1 ea-r-f) (? op2 ea-r-f) (? res ea-w-f))
+	      (BYTE (8 ,(+ #x41 (caddr form))))
+	      (OPERAND F op1)
+	      (OPERAND F op2)
+	      (OPERAND F res))
 
-	    ((D (? op1 ea-r-d) (? op2 ea-r-d) (? res ea-w-d))
-	     (BYTE (8 ,(+ #x61 digit)))
-	     (OPERAND D op1)
-	     (OPERAND D op2)
-	     (OPERAND D res))
+	     ((D (? op ea-r-d) (? res ea-m-d))
+	      (BYTE (8 ,(+ #x60 (caddr form))))
+	      (OPERAND D op)
+	      (OPERAND D res))
 
-	    ((G (? op ea-r-g) (? res ea-m-g))
-	     (BYTE (16 ,(+ #x40FD (* digit #x100))))
-	     (OPERAND G op)
-	     (OPERAND G res))
+	     ((D (? op1 ea-r-d) (? op2 ea-r-d) (? res ea-w-d))
+	      (BYTE (8 ,(+ #x61 (caddr form))))
+	      (OPERAND D op1)
+	      (OPERAND D op2)
+	      (OPERAND D res))
 
-	    ((G (? op1 ea-r-g) (? op2 ea-r-g) (? res ea-w-g))
-	     (BYTE (16 ,(+ #x41FD (* digit #x100))))
-	     (OPERAND G op1)
-	     (OPERAND G op2)
-	     (OPERAND G res))
+	     ((G (? op ea-r-g) (? res ea-m-g))
+	      (BYTE (16 ,(+ #x40FD (* (caddr form) #x100))))
+	      (OPERAND G op)
+	      (OPERAND G res))
 
-	    ((H (? op ea-r-h) (? res ea-m-h))
-	     (BYTE (16 ,(+ #x60FD (* digit #x100))))
-	     (OPERAND H op)
-	     (OPERAND H res))
+	     ((G (? op1 ea-r-g) (? op2 ea-r-g) (? res ea-w-g))
+	      (BYTE (16 ,(+ #x41FD (* (caddr form) #x100))))
+	      (OPERAND G op1)
+	      (OPERAND G op2)
+	      (OPERAND G res))
 
-	    ((H (? op1 ea-r-h) (? op2 ea-r-h) (? res ea-w-h))
-	     (BYTE (16 ,(+ #x61FD (* digit #x100))))
-	     (OPERAND H op1)
-	     (OPERAND H op2)
-	     (OPERAND H res))))))
+	     ((H (? op ea-r-h) (? res ea-m-h))
+	      (BYTE (16 ,(+ #x60FD (* (caddr form) #x100))))
+	      (OPERAND H op)
+	      (OPERAND H res))
+
+	     ((H (? op1 ea-r-h) (? op2 ea-r-h) (? res ea-w-h))
+	      (BYTE (16 ,(+ #x61FD (* (caddr form) #x100))))
+	      (OPERAND H op1)
+	      (OPERAND H op2)
+	      (OPERAND H res)))))))
 
   (define-arithmetic ADD #x0)
   (define-arithmetic SUB #x2)
@@ -529,40 +531,42 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-bitwise
-       (lambda (name opcode)
-	 `(define-instruction ,name
-	    ((B (? mask ea-r-b) (? dst ea-m-b))
-	     (BYTE (8 ,(+ #x80 opcode)))
-	     (OPERAND B mask)
-	     (OPERAND B dst))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  `(DEFINE-INSTRUCTION ,(cadr form)
+	     ((B (? mask ea-r-b) (? dst ea-m-b))
+	      (BYTE (8 ,(+ #x80 (caddr form))))
+	      (OPERAND B mask)
+	      (OPERAND B dst))
 
-	    ((B (? mask ea-r-b) (? src ea-r-b) (? dst ea-w-b))
-	     (BYTE (8 ,(+ #x81 opcode)))
-	     (OPERAND B mask)
-	     (OPERAND B src)
-	     (OPERAND B dst))
+	     ((B (? mask ea-r-b) (? src ea-r-b) (? dst ea-w-b))
+	      (BYTE (8 ,(+ #x81 (caddr form))))
+	      (OPERAND B mask)
+	      (OPERAND B src)
+	      (OPERAND B dst))
 
-	    ((W (? mask ea-r-w) (? dst ea-m-w))
-	     (BYTE (8 ,(+ #xA0 opcode)))
-	     (OPERAND W mask)
-	     (OPERAND W dst))
+	     ((W (? mask ea-r-w) (? dst ea-m-w))
+	      (BYTE (8 ,(+ #xA0 (caddr form))))
+	      (OPERAND W mask)
+	      (OPERAND W dst))
 
-	    ((W (? mask ea-r-w) (? src ea-r-w) (? dst ea-w-w))
-	     (BYTE (8 ,(+ #xA1 opcode)))
-	     (OPERAND W mask)
-	     (OPERAND W src)
-	     (OPERAND W dst))
-	    
-	    ((L (? mask ea-r-l) (? dst ea-m-l))
-	     (BYTE (8 ,(+ #xC0 opcode)))
-	     (OPERAND L mask)
-	     (OPERAND L dst))
+	     ((W (? mask ea-r-w) (? src ea-r-w) (? dst ea-w-w))
+	      (BYTE (8 ,(+ #xA1 (caddr form))))
+	      (OPERAND W mask)
+	      (OPERAND W src)
+	      (OPERAND W dst))
 
-	    ((L (? mask ea-r-l) (? src ea-r-l) (? dst ea-w-l))
-	     (BYTE (8 ,(+ #xC1 opcode)))
-	     (OPERAND L mask)
-	     (OPERAND L src)
-	     (OPERAND L dst))))))
+	     ((L (? mask ea-r-l) (? dst ea-m-l))
+	      (BYTE (8 ,(+ #xC0 (caddr form))))
+	      (OPERAND L mask)
+	      (OPERAND L dst))
+
+	     ((L (? mask ea-r-l) (? src ea-r-l) (? dst ea-w-l))
+	      (BYTE (8 ,(+ #xC1 (caddr form))))
+	      (OPERAND L mask)
+	      (OPERAND L src)
+	      (OPERAND L dst)))))))
 
   (define-bitwise BIS #x8)
   (define-bitwise BIC #xA)

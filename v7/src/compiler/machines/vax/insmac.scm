@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: insmac.scm,v 1.16 2002/02/14 22:03:32 cph Exp $
+$Id: insmac.scm,v 1.17 2002/02/16 03:36:04 cph Exp $
 
 Copyright (c) 1987, 1989, 1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -72,6 +72,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (rsc-macro-transformer
    (lambda (form environment)
      `(,(close-syntax 'DEFINE environment) ,@(cdr form)))))
+
+(define-syntax define-trivial-instruction
+  (sc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(SYMBOL EXPRESSION) (cdr form))
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (()
+	     (BYTE (8 ,(close-syntax (caddr form) environment)))))
+	 (ill-formed-syntax form)))))
 
 (define (parse-instruction opcode tail early? environment)
   (process-fields (cons opcode tail) early? environment))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr2.scm,v 1.10 2001/12/23 17:20:58 cph Exp $
+$Id: instr2.scm,v 1.11 2002/02/16 03:36:59 cph Exp $
 
-Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -31,124 +31,132 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;; The long forms of many of the following instructions use register
 ;;; 1 -- this may be inappropriate for assembly-language programs, but
 ;;; is OK for the output of the compiler.
+
 (let-syntax ((long-load
-	      (lambda (keyword opcode)
-		`(define-instruction ,keyword
-		   ((() (OFFSET (? offset) (? space) (? base)) (? reg))
-		    (VARIABLE-WIDTH (disp offset)
-		      ((#x-2000 #x1FFF)
-		       (LONG (6 ,opcode)
-			     (5 base)
-			     (5 reg)
-			     (2 space)
-			     (14 disp RIGHT-SIGNED)))
-		      ((() ())
-		       (LONG
-			;; (ADDIL () L$,offset ,base)
-			(6 #x0A)
-			(5 base)
-			(21 (quotient disp #x800) ASSEMBLE21:X)
-			;; (LDW () (OFFSET R$,offset ,space 1) ,reg)
-			(6 ,opcode)
-			(5 1)
-			(5 reg)
-			(2 space)
-			(14 (remainder disp #x800) RIGHT-SIGNED))))))))
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    ((() (OFFSET (? offset) (? space) (? base)) (? reg))
+		     (VARIABLE-WIDTH (disp offset)
+		       ((#x-2000 #x1FFF)
+			(LONG (6 ,(caddr form))
+			      (5 base)
+			      (5 reg)
+			      (2 space)
+			      (14 disp RIGHT-SIGNED)))
+		       ((() ())
+			(LONG
+			 ;; (ADDIL () L$,offset ,base)
+			 (6 #x0A)
+			 (5 base)
+			 (21 (quotient disp #x800) ASSEMBLE21:X)
+			 ;; (LDW () (OFFSET R$,offset ,space 1) ,reg)
+			 (6 ,(caddr form))
+			 (5 1)
+			 (5 reg)
+			 (2 space)
+			 (14 (remainder disp #x800) RIGHT-SIGNED))))))))))
+  (long-load LDW #x12)
+  (long-load LDWM #x13)
+  (long-load LDH #x11)
+  (long-load LDB #x10))
 
-	     (long-store
-	      (lambda (keyword opcode)
-		`(define-instruction ,keyword
-		   ((() (? reg) (OFFSET (? offset) (? space) (? base)))
-		    (VARIABLE-WIDTH (disp offset)
-		      ((#x-2000 #x1FFF)
-		       (LONG (6 ,opcode)
-			     (5 base)
-			     (5 reg)
-			     (2 space)
-			     (14 disp RIGHT-SIGNED)))
-		      ((() ())
-		       (LONG
-			;; (ADDIL () L$,offset ,base)
-			(6 #x0A)
-			(5 base)
-			(21 (quotient disp #x800) ASSEMBLE21:X)
-			;; (STW () ,reg (OFFSET R$,offset ,space 1))
-			(6 ,opcode)
-			(5 1)
-			(5 reg)
-			(2 space)
-			(14 (remainder disp #x800) RIGHT-SIGNED))))))))
+(let-syntax ((long-store
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    ((() (? reg) (OFFSET (? offset) (? space) (? base)))
+		     (VARIABLE-WIDTH (disp offset)
+		       ((#x-2000 #x1FFF)
+			(LONG (6 ,(caddr form))
+			      (5 base)
+			      (5 reg)
+			      (2 space)
+			      (14 disp RIGHT-SIGNED)))
+		       ((() ())
+			(LONG
+			 ;; (ADDIL () L$,offset ,base)
+			 (6 #x0A)
+			 (5 base)
+			 (21 (quotient disp #x800) ASSEMBLE21:X)
+			 ;; (STW () ,reg (OFFSET R$,offset ,space 1))
+			 (6 ,(caddr form))
+			 (5 1)
+			 (5 reg)
+			 (2 space)
+			 (14 (remainder disp #x800) RIGHT-SIGNED))))))))))
+  (long-store STW #x1a)
+  (long-store STWM #x1b)
+  (long-store STH #x19)
+  (long-store STB #x18))
+
+(let-syntax ((load-offset
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    ((() (OFFSET (? offset) 0 (? base)) (? reg))
+		     (VARIABLE-WIDTH (disp offset)
+		       ((#x-2000 #x1FFF)
+			(LONG (6 ,(caddr form))
+			      (5 base)
+			      (5 reg)
+			      (2 #b00)
+			      (14 disp RIGHT-SIGNED)))
+		       ((() ())
+			(LONG
+			 ;; (ADDIL () L$,offset ,base)
+			 (6 #x0A)
+			 (5 base)
+			 (21 (quotient disp #x800) ASSEMBLE21:X)
+			 ;; (LDO () (OFFSET R$,offset 0 1) ,reg)
+			 (6 ,(caddr form))
+			 (5 1)
+			 (5 reg)
+			 (2 #b00)
+			 (14 (remainder disp #x800) RIGHT-SIGNED))))))))))
+  (load-offset LDO #x0d))
 
-	     (load-offset
-	      (lambda (keyword opcode)
-		`(define-instruction ,keyword
-		   ((() (OFFSET (? offset) 0 (? base)) (? reg))
-		    (VARIABLE-WIDTH (disp offset)
-		      ((#x-2000 #x1FFF)
-		       (LONG (6 ,opcode)
-			     (5 base)
-			     (5 reg)
-			     (2 #b00)
-			     (14 disp RIGHT-SIGNED)))
-		      ((() ())
-		       (LONG
-			;; (ADDIL () L$,offset ,base)
-			(6 #x0A)
-			(5 base)
-			(21 (quotient disp #x800) ASSEMBLE21:X)
-			;; (LDO () (OFFSET R$,offset 0 1) ,reg)
-			(6 ,opcode)
-			(5 1)
-			(5 reg)
-			(2 #b00)
-			(14 (remainder disp #x800) RIGHT-SIGNED))))))))
+(let-syntax ((load-immediate
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    ((() (? offset) (? reg))
+		     (VARIABLE-WIDTH (disp offset)
+		       ((#x-2000 #x1FFF)
+			(LONG (6 ,(caddr form))
+			      (5 0)
+			      (5 reg)
+			      (2 #b00)
+			      (14 disp RIGHT-SIGNED)))
+		       ((() ())
+			(LONG
+			 ;; (LDIL () L$,offset ,base)
+			 (6 #x08)
+			 (5 reg)
+			 (21 (quotient disp #x800) ASSEMBLE21:X)
+			 ;; (LDO () (OFFSET R$,offset 0 ,reg) ,reg)
+			 (6 ,(caddr form))
+			 (5 reg)
+			 (5 reg)
+			 (2 #b00)
+			 (14 (remainder disp #x800) RIGHT-SIGNED))))))))))
+  ;; pseudo-op (LDO complt (OFFSET displ 0) reg)
+  (load-immediate LDI #x0d))
 
-	     (load-immediate
-	      (lambda (keyword opcode)
-		`(define-instruction ,keyword
-		   ((() (? offset) (? reg))
-		    (VARIABLE-WIDTH (disp offset)
-		      ((#x-2000 #x1FFF)
-		       (LONG (6 ,opcode)
-			     (5 0)
-			     (5 reg)
-			     (2 #b00)
-			     (14 disp RIGHT-SIGNED)))
-		      ((() ())
-		       (LONG
-			;; (LDIL () L$,offset ,base)
-			(6 #x08)
-			(5 reg)
-			(21 (quotient disp #x800) ASSEMBLE21:X)
-			;; (LDO () (OFFSET R$,offset 0 ,reg) ,reg)
-			(6 ,opcode)
-			(5 reg)
-			(5 reg)
-			(2 #b00)
-			(14 (remainder disp #x800) RIGHT-SIGNED))))))))
-
-	     (left-immediate
-	      (lambda (keyword opcode)
-		`(define-instruction ,keyword
-		   ((() (? immed-21) (? reg))
-		    (LONG (6 ,opcode)
-			  (5 reg)
-			  (21 immed-21 ASSEMBLE21:X)))))))
-
-  (long-load      LDW   #x12)
-  (long-load      LDWM  #x13)
-  (long-load      LDH   #x11)
-  (long-load      LDB   #x10)
-
-  (long-store     STW   #x1a)
-  (long-store     STWM  #x1b)
-  (long-store     STH   #x19)
-  (long-store     STB   #x18)
-
-  (load-offset    LDO   #x0d)
-  (load-immediate LDI   #x0d)	; pseudo-op (LDO complt (OFFSET displ 0) reg)
-
-  (left-immediate LDIL  #x08)
+(let-syntax ((left-immediate
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    ((() (? immed-21) (? reg))
+		     (LONG (6 ,(caddr form))
+			   (5 reg)
+			   (21 immed-21 ASSEMBLE21:X))))))))
+  (left-immediate LDIL #x08)
   (left-immediate ADDIL #x0a))
 
 ;; In the following, the middle completer field (2 bits) appears to be zero,
@@ -156,157 +164,167 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;; cache instructions.
 
 (let-syntax ((indexed-load
-	      (lambda (keyword opcode extn)
-		`(define-instruction ,keyword
-		   (((? compl complx) (INDEX (? index-reg) (? space) (? base))
-				      (? reg))
-		    (LONG (6 ,opcode)
-			  (5 base)
-			  (5 index-reg)
-			  (2 space)
-			  (1 (vector-ref compl 0))
-			  (1 #b0)
-			  (2 (vector-ref compl 1))
-			  (4 ,extn)
-			  (1 (vector-ref compl 2))
-			  (5 reg))))))
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    (((? compl complx) (INDEX (? index-reg) (? space) (? base))
+				       (? reg))
+		     (LONG (6 ,(caddr form))
+			   (5 base)
+			   (5 index-reg)
+			   (2 space)
+			   (1 (vector-ref compl 0))
+			   (1 #b0)
+			   (2 (vector-ref compl 1))
+			   (4 ,(cadddr form))
+			   (1 (vector-ref compl 2))
+			   (5 reg))))))))
+  (indexed-load LDWX #x03 #x2)
+  (indexed-load LDHX #x03 #x1)
+  (indexed-load LDBX #x03 #x0)
+  (indexed-load LDCWX #x03 #x7)
+  (indexed-load FLDWX #x09 #x0)
+  (indexed-load FLDDX #x0B #x0))
 
-	     (indexed-store
-	      (lambda (keyword opcode extn)
-		`(define-instruction ,keyword
-		   (((? compl complx) (? reg)
-				      (INDEX (? index-reg) (? space) (? base)))
-		    (LONG (6 ,opcode)
-			  (5 base)
-			  (5 index-reg)
-			  (2 space)
-			  (1 (vector-ref compl 0))
-			  (1 #b0)
-			  (2 (vector-ref compl 1))
-			  (4 ,extn)
-			  (1 (vector-ref compl 2))
-			  (5 reg))))))
-
-	     (indexed-d-cache
-	      (lambda (keyword extn)
-		`(define-instruction ,keyword
-		   (((? compl m-val) (INDEX (? index-reg) (? space) (? base)))
-		    (LONG (6 #x01)
-			  (5 base)
-			  (5 index-reg)
-			  (2 space)
-			  (8 ,extn)
-			  (1 compl)
-			  (5 #x0))))))
-
-	     (indexed-i-cache
-	      (lambda (keyword extn)
-		`(define-instruction ,keyword
-		   (((? compl m-val)
-		     (INDEX (? index-reg) (? space sr3) (? base)))
-		    (LONG (6 #x01)
-			  (5 base)
-			  (5 index-reg)
-			  (3 space)
-			  (7 ,extn)
-			  (1 compl)
-			  (5 #x0)))))))
-  
-  (indexed-load  LDWX  #x03 #x2)
-  (indexed-load  LDHX  #x03 #x1)
-  (indexed-load  LDBX  #x03 #x0)
-  (indexed-load  LDCWX #x03 #x7)
-  (indexed-load  FLDWX #x09 #x0)
-  (indexed-load  FLDDX #x0B #x0)
-
+(let-syntax ((indexed-store
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    (((? compl complx) (? reg)
+				       (INDEX (? index-reg) (? space)
+					      (? base)))
+		     (LONG (6 ,(caddr form))
+			   (5 base)
+			   (5 index-reg)
+			   (2 space)
+			   (1 (vector-ref compl 0))
+			   (1 #b0)
+			   (2 (vector-ref compl 1))
+			   (4 ,(cadddr form))
+			   (1 (vector-ref compl 2))
+			   (5 reg))))))))
   (indexed-store FSTWX #x09 #x8)
-  (indexed-store FSTDX #x0b #x8)
+  (indexed-store FSTDX #x0b #x8))
+
+(let-syntax ((indexed-d-cache
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    (((? compl m-val) (INDEX (? index-reg) (? space) (? base)))
+		     (LONG (6 #x01)
+			   (5 base)
+			   (5 index-reg)
+			   (2 space)
+			   (8 ,(caddr form))
+			   (1 compl)
+			   (5 #x0))))))))
+  (indexed-d-cache PDC #x4e)
+  (indexed-d-cache FDC #x4a)
+  (indexed-d-cache FDCE #x4b))
 
-  (indexed-d-cache PDC  #x4e)
-  (indexed-d-cache FDC  #x4a)
-  (indexed-i-cache FIC  #x0a)
-  (indexed-d-cache FDCE #x4b)
+(let-syntax ((indexed-i-cache
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    (((? compl m-val)
+		      (INDEX (? index-reg) (? space sr3) (? base)))
+		     (LONG (6 #x01)
+			   (5 base)
+			   (5 index-reg)
+			   (3 space)
+			   (7 ,(caddr form))
+			   (1 compl)
+			   (5 #x0))))))))
+  (indexed-i-cache FIC #x0a)
   (indexed-i-cache FICE #x0b))
-
+
 (let-syntax ((scalr-short-load
-	      (lambda (keyword extn)
-		`(define-instruction ,keyword
-		   (((? compl compls) (OFFSET (? offset) (? space) (? base))
-				      (? reg))
-		    (LONG (6 #x03)
-			  (5 base)
-			  (5 offset RIGHT-SIGNED)
-			  (2 space)
-			  (1 (vector-ref compl 0))
-			  (1 #b1)
-			  (2 (vector-ref compl 1))
-			  (4 ,extn)
-			  (1 (vector-ref compl 2))
-			  (5 reg))))))
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    (((? compl compls) (OFFSET (? offset) (? space) (? base))
+				       (? reg))
+		     (LONG (6 #x03)
+			   (5 base)
+			   (5 offset RIGHT-SIGNED)
+			   (2 space)
+			   (1 (vector-ref compl 0))
+			   (1 #b1)
+			   (2 (vector-ref compl 1))
+			   (4 ,(caddr form))
+			   (1 (vector-ref compl 2))
+			   (5 reg))))))))
+  (scalr-short-load LDWS #x02)
+  (scalr-short-load LDHS #x01)
+  (scalr-short-load LDBS #x00)
+  (scalr-short-load LDCWS #x07))
 
-	     (scalr-short-store
-	      (lambda (keyword extn)
-		`(define-instruction ,keyword
-		   (((? compl compls) (? reg)
-				      (OFFSET (? offset) (? space) (? base)))
-		    (LONG (6 #x03)
-			  (5 base)
-			  (5 reg)
-			  (2 space)
-			  (1 (vector-ref compl 0))
-			  (1 #b1)
-			  (2 (vector-ref compl 1))
-			  (4 ,extn)
-			  (1 (vector-ref compl 2))
-			  (5 offset RIGHT-SIGNED))))))
-
-	     (float-short-load
-	      (lambda (keyword opcode extn)
-		`(define-instruction ,keyword
-		   (((? compl compls) (OFFSET (? offset) (? space) (? base))
-				      (? reg))
-		    (LONG (6 ,opcode)
-			  (5 base)
-			  (5 offset RIGHT-SIGNED)
-			  (2 space)
-			  (1 (vector-ref compl 0))
-			  (1 #b1)
-			  (2 (vector-ref compl 1))
-			  (4 ,extn)
-			  (1 (vector-ref compl 2))
-			  (5 reg))))))
+(let-syntax ((scalr-short-store
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    (((? compl compls) (? reg)
+				       (OFFSET (? offset) (? space) (? base)))
+		     (LONG (6 #x03)
+			   (5 base)
+			   (5 reg)
+			   (2 space)
+			   (1 (vector-ref compl 0))
+			   (1 #b1)
+			   (2 (vector-ref compl 1))
+			   (4 ,(caddr form))
+			   (1 (vector-ref compl 2))
+			   (5 offset RIGHT-SIGNED))))))))
+  (scalr-short-store STWS #x0a)
+  (scalr-short-store STHS #x09)
+  (scalr-short-store STBS #x08)
+  (scalr-short-store STBYS #x0c))
 
-	     (float-short-store
-	      (lambda (keyword opcode extn)
-		`(define-instruction ,keyword
-		   (((? compl compls) (? reg)
-				      (OFFSET (? offset) (? space) (? base)))
-		    (LONG (6 ,opcode)
-			  (5 base)
-			  (5 offset RIGHT-SIGNED)
-			  (2 space)
-			  (1 (vector-ref compl 0))
-			  (1 #b1)
-			  (2 (vector-ref compl 1))
-			  (4 ,extn)
-			  (1 (vector-ref compl 2))
-			  (5 reg)))))))
+(let-syntax ((float-short-load
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    (((? compl compls) (OFFSET (? offset) (? space) (? base))
+				       (? reg))
+		     (LONG (6 ,(caddr form))
+			   (5 base)
+			   (5 offset RIGHT-SIGNED)
+			   (2 space)
+			   (1 (vector-ref compl 0))
+			   (1 #b1)
+			   (2 (vector-ref compl 1))
+			   (4 ,(cadddr form))
+			   (1 (vector-ref compl 2))
+			   (5 reg))))))))
+  (float-short-load FLDWS #x09 #x00)
+  (float-short-load FLDDS #x0b #x00))
 
-  (scalr-short-load  LDWS   #x02)
-  (scalr-short-load  LDHS   #x01)
-  (scalr-short-load  LDBS   #x00)
-  (scalr-short-load  LDCWS  #x07)
-
-  (scalr-short-store STWS   #x0a)
-  (scalr-short-store STHS   #x09)
-  (scalr-short-store STBS   #x08)
-  (scalr-short-store STBYS  #x0c)
-
-  (float-short-load  FLDWS  #x09 #x00)
-  (float-short-load  FLDDS  #x0b #x00)
-
-  (float-short-store FSTWS  #x09 #x08)
-  (float-short-store FSTDS  #x0b #x08))
+(let-syntax ((float-short-store
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    (((? compl compls) (? reg)
+				       (OFFSET (? offset) (? space) (? base)))
+		     (LONG (6 ,(caddr form))
+			   (5 base)
+			   (5 offset RIGHT-SIGNED)
+			   (2 space)
+			   (1 (vector-ref compl 0))
+			   (1 #b1)
+			   (2 (vector-ref compl 1))
+			   (4 ,(cadddr form))
+			   (1 (vector-ref compl 2))
+			   (5 reg))))))))
+  (float-short-store FSTWS #x09 #x08)
+  (float-short-store FSTDS #x0b #x08))
 
 ;;;; Control transfer instructions
 
@@ -315,131 +333,139 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;; They should be eventually (by using an LDIL,LDI,BLR sequence, for example).
 
 (let-syntax ((branch&link
-	      (lambda (keyword extn)
-		`(define-instruction ,keyword
-		   ((() (? reg) (@PCR (? label)))
-		    (LONG (6 #x3a)
-			  (5 reg)
-			  (5 label PC-REL ASSEMBLE17:X)
-			  (3 ,extn)
-			  (11 label PC-REL ASSEMBLE17:Y)
-			  (1 0)
-			  (1 label PC-REL ASSEMBLE17:Z)))
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    ((() (? reg) (@PCR (? label)))
+		     (LONG (6 #x3a)
+			   (5 reg)
+			   (5 label PC-REL ASSEMBLE17:X)
+			   (3 ,(caddr form))
+			   (11 label PC-REL ASSEMBLE17:Y)
+			   (1 0)
+			   (1 label PC-REL ASSEMBLE17:Z)))
 
-		   (((N) (? reg) (@PCR (? label)))
-		    (LONG (6 #x3a)
-			  (5 reg)
-			  (5 label PC-REL ASSEMBLE17:X)
-			  (3 ,extn)
-			  (11 label PC-REL ASSEMBLE17:Y)
-			  (1 1)
-			  (1 label PC-REL ASSEMBLE17:Z)))
+		    (((N) (? reg) (@PCR (? label)))
+		     (LONG (6 #x3a)
+			   (5 reg)
+			   (5 label PC-REL ASSEMBLE17:X)
+			   (3 ,(caddr form))
+			   (11 label PC-REL ASSEMBLE17:Y)
+			   (1 1)
+			   (1 label PC-REL ASSEMBLE17:Z)))
 
-		   ((() (? reg) (@PCO (? offset)))
-		    (LONG (6 #x3a)
-			  (5 reg)
-			  (5 offset ASSEMBLE17:X)
-			  (3 ,extn)
-			  (11 offset ASSEMBLE17:Y)
-			  (1 0)
-			  (1 offset ASSEMBLE17:Z)))
+		    ((() (? reg) (@PCO (? offset)))
+		     (LONG (6 #x3a)
+			   (5 reg)
+			   (5 offset ASSEMBLE17:X)
+			   (3 ,(caddr form))
+			   (11 offset ASSEMBLE17:Y)
+			   (1 0)
+			   (1 offset ASSEMBLE17:Z)))
 
-		   (((N) (? reg) (@PCO (? offset)))
-		    (LONG (6 #x3a)
-			  (5 reg)
-			  (5 offset ASSEMBLE17:X)
-			  (3 ,extn)
-			  (11 offset ASSEMBLE17:Y)
-			  (1 1)
-			  (1 offset ASSEMBLE17:Z))))))
-	      
-	     (branch
-	      (lambda (keyword extn)
-		`(define-instruction ,keyword
-		   ((() (@PCR (? l)))
-		    (LONG (6 #x3a)
-			  (5 #b00000)
-			  (5 l PC-REL ASSEMBLE17:X)
-			  (3 #b000)
-			  (11 l PC-REL ASSEMBLE17:Y)
-			  (1 0)
-			  (1 l PC-REL ASSEMBLE17:Z)))
-
-		   (((N) (@PCR (? l)))
-		    (LONG (6 #x3a)
-			  (5 #b00000)
-			  (5 l PC-REL ASSEMBLE17:X)
-			  (3 #b000)
-			  (11 l PC-REL ASSEMBLE17:Y)
-			  (1 1)
-			  (1 l PC-REL ASSEMBLE17:Z)))
-
-		   ((() (@PCO (? offset)))
-		    (LONG (6 #x3a)
-			  (5 #b00000)
-			  (5 offset ASSEMBLE17:X)
-			  (3 #b000)
-			  (11 offset ASSEMBLE17:Y)
-			  (1 0)
-			  (1 offset ASSEMBLE17:Z)))
-
-		   (((N) (@PCO (? offset)))
-		    (LONG (6 #x3a)
-			  (5 #b00000)
-			  (5 offset ASSEMBLE17:X)
-			  (3 #b000)
-			  (11 offset ASSEMBLE17:Y)
-			  (1 1)
-			  (1 offset ASSEMBLE17:Z)))))))
-
-  (branch      B    0)		; pseudo-op (BL complt 0 displ)
-  (branch&link BL   0)
+		    (((N) (? reg) (@PCO (? offset)))
+		     (LONG (6 #x3a)
+			   (5 reg)
+			   (5 offset ASSEMBLE17:X)
+			   (3 ,(caddr form))
+			   (11 offset ASSEMBLE17:Y)
+			   (1 1)
+			   (1 offset ASSEMBLE17:Z))))))))
+  (branch&link BL 0)
   (branch&link GATE 1))
 
+(let-syntax ((branch
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    ((() (@PCR (? l)))
+		     (LONG (6 #x3a)
+			   (5 #b00000)
+			   (5 l PC-REL ASSEMBLE17:X)
+			   (3 #b000)
+			   (11 l PC-REL ASSEMBLE17:Y)
+			   (1 0)
+			   (1 l PC-REL ASSEMBLE17:Z)))
+
+		    (((N) (@PCR (? l)))
+		     (LONG (6 #x3a)
+			   (5 #b00000)
+			   (5 l PC-REL ASSEMBLE17:X)
+			   (3 #b000)
+			   (11 l PC-REL ASSEMBLE17:Y)
+			   (1 1)
+			   (1 l PC-REL ASSEMBLE17:Z)))
+
+		    ((() (@PCO (? offset)))
+		     (LONG (6 #x3a)
+			   (5 #b00000)
+			   (5 offset ASSEMBLE17:X)
+			   (3 #b000)
+			   (11 offset ASSEMBLE17:Y)
+			   (1 0)
+			   (1 offset ASSEMBLE17:Z)))
+
+		    (((N) (@PCO (? offset)))
+		     (LONG (6 #x3a)
+			   (5 #b00000)
+			   (5 offset ASSEMBLE17:X)
+			   (3 #b000)
+			   (11 offset ASSEMBLE17:Y)
+			   (1 1)
+			   (1 offset ASSEMBLE17:Z))))))))
+  ;; pseudo-op (BL complt 0 displ)
+  (branch B 0))
+
 (let-syntax ((BV&BLR
-	      (lambda (keyword extn)
-		`(define-instruction ,keyword
-		   ((() (? offset-reg) (? reg))
-		    (LONG (6 #x3a)
-			  (5 reg)
-			  (5 offset-reg)
-			  (3 ,extn)
-			  (11 #b00000000000)
-			  (1 0)
-			  (1 #b0)))
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    ((() (? offset-reg) (? reg))
+		     (LONG (6 #x3a)
+			   (5 reg)
+			   (5 offset-reg)
+			   (3 ,(caddr form))
+			   (11 #b00000000000)
+			   (1 0)
+			   (1 #b0)))
 
-		   (((N) (? offset-reg) (? reg))
-		    (LONG (6 #x3a)
-			  (5 reg)
-			  (5 offset-reg)
-			  (3 ,extn)
-			  (11 #b00000000000)
-			  (1 1)
-			  (1 #b0))))))
-
-	     (BE&BLE
-	      (lambda (keyword opcode)
-		`(define-instruction ,keyword
-		   ((() (OFFSET (? offset) (? space sr3) (? base)))
-		    (LONG (6 ,opcode)
-			  (5 base)
-			  (5 offset ASSEMBLE17:X)
-			  (3 space)
-			  (11 offset ASSEMBLE17:Y)
-			  (1 0)
-			  (1 offset ASSEMBLE17:Z)))
-
-		   (((N) (OFFSET (? offset) (? space sr3) (? base)))
-		    (LONG (6 ,opcode)
-			  (5 base)
-			  (5 offset ASSEMBLE17:X)
-			  (3 space)
-			  (11 offset ASSEMBLE17:Y)
-			  (1 1)
-			  (1 offset ASSEMBLE17:Z)))))))
+		    (((N) (? offset-reg) (? reg))
+		     (LONG (6 #x3a)
+			   (5 reg)
+			   (5 offset-reg)
+			   (3 ,(caddr form))
+			   (11 #b00000000000)
+			   (1 1)
+			   (1 #b0))))))))
   (BV&BLR BLR 2)
-  (BV&BLR BV  6)
-  (BE&BLE BE  #x38)
+  (BV&BLR BV 6))
+
+(let-syntax ((BE&BLE
+	      (sc-macro-transformer
+	       (lambda (form environment)
+		 environment
+		 `(DEFINE-INSTRUCTION ,(cadr form)
+		    ((() (OFFSET (? offset) (? space sr3) (? base)))
+		     (LONG (6 ,(caddr form))
+			   (5 base)
+			   (5 offset ASSEMBLE17:X)
+			   (3 space)
+			   (11 offset ASSEMBLE17:Y)
+			   (1 0)
+			   (1 offset ASSEMBLE17:Z)))
+
+		    (((N) (OFFSET (? offset) (? space sr3) (? base)))
+		     (LONG (6 ,(caddr form))
+			   (5 base)
+			   (5 offset ASSEMBLE17:X)
+			   (3 space)
+			   (11 offset ASSEMBLE17:Y)
+			   (1 1)
+			   (1 offset ASSEMBLE17:Z))))))))
+  (BE&BLE BE #x38)
   (BE&BLE BLE #x39))
 
 ;;;; Conditional branch instructions
@@ -494,74 +520,77 @@ branch-extend-nullify in instr1.
 
 (let-syntax
     ((defccbranch
-       (lambda (keyword completer opcode1 opcode2 opr1)
-	 `(define-instruction ,keyword
-	    (((? compl ,completer) (? ,(car opr1)) (? reg-2) (@PCO (? offset)))
-	     (LONG (6  ,opcode1)
-		   (5  reg-2)
-		   (5  ,@opr1)
-		   (3  (cadr compl))
-		   (11 offset ASSEMBLE12:X)
-		   (1  (car compl))
-		   (1  offset ASSEMBLE12:Y)))
-
-	    (((? compl ,completer) (? ,(car opr1)) (? reg-2) (@PCR (? l)))
-	     (VARIABLE-WIDTH
-	      (disp `(- ,l (+ *PC* 8)))
-	      ((#x-2000 #x1FFF)
-	       (LONG (6  ,opcode1)
-		     (5  reg-2)
-		     (5  ,@opr1)
-		     (3  (cadr compl))
-		     (11 disp ASSEMBLE12:X)
-		     (1  (car compl))
-		     (1  disp ASSEMBLE12:Y)))
-
-	      ((() ())
-	       ;; See page comment above.
-	       (LONG (6  ,opcode2)		; COMBF
-		     (5  reg-2)
-		     (5  ,@opr1)
-		     (3  (cadr compl))
-		     (11 (branch-extend-pco disp (car compl)) ASSEMBLE12:X)
-		     (1  1)
-		     (1  (branch-extend-pco disp (car compl)) ASSEMBLE12:Y)
-
-		     (6  #x3a)			; B
-		     (5  0)
-		     (5  (branch-extend-disp disp) ASSEMBLE17:X)
-		     (3  0)
-		     (11 (branch-extend-disp disp) ASSEMBLE17:Y)
-		     (1  (branch-extend-nullify disp (car compl)))
-		     (1  (branch-extend-disp disp) ASSEMBLE17:Z)))))))))
-
-  (define-syntax defcond
-    (non-hygienic-macro-transformer
-     (lambda (name opcode1 opcode2 opr1)
-       `(defccbranch ,name complaltfb ,opcode1 ,opcode2 ,opr1))))
-
-  (define-syntax defpseudo
-    (non-hygienic-macro-transformer
-     (lambda (name opcode opr1)
-       `(defccbranch ,name complalb
-	  (TF-adjust ,opcode (cdr compl))
-	  (TF-adjust-inverted ,opcode (cdr compl))
-	  ,opr1))))
-
-  (defcond COMBT #x20 #x22 (reg-1))
-  (defcond COMBF #x22 #x20 (reg-1))
-  (defcond ADDBT #x28 #x2a (reg-1))
-  (defcond ADDBF #x2a #x28 (reg-1))
-
-  (defcond COMIBT #X21 #x23 (immed-5 right-signed))
-  (defcond COMIBF #X23 #x21 (immed-5 right-signed))
-  (defcond ADDIBT #X29 #x2b (immed-5 right-signed))
-  (defcond ADDIBF #X2b #x29 (immed-5 right-signed))
-
-  (defpseudo COMB  #X20 (reg-1))
-  (defpseudo ADDB  #X28 (reg-1))
-  (defpseudo COMIB #X21 (immed-5 right-signed))
-  (defpseudo ADDIB #x29 (immed-5 right-signed)))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  (let ((completer (list-ref form 2))
+		(opcode1 (list-ref form 3))
+		(opcode2 (list-ref form 4))
+		(opr1 (list-ref form 5)))
+	    `(DEFINE-INSTRUCTION ,(cadr form)
+	       (((? compl ,completer) (? ,(car opr1)) (? reg-2)
+				      (@PCO (? offset)))
+		(LONG (6  ,opcode1)
+		      (5  reg-2)
+		      (5  ,@opr1)
+		      (3  (cadr compl))
+		      (11 offset ASSEMBLE12:X)
+		      (1  (car compl))
+		      (1  offset ASSEMBLE12:Y)))
+	       (((? compl ,completer) (? ,(car opr1)) (? reg-2) (@PCR (? l)))
+		(VARIABLE-WIDTH
+		 (disp `(- ,l (+ *PC* 8)))
+		 ((#x-2000 #x1FFF)
+		  (LONG (6  ,opcode1)
+			(5  reg-2)
+			(5  ,@opr1)
+			(3  (cadr compl))
+			(11 disp ASSEMBLE12:X)
+			(1  (car compl))
+			(1  disp ASSEMBLE12:Y)))
+		 ((() ())
+		  ;; See page comment above.
+		  (LONG (6  ,opcode2)	; COMBF
+			(5  reg-2)
+			(5  ,@opr1)
+			(3  (cadr compl))
+			(11 (branch-extend-pco disp (car compl)) ASSEMBLE12:X)
+			(1  1)
+			(1  (branch-extend-pco disp (car compl)) ASSEMBLE12:Y)
+			(6  #x3a)	; B
+			(5  0)
+			(5  (branch-extend-disp disp) ASSEMBLE17:X)
+			(3  0)
+			(11 (branch-extend-disp disp) ASSEMBLE17:Y)
+			(1  (branch-extend-nullify disp (car compl)))
+			(1  (branch-extend-disp disp) ASSEMBLE17:Z)))))))))))
+  (let-syntax
+      ((defcond
+	 (sc-macro-transformer
+	  (lambda (form environment)
+	    environment
+	    `(DEFCCBRANCH ,(cadr form) COMPLALTFB ,@(cddr form))))))
+    (defcond COMBT #x20 #x22 (reg-1))
+    (defcond COMBF #x22 #x20 (reg-1))
+    (defcond ADDBT #x28 #x2a (reg-1))
+    (defcond ADDBF #x2a #x28 (reg-1))
+    (defcond COMIBT #x21 #x23 (immed-5 right-signed))
+    (defcond COMIBF #x23 #x21 (immed-5 right-signed))
+    (defcond ADDIBT #x29 #x2b (immed-5 right-signed))
+    (defcond ADDIBF #x2b #x29 (immed-5 right-signed)))
+  (let-syntax
+      ((defpseudo
+	 (sc-macro-transformer
+	  (lambda (form environment)
+	    environment
+	    `(DEFCCBRANCH ,(cadr form) COMPLALB
+	       (TF-ADJUST ,(caddr form) (CDR COMPL))
+	       (TF-ADJUST-INVERTED ,(caddr form) (CDR COMPL))
+	       ,(cadddr form))))))
+    (defpseudo COMB #x20 (reg-1))
+    (defpseudo ADDB #x28 (reg-1))
+    (defpseudo COMIB #x21 (immed-5 right-signed))
+    (defpseudo ADDIB #x29 (immed-5 right-signed))))
 
 ;;;; Pseudo branch instructions.
 
@@ -598,125 +627,126 @@ Note: Only those currently used by the code generator are implemented.
 
 (let-syntax
     ((defccbranch
-       (lambda (keyword completer opcode1 opcode2 opr1)
-	 `(define-instruction ,keyword
-	    ;; No @PCO form.
-	    ;; This is a pseudo-instruction used by the code-generator
-	    (((? compl ,completer) (? ,(car opr1)) (? reg-2) (@PCR (? l)))
-	     (VARIABLE-WIDTH
-	      (disp `(- ,l (+ *PC* 8)))
-	      ((0 #x1FFF)
-	       ;; Forward branch.  Nullify.
-	       (LONG (6  ,opcode1)		 ; COMB,cc,n
-		     (5  reg-2)
-		     (5  ,@opr1)
-		     (3  (car compl))
-		     (11 disp ASSEMBLE12:X)
-		     (1  1)
-		     (1  disp ASSEMBLE12:Y)))
-
-	      ((#x-2000 -1)
-	       ;; Backward branch.  No nullification, insert NOP.
-	       (LONG (6  ,opcode1)		; COMB,cc
-		     (5  reg-2)
-		     (5  ,@opr1)
-		     (3  (car compl))
-		     (11 disp ASSEMBLE12:X)
-		     (1  0)
-		     (1  disp ASSEMBLE12:Y)
-
-		     (6 #x02)			 ; NOP (OR 0 0 0)
-		     (10 #b0000000000)
-		     (3 0)
-		     (1 0)
-		     (7 #x12)
-		     (5 #b00000)))
-
-	      ((() ())
-	       (LONG (6  ,opcode2)		; COMB!,n
-		     (5  reg-2)
-		     (5  ,@opr1)
-		     (3  (car compl))
-		     (11 0 ASSEMBLE12:X)
-		     (1  1)
-		     (1  0 ASSEMBLE12:Y)
-
-		     (6  #x3a)			; B,n
-		     (5  0)
-		     (5  (branch-extend-disp disp) ASSEMBLE17:X)
-		     (3  0)
-		     (11 (branch-extend-disp disp) ASSEMBLE17:Y)
-		     (1  1)
-		     (1  (branch-extend-disp disp) ASSEMBLE17:Z)))))))))
-
-  (define-syntax defcond
-    (non-hygienic-macro-transformer
-     (lambda (name opcode1 opcode2 opr1)
-       `(defccbranch ,name complaltf ,opcode1 ,opcode2 ,opr1))))
-
-  (define-syntax defpseudo
-    (non-hygienic-macro-transformer
-     (lambda (name opcode opr1)
-       `(defccbranch ,name complal
-	  (TF-adjust ,opcode compl)
-	  (TF-adjust-inverted ,opcode compl)
-	  ,opr1))))
-
-  (defcond COMIBTN #X21 #x23 (immed-5 right-signed))
-  (defcond COMIBFN #X23 #x21 (immed-5 right-signed))
-
-  (defpseudo COMBN #X20 (reg-1)))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  (let ((completer (list-ref form 2))
+		(opcode1 (list-ref form 3))
+		(opcode2 (list-ref form 4))
+		(opr1 (list-ref form 5)))
+	    `(DEFINE-INSTRUCTION ,(cadr form)
+	       ;; No @PCO form.
+	       ;; This is a pseudo-instruction used by the code-generator
+	       (((? compl ,completer) (? ,(car opr1)) (? reg-2) (@PCR (? l)))
+		(VARIABLE-WIDTH
+		 (disp `(- ,l (+ *PC* 8)))
+		 ((0 #x1FFF)
+		  ;; Forward branch.  Nullify.
+		  (LONG (6  ,opcode1)	; COMB,cc,n
+			(5  reg-2)
+			(5  ,@opr1)
+			(3  (car compl))
+			(11 disp ASSEMBLE12:X)
+			(1  1)
+			(1  disp ASSEMBLE12:Y)))
+		 ((#x-2000 -1)
+		  ;; Backward branch.  No nullification, insert NOP.
+		  (LONG (6  ,opcode1)	; COMB,cc
+			(5  reg-2)
+			(5  ,@opr1)
+			(3  (car compl))
+			(11 disp ASSEMBLE12:X)
+			(1  0)
+			(1  disp ASSEMBLE12:Y)
+			(6 #x02)	; NOP (OR 0 0 0)
+			(10 #b0000000000)
+			(3 0)
+			(1 0)
+			(7 #x12)
+			(5 #b00000)))
+		 ((() ())
+		  (LONG (6  ,opcode2)	; COMB!,n
+			(5  reg-2)
+			(5  ,@opr1)
+			(3  (car compl))
+			(11 0 ASSEMBLE12:X)
+			(1  1)
+			(1  0 ASSEMBLE12:Y)
+			(6  #x3a)	; B,n
+			(5  0)
+			(5  (branch-extend-disp disp) ASSEMBLE17:X)
+			(3  0)
+			(11 (branch-extend-disp disp) ASSEMBLE17:Y)
+			(1  1)
+			(1  (branch-extend-disp disp) ASSEMBLE17:Z)))))))))))
+  (let-syntax ((defcond
+		 (sc-macro-transformer
+		  (lambda (form environment)
+		    environment
+		    `(DEFCCBRANCH ,(cadr form) COMPLALTF ,@(cddr form))))))
+    (defcond COMIBTN #x21 #x23 (immed-5 right-signed))
+    (defcond COMIBFN #x23 #x21 (immed-5 right-signed)))
+  (let-syntax ((defpseudo
+		 (sc-macro-transformer
+		  (lambda (form environment)
+		    environment
+		    `(DEFCCBRANCH ,(cadr form) COMPLAL
+		       (TF-adjust ,(caddr form) COMPL)
+		       (TF-ADJUST-INVERTED ,(caddr form) COMPL)
+		       ,(cadddr form))))))
+    (defpseudo COMBN #x20 (reg-1))))
 
 ;;;; Miscellaneous control
 
 (let-syntax
     ((defmovb&bb
-       (lambda (name opcode opr1 opr2 field2)
-	 `(define-instruction ,name
-	    (((? compl compledb) (? ,(car opr1)) ,@opr2 (@PCO (? offset)))
-	     (LONG (6  ,opcode)
-		   (5  ,field2)
-		   (5  ,@opr1)
-		   (3  (cdr compl))
-		   (11 offset ASSEMBLE12:X)
-		   (1  (car compl))
-		   (1  offset ASSEMBLE12:Y)))
-
-	    (((? compl compledb) (? ,(car opr1)) ,@opr2 (@PCR (? l)))
-	     (VARIABLE-WIDTH
-	      (disp `(- ,l (+ *PC* 8)))
-	      ((#x-2000 #x1FFF)
-	       (LONG (6  ,opcode)
-		     (5  ,field2)
-		     (5  ,@opr1)
-		     (3  (cdr compl))
-		     (11 l PC-REL ASSEMBLE12:X)
-		     (1  (car compl))
-		     (1  l PC-REL ASSEMBLE12:Y)))
-
-	      ((() ())
-	       ;; See page comment above.
-	       (LONG (6  ,opcode)		; MOVB
-		     (5  ,field2)
-		     (5  ,@opr1)
-		     (3  (branch-extend-edcc (cdr compl)))
-		     (11 (branch-extend-pco disp (car compl)) ASSEMBLE12:X)
-		     (1  1)
-		     (1  (branch-extend-pco disp (car compl)) ASSEMBLE12:Y)
-		     
-		     (6  #x3a)			; B
-		     (5  0)
-		     (5  (branch-extend-disp disp) ASSEMBLE17:X)
-		     (3  0)
-		     (11 (branch-extend-disp disp) ASSEMBLE17:Y)
-		     (1  (branch-extend-nullify disp (car compl)))
-		     (1  (branch-extend-disp disp) ASSEMBLE17:Z)))))))))
-
-
-  (defmovb&bb BVB	#x30 (reg)		    () 		#b00000)
-  (defmovb&bb BB	#x31 (reg)		    ((? pos))	pos)
-  (defmovb&bb MOVB	#x32 (reg-1)		    ((? reg-2))	reg-2)
-  (defmovb&bb MOVIB	#x33 (immed-5 right-signed) ((? reg-2))	reg-2))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  (let ((opcode (list-ref form 2))
+		(opr1 (list-ref form 3))
+		(opr2 (list-ref form 4))
+		(field2 (list-ref form 5)))
+	    `(DEFINE-INSTRUCTION ,(cadr form)
+	       (((? compl compledb) (? ,(car opr1)) ,@opr2 (@PCO (? offset)))
+		(LONG (6  ,opcode)
+		      (5  ,field2)
+		      (5  ,@opr1)
+		      (3  (cdr compl))
+		      (11 offset ASSEMBLE12:X)
+		      (1  (car compl))
+		      (1  offset ASSEMBLE12:Y)))
+	       (((? compl compledb) (? ,(car opr1)) ,@opr2 (@PCR (? l)))
+		(VARIABLE-WIDTH
+		 (disp `(- ,l (+ *PC* 8)))
+		 ((#x-2000 #x1FFF)
+		  (LONG (6  ,opcode)
+			(5  ,field2)
+			(5  ,@opr1)
+			(3  (cdr compl))
+			(11 l PC-REL ASSEMBLE12:X)
+			(1  (car compl))
+			(1  l PC-REL ASSEMBLE12:Y)))
+		 ((() ())
+		  ;; See page comment above.
+		  (LONG (6  ,opcode)	; MOVB
+			(5  ,field2)
+			(5  ,@opr1)
+			(3  (branch-extend-edcc (cdr compl)))
+			(11 (branch-extend-pco disp (car compl)) ASSEMBLE12:X)
+			(1  1)
+			(1  (branch-extend-pco disp (car compl)) ASSEMBLE12:Y)
+			(6  #x3a)	; B
+			(5  0)
+			(5  (branch-extend-disp disp) ASSEMBLE17:X)
+			(3  0)
+			(11 (branch-extend-disp disp) ASSEMBLE17:Y)
+			(1  (branch-extend-nullify disp (car compl)))
+			(1  (branch-extend-disp disp) ASSEMBLE17:Z)))))))))))
+  (defmovb&bb BVB #x30 (reg) () #b00000)
+  (defmovb&bb BB #x31 (reg) ((? pos)) pos)
+  (defmovb&bb MOVB #x32 (reg-1) ((? reg-2)) reg-2)
+  (defmovb&bb MOVIB #x33 (immed-5 right-signed) ((? reg-2)) reg-2))
 
 ;;;; Assembler pseudo-ops
 
