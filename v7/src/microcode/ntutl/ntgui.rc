@@ -32,12 +32,12 @@ BEGIN
     BEGIN
 	VALUE "CompanyName", "Artifical Intelligence Lab, MIT"
 	VALUE "FileDescription", "MIT Scheme Microcode"
-	VALUE "FileVersion", "11.144"
+	VALUE "FileVersion", "11.166"
 	VALUE "InternalName", "SCHEME"
 	VALUE "LegalCopyright", "Copyright Massachusetts Institute of Technology 1993"
 	VALUE "OriginalFilename", "SCHEME.EXE"
 	VALUE "ProductName", "MIT Scheme"
-	VALUE "ProductVersion", "7.2.0 (alpha)"
+	VALUE "ProductVersion", "7.3.0 (beta)"
     END
   END
 
