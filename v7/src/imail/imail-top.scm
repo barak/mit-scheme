@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.203 2000/06/30 18:31:31 cph Exp $
+;;; $Id: imail-top.scm,v 1.204 2000/06/30 19:11:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -2145,13 +2145,13 @@ Negative argument means search in reverse."
     (message (body <mime-body-text>) selector context mark)
   (if (and (or (not (insert-mime-context-enclosure context))
 	       (let ((disposition (mime-body-disposition body)))
-		 (and disposition
-		      (eq? (car disposition) 'INLINE)))
-	       (let ((subtype (mime-body-subtype body)))
-		 (or (eq? subtype 'PLAIN)
-		     (memq subtype
-			   (ref-variable imail-inline-mime-text-subtypes
-					 mark)))))
+		 (if disposition
+		     (eq? (car disposition) 'INLINE)
+		     (let ((subtype (mime-body-subtype body)))
+		       (or (eq? subtype 'PLAIN)
+			   (memq subtype
+				 (ref-variable imail-inline-mime-text-subtypes
+					       mark)))))))
 	   (known-mime-encoding? (mime-part-encoding context body))
 	   (re-string-match
 	    (string-append "\\`"
