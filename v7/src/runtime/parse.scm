@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 13.43 1987/06/16 22:39:53 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 13.44 1988/03/05 00:20:30 cph Rel $
 ;;;
-;;;	Copyright (c) 1987 Massachusetts Institute of Technology
+;;;	Copyright (c) 1988 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -125,8 +125,19 @@
   (build-atom (read-atom)))
 
 (define ((collect-list-wrapper object-parser))
-  (let ((value (object-parser)))			;forces order.
-    (cons value (collect-list))))
+  (let ((first (object-parser)))			;forces order.
+    (let ((rest (collect-list)))
+      (if (and (pair? rest)
+	       (eq? dot-symbol (car rest)))
+	  (if (and (pair? (cdr rest))
+		   (null? (cddr rest)))
+	      (cons first (cadr rest))
+	      (error "PARSE-OBJECT: Improperly formed dotted list"
+		     (cons first rest)))
+	  (cons first rest)))))
+
+(define dot-symbol
+  (string->symbol "."))
 
 (define (parse-undefined-special)
   (error "No such special reader macro" (peek-char)))
@@ -237,22 +248,33 @@
   (define-char-special '(#\e #\E) numeric-prefix)
   (define-char-special '(#\s #\S) numeric-prefix)
   (define-char-special '(#\l #\L) numeric-prefix))
-
+
 (define-char #\(
   (lambda ()
     (discard-char)
-    (collect-list)))
+    (collect-list/top-level)))
 
 (define-char-special #\(
   (lambda ()
     (discard-char)
-    (list->vector (collect-list))))
+    (list->vector (collect-list/top-level))))
+
+(define (collect-list/top-level)
+  (let ((value (collect-list)))
+    (if (and (pair? value)
+	     (eq? dot-symbol (car value)))
+	(error "PARSE-OBJECT: Improperly formed dotted list" value)
+	value)))
+
+(define ignore-extra-close-parens
+  true)
 
 (define-char #\)
   (lambda ()
-    (if (not (eq? console-input-port *parser-input-port*))
-	(error "PARSE-OBJECT: Unmatched close paren" (read-char))
-	(read-char))
+    (if (and ignore-extra-close-parens
+	     (eq? console-input-port *parser-input-port*))
+	(discard-char)
+	(error "PARSE-OBJECT: Unmatched close paren" (read-char)))
     (parse-object))
   (lambda ()
     (discard-char)
@@ -267,23 +289,6 @@
     (collect-list)))
 
 (let ()
-
-(vector-set! (cdar *parser-table*)
-	     (char->ascii #\.)
-  (lambda ()
-    (discard-char)
-    ;; atom with initial dot?
-    (if (char-set-member? atom-constituents (peek-char))
-	(let ((first (build-atom (string-append "." (read-atom)))))
-	  (cons first (collect-list)))
-
-	;; (A . B) -- get B and ignore whitespace following it.
-	(let ((tail (parse-object)))
-	  (discard-whitespace)
-	  (if (not (char=? (peek-char) #\)))
-	      (error "Illegal character in ignored stream" (peek-char)))
-	  (discard-char)
-	  tail))))
 
 (define-char char-set:whitespace
   (lambda ()
