@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.52 1989/09/20 23:09:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.53 1989/10/28 15:38:37 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -1691,7 +1691,6 @@ return_from_compiled_code:
 	      Interrupt(PENDING_INTERRUPTS());
 	    }
 
-
 	    case PRIM_APPLY_INTERRUPT:
 	    {
 	      apply_compiled_backout();
@@ -1699,6 +1698,9 @@ return_from_compiled_code:
 	      Interrupt(PENDING_INTERRUPTS());
 	    }
 
+	    /* The assembly language interfaces return errors
+	       here.  The portable version does not.
+	     */
 	    case ERR_COMPILED_CODE_ERROR:
 	    {
 	      /* The compiled code is signalling a microcode error. */
@@ -1709,7 +1711,8 @@ return_from_compiled_code:
 
 	    case ERR_INAPPLICABLE_OBJECT:
 	    /* This error code means that apply_compiled_procedure
-	       was called on an object which is not a compiled procedure.
+	       was called on an object which is not a compiled procedure,
+	       or it was called in a system without compiler support.
 
 	       Fall through...
 	     */
@@ -1720,20 +1723,11 @@ return_from_compiled_code:
 	      Apply_Error( Which_Way);
 	    }
 
-	    case ERR_UNIMPLEMENTED_PRIMITIVE:
-	    {
-	      /* This error code means that compiled code
-		 attempted to call an unimplemented primitive.
-	       */
-
-	      BACK_OUT_AFTER_PRIMITIVE();
-	      Pop_Return_Error( ERR_UNIMPLEMENTED_PRIMITIVE);
-	    }
-
 	    case ERR_EXECUTE_MANIFEST_VECTOR:
 	    {
 	      /* This error code means that enter_compiled_expression
 		 was called in a system without compiler support.
+		 This is a kludge!
 	       */
 
 	      execute_compiled_backout();
@@ -1742,21 +1736,11 @@ return_from_compiled_code:
 	      Pop_Return_Error( Which_Way);
 	    }
 
-	    case ERR_BAD_COMBINATION:
-	    {
-	      /* This error code means that apply_compiled_procedure
-		 was called in a system without compiler support.
-	       */
-
-	      apply_compiled_backout();
-	      Apply_Error( Which_Way);
-	    }
-
 	    case ERR_INAPPLICABLE_CONTINUATION:
 	    {
 	      /* This error code means that return_to_compiled_code
-		 or some other compiler continuation was called in a
-		 system without compiler support.
+		 saw a non-continuation on the stack, or was called
+		 in a system without compiler support.
 	       */
 
 	      Store_Expression(SHARP_F);
@@ -1765,7 +1749,8 @@ return_from_compiled_code:
 	    }
 
 	    default:
-	      Microcode_Termination( TERM_COMPILER_DEATH);
+	      compiled_error_backout();
+	      Pop_Return_Error(Which_Way);
             }
           }
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.40 1989/09/20 23:10:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.41 1989/10/28 15:38:44 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -257,7 +257,7 @@ Fix_Weak_Chain()
 	  *Scan = Temp;
 	  continue;
 	}
-	Compiled_BH(false, continue);
+	Compiled_BH(false, { *Scan = Temp; continue; });
 	*Scan = SHARP_F;
 	continue;
 

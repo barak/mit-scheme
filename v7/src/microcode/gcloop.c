@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.31 1989/09/20 23:08:50 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.32 1989/10/28 15:38:33 jinx Exp $
  *
  * This file contains the code for the most primitive part
  * of garbage collection.
@@ -146,12 +146,14 @@ GCLoop(Scan, To_Pointer)
 
 	  while(--count >= 0)
 	  {
-	    Scan = OPERATOR_LINKAGE_ENTRY_ADDRESS(word_ptr);
+	    Scan = ((SCHEME_OBJECT *) word_ptr);
 	    word_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr);
-	    Temp = *Scan;
+	    EXTRACT_OPERATOR_LINKAGE_ADDRESS(Temp, Scan);
 	    GC_Pointer(Setup_Internal(true,
 				      Transport_Compiled(),
-				      Compiled_BH(true, continue)));
+				      Compiled_BH(true, goto next_operator)));
+	  next_operator:
+	    STORE_OPERATOR_LINKAGE_ADDRESS(Temp, Scan);
 	  }
 	  Scan = end_scan;
 	  break;
@@ -160,30 +162,37 @@ GCLoop(Scan, To_Pointer)
 
       case TC_MANIFEST_CLOSURE:
       {
-	machine_word *start_ptr;
+	fast long count;
 	fast machine_word *word_ptr;
+	SCHEME_OBJECT *area_end;
 
 	Scan += 1;
-	word_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(Scan);
-	start_ptr = word_ptr;
+	count = (MANIFEST_CLOSURE_COUNT (Scan));
+	word_ptr = (FIRST_MANIFEST_CLOSURE_ENTRY (Scan));
+	area_end = (MANIFEST_CLOSURE_END (Scan, count));
 
-	while (VALID_MANIFEST_CLOSURE_ENTRY(word_ptr))
+	while ((--count) >= 0)
 	{
-	  Scan = MANIFEST_CLOSURE_ENTRY_ADDRESS(word_ptr);
-	  word_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
-	  Temp = *Scan;
+	  Scan = ((SCHEME_OBJECT *) (word_ptr));
+	  word_ptr = (NEXT_MANIFEST_CLOSURE_ENTRY (word_ptr));
+	  EXTRACT_CLOSURE_ENTRY_ADDRESS (Temp, Scan);
 	  GC_Pointer(Setup_Internal(true,
 				    Transport_Compiled(),
-				    Compiled_BH(true, continue)));
+				    Compiled_BH(true, goto next_closure)));
+	next_closure:
+	  STORE_CLOSURE_ENTRY_ADDRESS (Temp, Scan);
 	}
-	Scan = MANIFEST_CLOSURE_END(word_ptr, start_ptr);
+
+	Scan = area_end;
 	break;
       }
 
       case_compiled_entry_point:
 	GC_Pointer(Setup_Internal(true,
 				  Transport_Compiled(),
-				  Compiled_BH(true, continue)));
+				  Compiled_BH(true, goto after_entry)));
+      after_entry:
+	*Scan = Temp;
 	break;
 
       case_Cell:

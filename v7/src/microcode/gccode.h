@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.41 1989/09/20 23:08:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.42 1989/10/28 15:38:29 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -426,76 +426,7 @@ extern SCHEME_OBJECT Weak_Chain;
   (*To++) = SHARP_F;							\
   Pointer_End ();							\
 }
-
+
 /* Compiled Code Relocation Utilities */
 
-#ifdef CMPGCFILE
-/* Bug in bsd cpp */
-#ifdef vax
-#include "cmpvaxgc.h"
-#else
-#include CMPGCFILE
-#endif
-#else
-
-typedef unsigned long machine_word;
-
-/* Is there anything else that can be done here? */
-
-#define GC_NO_COMPILER_STMT()						\
-  gc_death								\
-    (TERM_COMPILER_DEATH,						\
-     "relocate_compiled: No compiler support!",				\
-     0, 0)
-
-#define GC_NO_COMPILER_EXPR(value_type)					\
-  ((GC_NO_COMPILER_STMT ()), (value_type 0))
-
-
-#define Relocate_Compiled(obj, nb, ob) (GC_NO_COMPILER_EXPR ((SCHEME_OBJECT)))
-
-#define Transport_Compiled() (GC_NO_COMPILER_STMT ())
-#define Compiled_BH(flag, then_what) (GC_NO_COMPILER_STMT ())
-#define Get_Compiled_Block(var, address) (GC_NO_COMPILER_STMT ())
-
-#define FIRST_MANIFEST_CLOSURE_ENTRY(scan)				\
-  (GC_NO_COMPILER_EXPR ((machine_word *)))
-
-#define VALID_MANIFEST_CLOSURE_ENTRY(word_ptr) (GC_NO_COMPILER_EXPR ((int)))
-
-#define NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr)				\
-  (GC_NO_COMPILER_EXPR ((machine_word *)))
-
-#define MANIFEST_CLOSURE_ENTRY_ADDRESS(ptr)				\
-  (GC_NO_COMPILER_EXPR ((SCHEME_OBJECT *)))
-
-#define MANIFEST_CLOSURE_END(end, start)				\
-  (GC_NO_COMPILER_EXPR ((SCHEME_OBJECT *)))
-
-#define MANIFEST_CLOSURE_VALID_FITS_P(end, st)				\
-  (GC_NO_COMPILER_EXPR ((int)))
-
-#define READ_LINKAGE_KIND(header)					\
-  (GC_NO_COMPILER_EXPR ((int)))
-
-#define OPERATOR_LINKAGE_KIND 0
-
-#define READ_CACHE_LINKAGE_COUNT(header)				\
-  (GC_NO_COMPILER_EXPR ((int)))
-
-#define READ_OPERATOR_LINKAGE_COUNT(header)				\
-  (GC_NO_COMPILER_EXPR ((int)))
-
-#define END_OPERATOR_LINKAGE_AREA(scan, count)				\
-  (GC_NO_COMPILER_EXPR ((SCHEME_OBJECT *)))
-
-#define FIRST_OPERATOR_LINKAGE_ENTRY(scan)				\
-  (GC_NO_COMPILER_EXPR ((machine_word *)))
-
-#define NEXT_LINKAGE_OPERATOR_ENTRY(ptr)				\
-  (GC_NO_COMPILER_EXPR ((machine_word *)))
-
-#define OPERATOR_LINKAGE_ENTRY_ADDRESS(ptr)				\
-  (GC_NO_COMPILER_EXPR ((SCHEME_OBJECT *)))
-
-#endif
+#include "cmpgc.h"

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.40 1989/09/20 23:04:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.41 1989/10/28 15:37:45 jinx Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -708,7 +708,7 @@ print_a_flonum(val)
     }									\
 }
 
-#ifdef CMPGCFILE
+#ifdef HAS_COMPILER_SUPPORT
 
 #define Do_Compiled_Entry(Code, Rel, Fre, Scn, Obj, FObj)		\
 {									\
@@ -736,7 +736,7 @@ print_a_flonum(val)
     }									\
 }
 
-#else /* no CMPGCFILE */
+#else /* no HAS_COMPILER_SUPPORT */
 
 #define Do_Compiled_Entry(Code, Rel, Fre, Scn, Obj, FObj)		\
 {									\
@@ -747,7 +747,7 @@ print_a_flonum(val)
   quit (1);								\
 }
 
-#endif /* CMPGCFILE */
+#endif /* HAS_COMPILER_SUPPORT */
 
 /* Common Pointer Code */
 

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.37 1989/09/20 23:10:58 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.38 1989/10/28 15:38:53 jinx Exp $ */
 
 /* Pure/Constant space utilities. */
 
@@ -74,19 +74,11 @@ Update(From, To, Was, Will_Be)
 
 	case TC_MANIFEST_CLOSURE:
 	{
-	  machine_word *start_ptr;
-	  fast machine_word *word_ptr;
+	  fast long count;
 
 	  From += 1;
-	  word_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(From);
-	  start_ptr = word_ptr;
-
-	  while (VALID_MANIFEST_CLOSURE_ENTRY(word_ptr))
-	  {
-	    word_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
-	  }
-	  From = MANIFEST_CLOSURE_END(word_ptr, start_ptr);
-
+	  count = (MANIFEST_CLOSURE_COUNT (From));
+	  From = (MANIFEST_CLOSURE_END (From, count));
 	  continue;
 	}
 

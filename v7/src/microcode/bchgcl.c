@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.36 1989/09/20 23:05:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.37 1989/10/28 15:37:58 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -90,13 +90,16 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
 
 	  /* The + & -1 are here because of the Scan++ in the for header. */
 	  overflow = (Scan - scan_buffer_top) + 1;
-	  Scan = ((dump_and_reload_scan_buffer((overflow / GC_DISK_BUFFER_SIZE), NULL) +
+	  Scan = ((dump_and_reload_scan_buffer
+		   ((overflow / GC_DISK_BUFFER_SIZE), NULL) +
 		   (overflow % GC_DISK_BUFFER_SIZE)) - 1);
 	  break;
 	}
 
       case_compiled_entry_point:
 	relocate_compiled_entry(true);
+	*Scan = Temp;
+	break;
 
       case TC_LINKAGE_SECTION:
       {
@@ -139,81 +142,90 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
 	  fast machine_word *word_ptr, *next_ptr;
 	  long overflow;
 
-	  count = READ_OPERATOR_LINKAGE_COUNT(Temp);
-	  word_ptr = FIRST_OPERATOR_LINKAGE_ENTRY(Scan);
-	  overflow = ((END_OPERATOR_LINKAGE_AREA(Scan, count)) -
+	  count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
+	  word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
+	  overflow = ((END_OPERATOR_LINKAGE_AREA (Scan, count)) -
 		      scan_buffer_top);
 
-	  for (next_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr);
+	  for (next_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
 	       (--count >= 0);
 	       word_ptr = next_ptr,
-	       next_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr))
+	       next_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr)))
 	  {
 	    if (next_ptr > ((machine_word *) scan_buffer_top))
 	    {
-	      extend_scan_buffer((char *) next_ptr, To);
-	      ONCE_ONLY(relocate_linked_operator(true));
+	      extend_scan_buffer ((char *) next_ptr, To);
+	      relocate_linked_operator (true);
 	      next_ptr = ((machine_word *)
-			  end_scan_buffer_extension((char *) next_ptr));
+			  (end_scan_buffer_extension ((char *) next_ptr)));
 	      overflow -= GC_DISK_BUFFER_SIZE;
 	    }
 	    else
 	    {
-	      relocate_linked_operator(true);
+	      relocate_linked_operator (true);
 	    }
 	  }
-	  Scan = scan_buffer_top + overflow;
+	  Scan = (scan_buffer_top + overflow);
 	  break;
 	}
       }
 
       case TC_MANIFEST_CLOSURE:
       {
-	machine_word *start_ptr;
-	fast machine_word *word_ptr, *next_ptr;
+	fast long count;
+	fast machine_word *word_ptr;
+	machine_word *end_ptr;
 
 	Scan += 1;
-	start_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(Scan);
-
-	for (word_ptr = start_ptr,
-	     next_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
-	     true;
-	     word_ptr = next_ptr,
-	     next_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr))
+	/* Is there enough space to read the count? */
+	if ((((machine_word *) Scan) + 2) >
+	    ((machine_word *) scan_buffer_top))
 	{
-	  if (!MANIFEST_CLOSURE_VALID_FITS_P(word_ptr, scan_buffer_top))
-	  {
-	    long dw, ds;
+	  long dw;
+	  machine_word *header_end;
 
-	    dw = (word_ptr - ((machine_word *) scan_buffer_top));
-	    ds = (word_ptr - start_ptr);
-	    word_ptr = (((machine_word *)
-			 (dump_and_reload_scan_buffer(0, NULL))) +
-			dw);
-	    start_ptr = word_ptr - ds;
-	    next_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
-	  }
-	  if (!VALID_MANIFEST_CLOSURE_ENTRY(word_ptr))
-	  {
-	    break;
-	  }
-	  else if (next_ptr > ((machine_word *) scan_buffer_top))
-	  {
-	    long ds;
+	  header_end = (((machine_word *) Scan) + 2);
+	  extend_scan_buffer (((char *) header_end), To);
+	  count = (MANIFEST_CLOSURE_COUNT (Scan));
+	  word_ptr = (FIRST_MANIFEST_CLOSURE_ENTRY (Scan));
+	  dw = (word_ptr - header_end);
+	  header_end = ((machine_word *)
+			(end_scan_buffer_extension ((char *) header_end)));
+	  word_ptr = (header_end + dw);
+	  Scan = ((SCHEME_OBJECT *) (header_end - 2));
+	}
+	else
+	{
+	  count = (MANIFEST_CLOSURE_COUNT (Scan));
+	  word_ptr = (FIRST_MANIFEST_CLOSURE_ENTRY (Scan));
+	}
+	end_ptr = ((machine_word *) (MANIFEST_CLOSURE_END (Scan, count)));
 
-	    ds = (next_ptr - start_ptr);
-	    extend_scan_buffer((char *) next_ptr, To);
-	    ONCE_ONLY(relocate_manifest_closure(true));
-	    next_ptr = ((machine_word *)
-			end_scan_buffer_extension((char *) next_ptr));
-	    start_ptr = next_ptr - ds;
+	for ( ; ((--count) >= 0);
+	     (word_ptr = (NEXT_MANIFEST_CLOSURE_ENTRY (word_ptr))))
+	{
+	  if ((CLOSURE_ENTRY_END (word_ptr)) >
+	      ((machine_word *) scan_buffer_top))
+	  {
+	    machine_word *entry_end;
+	    long de, dw;
+
+	    entry_end = (CLOSURE_ENTRY_END (word_ptr));
+	    de = (end_ptr - entry_end);
+	    dw = (entry_end - word_ptr);
+	    extend_scan_buffer (((char *) entry_end), To);
+	    relocate_manifest_closure(true);
+	    entry_end = ((machine_word *)
+			 (end_scan_buffer_extension ((char *) entry_end)));
+	    word_ptr = (entry_end - dw);
+	    end_ptr = (entry_end + de);
 	  }
 	  else
 	  {
 	    relocate_manifest_closure(true);
 	  }
 	}
-	Scan = MANIFEST_CLOSURE_END(word_ptr, start_ptr);
+	Scan = ((SCHEME_OBJECT *) (end_ptr));
 	break;
       }
 

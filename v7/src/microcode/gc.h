@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gc.h,v 9.29 1989/09/20 23:08:43 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gc.h,v 9.30 1989/10/28 15:38:26 jinx Rel $
  *
  * Garbage collection related macros of sufficient utility to be
  * included in all compilations.
@@ -38,13 +38,13 @@ MIT in each case. */
 
 /* GC Types. */
 
-#ifdef CMPGCFILE
+#ifdef HAS_COMPILER_SUPPORT
 #ifndef BAD_TYPES_LETHAL
 #ifndef BAD_TYPES_INNOCUOUS
 #define BAD_TYPES_INNOCUOUS
 #endif /* BAD_TYPES_INNOCUOUS */
 #endif /* BAD_TYPES_LETHAL */
-#endif /* CMPGCFILE */
+#endif /* HAS_COMPILER_SUPPORT */
 
 #ifdef BAD_TYPES_INNOCUOUS
 #ifdef BAD_TYPES_LETHAL

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.43 1989/09/20 23:07:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.44 1989/10/28 15:38:18 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -90,10 +90,10 @@ Dump_Pointer(Fasdump_Setup_Pointer(Extra_Code, Normal_BH(false, continue)))
 Old = OBJECT_ADDRESS (Temp);						\
 Code
 
-#define Dump_Compiled_Entry()						\
+#define Dump_Compiled_Entry(label)					\
 {									\
   Dump_Pointer(Fasdump_Setup_Pointer(Transport_Compiled(),		\
-				     Compiled_BH(false, continue)));	\
+				     Compiled_BH(false, goto label)));	\
 }
 
 /* Dump_Mode is currently a fossil.  It should be resurrected. */
@@ -150,27 +150,33 @@ DumpLoop(Scan, Dump_Mode)
 
       case_compiled_entry_point:
 	compiled_code_present_p = true;
-	Dump_Compiled_Entry();
+	Dump_Compiled_Entry(after_entry);
+      after_entry:
+	*Scan = Temp;
 	break;
 
       case TC_MANIFEST_CLOSURE:
       {
-	machine_word *start_ptr;
+	fast long count;
 	fast machine_word *word_ptr;
+	SCHEME_OBJECT *area_end;
 
 	compiled_code_present_p = true;
 	Scan += 1;
-	word_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(Scan);
-	start_ptr = word_ptr;
+	count = (MANIFEST_CLOSURE_COUNT (Scan));
+	word_ptr = (FIRST_MANIFEST_CLOSURE_ENTRY (Scan));
+	area_end = (MANIFEST_CLOSURE_END (Scan, count));
 
-	while (VALID_MANIFEST_CLOSURE_ENTRY(word_ptr))
+	while ((--count) >= 0)
 	{
-	  Scan = MANIFEST_CLOSURE_ENTRY_ADDRESS(word_ptr);
-	  word_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
-	  Temp = *Scan;
-	  Dump_Compiled_Entry();
+	  Scan = ((SCHEME_OBJECT *) (word_ptr));
+	  word_ptr = (NEXT_MANIFEST_CLOSURE_ENTRY (word_ptr));
+	  EXTRACT_CLOSURE_ENTRY_ADDRESS (Temp, Scan);
+	  Dump_Compiled_Entry (after_closure);
+	after_closure:
+	  STORE_CLOSURE_ENTRY_ADDRESS (Temp, Scan);
 	}
-	Scan = MANIFEST_CLOSURE_END(word_ptr, start_ptr);
+	Scan = area_end;
 	break;
       }
 
@@ -208,10 +214,12 @@ DumpLoop(Scan, Dump_Mode)
 
 	  while(--count >= 0)
 	  {
-	    Scan = OPERATOR_LINKAGE_ENTRY_ADDRESS(word_ptr);
+	    Scan = ((SCHEME_OBJECT *) (word_ptr));
 	    word_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr);
-	    Temp = *Scan;
-	    Dump_Compiled_Entry();
+	    EXTRACT_OPERATOR_LINKAGE_ADDRESS(Temp, Scan);
+	    Dump_Compiled_Entry(after_operator);
+	  after_operator:
+	    STORE_OPERATOR_LINKAGE_ADDRESS(Temp, Scan);
 	  }
 	  Scan = end_scan;
 	  break;

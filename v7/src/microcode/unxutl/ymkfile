@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.14 1989/09/24 15:25:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.15 1989/10/28 15:39:09 jinx Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -155,7 +155,7 @@ CTERM_LIB =
 
 #if (PROC_TYPE == PROC_TYPE_68020)
 
-MACHINE_SWITCHES = -DMC68020 -DCMPGCFILE=\"cmp68kgc.h\"
+MACHINE_SWITCHES = -DMC68020 -DHAS_COMPILER_SUPPORT
 MACHINE_SOURCES = cmp68020.m4
 MACHINE_OBJECTS = cmp68020.o
 GC_HEAD_FILES = gccode.h cmp68kgc.h
@@ -163,7 +163,7 @@ GC_HEAD_FILES = gccode.h cmp68kgc.h
 #else
 #if (PROC_TYPE == PROC_TYPE_VAX)
 
-MACHINE_SWITCHES = -DCMPGCFILE=\"cmpvaxgc.h\"
+MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
 MACHINE_SOURCES = cmpvax.m4
 MACHINE_OBJECTS = cmpvax.o
 GC_HEAD_FILES = gccode.h cmpvaxgc.h

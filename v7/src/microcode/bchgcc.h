@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.34 1989/09/20 23:05:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.35 1989/10/28 15:37:55 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -221,7 +221,7 @@ extern char gc_death_message_buffer[];
 }
 
 #define relocate_compiled_entry(in_gc_p)				\
-{									\
+do {									\
   Old = OBJECT_ADDRESS (Temp);						\
   if (Old >= Low_Constant)						\
     continue;								\
@@ -232,29 +232,25 @@ extern char gc_death_message_buffer[];
     New_Address = (MAKE_BROKEN_HEART (To_Address));			\
     copy_vector(NULL);							\
     *Saved_Old = New_Address;						\
-    *Scan = Relocate_Compiled(Temp,					\
-			      OBJECT_ADDRESS (New_Address),		\
-			      Saved_Old);				\
+    Temp = RELOCATE_COMPILED(Temp,					\
+			     OBJECT_ADDRESS (New_Address),		\
+			     Saved_Old);				\
     continue;								\
   }									\
-}
+} while (0)
 
 #define relocate_linked_operator(in_gc_p)				\
 {									\
-  Scan = OPERATOR_LINKAGE_ENTRY_ADDRESS(word_ptr);			\
-  Temp = *Scan;								\
+  Scan = ((SCHEME_OBJECT *) (word_ptr));				\
+  EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);			\
   relocate_compiled_entry(in_gc_p);					\
+  STORE_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);				\
 }
 
 #define relocate_manifest_closure(in_gc_p)				\
 {									\
-  Scan = MANIFEST_CLOSURE_ENTRY_ADDRESS(word_ptr);			\
-  Temp = *Scan;								\
+  Scan = ((SCHEME_OBJECT *) (word_ptr));				\
+  EXTRACT_CLOSURE_ENTRY_ADDRESS (Temp, Scan);				\
   relocate_compiled_entry(in_gc_p);					\
+  STORE_CLOSURE_ENTRY_ADDRESS (Temp, Scan);				\
 }
-
-#define ONCE_ONLY(stmt)							\
-do									\
-{									\
-  stmt;									\
-} while (false)
