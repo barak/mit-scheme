@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/dassm2.scm,v 1.5 1992/08/12 09:45:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/dassm2.scm,v 1.6 1992/08/18 13:55:09 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/dassm2.scm,v 4.18 1991/05/07 13:46:04 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -101,17 +101,18 @@ MIT in each case. |#
       ;; External label markers come in two parts:
       ;; An entry type descriptor, and a gc offset.
       (cond ((eq? state 'EXTERNAL-LABEL-OFFSET)
-	     (let* ((offset (next-unsigned-16-bit-word))
+	     (let* ((word (next-unsigned-16-bit-word))
 		    (label (find-label *current-offset)))
 	       (receiver *current-offset
 			 (if label
 			     `(BLOCK-OFFSET ,label)
-			     `(WORD U ,offset))
+			     `(WORD U ,word))
 			 'INSTRUCTION)))
 	    ((external-label-marker? symbol-table offset state)
-	     (receiver *current-offset
-		       `(WORD U ,(next-unsigned-16-bit-word))
-		       'EXTERNAL-LABEL-OFFSET))
+	     (let ((word ,(next-unsigned-16-bit-word)))
+	       (receiver *current-offset
+			 `(WORD U ,word)
+			 'EXTERNAL-LABEL-OFFSET)))
 	    (else
 	     (let ((instruction (disassemble-next-instruction)))
 	       (if (or *valid? (not (eq? 'BYTE (car instruction))))
