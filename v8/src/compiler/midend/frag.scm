@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: frag.scm,v 1.1 1995/03/30 15:11:40 adams Exp $
+$Id: frag.scm,v 1.2 1995/03/30 20:04:35 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -53,7 +53,7 @@ MIT in each case. |#
 (define-fragmenter LOOKUP (name)
   `(LOOKUP ,name))
 
-(define (frag/embody expr)
+(define (frag/body expr)
   (cond ((LOOKUP/? expr) (frag/expr expr))
 	((QUOTE/? expr)  (frag/expr expr))
 	((LAMBDA/? expr) (frag/expr expr))
@@ -67,7 +67,7 @@ MIT in each case. |#
 
 (define-fragmenter LAMBDA (lambda-list body)
   `(LAMBDA ,lambda-list
-     ,(frag/embody body)))
+     ,(frag/body body)))
 
 (define-fragmenter LET (bindings body)
   `(LET ,(map (lambda (binding)
@@ -79,14 +79,14 @@ MIT in each case. |#
 	      (or (pseudo-static-variable? (car b))
 		  (form/static? (cadr b)))))
 	  (frag/expr body)
-	  (frag/embody body))))
+	  (frag/body body))))
 
 (define-fragmenter LETREC (bindings body)
   `(LETREC ,(map (lambda (binding)
 		   (list (car binding)
 			 (frag/expr (cadr binding))))
 		 bindings)
-     ,(frag/embody body)))
+     ,(frag/body body)))
 
 (define-fragmenter IF (pred conseq alt)
   (frag* (list pred conseq alt)
@@ -110,6 +110,22 @@ MIT in each case. |#
 	   (lambda (parts*)
 	     `(CALL ,@parts*)))))
 
+
+(define (frag/expr expr)
+  (if (not (pair? expr))
+      (illegal expr))
+  (case (car expr)
+    ((QUOTE)    (frag/quote expr))
+    ((LOOKUP)   (frag/lookup expr))
+    ((LAMBDA)   (frag/lambda expr))
+    ((LET)      (frag/let expr))
+    ((DECLARE)  (frag/declare expr))
+    ((CALL)     (frag/call expr))
+    ((BEGIN)    (frag/begin expr))
+    ((IF)       (frag/if expr))
+    ((LETREC)   (frag/letrec expr))
+    (else       (illegal expr))))
+
 (define (frag* exprs receiver)
   (let* ((names  (map (lambda (e)
 		       (if (or (QUOTE/? e) (LOOKUP/? e) (LAMBDA/? e)
@@ -132,27 +148,6 @@ MIT in each case. |#
     (if (null? bds)
 	(receiver exprs*)
 	`(LET ,bds ,(receiver exprs*)))))
-
-
-(define (frag/expr expr)
-  (if (not (pair? expr))
-      (illegal expr))
-  (case (car expr)
-    ((QUOTE)    (frag/quote expr))
-    ((LOOKUP)   (frag/lookup expr))
-    ((LAMBDA)   (frag/lambda expr))
-    ((LET)      (frag/let expr))
-    ((DECLARE)  (frag/declare expr))
-    ((CALL)     (frag/call expr))
-    ((BEGIN)    (frag/begin expr))
-    ((IF)       (frag/if expr))
-    ((LETREC)   (frag/letrec expr))
-    (else       (illegal expr))))
-
-(define (frag/expr* exprs)
-  (lmap (lambda (expr)
-	  (frag/expr expr))
-	exprs))
 
 (define (frag/remember new old)
   (code-rewrite/remember new old))
@@ -185,17 +180,13 @@ MIT in each case. |#
   (worth-while? expr))
 
 
-;;;; Specialization
-;;
-;; We use a new form, (PLACEHOLDER <value>) where <value> is a scheme
-;; value containing placeholder objects.
-
 (define-structure
     (specializer/info
      (conc-name specializer/info/)
-     (constructor specializer/info/make (name lambda)))
-  (name #F read-only true)		; binding in top level LETREC
-  (lambda #F read-only true)		; lambda expression in top level LETREC
+     (constructor specializer/info/make (name lambda letrec)))
+  (name #F read-only true)		; binding name
+  (lambda #F read-only true)		; lambda expression
+  (letrec #F read-only true)		; the LETREC in which binding occurs
   (specializations '())			; list((key name lambda*))
   )
 
@@ -206,6 +197,8 @@ MIT in each case. |#
 
 (define (specialize/enqueue-lambda! form)
   (pp `(queue-lambda: ,form))
+  (if (not (LAMBDA/? form))
+      (internal-error "not a lambda:" form))
   (queue/enqueue! *lambda-queue* form))
 
 (define-macro (define-specializer keyword bindings . body)
@@ -309,7 +302,7 @@ MIT in each case. |#
   (let* ((lam-expr  (specializer/info/lambda info))
 	 (formals   (lambda/formals lam-expr))
 	 (body      (lambda/body lam-expr)))
-    (if (and (contains-placeholder? rands) ; depends on specialization params
+    (if (and (there-exists? rands PLACEHOLDER-QUOTE/?)
 	     (not (hairy-lambda-list? formals)))
 	(let* ((names*  (map variable/rename formals))
 	       (ph*     (map (lambda (p)
@@ -323,7 +316,9 @@ MIT in each case. |#
 			      (cdr formals)
 			      (cdr names*)
 			      rands))
-	       (body*   (specialize/expr! env* (form/copy body))))
+	       (body*   (form/copy body)))
+	  (specialize/expr! env* body*)
+	  (pp `(new-body: ,body*))
 	  (cond ((QUOTE/? body*)
 		 (form/rewrite! form body*))
 		((PLACEHOLDER-QUOTE/? body*)
@@ -350,25 +345,37 @@ MIT in each case. |#
 		     `(CALL (LOOKUP ,procedure-name)
 			    '#F
 			    ,@actuals))
+		   (pp `(call: ,form))
 		   (remember-specialization!
 		    info
 		    procedure-name
-		    `(LAMBDA ,new-formals ,body*)))))))))
+		    `(LAMBDA ,new-formals ,body*))))))
+	(pp `(declined: ,rands)))))
 
 
+(define (remember-specialization! info proc-name lam-expr)
+  (pp `(remember-specialization! ,info ,proc-name ,lam-expr))
+  (let ((letrec-form  (specializer/info/letrec info)))
+    (set-car! (cdr letrec-form)
+	      (cons (list proc-name lam-expr)
+		    (cadr letrec-form)))))
+  
 (define (remove-placeholders! env form) ; -> list (placeholder)
   ;; remove placeholders, replacing with new names.
   ;;  Return alist from placeholders to name
   (let walk ((form form) (ps '()))
     (cond ((PLACEHOLDER-QUOTE/? form)
 	   (let ((text (placeholder-quote/text form)))
-	     (if (placeholder? text)
-		 (let ((pair  (assq text env)))
-		   (if (not pair)
-		       (internal-error "Not bound" form env))
-		   (form/rewrite! form `(LOOKUP ,(cdr pair)))
-		   (if (memq text ps) ps (cons text ps)))
-		 (nasty-residual))))
+	     (cond ((placeholder? text)
+		    (let ((pair  (assq text env)))
+		      (if (not pair)
+			  (internal-error "Not bound" form env))
+		      (form/rewrite! form (cdr pair))
+		      (if (memq text ps) ps (cons text ps))))
+		   ((contains-placeholder? text)
+		    (nasty-residual))
+		   (else
+		    (form/rewrite! form `(QUOTE ,text))))))
 	  ((QUOTE/? form) ps)
 	  ((LOOKUP/? form) ps)
 	  ((LAMBDA/? form) (walk (lambda/formals form) ps))
@@ -433,57 +440,79 @@ MIT in each case. |#
     (placeholder
      (conc-name placeholder/)
      (constructor make-placeholder))
-  (name  #F read-only true))
-
+  (name  #F read-only true)		; #F or name of variable
+  (value #F read-only true)		; either this placeholder
+					; or structure containing placeholders
+)
 
 (define (arity/top-level program)
-  ;; These should be put in a fluid-let when debugging is done.
+  ;; These should be put in a fluid-let when debugging is done:
   (set! *specialization-table* (make-eq-hash-table))
   (set! *lambda-queue* (queue/make))
-  (let walk ((expr program))
-    (cond ((LETREC/? expr)
-	   (for-each
-	       (lambda (binding)
-		 (hash-table/put! *specialization-table*
-				  (car binding)
-				  (specializer/info/make (car binding)
-							 (cadr binding))))
-	     (letrec/bindings expr))
-	   (walk (letrec/body expr)))
-	  ((LET/? expr) (walk (let/body expr)))
-	  ((QUOTE/? expr))
-	  ((LOOKUP/? expr))
-	  ((LAMBDA/? expr)
-	   (if (hairy-lambda-list? (lambda/formals expr))
-	       (specialize/enqueue-lambda! expr))
-	   (walk (lambda/body expr)))
-	  (else (for-each walk (cdr expr))))
-    (queue/drain *lambda-queue* arity/specialize-lambda))
+  (let ((program* (copier/top-level program (lambda (old new) new))))
+    (let walk ((expr program*))
+      (cond ((LETREC/? expr)
+	     (for-each
+		 (lambda (binding)
+		   (hash-table/put! *specialization-table*
+				    (car binding)
+				    (specializer/info/make
+				     (car binding)
+				     (cadr binding)
+				     form)))
+	       (letrec/bindings expr))
+	     (walk (letrec/body expr)))
+	    ((LET/? expr) (walk (let/body expr)))
+	    ((QUOTE/? expr))
+	    ((LOOKUP/? expr))
+	    ((LAMBDA/? expr)
+	     (if (hairy-lambda-list? (lambda/formals expr))
+		 (specialize/enqueue-lambda! expr))
+	     (walk (lambda/body expr)))
+	    (else (for-each walk (cdr expr))))
+      (queue/drain! *lambda-queue* arity/specialize-lambda!))
+    program*))
 
 
-(define (arity/specialize-lambda form)
+(define (arity/specialize-lambda! form)
   (let ((body    (lambda/body form))
 	(formals (lambda/formals form)))
     (call-with-values
 	(lambda () (lambda-list/parse formals))
       (lambda (required optional rest aux)
 	;; required includes continuation.
+	(pp 'specialize-lambda:)
 	(pp form)
 	(let* ((low   (length required))
 	       (high  (if rest
 			  (+ low (length optional) 5)
-			  (+ low (length optional)))))
-	  (let loop ((arity low))
-	    (if (<= arity high)
-		(begin
-		  (arity/generate-specialization form arity #F)
-		  (loop (+ arity 1))))))))))
+			  (+ low (length optional))))
+	       (specializations
+		(let loop ((arity low) (specializations '()))
+		  (if (<= arity high)
+		      (let ((new-lambda
+			     (arity/generate-specialization form arity #F)))
+			(pp `(after: ,new-lambda))
+			(loop (+ arity 1) (cons new-lambda specializations)))
+		      (reverse specializations)))))
+	  (form/rewrite! form
+	    `(CALL 'make-multiple-arity-procedure
+		   '#F
+		   ',low
+		   ,@specializations))
+	  (pp `(transfomed-procedure: ,form)))))))
 
 
 (define (arity/generate-specialization lam-expr arity rest?)
   ; ARITY is at least enough to satisfy the requireds
   (define (generate new-ll env)
-    (pp `(lambda-list: ,new-ll env: ,env)))
+    (pp '----------)
+    (pp `(lambda-list: ,new-ll env: ,env))
+    (let ((body  (form/copy (lambda/body lam-expr))))
+      (pp `(before: ,body))
+      (specialize/expr! env body)
+      (remove-placeholders! env body)
+      `(LAMBDA ,new-ll ,body)))
 
   (let ((formals (lambda/formals lam-expr)))
     (let loop ((env '()) (old-ll formals) (new-ll '()) (position 0))
@@ -497,29 +526,32 @@ MIT in each case. |#
 		      (generate (reverse new-ll)
 				(cons (cons (second old-ll) `(QUOTE ())) env)))
 		     (else
-		      (loop (cons (cons (car old-ll) `(QUOTE ,%unassigned)) env)
+		      (loop (cons (cons (car old-ll)
+					`(PLACEHOLDER-QUOTE ,%unassigned))
+				  env)
 			    (cdr old-ll))))))
 	    ((eq? (car old-ll) '#!optional)
 	     (loop env (cdr old-ll) new-ll position))
 	    ((eq? (car old-ll) '#!rest)
 	     (let* ((rest           (second old-ll))
-
-*** I was making rest? work
-
 		    (rest-list-args (make-initialized-list (- arity position)
 				      (lambda (i) i (variable/rename rest))))
 		    (placeholders   (map make-placeholder rest-list-args))
+		    (new-rest-arg   (and rest? (variable/rename rest)))
+		    (new-rest-ph    (and rest? (make-placeholder new-rest-arg)))
 		    (rest-list-value (if rest?
-					 (append (list-head placeholders (- new-name-count 1))
-						 (car (last-pair placeholders)))
+					 (append placeholders new-rest-ph)
 					 placeholders)))
-	       (generate (append (reverse new-ll) rest-list-args)
-			 (map* (cons (cons rest
+	       (define (bind-ph ph name) (cons ph `(LOOKUP ,name)))
+	       (generate (append (reverse new-ll) rest-list-args
+				 (if rest? (list '#!rest new-rest-arg) '()))
+			 (append (if rest?
+				     (list (bind-ph new-rest-ph new-rest-arg))
+				     '())
+				 (map bind-ph placeholders rest-list-args)
+				 (cons (cons rest
 					   `(PLACEHOLDER-QUOTE ,rest-list-value))
-				     env)
-			       (lambda (ph name) (cons ph `(LOOKUP ,name)))
-			       placeholders
-			       rest-list-args))))
+				       env)))))
 	    (else
 	     (let* ((name   (car old-ll))
 		    (name*  (variable/rename name)))
@@ -543,9 +575,7 @@ MIT in each case. |#
     (cond ((PLACEHOLDER-QUOTE/? arg)
 	   (if (pair? (placeholder-quote/text arg))
 	       (form/rewrite! form
-		 (make-placeholder-quote (car (placeholder-quote/text arg))))
-	       (user-error "Run time error detected during specialization"
-			   form)))
+		 (make-placeholder-quote (car (placeholder-quote/text arg))))))
 	  (else unspecific))))
 
 (define-specializer-rewriter (make-primitive-procedure 'CDR)
@@ -553,9 +583,7 @@ MIT in each case. |#
     (cond ((PLACEHOLDER-QUOTE/? arg)
 	   (if (pair? (placeholder-quote/text arg))
 	       (form/rewrite! form
-		 (make-placeholder-quote (cdr (placeholder-quote/text arg))))
-	       (user-error "Run time error detected during specialization"
-			   form)))
+		 (make-placeholder-quote (cdr (placeholder-quote/text arg))))))
 	  (else unspecific))))
 
 
@@ -564,10 +592,11 @@ MIT in each case. |#
     (define-specializer-rewriter name
       (lambda (form arg)
 	(cond ((PLACEHOLDER-QUOTE/? arg)
-	       (form/rewrite! form
-		 `(QUOTE ,(pred (placeholder-quote/text arg)))))
+	       (if (not (placeholder? (placeholder-quote/text arg)))
+		   (form/rewrite! form
+		     `(QUOTE ,(pred (placeholder-quote/text arg))))))
 	      ((QUOTE/? arg)
-	       (from/rewrite! form `(QUOTE ,(pred (quote/text arg)))))
+	       (form/rewrite! form `(QUOTE ,(pred (quote/text arg)))))
 	      (else unspecific)))))
 
   (safe-unary-predicate  (make-primitive-procedure 'NULL?) null?)
