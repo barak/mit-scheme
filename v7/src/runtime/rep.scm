@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.18 1991/03/06 23:02:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.19 1991/03/14 04:27:13 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -527,7 +527,8 @@ MIT in each case. |#
 
 (define (repl-write/show-hash? object)
   (and (object-pointer? object)
-       (not (interned-symbol? object))))
+       (not (interned-symbol? object))
+       (not (number? object))))
 
 ;;;; History
 
