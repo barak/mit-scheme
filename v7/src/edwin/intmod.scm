@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.66 1993/10/15 23:50:20 cph Exp $
+;;;	$Id: intmod.scm,v 1.67 1993/10/16 04:56:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -933,7 +933,7 @@ If this is an error, the debugger examines the error condition."
       level)))
 
 (define suppress-standard-prompts? #t)
-(define standard-prompts '("]=>" "error>" "break>" "bkpt"))
+(define standard-prompts '("]=>" "error>" "break>" "bkpt>"))
 
 ;;; Miscellaneous
 
