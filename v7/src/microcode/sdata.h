@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sdata.h,v 9.28 1988/02/12 16:52:13 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sdata.h,v 9.29 1988/06/04 23:23:21 mhwu Exp $
  *
  * Description of the user data objects.  This should parallel the
  * file SDATA.SCM in the runtime system.
@@ -450,3 +450,10 @@ MIT in each case. */
 /* VECTOR_8B
  * An alternate name of CHARACTER_STRING.
  */
+
+/* COMPLEX
+ * System Pair with REAL in CAR and IMAGINARY in CDR
+ */
+
+#define COMPLEX_REAL		0
+#define COMPLEX_IMAG		1
