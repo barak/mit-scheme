@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 4.4 1989/10/26 06:28:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 4.5 1990/10/16 21:07:11 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -115,11 +115,48 @@ MIT in each case. |#
 		 (ucode-primitive negative?)
 		 (ucode-primitive positive?)))
 
-(define <=-expansion
-  (pairwise-test-inverse >-expansion))
+(define <=-expansion (pairwise-test-inverse >-expansion))
+(define >=-expansion (pairwise-test-inverse <-expansion))
+
+;;;; Fixnum Operations
 
-(define >=-expansion
-  (pairwise-test-inverse <-expansion))
+(define (fix:zero?-expansion operands if-expanded if-not-expanded block)
+  block if-not-expanded
+  (if (not (and (pair? operands) (null? (cdr operands))))
+      (error "wrong number of operands" operands))
+  (if-expanded
+   (make-combination (ucode-primitive eq?) (list (car operands) 0))))
+
+(define (fix:=-expansion operands if-expanded if-not-expanded block)
+  block if-not-expanded
+  (if (not (and (pair? operands)
+		(pair? (cdr operands))
+		(null? (cddr operands))))
+      (error "wrong number of operands" operands))
+  (if-expanded (make-combination (ucode-primitive eq?) operands)))
+
+(define (fix:<=-expansion operands if-expanded if-not-expanded block)
+  block if-not-expanded
+  (if (not (and (pair? operands)
+		(pair? (cdr operands))
+		(null? (cddr operands))))
+      (error "wrong number of operands" operands))
+  (if-expanded
+   (make-combination
+    (ucode-primitive not)
+    (list (make-combination (ucode-primitive greater-than-fixnum?)
+			    operands)))))
+
+(define (fix:>=-expansion operands if-expanded if-not-expanded block)
+  block if-not-expanded
+  (if (not (and (pair? operands)
+		(pair? (cdr operands))
+		(null? (cddr operands))))
+      (error "wrong number of operands" operands))
+  (if-expanded
+   (make-combination
+    (ucode-primitive not)
+    (list (make-combination (ucode-primitive less-than-fixnum?) operands)))))
 
 ;;;; N-ary Arithmetic Field Operations
 
@@ -404,7 +441,11 @@ MIT in each case. |#
     exact-integer?
     exact-rational?
     fifth
+    fix:<=
+    fix:=
+    fix:>=
     fix:fixnum?
+    fix:zero?
     flo:flonum?
     fourth
     int:integer?
@@ -471,7 +512,11 @@ MIT in each case. |#
    exact-integer?-expansion
    exact-rational?-expansion
    fifth-expansion
+   fix:<=-expansion
+   fix:=-expansion
+   fix:>=-expansion
    fix:fixnum?-expansion
+   fix:zero?-expansion
    flo:flonum?-expansion
    fourth-expansion
    exact-integer?-expansion

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.8 1990/07/15 22:57:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.9 1990/10/16 21:06:53 cph Rel $
 
 Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 
@@ -92,7 +92,7 @@ MIT in each case. |#
     FIX:-1+
     FIX:1+
     FIX:<
-    FIX:=
+    ;; FIX:= handled by expanding it to EQ?
     FIX:>
     FIX:AND
     FIX:ANDC
@@ -106,7 +106,7 @@ MIT in each case. |#
     FIX:QUOTIENT
     FIX:REMAINDER
     FIX:XOR
-    FIX:ZERO?
+    ;; FIX:ZERO? handled by expanding it to (EQ? x 0)
     FLO:*
     FLO:+
     FLO:-
