@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.32 1995/10/31 02:14:12 adams Exp $
+@comment $Id: user.texinfo,v 1.33 1995/10/31 02:18:02 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -4233,7 +4233,7 @@ operations the compiler replaces.
 Getting efficient flonum arithmetic is much more complicated and harder
 than getting efficient fixnum arithmetic.
 
-@subsubsection{Flonum consing}
+@subsubheading{Flonum consing}
 @cindex flonum consing
 One of the main disadvantages of generic arithmetic is that not all
 kinds of number fit in a machine register.
@@ -4275,7 +4275,7 @@ single arithmetic expression.  If the expression contains conditionals
 or calls to procedures then the values tend to get boxed anyway.
 
 
-@subsubsection{Flonum vectors}
+@subsubheading{Flonum vectors}
 
 Flonum vectors are vectors which contain only floating point values, in
 much the same way as a string is a `vector' containing only character
@@ -4289,7 +4289,7 @@ The disadvantages are that flonum vectors are incompatible with ordinary
 vectors, and if not used carefully, can increase flonum consing.  Flonum
 vectors are a pain to use because they require you to make a decision
 about the representation and stick with that, and it might not be easy
-to assertain whether the advantages in one part of the program outweigh
+to ascertain whether the advantages in one part of the program outweigh
 the disadvantages in another.
 
 @deffn {procedure+} flo:vector-cons n
@@ -4301,7 +4301,7 @@ The contents should not be used until initialized.
 
 @deffn {procedure+} flo:vector-ref flonum-vector index
 @deffnx {procedure+} flo:vector-set! flonum-vector index value
-@defnnx {procedure+} flo:vector-length flonum-vector
+@deffnx {procedure+} flo:vector-length flonum-vector
 These operations are analogous to the ordinary vector operations.
 @end deffn
 
@@ -4326,7 +4326,7 @@ changed then an ordinary vector might be more efficient.
 
 
 
-@subsubsection{Common pitfalls}
+@subsubheading{Common pitfalls}
 
 Pitfall 1:
 Make sure that your literals are floating point constants:
@@ -4337,7 +4337,7 @@ Make sure that your literals are floating point constants:
 @end example
 
 @code{F1} will most likely cause a hardware error, and certainly give
-the wrong answer.
+the wrong answer. @code{F2} is correct.
 
 
 Pitfall 2:
