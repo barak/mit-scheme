@@ -1,8 +1,8 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/vax.m4,v 1.1 1991/02/15 00:46:58 jinx Exp $
+###	$Id: vax.m4,v 1.2 1993/06/24 07:13:58 gjr Exp $
 ###
-###	Copyright (c) 1991 Massachusetts Institute of Technology
+###	Copyright (c) 1991-1993 Massachusetts Institute of Technology
 ###
 ###	This material was developed by the Scheme project at the
 ###	Massachusetts Institute of Technology, Department of
