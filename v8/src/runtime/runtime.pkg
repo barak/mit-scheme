@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.7 1988/06/22 21:23:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.8 1988/06/22 21:34:22 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -424,14 +424,14 @@ MIT in each case. |#
 	  cmdl-message/error
 	  condition-type/generalizations
 	  condition-type/error?
-	  condition-type/internal?
 	  condition-type/properties
 	  condition-type/reporter
 	  condition-type:error
 	  condition-type?
 	  condition/continuation
-	  condition/generalizations
 	  condition/error?
+	  condition/generalizations
+	  condition/internal?
 	  condition/irritants
 	  condition/properties
 	  condition/report-string
