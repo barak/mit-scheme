@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comint.scm,v 1.14 1992/09/23 23:03:42 jinx Exp $
+$Id: comint.scm,v 1.15 1992/11/13 21:36:15 cph Exp $
 
 Copyright (c) 1991-1992 Massachusetts Institute of Technology
 
@@ -144,6 +144,7 @@ Entry to this mode runs the hooks on comint-mode-hook."
 (define-key 'comint '(#\C-c #\C-f) 'comint-continue-subjob)
 (define-key 'comint '(#\C-c #\C-l) 'comint-show-output)
 (define-key 'comint '(#\C-c #\C-o) 'comint-flush-output)
+;;(define-key 'comint '(#\C-c #\C-q) 'comint-send-char)
 (define-key 'comint '(#\C-c #\C-r) 'comint-history-search-backward)
 (define-key 'comint '(#\C-c #\C-s) 'comint-history-search-forward)
 (define-key 'comint '(#\C-c #\C-u) 'comint-kill-input)
@@ -214,7 +215,29 @@ history list.  Default is to save anything that isn't all whitespace."
   (lambda (string)
     (not (re-match-string-forward (re-compile-pattern "\\`\\s *\\'" false)
 				  false (ref-variable syntax-table) string))))
+
+(define-command send-invisible
+  "Read a string without echoing, and send it to the process running
+in the current buffer.  A new-line is additionally sent.  
+String is not saved on comint input history list.
+Security bug: your string can still be temporarily recovered with
+\\[view-lossage]."
+  ()
+  (lambda () (send-invisible (prompt-for-password "Non-echoed text: "))))
+
+(define (send-invisible string)
+  (process-send-string (current-process) string)
+  (process-send-string (current-process) "\n"))
 
+(define-command comint-send-char
+  "Send single character to process."
+  "p"
+  (lambda (prefix)
+    (let ((string (string (read-quoted-char "Send Character: "))))
+      (do ((i 0 (+ i 1)))
+	  ((= i prefix))
+	(process-send-string (current-process) string)))))
+
 (define-command comint-previous-similar-input
   "Reenter the last input that matches the string typed so far.
 If repeated successively, older inputs are reentered.
