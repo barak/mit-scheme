@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.17 1988/11/04 12:16:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.18 1988/11/04 21:49:26 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -180,7 +180,7 @@ MIT in each case. |#
   (ASSIGN (REGISTER (? target))
 	  (ADDRESS->FIXNUM (OBJECT->ADDRESS (REGISTER (? source)))))
   (QUALIFIER (pseudo-register? target))
-  (convert-object/register->register target source object->address))
+  (convert-object/register->register target source address->fixnum))
 
 (define (convert-object/offset->register target address offset conversion)
   (let ((source (indirect-reference! address offset)))
