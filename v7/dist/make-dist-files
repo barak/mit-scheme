@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-dist-files,v 1.19 2001/04/10 19:31:13 cph Exp $
+# $Id: make-dist-files,v 1.20 2001/04/14 01:57:06 cph Exp $
 #
 # Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
@@ -31,7 +31,7 @@ VERSION="${2}"
 DESTINATION="${3}"
 
 case "${TYPE}" in
-6001|all|std|scmutils)
+6001|all|std)
   ;;
 *)
   echo "Unknown distribution type: ${TYPE}"
@@ -54,18 +54,12 @@ IMAGE_DIR="${BUILD_DIR}-image"
 BINDIR="${IMAGE_DIR}/usr/local/bin"
 AUXDIR="${IMAGE_DIR}/usr/local/lib/mit-scheme"
 
-MECH_SOURCE="/sw/scmutils"
-MECH_BUILD="${BUILD_DIR}/scmutils"
-MECH_IMAGE="${IMAGE_DIR}/usr/local/scmutils"
-STAMP_BUILD_MECH="${TL_DIR}/stamp-build-mech"
-STAMP_IMAGE_MECH="${TL_DIR}/stamp-image-mech"
-
 if [ ! -f "${SRC_FILE}" ]; then
     echo "No source file: ${SRC_FILE}."
     exit 1
 fi
 
-MKINSTALLDIRS="/scheme/v7/src/mkinstalldirs"
+MKDIR="mkdir -p"
 INSTALL="install -p"
 INSTALL_DATA="${INSTALL} -m 644"
 
@@ -94,7 +88,7 @@ if [ ! -f "${STAMP_IMAGE}" ]; then
 
     cd "${BUILD_DIR}/src"
     make install DESTDIR="${IMAGE_DIR}"
-    ${MKINSTALLDIRS} "${AUXDIR}/doc/."
+    ${MKDIR} "${AUXDIR}/doc/."
     ${INSTALL_DATA} COPYING "${AUXDIR}/doc/."
 
     cd "${BUILD_DIR}/doc"
@@ -134,11 +128,6 @@ if [ ! -f "${STAMP_IMAGE}" ]; then
 	    esac
 	done
 	;;
-    scmutils)
-	for BAND in ${ALL_BANDS}; do
-	    rm -f "${AUXDIR}/${BAND}"
-	done
-	;;
     esac
 
     find "${IMAGE_DIR}" -type f -print | xargs chmod og-w
@@ -147,148 +136,50 @@ if [ ! -f "${STAMP_IMAGE}" ]; then
     touch "${STAMP_IMAGE}"
 fi
 
-if  [ "${TYPE}" = "scmutils" ] && [ ! -f "${STAMP_BUILD_MECH}" ];then
-    rm -rf "${MECH_BUILD}"
-    cpx -qsE "${MECH_SOURCE}/src" "${MECH_BUILD}"
+make_tarfile ()
+{
+    TARFILE="${TL_DIR}/${1}.tar.gz"
+    [ -e "${TARFILE}" ] && rm -f "${TARFILE}"
+    (cd ${IMAGE_DIR}/usr/local; tar cvzf "${TARFILE}" *)
+    chmod 444 "${TARFILE}"
+}
+
+if [ "${DESTINATION}" = "" ]; then
+  PRE="${BUILD_DIR_REL}-ix86"
+  make_tarfile "${PRE}-gnu-linux"
+  ${INSTALL} ${DIST_DIR}/freebsd-bin/* "${BINDIR}/."
+  make_tarfile "${PRE}-freebsd"
+else
+  make_tarfile "${DESTINATION}"
+fi
+
+rm -rf "${STAMP_IMAGE}" "${IMAGE_DIR}"
+
+make_doc_file ()
+{
+    DOCFILE="${BUILD_DIR}-${2}.${3}"
+    rm -f "${DOCFILE}"
+    (cd "${TL_DIR}"; ${1} "${DOCFILE}" "${BUILD_DIR_REL}/${2}")
+    chmod a-w "${DOCFILE}"
+}
+
+for TYPE in html info pdf ps; do
+    IMAGE_ROOT="doc-${TYPE}"
+    IMAGE_DIR="${BUILD_DIR}/${IMAGE_ROOT}"
+    rm -rf "${IMAGE_DIR}"
+    mkdir "${IMAGE_DIR}"
     (
-	cd "${MECH_BUILD}"
-	"${BUILD_DIR}/src/microcode/scheme" \
-	    -library "${BUILD_DIR}/src/lib" -compiler -heap 4000 <<EOF
-(load "compile")
-EOF
-	"${BUILD_DIR}/src/microcode/scheme" \
-	    -library "${BUILD_DIR}/src/lib" -edwin -compiler -heap 4000 \
-	    <<EOF
-(load "load")
-(disk-save "edwin-mechanics.com")
-EOF
+	cd "${BUILD_DIR}/doc"
+	make "install-${TYPE}" "${TYPE}dir=${IMAGE_DIR}"
     )
-    (cd "${MECH_BUILD}/c-utils"; make)
+    make_doc_file "tar cvzf" "${IMAGE_ROOT}" "tar.gz"
+    make_doc_file "zip -r" "${IMAGE_ROOT}" "zip"
+    case "${TYPE}" in
+    html | pdf)
+	rm -rf "${TL_DIR}/${IMAGE_ROOT}"
+	mv -f "${IMAGE_DIR}" "${TL_DIR}/."
+	;;
+    esac
+done
 
-    touch "${STAMP_BUILD_MECH}"
-fi
-
-if [ "${TYPE}" = "scmutils" ] && [ ! -f "${STAMP_IMAGE_MECH}" ]; then
-    rm -f "${BINDIR}/edwin"
-    rm -f "${BINDIR}/mechanics"
-    rm -f "${AUXDIR}/edwin-mechanics.com"
-    ${INSTALL} "${MECH_SOURCE}/dist/edwin" "${BINDIR}/."
-    ${INSTALL} "${MECH_SOURCE}/dist/mechanics" "${BINDIR}/."
-    ${INSTALL_DATA} "${MECH_BUILD}/edwin-mechanics.com" "${AUXDIR}/."
-
-    rm -rf "${MECH_IMAGE}"
-    ${MKINSTALLDIRS} "${MECH_IMAGE}"
-
-    for DIR in $(cd "${MECH_SOURCE}";find src -type d -print); do
-	${MKINSTALLDIRS} "${MECH_IMAGE}/${DIR}"
-	for FILE in ${MECH_SOURCE}/${DIR}/*.doc; do
-	    [ -f "${FILE}" ] \
-		&& ${INSTALL_DATA} "${FILE}" "${MECH_IMAGE}/${DIR}/."
-	done
-	for SUFFIX in scm c; do
-	    for FILE in ${MECH_SOURCE}/${DIR}/*.${SUFFIX}; do
-		if [ -f "${FILE}" ]; then
-		    TFILE="${MECH_IMAGE}/${DIR}/$(basename "${FILE}")"
-		    rm -f "${TFILE}"
-		    cat "${DIST_DIR}/copyright.${SUFFIX}" "${FILE}" \
-			> "${TFILE}"
-		    chtime "${FILE}" "${TFILE}"
-		fi
-	    done
-	done
-    done
-    ${INSTALL_DATA} "${MECH_SOURCE}/src/copyrigh" "${MECH_IMAGE}/src/LICENSE"
-    ${INSTALL_DATA} "/scheme/v7/src/COPYING" "${MECH_IMAGE}/src/."
-    ${INSTALL_DATA} "${MECH_SOURCE}/src/general/binio/transcript" \
-	"${MECH_IMAGE}/src/general/binio/."
-    (
-	cd "${MECH_SOURCE}/src/c-utils"
-	for FILE in Makefile standard-map-ic.*;do
-	    [ -f "${FILE}" ] \
-		&& ${INSTALL_DATA} "${FILE}" "${MECH_IMAGE}/src/c-utils/."
-	done
-    )
-
-    for DIR in $(cd ${MECH_BUILD};find * -type d -print); do
-	${MKINSTALLDIRS} "${MECH_IMAGE}/linux/${DIR}"
-	for FILE in ${MECH_BUILD}/${DIR}/*.bci; do
-	    [ -f "${FILE}" ] \
-		&& ${INSTALL_DATA} "${FILE}" "${MECH_IMAGE}/linux/${DIR}/."
-	done
-    done
-
-    for FILE in psraster texfigure texfigure-big xplot; do
-	${INSTALL_DATA} "${MECH_BUILD}/c-utils/${FILE}" \
-	    "${MECH_IMAGE}/linux/c-utils/."
-    done
-    for FILE in standard-map-ic.ps standard-map-ic.tex; do
-	${INSTALL_DATA} "${MECH_SOURCE}/src/c-utils/${FILE}" \
-	    "${MECH_IMAGE}/linux/c-utils/."
-    done
-
-    ${MKINSTALLDIRS} "${MECH_IMAGE}/manual"
-    for FILE in beginner.txt graphing.txt refman.txt; do
-	${INSTALL_DATA} "${MECH_SOURCE}/manual/${FILE}" \
-	    "${MECH_IMAGE}/manual/."
-    done
-
-    for FILE in $(cat "${MECH_SOURCE}/dist/dist-exclude"); do
-	rm -rf "${MECH_IMAGE}/${FILE}"
-    done
-
-    find ${IMAGE_DIR} -type f -print | xargs chmod og-w
-    find ${IMAGE_DIR} -type d -print | xargs chmod og-w
-
-    touch "${STAMP_IMAGE_MECH}"
-fi
-
-if [ "${TYPE}" != "scmutils" ]; then
-
-    make_tarfile ()
-    {
-	TARFILE="${TL_DIR}/${1}.tar.gz"
-	[ -e "${TARFILE}" ] && rm -f "${TARFILE}"
-	(cd ${IMAGE_DIR}/usr/local; tar cvzf "${TARFILE}" *)
-	chmod 444 "${TARFILE}"
-    }
-
-    if [ "${DESTINATION}" = "" ]; then
-      PRE="${BUILD_DIR_REL}-ix86"
-      make_tarfile "${PRE}-gnu-linux"
-      ${INSTALL} ${DIST_DIR}/freebsd-bin/* "${BINDIR}/."
-      make_tarfile "${PRE}-freebsd"
-    else
-      make_tarfile "${DESTINATION}"
-    fi
-
-    rm -rf "${STAMP_IMAGE}" "${IMAGE_DIR}"
-
-    make_doc_file ()
-    {
-	DOCFILE="${BUILD_DIR}-${2}.${3}"
-	rm -f "${DOCFILE}"
-	(cd "${TL_DIR}"; ${1} "${DOCFILE}" "${BUILD_DIR_REL}/${2}")
-	chmod a-w "${DOCFILE}"
-    }
-
-    for TYPE in html info pdf ps; do
-	IMAGE_ROOT="doc-${TYPE}"
-	IMAGE_DIR="${BUILD_DIR}/${IMAGE_ROOT}"
-	rm -rf "${IMAGE_DIR}"
-	mkdir "${IMAGE_DIR}"
-	(
-	    cd "${BUILD_DIR}/doc"
-	    make "install-${TYPE}" "${TYPE}dir=${IMAGE_DIR}"
-	)
-	make_doc_file "tar cvzf" "${IMAGE_ROOT}" "tar.gz"
-	make_doc_file "zip -r" "${IMAGE_ROOT}" "zip"
-	case "${TYPE}" in
-	html | pdf)
-	    rm -rf "${TL_DIR}/${IMAGE_ROOT}"
-	    mv -f "${IMAGE_DIR}" "${TL_DIR}/."
-	    ;;
-	esac
-    done
-
-    rm -rf "${STAMP_BUILD}" "${BUILD_DIR}"
-fi
+rm -rf "${STAMP_BUILD}" "${BUILD_DIR}"
