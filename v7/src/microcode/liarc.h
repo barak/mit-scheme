@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.12 1993/11/13 03:46:40 gjr Exp $
+$Id: liarc.h,v 1.13 1997/07/15 03:01:26 adams Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -150,6 +150,8 @@ typedef union machine_word_u machine_word;
 #define CC_BLOCK_TO_ENTRY(block,offset)					\
   (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY,				\
 			((OBJECT_ADDRESS (block)) + (offset))))
+
+#define INDEX_FIXNUM_P(arg) ((FIXNUM_P(arg)) && (FIXNUM_TO_LONG(arg)>=0))
 
 #ifdef USE_GLOBAL_VARIABLES
 

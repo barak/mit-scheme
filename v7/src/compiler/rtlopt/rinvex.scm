@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rinvex.scm,v 1.7 1992/12/16 09:18:30 gjr Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rinvex.scm,v 1.8 1997/07/15 03:00:17 adams Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -276,6 +276,10 @@ MIT in each case. |#
   rtl:type-test-expression
   rtl:set-type-test-expression!)
 
+(define-one-arg-method 'PRED-1-ARG
+  rtl:pred-1-arg-operand
+  rtl:set-pred-1-arg-operand!)
+
 (define-one-arg-method 'INVOCATION:CACHE-REFERENCE
   rtl:invocation:cache-reference-name
   rtl:set-invocation:cache-reference-name!)
@@ -323,6 +327,12 @@ MIT in each case. |#
   rtl:set-eq-test-expression-1!
   rtl:eq-test-expression-2
   rtl:set-eq-test-expression-2!)
+
+(define-two-arg-method 'PRED-2-ARGS
+  rtl:pred-2-args-operand-1
+  rtl:set-pred-2-args-operand-1!
+  rtl:pred-2-args-operand-2
+  rtl:set-pred-2-args-operand-2!)
 
 (define-two-arg-method 'FIXNUM-PRED-2-ARGS
   rtl:fixnum-pred-2-args-operand-1

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules2.scm,v 1.1 1993/06/08 06:13:32 gjr Exp $
+$Id: rules2.scm,v 1.2 1997/07/15 03:01:15 adams Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -95,6 +95,20 @@ MIT in each case. |#
 	    ";\n\t"))
      (lambda (if-false-label)
        (LAP "if (" ,source " != " ,type ")\n\t  goto " ,if-false-label
+	    ";\n\t")))
+    (LAP)))
+
+(define-rule predicate
+  ;; Branch if virtual register contains the specified type number
+  (PRED-1-ARG INDEX-FIXNUM?
+	      (REGISTER (? source)))
+  (let ((source (standard-source! source 'ULONG)))
+    (set-current-branches!
+     (lambda (if-true-label)
+       (LAP "if (INDEX_FIXNUM_P" ,source ")\n\t  goto " ,if-true-label
+	    ";\n\t"))
+     (lambda (if-false-label)
+       (LAP "if (!(INDEX_FIXNUM_P" ,source "))\n\t  goto " ,if-false-label
 	    ";\n\t")))
     (LAP)))
 

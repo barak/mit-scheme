@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.63 1997/03/30 23:26:29 cph Exp $
+$Id: opncod.scm,v 4.64 1997/07/15 03:00:04 adams Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -630,6 +630,14 @@ MIT in each case. |#
      combination
      (finish (rtl:make-eq-test (car expressions) (cadr expressions))))
    '(0 1)
+   false))
+
+(define-open-coder/predicate 'INDEX-FIXNUM?
+  (simple-open-coder
+   (lambda (combination expressions finish)
+     combination
+     (finish (rtl:make-pred-1-arg 'INDEX-FIXNUM? (car expressions))))
+   '(0)
    false))
 
 (define-open-coder/predicate 'OBJECT-TYPE?

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules2.scm,v 4.13 1992/02/18 16:09:39 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules2.scm,v 4.14 1997/07/15 03:00:59 adams Exp $
 $MC68020-Header: rules2.scm,v 4.12 90/01/18 22:44:04 GMT cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
@@ -91,3 +91,16 @@ MIT in each case. |#
   ;; Branch if virtual register contains the specified type number
   (TYPE-TEST (REGISTER (? register)) (? type))
   (compare-immediate '= type (standard-source! register)))
+
+
+;; Combine tests for fixnum and non-negative by extracting the type
+;; bits and the sign bit.
+
+(define-rule predicate
+  (PRED-1-ARG INDEX-FIXNUM?
+	      (REGISTER (? source)))
+  (let ((src (standard-source! source)))
+    (let ((temp (standard-temporary!)))
+      (LAP (EXTRU () ,src ,(- scheme-type-width 0) ,(+ scheme-type-width 1)
+		  ,temp)
+	   ,@(compare-immediate '= (* 2 (ucode-type fixnum)) temp)))))

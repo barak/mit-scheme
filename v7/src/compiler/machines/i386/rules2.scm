@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules2.scm,v 1.7 1993/08/26 18:00:26 gjr Exp $
+$Id: rules2.scm,v 1.8 1997/07/15 02:59:36 adams Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -138,3 +138,15 @@ MIT in each case. |#
   (set-equal-branches!)
   (LAP (CMP W ,(offset->reference! expression)
 	    (&U ,(make-non-pointer-literal type datum)))))
+
+
+;; Combine tests for fixnum and non-negative by extracting the type
+;; bits and the sign bit.
+
+(define-rule predicate
+  (PRED-1-ARG INDEX-FIXNUM?
+	      (REGISTER (? register)))
+  (let ((temp (standard-move-to-temporary! register)))
+    (set-equal-branches!)
+    (LAP (SHR W ,temp (& ,(- scheme-datum-width 1)))
+	 (CMP B ,temp (&U ,(* 2 (ucode-type fixnum)))))))

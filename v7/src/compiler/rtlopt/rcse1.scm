@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rcse1.scm,v 4.22 1993/07/01 03:29:00 gjr Exp $
+$Id: rcse1.scm,v 4.23 1997/07/15 03:00:25 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -295,6 +295,13 @@ MIT in each case. |#
 (define-trivial-two-arg-method 'EQ-TEST
   rtl:eq-test-expression-1 rtl:set-eq-test-expression-1!
   rtl:eq-test-expression-2 rtl:set-eq-test-expression-2!)
+
+(define-trivial-one-arg-method 'PRED-1-ARG
+  rtl:pred-1-arg-operand rtl:set-pred-1-arg-operand!)
+
+(define-trivial-two-arg-method 'PRED-2-ARGS
+  rtl:pred-2-args-operand-1 rtl:set-pred-2-args-operand-1!
+  rtl:pred-2-args-operand-2 rtl:set-pred-2-args-operand-2!)
 
 (define-trivial-one-arg-method 'FIXNUM-PRED-1-ARG
   rtl:fixnum-pred-1-arg-operand rtl:set-fixnum-pred-1-arg-operand!)

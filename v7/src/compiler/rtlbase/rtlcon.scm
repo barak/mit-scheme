@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlcon.scm,v 4.27 1993/07/09 00:15:05 gjr Exp $
+$Id: rtlcon.scm,v 4.28 1997/07/15 03:00:32 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -87,6 +87,18 @@ MIT in each case. |#
   (expression-simplify-for-predicate expression
     (lambda (expression)
       (%make-type-test expression type))))
+
+(define (rtl:make-pred-1-arg predicate operand)
+  (expression-simplify-for-predicate operand
+    (lambda (operand)
+      (%make-pred-1-arg predicate operand))))
+
+(define (rtl:make-pred-2-args predicate operand1 operand2)
+  (expression-simplify-for-predicate operand1
+    (lambda (operand1)
+      (expression-simplify-for-predicate operand2
+	(lambda (operand2)
+	  (%make-pred-2-args predicate operand1 operand2))))))
 
 (define (rtl:make-unassigned-test expression)
   (rtl:make-eq-test
