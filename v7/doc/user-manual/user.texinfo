@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.84 2001/03/01 18:39:02 cph Exp $
+@comment $Id: user.texinfo,v 1.85 2001/03/08 21:24:08 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -34,9 +34,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.84
-@subtitle for Scheme Release 7.5.14
-@subtitle 1 March 2001
+@subtitle Edition 1.85
+@subtitle for Scheme Release 7.5.15
+@subtitle 9 March 2001
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -4711,6 +4711,13 @@ The Algorithmic Language Scheme}.
 These are the changes since release 7.5.0:
 
 @itemize @bullet
+@item
+Release 7.5.15 has no user-visible changes.  The crypto code in the
+system has been re-engineered so that it can be dynamically loaded on
+GNU/Linux systems, thus avoiding a direct dependence on crypto
+libraries.  This allows Scheme to be used without crypto libraries
+(except for the crypto support, of course).
+
 @item
 Release 7.5.14 has changed the way that the crypto libraries are
 handled.  We now support OpenSSL and mcrypt in addition to mhash and the
