@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.14 1992/03/06 00:26:26 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.15 1992/03/06 00:56:43 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -635,7 +635,7 @@ asm_generic_$1_fix_flo:
 	OP($4,l)	IND(rfree)			# fisubrl
 	jmp	asm_generic_flonum_result')
 
-declare_alignment(2)
+IF387(`declare_alignment(2)
 define_c_label(asm_generic_divide)
 	OP(pop,l)	REG(edx)
 	OP(pop,l)	REG(ebx)
@@ -693,7 +693,7 @@ asm_generic_divide_fail:
 	OP(push,l)	REG(ebx)
 	OP(push,l)	REG(edx)
 	OP(mov,b)	TW(IMM(HEX(23)),REG(al))
-	jmp	scheme_to_interface
+	jmp	scheme_to_interface')
 
 define(define_binary_predicate,
 `declare_alignment(2)
