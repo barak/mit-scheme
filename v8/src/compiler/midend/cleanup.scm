@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.12 1995/03/11 17:09:32 adams Exp $
+$Id: cleanup.scm,v 1.13 1995/04/10 14:53:31 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -56,7 +56,7 @@ MIT in each case. |#
 		     CODE))))))))))
 
 (define-cleanup-handler LOOKUP (env name)
-  (let ((place (assq name env)))
+  (let ((place (cleanup/env/find name env)))
     (if (not place)
 	(free-var-error name)
 	(form/copy (cadr place)))))
@@ -223,12 +223,9 @@ MIT in each case. |#
 							 result)))
 		 ((form/match cleanup/call-trivial-pattern call*)
 		  => (lambda (result)
-		       (let ((lam-expr
-			      (cadr (assq cleanup/?lam-expr result)))
-			     (rands
-			      (cadr (assq cleanup/?rands result)))
-			     (cont
-			      (cadr (assq cleanup/?cont result))))
+		       (let ((lam-expr (cadr (assq cleanup/?lam-expr result)))
+			     (rands    (cadr (assq cleanup/?rands result)))
+			     (cont     (cadr (assq cleanup/?cont result))))
 			 (cleanup/expr env
 				       `(CALL ,lam-expr ,cont ,@rands)))))
 		 (else
@@ -585,13 +582,22 @@ MIT in each case. |#
 
 (define (cleanup/renamings env names)
   (map (lambda (name)
-	 (let ((place (assq name env)))
+	 (let ((place (cleanup/env/find name env)))
 	   ;; Do not rename if the shadowed binding is disappearing
 	   (if (or (not place)
 		   (QUOTE/? (cadr place)))
 	       `(,name (LOOKUP ,name))
 	       `(,name (LOOKUP ,(variable/rename name))))))
        names))
+
+(define (cleanup/env/find name env)
+  ;; ASSQ
+  (let loop ((alist env))
+    (if (pair? alist)
+	(if (eq? name (caar alist))
+	    (car alist)
+	    (loop (cdr alist)))
+	#F)))
 
 (define (cleanup/expr env expr)
   (if (not (pair? expr))
@@ -636,7 +642,7 @@ MIT in each case. |#
    (lambda (form copy uninteresting)
      copy
      (cond ((and (LOOKUP/? form)
-		 (assq (lookup/name form) env))
+		 (cleanup/env/find (lookup/name form) env))
 	    => (lambda (place)
 		 (form/copy (cadr place))))
 	   (else
