@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.4 1989/03/14 02:23:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.5 1989/04/05 04:25:52 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -48,108 +48,3 @@ MIT in each case. |#
 
 (define pathname-newest
   false)
-
-(define (file-directory? filename)
-  (let ((truename (pathname->input-truename (->pathname filename))))
-    (and truename
-	 ((ucode-primitive file-directory?) (pathname->string truename)))))
-
-(define (file-symbolic-link? filename)
-  (let ((truename (pathname->input-truename (->pathname filename))))
-    (and truename
-	 ((ucode-primitive file-symlink?) (pathname->string truename)))))
-
-(define (file-attributes filename)
-  (let ((truename (pathname->input-truename (->pathname filename))))
-    (and truename
-	 ((ucode-primitive file-attributes) (pathname->string truename)))))
-
-(define-structure (file-attributes
-		   (type vector)
-		   (constructor false)
-		   (conc-name file-attributes/))
-  (type false read-only true)
-  (n-links false read-only true)
-  (uid false read-only true)
-  (gid false read-only true)
-  (access-time false read-only true)
-  (modification-time false read-only true)
-  (change-time false read-only true)
-  (length false read-only true)
-  (mode-string false read-only true)
-  (inode-number false read-only true))
-
-(define (file-modification-time filename)
-  (let ((attributes (file-attributes filename)))
-    (and attributes
-	 (file-attributes/modification-time attributes))))
-
-(define (file-modes filename)
-  (let ((truename (pathname->input-truename (->pathname filename))))
-    (and truename
-	 ((ucode-primitive file-modes) (pathname->string truename)))))
-
-(define-integrable (set-file-modes! filename modes)
-  ((ucode-primitive set-file-modes!) (canonicalize-input-filename filename)
-				     modes))
-
-(define (unix/file-access filename amode)
-  (let ((truename (pathname->input-truename (->pathname filename))))
-    (and truename
-	 ((ucode-primitive file-access) (pathname->string truename) amode))))
-
-(define (file-writable? filename)
-  (let ((pathname (pathname->absolute-pathname (->pathname filename))))
-    ((ucode-primitive file-access)
-     (pathname->string (or (pathname->input-truename pathname)
-			   (pathname-directory-path pathname)))
-     2)))
-
-(define (get-environment-variable name)
-  (or ((ucode-primitive get-environment-variable) name)
-      (error "GET-ENVIRONMENT-VARIABLE: Unbound name" name)))
-
-(define (get-user-home-directory user-name)
-  (or ((ucode-primitive get-user-home-directory) user-name)
-      (error "User has no home directory" user-name)))
-
-(define unix/current-user-name
-  (ucode-primitive current-user-name))
-
-(define unix/current-uid
-  (ucode-primitive current-uid))
-
-(define unix/current-gid
-  (ucode-primitive current-gid))
-
-(define unix/current-file-time
-  (ucode-primitive current-user-name))
-
-(define unix/file-time->string
-  (ucode-primitive file-time->string))
-
-(define (unix/uid->string uid)
-  (or ((ucode-primitive uid->string) uid)
-      (number->string uid 10)))
-
-(define (unix/gid->string gid)
-  (or ((ucode-primitive gid->string) gid)
-      (number->string gid 10)))
-
-(define unix/system
-  (ucode-primitive system))
-
-(define (file-touch filename)
-  (let ((filename
-	 (pathname->string
-	  (let ((pathname (pathname->absolute-pathname (->pathname filename))))
-	    (if (let ((version (pathname-version pathname)))
-		  (or (not version)
-		      (integer? version)))
-		pathname
-		(or (pathname->input-truename pathname)
-		    (pathname-new-version pathname false)))))))
-    (let ((result ((ucode-primitive file-touch) filename)))
-      (if result
-	  (error "FILE-TOUCH:" result))))
-  unspecific)
