@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: pwedit.scm,v 1.4 1999/01/29 20:03:35 cph Exp $
+;;; $Id: pwedit.scm,v 1.5 1999/05/04 17:23:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1999 Massachusetts Institute of Technology
 ;;;
@@ -30,8 +30,15 @@
 (declare (usual-integrations))
 
 (define-command view-password-file
-  "Read in a password file and show it in password-view mode."
-  "fView password file"
+  "Read in a password file and show it in password-view mode.
+Reads the file specified in the variable password-file.
+If password-file is #f, or if prefix arg supplied, prompts for a filename."
+  (lambda ()
+    (list
+     (let ((filename (ref-variable password-file)))
+       (if (and filename (not (command-argument)))
+	   filename
+	   (prompt-for-existing-file "View password file" filename)))))
   (lambda (pathname)
     (let ((forms
 	   (call-with-temporary-buffer " view-pw-file"
@@ -43,6 +50,7 @@
       (let ((buffer (new-buffer (pathname->buffer-name pathname))))
 	(insert-pw-forms forms (buffer-start buffer))
 	(set-buffer-major-mode! buffer (ref-mode-object password-view))
+	(set-buffer-default-directory! buffer (directory-pathname pathname))
 	(set-buffer-point! buffer (buffer-start buffer))
 	(select-buffer buffer)))))
 

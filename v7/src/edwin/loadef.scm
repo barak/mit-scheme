@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: loadef.scm,v 1.38 1999/05/04 17:19:10 cph Exp $
+;;; $Id: loadef.scm,v 1.39 1999/05/04 17:23:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -318,7 +318,9 @@ This is usually 103 or 2627."
   '("pwparse" (EDWIN PASSWORD-EDIT)))
 
 (define-autoload-command 'view-password-file 'PASSWORD-EDIT
-  "Read in a password file and show it in password-view mode.")
+  "Read in a password file and show it in password-view mode.
+Reads the file specified in the variable password-file.
+If password-file is #f, or if prefix arg supplied, prompts for a filename.")
 
 (define-variable password-file
   "Name of file containing passwords, or #F meaning prompt for name.
