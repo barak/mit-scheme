@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.53 2001/12/17 19:41:58 cph Exp $
+### $Id: i386.m4,v 1.54 2001/12/17 20:27:54 cph Exp $
 ###
 ### Copyright (c) 1992-2001 Massachusetts Institute of Technology
 ###
@@ -446,11 +446,6 @@ i386_initialize_no_fp:
 
 	OP(mov,l)	TW(IMM(HEX(00000001)),ABS(EVR(ia32_cpuid_supported)))
 
-# By default, use CPUID for synchronization.
-# We will disable this for known processors.
-
-	OP(mov,l)	TW(IMM(HEX(00000001)),ABS(EVR(ia32_cpuid_needed)))
-
 # Next, use the CPUID instruction to determine the processor type.
 
 	OP(push,l)	REG(ebx)
@@ -464,28 +459,28 @@ i386_initialize_no_fp:
 
 # Detect "GenuineIntel".
 
-	OP(cmp,l)	TW(IMM(HEX(756e6547)),REG(ebx))
-	jne		not_intel_cpu
-	OP(cmp,l)	TW(IMM(HEX(49656e69)),REG(edx))
-	jne		not_intel_cpu
-	OP(cmp,l)	TW(IMM(HEX(6c65746e)),REG(ecx))
-	jne		not_intel_cpu
+#	OP(cmp,l)	TW(IMM(HEX(756e6547)),REG(ebx))
+#	jne		not_intel_cpu
+#	OP(cmp,l)	TW(IMM(HEX(49656e69)),REG(edx))
+#	jne		not_intel_cpu
+#	OP(cmp,l)	TW(IMM(HEX(6c65746e)),REG(ecx))
+#	jne		not_intel_cpu
 
 # For CPU families 4 (486), 5 (Pentium), or 6 (Pentium Pro, Pentium
 # II, Pentium III), don't use CPUID synchronization.
 
-	OP(mov,l)	TW(IMM(HEX(01)),REG(eax))
-	cpuid
-	OP(shr,l)	TW(IMM(HEX(08)),REG(eax))
-	OP(and,l)	TW(IMM(HEX(0000000F)),REG(eax))
-	OP(cmp,l)	TW(IMM(HEX(4)),REG(eax))
-	jl		done_setting_up_cpuid
-	OP(cmp,l)	TW(IMM(HEX(6)),REG(eax))
-	jg		done_setting_up_cpuid
-
-	jmp		cpuid_not_needed
-
-not_intel_cpu:
+#	OP(mov,l)	TW(IMM(HEX(01)),REG(eax))
+#	cpuid
+#	OP(shr,l)	TW(IMM(HEX(08)),REG(eax))
+#	OP(and,l)	TW(IMM(HEX(0000000F)),REG(eax))
+#	OP(cmp,l)	TW(IMM(HEX(4)),REG(eax))
+#	jl		done_setting_up_cpuid
+#	OP(cmp,l)	TW(IMM(HEX(6)),REG(eax))
+#	jg		done_setting_up_cpuid
+#
+#	jmp		cpuid_not_needed
+#
+#not_intel_cpu:
 
 # Detect "AuthenticAMD".
 
@@ -496,20 +491,24 @@ not_intel_cpu:
 	OP(cmp,l)	TW(IMM(HEX(444d4163)),REG(ecx))
 	jne		not_amd_cpu
 
-# For CPU families 4 (Am486, Am586) or 5 (K5, K6), don't use CPUID
-# synchronization.
+# Problem appears to exist only on Athlon models 1, 2, 3, and 4.
 
 	OP(mov,l)	TW(IMM(HEX(01)),REG(eax))
 	cpuid
+
+	OP(mov,l)	TW(REG(eax),REG(ecx))
 	OP(shr,l)	TW(IMM(HEX(08)),REG(eax))
 	OP(and,l)	TW(IMM(HEX(0000000F)),REG(eax))
-	OP(cmp,l)	TW(IMM(HEX(4)),REG(eax))
-	jl		done_setting_up_cpuid
-	OP(cmp,l)	TW(IMM(HEX(5)),REG(eax))
-	jg		done_setting_up_cpuid
+	OP(cmp,l)	TW(IMM(HEX(6)),REG(eax))	# family 6 = Athlon
+	jne		done_setting_up_cpuid
 
-cpuid_not_needed:
-	OP(mov,l)	TW(IMM(HEX(00000000)),ABS(EVR(ia32_cpuid_needed)))
+	OP(mov,l)	TW(REG(ecx),REG(eax))
+	OP(shr,l)	TW(IMM(HEX(04)),REG(eax))
+	OP(and,l)	TW(IMM(HEX(0000000F)),REG(eax))
+	OP(cmp,l)	TW(IMM(HEX(6)),REG(eax))	# model 6 and up OK
+	jge		done_setting_up_cpuid
+
+	OP(mov,l)	TW(IMM(HEX(00000001)),ABS(EVR(ia32_cpuid_needed)))
 
 not_amd_cpu:
 done_setting_up_cpuid:
