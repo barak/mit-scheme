@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.29 1996/03/09 18:28:42 adams Exp $
+$Id: cleanup.scm,v 1.30 1996/07/20 23:03:03 adams Exp $
 
 Copyright (c) 1994-1996 Massachusetts Institute of Technology
 
@@ -406,6 +406,12 @@ MIT in each case. |#
     (and (QUOTE/? e1)
 	 (QUOTE/? e2)
 	 `(QUOTE ,(eq? (quote/text e1) (quote/text e2))))))
+
+(define-cleanup-rewrite %fixnum->flonum 1
+  (lambda (expr)
+    (and (QUOTE/? expr)
+	 (fixnum? (quote/text expr))
+	 `(QUOTE ,(exact->inexact (quote/text expr))))))
 
 (let ((NOT-primitive  (make-primitive-procedure 'NOT)))
   (define (form-absorbs-not? form)
