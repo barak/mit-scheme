@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/dassm2.scm,v 4.18 1992/08/11 02:37:45 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/dassm2.scm,v 4.19 1992/08/11 04:32:06 jinx Exp $
 $MC68020-Header: dassm2.scm,v 4.17 90/05/03 15:17:04 GMT jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
@@ -50,9 +50,17 @@ MIT in each case. |#
 
 (define (disassembler/read-procedure-cache block index)
   (fluid-let ((*block block))
-    (let* ((offset (compiled-code-block/index->offset index)))
-      ;; For now
-      (error "disassembler/read-procedure-cache: Not written"))))
+    (let* ((offset (compiled-code-block/index->offset index))
+	   (opcode (fix:lsh (read-unsigned-integer offset 8) -2)))
+      (case opcode
+	((#x08)				; LDIL
+	 ;; This should learn how to decode trampolines.
+	 (vector 'COMPILED
+		 (read-procedure offset)
+		 (read-unsigned-integer (+ offset 10) 16)))
+	(else
+	 (error "disassembler/read-procedure-cache: Unknown opcode"
+		opcode block index))))))
 
 (define (disassembler/instructions block start-offset end-offset symbol-table)
   (let loop ((offset start-offset) (state (disassembler/initial-state)))
@@ -200,25 +208,51 @@ MIT in each case. |#
 		   ,(extract bit-string 16 32)
 		   ,(offset->pc-relative (* 4 (extract bit-string 1 16))
 					 offset)))
-#|
-;;; 68k version
 
 (define (read-procedure offset)
+  (define-integrable (bit-string-andc-bang x y)
+    (bit-string-andc! x y)
+    x)
+
+  (define-integrable (low-21-bits offset)
+    #|
+    (bit-string->unsigned-integer
+     (bit-string-andc-bang (read-bits offset 32)
+			   #*11111111111000000000000000000000))
+    |#
+    (fix:and (read-unsigned-integer (1+ offset) 24) #x1FFFFF))
+
+  (define (assemble-21 val)
+    (fix:or (fix:or (fix:lsh (fix:and val 1) 20)
+		    (fix:lsh (fix:and val #xffe) 8))
+	    (fix:or (fix:or (fix:lsh (fix:and val #xc000) -7)
+			    (fix:lsh (fix:and val #x1f0000) -14))
+		    (fix:lsh (fix:and val #x3000) -12))))
+    
+
+  (define (assemble-17 val)
+    (fix:or (fix:or (fix:lsh (fix:and val 1) 16)
+		    (fix:lsh (fix:and val #x1f0000) -5))
+	    (fix:or (fix:lsh (fix:and val #x4) 8)
+		    (fix:lsh (fix:and val #x1ff8) -3))))
+
   (with-absolutely-no-interrupts
-   (lambda ()
-     (let-syntax ((ucode-type
-		   (macro (name) (microcode-type name)))
-		  (ucode-primitive
-		   (macro (name arity)
-		     (make-primitive-procedure name arity))))
-       ((ucode-primitive primitive-object-set-type 2)
-	(ucode-type compiled-entry)
-	((ucode-primitive make-non-pointer-object 1)
-	 (read-unsigned-integer offset 32)))))))
-|#
-
-(define (read-procedure offset)
-  (error "read-procedure: Called" offset))
+    (lambda ()
+      (let* ((address
+	      (+ (* (assemble-21 (low-21-bits offset)) #x800)
+		 (fix:lsh (assemble-17 (low-21-bits (+ offset 4))) 2)))
+	     (bitstr (bit-string-andc-bang
+		      (unsigned-integer->bit-string 32 address)
+		      #*11111100000000000000000000000000)))
+	(let-syntax ((ucode-type
+		      (macro (name) (microcode-type name)))
+		     (ucode-primitive
+		      (macro (name arity)
+			(make-primitive-procedure name arity))))
+	  ((ucode-primitive primitive-object-set-type 2)
+	   (ucode-type compiled-entry)
+	   ((ucode-primitive make-non-pointer-object 1)
+	    (bit-string->unsigned-integer bitstr))))))))
 
 (define (read-unsigned-integer offset size)
   (bit-string->unsigned-integer (read-bits offset size)))
