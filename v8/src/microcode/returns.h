@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/returns.h,v 9.30 1988/02/06 20:41:26 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/returns.h,v 9.31 1988/03/12 16:07:42 jinx Rel $
  *
  * Return codes.  These are placed in Return when an
  * interpreter operation needs to operate in several
@@ -112,21 +112,22 @@ MIT in each case. */
 #define RC_COMP_UNASSIGNED_P_RESTART	0x4D
 #define RC_COMP_UNBOUND_P_RESTART	0x4E
 #define RC_COMP_DEFINITION_RESTART	0x4F
-#define RC_COMP_LEXPR_INTERRUPT_RESTART 0x50
+/* formerly RC_COMP_LEXPR_INTERRUPT_RESTART 0x50 */
 #define RC_COMP_SAFE_REFERENCE_RESTART  0x51
-#define RC_COMP_CACHE_LOOKUP_RESTART  	0x52
+/* formerly RC_COMP_CACHE_LOOKUP_RESTART  	0x52 */
 #define RC_COMP_LOOKUP_TRAP_RESTART  	0x53
 #define RC_COMP_ASSIGNMENT_TRAP_RESTART 0x54
-#define RC_COMP_CACHE_OPERATOR_RESTART	0x55
+/* formerly RC_COMP_CACHE_OPERATOR_RESTART	0x55 */
 #define RC_COMP_OP_REF_TRAP_RESTART	0x56
 #define RC_COMP_CACHE_REF_APPLY_RESTART 0x57
 #define RC_COMP_SAFE_REF_TRAP_RESTART   0x58
 #define RC_COMP_UNASSIGNED_TRAP_RESTART 0x59
-#define RC_COMP_CACHE_ASSIGN_RESTART	0x5A
+/* formerly RC_COMP_CACHE_ASSIGN_RESTART	0x5A */
+#define RC_COMP_LINK_CACHES_RESTART	0x5B
 
 /* When adding return codes, add them to the table below as well! */
 
-#define MAX_RETURN_CODE			0x5A
+#define MAX_RETURN_CODE			0x5B
 
 #define RETURN_NAME_TABLE						\
 {									\
@@ -211,15 +212,16 @@ MIT in each case. */
 /* 0x4D */		"COMPILER_UNASSIGNED_P_RESTART",		\
 /* 0x4E */		"COMPILER_UNBOUND_P_RESTART",			\
 /* 0x4F */		"COMPILER_DEFINITION_RESTART",			\
-/* 0x50 */		"COMPILER_LEXPR_GC_RESTART",			\
+/* 0x50 */		"",						\
 /* 0x51 */		"COMPILER_SAFE_REFERENCE_RESTART",		\
-/* 0x52 */		"COMPILER_CACHE_LOOKUP_RESTART",		\
+/* 0x52 */		"",						\
 /* 0x53 */		"COMPILER_LOOKUP_TRAP_RESTART",			\
 /* 0x54 */		"COMPILER_ASSIGNMENT_TRAP_RESTART",		\
-/* 0x55 */		"COMPILER_CACHE_OPERATOR_RESTART",		\
+/* 0X55 */		"",						\
 /* 0x56 */		"COMPILER_OPERATOR_REFERENCE_TRAP_RESTART",	\
 /* 0x57 */		"COMPILER_CACHE_REFERENCE_APPLY_RESTART",	\
 /* 0x58 */		"COMPILER_SAFE_REFERENCE_TRAP_RESTART",		\
 /* 0x59 */		"COMPILER_UNASSIGNED_P_TRAP_RESTART",		\
-/* 0x5A */		"COMPILER_CACHE_ASSIGNMENT_RESTART"		\
+/* 0x5A */		"",						\
+/* 0x5A */		"COMPILER_LINK_CACHES_RESTART"			\
 }

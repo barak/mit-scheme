@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.36 1987/12/04 22:20:24 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.37 1988/03/12 16:08:24 jinx Rel $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -191,7 +191,7 @@ Back_Out_Of_Primitive ()
 
   primitive = Fetch_Expression();
   nargs = PRIMITIVE_N_ARGUMENTS(primitive);
-  if (OBJECT_TYPE(Stack_Ref(nargs)) == TC_RETURN_ADDRESS)
+  if (OBJECT_TYPE(Stack_Ref(nargs)) == TC_COMPILED_ENTRY)
   { 
     compiler_apply_procedure(nargs);
   }
@@ -225,7 +225,6 @@ void
 signal_error_from_primitive (error_code)
      long error_code;
 {
-
   PRIMITIVE_ABORT(error_code);
   /*NOTREACHED*/
 }

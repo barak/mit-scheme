@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.34 1988/02/20 06:17:48 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.35 1988/03/12 16:05:46 jinx Exp $
  *
  * This file contains the macros for use in code which does GC-like
  * loops over memory.  It is only included in a few files, unlike
@@ -72,11 +72,12 @@ extern char gc_death_message_buffer[];
    TC_MANIFEST_NM_VECTOR
    TC_MANIFEST_SPECIAL_NM_VECTOR
    TC_REFERENCE_TRAP
+   TC_MANIFEST_CLOSURE
+   TC_LINKAGE_SECTION
 */
 
 #define case_compiled_entry_point			\
- case TC_COMPILED_EXPRESSION:				\
- case TC_RETURN_ADDRESS					\
+ case TC_COMPILED_ENTRY
 
 #define case_Cell					\
  case TC_CELL
@@ -101,7 +102,6 @@ extern char gc_death_message_buffer[];
  case TC_IN_PACKAGE:					\
  case TC_LEXPR:						\
  case TC_DISJUNCTION:					\
- case TC_COMPILED_PROCEDURE:				\
  case TC_COMPLEX:					\
  case TC_ENTITY:					\
  case TC_RATNUM
@@ -159,72 +159,88 @@ extern char gc_death_message_buffer[];
 
 /* Macros for the garbage collector and related programs. */
 
-#define	NORMAL_GC	0
-#define PURE_COPY	1
-#define CONSTANT_COPY	2
-
 /* Pointer setup for the GC Type handlers. */
+
+#define GC_Consistency_Check(In_GC)					\
+{									\
+  if And2(In_GC, Consistency_Check)					\
+  {									\
+    if ((Old >= Highest_Allocated_Address) || (Old < Heap))		\
+    {									\
+      sprintf(gc_death_message_buffer,					\
+	      "setup_internal: out of range pointer (0x%lx)",		\
+	      Temp);							\
+      gc_death(TERM_EXIT, gc_death_message_buffer, Scan, To);		\
+      /*NOTREACHED*/							\
+    }									\
+  }									\
+}
 
 /* Check whether it has been relocated. */
 
 #define Normal_BH(In_GC, then_what)					\
-if (OBJECT_TYPE(*Old) == TC_BROKEN_HEART)				\
 {									\
-  *Scan = Make_New_Pointer(OBJECT_TYPE(Temp), *Old);			\
-  then_what;								\
+  if (OBJECT_TYPE(*Old) == TC_BROKEN_HEART)				\
+  {									\
+    *Scan = Make_New_Pointer(OBJECT_TYPE(Temp), *Old);			\
+    then_what;								\
+  }									\
 }
 
-#define Setup_Internal(In_GC, Extra_Code, BH_Code)			\
-if And2(In_GC, Consistency_Check)					\
+#define Setup_Internal(In_GC, Transport_Code, Already_Relocated_Code)	\
 {									\
-  if ((Old >= Highest_Allocated_Address) || (Old < Heap))		\
+  GC_Consistency_Check(In_GC);						\
+  if (Old >= Low_Constant)						\
   {									\
-    sprintf(gc_death_message_buffer,					\
-	    "setup_internal: out of range pointer (0x%lx)",		\
-	    Temp);							\
-    gc_death(TERM_EXIT, gc_death_message_buffer, Scan, To);		\
-    /*NOTREACHED*/							\
+    continue;								\
   }									\
-}									\
-if (Old >= Low_Constant)						\
+  Already_Relocated_Code;						\
+  New_Address = (Make_Broken_Heart(C_To_Scheme(To)));			\
+  Transport_Code;							\
+}
+
+#define Setup_Pointer(In_GC, Transport_Code)				\
 {									\
-  continue;								\
-}									\
-BH_Code;								\
-New_Address = (Make_Broken_Heart(C_To_Scheme(To)));			\
-Extra_Code;								\
-continue
+  Setup_Internal(In_GC, Transport_Code, Normal_BH(In_GC, continue));	\
+}
 
-#define Setup_Pointer(In_GC, Extra_Code)			\
-Setup_Internal(In_GC, Extra_Code, Normal_BH(In_GC, continue))
-
-#define Pointer_End()						\
-*Get_Pointer(Temp) = New_Address;				\
-*Scan = Make_New_Pointer(Type_Code(Temp), New_Address) 
+#define Pointer_End()							\
+{									\
+  *Get_Pointer(Temp) = New_Address;					\
+  *Scan = Make_New_Pointer(Type_Code(Temp), New_Address);		\
+}
 
 /* GC Type handlers.  These do the actual work. */
 
-#define Transport_Cell()					\
-*To++ = *Old;							\
-Pointer_End()
+#define Transport_Cell()						\
+{									\
+  *To++ = *Old;								\
+  Pointer_End();							\
+}
 
-#define Transport_Pair()					\
-*To++ = *Old++;							\
-*To++ = *Old;							\
-Pointer_End()
+#define Transport_Pair()						\
+{									\
+  *To++ = *Old++;							\
+  *To++ = *Old;								\
+  Pointer_End();							\
+}
 
-#define Transport_Triple()					\
-*To++ = *Old++;							\
-*To++ = *Old++;							\
-*To++ = *Old;							\
-Pointer_End()
+#define Transport_Triple()						\
+{									\
+  *To++ = *Old++;							\
+  *To++ = *Old++;							\
+  *To++ = *Old;								\
+  Pointer_End();							\
+}
 
-#define Transport_Quadruple()					\
-*To++ = *Old++;							\
-*To++ = *Old++;							\
-*To++ = *Old++;							\
-*To++ = *Old;							\
-Pointer_End()
+#define Transport_Quadruple()						\
+{									\
+  *To++ = *Old++;							\
+  *To++ = *Old++;							\
+  *To++ = *Old++;							\
+  *To++ = *Old;								\
+  Pointer_End();							\
+}
 
 #ifndef In_Fasdump
 
@@ -257,7 +273,7 @@ Pointer_End()
   Scan = Saved_Scan;							\
 }
 
-#else In_Fasdump
+#else /* In_Fasdump */
 
 #define Real_Transport_Vector()						\
 {									\
@@ -281,24 +297,38 @@ Pointer_End()
 
 #endif
 
+#define Transport_Vector()						\
+{									\
+Move_Vector:								\
+  Real_Transport_Vector();						\
+  Pointer_End();							\
+}
 #ifdef FLOATING_ALIGNMENT
-#define Transport_Flonum()					\
-  Align_Float(To);						\
-  New_Address = (Make_Broken_Heart(C_To_Scheme(To)));		\
-  Real_Transport_Vector();					\
-  Pointer_End()
+
+#define Transport_Flonum()						\
+{									\
+  Align_Float(To);							\
+  New_Address = (Make_Broken_Heart(C_To_Scheme(To)));			\
+  Real_Transport_Vector();						\
+  Pointer_End();							\
+}
+
+#else
+
+#define Transport_Flonum()						\
+{									\
+  goto Move_Vector;							\
+}
+
 #endif
 
-#define Transport_Vector()					\
-Move_Vector:							\
-  Real_Transport_Vector();					\
-  Pointer_End()
-
-#define Transport_Future()					\
-if (!(Future_Spliceable(Temp)))					\
-  goto Move_Vector;						\
-*Scan = Future_Value(Temp);					\
-Scan -= 1
+#define Transport_Future()						\
+{									\
+  if (!(Future_Spliceable(Temp)))					\
+    goto Move_Vector;							\
+  *Scan = Future_Value(Temp);						\
+  Scan -= 1;								\
+}
 
 /* Weak Pointer code.  The idea here is to support a post-GC pass which
    removes any objects in the CAR of a WEAK_CONS cell which is no longer
@@ -322,14 +352,17 @@ Scan -= 1
 
 extern Pointer Weak_Chain;
 
-#define Transport_Weak_Cons()					\
-{ long Car_Type = Type_Code(*Old);				\
-  *To++ = Make_New_Pointer(TC_NULL, *Old);			\
-  Old += 1;							\
-  *To++ = *Old;							\
-  *Old = Make_New_Pointer(Car_Type, Weak_Chain);		\
-  Weak_Chain = Temp;						\
-  Pointer_End();						\
+#define Transport_Weak_Cons()						\
+{									\
+  long Car_Type;							\
+									\
+  Car_Type = OBJECT_TYPE(*Old);						\
+  *To++ = Make_New_Pointer(TC_NULL, *Old);				\
+  Old += 1;								\
+  *To++ = *Old;								\
+  *Old = Make_New_Pointer(Car_Type, Weak_Chain);			\
+  Weak_Chain = Temp;							\
+  Pointer_End();							\
 }
 
 /* Special versions of the above for DumpLoop in Fasdump.  This code
@@ -338,34 +371,39 @@ extern Pointer Weak_Chain;
  */
 
 #define Fasdump_Setup_Pointer(Extra_Code, BH_Code)			\
-BH_Code;								\
-									\
-/* It must be transported to New Space */				\
-									\
-New_Address = (Make_Broken_Heart(C_To_Scheme(To)));			\
-if ((Fixes - To) < FASDUMP_FIX_BUFFER)					\
 {									\
-  NewFree = To;								\
-  Fixup = Fixes;							\
-  return (PRIM_INTERRUPT);						\
-}									\
-*--Fixes = *Old;							\
-*--Fixes = C_To_Scheme(Old);						\
-Extra_Code;								\
-continue
+  BH_Code;								\
+									\
+  /* It must be transported to New Space */				\
+									\
+  New_Address = (Make_Broken_Heart(C_To_Scheme(To)));			\
+  if ((Fixes - To) < FASDUMP_FIX_BUFFER)				\
+  {									\
+    NewFree = To;							\
+    Fixup = Fixes;							\
+    return (PRIM_INTERRUPT);						\
+  }									\
+  *--Fixes = *Old;							\
+  *--Fixes = C_To_Scheme(Old);						\
+  Extra_Code;								\
+}
 
 /* Undefine Symbols */
 
-#define Fasdump_Symbol(global_value)				\
-*To++ = *Old;							\
-*To++ = global_value;						\
-Pointer_End()
+#define Fasdump_Symbol(global_value)					\
+{									\
+  *To++ = *Old;								\
+  *To++ = global_value;							\
+  Pointer_End();							\
+}
 
-#define Fasdump_Variable()					\
-*To++ = *Old;							\
-*To++ = UNCOMPILED_VARIABLE;					\
-*To++ = NIL;							\
-Pointer_End()
+#define Fasdump_Variable()						\
+{									\
+  *To++ = *Old;								\
+  *To++ = UNCOMPILED_VARIABLE;						\
+  *To++ = NIL;								\
+  Pointer_End();							\
+}
 
 /* Compiled Code Relocation Utilities */
 
@@ -378,22 +416,47 @@ Pointer_End()
 #endif
 #else
 
+typedef unsigned long machine_word;
+
 /* Is there anything else that can be done here? */
 
-#define Relocate_Compiled(object, new_block, old_block)			\
-  (gc_death(TERM_COMPILER_DEATH,					\
-	    "relocate_compiled: No compiler support!",			\
-	    Scan, To),							\
-   NIL)
-
-#define Compiled_BH(flag, then_what)					\
-{									\
+#define GC_NO_COMPILER_STMT()						\
   gc_death(TERM_COMPILER_DEATH,						\
 	   "relocate_compiled: No compiler support!",			\
-	   Scan, To);							\
-  /*NOTREACHED*/							\
-}
+	   Scan, To)
 
-#define Transport_Compiled()
+#define GC_NO_COMPILER_EXPR()						\
+  (GC_NO_COMPILER_STMT(), NIL)
+
+#define Relocate_Compiled(object, new_block, old_block)			\
+  GC_NO_COMPILER_EXPR()
+
+#define Transport_Compiled()			GC_NO_COMPILER_STMT()
+
+#define Compiled_BH(flag, then_what)		GC_NO_COMPILER_STMT()
+
+#define Get_Compiled_Block(var, address)	GC_NO_COMPILER_STMT()
+
+#define READ_MANIFEST_CLOSURE_SIZE(scan)	GC_NO_COMPILER_EXPR()
+
+#define FIRST_MANIFEST_CLOSURE_ENTRY(scan)	GC_NO_COMPILER_EXPR()
+
+#define NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr)	GC_NO_COMPILER_EXPR()
+
+#define END_MANIFEST_CLOSURE_AREA(scan, count)	GC_NO_COMPILER_EXPR()
+
+#define READ_LINKAGE_KIND(header)		GC_NO_COMPILER_EXPR()
+
+#define READ_CACHE_LINKAGE_COUNT(header)	GC_NO_COMPILER_EXPR()
+
+#define READ_OPERATOR_LINKAGE_COUNT(header)	GC_NO_COMPILER_EXPR()
+  
+#define END_OPERATOR_LINKAGE_AREA(scan, count)	GC_NO_COMPILER_EXPR()
+
+#define FIRST_OPERATOR_LINKAGE_ENTRY(scan)	GC_NO_COMPILER_EXPR()
+
+#define NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr)	GC_NO_COMPILER_EXPR()
+
+#define OPERATOR_LINKAGE_KIND			0
 
 #endif

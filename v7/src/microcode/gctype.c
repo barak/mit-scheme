@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gctype.c,v 9.27 1988/02/12 16:51:15 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gctype.c,v 9.28 1988/03/12 16:06:21 jinx Rel $
  *
  * This file contains the table which maps between Types and
  * GC Types.
@@ -55,7 +55,7 @@ int GC_Type_Map[MAX_TYPE_CODE + 1] = {
     GC_Vector,			/* TC_VECTOR */
     GC_Non_Pointer,		/* TC_RETURN_CODE */
     GC_Triple,			/* TC_COMBINATION_2 */
-    GC_Pair,			/* TC_COMPILED_PROCEDURE */
+    GC_Special,			/* TC_MANIFEST_CLOSURE */
     GC_Vector,			/* TC_BIG_FIXNUM */
     GC_Pair,			/* TC_PROCEDURE */
     GC_Pair,			/* TC_ENTITY */
@@ -87,7 +87,7 @@ int GC_Type_Map[MAX_TYPE_CODE + 1] = {
 
     GC_Vector,			/* TC_COMBINATION */
     GC_Special,			/* TC_MANIFEST_NM_VECTOR */
-    GC_Compiled,		/* TC_COMPILED_EXPRESSION */
+    GC_Compiled,		/* TC_COMPILED_ENTRY */
     GC_Pair,			/* TC_LEXPR */
     GC_Vector,			/* TC_PCOMB3 */
     GC_Special,			/* TC_MANIFEST_SPECIAL_NM_VECTOR */
@@ -104,7 +104,7 @@ int GC_Type_Map[MAX_TYPE_CODE + 1] = {
     GC_Cell,			/* TC_CELL */
     GC_Pair,			/* TC_WEAK_CONS */
     GC_Quadruple,		/* TC_QUAD */
-    GC_Compiled,		/* TC_RETURN_ADDRESS */
+    GC_Special,			/* TC_LINKAGE_SECTION */
     GC_Pair,			/* TC_RATNUM */
     GC_Non_Pointer,		/* TC_STACK_ENVIRONMENT */
     GC_Pair,			/* TC_COMPLEX */

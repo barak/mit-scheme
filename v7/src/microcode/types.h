@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/types.h,v 9.27 1988/02/12 16:52:46 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/types.h,v 9.28 1988/03/12 16:07:56 jinx Rel $
  *
  * Type code definitions, numerical order
  *
@@ -51,7 +51,7 @@ MIT in each case. */
 #define TC_VECTOR			0x0A
 #define TC_RETURN_CODE 			0x0B
 #define TC_COMBINATION_2		0x0C
-#define TC_COMPILED_PROCEDURE		0x0D
+#define TC_MANIFEST_CLOSURE		0x0D
 #define TC_BIG_FIXNUM			0x0E
 #define TC_PROCEDURE			0x0F
 #define TC_ENTITY			0x10 /* PRIMITIVE_EXTERNAL */
@@ -79,7 +79,7 @@ MIT in each case. */
 #define TC_IN_PACKAGE			0x25
 #define TC_COMBINATION			0x26
 #define TC_MANIFEST_NM_VECTOR		0x27
-#define TC_COMPILED_EXPRESSION		0x28
+#define TC_COMPILED_ENTRY		0x28
 #define TC_LEXPR			0x29
 #define TC_PCOMB3  			0x2A
 #define TC_MANIFEST_SPECIAL_NM_VECTOR	0x2B
@@ -96,7 +96,7 @@ MIT in each case. */
 #define TC_CELL				0x36
 #define TC_WEAK_CONS			0x37
 #define TC_QUAD				0x38 /* TRAP */
-#define TC_RETURN_ADDRESS		0x39
+#define TC_LINKAGE_SECTION		0x39
 #define TC_RATNUM			0x3A /* COMPILER_LINK */
 #define TC_STACK_ENVIRONMENT		0x3B
 #define TC_COMPLEX			0x3C
@@ -123,7 +123,7 @@ MIT in each case. */
   /* 0x0A */			"VECTOR",				\
   /* 0x0B */ 			"RETURN-CODE",				\
   /* 0x0C */			"COMBINATION-2",			\
-  /* 0x0D */			"COMPILED-PROCEDURE",			\
+  /* 0x0D */			"MANIFEST-CLOSURE",			\
   /* 0x0E */			"BIG-FIXNUM",				\
   /* 0x0F */			"PROCEDURE",				\
   /* 0x10 */			"ENTITY",				\
@@ -150,7 +150,7 @@ MIT in each case. */
   /* 0x25 */			"IN-PACKAGE",				\
   /* 0x26 */			"COMBINATION",				\
   /* 0x27 */			"MANIFEST-NM-VECTOR",			\
-  /* 0x28 */			"COMPILED-EXPRESSION",			\
+  /* 0x28 */			"COMPILED-ENTRY",			\
   /* 0x29 */			"LEXPR",				\
   /* 0x2A */  			"PCOMB3",				\
   /* 0x2B */			"MANIFEST-SPECIAL-NM-VECTOR",		\
@@ -167,7 +167,7 @@ MIT in each case. */
   /* 0x36 */			"CELL",					\
   /* 0x37 */			"WEAK-CONS",				\
   /* 0x38 */			"QUAD",					\
-  /* 0x39 */			"RETURN-ADDRESS",			\
+  /* 0x39 */			"LINKAGE-SECTION",			\
   /* 0x3A */			"RATNUM",				\
   /* 0x3B */			"STACK-ENVIRONMENT",			\
   /* 0x3C */			"COMPLEX",				\

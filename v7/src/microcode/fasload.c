@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.34 1988/02/10 15:43:35 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.35 1988/03/12 16:05:26 jinx Exp $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
@@ -262,71 +262,131 @@ static Pointer *Relocate_Temp;
 */
 
 void
-Relocate_Block(Next_Pointer, Stop_At)
-     fast Pointer *Next_Pointer, *Stop_At;
+Relocate_Block(Scan, Stop_At)
+     fast Pointer *Scan, *Stop_At;
 {
   extern Pointer *load_renumber_table;
+  fast Pointer Temp;
+  fast long address;
 
   if (Reloc_Debug)
   {
     fprintf(stderr,
-	    "Relocation beginning, block = 0x%x, length = 0x%x, end = 0x%x.\n",
-	    Next_Pointer, (Stop_At - Next_Pointer) - 1, Stop_At);
+	    "\nRelocate_Block: block = 0x%x, length = 0x%x, end = 0x%x.\n",
+	    Scan, ((Stop_At - Scan) - 1), Stop_At);
   }
-  while (Next_Pointer < Stop_At)
-  {
-    fast Pointer Temp;
 
-    Temp = *Next_Pointer;
+  while (Scan < Stop_At)
+  {
+    Temp = *Scan;
     Switch_by_GC_Type(Temp)
     {
       case TC_BROKEN_HEART:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
       case_Fasload_Non_Pointer:
-        Next_Pointer += 1;
+        Scan += 1;
 	break;
 	
       case TC_PRIMITIVE:
-	*Next_Pointer++ = load_renumber_table[PRIMITIVE_NUMBER(Temp)];
+	*Scan++ = load_renumber_table[PRIMITIVE_NUMBER(Temp)];
 	break;
 	
       case TC_PCOMB0:
-	*Next_Pointer++ =
+	*Scan++ =
 	  Make_Non_Pointer(TC_PCOMB0,
 			   load_renumber_table[PRIMITIVE_NUMBER(Temp)]);
         break;
 
       case TC_MANIFEST_NM_VECTOR:
-        Next_Pointer += Get_Integer(Temp)+1;
+        Scan += (Get_Integer(Temp) + 1);
         break;
+
+      case TC_LINKAGE_SECTION:
+      {
+	if (READ_LINKAGE_KIND(Temp) != OPERATOR_LINKAGE_KIND)
+	{
+	  /* Assumes that all others are objects of type TC_QUAD without
+	     their type codes.
+	   */
+
+	  fast long count;
+
+	  Scan++;
+	  for (count = READ_CACHE_LINKAGE_COUNT(Temp);
+	       --count >= 0;
+	       )
+	  {
+	    address = ((long) *Scan);
+	    *Scan++ = ((Pointer) Relocate(address));
+	  }
+	  break;
+	}
+	else
+	{
+	  fast long count;
+	  fast machine_word *word_ptr;
+	  Pointer *end_scan;
+
+	  count = READ_OPERATOR_LINKAGE_COUNT(Temp);
+	  word_ptr = FIRST_OPERATOR_LINKAGE_ENTRY(Scan);
+	  end_scan = END_OPERATOR_LINKAGE_AREA(Scan, count);
+
+	  while(--count >= 0)
+	  {
+	    Scan = ((Pointer *) word_ptr);
+	    word_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr);
+	    address = ((long) *Scan);
+	    *Scan = ((Pointer) Relocate(address));
+	  }
+	  Scan = &end_scan[1];
+	  break;
+	}
+      }
+
+      case TC_MANIFEST_CLOSURE:
+      {
+	machine_word *start_ptr;
+	fast machine_word *word_ptr;
+	Pointer *saved_scan;
+
+	saved_scan = ++Scan;
+	word_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(Scan);
+	start_ptr = word_ptr;
+
+	while (VALID_MANIFEST_CLOSURE_ENTRY(word_ptr))
+	{
+	  Scan = MANIFEST_CLOSURE_ENTRY_ADDRESS(word_ptr);
+	  word_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
+	  address = ((long) *Scan);
+	  *Scan = ((Pointer) Relocate(address));
+	}
+	Scan = saved_scan + (1 + MANIFEST_CLOSURE_SIZE(word_ptr, start_ptr));
+	break;
+      }
 
 #ifdef BYTE_INVERSION
       case TC_CHARACTER_STRING:
-	String_Inversion(Relocate(Datum(Temp)));
+	String_Inversion(Relocate(OBJECT_DATUM(Temp)));
 	goto normal_pointer;
 #endif
 
       case TC_REFERENCE_TRAP:
-	if (Datum(Temp) <= TRAP_MAX_IMMEDIATE)
+	if (OBJECT_DATUM(Temp) <= TRAP_MAX_IMMEDIATE)
 	{
-	  Next_Pointer += 1;
+	  Scan += 1;
 	  break;
 	}
 	/* It is a pointer, fall through. */
 
       	/* Compiled entry points and stack environments work automagically. */
 	/* This should be more strict. */
-      default:
-      {
-normal_pointer:
-	{
-	  fast long Next;
 
-	  Next = Datum(Temp);
-	  *Next_Pointer++ = Make_Pointer(Type_Code(Temp), Relocate(Next));
-	}
+      default:
+      normal_pointer:
+	address = OBJECT_DATUM(Temp);
+	*Scan++ = Make_Pointer(OBJECT_TYPE(Temp), Relocate(address));
+	break;
       }
-    }
   }
   return;
 }

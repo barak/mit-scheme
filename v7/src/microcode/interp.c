@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.39 1988/02/20 06:18:15 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.40 1988/03/12 16:06:40 jinx Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -403,19 +403,25 @@ Repeat_Dispatch:
   {
     case PRIM_APPLY:
       LOG_FUTURES();
+    case CODE_MAP(PRIM_APPLY):
       goto Internal_Apply;
 
     case PRIM_NO_TRAP_APPLY:
       LOG_FUTURES();
+    case CODE_MAP(PRIM_NO_TRAP_APPLY):
       goto Apply_Non_Trapping;
 
     case PRIM_DO_EXPRESSION:
+      Val = Fetch_Expression();
       LOG_FUTURES();
-      Reduces_To(Fetch_Expression());
+    case CODE_MAP(PRIM_DO_EXPRESSION):
+      Reduces_To(Val);
 
     case PRIM_NO_TRAP_EVAL:
+      Val = Fetch_Expression();
       LOG_FUTURES();
-      New_Reduction(Fetch_Expression(), Fetch_Env());
+    case CODE_MAP(PRIM_NO_TRAP_EVAL):
+      New_Reduction(Val, Fetch_Env());
       goto Eval_Non_Trapping;
 
     case 0:			/* first time */
@@ -430,12 +436,20 @@ Repeat_Dispatch:
 
     case PRIM_POP_RETURN:
       LOG_FUTURES();
+    case CODE_MAP(PRIM_POP_RETURN):
       goto Pop_Return;
 
     case PRIM_TOUCH:
+    {
+      Pointer temp;
+
+      temp = Val;
       BACK_OUT_AFTER_PRIMITIVE();
+      Val = temp;
       LOG_FUTURES();
       /* fall through */
+    }
+
     case CODE_MAP(PRIM_TOUCH):
       TOUCH_SETUP(Val);
       goto Internal_Apply;
@@ -549,7 +563,6 @@ Eval_Non_Trapping:
     case TC_CHARACTER_STRING:
     case TC_CHARACTER:
     case TC_COMPILED_CODE_BLOCK:
-    case TC_COMPILED_PROCEDURE:
     case TC_COMPLEX:
     case TC_CONTROL_POINT:
     case TC_DELAYED:
@@ -635,7 +648,7 @@ Eval_Non_Trapping:
       Save_Env();
       Do_Nth_Then(RC_CONDITIONAL_DECIDE, COND_PREDICATE, Pushed());
 
-    case TC_COMPILED_EXPRESSION:
+    case TC_COMPILED_ENTRY:
       {
 	Pointer compiled_expression;
 
@@ -959,9 +972,6 @@ Pop_Return:
       define_compiler_restart (RC_COMP_INTERRUPT_RESTART,
 			       comp_interrupt_restart)
 
-      define_compiler_restart (RC_COMP_LEXPR_INTERRUPT_RESTART,
-			       comp_lexpr_interrupt_restart)
-
       define_compiler_restart (RC_COMP_LOOKUP_APPLY_RESTART,
 			       comp_lookup_apply_restart)
 
@@ -986,32 +996,26 @@ Pop_Return:
       define_compiler_restart (RC_COMP_SAFE_REFERENCE_RESTART,
 			       comp_safe_reference_restart)
 
-      define_compiler_restart (RC_COMP_CACHE_LOOKUP_RESTART,
-			       comp_cache_lookup_restart)
-
       define_compiler_restart (RC_COMP_LOOKUP_TRAP_RESTART,
 			       comp_lookup_trap_restart)
-
-      define_compiler_restart (RC_COMP_CACHE_ASSIGN_RESTART,
-			       comp_cache_assignment_restart)
 
       define_compiler_restart (RC_COMP_ASSIGNMENT_TRAP_RESTART,
 			       comp_assignment_trap_restart)
 
-      define_compiler_restart (RC_COMP_CACHE_OPERATOR_RESTART,
-			       comp_cache_operator_restart)
-
       define_compiler_restart (RC_COMP_OP_REF_TRAP_RESTART,
-			       comp_op_ref_trap_restart)
+			       comp_op_lookup_trap_restart)
 
       define_compiler_restart (RC_COMP_CACHE_REF_APPLY_RESTART,
-			       comp_cache_ref_apply_restart)
+			       comp_cache_lookup_apply_restart)
 
       define_compiler_restart (RC_COMP_SAFE_REF_TRAP_RESTART,
-			       comp_safe_ref_trap_restart)
+			       comp_safe_lookup_trap_restart)
 
       define_compiler_restart (RC_COMP_UNASSIGNED_TRAP_RESTART,
 			       comp_unassigned_p_trap_restart)
+
+      define_compiler_restart (RC_COMP_LINK_CACHES_RESTART,
+			       comp_link_caches_restart)
 
     case RC_REENTER_COMPILED_CODE:
       compiled_code_restart();
@@ -1309,12 +1313,12 @@ external_assignment_return:
   Save_Cont();								\
 }
                           
-#define Apply_Error(N)							\
-{									\
-  Store_Return(RC_INTERNAL_APPLY);					\
-  Store_Expression(NIL);						\
-  Val = NIL;								\
-  Pop_Return_Error(N);							\
+#define Apply_Error(N)
+{
+  Store_Return(RC_INTERNAL_APPLY);
+  Store_Expression(NIL);
+  Val = NIL;
+  Pop_Return_Error(N);
 }
 
 /* Interpret() continues on the next page */
@@ -1599,7 +1603,7 @@ Perform_Application:
 
 /* Interpret(), continued */
 
-          case TC_COMPILED_PROCEDURE:
+          case TC_COMPILED_ENTRY:
 	  {
 	    apply_compiled_setup(STACK_ENV_EXTRA_SLOTS +
 				 Get_Integer( Stack_Ref( STACK_ENV_HEADER)));
@@ -1611,21 +1615,16 @@ return_from_compiled_code:
             switch (Which_Way)
             {
 	    case PRIM_DONE:
-	    { compiled_code_done();
+	    {
+	      compiled_code_done();
 	      goto Pop_Return;
 	    }
 
 	    case PRIM_APPLY:
-	    { compiler_apply_procedure(STACK_ENV_EXTRA_SLOTS +
+	    {
+	      compiler_apply_procedure(STACK_ENV_EXTRA_SLOTS +
 				       Get_Integer( Stack_Ref( STACK_ENV_HEADER)));
 	      goto Internal_Apply;
-	    }
-
-	    case ERR_COMPILED_CODE_ERROR:
-	    { /* The compiled code is signalling a microcode error. */
-	      compiled_error_backout();
-	      /* The Save_Cont is done by Pop_Return_Error. */
-	      Pop_Return_Error( compiled_code_error_code);
 	    }
 
 	    case PRIM_INTERRUPT:
@@ -1634,7 +1633,30 @@ return_from_compiled_code:
 	      Save_Cont();
 	      Interrupt(PENDING_INTERRUPTS());
 	    }
+
+
+	    case PRIM_APPLY_INTERRUPT:
+	    {
+	      apply_compiled_backout();
+	      Prepare_Apply_Interrupt();
+	      Interrupt(PENDING_INTERRUPTS());
+	    }
+
+	    case ERR_COMPILED_CODE_ERROR:
+	    {
+	      /* The compiled code is signalling a microcode error. */
+	      compiled_error_backout();
+	      /* The Save_Cont is done by Pop_Return_Error. */
+	      Pop_Return_Error( compiled_code_error_code);
+	    }
 
+	    case ERR_INAPPLICABLE_OBJECT:
+	    /* This error code means that apply_compiled_procedure
+	       was called on an object which is not a compiled procedure.
+
+	       Fall through...
+	     */
+
 	    case ERR_WRONG_NUMBER_OF_ARGUMENTS:
 	    {
 	      apply_compiled_backout();
@@ -1652,28 +1674,34 @@ return_from_compiled_code:
 	    }
 
 	    case ERR_EXECUTE_MANIFEST_VECTOR:
-	    { /* This error code means that enter_compiled_expression
+	    {
+	      /* This error code means that enter_compiled_expression
 		 was called in a system without compiler support.
 	       */
+
 	      execute_compiled_backout();
-	      Val = Make_Non_Pointer( TC_COMPILED_EXPRESSION,
+	      Val = Make_Non_Pointer( TC_COMPILED_ENTRY,
 				     Fetch_Expression());
 	      Pop_Return_Error( Which_Way);
 	    }
 
-	    case ERR_INAPPLICABLE_OBJECT:
-	    { /* This error code means that apply_compiled_procedure
+	    case ERR_BAD_COMBINATION:
+	    {
+	      /* This error code means that apply_compiled_procedure
 		 was called in a system without compiler support.
 	       */
+
 	      apply_compiled_backout();
 	      Apply_Error( Which_Way);
 	    }
 
 	    case ERR_INAPPLICABLE_CONTINUATION:
-	    { /* This error code means that return_to_compiled_code
+	    {
+	      /* This error code means that return_to_compiled_code
 		 or some other compiler continuation was called in a
 		 system without compiler support.
 	       */
+
 	      Store_Expression(NIL);
 	      Store_Return(RC_REENTER_COMPILED_CODE);
 	      Pop_Return_Error(Which_Way);

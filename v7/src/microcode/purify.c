@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.31 1988/02/20 06:18:49 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.32 1988/03/12 16:07:11 jinx Exp $
  *
  * This file contains the code that copies objects into pure
  * and constant space.
@@ -47,26 +47,41 @@ MIT in each case. */
 extern void GCFlip(), GC();
 extern Pointer *GCLoop();
 
-/* This is a copy of GCLoop, with GC_Mode handling added, and
+/* This is a copy of GCLoop, with mode handling added, and
    debugging printout removed.
 */
 
-#define Purify_Pointer(Code)					\
-Old = Get_Pointer(Temp);					\
-if ((GC_Mode == CONSTANT_COPY) &&				\
-    (Old > Low_Constant))					\
-  continue;							\
-Code
+/* Purify modes */
 
-#define Setup_Pointer_for_Purify(Extra_Code)			\
-Purify_Pointer(Setup_Pointer(false, Extra_Code))
+#define	NORMAL_GC	0
+#define PURE_COPY	1
+#define CONSTANT_COPY	2
 
-#define Indirect_BH(In_GC)					\
-if (Type_Code(*Old) == TC_BROKEN_HEART) continue;	  
+#define Purify_Pointer(Code)						\
+{									\
+  Old = Get_Pointer(Temp);						\
+  if ((GC_Mode == CONSTANT_COPY) &&					\
+      (Old > Low_Constant))						\
+    continue;								\
+  Code;									\
+}
 
-#define Transport_Vector_Indirect()				\
-Real_Transport_Vector();					\
-*Get_Pointer(Temp) = New_Address
+#define Setup_Pointer_for_Purify(Extra_Code)				\
+{									\
+  Purify_Pointer(Setup_Pointer(false, Extra_Code));			\
+}
+
+#define Indirect_BH(In_GC)						\
+{									\
+  if (OBJECT_TYPE(*Old) == TC_BROKEN_HEART)				\
+    continue;								\
+}
+
+#define Transport_Vector_Indirect()					\
+{									\
+  Real_Transport_Vector();						\
+  *Get_Pointer(Temp) = New_Address;					\
+}
 
 Pointer *
 PurifyLoop(Scan, To_Pointer, GC_Mode)
@@ -102,20 +117,104 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
 
       case_Non_Pointer:
 	break;
+
+      /* Compiled code relocation. */
+
+      case TC_LINKAGE_SECTION:
+      {
+	if (GC_Mode == PURE_COPY)
+	{
+	  gc_death(TERM_COMPILER_DEATH,
+		   "purifyloop: linkage section in pure area",
+		   Scan, To);
+	  /*NOTREACHED*/
+	}
+	if (READ_LINKAGE_KIND(Temp) != OPERATOR_LINKAGE_KIND)
+	{
+	  /* Assumes that all others are objects of type TC_QUAD without
+	     their type codes.
+	   */
+
+	  fast long count;
+
+	  Scan++;
+	  for (count = READ_CACHE_LINKAGE_COUNT(Temp);
+	       --count >= 0;
+	       Scan += 1)
+	  {
+	    Temp = *Scan;
+	    Setup_Pointer_for_Purify(Transport_Quadruple());
+	  }
+	  Scan -= 1;
+	  break;
+	}
+	else
+	{
+	  fast long count;
+	  fast machine_word *word_ptr;
+	  Pointer *end_scan;
+
+	  count = READ_OPERATOR_LINKAGE_COUNT(Temp);
+	  word_ptr = FIRST_OPERATOR_LINKAGE_ENTRY(Scan);
+	  end_scan = END_OPERATOR_LINKAGE_AREA(Scan, count);
+
+	  while(--count >= 0)
+	  {
+	    Scan = ((Pointer *) word_ptr);
+	    word_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr);
+	    Temp = *Scan;
+	    Purify_Pointer(Setup_Internal(false,
+					  Transport_Compiled(),
+					  Compiled_BH(false, continue)));
+	  }
+	  Scan = end_scan;
+	  break;
+	}
+      }
+
+      case TC_MANIFEST_CLOSURE:
+      {
+	machine_word *start_ptr;
+	fast machine_word *word_ptr;
+	Pointer *saved_scan;
+
+	if (GC_Mode == PURE_COPY)
+	{
+	  gc_death(TERM_COMPILER_DEATH,
+		   "purifyloop: manifest closure in pure area",
+		   Scan, To);
+	  /*NOTREACHED*/
+	}
+
+	saved_scan = ++Scan;
+	word_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(Scan);
+	start_ptr = word_ptr;
+
+	while (VALID_MANIFEST_CLOSURE_ENTRY(word_ptr))
+	{
+	  Scan = MANIFEST_CLOSURE_ENTRY_ADDRESS(word_ptr);
+	  word_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
+	  Temp = *Scan;
+	  Purify_Pointer(Setup_Internal(false,
+					Transport_Compiled(),
+					Compiled_BH(false, continue)));
+	}
+	Scan = saved_scan + MANIFEST_CLOSURE_SIZE(word_ptr, start_ptr);
+	break;
+      }
 
       case_compiled_entry_point:
-	if (GC_Mode == PURE_COPY)
-	  break;
-	Purify_Pointer(Setup_Internal(false,
-				      Transport_Compiled(),
-				      Compiled_BH(false, continue)));
-
+	if (GC_Mode != PURE_COPY)
+	{
+	  Purify_Pointer(Setup_Internal(false,
+					Transport_Compiled(),
+					Compiled_BH(false, continue)));
+	}
+	break;
+
       case_Cell:
 	Setup_Pointer_for_Purify(Transport_Cell());
-
-/* PurifyLoop continues on the next page */
-
-/* PurifyLoop, continued */
+	break;
 
       /*
 	Symbols, variables, and reference traps cannot be put into
@@ -124,7 +223,8 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
        */
 
       case TC_REFERENCE_TRAP:
-	if ((Datum(Temp) <= TRAP_MAX_IMMEDIATE) || (GC_Mode == PURE_COPY))
+	if ((OBJECT_DATUM(Temp) <= TRAP_MAX_IMMEDIATE) ||
+	    (GC_Mode == PURE_COPY))
 	{
 	  /* It is a non pointer. */
 	  break;
@@ -139,18 +239,24 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
 	  Purify_Pointer(Setup_Internal(false,
 					Transport_Vector_Indirect(),
 					Indirect_BH(false)));
+	  break;
 	}
+
 	/* Fall through */
+
       case_Fasdump_Pair:
       purify_pair:
 	Setup_Pointer_for_Purify(Transport_Pair());
+	break;
 
       case TC_WEAK_CONS:
 	Setup_Pointer_for_Purify(Transport_Weak_Cons());
+	break;
 
       case TC_VARIABLE:
       case_Triple:
 	Setup_Pointer_for_Purify(Transport_Triple());
+	break;
 
 /* PurifyLoop continues on the next page */
 
@@ -158,6 +264,7 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
 
       case_Quadruple:
 	Setup_Pointer_for_Purify(Transport_Quadruple());
+	break;
 
 	/* No need to handle futures specially here, since PurifyLoop
 	   is always invoked after running GCLoop, which will have
@@ -165,29 +272,28 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
 	   GC dameons spliced them, but this should not occur.
 	 */
 
-      case TC_COMPILED_CODE_BLOCK:
       case TC_FUTURE:
       case TC_ENVIRONMENT:
+      case TC_COMPILED_CODE_BLOCK:
 	if (GC_Mode == PURE_COPY)
 	{
-	  /* This should actually do an indirect pair transport of
-	     the procedure, at least.
+	  /* For environments, this should actually do an indirect pair
+	     transport of the procedure, at least.
 	   */
 	  break;
 	}
 	/* Fall through */
-#ifndef FLOATING_ALIGNMENT
-      case TC_BIG_FLONUM:
-	/* Fall through */
-#endif
+
       case_Purify_Vector:
       purify_vector:
 	Setup_Pointer_for_Purify(Transport_Vector());
+	break;
 
-#ifdef FLOATING_ALIGNMENT
       case TC_BIG_FLONUM:
-        Setup_Pointer_for_Purify(Transport_Flonum());
-#endif
+        Setup_Pointer_for_Purify({
+	  Transport_Flonum();
+	  break;
+	});
 
       default:
 	sprintf(gc_death_message_buffer,
@@ -198,8 +304,10 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
 	/*NOTREACHED*/
       } /* Switch_by_GC_Type */
   } /* For loop */
+
   *To_Pointer = To;
   return (To);
+
 } /* PurifyLoop */
 
 /* Description of the algorithm for PURIFY:
@@ -316,7 +424,7 @@ Pointer Info;
   *Free_Constant++ = Relocated_Object;
   if (Purify_Object)
   {
-    Result = PurifyLoop(New_Object+1, &Free_Constant, PURE_COPY);
+    Result = PurifyLoop(New_Object + 1, &Free_Constant, PURE_COPY);
 
     if (Free_Constant != Result)
     {
@@ -352,9 +460,9 @@ Pointer Info;
       Microcode_Termination(TERM_BROKEN_HEART);
     }
   }
-  Recomputed_Length = (Free_Constant-New_Object)-4;
+  Recomputed_Length = ((Free_Constant - New_Object) - 4);
   *Free_Constant++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-  *Free_Constant++ = Make_Non_Pointer(END_OF_BLOCK, Recomputed_Length+5);
+  *Free_Constant++ = Make_Non_Pointer(END_OF_BLOCK, (Recomputed_Length + 5));
   if (Length > Recomputed_Length)
   {
     fprintf(stderr, "\nPurify phase error %x, %x\n",
@@ -363,10 +471,10 @@ Pointer Info;
   }
   *New_Object++ =
     Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, Pure_Length);
-  *New_Object = Make_Non_Pointer(PURE_PART, Recomputed_Length+5);
+  *New_Object = Make_Non_Pointer(PURE_PART, (Recomputed_Length + 5));
   GC();
   Set_Pure_Top();
-  return TRUTH;
+  return (TRUTH);
 }
 
 /* (PRIMITIVE-PURIFY OBJECT PURE?)

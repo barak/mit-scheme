@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.26 1988/02/20 06:18:04 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.27 1988/03/12 16:06:06 jinx Exp $
  *
  * This file contains the code for the most primitive part
  * of garbage collection.
@@ -44,39 +44,57 @@ MIT in each case. */
 
 extern Pointer *GCLoop();
 
-#define GC_Pointer(Code)					\
-Old = Get_Pointer(Temp);					\
-Code
+#define GC_Pointer(Code)						\
+{									\
+  Old = Get_Pointer(Temp);						\
+  Code;									\
+}
 
-#define Setup_Pointer_for_GC(Extra_Code)			\
-GC_Pointer(Setup_Pointer(true, Extra_Code))
-
+#define Setup_Pointer_for_GC(Extra_Code)				\
+{									\
+  GC_Pointer(Setup_Pointer(true, Extra_Code));				\
+}
+
 #ifdef ENABLE_DEBUGGING_TOOLS
-static Pointer *gc_scan_trap = NULL;
-static Pointer *gc_free_trap = NULL;
-static Pointer gc_trap = Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_MAX_IMMEDIATE);
+
+Pointer
+  *gc_scan_trap = NULL,
+  *gc_free_trap = NULL,
+  gc_trap = Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_MAX_IMMEDIATE);
+
+#define HANDLE_GC_TRAP()						\
+{									\
+  if ((Temp == gc_trap) ||						\
+      (Scan == gc_scan_trap) ||						\
+      (To == gc_free_trap))						\
+  {									\
+    fprintf(stderr, "\nGCLoop: trap.\n");				\
+  }									\
+}
+
+#else
+
+#define HANDLE_GC_TRAP()
+
 #endif
 
-Pointer
-*GCLoop(Scan, To_Pointer)
-fast Pointer *Scan;
-Pointer **To_Pointer;
-{ fast Pointer *To, *Old, Temp, *Low_Constant, New_Address;
+Pointer *
+GCLoop(Scan, To_Pointer)
+     fast Pointer *Scan;
+     Pointer **To_Pointer;
+{
+  fast Pointer *To, *Old, Temp, *Low_Constant, New_Address;
 
   To = *To_Pointer;
   Low_Constant = Constant_Space;
   for ( ; Scan != To; Scan++)
-  { Temp = *Scan;
-
-#ifdef ENABLE_DEBUGGING_TOOLS
-    if ((Temp == gc_trap) || (Scan == gc_scan_trap) || (To == gc_free_trap))
-    {
-      fprintf(stderr, "\nGCLoop: trap.\n");
-    }
-#endif
+  {
+    Temp = *Scan;
+    HANDLE_GC_TRAP();
 
     Switch_by_GC_Type(Temp)
-    { case TC_BROKEN_HEART:
+    {
+      case TC_BROKEN_HEART:
         if (Scan == (Get_Pointer(Temp)))
 	{
 	  *To_Pointer = To;
@@ -95,14 +113,86 @@ Pointer **To_Pointer;
 
       case_Non_Pointer:
 	break;
+
+      /* Compiled code relocation. */
+
+      case TC_LINKAGE_SECTION:
+      {
+	if (READ_LINKAGE_KIND(Temp) != OPERATOR_LINKAGE_KIND)
+	{
+	  /* Assumes that all others are objects of type TC_QUAD without
+	     their type codes.
+	   */
+
+	  fast long count;
+
+	  Scan++;
+	  for (count = READ_CACHE_LINKAGE_COUNT(Temp);
+	       --count >= 0;
+	       Scan += 1)
+	  {
+	    Temp = *Scan;
+	    Setup_Pointer_for_GC(Transport_Quadruple());
+	  }
+	  Scan -= 1;
+	  break;
+	}
+	else
+	{
+	  fast long count;
+	  fast machine_word *word_ptr;
+	  Pointer *end_scan;
+
+	  count = READ_OPERATOR_LINKAGE_COUNT(Temp);
+	  word_ptr = FIRST_OPERATOR_LINKAGE_ENTRY(Scan);
+	  end_scan = END_OPERATOR_LINKAGE_AREA(Scan, count);
+
+	  while(--count >= 0)
+	  {
+	    Scan = ((Pointer *) word_ptr);
+	    word_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr);
+	    Temp = *Scan;
+	    GC_Pointer(Setup_Internal(true,
+				      Transport_Compiled(),
+				      Compiled_BH(true, continue)));
+	  }
+	  Scan = end_scan;
+	  break;
+	}
+      }
+
+      case TC_MANIFEST_CLOSURE:
+      {
+	machine_word *start_ptr;
+	fast machine_word *word_ptr;
+	Pointer *saved_scan;
+
+	saved_scan = ++Scan;
+	word_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(Scan);
+	start_ptr = word_ptr;
+
+	while (VALID_MANIFEST_CLOSURE_ENTRY(word_ptr))
+	{
+	  Scan = MANIFEST_CLOSURE_ENTRY_ADDRESS(word_ptr);
+	  word_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
+	  Temp = *Scan;
+	  GC_Pointer(Setup_Internal(true,
+				    Transport_Compiled(),
+				    Compiled_BH(true, continue)));
+	}
+	Scan = saved_scan + MANIFEST_CLOSURE_SIZE(word_ptr, start_ptr);
+	break;
+      }
 
       case_compiled_entry_point:
 	GC_Pointer(Setup_Internal(true,
 				  Transport_Compiled(),
 				  Compiled_BH(true, continue)));
-
+	break;
+
       case_Cell:
 	Setup_Pointer_for_GC(Transport_Cell());
+	break;
 
       case TC_REFERENCE_TRAP:
 	if (OBJECT_DATUM(Temp) <= TRAP_MAX_IMMEDIATE)
@@ -110,36 +200,38 @@ Pointer **To_Pointer;
 	  /* It is a non pointer. */
 	  break;
 	}
-	/* It is a pair, fall through. */
+	/* Fall Through. */
+
       case_Pair:
 	Setup_Pointer_for_GC(Transport_Pair());
+	break;
 
       case TC_VARIABLE:
       case_Triple:
 	Setup_Pointer_for_GC(Transport_Triple());
-
-/* GCLoop continues on the next page */
-
-/* GCLoop, continued */
+	break;
 
       case_Quadruple:
 	Setup_Pointer_for_GC(Transport_Quadruple());
+	break;
 
-#ifdef FLOATING_ALIGNMENT
       case TC_BIG_FLONUM:
-	Setup_Pointer_for_GC(Transport_Flonum());
-#else
-      case TC_BIG_FLONUM:
-	/* Fall through */
-#endif
+	Setup_Pointer_for_GC({
+	  Transport_Flonum();
+	  break;
+	});
+
       case_Vector:
 	Setup_Pointer_for_GC(Transport_Vector());
+	break;
 
       case TC_FUTURE:
 	Setup_Pointer_for_GC(Transport_Future());
+	break;
 
       case TC_WEAK_CONS:
 	Setup_Pointer_for_GC(Transport_Weak_Cons());
+	break;
 
       default:
 	sprintf(gc_death_message_buffer,
@@ -150,6 +242,8 @@ Pointer **To_Pointer;
 	/*NOTREACHED*/
       }	/* Switch_by_GC_Type */
   } /* For loop */
+
   *To_Pointer = To;
   return (To);
+
 } /* GCLoop */

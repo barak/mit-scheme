@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.10 1987/12/09 22:35:43 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.11 1988/03/12 16:04:26 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,46 +36,14 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "primitive.h"
-#include "gccode.h"
 
 extern Pointer *compiled_entry_to_block_address();
 extern long compiled_entry_to_block_offset();
+extern void compiled_entry_type();
 
-#define COMPILED_CODE_ADDRESS_P(object)					\
-  (((OBJECT_TYPE (object)) == TC_COMPILED_EXPRESSION) ||		\
-   ((OBJECT_TYPE (object)) == TC_RETURN_ADDRESS))
+#define COMPILED_CODE_ADDRESS_P(object)			\
+   ((OBJECT_TYPE (object)) == TC_COMPILED_ENTRY)
 
-Pointer *
-compiled_entry_to_block_address(ce)
-     Pointer ce;
-{
-#ifdef Get_Compiled_Block
-
-  Pointer *block;
-
-  block = Get_Pointer(ce);
-  Get_Compiled_Block(block, block);
-  return block;
-
-#else
-
-  error_external_return();
-  /*NOTREACHED*/
-
-#endif
-}
-
-long
-compiled_entry_to_block_offset(ce)
-     Pointer ce;
-{
-  Pointer *address;
-
-  address = Get_Pointer(ce);
-  return (((unsigned long) address) -
-	  ((unsigned long) compiled_entry_to_block_address(address)));
-}
-
 DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->BLOCK",
 		  Prim_comp_code_address_block, 1)
 {
@@ -87,7 +55,8 @@ DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->BLOCK",
   PRIMITIVE_RETURN (Make_Pointer (TC_COMPILED_CODE_BLOCK, address));
 }
 
-DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->OFFSET", Prim_comp_code_address_offset, 1)
+DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->OFFSET",
+		  Prim_comp_code_address_offset, 1)
 {
   long offset;
   Primitive_1_Arg ();
@@ -112,4 +81,22 @@ DEFINE_PRIMITIVE("STACK-TOP-ADDRESS", Prim_Stack_Top_Address, 0)
   Primitive_0_Args();
 
   PRIMITIVE_RETURN (MAKE_SIGNED_FIXNUM(STACK_TOP_TO_DATUM()));
+}
+
+DEFINE_PRIMITIVE("COMPILED-ENTRY-KIND", Prim_Compiled_Entry_Type, 1)
+{
+  fast Pointer *temp;
+  Pointer result;
+  PRIMITIVE_HEADER(1);
+
+  CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
+
+  Primitive_GC_If_Needed(3);
+  temp = Free;
+  Free = &temp[3];
+  compiled_entry_type(ARG_REF(1), temp);
+  temp[0] = MAKE_UNSIGNED_FIXNUM(((long) temp[0]));
+  temp[1] = MAKE_SIGNED_FIXNUM(((long) temp[1]));
+  temp[2] = MAKE_SIGNED_FIXNUM(((long) temp[2]));
+  PRIMITIVE_RETURN (Make_Pointer(TC_HUNK3, temp));
 }

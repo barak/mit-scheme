@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.32 1987/11/17 08:15:51 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.33 1988/03/12 16:07:29 jinx Rel $ */
 
 /* Pure/Constant space utilities. */
 
@@ -43,13 +43,43 @@ void
 Update(From, To, Was, Will_Be)
      fast Pointer *From, *To, *Was, *Will_Be;
 {
+  fast long count;
+
   for (; From < To; From++)
   {
     if (GC_Type_Special(*From))
     {
-      if (OBJECT_TYPE(*From) == TC_MANIFEST_NM_VECTOR)
-        From += Get_Integer(*From);
-      continue;
+      switch(OBJECT_TYPE(*From))
+      {
+	case TC_MANIFEST_NM_VECTOR:
+	  From += OBJECT_DATUM(*From);
+	  continue;
+
+	  /* The following two type codes assume that none of the protected
+	     objects can be updated.
+	     This may be seriously wrong!
+	   */
+	case TC_LINKAGE_SECTION:
+	  if (READ_LINKAGE_KIND(*From) != OPERATOR_LINKAGE_KIND)
+	  {
+	    From += READ_CACHE_LINKAGE_COUNT(*From);
+	    continue;
+	  }
+	  else
+	  {
+	    count = READ_OPERATOR_LINKAGE_COUNT(*From);
+	    From = END_OPERATOR_LINKAGE_AREA(From, count);
+	    continue;	    
+	  }
+
+	case TC_MANIFEST_CLOSURE:
+	  count = READ_OPERATOR_LINKAGE_COUNT(*From);
+	  From = END_OPERATOR_LINKAGE_AREA(From, count);
+	  continue;	  
+
+	default:
+	  continue;
+      }
     }
     if (GC_Type_Non_Pointer(*From))
       continue;
@@ -79,7 +109,7 @@ Make_Impure(Object)
     case TC_MANIFEST_NM_VECTOR:
     case TC_MANIFEST_SPECIAL_NM_VECTOR:
     case_Non_Pointer:
-      fprintf(stderr, "\nImpurify Non-Pointer.\n");
+      fprintf(stderr, "\nImpurify Non-Pointer (0x%lx)\n", Object);
       Microcode_Termination(TERM_NON_POINTER_RELOCATION);
   
     case TC_BIG_FLONUM:
@@ -106,8 +136,11 @@ Make_Impure(Object)
       Length = 1;
       break;
 
+    case TC_LINKAGE_SECTION:
+    case TC_MANIFEST_CLOSURE:
+    case_compiled_entry_point:
     default:
-      fprintf(stderr, "\nImpurify: Bad type code = 0x%02x\n",
+      fprintf(stderr, "\nImpurify: Bad type code = 0x%02x.\n",
 	      OBJECT_TYPE(Object));
       Invalid_Type_Code();
   }

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.35 1988/02/20 06:17:33 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.36 1988/03/12 16:05:10 jinx Exp $
 
    This file contains code for fasdump and dump-band.
 */
@@ -84,18 +84,28 @@ static Boolean compiled_code_present_p;
    contents (e) To_Pointer is now NewFree.
 */
 
+#define Setup_Pointer_for_Dump(Extra_Code)			\
+Dump_Pointer(Fasdump_Setup_Pointer(Extra_Code, Normal_BH(false, continue)))
+
 #define Dump_Pointer(Code)					\
 Old = Get_Pointer(Temp);					\
 Code
 
-#define Setup_Pointer_for_Dump(Extra_Code)			\
-Dump_Pointer(Fasdump_Setup_Pointer(Extra_Code, Normal_BH(false, continue)))
+#define Dump_Compiled_Entry()						\
+{									\
+  Dump_Pointer(Fasdump_Setup_Pointer(Transport_Compiled(),		\
+				     Compiled_BH(false, continue)));	\
+}
 
 /* Dump_Mode is currently a fossil.  It should be resurrected. */
 
 /* Should be big enough for the largest fixed size object (a Quad) 
    and 2 for the Fixup.
  */
+
+#define	NORMAL_GC	0
+#define PURE_COPY	1
+#define CONSTANT_COPY	2
 
 #define FASDUMP_FIX_BUFFER 10
 
@@ -139,14 +149,82 @@ DumpLoop(Scan, Dump_Mode)
       case TC_STACK_ENVIRONMENT:
       case_Fasload_Non_Pointer:
 	break;
+
+      /* Compiled code relocation. */
+
+      case TC_LINKAGE_SECTION:
+      {
+	compiled_code_present_p = true;
+	if (READ_LINKAGE_KIND(Temp) != OPERATOR_LINKAGE_KIND)
+	{
+	  /* Assumes that all others are objects of type TC_QUAD without
+	     their type codes.
+	   */
+
+	  fast long count;
+
+	  Scan++;
+	  for (count = READ_CACHE_LINKAGE_COUNT(Temp);
+	       --count >= 0;
+	       Scan += 1)
+	  {
+	    Temp = *Scan;
+	    Setup_Pointer_for_Dump(Transport_Quadruple());
+	  }
+	  Scan -= 1;
+	  break;
+	}
+	else
+	{
+	  fast long count;
+	  fast machine_word *word_ptr;
+	  Pointer *end_scan;
+
+	  count = READ_OPERATOR_LINKAGE_COUNT(Temp);
+	  word_ptr = FIRST_OPERATOR_LINKAGE_ENTRY(Scan);
+	  end_scan = END_OPERATOR_LINKAGE_AREA(Scan, count);
+
+	  while(--count >= 0)
+	  {
+	    Scan = ((Pointer *) word_ptr);
+	    word_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr);
+	    Temp = *Scan;
+	    Dump_Compiled_Entry();
+	  }
+	  Scan = end_scan;
+	  break;
+	}
+      }
+
+      case TC_MANIFEST_CLOSURE:
+      {
+	machine_word *start_ptr;
+	fast machine_word *word_ptr;
+	Pointer *saved_scan;
+
+	saved_scan = ++Scan;
+	word_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(Scan);
+	start_ptr = word_ptr;
+
+	while (VALID_MANIFEST_CLOSURE_ENTRY(word_ptr))
+	{
+	  Scan = MANIFEST_CLOSURE_ENTRY_ADDRESS(word_ptr);
+	  word_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
+	  Temp = *Scan;
+	  Dump_Compiled_Entry();
+	}
+	Scan = saved_scan + MANIFEST_CLOSURE_SIZE(word_ptr, start_ptr);
+	break;
+      }
 
       case_compiled_entry_point:
 	compiled_code_present_p = true;
-	Dump_Pointer(Fasdump_Setup_Pointer(Transport_Compiled(),
-					   Compiled_BH(false, continue)));
-
+	Dump_Compiled_Entry();
+	break;
+
       case_Cell:
 	Setup_Pointer_for_Dump(Transport_Cell());
+	break;
 
       case TC_REFERENCE_TRAP:
 	if (OBJECT_DATUM(Temp) <= TRAP_MAX_IMMEDIATE)
@@ -159,18 +237,23 @@ DumpLoop(Scan, Dump_Mode)
       case TC_WEAK_CONS:
       case_Fasdump_Pair:
 	Setup_Pointer_for_Dump(Transport_Pair());
+	break;
 
       case TC_INTERNED_SYMBOL:
 	Setup_Pointer_for_Dump(Fasdump_Symbol(Make_Broken_Heart(0)));
+	break;
 
       case TC_UNINTERNED_SYMBOL:
 	Setup_Pointer_for_Dump(Fasdump_Symbol(UNBOUND_OBJECT));
+	break;
 
       case_Triple:
 	Setup_Pointer_for_Dump(Transport_Triple());
+	break;
 
       case TC_VARIABLE:
 	Setup_Pointer_for_Dump(Fasdump_Variable());
+	break;
 
 /* DumpLoop continues on the next page */
 
@@ -178,17 +261,18 @@ DumpLoop(Scan, Dump_Mode)
 
       case_Quadruple:
 	Setup_Pointer_for_Dump(Transport_Quadruple());
+	break;
 
-#ifdef FLOATING_ALIGNMENT
       case TC_BIG_FLONUM:
-	Setup_Pointer_for_Dump(Transport_Flonum());
-#else
-      case TC_BIG_FLONUM:
-	/* Fall through */
-#endif
+	Setup_Pointer_for_Dump({
+	  Transport_Flonum();
+	  break;
+	});
+
       case TC_COMPILED_CODE_BLOCK:
       case_Purify_Vector:
 	Setup_Pointer_for_Dump(Transport_Vector());
+	break;
 
       case TC_ENVIRONMENT:
 	/* Make fasdump fail */
@@ -196,6 +280,7 @@ DumpLoop(Scan, Dump_Mode)
 
       case TC_FUTURE:
 	Setup_Pointer_for_Dump(Transport_Future());
+	break;
 
       default:
 	sprintf(gc_death_message_buffer,

@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.42 1988/02/12 16:53:42 jinx Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.43 1988/03/12 16:08:08 jinx Exp $
 
 (declare (usual-integrations))
 
@@ -109,7 +109,7 @@
 	       VECTOR					;0A
 	       (RETURN-CODE RETURN-ADDRESS)		;0B
 	       COMBINATION-2				;0C
-	       COMPILED-PROCEDURE 	       		;0D
+	       MANIFEST-CLOSURE 	       		;0D
 	       (BIGNUM BIG-FIXNUM)			;0E
 	       PROCEDURE				;0F
 	       (ENTITY)					;10
@@ -136,7 +136,7 @@
 	       IN-PACKAGE				;25
 	       COMBINATION	       			;26
 	       MANIFEST-NM-VECTOR	       		;27
-	       COMPILED-EXPRESSION			;28
+	       COMPILED-ENTRY				;28
 	       LEXPR					;29
 	       PRIMITIVE-COMBINATION-3		       	;2A
 	       MANIFEST-SPECIAL-NM-VECTOR	  	;2B
@@ -153,7 +153,7 @@
 	       CELL					;36
 	       WEAK-CONS				;37
 	       QUAD        				;38
-	       COMPILER-RETURN-ADDRESS			;39
+	       LINKAGE-SECTION				;39
 	       RATNUM					;3A
 	       STACK-ENVIRONMENT			;3B
 	       (RECNUM COMPLEX)				;3C
@@ -438,17 +438,18 @@
 	       COMPILER-UNASSIGNED?-RESTART		;4D
 	       COMPILER-UNBOUND?-RESTART		;4E
 	       COMPILER-DEFINITION-RESTART		;4F
-	       COMPILER-LEXPR-INTERRUPT-RESTART		;50
+	       #F					;50
 	       COMPILER-SAFE-REFERENCE-RESTART		;51
-	       COMPILER-CACHE-VARIABLE-RESTART		;52
+	       #F					;52
 	       COMPILER-REFERENCE-TRAP-RESTART		;53
 	       COMPILER-ASSIGNMENT-TRAP-RESTART		;54
-	       COMPILER-UUO-LINK-RESTART		;55
-	       COMPILER-UUO-LINK-TRAP-RESTART		;56
-	       COMPILER-CACHE-REFERENCE-APPLY-RESTART	;57
+	       #F					;55
+	       COMPILER-OPERATOR-LOOKUP-TRAP-RESTART	;56
+	       COMPILER-LOOKUP-APPLY-TRAP-RESTART	;57
 	       COMPILER-SAFE-REFERENCE-TRAP-RESTART	;58
 	       COMPILER-UNASSIGNED?-TRAP-RESTART	;59
-	       COMPILER-CACHE-ASSIGNMENT-RESTART	;5A
+	       #F					;5A
+	       COMPILER-LINK-CACHES-RESTART 		;5B
 	       ))
 
 ;;; [] Errors
@@ -569,4 +570,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.42 1988/02/12 16:53:42 jinx Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.43 1988/03/12 16:08:08 jinx Exp $"

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.29 1988/02/06 20:40:00 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.30 1988/03/12 16:04:57 jinx Rel $
  *
  * Error and termination code declarations.
  *
@@ -60,7 +60,7 @@ MIT in each case. */
 #define ERR_ARG_1_BAD_RANGE			0x10
 #define ERR_ARG_2_BAD_RANGE			0x11
 #define ERR_ARG_3_BAD_RANGE			0x12
-/* #define ERR_BAD_COMBINATION			0x13 */
+#define ERR_BAD_COMBINATION			0x13
 /* #define ERR_FASDUMP_OVERFLOW			0x14 */
 #define ERR_BAD_INTERRUPT_CODE			0x15 /* Not generated */
 /* #define ERR_NO_ERRORS			0x16 */
