@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.1 2000/04/18 21:44:48 cph Exp $
+;;; $Id: imail-imap.scm,v 1.2 2000/04/18 21:50:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -59,25 +59,25 @@
 ;;;; Server operations
 
 (define-method %open-folder ((url <imap-url>))
-  )
+  ???)
 
 (define-method %new-folder ((url <imap-url>))
-  )
+  ???)
 
 (define-method %delete-folder ((url <imap-url>))
-  )
+  ???)
 
 (define-method %move-folder ((url <imap-url>) (new-url <imap-url>))
-  )
+  ???)
 
 (define-method %copy-folder ((url <imap-url>) (new-url <imap-url>))
-  )
+  ???)
 
 (define-method available-folder-names ((url <imap-url>))
-  )
+  ???)
 
 (define-method subscribed-folder-names ((url <imap-url>))
-  )
+  ???)
 
 ;;;; Folder
 
