@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/make.scm,v 4.89 1991/11/04 20:35:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/make.scm,v 4.90 1992/04/13 04:44:50 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -46,5 +46,5 @@ MIT in each case. |#
     (initialize-package! '(COMPILER DECLARATIONS)))
   (add-system!
    (make-system (string-append "Liar (" architecture-name ")")
-		4 89
+		4 90
 		'())))
