@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.29 1987/06/22 19:59:38 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.30 1987/07/07 21:01:25 cph Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -740,6 +740,8 @@ lookup_end_restart:
 
       Eval_Error(temp);
     }
+
+    SITE_EXPRESSION_DISPATCH_HOOK()
 
     case TC_RETURN_CODE:
     default: Eval_Error(ERR_UNDEFINED_USER_TYPE);
@@ -1853,6 +1855,8 @@ return_from_compiled_code:
     case RC_POP_FROM_COMPILED_CODE:
       Export_Registers();
       Microcode_Termination(TERM_UNIMPLEMENTED_CONTINUATION);
+
+    SITE_RETURN_DISPATCH_HOOK()
 
     default:
       Export_Registers();
