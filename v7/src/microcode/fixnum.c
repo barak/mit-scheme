@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.35 1992/01/15 02:23:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.36 1992/07/21 18:27:46 cph Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -59,6 +59,15 @@ DEFUN (arg_unsigned_fixnum, (n), int n)
 }
 
 /* Predicates */
+
+DEFINE_PRIMITIVE ("FIXNUM?", Prim_zero_fixnum_p, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    SCHEME_OBJECT argument = (ARG_REF (1));
+    PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (FIXNUM_P (argument)));
+  }
+}
 
 DEFINE_PRIMITIVE ("ZERO-FIXNUM?", Prim_zero_fixnum, 1, 1, 0)
 {
