@@ -139,7 +139,7 @@
 	(height (picture-height picture)))
     (let y-loop ((y 0))
       (if (< y height)
-	  (let ((yth-row (floating-vector-ref picdata y)))
+	  (let ((yth-row (vector-ref picdata y)))
 	    (let x-loop ((x 0))
 	      (if (< x width)
 		  (begin (floating-vector-set! yth-row x 

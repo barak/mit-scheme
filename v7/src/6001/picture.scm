@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.10 1992/06/08 16:50:21 aragorn Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.11 1992/06/08 18:17:14 aragorn Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -179,8 +179,8 @@ MIT in each case. |#
 	       (let ((p1-data (picture-data (car pic-list))))
 		 (let y-loop ((y 0))
 		   (if (fix:< y height)
-		       (let ((out-yth-row (floating-vector-ref picdata y))
-			     (in-yth-row (floating-vector-ref p1-data y))) 
+		       (let ((out-yth-row (vector-ref picdata y))
+			     (in-yth-row (vector-ref p1-data y))) 
 			 (let x-loop ((x 0))
 			   (if (fix:< x width)
 			       (begin
@@ -195,9 +195,9 @@ MIT in each case. |#
 		     (p2-data (picture-data (cadr pic-list))))
 		 (let y-loop ((y 0))
 		   (if (fix:< y height)
-		       (let ((out-yth-row (floating-vector-ref picdata y))
-			     (in-yth-row1 (floating-vector-ref p1-data y))
-			     (in-yth-row2 (floating-vector-ref p2-data y)))
+		       (let ((out-yth-row (vector-ref picdata y))
+			     (in-yth-row1 (vector-ref p1-data y))
+			     (in-yth-row2 (vector-ref p2-data y)))
 			 (let x-loop ((x 0))
 			   (if (fix:< x width)
 			       (begin (floating-vector-set! 
@@ -213,9 +213,9 @@ MIT in each case. |#
 				     pic-list)))
 		 (let y-loop ((y 0)) 
 		   (if (fix:< y height)
-		       (let ((out-yth-row (floating-vector-ref picdata y))
+		       (let ((out-yth-row (vector-ref picdata y))
 			     (in-yth-rows (map (lambda (data) 
-						 (floating-vector-ref
+						 (vector-ref
 						  data y))
 					       data-list)))
 			 (let x-loop ((x 0))
