@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: editor.scm,v 1.239 1995/01/06 17:47:09 cph Exp $
+;;;	$Id: editor.scm,v 1.240 1995/01/06 17:47:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -197,7 +197,7 @@
     (if (and buffer
 	     (not inhibit-initial-inferior-repl?))
 	(start-inferior-repl!
-	 (current-buffer)
+	 buffer
 	 (nearest-repl/environment)
 	 (nearest-repl/syntax-table)
 	 (and (not (ref-variable inhibit-startup-message))
