@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/notify.scm,v 1.5 1992/02/18 15:24:56 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/notify.scm,v 1.6 1992/02/19 00:11:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -46,101 +46,156 @@
 
 (declare (usual-integrations))
 
-(define-variable mail-notify-directory
-  "Directory in which MAIL-NOTIFY checks for mail."
-  (pathname-as-directory "/usr/mail/")
-  file-directory?)
+(define-variable notify-show-time
+  "If true, the notifier displays the current time."
+  true
+  boolean?)
 
-(define mail-present-string " Mail")
-(define mail-not-present-string "")
+(define (notifier:time)
+  (let ((time (get-decoded-time)))
+    (let ((hour (decoded-time/hour time))
+	  (minute (decoded-time/minute time)))
+      (string-append (write-to-string
+		      (cond ((zero? hour) 12)
+			    ((< hour 13) hour)
+			    (else (- hour 12))))
+		     (if (< minute 10) ":0" ":")
+		     (write-to-string minute)
+		     (if (< hour 12) "am" "pm")))))
 
-(define (mail-notify)
-  (install-mail-notify-hook! false)
-  (start-notifier (make-notifier get-mail-present-string)))
+(define-variable notify-show-load
+  "If true, the notifier displays the load average."
+  false
+  boolean?)
 
-(define (mail-and-load-notify)
-  (install-mail-notify-hook! true)
-  (start-notifier
-   (make-notifier
-    (lambda ()
-      (string-append (get-load-average-string)
-		     (get-mail-present-string))))))
-
-(define (get-mail-present-string)
-  (if (check-for-mail)
-      mail-present-string
-      mail-not-present-string))
-
-(define (check-for-mail)
-  (let ((attributes
-	 (file-attributes
-	  (merge-pathnames (ref-variable mail-notify-directory)
-			   (unix/current-user-name)))))
-    (and attributes
-	 (> (file-attributes/length attributes) 0))))
-
-(define (get-load-average-string)
+(define (notifier:load-average)
   (let ((temporary-buffer (temporary-buffer "*uptime*")))
     (let ((start (buffer-start temporary-buffer)))
       (shell-command false start false false "uptime")
       (let ((result
 	     (if (re-search-forward
-		  "[ ]*\\([0-9:]+[ap]m\\).*load average:[ ]*\\([0-9.]*\\),"
+		  ".*load average:[ ]*\\([0-9.]*\\),"
 		  start 
 		  (buffer-end temporary-buffer))
-		 (string-append
-		  (extract-string (re-match-start 1) (re-match-end 1))
-		  " "
-		  (extract-string (re-match-start 2) (re-match-end 2)))
-		 "n/a")))
+		 (extract-string (re-match-start 1)
+				 (re-match-end 1))
+		 "")))
 	(kill-buffer temporary-buffer)
 	result))))
-
-(define-variable notify-string
-  "Either \" Mail\" or \"\" depending on whether mail is waiting."
+
+(define-variable notify-show-mail
+  "If true, the notifier displays your mail status."
+  true
+  boolean?)
+
+(define-variable notify-mail-present
+  "A string to be displayed in the modeline when mail is present.
+Ignored if notify-show-mail is false."
+  "Mail"
+  string?)
+
+(define-variable notify-mail-not-present
+  "A string to be displayed in the modeline when mail is not present.
+Ignored if notify-show-mail is false."
   ""
   string?)
 
+(define-variable mail-notify-directory
+  "Directory in which MAIL-NOTIFY checks for mail."
+  (pathname-as-directory "/usr/mail/")
+  file-directory?)
+
+(define (notifier:mail-present)
+  (if (let ((attributes
+	     (file-attributes
+	      (merge-pathnames (ref-variable mail-notify-directory)
+			       (unix/current-user-name)))))
+	(and attributes
+	     (> (file-attributes/length attributes) 0)))
+      (ref-variable notify-mail-present)
+      (ref-variable notify-mail-not-present)))
+
 (define-variable notify-interval
-  "Interval at which MAIL-NOTIFY checks for mail, in milliseconds."
-  60000
+  "How often the notifier updates the modeline, in seconds."
+  60
   exact-nonnegative-integer?)
+
+(define notifier-elements
+  (list (cons (ref-variable-object notify-show-time) notifier:time)
+	(cons (ref-variable-object notify-show-load) notifier:load-average)))
+
+(define-command run-notifier
+  "Run the notifier.
+The notifier maintains a simple display in the modeline,
+which can show various things including time, load average, and mail status."
+  ()
+  (lambda ()
+    (if (not mail-notify-hook-installed?)
+	(begin
+	  (add-event-receiver!
+	   (ref-variable rmail-new-mail-hook)
+	   (lambda ()
+	     (update-notify-string!
+	      (if (ref-variable notify-show-mail)
+		  (ref-variable notify-mail-not-present)
+		  ""))))
+	  (set! mail-notify-hook-installed? true)
+	  unspecific))
+    ((ref-command kill-notifier))
+    (let ((thread
+	   (create-thread
+	    editor-thread-root-continuation
+	    (lambda ()
+	      (do () (false)
+		(inferior-thread-output! notifier-thread-registration)
+		(sleep-current-thread
+		 (* 1000 (ref-variable notify-interval))))))))
+      (detach-thread thread)
+      (set! current-notifier-thread thread)
+      (set! notifier-thread-registration
+	    (register-inferior-thread! thread notifier)))
+    unspecific))
+
+(define (notifier)
+  (set-variable! global-mode-string
+		 (reduce string-append-separated
+			 ""
+			 (map (lambda (element)
+				(if (and (car element)
+					 (variable-value (car element)))
+				    ((cdr element))
+				    ""))
+			      notifier-elements)))
+  (update-notify-string!
+   (if (ref-variable notify-show-mail)
+       (notifier:mail-present)
+       ""))
+  true)
+
+(define-command kill-notifier
+  "Kill the current notifier, if any."
+  ()
+  (lambda ()
+    (if (and current-notifier-thread
+	     (not (thread-dead? current-notifier-thread)))
+	(signal-thread-event current-notifier-thread
+			     (lambda () (exit-current-thread unspecific))))
+    (set-variable! global-mode-string "")
+    (update-notify-string! "")))
+
+(define (update-notify-string! string)
+  (set-variable! notify-string
+		 (if (or (string-null? (ref-variable global-mode-string))
+			 (string-null? string))
+		     string
+		     (string-append " " string)))
+  (global-window-modeline-event!))
+
+(define-variable notify-string
+  "This is an internal variable.  Don't change it."
+  ""
+  string?)
 
 (define mail-notify-hook-installed? false)
 (define current-notifier-thread false)
-
-(define (install-mail-notify-hook! load-notify?)
-  (if (not mail-notify-hook-installed?)
-      (begin
-       (add-event-receiver!
-	(ref-variable rmail-new-mail-hook)
-	(lambda ()
-	  (set-variable! 
-	   notify-string 
-	   (if load-notify?
-	       (string-append (get-load-average-string)
-			      mail-not-present-string)
-	       mail-not-present-string))
-	  (global-window-modeline-event!)
-	  (update-screens! false)))
-       (set! mail-notify-hook-installed? true)
-       unspecific)))
-
-(define (make-notifier thunk)
-  (lambda ()
-    (let notify-cycle ()
-      (set-variable! notify-string (thunk))
-      (global-window-modeline-event!)
-      (update-screens! false)
-      (sleep-current-thread (ref-variable notify-interval))
-      (notify-cycle))))
-
-(define (start-notifier notifier)
-  (if (and current-notifier-thread
-	   (not (thread-dead? current-notifier-thread)))
-      (signal-thread-event current-notifier-thread
-			   (lambda () (exit-current-thread unspecific))))
-  (let ((thread (create-thread editor-thread-root-continuation notifier)))
-    (detach-thread thread)
-    (set! current-notifier-thread thread)
-    thread))
+(define notifier-thread-registration)
