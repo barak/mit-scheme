@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.6 2000/05/18 21:09:37 cph Exp $
+;;; $Id: imail-summary.scm,v 1.7 2000/05/18 21:27:59 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -229,10 +229,12 @@ The recipients are specified as a comma-separated list of names."
 	(insert-newline mark)
 	(insert-string " " mark)
 	(insert-chars #\- index-digits mark)
-	(insert-string " ------  ----   " mark)
-	(insert-string-pad-right "-------" 40 #\space mark)
+	(insert-string " ------ ------  " mark)
+	(insert-chars #\- 40 mark)
 	(insert-string "  " mark)
-	(insert-string "----" mark)
+	(insert-chars #\-
+		      (max 4 (- (mark-x-size mark) (+ (mark-column mark) 1)))
+		      mark)
 	(insert-newline mark)
 	(for-each (lambda (message)
 		    (if (or (not predicate) (predicate message))
@@ -302,7 +304,32 @@ The recipients are specified as a comma-separated list of names."
 
 (define-major-mode imail-summary imail "IMAIL Summary"
   "Major mode in effect in IMAIL summary buffer.
-This mode is like IMAIL mode, with the addition of some specialized commands.
+Each line summarizes a single mail message.
+The columns describing the message are, left to right:
+
+1. A character in the left column indicating whether the message is
+   marked for deletion.  If so, this character is `D', otherwise it is
+   a space.
+
+2. The message index number.
+
+3. The approximate length of the message in bytes.  Large messages are
+   abbreviated using the standard metric suffixes (`k'=1,000,
+   `M'=1,000,000, etc.)  The length includes all of the header fields,
+   including those that aren't normally shown.  (In IMAP folders, the
+   length is slightly higher because it counts line endings as two
+   characters whereas Edwin counts them as one.)
+
+4. The date the message was sent, abbreviated by the day and month.
+
+5. The subject line from the message, truncated if it is too long to
+   fit in the available space.
+
+6. The sender of the message, from the message's `From:' header.
+
+The commands in this buffer are mostly the same as those for IMAIL
+mode (the mode used by the buffer that shows the message contents),
+with some additions to make navigation more natural.
 
 \\{imail-summary}"
   (lambda (buffer)
@@ -314,7 +341,13 @@ This mode is like IMAIL mode, with the addition of some specialized commands.
 			       (buffer-get buffer
 					   'IMAIL-SUMMARY-DESCRIPTION
 					   "All"))
-			 buffer)))
+			 buffer)
+    (event-distributor/invoke! (ref-variable imail-summary-mode-hook buffer)
+			       buffer)))
+
+(define-variable imail-summary-mode-hook
+  "An event distributor that is invoked when entering IMAIL Summary mode."
+  (make-event-distributor))
 
 (define (imail-summary-revert-buffer buffer dont-use-auto-save? dont-confirm?)
   dont-use-auto-save? dont-confirm?
@@ -330,7 +363,7 @@ This mode is like IMAIL mode, with the addition of some specialized commands.
 (define-key 'imail-summary #\q		'imail-summary-quit)
 (define-key 'imail-summary #\m-<	'imail-select-message)
 (define-key 'imail-summary #\m->	'imail-last-message)
-
+
 (define-command imail-summary-select-message
   "Select the message that point is on and show it in another window."
   ()
