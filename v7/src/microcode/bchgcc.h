@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.48 1992/06/04 13:09:39 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.49 1992/06/04 13:10:04 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -48,8 +48,8 @@ MIT in each case. */
 #endif
 
 #ifndef DOS386
-#else
 #  include <sys/param.h>
+#else
 #  define IO_PAGE_SIZE		4096
 #endif
 
