@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 1.3 1987/06/15 22:44:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 1.4 1987/06/18 01:08:51 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -135,6 +135,11 @@ MIT in each case. |#
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (CONSTANT (? object)))
   `(,(load-constant object (indirect-reference! a n))))
+
+(define-rule statement
+  (ASSIGN (OFFSET (REGISTER (? a)) (? n))
+	  (UNASSIGNED))
+  `(,(load-non-pointer type-code:unassigned 0 (indirect-reference! a n))))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
