@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.8 1991/03/15 23:39:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.9 1991/08/06 22:39:52 bal Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -47,6 +47,19 @@
 (declare (usual-integrations))
 
 ;;;; Major Mode Libraries
+
+(define-library 'RMAIL-SUMMARY-MODE
+  '("rmailsum" (EDWIN RMAIL)))
+
+(define-autoload-major-mode 'rmail-summary 'fundamental "RMAIL-Summary" 'RMAIL-SUMMARY-MODE
+  "Summary mode for RMAIL.")
+
+(define-autoload-command 'rmail-summary 'RMAIL-SUMMARY-MODE
+  "Enter RMAIL Summary mode.")
+
+(define-variable rmail-summary-mode-hook
+  "An event distributor that is invoked when entering RMAIL Summary mode."
+  (make-event-distributor))
 
 (define-library 'MIDAS-MODE
   '("midas" (EDWIN)))
