@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.33 1990/11/13 08:44:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.34 1990/11/14 14:04:51 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -208,8 +208,6 @@ DEFINE_PRIMITIVE ("DUMP-WORLD", Prim_dump_world, 1, 1, 0)
   char
     * fname,
     path_buffer[FILE_NAME_LENGTH];
-  extern
-    char * scheme_program_name;
   PRIMITIVE_HEADER (1);
 
   PRIMITIVE_CANONICALIZE_CONTEXT();
