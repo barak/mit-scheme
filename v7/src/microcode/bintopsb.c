@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.36 1989/05/15 22:06:49 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.37 1989/05/16 07:16:51 jinx Rel $
  *
  * This File contains the code to translate internal format binary
  * files to portable format.
@@ -107,13 +107,14 @@ ispunct(c)
 ((long) (upgrade_lengths_p ? Get_Integer(value) : (value)))
 
 static Boolean
-  shuffle_bytes_p = false,
-  allow_nmv_p = false,
-  upgrade_traps_p = false,
-  upgrade_primitives_p = false,
-  upgrade_lengths_p = false,
   allow_compiled_p = false,
-  upgrade_compiled_p = false;
+  allow_nmv_p = false,
+  shuffle_bytes_p = false,
+  upgrade_compiled_p = false,
+  upgrade_lengths_p = false,
+  upgrade_primitives_p = false,
+  upgrade_traps_p = false,
+  vax_invert_p = false;
 
 static long
   Heap_Relocation, Constant_Relocation,
@@ -639,6 +640,54 @@ print_a_flonum(val)
   }									\
 }
 
+/* This is a hack to get the cross compiler to work from vaxen to other
+   machines and viceversa.
+ */
+
+#define Do_Inverted_Block(Code, Rel, Fre, Scn, Obj, FObj)		\
+{									\
+  Old_Address += (Rel);							\
+  Old_Contents = *Old_Address;						\
+									\
+  if (OBJECT_TYPE(Old_Contents)  == TC_BROKEN_HEART)			\
+  {									\
+    Mem_Base[(Scn)] = Make_New_Pointer(OBJECT_TYPE(This),		\
+				       Old_Contents);			\
+  }									\
+  else									\
+  {									\
+    fast long len1, len2;						\
+    Pointer *Saved;							\
+									\
+    Mem_Base[(Scn)] = Make_Non_Pointer(OBJECT_TYPE(This), (Fre));	\
+									\
+    len1 = OBJECT_DATUM(Old_Contents);					\
+    *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Fre));		\
+    Mem_Base[(Fre)++] = Old_Contents;					\
+    if ((OBJECT_TYPE(*Old_Address)) != TC_MANIFEST_NM_VECTOR)		\
+    {									\
+      fprintf(stderr, "%s: Bad compiled code block found.\n",		\
+	      program_name);						\
+      quit(1);								\
+    }									\
+    len2 = OBJECT_DATUM(*Old_Address);					\
+    Mem_Base[(Fre)++] = *Old_Address++;					\
+    Old_Address += len2;						\
+    Saved = Old_Address;						\
+    len1 -= (len2 + 1);							\
+    while (--len2 >= 0)							\
+    {									\
+      Old_Address -= 1;							\
+      Mem_Base[(Fre)++] = *Old_Address;					\
+    }									\
+    Old_Address = Saved;						\
+    while (--len1 >= 0)							\
+    {									\
+      Mem_Base[(Fre)++] = *Old_Address++;				\
+    }									\
+  }									\
+}
+
 #define Do_Compiled_Entry(Code, Rel, Fre, Scn, Obj, FObj)		\
 {									\
   long offset;								\
@@ -964,14 +1013,21 @@ Process_Area(Code, Area, Bound, Obj, FObj)
 
       case TC_COMPILED_CODE_BLOCK:
 	compiled_p = true;
-	if (!allow_compiled_p)
+	if (vax_invert_p)
+	{
+	  Do_Pointer(*Area, Do_Inverted_Block);
+	}
+	else if (allow_compiled_p)
+	{
+	  Do_Pointer(*Area, Do_Vector);
+	}
+	else
 	{
 	  fprintf(stderr,
 		  "%s: File contains compiled code.\n",
 		  program_name);
 	  quit(1);
 	}
-	Do_Pointer(*Area, Do_Vector);
 
       case_compiled_entry_point:
 	compiled_p = true;
@@ -1314,7 +1370,7 @@ do_it()
   }
 
   allow_compiled_p = (allow_compiled_p || upgrade_compiled_p);
-  allow_nmv_p = (allow_nmv_p || allow_compiled_p);
+  allow_nmv_p = (allow_nmv_p || allow_compiled_p || vax_invert_p);
   if (null_nmv_p && allow_nmv_p)
   {
     fprintf(stderr,
@@ -1639,6 +1695,7 @@ static struct keyword_struct
 	    &ci_version_sup_p),
     KEYWORD("ci_processor", &compiler_processor_type, INT_KYWRD, "%ld",
 	    &ci_processor_sup_p),
+    KEYWORD("vax_invert", &vax_invert_p, BOOLEAN_KYWRD, BFRMT, NULL),
     KEYWORD("help", &help_p, BOOLEAN_KYWRD, BFRMT, &help_sup_p),
     OUTPUT_KEYWORD(),
     INPUT_KEYWORD(),
