@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.495 2004/10/01 02:16:49 cph Exp $
+$Id: runtime.pkg,v 14.496 2004/10/01 02:32:03 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -150,7 +150,6 @@ USA.
 	  interrupt-bit/timer
 	  interrupt-mask/all
 	  interrupt-mask/gc-ok
-	  interrupt-mask/no-background
 	  interrupt-mask/none
 	  interrupt-mask/timer-ok
 	  object-constant?
@@ -159,7 +158,6 @@ USA.
 	  unparser-method?
 	  unparser/standard-method
 	  with-absolutely-no-interrupts
-	  without-background-interrupts
 	  without-interrupts))
 
 (define-package (runtime equality)
