@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/copy.scm,v 3.4 1987/04/27 21:45:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/copy.scm,v 3.5 1987/05/09 00:50:09 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -188,9 +188,19 @@ MIT in each case. |#
 
 (define-method/copy 'COMBINATION
   (lambda (block environment expression)
-    (combination/make
-     (copy/expression block environment (combination/operator expression))
-     (copy/expressions block environment (combination/operands expression)))))
+    (let ((operator (combination/operator expression))
+	  (operands (combination/operands expression)))
+      (if (and (constant? operator)
+	       (eq? error-procedure (constant/value operator))
+	       (the-environment? (caddr operands)))
+	  (combination/make
+	   operator
+	   (list (copy/expression block environment (car operands))
+		 (copy/expression block environment (cadr operands))
+		 (the-environment/make block)))
+	  (combination/make
+	   (copy/expression block environment operator)
+	   (copy/expressions block environment operands))))))
 
 (define-method/copy 'CONDITIONAL
   (lambda (block environment expression)
@@ -215,14 +225,14 @@ MIT in each case. |#
   (lambda (block environment expression)
     (delay/make
      (copy/expression block environment (delay/expression expression)))))
-
+
 (define-method/copy 'DISJUNCTION
   (lambda (block environment expression)
     (disjunction/make
      (copy/expression block environment (disjunction/predicate expression))
      (copy/expression block environment
 		      (disjunction/alternative expression)))))
-
+
 (define-method/copy 'IN-PACKAGE
   (lambda (block environment expression)
     (in-package/make
@@ -267,7 +277,7 @@ MIT in each case. |#
     (reference/make block
 		    (copy/variable block environment
 				   (reference/variable expression)))))
-
+
 (define-method/copy 'SEQUENCE
   (lambda (block environment expression)
     (sequence/make
