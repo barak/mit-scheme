@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.10 1994/01/29 21:37:38 adams Exp $
+$Id: graphics.scm,v 1.11 1994/03/01 21:18:28 cph Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -169,16 +169,20 @@ MIT in each case. |#
        (if (not entry)
 	   (error "Unknown graphics operation" name type))
        (cdr entry)))))
-
-
+
 (define graphics-types '())
 ;; alist of (<symbol> . <graphics-device-type>)
 
-(define (graphics-type-available? type-name)
-  (memq type-name (enumerate-graphics-device-types)))
-
 (define (register-graphics-device-type name type)
-  (set! graphics-types (cons (cons name type) graphics-types)))
+  (set! graphics-types (cons (cons name type) graphics-types))
+  unspecific)
+
+(define (graphics-type-available? type-or-name)
+  (let loop ((types (%enumerate-graphics-device-types)))
+    (and (not (null? types))
+	 (or (eq? type-or-name (caar types))
+	     (eq? type-or-name (cdar types))
+	     (loop (cdr types))))))
 
 (define (enumerate-graphics-device-types)
   (map car (%enumerate-graphics-device-types)))
