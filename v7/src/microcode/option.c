@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.25 1992/06/05 19:35:33 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.26 1992/06/10 21:40:47 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -1152,9 +1152,14 @@ DEFUN (read_command_line_options, (argc, argv),
 	(standard_numeric_option ("-constant",
 				  option_raw_constant,
 				  LARGE_CONSTANT_VARIABLE,
+#ifdef HAS_COMPILER_SUPPORT
 				  (option_edwin_defaults
 				   ? DEFAULT_EDWIN_CONSTANT
-				   : DEFAULT_LARGE_CONSTANT)));
+				   : DEFAULT_LARGE_CONSTANT)
+#else
+				  DEFAULT_LARGE_CONSTANT
+#endif
+				  ));
 
       option_stack_size =
 	(standard_numeric_option ("-stack",
