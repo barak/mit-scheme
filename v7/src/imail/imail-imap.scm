@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.167 2001/05/28 03:49:04 cph Exp $
+;;; $Id: imail-imap.scm,v 1.168 2001/05/29 17:45:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -25,38 +25,74 @@
 
 ;;;; URL
 
-(define-class <imap-url> (<url>)
-  ;; User name to connect as.
-  (user-id define accessor)
-  ;; Name or IP address of host to connect to.
-  (host define accessor)
-  ;; Port number to connect to.
-  (port define accessor)
-  ;; Name of mailbox to access.
-  (mailbox define accessor))
-
+(define-class <imap-url> (<url>))
 (define-url-protocol "imap" <imap-url>)
-(define-class <imap-container-url> (<imap-url> <container-url>))
+
+;; User name to connect as.
+(define-generic imap-url-user-id (url))
+
+;; Name or IP address of host to connect to.
+(define-generic imap-url-host (url))
+
+;; Port number to connect to.
+(define-generic imap-url-port (url))
+
+;; Name of mailbox to access.
+(define-generic imap-url-mailbox (url))
 
 (define-class <imap-folder-url> (<imap-url> <folder-url>)
+  (user-id accessor imap-url-user-id)
+  (host accessor imap-url-host)
+  (port accessor imap-url-port)
+  (mailbox accessor imap-url-mailbox)
   (is-container? define standard
 		 initial-value 'UNKNOWN))
 
-(define make-imap-url
-  (let ((fields '(USER-ID HOST PORT MAILBOX)))
-    (let ((make-folder (instance-constructor <imap-folder-url> fields))
-	  (make-container (instance-constructor <imap-container-url> fields)))
-      (lambda (user-id host port mailbox)
-	(intern-url ((if (or (string-null? mailbox)
-			     (string-suffix? "/" mailbox))
-			 make-container
-			 make-folder)
-		     user-id
-		     (string-downcase host)
-		     port
-		     (canonicalize-imap-mailbox mailbox))
-		    imap-container-url)))))
+(define-class <imap-container-url> (<imap-url> <container-url>)
+  (corresponding-folder define accessor))
 
+(let ((reflect-1
+       (lambda (generic)
+	 (define-method generic ((url <container-url>))
+	   (generic (imap-container-url-corresponding-folder url))))))
+  (reflect-1 imap-url-user-id)
+  (reflect-1 imap-url-host)
+  (reflect-1 imap-url-port))
+
+(define-method imap-url-mailbox ((url <container-url>))
+  (let ((mailbox
+	 (imap-url-mailbox (imap-container-url-corresponding-folder url))))
+    (if (string-null? mailbox)
+	mailbox
+	(string-append mailbox "/"))))
+
+(define make-imap-url
+  (let ((make-folder
+	 (let ((constructor
+		(instance-constructor <imap-folder-url>
+				      '(USER-ID HOST PORT MAILBOX))))
+	   (lambda (user-id host port mailbox)
+	     (intern-url (constructor user-id host port mailbox)
+			 imap-container-url))))
+	(make-container
+	 (let ((constructor
+		(instance-constructor <imap-container-url>
+				      '(CORRESPONDING-FOLDER))))
+	   (lambda (folder)
+	     (intern-url (constructor folder) imap-container-url)))))
+    (lambda (user-id host port mailbox)
+      (let ((host (string-downcase host))
+	    (mailbox (canonicalize-imap-mailbox mailbox)))
+	(if (string-suffix? "/" mailbox)
+	    (make-container
+	     (make-folder user-id host port
+			  (string-head mailbox
+				       (fix:- (string-length mailbox) 1))))
+	    (let ((folder (make-folder user-id host port mailbox)))
+	      (if (string-null? mailbox)
+		  (make-container folder)
+		  folder)))))))
+
 (define (imap-url-new-mailbox url mailbox)
   (make-imap-url (imap-url-user-id url)
 		 (imap-url-host url)
