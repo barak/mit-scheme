@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.9 1987/06/01 20:29:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.10 1987/06/13 02:55:54 cph Exp $
 #| -*-Scheme-*-
 Copyright (c) 1987 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.9 1987/06/01 20:29:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.10 1987/06/13 02:55:54 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -74,14 +74,14 @@ promotional, or sales literature without prior written consent from
 	  (lambda (locative)
 	    (expression-value/simple (rtl:make-fetch locative)))
 	  (lambda (environment name)
-	    (if compiler:cache-free-variables?
-		(generate/cached-reference name (reference-safe? reference))
-		(expression-value/temporary
-		 (rtl:make-interpreter-call:lookup
-		  environment
-		  (intern-scode-variable! (reference-block reference) name)
-		  (reference-safe? reference))
-		 (rtl:interpreter-call-result:lookup))))))))
+	    (expression-value/temporary
+	     (rtl:make-interpreter-call:lookup
+	      environment
+	      (intern-scode-variable! (reference-block reference) name)
+	      (reference-safe? reference))
+	     (rtl:interpreter-call-result:lookup)))
+	  (lambda (name)
+	    (generate/cached-reference name (reference-safe? reference)))))))
 
 (define (generate/cached-reference name safe?)
   (let ((temp (make-temporary))
@@ -180,12 +180,12 @@ promotional, or sales literature without prior written consent from
 	   (expression-value/simple (rtl:make-constant false)))
 	  ((ic-block? block)
 	   (expression-value/simple
-	    (if compiler:cache-free-variables?
-		(rtl:make-constant false)
+	    (if (ic-block/use-lookup? block)
 		(let ((closure-block (procedure-closure-block procedure)))
 		  (if (ic-block? closure-block)
 		      (rtl:make-fetch register:environment)
-		      (closure-ic-locative closure-block block))))))
+		      (closure-ic-locative closure-block block)))
+		(rtl:make-constant false))))
 	  ((closure-block? block)
 	   (let ((closure-block (procedure-closure-block procedure)))
 	     (define (loop variables)
@@ -202,7 +202,7 @@ promotional, or sales literature without prior written consent from
 	     (let ((pushes
 		    (let ((parent (block-parent block))
 			  (pushes (loop (block-bound-variables block))))
-		      (if (and parent (not compiler:cache-free-variables?))
+		      (if (and parent (ic-block/use-lookup? parent))
 			  (cons (rtl:make-push
 				 (closure-ic-locative closure-block
 						      parent))

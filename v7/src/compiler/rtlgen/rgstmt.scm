@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 1.6 1987/06/01 20:30:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 1.7 1987/06/13 02:57:08 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -44,9 +44,7 @@ MIT in each case. |#
       (lambda (prefix expression)
 	(scfg*scfg->scfg!
 	 prefix
-	 (find-variable (definition-block node) (definition-lvalue node)
-	   (lambda (locative)
-	     (error "Definition of compiled variable"))
+	 (transmit-values (find-definition-variable node)
 	   (lambda (environment name)
 	     (rtl:make-interpreter-call:define environment name
 					       expression))))))))
@@ -101,11 +99,11 @@ MIT in each case. |#
       (lambda (locative)
 	(rtl:make-assignment locative expression))
       (lambda (environment name)
-	(if compiler:cache-free-variables?
-	    (generate/cached-assignment name expression)
-	    (rtl:make-interpreter-call:set! environment
-					    (intern-scode-variable! block name)
-					    expression))))))
+	(rtl:make-interpreter-call:set! environment
+					(intern-scode-variable! block name)
+					expression))
+      (lambda (name)
+	(generate/cached-assignment name expression)))))
 
 (define (generate/cached-assignment name value)
   (let ((temp (make-temporary)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.25 1987/06/13 00:14:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.26 1987/06/13 03:00:39 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -287,7 +287,9 @@ MIT in each case. |#
       (let ((operator (subproblem-value (combination-operator combination)))
 	    (frame-size* (1+ frame-size)))
 	(let ((name (variable-name (reference-variable operator))))
-	  (if compiler:cache-free-variables?
+	  ;; This predicate assumes that (reference-block operator)
+	  ;; returns an IC block.
+	  (if (ic-block/use-lookup? (reference-block operator))
 	      (let* ((temp (make-temporary))
 		     (cell (rtl:make-fetch temp))
 		     (contents (rtl:make-fetch cell)))

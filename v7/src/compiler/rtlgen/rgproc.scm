@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 1.1 1987/05/07 00:22:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 1.2 1987/06/13 03:01:28 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -40,7 +40,9 @@ MIT in each case. |#
 
 (define-export (generate/procedure-header procedure body)
   (if (procedure/ic? procedure)
-      body
+      (scfg*scfg->scfg!
+       (rtl:make-procedure-heap-check procedure)
+       body)
       (scfg-append!
        ((if (or (procedure-rest procedure)
 		(and (procedure/closure? procedure)
@@ -121,6 +123,8 @@ MIT in each case. |#
 			  (find-variable block variable
 			    (lambda (locative) locative)
 			    (lambda (nearest-ic-locative name)
+			      (error "Missing closure variable" variable))
+			    (lambda (name)
 			      (error "Missing closure variable" variable))))
 			 environment)))))
 
