@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.91 2000/05/23 20:19:01 cph Exp $
+;;; $Id: imail-core.scm,v 1.92 2000/06/01 05:10:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -388,6 +388,11 @@
 ;; automatically reconnect as needed.
 
 (define-generic disconnect-folder (folder))
+
+;; -------------------------------------------------------------------
+;; Return #T if FOLDER supports MIME parsing.
+
+(define-generic folder-supports-mime? (folder))
 
 ;;;; Message type
 
@@ -799,3 +804,81 @@
 
 (define (header-fields->string headers)
   (lines->string (header-fields->lines headers)))
+
+;;;; MIME structure
+
+(define-generic message-mime-body-structure (message))
+
+(define-class <mime-body> ()
+  (parameters define accessor)
+  (disposition define accessor)
+  (language define accessor))
+
+(define-generic mime-body-type (body))
+(define-generic mime-body-subtype (body))
+
+(define-class <mime-body-one-part> (<mime-body>)
+  (id define accessor)
+  (description define accessor)
+  (encoding define accessor)
+  (n-octets define accessor)
+  (md5 define accessor))
+
+(define-class (<mime-body-message>
+	       (constructor (parameters id description encoding n-octets
+					envelope body n-lines
+					md5 disposition language)))
+    (<mime-body-one-part>)
+  (envelope define accessor)		;<mime-envelope> instance
+  (body define accessor)		;<mime-body> instance
+  (n-lines define accessor))
+
+(define-method mime-body-type ((body <mime-body-message>)) body 'MESSAGE)
+(define-method mime-body-subtype ((body <mime-body-message>)) body 'RFC822)
+
+(define-class (<mime-body-text>
+	       (constructor (subtype parameters id description encoding
+				     n-octets n-lines
+				     md5 disposition language)))
+    (<mime-body-one-part>)
+  (subtype accessor mime-body-subtype)
+  (n-lines define accessor))
+
+(define-method mime-body-type ((body <mime-body-text>)) body 'TEXT)
+
+(define-class (<mime-body-basic>
+	       (constructor (type subtype parameters id description encoding
+				  n-octets md5 disposition language)))
+    (<mime-body-one-part>)
+  (type accessor mime-body-type)
+  (subtype accessor mime-body-subtype))
+
+(define-class (<mime-body-multipart>
+	       (constructor (subtype parameters parts disposition language)))
+    (<mime-body>)
+  (subtype accessor mime-body-subtype)
+  (parts define accessor))
+
+(define-method mime-body-type ((body <mime-body-multipart>)) body 'MULTIPART)
+
+(define-class (<mime-envelope>
+	       (constructor (date subject from sender reply-to to cc bcc
+				  in-reply-to message-id)))
+    ()
+  (date define accessor)
+  (subject define accessor)
+  (from define accessor)
+  (sender define accessor)
+  (reply-to define accessor)
+  (to define accessor)
+  (cc define accessor)
+  (bcc define accessor)
+  (in-reply-to define accessor)
+  (message-id define accessor))
+
+(define-class (<mime-address> (constructor (name source-route mailbox host)))
+    ()
+  (name define accessor)
+  (source-route define accessor)
+  (mailbox define accessor)
+  (host define accessor))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.95 2000/05/30 20:53:51 cph Exp $
+;;; $Id: imail-imap.scm,v 1.96 2000/06/01 05:10:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -772,6 +772,165 @@
 	       (guarantee-slot-initialized message initpred "bodystructure"
 					   '(BODYSTRUCTURE)))))
 
+;;;; MIME support
+
+(define-method message-mime-body-structure ((message <imap-message>))
+  (parse-mime-body (imap-message-bodystructure message)))
+
+(define (parse-mime-body body)
+  (cond ((not (and (pair? body) (list? body))) (parse-mime-body:lose body))
+	((string? (car body)) (parse-mime-body:one-part body))
+	((pair? (car body)) (parse-mime-body:multi-part body))
+	(else (parse-mime-body:lose body))))
+
+(define (parse-mime-body:one-part body)
+  (let ((n (length body)))
+    (cond ((string-ci=? "text" (car body))
+	   (if (not (fix:>= n 8))
+	       (parse-mime-body:lose body))
+	   (apply make-mime-body-text
+		  (intern (list-ref body 1))
+		  (parse-mime-parameters (list-ref body 2))
+		  (list-ref body 3)
+		  (list-ref body 4)
+		  (intern (list-ref body 5))
+		  (list-ref body 6)
+		  (list-ref body 7)
+		  (parse-mime-body:extensions (list-tail body 8))))
+	  ((and (string-ci=? "message" (car body))
+		(string-ci=? "rfc822" (cadr body)))
+	   (if (not (fix:>= n 10))
+	       (parse-mime-body:lose body))
+	   (apply make-mime-body-message
+		  (parse-mime-parameters (list-ref body 2))
+		  (list-ref body 3)
+		  (list-ref body 4)
+		  (intern (list-ref body 5))
+		  (list-ref body 6)
+		  (parse-mime-envelope (list-ref body 7))
+		  (parse-mime-body (list-ref body 8))
+		  (list-ref body 9)
+		  (parse-mime-body:extensions (list-tail body 10))))
+	  (else
+	   (if (not (fix:>= n 7))
+	       (parse-mime-body:lose body))
+	   (apply make-mime-body-basic
+		  (intern (list-ref body 0))
+		  (intern (list-ref body 1))
+		  (parse-mime-parameters (list-ref body 2))
+		  (list-ref body 3)
+		  (list-ref body 4)
+		  (intern (list-ref body 5))
+		  (list-ref body 6)
+		  (parse-mime-body:extensions (list-tail body 7)))))))
+
+(define (parse-mime-body:multi-part body)
+  (let loop ((tail body) (index 0))
+    (if (not (pair? tail))
+	(parse-mime-body:lose body))
+    (if (string? (car tail))
+	(let ((extensions (parse-mime-body:extensions (cdr tail))))
+	  (make-mime-body-multipart (intern (car tail))
+				    (parse-mime-parameters (car extensions))
+				    (list->vector
+				     (map parse-mime-body
+					  (sublist body 0 index)))
+				    (cadr extensions)
+				    (caddr extensions)))
+	(loop (cdr tail) (fix:+ index 1)))))
+
+(define (parse-mime-body:extensions tail)
+  (if (pair? tail)
+      (if (pair? (cdr tail))
+	  (if (pair? (cddr tail))
+	      (list (car tail) (cadr tail) (caddr tail))
+	      (list (car tail) (cadr tail) #f))
+	  (list (car tail) #f #f))
+      (list #f #f #f)))
+
+(define (parse-mime-body:lose body)
+  (error "Unrecognized MIME bodystructure:" body))
+
+(define (parse-mime-envelope envelope)
+  (make-mime-envelope (list-ref envelope 0)
+		      (list-ref envelope 1)
+		      (parse-mime-addr-list (list-ref envelope 2))
+		      (parse-mime-addr-list (list-ref envelope 3))
+		      (parse-mime-addr-list (list-ref envelope 4))
+		      (parse-mime-addr-list (list-ref envelope 5))
+		      (parse-mime-addr-list (list-ref envelope 6))
+		      (parse-mime-addr-list (list-ref envelope 7))
+		      (list-ref envelope 8)
+		      (list-ref envelope 9)))
+
+(define (parse-mime-addr-list addr-list)
+  (if addr-list
+      (let ((lose
+	     (lambda () (error "Malformed MIME address list:" addr-list))))
+	(define (loop addr-list open-groups result)
+	  (cond ((pair? addr-list)
+		 (let ((a (car addr-list)))
+		   (cond ((not (and (list? a) (fix:= 4 (length a))))
+			  (lose))
+			 ((and (or (not (car a)) (string? (car a)))
+			       (or (not (cadr a)) (string? (cadr a)))
+			       (string? (caddr a))
+			       (string? (cadddr a)))
+			  (loop (cdr addr-list)
+				open-groups
+				(cons (make-mime-address (car a)
+							 (cadr a)
+							 (caddr a)
+							 (cadddr a))
+				      result)))
+			 ((and (not (car a))
+			       (not (cadr a))
+			       (string? (caddr a))
+			       (not (cadddr a)))
+			  (loop (cdr addr-list)
+				(cons (cons (caddr a) result)
+				      open-groups)
+				'()))
+			 ((and (not (car a))
+			       (not (cadr a))
+			       (not (caddr a))
+			       (not (cadddr a))
+			       (pair? open-groups))
+			  (loop (cdr addr-list)
+				(cdr open-groups)
+				(cons (cons (caar open-groups)
+					    (reverse! result))
+				      (cdar open-groups))))
+			 (else (lose)))))
+		((and (null? addr-list) (null? open-groups)) (reverse! result))
+		(else (lose))))
+	(loop addr-list '() '()))
+      '()))
+
+(define (parse-mime-parameters parameters)
+  (let ((lose (lambda () (error "Malformed MIME parameters:" parameters))))
+    (let loop ((parameters parameters) (alist '()))
+      (if (pair? parameters)
+	  (if (pair? (cdr parameters))
+	      (loop (cddr parameters)
+		    (cons (cons (intern (car parameters)) (cadr parameters))
+			  alist))
+	      (lose))
+	  (if (null? parameters)
+	      (reverse! alist)
+	      (lose))))))
+
+(define (parse-mime-disposition disposition)
+  (and disposition
+       (begin
+	 (if (not (and (pair? disposition)
+		       (string? (car disposition))
+		       (pair? (cdr disposition))
+		       (null? (cddr disposition))))
+	     (error "Malformed MIME disposition:" disposition))
+	 (cons (intern (car disposition))
+	       (parse-mime-parameters (cadr disposition))))))
+
 ;;;; Server operations
 
 (define-method %create-folder ((url <imap-url>))
@@ -912,6 +1071,10 @@
 
 (define-method disconnect-folder ((folder <imap-folder>))
   (close-folder folder))
+
+(define-method folder-supports-mime? ((folder <imap-folder>))
+  folder
+  #t)
 
 ;;;; IMAP command invocation
 
