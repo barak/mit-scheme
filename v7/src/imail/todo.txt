@@ -1,11 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.59 2000/06/05 17:32:35 cph Exp $
+$Id: todo.txt,v 1.60 2000/06/05 17:34:57 cph Exp $
 
 Bug fixes
 ---------
-
-* Store bodystructure in IMAP message in converted form, so conversion
-  only happens once.
 
 * When message is selected in IMAIL and deleted by a different user
   agent, IMAIL ends up in state that there is no selected message.

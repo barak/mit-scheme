@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.106 2000/06/05 17:29:29 cph Exp $
+;;; $Id: imail-imap.scm,v 1.107 2000/06/05 17:35:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -796,7 +796,7 @@
 ;;;; MIME support
 
 (define-method message-mime-body-structure ((message <imap-message>))
-  (parse-mime-body (imap-message-bodystructure message)))
+  (imap-message-bodystructure message))
 
 (define-method message-mime-body-part ((message <imap-message>) selector)
   (let ((section
@@ -1541,7 +1541,7 @@
 (define (process-fetch-attribute message keyword datum)
   (case keyword
     ((BODYSTRUCTURE)
-     (%set-imap-message-bodystructure! message datum)
+     (%set-imap-message-bodystructure! message (parse-mime-body datum))
      #t)
     ((ENVELOPE)
      (%set-imap-message-envelope! message datum)
