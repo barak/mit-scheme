@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.15 1990/11/12 04:00:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.16 1990/11/14 13:25:29 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -693,3 +693,20 @@ MIT in each case. |#
 			(set-input-buffer/start-index! buffer end-index)
 			(if (input-buffer/fill* buffer)
 			    (loop))))))))))))
+
+(define (input-buffer/buffer-contents buffer)
+  (and (fix:< (input-buffer/start-index buffer)
+	      (input-buffer/end-index buffer))
+       (substring (input-buffer/string buffer)
+		  (input-buffer/start-index buffer)
+		  (input-buffer/end-index buffer))))
+
+(define (input-buffer/set-buffer-contents buffer contents)
+  (let ((string (input-buffer/string buffer)))
+    (let ((current-size (string-length string))
+	  (contents-size (string-length contents)))
+      (if (fix:> contents-size current-size)
+	  (input-buffer/set-size buffer contents-size))
+      (substring-move-left! contents 0 contents-size string 0)
+      (set-input-buffer/start-index! buffer 0)
+      (set-input-buffer/end-index! buffer contents-size))))

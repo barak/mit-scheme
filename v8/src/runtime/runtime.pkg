@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.84 1990/11/13 19:21:46 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.85 1990/11/14 13:26:46 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -1452,12 +1452,14 @@ MIT in each case. |#
 	  make-output-buffer)
   (export (runtime console-input)
 	  channel-type=file?
+	  input-buffer/buffer-contents
 	  input-buffer/buffered-chars
 	  input-buffer/channel
 	  input-buffer/char-ready?
 	  input-buffer/eof?
 	  input-buffer/peek-char
 	  input-buffer/read-char
+	  input-buffer/set-buffer-contents
 	  input-buffer/set-size
 	  input-buffer/size
 	  make-input-buffer
