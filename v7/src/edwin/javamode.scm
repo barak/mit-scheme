@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: javamode.scm,v 1.1 1998/06/29 04:10:23 cph Exp $
+;;;	$Id: javamode.scm,v 1.2 1998/06/29 04:22:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1998 Massachusetts Institute of Technology
 ;;;
@@ -96,7 +96,7 @@ Variables controlling indentation style:
     (local-set-variable! comment-indent-hook java-comment-indentation buffer)
     (local-set-variable! comment-start "// " buffer)
     (local-set-variable! comment-end "" buffer)
-    (local-set-variable! c-continued-brace-offset -2)
+    (local-set-variable! c-continued-brace-offset -2 buffer)
     (event-distributor/invoke! (ref-variable java-mode-hook buffer) buffer)))
 
 (define-command java-mode
