@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2term.scm,v 1.12 1996/04/23 23:07:54 cph Exp $
+;;;	$Id: os2term.scm,v 1.13 1996/04/24 04:34:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -945,7 +945,7 @@
 	     (begin
 	       (set-screen-visibility! screen 'UNMAPPED)
 	       (and (selected-screen? screen)
-		    (let ((screen (other-screen screen #f)))
+		    (let ((screen (other-screen screen 1 #f)))
 		      (and screen
 			   (make-input-event 'SELECT-SCREEN
 					     select-screen
