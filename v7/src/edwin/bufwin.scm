@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.294 1991/04/03 04:36:24 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.295 1991/05/18 03:25:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -1036,7 +1036,7 @@
 				       (fix:- y scroll-step)))))))))))))))
 
 (define-variable scroll-step
-  "*The number of lines to try scrolling a window by when point moves out.
+  "The number of lines to try scrolling a window by when point moves out.
 If that fails to bring point back on screen, point is centered instead.
 If this is zero, point is always centered after it moves off screen."
   0

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.204 1991/05/17 20:04:12 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.205 1991/05/18 03:25:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -184,7 +184,7 @@
 (define init-file-loaded? false)
 
 (define-variable inhibit-startup-message
-  "*True inhibits the initial startup messages.
+  "True inhibits the initial startup messages.
 This is for use in your personal init file, once you are familiar
 with the contents of the startup message."
   false)

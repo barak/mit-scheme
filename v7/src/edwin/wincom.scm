@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.103 1991/05/18 03:13:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.104 1991/05/18 03:23:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -49,41 +49,47 @@
 (define-variable window-min-width
   "Delete any window less than this wide.
 Do not set this variable below 2."
-  2)
+  2
+  (lambda (object) (and (exact-integer? object) (>= object 2))))
 
 (define-variable window-min-height
   "Delete any window less than this high.
 The modeline is not included in this figure.
 Do not set this variable below 1."
-  1)
+  1
+  (lambda (object) (and (exact-integer? object) (>= object 1))))
 
 (define-variable next-screen-context-lines
-  "*Number of lines of continuity when scrolling by screenfuls."
-  2)
+  "Number of lines of continuity when scrolling by screenfuls."
+  2
+  exact-nonnegative-integer?)
 
 (define-variable use-multiple-screens
   "If true, commands try to use multiple screens rather than multiple windows.
 Has no effect unless multiple-screen support is available."
-  false)
+  false
+  boolean?)
 
 (define-variable pop-up-windows
   "True enables the use of pop-up windows."
-  true)
+  true
+  boolean?)
 
 (define-variable preserve-window-arrangement
   "True means commands that normally change the window arrangement do not."
-  false)
+  false
+  boolean?)
 
 (define-variable split-height-threshold
   "Pop-up windows would prefer to split the largest window if this large.
 If there is only one window, it is split regardless of this value."
-  500)
+  500
+  exact-nonnegative-integer?)
 
 (define-command redraw-display
   "Redraws the entire display from scratch."
   ()
-  (lambda ()
-    (update-screens! true)))
+  (lambda () (update-screens! true)))
 
 (define-command recenter
   "Choose new window putting point at center, top or bottom.

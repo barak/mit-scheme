@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.36 1991/04/01 10:07:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.37 1991/05/18 03:23:25 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -73,8 +73,9 @@
   modeline-window:update-display!)
 
 (define-variable mode-line-inverse-video
-  "*True means use inverse video, or other suitable display mode, for the mode line."
-  true)
+  "True means use inverse video, or other suitable display mode, for the mode line."
+  true
+  boolean?)
 
 (define-method modeline-window (:event! window type)
   type					;ignored
