@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.40 1994/07/24 21:49:00 cph Exp $
+$Id: uerror.scm,v 14.41 1994/10/10 21:29:53 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -289,9 +289,15 @@ MIT in each case. |#
 ;;;; Utilities
 
 (define (error-type->string error-type)
-  (if (symbol? error-type)
-      (string-replace (symbol->string error-type) #\- #\space)
-      (string-append "error " (write-to-string error-type))))
+  (or (let ((code
+	     (if (symbol? error-type)
+		 (microcode-system-call-error/name->code error-type)
+		 (and (exact-nonnegative-integer? error-type) error-type))))
+	(and code
+	     ((ucode-primitive system-call-error-message 1) code)))
+      (if (symbol? error-type)
+	  (string-replace (symbol->string error-type) #\- #\space)
+	  (string-append "error " (write-to-string error-type)))))
 
 (define (normalize-trap-code-name name)
   (let loop ((prefixes '("floating-point " "integer ")))
