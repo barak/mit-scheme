@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.504 2004/10/28 22:53:20 cph Exp $
+$Id: runtime.pkg,v 14.505 2004/10/30 03:56:39 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -272,6 +272,8 @@ USA.
 	  %exit
 	  %quit
 	  *the-non-printing-object*
+	  <hook-list>
+	  append-hook-to-list
 	  apply
 	  bind-cell-contents!
 	  call-with-values
@@ -283,12 +285,15 @@ USA.
 	  environment-link-name
 	  eq?
 	  error-procedure
+	  error:not-hook-list
 	  eval
 	  exit
 	  false-procedure
 	  fasdump
 	  get-fixed-objects-vector
 	  get-interrupt-enables
+	  guarantee-hook-list
+	  hook-list?
 	  hook/exit
 	  hook/quit
 	  hook/scode-eval
@@ -305,6 +310,7 @@ USA.
 	  link-variables
 	  local-assignment
 	  make-cell
+	  make-hook-list
 	  make-non-pointer-object
 	  non-pointer-type-code?
 	  null-procedure
@@ -323,6 +329,8 @@ USA.
 	  primitive-procedure-documentation
 	  pwd
 	  quit
+	  remove-hook-from-list
+	  run-hooks-in-list
 	  scode-eval
 	  set-cell-contents!
 	  set-interrupt-enables!

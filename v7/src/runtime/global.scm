@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.68 2004/10/01 02:47:51 cph Exp $
+$Id: global.scm,v 14.69 2004/10/30 03:56:14 cph Exp $
 
 Copyright 1988,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1998,2000,2001,2003,2004 Massachusetts Institute of Technology
@@ -162,9 +162,8 @@ USA.
       (with-output-to-truncated-string max (lambda () (write object)))))
 
 (define (pa procedure)
-  (cond ((not (procedure? procedure))
-	 (error "Must be a procedure" procedure))
-	((procedure-lambda procedure)
+  (guarantee-procedure procedure 'PA)
+  (cond ((procedure-lambda procedure)
 	 => (lambda (scode)
 	      (pp (unsyntax-lambda-list scode))))
 	((and (primitive-procedure? procedure)
@@ -379,3 +378,56 @@ USA.
 		   (write-string " -- done" port)
 		   (newline port))))
 	(do-it no-print no-print))))
+
+;;;; Hook lists
+
+(define-record-type <hook-list>
+    (%make-hook-list hooks)
+    hook-list?
+  (hooks hook-list-hooks set-hook-list-hooks!))
+
+(define (make-hook-list)
+  (%make-hook-list '()))
+
+(define (guarantee-hook-list object caller)
+  (if (not (hook-list? object))
+      (error:not-hook-list object caller)))
+
+(define (error:not-hook-list object caller)
+  (error:wrong-type-argument object "hook list" caller))
+
+(define (append-hook-to-list hook-list key hook)
+  (guarantee-hook-list hook-list 'APPEND-HOOK-TO-LIST)
+  (let loop ((alist (hook-list-hooks hook-list)) (prev #f))
+    (if (pair? alist)
+	(loop (cdr alist)
+	      (if (eq? (caar alist) key)
+		  (begin
+		    (if prev
+			(set-cdr! prev (cdr alist))
+			(set-hook-list-hooks! hook-list (cdr alist)))
+		    prev)
+		  alist))
+	(let ((tail (list (cons key hook))))
+	  (if prev
+	      (set-cdr! prev tail)
+	      (set-hook-list-hooks! hook-list tail))))))
+
+(define (remove-hook-from-list hook-list key)
+  (guarantee-hook-list hook-list 'REMOVE-HOOK-FROM-LIST)
+  (let loop ((alist (hook-list-hooks hook-list)) (prev #f))
+    (if (pair? alist)
+	(loop (cdr alist)
+	      (if (eq? (caar alist) key)
+		  (begin
+		    (if prev
+			(set-cdr! prev (cdr alist))
+			(set-hook-list-hooks! hook-list (cdr alist)))
+		    prev)
+		  alist)))))
+
+(define (run-hooks-in-list hook-list . arguments)
+  (guarantee-hook-list hook-list 'RUN-HOOKS-IN-LIST)
+  (for-each (lambda (p)
+	      (apply (cdr p) arguments))
+	    (hook-list-hooks hook-list)))
