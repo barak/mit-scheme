@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crstop.scm,v 1.10 1992/06/12 01:43:21 jinx Exp $
+$Id: crstop.scm,v 1.11 1992/10/19 19:11:40 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -38,14 +38,6 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define-macro (last-reference name)
-  (let ((x (generate-uninterned-symbol)))
-    `(IF COMPILER:PRESERVE-DATA-STRUCTURES?
-	 ,name
-	 (LET ((,x ,name))
-	   (SET! ,name)
-	   ,x))))
-
 (define (cross-compile-bin-file input-string #!optional output-string)
   (let ((input-default
 	 (make-pathname false false false false "bin" 'NEWEST))
