@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.25 1997/06/05 03:06:03 cph Exp $
+$Id: record.scm,v 1.26 1997/06/25 03:27:54 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -255,14 +255,18 @@ MIT in each case. |#
 
 (define record-updater
   record-modifier)
-
-(define (record-type-field-index record-type field-name error-name)
+
+(define (record-type-field-index record-type field-name error?)
   (let loop ((field-names (record-type-field-names record-type)) (index 1))
     (cond ((null? field-names)
-	   (and error-name (error:bad-range-argument field-name error-name)))
+	   (and error?
+		(record-type-field-index
+		 record-type
+		 (error:no-such-slot record-type field-name)
+		 error?)))
 	  ((eq? field-name (car field-names)) index)
 	  (else (loop (cdr field-names) (+ index 1))))))
-
+
 (define (->string object)
   (if (string? object)
       object

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: recslot.scm,v 1.2 1997/06/24 05:33:57 cph Exp $
+;;; $Id: recslot.scm,v 1.3 1997/06/25 03:27:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -125,12 +125,40 @@
 	   (lambda (record)
 	     (record-type-field-names (record-type-descriptor record)))))))
 
+(define (store-value-restart location k thunk)
+  (let ((location (write-to-string location)))
+    (with-restart 'STORE-VALUE
+	(string-append "Initialize slot " location " to a given value.")
+	k
+	(string->interactor (string-append "Set " location " to"))
+      thunk)))
+
+(define (use-value-restart noun-phrase k thunk)
+  (with-restart 'USE-VALUE
+      (string-append "Specify a " noun-phrase ".")
+      k
+      (string->interactor (string-capitalize noun-phrase))
+    thunk))
+
+(define ((string->interactor string))
+  (values (prompt-for-evaluated-expression string)))
+
+(define condition-type:slot-error)
 (define condition-type:uninitialized-slot)
+(define condition-type:no-such-slot)
 (define error:uninitialized-slot)
+(define error:no-such-slot)
 
 (define (initialize-conditions!)
+  (set! condition-type:slot-error
+	(make-condition-type 'SLOT-ERROR condition-type:cell-error
+	    '()
+	  (lambda (condition port)
+	    (write-string "Anonymous error for slot " port)
+	    (write (access-condition condition 'LOCATION) port)
+	    (write-string "." port))))
   (set! condition-type:uninitialized-slot
-	(make-condition-type 'UNINITIALIZED-SLOT condition-type:cell-error
+	(make-condition-type 'UNINITIALIZED-SLOT condition-type:slot-error
 	    '(RECORD)
 	  (lambda (condition port)
 	    (write-string "Attempt to reference slot " port)
@@ -139,46 +167,47 @@
 	    (write (access-condition condition 'RECORD) port)
 	    (write-string " failed because the slot is not initialized."
 			  port))))
+  (set! condition-type:no-such-slot
+	(make-condition-type 'NO-SUCH-SLOT condition-type:slot-error
+	    '(RECORD-TYPE)
+	  (lambda (condition port)
+	    (write-string "No slot named " port)
+	    (write (access-condition condition 'LOCATION) port)
+	    (write-string " in records of type " port)
+	    (write (access-condition condition 'RECORD-TYPE) port)
+	    (write-string "." port))))
   (set! error:uninitialized-slot
 	(let ((signal
 	       (condition-signaller condition-type:uninitialized-slot
 				    '(RECORD LOCATION)
 				    standard-error-handler)))
 	  (lambda (record index)
-	    (let ((location
-		   (or (%record-slot-name record index)
-		       index)))
+	    (let* ((location (or (%record-slot-name record index) index))
+		   (ls (write-to-string location)))
 	      (call-with-current-continuation
 	       (lambda (k)
-		 (with-restart 'STORE-VALUE
-		     (lambda (port)
-		       (write-string "Initialize slot " port)
-		       (write location port)
-		       (write-string " to a given value." port))
-		     (lambda (value)
-		       (%record-set! record index value)
-		       (k value))
-		     (let ((prompt
-			    (string-append "Set "
-					   (write-to-string location)
-					   " to")))
-		       (lambda ()
-			 (values (prompt-for-evaluated-expression prompt))))
+		 (store-value-restart ls
+				      (lambda (value)
+					(%record-set! record index value)
+					(k value))
 		   (lambda ()
-		     (with-restart 'USE-VALUE
-			 (lambda (port)
-			   (write-string
-			    "Specify a value to use instead of the contents of slot "
-			    port)
-			   (write location port)
-			   (write-string "." port))
-			 k
-			 (let ((prompt
-				(string-append "Value to use instead of "
-					       (write-to-string location))))
-			   (lambda ()
-			     (values
-			      (prompt-for-evaluated-expression prompt))))
-		       (lambda ()
-			 (signal record location)))))))))))
+		     (use-value-restart
+		      (string-append
+		       "value to use instead of the contents of slot "
+		       ls)
+		      k
+		      (lambda () (signal record location)))))))))))
+  (set! error:no-such-slot
+	(let ((signal
+	       (condition-signaller condition-type:no-such-slot
+				    '(RECORD-TYPE LOCATION)
+				    standard-error-handler)))
+	  (lambda (record-type name)
+	    (call-with-current-continuation
+	     (lambda (k)
+	       (use-value-restart
+		(string-append "slot name to use instead of "
+			       (write-to-string name))
+		k
+		(lambda () (signal record-type name))))))))
   unspecific)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.282 1997/06/24 05:34:20 cph Exp $
+$Id: runtime.pkg,v 14.283 1997/06/25 03:28:17 cph Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -3325,6 +3325,8 @@ MIT in each case. |#
   (files "recslot")
   (parent ())
   (export ()
+	  condition-type:no-such-slot
+	  condition-type:slot-error
 	  condition-type:uninitialized-slot
 	  %record-accessor
 	  %record-accessor-generator
@@ -3334,7 +3336,9 @@ MIT in each case. |#
 	  %record-modifier-generator
 	  %record-slot-index
 	  %record-slot-name
-	  %record-slot-names))
+	  %record-slot-names)
+  (export (runtime record)
+	  error:no-such-slot))
 
 (define-package (runtime generic-procedure eqht)
   (files "geneqht")
