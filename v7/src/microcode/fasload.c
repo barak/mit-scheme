@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.65 1992/06/11 12:41:42 jinx Exp $
+$Id: fasload.c,v 9.66 1992/08/29 13:23:35 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -811,7 +811,7 @@ DEFUN (load_file, (mode), int mode)
 
 DEFINE_PRIMITIVE ("BINARY-FASLOAD", Prim_binary_fasload, 1, 1, 0)
 {
-  SCHEME_OBJECT arg;
+  SCHEME_OBJECT arg, result;
   PRIMITIVE_HEADER (1);
   
   PRIMITIVE_CANONICALIZE_CONTEXT();
@@ -819,13 +819,20 @@ DEFINE_PRIMITIVE ("BINARY-FASLOAD", Prim_binary_fasload, 1, 1, 0)
   if (STRING_P (arg))
   {
     read_file_start ((STRING_ARG (1)), false);
-    PRIMITIVE_RETURN (load_file (MODE_FNAME));
+    result = (load_file (MODE_FNAME));
   }
   else
   {
     read_channel_start ((arg_channel (1)), MODE_CHANNEL);
-    PRIMITIVE_RETURN (load_file (MODE_CHANNEL));
+    result = (load_file (MODE_CHANNEL));
   }
+#ifdef AUTOCLOBBER_BUG
+  *Free = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,
+			((PAGE_SIZE / (sizeof (SCHEME_OBJECT)))
+			 - 1)));
+  Free += (PAGE_SIZE / (sizeof (SCHEME_OBJECT)));
+#endif
+  PRIMITIVE_RETURN (result);
 }
 
 SCHEME_OBJECT
