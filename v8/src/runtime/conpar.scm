@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.10 1989/10/26 06:45:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.11 1989/12/07 05:35:31 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -472,7 +472,7 @@ MIT in each case. |#
 		(loop (1+ size))
 		(-1+ size)))))
   unspecific)
-
+
 (define stack-frame-types)
 (define stack-frame-type/compiled-return-address)
 (define stack-frame-type/return-to-interpreter)
@@ -506,7 +506,7 @@ MIT in each case. |#
 			true
 			length
 			parser/standard-next))
-
+
     (standard-frame 'RESTORE-TO-STATE-POINT 2 parser/restore-dynamic-state)
     (standard-frame 'RESTORE-FLUIDS 2 parser/restore-fluid-bindings)
     (standard-frame 'RESTORE-INTERRUPT-MASK 2 parser/restore-interrupt-mask)
@@ -520,7 +520,7 @@ MIT in each case. |#
     (standard-frame 'REENTER-COMPILED-CODE 2)
     (standard-frame 'COMPILER-INTERRUPT-RESTART 3)
     (standard-frame 'COMPILER-LINK-CACHES-RESTART 8)
-
+
     (standard-subproblem 'IN-PACKAGE-CONTINUE 2)
     (standard-subproblem 'ACCESS-CONTINUE 2)
     (standard-subproblem 'PRIMITIVE-COMBINATION-1-APPLY 2)
@@ -556,7 +556,6 @@ MIT in each case. |#
     (standard-subproblem 'COMPILER-DEFINITION-RESTART 5)
     (standard-subproblem 'COMPILER-ASSIGNMENT-TRAP-RESTART 5)
     (standard-subproblem 'MOVE-TO-ADJACENT-POINT 6)
-
     (standard-subproblem 'COMBINATION-SAVE-VALUE length/combination-save-value)
     (standard-subproblem 'REPEAT-PRIMITIVE length/repeat-primitive)
 
@@ -584,11 +583,12 @@ MIT in each case. |#
 
 (define-integrable hardware-trap/signal-index 1)
 (define-integrable hardware-trap/signal-name-index 2)
-(define-integrable hardware-trap/stack-index 3)
-(define-integrable hardware-trap/state-index 4)
-(define-integrable hardware-trap/pc-info1-index 5)
-(define-integrable hardware-trap/pc-info2-index 6)
-(define-integrable hardware-trap/extra-info-index 7)
+(define-integrable hardware-trap/code-index 3)
+(define-integrable hardware-trap/stack-index 4)
+(define-integrable hardware-trap/state-index 5)
+(define-integrable hardware-trap/pc-info1-index 6)
+(define-integrable hardware-trap/pc-info2-index 7)
+(define-integrable hardware-trap/extra-info-index 8)
 
 (define (length/hardware-trap stream offset)
   (let ((state (element-stream/ref stream hardware-trap/state-index))
@@ -630,19 +630,6 @@ MIT in each case. |#
 		    stack-frame-type/hardware-trap)))
       (error "guarantee-hardware-trap-frame: invalid" frame)))
 
-(define word-size)
-
-(define (print-register block index name)
-  (let ((value
-	 (let ((bit-string (bit-string-allocate word-size)))
-	   (read-bits! block (* word-size (1+ index)) bit-string)
-	   (bit-string->unsigned-integer bit-string))))
-    (newline)
-    (write-string "  ")
-    (write-string name)
-    (write-string " = ")
-    (write-string (number->string value 16))))
-
 (define (hardware-trap-frame/print-registers frame)
   (guarantee-hardware-trap-frame frame)
   (let ((block (stack-frame/ref frame hardware-trap/extra-info-index)))
@@ -658,6 +645,19 @@ MIT in each case. |#
 				  (string-append "register "
 						 (number->string i)))
 		  (loop (1+ i)))))))))
+
+(define (print-register block index name)
+  (let ((value
+	 (let ((bit-string (bit-string-allocate word-size)))
+	   (read-bits! block (* word-size (1+ index)) bit-string)
+	   (bit-string->unsigned-integer bit-string))))
+    (newline)
+    (write-string "  ")
+    (write-string name)
+    (write-string " = ")
+    (write-string (number->string value 16))))
+
+(define word-size)
 
 (define (hardware-trap-frame/print-stack frame)
   (guarantee-hardware-trap-frame frame)
