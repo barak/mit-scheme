@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.514 2004/11/19 06:56:21 cph Exp $
+$Id: runtime.pkg,v 14.515 2004/11/19 07:00:01 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1908,7 +1908,6 @@ USA.
 	  with-output-to-port
 	  with-trace-output-port)
   (export (runtime input-port)
-	  port/eof-object
 	  port/operation/char-ready?
 	  port/operation/discard-char
 	  port/operation/peek-char
@@ -1916,8 +1915,7 @@ USA.
 	  port/operation/read-external-substring
 	  port/operation/read-substring
 	  port/operation/read-wide-substring
-	  port/operation/unread-char
-	  set-port/eof-object!)
+	  port/operation/unread-char)
   (export (runtime output-port)
 	  port/operation/discretionary-flush-output
 	  port/operation/flush-output
@@ -1946,7 +1944,6 @@ USA.
   (export ()
 	  char-ready?
 	  discard-char
-	  eof-object-port
 	  eof-object?
 	  input-port/char-ready?
 	  input-port/discard-char

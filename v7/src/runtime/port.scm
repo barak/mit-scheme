@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.35 2004/11/04 03:00:25 cph Exp $
+$Id: port.scm,v 1.36 2004/11/19 06:59:50 cph Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
@@ -653,12 +653,6 @@ USA.
   (let ((tport (port/transcript port)))
     (if tport
 	(output-port/discretionary-flush tport))))
-
-(define (port/eof-object port)
-  (port/get-property port 'EOF-OBJECT #f))
-
-(define (set-port/eof-object! port eof)
-  (port/set-property! port 'EOF-OBJECT eof))
 
 (define (input-port? object)
   (and (port? object)
