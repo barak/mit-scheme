@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.39 1995/10/18 05:02:57 cph Exp $
+$Id: unxprm.scm,v 1.40 1995/10/23 06:39:22 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -289,6 +289,10 @@ MIT in each case. |#
 (define (delete-directory name)
   ((ucode-primitive directory-delete 1)
    (->namestring (directory-pathname-as-file (merge-pathnames name)))))
+
+(define (os/file-end-of-line-translation pathname)
+  pathname
+  #f)
 
 (define (os/default-end-of-line-translation)
   #f)

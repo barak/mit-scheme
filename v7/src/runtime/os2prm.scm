@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.18 1995/07/07 06:37:24 cph Exp $
+$Id: os2prm.scm,v 1.19 1995/10/23 06:38:35 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -228,11 +228,6 @@ MIT in each case. |#
 	  (try-directory "\\")
 	  (error "Can't find temporary directory.")))))
 
-(define (os2/fs-long-filenames? pathname)
-  (not (string-ci=? "fat"
-		    ((ucode-primitive drive-type 1)
-		     (pathname-device pathname)))))
-
 (define-integrable os2/current-pid
   (ucode-primitive current-pid 0))
 
@@ -255,6 +250,32 @@ MIT in each case. |#
 		    (pathname-as-directory (merge-pathnames directory))
 		    user-name)))))
       "\\"))
+
+(define (os2/fs-drive-type pathname)
+  (let ((type ((ucode-primitive drive-type 1) (pathname-device pathname))))
+    (let ((colon (string-find-next-char type #\:)))
+      (if colon
+	  (cons (string-head type colon) (string-tail type (fix:+ colon 1)))
+	  (cons type "")))))
+
+(define (os2/fs-long-filenames? pathname)
+  (not (string-ci=? "fat" (car (os2/fs-drive-type pathname)))))
+
+(define (os/file-end-of-line-translation pathname)
+  (let ((type (os2/fs-drive-type pathname)))
+    ;; "ext2" is the Linux ext2 file-system driver.  "NFS" is the IBM
+    ;; TCP/IP NFS driver, which we further qualify by examining the
+    ;; mount info -- if the directory starts with a "/", we assume
+    ;; that it is a unix system.
+    (if (or (string=? "ext2" (car type))
+	    (and (string=? "NFS" (car type))
+		 (let* ((mount (cdr type))
+			(colon (string-find-next-char mount #\:)))
+		   (and colon
+			(fix:< (fix:+ colon 1) (string-length mount))
+			(char=? #\/ (string-ref mount (fix:+ colon 1)))))))
+	#f
+	"\r\n")))
 
 (define (os/default-end-of-line-translation)
   "\r\n")

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.30 1995/10/18 05:09:08 cph Exp $
+$Id: dosprm.scm,v 1.31 1995/10/23 06:39:32 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -289,6 +289,10 @@ MIT in each case. |#
 (define (delete-directory name)
   ((ucode-primitive directory-delete 1)
    (->namestring (directory-pathname-as-file (merge-pathnames name)))))
+
+(define (os/file-end-of-line-translation pathname)
+  pathname
+  "\r\n")
 
 (define (os/default-end-of-line-translation)
   "\r\n")
