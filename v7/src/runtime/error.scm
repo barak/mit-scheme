@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.67 2005/02/18 18:20:55 cph Exp $
+$Id: error.scm,v 14.68 2005/03/29 03:37:58 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1995,2000,2001,2002 Massachusetts Institute of Technology
@@ -48,10 +48,18 @@ USA.
   (reporter #f read-only #t)
   (properties (make-1d-table) read-only #t))
 
+(define-guarantee condition-type "condition type")
+
+(define-integrable (guarantee-condition-types object caller)
+  (guarantee-list-of-type object
+			  condition-type?
+			  "list of condition types"
+			  caller))
+
 (define (make-condition-type name generalization field-names reporter)
   (if generalization
       (guarantee-condition-type generalization 'MAKE-CONDITION-TYPE))
-  (guarantee-list-of-symbols field-names 'MAKE-CONDITION-TYPE)
+  (guarantee-list-of-unique-symbols field-names 'MAKE-CONDITION-TYPE)
   (let ((type
 	 (call-with-values
 	     (lambda ()
@@ -159,6 +167,8 @@ USA.
   (field-values #f read-only #t)
   (properties (make-1d-table) read-only #t))
 
+(define-guarantee condition "condition")
+
 (define (%make-condition type continuation restarts)
   (%%make-condition type continuation restarts
 		    (make-vector (%condition-type/number-of-fields type) #f)))
@@ -166,7 +176,7 @@ USA.
 (define (make-condition type continuation restarts field-alist)
   (guarantee-condition-type type 'MAKE-CONDITION)
   (guarantee-continuation continuation 'MAKE-CONDITION)
-  (guarantee-keyword-association-list field-alist 'MAKE-CONDITION)
+  (guarantee-unique-keyword-list field-alist 'MAKE-CONDITION)
   (let ((condition
 	 (%make-condition type
 			  continuation
@@ -182,7 +192,7 @@ USA.
 
 (define (condition-constructor type field-names)
   (guarantee-condition-type type 'CONDITION-CONSTRUCTOR)
-  (guarantee-list-of-symbols field-names 'CONDITION-CONSTRUCTOR)
+  (guarantee-list-of-unique-symbols field-names 'CONDITION-CONSTRUCTOR)
   (let ((indexes
 	 (map (lambda (field-name)
 		(%condition-type/field-index type field-name
@@ -210,7 +220,7 @@ USA.
 		  (vector-set! values (car i) (car v))))
 	      condition))))
       constructor)))
-
+
 (define-integrable (%restarts-argument restarts operator)
   (cond ((eq? 'BOUND-RESTARTS restarts)
 	 *bound-restarts*)
@@ -219,7 +229,7 @@ USA.
 	(else
 	 (guarantee-restarts restarts operator)
 	 (list-copy restarts))))
-
+
 (define (condition-of-type? object type)
   (guarantee-condition-type type 'CONDITION-OF-TYPE?)
   (%condition-of-type? object type))
@@ -309,6 +319,11 @@ USA.
   (interactor #f)
   (properties (make-1d-table) read-only #t))
 
+(define-guarantee restart "restart")
+
+(define-integrable (guarantee-restarts object caller)
+  (guarantee-list-of-type object restart? "list of restarts" caller))
+
 (define (with-restart name reporter effector interactor thunk)
   (if name (guarantee-symbol name 'WITH-RESTART))
   (if (not (or (string? reporter) (procedure-of-arity? reporter 1)))
@@ -361,12 +376,12 @@ USA.
   (if (eq? key 'INTERACTIVE)
       (set-%restart/interactor! restart datum)
       (1d-table/put! (restart/properties restart) key datum)))
-
+
 (define (bind-restart name reporter effector receiver)
   (with-restart name reporter effector #f
     (lambda ()
       (receiver (car *bound-restarts*)))))
-
+
 (define (invoke-restart restart . arguments)
   (guarantee-restart restart 'INVOKE-RESTART)
   (hook/invoke-restart (%restart/effector restart) arguments))
@@ -498,6 +513,9 @@ USA.
   (fluid-let ((dynamic-handler-frames
 	       (cons (cons types handler) dynamic-handler-frames)))
     (thunk)))
+
+(define-integrable (guarantee-condition-handler object caller)
+  (guarantee-procedure-of-arity object 1 caller))
 
 (define (break-on-signals types)
   (guarantee-condition-types types 'BREAK-ON-SIGNALS)
@@ -1237,64 +1255,3 @@ USA.
 	     (primitive-procedure-name operator)
 	     operator)
 	 port))
-
-(define-integrable (guarantee-list-of-symbols object operator)
-  (if (not (list-of-symbols? object))
-      (error:wrong-type-argument object "list of unique symbols" operator)))
-
-(define (list-of-symbols? object)
-  (and (list? object)
-       (let loop ((field-names object))
-	 (or (not (pair? field-names))
-	     (and (symbol? (car field-names))
-		  (not (memq (car field-names) (cdr field-names)))
-		  (loop (cdr field-names)))))))
-
-(define-integrable (guarantee-keyword-association-list object operator)
-  (if (not (keyword-association-list? object))
-      (error:wrong-type-argument object "keyword association list" operator)))
-
-(define (keyword-association-list? object)
-  (and (list? object)
-       (let loop ((l object) (symbols '()))
-	 (or (not (pair? l))
-	     (and (symbol? (car l))
-		  (not (memq (car l) symbols))
-		  (pair? (cdr l))
-		  (loop (cddr l) (cons (car l) symbols)))))))
-
-(define-integrable (procedure-of-arity? object arity)
-  (and (procedure? object)
-       (procedure-arity-valid? object arity)))
-
-(define-integrable (guarantee-symbol object operator)
-  (if (not (symbol? object))
-      (error:wrong-type-argument object "symbol" operator)))
-
-(define-integrable (guarantee-continuation object operator)
-  (if (not (continuation? object))
-      (error:wrong-type-argument object "continuation" operator)))
-
-(define-integrable (guarantee-condition-type object operator)
-  (if (not (condition-type? object))
-      (error:wrong-type-argument object "condition type" operator)))
-
-(define-integrable (guarantee-condition-types object operator)
-  (if (not (and (list? object) (for-all? object condition-type?)))
-      (error:wrong-type-argument object "list of condition types" operator)))
-
-(define-integrable (guarantee-condition object operator)
-  (if (not (condition? object))
-      (error:wrong-type-argument object "condition" operator)))
-
-(define-integrable (guarantee-condition-handler object operator)
-  (if (not (procedure-of-arity? object 1))
-      (error:wrong-type-argument object "procedure of one argument" operator)))
-
-(define-integrable (guarantee-restart object operator)
-  (if (not (restart? object))
-      (error:wrong-type-argument object "restart" operator)))
-
-(define-integrable (guarantee-restarts object operator)
-  (if (not (and (list? object) (for-all? object restart?)))
-      (error:wrong-type-argument object "list of restarts" operator)))
