@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgstr.scm,v 1.9 1995/01/30 18:53:14 adams Exp $
+$Id: dbgstr.scm,v 1.10 1995/01/30 20:26:43 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -149,8 +149,8 @@ MIT in each case. |#
     (and block
 	 (let ((block*  (new-dbg-block/%make
 			 (new-dbg-block/type block)
-			 '()
 			 (copy-block (new-dbg-block/parent block))
+			 '()
 			 (new-dbg-block/flattened block))))
 	   (set-new-dbg-block/variables!
 	    block*
