@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.29 2003/03/14 20:45:07 cph Exp $
+$Id: random.scm,v 14.30 2003/09/19 00:39:21 cph Exp $
 
 Copyright 1988,1989,1993,1994,1995,1996 Massachusetts Institute of Technology
 Copyright 1998,1999,2000,2001,2003 Massachusetts Institute of Technology
@@ -162,6 +162,51 @@ USA.
 	    (set! seed n)
 	    (int:quotient (* (- n 1) b) m-1)))))))
 
+(define-integrable ers:tag 'RANDOM-STATE-V1)
+(define-integrable ers:length (fix:+ r 3))
+
+(define (export-random-state state)
+  (if (not (random-state? state))
+      (error:wrong-type-argument state "random state" 'EXPORT-RANDOM-STATE))
+  (let ((v (make-vector ers:length)))
+    (vector-set! v 0 ers:tag)
+    (vector-set! v 1 (random-state-index state))
+    (vector-set! v 2 (inexact->exact (random-state-borrow state)))
+    (let ((v* (random-state-vector state)))
+      (do ((i 0 (fix:+ i 1))
+	   (j 3 (fix:+ j 1)))
+	  ((fix:= i r))
+	(vector-set! v j (inexact->exact (flo:vector-ref v* i)))))
+    v))
+
+(define (import-random-state v)
+  (let ((lose
+	 (lambda ()
+	   (error:wrong-type-argument v
+				      "external random state"
+				      'IMPORT-RANDOM-STATE))))
+    (if (not (and (vector? v)
+		  (fix:= (vector-length v) ers:length)
+		  (eq? (vector-ref v 0) ers:tag)))
+	(lose))
+    (let ((index (vector-ref v 1))
+	  (borrow (vector-ref v 2))
+	  (v* (flo:vector-cons r)))
+      (if (not (and (index-fixnum? index)
+		    (fix:< index r)
+		    (index-fixnum? borrow)
+		    (fix:< borrow 2)))
+	  (lose))
+      (do ((i 3 (fix:+ i 1))
+	   (j 0 (fix:+ j 1)))
+	  ((fix:= j r))
+	(let ((n (vector-ref v i)))
+	  (if (not (and (exact-nonnegative-integer? n)
+			(< n b)))
+	      (lose))
+	  (flo:vector-set! v* j (exact->inexact n))))
+      (%make-random-state index (exact->inexact borrow) v*))))
+
 ;;; The RANDOM-STATE data abstraction must be built by hand because
 ;;; the random-number generator is needed in order to build the record
 ;;; abstraction.
@@ -175,7 +220,7 @@ USA.
        (eq? (vector-ref object 0) random-state-tag)))
 
 (define-integrable random-state-tag
-  ((ucode-primitive string->symbol) "#[(runtime random-number)random-state]"))
+  '|#[(runtime random-number)random-state]|)
 
 (define-integrable (random-state-index s) (vector-ref s 1))
 (define-integrable (set-random-state-index! s x) (vector-set! s 1 x))
