@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.5 1989/07/27 06:07:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.6 1989/07/27 06:30:38 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -134,15 +134,9 @@ X_LIB = -lX11 LIBX11_MACHINE LIBX11_SYSTEM
 #endif /* HAVE_X_WINDOWS */
 
 #ifdef HAVE_STARBASE_GRAPHICS
-#ifdef HAVE_X_WINDOWS
-GRAPHICS_SOURCES = starbase.c starbasex.c
-GRAPHICS_OBJECTS = starbase.o starbasex.o
-GRAPHICS_LIBS = STARBASE_DEVICE_DRIVERS -lddsox11 -lsb1 -lsb2 -lXhp11
-#else /* not HAVE_X_WINDOWS */
 GRAPHICS_SOURCES = starbase.c
 GRAPHICS_OBJECTS = starbase.o
 GRAPHICS_LIBS = STARBASE_DEVICE_DRIVERS -lsb1 -lsb2
-#endif /* HAVE_X_WINDOWS */
 #else /* not HAVE_STARBASE_GRAPHICS */
 GRAPHICS_SOURCES =
 GRAPHICS_OBJECTS =
