@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/graphics.scm,v 1.1 1989/06/23 00:01:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/graphics.scm,v 1.2 1989/06/27 10:18:01 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -180,7 +180,7 @@ MIT in each case. |#
   descriptor
   (drawing-mode drawing-mode:dominant)
   (line-style line-style:solid)
-  (buffer? true))
+  (buffer? false))
 
 (define (make-graphics-device type . arguments)
   (%make-graphics-device type
@@ -223,10 +223,12 @@ MIT in each case. |#
   (set-graphics-device/buffer?! device true))
 
 (define (graphics-disable-buffering device)
+  (if (graphics-device/buffer? device)
+      (graphics-flush device))
   (set-graphics-device/buffer?! device false))
 
-(define (maybe-flush device)
-  (if (graphics-device/buffer? device)
+(define-integrable (maybe-flush device)
+  (if (not (graphics-device/buffer? device))
       (graphics-flush device)))
 
 (define (graphics-close device)
