@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.36 1990/07/23 14:22:03 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.37 1990/11/14 17:38:50 cph Rel $
 $MC68020-Header: rules1.scm,v 4.33 90/05/03 15:17:28 GMT jinx Exp $
 $MC68020-Header: lapgen.scm,v 4.35 90/07/20 15:53:40 GMT jinx Exp $
 
@@ -450,29 +450,28 @@ MIT in each case. |#
 		    (LAP (COPY (TR) 0 ,tgt))))))
 	  (else
 	   ;; Left shift
-	   (cond ((>= shift scheme-datum-width)
-		  (if (not overflow?)
-		      (copy 0 tgt)
-		      #| (LAP (COMICLR (=) 0 ,src ,tgt)) |#
-		      (LAP (COMICLR (TR) 0 ,src ,tgt))))
-		 (overflow?
-		  #|
-		  ;; Arithmetic overflow condition accomplished
-		  ;; by skipping all over the place.
-		  ;; Another possibility is to use the shift-and-add
-		  ;; instructions, that compute correct signed overflow
-		  ;; conditions.
-		  (let ((nkept (- 32 shift))
-			(temp (standard-temporary!)))
-		    (LAP (ZDEP () ,src ,(- nkept 1) ,nkept ,tgt)
-			 (EXTRS (=) ,src ,(- shift 1) ,shift ,temp)
-			 (COMICLR (<>) -1 ,temp 0)
-			 (SKIP (TR))))
-		  |#
-		  (LAP (ZDEP (TR) ,src ,(- nbits 1) ,nbits ,tgt)))
-		 (else
-		  (let ((nbits (- 32 shift)))
-		    (LAP (ZDEP () ,src ,(- nbits 1) ,nbits ,tgt)))))))))
+	   (if (>= shift scheme-datum-width)
+	       (if (not overflow?)
+		   (copy 0 tgt)
+		   #| (LAP (COMICLR (=) 0 ,src ,tgt)) |#
+		   (LAP (COMICLR (TR) 0 ,src ,tgt)))
+	       (let ((nbits (- 32 shift)))
+		 (if overflow?
+		     #|
+		     ;; Arithmetic overflow condition accomplished
+		     ;; by skipping all over the place.
+		     ;; Another possibility is to use the shift-and-add
+		     ;; instructions, which compute correct signed overflow
+		     ;; conditions.
+		     (let ((nkept (- 32 shift))
+			   (temp (standard-temporary!)))
+		       (LAP (ZDEP () ,src ,(- nkept 1) ,nkept ,tgt)
+			    (EXTRS (=) ,src ,(- shift 1) ,shift ,temp)
+			    (COMICLR (<>) -1 ,temp 0)
+			    (SKIP (TR))))
+		     |#
+		     (LAP (ZDEP (TR) ,src ,(- nbits 1) ,nbits ,tgt))
+		     (LAP (ZDEP () ,src ,(- nbits 1) ,nbits ,tgt)))))))))
 
 (define-integrable (divisible? m n)
   (zero? (remainder m n)))
@@ -613,7 +612,7 @@ MIT in each case. |#
 	   ,@code
 	   ,@(cond ((= result-reg tgt)
 		    (LAP))
-		   ((eq? concition 'NV)
+		   ((eq? condition 'NV)
 		    (LAP (COPY () ,result-reg ,tgt)))
 		   (else
 		    (LAP (COPY (TR) ,result-reg ,tgt)
