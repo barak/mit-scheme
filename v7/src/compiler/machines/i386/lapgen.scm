@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.13 1992/02/15 14:17:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.14 1992/02/15 14:31:42 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.42 1991/05/28 19:14:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -290,11 +290,13 @@ MIT in each case. |#
 	 (LAP (CMP W ,(source-register-reference reg1)
 		   ,(any-reference reg2))))))
 
-(define (target-register-reference target)
+(define (target-register target)
   (delete-dead-registers!)
-  (register-reference
-   (or (register-alias target 'GENERAL)
-       (allocate-alias-register! target 'GENERAL))))
+  (or (register-alias target 'GENERAL)
+      (allocate-alias-register! target 'GENERAL)))  
+
+(define-integrable (target-register-reference target)
+  (register-reference (target-register target)))
 
 (define-integrable (temporary-register-reference)
   (reference-temporary-register! 'GENERAL))

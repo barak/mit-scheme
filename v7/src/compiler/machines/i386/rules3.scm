@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.12 1992/02/15 14:16:59 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.13 1992/02/15 14:31:27 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -421,7 +421,8 @@ MIT in each case. |#
 ;; the last component of closures with any entry points.
 
 (define (generate/cons-closure target procedure-label min max size)
-  (let* ((target (target-register-reference target))
+  (let* ((mtarget (target-register target))
+	 (target (register-reference mtarget))
 	 (temp (temporary-register-reference)))
     (LAP ,@(load-pc-relative-address
 	    temp
@@ -439,13 +440,14 @@ MIT in each case. |#
 	 (MOV W (@RO B ,regnum:free-pointer 9) ,temp) ; displacement
 	 (ADD W (R ,regnum:free-pointer) (& ,(* 4 (+ 5 size))))
 	 (LEA ,temp (@RO UW
-			 ,target
+			 ,mtarget
 			 ,(make-non-pointer-literal (ucode-type compiled-entry)
 						    0)))
 	 (MOV W (@RO B ,regnum:free-pointer -4) ,temp))))
 
 (define (generate/cons-multiclosure target nentries size entries)
-  (let* ((target (target-register-reference target))
+  (let* ((mtarget (target-register target))
+	 (target (register-reference mtarget))
 	 (temp (temporary-register-reference)))
     (with-pc
       (lambda (pc-label pc-reg)
@@ -482,7 +484,7 @@ MIT in each case. |#
 		  (& ,(+ (* 4 size) (if (odd? nentries) 7 5))))
 	     (LEA ,temp
 		  (@RO UW
-		       ,target
+		       ,mtarget
 		       ,(make-non-pointer-literal (ucode-type compiled-entry)
 						  0)))
 	     (MOV W (@RO B ,regnum:free-pointer -4) ,temp))))))
