@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/make.scm,v 1.8 1991/11/04 20:34:10 cph Exp $
+$Id: make.scm,v 1.9 1993/10/11 23:31:42 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,5 +36,6 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(load-option 'RB-TREE)
 (package/system-loader "cref" '() false)
-(add-system! (make-system "CREF" 1 8 '()))
+(add-system! (make-system "CREF" 1 9 '()))

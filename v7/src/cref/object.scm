@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 1.5 1992/12/03 03:13:59 cph Exp $
+$Id: object.scm,v 1.6 1993/10/11 23:31:42 cph Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -71,8 +71,8 @@ MIT in each case. |#
   (initialization false read-only true)
   parent
   (children '())
-  (bindings (make-btree) read-only true)
-  (references (make-btree) read-only true))
+  (bindings (make-rb-tree symbol=? symbol<?) read-only true)
+  (references (make-rb-tree symbol=? symbol<?) read-only true))
 
 (define (make-package name file-cases initialization parent)
   (let ((files
@@ -91,10 +91,14 @@ MIT in each case. |#
 (define-integrable (package/root? package)
   (null? (package/name package)))
 
-(define (package/find-binding package name)
-  (btree-lookup (package/bindings package) symbol<? binding/name name
-    identity-procedure
-    (lambda (name) name false)))
+(define-integrable (package/find-binding package name)
+  (rb-tree/lookup (package/bindings package) name #f))
+
+(define-integrable (package/sorted-bindings package)
+  (rb-tree/datum-list (package/bindings package)))
+
+(define-integrable (package/sorted-references package)
+  (rb-tree/datum-list (package/references package)))
 
 (define-integrable (file-case/type file-case)
   (car file-case))
@@ -179,9 +183,6 @@ MIT in each case. |#
   (expressions '())
   (binding false))
 
-(define-integrable (symbol<? x y)
-  (string<? (symbol->string x) (symbol->string y)))
-
 (define (symbol-list=? x y)
   (if (null? x)
       (null? y)

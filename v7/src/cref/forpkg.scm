@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/forpkg.scm,v 1.7 1991/11/04 20:34:03 cph Exp $
+$Id: forpkg.scm,v 1.8 1993/10/11 23:31:41 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,7 +62,7 @@ MIT in each case. |#
     (let ((free-references
 	   (append-map! (lambda (package)
 			  (list-transform-negative
-			      (btree-fringe (package/references package))
+			      (package/sorted-references package)
 			    reference/binding))
 			packages)))
       (if (not (null? free-references))
@@ -98,7 +98,7 @@ MIT in each case. |#
 	 (classify-bindings-by-package
 	  (lambda (binding)
 	    (binding/package (binding/source-binding binding)))
-	  (btree-fringe (package/bindings package)))))
+	  (package/sorted-bindings package))))
     (let ((class (assq package classes)))
       (if class
 	  (format-package/bindings port indentation width package (cdr class)))
@@ -157,7 +157,7 @@ MIT in each case. |#
 			    (set! unlinked (cons value-cell unlinked)))
 			   ((not (memq value-cell linked))
 			    (set! linked (cons value-cell linked))))))
-		 (btree-fringe (package/bindings package))))
+		 (package/sorted-bindings package)))
      packages)
     (values unlinked linked)))
 

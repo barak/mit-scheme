@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/Attic/triv.con,v 1.3 1991/06/06 21:37:19 cph Exp $
+$Id: triv.con,v 1.4 1993/10/11 23:31:44 cph Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -53,24 +53,6 @@ MIT in each case. |#
   (environment-link-name destination source 'cref/generate-cref)
   (environment-link-name destination source 'cref/generate-cref-unusual)
   (environment-link-name destination source 'cref/generate-trivial-constructor))
-
-(package/add-child!
- (find-package '(cross-reference))
- 'balanced-binary-tree
- (in-package (package/environment (find-package '(cross-reference)))
-   (let ((btree-delete!)
-	 (btree-fringe)
-	 (btree-insert!)
-	 (btree-lookup)
-	 (make-btree))
-     (the-environment))))
-(let ((source (package/environment (find-package '(cross-reference balanced-binary-tree))))
-      (destination (package/environment (find-package '(cross-reference)))))
-  (environment-link-name destination source 'btree-delete!)
-  (environment-link-name destination source 'btree-fringe)
-  (environment-link-name destination source 'btree-insert!)
-  (environment-link-name destination source 'btree-lookup)
-  (environment-link-name destination source 'make-btree))
 
 (package/add-child!
  (find-package '(cross-reference))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/toplev.scm,v 1.5 1991/11/04 20:34:26 cph Exp $
+$Id: toplev.scm,v 1.6 1993/10/11 23:31:44 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -109,7 +109,6 @@ MIT in each case. |#
 (define (write-globals pathname pmodel)
   (fasdump (map binding/name
 		(list-transform-positive
-		    (btree-fringe
-		     (package/bindings (pmodel/root-package pmodel)))
+		    (package/sorted-bindings (pmodel/root-package pmodel))
 		  binding/source-binding))
 	   (pathname-new-type pathname "glob")))

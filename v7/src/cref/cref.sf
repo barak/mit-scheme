@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/cref.sf,v 1.5 1992/06/04 03:02:47 mhwu Exp $
+$Id: cref.sf,v 1.6 1993/10/11 23:31:40 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,22 +36,15 @@ MIT in each case. |#
 (sf-conditionally "object")
 (sf-directory ".")
 
-;; Before runtime system is built this next thunk is the one
-;; used.
-(with-working-directory-pathname "../cref" ; this is rather useless
-  (lambda ()
-    (if (not (file-exists? "cref.bcon"))
-	(sf "triv.con" "cref.bcon"))
-    (if (not (file-exists? "cref.bldr"))
-	(sf "triv.ldr" "cref.bldr"))))
+(if (not (file-exists? "cref.bcon"))
+    (sf "triv.con" "cref.bcon"))
+(if (not (file-exists? "cref.bldr"))
+    (sf "triv.ldr" "cref.bldr"))
 
-;; After the runtime system is built, more elaborate work is done
-(with-working-directory-pathname "../cref" ; this is rather useless
-  (lambda ()
-    (if (file-exists? "../runtime/runtim.glob")
-	(begin
-	  (if (not (name->package '(CROSS-REFERENCE)))
-	      (load "make"))
-	  (cref/generate-constructors "cref")
-	  (sf "cref.con" "cref.bcon")
-	  (sf "cref.ldr" "cref.bldr")))))
+(if (file-exists? "../runtime/runtim.glob")
+    (begin
+      (if (not (name->package '(CROSS-REFERENCE)))
+	  (load "make"))
+      (cref/generate-constructors "cref")
+      (sf "cref.con" "cref.bcon")
+      (sf "cref.ldr" "cref.bldr")))

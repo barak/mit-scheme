@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/conpkg.scm,v 1.3 1991/11/04 20:33:57 cph Exp $
+$Id: conpkg.scm,v 1.4 1993/10/11 23:31:39 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -83,10 +83,10 @@ MIT in each case. |#
 		    ,(package-reference (binding/package source))
 		    ',(binding/name source))))
 	      (binding/links binding)))
-       (btree-fringe (package/bindings package)))))
+       (package/sorted-bindings package))))
 
 (define (package/source-bindings package)
-  (list-transform-positive (btree-fringe (package/bindings package))
+  (list-transform-positive (package/sorted-bindings package)
     (lambda (binding)
       (eq? (binding/source-binding binding) binding))))
 

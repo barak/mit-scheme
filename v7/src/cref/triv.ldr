@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/Attic/triv.ldr,v 1.2 1993/08/28 23:30:13 gjr Exp $
+$Id: triv.ldr,v 1.3 1993/10/11 23:31:45 cph Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,16 +35,13 @@ MIT in each case. |#
 ;;;; "Trivial" loader needed to bootstrap cref.
 
 (declare (usual-integrations))
-
+
 (lambda (load alist)
   alist
   (let ((env (package/environment (find-package '(cross-reference)))))
     (load "mset" env)
     (load "object" env)
     (load "toplev" env))
-  (load "btree"
-	(package/environment
-	 (find-package '(cross-reference balanced-binary-tree))))
   (load "anfile"
 	(package/environment (find-package '(cross-reference analyze-file))))
   (load "conpkg"

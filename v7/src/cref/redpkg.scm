@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/redpkg.scm,v 1.4 1991/11/04 20:34:18 cph Exp $
+$Id: redpkg.scm,v 1.5 1993/10/11 23:31:43 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -171,7 +171,7 @@ MIT in each case. |#
 (define (resolve-references! pmodel)
   (for-each (lambda (package)
 	      (for-each resolve-reference!
-			(btree-fringe (package/references package))))
+			(package/sorted-references package)))
 	    (pmodel/packages pmodel)))
 
 (define (resolve-reference! reference)
@@ -377,33 +377,31 @@ MIT in each case. |#
      (cons expression (value-cell/expressions value-cell)))))
 
 (define (link! source-package source-name destination-package destination-name)
+  (if (package/find-binding destination-package destination-name)
+      (error "Attempt to reinsert binding" destination-name))
   (let ((source-binding (intern-binding! source-package source-name)))
-    (make-link source-binding
-	       (btree-insert! (package/bindings destination-package)
-			      symbol<?
-			      binding/name
-			      destination-name
-		 (lambda (destination-name)
-		   (make-binding destination-package
-				 destination-name
-				 (binding/value-cell source-binding)))
-		 (lambda (binding)
-		   binding
-		   (error "Attempt to reinsert binding" destination-name))
-		 identity-procedure))))
+    (let ((destination-binding
+	   (make-binding destination-package
+			 destination-name
+			 (binding/value-cell source-binding))))
+      (rb-tree/insert! (package/bindings destination-package)
+		       destination-name
+		       destination-binding)
+      (make-link source-binding destination-binding))))
 
 (define (intern-binding! package name)
-  (btree-insert! (package/bindings package) symbol<? binding/name name
-    (lambda (name)
-      (let ((value-cell (make-value-cell)))
-	(let ((binding (make-binding package name value-cell)))
-	  (set-value-cell/source-binding! value-cell binding)
-	  binding)))
-    identity-procedure
-    identity-procedure))
+  (or (package/find-binding package name)
+      (let ((binding
+	     (let ((value-cell (make-value-cell)))
+	       (let ((binding (make-binding package name value-cell)))
+		 (set-value-cell/source-binding! value-cell binding)
+		 binding))))
+	(rb-tree/insert! (package/bindings package) name binding)
+	binding)))
 
 (define (make-reference package name expression)
-  (let ((add-reference!
+  (let ((references (package/references package))
+	(add-reference!
 	 (lambda (reference)
 	   (set-reference/expressions!
 	    reference
@@ -411,13 +409,13 @@ MIT in each case. |#
 	   (set-expression/references!
 	    expression
 	    (cons reference (expression/references expression))))))
-    (btree-insert! (package/references package) symbol<? reference/name name
-      (lambda (name)
-	(%make-reference package name))
-      (lambda (reference)
-	(if (not (memq expression (reference/expressions reference)))
-	    (add-reference! reference))
-	reference)
-      (lambda (reference)
-	(add-reference! reference)
-	reference))))
+    (let ((reference (rb-tree/lookup references name #f)))
+      (if reference
+	  (begin
+	    (if (not (memq expression (reference/expressions reference)))
+		(add-reference! reference))
+	    reference)
+	  (let ((reference (%make-reference package name)))
+	    (rb-tree/insert! references name reference)
+	    (add-reference! reference)
+	    reference)))))
