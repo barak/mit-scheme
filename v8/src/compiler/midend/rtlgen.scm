@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.27 1995/04/29 13:57:56 adams Exp $
+$Id: rtlgen.scm,v 1.28 1995/05/14 00:52:41 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -43,6 +43,9 @@ MIT in each case. |#
 (define *rtlgen/delayed-objects*)
 (define *rtlgen/fold-tag-predicates?* true)
 (define *rtlgen/fold-simple-value-tests?* #T)
+
+;; Does not currently work if #F:
+(define *rtlgen/pre-load-stack-frame?* #T)
 
 (define (rtlgen/top-level program)
   (initialize-machine-register-map!)
@@ -521,8 +524,12 @@ MIT in each case. |#
 		     (if (memq name handled)
 			 env
 			 (cons (let ((home (rtlgen/stack-ref stack-offset)))
-				 (rtlgen/binding/make name
-						      (rtlgen/->register home) home))
+				 (rtlgen/binding/make
+				  name
+				  (if *rtlgen/pre-load-stack-frame?*
+				      (rtlgen/->register home)
+				      home)
+				  home))
 			       env))))))))
 
   ;; Try to target register assignments from stack locations
@@ -2066,10 +2073,9 @@ MIT in each case. |#
 	      homes)))
 
 (define (rtlgen/jump state var-name cont rands)
-  (let* ((cont-label (rtlgen/continuation-setup/jump! state cont))
-	 (label      (rtlgen/enqueue-delayed-object! var-name 'TRIVIAL-CLOSURE))
-	 ;;(label      (rtlgen/enqueue-delayed-object! var-name 'PROCEDURE))
-	 )
+  (let ((label      (rtlgen/enqueue-delayed-object! var-name 'TRIVIAL-CLOSURE))
+	;;(label      (rtlgen/enqueue-delayed-object! var-name 'PROCEDURE))
+	)
     (let* ((proc-info    (rtlgen/find-delayed-object var-name))
 	   (lambda-expr  (rtlgen/descriptor/object proc-info))
 	   (params       (and (LAMBDA/? lambda-expr)
@@ -2084,9 +2090,11 @@ MIT in each case. |#
 	;;    (rtlgen/exprs->call-registers state (car rands) (cdr rands))
 	;;    (rtlgen/exprs->call-registers state #F rands))
 	(rtlgen/exprs->call-registers state #F rands)
-	(rtlgen/emit!/1
-	 `(INVOCATION:PROCEDURE 0 ,cont-label ,label
-				(MACHINE-CONSTANT ,(+ (length true-rands) 1))))))))
+	(let ((cont-label (rtlgen/continuation-setup/jump! state cont)))
+	  (rtlgen/emit!/1
+	   `(INVOCATION:PROCEDURE 0 ,cont-label
+				  ,label
+				  (MACHINE-CONSTANT ,(+ (length true-rands) 1)))))))))
 
 (define (rtlgen/continuation-setup/jump! state cont)
   ;; returns continuation label or #F
@@ -2347,36 +2355,52 @@ MIT in each case. |#
 	    (is-continuation-lookup? lambda-slot))))
 
     (define (overwrite elts)
-      (do ((frame-offset 0 (+ frame-offset 1))
-	   (stack-offset (- size 1) (- stack-offset 1))
-	   (elts elts (cdr elts)))
-	  ((null? elts))
-	(let ((result (form/match rtlgen/stack-overwrite-pattern (car elts))))
-	  (cond ((and result
-		      (= (cadr (assq rtlgen/?offset result))
-			 frame-offset)))
-		((and (zero? frame-offset)
-		      (not (is-continuation-lookup? (car elts)))
-		      (not (returning-with-stack-arguments?)))
-		 (internal-error "Unexpected previous continuation (1)" cont))
-		((and (is-continuation-lookup? (car elts))
-		      (not (zero? frame-offset))
-		      (internal-error "Continuation saved at non-0 slot" cont)))
-		(else
-		 (let* ((loc (rtlgen/->register
-			      (rtlgen/expr (rtlgen/state/->expr state '(ANY))
-					   (car elts)))))
-		   (rtlgen/emit!/1
-		    (rtlgen/write-stack-loc loc stack-offset))))))))
+      (define (elt->reg elt)
+	(rtlgen/->register
+	 (rtlgen/expr (rtlgen/state/->expr state '(ANY))
+		      elt)))
+      (let ((elt-regs
+	     (cond (*rtlgen/pre-load-stack-frame?*
+		    (make-list (length elts) #F))
+		   ((null? elts) '())
+		   (else
+		    (cons #F (map elt->reg (cdr elts)))))))
+	(do ((frame-offset 0 (+ frame-offset 1))
+	     (stack-offset (- size 1) (- stack-offset 1))
+	     (elt-regs elt-regs (cdr elt-regs))
+	     (elts elts (cdr elts)))
+	    ((null? elts))
+	  (let ((result (form/match rtlgen/stack-overwrite-pattern (car elts))))
+	    (cond ((and result
+			(= (cadr (assq rtlgen/?offset result))
+			   frame-offset)))
+		  ((and (zero? frame-offset)
+			(not (is-continuation-lookup? (car elts)))
+			(not (returning-with-stack-arguments?)))
+		   (internal-error "Unexpected previous continuation (1)" cont))
+		  ((and (is-continuation-lookup? (car elts))
+			(not (zero? frame-offset))
+			(internal-error "Continuation saved at non-0 slot"
+					cont)))
+		  (else
+		   (let* ((loc (or (car elt-regs)
+				   (elt->reg (car elts)))))
+		     (rtlgen/emit!/1
+		      (rtlgen/write-stack-loc loc stack-offset)))))))))
 
     (cond ((not (or (is-continuation-stack-ref? (first elts))
 		    (is-continuation-lookup? (first elts))
 		    (returning-with-stack-arguments?)))
 	   (internal-error "Unexpected previous continuation (2)" cont))
-	  ((> size* size)
+	  ((and (> size* size) *rtlgen/pre-load-stack-frame?*)
 	   (overwrite (list-head elts size))
 	   (rtlgen/stack-push!
 	    (rtlgen/expr* state (list-tail elts size))))
+	  ((> size* size)
+	   (let* ((values (rtlgen/expr* state (list-tail elts size)))
+		  (regs   (map rtlgen/->register values)))
+	     (overwrite (list-head elts size))
+	     (rtlgen/stack-push! regs)))
 	  (else
 	   (overwrite elts)
 	   (rtlgen/bop-stack-pointer! (- size size*))))))
@@ -3472,6 +3496,8 @@ MIT in each case. |#
 	      (rtlgen/fixed-selection state tag (first rands) offset))))))
   (define-fixed-selector 'CELL-CONTENTS     (machine-tag 'CELL) 0 1)
   (define-fixed-selector %cell-ref          (machine-tag 'CELL) 0 2)
+  (define-fixed-selector %car               (machine-tag 'PAIR) 0 1)
+  (define-fixed-selector %cdr               (machine-tag 'PAIR) 1 1)
   (define-fixed-selector 'CAR               (machine-tag 'PAIR) 0 1)
   (define-fixed-selector 'CDR               (machine-tag 'PAIR) 1 1)
   (define-fixed-selector 'SYSTEM-PAIR-CAR   false 0 1)
@@ -3517,6 +3543,7 @@ MIT in each case. |#
 			  state
 			  `(OFFSET ,ptr (MACHINE-CONSTANT ,offset))))))))))))
   (define-indexed-selector 'VECTOR-REF (machine-tag 'VECTOR) 1 2)
+  (define-indexed-selector %vector-ref (machine-tag 'VECTOR) 1 2)
   (define-indexed-selector '%RECORD-REF (machine-tag 'RECORD) 1 2)
   ;; NOTE: This assumes that the result of the following two is always
   ;; an object.  If it isn't it could be incorrectly preserved, and...
@@ -3585,6 +3612,7 @@ MIT in each case. |#
 		  `(CONS-NON-POINTER (MACHINE-CONSTANT ,fixnum-tag)
 				     ,field))))))))
   (define-fixnumized-selector/tagged 'VECTOR-LENGTH  (machine-tag 'VECTOR) 0)
+  (define-fixnumized-selector/tagged %vector-length  (machine-tag 'VECTOR) 0)
   (define-fixnumized-selector/tagged '%RECORD-LENGTH (machine-tag 'RECORD) 0)
   (define-fixnumized-selector/tagged 'SYSTEM-VECTOR-SIZE false 1)
   (define-fixnumized-selector 'STRING-LENGTH     (machine-tag 'STRING)    1)
@@ -3914,6 +3942,8 @@ MIT in each case. |#
   (define-fixed-mutator %cell-set! (machine-tag 'CELL) 0 3)
   (define-fixed-mutator 'SET-CAR!  (machine-tag 'PAIR) 0 2)
   (define-fixed-mutator 'SET-CDR!  (machine-tag 'PAIR) 1 2)
+  (define-fixed-mutator %set-car!  (machine-tag 'PAIR) 0 2)
+  (define-fixed-mutator %set-cdr!  (machine-tag 'PAIR) 1 2)
   (define-fixed-mutator 'SET-STRING-LENGTH! (machine-tag 'STRING) 1 2))
 
 (let ((define-indexed-mutator
@@ -3953,6 +3983,7 @@ MIT in each case. |#
 			  `(ASSIGN (OFFSET ,ptr (MACHINE-CONSTANT ,offset))
 				   ,value)))))))))))
   (define-indexed-mutator 'VECTOR-SET!  (machine-tag 'VECTOR) 1 3)
+  (define-indexed-mutator %vector-set!  (machine-tag 'VECTOR) 1 3)
   (define-indexed-mutator '%RECORD-SET! (machine-tag 'RECORD) 1 3)
   (define-indexed-mutator 'PRIMITIVE-OBJECT-SET! false 0 3))
 
