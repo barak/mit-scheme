@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.39 1991/09/07 22:46:14 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.40 1991/09/10 00:53:56 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -31,6 +31,10 @@ there shall be no use of the name of the Massachusetts Institute of
 Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
+
+#ifndef _BCHGCC_H_INCLUDED
+
+#define _BCHGCC_H_INCLUDED
 
 #include "oscond.h"
 #include "gccode.h"
@@ -81,13 +85,13 @@ extern SCHEME_OBJECT
   * EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **, SCHEME_OBJECT **)),
   * EXFUN (dump_and_reload_scan_buffer, (long, Boolean *)),
   * EXFUN (dump_and_reset_free_buffer, (long, Boolean *)),
+  * EXFUN (dump_free_directly, (SCHEME_OBJECT *, long, Boolean *)),
   * EXFUN (initialize_free_buffer, (void)),
   * EXFUN (initialize_scan_buffer, (void));
 
 extern void
   EXFUN (GC, (SCHEME_OBJECT)),
   EXFUN (end_transport, (Boolean *)),
-  EXFUN (dump_free_directly, (SCHEME_OBJECT *, long, Boolean *)),
   EXFUN (load_buffer, (long, SCHEME_OBJECT *, long, char *)),
   EXFUN (extend_scan_buffer, (char *, SCHEME_OBJECT *)),
   EXFUN (gc_death, (long, char *, SCHEME_OBJECT *, SCHEME_OBJECT *));
@@ -160,7 +164,7 @@ extern char
     To = (dump_and_reset_free_buffer (0, success));			\
     real_length = (overflow >> gc_buffer_shift);			\
     if (real_length > 0)						\
-      dump_free_directly (Old, real_length, success);			\
+      To = dump_free_directly (Old, real_length, success);		\
     Old += (real_length << gc_buffer_shift);				\
     Scan = To + (overflow & gc_buffer_mask);				\
   }									\
@@ -304,3 +308,5 @@ do {									\
   relocate_compiled_entry (in_gc_p);					\
   STORE_CLOSURE_ENTRY_ADDRESS (Temp, Scan);				\
 }
+
+#endif /* _BCHGCC_H_INCLUDED */
