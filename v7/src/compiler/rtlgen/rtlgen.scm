@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.8 1988/08/29 23:16:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.9 1988/10/20 17:59:30 markf Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -40,19 +40,25 @@ MIT in each case. |#
 (define *queued-procedures*)
 (define *queued-continuations*)
 
+(define *extra-continuations*)
+
 (define (generate/top-level expression)
-  (fluid-let ((*generation-queue* (make-queue))
-	      (*queued-procedures* '())
-	      (*queued-continuations* '()))
-    (set! *rtl-expression* (generate/expression expression))
-    (queue-map!/unsafe *generation-queue* (lambda (thunk) (thunk)))
-    (set! *rtl-graphs*
-	  (list-transform-positive (reverse! *rtl-graphs*)
-	    (lambda (rgraph)
-	      (not (null? (rgraph-entry-edges rgraph))))))
-    (for-each rgraph/compress! *rtl-graphs*)
-    (set! *rtl-procedures* (reverse! *rtl-procedures*))
-    (set! *rtl-continuations* (reverse! *rtl-continuations*))))
+  (cleanup-noop-nodes
+   (lambda ()
+     (fluid-let ((*generation-queue* (make-queue))
+		 (*queued-procedures* '())
+		 (*queued-continuations* '()))
+       (set! *extra-continuations* '())
+       (set! *rtl-expression* (generate/expression expression))
+       (queue-map!/unsafe *generation-queue* (lambda (thunk) (thunk)))
+       (set! *rtl-graphs*
+	     (list-transform-positive (reverse! *rtl-graphs*)
+	       (lambda (rgraph)
+		 (not (null? (rgraph-entry-edges rgraph))))))
+       (for-each rgraph/compress! *rtl-graphs*)
+       (set! *rtl-procedures* (reverse! *rtl-procedures*))
+       (set! *rtl-continuations*
+	     (append *extra-continuations* (reverse! *rtl-continuations*)))))))
 
 (define (enqueue-procedure! procedure)
   (if (not (memq procedure *queued-procedures*))
@@ -139,13 +145,15 @@ MIT in each case. |#
 	      ((REGISTER)
 	       (rtl:make-assignment (continuation/register continuation)
 				    (rtl:make-fetch register:value)))
-	      ((VALUE)
+	      ((VALUE PREDICATE)
 	       (if (continuation/ever-known-operator? continuation)
 		   (rtl:make-assignment (continuation/register continuation)
 					(rtl:make-fetch register:value))
 		   (make-null-cfg)))
+	      ((EFFECT)
+	       (make-null-cfg))
 	      (else
-	       (make-null-cfg)))
+	       (error "Illegal continuation type" continuation)))
 	    (generate/node node))))
       (lambda (rgraph entry-edge)
 	(make-rtl-continuation rgraph label entry-edge)))))
@@ -229,26 +237,58 @@ MIT in each case. |#
      (for-each (lambda (edge)
 		 (bblock-compress! (edge-right-node edge)))
 	       (rgraph-initial-edges rgraph))))
-  (set-rgraph-bblocks! rgraph (collect-rgraph-bblocks rgraph)))
+  (let ((collected-bblocks (collect-rgraph-bblocks rgraph)))
+    (remove-unreachable-nodes! collected-bblocks)
+    (set-rgraph-bblocks! rgraph collected-bblocks)))
 
 (define collect-rgraph-bblocks
-  (let ()
+  ;; Before you do anything to this procedure which might change the
+  ;; order of the bblocks in resultant list, please read the comment
+  ;; for remove-unreachable-nodes!
+  (let ((result))
     (define (loop bblock)
       (node-mark! bblock)
-      (cons bblock
-	    (if (sblock? bblock)
-		(next (snode-next bblock))
-		(append! (next (pnode-consequent bblock))
-			 (next (pnode-alternative bblock))))))
+      (if (sblock? bblock)
+	  (next (snode-next bblock))
+	  (begin
+	    (next (pnode-consequent bblock))
+	    (next (pnode-alternative bblock))))
+      (set! result (cons bblock result)))
 
     (define (next bblock)
-      (if (and bblock (not (node-marked? bblock)))
-	  (loop bblock)
-	  '()))
+      (and bblock
+	   (not (node-marked? bblock))
+	   (loop bblock)))
+    
+    (define (doit bblock)
+      (set! result '())
+      (loop bblock)
+      result)
 
     (lambda (rgraph)
-     (with-new-node-marks
-      (lambda ()
-	(mapcan (lambda (edge)
-		  (loop (edge-right-node edge)))
-		(rgraph-initial-edges rgraph)))))))
+      (with-new-node-marks
+       (lambda ()
+	 (mapcan (lambda (edge)
+		   (doit (edge-right-node edge)))
+		 (rgraph-initial-edges rgraph)))))))
+
+(define (remove-unreachable-nodes! collected-bblocks)
+  ;; This procedure depends on the order of the nodes in
+  ;; collected-bblocks. This order must be such that every node on a
+  ;; path from the root of the rgraph to a given node must precede the
+  ;; given node in the ordering. Another way of saying this is that
+  ;; the order of node in collected-bblocks must be a partial order on
+  ;; the ancestor-of relation on the rgraph DAG. Needless to say the
+  ;; procedure collect-rgraph-bblocks above produces a list of bblocks
+  ;; which has the correct order.
+  (with-new-node-marks
+   (lambda ()
+     (for-each
+      (lambda (bblock)
+	(node-mark! bblock)
+	(set-node-previous-edges! bblock
+	  (list-transform-positive (node-previous-edges bblock)
+	    (lambda (edge)
+	      (let ((prev-node (edge-left-node edge)))
+		(or (not prev-node) (node-marked? prev-node)))))))
+      collected-bblocks))))
