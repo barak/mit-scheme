@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.28 1991/08/28 22:28:42 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.29 1991/09/12 23:31:52 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -259,13 +259,13 @@ may be available.  The following commands are special to this mode:
 	    evaluation-error-handler
 	  (letrec
 	      ((loop
-		(lambda ()
+		(lambda (result)
 		  (let ((sexp (read)))
-		    (if (not (eof-object? sexp))
-			(begin
-			  (editor-eval sexp environment)
-			  (loop)))))))
-	    loop))))))
+		    (if (eof-object? sexp)
+			result
+			(loop (editor-eval sexp environment)))))))
+	    (lambda ()
+	      (loop unspecific))))))))
 
 (define (evaluation-environment argument)
   (let ((->environment
