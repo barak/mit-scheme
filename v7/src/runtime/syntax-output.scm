@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: syntax-output.scm,v 14.10 2003/03/14 01:12:39 cph Exp $
+$Id: syntax-output.scm,v 14.11 2005/03/18 20:24:37 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -254,7 +255,8 @@ USA.
 				(map-identifier (cadr clause)
 						(selector/add-cadr selector))
 				(cadr clause))))
-		    (cdr rule))))
+		    (cdr rule)
+		    (selector/add-cdr selector))))
 	   (cdr declaration)
 	   (selector/add-cdr selector)))))
 
