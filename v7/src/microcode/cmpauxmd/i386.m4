@@ -1,8 +1,8 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.34 1994/11/28 05:21:39 cph Exp $
+###	$Id: i386.m4,v 1.35 1995/01/06 17:39:39 cph Exp $
 ###
-###	Copyright (c) 1992-94 Massachusetts Institute of Technology
+###	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ###
 ###	This material was developed by the Scheme project at the
 ###	Massachusetts Institute of Technology, Department of
@@ -252,6 +252,7 @@ ifdef(`DOS',
       `define(IJMP,`*$1')')
 
 IFDOS(`define(TYPE_CODE_LENGTH,6)')
+IFOS2(`define(TYPE_CODE_LENGTH,6)')
 
 define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 8))
 define(DATUM_LENGTH, eval(32 - TC_LENGTH))
