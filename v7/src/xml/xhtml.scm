@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.10 2004/07/24 03:03:14 cph Exp $
+$Id: xhtml.scm,v 1.11 2004/07/24 03:19:18 cph Exp $
 
 Copyright 2002,2003,2004 Massachusetts Institute of Technology
 
@@ -27,42 +27,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (html-1.0-document attrs . items)
-  (%make-document html-1.0-dtd attrs items))
-
-(define html-1.0-external-id
-  (make-xml-external-id "-//W3C//DTD XHTML 1.0 Strict//EN"
-			"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"))
-
-(define html-1.0-dtd
-  (make-xml-dtd 'html html-1.0-external-id '()))
-
-(define (html-1.1-document attrs . items)
-  (%make-document html-1.1-dtd attrs items))
-
-(define html-1.1-external-id
-  (make-xml-external-id "-//W3C//DTD XHTML 1.1//EN"
-			"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd"))
-
-(define html-1.1-dtd
-  (make-xml-dtd 'html html-1.1-external-id '()))
-
-(define (%make-document dtd attrs items)
-  (make-xml-document (make-xml-declaration "1.0" "UTF-8" #f)
-		     '("\n")
-		     dtd
-		     '("\n")
-		     (html:html (if (there-exists? attrs
-				      (lambda (attr)
-					(eq? (xml-attribute-name attr)
-					     'xmlns)))
-				    attrs
-				    (xml-attrs 'xmlns html-iri attrs))
-				items)
-		     '()))
-
-(define html-iri
-  (make-xml-namespace-iri "http://www.w3.org/1999/xhtml"))
+(define html-iri-string "http://www.w3.org/1999/xhtml")
+(define html-iri (make-xml-namespace-iri html-iri-string))
 
 (define (html-element? object)
   (and (xml-element? object)
@@ -79,6 +45,67 @@ USA.
 (define (guarantee-html-element-name object caller)
   (if (not (html-element-name? object))
       (error:wrong-type-argument object "XHTML element name" caller)))
+
+(define (html-external-id? object)
+  (and (xml-external-id? object)
+       (let ((id (xml-external-id-id object))
+	     (iri (xml-external-id-iri object)))
+	 (and id
+	      iri
+	      (or (and (string=? id html-1.0-public-id)
+		       (string=? iri html-1.0-system-id))
+		  (and (string=? id html-1.1-public-id)
+		       (string=? iri html-1.1-system-id)))))))
+
+(define html-1.0-public-id "-//W3C//DTD XHTML 1.0 Strict//EN")
+(define html-1.0-system-id "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd")
+
+(define html-1.0-external-id
+  (make-xml-external-id html-1.0-public-id html-1.0-system-id))
+
+(define html-1.1-public-id "-//W3C//DTD XHTML 1.1//EN")
+(define html-1.1-system-id "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd")
+
+(define html-1.1-external-id
+  (make-xml-external-id html-1.1-public-id html-1.1-system-id))
+
+(define (html-dtd? object)
+  (and (xml-dtd? object)
+       (html:html? (xml-dtd-root object))
+       (html-external-id? (xml-dtd-external object))
+       (null? (xml-dtd-internal object))))
+
+(define html-root-name
+  (make-xml-name 'html html-iri))
+
+(define html-1.0-dtd
+  (make-xml-dtd html-root-name html-1.0-external-id '()))
+
+(define html-1.1-dtd
+  (make-xml-dtd html-root-name html-1.1-external-id '()))
+
+(define (html-1.0-document attrs . items)
+  (%make-document html-1.0-dtd attrs items))
+
+(define (html-1.1-document attrs . items)
+  (%make-document html-1.1-dtd attrs items))
+
+(define (%make-document dtd attrs items)
+  (let ((attr
+	 (find-matching-item attrs
+	   (lambda (attr)
+	     (xml-name=? (xml-attribute-name attr) 'xmlns)))))
+    (if (and attr (not (string=? (xml-attribute-value attr) html-iri-string)))
+	(error "Default namespace must be HTML:" (xml-attribute-value attr)))
+    (make-xml-document (make-xml-declaration "1.0" "UTF-8" #f)
+		       '("\n")
+		       dtd
+		       '("\n")
+		       (html:html (if attr
+				      attrs
+				      (xml-attrs 'xmlns html-iri attrs))
+				  items)
+		       '())))
 
 (define-syntax define-html-element
   (sc-macro-transformer

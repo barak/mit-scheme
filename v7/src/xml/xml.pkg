@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.50 2004/07/24 03:03:24 cph Exp $
+$Id: xml.pkg,v 1.51 2004/07/24 03:19:23 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -312,11 +312,13 @@ USA.
 	  html-1.1-document
 	  html-1.1-dtd
 	  html-1.1-external-id
+	  html-dtd?
 	  html-element-context
 	  html-element-name-context
 	  html-element-name?
 	  html-element-names
 	  html-element?
+	  html-external-id?
 	  html-iri
 	  html:a
 	  html:a?
