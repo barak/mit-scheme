@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.46 1992/02/10 13:53:34 jinx Exp $
+$Id: findprim.c,v 9.47 1993/06/24 03:32:03 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -80,8 +80,12 @@ MIT in each case. */
 
 #include <ctype.h>
 
+#ifdef WINNT
+#include <string.h>
+#else
 extern int EXFUN (strcmp, (CONST char *, CONST char *));
 extern int EXFUN (strlen, (CONST char *));
+#endif
 
 typedef int boolean;
 #define TRUE 1
