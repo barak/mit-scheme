@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: symbol.scm,v 1.16 2004/07/15 04:07:40 cph Exp $
+$Id: symbol.scm,v 1.17 2004/12/23 04:43:48 cph Exp $
 
 Copyright 1992,1993,2001,2003,2004 Massachusetts Institute of Technology
 
@@ -53,43 +53,97 @@ USA.
 (define (string->uninterned-symbol string)
   (guarantee-string string 'STRING->UNINTERNED-SYMBOL)
   ((ucode-primitive system-pair-cons) (ucode-type uninterned-symbol)
+				      (string->utf8-string string)
+				      (make-unmapped-unbound-reference-trap)))
+
+(define (utf8-string->uninterned-symbol string)
+  (guarantee-string string 'UTF8-STRING->UNINTERNED-SYMBOL)
+  ((ucode-primitive system-pair-cons) (ucode-type uninterned-symbol)
 				      string
 				      (make-unmapped-unbound-reference-trap)))
 
 (define (string->symbol string)
-  ;; Calling STRING-COPY prevents the symbol from being affected if
-  ;; the string is mutated.  The string is copied only if the symbol
-  ;; is created.
+  (guarantee-string string 'STRING->SYMBOL)
+  (let ((string* (string->utf8-string string)))
+    (if (eq? string* string)
+	(or ((ucode-primitive find-symbol) string)
+	    ((ucode-primitive string->symbol) (string-copy string)))
+	((ucode-primitive string->symbol) string*))))
+
+(define (utf8-string->symbol string)
+  (guarantee-string string 'UTF8-STRING->SYMBOL)
   (or ((ucode-primitive find-symbol) string)
       ((ucode-primitive string->symbol) (string-copy string))))
 
 (define (%string->symbol string)
-  (or ((ucode-primitive find-symbol) string)
-      ((ucode-primitive string->symbol) string)))
+  ((ucode-primitive string->symbol) (string->utf8-string string)))
 
 (define (substring->symbol string start end)
-  ((ucode-primitive string->symbol) (substring string start end)))
+  (guarantee-substring string start end 'SUBSTRING->SYMBOL)
+  ((ucode-primitive string->symbol) (substring->utf8-string string start end)))
 
 (define (string-head->symbol string end)
-  ((ucode-primitive string->symbol) (string-head string end)))
+  (substring->symbol string 0 end))
 
 (define (string-tail->symbol string start)
-  ((ucode-primitive string->symbol) (string-tail string start)))
+  (substring->symbol string start (string-length string)))
 
 (define (symbol . objects)
   ((ucode-primitive string->symbol)
-   (apply string-append
-	  (map (lambda (object)
-		 (cond ((symbol? object) (symbol-name object))
-		       ((string? object) object)
-		       ((char? object) (string object))
-		       ((number? object) (number->string object))
-		       ((not object) "")
-		       (else
-			(error:wrong-type-argument object
-						   "symbol component"
-						   'SYMBOL))))
-	       objects))))
+   (apply string-append (map ->utf8-string objects))))
+
+(define (->utf8-string object)
+  (cond ((symbol? object) (symbol-name object))
+	((string? object) (string->utf8-string object))
+	((wide-string? object) (wide-string->utf8-string object))
+	((wide-char? object) (wide-string->utf8-string (wide-string object)))
+	((number? object) (number->string object))
+	((not object) "")
+	(else (error:wrong-type-argument object "symbol component" 'SYMBOL))))
+
+(define (string->utf8-string string)
+  (let ((end (string-length string)))
+    (let ((n (count-non-ascii string 0 end)))
+      (if (fix:> n 0)
+	  (let ((string* (make-string (fix:+ end n))))
+	    (%substring->utf8-string string 0 end string*)
+	    string*)
+	  string))))
+
+(define (substring->utf8-string string start end)
+  (let ((string*
+	 (make-string
+	  (fix:+ (fix:- end start)
+		 (count-non-ascii string start end)))))
+    (%substring->utf8-string string start end string*)
+    string*))
+
+(define (count-non-ascii string start end)
+  (let loop ((i start) (n 0))
+    (if (fix:< i end)
+	(loop (fix:+ i 1)
+	      (if (fix:< (vector-8b-ref string i) #x80)
+		  n
+		  (fix:+ n 1)))
+	n)))
+
+(define (%substring->utf8-string string start end string*)
+  (let loop ((i start) (i* 0))
+    (if (fix:< i end)
+	(if (fix:< (vector-8b-ref string i) #x80)
+	    (begin
+	      (vector-8b-set! string* i* (vector-8b-ref string i))
+	      (loop (fix:+ i 1) (fix:+ i* 1)))
+	    (begin
+	      (vector-8b-set!
+	       string*
+	       i*
+	       (fix:or #xC0 (fix:lsh (vector-8b-ref string i) -6)))
+	      (vector-8b-set!
+	       string*
+	       (fix:+ i* 1)
+	       (fix:or #x80 (fix:and (vector-8b-ref string i) #x3F)))
+	      (loop (fix:+ i 1) (fix:+ i* 2)))))))
 
 (define (intern string)
   (if (string-lower-case? string)
@@ -106,20 +160,23 @@ USA.
   (guarantee-symbol symbol 'SYMBOL-NAME)
   (system-pair-car symbol))
 
-(define-integrable (symbol->string symbol)
-  (string-copy (symbol-name symbol)))
-
 (define (symbol-append . symbols)
   ((ucode-primitive string->symbol)
-   (apply string-append (map symbol-name symbols))))
+   (apply string-append
+	  (map (lambda (symbol)
+		 (guarantee-symbol symbol 'SYMBOL-APPEND)
+		 (system-pair-car symbol))
+	       symbols))))
 
-(define-integrable (symbol-hash symbol)
+(define (symbol-hash symbol)
   (string-hash (symbol-name symbol)))
 
-(define-integrable (symbol-hash-mod symbol modulus)
+(define (symbol-hash-mod symbol modulus)
   (string-hash-mod (symbol-name symbol) modulus))
 
 (define (symbol<? x y)
+  (guarantee-symbol x 'SYMBOL<?)
+  (guarantee-symbol y 'SYMBOL<?)
   (let ((sx (system-pair-car x))
 	(sy (system-pair-car y)))
     (let ((lx (string-length sx))
@@ -132,3 +189,9 @@ USA.
 		 (loop (fix:+ i 1)))
 		(else
 		 (fix:< (vector-8b-ref sx i) (vector-8b-ref sy i)))))))))
+
+(define (symbol->utf8-string symbol)
+  (string-copy (symbol-name symbol)))
+
+(define (symbol->string symbol)
+  (wide-string->string (utf8-string->wide-string (symbol-name symbol))))

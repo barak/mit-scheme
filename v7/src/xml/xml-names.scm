@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-names.scm,v 1.7 2004/10/14 02:48:51 cph Exp $
+$Id: xml-names.scm,v 1.8 2004/12/23 04:44:18 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -43,7 +43,7 @@ USA.
 	    ((#f) #f)
 	    ((ILLEGAL) iri)
 	    (else
-	     (let ((prefix (string-head->symbol s c)))
+	     (let ((prefix (utf8-string->symbol (string-head s c))))
 	       (or (and (eq? prefix 'xml)
 			(not (eq? iri xml-iri)))
 		   (and (eq? prefix 'xmlns)
@@ -84,7 +84,7 @@ USA.
       (begin
 	(if (not (string-is-xml-nmtoken? object))
 	    (error:bad-range-argument object 'MAKE-XML-NMTOKEN))
-	(string->symbol object))
+	(utf8-string->symbol object))
       (begin
 	(guarantee-xml-nmtoken object 'MAKE-XML-NMTOKEN)
 	object)))
@@ -203,7 +203,7 @@ USA.
       (begin
 	(if (not (string-is-xml-name? object))
 	    (error:bad-range-argument object 'MAKE-XML-QNAME))
-	(string->symbol object))
+	(utf8-string->symbol object))
       (begin
 	(guarantee-xml-qname object 'MAKE-XML-QNAME)
 	object)))
@@ -221,21 +221,21 @@ USA.
 
 (define (xml-qname-string qname)
   (guarantee-xml-qname qname 'XML-QNAME-STRING)
-  (symbol->string qname))
+  (symbol->utf8-string qname))
 
 (define (xml-qname-local qname)
   (let ((s (symbol-name qname)))
     (let ((c (find-prefix-separator s)))
       (if (or (not c) (eq? c 'ILLEGAL))
 	  qname
-	  (string-tail->symbol s (fix:+ c 1))))))
+	  (utf8-string->symbol (string-tail s (fix:+ c 1)))))))
 
 (define (xml-qname-prefix qname)
   (let ((s (symbol-name qname)))
     (let ((c (find-prefix-separator s)))
       (if (or (not c) (eq? c 'ILLEGAL))
 	  (null-xml-name-prefix)
-	  (string-head->symbol s c)))))
+	  (utf8-string->symbol (string-head s c))))))
 
 (define (find-prefix-separator s)
   (let ((c (string-find-next-char s #\:)))

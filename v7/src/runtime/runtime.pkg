@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.523 2004/12/20 04:38:49 cph Exp $
+$Id: runtime.pkg,v 14.524 2004/12/23 04:43:38 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -501,13 +501,16 @@ USA.
 	  substring->symbol
 	  symbol
 	  symbol->string
+	  symbol->utf8-string
 	  symbol-append
 	  symbol-hash
 	  symbol-hash-mod
 	  symbol-name
 	  symbol<?
 	  symbol?
-	  uninterned-symbol?)
+	  uninterned-symbol?
+	  utf8-string->symbol
+	  utf8-string->uninterned-symbol)
   (export (runtime parser)
 	  %string->symbol))
 
