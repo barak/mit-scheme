@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: struct.scm,v 1.84 1993/01/09 20:38:24 cph Exp $
+;;;	$Id: struct.scm,v 1.85 1993/01/10 10:54:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -110,12 +110,11 @@
   shrink-length)
 
 (define (make-group buffer)
-  (let ((group (%make-group))
-	(length group-minimum-length))
-    (vector-set! group group-index:text (string-allocate length))
+  (let ((group (%make-group)))
+    (vector-set! group group-index:text (string-allocate 0))
     (vector-set! group group-index:gap-start 0)
-    (vector-set! group group-index:gap-length length)
-    (vector-set! group group-index:gap-end length)
+    (vector-set! group group-index:gap-length 0)
+    (vector-set! group group-index:gap-end 0)
     (vector-set! group group-index:marks '())
     (let ((start (make-permanent-mark group 0 false)))
       (vector-set! group group-index:start-mark start)
@@ -132,7 +131,7 @@
     (vector-set! group group-index:modified? false)
     (vector-set! group group-index:point (make-permanent-mark group 0 true))
     (vector-set! group group-index:buffer buffer)
-    (vector-set! group group-index:shrink-length false)
+    (vector-set! group group-index:shrink-length 0)
     group))
 
 (define (group-length group)

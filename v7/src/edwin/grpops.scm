@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: grpops.scm,v 1.17 1993/01/09 01:16:11 cph Exp $
+;;;	$Id: grpops.scm,v 1.18 1993/01/10 10:54:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -51,14 +51,6 @@
 ;;; valid across modifications to the group, they can only be used in
 ;;; limited ways.  To save an index across a modification, it must be
 ;;; consed into a permanent mark.
-
-;;; This parameter controls how much extra space (in characters) is
-;;; allocated when the gap is too small to contain a given insertion.
-(define-integrable gap-allocation-extra 2000)
-
-;;; This parameter controls how large the gap is allowed to be between
-;;; operations.  It must be at least `gap-allocation-extra'.
-(define-integrable gap-maximum-extra 20000)
 
 ;;;; Extractions
 
@@ -119,11 +111,6 @@
 
 (define (group-insert-char! group index char)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (if (group-read-only? group)
-	(barf-if-read-only))
-    (if (not (group-modified? group))
-	(check-first-group-modification group))
-    (undo-record-insertion! group index (fix:+ index 1))
     (prepare-gap-for-insert! group index 1)
     (string-set! (group-text group) index char)
     (finish-group-insert! group index 1)
@@ -135,27 +122,21 @@
 
 (define (group-insert-substring! group index string start end)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (if (group-read-only? group)
-	(barf-if-read-only))
-    (if (not (group-modified? group))
-	(check-first-group-modification group))
     (let ((n (fix:- end start)))
-      (undo-record-insertion! group index (fix:+ index n))
       (prepare-gap-for-insert! group index n)
-      ;; SUBSTRING-MOVE-RIGHT is a primitive, and as such has a high
-      ;; calling cost; but the C compiler probably generates better
-      ;; code for the primitive's inner loop.  So inline code this
-      ;; primitive for small insertions to avoid the calling overhead,
-      ;; and use the primitive for large insertions to gain the inner
-      ;; loop speed.  There's no reason why 32 is a special number
-      ;; here, it's just out of the hat.
       (%substring-move! string start end (group-text group) index)
       (finish-group-insert! group index n))
     (set-interrupt-enables! interrupt-mask)
     unspecific))
-
-(define-integrable (prepare-gap-for-insert! group new-start n)
-  (cond ((fix:< new-start (group-gap-start group))
+
+(define (prepare-gap-for-insert! group new-start n)
+  (if (group-read-only? group)
+      (barf-if-read-only))
+  (if (not (group-modified? group))
+      (check-first-group-modification group))
+  (cond ((fix:< (group-gap-length group) n)
+	 (grow-group! group new-start n))
+	((fix:< new-start (group-gap-start group))
 	 (let ((new-end (fix:+ new-start (group-gap-length group))))
 	   (%substring-move! (group-text group)
 			     new-start
@@ -172,25 +153,9 @@
 			     (group-text group)
 			     (group-gap-start group))
 	   (vector-set! group group-index:gap-start new-start)
-	   (vector-set! group group-index:gap-end new-end))))
-  (if (fix:< (group-gap-length group) n)
-      (let ((n
-	     (fix:+ (fix:- n (group-gap-length group))
-		    gap-allocation-extra))
-	    (text (group-text group))
-	    (start (group-gap-start group))
-	    (end (group-gap-end group))
-	    (length (group-gap-length group)))
-	(let ((end* (string-length text)))
-	  (let ((text* (string-allocate (fix:+ end* n)))
-		(new-end (fix:+ end n)))
-	    (%substring-move! text 0 start text* 0)
-	    (%substring-move! text end end* text* new-end)
-	    (vector-set! group group-index:text text*)
-	    (vector-set! group group-index:gap-end new-end)))
-	(vector-set! group group-index:gap-length (fix:+ length n)))))
+	   (vector-set! group group-index:gap-end new-end)))))
 
-(define-integrable (finish-group-insert! group index n)
+(define (finish-group-insert! group index n)
   (vector-set! group group-index:gap-start (fix:+ index n))
   (vector-set! group group-index:gap-length (fix:- (group-gap-length group) n))
   (if (group-start-changes-index group)
@@ -216,6 +181,7 @@
   (vector-set! group group-index:modified-tick
 	       (fix:+ (group-modified-tick group) 1))
   ;; The MODIFIED? bit must be set *after* the undo recording.
+  (undo-record-insertion! group index (fix:+ index n))
   (set-group-modified! group true))
 
 ;;;; Deletions
@@ -233,21 +199,33 @@
 	    (barf-if-read-only))
 	(if (not (group-modified? group))
 	    (check-first-group-modification group))
-	;; Guarantee that the gap is between START and END.  This is
-	;; best done before the undo recording.
-	(cond ((fix:< (group-gap-start group) start)
-	       (%substring-move! (group-text group)
-				 (group-gap-end group)
-				 (fix:+ start (group-gap-length group))
-				 (group-text group)
-				 (group-gap-start group)))
-	      ((fix:> (group-gap-start group) end)
-	       (%substring-move! (group-text group)
-				 end
-				 (group-gap-start group)
-				 (group-text group)
-				 (fix:+ end (group-gap-length group)))))
-	(undo-record-deletion! group start end)
+	(let ((text (group-text group))
+	      (gap-length (group-gap-length group)))
+	  ;; Guarantee that the gap is between START and END.  This is
+	  ;; best done before the undo recording.
+	  (cond ((fix:< (group-gap-start group) start)
+		 (%substring-move! text
+				   (group-gap-end group)
+				   (fix:+ start gap-length)
+				   text
+				   (group-gap-start group)))
+		((fix:> (group-gap-start group) end)
+		 (%substring-move! text
+				   end
+				   (group-gap-start group)
+				   text
+				   (fix:+ end gap-length))))
+	  ;; The undo recording must occur *before* the deletion.
+	  (undo-record-deletion! group start end)
+	  (let ((gap-end (fix:+ end gap-length)))
+	    (vector-set! group group-index:gap-start start)
+	    (vector-set! group group-index:gap-end gap-end)
+	    (vector-set! group group-index:gap-length (fix:- gap-end start))
+	    (if (and (group-shrink-length group)
+		     (fix:<= (fix:- (string-length text)
+				    (fix:- gap-end start))
+			     (group-shrink-length group)))
+		(shrink-group! group))))
 	(let ((n (fix:- end start)))
 	  (if (group-start-changes-index group)
 	      (begin
@@ -276,22 +254,85 @@
 		     (fix:+ (group-modified-tick group) 1))
 	;; The MODIFIED? bit must be set *after* the undo recording.
 	(set-group-modified! group true)
-	(vector-set! group group-index:gap-start start)
-	(let ((gap-end (fix:+ end (group-gap-length group))))
-	  (if (fix:> (fix:- gap-end start) gap-maximum-extra)
-	      (let* ((new-gap-end (fix:+ start gap-allocation-extra))
-		     (text (group-text group))
-		     (text-end (string-length text)))
-		(%substring-move! text gap-end text-end text new-gap-end)
-		(set-string-maximum-length! text
-					    (fix:+ new-gap-end
-						   (fix:- text-end gap-end)))
-		(vector-set! group group-index:gap-end new-gap-end)
-		(vector-set! group group-index:gap-length
-			     gap-allocation-extra))
-	      (begin
-		(vector-set! group group-index:gap-end gap-end)
-		(vector-set! group group-index:gap-length
-			     (fix:- gap-end start)))))
 	(set-interrupt-enables! interrupt-mask)
 	unspecific)))
+
+;;;; Resizing
+
+(define (grow-group! group new-gap-start n)
+  (let ((text (group-text group))
+	(gap-start (group-gap-start group))
+	(gap-end (group-gap-end group))
+	(reallocation-factor (group-reallocation-factor group)))
+    (let ((text-length (string-length text))
+	  (gap-delta (- new-gap-start gap-start)))
+      (let ((n-chars (- text-length (group-gap-length group))))
+	(let ((new-text-length
+	       (let ((minimum-text-length (+ n-chars n)))
+		 (let loop ((length (if (= text-length 0) 1 text-length)))
+		   (let ((length (ceiling (* length reallocation-factor))))
+		     (if (< length minimum-text-length)
+			 (loop length)
+			 length))))))
+	  (let ((new-text (string-allocate new-text-length))
+		(new-gap-length (- new-text-length n-chars)))
+	    (let ((new-gap-end (+ new-gap-start new-gap-length)))
+	      (cond ((= gap-delta 0)
+		     (%substring-move! text 0 gap-start new-text 0)
+		     (%substring-move! text gap-end text-length
+				       new-text new-gap-end))
+		    ((< gap-delta 0)
+		     (%substring-move! text 0 new-gap-start new-text 0)
+		     (%substring-move! text new-gap-start gap-start
+				       new-text new-gap-end)
+		     (%substring-move! text gap-end text-length
+				       new-text (- new-gap-end gap-delta)))
+		    (else
+		     (let ((ngsp (+ gap-end gap-delta)))
+		       (%substring-move! text 0 gap-start new-text 0)
+		       (%substring-move! text gap-end ngsp new-text gap-start)
+		       (%substring-move! text ngsp text-length
+					 new-text new-gap-end))))
+	      (vector-set! group group-index:text new-text)
+	      (vector-set! group group-index:gap-start new-gap-start)
+	      (vector-set! group group-index:gap-end new-gap-end)
+	      (vector-set! group group-index:gap-length new-gap-length))))))
+    (memoize-shrink-length! group reallocation-factor)))
+
+(define (shrink-group! group)
+  (let ((text (group-text group))
+	(gap-length (group-gap-length group))
+	(reallocation-factor (group-reallocation-factor group)))
+    (let ((text-length (string-length text)))
+      (let ((n-chars (- text-length gap-length)))
+	(let ((new-text-length
+	       (if (= n-chars 0)
+		   0
+		   (let loop ((length text-length))
+		     (let ((length (floor (/ length reallocation-factor))))
+		       (let ((sl
+			      (compute-shrink-length length
+						     reallocation-factor)))
+			 (if (< sl n-chars)
+			     length
+			     (loop length)))))))
+	      (gap-end (group-gap-end group)))
+	  (let ((delta (- text-length new-text-length)))
+	    (let ((new-gap-end (- gap-end delta)))
+	      (%substring-move! text gap-end text-length text new-gap-end)
+	      (vector-set! group group-index:gap-end new-gap-end)
+	      (vector-set! group group-index:gap-length (- gap-length delta))))
+	  (set-string-maximum-length! text new-text-length))))
+    (memoize-shrink-length! group reallocation-factor)))
+
+(define (memoize-shrink-length! group reallocation-factor)
+  (vector-set! group group-index:shrink-length
+	       (compute-shrink-length (string-length (group-text group))
+				      reallocation-factor)))
+
+(define (compute-shrink-length length reallocation-factor)
+  (floor (/ (floor (/ length reallocation-factor)) reallocation-factor)))
+
+(define (group-reallocation-factor group)
+  ;; We assume the result satisfies (LAMBDA (G) (AND (REAL? G) (> G 1)))
+  (inexact->exact (ref-variable buffer-reallocation-factor group)))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: basic.scm,v 1.125 1992/10/17 23:28:06 jinx Exp $
+;;;	$Id: basic.scm,v 1.126 1993/01/10 10:54:41 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -97,7 +97,7 @@ With an argument, inserts several newlines."
     (let ((m* (mark-right-inserting (current-point))))
       (insert-newlines (or (command-argument-value argument) 1))
       (set-current-point! m*))))
-
+
 (define-command narrow-to-region
   "Restrict editing in current buffer to text between point and mark.
 Use \\[widen] to undo the effects of this command."
@@ -125,6 +125,21 @@ The key is bound in fundamental mode."
   (lambda (command key)
     (if (prompt-for-confirmation? "Go ahead")
 	(define-key 'fundamental key (command-name command)))))
+
+(define-variable buffer-reallocation-factor
+  "Determines how much a buffer grows by when it needs to expand.
+This is a real number greater than one.  When a buffer is expanded,
+its size is multiplied by this factor until it is big enough.
+Similarly, when a buffer shrinks, its size is divided by this factor.
+
+Increasing this factor reduces the average time for insertion and
+deletion, but increases the average space used by the buffer.
+
+The minimum ratio between the number of characters in a buffer and the
+amount of space allocated to hold them is
+    (/ 1 (expt buffer-reallocation-factor 2))"
+  5/4
+  (lambda (object) (and (real? object) (> object 1))))
 
 ;;;; Prefixes
 
