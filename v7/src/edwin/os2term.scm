@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2term.scm,v 1.10 1995/11/04 02:29:08 cph Exp $
+;;;	$Id: os2term.scm,v 1.11 1996/03/20 23:52:27 cph Exp $
 ;;;
-;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -162,7 +162,21 @@
 (define (open-window)
   (let ((wid (os2win-open event-descriptor "Edwin")))
     (os2win-set-icon wid edwin-screen-icon)
-    (let ((metrics (set-normal-font! wid current-font)))
+    (let ((metrics
+	   (if current-font
+	       (let ((metrics (set-normal-font! wid current-font)))
+		 (if (not metrics)
+		     (error "Unknown font name:" current-font))
+		 metrics)
+	       (let loop ((fonts initial-font-list))
+		 (if (null? fonts)
+		     (error "Unable to find usable font:" initial-font-list))
+		 (let ((metrics (set-normal-font! wid (car fonts))))
+		   (if metrics
+		       (begin
+			 (set! current-font (car fonts))
+			 metrics)
+		       (loop (cdr fonts))))))))
       (os2ps-set-colors (os2win-ps wid)
 			(face-foreground-color normal-face)
 			(face-background-color normal-face))
@@ -366,7 +380,10 @@
   (foreground-color #f read-only #t)
   (background-color #f read-only #t))
 
-(define current-font "4.System VIO")
+(define current-font #f)
+(define initial-font-list
+  '("4.System VIO" "8.Courier" "10.Courier" "12.Courier"
+		   "10.System Monospaced"))
 (define normal-face (make-face #x000000 #xFFFFFF))
 (define highlight-face (make-face #xFFFFFF #x000000))
 
@@ -390,7 +407,10 @@
   unspecific)
 
 (define (os2-screen/set-font! screen font)
-  (set-screen-font-metrics! screen (set-normal-font! (screen-wid screen) font))
+  (let ((metrics (set-normal-font! (screen-wid screen) font)))
+    (if (not metrics)
+	(error "Unknown font name:" font))
+    (set-screen-font-metrics! screen metrics))
   (set! current-font font)
   (let ((resize (screen-resize-thunk screen)))
     (if resize
@@ -398,13 +418,12 @@
 
 (define (set-normal-font! wid font)
   (let ((metrics (os2ps-set-font (os2win-ps wid) 1 font)))
-    (if (not metrics)
-	(error "Unknown font name:" font))
-    (let ((width (font-metrics/width metrics))
-	  (height (font-metrics/height metrics)))
-      (os2win-set-grid wid width height)
-      (os2win-shape-cursor wid width height
-			   (fix:or CURSOR_SOLID CURSOR_FLASH)))
+    (if metrics
+	(let ((width (font-metrics/width metrics))
+	      (height (font-metrics/height metrics)))
+	  (os2win-set-grid wid width height)
+	  (os2win-shape-cursor wid width height
+			       (fix:or CURSOR_SOLID CURSOR_FLASH))))
     metrics))
 
 (define (os2-screen/set-size! screen x-size y-size)
