@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: image.scm,v 1.136 2000/01/16 13:24:02 cph Exp $
+;;; $Id: image.scm,v 1.137 2000/01/25 17:01:02 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -88,7 +88,10 @@
 
 (define default-char-image-strings/ansi
   (let ((strings (vector-copy default-char-image-strings/original-emacs)))
-    (do ((i #x80 (+ i 1)))
+    (do ((i #x91 (+ i 1)))
+	((= #x93 i))
+      (vector-set! strings i (string (integer->char i))))
+    (do ((i #xA0 (+ i 1)))
 	((= #x100 i))
       (vector-set! strings i (string (integer->char i))))
     strings))
