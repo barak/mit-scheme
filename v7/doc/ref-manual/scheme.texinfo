@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.68 1999/04/29 22:21:30 cph Exp $
+@comment $Id: scheme.texinfo,v 1.69 1999/05/08 02:57:38 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -95,9 +95,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.68
+@subtitle Edition 1.69
 @subtitle for Scheme Release 7.5
-@subtitle 29 April 1999
+@subtitle 7 May 1999
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -6093,16 +6093,99 @@ defaults to @code{char-set:not-whitespace}.
 @cindex character, searching string for
 @cindex substring, searching string for
 
-@deffn {procedure+} substring? pattern string
-Searches @var{string} to see if it contains the substring @var{pattern}.
-Returns the index of the first substring of @var{string} that is equal
-to @var{pattern}; or @code{#f} if @var{string} does not contain @var{pattern}.
+The first few procedures in this section perform @dfn{string search}, in
+which a given string (the @dfn{text}) is searched to see if it contains
+another given string (the @dfn{pattern}) as a proper substring.  At
+present these procedures are implemented using a hybrid strategy.  For
+short patterns of less than 4 characters, the naive string-search
+algorithm is used.  For longer patterns, the Boyer-Moore string-search
+algorithm is used.
+
+@deffn {procedure+} string-search-forward string pattern
+@deffnx {procedure+} substring-search-forward string start end pattern
+@var{Pattern} must be a string.  Searches @var{string} to see if it
+contains @var{pattern} as a substring.  The search is performed from
+left to right; if successful, returns the index of the first character
+of the match.  Otherwise, returns @code{#f}.
+
+@code{substring-search-forward} limits its search to the specified
+substring of @var{string}; @code{string-search-forward} searches all of
+@var{string}.
 
 @example
 @group
-(substring? "rat" "pirate")             @result{}  2
+(string-search-forward "pirate" "rat")
+    @result{} 2
+(string-search-forward "pirate rating" "rat")
+    @result{} 2
+(substring-search-forward "pirate rating" 4 13 "rat")
+    @result{} 7
+(substring-search-forward "pirate rating" 9 13 "rat")
+    @result{} #f
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} string-search-backward string pattern
+@deffnx {procedure+} substring-search-backward string start end pattern
+@var{Pattern} must be a string.  Searches @var{string} to see if it
+contains @var{pattern} as a substring.  The search is performed from
+right to left; if successful, returns the index after the last character
+of the match.  Otherwise, returns @code{#f}.
+
+@code{substring-search-backward} limits its search to the specified
+substring of @var{string}; @code{string-search-backward} searches all of
+@var{string}.
+
+@example
+@group
+(string-search-backward "pirate" "rat")
+    @result{} 5
+(string-search-backward "pirate rating" "rat")
+    @result{} 10
+(substring-search-backward "pirate rating" 1 8 "rat")
+    @result{} 5
+(substring-search-backward "pirate rating" 9 13 "rat")
+    @result{} #f
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} string-search-all string pattern
+@deffnx {procedure+} substring-search-all string start end pattern
+@var{Pattern} must be a string.  Searches @var{string} to find all
+occurrences of @var{pattern}.  Returns a list of the occurrences; each
+element of the list is an index pointing to the first character of an
+occurrence.
+
+@code{substring-search-all} limits its search to the specified substring
+of @var{string}; @code{string-search-all} searches all of @var{string}.
+
+@example
+@group
+(string-search-all "pirate" "rat")
+    @result{} (2)
+(string-search-all "pirate rating" "rat")
+    @result{} (2 7)
+(substring-search-all "pirate rating" 4 13 "rat")
+    @result{} (7)
+(substring-search-all "pirate rating" 9 13 "rat")
+    @result{} ()
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} substring? pattern string
+@var{Pattern} must be a string.  Searches @var{string} to see if it
+contains @var{pattern} as a substring.  Returns @code{#t} if
+@var{pattern} is a substring of @var{string}, otherwise returns
+@code{#f}.
+
+@example
+@group
+(substring? "rat" "pirate")             @result{}  #t
 (substring? "rat" "outrage")            @result{}  #f
-(substring? "" any-string)              @result{}  0
+(substring? "" any-string)              @result{}  #t
 (if (substring? "moon" text)
     (process-lunar text)
     'no-moon)
@@ -6140,7 +6223,7 @@ index returned is relative to the entire string, not just the substring.
 @example
 @group
 (string-find-next-char-in-set my-string char-set:alphabetic)
-                @result{}  @r{start position of the first word in} my-string
+    @result{}  @r{start position of the first word in} my-string
 @r{; Can be used as a predicate:}
 (if (string-find-next-char-in-set my-string
                                   (char-set #\( #\) ))
@@ -6320,6 +6403,29 @@ answer                                      @result{}  "*********"
 answer                                      @result{}  "start****"
 (substring-move-left! "-end" 0 4 answer 5)  @result{}  @r{unspecified}
 answer                                      @result{}  "start-end"
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} reverse-string string
+@deffnx {procedure+} reverse-substring string start end
+@deffnx {procedure+} reverse-string! string
+@deffnx {procedure+} reverse-substring! string start end
+Reverses the order of the characters in the given string or substring.
+@code{reverse-string} and @code{reverse-substring} return newly
+allocated strings; @code{reverse-string!} and @code{reverse-substring!}
+modify their argument strings and return an unspecified value.
+
+@example
+@group
+(reverse-string "foo bar baz")          @result{} "zab rab oof"
+(reverse-substring "foo bar baz" 4 7)   @result{} "rab"
+(let ((foo "foo bar baz"))
+  (reverse-string! foo)
+  foo)                                  @result{} "zab rab oof"
+(let ((foo "foo bar baz"))
+  (reverse-substring! foo 4 7)
+  foo)                                  @result{} "foo rab baz"
 @end group
 @end example
 @end deffn
