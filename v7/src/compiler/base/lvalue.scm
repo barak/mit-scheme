@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 1.1 1987/06/17 02:16:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 1.2 1987/07/02 20:45:16 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,10 +36,11 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define-vnode variable block name assigned? in-cell? normal-offset)
+(define-vnode variable block name assigned? in-cell? normal-offset
+  declarations)
 
 (define (make-variable block name)
-  (make-vnode variable-tag block name false false false))
+  (make-vnode variable-tag block name false false false '()))
 
 (define variable-assoc
   (association-procedure eq? variable-name))
