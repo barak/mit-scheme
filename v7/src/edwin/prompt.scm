@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.135 1989/08/09 13:18:02 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.136 1989/08/14 09:49:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -171,15 +171,20 @@ recursive minibuffers."
 (define (set-message! message)
   (let ((window (typein-window)))
     (window-set-override-message! window message)
-    (window-direct-update! window true)))
+    (if (not *executing-keyboard-macro?*)
+	(window-direct-update! window true))))
 
 (define (clear-message!)
   (let ((window (typein-window)))
     (window-clear-override-message! window)
+    (if (not *executing-keyboard-macro?*)
+	(window-direct-update! window true))
     (window-direct-update! window true)))
 
 (define (update-typein!)
-  (window-direct-update! (typein-window) false))
+    (if (not *executing-keyboard-macro?*)
+	(window-direct-update! (typein-window) false)))
+
 (define (temporary-typein-message string)
   (let ((point) (start) (end))
     (dynamic-wind (lambda ()
