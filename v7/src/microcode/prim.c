@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.24 1987/04/16 02:27:21 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.25 1987/04/16 23:20:46 jinx Rel $
  *
  * The leftovers ... primitives that don't seem to belong elsewhere.
  *
@@ -103,7 +103,7 @@ Built_In_Primitive(Prim_Prim_Type, 1, "PRIMITIVE-TYPE", 0x10)
   Primitive_1_Arg();
 
   Touch_In_Primitive(Arg1, Arg1);
-  return Make_Unsigned_Fixnum(Type_Code(Arg1));
+  return Make_Unsigned_Fixnum(Safe_Type_Code(Arg1));
 }
 
 /* (PRIMITIVE-GC-TYPE OBJECT)
