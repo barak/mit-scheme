@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: loadef.scm,v 1.33 1998/08/31 04:14:31 cph Exp $
+;;;	$Id: loadef.scm,v 1.34 1998/08/31 04:19:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -292,7 +292,7 @@ is open the that server, its buffer is selected.")
 (define-library 'WEBSTER
   '("webster" (EDWIN)))
 
-(define-autoload-major-mode webster read-only "Webster" 'WEBSTER
+(define-autoload-major-mode 'webster 'read-only "Webster" 'WEBSTER
   "Major mode for interacting with webster server.
 Commands:
 
