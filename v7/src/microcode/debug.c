@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: debug.c,v 9.45 1993/08/03 08:29:42 gjr Exp $
+$Id: debug.c,v 9.46 1993/11/03 19:04:12 jmiller Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -845,7 +845,7 @@ DEFUN (Print_Primitive, (primitive), SCHEME_OBJECT primitive)
    debugging flags.  Invoked via the "D" command to the ^C
    handler or during each FASLOAD. */
 
-#ifdef ENABLE_DEBUGGING_TOOLS
+#ifdef ENABLE_DEBUGGING_FLAGS
 
 #ifndef MORE_DEBUG_FLAG_CASES
 #define MORE_DEBUG_FLAG_CASES()
@@ -856,7 +856,7 @@ DEFUN (Print_Primitive, (primitive), SCHEME_OBJECT primitive)
 #endif
 
 #ifndef SET_FLAG_HOOK
-#define SET_FLAG_HOOK()
+#define SET_FLAG_HOOK(hook)
 #endif
 
 #ifndef DEBUG_GETDEC
@@ -1010,7 +1010,7 @@ DEFUN_VOID (debug_edit_flags)
     }
 }
 
-#else /* not ENABLE_DEBUGGING_TOOLS */
+#else /* not ENABLE_DEBUGGING_FLAGS */
 
 void
 DEFUN_VOID (debug_edit_flags)
@@ -1020,4 +1020,19 @@ DEFUN_VOID (debug_edit_flags)
   return;
 }
 
-#endif /* not ENABLE_DEBUGGING_TOOLS */
+static int
+DEFUN (set_flag, (flag_number, value), int flag_number AND int value)
+{
+  signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE);
+  /*NOTREACHED*/
+}
+
+#endif /* not ENABLE_DEBUGGING_FLAGS */
+
+DEFINE_PRIMITIVE("SET-DEBUG-FLAGS!", Prim_set_debug_flags, 2, 2,
+  "(SET-DEBUG-FLAGS! flag_number boolean)")
+{
+  PRIMITIVE_HEADER (2);
+  set_flag ((arg_integer (1)), (BOOLEAN_ARG (2)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
