@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.14 2001/07/14 11:42:26 cph Exp $
+;;; $Id: matcher.scm,v 1.15 2001/10/09 16:02:43 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -47,6 +47,14 @@
 	   (if preprocessor
 	       (preprocessor expression external-bindings internal-bindings)
 	       expression)))
+	((string? expression)
+	 (preprocess-matcher-expression `(STRING ,expression)
+					external-bindings
+					internal-bindings))
+	((char? expression)
+	 (preprocess-matcher-expression `(CHAR ,expression)
+					external-bindings
+					internal-bindings))
 	(else
 	 (error "Unknown matcher expression:" expression))))
 
@@ -143,20 +151,22 @@
 (define-matcher-preprocessor 'CHAR-SET
   (lambda (expression external-bindings internal-bindings)
     internal-bindings
-    (let ((arg (check-1-arg expression)))
-      (if (string? arg)
-	  `(,(car expression)
-	    ,(handle-complex-expression
+    `(,(car expression)
+      ,(handle-complex-expression
+	(let ((arg (check-1-arg expression)))
+	  (if (string? arg)
 	      (if (string-prefix? "^" arg)
 		  `(RE-COMPILE-CHAR-SET ,(string-tail arg 1) #T)
 		  `(RE-COMPILE-CHAR-SET ,arg #F))
-	      external-bindings))
-	  expression))))
+	      arg))
+	external-bindings))))
 
 (define-matcher-preprocessor 'ALPHABET
   (lambda (expression external-bindings internal-bindings)
-    external-bindings internal-bindings
-    expression))
+    internal-bindings
+    `(,(car expression)
+      ,(handle-complex-expression (check-1-arg expression)
+				  external-bindings))))
 
 (define-matcher-preprocessor 'WITH-POINTER
   (lambda (expression external-bindings internal-bindings)
