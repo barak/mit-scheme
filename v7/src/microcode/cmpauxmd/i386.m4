@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.2 1992/02/14 20:11:07 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.3 1992/02/14 21:08:48 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -99,6 +99,8 @@
 
 ####	Utility macros and definitions
 
+ifdef(GCC,`errprint("cmpaux-i386.m4 only works with GCC!")')
+
 define(use_external,`')			# Declare desire to use an external
 define(external_reference,`_$1')	# The actual reference
 
@@ -112,7 +114,7 @@ $1:')
 
 define(HEX, `0x$1')
 define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 8))
-define(ADDRESS_MASK, eval(((2 ** (32 - TC_LENGTH)) - 1), 16))
+define(ADDRESS_MASK, eval(((2 ** (32 - TC_LENGTH)) - 1)))
 define(IMMEDIATE, `$$1')
 
 define(REGBLOCK_VAL,8)
@@ -132,12 +134,16 @@ use_external(Free)
 use_external(Registers)
 use_external(Ext_Stack_Pointer)
 
+	.file	"cmpaux-i386.m4"
+
 .globl C_Stack_Pointer
 .comm C_Stack_Pointer,4
 
 .globl C_Frame_Pointer
 .comm C_Frame_Pointer,4
 
+.text
+	.align 2
 define_c_label(interface_initialize)
 #	This needs to set the floating point mode.
 	ret
@@ -185,7 +191,7 @@ define_debugging_label(scheme_to_interface_return)
 
 define_c_label(interface_to_scheme)
 	movl	REGBLOCK_VAL()(regs),%eax		# Value/dynamic link
-	movl	IMMEDIATE(HEX(ADDRESS_MASK)),rmask	# = %ebp
+	movl	IMMEDIATE(ADDRESS_MASK),rmask 		# = %ebp
 	movl	external_reference(Free),rfree		# Free pointer = %edi
 	movl	external_reference(Ext_Stack_Pointer),%esp
 	movl	%eax,%ecx				# Copy if used
