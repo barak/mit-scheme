@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.40 1992/05/21 22:13:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.41 1992/08/18 03:25:27 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -1059,6 +1059,22 @@ DEFUN (update_input_mask, (xw), struct xwindow * xw)
   }
 }
 
+static void
+DEFUN (ping_server, (xd), struct xdisplay * xd)
+{
+  /* Periodically ping the server connection to see if it has
+     died.  If it has died, this will force an error to be signalled
+     to Scheme; we expect Scheme to handle the error in some
+     reasonable way.  */
+  (XD_SERVER_PING_TIMER (xd)) += 1;
+  if ((XD_SERVER_PING_TIMER (xd)) >= 100)
+    {
+      (XD_SERVER_PING_TIMER (xd)) = 0;
+      XNoOp (XD_DISPLAY (xd));
+      XFlush (XD_DISPLAY (xd));
+    }
+}
+
 /* The use of `XD_CACHED_EVENT' prevents an event from being lost due
    to garbage collection.  First `XD_CACHED_EVENT' is set to hold the
    current event, then the allocations are performed.  If one of them
@@ -1082,33 +1098,43 @@ DEFUN (xd_process_events, (xd, non_block_p, use_select_p),
       events_queued = (XEventsQueued (display, QueuedAlready));
       goto restart;
     }
-  events_queued =
-    (use_select_p ? (XEventsQueued (display, QueuedAlready))
-     : non_block_p ? (XEventsQueued (display, QueuedAfterReading))
-     : 0);
+  if (use_select_p)
+    events_queued = (XEventsQueued (display, QueuedAlready));
+  else if (non_block_p)
+    {
+      ping_server (xd);
+      events_queued = (XEventsQueued (display, QueuedAfterReading));
+    }
+  else
+    events_queued = 0;
   while (1)
     {
       XEvent event;
       if (events_queued > 0)
 	events_queued -= 1;
-      else if (use_select_p)
-	switch (UX_select_input ((ConnectionNumber (display)),
-				 (!non_block_p)))
-	  {
-	  case select_input_none:
+      else
+	{
+	  if (use_select_p)
+	    switch (UX_select_input ((ConnectionNumber (display)),
+				     (!non_block_p)))
+	      {
+	      case select_input_none:
+		return (SHARP_F);
+	      case select_input_other:
+		return (LONG_TO_FIXNUM (-2));
+	      case select_input_process_status:
+		return (LONG_TO_FIXNUM (-3));
+	      case select_input_interrupt:
+		return (LONG_TO_FIXNUM (-4));
+	      case select_input_argument:
+		ping_server (xd);
+		events_queued = (XEventsQueued (display, QueuedAfterReading));
+		continue;
+	      }
+	  else if (non_block_p)
 	    return (SHARP_F);
-	  case select_input_other:
-	    return (LONG_TO_FIXNUM (-2));
-	  case select_input_process_status:
-	    return (LONG_TO_FIXNUM (-3));
-	  case select_input_interrupt:
-	    return (LONG_TO_FIXNUM (-4));
-	  case select_input_argument:
-	    events_queued = (XEventsQueued (display, QueuedAfterReading));
-	    continue;
-	  }
-      else if (non_block_p)
-	return (SHARP_F);
+	  ping_server (xd);
+	}
       XNextEvent (display, (&event));
       if ((event . type) == KeymapNotify)
 	continue;
@@ -1166,6 +1192,7 @@ DEFINE_PRIMITIVE ("X-OPEN-DISPLAY", Prim_x_open_display, 1, 1, 0)
       }
     (XD_ALLOCATION_INDEX (xd)) =
       (allocate_table_index ((&x_display_table), xd));
+    (XD_SERVER_PING_TIMER (xd)) = 0;
     (XD_WM_PROTOCOLS (xd)) =
       (XInternAtom ((XD_DISPLAY (xd)), "WM_PROTOCOLS", False));
     (XD_WM_DELETE_WINDOW (xd)) =

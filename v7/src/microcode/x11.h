@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.13 1992/02/11 18:57:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.14 1992/08/18 03:25:26 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -43,6 +43,7 @@ struct xdisplay
 {
   unsigned int allocation_index;
   Display * display;
+  unsigned int server_ping_timer;
   Atom wm_protocols;
   Atom wm_delete_window;
   Atom wm_take_focus;
@@ -52,6 +53,7 @@ struct xdisplay
 
 #define XD_ALLOCATION_INDEX(xd) ((xd) -> allocation_index)
 #define XD_DISPLAY(xd) ((xd) -> display)
+#define XD_SERVER_PING_TIMER(xd) ((xd) -> server_ping_timer)
 #define XD_WM_PROTOCOLS(xd) ((xd) -> wm_protocols)
 #define XD_WM_DELETE_WINDOW(xd) ((xd) -> wm_delete_window)
 #define XD_WM_TAKE_FOCUS(xd) ((xd) -> wm_take_focus)
