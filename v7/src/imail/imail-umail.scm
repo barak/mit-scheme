@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.7 2000/01/19 05:38:46 cph Exp $
+;;; $Id: imail-umail.scm,v 1.8 2000/02/04 05:19:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -41,16 +41,17 @@
   (read-umail-file (file-url-pathname url) #f))
 
 (define-method %new-folder ((url <umail-url>))
-  (let ((folder (make-umail-folder url '())))
+  (let ((folder (make-umail-folder url)))
     (save-folder folder)
     folder))
 
 ;;;; Folder
 
-(define-class (<umail-folder> (constructor (url messages))) (<file-folder>))
+(define-class (<umail-folder> (constructor (url))) (<file-folder>))
 
 (define-method %write-folder ((folder <folder>) (url <umail-url>))
-  (write-umail-file folder (file-url-pathname url) #f))
+  (write-umail-file folder (file-url-pathname url) #f)
+  (update-file-folder-modification-time! folder))
 
 (define-method poll-folder ((folder <umail-folder>))
   folder
@@ -64,8 +65,13 @@
       (read-umail-folder (make-umail-url pathname) port import?))))
 
 (define (read-umail-folder url port import?)
-  (make-umail-folder
-   url
+  (let ((folder (make-umail-folder url)))
+    (%revert-folder folder)
+    folder))
+
+(define-method %revert-folder ((folder <umail-folder>))
+  (set-file-folder-messages!
+   folder
    (let ((from-line (read-line port)))
      (if (eof-object? from-line)
 	 '()
@@ -79,7 +85,8 @@
 		 (let ((messages (cons message messages)))
 		   (if from-line
 		       (loop from-line messages)
-		       (reverse! messages)))))))))))
+		       (reverse! messages))))))))))
+    (update-file-folder-modification-time! folder))
 
 (define (read-umail-message from-line port import?)
   (let read-headers ((header-lines '()))

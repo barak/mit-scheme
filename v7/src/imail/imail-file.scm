@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.6 2000/02/04 04:53:08 cph Exp $
+;;; $Id: imail-file.scm,v 1.7 2000/02/04 05:19:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -63,10 +63,19 @@
 
 (define-class <file-folder> (<folder>)
   (url accessor folder-url)
-  (messages define standard))
+  (messages define standard initial-value '())
+  (modification-time define standard initial-value #f))
+
+(define (file-folder-pathname folder)
+  (file-url-pathname (folder-url folder)))
+
+(define (update-file-folder-modification-time! folder)
+  (set-file-folder-modification-time!
+   folder
+   (file-modification-time (file-folder-pathname folder))))
 
 (define-method %folder-valid? ((folder <file-folder>))
-  (file-exists? (file-url-pathname (folder-url folder))))
+  (file-exists? (file-folder-pathname folder)))
 
 (define-method folder-length ((folder <file-folder>))
   (length (file-folder-messages folder)))
@@ -157,6 +166,14 @@
 (define-method synchronize-folder ((folder <file-folder>))
   folder
   unspecific)
+
+(define-method %maybe-revert-folder ((folder <file-folder>) resolve-conflict)
+  (if (if (eqv? (file-folder-modification-time folder)
+		(file-modification-time (file-folder-pathname folder)))
+	  (or (not (folder-modified? folder))
+	      (resolve-conflict folder))
+	  (folder-modified? folder))
+      (%revert-folder folder)))
 
 (define-method subscribe-folder ((folder <file-folder>))
   folder

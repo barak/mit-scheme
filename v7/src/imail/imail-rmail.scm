@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.11 2000/02/04 04:53:04 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.12 2000/02/04 05:19:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -41,15 +41,14 @@
   (read-rmail-file (file-url-pathname url) #f))
 
 (define-method %new-folder ((url <rmail-url>))
-  (let ((folder (make-rmail-folder url '())))
+  (let ((folder (make-rmail-folder url)))
     (set-header-fields! folder (compute-rmail-folder-header-fields folder))
     (save-folder folder)
     folder))
 
 ;;;; Folder
 
-(define-class (<rmail-folder> (constructor (url header-fields messages)))
-    (<file-folder>))
+(define-class (<rmail-folder> (constructor (url))) (<file-folder>))
 
 (define-method header-fields ((folder <rmail-folder>))
   (folder-get folder 'RMAIL-HEADER-FIELDS '()))
@@ -58,7 +57,8 @@
   (folder-put! folder 'RMAIL-HEADER-FIELDS headers))
 
 (define-method %write-folder ((folder <folder>) (url <rmail-url>))
-  (write-rmail-file folder (file-url-pathname url) #f))
+  (write-rmail-file folder (file-url-pathname url) #f)
+  (update-file-folder-modification-time! folder))
 
 (define-method poll-folder ((folder <rmail-folder>))
   (rmail-get-new-mail folder))
@@ -85,15 +85,19 @@
       (read-rmail-folder (make-rmail-url pathname) port import?))))
 
 (define (read-rmail-folder url port import?)
-  (let ((folder (make-rmail-folder url '())))
-    (set-header-fields! folder (read-rmail-prolog port))
-    (let loop ()
-      (let ((message (read-rmail-message port import?)))
-	(if message
-	    (begin
-	      (append-message folder message)
-	      (loop)))))
+  (let ((folder (make-rmail-folder url)))
+    (%revert-folder folder)
     folder))
+
+(define-method %revert-folder ((folder <rmail-folder>))
+  (set-header-fields! folder (read-rmail-prolog port))
+  (let loop ()
+    (let ((message (read-rmail-message port import?)))
+      (if message
+	  (begin
+	    (append-message folder message)
+	    (loop)))))
+  (update-file-folder-modification-time! folder))
 
 (define (read-rmail-prolog port)
   (if (not (string-prefix? "BABYL OPTIONS:" (read-required-line port)))
@@ -280,15 +284,15 @@
 	  (- (folder-length folder) initial-count)))))
 
 (define (rmail-folder-inbox-list folder)
-  (let ((url (folder-url folder))
-	(inboxes (get-first-header-field-value folder "mail" #f)))
+  (let ((inboxes (get-first-header-field-value folder "mail" #f)))
     (cond (inboxes
 	   (map (let ((directory
-		       (directory-pathname (file-url-pathname url))))
+		       (directory-pathname (file-folder-pathname folder))))
 		  (lambda (filename)
 		    (merge-pathnames (string-trim filename) directory)))
 		(burst-string inboxes #\, #f)))
-	  ((pathname=? (rmail-primary-folder-name) (url-body url))
+	  ((pathname=? (rmail-primary-folder-name)
+		       (url-body (folder-url folder)))
 	   (rmail-primary-inbox-list))
 	  (else '()))))
 
@@ -309,8 +313,7 @@
 			    (directory-pathname pathname))
 		(rename-inbox-using-movemail
 		 pathname
-		 (directory-pathname
-		  (file-url-pathname (folder-url folder)))))
+		 (directory-pathname (file-folder-pathname folder))))
 	       (else
 		(rename-inbox-using-rename pathname)))))
     (and (file-exists? pathname)

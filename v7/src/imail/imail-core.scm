@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.20 2000/02/04 04:53:12 cph Exp $
+;;; $Id: imail-core.scm,v 1.21 2000/02/04 05:19:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -309,6 +309,7 @@
   (%maybe-revert-folder folder resolve-conflict))
 
 (define-generic %maybe-revert-folder (folder resolve-conflict))
+(define-generic %revert-folder (folder))
 
 ;; Write the contents of FOLDER to URL.
 (define (write-folder folder url)
