@@ -14,7 +14,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/error.c,v 1.2 1992/02/10 13:10:44 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/error.c,v 1.3 1992/08/29 13:24:26 jinx Exp $ */
 
 #include <stdio.h>
 #include "dstack.h"
@@ -64,7 +64,7 @@ DEFUN (condition_type_allocate, (name, generalizations, reporter),
        Tptrvec generalizations AND
        void EXFUN ((*reporter), (Tcondition condition)))
 {
-  static Tptrvec EXFUN (generalizations_union, (Tptrvec generalizations));
+  Tptrvec EXFUN (generalizations_union, (Tptrvec generalizations));
   Tcondition_type type = (xmalloc (sizeof (struct condition_type)));
   Tptrvec g = (generalizations_union (generalizations));
   ptrvec_adjoin (g, type);
