@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.39 1989/09/24 15:24:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.40 1990/01/23 08:30:51 jinx Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -1012,9 +1012,8 @@ Read_Header_and_Allocate()
 	    program_name, Size);
     quit(1);
   }
-  Heap += HEAP_BUFFER_SPACE;
-  INITIAL_ALIGN_FLOAT(Heap);
-  return (Size - HEAP_BUFFER_SPACE);
+  Heap += (TRAP_MAX_IMMEDIATE + 1);
+  return (Size - (TRAP_MAX_IMMEDIATE + 1));
 }
 
 void
@@ -1031,6 +1030,7 @@ do_it()
 
   Heap_Table = &Heap[0];
   Heap_Base = &Heap_Table[Heap_Objects];
+  ALIGN_FLOAT (Heap_Base);
   Heap_Object_Base =
     Read_External(Heap_Objects, Heap_Table, Heap_Base);
 
