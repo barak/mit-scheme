@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.38 1997/11/06 06:57:42 cph Exp $
+;;;	$Id: sendmail.scm,v 1.39 1997/11/06 07:41:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
@@ -817,6 +817,7 @@ the user from the mailer."
 						  lookup-buffer)
 				    trace-buffer
 	       (lambda (port banner)
+		 banner
 		 (smtp-command/helo port)
 		 (smtp-command/mail port from)
 		 (let ((responses
@@ -834,6 +835,7 @@ the user from the mailer."
 	       (pop-up-temporary-buffer "*SMTP-invalid*"
 					'(READ-ONLY FLUSH-ON-SPACE)
 		 (lambda (buffer window)
+		   window
 		   (let ((m (mark-left-inserting-copy (buffer-start buffer))))
 		     (for-each (lambda (rcpt response)
 				 (if (not (valid-response? response))
@@ -999,7 +1001,7 @@ the user from the mailer."
 	 (cons* (string-head (car responses) 3)
 		" "
 		(let ((lines
-		       (map (lambda (response) (string-tail (car responses) 4))
+		       (map (lambda (response) (string-tail response 4))
 			    responses)))
 		  (cons (car lines)
 			(append-map (lambda (line) (list "\n" line))
